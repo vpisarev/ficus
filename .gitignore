@@ -7,6 +7,8 @@
 *.cmx
 *.cmxs
 *.cmxa
+parser.output
+ficus
 
 # ocamlbuild working directory
 _build/
@@ -14,10 +16,3 @@ _build/
 # ocamlbuild targets
 *.byte
 *.native
-
-# oasis generated files
-setup.data
-setup.log
-
-# Merlin configuring file for Vim and Emacs
-.merlin
