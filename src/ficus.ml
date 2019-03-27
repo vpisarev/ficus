@@ -19,9 +19,7 @@ let token2str t = match t with
   | Parser.CCODE -> "CCODE"
   | Parser.ELSE -> "ELSE"
   | Parser.EXCEPTION -> "EXCEPTION"
-  | Parser.B_FOR -> "B_FOR"
   | Parser.FOR -> "FOR"
-  | Parser.B_FOLD -> "B_FOLD"
   | Parser.FOLD -> "FOLD"
   | Parser.FROM -> "FROM"
   | Parser.FUN -> "FUN"
@@ -44,7 +42,6 @@ let token2str t = match t with
   | Parser.B_LSQUARE -> "B_LSQUARE"
   | Parser.LSQUARE -> "LSQUARE"
   | Parser.RSQUARE -> "RSQUARE"
-  | Parser.B_LBRACE -> "B_LBRACE"
   | Parser.LBRACE -> "LBRACE"
   | Parser.RBRACE -> "RBRACE"
   | Parser.COMMA -> "COMMA"
@@ -151,7 +148,7 @@ let () =
     []
     (fun s -> files := !files @ [s])
     ("Ficus Compiler v0.1\n" ^
-     Printf.sprintf "usage: %s file1.tml [file2.tml ...]" Sys.argv.(0));
+     Printf.sprintf "usage: %s file1.fx [file2.fx ...]" Sys.argv.(0));
   List.iter
     (fun f -> ignore (process_file f true))
     !files

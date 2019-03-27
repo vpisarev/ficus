@@ -53,14 +53,6 @@ let rec pptype_ t p1 =
         pstr prefix; pcut(); obox();
         (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pptype_ t TypPr0) args);
         cbox(); pcut(); pstr ")" in
-    let pprec_ prefix args =
-        pstr prefix; pcut(); obox();
-        (List.iteri (fun i (n1, t1, opt_x1) ->
-            if i = 0 then () else (pstr ","; pspace());
-            pprint_id n1; pstr ":"; pspace(); pptype_ t1 TypPr0;
-            (match opt_x1 with
-            | None -> ()
-            | Some(x1) -> pstr "="; pcut(); pprint_lit x1)) args); cbox(); pcut(); pstr "}" in
     match t with
     | TypVar {contents=None} -> pstr "Auto"
     | TypVar {contents=Some(t1)} -> pptype_ t1 p1
@@ -246,7 +238,7 @@ and pprint_exp_as_seq e = match e with
 and pprint_expseq el need_braces =
     if need_braces then pstr "{" else (); pcut(); ovbox();
     (List.iter (fun e -> pprint_exp e; pstr ";"; pcut()) el); cvbox(); pcut();
-    if need_braces then pstr "{" else ()
+    if need_braces then pstr "}" else ()
 and pprint_pat p = match p with
     | PatAny(_) -> pstr "_"
     | PatIdent(n, _) -> pprint_id n

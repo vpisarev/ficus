@@ -7,6 +7,7 @@ let keywords = Hashtbl.create 101;;
 let fname = ref "unknown";;
 
 (* kwtyp:
+   0 - single-word keyword
    1 - a keyword that cannot start a new expression, but
        it links previous part of expression with the subsequent one;
        so it can immediately follow expression (be placed on the same line),
@@ -15,16 +16,21 @@ let fname = ref "unknown";;
        some explicit operator or a separator
    3 - a keyword that can play a role of a connector (type 1) or an expression beginning (type 2),
        depending on context
-   4 - single-word keyword
+   4 - a keyword 'kwd' that start a construction: 'kwd' (expr) ...
+        Such keywords must be handled in a special way.
+        Normally, after ')' there can be no new expressions/statements without a separator,
+        but not in the case of whose constructions: 'kwd' (...) new_expression.
+        So, as soon as we encountered such special keyword, we start counting parentheses and
+        set new_exp flag as soon as we closed all the parentheses. See paren_stack use.
 *)
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
         ("as", AS, 1); ("catch", CATCH, 1); ("ccode", CCODE, 2); ("else", ELSE, 1);
-        ("exception", EXCEPTION, 2); ("false", FALSE, 4); ("fold", FOLD, 3);
-        ("for", FOR, 3); ("from", FROM, 2); ("fun", FUN, 2); ("if", IF, 2);
+        ("exception", EXCEPTION, 2); ("false", FALSE, 0); ("fold", FOLD, 4);
+        ("for", FOR, 4); ("from", FROM, 2); ("fun", FUN, 2); ("if", IF, 4);
         ("import", IMPORT, 3); ("in", IN, 1); ("operator", OPERATOR, 2); ("ref", REF, 3);
-        ("throw", THROW, 2); ("true", TRUE, 4); ("try", TRY, 2); ("type", TYPE, 2);
-        ("val", VAL, 2); ("var", VAR, 2); ("while", WHILE, 2);
+        ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
+        ("val", VAL, 2); ("var", VAR, 2); ("while", WHILE, 4);
     ]
 ;;
 
@@ -74,6 +80,7 @@ let string_literal = ref "";;
 let string_start = ref dummy_pos;;
 let comment_start = ref dummy_pos;;
 let new_exp = ref true;;
+let paren_stack = ref [];;
 
 let check_ne lexbuf =
     if !new_exp then
@@ -107,17 +114,30 @@ rule tokens = parse
       }
 
     | "\\" space * newline
-      { incr_lineno lexbuf; new_exp := false; tokens lexbuf }
+      { incr_lineno lexbuf; tokens lexbuf }
 
-    | '('   { let t = if !new_exp then [B_LPAREN] else [LPAREN] in (new_exp := true; t) }
-    | ')'   { new_exp := false; [RPAREN] }
+    | '('
+      {
+          (match (!paren_stack) with
+          | x :: rest -> paren_stack := (x+1) :: rest
+          | _ -> ());
+          let t = if !new_exp then [B_LPAREN] else [LPAREN] in (new_exp := true; t)
+      }
+    | ')'
+      {
+          (match (!paren_stack) with
+          | x :: rest -> paren_stack := (if x > 1 then (x-1) :: rest else rest); new_exp := x <= 1
+          | _ -> new_exp := false);
+          [RPAREN]
+      }
     | '['   { let t = if !new_exp then [B_LSQUARE] else [LSQUARE] in (new_exp := true; t) }
     | ']'   { new_exp := false; [RSQUARE] }
-    | '{'   { let t = if !new_exp then [B_LBRACE] else [LBRACE] in (new_exp := true; t) }
-    | '}'   { new_exp := false; [RSQUARE] }
+    | '{'   { new_exp := true; [LBRACE] }
+    | '}'   { new_exp := false; [RBRACE] }
 
     | ((('0' ['x' 'X'] ['0'-'9' 'A'-'F' 'a'-'f']+) | (digit+)) as num) (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
-        { check_ne(lexbuf); new_exp := false;
+      {
+          check_ne(lexbuf); new_exp := false;
           let suffix = match suffix_ with Some(x) -> x | _ -> "" in
           let v =
                try Scanf.sscanf num "%Lu" (fun v -> v)
@@ -133,26 +153,26 @@ rule tokens = parse
           | "u64" | "U64" | "UL" -> UINT(64, v)
           | "" -> INT(v)
           | _ -> raise (Error (InvalidIntegerLiteral, lexbuf.lex_start_p, lexbuf.lex_curr_p))]
-        }
+      }
     | ((digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?) as num) (['f' 'F']? as suffix)
         { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
 
     | ("\'" ? as prefix) ((['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident)
-        { if prefix <> "" then (check_ne(lexbuf); [TYVAR ("\'" ^ ident)]) else
+      {
+          if prefix <> "" then (check_ne(lexbuf); [TYVAR ("\'" ^ ident)]) else
           (try
               match Hashtbl.find keywords ident with
+              | (t, 0) -> check_ne(lexbuf); new_exp := false; [t]
               | (t, 1) -> new_exp := true; [t]
               | (t, 2) -> check_ne(lexbuf); new_exp := true; [t]
-              | (t, 4) -> check_ne(lexbuf); new_exp := false; [t]
-              | (FOLD, _) -> let t = if !new_exp then [B_FOLD] else [FOLD] in (new_exp := true; t)
-              | (FOR, _) -> let t = if !new_exp then [B_FOR] else [FOR] in (new_exp := true; t)
+              | (t, 4) -> check_ne(lexbuf); paren_stack := 0 :: !paren_stack; new_exp := true; [t]
               | (IMPORT, _) -> let t = if !new_exp then [B_IMPORT] else [IMPORT] in (new_exp := true; t)
               | (REF, _) -> let t = if !new_exp then [B_REF] else [REF] in t
               | _ -> raise (Error ((UnexpectedKeyword ident),
                              lexbuf.lex_start_p, lexbuf.lex_curr_p))
            with Not_found ->
-               let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t)) }
-
+               let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t))
+      }
     | '+'   { let t = if !new_exp then [B_PLUS] else [PLUS] in (new_exp := true; t) }
     | '-'   { let t = if !new_exp then [B_MINUS] else [MINUS] in (new_exp := true; t) }
     | '*'   { let t = if !new_exp then [B_STAR] else [STAR] in (new_exp := true; t) }
@@ -221,7 +241,8 @@ and strings = parse
           (Error
              (IllegalEscape (lexeme lexbuf),
              !string_start,
-             lexbuf.lex_curr_p)) }
+             lexbuf.lex_curr_p))
+      }
     | eof
       { raise (Error (UnterminatedString, !string_start, lexbuf.lex_curr_p)) }
     | _
