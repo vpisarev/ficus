@@ -61,7 +61,7 @@ let make_deffun fname args rt body flags loc tmp =
 %token B_MINUS MINUS B_PLUS PLUS
 %token B_STAR STAR SLASH MOD
 %token B_POWER POWER SHIFT_RIGHT SHIFT_LEFT
-%token BITWISE_AND BITWISE_XOR BITWISE_NOT
+%token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
 %token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL MOD_EQUAL
 %token AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
@@ -78,6 +78,7 @@ let make_deffun fname args rt body flags loc tmp =
 %left LOGICAL_OR
 %left LOGICAL_AND
 %left COLON
+%left BITWISE_OR
 %left BITWISE_XOR
 %left BITWISE_AND
 %left AS
@@ -266,7 +267,7 @@ exp:
 | exp LOGICAL_AND exp { make_bin_op(OpLogicAnd, $1, $3) }
 | exp BITWISE_AND exp { make_bin_op(OpBitwiseAnd, $1, $3) }
 | exp LOGICAL_OR exp { make_bin_op(OpLogicOr, $1, $3) }
-| exp BAR exp { make_bin_op(OpBitwiseOr, $1, $3) }
+| exp BITWISE_OR exp { make_bin_op(OpBitwiseOr, $1, $3) }
 | exp BITWISE_XOR exp { make_bin_op(OpBitwiseXor, $1, $3) }
 | exp EQUAL_TO exp { make_bin_op(OpCompareEQ, $1, $3) }
 | exp NOT_EQUAL exp { make_bin_op(OpCompareNE, $1, $3) }
@@ -336,7 +337,7 @@ op_name:
 | SHIFT_LEFT  { "__shl__" }
 | SHIFT_RIGHT  { "__shr__" }
 | BITWISE_AND  { "__bit_and__" }
-| BAR          { "__bit_or__" }
+| BITWISE_OR   { "__bit_or__" }
 | BITWISE_XOR  { "__bit_xor__" }
 | BITWISE_NOT  { "__bit_not__" }
 | EQUAL_TO  { "__eq__" }

@@ -16,12 +16,12 @@ let fname = ref "unknown";;
        some explicit operator or a separator
    3 - a keyword that can play a role of a connector (type 1) or an expression beginning (type 2),
        depending on context
-   4 - a keyword 'kwd' that start a construction: 'kwd' (expr) ...
+   4 - a keyword 'kwd' (where 'kwd' = if, for, fold, while, ...) that starts a construction: 'kwd' (expr) ...
         Such keywords must be handled in a special way.
         Normally, after ')' there can be no new expressions/statements without a separator,
         but not in the case of whose constructions: 'kwd' (...) new_expression.
         So, as soon as we encountered such special keyword, we start counting parentheses and
-        set new_exp flag as soon as we closed all the parentheses. See paren_stack use.
+        set new_exp flag as soon as we closed all the parentheses. See the use of 'paren_stack'
 *)
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
@@ -43,23 +43,13 @@ let incr_lineno lexbuf =
     }
 ;;
 
-type error =
-    | IllegalCharacter of char
-    | IllegalEscape of string
-    | InvalidIntegerLiteral
-    | MissingSeparator
-    | UnexpectedKeyword of string
-    | UnterminatedString
-    | UnterminatedComment
-;;
-
-exception Error of error * position * position;;
+exception Error of string * position * position;;
 
 let pos2str pos =
     let { pos_fname; pos_lnum; pos_bol; pos_cnum } = pos in
     Printf.sprintf "%s:%d:%d" pos_fname pos_lnum (pos_cnum - pos_bol + 1)
 
-let error2str = function
+(*let error2str = function
     | IllegalCharacter c ->
       Printf.sprintf "Illegal character (%C)" c
     | IllegalEscape s ->
@@ -74,19 +64,35 @@ let error2str = function
       Printf.sprintf "Unterminated string"
     | UnterminatedComment ->
       Printf.sprintf "Unterminated comment"
+    | UnmatchedParen c ->
+      Printf.sprintf "Unmatched paren (%C" c
 ;;
+*)
 
 let string_literal = ref "";;
 let string_start = ref dummy_pos;;
 let comment_start = ref dummy_pos;;
 let new_exp = ref true;;
+
+(* the stack of parentheses (and not only). Can contain the following characters:
+   '(', '[', '{' - corresponds to various parentheses
+   'C' - one of the special "control flow" keywords, such as if, for, fold, while
+   'P' - one of the special keywords, such as match and catch, that start pattern matching block.
+         Inside such a block (but not inside the nested parentheses) the character '|' is interpreted as BAR token
+         that separates actions and subsequent the patterns. Otherwise '|' is interpreted as BITWISE_OR token
+*)
 let paren_stack = ref [];;
+
+let unmatchedParenErr c1 =
+    match !paren_stack with
+      c0 :: _ -> Printf.sprintf "The closing paren '%C' does not correspond to the opening paren '%C'" c1 c0
+    | _ -> Printf.sprintf "Extra closing paren '%C'" c1
 
 let check_ne lexbuf =
     if !new_exp then
         ()
     else
-        raise (Error (MissingSeparator, lexbuf.lex_start_p, lexbuf.lex_curr_p))
+        raise (Error ("Missing separator", lexbuf.lex_start_p, lexbuf.lex_curr_p))
 
 }
 
@@ -97,7 +103,15 @@ let lower = ['a'-'z']
 let upper = ['A'-'Z']
 
 rule tokens = parse
-    | newline   { incr_lineno lexbuf; new_exp := true; tokens lexbuf }
+    | newline
+      {
+          (* inside () or [] parentheses newline characters do not start a new statement
+             (because the current one is not finished until we close all the opened parentheses) *)
+          (match !paren_stack with
+          | '(' :: _ | '[' :: _ -> ()
+          | _ -> new_exp := true);
+          incr_lineno lexbuf; tokens lexbuf
+      }
     | space +  { tokens lexbuf }
 
     | "/*/" { tokens lexbuf }
@@ -118,22 +132,38 @@ rule tokens = parse
 
     | '('
       {
-          (match (!paren_stack) with
-          | x :: rest -> paren_stack := (x+1) :: rest
-          | _ -> ());
+          paren_stack := '(' :: !paren_stack;
           let t = if !new_exp then [B_LPAREN] else [LPAREN] in (new_exp := true; t)
       }
     | ')'
       {
           (match (!paren_stack) with
-          | x :: rest -> paren_stack := (if x > 1 then (x-1) :: rest else rest); new_exp := x <= 1
-          | _ -> new_exp := false);
+          | '(' :: 'C' :: rest -> paren_stack := rest; new_exp := true
+          | '(' :: rest -> paren_stack := rest; new_exp := false
+          | _ -> raise (Error ((unmatchedParenErr ')'), lexbuf.lex_start_p, lexbuf.lex_curr_p)));
           [RPAREN]
       }
-    | '['   { let t = if !new_exp then [B_LSQUARE] else [LSQUARE] in (new_exp := true; t) }
-    | ']'   { new_exp := false; [RSQUARE] }
-    | '{'   { new_exp := true; [LBRACE] }
-    | '}'   { new_exp := false; [RBRACE] }
+    | '['
+      {
+          paren_stack := '[' :: !paren_stack;
+          let t = if !new_exp then [B_LSQUARE] else [LSQUARE] in (new_exp := true; t)
+      }
+    | ']'
+      {
+          (match (!paren_stack) with
+          | '[' :: rest -> paren_stack := rest
+          | _ -> raise (Error ((unmatchedParenErr ']'), lexbuf.lex_start_p, lexbuf.lex_curr_p)));
+          new_exp := false; [RSQUARE]
+      }
+    | '{'   { paren_stack := '{' :: !paren_stack; new_exp := true; [LBRACE] }
+    | '}'
+      {
+          (match (!paren_stack) with
+          | '{' :: 'P' :: rest -> paren_stack := rest
+          | '{' :: rest -> paren_stack := rest
+          | _ -> raise (Error ((unmatchedParenErr '}'), lexbuf.lex_start_p, lexbuf.lex_curr_p)));
+          new_exp := false; [RBRACE]
+      }
 
     | ((('0' ['x' 'X'] ['0'-'9' 'A'-'F' 'a'-'f']+) | (digit+)) as num) (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
       {
@@ -141,7 +171,7 @@ rule tokens = parse
           let suffix = match suffix_ with Some(x) -> x | _ -> "" in
           let v =
                try Scanf.sscanf num "%Lu" (fun v -> v)
-               with _ -> raise (Error (InvalidIntegerLiteral, lexbuf.lex_start_p, lexbuf.lex_curr_p)) in
+               with _ -> raise (Error (("Invalid integer literal '" ^ num ^ "'"), lexbuf.lex_start_p, lexbuf.lex_curr_p)) in
           [match suffix with
           | "i8" | "I8" -> SINT(8, v)
           | "u8" | "U8" -> UINT(8, v)
@@ -152,7 +182,7 @@ rule tokens = parse
           | "i64" | "I64" | "L" -> SINT(64, v)
           | "u64" | "U64" | "UL" -> UINT(64, v)
           | "" -> INT(v)
-          | _ -> raise (Error (InvalidIntegerLiteral, lexbuf.lex_start_p, lexbuf.lex_curr_p))]
+          | _ -> raise (Error (("Invalid suffix '" ^ suffix ^ "' of the integer literal"), lexbuf.lex_start_p, lexbuf.lex_curr_p))]
       }
     | ((digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?) as num) (['f' 'F']? as suffix)
         { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
@@ -162,14 +192,14 @@ rule tokens = parse
           if prefix <> "" then (check_ne(lexbuf); [TYVAR ("\'" ^ ident)]) else
           (try
               match Hashtbl.find keywords ident with
+              | (CATCH, _) -> paren_stack := 'P' :: !paren_stack; new_exp := true; [CATCH]
+              | (IMPORT, _) -> let t = if !new_exp then [B_IMPORT] else [IMPORT] in (new_exp := true; t)
+              | (REF, _) -> let t = if !new_exp then [B_REF] else [REF] in t
               | (t, 0) -> check_ne(lexbuf); new_exp := false; [t]
               | (t, 1) -> new_exp := true; [t]
               | (t, 2) -> check_ne(lexbuf); new_exp := true; [t]
-              | (t, 4) -> check_ne(lexbuf); paren_stack := 0 :: !paren_stack; new_exp := true; [t]
-              | (IMPORT, _) -> let t = if !new_exp then [B_IMPORT] else [IMPORT] in (new_exp := true; t)
-              | (REF, _) -> let t = if !new_exp then [B_REF] else [REF] in t
-              | _ -> raise (Error ((UnexpectedKeyword ident),
-                             lexbuf.lex_start_p, lexbuf.lex_curr_p))
+              | (t, 4) -> check_ne(lexbuf); paren_stack := 'C' :: !paren_stack; new_exp := true; [t]
+              | _ -> raise (Error (("Unexpected keyword '" ^ ident ^ "'"), lexbuf.lex_start_p, lexbuf.lex_curr_p))
            with Not_found ->
                let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t))
       }
@@ -182,7 +212,13 @@ rule tokens = parse
     | ">>"  { new_exp := true; [SHIFT_RIGHT] }
     | "<<"  { new_exp := true; [SHIFT_LEFT] }
     | '&'   { new_exp := true; [BITWISE_AND] }
-    | '|'   { new_exp := true; [BAR] }
+    | '|'
+      {
+          new_exp := true;
+          (match !paren_stack with
+          | '{' :: 'P' :: _ -> [BAR]
+          | _ -> [BITWISE_OR])
+      }
     | '^'   { new_exp := true; [BITWISE_XOR] }
     | '~'   { new_exp := true; [BITWISE_NOT] }
     | "&&"  { new_exp := true; [LOGICAL_AND] }
@@ -215,8 +251,7 @@ rule tokens = parse
     | "=>"  { new_exp := true; [DOUBLE_ARROW] }
     | "->"  { new_exp := true; [ARROW] }
     | eof   { [EOF] }
-    | _ { raise (Error (IllegalCharacter (lexeme_char lexbuf 0),
-            lexbuf.lex_start_p, lexbuf.lex_curr_p)) }
+    | _ as s { raise (Error (("Illegal character " ^ (Char.escaped s)), lexbuf.lex_start_p, lexbuf.lex_curr_p)) }
 
 and strings = parse
     | (([^ '\"' '\\' '\n' '\r']+) as string_part)
@@ -236,24 +271,18 @@ and strings = parse
     | "\\0" { string_literal := !string_literal ^ "\x00"; strings lexbuf }
     | "\\" (('x' ['0'-'9' 'a'-'f' 'A'-'F'] ['0'-'9' 'a'-'f' 'A'-'F']) as hexcode)
       { string_literal := !string_literal ^ (String.make 1 (Char.chr (int_of_string ("0" ^ hexcode)))); strings lexbuf }
-    | '\\' _
-      { raise
-          (Error
-             (IllegalEscape (lexeme lexbuf),
-             !string_start,
-             lexbuf.lex_curr_p))
-      }
+    | '\\' (_ as s)
+      { raise (Error (("Illegal escape \\" ^ (Char.escaped s)), !string_start, lexbuf.lex_curr_p)) }
     | eof
-      { raise (Error (UnterminatedString, !string_start, lexbuf.lex_curr_p)) }
-    | _
-      { raise (Error (IllegalCharacter (lexeme_char lexbuf 0),
-               lexbuf.lex_start_p, lexbuf.lex_curr_p)) }
+      { raise (Error ("Unterminated string", !string_start, lexbuf.lex_curr_p)) }
+    | _ as s
+      { raise (Error (("Illegal character '" ^ (Char.escaped s) ^ "' inside string literal"), lexbuf.lex_start_p, lexbuf.lex_curr_p)) }
 
 and comments level = parse
  | "*/" { if level = 0 then tokens lexbuf else comments (level-1) lexbuf }
  | "/*" { comments (level+1) lexbuf }
  | newline { incr_lineno lexbuf; comments level lexbuf }
- | eof  { raise (Error (UnterminatedComment, !comment_start, lexbuf.lex_curr_p)) }
+ | eof  { raise (Error ("Unterminated comment", !comment_start, lexbuf.lex_curr_p)) }
  | _  { comments level lexbuf }
 
 and eol_comments = parse

@@ -68,6 +68,7 @@ let token2str t = match t with
   | Parser.SHIFT_LEFT -> "SHIFT_LEFT"
   | Parser.BITWISE_AND -> "BITWISE_AND"
   | Parser.BITWISE_XOR -> "BITWISE_XOR"
+  | Parser.BITWISE_OR -> "BITWISE_OR"
   | Parser.BITWISE_NOT -> "BITWISE_NOT"
   | Parser.LOGICAL_AND -> "LOGICAL_AND"
   | Parser.LOGICAL_OR -> "LOGICAL_OR"
@@ -109,8 +110,9 @@ let process_buf outchan l fname =
     let ast = try
             Some(Parser.ficus_module lexer l)
         with
-        Lexer.Error(err, p0, p1) -> Printf.printf "Lexer error: %s at %s\n"
-                (Lexer.error2str err) (Lexer.pos2str p0); None
+          Lexer.Error(err, p0, p1) ->
+            Printf.printf "Lexer error: %s at %s\n" err (Lexer.pos2str p0);
+            None
         | e -> print_string "Unknown error occurred during parsing\n"; raise e
     in ast
 
