@@ -3,8 +3,8 @@
 open Parser
 open Lexing
 
-let keywords = Hashtbl.create 101;;
-let fname = ref "unknown";;
+let keywords = Hashtbl.create 101
+let fname = ref "unknown"
 
 (* kwtyp:
    0 - single-word keyword
@@ -32,7 +32,6 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
         ("val", VAL, 2); ("var", VAR, 2); ("while", WHILE, 4);
     ]
-;;
 
 let incr_lineno lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -41,38 +40,17 @@ let incr_lineno lexbuf =
       pos_lnum = pos.pos_lnum + 1;
       pos_bol = pos.pos_cnum;
     }
-;;
 
-exception Error of string * position * position;;
+exception Error of string * position * position
 
 let pos2str pos =
     let { pos_fname; pos_lnum; pos_bol; pos_cnum } = pos in
     Printf.sprintf "%s:%d:%d" pos_fname pos_lnum (pos_cnum - pos_bol + 1)
 
-(*let error2str = function
-    | IllegalCharacter c ->
-      Printf.sprintf "Illegal character (%C)" c
-    | IllegalEscape s ->
-      Printf.sprintf "Illegal escape (%S)" s
-    | InvalidIntegerLiteral ->
-      Printf.sprintf "Invalid integer literal"
-    | MissingSeparator ->
-      Printf.sprintf "Missing separator"
-    | UnexpectedKeyword s ->
-      Printf.sprintf "Unexpected keyword (%S)" s
-    | UnterminatedString ->
-      Printf.sprintf "Unterminated string"
-    | UnterminatedComment ->
-      Printf.sprintf "Unterminated comment"
-    | UnmatchedParen c ->
-      Printf.sprintf "Unmatched paren (%C" c
-;;
-*)
-
-let string_literal = ref "";;
-let string_start = ref dummy_pos;;
-let comment_start = ref dummy_pos;;
-let new_exp = ref true;;
+let string_literal = ref ""
+let string_start = ref dummy_pos
+let comment_start = ref dummy_pos
+let new_exp = ref true
 
 (* the stack of parentheses (and not only). Can contain the following characters:
    '(', '[', '{' - corresponds to various parentheses
@@ -81,7 +59,7 @@ let new_exp = ref true;;
          Inside such a block (but not inside the nested parentheses) the character '|' is interpreted as BAR token
          that separates actions and subsequent the patterns. Otherwise '|' is interpreted as BITWISE_OR token
 *)
-let paren_stack = ref [];;
+let paren_stack = ref []
 
 let unmatchedParenErr c1 =
     match !paren_stack with
@@ -93,6 +71,96 @@ let check_ne lexbuf =
         ()
     else
         raise (Error ("Missing separator", lexbuf.lex_start_p, lexbuf.lex_curr_p))
+
+let token2str t = match t with
+  | TRUE -> "TRUE"
+  | FALSE -> "FALSE"
+  | NIL -> "NIL"
+  | INT(i) -> Printf.sprintf "INT(%Ld)" i
+  | SINT(b, i) -> Printf.sprintf "SINT(%d, %Ld)" b i
+  | UINT(b, i) -> Printf.sprintf "UINT(%d, %Ld)" b i
+  | FLOAT(b, f) -> Printf.sprintf "FLOAT(%d, %g)" b f
+  | IDENT(s) -> Printf.sprintf "IDENT(%s)" s
+  | B_IDENT(s) -> Printf.sprintf "B_IDENT(%s)" s
+  | STRING(s) -> Printf.sprintf "STRING(%s)" s
+  | CHAR(s) -> Printf.sprintf "CHAR(%s)" s
+  | TYVAR(s) -> Printf.sprintf "TYVAR(%s)" s
+  | AS -> "AS"
+  | CATCH -> "CATCH"
+  | CCODE -> "CCODE"
+  | ELSE -> "ELSE"
+  | EXCEPTION -> "EXCEPTION"
+  | FOR -> "FOR"
+  | FOLD -> "FOLD"
+  | FROM -> "FROM"
+  | FUN -> "FUN"
+  | IF -> "IF"
+  | B_IMPORT -> "B_IMPORT"
+  | IMPORT -> "IMPORT"
+  | IN -> "IN"
+  | OPERATOR -> "OPERATOR"
+  | B_REF -> "B_REF"
+  | REF -> "REF"
+  | THROW -> "THROW"
+  | TRY -> "TRY"
+  | TYPE -> "TYPE"
+  | VAL -> "VAL"
+  | VAR -> "VAR"
+  | WHILE -> "WHILE"
+  | B_LPAREN -> "B_LPAREN"
+  | LPAREN -> "LPAREN"
+  | RPAREN -> "RPAREN"
+  | B_LSQUARE -> "B_LSQUARE"
+  | LSQUARE -> "LSQUARE"
+  | RSQUARE -> "RSQUARE"
+  | LBRACE -> "LBRACE"
+  | RBRACE -> "RBRACE"
+  | COMMA -> "COMMA"
+  | DOT -> "DOT"
+  | SEMICOLON -> "SEMICOLON"
+  | COLON -> "COLON"
+  | BAR -> "BAR"
+  | CONS -> "CONS"
+  | CAST -> "CAST"
+  | DOUBLE_ARROW -> "DOUBLE_ARROW"
+  | ARROW -> "ARROW"
+  | EOF -> "EOF"
+  | B_MINUS -> "B_MINUS"
+  | MINUS -> "MINUS"
+  | B_PLUS -> "B_PLUS"
+  | PLUS -> "PLUS"
+  | B_STAR -> "B_STAR"
+  | STAR -> "STAR"
+  | SLASH -> "SLASH"
+  | MOD -> "MOD"
+  | B_POWER -> "B_POWER"
+  | POWER -> "POWER"
+  | SHIFT_RIGHT -> "SHIFT_RIGHT"
+  | SHIFT_LEFT -> "SHIFT_LEFT"
+  | BITWISE_AND -> "BITWISE_AND"
+  | BITWISE_XOR -> "BITWISE_XOR"
+  | BITWISE_OR -> "BITWISE_OR"
+  | BITWISE_NOT -> "BITWISE_NOT"
+  | LOGICAL_AND -> "LOGICAL_AND"
+  | LOGICAL_OR -> "LOGICAL_OR"
+  | LOGICAL_NOT -> "LOGICAL_NOT"
+  | EQUAL -> "EQUAL"
+  | PLUS_EQUAL -> "PLUS_EQUAL"
+  | MINUS_EQUAL -> "MINUS_EQUAL"
+  | STAR_EQUAL -> "STAR_EQUAL"
+  | SLASH_EQUAL -> "SLASH_EQUAL"
+  | MOD_EQUAL -> "MOD_EQUAL"
+  | AND_EQUAL -> "AND_EQUAL"
+  | OR_EQUAL -> "OR_EQUAL"
+  | XOR_EQUAL -> "XOR_EQUAL"
+  | SHIFT_LEFT_EQUAL -> "SHIFT_LEFT_EQUAL"
+  | SHIFT_RIGHT_EQUAL -> "SHIFT_RIGHT_EQUAL"
+  | EQUAL_TO -> "EQUAL_TO"
+  | NOT_EQUAL -> "NOT_EQUAL"
+  | LESS_EQUAL -> "LESS_EQUAL"
+  | GREATER_EQUAL -> "GREATER_EQUAL"
+  | LESS -> "LESS"
+  | GREATER -> "GREATER"
 
 }
 

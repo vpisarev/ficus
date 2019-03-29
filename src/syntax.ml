@@ -182,7 +182,7 @@ let get_id_ s =
             (Hashtbl.add all_strings s i;
             (!all_ids).(i) <- IdName(s);
             i)) in
-    ((Printf.printf "get_id_ \"%s\"=%d\n" s idx); idx)
+    ((*(Printf.printf "get_id_ \"%s\"=%d\n" s idx);*) idx)
 
 let _ = (ignore (get_id_ ""); ignore (get_id_ "_"))
 
