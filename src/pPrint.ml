@@ -254,7 +254,8 @@ let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     (match dm_defs with
     | [] -> ()
     | _ -> pstr ":"; obox();
-        pspace(); (List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) dm_deps); cbox());
+        pspace(); (match dm_deps with [] -> pstr "<no deps>"
+        | _ -> List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) dm_deps); cbox());
     pcut();
     pstr "---------------------------------------------------------"; pcut();
     (List.iter (fun e -> pprint_exp e; pstr ";"; pcut()) dm_defs);

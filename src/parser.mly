@@ -2,10 +2,6 @@
 (* ficus parser *)
 open Syntax
 
-let imported_module_list = ref []
-let current_file_id = ref noid
-let update_imported_list i = imported_module_list := i :: !imported_module_list
-
 let make_loc(pos0, pos1) =
     let { Lexing.pos_lnum=l0; Lexing.pos_bol=b0; Lexing.pos_cnum=c0 } = pos0 in
     let { Lexing.pos_lnum=l1; Lexing.pos_bol=b1; Lexing.pos_cnum=c1 } = pos1 in
@@ -99,8 +95,8 @@ let make_deffun fname args rt body flags loc tmp =
 %%
 
 ficus_module:
-| top_level_seq_ { ((List.rev $1), !imported_module_list) }
-| top_level_seq_ SEMICOLON { ((List.rev $1), !imported_module_list) }
+| top_level_seq_ { ((List.rev $1), !current_imported_modules) }
+| top_level_seq_ SEMICOLON { ((List.rev $1), !current_imported_modules) }
 | /* empty */ { ([], []) }
 
 top_level_seq_:
@@ -113,19 +109,19 @@ top_level_exp:
 | decl { $1 }
 | B_IMPORT module_name_list_
     {
-        (List.iter (fun (a, _) -> update_imported_list a) $2;
+        (List.iter (fun (a, _) -> update_imported_modules a) $2;
         [DirImport ($2, curr_loc())])
     }
 | FROM dot_ident IMPORT STAR
     {
         let i = get_id $2 in
-        (update_imported_list i;
+        (update_imported_modules i;
         [DirImportFrom (i, [], curr_loc())])
     }
 | FROM dot_ident IMPORT ident_list_
     {
         let i = get_id $2 in
-        (update_imported_list i;
+        (update_imported_modules i;
         [DirImportFrom (i, (List.rev $4), curr_loc())])
     }
 

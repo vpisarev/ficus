@@ -15,26 +15,38 @@
    val i@100 : int = 5
    val i@101 : int = i@100 : int + 1
 
-   (here i@100 means Id(i, 100) and i@101 means Id(i, 101), where i is index in the global
+   (here i@100 means Id.Name(i, 100) and i@101 means Id.Name(i, 101), where i is index in the global
     table of symbolic names that corresponds to an abstract name "i", whereas 100 and 101
     are indices in the same table corresponding to the actually defined values.
     Internally the compiler uses unique names i@100 etc. to distinguish between values
     with the same name, but it uses the original names in error messages; it also uses the original name (i)
-    to search for the symbol, i.e. Id(f, f) can be matched with Id(f, 12345) or Id(f, 9876) or
-    some other Id(f, ...), depending on the current environment).
+    to search for the symbol, i.e. Id.Name(f, f) can be matched with Id.Name(f, 12345) or Id.Name(f, 9876) or
+    some other Id.Name(f, ...), depending on the current environment).
 
    There is a big global table of all symbols, so for each symbol we can retrieve its properties:
    the original name, inferred type, when and how it's defined.
 
    Sometimes we need a temporary value or a temporary function, i.e. when we do not have the original
    name. In this case we use some common prefix, e.g. "t" for intermediate results in complex expressions,
-   "lambda" for anonymous functions etc. but we represent the id as TempId(prefix, N). Such id is
+   "lambda" for anonymous functions etc. but we represent the id as Id.Temp(prefix, N). Such id is
    always displayed as prefix@@N, e.g. "t@@1000" or "lambda@@777", and it can only be matched with
-   itself (prefix@@N), that is, it's really unique.
+   itself (prefix@@N). That is, it's really unique.
 *)
-type id_t = Id of int*int | TempId of int*int
-let noid = Id(0, 0)
-let dummyid = Id(1, 1)
+
+module Id = struct
+   type t = Name of int * int | Temp of int * int
+   let compare a b =
+      let a_idx = match (a) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
+      let b_idx = match (b) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
+      Pervasives.compare a_idx b_idx
+end
+
+type id_t = Id.t
+let noid = Id.Name(0, 0)
+let dummyid = Id.Name(1, 1)
+let builtin_module = ref (Id.Name(0, 0))
+
+module Env = Map.Make(Id)
 
 type loc_t = { loc_fname: id_t; loc_line0: int; loc_pos0: int; loc_line1: int; loc_pos1: int }
 let noloc = { loc_fname=noid; loc_line0=0; loc_pos0=0; loc_line1=0; loc_pos1=0 }
@@ -139,15 +151,18 @@ and deffun_t = { df_name: id_t; df_template_args: id_t list; df_args: pat_t list
 and defexc_t = { dexc_name: id_t; dexc_tp: type_t; dexc_loc: loc_t }
 and deftype_t = { dt_name: id_t; dt_template_args: id_t list;
                   dt_body: type_t; dt_loc: loc_t }
-and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list; mutable dm_deps: id_t list }
+and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
+                    mutable dm_deps: id_t list; mutable dm_env: id_t list Env.t }
 
 type id_info_t =
-    | IdNone | IdName of string | IdVal of defval_t | IdFunc of deffun_t ref
+    | IdNone | IdSome of string | IdVal of defval_t | IdFunc of deffun_t ref
     | IdExc of defexc_t ref | IdType of deftype_t ref | IdModule of defmodule_t ref
 
 let all_nids = ref 0
 let all_ids : id_info_t array ref = ref [||]
-let all_strings: (string, int) Hashtbl.t = Hashtbl.create 1024
+let all_strings: (string, int) Hashtbl.t = Hashtbl.create 1000
+let all_modules: (string, id_t) Hashtbl.t = Hashtbl.create 100
+let sorted_modules: id_t list ref = ref []
 
 let new_id_idx() =
     let _ = if (Array.length !all_ids) <= !all_nids then
@@ -158,15 +173,15 @@ let new_id_idx() =
     let i = !all_nids in
     (all_nids := !all_nids + 1; i)
 
-let dump_id i = match i with Id(i, j) -> (Printf.sprintf "Id(%d, %d)" i j)
-                | TempId(i, j) -> (Printf.sprintf "TempId(%d, %d)" i j)
-let id2idx i = match i with Id(_, i_real) -> i_real | TempId(_, i_real) -> i_real
+let dump_id i = match i with Id.Name(i, j) -> (Printf.sprintf "Id.Name(%d, %d)" i j)
+                | Id.Temp(i, j) -> (Printf.sprintf "Id.Temp(%d, %d)" i j)
+let id2idx i = match i with Id.Name(_, i_real) -> i_real | Id.Temp(_, i_real) -> i_real
 let id2str_ i pp =
-    let (tempid, prefix, suffix) = match i with Id(i_name, i_real) -> (false, i_name, i_real)
-                            | TempId(i_prefix, i_real) -> (true, i_prefix, i_real) in
+    let (tempid, prefix, suffix) = match i with Id.Name(i_name, i_real) -> (false, i_name, i_real)
+                            | Id.Temp(i_prefix, i_real) -> (true, i_prefix, i_real) in
     let s = (match (!all_ids).(prefix) with
-      IdName(s) -> s
-    | _ -> failwith (Printf.sprintf "The first element of id=%s does not represent a string" (dump_id i))) in
+      IdSome(s) -> s
+    | _ -> failwith (Printf.sprintf "The first element of id=%s does not represent a string\n" (dump_id i))) in
     if tempid then (Printf.sprintf "%s@@%d" s suffix) else if pp then s else (Printf.sprintf "%s@%d" s suffix)
 
 let id2str i = id2str_ i false
@@ -180,19 +195,17 @@ let get_id_ s =
       x :: _ -> x
     | _ -> let i = new_id_idx() in
             (Hashtbl.add all_strings s i;
-            (!all_ids).(i) <- IdName(s);
+            (!all_ids).(i) <- IdSome(s);
             i)) in
     ((*(Printf.printf "get_id_ \"%s\"=%d\n" s idx);*) idx)
 
-let _ = (ignore (get_id_ ""); ignore (get_id_ "_"))
-
 let get_id s =
-    let i = get_id_ s in Id(i, i)
+    let i = get_id_ s in Id.Name(i, i)
 
 let get_unique_id s tmp =
     let i_name = get_id_ s in
     let i_real = new_id_idx() in
-    if tmp then TempId(i_name, i_real) else Id(i_name, i_real)
+    if tmp then Id.Temp(i_name, i_real) else Id.Name(i_name, i_real)
 
 let good_variant_name s =
     let c0 = String.get s 0 in
@@ -231,3 +244,13 @@ let get_exp_ctx e = match e with
 
 let get_exp_type e = let (t, l) = (get_exp_ctx e) in t
 let get_exp_loc e = let (t, l) = (get_exp_ctx e) in l
+
+let get_module m =
+    match id_info m with
+    | IdModule minfo -> minfo
+    | _ -> failwith (Printf.sprintf "internal error in process_all: %s is not a module" (pp_id2str m))
+
+(* used by the parser *)
+let current_imported_modules = ref ([] : id_t list)
+let current_file_id = ref noid
+let update_imported_modules i = current_imported_modules := i :: !current_imported_modules

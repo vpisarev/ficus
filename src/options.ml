@@ -11,22 +11,26 @@ type compiler_options_t =
       filename: string
   }
 
-let v = ref
+let options = ref
 {
     include_path = [];
     optimize_level = 1;
     output_name = "";
     print_tokens = false;
-    print_ast = true;
+    print_ast = false;
     filename = ""
 }
 
 let parse_options () =
-  let _include_path = ref !v.include_path in
-  let _optimize_level = ref !v.optimize_level in
-  let _output_name = ref !v.output_name in
-  let _print_tokens = ref !v.print_tokens in
-  let _print_ast = ref !v.print_ast in
+  let inc_path = !options.include_path in
+  let abs_ficus_path = Utils.normalize_path (Sys.getcwd()) (Sys.argv.(0)) in
+  let stdlib_dir = Utils.normalize_path (Filename.dirname abs_ficus_path) "../lib" in
+  let inc_path = stdlib_dir :: inc_path in
+  let _include_path = ref inc_path in
+  let _optimize_level = ref !options.optimize_level in
+  let _output_name = ref !options.output_name in
+  let _print_tokens = ref !options.print_tokens in
+  let _print_ast = ref !options.print_ast in
   let _files = ref [] in
   try
     Arg.parse
@@ -40,18 +44,18 @@ let parse_options () =
       (fun s -> _files := !_files @ [s])
       ("Ficus Compiler v0.1\n" ^
       Printf.sprintf "usage: %s [options ...] input_file.fx" Sys.argv.(0));
-    v :=
+    options :=
     {
-      include_path = !_include_path;
-      optimize_level = !_optimize_level;
-      output_name = !_output_name;
-      print_tokens = !_print_tokens;
-      print_ast = !_print_ast;
+        include_path = !_include_path;
+        optimize_level = !_optimize_level;
+        output_name = !_output_name;
+        print_tokens = !_print_tokens;
+        print_ast = !_print_ast;
 
-      filename = (match !_files with
-                  | f :: [] -> f
-                  | [] -> raise (Arg.Bad "no input file is specified")
-                  | _ -> raise (Arg.Bad "multiple input files are specified"))
+        filename = (match !_files with
+                    | f :: [] -> f
+                    | [] -> raise (Arg.Bad "no input file is specified")
+                    | _ -> raise (Arg.Bad "multiple input files are specified"))
     };
     true
   with Arg.Bad msg -> print_string ("error: " ^ msg ^ "\n"); false
