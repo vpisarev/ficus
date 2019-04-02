@@ -7,6 +7,7 @@ val a = _2 + 2
 
 //for i in 1:31 do println("fib(\(i)) = \(fib(i))") end
 */
+import testmod
 
 val _2 = 2
 val a = (_2 + 2 | 8)

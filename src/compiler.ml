@@ -53,31 +53,44 @@ let parse_all _fname0 =
     let inc_dirs0 = (if dir0 = cwd then [cwd] else [dir0; cwd]) @ !options.include_path in
     let inc_dirs0 = List.map (fun d -> normalize_path cwd d) inc_dirs0 in
     let _ = print_string ("Module search path:\n\t" ^ (String.concat ",\n\t" inc_dirs0) ^ "\n") in
-    let default_mods = [!builtin_module] in
+    let default_mods = [get_id "Builtin"] in
     let queue = ref [fname0] in
     let ok = ref true in
+    let find_module mfname =
+        (match Hashtbl.find_opt all_modules mfname with
+          Some(id) -> get_module id
+        | _ ->
+            let bare_mfname = Filename.remove_extension (Filename.basename mfname) in
+            let mname_id = get_unique_id bare_mfname false in
+            let newmodule = ref { dm_name=mname_id; dm_filename=mfname; dm_defs=[];
+                                  dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
+            let _ = set_id_entry mname_id (IdModule newmodule) in
+            let _ = Hashtbl.add all_modules mfname mname_id in
+            newmodule)
+    in
     while (!queue)!=[] do
         let mfname = List.hd (!queue) in
-        queue := List.tl (!queue);
-        if (Hashtbl.mem all_modules mfname) then ()
+        let bare_mfname = Filename.remove_extension (Filename.basename mfname) in
+        let _ = queue := List.tl (!queue) in
+        let minfo = find_module mfname in
+        if !minfo.dm_parsed then ()
         else
-        (let bare_mfname = Filename.remove_extension (Filename.basename mfname) in
-        let mname_id = if bare_mfname = "Builtin" then !builtin_module else (get_unique_id bare_mfname false) in
-        let newmodule = ref { dm_name=mname_id; dm_filename=mfname; dm_defs=[]; dm_deps=[]; dm_env=Env.empty } in
-        let _ = set_id_entry mname_id (IdModule newmodule) in
-        let _ = get_module mname_id in
-        let _ = Hashtbl.add all_modules mfname mname_id in
-        try
+        (try
             let (defs, deps) = parse_file mfname in
-            let _ = (!newmodule.dm_defs <- defs) in
+            let _ = (!minfo.dm_defs <- defs) in
             let deps = (if bare_mfname = "Builtin" then [] else default_mods) @ deps in
-            let _ = (!newmodule.dm_deps <- deps) in
             let dir1 = Filename.dirname mfname in
             let inc_dirs = (if dir1 = dir0 then [] else [dir1]) @ inc_dirs0 in
-            List.iter (fun dep -> match locate_module dep inc_dirs with
-                  Some(fname) -> queue := (normalize_path cwd fname) :: !queue
-                | _ -> (Printf.printf "%s: error: module %s cannot be located\n"
-                       bare_mfname (pp_id2str dep); ok := false)) deps
+            (* locate the deps, update the list of deps using proper ID's of real modules *)
+            let deps = List.map (fun dep -> match locate_module dep inc_dirs with
+                  | Some(dep_fname) ->
+                      let dep_fname = normalize_path cwd dep_fname in
+                      let dep_minfo = find_module dep_fname in
+                      if !dep_minfo.dm_parsed then () else queue := dep_fname :: !queue;
+                      !dep_minfo.dm_name
+                  | _ -> (Printf.printf "%s: error: module %s cannot be located\n"
+                       bare_mfname (pp_id2str dep)); ok := false; dep) deps in
+            !minfo.dm_deps <- deps
         with
         | Lexer.Error(err, p0, p1) ->
             Printf.printf "Lexer error: %s at %s\n" err (Lexer.pos2str p0); ok := false
@@ -91,7 +104,7 @@ let init () =
     (Hashtbl.reset all_strings);
     ignore (get_id_ "");
     ignore (get_id_ "_");
-    builtin_module := get_unique_id "Builtin" false;
+    ignore (get_id_ "Builtin");
     (Hashtbl.reset all_modules)
 
 (*
@@ -120,7 +133,7 @@ let process_all fname0 =
         let graph = Hashtbl.fold (fun mfname m gr ->
             let minfo = get_module m in
             (m, !minfo.dm_deps) :: gr) all_modules [] in
-        sorted_modules := toposort graph;
+        sorted_modules := List.rev (toposort graph);
         Printf.printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules));
         if not !options.print_ast then () else
         (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules);

@@ -44,7 +44,6 @@ end
 type id_t = Id.t
 let noid = Id.Name(0, 0)
 let dummyid = Id.Name(1, 1)
-let builtin_module = ref (Id.Name(0, 0))
 
 module Env = Map.Make(Id)
 
@@ -152,7 +151,8 @@ and defexc_t = { dexc_name: id_t; dexc_tp: type_t; dexc_loc: loc_t }
 and deftype_t = { dt_name: id_t; dt_template_args: id_t list;
                   dt_body: type_t; dt_loc: loc_t }
 and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
-                    mutable dm_deps: id_t list; mutable dm_env: id_t list Env.t }
+                    mutable dm_deps: id_t list; mutable dm_env: id_t list Env.t;
+                    mutable dm_parsed: bool }
 
 type id_info_t =
     | IdNone | IdSome of string | IdVal of defval_t | IdFunc of deffun_t ref
