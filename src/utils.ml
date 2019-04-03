@@ -22,3 +22,6 @@ let rec normalize_path dir fname =
     let fname1 = trim_left fname (2+seplen) in
     normalize_path parent_dir fname1) else
     (Filename.concat dir fname)
+
+let remove_extension fname =
+  try Filename.chop_extension fname with Invalid_argument _ -> fname

@@ -2,7 +2,7 @@
 
 .PHONY: all clean byte native profile debug sanity test
 
-OCB_FLAGS = # uses menhir
+OCB_FLAGS = -pkgs str
 OCB = ocamlbuild $(OCB_FLAGS)
 
 all: native # byte profile debug

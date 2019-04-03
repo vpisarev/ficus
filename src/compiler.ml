@@ -39,12 +39,15 @@ let parse_file fname =
     with
     | e -> (Printf.printf "error occured when parsing %s :(\n" fname); close_in inchan; raise e
 
+let dot_regexp = Str.regexp "\\."
+
 let rec locate_module dep inc_dirs =
     let mname = pp_id2str dep in
-    let mfname = (String.concat Filename.dir_sep (String.split_on_char '.' mname)) ^ ".fx" in
-    match List.find_opt (fun d -> Sys.file_exists (Filename.concat d mfname)) inc_dirs with
-    Some(d) -> Some(Filename.concat d mfname)
-    | _ -> None
+    let mfname = (Str.global_replace dot_regexp Filename.dir_sep mname) ^ ".fx" in
+    try Some(Filename.concat
+                (List.find (fun d -> Sys.file_exists (Filename.concat d mfname)) inc_dirs)
+            mfname)
+    with Not_found -> None
 
 let parse_all _fname0 =
     let cwd = Sys.getcwd() in
@@ -57,10 +60,9 @@ let parse_all _fname0 =
     let queue = ref [fname0] in
     let ok = ref true in
     let find_module mfname =
-        (match Hashtbl.find_opt all_modules mfname with
-          Some(id) -> get_module id
-        | _ ->
-            let bare_mfname = Filename.remove_extension (Filename.basename mfname) in
+        (try get_module (Hashtbl.find all_modules mfname) with
+          Not_found ->
+            let bare_mfname = Utils.remove_extension (Filename.basename mfname) in
             let mname_id = get_unique_id bare_mfname false in
             let newmodule = ref { dm_name=mname_id; dm_filename=mfname; dm_defs=[];
                                   dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
@@ -70,7 +72,7 @@ let parse_all _fname0 =
     in
     while (!queue)!=[] do
         let mfname = List.hd (!queue) in
-        let bare_mfname = Filename.remove_extension (Filename.basename mfname) in
+        let bare_mfname = Utils.remove_extension (Filename.basename mfname) in
         let _ = queue := List.tl (!queue) in
         let minfo = find_module mfname in
         if !minfo.dm_parsed then ()
