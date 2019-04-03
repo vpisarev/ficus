@@ -124,6 +124,8 @@ top_level_exp:
         (update_imported_modules i;
         [DirImportFrom (i, (List.rev $4), curr_loc())])
     }
+| error
+    { raise (SyntaxError ("syntax error", Parsing.symbol_start_pos(), Parsing.symbol_end_pos())) }
 
 exp_seq_:
 | exp_seq_ complex_exp { $2 :: $1 }
@@ -279,11 +281,6 @@ exp:
 | THROW exp { make_un_op(OpThrow, $2) }
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
 | BITWISE_NOT exp { make_un_op(OpBitwiseNot, $2) }
-| error
-    { failwith
-        (Printf.sprintf "parse error near characters %d-%d"
-           (Parsing.symbol_start ())
-           (Parsing.symbol_end ())) }
 
 exp_or_block:
 | exp { $1 }

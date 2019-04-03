@@ -37,7 +37,7 @@ let parse_file fname =
         let ast = Parser.ficus_module lexer l in
         close_in inchan; ast
     with
-    | e -> (Printf.printf "error occured when parsing %s :(\n" fname); close_in inchan; raise e
+    | e -> close_in inchan; raise e
 
 let dot_regexp = Str.regexp "\\."
 
@@ -80,6 +80,7 @@ let parse_all _fname0 =
         (try
             let (defs, deps) = parse_file mfname in
             let _ = (!minfo.dm_defs <- defs) in
+            let _ = (!minfo.dm_parsed <- true) in
             let deps = (if bare_mfname = "Builtin" then [] else default_mods) @ deps in
             let dir1 = Filename.dirname mfname in
             let inc_dirs = (if dir1 = dir0 then [] else [dir1]) @ inc_dirs0 in
@@ -95,8 +96,11 @@ let parse_all _fname0 =
             !minfo.dm_deps <- deps
         with
         | Lexer.Error(err, p0, p1) ->
-            Printf.printf "Lexer error: %s at %s\n" err (Lexer.pos2str p0); ok := false
-        | e -> Printf.printf "Syntax error when processing %s" bare_mfname; ok := false)
+            Printf.printf "%s: %s\n" (Lexer.pos2str p0) err; ok := false
+        | SyntaxError(err, p0, p1) ->
+            Printf.printf "%s: %s\n" (Lexer.pos2str p0) err; ok := false
+        | Failure(msg) -> (Printf.printf "%s: %s\n" mfname msg); ok := false
+        | e -> (Printf.printf "%s: exception %s occured" mfname (Printexc.to_string e)); ok := false)
     done;
     !ok
 

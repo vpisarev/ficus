@@ -251,6 +251,8 @@ let get_module m =
     | _ -> failwith (Printf.sprintf "internal error in process_all: %s is not a module" (pp_id2str m))
 
 (* used by the parser *)
+exception SyntaxError of string*Lexing.position*Lexing.position
+
 let current_imported_modules = ref ([] : id_t list)
 let current_file_id = ref noid
 let update_imported_modules i = current_imported_modules := i :: !current_imported_modules
