@@ -29,7 +29,8 @@ let expseq2exp es n = match es with
 let make_deffun fname args rt body flags loc tmp =
     let i = if tmp then (get_unique_id fname tmp) else (get_id fname) in
     { df_name=i; df_template_args=[]; df_args=args; df_rt=rt;
-      df_body=body; df_flags=flags; df_loc=loc; df_template_inst=[] }
+      df_body=body; df_flags=flags; df_scope=ScGlobal;
+      df_loc=loc; df_template_inst=[] }
 
 %}
 
@@ -158,16 +159,16 @@ decl:
 | typedef_lhs EQUAL typespec
     {
         let (targs, i) = $1 in
-        let dtp = { dt_name=i; dt_template_args=targs; dt_body=$3; dt_loc=curr_loc() } in
+        let dtp = { dt_name=i; dt_template_args=targs; dt_body=$3; dt_scope=ScGlobal; dt_loc=curr_loc() } in
         [DefType (ref dtp)]
     }
 | EXCEPTION B_IDENT
     {
-        [DefExc(ref { dexc_name=(get_id $2); dexc_tp = TypVoid; dexc_loc=curr_loc() })]
+        [DefExn(ref { dexn_name=(get_id $2); dexn_tp=TypVoid; dexn_scope=ScGlobal; dexn_loc=curr_loc() })]
     }
 | EXCEPTION B_IDENT COLON typespec
     {
-        [DefExc(ref { dexc_name=(get_id $2); dexc_tp = $4; dexc_loc=curr_loc() })]
+        [DefExn(ref { dexn_name=(get_id $2); dexn_tp = $4; dexn_scope=ScGlobal; dexn_loc=curr_loc() })]
     }
 
 complex_exp:
@@ -483,7 +484,7 @@ typespec_nf:
     | "string" -> TypString
     | "bool" -> TypBool
     | "void" -> TypVoid
-    | "exn" -> TypExc
+    | "exn" -> TypExn
     | "cptr" -> TypCPointer
     | _ -> TypApp([], get_id $1)
 }

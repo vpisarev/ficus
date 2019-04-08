@@ -22,7 +22,6 @@ let lit_to_string c = match c with
     | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
     | LitBool(true) -> "true"
     | LitBool(false) -> "false"
-    | LitUnit -> "{}"
     | LitNil -> "[]"
 
 let pprint_lit x = pstr (lit_to_string x)
@@ -34,8 +33,8 @@ let rec get_type_pr t = match t with
     | TypVar {contents=None} -> TypPrBase
     | TypVar {contents=Some(t1)} -> get_type_pr t1
     | TypInt | TypSInt(_) | TypUInt(_) | TypFloat(_)
-    | TypString | TypChar | TypBool | TypVoid | TypExc
-    | TypThrow | TypCPointer | TypDecl -> TypPrBase
+    | TypString | TypChar | TypBool | TypVoid | TypExn
+    | TypCPointer | TypDecl -> TypPrBase
     | TypApp([], _) -> TypPrBase
     | TypTuple(_) -> TypPrBase
     | TypList(_) | TypRef(_) | TypArray(_) | TypApp(_, _) -> TypPrComplex
@@ -84,8 +83,7 @@ let rec pptype_ t p1 =
     | TypApp(t1 :: [], n) -> pptypsuf t1 (pp_id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (pp_id2str n)
     | TypTuple(tl) -> pptypelist_ "(" tl
-    | TypExc -> pstr "Exn"
-    | TypThrow -> pstr "<Thrown exn>"
+    | TypExn -> pstr "Exn"
     | TypCPointer -> pstr "CPtr"
     | TypDecl -> pstr "<Declaration>"
 
@@ -144,9 +142,9 @@ let rec pprint_exp e =
                 df_body; df_flags; df_template_inst }} ->
         let fkind = ref "FUN" in
         (obox(); (List.iter (fun ff -> match ff with
-                    | FuncPure -> pstr "PURE"; pspace()
-                    | FuncImpure -> pstr "IMPURE"; pspace()
-                    | FuncInC -> pstr "C_FUNC"; pspace()) df_flags);
+                    | FunPure -> pstr "PURE"; pspace()
+                    | FunImpure -> pstr "IMPURE"; pspace()
+                    | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_template_args df_template_args; pprint_id df_name; pspace();
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
@@ -156,11 +154,11 @@ let rec pprint_exp e =
         | ExpSeq(_, _) -> pprint_exp df_body
         | _ -> obox(); pprint_exp df_body; cbox());
         cbox())
-    | DefExc { contents = {dexc_name; dexc_tp } } ->
-        pstr "EXCEPTION"; pspace(); pprint_id dexc_name;
-        (match dexc_tp with
+    | DefExn { contents = {dexn_name; dexn_tp } } ->
+        pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
+        (match dexn_tp with
         | TypVoid -> ()
-        | _ -> pspace(); pstr "OF"; pspace(); pprint_type dexc_tp)
+        | _ -> pspace(); pstr "OF"; pspace(); pprint_type dexn_tp)
     | DefType { contents = {dt_name; dt_template_args; dt_body }} ->
         pstr "TYPE"; pspace(); pprint_template_args dt_template_args; pprint_id dt_name;
         pspace(); pstr "="; pspace(); pprint_type dt_body

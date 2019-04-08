@@ -8,7 +8,7 @@
 - [x] implement minimal lexer
 - [x] implement minimal parser
 - [x] implement minimal pretty printer
-- [ ] support multiple modules (import and from-import directives)
+- [x] support multiple modules (import and from-import directives)
 - [ ] add intrinsic operations + very simple basic library
 - [ ] implement minimal type checker
 - [ ] K-normal form (call it IR?)

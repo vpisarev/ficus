@@ -45,7 +45,34 @@ type id_t = Id.t
 let noid = Id.Name(0, 0)
 let dummyid = Id.Name(1, 1)
 
+(*
+  Environment (Env.t) is the mapping from id_t to id_t list. It's the key data structure used
+  by the type checker.
+
+  That is, for each id key Id.Name(i, i) (which corresponds to an abstract symbol <i>)
+  we store a list of possible matches Id.Name(i, j) - the real defined symbols.
+  When the key is Id.Temp(prefix, k), we can only have a single match Id.Temp(prefix, k).
+
+  Why have a list of possible matches? Because:
+   * in the nested scopes we can redefine a symbol from the outer scope
+   * a defined value can be redefined later in the same block: val a = 5; val a = a + 1
+     (we can set a certain compiler option in order to get a warning in such cases)
+   * we can have overloaded functions, e.g. sin:float->float and sin:double->double
+   * types and functions/values with the same name can co-exist without conflicts, e.g.
+     string type and string:'t->string function.
+
+  Note that we use purely-functional data structure (Map) to store the environment.
+  Such immutable data structure let us forget about the neccesity to "undo" environment changes
+  when we get back from the nested expression analysis, at the expense of slight loss in efficiency
+  (however, the type checker is very inexpensive compiler stage, even in "-O0" compile mode)
+*)
 module Env = Map.Make(Id)
+
+(*
+   Scope of the definition
+
+*)
+type scope_t = ScBlock of int | ScFun of id_t | ScModule of id_t | ScGlobal
 
 type loc_t = { loc_fname: id_t; loc_line0: int; loc_pos0: int; loc_line1: int; loc_pos1: int }
 let noloc = { loc_fname=noid; loc_line0=0; loc_pos0=0; loc_line1=0; loc_pos1=0 }
@@ -64,7 +91,6 @@ type lit_t =
     | LitString of string (* UTF-8 string *)
     | LitChar of string (* a single character may require multiple "bytes", so we use a string for it *)
     | LitBool of bool
-    | LitUnit (* ~void in C or unit in *ML languages *)
     | LitNil (* can be used as stub initializer for C pointers, interfaces, recursive variants, empty lists etc. *)
 
 (* type of an expression *)
@@ -89,11 +115,7 @@ type type_t =
     | TypTuple of type_t list
     | TypRef of type_t
     | TypArray of int * type_t
-    | TypExc
-    | TypThrow (* when you throw an exception in one of the branches,
-                  it should not break type unification, so
-                  we have a separate type for a "thrown exception"
-                  that unifies well with any other type *)
+    | TypExn
     | TypCPointer (* smart pointer to a C structure; we use it for file handlers, mutexes etc. *)
     | TypApp of type_t list * id_t (* a generic type instance or a type alias (when type_t list is empty) *)
     | TypDecl (* since declarations are also expressions, they should have some type;
@@ -108,7 +130,7 @@ type bin_op_t =
 type un_op_t = OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow
 
 type val_flag_t = ValMutable | ValArg
-type func_flag_t = FuncPure | FuncImpure | FuncInC
+type func_flag_t = FunPure | FunImpure | FunInC
 type ctx_t = type_t * loc_t
 
 type exp_t =
@@ -120,7 +142,6 @@ type exp_t =
     | ExpUnOp of un_op_t * exp_t * ctx_t
     | ExpSeq of exp_t list * ctx_t
     | ExpMkTuple of exp_t list * ctx_t
-    | ExpMkList of exp_t list * ctx_t
     | ExpCall of exp_t * exp_t list * ctx_t
     | ExpAt of exp_t * exp_t list * ctx_t
     | ExpIf of exp_t * exp_t * exp_t option * ctx_t
@@ -132,7 +153,7 @@ type exp_t =
     | ExpCCode of string * ctx_t
     | DefVal of pat_t * exp_t * val_flag_t list * ctx_t
     | DefFun of deffun_t ref
-    | DefExc of defexc_t ref
+    | DefExn of defexn_t ref
     | DefType of deftype_t ref
     | DirImport of (id_t * id_t) list * loc_t
     | DirImportFrom of id_t * id_t list * loc_t
@@ -143,20 +164,20 @@ and pat_t =
     | PatTuple of pat_t list * loc_t
     | PatCtor of id_t * pat_t list * loc_t
     | PatTyped of pat_t * type_t * loc_t
-and defval_t = { dv_name: id_t; dv_type: type_t; dv_flags: val_flag_t list; dv_loc: loc_t }
+and defval_t = { dv_name: id_t; dv_type: type_t; dv_flags: val_flag_t list; dv_scope: scope_t; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_template_args: id_t list; df_args: pat_t list; df_rt: type_t;
-                 df_body: exp_t; df_flags: func_flag_t list; df_loc: loc_t;
+                 df_body: exp_t; df_flags: func_flag_t list; df_scope: scope_t; df_loc: loc_t;
                  mutable df_template_inst: id_t list }
-and defexc_t = { dexc_name: id_t; dexc_tp: type_t; dexc_loc: loc_t }
+and defexn_t = { dexn_name: id_t; dexn_tp: type_t; dexn_scope: scope_t; dexn_loc: loc_t }
 and deftype_t = { dt_name: id_t; dt_template_args: id_t list;
-                  dt_body: type_t; dt_loc: loc_t }
+                  dt_body: type_t; dt_scope: scope_t; dt_loc: loc_t }
 and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
                     mutable dm_deps: id_t list; mutable dm_env: id_t list Env.t;
                     mutable dm_parsed: bool }
 
 type id_info_t =
-    | IdNone | IdSome of string | IdVal of defval_t | IdFunc of deffun_t ref
-    | IdExc of defexc_t ref | IdType of deftype_t ref | IdModule of defmodule_t ref
+    | IdNone | IdText of string | IdVal of defval_t | IdFun of deffun_t ref
+    | IdExn of defexn_t ref | IdType of deftype_t ref | IdModule of defmodule_t ref
 
 let all_nids = ref 0
 let all_ids : id_info_t array ref = ref [||]
@@ -180,7 +201,7 @@ let id2str_ i pp =
     let (tempid, prefix, suffix) = match i with Id.Name(i_name, i_real) -> (false, i_name, i_real)
                             | Id.Temp(i_prefix, i_real) -> (true, i_prefix, i_real) in
     let s = (match (!all_ids).(prefix) with
-      IdSome(s) -> s
+      IdText(s) -> s
     | _ -> failwith (Printf.sprintf "The first element of id=%s does not represent a string\n" (dump_id i))) in
     if tempid then (Printf.sprintf "%s@@%d" s suffix) else if pp then s else (Printf.sprintf "%s@%d" s suffix)
 
@@ -195,7 +216,7 @@ let get_id_ s =
       x :: _ -> x
     | _ -> let i = new_id_idx() in
             (Hashtbl.add all_strings s i;
-            (!all_ids).(i) <- IdSome(s);
+            (!all_ids).(i) <- IdText(s);
             i)) in
     ((*(Printf.printf "get_id_ \"%s\"=%d\n" s idx);*) idx)
 
@@ -225,7 +246,6 @@ let get_exp_ctx e = match e with
     | ExpUnOp(_, _, c) -> c
     | ExpSeq(_, c) -> c
     | ExpMkTuple(_, c) -> c
-    | ExpMkList(_, c) -> c
     | ExpCall(_, _, c) -> c
     | ExpAt(_, _, c) -> c
     | ExpIf(_, _, _, c) -> c
@@ -237,7 +257,7 @@ let get_exp_ctx e = match e with
     | ExpCCode(_, c) -> c
     | DefVal(_, _, _, c) -> c
     | DefFun {contents = { df_loc }} -> (TypDecl, df_loc)
-    | DefExc {contents = { dexc_loc }} -> (TypDecl, dexc_loc)
+    | DefExn {contents = { dexn_loc }} -> (TypDecl, dexn_loc)
     | DefType {contents = { dt_loc }} -> (TypDecl, dt_loc)
     | DirImport(_, l) -> (TypDecl, l)
     | DirImportFrom(_, _, l) -> (TypDecl, l)
@@ -250,9 +270,36 @@ let get_module m =
     | IdModule minfo -> minfo
     | _ -> failwith (Printf.sprintf "internal error in process_all: %s is not a module" (pp_id2str m))
 
+let block_scope_idx = ref (-1)
+let new_block_scope () =
+    block_scope_idx := !block_scope_idx + 1;
+    ScBlock !block_scope_idx
+
+let get_scope_ id_info = match id_info with
+    | IdNone -> ScGlobal
+    | IdText _ -> ScGlobal
+    | IdVal {dv_scope} -> dv_scope
+    | IdFun {contents = {df_scope}} -> df_scope
+    | IdExn {contents = {dexn_scope}} -> dexn_scope
+    | IdType {contents = {dt_scope}} -> dt_scope
+    | IdModule _ -> ScGlobal
+
 (* used by the parser *)
 exception SyntaxError of string*Lexing.position*Lexing.position
 
 let current_imported_modules = ref ([] : id_t list)
 let current_file_id = ref noid
 let update_imported_modules i = current_imported_modules := i :: !current_imported_modules
+
+let loc2str loc = Printf.sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
+
+let get_lit_type l = match l with
+    | LitInt(_) -> TypInt
+    | LitSInt(b, _) -> TypSInt(b)
+    | LitUInt(b, _) -> TypUInt(b)
+    | LitFloat(b, _) -> TypFloat(b)
+    | LitString(_) -> TypString
+    | LitChar(_) -> TypChar
+    | LitBool(_) -> TypBool
+    | LitNil -> TypVar(ref None) (* in the case of NIL ([]) we cannot infere the type;
+                                    we postpone this step *)
