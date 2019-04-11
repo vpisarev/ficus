@@ -15,8 +15,7 @@ let make_loc(pos0, pos1) =
 let curr_loc() = make_loc(Parsing.symbol_start_pos(), Parsing.symbol_end_pos())
 let curr_loc_n n = make_loc((Parsing.rhs_start_pos n), (Parsing.rhs_end_pos n))
 
-let make_new_tp () = TypVar (ref (None: type_t option))
-let make_new_ctx () = (make_new_tp(), curr_loc())
+let make_new_ctx () = (make_new_typ(), curr_loc())
 
 let make_bin_op(op, a, b) = ExpBinOp(op, a, b, make_new_ctx())
 let make_un_op(op, a) = ExpUnOp(op, a, make_new_ctx())
@@ -24,7 +23,7 @@ let make_un_op(op, a) = ExpUnOp(op, a, make_new_ctx())
 let expseq2exp es n = match es with
       [] -> ExpNop(TypVoid, curr_loc_n(n))
     | e::[] -> e
-    | _ -> ExpSeq(es, (make_new_tp(), (curr_loc_n n)))
+    | _ -> ExpSeq(es, (make_new_typ(), (curr_loc_n n)))
 
 let make_deffun fname args rt body flags loc tmp =
     let i = if tmp then (get_unique_id fname tmp) else (get_id fname) in
@@ -110,20 +109,23 @@ top_level_exp:
 | decl { $1 }
 | B_IMPORT module_name_list_
     {
-        (List.iter (fun (a, _) -> update_imported_modules a) $2;
-        [DirImport ($2, curr_loc())])
+        let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
+        [DirImport ((List.map (fun (a, b) ->
+        let a1 = Utils.update_imported_modules a (pos0, pos1) in (a1, b)) $2), curr_loc())]
     }
 | FROM dot_ident IMPORT STAR
     {
-        let i = get_id $2 in
-        (update_imported_modules i;
-        [DirImportFrom (i, [], curr_loc())])
+        let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
+        let a = get_id $2 in
+        let a1 = Utils.update_imported_modules a (pos0, pos1) in
+        [DirImportFrom (a1, [], curr_loc())]
     }
 | FROM dot_ident IMPORT ident_list_
     {
-        let i = get_id $2 in
-        (update_imported_modules i;
-        [DirImportFrom (i, (List.rev $4), curr_loc())])
+        let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
+        let a = get_id $2 in
+        let a1 = Utils.update_imported_modules a (pos0, pos1) in
+        [DirImportFrom (a1, (List.rev $4), curr_loc())]
     }
 | error
     { raise (SyntaxError ("syntax error", Parsing.symbol_start_pos(), Parsing.symbol_end_pos())) }
@@ -178,8 +180,8 @@ complex_exp:
         let (tp, loc) = make_new_ctx() in
         ExpBinOp(OpSet, $1, ExpBinOp($2, $1, $3, (tp, loc)), (TypVoid, loc))
     }
-| IF B_LPAREN exp_or_block RPAREN exp_or_block ELSE exp_or_block { ExpIf ($3, $5, Some($7), make_new_ctx()) }
-| IF B_LPAREN exp_or_block RPAREN exp_or_block { ExpIf ($3, $5, None, make_new_ctx()) }
+| IF B_LPAREN exp_or_block RPAREN exp_or_block ELSE exp_or_block { ExpIf ($3, $5, $7, make_new_ctx()) }
+| IF B_LPAREN exp_or_block RPAREN exp_or_block { ExpIf ($3, $5, ExpNop(TypVoid, curr_loc_n 5), make_new_ctx()) }
 | WHILE lparen exp RPAREN exp_or_block { ExpWhile ($3, $5, make_new_ctx()) }
 | FOR for_clauses exp_or_block
     {
@@ -197,7 +199,7 @@ complex_exp:
            acc
            }`
         *)
-        let acc_tp = make_new_tp() in
+        let acc_tp = make_new_typ() in
         let acc_loc = curr_loc_n 2 (* pat location *) in
         let acc_id = get_unique_id "acc" true in
         let acc_ctx = (acc_tp, acc_loc) in
@@ -240,8 +242,8 @@ simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
 | B_LPAREN op_name RPAREN { ExpIdent((get_id $2), make_new_ctx()) }
 | literal { ExpLit($1, make_new_ctx()) }
-| simple_exp DOT B_IDENT { make_bin_op(OpDot, $1, ExpIdent((get_id $3), (make_new_tp(), curr_loc_n 3))) }
-| simple_exp DOT INT { make_bin_op(OpDot, $1, ExpLit((LitInt $3), (make_new_tp(), curr_loc_n 3))) }
+| simple_exp DOT B_IDENT { make_bin_op(OpDot, $1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3))) }
+| simple_exp DOT INT { make_bin_op(OpDot, $1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3))) }
 | B_LPAREN exp_or_block RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }
@@ -450,7 +452,7 @@ fun_args:
 
 opt_typespec:
 | COLON typespec { $2 }
-| /* empty */ { make_new_tp() }
+| /* empty */ { make_new_typ() }
 
 typedef_lhs:
 | TYPE B_LPAREN tyvar_list_ RPAREN ident { ((List.rev $3), (get_id $5)) }

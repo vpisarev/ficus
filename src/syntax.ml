@@ -121,6 +121,8 @@ type type_t =
     | TypDecl (* since declarations are also expressions, they should have some type;
                  and this is not "void" by the way *)
 
+let make_new_typ () = TypVar (ref (None: type_t option))
+
 type bin_op_t =
       OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
@@ -144,7 +146,7 @@ type exp_t =
     | ExpMkTuple of exp_t list * ctx_t
     | ExpCall of exp_t * exp_t list * ctx_t
     | ExpAt of exp_t * exp_t list * ctx_t
-    | ExpIf of exp_t * exp_t * exp_t option * ctx_t
+    | ExpIf of exp_t * exp_t * exp_t * ctx_t
     | ExpWhile of exp_t * exp_t * ctx_t
     | ExpFor of forexp_t * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
@@ -203,7 +205,7 @@ let id2str_ i pp =
     let s = (match (!all_ids).(prefix) with
       IdText(s) -> s
     | _ -> failwith (Printf.sprintf "The first element of id=%s does not represent a string\n" (dump_id i))) in
-    if tempid then (Printf.sprintf "%s@@%d" s suffix) else if pp then s else (Printf.sprintf "%s@%d" s suffix)
+    if tempid then (Printf.sprintf "%s@@%d" s suffix) else if pp || prefix = suffix then s else (Printf.sprintf "%s@%d" s suffix)
 
 let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
@@ -227,6 +229,12 @@ let get_unique_id s tmp =
     let i_name = get_id_ s in
     let i_real = new_id_idx() in
     if tmp then Id.Temp(i_name, i_real) else Id.Name(i_name, i_real)
+
+let get_fresh_id old_id =
+    let k = new_id_idx() in
+    match old_id with
+    | Id.Name(i, j) -> Id.Name(i, k)
+    | Id.Temp(i, j) -> Id.Temp(i, k)
 
 let good_variant_name s =
     let c0 = String.get s 0 in
@@ -289,10 +297,11 @@ exception SyntaxError of string*Lexing.position*Lexing.position
 
 let current_imported_modules = ref ([] : id_t list)
 let current_file_id = ref noid
-let update_imported_modules i = current_imported_modules := i :: !current_imported_modules
+let current_inc_dirs = ref ([] : string list)
 
 let loc2str loc = Printf.sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
 
+(* used by the type checker *)
 let get_lit_type l = match l with
     | LitInt(_) -> TypInt
     | LitSInt(b, _) -> TypSInt(b)

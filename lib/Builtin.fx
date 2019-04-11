@@ -5,7 +5,7 @@ fun string(a: int): void = ccode "char buf[32]; sprintf(buf, \"%d\", a); return 
 fun string(a: float): void = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_make_cstring(fx_res, buf);"
 fun string(a: double): void = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_make_cstring(fx_res, buf);"
 fun string(a: string) = a
-fun print_string(a: string): void = ccode "fx_puts(a.data); return FX_OK;"
+fun print_string(a: string): void = ccode "return fx_puts(a->data);"
 
 fun print(a: 't) = print_string(string(a))
 fun print(a: string) = print_string(a)

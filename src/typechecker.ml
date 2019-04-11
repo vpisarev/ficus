@@ -21,10 +21,11 @@ These are the tasks performed by type checker:
     "Modulename.symbolname" and looks inside imported modules to find the proper (possibly overloaded) symbol.
   * as a part of the previous step, instantiate generic functions and types.
     Unlike some functional languages, such as OCaml, and similar to some other languages with generics, like C++,
-    Ficus compiler deals with generic definitions only at the type checker stage. Later on, only the
+    Ficus compiler deals with generic definitions only at the type checker stage. Later on, only
     concrete instances, used by the rest of the code, survive.
     They are processed further and put into the final C code/binary.
-  * make sure that explicitly specified and inferenced types do not contract and follow the language semantics.
+  * make sure that explicitly specified and inferenced types do not contradict each other
+    and follow the language semantics.
     For example, condition in "if" statement must have type "bool",
     "then-" and "else-" branches must have the same type, etc.
   * do various sanity checks, e.g.
@@ -141,6 +142,7 @@ let unify t1 t2 loc msg =
     if maybe_unify t1 t2 then () else
     raise_typecheck_err loc msg
 
+(* [TODO] *)
 let coerce_types t1 t2 loc msg =
     match (t1, t2) with
     | (TypInt, TypInt) -> TypInt
@@ -149,21 +151,22 @@ let coerce_types t1 t2 loc msg =
 let rec check_exp e env sc =
     let (etyp, eloc) as ctx = get_exp_ctx e in
     match e with
-    | ExpNop(_) -> unify etyp TypVoid eloc "nop must have void type"; (ExpNop(ctx), env)
+    | ExpNop(_) -> unify etyp TypVoid eloc "nop must have void type"; ExpNop(ctx)
     | ExpRange(e1_opt, e2_opt, e3_opt, _) ->
         let check_range_e e_opt =
-            match e_opt with
+            (match e_opt with
             | None -> None
             | Some(e) ->
-                let (new_e, _) = check_exp e env sc in
+                let new_e = check_exp e env sc in
                 let (etyp1, eloc1) = get_exp_ctx new_e in
                 (unify etyp1 TypInt eloc1 "explicitly specified component of a range must be an integer";
-                Some(new_e)) in
+                Some(new_e))) in
         let new_e1_opt = check_range_e e1_opt in
         let new_e2_opt = check_range_e e2_opt in
         let new_e3_opt = check_range_e e3_opt in
-        (ExpRange(new_e1_opt, new_e2_opt, new_e3_opt, ctx), env)
-    | ExpLit(lit, _) -> unify etyp (get_lit_type lit) eloc "the literal has improper type"; (e, env)
+        unify etyp (TypTuple [TypInt;TypInt;TypInt]) eloc "the range type should have (int, int, int) type";
+        ExpRange(new_e1_opt, new_e2_opt, new_e3_opt, ctx)
+    | ExpLit(lit, _) -> unify etyp (get_lit_type lit) eloc "the literal has improper type"; e
     | ExpIdent(n, _) ->
         (*
           [TODO]
@@ -222,11 +225,11 @@ let rec check_exp e env sc =
     | ExpMkTuple(el, _) ->
         let (new_el, tl) = List.fold_left
             (fun (new_el, tl) elem ->
-                let (new_elem, _) = check_exp elem env sc in
+                let new_elem = check_exp elem env sc in
                 let (new_etyp, _) = get_exp_ctx new_elem in
                 (new_elem :: new_el), (new_etyp :: tl)) ([], []) el) in
         unify (TypTuple (List.rev tl)) etyp eloc "the improper tuple type or the number of elements";
-        (ExpMkTuple ((List.rev new_el), ctx), env)
+        ExpMkTuple ((List.rev new_el), ctx)
     | ExpCall(f, args, _)
         (*
           [TODO]
@@ -237,29 +240,47 @@ let rec check_exp e env sc =
           * then repeat the search of f if needed.
           * unify the expression type with "rt".
         *)
-    | ExpAt(ae, idxs, _)
-        (*
-          [TODO]
-          * consider a special "flatten" case: there is one idx and it's ":" range. Then
-             ae should be unified with TypArray( *, et ) (where et = TypVar(ref None)) and
-             the expression type is TypArray(1, et).
-          * otherwise, unify ae with TypArray(dims, et), where dims is the number of idxs and et=TypVar(ref None)
-          * check each index; it should either be an expression of type int or ExpRange(...)
-          * if all the indices are int's when et should be unified with etyp.
-          * otherwise the expression type is unified with TypArray(dims-scalar_dims, et),
-             where scalar_dims is the number of scalar indices
-        *)
+    | ExpAt(arr, idxs, _)
+        let new_arr = check_exp arr env sc in
+        let (new_atyp, new_aloc) = get_exp_ctx new_arr in
+        let et = make_new_typ() in
+        (match idxs with
+        (* flatten case "arr[:]" *)
+        | ExpRange(None, None, None, _) :: [] ->
+            unify new_atyp (TypArray(-1, et)) new_aloc "the argument of the flatten operation must be an array";
+            unify etyp (TypArray(1, et)) eloc "the result of the flatten operation must be 1D array";
+            ExpAt(new_arr, idxs, ctx)
+        (* other cases: check each index, it should be either a scalar or a range;
+           in the first case it should have integer type.
+           If all the indices are scalars, then the result should have et type,
+           otherwise it's an array of as high dimensionality as the number of range indices *)
+        | _ ->
+            let (new_idxs, nidx, nrange_idx) = List.fold_left (fun idx (new_idxs, nidx, nrange_idx) ->
+                let new_idx = check_exp idx env sc in
+                match new_idx with
+                | ExpRange(_, _, _, _) -> (new_idx :: new_idxs, nidx+1, nrange_idx+1)
+                | _ ->
+                    let (new_ityp, new_iloc) = get_exp_ctx new_idx in
+                    unify new_ityp TypInt new_iloc "each scalar index in array access op must be an integer";
+                    (new_idx :: new_idxs, nidx+1, nrange_idx)) idxs in
+            unify new_atyp (TypArray(nidx, et)) new_aloc "the array dimensionality does not match the number of indices";
+            (if nrange_idx = 0 then
+                unify etyp et eloc "the array access expression type does not match the array element type"
+            else
+                unify etyp (TypArray(nrange_idx, et)) eloc
+                  "the number of ranges does not match dimensionality of the result, or the element type is incorrect");
+            ExpAt(new_arr, (List.rev new_idxs), ctx))
     | ExpIf(c, e1, e2, _) ->
-        (*
-          [TODO]
-          * check c, e1 and e2
-          * unify c with bool
-          * unify e1 and e2
-          * unify etyp with e1
-        *)
         let new_c = check_exp c env sc in
+        let (new_ctyp, new_cloc) = get_exp_ctx new_c in
         let new_e1 = check_exp e1 env sc in
+        let (new_typ1, new_loc1) = get_exp_ctx new_e1 in
         let new_e2 = check_exp e2 env sc in
+        let (new_typ2, new_loc2) = get_exp_ctx new_e2 in
+        unify new_ctyp TypBool new_cloc "if() condition should have boolean type";
+        unify new_typ1 new_typ2 new_loc2 "if() then- and else- branches should have the same type";
+        unify new_typ1 etyp eloc "if() expression should have the same type as its branches";
+        ExpIf(new_c, new_e1, new_e2, ctx)
     | ExpWhile(c, body, _) ->
         let new_c = check_exp c env sc in
         let (new_ctyp, new_cloc) = get_exp_ctx new_c in
@@ -268,7 +289,7 @@ let rec check_exp e env sc =
         unify new_ctyp TypBool new_cloc "the while() loop condition should have boolean type";
         unify new_btyp TypVoid new_cloc "the while() loop body should have void type";
         unify etyp TypVoid eloc "the while() loop should have void type";
-        (ExpWhile (new_c, new_body, ctx), env)
+        ExpWhile (new_c, new_body, ctx)
     | ExpFor() of forexp_t * ctx_t
         (*
           [TODO]
@@ -290,7 +311,7 @@ let rec check_exp e env sc =
         let (new_etyp, new_eloc) = get_exp_ctx new_e1 in
         unify new_etyp new_t1 new_eloc "improper explicit type of the expression";
         unify etyp new_t1 new_eloc "improper explicit type of the expression";
-        (ExpTyped (new_e1, new_t1), env)
+        ExpTyped (new_e1, new_t1)
     | ExpCCode(_, _) ->
         (match sc with
         | ScModule(_) -> ()
@@ -332,11 +353,77 @@ let rec check_exp e env sc =
           * skip it; import directives are checked in check_seq
         *)
 
-and check_seq eseq env sc =
-    ...
+and check_seq eseq env sc create_sc =
+    (*
+      [TODO]
+      * if create_sc == true, create new block scope
+      * scan eseq, look for import statements. Since the modules are topologically sorted using the
+        dependency criteria, all the imported modules should have been analyzed already.
+        ** If we have "import m [as m_alias]",
+           we add either "m":"real_m_id" or "m_alias":"real_m_id" to the environment.
+           We also need to scan m's env and import all the overloaded operators.
+        ** If we have "from m import <id_list>|*", we scan m's env and import the requested
+           id's. We also add "m" to env (and import all the overloaded opeators).
+      * scan eseq, look for type declarations. Give all the types fresh names,
+        update the env, add the type declaration "headers" to the global symbol table.
+        check that there are no other types with the same name in the same scope.
+      * scan eseq again, now process all the type declaration bodies, resolve the types.
+      * scan eseq, look for function definitions and exception definitions. Give all the
+        exceptions and all the functions' fresh names, analyze their types. Since there can be
+        mutually recursive functions with unspecified return types, we are not always able to
+        figure out the return type at this point. So, some return types may be set to TypVar(ref None).
+        For each exception we introduce a function (or a value for an exception without parameters)
+        that constucts the exception. For each function definition we check that we do not have duplicates
+        in the argument names. We also make sure that each argument has a type and it's not ambiguous.
+        [probably, we should check whether there are other overloaded functions similar to the current one;
+        if there are other functions in the same scope with the same types of input arguments, we should
+        issue an error]
+      * [TODO] when we add classes, if eseq is the class body, we'd need to scan it again
+        to get all the members declarations and add them to env. This is needed because methods
+        can access members that are declared after methods.
+      * scan eseq one more time, process value definitions an functions bodies.
+        ** For each value we introduce a fresh name, add it to env and to the global sym table.
+        [if a value with the same name is defined in the same scope, we should issue an optional
+        "value redefinition" warning (if it's a class scope, probably we should issue an error)]
+        Before that, we need to analyze the pattern to handle cases like "val (x, y, _) = some_3d_point".
+        Underscores in such cases are replaced with temporary id's. They will be excluded later on at the
+        unused code elimination stage.
+        ** For each function we add all the arguments to the env, form a new scope and check the body
+        within this scope and using this special "inside-function" env.
+      * return the final env. It's especially useful when processing modules (top-level definitions) and classes,
+        because this env is then stored inside the module/class structure.
+    *)
 
 and check_typ tp env sc =
-    ...
+    (*
+      [TODO]
+      * leave simple types as-is
+      * in the case of complex type (ref, array, tuple, list, fun, ...) process the nested types.
+      * leave TypVar(ref None) as is
+      * process t inside TypVar(ref Some(t))
+      * the most sophisticated case: TypApp(args, id)
+        ** process all the args
+        ** look for id in the env; if there is type definition with the same id,
+           1. check that the number of args is the same OR that there is 1-to-n or n-to-1 relationship.
+              (that is, a type with a single arg can be instantiated using a tuple parameter,
+              or a type with multiple args is instantiated with a single tuple argument
+              (of as many elements as the number of parameters))
+           2. if number of args is wrong, report an error
+           3. otherwise, create a temporary environment where type arguments are replaced with the actual types.
+              process the type definition body using this temporary environment.
+           3.1. maybe in some cases before doing 3 need to iterate through a list of type instances and try to find
+              the proper match. this step is optional for now, but it will become a mandatory when handling complex types,
+              such as variants, classes and maybe records. It can also help to save some time and some space
+    *)
 
-and check_simple_pat pat env sc =
-    ...
+and check_simple_pat pat tp env id_set sc =
+    (*
+      [TODO]
+      * "_" should probably be replaced with a temporary id
+      * ident should be checked for the absence of duplicates.
+      *
+    | PatIdent of id_t * loc_t
+    | PatTuple of pat_t list * loc_t
+    | PatCtor of id_t * pat_t list * loc_t
+    | PatTyped of pat_t * type_t * loc_t
+    *)

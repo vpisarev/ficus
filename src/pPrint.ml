@@ -25,7 +25,7 @@ let lit_to_string c = match c with
     | LitNil -> "[]"
 
 let pprint_lit x = pstr (lit_to_string x)
-let pprint_id x = pstr (pp_id2str x)
+let pprint_id x = pstr (id2str x)
 
 type type_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
 
@@ -210,12 +210,10 @@ let rec pprint_exp e =
             obox(); (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"
-        | ExpIf(if_c, if_then, opt_if_else, _) ->
+        | ExpIf(if_c, if_then, if_else, _) ->
             pstr "IF ("; pprint_exp if_c; pstr ")";
             pspace(); pprint_exp if_then; pspace();
-            (match opt_if_else with
-            | None -> pstr "ELSE {}"
-            | Some(else_e) -> pstr "ELSE"; pspace(); pprint_exp else_e)
+            pstr "ELSE"; pspace(); pprint_exp if_else
         | ExpWhile(c, body, _) -> pstr "WHILE ("; pprint_exp c; pstr ")"; pspace(); pprint_exp e
         | ExpFor ({for_cl; for_body}, _) ->
             pcut(); (List.iter (fun pe_l -> pstr "FOR("; pspace();

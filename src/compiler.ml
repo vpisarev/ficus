@@ -7,8 +7,11 @@ exception CumulativeParseError
 
 let make_lexer fname =
     let _ = Lexer.fname := fname in
+    let bare_name = Utils.remove_extension (Filename.basename fname) in
     let prev_lnum = ref 0 in
-    let tokenbuf = ref [] in
+    (* the standard preamble *)
+    let tokenbuf = (if bare_name = "Builtin" then ref [] else
+        ref [Parser.FROM; Parser.B_IDENT "Builtin"; Parser.IMPORT; Parser.STAR; Parser.SEMICOLON]) in
     let print_token lexbuf t =
       (let s = Lexer.token2str t in
        let pos_lnum = lexbuf.lex_curr_p.pos_lnum in
@@ -26,28 +29,19 @@ let make_lexer fname =
                 | _ -> failwith "unexpected end of stream")
         in (if !options.print_tokens then print_token lexbuf t else ()); t)
 
-let parse_file fname =
+let parse_file fname inc_dirs =
     let fname_id = get_id fname in
     let lexer = make_lexer fname in
     let inchan = open_in fname in
     let l = Lexing.from_channel inchan in
     let _ = (current_file_id := fname_id) in
     let _ = (current_imported_modules := []) in
+    let _ = (current_inc_dirs := inc_dirs) in
     try
         let ast = Parser.ficus_module lexer l in
         close_in inchan; ast
     with
     | e -> close_in inchan; raise e
-
-let dot_regexp = Str.regexp "\\."
-
-let rec locate_module dep inc_dirs =
-    let mname = pp_id2str dep in
-    let mfname = (Str.global_replace dot_regexp Filename.dir_sep mname) ^ ".fx" in
-    try Some(Filename.concat
-                (List.find (fun d -> Sys.file_exists (Filename.concat d mfname)) inc_dirs)
-            mfname)
-    with Not_found -> None
 
 let parse_all _fname0 =
     let cwd = Sys.getcwd() in
@@ -56,44 +50,30 @@ let parse_all _fname0 =
     let inc_dirs0 = (if dir0 = cwd then [cwd] else [dir0; cwd]) @ !options.include_path in
     let inc_dirs0 = List.map (fun d -> normalize_path cwd d) inc_dirs0 in
     let _ = print_string ("Module search path:\n\t" ^ (String.concat ",\n\t" inc_dirs0) ^ "\n") in
-    let default_mods = [get_id "Builtin"] in
-    let queue = ref [fname0] in
+    let name0_id = get_id (Utils.remove_extension (Filename.basename fname0)) in
+    let minfo = Utils.find_module name0_id fname0 in
+    let queue = ref [!minfo.dm_name] in
     let ok = ref true in
-    let find_module mfname =
-        (try get_module (Hashtbl.find all_modules mfname) with
-          Not_found ->
-            let bare_mfname = Utils.remove_extension (Filename.basename mfname) in
-            let mname_id = get_unique_id bare_mfname false in
-            let newmodule = ref { dm_name=mname_id; dm_filename=mfname; dm_defs=[];
-                                  dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
-            let _ = set_id_entry mname_id (IdModule newmodule) in
-            let _ = Hashtbl.add all_modules mfname mname_id in
-            newmodule)
-    in
-    while (!queue)!=[] do
-        let mfname = List.hd (!queue) in
-        let bare_mfname = Utils.remove_extension (Filename.basename mfname) in
+    while !queue != [] do
+        let mname = List.hd (!queue) in
         let _ = queue := List.tl (!queue) in
-        let minfo = find_module mfname in
+        let minfo = get_module mname in
+        let mfname = !minfo.dm_filename in
         if !minfo.dm_parsed then ()
         else
         (try
-            let (defs, deps) = parse_file mfname in
-            let _ = (!minfo.dm_defs <- defs) in
-            let _ = (!minfo.dm_parsed <- true) in
-            let deps = (if bare_mfname = "Builtin" then [] else default_mods) @ deps in
             let dir1 = Filename.dirname mfname in
             let inc_dirs = (if dir1 = dir0 then [] else [dir1]) @ inc_dirs0 in
+            let (defs, deps) = parse_file mfname inc_dirs in
+            let _ = (!minfo.dm_defs <- defs) in
+            let _ = (!minfo.dm_parsed <- true) in
+            let _ = (!minfo.dm_deps <- deps) in
             (* locate the deps, update the list of deps using proper ID's of real modules *)
-            let deps = List.map (fun dep -> match locate_module dep inc_dirs with
-                  | Some(dep_fname) ->
-                      let dep_fname = normalize_path cwd dep_fname in
-                      let dep_minfo = find_module dep_fname in
-                      if !dep_minfo.dm_parsed then () else queue := dep_fname :: !queue;
-                      !dep_minfo.dm_name
-                  | _ -> (Printf.printf "%s: error: module %s cannot be located\n"
-                       bare_mfname (pp_id2str dep)); ok := false; dep) deps in
-            !minfo.dm_deps <- deps
+            List.iter (fun dep ->
+                let dep_minfo = get_module dep in
+                if not !dep_minfo.dm_parsed then
+                    queue := !dep_minfo.dm_name :: !queue
+                else ()) deps
         with
         | Lexer.Error(err, p0, p1) ->
             Printf.printf "%s: %s\n" (Lexer.pos2str p0) err; ok := false
@@ -110,7 +90,6 @@ let init () =
     (Hashtbl.reset all_strings);
     ignore (get_id_ "");
     ignore (get_id_ "_");
-    ignore (get_id_ "Builtin");
     (Hashtbl.reset all_modules)
 
 (*
