@@ -6,10 +6,10 @@ let make_loc(pos0, pos1) =
     let { Lexing.pos_lnum=l0; Lexing.pos_bol=b0; Lexing.pos_cnum=c0 } = pos0 in
     let { Lexing.pos_lnum=l1; Lexing.pos_bol=b1; Lexing.pos_cnum=c1 } = pos1 in
     if c0 <= c1 then
-        { loc_fname = !current_file_id; loc_line0 = l0;
+        { loc_fname = !Utils.parser_ctx_file; loc_line0 = l0;
           loc_pos0 = c0 - b0+1; loc_line1 = l1; loc_pos1 = c1 - b1+1 }
     else
-        { loc_fname = !current_file_id; loc_line0 = l1;
+        { loc_fname = !Utils.parser_ctx_file; loc_line0 = l1;
           loc_pos0 = c1 - b1+1; loc_line1 = l0; loc_pos1 = c0 - b0+1 }
 
 let curr_loc() = make_loc(Parsing.symbol_start_pos(), Parsing.symbol_end_pos())
@@ -89,15 +89,15 @@ let make_deffun fname args rt body flags loc tmp =
 %left app_type_prec arr_type_prec option_type_prec ref_type_prec
 %left DOT
 
-%type <Syntax.exp_t list * Syntax.id_t list> ficus_module
+%type <Syntax.exp_t list> ficus_module
 %start ficus_module
 
 %%
 
 ficus_module:
-| top_level_seq_ { ((List.rev $1), !current_imported_modules) }
-| top_level_seq_ SEMICOLON { ((List.rev $1), !current_imported_modules) }
-| /* empty */ { ([], []) }
+| top_level_seq_ { List.rev $1 }
+| top_level_seq_ SEMICOLON { List.rev $1 }
+| /* empty */ { [] }
 
 top_level_seq_:
 | top_level_seq_ top_level_exp { (List.rev $2) @ $1 }

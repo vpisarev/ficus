@@ -34,9 +34,9 @@ let parse_file fname inc_dirs =
     let lexer = make_lexer fname in
     let inchan = open_in fname in
     let l = Lexing.from_channel inchan in
-    let _ = (current_file_id := fname_id) in
-    let _ = (current_imported_modules := []) in
-    let _ = (current_inc_dirs := inc_dirs) in
+    let _ = (Utils.parser_ctx_file := fname_id) in
+    let _ = (Utils.parser_ctx_deps := []) in
+    let _ = (Utils.parser_ctx_inc_dirs := inc_dirs) in
     try
         let ast = Parser.ficus_module lexer l in
         close_in inchan; ast
@@ -51,7 +51,7 @@ let parse_all _fname0 =
     let inc_dirs0 = List.map (fun d -> normalize_path cwd d) inc_dirs0 in
     let _ = print_string ("Module search path:\n\t" ^ (String.concat ",\n\t" inc_dirs0) ^ "\n") in
     let name0_id = get_id (Utils.remove_extension (Filename.basename fname0)) in
-    let minfo = Utils.find_module name0_id fname0 in
+    let minfo = find_module name0_id fname0 in
     let queue = ref [!minfo.dm_name] in
     let ok = ref true in
     while !queue != [] do
@@ -64,7 +64,8 @@ let parse_all _fname0 =
         (try
             let dir1 = Filename.dirname mfname in
             let inc_dirs = (if dir1 = dir0 then [] else [dir1]) @ inc_dirs0 in
-            let (defs, deps) = parse_file mfname inc_dirs in
+            let defs = parse_file mfname inc_dirs in
+            let deps = !Utils.parser_ctx_deps in
             let _ = (!minfo.dm_defs <- defs) in
             let _ = (!minfo.dm_parsed <- true) in
             let _ = (!minfo.dm_deps <- deps) in

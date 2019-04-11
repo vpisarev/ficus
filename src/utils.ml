@@ -38,22 +38,16 @@ let rec locate_module_file mname inc_dirs =
         Some(normalize_path (Sys.getcwd()) mfname_full)
     with Not_found -> None
 
-let find_module mname_id mfname =
-    try get_module (Hashtbl.find all_modules mfname) with
-    Not_found ->
-        let m_fresh_id = get_fresh_id mname_id in
-        let newmodule = ref { dm_name=m_fresh_id; dm_filename=mfname; dm_defs=[];
-                              dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
-        let _ = set_id_entry m_fresh_id (IdModule newmodule) in
-        let _ = Hashtbl.add all_modules mfname m_fresh_id in
-        newmodule
+let parser_ctx_file = ref noid
+let parser_ctx_deps = ref ([] : id_t list)
+let parser_ctx_inc_dirs= ref ([] : string list)
 
 let update_imported_modules mname_id (pos0, pos1) =
     let mname = pp_id2str mname_id in
-    match locate_module_file mname !current_inc_dirs with
+    match locate_module_file mname !parser_ctx_inc_dirs with
     | Some(mfname) ->
         let dep_minfo = find_module mname_id mfname in
         let mname_unique_id = !dep_minfo.dm_name in
-        (current_imported_modules := mname_unique_id :: !current_imported_modules;
+        (parser_ctx_deps := mname_unique_id :: !parser_ctx_deps;
         mname_unique_id)
     | _ -> raise (SyntaxError(("module " ^ mname ^ " is not found"), pos0, pos1))

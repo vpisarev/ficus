@@ -219,8 +219,7 @@ let get_id_ s =
     | _ -> let i = new_id_idx() in
             (Hashtbl.add all_strings s i;
             (!all_ids).(i) <- IdText(s);
-            i)) in
-    ((*(Printf.printf "get_id_ \"%s\"=%d\n" s idx);*) idx)
+            i)) in idx
 
 let get_id s =
     let i = get_id_ s in Id.Name(i, i)
@@ -278,6 +277,16 @@ let get_module m =
     | IdModule minfo -> minfo
     | _ -> failwith (Printf.sprintf "internal error in process_all: %s is not a module" (pp_id2str m))
 
+let find_module mname_id mfname =
+    try get_module (Hashtbl.find all_modules mfname) with
+    Not_found ->
+        let m_fresh_id = get_fresh_id mname_id in
+        let newmodule = ref { dm_name=m_fresh_id; dm_filename=mfname; dm_defs=[];
+                              dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
+        let _ = set_id_entry m_fresh_id (IdModule newmodule) in
+        let _ = Hashtbl.add all_modules mfname m_fresh_id in
+        newmodule
+
 let block_scope_idx = ref (-1)
 let new_block_scope () =
     block_scope_idx := !block_scope_idx + 1;
@@ -294,11 +303,6 @@ let get_scope_ id_info = match id_info with
 
 (* used by the parser *)
 exception SyntaxError of string*Lexing.position*Lexing.position
-
-let current_imported_modules = ref ([] : id_t list)
-let current_file_id = ref noid
-let current_inc_dirs = ref ([] : string list)
-
 let loc2str loc = Printf.sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
 
 (* used by the type checker *)
