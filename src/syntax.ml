@@ -116,6 +116,7 @@ type type_t =
     | TypRef of type_t
     | TypArray of int * type_t
     | TypExn
+    | TypErr (* a thrown exception; can be unified with any other type (except for declaration) *)
     | TypCPointer (* smart pointer to a C structure; we use it for file handlers, mutexes etc. *)
     | TypApp of type_t list * id_t (* a generic type instance or a type alias (when type_t list is empty) *)
     | TypDecl (* since declarations are also expressions, they should have some type;
@@ -129,7 +130,7 @@ type bin_op_t =
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
     | OpCons | OpDot | OpSet
 
-type un_op_t = OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow
+type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow
 
 type val_flag_t = ValMutable | ValArg
 type func_flag_t = FunPure | FunImpure | FunInC
@@ -316,3 +317,86 @@ let get_lit_type l = match l with
     | LitBool(_) -> TypBool
     | LitNil -> TypVar(ref None) (* in the case of NIL ([]) we cannot infere the type;
                                     we postpone this step *)
+
+let binop_to_string bop = match bop with
+    | OpAdd -> "+"
+    | OpSub -> "-"
+    | OpMul -> "*"
+    | OpDiv -> "/"
+    | OpMod -> "%"
+    | OpPow -> "**"
+    | OpShiftLeft -> "<<"
+    | OpShiftRight -> ">>"
+    | OpBitwiseAnd -> "&"
+    | OpLogicAnd -> "&&"
+    | OpBitwiseOr -> "|"
+    | OpLogicOr -> "||"
+    | OpBitwiseXor -> "^"
+    | OpCompareEQ -> "=="
+    | OpCompareNE -> "!="
+    | OpCompareLT -> "<"
+    | OpCompareLE -> "<="
+    | OpCompareGT -> ">"
+    | OpCompareGE -> ">="
+    | OpCons -> "::"
+    | OpDot -> "."
+    | OpSet -> "="
+
+let unop_to_string uop = match uop with
+    | OpPlus -> "+"
+    | OpNegate -> "-"
+    | OpBitwiseNot -> "~"
+    | OpLogicNot -> "!"
+    | OpMakeRef -> "ref"
+    | OpDeref -> "*"
+    | OpThrow -> "throw"
+
+let fname_op_add = get_id "__add__"
+let fname_op_sub = get_id "__sub__"
+let fname_op_mul = get_id "__mul__"
+let fname_op_div = get_id "__div__"
+let fname_op_mod = get_id "__mod__"
+let fname_op_pow = get_id "__pow__"
+let fname_op_shl = get_id "__shl__"
+let fname_op_shr = get_id "__shr__"
+let fname_op_bit_and = get_id "__bit_and__"
+let fname_op_bit_or = get_id "__bit_or__"
+let fname_op_bit_xor = get_id "__bit_xor__"
+let fname_op_eq = get_id "__eq__"
+let fname_op_ne = get_id "__ne__"
+let fname_op_lt = get_id "__lt__"
+let fname_op_gt = get_id "__gt__"
+let fname_op_le = get_id "__le__"
+let fname_op_ge = get_id "__ge__"
+
+let fname_op_plus = get_id "__plus__"
+let fname_op_negate = get_id "__negate__"
+let fname_op_bit_not = get_id "__bit_not__"
+
+let get_binop_fname bop =
+    match bop with
+    | OpAdd -> fname_op_add
+    | OpSub -> fname_op_sub
+    | OpMul -> fname_op_mul
+    | OpDiv -> fname_op_div
+    | OpMod -> fname_op_mod
+    | OpPow -> fname_op_pow
+    | OpShiftLeft -> fname_op_shl
+    | OpShiftRight -> fname_op_shr
+    | OpBitwiseAnd -> fname_op_bit_and
+    | OpBitwiseOr -> fname_op_bit_or
+    | OpBitwiseXor -> fname_op_bit_xor
+    | OpCompareEQ -> fname_op_eq
+    | OpCompareNE -> fname_op_ne
+    | OpCompareLT -> fname_op_lt
+    | OpCompareLE -> fname_op_le
+    | OpCompareGT -> fname_op_gt
+    | OpCompareGE -> fname_op_ge
+    | _ -> failwith (Printf.sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
+
+let get_unop_fname uop =
+    match uop with
+    | OpPlus -> fname_op_plus
+    | OpNegate -> fname_op_negate
+    | OpBitwiseNot -> fname_op_bit_not
+    | _ -> failwith (Printf.sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))

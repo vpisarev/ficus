@@ -1,6 +1,7 @@
 (* The type checker *)
 
 open Syntax
+open Options
 
 (*
 The type checker component performs semantical analysis and various
@@ -40,8 +41,8 @@ Implementation plan:
 
 + raise_typecheck_err()
 + type unification
-+/--- checkexp
-- checkexpseq(toplevel:bool)
++/- checkexp
+- checkexpseq
 - check_deffun
 - check_defexn
 - check_deftype
@@ -52,9 +53,13 @@ Implementation plan:
 *)
 exception TypeCheckError of loc_t * string
 
+let typecheck_errs = ref ([]: exn list)
+
 let raise_typecheck_err loc msg =
-    Printf.printf "%s: %s\n" (loc2str loc) msg;
-    raise (TypeCheckError(loc, msg))
+    let whole_msg = Printf.sprintf "%s: %s\n" (loc2str loc) msg in
+    let err = TypeCheckError(loc, whole_msg) in
+    typecheck_errs := err :: !typecheck_errs;
+    raise err
 
 (*
   Try to match (i.e. unify) two types, possibly indirectly represented or unknown/undefined.
@@ -142,11 +147,63 @@ let unify t1 t2 loc msg =
     if maybe_unify t1 t2 then () else
     raise_typecheck_err loc msg
 
-(* [TODO] *)
-let coerce_types t1 t2 loc msg =
+let deref_type t shorten_paths =
+    let rec deref_type_ t =
+    (match t with
+    | TypFun(args, rt) -> TypFun((List.map deref_type_ args), (deref_type_ rt))
+    | TypList(et) -> TypList(deref_type_ et)
+    | TypTuple(tl) -> TypTuple (List.map deref_type_ tl)
+    | TypRef(drt) -> TypRef(deref_type_ drt)
+    | TypArray(dims, et) -> TypArray(dims, (deref_type_ et))
+    | TypVar({ contents = None }) -> t
+    | TypVar({ contents = Some(t2) } as r) ->
+        (match (shorten_paths, t2) with
+        | (true, TypVar(r2)) -> r := !r2; deref_type_ t
+        | _ -> deref_type_ t2)
+    | TypApp(args, i) -> TypApp((List.map deref_type_ args), i)
+    | _ -> t) in deref_type_ t
+
+let coerce_types t1 t2 allow_tuples loc =
+    let t1_ = deref_type t1 false in
+    let t2_ = deref_type t2 false in
+    let safe_max_ubits = if !options.arch64 then 32 else 16 in
+    let rec coerce_types_ t1 t2 =
     match (t1, t2) with
     | (TypInt, TypInt) -> TypInt
-    | ()
+    | (TypSInt b1), (TypSInt b2) ->
+        let b = max b1 b2 in if b <= 32 then TypInt else TypSInt(64)
+    | (TypUInt b1), (TypUInt b2) ->
+        let b = max b1 b2 in
+        if b <= safe_max_ubits then TypInt else TypUInt(b)
+    | TypInt, (TypSInt b) -> if b <= 32 then TypInt else TypSInt(b)
+    | TypInt, (TypUInt b) -> if b <= safe_max_ubits then TypInt else
+        raise_typecheck_err loc "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
+    | (TypSInt b), TypInt -> if b <= 32 then TypInt else TypSInt(b)
+    | (TypUInt b), TypInt -> if b <= safe_max_ubits then TypInt else
+        raise_typecheck_err loc "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
+    | (TypSInt b1), (TypUInt b2) ->
+        if b1 <= 32 && b2 <= safe_max_ubits then TypInt else
+        raise_typecheck_err loc "implicit type coercion for this (signed, unsigned) pair of integer is not allowed; use explicit type cast"
+    | (TypUInt b1), (TypSInt b2) ->
+        if b1 <= safe_max_ubits && b2 <= 32 then TypInt else
+        raise_typecheck_err loc "implicit type coercion for this (unsigned, signed) pair of integer is not allowed; use explicit type cast"
+    | (TypFloat b1), (TypFloat b2) ->
+        let max_b = max b1 b2 in TypFloat(max_b)
+    | (TypFloat b), TypInt -> TypFloat(b)
+    | (TypFloat b), (TypSInt _) -> TypFloat(b)
+    | (TypFloat b), (TypUInt _) -> TypFloat(b)
+    | TypInt, (TypFloat b) -> TypFloat(b)
+    | (TypSInt _), (TypFloat b) -> TypFloat(b)
+    | (TypUInt _), (TypFloat b) -> TypFloat(b)
+    | (TypTuple tl1), (TypTuple tl2) ->
+        if not allow_tuples then
+            raise_typecheck_err loc "tuples are not allowed in this operation"
+        else if (List.length tl1) = (List.length tl2) then
+            TypTuple (List.map2 (fun et1 et2 -> coerce_types_ et1 et2) tl1 tl2)
+        else
+            raise_typecheck_err loc "tuples have different number of elements"
+    | _ -> raise_typecheck_err loc "the types cannot be implicitly coerced; use explicit type cast"
+    in coerce_types_ t1_ t2_
 
 let rec check_exp e env sc =
     let (etyp, eloc) as ctx = get_exp_ctx e in
@@ -168,14 +225,7 @@ let rec check_exp e env sc =
         ExpRange(new_e1_opt, new_e2_opt, new_e3_opt, ctx)
     | ExpLit(lit, _) -> unify etyp (get_lit_type lit) eloc "the literal has improper type"; e
     | ExpIdent(n, _) ->
-        (*
-          [TODO]
-          * look for the specific id "n" in the current environment.
-          * If there is a single match, replace the id with the found one and unify the expression type
-          with the type of id.
-          * Otherwise, leave it as-is (???)
-        *)
-        (e, env)
+        let n1 = lookup_id n env sc ctx in ExpIdent(n1, ctx)
     | ExpBinOp(bop, e1, e2, _)
         (*
           [TODO]
@@ -200,6 +250,16 @@ let rec check_exp e env sc =
               if it's module access operator, try to find the proper match. If there are multiple possible matches,
               leave it as-is for now (???)
         *)
+        let f_id = bop_to_fname bop in
+        let new_e1 = check_exp e1 env sc in
+        let (etyp1, eloc1) = get_exp_ctx new_e1 in
+        let new_e2 = check_exp e2 env sc in
+        let (etyp2, eloc2) = get_exp_ctx new_e2 in
+
+        match bop with
+        |
+
+
     | ExpUnOp(uop, e1, _)
         (*
           [TODO]
@@ -326,32 +386,11 @@ let rec check_exp e env sc =
           * if it's not a class (check sc) then add p elements to the environment
           * unify etyp with TypDecl
         *)
-    | DefFun({contents = {}} as rdf)
-        (*
-          [TODO]
-          * the function prototype is analyzed separately in check_seq
-          * check the function body, unify it with rt
-        *)
-    | DefExn({contents = {}} as rde)
-        (*
-          [TODO]
-          * skip it; the exceptions are checked in check_seq
-        *)
-    | DefType({contents = {}} as rdt)
-        (*
-          [TODO]
-          * skip it; the type definitions are checked in check_seq
-        *)
-    | DirImport(imp_list, _)
-        (*
-          [TODO]
-          * skip it; import directives are checked in check_seq
-        *)
-    | DirImportFrom(m, imp_list, _)
-        (*
-          [TODO]
-          * skip it; import directives are checked in check_seq
-        *)
+    | DefFun({contents = {}} as rdf) -> e
+    | DefExn({contents = {}} as rde) -> e
+    | DefType({contents = {}} as rdt) -> e
+    | DirImport(imp_list, _) -> e
+    | DirImportFrom(m, imp_list, _) -> e
 
 and check_seq eseq env sc create_sc =
     (*

@@ -25,9 +25,8 @@ let expseq2exp es n = match es with
     | e::[] -> e
     | _ -> ExpSeq(es, (make_new_typ(), (curr_loc_n n)))
 
-let make_deffun fname args rt body flags loc tmp =
-    let i = if tmp then (get_unique_id fname tmp) else (get_id fname) in
-    { df_name=i; df_template_args=[]; df_args=args; df_rt=rt;
+let make_deffun fname args rt body flags loc =
+    { df_name=fname; df_template_args=[]; df_args=args; df_rt=rt;
       df_body=body; df_flags=flags; df_scope=ScGlobal;
       df_loc=loc; df_template_inst=[] }
 
@@ -149,14 +148,14 @@ decl:
         let (flags, fname) = $1 in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ [$4]) 4 in
-        [DefFun (ref (make_deffun fname args rt body flags (curr_loc()) false))]
+        [DefFun (ref (make_deffun fname args rt body flags (curr_loc())))]
     }
 | fun_decl_start fun_args block
     {
         let (flags, fname) = $1 in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ (List.rev $3)) 3 in
-        [DefFun (ref (make_deffun fname args rt body flags (curr_loc()) false))]
+        [DefFun (ref (make_deffun fname args rt body flags (curr_loc())))]
     }
 | typedef_lhs EQUAL typespec
     {
@@ -223,24 +222,24 @@ complex_exp:
         let ctx = make_new_ctx() in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ [$4]) 4 in
-        let df = make_deffun "lambda" args rt body [] (curr_loc()) true in
-        let {df_name=f_id} = df in
-        ExpSeq([DefFun (ref df); ExpIdent (f_id, ctx)], ctx)
+        let fname = get_unique_id "lambda" true in
+        let df = make_deffun fname args rt body [] (curr_loc()) in
+        ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
     }
 | FUN fun_args block
     {
         let ctx = make_new_ctx() in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ $3) 3 in
-        let df = make_deffun "lambda" args rt body [] (curr_loc()) true in
-        let {df_name=f_id} = df in
-        ExpSeq([DefFun (ref df); ExpIdent (f_id, ctx)], ctx)
+        let fname = get_unique_id "lambda" true in
+        let df = make_deffun fname args rt body [] (curr_loc()) in
+        ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
     }
 | exp { $1 }
 
 simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
-| B_LPAREN op_name RPAREN { ExpIdent((get_id $2), make_new_ctx()) }
+| B_LPAREN op_name RPAREN { ExpIdent($2, make_new_ctx()) }
 | literal { ExpLit($1, make_new_ctx()) }
 | simple_exp DOT B_IDENT { make_bin_op(OpDot, $1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3))) }
 | simple_exp DOT INT { make_bin_op(OpDot, $1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3))) }
@@ -281,7 +280,8 @@ exp:
 | B_POWER exp { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
 | B_REF exp { make_un_op(OpMakeRef, $2) }
 | B_MINUS exp { make_un_op(OpNegate, $2) }
-| THROW exp { make_un_op(OpThrow, $2) }
+| B_PLUS exp { make_un_op(OpPlus, $2) }
+| THROW exp { ExpUnOp(OpThrow, $2, (TypErr, curr_loc())) }
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
 | BITWISE_NOT exp { make_un_op(OpBitwiseNot, $2) }
 
@@ -324,24 +324,24 @@ exp_list_:
 | complex_exp { $1 :: [] }
 
 op_name:
-| B_PLUS { "__add__" }
-| B_MINUS  { "__sub__" }
-| B_STAR  { "__mul__" }
-| SLASH  { "__div__" }
-| MOD  { "__mod__" }
-| B_POWER  { "__pow__" }
-| SHIFT_LEFT  { "__shl__" }
-| SHIFT_RIGHT  { "__shr__" }
-| BITWISE_AND  { "__bit_and__" }
-| BITWISE_OR   { "__bit_or__" }
-| BITWISE_XOR  { "__bit_xor__" }
-| BITWISE_NOT  { "__bit_not__" }
-| EQUAL_TO  { "__eq__" }
-| NOT_EQUAL  { "__ne__" }
-| LESS  { "__lt__" }
-| LESS_EQUAL  { "__le__" }
-| GREATER  { "__gt__" }
-| GREATER_EQUAL  { "__ge__" }
+| B_PLUS { fname_op_add }
+| B_MINUS  { fname_op_sub }
+| B_STAR  { fname_op_mul }
+| SLASH  { fname_op_div }
+| MOD  { fname_op_mod }
+| B_POWER  { fname_op_pow }
+| SHIFT_LEFT  { fname_op_shl }
+| SHIFT_RIGHT  { fname_op_shr }
+| BITWISE_AND  { fname_op_bit_and }
+| BITWISE_OR   { fname_op_bit_or }
+| BITWISE_XOR  { fname_op_bit_xor }
+| BITWISE_NOT  { fname_op_bit_not }
+| EQUAL_TO  { fname_op_eq }
+| NOT_EQUAL  { fname_op_ne }
+| LESS  { fname_op_lt }
+| LESS_EQUAL  { fname_op_le }
+| GREATER  { fname_op_gt }
+| GREATER_EQUAL  { fname_op_ge }
 
 aug_op:
 | PLUS_EQUAL { OpAdd }
@@ -444,7 +444,7 @@ val_decl:
 | simple_pat EQUAL exp_or_block { ($1, $3, make_new_ctx()) }
 
 fun_decl_start:
-| FUN B_IDENT { ([], $2) }
+| FUN B_IDENT { ([], get_id $2) }
 | OPERATOR op_name { ([], $2) }
 
 fun_args:

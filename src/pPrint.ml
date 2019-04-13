@@ -34,7 +34,7 @@ let rec get_type_pr t = match t with
     | TypVar {contents=Some(t1)} -> get_type_pr t1
     | TypInt | TypSInt(_) | TypUInt(_) | TypFloat(_)
     | TypString | TypChar | TypBool | TypVoid | TypExn
-    | TypCPointer | TypDecl -> TypPrBase
+    | TypErr | TypCPointer | TypDecl -> TypPrBase
     | TypApp([], _) -> TypPrBase
     | TypTuple(_) -> TypPrBase
     | TypList(_) | TypRef(_) | TypArray(_) | TypApp(_, _) -> TypPrComplex
@@ -84,6 +84,7 @@ let rec pptype_ t p1 =
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (pp_id2str n)
     | TypTuple(tl) -> pptypelist_ "(" tl
     | TypExn -> pstr "Exn"
+    | TypErr -> pstr "Err"
     | TypCPointer -> pstr "CPtr"
     | TypDecl -> pstr "<Declaration>"
 
@@ -94,38 +95,6 @@ let pprint_template_args tt = match tt with
     | _ -> pstr "(";
         (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pprint_id t) tt);
         pstr ")"
-
-let bin_op_to_string op = match op with
-    | OpAdd -> "+"
-    | OpSub -> "-"
-    | OpMul -> "*"
-    | OpDiv -> "/"
-    | OpMod -> "%"
-    | OpPow -> "**"
-    | OpShiftLeft -> "<<"
-    | OpShiftRight -> ">>"
-    | OpBitwiseAnd -> "&"
-    | OpLogicAnd -> "&&"
-    | OpBitwiseOr -> "|"
-    | OpLogicOr -> "||"
-    | OpBitwiseXor -> "^"
-    | OpCompareEQ -> "=="
-    | OpCompareNE -> "!="
-    | OpCompareLT -> "<"
-    | OpCompareLE -> "<="
-    | OpCompareGT -> ">"
-    | OpCompareGE -> ">="
-    | OpCons -> "::"
-    | OpDot -> "."
-    | OpSet -> "="
-
-let un_op_to_string op = match op with
-    | OpNegate -> "-"
-    | OpBitwiseNot -> "~"
-    | OpLogicNot -> "!"
-    | OpMakeRef -> "ref"
-    | OpDeref -> "*"
-    | OpThrow -> "throw"
 
 let rec pprint_exp e =
     let t = get_exp_type e in
@@ -189,10 +158,10 @@ let rec pprint_exp e =
         | ExpLit(x, _) -> pprint_lit x
         | ExpIdent(n, _) -> pprint_id n
         | ExpBinOp(o, e1, e2, _) ->
-            let ostr = bin_op_to_string o in
+            let ostr = binop_to_string o in
             pstr "("; pprint_exp e1; pspace(); pstr ostr; pspace(); pprint_exp e2; pstr ")"
         | ExpUnOp(o, e1, _) ->
-            let ostr = un_op_to_string o in
+            let ostr = unop_to_string o in
             pstr "("; pstr ostr; pspace(); pprint_exp e1; pstr ")"
         | ExpMkTuple(el, _) ->
             pstr "("; obox(); (List.iteri (fun i e ->
