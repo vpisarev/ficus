@@ -34,7 +34,7 @@ let rec get_type_pr t = match t with
     | TypVar {contents=Some(t1)} -> get_type_pr t1
     | TypInt | TypSInt(_) | TypUInt(_) | TypFloat(_)
     | TypString | TypChar | TypBool | TypVoid | TypExn
-    | TypErr | TypCPointer | TypDecl -> TypPrBase
+    | TypErr | TypCPointer | TypDecl | TypModule -> TypPrBase
     | TypApp([], _) -> TypPrBase
     | TypTuple(_) -> TypPrBase
     | TypList(_) | TypRef(_) | TypArray(_) | TypApp(_, _) -> TypPrComplex
@@ -86,7 +86,8 @@ let rec pptype_ t p1 =
     | TypExn -> pstr "Exn"
     | TypErr -> pstr "Err"
     | TypCPointer -> pstr "CPtr"
-    | TypDecl -> pstr "<Declaration>"
+    | TypDecl -> pstr "Declaration"
+    | TypModule -> pstr "Module"
 
 let pprint_type t = pptype_ t TypPr0
 let pprint_template_args tt = match tt with

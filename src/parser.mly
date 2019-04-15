@@ -241,8 +241,8 @@ simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
 | B_LPAREN op_name RPAREN { ExpIdent($2, make_new_ctx()) }
 | literal { ExpLit($1, make_new_ctx()) }
-| simple_exp DOT B_IDENT { make_bin_op(OpDot, $1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3))) }
-| simple_exp DOT INT { make_bin_op(OpDot, $1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3))) }
+| simple_exp DOT B_IDENT { make_bin_op(OpMem, $1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3))) }
+| simple_exp DOT INT { make_bin_op(OpMem, $1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3))) }
 | B_LPAREN exp_or_block RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }

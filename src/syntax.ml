@@ -121,6 +121,7 @@ type type_t =
     | TypApp of type_t list * id_t (* a generic type instance or a type alias (when type_t list is empty) *)
     | TypDecl (* since declarations are also expressions, they should have some type;
                  and this is not "void" by the way *)
+    | TypModule
 
 let make_new_typ () = TypVar (ref (None: type_t option))
 
@@ -128,7 +129,7 @@ type bin_op_t =
       OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
-    | OpCons | OpDot | OpSet
+    | OpCons | OpMem | OpSet
 
 type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow
 
@@ -339,7 +340,7 @@ let binop_to_string bop = match bop with
     | OpCompareGT -> ">"
     | OpCompareGE -> ">="
     | OpCons -> "::"
-    | OpDot -> "."
+    | OpMem -> "."
     | OpSet -> "="
 
 let unop_to_string uop = match uop with

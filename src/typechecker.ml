@@ -55,6 +55,10 @@ exception TypeCheckError of loc_t * string
 
 let typecheck_errs = ref ([]: exn list)
 
+let pop_typecheck_err () = match !typecheck_errs with
+    | err :: rest -> typecheck_errs := rest
+    | _ -> ()
+
 let raise_typecheck_err loc msg =
     let whole_msg = Printf.sprintf "%s: %s\n" (loc2str loc) msg in
     let err = TypeCheckError(loc, whole_msg) in
@@ -77,7 +81,7 @@ let raise_typecheck_err loc msg =
   (or rather "overloaded function not found" error)
   in the very end, when we are out of candidates.
 *)
-let maybe_unify t1 t2 =
+let maybe_unify t1 t2 update_refs =
     let unify_undo_stack = ref [] in
 
     (* checks if a reference to undefined type (an argument of TypVar (ref None))
@@ -101,7 +105,7 @@ let maybe_unify t1 t2 =
         (* a type should be unified successfully with itself *)
         | (TypInt, TypInt) | (TypString, TypString) | (TypChar, TypChar)
         | (TypBool, TypBool) | (TypVoid, TypVoid) | (TypExn, TypExn)
-        | (TypCPointer, TypCPointer) | (TypDecl, TypDecl) -> true
+        | (TypCPointer, TypCPointer) | (TypDecl, TypDecl) | (TypModule, TypModule) -> true
         | ((TypSInt bits1), (TypSInt bits2)) -> bits1 = bits2
         | ((TypUInt bits1), (TypUInt bits2)) -> bits1 = bits2
         | ((TypFloat bits1), (TypFloat bits2)) -> bits1 = bits2
@@ -125,26 +129,32 @@ let maybe_unify t1 t2 =
                equivalent to t2, neither is a part of t2, then we unify it with t2.
                Before that, we update the undo stack. There is no need
                to memorize the previous value of r1, because we know that it's None. *)
-            (unify_undo_stack := r1 :: !unify_undo_stack;
-            r1 := Some(t2); true)
+            ((match t2 with
+            | TypErr -> ()
+            | _ -> unify_undo_stack := r1 :: !unify_undo_stack; r1 := Some(t2)); true)
           (* symmetrical case *)
         | (_, (TypVar ({contents = None} as r2))) ->
             if occurs r2 t1 then false else
-            (unify_undo_stack := r2 :: !unify_undo_stack;
-            r2 := Some(t1); true)
+            ((match t1 with
+            | TypErr -> ()
+            | _ -> unify_undo_stack := r2 :: !unify_undo_stack; r2 := Some(t1)); true)
         (* a declaration cannot be unified with any non-decl type *)
+        | (TypErr, _ ) -> true
+        | (_, TypErr) -> true
         | (TypDecl, _) | (_, TypDecl) -> false
         (* in all other cases the types cannot be unified *)
         | (_, _) -> false) in
 
-    if maybe_unify_ t1 t2 then true else
+    let ok = maybe_unify_ t1 t2 in
+    if ok && update_refs then () else
     (* restore the original types in the case of unification failure *)
-    (List.iter (fun r -> r := None) !unify_undo_stack; false)
+    (List.iter (fun r -> r := None) !unify_undo_stack);
+    ok
 
 (* this is another flavor of type unification function;
    it throws an exception in the case of failure *)
 let unify t1 t2 loc msg =
-    if maybe_unify t1 t2 then () else
+    if maybe_unify t1 t2 true then () else
     raise_typecheck_err loc msg
 
 let deref_type t shorten_paths =
@@ -157,13 +167,13 @@ let deref_type t shorten_paths =
     | TypArray(dims, et) -> TypArray(dims, (deref_type_ et))
     | TypVar({ contents = None }) -> t
     | TypVar({ contents = Some(t2) } as r) ->
-        (match (shorten_paths, t2) with
-        | (true, TypVar(r2)) -> r := !r2; deref_type_ t
-        | _ -> deref_type_ t2)
+        let t2_ = deref_type_ t2 in
+        if shorten_paths then r := Some(t2_) else ();
+        t2_
     | TypApp(args, i) -> TypApp((List.map deref_type_ args), i)
     | _ -> t) in deref_type_ t
 
-let coerce_types t1 t2 allow_tuples loc =
+let coerce_types t1 t2 allow_tuples allow_fp =
     let t1_ = deref_type t1 false in
     let t2_ = deref_type t2 false in
     let safe_max_ubits = if !options.arch64 then 32 else 16 in
@@ -177,33 +187,33 @@ let coerce_types t1 t2 allow_tuples loc =
         if b <= safe_max_ubits then TypInt else TypUInt(b)
     | TypInt, (TypSInt b) -> if b <= 32 then TypInt else TypSInt(b)
     | TypInt, (TypUInt b) -> if b <= safe_max_ubits then TypInt else
-        raise_typecheck_err loc "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
+        failwith "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
     | (TypSInt b), TypInt -> if b <= 32 then TypInt else TypSInt(b)
     | (TypUInt b), TypInt -> if b <= safe_max_ubits then TypInt else
-        raise_typecheck_err loc "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
+        failwith "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
     | (TypSInt b1), (TypUInt b2) ->
         if b1 <= 32 && b2 <= safe_max_ubits then TypInt else
-        raise_typecheck_err loc "implicit type coercion for this (signed, unsigned) pair of integer is not allowed; use explicit type cast"
+        failwith "implicit type coercion for this (signed, unsigned) pair of integer is not allowed; use explicit type cast"
     | (TypUInt b1), (TypSInt b2) ->
         if b1 <= safe_max_ubits && b2 <= 32 then TypInt else
-        raise_typecheck_err loc "implicit type coercion for this (unsigned, signed) pair of integer is not allowed; use explicit type cast"
-    | (TypFloat b1), (TypFloat b2) ->
-        let max_b = max b1 b2 in TypFloat(max_b)
-    | (TypFloat b), TypInt -> TypFloat(b)
-    | (TypFloat b), (TypSInt _) -> TypFloat(b)
-    | (TypFloat b), (TypUInt _) -> TypFloat(b)
-    | TypInt, (TypFloat b) -> TypFloat(b)
-    | (TypSInt _), (TypFloat b) -> TypFloat(b)
-    | (TypUInt _), (TypFloat b) -> TypFloat(b)
-    | (TypTuple tl1), (TypTuple tl2) ->
+        failwith "implicit type coercion for this (unsigned, signed) pair of integer is not allowed; use explicit type cast"
+    | ((TypFloat b1), (TypFloat b2)) when allow_fp ->
+        let max_b = max (max b1 b2) 32 in TypFloat(max_b)
+    | ((TypFloat b), TypInt) when allow_fp -> TypFloat(max b 32)
+    | ((TypFloat b), (TypSInt _)) when allow_fp -> TypFloat(max b 32)
+    | ((TypFloat b), (TypUInt _)) when allow_fp -> TypFloat(max b 32)
+    | (TypInt, (TypFloat b)) when allow_fp -> TypFloat(max b 32)
+    | ((TypSInt _), (TypFloat b)) when allow_fp -> TypFloat(max b 32)
+    | ((TypUInt _), (TypFloat b)) when allow_fp -> TypFloat(max b 32)
+    | ((TypTuple tl1), (TypTuple tl2)) ->
         if not allow_tuples then
-            raise_typecheck_err loc "tuples are not allowed in this operation"
+            failwith "tuples are not allowed in this operation"
         else if (List.length tl1) = (List.length tl2) then
             TypTuple (List.map2 (fun et1 et2 -> coerce_types_ et1 et2) tl1 tl2)
         else
-            raise_typecheck_err loc "tuples have different number of elements"
-    | _ -> raise_typecheck_err loc "the types cannot be implicitly coerced; use explicit type cast"
-    in coerce_types_ t1_ t2_
+            failwith "tuples have different number of elements"
+    | _ -> failwith "the types cannot be implicitly coerced; use explicit type cast"
+    in try Some(coerce_types_ t1_ t2_) with Failure _ -> None
 
 let rec check_exp e env sc =
     let (etyp, eloc) as ctx = get_exp_ctx e in
@@ -217,7 +227,7 @@ let rec check_exp e env sc =
                 let new_e = check_exp e env sc in
                 let (etyp1, eloc1) = get_exp_ctx new_e in
                 (unify etyp1 TypInt eloc1 "explicitly specified component of a range must be an integer";
-                Some(new_e))) in
+                Some new_e)) in
         let new_e1_opt = check_range_e e1_opt in
         let new_e2_opt = check_range_e e2_opt in
         let new_e3_opt = check_range_e e3_opt in
@@ -226,39 +236,117 @@ let rec check_exp e env sc =
     | ExpLit(lit, _) -> unify etyp (get_lit_type lit) eloc "the literal has improper type"; e
     | ExpIdent(n, _) ->
         let n1 = lookup_id n env sc ctx in ExpIdent(n1, ctx)
-    | ExpBinOp(bop, e1, e2, _)
-        (*
-          [TODO]
-          check e1 and e2;
-          then proceed depending on the op:
 
-          +, -, *, /, %, ** - coerce the argument types.
-              if the types are not primitive (numbers or tuples of numbers),
-              then transform it to a function call and then check it as a function call.
-          <<, >> - if the arguments are not integers, transform it to a function call.
-          &, |, ^ - if the arguments are not integers, transform it to a function call.
-                    these bitwise operations do not perform any type coercion.
-                    small numeric constants can be implicitly cast to the proper type.
-          &&, || - the arguments should be boolean, as well as the overal exp type
-          >, >=, ==, !=, <=, < - the arguments should have the same type, the result will have bool type
-          :: - the first argument should be unified with et=TypVar(ref None), the second with TypList(et);
-               the overall expression - with TypList(et).
-          = - the first argument should be a variable or array access operator. Unify it properly.
-              The expression will have type TypVoid.
-          . (OpDot) - it can be tuple access operator (or record access operator) or module access operator.
-              if it's a tuple or record, find the proper field and unify the expression type with accordingly.
-              if it's module access operator, try to find the proper match. If there are multiple possible matches,
-              leave it as-is for now (???)
-        *)
-        let f_id = bop_to_fname bop in
+    (*
+        '.' can be a tuple access operator (or a record access operator) or module access operator.
+        if it's a tuple or record, find the proper field and unify the expression type with accordingly.
+        if it's module access operator, try to find the proper match. If there are multiple possible matches,
+        leave it as-is for now (???)
+    *)
+    | ExpBinOp(OpMem, e1, e2, _) ->
+        (* in the case of '.' operation we do not check e2 immediately after e1,
+           because e2 is a 'member' of a structure/module e1,
+           so it cannot be independently analyzed *)
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
+        (match ((deref_type etyp1 false), new_e1, e2) with
+        | (TypModule, ExpIdent(n1, _), ExpIdent(n2, (etyp2, eloc2))) ->
+            let n1_info = get_module n1 in
+            let n1_env = n1_info.dm_env in
+            let new_n2 = lookup_id n2 n1_env sc ctx in ExpIdent(new_n2, ctx)
+        | ((TypTuple tl), _, ExpLit((LitInt idx), (etyp2, eloc2))) ->
+            unify etyp2 TypInt eloc2 "index must be int!";
+            (* we do not handle negative indices, because the parser would not allow that;
+               ok, if it's wrong assumption, an exception will be thrown
+               (and be catched at the higher level) anyway *)
+            let et = (try List.nth tl idx with Failure _ ->
+                raise_typecheck_err eloc2 "too big index") in
+            unify etyp et loc "incorrect type of tuple element";
+            ExpBinOp(new_e1, e2, ctx)
+        (* [TODO] add record handling *)
+        )
+    | ExpBinOp(bop, e1, e2, _) ->
+        let new_e1 = check_exp e1 env sc in
+        let (etyp1, eloc1) = get_exp_ctx new_e1 in
+        let etyp1_ = deref_type etyp1 false in
         let new_e2 = check_exp e2 env sc in
         let (etyp2, eloc2) = get_exp_ctx new_e2 in
+        let etyp2_ = deref_type etyp2 false in
 
-        match bop with
-        |
+        (* depending on the operation, figure out the type of result
+           (or set it to None if there is no embedded implementation)
+           and also do some other op-specific checks *)
+        let typ_opt =
+        (match bop with
+        | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight ->
+            let allow_fp = bop != OpShiftLeft && bop != OpShiftRight in
+            coerce_types etyp1_ etyp2_ true allow_fp
+        | OpBitwiseAnd | OpBitwiseOr | OpBitwiseXor ->
+            let rec check_bitwise t1 t2 =
+                (match (t1, t2) with
+                | (TypInt, TypInt) -> TypInt
+                | (TypSInt(b1), TypSInt(b2)) when b1 = b2 -> TypSInt(b1)
+                | (TypUInt(b1), TypUInt(b2)) when b1 = b2 -> TypUInt(b1)
+                | (TypBool, TypBool) -> TypBool
+                | (TypTuple tl1), (TypTuple tl2) ->
+                    if (List.length tl1) != (List.length tl2) then
+                        invalid_arg ""
+                    else
+                        TypTuple(List.map2 check_bitwise tl1 tl2)
+                | _ -> invalid_arg "")
+            in (try Some(check_bitwise etyp1_ etyp2_) with Failure _ -> None)
+        | OpLogicAnd | OpLogicOr ->
+            unify etyp1 TypBool eloc1 "arguments of logical operation must be boolean";
+            unify etyp2 TypBool eloc2 "arguments of logical operation must be boolean";
+            Some(TypBool)
 
+            (* [TODO] comparison operations should be autogenerated for any pair of equal types:
+            tuples and records must be compared lexicographically
+            (where record fields are ordered as in the definition, but by names),
+            lists, strings and arrays - lexicographically as well,
+            variants - using the tag precedence
+            maybe references and cpointers - by address,
+            maybe classes (lexicographically, member by member)
+            *)
+        | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE ->
+            unify etyp1 etyp2 eloc "only equal types can be compared";
+            (match etyp1 with
+            | TypInt | TypSInt _ | TypUInt _ -> | TypFloat _ | TypBool -> Some(TypBool)
+            | _ -> None)
+        | OpCons ->
+            unify etyp2 (TypList etyp1) "incorrect combination of types in '::' operation";
+            Some(etyp2)
+        | OpSet ->
+            (* check that new_e1 is lvalue and that new_e1 and new_e2 have equal types;
+               in future we can let etyp1_ and etyp2_ be different as long as the assignment
+               is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
+            let is_lvalue = (match new_e1 with
+            | ExpAt _ -> true (* an_arr[idx] = e2 *)
+            | ExpUnOp(OpDeref, _, _) -> true (* *a_ref = e2 *)
+            | ExpIdent(n1, _) -> (* a_var = e2 *)
+                (match (id_info n1) with
+                | IdVal { dv_type; dv_flags } ->
+                    unify etyp2 dv_type eloc "the variable type does not match the assigned value";
+                    (List.exists ValMutable dv_flags)
+                | _ -> false)
+            (* [TODO] probably, we should let user to modify individual fields of a record,
+            as long as it's stored in a mutable place (variable, array, by reference) *)
+            | _ -> false) in
+            if not is_lvalue then raise_typecheck_err "the left side of assignment is not an l-value"
+            else
+                unify etyp1 etyp2 eloc "the left and the right sides of the assignment must have the same type";
+            Some(TypVoid)
+        | _ -> raise_typecheck_err eloc "unsupported binary operation") in
+
+        (match typ_opt with
+        | Some(typ) ->
+            unify typ etyp eloc "improper type of arithmetic operation";
+            ExpBinOp(bop, new_e1, new_e2, ctx)
+        | _ ->
+            (* try to find an overloaded function that will handle such operation with combination of types, e.g.
+               operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)
+            let f_id = get_binop_fname bop in
+            check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1; new_e2], ctx)) env sc)
 
     | ExpUnOp(uop, e1, _)
         (*
@@ -288,7 +376,7 @@ let rec check_exp e env sc =
                 let new_elem = check_exp elem env sc in
                 let (new_etyp, _) = get_exp_ctx new_elem in
                 (new_elem :: new_el), (new_etyp :: tl)) ([], []) el) in
-        unify (TypTuple (List.rev tl)) etyp eloc "the improper tuple type or the number of elements";
+        unify (TypTuple (List.rev tl)) etyp eloc "improper tuple type or the number of elements";
         ExpMkTuple ((List.rev new_el), ctx)
     | ExpCall(f, args, _)
         (*
@@ -325,7 +413,7 @@ let rec check_exp e env sc =
                     (new_idx :: new_idxs, nidx+1, nrange_idx)) idxs in
             unify new_atyp (TypArray(nidx, et)) new_aloc "the array dimensionality does not match the number of indices";
             (if nrange_idx = 0 then
-                unify etyp et eloc "the array access expression type does not match the array element type"
+                unify etyp et eloc "the type of array access expression does not match the array element type"
             else
                 unify etyp (TypArray(nrange_idx, et)) eloc
                   "the number of ranges does not match dimensionality of the result, or the element type is incorrect");
@@ -346,9 +434,9 @@ let rec check_exp e env sc =
         let (new_ctyp, new_cloc) = get_exp_ctx new_c in
         let new_body = check_exp body env sc in
         let (new_btyp, new_bloc) = get_exp_ctx new_body in
-        unify new_ctyp TypBool new_cloc "the while() loop condition should have boolean type";
-        unify new_btyp TypVoid new_cloc "the while() loop body should have void type";
-        unify etyp TypVoid eloc "the while() loop should have void type";
+        unify new_ctyp TypBool new_cloc "while() loop condition should have boolean type";
+        unify new_btyp TypVoid new_cloc "while() loop body should have void type";
+        unify etyp TypVoid eloc "while() loop should have void type";
         ExpWhile (new_c, new_body, ctx)
     | ExpFor() of forexp_t * ctx_t
         (*

@@ -8,6 +8,8 @@ fun string(a: string) = a
 fun print_string(a: string): void = ccode "return fx_puts(a->data);"
 
 fun print(a: 't) = print_string(string(a))
+// [TODO] this overloaded variant can safely be removed later,
+// but currently it's used to test custom overloading of a generic function
 fun print(a: string) = print_string(a)
 
 fun println(a: 't) { print(a); print("\n"); }
