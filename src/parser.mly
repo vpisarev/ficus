@@ -44,13 +44,27 @@ let make_deffun fname args rt body flags loc =
 %token <string> TYVAR
 
 /* keywords */
-%token AS CATCH CCODE ELSE EXCEPTION
-%token FOLD FOR FROM FUN IF B_IMPORT IMPORT IN
-%token OPERATOR B_REF REF THROW TRY TYPE VAL VAR WHILE
+("as", AS, 2);
+("catch", CATCH, 2); ("ccode", CCODE, 1); ("class", CLASS, 1);
+("do", DO, 4); ("done", DONE, 3); ("elif", ELIF, 2); ("else", ELSE, 2);
+("end", END, 3); ("exception", EXCEPTION, 1); ("extends", EXTENDS, 2);
+("false", FALSE, 0); ("fi", FI, 3); ("for", FOR, 4); ("from", FROM, 1);
+("fun", FUN, 1); ("if", IF, 1); ("implements", IMPLEMENTS, 2);
+("import", IMPORT, 4); ("in", IN, 2); ("inline", INLINE, 1);
+("interface", INTERFACE, 1); ("is", IS, 1); 
+("match", MATCH, 1); ("nil", NIL, 0); ("operator", OPERATOR, 1);
+("parallel", PARALLEL, 1); ("pass", PASS, 0); ("ref", REF, 4); ("then", THEN, 2);
+("throw", THROW, 1); ("true", TRUE, 0); ("try", TRY, 1); ("type", TYPE, 1);
+("static", STATIC, 1); ("update", UPDATE, 4); ("val", VAL, 1); ("var", VAR, 1);
+("when", WHEN, 2); ("while", WHILE, 1); ("with", WITH, 2)
+%token AS CATCH CCODE CLASS DO DO_W DONE ELIF ELSE END EXCEPTION EXTENDS
+%token FI FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE IS
+%token MATCH OPERATOR PASS PARALLEL REF REF_TYPE STATIC
+%token THEN THROW TRY TYPE UPDATE VAL VAR WHEN WHILE WITH
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE COMMA DOT
-%token SEMICOLON COLON BAR CONS CAST DOUBLE_ARROW ARROW EOF
+%token SEMICOLON COLON BAR CONS CAST ARROW DOUBLE_ARROW EOF
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
@@ -82,7 +96,7 @@ let make_deffun fname args rt body flags loc =
 %left PLUS MINUS
 %left STAR SLASH MOD
 %right POWER
-%right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT B_POWER B_STAR B_REF
+%right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT B_POWER B_STAR REF
 %right ARROW
 %left lsquare_prec fcall_prec
 %left app_type_prec arr_type_prec option_type_prec ref_type_prec

@@ -11,6 +11,6 @@ import testmod
 
 val _2 = 2
 val a = (_2 + 2 | 8)
-fun fib(n: int): int = if (n <= 1) 1 else fib(n-1) + fib(n-2)
+fun fib(n: int): int = if n <= 1 then 1 else fib(n-1) + fib(n-2) fi
 
-for (i in 1:31) { print("Hello\n"); print("fib("); print(i); print(")="); println(fib(i)) }
+for i in 1:31 do print("Hello\n"); print("fib("); print(i); print(")="); println(fib(i)) done
