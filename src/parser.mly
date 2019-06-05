@@ -32,7 +32,7 @@ let make_deffun fname args rt body flags loc =
 
 %}
 
-%token TRUE FALSE NIL
+%token TRUE FALSE NIL NONE
 %token <Int64.t> INT
 %token <int * Int64.t> SINT
 %token <int * Int64.t> UINT
@@ -44,27 +44,14 @@ let make_deffun fname args rt body flags loc =
 %token <string> TYVAR
 
 /* keywords */
-("as", AS, 2);
-("catch", CATCH, 2); ("ccode", CCODE, 1); ("class", CLASS, 1);
-("do", DO, 4); ("done", DONE, 3); ("elif", ELIF, 2); ("else", ELSE, 2);
-("end", END, 3); ("exception", EXCEPTION, 1); ("extends", EXTENDS, 2);
-("false", FALSE, 0); ("fi", FI, 3); ("for", FOR, 4); ("from", FROM, 1);
-("fun", FUN, 1); ("if", IF, 1); ("implements", IMPLEMENTS, 2);
-("import", IMPORT, 4); ("in", IN, 2); ("inline", INLINE, 1);
-("interface", INTERFACE, 1); ("is", IS, 1); 
-("match", MATCH, 1); ("nil", NIL, 0); ("operator", OPERATOR, 1);
-("parallel", PARALLEL, 1); ("pass", PASS, 0); ("ref", REF, 4); ("then", THEN, 2);
-("throw", THROW, 1); ("true", TRUE, 0); ("try", TRY, 1); ("type", TYPE, 1);
-("static", STATIC, 1); ("update", UPDATE, 4); ("val", VAL, 1); ("var", VAR, 1);
-("when", WHEN, 2); ("while", WHILE, 1); ("with", WITH, 2)
-%token AS CATCH CCODE CLASS DO DO_W DONE ELIF ELSE END EXCEPTION EXTENDS
-%token FI FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE IS
-%token MATCH OPERATOR PASS PARALLEL REF REF_TYPE STATIC
+%token AND AS CATCH CCODE CLASS DO DO_W DONE ELIF ELSE END EXCEPTION
+%token EXTENDS FI FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE IS
+%token MATCH NOTHROW OPERATOR PASS PARALLEL PURE REF REF_TYPE STATIC
 %token THEN THROW TRY TYPE UPDATE VAL VAR WHEN WHILE WITH
 
 /* parens/delimiters */
-%token B_LPAREN LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE COMMA DOT
-%token SEMICOLON COLON BAR CONS CAST ARROW DOUBLE_ARROW EOF
+%token B_LPAREN LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE
+%token COMMA DOT SEMICOLON COLON BAR CONS CAST ARROW DOUBLE_ARROW EOF
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
@@ -120,7 +107,7 @@ top_level_seq_:
 top_level_exp:
 | complex_exp { $1 :: [] }
 | decl { $1 }
-| B_IMPORT module_name_list_
+| IMPORT module_name_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         [DirImport ((List.map (fun (a, b) ->
@@ -193,16 +180,16 @@ complex_exp:
         let (tp, loc) = make_new_ctx() in
         ExpBinOp(OpSet, $1, ExpBinOp($2, $1, $3, (tp, loc)), (TypVoid, loc))
     }
-| IF B_LPAREN exp_or_block RPAREN exp_or_block ELSE exp_or_block { ExpIf ($3, $5, $7, make_new_ctx()) }
+| IF exp exp_or_block RPAREN exp_or_block ELSE exp_or_block { ExpIf ($3, $5, $7, make_new_ctx()) }
 | IF B_LPAREN exp_or_block RPAREN exp_or_block { ExpIf ($3, $5, ExpNop(TypVoid, curr_loc_n 5), make_new_ctx()) }
-| WHILE lparen exp RPAREN exp_or_block { ExpWhile ($3, $5, make_new_ctx()) }
-| FOR for_clauses exp_or_block
+| WHILE exp DO exp_or_block DONE { ExpWhile ($2, $4, make_new_ctx()) }
+| FOR for_clauses DO exp_or_block DONE
     {
         let for_cl_ = $2 in
         let for_body_ = $3 in
         ExpFor ({ for_cl = for_cl_; for_body = for_body_ }, make_new_ctx())
     }
-| FOLD fold_clauses exp_or_block
+| FOR for_clauses UPDATE pat EQUAL exp WITH exp_or_block DONE
     {
         (* `fold (p=e0; ...) [fold (...) ...] e1`
               is transformed to
@@ -229,7 +216,8 @@ complex_exp:
         let new_for = ExpFor ({ for_cl = fold_cl; for_body = new_for_body }, (TypVoid, for_loc)) in
         ExpSeq([acc_decl; new_for; acc_exp], (acc_tp, for_loc))
     }
-| TRY exp_or_block CATCH LBRACE BAR pattern_matching_clauses_ RBRACE { ExpTryCatch ($2, (List.rev $6), make_new_ctx()) }
+| TRY exp_or_block CATCH pattern_matching_clauses_ END { ExpTryCatch ($2, (List.rev $4), make_new_ctx()) }
+| MATCH exp WITH pattern_matching_clauses_ END { ExpMatch }
 | CCODE STRING { ExpCCode($2, make_new_ctx()) }
 | FUN fun_args DOUBLE_ARROW complex_exp
     {

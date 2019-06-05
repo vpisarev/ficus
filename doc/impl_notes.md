@@ -34,8 +34,8 @@
 - [ ] val, var, fun (including lambda)
 - [ ] data structures: numbers (int, float, double, [u]int8|16|32|64), void, bool, char, string, tuples, records (?), arrays, lists, cptr
 - [ ] custom type definitions
-- [ ] (?) exceptions (maybe postpone it?)
-- [ ] (?) generic types (postpone it?)
+- [ ] exceptions (maybe postpone it?)
+- [ ] generic types (postpone it?)
 - [ ] control flow ops: if, while, for (no comprehensions so far)
 - [ ] tuple access, record access, array access (with ranges?)
 - [ ] module import

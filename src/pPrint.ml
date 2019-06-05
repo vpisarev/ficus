@@ -22,7 +22,8 @@ let lit_to_string c = match c with
     | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
     | LitBool(true) -> "true"
     | LitBool(false) -> "false"
-    | LitNil -> "[]"
+    | LitNil -> "nil"
+    | LitNone -> "None"
 
 let pprint_lit x = pstr (lit_to_string x)
 let pprint_id x = pstr (id2str x)
@@ -37,7 +38,10 @@ let rec get_type_pr t = match t with
     | TypErr | TypCPointer | TypDecl | TypModule -> TypPrBase
     | TypApp([], _) -> TypPrBase
     | TypTuple(_) -> TypPrBase
-    | TypList(_) | TypRef(_) | TypArray(_) | TypApp(_, _) -> TypPrComplex
+    | TypRecord(_) -> TypPrBase
+    | TypUseRecord(_) -> TypPrBase
+    | TypList(_) | TypRef(_) | TypArray(_)
+    | TypApp(_, _) | TypOption(_) -> TypPrComplex
     | TypFun(_, _) -> TypPrFun
 
 let need_parens p p1 = p1 > p
@@ -77,12 +81,24 @@ let rec pptype_ t p1 =
             pptype_ t2 p;
             pstr rp; cbox()
     | TypList(t1) -> pptypsuf t1 "List"
+    | TypOption(t1) -> pptypsuf t1 "Option"
     | TypRef(t1) -> pptypsuf t1 "Ref"
     | TypArray(d, t1) -> pptypsuf t1 (String.make (d - 1) ',')
     | TypApp([], n) -> pprint_id n
     | TypApp(t1 :: [], n) -> pptypsuf t1 (pp_id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (pp_id2str n)
     | TypTuple(tl) -> pptypelist_ "(" tl
+    | TypRecord(rec_elems) ->
+            pstr "{"; pcut(); obox();
+            (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
+                pprint_id n; pstr ":"; pspace(); pptype_ t;
+                match v_opt with Some(v0) -> pprint_lit | _ -> ()) args);
+            cbox(); pcut(); pstr "}"
+    | TypUseRecord(rec_elems) ->
+            pstr "{~"; pcut(); obox();
+            (List.iteri (fun i (n,t) -> if i = 0 then () else (pstr ";"; pspace());
+                pprint_id n; pstr ":"; pspace(); pptype_ t) args);
+            cbox(); pcut(); pstr "}"
     | TypExn -> pstr "Exn"
     | TypErr -> pstr "Err"
     | TypCPointer -> pstr "CPtr"
