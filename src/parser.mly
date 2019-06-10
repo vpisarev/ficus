@@ -26,9 +26,9 @@ let expseq2exp es n = match es with
     | _ -> ExpSeq(es, (make_new_typ(), (curr_loc_n n)))
 
 let make_deffun fname args rt body flags loc =
-    { df_name=fname; df_template_args=[]; df_args=args; df_rt=rt;
-      df_body=body; df_flags=flags; df_scope=ScGlobal;
-      df_loc=loc; df_template_inst=[] }
+    { df_name=fname; df_templ_args=[]; df_args=args; df_rt=rt;
+      df_body=body; df_flags=flags; df_scope=ScGlobal :: [];
+      df_loc=loc; df_templ_inst=[] }
 
 %}
 
@@ -45,7 +45,7 @@ let make_deffun fname args rt body flags loc =
 
 /* keywords */
 %token AND AS CATCH CCODE CLASS DO DO_W DONE ELIF ELSE END EXCEPTION
-%token EXTENDS FI FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE IS
+%token EXTENDS FI FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE INTERFACE IS
 %token MATCH NOTHROW OPERATOR PASS PARALLEL PURE REF REF_TYPE STATIC
 %token THEN THROW TRY TYPE UPDATE VAL VAR WHEN WHILE WITH
 
@@ -83,7 +83,7 @@ let make_deffun fname args rt body flags loc =
 %left PLUS MINUS
 %left STAR SLASH MOD
 %right POWER
-%right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT B_POWER B_STAR REF
+%right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT deref_prec REF
 %right ARROW
 %left lsquare_prec fcall_prec
 %left app_type_prec arr_type_prec option_type_prec ref_type_prec
@@ -105,7 +105,7 @@ top_level_seq_:
 | top_level_exp { (List.rev $1) }
 
 top_level_exp:
-| complex_exp { $1 :: [] }
+| stmt { $1 :: [] }
 | decl { $1 }
 | IMPORT module_name_list_
     {
@@ -130,12 +130,15 @@ top_level_exp:
 | error
     { raise (SyntaxError ("syntax error", Parsing.symbol_start_pos(), Parsing.symbol_end_pos())) }
 
+exp_seq_as_exp:
+| exp_seq_ { expseq2exp (List.rev $1) 1 }
+
 exp_seq_:
-| exp_seq_ complex_exp { $2 :: $1 }
+| exp_seq_ stmt { $2 :: $1 }
 | exp_seq_ decl { (List.rev $2) @ $1 }
-| exp_seq_ SEMICOLON complex_exp { $3 :: $1 }
+| exp_seq_ SEMICOLON stmt { $3 :: $1 }
 | exp_seq_ SEMICOLON decl { (List.rev $3) @ $1 }
-| complex_exp { $1 :: [] }
+| stmt { $1 :: [] }
 | decl { $1 }
 
 decl:
@@ -144,120 +147,79 @@ decl:
         let vflags = List.rev $1 in
         List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2
     }
-| fun_decl_start fun_args EQUAL complex_exp
+| fun_decl_start fun_args EQUAL stmt
     {
         let (flags, fname) = $1 in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ [$4]) 4 in
         [DefFun (ref (make_deffun fname args rt body flags (curr_loc())))]
     }
-| fun_decl_start fun_args block
+| fun_decl_start fun_args IS exp_seq_ END
     {
         let (flags, fname) = $1 in
         let (args, rt, prologue) = $2 in
-        let body = expseq2exp (prologue @ (List.rev $3)) 3 in
+        let body = expseq2exp (prologue @ (List.rev $4)) 4 in
         [DefFun (ref (make_deffun fname args rt body flags (curr_loc())))]
     }
 | typedef_lhs EQUAL typespec
     {
         let (targs, i) = $1 in
-        let dtp = { dt_name=i; dt_template_args=targs; dt_body=$3; dt_scope=ScGlobal; dt_loc=curr_loc() } in
+        let dtp = { dt_name=i; dt_templ_args=targs; dt_body=$3; dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
         [DefType (ref dtp)]
     }
 | EXCEPTION B_IDENT
     {
-        [DefExn(ref { dexn_name=(get_id $2); dexn_tp=TypVoid; dexn_scope=ScGlobal; dexn_loc=curr_loc() })]
+        [DefExn(ref { dexn_name=(get_id $2); dexn_tp=TypVoid; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })]
     }
 | EXCEPTION B_IDENT COLON typespec
     {
-        [DefExn(ref { dexn_name=(get_id $2); dexn_tp = $4; dexn_scope=ScGlobal; dexn_loc=curr_loc() })]
+        [DefExn(ref { dexn_name=(get_id $2); dexn_tp = $4; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })]
     }
 
-complex_exp:
-| exp EQUAL complex_exp { ExpBinOp(OpSet, $1, $3, (TypVoid, curr_loc())) }
-| exp aug_op complex_exp
+stmt:
+| PASS { ExpNop((TypVoid, curr_loc())) }
+| lval_exp EQUAL exp { ExpBinOp(OpSet, $1, $3, (TypVoid, curr_loc())) }
+| lval_exp aug_op exp
     {
         let (tp, loc) = make_new_ctx() in
         ExpBinOp(OpSet, $1, ExpBinOp($2, $1, $3, (tp, loc)), (TypVoid, loc))
     }
-| IF exp exp_or_block RPAREN exp_or_block ELSE exp_or_block { ExpIf ($3, $5, $7, make_new_ctx()) }
-| IF B_LPAREN exp_or_block RPAREN exp_or_block { ExpIf ($3, $5, ExpNop(TypVoid, curr_loc_n 5), make_new_ctx()) }
-| WHILE exp DO exp_or_block DONE { ExpWhile ($2, $4, make_new_ctx()) }
-| FOR for_clauses DO exp_or_block DONE
+| WHILE exp DO exp_seq_as_exp DONE { ExpWhile ($2, $4, make_new_ctx()) }
+| FOR for_clauses DO exp_seq_as_exp DONE
     {
-        let for_cl_ = $2 in
-        let for_body_ = $3 in
-        ExpFor ({ for_cl = for_cl_; for_body = for_body_ }, make_new_ctx())
+        ExpFor ({ for_cl = $2; for_body = $4 }, make_new_ctx())
     }
-| FOR for_clauses UPDATE pat EQUAL exp WITH exp_or_block DONE
-    {
-        (* `fold (p=e0; ...) [fold (...) ...] e1`
-              is transformed to
-           `{
-           var acc = e0
-           for (...) [for(...) ...] { val p = acc; acc = e1 }
-           acc
-           }`
-        *)
-        let acc_tp = make_new_typ() in
-        let acc_loc = curr_loc_n 2 (* pat location *) in
-        let acc_id = get_unique_id "acc" true in
-        let acc_ctx = (acc_tp, acc_loc) in
-        let acc_exp = ExpIdent(acc_id, acc_ctx) in
-        let acc_pat = PatIdent(acc_id, acc_loc) in
-        let ((acc_pat0, fold_exp0), fold_cl) = $2 in
-        let acc_decl = DefVal(acc_pat, fold_exp0, [ValMutable], acc_ctx) in
-        let for_body = $3 in
-        let for_body_loc  = get_exp_loc for_body in
-        let acc_expand = DefVal(acc_pat0, acc_exp, [], (acc_tp, for_body_loc)) in
-        let acc_update = ExpBinOp(OpSet, acc_exp, for_body, (TypVoid, for_body_loc)) in
-        let new_for_body = ExpSeq([acc_expand; acc_update], (TypVoid, for_body_loc)) in
-        let for_loc = curr_loc() in
-        let new_for = ExpFor ({ for_cl = fold_cl; for_body = new_for_body }, (TypVoid, for_loc)) in
-        ExpSeq([acc_decl; new_for; acc_exp], (acc_tp, for_loc))
-    }
-| TRY exp_or_block CATCH pattern_matching_clauses_ END { ExpTryCatch ($2, (List.rev $4), make_new_ctx()) }
-| MATCH exp WITH pattern_matching_clauses_ END { ExpMatch }
 | CCODE STRING { ExpCCode($2, make_new_ctx()) }
-| FUN fun_args DOUBLE_ARROW complex_exp
-    {
-        let ctx = make_new_ctx() in
-        let (args, rt, prologue) = $2 in
-        let body = expseq2exp (prologue @ [$4]) 4 in
-        let fname = get_unique_id "lambda" true in
-        let df = make_deffun fname args rt body [] (curr_loc()) in
-        ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
-    }
-| FUN fun_args block
-    {
-        let ctx = make_new_ctx() in
-        let (args, rt, prologue) = $2 in
-        let body = expseq2exp (prologue @ $3) 3 in
-        let fname = get_unique_id "lambda" true in
-        let df = make_deffun fname args rt body [] (curr_loc()) in
-        ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
-    }
 | exp { $1 }
 
 simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
-| B_LPAREN op_name RPAREN { ExpIdent($2, make_new_ctx()) }
 | literal { ExpLit($1, make_new_ctx()) }
-| simple_exp DOT B_IDENT { make_bin_op(OpMem, $1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3))) }
-| simple_exp DOT INT { make_bin_op(OpMem, $1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3))) }
-| B_LPAREN exp_or_block RPAREN { $2 }
-| B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
+| B_LPAREN op_name RPAREN { ExpIdent($2, make_new_ctx()) }
+| B_LPAREN exp RPAREN { $2 }
+| B_LPAREN exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }
 | B_LPAREN exp CAST typespec RPAREN { ExpCast($2, $4, make_new_ctx()) }
-| simple_exp LPAREN exp_list RPAREN
-    %prec fcall_prec
-    { ExpCall($1, $3, make_new_ctx()) }
+| simple_exp DOT B_IDENT { make_bin_op(OpMem, $1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3))) }
+| simple_exp DOT INT { make_bin_op(OpMem, $1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3))) }
 | simple_exp LSQUARE idx_list_ RSQUARE
     %prec lsquare_prec
     { ExpAt($1, (List.rev $3), make_new_ctx()) }
+| simple_exp LPAREN exp_list RPAREN
+    %prec fcall_prec
+    { ExpCall($1, $3, make_new_ctx()) }
+
+lval_exp:
+| simple_exp { $1 }
+| B_STAR lval_exp
+    %prec deref_prec
+    { make_un_op(OpDeref, $2) }
+| B_POWER lval_exp
+    %prec deref_prec
+    { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
 
 exp:
-| simple_exp { $1 }
+| lval_exp { $1 }
 | exp PLUS exp { make_bin_op(OpAdd, $1, $3) }
 | exp MINUS exp { make_bin_op(OpSub, $1, $3) }
 | exp STAR exp { make_bin_op(OpMul, $1, $3) }
@@ -278,23 +240,53 @@ exp:
 | exp GREATER exp { make_bin_op(OpCompareGT, $1, $3) }
 | exp GREATER_EQUAL exp { make_bin_op(OpCompareGE, $1, $3) }
 | exp CONS exp { make_bin_op(OpCons, $1, $3) }
-| B_STAR exp { make_un_op(OpDeref, $2) }
-| B_POWER exp { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
-| B_REF exp { make_un_op(OpMakeRef, $2) }
+| REF exp { make_un_op(OpMakeRef, $2) }
 | B_MINUS exp { make_un_op(OpNegate, $2) }
 | B_PLUS exp { make_un_op(OpPlus, $2) }
 | THROW exp { ExpUnOp(OpThrow, $2, (TypErr, curr_loc())) }
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
 | BITWISE_NOT exp { make_un_op(OpBitwiseNot, $2) }
+| IF exp THEN exp_seq_as_exp elif_seq_ FI { ExpIf (([($2, $4)] @ (List.rev $5)), ExpNop(TypVoid, curr_loc_n 6), make_new_ctx()) }
+| IF exp THEN exp_seq_as_exp elif_seq_ ELSE exp_seq_as_exp FI { ExpIf (([($2, $4)] @ (List.rev $5)), $7, make_new_ctx()) }
+| FOR for_clauses UPDATE simple_pat EQUAL exp WITH exp_seq_as_exp DONE
+    {
+        (* `for ... update p=e0 with e1 done`
+              is transformed to
+           `var acc = e0
+           for ... do val p = acc; acc = e1 done
+           acc`
+        *)
+        let acc_tp = make_new_typ() in
+        let acc_loc = curr_loc_n 2 (* pat location *) in
+        let acc_id = get_unique_id "acc" true in
+        let acc_ctx = (acc_tp, acc_loc) in
+        let acc_exp = ExpIdent(acc_id, acc_ctx) in
+        let acc_pat = PatIdent(acc_id, acc_loc) in
+        let acc_decl = DefVal(acc_pat, $6, [ValMutable], acc_ctx) in
+        let for_body = $8 in
+        let for_body_loc  = get_exp_loc for_body in
+        let acc_expand = DefVal($4, acc_exp, [], (acc_tp, for_body_loc)) in
+        let acc_update = ExpBinOp(OpSet, acc_exp, for_body, (TypVoid, for_body_loc)) in
+        let new_for_body = ExpSeq([acc_expand; acc_update], (TypVoid, for_body_loc)) in
+        let for_loc = curr_loc() in
+        let new_for = ExpFor ({ for_cl = $2; for_body = new_for_body }, (TypVoid, for_loc)) in
+        ExpSeq([acc_decl; new_for; acc_exp], (acc_tp, for_loc))
+    }
+| TRY exp_seq_as_exp CATCH pattern_matching_clauses_ END { ExpTryCatch ($2, (List.rev $4), make_new_ctx()) }
+| MATCH exp WITH pattern_matching_clauses_ END { ExpMatch ($2, (List.rev $4), make_new_ctx()) }
+| B_LPAREN FUN fun_args DOUBLE_ARROW exp_seq_ RPAREN
+    {
+        let ctx = make_new_ctx() in
+        let (args, rt, prologue) = $3 in
+        let body = expseq2exp (prologue @ (List.rev $5)) 5 in
+        let fname = get_unique_id "lambda" true in
+        let df = make_deffun fname args rt body [] (curr_loc()) in
+        ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
+    }
 
-exp_or_block:
-| exp { $1 }
-| block { expseq2exp $1 1 }
-
-block:
-| LBRACE RBRACE { [] }
-| LBRACE exp_seq_ RBRACE { List.rev $2 }
-| LBRACE exp_seq_ SEMICOLON RBRACE { List.rev $2 }
+elif_seq_:
+| elif_seq_ ELIF exp THEN exp_seq_as_exp { ($3, $5) :: $1 }
+| /* empty */ { [] }
 
 literal:
 | INT { LitInt $1 }
@@ -322,8 +314,8 @@ exp_list:
 | /* empty */ { [] }
 
 exp_list_:
-| exp_list_ COMMA complex_exp { $3 :: $1 }
-| complex_exp { $1 :: [] }
+| exp_list_ COMMA exp { $3 :: $1 }
+| exp { $1 :: [] }
 
 op_name:
 | B_PLUS { fname_op_add }
@@ -361,26 +353,12 @@ for_clauses:
 | for_clauses_ { (List.rev $1) }
 
 for_clauses_:
-| for_clauses_ FOR for_clause  { $3 :: $1 }
-| for_clause { $1 :: [] }
+| for_clauses_ FOR for_clause_  { (List.rev $3) :: $1 }
+| for_clause_ { (List.rev $1) :: [] }
 
-for_clause:
-| lparen for_in_list_ RPAREN { (List.rev $2) }
-
-for_in_list_:
-| for_in_list_ COMMA simple_pat IN loop_range_exp { ($3, $5) :: $1 }
+for_clause_:
+| for_clause_ AND simple_pat IN loop_range_exp { ($3, $5) :: $1 }
 | simple_pat IN loop_range_exp { ($1, $3) :: [] }
-
-fold_clauses:
-| first_fold_clause { let (e0, cl0) = $1 in (e0, (cl0 :: [])) }
-| first_fold_clause FOLD fold_clauses_ { let (e0, cl0) = $1 in (e0, (cl0 :: (List.rev $3))) }
-
-fold_clauses_:
-| fold_clauses_ FOLD for_clause  { $3 :: $1 }
-| for_clause { $1 :: [] }
-
-first_fold_clause:
-| lparen simple_pat EQUAL exp SEMICOLON for_in_list_ RPAREN { (($2, $4), (List.rev $6)) }
 
 loop_range_exp:
 | exp { $1 }
@@ -401,8 +379,8 @@ idx_list_:
 | range_exp { $1 :: [] }
 
 pattern_matching_clauses_:
-| pattern_matching_clauses_ BAR matching_patterns_ DOUBLE_ARROW exp_or_block { ((List.rev $3), $5) :: $1 }
-| matching_patterns_ DOUBLE_ARROW exp_or_block { ((List.rev $1), $3) :: [] }
+| pattern_matching_clauses_ BAR matching_patterns_ DOUBLE_ARROW exp_seq_as_exp { ((List.rev $3), $5) :: $1 }
+| matching_patterns_ DOUBLE_ARROW exp_seq_as_exp { ((List.rev $1), $3) :: [] }
 
 matching_patterns_:
 | matching_patterns_ BAR simple_pat { $3 :: $1 }
@@ -443,7 +421,8 @@ val_decls_:
 | val_decl { $1 :: [] }
 
 val_decl:
-| simple_pat EQUAL exp_or_block { ($1, $3, make_new_ctx()) }
+| simple_pat EQUAL exp { ($1, $3, make_new_ctx()) }
+| simple_pat IS exp_seq_as_exp END { ($1, $3, make_new_ctx()) }
 
 fun_decl_start:
 | FUN B_IDENT { ([], get_id $2) }
@@ -505,7 +484,7 @@ typespec_nf:
 | typespec_nf LSQUARE shapespec RSQUARE
 %prec arr_type_prec
 { TypArray($3, $1) }
-| typespec_nf REF
+| typespec_nf REF_TYPE
 %prec ref_type_prec
 { TypRef($1) }
 

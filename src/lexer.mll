@@ -17,7 +17,8 @@ let token2str t = match t with
     | B_IDENT(s) -> sprintf "B_IDENT(%s)" s
     | STRING(s) -> sprintf "STRING(%s)" s
     | CHAR(s) -> sprintf "CHAR(%s)" s
-    | TYVAR(s) -> sprintf "TYVAR(%s)" s    
+    | TYVAR(s) -> sprintf "TYVAR(%s)" s
+    | AND -> "AND"
     | AS -> "AS"
     | CATCH -> "CATCH"
     | CCODE -> "CCODE"
@@ -37,7 +38,6 @@ let token2str t = match t with
     | IF -> "IF"
     | IMPLEMENTS -> "IMPLEMENTS"
     | IMPORT -> "IMPORT"
-    | IMPORT_NAMES -> "IMPORT_NAMES"
     | IN -> "IN"
     | INLINE -> "INLINE"
     | INTERFACE -> "INTERFACE"
@@ -58,6 +58,7 @@ let token2str t = match t with
     | UPDATE -> "UPDATE"
     | VAL -> "VAL"
     | VAR -> "VAR"
+    | WHEN -> "WHEN"
     | WHILE -> "WHILE"
     | WITH -> "WITH"
     | B_LPAREN -> "B_LPAREN"
@@ -232,9 +233,9 @@ let paren_stack = ref []
 
 let unmatchedTokenMsg t0 expected_list =
     let expected_str = List.fold_left (fun str t -> let t_str = token2str_pp t in
-                if str = "" then t_str else str ^ "/" ^ t_str) expected_list in
-    let found_in_stack = expected_str = "" or
-        List.exist (fun (t, _) -> List.exist (fun t1 -> t = t1) expected_list) !paren_stack in
+                if str = "" then t_str else str ^ "/" ^ t_str) "" expected_list in
+    let found_in_stack = expected_str = "" ||
+        (List.exists (fun (t, _) -> List.exists (fun t1 -> t = t1) expected_list) !paren_stack) in
     if not found_in_stack then
         sprintf "'%s' without preceding %s." (token2str_pp t0) expected_str
     else
@@ -346,7 +347,7 @@ rule tokens = parse
           | (LBRACE, _) :: rest -> paren_stack := rest
           | _ -> raise (lexErr "Unexpected '}'" lexbuf));
           new_exp := false;
-          [BRACE]
+          [RBRACE]
       }
 
     | ((('0' ['x' 'X'] ['0'-'9' 'A'-'F' 'a'-'f']+) | (digit+)) as num) (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
@@ -376,8 +377,8 @@ rule tokens = parse
           let (p0, p1) = get_token_pos lexbuf in
           if prefix <> "" then (check_ne(lexbuf); [TYVAR ("\'" ^ ident)]) else
           (try
-              let tok = Hashtbl.find keywords ident in
-              match tok with
+              let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
+              match tokdata with
               | (TRY, _) | (IF, _) | (FUN, _) | (CLASS, _) | (INTERFACE, _) | (MATCH, _) | (FROM, _) ->
                   check_ne lexbuf;
                   paren_stack := (tok, p0) :: !paren_stack; new_exp := true; [tok]

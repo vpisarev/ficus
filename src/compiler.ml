@@ -76,10 +76,10 @@ let parse_all _fname0 =
                     queue := !dep_minfo.dm_name :: !queue
                 else ()) deps
         with
-        | Lexer.Error(err, p0, p1) ->
-            Printf.printf "%s: %s\n" (Lexer.pos2str p0) err; ok := false
+        | Lexer.LexError(err, (p0, p1)) ->
+            Printf.printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
         | SyntaxError(err, p0, p1) ->
-            Printf.printf "%s: %s\n" (Lexer.pos2str p0) err; ok := false
+            Printf.printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
         | Failure(msg) -> (Printf.printf "%s: %s\n" mfname msg); ok := false
         | e -> (Printf.printf "%s: exception %s occured" mfname (Printexc.to_string e)); ok := false)
     done;

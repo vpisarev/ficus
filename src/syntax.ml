@@ -189,7 +189,7 @@ and deftype_t = { dt_name: id_t; dt_templ_args: id_t list;
 and defvariant_t = { dvt_name: id_t; dvt_templ_args: id_t list; dvt_flags: variant_flag_t list;
                      dvt_members: (id_t * type_t) list; dvt_constr: id_t list;
                      mutable dvt_templ_inst: id_t list; dvt_scope: scope_t list; dvt_loc: loc_t }
-and defclass_t = { dc_name: id_t; dc_templ_args; id_t list; dc_impl: id_t list; dc_args: pat_t list;
+and defclass_t = { dc_name: id_t; dc_templ_args: id_t list; dc_impl: id_t list; dc_args: pat_t list;
                    dc_members: exp_t list; mutable dc_templ_inst: id_t list; dc_scope: scope_t list; dc_loc: loc_t }
 and definter_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
 and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
@@ -198,7 +198,7 @@ and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t l
 
 type id_info_t =
     | IdNone | IdText of string | IdVal of defval_t | IdFun of deffun_t ref
-    | IdExn of defexn_t ref | IdType of deftype_t ref | IdVariant of defvariant_t ref |
+    | IdExn of defexn_t ref | IdType of deftype_t ref | IdVariant of defvariant_t ref
     | IdClass of defclass_t ref | IdInterface of definter_t ref | IdModule of defmodule_t ref
 
 let all_nids = ref 0
@@ -277,7 +277,7 @@ let get_exp_ctx e = match e with
     | ExpUpdateRecord(_, _, c) -> c
     | ExpCall(_, _, c) -> c
     | ExpAt(_, _, c) -> c
-    | ExpIf(_, _, _, c) -> c
+    | ExpIf(_, _, c) -> c
     | ExpWhile(_, _, c) -> c
     | ExpFor(_, c) -> c
     | ExpTryCatch(_, _, c) -> c
