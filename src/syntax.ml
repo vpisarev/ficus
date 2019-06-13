@@ -186,9 +186,9 @@ and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; d
 and defexn_t = { dexn_name: id_t; dexn_tp: type_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftype_t = { dt_name: id_t; dt_templ_args: id_t list;
                   dt_body: type_t; dt_scope: scope_t list; dt_loc: loc_t }
-and defvariant_t = { dvt_name: id_t; dvt_templ_args: id_t list; dvt_flags: variant_flag_t list;
-                     dvt_members: (id_t * type_t) list; dvt_constr: id_t list;
-                     mutable dvt_templ_inst: id_t list; dvt_scope: scope_t list; dvt_loc: loc_t }
+and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_flags: variant_flag_t list;
+                     dvar_members: (id_t * type_t) list; dvar_constr: id_t list;
+                     mutable dvar_templ_inst: id_t list; dvar_scope: scope_t list; dvar_loc: loc_t }
 and defclass_t = { dc_name: id_t; dc_templ_args: id_t list; dc_impl: id_t list; dc_args: pat_t list;
                    dc_members: exp_t list; mutable dc_templ_inst: id_t list; dc_scope: scope_t list; dc_loc: loc_t }
 and definter_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
@@ -289,7 +289,7 @@ let get_exp_ctx e = match e with
     | DefFun {contents = { df_loc }} -> (TypDecl, df_loc)
     | DefExn {contents = { dexn_loc }} -> (TypDecl, dexn_loc)
     | DefType {contents = { dt_loc }} -> (TypDecl, dt_loc)
-    | DefVariant {contents = { dvt_loc }} -> (TypDecl, dvt_loc)
+    | DefVariant {contents = { dvar_loc }} -> (TypDecl, dvar_loc)
     | DefClass {contents = { dc_loc }} -> (TypDecl, dc_loc)
     | DefInterface {contents = { di_loc }} -> (TypDecl, di_loc)
     | DirImport(_, l) -> (TypDecl, l)
@@ -325,6 +325,7 @@ let get_scope_ id_info = match id_info with
     | IdFun {contents = {df_scope}} -> df_scope
     | IdExn {contents = {dexn_scope}} -> dexn_scope
     | IdType {contents = {dt_scope}} -> dt_scope
+    | IdVariant {contents = {dvar_scope}} -> dvar_scope
     | IdClass {contents = {dc_scope}} -> dc_scope
     | IdInterface {contents = {di_scope}} -> di_scope
     | IdModule _ -> ScGlobal :: []

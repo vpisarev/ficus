@@ -9,6 +9,9 @@ val a = _2 + 2
 */
 import testmod
 
+val str = "привет! 你好吗?"
+val c = '😄'
+
 val _2 = 2
 val a = (_2 + 2 | 8)
 fun fib(n: int): int = if n <= 1 then 1 else fib(n-1) + fib(n-2) fi

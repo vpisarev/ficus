@@ -275,13 +275,39 @@ let check_ne lexbuf =
         ()
     else
         raise (lexErr "Missing separator" lexbuf)
+
+let decode_special_char lexbuf c = match c with
+    | "\\\"" -> "\""
+    | "\\n" -> "\n"
+    | "\\t" -> "\t"
+    | "\\r" -> "\r"
+    | "\\b" -> "\b"
+    | "\\0" -> "\x00"
+    | _ -> raise (lexErr (sprintf "Invalid control character '%s'" c) lexbuf)
+
+let decode_hex_char hexcode =
+    String.make 1 (Char.chr (int_of_string ("0" ^ (String.sub hexcode 1 ((String.length hexcode)-1)))))
+
+let decode_oct_char octcode =
+    String.make 1 (Char.chr (int_of_string ("0o" ^ (String.sub octcode 1 ((String.length octcode)-1)))))
+
+let make_char_literal lexbuf c =
+    check_ne(lexbuf);
+    new_exp := false;
+    [CHAR c]
+        
 }
 
 let newline = '\n' | '\r' | "\r\n"
 let space = [' ' '\t' '\012']
-let digit = [ '0'-'9' ]
+let digit = ['0'-'9']
+let octdigit = ['0' - '7']
+let hexdigit = ['0' - '9' 'a' - 'f' 'A' - 'F']
 let lower = ['a'-'z']
 let upper = ['A'-'Z']
+let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0"
+let hexcode = "\\x" hexdigit hexdigit
+let octcode = "\\" octdigit octdigit octdigit
 
 rule tokens = parse
     | newline
@@ -307,8 +333,14 @@ rule tokens = parse
           string_literal := "" ; strings lexbuf;
           [STRING !string_literal]
       }
+      
+    | "'" (['\032' - '\127'] as c) "'" { make_char_literal lexbuf (String.make 1 c) }
+    | "'" (special_char as c) "'" { make_char_literal lexbuf (decode_special_char lexbuf c) }
+    | "'" (hexcode as hc) "'" { make_char_literal lexbuf (decode_hex_char hc) }
+    | "'" (octcode as oc) "'" { make_char_literal lexbuf (decode_oct_char oc) }
+    | "'" ((['\192' - '\247'] ['\128' - '\191']+) as uc) "'" { make_char_literal lexbuf uc }
 
-    | "\\" space * newline
+    | "\\" space* newline
       {   (* '\' just before the end of line means that we should ignore the subsequent line break *)
           incr_lineno lexbuf; tokens lexbuf }
 
@@ -350,13 +382,18 @@ rule tokens = parse
           [RBRACE]
       }
 
-    | ((('0' ['x' 'X'] ['0'-'9' 'A'-'F' 'a'-'f']+) | (digit+)) as num) (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
+    | (((('0' ['x' 'X'] hexdigit+) | ('0' ['b' 'B'] ['0'-'1']+) | (['1'-'9'] digit+)) as num_) | (octdigit+ as octnum_))
+      (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
       {
           check_ne(lexbuf); new_exp := false;
           let suffix = match suffix_ with Some(x) -> x | _ -> "" in
           let v =
-               try Scanf.sscanf num "%Lu" (fun v -> v)
-               with _ -> raise (lexErr (sprintf "Invalid integer literal '%s'" num) lexbuf) in
+               try
+                   match (num_, octnum_) with
+                   | (Some(num), _) -> Scanf.sscanf num "%Li" (fun v -> v)
+                   | (_, Some(octnum)) -> Scanf.sscanf octnum "%Lo" (fun v -> v)
+                   | _ -> raise (lexErr "Invalid integer literal" lexbuf)
+               with _ -> raise (lexErr "Invalid numeric literal" lexbuf) in
           [match suffix with
           | "i8" | "I8" -> SINT(8, v)
           | "u8" | "U8" -> UINT(8, v)
@@ -555,15 +592,12 @@ and strings = parse
        so we always add '\n', not the occured <newline> character(s) *)
     | newline { incr_lineno lexbuf; string_literal := !string_literal ^ "\n"; strings lexbuf }
 
-    | "\\'" { string_literal := !string_literal ^ "\'"; strings lexbuf }
-    | "\\\"" { string_literal := !string_literal ^ "\""; strings lexbuf }
-    | "\\n" { string_literal := !string_literal ^ "\n"; strings lexbuf }
-    | "\\t" { string_literal := !string_literal ^ "\t"; strings lexbuf }
-    | "\\r" { string_literal := !string_literal ^ "\r"; strings lexbuf }
-    | "\\b" { string_literal := !string_literal ^ "\b"; strings lexbuf }
-    | "\\0" { string_literal := !string_literal ^ "\x00"; strings lexbuf }
-    | "\\" (('x' ['0'-'9' 'a'-'f' 'A'-'F'] ['0'-'9' 'a'-'f' 'A'-'F']) as hexcode)
-      { string_literal := !string_literal ^ (String.make 1 (Char.chr (int_of_string ("0" ^ hexcode)))); strings lexbuf }
+    | special_char as c
+      { string_literal := !string_literal ^ (decode_special_char lexbuf c); strings lexbuf }
+    | hexcode as hc
+      { string_literal := !string_literal ^ (decode_hex_char hc); strings lexbuf }
+    | octcode as oc
+      { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }  
     | '\\' (_ as s)
       { raise (lexErrAt (sprintf "Illegal escape \\%s" (Char.escaped s)) (!string_start, lexbuf.lex_curr_p)) }
     | eof
