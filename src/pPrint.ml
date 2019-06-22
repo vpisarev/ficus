@@ -5,10 +5,14 @@ let base_indent = ref 3
 let pstr = Format.print_string
 let pspace = Format.print_space
 let pcut = Format.print_cut
+let pbreak () = Format.print_break 1 0
+let pbreak_indent () = Format.print_break 1 (!base_indent)
 let obox () = Format.open_box (!base_indent)
+let obox_indent () = Format.open_box (!base_indent)
 let cbox = Format.close_box
 let ovbox () = Format.open_vbox (!base_indent)
-let cvbox = Format.close_box
+let ohvbox () = Format.open_hvbox 0
+let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
 let lit_to_string c = match c with
     | LitInt(v) -> (Int64.to_string v)
@@ -123,7 +127,7 @@ let rec pprint_exp e =
     | DefVal(p, e0, vflags, _) -> obox(); (List.iter (fun vf -> match vf with
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
-        pstr "VAL"; pspace(); pprint_pat p; pcut(); pstr "="; pprint_exp e0; cbox()
+        pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace(); pprint_exp e0; cbox()
     | DefFun {contents={df_name; df_templ_args; df_args; df_rt;
                 df_body; df_flags; df_templ_inst }} ->
         let fkind = ref "FUN" in
@@ -136,11 +140,8 @@ let rec pprint_exp e =
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
         cbox(); pcut(); pstr ")";
-        pspace(); pstr ":"; pspace(); pprint_type df_rt; pspace(); pstr "="; pspace();
-        (match df_body with
-        | ExpSeq(_, _) -> pprint_exp df_body
-        | _ -> obox(); pprint_exp df_body; cbox());
-        cbox())
+        pspace(); pstr ":"; pspace(); pprint_type df_rt; pspace();
+        pstr "="; pspace(); pprint_exp df_body; cbox())
     | DefExn { contents = {dexn_name; dexn_tp } } ->
         pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
         (match dexn_tp with
@@ -157,7 +158,7 @@ let rec pprint_exp e =
         (match nl with
         | [] -> pstr "*"
         | _ -> List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) nl)
-    | ExpSeq(el, _) -> pprint_expseq el true
+    | ExpSeq(el, _) -> pprint_expseq el "LET"
     | _ -> obox_(); (match e with
         | ExpNop(_) -> pstr "PASS"
         | ExpRange(e1_opt, e2_opt, e3_opt, _) ->
@@ -198,31 +199,31 @@ let rec pprint_exp e =
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"
         | ExpIf(if_seq, if_else, _) ->
-            List.iteri (fun i (c, e) -> (if i = 0 then pstr "IF" else pstr "ELIF"); pspace();
-                            pprint_exp c; pspace(); pstr "THEN"; pprint_exp e; pspace()) if_seq;
-            pstr "ELSE"; pspace(); pprint_exp if_else; pspace(); pstr "FI"
+            obox(); List.iteri (fun i (c, e) -> (if i = 0 then pstr "IF" else pstr "ELIF"); pspace();
+                            pprint_exp c; pspace(); pstr "THEN"; pprint_exp_as_seq e; pspace()) if_seq;
+            pstr "ELSE"; pspace(); pprint_exp_as_seq if_else; pspace(); pstr "FI"; cbox()
         | ExpWhile(c, body, _) ->
             pstr "WHILE"; pprint_exp c; pspace(); pstr "DO";
-            pspace(); pprint_exp e; pspace(); pstr "DONE"
+            pspace(); pprint_exp_as_seq e; pspace(); pstr "DONE"
         | ExpFor ({for_cl; for_body}, _) ->
-            pcut(); (List.iter (fun pe_l -> pstr "FOR"; pspace();
+            (List.iter (fun pe_l -> pstr "FOR"; pspace();
                 (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr "AND"; pspace());
                 pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e; pspace()) pe_l)) for_cl);
-            pcut(); pprint_exp for_body; pspace(); pstr "DONE"
-        | ExpTryCatch(e, pe_l, _) -> pstr "TRY"; pspace(); pprint_exp e; pspace();
+            pstr "DO"; pprint_exp_as_seq for_body; pstr "DONE"
+        | ExpTryCatch(e, pe_l, _) -> pstr "TRY"; pspace(); pprint_exp_as_seq e; pspace();
                                      pstr "CATCH"; pphandlers pe_l
         | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_type t; cbox(); pstr ")"
         | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_type t; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
         | _ -> failwith "unknown exp"
-        ); cbox();
+        ); cbox()
 and pprint_exp_as_seq e = match e with
-    | ExpSeq(es, _) -> pprint_expseq es false
+    | ExpSeq(es, _) -> pprint_expseq es ""
     | _ -> pprint_exp e
-and pprint_expseq el need_braces =
-    if need_braces then pstr "BEGIN" else (); pcut(); ovbox();
-    (List.iter (fun e -> pprint_exp e; pstr ";"; pcut()) el); cvbox(); pcut();
-    if need_braces then pstr "END" else ()
+and pprint_expseq el braces =
+    if braces="" then () else pstr braces; ohvbox(); pcut();
+    (List.iter (fun e -> pprint_exp e; pstr ";"; pbreak()) el); cbox();
+    if braces="" then () else pstr "END"
 and pprint_pat p = match p with
     | PatAny(_) -> pstr "_"
     | PatIdent(n, _) -> pprint_id n
