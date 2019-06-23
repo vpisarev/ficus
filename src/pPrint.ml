@@ -119,7 +119,9 @@ let pprint_templ_args tt = match tt with
 
 let rec pprint_exp e =
     let t = get_exp_type e in
-    let obox_() = obox(); pstr "<"; pptype_ t TypPr0; pstr ">"; in
+    let obox_cnt = ref 0 in
+    let obox_() = obox(); pstr "<"; pptype_ t TypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
+    let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
     let pphandlers pe_l = (List.iter (fun (pl, e) ->
             (List.iter (fun p -> pspace(); pstr "|"; pspace(); pprint_pat p) pl);
             pspace(); pstr "=>"; pspace(); obox(); pprint_exp_as_seq e; cbox()) pe_l); pspace(); pstr "END" in
@@ -209,20 +211,20 @@ let rec pprint_exp e =
             (List.iter (fun pe_l -> pstr "FOR"; pspace();
                 (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr "AND"; pspace());
                 pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e; pspace()) pe_l)) for_cl);
-            pstr "DO"; pprint_exp_as_seq for_body; pstr "DONE"
+            pstr "DO"; pspace(); pprint_exp_as_seq for_body; cbox_(); pstr "DONE"
         | ExpTryCatch(e, pe_l, _) -> pstr "TRY"; pspace(); pprint_exp_as_seq e; pspace();
                                      pstr "CATCH"; pphandlers pe_l
         | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_type t; cbox(); pstr ")"
         | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_type t; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
         | _ -> failwith "unknown exp"
-        ); cbox()
+        ); cbox_()
 and pprint_exp_as_seq e = match e with
     | ExpSeq(es, _) -> pprint_expseq es ""
     | _ -> pprint_exp e
 and pprint_expseq el braces =
-    if braces="" then () else pstr braces; ohvbox(); pcut();
-    (List.iter (fun e -> pprint_exp e; pstr ";"; pbreak()) el); cbox();
+    ohvbox();
+    (List.iteri (fun i e -> if i=0 then (if braces<> "" then (pstr braces; pspace()) else ()) else (); pprint_exp e; pstr ";"; pcut()) el); cbox();
     if braces="" then () else pstr "END"
 and pprint_pat p = match p with
     | PatAny(_) -> pstr "_"

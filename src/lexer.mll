@@ -63,6 +63,7 @@ let token2str t = match t with
     | WITH -> "WITH"
     | B_LPAREN -> "B_LPAREN"
     | LPAREN -> "LPAREN"
+    | STR_INTERP_LPAREN -> "STR_INTERP_LPAREN"
     | RPAREN -> "RPAREN"
     | B_LSQUARE -> "B_LSQUARE"
     | LSQUARE -> "LSQUARE"
@@ -184,6 +185,8 @@ let lexErr msg lexbuf =
 let string_literal = ref ""
 let string_start = ref dummy_pos
 let comment_start = ref dummy_pos
+let string_interp_elem = ref 0
+let string_tokens = ref ([] : token list)
 let new_exp = ref true
 
 (* the stack of tokens. Can contain the following characters:
@@ -237,7 +240,7 @@ let unmatchedTokenMsg t0 expected_list =
     let found_in_stack = expected_str = "" ||
         (List.exists (fun (t, _) -> List.exists (fun t1 -> t = t1) expected_list) !paren_stack) in
     if not found_in_stack then
-        sprintf "'%s' without preceding %s." (token2str_pp t0) expected_str
+        sprintf "%s without preceding %s." (token2str_pp t0) expected_str
     else
     match !paren_stack with
     | (_, p) :: _ ->
@@ -311,14 +314,14 @@ let octcode = "\\" octdigit octdigit octdigit
 
 rule tokens = parse
     | newline
-      {
-          (* inside (), [] or {} parentheses newline characters do not start a new statement/expression
-             (because the current one is not finished until we close all the opened parentheses) *)
-          (match !paren_stack with
-          | (LPAREN, _) :: _ | (LSQUARE, _) :: _ | (LBRACE, _) :: _ -> ()
-          | _ -> new_exp := true);
-          incr_lineno lexbuf; tokens lexbuf
-      }
+        {
+            (* inside (), [] or {} parentheses newline characters do not start a new statement/expression
+               (because the current one is not finished until we close all the opened parentheses) *)
+            (match !paren_stack with
+            | (LPAREN, _) :: _ | (LSQUARE, _) :: _ | (LBRACE, _) :: _ -> ()
+            | _ -> new_exp := true);
+            incr_lineno lexbuf; tokens lexbuf
+        }
     | space +  { tokens lexbuf }
 
     | "/*/" { tokens lexbuf }
@@ -326,13 +329,16 @@ rule tokens = parse
     | "//"  { eol_comments lexbuf }
 
     | "\""
-      {
-          check_ne(lexbuf);
-          new_exp := false;
-          string_start := lexbuf.lex_start_p;
-          string_literal := "" ; strings lexbuf;
-          [STRING !string_literal]
-      }
+        {
+            check_ne(lexbuf);
+            if !string_interp_elem <> 0 then
+               raise (lexErr "Unexpected '\"'; nested interpolations are not allowed" lexbuf)
+            else ();
+            string_start := lexbuf.lex_start_p;
+            string_literal := "" ;
+            strings lexbuf;
+            !string_tokens
+        }
       
     | "'" (['\032' - '\127'] as c) "'" { make_char_literal lexbuf (String.make 1 c) }
     | "'" (special_char as c) "'" { make_char_literal lexbuf (decode_special_char lexbuf c) }
@@ -341,110 +347,118 @@ rule tokens = parse
     | "'" ((['\192' - '\247'] ['\128' - '\191']+) as uc) "'" { make_char_literal lexbuf uc }
 
     | "\\" space* newline
-      {   (* '\' just before the end of line means that we should ignore the subsequent line break *)
-          incr_lineno lexbuf; tokens lexbuf }
+        {   (* '\' just before the end of line means that we should ignore the subsequent line break *)
+            incr_lineno lexbuf; tokens lexbuf
+        }
 
     | '('
-      {
-          paren_stack := (LPAREN, lexbuf.lex_start_p) :: !paren_stack;
-          let t = if !new_exp then [B_LPAREN] else [LPAREN] in (new_exp := true; t)
-      }
+        {
+            paren_stack := (LPAREN, lexbuf.lex_start_p) :: !paren_stack;
+            let t = if !new_exp then [B_LPAREN] else [LPAREN] in (new_exp := true; t)
+        }
     | ')'
-      {
-          (match (!paren_stack) with
-          | (LPAREN, _) :: rest -> paren_stack := rest
-          | (DOUBLE_ARROW, _) :: (LPAREN, _) :: rest -> paren_stack := rest (* handle lambda functions: (fun () => ...) *)
-          | _ -> raise (lexErr "Unexpected ')'" lexbuf));
-          new_exp := false;
-          [RPAREN]
-      }
+        {
+            (match (!paren_stack) with
+            | (LPAREN, _) :: rest ->
+                paren_stack := rest; new_exp := false; [RPAREN]
+            (* handle lambda functions: (fun () => ...) *)
+            | (DOUBLE_ARROW, _) :: (LPAREN, _) :: rest ->
+                paren_stack := rest; new_exp := false; [RPAREN]
+            (* handle string interpolation e.g. "f(x)=\(f(x))" *)
+            | (STR_INTERP_LPAREN, _) :: rest ->
+                paren_stack := rest; strings lexbuf; RPAREN :: PLUS :: (!string_tokens)
+            | _ -> raise (lexErr "Unexpected ')'" lexbuf));
+        }
     | '['
-      {
-          paren_stack := (LSQUARE, lexbuf.lex_start_p) :: !paren_stack;
-          let t = if !new_exp then [B_LSQUARE] else [LSQUARE] in (new_exp := true; t)
-      }
+        {
+            paren_stack := (LSQUARE, lexbuf.lex_start_p) :: !paren_stack;
+            let t = if !new_exp then [B_LSQUARE] else [LSQUARE] in (new_exp := true; t)
+        }
     | ']'
-      {
-          (match (!paren_stack) with
-          | (LSQUARE, _) :: rest -> paren_stack := rest
-          | (DOUBLE_ARROW, _) :: (LSQUARE, _) :: rest -> paren_stack := rest (* handle array comprehensions: [for ... => ...] *)
-          | _ -> raise (lexErr "Unexpected ']'" lexbuf));
-          new_exp := false;
-          [RSQUARE]
-      }
+        {
+            (match (!paren_stack) with
+            | (LSQUARE, _) :: rest -> paren_stack := rest
+            
+            (* handle array comprehensions: [for ... => ...] *)
+            | (DOUBLE_ARROW, _) :: (LSQUARE, _) :: rest -> paren_stack := rest
+            
+            | _ -> raise (lexErr "Unexpected ']'" lexbuf));
+            new_exp := false;
+            [RSQUARE]
+        }
     | '{'  { paren_stack := (LBRACE, lexbuf.lex_start_p) :: !paren_stack; new_exp := true; [LBRACE] }
     | '}'
-      {
-          (match (!paren_stack) with
-          | (LBRACE, _) :: rest -> paren_stack := rest
-          | _ -> raise (lexErr "Unexpected '}'" lexbuf));
-          new_exp := false;
-          [RBRACE]
-      }
+        {
+            (match (!paren_stack) with
+            | (LBRACE, _) :: rest -> paren_stack := rest
+            | _ -> raise (lexErr "Unexpected '}'" lexbuf));
+            new_exp := false;
+            [RBRACE]
+        }
 
     | (((('0' ['x' 'X'] hexdigit+) | ('0' ['b' 'B'] ['0'-'1']+) | (['1'-'9'] digit+)) as num_) | (octdigit+ as octnum_))
       (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
-      {
-          check_ne(lexbuf); new_exp := false;
-          let suffix = match suffix_ with Some(x) -> x | _ -> "" in
-          let v =
-               try
-                   match (num_, octnum_) with
-                   | (Some(num), _) -> Scanf.sscanf num "%Li" (fun v -> v)
-                   | (_, Some(octnum)) -> Scanf.sscanf octnum "%Lo" (fun v -> v)
-                   | _ -> raise (lexErr "Invalid integer literal" lexbuf)
-               with _ -> raise (lexErr "Invalid numeric literal" lexbuf) in
-          [match suffix with
-          | "i8" | "I8" -> SINT(8, v)
-          | "u8" | "U8" -> UINT(8, v)
-          | "i16" | "I16" -> SINT(16, v)
-          | "u16" | "U16" -> UINT(16, v)
-          | "i32" | "I32" -> SINT(32, v)
-          | "u32" | "U32" -> UINT(32, v)
-          | "i64" | "I64" | "L" -> SINT(64, v)
-          | "u64" | "U64" | "UL" -> UINT(64, v)
-          | "" -> INT(v)
-          | _ -> raise (lexErr (sprintf "Invalid suffix '%s'" suffix) lexbuf)]
-      }
+        {
+            check_ne(lexbuf); new_exp := false;
+            let suffix = match suffix_ with Some(x) -> x | _ -> "" in
+            let v =
+                try
+                    match (num_, octnum_) with
+                    | (Some(num), _) -> Scanf.sscanf num "%Li" (fun v -> v)
+                    | (_, Some(octnum)) -> Scanf.sscanf octnum "%Lo" (fun v -> v)
+                    | _ -> raise (lexErr "Invalid integer literal" lexbuf)
+                with _ -> raise (lexErr "Invalid numeric literal" lexbuf) in
+            [match suffix with
+            | "i8" | "I8" -> SINT(8, v)
+            | "u8" | "U8" -> UINT(8, v)
+            | "i16" | "I16" -> SINT(16, v)
+            | "u16" | "U16" -> UINT(16, v)
+            | "i32" | "I32" -> SINT(32, v)
+            | "u32" | "U32" -> UINT(32, v)
+            | "i64" | "I64" | "L" -> SINT(64, v)
+            | "u64" | "U64" | "UL" -> UINT(64, v)
+            | "" -> INT(v)
+            | _ -> raise (lexErr (sprintf "Invalid suffix '%s'" suffix) lexbuf)]
+        }
     | ((digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?) as num) (['f' 'F']? as suffix)
         { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
 
     | ("\'" ? as prefix) ((['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident)
-      {
-          let (p0, p1) = get_token_pos lexbuf in
-          if prefix <> "" then (check_ne(lexbuf); [TYVAR ("\'" ^ ident)]) else
-          (try
-              let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
-              match tokdata with
-              | (TRY, _) | (IF, _) | (FUN, _) | (CLASS, _) | (INTERFACE, _) | (MATCH, _) | (FROM, _) ->
-                  check_ne lexbuf;
-                  paren_stack := (tok, p0) :: !paren_stack; new_exp := true; [tok]
-              | (IS, _) ->
-                  (match !paren_stack with
-                  | (FUN, _) :: rest -> paren_stack := (IS, p0) :: rest
-                  | rest -> paren_stack := (IS, p0) :: rest);
-                  new_exp := true; [tok]
-              | (CATCH, _) ->
-                  (match !paren_stack with
-                  | (TRY, _) :: rest -> paren_stack := (CATCH, p0) :: rest
-                  | _ -> raise (lexErr (unmatchedTokenMsg tok [TRY]) lexbuf));
-                  new_exp := true; [tok]
-              | (ELIF, _) | (ELSE, _) ->
-                  (match !paren_stack with
-                  | (THEN, _) :: rest -> paren_stack := (tok, p0) :: rest
-                  | _ -> raise (lexErr (unmatchedTokenMsg tok [THEN]) lexbuf));
-                  new_exp := true; [tok]
-              | (THEN, _) ->
-                  (match !paren_stack with
-                  | (IF, _) :: rest | (ELIF, _) :: rest -> paren_stack := (THEN, p0) :: rest
-                  | _ -> raise (lexErr (unmatchedTokenMsg tok [IF;ELIF]) lexbuf));
-                  new_exp := true; [tok]
-              | (FI, _) ->
-                  (match !paren_stack with
-                  | (THEN, _) :: rest | (ELSE, _) :: rest -> paren_stack := rest
-                  | _ -> raise (lexErr (unmatchedTokenMsg tok [THEN;ELSE]) lexbuf));
-                  new_exp := false; [tok]
-              | (FOR, _) ->
+        {
+            let (p0, p1) = get_token_pos lexbuf in
+            if prefix <> "" then (check_ne(lexbuf); [TYVAR ("\'" ^ ident)]) else
+            (try
+                let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
+                match tokdata with
+                | (TRY, _) | (IF, _) | (FUN, _) | (CLASS, _) | (INTERFACE, _) | (MATCH, _) | (FROM, _) ->
+                    check_ne lexbuf;
+                    paren_stack := (tok, p0) :: !paren_stack; new_exp := true; [tok]
+                | (IS, _) ->
+                    (match !paren_stack with
+                    | (FUN, _) :: rest -> paren_stack := (IS, p0) :: rest
+                    | rest -> paren_stack := (IS, p0) :: rest);
+                    new_exp := true; [tok]
+                | (CATCH, _) ->
+                    (match !paren_stack with
+                    | (TRY, _) :: rest -> paren_stack := (CATCH, p0) :: rest
+                    | _ -> raise (lexErr (unmatchedTokenMsg tok [TRY]) lexbuf));
+                    new_exp := true; [tok]
+                | (ELIF, _) | (ELSE, _) ->
+                    (match !paren_stack with
+                    | (THEN, _) :: rest -> paren_stack := (tok, p0) :: rest
+                    | _ -> raise (lexErr (unmatchedTokenMsg tok [THEN]) lexbuf));
+                    new_exp := true; [tok]
+                | (THEN, _) ->
+                    (match !paren_stack with
+                    | (IF, _) :: rest | (ELIF, _) :: rest -> paren_stack := (THEN, p0) :: rest
+                    | _ -> raise (lexErr (unmatchedTokenMsg tok [IF;ELIF]) lexbuf));
+                    new_exp := true; [tok]
+                | (FI, _) ->
+                    (match !paren_stack with
+                    | (THEN, _) :: rest | (ELSE, _) :: rest -> paren_stack := rest
+                    | _ -> raise (lexErr (unmatchedTokenMsg tok [THEN;ELSE]) lexbuf));
+                    new_exp := false; [tok]
+                | (FOR, _) ->
                   (match !paren_stack with
                   | (FOR, _) :: rest ->
                       paren_stack := (tok, p0) :: rest (* replace 'for' in the stack with the nested for
@@ -453,68 +467,69 @@ rule tokens = parse
                       check_ne lexbuf; (* if the 'for' is not nested, it should start a new expression *)
                       paren_stack := (tok, p0) :: rest);
                   new_exp := true; [tok]
-              | (WHILE, _) ->
-                  (match !paren_stack with
-                  | (DO_W, _) :: rest ->
-                      paren_stack := rest; (* end of the do-while loop *)
-                  | rest ->
-                      check_ne lexbuf; (* if the 'while' does not finish do-while loop, it should start a new expression *)
-                      paren_stack := (tok, p0) :: rest);
-                  new_exp := true; [tok]
-              | (DO, _) ->
-                  (match !paren_stack with
-                  | (WHILE, _) :: rest | (FOR, _) :: rest ->
-                      paren_stack := (tok, p0) :: rest;
-                      new_exp := true; [DO]
-                  | rest ->
-                      check_ne lexbuf; (* start of do-while loop *)
-                      paren_stack := (DO_W, p0) :: rest;
-                      new_exp := true; [DO_W])
-              | (UPDATE, _) ->
-                  (match !paren_stack with
-                  | (FOR, _) :: rest ->
-                      paren_stack := (tok, p0) :: rest
-                  | _ ->
-                      raise (lexErr (unmatchedTokenMsg tok [FOR]) lexbuf));
-                  new_exp := true; [tok]
-              | (WITH, _) ->
-                  (match !paren_stack with
-                  | (MATCH, _) :: rest ->
-                      paren_stack := (tok, p0) :: rest
-                  | (UPDATE, _) :: rest ->
-                      paren_stack := (tok, p0) :: !paren_stack
-                  | (LBRACE, _) :: rest -> ()
-                  | _ -> raise (lexErr (unmatchedTokenMsg tok [MATCH; UPDATE; LBRACE]) lexbuf));
-                  new_exp := true; [tok]
-              | (DONE, _) ->
-                  (match !paren_stack with
-                  | (DO, _) :: rest ->
-                      paren_stack := rest
-                  | (WITH, _) :: (UPDATE, _) :: rest ->
-                      paren_stack := rest
-                  | _ -> raise (lexErr (unmatchedTokenMsg tok [DO; WITH]) lexbuf));
-                  new_exp := false; [tok]
-              | (END, _) ->
-                  (match !paren_stack with
-                  | (IS, _) :: rest | (WITH, _) :: rest | (CLASS, _) :: rest | (INTERFACE, _) :: rest ->
-                      paren_stack := rest
-                  | _ -> raise (lexErr (unmatchedTokenMsg tok [IS; WITH; CLASS; INTERFACE]) lexbuf));
-                  new_exp := false; [tok]
-              | (IMPORT, _) ->
-                  (match !paren_stack with
-                  | (FROM, _) :: rest ->
-                      paren_stack := rest
-                  | _ ->
-                      check_ne lexbuf);
-                  new_exp := true; [tok]
-              | (REF, _) -> let t = if !new_exp then [REF] else [REF_TYPE] in t
-              | (t, 0) -> check_ne(lexbuf); new_exp := false; [t]
-              | (t, 1) -> check_ne(lexbuf); new_exp := true; [t]
-              | (t, 2) -> new_exp := true; [t]
-              | _ -> raise (lexErr (sprintf "Unexpected keyword '%s'" ident) lexbuf)
-           with Not_found ->
-               let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t))
-      }
+                | (WHILE, _) ->
+                    (match !paren_stack with
+                    | (DO_W, _) :: rest ->
+                        paren_stack := rest; (* end of the do-while loop *)
+                    | rest ->
+                        check_ne lexbuf; (* if 'while' does not finish do-while loop,
+                                            it should start a new expression *)
+                        paren_stack := (tok, p0) :: rest);
+                    new_exp := true; [tok]
+                | (DO, _) ->
+                    (match !paren_stack with
+                    | (WHILE, _) :: rest | (FOR, _) :: rest ->
+                        paren_stack := (tok, p0) :: rest;
+                        new_exp := true; [DO]
+                    | rest ->
+                        check_ne lexbuf; (* start of do-while loop *)
+                        paren_stack := (DO_W, p0) :: rest;
+                        new_exp := true; [DO_W])
+                | (UPDATE, _) ->
+                    (match !paren_stack with
+                    | (FOR, _) :: rest ->
+                        paren_stack := (tok, p0) :: rest
+                    | _ ->
+                        raise (lexErr (unmatchedTokenMsg tok [FOR]) lexbuf));
+                    new_exp := true; [tok]
+                | (WITH, _) ->
+                    (match !paren_stack with
+                    | (MATCH, _) :: rest ->
+                        paren_stack := (tok, p0) :: rest
+                    | (UPDATE, _) :: rest ->
+                        paren_stack := (tok, p0) :: !paren_stack
+                    | (LBRACE, _) :: rest -> ()
+                    | _ -> raise (lexErr (unmatchedTokenMsg tok [MATCH; UPDATE; LBRACE]) lexbuf));
+                    new_exp := true; [tok]
+                | (DONE, _) ->
+                    (match !paren_stack with
+                    | (DO, _) :: rest ->
+                        paren_stack := rest
+                    | (WITH, _) :: (UPDATE, _) :: rest ->
+                        paren_stack := rest
+                    | _ -> raise (lexErr (unmatchedTokenMsg tok [DO; WITH]) lexbuf));
+                    new_exp := false; [tok]
+                | (END, _) ->
+                    (match !paren_stack with
+                    | (IS, _) :: rest | (WITH, _) :: rest | (CLASS, _) :: rest | (INTERFACE, _) :: rest ->
+                        paren_stack := rest
+                    | _ -> raise (lexErr (unmatchedTokenMsg tok [IS; WITH; CLASS; INTERFACE]) lexbuf));
+                    new_exp := false; [tok]
+                | (IMPORT, _) ->
+                    (match !paren_stack with
+                    | (FROM, _) :: rest ->
+                        paren_stack := rest
+                    | _ ->
+                        check_ne lexbuf);
+                    new_exp := true; [tok]
+                | (REF, _) -> let t = if !new_exp then [REF] else [REF_TYPE] in t
+                | (t, 0) -> check_ne(lexbuf); new_exp := false; [t]
+                | (t, 1) -> check_ne(lexbuf); new_exp := true; [t]
+                | (t, 2) -> new_exp := true; [t]
+                | _ -> raise (lexErr (sprintf "Unexpected keyword '%s'" ident) lexbuf)
+            with Not_found ->
+                let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t))
+        }
     | '+'   { let t = if !new_exp then [B_PLUS] else [PLUS] in (new_exp := true; t) }
     | '-'   { let t = if !new_exp then [B_MINUS] else [MINUS] in (new_exp := true; t) }
     | '*'   { let t = if !new_exp then [B_STAR] else [STAR] in (new_exp := true; t) }
@@ -586,7 +601,31 @@ rule tokens = parse
 and strings = parse
     | (([^ '\"' '\\' '\n' '\r']+) as string_part)
         { string_literal := !string_literal ^ string_part; strings lexbuf }
-    | '\"' { () }
+    | '\"'
+        {
+            let string_lit = STRING !string_literal in
+            if !string_interp_elem = 0 then
+                string_tokens := [string_lit]
+            else
+                string_tokens := [string_lit; RPAREN];
+            string_literal := "";
+            string_interp_elem := 0;
+            new_exp := false
+            (* return to 'tokens' rule *)
+        }
+    | "\\("
+        {
+            let (p0, _) = get_token_pos lexbuf in
+            paren_stack := (STR_INTERP_LPAREN, p0) :: !paren_stack;
+            string_tokens := [(STRING !string_literal); PLUS; (B_IDENT "string"); LPAREN];  
+            if !string_interp_elem = 0 then
+                string_tokens := B_LPAREN :: !string_tokens
+            else ();
+            string_literal := "";
+            string_interp_elem := !string_interp_elem + 1;
+            new_exp := true
+            (* return to 'tokens' rule *)
+        }
 
     (* we want the produced string literal to be the same, regardless of the actual EOL encoding,
        so we always add '\n', not the occured <newline> character(s) *)
@@ -606,13 +645,13 @@ and strings = parse
       { raise (lexErr (sprintf "Illegal character '%s' inside string literal" (Char.escaped s)) lexbuf) }
 
 and comments level = parse
- | "*/" { if level = 0 then tokens lexbuf else comments (level-1) lexbuf }
- | "/*" { comments (level+1) lexbuf }
- | newline { incr_lineno lexbuf; comments level lexbuf }
- | eof  { raise (lexErrAt "Unterminated comment" (!comment_start, lexbuf.lex_curr_p)) }
- | _  { comments level lexbuf }
+    | "*/" { if level = 0 then tokens lexbuf else comments (level-1) lexbuf }
+    | "/*" { comments (level+1) lexbuf }
+    | newline { incr_lineno lexbuf; comments level lexbuf }
+    | eof  { raise (lexErrAt "Unterminated comment" (!comment_start, lexbuf.lex_curr_p)) }
+    | _  { comments level lexbuf }
 
 and eol_comments = parse
- | newline { incr_lineno lexbuf; new_exp := true; tokens lexbuf }
- | eof  { [EOF] }
- | _  { eol_comments lexbuf }
+    | newline { incr_lineno lexbuf; new_exp := true; tokens lexbuf }
+    | eof  { [EOF] }
+    | _  { eol_comments lexbuf }
