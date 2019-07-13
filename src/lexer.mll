@@ -7,7 +7,6 @@ open Printf
 let token2str t = match t with
     | TRUE -> "TRUE"
     | FALSE -> "FALSE"
-    | NIL -> "NIL"
     | NONE -> "NONE"
     | INT(i) -> sprintf "INT(%Ld)" i
     | SINT(b, i) -> sprintf "SINT(%d, %Ld)" b i
@@ -18,20 +17,15 @@ let token2str t = match t with
     | STRING(s) -> sprintf "STRING(%s)" s
     | CHAR(s) -> sprintf "CHAR(%s)" s
     | TYVAR(s) -> sprintf "TYVAR(%s)" s
-    | AND -> "AND"
     | AS -> "AS"
     | CATCH -> "CATCH"
     | CCODE -> "CCODE"
     | CLASS -> "CLASS"
     | DO -> "DO"
-    | DO_W -> "DO_W"
-    | DONE -> "DONE"
-    | ELIF -> "ELIF"
     | ELSE -> "ELSE"
-    | END -> "END"
     | EXCEPTION -> "EXCEPTION"
     | EXTENDS -> "EXTENDS"
-    | FI -> "FI"
+    | FOLD -> "FOLD"
     | FOR -> "FOR"
     | FROM -> "FROM"
     | FUN -> "FUN"
@@ -41,21 +35,17 @@ let token2str t = match t with
     | IN -> "IN"
     | INLINE -> "INLINE"
     | INTERFACE -> "INTERFACE"
-    | IS -> "IS"
     | MATCH -> "MATCH"
     | NOTHROW -> "NOTHROW"
     | OPERATOR -> "OPERATOR"
-    | PARALLEL -> "PASS"
-    | PASS -> "PASS"
+    | PARALLEL -> "PARALLEL"
     | PURE -> "PURE"
     | REF -> "MAKE_REF"
     | REF_TYPE -> "REF_TYPE"
     | STATIC -> "STATIC"
-    | THEN -> "THEN"
     | THROW -> "THROW"
     | TRY -> "TRY"
     | TYPE -> "TYPE"
-    | UPDATE -> "UPDATE"
     | VAL -> "VAL"
     | VAR -> "VAR"
     | WHEN -> "WHEN"
@@ -133,31 +123,34 @@ let keywords = Hashtbl.create 101
 let fname = ref "unknown"
 
 (* kwtyp:
-   0 - a keyword that is a single-word expression
-   1 - a keyword that starts a new expression; it cannot follow another expression
-       without some explicit operator or a separator
-   2 - a keyword that cannot start a new expression, but
+   0 - single-word keyword
+   1 - a keyword that cannot start a new expression, but
        it links previous part of expression with the subsequent one;
        so it can immediately follow expression (be placed on the same line),
        e.g. "else" in if-then expression
-   3 - a keyword that ends a compound expression
-   4 - a keyword that can start an expression (type 2) or be a connector (type 1),
-       depending on the context
+   2 - a keyword that starts a new expression; it cannot follow another expression without
+       some explicit operator or a separator
+   3 - a keyword that can play a role of a connector (type 1) or an expression beginning (type 2),
+       depending on context
+   4 - a keyword 'kwd' (where 'kwd' = if, for, fold, while, match, ...) that starts a construction: 'kwd' (expr) ...
+        Such keywords must be handled in a special way.
+        Normally, after ')' there can be no new expressions/statements without a separator,
+        but not in the case of whose constructions: 'kwd' (...) new_expression.
+        So, as soon as we encountered such special keyword, we start counting parentheses and
+        set new_exp flag as soon as we closed all the parentheses. See the use of 'paren_stack'
 *)
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
-[
-    ("and", AND, 2); ("as", AS, 2); ("catch", CATCH, 2); ("ccode", CCODE, 1); ("class", CLASS, 1);
-    ("do", DO, 4); ("done", DONE, 3); ("elif", ELIF, 2); ("else", ELSE, 2);
-    ("end", END, 3); ("exception", EXCEPTION, 1); ("extends", EXTENDS, 2);
-    ("false", FALSE, 0); ("fi", FI, 3); ("for", FOR, 4); ("from", FROM, 1); ("fun", FUN, 1);
-    ("if", IF, 1); ("implements", IMPLEMENTS, 2); ("import", IMPORT, 4);
-    ("in", IN, 2); ("inline", INLINE, 1); ("interface", INTERFACE, 1); ("is", IS, 1); 
-    ("match", MATCH, 1); ("nil", NIL, 0); ("None", NONE, 0); ("nothrow", NOTHROW, 1);
-    ("operator", OPERATOR, 1); ("parallel", PARALLEL, 1); ("pass", PASS, 0); ("pure", PURE, 1);
-    ("ref", REF, 4); ("static", STATIC, 1); ("then", THEN, 2); ("throw", THROW, 1);
-    ("true", TRUE, 0); ("try", TRY, 1); ("type", TYPE, 1); ("update", UPDATE, 2);
-    ("val", VAL, 1); ("var", VAR, 1); ("when", WHEN, 2); ("while", WHILE, 1); ("with", WITH, 2)
-];;
+    [
+        ("as", AS, 1); ("catch", CATCH, 1); ("ccode", CCODE, 2); ("class", CLASS, 2); ("do", DO, 2);
+        ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
+        ("false", FALSE, 0); ("fold", FOLD, 4); ("for", FOR, 4); ("from", FROM, 2); ("fun", FUN, 2);
+        ("if", IF, 4); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("in", IN, 1);
+        ("inline", INLINE, 2); ("interface", INTERFACE, 2);
+        ("match", MATCH, 4); ("None", NONE, 0); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
+        ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
+        ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
+        ("val", VAL, 2); ("var", VAR, 2); ("with", WITH, 1); ("when", WHEN, 1); ("while", WHILE, 4);
+    ]
 
 let incr_lineno lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -192,30 +185,23 @@ let new_exp = ref true
 (* the stack of tokens. Can contain the following characters:
    LPAREN, LSQUARE, LBRACE - corresponds to various parentheses;
                     wait for the corresponding closing bracket.
-   IF, ELIF - wait for THEN
-   THEN - wait for ELIF, ELSE or FI
-   DO_W - wait for WHILE
-   DO - wait for DONE
-   CLASS, INTERFACE - wait for END
-   IS - wait for END
+   IF, FOLD, FOR, WHILE - wait for the immediate ()
+   DO - wait for WHILE (after optional {})
+   CLASS, INTERFACE - wait for {}
    FROM - wait for IMPORT
-   FUN - waiting for IS or '=' or '|' or '=>'.
-       when IS is met, remove FUN from stack, put IS to stack
+   FUN - waiting for {...} or { | ... } or '=' or '=>'.
        when '=' or '=>' is met, remove FUN from stack
-       when '|' is met, remove FUN from stack, put WITH to stack
-   MATCH - wait for WITH
-       when WITH is met, remove MATCH, put WITH to stack.
-   UPDATE - wait for WITH
-       when WITH is met, remove UPDATE from stack.
-   TRY - wait for CATCH
-   CATCH - wait for END
-   WITH - wait for END
-   when IMPORT is met, remove FROM from the stack (if)
-   when END is met, remove the corresponding IS, WITH, CLASS or INTERFACE from stack.
-   when '|' is met and WITH is on the top, return BAR token.
+       when { is met, wait for }.
+       when { | is met, remove FUN from stack, leave { | on the stack
+   MATCH - wait for (), then wait for { | ... }.
+       when { | is met, remove MATCH from the stack.
+   TRY - wait for CATCH (after optional {})
+   CATCH - wait for { | ... }
+   when IMPORT is met, remove FROM from the stack (if it is there)
+   when } is met, remove the corresponding { or { | from stack.
+   when '|' is met and { | is on the top, return BAR token.
       otherwise return BITWISE_OR token.
    when '=>' is met:
-      if 'FOR' :: '[' :: _ is on top, we put '=>' to stack; that means array comprehension.
       if 'FUN' :: '(' :: _ are on top, remove 'FUN', put '=>' to stack; that means lambda function
       otherwise do nothing
    when '=' is met:
@@ -223,14 +209,8 @@ let new_exp = ref true
       otherwise do nothing
    when '|' is met:
       if 'FUN' is on top, remove 'FUN' and put 'WITH'
-   when '\n', '\r\n' or '\r' is met and if we are inside (), [] or {}, newline is ignored (yet we increment lineno).
-   when ']' is met, remove => (if any) and the matching '['.
+   when '\n', '\r\n' or '\r' is met and if we are inside (), [], newline is ignored (yet we increment lineno).
    when ')' is met, remove => (if any) and the matching '('.
-   when WITH is met:
-      if MATCH is on top of the stack, remove MATCH, put WITH
-      if UPDATE is on top of the stack, remove UPDATE
-      if '{' on top of the stack, do nothing
-      otherwise report an error.
 *)
 let paren_stack = ref []
 
@@ -244,29 +224,23 @@ let unmatchedTokenMsg t0 expected_list =
     else
     match !paren_stack with
     | (_, p) :: _ ->
-        let (kw, expected) = 
+        let (kw, expected) =
             (match !paren_stack with
             | (LPAREN, _) :: _ -> ("Unmatched '('", "")
             | (LSQUARE, _) :: _ -> ("Unmatched '['", "")
             | (LBRACE, _) :: _ -> ("Unmatched '{'", "")
-            | (IF, _) :: _ -> ("Unmatched 'if'", "'then'")
-            | (ELIF, _) :: _ -> ("Unmatched 'elif'", "'then'")
-            | (ELSE, _) :: _ -> ("Unmatched 'else'", "'fi'")
-            | (THEN, _) :: _ -> ("Unfinished 'then' clause", "'elif'/'else'/'fi'")
-            | (DO, _) :: _ -> ("Unfinished loop body", "'done'")
-            | (DO_W, _) :: _ -> ("Unfinished do-while body", "'while'")
-            | (CLASS, _) :: _ -> ("Unfinished class", "'end'")
-            | (INTERFACE, _) :: _ -> ("Unfinished interface", "'end'")
-            | (IS, _) :: _ -> ("Unfinished 'is' clause", "'end'")
+            | (IF, _) :: _ -> ("Unfinished 'if'", "'()'")
+            | (DO, _) :: _ -> ("Unfinished do-while body", "'while'")
+            | (CLASS, _) :: _ -> ("Unfinished class", "'{}'")
+            | (INTERFACE, _) :: _ -> ("Unfinished interface", "'{}'")
             | (FROM, _) :: _ -> ("Unfinished 'from'", "'import'")
             | (FUN, _) :: _ -> ("Unfinished 'fun'", "function body")
-            | (FOR, _) :: _ -> ("Unfinished 'for'", "'do'")
-            | (WHILE, _) :: _ -> ("Unfinished 'while'", "'do'")
-            | (MATCH, _) :: _ -> ("Unfinished 'match'", "'with'")
-            | (UPDATE, _) :: _ -> ("Unfinished 'for-update'", "'with'")
-            | (WITH, _) :: _ -> ("Unfinished pattern matching clause", "'end'")
+            | (FOLD, _) :: _ -> ("Unfinished 'fold'", "'()'")
+            | (FOR, _) :: _ -> ("Unfinished 'for'", "'()'")
+            | (WHILE, _) :: _ -> ("Unfinished 'while'", "'()'")
+            | (MATCH, _) :: _ -> ("Unfinished 'match'", "'()'")
             | (TRY, _) :: _ -> ("Unfinished 'try'", "catch")
-            | (CATCH, _) :: _ -> ("Unfinished exception handling clause", "'end'")
+            | (CATCH, _) :: _ -> ("Unfinished exception handling clause", "{| ... }")
             | (t1, _) :: _ -> ((token2str t1), "")
             | _ -> ("<START>", ""))
         in let expected_msg = if expected <> "" then ", " ^ expected ^ " is expected" else "" in
@@ -298,7 +272,7 @@ let make_char_literal lexbuf c =
     check_ne(lexbuf);
     new_exp := false;
     [CHAR c]
-        
+
 }
 
 let newline = '\n' | '\r' | "\r\n"
@@ -315,10 +289,10 @@ let octcode = "\\" octdigit octdigit octdigit
 rule tokens = parse
     | newline
         {
-            (* inside (), [] or {} parentheses newline characters do not start a new statement/expression
+            (* inside () or [] parentheses newline characters do not start a new statement/expression
                (because the current one is not finished until we close all the opened parentheses) *)
             (match !paren_stack with
-            | (LPAREN, _) :: _ | (LSQUARE, _) :: _ | (LBRACE, _) :: _ -> ()
+            | (LPAREN, _) :: _ | (LSQUARE, _) :: _ -> ()
             | _ -> new_exp := true);
             incr_lineno lexbuf; tokens lexbuf
         }
@@ -339,7 +313,7 @@ rule tokens = parse
             strings lexbuf;
             !string_tokens
         }
-      
+
     | "'" (['\032' - '\127'] as c) "'" { make_char_literal lexbuf (String.make 1 c) }
     | "'" (special_char as c) "'" { make_char_literal lexbuf (decode_special_char lexbuf c) }
     | "'" (hexcode as hc) "'" { make_char_literal lexbuf (decode_hex_char hc) }
@@ -359,6 +333,14 @@ rule tokens = parse
     | ')'
         {
             (match (!paren_stack) with
+            | (LPAREN, _) :: (IF, _) :: rest ->
+                paren_stack := rest; new_exp := true; [RPAREN]
+            | (LPAREN, _) :: (FOLD, _) :: rest ->
+                paren_stack := rest; new_exp := true; [RPAREN]
+            | (LPAREN, _) :: (FOR, _) :: rest ->
+                paren_stack := rest; new_exp := true; [RPAREN]
+            | (LPAREN, _) :: (WHILE, _) :: rest ->
+                paren_stack := rest; new_exp := true; [RPAREN]
             | (LPAREN, _) :: rest ->
                 paren_stack := rest; new_exp := false; [RPAREN]
             (* handle lambda functions: (fun () => ...) *)
@@ -378,18 +360,25 @@ rule tokens = parse
         {
             (match (!paren_stack) with
             | (LSQUARE, _) :: rest -> paren_stack := rest
-            
-            (* handle array comprehensions: [for ... => ...] *)
-            | (DOUBLE_ARROW, _) :: (LSQUARE, _) :: rest -> paren_stack := rest
-            
             | _ -> raise (lexErr "Unexpected ']'" lexbuf));
             new_exp := false;
             [RSQUARE]
         }
-    | '{'  { paren_stack := (LBRACE, lexbuf.lex_start_p) :: !paren_stack; new_exp := true; [LBRACE] }
+    | '{'
+        {
+            paren_stack := (LBRACE, lexbuf.lex_start_p) :: !paren_stack; new_exp := true;
+            let ts = tokens lexbuf in
+            LBRACE ::
+            (* if '|' follows immediately after '{', we emit BAR token (instead of BITWISE_OR) and
+               put it to the stack to mark that we are inside a pattern matching clause *)
+            (match ts with
+            | BITWISE_OR :: rest -> paren_stack := (BAR, lexbuf.lex_curr_p) :: !paren_stack; BAR :: rest
+            | _ -> ts)
+        }
     | '}'
         {
             (match (!paren_stack) with
+            | (BAR, _) :: (LBRACE, _) :: rest -> paren_stack := rest
             | (LBRACE, _) :: rest -> paren_stack := rest
             | _ -> raise (lexErr "Unexpected '}'" lexbuf));
             new_exp := false;
@@ -430,91 +419,23 @@ rule tokens = parse
             (try
                 let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
                 match tokdata with
-                | (TRY, _) | (IF, _) | (FUN, _) | (CLASS, _) | (INTERFACE, _) | (MATCH, _) | (FROM, _) ->
+                | (DO, _) | (TRY, _) | (IF, _) | (FOLD, _) | (FOR, _) | (FUN, _) | (CLASS, _) | (INTERFACE, _) | (MATCH, _) | (FROM, _) ->
                     check_ne lexbuf;
                     paren_stack := (tok, p0) :: !paren_stack; new_exp := true; [tok]
-                | (IS, _) ->
-                    (match !paren_stack with
-                    | (FUN, _) :: rest -> paren_stack := (IS, p0) :: rest
-                    | rest -> paren_stack := (IS, p0) :: rest);
-                    new_exp := true; [tok]
                 | (CATCH, _) ->
                     (match !paren_stack with
                     | (TRY, _) :: rest -> paren_stack := (CATCH, p0) :: rest
                     | _ -> raise (lexErr (unmatchedTokenMsg tok [TRY]) lexbuf));
                     new_exp := true; [tok]
-                | (ELIF, _) | (ELSE, _) ->
-                    (match !paren_stack with
-                    | (THEN, _) :: rest -> paren_stack := (tok, p0) :: rest
-                    | _ -> raise (lexErr (unmatchedTokenMsg tok [THEN]) lexbuf));
-                    new_exp := true; [tok]
-                | (THEN, _) ->
-                    (match !paren_stack with
-                    | (IF, _) :: rest | (ELIF, _) :: rest -> paren_stack := (THEN, p0) :: rest
-                    | _ -> raise (lexErr (unmatchedTokenMsg tok [IF;ELIF]) lexbuf));
-                    new_exp := true; [tok]
-                | (FI, _) ->
-                    (match !paren_stack with
-                    | (THEN, _) :: rest | (ELSE, _) :: rest -> paren_stack := rest
-                    | _ -> raise (lexErr (unmatchedTokenMsg tok [THEN;ELSE]) lexbuf));
-                    new_exp := false; [tok]
-                | (FOR, _) ->
-                  (match !paren_stack with
-                  | (FOR, _) :: rest ->
-                      paren_stack := (tok, p0) :: rest (* replace 'for' in the stack with the nested for
-                                                          in order to provide better error diagnostics *)
-                  | rest ->
-                      check_ne lexbuf; (* if the 'for' is not nested, it should start a new expression *)
-                      paren_stack := (tok, p0) :: rest);
-                  new_exp := true; [tok]
                 | (WHILE, _) ->
                     (match !paren_stack with
-                    | (DO_W, _) :: rest ->
-                        paren_stack := rest; (* end of the do-while loop *)
+                    | (DO, _) :: rest ->
+                        paren_stack := (tok, p0) :: rest (* end of the do-while loop *)
                     | rest ->
                         check_ne lexbuf; (* if 'while' does not finish do-while loop,
                                             it should start a new expression *)
                         paren_stack := (tok, p0) :: rest);
                     new_exp := true; [tok]
-                | (DO, _) ->
-                    (match !paren_stack with
-                    | (WHILE, _) :: rest | (FOR, _) :: rest ->
-                        paren_stack := (tok, p0) :: rest;
-                        new_exp := true; [DO]
-                    | rest ->
-                        check_ne lexbuf; (* start of do-while loop *)
-                        paren_stack := (DO_W, p0) :: rest;
-                        new_exp := true; [DO_W])
-                | (UPDATE, _) ->
-                    (match !paren_stack with
-                    | (FOR, _) :: rest ->
-                        paren_stack := (tok, p0) :: rest
-                    | _ ->
-                        raise (lexErr (unmatchedTokenMsg tok [FOR]) lexbuf));
-                    new_exp := true; [tok]
-                | (WITH, _) ->
-                    (match !paren_stack with
-                    | (MATCH, _) :: rest ->
-                        paren_stack := (tok, p0) :: rest
-                    | (UPDATE, _) :: rest ->
-                        paren_stack := (tok, p0) :: !paren_stack
-                    | (LBRACE, _) :: rest -> ()
-                    | _ -> raise (lexErr (unmatchedTokenMsg tok [MATCH; UPDATE; LBRACE]) lexbuf));
-                    new_exp := true; [tok]
-                | (DONE, _) ->
-                    (match !paren_stack with
-                    | (DO, _) :: rest ->
-                        paren_stack := rest
-                    | (WITH, _) :: (UPDATE, _) :: rest ->
-                        paren_stack := rest
-                    | _ -> raise (lexErr (unmatchedTokenMsg tok [DO; WITH]) lexbuf));
-                    new_exp := false; [tok]
-                | (END, _) ->
-                    (match !paren_stack with
-                    | (IS, _) :: rest | (WITH, _) :: rest | (CLASS, _) :: rest | (INTERFACE, _) :: rest ->
-                        paren_stack := rest
-                    | _ -> raise (lexErr (unmatchedTokenMsg tok [IS; WITH; CLASS; INTERFACE]) lexbuf));
-                    new_exp := false; [tok]
                 | (IMPORT, _) ->
                     (match !paren_stack with
                     | (FROM, _) :: rest ->
@@ -524,8 +445,8 @@ rule tokens = parse
                     new_exp := true; [tok]
                 | (REF, _) -> let t = if !new_exp then [REF] else [REF_TYPE] in t
                 | (t, 0) -> check_ne(lexbuf); new_exp := false; [t]
-                | (t, 1) -> check_ne(lexbuf); new_exp := true; [t]
-                | (t, 2) -> new_exp := true; [t]
+                | (t, 1) -> new_exp := true; [t]
+                | (t, 2) -> check_ne(lexbuf); new_exp := true; [t]
                 | _ -> raise (lexErr (sprintf "Unexpected keyword '%s'" ident) lexbuf)
             with Not_found ->
                 let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t))
@@ -543,9 +464,7 @@ rule tokens = parse
         {
             new_exp := true;
             match !paren_stack with
-            | (WITH, _) :: (UPDATE, _) :: _ -> [BITWISE_OR]
-            | (WITH, _) :: _ -> [BAR]
-            | (FUN, _) :: rest -> paren_stack := (WITH, lexbuf.lex_start_p) :: rest; [BAR]
+            | (BAR, _) :: (LBRACE, _) :: _ -> [BAR]
             | _ -> [BITWISE_OR]
         }
     | '^'   { new_exp := true; [BITWISE_XOR] }
@@ -617,7 +536,7 @@ and strings = parse
         {
             let (p0, _) = get_token_pos lexbuf in
             paren_stack := (STR_INTERP_LPAREN, p0) :: !paren_stack;
-            string_tokens := [(STRING !string_literal); PLUS; (B_IDENT "string"); LPAREN];  
+            string_tokens := [(STRING !string_literal); PLUS; (B_IDENT "string"); LPAREN];
             if !string_interp_elem = 0 then
                 string_tokens := B_LPAREN :: !string_tokens
             else ();
@@ -636,7 +555,7 @@ and strings = parse
     | hexcode as hc
       { string_literal := !string_literal ^ (decode_hex_char hc); strings lexbuf }
     | octcode as oc
-      { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }  
+      { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }
     | '\\' (_ as s)
       { raise (lexErrAt (sprintf "Illegal escape \\%s" (Char.escaped s)) (!string_start, lexbuf.lex_curr_p)) }
     | eof

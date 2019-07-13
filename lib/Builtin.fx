@@ -12,4 +12,4 @@ fun print(a: 't) = print_string(string(a))
 // but currently it's used to test custom overloading of a generic function
 fun print(a: string) = print_string(a)
 
-fun println(a: 't) is print(a); print("\n") end
+fun println(a: 't) { print(a); print("\n") }

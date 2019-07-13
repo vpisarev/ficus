@@ -14,6 +14,6 @@ val c = '😄'
 
 val _2 = 2
 val a = (_2 + 2 | 8)
-fun fib(n: int): int = if n <= 1 then 1 else fib(n-1) + fib(n-2) fi
+fun fib(n: int): int = if (n <= 1) 1 else fib(n-1) + fib(n-2)
 
-for i in 1:31 do print("Hello\n"); print("fib(\(i))=\(fib(i))") done
+for (i in 1:31) { print("fib(\(i))=\(fib(i))"); println() }

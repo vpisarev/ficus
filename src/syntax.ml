@@ -155,7 +155,7 @@ type exp_t =
     | ExpUpdateRecord of exp_t * (id_t * exp_t) list * ctx_t
     | ExpCall of exp_t * exp_t list * ctx_t
     | ExpAt of exp_t * exp_t list * ctx_t
-    | ExpIf of (exp_t * exp_t) list * exp_t * ctx_t
+    | ExpIf of exp_t * exp_t * exp_t * ctx_t
     | ExpWhile of exp_t * exp_t * ctx_t
     | ExpFor of forexp_t * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
@@ -277,7 +277,7 @@ let get_exp_ctx e = match e with
     | ExpUpdateRecord(_, _, c) -> c
     | ExpCall(_, _, c) -> c
     | ExpAt(_, _, c) -> c
-    | ExpIf(_, _, c) -> c
+    | ExpIf(_, _, _, c) -> c
     | ExpWhile(_, _, c) -> c
     | ExpFor(_, c) -> c
     | ExpTryCatch(_, _, c) -> c

@@ -200,9 +200,9 @@ let rec pprint_exp e =
             obox(); (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"
-        | ExpIf(if_seq, if_else, _) ->
-            obox(); List.iteri (fun i (c, e) -> (if i = 0 then pstr "IF" else pstr "ELIF"); pspace();
-                            pprint_exp c; pspace(); pstr "THEN"; pprint_exp_as_seq e; pspace()) if_seq;
+        | ExpIf(if_seq, if_then, if_else, _) ->
+            obox(); pstr "IF"; pspace();
+                            pprint_exp if_seq; pspace(); pstr "THEN"; pprint_exp_as_seq if_then; pspace();
             pstr "ELSE"; pspace(); pprint_exp_as_seq if_else; pspace(); pstr "FI"; cbox()
         | ExpWhile(c, body, _) ->
             pstr "WHILE"; pprint_exp c; pspace(); pstr "DO";
