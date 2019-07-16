@@ -135,15 +135,18 @@ type bin_op_t =
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
     | OpCons | OpMem | OpSet
 
-type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow
+type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow | OpExpand
 
-type val_flag_t = ValMutable | ValArg
-type func_flag_t = FunPure | FunImpure | FunNoThrow | FunInC
+type val_flag_t = ValArg | ValMutable
+type func_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic
 type variant_flag_t = VariantRecursive | VariantSimpleLabel of int
+type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = type_t * loc_t
 
 type exp_t =
     | ExpNop of ctx_t (* empty expression {} *)
+    | ExpBreak of ctx_t
+    | ExpContinue of ctx_t
     | ExpRange of exp_t option * exp_t option * exp_t option * ctx_t
     | ExpLit of lit_t * ctx_t
     | ExpIdent of id_t * ctx_t
@@ -151,13 +154,17 @@ type exp_t =
     | ExpUnOp of un_op_t * exp_t * ctx_t
     | ExpSeq of exp_t list * ctx_t
     | ExpMkTuple of exp_t list * ctx_t
+    | ExpMkArray of exp_t list list * ctx_t
     | ExpMkRecord of exp_t * (id_t * exp_t) list * ctx_t
     | ExpUpdateRecord of exp_t * (id_t * exp_t) list * ctx_t
     | ExpCall of exp_t * exp_t list * ctx_t
     | ExpAt of exp_t * exp_t list * ctx_t
     | ExpIf of exp_t * exp_t * exp_t * ctx_t
     | ExpWhile of exp_t * exp_t * ctx_t
-    | ExpFor of forexp_t * ctx_t
+    | ExpDoWhile of exp_t * exp_t * ctx_t
+    | ExpFor of (pat_t * exp_t) list * exp_t * for_flag_t list * ctx_t
+    | ExpMap of ((pat_t * exp_t) list * exp_t option) list * exp_t * for_flag_t list * ctx_t
+    | ExpFold of (pat_t * exp_t) option * (pat_t * exp_t) list * exp_t * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpCast of exp_t * type_t * ctx_t
@@ -169,15 +176,18 @@ type exp_t =
     | DefType of deftype_t ref
     | DefVariant of defvariant_t ref
     | DefClass of defclass_t ref
-    | DefInterface of definter_t ref
+    | DefInterface of defiface_t ref
     | DirImport of (id_t * id_t) list * loc_t
     | DirImportFrom of id_t * id_t list * loc_t
-and forexp_t = { for_cl: (pat_t * exp_t) list list; for_body: exp_t }
 and pat_t =
     | PatAny of loc_t
+    | PatLit of lit_t * loc_t
     | PatIdent of id_t * loc_t
     | PatTuple of pat_t list * loc_t
     | PatCtor of id_t * pat_t list * loc_t
+    | PatRec of id_t option * (id_t * pat_t) list * loc_t
+    | PatCons of pat_t * pat_t * loc_t
+    | PatAs of pat_t * id_t * loc_t
     | PatTyped of pat_t * type_t * loc_t
 and defval_t = { dv_name: id_t; dv_type: type_t; dv_flags: val_flag_t list; dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_rt: type_t;
@@ -189,9 +199,9 @@ and deftype_t = { dt_name: id_t; dt_templ_args: id_t list;
 and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_flags: variant_flag_t list;
                      dvar_members: (id_t * type_t) list; dvar_constr: id_t list;
                      mutable dvar_templ_inst: id_t list; dvar_scope: scope_t list; dvar_loc: loc_t }
-and defclass_t = { dc_name: id_t; dc_templ_args: id_t list; dc_impl: id_t list; dc_args: pat_t list;
-                   dc_members: exp_t list; mutable dc_templ_inst: id_t list; dc_scope: scope_t list; dc_loc: loc_t }
-and definter_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
+and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_ifaces: id_t list; dcl_args: pat_t list;
+                   dcl_members: exp_t list; mutable dcl_templ_inst: id_t list; dcl_scope: scope_t list; dcl_loc: loc_t }
+and defiface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
 and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
                     mutable dm_deps: id_t list; mutable dm_env: id_t list Env.t;
                     mutable dm_parsed: bool }
@@ -199,7 +209,7 @@ and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t l
 type id_info_t =
     | IdNone | IdText of string | IdVal of defval_t | IdFun of deffun_t ref
     | IdExn of defexn_t ref | IdType of deftype_t ref | IdVariant of defvariant_t ref
-    | IdClass of defclass_t ref | IdInterface of definter_t ref | IdModule of defmodule_t ref
+    | IdClass of defclass_t ref | IdInterface of defiface_t ref | IdModule of defmodule_t ref
 
 let all_nids = ref 0
 let all_ids : id_info_t array ref = ref [||]
@@ -266,6 +276,8 @@ let module_loc mname = { loc_fname=mname; loc_line0=1; loc_pos0=1; loc_line1=1; 
 
 let get_exp_ctx e = match e with
     | ExpNop(c) -> c
+    | ExpBreak(c) -> c
+    | ExpContinue(c) -> c
     | ExpRange(_, _, _, c) -> c
     | ExpLit(_, c) -> c
     | ExpIdent(_, c) -> c
@@ -274,12 +286,16 @@ let get_exp_ctx e = match e with
     | ExpSeq(_, c) -> c
     | ExpMkTuple(_, c) -> c
     | ExpMkRecord(_, _, c) -> c
+    | ExpMkArray(_, c) -> c
     | ExpUpdateRecord(_, _, c) -> c
     | ExpCall(_, _, c) -> c
     | ExpAt(_, _, c) -> c
     | ExpIf(_, _, _, c) -> c
     | ExpWhile(_, _, c) -> c
-    | ExpFor(_, c) -> c
+    | ExpDoWhile(_, _, c) -> c
+    | ExpFor(_, _, _, c) -> c
+    | ExpMap(_, _, _, c) -> c
+    | ExpFold(_, _, _, c) -> c
     | ExpTryCatch(_, _, c) -> c
     | ExpMatch(_, _, c) -> c
     | ExpCast(_, _, c) -> c
@@ -290,7 +306,7 @@ let get_exp_ctx e = match e with
     | DefExn {contents = { dexn_loc }} -> (TypDecl, dexn_loc)
     | DefType {contents = { dt_loc }} -> (TypDecl, dt_loc)
     | DefVariant {contents = { dvar_loc }} -> (TypDecl, dvar_loc)
-    | DefClass {contents = { dc_loc }} -> (TypDecl, dc_loc)
+    | DefClass {contents = { dcl_loc }} -> (TypDecl, dcl_loc)
     | DefInterface {contents = { di_loc }} -> (TypDecl, di_loc)
     | DirImport(_, l) -> (TypDecl, l)
     | DirImportFrom(_, _, l) -> (TypDecl, l)
@@ -326,7 +342,7 @@ let get_scope_ id_info = match id_info with
     | IdExn {contents = {dexn_scope}} -> dexn_scope
     | IdType {contents = {dt_scope}} -> dt_scope
     | IdVariant {contents = {dvar_scope}} -> dvar_scope
-    | IdClass {contents = {dc_scope}} -> dc_scope
+    | IdClass {contents = {dcl_scope}} -> dcl_scope
     | IdInterface {contents = {di_scope}} -> di_scope
     | IdModule _ -> ScGlobal :: []
 
@@ -379,6 +395,7 @@ let unop_to_string uop = match uop with
     | OpMakeRef -> "ref"
     | OpDeref -> "*"
     | OpThrow -> "throw"
+    | OpExpand -> "\\"
 
 let fname_op_add = get_id "__add__"
 let fname_op_sub = get_id "__sub__"

@@ -25,10 +25,40 @@ let expseq2exp es n = match es with
     | e::[] -> e
     | _ -> ExpSeq(es, (make_new_typ(), (curr_loc_n n)))
 
+let plist2exp args n =
+    let rec plist2exp_ plist0 =
+      List.fold_right (fun p (plist, elist) -> let (p_, e_) = pat2exp_ p in ((p_::plist), (e_::elist))) plist0 ([], [])
+    and pat2exp_ p =
+      (match p with
+      | PatAny(loc) ->
+          let arg_tp = make_new_typ() in
+          let arg_id = get_unique_id "arg" true in
+          (PatIdent(arg_id, loc), ExpIdent(arg_id, (arg_tp, loc)))
+      | PatIdent(i, loc) -> (p, ExpIdent(i, (make_new_typ(), loc)))
+      | PatTuple(plist, loc) ->
+          let (plist_new, elist_new) = plist2exp_ plist in
+          (PatTuple(plist_new, loc), (expseq2exp elist_new n))
+      | PatTyped(p, t, loc) -> pat2exp_ p
+      | _ -> raise (SyntaxError
+            ("unsupported arg pattern in the pattern-matching function",
+             Parsing.symbol_start_pos(),
+             Parsing.symbol_end_pos()))) in
+    let (plist, elist) = plist2exp_ args in
+    (plist, expseq2exp elist n)
+
 let make_deffun fname args rt body flags loc =
     { df_name=fname; df_templ_args=[]; df_args=args; df_rt=rt;
       df_body=body; df_flags=flags; df_scope=ScGlobal :: [];
       df_loc=loc; df_templ_inst=[] }
+
+let make_variant_type (targs, tname) var_elems0 =
+    let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
+    let loc = make_loc(pos0, pos1) in
+    let var_elems = List.map (fun (n, t) -> if (good_variant_name n) then (get_id n, t) else
+        raise (SyntaxError ((Printf.sprintf "syntax error: variant tag '%s' does not start with a capital latin letter" n), pos0, pos1))) var_elems0 in
+    let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_flags=[]; dvar_members=var_elems;
+               dvar_constr=[]; dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
+    DefVariant (ref dv)
 
 %}
 
@@ -44,14 +74,14 @@ let make_deffun fname args rt body flags loc =
 %token <string> TYVAR
 
 /* keywords */
-%token AS CATCH CCODE CLASS DO ELSE EXCEPTION
+%token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION
 %token EXTENDS FOLD FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE INTERFACE
 %token MATCH NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
 %token THROW TRY TYPE VAL VAR WHEN WHILE WITH
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE
-%token COMMA DOT SEMICOLON COLON BAR CONS CAST ARROW DOUBLE_ARROW EOF
+%token COMMA DOT SEMICOLON COLON BAR CONS CAST EXPAND ARROW DOUBLE_ARROW EOF
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
@@ -83,7 +113,8 @@ let make_deffun fname args rt body flags loc =
 %left PLUS MINUS
 %left STAR SLASH MOD
 %right POWER
-%right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT deref_prec REF
+%left WITH
+%right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT deref_prec REF EXPAND
 %right ARROW
 %left lsquare_prec fcall_prec
 %left app_type_prec arr_type_prec option_type_prec ref_type_prec
@@ -144,7 +175,7 @@ decl:
         let vflags = List.rev $1 in
         List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2
     }
-| fun_decl_start fun_args EQUAL complex_exp
+| fun_decl_start fun_args EQUAL stmt
     {
         let (flags, fname) = $1 in
         let (args, rt, prologue) = $2 in
@@ -158,34 +189,81 @@ decl:
         let body = expseq2exp (prologue @ $3) 3 in
         [DefFun (ref (make_deffun fname args rt body flags (curr_loc())))]
     }
-| typedef_lhs EQUAL typespec
+| fun_decl_start fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
     {
-        let (targs, i) = $1 in
-        let dtp = { dt_name=i; dt_templ_args=targs; dt_body=$3; dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
-        [DefType (ref dtp)]
+        let (flags, fname) = $1 in
+        let (args, rt, prologue) = $2 in
+        let (args_upd, match_arg) = plist2exp args 2 in
+        let match_e = ExpMatch(match_arg, $5, make_new_ctx()) in
+        let body = expseq2exp (prologue @ [match_e]) 5 in
+        [DefFun (ref (make_deffun fname args_upd rt body flags (curr_loc())))]
     }
+| simple_type_decl { [$1] }
+| exception_decl { [$1] }
+| CLASS type_lhs implemented_ifaces constr_args LBRACE class_members RBRACE
+    {
+        let (cl_templ_args, cl_name) = $2 in
+        let cl_ifaces = List.rev $3 in
+        let cl_args = $4 in
+        let cl_def = { dcl_name=cl_name; dcl_templ_args=cl_templ_args; dcl_ifaces=cl_ifaces; dcl_args=cl_args;
+                       dcl_members=$6; dcl_templ_inst=[]; dcl_scope=ScGlobal::[]; dcl_loc=curr_loc() } in
+        [DefClass(ref cl_def)]
+    }
+| INTERFACE B_IDENT base_iface LBRACE iface_members RBRACE
+    {
+        let iname = get_id $2 in
+        let base_iface = $3 in
+        let iface_def = { di_name=iname; di_base=base_iface; di_members=[]; di_scope=ScGlobal::[]; di_loc=curr_loc() } in
+        [DefInterface(ref iface_def)]
+    }
+
+simple_type_decl:
+| TYPE type_lhs EQUAL typespec
+    {
+        let (targs, i) = $2 in
+        let dtp = { dt_name=i; dt_templ_args=targs; dt_body=$4; dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
+        DefType (ref dtp)
+    }
+| TYPE type_lhs EQUAL B_IDENT BITWISE_OR variant_elems_
+    {
+        make_variant_type $2 (($4, TypVoid) :: (List.rev $6))
+    }
+| TYPE type_lhs EQUAL B_IDENT COLON typespec BITWISE_OR variant_elems_
+    {
+        make_variant_type $2 (($4, $6) :: (List.rev $8))
+    }
+| TYPE type_lhs EQUAL B_IDENT COLON typespec
+    {
+        make_variant_type $2 (($4, $6) :: [])
+    }
+
+exception_decl:
 | EXCEPTION B_IDENT
     {
-        [DefExn(ref { dexn_name=(get_id $2); dexn_tp=TypVoid; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })]
+        DefExn(ref { dexn_name=(get_id $2); dexn_tp=TypVoid; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
     }
 | EXCEPTION B_IDENT COLON typespec
     {
-        [DefExn(ref { dexn_name=(get_id $2); dexn_tp = $4; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })]
+        DefExn(ref { dexn_name=(get_id $2); dexn_tp = $4; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
     }
 
 stmt:
-| simple_exp EQUAL exp { ExpBinOp(OpSet, $1, $3, (TypVoid, curr_loc())) }
-| simple_exp aug_op exp
+| BREAK { ExpBreak((TypVoid, curr_loc())) }
+| CONTINUE { ExpContinue((TypVoid, curr_loc())) }
+| THROW exp { ExpUnOp(OpThrow, $2, (TypErr, curr_loc())) }
+| simple_exp EQUAL complex_exp { ExpBinOp(OpSet, $1, $3, (TypVoid, curr_loc())) }
+| simple_exp aug_op complex_exp
     {
         let (tp, loc) = make_new_ctx() in
         ExpBinOp(OpSet, $1, ExpBinOp($2, $1, $3, (tp, loc)), (TypVoid, loc))
     }
-| WHILE lparen exp RPAREN exp_or_block { ExpWhile ($3, $5, make_new_ctx()) }
-| FOR lparen for_in_list_ RPAREN exp_or_block
+| WHILE lparen exp_or_block RPAREN exp_or_block { ExpWhile ($3, $5, make_new_ctx()) }
+| DO exp_or_block WHILE lparen exp_or_block RPAREN { ExpDoWhile ($2, $5, make_new_ctx()) }
+| for_flags FOR lparen for_in_list_ RPAREN exp_or_block
     {
-        let for_cl_ = (List.rev $3) :: [] in
-        let for_body_ = $5 in
-        ExpFor ({ for_cl = for_cl_; for_body = for_body_ }, make_new_ctx())
+        let for_cl_ = List.rev $4 in
+        let for_body_ = $6 in
+        ExpFor (for_cl_, for_body_, $1, make_new_ctx())
     }
 | CCODE STRING { ExpCCode($2, make_new_ctx()) }
 | FUN fun_args DOUBLE_ARROW stmt
@@ -218,43 +296,57 @@ simple_exp:
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }
 | B_LPAREN exp CAST typespec RPAREN { ExpCast($2, $4, make_new_ctx()) }
+| B_LSQUARE for_flags FOR lparen for_in_list_ RPAREN exp_or_block RSQUARE
+    {
+        ExpMap(((List.rev $5), None) :: [], $7, ForMakeArray :: $2, make_new_ctx())
+    }
+| B_LSQUARE CONS for_flags FOR lparen for_in_list_ RPAREN exp_or_block RSQUARE
+    {
+        ExpMap(((List.rev $6), None) :: [], $8, ForMakeList :: $3, make_new_ctx())
+    }
+| B_LSQUARE array_elems_ RSQUARE
+    {
+        let ae = List.rev $2 in
+        ExpMkArray(ae, make_new_ctx())
+    }
+| B_LSQUARE CONS complex_exp COMMA exp_list RSQUARE
+    {
+        let l = List.rev ($3 :: $5) in
+        let e0 = ExpLit(LitNil, (make_new_typ(), curr_loc_n 6)) in
+        List.fold_left (fun e i -> make_bin_op(OpCons, i, e)) e0 l
+    }
 | simple_exp LPAREN exp_list RPAREN
     %prec fcall_prec
     { ExpCall($1, $3, make_new_ctx()) }
 | simple_exp LSQUARE idx_list_ RSQUARE
     %prec lsquare_prec
     { ExpAt($1, (List.rev $3), make_new_ctx()) }
+| simple_exp LBRACE id_exp_list_ RBRACE
+    %prec fcall_prec
+    { ExpMkRecord($1, (List.rev $3), make_new_ctx()) }
+| simple_exp LBRACE RBRACE
+    %prec fcall_prec
+    { ExpMkRecord($1, [], make_new_ctx()) }
+
+for_flags:
+| PARALLEL { [ForParallel] }
+| /* empty */ { [] }
 
 complex_exp:
 | IF B_LPAREN exp_or_block RPAREN exp_or_block ELSE exp_or_block { ExpIf ($3, $5, $7, make_new_ctx()) }
 | IF B_LPAREN exp_or_block RPAREN exp_or_block { ExpIf ($3, $5, ExpNop(TypVoid, curr_loc_n 5), make_new_ctx()) }
 | TRY exp_or_block CATCH LBRACE BAR pattern_matching_clauses_ RBRACE { ExpTryCatch ($2, (List.rev $6), make_new_ctx()) }
+| MATCH B_LPAREN exp_list_ RPAREN LBRACE BAR pattern_matching_clauses_ RBRACE
+    {
+        let e = (match $3 with
+        | e :: [] -> e
+        | l -> ExpMkTuple(l, (make_new_typ(), (curr_loc_n 3)))) in
+        ExpMatch (e, (List.rev $7), make_new_ctx())
+    }
 | FOLD fold_clause exp_or_block
     {
-        (* `fold (p=e0; ...) [fold (...) ...] e1`
-              is transformed to
-           `{
-           var acc = e0
-           for (...) [for(...) ...] { val p = acc; acc = e1 }
-           acc
-           }`
-        *)
-        let acc_tp = make_new_typ() in
-        let acc_loc = curr_loc_n 2 (* pat location *) in
-        let acc_id = get_unique_id "acc" true in
-        let acc_ctx = (acc_tp, acc_loc) in
-        let acc_exp = ExpIdent(acc_id, acc_ctx) in
-        let acc_pat = PatIdent(acc_id, acc_loc) in
-        let ((acc_pat0, fold_exp0), fold_cl) = $2 in
-        let acc_decl = DefVal(acc_pat, fold_exp0, [ValMutable], acc_ctx) in
-        let for_body = $3 in
-        let for_body_loc  = get_exp_loc for_body in
-        let acc_expand = DefVal(acc_pat0, acc_exp, [], (acc_tp, for_body_loc)) in
-        let acc_update = ExpBinOp(OpSet, acc_exp, for_body, (TypVoid, for_body_loc)) in
-        let new_for_body = ExpSeq([acc_expand; acc_update], (TypVoid, for_body_loc)) in
-        let for_loc = curr_loc() in
-        let new_for = ExpFor ({ for_cl = fold_cl; for_body = new_for_body }, (TypVoid, for_loc)) in
-        ExpSeq([acc_decl; new_for; acc_exp], (acc_tp, for_loc))
+        let (fold_init_opt, fold_cl) = $2 in
+        ExpFold(fold_init_opt, fold_cl, $3, make_new_ctx())
     }
 | exp { $1 }
 
@@ -280,14 +372,15 @@ exp:
 | exp GREATER exp { make_bin_op(OpCompareGT, $1, $3) }
 | exp GREATER_EQUAL exp { make_bin_op(OpCompareGE, $1, $3) }
 | exp CONS exp { make_bin_op(OpCons, $1, $3) }
+| exp WITH LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
 | B_STAR exp %prec deref_prec { make_un_op(OpDeref, $2) }
 | B_POWER exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
 | REF exp { make_un_op(OpMakeRef, $2) }
 | B_MINUS exp { make_un_op(OpNegate, $2) }
 | B_PLUS exp { make_un_op(OpPlus, $2) }
-| THROW exp { ExpUnOp(OpThrow, $2, (TypErr, curr_loc())) }
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
 | BITWISE_NOT exp { make_un_op(OpBitwiseNot, $2) }
+| EXPAND exp { make_un_op(OpExpand, $2) }
 
 exp_or_block:
 | stmt { $1 }
@@ -308,6 +401,7 @@ literal:
 | TRUE { LitBool true }
 | FALSE { LitBool false }
 | B_LSQUARE RSQUARE { LitNil }
+| NONE { LitNone }
 
 module_name_list_:
 | module_name_list_ COMMA B_IDENT { let i=get_id $3 in (i, i) :: $1 }
@@ -326,6 +420,14 @@ exp_list:
 exp_list_:
 | exp_list_ COMMA complex_exp { $3 :: $1 }
 | complex_exp { $1 :: [] }
+
+array_elems_:
+| array_elems_ SEMICOLON exp_list_ { (List.rev $3) :: $1 }
+| exp_list_ { (List.rev $1) :: [] }
+
+id_exp_list_:
+| id_exp_list_ COMMA B_IDENT EQUAL complex_exp { (get_id $3, $5) :: $1 }
+| B_IDENT EQUAL complex_exp { (get_id $1, $3) :: [] }
 
 op_name:
 | B_PLUS { fname_op_add }
@@ -386,12 +488,16 @@ idx_list_:
 | range_exp { $1 :: [] }
 
 pattern_matching_clauses_:
-| pattern_matching_clauses_ BAR matching_patterns_ DOUBLE_ARROW exp_or_block { ((List.rev $3), $5) :: $1 }
-| matching_patterns_ DOUBLE_ARROW exp_or_block { ((List.rev $1), $3) :: [] }
+| pattern_matching_clauses_ BAR matching_patterns_ DOUBLE_ARROW exp_seq_or_none { ((List.rev $3), $5) :: $1 }
+| matching_patterns_ DOUBLE_ARROW exp_seq_or_none { ((List.rev $1), $3) :: [] }
 
 matching_patterns_:
-| matching_patterns_ BAR simple_pat { $3 :: $1 }
-| simple_pat { $1 :: [] }
+| matching_patterns_ BAR pat { $3 :: $1 }
+| pat { $1 :: [] }
+
+exp_seq_or_none:
+| exp_seq_ { expseq2exp (List.rev $1) 1 }
+| LBRACE RBRACE { expseq2exp [] 1 }
 
 simple_pat:
 | B_IDENT
@@ -407,6 +513,8 @@ simple_pat:
         p :: [] -> p
       | _ -> PatTuple((List.rev $2), curr_loc())
   }
+| LBRACE id_simple_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
+| dot_ident LBRACE id_simple_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident LPAREN simple_pat_list_ RPAREN { PatCtor((get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident IDENT { PatCtor((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
 | simple_pat COLON typespec { PatTyped($1, $3, curr_loc()) }
@@ -419,6 +527,52 @@ simple_pat_list_:
 | simple_pat_list_ COMMA simple_pat { $3 :: $1 }
 | simple_pat { $1 :: [] }
 
+id_simple_pat_list_:
+| id_simple_pat_list_ COMMA id_simple_pat { $3 :: $1 }
+| id_simple_pat { $1 :: [] }
+
+id_simple_pat:
+| B_IDENT EQUAL simple_pat { (get_id $1, $3) }
+| B_IDENT { let n = (get_id $1) in
+            let p = PatIdent(n, curr_loc()) in (n, p) }
+
+pat:
+| B_IDENT
+  {
+      let loc = curr_loc() in
+      match $1 with
+          "_" -> PatAny(loc)
+         | _ -> PatIdent((get_id $1), loc)
+  }
+| literal { PatLit($1, curr_loc()) }
+| B_LPAREN pat_list_ RPAREN
+  {
+      match $2 with
+        p :: [] -> p
+      | _ -> PatTuple((List.rev $2), curr_loc())
+  }
+| pat CONS pat { PatCons($1, $3, curr_loc()) }
+| pat AS B_IDENT { PatAs($1, (get_id $3), curr_loc()) }
+| dot_ident LBRACE id_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
+| LBRACE id_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
+| dot_ident LPAREN pat_list_ RPAREN { PatCtor((get_id $1), (List.rev $3), curr_loc()) }
+| dot_ident IDENT { PatCtor((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
+| dot_ident literal { PatCtor((get_id $1), [PatLit($2, (curr_loc_n 2))], curr_loc()) }
+| pat COLON typespec { PatTyped($1, $3, curr_loc()) }
+
+pat_list_:
+| pat_list_ COMMA pat { $3 :: $1 }
+| pat { $1 :: [] }
+
+id_pat_list_:
+| id_pat_list_ COMMA id_pat { $3 :: $1 }
+| id_pat { $1 :: [] }
+
+id_pat:
+| B_IDENT EQUAL pat { (get_id $1, $3) }
+| B_IDENT { let n = (get_id $1) in
+            let p = PatIdent(n, curr_loc()) in (n, p) }
+
 val_spec_list_:
 | VAL { [] }
 | VAR { ValMutable :: [] }
@@ -429,10 +583,31 @@ val_decls_:
 
 val_decl:
 | simple_pat EQUAL exp_or_block { ($1, $3, make_new_ctx()) }
+| FOLD fold_clause exp_or_block
+    {
+        let (fold_init_opt, fold_cl) = $2 in
+        let p = (match fold_init_opt with
+        | Some((p, e0)) -> p
+        | None -> raise (SyntaxError ("syntax error: missing initialization part in 'val fold' definition",
+            (Parsing.rhs_start_pos 2), (Parsing.rhs_end_pos 2)))) in
+        (p, ExpFold(fold_init_opt, fold_cl, $3, make_new_ctx()), make_new_ctx())
+    }
 
 fun_decl_start:
+| fun_flags_ FUN B_IDENT { ((List.rev $1), get_id $3) }
 | FUN B_IDENT { ([], get_id $2) }
+| fun_flags_ OPERATOR op_name { ((List.rev $1), $3) }
 | OPERATOR op_name { ([], $2) }
+
+fun_flags_:
+| fun_flags_ fun_flag { $2 :: $1 }
+| fun_flag { $1 :: [] }
+
+fun_flag:
+| INLINE { FunInline }
+| NOTHROW { FunNoThrow }
+| PURE { FunPure }
+| STATIC { FunStatic }
 
 fun_args:
 | lparen simple_pat_list RPAREN opt_typespec { ($2, $4, []) }
@@ -441,13 +616,57 @@ opt_typespec:
 | COLON typespec { $2 }
 | /* empty */ { make_new_typ() }
 
-typedef_lhs:
-| TYPE B_LPAREN tyvar_list_ RPAREN ident { ((List.rev $3), (get_id $5)) }
-| TYPE ident { ([], (get_id $2)) }
+type_lhs:
+| B_LPAREN tyvar_list_ RPAREN ident { ((List.rev $2), (get_id $4)) }
+| TYVAR ident { ((get_id $1) :: [], (get_id $2)) }
+| ident { ([], (get_id $1)) }
 
 tyvar_list_:
 | tyvar_list_ COMMA TYVAR { (get_id $3) :: $1 }
 | TYVAR { (get_id $1) :: [] }
+
+implemented_ifaces:
+| INTERFACE dot_ident_list_ { List.rev $2 }
+| /* empty */ { [] }
+
+dot_ident_list_:
+| dot_ident_list_ COMMA dot_ident { (get_id $3) :: $1 }
+| dot_ident { (get_id $1) :: [] }
+
+constr_args:
+| lparen simple_pat_list RPAREN { $2 }
+| /* empty */ { [] }
+
+class_members:
+| class_members_ { List.rev $1 }
+| class_members_ SEMICOLON { List.rev $1 }
+
+class_members_:
+| class_members_ decl { (List.rev $2) @ $1 }
+| class_members_ SEMICOLON decl { (List.rev $3) @ $1 }
+| decl { List.rev $1 }
+
+base_iface:
+| EXTENDS dot_ident { get_id $2 }
+| /* empty */ { noid }
+
+iface_members:
+| iface_members_ { List.rev $1 }
+| iface_members_ SEMICOLON { List.rev $1 }
+
+iface_members_:
+| iface_members_ iface_decl { $2 :: $1 }
+| iface_members_ SEMICOLON iface_decl { $3 :: $1 }
+
+iface_decl:
+| simple_type_decl { $1 }
+| exception_decl { $1 }
+| fun_decl_start fun_args
+    {
+        let (flags, fname) = $1 in
+        let (args, rt, _) = $2 in
+        DefFun (ref (make_deffun fname args rt (ExpNop(TypVoid, curr_loc_n 1)) flags (curr_loc())))
+    }
 
 typespec:
 | typespec_nf { $1 }
@@ -493,6 +712,7 @@ typespec_nf:
 | typespec_nf REF_TYPE
 %prec ref_type_prec
 { TypRef($1) }
+| LBRACE id_typ_list_ RBRACE { TypRecord(List.rev $2) }
 
 typespec_list_:
 | typespec_list_ COMMA typespec { $3 :: $1 }
@@ -500,7 +720,7 @@ typespec_list_:
 
 shapespec:
 | shapespec COMMA { $1 + 1 }
-| /* empty */ { 0 }
+| /* empty */ { 1 }
 
 dot_ident:
 | B_IDENT { $1 }
@@ -509,6 +729,22 @@ dot_ident:
 nobreak_dot_ident:
 | nobreak_dot_ident DOT ident { $1 ^ "." ^ $3 }
 | IDENT { $1 }
+
+id_typ_list_:
+| id_typ_list_ SEMICOLON id_typ_elem { $3 :: $1 }
+| id_typ_elem { $1 :: [] }
+
+id_typ_elem:
+| B_IDENT COLON typespec { (get_id $1, $3, None) }
+| B_IDENT COLON typespec EQUAL literal { (get_id $1, $3, Some($5)) }
+
+variant_elems_:
+| variant_elems_ BITWISE_OR variant_elem { $3 :: $1 }
+| variant_elem { $1 :: [] }
+
+variant_elem:
+| B_IDENT COLON typespec { ($1, $3) }
+| B_IDENT { ($1, TypVoid) }
 
 lparen:
 | B_LPAREN { 0 }

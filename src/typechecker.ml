@@ -66,7 +66,8 @@ let raise_typecheck_err loc msg =
     raise err
 
 (*
-  Try to match (i.e. unify) two types, possibly indirectly represented or unknown/undefined.
+  Try to match (i.e. unify) two types,
+  possibly indirectly represented or unknown/undefined.
   We use slightly extended type unification algorithm from min-caml.
   In fact, it's [almost] canonical type unification algorithm
   using so-called destructive unification. The only difference from
@@ -74,7 +75,7 @@ let raise_typecheck_err loc msg =
   changes in unify_undo_stack, so that we can restore all the
   unsuccessfully matched types. Why do we need to recover from
   the unsuccessful unification?
-  Because Ficus allows overloaded functions, so that we
+  This is because Ficus allows overloaded functions, so that we
   should iterate through a list of candidates and
   try to unify them one by one with the searched type.
   We only throw a type unification error
@@ -446,6 +447,31 @@ let rec check_exp e env sc =
           * loop body should be unified with "void"
           * the whole loop should be unified with "void" as well
         *)
+    | ExpFold()
+        (* `fold (p=e0; ...) [fold (...) ...] e1`
+              is transformed to
+           `{
+           var acc = e0
+           for (...) [for(...) ...] { val p = acc; acc = e1 }
+           acc
+           }`
+        *)
+        let acc_tp = make_new_typ() in
+        let acc_loc = curr_loc_n 2 (* pat location *) in
+        let acc_id = get_unique_id "acc" true in
+        let acc_ctx = (acc_tp, acc_loc) in
+        let acc_exp = ExpIdent(acc_id, acc_ctx) in
+        let acc_pat = PatIdent(acc_id, acc_loc) in
+        let ((acc_pat0, fold_exp0), fold_cl) = $2 in
+        let acc_decl = DefVal(acc_pat, fold_exp0, [ValMutable], acc_ctx) in
+        let for_body = $3 in
+        let for_body_loc  = get_exp_loc for_body in
+        let acc_expand = DefVal(acc_pat0, acc_exp, [], (acc_tp, for_body_loc)) in
+        let acc_update = ExpBinOp(OpSet, acc_exp, for_body, (TypVoid, for_body_loc)) in
+        let new_for_body = ExpSeq([acc_expand; acc_update], (TypVoid, for_body_loc)) in
+        let for_loc = curr_loc() in
+        let new_for = ExpFor ({ for_cl = fold_cl; for_body = new_for_body }, (TypVoid, for_loc)) in
+        ExpSeq([acc_decl; new_for; acc_exp], (acc_tp, for_loc))
     | ExpTryCatch(try_e, handlers, _)
         (* [TODO] check try_e, check handlers, check that each handlers branch is unified with try_e;
            the overall trycatch should also be unified with try_e *)

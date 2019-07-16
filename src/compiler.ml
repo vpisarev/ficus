@@ -126,4 +126,4 @@ let process_all fname0 =
         true
     with
     | Failure msg -> print_string msg; false
-    | e -> false
+    | e -> (Printf.printf "\n\nException %s occured" (Printexc.to_string e)); false

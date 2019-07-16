@@ -117,14 +117,23 @@ let pprint_templ_args tt = match tt with
         (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pprint_id t) tt);
         pstr ")"
 
+let pprint_for_flags flags =
+    match flags with
+    | [] -> ()
+    | _ -> pstr "<"; (List.iter (fun f ->
+        pstr (match f with
+        | ForParallel -> "PARALLEL, "
+        | ForUnzip -> "UNZIP, "
+        | _ -> "")) flags); pstr ">"; pspace()
+
 let rec pprint_exp e =
     let t = get_exp_type e in
     let obox_cnt = ref 0 in
     let obox_() = obox(); pstr "<"; pptype_ t TypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
-    let pphandlers pe_l = (List.iter (fun (pl, e) ->
+    let pphandlers pe_l = pstr "{"; pcut(); obox(); (List.iter (fun (pl, e) ->
             (List.iter (fun p -> pspace(); pstr "|"; pspace(); pprint_pat p) pl);
-            pspace(); pstr "=>"; pspace(); obox(); pprint_exp_as_seq e; cbox()) pe_l); pspace(); pstr "END" in
+            pspace(); pstr "=>"; pspace(); pprint_exp_as_seq e) pe_l); pcut(); cbox(); pstr "}" in
     match e with
     | DefVal(p, e0, vflags, _) -> obox(); (List.iter (fun vf -> match vf with
         | ValMutable -> pstr "MUTABLE"; pspace()
@@ -136,7 +145,9 @@ let rec pprint_exp e =
         (obox(); (List.iter (fun ff -> match ff with
                     | FunPure -> pstr "PURE"; pspace()
                     | FunImpure -> pstr "IMPURE"; pspace()
+                    | FunInline -> pstr "INLINE"; pspace()
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
+                    | FunStatic -> pstr "STATIC"; pspace()
                     | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();
         pstr "("; pcut(); obox();
@@ -145,24 +156,26 @@ let rec pprint_exp e =
         pspace(); pstr ":"; pspace(); pprint_type df_rt; pspace();
         pstr "="; pspace(); pprint_exp df_body; cbox())
     | DefExn { contents = {dexn_name; dexn_tp } } ->
-        pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
+        obox(); pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
         (match dexn_tp with
         | TypVoid -> ()
-        | _ -> pspace(); pstr "OF"; pspace(); pprint_type dexn_tp)
+        | _ -> pspace(); pstr "OF"; pspace(); pprint_type dexn_tp); cbox()
     | DefType { contents = {dt_name; dt_templ_args; dt_body }} ->
-        pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
-        pspace(); pstr "="; pspace(); pprint_type dt_body
+        obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
+        pspace(); pstr "="; pspace(); pprint_type dt_body; cbox()
     | DirImport(ml, _) -> pstr "IMPORT"; pspace();
-        (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;
-                    if n1 = n2 then () else (pspace(); pstr "AS"; pspace(); pprint_id n2)) ml)
+        obox(); (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;
+                    if n1 = n2 then () else (pspace(); pstr "AS"; pspace(); pprint_id n2)) ml); cbox()
     | DirImportFrom(m, nl, _) ->
-        pstr "FROM"; pspace(); pprint_id m; pspace(); pstr "IMPORT"; pspace();
+        obox(); pstr "FROM"; pspace(); pprint_id m; pspace(); pstr "IMPORT"; pspace();
         (match nl with
         | [] -> pstr "*"
-        | _ -> List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) nl)
-    | ExpSeq(el, _) -> pprint_expseq el "LET"
+        | _ -> List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) nl); cbox()
+    | ExpSeq(el, _) -> pprint_expseq el true
     | _ -> obox_(); (match e with
-        | ExpNop(_) -> pstr "PASS"
+        | ExpNop(_) -> pstr "{}"
+        | ExpBreak(_) -> pstr "BREAK"
+        | ExpContinue(_) -> pstr "CONTINUE"
         | ExpRange(e1_opt, e2_opt, e3_opt, _) ->
             pstr "(";
             (match e1_opt with
@@ -185,58 +198,102 @@ let rec pprint_exp e =
             let ostr = unop_to_string o in
             pstr "("; pstr ostr; pspace(); pprint_exp e1; pstr ")"
         | ExpMkTuple(el, _) ->
-            pstr "("; obox(); (List.iteri (fun i e ->
+            pstr "("; obox();
+            (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) el);
-                (match el with
-                e :: [] -> pstr ","
-                | _ -> ()); cbox(); pstr ")"
+            (match el with
+            e :: [] -> pstr ","
+            | _ -> ()); cbox(); pstr ")"
+        | ExpMkRecord(rn, relems, _) ->
+            obox(); pprint_exp rn; pstr "{"; obox();
+            (List.iteri (fun i (n,v) ->
+                if i = 0 then () else (pstr ","; pspace()); pprint_id n; pstr "="; pprint_exp v) relems);
+            cbox(); pstr "}"; cbox()
+        | ExpUpdateRecord(e, relems, _) ->
+            obox(); pprint_exp e; pstr " WITH {"; obox();
+            (List.iteri (fun i (n,v) ->
+                if i = 0 then () else (pstr ","; pspace()); pprint_id n; pstr "="; pprint_exp v) relems);
+            cbox(); pstr "}"; cbox()
+        | ExpMkArray(arows, _) ->
+            obox(); pstr "[";
+            (List.iteri (fun i acols ->
+                if i = 0 then () else (pstr ";"; pspace()); obox();
+                (List.iteri (fun i a -> if i = 0 then () else (pstr ","; pspace()); pprint_exp a) acols);
+                cbox()) arows);
+            pstr "]"; cbox()
         | ExpCall(f, args, _) ->
-            pprint_exp f; pstr "(";
-            obox(); (List.iteri (fun i e ->
+            obox(); pprint_exp f; pstr "(";
+            (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
-            cbox(); pstr ")"
+            pstr ")"; cbox();
         | ExpAt(a, args, _) ->
             pprint_exp a; pstr "[";
             obox(); (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"
         | ExpIf(if_seq, if_then, if_else, _) ->
-            obox(); pstr "IF"; pspace();
-                            pprint_exp if_seq; pspace(); pstr "THEN"; pprint_exp_as_seq if_then; pspace();
-            pstr "ELSE"; pspace(); pprint_exp_as_seq if_else; pspace(); pstr "FI"; cbox()
+            obox(); pstr "IF ("; pprint_exp if_seq; pstr ")"; pspace(); pprint_exp if_then; pspace();
+            pstr "ELSE"; pspace(); pprint_exp if_else; cbox()
         | ExpWhile(c, body, _) ->
-            pstr "WHILE"; pprint_exp c; pspace(); pstr "DO";
-            pspace(); pprint_exp_as_seq e; pspace(); pstr "DONE"
-        | ExpFor ({for_cl; for_body}, _) ->
-            (List.iter (fun pe_l -> pstr "FOR"; pspace();
-                (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr "AND"; pspace());
-                pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e; pspace()) pe_l)) for_cl);
-            pstr "DO"; pspace(); pprint_exp_as_seq for_body; cbox_(); pstr "DONE"
-        | ExpTryCatch(e, pe_l, _) -> pstr "TRY"; pspace(); pprint_exp_as_seq e; pspace();
-                                     pstr "CATCH"; pphandlers pe_l
+            obox(); pstr "WHILE ("; pprint_exp c; pstr ")"; pspace(); pprint_exp body; cbox()
+        | ExpDoWhile(body, c, _) ->
+            obox(); pstr "DO"; pprint_exp body; pspace(); pstr "WHILE ("; pprint_exp c; pstr ")"; cbox()
+        | ExpFor (for_cl, for_body, flags, _) ->
+            obox(); pprint_for_flags flags;
+            pstr "FOR ("; (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
+                pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) for_cl);
+            pstr ")"; pspace(); pprint_exp for_body; cbox()
+        | ExpMap(map_cl, map_body, flags, _) ->
+            obox(); pprint_for_flags flags;
+            pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else ();
+            (List.iter (fun (pe_l, opt_when) -> pstr "FOR ("; (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
+            pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) pe_l);
+            pstr ")"; pspace(); match opt_when with Some(e) -> pstr "WHEN "; pprint_exp e; pspace() | _ -> ()) map_cl);
+            pprint_exp map_body; pstr "]"; cbox()
+        | ExpFold(fold_init_opt, fold_cl, fold_body, _) ->
+            obox(); pstr "FOLD ("; (match fold_init_opt with Some((p0, e0)) -> pprint_pat p0; pstr "="; pprint_exp e0; pstr ";"; pspace() | _ -> ());
+            (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
+            pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) fold_cl);
+            pstr ")"; pspace(); pprint_exp fold_body; cbox()
+        | ExpMatch(e, pe_l, _) ->
+            obox(); pstr "MATCH ("; pprint_exp e; pstr ")"; pspace();
+            pphandlers pe_l; cbox()
+        | ExpTryCatch(e, pe_l, _) ->
+            obox(); pstr "TRY"; pspace(); pprint_exp e; pspace();
+            pstr "CATCH"; pphandlers pe_l; cbox()
         | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_type t; cbox(); pstr ")"
         | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_type t; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
         | _ -> failwith "unknown exp"
         ); cbox_()
 and pprint_exp_as_seq e = match e with
-    | ExpSeq(es, _) -> pprint_expseq es ""
+    | ExpSeq(es, _) -> pprint_expseq es false
     | _ -> pprint_exp e
 and pprint_expseq el braces =
+    if braces then pstr "{" else ();
     ohvbox();
-    (List.iteri (fun i e -> if i=0 then (if braces<> "" then (pstr braces; pspace()) else ()) else (); pprint_exp e; pstr ";"; pcut()) el); cbox();
-    if braces="" then () else pstr "END"
+    (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_exp e) el); cbox();
+    if braces then pstr "}" else ()
 and pprint_pat p = match p with
     | PatAny(_) -> pstr "_"
+    | PatAs(p, n, _) -> pstr "("; pprint_pat p; pspace(); pstr "AS"; pspace(); pprint_id n; pstr ")"
+    | PatLit(c, _) -> pprint_lit c
+    | PatCons(p1, p2, _) -> pstr "("; pprint_pat p1; pspace(); pstr "::"; pspace(); pprint_pat p2; pstr ")"
     | PatIdent(n, _) -> pprint_id n
     | PatTuple(pl, _) -> pstr "("; obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) pl);
         cbox(); pstr ")"
     | PatCtor(n, elems, loc) -> pprint_id n; pprint_pat (PatTuple (elems, loc))
+    | PatRec(n_opt, elems, loc) ->
+        obox(); (match n_opt with Some(n) -> pprint_id n; pspace() | _ -> ()); pstr "{";
+        List.iteri (fun i (n, p) -> if i = 0 then () else (pstr ","; pspace());
+                    pprint_id n; pstr "="; pprint_pat p) elems;
+        pstr "}"; cbox()
     | PatTyped(p, t, _) -> pprint_pat p; pstr ":"; pspace(); pprint_type t
 
 let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     Format.open_vbox 0;
+    pcut();
     pstr dm_filename;
     (match dm_defs with
     | [] -> ()

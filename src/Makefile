@@ -9,6 +9,9 @@ all: native # byte profile debug
 
 clean:
 	$(OCB) -clean
+	@rm -f parser.ml
+	@rm -f parser.mli
+	@rm -f parser.output
 
 native:
 	$(OCB) ficus.native

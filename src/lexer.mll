@@ -18,9 +18,11 @@ let token2str t = match t with
     | CHAR(s) -> sprintf "CHAR(%s)" s
     | TYVAR(s) -> sprintf "TYVAR(%s)" s
     | AS -> "AS"
+    | BREAK -> "BREAK"
     | CATCH -> "CATCH"
     | CCODE -> "CCODE"
     | CLASS -> "CLASS"
+    | CONTINUE -> "CONTINUE"
     | DO -> "DO"
     | ELSE -> "ELSE"
     | EXCEPTION -> "EXCEPTION"
@@ -67,6 +69,7 @@ let token2str t = match t with
     | BAR -> "BAR"
     | CONS -> "CONS"
     | CAST -> "CAST"
+    | EXPAND -> "EXPAND"
     | DOUBLE_ARROW -> "DOUBLE_ARROW"
     | ARROW -> "ARROW"
     | EOF -> "EOF"
@@ -141,8 +144,9 @@ let fname = ref "unknown"
 *)
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
-        ("as", AS, 1); ("catch", CATCH, 1); ("ccode", CCODE, 2); ("class", CLASS, 2); ("do", DO, 2);
-        ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
+        ("as", AS, 1); ("break", BREAK, 0);
+        ("catch", CATCH, 1); ("ccode", CCODE, 2); ("class", CLASS, 2); ("continue", CONTINUE, 0);
+        ("do", DO, 2); ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
         ("false", FALSE, 0); ("fold", FOLD, 4); ("for", FOR, 4); ("from", FROM, 2); ("fun", FUN, 2);
         ("if", IF, 4); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("in", IN, 1);
         ("inline", INLINE, 2); ("interface", INTERFACE, 2);
@@ -166,7 +170,7 @@ let get_token_pos lexbuf = (lexbuf.lex_start_p, lexbuf.lex_curr_p)
 let pos2str pos print_fname =
     let { pos_fname; pos_lnum; pos_bol; pos_cnum } = pos in
     if print_fname then
-        sprintf "%s:%d:%d" pos_fname pos_lnum (pos_cnum - pos_bol + 1)
+        sprintf "%s:%d:%d" (if pos_fname <> "" then pos_fname else !fname) pos_lnum (pos_cnum - pos_bol + 1)
     else
         sprintf "%d:%d" pos_lnum (pos_cnum - pos_bol + 1)
 
@@ -189,10 +193,6 @@ let new_exp = ref true
    DO - wait for WHILE (after optional {})
    CLASS, INTERFACE - wait for {}
    FROM - wait for IMPORT
-   FUN - waiting for {...} or { | ... } or '=' or '=>'.
-       when '=' or '=>' is met, remove FUN from stack
-       when { is met, wait for }.
-       when { | is met, remove FUN from stack, leave { | on the stack
    MATCH - wait for (), then wait for { | ... }.
        when { | is met, remove MATCH from the stack.
    TRY - wait for CATCH (after optional {})
@@ -201,14 +201,6 @@ let new_exp = ref true
    when } is met, remove the corresponding { or { | from stack.
    when '|' is met and { | is on the top, return BAR token.
       otherwise return BITWISE_OR token.
-   when '=>' is met:
-      if 'FUN' :: '(' :: _ are on top, remove 'FUN', put '=>' to stack; that means lambda function
-      otherwise do nothing
-   when '=' is met:
-      if 'FUN' is on top, remove 'FUN'
-      otherwise do nothing
-   when '|' is met:
-      if 'FUN' is on top, remove 'FUN' and put 'WITH'
    when '\n', '\r\n' or '\r' is met and if we are inside (), [], newline is ignored (yet we increment lineno).
    when ')' is met, remove => (if any) and the matching '('.
 *)
@@ -231,10 +223,7 @@ let unmatchedTokenMsg t0 expected_list =
             | (LBRACE, _) :: _ -> ("Unmatched '{'", "")
             | (IF, _) :: _ -> ("Unfinished 'if'", "'()'")
             | (DO, _) :: _ -> ("Unfinished do-while body", "'while'")
-            | (CLASS, _) :: _ -> ("Unfinished class", "'{}'")
-            | (INTERFACE, _) :: _ -> ("Unfinished interface", "'{}'")
             | (FROM, _) :: _ -> ("Unfinished 'from'", "'import'")
-            | (FUN, _) :: _ -> ("Unfinished 'fun'", "function body")
             | (FOLD, _) :: _ -> ("Unfinished 'fold'", "'()'")
             | (FOR, _) :: _ -> ("Unfinished 'for'", "'()'")
             | (WHILE, _) :: _ -> ("Unfinished 'while'", "'()'")
@@ -339,12 +328,11 @@ rule tokens = parse
                 paren_stack := rest; new_exp := true; [RPAREN]
             | (LPAREN, _) :: (FOR, _) :: rest ->
                 paren_stack := rest; new_exp := true; [RPAREN]
+            | (LPAREN, _) :: (MATCH, _) :: rest ->
+                paren_stack := rest; new_exp := true; [RPAREN]
             | (LPAREN, _) :: (WHILE, _) :: rest ->
                 paren_stack := rest; new_exp := true; [RPAREN]
             | (LPAREN, _) :: rest ->
-                paren_stack := rest; new_exp := false; [RPAREN]
-            (* handle lambda functions: (fun () => ...) *)
-            | (DOUBLE_ARROW, _) :: (LPAREN, _) :: rest ->
                 paren_stack := rest; new_exp := false; [RPAREN]
             (* handle string interpolation e.g. "f(x)=\(f(x))" *)
             | (STR_INTERP_LPAREN, _) :: rest ->
@@ -415,11 +403,11 @@ rule tokens = parse
     | ("\'" ? as prefix) ((['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident)
         {
             let (p0, p1) = get_token_pos lexbuf in
-            if prefix <> "" then (check_ne(lexbuf); [TYVAR ("\'" ^ ident)]) else
+            if prefix <> "" then (check_ne(lexbuf); new_exp := false; [TYVAR ("\'" ^ ident)]) else
             (try
                 let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
                 match tokdata with
-                | (DO, _) | (TRY, _) | (IF, _) | (FOLD, _) | (FOR, _) | (FUN, _) | (CLASS, _) | (INTERFACE, _) | (MATCH, _) | (FROM, _) ->
+                | (DO, _) | (TRY, _) | (IF, _) | (FOLD, _) | (FOR, _) | (MATCH, _) | (FROM, _) ->
                     check_ne lexbuf;
                     paren_stack := (tok, p0) :: !paren_stack; new_exp := true; [tok]
                 | (CATCH, _) ->
@@ -475,9 +463,6 @@ rule tokens = parse
     | '='
         {
             new_exp := true;
-            (match !paren_stack with
-            | (FUN, _) :: rest -> paren_stack := rest
-            | _ -> ());
             [EQUAL]
         }
     | "+="  { new_exp := true; [PLUS_EQUAL] }
@@ -502,15 +487,11 @@ rule tokens = parse
     | ';'   { new_exp := true; [SEMICOLON] }
     | ':'   { new_exp := true; [COLON] }
     | "::"  { new_exp := true; [CONS] }
+    | "\\"  { new_exp := true; [EXPAND] }
     | ":>"  { new_exp := true; [CAST] }
     | "=>"
         {
             new_exp := true;
-            let (p0, _) = get_token_pos lexbuf in
-            (match !paren_stack with
-            | (FOR, _) :: rest -> paren_stack := (DOUBLE_ARROW, p0) :: rest
-            | (FUN, _) :: rest -> paren_stack := (DOUBLE_ARROW, p0) :: rest
-            | _ -> ());
             [DOUBLE_ARROW]
         }
     | "->"  { new_exp := true; [ARROW] }
