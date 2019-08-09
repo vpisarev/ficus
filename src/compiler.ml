@@ -112,6 +112,13 @@ let toposort graph =
         in explore [] visited start_node in
     List.fold_left (fun visited (node,_) -> dfs graph visited node) [] graph
 
+let typecheck_all modules =
+    let _ = (Typechecker.typecheck_errs := []) in
+    let _ = (List.iter (fun m -> Typechecker.check_mod m) modules) in
+    let errs = !Typechecker.typecheck_errs in
+    List.iter (fun err -> Typechecker.print_typecheck_err err) errs;
+    errs
+
 let process_all fname0 =
     init();
     try
@@ -119,10 +126,13 @@ let process_all fname0 =
         let graph = Hashtbl.fold (fun mfname m gr ->
             let minfo = get_module m in
             (m, !minfo.dm_deps) :: gr) all_modules [] in
-        sorted_modules := List.rev (toposort graph);
-        Printf.printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules));
+        let _ = (sorted_modules := List.rev (toposort graph)) in
+        let _ = (Printf.printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in
+        let typecheck_errs = typecheck_all !sorted_modules in
+        let errcount = List.length typecheck_errs in
         if not !options.print_ast then () else
         (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules);
+        if errcount != 0 then (Printf.printf "%d errors occured during type checking\n" errcount) else ();
         true
     with
     | Failure msg -> print_string msg; false

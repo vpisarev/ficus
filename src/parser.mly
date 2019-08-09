@@ -47,7 +47,8 @@ let plist2exp args n =
     (plist, expseq2exp elist n)
 
 let make_deffun fname args rt body flags loc =
-    { df_name=fname; df_templ_args=[]; df_args=args; df_rt=rt;
+    let argtp = List.map (fun _ -> make_new_typ()) args in
+    { df_name=fname; df_templ_args=[]; df_args=args; df_typ=TypFun(argtp, rt);
       df_body=body; df_flags=flags; df_scope=ScGlobal :: [];
       df_loc=loc; df_templ_inst=[] }
 
@@ -221,7 +222,7 @@ simple_type_decl:
 | TYPE type_lhs EQUAL typespec
     {
         let (targs, i) = $2 in
-        let dtp = { dt_name=i; dt_templ_args=targs; dt_body=$4; dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
+        let dtp = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
         DefType (ref dtp)
     }
 | TYPE type_lhs EQUAL B_IDENT BITWISE_OR variant_elems_
@@ -240,11 +241,11 @@ simple_type_decl:
 exception_decl:
 | EXCEPTION B_IDENT
     {
-        DefExn(ref { dexn_name=(get_id $2); dexn_tp=TypVoid; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
+        DefExn(ref { dexn_name=(get_id $2); dexn_typ=TypVoid; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
     }
 | EXCEPTION B_IDENT COLON typespec
     {
-        DefExn(ref { dexn_name=(get_id $2); dexn_tp = $4; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
+        DefExn(ref { dexn_name=(get_id $2); dexn_typ = $4; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
     }
 
 stmt:
@@ -712,7 +713,7 @@ typespec_nf:
 | typespec_nf REF_TYPE
 %prec ref_type_prec
 { TypRef($1) }
-| LBRACE id_typ_list_ RBRACE { TypRecord(List.rev $2) }
+| LBRACE id_typ_list_ RBRACE { TypRecord(ref (List.rev $2, false)) }
 
 typespec_list_:
 | typespec_list_ COMMA typespec { $3 :: $1 }

@@ -43,7 +43,6 @@ let rec get_type_pr t = match t with
     | TypApp([], _) -> TypPrBase
     | TypTuple(_) -> TypPrBase
     | TypRecord(_) -> TypPrBase
-    | TypUseRecord(_) -> TypPrBase
     | TypList(_) | TypRef(_) | TypArray(_)
     | TypApp(_, _) | TypOption(_) -> TypPrComplex
     | TypFun(_, _) -> TypPrFun
@@ -92,16 +91,11 @@ let rec pptype_ t p1 =
     | TypApp(t1 :: [], n) -> pptypsuf t1 (pp_id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (pp_id2str n)
     | TypTuple(tl) -> pptypelist_ "(" tl
-    | TypRecord(rec_elems) ->
-            pstr "{"; pcut(); obox();
+    | TypRecord {contents=(rec_elems,decl)} ->
+            pstr "{"; if decl then () else pstr "~"; pcut(); obox();
             (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
                 pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0;
                 match v0_opt with Some(v0) -> pprint_lit v0 | _ -> ()) rec_elems);
-            cbox(); pcut(); pstr "}"
-    | TypUseRecord(rec_elems) ->
-            pstr "{~"; pcut(); obox();
-            (List.iteri (fun i (n,t) -> if i = 0 then () else (pstr ";"; pspace());
-                pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0) rec_elems);
             cbox(); pcut(); pstr "}"
     | TypExn -> pstr "Exn"
     | TypErr -> pstr "Err"
@@ -127,7 +121,7 @@ let pprint_for_flags flags =
         | _ -> "")) flags); pstr ">"; pspace()
 
 let rec pprint_exp e =
-    let t = get_exp_type e in
+    let t = get_exp_typ e in
     let obox_cnt = ref 0 in
     let obox_() = obox(); pstr "<"; pptype_ t TypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
@@ -139,7 +133,7 @@ let rec pprint_exp e =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace(); pprint_exp e0; cbox()
-    | DefFun {contents={df_name; df_templ_args; df_args; df_rt;
+    | DefFun {contents={df_name; df_templ_args; df_args; df_typ;
                 df_body; df_flags; df_templ_inst }} ->
         let fkind = ref "FUN" in
         (obox(); (List.iter (fun ff -> match ff with
@@ -153,16 +147,16 @@ let rec pprint_exp e =
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
         cbox(); pcut(); pstr ")";
-        pspace(); pstr ":"; pspace(); pprint_type df_rt; pspace();
+        pspace(); pstr ":"; pspace(); pprint_type df_typ; pspace();
         pstr "="; pspace(); pprint_exp df_body; cbox())
-    | DefExn { contents = {dexn_name; dexn_tp } } ->
+    | DefExn { contents = {dexn_name; dexn_typ } } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
-        (match dexn_tp with
+        (match dexn_typ with
         | TypVoid -> ()
-        | _ -> pspace(); pstr "OF"; pspace(); pprint_type dexn_tp); cbox()
-    | DefType { contents = {dt_name; dt_templ_args; dt_body }} ->
+        | _ -> pspace(); pstr "OF"; pspace(); pprint_type dexn_typ); cbox()
+    | DefType { contents = {dt_name; dt_templ_args; dt_typ }} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
-        pspace(); pstr "="; pspace(); pprint_type dt_body; cbox()
+        pspace(); pstr "="; pspace(); pprint_type dt_typ; cbox()
     | DirImport(ml, _) -> pstr "IMPORT"; pspace();
         obox(); (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;
                     if n1 = n2 then () else (pspace(); pstr "AS"; pspace(); pprint_id n2)) ml); cbox()

@@ -67,6 +67,7 @@ let dummyid = Id.Name(1, 1)
   (however, the type checker is very inexpensive compiler stage, even in "-O0" compile mode)
 *)
 module Env = Map.Make(Id)
+type env_t = id_t list Env.t
 
 (*
    Scope of the definition
@@ -95,8 +96,8 @@ type lit_t =
     | LitNone
 
 (* type of an expression *)
-type type_t =
-    | TypVar of type_t option ref (* this is for type unification.
+type typ_t =
+    | TypVar of typ_t option ref (* this is for type unification.
                         Initially most expressions are given TypeVar (ref None) type,
                         and during type unification we
                         equalize types by redirecting those references to
@@ -110,24 +111,23 @@ type type_t =
     | TypChar
     | TypBool
     | TypVoid
-    | TypFun of type_t list * type_t (* unlike some classical ML languages, we initially let
+    | TypFun of typ_t list * typ_t (* unlike some classical ML languages, we initially let
                                           functions to have multiple arguments, not just one *)
-    | TypList of type_t
-    | TypTuple of type_t list
-    | TypRef of type_t
-    | TypOption of type_t
-    | TypArray of int * type_t
-    | TypRecord of (id_t * type_t * lit_t option) list
-    | TypUseRecord of (id_t * type_t) list
+    | TypList of typ_t
+    | TypTuple of typ_t list
+    | TypRef of typ_t
+    | TypOption of typ_t
+    | TypArray of int * typ_t
+    | TypRecord of ((id_t * typ_t * lit_t option) list * bool) ref
     | TypExn
     | TypErr (* a thrown exception; can be unified with any other type (except for declaration) *)
     | TypCPointer (* smart pointer to a C structure; we use it for file handlers, mutexes etc. *)
-    | TypApp of type_t list * id_t (* a generic type instance or a type alias (when type_t list is empty) *)
+    | TypApp of typ_t list * id_t (* a generic type instance or a type alias (when typ_t list is empty) *)
     | TypDecl (* since declarations are also expressions, they should have some type;
                  and this is not "void" by the way *)
     | TypModule
 
-let make_new_typ () = TypVar (ref (None: type_t option))
+let make_new_typ () = TypVar (ref (None: typ_t option))
 
 type bin_op_t =
       OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
@@ -141,7 +141,7 @@ type val_flag_t = ValArg | ValMutable
 type func_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic
 type variant_flag_t = VariantRecursive | VariantSimpleLabel of int
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
-type ctx_t = type_t * loc_t
+type ctx_t = typ_t * loc_t
 
 type exp_t =
     | ExpNop of ctx_t (* empty expression {} *)
@@ -167,13 +167,13 @@ type exp_t =
     | ExpFold of (pat_t * exp_t) option * (pat_t * exp_t) list * exp_t * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
-    | ExpCast of exp_t * type_t * ctx_t
-    | ExpTyped of exp_t * type_t * ctx_t
+    | ExpCast of exp_t * typ_t * ctx_t
+    | ExpTyped of exp_t * typ_t * ctx_t
     | ExpCCode of string * ctx_t
     | DefVal of pat_t * exp_t * val_flag_t list * ctx_t
     | DefFun of deffun_t ref
     | DefExn of defexn_t ref
-    | DefType of deftype_t ref
+    | DefType of deftyp_t ref
     | DefVariant of defvariant_t ref
     | DefClass of defclass_t ref
     | DefInterface of defiface_t ref
@@ -188,27 +188,27 @@ and pat_t =
     | PatRec of id_t option * (id_t * pat_t) list * loc_t
     | PatCons of pat_t * pat_t * loc_t
     | PatAs of pat_t * id_t * loc_t
-    | PatTyped of pat_t * type_t * loc_t
-and defval_t = { dv_name: id_t; dv_type: type_t; dv_flags: val_flag_t list; dv_scope: scope_t list; dv_loc: loc_t }
-and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_rt: type_t;
+    | PatTyped of pat_t * typ_t * loc_t
+and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list; dv_scope: scope_t list; dv_loc: loc_t }
+and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
                  df_body: exp_t; df_flags: func_flag_t list; df_scope: scope_t list; df_loc: loc_t;
                  mutable df_templ_inst: id_t list }
-and defexn_t = { dexn_name: id_t; dexn_tp: type_t; dexn_scope: scope_t list; dexn_loc: loc_t }
-and deftype_t = { dt_name: id_t; dt_templ_args: id_t list;
-                  dt_body: type_t; dt_scope: scope_t list; dt_loc: loc_t }
+and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
+and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list;
+                  dt_typ: typ_t; dt_scope: scope_t list; dt_loc: loc_t }
 and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_flags: variant_flag_t list;
-                     dvar_members: (id_t * type_t) list; dvar_constr: id_t list;
+                     dvar_members: (id_t * typ_t) list; dvar_constr: id_t list;
                      mutable dvar_templ_inst: id_t list; dvar_scope: scope_t list; dvar_loc: loc_t }
 and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_ifaces: id_t list; dcl_args: pat_t list;
                    dcl_members: exp_t list; mutable dcl_templ_inst: id_t list; dcl_scope: scope_t list; dcl_loc: loc_t }
 and defiface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
 and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
-                    mutable dm_deps: id_t list; mutable dm_env: id_t list Env.t;
+                    mutable dm_deps: id_t list; mutable dm_env: env_t;
                     mutable dm_parsed: bool }
 
 type id_info_t =
     | IdNone | IdText of string | IdVal of defval_t | IdFun of deffun_t ref
-    | IdExn of defexn_t ref | IdType of deftype_t ref | IdVariant of defvariant_t ref
+    | IdExn of defexn_t ref | IdType of deftyp_t ref | IdVariant of defvariant_t ref
     | IdClass of defclass_t ref | IdInterface of defiface_t ref | IdModule of defmodule_t ref
 
 let all_nids = ref 0
@@ -233,8 +233,9 @@ let id2str_ i pp =
     let (tempid, prefix, suffix) = match i with Id.Name(i_name, i_real) -> (false, i_name, i_real)
                             | Id.Temp(i_prefix, i_real) -> (true, i_prefix, i_real) in
     let s = (match (!all_ids).(prefix) with
-      IdText(s) -> s
-    | _ -> failwith (Printf.sprintf "The first element of id=%s does not represent a string\n" (dump_id i))) in
+        | IdText(s) -> s
+        | _ -> failwith (Printf.sprintf
+            "The first element of id=%s does not represent a string\n" (dump_id i))) in
     if tempid then (Printf.sprintf "%s@@%d" s suffix) else if pp || prefix = suffix then s else (Printf.sprintf "%s@%d" s suffix)
 
 let id2str i = id2str_ i false
@@ -245,7 +246,7 @@ let id_info i = (!all_ids).(id2idx i)
 let get_id_ s =
     let idx =
     (match Hashtbl.find_all all_strings s with
-      x :: _ -> x
+    | x :: _ -> x
     | _ -> let i = new_id_idx() in
             (Hashtbl.add all_strings s i;
             (!all_ids).(i) <- IdText(s);
@@ -311,7 +312,7 @@ let get_exp_ctx e = match e with
     | DirImport(_, l) -> (TypDecl, l)
     | DirImportFrom(_, _, l) -> (TypDecl, l)
 
-let get_exp_type e = let (t, l) = (get_exp_ctx e) in t
+let get_exp_typ e = let (t, l) = (get_exp_ctx e) in t
 let get_exp_loc e = let (t, l) = (get_exp_ctx e) in l
 
 let get_module m =
@@ -438,11 +439,13 @@ let get_binop_fname bop =
     | OpCompareLE -> fname_op_le
     | OpCompareGT -> fname_op_gt
     | OpCompareGE -> fname_op_ge
-    | _ -> failwith (Printf.sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
+    | OpLogicAnd | OpLogicOr | OpCons | OpMem | OpSet ->
+        failwith (Printf.sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
 
 let get_unop_fname uop =
     match uop with
     | OpPlus -> fname_op_plus
     | OpNegate -> fname_op_negate
     | OpBitwiseNot -> fname_op_bit_not
-    | _ -> failwith (Printf.sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
+    | OpLogicNot | OpMakeRef | OpDeref | OpThrow | OpExpand ->
+        failwith (Printf.sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))

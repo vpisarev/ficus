@@ -5,6 +5,11 @@
 *)
 open Syntax
 
+let rec last_elem l = match l with
+    | x :: [] -> x
+    | x :: rest -> last_elem rest
+    | [] -> failwith "empty list"
+
 let starts_with s subs =
     let l0 = String.length s in
     let l1 = String.length subs in
