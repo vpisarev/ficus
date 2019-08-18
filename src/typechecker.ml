@@ -40,23 +40,24 @@ These are the tasks performed by type checker:
 Implementation plan:
 
 + raise_typecheck_err()
-+ type unification
-+ walk_exp, walk_expv, ...
++/- type unification (extend it to handle all the types,
+    maybe except for classes and interfaces for now)
++ walk_exp, ...
 + make sure record types are handled properly (add ref)
 +/- check_exp
-- check_seq
++ check_eseq
 - add_typ_to_env, add_to_env
-- lookup_typ, lookup
++/- lookup_typ, lookup
 - check_deffun
-- check_defexn
-- check_deftype
-- check_pattern (with issimple flag)
-- check_typespec
-- directive handling (add the corresponding module(s) or module content to env)
-- instantiate_func
-- instantiate_type
-- check_exn
++ check_defexn
+- check_deftyp
 - check_defvariant
+- check_pattern (with issimple flag)
++ check_typ
++ check_directives (i.e. import directives for now)
+- instantiate_fun
+- instantiate_type
+- instantiate_variant
 - handle intrinsic functions/operators
 - run it all together
 *)
@@ -65,23 +66,45 @@ exception TypeCheckError of loc_t * string
 
 let typecheck_errs = ref ([]: exn list)
 
-let raise_typecheck_err loc msg =
-    let whole_msg = Printf.sprintf "%s: %s\n" (loc2str loc) msg in
-    let err = TypeCheckError(loc, whole_msg) in
+let fname_always_import =
+[
+    fname_op_add; fname_op_sub; fname_op_mul;
+    fname_op_div; fname_op_mod; fname_op_pow; fname_op_shl; fname_op_shr;
+    fname_op_bit_and; fname_op_bit_or; fname_op_bit_xor; fname_op_eq;
+    fname_op_ne; fname_op_lt; fname_op_gt; fname_op_le; fname_op_gt;
+    
+    fname_op_plus; fname_op_negate; fname_op_bit_not;
+
+    fname_to_int; fname_to_uint8; fname_to_int8; fname_to_uint16; fname_to_int16;
+    fname_to_uint32; fname_to_int32; fname_to_uint64; fname_to_int64;
+    fname_to_float; fname_to_double; fname_to_bool; fname_to_string
+]
+
+let raise_typecheck_err_ err =
     typecheck_errs := err :: !typecheck_errs;
     raise err
+
+let raise_typecheck_err loc msg =
+    let whole_msg = sprintf "%s: %s\n" (loc2str loc) msg in
+    let err = TypeCheckError(loc, whole_msg) in
+    raise_typecheck_err_ err
 
 let pop_typecheck_err loc =
     match !typecheck_errs with
     | _ :: rest -> typecheck_errs := rest
     | _ -> raise_typecheck_err loc "attempt to pop non-existing typecheck error"
 
+let check_typecheck_errs () =
+    match !typecheck_errs with
+    | err :: _ -> raise err
+    | _ -> ()
+
 let print_typecheck_err err =
     match err with
     (* error message has been formatted already in raise_typecheck_err(); just print it *)
     | TypeCheckError(_, msg) -> print_string msg
     | Failure msg -> print_string msg
-    | _ -> Printf.printf "\n\nException %s occured" (Printexc.to_string err)
+    | _ -> printf "\n\nException %s occured" (Printexc.to_string err)
 
 type 'x ast_callb_t =
 {
@@ -233,8 +256,8 @@ and walk_exp e callb =
         e)
     | DefClass(dc) -> (* [TODO] *) e
     | DefInterface(di) -> (* [TODO] *) e
-    | DirImport _ -> e
-    | DirImportFrom _ -> e)
+    | DirImport (_, _, _) -> e
+    | DirImportFrom (_, _, _) -> e)
 
 and walk_pat p callb =
     let walk_typ_ t = check_n_walk_typ t callb in
@@ -282,14 +305,19 @@ let maybe_unify t1 t2 update_refs =
     let rec occurs r1 t2 =
         (match t2 with
         | TypFun(args2, rt2) -> List.exists (occurs r1) args2 || occurs r1 rt2
-        | TypList(et2) -> occurs r1 et2
+        | TypList(t2_) -> occurs r1 t2_
         | TypTuple(tl2) -> List.exists (occurs r1) tl2
-        | TypRef(drt2) -> occurs r1 drt2
+        | TypRef(t2_) -> occurs r1 t2_
         | TypArray(_, et2) -> occurs r1 et2
+        | TypOption(t2_) -> occurs r1 t2_
+        | TypRecord({ contents = (relems2, _) }) ->
+            List.exists (fun (_, t, _) -> occurs r1 t) relems2
         | TypVar(r2) when r1 == r2 -> true
         | TypVar({ contents = None }) -> false
         | TypVar({ contents = Some(t2_) }) -> occurs r1 t2_
-        | _ -> false) in
+        | TypApp(tl2, _) -> List.exists (occurs r1) tl2
+        | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypString | TypChar
+        | TypBool | TypVoid | TypExn | TypErr | TypCPointer | TypDecl | TypModule -> false) in
     let rec maybe_unify_ t1 t2 =
         (match (t1, t2) with
         (* a type should be unified successfully with itself *)
@@ -406,7 +434,7 @@ let coerce_types t1 t2 allow_tuples allow_fp =
     | _ -> failwith "the types cannot be implicitly coerced; use explicit type cast"
     in try Some(coerce_types_ t1_ t2_) with Failure _ -> None
 
-let find_all_ids n env =
+let find_all n env =
     match Env.find_opt n env with
     | Some(l) -> l
     | _ -> []
@@ -427,21 +455,54 @@ let get_eseq_typ eseq =
     | [] -> TypVoid
     | _ -> get_exp_typ(Utils.last_elem eseq)
 
-let lookup_id n env loc =
-    let rec lookup_ ids =
-        (match ids with
-        | i :: rest ->
-            (match id_info i with
+let rec find_first n env loc pred =
+    let rec find_next_ elist =
+        (match elist with
+        | entry :: rest ->
+            (match pred of
+            | Some(res) -> res
+            | _ -> find_next_ rest)
+        | _ -> raise_typecheck_err loc (sprintf "%s not found" (pp_id2str n)))
+    in find_next_ (find_all n env)
+
+let rec lookup_id n env t loc =
+    let rec find_next_ elist =
+        (match elist with
+        | entry :: rest ->
+            (match pred of
+            | Some(res) -> res
+            | _ -> find_next_ rest)
+            (* match id_info i with
             | IdVal { dv_typ } -> (i, dv_typ)
             | IdFun {contents={ df_typ }} -> (i, df_typ)
             | IdModule _ -> (i, TypModule)
             | IdExn {contents={ dexn_typ }} -> (i, typ2constr dexn_typ TypExn)
             | IdNone | IdText _ | IdType _ | IdVariant _
-            | IdClass _ | IdInterface _ -> lookup_ rest)
-        | _ -> raise_typecheck_err loc (Printf.sprintf "%s not found" (pp_id2str n)))
+            | IdClass _ | IdInterface _ -> lookup_ rest *)
+        | _ -> raise_typecheck_err loc (sprintf "%s not found" (pp_id2str n)))
     in lookup_ (find_all_ids n env)
 
-let rec check_exp e env sc =
+and add_to_env key i env check_duplicates loc =
+    let entries = find_all key env in
+    let entries = List.filter (fun j ->
+        match (j, i) with
+        | (EnvId(j), EnvId(i)) -> j != i
+        | _ -> true) entries in
+    Env.add key (i::entries) env
+
+and match_ty_templ_args ty_args templ_args env def_loc inst_loc =
+    let n_ty_args = List.length ty_args in
+    let n_templ_args = List.length templ_args in
+    let norm_ty_args = (match (actual_ty_args, n_ty_args, n_templ_args) with
+        | (_, m, n) when m = n -> ty_args
+        | (TypTuple(tl) :: [], 1, n) when (List.length tl) = n -> tl
+        | (_, m, 1) -> TypTuple(ty_args) :: []
+        | _ -> raise_typecheck_err inst_loc
+        (sprintf "the number of actual type parameters and formal type parameters, as declared at\n\t%s,\n\tdo not match"
+        (loc2str def_loc))) in
+    List.fold_left2 (fun env n t -> add_to_env n t env false inst_loc) env templ_args norm_ty_args in
+
+and check_exp e env sc =
     let (etyp, eloc) as ctx = get_exp_ctx e in
     match e with
     | ExpNop(_) -> unify etyp TypVoid eloc "nop must have void type"; ExpNop(ctx)
@@ -461,6 +522,7 @@ let rec check_exp e env sc =
         ExpRange(new_e1_opt, new_e2_opt, new_e3_opt, ctx)
     | ExpLit(lit, _) -> unify etyp (get_lit_type lit) eloc "the literal has improper type"; e
     | ExpIdent(n, _) ->
+        (* [TODO] change lookup_id to take the type and look for the identifier of the specific type *)
         let (n, t) = lookup_id n env eloc in
         unify etyp t eloc "the indentifier has improper type";
         ExpIdent(n, ctx)
@@ -531,7 +593,7 @@ let rec check_exp e env sc =
 
             (* [TODO] comparison operations should be autogenerated for any pair of equal types:
             tuples and records must be compared lexicographically
-            (where record fields are ordered as in the definition, but by names),
+            (where record fields are ordered by the declaration order, not by names),
             lists, strings and arrays - lexicographically as well,
             variants - using the tag precedence
             maybe references and cpointers - by address,
@@ -569,7 +631,7 @@ let rec check_exp e env sc =
 
         (match typ_opt with
         | Some(typ) ->
-            unify typ etyp eloc "improper type of arithmetic operation";
+            unify typ etyp eloc "improper type of the arithmetic operation result";
             ExpBinOp(bop, new_e1, new_e2, ctx)
         | _ ->
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.
@@ -577,29 +639,35 @@ let rec check_exp e env sc =
             let f_id = get_binop_fname bop in
             check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1; new_e2], ctx)) env sc)
     | ExpUnOp(uop, e1, _) ->
-        (*
-          [TODO]
-          check e1;
-          then proceed depending on the op:
-
-          OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow
-
-          - - check that the argument is a number or a tuple of signed numbers.
-              find out the result type by coercing arg type with itself.
-          ~ - check that the argument is a number/bool or a tuple of numbers/bool's.
-              the result will have the same type.
-          ! - check that the argument is bool. the result will have type bool.
-          ref - unify arg type with et = TypVar(ref None). unify exp type with TypRef(et).
-          * (deref) - unify arg type with TypRef(etyp).
-          throw - do not unify etyp with anything, leave it as-is.
-        *)
-        raise_typecheck_err eloc "unsupported op"
+        let new_e1 = check_exp e1 env sc in
+        let (etyp1, eloc1) = get_exp_ctx new_e1 in
+        
+        (match uop with
+        | OpNegate ->
+            let t_opt = coerce_types etyp1 etyp1 true true in
+            (match t_opt with
+            | Some(t) ->
+                unify etyp t eloc "improper type of the unary '-' operator result";
+                ExpUnOp(uop, new_e1, ctx)
+            | None ->
+                let f_id = get_unop_fname uop in
+                check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1], ctx)) env sc)
+        | OpBitwiseNot -> ...
+        | OpLogicNot ->
+            unify etyp1 TypBool eloc1 "the argument of ! operator must be a boolean";
+            unify etyp TypBool eloc "the result of ! operator must be a boolean";
+            ExpUnOp(uop, new_e1, ctx)
+        | OpMakeRef ->
+            unify etyp (TypRef etyp1) eloc "improper type of ref() operator result";
+            ExpUnOp(uop, new_e1, ctx)
+        | OpDeref ->
+            unify (TypRef etyp) etyp1 eloc "improper type of the unary '*' operator result";
+            ExpUnOp(uop, new_e1, ctx)
+        | OpThrow ->
+            unify etyp1 TypExn "the argument of 'throw' operator must be an exception";
+            ExpUnOp(uop, new_e1, ctx))
     | ExpSeq(eseq, _) ->
-        (*
-          [TODO]
-          run a separate function to check a sequence of expression (see below)
-        *)
-        let (eseq, _) = check_seq eseq env sc true in
+        let (eseq, _) = check_eseq eseq env sc true in
         let eseq_typ = get_eseq_typ eseq in
         unify etyp eseq_typ eloc "the sequence type does not match the last expression type";
         ExpSeq(eseq, ctx)
@@ -749,7 +817,7 @@ let rec check_exp e env sc =
           * if it's not a class (check sc) then add p elements to the environment
           * unify etyp with TypDecl
         *)
-    | DefFun({contents = {df_templ_args}} as rdf) -> e
+    | DefFun(_) -> e
     | DefVariant(_) -> e
     | DefClass(_) -> raise_typecheck_err eloc "not implemented"
     | DefInterface(_) -> raise_typecheck_err eloc "not implemented"
@@ -758,17 +826,8 @@ let rec check_exp e env sc =
     | DirImport(_, _) -> e
     | DirImportFrom(_, _, _) -> e
 
-and check_seq eseq env sc create_sc =
+and check_eseq eseq env sc create_sc =
     (*
-      [TODO]
-      * if create_sc == true, create new block scope
-      * scan eseq, look for import statements. Since the modules are topologically sorted using the
-        dependency criteria, all the imported modules should have been analyzed already.
-        ** If we have "import m [as m_alias]",
-           we add either "m":"real_m_id" or "m_alias":"real_m_id" to the environment.
-           We also need to scan m's env and import all the overloaded operators.
-        ** If we have "from m import <id_list>|*", we scan m's env and import the requested
-           id's. We also add "m" to env (and import all the overloaded opeators).
       * scan eseq, look for type declarations. Give all the types fresh names,
         update the env, add the type declaration "headers" to the global symbol table.
         check that there are no other types with the same name in the same scope.
@@ -798,11 +857,138 @@ and check_seq eseq env sc create_sc =
       * return the final env. It's especially useful when processing modules (top-level definitions) and classes,
         because this env is then stored inside the module/class structure.
     *)
-    failwith "check_seq not implemented"
+    (* create the nested block scope if requested *)
+    let sc = if create_sc then new_block_scope() :: sc else sc in
+    (* process directives (now we have only import directives) *)
+    let env = check_directives eseq env sc in
+    (* process type declarations: use 2-pass procedure
+       in order to handle mutually-recursive types properly *)
+    let env = reg_types eseq env sc in
+    let env = check_types eseq env sc in
 
-and check_typ tp env sc =
+    (* register exceptions and function declarations *)
+    let env = List.fold_left (fun env e ->
+        match e with
+        | DefFun (df) -> reg_deffun df env sc
+        | DefExn (de) -> check_defexn de df sc
+        | _ -> env) env eseq in
+    
+    (* finally, process everything: function  *)
+    let (env, eseq) = List.fold_left (fun (env, eseq) e ->
+        try
+            match e with
+            | DefVal (dv) ->
+                let (env, dv, _) = check_defval dv env sc nmap_t.empty in
+                (env, DefVal(dv) :: eseq)
+            | DefFun (df) ->
+                let env = check_deffun df env sc in
+                (env, e :: eseq)
+            | DefType (dt) ->
+                let env = check_deftyp dt env sc in
+                (env, e :: eseq)
+            | DefVariant (dvar) ->
+                let env = check_defvariant dvar env sc in
+                (env, e :: eseq)    
+            | _ ->
+                let e = check_exp e env sc in
+                (env, e :: eseq)
+        with TypeCheckError(_, _) -> (env, e :: eseq))
+        (env, []) eseq in
+
+    check_typecheck_errs();
+    (env, List.rev eseq)
+
+and check_directives eseq env sc =
+    let is_imported alias n env allow_duplicate_import loc =
+        (List.exists(fun entry ->
+            match entry with
+            | EnvId m ->
+                (try
+                    let minfo = get_module m in
+                    if minfo.dm_name = n then
+                        let astr = pp_id2str alias in
+                        let mstr = pp_id2str minfo.dm_name in
+                        if allow_duplicate_import then true
+                        else if astr = mstr then
+                            raise_typecheck_err loc (sprintf "duplicate import of %s" mstr)
+                        else
+                            raise_typecheck_err loc (sprintf "duplicate import of %s as %s" mstr astr)
+                    else
+                        raise_typecheck_err loc
+                            (sprintf "another module %s has been already imported as %s"
+                            (pp_id2str minfo.dm_name) (pp_id2str alias))
+                with Failure _ -> false)
+            | EnvTyp _ -> false) (find_all alias env)) in
+
+    let import_entries env parent_mod key entries loc =
+        (List.fold_left (fun env i ->
+            match i with
+            | EnvId(i) ->
+                (let info = id_info i in
+                match get_scope_ info with
+                | (ScModule(m) :: _) when parent_mod = noid || parent_mod = m ->
+                    add_to_env key i env false loc
+                | _ -> env)
+            | EnvTyp _ -> env) env (List.rev entries)) in
+
+    let import_mod env alias m allow_duplicate_import loc =
+        (if is_imported alias m env allow_duplicate_import loc then env
+        else
+            (* add the imported module id to the env *)
+            let env = add_to_env alias m env false loc in
+            let menv = (get_module m).dm_env in
+            (* and also import all the overloaded operators from the module
+               to make them usable in the corresponding arithmetic expressions *)
+            List.fold_left (fun env op_name ->
+                let entries = find_all op_name env in
+                import_entries env n op_name entries loc)
+            env fname_always_import) in
+            
+    let (env, mlist) = (List.fold_left (fun (env, mlist) e ->
+        match e with
+        | DirImport(impdirs, eloc) ->
+            ((List.fold_left (fun env (m, alias) ->
+                try
+                    import_mod env alias m false eloc
+                with TypeCheckError(_, _) -> env) env impdirs), mlist)
+        | DirFromImport(m, implist, eloc) ->
+            let env =
+            (try
+                let menv = (get_module m).dm_env in
+                let keys = if implist != [] then implist else
+                    (Env.fold (fun k ids l -> k :: l) menv []) in
+                List.fold_left (fun env k ->
+                    try
+                        let entries = find_all k menv in
+                        let _ = (if ids != [] then () else
+                            raise_typecheck_err eloc
+                                (sprintf "no symbol %s found in %s" (pp_id2str k) (pp_id2str m))) in
+                        import_entries env m k entries false eloc
+                    with TypeCheckError(_, _) -> env) env keys
+            with TypeCheckError(_, _) -> env) in
+            (env, (m, eloc) :: mlist)
+        | _ -> (env, mlist)) (env, []) eseq) in
+    
+    (* after processing explicit (e.g. specified by user) import directives,
+       we also implicitly import each module "m" for which we have "from m import ...".
+       Probably, this needs to be revised *)
+    let env = List.fold_left (fun env (m, eloc) ->
+        let alias = get_orig_id m in
+        import_mod env alias m true eloc) env mlist in
+    
+    check_typecheck_errs();
+    env
+
+and check_defexn de env sc =
+    let { dexn_name=alias; dexn_typ=t; dexn_loc=loc } = !de in
+    let t = check_typ t env sc Env.empty loc in
+    let n = get_fresh_id alias in
+    let _ = (de := { dexn=n; exn_typ=t; dexn_sc=sc; dexn_loc=loc }) in
+    set_id_entry n (IdExn de);
+    add_to_env alias n env true loc
+
+and check_typ t env sc loc =
     (*
-      [TODO]
       * leave simple types as-is
       * in the case of complex type (ref, array, tuple, list, fun, ...) process the nested types.
       * leave TypVar(ref None) as is
@@ -820,8 +1006,45 @@ and check_typ tp env sc =
            3.1. maybe in some cases before doing 3 need to iterate through a list of type instances and try to find
               the proper match. this step is optional for now, but it will become a mandatory when handling complex types,
               such as variants, classes and maybe records. It can also help to save some time and some space
-    *)
-    failwith "check_typ not implemented"
+    *)  
+    let rec check_typ_ t callb =
+        (match t with
+        | TypApp(ty_args, n) ->
+            let ty_args = List.map (fun t -> check_typ_ t callb) ty_args in
+            find_first n env loc (fun entry ->
+                match entry with
+                | EnvTyp(t) ->
+                    if ty_args = [] then Some(t) else
+                    raise_typecheck_err loc (sprintf "a concrete type (%s) cannot be further instantiated" (pp_id2str n))
+                | EnvId(i) ->
+                    match (id_info i) with
+                    | IdNone | IdText _ | IdVal _ | IdFun _ | IdExn _ | IdModule _ -> None
+                    | IdClass _ | IdInterfaces _ ->
+                        (* [TODO] *)
+                        raise_typecheck_err loc "classes & interfaces are not supported yet"
+                    | IdType dt ->
+                        let { dt_name; dt_templ_args; dt_typ; dt_scope; dt_finalized; dt_loc } = !dt in
+                        let _ = if dt_finalized then () else
+                            raise_typecheck_err loc
+                            (sprinf "later declared non-variant type %s is referenced; try to reorder the type declarations"
+                            (pp_id2str dt_name)) in
+                        let env = match_ty_templ_args ty_args dt_templ_args env dt_loc in
+                        check_typ dt_typ env sc loc
+                    | IdVariant dvar ->
+                        instantiate_variant ty_args dvar env sc loc
+                    | _ -> raise_typecheck_err loc (sprintf "unknown type %s" (pp_id2str n)))
+        | _ -> walk_typ t callb) in
+    let callb = { acb_typ=check_typ_; acb_exp=None; acb_pat=None; acb_res=0 } in
+    check_typ_ t callb
+
+and instantiate_variant ty_args dvar env sc loc =
+    let { dvar_name; dvar_templ_args; dvar_flags; dvar_members;
+          dvar_constr; dvar_templ_inst; dvar_scope; dvar_loc } = !dvar in
+    let env = match_ty_templ_args ty_args dvar_templ_args env dvar_loc in
+    if ty_args = [] then TypApp([], dvar_name) else
+    let members = List.map (fun (n, t) -> n) in
+    
+    failwith "instantiate_variant not implemented"
 
 and check_pat pat tp env id_set sc =
     (*
@@ -840,7 +1063,7 @@ and check_mod m =
     let minfo = !(get_module m) in
     try
         let modsc = (ScModule m) :: [] in
-        let (seq, env) = check_seq minfo.dm_defs Env.empty modsc false in
+        let (seq, env) = check_eseq minfo.dm_defs Env.empty modsc false in
         minfo.dm_defs <- seq;
         minfo.dm_env <- env;
     with e ->

@@ -56,7 +56,7 @@ let make_variant_type (targs, tname) var_elems0 =
     let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
     let loc = make_loc(pos0, pos1) in
     let var_elems = List.map (fun (n, t) -> if (good_variant_name n) then (get_id n, t) else
-        raise (SyntaxError ((Printf.sprintf "syntax error: variant tag '%s' does not start with a capital latin letter" n), pos0, pos1))) var_elems0 in
+        raise (SyntaxError ((sprintf "syntax error: variant tag '%s' does not start with a capital latin letter" n), pos0, pos1))) var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_flags=[]; dvar_members=var_elems;
                dvar_constr=[]; dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
@@ -222,7 +222,8 @@ simple_type_decl:
 | TYPE type_lhs EQUAL typespec
     {
         let (targs, i) = $2 in
-        let dtp = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
+        let dtp = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: [];
+                    dt_finalized=false; dt_loc=curr_loc() } in
         DefType (ref dtp)
     }
 | TYPE type_lhs EQUAL B_IDENT BITWISE_OR variant_elems_

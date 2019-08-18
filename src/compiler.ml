@@ -16,7 +16,7 @@ let make_lexer fname =
       (let s = Lexer.token2str t in
        let pos_lnum = lexbuf.lex_curr_p.pos_lnum in
        if pos_lnum > !prev_lnum then
-          ((Printf.printf "\n%s (%d): %s" fname pos_lnum s);
+          ((printf "\n%s (%d): %s" fname pos_lnum s);
           prev_lnum := pos_lnum)
        else print_string (" " ^ s);
        match t with
@@ -77,11 +77,11 @@ let parse_all _fname0 =
                 else ()) deps
         with
         | Lexer.LexError(err, (p0, p1)) ->
-            Printf.printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
+            printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
         | SyntaxError(err, p0, p1) ->
-            Printf.printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
-        | Failure(msg) -> (Printf.printf "%s: %s\n" mfname msg); ok := false
-        | e -> (Printf.printf "%s: exception %s occured" mfname (Printexc.to_string e)); ok := false)
+            printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
+        | Failure(msg) -> (printf "%s: %s\n" mfname msg); ok := false
+        | e -> (printf "%s: exception %s occured" mfname (Printexc.to_string e)); ok := false)
     done;
     !ok
 
@@ -102,7 +102,7 @@ let toposort graph =
     let dfs graph visited start_node =
         let rec explore path visited node =
             if List.mem node path then
-                let msg = (Printf.sprintf "error: cylic module dependency: %s\n" (String.concat " " (List.map pp_id2str path))) in
+                let msg = (sprintf "error: cylic module dependency: %s\n" (String.concat " " (List.map pp_id2str path))) in
                 failwith msg
             else if List.mem node visited then visited else
                 let new_path = node :: path in
@@ -127,13 +127,13 @@ let process_all fname0 =
             let minfo = get_module m in
             (m, !minfo.dm_deps) :: gr) all_modules [] in
         let _ = (sorted_modules := List.rev (toposort graph)) in
-        let _ = (Printf.printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in
+        let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in
         let typecheck_errs = typecheck_all !sorted_modules in
         let errcount = List.length typecheck_errs in
         if not !options.print_ast then () else
         (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules);
-        if errcount != 0 then (Printf.printf "%d errors occured during type checking\n" errcount) else ();
+        if errcount != 0 then (printf "%d errors occured during type checking\n" errcount) else ();
         true
     with
     | Failure msg -> print_string msg; false
-    | e -> (Printf.printf "\n\nException %s occured" (Printexc.to_string e)); false
+    | e -> (printf "\n\nException %s occured" (Printexc.to_string e)); false

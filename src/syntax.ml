@@ -46,7 +46,7 @@ let noid = Id.Name(0, 0)
 let dummyid = Id.Name(1, 1)
 
 (*
-  Environment (Env.t) is the mapping from id_t to id_t list. It's the key data structure used
+  Environment (Env.t) is the mapping from id_t to env_entry_t list. It's the key data structure used
   by the type checker.
 
   That is, for each id key Id.Name(i, i) (which corresponds to an abstract symbol <i>)
@@ -67,7 +67,6 @@ let dummyid = Id.Name(1, 1)
   (however, the type checker is very inexpensive compiler stage, even in "-O0" compile mode)
 *)
 module Env = Map.Make(Id)
-type env_t = id_t list Env.t
 
 (*
    Scope of the definition
@@ -138,7 +137,7 @@ type bin_op_t =
 type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow | OpExpand
 
 type val_flag_t = ValArg | ValMutable
-type func_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic
+type func_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
 type variant_flag_t = VariantRecursive | VariantSimpleLabel of int
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
@@ -176,7 +175,7 @@ type exp_t =
     | DefType of deftyp_t ref
     | DefVariant of defvariant_t ref
     | DefClass of defclass_t ref
-    | DefInterface of defiface_t ref
+    | DefInterface of definterface_t ref
     | DirImport of (id_t * id_t) list * loc_t
     | DirImportFrom of id_t * id_t list * loc_t
 and pat_t =
@@ -195,14 +194,19 @@ and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; d
                  mutable df_templ_inst: id_t list }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list;
-                  dt_typ: typ_t; dt_scope: scope_t list; dt_loc: loc_t }
-and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_flags: variant_flag_t list;
-                     dvar_members: (id_t * typ_t) list; dvar_constr: id_t list;
-                     mutable dvar_templ_inst: id_t list; dvar_scope: scope_t list; dvar_loc: loc_t }
+                  dt_typ: typ_t; dt_scope: scope_t list; dt_finalized: bool; dt_loc: loc_t }
+and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_typ: typ_t;
+                     dvar_flags: variant_flag_t list; dvar_members: (id_t * typ_t) list;
+                     dvar_constr: id_t list; mutable dvar_templ_inst: id_t list;
+                     dvar_scope: scope_t list; dvar_loc: loc_t }
 and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_ifaces: id_t list; dcl_args: pat_t list;
                    dcl_members: exp_t list; mutable dcl_templ_inst: id_t list; dcl_scope: scope_t list; dcl_loc: loc_t }
-and defiface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
-and defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
+and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
+
+type env_entry_t = EnvId of id_t | EnvTyp of typ_t
+type env_t = env_entry_t list Env.t
+
+type defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
                     mutable dm_deps: id_t list; mutable dm_env: env_t;
                     mutable dm_parsed: bool }
 
@@ -217,6 +221,9 @@ let all_strings: (string, int) Hashtbl.t = Hashtbl.create 1000
 let all_modules: (string, id_t) Hashtbl.t = Hashtbl.create 100
 let sorted_modules: id_t list ref = ref []
 
+let sprintf = Printf.sprintf
+let printf = Printf.printf
+
 let new_id_idx() =
     let _ = if (Array.length !all_ids) <= !all_nids then
         let delta_nids = max !all_nids 128 in
@@ -226,17 +233,17 @@ let new_id_idx() =
     let i = !all_nids in
     (all_nids := !all_nids + 1; i)
 
-let dump_id i = match i with Id.Name(i, j) -> (Printf.sprintf "Id.Name(%d, %d)" i j)
-                | Id.Temp(i, j) -> (Printf.sprintf "Id.Temp(%d, %d)" i j)
+let dump_id i = match i with Id.Name(i, j) -> (sprintf "Id.Name(%d, %d)" i j)
+                | Id.Temp(i, j) -> (sprintf "Id.Temp(%d, %d)" i j)
 let id2idx i = match i with Id.Name(_, i_real) -> i_real | Id.Temp(_, i_real) -> i_real
 let id2str_ i pp =
     let (tempid, prefix, suffix) = match i with Id.Name(i_name, i_real) -> (false, i_name, i_real)
                             | Id.Temp(i_prefix, i_real) -> (true, i_prefix, i_real) in
     let s = (match (!all_ids).(prefix) with
         | IdText(s) -> s
-        | _ -> failwith (Printf.sprintf
+        | _ -> failwith (sprintf
             "The first element of id=%s does not represent a string\n" (dump_id i))) in
-    if tempid then (Printf.sprintf "%s@@%d" s suffix) else if pp || prefix = suffix then s else (Printf.sprintf "%s@%d" s suffix)
+    if tempid then (sprintf "%s@@%d" s suffix) else if pp || prefix = suffix then s else (sprintf "%s@%d" s suffix)
 
 let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
@@ -266,12 +273,17 @@ let get_fresh_id old_id =
     | Id.Name(i, j) -> Id.Name(i, k)
     | Id.Temp(i, j) -> Id.Temp(i, k)
 
+let get_orig_id i =
+    match i with
+    | Id.Name(i, j) -> Id.Name(i, i)
+    | Id.Temp(_, _) -> i
+
 let good_variant_name s =
     let c0 = String.get s 0 in
     ('A' <= c0 && c0 <= 'Z') || (String.contains s '.')
 
 let set_id_entry i n =
-    let idx = id2idx i in ((!all_ids).(idx) <- n; i)
+    let idx = id2idx i in (!all_ids).(idx) <- n
 
 let module_loc mname = { loc_fname=mname; loc_line0=1; loc_pos0=1; loc_line1=1; loc_pos1=1 }
 
@@ -318,7 +330,7 @@ let get_exp_loc e = let (t, l) = (get_exp_ctx e) in l
 let get_module m =
     match id_info m with
     | IdModule minfo -> minfo
-    | _ -> failwith (Printf.sprintf "internal error in process_all: %s is not a module" (pp_id2str m))
+    | _ -> failwith (sprintf "internal error in process_all: %s is not a module" (pp_id2str m))
 
 let find_module mname_id mfname =
     try get_module (Hashtbl.find all_modules mfname) with
@@ -326,8 +338,8 @@ let find_module mname_id mfname =
         let m_fresh_id = get_fresh_id mname_id in
         let newmodule = ref { dm_name=m_fresh_id; dm_filename=mfname; dm_defs=[];
                               dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
-        let _ = set_id_entry m_fresh_id (IdModule newmodule) in
-        let _ = Hashtbl.add all_modules mfname m_fresh_id in
+        set_id_entry m_fresh_id (IdModule newmodule);
+        Hashtbl.add all_modules mfname m_fresh_id;
         newmodule
 
 let block_scope_idx = ref (-1)
@@ -349,7 +361,7 @@ let get_scope_ id_info = match id_info with
 
 (* used by the parser *)
 exception SyntaxError of string*Lexing.position*Lexing.position
-let loc2str loc = Printf.sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
+let loc2str loc = sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
 
 (* used by the type checker *)
 let get_lit_type l = match l with
@@ -420,6 +432,20 @@ let fname_op_plus = get_id "__plus__"
 let fname_op_negate = get_id "__negate__"
 let fname_op_bit_not = get_id "__bit_not__"
 
+let fname_to_int = get_id "int"
+let fname_to_uint8 = get_id "uint8"
+let fname_to_int8 = get_id "int8"
+let fname_to_uint16 = get_id "uint16"
+let fname_to_int16 = get_id "int16"
+let fname_to_uint32 = get_id "uint32"
+let fname_to_int32 = get_id "int32"
+let fname_to_uint64 = get_id "uint64"
+let fname_to_int64 = get_id "int64"
+let fname_to_float = get_id "float"
+let fname_to_double = get_id "double"
+let fname_to_bool = get_id "bool"
+let fname_to_string = get_id "string"
+
 let get_binop_fname bop =
     match bop with
     | OpAdd -> fname_op_add
@@ -440,7 +466,7 @@ let get_binop_fname bop =
     | OpCompareGT -> fname_op_gt
     | OpCompareGE -> fname_op_ge
     | OpLogicAnd | OpLogicOr | OpCons | OpMem | OpSet ->
-        failwith (Printf.sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
+        failwith (sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
 
 let get_unop_fname uop =
     match uop with
@@ -448,4 +474,4 @@ let get_unop_fname uop =
     | OpNegate -> fname_op_negate
     | OpBitwiseNot -> fname_op_bit_not
     | OpLogicNot | OpMakeRef | OpDeref | OpThrow | OpExpand ->
-        failwith (Printf.sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
+        failwith (sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))

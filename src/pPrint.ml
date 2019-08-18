@@ -16,12 +16,12 @@ let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
 let lit_to_string c = match c with
     | LitInt(v) -> (Int64.to_string v)
-    | LitSInt(b, v) -> Printf.sprintf "%Lii%d" v b
-    | LitUInt(b, v) -> Printf.sprintf "%Luu%d" v b
-    | LitFloat(16, v) -> Printf.sprintf "%.4gh" v
-    | LitFloat(32, v) -> Printf.sprintf "%.8gf" v
-    | LitFloat(64, v) -> Printf.sprintf "%.16g" v
-    | LitFloat(b, v) -> failwith (Printf.sprintf "invalid literal LitFloat(%d, %.16g)" b v)
+    | LitSInt(b, v) -> sprintf "%Lii%d" v b
+    | LitUInt(b, v) -> sprintf "%Luu%d" v b
+    | LitFloat(16, v) -> sprintf "%.4gh" v
+    | LitFloat(32, v) -> sprintf "%.8gf" v
+    | LitFloat(64, v) -> sprintf "%.16g" v
+    | LitFloat(b, v) -> failwith (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
     | LitString(s) -> "\"" ^ (String.escaped s) ^ "\""
     | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
     | LitBool(true) -> "true"
@@ -68,7 +68,7 @@ let rec pptype_ t p1 =
     | TypFloat(16) -> pstr "Half"
     | TypFloat(32) -> pstr "Float"
     | TypFloat(64) -> pstr "Double"
-    | TypFloat(b) -> failwith (Printf.sprintf "invalid type TypFloat(%d)" b)
+    | TypFloat(b) -> failwith (sprintf "invalid type TypFloat(%d)" b)
     | TypString -> pstr "String"
     | TypChar -> pstr "Char"
     | TypBool -> pstr "Bool"
@@ -136,19 +136,21 @@ let rec pprint_exp e =
     | DefFun {contents={df_name; df_templ_args; df_args; df_typ;
                 df_body; df_flags; df_templ_inst }} ->
         let fkind = ref "FUN" in
+        let is_constr = List.mem FunConstr df_flags in
         (obox(); (List.iter (fun ff -> match ff with
                     | FunPure -> pstr "PURE"; pspace()
                     | FunImpure -> pstr "IMPURE"; pspace()
                     | FunInline -> pstr "INLINE"; pspace()
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunStatic -> pstr "STATIC"; pspace()
+                    | FunConstr -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
         cbox(); pcut(); pstr ")";
         pspace(); pstr ":"; pspace(); pprint_type df_typ; pspace();
-        pstr "="; pspace(); pprint_exp df_body; cbox())
+        pstr "="; pspace(); if is_constr then pstr "Constructor" else pprint_exp df_body; cbox())
     | DefExn { contents = {dexn_name; dexn_typ } } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
         (match dexn_typ with

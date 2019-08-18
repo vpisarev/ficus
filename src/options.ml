@@ -49,7 +49,7 @@ let parse_options () =
         ]
         (fun s -> _files := !_files @ [s])
         ("Ficus Compiler v0.1\n" ^
-        Printf.sprintf "usage: %s [options ...] input_file.fx" Sys.argv.(0));
+        sprintf "usage: %s [options ...] input_file.fx" Sys.argv.(0));
 
         options :=
         {
