@@ -67,6 +67,7 @@ let dummyid = Id.Name(1, 1)
   (however, the type checker is very inexpensive compiler stage, even in "-O0" compile mode)
 *)
 module Env = Map.Make(Id)
+module IdSet = Set.Make(Id)
 
 (*
    Scope of the definition
@@ -97,7 +98,7 @@ type lit_t =
 (* type of an expression *)
 type typ_t =
     | TypVar of typ_t option ref (* this is for type unification.
-                        Initially most expressions are given TypeVar (ref None) type,
+                        Initially most expressions are given TypVar (ref None) type,
                         and during type unification we
                         equalize types by redirecting those references to
                         other types (i.e. we use so-called destructive
@@ -172,7 +173,7 @@ type exp_t =
     | DefVal of pat_t * exp_t * val_flag_t list * ctx_t
     | DefFun of deffun_t ref
     | DefExn of defexn_t ref
-    | DefType of deftyp_t ref
+    | DefTyp of deftyp_t ref
     | DefVariant of defvariant_t ref
     | DefClass of defclass_t ref
     | DefInterface of definterface_t ref
@@ -212,8 +213,8 @@ type defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t 
 
 type id_info_t =
     | IdNone | IdText of string | IdVal of defval_t | IdFun of deffun_t ref
-    | IdExn of defexn_t ref | IdType of deftyp_t ref | IdVariant of defvariant_t ref
-    | IdClass of defclass_t ref | IdInterface of defiface_t ref | IdModule of defmodule_t ref
+    | IdExn of defexn_t ref | IdTyp of deftyp_t ref | IdVariant of defvariant_t ref
+    | IdClass of defclass_t ref | IdInterface of definterface_t ref | IdModule of defmodule_t ref
 
 let all_nids = ref 0
 let all_ids : id_info_t array ref = ref [||]
@@ -267,7 +268,7 @@ let get_unique_id s tmp =
     let i_real = new_id_idx() in
     if tmp then Id.Temp(i_name, i_real) else Id.Name(i_name, i_real)
 
-let get_fresh_id old_id =
+let dup_id old_id =
     let k = new_id_idx() in
     match old_id with
     | Id.Name(i, j) -> Id.Name(i, k)
@@ -317,7 +318,7 @@ let get_exp_ctx e = match e with
     | DefVal(_, _, _, c) -> c
     | DefFun {contents = { df_loc }} -> (TypDecl, df_loc)
     | DefExn {contents = { dexn_loc }} -> (TypDecl, dexn_loc)
-    | DefType {contents = { dt_loc }} -> (TypDecl, dt_loc)
+    | DefTyp {contents = { dt_loc }} -> (TypDecl, dt_loc)
     | DefVariant {contents = { dvar_loc }} -> (TypDecl, dvar_loc)
     | DefClass {contents = { dcl_loc }} -> (TypDecl, dcl_loc)
     | DefInterface {contents = { di_loc }} -> (TypDecl, di_loc)
@@ -335,7 +336,7 @@ let get_module m =
 let find_module mname_id mfname =
     try get_module (Hashtbl.find all_modules mfname) with
     Not_found ->
-        let m_fresh_id = get_fresh_id mname_id in
+        let m_fresh_id = dup_id mname_id in
         let newmodule = ref { dm_name=m_fresh_id; dm_filename=mfname; dm_defs=[];
                               dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
         set_id_entry m_fresh_id (IdModule newmodule);
@@ -353,7 +354,7 @@ let get_scope_ id_info = match id_info with
     | IdVal {dv_scope} -> dv_scope
     | IdFun {contents = {df_scope}} -> df_scope
     | IdExn {contents = {dexn_scope}} -> dexn_scope
-    | IdType {contents = {dt_scope}} -> dt_scope
+    | IdTyp {contents = {dt_scope}} -> dt_scope
     | IdVariant {contents = {dvar_scope}} -> dvar_scope
     | IdClass {contents = {dcl_scope}} -> dcl_scope
     | IdInterface {contents = {di_scope}} -> di_scope
@@ -364,7 +365,7 @@ exception SyntaxError of string*Lexing.position*Lexing.position
 let loc2str loc = sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
 
 (* used by the type checker *)
-let get_lit_type l = match l with
+let get_lit_typ l = match l with
     | LitInt(_) -> TypInt
     | LitSInt(b, _) -> TypSInt(b)
     | LitUInt(b, _) -> TypUInt(b)

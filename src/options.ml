@@ -1,4 +1,5 @@
 (* Various compile-time options *)
+open Printf
 
 type compiler_options_t =
 {

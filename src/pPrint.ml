@@ -34,9 +34,9 @@ let pprint_id x = pstr (id2str x)
 
 type type_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
 
-let rec get_type_pr t = match t with
+let rec get_typ_pr t = match t with
     | TypVar {contents=None} -> TypPrBase
-    | TypVar {contents=Some(t1)} -> get_type_pr t1
+    | TypVar {contents=Some(t1)} -> get_typ_pr t1
     | TypInt | TypSInt(_) | TypUInt(_) | TypFloat(_)
     | TypString | TypChar | TypBool | TypVoid | TypExn
     | TypErr | TypCPointer | TypDecl | TypModule -> TypPrBase
@@ -51,7 +51,7 @@ let need_parens p p1 = p1 > p
 let opt_parens p p1 = if (need_parens p p1) then ("(", ")") else ("", "")
 
 let rec pptype_ t p1 =
-    let p = get_type_pr t in
+    let p = get_typ_pr t in
     let pptypsuf t1 suf =
         let (lp, rp) = opt_parens p p1 in
         (obox(); pstr lp; pptype_ t1 p; pstr rp; pspace(); pstr suf; cbox()) in
@@ -103,7 +103,7 @@ let rec pptype_ t p1 =
     | TypDecl -> pstr "Declaration"
     | TypModule -> pstr "Module"
 
-let pprint_type t = pptype_ t TypPr0
+let pprint_typ t = pptype_ t TypPr0
 let pprint_templ_args tt = match tt with
     | [] -> ()
     | t :: [] -> pprint_id t; pspace()
@@ -149,16 +149,16 @@ let rec pprint_exp e =
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
         cbox(); pcut(); pstr ")";
-        pspace(); pstr ":"; pspace(); pprint_type df_typ; pspace();
+        pspace(); pstr ":"; pspace(); pprint_typ df_typ; pspace();
         pstr "="; pspace(); if is_constr then pstr "Constructor" else pprint_exp df_body; cbox())
     | DefExn { contents = {dexn_name; dexn_typ } } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
         (match dexn_typ with
         | TypVoid -> ()
-        | _ -> pspace(); pstr "OF"; pspace(); pprint_type dexn_typ); cbox()
-    | DefType { contents = {dt_name; dt_templ_args; dt_typ }} ->
+        | _ -> pspace(); pstr "OF"; pspace(); pprint_typ dexn_typ); cbox()
+    | DefTyp { contents = {dt_name; dt_templ_args; dt_typ }} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
-        pspace(); pstr "="; pspace(); pprint_type dt_typ; cbox()
+        pspace(); pstr "="; pspace(); pprint_typ dt_typ; cbox()
     | DirImport(ml, _) -> pstr "IMPORT"; pspace();
         obox(); (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;
                     if n1 = n2 then () else (pspace(); pstr "AS"; pspace(); pprint_id n2)) ml); cbox()
@@ -257,8 +257,8 @@ let rec pprint_exp e =
         | ExpTryCatch(e, pe_l, _) ->
             obox(); pstr "TRY"; pspace(); pprint_exp e; pspace();
             pstr "CATCH"; pphandlers pe_l; cbox()
-        | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_type t; cbox(); pstr ")"
-        | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_type t; cbox(); pstr ")"
+        | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_typ t; cbox(); pstr ")"
+        | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_typ t; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
         | _ -> failwith "unknown exp"
         ); cbox_()
@@ -285,7 +285,7 @@ and pprint_pat p = match p with
         List.iteri (fun i (n, p) -> if i = 0 then () else (pstr ","; pspace());
                     pprint_id n; pstr "="; pprint_pat p) elems;
         pstr "}"; cbox()
-    | PatTyped(p, t, _) -> pprint_pat p; pstr ":"; pspace(); pprint_type t
+    | PatTyped(p, t, _) -> pprint_pat p; pstr ":"; pspace(); pprint_typ t
 
 let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     Format.open_vbox 0;
