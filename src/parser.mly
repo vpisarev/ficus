@@ -32,7 +32,7 @@ let plist2exp args n =
       (match p with
       | PatAny(loc) ->
           let arg_tp = make_new_typ() in
-          let arg_id = get_unique_id "arg" true in
+          let arg_id = get_temp_id "arg" in
           (PatIdent(arg_id, loc), ExpIdent(arg_id, (arg_tp, loc)))
       | PatIdent(i, loc) -> (p, ExpIdent(i, (make_new_typ(), loc)))
       | PatTuple(plist, loc) ->
@@ -60,6 +60,43 @@ let make_variant_type (targs, tname) var_elems0 =
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_flags=[]; dvar_members=var_elems;
                dvar_constr=[]; dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
+
+let transform_fold_exp fold_pat fold_pat_n fold_init_exp fold_cl fold_body =
+    (* `fold (p=e0; ...) e1`
+            is transformed to
+        `{
+        var p = e0
+        for (...) e1
+        p
+        }`
+    *)
+    let rec fold_pat2exp p =
+        (let ctx = (make_new_typ(), get_pat_loc p) in
+        match p with
+        | PatTuple(pl, _) -> ExpMkTuple((List.map fold_pat2exp pl), ctx)
+        | PatTyped(p, t, _) -> ExpTyped((fold_pat2exp p), t, ctx)
+        | PatIdent(i, _) -> ExpIdent(i, ctx)
+        | PatVariant(f, pl, _) ->
+            let f_loc = get_pat_loc l in
+            ExpCall(ExpIdent(f, (make_new_typ(), f_loc)), (List.map fold_pat2exp pl), ctx)
+        | _ ->
+            let (pos0, pos1) = ((Parsing.rhs_start_pos fold_pat_n), (Parsing.rhs_end_pos fold_pat_n)) in
+            raise (SyntaxError
+                (("unsupported accumulator pattern in the fold() expression; " ^
+                "only identifiers, tuples, single-case variants, type annotations " ^
+                "and various combinations of those are currently supported."),
+                pos0, pos1))) in
+    let acc_tp = make_new_typ() in
+    let acc_loc = get_pat_loc fold_pat in
+    let acc_ctx = (acc_tp, acc_loc) in
+    let acc_decl = DefVal(fold_pat, fold_init_exp, [ValMutable], acc_ctx) in
+    let (p0, _) = List.hd fold_cl in
+    let { loc_fname; loc_line0; loc_pos0 } = get_pat_loc p0 in
+    let { loc_line1; loc_pos1 } = get_exp_loc fold_body in
+    let for_loc = { loc_fname; loc_line0; loc_pos0; loc_line1; loc_pos1 } in
+    let for_exp = ExpFor (fold_cl, fold_body, [], (TypVoid, for_loc)) in
+    let acc_exp = fold_pat2exp fold_pat in
+    ExpSeq([acc_decl; for_exp; acc_exp], (make_new_typ(), curr_loc()))
 
 %}
 
@@ -273,7 +310,7 @@ stmt:
         let ctx = make_new_ctx() in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ [$4]) 4 in
-        let fname = get_unique_id "lambda" true in
+        let fname = get_temp_id "lambda" in
         let df = make_deffun fname args rt body [] (curr_loc()) in
         ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
     }
@@ -282,7 +319,7 @@ stmt:
         let ctx = make_new_ctx() in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ $3) 3 in
-        let fname = get_unique_id "lambda" true in
+        let fname = get_temp_id "lambda" in
         let df = make_deffun fname args rt body [] (curr_loc()) in
         ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
     }
@@ -347,8 +384,8 @@ complex_exp:
     }
 | FOLD fold_clause exp_or_block
     {
-        let (fold_init_opt, fold_cl) = $2 in
-        ExpFold(fold_init_opt, fold_cl, $3, make_new_ctx())
+        let ((fold_pat, fold_init_exp), fold_cl) = $2 in
+        transform_fold_exp fold_pat 2 fold_init_exp fold_cl $3
     }
 | exp { $1 }
 
@@ -468,8 +505,7 @@ for_in_list_:
 | simple_pat IN loop_range_exp { ($1, $3) :: [] }
 
 fold_clause:
-| lparen simple_pat EQUAL exp SEMICOLON for_in_list_ RPAREN { (Some(($2, $4)), (List.rev $6)) }
-| lparen for_in_list_ RPAREN { (None, (List.rev $2)) }
+| lparen simple_pat EQUAL exp SEMICOLON for_in_list_ RPAREN { (($2, $4), (List.rev $6)) }
 
 loop_range_exp:
 | exp { $1 }
@@ -517,8 +553,8 @@ simple_pat:
   }
 | LBRACE id_simple_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
 | dot_ident LBRACE id_simple_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
-| dot_ident LPAREN simple_pat_list_ RPAREN { PatCtor((get_id $1), (List.rev $3), curr_loc()) }
-| dot_ident IDENT { PatCtor((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
+| dot_ident LPAREN simple_pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
+| dot_ident IDENT { PatVariant((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
 | simple_pat COLON typespec { PatTyped($1, $3, curr_loc()) }
 
 simple_pat_list:
@@ -557,9 +593,9 @@ pat:
 | pat AS B_IDENT { PatAs($1, (get_id $3), curr_loc()) }
 | dot_ident LBRACE id_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
 | LBRACE id_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
-| dot_ident LPAREN pat_list_ RPAREN { PatCtor((get_id $1), (List.rev $3), curr_loc()) }
-| dot_ident IDENT { PatCtor((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
-| dot_ident literal { PatCtor((get_id $1), [PatLit($2, (curr_loc_n 2))], curr_loc()) }
+| dot_ident LPAREN pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
+| dot_ident IDENT { PatVariant((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
+| dot_ident literal { PatVariant((get_id $1), [PatLit($2, (curr_loc_n 2))], curr_loc()) }
 | pat COLON typespec { PatTyped($1, $3, curr_loc()) }
 
 pat_list_:
@@ -587,12 +623,9 @@ val_decl:
 | simple_pat EQUAL exp_or_block { ($1, $3, make_new_ctx()) }
 | FOLD fold_clause exp_or_block
     {
-        let (fold_init_opt, fold_cl) = $2 in
-        let p = (match fold_init_opt with
-        | Some((p, e0)) -> p
-        | None -> raise (SyntaxError ("syntax error: missing initialization part in 'val fold' definition",
-            (Parsing.rhs_start_pos 2), (Parsing.rhs_end_pos 2)))) in
-        (p, ExpFold(fold_init_opt, fold_cl, $3, make_new_ctx()), make_new_ctx())
+        let ((fold_pat, fold_init_exp), fold_cl) = $2 in
+        let e = transform_fold_exp fold_pat 2 fold_init_exp fold_cl $3 in
+        (fold_pat, e, make_new_ctx())
     }
 
 fun_decl_start:

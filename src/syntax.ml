@@ -164,7 +164,6 @@ type exp_t =
     | ExpDoWhile of exp_t * exp_t * ctx_t
     | ExpFor of (pat_t * exp_t) list * exp_t * for_flag_t list * ctx_t
     | ExpMap of ((pat_t * exp_t) list * exp_t option) list * exp_t * for_flag_t list * ctx_t
-    | ExpFold of (pat_t * exp_t) option * (pat_t * exp_t) list * exp_t * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpCast of exp_t * typ_t * ctx_t
@@ -184,7 +183,7 @@ and pat_t =
     | PatLit of lit_t * loc_t
     | PatIdent of id_t * loc_t
     | PatTuple of pat_t list * loc_t
-    | PatCtor of id_t * pat_t list * loc_t
+    | PatVariant of id_t * pat_t list * loc_t
     | PatRec of id_t option * (id_t * pat_t) list * loc_t
     | PatCons of pat_t * pat_t * loc_t
     | PatAs of pat_t * id_t * loc_t
@@ -263,10 +262,10 @@ let get_id_ s =
 let get_id s =
     let i = get_id_ s in Id.Name(i, i)
 
-let get_unique_id s tmp =
+let get_temp_id s =
     let i_name = get_id_ s in
     let i_real = new_id_idx() in
-    if tmp then Id.Temp(i_name, i_real) else Id.Name(i_name, i_real)
+    Id.Temp(i_name, i_real)
 
 let dup_id old_id =
     let k = new_id_idx() in
@@ -309,7 +308,6 @@ let get_exp_ctx e = match e with
     | ExpDoWhile(_, _, c) -> c
     | ExpFor(_, _, _, c) -> c
     | ExpMap(_, _, _, c) -> c
-    | ExpFold(_, _, _, c) -> c
     | ExpTryCatch(_, _, c) -> c
     | ExpMatch(_, _, c) -> c
     | ExpCast(_, _, c) -> c
@@ -327,6 +325,17 @@ let get_exp_ctx e = match e with
 
 let get_exp_typ e = let (t, l) = (get_exp_ctx e) in t
 let get_exp_loc e = let (t, l) = (get_exp_ctx e) in l
+
+let get_pat_loc p = match p with
+    | PatAny l -> l
+    | PatLit(_, l) -> l
+    | PatIdent(_, l) -> l
+    | PatTuple(_, l) -> l
+    | PatVariant(_, _, l) -> l
+    | PatRec(_, _, l) -> l
+    | PatCons(_, _, l) -> l
+    | PatAs(_, _, l) -> l
+    | PatTyped(_, _, l) -> l
 
 let get_module m =
     match id_info m with
@@ -348,7 +357,7 @@ let new_block_scope () =
     block_scope_idx := !block_scope_idx + 1;
     ScBlock !block_scope_idx
 
-let get_scope_ id_info = match id_info with
+let get_scope id_info = match id_info with
     | IdNone -> ScGlobal :: []
     | IdText _ -> ScGlobal :: []
     | IdVal {dv_scope} -> dv_scope
@@ -359,6 +368,16 @@ let get_scope_ id_info = match id_info with
     | IdClass {contents = {dcl_scope}} -> dcl_scope
     | IdInterface {contents = {di_scope}} -> di_scope
     | IdModule _ -> ScGlobal :: []
+
+let get_loc id_info = match id_info with
+    | IdNone | IdText _ | IdModule _ -> noloc
+    | IdVal {dv_loc} -> dv_loc
+    | IdFun {contents = {df_loc}} -> df_loc
+    | IdExn {contents = {dexn_loc}} -> dexn_loc
+    | IdTyp {contents = {dt_loc}} -> dt_loc
+    | IdVariant {contents = {dvar_loc}} -> dvar_loc
+    | IdClass {contents = {dcl_loc}} -> dcl_loc
+    | IdInterface {contents = {di_loc}} -> di_loc
 
 (* used by the parser *)
 exception SyntaxError of string*Lexing.position*Lexing.position

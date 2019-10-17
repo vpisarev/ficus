@@ -246,11 +246,6 @@ let rec pprint_exp e =
             pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) pe_l);
             pstr ")"; pspace(); match opt_when with Some(e) -> pstr "WHEN "; pprint_exp e; pspace() | _ -> ()) map_cl);
             pprint_exp map_body; pstr "]"; cbox()
-        | ExpFold(fold_init_opt, fold_cl, fold_body, _) ->
-            obox(); pstr "FOLD ("; (match fold_init_opt with Some((p0, e0)) -> pprint_pat p0; pstr "="; pprint_exp e0; pstr ";"; pspace() | _ -> ());
-            (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
-            pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) fold_cl);
-            pstr ")"; pspace(); pprint_exp fold_body; cbox()
         | ExpMatch(e, pe_l, _) ->
             obox(); pstr "MATCH ("; pprint_exp e; pstr ")"; pspace();
             pphandlers pe_l; cbox()
@@ -279,7 +274,7 @@ and pprint_pat p = match p with
     | PatTuple(pl, _) -> pstr "("; obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) pl);
         cbox(); pstr ")"
-    | PatCtor(n, elems, loc) -> pprint_id n; pprint_pat (PatTuple (elems, loc))
+    | PatVariant(n, elems, loc) -> pprint_id n; pprint_pat (PatTuple (elems, loc))
     | PatRec(n_opt, elems, loc) ->
         obox(); (match n_opt with Some(n) -> pprint_id n; pspace() | _ -> ()); pstr "{";
         List.iteri (fun i (n, p) -> if i = 0 then () else (pstr ","; pspace());
