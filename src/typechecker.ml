@@ -8,18 +8,22 @@ The type checker component performs semantical analysis and various
 sanity checks of just parsed Ficus module(s).
 
 In theory, this stage, together with the previous lexical and syntactic analysis stages,
-ensures that the code is valid and can be compiled to a valid C/machine code.
+ensures that the code is valid, typesafe and can be compiled to a valid C/machine code.
 In practice, however, some checks are better to be postponed to further stages.
-Nevertheless, the first 3 stages (lexer, parser and typechecker) are responsible
+Nevertheless, the first 3 stages (lexer, parser and the typechecker) are responsible
 for reporting majority of the problems in the code.
 
 These are the tasks performed by type checker:
-  * infere the missing type specifications. In Ficus one must to explicitly define function argument types,
-    however value/variable types, as well as function return types can be omitted, e.g.
-    fun hypot(a: float, b: float) = sqrt(a*a + b*b)
+  * infere the missing type specifications. In Ficus one must explicitly define function argument types
+    and may also optionally specify function return types, types of the declared values/variables and
+    even types of some expressions using (exp: type) syntax (e.g. (None: int option)). Unop completion of
+    the type checker stage, each symbol is given the proper (and the only possible) type.
+    When the type cannot be inferenced, an error is reported by the type checker or at the subsequent
+    K-normalization step.
   * find the proper match for each abstract symbol referenced in the program. This part deals with
-    overloaded functions, generic functions, overriden symbols, etc. It also recognizes notation
-    "Modulename.symbolname" and looks inside imported modules to find the proper (possibly overloaded) symbol.
+    overloaded functions, generic functions, overriden symbols, etc. It also recognizes '.' notation,
+    such as "Modulename.symbolname" or "record_instance_name.record_field" and looks inside imported modules
+    or records to find the proper match.
   * as a part of the previous step, instantiate generic functions and types.
     Unlike some functional languages, such as OCaml, and similar to some other languages with generics, like C++,
     Ficus compiler deals with generic definitions only at the type checker stage. Later on, only
@@ -44,7 +48,7 @@ Implementation plan:
     maybe except for classes and interfaces for now)
 + walk_exp, ...
 + make sure record types are handled properly (add ref)
-+/- check_exp
++ check_exp
 + check_eseq
 + add_typ_to_env
 + add_id_to_env
@@ -53,7 +57,7 @@ Implementation plan:
 + check_defexn
 + check_deftyp
 +/- check_defvariant
-- check_pattern (with issimple flag)
++ check_pattern (with issimple flag)
 + check_typ
 + check_directives (i.e. import directives for now)
 + instantiate_fun
@@ -224,8 +228,8 @@ and walk_exp e callb =
     | ExpCast(e, t, ctx) -> ExpCast((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
     | ExpTyped(e, t, ctx) -> ExpCast((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
     | ExpCCode(str, ctx) -> ExpCCode(str, (walk_ctx_ ctx))
-    | DefVal(p, v, flags, ctx) ->
-        DefVal((walk_pat_ p), (walk_exp_ v), flags, (walk_ctx_ ctx))
+    | DefVal(p, v, flags, loc) ->
+        DefVal((walk_pat_ p), (walk_exp_ v), flags, loc)
     | DefFun(df) ->
         if !df.df_templ_args != [] then e else
         (let { df_name; df_templ_args; df_args; df_typ; df_body;
@@ -547,18 +551,21 @@ let check_for_duplicate_typ key sc loc =
         else ()
     | _ -> ())
 
+let report_not_found n loc =
+    raise_typecheck_err loc (sprintf "the appropriate match for %s is not found" (pp_id2str n))
+
 let rec find_first n env loc pred =
     let rec find_next_ elist =
         match elist with
         | e :: rest ->
             (match (pred e) with
-            | Some x -> x
+            | Some x -> Some x
             | _ -> find_next_ rest)
-        | _ -> raise_typecheck_err loc (sprintf "the appropriate match for %s is not found" (pp_id2str n))
+        | _ -> None
     in find_next_ (find_all n env)
 
 let rec lookup_id n t env sc loc =
-    find_first n env loc (fun e ->
+    match (find_first n env loc (fun e ->
         match e with
         | EnvId i ->
             (match id_info i with
@@ -594,7 +601,9 @@ let rec lookup_id n t env sc loc =
                 Some(i)
             | IdNone | IdText _ | IdTyp _ | IdVariant _
             | IdClass _ | IdInterface _ -> None)
-        | EnvTyp _ -> None)
+        | EnvTyp _ -> None)) with
+    | Some(x) -> x
+    | None -> report_not_found n loc
 
 and preprocess_templ_typ templ_args typ env sc loc =
     let t = dup_typ typ in
@@ -638,19 +647,52 @@ and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
         (loc2str def_loc))) in
     List.fold_left2 (fun env n t -> add_typ_to_env n t env) env templ_args norm_ty_args
 
+(*
+    One of the main functions in type checker:
+    inferes the proper type of expression and recursively process sub-expressions.
+
+    Whenever possible, we try to do type unification before processing sub-expressions.
+    This is because sometimes we know type of the outer expression (type of the expression result)
+    and using this information we can possibly deduce the types of arguments.
+    For example, in `5 :: []` operation we can figure out that the second argument has `int list` type,
+    we do not have to write more explicit `5 :: ([]: int list)` expression.
+    Or, in the case of some hypothetical "fun integrate(a: 't, b: 't, f: 't->'t)" we can just call it
+    with `integrate(0.f, 10.f, Math.sin)` instead of more explicit `integrate(0.f, 10.f, (Math.sin: float->float))`.Bigarray
+
+    Also, note that the function does not modify the environment. When a complex expression
+    is analyzed (such as for loop), a temporary environment can be created with extra content
+    (like iteration variables in the case of for loop), but that temporary environment
+    is discared as soon the analysis is over.
+
+    The declarations should modify the environment, e.g. `val (a, b) = (cos(0.5), sin(0.5))` should introduce
+    some fresh ids like `a12345`, `b12346`, add the pairs (a, a12345) and (b, b12346) into the environment
+    and then analyze the subsequent expressions in the same scope using this augmented environment,
+    but this is done in check_eseq() function.
+*)
 and check_exp e env sc =
     let (etyp, eloc) as ctx = get_exp_ctx e in
+    let check_for_clause p e env idset sc =
+        let e = check_exp e env sc in
+        let (etyp, eloc) = get_exp_ctx e in
+        let (ptyp, dims) = (match (e, (deref_typ etyp false)) with
+            | (ExpRange(_, _, _, _), _) -> (TypInt, 1)
+            | (_, TypArray(d, et)) -> (et, d)
+            | (_, TypList(et)) -> (et, 1)
+            | (_, TypString) -> (TypChar, 1)
+            | _ -> raise_typecheck_err eloc "unsupported iteration domain; it should be a range, array, list or a string") in
+        let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true in
+        (p, e, dims, env, idset) in
     (match e with
-    | ExpNop(_) -> unify etyp TypVoid eloc "nop must have void type"; ExpNop(ctx)
+    | ExpNop(_) -> unify etyp TypVoid eloc "nop must have 'void' type"; ExpNop(ctx)
     | ExpRange(e1_opt, e2_opt, e3_opt, _) ->
         let check_range_e e_opt =
             (match e_opt with
             | None -> None
             | Some(e) ->
+                let (etyp1, eloc1) = get_exp_ctx e in
+                let _ = unify etyp1 TypInt eloc1 "explicitly specified component of a range must be an integer" in
                 let new_e = check_exp e env sc in
-                let (etyp1, eloc1) = get_exp_ctx new_e in
-                (unify etyp1 TypInt eloc1 "explicitly specified component of a range must be an integer";
-                Some new_e)) in
+                Some new_e) in
         let new_e1_opt = check_range_e e1_opt in
         let new_e2_opt = check_range_e e2_opt in
         let new_e3_opt = check_range_e e3_opt in
@@ -692,6 +734,39 @@ and check_exp e env sc =
             with Not_found -> raise_typecheck_err eloc (sprintf "the record element %s is not found" (pp_id2str n2)))
         | _ -> raise_typecheck_err eloc "unsupported element access operation"
         )
+    | ExpBinOp(OpCons, e1, e2, _) ->
+        let (etyp1, eloc1) = get_exp_ctx e1 in
+        let (etyp2, eloc2) = get_exp_ctx e2 in
+        let _ = unify etyp (TypList etyp1) eloc1 "'::' operation should produce a list" in
+        let _ = unify etyp etyp2 eloc2 "incorrect type of the second argument of '::' operation" in
+        let new_e1 = check_exp e1 env sc in
+        let new_e2 = check_exp e2 env sc in
+        ExpBinOp(OpCons, new_e1, new_e2, ctx)
+
+    | ExpBinOp(OpSet, e1, e2, _) ->
+        let (etyp1, eloc1) = get_exp_ctx e1 in
+        let (etyp2, eloc2) = get_exp_ctx e2 in
+        let _ = unify etyp1 etyp2 eloc "the left and the right sides of the assignment must have the same type" in
+        let _ = unify etyp TypVoid eloc "'=' operation has 'void' type" in
+        let new_e1 = check_exp e1 env sc in
+        let new_e2 = check_exp e2 env sc in
+        (* check that new_e1 is lvalue and that new_e1 and new_e2 have equal types;
+           in future we can let etyp1_ and etyp2_ be different as long as the assignment
+           is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
+        let is_lvalue = (match new_e1 with
+        | ExpAt _ -> true (* an_arr[idx] = e2 *)
+        | ExpUnOp(OpDeref, _, _) -> true (* *a_ref = e2 *)
+        | ExpIdent(n1, _) -> (* a_var = e2 *)
+            (match (id_info n1) with
+            | IdVal { dv_flags } -> (List.mem ValMutable dv_flags)
+            | _ -> false)
+        (* [TODO] probably, we should let user to modify individual fields of a record,
+        as long as it's stored in a mutable place (variable, array, by reference) *)
+        | _ -> false) in
+        if not is_lvalue then raise_typecheck_err eloc "the left side of assignment is not an l-value"
+        else ();
+        ExpBinOp(OpSet, new_e1, new_e2, ctx)
+
     | ExpBinOp(bop, e1, e2, _) ->
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
@@ -740,30 +815,7 @@ and check_exp e env sc =
             (match (deref_typ etyp1 false) with
             | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypBool -> Some(TypBool)
             | _ -> None)
-        | OpCons ->
-            unify etyp2 (TypList etyp1) eloc "incorrect combination of types in '::' operation";
-            Some(etyp2)
-        | OpSet ->
-            (* check that new_e1 is lvalue and that new_e1 and new_e2 have equal types;
-               in future we can let etyp1_ and etyp2_ be different as long as the assignment
-               is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
-            let is_lvalue = (match new_e1 with
-            | ExpAt _ -> true (* an_arr[idx] = e2 *)
-            | ExpUnOp(OpDeref, _, _) -> true (* *a_ref = e2 *)
-            | ExpIdent(n1, _) -> (* a_var = e2 *)
-                (match (id_info n1) with
-                | IdVal { dv_typ; dv_flags } ->
-                    unify etyp2 dv_typ eloc "the variable type does not match the assigned value";
-                    (List.mem ValMutable dv_flags)
-                | _ -> false)
-            (* [TODO] probably, we should let user to modify individual fields of a record,
-            as long as it's stored in a mutable place (variable, array, by reference) *)
-            | _ -> false) in
-            if not is_lvalue then raise_typecheck_err eloc "the left side of assignment is not an l-value"
-            else
-                unify etyp1 etyp2 eloc "the left and the right sides of the assignment must have the same type";
-            Some(TypVoid)
-        | _ -> raise_typecheck_err eloc "unsupported binary operation") in
+        | _ -> raise_typecheck_err eloc (sprintf "unsupported binary operation %s" (binop_to_string bop))) in
 
         (match typ_opt with
         | Some(typ) ->
@@ -774,6 +826,26 @@ and check_exp e env sc =
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)
             let f_id = get_binop_fname bop in
             check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1; new_e2], ctx)) env sc)
+
+    | ExpUnOp(OpMakeRef, e1, _) ->
+        let (etyp1, eloc1) = get_exp_ctx e1 in
+        let _ = unify etyp (TypRef etyp1) eloc "the types of ref() operation argument and result are inconsistent" in
+        let new_e1 = check_exp e1 env sc in
+        ExpUnOp(OpMakeRef, new_e1, ctx)
+
+    | ExpUnOp(OpDeref, e1, _) ->
+        let (etyp1, eloc1) = get_exp_ctx e1 in
+        let _ = unify (TypRef etyp) etyp1 eloc "the types of unary '*' operation argument and result are inconsistent" in
+        let new_e1 = check_exp e1 env sc in
+        ExpUnOp(OpDeref, new_e1, ctx)
+
+    | ExpUnOp(OpThrow, e1, _) ->
+        let (etyp1, eloc1) = get_exp_ctx e1 in
+        let _ = unify TypExn etyp1 eloc "the argument of 'throw' operator must be an exception" in
+        let _ = unify TypErr etyp eloc "the argument of 'throw' operator must be an exception" in
+        let new_e1 = check_exp e1 env sc in
+        ExpUnOp(OpThrow, new_e1, ctx)
+
     | ExpUnOp(uop, e1, _) ->
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
@@ -807,41 +879,29 @@ and check_exp e env sc =
             unify etyp1 TypBool eloc1 "the argument of ! operator must be a boolean";
             unify etyp TypBool eloc "the result of ! operator must be a boolean";
             ExpUnOp(uop, new_e1, ctx)
-        | OpMakeRef ->
-            unify etyp (TypRef etyp1) eloc "improper type of ref() operator result";
-            ExpUnOp(uop, new_e1, ctx)
-        | OpDeref ->
-            unify (TypRef etyp) etyp1 eloc "improper type of the unary '*' operator result";
-            ExpUnOp(uop, new_e1, ctx)
-        | OpThrow ->
-            unify etyp1 TypExn eloc "the argument of 'throw' operator must be an exception";
-            ExpUnOp(uop, new_e1, ctx)
         | OpExpand ->
-            raise_typecheck_err eloc "the expand (\\...) operation is not implemented yet")
+            raise_typecheck_err eloc "the expand (\\...) operation is not implemented yet"
+        | _ ->
+            raise_typecheck_err eloc (sprintf "unsupported unary operation %s" (unop_to_string uop)))
     | ExpSeq(eseq, _) ->
-        let (eseq, _) = check_eseq eseq env sc true in
         let eseq_typ = get_eseq_typ eseq in
-        unify etyp eseq_typ eloc "the sequence type does not match the last expression type";
+        let _ = unify etyp eseq_typ eloc "the expected type of block expression does not match its actual type" in
+        let (eseq, _) = check_eseq eseq env sc true in
         ExpSeq(eseq, ctx)
     | ExpMkTuple(el, _) ->
-        let (new_el, tl) = List.fold_left
-            (fun (new_el, tl) elem ->
-                let new_elem = check_exp elem env sc in
-                let (new_etyp, _) = get_exp_ctx new_elem in
-                ((new_elem :: new_el), (new_etyp :: tl))) ([], []) el in
-        unify (TypTuple (List.rev tl)) etyp eloc "improper tuple type or the number of elements";
-        ExpMkTuple ((List.rev new_el), ctx)
+        let tl = List.map (fun e -> get_exp_typ e) el in
+        let _ = unify etyp (TypTuple tl) eloc "improper type of tuple elements or the number of elements" in
+        ExpMkTuple((List.map (fun e -> check_exp e env sc) el), ctx)
     | ExpCall(f, args, _) ->
-        (*
-          [TODO]
-          * unify f typ with TypFun(args_types, rt), where each of arg types and rt = TypVar(ref None)
-            (but all the types are different)
-          * then try to find the proper f (run check_exp)
-          * then check and unify types of all the arg types.
-          * then repeat the search of f if needed.
-          * unify the expression type with "rt".
-        *)
-        raise_typecheck_err eloc "unsupported op"
+        (* [TODO] implement more sophisticated algorithm; try to look for possible overloaded functions first;
+           if there is just one obvious match, take it first and use to figure out the argument types *)
+        let arg_typs = List.map (fun a -> get_exp_typ a) args in
+        let f_expected_typ = TypFun(arg_typs, etyp) in
+        let (f_real_typ, floc) = get_exp_ctx f in
+        let _ = unify f_real_typ f_expected_typ floc "the real and expected function type do not match" in
+        let new_args = List.map (fun a -> check_exp a env sc) args in
+        let new_f = check_exp f env sc in
+        ExpCall(new_f, new_args, ctx)
     | ExpAt(arr, idxs, _) ->
         let new_arr = check_exp arr env sc in
         let (new_atyp, new_aloc) = get_exp_ctx new_arr in
@@ -873,47 +933,79 @@ and check_exp e env sc =
                   "the number of ranges does not match dimensionality of the result, or the element type is incorrect");
             ExpAt(new_arr, (List.rev new_idxs), ctx))
     | ExpIf(c, e1, e2, _) ->
+        let (ctyp, cloc) = get_exp_ctx c in
+        let (typ1, loc1) = get_exp_ctx e1 in
+        let (typ2, loc2) = get_exp_ctx e2 in
+        let _ = unify ctyp TypBool cloc "if() condition should have 'bool' type" in
+        let _ = unify typ1 typ2 loc2 "if() then- and else- branches should have the same type" in
+        let _ = unify typ1 etyp eloc "if() expression should have the same type as its branches" in
         let new_c = check_exp c env sc in
-        let (new_ctyp, new_cloc) = get_exp_ctx new_c in
         let new_e1 = check_exp e1 env sc in
-        let (new_typ1, new_loc1) = get_exp_ctx new_e1 in
         let new_e2 = check_exp e2 env sc in
-        let (new_typ2, new_loc2) = get_exp_ctx new_e2 in
-        unify new_ctyp TypBool new_cloc "if() condition should have boolean type";
-        unify new_typ1 new_typ2 new_loc2 "if() then- and else- branches should have the same type";
-        unify new_typ1 etyp eloc "if() expression should have the same type as its branches";
         ExpIf(new_c, new_e1, new_e2, ctx)
     | ExpWhile(c, body, _) ->
+        let (ctyp, cloc) = get_exp_ctx c in
+        let (btyp, bloc) = get_exp_ctx body in
+        let _ = unify ctyp TypBool cloc "while() loop condition should have 'bool' type" in
+        let _ = unify btyp TypVoid bloc "while() loop body should have 'void' type" in
+        let _ = unify etyp TypVoid eloc "while() loop should have 'void' type" in
         let new_c = check_exp c env sc in
-        let (new_ctyp, new_cloc) = get_exp_ctx new_c in
         let new_body = check_exp body env sc in
-        let (new_btyp, new_bloc) = get_exp_ctx new_body in
-        unify new_ctyp TypBool new_cloc "while() loop condition should have boolean type";
-        unify new_btyp TypVoid new_cloc "while() loop body should have void type";
-        unify etyp TypVoid eloc "while() loop should have void type";
         ExpWhile (new_c, new_body, ctx)
     | ExpDoWhile(c, body, _) ->
+        let (ctyp, cloc) = get_exp_ctx c in
+        let (btyp, bloc) = get_exp_ctx body in
+        let _ = unify ctyp TypBool cloc "do-while() loop condition should have 'bool' type" in
+        let _ = unify btyp TypVoid bloc "do-while() loop body should have 'void' type" in
+        let _ = unify etyp TypVoid eloc "do-while() loop should have 'void' type" in
         let new_c = check_exp c env sc in
-        let (new_ctyp, new_cloc) = get_exp_ctx new_c in
         let new_body = check_exp body env sc in
-        let (new_btyp, new_bloc) = get_exp_ctx new_body in
-        unify new_ctyp TypBool new_cloc "do while() loop condition should have boolean type";
-        unify new_btyp TypVoid new_cloc "do while() loop body should have void type";
-        unify etyp TypVoid eloc "do while() loop should have void type";
         ExpDoWhile (new_c, new_body, ctx)
     | ExpFor(for_clauses, body, flags, _) ->
-        (*
-          [TODO]
-          * check each range of for loop; it should either be a range or some collection;
-          * the pattern should take the appropriate type;
-          * loop body should be unified with "void"
-          * the whole loop should be unified with "void" as well
-        *)
-        raise_typecheck_err eloc "unsupported op"
-    | ExpMap (_, _, _, _) ->
-        raise_typecheck_err eloc "unsupported op"
-    | ExpBreak _ | ExpContinue _ ->
-        raise_typecheck_err eloc "unsupported op"
+        let for_sc = new_block_scope() :: sc in
+        let (for_clauses1, _, env1, _) = List.fold_left
+            (fun (for_clauses1, dims1, env1, idset1) (pi, ei) ->
+                let (pi, ei, dims, env1, idset1) = check_for_clause pi ei env1 idset1 for_sc in
+                if dims1 != 0 && dims1 != dims then
+                    raise_typecheck_err (get_exp_loc ei) "the dimensionalities of simultaneously iterated containers/ranges do not match"
+                else ();
+                ((pi, ei) :: for_clauses1, dims, env1, idset1)) ([], 0, env, IdSet.empty) for_clauses in
+        let (btyp, bloc) = get_exp_ctx body in
+        let _ = unify btyp TypVoid bloc "'for()' body should have 'void' type" in
+        let _ = unify etyp TypVoid bloc "'for()' expression has 'void' type" in
+        let new_body = check_exp body env1 for_sc in
+        ExpFor((List.rev for_clauses1), new_body, flags, ctx)
+    | ExpMap (map_clauses, body, flags, ctx) ->
+        let for_sc = new_block_scope() :: sc in
+        let (map_clauses1, total_dims, env1, _) = List.fold_left
+            (fun (map_clauses1, total_dims, env1, idset1) (for_clauses, opt_c) ->
+                let (for_clauses1, dims1, env1, idset1) = List.fold_left
+                (fun (for_clauses1, dims1, env1, idset1) (pi, ei) ->
+                    let (pi, ei, dims, env1, idset1) = check_for_clause pi ei env1 idset1 for_sc in
+                    if dims1 != 0 && dims1 != dims then
+                        raise_typecheck_err (get_exp_loc ei) "the dimensionalities of simultaneously iterated containers/ranges do not match"
+                    else ();
+                ((pi, ei) :: for_clauses1, dims, env1, idset1)) ([], 0, env, IdSet.empty) for_clauses in
+                let new_opt_c = (match opt_c with
+                    | Some(c) ->
+                        let new_c = check_exp c env1 for_sc in
+                        let (new_ctyp, new_cloc) = get_exp_ctx new_c in
+                        unify new_ctyp TypBool new_cloc "the conditional clause in map must have 'bool' type";
+                        Some(new_c)
+                    | _ -> None) in
+                (((List.rev for_clauses1), new_opt_c) :: map_clauses1,
+                total_dims + dims1, env1, idset1)) ([], 0, env, IdSet.empty) map_clauses in
+        let (btyp, bloc) = get_exp_ctx body in
+        let _ = unify etyp (TypArray(total_dims, btyp)) bloc
+            "the map should return %d-dimensional array with elements of the same type as the map body" in
+        let new_body = check_exp body env1 for_sc in
+        ExpMap((List.rev map_clauses1), new_body, flags, ctx)
+    | ExpBreak _ ->
+        unify etyp TypVoid eloc "improper use of break";
+        e
+    | ExpContinue _ ->
+        unify etyp TypVoid eloc "improper use of continue";
+        e
     | ExpMkArray (_, _) ->
         raise_typecheck_err eloc "unsupported op"
     | ExpMkRecord (_, _, _) | ExpUpdateRecord (_, _, _) ->
@@ -921,14 +1013,14 @@ and check_exp e env sc =
     | ExpTryCatch(e1, handlers, _) ->
         (* [TODO] check try_e, check handlers, check that each handlers branch is unified with try_e;
            the overall trycatch should also be unified with try_e *)
+        let (e1typ, e1loc) = get_exp_ctx e1 in
+        let _ = unify etyp e1typ e1loc "try body type does match the whole try-catch type" in
         let new_e1 = check_exp e1 env sc in
-        let (new_e1typ, new_e1loc) = get_exp_ctx new_e1 in
-        let _ = unify etyp new_e1typ new_e1loc "try body type does match the whole try-catch type" in
         let new_handlers = check_handlers handlers TypExn etyp env sc eloc in
         ExpTryCatch(new_e1, new_handlers, ctx)
     | ExpMatch(e1, handlers, _) ->
         let new_e1 = check_exp e1 env sc in
-        let (new_e1typ, new_e1loc) = get_exp_ctx new_e1 in
+        let new_e1typ = get_exp_typ new_e1 in
         let new_handlers = check_handlers handlers new_e1typ etyp env sc eloc in
         ExpMatch(new_e1, new_handlers, ctx)
     | ExpCast(e1, t1, _) ->
@@ -951,22 +1043,17 @@ and check_exp e env sc =
         | _ -> raise_typecheck_err eloc
             "ccode may be used only at the top (module level) or as a single expression in function definition");
         e
-    | DefVal(p, v, flags, _) -> e
-        (*
-          [TODO]
-          * check v and get its type
-          * check the pattern p and unify it with v type
-          * if it's not a class (check sc) then add p elements to the environment
-          * unify etyp with TypDecl
-        *)
-    | DefFun(_) -> e
-    | DefVariant(_) -> e
-    | DefClass(_) -> raise_typecheck_err eloc "not implemented"
-    | DefInterface(_) -> raise_typecheck_err eloc "not implemented"
-    | DefExn(_) -> e
-    | DefTyp(_) -> e
-    | DirImport(_, _) -> e
-    | DirImportFrom(_, _, _) -> e)
+    (* all the declarations are checked in check_eseq *)
+    | DefVal(_, _, _, _)
+    | DefFun(_)
+    | DefVariant(_)
+    | DefClass(_)
+    | DefInterface(_)
+    | DefExn(_)
+    | DefTyp(_)
+    | DirImport(_, _)
+    | DirImportFrom(_, _, _) ->
+        raise_typecheck_err eloc "internal err: should not get here; all the declarations must be handled in check_eseq")
 
 and check_eseq eseq env sc create_sc =
     (*
@@ -1015,13 +1102,16 @@ and check_eseq eseq env sc create_sc =
         | DefExn (de) -> check_defexn de env sc
         | _ -> env) env eseq in
 
-    (* finally, process everything: function  *)
+    (* finally, process everything else:
+       function bodies, values declarations as well as normal expressions/statements *)
     let (env, eseq) = List.fold_left (fun (env, eseq) e ->
         try
             match e with
-            | DefVal (dv) ->
-                let (env, dv, _) = check_defval dv env sc nmap_t.empty in
-                (env, DefVal(dv) :: eseq)
+            | DefVal (p, e, flags, loc) ->
+                let t = get_exp_typ e in
+                let e1 = check_exp e env sc in
+                let (p1, env1, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true in
+                (env1, DefVal(p1, e1, flags, loc) :: eseq)
             | DefFun (df) ->
                 let env = check_deffun df env sc in
                 (env, e :: eseq)
@@ -1176,14 +1266,22 @@ and check_types eseq env sc =
     * add it into the environment
 *)
 and reg_deffun df env sc =
-    let { df_name; df_templ_args; df_args; df_typ; df_body; df_flags; df_loc } = !df in
+    let { df_name; df_args; df_typ; df_body; df_flags; df_loc } = !df in
     let df_name1 = dup_id df_name in
-    let (_, _, df_args1) = List.fold_left (fun (env, idset, df_args1) arg ->
-            let arg, idset,
-    let df_typ1 = df_typ in
-    dt := {dt_name=dt_name1; dt_templ_args; dt_typ; dt_scope=sc; dt_finalized=false; dt_loc};
-    set_id_entry dt_name1 (IdTyp dt);
-    add_id_to_env_check dt_name dt_name1 env (check_for_duplicate_fun df_typ1 env sc df_loc)
+    let rt = (match df_typ with TypFun(_, rt) -> rt | _ -> raise_typecheck_err df_loc "incorrect function type") in
+    let df_sc = (ScFun df_name1) :: sc in
+    let (args1, argtyps1, env1, idset1, templ_args1) = List.fold_left (fun (args1, argtyps1, env1, idset1, templ_args1) arg ->
+            let t = make_new_typ() in
+            let (arg1, env1, idset1, templ_args1) = check_pat arg t env1 idset1 templ_args1 df_sc true true in
+            ((arg1 :: args1), (t :: argtyp1), env1, idset1, templ_args1)) ([], [], env, IdSet.empty, IdSet.empty) df_args in
+    let dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc) in
+    let (_, env1, idset1, templ_args1) = check_pat dummy_rt_pat (make_new_typ()) env1 idset1 templ_args1 df_sc true true in
+    let df_typ1 = TypFun((List.rev argtyps1), rt) in
+    df := { df_name=df_name1; df_templ_args=(IdSet.elements templ_args1);
+            df_args=(List.rev args1); df_typ=df_typ1;
+            df_body; df_flags; df_scope=df_sc; df_loc; df_templ_inst=[] };
+    set_id_entry df_name1 (IdFun df);
+    add_id_to_env_check df_name df_name1 env (check_for_duplicate_fun df_typ1 env sc df_loc)
 
 (*
     dvar_flags; dvar_members;
@@ -1239,12 +1337,13 @@ and check_defexn de env sc =
             the proper match. this step is optional for now, but it will become a mandatory when handling complex types,
             such as variants, classes and maybe records. It can also help to save some time and some space
 *)
-and check_typ t env sc loc =
+and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
+    let r_env = ref env in
     let rec check_typ_ t callb =
         (match t with
         | TypApp(ty_args, n) ->
             let ty_args = List.map (fun t -> check_typ_ t callb) ty_args in
-            find_first n env loc (fun entry ->
+            let found_typ_opt = find_first n !r_env loc (fun entry ->
                 match entry with
                 | EnvTyp(t) ->
                     if ty_args = [] then Some(t) else
@@ -1264,7 +1363,7 @@ and check_typ t env sc loc =
                         if dt_name = n && ty_args = [] then
                             t
                         else
-                            let env = match_ty_templ_args ty_args dt_templ_args env dt_loc in
+                            let env = match_ty_templ_args ty_args dt_templ_args !r_env dt_loc in
                             Some(check_typ dt_typ env sc loc)
                     | IdVariant dvar ->
                         let { dvar_name; dvar_templ_args; dvar_templ_inst; dvar_typ } = !dvar in
@@ -1281,10 +1380,20 @@ and check_typ t env sc loc =
                                     | _ -> raise_typecheck_err loc (sprintf "invalid type of variant instance %s (must be also a variant)" (id2str i)))
                                     dvar_templ_inst))
                             with Not_found ->
-                                instantiate_variant ty_args dvar env sc loc))
+                                instantiate_variant ty_args dvar !r_env sc loc)) in
+            (match (r_opt_typ_vars, ty_args, found_typ_opt) with
+            | (_, _, Some(new_t)) -> new_t
+            | (Some(r_typ_vars), [], _) when (Utils.starts_with (id2str n) "'") ->
+                r_typ_vars := IdSet.add n !r_typ_vars;
+                r_env := add_typ_to_env n t !r_env;
+                t
+            | _ -> report_not_found n loc)
         | _ -> walk_typ t callb) in
     let callb = { acb_typ=Some(check_typ_); acb_exp=None; acb_pat=None; acb_res=0 } in
-    check_typ_ t callb
+    (check_typ_ t callb, !r_env)
+
+and check_typ t env sc loc =
+    let (t, _) = check_typ_and_collect_typ_vars t env None sc loc in t
 
 and instantiate_fun templ_df inst_ftyp inst_env inst_sc inst_loc =
     let { df_name; df_templ_args; df_args; df_body; df_flags; df_scope; df_loc; df_templ_inst } = !templ_df in
@@ -1295,9 +1404,9 @@ and instantiate_fun templ_df inst_ftyp inst_env inst_sc inst_loc =
     let inst_name = dup_id df_name in
     let fun_sc = (ScFun inst_name) :: inst_sc in
     let (df_inst_args, inst_env, _) = List.fold_left2
-        (fun (df_inst_args, inst_env, id_set) df_arg arg_typ ->
-            let (df_inst_arg, inst_env, id_set) = check_pat df_arg arg_typ inst_env id_set fun_sc in
-            ((df_inst_arg :: df_inst_args), inst_env, id_set)) ([], inst_env, IdSet.empty) df_args arg_typs in
+        (fun (df_inst_args, inst_env, idset) df_arg arg_typ ->
+            let (df_inst_arg, inst_env, idset) = check_pat df_arg arg_typ inst_env idset fun_sc in
+            ((df_inst_arg :: df_inst_args), inst_env, idset)) ([], inst_env, IdSet.empty) df_args arg_typs in
     let inst_body = check_exp (dup_exp df_body) inst_env fun_sc in
     let (body_typ, body_loc) = get_exp_ctx inst_body in
     let _ = unify body_typ rt body_loc "the function body type does not match the function type" in
@@ -1317,20 +1426,87 @@ and instantiate_variant ty_args dvar env sc loc =
 
     failwith "instantiate_variant not implemented"
 
-and check_pat pat typ env id_set sc =
-    let id_set_r = ref id_set in
-    match
-    (*
-      [TODO]
-      * "_" should probably be replaced with a temporary id
-      * ident should be checked for the absence of duplicates.
-      *
-    | PatIdent of id_t * loc_t
-    | PatTuple of pat_t list * loc_t
-    | PatVariant of id_t * pat_t list * loc_t
-    | PatTyped of pat_t * typ_t * loc_t
-    *)
-    failwith "check_pat not implemented"
+and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode =
+    let r_idset = ref idset in
+    let r_env = ref env in
+    let r_typ_vars = ref typ_vars in
+    let rec process_id i t loc =
+        (if (IdSet.mem i !r_idset) then
+            raise_typecheck_err loc "duplicate identifier"
+        else
+            r_idset := IdSet.add i !r_idset;
+        if proto_mode then i else
+            (let j = dup_id i in
+            let dv = { dv_name=j; dv_typ=t; dv_flags=[]; dv_scope=sc; dv_loc=loc } in
+            set_id_entry j (IdVal dv);
+            r_env := add_id_to_env i j !r_env;
+            j))
+    and check_pat_ p t = (match p with
+        | PatAny _ -> ()
+        | PatLit(l, loc) ->
+            if simple_pat_mode then raise_typecheck_err loc "literals are not allowed here" else ();
+            unify t (get_lit_typ l) loc "the literal of unexpected type";
+            p
+        | PatIdent(i, loc) ->
+            PatIdent((process_id i t loc), loc)
+        | PatTuple(pl, loc) ->
+            let tl = List.map (fun p -> make_new_typ ()) pl in
+            unify t TypTuple(tl) loc "improper type of the tuple pattern";
+            PatTuple(List.rev (List.fold_left2 (fun pl_new p t -> (check_pat_ p t) :: pl_new) [] pl tl))
+        | PatVariant(v, pl, loc) ->
+            if not proto_mode then
+                (* [TODO] in the ideal case this branch should work fine in the prototype mode as well,
+                   just need to make lookup_id smart enough (maybe add some extra parameters to
+                   avoid preliminary type instantiation) *)
+                let tl = List.map (fun p -> make_new_typ()) pl in
+                let v_new = lookup_id v (TypFun(typ_args, t)) !r_env sc loc in
+                PatVariant(v_new, (List.map2 (fun p t -> check_pat_ p t) pl tl), loc)
+            else
+            (match (deref_typ t false) with
+            | TypApp(ty_args, n) ->
+                (match (id_info n) with
+                | IdVariant dv ->
+                    let { dvar_members } = !dv in
+                    if (List.length dvar_members) != 1 then
+                        raise_typecheck_err loc "a label of multi-case variant may not be used in a formal function parameter"
+                    else
+                    (try
+                        let (vi, ti) = List.find (fun (vi, ti) -> vi = v) dvar_members in
+                        let ni = (match ti with
+                        | TypTuple(tl) -> List.length tl
+                        | TypVoid -> raise_typecheck_err loc
+                            (sprintf "a variant label '%s' with no arguments may not be used as a formal function parameter" (pp_id2str vi))
+                        | _ -> 1) in
+                        if ni != (List.length pl) then
+                            raise_typecheck_err loc
+                            (sprintf "the number of variant pattern arguments does not match to the description of variant case '%s'" (pp_id2str vi))
+                            else ();
+                        PatVariant(v, pl, loc)
+                    with Not_found ->
+                        raise_typecheck_err loc
+                        (sprintf "the number of variant pattern arguments does not match to the description of variant case '%s'" (pp_id2str vi)))
+                | _ -> raise_typecheck_err loc "variant pattern is used with non-variant type")
+            | _ -> raise_typecheck_err loc "variant pattern is used with non-variant type")
+        | PatRec(r_opt, relems, loc) ->
+            raise_typecheck_err loc "record patterns are not supported yet"
+        | PatCons(p1, p2, loc) ->
+            let t1 = make_new_typ() in
+            let t2 = TypList t1 in
+            if simple_pat_mode then raise_typecheck_err loc "'::' pattern is not allowed here" else ();
+            unify t t2 loc "'::' pattern is used with non-list type";
+            PatCons((check_pat_ p1 t1), (check_pat_ p2 t2), loc)
+        | PatAs(p1, i, loc) ->
+            let p1_new = check_pat_ p1 t in
+            let i_new = process_id i t loc in
+            PatAs(p1_new, i_new, loc)
+        | PatTyped(p1, t1, loc) ->
+            let (t1_new, env1) = check_typ_and_collect_typ_vars t1 !r_env
+                (if proto_mode then Some(r_typ_vars) else None) sc loc in
+            r_env := env1;
+            unify t1_new t loc "inconsistent explicit type specification";
+            PatType((check_pat_ p1 t), t1_new, loc)) in
+    let pat_new = check_pat_ pat typ in
+    (pat_new, !r_env, !r_idset, !r_typ_vars)
 
 and check_handlers handlers inptyp outtyp env sc loc =
     List.map (fun (plist, e) ->

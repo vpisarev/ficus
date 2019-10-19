@@ -98,6 +98,10 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp fold_cl fold_body =
     let acc_exp = fold_pat2exp fold_pat in
     ExpSeq([acc_decl; for_exp; acc_exp], (make_new_typ(), curr_loc()))
 
+let rec compress_nested_map_exp l e = match e with
+    | ExpFor(for_clauses, body, flags, ctx) -> compress_map_for_clauses ((for_clauses, None) :: l) body
+    | _ -> ((List.rev l), e)
+
 %}
 
 %token TRUE FALSE NONE
@@ -337,11 +341,13 @@ simple_exp:
 | B_LPAREN exp CAST typespec RPAREN { ExpCast($2, $4, make_new_ctx()) }
 | B_LSQUARE for_flags FOR lparen for_in_list_ RPAREN exp_or_block RSQUARE
     {
-        ExpMap(((List.rev $5), None) :: [], $7, ForMakeArray :: $2, make_new_ctx())
+        let (map_clauses, body) = compress_nested_map_exp (((List.rev $5), None) :: []) $7 in
+        ExpMap(map_clauses, body, ForMakeArray :: $2, make_new_ctx())
     }
 | B_LSQUARE CONS for_flags FOR lparen for_in_list_ RPAREN exp_or_block RSQUARE
     {
-        ExpMap(((List.rev $6), None) :: [], $8, ForMakeList :: $3, make_new_ctx())
+        let (map_clauses, body) = compress_nested_map_exp (((List.rev $6), None) :: []) $8 in
+        ExpMap(map_clauses, body, ForMakeList :: $3, make_new_ctx())
     }
 | B_LSQUARE array_elems_ RSQUARE
     {

@@ -169,7 +169,7 @@ type exp_t =
     | ExpCast of exp_t * typ_t * ctx_t
     | ExpTyped of exp_t * typ_t * ctx_t
     | ExpCCode of string * ctx_t
-    | DefVal of pat_t * exp_t * val_flag_t list * ctx_t
+    | DefVal of pat_t * exp_t * val_flag_t list * loc_t
     | DefFun of deffun_t ref
     | DefExn of defexn_t ref
     | DefTyp of deftyp_t ref
@@ -313,7 +313,7 @@ let get_exp_ctx e = match e with
     | ExpCast(_, _, c) -> c
     | ExpTyped(_, _, c) -> c
     | ExpCCode(_, c) -> c
-    | DefVal(_, _, _, c) -> c
+    | DefVal(_, _, _, dv_loc) -> (TypDecl, dv_loc)
     | DefFun {contents = { df_loc }} -> (TypDecl, df_loc)
     | DefExn {contents = { dexn_loc }} -> (TypDecl, dexn_loc)
     | DefTyp {contents = { dt_loc }} -> (TypDecl, dt_loc)
