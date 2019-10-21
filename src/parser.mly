@@ -57,7 +57,7 @@ let make_variant_type (targs, tname) var_elems0 =
     let loc = make_loc(pos0, pos1) in
     let var_elems = List.map (fun (n, t) -> if (good_variant_name n) then (get_id n, t) else
         raise (SyntaxError ((sprintf "syntax error: variant tag '%s' does not start with a capital latin letter" n), pos0, pos1))) var_elems0 in
-    let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_flags=[]; dvar_members=var_elems;
+    let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_typ=make_new_typ(); dvar_flags=[]; dvar_members=var_elems;
                dvar_constr=[]; dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
 
@@ -71,14 +71,13 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp fold_cl fold_body =
         }`
     *)
     let rec fold_pat2exp p =
-        (let ctx = (make_new_typ(), get_pat_loc p) in
+        (let (ptype, ploc) as ctx = (make_new_typ(), get_pat_loc p) in
         match p with
         | PatTuple(pl, _) -> ExpMkTuple((List.map fold_pat2exp pl), ctx)
         | PatTyped(p, t, _) -> ExpTyped((fold_pat2exp p), t, ctx)
         | PatIdent(i, _) -> ExpIdent(i, ctx)
         | PatVariant(f, pl, _) ->
-            let f_loc = get_pat_loc l in
-            ExpCall(ExpIdent(f, (make_new_typ(), f_loc)), (List.map fold_pat2exp pl), ctx)
+            ExpCall(ExpIdent(f, (make_new_typ(), ploc)), (List.map fold_pat2exp pl), ctx)
         | _ ->
             let (pos0, pos1) = ((Parsing.rhs_start_pos fold_pat_n), (Parsing.rhs_end_pos fold_pat_n)) in
             raise (SyntaxError
@@ -86,10 +85,8 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp fold_cl fold_body =
                 "only identifiers, tuples, single-case variants, type annotations " ^
                 "and various combinations of those are currently supported."),
                 pos0, pos1))) in
-    let acc_tp = make_new_typ() in
     let acc_loc = get_pat_loc fold_pat in
-    let acc_ctx = (acc_tp, acc_loc) in
-    let acc_decl = DefVal(fold_pat, fold_init_exp, [ValMutable], acc_ctx) in
+    let acc_decl = DefVal(fold_pat, fold_init_exp, [ValMutable], acc_loc) in
     let (p0, _) = List.hd fold_cl in
     let { loc_fname; loc_line0; loc_pos0 } = get_pat_loc p0 in
     let { loc_line1; loc_pos1 } = get_exp_loc fold_body in
@@ -99,7 +96,7 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp fold_cl fold_body =
     ExpSeq([acc_decl; for_exp; acc_exp], (make_new_typ(), curr_loc()))
 
 let rec compress_nested_map_exp l e = match e with
-    | ExpFor(for_clauses, body, flags, ctx) -> compress_map_for_clauses ((for_clauses, None) :: l) body
+    | ExpFor(for_clauses, body, _, _) -> compress_nested_map_exp ((for_clauses, None) :: l) body
     | _ -> ((List.rev l), e)
 
 %}
@@ -263,9 +260,9 @@ simple_type_decl:
 | TYPE type_lhs EQUAL typespec
     {
         let (targs, i) = $2 in
-        let dtp = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: [];
+        let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: [];
                     dt_finalized=false; dt_loc=curr_loc() } in
-        DefType (ref dtp)
+        DefTyp (ref dt)
     }
 | TYPE type_lhs EQUAL B_IDENT BITWISE_OR variant_elems_
     {
@@ -626,12 +623,12 @@ val_decls_:
 | val_decl { $1 :: [] }
 
 val_decl:
-| simple_pat EQUAL exp_or_block { ($1, $3, make_new_ctx()) }
+| simple_pat EQUAL exp_or_block { ($1, $3, curr_loc()) }
 | FOLD fold_clause exp_or_block
     {
         let ((fold_pat, fold_init_exp), fold_cl) = $2 in
         let e = transform_fold_exp fold_pat 2 fold_init_exp fold_cl $3 in
-        (fold_pat, e, make_new_ctx())
+        (fold_pat, e, curr_loc())
     }
 
 fun_decl_start:

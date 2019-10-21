@@ -38,7 +38,7 @@ module Id = struct
    let compare a b =
       let a_idx = match (a) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
       let b_idx = match (b) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
-      Pervasives.compare a_idx b_idx
+      if a_idx < b_idx then -1 else if a_idx > b_idx then 1 else 0
 end
 
 type id_t = Id.t
