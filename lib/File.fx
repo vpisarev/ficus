@@ -126,7 +126,7 @@ fun write(f: file_t, a: 't [,])
 fun read(f: file_t, buf: uint8 [])
 {
     fun read_(f: cptr, buf: uint8 []): int =
-        ccode "return __fx_fread(fx_ctx, fx_result, buf->data, 1, buf->dim[0].size, (FILE*)(f->p));"
+        ccode "return __fx_fread(fx_ctx, &fx_res, buf->data, 1, buf->dim[0].size, (FILE*)(f->p));"
     if (!isOpened()) throw NullFileError
     read_(handle, buf)
 }

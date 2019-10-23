@@ -15,18 +15,18 @@ let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
 let lit_to_string c = match c with
-    | LitInt(v) -> (Int64.to_string v)
-    | LitSInt(b, v) -> sprintf "%Lii%d" v b
-    | LitUInt(b, v) -> sprintf "%Luu%d" v b
-    | LitFloat(16, v) -> sprintf "%.4gh" v
-    | LitFloat(32, v) -> sprintf "%.8gf" v
-    | LitFloat(64, v) -> sprintf "%.16g" v
+    | LitInt(v) -> sprintf "INT:%Li" v
+    | LitSInt(b, v) -> sprintf "SINT:%Lii%d" v b
+    | LitUInt(b, v) -> sprintf "UINT:%Luu%d" v b
+    | LitFloat(16, v) -> sprintf "HALF:%.4gh" v
+    | LitFloat(32, v) -> sprintf "FLOAT:%.8gf" v
+    | LitFloat(64, v) -> sprintf "DOUBLE:%.16g" v
     | LitFloat(b, v) -> failwith (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
     | LitString(s) -> "\"" ^ (String.escaped s) ^ "\""
     | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
-    | LitBool(true) -> "true"
-    | LitBool(false) -> "false"
-    | LitNil -> "nil"
+    | LitBool(true) -> "True"
+    | LitBool(false) -> "False"
+    | LitNil -> "Nil"
     | LitNone -> "None"
 
 let pprint_lit x = pstr (lit_to_string x)
@@ -54,7 +54,7 @@ let rec pptype_ t p1 =
     let p = get_typ_pr t in
     let pptypsuf t1 suf =
         let (lp, rp) = opt_parens p p1 in
-        (obox(); pstr lp; pptype_ t1 p; pstr rp; pspace(); pstr suf; cbox()) in
+        (obox(); pstr lp; pptype_ t1 p; pstr rp; pstr " applied-to "; pstr suf; cbox()) in
     let pptypelist_ prefix args =
         pstr prefix; pcut(); obox();
         (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pptype_ t TypPr0) args);
@@ -74,15 +74,15 @@ let rec pptype_ t p1 =
     | TypBool -> pstr "Bool"
     | TypVoid -> pstr "Void"
     | TypFun(tl, t2) ->
-            let (lp, rp) = opt_parens p p1 in
-            obox(); pstr lp;
+            (*let (lp, rp) = opt_parens p p1 in*)
+            obox(); pstr "(";
             (match tl with
             | [] -> pstr "Void"
             | t1 :: [] -> pptype_ t1 p
             | _ -> pptype_ (TypTuple tl) p);
             pspace(); pstr "->";
             pptype_ t2 p;
-            pstr rp; cbox()
+            pstr ")"; cbox()
     | TypList(t1) -> pptypsuf t1 "List"
     | TypOption(t1) -> pptypsuf t1 "Option"
     | TypRef(t1) -> pptypsuf t1 "Ref"
@@ -255,7 +255,7 @@ let rec pprint_exp e =
         | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_typ t; cbox(); pstr ")"
         | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_typ t; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
-        | _ -> failwith "unknown exp"
+        | _ -> printf "\n\n\n\nunknown exp!!!!!!!!!!!!!!!!!!!!\n\n\n\n"; failwith "unknown exp"
         ); cbox_()
 and pprint_exp_as_seq e = match e with
     | ExpSeq(es, _) -> pprint_expseq es false
@@ -266,7 +266,7 @@ and pprint_expseq el braces =
     (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_exp e) el); cbox();
     if braces then pstr "}" else ()
 and pprint_pat p = match p with
-    | PatAny(_) -> pstr "_"
+    | PatAny(_) -> pstr "_<ANY>"
     | PatAs(p, n, _) -> pstr "("; pprint_pat p; pspace(); pstr "AS"; pspace(); pprint_id n; pstr ")"
     | PatLit(c, _) -> pprint_lit c
     | PatCons(p1, p2, _) -> pstr "("; pprint_pat p1; pspace(); pstr "::"; pspace(); pprint_pat p2; pstr ")"
@@ -283,6 +283,7 @@ and pprint_pat p = match p with
     | PatTyped(p, t, _) -> pprint_pat p; pstr ":"; pspace(); pprint_typ t
 
 let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
+    Format.print_flush ();
     Format.open_vbox 0;
     pcut();
     pstr dm_filename;
@@ -294,4 +295,9 @@ let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     pcut();
     pstr "---------------------------------------------------------"; pcut();
     (List.iter (fun e -> pprint_exp e; pstr ";"; pcut()) dm_defs);
-    Format.close_box()
+    Format.close_box();
+    Format.print_flush ()
+
+let pprint_typ_x t = Format.print_flush (); Format.open_box 0; pprint_typ t; Format.close_box(); Format.print_flush ()
+let pprint_exp_x e = Format.print_flush (); Format.open_box 0; pprint_exp e; Format.close_box(); Format.print_flush ()
+let pprint_pat_x p = Format.print_flush (); Format.open_box 0; pprint_pat p; Format.close_box(); Format.print_flush ()

@@ -472,24 +472,24 @@ id_exp_list_:
 | B_IDENT EQUAL complex_exp { (get_id $1, $3) :: [] }
 
 op_name:
-| B_PLUS { fname_op_add }
-| B_MINUS  { fname_op_sub }
-| B_STAR  { fname_op_mul }
-| SLASH  { fname_op_div }
-| MOD  { fname_op_mod }
-| B_POWER  { fname_op_pow }
-| SHIFT_LEFT  { fname_op_shl }
-| SHIFT_RIGHT  { fname_op_shr }
-| BITWISE_AND  { fname_op_bit_and }
-| BITWISE_OR   { fname_op_bit_or }
-| BITWISE_XOR  { fname_op_bit_xor }
-| BITWISE_NOT  { fname_op_bit_not }
-| EQUAL_TO  { fname_op_eq }
-| NOT_EQUAL  { fname_op_ne }
-| LESS  { fname_op_lt }
-| LESS_EQUAL  { fname_op_le }
-| GREATER  { fname_op_gt }
-| GREATER_EQUAL  { fname_op_ge }
+| B_PLUS { fname_op_add() }
+| B_MINUS  { fname_op_sub() }
+| B_STAR  { fname_op_mul() }
+| SLASH  { fname_op_div() }
+| MOD  { fname_op_mod() }
+| B_POWER  { fname_op_pow() }
+| SHIFT_LEFT  { fname_op_shl() }
+| SHIFT_RIGHT  { fname_op_shr() }
+| BITWISE_AND  { fname_op_bit_and() }
+| BITWISE_OR   { fname_op_bit_or() }
+| BITWISE_XOR  { fname_op_bit_xor() }
+| BITWISE_NOT  { fname_op_bit_not() }
+| EQUAL_TO  { fname_op_eq() }
+| NOT_EQUAL  { fname_op_ne() }
+| LESS  { fname_op_lt() }
+| LESS_EQUAL  { fname_op_le() }
+| GREATER  { fname_op_gt() }
+| GREATER_EQUAL  { fname_op_ge() }
 
 aug_op:
 | PLUS_EQUAL { OpAdd }

@@ -373,7 +373,7 @@ rule tokens = parse
             [RBRACE]
         }
 
-    | (((('0' ['x' 'X'] hexdigit+) | ('0' ['b' 'B'] ['0'-'1']+) | (['1'-'9'] digit+)) as num_) | (octdigit+ as octnum_))
+    | (((('0' ['x' 'X'] hexdigit+) | ('0' ['b' 'B'] ['0'-'1']+) | (['1'-'9'] digit*)) as num_) | ((['0'] octdigit*) as octnum_))
       (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
         {
             check_ne(lexbuf); new_exp := false;
@@ -397,7 +397,11 @@ rule tokens = parse
             | "" -> INT(v)
             | _ -> raise (lexErr (sprintf "Invalid suffix '%s'" suffix) lexbuf)]
         }
-    | ((digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?) as num) (['f' 'F']? as suffix)
+
+    | ((digit+ '.' digit* (['e' 'E'] ['+' '-']? digit+)?) as num) (['f' 'F']? as suffix)
+        { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
+
+    | ((digit+ ['e' 'E'] ['+' '-']? digit+) as num) (['f' 'F']? as suffix)
         { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
 
     | ("\'" ? as prefix) ((['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident)

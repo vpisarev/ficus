@@ -249,6 +249,7 @@ let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
 
 let id_info i = (!all_ids).(id2idx i)
+let is_unique_id i = match id_info i with IdText _ -> false | _ -> true
 
 let get_id_ s =
     let idx =
@@ -356,6 +357,15 @@ let block_scope_idx = ref (-1)
 let new_block_scope () =
     block_scope_idx := !block_scope_idx + 1;
     ScBlock !block_scope_idx
+let rec scope2str sc =
+    match sc with
+    | ScBlock b :: r -> (sprintf "block(%d)." b) ^ (scope2str r)
+    | ScFun f :: r -> (sprintf "fun(%s)." (id2str f)) ^ (scope2str r)
+    | ScClass c :: r -> (sprintf "class(%s)." (id2str c)) ^ (scope2str r)
+    | ScInterface i :: r -> (sprintf "interface(%s)." (id2str i)) ^ (scope2str r)
+    | ScModule m :: r -> (sprintf "mod(%s)." (id2str m)) ^ (scope2str r)
+    | ScGlobal :: r -> "global." ^ (scope2str r)
+    | [] -> ""
 
 let get_scope id_info = match id_info with
     | IdNone -> ScGlobal :: []
@@ -430,68 +440,91 @@ let unop_to_string uop = match uop with
     | OpThrow -> "throw"
     | OpExpand -> "\\"
 
-let fname_op_add = get_id "__add__"
-let fname_op_sub = get_id "__sub__"
-let fname_op_mul = get_id "__mul__"
-let fname_op_div = get_id "__div__"
-let fname_op_mod = get_id "__mod__"
-let fname_op_pow = get_id "__pow__"
-let fname_op_shl = get_id "__shl__"
-let fname_op_shr = get_id "__shr__"
-let fname_op_bit_and = get_id "__bit_and__"
-let fname_op_bit_or = get_id "__bit_or__"
-let fname_op_bit_xor = get_id "__bit_xor__"
-let fname_op_eq = get_id "__eq__"
-let fname_op_ne = get_id "__ne__"
-let fname_op_lt = get_id "__lt__"
-let fname_op_gt = get_id "__gt__"
-let fname_op_le = get_id "__le__"
-let fname_op_ge = get_id "__ge__"
 
-let fname_op_plus = get_id "__plus__"
-let fname_op_negate = get_id "__negate__"
-let fname_op_bit_not = get_id "__bit_not__"
+let fname_op_add() = get_id "__add__"
+let fname_op_sub() = get_id "__sub__"
+let fname_op_mul() = get_id "__mul__"
+let fname_op_div() = get_id "__div__"
+let fname_op_mod() = get_id "__mod__"
+let fname_op_pow() = get_id "__pow__"
+let fname_op_shl() = get_id "__shl__"
+let fname_op_shr() = get_id "__shr__"
+let fname_op_bit_and() = get_id "__bit_and__"
+let fname_op_bit_or() = get_id "__bit_or__"
+let fname_op_bit_xor() = get_id "__bit_xor__"
+let fname_op_eq() = get_id "__eq__"
+let fname_op_ne() = get_id "__ne__"
+let fname_op_lt() = get_id "__lt__"
+let fname_op_gt() = get_id "__gt__"
+let fname_op_le() = get_id "__le__"
+let fname_op_ge() = get_id "__ge__"
 
-let fname_to_int = get_id "int"
-let fname_to_uint8 = get_id "uint8"
-let fname_to_int8 = get_id "int8"
-let fname_to_uint16 = get_id "uint16"
-let fname_to_int16 = get_id "int16"
-let fname_to_uint32 = get_id "uint32"
-let fname_to_int32 = get_id "int32"
-let fname_to_uint64 = get_id "uint64"
-let fname_to_int64 = get_id "int64"
-let fname_to_float = get_id "float"
-let fname_to_double = get_id "double"
-let fname_to_bool = get_id "bool"
-let fname_to_string = get_id "string"
+let fname_op_plus() = get_id "__plus__"
+let fname_op_negate() = get_id "__negate__"
+let fname_op_bit_not() = get_id "__bit_not__"
+
+let fname_to_int() = get_id "int"
+let fname_to_uint8() = get_id "uint8"
+let fname_to_int8() = get_id "int8"
+let fname_to_uint16() = get_id "uint16"
+let fname_to_int16() = get_id "int16"
+let fname_to_uint32() = get_id "uint32"
+let fname_to_int32() = get_id "int32"
+let fname_to_uint64() = get_id "uint64"
+let fname_to_int64() = get_id "int64"
+let fname_to_float() = get_id "float"
+let fname_to_double() = get_id "double"
+let fname_to_bool() = get_id "bool"
+let fname_to_string() = get_id "string"
 
 let get_binop_fname bop =
     match bop with
-    | OpAdd -> fname_op_add
-    | OpSub -> fname_op_sub
-    | OpMul -> fname_op_mul
-    | OpDiv -> fname_op_div
-    | OpMod -> fname_op_mod
-    | OpPow -> fname_op_pow
-    | OpShiftLeft -> fname_op_shl
-    | OpShiftRight -> fname_op_shr
-    | OpBitwiseAnd -> fname_op_bit_and
-    | OpBitwiseOr -> fname_op_bit_or
-    | OpBitwiseXor -> fname_op_bit_xor
-    | OpCompareEQ -> fname_op_eq
-    | OpCompareNE -> fname_op_ne
-    | OpCompareLT -> fname_op_lt
-    | OpCompareLE -> fname_op_le
-    | OpCompareGT -> fname_op_gt
-    | OpCompareGE -> fname_op_ge
+    | OpAdd -> fname_op_add()
+    | OpSub -> fname_op_sub()
+    | OpMul -> fname_op_mul()
+    | OpDiv -> fname_op_div()
+    | OpMod -> fname_op_mod()
+    | OpPow -> fname_op_pow()
+    | OpShiftLeft -> fname_op_shl()
+    | OpShiftRight -> fname_op_shr()
+    | OpBitwiseAnd -> fname_op_bit_and()
+    | OpBitwiseOr -> fname_op_bit_or()
+    | OpBitwiseXor -> fname_op_bit_xor()
+    | OpCompareEQ -> fname_op_eq()
+    | OpCompareNE -> fname_op_ne()
+    | OpCompareLT -> fname_op_lt()
+    | OpCompareLE -> fname_op_le()
+    | OpCompareGT -> fname_op_gt()
+    | OpCompareGE -> fname_op_ge()
     | OpLogicAnd | OpLogicOr | OpCons | OpMem | OpSet ->
         failwith (sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
 
 let get_unop_fname uop =
     match uop with
-    | OpPlus -> fname_op_plus
-    | OpNegate -> fname_op_negate
-    | OpBitwiseNot -> fname_op_bit_not
+    | OpPlus -> fname_op_plus()
+    | OpNegate -> fname_op_negate()
+    | OpBitwiseNot -> fname_op_bit_not()
     | OpLogicNot | OpMakeRef | OpDeref | OpThrow | OpExpand ->
         failwith (sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
+
+let fname_always_import () =
+    [
+      fname_op_add(); fname_op_sub(); fname_op_mul();
+      fname_op_div(); fname_op_mod(); fname_op_pow(); fname_op_shl(); fname_op_shr();
+      fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor(); fname_op_eq();
+      fname_op_ne(); fname_op_lt(); fname_op_gt(); fname_op_le(); fname_op_gt();
+
+      fname_op_plus(); fname_op_negate(); fname_op_bit_not();
+
+      fname_to_int(); fname_to_uint8(); fname_to_int8(); fname_to_uint16(); fname_to_int16();
+      fname_to_uint32(); fname_to_int32(); fname_to_uint64(); fname_to_int64();
+      fname_to_float(); fname_to_double(); fname_to_bool(); fname_to_string()
+    ]
+
+let init_all_ids () =
+    all_nids := 0;
+    all_ids := [||];
+    (Hashtbl.reset all_strings);
+    let _ = get_id_ "" in
+    let _ = get_id_ "_" in
+    fname_always_import()

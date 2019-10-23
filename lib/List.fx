@@ -23,7 +23,7 @@ fun length(l: 't list): int
         | _ :: rest => length(rest, n+1)
         | _ => n
         }
-    length_(l, 0
+    length_(l, 0)
 }
 
 fun rev(l: 't list): 't list = rev(l, [])
@@ -61,7 +61,7 @@ fun mem(l: 't list, a: 't): bool =
     | _ => false
     }
 
-fun find(l: 't list, f: 't -> bool): 't option =
+fun find(l: 't list, f: 't -> bool): 't? =
     match (l) {
     | a :: rest => if (f(a)) Some(a) else find(rest, f)
     | _ => None
