@@ -63,6 +63,8 @@ Implementation plan:
 + instantiate_fun
 +/- instantiate_type
 - instantiate_variant
+- add missing operations on records (MkRecord, UpdateRecord)
+- support array construction operations ExpMkArray, OpExpand
 - handle intrinsic functions/operators
 - run it all together
 *)
@@ -158,7 +160,6 @@ and walk_typ t callb =
     | TypList t -> TypList(walk_typ_ t)
     | TypTuple args -> TypTuple(walk_tl_ args)
     | TypRef t -> TypRef(walk_typ_ t)
-    | TypOption t -> TypOption(walk_typ_ t)
     | TypArray(d, et) -> TypArray(d, walk_typ_ et)
     | TypRecord r ->
         let (relems, norm_flag) = !r in
@@ -342,7 +343,6 @@ let maybe_unify t1 t2 update_refs =
         | TypTuple(tl2) -> List.exists (occurs r1) tl2
         | TypRef(t2_) -> occurs r1 t2_
         | TypArray(_, et2) -> occurs r1 et2
-        | TypOption(t2_) -> occurs r1 t2_
         | TypRecord({ contents = (relems2, _) }) ->
             List.exists (fun (_, t, _) -> occurs r1 t) relems2
         | TypVar(r2) when r1 == r2 -> true

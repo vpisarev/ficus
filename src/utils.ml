@@ -5,6 +5,8 @@
 *)
 open Syntax
 
+let zip l1 l2 = List.map2 (fun i1 i2 -> (i1, i2)) l1 l2
+
 let rec last_elem l = match l with
     | x :: [] -> x
     | x :: rest -> last_elem rest

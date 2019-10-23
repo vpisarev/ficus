@@ -61,7 +61,7 @@ fun mem(l: 't list, a: 't): bool =
     | _ => false
     }
 
-fun find(l: 't list, f: 't -> bool): 't? =
+fun find_opt(l: 't list, f: 't -> bool): 't? =
     match (l) {
     | a :: rest => if (f(a)) Some(a) else find(rest, f)
     | _ => None

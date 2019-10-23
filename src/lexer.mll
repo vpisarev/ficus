@@ -7,7 +7,6 @@ open Printf
 let token2str t = match t with
     | TRUE -> "TRUE"
     | FALSE -> "FALSE"
-    | NONE -> "NONE"
     | INT(i) -> sprintf "INT(%Ld)" i
     | SINT(b, i) -> sprintf "SINT(%d, %Ld)" b i
     | UINT(b, i) -> sprintf "UINT(%d, %Ld)" b i
@@ -72,6 +71,7 @@ let token2str t = match t with
     | EXPAND -> "EXPAND"
     | DOUBLE_ARROW -> "DOUBLE_ARROW"
     | ARROW -> "ARROW"
+    | QUESTION -> "QUESTION"
     | EOF -> "EOF"
     | B_MINUS -> "B_MINUS"
     | MINUS -> "MINUS"
@@ -150,7 +150,7 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("false", FALSE, 0); ("fold", FOLD, 4); ("for", FOR, 4); ("from", FROM, 2); ("fun", FUN, 2);
         ("if", IF, 4); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("in", IN, 1);
         ("inline", INLINE, 2); ("interface", INTERFACE, 2);
-        ("match", MATCH, 4); ("None", NONE, 0); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
+        ("match", MATCH, 4); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
         ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
         ("val", VAL, 2); ("var", VAR, 2); ("with", WITH, 1); ("when", WHEN, 1); ("while", WHILE, 4);
@@ -499,6 +499,7 @@ rule tokens = parse
             [DOUBLE_ARROW]
         }
     | "->"  { new_exp := true; [ARROW] }
+    | "?"   { new_exp := false; [QUESTION] }
     | eof   { [EOF] }
     | _ as s { raise (lexErr (sprintf "Illegal character '%s'" (Char.escaped s)) lexbuf) }
 

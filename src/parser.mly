@@ -101,7 +101,7 @@ let rec compress_nested_map_exp l e = match e with
 
 %}
 
-%token TRUE FALSE NONE
+%token TRUE FALSE
 %token <Int64.t> INT
 %token <int * Int64.t> SINT
 %token <int * Int64.t> UINT
@@ -120,7 +120,7 @@ let rec compress_nested_map_exp l e = match e with
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE
-%token COMMA DOT SEMICOLON COLON BAR CONS CAST EXPAND ARROW DOUBLE_ARROW EOF
+%token COMMA DOT SEMICOLON COLON BAR CONS CAST EXPAND ARROW QUESTION DOUBLE_ARROW EOF
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
@@ -443,7 +443,6 @@ literal:
 | TRUE { LitBool true }
 | FALSE { LitBool false }
 | B_LSQUARE RSQUARE { LitNil }
-| NONE { LitNone }
 
 module_name_list_:
 | module_name_list_ COMMA B_IDENT { let i=get_id $3 in (i, i) :: $1 }
@@ -743,6 +742,14 @@ typespec_nf:
   | (x, "list") -> TypList(x)
   | (TypTuple(args), y) -> TypApp(args, get_id y)
   | (x, y) -> TypApp(x :: [], get_id y)
+}
+| typespec_nf QUESTION
+%prec option_type_prec
+{
+    TypApp((match $1 with
+            | TypTuple(args) -> args
+            | x -> x :: []),
+            get_id "option")
 }
 | typespec_nf LSQUARE shapespec RSQUARE
 %prec arr_type_prec

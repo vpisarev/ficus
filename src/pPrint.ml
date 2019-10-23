@@ -27,7 +27,6 @@ let lit_to_string c = match c with
     | LitBool(true) -> "True"
     | LitBool(false) -> "False"
     | LitNil -> "Nil"
-    | LitNone -> "None"
 
 let pprint_lit x = pstr (lit_to_string x)
 let pprint_id x = pstr (id2str x)
@@ -44,7 +43,7 @@ let rec get_typ_pr t = match t with
     | TypTuple(_) -> TypPrBase
     | TypRecord(_) -> TypPrBase
     | TypList(_) | TypRef(_) | TypArray(_)
-    | TypApp(_, _) | TypOption(_) -> TypPrComplex
+    | TypApp(_, _) -> TypPrComplex
     | TypFun(_, _) -> TypPrFun
 
 let need_parens p p1 = p1 > p
@@ -54,7 +53,7 @@ let rec pptype_ t p1 =
     let p = get_typ_pr t in
     let pptypsuf t1 suf =
         let (lp, rp) = opt_parens p p1 in
-        (obox(); pstr lp; pptype_ t1 p; pstr rp; pstr " applied-to "; pstr suf; cbox()) in
+        (obox(); pstr lp; pptype_ t1 p; pstr rp; pstr " "; pstr suf; cbox()) in
     let pptypelist_ prefix args =
         pstr prefix; pcut(); obox();
         (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pptype_ t TypPr0) args);
@@ -84,7 +83,6 @@ let rec pptype_ t p1 =
             pptype_ t2 p;
             pstr ")"; cbox()
     | TypList(t1) -> pptypsuf t1 "List"
-    | TypOption(t1) -> pptypsuf t1 "Option"
     | TypRef(t1) -> pptypsuf t1 "Ref"
     | TypArray(d, t1) -> pptypsuf t1 (String.make (d - 1) ',')
     | TypApp([], n) -> pprint_id n
@@ -159,6 +157,13 @@ let rec pprint_exp e =
     | DefTyp { contents = {dt_name; dt_templ_args; dt_typ }} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
         pspace(); pstr "="; pspace(); pprint_typ dt_typ; cbox()
+    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_members; dvar_constr; dvar_templ_inst} } ->
+        obox(); pstr "TYPE"; pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name;
+        pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
+            if i = 0 then () else pstr " | "; pprint_id v;
+            pstr "<"; pprint_id c; pstr ">: "; pprint_typ t)
+            (Utils.zip dvar_members (if dvar_constr != [] then dvar_constr else (List.map (fun (v, _) -> v) dvar_members))));
+        cbox()
     | DirImport(ml, _) -> pstr "IMPORT"; pspace();
         obox(); (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;
                     if n1 = n2 then () else (pspace(); pstr "AS"; pspace(); pprint_id n2)) ml); cbox()

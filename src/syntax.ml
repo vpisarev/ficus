@@ -93,7 +93,6 @@ type lit_t =
     | LitChar of string (* a single character may require multiple "bytes", so we use a string for it *)
     | LitBool of bool
     | LitNil (* can be used as stub initializer for C pointers, interfaces, recursive variants, empty lists etc. *)
-    | LitNone
 
 (* type of an expression *)
 type typ_t =
@@ -116,7 +115,6 @@ type typ_t =
     | TypList of typ_t
     | TypTuple of typ_t list
     | TypRef of typ_t
-    | TypOption of typ_t
     | TypArray of int * typ_t
     | TypRecord of ((id_t * typ_t * lit_t option) list * bool) ref
     | TypExn
@@ -404,7 +402,6 @@ let get_lit_typ l = match l with
     | LitBool(_) -> TypBool
     | LitNil -> TypVar(ref None) (* in the case of NIL ([]) we cannot infere the type;
                                     we postpone this step *)
-    | LitNone -> TypOption(TypVar(ref None)) (* same *)
 
 let binop_to_string bop = match bop with
     | OpAdd -> "+"
