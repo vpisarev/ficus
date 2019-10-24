@@ -2,6 +2,7 @@
    as if it has "from Builtin import *" directive in the beginning */
 type 't option = None | Some: 't
 
+pure nothrow fun length(s: string): int = ccode "return s->length;"
 fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"

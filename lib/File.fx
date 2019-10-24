@@ -13,22 +13,23 @@ type file_t = { handle: cptr }
 fun open(fname: string, mode: string)
 {
     fun open_(fname: string, mode: string): cptr =
-ccode "
-__fx_cstr fname_, mode_;
-FX_STATUS fx_status = __fx_str2cstr(fx_ctx, &fname_, fname);
-if (!fx_status) {
-    fx_status = __fx_str2cstr(fx_ctx, &mode_, mode);
+ccode
+    "
+    __fx_cstr fname_, mode_;
+    FX_STATUS fx_status = __fx_str2cstr(fx_ctx, &fname_, fname);
     if (!fx_status) {
-        FILE* f = fopen(fname_.data, mode_.data);
-        if (f)
-            fx_status = __fx_new_cptr(fx_ctx, fx_result, f, _fx_file_t_destructor);
-        else
-            fx_status = FX_THROW(FX_EXCEPTION_IO);
-        __fx_release_cstr(fx_ctx, &mode_);
+        fx_status = __fx_str2cstr(fx_ctx, &mode_, mode);
+        if (!fx_status) {
+            FILE* f = fopen(fname_.data, mode_.data);
+            if (f)
+                fx_status = __fx_new_cptr(fx_ctx, fx_result, f, _fx_file_t_destructor);
+            else
+                fx_status = FX_THROW(FX_EXCEPTION_IO);
+            __fx_release_cstr(fx_ctx, &mode_);
+        }
+        __fx_release_cstr(fx_ctx, &fname_);
     }
-    __fx_release_cstr(fx_ctx, &fname_);
-}
-return fx_status;
+    return fx_status;
 "
     file_t { handle=open_(fname, mode) }
 }

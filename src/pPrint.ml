@@ -157,12 +157,12 @@ let rec pprint_exp e =
     | DefTyp { contents = {dt_name; dt_templ_args; dt_typ }} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
         pspace(); pstr "="; pspace(); pprint_typ dt_typ; cbox()
-    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_members; dvar_constr; dvar_templ_inst} } ->
+    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_cases; dvar_constr; dvar_templ_inst} } ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id v;
-            pstr "<"; pprint_id c; pstr ">: "; pprint_typ t)
-            (Utils.zip dvar_members (if dvar_constr != [] then dvar_constr else (List.map (fun (v, _) -> v) dvar_members))));
+            pstr "<"; pprint_id c; pstr ": "; pprint_typ (get_id_typ c); pstr ">: "; pprint_typ t)
+            (Utils.zip dvar_cases (if dvar_constr != [] then dvar_constr else (List.map (fun (v, _) -> v) dvar_cases))));
         cbox()
     | DirImport(ml, _) -> pstr "IMPORT"; pspace();
         obox(); (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;

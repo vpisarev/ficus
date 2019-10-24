@@ -21,28 +21,30 @@ let make_bin_op(op, a, b) = ExpBinOp(op, a, b, make_new_ctx())
 let make_un_op(op, a) = ExpUnOp(op, a, make_new_ctx())
 
 let expseq2exp es n = match es with
-      [] -> ExpNop(TypVoid, curr_loc_n(n))
+      [] -> ExpNop (curr_loc_n n)
     | e::[] -> e
     | _ -> ExpSeq(es, (make_new_typ(), (curr_loc_n n)))
 
 let plist2exp args n =
     let rec plist2exp_ plist0 =
-      List.fold_right (fun p (plist, elist) -> let (p_, e_) = pat2exp_ p in ((p_::plist), (e_::elist))) plist0 ([], [])
+        List.fold_right (fun p (plist, elist) -> let (p_, e_) = pat2exp_ p in ((p_::plist), (e_::elist))) plist0 ([], [])
     and pat2exp_ p =
-      (match p with
-      | PatAny(loc) ->
-          let arg_tp = make_new_typ() in
-          let arg_id = get_temp_id "arg" in
-          (PatIdent(arg_id, loc), ExpIdent(arg_id, (arg_tp, loc)))
-      | PatIdent(i, loc) -> (p, ExpIdent(i, (make_new_typ(), loc)))
-      | PatTuple(plist, loc) ->
-          let (plist_new, elist_new) = plist2exp_ plist in
-          (PatTuple(plist_new, loc), (expseq2exp elist_new n))
-      | PatTyped(p, t, loc) -> pat2exp_ p
-      | _ -> raise (SyntaxError
+        (match p with
+        | PatAny(loc) ->
+            let arg_tp = make_new_typ() in
+            let arg_id = get_temp_id "arg" in
+            (PatIdent(arg_id, loc), ExpIdent(arg_id, (arg_tp, loc)))
+        | PatIdent(i, loc) -> (p, ExpIdent(i, (make_new_typ(), loc)))
+        | PatTuple(plist, loc) ->
+            let (plist_new, elist_new) = plist2exp_ plist in
+            (PatTuple(plist_new, loc), (expseq2exp elist_new n))
+        | PatTyped(p, t, loc) ->
+            let (p, e) = pat2exp_ p in
+            (PatTyped(p, t, loc), e)
+        | _ -> raise (SyntaxError
             ("unsupported arg pattern in the pattern-matching function",
-             Parsing.symbol_start_pos(),
-             Parsing.symbol_end_pos()))) in
+            Parsing.symbol_start_pos(),
+            Parsing.symbol_end_pos()))) in
     let (plist, elist) = plist2exp_ args in
     (plist, expseq2exp elist n)
 
@@ -57,7 +59,7 @@ let make_variant_type (targs, tname) var_elems0 =
     let loc = make_loc(pos0, pos1) in
     let var_elems = List.map (fun (n, t) -> if (good_variant_name n) then (get_id n, t) else
         raise (SyntaxError ((sprintf "syntax error: variant tag '%s' does not start with a capital latin letter" n), pos0, pos1))) var_elems0 in
-    let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_typ=make_new_typ(); dvar_flags=[]; dvar_members=var_elems;
+    let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_typ=make_new_typ(); dvar_flags=[]; dvar_cases=var_elems;
                dvar_constr=[]; dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
 
@@ -244,7 +246,8 @@ decl:
         let (cl_templ_args, cl_name) = $2 in
         let cl_ifaces = List.rev $3 in
         let cl_args = $4 in
-        let cl_def = { dcl_name=cl_name; dcl_templ_args=cl_templ_args; dcl_ifaces=cl_ifaces; dcl_args=cl_args;
+        let cl_def = { dcl_name=cl_name; dcl_templ_args=cl_templ_args;
+                       dcl_typ=TypApp([], cl_name); dcl_ifaces=cl_ifaces; dcl_args=cl_args;
                        dcl_members=$6; dcl_templ_inst=[]; dcl_scope=ScGlobal::[]; dcl_loc=curr_loc() } in
         [DefClass(ref cl_def)]
     }
@@ -288,8 +291,8 @@ exception_decl:
     }
 
 stmt:
-| BREAK { ExpBreak((TypVoid, curr_loc())) }
-| CONTINUE { ExpContinue((TypVoid, curr_loc())) }
+| BREAK { ExpBreak (curr_loc()) }
+| CONTINUE { ExpContinue(curr_loc()) }
 | THROW exp { ExpUnOp(OpThrow, $2, (TypErr, curr_loc())) }
 | simple_exp EQUAL complex_exp { ExpBinOp(OpSet, $1, $3, (TypVoid, curr_loc())) }
 | simple_exp aug_op complex_exp
@@ -376,7 +379,7 @@ for_flags:
 
 complex_exp:
 | IF B_LPAREN exp_or_block RPAREN exp_or_block ELSE exp_or_block { ExpIf ($3, $5, $7, make_new_ctx()) }
-| IF B_LPAREN exp_or_block RPAREN exp_or_block { ExpIf ($3, $5, ExpNop(TypVoid, curr_loc_n 5), make_new_ctx()) }
+| IF B_LPAREN exp_or_block RPAREN exp_or_block { ExpIf ($3, $5, ExpNop (curr_loc_n 5), make_new_ctx()) }
 | TRY exp_or_block CATCH LBRACE BAR pattern_matching_clauses_ RBRACE { ExpTryCatch ($2, (List.rev $6), make_new_ctx()) }
 | MATCH B_LPAREN exp_list_ RPAREN LBRACE BAR pattern_matching_clauses_ RBRACE
     {
@@ -702,7 +705,7 @@ iface_decl:
     {
         let (flags, fname) = $1 in
         let (args, rt, _) = $2 in
-        DefFun (ref (make_deffun fname args rt (ExpNop(TypVoid, curr_loc_n 1)) flags (curr_loc())))
+        DefFun (ref (make_deffun fname args rt (ExpNop (curr_loc_n 1)) flags (curr_loc())))
     }
 
 typespec:

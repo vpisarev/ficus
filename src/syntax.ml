@@ -142,9 +142,9 @@ type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
 
 type exp_t =
-    | ExpNop of ctx_t (* empty expression {} *)
-    | ExpBreak of ctx_t
-    | ExpContinue of ctx_t
+    | ExpNop of loc_t (* empty expression {} *)
+    | ExpBreak of loc_t
+    | ExpContinue of loc_t
     | ExpRange of exp_t option * exp_t option * exp_t option * ctx_t
     | ExpLit of lit_t * ctx_t
     | ExpIdent of id_t * ctx_t
@@ -192,12 +192,23 @@ and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; d
                  mutable df_templ_inst: id_t list }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list;
-                  dt_typ: typ_t; dt_scope: scope_t list; dt_finalized: bool; dt_loc: loc_t }
+                 dt_typ: typ_t; dt_scope: scope_t list; dt_finalized: bool; dt_loc: loc_t }
+(* variants are represented in a seemingly complex but logical way;
+   the structure contains the list of variant cases (dvar_cases, a list of (id_t, typ_t) pairs),
+   as well as the variant constructors (dvar_constr). Think of the id_t's in dvar_cases as of enumeration elements
+   that represent different "tag" values. Whereas the constructors will eventually (in the final compiled code)
+   become real functions that take the case arguments on input and return the variant instance.
+
+   If the variant is generic, then it may have some instances, which are listed in dvar_templ_inst.
+   In this case each constructor is also a generic function, which contains the corresponding list of instances as well.
+   When variant type is instantiated, its instance is added to dvar_templ_list. Also, instances of all its constructors
+   are created as well and added to the corresponding df_templ_inst' lists of the generic constructors.
+*)
 and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_typ: typ_t;
-                     dvar_flags: variant_flag_t list; dvar_members: (id_t * typ_t) list;
+                     dvar_flags: variant_flag_t list; dvar_cases: (id_t * typ_t) list;
                      dvar_constr: id_t list; mutable dvar_templ_inst: id_t list;
                      dvar_scope: scope_t list; dvar_loc: loc_t }
-and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_ifaces: id_t list; dcl_args: pat_t list;
+and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_typ: typ_t; dcl_ifaces: id_t list; dcl_args: pat_t list;
                    dcl_members: exp_t list; mutable dcl_templ_inst: id_t list; dcl_scope: scope_t list; dcl_loc: loc_t }
 and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
 
@@ -287,9 +298,9 @@ let set_id_entry i n =
 let module_loc mname = { loc_fname=mname; loc_line0=1; loc_pos0=1; loc_line1=1; loc_pos1=1 }
 
 let get_exp_ctx e = match e with
-    | ExpNop(c) -> c
-    | ExpBreak(c) -> c
-    | ExpContinue(c) -> c
+    | ExpNop(l) -> (TypVoid, l)
+    | ExpBreak(l) -> (TypVoid, l)
+    | ExpContinue(l) -> (TypVoid, l)
     | ExpRange(_, _, _, c) -> c
     | ExpLit(_, c) -> c
     | ExpIdent(_, c) -> c
@@ -377,7 +388,7 @@ let get_scope id_info = match id_info with
     | IdInterface {contents = {di_scope}} -> di_scope
     | IdModule _ -> ScGlobal :: []
 
-let get_loc id_info = match id_info with
+let get_idinfo_loc id_info = match id_info with
     | IdNone | IdText _ | IdModule _ -> noloc
     | IdVal {dv_loc} -> dv_loc
     | IdFun {contents = {df_loc}} -> df_loc
@@ -386,6 +397,22 @@ let get_loc id_info = match id_info with
     | IdVariant {contents = {dvar_loc}} -> dvar_loc
     | IdClass {contents = {dcl_loc}} -> dcl_loc
     | IdInterface {contents = {di_loc}} -> di_loc
+
+let get_id_loc i = get_idinfo_loc (id_info i)
+
+let get_idinfo_typ id_info = match id_info with
+    | IdNone -> failwith "attempt to request type of non-existing symbol"
+    | IdText _ -> TypVar (ref None)
+    | IdModule _ -> TypModule
+    | IdVal {dv_typ} -> dv_typ
+    | IdFun {contents = {df_typ}} -> df_typ
+    | IdExn {contents = {dexn_typ}} -> dexn_typ
+    | IdTyp {contents = {dt_typ}} -> dt_typ
+    | IdVariant {contents = {dvar_typ}} -> dvar_typ
+    | IdClass {contents = {dcl_typ}} -> dcl_typ
+    | IdInterface {contents = {di_name}} -> TypApp([], di_name)
+
+let get_id_typ i = get_idinfo_typ (id_info i)
 
 (* used by the parser *)
 exception SyntaxError of string*Lexing.position*Lexing.position
@@ -505,18 +532,18 @@ let get_unop_fname uop =
         failwith (sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
 
 let fname_always_import () =
-    [
-      fname_op_add(); fname_op_sub(); fname_op_mul();
-      fname_op_div(); fname_op_mod(); fname_op_pow(); fname_op_shl(); fname_op_shr();
-      fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor(); fname_op_eq();
-      fname_op_ne(); fname_op_lt(); fname_op_gt(); fname_op_le(); fname_op_gt();
+[
+    fname_op_add(); fname_op_sub(); fname_op_mul();
+    fname_op_div(); fname_op_mod(); fname_op_pow(); fname_op_shl(); fname_op_shr();
+    fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor(); fname_op_eq();
+    fname_op_ne(); fname_op_lt(); fname_op_gt(); fname_op_le(); fname_op_gt();
 
-      fname_op_plus(); fname_op_negate(); fname_op_bit_not();
+    fname_op_plus(); fname_op_negate(); fname_op_bit_not();
 
-      fname_to_int(); fname_to_uint8(); fname_to_int8(); fname_to_uint16(); fname_to_int16();
-      fname_to_uint32(); fname_to_int32(); fname_to_uint64(); fname_to_int64();
-      fname_to_float(); fname_to_double(); fname_to_bool(); fname_to_string()
-    ]
+    fname_to_int(); fname_to_uint8(); fname_to_int8(); fname_to_uint16(); fname_to_int16();
+    fname_to_uint32(); fname_to_int32(); fname_to_uint64(); fname_to_int64();
+    fname_to_float(); fname_to_double(); fname_to_bool(); fname_to_string()
+]
 
 let init_all_ids () =
     all_nids := 0;
