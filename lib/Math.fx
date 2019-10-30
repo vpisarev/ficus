@@ -2,7 +2,7 @@
 
 ccode "#include <math.h>"
 
-val pi = 3.1415926535897932384626433832795
+val Pi = 3.1415926535897932384626433832795
 
 pure nothrow fun pow(x: float, y: float): float = ccode "return powf(x, y);"
 pure nothrow fun pow(x: double, y: double): double = ccode "return pow(x, y);"

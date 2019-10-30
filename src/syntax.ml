@@ -73,7 +73,8 @@ module IdSet = Set.Make(Id)
    Scope of the definition
 
 *)
-type scope_t = ScBlock of int | ScFun of id_t | ScClass of id_t | ScInterface of id_t | ScModule of id_t | ScGlobal
+type scope_t = ScBlock of int | ScFun of id_t | ScClass of id_t
+            | ScInterface of id_t | ScModule of id_t | ScGlobal
 
 type loc_t = { loc_fname: id_t; loc_line0: int; loc_pos0: int; loc_line1: int; loc_pos1: int }
 let noloc = { loc_fname=noid; loc_line0=0; loc_pos0=0; loc_line1=0; loc_pos1=0 }
@@ -92,7 +93,8 @@ type lit_t =
     | LitString of string (* UTF-8 string *)
     | LitChar of string (* a single character may require multiple "bytes", so we use a string for it *)
     | LitBool of bool
-    | LitNil (* can be used as stub initializer for C pointers, interfaces, recursive variants, empty lists etc. *)
+    | LitNil (* can be used as stub initializer for C pointers, interfaces,
+                recursive variants, empty lists etc. *)
 
 (* type of an expression *)
 type typ_t =
@@ -116,7 +118,7 @@ type typ_t =
     | TypTuple of typ_t list
     | TypRef of typ_t
     | TypArray of int * typ_t
-    | TypRecord of ((id_t * typ_t * lit_t option) list * bool) ref
+    | TypRecord of ((id_t * typ_t * lit_t option) list * id_t option) ref
     | TypExn
     | TypErr (* a thrown exception; can be unified with any other type (except for declaration) *)
     | TypCPointer (* smart pointer to a C structure; we use it for file handlers, mutexes etc. *)
@@ -186,31 +188,39 @@ and pat_t =
     | PatCons of pat_t * pat_t * loc_t
     | PatAs of pat_t * id_t * loc_t
     | PatTyped of pat_t * typ_t * loc_t
-and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list; dv_scope: scope_t list; dv_loc: loc_t }
+and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
+                 dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
                  df_body: exp_t; df_flags: func_flag_t list; df_scope: scope_t list; df_loc: loc_t;
                  mutable df_templ_inst: id_t list }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
-and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list;
-                 dt_typ: typ_t; dt_scope: scope_t list; dt_finalized: bool; dt_loc: loc_t }
+and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
+                 dt_finalized: bool; dt_scope: scope_t list; dt_loc: loc_t }
 (* variants are represented in a seemingly complex but logical way;
    the structure contains the list of variant cases (dvar_cases, a list of (id_t, typ_t) pairs),
-   as well as the variant constructors (dvar_constr). Think of the id_t's in dvar_cases as of enumeration elements
-   that represent different "tag" values. Whereas the constructors will eventually (in the final compiled code)
+   as well as the variant constructors (dvar_constr). Think of the id_t's in dvar_cases
+   as of enumeration elements that represent different "tag" values.
+   Whereas the constructors will eventually (in the final compiled code)
    become real functions that take the case arguments on input and return the variant instance.
 
-   If the variant is generic, then it may have some instances, which are listed in dvar_templ_inst.
-   In this case each constructor is also a generic function, which contains the corresponding list of instances as well.
-   When variant type is instantiated, its instance is added to dvar_templ_list. Also, instances of all its constructors
-   are created as well and added to the corresponding df_templ_inst' lists of the generic constructors.
+   If the variant is generic, then it may have some instances,
+   which are listed in dvar_templ_inst.
+   In this case each constructor is also a generic function,
+   which contains the corresponding list of instances as well.
+   When variant type is instantiated, its instance is added to dvar_templ_list.
+   Also, instances of all its constructors are created as well and added
+   to the corresponding df_templ_inst' lists of the generic constructors.
 *)
-and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_typ: typ_t;
+and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_alias: typ_t;
                      dvar_flags: variant_flag_t list; dvar_cases: (id_t * typ_t) list;
                      dvar_constr: id_t list; mutable dvar_templ_inst: id_t list;
                      dvar_scope: scope_t list; dvar_loc: loc_t }
-and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_typ: typ_t; dcl_ifaces: id_t list; dcl_args: pat_t list;
-                   dcl_members: exp_t list; mutable dcl_templ_inst: id_t list; dcl_scope: scope_t list; dcl_loc: loc_t }
-and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list; di_scope: scope_t list; di_loc: loc_t }
+and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_typ: typ_t;
+                   dcl_ifaces: id_t list; dcl_args: pat_t list;
+                   dcl_members: exp_t list; mutable dcl_templ_inst: id_t list;
+                   dcl_scope: scope_t list; dcl_loc: loc_t }
+and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list;
+                       di_scope: scope_t list; di_loc: loc_t }
 
 type env_entry_t = EnvId of id_t | EnvTyp of typ_t
 type env_t = env_entry_t list Env.t
@@ -252,7 +262,8 @@ let id2str_ i pp =
         | IdText(s) -> s
         | _ -> failwith (sprintf
             "The first element of id=%s does not represent a string\n" (dump_id i))) in
-    if tempid then (sprintf "%s@@%d" s suffix) else if pp || prefix = suffix then s else (sprintf "%s@%d" s suffix)
+    if tempid then (sprintf "%s@@%d" s suffix) else
+    if pp || prefix = suffix then s else (sprintf "%s@%d" s suffix)
 
 let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
@@ -408,7 +419,7 @@ let get_idinfo_typ id_info = match id_info with
     | IdFun {contents = {df_typ}} -> df_typ
     | IdExn {contents = {dexn_typ}} -> dexn_typ
     | IdTyp {contents = {dt_typ}} -> dt_typ
-    | IdVariant {contents = {dvar_typ}} -> dvar_typ
+    | IdVariant {contents = {dvar_alias}} -> dvar_alias
     | IdClass {contents = {dcl_typ}} -> dcl_typ
     | IdInterface {contents = {di_name}} -> TypApp([], di_name)
 

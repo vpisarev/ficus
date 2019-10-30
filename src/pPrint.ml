@@ -89,8 +89,9 @@ let rec pptype_ t p1 =
     | TypApp(t1 :: [], n) -> pptypsuf t1 (pp_id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (pp_id2str n)
     | TypTuple(tl) -> pptypelist_ "(" tl
-    | TypRecord {contents=(rec_elems,decl)} ->
-            pstr "{"; if decl then () else pstr "~"; pcut(); obox();
+    | TypRecord {contents=(rec_elems, name_opt)} ->
+            let name = match name_opt with Some(i) -> (id2str i) | _ -> "??" in
+            pstr name; pstr " {"; pcut(); obox();
             (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
                 pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0;
                 match v0_opt with Some(v0) -> pprint_lit v0 | _ -> ()) rec_elems);

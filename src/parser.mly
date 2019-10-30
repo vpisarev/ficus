@@ -58,9 +58,12 @@ let make_variant_type (targs, tname) var_elems0 =
     let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
     let loc = make_loc(pos0, pos1) in
     let var_elems = List.map (fun (n, t) -> if (good_variant_name n) then (get_id n, t) else
-        raise (SyntaxError ((sprintf "syntax error: variant tag '%s' does not start with a capital latin letter" n), pos0, pos1))) var_elems0 in
-    let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_typ=make_new_typ(); dvar_flags=[]; dvar_cases=var_elems;
-               dvar_constr=[]; dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
+        raise (SyntaxError ((sprintf
+            "syntax error: variant tag '%s' does not start with a capital latin letter" n),
+            pos0, pos1))) var_elems0 in
+    let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
+               dvar_flags=[]; dvar_cases=var_elems; dvar_constr=[];
+               dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
 
 let transform_fold_exp fold_pat fold_pat_n fold_init_exp fold_cl fold_body =
@@ -760,7 +763,8 @@ typespec_nf:
 | typespec_nf REF_TYPE
 %prec ref_type_prec
 { TypRef($1) }
-| LBRACE id_typ_list_ RBRACE { TypRecord(ref (List.rev $2, false)) }
+| LBRACE id_typ_list_ RBRACE
+{ TypRecord(ref (List.rev $2, None)) }
 
 typespec_list_:
 | typespec_list_ COMMA typespec { $3 :: $1 }

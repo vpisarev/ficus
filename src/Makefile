@@ -25,7 +25,7 @@ profile:
 	@cp ficus.native ficus
 
 debug:
-	$(OCB) -tag debug ficus.byte
+	$(OCB) -tag debug ficus.d.byte
 
 test: native
 	./ficus -C test fst.fcs
