@@ -34,7 +34,7 @@ fun rev(l: 't list, rl: 't list): 't list =
     | _ => rl
     }
 
-fun array(l: 't list): 't [] = [for (x in l) x]
+fun array(l: 't list): 't [] = [for (x <- l) x]
 
 fun all(l: 't list, f: 't -> bool): bool =
     match(l) {
@@ -69,7 +69,7 @@ fun find_opt(l: 't list, f: 't -> bool): 't? =
 
 fun concat(ll: 't list list): 't list =
     fold(s = []; l <- rev(ll))
-        l + s
+        s = l + s
 
 fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
     [:: for (x <- la, y <- lb) (x, y)]

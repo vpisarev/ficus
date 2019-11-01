@@ -69,6 +69,10 @@ Implementation plan:
 - run it all together
 *)
 
+let pprint_typ_x = PPrint.pprint_typ_x
+let pprint_exp_x = PPrint.pprint_exp_x
+let pprint_pat_x = PPrint.pprint_pat_x
+
 exception TypeCheckError of loc_t * string
 
 let typecheck_errs = ref ([]: exn list)
@@ -103,7 +107,21 @@ let print_env msg env loc =
     printf "%s. env at %s [\n" msg (loc2str loc);
     Env.iter (fun k entries -> printf "\t%s:" (id2str k); (List.iter (fun e ->
         match e with
-        | EnvId i -> printf " %s" (id2str i)
+        | EnvId n -> printf " %s" (id2str n);
+            let templ_inst =
+                match id_info n with
+                | IdFun {contents={df_templ_inst}} -> df_templ_inst
+                | IdVariant {contents={dvar_templ_inst}} -> dvar_templ_inst
+                | _ -> []
+            in if templ_inst = [] then () else
+                (List.iteri (fun i ni ->
+                    let t = match id_info ni with
+                        | IdFun {contents={df_typ}} -> df_typ
+                        | IdVariant {contents={dvar_alias}} -> dvar_alias
+                        | _ -> TypVar(ref None)
+                    in printf "%s%s<" (if i = 0 then " -> [" else ", ") (id2str ni);
+                    pprint_typ_x t; printf ">") templ_inst;
+                printf "]")
         | EnvTyp t -> printf "<some type>") entries);
         printf ";\n") env;
     printf "]\n"
@@ -343,7 +361,7 @@ let rec deref_typ t =
   in the very end, when we are out of candidates.
 *)
 let maybe_unify t1 t2 update_refs =
-    (*let _ = (printf "\n<<<trying to unify types: "; PPrint.pprint_typ_x t1; printf " and "; PPrint.pprint_typ_x t2; printf "\n") in*)
+    let _ = (printf "\n<<<trying to unify types: "; pprint_typ_x t1; printf " and "; pprint_typ_x t2; printf "\n"; flush stdout) in
     let rec_undo_stack = ref [] in
     let undo_stack = ref [] in
     (* checks if a reference to undefined type (an argument of TypVar (ref None))
@@ -435,7 +453,7 @@ let maybe_unify t1 t2 update_refs =
         | (_, _) -> false) in
 
     let ok = maybe_unify_ (deref_typ t1) (deref_typ t2) in
-    (*((printf "result (%B): " ok); PPrint.pprint_typ_x t1; printf " and "; PPrint.pprint_typ_x t2; printf ">>>\n");*)
+    ((printf "result (%B): " ok); pprint_typ_x t1; printf " and "; pprint_typ_x t2; printf ">>>\n");
     if ok && update_refs then () else
     (* restore the original types in the case of type unification failure
        or when update_refs=false *)
@@ -564,6 +582,7 @@ let is_real_typ t =
             (match (id_info i) with
             | IdText _ -> have_typ_vars := true
             | _ -> ()); t
+        | TypVar {contents=None} -> have_typ_vars := true; t
         | _ -> walk_typ t callb
     in
     let callb = { acb_typ = Some(is_real_typ_); acb_exp = None; acb_pat = None; } in
@@ -727,7 +746,7 @@ and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
     but this is done in check_eseq() function.
 *)
 and check_exp e env sc =
-    let _ = (match e with ExpSeq _ -> () | _ -> (printf "checking exp at (%s): " (loc2str (get_exp_loc e))); (PPrint.pprint_exp_x e); printf "\n========\n") in
+    let _ = (match e with ExpSeq _ -> () | _ -> (printf "checking exp at (%s): " (loc2str (get_exp_loc e))); (pprint_exp_x e); printf "\n========\n") in
     let (etyp, eloc) as ctx = get_exp_ctx e in
     let check_for_clause p e env idset sc =
         let e = check_exp e env sc in
@@ -738,7 +757,7 @@ and check_exp e env sc =
             | (_, TypList(et)) -> (et, 1)
             | (_, TypString) -> (TypChar, 1)
             | _ -> raise_typecheck_err eloc "unsupported iteration domain; it should be a range, array, list or a string") in
-        let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true in
+        let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true false in
         (p, e, dims, env, idset) in
     let new_e =
     (match e with
@@ -918,7 +937,7 @@ and check_exp e env sc =
                 check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1], ctx)) env sc)
         | OpBitwiseNot ->
             (let rec check_bitwise t =
-                match t with
+                match (deref_typ t) with
                 | TypInt -> TypInt
                 | TypSInt b -> TypSInt b
                 | TypUInt b -> TypUInt b
@@ -1043,7 +1062,7 @@ and check_exp e env sc =
                         raise_typecheck_err (get_exp_loc ei)
                             "the dimensionalities of simultaneously iterated containers/ranges do not match"
                     else ();
-                ((pi, ei) :: for_clauses1, dims, env1, idset1)) ([], 0, env, IdSet.empty) for_clauses in
+                ((pi, ei) :: for_clauses1, dims, env1, idset1)) ([], 0, env1, IdSet.empty) for_clauses in
                 let new_opt_c = (match opt_c with
                     | Some(c) ->
                         let new_c = check_exp c env1 for_sc in
@@ -1056,12 +1075,23 @@ and check_exp e env sc =
         let (btyp, bloc) = get_exp_ctx body in
         let _ = unify etyp (TypArray(total_dims, btyp)) bloc
             "the map should return %d-dimensional array with elements of the same type as the map body" in
+        let _ = print_env "before processing map body: " env1 eloc in
         let new_body = check_exp body env1 for_sc in
         ExpMap((List.rev map_clauses1), new_body, flags, ctx)
     | ExpBreak _ -> e
     | ExpContinue _ -> e
-    | ExpMkArray (_, _) ->
-        raise_typecheck_err eloc "unsupported op"
+    | ExpMkArray (arows, _) ->
+        (* [TODO] supported extended syntax of array initialization *)
+        let dims = if (List.length arows) > 1 then 2 else 1 in
+        let elemtyp = make_new_typ() in
+        let atyp = TypArray(dims, elemtyp) in
+        let _ = unify atyp etyp eloc "the array literal should produce an array" in
+        let arows = List.map (fun arow ->
+            List.map (fun elem ->
+                let (elemtyp1, eloc1) = get_exp_ctx elem in
+                let _ = unify elemtyp elemtyp1 eloc1 "all the array literal elements should have the same type" in
+                check_exp elem env sc) arow) arows in
+        ExpMkArray(arows, ctx)
     | ExpMkRecord (r_e, r_initializers, _) ->
         let _ = check_for_rec_field_duplicates (List.map (fun (n, _) -> n) r_initializers) eloc in
         let (r_new_initializers, relems) = List.fold_left (fun (r_new_initializers, relems) (n, e) ->
@@ -1121,7 +1151,7 @@ and check_exp e env sc =
     | DirImportFrom(_, _, _) ->
         raise_typecheck_err eloc "internal err: should not get here; all the declarations must be handled in check_eseq") in
     let _ = match new_e with ExpSeq _ -> () | _ -> (printf "\ninferenced type: \n";
-        (PPrint.pprint_typ_x etyp); printf "\n========\n") in
+        (pprint_typ_x etyp); printf "\n========\n") in
     new_e
 
 and check_eseq eseq env sc create_sc =
@@ -1179,9 +1209,10 @@ and check_eseq eseq env sc create_sc =
             | DirImport(_, _) | DirImportFrom(_, _, _)
             | DefTyp _ | DefVariant _ | DefClass _ | DefInterface _ | DefExn _ -> (e :: eseq, env)
             | DefVal (p, e, flags, loc) ->
+                let is_mutable = List.mem ValMutable flags in
                 let t = get_exp_typ e in
                 let e1 = check_exp e env sc in
-                let (p1, env1, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true in
+                let (p1, env1, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true is_mutable in
                 (DefVal(p1, e1, flags, loc) :: eseq, env1)
             | DefFun (df) ->
                 let _ = if !df.df_templ_args = [] then (check_deffun df env) else df in
@@ -1362,15 +1393,16 @@ and reg_deffun df env sc =
     let df_sc = (ScFun df_name1) :: sc in
     let (args1, argtyps1, env1, idset1, templ_args1) = List.fold_left (fun (args1, argtyps1, env1, idset1, templ_args1) arg ->
             let t = make_new_typ() in
-            let (arg1, env1, idset1, templ_args1) = check_pat arg t env1 idset1 templ_args1 df_sc true true in
+            let (arg1, env1, idset1, templ_args1) = check_pat arg t env1 idset1 templ_args1 df_sc true true false in
             ((arg1 :: args1), (t :: argtyps1), env1, idset1, templ_args1)) ([], [], env, IdSet.empty, IdSet.empty) df_args in
     let dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc) in
-    let (_, env1, idset1, templ_args1) = check_pat dummy_rt_pat (make_new_typ()) env1 idset1 templ_args1 df_sc true true in
+    let (dummy_rt_pat1, env1, idset1, templ_args1) = check_pat dummy_rt_pat (make_new_typ()) env1 idset1 templ_args1 df_sc true true false in
+    let rt = match dummy_rt_pat1 with PatTyped(_, rt, _) -> rt | _ -> raise_typecheck_err df_loc "invalid return pattern after check" in
     let df_typ1 = TypFun((List.rev argtyps1), rt) in
     df := { df_name=df_name1; df_templ_args=(IdSet.elements templ_args1);
             df_args=(List.rev args1); df_typ=df_typ1;
             df_body; df_flags; df_scope=sc; df_loc; df_templ_inst=[] };
-    let _ = (printf "\tfun after registration: "; PPrint.pprint_exp_x (DefFun df); printf "\n~~~~~~~~~~~~~~~~\n") in
+    let _ = (printf "\tfun after registration: "; pprint_exp_x (DefFun df); printf "\n~~~~~~~~~~~~~~~~\n") in
     set_id_entry df_name1 (IdFun df);
     add_id_to_env_check df_name df_name1 env (check_for_duplicate_fun df_typ1 env sc df_loc)
 
@@ -1436,24 +1468,24 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
                             let env1 = match_ty_templ_args ty_args dt_templ_args !r_env dt_loc loc in
                             Some(check_typ dt_typ env1 sc loc)
                     | IdVariant dvar ->
-                        let { dvar_name; dvar_templ_args; dvar_templ_inst } = !dvar in
-                        let t1 = TypApp(ty_args, i) in
-                        if ty_args = [] && dvar_templ_args = [] then
-                            Some(t1)
+                        let { dvar_name; dvar_templ_args; dvar_alias; dvar_templ_inst } = !dvar in
+                        Some(if dvar_templ_args = [] then
+                            dvar_alias
                         else if ty_args_are_real then
-                            Some(TypApp([],
                             (try
-                                List.find (fun inst ->
-                                    match (id_info i) with
+                                let t1 = TypApp(ty_args, dvar_name) in
+                                let _ = List.find (fun inst ->
+                                    match (id_info inst) with
                                     | IdVariant dvar_inst ->
                                         let {dvar_alias=dvar_inst_alias} = !dvar_inst in
-                                        maybe_unify t dvar_inst_alias true
+                                        maybe_unify t1 dvar_inst_alias true
                                     | _ -> raise_typecheck_err loc
                                         (sprintf "invalid type of variant instance %s (must be also a variant)" (id2str i)))
-                                    dvar_templ_inst
+                                    dvar_templ_inst in
+                                t1
                             with Not_found ->
-                                instantiate_variant ty_args dvar !r_env sc loc)))
-                        else Some(TypApp(ty_args, dvar_name))) in
+                                let (_, inst_app_typ) = instantiate_variant ty_args dvar !r_env sc loc in inst_app_typ)
+                        else TypApp(ty_args, dvar_name))) in
             (match (r_opt_typ_vars, ty_args, found_typ_opt) with
             | (_, _, Some(new_t)) -> new_t
             | (Some(r_typ_vars), [], _) when (Utils.starts_with (id2str n) "'") ->
@@ -1482,14 +1514,15 @@ and instantiate_fun templ_df inst_ftyp inst_env inst_sc inst_loc =
     let fun_sc = (ScFun inst_name) :: inst_sc in
     let (df_inst_args, inst_env, _) = List.fold_left2
         (fun (df_inst_args, inst_env, idset) df_arg arg_typ ->
-            let (df_inst_arg, inst_env, idset, _) = check_pat df_arg arg_typ inst_env idset IdSet.empty fun_sc false true in
+            let (df_inst_arg, inst_env, idset, _) = check_pat df_arg arg_typ inst_env idset IdSet.empty fun_sc false true false in
             ((df_inst_arg :: df_inst_args), inst_env, idset)) ([], inst_env, IdSet.empty) df_args arg_typs in
     let df_inst_args = List.rev df_inst_args in
+    let rt = check_typ rt inst_env df_scope inst_loc in
     let inst_body = if instantiate then (dup_exp df_body) else df_body in
-    let _ = ((printf "processing function %s " (id2str inst_name)); PPrint.pprint_pat_x (PatTuple(df_inst_args, noloc)); printf "<";
+    let _ = ((printf "processing function %s " (id2str inst_name)); pprint_pat_x (PatTuple(df_inst_args, noloc)); printf "<";
             List.iteri (fun i n -> printf "%s%s" (if i=0 then "" else ", ") (id2str n)) df_templ_args; printf ">\n") in
-    let _ = (printf "\tof typ: "; PPrint.pprint_typ_x inst_ftyp; printf "\n") in
-    let _ = (printf "\tfun before type checking: "; PPrint.pprint_exp_x (DefFun templ_df); printf "\n~~~~~~~~~~~~~~~~\n") in
+    let _ = (printf "\tof typ: "; pprint_typ_x inst_ftyp; printf "\n") in
+    let _ = (printf "\tfun before type checking: "; pprint_exp_x (DefFun templ_df); printf "\n~~~~~~~~~~~~~~~~\n") in
     let _ = print_env (sprintf "before processing function body of %s defined at %s" (id2str inst_name) (loc2str df_loc)) inst_env inst_loc in
     let (body_typ, body_loc) = get_exp_ctx inst_body in
     let _ = unify body_typ rt body_loc "the function body type does not match the function type" in
@@ -1497,7 +1530,7 @@ and instantiate_fun templ_df inst_ftyp inst_env inst_sc inst_loc =
     let inst_df = ref { df_name=inst_name; df_templ_args=[]; df_args=df_inst_args;
                         df_typ=(deref_typ inst_ftyp); df_body=inst_body;
                         df_flags; df_scope=inst_sc; df_loc=inst_loc; df_templ_inst=[] } in
-    let _ = (printf "<<<processed function:\n"; (PPrint.pprint_exp_x (DefFun inst_df)); printf "\n>>>\n") in
+    let _ = (printf "<<<processed function:\n"; (pprint_exp_x (DefFun inst_df)); printf "\n>>>\n") in
     set_id_entry inst_name (IdFun inst_df);
     if instantiate then
         !templ_df.df_templ_inst <- inst_name :: !templ_df.df_templ_inst
@@ -1514,8 +1547,8 @@ and instantiate_variant ty_args dvar env sc loc =
        inst_app_typ - typ used to reference the original template type from the instance
             (or reference the template type from itself). it's used to search for the proper instance of the variant type.
     *)
-    let _ = (printf "variant before instantiation: {{{ "; PPrint.pprint_exp_x (DefVariant dvar); printf "\n\twith ty_args=[";
-        List.iteri (fun i t -> if i = 0 then () else printf ", "; PPrint.pprint_typ_x t) ty_args; printf "] }}}\n") in
+    let _ = (printf "variant before instantiation: {{{ "; pprint_exp_x (DefVariant dvar); printf "\n\twith ty_args=[";
+        List.iteri (fun i t -> if i = 0 then () else printf ", "; pprint_typ_x t) ty_args; printf "] }}}\n") in
     let (instantiate, env, inst_name, inst_typ, inst_app_typ, inst_templ_args) = match ty_args with
         | [] -> (* not actually an instantiation, but finalization of the original (template or not) variant declaration *)
             let env = List.fold_left (fun env tn -> add_typ_to_env tn (TypApp([], tn)) env) env dvar_templ_args in
@@ -1527,7 +1560,7 @@ and instantiate_variant ty_args dvar env sc loc =
     let (inst_members, inst_constr) = List.fold_left2 (fun (inst_members, inst_constr) (n, t) cname ->
         let t = check_typ t env sc loc in
         let t = finalize_record_typ (Some cname) t loc in
-        let (inst_cname, _) = register_typ_constructor cname inst_templ_args t inst_typ env dvar_scope dvar_loc in
+        let (inst_cname, _) = register_typ_constructor cname inst_templ_args t inst_app_typ env dvar_scope dvar_loc in
         if instantiate then
             match id_info cname with
             | IdFun c_def -> !c_def.df_templ_inst <- inst_cname :: !c_def.df_templ_inst
@@ -1538,18 +1571,19 @@ and instantiate_variant ty_args dvar env sc loc =
                           dvar_alias=inst_app_typ; dvar_flags;
                           dvar_cases=(List.rev inst_members); dvar_constr=(List.rev inst_constr);
                           dvar_templ_inst=[]; dvar_scope (* let's retain the original scope *); dvar_loc=loc } in
-    printf "variant after instantiation: {{{ "; PPrint.pprint_exp_x (DefVariant inst_dvar); printf " }}}\n";
+    printf "variant after instantiation: {{{ "; pprint_exp_x (DefVariant inst_dvar); printf " }}}\n";
     if instantiate then
-        set_id_entry inst_name (IdVariant inst_dvar)
+        (set_id_entry inst_name (IdVariant inst_dvar);
+        !dvar.dvar_templ_inst <- inst_name :: !dvar.dvar_templ_inst)
     else
-        (dvar := !inst_dvar;
-        !dvar.dvar_templ_inst <- inst_name :: !dvar.dvar_templ_inst);
-    inst_name
+        dvar := !inst_dvar;
+    (inst_name, inst_app_typ)
 
-and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode =
+and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutable =
     let r_idset = ref idset in
     let r_env = ref env in
     let r_typ_vars = ref typ_vars in
+    let captured_val_flags = if is_mutable then ValMutable :: [] else [] in
     let rec process_id i t loc =
         let i0 = get_orig_id i in
         (if (IdSet.mem i0 !r_idset) then
@@ -1559,7 +1593,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode =
         if proto_mode then i0 else
             (let j = dup_id i0 in
             (*let _ = printf "check_pat: pattern %s is replaced with %s at %s\n" (id2str i0) (id2str j) (loc2str loc) in*)
-            let dv = { dv_name=j; dv_typ=t; dv_flags=[]; dv_scope=sc; dv_loc=loc } in
+            let dv = { dv_name=j; dv_typ=t; dv_flags=captured_val_flags; dv_scope=sc; dv_loc=loc } in
             set_id_entry j (IdVal dv);
             r_env := add_id_to_env i0 j !r_env;
             j))
@@ -1567,6 +1601,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode =
         | PatAny _ -> p
         | PatLit(l, loc) ->
             if simple_pat_mode then raise_typecheck_err loc "literals are not allowed here" else ();
+            let _ = (printf "PatLit: "; pprint_typ_x t; printf " ~ "; pprint_pat_x p; printf "\n") in
             unify t (get_lit_typ l) loc "the literal of unexpected type";
             p
         | PatIdent(i, loc) ->
@@ -1635,7 +1670,7 @@ and check_handlers handlers inptyp outtyp env sc loc =
     List.map (fun (plist, e) ->
         let case_sc = new_block_scope() :: sc in
         let (plist1, env1, capt1) = List.fold_left (fun (plist1, env1, capt1) p ->
-            let (p2, env2, capt2, _) = check_pat p inptyp env1 capt1 IdSet.empty case_sc false false in
+            let (p2, env2, capt2, _) = check_pat p inptyp env1 capt1 IdSet.empty case_sc false false false in
             (p2 :: plist1, env2, capt2)) ([], env, IdSet.empty) plist in
         if not (IdSet.is_empty capt1) && (List.length plist1) > 1 then
             raise_typecheck_err loc "captured variables may not be used in the case of several alternatives"

@@ -2,6 +2,8 @@
    as if it has "from Builtin import *" directive in the beginning */
 type 't option = None | Some: 't
 
+fun getOpt(x: 't option, defval: 't) = match (x) { | Some(x) => x | None => defval }
+
 pure nothrow fun length(s: string): int = ccode "return s->length;"
 fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
@@ -22,6 +24,16 @@ operator + (a: char, b: string): string = ccode "
     return fx_str_join(fx_ctx, fx_res, 0, s, 2);"
 
 fun print_string(a: string): void = ccode "return __fx_puts(fx_ctx, a->data);"
+
+fun atoi(a: string): int option
+{
+    fun atoi_(a: string): (int, bool) = ccode
+        "return __fx_atoi(fx_ctx, a, &fx_result->v1, &fx_result->v2, 10);"
+    match (atoi_(a)) {
+    | (x, true) => Some(x)
+    | _ => None
+    }
+}
 
 fun print(a: 't) = print_string(string(a))
 // [TODO] this overloaded variant can safely be removed later,

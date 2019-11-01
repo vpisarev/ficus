@@ -86,8 +86,8 @@ let rec pptype_ t p1 =
     | TypRef(t1) -> pptypsuf t1 "Ref"
     | TypArray(d, t1) -> pptypsuf t1 (String.make (d - 1) ',')
     | TypApp([], n) -> pprint_id n
-    | TypApp(t1 :: [], n) -> pptypsuf t1 (pp_id2str n)
-    | TypApp(tl, n) -> pptypsuf (TypTuple tl) (pp_id2str n)
+    | TypApp(t1 :: [], n) -> pptypsuf t1 (id2str n)
+    | TypApp(tl, n) -> pptypsuf (TypTuple tl) (id2str n)
     | TypTuple(tl) -> pptypelist_ "(" tl
     | TypRecord {contents=(rec_elems, name_opt)} ->
             let name = match name_opt with Some(i) -> (id2str i) | _ -> "??" in
@@ -158,8 +158,9 @@ let rec pprint_exp e =
     | DefTyp { contents = {dt_name; dt_templ_args; dt_typ }} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
         pspace(); pstr "="; pspace(); pprint_typ dt_typ; cbox()
-    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_cases; dvar_constr; dvar_templ_inst} } ->
-        obox(); pstr "TYPE"; pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name;
+    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases; dvar_constr; dvar_templ_inst} } ->
+        obox(); pstr "TYPE"; pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name; pstr "<";
+        pprint_typ dvar_alias; pstr ">";
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id v;
             pstr "<"; pprint_id c; pstr ": "; pprint_typ (get_id_typ c); pstr ">: "; pprint_typ t)

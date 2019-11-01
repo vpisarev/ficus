@@ -740,7 +740,7 @@ typespec_nf:
     | _ -> TypApp([], get_id $1)
 }
 | TYVAR { TypApp([], get_id $1) }
-| B_LPAREN typespec_list_ RPAREN { match $2 with t::[] -> t | _ -> TypTuple($2) }
+| B_LPAREN typespec_list_ RPAREN { match $2 with t::[] -> t | _ -> TypTuple(List.rev $2) }
 | B_LPAREN typespec_list_ COMMA RPAREN { TypTuple(List.rev $2) }
 | typespec_nf nobreak_dot_ident
 %prec app_type_prec

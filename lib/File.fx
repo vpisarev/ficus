@@ -12,8 +12,7 @@ type file_t = { handle: cptr }
 
 fun open(fname: string, mode: string)
 {
-    fun open_(fname: string, mode: string): cptr =
-ccode
+    fun open_(fname: string, mode: string): cptr = ccode
     "
     __fx_cstr fname_, mode_;
     FX_STATUS fx_status = __fx_str2cstr(fx_ctx, &fname_, fname);
@@ -30,7 +29,7 @@ ccode
         __fx_release_cstr(fx_ctx, &fname_);
     }
     return fx_status;
-"
+    "
     file_t { handle=open_(fname, mode) }
 }
 
@@ -82,7 +81,7 @@ fun print(f: file_t, x: 't) = print(f, string(x))
 fun print(f: file_t, x: string)
 {
     nothrow fun print_(f: cptr, str: string): void = ccode "__fx_fputs(fx_ctx, str, (FILE*)(f->p));"
-    if (!isOpened()) throw NullFileError
+    if (!isOpened(f)) throw NullFileError
     print_(f.handle, x)
 }
 
@@ -120,7 +119,7 @@ fun write(f: file_t, a: 't [,])
     }
     return fx_status;
     "
-    if (!isOpened()) throw NullFileError
+    if (!isOpened(f)) throw NullFileError
     write_(f.handle, a)
 }
 
@@ -128,20 +127,20 @@ fun read(f: file_t, buf: uint8 [])
 {
     fun read_(f: cptr, buf: uint8 []): int =
         ccode "return __fx_fread(fx_ctx, &fx_res, buf->data, 1, buf->dim[0].size, (FILE*)(f->p));"
-    if (!isOpened()) throw NullFileError
-    read_(handle, buf)
+    if (!isOpened(f)) throw NullFileError
+    read_(f.handle, buf)
 }
 
 fun readln(f: file_t)
 {
     fun readln_(f: cptr): string =
         ccode "return __fx_fgets(fx_ctx, fx_result, (FILE*)(f->p));"
-    if (!isOpened()) throw NullFileError
+    if (!isOpened(f)) throw NullFileError
     readln_(f.handle)
 }
 
-fun remove(name: string): bool =
-ccode "
+fun remove(name: string): bool = ccode
+    "
     __fx_cstr name_;
     FX_STATUS fx_status = __fx_str2cstr(fx_ctx, &name_, name);
     if (!fx_status) {
@@ -149,10 +148,10 @@ ccode "
         __fx_release_cstr(fx_ctx, &name_);
     }
     return fx_status;
-"
+    "
 
-fun rename(name: string, new_name: string): bool =
-ccode "
+fun rename(name: string, new_name: string): bool = ccode
+    "
     __fx_cstr name_, new_name_;
     FX_STATUS fx_status = __fx_str2cstr(fx_ctx, &name_, name);
     if (!fx_status) {
@@ -164,4 +163,4 @@ ccode "
         __fx_release_cstr(fx_ctx, &name_);
     }
     return fx_status;
-"
+    "
