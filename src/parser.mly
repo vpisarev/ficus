@@ -780,11 +780,11 @@ shapespec:
 | /* empty */ { 1 }
 
 dot_ident:
+| dot_ident DOT B_IDENT { $1 ^ "." ^ $3 }
 | B_IDENT { $1 }
-| B_IDENT DOT nobreak_dot_ident { $1 ^ "." ^ $3 }
 
 nobreak_dot_ident:
-| nobreak_dot_ident DOT ident { $1 ^ "." ^ $3 }
+| nobreak_dot_ident DOT B_IDENT { $1 ^ "." ^ $3 }
 | IDENT { $1 }
 
 id_typ_list_:

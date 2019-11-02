@@ -9,6 +9,14 @@ val _2 = 2
 val a = (_2 + 2) | 8
 fun fib(n: int) = if (n <= 1) 1 else fib(n-1) + fib(n-2)
 
+fun templ(x: 't): 't = x + (i :> 't)
+
+fun test_templ()
+{
+    val i = 5
+    templ(7.0)
+}
+
 println("factorial(5)=\(testmod.fact(5))")
 
 for (i <- 1:31) { print("fib(\(i))=\(fib(i))"); println() }

@@ -41,4 +41,8 @@ fun print(a: string) = print_string(a)
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
+fun array(n: int, x: 't) = [for (i <- 0:n) x]
+fun array((m: int, n: int), x: 't) = [for (i <- 0:m) for (j <- 0:n) x]
+fun array((m: int, n: int, l: int), x: 't) = [for (i <- 0:m) for (j <- 0:n) for (k <- 0:l) x]
+
 pure nothrow fun size(a: 't []): int = ccode "return a->size[0];"

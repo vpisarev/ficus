@@ -191,7 +191,7 @@ and pat_t =
 and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
                  dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
-                 df_body: exp_t; df_flags: func_flag_t list; df_scope: scope_t list; df_loc: loc_t;
+                 mutable df_body: exp_t; df_flags: func_flag_t list; df_scope: scope_t list; df_loc: loc_t;
                  mutable df_templ_inst: id_t list }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
@@ -212,8 +212,8 @@ and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
    to the corresponding df_templ_inst' lists of the generic constructors.
 *)
 and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_alias: typ_t;
-                     dvar_flags: variant_flag_t list; dvar_cases: (id_t * typ_t) list;
-                     dvar_constr: id_t list; mutable dvar_templ_inst: id_t list;
+                     dvar_flags: variant_flag_t list; mutable dvar_cases: (id_t * typ_t) list;
+                     mutable dvar_constr: id_t list; mutable dvar_templ_inst: id_t list;
                      dvar_scope: scope_t list; dvar_loc: loc_t }
 and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_typ: typ_t;
                    dcl_ifaces: id_t list; dcl_args: pat_t list;
@@ -362,6 +362,8 @@ let get_module m =
     match id_info m with
     | IdModule minfo -> minfo
     | _ -> failwith (sprintf "internal error in process_all: %s is not a module" (pp_id2str m))
+
+let get_module_env m = !(get_module m).dm_env
 
 let find_module mname_id mfname =
     try get_module (Hashtbl.find all_modules mfname) with

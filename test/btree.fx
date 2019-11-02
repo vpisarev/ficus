@@ -8,7 +8,7 @@ fun make(i: 'a, d: int) =
     else
         Node(make(i*2-1, d-1), i, make(i*2, d-1))
 
-fun check(t: 'a tree)
+fun check(t: 'a tree): int
 {
     | Empty => 0
     | Node(l, i, r) => i + check(l) - check(r)
@@ -18,7 +18,7 @@ val min_depth = 4
 val max_depth =
     match (Args.arguments())
     {
-    | n_str :: [] => getOpt(int(n_str), 20)
+    | n_str :: [] => getOpt(atoi(n_str), 20)
     | _ => 20
     }
 val stretch_depth = max_depth + 1
