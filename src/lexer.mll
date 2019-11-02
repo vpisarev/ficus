@@ -51,7 +51,6 @@ let token2str t = match t with
     | VAR -> "VAR"
     | WHEN -> "WHEN"
     | WHILE -> "WHILE"
-    | WITH -> "WITH"
     | B_LPAREN -> "B_LPAREN"
     | LPAREN -> "LPAREN"
     | STR_INTERP_LPAREN -> "STR_INTERP_LPAREN"
@@ -68,7 +67,7 @@ let token2str t = match t with
     | BAR -> "BAR"
     | CONS -> "CONS"
     | CAST -> "CAST"
-    | EXPAND -> "EXPAND"
+    | BACKSLASH -> "BACKSLASH"
     | DOUBLE_ARROW -> "DOUBLE_ARROW"
     | ARROW -> "ARROW"
     | QUESTION -> "QUESTION"
@@ -97,6 +96,7 @@ let token2str t = match t with
     | MINUS_EQUAL -> "MINUS_EQUAL"
     | STAR_EQUAL -> "STAR_EQUAL"
     | SLASH_EQUAL -> "SLASH_EQUAL"
+    | BACKSLASH_EQUAL -> "BACKSLASH_EQUAL"
     | MOD_EQUAL -> "MOD_EQUAL"
     | AND_EQUAL -> "AND_EQUAL"
     | OR_EQUAL -> "OR_EQUAL"
@@ -153,7 +153,7 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("match", MATCH, 4); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
         ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
-        ("val", VAL, 2); ("var", VAR, 2); ("with", WITH, 1); ("when", WHEN, 1); ("while", WHILE, 4);
+        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 4);
     ]
 
 let incr_lineno lexbuf =
@@ -474,6 +474,7 @@ rule tokens = parse
     | "-="  { new_exp := true; [MINUS_EQUAL] }
     | "*="  { new_exp := true; [STAR_EQUAL] }
     | "/="  { new_exp := true; [SLASH_EQUAL] }
+    | "\\="  { new_exp := true; [BACKSLASH_EQUAL] }
     | "%="  { new_exp := true; [MOD_EQUAL] }
     | "&="  { new_exp := true; [AND_EQUAL] }
     | "|="  { new_exp := true; [OR_EQUAL] }
@@ -492,7 +493,7 @@ rule tokens = parse
     | ';'   { new_exp := true; [SEMICOLON] }
     | ':'   { new_exp := true; [COLON] }
     | "::"  { new_exp := true; [CONS] }
-    | "\\"  { new_exp := true; [EXPAND] }
+    | "\\"  { new_exp := true; [BACKSLASH] }
     | ":>"  { new_exp := true; [CAST] }
     | "=>"
         {

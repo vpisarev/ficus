@@ -639,32 +639,6 @@ let rec lookup_id_ n t env sc loc =
                             Some(inst_name)
                     else
                         None
-            (* when we have a record, it's name plays a double role - as a type name and as a name of the constructor function *)
-            (*| IdTyp ({contents={dt_templ_args; dt_typ=(TypRecord _) as dt_typ; dt_alias; dt_templ_inst; dt_loc}} as dt) ->
-                if dt_templ_args = [] then
-                    let ctyp = TypFun(dt_typ :: [], dt_alias) in
-                    if maybe_unify ctyp t true then
-                        Some(i)
-                    else
-                        None
-                else
-                    let (dt_typ, env1) = preprocess_templ_typ dt_templ_args dt_typ env sc loc in
-                    if maybe_unify ftyp t true then
-                        try
-                            Some(List.find (fun inst ->
-                                match id_info inst with
-                                | IdFun {contents={df_typ=inst_typ}} ->
-                                    maybe_unify inst_typ t true
-                                | _ -> raise_typecheck_err loc (sprintf "invalid (non-function) instance %s of template function %s" (id2str inst) (pp_id2str n))
-                                ) dt_templ_inst)
-                        with Not_found ->
-                            (* the generic function matches the requested type,
-                            but there is no appropriate instance;
-                            let's create a new one *)
-                            let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp env1 sc loc) in
-                            Some(inst_name)
-                    else
-                        None*)
             | IdModule _ -> unify TypModule t loc "unexpected module name"; Some(i)
             | IdExn {contents={ dexn_typ }} ->
                 let ctyp = typ2constr dexn_typ TypExn in
@@ -691,12 +665,12 @@ and preprocess_templ_typ templ_args typ env sc loc =
 and check_for_duplicate_fun ftyp env sc loc =
     (fun i ->
     match i with
-    (*[TODO] | IdFun {contents={df_name; df_templ_args; df_typ; df_scope; df_loc}} ->
+    | IdFun {contents={df_name; df_templ_args; df_typ; df_scope; df_loc}} ->
         if (List.hd df_scope) = (List.hd sc) then
             let (t, _) = preprocess_templ_typ df_templ_args df_typ env sc loc in
-            if maybe_unify t ftyp false then
+            if (maybe_unify t ftyp false) && (df_templ_args = []) then
                 raise_typecheck_err loc
-                    (sprintf "the type %s is re-declared in the same scope; the previous declaration is here %s"
+                    (sprintf "the symbol %s is re-declared in the same scope; the previous declaration is here %s"
                     (pp_id2str df_name) (loc2str df_loc))
             else ()
         else ()
@@ -705,10 +679,10 @@ and check_for_duplicate_fun ftyp env sc loc =
             let t = typ2constr dexn_typ TypExn in
             if maybe_unify t ftyp false then
                 raise_typecheck_err loc
-                    (sprintf "the type %s is re-declared in the same scope; the previous declaration is here %s"
+                    (sprintf "the symbol %s is re-declared in the same scope; the previous declaration is here %s"
                     (pp_id2str dexn_name) (loc2str dexn_loc))
                 else ()
-        else ()*)
+        else ()
     | _ -> ())
 
 and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
@@ -829,17 +803,17 @@ and check_exp e env sc =
         (* check that new_e1 is lvalue and that new_e1 and new_e2 have equal types;
            in future we can let etyp1_ and etyp2_ be different as long as the assignment
            is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
-        let is_lvalue = (match new_e1 with
+        let rec is_lvalue e = (match e with
         | ExpAt _ -> true (* an_arr[idx] = e2 *)
         | ExpUnOp(OpDeref, _, _) -> true (* *a_ref = e2 *)
         | ExpIdent(n1, _) -> (* a_var = e2 *)
             (match (id_info n1) with
             | IdVal { dv_flags } -> (List.mem ValMutable dv_flags)
             | _ -> false)
-        (* [TODO] probably, we should let user to modify individual fields of a record,
-        as long as it's stored in a mutable place (variable, array, by reference) *)
+        | ExpBinOp(OpMem, rcrd, ExpIdent(_, _), _) -> is_lvalue rcrd
+        | ExpBinOp(OpMem, tup, ExpLit(_, _), _) -> is_lvalue tup
         | _ -> false) in
-        if not is_lvalue then raise_typecheck_err eloc "the left side of assignment is not an l-value"
+        if not (is_lvalue new_e1) then raise_typecheck_err eloc "the left side of assignment is not an l-value"
         else ();
         ExpBinOp(OpSet, new_e1, new_e2, ctx)
 
@@ -1104,8 +1078,29 @@ and check_exp e env sc =
         let _ = unify r_etyp r_expected_typ r_eloc "there is no proper record constructor/function with record argument" in
         let new_r_e = check_exp r_e env sc in
         ExpMkRecord(new_r_e, (List.rev r_new_initializers), ctx)
-    | ExpUpdateRecord (_, _, _) ->
-        raise_typecheck_err eloc "unsupported op"
+    | ExpUpdateRecord (r_e, r_initializers, _) ->
+        let _ = check_for_rec_field_duplicates (List.map (fun (n, _) -> n) r_initializers) eloc in
+        let (rtyp, rloc) = get_exp_ctx r_e in
+        let _ = unify rtyp etyp eloc "the types of the update-record argument and the result do not match" in
+        let new_r_e = check_exp r_e env sc in
+        let relems = (match (deref_typ rtyp) with
+            | TypRecord {contents=(relems, rname_opt)} ->
+                (match rname_opt with
+                | Some _ -> ()
+                | _ -> raise_typecheck_err rloc "the updated record is not completely defined. Use explicit type specification");
+                relems
+            | _ -> raise_typecheck_err rloc "the update-record operation argument is not a record") in
+        let new_r_initializers = List.map (fun (ni, ei) ->
+            let (ei_typ, ei_loc) = get_exp_ctx ei in
+            try
+                let (_, ti, _) = List.find (fun (nj, _, _) -> ni = nj) relems in
+                let _ = unify ti ei_typ ei_loc (sprintf
+                    "invalid type of the initializer of record field '%s'" (id2str ni)) in
+                let new_ei = check_exp ei env sc in
+                (ni, new_ei)
+            with Not_found -> raise_typecheck_err ei_loc (sprintf
+                "there is no record field '%s' in the updated record" (id2str ni))) r_initializers in
+        ExpUpdateRecord(new_r_e, new_r_initializers, ctx)
     | ExpTryCatch(e1, handlers, _) ->
         (* [TODO] check try_e, check handlers, check that each handlers branch is unified with try_e;
            the overall trycatch should also be unified with try_e *)

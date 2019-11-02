@@ -36,9 +36,9 @@ fun atoi(a: string): int option
 }
 
 fun print(a: 't) = print_string(string(a))
-// [TODO] this overloaded variant can safely be removed later,
-// but currently it's used to test custom overloading of a generic function
 fun print(a: string) = print_string(a)
 
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
+
+pure nothrow fun size(a: 't []): int = ccode "return a->size[0];"

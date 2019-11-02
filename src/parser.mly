@@ -121,11 +121,11 @@ let rec compress_nested_map_exp l e = match e with
 %token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION
 %token EXTENDS FOLD FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE INTERFACE
 %token MATCH NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
-%token THROW TRY TYPE VAL VAR WHEN WHILE WITH
+%token THROW TRY TYPE VAL VAR WHEN WHILE
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE
-%token COMMA DOT SEMICOLON COLON BAR CONS CAST EXPAND ARROW QUESTION DOUBLE_ARROW EOF
+%token COMMA DOT SEMICOLON COLON BAR CONS CAST BACKSLASH ARROW QUESTION DOUBLE_ARROW EOF
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
@@ -133,7 +133,7 @@ let rec compress_nested_map_exp l e = match e with
 %token B_POWER POWER SHIFT_RIGHT SHIFT_LEFT
 %token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
-%token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL MOD_EQUAL
+%token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL BACKSLASH_EQUAL MOD_EQUAL
 %token AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
 %token EQUAL_TO NOT_EQUAL LESS_EQUAL GREATER_EQUAL LESS GREATER
 
@@ -142,7 +142,7 @@ let rec compress_nested_map_exp l e = match e with
 %right DOUBLE_ARROW
 %left BAR
 %right THROW
-%right EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL MOD_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
+%right EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL BACKSLASH_EQUAL MOD_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
 %left WHEN
 %right CONS
 %left LOGICAL_OR
@@ -157,7 +157,7 @@ let rec compress_nested_map_exp l e = match e with
 %left PLUS MINUS
 %left STAR SLASH MOD
 %right POWER
-%left WITH
+%left BACKSLASH
 %right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT deref_prec REF EXPAND
 %right ARROW
 %left lsquare_prec fcall_prec
@@ -303,6 +303,11 @@ stmt:
         let (tp, loc) = make_new_ctx() in
         ExpBinOp(OpSet, $1, ExpBinOp($2, $1, $3, (tp, loc)), (TypVoid, loc))
     }
+| simple_exp BACKSLASH_EQUAL LBRACE id_exp_list_ RBRACE
+    {
+        let (tp, loc) = make_new_ctx() in
+        ExpBinOp(OpSet, $1, ExpUpdateRecord($1, (List.rev $4), (tp, loc)), (TypVoid, loc))
+    }
 | WHILE lparen exp_or_block RPAREN exp_or_block { ExpWhile ($3, $5, make_new_ctx()) }
 | DO exp_or_block WHILE lparen exp_or_block RPAREN { ExpDoWhile ($2, $5, make_new_ctx()) }
 | for_flags FOR lparen for_in_list_ RPAREN exp_or_block
@@ -420,7 +425,7 @@ exp:
 | exp GREATER exp { make_bin_op(OpCompareGT, $1, $3) }
 | exp GREATER_EQUAL exp { make_bin_op(OpCompareGE, $1, $3) }
 | exp CONS exp { make_bin_op(OpCons, $1, $3) }
-| exp WITH LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
+| exp BACKSLASH LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
 | B_STAR exp %prec deref_prec { make_un_op(OpDeref, $2) }
 | B_POWER exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
 | REF exp { make_un_op(OpMakeRef, $2) }

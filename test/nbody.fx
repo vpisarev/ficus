@@ -66,7 +66,8 @@ val bodies = [sun, jupiter, saturn, uranus, neptune]
 
 fun offsetMomentum()
 {
-    bodies[0] = bodies[0] with {
+    bodies[0] \=
+    {
         vel = fold(p = Vec{x=0., y=0., z=0.}; body <- bodies)
                 p += body.vel * (body.mass / SolarMass)
     }
@@ -83,7 +84,7 @@ fun energy()
         {
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
-            val distance = sqrt(distance2(diff))
+            val distance = Math.sqrt(distance2(diff))
             e1 += (bi.mass * bj.mass) / distance
         })
     }
@@ -100,11 +101,11 @@ fun advance(dt: double)
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
             val dist2 = distance2(diff)
-            val mag = dt / (dist2 * sqrt(dist2))
+            val mag = dt / (dist2 * Math.sqrt(dist2))
             bi.vel -= diff * (bj.mass * mag)
             bodies[j].vel = bj.vel + diff * (bi.mass * mag)
         }
-        bodies[i] = bi with { pos=bi.pos + bi.vel * dt }
+        bodies[i] = bi \ { pos=bi.pos + bi.vel * dt }
     }
 }
 
