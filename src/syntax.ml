@@ -188,11 +188,13 @@ and pat_t =
     | PatCons of pat_t * pat_t * loc_t
     | PatAs of pat_t * id_t * loc_t
     | PatTyped of pat_t * typ_t * loc_t
+and env_entry_t = EnvId of id_t | EnvTyp of typ_t
+and env_t = env_entry_t list Env.t
 and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
                  dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
                  mutable df_body: exp_t; df_flags: func_flag_t list; df_scope: scope_t list; df_loc: loc_t;
-                 mutable df_templ_inst: id_t list }
+                 mutable df_templ_inst: id_t list; df_env: env_t }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
                  dt_finalized: bool; dt_scope: scope_t list; dt_loc: loc_t }
@@ -221,9 +223,6 @@ and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_typ: typ_t;
                    dcl_scope: scope_t list; dcl_loc: loc_t }
 and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list;
                        di_scope: scope_t list; di_loc: loc_t }
-
-type env_entry_t = EnvId of id_t | EnvTyp of typ_t
-type env_t = env_entry_t list Env.t
 
 type defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
                     mutable dm_deps: id_t list; mutable dm_env: env_t;

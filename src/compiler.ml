@@ -110,8 +110,8 @@ let toposort graph =
 
 let typecheck_all modules =
     let _ = (Typechecker.typecheck_errs := []) in
-    let _ = (List.iter (fun m -> Typechecker.check_mod m; printf "typed module:\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-            let minfo = get_module m in PPrint.pprint_mod !minfo; printf "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n") modules) in
+    let _ = (List.iter (fun m -> Typechecker.check_mod m(*; printf "typed module:\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+            let minfo = get_module m in PPrint.pprint_mod !minfo; printf "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"*)) modules) in
     let errs = !Typechecker.typecheck_errs in
     List.iter (fun err -> Typechecker.print_typecheck_err err) errs;
     errs
@@ -125,7 +125,7 @@ let process_all fname0 =
             (m, !minfo.dm_deps) :: gr) all_modules [] in
         let _ = (sorted_modules := List.rev (toposort graph)) in
         let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in
-        let _ = (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules) in
+        (*let _ = (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules) in*)
         let typecheck_errs = typecheck_all !sorted_modules in
         let errcount = List.length typecheck_errs in
         if errcount != 0 then

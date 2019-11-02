@@ -52,7 +52,7 @@ let make_deffun fname args rt body flags loc =
     let argtp = List.map (fun _ -> make_new_typ()) args in
     { df_name=fname; df_templ_args=[]; df_args=args; df_typ=TypFun(argtp, rt);
       df_body=body; df_flags=flags; df_scope=ScGlobal :: [];
-      df_loc=loc; df_templ_inst=[] }
+      df_loc=loc; df_templ_inst=[]; df_env=Env.empty }
 
 let make_variant_type (targs, tname) var_elems0 =
     let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in

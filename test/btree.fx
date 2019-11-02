@@ -2,7 +2,7 @@ import Args
 
 type 'a tree = Empty | Node: ('a tree, 'a, 'a tree)
 
-fun make(i: 'a, d: int) =
+fun make(i: 'a, d: int): 'a tree =
     if (d == 0)
         Node(Empty, i, Empty)
     else
