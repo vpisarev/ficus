@@ -54,6 +54,10 @@ let make_deffun fname args rt body flags loc =
       df_body=body; df_flags=flags; df_scope=ScGlobal :: [];
       df_loc=loc; df_templ_inst=[]; df_env=Env.empty }
 
+let good_variant_name s =
+    let c0 = String.get s 0 in
+    ('A' <= c0 && c0 <= 'Z') || (String.contains s '.')
+
 let make_variant_type (targs, tname) var_elems0 =
     let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
     let loc = make_loc(pos0, pos1) in
@@ -96,7 +100,7 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp fold_cl fold_body =
     let { loc_fname; loc_line0; loc_pos0 } = get_pat_loc p0 in
     let { loc_line1; loc_pos1 } = get_exp_loc fold_body in
     let for_loc = { loc_fname; loc_line0; loc_pos0; loc_line1; loc_pos1 } in
-    let for_exp = ExpFor (fold_cl, fold_body, [], (TypVoid, for_loc)) in
+    let for_exp = ExpFor (fold_cl, fold_body, [], for_loc) in
     let acc_exp = fold_pat2exp fold_pat in
     ExpSeq([acc_decl; for_exp; acc_exp], (make_new_typ(), curr_loc()))
 
@@ -238,7 +242,7 @@ decl:
         let (flags, fname) = $1 in
         let (args, rt, prologue) = $2 in
         let (args_upd, match_arg) = plist2exp args 2 in
-        let match_e = ExpMatch(match_arg, $5, make_new_ctx()) in
+        let match_e = ExpMatch(match_arg, (List.rev $5), make_new_ctx()) in
         let body = expseq2exp (prologue @ [match_e]) 5 in
         [DefFun (ref (make_deffun fname args_upd rt body flags (curr_loc())))]
     }
@@ -296,25 +300,25 @@ exception_decl:
 stmt:
 | BREAK { ExpBreak (curr_loc()) }
 | CONTINUE { ExpContinue(curr_loc()) }
-| THROW exp { ExpUnOp(OpThrow, $2, (TypErr, curr_loc())) }
-| simple_exp EQUAL complex_exp { ExpBinOp(OpSet, $1, $3, (TypVoid, curr_loc())) }
+| THROW exp { ExpThrow($2, curr_loc()) }
+| simple_exp EQUAL complex_exp { ExpAssign($1, $3, curr_loc()) }
 | simple_exp aug_op complex_exp
     {
         let (tp, loc) = make_new_ctx() in
-        ExpBinOp(OpSet, $1, ExpBinOp($2, $1, $3, (tp, loc)), (TypVoid, loc))
+        ExpAssign($1, ExpBinOp($2, $1, $3, (tp, loc)), loc)
     }
 | simple_exp BACKSLASH_EQUAL LBRACE id_exp_list_ RBRACE
     {
         let (tp, loc) = make_new_ctx() in
-        ExpBinOp(OpSet, $1, ExpUpdateRecord($1, (List.rev $4), (tp, loc)), (TypVoid, loc))
+        ExpAssign($1, ExpUpdateRecord($1, (List.rev $4), (tp, loc)), loc)
     }
-| WHILE lparen exp_or_block RPAREN exp_or_block { ExpWhile ($3, $5, make_new_ctx()) }
-| DO exp_or_block WHILE lparen exp_or_block RPAREN { ExpDoWhile ($2, $5, make_new_ctx()) }
+| WHILE lparen exp_or_block RPAREN exp_or_block { ExpWhile ($3, $5, curr_loc()) }
+| DO exp_or_block WHILE lparen exp_or_block RPAREN { ExpDoWhile ($2, $5, curr_loc()) }
 | for_flags FOR lparen for_in_list_ RPAREN exp_or_block
     {
         let for_cl_ = List.rev $4 in
         let for_body_ = $6 in
-        ExpFor (for_cl_, for_body_, $1, make_new_ctx())
+        ExpFor (for_cl_, for_body_, $1, curr_loc())
     }
 | CCODE STRING { ExpCCode($2, make_new_ctx()) }
 | FUN fun_args DOUBLE_ARROW stmt
@@ -341,8 +345,8 @@ simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
 | B_LPAREN op_name RPAREN { ExpIdent($2, make_new_ctx()) }
 | literal { ExpLit($1, make_new_ctx()) }
-| simple_exp DOT B_IDENT { make_bin_op(OpMem, $1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3))) }
-| simple_exp DOT INT { make_bin_op(OpMem, $1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3))) }
+| simple_exp DOT B_IDENT { ExpMem($1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
+| simple_exp DOT INT { ExpMem($1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
 | B_LPAREN exp_or_block RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }
@@ -426,9 +430,9 @@ exp:
 | exp GREATER_EQUAL exp { make_bin_op(OpCompareGE, $1, $3) }
 | exp CONS exp { make_bin_op(OpCons, $1, $3) }
 | exp BACKSLASH LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
-| B_STAR exp %prec deref_prec { make_un_op(OpDeref, $2) }
-| B_POWER exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
-| REF exp { make_un_op(OpMakeRef, $2) }
+| B_STAR exp %prec deref_prec { ExpDeref($2, make_new_ctx()) }
+| B_POWER exp %prec deref_prec { ExpDeref(ExpDeref($2, make_new_ctx()), make_new_ctx()) }
+| REF exp { ExpMakeRef($2, make_new_ctx()) }
 | B_MINUS exp { make_un_op(OpNegate, $2) }
 | B_PLUS exp { make_un_op(OpPlus, $2) }
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
@@ -552,18 +556,18 @@ exp_seq_or_none:
 
 simple_pat:
 | B_IDENT
-  {
-      let loc = curr_loc() in
-      match $1 with
-          "_" -> PatAny(loc)
-         | _ -> PatIdent((get_id $1), loc)
-  }
+    {
+        let loc = curr_loc() in
+        match $1 with
+        | "_" -> PatAny(loc)
+        | _ -> PatIdent((get_id $1), loc)
+    }
 | B_LPAREN simple_pat_list_ RPAREN
-  {
-      match $2 with
-        p :: [] -> p
-      | _ -> PatTuple((List.rev $2), curr_loc())
-  }
+    {
+        match $2 with
+        | p :: [] -> p
+        | _ -> PatTuple((List.rev $2), curr_loc())
+    }
 | LBRACE id_simple_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
 | dot_ident LBRACE id_simple_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident LPAREN simple_pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
@@ -589,19 +593,25 @@ id_simple_pat:
 
 pat:
 | B_IDENT
-  {
-      let loc = curr_loc() in
-      match $1 with
-          "_" -> PatAny(loc)
-         | _ -> PatIdent((get_id $1), loc)
-  }
+    {
+        let loc = curr_loc() in
+        match $1 with
+        | "_" -> PatAny(loc)
+        | _ ->
+            let i = get_id $1 in
+            if (try String.index $1 '.' with Not_found -> -1) >= 0 ||
+               (good_variant_name $1) then
+                PatVariant(i, [], loc)
+            else
+                PatIdent(i, loc)
+    }
 | literal { PatLit($1, curr_loc()) }
 | B_LPAREN pat_list_ RPAREN
-  {
-      match $2 with
-        p :: [] -> p
-      | _ -> PatTuple((List.rev $2), curr_loc())
-  }
+    {
+        match $2 with
+        | p :: [] -> p
+        | _ -> PatTuple((List.rev $2), curr_loc())
+    }
 | pat CONS pat { PatCons($1, $3, curr_loc()) }
 | pat AS B_IDENT { PatAs($1, (get_id $3), curr_loc()) }
 | dot_ident LBRACE id_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }

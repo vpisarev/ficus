@@ -15,12 +15,12 @@ let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
 let lit_to_string c = match c with
-    | LitInt(v) -> sprintf "INT:%Li" v
-    | LitSInt(b, v) -> sprintf "SINT:%Lii%d" v b
-    | LitUInt(b, v) -> sprintf "UINT:%Luu%d" v b
-    | LitFloat(16, v) -> sprintf "HALF:%.4gh" v
-    | LitFloat(32, v) -> sprintf "FLOAT:%.8gf" v
-    | LitFloat(64, v) -> sprintf "DOUBLE:%.16g" v
+    | LitInt(v) -> sprintf "%Li" v
+    | LitSInt(b, v) -> sprintf "%Lii%d" v b
+    | LitUInt(b, v) -> sprintf "%Luu%d" v b
+    | LitFloat(16, v) -> sprintf "%.4gh" v
+    | LitFloat(32, v) -> sprintf "%.8gf" v
+    | LitFloat(64, v) -> sprintf "%.16g" v
     | LitFloat(b, v) -> failwith (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
     | LitString(s) -> "\"" ^ (String.escaped s) ^ "\""
     | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
@@ -31,7 +31,7 @@ let lit_to_string c = match c with
 let pprint_lit x = pstr (lit_to_string x)
 let pprint_id x = pstr (id2str x)
 
-type type_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
+type typ_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
 
 let rec get_typ_pr t = match t with
     | TypVar {contents=None} -> TypPrBase
@@ -42,8 +42,7 @@ let rec get_typ_pr t = match t with
     | TypApp([], _) -> TypPrBase
     | TypTuple(_) -> TypPrBase
     | TypRecord(_) -> TypPrBase
-    | TypList(_) | TypRef(_) | TypArray(_)
-    | TypApp(_, _) -> TypPrComplex
+    | TypList(_) | TypRef(_) | TypArray(_, _) | TypApp(_, _) -> TypPrComplex
     | TypFun(_, _) -> TypPrFun
 
 let need_parens p p1 = p1 > p
@@ -129,6 +128,7 @@ let rec pprint_exp e =
             pspace(); pstr "=>"; pspace(); pprint_exp_as_seq e) pe_l); pcut(); cbox(); pstr "}" in
     match e with
     | DefVal(p, e0, vflags, _) -> obox(); (List.iter (fun vf -> match vf with
+        | ValTempRef -> pstr "TEMP_REF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace(); pprint_exp e0; cbox()
@@ -197,9 +197,14 @@ let rec pprint_exp e =
         | ExpBinOp(o, e1, e2, _) ->
             let ostr = binop_to_string o in
             pstr "("; pprint_exp e1; pspace(); pstr ostr; pspace(); pprint_exp e2; pstr ")"
+        | ExpAssign(e1, e2, _) -> pprint_exp e1; pspace(); pstr "="; pspace(); pprint_exp e2
+        | ExpMem(e1, e2, _) -> pprint_exp e1; pstr "."; pprint_exp e2
         | ExpUnOp(o, e1, _) ->
             let ostr = unop_to_string o in
             pstr "("; pstr ostr; pspace(); pprint_exp e1; pstr ")"
+        | ExpDeref(e1, _) -> pstr "*"; pprint_exp e1
+        | ExpMakeRef(e1, _) -> pstr "REF ("; pprint_exp e1; pstr ")"
+        | ExpThrow(e1, _) -> pstr "THROW ("; pprint_exp e1; pstr ")"
         | ExpMkTuple(el, _) ->
             pstr "("; obox();
             (List.iteri (fun i e ->
@@ -234,6 +239,16 @@ let rec pprint_exp e =
             obox(); (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"
+        | ExpAssign(lv, rv, _) ->
+            pprint_exp lv; pstr " ="; pspace(); pprint_exp rv
+        | ExpMem(a, member, _) ->
+            pprint_exp a; pstr "."; pprint_exp member
+        | ExpDeref(a, _) ->
+            pstr "*"; pprint_exp a
+        | ExpMakeRef(a, _) ->
+            pstr "ref("; pprint_exp a; pstr ")"
+        | ExpThrow(a, _) ->
+            pstr "throw"; pspace(); pprint_exp a
         | ExpIf(if_seq, if_then, if_else, _) ->
             obox(); pstr "IF ("; pprint_exp if_seq; pstr ")"; pspace(); pprint_exp if_then; pspace();
             pstr "ELSE"; pspace(); pprint_exp if_else; cbox()

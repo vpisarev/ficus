@@ -27,7 +27,7 @@ let make_lexer fname =
         | _ -> (match Lexer.tokens lexbuf with
                 | t::rest -> tokenbuf := rest; t
                 | _ -> failwith "unexpected end of stream")
-        in (if !options.print_tokens then print_token lexbuf t else ()); t)
+        in (if options.print_tokens then print_token lexbuf t else ()); t)
 
 let parse_file fname inc_dirs =
     let fname_id = get_id fname in
@@ -47,7 +47,7 @@ let parse_all _fname0 =
     let cwd = Sys.getcwd() in
     let fname0 = normalize_path cwd _fname0 in
     let dir0 = Filename.dirname fname0 in
-    let inc_dirs0 = (if dir0 = cwd then [cwd] else [dir0; cwd]) @ !options.include_path in
+    let inc_dirs0 = (if dir0 = cwd then [cwd] else [dir0; cwd]) @ options.include_path in
     let inc_dirs0 = List.map (fun d -> normalize_path cwd d) inc_dirs0 in
     let _ = print_string ("Module search path:\n\t" ^ (String.concat ",\n\t" inc_dirs0) ^ "\n") in
     let name0_id = get_id (Utils.remove_extension (Filename.basename fname0)) in
@@ -109,12 +109,23 @@ let toposort graph =
     List.fold_left (fun visited (node,_) -> dfs graph visited node) [] graph
 
 let typecheck_all modules =
-    let _ = (Typechecker.typecheck_errs := []) in
-    let _ = (List.iter (fun m -> Typechecker.check_mod m(*; printf "typed module:\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-            let minfo = get_module m in PPrint.pprint_mod !minfo; printf "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"*)) modules) in
-    let errs = !Typechecker.typecheck_errs in
-    List.iter (fun err -> Typechecker.print_typecheck_err err) errs;
-    errs
+    let _ = (compile_errs := []) in
+    let _ = (List.iter Typechecker.check_mod modules) in
+    !compile_errs = []
+
+let k_normalize_all modules =
+    let _ = (compile_errs := []) in
+    let rcode = List.fold_left (fun rcode m ->
+        let rcode_i = K_norm.normalize m in
+        rcode_i :: rcode) [] modules in
+    (List.rev rcode, !compile_errs = [])
+
+let print_all_compile_errs () =
+    let nerrs = List.length !compile_errs in
+    if nerrs = 0 then ()
+    else
+        (List.iter print_compile_err !compile_errs;
+        printf "\n\n%d errors occured during type checking.\n" nerrs)
 
 let process_all fname0 =
     init();
@@ -125,17 +136,12 @@ let process_all fname0 =
             (m, !minfo.dm_deps) :: gr) all_modules [] in
         let _ = (sorted_modules := List.rev (toposort graph)) in
         let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in
-        (*let _ = (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules) in*)
-        let typecheck_errs = typecheck_all !sorted_modules in
-        let errcount = List.length typecheck_errs in
-        if errcount != 0 then
-            (List.iter (fun err -> Typechecker.print_typecheck_err err) !Typechecker.typecheck_errs;
-            printf "\n\n%d errors occured during type checking.\n" errcount;
-            false)
-        else
-            (if not !options.print_ast then () else
-            (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules);
-            true)
+        let ok = typecheck_all !sorted_modules in
+        let _ = if ok && options.print_ast then
+            (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules) else () in
+        let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
+        let _ = if ok && options.print_orig_kform then (K_pp.pprint_kseq code) else () in
+        ok
     with
     | Failure msg -> print_string msg; false
     | e -> (printf "\n\nException %s occured" (Printexc.to_string e)); false

@@ -1,5 +1,14 @@
 /* Ficus built-in module, i.e. each Ficus module is compiled
    as if it has "from Builtin import *" directive in the beginning */
+
+exception Failure: string
+exception NotFoundError
+exception IndexError
+exception MatchError
+exception OptionError
+exception NullListError
+exception ListSizeMismatchError
+
 type 't option = None | Some: 't
 
 fun getOpt(x: 't option, defval: 't) = match (x) { | Some(x) => x | None => defval }

@@ -8,7 +8,7 @@ fun make(i: 'a, d: int): 'a tree =
     else
         Node(make(i*2-1, d-1), i, make(i*2, d-1))
 
-fun check(t: 'a tree): int
+fun check(_: 'a tree)
 {
     | Empty => 0
     | Node(l, i, r) => i + check(l) - check(r)

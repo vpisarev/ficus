@@ -1,22 +1,22 @@
 /* Operations on LISP-like lists */
 
-fun hd(_: 't list): 't { | a :: _ => a | _ => throw NullListError }
-fun tl(_: 't list): 't { | _ :: ll => ll | _ => throw NullListError }
-fun null(_: 't list): bool { | [] => true | _ => false }
-fun last(_: 't list): 't
+fun hd(_: 't list) { | a :: _ => a | _ => throw NullListError }
+fun tl(_: 't list) { | _ :: ll => ll | _ => throw NullListError }
+fun null(_: 't list) { | [] => true | _ => false }
+fun last(_: 't list)
 {
     | a :: [] => a
     | a :: rest => last(rest)
     | _ => throw NullListError
 }
 
-fun nth(l: 't list, n: int): 't
+fun nth(_: 't list, n: int)
 {
     | a :: rest => if (n == 0) a else nth(rest, n-1)
-    | _ => throw OutOfRangeError
+    | _ => throw IndexError
 }
 
-fun length(l: 't list): int
+fun length(l: 't list)
 {
     fun length_(l: 't list, n: int) =
         match(l) {
@@ -82,18 +82,21 @@ fun mergeSort(l: 't list, gt: ('t,'t)->bool): 't list =
     match(l) {
     | [] => []
     | l =>
-        fun merge(_: 't list, _: 't list): 't list {
+        fun merge(_: 't list, _: 't list)
+        {
             | ((a :: at) as l, (b :: bt) as r) => if (gt(a, b)) b :: merge(l, bt) else a :: merge(at, r)
             | (l, []) => l
             | ([], r) => r
         }
 
-        fun scan(_: 't list list): 't list list {
+        fun scan(_: 't list list)
+        {
             | a :: b :: rest => merge(a, b) :: scan(rest)
             | l => l
         }
 
-        fun loop(_: 't list list): 't list {
+        fun loop(_: 't list list)
+        {
             | a :: [] => a
             | l => loop(scan(l))
         }

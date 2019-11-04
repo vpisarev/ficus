@@ -34,11 +34,11 @@
 *)
 
 module Id = struct
-   type t = Name of int * int | Temp of int * int
-   let compare a b =
-      let a_idx = match (a) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
-      let b_idx = match (b) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
-      if a_idx < b_idx then -1 else if a_idx > b_idx then 1 else 0
+    type t = Name of int * int | Temp of int * int
+    let compare a b =
+        let a_idx = match (a) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
+        let b_idx = match (b) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
+        if a_idx < b_idx then -1 else if a_idx > b_idx then 1 else 0
 end
 
 type id_t = Id.t
@@ -133,13 +133,13 @@ type bin_op_t =
       OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
-    | OpCons | OpMem | OpSet
+    | OpCons
 
-type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMakeRef | OpDeref | OpThrow | OpExpand
+type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
 
-type val_flag_t = ValArg | ValMutable
-type func_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
-type variant_flag_t = VariantRecursive | VariantSimpleLabel of int
+type val_flag_t = ValArg | ValMutable | ValTempRef
+type fun_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
+type variant_flag_t = VariantRecursive | VariantHaveNil of int
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
 
@@ -159,10 +159,15 @@ type exp_t =
     | ExpUpdateRecord of exp_t * (id_t * exp_t) list * ctx_t
     | ExpCall of exp_t * exp_t list * ctx_t
     | ExpAt of exp_t * exp_t list * ctx_t
+    | ExpAssign of exp_t * exp_t * loc_t
+    | ExpMem of exp_t * exp_t * ctx_t
+    | ExpDeref of exp_t * ctx_t
+    | ExpMakeRef of exp_t * ctx_t
+    | ExpThrow of exp_t * loc_t
     | ExpIf of exp_t * exp_t * exp_t * ctx_t
-    | ExpWhile of exp_t * exp_t * ctx_t
-    | ExpDoWhile of exp_t * exp_t * ctx_t
-    | ExpFor of (pat_t * exp_t) list * exp_t * for_flag_t list * ctx_t
+    | ExpWhile of exp_t * exp_t * loc_t
+    | ExpDoWhile of exp_t * exp_t * loc_t
+    | ExpFor of (pat_t * exp_t) list * exp_t * for_flag_t list * loc_t
     | ExpMap of ((pat_t * exp_t) list * exp_t option) list * exp_t * for_flag_t list * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
@@ -193,7 +198,7 @@ and env_t = env_entry_t list Env.t
 and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
                  dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
-                 mutable df_body: exp_t; df_flags: func_flag_t list; df_scope: scope_t list; df_loc: loc_t;
+                 mutable df_body: exp_t; df_flags: fun_flag_t list; df_scope: scope_t list; df_loc: loc_t;
                  mutable df_templ_inst: id_t list; df_env: env_t }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
@@ -298,14 +303,8 @@ let get_orig_id i =
     | Id.Name(i, j) -> Id.Name(i, i)
     | Id.Temp(_, _) -> i
 
-let good_variant_name s =
-    let c0 = String.get s 0 in
-    ('A' <= c0 && c0 <= 'Z') || (String.contains s '.')
-
 let set_id_entry i n =
     let idx = id2idx i in (!all_ids).(idx) <- n
-
-let module_loc mname = { loc_fname=mname; loc_line0=1; loc_pos0=1; loc_line1=1; loc_pos1=1 }
 
 let get_exp_ctx e = match e with
     | ExpNop(l) -> (TypVoid, l)
@@ -323,10 +322,15 @@ let get_exp_ctx e = match e with
     | ExpUpdateRecord(_, _, c) -> c
     | ExpCall(_, _, c) -> c
     | ExpAt(_, _, c) -> c
+    | ExpAssign(_, _, l) -> (TypVoid, l)
+    | ExpMem(_, _, c) -> c
+    | ExpDeref(_, c) -> c
+    | ExpMakeRef(_, c) -> c
+    | ExpThrow(_, l) -> (TypErr, l)
     | ExpIf(_, _, _, c) -> c
-    | ExpWhile(_, _, c) -> c
-    | ExpDoWhile(_, _, c) -> c
-    | ExpFor(_, _, _, c) -> c
+    | ExpWhile(_, _, l) -> (TypVoid, l)
+    | ExpDoWhile(_, _, l) -> (TypVoid, l)
+    | ExpFor(_, _, _, l) -> (TypVoid, l)
     | ExpMap(_, _, _, c) -> c
     | ExpTryCatch(_, _, c) -> c
     | ExpMatch(_, _, c) -> c
@@ -463,19 +467,13 @@ let binop_to_string bop = match bop with
     | OpCompareGT -> ">"
     | OpCompareGE -> ">="
     | OpCons -> "::"
-    | OpMem -> "."
-    | OpSet -> "="
 
 let unop_to_string uop = match uop with
     | OpPlus -> "+"
     | OpNegate -> "-"
     | OpBitwiseNot -> "~"
     | OpLogicNot -> "!"
-    | OpMakeRef -> "ref"
-    | OpDeref -> "*"
-    | OpThrow -> "throw"
     | OpExpand -> "\\"
-
 
 let fname_op_add() = get_id "__add__"
 let fname_op_sub() = get_id "__sub__"
@@ -532,7 +530,7 @@ let get_binop_fname bop =
     | OpCompareLE -> fname_op_le()
     | OpCompareGT -> fname_op_gt()
     | OpCompareGE -> fname_op_ge()
-    | OpLogicAnd | OpLogicOr | OpCons | OpMem | OpSet ->
+    | OpLogicAnd | OpLogicOr | OpCons ->
         failwith (sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
 
 let get_unop_fname uop =
@@ -540,7 +538,7 @@ let get_unop_fname uop =
     | OpPlus -> fname_op_plus()
     | OpNegate -> fname_op_negate()
     | OpBitwiseNot -> fname_op_bit_not()
-    | OpLogicNot | OpMakeRef | OpDeref | OpThrow | OpExpand ->
+    | OpLogicNot | OpExpand ->
         failwith (sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
 
 let fname_always_import () =
@@ -564,3 +562,33 @@ let init_all_ids () =
     let _ = get_id_ "" in
     let _ = get_id_ "_" in
     fname_always_import()
+
+exception CompileError of loc_t * string
+
+let compile_errs = ref ([]: exn list)
+
+let raise_compile_err_ err =
+    compile_errs := err :: !compile_errs;
+    raise err
+
+let raise_compile_err loc msg =
+    let whole_msg = sprintf "%s: %s\n" (loc2str loc) msg in
+    let err = CompileError(loc, whole_msg) in
+    raise_compile_err_ err
+
+let pop_compile_err loc =
+    match !compile_errs with
+    | _ :: rest -> compile_errs := rest
+    | _ -> raise_compile_err loc "attempt to pop non-existing compile error"
+
+let check_compile_errs () =
+    match !compile_errs with
+    | err :: _ -> raise err
+    | _ -> ()
+
+let print_compile_err err =
+    match err with
+    (* error message has been formatted already in raise_typecheck_err(); just print it *)
+    | CompileError(_, msg) -> printf "%s\n" msg
+    | Failure msg -> printf "%s\n" msg
+    | _ -> printf "\n\nException %s occured\n" (Printexc.to_string err)
