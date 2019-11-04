@@ -3,7 +3,7 @@
    [TODO] when the compiler is rewritten in Ficus,
    those functions should be put to Ficus Std Lib
 *)
-open Syntax
+open Ast
 
 let zip l1 l2 = List.map2 (fun i1 i2 -> (i1, i2)) l1 l2
 

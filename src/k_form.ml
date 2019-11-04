@@ -3,7 +3,7 @@
   This is a greatly extended variant of K-normal form in min-caml:
   https://github.com/esumii/min-caml.
 
-  Similarly to ficus AST, which is defined in syntax.ml,
+  Similarly to ficus AST, which is defined in ast.ml,
   K-form is an hierarchical (tree-like) representation of
   the compiled code. However, it's much simpler and more
   suitable for intermediate optimizations and then for
@@ -29,9 +29,9 @@
     by type checker, are retained though.
   * ...
 *)
-open Syntax
+open Ast
 
-(* key_t for K-normal forms is the same thing as id_t for AST (see syntax.ml).
+(* key_t for K-normal forms is the same thing as id_t for AST (see ast.ml).
    Why do we need a different entity?
    This is to make sure that we do not misuse id_t and its respective functions (dup_id, get_id etc.).
    During generation of the K-form and its further transformations we may introduce
@@ -59,11 +59,11 @@ end
 
 type atom_t = Atom.t
 
-module Idx = struct
+module Domain = struct
     type t = Elem of atom_t | Fast of atom_t | Range of atom_t * atom_t * atom_t
 end
 
-type idx_t = Idx.t
+type dom_t = Domain.t
 
 type kscope_t = KScBlock of int | KScFun of id_t | KScClass of id_t
             | KScInterface of id_t | KScModule of id_t | KScGlobal
@@ -93,25 +93,26 @@ and kexp_t =
     | KExpBreak of loc_t
     | KExpContinue of loc_t
     | KExpAtom of atom_t * kctx_t
-    | KExpUnary of un_op_t * atom_t * kctx_t
-    | KExpBinary of bin_op_t * atom_t * atom_t * kctx_t
+    | KExpUnOp of un_op_t * atom_t * kctx_t
+    | KExpBinOp of bin_op_t * atom_t * atom_t * kctx_t
     | KExpSeq of kexp_t list * kctx_t
     | KExpIf of kexp_t list * kexp_t * kexp_t * kctx_t
     | KExpCall of key_t * atom_t list * kctx_t
     | KExpMkTuple of atom_t list * kctx_t
     | KExpMkArray of int list * atom_t list * kctx_t
-    | KExpAt of key_t * idx_t list * bool * kctx_t
+    | KExpAt of atom_t * dom_t list * bool * kctx_t
     | KExpMem of key_t * int * bool * kctx_t
     | KExpDeref of key_t * bool * kctx_t
     | KExpMakeRef of atom_t * kctx_t
     | KExpAssign of key_t * atom_t * loc_t
     | KExpTry of kexp_t * kexp_t * kctx_t
-    | KExpThrow of atom_t * loc_t
+    | KExpThrow of key_t * loc_t
     | KExpCast of atom_t * ktyp_t * kctx_t
-    | KExpMap of (kexp_t * (key_t * atom_t) list) list * kexp_t * for_flag_t list * kctx_t
-    | KExpFor of (key_t * atom_t) list * kexp_t * for_flag_t list * loc_t
+    | KExpMap of (kexp_t * (key_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
+    | KExpFor of (key_t * dom_t) list * kexp_t * for_flag_t list * loc_t
     | KExpWhile of kexp_t * kexp_t * loc_t
     | KExpDoWhile of kexp_t * kexp_t * loc_t
+    | KExpCCode of string * kctx_t
     | KDefVal of key_t * kexp_t * val_flag_t list * loc_t
     | KDefFun of kdeffun_t ref
     | KDefExn of kdefexn_t ref
@@ -198,8 +199,8 @@ let get_kexp_ctx e = match e with
     | KExpBreak(l) -> (KTypVoid, l)
     | KExpContinue(l) -> (KTypVoid, l)
     | KExpAtom(_, c) -> c
-    | KExpUnary(_, _, c) -> c
-    | KExpBinary(_, _, _, c) -> c
+    | KExpUnOp(_, _, c) -> c
+    | KExpBinOp(_, _, _, c) -> c
     | KExpSeq(_, c) -> c
     | KExpIf(_, _, _, c) -> c
     | KExpCall(_, _, c) -> c
@@ -217,6 +218,7 @@ let get_kexp_ctx e = match e with
     | KExpFor(_, _, _, l) -> (KTypVoid, l)
     | KExpWhile(_, _, l) -> (KTypVoid, l)
     | KExpDoWhile(_, _, l) -> (KTypVoid, l)
+    | KExpCCode(_, c) -> c
     | KDefVal (_, _, _, l) -> (KTypVoid, l)
     | KDefFun {contents={kf_loc}} -> (KTypVoid, kf_loc)
     | KDefExn {contents={ke_loc}} -> (KTypVoid, ke_loc)
@@ -256,7 +258,7 @@ let get_kinfo_loc info = match info with
 
 let get_key_loc i = get_kinfo_loc (kinfo i)
 
-let get_kinfo_typ info loc = match info with
+let get_kinfo_ktyp info = match info with
     | KNone -> failwith "attempt to request type of non-existing symbol"
     | KText s -> failwith (sprintf "attempt to request type of symbol '%s'" s)
     | KVal {kv_typ} -> kv_typ
@@ -264,7 +266,7 @@ let get_kinfo_typ info loc = match info with
     | KExn {contents = {ke_typ}} -> ke_typ
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
 
-let get_key_typ i = get_kinfo_typ (kinfo i)
+let get_key_ktyp i = get_kinfo_ktyp (kinfo i)
 
 (* used by the type checker *)
 let get_lit_ktyp l = match l with

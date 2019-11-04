@@ -1,6 +1,6 @@
 %{
 (* ficus parser *)
-open Syntax
+open Ast
 
 let make_loc(pos0, pos1) =
     let { Lexing.pos_lnum=l0; Lexing.pos_bol=b0; Lexing.pos_cnum=c0 } = pos0 in
@@ -168,7 +168,7 @@ let rec compress_nested_map_exp l e = match e with
 %left app_type_prec arr_type_prec option_type_prec ref_type_prec
 %left DOT
 
-%type <Syntax.exp_t list> ficus_module
+%type <Ast.exp_t list> ficus_module
 %start ficus_module
 
 %%

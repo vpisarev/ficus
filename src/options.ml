@@ -32,9 +32,9 @@ let parse_options () =
     options.include_path <- stdlib_dir :: [];
     try
         Arg.parse
-        [("-pr-tokens", (Arg.Bool (fun f -> options.print_tokens <- f)), "   Print all the tokens in parsed files");
-        ("-pr-ast", (Arg.Bool (fun f -> options.print_ast <- f)), "   Print typechecked AST of the parsed files");
-        ("-pr-orig-k", (Arg.Bool (fun f -> options.print_orig_k <- f)), "   Print generated K-form");
+        [("-pr-tokens", (Arg.Unit (fun f -> options.print_tokens <- true)), "   Print all the tokens in parsed files");
+        ("-pr-ast", (Arg.Unit (fun f -> options.print_ast <- true)), "   Print typechecked AST of the parsed files");
+        ("-pr-orig-k", (Arg.Unit (fun f -> options.print_orig_k <- true)), "   Print generated K-form");
         ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for some essential ones");
         ("-O1", (Arg.Unit (fun () -> options.optimize_level <- 1)), "   Optimization level 1: enable most of optimizations");
         ("-O3", (Arg.Unit (fun () -> options.optimize_level <- 3)), "   Optimization level 3: enable all optimizations");

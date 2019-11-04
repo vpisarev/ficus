@@ -1,6 +1,6 @@
 open Lexing
 open Options
-open Syntax
+open Ast
 open Utils
 
 exception CumulativeParseError
@@ -110,14 +110,14 @@ let toposort graph =
 
 let typecheck_all modules =
     let _ = (compile_errs := []) in
-    let _ = (List.iter Typechecker.check_mod modules) in
+    let _ = (List.iter Ast_typecheck.check_mod modules) in
     !compile_errs = []
 
 let k_normalize_all modules =
     let _ = (compile_errs := []) in
     let rcode = List.fold_left (fun rcode m ->
-        let rcode_i = K_norm.normalize m in
-        rcode_i :: rcode) [] modules in
+        let rcode_i = K_norm.normalize_mod m in
+        rcode_i @ rcode) [] modules in
     (List.rev rcode, !compile_errs = [])
 
 let print_all_compile_errs () =
@@ -138,9 +138,9 @@ let process_all fname0 =
         let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in
         let ok = typecheck_all !sorted_modules in
         let _ = if ok && options.print_ast then
-            (List.iter (fun m -> let minfo = get_module m in PPrint.pprint_mod !minfo) !sorted_modules) else () in
+            (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
         let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
-        let _ = if ok && options.print_orig_kform then (K_pp.pprint_kseq code) else () in
+        let _ = if ok && options.print_orig_k then (K_pp.pprint_top code) else () in
         ok
     with
     | Failure msg -> print_string msg; false

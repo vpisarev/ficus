@@ -1,4 +1,4 @@
-open Syntax
+open Ast
 
 let base_indent = ref 3
 
@@ -239,16 +239,6 @@ let rec pprint_exp e =
             obox(); (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"
-        | ExpAssign(lv, rv, _) ->
-            pprint_exp lv; pstr " ="; pspace(); pprint_exp rv
-        | ExpMem(a, member, _) ->
-            pprint_exp a; pstr "."; pprint_exp member
-        | ExpDeref(a, _) ->
-            pstr "*"; pprint_exp a
-        | ExpMakeRef(a, _) ->
-            pstr "ref("; pprint_exp a; pstr ")"
-        | ExpThrow(a, _) ->
-            pstr "throw"; pspace(); pprint_exp a
         | ExpIf(if_seq, if_then, if_else, _) ->
             obox(); pstr "IF ("; pprint_exp if_seq; pstr ")"; pspace(); pprint_exp if_then; pspace();
             pstr "ELSE"; pspace(); pprint_exp if_else; cbox()

@@ -1,6 +1,6 @@
 (* The type checker *)
 
-open Syntax
+open Ast
 open Options
 
 (*
@@ -40,9 +40,9 @@ These are the tasks performed by type checker:
     ** etc.
 *)
 
-let pprint_typ_x = PPrint.pprint_typ_x
-let pprint_exp_x = PPrint.pprint_exp_x
-let pprint_pat_x = PPrint.pprint_pat_x
+let pprint_typ_x = Ast_pp.pprint_typ_x
+let pprint_exp_x = Ast_pp.pprint_exp_x
+let pprint_pat_x = Ast_pp.pprint_pat_x
 
 let print_env msg env loc =
     printf "%s. env at %s [\n" msg (loc2str loc);
