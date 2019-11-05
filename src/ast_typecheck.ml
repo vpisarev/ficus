@@ -1159,7 +1159,13 @@ and check_eseq eseq env sc create_sc =
                 let (p1, env1, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true is_mutable in
                 (DefVal(p1, e1, flags, loc) :: eseq, env1)
             | DefFun (df) ->
-                let _ = if !df.df_templ_args = [] then (check_deffun df env) else df in
+                let _ = if !df.df_templ_args = [] then
+                        (check_deffun df env)
+                    else
+                        (* update environment of the template function
+                           to give it access to the above defined
+                           non-template values *)
+                        ((!df.df_env <- env); df) in
                 (e :: eseq, env)
             | _ ->
                 let e = check_exp e env sc in
