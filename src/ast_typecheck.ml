@@ -172,7 +172,7 @@ and walk_exp e callb =
     | ExpIf(c, then_e, else_e, ctx) ->
         ExpIf((walk_exp_ c), (walk_exp_ then_e), (walk_exp_ else_e), (walk_ctx_ ctx))
     | ExpWhile(c, e, loc) -> ExpWhile((walk_exp_ c), (walk_exp_ e), loc)
-    | ExpDoWhile(c, e, loc) -> ExpWhile((walk_exp_ c), (walk_exp_ e), loc)
+    | ExpDoWhile(c, e, loc) -> ExpDoWhile((walk_exp_ c), (walk_exp_ e), loc)
     | ExpFor(pe_l, body, flags, loc) ->
         ExpFor((walk_pe_l_ pe_l), (walk_exp_ body), flags, loc)
     | ExpMap(pew_ll, body, flags, ctx) ->
@@ -184,7 +184,7 @@ and walk_exp e callb =
     | ExpMatch(e, handlers, ctx) ->
         ExpMatch((walk_exp_ e), (walk_handlers_ handlers), (walk_ctx_ ctx))
     | ExpCast(e, t, ctx) -> ExpCast((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
-    | ExpTyped(e, t, ctx) -> ExpCast((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
+    | ExpTyped(e, t, ctx) -> ExpTyped((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
     | ExpCCode(str, ctx) -> ExpCCode(str, (walk_ctx_ ctx))
     | DefVal(p, v, flags, loc) ->
         DefVal((walk_pat_ p), (walk_exp_ v), flags, loc)
@@ -200,18 +200,16 @@ and walk_exp e callb =
         de := { dexn_name; dexn_typ=(walk_typ_ dexn_typ); dexn_scope; dexn_loc };
         e
     | DefTyp(dt) ->
-        if !dt.dt_templ_args != [] then e else
-        (let { dt_name; dt_templ_args; dt_typ; dt_finalized; dt_scope; dt_loc } = !dt in
+        let { dt_name; dt_templ_args; dt_typ; dt_finalized; dt_scope; dt_loc } = !dt in
         dt := { dt_name; dt_templ_args; dt_typ=(walk_typ_ dt_typ); dt_finalized; dt_scope; dt_loc };
-        e)
+        e
     | DefVariant(dvar) ->
-        if !dvar.dvar_templ_args != [] then e else
-        (let { dvar_name; dvar_templ_args; dvar_alias; dvar_flags; dvar_cases;
+        let { dvar_name; dvar_templ_args; dvar_alias; dvar_flags; dvar_cases;
                dvar_constr; dvar_templ_inst; dvar_scope; dvar_loc } = !dvar in
         dvar := { dvar_name; dvar_templ_args; dvar_alias=(walk_typ_ dvar_alias); dvar_flags;
                   dvar_cases=(List.map (fun (n, t) -> (n, walk_typ_ t)) dvar_cases);
                   dvar_constr; dvar_templ_inst; dvar_scope; dvar_loc };
-        e)
+        e
     | DefClass(dc) -> (* [TODO] *) e
     | DefInterface(di) -> (* [TODO] *) e
     | DirImport (_, _) -> e
@@ -221,7 +219,6 @@ and walk_pat p callb =
     let walk_typ_ t = check_n_walk_typ t callb in
     let walk_pat_ p = check_n_walk_pat p callb in
     let walk_pl_ p = check_n_walk_plist p callb in
-    (*let walk_exp_ e = check_n_walk_exp e callb in*)
 
     (match p with
     | PatAny _ -> p

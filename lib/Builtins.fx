@@ -1,5 +1,5 @@
 /* Ficus built-in module, i.e. each Ficus module is compiled
-   as if it has "from Builtin import *" directive in the beginning */
+   as if it has "from Builtins import *" directive in the beginning */
 
 exception Failure: string
 exception NotFoundError

@@ -3,7 +3,7 @@ import List
 
 ccode "#include <string.h>"
 
-inline pure nothrow fun length(s: string) = Builtin.length(s)
+inline pure nothrow fun length(s: string) = Builtins.length(s)
 
 nothrow pure fun empty(s: string): bool = ccode "return s->length == 0;"
 

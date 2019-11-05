@@ -54,7 +54,7 @@ type key_t = Key.t
 (* it looks like OCaml generates some default compare operation for the types,
    so we do not have to define it explicitly *)
 module Atom = struct
-    type t = Val of key_t | Lit of lit_t
+    type t = Key of key_t | Lit of lit_t
 end
 
 type atom_t = Atom.t
@@ -65,8 +65,9 @@ end
 
 type dom_t = Domain.t
 
-type kscope_t = KScBlock of int | KScFun of id_t | KScClass of id_t
-            | KScInterface of id_t | KScModule of id_t | KScGlobal
+type kscope_t =
+    | KScBlock of int | KScFun of id_t | KScClass of id_t
+    | KScInterface of id_t | KScModule of id_t | KScGlobal
 
 type ktyp_t =
     | KTypInt
@@ -96,7 +97,7 @@ and kexp_t =
     | KExpUnOp of un_op_t * atom_t * kctx_t
     | KExpBinOp of bin_op_t * atom_t * atom_t * kctx_t
     | KExpSeq of kexp_t list * kctx_t
-    | KExpIf of kexp_t list * kexp_t * kexp_t * kctx_t
+    | KExpIf of kexp_t * kexp_t * kexp_t * kctx_t
     | KExpCall of key_t * atom_t list * kctx_t
     | KExpMkTuple of atom_t list * kctx_t
     | KExpMkArray of int list * atom_t list * kctx_t
@@ -105,7 +106,7 @@ and kexp_t =
     | KExpDeref of key_t * bool * kctx_t
     | KExpMakeRef of atom_t * kctx_t
     | KExpAssign of key_t * atom_t * loc_t
-    | KExpTry of kexp_t * kexp_t * kctx_t
+    | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of key_t * loc_t
     | KExpCast of atom_t * ktyp_t * kctx_t
     | KExpMap of (kexp_t * (key_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
@@ -194,6 +195,14 @@ let get_orig_key i =
 let set_key_entry i n =
     let idx = key2idx i in (!all_keys).(idx) <- n
 
+let init_all_keys () =
+    all_nkeys := 0;
+    all_keys := [||];
+    (Hashtbl.reset all_kstrings);
+    let _ = get_key_ "" in
+    let _ = get_key_ "_" in
+    ()
+
 let get_kexp_ctx e = match e with
     | KExpNop(l) -> (KTypVoid, l)
     | KExpBreak(l) -> (KTypVoid, l)
@@ -211,7 +220,7 @@ let get_kexp_ctx e = match e with
     | KExpDeref(_, _, c) -> c
     | KExpMakeRef(_, c) -> c
     | KExpAssign(_, _, l) -> (KTypVoid, l)
-    | KExpTry(_, _, c) -> c
+    | KExpTryCatch(_, _, c) -> c
     | KExpThrow(_, l) -> (KTypErr, l)
     | KExpCast(_, _, c) -> c
     | KExpMap(_, _, _, c) -> c
@@ -278,3 +287,126 @@ let get_lit_ktyp l = match l with
     | LitChar(_) -> KTypChar
     | LitBool(_) -> KTypBool
     | LitNil -> KTypNil
+
+type k_callb_t =
+{
+    kcb_ktyp: (ktyp_t -> k_callb_t -> ktyp_t) option;
+    kcb_kexp: (kexp_t -> k_callb_t -> kexp_t) option;
+    kcb_atom: (atom_t -> k_callb_t -> atom_t) option;
+}
+
+let rec check_n_walk_ktyp t callb =
+    match callb.kcb_ktyp with
+    | Some(f) -> f t callb
+    | _ -> walk_ktyp t callb
+
+and check_n_walk_kexp e callb =
+    match callb.kcb_kexp with
+    | Some(f) -> f e callb
+    | _ -> walk_kexp e callb
+
+and check_n_walk_atom a callb =
+    match callb.kcb_atom with
+    | Some(f) -> f a callb
+    | _ -> a
+and check_n_walk_al al callb =
+    List.map (fun a -> check_n_walk_atom a callb) al
+
+and check_n_walk_dom d callb =
+    match d with
+    | Domain.Elem a -> Domain.Elem (check_n_walk_atom a callb)
+    | Domain.Fast a -> Domain.Fast (check_n_walk_atom a callb)
+    | Domain.Range (a, b, c) ->
+        Domain.Range ((check_n_walk_atom a callb),
+                      (check_n_walk_atom b callb),
+                      (check_n_walk_atom c callb))
+
+and walk_ktyp t callb =
+    let walk_ktyp_ t = check_n_walk_ktyp t callb in
+    let walk_ktl_ tl = List.map walk_ktyp_ tl in
+    let walk_key_ k callb =
+        match callb.kcb_atom with
+        | Some(f) ->
+            (match f (Atom.Key k) callb with
+            | Atom.Key k -> k
+            | _ -> failwith "internal error: inside walk_key the callback returned a literal, not key, which is unexpected.")
+        | _ -> k in
+    (match t with
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+    | KTypVoid | KTypNil | KTypBool
+    | KTypChar | KTypString | KTypCPointer
+    | KTypExn | KTypErr -> t
+    | KTypFun (args, rt) -> KTypFun((walk_ktl_ args), (walk_ktyp_ rt))
+    | KTypTuple elems -> KTypTuple(walk_ktl_ elems)
+    | KTypName k -> KTypName(walk_key_ k callb)
+    | KTypArray (d, t) -> KTypArray(d, (walk_ktyp_ t))
+    | KTypList t -> KTypList(walk_ktyp_ t)
+    | KTypRef t -> KTypRef(walk_ktyp_ t))
+
+and walk_kexp e callb =
+    let walk_atom_ a = check_n_walk_atom a callb in
+    let walk_al_ al = List.map walk_atom_ al in
+    let walk_ktyp_ t = check_n_walk_ktyp t callb in
+    let walk_key_ k =
+        match callb.kcb_atom with
+        | Some(f) ->
+            (match f (Atom.Key k) callb with
+            | Atom.Key k -> k
+            | _ -> raise_compile_err (get_kexp_loc e)
+                "internal error: inside walk_key the callback returned a literal, not key, which is unexpected.")
+        | _ -> k in
+    let walk_kexp_ e = check_n_walk_kexp e callb in
+    let walk_kctx_ (t, loc) = ((walk_ktyp_ t), loc) in
+    let walk_dom_ d = check_n_walk_dom d callb in
+    let walk_kdl_ kdl = List.map (fun (k, d) -> ((walk_key_ k), (walk_dom_ d))) kdl in
+    (match e with
+    | KExpNop (_) -> e
+    | KExpBreak _ -> e
+    | KExpContinue _ -> e
+    | KExpAtom (a, ctx) -> KExpAtom((walk_atom_ a), (walk_kctx_ ctx))
+    | KExpBinOp(bop, a1, a2, ctx) ->
+        KExpBinOp(bop, (walk_atom_ a1), (walk_atom_ a2), (walk_kctx_ ctx))
+    | KExpUnOp(uop, a, ctx) -> KExpUnOp(uop, (walk_atom_ a), (walk_kctx_ ctx))
+    | KExpIf(c, then_e, else_e, ctx) ->
+        KExpIf((walk_kexp_ c), (walk_kexp_ then_e), (walk_kexp_ else_e), (walk_kctx_ ctx))
+    | KExpSeq(elist, ctx) -> KExpSeq((List.map walk_kexp_ elist), (walk_kctx_ ctx))
+    | KExpMkTuple(alist, ctx) -> KExpMkTuple((walk_al_ alist), (walk_kctx_ ctx))
+    | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
+    | KExpCall(f, args, ctx) -> KExpCall((walk_key_ f), (walk_al_ args), (walk_kctx_ ctx))
+    | KExpAt(a, idx, flag, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), flag, (walk_kctx_ ctx))
+    | KExpAssign(lv, rv, loc) -> KExpAssign((walk_key_ lv), (walk_atom_ rv), loc)
+    | KExpMem(k, member, flag, ctx) -> KExpMem((walk_key_ k), member, flag, (walk_kctx_ ctx))
+    | KExpDeref(k, flag, ctx) -> KExpDeref((walk_key_ k), flag, (walk_kctx_ ctx))
+    | KExpMakeRef(a, ctx) -> KExpMakeRef((walk_atom_ a), (walk_kctx_ ctx))
+    | KExpThrow(k, loc) -> KExpThrow((walk_key_ k), loc)
+    | KExpWhile(c, e, loc) -> KExpWhile((walk_kexp_ c), (walk_kexp_ e), loc)
+    | KExpDoWhile(c, e, loc) -> KExpDoWhile((walk_kexp_ c), (walk_kexp_ e), loc)
+    | KExpFor(kdl, body, flags, loc) ->
+        KExpFor((walk_kdl_ kdl), (walk_kexp_ body), flags, loc)
+    | KExpMap(e_kdl_l, body, flags, ctx) ->
+        (* (kexp_t * (key_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t *)
+        KExpMap((List.map (fun (e, kdl) -> ((walk_kexp_ e), (walk_kdl_ kdl))) e_kdl_l),
+                (walk_kexp_ body), flags, (walk_kctx_ ctx))
+    | KExpTryCatch(e1, e2, ctx) ->
+        KExpTryCatch((walk_kexp_ e1), (walk_kexp_ e2), (walk_kctx_ ctx))
+    | KExpCast(a, t, ctx) -> KExpCast((walk_atom_ a), (walk_ktyp_ t), (walk_kctx_ ctx))
+    | KExpCCode(str, ctx) -> KExpCCode(str, (walk_kctx_ ctx))
+    | KDefVal(k, e, flags, loc) ->
+        (* key_t * kexp_t * val_flag_t list * loc_t *)
+        KDefVal((walk_key_ k), (walk_kexp_ e), flags, loc)
+    | KDefFun(df) ->
+        let { kf_name; kf_typ; kf_args; kf_body; kf_flags; kf_scope; kf_loc } = !df in
+        df := { kf_name = (walk_key_ kf_name); kf_typ = (walk_ktyp_ kf_typ);
+                kf_args = (List.map walk_key_ kf_args); kf_body = (walk_kexp_ kf_body);
+                kf_flags; kf_scope; kf_loc };
+        e
+    | KDefExn(ke) ->
+        let { ke_name; ke_typ; ke_scope; ke_loc } = !ke in
+        ke := { ke_name = (walk_key_ ke_name); ke_typ=(walk_ktyp_ ke_typ); ke_scope; ke_loc };
+        e
+    | KDefVariant(kvar) ->
+        let { kvar_name; kvar_cases; kvar_constr; kvar_flags; kvar_scope; kvar_loc } = !kvar in
+        kvar := { kvar_name = (walk_key_ kvar_name);
+            kvar_cases = (List.map (fun (k, t) -> ((walk_key_ k), (walk_ktyp_ t))) kvar_cases);
+            kvar_constr = (List.map walk_key_ kvar_constr); kvar_flags; kvar_scope; kvar_loc };
+        e)

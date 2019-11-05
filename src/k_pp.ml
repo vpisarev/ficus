@@ -73,7 +73,7 @@ let rec ppktyp_ t p1 =
 
 let pprint_ktyp t = ppktyp_ t KTypPr0
 let pprint_atom a = match a with
-    | Atom.Val n -> pprint_key n
+    | Atom.Key k -> pprint_key k
     | Atom.Lit l -> pstr (Ast_pp.lit_to_string l)
 let pprint_dom r = match r with
     | Domain.Elem(a) -> pprint_atom a
@@ -175,9 +175,8 @@ let rec pprint_kexp e =
             obox(); (List.iteri (fun i dom ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_dom dom) args);
             cbox(); pstr "]"
-        | KExpIf(if_cascade, if_then, if_else, _) ->
-            obox(); pstr "IF ("; List.iteri (fun i e ->
-                if i = 0 then () else (pstr "&&"; pcut()); pprint_kexp e) if_cascade; pstr ")";
+        | KExpIf(if_c, if_then, if_else, _) ->
+            obox(); pstr "IF ("; pprint_kexp if_c; pstr ")";
             pspace(); pprint_kexp if_then; pspace();
             pstr "ELSE"; pspace(); pprint_kexp if_else; cbox()
         | KExpWhile(c, body, _) ->
@@ -197,7 +196,7 @@ let rec pprint_kexp e =
               pprint_key n; pspace(); pstr "<-"; pspace(); pprint_dom dom) pe_l);
               pstr ")"; pspace()) map_cl);
             pprint_kexp map_body; pstr "]"; cbox()
-        | KExpTry(e1, e2, _) ->
+        | KExpTryCatch(e1, e2, _) ->
             obox(); pstr "TRY"; pspace(); pprint_kexp e1; pspace();
             pstr "CATCH"; pprint_kexp e2; cbox()
         | KExpCast(a, t, _) -> pstr "("; obox(); pprint_atom a; pspace(); pstr ":>"; pspace(); pprint_ktyp t; cbox(); pstr ")"

@@ -1,6 +1,7 @@
 open Lexing
 open Options
 open Ast
+open K_form
 open Utils
 
 exception CumulativeParseError
@@ -10,8 +11,8 @@ let make_lexer fname =
     let bare_name = Utils.remove_extension (Filename.basename fname) in
     let prev_lnum = ref 0 in
     (* the standard preamble *)
-    let tokenbuf = (if bare_name = "Builtin" then ref [] else
-        ref [Parser.FROM; Parser.B_IDENT "Builtin"; Parser.IMPORT; Parser.STAR; Parser.SEMICOLON]) in
+    let tokenbuf = (if bare_name = "Builtins" then ref [] else
+        ref [Parser.FROM; Parser.B_IDENT "Builtins"; Parser.IMPORT; Parser.STAR; Parser.SEMICOLON]) in
     let print_token lexbuf t =
       (let s = Lexer.token2str t in
        let pos_lnum = lexbuf.lex_curr_p.pos_lnum in
@@ -87,6 +88,7 @@ let parse_all _fname0 =
 
 let init () =
     ignore(init_all_ids ());
+    ignore(init_all_keys ());
     (Hashtbl.reset all_modules)
 
 (*
@@ -115,10 +117,10 @@ let typecheck_all modules =
 
 let k_normalize_all modules =
     let _ = (compile_errs := []) in
-    let rcode = List.fold_left (fun rcode m ->
-        let rcode_i = K_norm.normalize_mod m in
-        rcode_i @ rcode) [] modules in
-    (List.rev rcode, !compile_errs = [])
+    let rkcode = List.fold_left (fun rkcode m ->
+        let rkcode_i = K_norm.normalize_mod m in
+        rkcode_i @ rkcode) [] modules in
+    (List.rev rkcode, !compile_errs = [])
 
 let print_all_compile_errs () =
     let nerrs = List.length !compile_errs in
