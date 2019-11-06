@@ -33,17 +33,19 @@
    itself (prefix@@N). That is, it's really unique.
 *)
 
+let pair_compare ((i1: int), (j1: int)) ((i2: int), (j2: int)) = compare (i1, j1) (i2, j2)
+
 module Id = struct
-    type t = Name of int * int | Temp of int * int
+    type t = Name of int | Val of int * int | Temp of int * int
     let compare a b =
-        let a_idx = match (a) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
-        let b_idx = match (b) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
-        if a_idx < b_idx then -1 else if a_idx > b_idx then 1 else 0
+        let ap = match a with Name(i) -> (-1, i) | Val(_, i) -> (0, i) | Temp(_, i) -> (0, i) in
+        let bp = match b with Name(i) -> (-1, i) | Val(_, i) -> (0, i) | Temp(_, i) -> (0, i) in
+        pair_compare ap bp
 end
 
 type id_t = Id.t
-let noid = Id.Name(0, 0)
-let dummyid = Id.Name(1, 1)
+let noid = Id.Name(0)
+let dummyid = Id.Name(1)
 
 (*
   Environment (Env.t) is the mapping from id_t to env_entry_t list. It's the key data structure used
@@ -234,58 +236,72 @@ type defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t 
                     mutable dm_parsed: bool }
 
 type id_info_t =
-    | IdNone | IdText of string | IdVal of defval_t | IdFun of deffun_t ref
+    | IdNone | IdVal of defval_t | IdFun of deffun_t ref
     | IdExn of defexn_t ref | IdTyp of deftyp_t ref | IdVariant of defvariant_t ref
     | IdClass of defclass_t ref | IdInterface of definterface_t ref | IdModule of defmodule_t ref
 
-let all_nids = ref 0
-let all_ids : id_info_t array ref = ref [||]
-let all_strings: (string, int) Hashtbl.t = Hashtbl.create 1000
+type 't dynvec_t = { mutable dynvec_count: int; mutable dynvec_data: 't array; dynvec_val0: 't }
+
+let dynvec_create (v0: 't) = { dynvec_count=0; dynvec_data=([||]: 't array); dynvec_val0=v0 }
+let dynvec_clear v = v.dynvec_count <- 0; v.dynvec_data <- [||]
+let dynvec_push v =
+    let _ = if (Array.length v.dynvec_data) <= v.dynvec_count then
+        let delta_n = max v.dynvec_count 128 in
+        let new_data = Array.make delta_n v.dynvec_val0 in
+        v.dynvec_data <- Array.append v.dynvec_data new_data
+    else () in
+    let i = v.dynvec_count in
+    (v.dynvec_count <- v.dynvec_count + 1; i)
+let dynvec_get v i = v.dynvec_data.(i)
+let dynvec_set v i newv = v.dynvec_data.(i) <- newv
+
+let all_ids = dynvec_create IdNone
+let all_strhash: (string, int) Hashtbl.t = Hashtbl.create 1000
+let all_strings = dynvec_create ""
+
 let all_modules: (string, id_t) Hashtbl.t = Hashtbl.create 100
 let sorted_modules: id_t list ref = ref []
 
 let sprintf = Printf.sprintf
 let printf = Printf.printf
 
-let new_id_idx() =
-    let _ = if (Array.length !all_ids) <= !all_nids then
-        let delta_nids = max !all_nids 128 in
-        let new_ids = Array.make delta_nids IdNone in
-        all_ids := Array.append !all_ids new_ids
-    else () in
-    let i = !all_nids in
-    (all_nids := !all_nids + 1; i)
+let new_id_idx() = dynvec_push all_ids
 
-let dump_id i = match i with Id.Name(i, j) -> (sprintf "Id.Name(%d, %d)" i j)
-                | Id.Temp(i, j) -> (sprintf "Id.Temp(%d, %d)" i j)
-let id2idx i = match i with Id.Name(_, i_real) -> i_real | Id.Temp(_, i_real) -> i_real
+let dump_id i = match i with
+    | Id.Name(i) -> (sprintf "Id.Name(%d)" i)
+    | Id.Val(i, j) -> (sprintf "Id.Val(%d, %d)" i j)
+    | Id.Temp(i, j) -> (sprintf "Id.Temp(%d, %d)" i j)
+
 let id2str_ i pp =
-    let (tempid, prefix, suffix) = match i with Id.Name(i_name, i_real) -> (false, i_name, i_real)
-                            | Id.Temp(i_prefix, i_real) -> (true, i_prefix, i_real) in
-    let s = (match (!all_ids).(prefix) with
-        | IdText(s) -> s
-        | _ -> failwith (sprintf
-            "The first element of id=%s does not represent a string\n" (dump_id i))) in
-    if tempid then (sprintf "%s@@%d" s suffix) else
-    if pp || prefix = suffix then s else (sprintf "%s@%d" s suffix)
+    let (infix, prefix, suffix) = match i with
+        | Id.Name(i) -> ("", i, -1)
+        | Id.Val(i, j) -> ("@", i, j)
+        | Id.Temp(i, j) -> ("@@", i, j) in
+    let prefix = dynvec_get all_strings prefix in
+    if pp || suffix < 0 then (sprintf "%s" prefix)
+    else (sprintf "%s%s%d" prefix infix suffix)
 
 let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
 
-let id_info i = (!all_ids).(id2idx i)
-let is_unique_id i = match id_info i with IdText _ -> false | _ -> true
+let id2idx i = match i with
+    | Id.Name _ -> failwith (sprintf "attempt to query information about unresolved '%s'" (id2str i))
+    | Id.Val(_, i_real) -> i_real
+    | Id.Temp(_, i_real) -> i_real
+
+let id_info i = dynvec_get all_ids (id2idx i)
+let is_unique_id i = match i with Id.Name _ -> false | _ -> true
 
 let get_id_ s =
-    let idx =
-    (match Hashtbl.find_all all_strings s with
-    | x :: _ -> x
-    | _ -> let i = new_id_idx() in
-            (Hashtbl.add all_strings s i;
-            (!all_ids).(i) <- IdText(s);
-            i)) in idx
+    match Hashtbl.find_all all_strhash s with
+    | idx :: _ -> idx
+    | _ -> let idx = dynvec_push all_strings in
+        Hashtbl.add all_strhash s idx;
+        dynvec_set all_strings idx s;
+        idx
 
 let get_id s =
-    let i = get_id_ s in Id.Name(i, i)
+    let i = get_id_ s in Id.Name(i)
 
 let get_temp_id s =
     let i_name = get_id_ s in
@@ -295,16 +311,18 @@ let get_temp_id s =
 let dup_id old_id =
     let k = new_id_idx() in
     match old_id with
-    | Id.Name(i, j) -> Id.Name(i, k)
-    | Id.Temp(i, j) -> Id.Temp(i, k)
+    | Id.Name(i) -> Id.Val(i, k)
+    | Id.Val(i, _) -> Id.Val(i, k)
+    | Id.Temp(i, _) -> Id.Temp(i, k)
 
 let get_orig_id i =
     match i with
-    | Id.Name(i, j) -> Id.Name(i, i)
+    | Id.Name _ -> i
+    | Id.Val(i, _) -> Id.Name(i)
     | Id.Temp(_, _) -> i
 
 let set_id_entry i n =
-    let idx = id2idx i in (!all_ids).(idx) <- n
+    let idx = id2idx i in dynvec_set all_ids idx n
 
 let get_exp_ctx e = match e with
     | ExpNop(l) -> (TypVoid, l)
@@ -394,7 +412,6 @@ let rec scope2str sc =
 
 let get_scope id_info = match id_info with
     | IdNone -> ScGlobal :: []
-    | IdText _ -> ScGlobal :: []
     | IdVal {dv_scope} -> dv_scope
     | IdFun {contents = {df_scope}} -> df_scope
     | IdExn {contents = {dexn_scope}} -> dexn_scope
@@ -405,7 +422,7 @@ let get_scope id_info = match id_info with
     | IdModule _ -> ScGlobal :: []
 
 let get_idinfo_loc id_info = match id_info with
-    | IdNone | IdText _ | IdModule _ -> noloc
+    | IdNone | IdModule _ -> noloc
     | IdVal {dv_loc} -> dv_loc
     | IdFun {contents = {df_loc}} -> df_loc
     | IdExn {contents = {dexn_loc}} -> dexn_loc
@@ -414,11 +431,10 @@ let get_idinfo_loc id_info = match id_info with
     | IdClass {contents = {dcl_loc}} -> dcl_loc
     | IdInterface {contents = {di_loc}} -> di_loc
 
-let get_id_loc i = get_idinfo_loc (id_info i)
+let get_id_loc i = match i with Id.Name _ -> noloc | _ -> get_idinfo_loc (id_info i)
 
 let get_idinfo_typ id_info = match id_info with
     | IdNone -> failwith "attempt to request type of non-existing symbol"
-    | IdText _ -> TypVar (ref None)
     | IdModule _ -> TypModule
     | IdVal {dv_typ} -> dv_typ
     | IdFun {contents = {df_typ}} -> df_typ
@@ -428,7 +444,7 @@ let get_idinfo_typ id_info = match id_info with
     | IdClass {contents = {dcl_typ}} -> dcl_typ
     | IdInterface {contents = {di_name}} -> TypApp([], di_name)
 
-let get_id_typ i = get_idinfo_typ (id_info i)
+let get_id_typ i = match i with Id.Name _ -> TypVar (ref None) | _ -> get_idinfo_typ (id_info i)
 
 (* used by the parser *)
 exception SyntaxError of string*Lexing.position*Lexing.position
@@ -556,9 +572,8 @@ let fname_always_import () =
 ]
 
 let init_all_ids () =
-    all_nids := 0;
-    all_ids := [||];
-    (Hashtbl.reset all_strings);
+    dynvec_clear all_ids;
+    (Hashtbl.reset all_strhash);
     let _ = get_id_ "" in
     let _ = get_id_ "_" in
     fname_always_import()

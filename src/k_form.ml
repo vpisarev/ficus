@@ -41,15 +41,16 @@ open Ast
    the original symbol table. With the new type we will get a compile error if we
    try to use id_t after K-normalization. *)
 module Key = struct
-    type t = Name of int * int | Temp of int * int
+    type t = Val of int * int | Temp of int * int
 
     let compare a b =
-        let a_idx = match (a) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
-        let b_idx = match (b) with Name(_, idx) -> idx | Temp(_, idx) -> idx in
-        if a_idx < b_idx then -1 else if a_idx > b_idx then 1 else 0
+        let a_idx = match (a) with Val(_, idx) -> idx | Temp(_, idx) -> idx in
+        let b_idx = match (b) with Val(_, idx) -> idx | Temp(_, idx) -> idx in
+        Int.compare a_idx b_idx
 end
 
 type key_t = Key.t
+let nokey = Key.Val(0, 0)
 
 (* it looks like OCaml generates some default compare operation for the types,
    so we do not have to define it explicitly *)
@@ -105,7 +106,8 @@ and kexp_t =
     | KExpMem of key_t * int * bool * kctx_t
     | KExpDeref of key_t * bool * kctx_t
     | KExpMakeRef of atom_t * kctx_t
-    | KExpAssign of key_t * atom_t * loc_t
+    | KExpAssign of key_t * kexp_t * loc_t
+    | KExpMatch of ((kexp_t list) * kexp_t) list * kctx_t
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of key_t * loc_t
     | KExpCast of atom_t * ktyp_t * kctx_t
@@ -144,13 +146,13 @@ let new_key_idx() =
     let i = !all_nkeys in
     (all_nkeys := !all_nkeys + 1; i)
 
-let dump_key i = match i with Key.Name(i, j) -> (sprintf "Key.Name(%d, %d)" i j)
+let dump_key i = match i with Key.Val(i, j) -> (sprintf "Key.Name(%d, %d)" i j)
                 | Key.Temp(i, j) -> (sprintf "Key.Temp(%d, %d)" i j)
-let key2idx i = match i with Key.Name(_, i_real) -> i_real | Key.Temp(_, i_real) -> i_real
+let key2idx i = match i with Key.Val(_, i_real) -> i_real | Key.Temp(_, i_real) -> i_real
 let key2str_ i pp =
     let (temp, prefix, suffix) =
         match i with
-        | Key.Name(i_name, i_real) -> (false, i_name, i_real)
+        | Key.Val(i_name, i_real) -> (false, i_name, i_real)
         | Key.Temp(i_prefix, i_real) -> (true, i_prefix, i_real) in
     let s = (match (!all_keys).(prefix) with
         | KText(s) -> s
@@ -174,7 +176,7 @@ let get_key_ s =
             i)) in idx
 
 let get_key s =
-    let i = get_key_ s in Key.Name(i, i)
+    let i = get_key_ s in Key.Val(i, i)
 
 let get_temp_key s =
     let i_name = get_key_ s in
@@ -184,12 +186,12 @@ let get_temp_key s =
 let dup_key old_key =
     let k = new_key_idx() in
     match old_key with
-    | Key.Name(i, j) -> Key.Name(i, k)
+    | Key.Val(i, j) -> Key.Val(i, k)
     | Key.Temp(i, j) -> Key.Temp(i, k)
 
 let get_orig_key i =
     match i with
-    | Key.Name(i, j) -> Key.Name(i, i)
+    | Key.Val(i, j) -> Key.Val(i, i)
     | Key.Temp(_, _) -> i
 
 let set_key_entry i n =
@@ -220,6 +222,7 @@ let get_kexp_ctx e = match e with
     | KExpDeref(_, _, c) -> c
     | KExpMakeRef(_, c) -> c
     | KExpAssign(_, _, l) -> (KTypVoid, l)
+    | KExpMatch(_, c) -> c
     | KExpTryCatch(_, _, c) -> c
     | KExpThrow(_, l) -> (KTypErr, l)
     | KExpCast(_, _, c) -> c
@@ -288,6 +291,8 @@ let get_lit_ktyp l = match l with
     | LitBool(_) -> KTypBool
     | LitNil -> KTypNil
 
+(* walk through a K-normalized syntax tree and produce another tree *)
+
 type k_callb_t =
 {
     kcb_ktyp: (ktyp_t -> k_callb_t -> ktyp_t) option;
@@ -324,7 +329,7 @@ and check_n_walk_dom d callb =
 and walk_ktyp t callb =
     let walk_ktyp_ t = check_n_walk_ktyp t callb in
     let walk_ktl_ tl = List.map walk_ktyp_ tl in
-    let walk_key_ k callb =
+    let walk_key_ k =
         match callb.kcb_atom with
         | Some(f) ->
             (match f (Atom.Key k) callb with
@@ -338,7 +343,7 @@ and walk_ktyp t callb =
     | KTypExn | KTypErr -> t
     | KTypFun (args, rt) -> KTypFun((walk_ktl_ args), (walk_ktyp_ rt))
     | KTypTuple elems -> KTypTuple(walk_ktl_ elems)
-    | KTypName k -> KTypName(walk_key_ k callb)
+    | KTypName k -> KTypName(walk_key_ k)
     | KTypArray (d, t) -> KTypArray(d, (walk_ktyp_ t))
     | KTypList t -> KTypList(walk_ktyp_ t)
     | KTypRef t -> KTypRef(walk_ktyp_ t))
@@ -374,7 +379,7 @@ and walk_kexp e callb =
     | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
     | KExpCall(f, args, ctx) -> KExpCall((walk_key_ f), (walk_al_ args), (walk_kctx_ ctx))
     | KExpAt(a, idx, flag, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), flag, (walk_kctx_ ctx))
-    | KExpAssign(lv, rv, loc) -> KExpAssign((walk_key_ lv), (walk_atom_ rv), loc)
+    | KExpAssign(lv, rv, loc) -> KExpAssign((walk_key_ lv), (walk_kexp_ rv), loc)
     | KExpMem(k, member, flag, ctx) -> KExpMem((walk_key_ k), member, flag, (walk_kctx_ ctx))
     | KExpDeref(k, flag, ctx) -> KExpDeref((walk_key_ k), flag, (walk_kctx_ ctx))
     | KExpMakeRef(a, ctx) -> KExpMakeRef((walk_atom_ a), (walk_kctx_ ctx))
@@ -384,15 +389,17 @@ and walk_kexp e callb =
     | KExpFor(kdl, body, flags, loc) ->
         KExpFor((walk_kdl_ kdl), (walk_kexp_ body), flags, loc)
     | KExpMap(e_kdl_l, body, flags, ctx) ->
-        (* (kexp_t * (key_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t *)
         KExpMap((List.map (fun (e, kdl) -> ((walk_kexp_ e), (walk_kdl_ kdl))) e_kdl_l),
                 (walk_kexp_ body), flags, (walk_kctx_ ctx))
+    | KExpMatch(handlers, ctx) ->
+        KExpMatch((List.map (fun (checks_i, ei) ->
+            ((List.map (fun cij -> walk_kexp_ cij) checks_i), (walk_kexp_ ei))) handlers),
+            (walk_kctx_ ctx))
     | KExpTryCatch(e1, e2, ctx) ->
         KExpTryCatch((walk_kexp_ e1), (walk_kexp_ e2), (walk_kctx_ ctx))
     | KExpCast(a, t, ctx) -> KExpCast((walk_atom_ a), (walk_ktyp_ t), (walk_kctx_ ctx))
     | KExpCCode(str, ctx) -> KExpCCode(str, (walk_kctx_ ctx))
     | KDefVal(k, e, flags, loc) ->
-        (* key_t * kexp_t * val_flag_t list * loc_t *)
         KDefVal((walk_key_ k), (walk_kexp_ e), flags, loc)
     | KDefFun(df) ->
         let { kf_name; kf_typ; kf_args; kf_body; kf_flags; kf_scope; kf_loc } = !df in
@@ -410,3 +417,123 @@ and walk_kexp e callb =
             kvar_cases = (List.map (fun (k, t) -> ((walk_key_ k), (walk_ktyp_ t))) kvar_cases);
             kvar_constr = (List.map walk_key_ kvar_constr); kvar_flags; kvar_scope; kvar_loc };
         e)
+
+(* walk through a K-normalized syntax tree and perform some actions;
+   do not construct/return anything (though, it's expected that
+   the callbacks collect some information about the tree) *)
+
+type k_fold_callb_t =
+{
+    kcb_fold_ktyp: (ktyp_t -> k_fold_callb_t -> unit) option;
+    kcb_fold_kexp: (kexp_t -> k_fold_callb_t -> unit) option;
+    kcb_fold_atom: (atom_t -> k_fold_callb_t -> unit) option;
+}
+
+let rec check_n_fold_ktyp t callb =
+    match callb.kcb_fold_ktyp with
+    | Some(f) -> f t callb
+    | _ -> fold_ktyp t callb
+
+and check_n_fold_kexp e callb =
+    match callb.kcb_fold_kexp with
+    | Some(f) -> f e callb
+    | _ -> fold_kexp e callb
+
+and check_n_fold_atom a callb =
+    match callb.kcb_fold_atom with
+    | Some(f) -> f a callb
+    | _ -> ()
+and check_n_fold_al al callb =
+    List.iter (fun a -> check_n_fold_atom a callb) al
+
+and check_n_fold_dom d callb =
+    match d with
+    | Domain.Elem a -> check_n_fold_atom a callb
+    | Domain.Fast a -> check_n_fold_atom a callb
+    | Domain.Range (a, b, c) ->
+        check_n_fold_atom a callb;
+        check_n_fold_atom b callb;
+        check_n_fold_atom c callb
+
+and check_n_fold_key k callb =
+    match callb.kcb_fold_atom with
+    | Some(f) -> f (Atom.Key k) callb
+    | _ -> ()
+
+and fold_ktyp t callb =
+    let fold_ktyp_ t = check_n_fold_ktyp t callb in
+    let fold_ktl_ tl = List.iter fold_ktyp_ tl in
+    (match t with
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+    | KTypVoid | KTypNil | KTypBool
+    | KTypChar | KTypString | KTypCPointer
+    | KTypExn | KTypErr -> ()
+    | KTypFun (args, rt) -> fold_ktl_ args; fold_ktyp_ rt
+    | KTypTuple elems -> fold_ktl_ elems
+    | KTypName k -> check_n_fold_key k callb
+    | KTypArray (d, t) -> fold_ktyp_ t
+    | KTypList t -> fold_ktyp_ t
+    | KTypRef t -> fold_ktyp_ t)
+
+and fold_kexp e callb =
+    let fold_atom_ a = check_n_fold_atom a callb in
+    let fold_al_ al = List.iter fold_atom_ al in
+    let fold_ktyp_ t = check_n_fold_ktyp t callb in
+    let fold_key_ k = check_n_fold_key k callb in
+    let fold_kexp_ e = check_n_fold_kexp e callb in
+    let fold_kctx_ (t, _) = fold_ktyp_ t in
+    let fold_dom_ d = check_n_fold_dom d callb in
+    let fold_kdl_ kdl = List.iter (fun (k, d) -> fold_key_ k; fold_dom_ d) kdl in
+    fold_kctx_ (match e with
+    | KExpNop (l) -> (KTypVoid, l)
+    | KExpBreak (l) -> (KTypVoid, l)
+    | KExpContinue (l) -> (KTypVoid, l)
+    | KExpAtom (a, ctx) -> fold_atom_ a; ctx
+    | KExpBinOp(_, a1, a2, ctx) ->
+        fold_atom_ a1; fold_atom_ a2; ctx
+    | KExpUnOp(_, a, ctx) -> fold_atom_ a; ctx
+    | KExpIf(c, then_e, else_e, ctx) ->
+        fold_kexp_ c; fold_kexp_ then_e; fold_kexp_ else_e; ctx
+    | KExpSeq(elist, ctx) -> List.iter fold_kexp_ elist; ctx
+    | KExpMkTuple(alist, ctx) -> fold_al_ alist; ctx
+    | KExpMkArray(_, elems, ctx) -> fold_al_ elems; ctx
+    | KExpCall(f, args, ctx) -> fold_key_ f; fold_al_ args; ctx
+    | KExpAt(a, idx, _, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
+    | KExpAssign(lv, rv, loc) -> fold_key_ lv; fold_kexp_ rv; (KTypVoid, loc)
+    | KExpMem(k, _, _, ctx) -> fold_key_ k; ctx
+    | KExpDeref(k, _, ctx) -> fold_key_ k; ctx
+    | KExpMakeRef(a, ctx) -> fold_atom_ a; ctx
+    | KExpThrow(k, loc) -> fold_key_ k; (KTypErr, loc)
+    | KExpWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
+    | KExpDoWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
+    | KExpFor(kdl, body, _, loc) ->
+        fold_kdl_ kdl; fold_kexp_ body; (KTypVoid, loc)
+    | KExpMap(e_kdl_l, body, _, ctx) ->
+        List.iter (fun (e, kdl) -> fold_kexp_ e; fold_kdl_ kdl) e_kdl_l;
+        fold_kexp_ body; ctx
+    | KExpMatch(handlers, ctx) ->
+        List.iter (fun (checks_i, ei) ->
+            List.iter (fun cij -> fold_kexp_ cij) checks_i; fold_kexp_ ei) handlers;
+        ctx
+    | KExpTryCatch(e1, e2, ctx) ->
+        fold_kexp_ e1; fold_kexp_ e2; ctx
+    | KExpCast(a, t, ctx) ->
+        fold_atom_ a; fold_ktyp_ t; ctx
+    | KExpCCode(_, ctx) -> ctx
+    | KDefVal(k, e, _, loc) ->
+        fold_key_ k; fold_kexp_ e; (KTypVoid, loc)
+    | KDefFun(df) ->
+        let { kf_name; kf_typ; kf_args; kf_body; kf_loc } = !df in
+        fold_key_ kf_name; fold_ktyp_ kf_typ;
+        List.iter fold_key_ kf_args; fold_kexp_ kf_body;
+        (KTypVoid, kf_loc)
+    | KDefExn(ke) ->
+        let { ke_name; ke_typ; ke_loc } = !ke in
+        fold_key_ ke_name; fold_ktyp_ ke_typ;
+        (KTypVoid, ke_loc)
+    | KDefVariant(kvar) ->
+        let { kvar_name; kvar_cases; kvar_constr; kvar_loc } = !kvar in
+        fold_key_ kvar_name;
+        List.iter (fun (k, t) -> fold_key_ k; fold_ktyp_ t) kvar_cases;
+        List.iter fold_key_ kvar_constr;
+        (KTypVoid, kvar_loc))

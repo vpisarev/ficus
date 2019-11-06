@@ -523,10 +523,8 @@ let is_real_typ t =
     let have_typ_vars = ref false in
     let rec is_real_typ_ t callb =
         match t with
-        | TypApp([], i) ->
-            (match (id_info i) with
-            | IdText _ -> have_typ_vars := true
-            | _ -> ()); t
+        | TypApp([], (Id.Name _)) -> have_typ_vars := true; t
+        | TypApp([], _) -> t
         | TypVar {contents=None} -> have_typ_vars := true; t
         | _ -> walk_typ t callb
     in
@@ -567,6 +565,7 @@ let rec find_first n env loc pred =
 let rec lookup_id n t env sc loc =
     match (find_first n env loc (fun e ->
         match e with
+        | EnvId(Id.Name _) -> None
         | EnvId i ->
             (match id_info i with
             | IdVal {dv_typ} -> unify dv_typ t loc "incorrect value type"; Some(i)
@@ -599,7 +598,7 @@ let rec lookup_id n t env sc loc =
                 let ctyp = typ2constr dexn_typ TypExn in
                 unify ctyp t loc "uncorrect type of exception constructor and/or its arguments";
                 Some(i)
-            | IdNone | IdText _ | IdTyp _ | IdVariant _
+            | IdNone | IdTyp _ | IdVariant _
             | IdClass _ | IdInterface _ -> None)
         | EnvTyp _ -> None)) with
     | Some(x) -> x
@@ -1401,9 +1400,10 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
                 | EnvTyp(t) ->
                     if ty_args = [] then Some(t) else
                     raise_compile_err loc (sprintf "a concrete type (%s) cannot be further instantiated" (pp_id2str n))
+                | EnvId(Id.Name _) -> None
                 | EnvId(i) ->
                     match (id_info i) with
-                    | IdNone | IdText _ | IdVal _ | IdFun _ | IdExn _ | IdModule _ -> None
+                    | IdNone | IdVal _ | IdFun _ | IdExn _ | IdModule _ -> None
                     | IdClass _ | IdInterface _ ->
                         (* [TODO] *)
                         raise_compile_err loc "classes & interfaces are not supported yet"

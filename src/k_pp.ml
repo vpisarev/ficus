@@ -137,7 +137,7 @@ let rec pprint_kexp e =
         | KExpBinOp(o, a, b, _) ->
             let ostr = binop_to_string o in
             pprint_atom a; pspace(); pstr ostr; pspace(); pprint_atom b
-        | KExpAssign(n, a, _) -> pprint_key n; pspace(); pstr "="; pspace(); pprint_atom a
+        | KExpAssign(n, e, _) -> pprint_key n; pspace(); pstr "="; pspace(); pprint_kexp e
         | KExpMem(n, i, f, _) -> pprint_tref_flag f; pprint_key n; pstr "."; pstr (string_of_int i)
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
@@ -196,6 +196,15 @@ let rec pprint_kexp e =
               pprint_key n; pspace(); pstr "<-"; pspace(); pprint_dom dom) pe_l);
               pstr ")"; pspace()) map_cl);
             pprint_kexp map_body; pstr "]"; cbox()
+        | KExpMatch (handlers, _) ->
+            obox(); List.iteri (fun i (checks_i, e_i) ->
+                pstr (if i = 0 then "IF (" else if checks_i = [] then "ELSE" else "ELSE IF (");
+                List.iteri (fun j cj ->
+                    if j = 0 then () else (pstr " &&"; pspace());
+                    pprint_kexp cj) checks_i;
+                if checks_i = [] then () else pstr ")";
+                pspace(); pprint_kexp e_i) handlers;
+            cbox();
         | KExpTryCatch(e1, e2, _) ->
             obox(); pstr "TRY"; pspace(); pprint_kexp e1; pspace();
             pstr "CATCH"; pprint_kexp e2; cbox()
