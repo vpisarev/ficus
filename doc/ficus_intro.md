@@ -82,5 +82,4 @@ Here is brief comparison of the languages (where in the Ficus column we put the 
 | runtime footprint (which affects the use on *edge* devices) | tiny | v. big - JVM (or smaller with LLVM - w.i.p) | big, but smaller than JVM | small | .NET (v. big) | normally small; depends on the framework used | relatively small |
 | std lib | looong way to go, but easy to connect 3rd-party C/C++ libs | excellent on JVM | excellent on Apple platforms; v. good on others | very good | excellent on MS platforms | v. good + many 3rd-party libs | excellent + myriads of 3rd-party libs |
 | numerical lib | looong way to go, but some basic algorithms are embedded into the language or are very easy to implement | + (Koma) | + (w.i.p, Fast AI etc.) | ± | + | OpenCV and such | fantastic! (numpy, scipy + many ML/AI frameworks) |
-| implemented in itself? | TBD (for now we are using OCaml) | + | – (C++) | + | – (C#) | + | ± (CPython is implemented in C, PyPy is implemented in Python) |
 | REPL (interactive mode) | – (planned in 2.0) | – | + | + | + | – | + |

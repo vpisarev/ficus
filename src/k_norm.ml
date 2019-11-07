@@ -1,6 +1,8 @@
 open Ast
 open K_form
 
+let zero_env = (Env.empty : env_t)
+
 let typ2ktyp t loc =
     let rec typ2ktyp_ t = match (Ast_typecheck.deref_typ t) with
     | TypVar {contents=Some(t)} -> typ2ktyp_ t
@@ -30,7 +32,7 @@ let typ2ktyp t loc =
     | TypApp(args, n) -> if is_unique_id n then () else
         raise_compile_err loc (sprintf "unknown type name '%s'" (id2str n));
         if args = [] then KTypName(n) else
-        (match (Ast_typecheck.deref_typ (Ast_typecheck.check_typ t Env.empty (ScGlobal::[]) loc)) with
+        (match (Ast_typecheck.deref_typ (Ast_typecheck.check_typ t zero_env (ScGlobal::[]) loc)) with
         | (TypApp(args1, n1)) as t1 ->
             if args1 = [] then KTypName(n1) else
             (match (id_info n1) with
@@ -51,10 +53,22 @@ let typ2ktyp t loc =
         | t -> typ2ktyp_ t)
     in typ2ktyp_ t
 
+let atom2id a loc msg = match a with
+    | Atom.Id i -> i
+    | Atom.Lit _ -> raise_compile_err loc msg
+
+let code2kexp code loc = match code with
+    | [] -> KExpNop(loc)
+    | e :: [] -> e
+    | e :: rest ->
+        let t = get_kexp_ktyp e in
+        KExpSeq((List.rev code), (t, loc))
+
 let rec exp2kexp e code lvflag sc =
     let (etyp, eloc) = get_exp_ctx e in
     let ktyp = typ2ktyp etyp eloc in
     let kctx = (ktyp, eloc) in
+
     match e with
     | ExpNop(loc) -> ((KExpNop loc), code)
     | ExpBreak(loc) -> ((KExpBreak loc), code)
@@ -77,38 +91,115 @@ let rec exp2kexp e code lvflag sc =
     | ExpUnOp(uop, e1, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         (KExpUnOp(uop, a1, kctx), code)
-    (*| ExpSeq(elist, _) ->
-        let
-    | ExpMkTuple of exp_t list * ctx_t
-    | ExpMkArray of exp_t list list * ctx_t
-    | ExpMkRecord of exp_t * (id_t * exp_t) list * ctx_t
-    | ExpUpdateRecord of exp_t * (id_t * exp_t) list * ctx_t
-    | ExpCall of exp_t * exp_t list * ctx_t
-    | ExpAt of exp_t * exp_t list * ctx_t
-    | ExpAssign of exp_t * exp_t * loc_t
-    | ExpMem of exp_t * exp_t * ctx_t
-    | ExpDeref of exp_t * ctx_t
-    | ExpMakeRef of exp_t * ctx_t
-    | ExpThrow of exp_t * loc_t
-    | ExpIf of exp_t * exp_t * exp_t * ctx_t
-    | ExpWhile of exp_t * exp_t * loc_t
-    | ExpDoWhile of exp_t * exp_t * loc_t
+    | ExpSeq(elist, _) ->
+        let rec knorm_eseq elist code = match elist with
+            | ei :: rest ->
+                let (eki, code) = exp2kexp ei code false sc in
+                if rest = [] then (eki, code) else
+                let code = (match eki with
+                      KExpNop _ -> code
+                    | _ -> eki :: code) in
+                knorm_eseq rest code
+            | [] -> ((KExpNop eloc), code) in
+        knorm_eseq elist code
+    | ExpMkTuple(args, _) ->
+        let (args, code) = List.fold_left (fun (args, code) ei ->
+                let (ai, code) = exp2atom ei code false sc in
+                (ai :: args, code)) ([], code) args in
+        (KExpMkTuple((List.rev args), kctx), code)
+    | ExpMkArray(erows, _) ->
+        let nrows = List.length erows in
+        if nrows = 0 then raise_compile_err eloc "empty arrays are not supported" else
+        let ncols = List.length (List.hd erows) in
+        if ncols = 0 then raise_compile_err eloc "empty arrays are not supported" else
+        let (elems, code) = List.fold_left (fun (elems, code) erow ->
+            List.fold_left (fun (elems, code) e ->
+                let (a, code) = exp2atom e code false sc in (a :: elems, code))
+            (elems, code) erow) ([], code) erows in
+        let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
+        (KExpMkArray(shape, (List.rev elems), kctx), code)
+    | ExpMkRecord (rn, relems, _) -> (* [TODO] *) raise_compile_err eloc "records are not supported yet"
+    | ExpUpdateRecord(e, relems, _) -> (* [TODO] *) raise_compile_err eloc "records are not supported yet"
+    | ExpCall(f, args, _) ->
+        let (f_a, code) = exp2atom f code false sc in
+        let f_id = atom2id f_a (get_exp_loc f) "a function name cannot be a literal" in
+        let (args, code) = List.fold_left (fun (args, code) ei ->
+            let (ai, code) = exp2atom ei code false sc in (ai :: args, code)) ([], code) args in
+        (KExpCall(f_id, (List.rev args), kctx), code)
+    | ExpDeref(e, _) ->
+        let (a, code) = exp2atom e code false sc in
+        let a_id = atom2id a (get_exp_loc e) "a literal cannot be dereferenced" in
+        (KExpDeref(a_id, lvflag, kctx), code)
+    | ExpMakeRef(e, _) ->
+        let (a, code) = exp2atom e code false sc in
+        (KExpIntrin(IntrinMkRef, a :: [], kctx), code)
+    | ExpThrow(e, _) ->
+        let (a, code) = exp2atom e code false sc in
+        let a_id = atom2id a (get_exp_loc e) "a literal cannot be thrown as exception" in
+        (KExpThrow(a_id, eloc), code)
+    | ExpIf(e1, e2, e3, _) ->
+        let (c, code) = exp2kexp e1 code false sc in
+        let loc2 = get_exp_loc e2 in
+        let loc3 = get_exp_loc e3 in
+        let (e2, code2) = exp2kexp e2 [] false sc in
+        let (e3, code3) = exp2kexp e3 [] false sc in
+        let if_then = code2kexp (e2 :: code2) loc2 in
+        let if_else = code2kexp (e3 :: code3) loc3 in
+        (KExpIf(c, if_then, if_else, kctx), code)
+    | ExpWhile(e1, e2, _) ->
+        let loc1 = get_exp_loc e1 in
+        let loc2 = get_exp_loc e2 in
+        let (e1, code1) = exp2kexp e1 [] false sc in
+        let (e2, code2) = exp2kexp e2 [] false sc in
+        let c = code2kexp (e1 :: code1) loc1 in
+        let body = code2kexp (e1 :: code2) loc2 in
+        (KExpWhile(c, body, eloc), code)
+    | ExpDoWhile(e1, e2, _) ->
+        let (e1, code1) = exp2kexp e1 [] false sc in
+        let (e2, code2) = exp2kexp e2 (e1 :: code1) false sc in
+        let body = code2kexp code2 eloc in
+        (KExpDoWhile(body, e2, eloc), code)
+    | ExpAt(e, idxlist, _) ->
+        let (dlist, code) = List.fold_left (fun (dlist, code) idx ->
+            match idx with
+            | ExpRange _ ->
+                let (dom, code) = range2dom idx code sc in
+                (dom :: dlist, code)
+            | _ ->
+                let (i, code) = exp2atom idx code false sc in
+                ((Domain.Elem i) :: dlist, code)) ([], code) idxlist in
+        let (arr, code) = exp2atom e code true sc in
+        (KExpAt(arr, (List.rev dlist), lvflag, kctx), code)
+    | ExpAssign(e1, e2, _) ->
+        let (e2, code) = exp2kexp e2 code false sc in
+        let (a, code) = exp2atom e1 code true sc in
+        let a_id = atom2id a (get_exp_loc e1) "a literal cannot be assigned" in
+        (KExpAssign(a_id, e2, eloc), code)
+    | ExpCast(e, t, _) ->
+        let (a, code) = exp2atom e code false sc in
+        let t = typ2ktyp t eloc in
+        (KExpCast(a, t, kctx), code)
+    | ExpTyped(e, t, _) ->
+        let (a, code) = exp2atom e code false sc in
+        let t = typ2ktyp t eloc in
+        (KExpAtom(a, (t, eloc)), code)
+    | ExpCCode(s, _) -> (KExpCCode(s, kctx), code)
+    | DefTyp _ -> (KExpNop(eloc), code)
+    | DefClass _ -> raise_compile_err eloc "classes are not supported yet"
+    | DefInterface _ -> raise_compile_err eloc "interfaces are not supported yet"
+    | DirImport _ -> (KExpNop(eloc), code)
+    | DirImportFrom _ -> (KExpNop(eloc), code)
+
+    (*| ExpMem of exp_t * exp_t * ctx_t
     | ExpFor of (pat_t * exp_t) list * exp_t * for_flag_t list * loc_t
     | ExpMap of ((pat_t * exp_t) list * exp_t option) list * exp_t * for_flag_t list * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
-    | ExpCast of exp_t * typ_t * ctx_t
-    | ExpTyped of exp_t * typ_t * ctx_t
-    | ExpCCode of string * ctx_t
     | DefVal of pat_t * exp_t * val_flag_t list * loc_t
     | DefFun of deffun_t ref
     | DefExn of defexn_t ref
-    | DefTyp of deftyp_t ref
     | DefVariant of defvariant_t ref
-    | DefClass of defclass_t ref
-    | DefInterface of definterface_t ref
-    | DirImport of (id_t * id_t) list * loc_t
-    | DirImportFrom of id_t * id_t list * loc_t*)
+    *)
     | _ -> raise_compile_err eloc "unsupported operator"
 
 and exp2atom e code lvflag sc =
@@ -123,5 +214,11 @@ and exp2atom e code lvflag sc =
                    kv_flags=(if lvflag then ValTempRef :: [] else []) } in
         set_idk_entry kv_name (KVal dv);
         ((Atom.Id kv_name), (KDefVal (kv_name, e, eloc)) :: code)
+
+and range2dom re code sc =
+    let (rk, code) = exp2kexp re code false sc in
+    match rk with
+    | KExpMkTuple(a :: b :: c :: [], _) -> (Domain.Range(a, b, c), code)
+    | _ -> raise_compile_err (get_exp_loc re) "the range was not converted to a 3-element tuple as expected"
 
 let normalize_mod m = ([]: kexp_t list)
