@@ -243,7 +243,9 @@ type id_info_t =
 type 't dynvec_t = { mutable dynvec_count: int; mutable dynvec_data: 't array; dynvec_val0: 't }
 
 let dynvec_create (v0: 't) = { dynvec_count=0; dynvec_data=([||]: 't array); dynvec_val0=v0 }
+let dynvec_isempty v = v.dynvec_count = 0
 let dynvec_clear v = v.dynvec_count <- 0; v.dynvec_data <- [||]
+let dynvec_init v n = v.dynvec_count <- n; v.dynvec_data <- Array.make n v.dynvec_val0
 let dynvec_push v =
     let _ = if (Array.length v.dynvec_data) <= v.dynvec_count then
         let delta_n = max v.dynvec_count 128 in
@@ -292,7 +294,7 @@ let id2idx i = match i with
 let id_info i = dynvec_get all_ids (id2idx i)
 let is_unique_id i = match i with Id.Name _ -> false | _ -> true
 
-let get_id_ s =
+let get_id_prefix s =
     match Hashtbl.find_all all_strhash s with
     | idx :: _ -> idx
     | _ -> let idx = dynvec_push all_strings in
@@ -301,10 +303,10 @@ let get_id_ s =
         idx
 
 let get_id s =
-    let i = get_id_ s in Id.Name(i)
+    let i = get_id_prefix s in Id.Name(i)
 
 let get_temp_id s =
-    let i_name = get_id_ s in
+    let i_name = get_id_prefix s in
     let i_real = new_id_idx() in
     Id.Temp(i_name, i_real)
 
@@ -574,8 +576,8 @@ let fname_always_import () =
 let init_all_ids () =
     dynvec_clear all_ids;
     (Hashtbl.reset all_strhash);
-    let _ = get_id_ "" in
-    let _ = get_id_ "_" in
+    let _ = get_id_prefix "" in
+    let _ = get_id_prefix "_" in
     fname_always_import()
 
 exception CompileError of loc_t * string

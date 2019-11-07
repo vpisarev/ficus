@@ -88,7 +88,6 @@ let parse_all _fname0 =
 
 let init () =
     ignore(init_all_ids ());
-    ignore(init_all_keys ());
     (Hashtbl.reset all_modules)
 
 (*
@@ -117,6 +116,7 @@ let typecheck_all modules =
 
 let k_normalize_all modules =
     let _ = (compile_errs := []) in
+    let _ = K_form.init_all_idks() in
     let rkcode = List.fold_left (fun rkcode m ->
         let rkcode_i = K_norm.normalize_mod m in
         rkcode_i @ rkcode) [] modules in

@@ -1143,7 +1143,9 @@ and check_eseq eseq env sc create_sc =
 
     (* finally, process everything else:
        function bodies, values declarations as well as normal expressions/statements *)
-    let (eseq, env) = List.fold_left (fun (eseq, env) e ->
+    let nexps = List.length eseq in
+    let (eseq, env, _) = List.fold_left (fun (eseq, env, idx) e ->
+        let (eseq1, env1) =
         try
             match e with
             | DirImport(_, _) | DirImportFrom(_, _, _)
@@ -1165,9 +1167,18 @@ and check_eseq eseq env sc create_sc =
                 (e :: eseq, env)
             | _ ->
                 let e = check_exp e env sc in
+                (match e with
+                | ExpNop _ ->
+                    if nexps = 1 then () else
+                        raise_compile_err (get_exp_loc e) "there cannot be {} operators inside code blocks"
+                | ExpBreak _ | ExpContinue _ ->
+                    if idx = nexps - 1 then () else
+                        raise_compile_err (get_exp_loc e)
+                        "break/continue operator should not be followed by any other operators in the same linear code sequence"
+                | _ -> ());
                 (e :: eseq, env)
-        with CompileError(_, _) as err -> raise err(*; (e :: eseq, env)*))
-        ([], env) eseq in
+        with CompileError(_, _) as err -> raise err(*; (e :: eseq, env)*) in
+        (eseq1, env1, idx+1)) ([], env, 0) eseq in
 
     check_compile_errs();
     (List.rev eseq, env)
@@ -1591,7 +1602,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                         let ni = (match ti with
                         | TypTuple(tl) -> List.length tl
                         | TypVoid -> raise_compile_err loc
-                            (sprintf "a variant label '%s' with no arguments may not be used as a formal function parameter" (pp_id2str vi))
+                            (sprintf "a variant label '%s' with no arguments may not be used in a formal function parameter" (pp_id2str vi))
                         | _ -> 1) in
                         if ni != (List.length pl) then
                             raise_compile_err loc

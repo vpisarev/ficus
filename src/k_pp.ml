@@ -15,14 +15,14 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
-let pprint_key x = pstr (key2str x)
+let pprint_id x = pstr (id2str x)
 
 type ktyp_pr_t = KTypPr0 | KTypPrFun | KTypPrComplex | KTypPrBase
 
 let rec get_ktyp_pr t = match t with
     | KTypInt | KTypSInt(_) | KTypUInt(_) | KTypFloat(_)
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
-    | KTypErr | KTypCPointer | KTypNil | KTypName(_) -> KTypPrBase
+    | KTypErr | KTypCPointer | KTypNil | KTypModule | KTypName(_) -> KTypPrBase
     | KTypTuple(_) -> KTypPrBase
     | KTypList(_) | KTypRef(_) | KTypArray(_, _) -> KTypPrComplex
     | KTypFun(_, _) -> KTypPrFun
@@ -65,15 +65,16 @@ let rec ppktyp_ t p1 =
     | KTypList(t1) -> ppktypsuf t1 "List"
     | KTypRef(t1) -> ppktypsuf t1 "Ref"
     | KTypArray(d, t1) -> ppktypsuf t1 (String.make (d - 1) ',')
-    | KTypName(n) -> pprint_key n
+    | KTypName(n) -> pprint_id n
     | KTypTuple(tl) -> ppktyplist_ "(" tl
     | KTypExn -> pstr "Exn"
     | KTypErr -> pstr "Err"
     | KTypCPointer -> pstr "CPtr"
+    | KTypModule -> pstr "Module"
 
 let pprint_ktyp t = ppktyp_ t KTypPr0
 let pprint_atom a = match a with
-    | Atom.Key k -> pprint_key k
+    | Atom.Id k -> pprint_id k
     | Atom.Lit l -> pstr (Ast_pp.lit_to_string l)
 let pprint_dom r = match r with
     | Domain.Elem(a) -> pprint_atom a
@@ -88,17 +89,21 @@ let pprint_dom r = match r with
           | _ -> pstr ":"; pprint_atom k)
 
 let rec pprint_kexp e =
-    let t = get_kexp_typ e in
+    let t = get_kexp_ktyp e in
     let obox_cnt = ref 0 in
     let obox_() = obox(); pstr "<"; ppktyp_ t KTypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
     let pprint_tref_flag f = if f then pstr "TEMP_REF " else () in
     match e with
-    | KDefVal(n, e0, vflags, _) -> obox(); (List.iter (fun vf -> match vf with
+    | KDefVal(n, e0, loc) -> obox();
+        let (vt, vflags) = match (kinfo n) with
+            | KVal {kv_typ; kv_flags} -> (kv_typ, kv_flags)
+            | _ -> raise_compile_err loc (sprintf "there is no information about defined value '%s'" (id2str n)) in
+        (List.iter (fun vf -> match vf with
         | ValTempRef -> pstr "TEMP_REF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
-        pstr "VAL"; pspace(); pprint_key n; pspace(); pstr "="; pspace(); pprint_kexp e0; cbox()
+        pstr "VAL"; pspace(); pprint_id n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace(); pprint_kexp e0; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_typ; kf_body; kf_flags }} ->
         let fkind = ref "FUN" in
         let is_constr = List.mem FunConstr kf_flags in
@@ -110,22 +115,22 @@ let rec pprint_kexp e =
                     | FunStatic -> pstr "STATIC"; pspace()
                     | FunConstr -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
-        pstr (!fkind); pspace(); pprint_key kf_name; pspace();
+        pstr (!fkind); pspace(); pprint_id kf_name; pspace();
         pstr "("; pcut(); obox();
-        (List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_key n) kf_args);
+        (List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) kf_args);
         cbox(); pcut(); pstr ")";
         pspace(); pstr ":"; pspace(); pprint_ktyp kf_typ; pspace();
         pstr "="; pspace(); if is_constr then pstr "Constructor" else pprint_kexp kf_body; cbox())
     | KDefExn { contents = {ke_name; ke_typ } } ->
-        obox(); pstr "EXCEPTION"; pspace(); pprint_key ke_name;
+        obox(); pstr "EXCEPTION"; pspace(); pprint_id ke_name;
         (match ke_typ with
         | KTypVoid -> ()
         | _ -> pspace(); pstr "OF"; pspace(); pprint_ktyp ke_typ); cbox()
     | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr} } ->
-        obox(); pstr "TYPE"; pspace(); pprint_key kvar_name;
+        obox(); pstr "TYPE"; pspace(); pprint_id kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
-            if i = 0 then () else pstr " | "; pprint_key v;
-            pstr "<"; pprint_key c; pstr ": "; pprint_ktyp (get_key_ktyp c); pstr ">: "; pprint_ktyp t)
+            if i = 0 then () else pstr " | "; pprint_id v;
+            pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_id_ktyp c); pstr ">: "; pprint_ktyp t)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr else (List.map (fun (v, _) -> v) kvar_cases))));
         cbox()
     | KExpSeq(el, _) -> pprint_kexpseq el true
@@ -137,14 +142,17 @@ let rec pprint_kexp e =
         | KExpBinOp(o, a, b, _) ->
             let ostr = binop_to_string o in
             pprint_atom a; pspace(); pstr ostr; pspace(); pprint_atom b
-        | KExpAssign(n, e, _) -> pprint_key n; pspace(); pstr "="; pspace(); pprint_kexp e
-        | KExpMem(n, i, f, _) -> pprint_tref_flag f; pprint_key n; pstr "."; pstr (string_of_int i)
+        | KExpAssign(n, e, _) -> pprint_id n; pspace(); pstr "="; pspace(); pprint_kexp e
+        | KExpMem(n, i, f, _) -> pprint_tref_flag f; pprint_id n; pstr "."; pstr (string_of_int i)
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
             pstr ostr; pprint_atom a
-        | KExpDeref(n, f, _) -> pprint_tref_flag f; pstr "*"; pprint_key n
-        | KExpMakeRef(a, _) -> pstr "REF "; pprint_atom a
-        | KExpThrow(n, _) -> pstr "THROW "; pprint_key n
+        | KExpDeref(n, f, _) -> pprint_tref_flag f; pstr "*"; pprint_id n
+        | KExpIntrin(iop, args, _) ->
+            pstr (intrin2str iop);
+            List.iteri (fun i a -> if i = 0 then pstr "(" else (pstr ","; pspace()); pprint_atom a) args;
+            pstr ")"
+        | KExpThrow(n, _) -> pstr "THROW "; pprint_id n
         | KExpMkTuple(al, _) ->
             pstr "("; obox();
             (List.iteri (fun i a ->
@@ -165,7 +173,7 @@ let rec pprint_kexp e =
                 pprint_atom a) elems);
             cbox(); pstr "]"; cbox()
         | KExpCall(f, args, _) ->
-            obox(); pprint_key f; pstr "(";
+            obox(); pprint_id f; pstr "(";
             (List.iteri (fun i a ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_atom a) args);
             pstr ")"; cbox();
@@ -186,14 +194,14 @@ let rec pprint_kexp e =
         | KExpFor (for_cl, for_body, flags, _) ->
             obox(); Ast_pp.pprint_for_flags flags;
             pstr "FOR ("; (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
-                pprint_key n; pspace(); pstr "<-"; pspace(); pprint_dom dom) for_cl);
+                pprint_id n; pspace(); pstr "<-"; pspace(); pprint_dom dom) for_cl);
             pstr ")"; pspace(); pprint_kexp for_body; cbox()
         | KExpMap(map_cl, map_body, flags, _) ->
             obox(); Ast_pp.pprint_for_flags flags;
             pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else ();
             (List.iter (fun (pre, pe_l) -> pstr "FOR ("; pprint_kexp pre; pstr ";"; pcut();
               (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
-              pprint_key n; pspace(); pstr "<-"; pspace(); pprint_dom dom) pe_l);
+              pprint_id n; pspace(); pstr "<-"; pspace(); pprint_dom dom) pe_l);
               pstr ")"; pspace()) map_cl);
             pprint_kexp map_body; pstr "]"; cbox()
         | KExpMatch (handlers, _) ->
