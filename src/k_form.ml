@@ -84,9 +84,9 @@ and kexp_t =
     | KExpCall of id_t * atom_t list * kctx_t
     | KExpMkTuple of atom_t list * kctx_t
     | KExpMkArray of int list * atom_t list * kctx_t
-    | KExpAt of atom_t * dom_t list * bool * kctx_t
-    | KExpMem of id_t * int * bool * kctx_t
-    | KExpDeref of id_t * bool * kctx_t
+    | KExpAt of atom_t * dom_t list * kctx_t
+    | KExpMem of id_t * int * kctx_t
+    | KExpDeref of id_t * kctx_t
     | KExpAssign of id_t * kexp_t * loc_t
     | KExpMatch of ((kexp_t list) * kexp_t) list * kctx_t
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
@@ -124,7 +124,7 @@ let new_idk_idx() =
 
 let kinfo i = dynvec_get all_idks (id2idx i)
 
-let get_temp_idk s =
+let gen_temp_idk s =
     let i_name = get_id_prefix s in
     let i_real = new_idk_idx() in
     Id.Temp(i_name, i_real)
@@ -155,9 +155,9 @@ let get_kexp_kctx e = match e with
     | KExpCall(_, _, c) -> c
     | KExpMkTuple(_, c) -> c
     | KExpMkArray(_, _, c) -> c
-    | KExpAt(_, _, _, c) -> c
-    | KExpMem(_, _, _, c) -> c
-    | KExpDeref(_, _, c) -> c
+    | KExpAt(_, _, c) -> c
+    | KExpMem(_, _, c) -> c
+    | KExpDeref(_, c) -> c
     | KExpAssign(_, _, l) -> (KTypVoid, l)
     | KExpMatch(_, c) -> c
     | KExpTryCatch(_, _, c) -> c
@@ -307,10 +307,10 @@ and walk_kexp e callb =
     | KExpMkTuple(alist, ctx) -> KExpMkTuple((walk_al_ alist), (walk_kctx_ ctx))
     | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
     | KExpCall(f, args, ctx) -> KExpCall((walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
-    | KExpAt(a, idx, flag, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), flag, (walk_kctx_ ctx))
+    | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
     | KExpAssign(lv, rv, loc) -> KExpAssign((walk_id_ lv), (walk_kexp_ rv), loc)
-    | KExpMem(k, member, flag, ctx) -> KExpMem((walk_id_ k), member, flag, (walk_kctx_ ctx))
-    | KExpDeref(k, flag, ctx) -> KExpDeref((walk_id_ k), flag, (walk_kctx_ ctx))
+    | KExpMem(k, member, ctx) -> KExpMem((walk_id_ k), member, (walk_kctx_ ctx))
+    | KExpDeref(k, ctx) -> KExpDeref((walk_id_ k), (walk_kctx_ ctx))
     | KExpThrow(k, loc) -> KExpThrow((walk_id_ k), loc)
     | KExpWhile(c, e, loc) -> KExpWhile((walk_kexp_ c), (walk_kexp_ e), loc)
     | KExpDoWhile(c, e, loc) -> KExpDoWhile((walk_kexp_ c), (walk_kexp_ e), loc)
@@ -427,10 +427,10 @@ and fold_kexp e callb =
     | KExpMkTuple(alist, ctx) -> fold_al_ alist; ctx
     | KExpMkArray(_, elems, ctx) -> fold_al_ elems; ctx
     | KExpCall(f, args, ctx) -> fold_id_ f; fold_al_ args; ctx
-    | KExpAt(a, idx, _, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
+    | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
     | KExpAssign(lv, rv, loc) -> fold_id_ lv; fold_kexp_ rv; (KTypVoid, loc)
-    | KExpMem(k, _, _, ctx) -> fold_id_ k; ctx
-    | KExpDeref(k, _, ctx) -> fold_id_ k; ctx
+    | KExpMem(k, _, ctx) -> fold_id_ k; ctx
+    | KExpDeref(k, ctx) -> fold_id_ k; ctx
     | KExpThrow(k, loc) -> fold_id_ k; (KTypErr, loc)
     | KExpWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
     | KExpDoWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)

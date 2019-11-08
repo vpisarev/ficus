@@ -32,7 +32,7 @@ let plist2exp args n =
         (match p with
         | PatAny(loc) ->
             let arg_tp = make_new_typ() in
-            let arg_id = get_temp_id "arg" in
+            let arg_id = gen_temp_id "arg" in
             (PatIdent(arg_id, loc), ExpIdent(arg_id, (arg_tp, loc)))
         | PatIdent(i, loc) -> (p, ExpIdent(i, (make_new_typ(), loc)))
         | PatTuple(plist, loc) ->
@@ -326,7 +326,7 @@ stmt:
         let ctx = make_new_ctx() in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ [$4]) 4 in
-        let fname = get_temp_id "lambda" in
+        let fname = gen_temp_id "lambda" in
         let df = make_deffun fname args rt body [] (curr_loc()) in
         ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
     }
@@ -335,7 +335,7 @@ stmt:
         let ctx = make_new_ctx() in
         let (args, rt, prologue) = $2 in
         let body = expseq2exp (prologue @ $3) 3 in
-        let fname = get_temp_id "lambda" in
+        let fname = gen_temp_id "lambda" in
         let df = make_deffun fname args rt body [] (curr_loc()) in
         ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
     }

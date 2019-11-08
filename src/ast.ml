@@ -305,7 +305,7 @@ let get_id_prefix s =
 let get_id s =
     let i = get_id_prefix s in Id.Name(i)
 
-let get_temp_id s =
+let gen_temp_id s =
     let i_name = get_id_prefix s in
     let i_real = new_id_idx() in
     Id.Temp(i_name, i_real)

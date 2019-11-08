@@ -93,7 +93,6 @@ let rec pprint_kexp e =
     let obox_cnt = ref 0 in
     let obox_() = obox(); pstr "<"; ppktyp_ t KTypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
-    let pprint_tref_flag f = if f then pstr "TEMP_REF " else () in
     match e with
     | KDefVal(n, e0, loc) -> obox();
         let (vt, vflags) = match (kinfo n) with
@@ -143,11 +142,11 @@ let rec pprint_kexp e =
             let ostr = binop_to_string o in
             pprint_atom a; pspace(); pstr ostr; pspace(); pprint_atom b
         | KExpAssign(n, e, _) -> pprint_id n; pspace(); pstr "="; pspace(); pprint_kexp e
-        | KExpMem(n, i, f, _) -> pprint_tref_flag f; pprint_id n; pstr "."; pstr (string_of_int i)
+        | KExpMem(n, i, _) -> pprint_id n; pstr "."; pstr (string_of_int i)
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
             pstr ostr; pprint_atom a
-        | KExpDeref(n, f, _) -> pprint_tref_flag f; pstr "*"; pprint_id n
+        | KExpDeref(n, _) -> pstr "*"; pprint_id n
         | KExpIntrin(iop, args, _) ->
             pstr (intrin2str iop);
             List.iteri (fun i a -> if i = 0 then pstr "(" else (pstr ","; pspace()); pprint_atom a) args;
@@ -177,8 +176,7 @@ let rec pprint_kexp e =
             (List.iteri (fun i a ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_atom a) args);
             pstr ")"; cbox();
-        | KExpAt(a, args, f, _) ->
-            pprint_tref_flag f;
+        | KExpAt(a, args, _) ->
             pprint_atom a; pstr "[";
             obox(); (List.iteri (fun i dom ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_dom dom) args);
