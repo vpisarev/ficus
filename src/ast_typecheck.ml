@@ -1074,7 +1074,7 @@ and check_exp e env sc =
         ExpTyped(new_e1, new_t1, ctx)
     | ExpCCode(_, _) ->
         (match sc with
-        | ScModule(_) :: _ -> ()
+        | ScModule(_) :: _ -> unify etyp TypVoid eloc "module-level ccode should have 'void' type"
         | ScFun(_) :: _ -> ()
         | _ -> raise_compile_err eloc
             "ccode may be used only at the top (module level) or as a single expression in function definition");
@@ -1167,15 +1167,22 @@ and check_eseq eseq env sc create_sc =
                 (e :: eseq, env)
             | _ ->
                 let e = check_exp e env sc in
+                let (etyp, eloc) = get_exp_ctx e in
                 (match e with
                 | ExpNop _ ->
                     if nexps = 1 then () else
-                        raise_compile_err (get_exp_loc e) "there cannot be {} operators inside code blocks"
+                        raise_compile_err eloc "there cannot be {} operators inside code blocks"
                 | ExpBreak _ | ExpContinue _ ->
                     if idx = nexps - 1 then () else
-                        raise_compile_err (get_exp_loc e)
+                        raise_compile_err eloc
                         "break/continue operator should not be followed by any other operators in the same linear code sequence"
-                | _ -> ());
+                | ExpCCode _ -> ()
+                | _ ->
+                    (match (deref_typ etyp) with
+                    | TypVoid | TypDecl -> ()
+                    | _ -> if idx = nexps - 1 then () else
+                        raise_compile_err eloc
+                        "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error"));
                 (e :: eseq, env)
         with CompileError(_, _) as err -> raise err(*; (e :: eseq, env)*) in
         (eseq1, env1, idx+1)) ([], env, 0) eseq in

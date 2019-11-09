@@ -59,7 +59,12 @@ let atom2id a loc msg = match a with
     | Atom.Id i -> i
     | Atom.Lit _ -> raise_compile_err loc msg
 
-let code2kexp code loc = match code with
+let filter_out_nops code =
+    List.filter (fun e -> match e with
+        | KExpNop _ -> false
+        | _ -> true) code
+
+let code2kexp code loc = match (filter_out_nops code) with
     | [] -> KExpNop(loc)
     | e :: [] -> e
     | e :: rest ->
@@ -70,7 +75,33 @@ let rec exp2kexp e code tref sc =
     let (etyp, eloc) = get_exp_ctx e in
     let ktyp = typ2ktyp etyp eloc in
     let kctx = (ktyp, eloc) in
-
+    (*
+        scans through (pi, ei) pairs in for(p1<-e1, p2<-e2, ..., pn<-en) operators;
+        * updates the code that needs to be put before the for loop
+          (all the ei needs to be computed there),
+        * generates the pattern unpack code, which should be put into the beginning of the loop body
+        * generates the proxy identifiers that are used in the corresponding KExpFor/KExpMap.
+        For example, the following code:
+            for ((r, g, b) <- GaussianBlur(img)) { ... }
+        is converted to
+            val temp123 = GaussianBlur(img)
+            for (i124 <- temp123) { val r=i124.0, g=i124.1, b = i124.2; ... }
+    *)
+    let transform_for pe_l code sc body_sc =
+        let (idom_list, code, body_code) =
+            List.fold_left (fun (idom_list, code, body_code) (pi, ei) ->
+                let (etyp, eloc) = get_exp_ctx ei in
+                let (di, code) = exp2dom ei code sc in
+                let ptyp = match (di, etyp) with
+                    | (Domain.Range _, _) -> TypInt
+                    | (_, TypArray(_, et)) -> et
+                    | (_, TypList(et)) -> et
+                    | (_, TypString) -> TypChar
+                    | _ -> raise_compile_err eloc "unsupported domain expression in for loop" in
+                let (i, body_code) = pat_simple_unpack pi ptyp None body_code "i" [] body_sc
+                in ((i, di) :: idom_list, code, body_code))
+            ([], code, []) pe_l in
+        ((List.rev idom_list), code, body_code) in
     match e with
     | ExpNop(loc) -> ((KExpNop loc), code)
     | ExpBreak(loc) -> ((KExpBreak loc), code)
@@ -93,20 +124,12 @@ let rec exp2kexp e code tref sc =
     | ExpUnOp(uop, e1, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         (KExpUnOp(uop, a1, kctx), code)
-    | ExpSeq(elist, _) ->
-        (* [TODO] grab and transform all the types first *)
+    | ExpSeq(eseq, _) ->
         let sc = new_block_scope() :: sc in
-        let code = transform_all_types_and_cons elist code in
-        let rec knorm_eseq elist code = match elist with
-            | ei :: rest ->
-                let (eki, code) = exp2kexp ei code false sc in
-                if rest = [] then (eki, code) else
-                let code = (match eki with
-                      KExpNop _ -> code
-                    | _ -> eki :: code) in
-                knorm_eseq rest code
-            | [] -> ((KExpNop eloc), code) in
-        knorm_eseq elist code
+        let code = eseq2code eseq code sc in
+        (match code with
+        | c :: code -> (c, code)
+        | _ -> ((KExpNop eloc), code))
     | ExpMkTuple(args, _) ->
         let (args, code) = List.fold_left (fun (args, code) ei ->
                 let (ai, code) = exp2atom ei code false sc in
@@ -159,6 +182,13 @@ let rec exp2kexp e code tref sc =
         let c = code2kexp (e1 :: code1) loc1 in
         let body = code2kexp (e1 :: code2) loc2 in
         (KExpWhile(c, body, eloc), code)
+    | ExpFor(pe_l, body, flags, _) ->
+        let body_sc = new_block_scope() :: sc in
+        let (idom_list, code, body_code) = transform_for pe_l code sc body_sc in
+        let (e, body_code) = exp2kexp body body_code false body_sc in
+        let bloc = get_exp_loc body in
+        let body_kexp = code2kexp body_code bloc in
+        (KExpFor(idom_list, body_kexp, flags, eloc), code)
     | ExpDoWhile(e1, e2, _) ->
         let (e1, code1) = exp2kexp e1 [] false sc in
         let (e2, code2) = exp2kexp e2 (e1 :: code1) false sc in
@@ -192,7 +222,7 @@ let rec exp2kexp e code tref sc =
                     raise_compile_err e1loc "unsupported access operation") in
         (KExpMem(a_id, i, kctx), code)
     | ExpAssign(e1, e2, _) ->
-        let (e2, code) = exp2kexp e2 code false sc in
+        let (e2, code) = exp2kexp e2 code true sc in
         let (a, code) = exp2atom e1 code true sc in
         let a_id = atom2id a (get_exp_loc e1) "a literal cannot be assigned" in
         (KExpAssign(a_id, e2, eloc), code)
@@ -205,6 +235,18 @@ let rec exp2kexp e code tref sc =
         let t = typ2ktyp t eloc in
         (KExpAtom(a, (t, eloc)), code)
     | ExpCCode(s, _) -> (KExpCCode(s, kctx), code)
+    | DefVal(p, e2, flags, _) ->
+        let (e2, code) = exp2kexp e2 code true sc in
+        let (v, code) = pat_simple_unpack p etyp (Some e2) code "v" flags sc in
+        (*  if pat_simple_unpack returns (noid, code), it means that the pattern p does
+            not contain variables to capture, i.e. user wrote something like
+                val _ = <exp> or
+                val (_, (_, _)) = <exp> etc.,
+            which means that the assignment was not generated, but we need to retain <exp>,
+            because it likely has some side effects *)
+        if v = noid then (e2, code) else ((KExpNop eloc), code)
+    | DefFun df ->
+        let code = transform_fun df code sc in ((KExpNop eloc), code)
     | DefTyp _ -> (KExpNop(eloc), code)
     | DefVariant _ -> (KExpNop(eloc), code) (* variant declarations are handled in batch in transform_all_types_and_cons *)
     | DefExn _ -> (KExpNop(eloc), code) (* exception declarations are handled in batch in transform_all_types_and_cons *)
@@ -212,18 +254,9 @@ let rec exp2kexp e code tref sc =
     | DefInterface _ -> raise_compile_err eloc "interfaces are not supported yet"
     | DirImport _ -> (KExpNop(eloc), code)
     | DirImportFrom _ -> (KExpNop(eloc), code)
-    (*| ExpFor(pe_l, body, flags, _) ->
-        let (idom_list, code, body_code) = List.fold_left
-            (fun (idom_list, code, body_code) (pi, ei) ->
-                let (d, code) = exp2dom e
-
-        | KExpFor of (id_t * dom_t) list * kexp_t * for_flag_t list * loc_t
-
-    | ExpMap of ((pat_t * exp_t) list * exp_t option) list * exp_t * for_flag_t list * ctx_t
+    (*| ExpMap of ((pat_t * exp_t) list * exp_t option) list * exp_t * for_flag_t list * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
-    | DefVal of pat_t * exp_t * val_flag_t list * loc_t
-    | DefFun of deffun_t ref
     *)
     | _ -> raise_compile_err eloc "unsupported operator"
 
@@ -252,6 +285,18 @@ and exp2dom e code sc =
     | _ ->
         let (i, code) = exp2atom e code false sc in
         (Domain.Elem i, code)
+
+and eseq2code eseq code sc =
+    let code = transform_all_types_and_cons eseq code sc in
+    let rec knorm_eseq eseq code = (match eseq with
+        | ei :: rest ->
+            let (eki, code) = exp2kexp ei code false sc in
+            let code = (match eki with
+                | KExpNop _ -> code
+                | _ -> eki :: code) in
+            knorm_eseq rest code
+        | [] -> code) in
+    knorm_eseq eseq code
 
 (* finds if the pattern contains variables to capture. We could have
    combined this and the next function into one, but then we would
@@ -287,7 +332,8 @@ and pat_skip_typed p = match p with
     | _ -> p
 
 and pat_simple_propose_id p ptyp preferred_temp_prefix mutable_leaves sc =
-    let rec pat_simple_propose_id_ p = (match (pat_skip_typed p) with
+    let p = pat_skip_typed p in
+    match p with
     | PatAny _ -> (p, noid, false)
     | PatIdent(n, _) -> (p, n, false)
     | PatAs(p, n, ploc) ->
@@ -297,20 +343,18 @@ and pat_simple_propose_id p ptyp preferred_temp_prefix mutable_leaves sc =
         ((pat_skip_typed p), n, true)
     | _ ->
         if (pat_have_vars p) then (p, (gen_temp_idk preferred_temp_prefix), true)
-        else (p, noid, false)) in
-    let (p, n, tref) = pat_simple_propose_id_ p in
-    let flags = (if tref then ValTempRef :: [] else []) @ (if mutable_leaves then ValMutable :: [] else []) in
-    if n = noid then ()
-    else create_val n ptyp flags sc (get_pat_loc p);
-    (p, n, tref)
+        else (p, noid, false)
 
-and pat_simple_unpack p ptyp e_opt code preferred_temp_prefix mutable_leaves sc =
+and pat_simple_unpack p ptyp e_opt code preferred_temp_prefix flags sc =
+    let mutable_leaves = List.mem ValMutable flags in
+    let flags = List.filter (fun f -> f != ValMutable && f != ValTempRef) flags in
     let (p, n, tref) = pat_simple_propose_id p ptyp preferred_temp_prefix mutable_leaves sc in
     if n = noid then (n, code) else
     let loc = get_pat_loc p in
-    let flags = (if tref then ValTempRef :: [] else []) @
-                (if mutable_leaves then ValMutable :: [] else []) in
-    let _ = create_val n ptyp flags sc loc in
+    let flags = if mutable_leaves && not tref then ValMutable :: flags
+                else if tref then ValTempRef :: flags else flags in
+    let ktyp = match e_opt with Some(e) -> get_kexp_ktyp e | _ -> typ2ktyp ptyp loc in
+    let _ = create_val n ktyp flags sc loc in
     let code = match e_opt with
         | Some(e) -> KDefVal(n, e, loc) :: code
         | _ -> code in
@@ -318,15 +362,16 @@ and pat_simple_unpack p ptyp e_opt code preferred_temp_prefix mutable_leaves sc 
     (match p with
     | PatTuple(pl, loc) ->
         let tl = match ptyp with
-                | KTypTuple(tl) ->
+                | TypTuple(tl) ->
                     if (List.length tl) != (List.length pl) then
                         raise_compile_err loc "the number of elements in the pattern and in the tuple type are different"
                     else
                         tl
                 | _ -> raise_compile_err loc "invalid type of the tuple pattern (it must be a tuple as well)" in
         let (_, code) = List.fold_left2 (fun (idx, code) pi ti ->
-            let ei = KExpMem(n, idx, (ti, (get_pat_loc pi))) in
-            let (_, code) = pat_simple_unpack pi ti (Some ei) code preferred_temp_prefix mutable_leaves sc in
+            let loci = get_pat_loc pi in
+            let ei = KExpMem(n, idx, ((typ2ktyp ti loci), loci)) in
+            let (_, code) = pat_simple_unpack pi ti (Some ei) code preferred_temp_prefix flags sc in
             (idx + 1, code)) (0, code) pl tl in
         code
     | PatIdent _ -> code
@@ -335,21 +380,55 @@ and pat_simple_unpack p ptyp e_opt code preferred_temp_prefix mutable_leaves sc 
     | PatRec(_, ip_l, loc) ->
         raise_compile_err loc "record patterns are not supported yet"
     | PatAs _ ->
-        let e = KExpAtom(Atom.Id n, (ptyp, (get_pat_loc p))) in
-        let (_, code) = pat_simple_unpack p ptyp (Some e) code preferred_temp_prefix mutable_leaves sc in
+        let e = KExpAtom(Atom.Id n, (ktyp, loc)) in
+        let (_, code) = pat_simple_unpack p ptyp (Some e) code preferred_temp_prefix flags sc in
         code
     | _ ->
+        printf "pattern: "; Ast_pp.pprint_pat_x p; printf "\n";
         raise_compile_err loc "this type of pattern cannot be used here") in
     (n, code)
 
-and transform_all_types_and_cons elist code =
+and transform_fun df code sc =
+    let {df_name; df_templ_args; df_templ_inst; df_loc} = !df in
+    let inst_list = if df_templ_args = [] then df_name :: [] else df_templ_inst in
+    List.fold_left (fun code inst ->
+        match (id_info inst) with
+        | IdFun {contents={df_name=inst_name; df_args=inst_args;
+            df_typ=inst_typ; df_body=inst_body; df_flags=inst_flags; df_loc=inst_loc}} ->
+            let (argtyps, rt) = match inst_typ with
+                | TypFun(argtyps, rt) -> (argtyps, rt)
+                | _ -> raise_compile_err inst_loc
+                    (sprintf "the type of non-constructor function '%s' should be TypFun(_,_)" (id2str inst_name)) in
+            let ktyp = typ2ktyp inst_typ df_loc in
+            let nargs = List.length inst_args in
+            let nargtypes = List.length argtyps in
+            let _ = if nargs = nargtypes then () else
+                raise_compile_err inst_loc
+                    (sprintf "the number of argument patterns (%d) and the number of argument types (%d) do not match"
+                    nargs nargtypes) in
+            let body_sc = new_block_scope() :: sc in
+            let (argids, body_code) = List.fold_left2 (fun (argids, body_code) pi ti ->
+                let (i, body_code) = pat_simple_unpack pi ti None body_code "arg" [] body_sc in
+                (i :: argids, body_code)) ([], []) inst_args argtyps in
+            let body_loc = get_exp_loc inst_body in
+            let (e, body_code) = exp2kexp inst_body body_code false body_sc in
+            let kf = ref { kf_name=inst_name; kf_typ=ktyp; kf_args=(List.rev argids);
+                kf_body=(code2kexp (e :: body_code) body_loc); kf_flags=inst_flags; kf_scope=sc; kf_loc=inst_loc } in
+            set_idk_entry inst_name (KFun kf);
+            KDefFun kf :: code
+        | i -> raise_compile_err (get_idinfo_loc i)
+            (sprintf "the entry '%s' (an instance of '%s'?) is supposed to be a function, but it's not" (id2str inst) (id2str df_name)))
+    code inst_list
+
+and transform_all_types_and_cons elist code sc =
     List.fold_left (fun code e -> match e with
-        | DefVariant {contents={dvar_name; dvar_templ_inst; dvar_loc}} ->
+        | DefVariant {contents={dvar_name; dvar_templ_args; dvar_templ_inst; dvar_loc}} ->
+            let inst_list = if dvar_templ_args = [] then dvar_name :: [] else dvar_templ_inst in
             List.fold_left (fun code inst ->
                 match (id_info inst) with
                 | IdVariant {contents={dvar_name=inst_name; dvar_cases; dvar_constr; dvar_flags; dvar_scope; dvar_loc=inst_loc}} ->
                     let kvar = ref { kvar_name=inst_name; kvar_cases=List.map (fun (i, t) -> (i, typ2ktyp t inst_loc)) dvar_cases;
-                                     kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=dvar_scope; kvar_loc=inst_loc } in
+                                     kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
                     let _ = set_idk_entry inst_name (KVariant kvar) in
                     let code = (KDefVariant kvar) :: code in
                     List.fold_left (fun code constr ->
@@ -360,19 +439,22 @@ and transform_all_types_and_cons elist code =
                                        | KTypFun(argtypes, _) -> argtypes
                                        | _ -> [] in
                             let kf = ref { kf_name=df_name; kf_typ=(typ2ktyp df_typ dvar_loc); kf_args=List.map (fun _ -> noid) argtypes;
-                                           kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: []; kf_scope=dvar_scope; kf_loc=dvar_loc } in
-                            let _ = set_idk_entry df_name (KFun kf) in
+                                           kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: []; kf_scope=sc; kf_loc=dvar_loc } in
+                            set_idk_entry df_name (KFun kf);
                             (KDefFun kf) :: code
                         | _ -> raise_compile_err dvar_loc
                             (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))
                     code dvar_constr
                 | _ -> raise_compile_err dvar_loc
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
-            code dvar_templ_inst
-        | DefExn {contents={dexn_name; dexn_typ; dexn_scope; dexn_loc}} ->
-            let ke = ref { ke_name=dexn_name; ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=dexn_scope; ke_loc=dexn_loc } in
+            code inst_list
+        | DefExn {contents={dexn_name; dexn_typ; dexn_loc}} ->
+            let ke = ref { ke_name=dexn_name; ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
             set_idk_entry dexn_name (KExn ke);
             (KDefExn ke) :: code
         | _ -> code) code elist
 
-let normalize_mod m = ([]: kexp_t list)
+let normalize_mod m =
+    let minfo = !(get_module m) in
+    let modsc = (ScModule m) :: [] in
+    eseq2code (minfo.dm_defs) [] modsc

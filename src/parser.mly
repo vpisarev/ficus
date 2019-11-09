@@ -186,6 +186,7 @@ top_level_seq_:
 top_level_exp:
 | stmt { $1 :: [] }
 | decl { $1 }
+| ccode_exp { $1 :: [] }
 | IMPORT module_name_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
@@ -223,7 +224,7 @@ decl:
         let vflags = List.rev $1 in
         List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2
     }
-| fun_decl_start fun_args EQUAL stmt
+| fun_decl_start fun_args EQUAL stmt_or_ccode
     {
         let (flags, fname) = $1 in
         let (args, rt, prologue) = $2 in
@@ -320,8 +321,7 @@ stmt:
         let for_body_ = $6 in
         ExpFor (for_cl_, for_body_, $1, curr_loc())
     }
-| CCODE STRING { ExpCCode($2, make_new_ctx()) }
-| FUN fun_args DOUBLE_ARROW stmt
+| FUN fun_args DOUBLE_ARROW stmt_or_ccode
     {
         let ctx = make_new_ctx() in
         let (args, rt, prologue) = $2 in
@@ -340,6 +340,13 @@ stmt:
         ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
     }
 | complex_exp { $1 }
+
+ccode_exp:
+| CCODE STRING { ExpCCode($2, make_new_ctx()) }
+
+stmt_or_ccode:
+| stmt { $1 }
+| ccode_exp { $1 }
 
 simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
@@ -644,6 +651,7 @@ val_decls_:
 
 val_decl:
 | simple_pat EQUAL exp_or_block { ($1, $3, curr_loc()) }
+| simple_pat EQUAL ccode_exp { ($1, $3, curr_loc()) }
 | FOLD fold_clause exp_or_block
     {
         let ((fold_pat, fold_init_exp), fold_cl) = $2 in

@@ -229,4 +229,4 @@ and pprint_kexpseq el braces =
 
 let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ktyp t; Format.close_box(); Format.print_flush ()
 let pprint_kexp_x e = Format.print_flush (); Format.open_box 0; pprint_kexp e; Format.close_box(); Format.print_flush ()
-let pprint_top code = Format.print_flush (); Format.open_box 0; pprint_kexpseq code false; Format.close_box(); Format.print_flush ()
+let pprint_top code = Format.print_flush (); Format.open_box 0; pprint_kexpseq code false; Format.close_box(); pbreak(); Format.print_flush ()
