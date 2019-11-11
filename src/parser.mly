@@ -186,7 +186,7 @@ top_level_seq_:
 top_level_exp:
 | stmt { $1 :: [] }
 | decl { $1 }
-| ccode_exp { $1 :: [] }
+| ccode_exp { ExpCCode($1, (TypVoid, curr_loc())) :: [] }
 | IMPORT module_name_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
@@ -342,11 +342,11 @@ stmt:
 | complex_exp { $1 }
 
 ccode_exp:
-| CCODE STRING { ExpCCode($2, make_new_ctx()) }
+| CCODE STRING { $2 }
 
 stmt_or_ccode:
 | stmt { $1 }
-| ccode_exp { $1 }
+| ccode_exp { ExpCCode($1, make_new_ctx()) }
 
 simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
@@ -651,7 +651,7 @@ val_decls_:
 
 val_decl:
 | simple_pat EQUAL exp_or_block { ($1, $3, curr_loc()) }
-| simple_pat EQUAL ccode_exp { ($1, $3, curr_loc()) }
+| simple_pat EQUAL ccode_exp { ($1, (ExpCCode($3, make_new_ctx())), curr_loc()) }
 | FOLD fold_clause exp_or_block
     {
         let ((fold_pat, fold_init_exp), fold_cl) = $2 in

@@ -4,8 +4,10 @@ fun fact(n: int)
     fact_(n, 1)
 }
 
-/*fun rgb2gray(rgbimg: uint8 [,]) =
+fun rgb2gray(rgbimg: (uint8, uint8, uint8) [,]) =
 [
-    for (r, g, b) in rgbimg =>
-        sat_uint8(r*0.299 + g*0.587 + b*0.114)
-]*/
+    for ((r, g, b)
+        <-
+        rgbimg)
+        sat_uint8(r*0.299f + g*0.587f + b*0.114f)
+]

@@ -20,7 +20,7 @@ Here are the essential features that are planned for Ficus 1.0:
     * (*planned*) co-routines to enable light-weight threading without associated OS overhead on switching between the threads and their scheduling.
   - [x] Rich set of primitive data types: 8-, 16-, 32-, 64-bit signed and unsigned integers, 32- and 64-bit floating-point values (16-bit floating-point type will eventually be added as well), bool, char. In other words, matrices, images, audio data, tensors and other massive data arrays can be represented in the most optimal way.
   - [±] Native `string` type and good Unicode support.
-  - [x] Tuples and records. At compile-time records are converted to tuples. They are allocated on stack and there is no any extra overhead (i.e. no tags, dictionaries of keys etc.)
+  - [x] Tuples and records. They are efficient (equally efficient) types, allocated on stack with no any extra overhead (i.e. no tags, dictionaries of keys etc.)
   - [x] Native support for multi-dimensional dense arrays. Many modern languages represent 2D arrays as arrays of arrays. Thus, 4D arrays, which are essential data structures in Deep Learning, would need arrays of arrays of arrays of arrays, which is very inefficient. Of course, it's possible to represent multi-dimensional arrays using 1D arrays and on each access transform N-D index into the "raw" 1D index, but it's both inconvenient and error-prone, e.g. out-of-range 4D index, when converted to a raw index, may be a within-range value. Instead, Ficus offers full support for multi-dimensional arrays, including convenient access to individual elements, as well as sub-arrays, just like in Python+numpy:
 
         // create 1920x1080 image containing 3-tuples and initialize it with 0's

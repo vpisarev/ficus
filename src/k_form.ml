@@ -20,9 +20,12 @@
         }
     * all the symbols have known type. If it cannot be figured out,
       type checker or the k-form generator (see k_norm.ml) report compile error.
+    * at once, all the types (typ_t) are converted to k-types (ktyp_t), i.e.
+      all indirections are eliminated, instances of generic types
+      (TypApp(<args...>, <some_generic_type_id>)) are replaced with concrete instances
+      (KTypName(<instance_type_id>)) or even actual types where applicable.
     * all complex expressions are broken down into sequences of basic operations
       with intermediate results stored in temporary values.
-    * records are converted to tuples
     * pattern matching is converted into a sequences of nested if-expressions
     * import directives are removed; we've already resolved all the symbols
     * generic types and functions are removed. Their instances, generated
@@ -47,8 +50,11 @@ type dom_t = Domain.t
 
 type intrin_t =
     | IntrinMkRef
-    | IntrinGetTag
+    | IntrinVariantTag
+    | IntrinVariantCase
     | IntrinGetShape
+    | IntrinListHead
+    | IntrinListTail
 
 type ktyp_t =
     | KTypInt
@@ -63,6 +69,7 @@ type ktyp_t =
     | KTypCPointer
     | KTypFun of ktyp_t list * ktyp_t
     | KTypTuple of ktyp_t list
+    | KTypRecord of id_t * (id_t * ktyp_t) list
     | KTypName of id_t
     | KTypArray of int * ktyp_t
     | KTypList of ktyp_t
@@ -83,6 +90,7 @@ and kexp_t =
     | KExpIf of kexp_t * kexp_t * kexp_t * kctx_t
     | KExpCall of id_t * atom_t list * kctx_t
     | KExpMkTuple of atom_t list * kctx_t
+    | KExpMkRecord of atom_t list * kctx_t
     | KExpMkArray of int list * atom_t list * kctx_t
     | KExpAt of atom_t * dom_t list * kctx_t
     | KExpMem of id_t * int * kctx_t
@@ -154,6 +162,7 @@ let get_kexp_kctx e = match e with
     | KExpIf(_, _, _, c) -> c
     | KExpCall(_, _, c) -> c
     | KExpMkTuple(_, c) -> c
+    | KExpMkRecord(_, c) -> c
     | KExpMkArray(_, _, c) -> c
     | KExpAt(_, _, c) -> c
     | KExpMem(_, _, c) -> c
@@ -214,10 +223,27 @@ let get_lit_ktyp l = match l with
     | LitBool(_) -> KTypBool
     | LitNil -> KTypNil
 
+let get_atom_ktyp a = match a with
+    | Atom.Id i -> get_id_ktyp i
+    | Atom.Lit l -> get_lit_ktyp l
+
 let intrin2str iop = match iop with
-    | IntrinMkRef -> "MK_REF"
-    | IntrinGetTag -> "GET_TAG"
-    | IntrinGetShape -> "GET_SHAPE"
+    | IntrinMkRef -> "INTRIN_MK_REF"
+    | IntrinVariantTag -> "INTRIN_VARIANT_TAG"
+    | IntrinVariantCase -> "INTRIN_VARIANT_CASE"
+    | IntrinGetShape -> "INTRIN_GET_SHAPE"
+    | IntrinListHead -> "INTRIN_LIST_HD"
+    | IntrinListTail -> "INTRIN_LIST_TL"
+
+let create_val name t flags sc loc =
+    let dv = { kv_name=name; kv_typ=t; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
+    set_idk_entry name (KVal dv)
+
+let create_defval n t flags e_opt code sc loc =
+    let _ = create_val n t flags sc loc in
+    match e_opt with
+    | Some(e) -> KDefVal(n, e, loc) :: code
+    | _ -> code
 
 (* walk through a K-normalized syntax tree and produce another tree *)
 
@@ -271,6 +297,9 @@ and walk_ktyp t callb =
     | KTypExn | KTypErr | KTypModule -> t
     | KTypFun (args, rt) -> KTypFun((walk_ktl_ args), (walk_ktyp_ rt))
     | KTypTuple elems -> KTypTuple(walk_ktl_ elems)
+    | KTypRecord (rn, relems) ->
+            KTypRecord((walk_id_ rn),
+                (List.map (fun (ni, ti) -> ((walk_id_ ni), (walk_ktyp_ ti))) relems))
     | KTypName k -> KTypName(walk_id_ k)
     | KTypArray (d, t) -> KTypArray(d, (walk_ktyp_ t))
     | KTypList t -> KTypList(walk_ktyp_ t)
@@ -305,6 +334,7 @@ and walk_kexp e callb =
         KExpIf((walk_kexp_ c), (walk_kexp_ then_e), (walk_kexp_ else_e), (walk_kctx_ ctx))
     | KExpSeq(elist, ctx) -> KExpSeq((List.map walk_kexp_ elist), (walk_kctx_ ctx))
     | KExpMkTuple(alist, ctx) -> KExpMkTuple((walk_al_ alist), (walk_kctx_ ctx))
+    | KExpMkRecord(alist, ctx) -> KExpMkRecord((walk_al_ alist), (walk_kctx_ ctx))
     | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
     | KExpCall(f, args, ctx) -> KExpCall((walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
     | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
@@ -391,6 +421,7 @@ and check_n_fold_id k callb =
 and fold_ktyp t callb =
     let fold_ktyp_ t = check_n_fold_ktyp t callb in
     let fold_ktl_ tl = List.iter fold_ktyp_ tl in
+    let fold_id_ i = check_n_fold_id i callb in
     (match t with
     | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypVoid | KTypNil | KTypBool
@@ -398,7 +429,9 @@ and fold_ktyp t callb =
     | KTypExn | KTypErr | KTypModule -> ()
     | KTypFun (args, rt) -> fold_ktl_ args; fold_ktyp_ rt
     | KTypTuple elems -> fold_ktl_ elems
-    | KTypName k -> check_n_fold_id k callb
+    | KTypRecord (rn, relems) -> fold_id_ rn;
+        List.iter (fun (ni, ti) -> fold_id_ ni; fold_ktyp_ ti) relems
+    | KTypName i -> fold_id_ i
     | KTypArray (d, t) -> fold_ktyp_ t
     | KTypList t -> fold_ktyp_ t
     | KTypRef t -> fold_ktyp_ t)
@@ -425,6 +458,7 @@ and fold_kexp e callb =
         fold_kexp_ c; fold_kexp_ then_e; fold_kexp_ else_e; ctx
     | KExpSeq(elist, ctx) -> List.iter fold_kexp_ elist; ctx
     | KExpMkTuple(alist, ctx) -> fold_al_ alist; ctx
+    | KExpMkRecord(alist, ctx) -> fold_al_ alist; ctx
     | KExpMkArray(_, elems, ctx) -> fold_al_ elems; ctx
     | KExpCall(f, args, ctx) -> fold_id_ f; fold_al_ args; ctx
     | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx

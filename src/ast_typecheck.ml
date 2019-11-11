@@ -1074,7 +1074,7 @@ and check_exp e env sc =
         ExpTyped(new_e1, new_t1, ctx)
     | ExpCCode(_, _) ->
         (match sc with
-        | ScModule(_) :: _ -> unify etyp TypVoid eloc "module-level ccode should have 'void' type"
+        | ScModule(_) :: _ -> () (*unify etyp TypVoid eloc "module-level ccode should have 'void' type"*)
         | ScFun(_) :: _ -> ()
         | _ -> raise_compile_err eloc
             "ccode may be used only at the top (module level) or as a single expression in function definition");
@@ -1179,10 +1179,11 @@ and check_eseq eseq env sc create_sc =
                 | ExpCCode _ -> ()
                 | _ ->
                     (match (deref_typ etyp) with
-                    | TypVoid | TypDecl -> ()
+                    | TypVoid | TypDecl | TypVar {contents=None} -> ()
                     | _ -> if idx = nexps - 1 then () else
+                        ((printf "exp type: "; pprint_typ_x (deref_typ etyp); printf "\n");
                         raise_compile_err eloc
-                        "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error"));
+                        "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error")));
                 (e :: eseq, env)
         with CompileError(_, _) as err -> raise err(*; (e :: eseq, env)*) in
         (eseq1, env1, idx+1)) ([], env, 0) eseq in

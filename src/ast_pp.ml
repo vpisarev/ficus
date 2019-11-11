@@ -83,7 +83,7 @@ let rec pptype_ t p1 =
             pstr ")"; cbox()
     | TypList(t1) -> pptypsuf t1 "List"
     | TypRef(t1) -> pptypsuf t1 "Ref"
-    | TypArray(d, t1) -> pptypsuf t1 (String.make (d - 1) ',')
+    | TypArray(d, t1) -> pptypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
     | TypApp([], n) -> pprint_id n
     | TypApp(t1 :: [], n) -> pptypsuf t1 (id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (id2str n)

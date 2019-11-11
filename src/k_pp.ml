@@ -23,7 +23,7 @@ let rec get_ktyp_pr t = match t with
     | KTypInt | KTypSInt(_) | KTypUInt(_) | KTypFloat(_)
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
     | KTypErr | KTypCPointer | KTypNil | KTypModule | KTypName(_) -> KTypPrBase
-    | KTypTuple(_) -> KTypPrBase
+    | KTypTuple(_) | KTypRecord(_, _) -> KTypPrBase
     | KTypList(_) | KTypRef(_) | KTypArray(_, _) -> KTypPrComplex
     | KTypFun(_, _) -> KTypPrFun
 
@@ -64,9 +64,12 @@ let rec ppktyp_ t p1 =
             pstr ")"; cbox()
     | KTypList(t1) -> ppktypsuf t1 "List"
     | KTypRef(t1) -> ppktypsuf t1 "Ref"
-    | KTypArray(d, t1) -> ppktypsuf t1 (String.make (d - 1) ',')
+    | KTypArray(d, t1) -> ppktypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
     | KTypName(n) -> pprint_id n
     | KTypTuple(tl) -> ppktyplist_ "(" tl
+    | KTypRecord(rn, relems) -> obox(); pprint_id rn; pstr " {";
+        List.iteri (fun i (ni, ti) -> if i = 0 then () else pstr ", ";
+            pprint_id ni; pstr ": "; ppktyp_ ti KTypPr0) relems; pstr "}"; cbox()
     | KTypExn -> pstr "Exn"
     | KTypErr -> pstr "Err"
     | KTypCPointer -> pstr "CPtr"
@@ -159,6 +162,13 @@ let rec pprint_kexp e =
             (match al with
             a :: [] -> pstr ","
             | _ -> ()); cbox(); pstr ")"
+        | KExpMkRecord(al, _) ->
+            pstr "{"; obox();
+            (List.iteri (fun i a ->
+                if i = 0 then () else (pstr ","; pspace()); pprint_atom a) al);
+            (match al with
+            a :: [] -> pstr ","
+            | _ -> ()); cbox(); pstr "}"
         | KExpMkArray(shape, elems, (_, l)) ->
             let total_elems = List.length elems in
             let total_elems2 = List.fold_left (fun p di -> p*di) 1 shape in

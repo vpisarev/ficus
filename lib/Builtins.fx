@@ -34,8 +34,6 @@ operator + (a: char, b: string): string = ccode "
         return fx_status;
     return fx_str_join(fx_ctx, fx_res, 0, s, 2);"
 
-fun print_string(a: string): void = ccode "return __fx_puts(fx_ctx, a->data);"
-
 fun atoi(a: string): int option
 {
     fun atoi_(a: string): (int, bool) = ccode
@@ -45,6 +43,26 @@ fun atoi(a: string): int option
     | _ => None
     }
 }
+
+pure nothrow fun sat_uint8(i: int): uint8 = ccode "
+    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
+
+pure nothrow fun sat_uint8(f: float): uint8 = ccode "
+    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
+
+pure nothrow fun sat_uint8(d: double): uint8 = ccode "
+    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
+
+pure nothrow fun round(x: float): int = ccode "return (fx_int)lrintf(x);"
+pure nothrow fun round(x: double): int = ccode "return (fx_int)lrint(x);"
+
+fun min(a: 't, b: 't) = if (a <= b) a else b
+fun max(a: 't, b: 't) = if (a >= b) a else b
+fun abs(a: 't) = if (a >= (0 :> 't)) a else -a
+
+fun print_string(a: string): void = ccode "return __fx_puts(fx_ctx, a->data);"
 
 fun print(a: 't) = print_string(string(a))
 fun print(a: string) = print_string(a)

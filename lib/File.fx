@@ -93,7 +93,7 @@ fun println(f: file_t, x: 't): void
 
 fun write(f: file_t, a: 't [])
 {
-    fun write_(f: cptr, a: 't []): int = ccode
+    fun write_(f: cptr, a: 't []): void = ccode
     "
     size_t elem_size = a->dim[0].step;
     return __fx_fwrite(fx_ctx, fx_result, a->data, elem_size, a->dim[0].size, (FILE*)(f->p));
@@ -104,7 +104,7 @@ fun write(f: file_t, a: 't [])
 
 fun write(f: file_t, a: 't [,])
 {
-    fun write_(f: cptr, a: 't [,]): int = ccode
+    fun write_(f: cptr, a: 't [,]): void = ccode
     "
     size_t elem_size = a->dim[1].step;
     size_t m = a->dim[0].size, n = a->dim[1].size;
@@ -125,7 +125,7 @@ fun write(f: file_t, a: 't [,])
 
 fun read(f: file_t, buf: uint8 [])
 {
-    fun read_(f: cptr, buf: uint8 []): int =
+    fun read_(f: cptr, buf: uint8 []): void =
         ccode "return __fx_fread(fx_ctx, &fx_res, buf->data, 1, buf->dim[0].size, (FILE*)(f->p));"
     if (!isOpened(f)) throw NullFileError
     read_(f.handle, buf)
