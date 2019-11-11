@@ -219,7 +219,7 @@ let rec pprint_kexp e =
                     if j = 0 then () else (pstr " &&"; pspace());
                     pprint_kexp cj) checks_i;
                 if checks_i = [] then () else pstr ")";
-                pspace(); pprint_kexp e_i) handlers;
+                pspace(); pprint_kexp e_i; pspace()) handlers;
             cbox();
         | KExpTryCatch(e1, e2, _) ->
             obox(); pstr "TRY"; pspace(); pprint_kexp e1; pspace();

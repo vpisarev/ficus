@@ -490,12 +490,12 @@ and transform_pat_matching a handlers code sc loc =
                 let _ = if (List.length tl) != (List.length pl) then
                     raise_compile_err (get_pat_loc (List.hd pl)) "wrong number of the pattern elements"
                 else () in
-                let (_, plists) = List.fold_left2 (fun (idx, plists) pi ti ->
+                let (_, plists_delta) = List.fold_left2 (fun (idx, plists_delta) pi ti ->
                 let loci = get_pat_loc pi in
                 let ei = KExpMem(tup_id, idx, (ti, loci)) in
                 let pinfo_i = {pinfo_p=pi; pinfo_typ=ti; pinfo_e=ei; pinfo_tag=noid} in
-                let plists = dispatch_pat pinfo_i plists in
-                (idx + 1, plists)) (0, plists) pl tl in
+                (idx + 1, pinfo_i :: plists_delta)) (0, []) pl tl in
+                let plists = List.fold_left (fun plists pinfo -> dispatch_pat pinfo plists) plists plists_delta in
                 plists
         in
         let get_var_tag_cmp_and_extract n pinfo (checks, code) vn sc loc =
@@ -532,8 +532,12 @@ and transform_pat_matching a handlers code sc loc =
             let (p, n, tref) = pat_propose_id p ptyp temp_prefix false false case_sc in
             if n = noid then process_next_subpat plists (checks, code) case_sc else
             let loc = get_pat_loc p in
-            let flags = if tref then ValTempRef :: [] else [] in
-            let code = create_defval n ptyp flags (Some ke) code sc loc in
+            let (n, code) = match ke with
+                | KExpAtom((Atom.Id n0), _) -> (n0, code)
+                | _ ->
+                    let flags = if tref then ValTempRef :: [] else [] in
+                    let code = create_defval n ptyp flags (Some ke) code sc loc in
+                    (n, code) in
             let (plists, checks, code) =
             (match p with
             | PatLit (l, _) ->
@@ -602,7 +606,7 @@ and transform_pat_matching a handlers code sc loc =
         let (ke, case_code) = exp2kexp e case_code false case_sc in
         let eloc = get_exp_loc e in
         let ke = code2kexp (ke :: case_code) eloc in
-        (checks, ke)) handlers in
+        ((List.rev checks), ke)) handlers in
     (k_handlers, code)
 
 and transform_fun df code sc =
