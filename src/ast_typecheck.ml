@@ -1179,7 +1179,7 @@ and check_eseq eseq env sc create_sc =
                 | ExpCCode _ -> ()
                 | _ ->
                     (match (deref_typ etyp) with
-                    | TypVoid | TypDecl | TypVar {contents=None} -> ()
+                    | TypVoid | TypDecl -> ()
                     | _ -> if idx = nexps - 1 then () else
                         ((printf "exp type: "; pprint_typ_x (deref_typ etyp); printf "\n");
                         raise_compile_err eloc

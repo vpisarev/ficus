@@ -150,7 +150,8 @@ let rec exp2kexp e code tref sc =
             (elems, code) erow) ([], code) erows in
         let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
         (KExpMkArray(shape, (List.rev elems), kctx), code)
-    | ExpMkRecord (rn, relems, _) -> (* [TODO] *) raise_compile_err eloc "records are not supported yet"
+    | ExpMkRecord (rn, relems, _) ->
+        (* [TODO] *) raise_compile_err eloc "records are not supported yet"
     | ExpUpdateRecord(e, relems, _) -> (* [TODO] *) raise_compile_err eloc "records are not supported yet"
     | ExpCall(f, args, _) ->
         let (f_a, code) = exp2atom f code false sc in
@@ -310,7 +311,6 @@ let rec exp2kexp e code tref sc =
     | DirImportFrom _ -> (KExpNop(eloc), code)
     (*
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
-
     *)
     | _ -> raise_compile_err eloc "unsupported operator"
 
@@ -405,13 +405,13 @@ and pat_propose_id p ptyp temp_prefix is_simple mutable_leaves sc =
 
 and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
     let mutable_leaves = List.mem ValMutable flags in
-    let flags = List.filter (fun f -> f != ValMutable && f != ValTempRef) flags in
+    let n_flags = List.filter (fun f -> f != ValMutable && f != ValTempRef) flags in
     let (p, n, tref) = pat_propose_id p ptyp temp_prefix true mutable_leaves sc in
     if n = noid then (n, code) else
     let loc = get_pat_loc p in
-    let flags = if mutable_leaves && not tref then ValMutable :: flags
-                else if tref then ValTempRef :: flags else flags in
-    let code = create_defval n ptyp flags e_opt code sc loc in
+    let n_flags = if mutable_leaves && not tref then ValMutable :: n_flags
+                else if tref then ValTempRef :: n_flags else n_flags in
+    let code = create_defval n ptyp n_flags e_opt code sc loc in
     let code =
     (match p with
     | PatTuple(pl, loc) ->
@@ -532,8 +532,8 @@ and transform_pat_matching a handlers code sc loc =
             let (p, n, tref) = pat_propose_id p ptyp temp_prefix false false case_sc in
             if n = noid then process_next_subpat plists (checks, code) case_sc else
             let loc = get_pat_loc p in
-            let (n, code) = match ke with
-                | KExpAtom((Atom.Id n0), _) -> (n0, code)
+            let (n, code) = match (ke, tref) with
+                | (KExpAtom((Atom.Id n0), _), true) -> (n0, code)
                 | _ ->
                     let flags = if tref then ValTempRef :: [] else [] in
                     let code = create_defval n ptyp flags (Some ke) code sc loc in

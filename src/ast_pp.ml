@@ -29,7 +29,7 @@ let lit_to_string c = match c with
     | LitNil -> "Nil"
 
 let pprint_lit x = pstr (lit_to_string x)
-let pprint_id x = pstr (id2str x)
+let pprint_id x = pstr (match x with Id.Name(0) -> "__" | _ -> id2str x)
 
 type typ_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
 

@@ -15,7 +15,7 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
-let pprint_id x = pstr (id2str x)
+let pprint_id = Ast_pp.pprint_id
 
 type ktyp_pr_t = KTypPr0 | KTypPrFun | KTypPrComplex | KTypPrBase
 
