@@ -202,15 +202,15 @@ let get_kinfo_loc info = match info with
 
 let get_id_loc i = get_kinfo_loc (kinfo i)
 
-let get_kinfo_ktyp info = match info with
-    | KNone -> failwith "attempt to request type of non-existing symbol"
+let get_kinfo_ktyp info i = match info with
+    | KNone -> failwith (sprintf "attempt to request type of non-existing symbol '%s'" (id2str i))
     | KText s -> failwith (sprintf "attempt to request type of symbol '%s'" s)
     | KVal {kv_typ} -> kv_typ
     | KFun {contents = {kf_typ}} -> kf_typ
     | KExn {contents = {ke_typ}} -> ke_typ
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
 
-let get_id_ktyp i = get_kinfo_ktyp (kinfo i)
+let get_id_ktyp i = get_kinfo_ktyp (kinfo i) i
 
 (* used by the type checker *)
 let get_lit_ktyp l = match l with

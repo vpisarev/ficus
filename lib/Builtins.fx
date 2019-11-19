@@ -13,7 +13,7 @@ fun ignore(_: 't) {}
 
 type 't option = None | Some: 't
 
-fun getOpt(x: 't option, defval: 't) = match (x) { | Some(x) => x | None => defval }
+fun getOpt(x: 't option, defval: 't) = match (x) { | Some(x) => x | _ => defval }
 
 pure nothrow fun length(s: string): int = ccode "return s->length;"
 fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"

@@ -91,10 +91,11 @@ let pprint_dom r = match r with
           | Atom.Lit(LitInt 1L) -> ()
           | _ -> pstr ":"; pprint_atom k)
 
-let rec pprint_kexp e =
+let rec pprint_kexp e = pprint_kexp_ e true
+and pprint_kexp_ e prtyp =
     let t = get_kexp_ktyp e in
     let obox_cnt = ref 0 in
-    let obox_() = obox(); pstr "<"; ppktyp_ t KTypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
+    let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
     match e with
     | KDefVal(n, e0, loc) -> obox();
@@ -105,7 +106,7 @@ let rec pprint_kexp e =
         | ValTempRef -> pstr "TEMP_REF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
-        pstr "VAL"; pspace(); pprint_id n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace(); pprint_kexp e0; cbox()
+        pstr "VAL"; pspace(); pprint_id n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace(); pprint_kexp_ e0 false; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_typ; kf_body; kf_flags }} ->
         let fkind = ref "FUN" in
         let is_constr = List.mem FunConstr kf_flags in
@@ -145,7 +146,12 @@ let rec pprint_kexp e =
             let ostr = binop_to_string o in
             pprint_atom a; pspace(); pstr ostr; pspace(); pprint_atom b
         | KExpAssign(n, e, _) -> pprint_id n; pspace(); pstr "="; pspace(); pprint_kexp e
-        | KExpMem(n, i, _) -> pprint_id n; pstr "."; pstr (string_of_int i)
+        | KExpMem(n, i, _) ->
+            pprint_id n; pstr ".";
+            (match (get_id_ktyp n) with
+            | KTypRecord(rn, relems) ->
+                let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
+            | _ -> pstr (string_of_int i))
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
             pstr ostr; pprint_atom a

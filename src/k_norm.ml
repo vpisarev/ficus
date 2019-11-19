@@ -58,10 +58,6 @@ let typ2ktyp t loc =
         | t -> typ2ktyp_ t)
     in typ2ktyp_ t
 
-let atom2id a loc msg = match a with
-    | Atom.Id i -> i
-    | Atom.Lit _ -> raise_compile_err loc msg
-
 let filter_out_nops code =
     List.filter (fun e -> match e with
         | KExpNop _ -> false
@@ -150,25 +146,56 @@ let rec exp2kexp e code tref sc =
             (elems, code) erow) ([], code) erows in
         let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
         (KExpMkArray(shape, (List.rev elems), kctx), code)
-    | ExpMkRecord (rn, relems, _) ->
-        (* [TODO] *) raise_compile_err eloc "records are not supported yet"
-    | ExpUpdateRecord(e, relems, _) -> (* [TODO] *) raise_compile_err eloc "records are not supported yet"
+    | ExpMkRecord (rn, rinitelems, _) ->
+        let relems = match (deref_typ etyp) with
+            | TypRecord {contents=(relems, Some(_))} -> relems
+            | TypRecord _ -> raise_compile_err eloc
+                "the record type cannot be inferenced. Please, use explicit type specification"
+            | _ -> raise_compile_err eloc
+                "the record construction expression should return a record type" in
+        let (ratoms, code) = List.fold_left (fun (ratoms, code) (ni, ti, opt_vi) ->
+            let (a, code) = try
+                let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rinitelems in
+                exp2atom ej code false sc
+            with Not_found ->
+                (match opt_vi with
+                | Some(vi) -> ((Atom.Lit vi), code)
+                | _ -> raise_compile_err eloc
+                    (sprintf
+                    "there is no explicit inializer for the field '%s' nor there is default initializer for it"
+                    (id2str ni)))
+            in (a::ratoms, code)) ([], code) relems in
+        (KExpMkRecord((List.rev ratoms), kctx), code)
+    | ExpUpdateRecord(e, rupdelems, _) ->
+        let (rec_n, code) = exp2id e code true sc "the updated record cannot be a literal" in
+        let relems = match ktyp with
+            | KTypRecord (rn, relems) -> relems
+            | _ -> raise_compile_err eloc
+                "the record construction expression should return a record type" in
+        let (_, ratoms, code) = List.fold_left (fun (idx, ratoms, code) (ni, ti) ->
+            let (a, code) = try
+                let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rupdelems in
+                exp2atom ej code false sc
+            with Not_found ->
+                let ni_ = dup_idk ni in
+                let get_ni = KExpMem(rec_n, idx, (ti, eloc)) in
+                let code = create_defval ni_ ti (ValTempRef :: []) (Some get_ni) code sc eloc in
+                ((Atom.Id ni_), code)
+            in (idx + 1, a::ratoms, code)) (0, [], code) relems in
+        (KExpMkRecord((List.rev ratoms), kctx), code)
     | ExpCall(f, args, _) ->
-        let (f_a, code) = exp2atom f code false sc in
-        let f_id = atom2id f_a (get_exp_loc f) "a function name cannot be a literal" in
+        let (f_id, code) = exp2id f code false sc "a function name cannot be a literal" in
         let (args, code) = List.fold_left (fun (args, code) ei ->
             let (ai, code) = exp2atom ei code false sc in (ai :: args, code)) ([], code) args in
         (KExpCall(f_id, (List.rev args), kctx), code)
     | ExpDeref(e, _) ->
-        let (a, code) = exp2atom e code false sc in
-        let a_id = atom2id a (get_exp_loc e) "a literal cannot be dereferenced" in
+        let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
         (KExpDeref(a_id, kctx), code)
     | ExpMakeRef(e, _) ->
         let (a, code) = exp2atom e code false sc in
         (KExpIntrin(IntrinMkRef, a :: [], kctx), code)
     | ExpThrow(e, _) ->
-        let (a, code) = exp2atom e code false sc in
-        let a_id = atom2id a (get_exp_loc e) "a literal cannot be thrown as exception" in
+        let (a_id, code) = exp2id e code false sc "a literal cannot be thrown as exception" in
         (KExpThrow(a_id, eloc), code)
     | ExpIf(e1, e2, e3, _) ->
         let (c, code) = exp2kexp e1 code false sc in
@@ -253,8 +280,7 @@ let rec exp2kexp e code tref sc =
         (KExpAt(arr, (List.rev dlist), kctx), code)
     | ExpMem(e1, elem, _) ->
         let e1loc = get_exp_loc e1 in
-        let (a, code) = exp2atom e1 code true sc in
-        let a_id = atom2id a e1loc "a literal is not allowed here" in
+        let (a_id, code) = exp2id e1 code true sc "the literal does not have members to access" in
         let ktyp = get_id_ktyp a_id in
         let i = (match (ktyp, elem) with
                 | (KTypTuple(tl), ExpLit((LitInt i_), (ityp, iloc))) ->
@@ -273,8 +299,7 @@ let rec exp2kexp e code tref sc =
         (KExpMem(a_id, i, kctx), code)
     | ExpAssign(e1, e2, _) ->
         let (e2, code) = exp2kexp e2 code true sc in
-        let (a, code) = exp2atom e1 code true sc in
-        let a_id = atom2id a (get_exp_loc e1) "a literal cannot be assigned" in
+        let (a_id, code) = exp2id e1 code true sc "a literal cannot be assigned" in
         (KExpAssign(a_id, e2, eloc), code)
     | ExpCast(e, t, _) ->
         let (a, code) = exp2atom e code false sc in
@@ -324,6 +349,13 @@ and exp2atom e code tref sc =
         let kv_name = gen_temp_idk "v" in
         create_val kv_name t (if tref then ValTempRef :: [] else []) sc eloc;
         ((Atom.Id kv_name), (KDefVal (kv_name, e, eloc)) :: code)
+
+and exp2id e code tref sc msg =
+    let (a, code) = exp2atom e code tref sc in
+    let i = (match a with
+    | Atom.Id i -> i
+    | Atom.Lit _ -> raise_compile_err (get_exp_loc e) msg)
+    in (i, code)
 
 and exp2dom e code sc =
     match e with
@@ -483,7 +515,7 @@ and transform_pat_matching a handlers code sc loc =
     in
     let rec process_next_subpat plists (checks, code) case_sc =
         let temp_prefix = "v" in
-        let process_pltl tup_id pl tl plists =
+        let process_pltl tup_id pl tl plists alt_ei_opt =
             match pl with
             | PatAny _ :: [] -> plists
             | _ ->
@@ -492,7 +524,13 @@ and transform_pat_matching a handlers code sc loc =
                 else () in
                 let (_, plists_delta) = List.fold_left2 (fun (idx, plists_delta) pi ti ->
                 let loci = get_pat_loc pi in
-                let ei = KExpMem(tup_id, idx, (ti, loci)) in
+                let ei = match alt_ei_opt with
+                    | Some(ei) ->
+                        if idx = 0 then () else raise_compile_err loci
+                            "a code for singe-argument variant case handling is used with a case with multiple patterns";
+                        ei
+                    | _ ->
+                        KExpMem(tup_id, idx, (ti, loci)) in
                 let pinfo_i = {pinfo_p=pi; pinfo_typ=ti; pinfo_e=ei; pinfo_tag=noid} in
                 (idx + 1, pinfo_i :: plists_delta)) (0, []) pl tl in
                 let plists = List.fold_left (fun plists pinfo -> dispatch_pat pinfo plists) plists plists_delta in
@@ -512,14 +550,20 @@ and transform_pat_matching a handlers code sc loc =
             let c_args = match (kinfo vn) with
                 | KFun {contents={kf_typ}} -> (match kf_typ with KTypFun(args, rt) -> args | _ -> [])
                 | _ -> raise_compile_err loc "a variant constructor is expected here" in
-            let (case_n, code) = match c_args with
-                | [] -> (noid, [])
+            let (case_n, code, alt_e_opt) = match c_args with
+                | [] -> (noid, [], None)
                 | _ ->
-                    let case_typ = match c_args with t :: [] -> t | _ -> KTypTuple(c_args) in
-                    let case_n = gen_temp_idk "case" in
-                    let extract_case_exp = KExpIntrin(IntrinVariantCase, (Atom.Id n) :: (Atom.Id vn) :: [], (case_typ, loc)) in
-                    (case_n, extract_case_exp :: [])
-            in (case_n, c_args, checks, code)
+                    let (is_tuple, case_typ) = match c_args with t :: [] -> (false, t) | _ -> (true, KTypTuple(c_args)) in
+                    let extract_case_exp = KExpIntrin(IntrinVariantCase,
+                        (Atom.Id n) :: (Atom.Id vn) :: [], (case_typ, loc)) in
+                    if is_tuple then
+                        let case_n = gen_temp_idk "case" in
+                        let code = create_defval case_n case_typ (ValTempRef :: [])
+                            (Some extract_case_exp) [] sc loc in
+                        (case_n, code, None)
+                    else
+                        (noid, [], (Some extract_case_exp))
+            in (case_n, c_args, checks, code, alt_e_opt)
         in
         let (p_opt, plists) = match plists with
             | (p :: pl_c, pl_cu, pl_u) -> ((Some p), (pl_c, pl_cu, pl_u))
@@ -562,13 +606,13 @@ and transform_pat_matching a handlers code sc loc =
                 let tl = match ptyp with
                     | KTypTuple(tl) -> tl
                     | _ -> raise_compile_err loc "invalid type of the tuple pattern (it must be a tuple as well)" in
-                let plists = process_pltl n pl tl plists in
+                let plists = process_pltl n pl tl plists None in
                 (plists, checks, code)
             | PatVariant(vn, pl, loc) ->
-                let (case_n, tl, checks, code) = get_var_tag_cmp_and_extract n pinfo (checks, code) vn case_sc loc in
-                if case_n = noid then (plists, checks, code)
-                else
-                let plists = process_pltl case_n pl tl plists in
+                let (case_n, tl, checks, code, alt_e_opt) =
+                    get_var_tag_cmp_and_extract n pinfo (checks, code) vn case_sc loc in
+                let plists = if case_n = noid && (Option.is_none alt_e_opt) then plists
+                             else process_pltl case_n pl tl plists alt_e_opt in
                 (plists, checks, code)
             | PatRec(_, ip_l, loc) ->
                 raise_compile_err loc "record patterns are not supported yet"
