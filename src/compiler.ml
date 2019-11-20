@@ -118,7 +118,7 @@ let k_normalize_all modules =
     let _ = (compile_errs := []) in
     let _ = K_form.init_all_idks() in
     let rkcode = List.fold_left (fun rkcode m ->
-        let rkcode_i = K_norm.normalize_mod m in
+        let rkcode_i = K_normalize.normalize_mod m in
         rkcode_i @ rkcode) [] modules in
     (List.rev rkcode, !compile_errs = [])
 

@@ -49,6 +49,7 @@ end
 type dom_t = Domain.t
 
 type intrin_t =
+    | IntrinPopExn
     | IntrinMkRef
     | IntrinVariantTag
     | IntrinVariantCase
@@ -123,6 +124,9 @@ let all_idks = dynvec_create KNone
 
 let sprintf = Printf.sprintf
 let printf = Printf.printf
+
+let builtin_exn_NoMatchError = ref noid
+let builtin_exn_IndexError = ref noid
 
 let new_idk_idx() =
     let new_idx = dynvec_push all_ids in
@@ -228,6 +232,7 @@ let get_atom_ktyp a = match a with
     | Atom.Lit l -> get_lit_ktyp l
 
 let intrin2str iop = match iop with
+    | IntrinPopExn -> "INTRIN_POP_EXN"
     | IntrinMkRef -> "INTRIN_MK_REF"
     | IntrinVariantTag -> "INTRIN_VARIANT_TAG"
     | IntrinVariantCase -> "INTRIN_VARIANT_CASE"
@@ -235,12 +240,9 @@ let intrin2str iop = match iop with
     | IntrinListHead -> "INTRIN_LIST_HD"
     | IntrinListTail -> "INTRIN_LIST_TL"
 
-let create_val name t flags sc loc =
-    let dv = { kv_name=name; kv_typ=t; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
-    set_idk_entry name (KVal dv)
-
 let create_defval n t flags e_opt code sc loc =
-    let _ = create_val n t flags sc loc in
+    let dv = { kv_name=n; kv_typ=t; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
+    set_idk_entry n (KVal dv);
     match e_opt with
     | Some(e) -> KDefVal(n, e, loc) :: code
     | _ -> code

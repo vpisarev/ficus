@@ -312,8 +312,24 @@ let rec exp2kexp e code tref sc =
     | ExpCCode(s, _) -> (KExpCCode(s, kctx), code)
     | ExpMatch(e1, handlers, _) ->
         let (a, code) = exp2atom e1 code false sc in
-        let (k_handlers, code) = transform_pat_matching a handlers code sc eloc in
+        let (k_handlers, code) = transform_pat_matching a handlers code sc eloc false in
         (KExpMatch(k_handlers, kctx), code)
+    | ExpTryCatch(e1, handlers, _) ->
+        let e1loc = get_exp_loc e1 in
+        let try_sc = new_block_scope() :: sc in
+        let (e1, body_code) = exp2kexp e1 [] false try_sc in
+        let try_body = code2kexp (e1 :: body_code) e1loc in
+        let exn_loc = match handlers with
+            | ((p :: _), _) :: _ -> get_pat_loc p
+            | _ -> eloc in
+        let exn_n = gen_temp_idk "exn" in
+        let pop_e = KExpIntrin(IntrinPopExn, [], (KTypExn, exn_loc)) in
+        let catch_sc = new_block_scope() :: sc in
+        let catch_code = create_defval exn_n KTypExn [] (Some pop_e) [] catch_sc exn_loc in
+        let (k_handlers, catch_code) = transform_pat_matching (Atom.Id exn_n) handlers catch_code catch_sc exn_loc true in
+        let handle_exn = KExpMatch(k_handlers, (ktyp, exn_loc)) in
+        let handle_exn = code2kexp (handle_exn :: catch_code) exn_loc in
+        (KExpTryCatch(try_body, handle_exn, kctx), code)
     | DefVal(p, e2, flags, _) ->
         let (e2, code) = exp2kexp e2 code true sc in
         let ktyp = get_kexp_ktyp e2 in
@@ -334,10 +350,6 @@ let rec exp2kexp e code tref sc =
     | DefInterface _ -> raise_compile_err eloc "interfaces are not supported yet"
     | DirImport _ -> (KExpNop(eloc), code)
     | DirImportFrom _ -> (KExpNop(eloc), code)
-    (*
-    | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
-    *)
-    | _ -> raise_compile_err eloc "unsupported operator"
 
 and exp2atom e code tref sc =
     let (e, code) = exp2kexp e code tref sc in
@@ -347,15 +359,18 @@ and exp2atom e code tref sc =
     | (_, KExpAtom(a, _)) -> (a, code)
     | (_, _) ->
         let kv_name = gen_temp_idk "v" in
-        create_val kv_name t (if tref then ValTempRef :: [] else []) sc eloc;
-        ((Atom.Id kv_name), (KDefVal (kv_name, e, eloc)) :: code)
+        let kv_flags = if tref then ValTempRef :: [] else [] in
+        let code = create_defval kv_name t kv_flags (Some e) code sc eloc in
+        ((Atom.Id kv_name), code)
+
+and atom2id a loc msg =
+    match a with
+    | Atom.Id i -> i
+    | Atom.Lit _ -> raise_compile_err loc msg
 
 and exp2id e code tref sc msg =
     let (a, code) = exp2atom e code tref sc in
-    let i = (match a with
-    | Atom.Id i -> i
-    | Atom.Lit _ -> raise_compile_err (get_exp_loc e) msg)
-    in (i, code)
+    ((atom2id a (get_exp_loc e) msg), code)
 
 and exp2dom e code sc =
     match e with
@@ -474,7 +489,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
         raise_compile_err loc "this type of pattern cannot be used here") in
     (n, code)
 
-and transform_pat_matching a handlers code sc loc =
+and transform_pat_matching a handlers code sc loc catch_mode =
     (*
         We dynamically maintain 3 lists of the sub-patterns to consider next.
         Each new sub-pattern occuring during recursive processing of the top-level pattern
@@ -549,6 +564,7 @@ and transform_pat_matching a handlers code sc loc =
             let checks = (code2kexp (cmp_tag_exp :: code) loc) :: checks in
             let c_args = match (kinfo vn) with
                 | KFun {contents={kf_typ}} -> (match kf_typ with KTypFun(args, rt) -> args | _ -> [])
+                | KExn {contents={ke_typ}} -> (match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: [])
                 | _ -> raise_compile_err loc "a variant constructor is expected here" in
             let (case_n, code, alt_e_opt) = match c_args with
                 | [] -> (noid, [], None)
@@ -638,20 +654,34 @@ and transform_pat_matching a handlers code sc loc =
         let extract_tag_exp = KExpIntrin(IntrinVariantTag, a :: [], (KTypInt, loc)) in
         let code = create_defval tag_n KTypInt [] (Some extract_tag_exp) code sc loc in
         (tag_n, code)) in
+    let have_else = ref false in
     let k_handlers = List.map (fun (pl, e) ->
         let ncases = List.length pl in
+        let p0 = List.hd pl in
+        let ploc = get_pat_loc p0 in
         let _ = if ncases = 1 then () else
-            raise_compile_err (get_pat_loc (List.hd pl))
-                "multiple alternative patterns are not supported yet" in
-        let pinfo={pinfo_p=(List.hd pl); pinfo_typ=atyp; pinfo_e=KExpAtom(a, (atyp, loc)); pinfo_tag=var_tag0} in
+            raise_compile_err ploc "multiple alternative patterns are not supported yet" in
+        let pinfo={pinfo_p=p0; pinfo_typ=atyp; pinfo_e=KExpAtom(a, (atyp, loc)); pinfo_tag=var_tag0} in
+        let _ = if not !have_else then () else
+            raise_compile_err ploc "unreacheable pattern matching case" in
         let plists = dispatch_pat pinfo ([], [], []) in
         let case_sc = new_block_scope() :: sc in
         let (checks, case_code) = process_next_subpat plists ([], []) case_sc in
         let (ke, case_code) = exp2kexp e case_code false case_sc in
         let eloc = get_exp_loc e in
         let ke = code2kexp (ke :: case_code) eloc in
+        if checks = [] then have_else := true else ();
         ((List.rev checks), ke)) handlers in
-    (k_handlers, code)
+    let k_handlers = if !have_else then k_handlers else
+        if catch_mode then
+            let rethrow_exp = KExpThrow((atom2id a loc "internal error: a literal cannot occur here"), loc) in
+            k_handlers @ [([], rethrow_exp)]
+        else
+            let _ = if !builtin_exn_NoMatchError != noid then () else
+                raise_compile_err loc "internal error: NoMatchError exception is not found" in
+            let nomatch_err = KExpThrow(!builtin_exn_NoMatchError, loc) in
+            k_handlers @ [([], nomatch_err)]
+    in (k_handlers, code)
 
 and transform_fun df code sc =
     let {df_name; df_templ_args; df_templ_inst; df_loc} = !df in
@@ -714,8 +744,18 @@ and transform_all_types_and_cons elist code sc =
                 | _ -> raise_compile_err dvar_loc
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
-        | DefExn {contents={dexn_name; dexn_typ; dexn_loc}} ->
+        | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
             let ke = ref { ke_name=dexn_name; ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
+            let _ = match dexn_scope with
+                    (ScModule m) :: _ when (pp_id2str m) = "Builtins" ->
+                        let exn_name_str = pp_id2str dexn_name in
+                        if exn_name_str = "IndexError" then
+                            builtin_exn_IndexError := dexn_name
+                        else if exn_name_str = "NoMatchError" then
+                            builtin_exn_NoMatchError := dexn_name
+                        else
+                            ()
+                    | _ -> () in
             set_idk_entry dexn_name (KExn ke);
             (KDefExn ke) :: code
         | _ -> code) code elist

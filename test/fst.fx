@@ -13,3 +13,20 @@ fun fib(n: int) = if (n <= 1) 1 else fib(n-1) + fib(n-2)
 println("factorial(5)=\(testmod.fact(5))")
 
 for (i <- 1:31) { print("fib(\(i))="); println(fib(i)); }
+
+exception Break: int
+
+fun find_idx(a: 't [], elem: 't)
+{
+    val n = size(a)
+    try {
+        for (i <- 0:n) if (a[i] == elem) throw Break(i)
+        -1
+    }
+    catch
+    {
+    | Break(i) => i
+    }
+}
+
+println(find_idx([1, 2, 5], 5))

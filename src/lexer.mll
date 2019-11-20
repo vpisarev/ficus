@@ -366,7 +366,9 @@ rule tokens = parse
     | '}'
         {
             (match (!paren_stack) with
+            | (CATCH, _) :: (BAR, _) :: (LBRACE, _) :: rest -> paren_stack := rest
             | (BAR, _) :: (LBRACE, _) :: rest -> paren_stack := rest
+            | (CATCH, _) :: (LBRACE, _) :: rest -> paren_stack := rest
             | (LBRACE, _) :: rest -> paren_stack := rest
             | _ -> raise (lexErr "Unexpected '}'" lexbuf));
             new_exp := false;

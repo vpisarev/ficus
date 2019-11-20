@@ -4,7 +4,7 @@
 exception Failure: string
 exception NotFoundError
 exception IndexError
-exception MatchError
+exception NoMatchError
 exception OptionError
 exception NullListError
 exception ListSizeMismatchError
@@ -37,7 +37,7 @@ operator + (a: char, b: string): string = ccode "
 fun atoi(a: string): int option
 {
     fun atoi_(a: string): (int, bool) = ccode
-        "return __fx_atoi(fx_ctx, a, &fx_result->v1, &fx_result->v2, 10);"
+        "return __fx_atoi(fx_ctx, a, &fx_result->v0, &fx_result->v1, 10);"
     match (atoi_(a)) {
     | (x, true) => Some(x)
     | _ => None
@@ -75,3 +75,10 @@ fun array((m: int, n: int), x: 't) = [for (i <- 0:m) for (j <- 0:n) x]
 fun array((m: int, n: int, l: int), x: 't) = [for (i <- 0:m) for (j <- 0:n) for (k <- 0:l) x]
 
 pure nothrow fun size(a: 't []): int = ccode "return a->size[0];"
+pure fun size(a: 't [,]): (int, int) = ccode
+    "fx_result->v0=a->size[0]; fx_result->v1=a->size[1]; return FX_OK;"
+pure fun size(a: 't [,,]): (int, int, int) = ccode
+    "fx_result->v0=a->size[0];
+    fx_result->v1=a->size[1];
+    fx_result->v2=a->size[2];
+    return FX_OK;"
