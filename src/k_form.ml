@@ -242,6 +242,9 @@ let intrin2str iop = match iop with
 
 let create_defval n t flags e_opt code sc loc =
     let dv = { kv_name=n; kv_typ=t; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
+    match t with
+    | KTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
+    | _ -> ();
     set_idk_entry n (KVal dv);
     match e_opt with
     | Some(e) -> KDefVal(n, e, loc) :: code

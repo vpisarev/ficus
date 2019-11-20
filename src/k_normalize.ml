@@ -117,6 +117,18 @@ let rec exp2kexp e code tref sc =
         (KExpMkTuple(a1 :: a2 :: a3 :: [], kctx), code)
     | ExpLit(lit, _) -> (KExpAtom((Atom.Lit lit), kctx), code)
     | ExpIdent(n, _) -> (KExpAtom((Atom.Id n), kctx), code)
+    | ExpBinOp(OpLogicAnd, e1, e2, _) ->
+        let (e1, code) = exp2kexp e1 code false sc in
+        let eloc2 = get_exp_loc e2 in
+        let (e2, code2) = exp2kexp e2 [] false sc in
+        let e2 = code2kexp (e2 :: code2) eloc2 in
+        (KExpIf(e1, e2, KExpAtom((Atom.Lit (LitBool false)), (KTypBool, eloc2)), kctx), code)
+    | ExpBinOp(OpLogicOr, e1, e2, _) ->
+        let (e1, code) = exp2kexp e1 code false sc in
+        let eloc2 = get_exp_loc e2 in
+        let (e2, code2) = exp2kexp e2 [] false sc in
+        let e2 = code2kexp (e2 :: code2) eloc2 in
+        (KExpIf(e1, KExpAtom((Atom.Lit (LitBool true)), (KTypBool, eloc2)), e2, kctx), code)
     | ExpBinOp(bop, e1, e2, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         let (a2, code) = exp2atom e2 code false sc in
