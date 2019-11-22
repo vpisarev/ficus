@@ -122,6 +122,14 @@ let k_normalize_all modules =
         rkcode_i @ rkcode) [] modules in
     (List.rev rkcode, !compile_errs = [])
 
+let k_optimize_all code =
+    let niters = 10 in
+    let temp_code = ref code in
+    for i = 1 to niters do
+        temp_code := K_deadcode_elim.elim_unused !temp_code
+    done;
+    (!temp_code, !compile_errs = [])
+
 let print_all_compile_errs () =
     let nerrs = List.length !compile_errs in
     if nerrs = 0 then ()
@@ -142,6 +150,7 @@ let process_all fname0 =
         let _ = if ok && options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
         let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
+        let (code, ok) = if ok then k_optimize_all code else ([], false) in
         let _ = if ok && options.print_orig_k then (K_pp.pprint_top code) else () in
         ok
     with
