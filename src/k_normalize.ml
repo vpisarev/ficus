@@ -719,8 +719,10 @@ and transform_fun df code sc =
                 (i :: argids, body_code)) ([], []) inst_args argtyps in
             let body_loc = get_exp_loc inst_body in
             let (e, body_code) = exp2kexp inst_body body_code false body_sc in
+            let body_kexp = code2kexp (e :: body_code) body_loc in
+            let inst_flags = match body_kexp with KExpCCode _ -> FunInC :: inst_flags | _ -> inst_flags in
             let kf = ref { kf_name=inst_name; kf_typ=ktyp; kf_args=(List.rev argids);
-                kf_body=(code2kexp (e :: body_code) body_loc); kf_flags=inst_flags; kf_scope=sc; kf_loc=inst_loc } in
+                kf_body=body_kexp; kf_flags=inst_flags; kf_scope=sc; kf_loc=inst_loc } in
             set_idk_entry inst_name (KFun kf);
             KDefFun kf :: code
         | i -> raise_compile_err (get_idinfo_loc i)

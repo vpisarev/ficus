@@ -385,11 +385,12 @@ and walk_kexp e callb =
    do not construct/return anything (though, it's expected that
    the callbacks collect some information about the tree) *)
 
-type k_fold_callb_t =
+type 'x k_fold_callb_t =
 {
-    kcb_fold_ktyp: (ktyp_t -> k_fold_callb_t -> unit) option;
-    kcb_fold_kexp: (kexp_t -> k_fold_callb_t -> unit) option;
-    kcb_fold_atom: (atom_t -> k_fold_callb_t -> unit) option;
+    kcb_fold_ktyp: (ktyp_t -> 'x k_fold_callb_t -> unit) option;
+    kcb_fold_kexp: (kexp_t -> 'x k_fold_callb_t -> unit) option;
+    kcb_fold_atom: (atom_t -> 'x k_fold_callb_t -> unit) option;
+    mutable kcb_fold_result: 'x;
 }
 
 let rec check_n_fold_ktyp t callb =

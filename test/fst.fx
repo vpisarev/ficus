@@ -19,7 +19,8 @@ exception Break: int
 fun find_idx(a: 't [], elem: 't)
 {
     val n = size(a)
-    try {
+    try
+    {
         for (i <- 0:n) if (a[i] == elem) throw Break(i)
         -1
     }
