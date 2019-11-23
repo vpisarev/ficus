@@ -66,6 +66,17 @@ fun print_string(a: string): void = ccode "return __fx_puts(fx_ctx, a->data);"
 
 fun print(a: 't) = print_string(string(a))
 fun print(a: string) = print_string(a)
+fun print(l: 't list)
+{
+    print("[")
+    var i = 0
+    for (x <- l) {
+        if (i > 0) print(", ")
+        i += 1
+        print (x)
+    }
+    print("]")
+}
 
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }

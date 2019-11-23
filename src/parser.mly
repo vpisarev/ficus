@@ -46,7 +46,10 @@ let plist2exp args n =
             Parsing.symbol_start_pos(),
             Parsing.symbol_end_pos()))) in
     let (plist, elist) = plist2exp_ args in
-    (plist, expseq2exp elist n)
+    let match_arg = match elist with
+        | e :: [] -> e
+        | _ -> ExpMkTuple(elist, (make_new_typ(), curr_loc_n n)) in
+    (plist, match_arg)
 
 let make_deffun fname args rt body flags loc =
     let argtp = List.map (fun _ -> make_new_typ()) args in

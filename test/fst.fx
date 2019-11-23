@@ -1,5 +1,5 @@
 // the first test script
-import testmod, Math
+import testmod, Math, List
 
 val str = "привет! 你好吗?\nBTW,\n\t2*2=\(2*2),\n\tπ (the area of circle with radius 1) = \(Math.Pi),\n\te = \(Math.exp(1.)),\n\tφ (golden ratio) = \((1+5.**0.5)/2) "
 val c = '😄'
@@ -31,3 +31,6 @@ fun find_idx(a: 't [], elem: 't)
 }
 
 println(find_idx([1, 2, 5], 5))
+val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], (fun (a: int, b: int) => a > b))
+print("sorted: ")
+println(sorted)
