@@ -7,6 +7,18 @@ type pat_info_t = { pinfo_p: pat_t; pinfo_typ: ktyp_t; pinfo_e: kexp_t; pinfo_ta
 let deref_typ = Ast_typecheck.deref_typ
 let zero_env = (Env.empty : env_t)
 
+let filter_out_nops code =
+    List.filter (fun e -> match e with
+        | KExpNop _ -> false
+        | _ -> true) code
+
+let rcode2kexp code loc = match (filter_out_nops code) with
+    | [] -> KExpNop(loc)
+    | e :: [] -> e
+    | e :: rest ->
+        let t = get_kexp_ktyp e in
+        KExpSeq((List.rev code), (t, loc))
+
 let typ2ktyp t loc =
     let rec typ2ktyp_ t = match (deref_typ t) with
     | TypVar {contents=Some(t)} -> typ2ktyp_ t
@@ -57,18 +69,6 @@ let typ2ktyp t loc =
             | _ -> raise_compile_err loc (sprintf "unsupported type '%s' ~ '%s'" (id2str n) (id2str n1)))
         | t -> typ2ktyp_ t)
     in typ2ktyp_ t
-
-let filter_out_nops code =
-    List.filter (fun e -> match e with
-        | KExpNop _ -> false
-        | _ -> true) code
-
-let code2kexp code loc = match (filter_out_nops code) with
-    | [] -> KExpNop(loc)
-    | e :: [] -> e
-    | e :: rest ->
-        let t = get_kexp_ktyp e in
-        KExpSeq((List.rev code), (t, loc))
 
 let rec exp2kexp e code tref sc =
     let (etyp, eloc) = get_exp_ctx e in
@@ -121,13 +121,13 @@ let rec exp2kexp e code tref sc =
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in
         let (e2, code2) = exp2kexp e2 [] false sc in
-        let e2 = code2kexp (e2 :: code2) eloc2 in
+        let e2 = rcode2kexp (e2 :: code2) eloc2 in
         (KExpIf(e1, e2, KExpAtom((Atom.Lit (LitBool false)), (KTypBool, eloc2)), kctx), code)
     | ExpBinOp(OpLogicOr, e1, e2, _) ->
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in
         let (e2, code2) = exp2kexp e2 [] false sc in
-        let e2 = code2kexp (e2 :: code2) eloc2 in
+        let e2 = rcode2kexp (e2 :: code2) eloc2 in
         (KExpIf(e1, KExpAtom((Atom.Lit (LitBool true)), (KTypBool, eloc2)), e2, kctx), code)
     | ExpBinOp(bop, e1, e2, _) ->
         let (a1, code) = exp2atom e1 code false sc in
@@ -215,28 +215,28 @@ let rec exp2kexp e code tref sc =
         let loc3 = get_exp_loc e3 in
         let (e2, code2) = exp2kexp e2 [] false sc in
         let (e3, code3) = exp2kexp e3 [] false sc in
-        let if_then = code2kexp (e2 :: code2) loc2 in
-        let if_else = code2kexp (e3 :: code3) loc3 in
+        let if_then = rcode2kexp (e2 :: code2) loc2 in
+        let if_else = rcode2kexp (e3 :: code3) loc3 in
         (KExpIf(c, if_then, if_else, kctx), code)
     | ExpWhile(e1, e2, _) ->
         let loc1 = get_exp_loc e1 in
         let loc2 = get_exp_loc e2 in
         let (e1, code1) = exp2kexp e1 [] false sc in
         let (e2, code2) = exp2kexp e2 [] false sc in
-        let c = code2kexp (e1 :: code1) loc1 in
-        let body = code2kexp (e1 :: code2) loc2 in
+        let c = rcode2kexp (e1 :: code1) loc1 in
+        let body = rcode2kexp (e1 :: code2) loc2 in
         (KExpWhile(c, body, eloc), code)
     | ExpDoWhile(e1, e2, _) ->
         let (e1, code1) = exp2kexp e1 [] false sc in
         let (e2, code2) = exp2kexp e2 (e1 :: code1) false sc in
-        let body = code2kexp code2 eloc in
+        let body = rcode2kexp code2 eloc in
         (KExpDoWhile(body, e2, eloc), code)
     | ExpFor(pe_l, body, flags, _) ->
         let body_sc = new_block_scope() :: sc in
         let (idom_list, code, body_code) = transform_for pe_l code sc body_sc in
         let (last_e, body_code) = exp2kexp body body_code false body_sc in
         let bloc = get_exp_loc body in
-        let body_kexp = code2kexp (last_e :: body_code) bloc in
+        let body_kexp = rcode2kexp (last_e :: body_code) bloc in
         (KExpFor(idom_list, body_kexp, flags, eloc), code)
     | ExpMap(pew_ll, body, flags, _) ->
         (*
@@ -278,11 +278,11 @@ let rec exp2kexp e code tref sc =
                     | _ -> body_code in
                 let (p, _) = List.hd pe_l in
                 let ploc = get_pat_loc p in
-                let pre_exp = code2kexp pre_code ploc in
+                let pre_exp = rcode2kexp pre_code ploc in
                 ((pre_exp, idom_list) :: pre_idom_ll, body_code)) ([], []) pew_ll in
         let (last_e, body_code) = exp2kexp body body_code false body_sc in
         let bloc = get_exp_loc body in
-        let body_kexp = code2kexp (last_e :: body_code) bloc in
+        let body_kexp = rcode2kexp (last_e :: body_code) bloc in
         (KExpMap(pre_idom_ll, body_kexp, flags, kctx), code)
     | ExpAt(e, idxlist, _) ->
         let (dlist, code) = List.fold_left (fun (dlist, code) idx ->
@@ -330,7 +330,7 @@ let rec exp2kexp e code tref sc =
         let e1loc = get_exp_loc e1 in
         let try_sc = new_block_scope() :: sc in
         let (e1, body_code) = exp2kexp e1 [] false try_sc in
-        let try_body = code2kexp (e1 :: body_code) e1loc in
+        let try_body = rcode2kexp (e1 :: body_code) e1loc in
         let exn_loc = match handlers with
             | ((p :: _), _) :: _ -> get_pat_loc p
             | _ -> eloc in
@@ -340,7 +340,7 @@ let rec exp2kexp e code tref sc =
         let catch_code = create_defval exn_n KTypExn [] (Some pop_e) [] catch_sc exn_loc in
         let (k_handlers, catch_code) = transform_pat_matching (Atom.Id exn_n) handlers catch_code catch_sc exn_loc true in
         let handle_exn = KExpMatch(k_handlers, (ktyp, exn_loc)) in
-        let handle_exn = code2kexp (handle_exn :: catch_code) exn_loc in
+        let handle_exn = rcode2kexp (handle_exn :: catch_code) exn_loc in
         (KExpTryCatch(try_body, handle_exn, kctx), code)
     | DefVal(p, e2, flags, _) ->
         let (e2, code) = exp2kexp e2 code true sc in
@@ -573,7 +573,7 @@ and transform_pat_matching a handlers code sc loc catch_mode =
                 let code = create_defval tag_n KTypInt [] (Some extract_tag_exp) code sc loc in
                 (tag_n, code))
             in let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), (Atom.Id vn), (KTypBool, loc)) in
-            let checks = (code2kexp (cmp_tag_exp :: code) loc) :: checks in
+            let checks = (rcode2kexp (cmp_tag_exp :: code) loc) :: checks in
             let c_args = match (kinfo vn) with
                 | KFun {contents={kf_typ}} -> (match kf_typ with KTypFun(args, rt) -> args | _ -> [])
                 | KExn {contents={ke_typ}} -> (match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: [])
@@ -614,12 +614,12 @@ and transform_pat_matching a handlers code sc loc catch_mode =
             (match p with
             | PatLit (l, _) ->
                 let code = KExpBinOp(OpCompareEQ, (Atom.Id n), (Atom.Lit l), (KTypBool, loc)) :: code in
-                let c_exp = code2kexp code loc in
+                let c_exp = rcode2kexp code loc in
                 (plists, c_exp :: checks, [])
             | PatIdent _ -> (plists, checks, code)
             | PatCons(p1, p2, _) ->
                 let code = KExpBinOp(OpCompareNE, (Atom.Id n), (Atom.Lit LitNil), (KTypBool, loc)) :: code in
-                let c_exp = code2kexp code loc in
+                let c_exp = rcode2kexp code loc in
                 let et = match ptyp with
                         | KTypList et -> et
                         | _ -> raise_compile_err loc "the pattern needs list type" in
@@ -681,7 +681,7 @@ and transform_pat_matching a handlers code sc loc catch_mode =
         let (checks, case_code) = process_next_subpat plists ([], []) case_sc in
         let (ke, case_code) = exp2kexp e case_code false case_sc in
         let eloc = get_exp_loc e in
-        let ke = code2kexp (ke :: case_code) eloc in
+        let ke = rcode2kexp (ke :: case_code) eloc in
         if checks = [] then have_else := true else ();
         ((List.rev checks), ke)) handlers in
     let k_handlers = if !have_else then k_handlers else
@@ -719,7 +719,7 @@ and transform_fun df code sc =
                 (i :: argids, body_code)) ([], []) inst_args argtyps in
             let body_loc = get_exp_loc inst_body in
             let (e, body_code) = exp2kexp inst_body body_code false body_sc in
-            let body_kexp = code2kexp (e :: body_code) body_loc in
+            let body_kexp = rcode2kexp (e :: body_code) body_loc in
             let inst_flags = match body_kexp with KExpCCode _ -> FunInC :: inst_flags | _ -> inst_flags in
             let kf = ref { kf_name=inst_name; kf_typ=ktyp; kf_args=(List.rev argids);
                 kf_body=body_kexp; kf_flags=inst_flags; kf_scope=sc; kf_loc=inst_loc } in

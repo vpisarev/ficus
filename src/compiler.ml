@@ -125,8 +125,11 @@ let k_normalize_all modules =
 let k_optimize_all code =
     let niters = 10 in
     let temp_code = ref code in
-    for i = 1 to niters do
-        temp_code := K_deadcode_elim.elim_unused !temp_code
+    for i = 0 to niters-1 do
+        temp_code := K_deadcode_elim.elim_unused !temp_code;
+        if i <= 1 then
+            temp_code := K_simple_ll.lift !temp_code
+        else ()
     done;
     (!temp_code, !compile_errs = [])
 

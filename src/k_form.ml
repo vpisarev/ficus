@@ -250,6 +250,20 @@ let create_defval n t flags e_opt code sc loc =
     | Some(e) -> KDefVal(n, e, loc) :: code
     | _ -> code
 
+let code2kexp code loc =
+    match code with
+    | [] -> KExpNop(loc)
+    | e :: [] -> e
+    | _ ->
+        let t = get_kexp_ktyp (Utils.last_elem code) in
+        KExpSeq(code, (t, loc))
+
+let kexp2code e =
+    match e with
+    | KExpNop _ -> []
+    | KExpSeq(elist, _) -> elist
+    | _ -> e :: []
+
 (* walk through a K-normalized syntax tree and produce another tree *)
 
 type k_callb_t =
@@ -337,7 +351,23 @@ and walk_kexp e callb =
     | KExpIntrin(iop, args, ctx) -> KExpIntrin(iop, (walk_al_ args), (walk_kctx_ ctx))
     | KExpIf(c, then_e, else_e, ctx) ->
         KExpIf((walk_kexp_ c), (walk_kexp_ then_e), (walk_kexp_ else_e), (walk_kctx_ ctx))
-    | KExpSeq(elist, ctx) -> KExpSeq((List.map walk_kexp_ elist), (walk_kctx_ ctx))
+    | KExpSeq(elist, ctx) ->
+        let rec process_elist elist result =
+            match elist with
+            | e :: rest ->
+                let new_e = walk_kexp_ e in
+                let new_result = match e with
+                    | KExpNop _ -> if rest != [] then result
+                                   else new_e :: result
+                    | _ -> new_e :: result in
+                process_elist rest new_result
+            | _ -> List.rev result in
+        let new_elist = process_elist elist [] in
+        let (new_ktyp, loc) = walk_kctx_ ctx in
+        (match new_elist with
+        | [] -> KExpNop(loc)
+        | e :: [] -> e
+        | _ -> KExpSeq(new_elist, (new_ktyp, loc)))
     | KExpMkTuple(alist, ctx) -> KExpMkTuple((walk_al_ alist), (walk_kctx_ ctx))
     | KExpMkRecord(alist, ctx) -> KExpMkRecord((walk_al_ alist), (walk_kctx_ ctx))
     | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
@@ -505,3 +535,87 @@ and fold_kexp e callb =
         List.iter (fun (k, t) -> fold_id_ k; fold_ktyp_ t) kvar_cases;
         List.iter fold_id_ kvar_constr;
         (KTypVoid, kvar_loc))
+
+let add_to_used1 i callb =
+    let (used_set, decl_set) = callb.kcb_fold_result in
+    callb.kcb_fold_result <- ((IdSet.add i used_set), decl_set)
+
+let add_to_used uv_set callb =
+    let (used_set, decl_set) = callb.kcb_fold_result in
+    callb.kcb_fold_result <- ((IdSet.union uv_set used_set), decl_set)
+
+let add_to_decl1 i callb =
+    let (used_set, decl_set) = callb.kcb_fold_result in
+    callb.kcb_fold_result <- (used_set, (IdSet.add i decl_set))
+
+let add_to_decl dv_set callb =
+    let (used_set, decl_set) = callb.kcb_fold_result in
+    callb.kcb_fold_result <- (used_set, (IdSet.union dv_set decl_set))
+
+let rec used_by_atom_ a callb =
+    match a with
+    | Atom.Id i -> add_to_used1 i callb
+    | _ -> ()
+and used_by_ktyp_ t callb = fold_ktyp t callb
+and used_by_kexp_ e callb =
+    match e with
+    | KDefVal(i, e, _) ->
+        let (uv, dv) = used_decl_by_kexp e in
+        add_to_used uv callb;
+        add_to_decl dv callb;
+        add_to_decl1 i callb
+    | KDefFun {contents={kf_name; kf_typ; kf_args; kf_body}} ->
+        (* the function arguments are not included into the "used variables" set by default,
+            they should be referenced by the function body to be included *)
+        let uv_typ = used_by_ktyp kf_typ in
+        let (uv_body, dv_body) = used_decl_by_kexp kf_body in
+        let uv = IdSet.union uv_typ (IdSet.remove kf_name uv_body) in
+        add_to_used uv callb;
+        add_to_decl dv_body callb;
+        add_to_decl1 kf_name callb;
+        List.iter (fun a -> add_to_decl1 a callb) kf_args
+    | KDefExn {contents={ke_name; ke_typ}} ->
+        let uv = used_by_ktyp ke_typ in
+        add_to_used uv callb;
+        add_to_decl1 ke_name callb
+    | KDefVariant {contents={kvar_name; kvar_cases}} ->
+        let uv = List.fold_left (fun uv (ni, ti) ->
+            let uv = IdSet.add ni uv in
+            let uv_ti = IdSet.remove kvar_name (used_by_ktyp ti) in
+            IdSet.union uv_ti uv) IdSet.empty kvar_cases in
+        add_to_used uv callb;
+        add_to_decl1 kvar_name callb
+    | _ -> fold_kexp e callb
+
+and new_used_vars_callb () =
+    {
+        kcb_fold_atom = Some(used_by_atom_);
+        kcb_fold_ktyp = Some(used_by_ktyp_);
+        kcb_fold_kexp = Some(used_by_kexp_);
+        kcb_fold_result = (IdSet.empty, IdSet.empty)
+    }
+and used_by_ktyp t =
+    let callb = new_used_vars_callb() in
+    let _ = used_by_ktyp_ t callb in
+    let (used_set, _) = callb.kcb_fold_result in
+    used_set
+and used_decl_by_kexp e =
+    let callb = new_used_vars_callb() in
+    let _ = used_by_kexp_ e callb in
+    callb.kcb_fold_result
+and used_by_kexp e =
+    let (used_set, _) = used_decl_by_kexp e in
+    used_set
+
+let used_by code =
+    let e = code2kexp code noloc in
+    used_by_kexp e
+
+let free_vars_kexp e =
+    let (uv, dv) = used_decl_by_kexp e in
+    IdSet.diff uv dv
+
+let print_set setname s =
+    printf "%s:[" setname;
+    IdSet.iter (fun i -> printf " %s" (id2str i)) s;
+    printf " ]\n";

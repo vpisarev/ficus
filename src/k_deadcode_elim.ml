@@ -93,61 +93,6 @@ let reset_purity_flags code =
     }
     in List.iter (fun e -> reset_purity_flags_kexp_ e callb) code
 
-let add_used1 i callb =
-    callb.kcb_fold_result <- IdSet.add i callb.kcb_fold_result
-
-let add_used uv_set callb =
-    callb.kcb_fold_result <- IdSet.union uv_set callb.kcb_fold_result
-
-let rec used_by_atom_ a callb =
-    match a with
-    | Atom.Id i -> add_used1 i callb
-    | _ -> ()
-and used_by_ktyp_ t callb = fold_ktyp t callb
-and used_by_kexp_ e callb =
-    match e with
-    | KDefVal(i, e, _) ->
-        let uv = used_by_kexp e in
-        add_used uv callb
-    | KDefFun {contents={kf_name; kf_typ; kf_body}} ->
-        (* the function arguments are not included into the "used id's" set by default,
-           they should be referenced by the function body to be included *)
-        let uv_typ = used_by_ktyp kf_typ in
-        let uv_body = used_by_kexp kf_body in
-        let uv = IdSet.union uv_typ (IdSet.remove kf_name uv_body) in
-        add_used uv callb
-    | KDefExn {contents={ke_typ}} ->
-        let uv = used_by_ktyp ke_typ in
-        add_used uv callb
-    | KDefVariant {contents={kvar_name; kvar_cases}} ->
-        (* variant constructors are not included into the "used id's" set by default;
-           they should be referenced somewhere to be included *)
-        let uv = List.fold_left (fun uv (ni, ti) ->
-            let uv = IdSet.add ni uv in
-            let uv_ti = IdSet.remove kvar_name (used_by_ktyp ti) in
-            IdSet.union uv_ti uv) IdSet.empty kvar_cases in
-        add_used uv callb
-    | _ -> fold_kexp e callb
-
-and new_used_ids_callb () =
-    {
-        kcb_fold_atom = Some(used_by_atom_);
-        kcb_fold_ktyp = Some(used_by_ktyp_);
-        kcb_fold_kexp = Some(used_by_kexp_);
-        kcb_fold_result = IdSet.empty
-    }
-and used_by_ktyp t =
-    let callb = new_used_ids_callb() in
-    used_by_ktyp_ t callb;
-    callb.kcb_fold_result
-and used_by_kexp e =
-    let callb = new_used_ids_callb() in
-    used_by_kexp_ e callb;
-    callb.kcb_fold_result
-
-let used_by code =
-    List.fold_left (fun uv e -> IdSet.union (used_by_kexp e) uv) IdSet.empty code
-
 let rec elim_unused code =
     let _ = reset_purity_flags code in
     let uv = used_by code in
@@ -193,9 +138,9 @@ let rec elim_unused code =
             | KExpAtom(Atom.Lit (LitBool true), _) -> then_e
             | KExpAtom(Atom.Lit (LitBool false), _) -> else_e
             | _ -> KExpIf(c, then_e, else_e, kctx))
-        | KExpSeq(code, kctx) ->
+        | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
-            KExpSeq(code, kctx)
+            code2kexp code loc
         | _ -> walk_kexp e callb
     and elim_unused_ code result callb =
         match code with
