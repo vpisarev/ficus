@@ -461,8 +461,8 @@ let get_lit_typ l = match l with
     | LitString(_) -> TypString
     | LitChar(_) -> TypChar
     | LitBool(_) -> TypBool
-    | LitNil -> TypVar(ref None) (* in the case of NIL ([]) we cannot infere the type;
-                                    we postpone this step *)
+    (* in the case of NIL ([]) we cannot infere the type; we postpone this step *)
+    | LitNil -> TypList(TypVar(ref None))
 
 let binop_to_string bop = match bop with
     | OpAdd -> "+"

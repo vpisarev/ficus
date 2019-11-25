@@ -69,10 +69,8 @@ fun print(a: string) = print_string(a)
 fun print(l: 't list)
 {
     print("[")
-    var i = 0
-    for (x <- l) {
+    for (i <- 0:, x <- l) {
         if (i > 0) print(", ")
-        i += 1
         print (x)
     }
     print("]")

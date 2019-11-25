@@ -354,7 +354,12 @@ stmt_or_ccode:
 simple_exp:
 | B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
 | B_LPAREN op_name RPAREN { ExpIdent($2, make_new_ctx()) }
-| literal { ExpLit($1, make_new_ctx()) }
+| literal
+    {
+        let lit = $1 in
+        let typ = get_lit_typ lit in
+        ExpLit(lit, (typ, curr_loc()))
+    }
 | simple_exp DOT B_IDENT { ExpMem($1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
 | simple_exp DOT INT { ExpMem($1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
 | B_LPAREN exp_or_block RPAREN { $2 }
@@ -379,7 +384,7 @@ simple_exp:
 | B_LSQUARE CONS complex_exp COMMA exp_list RSQUARE
     {
         let l = List.rev ($3 :: $5) in
-        let e0 = ExpLit(LitNil, (make_new_typ(), curr_loc_n 6)) in
+        let e0 = ExpLit(LitNil, ((TypList (make_new_typ())), curr_loc_n 6)) in
         List.fold_left (fun e i -> make_bin_op(OpCons, i, e)) e0 l
     }
 | simple_exp LPAREN exp_list RPAREN
@@ -536,8 +541,11 @@ fold_clause:
 
 loop_range_exp:
 | exp { $1 }
+| CONS exp { ExpRange(None, None, Some($2), make_new_ctx()) }
+| exp COLON { ExpRange(Some($1), None, None, make_new_ctx()) }
 | exp COLON exp { ExpRange(Some($1), Some($3), None, make_new_ctx()) }
 | exp COLON exp COLON exp { ExpRange(Some($1), Some($3), Some($5), make_new_ctx()) }
+| exp COLON COLON exp { ExpRange(Some($1), None, Some($4), make_new_ctx()) }
 
 range_exp:
 | exp { $1 }

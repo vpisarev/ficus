@@ -758,14 +758,18 @@ and check_exp e env sc =
         ExpAssign(new_e1, new_e2, eloc)
 
     | ExpBinOp(OpCons, e1, e2, _) ->
-        let (etyp1, eloc1) = get_exp_ctx e1 in
-        let (etyp2, eloc2) = get_exp_ctx e2 in
-        let _ = unify etyp (TypList etyp1) eloc1 "'::' operation should produce a list" in
-        let _ = unify etyp etyp2 eloc2 "incorrect type of the second argument of '::' operation" in
         let new_e1 = check_exp e1 env sc in
         let new_e2 = check_exp e2 env sc in
-        ExpBinOp(OpCons, new_e1, new_e2, ctx)
+        let (etyp1, eloc1) = get_exp_ctx new_e1 in
+        let (etyp2, eloc2) = get_exp_ctx new_e2 in
 
+        if (maybe_unify etyp (TypList etyp1) false) &&
+           (maybe_unify etyp2 (TypList etyp1) false) then
+            let _ = unify etyp (TypList etyp1) eloc1 "'::' operation should produce a list" in
+            let _ = unify etyp2 (TypList etyp1) eloc2 "incorrect type of the second argument of '::' operation" in
+            ExpBinOp(OpCons, new_e1, new_e2, ctx)
+        else
+            check_exp (ExpRange((Some e1), None, (Some e2), ctx)) env sc
     | ExpBinOp(bop, e1, e2, _) ->
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
