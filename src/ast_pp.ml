@@ -123,7 +123,7 @@ let rec pprint_exp e =
     let obox_cnt = ref 0 in
     let obox_() = obox(); pstr "<"; pptype_ t TypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
-    let pphandlers pe_l = pstr "{"; pcut(); obox(); (List.iter (fun (pl, e) ->
+    let ppcases pe_l = pstr "{"; pcut(); obox(); (List.iter (fun (pl, e) ->
             (List.iter (fun p -> pspace(); pstr "|"; pspace(); pprint_pat p) pl);
             pspace(); pstr "=>"; pspace(); pprint_exp_as_seq e) pe_l); pcut(); cbox(); pstr "}" in
     match e with
@@ -260,10 +260,10 @@ let rec pprint_exp e =
             pprint_exp map_body; pstr "]"; cbox()
         | ExpMatch(e, pe_l, _) ->
             obox(); pstr "MATCH ("; pprint_exp e; pstr ")"; pspace();
-            pphandlers pe_l; cbox()
+            ppcases pe_l; cbox()
         | ExpTryCatch(e, pe_l, _) ->
             obox(); pstr "TRY"; pspace(); pprint_exp e; pspace();
-            pstr "CATCH"; pphandlers pe_l; cbox()
+            pstr "CATCH"; ppcases pe_l; cbox()
         | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_typ t; cbox(); pstr ")"
         | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_typ t; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""

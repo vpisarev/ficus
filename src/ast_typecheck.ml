@@ -137,7 +137,7 @@ and walk_exp e callb =
     let walk_plist_ pl = check_n_walk_plist pl callb in
     let walk_pe_l_ pe_l = List.map (fun (p, e) -> ((walk_pat_ p), (walk_exp_ e))) pe_l in
     let walk_ne_l_ ne_l = List.map (fun (n, e) -> (n, (walk_exp_ e))) ne_l in
-    let walk_handlers_ ple_l =
+    let walk_cases_ ple_l =
         List.map (fun (pl, e) -> ((walk_plist_ pl), (walk_exp_ e))) ple_l in
     let walk_exp_opt_ e_opt =
         (match e_opt with
@@ -179,10 +179,10 @@ and walk_exp e callb =
         ExpMap((List.map (fun (pe_l, when_opt) ->
             (walk_pe_l_ pe_l), (walk_exp_opt_ when_opt)) pew_ll),
             (walk_exp_ body), flags, (walk_ctx_ ctx))
-    | ExpTryCatch(e, handlers, ctx) ->
-        ExpTryCatch((walk_exp_ e), (walk_handlers_ handlers), (walk_ctx_ ctx))
-    | ExpMatch(e, handlers, ctx) ->
-        ExpMatch((walk_exp_ e), (walk_handlers_ handlers), (walk_ctx_ ctx))
+    | ExpTryCatch(e, cases, ctx) ->
+        ExpTryCatch((walk_exp_ e), (walk_cases_ cases), (walk_ctx_ ctx))
+    | ExpMatch(e, cases, ctx) ->
+        ExpMatch((walk_exp_ e), (walk_cases_ cases), (walk_ctx_ ctx))
     | ExpCast(e, t, ctx) -> ExpCast((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
     | ExpTyped(e, t, ctx) -> ExpTyped((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
     | ExpCCode(str, ctx) -> ExpCCode(str, (walk_ctx_ ctx))
@@ -1052,17 +1052,17 @@ and check_exp e env sc =
             with Not_found -> raise_compile_err ei_loc (sprintf
                 "there is no record field '%s' in the updated record" (id2str ni))) r_initializers in
         ExpUpdateRecord(new_r_e, new_r_initializers, ctx)
-    | ExpTryCatch(e1, handlers, _) ->
+    | ExpTryCatch(e1, cases, _) ->
         let (e1typ, e1loc) = get_exp_ctx e1 in
         let _ = unify etyp e1typ e1loc "try body type does match the whole try-catch type" in
         let new_e1 = check_exp e1 env sc in
-        let new_handlers = check_handlers handlers TypExn etyp env sc eloc in
-        ExpTryCatch(new_e1, new_handlers, ctx)
-    | ExpMatch(e1, handlers, _) ->
+        let new_cases = check_cases cases TypExn etyp env sc eloc in
+        ExpTryCatch(new_e1, new_cases, ctx)
+    | ExpMatch(e1, cases, _) ->
         let new_e1 = check_exp e1 env sc in
         let new_e1typ = get_exp_typ new_e1 in
-        let new_handlers = check_handlers handlers new_e1typ etyp env sc eloc in
-        ExpMatch(new_e1, new_handlers, ctx)
+        let new_cases = check_cases cases new_e1typ etyp env sc eloc in
+        ExpMatch(new_e1, new_cases, ctx)
     | ExpCast(e1, t1, _) ->
         (* [TODO] check that e1 can be cast to t1 *)
         let new_t1 = check_typ t1 env sc eloc in
@@ -1647,7 +1647,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
     let pat_new = check_pat_ pat typ in
     (pat_new, !r_env, !r_idset, !r_typ_vars)
 
-and check_handlers handlers inptyp outtyp env sc loc =
+and check_cases cases inptyp outtyp env sc loc =
     List.map (fun (plist, e) ->
         let case_sc = new_block_scope() :: sc in
         let (plist1, env1, capt1) = List.fold_left (fun (plist1, env1, capt1) p ->
@@ -1660,7 +1660,7 @@ and check_handlers handlers inptyp outtyp env sc loc =
             unify e1_typ outtyp e1_loc
                 "the case expression type does not match the whole expression type (or the type of previous case(s))";
             ((List.rev plist1), (check_exp e env1 case_sc))
-        ) handlers
+        ) cases
 
 and check_mod m =
     let minfo = !(get_module m) in

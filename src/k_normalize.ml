@@ -7,18 +7,6 @@ type pat_info_t = { pinfo_p: pat_t; pinfo_typ: ktyp_t; pinfo_e: kexp_t; pinfo_ta
 let deref_typ = Ast_typecheck.deref_typ
 let zero_env = (Env.empty : env_t)
 
-let filter_out_nops code =
-    List.filter (fun e -> match e with
-        | KExpNop _ -> false
-        | _ -> true) code
-
-let rcode2kexp code loc = match (filter_out_nops code) with
-    | [] -> KExpNop(loc)
-    | e :: [] -> e
-    | e :: rest ->
-        let t = get_kexp_ktyp e in
-        KExpSeq((List.rev code), (t, loc))
-
 let typ2ktyp t loc =
     let rec typ2ktyp_ t = match (deref_typ t) with
     | TypVar {contents=Some(t)} -> typ2ktyp_ t
@@ -276,10 +264,7 @@ let rec exp2kexp e code tref sc =
                         let check_when = KExpIf(e, (KExpNop eloc), (KExpContinue eloc), (KTypVoid, eloc)) in
                         check_when :: body_code
                     | _ -> body_code in
-                let (p, _) = List.hd pe_l in
-                let ploc = get_pat_loc p in
-                let pre_exp = rcode2kexp pre_code ploc in
-                ((pre_exp, idom_list) :: pre_idom_ll, body_code)) ([], []) pew_ll in
+                (((List.rev pre_code), idom_list) :: pre_idom_ll, body_code)) ([], []) pew_ll in
         let (last_e, body_code) = exp2kexp body body_code false body_sc in
         let bloc = get_exp_loc body in
         let body_kexp = rcode2kexp (last_e :: body_code) bloc in
@@ -322,24 +307,24 @@ let rec exp2kexp e code tref sc =
         let t = typ2ktyp t eloc in
         (KExpAtom(a, (t, eloc)), code)
     | ExpCCode(s, _) -> (KExpCCode(s, kctx), code)
-    | ExpMatch(e1, handlers, _) ->
+    | ExpMatch(e1, cases, _) ->
         let (a, code) = exp2atom e1 code false sc in
-        let (k_handlers, code) = transform_pat_matching a handlers code sc eloc false in
-        (KExpMatch(k_handlers, kctx), code)
-    | ExpTryCatch(e1, handlers, _) ->
+        let (k_cases, code) = transform_pat_matching a cases code sc eloc false in
+        (KExpMatch(k_cases, kctx), code)
+    | ExpTryCatch(e1, cases, _) ->
         let e1loc = get_exp_loc e1 in
         let try_sc = new_block_scope() :: sc in
         let (e1, body_code) = exp2kexp e1 [] false try_sc in
         let try_body = rcode2kexp (e1 :: body_code) e1loc in
-        let exn_loc = match handlers with
+        let exn_loc = match cases with
             | ((p :: _), _) :: _ -> get_pat_loc p
             | _ -> eloc in
         let exn_n = gen_temp_idk "exn" in
         let pop_e = KExpIntrin(IntrinPopExn, [], (KTypExn, exn_loc)) in
         let catch_sc = new_block_scope() :: sc in
         let catch_code = create_defval exn_n KTypExn [] (Some pop_e) [] catch_sc exn_loc in
-        let (k_handlers, catch_code) = transform_pat_matching (Atom.Id exn_n) handlers catch_code catch_sc exn_loc true in
-        let handle_exn = KExpMatch(k_handlers, (ktyp, exn_loc)) in
+        let (k_cases, catch_code) = transform_pat_matching (Atom.Id exn_n) cases catch_code catch_sc exn_loc true in
+        let handle_exn = KExpMatch(k_cases, (ktyp, exn_loc)) in
         let handle_exn = rcode2kexp (handle_exn :: catch_code) exn_loc in
         (KExpTryCatch(try_body, handle_exn, kctx), code)
     | DefVal(p, e2, flags, _) ->
@@ -501,7 +486,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
         raise_compile_err loc "this type of pattern cannot be used here") in
     (n, code)
 
-and transform_pat_matching a handlers code sc loc catch_mode =
+and transform_pat_matching a cases code sc loc catch_mode =
     (*
         We dynamically maintain 3 lists of the sub-patterns to consider next.
         Each new sub-pattern occuring during recursive processing of the top-level pattern
@@ -667,7 +652,7 @@ and transform_pat_matching a handlers code sc loc catch_mode =
         let code = create_defval tag_n KTypInt [] (Some extract_tag_exp) code sc loc in
         (tag_n, code)) in
     let have_else = ref false in
-    let k_handlers = List.map (fun (pl, e) ->
+    let k_cases = List.map (fun (pl, e) ->
         let ncases = List.length pl in
         let p0 = List.hd pl in
         let ploc = get_pat_loc p0 in
@@ -683,17 +668,17 @@ and transform_pat_matching a handlers code sc loc catch_mode =
         let eloc = get_exp_loc e in
         let ke = rcode2kexp (ke :: case_code) eloc in
         if checks = [] then have_else := true else ();
-        ((List.rev checks), ke)) handlers in
-    let k_handlers = if !have_else then k_handlers else
+        ((List.rev checks), ke)) cases in
+    let k_cases = if !have_else then k_cases else
         if catch_mode then
             let rethrow_exp = KExpThrow((atom2id a loc "internal error: a literal cannot occur here"), loc) in
-            k_handlers @ [([], rethrow_exp)]
+            k_cases @ [([], rethrow_exp)]
         else
             let _ = if !builtin_exn_NoMatchError != noid then () else
                 raise_compile_err loc "internal error: NoMatchError exception is not found" in
             let nomatch_err = KExpThrow(!builtin_exn_NoMatchError, loc) in
-            k_handlers @ [([], nomatch_err)]
-    in (k_handlers, code)
+            k_cases @ [([], nomatch_err)]
+    in (k_cases, code)
 
 and transform_fun df code sc =
     let {df_name; df_templ_args; df_templ_inst; df_loc} = !df in

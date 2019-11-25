@@ -101,7 +101,7 @@ and kexp_t =
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of id_t * loc_t
     | KExpCast of atom_t * ktyp_t * kctx_t
-    | KExpMap of (kexp_t * (id_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
+    | KExpMap of (kexp_t list * (id_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
     | KExpFor of (id_t * dom_t) list * kexp_t * for_flag_t list * loc_t
     | KExpWhile of kexp_t * kexp_t * loc_t
     | KExpDoWhile of kexp_t * kexp_t * loc_t
@@ -258,6 +258,18 @@ let code2kexp code loc =
         let t = get_kexp_ktyp (Utils.last_elem code) in
         KExpSeq(code, (t, loc))
 
+let filter_out_nops code =
+    List.filter (fun e -> match e with
+        | KExpNop _ -> false
+        | _ -> true) code
+
+let rcode2kexp code loc = match (filter_out_nops code) with
+    | [] -> KExpNop(loc)
+    | e :: [] -> e
+    | e :: rest ->
+        let t = get_kexp_ktyp e in
+        KExpSeq((List.rev code), (t, loc))
+
 let kexp2code e =
     match e with
     | KExpNop _ -> []
@@ -337,6 +349,7 @@ and walk_kexp e callb =
                 "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
         | _ -> k in
     let walk_kexp_ e = check_n_walk_kexp e callb in
+    let walk_el_ el = List.map walk_kexp_ el in
     let walk_kctx_ (t, loc) = ((walk_ktyp_ t), loc) in
     let walk_dom_ d = check_n_walk_dom d callb in
     let walk_kdl_ kdl = List.map (fun (k, d) -> ((walk_id_ k), (walk_dom_ d))) kdl in
@@ -382,11 +395,11 @@ and walk_kexp e callb =
     | KExpFor(kdl, body, flags, loc) ->
         KExpFor((walk_kdl_ kdl), (walk_kexp_ body), flags, loc)
     | KExpMap(e_kdl_l, body, flags, ctx) ->
-        KExpMap((List.map (fun (e, kdl) -> ((walk_kexp_ e), (walk_kdl_ kdl))) e_kdl_l),
+        KExpMap((List.map (fun (el, kdl) -> ((walk_el_ el), (walk_kdl_ kdl))) e_kdl_l),
                 (walk_kexp_ body), flags, (walk_kctx_ ctx))
-    | KExpMatch(handlers, ctx) ->
+    | KExpMatch(cases, ctx) ->
         KExpMatch((List.map (fun (checks_i, ei) ->
-            ((List.map (fun cij -> walk_kexp_ cij) checks_i), (walk_kexp_ ei))) handlers),
+            ((List.map (fun cij -> walk_kexp_ cij) checks_i), (walk_kexp_ ei))) cases),
             (walk_kctx_ ctx))
     | KExpTryCatch(e1, e2, ctx) ->
         KExpTryCatch((walk_kexp_ e1), (walk_kexp_ e2), (walk_kctx_ ctx))
@@ -478,6 +491,7 @@ and fold_kexp e callb =
     let fold_ktyp_ t = check_n_fold_ktyp t callb in
     let fold_id_ k = check_n_fold_id k callb in
     let fold_kexp_ e = check_n_fold_kexp e callb in
+    let fold_el_ el = List.iter fold_kexp_ el in
     let fold_kctx_ (t, _) = fold_ktyp_ t in
     let fold_dom_ d = check_n_fold_dom d callb in
     let fold_kdl_ kdl = List.iter (fun (k, d) -> fold_id_ k; fold_dom_ d) kdl in
@@ -507,11 +521,11 @@ and fold_kexp e callb =
     | KExpFor(kdl, body, _, loc) ->
         fold_kdl_ kdl; fold_kexp_ body; (KTypVoid, loc)
     | KExpMap(e_kdl_l, body, _, ctx) ->
-        List.iter (fun (e, kdl) -> fold_kexp_ e; fold_kdl_ kdl) e_kdl_l;
+        List.iter (fun (el, kdl) -> fold_el_ el; fold_kdl_ kdl) e_kdl_l;
         fold_kexp_ body; ctx
-    | KExpMatch(handlers, ctx) ->
+    | KExpMatch(cases, ctx) ->
         List.iter (fun (checks_i, ei) ->
-            List.iter (fun cij -> fold_kexp_ cij) checks_i; fold_kexp_ ei) handlers;
+            List.iter (fun cij -> fold_kexp_ cij) checks_i; fold_kexp_ ei) cases;
         ctx
     | KExpTryCatch(e1, e2, ctx) ->
         fold_kexp_ e1; fold_kexp_ e2; ctx

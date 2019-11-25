@@ -123,7 +123,7 @@ type typ_t =
     | TypRecord of ((id_t * typ_t * lit_t option) list * id_t option) ref
     | TypExn
     | TypErr (* a thrown exception; can be unified with any other type (except for declaration) *)
-    | TypCPointer (* smart pointer to a C structure; we use it for file handlers, mutexes etc. *)
+    | TypCPointer (* smart pointer to a C structure; we use it for file handles, mutexes etc. *)
     | TypApp of typ_t list * id_t (* a generic type instance or a type alias (when typ_t list is empty) *)
     | TypDecl (* since declarations are also expressions, they should have some type;
                  and this is not "void" by the way *)

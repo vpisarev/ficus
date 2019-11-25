@@ -213,19 +213,19 @@ and pprint_kexp_ e prtyp =
         | KExpMap(map_cl, map_body, flags, _) ->
             obox(); Ast_pp.pprint_for_flags flags;
             pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else ();
-            (List.iter (fun (pre, pe_l) -> pstr "FOR ("; pprint_kexp pre; pstr ";"; pcut();
+            (List.iter (fun (pre_l, pe_l) -> pstr "FOR ("; pprint_kexpseq pre_l false; pstr ";"; pcut();
               (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
               pprint_id n; pspace(); pstr "<-"; pspace(); pprint_dom dom) pe_l);
               pstr ")"; pspace()) map_cl);
             pprint_kexp map_body; pstr "]"; cbox()
-        | KExpMatch (handlers, _) ->
+        | KExpMatch (cases, _) ->
             obox(); List.iteri (fun i (checks_i, e_i) ->
                 pstr (if i = 0 then "IF (" else if checks_i = [] then "ELSE" else "ELSE IF (");
                 List.iteri (fun j cj ->
                     if j = 0 then () else (pstr " &&"; pspace());
                     pprint_kexp cj) checks_i;
                 if checks_i = [] then () else pstr ")";
-                pspace(); pprint_kexp e_i; pspace()) handlers;
+                pspace(); pprint_kexp e_i; pspace()) cases;
             cbox();
         | KExpTryCatch(e1, e2, _) ->
             obox(); pstr "TRY"; pspace(); pprint_kexp e1; pspace();

@@ -129,7 +129,8 @@ let k_optimize_all code =
         temp_code := K_deadcode_elim.elim_unused !temp_code;
         if i <= 1 then
             temp_code := K_simple_ll.lift !temp_code
-        else ()
+        else ();
+        temp_code := K_flatten.flatten !temp_code
     done;
     (!temp_code, !compile_errs = [])
 
