@@ -129,15 +129,6 @@ let rec elim_unused code =
                some of its used constructors. *)
             if (used kvar_name) then e
             else KExpNop(kvar_loc)
-        | KExpIf(c, then_e, else_e, kctx) ->
-            let c = elim_unused_kexp_ c callb in
-            let then_e = elim_unused_kexp_ then_e callb in
-            let else_e = elim_unused_kexp_ else_e callb in
-            (* eliminate dead branches *)
-            (match c with
-            | KExpAtom(Atom.Lit (LitBool true), _) -> then_e
-            | KExpAtom(Atom.Lit (LitBool false), _) -> else_e
-            | _ -> KExpIf(c, then_e, else_e, kctx))
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
             code2kexp code loc

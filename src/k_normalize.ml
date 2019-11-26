@@ -81,7 +81,7 @@ let rec exp2kexp e code tref sc =
                 let ptyp = match di with
                     | Domain.Range _ -> KTypInt
                     | Domain.Fast i | Domain.Elem i ->
-                        match (get_atom_ktyp i) with
+                        match (get_atom_ktyp i eloc) with
                         | KTypArray(_, et) -> et
                         | KTypList(et) -> et
                         | KTypString -> KTypChar
@@ -278,7 +278,7 @@ let rec exp2kexp e code tref sc =
     | ExpMem(e1, elem, _) ->
         let e1loc = get_exp_loc e1 in
         let (a_id, code) = exp2id e1 code true sc "the literal does not have members to access" in
-        let ktyp = get_id_ktyp a_id in
+        let ktyp = get_id_ktyp a_id e1loc in
         let i = (match (ktyp, elem) with
                 | (KTypTuple(tl), ExpLit((LitInt i_), (ityp, iloc))) ->
                     let i = Int64.to_int i_ in
@@ -298,10 +298,9 @@ let rec exp2kexp e code tref sc =
         let (e2, code) = exp2kexp e2 code true sc in
         let (a_id, code) = exp2id e1 code true sc "a literal cannot be assigned" in
         (KExpAssign(a_id, e2, eloc), code)
-    | ExpCast(e, t, _) ->
+    | ExpCast(e, _, _) ->
         let (a, code) = exp2atom e code false sc in
-        let t = typ2ktyp t eloc in
-        (KExpCast(a, t, kctx), code)
+        (KExpCast(a, ktyp, eloc), code)
     | ExpTyped(e, t, _) ->
         let (a, code) = exp2atom e code false sc in
         let t = typ2ktyp t eloc in
@@ -639,7 +638,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
             in process_next_subpat plists (checks, code) case_sc
         | _ -> (checks, code)
     in
-    let atyp = get_atom_ktyp a in
+    let atyp = get_atom_ktyp a loc in
     let is_variant = match atyp with
                 | KTypExn -> true
                 | KTypName(tname) -> (match (kinfo tname) with

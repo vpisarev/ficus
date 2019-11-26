@@ -820,9 +820,14 @@ and check_exp e env sc =
             | _ -> None)
         | _ -> raise_compile_err eloc (sprintf "unsupported binary operation %s" (binop_to_string bop))) in
 
-        (match typ_opt with
-        | Some(typ) ->
+        (match (typ_opt, bop, etyp1_, etyp2_) with
+        | ((Some typ), _, _, _) ->
             unify typ etyp eloc "improper type of the arithmetic operation result";
+            ExpBinOp(bop, new_e1, new_e2, ctx)
+        | (_, OpAdd, TypString, TypString)
+        | (_, OpAdd, TypString, TypChar)
+        | (_, OpAdd, TypChar, TypString) ->
+            unify TypString etyp eloc "improper type of the string concatenation operation (string is expected)";
             ExpBinOp(bop, new_e1, new_e2, ctx)
         | _ ->
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.

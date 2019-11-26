@@ -30,6 +30,16 @@ fun find_idx(a: 't [], elem: 't)
     }
 }
 
+val fixed_choice = "five"
+
+match (fixed_choice)
+{
+    | "пять" => println("нашли 5")
+    | "five" => println("found 5")
+    | "五" => println("找到五个")
+    | _ => println("some other number")
+}
+
 println(find_idx([1, 2, 5], 5))
 val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], (fun (a: int, b: int) => a > b))
 print("sorted: ")

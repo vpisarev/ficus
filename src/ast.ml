@@ -81,12 +81,28 @@ type scope_t = ScBlock of int | ScFun of id_t | ScClass of id_t
 type loc_t = { loc_fname: id_t; loc_line0: int; loc_pos0: int; loc_line1: int; loc_pos1: int }
 let noloc = { loc_fname=noid; loc_line0=0; loc_pos0=0; loc_line1=0; loc_pos1=0 }
 
+let loclist2loc llist default_loc =
+    List.fold_left (fun loc loci ->
+        let { loc_fname; loc_line0; loc_pos0; loc_line1; loc_pos1 } = loc in
+        let { loc_fname=loci_fname; loc_line0=loci_line0;
+            loc_pos0=loci_pos0; loc_line1=loci_line1; loc_pos1=loci_pos1 } = loci in
+        if loc_fname != loci_fname then
+            (if loc_fname = noid then loci else loc)
+        else
+        {
+            loc_fname;
+            loc_line0=min loc_line0 loci_line0;
+            loc_pos0=min loc_pos0 loci_pos0;
+            loc_line1=max loc_line1 loci_line1;
+            loc_pos1=max loc_pos1 loci_pos1
+        }) default_loc llist
+
 (* the primitive objects in the programs, literals, that represent themselves *)
 type lit_t =
-    | LitInt of Int64.t (* "int" (a signed integer that can be stored in CPU register,
-                               64-bit on 64-bit platforms, 32-bit on 32-bit platforms) *)
-    | LitSInt of int * Int64.t (* int8, int16, int32, int64 *)
-    | LitUInt of int * Int64.t (* uint8, uint16, uint32, uint64.
+    | LitInt of int64 (* "int" (a signed integer that can be stored in CPU register,
+                          64-bit on 64-bit platforms, 32-bit on 32-bit platforms) *)
+    | LitSInt of int * int64 (* int8, int16, int32, int64 *)
+    | LitUInt of int * int64 (* uint8, uint16, uint32, uint64.
       Ocaml does not provide unsigned 64-bit integer in its standard library
       (even though there is external UInt64 module). Let's use int64 to represent unsigned integers.
       (uint8, uint16 and uint32 will fit it easily, and operations on uint64 can be

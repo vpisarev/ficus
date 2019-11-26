@@ -16,7 +16,11 @@ type 't option = None | Some: 't
 fun getOpt(x: 't option, defval: 't) = match (x) { | Some(x) => x | _ => defval }
 
 pure nothrow fun length(s: string): int = ccode "return s->length;"
-fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
+fun string(a: bool) = (a :> string)
+fun string(a: int) = (a :> string)
+fun string(a: float) = (a :> string)
+fun string(a: double) = (a :> string)
+/*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: string) = a
@@ -32,7 +36,7 @@ operator + (a: char, b: string): string = ccode "
     FX_STATUS fx_status = __fx_make_static_string(fx_ctx, &astr, &a, 1);
     if(fx_status < 0)
         return fx_status;
-    return fx_str_join(fx_ctx, fx_res, 0, s, 2);"
+    return fx_str_join(fx_ctx, fx_res, 0, s, 2);"*/
 
 fun atoi(a: string): int option
 {

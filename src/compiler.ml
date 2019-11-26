@@ -123,14 +123,15 @@ let k_normalize_all modules =
     (List.rev rkcode, !compile_errs = [])
 
 let k_optimize_all code =
-    let niters = 10 in
+    let niters = 5 in
     let temp_code = ref code in
     for i = 0 to niters-1 do
         temp_code := K_deadcode_elim.elim_unused !temp_code;
         if i <= 1 then
             temp_code := K_simple_ll.lift !temp_code
         else ();
-        temp_code := K_flatten.flatten !temp_code
+        temp_code := K_flatten.flatten !temp_code;
+        temp_code := K_cfold_dealias.cfold_dealias !temp_code
     done;
     (!temp_code, !compile_errs = [])
 

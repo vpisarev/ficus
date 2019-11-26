@@ -129,11 +129,11 @@ and pprint_kexp_ e prtyp =
         (match ke_typ with
         | KTypVoid -> ()
         | _ -> pspace(); pstr "OF"; pspace(); pprint_ktyp ke_typ); cbox()
-    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr} } ->
+    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr; kvar_loc} } ->
         obox(); pstr "TYPE"; pspace(); pprint_id kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id v;
-            pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_id_ktyp c); pstr ">: "; pprint_ktyp t)
+            pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_id_ktyp c kvar_loc); pstr ">: "; pprint_ktyp t)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr else (List.map (fun (v, _) -> v) kvar_cases))));
         cbox()
     | KExpSeq(el, _) -> pprint_kexpseq el true
@@ -146,9 +146,9 @@ and pprint_kexp_ e prtyp =
             let ostr = binop_to_string o in
             pprint_atom a; pspace(); pstr ostr; pspace(); pprint_atom b
         | KExpAssign(n, e, _) -> pprint_id n; pspace(); pstr "="; pspace(); pprint_kexp e
-        | KExpMem(n, i, _) ->
+        | KExpMem(n, i, (_, loc)) ->
             pprint_id n; pstr ".";
-            (match (get_id_ktyp n) with
+            (match (get_id_ktyp n loc) with
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
             | _ -> pstr (string_of_int i))
@@ -184,7 +184,7 @@ and pprint_kexp_ e prtyp =
                 else () in
             obox(); pstr "["; obox();
             (List.iteri (fun i a ->
-                if i mod cols != 0 || i = 0 then () else (cbox(); pstr ";"; pcut(); obox());
+                if i mod cols != 0 then pstr ", " else if i = 0 then () else (cbox(); pstr ";"; pcut(); obox());
                 pprint_atom a) elems);
             cbox(); pstr "]"; cbox()
         | KExpCall(f, args, _) ->
@@ -243,6 +243,7 @@ and pprint_kexpseq el braces =
     (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_kexp e) el); cbox();
     if braces then pstr "}" else ()
 
+let pprint_atom_x a = Format.print_flush (); Format.open_box 0; pprint_atom a; Format.close_box(); Format.print_flush ()
 let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ktyp t; Format.close_box(); Format.print_flush ()
 let pprint_kexp_x e = Format.print_flush (); Format.open_box 0; pprint_kexp e; Format.close_box(); Format.print_flush ()
 let pprint_top code = Format.print_flush (); Format.open_box 0; pprint_kexpseq code false; Format.close_box(); pbreak(); Format.print_flush ()

@@ -100,7 +100,7 @@ and kexp_t =
     | KExpMatch of ((kexp_t list) * kexp_t) list * kctx_t
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of id_t * loc_t
-    | KExpCast of atom_t * ktyp_t * kctx_t
+    | KExpCast of atom_t * ktyp_t * loc_t
     | KExpMap of (kexp_t list * (id_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
     | KExpFor of (id_t * dom_t) list * kexp_t * for_flag_t list * loc_t
     | KExpWhile of kexp_t * kexp_t * loc_t
@@ -111,7 +111,8 @@ and kexp_t =
     | KDefExn of kdefexn_t ref
     | KDefVariant of kdefvariant_t ref
 and kdefval_t = { kv_name: id_t; kv_typ: ktyp_t; kv_flags: val_flag_t list; kv_scope: scope_t list; kv_loc: loc_t }
-and kdeffun_t = { kf_name: id_t; kf_typ: ktyp_t; kf_args: id_t list; kf_body: kexp_t; kf_flags: fun_flag_t list; kf_scope: scope_t list; kf_loc: loc_t }
+and kdeffun_t = { kf_name: id_t; kf_typ: ktyp_t; kf_args: id_t list; kf_body: kexp_t;
+                  kf_flags: fun_flag_t list; kf_scope: scope_t list; kf_loc: loc_t }
 and kdefexn_t = { ke_name: id_t; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
 and kdefvariant_t = { kvar_name: id_t; kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
@@ -175,7 +176,7 @@ let get_kexp_kctx e = match e with
     | KExpMatch(_, c) -> c
     | KExpTryCatch(_, _, c) -> c
     | KExpThrow(_, l) -> (KTypErr, l)
-    | KExpCast(_, _, c) -> c
+    | KExpCast(_, t, l) -> (t, l)
     | KExpMap(_, _, _, c) -> c
     | KExpFor(_, _, _, l) -> (KTypVoid, l)
     | KExpWhile(_, _, l) -> (KTypVoid, l)
@@ -189,7 +190,8 @@ let get_kexp_kctx e = match e with
 let get_kexp_ktyp e = let (t, l) = (get_kexp_kctx e) in t
 let get_kexp_loc e = let (t, l) = (get_kexp_kctx e) in l
 
-let get_kscope info = match info with
+let get_kscope info =
+    match info with
     | KNone -> ScGlobal :: []
     | KText _ -> ScGlobal :: []
     | KVal {kv_scope} -> kv_scope
@@ -197,7 +199,8 @@ let get_kscope info = match info with
     | KExn {contents = {ke_scope}} -> ke_scope
     | KVariant {contents = {kvar_scope}} -> kvar_scope
 
-let get_kinfo_loc info = match info with
+let get_kinfo_loc info =
+    match info with
     | KNone | KText _ -> noloc
     | KVal {kv_loc} -> kv_loc
     | KFun {contents = {kf_loc}} -> kf_loc
@@ -206,15 +209,23 @@ let get_kinfo_loc info = match info with
 
 let get_id_loc i = get_kinfo_loc (kinfo i)
 
-let get_kinfo_ktyp info i = match info with
-    | KNone -> failwith (sprintf "attempt to request type of non-existing symbol '%s'" (id2str i))
-    | KText s -> failwith (sprintf "attempt to request type of symbol '%s'" s)
+let check_kinfo info i loc =
+    match info with
+    | KNone -> raise_compile_err loc (sprintf "attempt to request type of non-existing symbol '%s'" (id2str i))
+    | KText s -> raise_compile_err loc (sprintf "attempt to request type of symbol '%s'" s)
+    | _ -> ()
+
+let get_kinfo_ktyp info i loc =
+    check_kinfo info i loc;
+    match info with
+    | KNone -> KTypNil
+    | KText _ -> KTypNil
     | KVal {kv_typ} -> kv_typ
     | KFun {contents = {kf_typ}} -> kf_typ
     | KExn {contents = {ke_typ}} -> ke_typ
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
 
-let get_id_ktyp i = get_kinfo_ktyp (kinfo i) i
+let get_id_ktyp i loc = get_kinfo_ktyp (kinfo i) i loc
 
 (* used by the type checker *)
 let get_lit_ktyp l = match l with
@@ -227,8 +238,9 @@ let get_lit_ktyp l = match l with
     | LitBool(_) -> KTypBool
     | LitNil -> KTypNil
 
-let get_atom_ktyp a = match a with
-    | Atom.Id i -> get_id_ktyp i
+let get_atom_ktyp a loc =
+    match a with
+    | Atom.Id i -> get_id_ktyp i loc
     | Atom.Lit l -> get_lit_ktyp l
 
 let intrin2str iop = match iop with
@@ -250,13 +262,17 @@ let create_defval n t flags e_opt code sc loc =
     | Some(e) -> KDefVal(n, e, loc) :: code
     | _ -> code
 
+let get_code_loc code default_loc =
+    loclist2loc (List.map get_kexp_loc code) default_loc
+
 let code2kexp code loc =
     match code with
     | [] -> KExpNop(loc)
     | e :: [] -> e
     | _ ->
         let t = get_kexp_ktyp (Utils.last_elem code) in
-        KExpSeq(code, (t, loc))
+        let final_loc = get_code_loc code loc in
+        KExpSeq(code, (t, final_loc))
 
 let filter_out_nops code =
     List.filter (fun e -> match e with
@@ -268,7 +284,8 @@ let rcode2kexp code loc = match (filter_out_nops code) with
     | e :: [] -> e
     | e :: rest ->
         let t = get_kexp_ktyp e in
-        KExpSeq((List.rev code), (t, loc))
+        let final_loc = get_code_loc code loc in
+        KExpSeq((List.rev code), (t, final_loc))
 
 let kexp2code e =
     match e with
@@ -403,7 +420,7 @@ and walk_kexp e callb =
             (walk_kctx_ ctx))
     | KExpTryCatch(e1, e2, ctx) ->
         KExpTryCatch((walk_kexp_ e1), (walk_kexp_ e2), (walk_kctx_ ctx))
-    | KExpCast(a, t, ctx) -> KExpCast((walk_atom_ a), (walk_ktyp_ t), (walk_kctx_ ctx))
+    | KExpCast(a, t, loc) -> KExpCast((walk_atom_ a), (walk_ktyp_ t), loc)
     | KExpCCode(str, ctx) -> KExpCCode(str, (walk_kctx_ ctx))
     | KDefVal(k, e, loc) ->
         KDefVal((walk_id_ k), (walk_kexp_ e), loc)
@@ -529,8 +546,8 @@ and fold_kexp e callb =
         ctx
     | KExpTryCatch(e1, e2, ctx) ->
         fold_kexp_ e1; fold_kexp_ e2; ctx
-    | KExpCast(a, t, ctx) ->
-        fold_atom_ a; fold_ktyp_ t; ctx
+    | KExpCast(a, t, loc) ->
+        fold_atom_ a; (t, loc)
     | KExpCCode(_, ctx) -> ctx
     | KDefVal(k, e, loc) ->
         fold_id_ k; fold_kexp_ e; (KTypVoid, loc)
@@ -628,6 +645,17 @@ let used_by code =
 let free_vars_kexp e =
     let (uv, dv) = used_decl_by_kexp e in
     IdSet.diff uv dv
+
+let is_mutable i loc =
+    let info = kinfo i in
+    check_kinfo info i loc;
+    match info with
+    | KNone | KText _ -> false
+    | KVal {kv_flags} -> List.mem ValMutable kv_flags
+    | KFun _ -> false
+    | KExn _ -> false
+    | KVariant _ -> raise_compile_err loc
+        (sprintf "attempt to treat variant '%s' as a value or function" (id2str i))
 
 let print_set setname s =
     printf "%s:[" setname;

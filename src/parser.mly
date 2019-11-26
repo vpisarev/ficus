@@ -114,9 +114,9 @@ let rec compress_nested_map_exp l e = match e with
 %}
 
 %token TRUE FALSE
-%token <Int64.t> INT
-%token <int * Int64.t> SINT
-%token <int * Int64.t> UINT
+%token <int64> INT
+%token <int * int64> SINT
+%token <int * int64> UINT
 %token <int * float> FLOAT
 %token <string> IDENT
 %token <string> B_IDENT

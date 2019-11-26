@@ -58,3 +58,10 @@ let update_imported_modules mname_id (pos0, pos1) =
         (parser_ctx_deps := mname_unique_id :: !parser_ctx_deps;
         mname_unique_id)
     | _ -> raise (SyntaxError(("module " ^ mname ^ " is not found"), pos0, pos1))
+
+let ipower a b =
+    let rec ipower_ a b p =
+        if b = 0L then p else
+            let p = if (Int64.logand b 1L) != 0L then (Int64.mul p a) else p in
+            ipower_ (Int64.mul a a) (Int64.div b 2L) p in
+    ipower_ a b 1L
