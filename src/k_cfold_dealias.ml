@@ -199,6 +199,7 @@ let cfold_bop bop a b res_t loc =
         if ib >= 0L then
             ((Some (ConstInt (Utils.ipower ia ib))), None)
         else
+            (* [TODO] should probably issue a warning in this case *)
             (None, None)
     | (OpPow, (ConstInt ia), (ConstFloat fb)) ->
         ((Some (ConstFloat (Float.pow (Int64.to_float ia) fb))), None)
@@ -214,8 +215,8 @@ let cfold_bop bop a b res_t loc =
     | (OpCompareLE, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia <= ib))), None)
     | (OpCompareGE, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia >= ib))), None)
 
-    (* [TODO] we do not have >, >=, < and <= comparison operation on strings
-       since it may require a better Unicode support *)
+    (* [TODO] we do not have >, >=, < and <= comparison operations on strings yet,
+       because it requires a better Unicode support *)
     | (OpCompareEQ, (ConstString sa), (ConstString sb)) -> ((Some (ConstBool (sa = sb))), None)
     | (OpCompareNE, (ConstString sa), (ConstString sb)) -> ((Some (ConstBool (sa != sb))), None)
 

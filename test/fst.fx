@@ -9,10 +9,14 @@ val _2 = 2
 val a = (_2 + 2) | 8
 val a = a + 1
 fun fib(n: int) = if (n <= 1) 1 else fib(n-1) + fib(n-2)
+fun fib2(n: int) {
+    fun fib2_(a: int, b: int, n: int) = if (n <= 1) a else fib2_(a+b, a, n-1)
+    fib2_(1, 1, n)
+}
 
 println("factorial(5)=\(testmod.fact(5))")
 
-for (i <- 1:31) { print("fib(\(i))="); println(fib(i)); }
+for (i <- 1:31) { print("fib(\(i))="); print(fib(i)); println("fib2(\(i))="); println(fib2(i)); }
 
 exception Break: int
 

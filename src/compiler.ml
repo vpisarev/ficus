@@ -130,6 +130,7 @@ let k_optimize_all code =
         if i <= 1 then
             temp_code := K_simple_ll.lift !temp_code
         else ();
+        temp_code := K_tailrec.tailrec2loops !temp_code;
         temp_code := K_flatten.flatten !temp_code;
         temp_code := K_cfold_dealias.cfold_dealias !temp_code
     done;
