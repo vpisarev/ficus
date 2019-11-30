@@ -185,7 +185,7 @@ let tailrec2loops top_code =
     let trec2loop_callb =
     {
         kcb_atom=None;
-        kcb_ktyp=Some(tailrec2loop_ktyp_);
-        kcb_kexp=Some(tailrec2loop_kexp_)
+        kcb_typ=Some(tailrec2loop_ktyp_);
+        kcb_exp=Some(tailrec2loop_kexp_)
     } in
     List.map (fun e -> tailrec2loop_kexp_ e trec2loop_callb) top_code

@@ -148,8 +148,8 @@ let rec elim_unused code =
         | _ -> List.rev result
     in let elim_callb =
     {
-        kcb_ktyp=Some(elim_unused_ktyp_);
-        kcb_kexp=Some(elim_unused_kexp_);
+        kcb_typ=Some(elim_unused_ktyp_);
+        kcb_exp=Some(elim_unused_kexp_);
         kcb_atom=None
     }
     in elim_unused_ code [] elim_callb

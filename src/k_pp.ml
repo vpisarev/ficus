@@ -93,7 +93,7 @@ let pprint_dom r = match r with
 
 let rec pprint_kexp e = pprint_kexp_ e true
 and pprint_kexp_ e prtyp =
-    let t = get_kexp_ktyp e in
+    let t = get_kexp_typ e in
     let obox_cnt = ref 0 in
     let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
@@ -133,7 +133,7 @@ and pprint_kexp_ e prtyp =
         obox(); pstr "TYPE"; pspace(); pprint_id kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id v;
-            pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_id_ktyp c kvar_loc); pstr ">: "; pprint_ktyp t)
+            pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_idk_typ c kvar_loc); pstr ">: "; pprint_ktyp t)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr else (List.map (fun (v, _) -> v) kvar_cases))));
         cbox()
     | KExpSeq(el, _) -> pprint_kexpseq el true
@@ -148,7 +148,7 @@ and pprint_kexp_ e prtyp =
         | KExpAssign(n, e, _) -> pprint_id n; pspace(); pstr "="; pspace(); pprint_kexp e
         | KExpMem(n, i, (_, loc)) ->
             pprint_id n; pstr ".";
-            (match (get_id_ktyp n loc) with
+            (match (get_idk_typ n loc) with
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
             | _ -> pstr (string_of_int i))

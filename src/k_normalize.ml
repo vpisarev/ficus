@@ -278,7 +278,7 @@ let rec exp2kexp e code tref sc =
     | ExpMem(e1, elem, _) ->
         let e1loc = get_exp_loc e1 in
         let (a_id, code) = exp2id e1 code true sc "the literal does not have members to access" in
-        let ktyp = get_id_ktyp a_id e1loc in
+        let ktyp = get_idk_typ a_id e1loc in
         let i = (match (ktyp, elem) with
                 | (KTypTuple(tl), ExpLit((LitInt i_), (ityp, iloc))) ->
                     let i = Int64.to_int i_ in
@@ -328,7 +328,7 @@ let rec exp2kexp e code tref sc =
         (KExpTryCatch(try_body, handle_exn, kctx), code)
     | DefVal(p, e2, flags, _) ->
         let (e2, code) = exp2kexp e2 code true sc in
-        let ktyp = get_kexp_ktyp e2 in
+        let ktyp = get_kexp_typ e2 in
         let (v, code) = pat_simple_unpack p ktyp (Some e2) code "v" flags sc in
         (*  if pat_simple_unpack returns (noid, code), it means that the pattern p does
             not contain variables to capture, i.e. user wrote something like
@@ -349,7 +349,7 @@ let rec exp2kexp e code tref sc =
 
 and exp2atom e code tref sc =
     let (e, code) = exp2kexp e code tref sc in
-    let (t, eloc) = get_kexp_kctx e in
+    let (t, eloc) = get_kexp_ctx e in
     match (t, e) with
     | (KTypVoid, _) -> raise_compile_err eloc "no-value operator or declaration cannot be represented as an atom"
     | (_, KExpAtom(a, _)) -> (a, code)

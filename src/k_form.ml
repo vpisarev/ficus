@@ -84,8 +84,8 @@ and kexp_t =
     | KExpBreak of loc_t
     | KExpContinue of loc_t
     | KExpAtom of atom_t * kctx_t
-    | KExpBinOp of bin_op_t * atom_t * atom_t * kctx_t
-    | KExpUnOp of un_op_t * atom_t * kctx_t
+    | KExpBinOp of binop_t * atom_t * atom_t * kctx_t
+    | KExpUnOp of unop_t * atom_t * kctx_t
     | KExpIntrin of intrin_t * atom_t list * kctx_t
     | KExpSeq of kexp_t list * kctx_t
     | KExpIf of kexp_t * kexp_t * kexp_t * kctx_t
@@ -155,7 +155,7 @@ let set_idk_entry i n =
 let init_all_idks () =
     dynvec_init all_idks all_ids.dynvec_count
 
-let get_kexp_kctx e = match e with
+let get_kexp_ctx e = match e with
     | KExpNop(l) -> (KTypVoid, l)
     | KExpBreak(l) -> (KTypVoid, l)
     | KExpContinue(l) -> (KTypVoid, l)
@@ -187,8 +187,8 @@ let get_kexp_kctx e = match e with
     | KDefExn {contents={ke_loc}} -> (KTypVoid, ke_loc)
     | KDefVariant {contents={kvar_loc}} -> (KTypVoid, kvar_loc)
 
-let get_kexp_ktyp e = let (t, l) = (get_kexp_kctx e) in t
-let get_kexp_loc e = let (t, l) = (get_kexp_kctx e) in l
+let get_kexp_typ e = let (t, l) = (get_kexp_ctx e) in t
+let get_kexp_loc e = let (t, l) = (get_kexp_ctx e) in l
 
 let get_kscope info =
     match info with
@@ -215,7 +215,7 @@ let check_kinfo info i loc =
     | KText s -> raise_compile_err loc (sprintf "attempt to request type of symbol '%s'" s)
     | _ -> ()
 
-let get_kinfo_ktyp info i loc =
+let get_kinfo_typ info i loc =
     check_kinfo info i loc;
     match info with
     | KNone -> KTypNil
@@ -225,7 +225,7 @@ let get_kinfo_ktyp info i loc =
     | KExn {contents = {ke_typ}} -> ke_typ
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
 
-let get_id_ktyp i loc = get_kinfo_ktyp (kinfo i) i loc
+let get_idk_typ i loc = get_kinfo_typ (kinfo i) i loc
 
 (* used by the type checker *)
 let get_lit_ktyp l = match l with
@@ -240,7 +240,7 @@ let get_lit_ktyp l = match l with
 
 let get_atom_ktyp a loc =
     match a with
-    | Atom.Id i -> get_id_ktyp i loc
+    | Atom.Id i -> get_idk_typ i loc
     | Atom.Lit l -> get_lit_ktyp l
 
 let intrin2str iop = match iop with
@@ -270,7 +270,7 @@ let code2kexp code loc =
     | [] -> KExpNop(loc)
     | e :: [] -> e
     | _ ->
-        let t = get_kexp_ktyp (Utils.last_elem code) in
+        let t = get_kexp_typ (Utils.last_elem code) in
         let final_loc = get_code_loc code loc in
         KExpSeq(code, (t, final_loc))
 
@@ -283,7 +283,7 @@ let rcode2kexp code loc = match (filter_out_nops code) with
     | [] -> KExpNop(loc)
     | e :: [] -> e
     | e :: rest ->
-        let t = get_kexp_ktyp e in
+        let t = get_kexp_typ e in
         let final_loc = get_code_loc code loc in
         KExpSeq((List.rev code), (t, final_loc))
 
@@ -297,18 +297,18 @@ let kexp2code e =
 
 type k_callb_t =
 {
-    kcb_ktyp: (ktyp_t -> k_callb_t -> ktyp_t) option;
-    kcb_kexp: (kexp_t -> k_callb_t -> kexp_t) option;
+    kcb_typ: (ktyp_t -> k_callb_t -> ktyp_t) option;
+    kcb_exp: (kexp_t -> k_callb_t -> kexp_t) option;
     kcb_atom: (atom_t -> k_callb_t -> atom_t) option;
 }
 
 let rec check_n_walk_ktyp t callb =
-    match callb.kcb_ktyp with
+    match callb.kcb_typ with
     | Some(f) -> f t callb
     | _ -> walk_ktyp t callb
 
 and check_n_walk_kexp e callb =
-    match callb.kcb_kexp with
+    match callb.kcb_exp with
     | Some(f) -> f e callb
     | _ -> walk_kexp e callb
 

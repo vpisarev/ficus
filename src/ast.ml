@@ -147,13 +147,13 @@ type typ_t =
 
 let make_new_typ () = TypVar (ref (None: typ_t option))
 
-type bin_op_t =
+type binop_t =
       OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
     | OpCons
 
-type un_op_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
+type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTempRef
 type fun_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
@@ -168,8 +168,8 @@ type exp_t =
     | ExpRange of exp_t option * exp_t option * exp_t option * ctx_t
     | ExpLit of lit_t * ctx_t
     | ExpIdent of id_t * ctx_t
-    | ExpBinOp of bin_op_t * exp_t * exp_t * ctx_t
-    | ExpUnOp of un_op_t * exp_t * ctx_t
+    | ExpBinOp of binop_t * exp_t * exp_t * ctx_t
+    | ExpUnOp of unop_t * exp_t * ctx_t
     | ExpSeq of exp_t list * ctx_t
     | ExpMkTuple of exp_t list * ctx_t
     | ExpMkArray of exp_t list list * ctx_t

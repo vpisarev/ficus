@@ -123,6 +123,7 @@ let k_normalize_all modules =
     (List.rev rkcode, !compile_errs = [])
 
 let k_optimize_all code =
+    let _ = (compile_errs := []) in
     let niters = 5 in
     let temp_code = ref code in
     for i = 0 to niters-1 do
@@ -135,6 +136,12 @@ let k_optimize_all code =
         temp_code := K_cfold_dealias.cfold_dealias !temp_code
     done;
     (!temp_code, !compile_errs = [])
+
+let k2c_all code =
+    let _ = (compile_errs := []) in
+    let _ = C_form.init_all_idcs() in
+    let _ = C_pp.pprint_top [] in
+    ()
 
 let print_all_compile_errs () =
     let nerrs = List.length !compile_errs in

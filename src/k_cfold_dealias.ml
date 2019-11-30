@@ -453,8 +453,8 @@ let cfold_dealias top_code =
     let cfd_callb =
     {
         kcb_atom=Some(cfd_atom_);
-        kcb_ktyp=Some(cfd_ktyp_);
-        kcb_kexp=Some(cfd_kexp_)
+        kcb_typ=Some(cfd_ktyp_);
+        kcb_exp=Some(cfd_kexp_)
     } in
     (* do 2 passes to implement the backward subsitution properly
        (see the comments in KDefVal case above) *)
