@@ -355,7 +355,7 @@ let maybe_unify t1 t2 update_refs =
                 | ((relems1, _), (relems2, _)) ->
                     let have_all_matches = List.for_all (fun (n1, t1, v1opt) ->
                         (List.exists (fun (n2, t2, _) -> n1 = n2 && maybe_unify_ t1 t2) relems2)
-                        || (Option.is_some v1opt)) relems1 in
+                        || (Utils.is_some v1opt)) relems1 in
                     (* if both the record types are unknown then all the v1opt's in relems1
                        are None's. Since we do not have duplicates, which is checked by the parser,
                        then if for each record field in relems1 we have a match in relems2
@@ -1316,7 +1316,7 @@ and register_typ_constructor n templ_args arg_t rt env sc decl_loc =
               TypVoid -> ([], rt)
             | TypTuple(tl) -> (tl, TypFun(tl, rt))
             | _ -> let argtyps = arg_t :: [] in (argtyps, TypFun(argtyps, rt)) in
-    let args = List.mapi (fun i _ -> PatIdent((get_id ("arg" ^ (Int.to_string i))), decl_loc)) argtyps in
+    let args = List.mapi (fun i _ -> PatIdent((get_id (sprintf "arg%d" i)), decl_loc)) argtyps in
     let cname = dup_id n in
     let df = ref { df_name=cname; df_templ_args=templ_args;
             df_args=args; df_typ=ctyp;

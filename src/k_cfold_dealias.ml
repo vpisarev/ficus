@@ -96,7 +96,7 @@ let finalize_cfold_result c_opt at_opt res_t loc =
             | KTypInt -> mk_some_lit_atom (LitInt (b2i x))
             | KTypSInt b -> mk_some_lit_atom (LitSInt(b, (b2i x)))
             | KTypUInt b -> mk_some_lit_atom (LitUInt(b, (b2i x)))
-            | KTypFloat b -> mk_some_lit_atom (LitFloat(b, (Bool.to_float x)))
+            | KTypFloat b -> mk_some_lit_atom (LitFloat(b, (if x then 1.0 else 0.0)))
             | KTypBool -> mk_some_lit_atom (LitBool x)
             | KTypString -> mk_some_lit_atom (LitString (if x then "true" else "false"))
             | _ -> None)

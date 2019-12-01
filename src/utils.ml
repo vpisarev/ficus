@@ -5,6 +5,9 @@
 *)
 open Ast
 
+let is_some x_opt = match x_opt with Some _ -> true | _ -> false
+let is_none x_opt = match x_opt with Some _ -> false | _ -> true
+
 let zip l1 l2 = List.map2 (fun i1 i2 -> (i1, i2)) l1 l2
 
 let rec last_elem l = match l with

@@ -623,7 +623,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
             | PatVariant(vn, pl, loc) ->
                 let (case_n, tl, checks, code, alt_e_opt) =
                     get_var_tag_cmp_and_extract n pinfo (checks, code) vn case_sc loc in
-                let plists = if case_n = noid && (Option.is_none alt_e_opt) then plists
+                let plists = if case_n = noid && (Utils.is_none alt_e_opt) then plists
                              else process_pltl case_n pl tl plists alt_e_opt in
                 (plists, checks, code)
             | PatRec(_, ip_l, loc) ->
