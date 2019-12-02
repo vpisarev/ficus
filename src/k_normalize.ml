@@ -706,7 +706,7 @@ and transform_fun df code sc =
             let body_kexp = rcode2kexp (e :: body_code) body_loc in
             let inst_flags = match body_kexp with KExpCCode _ -> FunInC :: inst_flags | _ -> inst_flags in
             let kf = ref { kf_name=inst_name; kf_typ=ktyp; kf_args=(List.rev argids);
-                kf_body=body_kexp; kf_flags=inst_flags; kf_scope=sc; kf_loc=inst_loc } in
+                kf_body=body_kexp; kf_flags=inst_flags; kf_closure=(noid, noid); kf_scope=sc; kf_loc=inst_loc } in
             set_idk_entry inst_name (KFun kf);
             KDefFun kf :: code
         | i -> raise_compile_err (get_idinfo_loc i)
@@ -733,7 +733,8 @@ and transform_all_types_and_cons elist code sc =
                                        | KTypFun(argtypes, _) -> argtypes
                                        | _ -> [] in
                             let kf = ref { kf_name=df_name; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
-                                           kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: []; kf_scope=sc; kf_loc=dvar_loc } in
+                                           kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: [];
+                                           kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
                             set_idk_entry df_name (KFun kf);
                             (KDefFun kf) :: code
                         | _ -> raise_compile_err dvar_loc

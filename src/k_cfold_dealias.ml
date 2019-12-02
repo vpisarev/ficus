@@ -332,7 +332,7 @@ let cfold_dealias top_code =
                         else
                             e
                     | Atom.Lit c ->
-                        printf "will replace '%s' with literal '%s'\n" (id2str n) (Ast_pp.lit_to_string c);
+                        (*printf "will replace '%s' with literal '%s'\n" (id2str n) (Ast_pp.lit_to_string c);*)
                         add_to_map n a;
                         KExpNop(loc))
                 else e
