@@ -67,14 +67,18 @@ let rec ppktyp_ t p1 =
     | KTypArray(d, t1) -> ppktypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
     | KTypName(n) -> pprint_id n
     | KTypTuple(tl) -> ppktyplist_ "(" tl
-    | KTypClosure(i, t) ->
+    | KTypClosure(t, i) ->
         obox(); pstr "Closure[";
         ppktyp_ t KTypPr0; pstr ";";
         pspace();
-        let fvars = get_closure_freevars i (get_id_loc i) in
-        pstr "{";
-        List.iteri (fun i (ni, _) -> if i = 0 then () else pstr ", "; pprint_id ni) fvars;
-        pstr "}]"; cbox()
+        if i = noid then
+            pstr "{...}]"
+        else
+            (let fvars = get_closure_freevars i (get_id_loc i) in
+            pstr "{";
+            List.iteri (fun i (ni, _) -> if i = 0 then () else pstr ", "; pprint_id ni) fvars;
+            pstr "}]");
+        cbox()
     | KTypRecord(rn, relems) -> obox(); pprint_id rn; pstr " {";
         List.iteri (fun i (ni, ti) -> if i = 0 then () else pstr ", ";
             pprint_id ni; pstr ": "; ppktyp_ ti KTypPr0) relems; pstr "}"; cbox()
@@ -84,24 +88,31 @@ let rec ppktyp_ t p1 =
     | KTypModule -> pstr "Module"
 
 let pprint_ktyp t = ppktyp_ t KTypPr0
-let pprint_atom a = match a with
-    | Atom.Id k -> pprint_id k
+let pprint_atom a impderef loc = match a with
+    | Atom.Id k ->
+        if impderef && (is_implicit_deref k loc) then
+            (pstr "(*"; pprint_id k; pstr ")")
+        else
+            pprint_id k
     | Atom.Lit l -> pstr (Ast_pp.lit_to_string l)
-let pprint_dom r = match r with
-    | Domain.Elem(a) -> pprint_atom a
-    | Domain.Fast(a) -> pstr "<"; pprint_atom a; pstr ">"
-    | Domain.Range(i,j,k) -> pprint_atom i; pstr ":";
+let pprint_dom r loc = match r with
+    | Domain.Elem(a) -> pprint_atom a true loc
+    | Domain.Fast(a) -> pstr "<"; pprint_atom a true loc; pstr ">"
+    | Domain.Range(i,j,k) -> pprint_atom i true loc; pstr ":";
           (match j with
           | Atom.Lit(LitNil) -> ()
-          | _ -> pprint_atom j);
+          | _ -> pprint_atom j true loc);
           (match k with
           | Atom.Lit(LitNil) -> ()
           | Atom.Lit(LitInt 1L) -> ()
-          | _ -> pstr ":"; pprint_atom k)
+          | _ -> pstr ":"; pprint_atom k true loc)
 
 let rec pprint_kexp e = pprint_kexp_ e true
 and pprint_kexp_ e prtyp =
     let t = get_kexp_typ e in
+    let eloc = get_kexp_loc e in
+    let pprint_atom_ a = pprint_atom a true eloc in
+    let pprint_dom_ r = pprint_dom r eloc in
     let obox_cnt = ref 0 in
     let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
@@ -112,16 +123,17 @@ and pprint_kexp_ e prtyp =
             | _ -> raise_compile_err loc (sprintf "there is no information about defined value '%s'" (id2str n)) in
         (List.iter (fun vf -> match vf with
         | ValTempRef -> pstr "TEMP_REF"; pspace()
+        | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_id n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace(); pprint_kexp_ e0 false; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_typ; kf_body; kf_closure; kf_flags; kf_loc }} ->
-        let (kf_c_arg, kf_c) = kf_closure in
+        let (kf_c_arg, kf_c_vt) = kf_closure in
         let nargs = List.length kf_args in
         let kf_freevars = if kf_c_arg = noid then
             []
         else
-            (get_closure_freevars kf_c kf_loc) in
+            (get_closure_freevars kf_c_vt kf_loc) in
         let (argtyps, rt) = match kf_typ with
             | KTypFun(argtyps, rt) -> (argtyps, rt)
             | _ ->
@@ -161,35 +173,47 @@ and pprint_kexp_ e prtyp =
             pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_idk_typ c kvar_loc); pstr ">: "; pprint_ktyp t)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr else (List.map (fun (v, _) -> v) kvar_cases))));
         cbox()
+    | KDefClosureVars { contents = {kcv_name; kcv_freevars; kcv_loc} } ->
+        obox(); pstr "CLOSURE_DATA"; pspace(); pprint_id kcv_name;
+        pspace(); pstr "="; pspace(); pstr "{ ";
+        List.iteri (fun i (n, t) ->
+            if i = 0 then () else (pstr ","; pspace());
+            pprint_id n; pstr ": "; pspace(); pprint_ktyp t)
+        kcv_freevars;
+        pstr " }"; cbox()
     | KExpSeq(el, _) -> pprint_kexpseq el true
     | _ -> obox_(); (match e with
         | KExpNop(_) -> pstr "{}"
         | KExpBreak(_) -> pstr "BREAK"
         | KExpContinue(_) -> pstr "CONTINUE"
-        | KExpAtom(a, _) -> pprint_atom a
+        | KExpAtom(a, _) -> pprint_atom_ a
         | KExpBinOp(o, a, b, _) ->
             let ostr = binop_to_string o in
-            pprint_atom a; pspace(); pstr ostr; pspace(); pprint_atom b
+            pprint_atom_ a; pspace(); pstr ostr; pspace(); pprint_atom_ b
         | KExpAssign(n, e, _) -> pprint_id n; pspace(); pstr "="; pspace(); pprint_kexp e
         | KExpMem(n, i, (_, loc)) ->
             pprint_id n; pstr ".";
             (match (get_idk_typ n loc) with
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
+            | KTypClosure(_, cn) ->
+                let fv = get_closure_freevars cn loc in
+                if fv = [] then raise_compile_err loc "attempt to access unspecified closure"
+                else let (ni, _) = List.nth fv i in pstr (id2str ni)
             | _ -> pstr (string_of_int i))
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
-            pstr ostr; pprint_atom a
+            pstr ostr; pprint_atom_ a
         | KExpDeref(n, _) -> pstr "*"; pprint_id n
         | KExpIntrin(iop, args, _) ->
             pstr (intrin2str iop);
-            List.iteri (fun i a -> if i = 0 then pstr "(" else (pstr ","; pspace()); pprint_atom a) args;
+            List.iteri (fun i a -> if i = 0 then pstr "(" else (pstr ","; pspace()); pprint_atom_ a) args;
             pstr ")"
         | KExpThrow(n, _) -> pstr "THROW "; pprint_id n
         | KExpMkTuple(al, _) ->
             pstr "("; obox();
             (List.iteri (fun i a ->
-                if i = 0 then () else (pstr ","; pspace()); pprint_atom a) al);
+                if i = 0 then () else (pstr ","; pspace()); pprint_atom_ a) al);
             (match al with
             a :: [] -> pstr ","
             | _ -> ()); cbox(); pstr ")"
@@ -200,7 +224,7 @@ and pprint_kexp_ e prtyp =
             let ant = Utils.zip al relems in
             pstr "NEW_RECORD "; pprint_id rn; pstr " {"; obox();
             List.iteri (fun i (a, (n, t)) ->
-                if i = 0 then () else (pstr ","; pspace()); pprint_id n; pstr "="; pprint_atom a) ant;
+                if i = 0 then () else (pstr ","; pspace()); pprint_id n; pstr "="; pprint_atom_ a) ant;
             (match al with
             a :: [] -> pstr ","
             | _ -> ()); cbox(); pstr "}"
@@ -209,7 +233,7 @@ and pprint_kexp_ e prtyp =
             let ant = Utils.zip args fvars in
             pstr "NEW_CLOSURE ("; pprint_id f; pstr ") {"; obox();
             List.iteri (fun i (a, (n, _)) ->
-                if i = 0 then () else (pstr ","; pspace()); pprint_id n; pstr "="; pprint_atom a) ant;
+                if i = 0 then () else (pstr ","; pspace()); pprint_id n; pstr "="; pprint_atom a false eloc) ant;
             cbox(); pstr "}"
         | KExpMkArray(shape, elems, (_, l)) ->
             let total_elems = List.length elems in
@@ -221,17 +245,22 @@ and pprint_kexp_ e prtyp =
             obox(); pstr "["; obox();
             (List.iteri (fun i a ->
                 if i mod cols != 0 then pstr ", " else if i = 0 then () else (cbox(); pstr ";"; pcut(); obox());
-                pprint_atom a) elems);
+                pprint_atom_ a) elems);
             cbox(); pstr "]"; cbox()
         | KExpCall(f, args, _) ->
-            obox(); pprint_id f; pstr "(";
+            obox(); pprint_id f;
+            (match (kinfo f) with
+            | KFun _ -> ()
+            | KExn _ -> ()
+            | _ -> pstr "~");
+            pstr "(";
             (List.iteri (fun i a ->
-                if i = 0 then () else (pstr ","; pspace()); pprint_atom a) args);
+                if i = 0 then () else (pstr ","; pspace()); pprint_atom_ a) args);
             pstr ")"; cbox();
         | KExpAt(a, args, _) ->
-            pprint_atom a; pstr "[";
+            pprint_atom_ a; pstr "[";
             obox(); (List.iteri (fun i dom ->
-                if i = 0 then () else (pstr ","; pspace()); pprint_dom dom) args);
+                if i = 0 then () else (pstr ","; pspace()); pprint_dom_ dom) args);
             cbox(); pstr "]"
         | KExpIf(if_c, if_then, if_else, _) ->
             obox(); pstr "IF ("; pprint_kexp if_c; pstr ")";
@@ -244,14 +273,14 @@ and pprint_kexp_ e prtyp =
         | KExpFor (for_cl, for_body, flags, _) ->
             obox(); Ast_pp.pprint_for_flags flags;
             pstr "FOR ("; (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
-                pprint_id n; pspace(); pstr "<-"; pspace(); pprint_dom dom) for_cl);
+                pprint_id n; pspace(); pstr "<-"; pspace(); pprint_dom_ dom) for_cl);
             pstr ")"; pspace(); pprint_kexp for_body; cbox()
         | KExpMap(map_cl, map_body, flags, _) ->
             obox(); Ast_pp.pprint_for_flags flags;
             pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else ();
-            (List.iter (fun (pre_l, pe_l) -> pstr "FOR ("; pprint_kexpseq pre_l false; pstr ";"; pcut();
+            (List.iter (fun (pre_e, pe_l) -> pstr "FOR ("; pprint_kexp pre_e; pstr ";"; pcut();
               (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
-              pprint_id n; pspace(); pstr "<-"; pspace(); pprint_dom dom) pe_l);
+              pprint_id n; pspace(); pstr "<-"; pspace(); pprint_dom_ dom) pe_l);
               pstr ")"; pspace()) map_cl);
             pprint_kexp map_body; pstr "]"; cbox()
         | KExpMatch (cases, _) ->
@@ -266,7 +295,7 @@ and pprint_kexp_ e prtyp =
         | KExpTryCatch(e1, e2, _) ->
             obox(); pstr "TRY"; pspace(); pprint_kexp e1; pspace();
             pstr "CATCH"; pprint_kexp e2; cbox()
-        | KExpCast(a, t, _) -> pstr "("; obox(); pprint_atom a; pspace(); pstr ":>"; pspace(); pprint_ktyp t; cbox(); pstr ")"
+        | KExpCast(a, t, _) -> pstr "("; obox(); pprint_atom_ a; pspace(); pstr ":>"; pspace(); pprint_ktyp t; cbox(); pstr ")"
         | KExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
         | _ -> printf "\n\n\n\nunknown exp!!!!!!!!!!!!!!!!!!!!\n\n\n\n"; failwith "unknown exp"
         ); cbox_()
@@ -279,7 +308,7 @@ and pprint_kexpseq el braces =
     (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_kexp e) el); cbox();
     if braces then pstr "}" else ()
 
-let pprint_atom_x a = Format.print_flush (); Format.open_box 0; pprint_atom a; Format.close_box(); Format.print_flush ()
+let pprint_atom_x a = Format.print_flush (); Format.open_box 0; pprint_atom a true noloc; Format.close_box(); Format.print_flush ()
 let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ktyp t; Format.close_box(); Format.print_flush ()
 let pprint_kexp_x e = Format.print_flush (); Format.open_box 0; pprint_kexp e; Format.close_box(); Format.print_flush ()
 let pprint_top code = Format.print_flush (); Format.open_box 0; pprint_kexpseq code false; Format.close_box(); pbreak(); Format.print_flush ()

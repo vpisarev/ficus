@@ -21,24 +21,28 @@
 open Ast
 open K_form
 
+let find_globals top_code set0 = List.fold_left (fun globals e ->
+    let n_opt =
+    match e with
+    | KDefVal(n, e, _) -> Some n
+    | KDefFun {contents={kf_name}} -> Some kf_name
+    | KDefExn {contents={ke_name}} -> Some ke_name
+    | KDefVariant {contents={kvar_name}} -> Some kvar_name
+    | _ -> None in
+    match n_opt with
+    | Some n -> IdSet.add n globals
+    | _ -> globals) set0 top_code
+
 let lift top_code =
     let new_top_code = ref ([]: kexp_t list) in
-    let globals = ref IdSet.empty in
+    (* first, let's see which definitions are already at the top level *)
+    let globals = ref (find_globals top_code IdSet.empty) in
     let add_to_globals i = globals := IdSet.add i !globals in
     let add_to_globals_and_lift i e loc =
         add_to_globals i;
         new_top_code := e :: !new_top_code;
         KExpNop(loc) in
     let is_global i = IdSet.mem i !globals in
-
-    (* first, let's see which definitions are already at the top level *)
-    let _ = List.iter (fun e ->
-        match e with
-        | KDefVal(i, e, _) -> add_to_globals i
-        | KDefFun {contents={kf_name}} -> add_to_globals kf_name
-        | KDefExn {contents={ke_name}} -> add_to_globals ke_name
-        | KDefVariant {contents={kvar_name}} -> add_to_globals kvar_name
-        | _ -> ()) top_code in
 
     (* a function can be lifted to the top level (i.e. become global) if all its
        "free variables" are either global (or have been just promoted there) or

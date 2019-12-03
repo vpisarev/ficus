@@ -70,7 +70,7 @@ type ktyp_t =
     | KTypCPointer
     | KTypFun of ktyp_t list * ktyp_t
     | KTypTuple of ktyp_t list
-    | KTypClosure of id_t * ktyp_t (* id of closure type + type of the function it's used for *)
+    | KTypClosure of ktyp_t * id_t (* type of the function + id of its free vars type (or noid if there is no free vars) *)
     | KTypRecord of id_t * (id_t * ktyp_t) list
     | KTypName of id_t
     | KTypArray of int * ktyp_t
@@ -103,7 +103,7 @@ and kexp_t =
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of id_t * loc_t
     | KExpCast of atom_t * ktyp_t * loc_t
-    | KExpMap of (kexp_t list * (id_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
+    | KExpMap of (kexp_t * (id_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
     | KExpFor of (id_t * dom_t) list * kexp_t * for_flag_t list * loc_t
     | KExpWhile of kexp_t * kexp_t * loc_t
     | KExpDoWhile of kexp_t * kexp_t * loc_t
@@ -112,6 +112,7 @@ and kexp_t =
     | KDefFun of kdeffun_t ref
     | KDefExn of kdefexn_t ref
     | KDefVariant of kdefvariant_t ref
+    | KDefClosureVars of kdefclosurevars_t ref
 and kdefval_t = { kv_name: id_t; kv_typ: ktyp_t; kv_flags: val_flag_t list; kv_scope: scope_t list; kv_loc: loc_t }
 and kdeffun_t = { kf_name: id_t; kf_typ: ktyp_t; kf_args: id_t list; kf_body: kexp_t;
                   kf_flags: fun_flag_t list; kf_closure: id_t * id_t;
@@ -192,6 +193,7 @@ let get_kexp_ctx e = match e with
     | KDefFun {contents={kf_loc}} -> (KTypVoid, kf_loc)
     | KDefExn {contents={ke_loc}} -> (KTypVoid, ke_loc)
     | KDefVariant {contents={kvar_loc}} -> (KTypVoid, kvar_loc)
+    | KDefClosureVars {contents={kcv_loc}} -> (KTypVoid, kcv_loc)
 
 let get_kexp_typ e = let (t, l) = (get_kexp_ctx e) in t
 let get_kexp_loc e = let (t, l) = (get_kexp_ctx e) in l
@@ -354,7 +356,7 @@ and walk_ktyp t callb =
     | KTypExn | KTypErr | KTypModule -> t
     | KTypFun (args, rt) -> KTypFun((walk_ktl_ args), (walk_ktyp_ rt))
     | KTypTuple elems -> KTypTuple(walk_ktl_ elems)
-    | KTypClosure (i, t) -> KTypClosure((walk_id_ i), (walk_ktyp_ t))
+    | KTypClosure (t, i) -> KTypClosure((walk_ktyp_ t), (walk_id_ i))
     | KTypRecord (rn, relems) ->
             KTypRecord((walk_id_ rn),
                 (List.map (fun (ni, ti) -> ((walk_id_ ni), (walk_ktyp_ ti))) relems))
@@ -376,7 +378,6 @@ and walk_kexp e callb =
                 "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
         | _ -> k in
     let walk_kexp_ e = check_n_walk_kexp e callb in
-    let walk_el_ el = List.map walk_kexp_ el in
     let walk_kctx_ (t, loc) = ((walk_ktyp_ t), loc) in
     let walk_dom_ d = check_n_walk_dom d callb in
     let walk_kdl_ kdl = List.map (fun (k, d) -> ((walk_id_ k), (walk_dom_ d))) kdl in
@@ -399,6 +400,7 @@ and walk_kexp e callb =
                 let new_result = match e with
                     | KExpNop _ -> if rest != [] then result
                                    else new_e :: result
+                    | KExpSeq(el, _) -> (List.rev el) @ result
                     | _ -> new_e :: result in
                 process_elist rest new_result
             | _ -> List.rev result in
@@ -423,7 +425,7 @@ and walk_kexp e callb =
     | KExpFor(kdl, body, flags, loc) ->
         KExpFor((walk_kdl_ kdl), (walk_kexp_ body), flags, loc)
     | KExpMap(e_kdl_l, body, flags, ctx) ->
-        KExpMap((List.map (fun (el, kdl) -> ((walk_el_ el), (walk_kdl_ kdl))) e_kdl_l),
+        KExpMap((List.map (fun (e, kdl) -> ((walk_kexp_ e), (walk_kdl_ kdl))) e_kdl_l),
                 (walk_kexp_ body), flags, (walk_kctx_ ctx))
     | KExpMatch(cases, ctx) ->
         KExpMatch((List.map (fun (checks_i, ei) ->
@@ -437,10 +439,10 @@ and walk_kexp e callb =
         KDefVal((walk_id_ k), (walk_kexp_ e), loc)
     | KDefFun(df) ->
         let { kf_name; kf_typ; kf_args; kf_body; kf_closure; kf_flags; kf_scope; kf_loc } = !df in
-        let (kf_c_arg, kf_c) = kf_closure in
+        let (kf_c_arg, kf_c_vt) = kf_closure in
         df := { kf_name = (walk_id_ kf_name); kf_typ = (walk_ktyp_ kf_typ);
                 kf_args = (List.map walk_id_ kf_args); kf_body = (walk_kexp_ kf_body);
-                kf_closure = ((walk_id_ kf_c_arg), (walk_id_ kf_c)); kf_flags; kf_scope; kf_loc };
+                kf_closure = ((walk_id_ kf_c_arg), (walk_id_ kf_c_vt)); kf_flags; kf_scope; kf_loc };
         e
     | KDefExn(ke) ->
         let { ke_name; ke_typ; ke_scope; ke_loc } = !ke in
@@ -451,6 +453,12 @@ and walk_kexp e callb =
         kvar := { kvar_name = (walk_id_ kvar_name);
             kvar_cases = (List.map (fun (k, t) -> ((walk_id_ k), (walk_ktyp_ t))) kvar_cases);
             kvar_constr = (List.map walk_id_ kvar_constr); kvar_flags; kvar_scope; kvar_loc };
+        e
+    | KDefClosureVars(kcv) ->
+        let { kcv_name; kcv_freevars; kcv_scope; kcv_loc } = !kcv in
+        kcv := { kcv_name = (walk_id_ kcv_name);
+            kcv_freevars = (List.map (fun (k, t) -> ((walk_id_ k), (walk_ktyp_ t))) kcv_freevars);
+            kcv_scope; kcv_loc };
         e)
 
 (* walk through a K-normalized syntax tree and perform some actions;
@@ -507,7 +515,7 @@ and fold_ktyp t callb =
     | KTypExn | KTypErr | KTypModule -> ()
     | KTypFun (args, rt) -> fold_ktl_ args; fold_ktyp_ rt
     | KTypTuple elems -> fold_ktl_ elems
-    | KTypClosure (i, t) -> fold_id_ i; fold_ktyp_ t
+    | KTypClosure (t, i) -> fold_ktyp_ t; fold_id_ i
     | KTypRecord (rn, relems) -> fold_id_ rn;
         List.iter (fun (ni, ti) -> fold_id_ ni; fold_ktyp_ ti) relems
     | KTypName i -> fold_id_ i
@@ -521,7 +529,6 @@ and fold_kexp e callb =
     let fold_ktyp_ t = check_n_fold_ktyp t callb in
     let fold_id_ k = check_n_fold_id k callb in
     let fold_kexp_ e = check_n_fold_kexp e callb in
-    let fold_el_ el = List.iter fold_kexp_ el in
     let fold_kctx_ (t, _) = fold_ktyp_ t in
     let fold_dom_ d = check_n_fold_dom d callb in
     let fold_kdl_ kdl = List.iter (fun (k, d) -> fold_id_ k; fold_dom_ d) kdl in
@@ -552,7 +559,7 @@ and fold_kexp e callb =
     | KExpFor(kdl, body, _, loc) ->
         fold_kdl_ kdl; fold_kexp_ body; (KTypVoid, loc)
     | KExpMap(e_kdl_l, body, _, ctx) ->
-        List.iter (fun (el, kdl) -> fold_el_ el; fold_kdl_ kdl) e_kdl_l;
+        List.iter (fun (e, kdl) -> fold_kexp_ e; fold_kdl_ kdl) e_kdl_l;
         fold_kexp_ body; ctx
     | KExpMatch(cases, ctx) ->
         List.iter (fun (checks_i, ei) ->
@@ -567,9 +574,9 @@ and fold_kexp e callb =
         fold_id_ k; fold_kexp_ e; (KTypVoid, loc)
     | KDefFun(df) ->
         let { kf_name; kf_typ; kf_args; kf_body; kf_closure; kf_loc } = !df in
-        let (kf_c_arg, kf_c) = kf_closure in
+        let (kf_c_arg, kf_c_vt) = kf_closure in
         fold_id_ kf_name; fold_ktyp_ kf_typ;
-        fold_id_ kf_c_arg; fold_id_ kf_c;
+        fold_id_ kf_c_arg; fold_id_ kf_c_vt;
         List.iter fold_id_ kf_args; fold_kexp_ kf_body;
         (KTypVoid, kf_loc)
     | KDefExn(ke) ->
@@ -581,7 +588,12 @@ and fold_kexp e callb =
         fold_id_ kvar_name;
         List.iter (fun (k, t) -> fold_id_ k; fold_ktyp_ t) kvar_cases;
         List.iter fold_id_ kvar_constr;
-        (KTypVoid, kvar_loc))
+        (KTypVoid, kvar_loc)
+    | KDefClosureVars(kcv) ->
+        let { kcv_name; kcv_freevars; kcv_loc } = !kcv in
+        fold_id_ kcv_name;
+        List.iter (fun (k, t) -> fold_id_ k; fold_ktyp_ t) kcv_freevars;
+        (KTypVoid, kcv_loc))
 
 let add_to_used1 i callb =
     let (used_set, decl_set) = callb.kcb_fold_result in
@@ -616,12 +628,12 @@ and used_by_kexp_ e callb =
     | KDefFun {contents={kf_name; kf_typ; kf_args; kf_closure; kf_body}} ->
         (* the function arguments are not included into the "used variables" set by default,
             they should be referenced by the function body to be included *)
-        let (kf_c_arg, kf_c) = kf_closure in
+        let (kf_c_arg, kf_c_vt) = kf_closure in
         let uv_typ = used_by_ktyp kf_typ in
         let (uv_body, dv_body) = used_decl_by_kexp kf_body in
         let uv = IdSet.union uv_typ (IdSet.remove kf_name uv_body) in
         add_to_decl1 kf_c_arg callb;
-        add_to_used1 kf_c callb;
+        add_to_used1 kf_c_vt callb;
         add_to_used uv callb;
         add_to_decl dv_body callb;
         add_to_decl1 kf_name callb;
@@ -679,6 +691,13 @@ let is_mutable i loc =
     | KVariant _ -> raise_compile_err loc
         (sprintf "attempt to treat variant '%s' as a value or function" (id2str i))
 
+let is_implicit_deref i loc =
+    let info = kinfo i in
+    check_kinfo info i loc;
+    match info with
+    | KVal {kv_flags} -> List.mem ValImplicitDeref kv_flags
+    | _ -> false
+
 let get_closure_freevars i loc =
     if i = noid then [] else
     (let info = kinfo i in
@@ -690,7 +709,7 @@ let get_closure_freevars i loc =
 
 let get_ktyp_closure_freevars t loc =
     match t with
-    | KTypClosure(i, _) -> (i, (get_closure_freevars i loc))
+    | KTypClosure(_, i) -> (i, (get_closure_freevars i loc))
     | _ -> raise_compile_err loc "invalid closure type (should be KTypClosure ...)"
 
 let print_set setname s =

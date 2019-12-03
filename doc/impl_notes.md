@@ -9,16 +9,16 @@
 - [x] implement minimal parser
 - [x] implement minimal pretty printer
 - [x] support multiple modules (import and from-import directives)
-- [ ] add intrinsic operations + very simple basic library
-- [ ] implement minimal type checker
-- [ ] K-normal form (call it IR?)
-- [ ] K-normalization
+- [x] add intrinsic operations + very simple basic library
+- [x] implement minimal type checker
+- [x] K-normal form (call it IR?)
+- [x] K-normalization
 - [ ] basic optimization of the form:
-   - [ ] dead code elimination
-   - [ ] tail recursion => loop substitution
+   - [x] dead code elimination
+   - [x] tail recursion => loop substitution
    - [ ] inline function expansion
-   - [ ] alpha/beta reduction, flattening (helper transformations)
-   - [ ] const folding
+   - [x] alpha/beta reduction, flattening (helper transformations)
+   - [x] const folding
    - [ ] (optionally) optimize out array index boundary checks during sequential array access
    - [ ] lambda lifting
 - [ ] C-form
@@ -29,24 +29,24 @@
 - [ ] initial set of tests
 
 ### minimal set of features for the version **0.1**:
-- [ ] binary operations: +, -, *, /, %, **, &, |, ^, >>, <<, ==, !=, <=, >=, <, >, &&, ||, = (assign)
-- [ ] unary operations: +, -, ~, !, *, ref
-- [ ] val, var, fun (including lambda)
-- [ ] data structures: numbers (int, float, double, [u]int8|16|32|64), void, bool, char, string, tuples, records (?), arrays, lists, cptr
-- [ ] custom type definitions
-- [ ] exceptions (maybe postpone it?)
-- [ ] generic types (postpone it?)
-- [ ] control flow ops: if, while, for (no comprehensions so far)
-- [ ] tuple access, record access, array access (with ranges?)
-- [ ] module import
-- [ ] inline c code
-- [ ] very basic standard library
+- [x] binary operations: +, -, *, /, %, **, &, |, ^, >>, <<, ==, !=, <=, >=, <, >, &&, ||, = (assign)
+- [x] unary operations: +, -, ~, !, *, ref
+- [x] val, var, fun (including lambda)
+- [x] data structures: numbers (int, float, double, [u]int8|16|32|64), void, bool, char, string, tuples, records (?), arrays, lists, cptr
+- [x] custom type definitions
+- [x] exceptions
+- [x] generic types
+- [x] control flow ops: if, while, for + array comprehensions
+- [x] tuple access, record access, array access
+- [x] module import
+- [x] inline c code
+- [x] very basic standard library
 
 ### planned features for the version **1.0**:
-- [ ] variants
-- [ ] option type
-- [ ] pattern matching
-- [ ] array & list comprehensions
+- [x] variants
+- [x] option type
+- [x] pattern matching
+- [x] array & list comprehensions
 - [ ] array initializations
 - [ ] automatically generated operations (==, string(), ...)
 - [ ] parallel loops
