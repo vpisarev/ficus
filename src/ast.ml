@@ -302,6 +302,13 @@ let id2str_ i pp =
 let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
 
+let id2prefix i =
+    let prefix = match i with
+    | Id.Name(i) -> i
+    | Id.Val(i, _) -> i
+    | Id.Temp(i, _) -> i in
+    dynvec_get all_strings prefix
+
 let id2idx i = match i with
     | Id.Name _ -> failwith (sprintf "attempt to query information about unresolved '%s'" (id2str i))
     | Id.Val(_, i_real) -> i_real

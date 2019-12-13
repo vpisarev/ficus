@@ -11,10 +11,8 @@
     semantics of the original code, we need to transform some nested functions,
     as well as some outer code that uses those functions.
 
-    * We analyze each function (which is a recursive algorithm that
-      may be re-done more than once for certain functions) and
-      see if the function has 'free variables', i.e. variables that
-      are non-local and yet are non-global.
+    * We analyze each function and see if the function has 'free variables',
+      i.e. variables that are non-local and yet are non-global.
     a) If the function has some 'free variables',
       it needs a special satellite structure called 'closure data'
       that incapsulates all the free variables. The function itself
@@ -26,17 +24,17 @@
       This pair is used instead of the original function. Here is the example:
 
       fun foo(n: int) {
-        fun bar(m: int) = n * m
+        fun bar(m: int) = m * n
         bar
       }
 
       is replaced with
 
       fun bar(m: int, c: bar_closure_t) {
-        m*c->n
+        m * c->n
       }
       fun foo(n: int) {
-        make_closure(bar, {n})
+        make_closure(bar, bar_closure_t {n})
       }
 
     b) If the function does not have any 'free variables', we may still
@@ -45,11 +43,11 @@
       or store it as a value (essentially, we store a function pointer), the caller
       of that function does not know whether it needs free variables or not, so
       we need a consistent representation of functions that are called indirectly.
-      But in this case we can have a pair (function, nil), i.e. we just use something like
+      But in this case we can have a pair ('some function', nil), i.e. we just use something like
       NULL pointer instead of a pointer to some real closure. So, the following code:
 
       fun foo(n: int) {
-        fun bar(m: int) = n * m
+        fun bar(m: int) = m*n
         fun baz(m: int) = m+1
         if (generate_random_number() % 2 == 0) bar else baz
       }
@@ -63,7 +61,7 @@
 
       fun foo(n: int) =
         if (generate_random_number() % 2 == 0)
-          make_closure(bar, {n})
+          make_closure(bar, bar_closure_t {n})
         else
           make_closure(baz, nil)
 
@@ -83,7 +81,8 @@
       that may access the same 'var' and modify it. We could have stored an address
       of each var in the closure data, but that would be unsafe, because we may
       return the created closure outside of the function where 'var' does not
-      exist anymore. The robust solution for this problem is to convert each 'var',
+      exist anymore (a typical functional language pattern for generators).
+      The robust solution for this problem is to convert each 'var',
       which is used at least once as a free variable, into a reference:
 
       fun create_inc(start: int) {
@@ -101,7 +100,7 @@
       }
       fun create_inc(start: int) {
           val v = ref(start)
-          make_closure(inc_me, {v})
+          make_closure(inc_me, inc_me_closure_t {v})
       }
 
     2. besides the free variables, the nested function may also call:
@@ -119,11 +118,11 @@
 
           // option 1: dynamically created closure
           fun bar( m: int, c:bar_closure_t* ) {
-              val (baz_cl_f, baz_cl_fv) = make_closure(baz, {c->n})
+              val (baz_cl_f, baz_cl_fv) = make_closure(baz, baz_closure_t {c->n})
               baz_cl_f(m+1, baz_cl_fv)
           }
           fun baz( m: int, c:baz_closure_t* ) = m*c->n
-          fun foo(n: int) = (make_closure(bar, {n}), make_closure(baz, {n})
+          fun foo(n: int) = (make_closure(bar, bar_closure_t {n}), make_closure(baz, baz_closure_t {n})
 
           or it can be converted to
 
@@ -134,7 +133,7 @@
           }
           fun baz( m: int, c:baz_closure_t* ) = m*c->n
           fun foo(n: int) = {
-              val baz_cl = make_closure(baz, {n})
+              val baz_cl = make_closure(baz, baz_closure_t {n})
               val bar_cl = make_closure(bar, {baz_cl})
               (bar_cl, baz_cl)
           }
@@ -147,7 +146,7 @@
           }
           fun baz( m: int, c:foo_nested_closure_t* ) = m*c->n
           fun foo(n: int) = {
-              val foo_nested_closure_data = {n}
+              val foo_nested_closure_data = foo_nested_closure_t {n}
               val bar_cl = make_closure(bar, foo_nested_closure_data)
               val baz_cl = make_closure(baz, foo_nested_closure_data)
               (bar_cl, baz_cl)
@@ -220,10 +219,9 @@ let lift_all top_code =
                     else IdSet.add n called_funcs
                 | _ -> called_funcs) uv IdSet.empty in
             let fv0 = IdSet.diff fv0 called_funcs in
-            ll_env := Env.add kf_name {ll_fvars=fv0; ll_declared_inside=dv; ll_called_funcs=called_funcs} !ll_env)
+            ll_env := Env.add kf_name {ll_fvars=fv0; ll_declared_inside=dv; ll_called_funcs=called_funcs} !ll_env
         | _ -> ()
-    in
-    let fv0_callb =
+    in let fv0_callb =
     {
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(fold_fv0_ktyp_);
@@ -233,29 +231,101 @@ let lift_all top_code =
     (* for each function, top-level or not, find the initial set of free variables,
        as well as the set of called functions *)
     let _ = List.iter (fun e -> fold_fv0_kexp_ e fv0_callb) top_code in
-    let rec finalize_sets iters =
+
+    (* now expand those sets. recursively add to the list of free variables
+       all the free variables from the called functions
+       (but not defined locally) *)
+    let rec finalize_sets iters ll_all =
+        let visited_funcs = ref IdSet.empty in
         let changed = ref false in
-        if iters <= 0 then raise_compile_err noloc
-            "too many iterations to produce the final sets of free variables for the lambda lifting; seems like there is bug in the code"
-        else
-        (Env.iter (fun fname ll_info ->
-            let { ll_fvars; ll_declared_inside; ll_called_funcs } = ll_info in
-            let size0 = IdSet.cardinal ll_fvars in
-            let fvars = IdSet.fold (fun called_f fvars ->
-                if called_f = fname then fvars else
-                match (Env.find_opt called_f !ll_env) with
-                | Some ll_called_info ->
-                    IdSet.union fvars ll_called_info.ll_fvars
-                | _ -> fvars) ll_called_funcs ll_fvars in
-            let fvars = IdSet.diff fvars ll_declared_inside in
-            let size1 = IdSet.cardinal fvars in
-            ll_info.ll_fvars <- fvars;
-            if size1 = size0 then () else changed := true) !ll_env;
-        if !changed then finalize_sets (iters-1) else ()) in
-    let _ = finalize_sets 1000 in
-    let all_free_vars = Env.fold (fun _ info all_free_vars ->
-        let {ll_fvars} = info in IdSet.union all_free_vars ll_fvars) !ll_env IdSet.empty in
-    let declared_so_far = ref IdSet.empty in
+        let _ = if iters > 0 then () else raise_compile_err noloc
+            "finalization of the free var sets takes too much iterations; probably, something is wrong" in
+        let rec update_fvars f =
+            match (Env.find_opt f !ll_env) with
+            | Some ll_info ->
+                let { ll_fvars; ll_declared_inside; ll_called_funcs } = ll_info in
+                if IdSet.mem f !visited_funcs then ll_fvars
+                else
+                    let _ = visited_funcs := IdSet.add f !visited_funcs in
+                    let size0 = IdSet.cardinal ll_fvars in
+                    let fvars = IdSet.fold (fun called_f fvars ->
+                        let called_fvars = update_fvars called_f in
+                        IdSet.union fvars called_fvars) ll_called_funcs ll_fvars in
+                    let fvars = IdSet.diff fvars ll_declared_inside in
+                    let size1 = IdSet.cardinal fvars in
+                    let _ = if size1 = size0 then () else
+                        (ll_info.ll_fvars <- fvars; changed := true) in
+                    fvars
+            | _ -> IdSet.empty
+        in List.iter (fun f -> ignore (update_fvars f)) ll_all;
+        if not !changed then (iters-1) else finalize_sets (iters - 1) (List.rev ll_all)
+    in let iters0 = 10 in
+    let iters = finalize_sets iters0 (List.rev (Env.fold (fun f _ ll_all -> f :: ll_all) !ll_env [])) in
+    let _ = printf "LAMBDA LIFTING: free var sets finalized after %d iterations\n" (iters0 - iters) in
+    let all_fvars = Env.fold (fun _ ll_info all_fvars ->
+        IdSet.union (ll_info.ll_fvars) all_fvars) !ll_env IdSet.empty in
+    let all_mut_fvars = IdSet.filter (fun i -> is_mutable i (get_id_loc i)) all_fvars in
+
+    (*
+      for each mutable variable:
+      - convert its type from 't' to 't*' (reference)
+      - remove ValMutable flag, add ValImplicitDeref instead
+    *)
+    let _ = IdSet.iter (fun mut_fv ->
+        let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kvar mut_fv noloc in
+        let new_kv_typ = KTypRef(kv_typ) in
+        let new_kv_flags = ValImplicitDeref :: (List.filter (fun f -> f != ValMutable) kv_flags) in
+        let new_kv = { kv_name; kv_typ=new_kv_typ; kv_flags=new_kv_flags; kv_scope; kv_loc } in
+        set_idk_entry kv_name (KVal new_kv))
+        all_mut_fvars in
+    (* iterate through all the functions; for each function with
+       free variables define a closure and add an extra parameter *)
+    let fold_defcl_ktyp_ t callb = () in
+    let fold_defcl_kexp_ e callb =
+        fold_kexp e callb; (* process all the sub-expressions in any case *)
+        match e with
+        | KDefFun kf ->
+            let {kf_name; kf_scope; kf_loc} = !kf in
+            (match Env.find_opt kf_name !ll_env with
+            | Some ll_info ->
+                let fvars = ll_info.ll_fvars in
+                if (IdSet.is_empty fvars) then ()
+                else
+                (let fvar_pairs_to_sort = IdSet.fold (fun fv fvars_to_sort ->
+                    ((id2str fv), fv) :: fvars_to_sort) fvars [] in
+                let fvar_pairs_sorted = List.sort (fun (a, _) (b, _) -> String.compare a b) fvar_pairs_to_sort in
+                let fvars_final = List.map (fun (_, fv) -> fv) fvar_pairs_sorted in
+                let kf_c_vt = gen_temp_idk ((id2prefix kf_name) ^ "_closure") in
+                let fvars_wt = List.map (fun fv ->
+                    let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kvar fv noloc in
+                    let new_fv = dup_idk fv in
+                    let new_kv = { kv_name=new_fv; kv_typ; kv_flags; kv_scope=kf_scope; kv_loc=kf_loc } in
+                    set_idk_entry new_fv (KVal new_kv); (new_fv, kv_typ)) fvars_final in
+                let kcv = { kcv_name=kf_c_vt; kcv_freevars=fvars_wt;
+                    kcv_orig_freevars=fvars_final; kcv_scope=kf_scope; kcv_loc=kf_loc } in
+                let kf_c_arg = gen_temp_idk "cv" in
+                let kf_c_arg_kv = { kv_name=kf_c_arg; kv_typ=(KTypName kf_c_vt);
+                                    kv_flags=[]; kv_scope=kf_scope; kv_loc=kf_loc} in
+                let new_kf_closure = (kf_c_arg, kf_c_vt) in
+                set_idk_entry kf_c_vt (KClosureVars kcv);
+                set_idk_entry kf_c_arg (KVal kf_c_arg_kv);
+                (* we do not add the closure parameter explicitly to kf_args;
+                  instead, we put in kf_closure and then C generator will recognize and use it *)
+                kf := { !kf with kf_closure=new_kf_closure })
+            | _ -> ())
+        | _ -> ()
+    in let defcl_callb =
+    {
+        kcb_fold_atom = None;
+        kcb_fold_ktyp = Some(fold_defcl_ktyp_);
+        kcb_fold_kexp = Some(fold_defcl_kexp_);
+        kcb_fold_result = 0
+    } in
+    (* recursively process each top-level expression; define the closures etc. *)
+    let _ = List.iter (fun e -> fold_defcl_kexp_ e defcl_callb) top_code in
+    top_code
+
+    (*let declared_so_far = ref IdSet.empty in
     let curr_subst_env = ref (Env.empty : ll_subst_env_t) in
     let curr_top_code = ref ([]: kexp_t list) in
     let add_to_top e = curr_top_code := (List.rev (kexp2code e)) @ !curr_top_code in
@@ -279,9 +349,7 @@ let lift_all top_code =
                     (sprintf "information about function '%s' is missing somehow" (id2str kf_name))
             in
             (*
-            if the
             *)
-
 
             let new_body = walk_kexp_n_lift kf_body callb in
             let _ = kf := {!kf with kf_body=new_body} in
@@ -306,4 +374,4 @@ let lift_all top_code =
             | _ -> new_top_code := new_e :: !new_top_code) top_code;
         List.rev !new_top_code in
 
-    let top_code = process top_code in
+    let top_code = process top_code in*)

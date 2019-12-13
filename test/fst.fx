@@ -13,10 +13,23 @@ fun fib2(n: int) {
     fun fib2_(a: int, b: int, n: int) = if (n <= 1) a else fib2_(a+b, a, n-1)
     fib2_(1, 1, n)
 }
+fun fib_seq()
+{
+    var a=1, b=1
+    fun next_fib()
+    {
+        val t = b
+        b = a
+        a += t
+        t
+    }
+    next_fib
+}
+val fib3 = fib_seq()
 
 println("factorial(5)=\(testmod.fact(5))")
 
-for (i <- 1:31) { print("fib(\(i))="); print(fib(i)); println("fib2(\(i))="); println(fib2(i)); }
+for (i <- 1:31) { print("fib(\(i))="); print(fib(i)); print(", fib2(\(i))=\(fib2(i)), "); println("fib3(\(i))=\(fib3())") }
 
 exception Break: int
 

@@ -113,6 +113,7 @@ and pprint_kexp_ e prtyp =
     let eloc = get_kexp_loc e in
     let pprint_atom_ a = pprint_atom a true eloc in
     let pprint_dom_ r = pprint_dom r eloc in
+    let pprint_id_ i = pprint_atom_ (Atom.Id i) in
     let obox_cnt = ref 0 in
     let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
@@ -154,8 +155,9 @@ and pprint_kexp_ e prtyp =
                     | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
         pstr (!fkind); pspace(); pprint_id kf_name; pspace();
         pstr "("; pcut(); obox();
-        List.iteri (fun i (n, t) -> if i = 0 then ()
-            else if i = nargs then (pstr ";"; pspace(); pstr "{")
+        List.iteri (fun i (n, t) ->
+            if i = nargs then (pstr ";"; pspace(); pstr "{")
+            else if i = 0 then ()
             else (pstr ","; pspace()); pprint_id n; pstr ":"; pspace(); pprint_ktyp t) kf_all_args;
         if (List.length kf_all_args) > nargs then pstr "}" else (); cbox(); pcut();
         pstr ")";
@@ -190,9 +192,10 @@ and pprint_kexp_ e prtyp =
         | KExpBinOp(o, a, b, _) ->
             let ostr = binop_to_string o in
             pprint_atom_ a; pspace(); pstr ostr; pspace(); pprint_atom_ b
-        | KExpAssign(n, e, _) -> pprint_id n; pspace(); pstr "="; pspace(); pprint_kexp e
+        | KExpAssign(n, e, _) -> pprint_id_ n; pspace(); pstr "="; pspace(); pprint_kexp e
         | KExpMem(n, i, (_, loc)) ->
-            pprint_id n; pstr ".";
+            pprint_id n;
+            pstr (if (is_implicit_deref n loc) then "->" else ".");
             (match (get_idk_typ n loc) with
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
@@ -204,12 +207,12 @@ and pprint_kexp_ e prtyp =
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
             pstr ostr; pprint_atom_ a
-        | KExpDeref(n, _) -> pstr "*"; pprint_id n
+        | KExpDeref(n, (_, loc)) -> pstr (if (is_implicit_deref n loc) then "**" else "*"); pprint_id n
         | KExpIntrin(iop, args, _) ->
             pstr (intrin2str iop);
             List.iteri (fun i a -> if i = 0 then pstr "(" else (pstr ","; pspace()); pprint_atom_ a) args;
             pstr ")"
-        | KExpThrow(n, _) -> pstr "THROW "; pprint_id n
+        | KExpThrow(n, _) -> pstr "THROW "; pprint_id_ n
         | KExpMkTuple(al, _) ->
             pstr "("; obox();
             (List.iteri (fun i a ->
@@ -248,7 +251,7 @@ and pprint_kexp_ e prtyp =
                 pprint_atom_ a) elems);
             cbox(); pstr "]"; cbox()
         | KExpCall(f, args, _) ->
-            obox(); pprint_id f;
+            obox(); pprint_id_ f;
             (match (kinfo f) with
             | KFun _ -> ()
             | KExn _ -> ()

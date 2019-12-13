@@ -120,12 +120,12 @@ and kdeffun_t = { kf_name: id_t; kf_typ: ktyp_t; kf_args: id_t list; kf_body: ke
 and kdefexn_t = { ke_name: id_t; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
 and kdefvariant_t = { kvar_name: id_t; kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
-and kdefclosurevars_t = { kcv_name: id_t; kcv_freevars: (id_t * ktyp_t) list;
+and kdefclosurevars_t = { kcv_name: id_t; kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
 
 type kinfo_t =
     | KNone | KText of string | KVal of kdefval_t | KFun of kdeffun_t ref
-    | KExn of kdefexn_t ref | KVariant of kdefvariant_t ref | KClosureVars of kdefclosurevars_t ref
+    | KExn of kdefexn_t ref | KVariant of kdefvariant_t ref | KClosureVars of kdefclosurevars_t
 
 let all_idks = dynvec_create KNone
 
@@ -206,7 +206,7 @@ let get_kscope info =
     | KFun {contents = {kf_scope}} -> kf_scope
     | KExn {contents = {ke_scope}} -> ke_scope
     | KVariant {contents = {kvar_scope}} -> kvar_scope
-    | KClosureVars {contents = {kcv_scope}} -> kcv_scope
+    | KClosureVars {kcv_scope} -> kcv_scope
 
 let get_kinfo_loc info =
     match info with
@@ -215,7 +215,7 @@ let get_kinfo_loc info =
     | KFun {contents = {kf_loc}} -> kf_loc
     | KExn {contents = {ke_loc}} -> ke_loc
     | KVariant {contents = {kvar_loc}} -> kvar_loc
-    | KClosureVars {contents = {kcv_loc}} -> kcv_loc
+    | KClosureVars {kcv_loc} -> kcv_loc
 
 let get_id_loc i = get_kinfo_loc (kinfo i)
 
@@ -234,7 +234,7 @@ let get_kinfo_typ info i loc =
     | KFun {contents = {kf_typ}} -> kf_typ
     | KExn {contents = {ke_typ}} -> ke_typ
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
-    | KClosureVars {contents = {kcv_name; kcv_freevars}} -> KTypRecord(kcv_name, kcv_freevars)
+    | KClosureVars {kcv_name; kcv_freevars} -> KTypRecord(kcv_name, kcv_freevars)
 
 let get_idk_typ i loc = get_kinfo_typ (kinfo i) i loc
 
@@ -455,9 +455,10 @@ and walk_kexp e callb =
             kvar_constr = (List.map walk_id_ kvar_constr); kvar_flags; kvar_scope; kvar_loc };
         e
     | KDefClosureVars(kcv) ->
-        let { kcv_name; kcv_freevars; kcv_scope; kcv_loc } = !kcv in
+        let { kcv_name; kcv_freevars; kcv_orig_freevars; kcv_scope; kcv_loc } = !kcv in
         kcv := { kcv_name = (walk_id_ kcv_name);
             kcv_freevars = (List.map (fun (k, t) -> ((walk_id_ k), (walk_ktyp_ t))) kcv_freevars);
+            kcv_orig_freevars = (List.map walk_id_ kcv_orig_freevars);
             kcv_scope; kcv_loc };
         e)
 
@@ -590,9 +591,10 @@ and fold_kexp e callb =
         List.iter fold_id_ kvar_constr;
         (KTypVoid, kvar_loc)
     | KDefClosureVars(kcv) ->
-        let { kcv_name; kcv_freevars; kcv_loc } = !kcv in
+        let { kcv_name; kcv_freevars; kcv_orig_freevars; kcv_loc } = !kcv in
         fold_id_ kcv_name;
         List.iter (fun (k, t) -> fold_id_ k; fold_ktyp_ t) kcv_freevars;
+        List.iter fold_id_ kcv_orig_freevars;
         (KTypVoid, kcv_loc))
 
 let add_to_used1 i callb =
@@ -649,6 +651,13 @@ and used_by_kexp_ e callb =
             IdSet.union uv_ti uv) IdSet.empty kvar_cases in
         add_to_used uv callb;
         add_to_decl1 kvar_name callb
+    | KExpMap (clauses, body, _, (t, _)) ->
+        fold_kexp e callb;
+        List.iter (fun (_, id_l) ->
+            List.iter (fun (i, _) -> add_to_decl1 i callb) id_l) clauses
+    | KExpFor (id_l, body, _, _) ->
+        fold_kexp e callb;
+        List.iter (fun (i, _) -> add_to_decl1 i callb) id_l
     | _ -> fold_kexp e callb
 
 and new_used_vars_callb () =
@@ -703,7 +712,7 @@ let get_closure_freevars i loc =
     (let info = kinfo i in
     check_kinfo info i loc;
     match info with
-    | KClosureVars {contents={kcv_freevars}} -> kcv_freevars
+    | KClosureVars {kcv_freevars} -> kcv_freevars
     | _ -> raise_compile_err loc
         (sprintf "invalid description of a closure data '%s' (should KClosureVars ...)" (id2str i)))
 
@@ -711,6 +720,15 @@ let get_ktyp_closure_freevars t loc =
     match t with
     | KTypClosure(_, i) -> (i, (get_closure_freevars i loc))
     | _ -> raise_compile_err loc "invalid closure type (should be KTypClosure ...)"
+
+let get_kvar i loc =
+    let info = kinfo i in
+    check_kinfo info i loc;
+    match info with
+    | KVal kv -> kv
+    | _ ->
+        let loc = if loc!=noloc then loc else get_kinfo_loc info in
+        raise_compile_err loc (sprintf "invalid symbol '%s' - should be KVar ..." (id2str i))
 
 let print_set setname s =
     printf "%s:[" setname;
