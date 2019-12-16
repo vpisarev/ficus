@@ -34,7 +34,7 @@ let rec pure_kexp_ e callb =
     | KExpBreak _ -> set_impure()
     | KExpContinue _ -> set_impure()
     | KExpIntrin(IntrinPopExn, _, _) -> set_impure()
-    | KExpCall(f, _, _) -> if (pure_fun f) then () else set_impure()
+    | KExpCall(f, _, (_, loc)) -> if (pure_fun f loc) then () else set_impure()
 
     (* [TODO] make it more sophisticated. A block of expressions may change value
        of a locally-defined variable and yet, as a whole, stay a pure expression *)
@@ -54,8 +54,8 @@ and pure_kexp e =
     let callb = new_pure_callb() in
     pure_kexp_ e callb;
     callb.kcb_fold_result
-and pure_fun f =
-    match (kinfo f) with
+and pure_fun f loc =
+    match (kinfo_ f loc) with
     | KFun df ->
         let {kf_body; kf_flags} = !df in
         if (List.mem FunPure kf_flags) then true

@@ -120,12 +120,14 @@ and kdeffun_t = { kf_name: id_t; kf_typ: ktyp_t; kf_args: id_t list; kf_body: ke
 and kdefexn_t = { ke_name: id_t; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
 and kdefvariant_t = { kvar_name: id_t; kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
+and kdefrecord_t = { krec_name: id_t; krec_elems: (id_t * ktyp_t) list; krec_scope: scope_t list; krec_loc: loc_t }
 and kdefclosurevars_t = { kcv_name: id_t; kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
 
 type kinfo_t =
     | KNone | KText of string | KVal of kdefval_t | KFun of kdeffun_t ref
-    | KExn of kdefexn_t ref | KVariant of kdefvariant_t ref | KClosureVars of kdefclosurevars_t
+    | KExn of kdefexn_t ref | KVariant of kdefvariant_t ref
+    | KRecord of kdefrecord_t ref | KClosureVars of kdefclosurevars_t ref
 
 let all_idks = dynvec_create KNone
 
@@ -142,6 +144,7 @@ let new_idk_idx() =
         failwith "internal error: unsynchronized outputs from new_id_idx() and new_idk_idx()"
 
 let kinfo i = dynvec_get all_idks (id2idx i)
+let kinfo_ i loc = dynvec_get all_idks (id2idx_ i loc)
 
 let gen_temp_idk s =
     let i_name = get_id_prefix s in
@@ -206,7 +209,8 @@ let get_kscope info =
     | KFun {contents = {kf_scope}} -> kf_scope
     | KExn {contents = {ke_scope}} -> ke_scope
     | KVariant {contents = {kvar_scope}} -> kvar_scope
-    | KClosureVars {kcv_scope} -> kcv_scope
+    | KRecord {contents={krec_scope}} -> krec_scope
+    | KClosureVars {contents = {kcv_scope}} -> kcv_scope
 
 let get_kinfo_loc info =
     match info with
@@ -215,14 +219,15 @@ let get_kinfo_loc info =
     | KFun {contents = {kf_loc}} -> kf_loc
     | KExn {contents = {ke_loc}} -> ke_loc
     | KVariant {contents = {kvar_loc}} -> kvar_loc
-    | KClosureVars {kcv_loc} -> kcv_loc
+    | KRecord {contents = {krec_loc}} -> krec_loc
+    | KClosureVars {contents = {kcv_loc}} -> kcv_loc
 
 let get_id_loc i = get_kinfo_loc (kinfo i)
 
 let check_kinfo info i loc =
     match info with
-    | KNone -> raise_compile_err loc (sprintf "attempt to request type of non-existing symbol '%s'" (id2str i))
-    | KText s -> raise_compile_err loc (sprintf "attempt to request type of symbol '%s'" s)
+    | KNone -> raise_compile_err loc (sprintf "attempt to request information about uninitialized symbol '%s'" (id2str i))
+    | KText s -> raise_compile_err loc (sprintf "attempt to request information about symbolic name '%s'" s)
     | _ -> ()
 
 let get_kinfo_typ info i loc =
@@ -234,9 +239,10 @@ let get_kinfo_typ info i loc =
     | KFun {contents = {kf_typ}} -> kf_typ
     | KExn {contents = {ke_typ}} -> ke_typ
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
-    | KClosureVars {kcv_name; kcv_freevars} -> KTypRecord(kcv_name, kcv_freevars)
+    | KRecord {contents = {krec_name; krec_elems}} -> KTypRecord(krec_name, krec_elems)
+    | KClosureVars {contents = {kcv_name; kcv_freevars}} -> KTypRecord(kcv_name, kcv_freevars)
 
-let get_idk_typ i loc = get_kinfo_typ (kinfo i) i loc
+let get_idk_typ i loc = get_kinfo_typ (kinfo_ i loc) i loc
 
 (* used by the type checker *)
 let get_lit_ktyp l = match l with
@@ -256,7 +262,7 @@ let get_atom_ktyp a loc =
 
 let intrin2str iop = match iop with
     | IntrinPopExn -> "INTRIN_POP_EXN"
-    | IntrinMkRef -> "INTRIN_MK_REF"
+    | IntrinMkRef -> "MAKE_REF"
     | IntrinVariantTag -> "INTRIN_VARIANT_TAG"
     | IntrinVariantCase -> "INTRIN_VARIANT_CASE"
     | IntrinGetShape -> "INTRIN_GET_SHAPE"
@@ -339,16 +345,18 @@ and check_n_walk_dom d callb =
                       (check_n_walk_atom b callb),
                       (check_n_walk_atom c callb))
 
+and check_n_walk_id n callb =
+    match callb.kcb_atom with
+    | Some(f) ->
+        (match f (Atom.Id n) callb with
+        | Atom.Id n -> n
+        | _ -> failwith "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
+    | _ -> n
+
 and walk_ktyp t callb =
     let walk_ktyp_ t = check_n_walk_ktyp t callb in
     let walk_ktl_ tl = List.map walk_ktyp_ tl in
-    let walk_id_ k =
-        match callb.kcb_atom with
-        | Some(f) ->
-            (match f (Atom.Id k) callb with
-            | Atom.Id k -> k
-            | _ -> failwith "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
-        | _ -> k in
+    let walk_id_ k = check_n_walk_id k callb in
     (match t with
     | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypVoid | KTypNil | KTypBool
@@ -369,14 +377,7 @@ and walk_kexp e callb =
     let walk_atom_ a = check_n_walk_atom a callb in
     let walk_al_ al = List.map walk_atom_ al in
     let walk_ktyp_ t = check_n_walk_ktyp t callb in
-    let walk_id_ k =
-        match callb.kcb_atom with
-        | Some(f) when k != noid ->
-            (match f (Atom.Id k) callb with
-            | Atom.Id k -> k
-            | _ -> raise_compile_err (get_kexp_loc e)
-                "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
-        | _ -> k in
+    let walk_id_ k = check_n_walk_id k callb in
     let walk_kexp_ e = check_n_walk_kexp e callb in
     let walk_kctx_ (t, loc) = ((walk_ktyp_ t), loc) in
     let walk_dom_ d = check_n_walk_dom d callb in
@@ -617,6 +618,7 @@ let add_to_decl dv_set callb =
 
 let rec used_by_atom_ a callb =
     match a with
+    | Atom.Id (Id.Name i) -> ()
     | Atom.Id i -> add_to_used1 i callb
     | _ -> ()
 and used_by_ktyp_ t callb = fold_ktyp t callb
@@ -689,46 +691,45 @@ let free_vars_kexp e =
     IdSet.diff uv dv
 
 let is_mutable i loc =
-    let info = kinfo i in
+    let info = kinfo_ i loc in
     check_kinfo info i loc;
     match info with
     | KNone | KText _ -> false
     | KVal {kv_flags} -> List.mem ValMutable kv_flags
     | KFun _ -> false
     | KExn _ -> false
-    | KClosureVars _ -> false
-    | KVariant _ -> raise_compile_err loc
-        (sprintf "attempt to treat variant '%s' as a value or function" (id2str i))
+    | KClosureVars _ | KRecord _ | KVariant _ -> false
 
 let is_implicit_deref i loc =
-    let info = kinfo i in
+    let info = kinfo_ i loc in
     check_kinfo info i loc;
     match info with
     | KVal {kv_flags} -> List.mem ValImplicitDeref kv_flags
     | _ -> false
 
 let get_closure_freevars i loc =
-    if i = noid then [] else
-    (let info = kinfo i in
+    if i = noid then ([], []) else
+    (let info = kinfo_ i loc in
     check_kinfo info i loc;
     match info with
-    | KClosureVars {kcv_freevars} -> kcv_freevars
+    | KClosureVars {contents={kcv_freevars; kcv_orig_freevars}} -> (kcv_freevars, kcv_orig_freevars)
     | _ -> raise_compile_err loc
         (sprintf "invalid description of a closure data '%s' (should KClosureVars ...)" (id2str i)))
 
 let get_ktyp_closure_freevars t loc =
     match t with
-    | KTypClosure(_, i) -> (i, (get_closure_freevars i loc))
+    | KTypClosure(_, i) ->
+        let (freevars, _) = get_closure_freevars i loc in (i, freevars)
     | _ -> raise_compile_err loc "invalid closure type (should be KTypClosure ...)"
 
-let get_kvar i loc =
-    let info = kinfo i in
+let get_kval i loc =
+    let info = kinfo_ i loc in
     check_kinfo info i loc;
     match info with
     | KVal kv -> kv
     | _ ->
         let loc = if loc!=noloc then loc else get_kinfo_loc info in
-        raise_compile_err loc (sprintf "invalid symbol '%s' - should be KVar ..." (id2str i))
+        raise_compile_err loc (sprintf "invalid symbol '%s' - should be KVal ..." (id2str i))
 
 let print_set setname s =
     printf "%s:[" setname;

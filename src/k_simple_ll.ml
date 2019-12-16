@@ -49,10 +49,11 @@ let lift top_code =
        type names, constructor names or C functions, i.e. they will
        definitely can be promoted to the top level. *)
     let can_lift_fun kf =
+        let {kf_loc} = !kf in
         let fv = free_vars_kexp (KDefFun kf) in
         let can_lift = IdSet.for_all (fun n ->
             (is_global n) ||
-            (match (kinfo n) with
+            (match (kinfo_ n kf_loc) with
             | KExn _ -> true
             | KVariant _ -> true
             | KVal _ -> false

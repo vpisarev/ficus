@@ -59,7 +59,7 @@ let rec ppktyp_ t p1 =
             | [] -> pstr "Void"
             | t1 :: [] -> ppktyp_ t1 p
             | _ -> ppktyp_ (KTypTuple tl) p);
-            pspace(); pstr "->";
+            pspace(); pstr "->"; pspace();
             ppktyp_ t2 p;
             pstr ")"; cbox()
     | KTypList(t1) -> ppktypsuf t1 "List"
@@ -74,7 +74,7 @@ let rec ppktyp_ t p1 =
         if i = noid then
             pstr "{...}]"
         else
-            (let fvars = get_closure_freevars i (get_id_loc i) in
+            (let (fvars, _) = get_closure_freevars i (get_id_loc i) in
             pstr "{";
             List.iteri (fun i (ni, _) -> if i = 0 then () else pstr ", "; pprint_id ni) fvars;
             pstr "}]");
@@ -119,7 +119,7 @@ and pprint_kexp_ e prtyp =
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
     match e with
     | KDefVal(n, e0, loc) -> obox();
-        let (vt, vflags) = match (kinfo n) with
+        let (vt, vflags) = match (kinfo_ n loc) with
             | KVal {kv_typ; kv_flags} -> (kv_typ, kv_flags)
             | _ -> raise_compile_err loc (sprintf "there is no information about defined value '%s'" (id2str n)) in
         (List.iter (fun vf -> match vf with
@@ -127,14 +127,17 @@ and pprint_kexp_ e prtyp =
         | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
-        pstr "VAL"; pspace(); pprint_id n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace(); pprint_kexp_ e0 false; cbox()
+        pstr "VAL"; pspace(); pprint_id n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace();
+        if List.mem ValImplicitDeref vflags then
+        (pstr "MAKE_REF("; pprint_kexp_ e0 false; pstr ")")
+        else pprint_kexp_ e0 false; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_typ; kf_body; kf_closure; kf_flags; kf_loc }} ->
-        let (kf_c_arg, kf_c_vt) = kf_closure in
+        let (kf_cl_arg, kf_cl_vt) = kf_closure in
         let nargs = List.length kf_args in
-        let kf_freevars = if kf_c_arg = noid then
-            []
+        let (kf_freevars, _) = if kf_cl_arg = noid then
+            ([], [])
         else
-            (get_closure_freevars kf_c_vt kf_loc) in
+            (get_closure_freevars kf_cl_vt kf_loc) in
         let (argtyps, rt) = match kf_typ with
             | KTypFun(argtyps, rt) -> (argtyps, rt)
             | _ ->
@@ -156,7 +159,7 @@ and pprint_kexp_ e prtyp =
         pstr (!fkind); pspace(); pprint_id kf_name; pspace();
         pstr "("; pcut(); obox();
         List.iteri (fun i (n, t) ->
-            if i = nargs then (pstr ";"; pspace(); pstr "{")
+            if i = nargs then (pstr ";"; pspace(); pprint_id kf_cl_arg; pstr ": {")
             else if i = 0 then ()
             else (pstr ","; pspace()); pprint_id n; pstr ":"; pspace(); pprint_ktyp t) kf_all_args;
         if (List.length kf_all_args) > nargs then pstr "}" else (); cbox(); pcut();
@@ -200,7 +203,7 @@ and pprint_kexp_ e prtyp =
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
             | KTypClosure(_, cn) ->
-                let fv = get_closure_freevars cn loc in
+                let (fv, _) = get_closure_freevars cn loc in
                 if fv = [] then raise_compile_err loc "attempt to access unspecified closure"
                 else let (ni, _) = List.nth fv i in pstr (id2str ni)
             | _ -> pstr (string_of_int i))
@@ -209,8 +212,8 @@ and pprint_kexp_ e prtyp =
             pstr ostr; pprint_atom_ a
         | KExpDeref(n, (_, loc)) -> pstr (if (is_implicit_deref n loc) then "**" else "*"); pprint_id n
         | KExpIntrin(iop, args, _) ->
-            pstr (intrin2str iop);
-            List.iteri (fun i a -> if i = 0 then pstr "(" else (pstr ","; pspace()); pprint_atom_ a) args;
+            pstr (intrin2str iop); pstr "(";
+            List.iteri (fun i a -> if i = 0 then () else (pstr ","; pspace()); pprint_atom_ a) args;
             pstr ")"
         | KExpThrow(n, _) -> pstr "THROW "; pprint_id_ n
         | KExpMkTuple(al, _) ->
@@ -250,9 +253,9 @@ and pprint_kexp_ e prtyp =
                 if i mod cols != 0 then pstr ", " else if i = 0 then () else (cbox(); pstr ";"; pcut(); obox());
                 pprint_atom_ a) elems);
             cbox(); pstr "]"; cbox()
-        | KExpCall(f, args, _) ->
+        | KExpCall(f, args, (_, loc)) ->
             obox(); pprint_id_ f;
-            (match (kinfo f) with
+            (match (kinfo_ f loc) with
             | KFun _ -> ()
             | KExn _ -> ()
             | _ -> pstr "~");

@@ -559,7 +559,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 (tag_n, code))
             in let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), (Atom.Id vn), (KTypBool, loc)) in
             let checks = (rcode2kexp (cmp_tag_exp :: code) loc) :: checks in
-            let c_args = match (kinfo vn) with
+            let c_args = match (kinfo_ vn loc) with
                 | KFun {contents={kf_typ}} -> (match kf_typ with KTypFun(args, rt) -> args | _ -> [])
                 | KExn {contents={ke_typ}} -> (match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: [])
                 | _ -> raise_compile_err loc "a variant constructor is expected here" in
@@ -744,6 +744,15 @@ and transform_all_types_and_cons elist code sc =
                 | _ -> raise_compile_err dvar_loc
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
+        | DefTyp {contents={dt_name; dt_typ; dt_scope; dt_loc}} ->
+            (* do not add explicit record definition (similarly to the tuple definition, it's not needed),
+               but set the proper entry of the symbol table *)
+            (match (typ2ktyp dt_typ dt_loc) with
+            | KTypRecord(rn, relems) ->
+                let krec = ref { krec_name=rn; krec_elems=relems; krec_scope=dt_scope; krec_loc=dt_loc} in
+                set_idk_entry dt_name (KRecord krec)
+            | _ -> ());
+            code
         | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
             let ke = ref { ke_name=dexn_name; ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
             let _ = match dexn_scope with

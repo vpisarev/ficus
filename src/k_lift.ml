@@ -207,18 +207,20 @@ let lift_all top_code =
         fold_kexp e callb; (* process all the sub-expressions in any case *)
         match e with
         (* some extra processing for each function *)
-        | KDefFun {contents={kf_name}} ->
+        | KDefFun {contents={kf_name; kf_loc}} ->
             let (uv, dv) = used_decl_by_kexp e in
             (* from the set of free variables we exclude global functions, values and types
                because they do not have to be put into a closure anyway *)
             let fv0 = IdSet.diff (IdSet.diff uv dv) !globals in
             let called_funcs = IdSet.fold (fun n called_funcs ->
-                match (kinfo n) with
+                match (kinfo_ n kf_loc) with
                 | KFun _ ->
                     if (is_global n) then called_funcs
                     else IdSet.add n called_funcs
                 | _ -> called_funcs) uv IdSet.empty in
-            let fv0 = IdSet.diff fv0 called_funcs in
+            let fv0 = IdSet.filter (fun fv -> match (kinfo_ fv kf_loc) with
+                | KVal _ -> true
+                | _ -> false) fv0 in
             ll_env := Env.add kf_name {ll_fvars=fv0; ll_declared_inside=dv; ll_called_funcs=called_funcs} !ll_env
         | _ -> ()
     in let fv0_callb =
@@ -260,19 +262,17 @@ let lift_all top_code =
         in List.iter (fun f -> ignore (update_fvars f)) ll_all;
         if not !changed then (iters-1) else finalize_sets (iters - 1) (List.rev ll_all)
     in let iters0 = 10 in
-    let iters = finalize_sets iters0 (List.rev (Env.fold (fun f _ ll_all -> f :: ll_all) !ll_env [])) in
-    let _ = printf "LAMBDA LIFTING: free var sets finalized after %d iterations\n" (iters0 - iters) in
+    let _ = finalize_sets iters0 (List.rev (Env.fold (fun f _ ll_all -> f :: ll_all) !ll_env [])) in
     let all_fvars = Env.fold (fun _ ll_info all_fvars ->
         IdSet.union (ll_info.ll_fvars) all_fvars) !ll_env IdSet.empty in
     let all_mut_fvars = IdSet.filter (fun i -> is_mutable i (get_id_loc i)) all_fvars in
-
     (*
       for each mutable variable:
       - convert its type from 't' to 't*' (reference)
       - remove ValMutable flag, add ValImplicitDeref instead
     *)
     let _ = IdSet.iter (fun mut_fv ->
-        let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kvar mut_fv noloc in
+        let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kval mut_fv noloc in
         let new_kv_typ = KTypRef(kv_typ) in
         let new_kv_flags = ValImplicitDeref :: (List.filter (fun f -> f != ValMutable) kv_flags) in
         let new_kv = { kv_name; kv_typ=new_kv_typ; kv_flags=new_kv_flags; kv_scope; kv_loc } in
@@ -297,11 +297,11 @@ let lift_all top_code =
                 let fvars_final = List.map (fun (_, fv) -> fv) fvar_pairs_sorted in
                 let kf_c_vt = gen_temp_idk ((id2prefix kf_name) ^ "_closure") in
                 let fvars_wt = List.map (fun fv ->
-                    let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kvar fv noloc in
+                    let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kval fv noloc in
                     let new_fv = dup_idk fv in
                     let new_kv = { kv_name=new_fv; kv_typ; kv_flags; kv_scope=kf_scope; kv_loc=kf_loc } in
                     set_idk_entry new_fv (KVal new_kv); (new_fv, kv_typ)) fvars_final in
-                let kcv = { kcv_name=kf_c_vt; kcv_freevars=fvars_wt;
+                let kcv = ref { kcv_name=kf_c_vt; kcv_freevars=fvars_wt;
                     kcv_orig_freevars=fvars_final; kcv_scope=kf_scope; kcv_loc=kf_loc } in
                 let kf_c_arg = gen_temp_idk "cv" in
                 let kf_c_arg_kv = { kv_name=kf_c_arg; kv_typ=(KTypName kf_c_vt);
@@ -323,55 +323,156 @@ let lift_all top_code =
     } in
     (* recursively process each top-level expression; define the closures etc. *)
     let _ = List.iter (fun e -> fold_defcl_kexp_ e defcl_callb) top_code in
-    top_code
 
-    (*let declared_so_far = ref IdSet.empty in
+    let defined_so_far = ref IdSet.empty in
+    let curr_clo = ref (noid, noid, noid) in
     let curr_subst_env = ref (Env.empty : ll_subst_env_t) in
     let curr_top_code = ref ([]: kexp_t list) in
-    let add_to_top e = curr_top_code := (List.rev (kexp2code e)) @ !curr_top_code in
 
     let rec walk_atom_n_lift_all a callb =
         match a with
+        | Atom.Id (Id.Name _) -> a
         | Atom.Id n ->
             (match (Env.find_opt n !curr_subst_env) with
             | Some n2 -> Atom.Id n2
-            | _ -> a)
+            | _ ->
+                (match (kinfo n) with
+                | KFun {contents={kf_flags}} ->
+                    if List.mem FunConstr kf_flags then a
+                    else raise_compile_err noloc
+                        (sprintf "for the function '%s' there is no corresponding closure" (id2str n))
+                | _ -> a))
         | _ -> a
     and walk_ktyp_n_lift_all t callb = t
     and walk_kexp_n_lift_all e callb =
         match e with
         | KDefFun kf ->
-            let {kf_name; kf_typ; kf_args; kf_body; kf_closure; kf_loc} = !kf in
-            let { ll_fvars; ll_declared_inside; ll_called_funcs } =
-                match (Env.find_opt kf_name !ll_env) with
-                | Some info -> info
-                | _ -> raise_compile_err kf_loc
-                    (sprintf "information about function '%s' is missing somehow" (id2str kf_name))
-            in
-            (*
-            *)
+            let { kf_name; kf_typ; kf_args; kf_body; kf_closure=(kf_cl_arg, kf_cl_vt); kf_scope; kf_loc } = !kf in
+            let saved_dsf = !defined_so_far in
+            let saved_clo = !curr_clo in
+            let saved_subst_env = !curr_subst_env in
+            let _ = curr_clo := (kf_name, kf_cl_arg, kf_cl_vt) in
+            let _ = defined_so_far := List.fold_left (fun dsf arg -> IdSet.add arg dsf) !defined_so_far kf_args in
 
-            let new_body = walk_kexp_n_lift kf_body callb in
-            let _ = kf := {!kf with kf_body=new_body} in
-            if (is_global kf_name) then e
+            let create_defclosure kf code =
+                let {kf_name; kf_typ; kf_closure=(_, cl_vt); kf_scope; kf_loc} = !kf in
+                let cl_name = dup_idk kf_name in
+                let _ = curr_subst_env := Env.add kf_name cl_name !curr_subst_env in
+                let _ = defined_so_far := IdSet.add cl_name !defined_so_far in
+                let (_, orig_freevars) = get_closure_freevars cl_vt kf_loc in
+                let cl_args = List.map (fun fv ->
+                    if IdSet.mem fv !defined_so_far then ()
+                    else raise_compile_err kf_loc
+                        (sprintf "free variable '%s' of '%s' is not defined yet"
+                        (id2str fv) (id2str kf_name));
+                    walk_atom_n_lift_all (Atom.Id fv) callb) orig_freevars
+                    in
+                let cl_typ = KTypClosure(kf_typ, cl_vt) in
+                let make_cl = KExpMkClosure(kf_name, cl_args, (cl_typ, kf_loc)) in
+                create_defval cl_name cl_typ [] (Some make_cl) code kf_scope kf_loc
+                in
+
+            let (prologue, def_cl_vt) =
+                if kf_cl_vt = noid then ([], []) else
+                    let kcv = match (kinfo_ kf_cl_vt kf_loc) with
+                        | KClosureVars kcv -> kcv
+                        | _ -> raise_compile_err kf_loc
+                            (sprintf "closure type '%s' information is not valid (should be KClosureVars ...)"
+                            (id2str kf_cl_vt))
+                        in
+                    let {kcv_freevars; kcv_orig_freevars} = !kcv in
+                    (* for each free variable 'fv' we create a proxy 'val fv_proxy = kf_cl_arg.fv'
+                      and add it to the function prologue. We also add the pair (fv, fv_proxy)
+                      to the substitution dictionary. That is, we convert all the
+                      accesses to the free variables *)
+                    let (prologue, _) = List.fold_left2 (fun (prologue, idx) (fv, t) fv_orig ->
+                        let _ = if IdSet.mem fv_orig !defined_so_far then () else
+                            raise_compile_err kf_loc
+                            (sprintf "free variable '%s' of function '%s' is not defined before the function body"
+                            (id2str fv_orig) (id2str kf_name)) in
+                        let fv_proxy = dup_idk fv in
+                        let _ = curr_subst_env := Env.add fv_orig fv_proxy !curr_subst_env in
+                        let _ = defined_so_far := IdSet.add fv_proxy !defined_so_far in
+                        let kv_flags = match (kinfo_ fv_orig kf_loc) with | KVal {kv_flags} -> kv_flags | _ -> [] in
+                        let get_fv = KExpMem (kf_cl_arg, idx, (t, kf_loc)) in
+                        let new_prologue = create_defval fv_proxy t kv_flags (Some get_fv) prologue kf_scope kf_loc in
+                        (new_prologue, idx+1)) ([], 0) kcv_freevars kcv_orig_freevars in
+                    (* we also create a closure for each function with free variables
+                        that is called from 'kf_name', but is not declared in 'kf_name' *)
+                    let prologue = match Env.find_opt kf_name !ll_env with
+                        | Some ({ll_declared_inside; ll_called_funcs}) ->
+                            let called_fs = IdSet.diff ll_called_funcs ll_declared_inside in
+                            IdSet.fold (fun called_f prologue ->
+                                match (kinfo_ called_f kf_loc) with
+                                | KFun called_kf ->
+                                    let {kf_typ=called_ftyp; kf_closure=(_, called_cl_vt)} = !called_kf in
+                                    if called_cl_vt = noid then prologue
+                                    else create_defclosure called_kf prologue
+                                | _ -> prologue) called_fs prologue
+                        | _ -> raise_compile_err kf_loc
+                            (sprintf "missing 'lambda lifting' information about function '%s'"
+                            (id2str kf_name))
+                        in
+                    (prologue, [KDefClosureVars kcv])
+                in
+            (* add the generated prologue to the function body, then transform it alltogether *)
+            let body_loc = get_kexp_loc kf_body in
+            let body = code2kexp ((List.rev prologue) @ (kexp2code kf_body)) body_loc in
+            let body = walk_kexp_n_lift_all body callb in
+            defined_so_far := saved_dsf;
+            curr_clo := saved_clo;
+            curr_subst_env := saved_subst_env;
+            curr_top_code := def_cl_vt @ !curr_top_code;
+            kf := {!kf with kf_body=body};
+            curr_top_code := (KDefFun kf) :: !curr_top_code;
+            List.hd (create_defclosure kf [])
+        | KDefVal(n, rhs, loc) ->
+            let rhs = walk_kexp_n_lift_all rhs callb in
+            defined_so_far := IdSet.add n !defined_so_far;
+            KDefVal(n, rhs, loc)
+        | KExpFor(idom_l, body, flags, loc) ->
+            let idom_l = List.map (fun (i, dom_i) ->
+                let dom_i = check_n_walk_dom dom_i callb in
+                defined_so_far := IdSet.add i !defined_so_far;
+                (i, dom_i)) idom_l in
+            let body = walk_kexp_n_lift_all body callb in
+            KExpFor(idom_l, body, flags, loc)
+        | KExpMap(e_idom_ll, body, flags, kctx) ->
+            let e_idom_ll = List.map (fun (e, idom_l) ->
+                let e = walk_kexp_n_lift_all e callb in
+                let idom_l = List.map (fun (i, dom_i) ->
+                    let dom_i = check_n_walk_dom dom_i callb in
+                    defined_so_far := IdSet.add i !defined_so_far;
+                    (i, dom_i)) idom_l
+                in (e, idom_l)) e_idom_ll
+            in let body = walk_kexp_n_lift_all body callb in
+            KExpMap(e_idom_ll, body, flags, kctx)
+        | KExpCall(f, args, ((_, loc) as kctx)) ->
+            let args = List.map (fun a -> walk_atom_n_lift_all a callb) args in
+            let (curr_f, curr_cl_arg, curr_cl_vt) = !curr_clo in
+            if f = curr_f then
+                let cl_arg =
+                    if curr_cl_arg = noid then Atom.Lit LitNil
+                    else Atom.Id curr_cl_arg
+                in KExpCall(f, args @ [cl_arg], kctx)
             else
-                if not (can_lift_fun kf) then e
-                else add_to_globals_and_lift kf_name e kf_loc
+                (match (kinfo_ f loc) with
+                | KFun {contents={kf_closure=(_, cl_vt)}} ->
+                    if cl_vt = noid then
+                        KExpCall(f, (args @ [(Atom.Lit LitNil)]), kctx)
+                    else
+                        KExpCall((check_n_walk_id f callb), args, kctx)
+                | _ -> KExpCall((check_n_walk_id f callb), args, kctx))
         | _ -> walk_kexp e callb
-    in let walk_n_lift_callb =
+    in let walk_n_lift_all_callb =
     {
-        kcb_atom = None;
-        kcb_typ = Some(walk_ktyp_n_lift);
-        kcb_exp = Some(walk_kexp_n_lift)
+        kcb_atom = Some(walk_atom_n_lift_all);
+        kcb_typ = Some(walk_ktyp_n_lift_all);
+        kcb_exp = Some(walk_kexp_n_lift_all)
     } in
 
-    let process top_code =
-        new_top_code := [];
-        List.iter (fun e ->
-            let new_e = walk_kexp_n_lift e walk_n_lift_callb in
-            match new_e with
-            | KExpNop _ -> ()
-            | _ -> new_top_code := new_e :: !new_top_code) top_code;
-        List.rev !new_top_code in
+    List.iter (fun e ->
+        let e = walk_kexp_n_lift_all e walk_n_lift_all_callb in
+        curr_top_code := e :: !curr_top_code) top_code;
 
-    let top_code = process top_code in*)
+    List.rev !curr_top_code

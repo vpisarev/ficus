@@ -302,6 +302,40 @@ let id2str_ i pp =
 let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
 
+(* used by the parser *)
+exception SyntaxError of string*Lexing.position*Lexing.position
+let loc2str loc = sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
+
+exception CompileError of loc_t * string
+
+let compile_errs = ref ([]: exn list)
+
+let raise_compile_err_ err =
+    compile_errs := err :: !compile_errs;
+    raise err
+
+let raise_compile_err loc msg =
+    let whole_msg = sprintf "%s: %s\n" (loc2str loc) msg in
+    let err = CompileError(loc, whole_msg) in
+    raise_compile_err_ err
+
+let pop_compile_err loc =
+    match !compile_errs with
+    | _ :: rest -> compile_errs := rest
+    | _ -> raise_compile_err loc "attempt to pop non-existing compile error"
+
+let check_compile_errs () =
+    match !compile_errs with
+    | err :: _ -> raise err
+    | _ -> ()
+
+let print_compile_err err =
+    match err with
+    (* error message has been formatted already in raise_typecheck_err(); just print it *)
+    | CompileError(_, msg) -> printf "%s\n" msg
+    | Failure msg -> printf "%s\n" msg
+    | _ -> printf "\n\nException %s occured\n" (Printexc.to_string err)
+
 let id2prefix i =
     let prefix = match i with
     | Id.Name(i) -> i
@@ -309,10 +343,12 @@ let id2prefix i =
     | Id.Temp(i, _) -> i in
     dynvec_get all_strings prefix
 
-let id2idx i = match i with
-    | Id.Name _ -> failwith (sprintf "attempt to query information about unresolved '%s'" (id2str i))
+let id2idx_ i loc = match i with
+    | Id.Name _ -> raise_compile_err loc (sprintf "attempt to query information about unresolved '%s'" (id2str i))
     | Id.Val(_, i_real) -> i_real
     | Id.Temp(_, i_real) -> i_real
+
+let id2idx i = id2idx_ i noloc
 
 let id_info i = dynvec_get all_ids (id2idx i)
 let is_unique_id i = match i with Id.Name _ -> false | _ -> true
@@ -471,10 +507,6 @@ let get_idinfo_typ id_info = match id_info with
 
 let get_id_typ i = match i with Id.Name _ -> TypVar (ref None) | _ -> get_idinfo_typ (id_info i)
 
-(* used by the parser *)
-exception SyntaxError of string*Lexing.position*Lexing.position
-let loc2str loc = sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
-
 (* used by the type checker *)
 let get_lit_typ l = match l with
     | LitInt(_) -> TypInt
@@ -602,33 +634,3 @@ let init_all_ids () =
     let _ = get_id_prefix "" in
     let _ = get_id_prefix "_" in
     fname_always_import()
-
-exception CompileError of loc_t * string
-
-let compile_errs = ref ([]: exn list)
-
-let raise_compile_err_ err =
-    compile_errs := err :: !compile_errs;
-    raise err
-
-let raise_compile_err loc msg =
-    let whole_msg = sprintf "%s: %s\n" (loc2str loc) msg in
-    let err = CompileError(loc, whole_msg) in
-    raise_compile_err_ err
-
-let pop_compile_err loc =
-    match !compile_errs with
-    | _ :: rest -> compile_errs := rest
-    | _ -> raise_compile_err loc "attempt to pop non-existing compile error"
-
-let check_compile_errs () =
-    match !compile_errs with
-    | err :: _ -> raise err
-    | _ -> ()
-
-let print_compile_err err =
-    match err with
-    (* error message has been formatted already in raise_typecheck_err(); just print it *)
-    | CompileError(_, msg) -> printf "%s\n" msg
-    | Failure msg -> printf "%s\n" msg
-    | _ -> printf "\n\nException %s occured\n" (Printexc.to_string err)
