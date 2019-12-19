@@ -706,7 +706,7 @@ and transform_fun df code sc =
             let (e, body_code) = exp2kexp inst_body body_code false body_sc in
             let body_kexp = rcode2kexp (e :: body_code) body_loc in
             let inst_flags = match body_kexp with KExpCCode _ -> FunInC :: inst_flags | _ -> inst_flags in
-            let kf = ref { kf_name=inst_name; kf_typ=ktyp; kf_args=(List.rev argids);
+            let kf = ref { kf_name=inst_name; kf_cname=""; kf_typ=ktyp; kf_args=(List.rev argids);
                 kf_body=body_kexp; kf_flags=inst_flags; kf_closure=(noid, noid); kf_scope=sc; kf_loc=inst_loc } in
             set_idk_entry inst_name (KFun kf);
             KDefFun kf :: code
@@ -721,8 +721,15 @@ and transform_all_types_and_cons elist code sc =
             let inst_list = if dvar_templ_args = [] then dvar_name :: [] else dvar_templ_inst in
             List.fold_left (fun code inst ->
                 match (id_info inst) with
-                | IdVariant {contents={dvar_name=inst_name; dvar_cases; dvar_constr; dvar_flags; dvar_scope; dvar_loc=inst_loc}} ->
-                    let kvar = ref { kvar_name=inst_name; kvar_cases=List.map (fun (i, t) -> (i, typ2ktyp t inst_loc)) dvar_cases;
+                | IdVariant {contents={dvar_name=inst_name; dvar_alias=inst_alias; dvar_cases;
+                                       dvar_constr; dvar_flags; dvar_scope; dvar_loc=inst_loc}} ->
+                    let targs = match (deref_typ inst_alias) with
+                                | TypApp(targs, _) -> List.map (fun t -> typ2ktyp t inst_loc) targs
+                                | _ -> raise_compile_err inst_loc
+                                    (sprintf "invalid variant type alias '%s'; should be TypApp(_, _)" (id2str inst_name))
+                                in
+                    let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_targs=targs;
+                                     kvar_cases=List.map (fun (i, t) -> (i, typ2ktyp t inst_loc)) dvar_cases;
                                      kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
                     let _ = set_idk_entry inst_name (KVariant kvar) in
                     let code = (KDefVariant kvar) :: code in
@@ -733,7 +740,7 @@ and transform_all_types_and_cons elist code sc =
                             let argtypes = match kf_typ with
                                        | KTypFun(argtypes, _) -> argtypes
                                        | _ -> [] in
-                            let kf = ref { kf_name=df_name; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
+                            let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
                                            kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: [];
                                            kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
                             set_idk_entry df_name (KFun kf);
@@ -744,17 +751,20 @@ and transform_all_types_and_cons elist code sc =
                 | _ -> raise_compile_err dvar_loc
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
-        | DefTyp {contents={dt_name; dt_typ; dt_scope; dt_loc}} ->
-            (* do not add explicit record definition (similarly to the tuple definition, it's not needed),
-               but set the proper entry of the symbol table *)
+        | DefTyp {contents={dt_name; dt_templ_args; dt_typ; dt_scope; dt_loc}} ->
+            (* [TODO] record handling is broken; it handles template records incorrectly,
+               because they share the same "rn" *)
+            if dt_templ_args != [] then () else
             (match (typ2ktyp dt_typ dt_loc) with
             | KTypRecord(rn, relems) ->
-                let krec = ref { krec_name=rn; krec_elems=relems; krec_scope=dt_scope; krec_loc=dt_loc} in
+                let krec = ref { krec_name=rn; krec_cname=""; krec_elems=relems;
+                                krec_flags=[]; krec_scope=dt_scope; krec_loc=dt_loc} in
                 set_idk_entry dt_name (KRecord krec)
             | _ -> ());
             code
         | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
-            let ke = ref { ke_name=dexn_name; ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
+            let ke = ref { ke_name=dexn_name; ke_cname="";
+                ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
             let _ = match dexn_scope with
                     (ScModule m) :: _ when (pp_id2str m) = "Builtins" ->
                         let exn_name_str = pp_id2str dexn_name in

@@ -157,7 +157,8 @@ type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTempRef | ValImplicitDeref
 type fun_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
-type variant_flag_t = VariantRecursive | VariantHaveNil of int
+type variant_flag_t = VariantRecursive | VariantHaveNil of int | VariantComplexOps
+type typ_flag_t = TypComplexOps | TypRecursive
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
 

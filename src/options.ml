@@ -9,7 +9,7 @@ type options_t =
     mutable output_name: string;
     mutable print_tokens: bool;
     mutable print_ast: bool;
-    mutable print_orig_k: bool;
+    mutable print_k: bool;
     mutable filename: string;
 }
 
@@ -21,7 +21,7 @@ let options =
     output_name = "";
     print_tokens = false;
     print_ast = false;
-    print_orig_k = false;
+    print_k = false;
     filename = ""
 }
 
@@ -34,8 +34,8 @@ let parse_options () =
         Arg.parse
         [("-pr-tokens", (Arg.Unit (fun f -> options.print_tokens <- true)), "   Print all the tokens in parsed files");
         ("-pr-ast", (Arg.Unit (fun f -> options.print_ast <- true)), "   Print typechecked AST of the parsed files");
-        ("-pr-orig-k", (Arg.Unit (fun f -> options.print_orig_k <- true)), "   Print generated K-form");
-        ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for some essential ones");
+        ("-pr-k", (Arg.Unit (fun f -> options.print_k <- true)), "   Print the generated and optimized K-form");
+        ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for the most essential ones");
         ("-O1", (Arg.Unit (fun () -> options.optimize_level <- 1)), "   Optimization level 1: enable most of optimizations");
         ("-O3", (Arg.Unit (fun () -> options.optimize_level <- 3)), "   Optimization level 3: enable all optimizations");
         ("-o", (Arg.String (fun s -> options.output_name <- s)), "<output_filename>    Output file name");

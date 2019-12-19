@@ -20,20 +20,20 @@ fun string(a: bool) = (a :> string)
 fun string(a: int) = (a :> string)
 fun string(a: float) = (a :> string)
 fun string(a: double) = (a :> string)
-/*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
-fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
-fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return __fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: string) = a
-operator + (a: string, b: string): string = ccode "fx_string* s[] = {a, b}; return __fx_str_join(fx_ctx, &fx_res, 0, s, 2);"
+/*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
+fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
+fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
+operator + (a: string, b: string): string = ccode "fx_string* s[] = {a, b}; return fx_str_join(fx_ctx, &fx_res, 0, s, 2);"
 operator + (a: string, b: char): string = ccode "
     fx_string bstr; fx_string* s[] = {a, &bstr};
-    FX_STATUS fx_status = __fx_make_static_string(fx_ctx, &bstr, &b, 1);
+    FX_STATUS fx_status = fx_make_static_string(fx_ctx, &bstr, &b, 1);
     if(fx_status < 0)
         return fx_status;
     return fx_str_join(fx_ctx, fx_res, 0, s, 2);"
 operator + (a: char, b: string): string = ccode "
     fx_string astr; fx_string* s[] = {&astr, b};
-    FX_STATUS fx_status = __fx_make_static_string(fx_ctx, &astr, &a, 1);
+    FX_STATUS fx_status = fx_make_static_string(fx_ctx, &astr, &a, 1);
     if(fx_status < 0)
         return fx_status;
     return fx_str_join(fx_ctx, fx_res, 0, s, 2);"*/
@@ -41,7 +41,7 @@ operator + (a: char, b: string): string = ccode "
 fun atoi(a: string): int option
 {
     fun atoi_(a: string): (int, bool) = ccode
-        "return __fx_atoi(fx_ctx, a, &fx_result->v0, &fx_result->v1, 10);"
+        "return fx_atoi(fx_ctx, a, &fx_result->v0, &fx_result->v1, 10);"
     match (atoi_(a)) {
     | (x, true) => Some(x)
     | _ => None
@@ -66,7 +66,7 @@ fun min(a: 't, b: 't) = if (a <= b) a else b
 fun max(a: 't, b: 't) = if (a >= b) a else b
 fun abs(a: 't) = if (a >= (0 :> 't)) a else -a
 
-fun print_string(a: string): void = ccode "return __fx_puts(fx_ctx, a->data);"
+fun print_string(a: string): void = ccode "return fx_puts(fx_ctx, a->data);"
 
 fun print(a: 't) = print_string(string(a))
 fun print(a: string) = print_string(a)

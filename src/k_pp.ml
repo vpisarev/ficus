@@ -65,7 +65,9 @@ let rec ppktyp_ t p1 =
     | KTypList(t1) -> ppktypsuf t1 "List"
     | KTypRef(t1) -> ppktypsuf t1 "Ref"
     | KTypArray(d, t1) -> ppktypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
-    | KTypName(n) -> pprint_id n
+    | KTypName(n) ->
+        let cname = get_id_cname n noloc in
+        if cname = "" then pprint_id n else pstr cname
     | KTypTuple(tl) -> ppktyplist_ "(" tl
     | KTypClosure(t, i) ->
         obox(); pstr "Closure[";

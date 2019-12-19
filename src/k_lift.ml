@@ -275,7 +275,7 @@ let lift_all top_code =
         let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kval mut_fv noloc in
         let new_kv_typ = KTypRef(kv_typ) in
         let new_kv_flags = ValImplicitDeref :: (List.filter (fun f -> f != ValMutable) kv_flags) in
-        let new_kv = { kv_name; kv_typ=new_kv_typ; kv_flags=new_kv_flags; kv_scope; kv_loc } in
+        let new_kv = { kv_name; kv_cname=""; kv_typ=new_kv_typ; kv_flags=new_kv_flags; kv_scope; kv_loc } in
         set_idk_entry kv_name (KVal new_kv))
         all_mut_fvars in
     (* iterate through all the functions; for each function with
@@ -299,12 +299,12 @@ let lift_all top_code =
                 let fvars_wt = List.map (fun fv ->
                     let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kval fv noloc in
                     let new_fv = dup_idk fv in
-                    let new_kv = { kv_name=new_fv; kv_typ; kv_flags; kv_scope=kf_scope; kv_loc=kf_loc } in
+                    let new_kv = { kv_name=new_fv; kv_cname=""; kv_typ; kv_flags; kv_scope=kf_scope; kv_loc=kf_loc } in
                     set_idk_entry new_fv (KVal new_kv); (new_fv, kv_typ)) fvars_final in
-                let kcv = ref { kcv_name=kf_c_vt; kcv_freevars=fvars_wt;
+                let kcv = ref { kcv_name=kf_c_vt; kcv_cname=""; kcv_freevars=fvars_wt;
                     kcv_orig_freevars=fvars_final; kcv_scope=kf_scope; kcv_loc=kf_loc } in
                 let kf_c_arg = gen_temp_idk "cv" in
-                let kf_c_arg_kv = { kv_name=kf_c_arg; kv_typ=(KTypName kf_c_vt);
+                let kf_c_arg_kv = { kv_name=kf_c_arg; kv_cname=""; kv_typ=(KTypName kf_c_vt);
                                     kv_flags=[]; kv_scope=kf_scope; kv_loc=kf_loc} in
                 let new_kf_closure = (kf_c_arg, kf_c_vt) in
                 set_idk_entry kf_c_vt (KClosureVars kcv);

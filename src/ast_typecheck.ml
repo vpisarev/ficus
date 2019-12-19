@@ -51,16 +51,17 @@ let print_env msg env loc =
         | EnvId n -> printf " %s" (id2str n);
             let templ_inst =
                 match id_info n with
-                | IdFun {contents={df_templ_inst}} -> df_templ_inst
-                | IdVariant {contents={dvar_templ_inst}} -> dvar_templ_inst
+                | IdFun {contents={df_templ_inst}} -> n :: df_templ_inst
+                | IdVariant {contents={dvar_templ_inst}} -> n :: dvar_templ_inst
                 | _ -> []
             in if templ_inst = [] then () else
                 (List.iteri (fun i ni ->
                     let t = match id_info ni with
                         | IdFun {contents={df_typ}} -> df_typ
                         | IdVariant {contents={dvar_alias}} -> dvar_alias
+                        | IdTyp {contents={dt_typ}} -> dt_typ
                         | _ -> TypVar(ref None)
-                    in printf "%s%s<" (if i = 0 then " -> [" else ", ") (id2str ni);
+                    in printf "%s%s<" (if i = 0 then " => [" else ", ") (id2str ni);
                     pprint_typ_x t; printf ">") templ_inst;
                 printf "]")
         | EnvTyp t -> printf "<some type>") entries);
@@ -589,7 +590,7 @@ let rec lookup_id n t env sc loc =
                             (* the generic function matches the requested type,
                                but there is no appropriate instance;
                                let's create a new one *)
-                            let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp env1 sc loc) in
+                            let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp env1 sc loc true) in
                             Some(inst_name)
                     else
                         None
@@ -1395,7 +1396,7 @@ and check_defexn de env sc =
 
 and check_deffun df env =
     let { df_typ; df_scope; df_loc } = !df in
-    instantiate_fun df df_typ env df_scope df_loc
+    instantiate_fun df df_typ env df_scope df_loc false
 
 (*
     * leave simple types as-is
@@ -1445,7 +1446,7 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
                             Some(t)
                         else
                             let env1 = match_ty_templ_args ty_args dt_templ_args !r_env dt_loc loc in
-                            Some(check_typ dt_typ env1 sc loc)
+                            Some(check_typ (dup_typ dt_typ) env1 sc loc)
                     | IdVariant dvar ->
                         let { dvar_name; dvar_templ_args; dvar_alias; dvar_templ_inst } = !dvar in
                         Some(if dvar_templ_args = [] then
@@ -1482,14 +1483,13 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
 and check_typ t env sc loc =
     let (t, _) = check_typ_and_collect_typ_vars t env None sc loc in t
 
-and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc =
+and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let { df_name; df_templ_args; df_args; df_body; df_flags; df_scope; df_loc; df_templ_inst } = !templ_df in
     let inst_env = inst_env0 in
     let is_constr = List.mem FunConstr df_flags in
     (*let _ = (printf "before instantiation of %s %s with type<" (if is_constr then
         "constructor" else "function") (id2str df_name); pprint_typ_x inst_ftyp; printf ">:\n") in
     let _ = print_env "" inst_env inst_loc in*)
-    let instantiate = inst_loc != df_loc in
     let (arg_typs, rt) = (match (deref_typ inst_ftyp) with
                     | TypFun(arg_typs, rt) -> (arg_typs, rt)
                     | rt -> if is_constr && df_args = [] then ([], rt)
@@ -1499,7 +1499,7 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc =
     let fun_sc = (ScFun inst_name) :: inst_sc in
     let (df_inst_args, inst_env, _) = List.fold_left2
         (fun (df_inst_args, inst_env, idset) df_arg arg_typ ->
-            let (df_inst_arg, inst_env, idset, _) = check_pat df_arg arg_typ inst_env idset IdSet.empty fun_sc false true false in
+            let (df_inst_arg, inst_env, idset, _) = check_pat (dup_pat df_arg) arg_typ inst_env idset IdSet.empty fun_sc false true false in
             ((df_inst_arg :: df_inst_args), inst_env, idset)) ([], inst_env, IdSet.empty) df_args arg_typs in
     let df_inst_args = List.rev df_inst_args in
     let rt = check_typ rt inst_env df_scope inst_loc in

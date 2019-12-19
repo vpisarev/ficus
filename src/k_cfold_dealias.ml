@@ -6,10 +6,10 @@
     * `a & true, true & a, a | false, false | a` is replaced with a
     * `a & false, false & a` is replaced with false
     * trivial definitions are eliminated.
-      That is, the algorithm finds the definitions that look like
+      That is, if the algorithm finds the definitions that look like
         * `val a@34535=b@795`, where `b@795` is immutable value,
         * or `val a@34535=3.1415`,
-      removes them and the replaces `a@34535` with `b@795` or `3.1415`,
+      it removes them and the replaces `a@34535` with `b@795` or `3.1415`,
       respectively, everywhere in the code
 *)
 

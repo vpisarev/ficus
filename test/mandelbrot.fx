@@ -36,7 +36,6 @@ val result: int8 [,] = [
 
         for (iter <- 0:MAX_ITER)
         {
-            // Find Re(z)^2 and Im(z)^2
             val rr = zr * zr
             val ii = zi * zi
 
@@ -50,11 +49,8 @@ val result: int8 [,] = [
             if (mag.6 > 4.0) bits &= ~2
             if (mag.7 > 4.0) bits &= ~1
 
-            // Find Im(z^2)
             val ir = zr * zi
-            // Set Re(z^2) + Re(c)
             zr = (rr - ii) + cr
-            // Set Im(z^2) + Im(c)
             zi = (ir + ir) + ci
 
             if (bits == 0) break
@@ -67,7 +63,7 @@ fun write_file()
 {
     val f: File.file_t = File.open("result.pgm", "wb")
     File.print(f, "P4\n\(w) \(h)\n")
-    File.write(f, result) // RAW binary output
+    File.write(f, result)
     File.close(f)
 }
 

@@ -113,21 +113,28 @@ and kexp_t =
     | KDefExn of kdefexn_t ref
     | KDefVariant of kdefvariant_t ref
     | KDefClosureVars of kdefclosurevars_t ref
-and kdefval_t = { kv_name: id_t; kv_typ: ktyp_t; kv_flags: val_flag_t list; kv_scope: scope_t list; kv_loc: loc_t }
-and kdeffun_t = { kf_name: id_t; kf_typ: ktyp_t; kf_args: id_t list; kf_body: kexp_t;
+and kdefval_t = { kv_name: id_t; kv_cname: string; kv_typ: ktyp_t;
+                  kv_flags: val_flag_t list; kv_scope: scope_t list; kv_loc: loc_t }
+and kdeffun_t = { kf_name: id_t; kf_cname: string; kf_typ: ktyp_t; kf_args: id_t list; kf_body: kexp_t;
                   kf_flags: fun_flag_t list; kf_closure: id_t * id_t;
                   kf_scope: scope_t list; kf_loc: loc_t }
-and kdefexn_t = { ke_name: id_t; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
-and kdefvariant_t = { kvar_name: id_t; kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
+and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
+and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_targs: ktyp_t list;
+                      kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
-and kdefrecord_t = { krec_name: id_t; krec_elems: (id_t * ktyp_t) list; krec_scope: scope_t list; krec_loc: loc_t }
-and kdefclosurevars_t = { kcv_name: id_t; kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
+and kdefrecord_t = { krec_name: id_t; krec_cname: string; krec_elems: (id_t * ktyp_t) list;
+                     krec_flags: typ_flag_t list; krec_scope: scope_t list; krec_loc: loc_t }
+and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
+                          kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
+and kdefgentyp_t = { kgen_name: id_t; kgen_cname: string; kgen_typ: ktyp_t;
+                     kgen_flags: typ_flag_t list; kgen_scope: scope_t list; kgen_loc: loc_t }
 
 type kinfo_t =
     | KNone | KText of string | KVal of kdefval_t | KFun of kdeffun_t ref
     | KExn of kdefexn_t ref | KVariant of kdefvariant_t ref
     | KRecord of kdefrecord_t ref | KClosureVars of kdefclosurevars_t ref
+    | KGenTyp of kdefgentyp_t ref
 
 let all_idks = dynvec_create KNone
 
@@ -209,8 +216,9 @@ let get_kscope info =
     | KFun {contents = {kf_scope}} -> kf_scope
     | KExn {contents = {ke_scope}} -> ke_scope
     | KVariant {contents = {kvar_scope}} -> kvar_scope
-    | KRecord {contents={krec_scope}} -> krec_scope
+    | KRecord {contents = {krec_scope}} -> krec_scope
     | KClosureVars {contents = {kcv_scope}} -> kcv_scope
+    | KGenTyp {contents = {kgen_scope}} -> kgen_scope
 
 let get_kinfo_loc info =
     match info with
@@ -221,6 +229,7 @@ let get_kinfo_loc info =
     | KVariant {contents = {kvar_loc}} -> kvar_loc
     | KRecord {contents = {krec_loc}} -> krec_loc
     | KClosureVars {contents = {kcv_loc}} -> kcv_loc
+    | KGenTyp {contents = {kgen_loc}} -> kgen_loc
 
 let get_id_loc i = get_kinfo_loc (kinfo i)
 
@@ -229,6 +238,22 @@ let check_kinfo info i loc =
     | KNone -> raise_compile_err loc (sprintf "attempt to request information about uninitialized symbol '%s'" (id2str i))
     | KText s -> raise_compile_err loc (sprintf "attempt to request information about symbolic name '%s'" s)
     | _ -> ()
+
+let get_kinfo_cname info loc =
+    match info with
+    | KNone | KText _ -> raise_compile_err loc "attempt to request cname of uninitialized symbol"
+    | KVal {kv_cname} -> kv_cname
+    | KFun {contents = {kf_cname}} -> kf_cname
+    | KExn {contents = {ke_cname}} -> ke_cname
+    | KVariant {contents = {kvar_cname}} -> kvar_cname
+    | KRecord {contents = {krec_cname}} -> krec_cname
+    | KClosureVars {contents = {kcv_cname}} -> kcv_cname
+    | KGenTyp {contents = {kgen_cname}} -> kgen_cname
+
+let get_id_cname i loc =
+    let info = kinfo_ i loc in
+    check_kinfo info i loc;
+    get_kinfo_cname info loc
 
 let get_kinfo_typ info i loc =
     check_kinfo info i loc;
@@ -241,6 +266,7 @@ let get_kinfo_typ info i loc =
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
     | KRecord {contents = {krec_name; krec_elems}} -> KTypRecord(krec_name, krec_elems)
     | KClosureVars {contents = {kcv_name; kcv_freevars}} -> KTypRecord(kcv_name, kcv_freevars)
+    | KGenTyp {contents={kgen_name}} -> KTypName(kgen_name)
 
 let get_idk_typ i loc = get_kinfo_typ (kinfo_ i loc) i loc
 
@@ -270,7 +296,7 @@ let intrin2str iop = match iop with
     | IntrinListTail -> "INTRIN_LIST_TL"
 
 let create_defval n t flags e_opt code sc loc =
-    let dv = { kv_name=n; kv_typ=t; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
+    let dv = { kv_name=n; kv_cname=""; kv_typ=t; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
     match t with
     | KTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
@@ -438,29 +464,28 @@ and walk_kexp e callb =
     | KExpCCode(str, ctx) -> KExpCCode(str, (walk_kctx_ ctx))
     | KDefVal(k, e, loc) ->
         KDefVal((walk_id_ k), (walk_kexp_ e), loc)
-    | KDefFun(df) ->
-        let { kf_name; kf_typ; kf_args; kf_body; kf_closure; kf_flags; kf_scope; kf_loc } = !df in
+    | KDefFun(kf) ->
+        let { kf_name; kf_typ; kf_args; kf_body; kf_closure } = !kf in
         let (kf_c_arg, kf_c_vt) = kf_closure in
-        df := { kf_name = (walk_id_ kf_name); kf_typ = (walk_ktyp_ kf_typ);
+        kf := { !kf with kf_name = (walk_id_ kf_name); kf_typ = (walk_ktyp_ kf_typ);
                 kf_args = (List.map walk_id_ kf_args); kf_body = (walk_kexp_ kf_body);
-                kf_closure = ((walk_id_ kf_c_arg), (walk_id_ kf_c_vt)); kf_flags; kf_scope; kf_loc };
+                kf_closure = ((walk_id_ kf_c_arg), (walk_id_ kf_c_vt)) };
         e
     | KDefExn(ke) ->
-        let { ke_name; ke_typ; ke_scope; ke_loc } = !ke in
-        ke := { ke_name = (walk_id_ ke_name); ke_typ=(walk_ktyp_ ke_typ); ke_scope; ke_loc };
+        let { ke_name; ke_cname; ke_typ } = !ke in
+        ke := { !ke with ke_name = (walk_id_ ke_name); ke_typ=(walk_ktyp_ ke_typ) };
         e
     | KDefVariant(kvar) ->
-        let { kvar_name; kvar_cases; kvar_constr; kvar_flags; kvar_scope; kvar_loc } = !kvar in
-        kvar := { kvar_name = (walk_id_ kvar_name);
+        let { kvar_name; kvar_cases; kvar_constr } = !kvar in
+        kvar := { !kvar with kvar_name = (walk_id_ kvar_name);
             kvar_cases = (List.map (fun (k, t) -> ((walk_id_ k), (walk_ktyp_ t))) kvar_cases);
-            kvar_constr = (List.map walk_id_ kvar_constr); kvar_flags; kvar_scope; kvar_loc };
+            kvar_constr = (List.map walk_id_ kvar_constr) };
         e
     | KDefClosureVars(kcv) ->
-        let { kcv_name; kcv_freevars; kcv_orig_freevars; kcv_scope; kcv_loc } = !kcv in
-        kcv := { kcv_name = (walk_id_ kcv_name);
+        let { kcv_name; kcv_freevars; kcv_orig_freevars } = !kcv in
+        kcv := { !kcv with kcv_name = (walk_id_ kcv_name);
             kcv_freevars = (List.map (fun (k, t) -> ((walk_id_ k), (walk_ktyp_ t))) kcv_freevars);
-            kcv_orig_freevars = (List.map walk_id_ kcv_orig_freevars);
-            kcv_scope; kcv_loc };
+            kcv_orig_freevars = (List.map walk_id_ kcv_orig_freevars) };
         e)
 
 (* walk through a K-normalized syntax tree and perform some actions;
@@ -698,7 +723,7 @@ let is_mutable i loc =
     | KVal {kv_flags} -> List.mem ValMutable kv_flags
     | KFun _ -> false
     | KExn _ -> false
-    | KClosureVars _ | KRecord _ | KVariant _ -> false
+    | KClosureVars _ | KRecord _ | KVariant _ | KGenTyp _ -> false
 
 let is_implicit_deref i loc =
     let info = kinfo_ i loc in
