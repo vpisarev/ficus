@@ -8,7 +8,10 @@ let deref_typ = Ast_typecheck.deref_typ
 let zero_env = (Env.empty : env_t)
 
 let typ2ktyp t loc =
-    let rec typ2ktyp_ t = match (deref_typ t) with
+    let id_stack = ref ([]: id_t list) in
+    let rec typ2ktyp_ t =
+    let t = deref_typ t in
+    match t with
     | TypVar {contents=Some(t)} -> typ2ktyp_ t
     | TypVar _ -> raise_compile_err loc "undefined type; use explicit type annotation"
     | TypInt -> KTypInt
@@ -29,33 +32,27 @@ let typ2ktyp t loc =
     | TypRef(t) -> KTypRef(typ2ktyp_ t)
     | TypArray(d, t) -> KTypArray(d, typ2ktyp_ t)
     | TypFun(args, rt) -> KTypFun((List.map typ2ktyp_ args), (typ2ktyp_ rt))
-    | TypRecord {contents=(relems, Some(rn))} ->
-        KTypRecord(rn, List.map (fun (n, t, _) -> (n, (typ2ktyp_ t))) relems)
+    | TypRecord {contents=(relems, true)} ->
+        KTypRecord(noid, List.map (fun (ni, ti, _) -> (ni, (typ2ktyp_ ti))) relems)
     | TypRecord _ ->
         raise_compile_err loc "the record type cannot be inferenced; use explicit type annotation"
     | TypApp(args, n) ->
-        if is_unique_id n then () else
-            raise_compile_err loc (sprintf "unknown type name '%s'" (id2str n));
-        if args = [] then KTypName(n) else
-        (match (deref_typ (Ast_typecheck.check_typ t zero_env (ScGlobal::[]) loc)) with
-        | (TypApp(args1, n1)) as t1 ->
-            if args1 = [] then KTypName(n1) else
-            (match (id_info n1) with
-            | IdVariant {contents={dvar_templ_inst}} ->
-                (try
-                    let found_inst = List.find (fun inst ->
-                        match (id_info inst) with
-                        | IdVariant {contents={dvar_alias}} ->
-                            Ast_typecheck.maybe_unify t1 dvar_alias false
-                        | _ -> raise_compile_err loc
-                            (sprintf "instance '%s' of variant '%s' ~ '%s' is not a variant" (id2str inst) (id2str n) (id2str n1)))
-                        dvar_templ_inst in
-                    KTypName(found_inst)
-                with Not_found ->
-                    raise_compile_err loc
-                        (sprintf "no proper instance of variant '%s' ~ '%s' is found" (id2str n) (id2str n1)))
-            | _ -> raise_compile_err loc (sprintf "unsupported type '%s' ~ '%s'" (id2str n) (id2str n1)))
-        | t -> typ2ktyp_ t)
+        let t = Ast_typecheck.find_typ_instance t loc in
+        (match t with
+        | Some (TypApp([], n)) ->
+            (match (id_info n) with
+            | IdVariant {contents={dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []; dvar_flags}}
+                when (List.mem VariantRecord dvar_flags) ->
+                if (List.mem n !id_stack) then
+                        raise_compile_err loc
+                            (sprintf "the record '%s' directly or indirectly references itself" (id2str n))
+                    else ();
+                id_stack := n :: !id_stack;
+                let new_t = KTypRecord(n, List.map (fun (ni, ti, _) -> (ni, (typ2ktyp_ ti))) relems) in
+                id_stack := List.tl !id_stack;
+                new_t
+            | _ -> KTypName(n))
+        | _ -> raise_compile_err loc "the proper instance of the template type is not found")
     in typ2ktyp_ t
 
 let rec exp2kexp e code tref sc =
@@ -146,13 +143,8 @@ let rec exp2kexp e code tref sc =
             (elems, code) erow) ([], code) erows in
         let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
         (KExpMkArray(shape, (List.rev elems), kctx), code)
-    | ExpMkRecord (rn, rinitelems, _) ->
-        let relems = match (deref_typ etyp) with
-            | TypRecord {contents=(relems, Some(_))} -> relems
-            | TypRecord _ -> raise_compile_err eloc
-                "the record type cannot be inferenced. Please, use explicit type specification"
-            | _ -> raise_compile_err eloc
-                "the record construction expression should return a record type" in
+    | ExpMkRecord (_, rinitelems, _) ->
+        let relems = Ast_typecheck.get_record_elems etyp eloc in
         let (ratoms, code) = List.fold_left (fun (ratoms, code) (ni, ti, opt_vi) ->
             let (a, code) = try
                 let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rinitelems in
@@ -168,18 +160,16 @@ let rec exp2kexp e code tref sc =
         (KExpMkRecord((List.rev ratoms), kctx), code)
     | ExpUpdateRecord(e, rupdelems, _) ->
         let (rec_n, code) = exp2id e code true sc "the updated record cannot be a literal" in
-        let relems = match ktyp with
-            | KTypRecord (rn, relems) -> relems
-            | _ -> raise_compile_err eloc
-                "the record construction expression should return a record type" in
-        let (_, ratoms, code) = List.fold_left (fun (idx, ratoms, code) (ni, ti) ->
+        let relems = Ast_typecheck.get_record_elems etyp eloc in
+        let (_, ratoms, code) = List.fold_left (fun (idx, ratoms, code) (ni, ti, _) ->
             let (a, code) = try
                 let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rupdelems in
                 exp2atom ej code false sc
             with Not_found ->
                 let ni_ = dup_idk ni in
-                let get_ni = KExpMem(rec_n, idx, (ti, eloc)) in
-                let code = create_defval ni_ ti (ValTempRef :: []) (Some get_ni) code sc eloc in
+                let ti_ = typ2ktyp ti eloc in
+                let get_ni = KExpMem(rec_n, idx, (ti_, eloc)) in
+                let code = create_defval ni_ ti_ (ValTempRef :: []) (Some get_ni) code sc eloc in
                 ((Atom.Id ni_), code)
             in (idx + 1, a::ratoms, code)) (0, [], code) relems in
         (KExpMkRecord((List.rev ratoms), kctx), code)
@@ -191,7 +181,7 @@ let rec exp2kexp e code tref sc =
     | ExpDeref(e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
         (KExpDeref(a_id, kctx), code)
-    | ExpMakeRef(e, _) ->
+    | ExpMkRef(e, _) ->
         let (a, code) = exp2atom e code false sc in
         (KExpIntrin(IntrinMkRef, a :: [], kctx), code)
     | ExpThrow(e, _) ->
@@ -728,40 +718,38 @@ and transform_all_types_and_cons elist code sc =
                                 | _ -> raise_compile_err inst_loc
                                     (sprintf "invalid variant type alias '%s'; should be TypApp(_, _)" (id2str inst_name))
                                 in
-                    let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_targs=targs;
-                                     kvar_cases=List.map (fun (i, t) -> (i, typ2ktyp t inst_loc)) dvar_cases;
-                                     kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
-                    let _ = set_idk_entry inst_name (KVariant kvar) in
-                    let code = (KDefVariant kvar) :: code in
-                    List.fold_left (fun code constr ->
-                        match (id_info constr) with
-                        | IdFun {contents={df_name; df_typ}} ->
-                            let kf_typ=(typ2ktyp df_typ dvar_loc) in
-                            let argtypes = match kf_typ with
-                                       | KTypFun(argtypes, _) -> argtypes
-                                       | _ -> [] in
-                            let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
-                                           kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: [];
-                                           kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
-                            set_idk_entry df_name (KFun kf);
-                            (KDefFun kf) :: code
-                        | _ -> raise_compile_err dvar_loc
-                            (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))
-                    code dvar_constr
+                    let code = (match (dvar_cases, (List.mem VariantRecord dvar_flags)) with
+                    | (((rn, TypRecord {contents=(relems, _)}) :: []), true) ->
+                        let krec = ref { krec_name=inst_name; krec_cname=""; krec_targs=targs;
+                            krec_elems=List.map (fun (i, t, _) -> (i, typ2ktyp t inst_loc)) relems;
+                            krec_flags=[]; krec_scope=sc; krec_loc=inst_loc } in
+                        let _ = set_idk_entry inst_name (KRecord krec) in
+                        (KDefRecord krec) :: code
+                    | _ ->
+                        let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_targs=targs;
+                                        kvar_cases=List.map (fun (i, t) -> (i, typ2ktyp t inst_loc)) dvar_cases;
+                                        kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
+                        let _ = set_idk_entry inst_name (KVariant kvar) in
+                        let code = (KDefVariant kvar) :: code in
+                        List.fold_left (fun code constr ->
+                            match (id_info constr) with
+                            | IdFun {contents={df_name; df_typ}} ->
+                                let kf_typ=(typ2ktyp df_typ dvar_loc) in
+                                let argtypes = match kf_typ with
+                                        | KTypFun(argtypes, _) -> argtypes
+                                        | _ -> [] in
+                                let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
+                                            kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: [];
+                                            kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
+                                set_idk_entry df_name (KFun kf);
+                                (KDefFun kf) :: code
+                            | _ -> raise_compile_err dvar_loc
+                                (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))
+                        code dvar_constr)
+                    in code
                 | _ -> raise_compile_err dvar_loc
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
-        | DefTyp {contents={dt_name; dt_templ_args; dt_typ; dt_scope; dt_loc}} ->
-            (* [TODO] record handling is broken; it handles template records incorrectly,
-               because they share the same "rn" *)
-            if dt_templ_args != [] then () else
-            (match (typ2ktyp dt_typ dt_loc) with
-            | KTypRecord(rn, relems) ->
-                let krec = ref { krec_name=rn; krec_cname=""; krec_elems=relems;
-                                krec_flags=[]; krec_scope=dt_scope; krec_loc=dt_loc} in
-                set_idk_entry dt_name (KRecord krec)
-            | _ -> ());
-            code
         | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
             let ke = ref { ke_name=dexn_name; ke_cname="";
                 ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in

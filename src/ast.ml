@@ -109,7 +109,7 @@ type lit_t =
       emulated using int64 ops (or even map to them 1:1) *)
     | LitFloat of int * float (* float, double, potentially half too *)
     | LitString of string (* UTF-8 string *)
-    | LitChar of string (* a single character may require multiple "bytes", so we use a string for it *)
+    | LitChar of string (* a single character may require multiple bytes, so we use OCaml string for it *)
     | LitBool of bool
     | LitNil (* can be used as stub initializer for C pointers, interfaces,
                 recursive variants, empty lists etc. *)
@@ -131,12 +131,12 @@ type typ_t =
     | TypBool
     | TypVoid
     | TypFun of typ_t list * typ_t (* unlike some classical ML languages, we initially let
-                                          functions to have multiple arguments, not just one *)
+                                    functions to have multiple arguments, not just one *)
     | TypList of typ_t
     | TypTuple of typ_t list
     | TypRef of typ_t
     | TypArray of int * typ_t
-    | TypRecord of ((id_t * typ_t * lit_t option) list * id_t option) ref
+    | TypRecord of ((id_t * typ_t * lit_t option) list * bool) ref
     | TypExn
     | TypErr (* a thrown exception; can be unified with any other type (except for declaration) *)
     | TypCPointer (* smart pointer to a C structure; we use it for file handles, mutexes etc. *)
@@ -157,7 +157,7 @@ type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTempRef | ValImplicitDeref
 type fun_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
-type variant_flag_t = VariantRecursive | VariantHaveNil of int | VariantComplexOps
+type variant_flag_t = VariantRecord | VariantRecursive | VariantHaveNil of int | VariantComplexOps
 type typ_flag_t = TypComplexOps | TypRecursive
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
@@ -181,7 +181,7 @@ type exp_t =
     | ExpAssign of exp_t * exp_t * loc_t
     | ExpMem of exp_t * exp_t * ctx_t
     | ExpDeref of exp_t * ctx_t
-    | ExpMakeRef of exp_t * ctx_t
+    | ExpMkRef of exp_t * ctx_t
     | ExpThrow of exp_t * loc_t
     | ExpIf of exp_t * exp_t * exp_t * ctx_t
     | ExpWhile of exp_t * exp_t * loc_t
@@ -405,7 +405,7 @@ let get_exp_ctx e = match e with
     | ExpAssign(_, _, l) -> (TypVoid, l)
     | ExpMem(_, _, c) -> c
     | ExpDeref(_, c) -> c
-    | ExpMakeRef(_, c) -> c
+    | ExpMkRef(_, c) -> c
     | ExpThrow(_, l) -> (TypErr, l)
     | ExpIf(_, _, _, c) -> c
     | ExpWhile(_, _, l) -> (TypVoid, l)

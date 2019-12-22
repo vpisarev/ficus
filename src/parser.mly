@@ -61,15 +61,17 @@ let good_variant_name s =
     let c0 = String.get s 0 in
     ('A' <= c0 && c0 <= 'Z') || (String.contains s '.')
 
-let make_variant_type (targs, tname) var_elems0 =
+let make_variant_type (targs, tname) var_elems0 is_record =
     let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
     let loc = make_loc(pos0, pos1) in
-    let var_elems = List.map (fun (n, t) -> if (good_variant_name n) then (get_id n, t) else
+    let var_elems = List.map (fun (n, t) ->
+        if is_record || (good_variant_name n) then (get_id n, t) else
         raise (SyntaxError ((sprintf
             "syntax error: variant tag '%s' does not start with a capital latin letter" n),
             pos0, pos1))) var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
-               dvar_flags=[]; dvar_cases=var_elems; dvar_constr=[];
+               dvar_flags=(if is_record then [VariantRecord] else []);
+               dvar_cases=var_elems; dvar_constr=[];
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
 
@@ -271,24 +273,29 @@ decl:
     }
 
 simple_type_decl:
-| TYPE type_lhs EQUAL typespec
+| TYPE type_lhs EQUAL typespec_or_record
     {
         let (targs, i) = $2 in
-        let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: [];
-                    dt_finalized=false; dt_loc=curr_loc() } in
-        DefTyp (ref dt)
+        let dt_body = $4 in
+        match dt_body with
+        | TypRecord _ ->
+            make_variant_type (targs, i) (((id2str i), dt_body) :: []) true
+        | _ ->
+            let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: [];
+                       dt_finalized=false; dt_loc=curr_loc() } in
+            DefTyp (ref dt)
     }
 | TYPE type_lhs EQUAL B_IDENT BITWISE_OR variant_elems_
     {
-        make_variant_type $2 (($4, TypVoid) :: (List.rev $6))
+        make_variant_type $2 (($4, TypVoid) :: (List.rev $6)) false
     }
-| TYPE type_lhs EQUAL B_IDENT COLON typespec BITWISE_OR variant_elems_
+| TYPE type_lhs EQUAL B_IDENT COLON typespec_or_record BITWISE_OR variant_elems_
     {
-        make_variant_type $2 (($4, $6) :: (List.rev $8))
+        make_variant_type $2 (($4, $6) :: (List.rev $8)) false
     }
-| TYPE type_lhs EQUAL B_IDENT COLON typespec
+| TYPE type_lhs EQUAL B_IDENT COLON typespec_or_record
     {
-        make_variant_type $2 (($4, $6) :: [])
+        make_variant_type $2 (($4, $6) :: []) false
     }
 
 exception_decl:
@@ -447,7 +454,7 @@ exp:
 | exp BACKSLASH LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
 | B_STAR exp %prec deref_prec { ExpDeref($2, make_new_ctx()) }
 | B_POWER exp %prec deref_prec { ExpDeref(ExpDeref($2, make_new_ctx()), make_new_ctx()) }
-| REF exp { ExpMakeRef($2, make_new_ctx()) }
+| REF exp { ExpMkRef($2, make_new_ctx()) }
 | B_MINUS exp { make_un_op(OpNegate, $2) }
 | B_PLUS exp { make_un_op(OpPlus, $2) }
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
@@ -745,6 +752,10 @@ iface_decl:
         DefFun (ref (make_deffun fname args rt (ExpNop (curr_loc_n 1)) flags (curr_loc())))
     }
 
+typespec_or_record:
+| typespec { $1 }
+| LBRACE id_typ_list_ RBRACE { TypRecord {contents=((List.rev $2), true)} }
+
 typespec:
 | typespec_nf { $1 }
 | typespec_nf ARROW typespec { TypFun((match $1 with TypVoid -> [] | TypTuple(args) -> args | _ -> [$1]), $3) }
@@ -797,8 +808,6 @@ typespec_nf:
 | typespec_nf REF_TYPE
 %prec ref_type_prec
 { TypRef($1) }
-| LBRACE id_typ_list_ RBRACE
-{ TypRecord(ref (List.rev $2, None)) }
 
 typespec_list_:
 | typespec_list_ COMMA typespec { $3 :: $1 }
@@ -829,7 +838,7 @@ variant_elems_:
 | variant_elem { $1 :: [] }
 
 variant_elem:
-| B_IDENT COLON typespec { ($1, $3) }
+| B_IDENT COLON typespec_or_record { ($1, $3) }
 | B_IDENT { ($1, TypVoid) }
 
 lparen:

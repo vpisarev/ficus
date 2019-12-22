@@ -120,9 +120,9 @@ and walk_typ t callb =
     | TypTuple args -> TypTuple(walk_tl_ args)
     | TypRef t -> TypRef(walk_typ_ t)
     | TypArray(d, et) -> TypArray(d, walk_typ_ et)
-    | TypRecord ({contents=(relems, rn)} as r) ->
+    | TypRecord ({contents=(relems, ordered)} as r) ->
         let new_relems = List.map (fun (n, t, v) -> (n, (walk_typ_ t), v)) relems in
-        r := (new_relems, rn); t
+        r := (new_relems, ordered); t
     | TypExn -> t
     | TypErr -> t
     | TypCPointer -> t
@@ -168,7 +168,7 @@ and walk_exp e callb =
     | ExpAssign(lv, rv, loc) -> ExpAssign((walk_exp_ lv), (walk_exp_ rv), loc)
     | ExpMem(a, member, ctx) -> ExpMem((walk_exp_ a), (walk_exp_ member), (walk_ctx_ ctx))
     | ExpDeref(a, ctx) -> ExpDeref((walk_exp_ a), (walk_ctx_ ctx))
-    | ExpMakeRef(a, ctx) -> ExpMakeRef((walk_exp_ a), (walk_ctx_ ctx))
+    | ExpMkRef(a, ctx) -> ExpMkRef((walk_exp_ a), (walk_ctx_ ctx))
     | ExpThrow(a, loc) -> ExpThrow((walk_exp_ a), loc)
     | ExpIf(c, then_e, else_e, ctx) ->
         ExpIf((walk_exp_ c), (walk_exp_ then_e), (walk_exp_ else_e), (walk_ctx_ ctx))
@@ -239,9 +239,9 @@ let rec dup_typ_ t callb =
         TypVar (ref (Some(dup_typ_ t1 callb)))
     | TypVar _ -> TypVar (ref None)
     | TypRecord r ->
-        let (relems, rn) = !r in
+        let (relems, ordered) = !r in
         let new_relems = List.map (fun (n, t, v) -> (n, (dup_typ_ t callb), v)) relems in
-        TypRecord(ref (new_relems, rn))
+        TypRecord(ref (new_relems, ordered))
     | _ -> walk_typ t callb
 
 let rec dup_exp_ e callb =
@@ -347,11 +347,12 @@ let maybe_unify t1 t2 update_refs =
             List.for_all2 maybe_unify_ tl1 tl2
         | ((TypRef drt1), (TypRef drt2)) -> maybe_unify_ drt1 drt2
         | (TypRecord r1, TypRecord r2) when r1 == r2 -> true
-        | (TypRecord {contents=(_, None)}, TypRecord {contents=(_, Some _)}) -> maybe_unify_ t2 t1
+        | (TypRecord {contents=(_, false)}, TypRecord {contents=(_, true)}) -> maybe_unify_ t2 t1
         | (TypRecord r1, TypRecord r2) ->
             let ok = match (!r1, !r2) with
-                | ((relems1, Some rn1), (relems2, Some rn2)) ->
-                    rn1 = rn2 && (List.for_all2 (fun (n1, t1, _) (n2, t2, _) ->
+                | ((relems1, true), (relems2, true)) ->
+                    (List.length relems1) == (List.length relems2) &&
+                    (List.for_all2 (fun (n1, t1, _) (n2, t2, _) ->
                         n1 = n2 && maybe_unify_ t1 t2) relems1 relems2)
                 | ((relems1, _), (relems2, _)) ->
                     let have_all_matches = List.for_all (fun (n1, t1, v1opt) ->
@@ -508,17 +509,52 @@ let check_for_rec_field_duplicates rfnames loc =
             raise_compile_err loc (sprintf "duplicate record field '%s'" (id2str ni)))
         rfnames) rfnames
 
-let finalize_record_typ rn t loc =
-    match (deref_typ t) with
-    | TypRecord ({contents=(relems, None)} as r) ->
-        r := (relems, rn);
+let finalize_record_typ t loc =
+    let t = deref_typ (dup_typ t) in
+    match t with
+    | TypRecord ({contents=(relems, _)} as r) ->
         List.iter (fun (n, t, v_opt) ->
             match v_opt with
             | Some(v) -> unify t (get_lit_typ v) loc
                 (sprintf "type of the field '%s' and its initializer do not match" (pp_id2str n))
             | _ -> ()) relems;
         TypRecord(r)
-    | t -> t
+    | _ -> t
+
+let find_typ_instance t loc =
+    let t = deref_typ t in
+    match t with
+    | TypApp(targs, n) ->
+        if targs = [] then Some t
+        else
+            let inst_list = (match (id_info n) with
+                | IdVariant {contents={dvar_templ_inst}} -> dvar_templ_inst
+                | _ -> [])
+            in (try
+                let n = List.find (fun inst ->
+                    match (id_info inst) with
+                    | IdVariant {contents={dvar_alias=inst_alias}} ->
+                        maybe_unify t inst_alias false
+                    | _ -> false)
+                inst_list in Some (TypApp([], n))
+            with Not_found -> None)
+    | _ -> Some t
+
+let get_record_elems t loc =
+    let t = deref_typ t in
+    match t with
+    | TypRecord {contents=(relems, true)} -> relems
+    | TypRecord _ -> raise_compile_err loc "the records, which elements we request, is not finalized"
+    | TypApp _ ->
+        (match (find_typ_instance t loc) with
+        | Some (TypApp([], n)) ->
+            (match (id_info n) with
+            | IdVariant {contents={dvar_flags;
+                dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []}}
+                when (List.mem VariantRecord dvar_flags) -> relems
+            | _ -> raise_compile_err loc "attempt to treat non-record as a record")
+        | _ -> raise_compile_err loc "proper instance of the template [record?] type is not found")
+    | _ -> raise_compile_err loc "attempt to treat non-record as a record"
 
 let is_real_typ t =
     let have_typ_vars = ref false in
@@ -603,7 +639,9 @@ let rec lookup_id n t env sc loc =
             | IdClass _ | IdInterface _ -> None)
         | EnvTyp _ -> None)) with
     | Some(x) -> x
-    | None -> report_not_found n loc
+    | None ->
+        (*print_env "env @ report_not_found: " env loc;*)
+        report_not_found n loc
 
 and preprocess_templ_typ templ_args typ env sc loc =
     let t = dup_typ typ in
@@ -711,7 +749,8 @@ and check_exp e env sc =
            so it cannot be independently analyzed *)
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
-        (match ((deref_typ etyp1), new_e1, e2) with
+        let etyp1 = deref_typ etyp1 in
+        (match (etyp1, new_e1, e2) with
         | (TypModule, ExpIdent(n1, _), ExpIdent(n2, (etyp2, eloc2))) ->
             let n1_env = get_module_env n1 in
             (*let _ = printf "looking for %s in module %s ...\n" (id2str n2) (id2str n1) in*)
@@ -726,7 +765,8 @@ and check_exp e env sc =
                 raise_compile_err eloc2 "the tuple index is out of range") in
             unify etyp et eloc "incorrect type of the tuple element";
             ExpMem(new_e1, e2, ctx)
-        | (TypRecord {contents=(relems, _)}, _, ExpIdent(n2, (etyp2, eloc2))) ->
+        | (_, _, ExpIdent(n2, (etyp2, eloc2))) ->
+            let relems = get_record_elems etyp1 eloc1 in
             (try
                 let (_, t1, _) = List.find (fun (n1, t1, _) -> n1 = n2) relems in
                 unify etyp t1 eloc "incorrect type of the record element";
@@ -842,11 +882,11 @@ and check_exp e env sc =
         let new_e1 = check_exp e1 env sc in
         ExpDeref(new_e1, ctx)
 
-    | ExpMakeRef(e1, _) ->
+    | ExpMkRef(e1, _) ->
         let (etyp1, eloc1) = get_exp_ctx e1 in
         let _ = unify etyp (TypRef etyp1) eloc "the types of ref() operation argument and result are inconsistent" in
         let new_e1 = check_exp e1 env sc in
-        ExpMakeRef(new_e1, ctx)
+        ExpMkRef(new_e1, ctx)
 
     | ExpThrow(e1, _) ->
         let (etyp1, eloc1) = get_exp_ctx e1 in
@@ -1029,7 +1069,7 @@ and check_exp e env sc =
             let e = check_exp e env sc in
             let etyp = get_exp_typ e in
             ((n, e) :: r_new_initializers, (n, etyp, (None : lit_t option)) :: relems)) ([], []) r_initializers in
-        let rtyp = TypRecord(ref ((List.rev relems), None)) in
+        let rtyp = TypRecord(ref ((List.rev relems), false)) in
         let (r_etyp, r_eloc) = get_exp_ctx r_e in
         let r_expected_typ = TypFun(rtyp :: [], etyp) in
         let _ = unify r_etyp r_expected_typ r_eloc "there is no proper record constructor/function with record argument" in
@@ -1040,13 +1080,7 @@ and check_exp e env sc =
         let (rtyp, rloc) = get_exp_ctx r_e in
         let _ = unify rtyp etyp eloc "the types of the update-record argument and the result do not match" in
         let new_r_e = check_exp r_e env sc in
-        let relems = (match (deref_typ rtyp) with
-            | TypRecord {contents=(relems, rname_opt)} ->
-                (match rname_opt with
-                | Some _ -> ()
-                | _ -> raise_compile_err rloc "the updated record is not completely defined. Use explicit type specification");
-                relems
-            | _ -> raise_compile_err rloc "the update-record operation argument is not a record") in
+        let relems = get_record_elems rtyp rloc in
         let new_r_initializers = List.map (fun (ni, ei) ->
             let (ei_typ, ei_loc) = get_exp_ctx ei in
             try
@@ -1335,7 +1369,7 @@ and check_types eseq env sc =
             let env1 = List.fold_left (fun env1 t_arg ->
                 add_typ_to_env t_arg (TypApp([], t_arg)) env1) env dt_templ_args in
             let dt_typ = deref_typ (check_typ dt_typ env1 dt_scope dt_loc) in
-            let dt_typ = finalize_record_typ (Some dt_name) dt_typ dt_loc in
+            let dt_typ = finalize_record_typ dt_typ dt_loc in
             dt := {dt_name; dt_templ_args; dt_typ=dt_typ; dt_finalized=true; dt_scope; dt_loc};
             (* in the case of record we add the record constructor function
                to support the constructions 'record_name { f1=e1, f2=e2, ..., fn=en }' gracefully *)
@@ -1552,8 +1586,8 @@ and instantiate_variant ty_args dvar env sc loc =
         (set_id_entry inst_name (IdVariant inst_dvar);
         !dvar.dvar_templ_inst <- inst_name :: !dvar.dvar_templ_inst) else () in
     let (inst_cases, inst_constr) = List.fold_left2 (fun (inst_cases, inst_constr) (n, t) cname ->
-        let t = check_typ t env sc loc in
-        let t = finalize_record_typ (Some cname) t loc in
+        let t = check_typ (dup_typ t) env sc loc in
+        let t = finalize_record_typ t loc in
         let (inst_cname, _) = register_typ_constructor cname (!inst_dvar.dvar_templ_args) t inst_app_typ env dvar_scope dvar_loc in
         if instantiate then
             match id_info cname with

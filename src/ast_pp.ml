@@ -72,15 +72,15 @@ let rec pptype_ t p1 =
     | TypBool -> pstr "Bool"
     | TypVoid -> pstr "Void"
     | TypFun(tl, t2) ->
-            (*let (lp, rp) = opt_parens p p1 in*)
-            obox(); pstr "(";
-            (match tl with
-            | [] -> pstr "Void"
-            | t1 :: [] -> pptype_ t1 p
-            | _ -> pptype_ (TypTuple tl) p);
-            pspace(); pstr "->";
-            pptype_ t2 p;
-            pstr ")"; cbox()
+        (*let (lp, rp) = opt_parens p p1 in*)
+        obox(); pstr "(";
+        (match tl with
+        | [] -> pstr "Void"
+        | t1 :: [] -> pptype_ t1 p
+        | _ -> pptype_ (TypTuple tl) p);
+        pspace(); pstr "->";
+        pptype_ t2 p;
+        pstr ")"; cbox()
     | TypList(t1) -> pptypsuf t1 "List"
     | TypRef(t1) -> pptypsuf t1 "Ref"
     | TypArray(d, t1) -> pptypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
@@ -88,13 +88,12 @@ let rec pptype_ t p1 =
     | TypApp(t1 :: [], n) -> pptypsuf t1 (id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (id2str n)
     | TypTuple(tl) -> pptypelist_ "(" tl
-    | TypRecord {contents=(rec_elems, name_opt)} ->
-            let name = match name_opt with Some(i) -> (id2str i) | _ -> "??" in
-            pstr name; pstr " {"; pcut(); obox();
-            (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
-                pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0;
-                match v0_opt with Some(v0) -> pprint_lit v0 | _ -> ()) rec_elems);
-            cbox(); pcut(); pstr "}"
+    | TypRecord {contents=(rec_elems, ordered)} ->
+        pstr (if ordered then "{" else "~{"); pcut(); obox();
+        (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
+            pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0;
+            match v0_opt with Some(v0) -> pprint_lit v0 | _ -> ()) rec_elems);
+        cbox(); pcut(); pstr "}"
     | TypExn -> pstr "Exn"
     | TypErr -> pstr "Err"
     | TypCPointer -> pstr "CPtr"
@@ -159,13 +158,17 @@ let rec pprint_exp e =
     | DefTyp { contents = {dt_name; dt_templ_args; dt_typ }} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
         pspace(); pstr "="; pspace(); pprint_typ dt_typ; cbox()
-    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases; dvar_constr; dvar_templ_inst} } ->
-        obox(); pstr "TYPE"; pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name; pstr "<";
+    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases; dvar_constr; dvar_flags; dvar_templ_inst} } ->
+        obox(); if (List.mem VariantRecord dvar_flags) then pstr "TYPE RECORD" else pstr "TYPE";
+        pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name; pstr "<";
         pprint_typ dvar_alias; pstr ">";
-        pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
-            if i = 0 then () else pstr " | "; pprint_id v;
+        pspace(); pstr "="; pspace();
+        let var_cases_constr = Utils.zip dvar_cases
+            (if dvar_constr != [] then dvar_constr else List.map (fun (n, _) -> n) dvar_cases) in
+        List.iteri (fun i ((n, t), c) ->
+            if i = 0 then () else pstr " | "; pprint_id n;
             pstr "<"; pprint_id c; pstr ": "; pprint_typ (get_id_typ c); pstr ">: "; pprint_typ t)
-            (Utils.zip dvar_cases (if dvar_constr != [] then dvar_constr else (List.map (fun (v, _) -> v) dvar_cases))));
+        var_cases_constr;
         cbox()
     | DirImport(ml, _) -> pstr "IMPORT"; pspace();
         obox(); (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;
@@ -204,7 +207,7 @@ let rec pprint_exp e =
             let ostr = unop_to_string o in
             pstr "("; pstr ostr; pspace(); pprint_exp e1; pstr ")"
         | ExpDeref(e1, _) -> pstr "*"; pprint_exp e1
-        | ExpMakeRef(e1, _) -> pstr "REF ("; pprint_exp e1; pstr ")"
+        | ExpMkRef(e1, _) -> pstr "REF ("; pprint_exp e1; pstr ")"
         | ExpThrow(e1, _) -> pstr "THROW ("; pprint_exp e1; pstr ")"
         | ExpMkTuple(el, _) ->
             pstr "("; obox();

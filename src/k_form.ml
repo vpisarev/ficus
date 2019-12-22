@@ -112,6 +112,7 @@ and kexp_t =
     | KDefFun of kdeffun_t ref
     | KDefExn of kdefexn_t ref
     | KDefVariant of kdefvariant_t ref
+    | KDefRecord of kdefrecord_t ref
     | KDefClosureVars of kdefclosurevars_t ref
 and kdefval_t = { kv_name: id_t; kv_cname: string; kv_typ: ktyp_t;
                   kv_flags: val_flag_t list; kv_scope: scope_t list; kv_loc: loc_t }
@@ -122,8 +123,9 @@ and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_typ: ktyp_t; ke_scope: sco
 and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_targs: ktyp_t list;
                       kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
-and kdefrecord_t = { krec_name: id_t; krec_cname: string; krec_elems: (id_t * ktyp_t) list;
-                     krec_flags: typ_flag_t list; krec_scope: scope_t list; krec_loc: loc_t }
+and kdefrecord_t = { krec_name: id_t; krec_cname: string; krec_targs: ktyp_t list;
+                      krec_elems: (id_t * ktyp_t) list; krec_flags: typ_flag_t list;
+                      krec_scope: scope_t list; krec_loc: loc_t }
 and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
                           kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
@@ -203,6 +205,7 @@ let get_kexp_ctx e = match e with
     | KDefFun {contents={kf_loc}} -> (KTypVoid, kf_loc)
     | KDefExn {contents={ke_loc}} -> (KTypVoid, ke_loc)
     | KDefVariant {contents={kvar_loc}} -> (KTypVoid, kvar_loc)
+    | KDefRecord {contents={krec_loc}} -> (KTypVoid, krec_loc)
     | KDefClosureVars {contents={kcv_loc}} -> (KTypVoid, kcv_loc)
 
 let get_kexp_typ e = let (t, l) = (get_kexp_ctx e) in t
@@ -478,13 +481,18 @@ and walk_kexp e callb =
     | KDefVariant(kvar) ->
         let { kvar_name; kvar_cases; kvar_constr } = !kvar in
         kvar := { !kvar with kvar_name = (walk_id_ kvar_name);
-            kvar_cases = (List.map (fun (k, t) -> ((walk_id_ k), (walk_ktyp_ t))) kvar_cases);
+            kvar_cases = (List.map (fun (n, t) -> ((walk_id_ n), (walk_ktyp_ t))) kvar_cases);
             kvar_constr = (List.map walk_id_ kvar_constr) };
+        e
+    | KDefRecord(krec) ->
+        let { krec_name; krec_elems } = !krec in
+        krec := { !krec with krec_name = (walk_id_ krec_name);
+            krec_elems = (List.map (fun (n, t) -> ((walk_id_ n), (walk_ktyp_ t))) krec_elems) };
         e
     | KDefClosureVars(kcv) ->
         let { kcv_name; kcv_freevars; kcv_orig_freevars } = !kcv in
         kcv := { !kcv with kcv_name = (walk_id_ kcv_name);
-            kcv_freevars = (List.map (fun (k, t) -> ((walk_id_ k), (walk_ktyp_ t))) kcv_freevars);
+            kcv_freevars = (List.map (fun (n, t) -> ((walk_id_ n), (walk_ktyp_ t))) kcv_freevars);
             kcv_orig_freevars = (List.map walk_id_ kcv_orig_freevars) };
         e)
 
@@ -613,13 +621,18 @@ and fold_kexp e callb =
     | KDefVariant(kvar) ->
         let { kvar_name; kvar_cases; kvar_constr; kvar_loc } = !kvar in
         fold_id_ kvar_name;
-        List.iter (fun (k, t) -> fold_id_ k; fold_ktyp_ t) kvar_cases;
+        List.iter (fun (n, t) -> fold_id_ n; fold_ktyp_ t) kvar_cases;
         List.iter fold_id_ kvar_constr;
         (KTypVoid, kvar_loc)
+    | KDefRecord(krec) ->
+        let { krec_name; krec_elems; krec_loc } = !krec in
+        fold_id_ krec_name;
+        List.iter (fun (n, t) -> fold_id_ n; fold_ktyp_ t) krec_elems;
+        (KTypVoid, krec_loc)
     | KDefClosureVars(kcv) ->
         let { kcv_name; kcv_freevars; kcv_orig_freevars; kcv_loc } = !kcv in
         fold_id_ kcv_name;
-        List.iter (fun (k, t) -> fold_id_ k; fold_ktyp_ t) kcv_freevars;
+        List.iter (fun (n, t) -> fold_id_ n; fold_ktyp_ t) kcv_freevars;
         List.iter fold_id_ kcv_orig_freevars;
         (KTypVoid, kcv_loc))
 
@@ -678,6 +691,13 @@ and used_by_kexp_ e callb =
             IdSet.union uv_ti uv) IdSet.empty kvar_cases in
         add_to_used uv callb;
         add_to_decl1 kvar_name callb
+    | KDefRecord {contents={krec_name; krec_elems}} ->
+        let uv = List.fold_left (fun uv (ni, ti) ->
+            let uv = IdSet.add ni uv in
+            let uv_ti = IdSet.remove krec_name (used_by_ktyp ti) in
+            IdSet.union uv_ti uv) IdSet.empty krec_elems in
+        add_to_used uv callb;
+        add_to_decl1 krec_name callb
     | KExpMap (clauses, body, _, (t, _)) ->
         fold_kexp e callb;
         List.iter (fun (_, id_l) ->
