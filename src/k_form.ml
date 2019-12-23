@@ -113,6 +113,7 @@ and kexp_t =
     | KDefExn of kdefexn_t ref
     | KDefVariant of kdefvariant_t ref
     | KDefRecord of kdefrecord_t ref
+    | KDefGenTyp of kdefgentyp_t ref
     | KDefClosureVars of kdefclosurevars_t ref
 and kdefval_t = { kv_name: id_t; kv_cname: string; kv_typ: ktyp_t;
                   kv_flags: val_flag_t list; kv_scope: scope_t list; kv_loc: loc_t }
@@ -206,6 +207,7 @@ let get_kexp_ctx e = match e with
     | KDefExn {contents={ke_loc}} -> (KTypVoid, ke_loc)
     | KDefVariant {contents={kvar_loc}} -> (KTypVoid, kvar_loc)
     | KDefRecord {contents={krec_loc}} -> (KTypVoid, krec_loc)
+    | KDefGenTyp {contents={kgen_loc}} -> (KTypVoid, kgen_loc)
     | KDefClosureVars {contents={kcv_loc}} -> (KTypVoid, kcv_loc)
 
 let get_kexp_typ e = let (t, l) = (get_kexp_ctx e) in t
@@ -343,49 +345,49 @@ let kexp2code e =
 
 type k_callb_t =
 {
-    kcb_typ: (ktyp_t -> k_callb_t -> ktyp_t) option;
+    kcb_typ: (ktyp_t -> loc_t -> k_callb_t -> ktyp_t) option;
     kcb_exp: (kexp_t -> k_callb_t -> kexp_t) option;
-    kcb_atom: (atom_t -> k_callb_t -> atom_t) option;
+    kcb_atom: (atom_t -> loc_t -> k_callb_t -> atom_t) option;
 }
 
-let rec check_n_walk_ktyp t callb =
+let rec check_n_walk_ktyp t loc callb =
     match callb.kcb_typ with
-    | Some(f) -> f t callb
-    | _ -> walk_ktyp t callb
+    | Some(f) -> f t loc callb
+    | _ -> walk_ktyp t loc callb
 
 and check_n_walk_kexp e callb =
     match callb.kcb_exp with
     | Some(f) -> f e callb
     | _ -> walk_kexp e callb
 
-and check_n_walk_atom a callb =
+and check_n_walk_atom a loc callb =
     match callb.kcb_atom with
-    | Some(f) -> f a callb
+    | Some(f) -> f a loc callb
     | _ -> a
-and check_n_walk_al al callb =
-    List.map (fun a -> check_n_walk_atom a callb) al
+and check_n_walk_al al loc callb =
+    List.map (fun a -> check_n_walk_atom a loc callb) al
 
-and check_n_walk_dom d callb =
+and check_n_walk_dom d loc callb =
     match d with
-    | Domain.Elem a -> Domain.Elem (check_n_walk_atom a callb)
-    | Domain.Fast a -> Domain.Fast (check_n_walk_atom a callb)
+    | Domain.Elem a -> Domain.Elem (check_n_walk_atom a loc callb)
+    | Domain.Fast a -> Domain.Fast (check_n_walk_atom a loc callb)
     | Domain.Range (a, b, c) ->
-        Domain.Range ((check_n_walk_atom a callb),
-                      (check_n_walk_atom b callb),
-                      (check_n_walk_atom c callb))
+        Domain.Range ((check_n_walk_atom a loc callb),
+                      (check_n_walk_atom b loc callb),
+                      (check_n_walk_atom c loc callb))
 
-and check_n_walk_id n callb =
+and check_n_walk_id n loc callb =
     match callb.kcb_atom with
     | Some(f) ->
-        (match f (Atom.Id n) callb with
+        (match f (Atom.Id n) loc callb with
         | Atom.Id n -> n
         | _ -> failwith "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
     | _ -> n
 
-and walk_ktyp t callb =
-    let walk_ktyp_ t = check_n_walk_ktyp t callb in
+and walk_ktyp t loc callb =
+    let walk_ktyp_ t = check_n_walk_ktyp t loc callb in
     let walk_ktl_ tl = List.map walk_ktyp_ tl in
-    let walk_id_ k = check_n_walk_id k callb in
+    let walk_id_ k = check_n_walk_id k loc callb in
     (match t with
     | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypVoid | KTypNil | KTypBool
@@ -403,13 +405,14 @@ and walk_ktyp t callb =
     | KTypRef t -> KTypRef(walk_ktyp_ t))
 
 and walk_kexp e callb =
-    let walk_atom_ a = check_n_walk_atom a callb in
+    let loc = get_kexp_loc e in
+    let walk_atom_ a = check_n_walk_atom a loc callb in
     let walk_al_ al = List.map walk_atom_ al in
-    let walk_ktyp_ t = check_n_walk_ktyp t callb in
-    let walk_id_ k = check_n_walk_id k callb in
+    let walk_ktyp_ t = check_n_walk_ktyp t loc callb in
+    let walk_id_ k = check_n_walk_id k loc callb in
     let walk_kexp_ e = check_n_walk_kexp e callb in
     let walk_kctx_ (t, loc) = ((walk_ktyp_ t), loc) in
-    let walk_dom_ d = check_n_walk_dom d callb in
+    let walk_dom_ d = check_n_walk_dom d loc callb in
     let walk_kdl_ kdl = List.map (fun (k, d) -> ((walk_id_ k), (walk_dom_ d))) kdl in
     (match e with
     | KExpNop (_) -> e
@@ -489,6 +492,10 @@ and walk_kexp e callb =
         krec := { !krec with krec_name = (walk_id_ krec_name);
             krec_elems = (List.map (fun (n, t) -> ((walk_id_ n), (walk_ktyp_ t))) krec_elems) };
         e
+    | KDefGenTyp(kgen) ->
+        let { kgen_name; kgen_typ } = !kgen in
+        kgen := { !kgen with kgen_name = (walk_id_ kgen_name); kgen_typ = walk_ktyp_ kgen_typ };
+        e
     | KDefClosureVars(kcv) ->
         let { kcv_name; kcv_freevars; kcv_orig_freevars } = !kcv in
         kcv := { !kcv with kcv_name = (walk_id_ kcv_name);
@@ -502,47 +509,47 @@ and walk_kexp e callb =
 
 type 'x k_fold_callb_t =
 {
-    kcb_fold_ktyp: (ktyp_t -> 'x k_fold_callb_t -> unit) option;
+    kcb_fold_ktyp: (ktyp_t -> loc_t -> 'x k_fold_callb_t -> unit) option;
     kcb_fold_kexp: (kexp_t -> 'x k_fold_callb_t -> unit) option;
-    kcb_fold_atom: (atom_t -> 'x k_fold_callb_t -> unit) option;
+    kcb_fold_atom: (atom_t -> loc_t -> 'x k_fold_callb_t -> unit) option;
     mutable kcb_fold_result: 'x;
 }
 
-let rec check_n_fold_ktyp t callb =
+let rec check_n_fold_ktyp t loc callb =
     match callb.kcb_fold_ktyp with
-    | Some(f) -> f t callb
-    | _ -> fold_ktyp t callb
+    | Some(f) -> f t loc callb
+    | _ -> fold_ktyp t loc callb
 
 and check_n_fold_kexp e callb =
     match callb.kcb_fold_kexp with
     | Some(f) -> f e callb
     | _ -> fold_kexp e callb
 
-and check_n_fold_atom a callb =
+and check_n_fold_atom a loc callb =
     match callb.kcb_fold_atom with
-    | Some(f) -> f a callb
+    | Some(f) -> f a loc callb
     | _ -> ()
-and check_n_fold_al al callb =
-    List.iter (fun a -> check_n_fold_atom a callb) al
+and check_n_fold_al al loc callb =
+    List.iter (fun a -> check_n_fold_atom a loc callb) al
 
-and check_n_fold_dom d callb =
+and check_n_fold_dom d loc callb =
     match d with
-    | Domain.Elem a -> check_n_fold_atom a callb
-    | Domain.Fast a -> check_n_fold_atom a callb
+    | Domain.Elem a -> check_n_fold_atom a loc callb
+    | Domain.Fast a -> check_n_fold_atom a loc callb
     | Domain.Range (a, b, c) ->
-        check_n_fold_atom a callb;
-        check_n_fold_atom b callb;
-        check_n_fold_atom c callb
+        check_n_fold_atom a loc callb;
+        check_n_fold_atom b loc callb;
+        check_n_fold_atom c loc callb
 
-and check_n_fold_id k callb =
+and check_n_fold_id k loc callb =
     match callb.kcb_fold_atom with
-    | Some(f) when k != noid -> f (Atom.Id k) callb
+    | Some(f) when k != noid -> f (Atom.Id k) loc callb
     | _ -> ()
 
-and fold_ktyp t callb =
-    let fold_ktyp_ t = check_n_fold_ktyp t callb in
+and fold_ktyp t loc callb =
+    let fold_ktyp_ t = check_n_fold_ktyp t loc callb in
     let fold_ktl_ tl = List.iter fold_ktyp_ tl in
-    let fold_id_ i = check_n_fold_id i callb in
+    let fold_id_ i = check_n_fold_id i loc callb in
     (match t with
     | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypVoid | KTypNil | KTypBool
@@ -559,13 +566,14 @@ and fold_ktyp t callb =
     | KTypRef t -> fold_ktyp_ t)
 
 and fold_kexp e callb =
-    let fold_atom_ a = check_n_fold_atom a callb in
+    let loc = get_kexp_loc e in
+    let fold_atom_ a = check_n_fold_atom a loc callb in
     let fold_al_ al = List.iter fold_atom_ al in
-    let fold_ktyp_ t = check_n_fold_ktyp t callb in
-    let fold_id_ k = check_n_fold_id k callb in
+    let fold_ktyp_ t = check_n_fold_ktyp t loc callb in
+    let fold_id_ k = check_n_fold_id k loc callb in
     let fold_kexp_ e = check_n_fold_kexp e callb in
     let fold_kctx_ (t, _) = fold_ktyp_ t in
-    let fold_dom_ d = check_n_fold_dom d callb in
+    let fold_dom_ d = check_n_fold_dom d loc callb in
     let fold_kdl_ kdl = List.iter (fun (k, d) -> fold_id_ k; fold_dom_ d) kdl in
     fold_kctx_ (match e with
     | KExpNop (l) -> (KTypVoid, l)
@@ -629,6 +637,10 @@ and fold_kexp e callb =
         fold_id_ krec_name;
         List.iter (fun (n, t) -> fold_id_ n; fold_ktyp_ t) krec_elems;
         (KTypVoid, krec_loc)
+    | KDefGenTyp(kgen) ->
+        let { kgen_name; kgen_typ; kgen_loc } = !kgen in
+        fold_id_ kgen_name; fold_ktyp_ kgen_typ;
+        (KTypVoid, kgen_loc)
     | KDefClosureVars(kcv) ->
         let { kcv_name; kcv_freevars; kcv_orig_freevars; kcv_loc } = !kcv in
         fold_id_ kcv_name;
@@ -654,12 +666,12 @@ let add_to_decl dv_set callb =
     let (used_set, decl_set) = callb.kcb_fold_result in
     callb.kcb_fold_result <- (used_set, (IdSet.union dv_set decl_set))
 
-let rec used_by_atom_ a callb =
+let rec used_by_atom_ a loc callb =
     match a with
     | Atom.Id (Id.Name i) -> ()
     | Atom.Id i -> add_to_used1 i callb
     | _ -> ()
-and used_by_ktyp_ t callb = fold_ktyp t callb
+and used_by_ktyp_ t loc callb = fold_ktyp t loc callb
 and used_by_kexp_ e callb =
     match e with
     | KDefVal(i, e, _) ->
@@ -667,11 +679,11 @@ and used_by_kexp_ e callb =
         add_to_used uv callb;
         add_to_decl dv callb;
         add_to_decl1 i callb
-    | KDefFun {contents={kf_name; kf_typ; kf_args; kf_closure; kf_body}} ->
+    | KDefFun {contents={kf_name; kf_typ; kf_args; kf_closure; kf_body; kf_loc}} ->
         (* the function arguments are not included into the "used variables" set by default,
             they should be referenced by the function body to be included *)
         let (kf_c_arg, kf_c_vt) = kf_closure in
-        let uv_typ = used_by_ktyp kf_typ in
+        let uv_typ = used_by_ktyp kf_typ kf_loc in
         let (uv_body, dv_body) = used_decl_by_kexp kf_body in
         let uv = IdSet.union uv_typ (IdSet.remove kf_name uv_body) in
         add_to_decl1 kf_c_arg callb;
@@ -680,24 +692,28 @@ and used_by_kexp_ e callb =
         add_to_decl dv_body callb;
         add_to_decl1 kf_name callb;
         List.iter (fun a -> add_to_decl1 a callb) kf_args
-    | KDefExn {contents={ke_name; ke_typ}} ->
-        let uv = used_by_ktyp ke_typ in
+    | KDefExn {contents={ke_name; ke_typ; ke_loc}} ->
+        let uv = used_by_ktyp ke_typ ke_loc in
         add_to_used uv callb;
         add_to_decl1 ke_name callb
-    | KDefVariant {contents={kvar_name; kvar_cases}} ->
+    | KDefVariant {contents={kvar_name; kvar_cases; kvar_loc}} ->
         let uv = List.fold_left (fun uv (ni, ti) ->
             let uv = IdSet.add ni uv in
-            let uv_ti = IdSet.remove kvar_name (used_by_ktyp ti) in
+            let uv_ti = IdSet.remove kvar_name (used_by_ktyp ti kvar_loc) in
             IdSet.union uv_ti uv) IdSet.empty kvar_cases in
         add_to_used uv callb;
         add_to_decl1 kvar_name callb
-    | KDefRecord {contents={krec_name; krec_elems}} ->
+    | KDefRecord {contents={krec_name; krec_elems; krec_loc}} ->
         let uv = List.fold_left (fun uv (ni, ti) ->
             let uv = IdSet.add ni uv in
-            let uv_ti = IdSet.remove krec_name (used_by_ktyp ti) in
+            let uv_ti = IdSet.remove krec_name (used_by_ktyp ti krec_loc) in
             IdSet.union uv_ti uv) IdSet.empty krec_elems in
         add_to_used uv callb;
         add_to_decl1 krec_name callb
+    | KDefGenTyp {contents={kgen_name; kgen_typ; kgen_loc}} ->
+        let uv = used_by_ktyp kgen_typ kgen_loc in
+        add_to_used uv callb;
+        add_to_decl1 kgen_name callb
     | KExpMap (clauses, body, _, (t, _)) ->
         fold_kexp e callb;
         List.iter (fun (_, id_l) ->
@@ -714,9 +730,9 @@ and new_used_vars_callb () =
         kcb_fold_kexp = Some(used_by_kexp_);
         kcb_fold_result = (IdSet.empty, IdSet.empty)
     }
-and used_by_ktyp t =
+and used_by_ktyp t loc =
     let callb = new_used_vars_callb() in
-    let _ = used_by_ktyp_ t callb in
+    let _ = used_by_ktyp_ t loc callb in
     let (used_set, _) = callb.kcb_fold_result in
     used_set
 and used_decl_by_kexp e =

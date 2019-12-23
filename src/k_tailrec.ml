@@ -175,7 +175,7 @@ let tailrec2loop kf =
         kf := { !kf with kf_args=new_kf_args; kf_body=new_kf_body }
 
 let tailrec2loops top_code =
-    let rec tailrec2loop_ktyp_ t callb = t
+    let rec tailrec2loop_ktyp_ t loc callb = t
     and tailrec2loop_kexp_ e callb =
         let e = walk_kexp e callb in
         (match e with

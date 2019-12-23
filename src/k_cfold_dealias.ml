@@ -278,7 +278,7 @@ let print_subst_map m =
 let cfold_dealias top_code =
     let id_map = ref (Env.empty : atom_t Env.t) in
     let add_to_map n a = id_map := Env.add n a !id_map in
-    let rec cfd_atom_ a callb =
+    let rec cfd_atom_ a loc callb =
         match a with
         | Atom.Id n ->
             (match (Env.find_opt n !id_map) with
@@ -286,7 +286,7 @@ let cfold_dealias top_code =
                 a2
             | _ -> a)
         | _ -> a
-    and cfd_ktyp_ t callb = t
+    and cfd_ktyp_ t loc callb = t
     and cfd_kexp_ e callb =
         (* [TODO] add handling of tuple/record construction with
            subsequent field access, e.g.
@@ -306,7 +306,7 @@ let cfold_dealias top_code =
         | KDefVal(n, rhs_e, loc) ->
             (*printf "defval: "; K_pp.pprint_kexp_x e; printf "\n";*)
             let rhs_e = cfd_kexp_ rhs_e callb in
-            let n = match cfd_atom_ (Atom.Id n) callb with
+            let n = match cfd_atom_ (Atom.Id n) loc callb with
                         | Atom.Id n2 -> n2
                         | _ -> n in
             let e = KDefVal(n, rhs_e, loc) in

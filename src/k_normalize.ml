@@ -254,7 +254,7 @@ let rec exp2kexp e code tref sc =
                         let check_when = KExpIf(e, (KExpNop eloc), (KExpContinue eloc), (KTypVoid, eloc)) in
                         check_when :: body_code
                     | _ -> body_code in
-                let pre_exp = rcode2kexp pre_code noloc in
+                let pre_exp = rcode2kexp pre_code eloc in
                 ((pre_exp, idom_list) :: pre_idom_ll, body_code)) ([], []) pew_ll in
         let (last_e, body_code) = exp2kexp body body_code false body_sc in
         let bloc = get_exp_loc body in

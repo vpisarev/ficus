@@ -13,7 +13,7 @@
 open Ast
 open K_form
 
-let rec flatten_ktyp_ t callb = t
+let rec flatten_ktyp_ t loc callb = t
 and flatten_kexp_ e callb =
     match e with
     | KExpSeq(elist, (_, loc)) ->

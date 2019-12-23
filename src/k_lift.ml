@@ -202,7 +202,7 @@ let lift_all top_code =
     let globals = ref (K_simple_ll.find_globals top_code IdSet.empty) in
     let is_global n = IdSet.mem n !globals in
     let ll_env = ref (Env.empty : ll_env_t) in
-    let fold_fv0_ktyp_ t callb = () in
+    let fold_fv0_ktyp_ t loc callb = () in
     let fold_fv0_kexp_ e callb =
         fold_kexp e callb; (* process all the sub-expressions in any case *)
         match e with
@@ -241,7 +241,7 @@ let lift_all top_code =
         let visited_funcs = ref IdSet.empty in
         let changed = ref false in
         let _ = if iters > 0 then () else raise_compile_err noloc
-            "finalization of the free var sets takes too much iterations; probably, something is wrong" in
+            "finalization of the free var sets takes too much iterations" in
         let rec update_fvars f =
             match (Env.find_opt f !ll_env) with
             | Some ll_info ->
@@ -280,7 +280,7 @@ let lift_all top_code =
         all_mut_fvars in
     (* iterate through all the functions; for each function with
        free variables define a closure and add an extra parameter *)
-    let fold_defcl_ktyp_ t callb = () in
+    let fold_defcl_ktyp_ t loc callb = () in
     let fold_defcl_kexp_ e callb =
         fold_kexp e callb; (* process all the sub-expressions in any case *)
         match e with
@@ -297,7 +297,7 @@ let lift_all top_code =
                 let fvars_final = List.map (fun (_, fv) -> fv) fvar_pairs_sorted in
                 let kf_c_vt = gen_temp_idk ((id2prefix kf_name) ^ "_closure") in
                 let fvars_wt = List.map (fun fv ->
-                    let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kval fv noloc in
+                    let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kval fv kf_loc in
                     let new_fv = dup_idk fv in
                     let new_kv = { kv_name=new_fv; kv_cname=""; kv_typ; kv_flags; kv_scope=kf_scope; kv_loc=kf_loc } in
                     set_idk_entry new_fv (KVal new_kv); (new_fv, kv_typ)) fvars_final in
@@ -329,7 +329,7 @@ let lift_all top_code =
     let curr_subst_env = ref (Env.empty : ll_subst_env_t) in
     let curr_top_code = ref ([]: kexp_t list) in
 
-    let rec walk_atom_n_lift_all a callb =
+    let rec walk_atom_n_lift_all a loc callb =
         match a with
         | Atom.Id (Id.Name _) -> a
         | Atom.Id n ->
@@ -339,11 +339,11 @@ let lift_all top_code =
                 (match (kinfo n) with
                 | KFun {contents={kf_flags}} ->
                     if List.mem FunConstr kf_flags then a
-                    else raise_compile_err noloc
+                    else raise_compile_err loc
                         (sprintf "for the function '%s' there is no corresponding closure" (id2str n))
                 | _ -> a))
         | _ -> a
-    and walk_ktyp_n_lift_all t callb = t
+    and walk_ktyp_n_lift_all t loc callb = t
     and walk_kexp_n_lift_all e callb =
         match e with
         | KDefFun kf ->
@@ -365,7 +365,7 @@ let lift_all top_code =
                     else raise_compile_err kf_loc
                         (sprintf "free variable '%s' of '%s' is not defined yet"
                         (id2str fv) (id2str kf_name));
-                    walk_atom_n_lift_all (Atom.Id fv) callb) orig_freevars
+                    walk_atom_n_lift_all (Atom.Id fv) kf_loc callb) orig_freevars
                     in
                 let cl_typ = KTypClosure(kf_typ, cl_vt) in
                 let make_cl = KExpMkClosure(kf_name, cl_args, (cl_typ, kf_loc)) in
@@ -432,23 +432,23 @@ let lift_all top_code =
             KDefVal(n, rhs, loc)
         | KExpFor(idom_l, body, flags, loc) ->
             let idom_l = List.map (fun (i, dom_i) ->
-                let dom_i = check_n_walk_dom dom_i callb in
+                let dom_i = check_n_walk_dom dom_i loc callb in
                 defined_so_far := IdSet.add i !defined_so_far;
                 (i, dom_i)) idom_l in
             let body = walk_kexp_n_lift_all body callb in
             KExpFor(idom_l, body, flags, loc)
-        | KExpMap(e_idom_ll, body, flags, kctx) ->
+        | KExpMap(e_idom_ll, body, flags, ((etyp, eloc) as kctx)) ->
             let e_idom_ll = List.map (fun (e, idom_l) ->
                 let e = walk_kexp_n_lift_all e callb in
                 let idom_l = List.map (fun (i, dom_i) ->
-                    let dom_i = check_n_walk_dom dom_i callb in
+                    let dom_i = check_n_walk_dom dom_i eloc callb in
                     defined_so_far := IdSet.add i !defined_so_far;
                     (i, dom_i)) idom_l
                 in (e, idom_l)) e_idom_ll
             in let body = walk_kexp_n_lift_all body callb in
             KExpMap(e_idom_ll, body, flags, kctx)
         | KExpCall(f, args, ((_, loc) as kctx)) ->
-            let args = List.map (fun a -> walk_atom_n_lift_all a callb) args in
+            let args = List.map (fun a -> walk_atom_n_lift_all a loc callb) args in
             let (curr_f, curr_cl_arg, curr_cl_vt) = !curr_clo in
             if f = curr_f then
                 let cl_arg =
@@ -461,8 +461,8 @@ let lift_all top_code =
                     if cl_vt = noid then
                         KExpCall(f, (args @ [(Atom.Lit LitNil)]), kctx)
                     else
-                        KExpCall((check_n_walk_id f callb), args, kctx)
-                | _ -> KExpCall((check_n_walk_id f callb), args, kctx))
+                        KExpCall((check_n_walk_id f loc callb), args, kctx)
+                | _ -> KExpCall((check_n_walk_id f loc callb), args, kctx))
         | _ -> walk_kexp e callb
     in let walk_n_lift_all_callb =
     {

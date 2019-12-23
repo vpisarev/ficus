@@ -15,7 +15,12 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
-let pprint_id = Ast_pp.pprint_id
+let pprint_id n =
+    match n with
+    | Id.Name _ -> pstr (id2str n)
+    | _ ->
+        let cname = get_id_cname n noloc in
+        pstr (if cname = "" then (id2str n) else ("_vx_" ^ cname))
 
 type ktyp_pr_t = KTypPr0 | KTypPrFun | KTypPrComplex | KTypPrBase
 
@@ -67,7 +72,7 @@ let rec ppktyp_ t p1 =
     | KTypArray(d, t1) -> ppktypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
     | KTypName(n) ->
         let cname = get_id_cname n noloc in
-        if cname = "" then pprint_id n else pstr cname
+        if cname = "" then pprint_id n else pstr ("_vx_" ^ cname)
     | KTypTuple(tl) -> ppktyplist_ "(" tl
     | KTypClosure(t, i) ->
         obox(); pstr "Closure[";
@@ -116,6 +121,10 @@ and pprint_kexp_ e prtyp =
     let pprint_atom_ a = pprint_atom a true eloc in
     let pprint_dom_ r = pprint_dom r eloc in
     let pprint_id_ i = pprint_atom_ (Atom.Id i) in
+    let pprint_id_label i =
+        let cname = get_id_cname i noloc in
+        if cname = "" then pstr (id2str i)
+        else pstr ("_vx_" ^ cname) in
     let obox_cnt = ref 0 in
     let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
@@ -129,7 +138,7 @@ and pprint_kexp_ e prtyp =
         | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
-        pstr "VAL"; pspace(); pprint_id n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace();
+        pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp vt; pspace(); pstr "="; pspace();
         if List.mem ValImplicitDeref vflags then
         (pstr "MAKE_REF("; pprint_kexp_ e0 false; pstr ")")
         else pprint_kexp_ e0 false; cbox()
@@ -158,7 +167,7 @@ and pprint_kexp_ e prtyp =
                     | FunStatic -> pstr "STATIC"; pspace()
                     | FunConstr -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
-        pstr (!fkind); pspace(); pprint_id kf_name; pspace();
+        pstr (!fkind); pspace(); pprint_id_label kf_name; pspace();
         pstr "("; pcut(); obox();
         List.iteri (fun i (n, t) ->
             if i = nargs then (pstr ";"; pspace(); pprint_id kf_cl_arg; pstr ": {")
@@ -169,19 +178,22 @@ and pprint_kexp_ e prtyp =
         pspace(); pstr ":"; pspace(); pprint_ktyp rt; pspace();
         pstr "="; pspace(); if is_constr then pstr "Constructor" else pprint_kexp kf_body; cbox())
     | KDefExn { contents = {ke_name; ke_typ } } ->
-        obox(); pstr "EXCEPTION"; pspace(); pprint_id ke_name;
+        obox(); pstr "EXCEPTION"; pspace(); pprint_id_label ke_name;
         (match ke_typ with
         | KTypVoid -> ()
         | _ -> pspace(); pstr "OF"; pspace(); pprint_ktyp ke_typ); cbox()
+    | KDefGenTyp { contents = {kgen_name; kgen_typ } } ->
+        obox(); pstr "GENERATED_TYPE"; pspace(); pprint_id_label kgen_name;
+        pspace(); pstr "="; pspace(); pprint_ktyp kgen_typ; cbox()
     | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr; kvar_loc} } ->
-        obox(); pstr "TYPE"; pspace(); pprint_id kvar_name;
+        obox(); pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id v;
             pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_idk_typ c kvar_loc); pstr ">: "; pprint_ktyp t)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr else (List.map (fun (v, _) -> v) kvar_cases))));
         cbox()
     | KDefClosureVars { contents = {kcv_name; kcv_freevars; kcv_loc} } ->
-        obox(); pstr "CLOSURE_DATA"; pspace(); pprint_id kcv_name;
+        obox(); pstr "CLOSURE_DATA"; pspace(); pprint_id_label kcv_name;
         pspace(); pstr "="; pspace(); pstr "{ ";
         List.iteri (fun i (n, t) ->
             if i = 0 then () else (pstr ","; pspace());
@@ -228,6 +240,9 @@ and pprint_kexp_ e prtyp =
         | KExpMkRecord(al, (t, loc)) ->
             let (rn, relems) = match t with
                 | KTypRecord(rn, relems) -> (rn, relems)
+                | KTypName n -> (match (kinfo_ n loc) with
+                    | KRecord {contents={krec_name; krec_elems}} -> (krec_name, krec_elems)
+                    | _ -> raise_compile_err loc "invalid record type in KExpMkRecord(...)")
                 | _ -> raise_compile_err loc "invalid record type in KExpMkRecord(...)" in
             let ant = Utils.zip al relems in
             pstr "NEW_RECORD "; pprint_id rn; pstr " {"; obox();

@@ -27,7 +27,7 @@
 open Ast
 open K_form
 
-let pure_ktyp_ t callb = ()
+let pure_ktyp_ t loc callb = ()
 let rec pure_kexp_ e callb =
     let set_impure () = callb.kcb_fold_result <- false in
     match e with
@@ -71,7 +71,7 @@ and pure_fun f loc =
     (* all indirect calls via values etc. are considered impure, because of uncertainty *)
     | _ -> false
 
-let rec reset_purity_flags_ktyp_ t callb = ()
+let rec reset_purity_flags_ktyp_ t loc callb = ()
 and reset_purity_flags_kexp_ e callb =
     match e with
     | KDefFun df ->
@@ -98,7 +98,7 @@ let rec elim_unused code =
     let uv = used_by code in
     let used i = IdSet.mem i uv in
 
-    let rec elim_unused_ktyp_ t callb = t
+    let rec elim_unused_ktyp_ t loc callb = t
     and elim_unused_kexp_ e callb =
         match e with
         | KDefVal(i, e, loc) ->

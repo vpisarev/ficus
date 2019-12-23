@@ -66,7 +66,7 @@ let lift top_code =
         (*print_set ((id2str !kf.kf_name) ^ " free vars") fv; printf "\tcan lift: %B\n" can_lift;*)
         can_lift in
 
-    let rec walk_ktyp_n_lift t callb = t
+    let rec walk_ktyp_n_lift t loc callb = t
     and walk_kexp_n_lift e callb =
         match e with
         | KDefVariant {contents={kvar_name; kvar_loc}} ->
