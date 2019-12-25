@@ -79,6 +79,28 @@ type cunop_t =
     | COpPrefixInc | COpPrefixDec | COpSuffixInc | COpSuffixDec | COpMacroName | COpMacroDefined
 
 type ctyp_attr_t = CTypConst | CTypVolatile
+type ctyp_kind_t =
+    | CKindPrimitive (* the type is an integer or floating-point number, bool or char *)
+    | CKindSimple (* the type is a tuple, record or non-recursive variant, where
+                    all the elements are primitive or simple *)
+    | CKindStruct (* the type is a tuple, record or non-recursive variant, which elements
+                     may require a special handling *)
+    | CKindSimpleCollection (* array, which elements are primitive or simple, or a string *)
+    | CKindComplexCollection (* array, which elements are not simple *)
+    | CKindSmartPointer (* the type, which instances are dynamically allocated and
+            handled using smart pointers: list, reference, recursive variant, cptr *)
+
+type ctyp_flag_t =
+    | CTypFlagVariantNilCase of int (* if the type is a recursive variant and one of its cases has "void" type,
+                                       e.g. type tree_t = Empty | None : (int, tree_t, tree_t),
+                                       it makes sense to use a null pointer to identify this case
+                                       reduce the amount of memory allocations
+                                       (in the case of binary tree it's basically 2x reduction).
+                                       We can call this variant case "nullable",
+                                       and its index is stored with the flag *)
+    | CTypFlagVariantHasTag (* indicates that the variant has a tag. Single-case variants do not need a tag.
+                               Recursive variants with just 2 cases, where one of them is "nullable" (see above),
+                               do not need a tag either. *)
 
 type ctyp_t =
     | CTypInt (* this is a direct mapping from TypInt and CTypInt.
@@ -97,7 +119,11 @@ type ctyp_t =
     | CTypStruct of id_t option * (id_t * ctyp_t) list
     | CTypUnion of id_t option * (id_t * ctyp_t) list
     | CTypFun of ctyp_t list * ctyp_t
+    | CTypFunPtr of ctyp_t list * ctyp_t
     | CTypRawPointer of ctyp_attr_t list * ctyp_t
+    | CTypList of ctyp_t
+    | CTypArray of int * ctyp_t
+    | CTypArrayAccess of int * ctyp_t
     | CTypName of id_t
 and cctx_t = ctyp_t * loc_t
 and cexp_t =
@@ -137,10 +163,15 @@ and cstmt_t =
        but it's probably good enough for our purposes *)
     | CMacroIf of (cexp_t * cstmt_t list) list * cstmt_t list * loc_t
     | CMacroInclude of string * loc_t
-and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_flags: val_flag_t list; cv_scope: scope_t list; cv_loc: loc_t }
+and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_flags: val_flag_t list;
+                  cv_arrdata: id_t; cv_scope: scope_t list; cv_loc: loc_t }
 and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_args: id_t list; cf_body: cstmt_t;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
-and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_scope: scope_t list; ct_loc: loc_t }
+and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: id_t;
+                  ct_kind: ctyp_kind_t; ct_flags: ctyp_flag_t list;
+                  ct_init: id_t; ct_release: id_t; ct_copy: id_t;
+                  ct_elems_clear: id_t; ct_elems_copy: id_t; ct_elems_release: id_t;
+                  ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_scope: scope_t list; ce_loc: loc_t }
 and cdeflabel_t = { cl_name: id_t; cl_scope: scope_t list; cl_loc: loc_t }
 
@@ -267,7 +298,7 @@ let get_lit_ctyp l = match l with
     | LitNil -> CTypNil
 
 let create_cdefval n t flags e_opt code sc loc =
-    let dv = { cv_name=n; cv_typ=t; cv_flags=flags; cv_scope=sc; cv_loc=loc } in
+    let dv = { cv_name=n; cv_typ=t; cv_flags=flags; cv_arrdata=noid; cv_scope=sc; cv_loc=loc } in
     match t with
     | CTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
@@ -346,6 +377,10 @@ and walk_ctyp t callb =
     | CTypUnion (n_opt, uelems) ->
         CTypUnion((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) uelems))
     | CTypFun (args, rt) -> CTypFun((List.map walk_ctyp_ args), (walk_ctyp_ rt))
+    | CTypFunPtr (args, rt) -> CTypFunPtr((List.map walk_ctyp_ args), (walk_ctyp_ rt))
+    | CTypList(et) -> CTypList(walk_ctyp_ et)
+    | CTypArray(d, et) -> CTypArray(d, walk_ctyp_ et)
+    | CTypArrayAccess(d, et) -> CTypArray(d, walk_ctyp_ et)
     | CTypRawPointer(attrs, t) -> CTypRawPointer(attrs, (walk_ctyp_ t))
     | CTypName n -> CTypName(walk_id_ n))
 
@@ -470,7 +505,11 @@ and fold_ctyp t callb =
     | CTypUnion (n_opt, uelems) ->
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) uelems
     | CTypFun (args, rt) -> fold_tl_ args; fold_ctyp_ rt
+    | CTypFunPtr (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypRawPointer(_, t) -> fold_ctyp_ t
+    | CTypList(t) -> fold_ctyp_ t
+    | CTypArray(_, t) -> fold_ctyp_ t
+    | CTypArrayAccess(_, t) -> fold_ctyp_ t
     | CTypName n -> fold_id_ n)
 
 and fold_cexp e callb =

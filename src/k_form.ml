@@ -124,14 +124,15 @@ and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_typ: ktyp_t; ke_scope: sco
 and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_targs: ktyp_t list;
                       kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
-and kdefrecord_t = { krec_name: id_t; krec_cname: string; krec_targs: ktyp_t list;
-                      krec_elems: (id_t * ktyp_t) list; krec_flags: typ_flag_t list;
-                      krec_scope: scope_t list; krec_loc: loc_t }
+and kdefrecord_t = { krec_name: id_t; krec_cname: string;
+                    krec_targs: ktyp_t list;
+                    krec_elems: (id_t * ktyp_t) list;
+                    krec_scope: scope_t list; krec_loc: loc_t }
 and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
                           kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
 and kdefgentyp_t = { kgen_name: id_t; kgen_cname: string; kgen_typ: ktyp_t;
-                     kgen_flags: typ_flag_t list; kgen_scope: scope_t list; kgen_loc: loc_t }
+                     kgen_scope: scope_t list; kgen_loc: loc_t }
 
 type kinfo_t =
     | KNone | KText of string | KVal of kdefval_t | KFun of kdeffun_t ref

@@ -165,7 +165,7 @@ let mangle_all top_code =
         with Not_found ->
             let i = gen_temp_idk name_prefix in
             let kg = ref { kgen_name=i; kgen_cname=cname; kgen_typ=t;
-                kgen_flags=[]; kgen_scope=ScGlobal::[]; kgen_loc=loc } in
+                kgen_scope=ScGlobal::[]; kgen_loc=loc } in
             Hashtbl.add mangle_map cname i;
             set_idk_entry i (KGenTyp kg);
             curr_top_code := (KDefGenTyp kg) :: !curr_top_code;

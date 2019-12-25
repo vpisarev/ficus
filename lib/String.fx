@@ -47,10 +47,10 @@ pure nothrow fun rfind(s: string, part: string): int = ccode "
 
 pure fun tolower(s: string): string = ccode "
     size_t sz = s->length;
-    fx_STATUS fx_status = fx_newstr_n(fx_ctx, fx_result, s->data, sz);
+    int fx_status = fx_string_create_sz(fx_ctx, fx_result, s->data, sz);
     if( fx_status == fx_SUCCESS )
     {
-        fx_char* const ptr = (fx_char*)fx_result->data;
+        fx_char_t* ptr = (fx_char_t*)fx_result->data;
         for (size_t i = 0; i < sz; i++)
             ptr[i] = fx_tolower(ptr[i]);
     }
@@ -59,10 +59,10 @@ pure fun tolower(s: string): string = ccode "
 
 pure fun toupper(s: string): string = ccode "
     size_t sz = s->length;
-    fx_STATUS fx_status = fx_String__create_n(fx_ctx, fx_result, s->data, sz);
+    int fx_status = fx_string_create_sz(fx_ctx, fx_result, s->data, sz);
     if( fx_status == fx_SUCCESS )
     {
-        fx_char* const ptr = (fx_char*)fx_result->data;
+        fx_char_t* ptr = (fx_char_t*)fx_result->data;
         for (size_t i = 0; i < sz; i++)
             ptr[i] = fx_toupper(ptr[i]);
     }
@@ -70,7 +70,7 @@ pure fun toupper(s: string): string = ccode "
 "
 
 pure fun lstrip(s: string): string = ccode "
-    const fx_char* ptr = s->data;
+    const fx_char_t* ptr = s->data;
     size_t sz = s->length;
     size_t i = 0;
     for (; i < sz && fx_isspace(ptr[i]); i++)
@@ -79,7 +79,7 @@ pure fun lstrip(s: string): string = ccode "
 "
 
 pure fun rstrip(s: string): string = ccode "
-    const fx_char* ptr = s->data;
+    const fx_char_t* ptr = s->data;
     size_t sz = s->length;
     for (; sz > 0 && fx_isspace(ptr[sz - 1]); sz--)
         ;
@@ -87,14 +87,14 @@ pure fun rstrip(s: string): string = ccode "
 "
 
 pure fun strip(s: string): string = ccode "
-    const fx_char* ptr = s->data;
+    const fx_char_t* ptr = s->data;
     size_t sz = s->length;
     size_t i = 0;
     for (; i < sz && fx_isspace(ptr[i]); i++)
         ;
     for (; sz > i && fx_isspace(ptr[sz - 1]); sz--)
         ;
-    return fx_String__substring(fx_ctx, s, fx_result, i, sz, 1);
+    return fx_substr(fx_ctx, s, fx_result, i, sz, 1);
 "
 
 pure nothrow fun isalpha(c: char): bool = ccode "return fx_isalpha(c);"

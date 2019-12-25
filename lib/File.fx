@@ -14,8 +14,8 @@ fun open(fname: string, mode: string)
 {
     fun open_(fname: string, mode: string): cptr = ccode
     "
-    fx_cstr fname_, mode_;
-    FX_STATUS fx_status = fx_str2cstr(fx_ctx, &fname_, fname);
+    fx_cstr_t fname_, mode_;
+    int fx_status = fx_str2cstr(fx_ctx, &fname_, fname);
     if (!fx_status) {
         fx_status = fx_str2cstr(fx_ctx, &mode_, mode);
         if (!fx_status) {
@@ -24,9 +24,9 @@ fun open(fname: string, mode: string)
                 fx_status = fx_new_cptr(fx_ctx, fx_result, f, _fx_file_t_destructor);
             else
                 fx_status = FX_THROW(FX_EXCEPTION_IO);
-            fx_release_cstr(fx_ctx, &mode_);
+            fx_cstr_release(fx_ctx, &mode_);
         }
-        fx_release_cstr(fx_ctx, &fname_);
+        fx_cstr_release(fx_ctx, &fname_);
     }
     return fx_status;
     "
@@ -109,7 +109,7 @@ fun write(f: file_t, a: 't [,])
     size_t elem_size = a->dim[1].step;
     size_t m = a->dim[0].size, n = a->dim[1].size;
     size_t idx0;
-    FX_STATUS fx_status = FX_SUCCESS;
+    int fx_status = FX_SUCCESS;
     for (idx0 = 0; idx0 < m && !fx_status; idx0++)
     {
         size_t offset = FX_ND_OFFSET_2D_UNWRAP(int8_t, a->dim, idx0, 0);
@@ -141,8 +141,8 @@ fun readln(f: file_t)
 
 fun remove(name: string): bool = ccode
     "
-    fx_cstr name_;
-    FX_STATUS fx_status = fx_str2cstr(fx_ctx, &name_, name);
+    fx_cstr_t name_;
+    int fx_status = fx_str2cstr(fx_ctx, &name_, name);
     if (!fx_status) {
         *fx_result = remove(name_.data) == 0;
         fx_release_cstr(fx_ctx, &name_);
@@ -152,15 +152,15 @@ fun remove(name: string): bool = ccode
 
 fun rename(name: string, new_name: string): bool = ccode
     "
-    fx_cstr name_, new_name_;
-    FX_STATUS fx_status = fx_str2cstr(fx_ctx, &name_, name);
+    fx_cstr_t name_, new_name_;
+    int fx_status = fx_str2cstr(fx_ctx, &name_, name);
     if (!fx_status) {
         fx_status = fx_str2cstr(fx_ctx, &new_name_, new_name);
         if (!fx_status) {
             *fx_result = rename(name_.data, new_name_.data) == 0;
-            fx_release_cstr(fx_ctx, &new_name_);
+            fx_cstr_release(fx_ctx, &new_name_);
         }
-        fx_release_cstr(fx_ctx, &name_);
+        fx_cstr_release(fx_ctx, &name_);
     }
     return fx_status;
     "

@@ -81,12 +81,22 @@ let rec pprint_ctyp_ t id_opt =
     | CTypFloat(32) -> pstr "float"; pr_id_opt ()
     | CTypFloat(64) -> pstr "double"; pr_id_opt ()
     | CTypFloat(b) -> failwith (sprintf "invalid type CTypFloat(%d)" b)
-    | CTypString -> pstr "fx_string"; pr_id_opt ()
+    | CTypString -> pstr "fx_str_t"; pr_id_opt ()
     | CTypChar -> pstr "char_"; pr_id_opt ()
     | CTypBool -> pstr "bool_"; pr_id_opt ()
     | CTypVoid -> pstr "void"; pr_id_opt ()
     | CTypNil -> pstr "nil_t"; pr_id_opt ()
     | CTypFun(args, rt) ->
+        obox(); pprint_ctyp_ rt None;
+        pspace(); pstr "(*";
+        pr_id_opt_ false; pstr ")(";
+        obox();
+        (match args with
+        | [] -> pstr "void"
+        | t :: [] -> pprint_ctyp_ t None
+        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
+        cbox(); pstr ")"; cbox()
+    | CTypFunPtr(args, rt) ->
         obox(); pprint_ctyp_ rt None;
         pspace(); pstr "(*";
         pr_id_opt_ false; pstr ")(";
@@ -122,6 +132,9 @@ let rec pprint_ctyp_ t id_opt =
         pprint_ctyp_ t None;
         pstr "*"; pr_id_opt();
         cbox()
+    | CTypArray (d, _) -> pstr (sprintf "fx_arr%d_t" d)
+    | CTypArrayAccess (d, _) -> pstr (sprintf "fx_arrdata%d_t" d)
+    | CTypList _ -> pstr "fx_list_t"
     | CTypName n -> pprint_id n; pr_id_opt()
 
 and pprint_cexp_ e pr =
