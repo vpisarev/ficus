@@ -50,7 +50,7 @@ pure fun tolower(s: string): string = ccode "
     int fx_status = fx_string_create_sz(fx_ctx, fx_result, s->data, sz);
     if( fx_status == fx_SUCCESS )
     {
-        fx_char_t* ptr = (fx_char_t*)fx_result->data;
+        char_* ptr = (char_*)fx_result->data;
         for (size_t i = 0; i < sz; i++)
             ptr[i] = fx_tolower(ptr[i]);
     }
@@ -62,7 +62,7 @@ pure fun toupper(s: string): string = ccode "
     int fx_status = fx_string_create_sz(fx_ctx, fx_result, s->data, sz);
     if( fx_status == fx_SUCCESS )
     {
-        fx_char_t* ptr = (fx_char_t*)fx_result->data;
+        char_* ptr = (char_*)fx_result->data;
         for (size_t i = 0; i < sz; i++)
             ptr[i] = fx_toupper(ptr[i]);
     }
@@ -70,7 +70,7 @@ pure fun toupper(s: string): string = ccode "
 "
 
 pure fun lstrip(s: string): string = ccode "
-    const fx_char_t* ptr = s->data;
+    const char_* ptr = s->data;
     size_t sz = s->length;
     size_t i = 0;
     for (; i < sz && fx_isspace(ptr[i]); i++)
@@ -79,7 +79,7 @@ pure fun lstrip(s: string): string = ccode "
 "
 
 pure fun rstrip(s: string): string = ccode "
-    const fx_char_t* ptr = s->data;
+    const char_* ptr = s->data;
     size_t sz = s->length;
     for (; sz > 0 && fx_isspace(ptr[sz - 1]); sz--)
         ;
@@ -87,7 +87,7 @@ pure fun rstrip(s: string): string = ccode "
 "
 
 pure fun strip(s: string): string = ccode "
-    const fx_char_t* ptr = s->data;
+    const char_* ptr = s->data;
     size_t sz = s->length;
     size_t i = 0;
     for (; i < sz && fx_isspace(ptr[i]); i++)

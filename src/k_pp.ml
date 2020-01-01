@@ -185,8 +185,9 @@ and pprint_kexp_ e prtyp =
     | KDefGenTyp { contents = {kgen_name; kgen_typ } } ->
         obox(); pstr "GENERATED_TYPE"; pspace(); pprint_id_label kgen_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kgen_typ; cbox()
-    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr; kvar_loc} } ->
-        obox(); pstr "TYPE"; pspace(); pprint_id_label kvar_name;
+    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr; kvar_flags; kvar_loc} } ->
+        obox(); if (List.mem VariantRecursive kvar_flags) then pstr "RECURSIVE " else ();
+        pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id v;
             pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_idk_typ c kvar_loc); pstr ">: "; pprint_ktyp t)

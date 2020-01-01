@@ -16,8 +16,6 @@ let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 let ohbox () = Format.open_hbox ()
 
-let pprint_id = Ast_pp.pprint_id
-
 type assoc_t = AssocLeft | AssocRight
 
 let binop2str_ bop = match bop with
@@ -67,6 +65,10 @@ let unop2str_ uop = match uop with
     | COpMacroName -> ("#", 1600, AssocLeft)
     | COpMacroDefined -> ("defined ", 1600, AssocLeft)
 
+let pprint_id n =
+    let cname = get_idc_cname n in
+    pstr (if cname = "" then (pp_id2str n) else cname)
+
 let rec pprint_ctyp_ t id_opt =
     let pr_id_opt_ add_space = match id_opt with
         | Some(i) -> if add_space then pspace() else (); pprint_id i
@@ -82,10 +84,14 @@ let rec pprint_ctyp_ t id_opt =
     | CTypFloat(64) -> pstr "double"; pr_id_opt ()
     | CTypFloat(b) -> failwith (sprintf "invalid type CTypFloat(%d)" b)
     | CTypString -> pstr "fx_str_t"; pr_id_opt ()
-    | CTypChar -> pstr "char_"; pr_id_opt ()
+    | CTypWChar -> pstr "char_"; pr_id_opt ()
     | CTypBool -> pstr "bool_"; pr_id_opt ()
-    | CTypVoid -> pstr "void"; pr_id_opt ()
+    | CTypVoid -> pstr "void";
+        (match id_opt with
+        | Some _ -> raise_compile_err noloc "c_pp.ml: void cannot be used with id"
+        | _ -> ())
     | CTypNil -> pstr "nil_t"; pr_id_opt ()
+    | CTypExn -> pstr "fx_exn_t"; pr_id_opt ()
     | CTypFun(args, rt) ->
         obox(); pprint_ctyp_ rt None;
         pspace(); pstr "(*";
@@ -134,7 +140,6 @@ let rec pprint_ctyp_ t id_opt =
         cbox()
     | CTypArray (d, _) -> pstr (sprintf "fx_arr%d_t" d)
     | CTypArrayAccess (d, _) -> pstr (sprintf "fx_arrdata%d_t" d)
-    | CTypList _ -> pstr "fx_list_t"
     | CTypName n -> pprint_id n; pr_id_opt()
 
 and pprint_cexp_ e pr =
@@ -188,7 +193,7 @@ and pprint_elist el =
 
 and pprint_cstmt s =
     obox();
-    match s with
+    (match s with
     | CStmtNop _ -> pstr "{}"
     | CComment (s, _) -> pstr s
     | CExp e -> pprint_cexp_ e 0; pstr ";"
@@ -269,6 +274,8 @@ and pprint_cstmt s =
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
         pstr "typedef "; pprint_ctyp_ ct_typ (Some ct_name); pstr ";"
+    | CDefForwardTyp (n, _) ->
+        pstr "struct "; pprint_id n; pstr ";"
     | CDefEnum ce ->
         let { ce_name; ce_members } = !ce in
         pstr "typedef enum {";
@@ -283,7 +290,6 @@ and pprint_cstmt s =
         cbox(); pbreak(); pstr "} "; pprint_id ce_name; pstr ";";
         pbreak()
     | CMacroDef (n, args, e_opt, _) ->
-        ohbox();
         pstr "#define "; pprint_id n;
         (match args with
         | [] -> ()
@@ -301,10 +307,8 @@ and pprint_cstmt s =
             pstr "    ";
             pprint_cexp_ e 0
         | _ -> ());
-        cbox()
     | CMacroUndef (n, _) -> ohbox(); pstr "#undef "; pprint_id n; cbox()
     | CMacroIf (cs_l, else_l, _) ->
-        ovbox();
         List.iteri (fun i (c, sl) ->
             pbreak(); ohbox();
             pstr (if i = 0 then "#if " else "#elif "); pprint_cexp_ c 0;
@@ -315,9 +319,10 @@ and pprint_cstmt s =
         | _ -> pbreak(); ohbox(); pstr "#else"; cbox(); pbreak();
             List.iter (fun s -> pprint_cstmt s) else_l);
         pbreak();
-        ohbox(); pstr "#endif"; cbox();
+        ohbox(); pstr "#endif";
         pbreak()
-    | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox(); pbreak()
+    | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox(); pbreak());
+    cbox()
 
 let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ctyp_ t None; Format.close_box(); Format.print_flush ()
 let pprint_cexp_x e = Format.print_flush (); Format.open_box 0; pprint_cexp_ e 0; Format.close_box(); Format.print_flush ()

@@ -21,8 +21,8 @@
       * for each complex type (where complex means "non-primitive",
         i.e. a list, reference, array, tuple, structure, variant etc.)
         a unique name (signature) is generated and is used to reference the type.
-        For example, CTypList(CTypInt) becomes _fx_Li_t,
-        CTypTuple(CTypFloat :: CTypFloat :: CTypFloat :: []) becomes _fx_v3f_t etc.
+        For example, KTypList(KTypInt) becomes _fx_Li_t,
+        KTypTuple(KTypFloat :: KTypFloat :: KTypFloat :: []) becomes _fx_Ta3f etc.
     * the memory is now managed manually.
       Reference counting is involved when copying and releasing the references to objects.
       Cleanup blocks are added to each function (including 'main') to try to reclaim
@@ -43,7 +43,7 @@
           are passed as 'const' pointers, e.g.
           int _fx_print_vec(fx_ctx_t* fx_ctx, const _fx_v3f_t* mytup) { ... }
         * Static data types may have fields that are represented by dynamic data types.
-          For example, CTypTuple(CTypBool :: CTypList(CTypInt) :: CTypList(CTypInt) :: []).
+          For example, KTypTuple(KTypBool :: KTypList(KTypInt) :: KTypList(KTypInt) :: []).
     * Expression does not represent any element of the code anymore.
       There are now expressions and statements, just like in C/C++.
     * the complex (nested) expressions are re-introduced.
@@ -64,6 +64,7 @@
 *)
 
 open Ast
+open K_form
 
 type cbinop_t =
     | COpAdd | COpSub | COpMul | COpDiv | COpMod | COpShiftLeft | COpShiftRight
@@ -113,15 +114,15 @@ type ctyp_t =
     | CTypVoid
     | CTypNil
     | CTypBool
-    | CTypChar
+    | CTypWChar
     | CTypCPointer
     | CTypString
+    | CTypExn
     | CTypStruct of id_t option * (id_t * ctyp_t) list
     | CTypUnion of id_t option * (id_t * ctyp_t) list
     | CTypFun of ctyp_t list * ctyp_t
     | CTypFunPtr of ctyp_t list * ctyp_t
     | CTypRawPointer of ctyp_attr_t list * ctyp_t
-    | CTypList of ctyp_t
     | CTypArray of int * ctyp_t
     | CTypArrayAccess of int * ctyp_t
     | CTypName of id_t
@@ -155,6 +156,7 @@ and cstmt_t =
     | CDefVal of ctyp_t * id_t * cexp_t option * loc_t
     | CDefFun of cdeffun_t ref
     | CDefTyp of cdeftyp_t ref
+    | CDefForwardTyp of id_t * loc_t
     | CDefEnum of cdefenum_t ref
     | CMacroDef of id_t * id_t list * cexp_t option * loc_t
     | CMacroUndef of id_t * loc_t
@@ -163,17 +165,19 @@ and cstmt_t =
        but it's probably good enough for our purposes *)
     | CMacroIf of (cexp_t * cstmt_t list) list * cstmt_t list * loc_t
     | CMacroInclude of string * loc_t
-and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_flags: val_flag_t list;
+and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list;
                   cv_arrdata: id_t; cv_scope: scope_t list; cv_loc: loc_t }
-and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_args: id_t list; cf_body: cstmt_t;
+and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
+                  cf_args: id_t list; cf_body: cstmt_t;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
-and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: id_t;
+and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
                   ct_kind: ctyp_kind_t; ct_flags: ctyp_flag_t list;
                   ct_init: id_t; ct_release: id_t; ct_copy: id_t;
                   ct_elems_clear: id_t; ct_elems_copy: id_t; ct_elems_release: id_t;
                   ct_scope: scope_t list; ct_loc: loc_t }
-and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_scope: scope_t list; ce_loc: loc_t }
-and cdeflabel_t = { cl_name: id_t; cl_scope: scope_t list; cl_loc: loc_t }
+and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
+                   ce_scope: scope_t list; ce_loc: loc_t }
+and cdeflabel_t = { cl_name: id_t; cl_cname: string; cl_scope: scope_t list; cl_loc: loc_t }
 
 type cinfo_t =
     | CNone | CText of string | CVal of cdefval_t | CFun of cdeffun_t ref
@@ -240,6 +244,7 @@ let get_cstmt_loc s = match s with
     | CDefVal (_, _, _, l) -> l
     | CDefFun {contents={cf_loc}} -> cf_loc
     | CDefTyp {contents={ct_loc}} -> ct_loc
+    | CDefForwardTyp (_, cft_loc) -> cft_loc
     | CDefEnum {contents={ce_loc}} -> ce_loc
     | CMacroDef (_, _, _, l) -> l
     | CMacroUndef (_, l) -> l
@@ -286,6 +291,15 @@ let get_cinfo_typ info i loc =
 
 let get_idc_typ i loc = get_cinfo_typ (cinfo i) i loc
 
+let get_idc_cname i = match (cinfo i) with
+    | CNone -> ""
+    | CText _ -> ""
+    | CVal {cv_cname} -> cv_cname
+    | CFun {contents = {cf_cname}} -> cf_cname
+    | CTyp {contents = {ct_cname}} -> ct_cname
+    | CLabel {cl_cname} -> cl_cname
+    | CEnum {contents = {ce_cname}} -> ce_cname
+
 (* used by the type checker *)
 let get_lit_ctyp l = match l with
     | LitInt(_) -> CTypInt
@@ -293,12 +307,12 @@ let get_lit_ctyp l = match l with
     | LitUInt(b, _) -> CTypUInt(b)
     | LitFloat(b, _) -> CTypFloat(b)
     | LitString(_) -> CTypString
-    | LitChar(_) -> CTypChar
+    | LitChar(_) -> CTypWChar
     | LitBool(_) -> CTypBool
     | LitNil -> CTypNil
 
 let create_cdefval n t flags e_opt code sc loc =
-    let dv = { cv_name=n; cv_typ=t; cv_flags=flags; cv_arrdata=noid; cv_scope=sc; cv_loc=loc } in
+    let dv = { cv_name=n; cv_typ=t; cv_cname=""; cv_flags=flags; cv_arrdata=noid; cv_scope=sc; cv_loc=loc } in
     match t with
     | CTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
@@ -370,15 +384,14 @@ and walk_ctyp t callb =
     let walk_ctyp_ t = check_n_walk_ctyp t callb in
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
-    | CTypVoid | CTypNil | CTypBool
-    | CTypChar | CTypCPointer | CTypString -> t
+    | CTypVoid | CTypNil | CTypBool | CTypExn
+    | CTypWChar | CTypCPointer | CTypString -> t
     | CTypStruct (n_opt, selems) ->
         CTypStruct((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) selems))
     | CTypUnion (n_opt, uelems) ->
         CTypUnion((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) uelems))
     | CTypFun (args, rt) -> CTypFun((List.map walk_ctyp_ args), (walk_ctyp_ rt))
     | CTypFunPtr (args, rt) -> CTypFunPtr((List.map walk_ctyp_ args), (walk_ctyp_ rt))
-    | CTypList(et) -> CTypList(walk_ctyp_ et)
     | CTypArray(d, et) -> CTypArray(d, walk_ctyp_ et)
     | CTypArrayAccess(d, et) -> CTypArray(d, walk_ctyp_ et)
     | CTypRawPointer(attrs, t) -> CTypRawPointer(attrs, (walk_ctyp_ t))
@@ -445,6 +458,8 @@ and walk_cstmt s callb =
             ct_name = (walk_id_ ct_name);
             ct_typ = (walk_ctyp_ ct_typ) };
         s
+    | CDefForwardTyp (n, loc) ->
+        CDefForwardTyp (walk_id_ n, loc)
     | CDefEnum ce ->
         let { ce_name; ce_members } = !ce in
         ce := { !ce with
@@ -498,8 +513,8 @@ and fold_ctyp t callb =
     let fold_id_opt_ i_opt = match i_opt with Some(i) -> check_n_fold_id i callb | _ -> () in
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
-    | CTypVoid | CTypNil | CTypBool
-    | CTypChar | CTypString | CTypCPointer -> ()
+    | CTypVoid | CTypNil | CTypBool | CTypExn
+    | CTypWChar | CTypString | CTypCPointer -> ()
     | CTypStruct (n_opt, selems) ->
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) selems
     | CTypUnion (n_opt, uelems) ->
@@ -507,7 +522,6 @@ and fold_ctyp t callb =
     | CTypFun (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypFunPtr (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypRawPointer(_, t) -> fold_ctyp_ t
-    | CTypList(t) -> fold_ctyp_ t
     | CTypArray(_, t) -> fold_ctyp_ t
     | CTypArrayAccess(_, t) -> fold_ctyp_ t
     | CTypName n -> fold_id_ n)
@@ -565,6 +579,8 @@ and fold_cstmt s callb =
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
         fold_id_ ct_name; fold_ctyp_ ct_typ
+    | CDefForwardTyp (n, _) ->
+        fold_id_ n
     | CDefEnum ce ->
         let { ce_name; ce_members } = !ce in
         fold_id_ ce_name;
