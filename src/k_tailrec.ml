@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     Transforms tail-recursive functions into loops.
 
     Note that some functions may call itself several times,

@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 /* math functions on scalars and arrays */
 
 ccode "#include <math.h>"

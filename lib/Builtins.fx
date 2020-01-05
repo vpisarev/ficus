@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 /* Ficus built-in module, i.e. each Ficus module is compiled
    as if it has "from Builtins import *" directive in the beginning */
 

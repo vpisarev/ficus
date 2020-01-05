@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     remove unused code from the K-form:
     * any type or exception that is declared but not referenced.
       that includes the types that reference itself (recursive variants),

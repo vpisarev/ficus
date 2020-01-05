@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     very simple variant of 'lambda-lifting' optimization step,
     which is performed in the very beginning after the
     initial dead code elimination step.

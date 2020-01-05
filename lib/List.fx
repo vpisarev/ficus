@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 /* Operations on LISP-like lists */
 
 fun hd(_: 't list) { | a :: _ => a | _ => throw NullListError }

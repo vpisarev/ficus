@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     Finds out all the recursive types defined in the code.
     Also, for each type collects the list of all other types that it references,
     directly or indirectly.

@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     Convert all non-primitive types to KTypName(...)
     (including lists, arrays, references, tuples, records etc.).
     This is a useful step to make K-form closer to the final C code.

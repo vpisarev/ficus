@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
    Some utility functions used by the compiler.
    [TODO] when the compiler is rewritten in Ficus,
    those functions should be put to Ficus Std Lib

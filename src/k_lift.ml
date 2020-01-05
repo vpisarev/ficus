@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     Full-scale lambda lifting.
     Unlike k_simple_ll, this algorithm
     moves all the functions to the top level.

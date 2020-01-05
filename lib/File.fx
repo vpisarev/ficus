@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 // C-style operations on files
 import String
 
@@ -21,12 +26,12 @@ fun open(fname: string, mode: string)
         if (!fx_status) {
             FILE* f = fopen(fname_.data, mode_.data);
             if (f)
-                fx_status = fx_new_cptr(fx_ctx, fx_result, f, _fx_file_t_destructor);
+                fx_status = fx_make_cptr(f, _fx_file_t_destructor, fx_result);
             else
-                fx_status = FX_THROW(FX_EXCEPTION_IO);
-            fx_cstr_release(fx_ctx, &mode_);
+                fx_status = FX_FILEOPEN_ERR;
+            fx_free_cstr(&mode_);
         }
-        fx_cstr_release(fx_ctx, &fname_);
+        fx_free_cstr(&fname_);
     }
     return fx_status;
     "
@@ -35,7 +40,7 @@ fun open(fname: string, mode: string)
 
 fun close(f: file_t)
 {
-    fun close_(f: cptr): void = ccode "if(f && f->p) { fclose((FILE*)(f->p)); f->p = NULL; } return FX_SUCCESS;"
+    fun close_(f: cptr): void = ccode "if(f && f->p) { fclose((FILE*)(f->p)); f->p = NULL; } return FX_OK;"
     close_(f.handle)
 }
 
@@ -63,7 +68,7 @@ fun seek(f: file_t, pos: int64, origin: int)
 
 fun tell(f: file_t)
 {
-    nothrow pure fun tell_(f: cptr): int64 = ccode "return (int64)ftell((FILE*)(f->p));"
+    nothrow pure fun tell_(f: cptr): int64 = ccode "return (int64_t)ftell((FILE*)(f->p));"
     if (!isOpened(f)) throw NullFileError
     tell_(f.handle)
 }
@@ -80,7 +85,7 @@ fun print(f: file_t, x: 't) = print(f, string(x))
 
 fun print(f: file_t, x: string)
 {
-    nothrow fun print_(f: cptr, str: string): void = ccode "fx_fputs(fx_ctx, str, (FILE*)(f->p));"
+    fun print_(f: cptr, str: string): void = ccode "return fx_fputs(fx_ctx, str, (FILE*)(f->p));"
     if (!isOpened(f)) throw NullFileError
     print_(f.handle, x)
 }
@@ -109,7 +114,7 @@ fun write(f: file_t, a: 't [,])
     size_t elem_size = a->dim[1].step;
     size_t m = a->dim[0].size, n = a->dim[1].size;
     size_t idx0;
-    int fx_status = FX_SUCCESS;
+    int fx_status = FX_OK;
     for (idx0 = 0; idx0 < m && !fx_status; idx0++)
     {
         size_t offset = FX_ND_OFFSET_2D_UNWRAP(int8_t, a->dim, idx0, 0);

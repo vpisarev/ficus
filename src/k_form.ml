@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     K-normal form (or K-form in short) definition.
     This is a greatly extended variant of K-normal form in min-caml:
     https://github.com/esumii/min-caml.

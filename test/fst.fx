@@ -57,6 +57,10 @@ match (fixed_choice)
     | _ => println("some other number")
 }
 
+val n = 30
+val a = [for (i <- 0:n) 1]
+for (i <- 1:n) a[i] += a[i-1]
+
 println(find_idx([1, 2, 5], 5))
 val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], (fun (a: int, b: int) => a > b))
 print("sorted: ")

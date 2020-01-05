@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     try to move as much code as possible into the upper-level
     expression sequence without changing the semantics and
     without affecting possible side effects of the code. That is:

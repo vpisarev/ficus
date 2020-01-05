@@ -1,4 +1,9 @@
 (*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
     perform "constant folding" + "dealiasing" optimization step of K-form:
     * `1+2` is replaced with `3` etc. (const1 op const2 => result_const)
     * `a+0, a-0, a*1, a/1` is replaced with `a`
