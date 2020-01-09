@@ -372,9 +372,8 @@ let lift_all top_code =
                         (id2str fv) (id2str kf_name));
                     walk_atom_n_lift_all (Atom.Id fv) kf_loc callb) orig_freevars
                     in
-                let cl_typ = KTypClosure(kf_typ, cl_vt) in
-                let make_cl = KExpMkClosure(kf_name, cl_args, (cl_typ, kf_loc)) in
-                create_defval cl_name cl_typ [] (Some make_cl) code kf_scope kf_loc
+                let make_cl = KExpMkClosure(kf_name, cl_vt, cl_args, (kf_typ, kf_loc)) in
+                create_defval cl_name kf_typ [] (Some make_cl) code kf_scope kf_loc
                 in
 
             let (prologue, def_cl_vt) =

@@ -20,13 +20,13 @@
    val i@100 : int = 5
    val i@101 : int = i@100 : int + 1
 
-   (here i@100 means Id.Name(i, 100) and i@101 means Id.Name(i, 101), where i is index in the global
-    table of symbolic names that corresponds to an abstract name "i", whereas 100 and 101
+   (here i@100 means Id.Val(i, 100) and foo@101 means Id.Val(foo, 357), where i & foo are indices in the global
+    table of symbolic names that corresponds to the abstract names "i", "foo", whereas 100 and 357
     are indices in the same table corresponding to the actually defined values.
     Internally the compiler uses unique names i@100 etc. to distinguish between values
     with the same name, but it uses the original names in error messages; it also uses the original name (i)
-    to search for the symbol, i.e. Id.Name(f, f) can be matched with Id.Name(f, 12345) or Id.Name(f, 9876) or
-    some other Id.Name(f, ...), depending on the current environment).
+    to search for the symbol, i.e. Id.Name(f) can be matched with Id.Val(f, 12345) or Id.Val(f, 9876) or
+    some other Id.Val(f, ...), depending on the current environment).
 
    There is a big global table of all symbols, so for each symbol we can retrieve its properties:
    the original name, inferred type, when and how it's defined.
@@ -56,8 +56,8 @@ let dummyid = Id.Name(1)
   Environment (Env.t) is the mapping from id_t to env_entry_t list. It's the key data structure used
   by the type checker.
 
-  That is, for each id key Id.Name(i, i) (which corresponds to an abstract symbol <i>)
-  we store a list of possible matches Id.Name(i, j) - the real defined symbols.
+  That is, for each id key Id.Name(i) (which corresponds to some abstract symbol <i>)
+  we store a list of possible matches Id.Val(i, j) - the really defined symbols.
   When the key is Id.Temp(prefix, k), we can only have a single match Id.Temp(prefix, k).
 
   Why have a list of possible matches? Because:
@@ -162,7 +162,9 @@ type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTempRef | ValImplicitDeref
 type fun_flag_t = FunImpure | FunInC | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
-type variant_flag_t = VariantRecord | VariantRecursive
+type variant_flag_t = VariantRecord | VariantRecursive | VariantComplexOps
+                    | VariantNoComplexOps | VariantNoTag | VariantDummyTag0
+type typ_flag_t = TypComplexOps | TypNoComplexOps
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
 

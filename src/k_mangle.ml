@@ -146,7 +146,6 @@ let rec mangle_ktyp t mangle_map loc =
             | _ -> raise_compile_err loc "the tuple has 0 elements")
         (* treat the closure type just like normal function type, because after the lambda
             lifting all the 'function pointers' are 'closures' *)
-        | KTypClosure(ftyp, _) -> mangle_ktyp_ ftyp result
         | KTypRecord(rn, _) -> mangle_typname_ rn result
         | KTypName(n) -> mangle_typname_ n result
         | KTypArray(dims, t) ->
@@ -170,7 +169,7 @@ let mangle_all top_code =
         with Not_found ->
             let i = gen_temp_idk name_prefix in
             let kg = ref { kgen_name=i; kgen_cname=cname; kgen_typ=t;
-                kgen_scope=ScGlobal::[]; kgen_loc=loc } in
+                kgen_flags=[]; kgen_scope=ScGlobal::[]; kgen_loc=loc } in
             Hashtbl.add mangle_map cname i;
             set_idk_entry i (KGenTyp kg);
             curr_top_code := (KDefGenTyp kg) :: !curr_top_code;
@@ -186,7 +185,6 @@ let mangle_all top_code =
         | KTypName n -> ignore(mangle_ktyp t mangle_map loc); t
         | KTypRecord(rn, _) -> ignore(mangle_ktyp t mangle_map loc); KTypName rn
         | KTypFun _ -> create_gen_typ t "fun" loc
-        | KTypClosure (ftyp, i) -> KTypClosure((walk_ktyp_n_mangle ftyp loc callb), i)
         | KTypTuple _ -> create_gen_typ t "tup" loc
         | KTypArray _ -> create_gen_typ t "arr" loc
         | KTypList _ -> create_gen_typ t "lst" loc

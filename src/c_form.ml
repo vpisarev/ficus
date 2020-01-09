@@ -157,7 +157,7 @@ and cstmt_t =
     | CStmtWhile of cexp_t * cstmt_t * loc_t
     | CStmtDoWhile of cstmt_t * cexp_t * loc_t
     (* we don't parse and don't process the inline C code; just retain it as-is *)
-    | CStmtCCode of ccode_t ref
+    | CStmtCCode of string * loc_t
     | CDefVal of ctyp_t * id_t * cexp_t option * loc_t
     | CDefFun of cdeffun_t ref
     | CDefTyp of cdeftyp_t ref
@@ -183,7 +183,6 @@ and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: stri
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
                    ce_scope: scope_t list; ce_loc: loc_t }
 and cdeflabel_t = { cl_name: id_t; cl_cname: string; cl_scope: scope_t list; cl_loc: loc_t }
-and ccode_t = { cc_code: string; (id_t)}
 
 type cinfo_t =
     | CNone | CText of string | CVal of cdefval_t | CFun of cdeffun_t ref

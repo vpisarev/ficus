@@ -143,7 +143,7 @@ let k_optimize_all code =
     temp_code := K_lift.lift_all !temp_code;
     temp_code := K_deadcode_elim.elim_unused !temp_code;
     temp_code := K_mangle.mangle_all !temp_code;
-    temp_code := K_recursive_typs.find_recursive !temp_code;
+    temp_code := K_annotate_types.annotate_types !temp_code;
     (!temp_code, !compile_errs = [])
 
 let k2c_all code =
@@ -172,6 +172,7 @@ let process_all fname0 =
         let _ = if ok && options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
         let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
+        (*let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in*)
         let (code, ok) = if ok then k_optimize_all code else ([], false) in
         let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in
         ok

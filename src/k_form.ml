@@ -75,7 +75,6 @@ type ktyp_t =
     | KTypCPointer
     | KTypFun of ktyp_t list * ktyp_t
     | KTypTuple of ktyp_t list
-    | KTypClosure of ktyp_t * id_t (* type of the function + id of its free vars type (or noid if there is no free vars) *)
     | KTypRecord of id_t * (id_t * ktyp_t) list
     | KTypName of id_t
     | KTypArray of int * ktyp_t
@@ -98,7 +97,7 @@ and kexp_t =
     | KExpCall of id_t * atom_t list * kctx_t
     | KExpMkTuple of atom_t list * kctx_t
     | KExpMkRecord of atom_t list * kctx_t
-    | KExpMkClosure of id_t * atom_t list * kctx_t (* (function id, list of actual free vars) *)
+    | KExpMkClosure of id_t * id_t * atom_t list * kctx_t (* (function id, list of actual free vars) *)
     | KExpMkArray of int list * atom_t list * kctx_t
     | KExpAt of atom_t * dom_t list * kctx_t
     | KExpMem of id_t * int * kctx_t
@@ -132,11 +131,13 @@ and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_targs: ktyp_t li
 and kdefrecord_t = { krec_name: id_t; krec_cname: string;
                     krec_targs: ktyp_t list;
                     krec_elems: (id_t * ktyp_t) list;
+                    krec_flags: typ_flag_t list;
                     krec_scope: scope_t list; krec_loc: loc_t }
 and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
                           kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
-and kdefgentyp_t = { kgen_name: id_t; kgen_cname: string; kgen_typ: ktyp_t;
+and kdefgentyp_t = { kgen_name: id_t; kgen_cname: string;
+                     kgen_typ: ktyp_t; kgen_flags: typ_flag_t list;
                      kgen_scope: scope_t list; kgen_loc: loc_t }
 
 type kinfo_t =
@@ -193,7 +194,7 @@ let get_kexp_ctx e = match e with
     | KExpCall(_, _, c) -> c
     | KExpMkTuple(_, c) -> c
     | KExpMkRecord(_, c) -> c
-    | KExpMkClosure(_, _, c) -> c
+    | KExpMkClosure(_, _, _, c) -> c
     | KExpMkArray(_, _, c) -> c
     | KExpAt(_, _, c) -> c
     | KExpMem(_, _, c) -> c
@@ -401,7 +402,6 @@ and walk_ktyp t loc callb =
     | KTypExn | KTypErr | KTypModule -> t
     | KTypFun (args, rt) -> KTypFun((walk_ktl_ args), (walk_ktyp_ rt))
     | KTypTuple elems -> KTypTuple(walk_ktl_ elems)
-    | KTypClosure (t, i) -> KTypClosure((walk_ktyp_ t), (walk_id_ i))
     | KTypRecord (rn, relems) ->
             KTypRecord((walk_id_ rn),
                 (List.map (fun (ni, ti) -> ((walk_id_ ni), (walk_ktyp_ ti))) relems))
@@ -451,7 +451,8 @@ and walk_kexp e callb =
         | _ -> KExpSeq(new_elist, (new_ktyp, loc)))
     | KExpMkTuple(alist, ctx) -> KExpMkTuple((walk_al_ alist), (walk_kctx_ ctx))
     | KExpMkRecord(alist, ctx) -> KExpMkRecord((walk_al_ alist), (walk_kctx_ ctx))
-    | KExpMkClosure(f, args, ctx) -> KExpMkClosure((walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
+    | KExpMkClosure(f, cl_id, args, ctx) ->
+        KExpMkClosure((walk_id_ f), (walk_id_ cl_id), (walk_al_ args), (walk_kctx_ ctx))
     | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
     | KExpCall(f, args, ctx) -> KExpCall((walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
     | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
@@ -563,7 +564,6 @@ and fold_ktyp t loc callb =
     | KTypExn | KTypErr | KTypModule -> ()
     | KTypFun (args, rt) -> fold_ktl_ args; fold_ktyp_ rt
     | KTypTuple elems -> fold_ktl_ elems
-    | KTypClosure (t, i) -> fold_ktyp_ t; fold_id_ i
     | KTypRecord (rn, relems) -> fold_id_ rn;
         List.iter (fun (ni, ti) -> fold_id_ ni; fold_ktyp_ ti) relems
     | KTypName i -> fold_id_ i
@@ -595,7 +595,7 @@ and fold_kexp e callb =
     | KExpSeq(elist, ctx) -> List.iter fold_kexp_ elist; ctx
     | KExpMkTuple(alist, ctx) -> fold_al_ alist; ctx
     | KExpMkRecord(alist, ctx) -> fold_al_ alist; ctx
-    | KExpMkClosure(f, args, ctx) -> fold_id_ f; fold_al_ args; ctx
+    | KExpMkClosure(f, cl_id, args, ctx) -> fold_id_ f; fold_id_ cl_id; fold_al_ args; ctx
     | KExpMkArray(_, elems, ctx) -> fold_al_ elems; ctx
     | KExpCall(f, args, ctx) -> fold_id_ f; fold_al_ args; ctx
     | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
@@ -782,12 +782,6 @@ let get_closure_freevars i loc =
     | KClosureVars {contents={kcv_freevars; kcv_orig_freevars}} -> (kcv_freevars, kcv_orig_freevars)
     | _ -> raise_compile_err loc
         (sprintf "invalid description of a closure data '%s' (should KClosureVars ...)" (id2str i)))
-
-let get_ktyp_closure_freevars t loc =
-    match t with
-    | KTypClosure(_, i) ->
-        let (freevars, _) = get_closure_freevars i loc in (i, freevars)
-    | _ -> raise_compile_err loc "invalid closure type (should be KTypClosure ...)"
 
 let get_kval i loc =
     let info = kinfo_ i loc in

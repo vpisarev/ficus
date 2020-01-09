@@ -727,7 +727,7 @@ and transform_all_types_and_cons elist code sc =
                     | (((rn, TypRecord {contents=(relems, _)}) :: []), true) ->
                         let krec = ref { krec_name=inst_name; krec_cname=""; krec_targs=targs;
                             krec_elems=List.map (fun (i, t, _) -> (i, typ2ktyp t inst_loc)) relems;
-                            krec_scope=sc; krec_loc=inst_loc } in
+                            krec_flags=[]; krec_scope=sc; krec_loc=inst_loc } in
                         let _ = set_idk_entry inst_name (KRecord krec) in
                         (KDefRecord krec) :: code
                     | _ ->

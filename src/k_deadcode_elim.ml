@@ -134,6 +134,15 @@ let rec elim_unused code =
                some of its used constructors. *)
             if (used kvar_name) then e
             else KExpNop(kvar_loc)
+        | KDefRecord krec ->
+            let {krec_name; krec_loc} = !krec in
+            (* if at least one of the variant constructors is used then
+               the constructor call returns the variant type,
+               i.e. the variant name gets used. So, we may be sure that
+               we will never eliminate variant definition and yet retain
+               some of its used constructors. *)
+            if (used krec_name) then e
+            else KExpNop(krec_loc)
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
             code2kexp code loc
@@ -145,7 +154,7 @@ let rec elim_unused code =
             let result = (match e with
             | KExpNop _ ->
                 if rest = [] then e :: result else result
-            | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _ ->
+            | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _ | KDefRecord _ ->
                 e :: result
             | _ -> if (pure_kexp e) && rest != [] then result
                     else e :: result) in

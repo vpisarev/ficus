@@ -26,9 +26,9 @@ let get_typ_dependencies n loc =
             List.fold_left (fun deps t -> get_ktyp_deps_ t deps) deps (rt :: args)
         | KTypTuple tl ->
             List.fold_left (fun deps t -> get_ktyp_deps_ t deps) deps tl
-        | KTypClosure (ft, cl_id) ->
+        (*| KTypClosure (ft, cl_id) ->
             let deps = get_ktyp_deps_ ft deps in
-            if cl_id = noid then deps else IdSet.add cl_id deps
+            if cl_id = noid then deps else IdSet.add cl_id deps*)
         | KTypRecord (rn, relems) ->
             (* skip rn, because in this particular case it's not a real dependency *)
             List.fold_left (fun deps (_, ti) -> get_ktyp_deps_ ti deps) deps relems
@@ -109,4 +109,84 @@ let find_recursive top_code =
             let {kvar_flags} = !kvar in
             if isrec then kvar := {!kvar with kvar_flags=VariantRecursive :: kvar_flags} else ()
         | _ -> ()) all_typs;
+    top_code
+
+let need_complex_ops t loc =
+    let visited = ref (IdSet.empty) in
+    let rec need_complex_ops_ t loc =
+    match t with
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ -> false
+    | KTypVoid | KTypNil | KTypBool | KTypChar -> false
+    | KTypString -> true
+    | KTypCPointer -> true
+    | KTypFun _ -> true
+    | KTypTuple(elems) -> List.exists (fun ti -> need_complex_ops_ ti loc) elems
+    | KTypRecord(_, relems) -> List.exists (fun (_, ti) -> need_complex_ops_ ti loc) relems
+    | KTypName n ->
+        (match (kinfo n) with
+        | KVariant kvar ->
+            let {kvar_cases; kvar_flags; kvar_loc} = !kvar in
+            if List.mem VariantComplexOps kvar_flags then true
+            else if List.mem VariantNoComplexOps kvar_flags then false
+            else
+                let f =
+                    if List.mem VariantRecursive kvar_flags then true
+                    else if IdSet.mem n !visited then true else
+                    let _ = visited := IdSet.add n !visited in
+                    List.exists (fun (_, ti) -> need_complex_ops_ ti kvar_loc) kvar_cases in
+                let _ = kvar := {!kvar with
+                    kvar_flags = (if f then VariantComplexOps else VariantNoComplexOps) :: kvar_flags} in
+                f
+        | KRecord krec ->
+            let {krec_elems; krec_flags; krec_loc} = !krec in
+            if List.mem TypComplexOps krec_flags then true
+            else if List.mem TypNoComplexOps krec_flags then false
+            else
+                let f = if IdSet.mem n !visited then true else
+                    let _ = visited := IdSet.add n !visited in
+                    List.exists (fun (_, ti) -> need_complex_ops_ ti krec_loc) krec_elems in
+                let _ = krec := {!krec with
+                    krec_flags = (if f then TypComplexOps else TypNoComplexOps) :: krec_flags} in
+                f
+        | KGenTyp kgen ->
+                let {kgen_typ; kgen_flags; kgen_loc} = !kgen in
+                if List.mem TypComplexOps kgen_flags then true
+                else if List.mem TypNoComplexOps kgen_flags then false
+                else
+                    let f = if IdSet.mem n !visited then true else
+                        let _ = visited := IdSet.add n !visited in
+                        need_complex_ops_ kgen_typ kgen_loc in
+                    let _ = kgen := {!kgen with
+                        kgen_flags = (if f then TypComplexOps else TypNoComplexOps) :: kgen_flags} in
+                    f
+        | _ -> raise_compile_err loc (sprintf "unsupported named type '%s'" (id2str n)))
+    | KTypArray _ -> true
+    | KTypList _ -> true
+    | KTypRef _ -> true
+    | KTypExn -> true
+    | KTypErr -> false
+    | KTypModule -> true
+    in need_complex_ops_ t loc
+
+let annotate_types top_code =
+    let top_code = find_recursive top_code in
+    List.iter (fun e -> match e with
+        | KDefVariant kvar ->
+            let {kvar_name; kvar_cases; kvar_loc} = !kvar in
+            let _ = need_complex_ops (KTypName kvar_name) kvar_loc in
+            let {kvar_flags} = !kvar in
+            let is_recursive = List.mem VariantRecursive kvar_flags in
+            let ncases = List.length kvar_cases in
+            let dummy_tag0 = match kvar_cases with
+                    | (_, KTypVoid) :: _ -> true
+                    | _ -> false in
+            let no_tag = ncases == 1 || (is_recursive && ncases == 2 && dummy_tag0) in
+            kvar := {!kvar with kvar_flags =
+                (if dummy_tag0 then [VariantDummyTag0] else []) @
+                (if no_tag then [VariantNoTag] else []) @ kvar_flags}
+        | KDefRecord {contents={krec_name; krec_loc}} ->
+                ignore(need_complex_ops (KTypName krec_name) krec_loc)
+        | KDefGenTyp {contents={kgen_name; kgen_loc}} ->
+            ignore(need_complex_ops (KTypName kgen_name) kgen_loc)
+        | _ -> ()) top_code;
     top_code

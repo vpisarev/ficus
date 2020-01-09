@@ -33,7 +33,7 @@ let rec get_ktyp_pr t = match t with
     | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
     | KTypErr | KTypCPointer | KTypNil | KTypModule | KTypName _ -> KTypPrBase
-    | KTypTuple _ | KTypRecord _ | KTypClosure _ -> KTypPrBase
+    | KTypTuple _ | KTypRecord _ -> KTypPrBase
     | KTypList _ | KTypRef _ | KTypArray _ -> KTypPrComplex
     | KTypFun _ -> KTypPrFun
 
@@ -79,18 +79,6 @@ let rec ppktyp_ t p1 =
         let cname = get_id_cname n noloc in
         if cname = "" then pprint_id n else pstr ("_vx_" ^ cname)
     | KTypTuple(tl) -> ppktyplist_ "(" tl
-    | KTypClosure(t, i) ->
-        obox(); pstr "Closure[";
-        ppktyp_ t KTypPr0; pstr ";";
-        pspace();
-        if i = noid then
-            pstr "{...}]"
-        else
-            (let (fvars, _) = get_closure_freevars i (get_id_loc i) in
-            pstr "{";
-            List.iteri (fun i (ni, _) -> if i = 0 then () else pstr ", "; pprint_id ni) fvars;
-            pstr "}]");
-        cbox()
     | KTypRecord(rn, relems) -> obox(); pprint_id rn; pstr " {";
         List.iteri (fun i (ni, ti) -> if i = 0 then () else pstr ", ";
             pprint_id ni; pstr ": "; ppktyp_ ti KTypPr0) relems; pstr "}"; cbox()
@@ -187,14 +175,27 @@ and pprint_kexp_ e prtyp =
         (match ke_typ with
         | KTypVoid -> ()
         | _ -> pspace(); pstr "OF"; pspace(); pprint_ktyp ke_typ); cbox()
-    | KDefGenTyp { contents = {kgen_name; kgen_typ } } ->
-        obox(); pstr "GENERATED_TYPE"; pspace(); pprint_id_label kgen_name;
+    | KDefGenTyp { contents = {kgen_name; kgen_typ; kgen_flags} } ->
+        let cops = List.mem TypComplexOps kgen_flags in
+        obox(); pstr (if cops then "COMPLEX" else "SIMPLE"); pspace();
+        pstr "GENERATED_TYPE"; pspace(); pprint_id_label kgen_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kgen_typ; cbox()
+    | KDefRecord { contents = {krec_name; krec_elems; krec_flags} } ->
+        let cops = List.mem TypComplexOps krec_flags in
+        obox(); pstr (if cops then "COMPLEX" else "SIMPLE"); pspace();
+        pstr "TYPE"; pspace(); pprint_id_label krec_name;
+        pspace(); pstr "="; pspace(); pstr "{"; obox();
+        List.iter (fun (n, t) -> obox(); pprint_id n; pstr ":"; pspace();
+        pprint_ktyp t; pstr ";"; cbox(); pspace()) krec_elems; cbox(); pstr "}"; cbox()
     | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr; kvar_flags; kvar_loc} } ->
-        obox(); if (List.mem VariantRecursive kvar_flags) then pstr "RECURSIVE " else ();
+        let nullable0 = List.mem VariantDummyTag0 kvar_flags in
+        let is_recursive = List.mem VariantRecursive kvar_flags in
+        obox(); if is_recursive then pstr "RECURSIVE " else ();
+        if (List.mem VariantNoTag kvar_flags) then pstr "NO_TAG " else ();
+        if (List.mem VariantComplexOps kvar_flags) then pstr "COMPLEX " else pstr "SIMPLE ";
         pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
-            if i = 0 then () else pstr " | "; pprint_id v;
+            if i = 0 then (if nullable0 then pstr "NULLABLE " else ()) else pstr " | "; pprint_id v;
             pstr "<"; pprint_id c; pstr ": "; pprint_ktyp (get_idk_typ c kvar_loc); pstr ">: "; pprint_ktyp t)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr else (List.map (fun (v, _) -> v) kvar_cases))));
         cbox()
@@ -222,10 +223,10 @@ and pprint_kexp_ e prtyp =
             (match (get_idk_typ n loc) with
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
-            | KTypClosure(_, cn) ->
+            (*| KTypClosure(_, cn) ->
                 let (fv, _) = get_closure_freevars cn loc in
                 if fv = [] then raise_compile_err loc "attempt to access unspecified closure"
-                else let (ni, _) = List.nth fv i in pstr (id2str ni)
+                else let (ni, _) = List.nth fv i in pstr (id2str ni)*)
             | _ -> pstr (string_of_int i))
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
@@ -257,8 +258,8 @@ and pprint_kexp_ e prtyp =
             (match al with
             a :: [] -> pstr ","
             | _ -> ()); cbox(); pstr "}"
-        | KExpMkClosure(f, args, (t, loc)) ->
-            let (_, fvars) = get_ktyp_closure_freevars t loc in
+        | KExpMkClosure(f, cl_id, args, (_, loc)) ->
+            let (fvars, _) = get_closure_freevars cl_id loc in
             let ant = Utils.zip args fvars in
             pstr "NEW_CLOSURE ("; pprint_id f; pstr ") {"; obox();
             List.iteri (fun i (a, (n, _)) ->
@@ -328,6 +329,7 @@ and pprint_kexp_ e prtyp =
         | KExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
         | _ -> printf "\n\n\n\nunknown exp!!!!!!!!!!!!!!!!!!!!\n\n\n\n"; failwith "unknown exp"
         ); cbox_()
+
 and pprint_kexp_as_seq e = match e with
     | KExpSeq(es, _) -> pprint_kexpseq es false
     | _ -> pprint_kexp e
