@@ -293,6 +293,11 @@ let rec exp2kexp e code tref sc =
     | ExpAssign(e1, e2, _) ->
         let (e2, code) = exp2kexp e2 code true sc in
         let (a_id, code) = exp2id e1 code true sc "a literal cannot be assigned" in
+        let kv = get_kval a_id eloc in
+        let {kv_flags} = kv in
+        let kv = {kv with kv_flags = if List.mem ValMutable kv_flags then
+            kv_flags else ValMutable :: kv_flags} in
+        set_idk_entry a_id (KVal kv);
         (KExpAssign(a_id, e2, eloc), code)
     | ExpCast(e, _, _) ->
         let (a, code) = exp2atom e code false sc in
