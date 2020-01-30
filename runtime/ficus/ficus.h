@@ -59,7 +59,6 @@ typedef struct fx_rng_t
     uint64_t state;
 } fx_rng_t;
 
-struct fx_ctx_t;
 struct fx_exndata_t;
 
 typedef struct fx_exndata_t
@@ -83,9 +82,10 @@ void fx_init(int t_idx);
 void* fx_alloc(size_t sz);
 void fx_free(void* ptr);
 
+#define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
 #define FX_COPY_PTR(src, dst) FX_INCREF(src->refcount); *(dst) = (src)
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
-#define FX_NO_FREE(ctx, v)
+#define FX_NO_FREE(ptr)
 
 ////////////////////////// Strings //////////////////////
 typedef struct fx_str_t
@@ -104,9 +104,6 @@ int fx_make_str(fx_str_t* str, char_* strdata, int_ length);
 
 #define FX_THROW_LIGHT(exn_name, catch_label) \
     fx_status = exn_name; goto catch_label
-
-#define FX_FREE_EXN(exn) \
-    if((exn).data != 0) fx_free_exn(&(exn)) else
 
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
@@ -152,9 +149,6 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 
 //////////////////////////// Arrays /////////////////////////
 
-typedef void (*fx_free_elems_t)(const char* elems, int_ count);
-typedef void (*fx_copy_elems_t)(const char* src, char* dst, int_ count);
-
 #define FX_MAX_DIMS 5
 #define FX_ARR_CONTINUOUS 1
 #define FX_IS_ARR_CONTINUOUS(flags) ((flags) & FX_ARR_CONTINUOUS)
@@ -164,6 +158,9 @@ typedef struct fx_arrdim_t
     int_ size;
     size_t step;
 } fx_arrdim_t;
+
+typedef void (*fx_free_elem_t)(void* elem);
+typedef void (*fx_copy_elem_t)(const void* src, void* dst);
 
 typedef struct fx_arr_t
 {
@@ -177,8 +174,8 @@ typedef struct fx_arr_t
     // data, dim[0].size, dim[0].step, dim[1].size
     char*  data;
     fx_arrdim_t dim[FX_MAX_DIMS];
-    fx_free_elems_t free_elems;
-    fx_copy_elems_t copy_elems;
+    fx_free_elem_t free_elem;
+    fx_copy_elem_t copy_elem;
 }
 fx_arr_t;
 
@@ -199,40 +196,97 @@ void fx_arr_nextiter(fx_arriter_t* it);
 
 #define FX_CHKIDX_1D(arr, idx, catch_label) \
     if((size_t)(idx) >= (size_t)(arr).dim[0].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label } \
-    else
+    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
 #define FX_CHKIDX_2D(arr, idx0, idx1, catch_label) \
-    if((size_t)(idx0) >= (size_t)(arr).dim[0].size && \
+    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
        (size_t)(idx1) >= (size_t)(arr).dim[1].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label } \
-    else
+    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
 #define FX_CHKIDX_3D(arr, idx0, idx1, idx2, catch_label) \
-    if((size_t)(idx0) >= (size_t)(arr).dim[0].size && \
-       (size_t)(idx1) >= (size_t)(arr).dim[1].size && \
+    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
+       (size_t)(idx1) >= (size_t)(arr).dim[1].size || \
        (size_t)(idx2) >= (size_t)(arr).dim[2].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label } \
-    else
+    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
+#define FX_CHKIDX_4D(arr, idx0, idx1, idx2, idx3, catch_label) \
+    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
+       (size_t)(idx1) >= (size_t)(arr).dim[1].size || \
+       (size_t)(idx2) >= (size_t)(arr).dim[2].size || \
+       (size_t)(idx3) >= (size_t)(arr).dim[3].size) \
+    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
+#define FX_CHKIDX_5D(arr, idx0, idx1, idx2, idx3, idx4, catch_label) \
+    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
+       (size_t)(idx1) >= (size_t)(arr).dim[1].size || \
+       (size_t)(idx2) >= (size_t)(arr).dim[2].size || \
+       (size_t)(idx3) >= (size_t)(arr).dim[3].size || \
+       (size_t)(idx4) >= (size_t)(arr).dim[4].size) \
+    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
 #define FX_EPTR_1D_(typ, arr, idx) \
     (typ*)(arr).data + (idx)
 #define FX_EPTR_2D_(typ, arr, idx0, idx1) \
     (typ*)((arr).data + (arr).dim[0].step*(idx0)) + (idx1)
-#define FX_EPTR_3D_(typ, arr, idx0, idx1) \
-    (typ*)((arr).data + (arr).dim[0].step*(idx0) + (arr).dim[1].step*(idx1)) + (idx2)
-#define FX_EPTR_1D(typ, arr, idx) \
-    FX_CHKIDX_1D((arr), (idx)); \
-    FX_EPTR_1D_(typ, (arr), (idx))
-#define FX_EPTR_2D(typ, arr, idx0, idx1) \
-    FX_CHKIDX_2D((arr), (idx0), (idx1)); \
-    FX_EPTR_2D_(typ, (arr), (idx0), (idx1))
-#define FX_EPTR_3D(typ, arr, idx0, idx1, idx2) \
-    FX_CHKIDX_3D((arr), (idx0), (idx1), (idx2)); \
-    FX_EPTR_3D_(typ, (arr), (idx0), (idx1), (idx2))
+#define FX_EPTR_3D_(typ, arr, idx0, idx1, idx2) \
+    (typ*)((arr).data + (arr).dim[0].step*(idx0) + \
+    (arr).dim[1].step*(idx1)) + (idx2)
+#define FX_EPTR_4D_(typ, arr, idx0, idx1, idx2, idx3) \
+    (typ*)((arr).data + (arr).dim[0].step*(idx0) + \
+    (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2)) + (idx3)
+#define FX_EPTR_5D_(typ, arr, idx0, idx1, idx2, idx3) \
+    (typ*)((arr).data + (arr).dim[0].step*(idx0) + \
+    (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2) + \
+    (arr).dim[3].step*(idx3)) + (idx4)
+
+#define FX_EPTR_1D(typ, arr, idx, ptr, catch_label) \
+    FX_CHKIDX_1D((arr), (idx), catch_label) \
+    (ptr) = FX_EPTR_1D_(typ, (arr), (idx))
+#define FX_EPTR_2D(typ, arr, idx0, idx1, ptr, catch_label) \
+    FX_CHKIDX_2D((arr), (idx0), (idx1), ptr, catch_label) \
+    (ptr) = FX_EPTR_2D_(typ, (arr), (idx0), (idx1))
+#define FX_EPTR_3D(typ, arr, idx0, idx1, idx2, ptr, catch_label) \
+    FX_CHKIDX_3D((arr), (idx0), (idx1), (idx2), catch_label) \
+    (ptr) = FX_EPTR_3D_(typ, (arr), (idx0), (idx1), (idx2))
+#define FX_EPTR_4D(typ, arr, idx0, idx1, idx2, idx3, ptr, catch_label) \
+    FX_CHKIDX_4D((arr), (idx0), (idx1), (idx2), (idx3), catch_label) \
+    (ptr) = FX_EPTR_4D_(typ, (arr), (idx0), (idx1), (idx2), (idx3))
+#define FX_EPTR_5D(typ, arr, idx0, idx1, idx2, idx3, idx4, ptr, catch_label) \
+    FX_CHKIDX_5D((arr), (idx0), (idx1), (idx2), (idx3), (idx4), catch_label) \
+    (ptr) = FX_EPTR_5D_(typ, (arr), (idx0), (idx1), (idx2), (idx3), (idx4))
 
 void fx_free_arr(fx_arr_t* arr);
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
-                 fx_free_elems_t free_elems, fx_copy_elems_t copy_elems,
+                 fx_free_elem_t free_elem, fx_copy_elem_t copy_elem,
                  fx_arr_t* arr );
+FX_INLINE int fx_make_arr1d(int_ size0, size_t elemsize,
+                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem,
+                fx_arr_t* arr)
+{ return fx_make_arr(1, &size0, elemsize, free_elem, copy_elem, arr); }
+
+FX_INLINE int fx_make_arr2d(int_ size0, int_ size1, size_t elemsize,
+                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+{
+    int_ size[] = { size0, size1 };
+    return fx_make_arr(2, size, elemsize, free_elem, copy_elem, arr);
+}
+
+FX_INLINE int fx_make_arr3d(int_ size0, int_ size1, int_ size2, size_t elemsize,
+                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+{
+    int_ size[] = { size0, size1, size2 };
+    return fx_make_arr(3, size, elemsize, free_elem, copy_elem, arr);
+}
+
+FX_INLINE int fx_make_arr4d(int_ size0, int_ size1, int_ size2, int_ size3, size_t elemsize,
+                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+{
+    int_ size[] = { size0, size1, size2, size3 };
+    return fx_make_arr(4, size, elemsize, free_elem, copy_elem, arr);
+}
+
+FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_ size4, size_t elemsize,
+                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+{
+    int_ size[] = { size0, size1, size2, size3, size4 };
+    return fx_make_arr(5, size, elemsize, free_elem, copy_elem, arr);
+}
 
 ////////////////////////// References //////////////////////////
 
@@ -256,7 +310,7 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
 //////////////////////// Function pointers /////////////////////////
 
 #define FX_FREE_FP(f) \
-    if(f.fv) { f.fv->free_f(f.fv); f.fv=0; } else
+    if(f.fv) { f.fv->free_f(f.fv); f.fv=0; }
 #define FX_COPY_FP(src, dst) \
     if((src).fv) FX_INCREF((src).fv->base.refcount); *(dst) = (src)
 
@@ -271,10 +325,10 @@ typedef struct fx_cptr_cell_t
     void* ptr;
 } fx_cptr_cell_t, *fx_cptr_t;
 
-void fx_free_cptr(fx_cptr_t** cptr);
+void fx_cptr_no_destructor(void* ptr);
+void fx_free_cptr_(fx_cptr_t* cptr);
+void fx_free_cptr(fx_cptr_t* cptr);
+void fx_copy_cptr(const fx_cptr_t* src, fx_cptr_t* dst);
 int fx_make_cptr(void* ptr, fx_cptr_destructor_t free_f, fx_cptr_t* fx_result);
-
-#define FX_FREE_CPTR(p) \
-    if(p && FX_DECREF(p->refcount) == 1) fx_free_cptr(&p) else
 
 #endif

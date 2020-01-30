@@ -16,9 +16,7 @@ void fx_init(int t_idx)
     uint64_t state = (uint64_t)-1;
     for(int i = 0; i < t_idx*2 + 10; i++)
         state = (uint64_t)(unsigned)state*4187999619U + (unsigned)(state >> 32);
-    fx_ctx->rng.state = state;
-
-    return fx_ctx;
+    fx_rng.state = state;
 }
 
 /* [TODO] replace it with something more efficient,
@@ -35,12 +33,12 @@ void fx_free(void* ptr)
 
 ///////////// exceptions /////////////
 
-void fx_free_exn(fx_ctx_t* fx_ctx, fx_exn_t* exn)
+void fx_free_exn(fx_exn_t* exn)
 {
     if(exn->data)
     {
         if(FX_DECREF(exn->data->refcount) == 1)
-            exn->data->free_f(fx_ctx, exn->data);
+            exn->data->free_f(exn->data);
         exn->data = 0;
     }
 }
@@ -53,14 +51,29 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst)
 
 //////////////////// cpointers ////////////////////
 
-void fx_free_cptr(fx_cptr_t** cptr)
+void fx_cptr_no_destructor(void* ptr) {}
+
+void fx_free_cptr_(fx_cptr_t* cptr)
 {
-    if(cptr && *cptr)
+    free_f(*(cptr)->ptr);
+    fx_free(*cptr);
+    *cptr = 0;
+}
+
+void fx_free_cptr_(fx_cptr_t* cptr)
+{
+    if(*cptr && FX_DECREF((*cptr)->refcount) == 1)
     {
-        if((*cptr)->free_f) free_f->(*(cptr)->ptr);
+        free_f(*(cptr)->ptr);
         fx_free(*cptr);
         *cptr = 0;
     }
+}
+
+void fx_copy_cptr(const fx_cptr_t* src, fx_cptr_t* dst)
+{
+    if(*src) FX_INCREF((*src)->refcount);
+    *dst = *src;
 }
 
 int fx_make_cptr(void* ptr, fx_cptr_destructor_t free_f, fx_cptr_t* fx_result)

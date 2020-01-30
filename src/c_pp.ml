@@ -117,7 +117,7 @@ let rec pprint_ctyp_ t id_opt =
         | t :: [] -> pprint_ctyp_ t None
         | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
         cbox(); pstr ")"; cbox()
-    | CTypCPointer -> pstr "fx_cptr"; pr_id_opt ()
+    | CTypCSmartPointer -> pstr "fx_cptr_t"; pr_id_opt ()
     | CTypStruct (n_opt, selems) ->
         obox(); pstr "struct ";
         (match n_opt with
@@ -146,6 +146,7 @@ let rec pprint_ctyp_ t id_opt =
     | CTypArray (d, _) -> pstr (sprintf "fx_arr%d_t" d)
     | CTypArrayAccess (d, _) -> pstr (sprintf "fx_arrdata%d_t" d)
     | CTypName n -> pprint_id n; pr_id_opt()
+    | CTypCName s -> pstr s; pr_id_opt()
 
 and pprint_cexp_ e pr =
     match e with
@@ -189,6 +190,12 @@ and pprint_cexp_ e pr =
         (if pr0 < pr then (pcut(); pstr ")") else ()); cbox()
     | CExpCall(f, args, _) ->
         obox(); pprint_cexp_ f 1400; pstr "("; pprint_elist args; pstr ")"; cbox()
+    | CExpSeq(eseq, _) ->
+        obox();
+        List.iteri (fun i e ->
+            if i = 0 then pcut() else (pstr ";"; pspace());
+            pprint_cexp_ e 0) eseq;
+        cbox()
 
 and pprint_elist el =
     (obox();

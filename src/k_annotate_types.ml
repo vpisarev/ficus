@@ -168,6 +168,29 @@ let need_complex_ops t loc =
     | KTypModule -> true
     in need_complex_ops_ t loc
 
+let rec pass_by_ref t loc =
+    match t with
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> false
+    | KTypVoid -> raise_compile_err loc "pass_by_ref: 'void' type cannot occur here"
+    | KTypNil -> raise_compile_err loc "pass_by_ref: 'nil' type cannot occur here"
+    | KTypString -> true
+    | KTypCPointer -> true
+    | KTypFun _ -> true
+    | KTypTuple _ -> true
+    | KTypRecord _ -> true
+    | KTypName n ->
+        (match (kinfo n) with
+        | KVariant _ -> true
+        | KRecord _ -> true
+        | KGenTyp {contents={kgen_typ}} -> pass_by_ref kgen_typ loc
+        | _ -> raise_compile_err loc (sprintf "unsupported named type '%s'" (id2str n)))
+    | KTypArray _ -> true
+    | KTypList _ -> true
+    | KTypRef _ -> true
+    | KTypExn -> true
+    | KTypErr -> raise_compile_err loc "pass_by_ref: 'err' type cannot occur here"
+    | KTypModule -> raise_compile_err loc "pass_by_ref: 'module' type cannot occur here"
+
 let annotate_types top_code =
     let top_code = find_recursive top_code in
     List.iter (fun e -> match e with

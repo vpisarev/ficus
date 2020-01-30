@@ -152,25 +152,39 @@ void fx_arr_nextiter(fx_arriter_t* it)
     }
 }
 
-void fx_free_arr(fx_ctx_t* fx_ctx, fx_arr_t* arr)
+static void fx_free_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_elem_t free_f)
 {
-    if(arr->refcount) {
+    char* elems = (char*)elems_;
+    for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
+}
+
+static void fx_copy_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_elem_t free_f)
+{
+    char* elems = (char*)elems_;
+    for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
+}
+
+void fx_free_arr(fx_arr_t* arr)
+{
+    if(arr->refcount)
+    {
         if(FX_DECREF(arr->refcount) == 1)
         {
-            fx_free_elems_t free_f = arr->free_elems;
+            fx_free_elem_t free_f = arr->free_elem;
+            size_t elemsize = arr->elemsize;
             if(free_f)
             {
                 if(arr->ndims == 1)
-                    free_f(fx_ctx, arr->data, arr->dim[0].size);
+                    fx_free_arr_elems(arr->data, arr->dim[0].size, elemsize, free_f);
                 else if(arr->ndims == 2)
                 {
-                    int size0 = arr->dim[0].size, size1 = arr->dim[1].size;
+                    int_ size0 = arr->dim[0].size, size1 = arr->dim[1].size;
                     if(FX_IS_ARR_CONTINUOUS(arr->flags))
                     {
                         size1 *= size0; size0 = 1;
                     }
                     for( int_ i = 0; i < size0; i++ )
-                        free_f(fx_ctx, arr->data + i*arr->dim[0].step, size1);
+                        fx_free_arr_elems(arr->data + i*arr->dim[0].step, size1, elemsize, free_f);
                 }
                 else
                 {
@@ -179,12 +193,12 @@ void fx_free_arr(fx_ctx_t* fx_ctx, fx_arr_t* arr)
                     fx_arr_startiter(1, &arr, &ptr, &it);
                     for(int_ i = 0; i < it.nblocks; i++)
                     {
-                        free_f(fx_ctx, ptr, it.blocksize);
+                        fx_free_arr_elems(ptr, it.blocksize, elemsize, free_f);
                         fx_arr_nextiter(&it);
                     }
                 }
             }
-            fx_free(fx_ctx, arr->refcount, arr->totalsize);
+            fx_free(arr->refcount);
         }
         arr->refcount = 0;
         arr->data = 0;
@@ -197,8 +211,8 @@ void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst)
     *dst = *src;
 }
 
-int fx_make_arr( fx_ctx_t* fx_ctx, int ndims, const int_* size, size_t elemsize,
-                 fx_free_elems_t free_elems, fx_copy_elems_t copy_elems,
+int fx_make_arr( int ndims, const int_* size, size_t elemsize,
+                 fx_free_elem_t free_elem, fx_copy_elem_t copy_elem,
                  fx_arr_t* arr )
 {
     if(ndims <= 0 || ndims > FX_MAX_DIMS) return FX_DIM_ERR;
@@ -213,19 +227,19 @@ int fx_make_arr( fx_ctx_t* fx_ctx, int ndims, const int_* size, size_t elemsize,
         netw *= szi;
     }
     size_t grossw = netw + 8;
-    arr->refcount = (int*)fx_alloc(fx_ctx, grossw);
+    arr->refcount = (int*)fx_alloc(grossw);
     if(!arr->refcount) return FX_OUT_OF_MEM_ERR;
     arr->flags = FX_ARR_CONTINUOUS;
     arr->ndims = ndims;
     arr->data = (char*)arr->refcount + 8;
     arr->totalsize = grossw;
-    arr->free_elems = free_elems;
-    arr->copy_elems = copy_elems;
+    arr->free_elem = free_elem;
+    arr->copy_elem = copy_elem;
     // if there is destructor for elements specified, we must clear the array.
     // otherwise, if there is an exception during the array initialization,
     // we might not be able to tell, which elements are valid and needs to
     // be destructed.
-    if(free_elems && netw > 0) memset(arr->data, 0, netw);
+    if(free_elem && netw > 0) memset(arr->data, 0, netw);
     return FX_OK;
 }
 
