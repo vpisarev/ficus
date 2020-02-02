@@ -82,6 +82,7 @@ let rec pprint_ctyp_ t id_opt =
     match t with
     | CTypInt -> pstr "int_"; pr_id_opt ()
     | CTypCInt -> pstr "int"; pr_id_opt ()
+    | CTypSize_t -> pstr "size_t"; pr_id_opt ()
     | CTypSInt(b) -> pstr ("int" ^ (string_of_int b) ^ "_t"); pr_id_opt ()
     | CTypUInt(b) -> pstr ("unt" ^ (string_of_int b) ^ "_t"); pr_id_opt ()
     | CTypFloat(16) -> pstr "float16_t"; pr_id_opt ()
@@ -144,9 +145,10 @@ let rec pprint_ctyp_ t id_opt =
         pstr "*"; pr_id_opt();
         cbox()
     | CTypArray (d, _) -> pstr (sprintf "fx_arr%d_t" d)
-    | CTypArrayAccess (d, _) -> pstr (sprintf "fx_arrdata%d_t" d)
     | CTypName n -> pprint_id n; pr_id_opt()
     | CTypCName s -> pstr s; pr_id_opt()
+    | CTypLabel -> pstr "/*<label>*/"; pr_id_opt()
+    | CTypAny -> pstr "void"; pr_id_opt()
 
 and pprint_cexp_ e pr =
     match e with
@@ -301,7 +303,8 @@ and pprint_cstmt s =
             | _ -> ()) ce_members;
         cbox(); pbreak(); pstr "} "; pprint_id ce_name; pstr ";";
         pbreak()
-    | CMacroDef (n, args, e_opt, _) ->
+    | CMacroDef cm ->
+        let {cm_name=n; cm_args=args; cm_body=body} = !cm in
         pstr "#define "; pprint_id n;
         (match args with
         | [] -> ()
@@ -311,14 +314,14 @@ and pprint_cstmt s =
                 if i = 0 then () else pstr ", ";
                 pprint_id a) args;
             pstr ")");
-        (match e_opt with
-        | Some e ->
+        (match body with
+        | [] -> ()
+        | _ -> List.iter (fun s ->
             pspace();
             pstr "\\";
             pbreak();
             pstr "    ";
-            pprint_cexp_ e 0
-        | _ -> ());
+            pprint_cstmt s) body)
     | CMacroUndef (n, _) -> ohbox(); pstr "#undef "; pprint_id n; cbox()
     | CMacroIf (cs_l, else_l, _) ->
         List.iteri (fun i (c, sl) ->

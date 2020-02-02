@@ -194,12 +194,6 @@ type cinfo_t =
     | CTyp of cdeftyp_t ref | CEnum of cdefenum_t ref | CLabel of cdeflabel_t
     | CMacro of cdefmacro_t ref
 
-let CTypVoidPtr = make_ptr CTypVoid
-let CTypConstVoidPtr = make_const_ptr CTypVoid
-let CTypAnyArray = CTypArray(0, CTypInt)
-let CTypAnyPtr = make_ptr CTypAny
-let CTypConstAnyPtr make_const_ptr CTypAny
-
 let all_idcs = dynvec_create CNone
 
 let new_idc_idx() =
@@ -239,6 +233,7 @@ let get_cexp_ctx e = match e with
     | CExpCast(_, t, l) -> (t, l)
     | CExpTernary(_, _, _, c) -> c
     | CExpCall(_, _, c) -> c
+    | CExpSeq(_, c) -> c
 
 let get_cexp_typ e = let (t, l) = (get_cexp_ctx e) in t
 let get_cexp_loc e = let (t, l) = (get_cexp_ctx e) in l
@@ -263,7 +258,7 @@ let get_cstmt_loc s = match s with
     | CDefTyp {contents={ct_loc}} -> ct_loc
     | CDefForwardTyp (_, cft_loc) -> cft_loc
     | CDefEnum {contents={ce_loc}} -> ce_loc
-    | CMacroDef (_, _, _, l) -> l
+    | CMacroDef {contents={cm_loc}} -> cm_loc
     | CMacroUndef (_, l) -> l
     | CMacroIf (_, _, l) -> l
     | CMacroInclude (_, l) -> l
@@ -322,6 +317,7 @@ let get_idc_cname i = match (cinfo i) with
     | CTyp {contents = {ct_cname}} -> ct_cname
     | CLabel {cl_cname} -> cl_cname
     | CEnum {contents = {ce_cname}} -> ce_cname
+    | CMacro {contents = {cm_cname}} -> cm_cname
 
 (* used by the type checker *)
 let get_lit_ctyp l = match l with
@@ -416,7 +412,6 @@ and walk_ctyp t callb =
     | CTypFun (args, rt) -> CTypFun((List.map walk_ctyp_ args), (walk_ctyp_ rt))
     | CTypFunPtr (args, rt) -> CTypFunPtr((List.map walk_ctyp_ args), (walk_ctyp_ rt))
     | CTypArray(d, et) -> CTypArray(d, walk_ctyp_ et)
-    | CTypArrayAccess(d, et) -> CTypArray(d, walk_ctyp_ et)
     | CTypRawPointer(attrs, t) -> CTypRawPointer(attrs, (walk_ctyp_ t))
     | CTypName n -> CTypName(walk_id_ n)
     | CTypCName _ -> t
@@ -492,8 +487,12 @@ and walk_cstmt s callb =
             ce_name = (walk_id_ ce_name);
             ce_members = (List.map (fun (n, e_opt) -> ((walk_id_ n), (walk_cexp_opt_ e_opt))) ce_members) };
         s
-    | CMacroDef (n, args, e_opt, l) ->
-        CMacroDef((walk_id_ n), (List.map walk_id_ args), (walk_cexp_opt_ e_opt), l)
+    | CMacroDef cm ->
+        let { cm_name; cm_args; cm_body } = !cm in
+        cm := { !cm with cm_name = (walk_id_ cm_name);
+            cm_args = (List.map walk_id_ cm_args);
+            cm_body = (List.map walk_cstmt_ cm_body) };
+        s
     | CMacroUndef (n, l) -> CMacroUndef((walk_id_ n), l)
     | CMacroIf (cs_l, else_l, l) ->
         CMacroIf((List.map (fun (c, sl) -> ((walk_cexp_ c), (walk_csl_ sl))) cs_l), (walk_csl_ else_l), l)
@@ -549,7 +548,6 @@ and fold_ctyp t callb =
     | CTypFunPtr (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypRawPointer(_, t) -> fold_ctyp_ t
     | CTypArray(_, t) -> fold_ctyp_ t
-    | CTypArrayAccess(_, t) -> fold_ctyp_ t
     | CTypName n -> fold_id_ n
     | CTypCName _ -> ()
     | CTypLabel -> ())
@@ -614,8 +612,9 @@ and fold_cstmt s callb =
         let { ce_name; ce_members } = !ce in
         fold_id_ ce_name;
         List.iter (fun (n, e_opt) -> fold_id_ n; fold_cexp_opt_ e_opt) ce_members
-    | CMacroDef (n, args, e_opt, _) ->
-        fold_id_ n; List.iter fold_id_ args; fold_cexp_opt_ e_opt
+    | CMacroDef cm ->
+        let { cm_name; cm_args; cm_body } = !cm in
+        fold_id_ cm_name; List.iter fold_id_ cm_args; List.iter fold_cstmt_ cm_body
     | CMacroUndef (n, _) -> fold_id_ n
     | CMacroIf (cs_l, else_l, _) ->
         List.iter (fun (c, sl) -> fold_cexp_ c; fold_csl_ sl) cs_l;
@@ -625,11 +624,17 @@ and fold_cstmt s callb =
 let make_ptr t = CTypRawPointer([], t)
 let make_const_ptr t = CTypRawPointer((CTypConst :: []), t)
 let make_int_exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
-let make_id_exp i loc = let t = get_idc_typ i loc in CExpIndent(i, (t, loc))
+let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_cid prefix ctyp e_opt code sc loc =
     let n = gen_temp_idc prefix in
     let code = create_cdefval n ctyp (ValMutable :: []) e_opt code sc loc in
     (n, code)
+
+let std_CTypVoidPtr = make_ptr CTypVoid
+let std_CTypConstVoidPtr = make_const_ptr CTypVoid
+let std_CTypAnyArray = CTypArray(0, CTypInt)
+let std_CTypAnyPtr = make_ptr CTypAny
+let std_CTypConstAnyPtr = make_const_ptr CTypAny
 
 let make_cfor_inc i ityp a b delta body loc =
     let i_exp = CExpIdent(i, (ityp, loc)) in
@@ -683,25 +688,11 @@ let std_FX_COPY_FP = ref noid
 let std_fx_free_cptr = ref noid
 let std_fx_copy_cptr = ref noid
 
-let make_call f args loc =
-    let t = get_idc_typ f loc in
-    let rt = match t with CTypFun()
+let make_call f args rt loc =
     let f_exp = make_id_exp f loc in
     CExpCall(f_exp, args, (rt, loc))
 
 let make_ccall_catch f args catch_label loc =
-    let f_exp = CExpIdent(f, (CTyp))
     let f_call = make_call f args CTypCInt loc in
-    let f = make_call !std_FX_CALL
-    CExpCall(f, )
-    let std_FX_CALL = ref noid
-
-    let (t, have_label) = match catch_label_opt with
-        | Some _ -> (CTypCInt, true)
-        | _ -> match (cinfo f) with
-            | CFun {contents={cf_typ=CTypFun(_, rt)}} -> (rt, false)
-            | CFun _ -> raise_compile_err loc (sprintf "%s has invalid CFun type - not a function" (id2str f))
-            | CVal
-    match catch_label_opt with
-    | Some catch_label ->
-        CExpCall(,
+    let cl_exp = CExpIdent(catch_label, (CTypLabel, loc)) in
+    make_call !std_FX_CALL (f_call :: cl_exp :: []) CTypVoid loc

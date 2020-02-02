@@ -158,6 +158,7 @@ and pprint_kexp_ e prtyp =
                     | FunInline -> pstr "INLINE"; pspace()
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunStatic -> pstr "STATIC"; pspace()
+                    | FunStd -> pstr "STANDARD"; pspace()
                     | FunConstr -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
         pstr (!fkind); pspace(); pprint_id_label kf_name; pspace();
