@@ -17,7 +17,7 @@
       put all the definitions in the beginning of the generated C code.
       If a type definition depends on other types that are delcared later
       (e.g. in the case of mutually-recursive variants), insert forward declarations
-      of those types ('struct _vx_V<dep_variant_name>;')
+      of those types ('struct _fx_V<dep_variant_name>;')
 
     2. traverse through the code:
         For each function:
@@ -52,7 +52,7 @@ let ktyp2ctyp t loc =
         | KTypBool -> CTypBool
         | KTypChar -> CTypWChar
         | KTypString -> CTypString
-        | KTypCPointer -> CTypCPointer
+        | KTypCPointer -> CTypCSmartPointer
         | KTypFun (args, rt) -> CTypFunPtr((List.map ktyp2ctyp_ args), ktyp2ctyp_ rt)
         | KTypTuple _ -> report_err "KTypTuple"
         | KTypRecord _ -> report_err "KTypRecord"
@@ -66,13 +66,88 @@ let ktyp2ctyp t loc =
     in ktyp2ctyp_ t
 
 let convert_all_typs top_code =
-    let ccode_tdefs = ref ([]: cstmt_t list) in
-    let ccode_tfuns = ref ([]: cstmt_t list) in
+    let top_fwd_decl = ref ([]: cstmt_t list) in
+    let top_typ_decl = ref ([]: cstmt_t list) in
+    let top_typ_ops = ref ([]: cstmt_t list) in
+    let all_decls = ref (IdSet.empty) in
+    let all_fwd_decls = ref (IdSet.empty) in
+    let all_visited = ref (IdSet.empty) in
+
+    let add_fwd_decl fwd_decl decl =
+        if fwd_decl then
+            top_fwd_decl := decl :: !top_fwd_decl
+        else ()
+    in
+    let create_ctyp_decl tn ptr_typ gen_free gen_cpy fwd_decl loc =
+        let is_simple = gen_free || gen_cpy in
+        let freef = if gen_free then (gen_temp_idc "free") else noid in
+        let cpyf = if gen_cpy then (gen_temp_idc "copy") else noid in
+        let cname = get_id_cname tn loc in
+        let (struct_id, struct_cname) = if ptr_typ then ((dup_idc tn), cname ^ "_data_t") else (tn, cname) in
+        let kind = (if is_simple then CKindSimple else CKindStruct) in
+        let struct_decl = ref { ct_name=struct_id;
+            ct_typ=CTypStruct((Some struct_id), []);
+            ct_ktyp=KTypName tn; ct_cname=struct_cname;
+            ct_kind=kind; ct_flags=[]; ct_make=noid; ct_free=freef; ct_copy=cpyf;
+            ct_scope=ScGlobal::[]; ct_loc=loc } in
+        let typ_decl = if ptr_typ then
+            ref { !struct_decl with ct_name=tn; ct_typ=(make_ptr struct_id); ct_cname=cname }
+            else struct_decl in
+        let ctyp = CTypName struct_id in
+        let (src_typ, dst_typ) = ((make_const_ptr ctyp), (make_ptr ctyp)) in
+        let dst_typ = if ptr_typ then (make_ptr dst_typ) else dst_typ in
+        let freef_decl = ref {
+            cf_name=freef; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ cname;
+            cf_args=(get_id "dst") :: [];  cf_body=CStmtNop(loc);
+            cf_flags=FunNoThrow :: []; cf_scope=ScGlobal :: []; cf_loc=loc } in
+        let cpyf_decl = ref { !freef_decl with
+            cf_name=freef; cf_typ=CTypFun(src_typ :: dst_typ :: [], CTypVoid); cf_cname="_fx_copy_" ^ cname;
+            cf_args=(get_id "src") :: (get_id "dst") :: [] } in
+        if ptr_typ then
+            set_idc_entry struct_id (CTyp struct_decl);
+            add_fwd_decl fwd_decl (CDefForwardTyp struct_id)
+        else ();
+        set_idc_entry tn (CTyp typ_decl);
+        if gen_free then
+            set_idc_entry freef (CFun freef_decl);
+            add_fwd_decl fwd_decl (CDefForwardFun freef)
+        else ();
+        if gen_cpy then
+            set_idc_entry cpyf (CFun cpyf_decl);
+            add_fwd_decl fwd_decl (CDefForwardFun cpyf)
+        else ();
+        (tn, struct_id, freef, cpyf)
+
+    let rec cvt2ctyp tn loc =
+        if (IdSet.mem tn !all_decls) then ()
+        else
+            let visited = IdSet.mem tn !all_visited in
+            let deps = K_annotate_types.get_typ_deps tn loc in
+            let (opt_rec_var, opt_rec_cvar, deps) = match (kinfo_ tn loc) with
+                | KVariant kvar ->
+                    let {kvar_flags} = !kvar in
+                    if (List.mem VariantRecursive kvar_flags) then
+                        (if (IdSet.mem tn !all_fwd_decls) then ()
+                        else
+                        ((Some kvar), (List.filter (fun d -> d != tn) deps)))
+                    else
+                        (None, None, deps)
+                | _ -> (None, None, deps)
+            let _ = match (opt_rec_var, visited) with
+                | (None, true) -> raise_compile_err loc
+                    (sprintf "")
+                | _ -> ()
+            let _ = all_visited := IdSet.add tn !all_visited in
 
     let rec fold_n_cvt_ktyp t loc callb = ()
     and fold_n_cvt_kexp e loc callb =
         match e with
-        | KDefGenTyp kgen
+        | KDefGenTyp {contents={kgen_name; kgen_loc}} -> cvt2ctyp kgen_name kgen_loc
+        | KDefRecord {contents={krec_name; krec_loc}} -> cvt2ctyp krec_name krec_loc
+        | KDefVariant {contents={kvar_name; kvar_loc}} -> cvt2ctyp kvar_name kvar_loc
+        | KDefClosureVars {contents={kcv_name; kcv_loc}} -> cvt2ctyp kcv_name kcv_loc
+        | KDefExn {contents={ke_name; ke_loc}} -> cvt2ctyp ke_name ke_loc
+        | _ -> fold_kexp e callb
             (*
                 Tuples:
                 //////// simple tuples /////////
@@ -112,7 +187,7 @@ let convert_all_typs top_code =
                     _fx_make_T2iS(src->t0, &src->t1, dst);
                 }
             *)
-        | KDefExn ke ->
+
             (*
                 // simple exceptions
                 #define _FX_EXN_MyException -500
@@ -149,10 +224,6 @@ let convert_all_typs top_code =
                     fx_status = _fx_make_E8Failwith(arg, &fx_ctx->exn, false); \
                     goto catch_label
             *)
-        | KDefVariant of kdefvariant_t ref
-        | KDefRecord of kdefrecord_t ref
-
-        | KDefClosureVars of kdefclosurevars_t ref
 
 
 let convert_to_c top_code =

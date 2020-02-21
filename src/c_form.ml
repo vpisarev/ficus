@@ -165,6 +165,7 @@ and cstmt_t =
     | CDefVal of ctyp_t * id_t * cexp_t option * loc_t
     | CDefFun of cdeffun_t ref
     | CDefTyp of cdeftyp_t ref
+    | CDefForwardFun of id_t * loc_t
     | CDefForwardTyp of id_t * loc_t
     | CDefEnum of cdefenum_t ref
     | CMacroDef of cdefmacro_t ref
@@ -256,6 +257,7 @@ let get_cstmt_loc s = match s with
     | CDefVal (_, _, _, l) -> l
     | CDefFun {contents={cf_loc}} -> cf_loc
     | CDefTyp {contents={ct_loc}} -> ct_loc
+    | CDefForwardFun (_, cff_loc) -> cff_loc
     | CDefForwardTyp (_, cft_loc) -> cft_loc
     | CDefEnum {contents={ce_loc}} -> ce_loc
     | CMacroDef {contents={cm_loc}} -> cm_loc
@@ -479,6 +481,8 @@ and walk_cstmt s callb =
             ct_name = (walk_id_ ct_name);
             ct_typ = (walk_ctyp_ ct_typ) };
         s
+    | CDefForwardFun (n, loc) ->
+        CDefForwardFun (walk_id_ n, loc)
     | CDefForwardTyp (n, loc) ->
         CDefForwardTyp (walk_id_ n, loc)
     | CDefEnum ce ->
@@ -606,6 +610,8 @@ and fold_cstmt s callb =
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
         fold_id_ ct_name; fold_ctyp_ ct_typ
+    | CDefForwardFun (n, _) ->
+        fold_id_ n
     | CDefForwardTyp (n, _) ->
         fold_id_ n
     | CDefEnum ce ->

@@ -16,7 +16,7 @@
 open Ast
 open K_form
 
-let get_typ_dependencies n loc =
+let get_typ_deps n loc =
     let rec get_ktyp_deps_ t deps =
         match t with
         | KTypInt | KTypSInt _ | KTypUInt _  | KTypFloat _
@@ -49,13 +49,13 @@ let find_recursive top_code =
     let fold_deps0_kexp_ e callb =
         match e with
         | KDefRecord {contents={krec_name; krec_loc}} ->
-            let deps = get_typ_dependencies krec_name krec_loc in
+            let deps = get_typ_deps krec_name krec_loc in
             dep_env := Env.add krec_name (ref deps) !dep_env
         | KDefVariant {contents={kvar_name; kvar_loc}} ->
-            let deps = get_typ_dependencies kvar_name kvar_loc in
+            let deps = get_typ_deps kvar_name kvar_loc in
             dep_env := Env.add kvar_name (ref deps) !dep_env
         | KDefGenTyp {contents={kgen_name; kgen_loc}} ->
-            let deps = get_typ_dependencies kgen_name kgen_loc in
+            let deps = get_typ_deps kgen_name kgen_loc in
             dep_env := Env.add kgen_name (ref deps) !dep_env
         | _ -> fold_kexp e callb
     in let deps0_callb =
