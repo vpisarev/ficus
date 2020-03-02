@@ -166,9 +166,9 @@ static void fx_copy_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_fre
 
 void fx_free_arr(fx_arr_t* arr)
 {
-    if(arr->refcount)
+    if(arr->rc)
     {
-        if(FX_DECREF(arr->refcount) == 1)
+        if(FX_DECREF(arr->rc) == 1)
         {
             fx_free_elem_t free_f = arr->free_elem;
             size_t elemsize = arr->elemsize;
@@ -198,16 +198,16 @@ void fx_free_arr(fx_arr_t* arr)
                     }
                 }
             }
-            fx_free(arr->refcount);
+            fx_free(arr->rc);
         }
-        arr->refcount = 0;
+        arr->rc = 0;
         arr->data = 0;
     }
 }
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst)
 {
-    if(src->refcount) FX_INCREF(*src->refcount);
+    if(src->rc) FX_INCREF(*src->rc);
     *dst = *src;
 }
 
@@ -227,11 +227,11 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
         netw *= szi;
     }
     size_t grossw = netw + 8;
-    arr->refcount = (int*)fx_alloc(grossw);
-    if(!arr->refcount) return FX_OUT_OF_MEM_ERR;
+    arr->rc = (fx_rc_t*)fx_alloc(grossw);
+    if(!arr->rc) return FX_OUT_OF_MEM_ERR;
     arr->flags = FX_ARR_CONTINUOUS;
     arr->ndims = ndims;
-    arr->data = (char*)arr->refcount + 8;
+    arr->data = (char*)arr->rc + 8;
     arr->totalsize = grossw;
     arr->free_elem = free_elem;
     arr->copy_elem = copy_elem;

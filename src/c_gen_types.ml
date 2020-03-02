@@ -105,25 +105,26 @@ let convert_all_typs top_code =
             cf_args=(get_id "src") :: (get_id "dst") :: [] } in
         if ptr_typ then
             set_idc_entry struct_id (CTyp struct_decl);
-            add_fwd_decl fwd_decl (CDefForwardTyp struct_id)
+            add_fwd_decl fwd_decl (CDefForwardTyp (struct_id, loc))
         else ();
         set_idc_entry tn (CTyp typ_decl);
         if gen_free then
             set_idc_entry freef (CFun freef_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun freef)
+            add_fwd_decl fwd_decl (CDefForwardFun (freef, loc))
         else ();
         if gen_cpy then
             set_idc_entry cpyf (CFun cpyf_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun cpyf)
+            add_fwd_decl fwd_decl (CDefForwardFun (cpyf, loc))
         else ();
-        (tn, struct_id, freef, cpyf)
+        (tn, struct_decl, freef_decl, cpyf_decl)
 
     let rec cvt2ctyp tn loc =
         if (IdSet.mem tn !all_decls) then ()
         else
             let visited = IdSet.mem tn !all_visited in
             let deps = K_annotate_types.get_typ_deps tn loc in
-            let (opt_rec_var, opt_rec_cvar, deps) = match (kinfo_ tn loc) with
+            let ktyp_info = kinfo_ tn loc in
+            let (opt_rec_var, deps) = match ktyp_info with
                 | KVariant kvar ->
                     let {kvar_flags} = !kvar in
                     if (List.mem VariantRecursive kvar_flags) then
@@ -131,8 +132,8 @@ let convert_all_typs top_code =
                         else
                         ((Some kvar), (List.filter (fun d -> d != tn) deps)))
                     else
-                        (None, None, deps)
-                | _ -> (None, None, deps)
+                        (None, deps)
+                | _ -> (None, deps)
             let _ = match (opt_rec_var, visited) with
                 | (None, true) -> raise_compile_err loc
                     (sprintf "")
@@ -150,7 +151,7 @@ let convert_all_typs top_code =
         | _ -> fold_kexp e callb
             (*
                 Tuples:
-                //////// simple tuples /////////
+                ///////// simple tuples /////////
                 typedef struct _fx_Ta3f
                 {
                     float t0;

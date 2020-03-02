@@ -37,7 +37,7 @@ void fx_free_exn(fx_exn_t* exn)
 {
     if(exn->data)
     {
-        if(FX_DECREF(exn->data->refcount) == 1)
+        if(FX_DECREF(exn->data->rc) == 1)
             exn->data->free_f(exn->data);
         exn->data = 0;
     }
@@ -45,7 +45,7 @@ void fx_free_exn(fx_exn_t* exn)
 
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst)
 {
-    if(src->data) FX_INCREF(src->data->refcount);
+    if(src->data) FX_INCREF(src->data->rc);
     *dst = *src;
 }
 
@@ -62,7 +62,7 @@ void fx_free_cptr_(fx_cptr_t* cptr)
 
 void fx_free_cptr_(fx_cptr_t* cptr)
 {
-    if(*cptr && FX_DECREF((*cptr)->refcount) == 1)
+    if(*cptr && FX_DECREF((*cptr)->rc) == 1)
     {
         free_f(*(cptr)->ptr);
         fx_free(*cptr);
@@ -72,7 +72,7 @@ void fx_free_cptr_(fx_cptr_t* cptr)
 
 void fx_copy_cptr(const fx_cptr_t* src, fx_cptr_t* dst)
 {
-    if(*src) FX_INCREF((*src)->refcount);
+    if(*src) FX_INCREF((*src)->rc);
     *dst = *src;
 }
 
@@ -80,7 +80,7 @@ int fx_make_cptr(void* ptr, fx_cptr_destructor_t free_f, fx_cptr_t* fx_result)
 {
     fx_cptr_t p = (fx_cptr_t)fx_alloc(sizeof(*p));
     if(!p) return FX_OUT_OF_MEM_ERR;
-    p->refcount = 1;
+    p->rc = 1;
     p->free_f = free_f;
     p->ptr = ptr;
     *fx_result = p;

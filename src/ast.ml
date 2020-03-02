@@ -163,8 +163,8 @@ type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
 type val_flag_t = ValArg | ValMutable | ValTempRef | ValImplicitDeref
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
 type variant_flag_t = VariantRecord | VariantRecursive | VariantComplexOps
-                    | VariantNoComplexOps | VariantNoTag | VariantDummyTag0
-type typ_flag_t = TypComplexOps | TypNoComplexOps
+        | VariantNoComplexOps | VariantNoTag | VariantDummyTag0
+type typ_flag_t = TypComplexOps | TypNoComplexOps | TypCustomDestructor | TypCustomCopy
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
 

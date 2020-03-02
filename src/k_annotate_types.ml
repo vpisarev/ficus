@@ -111,63 +111,107 @@ let find_recursive top_code =
         | _ -> ()) all_typs;
     top_code
 
+(* returns 3-element tuple:
+    1. whether the type needs any special handling (destructor and/or copy operator)
+    2. whether the type needs custom destructor
+    3. whether the type needs custom copy operator
+
+    * if the 1st element of the tuple is false, then the 2nd and 3rd must be false too.
+     It means that the type is primitive, it does not need a destructor and
+     it can be copied with a simple '=' operator.
+
+    * if the 1st element is true,it means that the type needs special treatment
+     (and correspondingly all the types that have element(s) of this type).
+
+    * if the 1st element is true, but the 2nd and 3rd elements are false,
+     it means that the element needs special treatment, but the destructor and
+     the copy operator are standard (they do not need to be declared). For example,
+     string, smart c pointer, array, function pointer, reference or
+     list with simple element(s) are such types.
+
+    * if the 1st element and the 2nd elements are true, but the 3rd element is false,
+     it means that the element needs custom destructor, but it can be copied with
+     a standard operator. References and lists with complex element(s), as well as
+     recursive variants are such cases.
+     To copy an instance of such type, you need to increment the source's
+     reference counter (which is always the first element) and then copy the pointer.
+*)
 let need_complex_ops t loc =
     let visited = ref (IdSet.empty) in
     let rec need_complex_ops_ t loc =
     match t with
-    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ -> false
-    | KTypVoid | KTypNil | KTypBool | KTypChar -> false
-    | KTypString -> true
-    | KTypCPointer -> true
-    | KTypFun _ -> true
-    | KTypTuple(elems) -> List.exists (fun ti -> need_complex_ops_ ti loc) elems
-    | KTypRecord(_, relems) -> List.exists (fun (_, ti) -> need_complex_ops_ ti loc) relems
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ -> (false, false, false)
+    | KTypVoid | KTypNil | KTypBool | KTypChar -> (false, false, false)
+    | KTypString -> (true, false, false)
+    | KTypCPointer -> (true, false, false)
+    | KTypFun _ -> (true, false, false)
+    | KTypTuple(elems) ->
+        let have_complex = List.exists (fun ti ->
+            let (f, _, _) = need_complex_ops_ ti loc in f) elems in
+        (have_complex, have_complex, have_complex)
+    | KTypRecord(_, relems) ->
+        let have_complex = List.exists (fun (_, ti) ->
+            let (f, _, _) = need_complex_ops_ ti loc in f) relems in
+        (have_complex, have_complex, have_complex)
     | KTypName n ->
         (match (kinfo n) with
         | KVariant kvar ->
             let {kvar_cases; kvar_flags; kvar_loc} = !kvar in
-            if List.mem VariantComplexOps kvar_flags then true
-            else if List.mem VariantNoComplexOps kvar_flags then false
+            if List.mem VariantRecursive kvar_flags then (true, true, false)
+            else if List.mem VariantNoComplexOps kvar_flags then (false, false, false)
+            else if List.mem VariantComplexOps kvar_flags then (true, true, true)
             else
                 let f =
-                    if List.mem VariantRecursive kvar_flags then true
-                    else if IdSet.mem n !visited then true else
+                    if IdSet.mem n !visited then true else
                     let _ = visited := IdSet.add n !visited in
-                    List.exists (fun (_, ti) -> need_complex_ops_ ti kvar_loc) kvar_cases in
+                    List.exists (fun (_, ti) -> let (f, _, _) = need_complex_ops_ ti kvar_loc in f) kvar_cases in
                 let _ = kvar := {!kvar with
                     kvar_flags = (if f then VariantComplexOps else VariantNoComplexOps) :: kvar_flags} in
-                f
+                (f, f, f)
         | KRecord krec ->
             let {krec_elems; krec_flags; krec_loc} = !krec in
-            if List.mem TypComplexOps krec_flags then true
-            else if List.mem TypNoComplexOps krec_flags then false
+            if List.mem TypNoComplexOps krec_flags then (false, false, false)
+            else if List.mem TypComplexOps krec_flags then (true, true, true)
             else
                 let f = if IdSet.mem n !visited then true else
                     let _ = visited := IdSet.add n !visited in
-                    List.exists (fun (_, ti) -> need_complex_ops_ ti krec_loc) krec_elems in
+                    List.exists (fun (_, ti) ->
+                        let (f, _, _) = need_complex_ops_ ti krec_loc in f) krec_elems in
                 let _ = krec := {!krec with
-                    krec_flags = (if f then TypComplexOps else TypNoComplexOps) :: krec_flags} in
-                f
+                    krec_flags = (if f then [TypComplexOps; TypCustomDestructor; TypCustomCopy]
+                            else [TypNoComplexOps]) @ krec_flags}
+                in (f, f, f)
         | KGenTyp kgen ->
-                let {kgen_typ; kgen_flags; kgen_loc} = !kgen in
-                if List.mem TypComplexOps kgen_flags then true
-                else if List.mem TypNoComplexOps kgen_flags then false
-                else
-                    let f = if IdSet.mem n !visited then true else
-                        let _ = visited := IdSet.add n !visited in
-                        need_complex_ops_ kgen_typ kgen_loc in
-                    let _ = kgen := {!kgen with
-                        kgen_flags = (if f then TypComplexOps else TypNoComplexOps) :: kgen_flags} in
-                    f
+            let {kgen_typ; kgen_flags; kgen_loc} = !kgen in
+            if List.mem TypNoComplexOps kgen_flags then (false, false, false)
+            else if List.mem TypComplexOps kgen_flags then
+                let custom_destructor = List.mem TypCustomDestructor kgen_flags in
+                let custom_copy = List.mem TypCustomCopy kgen_flags in
+                (true, custom_destructor, custom_copy)
+            else
+                let (f, custom_destructor, custom_copy) = need_complex_ops_ kgen_typ kgen_loc in
+                let _ = kgen := {!kgen with
+                    kgen_flags = (if f then [TypComplexOps] else [TypNoComplexOps]) @
+                        (if custom_destructor then [TypCustomDestructor] else []) @
+                        (if custom_copy then [TypCustomCopy] else []) @ kgen_flags} in
+                (f, custom_destructor, custom_copy)
         | _ -> raise_compile_err loc (sprintf "unsupported named type '%s'" (id2str n)))
-    | KTypArray _ -> true
-    | KTypList _ -> true
-    | KTypRef _ -> true
-    | KTypExn -> true
-    | KTypErr -> false
-    | KTypModule -> true
+    | KTypArray _ -> (true, false, false)
+    | KTypList et ->
+        let (have_complex, _, _) = need_complex_ops_ et loc in
+        (true, have_complex, false)
+    | KTypRef et ->
+        let (have_complex, _, _) = need_complex_ops_ et loc in
+        (true, have_complex, false)
+    | KTypExn -> (true, false, false)
+    | KTypErr -> (false, false, false)
+    | KTypModule -> (true, false, false)
     in need_complex_ops_ t loc
 
+(* Returns true if in the generated C/assembly code the argument of the corresponding type
+   needs to be passed to a function by reference/pointer. If it returns false, the argument
+   is passed by value. Basically, everything except for the primitive numeric types
+   and pointer types is passed by reference. *)
 let rec pass_by_ref t loc =
     match t with
     | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> false
@@ -180,13 +224,14 @@ let rec pass_by_ref t loc =
     | KTypRecord _ -> true
     | KTypName n ->
         (match (kinfo n) with
-        | KVariant _ -> true
+        | KVariant {contents={kvar_flags}} ->
+            not (List.mem VariantRecursive kvar_flags)
         | KRecord _ -> true
         | KGenTyp {contents={kgen_typ}} -> pass_by_ref kgen_typ loc
         | _ -> raise_compile_err loc (sprintf "unsupported named type '%s'" (id2str n)))
     | KTypArray _ -> true
-    | KTypList _ -> true
-    | KTypRef _ -> true
+    | KTypList _ -> false
+    | KTypRef _ -> false
     | KTypExn -> true
     | KTypErr -> raise_compile_err loc "pass_by_ref: 'err' type cannot occur here"
     | KTypModule -> raise_compile_err loc "pass_by_ref: 'module' type cannot occur here"

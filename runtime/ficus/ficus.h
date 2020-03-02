@@ -44,9 +44,9 @@ typedef int char_; // 4-byte unicode character
 #endif
 #endif
 
-#define FX_INCREF(refcnt) FX_XADD(&(refcnt), 1)
-#define FX_DECREF(refcnt) FX_XADD(&(refcnt), -1)
-typedef int fx_refcount_t;
+#define FX_INCREF(rc) FX_XADD(&(rc), 1)
+#define FX_DECREF(rc) FX_XADD(&(rc), -1)
+typedef int fx_rc_t;
 
 #ifdef _MSC_VER
 #define FX_THREAD_LOCAL __declspec(thread)
@@ -63,7 +63,7 @@ struct fx_exndata_t;
 
 typedef struct fx_exndata_t
 {
-    fx_refcount_t refcount;
+    fx_rc_t rc;
     void (*free_f)(struct fx_exndata_t* data);
 
 } fx_exndata_t;
@@ -83,14 +83,14 @@ void* fx_alloc(size_t sz);
 void fx_free(void* ptr);
 
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
-#define FX_COPY_PTR(src, dst) FX_INCREF(src->refcount); *(dst) = (src)
+#define FX_COPY_PTR(src, dst) FX_INCREF(src->rc); *(dst) = (src)
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
 #define FX_NO_FREE(ptr)
 
 ////////////////////////// Strings //////////////////////
 typedef struct fx_str_t
 {
-    int* refcount;
+    fx_rc_t* rc;
     size_t total;
     char_* data;
     int_ length;
@@ -115,7 +115,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     exndata_typ* data = (exndata_typ*)fx_alloc(sizeof(*data)); \
     if(!data) return FX_OUT_OF_MEM_ERR; \
         \
-    data->base.refcount = 1; \
+    data->base.rc = 1; \
     data->base.free_f = exndata_free; \
     arg_copy; \
         \
@@ -128,7 +128,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_LIST_FREE_IMPL(typ, hd_free_f) \
     typ l = *pl; \
     while(l) { \
-        if(FX_DECREF(l->refcount) > 1) \
+        if(FX_DECREF(l->rc) > 1) \
             break; \
         typ tl = (typ)l->tl; \
         hd_free_f(&l->hd); \
@@ -140,9 +140,9 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_LIST_MAKE_IMPL(typ, hd_copy_f) \
     typ l = (typ)fx_alloc(sizeof(*l)); \
     if (!l) return FX_OUT_OF_MEM_ERR; \
-    l->refcount = 1; \
+    l->rc = 1; \
     l->tl = tl; \
-    if(tl) FX_INCREF(tl->refcount); \
+    if(tl) FX_INCREF(tl->rc); \
     hd_copy_f(hd, &l->hd); \
     *fx_result = l; \
     return FX_OK
@@ -164,7 +164,7 @@ typedef void (*fx_copy_elem_t)(const void* src, void* dst);
 
 typedef struct fx_arr_t
 {
-    int* refcount;
+    fx_rc_t* rc;
     int flags;
     int ndims;
     // put 'data' together with the interleaved '(size, step)' pairs
@@ -292,7 +292,7 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
 
 #define FX_REF_FREE_IMPL(typ, arg_free_f) \
     typ r = *pr; \
-    if(r && FX_DECREF(r->refcount) == 1) \
+    if(r && FX_DECREF(r->rc) == 1) \
     { \
         arg_free_f(&r->data); \
         fx_free(r); \
@@ -302,7 +302,7 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
 #define FX_REF_MAKE_IMPL(typ, arg_copy_f) \
     typ r = (typ)fx_alloc(sizeof(*r)); \
     if (!r) return FX_OUT_OF_MEM_ERR; \
-    r->refcount = 1; \
+    r->rc = 1; \
     arg_copy_f(arg, &r->data); \
     *fx_result = r; \
     return FX_OK
@@ -312,7 +312,7 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
 #define FX_FREE_FP(f) \
     if(f.fv) { f.fv->free_f(f.fv); f.fv=0; }
 #define FX_COPY_FP(src, dst) \
-    if((src).fv) FX_INCREF((src).fv->base.refcount); *(dst) = (src)
+    if((src).fv) FX_INCREF((src).fv->base.rc); *(dst) = (src)
 
 ///////////////////////////// C pointers ///////////////////////////
 
@@ -320,7 +320,7 @@ typedef void (*fx_cptr_destructor_t)(void*);
 
 typedef struct fx_cptr_cell_t
 {
-    fx_refcount_t refcount;
+    fx_rc_t rc;
     fx_cptr_destructor_t free_f;
     void* ptr;
 } fx_cptr_cell_t, *fx_cptr_t;

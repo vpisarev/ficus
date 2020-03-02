@@ -205,6 +205,30 @@ and pprint_elist el =
         if i = 0 then pcut() else (pstr ","; pspace());
         pprint_cexp_ e 0) el; cbox())
 
+and pprint_fun_hdr fname semicolon loc =
+    let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = match (cinfo fname) with
+        | CFun cf -> !cf
+        | _ -> raise_compile_err loc (sprintf "the forward declaration of %s does not reference a function" (pp_id2str fname))
+    in
+    let (argtyps, rt) = (match cf_typ with
+        | CTypFun(argtyps, rt) -> argtyps, rt
+        | _ ->
+            raise_compile_err cf_loc "invalid function type (should be a function)") in
+    let typed_args = Utils.zip cf_args argtyps in
+    obox();
+    if List.mem FunStatic cf_flags then pstr "static " else ();
+    if List.mem FunInline cf_flags then pstr "inline " else ();
+    pprint_ctyp_ rt None;
+    pspace();
+    pprint_id cf_name;
+    pstr "(";
+    obox();
+    List.iteri (fun i (n, t) ->
+        if i = 0 then () else (pstr ","; pspace());
+        pprint_ctyp_ t (Some n)) typed_args;
+    cbox(); pstr (")" ^ (if semicolon then ";" else "")); cbox();
+    pbreak()
+
 and pprint_cstmt s =
     obox();
     (match s with
@@ -262,29 +286,14 @@ and pprint_cstmt s =
         pstr ";"
     | CDefFun cf ->
         let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = !cf in
-        let (argtyps, rt) = (match cf_typ with
-            | CTypFun(argtyps, rt) -> argtyps, rt
-            | _ ->
-                raise_compile_err cf_loc "invalid function type (should be a function)") in
-        let typed_args = Utils.zip cf_args argtyps in
-        obox();
-        if List.mem FunStatic cf_flags then pstr "static " else ();
-        if List.mem FunInline cf_flags then pstr "inline " else ();
-        pprint_ctyp_ rt None;
-        pspace();
-        pprint_id cf_name;
-        pstr "(";
-        obox();
-        List.iteri (fun i (n, t) ->
-            if i = 0 then () else (pstr ","; pspace());
-            pprint_ctyp_ t (Some n)) typed_args;
-        cbox(); pstr ")"; cbox();
-        pbreak();
+        pprint_fun_hdr cf_name false cf_loc;
         (match cf_body with
         | CStmtBlock(s :: [], _) ->
             obox(); pstr "{"; obox(); pspace(); pprint_cstmt s; pspace(); cbox(); pstr "}"; cbox()
         | _ -> pprint_cstmt cf_body);
         pbreak()
+    | CDefForwardFun (cf_name, cf_loc) ->
+        pprint_fun_hdr cf_name true cf_loc
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
         pstr "typedef "; pprint_ctyp_ ct_typ (Some ct_name); pstr ";"
