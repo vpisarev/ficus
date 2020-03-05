@@ -152,13 +152,13 @@ void fx_arr_nextiter(fx_arriter_t* it)
     }
 }
 
-static void fx_free_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_elem_t free_f)
+static void fx_free_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_t free_f)
 {
     char* elems = (char*)elems_;
     for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
 }
 
-static void fx_copy_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_elem_t free_f)
+static void fx_copy_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_t free_f)
 {
     char* elems = (char*)elems_;
     for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
@@ -170,7 +170,7 @@ void fx_free_arr(fx_arr_t* arr)
     {
         if(FX_DECREF(arr->rc) == 1)
         {
-            fx_free_elem_t free_f = arr->free_elem;
+            fx_free_t free_f = arr->free_elem;
             size_t elemsize = arr->elemsize;
             if(free_f)
             {
@@ -212,7 +212,7 @@ void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst)
 }
 
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
-                 fx_free_elem_t free_elem, fx_copy_elem_t copy_elem,
+                 fx_free_t free_elem, fx_copy_t copy_elem,
                  fx_arr_t* arr )
 {
     if(ndims <= 0 || ndims > FX_MAX_DIMS) return FX_DIM_ERR;

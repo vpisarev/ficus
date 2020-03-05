@@ -164,7 +164,6 @@ type val_flag_t = ValArg | ValMutable | ValTempRef | ValImplicitDeref
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
 type variant_flag_t = VariantRecord | VariantRecursive | VariantComplexOps
         | VariantNoComplexOps | VariantNoTag | VariantDummyTag0
-type typ_flag_t = TypComplexOps | TypNoComplexOps | TypCustomDestructor | TypCustomCopy
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
 
@@ -498,8 +497,6 @@ let get_idinfo_loc id_info = match id_info with
     | IdVariant {contents = {dvar_loc}} -> dvar_loc
     | IdClass {contents = {dcl_loc}} -> dcl_loc
     | IdInterface {contents = {di_loc}} -> di_loc
-
-let get_id_loc i = match i with Id.Name _ -> noloc | _ -> get_idinfo_loc (id_info i)
 
 let get_idinfo_typ id_info = match id_info with
     | IdNone -> failwith "attempt to request type of non-existing symbol"

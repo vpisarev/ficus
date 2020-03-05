@@ -28,6 +28,7 @@ enum
 };
 
 /////////////////// Various Basic Definitions ////////////////
+
 #define FX_INLINE __inline
 
 typedef intptr_t int_; // int size in ficus is equal to the pointer size
@@ -54,6 +55,9 @@ typedef int fx_rc_t;
 #define FX_THREAD_LOCAL __thread
 #endif
 
+typedef void (*fx_free_t)(void*);
+typedef void (*fx_copy_t)(const void*, void*);
+
 typedef struct fx_rng_t
 {
     uint64_t state;
@@ -64,8 +68,7 @@ struct fx_exndata_t;
 typedef struct fx_exndata_t
 {
     fx_rc_t rc;
-    void (*free_f)(struct fx_exndata_t* data);
-
+    fx_free_t free_f;
 } fx_exndata_t;
 
 typedef struct fx_exn_t
@@ -83,15 +86,17 @@ void* fx_alloc(size_t sz);
 void fx_free(void* ptr);
 
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
-#define FX_COPY_PTR(src, dst) FX_INCREF(src->rc); *(dst) = (src)
-#define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
-#define FX_NO_FREE(ptr)
+#define FX_COPY_PTR(src, pdst) FX_INCREF(src->rc); *(pdst) = (src)
+#define FX_COPY_SIMPLE(src, pdst) *(pdst) = (src)
+#define FX_NOP(ptr)
+
+void fx_free_ptr(void* pdst);
+void fx_copy_ptr(const void* src, void* pdst);
 
 ////////////////////////// Strings //////////////////////
 typedef struct fx_str_t
 {
     fx_rc_t* rc;
-    size_t total;
     char_* data;
     int_ length;
 } fx_str_t;
@@ -109,7 +114,7 @@ void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 
 #define FX_FREE_EXN(exn) if(!(exn)->data) ; else fx_free_exn(exn)
-#define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
+#define FX_COPY_EXN(src, pdst) if(!(src)->data) *(pdst)=*(src) else fx_copy_exn((src), (pdst))
 
 #define FX_EXN_MAKE_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy) \
     exndata_typ* data = (exndata_typ*)fx_alloc(sizeof(*data)); \
@@ -147,6 +152,8 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     *fx_result = l; \
     return FX_OK
 
+void fx_free_list_simple(void* pl);
+
 //////////////////////////// Arrays /////////////////////////
 
 #define FX_MAX_DIMS 5
@@ -159,8 +166,8 @@ typedef struct fx_arrdim_t
     size_t step;
 } fx_arrdim_t;
 
-typedef void (*fx_free_elem_t)(void* elem);
-typedef void (*fx_copy_elem_t)(const void* src, void* dst);
+typedef void (*fx_free_t)(void* elem);
+typedef void (*fx_copy_t)(const void* src, void* dst);
 
 typedef struct fx_arr_t
 {
@@ -174,8 +181,8 @@ typedef struct fx_arr_t
     // data, dim[0].size, dim[0].step, dim[1].size
     char*  data;
     fx_arrdim_t dim[FX_MAX_DIMS];
-    fx_free_elem_t free_elem;
-    fx_copy_elem_t copy_elem;
+    fx_free_t free_elem;
+    fx_copy_t copy_elem;
 }
 fx_arr_t;
 
@@ -253,36 +260,34 @@ void fx_arr_nextiter(fx_arriter_t* it);
 void fx_free_arr(fx_arr_t* arr);
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
-                 fx_free_elem_t free_elem, fx_copy_elem_t copy_elem,
-                 fx_arr_t* arr );
+                 fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr );
 FX_INLINE int fx_make_arr1d(int_ size0, size_t elemsize,
-                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem,
-                fx_arr_t* arr)
+                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
 { return fx_make_arr(1, &size0, elemsize, free_elem, copy_elem, arr); }
 
 FX_INLINE int fx_make_arr2d(int_ size0, int_ size1, size_t elemsize,
-                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
 {
     int_ size[] = { size0, size1 };
     return fx_make_arr(2, size, elemsize, free_elem, copy_elem, arr);
 }
 
 FX_INLINE int fx_make_arr3d(int_ size0, int_ size1, int_ size2, size_t elemsize,
-                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
 {
     int_ size[] = { size0, size1, size2 };
     return fx_make_arr(3, size, elemsize, free_elem, copy_elem, arr);
 }
 
 FX_INLINE int fx_make_arr4d(int_ size0, int_ size1, int_ size2, int_ size3, size_t elemsize,
-                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
 {
     int_ size[] = { size0, size1, size2, size3 };
     return fx_make_arr(4, size, elemsize, free_elem, copy_elem, arr);
 }
 
 FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_ size4, size_t elemsize,
-                fx_free_elem_t free_elem, fx_copy_elem_t copy_elem, fx_arr_t* arr)
+                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
 {
     int_ size[] = { size0, size1, size2, size3, size4 };
     return fx_make_arr(5, size, elemsize, free_elem, copy_elem, arr);
@@ -309,26 +314,44 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
 
 //////////////////////// Function pointers /////////////////////////
 
+typedef struct fx_base_fv_t
+{
+    fx_rc_t rc;
+    fx_free_t free_f;
+} fx_base_fv_t;
+
+typedef struct fx_fv_t
+{
+    fx_base_fv_t base;
+} fx_fv_t;
+
+typedef struct fx_fp_t
+{
+    void (*fp)(void);
+    fx_fv_t* fv;
+} fx_fp_t;
+
 #define FX_FREE_FP(f) \
-    if(f.fv) { f.fv->free_f(f.fv); f.fv=0; }
-#define FX_COPY_FP(src, dst) \
+    if(f.fv) { f.fv->base.free_f(f.fv); f.fv=0; }
+#define FX_COPY_FP(src, pdst) \
     if((src).fv) FX_INCREF((src).fv->base.rc); *(dst) = (src)
 
-///////////////////////////// C pointers ///////////////////////////
+void fx_free_fp(void* fp);
+void fx_copy_fp(const void* src, void* pdst);
 
-typedef void (*fx_cptr_destructor_t)(void*);
+///////////////////////////// C pointers ///////////////////////////
 
 typedef struct fx_cptr_cell_t
 {
     fx_rc_t rc;
-    fx_cptr_destructor_t free_f;
+    fx_free_t free_f;
     void* ptr;
 } fx_cptr_cell_t, *fx_cptr_t;
 
 void fx_cptr_no_destructor(void* ptr);
 void fx_free_cptr_(fx_cptr_t* cptr);
 void fx_free_cptr(fx_cptr_t* cptr);
-void fx_copy_cptr(const fx_cptr_t* src, fx_cptr_t* dst);
-int fx_make_cptr(void* ptr, fx_cptr_destructor_t free_f, fx_cptr_t* fx_result);
+void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* pdst);
+int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);
 
 #endif

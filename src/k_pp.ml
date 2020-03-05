@@ -24,7 +24,7 @@ let pprint_id n =
     match n with
     | Id.Name _ -> pstr (id2str n)
     | _ ->
-        let cname = get_id_cname n noloc in
+        let cname = get_idk_cname n noloc in
         pstr (if cname = "" then (id2str n) else ("_vx_" ^ cname))
 
 type ktyp_pr_t = KTypPr0 | KTypPrFun | KTypPrComplex | KTypPrBase
@@ -76,7 +76,7 @@ let rec ppktyp_ t p1 =
     | KTypRef(t1) -> ppktypsuf t1 "Ref"
     | KTypArray(d, t1) -> ppktypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
     | KTypName(n) ->
-        let cname = get_id_cname n noloc in
+        let cname = get_idk_cname n noloc in
         if cname = "" then pprint_id n else pstr ("_vx_" ^ cname)
     | KTypTuple(tl) -> ppktyplist_ "(" tl
     | KTypRecord(rn, relems) -> obox(); pprint_id rn; pstr " {";
@@ -111,11 +111,14 @@ let rec pprint_kexp e = pprint_kexp_ e true
 and pprint_kexp_ e prtyp =
     let t = get_kexp_typ e in
     let eloc = get_kexp_loc e in
+    let ppkti kti = match kti with
+        Some({kti_complex}) -> pstr (if kti_complex then "COMPLEX" else "SIMPLE"); pspace()
+        | _ -> () in
     let pprint_atom_ a = pprint_atom a true eloc in
     let pprint_dom_ r = pprint_dom r eloc in
     let pprint_id_ i = pprint_atom_ (Atom.Id i) in
     let pprint_id_label i =
-        let cname = get_id_cname i noloc in
+        let cname = get_idk_cname i noloc in
         if cname = "" then pstr (id2str i)
         else pstr ("_vx_" ^ cname) in
     let obox_cnt = ref 0 in
@@ -176,14 +179,12 @@ and pprint_kexp_ e prtyp =
         (match ke_typ with
         | KTypVoid -> ()
         | _ -> pspace(); pstr "OF"; pspace(); pprint_ktyp ke_typ); cbox()
-    | KDefGenTyp { contents = {kgen_name; kgen_typ; kgen_flags} } ->
-        let cops = List.mem TypComplexOps kgen_flags in
-        obox(); pstr (if cops then "COMPLEX" else "SIMPLE"); pspace();
+    | KDefGenTyp { contents = {kgen_name; kgen_typ; kgen_info} } ->
+        obox(); ppkti kgen_info;
         pstr "GENERATED_TYPE"; pspace(); pprint_id_label kgen_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kgen_typ; cbox()
-    | KDefRecord { contents = {krec_name; krec_elems; krec_flags} } ->
-        let cops = List.mem TypComplexOps krec_flags in
-        obox(); pstr (if cops then "COMPLEX" else "SIMPLE"); pspace();
+    | KDefRecord { contents = {krec_name; krec_elems; krec_info} } ->
+        obox(); ppkti krec_info;
         pstr "TYPE"; pspace(); pprint_id_label krec_name;
         pspace(); pstr "="; pspace(); pstr "{"; obox();
         List.iter (fun (n, t) -> obox(); pprint_id n; pstr ":"; pspace();

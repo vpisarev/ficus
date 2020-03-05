@@ -85,16 +85,6 @@ type cunop_t =
     | COpPrefixInc | COpPrefixDec | COpSuffixInc | COpSuffixDec | COpMacroName | COpMacroDefined
 
 type ctyp_attr_t = CTypConst | CTypVolatile
-type ctyp_kind_t =
-    | CKindPrimitive (* the type is an integer or floating-point number, bool or char *)
-    | CKindSimple (* the type is a tuple, record or non-recursive variant, where
-                    all the elements are primitive or simple *)
-    | CKindStruct (* the type is a tuple, record or non-recursive variant, which elements
-                     may require a special handling *)
-    | CKindSimpleCollection (* array, which elements are primitive or simple, or a string *)
-    | CKindComplexCollection (* array, which elements are not simple *)
-    | CKindSmartPointer (* the type, which instances are dynamically allocated and
-            handled using smart pointers: list, reference, recursive variant, cptr *)
 
 type ctyp_flag_t =
     | CTypFlagVariantNilCase of int (* if the type is a recursive variant and one of its cases has "void" type,
@@ -131,7 +121,7 @@ type ctyp_t =
     | CTypRawPointer of ctyp_attr_t list * ctyp_t
     | CTypArray of int * ctyp_t
     | CTypName of id_t
-    | CTypCName of string
+    | CTypCName of id_t
     | CTypLabel
     | CTypAny
 and cctx_t = ctyp_t * loc_t
@@ -181,14 +171,15 @@ and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
                   cf_args: id_t list; cf_body: cstmt_t;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
-                  ct_kind: ctyp_kind_t; ct_flags: ctyp_flag_t list;
-                  ct_make: id_t; ct_free: id_t; ct_copy: id_t;
+                  ct_flags: ctyp_flag_t list; ct_make: id_t; ct_free: id_t; ct_copy: id_t;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
                    ce_scope: scope_t list; ce_loc: loc_t }
 and cdeflabel_t = { cl_name: id_t; cl_cname: string; cl_scope: scope_t list; cl_loc: loc_t }
 and cdefmacro_t = { cm_name: id_t; cm_cname: string; cm_args: id_t list; cm_body: cstmt_t list;
                     cm_scope: scope_t list; cm_loc: loc_t }
+
+type ctypinfo_t = { cti_freef: id_t; cti_copyf: id_t; cti_pass_by_ref: bool; cti_ptr: bool }
 
 type cinfo_t =
     | CNone | CText of string | CVal of cdefval_t | CFun of cdeffun_t ref
@@ -649,8 +640,9 @@ let make_cfor_inc i ityp a b delta body loc =
     let e2 = CExpUnOp(COpSuffixInc, i_exp, (ityp, loc)) in
     CStmtFor ((e0 :: []), (Some e1), (e2 :: []), body, loc)
 
-let std_fx_free_elem_t = CTypCName "fx_free_elem_t"
-let std_fx_copy_elem_t = CTypCName "fx_copy_elem_t"
+let std_fx_rc_t = ref CTypNil
+let std_fx_free_t = ref CTypNil
+let std_fx_copy_t = ref CTypNil
 
 let curr_exn_val = ref (-1024)
 let std_FX_MAX_DIMS = 5
@@ -662,6 +654,9 @@ let std_FX_CALL = ref noid
 let std_FX_COPY_PTR = ref noid
 let std_FX_COPY_SIMPLE = ref noid
 let std_FX_NO_FREE = ref noid
+
+let std_fx_copy_ptr = ref noid
+let std_fx_free_ptr = ref noid
 
 let std_fx_free_str = ref noid
 let std_fx_copy_str = ref noid
@@ -690,6 +685,8 @@ let std_FX_REF_MAKE_IMPL = ref noid
 
 let std_FX_FREE_FP = ref noid
 let std_FX_COPY_FP = ref noid
+let std_fx_free_fp = ref noid
+let std_fx_copy_fp = ref noid
 
 let std_fx_free_cptr = ref noid
 let std_fx_copy_cptr = ref noid

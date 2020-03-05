@@ -37,33 +37,94 @@ open Ast
 open K_form
 open C_form
 
+let prim_ctypinfo = {cti_freef=noid; cti_copyf=noid; cti_pass_by_ref=false; cti_ptr=false}
+
+(* converts ktyp to ctyp and also returns some basic information about the type *)
 let ktyp2ctyp t loc =
     let report_err tname =
-        raise_compile_err loc (sprintf "%s is not supported here. Should be converted to KTypName()" tname)
+        raise_compile_err loc (sprintf "ktyp2ctyp: %s is not supported here. Should be converted to KTypName()" tname)
     in
     let rec ktyp2ctyp_ t =
         match t with
-        | KTypInt -> CTypInt
-        | KTypSInt n -> CTypSInt n
-        | KTypUInt n -> CTypUInt n
-        | KTypFloat n -> CTypFloat n
-        | KTypVoid -> CTypVoid
-        | KTypNil -> CTypNil
-        | KTypBool -> CTypBool
-        | KTypChar -> CTypWChar
-        | KTypString -> CTypString
-        | KTypCPointer -> CTypCSmartPointer
-        | KTypFun (args, rt) -> CTypFunPtr((List.map ktyp2ctyp_ args), ktyp2ctyp_ rt)
+        | KTypInt -> (CTypInt, prim_ctypinfo)
+        | KTypSInt n -> ((CTypSInt n), prim_ctypinfo)
+        | KTypUInt n -> ((CTypUInt n), prim_ctypinfo)
+        | KTypFloat n -> ((CTypFloat n), prim_ctypinfo)
+        | KTypVoid -> (CTypVoid, prim_ctypinfo)
+        | KTypNil -> (CTypNil, prim_ctypinfo)
+        | KTypBool -> (CTypBool, prim_ctypinfo)
+        | KTypChar -> (CTypWChar, prim_ctypinfo)
+        | KTypString -> (CTypString, {cti_freef=!std_fx_free_str;
+            cti_copyf=!std_fx_copy_str; cti_pass_by_ref=true; cti_ptr=false})
+        | KTypCPointer -> (CTypCSmartPointer, {cti_freef=!std_fx_free_cptr;
+            cti_copyf=!std_fx_copy_cptr; cti_pass_by_ref=false; cti_ptr=true})
+        | KTypFun (args, rt) -> (CTypFunPtr((List.map ktyp2ctyp_ args), ktyp2ctyp_ rt),
+            {cti_freef=!std_fx_free_fptr; cti_copyf=!std_fx_copy_fptr; cti_pass_by_ref=true; cti_ptr=false})
         | KTypTuple _ -> report_err "KTypTuple"
         | KTypRecord _ -> report_err "KTypRecord"
-        | KTypName i -> CTypName i
+        | KTypName i ->
+            let CTypName i
         | KTypArray _ -> report_err "KTypArray"
         | KTypList _ -> report_err "KTypList"
         | KTypRef _ -> report_err "KTypRef"
-        | KTypExn -> CTypExn
-        | KTypErr -> CTypVoid
-        | KTypModule -> CTypVoid
+        | KTypExn -> (CTypExn, {cti_freef=!std_fx_free_exn; cti_copyf=!std_fx_copy_exn;
+            cti_pass_by_ref=true; cti_ptr=false})
+        | KTypErr -> (CTypVoid, prim_ctypinfo)
+        | KTypModule -> (CTypVoid, prim_ctypinfo)
     in ktyp2ctyp_ t
+
+(* Returns true if in the generated C/assembly code the argument of the corresponding type
+   needs to be passed to a function by reference/pointer. If it returns false, the argument
+   is passed by value. Basically, everything except for the primitive numeric types
+   and pointer types is passed by reference. *)
+(* let rec pass_ktyp_by_ref t loc =
+    match t with
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> false
+    | KTypVoid -> raise_compile_err loc "pass_ktyp_by_ref: 'void' type cannot occur here"
+    | KTypNil -> raise_compile_err loc "pass_ktyp_by_ref: 'nil' type cannot occur here"
+    | KTypString -> true
+    | KTypCPointer -> true
+    | KTypFun _ -> true
+    | KTypTuple _ -> true
+    | KTypRecord _ -> true
+    | KTypName n ->
+        (match (kinfo n) with
+        | KVariant {contents={kvar_flags}} ->
+            not (List.mem VariantRecursive kvar_flags)
+        | KRecord _ -> true
+        | KGenTyp {contents={kgen_typ}} -> pass_ktyp_by_ref kgen_typ loc
+        | _ -> raise_compile_err loc (sprintf "pass_ktyp_by_ref: unsupported named type '%s'" (id2str n)))
+    | KTypArray _ -> true
+    | KTypList _ -> false
+    | KTypRef _ -> false
+    | KTypExn -> true
+    | KTypErr -> raise_compile_err loc "pass_ktyp_by_ref: 'err' type cannot occur here"
+    | KTypModule -> raise_compile_err loc "pass_ktyp_by_ref: 'module' type cannot occur here" *)
+
+let get_ctyp_ops t loc =
+    match t with
+    | CTypInt | CTypCInt | CTypSize_t
+    | CTypSInt _ | CTypUInt _ | CTypFloat _
+    | CTypNil | CTypBool | CTypWChar | CTypVoid -> (false, noid, noid)
+    | CTypCSmartPointer -> (false, !std_fx_free_cptr, !std_fx_copy_cptr)
+    | CTypString -> (true,
+    | CTypExn -> (true, !std_fx_copy_exn, !std_fx_free_exn)
+    | CTypStruct (n_opt, _) ->
+        (match n_opt with
+        | Some n -> get_ctyp_ops (CTypName n) loc
+        | _ -> raise_compile_err loc "get_ctyp_ops: anonymous records cannot be passed there")
+    | CTypUnion (n_opt, _) ->
+        (match n_opt with
+        | Some n -> get_ctyp_ops (CTypName n) loc
+        | _ -> raise_compile_err loc "get_ctyp_ops: anonymous records cannot be passed there")
+    | CTypFun of ctyp_t list * ctyp_t
+    | CTypFunPtr of ctyp_t list * ctyp_t
+    | CTypRawPointer (of ctyp_attr_t list * ctyp_t
+    | CTypArray of int * ctyp_t
+    | CTypName of id_t
+    | CTypCName of string
+    | CTypLabel -> raise_compile_err loc "get_ctyp_ops: 'CTypLabel' cannot be passed there"
+    | CTypAny -> raise_compile_err loc "get_ctyp_ops: 'CTypAny' cannot be passed there"
 
 let convert_all_typs top_code =
     let top_fwd_decl = ref ([]: cstmt_t list) in
@@ -79,19 +140,17 @@ let convert_all_typs top_code =
         else ()
     in
     let create_ctyp_decl tn ptr_typ gen_free gen_cpy fwd_decl loc =
-        let is_simple = gen_free || gen_cpy in
         let freef = if gen_free then (gen_temp_idc "free") else noid in
         let cpyf = if gen_cpy then (gen_temp_idc "copy") else noid in
-        let cname = get_id_cname tn loc in
+        let cname = get_idk_cname tn loc in
         let (struct_id, struct_cname) = if ptr_typ then ((dup_idc tn), cname ^ "_data_t") else (tn, cname) in
-        let kind = (if is_simple then CKindSimple else CKindStruct) in
         let struct_decl = ref { ct_name=struct_id;
             ct_typ=CTypStruct((Some struct_id), []);
             ct_ktyp=KTypName tn; ct_cname=struct_cname;
-            ct_kind=kind; ct_flags=[]; ct_make=noid; ct_free=freef; ct_copy=cpyf;
+            ct_flags=[]; ct_make=noid; ct_free=freef; ct_copy=cpyf;
             ct_scope=ScGlobal::[]; ct_loc=loc } in
         let typ_decl = if ptr_typ then
-            ref { !struct_decl with ct_name=tn; ct_typ=(make_ptr struct_id); ct_cname=cname }
+            ref { !struct_decl with ct_name=tn; ct_typ=(make_ptr (CTypName struct_id)); ct_cname=cname }
             else struct_decl in
         let ctyp = CTypName struct_id in
         let (src_typ, dst_typ) = ((make_const_ptr ctyp), (make_ptr ctyp)) in
@@ -116,7 +175,7 @@ let convert_all_typs top_code =
             set_idc_entry cpyf (CFun cpyf_decl);
             add_fwd_decl fwd_decl (CDefForwardFun (cpyf, loc))
         else ();
-        (tn, struct_decl, freef_decl, cpyf_decl)
+        (struct_decl, freef_decl, cpyf_decl)
 
     let rec cvt2ctyp tn loc =
         if (IdSet.mem tn !all_decls) then ()
@@ -124,21 +183,27 @@ let convert_all_typs top_code =
             let visited = IdSet.mem tn !all_visited in
             let deps = K_annotate_types.get_typ_deps tn loc in
             let ktyp_info = kinfo_ tn loc in
-            let (opt_rec_var, deps) = match ktyp_info with
+            let (opt_rec_var, fwd_decl, deps) = match ktyp_info with
                 | KVariant kvar ->
                     let {kvar_flags} = !kvar in
                     if (List.mem VariantRecursive kvar_flags) then
                         (if (IdSet.mem tn !all_fwd_decls) then ()
                         else
-                        ((Some kvar), (List.filter (fun d -> d != tn) deps)))
+                        ((Some kvar), true, (List.filter (fun d -> d != tn) deps)))
                     else
-                        (None, deps)
-                | _ -> (None, deps)
+                        (None, false, deps)
+                | _ -> (None, false, deps)
             let _ = match (opt_rec_var, visited) with
                 | (None, true) -> raise_compile_err loc
-                    (sprintf "")
+                    (sprintf "non-recursive variant type '%s' references itself directly or indirectly" (pp_id2str tn))
                 | _ -> ()
             let _ = all_visited := IdSet.add tn !all_visited in
+            let (complex_ops, ptr_typ, gen_free, gen_copy) = K_annotate_types.classify_typ (KTypName tn) loc in
+            let (struct_decl, freef_decl, cpyf_decl) = create_ctyp_decl tn ptr_typ gen_free gen_cpy in
+            let _ = List.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps in
+            let _ = match ktyp_info with
+                | KGenTyp kgen ->
+                    let {kgen_typ; kgen_loc} = !kgen in
 
     let rec fold_n_cvt_ktyp t loc callb = ()
     and fold_n_cvt_kexp e loc callb =

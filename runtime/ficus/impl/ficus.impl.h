@@ -31,6 +31,45 @@ void fx_free(void* ptr)
     free(ptr);
 }
 
+/////////////// list ////////////////
+
+typedef struct fx_list_simple_cell_t
+{
+    fx_rc_t rc;
+    struct fx_list_simple_cell_t* tl;
+} fx_list_simple_cell_t;
+
+void fx_free_list_simple(void* pl)
+{
+    fx_list_simple_cell_t **pl_ = (fx_list_simple_cell_t**pl), l = *pl_;
+    while(l) {
+        if(FX_DECREF(l->rc) > 1)
+            break;
+        fx_list_simple_cell_t* tl = (fx_list_simple_cell_t*)l->tl;
+        fx_free(l);
+        l = tl;
+    }
+    *pl_ = 0;
+}
+
+////// reference-counted cells //////
+
+void fx_free_ptr(void* pp)
+{
+    fx_rc_t** pp_ = (fx_rc_t**)pp;
+    if(*pp_ && FX_DECREF(**pp_) == 1)
+        fx_free(*pp_);
+    *pp_ = 0;
+}
+
+void fx_copy_ptr(const void* src, void* dst)
+{
+    fx_rc_t* src_ = (fx_rc_t*)src;
+    fx_rc_t** dst_ = (fx_rc_t**)dst;
+    if(src_) FX_INCREF(*src_);
+    *dst_ = src;
+}
+
 ///////////// exceptions /////////////
 
 void fx_free_exn(fx_exn_t* exn)
@@ -47,6 +86,20 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst)
 {
     if(src->data) FX_INCREF(src->data->rc);
     *dst = *src;
+}
+
+//////////////// function pointers ////////////////
+
+void fx_free_fp(void* fp)
+{
+    fx_fp_t* fp_ = (fx_fp_t*)fp;
+    FX_FREE_FP(fp_)
+}
+
+void fx_copy_fp(const void* src, void* pdst)
+{
+    fx_fp_t *src_ = (fx_fp_t*)src, **pdst_ = (fx_fp_t**)pdst;
+    FX_COPY_FP(src_, *pdst_);
 }
 
 //////////////////// cpointers ////////////////////
@@ -76,7 +129,7 @@ void fx_copy_cptr(const fx_cptr_t* src, fx_cptr_t* dst)
     *dst = *src;
 }
 
-int fx_make_cptr(void* ptr, fx_cptr_destructor_t free_f, fx_cptr_t* fx_result)
+int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 {
     fx_cptr_t p = (fx_cptr_t)fx_alloc(sizeof(*p));
     if(!p) return FX_OUT_OF_MEM_ERR;

@@ -62,6 +62,15 @@ type intrin_t =
     | IntrinListHead
     | IntrinListTail
 
+type ktypinfo_t =
+{
+    kti_complex: bool;
+    kti_ptr: bool;
+    kti_pass_by_ref: bool;
+    kti_custom_free: bool;
+    kti_custom_copy: bool
+}
+
 type ktyp_t =
     | KTypInt
     | KTypSInt of int
@@ -125,20 +134,17 @@ and kdeffun_t = { kf_name: id_t; kf_cname: string; kf_typ: ktyp_t; kf_args: id_t
                   kf_flags: fun_flag_t list; kf_closure: id_t * id_t;
                   kf_scope: scope_t list; kf_loc: loc_t }
 and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
-and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_targs: ktyp_t list;
+and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_info: ktypinfo_t option; kvar_targs: ktyp_t list;
                       kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
-and kdefrecord_t = { krec_name: id_t; krec_cname: string;
-                    krec_targs: ktyp_t list;
-                    krec_elems: (id_t * ktyp_t) list;
-                    krec_flags: typ_flag_t list;
+and kdefrecord_t = { krec_name: id_t; krec_cname: string; krec_info: ktypinfo_t option;
+                    krec_targs: ktyp_t list; krec_elems: (id_t * ktyp_t) list;
                     krec_scope: scope_t list; krec_loc: loc_t }
 and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
                           kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
-and kdefgentyp_t = { kgen_name: id_t; kgen_cname: string;
-                     kgen_typ: ktyp_t; kgen_flags: typ_flag_t list;
-                     kgen_scope: scope_t list; kgen_loc: loc_t }
+and kdefgentyp_t = { kgen_name: id_t; kgen_cname: string; kgen_info: ktypinfo_t option;
+                     kgen_typ: ktyp_t; kgen_scope: scope_t list; kgen_loc: loc_t }
 
 type kinfo_t =
     | KNone | KText of string | KVal of kdefval_t | KFun of kdeffun_t ref
@@ -243,7 +249,7 @@ let get_kinfo_loc info =
     | KClosureVars {contents = {kcv_loc}} -> kcv_loc
     | KGenTyp {contents = {kgen_loc}} -> kgen_loc
 
-let get_id_loc i = get_kinfo_loc (kinfo i)
+let get_idk_loc i = get_kinfo_loc (kinfo i)
 
 let check_kinfo info i loc =
     match info with
@@ -262,7 +268,7 @@ let get_kinfo_cname info loc =
     | KClosureVars {contents = {kcv_cname}} -> kcv_cname
     | KGenTyp {contents = {kgen_cname}} -> kgen_cname
 
-let get_id_cname i loc =
+let get_idk_cname i loc =
     let info = kinfo_ i loc in
     check_kinfo info i loc;
     get_kinfo_cname info loc

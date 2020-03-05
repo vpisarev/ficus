@@ -146,7 +146,7 @@ let rec pprint_ctyp_ t id_opt =
         cbox()
     | CTypArray (d, _) -> pstr (sprintf "fx_arr%d_t" d)
     | CTypName n -> pprint_id n; pr_id_opt()
-    | CTypCName s -> pstr s; pr_id_opt()
+    | CTypCName n -> pstr (pp_id2str n); pr_id_opt()
     | CTypLabel -> pstr "/*<label>*/"; pr_id_opt()
     | CTypAny -> pstr "void"; pr_id_opt()
 

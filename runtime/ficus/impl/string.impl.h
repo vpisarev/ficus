@@ -8,7 +8,8 @@
 
 void fx_free_str(fx_str_t* str)
 {
-    if(str->rc) {
+    if( str->rc )
+    {
         if(FX_DECREF(*str->rc) == 1)
             fx_free(str->rc);
         str->rc = 0;
@@ -23,11 +24,13 @@ void fx_copy_str(const fx_str_t* src, fx_str_t* dst)
 
 int fx_make_str(fx_str_t* str, char_* strdata, int_ length)
 {
-    if(!strdata) length = 0;
-    size_t strsize = length*sizeof(strdata[0]);
-    str->total = sizeof(*str->rc) + strsize;
-    str->rc = (fx_rc_t*)fx_alloc(str->total);
-    if(!str->rc) return FX_OUT_OF_MEM_ERR;
+    if( !strdata )
+        length = 0;
+
+    size_t total = sizeof(*str->rc) + length*sizeof(strdata[0]);
+    str->rc = (fx_rc_t*)fx_alloc(total);
+    if( !str->rc )
+        return FX_OUT_OF_MEM_ERR;
 
     str->data = (char_*)(str->rc + 1);
     str->length = length;
