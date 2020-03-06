@@ -33,7 +33,7 @@ let find_globals top_code set0 = List.fold_left (fun globals e ->
     | KDefFun {contents={kf_name}} -> Some kf_name
     | KDefExn {contents={ke_name}} -> Some ke_name
     | KDefVariant {contents={kvar_name}} -> Some kvar_name
-    | KDefRecord {contents={krec_name}} -> Some krec_name
+    | KDefTyp {contents={kt_name}} -> Some kt_name
     | _ -> None in
     match n_opt with
     | Some n -> IdSet.add n globals
@@ -62,7 +62,7 @@ let lift top_code =
             (match (kinfo_ n kf_loc) with
             | KExn _ -> true
             | KVariant _ -> true
-            | KRecord _ -> true
+            | KTyp _ -> true
             | KVal _ -> false
             | KFun {contents={kf_flags}} ->
                 (List.mem FunInC kf_flags) || (List.mem FunConstr kf_flags)
@@ -79,9 +79,9 @@ let lift top_code =
         | KDefVariant {contents={kvar_name; kvar_loc}} ->
             if (is_global kvar_name) then e
             else add_to_globals_and_lift kvar_name e kvar_loc
-        | KDefRecord {contents={krec_name; krec_loc}} ->
-            if (is_global krec_name) then e
-            else add_to_globals_and_lift krec_name e krec_loc
+        | KDefTyp {contents={kt_name; kt_loc}} ->
+            if (is_global kt_name) then e
+            else add_to_globals_and_lift kt_name e kt_loc
         | KDefExn {contents={ke_name; ke_loc}} ->
             if (is_global ke_name) then e
             else add_to_globals_and_lift ke_name e ke_loc

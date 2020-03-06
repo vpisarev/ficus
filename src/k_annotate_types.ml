@@ -38,9 +38,8 @@ let get_typ_deps n loc =
         | KTypRef et -> get_ktyp_deps_ et deps
     in
     match (kinfo_ n loc) with
-    | KRecord {contents={krec_elems}} -> List.fold_left (fun deps (_, ti) -> get_ktyp_deps_ ti deps) IdSet.empty krec_elems
     | KVariant {contents={kvar_cases}} -> List.fold_left (fun deps (_, ti) -> get_ktyp_deps_ ti deps) IdSet.empty kvar_cases
-    | KGenTyp {contents={kgen_typ}} -> get_ktyp_deps_ kgen_typ IdSet.empty
+    | KTyp {contents={kt_typ}} -> get_ktyp_deps_ kt_typ IdSet.empty
     | _ -> raise_compile_err loc (sprintf "the symbol '%s' is not a type" (id2str n))
 
 let find_recursive top_code =
@@ -48,15 +47,12 @@ let find_recursive top_code =
     let fold_deps0_ktyp_ t loc callb = () in
     let fold_deps0_kexp_ e callb =
         match e with
-        | KDefRecord {contents={krec_name; krec_loc}} ->
-            let deps = get_typ_deps krec_name krec_loc in
-            dep_env := Env.add krec_name (ref deps) !dep_env
         | KDefVariant {contents={kvar_name; kvar_loc}} ->
             let deps = get_typ_deps kvar_name kvar_loc in
             dep_env := Env.add kvar_name (ref deps) !dep_env
-        | KDefGenTyp {contents={kgen_name; kgen_loc}} ->
-            let deps = get_typ_deps kgen_name kgen_loc in
-            dep_env := Env.add kgen_name (ref deps) !dep_env
+        | KDefTyp {contents={kt_name; kt_loc}} ->
+            let deps = get_typ_deps kt_name kt_loc in
+            dep_env := Env.add kt_name (ref deps) !dep_env
         | _ -> fold_kexp e callb
     in let deps0_callb =
     {
@@ -111,8 +107,8 @@ let find_recursive top_code =
         | _ -> ()) all_typs;
     top_code
 
-(* returns 4-element tuple:
-    1. whether the type needs any special handling (destructor and/or copy operator)
+(* returns the ktypinfo_t structure for each value of ktyp_t:
+    1. whether the type is complex, i.e. needs any special handling (non-trivial destructor and non-trivial copy operator)
     2. whether the type is pointer type (i.e. which content is allocated on heap rather than stack).
        note that string and array are non-pointer types,
        because their headers are allocated on stack,
@@ -120,108 +116,85 @@ let find_recursive top_code =
     3. whether the type needs custom destructor
     4. whether the type needs custom copy operator
 
-    * if the 1st element of the tuple is false, then all other elements are false too.
-     It means that the type is primitive, it does not need a destructor and
-     it can be copied with a simple '=' operator.
-
-    * if the 1st element is true,it means that the type needs special treatment
-     (and correspondingly all the types that have element(s) of this type).
-
-    * if the 1st element is true, but the 3rd and 4th elements are false,
-     it means that the element needs special treatment, but the destructor and
-     the copy operator are standard (they do not need to be declared). For example,
-     string, smart c pointer, array, function pointer, reference or
-     list with simple element(s) are such types.
-
-    * if the 1st element and the 3rd elements are true, but the 4th element is false,
-     it means that the element needs custom destructor, but it can be copied with
-     a standard operator. References and lists with complex element(s), as well as
-     recursive variants are such cases.
-     To copy an instance of such type, you need to increment the source's
-     reference counter (which is always the first element) and then copy the pointer.
+    note that KTypString and KTypArray, for example, are complex types, but
+    they do not need custom destructor or custom copy operator,
+    because there are standard ones in the runtime.
 *)
-let classify_typ t loc =
+let get_ktyp_info t loc =
     let visited = ref (IdSet.empty) in
-    let rec classify_typ_ t loc =
+    let rec get_ktyp_info_ t loc =
     match t with
-    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ -> (false, false, false, false)
-    | KTypVoid | KTypNil | KTypBool | KTypChar -> (false, false, false, false)
-    | KTypString -> (true, false, false, false)
-    | KTypCPointer -> (true, true, false, false)
-    | KTypFun _ -> (true, false, false, false)
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+    | KTypVoid | KTypNil | KTypBool | KTypChar | KTypErr ->
+        { kti_complex=false; kti_ptr=false; kti_pass_by_ref=false;
+          kti_custom_free=false; kti_custom_copy=false }
+    | KTypString | KTypArray _ | KTypExn | KTypFun _ | KTypModule ->
+        { kti_complex=true; kti_ptr=false; kti_pass_by_ref=true;
+          kti_custom_free=false; kti_custom_copy=false }
+    | KTypCPointer ->
+        { kti_complex=true; kti_ptr=true; kti_pass_by_ref=false;
+          kti_custom_free=false; kti_custom_copy=false }
     | KTypTuple(elems) ->
         let have_complex = List.exists (fun ti ->
-            let (f, _, _, _) = classify_typ_ ti loc in f) elems in
-        (have_complex, false, have_complex, have_complex)
+            (get_ktyp_info_ ti loc).kti_complex) elems in
+        { kti_complex=have_complex; kti_ptr=false; kti_pass_by_ref=true;
+          kti_custom_free=have_complex; kti_custom_copy=have_complex }
     | KTypRecord(_, relems) ->
         let have_complex = List.exists (fun (_, ti) ->
-            let (f, _, _, _) = classify_typ_ ti loc in f) relems in
-        (have_complex, false, have_complex, have_complex)
+            (get_ktyp_info_ ti loc).kti_complex) relems in
+        { kti_complex=have_complex; kti_ptr=false; kti_pass_by_ref=true;
+          kti_custom_free=have_complex; kti_custom_copy=have_complex }
+    | KTypList et ->
+        let have_complex = (get_ktyp_info_ et loc).kti_complex in
+        { kti_complex=true; kti_ptr=true; kti_pass_by_ref=false;
+          kti_custom_free=have_complex; kti_custom_copy=false }
+    | KTypRef et ->
+        let have_complex = (get_ktyp_info_ et loc).kti_complex in
+        { kti_complex=true; kti_ptr=true; kti_pass_by_ref=false;
+          kti_custom_free=have_complex; kti_custom_copy=false }
     | KTypName n ->
         (match (kinfo n) with
         | KVariant kvar ->
-            let {kvar_cases; kvar_flags; kvar_loc} = !kvar in
-            if List.mem VariantRecursive kvar_flags then (true, true, true, false)
-            else if List.mem VariantNoComplexOps kvar_flags then (false, false, false, false)
-            else if List.mem VariantComplexOps kvar_flags then (true, false, true, true)
-            else
-                let f =
-                    if IdSet.mem n !visited then true else
+            let {kvar_name; kvar_cname; kvar_cases; kvar_info; kvar_flags; kvar_loc} = !kvar in
+            (match kvar_info with
+            | Some(kvi) -> kvi
+            | _ ->
+                let kvi = (if List.mem VariantRecursive kvar_flags then
+                    { kti_complex=true; kti_ptr=true; kti_pass_by_ref=false;
+                      kti_custom_free=true; kti_custom_copy=false }
+                else
+                    let _ = if IdSet.mem n !visited then raise_compile_err loc
+                        (sprintf "unexpected recursive variant %s" (if kvar_cname<>"" then kvar_cname else pp_id2str kvar_name)) in
                     let _ = visited := IdSet.add n !visited in
-                    List.exists (fun (_, ti) -> let (f, _, _, _) = classify_typ_ ti kvar_loc in f) kvar_cases in
-                let _ = kvar := {!kvar with
-                    kvar_flags = (if f then VariantComplexOps else VariantNoComplexOps) :: kvar_flags} in
-                (f, false, f, f)
-        | KRecord krec ->
-            let {krec_elems; krec_info; krec_loc} = !krec in
-
-            if List.mem TypNoComplexOps krec_flags then (false, false, false, false)
-            else if List.mem TypComplexOps krec_flags then (true, false, true, true)
-            else
-                let f = if IdSet.mem n !visited then true else
-                    let _ = visited := IdSet.add n !visited in
-                    List.exists (fun (_, ti) ->
-                        let (f, _, _, _) = classify_typ_ ti krec_loc in f) krec_elems in
-                let _ = krec := {!krec with
-                    krec_flags = (if f then [TypComplexOps; TypCustomFree; TypCustomCopy]
-                            else [TypNoComplexOps]) @ krec_flags}
-                in (f, false, f, f)
-        | KGenTyp kgen ->
-            let {kgen_typ; kgen_flags; kgen_loc} = !kgen in
-            if List.mem TypNoComplexOps kgen_flags then (false, false, false, false)
-            else if List.mem TypComplexOps kgen_flags then
-                let ptr_typ = List.mem TypPointer kgen_flags in
-                let custom_free = List.mem TypCustomFree kgen_flags in
-                let custom_copy = List.mem TypCustomCopy kgen_flags in
-                (true, ptr_typ, custom_free, custom_copy)
-            else
-                let (f, ptr_typ, custom_free, custom_copy) = classify_typ_ kgen_typ kgen_loc in
-                let _ = kgen := {!kgen with
-                    kgen_flags = (if f then [TypComplexOps] else [TypNoComplexOps]) @
-                                (if ptr_typ then [TypPointer] else []) @
-                                (if custom_free then [TypCustomFree] else []) @
-                                (if custom_copy then [TypCustomCopy] else []) @
-                                kgen_flags} in
-                (f, ptr_typ, custom_free, custom_copy)
+                    let have_complex = List.exists (fun (_, ti) -> (get_ktyp_info_ ti kvar_loc).kti_complex) kvar_cases
+                    in
+                    { kti_complex=have_complex; kti_ptr=false; kti_pass_by_ref=true;
+                     kti_custom_free=have_complex; kti_custom_copy=have_complex })
+                in
+                    kvar := {!kvar with kvar_info=Some(kvi)};
+                    kvi)
+        | KTyp kt ->
+            let {kt_name; kt_cname; kt_typ; kt_info; kt_loc} = !kt in
+            (match kt_info with
+            | Some(kti) -> kti
+            | _ ->
+                let _ = if IdSet.mem n !visited then raise_compile_err loc
+                    (sprintf "unexpected recursive type %s" (if kt_cname<>"" then kt_cname else pp_id2str kt_name)) in
+                let _ = visited := IdSet.add n !visited in
+                let kti = get_ktyp_info_ kt_typ kt_loc
+                in
+                    kt := {!kt with kt_info=Some(kti)};
+                    kti)
         | _ -> raise_compile_err loc (sprintf "unsupported named type '%s'" (id2str n)))
-    | KTypArray _ -> (true, false, false, false)
-    | KTypList et ->
-        let (have_complex, _, _, _) = classify_typ_ et loc in
-        (true, true, have_complex, false)
-    | KTypRef et ->
-        let (have_complex, _, _, _) = classify_typ_ et loc in
-        (true, true, have_complex, false)
-    | KTypExn -> (true, false, false, false)
-    | KTypErr -> (false, false, false, false)
-    | KTypModule -> (true, false, false, false)
-    in classify_typ_ t loc
+
+    in get_ktyp_info_ t loc
 
 let annotate_types top_code =
     let top_code = find_recursive top_code in
     List.iter (fun e -> match e with
         | KDefVariant kvar ->
             let {kvar_name; kvar_cases; kvar_loc} = !kvar in
-            let _ = classify_typ (KTypName kvar_name) kvar_loc in
+            let _ = get_ktyp_info (KTypName kvar_name) kvar_loc in
             let {kvar_flags} = !kvar in
             let is_recursive = List.mem VariantRecursive kvar_flags in
             let ncases = List.length kvar_cases in
@@ -232,9 +205,7 @@ let annotate_types top_code =
             kvar := {!kvar with kvar_flags =
                 (if dummy_tag0 then [VariantDummyTag0] else []) @
                 (if no_tag then [VariantNoTag] else []) @ kvar_flags}
-        | KDefRecord {contents={krec_name; krec_loc}} ->
-                ignore(classify_typ (KTypName krec_name) krec_loc)
-        | KDefGenTyp {contents={kgen_name; kgen_loc}} ->
-            ignore(classify_typ (KTypName kgen_name) kgen_loc)
+        | KDefTyp {contents={kt_name; kt_loc}} ->
+            ignore(get_ktyp_info (KTypName kt_name) kt_loc)
         | _ -> ()) top_code;
     top_code

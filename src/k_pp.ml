@@ -179,22 +179,15 @@ and pprint_kexp_ e prtyp =
         (match ke_typ with
         | KTypVoid -> ()
         | _ -> pspace(); pstr "OF"; pspace(); pprint_ktyp ke_typ); cbox()
-    | KDefGenTyp { contents = {kgen_name; kgen_typ; kgen_info} } ->
-        obox(); ppkti kgen_info;
-        pstr "GENERATED_TYPE"; pspace(); pprint_id_label kgen_name;
-        pspace(); pstr "="; pspace(); pprint_ktyp kgen_typ; cbox()
-    | KDefRecord { contents = {krec_name; krec_elems; krec_info} } ->
-        obox(); ppkti krec_info;
-        pstr "TYPE"; pspace(); pprint_id_label krec_name;
-        pspace(); pstr "="; pspace(); pstr "{"; obox();
-        List.iter (fun (n, t) -> obox(); pprint_id n; pstr ":"; pspace();
-        pprint_ktyp t; pstr ";"; cbox(); pspace()) krec_elems; cbox(); pstr "}"; cbox()
-    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_constr; kvar_flags; kvar_loc} } ->
+    | KDefTyp { contents = {kt_name; kt_typ; kt_info} } ->
+        obox(); ppkti kt_info;
+        pstr "TYPE"; pspace(); pprint_id_label kt_name;
+        pspace(); pstr "="; pspace(); pprint_ktyp kt_typ; cbox()
+    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_info; kvar_constr; kvar_flags; kvar_loc} } ->
         let nullable0 = List.mem VariantDummyTag0 kvar_flags in
         let is_recursive = List.mem VariantRecursive kvar_flags in
-        obox(); if is_recursive then pstr "RECURSIVE " else ();
+        obox(); ppkti kvar_info; if is_recursive then pstr "RECURSIVE " else ();
         if (List.mem VariantNoTag kvar_flags) then pstr "NO_TAG " else ();
-        if (List.mem VariantComplexOps kvar_flags) then pstr "COMPLEX " else pstr "SIMPLE ";
         pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then (if nullable0 then pstr "NULLABLE " else ()) else pstr " | "; pprint_id v;
@@ -250,7 +243,7 @@ and pprint_kexp_ e prtyp =
             let (rn, relems) = match t with
                 | KTypRecord(rn, relems) -> (rn, relems)
                 | KTypName n -> (match (kinfo_ n loc) with
-                    | KRecord {contents={krec_name; krec_elems}} -> (krec_name, krec_elems)
+                    | KTyp {contents={kt_name; kt_typ=KTypRecord(_, rec_elems)}} -> (kt_name, rec_elems)
                     | _ -> raise_compile_err loc "invalid record type in KExpMkRecord(...)")
                 | _ -> raise_compile_err loc "invalid record type in KExpMkRecord(...)" in
             let ant = Utils.zip al relems in

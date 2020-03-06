@@ -95,16 +95,16 @@ let rec mangle_ktyp t mangle_map loc =
                 else kvar_cname in
             kvar := {!kvar with kvar_cname=cname};
             cname :: result
-        | KRecord krec ->
-            let {krec_name; krec_cname; krec_targs; krec_scope} = !krec in
-            let cname = if krec_cname = "" then mangle_inst_ krec_name "R" krec_targs krec_name krec_scope
-                else krec_cname in
-            krec := {!krec with krec_cname=cname};
+        | KTyp ({contents={kt_typ=KTypRecord(_,_)}} as kt) ->
+            let {kt_name; kt_cname; kt_targs; kt_scope} = !kt in
+            let cname = if kt_cname = "" then mangle_inst_ kt_name "R" kt_targs kt_name kt_scope
+                else kt_cname in
+            kt := {!kt with kt_cname=cname};
             cname :: result
-        | KGenTyp {contents={kgen_cname}} ->
-            if kgen_cname = "" then
-                raise_compile_err loc "KGenTyp does not have a proper mangled name"
-            else kgen_cname :: result
+        | KTyp {contents={kt_cname}} ->
+            if kt_cname = "" then
+                raise_compile_err loc "KTyp does not have a proper mangled name"
+            else kt_cname :: result
         | _ ->
             raise_compile_err loc (sprintf "unsupported type '%s' (should be variant or record)" (id2str n))
     and mangle_ktyp_ t result =
@@ -168,11 +168,11 @@ let mangle_all top_code =
             KTypName i
         with Not_found ->
             let i = gen_temp_idk name_prefix in
-            let kg = ref { kgen_name=i; kgen_cname=cname; kgen_typ=t;
-                kgen_flags=[]; kgen_scope=ScGlobal::[]; kgen_loc=loc } in
+            let kt = ref { kt_name=i; kt_cname=cname; kt_targs=[]; kt_typ=t;
+                kt_info=None; kt_scope=ScGlobal::[]; kt_loc=loc } in
             Hashtbl.add mangle_map cname i;
-            set_idk_entry i (KGenTyp kg);
-            curr_top_code := (KDefGenTyp kg) :: !curr_top_code;
+            set_idk_entry i (KTyp kt);
+            curr_top_code := (KDefTyp kt) :: !curr_top_code;
             KTypName i
         in
     let rec walk_ktyp_n_mangle t loc callb =
@@ -236,17 +236,17 @@ let mangle_all top_code =
                 (n, mangle_ktyp_retain_record t kvar_loc callb)) kvar_cases in
             kvar := { !kvar with kvar_cases=var_cases };
             e
-        | KDefRecord krec ->
-            let {krec_name; krec_elems; krec_loc} = !krec in
-            (* compute and set krec_cname *)
-            let _ = mangle_ktyp (KTypName krec_name) mangle_map krec_loc in
-            let relems = match (mangle_ktyp_retain_record (KTypRecord(krec_name, krec_elems)) krec_loc callb) with
-                | KTypRecord(_, relems) -> relems
-                | _ -> raise_compile_err krec_loc "after mangling record is not a record anymore"
+        | KDefTyp ({contents={kt_typ=KTypRecord(_, _)}} as kt) ->
+            let {kt_name; kt_typ; kt_loc} = !kt in
+            (* compute and set kt_cname *)
+            let _ = mangle_ktyp (KTypName kt_name) mangle_map kt_loc in
+            let ktyp = match (mangle_ktyp_retain_record kt_typ kt_loc callb) with
+                | KTypRecord(_, _) as ktyp -> ktyp
+                | _ -> raise_compile_err kt_loc "after mangling record is not a record anymore"
                 in
-            krec := { !krec with krec_elems=relems };
+            kt := { !kt with kt_typ=ktyp };
             e
-        | KDefGenTyp _ ->
+        | KDefTyp _ ->
             (* since KDefGenTyp's are formed during this step, we should not get here.
                If we are here, retain the definition as-is *)
             e

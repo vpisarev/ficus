@@ -73,34 +73,6 @@ let ktyp2ctyp t loc =
         | KTypModule -> (CTypVoid, prim_ctypinfo)
     in ktyp2ctyp_ t
 
-(* Returns true if in the generated C/assembly code the argument of the corresponding type
-   needs to be passed to a function by reference/pointer. If it returns false, the argument
-   is passed by value. Basically, everything except for the primitive numeric types
-   and pointer types is passed by reference. *)
-(* let rec pass_ktyp_by_ref t loc =
-    match t with
-    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> false
-    | KTypVoid -> raise_compile_err loc "pass_ktyp_by_ref: 'void' type cannot occur here"
-    | KTypNil -> raise_compile_err loc "pass_ktyp_by_ref: 'nil' type cannot occur here"
-    | KTypString -> true
-    | KTypCPointer -> true
-    | KTypFun _ -> true
-    | KTypTuple _ -> true
-    | KTypRecord _ -> true
-    | KTypName n ->
-        (match (kinfo n) with
-        | KVariant {contents={kvar_flags}} ->
-            not (List.mem VariantRecursive kvar_flags)
-        | KRecord _ -> true
-        | KGenTyp {contents={kgen_typ}} -> pass_ktyp_by_ref kgen_typ loc
-        | _ -> raise_compile_err loc (sprintf "pass_ktyp_by_ref: unsupported named type '%s'" (id2str n)))
-    | KTypArray _ -> true
-    | KTypList _ -> false
-    | KTypRef _ -> false
-    | KTypExn -> true
-    | KTypErr -> raise_compile_err loc "pass_ktyp_by_ref: 'err' type cannot occur here"
-    | KTypModule -> raise_compile_err loc "pass_ktyp_by_ref: 'module' type cannot occur here" *)
-
 let get_ctyp_ops t loc =
     match t with
     | CTypInt | CTypCInt | CTypSize_t
@@ -208,8 +180,7 @@ let convert_all_typs top_code =
     let rec fold_n_cvt_ktyp t loc callb = ()
     and fold_n_cvt_kexp e loc callb =
         match e with
-        | KDefGenTyp {contents={kgen_name; kgen_loc}} -> cvt2ctyp kgen_name kgen_loc
-        | KDefRecord {contents={krec_name; krec_loc}} -> cvt2ctyp krec_name krec_loc
+        | KDefTyp {contents={kt_name; kt_loc}} -> cvt2ctyp kt_name kt_loc
         | KDefVariant {contents={kvar_name; kvar_loc}} -> cvt2ctyp kvar_name kvar_loc
         | KDefClosureVars {contents={kcv_name; kcv_loc}} -> cvt2ctyp kcv_name kcv_loc
         | KDefExn {contents={ke_name; ke_loc}} -> cvt2ctyp ke_name ke_loc
