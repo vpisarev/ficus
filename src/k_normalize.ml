@@ -731,13 +731,13 @@ and transform_all_types_and_cons elist code sc =
                     let code = (match (dvar_cases, (List.mem VariantRecord dvar_flags)) with
                     | (((rn, TypRecord {contents=(relems, _)}) :: []), true) ->
                         let rec_elems=List.map (fun (i, t, _) -> (i, typ2ktyp t inst_loc)) relems in
-                        let kt = ref { kt_name=inst_name; kt_cname=""; kt_targs=targs; kt_info=None;
+                        let kt = ref { kt_name=inst_name; kt_cname=""; kt_targs=targs; kt_props=None;
                             kt_typ = KTypRecord(inst_name, rec_elems);
                             kt_scope=sc; kt_loc=inst_loc } in
                         let _ = set_idk_entry inst_name (KTyp kt) in
                         (KDefTyp kt) :: code
                     | _ ->
-                        let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_targs=targs; kvar_info=None;
+                        let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_targs=targs; kvar_props=None;
                                         kvar_cases=List.map (fun (i, t) -> (i, typ2ktyp t inst_loc)) dvar_cases;
                                         kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
                         let _ = set_idk_entry inst_name (KVariant kvar) in

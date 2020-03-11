@@ -104,16 +104,9 @@ void fx_copy_fp(const void* src, void* pdst)
 
 //////////////////// cpointers ////////////////////
 
-void fx_cptr_no_destructor(void* ptr) {}
+void fx_cptr_no_free(void* ptr) {}
 
-void fx_free_cptr_(fx_cptr_t* cptr)
-{
-    free_f(*(cptr)->ptr);
-    fx_free(*cptr);
-    *cptr = 0;
-}
-
-void fx_free_cptr_(fx_cptr_t* cptr)
+void fx_free_cptr(fx_cptr_t* cptr)
 {
     if(*cptr && FX_DECREF((*cptr)->rc) == 1)
     {

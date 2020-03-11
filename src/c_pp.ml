@@ -108,7 +108,7 @@ let rec pprint_ctyp_ t id_opt =
         | t :: [] -> pprint_ctyp_ t None
         | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
         cbox(); pstr ")"; cbox()
-    | CTypFunPtr(args, rt) ->
+    | CTypFunRawPtr(args, rt) ->
         obox(); pprint_ctyp_ rt None;
         pspace(); pstr "(*";
         pr_id_opt_ false; pstr ")(";
@@ -118,7 +118,7 @@ let rec pprint_ctyp_ t id_opt =
         | t :: [] -> pprint_ctyp_ t None
         | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
         cbox(); pstr ")"; cbox()
-    | CTypCSmartPointer -> pstr "fx_cptr_t"; pr_id_opt ()
+    | CTypCSmartPtr -> pstr "fx_cptr_t"; pr_id_opt ()
     | CTypStruct (n_opt, selems) ->
         obox(); pstr "struct ";
         (match n_opt with
@@ -137,7 +137,7 @@ let rec pprint_ctyp_ t id_opt =
         pstr "{"; ovbox(); pspace();
         List.iter (fun (ni, ti) -> pprint_ctyp_ ti (Some ni); pstr ";"; pspace()) uelems;
         cbox(); pstr "}"; cbox(); pr_id_opt()
-    | CTypRawPointer (attrs, t) ->
+    | CTypRawPtr (attrs, t) ->
         obox();
         if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
         if (List.mem CTypConst attrs) then pstr "const " else ();
@@ -287,10 +287,9 @@ and pprint_cstmt s =
     | CDefFun cf ->
         let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = !cf in
         pprint_fun_hdr cf_name false cf_loc;
-        (match cf_body with
-        | CStmtBlock(s :: [], _) ->
-            obox(); pstr "{"; obox(); pspace(); pprint_cstmt s; pspace(); cbox(); pstr "}"; cbox()
-        | _ -> pprint_cstmt cf_body);
+        obox(); pstr "{"; ovbox(); pbreak();
+        List.iter (fun s -> pprint_cstmt s; pbreak()) cf_body; pbreak();
+        cbox(); pstr "}"; cbox();
         pbreak()
     | CDefForwardFun (cf_name, cf_loc) ->
         pprint_fun_hdr cf_name true cf_loc

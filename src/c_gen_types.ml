@@ -37,66 +37,132 @@ open Ast
 open K_form
 open C_form
 
-let prim_ctypinfo = {cti_freef=noid; cti_copyf=noid; cti_pass_by_ref=false; cti_ptr=false}
+(* converts function arguments and the return type to ctyp_t.
+   where needed, adds pointers. The return value is added to the argument list.
+   For example,
+   (int, float [,], string list) -> int
+   is converted to
+   ( int*, fx_arr_t*, _fx_LS, int* )
+*)
+let rec ktyp2ctyp_fargs args rt loc =
+    let args_ = List.map (fun kt ->
+        let (ct, {ctp_pass_by_ref}) = ktyp2ctyp kt loc in
+        let ptr_attr = match (ktyp_deref kt loc) with
+                | KTypArray(_, _) -> []
+                | _ -> [CTypConst]) in
+        if ctp_pass_by_ref then CTypRawPtr(ptr_attr, ct) else ct) args in
+    let (rct, _) = ktyp2ctyp rt loc in
+    let rct = CTypRawPtr([], rct) in
+    args_ @ (rct :: [])
 
-(* converts ktyp to ctyp and also returns some basic information about the type *)
-let ktyp2ctyp t loc =
+(* ktyp_t -> ctyp_t *)
+and ktyp2ctyp t loc =
     let report_err tname =
         raise_compile_err loc (sprintf "ktyp2ctyp: %s is not supported here. Should be converted to KTypName()" tname)
     in
     let rec ktyp2ctyp_ t =
         match t with
-        | KTypInt -> (CTypInt, prim_ctypinfo)
-        | KTypSInt n -> ((CTypSInt n), prim_ctypinfo)
-        | KTypUInt n -> ((CTypUInt n), prim_ctypinfo)
-        | KTypFloat n -> ((CTypFloat n), prim_ctypinfo)
-        | KTypVoid -> (CTypVoid, prim_ctypinfo)
-        | KTypNil -> (CTypNil, prim_ctypinfo)
-        | KTypBool -> (CTypBool, prim_ctypinfo)
-        | KTypChar -> (CTypWChar, prim_ctypinfo)
-        | KTypString -> (CTypString, {cti_freef=!std_fx_free_str;
-            cti_copyf=!std_fx_copy_str; cti_pass_by_ref=true; cti_ptr=false})
-        | KTypCPointer -> (CTypCSmartPointer, {cti_freef=!std_fx_free_cptr;
-            cti_copyf=!std_fx_copy_cptr; cti_pass_by_ref=false; cti_ptr=true})
-        | KTypFun (args, rt) -> (CTypFunPtr((List.map ktyp2ctyp_ args), ktyp2ctyp_ rt),
-            {cti_freef=!std_fx_free_fptr; cti_copyf=!std_fx_copy_fptr; cti_pass_by_ref=true; cti_ptr=false})
+        | KTypInt -> CTypInt
+        | KTypSInt n -> CTypSInt n
+        | KTypUInt n -> CTypUInt n
+        | KTypFloat n -> CTypFloat n
+        | KTypVoid -> CTypVoid
+        | KTypNil -> CTypNil
+        | KTypBool -> CTypBool
+        | KTypChar -> CTypWChar
+        | KTypString -> CTypString
+        | KTypCPointer -> CTypCSmartPtr
+        | KTypFun (args, rt) ->
+            let args_ = ktyp2ctyp_fargs args rt loc in
+            CTypFun(args_, CTypInt)
         | KTypTuple _ -> report_err "KTypTuple"
         | KTypRecord _ -> report_err "KTypRecord"
-        | KTypName i ->
-            let CTypName i
-        | KTypArray _ -> report_err "KTypArray"
+        | KTypName i -> CTypName i
+        | KTypArray (d, et) -> CTypArray(d, et)
         | KTypList _ -> report_err "KTypList"
         | KTypRef _ -> report_err "KTypRef"
-        | KTypExn -> (CTypExn, {cti_freef=!std_fx_free_exn; cti_copyf=!std_fx_copy_exn;
-            cti_pass_by_ref=true; cti_ptr=false})
-        | KTypErr -> (CTypVoid, prim_ctypinfo)
-        | KTypModule -> (CTypVoid, prim_ctypinfo)
+        | KTypExn -> CTypExn
+        | KTypErr -> CTypVoid
+        | KTypModule -> CTypVoid
     in ktyp2ctyp_ t
 
-let get_ctyp_ops t loc =
-    match t with
-    | CTypInt | CTypCInt | CTypSize_t
-    | CTypSInt _ | CTypUInt _ | CTypFloat _
-    | CTypNil | CTypBool | CTypWChar | CTypVoid -> (false, noid, noid)
-    | CTypCSmartPointer -> (false, !std_fx_free_cptr, !std_fx_copy_cptr)
-    | CTypString -> (true,
-    | CTypExn -> (true, !std_fx_copy_exn, !std_fx_free_exn)
-    | CTypStruct (n_opt, _) ->
-        (match n_opt with
-        | Some n -> get_ctyp_ops (CTypName n) loc
-        | _ -> raise_compile_err loc "get_ctyp_ops: anonymous records cannot be passed there")
-    | CTypUnion (n_opt, _) ->
-        (match n_opt with
-        | Some n -> get_ctyp_ops (CTypName n) loc
-        | _ -> raise_compile_err loc "get_ctyp_ops: anonymous records cannot be passed there")
-    | CTypFun of ctyp_t list * ctyp_t
-    | CTypFunPtr of ctyp_t list * ctyp_t
-    | CTypRawPointer (of ctyp_attr_t list * ctyp_t
-    | CTypArray of int * ctyp_t
-    | CTypName of id_t
-    | CTypCName of string
-    | CTypLabel -> raise_compile_err loc "get_ctyp_ops: 'CTypLabel' cannot be passed there"
-    | CTypAny -> raise_compile_err loc "get_ctyp_ops: 'CTypAny' cannot be passed there"
+(* returns some basic information about ctyp_t instance *)
+let get_ctprops ct loc =
+    match ct with
+    | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _
+    | CTypFloat _ | CTypVoid | CTypNil | CTypBool | CTypWChar ->
+        {ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        ctp_pass_by_ref=false; ctp_ptr=false}
+    | CTypCSmartPtr ->
+        {ctp_free=(noid, !std_fx_free_cptr); ctp_copy=(noid, !std_fx_copy_cptr);
+        ctp_pass_by_ref=false; ctp_ptr=true}
+    | CTypString ->
+        {ctp_free=(noid, !std_fx_free_str);
+        ctp_copy=(noid, !std_fx_copy_str); ctp_pass_by_ref=true; ctp_ptr=false}
+    | CTypExn ->
+        {ctp_free=!std_fx_free_exn; ctp_copy=!std_fx_copy_exn;
+        ctp_pass_by_ref=true; ctp_ptr=false}
+    | CTypStruct(i, _) -> get_ctprops CTypName i
+    | CTypUnion(i, _) ->
+        raise_compile_err loc (sprintf "there is no type properties for union '%s'" (id2str i))
+    | CTypFun(_, _) ->
+        {ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
+        ctp_copy=(!std_FX_COPY_FP, !std_fx_copy_fp);
+        ctp_pass_by_ref=true; ctp_ptr=false}
+    | CTypFunRawPtr(_, _) ->
+        {ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        ctp_pass_by_ref=false; ctp_ptr=true}
+    | CTypRawPtr(_, t) ->
+        {ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        ctp_pass_by_ref=false; ctp_ptr=ptr}
+    | CTypArray(_, _) ->
+        {ctp_free=(noid, !std_fx_free_fp); ctp_copy=(noid, !std_fx_copy_arr);
+        ctp_pass_by_ref=true; ctp_ptr=false})
+    | CTypName i ->
+        (match (cinfo i) with
+        | CTyp {contents={ct_props}} -> ct_props
+        | _ -> raise_compile_err loc
+            (sprintf "properties of non-type '%s' cannot be requested" (id2str i)))
+    | CTypLabel ->
+        raise_compile_err loc "properties of label cannot be requested"
+    | CTypAny ->
+        raise_compile_err loc "properties of 'any type' cannot be requested"
+
+(* generates the copy/assignment expression; it's assumed that the destination
+   is just empty, not initialized. If it's initialized then the compiler
+   should call the destructor for it first *)
+let gen_copy_code src_exp dst_exp ct code loc =
+    let {ctp_pass_by_ref; ctp_copy=(copym, copyf)} = get_ctprops ct in
+    let ctx = (CTypVoid, loc) in
+    let e =
+        if copym <> noid then
+            let copym_exp = CExpIdent(copym, ((get_idc_typ copym loc), loc)) in
+            CExpCall(copym_exp, src_exp :: dst_exp :: [], ctx)
+        else if copyf <> noid then
+            let copyf_exp = CExpIdent(copyf, ((get_idc_typ copyf loc), loc)) in
+            let src_arg = if ctp_pass_by_ref then CExpUnOp(COpGetAddr, src_exp, ((make_ptr ct), loc)) else src_exp in
+            let dst_arg = CExpUnOp(COpGetAddr, src_exp, ((make_ptr ct), loc)) in
+            CExpCall(copyf_exp, src_arg :: dst_arg :: [], ctx)
+        else
+            (* in C the assignment operator returns assigned value,
+            but since in this particular case we are not going to chain
+            assignment operators, we assume that it returns 'void' *)
+            CExpBinOp(COpAssign, dst_exp, src_exp, ctx)
+    in (CExp e) :: code
+
+(* generates the destructor call if needed *)
+let gen_free_code elem_exp ct code loc =
+    let {ctp_free=(freem, freef)} = get_ctprops ct in
+    let ctx = (CTypVoid, loc) in
+    if freem <> noid then
+        let freem_exp = CExpIdent(freem, ((get_idc_typ freem loc), loc)) in
+        CExp(CExpCall(freem_exp, elem_exp :: [], ctx)) :: code
+    else if copyf <> noid then
+        let freef_exp = CExpIdent(freef, ((get_idc_typ freef loc), loc)) in
+        let elem_arg = CExpUnOp(COpGetAddr, elem_exp, ((make_ptr ct), loc)) in
+        CExp(CExpCall(freef_exp, elem_arg :: [], ctx)) :: code
+    else
+        code
 
 let convert_all_typs top_code =
     let top_fwd_decl = ref ([]: cstmt_t list) in
@@ -111,50 +177,61 @@ let convert_all_typs top_code =
             top_fwd_decl := decl :: !top_fwd_decl
         else ()
     in
-    let create_ctyp_decl tn ptr_typ gen_free gen_cpy fwd_decl loc =
-        let freef = if gen_free then (gen_temp_idc "free") else noid in
-        let cpyf = if gen_cpy then (gen_temp_idc "copy") else noid in
+    (* creates declaration of the data structure with optional forward declaration;
+       if needed, create declarations (empty at this momoent) of the destructor and
+       copy operator, together with thier optional forward declarations *)
+    let create_ctyp_decl tn kti fwd_decl loc =
+        let {ktp_ptr; ktp_pass_by_ref; ktp_custom_free; ktp_custom_copy} = kti in
+        let (freem, freef) = if ktp_custom_free then (noid, (gen_temp_idc "free")) else (noid, noid) in
+        let (cpym, cpyf) = if ktp_custom_copy then (noid, (gen_temp_idc "copy")) else
+            if ktp_ptr then (!std_FX_COPY_PTR, !std_fx_copy_ptr) else (noid, noid) in
         let cname = get_idk_cname tn loc in
         let (struct_id, struct_cname) = if ptr_typ then ((dup_idc tn), cname ^ "_data_t") else (tn, cname) in
         let struct_decl = ref { ct_name=struct_id;
             ct_typ=CTypStruct((Some struct_id), []);
             ct_ktyp=KTypName tn; ct_cname=struct_cname;
-            ct_flags=[]; ct_make=noid; ct_free=freef; ct_copy=cpyf;
+            ct_flags=[]; ct_make=noid; ct_free=(freem, freef); ct_copy=(cpym, cpyf);
             ct_scope=ScGlobal::[]; ct_loc=loc } in
-        let typ_decl = if ptr_typ then
+        let typ_decl = if ktp_ptr then
             ref { !struct_decl with ct_name=tn; ct_typ=(make_ptr (CTypName struct_id)); ct_cname=cname }
             else struct_decl in
         let ctyp = CTypName struct_id in
-        let (src_typ, dst_typ) = ((make_const_ptr ctyp), (make_ptr ctyp)) in
-        let dst_typ = if ptr_typ then (make_ptr dst_typ) else dst_typ in
+        let (src_typ, dst_typ0) = ((make_const_ptr ctyp), (make_ptr ctyp)) in
+        let dst_typ = if ktp_ptr then (make_ptr dst_typ) else dst_typ in
+        let src_id = get_id "src" in
+        let dst_id = get_id "dst" in
+        let src_exp = CExpIdent(src_id, (src_typ, loc)) in
+        let dst_exp = CExpIdent(dst_id, (dst_typ, loc)) in
+        let dst_exp = if ktp_ptr then CExpUnOp(COpDeref, dst_exp, (dst_typ0, loc)) else dst_exp in
         let freef_decl = ref {
             cf_name=freef; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ cname;
-            cf_args=(get_id "dst") :: [];  cf_body=CStmtNop(loc);
+            cf_args=dst_id :: [];  cf_body=[];
             cf_flags=FunNoThrow :: []; cf_scope=ScGlobal :: []; cf_loc=loc } in
         let cpyf_decl = ref { !freef_decl with
             cf_name=freef; cf_typ=CTypFun(src_typ :: dst_typ :: [], CTypVoid); cf_cname="_fx_copy_" ^ cname;
-            cf_args=(get_id "src") :: (get_id "dst") :: [] } in
-        if ptr_typ then
+            cf_args=src_id :: dst_id :: [] } in
+        if ktp_ptr then
             set_idc_entry struct_id (CTyp struct_decl);
             add_fwd_decl fwd_decl (CDefForwardTyp (struct_id, loc))
         else ();
         set_idc_entry tn (CTyp typ_decl);
-        if gen_free then
+        if ktp_custom_free then
             set_idc_entry freef (CFun freef_decl);
             add_fwd_decl fwd_decl (CDefForwardFun (freef, loc))
         else ();
-        if gen_cpy then
+        if ktp_custom_copy then
             set_idc_entry cpyf (CFun cpyf_decl);
             add_fwd_decl fwd_decl (CDefForwardFun (cpyf, loc))
         else ();
-        (struct_decl, freef_decl, cpyf_decl)
+        (struct_decl, freef_decl, cpyf_decl, src_exp, dst_exp)
 
+    (* converts named type to C *)
     let rec cvt2ctyp tn loc =
         if (IdSet.mem tn !all_decls) then ()
         else
             let visited = IdSet.mem tn !all_visited in
             let deps = K_annotate_types.get_typ_deps tn loc in
-            let ktyp_info = kinfo_ tn loc in
+            let kt_info = kinfo_ tn loc in
             let (opt_rec_var, fwd_decl, deps) = match ktyp_info with
                 | KVariant kvar ->
                     let {kvar_flags} = !kvar in
@@ -170,12 +247,48 @@ let convert_all_typs top_code =
                     (sprintf "non-recursive variant type '%s' references itself directly or indirectly" (pp_id2str tn))
                 | _ -> ()
             let _ = all_visited := IdSet.add tn !all_visited in
-            let (complex_ops, ptr_typ, gen_free, gen_copy) = K_annotate_types.classify_typ (KTypName tn) loc in
-            let (struct_decl, freef_decl, cpyf_decl) = create_ctyp_decl tn ptr_typ gen_free gen_cpy in
-            let _ = List.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps in
-            let _ = match ktyp_info with
-                | KGenTyp kgen ->
-                    let {kgen_typ; kgen_loc} = !kgen in
+            let ktp = K_annotate_types.get_ktprops (KTypName tn) loc in
+            let {ktp_complex; ktp_ptr; ktp_pass_by_ref; ktp_custom_free; ktp_custom_copy} = ktp in
+            let (struct_decl, freef_decl, cpyf_decl, src_exp, dst_exp) = create_ctyp_decl tn ptr_typ gen_free gen_cpy in
+            let {ct_name=struct_id} = !struct_decl in
+            List.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps;
+            match kt_info with
+            | KTyp kt ->
+                let {kt_typ; kt_loc} = !kt in
+                (match kt_typ with
+                | KTypTuple(telems) ->
+                    let (_, free_code, copy_code, relems) =
+                        List.fold_left (fun (i, free_code, copy_code, relems) kt ->
+                            let ni = get_id (sprintf "t%i" i) in
+                            let ti = ktyp2ctyp kt kt_loc in
+                            let selem = CExpArrow(src_exp, ni, (ti, loc)) in
+                            let delem = CExpArrow(dst_exp, ni, (ti, loc)) in
+                            let free_code = gen_free_code delem ti free_code kt_loc in
+                            let copy_code = gen_copy_code selem delem ti copy_code kt_loc in
+                            (i+1, free_code, copy_code, (ni, ti) :: relems) (0, [], [], []) telems in
+                    struct_decl := {!struct_decl with ct_typ=CTypStruct((Some struct_id), List.rev relems)};
+                    freef_decl := {!freef_decl with cf_body=List.rev free_code};
+                    copyf_decl := {!freef_decl with cf_body=List.rev copy_code}
+                | KTypRecord(_, relems) ->
+                    let (free_code, copy_code, relems) =
+                        List.fold_left (fun (free_code, copy_code, relems) (ni, kt) ->
+                            let ti = ktyp2ctyp kt loc in
+                            let selem = CExpArrow(src_exp, ni, (ti, kt_loc)) in
+                            let delem = CExpArrow(dst_exp, ni, (ti, kt_loc)) in
+                            let free_code = gen_free_code delem ti free_code kt_loc in
+                            let copy_code = gen_copy_code selem delem ti copy_code kt_loc in
+                            (free_code, copy_code, (ni, ti) :: relems) ([], [], []) telems in
+                    struct_decl := {!struct_decl with ct_typ=CTypStruct((Some tn), List.rev relems)};
+                    freef_decl := {!freef_decl with cf_body=List.rev free_code};
+                    copyf_decl := {!freef_decl with cf_body=List.rev copy_code}
+                | KTypList(et) ->
+                    let ct = ktyp2ctyp kt kt_loc in
+                    let relems = ((get_id "rc"), !std_fx_rc_t) ::
+                        ((get_id "tl"), (make_ptr (CTypName struct_id))) ::
+                        ((get_id "hd"), ct) :: [] in
+
+                | KTypRef(et) -> ())
+            | KVariant kv ->
 
     let rec fold_n_cvt_ktyp t loc callb = ()
     and fold_n_cvt_kexp e loc callb =

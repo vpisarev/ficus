@@ -98,6 +98,9 @@ type ctyp_flag_t =
                                Recursive variants with just 2 cases, where one of them is "nullable" (see above),
                                do not need a tag either. *)
 
+
+type ctprops_t = { ctp_ptr: bool; ctp_pass_by_ref: bool; ctp_free: id_t*id_t; ctp_copy: id_t*id_t }
+
 type ctyp_t =
     | CTypInt (* this is a direct mapping from TypInt and CTypInt.
                 It's ~ ptrdiff_t - a signed version of size_t, i.e.
@@ -111,14 +114,14 @@ type ctyp_t =
     | CTypNil
     | CTypBool
     | CTypWChar
-    | CTypCSmartPointer
+    | CTypCSmartPtr
     | CTypString
     | CTypExn
     | CTypStruct of id_t option * (id_t * ctyp_t) list
     | CTypUnion of id_t option * (id_t * ctyp_t) list
     | CTypFun of ctyp_t list * ctyp_t
-    | CTypFunPtr of ctyp_t list * ctyp_t
-    | CTypRawPointer of ctyp_attr_t list * ctyp_t
+    | CTypFunRawPtr of ctyp_t list * ctyp_t
+    | CTypRawPtr of ctyp_attr_t list * ctyp_t
     | CTypArray of int * ctyp_t
     | CTypName of id_t
     | CTypCName of id_t
@@ -168,18 +171,16 @@ and cstmt_t =
 and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list;
                   cv_arrdata: id_t; cv_scope: scope_t list; cv_loc: loc_t }
 and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
-                  cf_args: id_t list; cf_body: cstmt_t;
+                  cf_args: id_t list; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
-                  ct_flags: ctyp_flag_t list; ct_make: id_t; ct_free: id_t; ct_copy: id_t;
+                  ct_make: id_t; ct_props: ctprops_t;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
                    ce_scope: scope_t list; ce_loc: loc_t }
 and cdeflabel_t = { cl_name: id_t; cl_cname: string; cl_scope: scope_t list; cl_loc: loc_t }
 and cdefmacro_t = { cm_name: id_t; cm_cname: string; cm_args: id_t list; cm_body: cstmt_t list;
                     cm_scope: scope_t list; cm_loc: loc_t }
-
-type ctypinfo_t = { cti_freef: id_t; cti_copyf: id_t; cti_pass_by_ref: bool; cti_ptr: bool }
 
 type cinfo_t =
     | CNone | CText of string | CVal of cdefval_t | CFun of cdeffun_t ref
@@ -397,15 +398,15 @@ and walk_ctyp t callb =
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
     | CTypSize_t | CTypVoid | CTypNil | CTypBool | CTypExn | CTypAny
-    | CTypWChar | CTypCSmartPointer | CTypString -> t
+    | CTypWChar | CTypCSmartPtr | CTypString -> t
     | CTypStruct (n_opt, selems) ->
         CTypStruct((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) selems))
     | CTypUnion (n_opt, uelems) ->
         CTypUnion((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) uelems))
     | CTypFun (args, rt) -> CTypFun((List.map walk_ctyp_ args), (walk_ctyp_ rt))
-    | CTypFunPtr (args, rt) -> CTypFunPtr((List.map walk_ctyp_ args), (walk_ctyp_ rt))
+    | CTypFunRawPtr (args, rt) -> CTypFunRawPtr((List.map walk_ctyp_ args), (walk_ctyp_ rt))
     | CTypArray(d, et) -> CTypArray(d, walk_ctyp_ et)
-    | CTypRawPointer(attrs, t) -> CTypRawPointer(attrs, (walk_ctyp_ t))
+    | CTypRawPtr(attrs, t) -> CTypRawPtr(attrs, (walk_ctyp_ t))
     | CTypName n -> CTypName(walk_id_ n)
     | CTypCName _ -> t
     | CTypLabel -> t)
@@ -464,7 +465,7 @@ and walk_cstmt s callb =
             cf_name = (walk_id_ cf_name);
             cf_typ = (walk_ctyp_ cf_typ);
             cf_args = (List.map walk_id_ cf_args);
-            cf_body = (walk_cstmt_ cf_body) };
+            cf_body = (walk_csl_ cf_body) };
         s
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
@@ -534,14 +535,14 @@ and fold_ctyp t callb =
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
     | CTypSize_t | CTypVoid | CTypNil | CTypBool | CTypExn | CTypAny
-    | CTypWChar | CTypString | CTypCSmartPointer -> ()
+    | CTypWChar | CTypString | CTypCSmartPtr -> ()
     | CTypStruct (n_opt, selems) ->
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) selems
     | CTypUnion (n_opt, uelems) ->
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) uelems
     | CTypFun (args, rt) -> fold_tl_ args; fold_ctyp_ rt
-    | CTypFunPtr (args, rt) -> fold_tl_ args; fold_ctyp_ rt
-    | CTypRawPointer(_, t) -> fold_ctyp_ t
+    | CTypFunRawPtr (args, rt) -> fold_tl_ args; fold_ctyp_ rt
+    | CTypRawPtr(_, t) -> fold_ctyp_ t
     | CTypArray(_, t) -> fold_ctyp_ t
     | CTypName n -> fold_id_ n
     | CTypCName _ -> ()
@@ -597,7 +598,7 @@ and fold_cstmt s callb =
     | CDefFun cf ->
         let { cf_name; cf_typ; cf_args; cf_body } = !cf in
         fold_id_ cf_name; fold_ctyp_ cf_typ;
-        List.iter fold_id_ cf_args; fold_cstmt_ cf_body
+        List.iter fold_id_ cf_args; fold_csl_ cf_body
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
         fold_id_ ct_name; fold_ctyp_ ct_typ
@@ -618,8 +619,8 @@ and fold_cstmt s callb =
         fold_csl_ else_l
     | CMacroInclude (_, l) -> ()
 
-let make_ptr t = CTypRawPointer([], t)
-let make_const_ptr t = CTypRawPointer((CTypConst :: []), t)
+let make_ptr t = CTypRawPtr([], t)
+let make_const_ptr t = CTypRawPtr((CTypConst :: []), t)
 let make_int_exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_cid prefix ctyp e_opt code sc loc =

@@ -84,6 +84,6 @@ let init_std_names () =
     std_fx_free_fp := gen_std_fun "fx_free_fp" (std_CTypVoidPtr :: []) CTypVoid;
     std_fx_copy_fp := gen_std_fun "fx_copy_fp" (std_CTypConstVoidPtr :: std_CTypVoidPtr :: []) CTypVoid;
 
-    std_fx_free_cptr := gen_std_fun "fx_free_cptr" ((make_ptr CTypCSmartPointer) :: []) CTypVoid;
+    std_fx_free_cptr := gen_std_fun "fx_free_cptr" ((make_ptr CTypCSmartPtr) :: []) CTypVoid;
     std_fx_copy_cptr := gen_std_fun "fx_copy_cptr"
-        ((make_const_ptr CTypCSmartPointer) :: (make_ptr CTypCSmartPointer) :: []) CTypVoid;
+        ((make_const_ptr CTypCSmartPtr) :: (make_ptr CTypCSmartPtr) :: []) CTypVoid;

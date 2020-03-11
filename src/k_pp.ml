@@ -20,12 +20,7 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
-let pprint_id n =
-    match n with
-    | Id.Name _ -> pstr (id2str n)
-    | _ ->
-        let cname = get_idk_cname n noloc in
-        pstr (if cname = "" then (id2str n) else ("_vx_" ^ cname))
+let pprint_id n = pstr (idk2str n noloc)
 
 type ktyp_pr_t = KTypPr0 | KTypPrFun | KTypPrComplex | KTypPrBase
 
@@ -75,9 +70,7 @@ let rec ppktyp_ t p1 =
     | KTypList(t1) -> ppktypsuf t1 "List"
     | KTypRef(t1) -> ppktypsuf t1 "Ref"
     | KTypArray(d, t1) -> ppktypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
-    | KTypName(n) ->
-        let cname = get_idk_cname n noloc in
-        if cname = "" then pprint_id n else pstr ("_vx_" ^ cname)
+    | KTypName(n) -> pstr (idk2str n noloc)
     | KTypTuple(tl) -> ppktyplist_ "(" tl
     | KTypRecord(rn, relems) -> obox(); pprint_id rn; pstr " {";
         List.iteri (fun i (ni, ti) -> if i = 0 then () else pstr ", ";
@@ -111,16 +104,13 @@ let rec pprint_kexp e = pprint_kexp_ e true
 and pprint_kexp_ e prtyp =
     let t = get_kexp_typ e in
     let eloc = get_kexp_loc e in
-    let ppkti kti = match kti with
-        Some({kti_complex}) -> pstr (if kti_complex then "COMPLEX" else "SIMPLE"); pspace()
+    let ppktp ktp = match ktp with
+        Some({ktp_complex}) -> pstr (if ktp_complex then "COMPLEX" else "SIMPLE"); pspace()
         | _ -> () in
     let pprint_atom_ a = pprint_atom a true eloc in
     let pprint_dom_ r = pprint_dom r eloc in
     let pprint_id_ i = pprint_atom_ (Atom.Id i) in
-    let pprint_id_label i =
-        let cname = get_idk_cname i noloc in
-        if cname = "" then pstr (id2str i)
-        else pstr ("_vx_" ^ cname) in
+    let pprint_id_label i = pstr (idk2str i eloc) in
     let obox_cnt = ref 0 in
     let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
@@ -179,14 +169,14 @@ and pprint_kexp_ e prtyp =
         (match ke_typ with
         | KTypVoid -> ()
         | _ -> pspace(); pstr "OF"; pspace(); pprint_ktyp ke_typ); cbox()
-    | KDefTyp { contents = {kt_name; kt_typ; kt_info} } ->
-        obox(); ppkti kt_info;
+    | KDefTyp { contents = {kt_name; kt_typ; kt_props} } ->
+        obox(); ppktp kt_props;
         pstr "TYPE"; pspace(); pprint_id_label kt_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kt_typ; cbox()
-    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_info; kvar_constr; kvar_flags; kvar_loc} } ->
+    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_props; kvar_constr; kvar_flags; kvar_loc} } ->
         let nullable0 = List.mem VariantDummyTag0 kvar_flags in
         let is_recursive = List.mem VariantRecursive kvar_flags in
-        obox(); ppkti kvar_info; if is_recursive then pstr "RECURSIVE " else ();
+        obox(); ppktp kvar_props; if is_recursive then pstr "RECURSIVE " else ();
         if (List.mem VariantNoTag kvar_flags) then pstr "NO_TAG " else ();
         pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->

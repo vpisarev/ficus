@@ -62,13 +62,13 @@ type intrin_t =
     | IntrinListHead
     | IntrinListTail
 
-type ktypinfo_t =
+type ktprops_t =
 {
-    kti_complex: bool;
-    kti_ptr: bool;
-    kti_pass_by_ref: bool;
-    kti_custom_free: bool;
-    kti_custom_copy: bool
+    ktp_complex: bool;
+    ktp_ptr: bool;
+    ktp_pass_by_ref: bool;
+    ktp_custom_free: bool;
+    ktp_custom_copy: bool
 }
 
 type ktyp_t =
@@ -133,10 +133,10 @@ and kdeffun_t = { kf_name: id_t; kf_cname: string; kf_typ: ktyp_t; kf_args: id_t
                   kf_flags: fun_flag_t list; kf_closure: id_t * id_t;
                   kf_scope: scope_t list; kf_loc: loc_t }
 and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
-and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_info: ktypinfo_t option; kvar_targs: ktyp_t list;
+and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_props: ktprops_t option; kvar_targs: ktyp_t list;
                       kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
-and kdeftyp_t = { kt_name: id_t; kt_cname: string; kt_info: ktypinfo_t option;
+and kdeftyp_t = { kt_name: id_t; kt_cname: string; kt_props: ktprops_t option;
                   kt_targs: ktyp_t list; kt_typ: ktyp_t; kt_scope: scope_t list; kt_loc: loc_t }
 and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
                           kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
@@ -264,6 +264,13 @@ let get_idk_cname i loc =
     let info = kinfo_ i loc in
     check_kinfo info i loc;
     get_kinfo_cname info loc
+
+let idk2str i loc =
+    match i with
+    | Id.Name _ -> (id2str i)
+    | _ ->
+        let cname = get_idk_cname i loc in
+        if cname = "" then id2str i else cname
 
 let get_kinfo_typ info i loc =
     check_kinfo info i loc;
@@ -773,6 +780,16 @@ let get_kval i loc =
     | _ ->
         let loc = if loc!=noloc then loc else get_kinfo_loc info in
         raise_compile_err loc (sprintf "invalid symbol '%s' - should be KVal ..." (id2str i))
+
+let rec ktyp_deref kt loc =
+    match kt with
+    | KTypName (Id.Name _) -> kt
+    | KTypName i ->
+        (match (kinfo_ i loc) with
+        | KTyp {contents={kt_typ; kt_loc}} -> ktyp_deref kt_typ kt_loc
+        | KVariant _ -> kt
+        | _ -> raise_compile_err loc (sprintf "named 'type' '%s' does not represent a type" (id2str i)))
+    | _ -> kt
 
 let print_set setname s =
     printf "%s:[" setname;

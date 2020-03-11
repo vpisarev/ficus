@@ -14,6 +14,7 @@ let is_some x_opt = match x_opt with Some _ -> true | _ -> false
 let is_none x_opt = match x_opt with Some _ -> false | _ -> true
 
 let zip l1 l2 = List.map2 (fun i1 i2 -> (i1, i2)) l1 l2
+let unzip l12 = List.fold_left (fun (l1, l2) (i, j) -> ((i :: l1), (j :: l2))) ([], []) (List.rev l12)
 
 let rec last_elem l = match l with
     | x :: [] -> x

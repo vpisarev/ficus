@@ -86,8 +86,8 @@ void* fx_alloc(size_t sz);
 void fx_free(void* ptr);
 
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
-#define FX_COPY_PTR(src, pdst) FX_INCREF(src->rc); *(pdst) = (src)
-#define FX_COPY_SIMPLE(src, pdst) *(pdst) = (src)
+#define FX_COPY_PTR(src, dst) FX_INCREF(src->rc); (dst) = (src)
+#define FX_COPY_SIMPLE(src, dst) (dst) = (src)
 #define FX_NOP(ptr)
 
 void fx_free_ptr(void* pdst);
@@ -113,8 +113,8 @@ int fx_make_str(fx_str_t* str, char_* strdata, int_ length);
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 
-#define FX_FREE_EXN(exn) if(!(exn)->data) ; else fx_free_exn(exn)
-#define FX_COPY_EXN(src, pdst) if(!(src)->data) *(pdst)=*(src) else fx_copy_exn((src), (pdst))
+#define FX_FREE_EXN(exn) if(!(exn).data) ; else fx_free_exn(&(exn))
+#define FX_COPY_EXN(src, dst) if(!(src).data) (dst)=(src) else fx_copy_exn(&(src), &(dst))
 
 #define FX_EXN_MAKE_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy) \
     exndata_typ* data = (exndata_typ*)fx_alloc(sizeof(*data)); \
@@ -333,8 +333,8 @@ typedef struct fx_fp_t
 
 #define FX_FREE_FP(f) \
     if(f.fv) { f.fv->base.free_f(f.fv); f.fv=0; }
-#define FX_COPY_FP(src, pdst) \
-    if((src).fv) FX_INCREF((src).fv->base.rc); *(dst) = (src)
+#define FX_COPY_FP(src, dst) \
+    if((src).fv) FX_INCREF((src).fv->base.rc); (dst) = (src)
 
 void fx_free_fp(void* fp);
 void fx_copy_fp(const void* src, void* pdst);
@@ -348,8 +348,7 @@ typedef struct fx_cptr_cell_t
     void* ptr;
 } fx_cptr_cell_t, *fx_cptr_t;
 
-void fx_cptr_no_destructor(void* ptr);
-void fx_free_cptr_(fx_cptr_t* cptr);
+void fx_cptr_no_free(void* ptr);
 void fx_free_cptr(fx_cptr_t* cptr);
 void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* pdst);
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);

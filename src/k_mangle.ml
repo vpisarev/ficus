@@ -72,6 +72,9 @@ let mangle_make_unique n_id prefix name suffix mangle_map =
         in
     make_unique_ 0
 
+let add_vx str = if Utils.starts_with str "_vx_" then str else "_vx_" ^ str
+let remove_vx str = if Utils.starts_with str "_vx_" then String.sub str 4 ((String.length str) - 4) else str
+
 (* Convert type to a string, i.e. mangle it.
    Use mangle_map to control uniqueness when mangling KTypName _ and KTypRecord _.
    Update the mangled names (cname), if needed,
@@ -90,21 +93,22 @@ let rec mangle_ktyp t mangle_map loc =
         match (kinfo_ n loc) with
         | KVariant kvar ->
             let {kvar_name; kvar_cname; kvar_targs; kvar_scope} = !kvar in
-            let cname = if kvar_cname = "" then
-                mangle_inst_ kvar_name "V" kvar_targs kvar_name kvar_scope
-                else kvar_cname in
-            kvar := {!kvar with kvar_cname=cname};
-            cname :: result
+            if kvar_cname = "" then
+                let cname = mangle_inst_ kvar_name "V" kvar_targs kvar_name kvar_scope in
+                let _ = kvar := {!kvar with kvar_cname=add_vx cname} in
+                cname :: result
+            else (remove_vx kvar_cname) :: result
         | KTyp ({contents={kt_typ=KTypRecord(_,_)}} as kt) ->
             let {kt_name; kt_cname; kt_targs; kt_scope} = !kt in
-            let cname = if kt_cname = "" then mangle_inst_ kt_name "R" kt_targs kt_name kt_scope
-                else kt_cname in
-            kt := {!kt with kt_cname=cname};
-            cname :: result
+            if kt_cname = "" then
+                let cname = mangle_inst_ kt_name "R" kt_targs kt_name kt_scope in
+                let _ = kt := {!kt with kt_cname=add_vx cname} in
+                cname :: result
+            else (remove_vx kt_cname) :: result
         | KTyp {contents={kt_cname}} ->
             if kt_cname = "" then
                 raise_compile_err loc "KTyp does not have a proper mangled name"
-            else kt_cname :: result
+            else (remove_vx kt_cname) :: result
         | _ ->
             raise_compile_err loc (sprintf "unsupported type '%s' (should be variant or record)" (id2str n))
     and mangle_ktyp_ t result =
@@ -169,7 +173,7 @@ let mangle_all top_code =
         with Not_found ->
             let i = gen_temp_idk name_prefix in
             let kt = ref { kt_name=i; kt_cname=cname; kt_targs=[]; kt_typ=t;
-                kt_info=None; kt_scope=ScGlobal::[]; kt_loc=loc } in
+                kt_props=None; kt_scope=ScGlobal::[]; kt_loc=loc } in
             Hashtbl.add mangle_map cname i;
             set_idk_entry i (KTyp kt);
             curr_top_code := (KDefTyp kt) :: !curr_top_code;
@@ -218,7 +222,7 @@ let mangle_all top_code =
             let bare_name = mangle_name kf_name (Some kf_scope) kf_loc in
             let cname = mangle_make_unique kf_name "F" bare_name suffix mangle_map in
             let cname = compress_name cname kf_scope kf_loc in
-            kf := { !kf with kf_cname=cname; kf_typ=t; kf_body=new_body };
+            kf := { !kf with kf_cname=add_vx cname; kf_typ=t; kf_body=new_body };
             e
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_scope; ke_loc} = !ke in
@@ -226,7 +230,7 @@ let mangle_all top_code =
             let suffix = mangle_ktyp t mangle_map ke_loc in
             let bare_name = mangle_name ke_name (Some ke_scope) ke_loc in
             let cname = mangle_make_unique ke_name "E" bare_name suffix mangle_map in
-            ke := { !ke with ke_cname=cname; ke_typ=t };
+            ke := { !ke with ke_cname=add_vx cname; ke_typ=t };
             e
         | KDefVariant kvar ->
             let {kvar_name; kvar_cases; kvar_loc} = !kvar in
