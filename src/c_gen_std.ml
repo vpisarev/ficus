@@ -7,7 +7,7 @@ let gen_std_fun cname argtyps rt =
     {
         cf_name=n; cf_typ=CTypFun(argtyps, rt); cf_cname=cname;
         cf_args=List.map (fun a -> noid) argtyps;
-        cf_body=CStmtCCode("", noloc);
+        cf_body=[];
         cf_flags=FunInC :: FunStd :: FunImpure :: [];
         cf_scope=ScGlobal :: []; cf_loc=noloc
     } in
@@ -27,9 +27,7 @@ let gen_std_macro cname nargs =
 let init_std_names () =
     curr_exn_val := -1024;
 
-    std_fx_rc_t := CTypCName (get_id "fx_rc_t");
-    std_fx_free_t := CTypCName (get_id "fx_free_t");
-    std_fx_copy_t := CTypCName (get_id "fx_copy_t");
+    std_fx_rc_t := CTypName (get_id "fx_rc_t");
 
     std_fx_alloc := gen_std_fun "fx_alloc" (CTypSize_t :: []) std_CTypVoidPtr;
     std_fx_free := gen_std_fun "fx_free" (std_CTypVoidPtr :: []) CTypVoid;
@@ -37,7 +35,8 @@ let init_std_names () =
     std_FX_CALL := gen_std_macro "FX_CALL" 2;
     std_FX_COPY_PTR := gen_std_macro "FX_COPY_PTR" 2;
     std_FX_COPY_SIMPLE := gen_std_macro "FX_COPY_SIMPLE" 2;
-    std_FX_NO_FREE := gen_std_macro "FX_NO_FREE" 1;
+    std_FX_COPY_SIMPLE_BY_PTR := gen_std_macro "FX_COPY_SIMPLE_BY_PTR" 2;
+    std_FX_NOP := gen_std_macro "FX_NOP" 1;
 
     std_fx_free_ptr := gen_std_fun "fx_free_ptr" (std_CTypVoidPtr :: []) CTypVoid;
     std_fx_copy_ptr := gen_std_fun "fx_copy_ptr" (std_CTypConstVoidPtr :: std_CTypVoidPtr :: []) CTypVoid;
@@ -61,7 +60,7 @@ let init_std_names () =
     std_FX_EPTR_xD := [];
     std_fx_make_arrxd := [];
 
-    let make_arr_args0 = CTypSize_t :: !std_fx_free_t :: !std_fx_copy_t :: (make_ptr std_CTypAnyArray) :: [] in
+    let make_arr_args0 = CTypSize_t :: std_CTypVoidPtr :: std_CTypVoidPtr :: (make_ptr std_CTypAnyArray) :: [] in
 
     for i = std_FX_MAX_DIMS - 1 downto 1 do
         std_FX_CHKIDX_xD := (gen_std_macro (sprintf "FX_CHKIDX_%dD" i) (2+i)) :: !std_FX_CHKIDX_xD;

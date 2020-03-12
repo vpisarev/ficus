@@ -67,7 +67,7 @@ void fx_copy_ptr(const void* src, void* dst)
     fx_rc_t* src_ = (fx_rc_t*)src;
     fx_rc_t** dst_ = (fx_rc_t**)dst;
     if(src_) FX_INCREF(*src_);
-    *dst_ = src;
+    *dst_ = src_;
 }
 
 ///////////// exceptions /////////////
@@ -116,10 +116,10 @@ void fx_free_cptr(fx_cptr_t* cptr)
     }
 }
 
-void fx_copy_cptr(const fx_cptr_t* src, fx_cptr_t* dst)
+void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* dst)
 {
-    if(*src) FX_INCREF((*src)->rc);
-    *dst = *src;
+    if(src) FX_INCREF(src->rc);
+    *dst = src;
 }
 
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)

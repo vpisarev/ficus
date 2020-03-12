@@ -15,6 +15,7 @@ type options_t =
     mutable print_tokens: bool;
     mutable print_ast: bool;
     mutable print_k: bool;
+    mutable print_c: bool;
     mutable filename: string;
 }
 
@@ -27,6 +28,7 @@ let options =
     print_tokens = false;
     print_ast = false;
     print_k = false;
+    print_c = false;
     filename = ""
 }
 
@@ -40,6 +42,7 @@ let parse_options () =
         [("-pr-tokens", (Arg.Unit (fun f -> options.print_tokens <- true)), "   Print all the tokens in parsed files");
         ("-pr-ast", (Arg.Unit (fun f -> options.print_ast <- true)), "   Print typechecked AST of the parsed files");
         ("-pr-k", (Arg.Unit (fun f -> options.print_k <- true)), "   Print the generated and optimized K-form");
+        ("-pr-c", (Arg.Unit (fun f -> options.print_c <- true)), "   Print the generated C code");
         ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for the most essential ones");
         ("-O1", (Arg.Unit (fun () -> options.optimize_level <- 1)), "   Optimization level 1: enable most of optimizations");
         ("-O3", (Arg.Unit (fun () -> options.optimize_level <- 3)), "   Optimization level 3: enable all optimizations");

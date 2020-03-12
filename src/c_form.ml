@@ -124,7 +124,6 @@ type ctyp_t =
     | CTypRawPtr of ctyp_attr_t list * ctyp_t
     | CTypArray of int * ctyp_t
     | CTypName of id_t
-    | CTypCName of id_t
     | CTypLabel
     | CTypAny
 and cctx_t = ctyp_t * loc_t
@@ -408,7 +407,6 @@ and walk_ctyp t callb =
     | CTypArray(d, et) -> CTypArray(d, walk_ctyp_ et)
     | CTypRawPtr(attrs, t) -> CTypRawPtr(attrs, (walk_ctyp_ t))
     | CTypName n -> CTypName(walk_id_ n)
-    | CTypCName _ -> t
     | CTypLabel -> t)
 
 and walk_cexp e callb =
@@ -545,7 +543,6 @@ and fold_ctyp t callb =
     | CTypRawPtr(_, t) -> fold_ctyp_ t
     | CTypArray(_, t) -> fold_ctyp_ t
     | CTypName n -> fold_id_ n
-    | CTypCName _ -> ()
     | CTypLabel -> ())
 
 and fold_cexp e callb =
@@ -642,8 +639,6 @@ let make_cfor_inc i ityp a b delta body loc =
     CStmtFor ((e0 :: []), (Some e1), (e2 :: []), body, loc)
 
 let std_fx_rc_t = ref CTypNil
-let std_fx_free_t = ref CTypNil
-let std_fx_copy_t = ref CTypNil
 
 let curr_exn_val = ref (-1024)
 let std_FX_MAX_DIMS = 5
@@ -654,7 +649,8 @@ let std_fx_free = ref noid
 let std_FX_CALL = ref noid
 let std_FX_COPY_PTR = ref noid
 let std_FX_COPY_SIMPLE = ref noid
-let std_FX_NO_FREE = ref noid
+let std_FX_COPY_SIMPLE_BY_PTR = ref noid
+let std_FX_NOP = ref noid
 
 let std_fx_copy_ptr = ref noid
 let std_fx_free_ptr = ref noid

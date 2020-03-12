@@ -149,8 +149,9 @@ let k_optimize_all code =
 let k2c_all code =
     let _ = (compile_errs := []) in
     let _ = C_form.init_all_idcs() in
-    let _ = C_pp.pprint_top [] in
-    ()
+    let _ = C_gen_std.init_std_names() in
+    let ccode_types = C_gen_types.convert_to_c code in
+    (ccode_types, !compile_errs = [])
 
 let print_all_compile_errs () =
     let nerrs = List.length !compile_errs in
@@ -174,7 +175,9 @@ let process_all fname0 =
         let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
         (*let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in*)
         let (code, ok) = if ok then k_optimize_all code else ([], false) in
+        let (ccode, ok) = if ok then k2c_all code else ([], false) in
         let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in
+        let _ = if ok && options.print_c then (C_pp.pprint_top ccode) else () in
         ok
     with
     | Failure msg -> print_string msg; false
