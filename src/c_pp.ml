@@ -74,12 +74,14 @@ let pprint_id n =
     let cname = get_idc_cname n in
     pstr (if cname = "" then (pp_id2str n) else cname)
 
-let rec pprint_ctyp_ t id_opt =
+let rec pprint_ctyp__ prefix t id_opt =
     let pr_id_opt_ add_space = match id_opt with
         | Some(i) -> if add_space then pspace() else (); pprint_id i
         | _ -> () in
     let pr_id_opt () = pr_id_opt_ true in
-    match t with
+    (match t with CTypStruct _ -> ohbox() | _ -> ());
+    pstr prefix;
+    (match t with
     | CTypInt -> pstr "int_"; pr_id_opt ()
     | CTypCInt -> pstr "int"; pr_id_opt ()
     | CTypSize_t -> pstr "size_t"; pr_id_opt ()
@@ -120,14 +122,14 @@ let rec pprint_ctyp_ t id_opt =
         cbox(); pstr ")"; cbox()
     | CTypCSmartPtr -> pstr "fx_cptr_t"; pr_id_opt ()
     | CTypStruct (n_opt, selems) ->
-        obox(); pstr "struct ";
+        pstr "struct ";
         (match n_opt with
         | Some n -> pprint_id n; pstr " "
         | _ -> ()
         );
-        pstr "{"; ovbox(); pspace();
-        List.iter (fun (ni, ti) -> pprint_ctyp_ ti (Some ni); pstr ";"; pspace()) selems;
-        cbox(); pstr "}"; cbox(); pr_id_opt()
+        pstr "{"; cbox(); pcut(); ovbox();
+        List.iteri (fun i (ni, ti) -> if i = 0 then pstr "   " else pbreak(); ohbox(); pprint_ctyp_ ti (Some ni); pstr ";"; cbox()) selems;
+        cbox(); pbreak(); pstr "}"; pr_id_opt()
     | CTypUnion (n_opt, uelems) ->
         obox(); pstr "union ";
         (match n_opt with
@@ -147,7 +149,9 @@ let rec pprint_ctyp_ t id_opt =
     | CTypArray (d, _) -> pstr (sprintf "fx_arr%d_t" d)
     | CTypName n -> pprint_id n; pr_id_opt()
     | CTypLabel -> pstr "/*<label>*/"; pr_id_opt()
-    | CTypAny -> pstr "void"; pr_id_opt()
+    | CTypAny -> pstr "void"; pr_id_opt())
+
+and pprint_ctyp_ t id_opt = pprint_ctyp__ "" t id_opt
 
 and pprint_cexp_ e pr =
     match e with
@@ -229,7 +233,6 @@ and pprint_fun_hdr fname semicolon loc =
     pbreak()
 
 and pprint_cstmt s =
-    obox();
     (match s with
     | CStmtNop _ -> pstr "{}"
     | CComment (s, _) -> pstr s
@@ -246,7 +249,7 @@ and pprint_cstmt s =
         | [] -> pstr "{}"
         | s :: [] -> pprint_cstmt s
         | _ ->  pstr "{"; ovbox();
-            List.iter (fun s -> pprint_cstmt s) sl;
+            List.iter (fun s -> pprint_cstmt s; pbreak()) sl;
             cbox(); pstr "}")
     | CStmtIf (e, s1, s2, _) ->
         pstr "if ("; pprint_cexp_ e 0; pstr ")";
@@ -286,15 +289,14 @@ and pprint_cstmt s =
     | CDefFun cf ->
         let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = !cf in
         pprint_fun_hdr cf_name false cf_loc;
-        obox(); pstr "{"; ovbox(); pbreak();
-        List.iter (fun s -> pprint_cstmt s; pbreak()) cf_body; pbreak();
-        cbox(); pstr "}"; cbox();
-        pbreak()
+        ovbox(); pstr "{";
+        List.iter (fun s -> pbreak(); pprint_cstmt s) cf_body;
+        cbox(); pbreak(); pstr "}"
     | CDefForwardFun (cf_name, cf_loc) ->
         pprint_fun_hdr cf_name true cf_loc
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
-        pstr "typedef "; pprint_ctyp_ ct_typ (Some ct_name); pstr ";"
+        pprint_ctyp__ "typedef " ct_typ (Some ct_name); pstr ";";
     | CDefForwardTyp (n, _) ->
         pstr "struct "; pprint_id n; pstr ";"
     | CDefEnum ce ->
@@ -308,8 +310,7 @@ and pprint_cstmt s =
             match e_opt with
             | Some e -> pstr "="; pprint_cexp_ e 0
             | _ -> ()) ce_members;
-        cbox(); pbreak(); pstr "} "; pprint_id ce_name; pstr ";";
-        pbreak()
+        cbox(); pbreak(); pstr "} "; pprint_id ce_name; pstr ";"
     | CMacroDef cm ->
         let {cm_name=n; cm_args=args; cm_body=body} = !cm in
         pstr "#define "; pprint_id n;
@@ -342,11 +343,9 @@ and pprint_cstmt s =
             List.iter (fun s -> pprint_cstmt s) else_l);
         pbreak();
         ohbox(); pstr "#endif";
-        pbreak()
-    | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox(); pbreak());
-    cbox()
+    | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox())
 
 let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ctyp_ t None; Format.close_box(); Format.print_flush ()
 let pprint_cexp_x e = Format.print_flush (); Format.open_box 0; pprint_cexp_ e 0; Format.close_box(); Format.print_flush ()
 let pprint_cstmt_x s = Format.print_flush (); Format.open_box 0; pprint_cstmt s; Format.close_box(); Format.print_flush ()
-let pprint_top code = Format.print_flush (); Format.open_vbox 0; List.iter pprint_cstmt code; Format.close_box(); pbreak(); Format.print_flush ()
+let pprint_top code = Format.print_flush (); Format.open_vbox 0; List.iter (fun s -> pprint_cstmt s; pbreak()) code; Format.close_box(); pbreak(); Format.print_flush ()
