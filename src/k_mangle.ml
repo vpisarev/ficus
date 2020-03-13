@@ -72,8 +72,8 @@ let mangle_make_unique n_id prefix name suffix mangle_map =
         in
     make_unique_ 0
 
-let add_vx str = if Utils.starts_with str "_vx_" then str else "_vx_" ^ str
-let remove_vx str = if Utils.starts_with str "_vx_" then String.sub str 4 ((String.length str) - 4) else str
+let add_vx str = if Utils.starts_with str "_fx_" then str else "_fx_" ^ str
+let remove_vx str = if Utils.starts_with str "_fx_" then String.sub str 4 ((String.length str) - 4) else str
 
 (* Convert type to a string, i.e. mangle it.
    Use mangle_map to control uniqueness when mangling KTypName _ and KTypRecord _.

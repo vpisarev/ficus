@@ -187,15 +187,16 @@ let convert_all_typs top_code =
     let add_fwd_decl fwd_decl decl =
         if fwd_decl then
             top_fwd_decl := decl :: !top_fwd_decl
-        else ()
-    in
+        else () in
+    let add_decl decl =
+        top_typ_decl := decl :: !top_typ_decl in
     (* creates declaration of the data structure with optional forward declaration;
        if needed, create declarations (empty at this momoent) of the destructor and
        copy operator, together with thier optional forward declarations *)
     let create_ctyp_decl tn ktp fwd_decl loc =
         let {ktp_ptr; ktp_pass_by_ref; ktp_custom_free; ktp_custom_copy} = ktp in
         let (freem, freef) = if ktp_custom_free then (noid, (gen_temp_idc "free")) else (noid, noid) in
-        let (cpym, cpyf) = if ktp_custom_copy then (noid, (gen_temp_idc "copy")) else
+        let (cpym, copyf) = if ktp_custom_copy then (noid, (gen_temp_idc "copy")) else
             if ktp_ptr then (!std_FX_COPY_PTR, !std_fx_copy_ptr) else (noid, noid) in
         let cname = get_idk_cname tn loc in
         let (struct_id, struct_cname) = if ktp_ptr then ((dup_idc tn), cname ^ "_data_t") else (tn, cname) in
@@ -205,7 +206,7 @@ let convert_all_typs top_code =
             ct_make=noid;  ct_scope=ScGlobal::[]; ct_loc=loc;
             ct_props={
                 ctp_ptr=ktp_ptr; ctp_pass_by_ref=ktp_pass_by_ref;
-                ctp_free=(freem, freef); ctp_copy=(cpym, cpyf)}
+                ctp_free=(freem, freef); ctp_copy=(cpym, copyf)}
             } in
         let typ_decl = if ktp_ptr then
             ref { !struct_decl with ct_name=tn; ct_typ=(make_ptr (CTypName struct_id)); ct_cname=cname }
@@ -222,7 +223,7 @@ let convert_all_typs top_code =
             cf_name=freef; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ cname;
             cf_args=dst_id :: [];  cf_body=[];
             cf_flags=FunNoThrow :: []; cf_scope=ScGlobal :: []; cf_loc=loc } in
-        let cpyf_decl = ref { !freef_decl with
+        let copyf_decl = ref { !freef_decl with
             cf_name=freef; cf_typ=CTypFun(src_typ :: dst_typ :: [], CTypVoid); cf_cname="_fx_copy_" ^ cname;
             cf_args=src_id :: dst_id :: [] } in
         if ktp_ptr then
@@ -230,15 +231,18 @@ let convert_all_typs top_code =
             add_fwd_decl fwd_decl (CDefForwardTyp (struct_id, loc)))
         else ();
         set_idc_entry tn (CTyp typ_decl);
+        add_decl (CDefTyp struct_decl);
         if ktp_custom_free then
             (set_idc_entry freef (CFun freef_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun (freef, loc)))
+            add_fwd_decl fwd_decl (CDefForwardFun (freef, loc));
+            add_decl (CDefFun freef_decl))
         else ();
         if ktp_custom_copy then
-            (set_idc_entry cpyf (CFun cpyf_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun (cpyf, loc)))
+            (set_idc_entry copyf (CFun copyf_decl);
+            add_fwd_decl fwd_decl (CDefForwardFun (copyf, loc));
+            add_decl (CDefFun copyf_decl))
         else ();
-        (struct_decl, freef_decl, cpyf_decl, src_exp, dst_exp)
+        (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp)
     in
     (* converts named type to C *)
     let rec cvt2ctyp tn loc =
@@ -258,13 +262,14 @@ let convert_all_typs top_code =
                 | _ -> (None, false, deps) in
             let _ = match (opt_rec_var, visited) with
                 | (None, true) -> raise_compile_err loc
-                    (sprintf "non-recursive variant type '%s' references itself directly or indirectly" (pp_id2str tn))
+                    (sprintf "non-recursive variant type '%s' references itself directly or indirectly" (id2str tn))
                 | _ -> () in
             let _ = all_visited := IdSet.add tn !all_visited in
             let ktp = K_annotate_types.get_ktprops (KTypName tn) loc in
             let (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp) = create_ctyp_decl tn ktp fwd_decl loc in
             let {ct_name=struct_id} = !struct_decl in
             IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps;
+            all_decls := IdSet.add tn !all_decls;
             match kt_info with
             | KTyp kt ->
                 let {kt_typ; kt_loc} = !kt in
@@ -296,7 +301,7 @@ let convert_all_typs top_code =
                     copyf_decl := {!freef_decl with cf_body=List.rev copy_code}
                 | KTypList et ->
                     let ct = ktyp2ctyp et kt_loc in
-                    let relems = ((get_id "rc"), !std_fx_rc_t) ::
+                    let relems = ((get_id "rc"), CTypInt) ::
                         ((get_id "tl"), (make_ptr (CTypName struct_id))) ::
                         ((get_id "hd"), ct) :: [] in
                     struct_decl := {!struct_decl with ct_typ=CTypStruct((Some struct_id), relems)}
@@ -311,7 +316,7 @@ let convert_all_typs top_code =
         | KDefTyp {contents={kt_name; kt_loc}} -> cvt2ctyp kt_name kt_loc
         | KDefVariant {contents={kvar_name; kvar_loc}} -> cvt2ctyp kvar_name kvar_loc
         | KDefClosureVars {contents={kcv_name; kcv_loc}} -> cvt2ctyp kcv_name kcv_loc
-        | KDefExn {contents={ke_name; ke_loc}} -> cvt2ctyp ke_name ke_loc
+        | KDefExn {contents={ke_name; ke_loc}} -> () (* [TODO] convert exception to C *)
         | _ -> fold_kexp e callb
             (*
                 Tuples:

@@ -302,15 +302,18 @@ let get_cinfo_typ info i loc =
 
 let get_idc_typ i loc = get_cinfo_typ (cinfo i) i loc
 
-let get_idc_cname i = match (cinfo i) with
-    | CNone -> ""
-    | CText _ -> ""
-    | CVal {cv_cname} -> cv_cname
-    | CFun {contents = {cf_cname}} -> cf_cname
-    | CTyp {contents = {ct_cname}} -> ct_cname
-    | CLabel {cl_cname} -> cl_cname
-    | CEnum {contents = {ce_cname}} -> ce_cname
-    | CMacro {contents = {cm_cname}} -> cm_cname
+let get_idc_cname i =
+    match i with
+    | Id.Name _ -> pp_id2str i
+    | _ -> (match (cinfo i) with
+        | CNone -> ""
+        | CText _ -> ""
+        | CVal {cv_cname} -> cv_cname
+        | CFun {contents = {cf_cname}} -> cf_cname
+        | CTyp {contents = {ct_cname}} -> ct_cname
+        | CLabel {cl_cname} -> cl_cname
+        | CEnum {contents = {ce_cname}} -> ce_cname
+        | CMacro {contents = {cm_cname}} -> cm_cname)
 
 (* used by the type checker *)
 let get_lit_ctyp l = match l with
@@ -637,8 +640,6 @@ let make_cfor_inc i ityp a b delta body loc =
     let e1 = CExpBinOp(COpCompareLT, i_exp, b, (CTypBool, loc)) in
     let e2 = CExpUnOp(COpSuffixInc, i_exp, (ityp, loc)) in
     CStmtFor ((e0 :: []), (Some e1), (e2 :: []), body, loc)
-
-let std_fx_rc_t = ref CTypNil
 
 let curr_exn_val = ref (-1024)
 let std_FX_MAX_DIMS = 5

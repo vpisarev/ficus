@@ -32,22 +32,25 @@ enum
 #define FX_INLINE __inline
 
 typedef intptr_t int_; // int size in ficus is equal to the pointer size
-typedef int char_; // 4-byte unicode character
+typedef unsigned int char_; // 4-byte unicode character
 
 #ifndef FX_XADD
 #ifdef _MSC_VER
 #include <intrin.h>
-#define FX_XADD(addr, delta) (int)_InterlockedExchangeAdd((long volatile*)addr, delta)
-#elif defined __ATOMIC_ACQ_REL
-#define FX_XADD(addr, delta) __c11_atomic_fetch_add((_Atomic(int)*)(addr), delta, __ATOMIC_ACQ_REL)
+#if defined _M_X64 || defined _M_ARM64
+#define FX_XADD(addr, delta) (int_)_InterlockedExchangeAdd64((__int64 volatile*)addr, delta)
 #else
-#define FX_XADD(addr, delta) __atomic_fetch_add((_Atomic(int)*)(addr), delta, 4)
+#define FX_XADD(addr, delta) (int)_InterlockedExchangeAdd((long volatile*)addr, delta)
+#endif
+#elif defined __ATOMIC_ACQ_REL
+#define FX_XADD(addr, delta) __c11_atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, __ATOMIC_ACQ_REL)
+#else
+#define FX_XADD(addr, delta) __atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, 4)
 #endif
 #endif
 
 #define FX_INCREF(rc) FX_XADD(&(rc), 1)
 #define FX_DECREF(rc) FX_XADD(&(rc), -1)
-typedef int fx_rc_t;
 
 #ifdef _MSC_VER
 #define FX_THREAD_LOCAL __declspec(thread)
@@ -67,7 +70,7 @@ struct fx_exndata_t;
 
 typedef struct fx_exndata_t
 {
-    fx_rc_t rc;
+    int_ rc;
     fx_free_t free_f;
 } fx_exndata_t;
 
@@ -97,7 +100,7 @@ void fx_copy_ptr(const void* src, void* pdst);
 ////////////////////////// Strings //////////////////////
 typedef struct fx_str_t
 {
-    fx_rc_t* rc;
+    int_* rc;
     char_* data;
     int_ length;
 } fx_str_t;
@@ -172,7 +175,7 @@ typedef void (*fx_copy_t)(const void* src, void* dst);
 
 typedef struct fx_arr_t
 {
-    fx_rc_t* rc;
+    int_* rc;
     int flags;
     int ndims;
     // put 'data' together with the interleaved '(size, step)' pairs
@@ -317,7 +320,7 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
 
 typedef struct fx_base_fv_t
 {
-    fx_rc_t rc;
+    int_ rc;
     fx_free_t free_f;
 } fx_base_fv_t;
 
@@ -344,7 +347,7 @@ void fx_copy_fp(const void* src, void* pdst);
 
 typedef struct fx_cptr_cell_t
 {
-    fx_rc_t rc;
+    int_ rc;
     fx_free_t free_f;
     void* ptr;
 } fx_cptr_cell_t, *fx_cptr_t;

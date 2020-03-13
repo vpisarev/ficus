@@ -27,8 +27,6 @@ let gen_std_macro cname nargs =
 let init_std_names () =
     curr_exn_val := -1024;
 
-    std_fx_rc_t := CTypName (get_id "fx_rc_t");
-
     std_fx_alloc := gen_std_fun "fx_alloc" (CTypSize_t :: []) std_CTypVoidPtr;
     std_fx_free := gen_std_fun "fx_free" (std_CTypVoidPtr :: []) CTypVoid;
 
