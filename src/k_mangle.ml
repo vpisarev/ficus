@@ -190,7 +190,7 @@ let mangle_all top_code =
         | KTypRecord(rn, _) -> ignore(mangle_ktyp t mangle_map loc); KTypName rn
         | KTypFun _ -> create_gen_typ t "fun" loc
         | KTypTuple _ -> create_gen_typ t "tup" loc
-        | KTypArray _ -> create_gen_typ t "arr" loc
+        | KTypArray _ -> t (*create_gen_typ t "arr" loc*)
         | KTypList _ -> create_gen_typ t "lst" loc
         | KTypRef _ -> create_gen_typ t "ref" loc
     and mangle_ktyp_retain_record t loc callb =

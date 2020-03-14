@@ -17,6 +17,7 @@ let obox () = Format.open_box (!base_indent)
 let obox_indent () = Format.open_box (!base_indent)
 let cbox = Format.close_box
 let ovbox () = Format.open_vbox (!base_indent)
+let ovbox_brace () = Format.open_vbox (!base_indent-1)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 let ohbox () = Format.open_hbox ()
@@ -74,12 +75,21 @@ let pprint_id n =
     let cname = get_idc_cname n in
     pstr (if cname = "" then (pp_id2str n) else cname)
 
-let rec pprint_ctyp__ prefix t id_opt =
+let rec pprint_ctyp__ prefix t id_opt fwd_mode =
     let pr_id_opt_ add_space = match id_opt with
         | Some(i) -> if add_space then pspace() else (); pprint_id i
         | _ -> () in
     let pr_id_opt () = pr_id_opt_ true in
-    (match t with CTypStruct _ -> ohbox() | _ -> ());
+    let pr_struct prefix n_opt elems suffix =
+        (pstr (prefix ^ " ");
+        (match n_opt with
+        | Some n -> pprint_id n; pstr " "
+        | _ -> ()
+        );
+        cbox(); pspace(); pstr "{"; ovbox_brace();
+        List.iter (fun (ni, ti) -> pbreak(); ohbox(); pprint_ctyp__ "" ti (Some ni) true; pstr ";"; cbox()) elems;
+        cbox(); pbreak(); ohbox(); pstr ("} " ^ suffix); pr_id_opt_ false; cbox()) in
+    (match t with CTypStruct _ | CTypUnion _ | CTypRawPtr(_, CTypStruct _) -> ohbox() | _ -> ());
     pstr prefix;
     (match t with
     | CTypInt -> pstr "int_"; pr_id_opt ()
@@ -121,24 +131,9 @@ let rec pprint_ctyp__ prefix t id_opt =
         | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
         cbox(); pstr ")"; cbox()
     | CTypCSmartPtr -> pstr "fx_cptr_t"; pr_id_opt ()
-    | CTypStruct (n_opt, selems) ->
-        pstr "struct ";
-        (match n_opt with
-        | Some n -> pprint_id n; pstr " "
-        | _ -> ()
-        );
-        pstr "{"; cbox(); pcut(); ovbox();
-        List.iteri (fun i (ni, ti) -> if i = 0 then pstr "   " else pbreak(); ohbox(); pprint_ctyp_ ti (Some ni); pstr ";"; cbox()) selems;
-        cbox(); pbreak(); pstr "}"; pr_id_opt()
-    | CTypUnion (n_opt, uelems) ->
-        obox(); pstr "union ";
-        (match n_opt with
-        | Some n -> pprint_id n; pstr " "
-        | _ -> ()
-        );
-        pstr "{"; ovbox(); pspace();
-        List.iter (fun (ni, ti) -> pprint_ctyp_ ti (Some ni); pstr ";"; pspace()) uelems;
-        cbox(); pstr "}"; cbox(); pr_id_opt()
+    | CTypStruct (n_opt, selems) -> pr_struct "struct" n_opt selems ""
+    | CTypRawPtr ([], CTypStruct(n_opt, selems)) -> pr_struct "struct" n_opt selems "*"
+    | CTypUnion (n_opt, uelems) -> pr_struct "union" n_opt uelems ""
     | CTypRawPtr (attrs, t) ->
         obox();
         if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
@@ -146,12 +141,20 @@ let rec pprint_ctyp__ prefix t id_opt =
         pprint_ctyp_ t None;
         pstr "*"; pr_id_opt();
         cbox()
-    | CTypArray (d, _) -> pstr (sprintf "fx_arr%d_t" d)
-    | CTypName n -> pprint_id n; pr_id_opt()
+    | CTypArray _ -> pstr "fx_arr_t"; pr_id_opt()
+    | CTypName n ->
+        (match (fwd_mode, n) with
+        | (false, _) -> pprint_id n
+        | (true, Id.Name _) -> pprint_id n
+        | _ -> (match (cinfo n) with
+            | CTyp {contents={ct_typ=CTypRawPtr(_, CTypStruct((Some struct_id), _))}} ->
+                pstr "struct "; pprint_id struct_id; pstr "*"
+            | _ -> pprint_id n));
+        pr_id_opt()
     | CTypLabel -> pstr "/*<label>*/"; pr_id_opt()
     | CTypAny -> pstr "void"; pr_id_opt())
 
-and pprint_ctyp_ t id_opt = pprint_ctyp__ "" t id_opt
+and pprint_ctyp_ t id_opt = pprint_ctyp__ "" t id_opt false
 
 and pprint_cexp_ e pr =
     match e with
@@ -291,12 +294,12 @@ and pprint_cstmt s =
         pprint_fun_hdr cf_name false cf_loc;
         ovbox(); pstr "{";
         List.iter (fun s -> pbreak(); pprint_cstmt s) cf_body;
-        cbox(); pbreak(); pstr "}"
+        cbox(); pbreak(); pstr "}"; pbreak()
     | CDefForwardFun (cf_name, cf_loc) ->
         pprint_fun_hdr cf_name true cf_loc
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
-        pprint_ctyp__ "typedef " ct_typ (Some ct_name); pstr ";";
+        pprint_ctyp__ "typedef " ct_typ (Some ct_name) true; pstr ";"; pbreak()
     | CDefForwardTyp (n, _) ->
         pstr "struct "; pprint_id n; pstr ";"
     | CDefEnum ce ->

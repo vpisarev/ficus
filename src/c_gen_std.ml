@@ -25,7 +25,7 @@ let gen_std_macro cname nargs =
     n
 
 let init_std_names () =
-    curr_exn_val := -1024;
+    (curr_exn_val := -1024;
 
     std_fx_alloc := gen_std_fun "fx_alloc" (CTypSize_t :: []) std_CTypVoidPtr;
     std_fx_free := gen_std_fun "fx_free" (std_CTypVoidPtr :: []) CTypVoid;
@@ -45,13 +45,14 @@ let init_std_names () =
     std_FX_THROW_LIGHT := gen_std_macro "FX_THROW_LIGHT" 2;
     std_FX_FREE_EXN := gen_std_macro "FX_FREE_EXN" 1;
     std_FX_COPY_EXN := gen_std_macro "FX_COPY_EXN" 2;
-    std_FX_EXN_MAKE_IMPL := gen_std_macro "FX_EXN_MAKE_IMPL" 4;
+    std_FX_MAKE_EXN_IMPL := gen_std_macro "FX_EXN_MAKE_IMPL" 4;
 
     std_fx_free_exn := gen_std_fun "fx_free_exn" ((make_ptr CTypExn) :: []) CTypVoid;
     std_fx_copy_exn := gen_std_fun "fx_copy_exn" ((make_const_ptr CTypExn) :: (make_ptr CTypExn) :: []) CTypVoid;
 
-    std_FX_LIST_FREE_IMPL := gen_std_macro "FX_LIST_FREE_IMPL" 2;
-    std_FX_LIST_MAKE_IMPL := gen_std_macro "FX_LIST_MAKE_IMPL" 2;
+    std_fx_free_list_simple := gen_std_fun "fx_free_list_simple" (std_CTypVoidPtr :: []) CTypVoid;
+    std_FX_FREE_LIST_IMPL := gen_std_macro "FX_FREE_LIST_IMPL" 2;
+    std_FX_MAKE_LIST_IMPL := gen_std_macro "FX_MAKE_LIST_IMPL" 2;
 
     std_FX_CHKIDX_xD := [];
     std_FX_EPTR_xD_ := [];
@@ -71,10 +72,11 @@ let init_std_names () =
 
     std_fx_free_arr := gen_std_fun "fx_free_arr" ((make_ptr std_CTypAnyArray) :: []) CTypVoid;
     std_fx_copy_arr := gen_std_fun "fx_copy_arr"
-        ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: []) CTypVoid;;
+        ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: []) CTypVoid;
 
-    std_FX_REF_FREE_IMPL := gen_std_macro "FX_REF_FREE_IMPL" 2;
-    std_FX_REF_MAKE_IMPL := gen_std_macro "FX_REF_MAKE_IMPL" 2;
+    std_fx_free_ref_simple := gen_std_fun "fx_free_ref_simple" (std_CTypVoidPtr :: []) CTypVoid;
+    std_FX_FREE_REF_IMPL := gen_std_macro "FX_FREE_REF_IMPL" 2;
+    std_FX_MAKE_REF_IMPL := gen_std_macro "FX_MAKE_REF_IMPL" 2;
 
     std_FX_FREE_FP := gen_std_macro "FX_FREE_FP" 1;
     std_FX_COPY_FP := gen_std_macro "FX_COPY_FP" 2;
@@ -83,4 +85,4 @@ let init_std_names () =
 
     std_fx_free_cptr := gen_std_fun "fx_free_cptr" ((make_ptr CTypCSmartPtr) :: []) CTypVoid;
     std_fx_copy_cptr := gen_std_fun "fx_copy_cptr"
-        ((make_const_ptr CTypCSmartPtr) :: (make_ptr CTypCSmartPtr) :: []) CTypVoid;
+        ((make_const_ptr CTypCSmartPtr) :: (make_ptr CTypCSmartPtr) :: []) CTypVoid)

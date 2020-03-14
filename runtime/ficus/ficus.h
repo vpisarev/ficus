@@ -120,7 +120,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_FREE_EXN(exn) if(!(exn)->data) ; else fx_free_exn(exn)
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
 
-#define FX_EXN_MAKE_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy_f) \
+#define FX_MAKE_EXN_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy_f) \
     exndata_typ* data = (exndata_typ*)fx_alloc(sizeof(*data)); \
     if(!data) return FX_OUT_OF_MEM_ERR; \
         \
@@ -134,7 +134,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 
 //////////////////////////// Lists /////////////////////////
 
-#define FX_LIST_FREE_IMPL(typ, hd_free_f) \
+#define FX_FREE_LIST_IMPL(typ, hd_free_f) \
     typ l = *pl; \
     while(l) { \
         if(FX_DECREF(l->rc) > 1) \
@@ -146,7 +146,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     } \
     *pl = 0
 
-#define FX_LIST_MAKE_IMPL(typ, hd_copy_f) \
+#define FX_MAKE_LIST_IMPL(typ, hd_copy_f) \
     typ l = (typ)fx_alloc(sizeof(*l)); \
     if (!l) return FX_OUT_OF_MEM_ERR; \
     l->rc = 1; \
@@ -299,7 +299,7 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
 
 ////////////////////////// References //////////////////////////
 
-#define FX_REF_FREE_IMPL(typ, arg_free_f) \
+#define FX_FREE_REF_IMPL(typ, arg_free_f) \
     typ r = *pr; \
     if(r && FX_DECREF(r->rc) == 1) \
     { \
@@ -308,13 +308,15 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
     } \
     *pr = 0
 
-#define FX_REF_MAKE_IMPL(typ, arg_copy_f) \
+#define FX_MAKE_REF_IMPL(typ, arg_copy_f) \
     typ r = (typ)fx_alloc(sizeof(*r)); \
     if (!r) return FX_OUT_OF_MEM_ERR; \
     r->rc = 1; \
     arg_copy_f(arg, &r->data); \
     *fx_result = r; \
     return FX_OK
+
+void fx_free_ref_simple(void* pr);
 
 //////////////////////// Function pointers /////////////////////////
 

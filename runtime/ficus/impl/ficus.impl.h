@@ -33,23 +33,31 @@ void fx_free(void* ptr)
 
 /////////////// list ////////////////
 
-typedef struct fx_list_simple_cell_t
+typedef struct fx_list_simple_data_t
 {
     fx_rc_t rc;
     struct fx_list_simple_cell_t* tl;
-} fx_list_simple_cell_t;
+    int hd;
+}* fx_list_simple_t;
 
-void fx_free_list_simple(void* pl)
+void fx_free_list_simple(void* pl_)
 {
-    fx_list_simple_cell_t **pl_ = (fx_list_simple_cell_t**pl), l = *pl_;
-    while(l) {
-        if(FX_DECREF(l->rc) > 1)
-            break;
-        fx_list_simple_cell_t* tl = (fx_list_simple_cell_t*)l->tl;
-        fx_free(l);
-        l = tl;
-    }
-    *pl_ = 0;
+    fx_list_simple_t *pl = (fx_list_simple_t*)pl_;
+    FX_FREE_LIST_IMPL(fx_list_simple_t, FX_NOP)
+}
+
+///////////// references ////////////
+
+typedef struct fx_ref_simple_data_t
+{
+    fx_rc_t rc;
+    int data;
+} fx_ref_simple_t;
+
+void fx_free_ref_simple(void* pr_)
+{
+    fx_ref_simple_t *pr = (fx_ref_simple_t*)pr_;
+    FX_FREE_REF_IMPL(fx_ref_simple_t, FX_NOP);
 }
 
 ////// reference-counted cells //////

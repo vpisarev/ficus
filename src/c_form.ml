@@ -662,12 +662,13 @@ let std_fx_copy_str = ref noid
 let std_FX_THROW_LIGHT = ref noid
 let std_FX_FREE_EXN = ref noid
 let std_FX_COPY_EXN = ref noid
-let std_FX_EXN_MAKE_IMPL = ref noid
+let std_FX_MAKE_EXN_IMPL = ref noid
 let std_fx_free_exn = ref noid
 let std_fx_copy_exn = ref noid
 
-let std_FX_LIST_FREE_IMPL = ref noid
-let std_FX_LIST_MAKE_IMPL = ref noid
+let std_fx_free_list_simple = ref noid
+let std_FX_FREE_LIST_IMPL = ref noid
+let std_FX_MAKE_LIST_IMPL = ref noid
 
 let std_FX_CHKIDX_xD = ref ([] : id_t list)
 let std_FX_EPTR_xD_ = ref ([] : id_t list)
@@ -678,8 +679,9 @@ let std_fx_copy_arr = ref noid
 let std_fx_make_arr = ref noid
 let std_fx_make_arrxd = ref ([] : id_t list)
 
-let std_FX_REF_FREE_IMPL = ref noid
-let std_FX_REF_MAKE_IMPL = ref noid
+let std_fx_free_ref_simple = ref noid
+let std_FX_FREE_REF_IMPL = ref noid
+let std_FX_MAKE_REF_IMPL = ref noid
 
 let std_FX_FREE_FP = ref noid
 let std_FX_COPY_FP = ref noid
