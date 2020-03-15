@@ -11,6 +11,7 @@ lexer.ml
 parser.ml
 parser.mli
 parser.output
+src/ficus
 
 # ocamlbuild working directory
 _build/

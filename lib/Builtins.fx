@@ -78,7 +78,7 @@ fun print(a: string) = print_string(a)
 fun print(l: 't list)
 {
     print("[")
-    for (i <- 0:, x <- l) {
+    for (i in 0:, x in l) {
         if (i > 0) print(", ")
         print (x)
     }
@@ -88,9 +88,9 @@ fun print(l: 't list)
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
-fun array(n: int, x: 't) = [for (i <- 0:n) x]
-fun array((m: int, n: int), x: 't) = [for (i <- 0:m) for (j <- 0:n) x]
-fun array((m: int, n: int, l: int), x: 't) = [for (i <- 0:m) for (j <- 0:n) for (k <- 0:l) x]
+fun array(n: int, x: 't) = [for (i in 0:n) x]
+fun array((m: int, n: int), x: 't) = [for (i in 0:m) for (j in 0:n) x]
+fun array((m: int, n: int, l: int), x: 't) = [for (i in 0:m) for (j in 0:n) for (k in 0:l) x]
 
 pure nothrow fun size(a: 't []): int = ccode "return a->size[0];"
 pure fun size(a: 't [,]): (int, int) = ccode

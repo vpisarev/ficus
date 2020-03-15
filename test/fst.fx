@@ -29,7 +29,7 @@ val fib3 = fib_seq()
 
 println("factorial(5)=\(testmod.fact(5))")
 
-for (i <- 1:31) { print("fib(\(i))="); print(fib(i)); print(", fib2(\(i))=\(fib2(i)), "); println("fib3(\(i))=\(fib3())") }
+for (i in 1:31) { print("fib(\(i))="); print(fib(i)); print(", fib2(\(i))=\(fib2(i)), "); println("fib3(\(i))=\(fib3())") }
 
 exception Break: int
 
@@ -38,7 +38,7 @@ fun find_idx(a: 't [], elem: 't)
     val n = size(a)
     try
     {
-        for (i <- 0:n) if (a[i] == elem) throw Break(i)
+        for (i in 0:n) if (a[i] == elem) throw Break(i)
         -1
     }
     catch
@@ -58,8 +58,8 @@ match (fixed_choice)
 }
 
 val n = 30
-val a = [for (i <- 0:n) 1]
-for (i <- 1:n) a[i] += a[i-1]
+val a = [for (i in 0:n) 1]
+for (i in 1:n) a[i] += a[i-1]
 
 println(find_idx([1, 2, 5], 5))
 val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], (fun (a: int, b: int) => a > b))

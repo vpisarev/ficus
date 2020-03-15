@@ -17,9 +17,9 @@ operator - (a: vec8d, b: vec8d) =
 operator * (a: vec8d, b: vec8d) =
     (a.0*b.0, a.1*b.1, a.2*b.2, a.3*b.3, a.4*b.4, a.5*b.5, a.6*b.6, a.7*b.7)
 
-val x_ = [parallel for (x <- 0:w) (x :> double) * inv - 1.5]
+val x_ = [parallel for (x in 0:w) (x :> double) * inv - 1.5]
 val result: int8 [,] = [
-    parallel for (y <- 0:h) for (x8 <- 0:(w/8))
+    parallel for (y in 0:h) for (x8 in 0:(w/8))
     {
         val y_ = (y :> double) * inv - 1.0
         val x = x8*8
@@ -34,7 +34,7 @@ val result: int8 [,] = [
         val ci: vec8d = (y_, y_, y_, y_, y_, y_, y_, y_)
         var bits = 255, zr = cr, zi = ci
 
-        for (iter <- 0:MAX_ITER)
+        for (iter in 0:MAX_ITER)
         {
             val rr = zr * zr
             val ii = zi * zi

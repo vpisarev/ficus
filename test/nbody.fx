@@ -68,7 +68,7 @@ fun offsetMomentum()
 {
     bodies[0] \=
     {
-        vel = fold(p = Vec{x=0., y=0., z=0.}; body <- bodies)
+        vel = fold(p = Vec{x=0., y=0., z=0.}; body in bodies)
                 p += body.vel * (body.mass / SolarMass)
     }
 }
@@ -76,11 +76,11 @@ fun offsetMomentum()
 fun energy()
 {
     val n = size(bodies)
-    fold (e = 0.; i <- 0:n)
+    fold (e = 0.; i in 0:n)
     {
         val bi = bodies[i]
         e += 0.5 * bi.mass * dot(bi.vel, bi.vel) -
-        (fold(e1 = 0.; j <- (i+1):n)
+        (fold(e1 = 0.; j in (i+1):n)
         {
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
@@ -93,10 +93,10 @@ fun energy()
 fun advance(dt: double)
 {
     val n = size(bodies)
-    for (i <- 0:n)
+    for (i in 0:n)
     {
         var bi = bodies[i]
-        for (j <- (i+1):n)
+        for (j in (i+1):n)
         {
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
@@ -111,7 +111,7 @@ fun advance(dt: double)
 
 offsetMomentum()
 println(energy())
-for (i <- 0:50000000) advance(0.01)
+for (i in 0:50000000) advance(0.01)
 println(energy())
 println("Done")
 0

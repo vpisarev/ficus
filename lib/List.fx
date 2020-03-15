@@ -39,7 +39,7 @@ fun rev(l: 't list, rl: 't list): 't list =
     | _ => rl
     }
 
-fun array(l: 't list): 't [] = [for (x <- l) x]
+fun array(l: 't list): 't [] = [for (x in l) x]
 
 fun all(l: 't list, f: 't -> bool): bool =
     match(l) {
@@ -73,14 +73,14 @@ fun find_opt(l: 't list, f: 't -> bool): 't? =
     }
 
 fun concat(ll: 't list list): 't list =
-    fold(s = []; l <- rev(ll))
+    fold(s = []; l in rev(ll))
         s = l + s
 
 fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
-    [:: for (x <- la, y <- lb) (x, y)]
+    [:: for (x in la, y in lb) (x, y)]
 
 fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
-    unzip([:: for (x <- lab) x])
+    unzip([:: for (x in lab) x])
 
 // O(n log n) merge sort
 fun mergeSort(l: 't list, gt: ('t,'t)->bool): 't list =
@@ -106,5 +106,5 @@ fun mergeSort(l: 't list, gt: ('t,'t)->bool): 't list =
             | l => loop(scan(l))
         }
 
-        loop([:: for (a <- l) a :: []])
+        loop([:: for (a in l) a :: []])
     }

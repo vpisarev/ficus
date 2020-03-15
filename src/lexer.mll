@@ -38,7 +38,7 @@ let token2str t = match t with
     | IF -> "IF"
     | IMPLEMENTS -> "IMPLEMENTS"
     | IMPORT -> "IMPORT"
-    | IN -> "<-"
+    | IN -> "IN"
     | INLINE -> "INLINE"
     | INTERFACE -> "INTERFACE"
     | MATCH -> "MATCH"
@@ -154,7 +154,7 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("do", DO, 2); ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
         ("false", FALSE, 0); ("fold", FOLD, 4); ("for", FOR, 4); ("from", FROM, 2); ("fun", FUN, 2);
         ("if", IF, 4); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3);
-        ("inline", INLINE, 2); ("interface", INTERFACE, 2);
+        ("in", IN, 1); ("inline", INLINE, 2); ("interface", INTERFACE, 2);
         ("match", MATCH, 4); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
         ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
@@ -471,7 +471,6 @@ rule tokens = parse
     | "&&"  { new_exp := true; [LOGICAL_AND] }
     | "||"  { new_exp := true; [LOGICAL_OR] }
     | '!'   { new_exp := true; [LOGICAL_NOT] }
-    | "<-"  { new_exp := true; [IN] }
     | '='
         {
             new_exp := true;
