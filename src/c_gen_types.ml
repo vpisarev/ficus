@@ -183,6 +183,7 @@ let convert_all_typs top_code =
     let all_decls = ref (IdSet.empty) in
     let all_fwd_decls = ref (IdSet.empty) in
     let all_visited = ref (IdSet.empty) in
+    let all_var_enums = ref (Env.empty : id_t Env.t) in
 
     let add_fwd_decl fwd_decl decl =
         if fwd_decl then
@@ -204,7 +205,7 @@ let convert_all_typs top_code =
         let struct_typ = CTypStruct((Some struct_id), []) in
         let struct_or_ptr_typ = if ktp_ptr then (make_ptr struct_typ) else struct_typ in
         let struct_decl = ref { ct_name=tn; ct_typ = struct_or_ptr_typ;
-            ct_ktyp=KTypName tn; ct_cname=cname;
+            ct_ktyp=KTypName tn; ct_cname=cname; ct_tagenum=noid;
             ct_make=noid; ct_scope=ScGlobal::[]; ct_loc=loc;
             ct_props={
                 ctp_ptr=ktp_ptr; ctp_pass_by_ref=ktp_pass_by_ref;
@@ -240,6 +241,35 @@ let convert_all_typs top_code =
         else ();
         (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp)
     in
+    let get_var_enum kvar =
+        let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in
+        match Env.find_opt kvar_base_name !all_var_enums with
+        | Some(e_id) ->
+            (match (cinfo e_id) with
+            | CEnum {contents={ce_members}} -> (e_id, ce_members)
+            | _ -> raise_compile_err kvar_loc (sprintf "invalid variant enumeration '%s'" (id2str e_id)))
+        | _ ->
+            let e_base_cname = (pp_id2str kvar_base_name) ^ "_" in
+            let e_cname = e_base_cname ^ "tag_t" in
+            let e_id = gen_temp_idc e_cname in
+            let start_idx = if (List.mem VariantHaveNull kvar_flags) then 0 else 1 in
+            let ctx = (CTypCInt, kvar_loc) in
+            let (_, members) = List.fold_left (fun (idx, members) (ni, ti) ->
+                let cname_i = pp_id2str ni in
+                let cname_i = "_FX_" ^ e_base_cname ^ cname_i in
+                let ni = dup_idc ni in
+                let dv = { cv_name=ni; cv_typ=CTypCInt; cv_cname=cname_i; cv_flags=[]; cv_scope=ScGlobal::[]; cv_loc=kvar_loc } in
+                let _ = set_idc_entry ni (CVal dv) in
+                let vali = Some (CExpLit((LitInt (Int64.of_int idx)), ctx)) in
+                (idx+1, (ni, vali) :: members)) (start_idx, []) kvar_cases in
+            let members = List.rev members in
+            let ce = ref { ce_name=e_id; ce_members=members;
+                ce_cname=K_mangle.add_fx e_cname; ce_scope=ScGlobal::[]; ce_loc=kvar_loc } in
+            set_idc_entry e_id (CEnum ce);
+            all_var_enums := Env.add kvar_base_name e_id !all_var_enums;
+            top_typ_decl := (CDefEnum ce) :: !top_typ_decl;
+            (e_id, members)
+    in
     (* converts named type to C *)
     let rec cvt2ctyp tn loc =
         let _ = printf "cvt2ctyp %s\n" (id2str tn) in
@@ -249,17 +279,18 @@ let convert_all_typs top_code =
             let visited = IdSet.mem tn !all_visited in
             let deps = K_annotate_types.get_typ_deps tn loc in
             let kt_info = kinfo_ tn loc in
-            let (opt_rec_var, fwd_decl, deps) = match kt_info with
+            let (ce_id, ce_members, varflag, fwd_decl, deps) = match kt_info with
                 | KVariant kvar ->
+                    let (ce_id, ce_members) = get_var_enum kvar in
                     let {kvar_flags} = !kvar in
                     if (List.mem VariantRecursive kvar_flags) then
                         let fwd_decl = not (IdSet.mem tn !all_fwd_decls) in
-                        ((Some kvar), fwd_decl, (IdSet.filter (fun d -> d != tn) deps))
+                        (ce_id, ce_members, true, fwd_decl, (IdSet.filter (fun d -> d != tn) deps))
                     else
-                        (None, false, deps)
-                | _ -> (None, false, deps) in
-            let _ = match (opt_rec_var, visited) with
-                | (None, true) -> raise_compile_err loc
+                        (ce_id, ce_members, false, false, deps)
+                | _ -> (noid, [], false, false, deps) in
+            let _ = match (varflag, visited) with
+                | (false, true) -> raise_compile_err loc
                     (sprintf "non-recursive variant type '%s' references itself directly or indirectly" (id2str tn))
                 | _ -> () in
             let _ = all_visited := IdSet.add tn !all_visited in
@@ -346,7 +377,55 @@ let convert_all_typs top_code =
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
                         ct_props={ct_props with ctp_free=(noid, freef)}}
                         | _ -> ())
-            | KVariant kv -> ()
+            | KVariant kvar ->
+                let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in
+                (*let isrecursive = List.mem VariantRecursive kvar_flags in*)
+                let int_ctx = (CTypCInt, kvar_loc) in
+                let void_ctx = (CTypVoid, kvar_loc) in
+                let tag_id = get_id "tag" in
+                let u_id = get_id "u" in
+                let src_tag_exp = CExpArrow(src_exp, tag_id, int_ctx) in
+                let dst_tag_exp = CExpArrow(dst_exp, tag_id, int_ctx) in
+                let src_u_exp = CExpArrow(src_exp, u_id, (CTypAny, kvar_loc)) in
+                let dst_u_exp = CExpArrow(dst_exp, u_id, (CTypAny, kvar_loc)) in
+                let (free_cases, copy_cases, uelems) =
+                    List.fold_left2 (fun (free_cases, copy_cases, uelems) (ni, kt) (label_i, _) ->
+                        match kt with
+                        | KTypVoid -> (free_cases, copy_cases, uelems)
+                        | _ ->
+                            let ti = ktyp2ctyp kt loc in
+                            let ni_clean = get_id (pp_id2str ni) in
+                            let selem_i = CExpMem(src_u_exp, ni_clean, (ti, kvar_loc)) in
+                            let delem_i = CExpMem(dst_u_exp, ni_clean, (ti, kvar_loc)) in
+                            let label_i_exp = [CExpIdent(label_i, int_ctx)] in
+                            let free_code_i = gen_free_code delem_i ti [] kvar_loc in
+                            let free_cases = match free_code_i with
+                                | [] -> free_cases
+                                | _ -> (label_i_exp, free_code_i) :: free_cases in
+                            let copy_code_i = gen_copy_code selem_i delem_i ti [] kvar_loc in
+                            let copy_cases = match copy_code_i with
+                                | CExp(CExpBinOp(COpAssign, _, _, _)) :: [] -> copy_cases
+                                | _ -> (label_i_exp, copy_code_i) :: copy_cases in
+                            (free_cases, copy_cases, (ni_clean, ti) :: uelems)) ([], [], []) kvar_cases ce_members in
+                let free_code = match free_cases with
+                    | [] -> []
+                    | _ ->
+                        (* add "default: ;" case *)
+                        let free_cases = ([], []) :: free_cases in
+                        let clear_tag = CExp(CExpBinOp(COpAssign, dst_tag_exp, CExpLit((LitInt 0L), int_ctx), void_ctx)) in
+                        clear_tag :: CStmtSwitch(dst_u_exp, (List.rev free_cases), kvar_loc) :: [] in
+                let copy_code = gen_copy_code src_tag_exp dst_tag_exp CTypCInt [] kvar_loc in
+                let default_copy_code = CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
+                let copy_code = match copy_cases with
+                    | [] -> default_copy_code :: copy_code
+                    | _ ->
+                        let copy_cases = ([], [default_copy_code]) :: copy_cases in
+                        CStmtSwitch(src_tag_exp, (List.rev copy_cases), kvar_loc) :: copy_code
+                in
+                let relems = (tag_id, CTypCInt) :: (u_id, CTypUnion(None, List.rev uelems)) :: [] in
+                struct_decl := {!struct_decl with ct_typ=CTypStruct((Some tn), relems)};
+                freef_decl := {!freef_decl with cf_body=List.rev free_code};
+                copyf_decl := {!copyf_decl with cf_body=List.rev copy_code}
             | _ -> raise_compile_err loc (sprintf "type '%s' cannot be converted to C" (id2str tn))
     in
     let rec fold_n_cvt_ktyp t loc callb = ()

@@ -562,7 +562,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let c_args = match (kinfo_ vn loc) with
                 | KFun {contents={kf_typ}} -> (match kf_typ with KTypFun(args, rt) -> args | _ -> [])
                 | KExn {contents={ke_typ}} -> (match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: [])
-                | _ -> raise_compile_err loc "a variant constructor is expected here" in
+                | k -> K_pp.pprint_kinfo_x k; raise_compile_err loc (sprintf "a variant constructor ('%s') is expected here" (id2str vn)) in
             let (case_n, code, alt_e_opt) = match c_args with
                 | [] -> (noid, [], None)
                 | _ ->
@@ -737,7 +737,7 @@ and transform_all_types_and_cons elist code sc =
                         let _ = set_idk_entry inst_name (KTyp kt) in
                         (KDefTyp kt) :: code
                     | _ ->
-                        let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_targs=targs; kvar_props=None;
+                        let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_base_name=noid; kvar_targs=targs; kvar_props=None;
                                         kvar_cases=List.map (fun (i, t) -> (i, typ2ktyp t inst_loc)) dvar_cases;
                                         kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
                         let _ = set_idk_entry inst_name (KVariant kvar) in
@@ -752,6 +752,9 @@ and transform_all_types_and_cons elist code sc =
                                 let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
                                             kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: [];
                                             kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
+                                printf "added %s (%s) variant constructor: " (id2str df_name) (id2str constr);
+                                K_pp.pprint_ktyp_x kf_typ;
+                                printf "\n";
                                 set_idk_entry df_name (KFun kf);
                                 (KDefFun kf) :: code
                             | _ -> raise_compile_err dvar_loc
@@ -762,7 +765,7 @@ and transform_all_types_and_cons elist code sc =
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
         | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
-            let ke = ref { ke_name=dexn_name; ke_cname="";
+            let ke = ref { ke_name=dexn_name; ke_cname=""; ke_base_name=noid;
                 ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
             let _ = match dexn_scope with
                     (ScModule m) :: _ when (pp_id2str m) = "Builtins" ->

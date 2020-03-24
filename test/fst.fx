@@ -57,6 +57,18 @@ match (fixed_choice)
     | _ => println("some other number")
 }
 
+val fpair = List.find_opt(("a", 0) :: ("b", 1) :: ("rest", 2) :: [], (fun ((key, i): (string, int)) => key == "xyz"))
+fun print_pair(fpair: (string, int) option)
+{
+    println(match (fpair) {
+    |
+        Some(x) =>
+        val (a, b) = x;
+        b
+    | _ => -1
+    })
+}
+
 val n = 30
 val a = [for (i in 0:n) 1]
 for (i in 1:n) a[i] += a[i-1]

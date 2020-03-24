@@ -26,6 +26,10 @@ fun string(a: int) = (a :> string)
 fun string(a: float) = (a :> string)
 fun string(a: double) = (a :> string)
 fun string(a: string) = a
+
+operator == (a: string, b: string): bool = ccode "
+    *fx_res = (bool)(a->length == b->length && (a->length == 0 || memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
+    return FX_OK;"
 /*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
 fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"

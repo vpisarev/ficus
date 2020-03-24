@@ -152,6 +152,7 @@ and cstmt_t =
     | CStmtFor of cexp_t list * cexp_t option * cexp_t list * cstmt_t * loc_t
     | CStmtWhile of cexp_t * cstmt_t * loc_t
     | CStmtDoWhile of cstmt_t * cexp_t * loc_t
+    | CStmtSwitch of cexp_t * (cexp_t list * cstmt_t list) list * loc_t
     (* we don't parse and don't process the inline C code; just retain it as-is *)
     | CStmtCCode of string * loc_t
     | CDefVal of ctyp_t * id_t * cexp_t option * loc_t
@@ -168,12 +169,12 @@ and cstmt_t =
     | CMacroIf of (cexp_t * cstmt_t list) list * cstmt_t list * loc_t
     | CMacroInclude of string * loc_t
 and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list;
-                  cv_arrdata: id_t; cv_scope: scope_t list; cv_loc: loc_t }
+                  cv_scope: scope_t list; cv_loc: loc_t }
 and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
                   cf_args: id_t list; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
-                  ct_make: id_t; ct_props: ctprops_t;
+                  ct_make: id_t; ct_props: ctprops_t; ct_tagenum: id_t;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
                    ce_scope: scope_t list; ce_loc: loc_t }
@@ -244,6 +245,7 @@ let get_cstmt_loc s = match s with
     | CStmtFor (_, _, _, _, l) -> l
     | CStmtWhile (_, _, l) -> l
     | CStmtDoWhile (_, _, l) -> l
+    | CStmtSwitch (_, _, l) -> l
     | CStmtCCode (_, l) -> l
     | CDefVal (_, _, _, l) -> l
     | CDefFun {contents={cf_loc}} -> cf_loc
@@ -327,7 +329,7 @@ let get_lit_ctyp l = match l with
     | LitNil -> CTypNil
 
 let create_cdefval n t flags e_opt code sc loc =
-    let dv = { cv_name=n; cv_typ=t; cv_cname=""; cv_flags=flags; cv_arrdata=noid; cv_scope=sc; cv_loc=loc } in
+    let dv = { cv_name=n; cv_typ=t; cv_cname=""; cv_flags=flags; cv_scope=sc; cv_loc=loc } in
     match t with
     | CTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
@@ -458,6 +460,8 @@ and walk_cstmt s callb =
         CStmtWhile((walk_cexp_ e), (walk_cstmt_ body), l)
     | CStmtDoWhile (body, e, l) ->
         CStmtDoWhile((walk_cstmt_ body), (walk_cexp_ e), l)
+    | CStmtSwitch (e, cases, l) ->
+        CStmtSwitch((walk_cexp_ e), (List.map (fun (ll, sl) -> (walk_cel_ ll, walk_csl_ sl)) cases), l)
     | CStmtCCode (ccode, l) -> s
     | CDefVal (t, n, e_opt, l) -> CDefVal((walk_ctyp_ t), (walk_id_ n), (walk_cexp_opt_ e_opt), l)
     | CDefFun cf ->
@@ -592,6 +596,8 @@ and fold_cstmt s callb =
         fold_cexp_ e; fold_cstmt_ body
     | CStmtDoWhile (body, e, _) ->
         fold_cstmt_ body; fold_cexp_ e
+    | CStmtSwitch (e, cases, l) ->
+        fold_cexp_ e; List.iter (fun (ll, sl) -> fold_cel_ ll; fold_csl_ sl) cases
     | CStmtCCode (ccode, _) -> ()
     | CDefVal (t, n, e_opt, _) ->
         fold_ctyp_ t; fold_id_ n; fold_cexp_opt_ e_opt

@@ -10,7 +10,7 @@ fun make(i: 'a, d: int): 'a tree =
 
 fun check(_: 'a tree)
 {
-    | Empty => 0
+    | Empty => (0 :> 'a)
     | Node(l, i, r) => i + check(l) - check(r)
 }
 
@@ -31,6 +31,7 @@ fun test_1()
 test_1()
 
 val long_lived_tree = make(0, max_depth)
+val long_lived_tree_dbl = make(0.0, max_depth)
 
 parallel
 for (depth in min_depth:(max_depth+1):2)
@@ -42,4 +43,5 @@ for (depth in min_depth:(max_depth+1):2)
 }
 
 println("long lived tree of depth \(max_depth)\t check: \(check(long_lived_tree))")
+println("long lived tree of depth \(max_depth)\t check: \(check(long_lived_tree_dbl))")
 0

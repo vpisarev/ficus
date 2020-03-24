@@ -75,22 +75,27 @@ let pprint_id n =
     let cname = get_idc_cname n in
     pstr (if cname = "" then (pp_id2str n) else cname)
 
-let rec pprint_ctyp__ prefix t id_opt fwd_mode =
+let rec pprint_ctyp__ prefix0 t id_opt fwd_mode =
     let pr_id_opt_ add_space = match id_opt with
         | Some(i) -> if add_space then pspace() else (); pprint_id i
         | _ -> () in
     let pr_id_opt () = pr_id_opt_ true in
     let pr_struct prefix n_opt elems suffix =
-        (pstr (prefix ^ " ");
+        (ohbox();
+        pstr (prefix ^ " ");
         (match n_opt with
         | Some n -> pprint_id n; pstr " "
         | _ -> ()
         );
         cbox(); pspace(); pstr "{"; ovbox_brace();
-        List.iter (fun (ni, ti) -> pbreak(); ohbox(); pprint_ctyp__ "" ti (Some ni) true; pstr ";"; cbox()) elems;
+        List.iter (fun (ni, ti) -> pbreak();
+            let need_nested_box = match ti with
+                | CTypStruct _ | CTypUnion _ | CTypRawPtr(_, CTypStruct _) -> false
+                | _ -> true in
+            if need_nested_box then ohbox() else ();
+            pprint_ctyp__ "" ti (Some ni) true; pstr ";";
+            if need_nested_box then cbox() else ()) elems;
         cbox(); pbreak(); ohbox(); pstr ("} " ^ suffix); pr_id_opt_ false; cbox()) in
-    (match t with CTypStruct _ | CTypUnion _ | CTypRawPtr(_, CTypStruct _) -> ohbox() | _ -> ());
-    pstr prefix;
     (match t with
     | CTypInt -> pstr "int_"; pr_id_opt ()
     | CTypCInt -> pstr "int"; pr_id_opt ()
@@ -106,7 +111,7 @@ let rec pprint_ctyp__ prefix t id_opt fwd_mode =
     | CTypBool -> pstr "bool_"; pr_id_opt ()
     | CTypVoid -> pstr "void";
         (match id_opt with
-        | Some _ -> raise_compile_err noloc "c_pp.ml: void cannot be used with id"
+        | Some i -> raise_compile_err noloc (sprintf "c_pp.ml: void cannot be used with id '%s'" (id2str i))
         | _ -> ())
     | CTypNil -> pstr "nil_t"; pr_id_opt ()
     | CTypExn -> pstr "fx_exn_t"; pr_id_opt ()
@@ -131,9 +136,9 @@ let rec pprint_ctyp__ prefix t id_opt fwd_mode =
         | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
         cbox(); pstr ")"; cbox()
     | CTypCSmartPtr -> pstr "fx_cptr_t"; pr_id_opt ()
-    | CTypStruct (n_opt, selems) -> pr_struct "struct" n_opt selems ""
-    | CTypRawPtr ([], CTypStruct(n_opt, selems)) -> pr_struct "struct" n_opt selems "*"
-    | CTypUnion (n_opt, uelems) -> pr_struct "union" n_opt uelems ""
+    | CTypStruct (n_opt, selems) -> pr_struct (prefix0 ^ "struct") n_opt selems ""
+    | CTypRawPtr ([], CTypStruct(n_opt, selems)) -> pr_struct (prefix0 ^ "struct") n_opt selems "*"
+    | CTypUnion (n_opt, uelems) -> pr_struct (prefix0 ^ "union") n_opt uelems ""
     | CTypRawPtr (attrs, t) ->
         obox();
         if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
@@ -282,6 +287,20 @@ and pprint_cstmt s =
     | CStmtDoWhile (body, e, _) ->
         pstr "do"; obox(); pspace(); pprint_cstmt body; pspace(); cbox();
         pstr "while ("; pprint_cexp_ e 0; pstr ");"
+    | CStmtSwitch (e, cases, _) ->
+        pstr "switch ("; obox(); pprint_cexp_ e 0; cbox();
+        pstr ") {"; obox();
+        List.iter (fun (labels, code) ->
+            let isdefault = (match labels with
+            | [] -> pstr "default:"; true
+            | _ -> List.iter (fun l -> pstr "case "; pprint_cexp_ l 0) labels; false) in
+            ovbox();
+            List.iter (fun s -> pprint_cstmt s) code;
+            pbreak();
+            if isdefault then pstr ";" else pstr "break;";
+            cbox();
+            pbreak()) cases;
+        cbox(); pstr "}"
     | CStmtCCode (ccode, l) -> pstr ccode; pstr ";"
     | CDefVal (t, n, e_opt, l) ->
         pprint_ctyp_ t (Some n);
@@ -304,16 +323,18 @@ and pprint_cstmt s =
         pstr "struct "; pprint_id n; pstr ";"
     | CDefEnum ce ->
         let { ce_name; ce_members } = !ce in
+        ohbox();
         pstr "typedef enum {";
+        cbox();
         pbreak();
-        obox();
+        ovbox();
         List.iteri (fun i (n, e_opt) ->
-            if i = 0 then () else (pstr ","; pspace());
+            if i = 0 then pstr "   " else (pstr ","; pspace());
             pprint_id n;
             match e_opt with
             | Some e -> pstr "="; pprint_cexp_ e 0
             | _ -> ()) ce_members;
-        cbox(); pbreak(); pstr "} "; pprint_id ce_name; pstr ";"
+        cbox(); pbreak(); pstr "} "; pprint_id ce_name; pstr ";"; pbreak()
     | CMacroDef cm ->
         let {cm_name=n; cm_args=args; cm_body=body} = !cm in
         pstr "#define "; pprint_id n;

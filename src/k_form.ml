@@ -132,8 +132,9 @@ and kdefval_t = { kv_name: id_t; kv_cname: string; kv_typ: ktyp_t;
 and kdeffun_t = { kf_name: id_t; kf_cname: string; kf_typ: ktyp_t; kf_args: id_t list; kf_body: kexp_t;
                   kf_flags: fun_flag_t list; kf_closure: id_t * id_t;
                   kf_scope: scope_t list; kf_loc: loc_t }
-and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
-and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_props: ktprops_t option; kvar_targs: ktyp_t list;
+and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_base_name: id_t; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
+and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_base_name: id_t;
+                      kvar_props: ktprops_t option; kvar_targs: ktyp_t list;
                       kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
                       kvar_flags: variant_flag_t list; kvar_scope: scope_t list; kvar_loc: loc_t }
 and kdeftyp_t = { kt_name: id_t; kt_cname: string; kt_props: ktprops_t option;

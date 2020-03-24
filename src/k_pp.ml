@@ -174,7 +174,7 @@ and pprint_kexp_ e prtyp =
         pstr "TYPE"; pspace(); pprint_id_label kt_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kt_typ; cbox()
     | KDefVariant { contents = {kvar_name; kvar_cases; kvar_props; kvar_constr; kvar_flags; kvar_loc} } ->
-        let nullable0 = List.mem VariantDummyTag0 kvar_flags in
+        let nullable0 = List.mem VariantHaveNull kvar_flags in
         let is_recursive = List.mem VariantRecursive kvar_flags in
         obox(); ppktp kvar_props; if is_recursive then pstr "RECURSIVE " else ();
         if (List.mem VariantNoTag kvar_flags) then pstr "NO_TAG " else ();
@@ -328,3 +328,15 @@ let pprint_atom_x a = Format.print_flush (); Format.open_box 0; pprint_atom a tr
 let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ktyp t; Format.close_box(); Format.print_flush ()
 let pprint_kexp_x e = Format.print_flush (); Format.open_box 0; pprint_kexp e; Format.close_box(); Format.print_flush ()
 let pprint_top code = Format.print_flush (); Format.open_box 0; pprint_kexpseq code false; Format.close_box(); pbreak(); Format.print_flush ()
+let pprint_kinfo_x ki =
+    (Format.print_flush (); Format.open_box 0;
+    (match ki with
+    | KNone -> pstr "KNone"
+    | KText s -> pstr ("KText: " ^ s)
+    | KVal {kv_name; kv_typ} -> pstr "KVal: "; pprint_id kv_name; pstr ": "; pprint_ktyp kv_typ
+    | KFun kf -> pstr "KFun: "; pprint_kexp (KDefFun kf)
+    | KVariant kvar -> pstr "KVar: "; pprint_kexp (KDefVariant kvar)
+    | KExn ke -> pstr "KExn: "; pprint_kexp (KDefExn ke)
+    | KClosureVars kcv -> pstr "KClosureVars: "; pprint_kexp (KDefClosureVars kcv)
+    | KTyp kt -> pstr "KTyp: "; pprint_kexp (KDefTyp kt));
+    Format.close_box(); Format.print_flush ())

@@ -164,7 +164,7 @@ let rec pprint_exp e =
     | DefTyp { contents = {dt_name; dt_templ_args; dt_typ }} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
         pspace(); pstr "="; pspace(); pprint_typ dt_typ; cbox()
-    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases; dvar_constr; dvar_flags; dvar_templ_inst} } ->
+    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases; dvar_constr; dvar_flags; dvar_templ_inst; dvar_loc} } ->
         obox(); if (List.mem VariantRecord dvar_flags) then pstr "TYPE RECORD" else pstr "TYPE";
         pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name; pstr "<";
         pprint_typ dvar_alias; pstr ">";
@@ -175,7 +175,20 @@ let rec pprint_exp e =
             if i = 0 then () else pstr " | "; pprint_id n;
             pstr "<"; pprint_id c; pstr ": "; pprint_typ (get_id_typ c); pstr ">: "; pprint_typ t)
         var_cases_constr;
-        cbox()
+        cbox();
+        (match dvar_templ_inst with
+        | [] -> ()
+        | _ ->
+            pstr "==[instances]=> {";
+            ovbox();
+            List.iteri (fun i inst_id ->
+                if i = 0 then () else pstr ";";
+                (match (id_info inst_id) with
+                | IdVariant inst_kvar -> pprint_exp (DefVariant inst_kvar)
+                | _ -> ());
+                pbreak()) dvar_templ_inst;
+            pstr "}";
+            cbox())
     | DirImport(ml, _) -> pstr "IMPORT"; pspace();
         obox(); (List.iteri (fun i (n1, n2) -> if i = 0 then () else (pstr ","; pspace()); pprint_id n1;
                     if n1 = n2 then () else (pspace(); pstr "AS"; pspace(); pprint_id n2)) ml); cbox()

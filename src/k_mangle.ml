@@ -50,10 +50,10 @@ let compress_name nstr sc loc =
         if new_nstr = nstr then nstr else
         "M" ^ (string_of_int (String.length prefix)) ^ prefix ^ new_nstr
 
-(* Try if <prefix><nlen><name><suffix> is unique.
+(* Check if <prefix><nlen><name><suffix> is unique.
    If yes, add it to the set of mangled names and output.
-   Otherwise, try <prefix><nlen1><name>1_<suffix>,
-   then <prefix><nlen2><name>2_<suffix> etc.
+   Otherwise, try <prefix><nlen+2><name>1_<suffix>,
+   then <prefix><nlen+2><name>2_<suffix> etc.
    e.g. with prefix="V", name="rbtree" and suffix="1i"
    first try V6rbtree1i, then V8rbtree1_1i, V8rbtree2_1i, ..., V9rbtree10_1i etc.
    Note, that the name is preceded with its length
@@ -63,12 +63,13 @@ let mangle_make_unique n_id prefix name suffix mangle_map =
         let idxstr = if idx = 0 then "" else (string_of_int idx) ^ "_" in
         let name1 = name ^ idxstr in
         let nlen = String.length name1 in
-        let candidate = prefix ^ (string_of_int nlen) ^ name1 ^ suffix in
+        let candidate_base_name = prefix ^ (string_of_int nlen) ^ name1 in
+        let candidate = candidate_base_name ^ suffix in
         if Hashtbl.mem mangle_map candidate then
             make_unique_ (idx + 1)
         else
             (Hashtbl.add mangle_map candidate n_id;
-            candidate)
+            (candidate_base_name, candidate))
         in
     make_unique_ 0
 
@@ -94,14 +95,14 @@ let rec mangle_ktyp t mangle_map loc =
         | KVariant kvar ->
             let {kvar_name; kvar_cname; kvar_targs; kvar_scope} = !kvar in
             if kvar_cname = "" then
-                let cname = mangle_inst_ kvar_name "V" kvar_targs kvar_name kvar_scope in
-                let _ = kvar := {!kvar with kvar_cname=add_fx cname} in
+                let (base_name, cname) = mangle_inst_ kvar_name "V" kvar_targs kvar_name kvar_scope in
+                let _ = kvar := {!kvar with kvar_cname=add_fx cname; kvar_base_name=get_id base_name} in
                 cname :: result
             else (remove_fx kvar_cname) :: result
         | KTyp ({contents={kt_typ=KTypRecord(_,_)}} as kt) ->
             let {kt_name; kt_cname; kt_targs; kt_scope} = !kt in
             if kt_cname = "" then
-                let cname = mangle_inst_ kt_name "R" kt_targs kt_name kt_scope in
+                let (_, cname) = mangle_inst_ kt_name "R" kt_targs kt_name kt_scope in
                 let _ = kt := {!kt with kt_cname=add_fx cname} in
                 cname :: result
             else (remove_fx kt_cname) :: result
@@ -220,7 +221,7 @@ let mangle_all top_code =
             let suffix = String.sub suffix 2 ((String.length suffix) - 2) in
             let new_body = walk_kexp_n_mangle kf_body callb in
             let bare_name = mangle_name kf_name (Some kf_scope) kf_loc in
-            let cname = mangle_make_unique kf_name "F" bare_name suffix mangle_map in
+            let (_, cname) = mangle_make_unique kf_name "F" bare_name suffix mangle_map in
             let cname = compress_name cname kf_scope kf_loc in
             kf := { !kf with kf_cname=add_fx cname; kf_typ=t; kf_body=new_body };
             e
@@ -229,8 +230,8 @@ let mangle_all top_code =
             let t = mangle_ktyp_retain_record ke_typ ke_loc callb in
             let suffix = mangle_ktyp t mangle_map ke_loc in
             let bare_name = mangle_name ke_name (Some ke_scope) ke_loc in
-            let cname = mangle_make_unique ke_name "E" bare_name suffix mangle_map in
-            ke := { !ke with ke_cname=add_fx cname; ke_typ=t };
+            let (base_name, cname) = mangle_make_unique ke_name "E" bare_name suffix mangle_map in
+            ke := { !ke with ke_cname=add_fx cname; ke_typ=t; ke_base_name=get_id base_name };
             e
         | KDefVariant kvar ->
             let {kvar_name; kvar_cases; kvar_loc} = !kvar in

@@ -198,12 +198,12 @@ let annotate_types top_code =
             let {kvar_flags} = !kvar in
             let is_recursive = List.mem VariantRecursive kvar_flags in
             let ncases = List.length kvar_cases in
-            let dummy_tag0 = match kvar_cases with
+            let have_null = match kvar_cases with
                     | (_, KTypVoid) :: _ -> true
                     | _ -> false in
-            let no_tag = ncases == 1 || (is_recursive && ncases == 2 && dummy_tag0) in
+            let no_tag = ncases == 1 || (is_recursive && ncases == 2 && have_null) in
             kvar := {!kvar with kvar_flags =
-                (if dummy_tag0 then [VariantDummyTag0] else []) @
+                (if have_null then [VariantHaveNull] else []) @
                 (if no_tag then [VariantNoTag] else []) @ kvar_flags}
         | KDefTyp {contents={kt_name; kt_loc}} ->
             ignore(get_ktprops (KTypName kt_name) kt_loc)
