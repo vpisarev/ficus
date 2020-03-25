@@ -158,10 +158,11 @@ let get_copy_f ct let_none loc =
 let gen_copy_code src_exp dst_exp ct code loc =
     let (pass_by_ref, copy_f_opt) = get_copy_f ct true loc in
     let ctx = (CTypVoid, loc) in
-    let dst_exp = CExpUnOp(COpGetAddr, dst_exp, ((make_ptr ct), loc)) in
     let src_exp = if pass_by_ref then CExpUnOp(COpGetAddr, src_exp, ((make_ptr ct), loc)) else src_exp in
     let e = match copy_f_opt with
-            | Some(f) -> CExpCall(f, src_exp :: dst_exp :: [], ctx)
+            | Some(f) ->
+                let dst_exp = CExpUnOp(COpGetAddr, dst_exp, ((make_ptr ct), loc)) in
+                CExpCall(f, src_exp :: dst_exp :: [], ctx)
             | _ -> (* in C the assignment operator returns assigned value,
                     but since in this particular case we are not going to chain
                     assignment operators, we assume that it returns 'void' *)
@@ -272,10 +273,10 @@ let convert_all_typs top_code =
     in
     (* converts named type to C *)
     let rec cvt2ctyp tn loc =
-        let _ = printf "cvt2ctyp %s\n" (id2str tn) in
+        (*let _ = printf "cvt2ctyp %s\n" (id2str tn) in*)
         if (IdSet.mem tn !all_decls) then ()
         else
-            let _ = printf "proceeding with %s\n" (id2str tn) in
+            (*let _ = printf "proceeding with %s\n" (id2str tn) in*)
             let visited = IdSet.mem tn !all_visited in
             let deps = K_annotate_types.get_typ_deps tn loc in
             let kt_info = kinfo_ tn loc in
@@ -296,7 +297,7 @@ let convert_all_typs top_code =
             let _ = all_visited := IdSet.add tn !all_visited in
             let ktp = K_annotate_types.get_ktprops (KTypName tn) loc in
             let (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp) = create_ctyp_decl tn ktp fwd_decl loc in
-            printf "deps for %s: " (id2str tn); IdSet.iter (fun d -> printf "%s, " (id2str d)) deps; printf "\n";
+            (*printf "deps for %s: " (id2str tn); IdSet.iter (fun d -> printf "%s, " (id2str d)) deps; printf "\n";*)
             IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps;
             add_decl (CDefTyp struct_decl);
             if ktp.ktp_custom_free then
@@ -413,7 +414,7 @@ let convert_all_typs top_code =
                         (* add "default: ;" case *)
                         let free_cases = ([], []) :: free_cases in
                         let clear_tag = CExp(CExpBinOp(COpAssign, dst_tag_exp, CExpLit((LitInt 0L), int_ctx), void_ctx)) in
-                        clear_tag :: CStmtSwitch(dst_u_exp, (List.rev free_cases), kvar_loc) :: [] in
+                        clear_tag :: CStmtSwitch(dst_tag_exp, (List.rev free_cases), kvar_loc) :: [] in
                 let copy_code = gen_copy_code src_tag_exp dst_tag_exp CTypCInt [] kvar_loc in
                 let default_copy_code = CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
                 let copy_code = match copy_cases with

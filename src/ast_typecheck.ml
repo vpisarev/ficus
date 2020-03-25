@@ -309,7 +309,7 @@ let rec deref_typ t =
   (or rather "overloaded function not found" error)
   in the very end, when we are out of candidates.
 *)
-let maybe_unify t1 t2 update_refs =
+let rec maybe_unify t1 t2 update_refs =
     (*let _ = (printf "\n<<<trying to unify types: "; pprint_typ_x t1; printf " and "; pprint_typ_x t2; printf "\n"; flush stdout) in*)
     let rec_undo_stack = ref [] in
     let undo_stack = ref [] in
@@ -356,7 +356,7 @@ let maybe_unify t1 t2 update_refs =
         | (TypRecord r1, TypRecord r2) ->
             let ok = match (!r1, !r2) with
                 | ((relems1, true), (relems2, true)) ->
-                    (List.length relems1) == (List.length relems2) &&
+                    (List.length relems1) = (List.length relems2) &&
                     (List.for_all2 (fun (n1, t1, _) (n2, t2, _) ->
                         n1 = n2 && maybe_unify_ t1 t2) relems1 relems2)
                 | ((relems1, _), (relems2, _)) ->
@@ -376,7 +376,11 @@ let maybe_unify t1 t2 update_refs =
         | ((TypArray (d1, et1)), (TypArray (d2, et2))) ->
             (d1 < 0 || d2 < 0 || d1 = d2) && (maybe_unify_ et1 et2)
         | ((TypApp (args1, id1)), (TypApp (args2, id2))) ->
-            id1 = id2 && (List.for_all2 maybe_unify_ args1 args2)
+            if id1 <> id2 then false
+            else
+                let t1 = match args1 with [] -> TypVoid | t :: [] -> t | _ -> TypTuple(args1) in
+                let t2 = match args2 with [] -> TypVoid | t :: [] -> t | _ -> TypTuple(args2) in
+                maybe_unify_ t1 t2
         (* unify TypVar(_) with another TypVar(_): consider several cases *)
         | ((TypVar r1), (TypVar r2)) when r1 == r2 -> true
         | ((TypVar {contents = Some(t1_)}), _) -> maybe_unify_ t1_ t2
@@ -1230,9 +1234,9 @@ and check_eseq eseq env sc create_sc =
                     (match (deref_typ etyp) with
                     | TypVoid | TypDecl -> ()
                     | _ -> if idx = nexps - 1 then () else
-                        ((printf "exp type: "; pprint_typ_x (deref_typ etyp); printf "\n");
+                        (*((printf "exp type: "; pprint_typ_x (deref_typ etyp); printf "\n");*)
                         raise_compile_err eloc
-                        "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error")));
+                        "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error"));
                 (e :: eseq, env)
         with CompileError(_, _) as err -> raise err(*; (e :: eseq, env)*) in
         (eseq1, env1, idx+1)) ([], env, 0) eseq in
@@ -1351,11 +1355,8 @@ and reg_types eseq env sc =
         | DefInterface {contents={di_loc=loc}} -> raise_compile_err loc "interfaces are not supported yet"
         | _ -> env) env eseq
 
-and register_typ_constructor n templ_args arg_t rt env sc decl_loc =
-    let (argtyps, ctyp) = match arg_t with
-              TypVoid -> ([], rt)
-            | TypTuple(tl) -> (tl, TypFun(tl, rt))
-            | _ -> let argtyps = arg_t :: [] in (argtyps, TypFun(argtyps, rt)) in
+and register_typ_constructor n templ_args argtyps rt env sc decl_loc =
+    let ctyp = match argtyps with [] -> rt | _ -> TypFun(argtyps, rt) in
     let args = List.mapi (fun i _ -> PatIdent((get_id (sprintf "arg%d" i)), decl_loc)) argtyps in
     let cname = dup_id n in
     let df = ref { df_name=cname; df_templ_args=templ_args;
@@ -1380,7 +1381,7 @@ and check_types eseq env sc =
                to support the constructions 'record_name { f1=e1, f2=e2, ..., fn=en }' gracefully *)
             (match dt_typ with
             | TypRecord _ ->
-                let (cname, ctyp) = register_typ_constructor dt_name dt_templ_args dt_typ dt_typ env1 dt_scope dt_loc in
+                let (cname, ctyp) = register_typ_constructor dt_name dt_templ_args (dt_typ::[]) dt_typ env1 dt_scope dt_loc in
                 add_id_to_env_check (get_orig_id dt_name) cname env (check_for_duplicate_fun ctyp env dt_scope dt_loc)
             | _ -> env)
         | DefVariant dvar ->
@@ -1524,16 +1525,27 @@ and check_typ t env sc loc =
 
 and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let { df_name; df_templ_args; df_args; df_body; df_flags; df_scope; df_loc; df_templ_inst } = !templ_df in
+    let nargs = List.length df_args in
     let inst_env = inst_env0 in
     let is_constr = List.mem FunConstr df_flags in
     (*let _ = (printf "before instantiation of %s %s with type<" (if is_constr then
         "constructor" else "function") (id2str df_name); pprint_typ_x inst_ftyp; printf ">:\n") in
     let _ = print_env "" inst_env inst_loc in*)
-    let (arg_typs, rt) = (match (deref_typ inst_ftyp) with
+    let inst_ftyp = deref_typ inst_ftyp in
+    let (arg_typs, rt) = (match inst_ftyp with
+                    | TypFun((TypVoid :: []), rt) -> ([], rt)
                     | TypFun(arg_typs, rt) -> (arg_typs, rt)
-                    | rt -> if is_constr && df_args = [] then ([], rt)
+                    | rt -> if is_constr (*&& df_args = []*) then ([], rt)
                         else raise_compile_err inst_loc
                         "internal error: the type of instantiated function is not a function") in
+    let ninst_args = List.length arg_typs in
+    let arg_typs = if nargs = ninst_args then arg_typs else
+                    if nargs = 1 then TypTuple(arg_typs) :: [] else
+                    (match arg_typs with
+                    | TypTuple(elems) :: [] when (List.length elems)=nargs -> elems
+                    | _ -> raise_compile_err df_loc
+                        (sprintf "during instantion at %s: incorrect number of actual parameters =%d (vs expected %d)"
+                        (loc2str inst_loc) ninst_args nargs)) in
     let inst_name = if instantiate then (dup_id df_name) else df_name in
     let fun_sc = (ScFun inst_name) :: inst_sc in
     let (df_inst_args, inst_env, _) = List.fold_left2
@@ -1550,8 +1562,10 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let _ = print_env (sprintf "before processing function body of %s defined at %s" (id2str inst_name) (loc2str df_loc)) inst_env inst_loc in*)
     let (body_typ, body_loc) = get_exp_ctx inst_body in
     let _ = if is_constr then () else unify body_typ rt body_loc "the function body type does not match the function type" in
+    let inst_ftyp = match (arg_typs, is_constr) with ([], true) -> rt | _ -> TypFun(arg_typs, rt) in
+    (*let _ = (printf "instantiated '%s' with nargs=%d, typ=" (id2str inst_name) nargs; pprint_typ_x inst_ftyp; printf "\n") in*)
     let inst_df = ref { df_name=inst_name; df_templ_args=[]; df_args=df_inst_args;
-                        df_typ=(deref_typ inst_ftyp); df_body=inst_body;
+                        df_typ=inst_ftyp; df_body=inst_body;
                         df_flags; df_scope=inst_sc; df_loc=inst_loc; df_templ_inst=[]; df_env=inst_env0 } in
     let _ = set_id_entry inst_name (IdFun inst_df) in
     let inst_or_templ_df = if instantiate then
@@ -1591,9 +1605,19 @@ and instantiate_variant ty_args dvar env sc loc =
         (set_id_entry inst_name (IdVariant inst_dvar);
         !dvar.dvar_templ_inst <- inst_name :: !dvar.dvar_templ_inst) else () in
     let (inst_cases, inst_constr) = List.fold_left2 (fun (inst_cases, inst_constr) (n, t) cname ->
+        let nargs = match t with TypTuple(telems) -> List.length telems | TypVoid -> 0 | _ -> 1 in
         let t = check_typ (dup_typ t) env sc loc in
         let t = finalize_record_typ t loc in
-        let (inst_cname, _) = register_typ_constructor cname (!inst_dvar.dvar_templ_args) t inst_app_typ env dvar_scope dvar_loc in
+        let nrealargs = match t with TypTuple(telems) -> List.length telems | TypVoid -> 0 | _ -> 1 in
+        let argtyps = match (t, nargs) with
+            | (TypVoid, 0) -> []
+            | (_, 1) -> t :: []
+            | (TypTuple(telems), _) when nrealargs = nargs -> telems
+            | _ ->
+                raise_compile_err loc
+                (sprintf "cannot instantiate case '%s' of variant '%s' defined at '%s': wrong number of actual parameters %d (vs %d expected)"
+                (id2str cname) (id2str dvar_name) (loc2str dvar_loc) nrealargs nargs) in
+        let (inst_cname, _) = register_typ_constructor cname (!inst_dvar.dvar_templ_args) argtyps inst_app_typ env dvar_scope dvar_loc in
         if instantiate then
             match id_info cname with
             | IdFun c_def -> !c_def.df_templ_inst <- inst_cname :: !c_def.df_templ_inst
@@ -1642,7 +1666,9 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                    avoid preliminary type instantiation) *)
                 let tl = List.map (fun p -> make_new_typ()) pl in
                 let ctyp = match tl with [] -> t | _ -> TypFun(tl, t) in
+                (*let _ = print_env "env @ report_not_found: " env loc in*)
                 let v_new = lookup_id v ctyp !r_env sc loc in
+                (*let _ = printf "checking '%s'~'%s' with %d params at %s\n" (id2str v) (id2str v_new) (List.length pl) (loc2str loc) in*)
                 PatVariant(v_new, (List.map2 (fun p t -> check_pat_ p t) pl tl), loc)
             else
             (match (deref_typ t) with

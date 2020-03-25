@@ -288,19 +288,24 @@ and pprint_cstmt s =
         pstr "do"; obox(); pspace(); pprint_cstmt body; pspace(); cbox();
         pstr "while ("; pprint_cexp_ e 0; pstr ");"
     | CStmtSwitch (e, cases, _) ->
-        pstr "switch ("; obox(); pprint_cexp_ e 0; cbox();
-        pstr ") {"; obox();
+        ohbox(); pstr "switch ("; obox(); pprint_cexp_ e 0; cbox();
+        pstr ") {"; cbox(); pbreak();
         List.iter (fun (labels, code) ->
+            ohbox();
             let isdefault = (match labels with
             | [] -> pstr "default:"; true
-            | _ -> List.iter (fun l -> pstr "case "; pprint_cexp_ l 0) labels; false) in
-            ovbox();
-            List.iter (fun s -> pprint_cstmt s) code;
-            pbreak();
-            if isdefault then pstr ";" else pstr "break;";
+            | _ ->
+                List.iter (fun l -> pstr "case "; pprint_cexp_ l 0; pstr ":"; pspace()) labels; false) in
             cbox();
-            pbreak()) cases;
-        cbox(); pstr "}"
+            pbreak();
+            ovbox();
+            let codelen = (List.length code) + (if isdefault then 0 else 1) in
+            List.iteri (fun i s -> if i = 0 then pstr "   " else (); pprint_cstmt s; if i < codelen-1 then pbreak() else ()) code;
+            if isdefault then (if code=[] then pstr "   ;" else ()) else pstr "break;";
+            cbox();
+            pbreak()
+            ) cases;
+        pstr "}"
     | CStmtCCode (ccode, l) -> pstr ccode; pstr ";"
     | CDefVal (t, n, e_opt, l) ->
         pprint_ctyp_ t (Some n);

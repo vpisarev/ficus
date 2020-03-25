@@ -482,7 +482,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
         let (_, code) = pat_simple_unpack p ptyp (Some e) code temp_prefix flags sc in
         code
     | _ ->
-        printf "pattern: "; Ast_pp.pprint_pat_x p; printf "\n";
+        (*printf "pattern: "; Ast_pp.pprint_pat_x p; printf "\n";*)
         raise_compile_err loc "this type of pattern cannot be used here") in
     (n, code)
 
@@ -634,7 +634,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 let plists = dispatch_pat pinfo plists in
                 (plists, checks, code)
             | _ ->
-                printf "pattern: "; Ast_pp.pprint_pat_x p; printf "\n";
+                (*printf "pattern: "; Ast_pp.pprint_pat_x p; printf "\n";*)
                 raise_compile_err loc "this type of pattern is not supported yet")
             in process_next_subpat plists (checks, code) case_sc
         | _ -> (checks, code)
@@ -752,9 +752,6 @@ and transform_all_types_and_cons elist code sc =
                                 let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
                                             kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: [];
                                             kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
-                                printf "added %s (%s) variant constructor: " (id2str df_name) (id2str constr);
-                                K_pp.pprint_ktyp_x kf_typ;
-                                printf "\n";
                                 set_idk_entry df_name (KFun kf);
                                 (KDefFun kf) :: code
                             | _ -> raise_compile_err dvar_loc
