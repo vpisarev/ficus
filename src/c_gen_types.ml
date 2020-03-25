@@ -280,7 +280,7 @@ let convert_all_typs top_code =
             let visited = IdSet.mem tn !all_visited in
             let deps = K_annotate_types.get_typ_deps tn loc in
             let kt_info = kinfo_ tn loc in
-            let (ce_id, ce_members, varflag, fwd_decl, deps) = match kt_info with
+            let (ce_id, ce_members, recursive_variant, fwd_decl, deps) = match kt_info with
                 | KVariant kvar ->
                     let (ce_id, ce_members) = get_var_enum kvar in
                     let {kvar_flags} = !kvar in
@@ -290,15 +290,20 @@ let convert_all_typs top_code =
                     else
                         (ce_id, ce_members, false, false, deps)
                 | _ -> (noid, [], false, false, deps) in
-            let _ = match (varflag, visited) with
+            let _ = match (recursive_variant, visited) with
                 | (false, true) -> raise_compile_err loc
                     (sprintf "non-recursive variant type '%s' references itself directly or indirectly" (id2str tn))
                 | _ -> () in
             let _ = all_visited := IdSet.add tn !all_visited in
             let ktp = K_annotate_types.get_ktprops (KTypName tn) loc in
             let (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp) = create_ctyp_decl tn ktp fwd_decl loc in
+            let struct_id_opt = match !struct_decl with
+                | {ct_typ=CTypRawPtr(_, CTypStruct(struct_id_opt, _))} -> struct_id_opt
+                | _ -> Some tn in
+            let process_deps () = IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps in
+            all_decls := IdSet.add tn !all_decls;
             (*printf "deps for %s: " (id2str tn); IdSet.iter (fun d -> printf "%s, " (id2str d)) deps; printf "\n";*)
-            IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps;
+            if recursive_variant then process_deps() else ();
             add_decl (CDefTyp struct_decl);
             if ktp.ktp_custom_free then
                 add_decl (CDefFun freef_decl)
@@ -306,7 +311,7 @@ let convert_all_typs top_code =
             if ktp.ktp_custom_copy then
                 add_decl (CDefFun copyf_decl)
             else ();
-            all_decls := IdSet.add tn !all_decls;
+            if not recursive_variant then process_deps() else ();
             match kt_info with
             | KTyp kt ->
                 let {kt_typ; kt_loc} = !kt in
@@ -337,9 +342,6 @@ let convert_all_typs top_code =
                     freef_decl := {!freef_decl with cf_body=List.rev free_code};
                     copyf_decl := {!copyf_decl with cf_body=List.rev copy_code}
                 | KTypList et ->
-                    let struct_id_opt = match !struct_decl with
-                        | {ct_typ=CTypRawPtr(_, CTypStruct(struct_id_opt, _))} -> struct_id_opt
-                        | _ -> raise_compile_err loc (sprintf "unexpected ct_typ when converting %s" (get_idk_cname tn loc)) in
                     let ct = ktyp2ctyp et kt_loc in
                     let {ct_props} = !struct_decl in
                     let {ctp_free=(_, freef)} = ct_props in
@@ -358,9 +360,6 @@ let convert_all_typs top_code =
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
                         ct_props={ct_props with ctp_free=(noid, freef)}}
                 | KTypRef(et) ->
-                    let struct_id_opt = match !struct_decl with
-                        | {ct_typ=CTypRawPtr(_, CTypStruct(struct_id_opt, _))} -> struct_id_opt
-                        | _ -> raise_compile_err loc (sprintf "unexpected ct_typ when converting %s" (get_idk_cname tn loc)) in
                     let ct = ktyp2ctyp et kt_loc in
                     let {ct_props} = !struct_decl in
                     let {ctp_free=(_, freef)} = ct_props in
@@ -424,7 +423,11 @@ let convert_all_typs top_code =
                         CStmtSwitch(src_tag_exp, (List.rev copy_cases), kvar_loc) :: copy_code
                 in
                 let relems = (tag_id, CTypCInt) :: (u_id, CTypUnion(None, List.rev uelems)) :: [] in
-                struct_decl := {!struct_decl with ct_typ=CTypStruct((Some tn), relems)};
+                if recursive_variant then
+                    let relems = ((get_id "rc"), CTypInt) :: relems in
+                    struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)))};
+                else
+                    struct_decl := {!struct_decl with ct_typ=CTypStruct(struct_id_opt, relems)};
                 freef_decl := {!freef_decl with cf_body=List.rev free_code};
                 copyf_decl := {!copyf_decl with cf_body=List.rev copy_code}
             | _ -> raise_compile_err loc (sprintf "type '%s' cannot be converted to C" (id2str tn))

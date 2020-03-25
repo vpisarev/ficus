@@ -143,7 +143,7 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode =
         obox();
         if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
         if (List.mem CTypConst attrs) then pstr "const " else ();
-        pprint_ctyp_ t None;
+        pprint_ctyp__ "" t None fwd_mode;
         pstr "*"; pr_id_opt();
         cbox()
     | CTypArray _ -> pstr "fx_arr_t"; pr_id_opt()
@@ -216,7 +216,7 @@ and pprint_elist el =
         if i = 0 then pcut() else (pstr ","; pspace());
         pprint_cexp_ e 0) el; cbox())
 
-and pprint_fun_hdr fname semicolon loc =
+and pprint_fun_hdr fname semicolon loc fwd_mode =
     let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = match (cinfo fname) with
         | CFun cf -> !cf
         | _ -> raise_compile_err loc (sprintf "the forward declaration of %s does not reference a function" (pp_id2str fname))
@@ -233,10 +233,12 @@ and pprint_fun_hdr fname semicolon loc =
     pspace();
     pprint_id cf_name;
     pstr "(";
-    obox();
+    pcut();
+    (*ovbox();*)
+    Format.open_vbox 0;
     List.iteri (fun i (n, t) ->
         if i = 0 then () else (pstr ","; pspace());
-        pprint_ctyp_ t (Some n)) typed_args;
+        pprint_ctyp__ "" t (Some n) true) typed_args;
     cbox(); pstr (")" ^ (if semicolon then ";" else "")); cbox();
     pbreak()
 
@@ -315,12 +317,12 @@ and pprint_cstmt s =
         pstr ";"
     | CDefFun cf ->
         let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = !cf in
-        pprint_fun_hdr cf_name false cf_loc;
+        pprint_fun_hdr cf_name false cf_loc false;
         ovbox(); pstr "{";
         List.iter (fun s -> pbreak(); pprint_cstmt s) cf_body;
         cbox(); pbreak(); pstr "}"; pbreak()
     | CDefForwardFun (cf_name, cf_loc) ->
-        pprint_fun_hdr cf_name true cf_loc
+        pprint_fun_hdr cf_name true cf_loc true
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
         pprint_ctyp__ "typedef " ct_typ (Some ct_name) true; pstr ";"; pbreak()
