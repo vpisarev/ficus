@@ -3,6 +3,20 @@
     See ficus/LICENSE for the licensing terms
 *)
 
+(*
+    The top-level "driver" module that
+    performs all the compilation steps
+    in the certain order:
+
+    lexical + syntactic analysis (parsing) =>
+    type checking =>
+    k-normalization =>
+    iterative k-form optimization =>
+    final k-form preparation (lambda lifting, name mangling ...) =>
+    C code generation =>
+    [optional C compiler invocation to process the produced C code]
+*)
+
 open Lexing
 open Options
 open Ast

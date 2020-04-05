@@ -15,7 +15,7 @@
       - in a per-module compilation mode (that is not implemented yet)
         only "static", i.e. module-local functions should be removed.
         other unused functions should be excluded at the link stage.
-    * if there is a value that is assigned but not used, we remove it as well.
+    * if there is a value that is defined but not used, we remove it as well.
       however, if the right-hand-side expression that initializes the value
       is impure, we retain this call, e.g. we replace
       'val usused_flag = func_with_side_effects(args)' with

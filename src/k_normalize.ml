@@ -3,6 +3,16 @@
     See ficus/LICENSE for the licensing terms
 *)
 
+(*
+    Converts the Abstract Syntax Tree (ast.ml) into K-form (K_form.ml).
+
+    For now only the global compilation mode is supported, i.e.
+    the code from all the modules, used in the program,
+    is put into one global list of definitions and top-level expressions.
+    Since the modules are processed in the topological order, the output
+    is correct.
+*)
+
 open Ast
 open K_form
 

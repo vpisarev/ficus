@@ -3,6 +3,16 @@
     See ficus/LICENSE for the licensing terms
 *)
 
+(*
+    C-form pretty printer.
+
+    Unlike Ast_pp or K_pp, the output of this module
+    is not just free-form.
+
+    It should output valid, and yet preferably
+    well-formatted beautifully-looking C code.
+*)
+
 open Ast
 open C_form
 

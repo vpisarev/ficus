@@ -28,9 +28,7 @@ int fx_make_str(fx_str_t* str, char_* strdata, int_ length)
         length = 0;
 
     size_t total = sizeof(*str->rc) + length*sizeof(strdata[0]);
-    str->rc = (fx_rc_t*)fx_alloc(total);
-    if( !str->rc )
-        return FX_OUT_OF_MEM_ERR;
+    FX_CALL(fx_malloc(total, &str->rc));
 
     str->data = (char_*)(str->rc + 1);
     str->length = length;

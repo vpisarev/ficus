@@ -85,7 +85,7 @@ extern FX_THREAD_LOCAL fx_rng_t fx_rng;
 
 void fx_init(int t_idx);
 
-void* fx_alloc(size_t sz);
+int fx_malloc(size_t sz, void* ptr);
 void fx_free(void* ptr);
 
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
@@ -107,7 +107,8 @@ typedef struct fx_str_t
 
 void fx_free_str(fx_str_t* str);
 void fx_copy_str(const fx_str_t* src, fx_str_t* dst);
-int fx_make_str(fx_str_t* str, char_* strdata, int_ length);
+int fx_make_str(char_* strdata, int_ length, fx_str_t* str);
+#define FX_FREE_STR(str) if(!(str)->data) ; else fx_free_str(str)
 
 ////////////////////////// Exceptions //////////////////////
 
@@ -121,8 +122,8 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
 
 #define FX_MAKE_EXN_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy_f) \
-    exndata_typ* data = (exndata_typ*)fx_alloc(sizeof(*data)); \
-    if(!data) return FX_OUT_OF_MEM_ERR; \
+    exndata_typ* data; \
+    FX_CALL(fx_malloc(sizeof(*data), &data)); \
         \
     data->base.rc = 1; \
     data->base.free_f = exndata_free; \
@@ -147,8 +148,8 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     *pl = 0
 
 #define FX_MAKE_LIST_IMPL(typ, hd_copy_f) \
-    typ l = (typ)fx_alloc(sizeof(*l)); \
-    if (!l) return FX_OUT_OF_MEM_ERR; \
+    typ l; \
+    FX_CALL(fx_malloc(sizeof(*l), &l)); \
     l->rc = 1; \
     l->tl = tl; \
     if(tl) FX_INCREF(tl->rc); \
@@ -231,19 +232,19 @@ void fx_arr_nextiter(fx_arriter_t* it);
        (size_t)(idx4) >= (size_t)(arr).dim[4].size) \
     { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
 #define FX_EPTR_1D_(typ, arr, idx) \
-    (typ*)(arr).data + (idx)
+    ((typ*)(arr).data + (idx))
 #define FX_EPTR_2D_(typ, arr, idx0, idx1) \
-    (typ*)((arr).data + (arr).dim[0].step*(idx0)) + (idx1)
+    ((typ*)((arr).data + (arr).dim[0].step*(idx0)) + (idx1))
 #define FX_EPTR_3D_(typ, arr, idx0, idx1, idx2) \
-    (typ*)((arr).data + (arr).dim[0].step*(idx0) + \
-    (arr).dim[1].step*(idx1)) + (idx2)
+    ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
+    (arr).dim[1].step*(idx1)) + (idx2))
 #define FX_EPTR_4D_(typ, arr, idx0, idx1, idx2, idx3) \
-    (typ*)((arr).data + (arr).dim[0].step*(idx0) + \
-    (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2)) + (idx3)
+    ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
+    (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2)) + (idx3))
 #define FX_EPTR_5D_(typ, arr, idx0, idx1, idx2, idx3) \
-    (typ*)((arr).data + (arr).dim[0].step*(idx0) + \
+    ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
     (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2) + \
-    (arr).dim[3].step*(idx3)) + (idx4)
+    (arr).dim[3].step*(idx3)) + (idx4))
 
 #define FX_EPTR_1D(typ, arr, idx, ptr, catch_label) \
     FX_CHKIDX_1D((arr), (idx), catch_label) \
@@ -262,6 +263,8 @@ void fx_arr_nextiter(fx_arriter_t* it);
     (ptr) = FX_EPTR_5D_(typ, (arr), (idx0), (idx1), (idx2), (idx3), (idx4))
 
 void fx_free_arr(fx_arr_t* arr);
+#define FX_FREE_ARR(arr) if(!(arr)->data) ; else fx_free_arr(arr)
+
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr );
@@ -309,8 +312,8 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
     *pr = 0
 
 #define FX_MAKE_REF_IMPL(typ, arg_copy_f) \
-    typ r = (typ)fx_alloc(sizeof(*r)); \
-    if (!r) return FX_OUT_OF_MEM_ERR; \
+    typ r; \
+    FX_CALL(fx_malloc(sizeof(*r), &r)); \
     r->rc = 1; \
     arg_copy_f(arg, &r->data); \
     *fx_result = r; \

@@ -3,6 +3,12 @@
     See ficus/LICENSE for the licensing terms
 *)
 
+(*
+    K-form pretty printer.
+    Can be used to debug the K-normalization step,
+    as well as all the further K-form transformations
+*)
+
 open Ast
 open K_form
 

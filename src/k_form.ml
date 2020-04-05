@@ -467,7 +467,7 @@ and walk_kexp e callb =
     | KExpDeref(k, ctx) -> KExpDeref((walk_id_ k), (walk_kctx_ ctx))
     | KExpThrow(k, loc) -> KExpThrow((walk_id_ k), loc)
     | KExpWhile(c, e, loc) -> KExpWhile((walk_kexp_ c), (walk_kexp_ e), loc)
-    | KExpDoWhile(c, e, loc) -> KExpDoWhile((walk_kexp_ c), (walk_kexp_ e), loc)
+    | KExpDoWhile(e, c, loc) -> KExpDoWhile((walk_kexp_ e), (walk_kexp_ c), loc)
     | KExpFor(kdl, body, flags, loc) ->
         KExpFor((walk_kdl_ kdl), (walk_kexp_ body), flags, loc)
     | KExpMap(e_kdl_l, body, flags, ctx) ->

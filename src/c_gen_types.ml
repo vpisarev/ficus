@@ -4,33 +4,17 @@
 *)
 
 (*
-    Generate C code (in the tree-like representation, see C_form.ml)
-    out of K-form (after the lambda lifting step and possibly other
-    similar lowering transformations).
-*)
+    Generates C code for the data structures and the supporting
+    functions (_fx_free_..., _fx_copy_..., _fx_make_... etc.).
 
-(*
-    The algorithm:
-    1. traverse through the code; represent each complex type of K-form is a C structure;
-      earlier on (in k_mangle.ml), we replaced all the complex types with KTypName(...)
-      and gave them unique names. now need to convert those types to C,
-      put all the definitions in the beginning of the generated C code.
-      If a type definition depends on other types that are delcared later
-      (e.g. in the case of mutually-recursive variants), insert forward declarations
-      of those types ('struct _fx_V<dep_variant_name>;')
-
-    2. traverse through the code:
-        For each function:
-        * form declaration of each function in C:
-          * add the context parameter and the closure parameter
-          * make the return value an output parameter; make "int" the actual return parameter
-        * collect information about the local values/variables
-          * find out the C type of each local value
-            ** TEMP_REF values should become pointers!
-          * find which local values need cleanup; their declarations should be
-            put in the beginning of the function with "nil" initializer
-          * convert the code step by step with a special treatment for try-catch, loops and especially KExpMap.
-            Each function call (unless there is no-throw flag) needs to be wrapped in a macro that checks for errors.
+    We traverse through the code; represent each complex type of K-form is a C structure;
+    earlier on (in k_mangle.ml), we replaced all the complex types with KTypName(...)
+    and gave them unique names. now need to convert those types to C,
+    put all the definitions in the beginning of the generated C code.
+    If a type definition depends on other types that are delcared later
+    (e.g. in the case of mutually-recursive variants), insert forward declarations
+    of those types ('struct _fx_V<dep_variant_name>;') and the forward declarations of
+    their destructors.
 *)
 
 open Ast
@@ -485,7 +469,3 @@ let convert_all_typs top_code =
     }
     in List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) top_code;
     (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl)
-
-let convert_to_c top_code =
-    let ccode = convert_all_typs top_code in
-    ccode

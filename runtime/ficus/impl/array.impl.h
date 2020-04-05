@@ -227,8 +227,7 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
         netw *= szi;
     }
     size_t grossw = netw + 8;
-    arr->rc = (fx_rc_t*)fx_alloc(grossw);
-    if(!arr->rc) return FX_OUT_OF_MEM_ERR;
+    fx_malloc(grossw, &arr->rc);
     arr->flags = FX_ARR_CONTINUOUS;
     arr->ndims = ndims;
     arr->data = (char*)arr->rc + 8;

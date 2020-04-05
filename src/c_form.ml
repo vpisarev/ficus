@@ -650,7 +650,7 @@ let make_cfor_inc i ityp a b delta body loc =
 let curr_exn_val = ref (-1024)
 let std_FX_MAX_DIMS = 5
 
-let std_fx_alloc = ref noid
+let std_fx_malloc = ref noid
 let std_fx_free = ref noid
 
 let std_FX_CALL = ref noid

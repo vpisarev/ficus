@@ -3,6 +3,11 @@
     See ficus/LICENSE for the licensing terms
 *)
 
+(*
+    AST pretty printer. Can be used to debug the parser
+    and the type checker output.
+*)
+
 open Ast
 
 let base_indent = ref 3
