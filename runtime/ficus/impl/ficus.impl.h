@@ -21,11 +21,9 @@ void fx_init(int t_idx)
 
 /* [TODO] replace it with something more efficient,
    e.g. mimalloc (https://github.com/microsoft/mimalloc) */
-int fx_malloc(size_t sz, void* pptr_)
+void* fx_malloc(size_t sz)
 {
-    void** pptr = (void**)pptr_;
-    *pptr = malloc(sz);
-    return *pptr ? FX_OK : FX_OUT_OF_MEM_ERR;
+    return malloc(sz);
 }
 
 void fx_free(void* ptr)
@@ -63,14 +61,6 @@ void fx_free_ref_simple(void* pr_)
 }
 
 ////// reference-counted cells //////
-
-void fx_free_ptr(void* pp)
-{
-    fx_rc_t** pp_ = (fx_rc_t**)pp;
-    if(*pp_ && FX_DECREF(**pp_) == 1)
-        fx_free(*pp_);
-    *pp_ = 0;
-}
 
 void fx_copy_ptr(const void* src, void* dst)
 {
@@ -134,8 +124,7 @@ void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* dst)
 
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 {
-    fx_cptr_t p;
-    FX_CALL(fx_malloc(sizeof(*p), &p));
+    FX_DECL_AND_MALLOC(fx_cptr_t, p, sizeof(fx_cptr_t));
     p->rc = 1;
     p->free_f = free_f;
     p->ptr = ptr;

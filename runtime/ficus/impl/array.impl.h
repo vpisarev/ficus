@@ -226,12 +226,14 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
         arr->dim[i].step = netw;
         netw *= szi;
     }
-    size_t grossw = netw + 8;
-    fx_malloc(grossw, &arr->rc);
+    size_t dataoffset = elemsize % 8 == 0 ? (size_t)8 : sizeof(*arr->rc);
+    size_t grossw = netw + dataoffset;
+    arr->rc = (int_*)fx_malloc(grossw);
+    if(!arr->rc) return FX_OUT_OF_MEM_ERR;
+    *arr->rc = 1;
     arr->flags = FX_ARR_CONTINUOUS;
     arr->ndims = ndims;
-    arr->data = (char*)arr->rc + 8;
-    arr->totalsize = grossw;
+    arr->data = (char*)arr->rc + dataoffset;
     arr->free_elem = free_elem;
     arr->copy_elem = copy_elem;
     // if there is destructor for elements specified, we must clear the array.

@@ -32,7 +32,12 @@ enum
 #define FX_INLINE __inline
 
 typedef intptr_t int_; // int size in ficus is equal to the pointer size
-typedef unsigned int char_; // 4-byte unicode character
+#ifdef __APPLE__
+typedef uint32_t char_;
+#else
+#include <uchar.h>
+typedef char32_t char_;
+#endif
 
 #ifndef FX_XADD
 #ifdef _MSC_VER
@@ -83,21 +88,101 @@ typedef struct fx_exn_t
 extern FX_THREAD_LOCAL fx_exn_t fx_exn;
 extern FX_THREAD_LOCAL fx_rng_t fx_rng;
 
-void fx_init(int t_idx);
+void fx_init(int argc, char** argv);
+void fx_init_thread(int t_idx);
+int_ fx_argc(void);
+char* fx_argv(int_ idx);
 
-int fx_malloc(size_t sz, void* ptr);
+void* fx_malloc(size_t sz);
 void fx_free(void* ptr);
-
+#define FX_DECL_AND_MALLOC(typ, ptr, sz) \
+    typ* ptr = (typ*)fx_malloc(sz); \
+    if(!ptr) return FX_OUT_OF_MEM_ERR
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
 #define FX_COPY_PTR(src, dst) FX_INCREF((src)->rc); *(dst) = (src)
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
 
-void fx_free_ptr(void* pdst);
 void fx_copy_ptr(const void* src, void* pdst);
 
 ////////////////////////// Strings //////////////////////
+
+// Unicode character category
+enum
+{
+    FX_UNICODE_CAT_Lu = 0,
+    FX_UNICODE_CAT_Ll = 1,
+    FX_UNICODE_CAT_Lt = 2,
+    FX_UNICODE_CAT_Lm = 3,
+    FX_UNICODE_CAT_Lo = 4,
+
+    FX_UNICODE_CAT_Mn = 5,
+    FX_UNICODE_CAT_Me = 6,
+    FX_UNICODE_CAT_Mc = 7,
+
+    FX_UNICODE_CAT_Nd = 8,
+    FX_UNICODE_CAT_Nl = 9,
+    FX_UNICODE_CAT_No = 10,
+
+    FX_UNICODE_CAT_Zs = 11,
+    FX_UNICODE_CAT_Zl = 12,
+    FX_UNICODE_CAT_Zp = 13,
+
+    FX_UNICODE_CAT_Cc = 14,
+    FX_UNICODE_CAT_Cf = 15,
+    FX_UNICODE_CAT_Co = 16,
+    FX_UNICODE_CAT_Cs = 17,
+    FX_UNICODE_CAT_Cn = 18,
+
+    FX_UNICODE_CAT_Pd = 19,
+    FX_UNICODE_CAT_Ps = 20,
+    FX_UNICODE_CAT_Pe = 21,
+    FX_UNICODE_CAT_Pc = 22,
+    FX_UNICODE_CAT_Po = 23,
+    FX_UNICODE_CAT_Pi = 24,
+    FX_UNICODE_CAT_Pf = 25,
+
+    FX_UNICODE_CAT_Sm = 26,
+    FX_UNICODE_CAT_Sc = 27,
+    FX_UNICODE_CAT_Sk = 28,
+    FX_UNICODE_CAT_So = 29,
+    FX_UNICODE_CAT_Zextra = 30, // extra space (TAB, CR, LF etc.)
+    FX_UNICODE_CAT_Unknown = FX_UNICODE_CAT_Cn,
+    FX_UNICODE_CAT_Mask = 31,
+    FX_UNICODE_CAT_Shift = 5
+};
+
+// Unicode character bidirectional category
+enum
+{
+    FX_UNICODE_BIDIR_AL = 0,
+    FX_UNICODE_BIDIR_AN = 1,
+    FX_UNICODE_BIDIR_B = 2,
+    FX_UNICODE_BIDIR_BN = 3,
+    FX_UNICODE_BIDIR_CS = 4,
+    FX_UNICODE_BIDIR_EN = 5,
+    FX_UNICODE_BIDIR_ES = 6,
+    FX_UNICODE_BIDIR_ET = 7,
+    FX_UNICODE_BIDIR_FSI = 8,
+    FX_UNICODE_BIDIR_L = 9,
+    FX_UNICODE_BIDIR_LRE = 10,
+    FX_UNICODE_BIDIR_LRI = 11,
+    FX_UNICODE_BIDIR_LRO = 12,
+    FX_UNICODE_BIDIR_NSM = 13,
+    FX_UNICODE_BIDIR_ON = 14,
+    FX_UNICODE_BIDIR_PDF = 15,
+    FX_UNICODE_BIDIR_PDI = 16,
+    FX_UNICODE_BIDIR_R = 17,
+    FX_UNICODE_BIDIR_RLE = 18,
+    FX_UNICODE_BIDIR_RLI = 19,
+    FX_UNICODE_BIDIR_RLO = 20,
+    FX_UNICODE_BIDIR_S = 21,
+    FX_UNICODE_BIDIR_WS = 22,
+    FX_UNICODE_BIDIR_Mask = 31,
+    FX_UNICODE_BIDIR_Shift = 5
+};
+
 typedef struct fx_str_t
 {
     int_* rc;
@@ -105,10 +190,39 @@ typedef struct fx_str_t
     int_ length;
 } fx_str_t;
 
+// this type is not exposed in Ficus language,
+// but used by the runtime and the standard library
+typedef struct fx_cstr_t
+{
+    int_* rc;
+    char* data;
+    int_ length;
+} fx_cstr_t;
+
 void fx_free_str(fx_str_t* str);
+void fx_free_cstr(fx_cstr_t* cstr);
 void fx_copy_str(const fx_str_t* src, fx_str_t* dst);
-int fx_make_str(char_* strdata, int_ length, fx_str_t* str);
-#define FX_FREE_STR(str) if(!(str)->data) ; else fx_free_str(str)
+int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
+#define FX_FREE_STR(str) if(!(str)->rc) ; else fx_free_str(str)
+#define FX_FREE_CSTR(cstr) if(!(cstr)->rc) ; else fx_free_cstr(cstr)
+#define FX_MAKE_STR(strlit) { 0, U##strlit, (int_)(sizeof(U##strlit)/sizeof(char_)-1) }
+
+int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
+int fx_cstr2str(const char* cstr, int_ length, fx_str_t* str);
+int fx_substr(const fx_str* str, int_ start, int_ end, fx_str* substr);
+int fx_strjoin(const fx_str* sep, fx_str** s, int_ count, fx_str* result);
+
+bool fx_isalpha(char_ ch);
+bool fx_isdigit(char_ ch);
+bool fx_isalnum(char_ ch);
+bool fx_ispunct(char_ ch);
+bool fx_isdecimal(char_ ch);
+bool fx_isspace(char_ ch);
+char_ fx_tolower(char_ ch);
+char_ fx_toupper(char_ ch);
+int fx_todigit(char_ ch);
+int fx_bidirectional(char_ ch);
+int fx_atoi(const fx_str_t* str, int* result, bool* ok, int base);
 
 ////////////////////////// Exceptions //////////////////////
 
@@ -122,8 +236,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
 
 #define FX_MAKE_EXN_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy_f) \
-    exndata_typ* data; \
-    FX_CALL(fx_malloc(sizeof(*data), &data)); \
+    FX_DECL_AND_MALLOC(exndata_typ, data, sizeof(exndata_typ)); \
         \
     data->base.rc = 1; \
     data->base.free_f = exndata_free; \
@@ -131,7 +244,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
         \
     fx_result->tag = exn_tag; \
     fx_result->data = (fx_exndata_t*)data; \
-    return fx_result->tag
+    return FX_OK
 
 //////////////////////////// Lists /////////////////////////
 
@@ -148,8 +261,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     *pl = 0
 
 #define FX_MAKE_LIST_IMPL(typ, hd_copy_f) \
-    typ l; \
-    FX_CALL(fx_malloc(sizeof(*l), &l)); \
+    FX_DECL_AND_MALLOC(typ, l, sizeof(typ)); \
     l->rc = 1; \
     l->tl = tl; \
     if(tl) FX_INCREF(tl->rc); \
@@ -158,6 +270,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     return FX_OK
 
 void fx_free_list_simple(void* pl);
+#define FX_FREE_LIST_SIMPLE(pl) if(!*(pl)) ; else fx_free_list_simple(pl)
 
 //////////////////////////// Arrays /////////////////////////
 
@@ -263,7 +376,7 @@ void fx_arr_nextiter(fx_arriter_t* it);
     (ptr) = FX_EPTR_5D_(typ, (arr), (idx0), (idx1), (idx2), (idx3), (idx4))
 
 void fx_free_arr(fx_arr_t* arr);
-#define FX_FREE_ARR(arr) if(!(arr)->data) ; else fx_free_arr(arr)
+#define FX_FREE_ARR(arr) if(!(arr)->rc) ; else fx_free_arr(arr)
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
@@ -312,14 +425,14 @@ FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_
     *pr = 0
 
 #define FX_MAKE_REF_IMPL(typ, arg_copy_f) \
-    typ r; \
-    FX_CALL(fx_malloc(sizeof(*r), &r)); \
+    FX_DECL_AND_MALLOC(typ, r, sizeof(typ)); \
     r->rc = 1; \
     arg_copy_f(arg, &r->data); \
     *fx_result = r; \
     return FX_OK
 
 void fx_free_ref_simple(void* pr);
+#define FX_FREE_REF_SIMPLE(pr) if(!*(pr)) ; else fx_free_list_simple(pr)
 
 //////////////////////// Function pointers /////////////////////////
 

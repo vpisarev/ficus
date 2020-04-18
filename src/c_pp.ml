@@ -174,7 +174,11 @@ and pprint_ctyp_ t id_opt = pprint_ctyp__ "" t id_opt false
 and pprint_cexp_ e pr =
     match e with
     | CExpIdent(i, _) -> pprint_id i
-    | CExpLit(l, _) -> pstr (Ast_pp.lit_to_string l)
+    | CExpLit(l, _) ->
+        let s = match l with
+        | LitNil -> "0"
+        | LitString _ -> raise_compile_err "c_pp: string literal cannot occur here"
+        pstr (Ast_pp.lit_to_string l)
     | CExpBinOp (COpArrayElem as bop, a, b, _) ->
         let (_, pr0, _) = binop2str_ bop in
         obox(); pprint_cexp_ a pr0; pstr "["; pcut();
@@ -215,9 +219,11 @@ and pprint_cexp_ e pr =
         obox(); pprint_cexp_ f 1400; pstr "("; pprint_elist args; pstr ")"; cbox()
     | CExpSeq(eseq, _) ->
         obox();
-        List.iteri (fun i e ->
-            if i = 0 then pcut() else (pstr ";"; pspace());
-            pprint_cexp_ e 0) eseq;
+        if eseq=[] then pstr "{}"
+        else
+            List.iteri (fun i e ->
+                if i = 0 then pcut() else (pstr ";"; pspace());
+                pprint_cexp_ e 0) eseq;
         cbox()
 
 and pprint_elist el =

@@ -149,51 +149,224 @@ let gen_ccode topcode =
     let u1vals = find_single_use_vals topcode in
     let block_stack = ref ([]: block_ctx_t list) in
 
-    let add_complex_val i ctyp e0 loc =
+    let curr_block_ctx loc = match !block_stack with
+        | top :: _ -> top
+        | _ -> raise_compile_err loc "cgen internal err: empty block stack!"
+    in
+    let add_complex_val i ctyp e0 sc loc =
+        let {ctp_ptr; ctp_free=(freem,freef)} = get_ctprops ctyp loc in
+        let {bctx_prologue; bctx_cleanup} = curr_block_ctx loc in
 
-    let rec kexp2cexp e dstid ccode sc =
+
+    let add_complex_temp_val prefix ctyp e0 sc loc =
+        let i = gen_temp_idc prefix in
+        add_complex_val i ctyp e0 sc loc; i
+    in
+
+    (*
+        cases:
+           - input kexp is void:
+                no expression should be stored anywhere,
+                just need to update ccode and return "nop"
+           - non-void expression,
+                the result should be stored to some pre-defined value (dstid).
+                returns this CExpIdent(dstid)
+           - non-void expression (dstid=noid),
+                the result should be returned as expression
+                if needed, some temporary id is generated where the result is stored.
+    *)
+    let rec kexp2cexp kexp dstid ccode sc =
         let fname = match sc with ScFun f :: _ -> f | _ -> noid in
-        let (ktyp, kloc) = get_kexp_ctx e in
+        let (ktyp, kloc) = get_kexp_ctx kexp in
         let dummy_exp = CExpSeq([], (CTypVoid, kloc)) in
-        match e with
+        (* generate exp and then optionally generate the assignment if needed *)
+        match kexp with
         | KExpNop _ -> (dummy_exp, ccode, i2e)
         | KExpBreak _ -> (dummy_exp, ((CStmtBreak kloc) :: ccode), i2e)
-        | KExpContinue _ -> (dummy_exp, ((CStmtContinue kloc) :: ccode), i2e)
+        | KExpContinue _ ->
+            (* 1. need to transform the block context stack: add the type of block, in particular, for/while loop
+               2. need to check that break & continue are called inside such block (or inside try-catch block inside loop).
+                  BTW, if break/continue are called inside try-catch, it must have void type. Probably, in the common
+                  case they should generate some Break/Continue exceptions, which for loop should catch.
+                  In the easiest case (no cleanup sections before the end of loop) they can simply be converted into
+                  break/continue C statements.
+               3.  *)
+            (dummy_exp, ((CStmtContinue kloc) :: ccode), i2e)
         | KExpAtom(a, _) ->
             match a with
             | Atom.Lit(l) ->
                 match l with
                 | LitString s -> (* generate temporary variable, initialize it with fx_make_str() *)
+                    fx_cstr2str()
             (* [TODO] *) raise_compile_err kloc "cgen: unsupported KExpAtom"
         | KExpBinOp(bop, e1, e2, _) -> raise_compile_err kloc "cgen: unsupported KExpBinOp"
         | KExpUnOp(uop, e1, _) -> raise_compile_err kloc "cgen: unsupported KExpUnOp"
+            (* UnOp/BinOp - generate C expression and return it *)
         | KExpIntrin(intr, args, _) -> raise_compile_err kloc "cgen: unsupported KExpIntrin"
         | KExpSeq(el, _) -> raise_compile_err kloc "cgen: unsupported KExpSeq"
+            (* generate block of C statements;
+               for all bust the last expression call kexp2cexp recursively with dstid=noid;
+               for the last expression pass the input dstid transparently *)
         | KExpIf(c, e1, e2, _) -> raise_compile_err kloc "cgen: unsupported KExpIf"
+            (* 1. should recognize the sequence of if (c1) a1 else if (c2) a2 else if ... else an
+               2. in the lucky case when all ci and ai are simple expressions, this can be replaced
+                    with a cascade of ternary operations:
+                    "c1 ? a1 : c2 ? a2 ... : an."
+                    for that, we generate code for cj and aj into a separate sequences
+                    ccode_cj and ccode_aj, respectively (except for c1, for which we can safely use ccode).
+
+                    if at some point ccode_cj or ccode_aj is not empty, we need to patch
+                    so-far generated c code for previous branches, and generate a cascade of if's.
+
+                    In this case, if some ck can be translated to a single C expression, it can be
+                    translated to "else if(ck) ..." instead of "else { some_ccode_ck; if(ck) ... }".
+
+                    So, in the second lucky case (not the most lucky, but still), the cascade of if's
+                    can be translated to:
+
+                    if(c1) a1 else if(c2) a2 ... else an,
+
+                    where aj can be complex compound statements. If KExpIf() has non-void type, i.e.
+                    it should return some expression, the code for all ak should be patched to use
+                    assign the result to some common variable:
+
+                    rtype res = ...; // init res
+                    if(c1) { ... ; res=a1_res } else if(c2) { ...; res=a2_res } ... else { ...; res=an_res }
+            *)
         | KExpCall(f, args, _) -> raise_compile_err kloc "cgen: unsupported KExpCall"
+            (*
+                generate the call; if the function returns the result via output parameter
+                (for now we do not support "nothrow" functions properly, so this always be the case),
+                we pass pointer to dstid as the output parameter. If dstid=noid and the function is non-void,
+                we generate temporary id. Let's call it dstid' (=dstid if dstid!=noid, some_temp_id overwise).
+                The result will look like: FX_CALL(f(args, &dstid', fv_data))
+                Return dstid' as the result.
+                If f is a known function, just call it and pass fv_data=0. If it's function closure,
+                call it via pointer and provide the stored in closure fv_data:
+                FX_CALL(f.ptr(args, &dstid', f.fv_data));
+                if f is "void" function (can only be in th case of known nothrow function, e.g. destructor),
+                FX_CALL is not needed.
+
+                Need to look at each argument and optionally add '&' or '*' if needed.
+            *)
         | KExpMkTuple(args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkTuple"
+            (* in the case of simple tuple, generate code "ttype tmp={args};"
+               in the case of complex tuple, generate "ttype tmp={}; (added to the block prologue)
+                                                      _fx_make_T(args,&tmp);"
+               add the destructor call _fx_free_T...(&tmp); to epilogue
+               in both cases return tmp *)
         | KExpMkRecord(args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkRecord"
+            (* same as tuples *)
         | KExpMkClosure(f, fcv, args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkClosure"
+            (* TBD *)
         | KExpMkArray(shape, elems, _) -> raise_compile_err kloc "cgen: unsupported KExpMkArray"
+            (* declare array with initializer expressions.
+               [TODO] if array is just an argument to some simple arithmetic operation
+               or array comprehension or a pure function, maybe
+               we can avoid allocation of the memory on heap and copying data there?
+               call fx_make_arrNd(...); *)
         | KExpAt(a, idxs, _) -> raise_compile_err kloc "cgen: unsupported KExpAt"
+            (* if array is accessed with index check, add macro to check boundaries to ccode.
+               then return the expression that returns array element *)
         | KExpMem(a, n, _) -> raise_compile_err kloc "cgen: unsupported KExpMem"
+            (* return expression {tuple|record}.n *)
         | KExpDeref(a, _) -> raise_compile_err kloc "cgen: unsupported KExpDeref"
+            (* a should be reference, just generate *a expression (in some cases it can be **a) *)
         | KExpAssign(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KExpAssign"
+            (* 1. if needed, call destructor for i.
+               2. then call _fx_copy(e1, &i), fx_copy(e1, &i) or simply do assignment i=e1 *)
         | KExpMatch(cases, _) -> raise_compile_err kloc "cgen: unsupported KExpMatch"
+            (* very similar to if, just a little bit more complex *)
         | KExpTryCatch(try_e, catch_e, _) -> raise_compile_err kloc "cgen: unsupported KExpCatch"
+            (* create new block context, generate temporary value to assign the try result.
+               generate code for try_e. then generate code for catch similarly to kexpmatch:
+
+               tvtype try_val = ...;
+               try_code;
+               try_val = try_code_result;
+
+            try_cleanup:
+               ...; // call destructors for complex data structures used in try
+               if(fx_status >= 0) goto end_catch;
+
+               int code = fx_status;
+               fx_status = FX_OK;
+               ... // code to match the exception
+               // if not caught
+               fx_status = FX_OK; goto next_label_in_stack; // propagate the unhandled exception
+            end_catch:
+               // here we jump after each successful try or after successful catch.
+               *)
         | KExpThrow(i, _) -> raise_compile_err kloc "cgen: unsupported KExpThrow"
+            (*
+                set the current exception to i, which includes setting fx_status=i.tag;
+                then "goto try_cleanup";
+            *)
         | KExpCast(a, kt, _) -> raise_compile_err kloc "cgen: unsupported KExpCast"
+            (*
+                for now just generate the cast expression
+            *)
         | KExpMap(e_kdl_l, body, flags, _) -> raise_compile_err kloc "cgen: unsupported KExpMap"
+            (*
+                TBD
+            *)
         | KExpFor(kdl, body, flags, _) -> raise_compile_err kloc "cgen: unsupported KExpFor"
+            (*
+                TBD
+            *)
         | KExpWhile(c, body, _) -> raise_compile_err kloc "cgen: unsupported KExpWhile"
+            (*
+                for body translation generate a new context
+                if c == true, replace with "for(;;) { body_ccode }"
+                if c is simple expression, but not "true", replace with "while(c) { body_ccode }"
+                otherwise replace with
+                for(;;) {
+                    ccode_for_c;
+                    if(!c) break;
+                    body_ccode;
+                }
+            *)
         | KExpDoWhile(body, c, _) -> raise_compile_err kloc "cgen: unsupported KExpDoWhile"
+            (*
+                for body translation generate a new context
+                if c == true, replace with "for(;;) { body_ccode }
+                otherwise translate to
+                do {
+                    body_ccode;
+                    ccode_for_c;
+                }
+                while(final_c_exp);
+            *)
         | KExpCCode(ccode_str, _) -> raise_compile_err kloc "cgen: unsupported KExpCCode"
+            (*
+                copy-n-paste literaly to the output tree.
+                just make sure that if it's function body, the function parameters
+                look just like in the source code, without "@n", "@@m" etc.
+            *)
         | KDefVal(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KDefVal"
+            (*
+                * if e1/i has complex type:
+                    ** generate "type i={};",
+                    ** add it to prologue, add destuctor to cleanup.
+                    ** set dstid = i
+                * otherwise dstid = noid
+                convert e1 to cexp. if e1/i has simple type, then do "some_type i = e1;"
+                (otherwise during the conversion the result of e1 will automatically be stored to dstid)
+            *)
         | KDefFun kf -> raise_compile_err kloc "cgen: unsupported KDefFun"
+            (*
+                generate new context.
+                generate ccode for the body with dstid=fx_result.
+                after cleanup section add "return fx_status;"
+            *)
         | KDefExn ke -> raise_compile_err kloc "cgen: unsupported KDefExn"
+            (*
+                should generate constructor in the case of exception with argument(s) (TBD).
+            *)
         | KDefVariant kvar -> (ccode, i2e) (* handled in c_gen_types *)
         | KDefTyp kt -> (ccode, i2e) (* handled in c_gen_types *)
         | KDefClosureVars kcv -> raise_compile_err kloc "cgen: unsupported KDefClosureVars"
+            (* TBD *)
     in ...
 
 let convert_to_c top_code =

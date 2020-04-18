@@ -81,7 +81,7 @@ and get_ctprops ct loc =
         {ctp_free=(noid, !std_fx_free_cptr); ctp_copy=(noid, !std_fx_copy_cptr);
         ctp_pass_by_ref=false; ctp_ptr=true}
     | CTypString ->
-        {ctp_free=(noid, !std_fx_free_str);
+        {ctp_free=(!std_FX_FREE_STR, !std_fx_free_str);
         ctp_copy=(noid, !std_fx_copy_str); ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypExn ->
         {ctp_free=(noid, !std_fx_free_exn); ctp_copy=(noid, !std_fx_copy_exn);
@@ -102,7 +102,7 @@ and get_ctprops ct loc =
         {ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=true}
     | CTypArray(_, _) ->
-        {ctp_free=(noid, !std_fx_free_arr); ctp_copy=(noid, !std_fx_copy_arr);
+        {ctp_free=(!std_FX_FREE_ARR, !std_fx_free_arr); ctp_copy=(noid, !std_fx_copy_arr);
         ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypName i ->
         (match (cinfo i) with
@@ -114,12 +114,12 @@ and get_ctprops ct loc =
     | CTypAny ->
         raise_compile_err loc "properties of 'any type' cannot be requested"
 
-let get_free_f ct let_none loc =
+let get_free_f ct let_none let_macro loc =
     let {ctp_free=(freem, freef)} = get_ctprops ct loc in
     if freem = noid && freef = noid && let_none then
         None
     else
-        let i = if freem <> noid then freem
+        let i = if let_macro && freem <> noid then freem
             else if freef <> noid then freef
             else !std_FX_NOP in
         Some (make_id_exp i loc)
@@ -155,7 +155,7 @@ let gen_copy_code src_exp dst_exp ct code loc =
 
 (* generates the destructor call if needed *)
 let gen_free_code elem_exp ct code loc =
-    let free_f_opt = get_free_f ct true loc in
+    let free_f_opt = get_free_f ct true false loc in
     let ctx = (CTypVoid, loc) in
     let elem_exp = CExpUnOp(COpGetAddr, elem_exp, ((make_ptr ct), loc)) in
     match free_f_opt with
@@ -332,34 +332,38 @@ let convert_all_typs top_code =
                     let relems = ((get_id "rc"), CTypInt) ::
                         ((get_id "tl"), (CTypName tn)) ::
                         ((get_id "hd"), ct) :: [] in
-                    let freef = if freef = noid then !std_fx_free_list_simple else
+                    let (freem, freef) = if freef = noid then (!std_FX_FREE_LIST_SIMPLE, !std_fx_free_list_simple) else
                         let f = make_id_exp !std_FX_FREE_LIST_IMPL loc in
                         let tn_arg = make_id_exp tn loc in
-                        let free_hd_arg = match (get_free_f ct true loc) with
+                        let free_hd_arg = match (get_free_f ct true false loc) with
                             | Some(free_hd_arg) -> free_hd_arg
-                            | _ -> raise_compile_err loc (sprintf "unexpected element destructor when converting %s" (get_idk_cname tn loc))
+                            | _ -> raise_compile_err loc
+                                (sprintf "unexpected element destructor when converting %s" (get_idk_cname tn loc))
                         in let free_code = [CExp(CExpCall(f, tn_arg :: free_hd_arg :: [], (CTypVoid, loc)))] in
-                        (freef_decl := {!freef_decl with cf_body=free_code}; freef)
+                        (freef_decl := {!freef_decl with cf_body=free_code}; (noid, freef))
                     in
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
-                        ct_props={ct_props with ctp_free=(noid, freef)}}
+                        ct_props={ct_props with ctp_free=(freem, freef)}}
                 | KTypRef(et) ->
                     let ct = ktyp2ctyp et kt_loc in
                     let {ct_props} = !struct_decl in
                     let {ctp_free=(_, freef)} = ct_props in
                     let relems = ((get_id "rc"), CTypInt) ::
                         ((get_id "data"), ct) :: [] in
-                    let freef = if freef = noid then !std_fx_free_ref_simple else
-                        let f = make_id_exp !std_FX_FREE_REF_IMPL loc in
-                        let tn_arg = make_id_exp tn loc in
-                        let free_hd_arg = match (get_free_f ct true loc) with
-                            | Some(free_hd_arg) -> free_hd_arg
-                            | _ -> raise_compile_err loc (sprintf "unexpected element destructor when converting %s" (get_idk_cname tn loc))
-                        in let free_code = [CExp(CExpCall(f, tn_arg :: free_hd_arg :: [], (CTypVoid, loc)))] in
-                        (freef_decl := {!freef_decl with cf_body=free_code}; freef)
+                    let (freem, freef) = if freef = noid then
+                            (!std_FX_FREE_REF_SIMPLE, !std_fx_free_ref_simple)
+                        else
+                            let f = make_id_exp !std_FX_FREE_REF_IMPL loc in
+                            let tn_arg = make_id_exp tn loc in
+                            let free_hd_arg = match (get_free_f ct true false loc) with
+                                | Some(free_hd_arg) -> free_hd_arg
+                                | _ -> raise_compile_err loc
+                                    (sprintf "unexpected element destructor when converting %s" (get_idk_cname tn loc))
+                            in let free_code = [CExp(CExpCall(f, tn_arg :: free_hd_arg :: [], (CTypVoid, loc)))] in
+                            (freef_decl := {!freef_decl with cf_body=free_code}; (noid, freef))
                     in
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
-                        ct_props={ct_props with ctp_free=(noid, freef)}}
+                        ct_props={ct_props with ctp_free=(freem, freef)}}
                         | _ -> ())
             | KVariant kvar ->
                 let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in

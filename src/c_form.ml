@@ -660,8 +660,8 @@ let std_FX_COPY_SIMPLE_BY_PTR = ref noid
 let std_FX_NOP = ref noid
 
 let std_fx_copy_ptr = ref noid
-let std_fx_free_ptr = ref noid
 
+let std_FX_FREE_STR = ref noid
 let std_fx_free_str = ref noid
 let std_fx_copy_str = ref noid
 
@@ -672,6 +672,7 @@ let std_FX_MAKE_EXN_IMPL = ref noid
 let std_fx_free_exn = ref noid
 let std_fx_copy_exn = ref noid
 
+let std_FX_FREE_LIST_SIMPLE = ref noid
 let std_fx_free_list_simple = ref noid
 let std_FX_FREE_LIST_IMPL = ref noid
 let std_FX_MAKE_LIST_IMPL = ref noid
@@ -680,11 +681,13 @@ let std_FX_CHKIDX_xD = ref ([] : id_t list)
 let std_FX_EPTR_xD_ = ref ([] : id_t list)
 let std_FX_EPTR_xD = ref ([] : id_t list)
 
+let std_FX_FREE_ARR = ref noid
 let std_fx_free_arr = ref noid
 let std_fx_copy_arr = ref noid
 let std_fx_make_arr = ref noid
 let std_fx_make_arrxd = ref ([] : id_t list)
 
+let std_FX_FREE_REF_SIMPLE = ref noid
 let std_fx_free_ref_simple = ref noid
 let std_FX_FREE_REF_IMPL = ref noid
 let std_FX_MAKE_REF_IMPL = ref noid
@@ -705,3 +708,21 @@ let make_ccall_catch f args catch_label loc =
     let f_call = make_call f args CTypCInt loc in
     let cl_exp = CExpIdent(catch_label, (CTypLabel, loc)) in
     make_call !std_FX_CALL (f_call :: cl_exp :: []) CTypVoid loc
+
+let cexp_get_addr e =
+    match e with
+    | CExpUnOp(COpDeref, x, _) -> x
+    | _ ->
+        let (t, loc) = get_cexp_ctx e in
+        CExpUnOp(COpGetAddr, e, (CTypRawPtr([], t), loc))
+
+let cexp_deref e =
+    match e with
+    | CExpUnOp(COpGetAddr, x, _) -> x
+    | _ ->
+        let (t, loc) = get_cexp_ctx e in
+        let t = match t with
+            | CTypRawPtr(_, CTypVoid) -> CTypAny
+            | CTypRawPtr(_, t) -> t
+            | _ -> CTypAny
+        in CExpUnOp(COpDeref, e, (t, loc))

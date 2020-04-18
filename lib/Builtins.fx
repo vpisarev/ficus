@@ -28,29 +28,23 @@ fun string(a: double) = (a :> string)
 fun string(a: string) = a
 
 operator == (a: string, b: string): bool = ccode "
-    *fx_res = (bool)(a->length == b->length && (a->length == 0 || memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
+    *fx_result = (bool)(a->length == b->length && (a->length == 0 || memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
     return FX_OK;"
-/*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
-fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
-fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_make_cstring(fx_ctx, &fx_res, buf);"
-operator + (a: string, b: string): string = ccode "fx_string* s[] = {a, b}; return fx_str_join(fx_ctx, &fx_res, 0, s, 2);"
+/*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_cstr2str(buf, -1, fx_result);"
+fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_cstr2str(buf, -1, fx_result);"
+fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_cstr2str(buf, -1, fx_result);"
+operator + (a: string, b: string): string = ccode "fx_str_t* s[] = {a, b}; return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: string, b: char): string = ccode "
-    fx_string bstr; fx_string* s[] = {a, &bstr};
-    FX_STATUS fx_status = fx_make_static_string(fx_ctx, &bstr, &b, 1);
-    if(fx_status < 0)
-        return fx_status;
-    return fx_str_join(fx_ctx, fx_res, 0, s, 2);"
+    fx_str_t bstr = {0, &b, 1}, *s[] = {a, &bstr};
+    return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: char, b: string): string = ccode "
-    fx_string astr; fx_string* s[] = {&astr, b};
-    FX_STATUS fx_status = fx_make_static_string(fx_ctx, &astr, &a, 1);
-    if(fx_status < 0)
-        return fx_status;
-    return fx_str_join(fx_ctx, fx_res, 0, s, 2);"*/
+    fx_str_t astr = {0, &a, 1}, *s[] = {&astr, b};
+    return fx_strjoin(0, s, 2, fx_result);"*/
 
 fun atoi(a: string): int option
 {
     fun atoi_(a: string): (int, bool) = ccode
-        "return fx_atoi(fx_ctx, a, &fx_result->v0, &fx_result->v1, 10);"
+        "return fx_atoi(a, &fx_result->t0, &fx_result->t1, 10);"
     match (atoi_(a)) {
     | (x, true) => Some(x)
     | _ => None
@@ -68,14 +62,14 @@ pure nothrow fun sat_uint8(d: double): uint8 = ccode "
     int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
     return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
 
-pure nothrow fun round(x: float): int = ccode "return (fx_int)lrintf(x);"
-pure nothrow fun round(x: double): int = ccode "return (fx_int)lrint(x);"
+pure nothrow fun round(x: float): int = ccode "return (int_)lrintf(x);"
+pure nothrow fun round(x: double): int = ccode "return (int_)lrint(x);"
 
 fun min(a: 't, b: 't) = if (a <= b) a else b
 fun max(a: 't, b: 't) = if (a >= b) a else b
 fun abs(a: 't) = if (a >= (0 :> 't)) a else -a
 
-fun print_string(a: string): void = ccode "return fx_puts(fx_ctx, a->data);"
+fun print_string(a: string): void = ccode "return fx_puts(a->data);"
 
 fun print(a: 't) = print_string(string(a))
 fun print(a: string) = print_string(a)
@@ -96,11 +90,11 @@ fun array(n: int, x: 't) = [for (i in 0:n) x]
 fun array((m: int, n: int), x: 't) = [for (i in 0:m) for (j in 0:n) x]
 fun array((m: int, n: int, l: int), x: 't) = [for (i in 0:m) for (j in 0:n) for (k in 0:l) x]
 
-pure nothrow fun size(a: 't []): int = ccode "return a->size[0];"
+pure fun size(a: 't []): int = ccode "*fx_result = a->dim[0]; return FX_OK;"
 pure fun size(a: 't [,]): (int, int) = ccode
-    "fx_result->v0=a->size[0]; fx_result->v1=a->size[1]; return FX_OK;"
+    "fx_result->t0=a->dim[0].size; fx_result->t1=a->dim[1].size; return FX_OK;"
 pure fun size(a: 't [,,]): (int, int, int) = ccode
-    "fx_result->v0=a->size[0];
-    fx_result->v1=a->size[1];
-    fx_result->v2=a->size[2];
+    "fx_result->t0=a->dim[0].size;
+    fx_result->t1=a->dim[1].size;
+    fx_result->t2=a->dim[2].size;
     return FX_OK;"
