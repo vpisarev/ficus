@@ -69,9 +69,12 @@ fun min(a: 't, b: 't) = if (a <= b) a else b
 fun max(a: 't, b: 't) = if (a >= b) a else b
 fun abs(a: 't) = if (a >= (0 :> 't)) a else -a
 
-fun print_string(a: string): void = ccode "return fx_puts(a->data);"
+fun print_string(a: string): void = ccode "return fx_puts(stdout, a->data);"
 
 fun print(a: 't) = print_string(string(a))
+nothrow fun print(a: int): void = ccode "printf(\"%zd\", a);"
+nothrow fun print(a: float): void = ccode "printf(\"%.8g\", a);"
+nothrow fun print(a: double): void = ccode "printf(\"%.16g\", a);"
 fun print(a: string) = print_string(a)
 fun print(l: 't list)
 {
@@ -90,7 +93,7 @@ fun array(n: int, x: 't) = [for (i in 0:n) x]
 fun array((m: int, n: int), x: 't) = [for (i in 0:m) for (j in 0:n) x]
 fun array((m: int, n: int, l: int), x: 't) = [for (i in 0:m) for (j in 0:n) for (k in 0:l) x]
 
-pure fun size(a: 't []): int = ccode "*fx_result = a->dim[0]; return FX_OK;"
+pure nothrow fun size(a: 't []): int = ccode "return a->dim[0];"
 pure fun size(a: 't [,]): (int, int) = ccode
     "fx_result->t0=a->dim[0].size; fx_result->t1=a->dim[1].size; return FX_OK;"
 pure fun size(a: 't [,,]): (int, int, int) = ccode

@@ -24,7 +24,10 @@ enum
     FX_DIV_BY_ZERO_ERR = -3,
     FX_UNMATCHED_SIZE_ERR = -4,
     FX_DIM_ERR = -5,
-    FX_SIZE_ERR = -6
+    FX_SIZE_ERR = -6,
+    FX_FILE_OPEN_ERR = -7,
+    FX_FILE_NULLHANDLE_ERR = -8,
+    FX_FILE_IO_ERR = -9
 };
 
 /////////////////// Various Basic Definitions ////////////////
@@ -208,9 +211,11 @@ int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
 #define FX_MAKE_STR(strlit) { 0, U##strlit, (int_)(sizeof(U##strlit)/sizeof(char_)-1) }
 
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
+size_t _fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
+
 int fx_cstr2str(const char* cstr, int_ length, fx_str_t* str);
-int fx_substr(const fx_str* str, int_ start, int_ end, fx_str* substr);
-int fx_strjoin(const fx_str* sep, fx_str** s, int_ count, fx_str* result);
+int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr);
+int fx_strjoin(const fx_str_t* sep, fx_str_t** s, int_ count, fx_str_t* result);
 
 bool fx_isalpha(char_ ch);
 bool fx_isdigit(char_ ch);
@@ -474,5 +479,14 @@ void fx_cptr_no_free(void* ptr);
 void fx_free_cptr(fx_cptr_t* cptr);
 void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* pdst);
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);
+
+//////////////////////////// File I/O //////////////////////////////
+
+int fx_fputs(FILE* f, const fx_str_t* str);
+int fx_fgets(FILE* f, fx_str_t* str);
+
+fx_cptr_t fx_get_stdin(void);
+fx_cptr_t fx_get_stdout(void);
+fx_cptr_t fx_get_stderr(void);
 
 #endif

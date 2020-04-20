@@ -11,7 +11,11 @@
 FX_THREAD_LOCAL fx_exn_t fx_exn;
 FX_THREAD_LOCAL fx_rng_t fx_rng;
 
-void fx_init(int t_idx)
+static int fx_argc = 0;
+static char** fx_argv = 0;
+
+
+void fx_init_thread(int t_idx)
 {
     uint64_t state = (uint64_t)-1;
     for(int i = 0; i < t_idx*2 + 10; i++)
@@ -24,6 +28,11 @@ void fx_init(int t_idx)
 void* fx_malloc(size_t sz)
 {
     return malloc(sz);
+}
+
+void* fx_realloc(void* ptr, size_t sz)
+{
+    return realloc(ptr, sz);
 }
 
 void fx_free(void* ptr)
@@ -108,10 +117,12 @@ void fx_cptr_no_free(void* ptr) {}
 
 void fx_free_cptr(fx_cptr_t* cptr)
 {
-    if(*cptr && FX_DECREF((*cptr)->rc) == 1)
+    if(*cptr)
     {
-        free_f(*(cptr)->ptr);
-        fx_free(*cptr);
+        if((*cptr)->free_f && FX_DECREF((*cptr)->rc) == 1) {
+            (*cptr)->free_f(*(cptr)->ptr);
+            fx_free(*cptr);
+        }
         *cptr = 0;
     }
 }
