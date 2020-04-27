@@ -29,7 +29,15 @@ val fib3 = fib_seq()
 
 println("factorial(5)=\(testmod.fact(5))")
 
-for (i in 1:31) { print("fib(\(i))="); print(fib(i)); print(", fib2(\(i))=\(fib2(i)), "); println("fib3(\(i))=\(fib3())") }
+for (i in 1:31) {
+    fun foo() {
+        print(fib(i))
+    }
+    print("fib(\(i))=");
+    foo();
+    print(", fib2(\(i))=\(fib2(i)), ");
+    println("fib3(\(i))=\(fib3())")
+}
 
 exception Break: int
 

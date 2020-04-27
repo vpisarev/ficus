@@ -35,9 +35,12 @@ let init_std_names () =
     std_FX_COPY_SIMPLE := gen_std_macro "FX_COPY_SIMPLE" 2;
     std_FX_COPY_SIMPLE_BY_PTR := gen_std_macro "FX_COPY_SIMPLE_BY_PTR" 2;
     std_FX_NOP := gen_std_macro "FX_NOP" 1;
+    std_FX_BREAK := gen_std_macro "FX_BREAK" 1;
+    std_FX_CONTINUE := gen_std_macro "FX_CONTINUE" 1;
 
     std_fx_copy_ptr := gen_std_fun "fx_copy_ptr" (std_CTypConstVoidPtr :: std_CTypVoidPtr :: []) CTypVoid;
 
+    std_FX_MAKE_STR := gen_std_macro "FX_MAKE_STR" 1;
     std_FX_FREE_STR := gen_std_macro "FX_FREE_STR" 1;
     std_fx_free_str := gen_std_fun "fx_free_str" ((make_ptr CTypString) :: []) CTypVoid;
     std_fx_copy_str := gen_std_fun "fx_copy_str" ((make_const_ptr CTypString) :: (make_ptr CTypString) :: []) CTypVoid;

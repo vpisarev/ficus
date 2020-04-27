@@ -30,15 +30,16 @@ fun string(a: string) = a
 operator == (a: string, b: string): bool = ccode "
     *fx_result = (bool)(a->length == b->length && (a->length == 0 || memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
     return FX_OK;"
+operator != (a: string, b: string): bool = !(a == b)
 /*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_cstr2str(buf, -1, fx_result);"
 fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_cstr2str(buf, -1, fx_result);"
 fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_cstr2str(buf, -1, fx_result);"
-operator + (a: string, b: string): string = ccode "fx_str_t* s[] = {a, b}; return fx_strjoin(0, s, 2, fx_result);"
+operator + (a: string, b: string): string = ccode "fx_str_t s[] = {*a, *b}; return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: string, b: char): string = ccode "
-    fx_str_t bstr = {0, &b, 1}, *s[] = {a, &bstr};
+    fx_str_t s[] = {*a, {0, &b, 1}};
     return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: char, b: string): string = ccode "
-    fx_str_t astr = {0, &a, 1}, *s[] = {&astr, b};
+    fx_str_t s[] = {{0, &a, 1}, *b};
     return fx_strjoin(0, s, 2, fx_result);"*/
 
 fun atoi(a: string): int option

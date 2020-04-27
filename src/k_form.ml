@@ -58,7 +58,6 @@ type intrin_t =
     | IntrinMkRef
     | IntrinVariantTag
     | IntrinVariantCase
-    | IntrinGetShape
     | IntrinListHead
     | IntrinListTail
 
@@ -309,7 +308,6 @@ let intrin2str iop = match iop with
     | IntrinMkRef -> "MAKE_REF"
     | IntrinVariantTag -> "INTRIN_VARIANT_TAG"
     | IntrinVariantCase -> "INTRIN_VARIANT_CASE"
-    | IntrinGetShape -> "INTRIN_GET_SHAPE"
     | IntrinListHead -> "INTRIN_LIST_HD"
     | IntrinListTail -> "INTRIN_LIST_TL"
 

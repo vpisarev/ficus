@@ -11,9 +11,18 @@
 FX_THREAD_LOCAL fx_exn_t fx_exn;
 FX_THREAD_LOCAL fx_rng_t fx_rng;
 
-static int fx_argc = 0;
-static char** fx_argv = 0;
+static int _fx_argc = 0;
+static char** _fx_argv = 0;
 
+int_ fx_argc(void) { return _fx_argc; }
+char* fx_argv(int_ idx) { return _fx_argv[idx]; }
+
+void fx_init(int argc, char** argv)
+{
+    _fx_argc = argc;
+    _fx_argv = argv;
+    fx_init_thread(0);
+}
 
 void fx_init_thread(int t_idx)
 {

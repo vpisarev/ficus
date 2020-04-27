@@ -27,7 +27,9 @@ enum
     FX_SIZE_ERR = -6,
     FX_FILE_OPEN_ERR = -7,
     FX_FILE_NULLHANDLE_ERR = -8,
-    FX_FILE_IO_ERR = -9
+    FX_FILE_IO_ERR = -9,
+    FX_BREAK = -10,
+    FX_CONTINUE = -11,
 };
 
 /////////////////// Various Basic Definitions ////////////////
@@ -97,11 +99,15 @@ int_ fx_argc(void);
 char* fx_argv(int_ idx);
 
 void* fx_malloc(size_t sz);
+void* fx_realloc(void* ptr, size_t sz);
 void fx_free(void* ptr);
 #define FX_DECL_AND_MALLOC(typ, ptr, sz) \
     typ* ptr = (typ*)fx_malloc(sz); \
     if(!ptr) return FX_OUT_OF_MEM_ERR
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
+#define FX_BREAK(label) fx_status = FX_BREAK; goto label
+#define FX_CONTINUE(label) fx_status = FX_CONTINUE; goto label
+
 #define FX_COPY_PTR(src, dst) FX_INCREF((src)->rc); *(dst) = (src)
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
@@ -215,7 +221,7 @@ size_t _fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* 
 
 int fx_cstr2str(const char* cstr, int_ length, fx_str_t* str);
 int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr);
-int fx_strjoin(const fx_str_t* sep, fx_str_t** s, int_ count, fx_str_t* result);
+int fx_strjoin(const fx_str_t* sep, fx_str_t* strs, int_ count, fx_str_t* result);
 
 bool fx_isalpha(char_ ch);
 bool fx_isdigit(char_ ch);

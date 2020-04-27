@@ -164,7 +164,7 @@ let k2c_all code =
     let _ = (compile_errs := []) in
     let _ = C_form.init_all_idcs() in
     let _ = C_gen_std.init_std_names() in
-    let ccode_types = C_gen_types.convert_to_c code in
+    let ccode_types = C_gen_types.convert_all_typs code in
     (ccode_types, !compile_errs = [])
 
 let print_all_compile_errs () =

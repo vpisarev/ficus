@@ -69,6 +69,7 @@ let binop2str_ bop = match bop with
     | COpMacroConcat -> ("##", 1500, AssocLeft)
 
 let unop2str_ uop = match uop with
+    | COpPlus -> ("+", 1300, AssocRight)
     | COpNegate -> ("-", 1300, AssocRight)
     | COpBitwiseNot -> ("~", 1300, AssocRight)
     | COpLogicNot -> ("!", 1300, AssocRight)
@@ -117,7 +118,7 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode =
     | CTypFloat(64) -> pstr "double"; pr_id_opt ()
     | CTypFloat(b) -> failwith (sprintf "invalid type CTypFloat(%d)" b)
     | CTypString -> pstr "fx_str_t"; pr_id_opt ()
-    | CTypWChar -> pstr "char_"; pr_id_opt ()
+    | CTypUChar -> pstr "char_"; pr_id_opt ()
     | CTypBool -> pstr "bool_"; pr_id_opt ()
     | CTypVoid -> pstr "void";
         (match id_opt with
@@ -177,8 +178,8 @@ and pprint_cexp_ e pr =
     | CExpLit(l, _) ->
         let s = match l with
         | LitNil -> "0"
-        | LitString _ -> raise_compile_err "c_pp: string literal cannot occur here"
-        pstr (Ast_pp.lit_to_string l)
+        | _ -> Ast_pp.lit_to_string l in
+        pstr s
     | CExpBinOp (COpArrayElem as bop, a, b, _) ->
         let (_, pr0, _) = binop2str_ bop in
         obox(); pprint_cexp_ a pr0; pstr "["; pcut();
@@ -217,14 +218,16 @@ and pprint_cexp_ e pr =
         (if pr0 < pr then (pcut(); pstr ")") else ()); cbox()
     | CExpCall(f, args, _) ->
         obox(); pprint_cexp_ f 1400; pstr "("; pprint_elist args; pstr ")"; cbox()
-    | CExpSeq(eseq, _) ->
+    | CExpStructInit(eseq, _) ->
         obox();
         if eseq=[] then pstr "{}"
         else
             List.iteri (fun i e ->
-                if i = 0 then pcut() else (pstr ";"; pspace());
+                if i = 0 then pcut() else (pstr ","; pspace());
                 pprint_cexp_ e 0) eseq;
         cbox()
+    | CStmtCCode (ccode, l) ->
+        obox(); pstr ccode; cbox()
 
 and pprint_elist el =
     (obox();
@@ -324,7 +327,6 @@ and pprint_cstmt s =
             pbreak()
             ) cases;
         pstr "}"
-    | CStmtCCode (ccode, l) -> pstr ccode; pstr ";"
     | CDefVal (t, n, e_opt, l) ->
         pprint_ctyp_ t (Some n);
         (match e_opt with
@@ -389,7 +391,7 @@ and pprint_cstmt s =
         | _ -> pbreak(); ohbox(); pstr "#else"; cbox(); pbreak();
             List.iter (fun s -> pprint_cstmt s) else_l);
         pbreak();
-        ohbox(); pstr "#endif";
+        ohbox(); pstr "#endif"
     | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox())
 
 let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ctyp_ t None; Format.close_box(); Format.print_flush ()

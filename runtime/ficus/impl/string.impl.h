@@ -347,16 +347,16 @@ int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr)
     return FX_OK;
 }
 
-int fx_strjoin(const fx_str_t* sep, fx_str_t** s, int_ count, fx_str_t* result)
+int fx_strjoin(const fx_str_t* sep, fx_str_t* s, int_ count, fx_str_t* result)
 {
     int_ seplen = sep ? sep->length : 0;
     if(count == 0)
         return FX_OK;
     if(count == 1)
-        return fx_copy_str(s[0], result);
+        return fx_copy_str(&s[0], result);
     int_ i, total = seplen*(count-1);
     for( i = 0; i < count; i++ )
-        total += s[i]->length;
+        total += s[i].length;
     int status = fx_make_str(0, total, result);
     if(status < 0) return status;
 
@@ -368,7 +368,7 @@ int fx_strjoin(const fx_str_t* sep, fx_str_t** s, int_ count, fx_str_t* result)
             memcpy(result->data + ofs, sep->data, seplen*sizeof(result->data[0]));
             ofs += seplen;
         }
-        memcpy(result->data + ofs, s[i]->data, s[i]->length*sizeof(result->data[0]));
+        memcpy(result->data + ofs, s[i].data, s[i].length*sizeof(result->data[0]));
     }
     return FX_OK;
 }

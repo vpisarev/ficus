@@ -53,7 +53,7 @@ and ktyp2ctyp t loc =
         | KTypVoid -> CTypVoid
         | KTypNil -> CTypNil
         | KTypBool -> CTypBool
-        | KTypChar -> CTypWChar
+        | KTypChar -> CTypUChar
         | KTypString -> CTypString
         | KTypCPointer -> CTypCSmartPtr
         | KTypFun (args, rt) ->
@@ -74,7 +74,7 @@ and ktyp2ctyp t loc =
 and get_ctprops ct loc =
     match ct with
     | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _
-    | CTypFloat _ | CTypVoid | CTypNil | CTypBool | CTypWChar ->
+    | CTypFloat _ | CTypVoid | CTypNil | CTypBool | CTypUChar ->
         {ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=false}
     | CTypCSmartPtr ->
@@ -115,14 +115,14 @@ and get_ctprops ct loc =
         raise_compile_err loc "properties of 'any type' cannot be requested"
 
 let get_free_f ct let_none let_macro loc =
-    let {ctp_free=(freem, freef)} = get_ctprops ct loc in
+    let {ctp_ptr; ctp_free=(freem, freef)} = get_ctprops ct loc in
     if freem = noid && freef = noid && let_none then
-        None
+        (false, None)
     else
-        let i = if let_macro && freem <> noid then freem
-            else if freef <> noid then freef
-            else !std_FX_NOP in
-        Some (make_id_exp i loc)
+        let (use_if, i) = if let_macro && freem <> noid then (false, freem)
+            else if freef <> noid then (ctp_ptr, freef)
+            else (false, !std_FX_NOP) in
+        (use_if, Some (make_id_exp i loc))
 
 let get_copy_f ct let_none loc =
     let {ctp_pass_by_ref; ctp_copy=(copym, copyf)} = get_ctprops ct loc in
@@ -154,12 +154,15 @@ let gen_copy_code src_exp dst_exp ct code loc =
     in (CExp e) :: code
 
 (* generates the destructor call if needed *)
-let gen_free_code elem_exp ct code loc =
-    let free_f_opt = get_free_f ct true false loc in
+let gen_free_code elem_exp ct let_macro code loc =
+    let (use_if, free_f_opt) = get_free_f ct true let_macro loc in
     let ctx = (CTypVoid, loc) in
     let elem_exp = CExpUnOp(COpGetAddr, elem_exp, ((make_ptr ct), loc)) in
     match free_f_opt with
-    | Some(f) -> CExp(CExpCall(f, elem_exp :: [], ctx)) :: code
+    | Some(f) ->
+        let call_stmt = CExp(CExpCall(f, elem_exp :: [], ctx)) in
+        let stmt = if use_if then CStmtIf(elem_exp, call_stmt, (CStmtNop loc), loc) else call_stmt in
+        stmt :: code
     | _ -> code
 
 let convert_all_typs top_code =
@@ -307,7 +310,7 @@ let convert_all_typs top_code =
                             let ti = ktyp2ctyp kt kt_loc in
                             let selem = CExpArrow(src_exp, ni, (ti, loc)) in
                             let delem = CExpArrow(dst_exp, ni, (ti, loc)) in
-                            let free_code = gen_free_code delem ti free_code kt_loc in
+                            let free_code = gen_free_code delem ti false free_code kt_loc in
                             let copy_code = gen_copy_code selem delem ti copy_code kt_loc in
                             (i+1, free_code, copy_code, (ni, ti) :: relems)) (0, [], [], []) telems in
                     struct_decl := {!struct_decl with ct_typ=CTypStruct((Some tn), List.rev relems)};
@@ -319,7 +322,7 @@ let convert_all_typs top_code =
                             let ti = ktyp2ctyp kt loc in
                             let selem = CExpArrow(src_exp, ni, (ti, kt_loc)) in
                             let delem = CExpArrow(dst_exp, ni, (ti, kt_loc)) in
-                            let free_code = gen_free_code delem ti free_code kt_loc in
+                            let free_code = gen_free_code delem ti false free_code kt_loc in
                             let copy_code = gen_copy_code selem delem ti copy_code kt_loc in
                             (free_code, copy_code, (ni, ti) :: relems)) ([], [], []) relems in
                     struct_decl := {!struct_decl with ct_typ=CTypStruct((Some tn), List.rev relems)};
@@ -386,7 +389,7 @@ let convert_all_typs top_code =
                             let selem_i = CExpMem(src_u_exp, ni_clean, (ti, kvar_loc)) in
                             let delem_i = CExpMem(dst_u_exp, ni_clean, (ti, kvar_loc)) in
                             let label_i_exp = [CExpIdent(label_i, int_ctx)] in
-                            let free_code_i = gen_free_code delem_i ti [] kvar_loc in
+                            let free_code_i = gen_free_code delem_i ti false [] kvar_loc in
                             let free_cases = match free_code_i with
                                 | [] -> free_cases
                                 | _ -> (label_i_exp, free_code_i) :: free_cases in

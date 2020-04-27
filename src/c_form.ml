@@ -81,7 +81,7 @@ type cbinop_t =
     | COpAugBitwiseOr | COpAugBitwiseXor | COpMacroConcat
 
 type cunop_t =
-    | COpNegate | COpBitwiseNot | COpLogicNot | COpDeref | COpGetAddr
+    | COpPlus | COpNegate | COpBitwiseNot | COpLogicNot | COpDeref | COpGetAddr
     | COpPrefixInc | COpPrefixDec | COpSuffixInc | COpSuffixDec | COpMacroName | COpMacroDefined
 
 type ctyp_attr_t = CTypConst | CTypVolatile
@@ -113,7 +113,7 @@ type ctyp_t =
     | CTypVoid
     | CTypNil
     | CTypBool
-    | CTypWChar
+    | CTypUChar
     | CTypCSmartPtr
     | CTypString
     | CTypExn
@@ -137,7 +137,8 @@ and cexp_t =
     | CExpCast of cexp_t * ctyp_t * loc_t
     | CExpTernary of cexp_t * cexp_t * cexp_t * cctx_t
     | CExpCall of cexp_t * cexp_t list * cctx_t
-    | CExpSeq of cexp_t list * cctx_t (* this is to pass a sequence of expressions to a macro *)
+    | CExpStructInit of cexp_t list * cctx_t (* {a, b, c, ...} *)
+    | CExpCCode of string * loc_t
 and cstmt_t =
     | CStmtNop of loc_t
     | CComment of string * loc_t
@@ -154,7 +155,6 @@ and cstmt_t =
     | CStmtDoWhile of cstmt_t * cexp_t * loc_t
     | CStmtSwitch of cexp_t * (cexp_t list * cstmt_t list) list * loc_t
     (* we don't parse and don't process the inline C code; just retain it as-is *)
-    | CStmtCCode of string * loc_t
     | CDefVal of ctyp_t * id_t * cexp_t option * loc_t
     | CDefFun of cdeffun_t ref
     | CDefTyp of cdeftyp_t ref
@@ -174,7 +174,7 @@ and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
                   cf_args: id_t list; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
-                  ct_make: id_t; ct_props: ctprops_t; ct_tagenum: id_t;
+                  ct_make: id_t list; ct_props: ctprops_t; ct_tagenum: id_t;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
                    ce_scope: scope_t list; ce_loc: loc_t }
@@ -226,7 +226,8 @@ let get_cexp_ctx e = match e with
     | CExpCast(_, t, l) -> (t, l)
     | CExpTernary(_, _, _, c) -> c
     | CExpCall(_, _, c) -> c
-    | CExpSeq(_, c) -> c
+    | CExpStructInit(_, c) -> c
+    | CExpCCode (_, l) -> (CTypAny, l)
 
 let get_cexp_typ e = let (t, l) = (get_cexp_ctx e) in t
 let get_cexp_loc e = let (t, l) = (get_cexp_ctx e) in l
@@ -246,7 +247,6 @@ let get_cstmt_loc s = match s with
     | CStmtWhile (_, _, l) -> l
     | CStmtDoWhile (_, _, l) -> l
     | CStmtSwitch (_, _, l) -> l
-    | CStmtCCode (_, l) -> l
     | CDefVal (_, _, _, l) -> l
     | CDefFun {contents={cf_loc}} -> cf_loc
     | CDefTyp {contents={ct_loc}} -> ct_loc
@@ -317,14 +317,30 @@ let get_idc_cname i =
         | CEnum {contents = {ce_cname}} -> ce_cname
         | CMacro {contents = {cm_cname}} -> cm_cname)
 
-(* used by the type checker *)
+(*let get_ctyp_cname ctyp loc =
+    match ctyp with
+    | CTypInt -> "int_"
+    | CTypCInt -> "int"
+    | CTypSize_t -> "size_t"
+    | CTypSInt n -> sprintf "int%d_t" n
+    | CTypUInt n -> sprintf "uint%d_t" n
+    | CTypFloat 16 -> "half"
+    | CTypFloat 32 -> "float"
+    | CTypFloat 64 -> "double"
+    | CTypFloat n -> raise_compile_err loc (sprintf "cgen: invalid type CTypFloat(%d)" n)
+    | CTypVoid -> "void"
+    | CTypNil -> raise_compile_err loc (sprintf "cgen: invalid type CTypNil")
+    | CTypBool -> "bool"
+    | CTypUChar -> "char_"
+    | CTypCSmartPtr ->*)
+
 let get_lit_ctyp l = match l with
     | LitInt(_) -> CTypInt
     | LitSInt(b, _) -> CTypSInt(b)
     | LitUInt(b, _) -> CTypUInt(b)
     | LitFloat(b, _) -> CTypFloat(b)
     | LitString(_) -> CTypString
-    | LitChar(_) -> CTypWChar
+    | LitChar(_) -> CTypUChar
     | LitBool(_) -> CTypBool
     | LitNil -> CTypNil
 
@@ -402,7 +418,7 @@ and walk_ctyp t callb =
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
     | CTypSize_t | CTypVoid | CTypNil | CTypBool | CTypExn | CTypAny
-    | CTypWChar | CTypCSmartPtr | CTypString -> t
+    | CTypUChar | CTypCSmartPtr | CTypString -> t
     | CTypStruct (n_opt, selems) ->
         CTypStruct((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) selems))
     | CTypUnion (n_opt, uelems) ->
@@ -431,7 +447,8 @@ and walk_cexp e callb =
     | CExpCast (e, t, loc) -> CExpCast((walk_cexp_ e), (walk_ctyp_ t), loc)
     | CExpTernary (e1, e2, e3, ctx) -> CExpTernary((walk_cexp_ e1), (walk_cexp_ e2), (walk_cexp_ e3), (walk_ctx_ ctx))
     | CExpCall (f, args, ctx) -> CExpCall((walk_cexp_ f), (List.map walk_cexp_ args), (walk_ctx_ ctx))
-    | CExpSeq (eseq, ctx) -> CExpSeq((List.map walk_cexp_ eseq), (walk_ctx_ ctx)))
+    | CExpStructInit (eseq, ctx) -> CExpStructInit((List.map walk_cexp_ eseq), (walk_ctx_ ctx))
+    | CExpCCode(s, loc) -> e)
 
 and walk_cstmt s callb =
     let walk_id_ n = check_n_walk_ident n callb in
@@ -462,7 +479,6 @@ and walk_cstmt s callb =
         CStmtDoWhile((walk_cstmt_ body), (walk_cexp_ e), l)
     | CStmtSwitch (e, cases, l) ->
         CStmtSwitch((walk_cexp_ e), (List.map (fun (ll, sl) -> (walk_cel_ ll, walk_csl_ sl)) cases), l)
-    | CStmtCCode (ccode, l) -> s
     | CDefVal (t, n, e_opt, l) -> CDefVal((walk_ctyp_ t), (walk_id_ n), (walk_cexp_opt_ e_opt), l)
     | CDefFun cf ->
         let { cf_name; cf_typ; cf_args; cf_body } = !cf in
@@ -540,7 +556,7 @@ and fold_ctyp t callb =
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
     | CTypSize_t | CTypVoid | CTypNil | CTypBool | CTypExn | CTypAny
-    | CTypWChar | CTypString | CTypCSmartPtr -> ()
+    | CTypUChar | CTypString | CTypCSmartPtr -> ()
     | CTypStruct (n_opt, selems) ->
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) selems
     | CTypUnion (n_opt, uelems) ->
@@ -567,7 +583,8 @@ and fold_cexp e callb =
     | CExpCast (e, t, loc) -> fold_cexp_ e; (t, loc)
     | CExpTernary (e1, e2, e3, ctx) -> fold_cexp_ e1; fold_cexp_ e2; fold_cexp_ e3; ctx
     | CExpCall (f, args, ctx) -> fold_cexp_ f; List.iter fold_cexp_ args; ctx
-    | CExpSeq (eseq, ctx) -> List.iter fold_cexp_ eseq; ctx)
+    | CExpStructInit (eseq, ctx) -> List.iter fold_cexp_ eseq; ctx
+    | CExpCCode (s, loc) -> (CTypAny, loc))
 
 and fold_cstmt s callb =
     let fold_cstmt_ s = check_n_fold_cstmt s callb in
@@ -598,7 +615,6 @@ and fold_cstmt s callb =
         fold_cstmt_ body; fold_cexp_ e
     | CStmtSwitch (e, cases, l) ->
         fold_cexp_ e; List.iter (fun (ll, sl) -> fold_cel_ ll; fold_csl_ sl) cases
-    | CStmtCCode (ccode, _) -> ()
     | CDefVal (t, n, e_opt, _) ->
         fold_ctyp_ t; fold_id_ n; fold_cexp_opt_ e_opt
     | CDefFun cf ->
@@ -627,6 +643,7 @@ and fold_cstmt s callb =
 
 let make_ptr t = CTypRawPtr([], t)
 let make_const_ptr t = CTypRawPtr((CTypConst :: []), t)
+let make_lit_exp l loc = let t = get_lit_ctyp l in CExpLit (l, (t, loc))
 let make_int_exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_cid prefix ctyp e_opt code sc loc =
@@ -658,9 +675,12 @@ let std_FX_COPY_PTR = ref noid
 let std_FX_COPY_SIMPLE = ref noid
 let std_FX_COPY_SIMPLE_BY_PTR = ref noid
 let std_FX_NOP = ref noid
+let std_FX_BREAK = ref noid
+let std_FX_CONTINUE = ref noid
 
 let std_fx_copy_ptr = ref noid
 
+let std_FX_MAKE_STR = ref noid
 let std_FX_FREE_STR = ref noid
 let std_fx_free_str = ref noid
 let std_fx_copy_str = ref noid
