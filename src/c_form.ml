@@ -99,7 +99,7 @@ type ctyp_flag_t =
                                do not need a tag either. *)
 
 
-type ctprops_t = { ctp_ptr: bool; ctp_pass_by_ref: bool; ctp_free: id_t*id_t; ctp_copy: id_t*id_t }
+type ctprops_t = { ctp_ptr: bool; ctp_pass_by_ref: bool; ctp_make:id_t list; ctp_free: id_t*id_t; ctp_copy: id_t*id_t }
 
 type ctyp_t =
     | CTypInt (* this is a direct mapping from TypInt and CTypInt.
@@ -174,7 +174,7 @@ and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
                   cf_args: id_t list; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
-                  ct_make: id_t list; ct_props: ctprops_t; ct_tagenum: id_t;
+                  ct_props: ctprops_t; ct_tagenum: id_t;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
                    ce_scope: scope_t list; ce_loc: loc_t }
@@ -302,7 +302,10 @@ let get_cinfo_typ info i loc =
     | CLabel _ -> CTypLabel
     | CEnum _ -> CTypCInt
 
-let get_idc_typ i loc = get_cinfo_typ (cinfo i) i loc
+let get_idc_typ i loc =
+    match i with
+    | Id.Name _ -> CTypAny
+    | _ -> get_cinfo_typ (cinfo i) i loc
 
 let get_idc_cname i =
     match i with
@@ -651,18 +654,52 @@ let make_cid prefix ctyp e_opt code sc loc =
     let code = create_cdefval n ctyp (ValMutable :: []) e_opt code sc loc in
     (n, code)
 
-let std_CTypVoidPtr = make_ptr CTypVoid
-let std_CTypConstVoidPtr = make_const_ptr CTypVoid
-let std_CTypAnyArray = CTypArray(0, CTypInt)
-let std_CTypAnyPtr = make_ptr CTypAny
-let std_CTypConstAnyPtr = make_const_ptr CTypAny
-
 let make_cfor_inc i ityp a b delta body loc =
     let i_exp = CExpIdent(i, (ityp, loc)) in
     let e0 = CExpBinOp(COpAssign, i_exp, a, (ityp, loc)) in
     let e1 = CExpBinOp(COpCompareLT, i_exp, b, (CTypBool, loc)) in
     let e2 = CExpUnOp(COpSuffixInc, i_exp, (ityp, loc)) in
     CStmtFor ((e0 :: []), (Some e1), (e2 :: []), body, loc)
+
+let make_call f args rt loc =
+    let f_exp = make_id_exp f loc in
+    CExpCall(f_exp, args, (rt, loc))
+
+let cexp_get_addr e =
+    match e with
+    | CExpUnOp(COpDeref, x, _) -> x
+    | _ ->
+        let (t, loc) = get_cexp_ctx e in
+        CExpUnOp(COpGetAddr, e, (CTypRawPtr([], t), loc))
+
+let cexp_deref e =
+    match e with
+    | CExpUnOp(COpGetAddr, x, _) -> x
+    | _ ->
+        let (t, loc) = get_cexp_ctx e in
+        let t = match t with
+            | CTypRawPtr(_, CTypVoid) -> CTypAny
+            | CTypRawPtr(_, t) -> t
+            | _ -> CTypAny
+        in CExpUnOp(COpDeref, e, (t, loc))
+
+let cexp_arrow e m_id t =
+    let loc = get_cexp_loc e in
+    match e with
+    | CExpUnOp(COpGetAddr, x, _) -> CExpMem(x, m_id, (t, loc))
+    | _ -> CExpArrow(e, m_id, (t, loc))
+
+let cexp_mem e m_id t =
+    let loc = get_cexp_loc e in
+    match e with
+    | CExpUnOp(COpDeref, x, _) -> CExpArrow(x, m_id, (t, loc))
+    | _ -> CExpMem(e, m_id, (t, loc))
+
+let std_CTypVoidPtr = make_ptr CTypVoid
+let std_CTypConstVoidPtr = make_const_ptr CTypVoid
+let std_CTypAnyArray = CTypArray(0, CTypInt)
+let std_CTypAnyPtr = make_ptr CTypAny
+let std_CTypConstAnyPtr = make_const_ptr CTypAny
 
 let curr_exn_val = ref (-1024)
 let std_FX_MAX_DIMS = 5
@@ -719,30 +756,3 @@ let std_fx_copy_fp = ref noid
 
 let std_fx_free_cptr = ref noid
 let std_fx_copy_cptr = ref noid
-
-let make_call f args rt loc =
-    let f_exp = make_id_exp f loc in
-    CExpCall(f_exp, args, (rt, loc))
-
-let make_ccall_catch f args catch_label loc =
-    let f_call = make_call f args CTypCInt loc in
-    let cl_exp = CExpIdent(catch_label, (CTypLabel, loc)) in
-    make_call !std_FX_CALL (f_call :: cl_exp :: []) CTypVoid loc
-
-let cexp_get_addr e =
-    match e with
-    | CExpUnOp(COpDeref, x, _) -> x
-    | _ ->
-        let (t, loc) = get_cexp_ctx e in
-        CExpUnOp(COpGetAddr, e, (CTypRawPtr([], t), loc))
-
-let cexp_deref e =
-    match e with
-    | CExpUnOp(COpGetAddr, x, _) -> x
-    | _ ->
-        let (t, loc) = get_cexp_ctx e in
-        let t = match t with
-            | CTypRawPtr(_, CTypVoid) -> CTypAny
-            | CTypRawPtr(_, t) -> t
-            | _ -> CTypAny
-        in CExpUnOp(COpDeref, e, (t, loc))

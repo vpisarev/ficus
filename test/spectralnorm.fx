@@ -47,4 +47,3 @@ val N = match (Args.arguments())
         | _ => 5500
         }
 println(spectralnorm(N))
-0

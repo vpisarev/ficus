@@ -114,4 +114,3 @@ println(energy())
 for (i in 0:50000000) advance(0.01)
 println(energy())
 println("Done")
-0

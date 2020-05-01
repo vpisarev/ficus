@@ -68,4 +68,3 @@ fun write_file()
 }
 
 write_file()
-0

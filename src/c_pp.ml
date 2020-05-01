@@ -226,7 +226,7 @@ and pprint_cexp_ e pr =
                 if i = 0 then pcut() else (pstr ","; pspace());
                 pprint_cexp_ e 0) eseq;
         cbox()
-    | CStmtCCode (ccode, l) ->
+    | CExpCCode (ccode, l) ->
         obox(); pstr ccode; cbox()
 
 and pprint_elist el =
@@ -257,7 +257,7 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
     Format.open_vbox 0;
     List.iteri (fun i (n, t) ->
         if i = 0 then () else (pstr ","; pspace());
-        pprint_ctyp__ "" t (Some n) true) typed_args;
+        ohbox(); pprint_ctyp__ "" t (Some n) true; cbox()) typed_args;
     cbox(); pstr (")" ^ (if semicolon then ";" else "")); cbox();
     pbreak()
 
@@ -282,10 +282,10 @@ and pprint_cstmt s =
             cbox(); pstr "}")
     | CStmtIf (e, s1, s2, _) ->
         pstr "if ("; pprint_cexp_ e 0; pstr ")";
-        obox(); pprint_cstmt s1; cbox();
-        (match s1 with
+        obox(); pspace(); pprint_cstmt s1; cbox();
+        (match s2 with
         | CStmtNop _ | CStmtBlock ([], _) -> ()
-        | _ -> pstr "else"; obox(); pprint_cstmt s1; cbox())
+        | _ -> pstr "else"; obox(); pprint_cstmt s2; cbox())
     | CStmtGoto(n, _) -> pstr "goto "; pprint_id n
     | CStmtLabel (n, _) -> pbreak(); pprint_id n; pstr ":"
     | CStmtFor(e1, e2_opt, e3, body, _) ->

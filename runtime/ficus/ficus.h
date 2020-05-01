@@ -275,7 +275,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     FX_DECL_AND_MALLOC(typ, l, sizeof(typ)); \
     l->rc = 1; \
     l->tl = tl; \
-    if(tl) FX_INCREF(tl->rc); \
+    if(addref_tl && tl) FX_INCREF(tl->rc); \
     hd_copy_f(hd, &l->hd); \
     *fx_result = l; \
     return FX_OK

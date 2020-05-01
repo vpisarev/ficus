@@ -47,7 +47,7 @@ let rec pure_kexp_ e callb =
     | KExpTryCatch _ -> set_impure()
     | KExpThrow _ -> set_impure()
     | KExpCCode _ -> set_impure()
-    | _ -> fold_kexp e callb
+    | _ -> if callb.kcb_fold_result then fold_kexp e callb else ()
 and new_pure_callb () =
 {
     kcb_fold_atom=None;

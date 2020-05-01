@@ -138,7 +138,7 @@ void fx_free_cptr(fx_cptr_t* cptr)
 
 void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* dst)
 {
-    if(src) FX_INCREF(src->rc);
+    if(src && src->free_f) FX_INCREF(src->rc);
     *dst = src;
 }
 

@@ -15,9 +15,9 @@ val SEEK_END: int = ccode "(int)SEEK_END"
 
 type file_t = { handle: cptr }
 
-val stdin: file_t = "{ fx_get_stdin() }"
-val stdout: file_t = "{ fx_get_stdout() }"
-val stderr: file_t = "{ fx_get_stderr() }"
+val stdin: file_t = ccode "{ fx_get_stdin() }"
+val stdout: file_t = ccode "{ fx_get_stdout() }"
+val stderr: file_t = ccode "{ fx_get_stderr() }"
 
 fun open(fname: string, mode: string)
 {
@@ -96,7 +96,7 @@ fun print(f: file_t, x: string): void = ccode
     return fx_fputs((FILE*)(f->handle->ptr), str);
     "
 
-fun print(f: file_t, x: int): void =
+fun print(f: file_t, x: int): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
         return FX_FILE_NULL_HANDLE_ERR;
@@ -104,7 +104,7 @@ fun print(f: file_t, x: int): void =
     return FX_OK;
     "
 
-fun print(f: file_t, x: float): void =
+fun print(f: file_t, x: float): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
         return FX_FILE_NULL_HANDLE_ERR;
@@ -112,7 +112,7 @@ fun print(f: file_t, x: float): void =
     return FX_OK;
     "
 
-fun print(f: file_t, x: double): void =
+fun print(f: file_t, x: double): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
         return FX_FILE_NULL_HANDLE_ERR;

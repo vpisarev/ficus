@@ -44,4 +44,3 @@ for (depth in min_depth:(max_depth+1):2)
 
 println("long lived tree of depth \(max_depth)\t check: \(check(long_lived_tree))")
 println("long lived tree of depth \(max_depth)\t check: \(check(long_lived_tree_dbl))")
-0
