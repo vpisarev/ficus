@@ -358,31 +358,36 @@ let create_cdefval n t flags e_opt code sc loc =
 let get_ccode_loc ccode default_loc =
     loclist2loc (List.map get_cstmt_loc ccode) default_loc
 
-let code2stmt code loc =
-    match code with
+let filter_out_nops code =
+    List.filter (fun s -> match s with
+        | CStmtNop _ -> false
+        | _ -> true) code
+
+let ccode2stmt code loc =
+    match (filter_out_nops code) with
     | [] -> CStmtNop(loc)
     | s :: [] -> s
     | _ ->
         let final_loc = get_ccode_loc code loc in
         CStmtBlock(code, final_loc)
 
-let filter_out_nops code =
-    List.filter (fun s -> match s with
-        | CStmtNop _ -> false
-        | _ -> true) code
-
-let rcode2stmt code loc = match (filter_out_nops code) with
+let rccode2stmt code loc = match (filter_out_nops code) with
     | [] -> CStmtNop loc
     | s :: [] -> s
     | _ ->
         let final_loc = get_ccode_loc code loc in
         CStmtBlock((List.rev code), final_loc)
 
-let stmt2code s =
+let stmt2ccode s =
     match s with
     | CStmtNop _ -> []
     | CStmtBlock(slist, _) -> slist
     | _ -> s :: []
+
+let cexp2stmt e =
+    match e with
+    | CExpStructInit([], (CTypVoid, loc)) -> CStmtNop loc
+    | _ -> CExp e
 
 (* walk through a C-form and produce another one *)
 

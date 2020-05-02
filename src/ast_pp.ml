@@ -230,8 +230,6 @@ let rec pprint_exp e =
         | ExpUnOp(o, e1, _) ->
             let ostr = unop_to_string o in
             pstr "("; pstr ostr; pspace(); pprint_exp e1; pstr ")"
-        | ExpDeref(e1, _) -> pstr "*"; pprint_exp e1
-        | ExpMkRef(e1, _) -> pstr "REF ("; pprint_exp e1; pstr ")"
         | ExpThrow(e1, _) -> pstr "THROW ("; pprint_exp e1; pstr ")"
         | ExpMkTuple(el, _) ->
             pstr "("; obox();

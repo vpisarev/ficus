@@ -198,20 +198,33 @@ let gen_ccode topcode =
         i_exp
     in
 
-    let get_dstid dstid_r prefix ctyp flags init sc loc =
-        if !dstid_r <> noid then
-            dstid
-        else
+    let get_dstexp dstexp_r prefix ctyp flags init sc loc =
+        match !dstexp_r with
+        | Some(dstexp) -> dstexp
+        | _ ->
             let i = gen_temp_idc prefix in
-            let _ = add_val i ctyp flags init sc loc in
-            (dstid_r := i; i)
+            let i_exp = add_val i ctyp flags init sc loc in
+            (dstid_r := (Some i_exp); i_exp)
     in
 
-    let get_constructor ctyp required loc =
-        let {ctp_make} = C_gen_types.get_ctprops ctyp loc in
-        match ctp_make with
-        | i :: [] -> i
-        | _ -> if required then raise_compile_err loc "cgen: missing type constructor" else noid
+    let get_struct c_e =
+        let (ctyp, cloc) = get_cexp_ctx c_e in
+        let rec try_deref c_e ctyp =
+            match ctyp with
+            | CTypRawPtr(_, ctyp1) -> try_deref (cexp_deref c_e) ctyp1
+            | _ ->
+                (match ctyp with
+                | CTypName tn ->
+                    (match (cinfo tn) with
+                    | CTyp {contents={ct_typ=CTypStruct(_, relems)}} ->
+                        (c_e, relems)
+                    | CTyp {contents={ct_typ=CTypRawPtr(_, CTypStruct(_, relems))}} ->
+                        ((cexp_deref ce), relems)
+                    | _ -> raise_compile_err cloc (sprintf "the type '%s' is not a structure" (get_idc_cname tn)))
+                | CTypStruct(_, relems) -> (ce, relems)
+                | _ -> raise_compile_err cloc "a structure is expected here")
+        in try_deref c_e ctyp
+    in
 
     (*
         cases:
@@ -225,24 +238,24 @@ let gen_ccode topcode =
                 the result should be returned as expression
                 if needed, some temporary id is generated where the result is stored.
     *)
-    let rec kexp2cexp kexp dstid_r ccode sc =
+    let rec kexp2cexp kexp dstexp_r ccode sc =
         let fname = match sc with ScFun f :: _ -> f | _ -> noid in
         let (ktyp, kloc) = get_kexp_ctx kexp in
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = CExpStructInit([], (CTypVoid, kloc)) in
         (* generate exp and then optionally generate the assignment if needed *)
-        let (cexp, ccode) = match kexp with
-        | KExpNop _ -> (dummy_exp, ccode)
+        let (assign, cexp, ccode) = match kexp with
+        | KExpNop _ -> (false, dummy_exp, ccode)
         | KExpBreak _ ->
             let _ = check_inside_loop true loc in
             let f = make_id_exp !std_FX_BREAK loc in
             let l = curr_block_label loc in
-            (dummy_exp, (CExp (CExpCall(f, l::[], (CTypVoid, loc)))) :: ccode)
+            (false, dummy_exp, (CExp (CExpCall(f, l::[], (CTypVoid, loc)))) :: ccode)
         | KExpContinue _ ->
             let _ = check_inside_loop false loc in
             let f = make_id_exp !std_FX_CONTINUE loc in
             let l = curr_block_label loc in
-            (dummy_exp, (CExp (CExpCall(f, l::[], (CTypVoid, loc)))) :: ccode)
+            (false, dummy_exp, (CExp (CExpCall(f, l::[], (CTypVoid, loc)))) :: ccode)
         | KExpAtom(a, _) ->
             (match a with
             | Atom.Lit(l) ->
@@ -253,11 +266,11 @@ let gen_ccode topcode =
                     let e0 = make_call !std_FX_MAKE_STR ((make_lit_exp l kloc) :: []) CTypString kloc in
                     let i = gen_temp_idc "slit" in
                     let ccode = create_cdefval i CTypString [] (Some e0) ccode sc kloc in
-                    ((make_id_exp i kloc), ccode)
+                    (true, (make_id_exp i kloc), ccode)
                 | _ ->
-                    let e = make_lit_exp l kloc in (e, ccode))
+                    let e = make_lit_exp l kloc in (true, e, ccode))
             | Atom.Id(i) ->
-                ((match (Env.find_opt i !i2e) with
+                (true, (match (Env.find_opt i !i2e) with
                 | Some(e) -> e
                 | _ ->
                     let e = make_id_exp i kloc in
@@ -271,8 +284,8 @@ let gen_ccode topcode =
                     if add_deref then cexp_deref e else e), ccode)
             )
         | KExpBinOp(bop, e1, e2, _) ->
-            let (ce1, ccode) = kexp2cexp e1 (ref noid) ccode sc in
-            let (ce2, ccode) = kexp2cexp e2 (ref noid) ccode sc in
+            let (ce1, ccode) = kexp2cexp e1 (ref None) ccode sc in
+            let (ce2, ccode) = kexp2cexp e2 (ref None) ccode sc in
             (match bop with
             | OpLogicAnd | OpLogicOr ->
                 raise_compile_err kloc "cgen: unexpected operation"
@@ -286,26 +299,25 @@ let gen_ccode topcode =
                         (true, ce1, ce2, (CTypFloat 64), get_id "pow") in
                 let e = make_call f (ce1 :: ce2 :: []) rtyp kloc in
                 let e = if need_cast then CExpCast(e, ctyp, kloc) else e in
-                (e, ccode)
+                (true, e, ccode)
             | OpCons ->
                 (*
                     l = e1 :: e2;
-                    if !dstid_r == noid && (e2 is single-use id from u1vals) && (ce2 is id) then
+                    if !dstexp_r == None && (e2 is single-use id from u1vals) && (ce2 is id) then
                         re-use ce2 as l
                     else
-                        obtain l using get_dstid.
+                        obtain l using get_dstexp.
                 *)
                 let e2_id = match e2 with KExpAtom(Atom.Id i, _) when IdSet.mem i u1vals -> i | _ -> noid in
                 let ce2_id = match ce2 with CExpIdent(i, _) -> i | _ -> noid in
-                let (reuse_ce2, l) = if !dstid_r = noid && e2_id <> noid && ce2_id <> noid then
+                let (reuse_ce2, l_exp) = (Utils.is_none !dstexp_r) && e2_id <> noid && ce2_id <> noid then
                         (true, ce2_id)
-                    else (false, (get_dstid dstid_r "lst" ctyp [] true sc kloc)) in
-                let lcon = get_constructor ctyp true kloc in
-                let l_exp = make_id_exp l kloc in
+                    else (false, (get_dstexp dstexp_r "lst" ctyp [] true sc kloc)) in
+                let lcon = C_gen_types.get_constructor ctyp true kloc in
                 let call_cons = make_call lcon
                     (ce1 :: ce2 :: (make_lit_exp (LitBool (not reuse_ce2)) kloc) ::
                     (cexp_get_addr l_exp) :: []) CTypCInt kloc in
-                (l_exp, (add_fx_call call_cons ccode kloc))
+                (false, l_exp, (add_fx_call call_cons ccode kloc))
             | _ ->
                 let c_bop = match bop with
                     | OpAdd -> COpAdd
@@ -325,67 +337,69 @@ let gen_ccode topcode =
                     | OpCompareGT -> COpCompareGT
                     | OpCompareGE -> COpCompareGE
                     | _ -> raise_compile_err kloc (sprintf "cgen: unsupported op '%s'" (binop_to_string bop))
-                in (CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))
-        | KExpUnOp(uop, e1, _) -> raise_compile_err kloc "cgen: unsupported KExpUnOp"
-            let (ce1, ccode) = kexp2cexp e1 (ref noid) ccode sc in
+                in (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))
+        | KExpUnOp(OpMkRef, e1, _) ->
+            let (ce1, ccode) = kexp2cexp e1 (ref None) ccode sc in
+            let r_exp = get_dstexp dstexp_r "r" ctyp [] true sc kloc in
+            let rcon = C_gen_types.get_constructor ctyp true kloc in
+            let call_mkref = make_call rcon
+                (ce1 :: (cexp_get_addr r_exp) :: []) CTypCInt kloc in
+            (false, r_exp, (add_fx_call call_mkref ccode kloc))
+        | KExpUnOp(OpDeref, e1, _) ->
+            let (ce1, ccode) = kexp2cexp e1 (ref None) ccode sc in
+            (true, (cexp_deref ce1), ccode)
+        | KExpUnOp(uop, e1, _) ->
+            let (ce1, ccode) = kexp2cexp e1 (ref None) ccode sc in
             let c_uop = match uop with
                 | OpPlus -> COpPlus
                 | OpNegate -> COpNegate
                 | OpBitwiseNot -> COpBitwiseNot
                 | OpLogicNot -> COpLogicNot
                 | OpExpand -> raise_compile_err kloc "cgen: unsupported op 'expand'"
-            in (CExpUnOp(c_uop, ce1, (ctyp, kloc)), ccode)
+            in (true, CExpUnOp(c_uop, ce1, (ctyp, kloc)), ccode)
         | KExpIntrin(intr, args, _) ->
             (match (intr, args) with
-            | (IntrinMkRef, _) -> raise_compile_err kloc "cgen: unsupported intrin op 'mkref'"
             | (IntrinVariantTag, v :: []) ->
-
-                (* extract variant from v, if it's recursive, use '->', otherwise use '.'; return v{.|->}tag *)
+                let cv = kexp2cexp last (ref None) ccode sc in
+                let {ktp_ptr} = get_ktprops (get_kexp_typ v) kloc in
+                let ctag = if ktp_ptr then
+                        cexp_arrow cv (get_id "tag") CTypCInt
+                    else
+                        cexp_mem cv (get_id "tag") CTypCInt in
+                (true, ctag, ccode)
             | (IntrinVariantCase, v :: (KExpAtom((Atom.Id vn), _)) :: []) ->
-                (* extract variant from v, if it's recursive, use '->', otherwise use '.'; return v{.|->}u.vn *)
-            | (IntrinListHead, v :: []) ->
-                let (cv, ccode) = kexp2cexp v (ref noid) ccode sc in
-                (cexp_arrow cv (get_id "hd") ctyp, ccode)
-            | (IntrinListTail, v :: []) ->
-                let (cv, ccode) = kexp2cexp v (ref noid) ccode sc in
-                (cexp_arrow cv (get_id "tl") ctyp, ccode)
+                let cv = kexp2cexp last (ref None) ccode sc in
+                let {ktp_ptr} = get_ktprops (get_kexp_typ v) kloc in
+                let cvu = if ktp_ptr then
+                        cexp_arrow cv (get_id "u") CTypAny
+                    else
+                        cexp_mem cv (get_id "u") CTypAny in
+                let celem = cexp_mem cvu (get_orig_id vn) ctyp in
+                (true, celem, ccode)
+            | (IntrinListHead, l :: []) ->
+                let (cl, ccode) = kexp2cexp l (ref None) ccode sc in
+                (true, (cexp_arrow cl (get_id "hd") ctyp), ccode)
+            | (IntrinListTail, l :: []) ->
+                let (cl, ccode) = kexp2cexp l (ref None) ccode sc in
+                (true, (cexp_arrow cl (get_id "hd") ctyp), ccode)
             | _ -> raise_compile_err kloc "cgen: unsupported KExpIntrin")
         | KExpSeq(el, _) ->
             let rec process_seq el ccode = match el with
                 | [] -> (dummy_exp, ccode)
                 | last :: [] -> kexp2cexp last dstid_r ccode sc
                 | e :: rest ->
-                    let (_, ccode) = kexp2cexp e (ref noid) ccode sc in
+                    let (_, ccode) = kexp2cexp e (ref None) ccode sc in
                     process_seq rest ccode
-            in process_seq el ccode
+            in let (e, ccode) = process_seq el ccode in
+            (false, e, ccode)
         | KExpIf(c, e1, e2, _) -> raise_compile_err kloc "cgen: unsupported KExpIf"
-            let cc = kexp2cexp c (ref noid) ccode sc in
-            let c_e1 = kexp2cexp e1
-            (* 1. should recognize the sequence "if (c1) a1 else if (c2) a2 else if ... else an".
-               2. in the lucky case when all ci and ai are simple expressions, this can be replaced
-                    with a cascade of ternary operations:
-                    "c1 ? a1 : c2 ? a2 ... : an."
-                    for that, we generate code for cj and aj into a separate sequences
-                    ccode_cj and ccode_aj, respectively (except for c1, for which we can safely use ccode).
-
-                    if at some point ccode_cj or ccode_aj is not empty, we need to patch
-                    so-far generated c code for previous branches, and generate a cascade of if's.
-
-                    In this case, if some ck can be translated to a single C expression, it can be
-                    translated to "else if(ck) ..." instead of "else { some_ccode_ck; if(ck) ... }".
-
-                    So, in the second lucky case (not the most lucky, but still), the cascade of if's
-                    can be translated to:
-
-                    if(c1) a1 else if(c2) a2 ... else an,
-
-                    where aj can be complex compound statements. If KExpIf() has non-void type, i.e.
-                    it should return some expression, the code for all ak should be patched to use
-                    assign the result to some common variable:
-
-                    rtype res = ...; // init res
-                    if(c1) { ... ; res=a1_res } else if(c2) { ...; res=a2_res } ... else { ...; res=an_res }
-            *)
+            let (cc, ccode) = kexp2cexp c (ref None) ccode sc in
+            let dstexp = get_dstexp dstexp_r "t" ctyp [] true sc kloc in
+            let (c_e1, ccode1) = kexp2cexp e1 dstid_r [] sc in
+            let (c_e2, ccode2) = kexp2cexp e2 dstid_r [] sc in
+            let c_e1 = rccode2stmt ((cexp2stmt c_e1) :: ccode1) (get_kexp_loc e1) in
+            let c_e2 = rccode2stmt ((cexp2stmt c_e2) :: ccode2) (get_kexp_loc e2) in
+            (false, dstexp, (CStmtIf(cc, c_e1, c_e2, kloc)) :: ccode)
         | KExpCall(f, args, _) -> raise_compile_err kloc "cgen: unsupported KExpCall"
             (*
                 generate the call; if the function returns the result via output parameter
@@ -402,14 +416,24 @@ let gen_ccode topcode =
 
                 Need to look at each argument and optionally add '&' or '*' if needed.
             *)
-        | KExpMkTuple(args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkTuple"
-            (* in the case of simple tuple, generate code "ttype tmp={args};"
-               in the case of complex tuple, generate "ttype tmp={}; (added to the block prologue)
-                                                      _fx_make_T(args,&tmp);"
-               add the destructor call _fx_free_T...(&tmp); to epilogue
-               in both cases return tmp *)
-        | KExpMkRecord(args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkRecord"
-            (* same as tuples *)
+        | KExpMkTuple(args, _) | KExpMkRecord(args, _) ->
+            let prefix = match kexp with KExpMkTuple(_, _) -> "tup" | _ -> "rec" in
+            let (cargs, ccode) = List.fold_left (fun (cargs, ccode) a ->
+                let (ca, ccode) = kexp2cexp a (ref None) ccode sc in
+                ((a :: cargs), ccode)) ([], ccode) args in
+            let tcon = C_gen_types.get_constructor ctyp true kloc in
+            if tcon <> noid then
+                let t_exp = get_dstexp dstexp_r prefix ctyp [] true sc kloc in
+                let call_mktup = make_call tcon
+                    ((List.rev cargs) @ [cexp_get_addr t_exp]) CTypVoid kloc in
+                (false, t_exp, call_mktup :: ccode)
+            else
+                let tup = gen_temp_idc prefix in
+                let e0 = CExpStructInit((List.rev cargs), (ctyp, kloc)) in
+                let _ = add_val i ctyp flags init sc loc in
+                let ccode = create_cdefval tup ctyp [] (Some e0) ccode sc kloc in
+                let t_exp = make_id_exp tup kloc in
+                (true, t_exp, ccode)
         | KExpMkClosure(f, fcv, args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkClosure"
             (* TBD *)
         | KExpMkArray(shape, elems, _) -> raise_compile_err kloc "cgen: unsupported KExpMkArray"
@@ -419,13 +443,47 @@ let gen_ccode topcode =
                we can avoid allocation of the memory on heap and copying data there?
                call fx_make_arrNd(...); *)
         | KExpAt(a, idxs, _) -> raise_compile_err kloc "cgen: unsupported KExpAt"
-            (* if array is accessed with index check, add macro to check boundaries to ccode.
-               then return the expression that returns array element *)
-        | KExpMem(a, n, _) -> raise_compile_err kloc "cgen: unsupported KExpMem"
-            (* return expression {tuple|record}.n *)
-        | KExpDeref(e1, _) ->
-            let (ce1, ccode) = kexp2cexp e1 (ref noid) ccode sc in
-            ((cexp_deref ce1), ccode)
+            (*
+                there are 2 major cases:
+                1. some of the idxs are ranges. Then the result is fx_arr_t
+                2. all the ranges are scalars. Then the result is scalar.
+
+                1. In the first case need to call a special function
+                    `FX_CALL(fx_subarr(arr, temp_idx, &dst, kind0, {idx0_data}, kind1, {idx1_data}, ..., -1), catch_label)`.
+                    where kind{i} is type of i-th index:
+                    =0 scalar index, followed by the index itself
+                    =1 normal range [a, b), followed by a and b
+                    =2 open range [a,end_of_dim), followed by the a;
+                       the whole range is equivalent to [0,end_of_dim)
+                    =3 normal range with stride [a..stride..b), followed by a, b and stride
+                    =4 open range with stride [a..stride..end_of_dim), followed by a and a and stride
+                    -1 end of the range spec; strictly speaking, it's not needed,
+                       because we know the dimensionality
+                also obtain `dst` using `get_dstexp()`
+                and then call
+                return `(false, dst, ccode)`.
+
+                2. In the second case need first to process each index idx_k (k=0..dims-1):
+                   2.1. If idx_k is "fast index" - great, just use the expression for the index
+                        (process it via `kexp2cexp (KExpAtom i) (ref None) ccode sc`)
+                   2.2. Otherwise we need to use the index more than once, so we need to
+                        store it to temporary variable (unless it's already an indentifier or constant)
+                        and add it to the check
+                        `if(FX_CHKIDX(arr, k1, idx_k1) || FX_CHKIDX(arr, k2, idx_k2) ...)
+                            FX_THROW_OUT_OF_RANGE(catch_label);`
+                    if all the indices are fast indices, the check is excluded, of course,
+                    otherwise it's added to ccode
+                    and we return `(true, FX_PTR_{dims}D(elemtypname, arr, idx0, ..., idx{dims-1}, ccode)`
+            *)
+        | KExpMem(e1, n, _) ->
+            let ce1 = kexp2cexp e1 (ref None) ccode sc in
+            let (ce1, relems) = get_struct ce1 in
+            let nelems = List.length relems in
+            let _ = if n < 0 || n >= nelems then
+                raise_compile_err kloc (sprintf "the tuple/record element index %d is out of range [0, %d]" n nelems)
+                else () in
+            let (n_id, _) = List.nth relems n in
+            (true, (cexp_mem ce1 n_id ctyp), ccode)
         | KExpAssign(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KExpAssign"
             (* 1. if needed, call destructor for i.
                2. then call _fx_copy(e1, &i), fx_copy(e1, &i) or simply do assignment i=e1 *)
@@ -457,9 +515,9 @@ let gen_ccode topcode =
                 then "goto try_cleanup";
             *)
         | KExpCast(e1, kt, _) ->
-            let ce1 = kexp2cexp e1 (ref noid) ccode sc in
+            let ce1 = kexp2cexp e1 (ref None) ccode sc in
             let ct = C_gen_types.ktyp2ctyp kt kloc in
-            (CExpCast(ce1, ct, kloc), ccode)
+            (true, CExpCast(ce1, ct, kloc), ccode)
         | KExpMap(e_kdl_l, body, flags, _) -> raise_compile_err kloc "cgen: unsupported KExpMap"
             (*
                 TBD
@@ -468,8 +526,8 @@ let gen_ccode topcode =
             (*
                 TBD
             *)
-        | KExpWhile(c, body, _) -> raise_compile_err kloc "cgen: unsupported KExpWhile"
-            let (cc, cc_code) = kexp2cexp c (ref noid) [] sc in
+        | KExpWhile(c, body, _) ->
+            let (cc, cc_code) = kexp2cexp c (ref None) [] sc in
             let (is_for_loop, check_code) =
                 match (cc, cc_code) with
                 | (CExp(CExpLit(LitBool(true), _)), []) -> (true, [])
@@ -503,7 +561,7 @@ let gen_ccode topcode =
                 while(final_c_exp);
             *)
         | KExpCCode(ccode_str, _) ->
-            (CExpCCode(ccode_str, kloc), ccode)
+            (false, CExpCCode(ccode_str, kloc), ccode)
         | KDefVal(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KDefVal"
             (*
                 * if e1/i has complex type:
@@ -525,8 +583,8 @@ let gen_ccode topcode =
             (*
                 should generate constructor in the case of exception with argument(s) (TBD).
             *)
-        | KDefVariant kvar -> (dummy_exp, ccode) (* handled in c_gen_types *)
-        | KDefTyp kt -> (dummy_exp, ccode) (* handled in c_gen_types *)
+        | KDefVariant kvar -> (false, dummy_exp, ccode) (* handled in c_gen_types *)
+        | KDefTyp kt -> (false, dummy_exp, ccode) (* handled in c_gen_types *)
         | KDefClosureVars kcv -> raise_compile_err kloc "cgen: unsupported KDefClosureVars"
             (* TBD *)
     in ...

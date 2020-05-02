@@ -158,7 +158,7 @@ type binop_t =
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
     | OpCons
 
-type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpExpand
+type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTempRef | ValImplicitDeref
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
@@ -184,8 +184,6 @@ type exp_t =
     | ExpAt of exp_t * exp_t list * ctx_t
     | ExpAssign of exp_t * exp_t * loc_t
     | ExpMem of exp_t * exp_t * ctx_t
-    | ExpDeref of exp_t * ctx_t
-    | ExpMkRef of exp_t * ctx_t
     | ExpThrow of exp_t * loc_t
     | ExpIf of exp_t * exp_t * exp_t * ctx_t
     | ExpWhile of exp_t * exp_t * loc_t
@@ -408,8 +406,6 @@ let get_exp_ctx e = match e with
     | ExpAt(_, _, c) -> c
     | ExpAssign(_, _, l) -> (TypVoid, l)
     | ExpMem(_, _, c) -> c
-    | ExpDeref(_, c) -> c
-    | ExpMkRef(_, c) -> c
     | ExpThrow(_, l) -> (TypErr, l)
     | ExpIf(_, _, _, c) -> c
     | ExpWhile(_, _, l) -> (TypVoid, l)
@@ -550,6 +546,8 @@ let unop_to_string uop = match uop with
     | OpBitwiseNot -> "~"
     | OpLogicNot -> "!"
     | OpExpand -> "\\"
+    | OpMkRef -> "REF"
+    | OpDeref -> "*"
 
 let fname_op_add() = get_id "__add__"
 let fname_op_sub() = get_id "__sub__"
@@ -614,7 +612,7 @@ let get_unop_fname uop =
     | OpPlus -> fname_op_plus()
     | OpNegate -> fname_op_negate()
     | OpBitwiseNot -> fname_op_bit_not()
-    | OpLogicNot | OpExpand ->
+    | OpLogicNot | OpExpand | OpMkRef | OpDeref ->
         failwith (sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
 
 let fname_always_import () =

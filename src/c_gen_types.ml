@@ -114,6 +114,12 @@ and get_ctprops ct loc =
     | CTypAny ->
         raise_compile_err loc "properties of 'any type' cannot be requested"
 
+let get_constructor ctyp required loc =
+    let {ctp_make} = C_gen_types.get_ctprops ctyp loc in
+    match ctp_make with
+    | i :: [] -> i
+    | _ -> if required then raise_compile_err loc "cgen: missing type constructor" else noid
+
 let get_free_f ct let_none let_macro loc =
     let {ctp_ptr; ctp_free=(freem, freef)} = get_ctprops ct loc in
     if freem = noid && freef = noid && let_none then

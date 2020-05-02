@@ -457,9 +457,9 @@ exp:
 | exp GREATER_EQUAL exp { make_bin_op(OpCompareGE, $1, $3) }
 | exp CONS exp { make_bin_op(OpCons, $1, $3) }
 | exp BACKSLASH LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
-| B_STAR exp %prec deref_prec { ExpDeref($2, make_new_ctx()) }
-| B_POWER exp %prec deref_prec { ExpDeref(ExpDeref($2, make_new_ctx()), make_new_ctx()) }
-| REF exp { ExpMkRef($2, make_new_ctx()) }
+| B_STAR exp %prec deref_prec { make_un_op(OpDeref, $2) }
+| B_POWER exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
+| REF exp { make_un_op(OpMkRef, $2) }
 | B_MINUS exp { make_un_op(OpNegate, $2) }
 | B_PLUS exp { make_un_op(OpPlus, $2) }
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }

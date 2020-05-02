@@ -330,61 +330,25 @@ typedef struct fx_arriter_t
 int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it);
 void fx_arr_nextiter(fx_arriter_t* it);
 
-#define FX_CHKIDX_1D(arr, idx, catch_label) \
-    if((size_t)(idx) >= (size_t)(arr).dim[0].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
-#define FX_CHKIDX_2D(arr, idx0, idx1, catch_label) \
-    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
-       (size_t)(idx1) >= (size_t)(arr).dim[1].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
-#define FX_CHKIDX_3D(arr, idx0, idx1, idx2, catch_label) \
-    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
-       (size_t)(idx1) >= (size_t)(arr).dim[1].size || \
-       (size_t)(idx2) >= (size_t)(arr).dim[2].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
-#define FX_CHKIDX_4D(arr, idx0, idx1, idx2, idx3, catch_label) \
-    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
-       (size_t)(idx1) >= (size_t)(arr).dim[1].size || \
-       (size_t)(idx2) >= (size_t)(arr).dim[2].size || \
-       (size_t)(idx3) >= (size_t)(arr).dim[3].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
-#define FX_CHKIDX_5D(arr, idx0, idx1, idx2, idx3, idx4, catch_label) \
-    if((size_t)(idx0) >= (size_t)(arr).dim[0].size || \
-       (size_t)(idx1) >= (size_t)(arr).dim[1].size || \
-       (size_t)(idx2) >= (size_t)(arr).dim[2].size || \
-       (size_t)(idx3) >= (size_t)(arr).dim[3].size || \
-       (size_t)(idx4) >= (size_t)(arr).dim[4].size) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label }
-#define FX_EPTR_1D_(typ, arr, idx) \
+#define FX_CHKIDX(arr, i, idx) \
+    ((size_t)(idx) >= (size_t)(arr).dim[i].size)
+#define FX_THROW_OUT_OF_RANGE(catch_label) \
+    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label; }
+
+#define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))
-#define FX_EPTR_2D_(typ, arr, idx0, idx1) \
+#define FX_PTR_2D(typ, arr, idx0, idx1) \
     ((typ*)((arr).data + (arr).dim[0].step*(idx0)) + (idx1))
-#define FX_EPTR_3D_(typ, arr, idx0, idx1, idx2) \
+#define FX_PTR_3D(typ, arr, idx0, idx1, idx2) \
     ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
     (arr).dim[1].step*(idx1)) + (idx2))
-#define FX_EPTR_4D_(typ, arr, idx0, idx1, idx2, idx3) \
+#define FX_PTR_4D(typ, arr, idx0, idx1, idx2, idx3) \
     ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
     (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2)) + (idx3))
-#define FX_EPTR_5D_(typ, arr, idx0, idx1, idx2, idx3) \
+#define FX_PTR_5D(typ, arr, idx0, idx1, idx2, idx3) \
     ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
     (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2) + \
     (arr).dim[3].step*(idx3)) + (idx4))
-
-#define FX_EPTR_1D(typ, arr, idx, ptr, catch_label) \
-    FX_CHKIDX_1D((arr), (idx), catch_label) \
-    (ptr) = FX_EPTR_1D_(typ, (arr), (idx))
-#define FX_EPTR_2D(typ, arr, idx0, idx1, ptr, catch_label) \
-    FX_CHKIDX_2D((arr), (idx0), (idx1), ptr, catch_label) \
-    (ptr) = FX_EPTR_2D_(typ, (arr), (idx0), (idx1))
-#define FX_EPTR_3D(typ, arr, idx0, idx1, idx2, ptr, catch_label) \
-    FX_CHKIDX_3D((arr), (idx0), (idx1), (idx2), catch_label) \
-    (ptr) = FX_EPTR_3D_(typ, (arr), (idx0), (idx1), (idx2))
-#define FX_EPTR_4D(typ, arr, idx0, idx1, idx2, idx3, ptr, catch_label) \
-    FX_CHKIDX_4D((arr), (idx0), (idx1), (idx2), (idx3), catch_label) \
-    (ptr) = FX_EPTR_4D_(typ, (arr), (idx0), (idx1), (idx2), (idx3))
-#define FX_EPTR_5D(typ, arr, idx0, idx1, idx2, idx3, idx4, ptr, catch_label) \
-    FX_CHKIDX_5D((arr), (idx0), (idx1), (idx2), (idx3), (idx4), catch_label) \
-    (ptr) = FX_EPTR_5D_(typ, (arr), (idx0), (idx1), (idx2), (idx3), (idx4))
 
 void fx_free_arr(fx_arr_t* arr);
 #define FX_FREE_ARR(arr) if(!(arr)->rc) ; else fx_free_arr(arr)

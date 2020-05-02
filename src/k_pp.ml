@@ -219,10 +219,10 @@ and pprint_kexp_ e prtyp =
                 if fv = [] then raise_compile_err loc "attempt to access unspecified closure"
                 else let (ni, _) = List.nth fv i in pstr (id2str ni)*)
             | _ -> pstr (string_of_int i))
+        | KExpUnOp(OpDeref, (Atom.Id n), (_, loc)) -> pstr (if (is_implicit_deref n loc) then "**" else "*"); pprint_id n
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
             pstr ostr; pprint_atom_ a
-        | KExpDeref(n, (_, loc)) -> pstr (if (is_implicit_deref n loc) then "**" else "*"); pprint_id n
         | KExpIntrin(iop, args, _) ->
             pstr (intrin2str iop); pstr "(";
             List.iteri (fun i a -> if i = 0 then () else (pstr ","; pspace()); pprint_atom_ a) args;

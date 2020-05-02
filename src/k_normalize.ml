@@ -133,6 +133,9 @@ let rec exp2kexp e code tref sc =
         let (a1, code) = exp2atom e1 code false sc in
         let (a2, code) = exp2atom e2 code false sc in
         (KExpBinOp(bop, a1, a2, kctx), code)
+    | ExpUnOp(OpDeref, e, _) ->
+        let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
+        (KExpUnOp(OpDeref, (Atom.Id a_id), kctx), code)
     | ExpUnOp(uop, e1, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         (KExpUnOp(uop, a1, kctx), code)
@@ -193,12 +196,6 @@ let rec exp2kexp e code tref sc =
         let (args, code) = List.fold_left (fun (args, code) ei ->
             let (ai, code) = exp2atom ei code false sc in (ai :: args, code)) ([], code) args in
         (KExpCall(f_id, (List.rev args), kctx), code)
-    | ExpDeref(e, _) ->
-        let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
-        (KExpDeref(a_id, kctx), code)
-    | ExpMkRef(e, _) ->
-        let (a, code) = exp2atom e code false sc in
-        (KExpIntrin(IntrinMkRef, a :: [], kctx), code)
     | ExpThrow(e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be thrown as exception" in
         (KExpThrow(a_id, eloc), code)
@@ -578,7 +575,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 | _ ->
                     let (is_tuple, case_typ) = match c_args with t :: [] -> (false, t) | _ -> (true, KTypTuple(c_args)) in
                     let extract_case_exp = KExpIntrin(IntrinVariantCase,
-                        (Atom.Id n) :: (Atom.Id (get_orig_id vn)) :: [], (case_typ, loc)) in
+                        (Atom.Id n) :: (Atom.Id vn) :: [], (case_typ, loc)) in
                     if is_tuple then
                         let case_n = gen_temp_idk "case" in
                         let code = create_defval case_n case_typ (ValTempRef :: [])

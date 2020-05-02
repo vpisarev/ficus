@@ -55,7 +55,6 @@ type dom_t = Domain.t
 
 type intrin_t =
     | IntrinPopExn
-    | IntrinMkRef
     | IntrinVariantTag
     | IntrinVariantCase
     | IntrinListHead
@@ -109,7 +108,6 @@ and kexp_t =
     | KExpMkArray of int list * atom_t list * kctx_t
     | KExpAt of atom_t * dom_t list * kctx_t
     | KExpMem of id_t * int * kctx_t
-    | KExpDeref of id_t * kctx_t
     | KExpAssign of id_t * kexp_t * loc_t
     | KExpMatch of ((kexp_t list) * kexp_t) list * kctx_t
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
@@ -200,7 +198,6 @@ let get_kexp_ctx e = match e with
     | KExpMkArray(_, _, c) -> c
     | KExpAt(_, _, c) -> c
     | KExpMem(_, _, c) -> c
-    | KExpDeref(_, c) -> c
     | KExpAssign(_, _, l) -> (KTypVoid, l)
     | KExpMatch(_, c) -> c
     | KExpTryCatch(_, _, c) -> c
@@ -305,7 +302,6 @@ let get_atom_ktyp a loc =
 
 let intrin2str iop = match iop with
     | IntrinPopExn -> "INTRIN_POP_EXN"
-    | IntrinMkRef -> "MAKE_REF"
     | IntrinVariantTag -> "INTRIN_VARIANT_TAG"
     | IntrinVariantCase -> "INTRIN_VARIANT_CASE"
     | IntrinListHead -> "INTRIN_LIST_HD"
@@ -462,7 +458,6 @@ and walk_kexp e callb =
     | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
     | KExpAssign(lv, rv, loc) -> KExpAssign((walk_id_ lv), (walk_kexp_ rv), loc)
     | KExpMem(k, member, ctx) -> KExpMem((walk_id_ k), member, (walk_kctx_ ctx))
-    | KExpDeref(k, ctx) -> KExpDeref((walk_id_ k), (walk_kctx_ ctx))
     | KExpThrow(k, loc) -> KExpThrow((walk_id_ k), loc)
     | KExpWhile(c, e, loc) -> KExpWhile((walk_kexp_ c), (walk_kexp_ e), loc)
     | KExpDoWhile(e, c, loc) -> KExpDoWhile((walk_kexp_ e), (walk_kexp_ c), loc)
@@ -600,7 +595,6 @@ and fold_kexp e callb =
     | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
     | KExpAssign(lv, rv, loc) -> fold_id_ lv; fold_kexp_ rv; (KTypVoid, loc)
     | KExpMem(k, _, ctx) -> fold_id_ k; ctx
-    | KExpDeref(k, ctx) -> fold_id_ k; ctx
     | KExpThrow(k, loc) -> fold_id_ k; (KTypErr, loc)
     | KExpWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
     | KExpDoWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)

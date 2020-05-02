@@ -172,8 +172,6 @@ and walk_exp e callb =
     | ExpAt(arr, idx, ctx) -> ExpAt((walk_exp_ arr), (walk_elist_ idx), (walk_ctx_ ctx))
     | ExpAssign(lv, rv, loc) -> ExpAssign((walk_exp_ lv), (walk_exp_ rv), loc)
     | ExpMem(a, member, ctx) -> ExpMem((walk_exp_ a), (walk_exp_ member), (walk_ctx_ ctx))
-    | ExpDeref(a, ctx) -> ExpDeref((walk_exp_ a), (walk_ctx_ ctx))
-    | ExpMkRef(a, ctx) -> ExpMkRef((walk_exp_ a), (walk_ctx_ ctx))
     | ExpThrow(a, loc) -> ExpThrow((walk_exp_ a), loc)
     | ExpIf(c, then_e, else_e, ctx) ->
         ExpIf((walk_exp_ c), (walk_exp_ then_e), (walk_exp_ else_e), (walk_ctx_ ctx))
@@ -704,7 +702,7 @@ and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
     For example, in `5 :: []` operation we can figure out that the second argument has `int list` type,
     we do not have to write more explicit `5 :: ([]: int list)` expression.
     Or, in the case of some hypothetical "fun integrate(a: 't, b: 't, f: 't->'t)" we can just call it
-    with `integrate(0.f, 10.f, Math.sin)` instead of more explicit `integrate(0.f, 10.f, (Math.sin: float->float))`.Bigarray
+    with `integrate(0.f, 10.f, Math.sin)` instead of more explicit `integrate(0.f, 10.f, (Math.sin: float->float))`.
 
     Also, note that the function does not modify the environment. When a complex expression
     is analyzed (such as for loop), a temporary environment can be created with extra content
@@ -795,7 +793,7 @@ and check_exp e env sc =
            is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
         let rec is_lvalue e = (match e with
             | ExpAt _ -> true (* an_arr[idx] = e2 *)
-            | ExpDeref(_, _) -> true (* *a_ref = e2 *)
+            | ExpUnOp(OpDeref, _, _) -> true (* *a_ref = e2 *)
             | ExpIdent(n1, _) -> (* a_var = e2 *)
                 (match (id_info n1) with
                 | IdVal { dv_flags } -> (List.mem ValMutable dv_flags)
@@ -885,23 +883,23 @@ and check_exp e env sc =
             let f_id = get_binop_fname bop in
             check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1; new_e2], ctx)) env sc)
 
-    | ExpDeref(e1, _) ->
-        let (etyp1, eloc1) = get_exp_ctx e1 in
-        let _ = unify (TypRef etyp) etyp1 eloc "the types of unary '*' operation argument and result are inconsistent" in
-        let new_e1 = check_exp e1 env sc in
-        ExpDeref(new_e1, ctx)
-
-    | ExpMkRef(e1, _) ->
-        let (etyp1, eloc1) = get_exp_ctx e1 in
-        let _ = unify etyp (TypRef etyp1) eloc "the types of ref() operation argument and result are inconsistent" in
-        let new_e1 = check_exp e1 env sc in
-        ExpMkRef(new_e1, ctx)
-
     | ExpThrow(e1, _) ->
         let (etyp1, eloc1) = get_exp_ctx e1 in
         let _ = unify TypExn etyp1 eloc "the argument of 'throw' operator must be an exception" in
         let new_e1 = check_exp e1 env sc in
         ExpThrow(new_e1, eloc)
+
+    | ExpUnOp(OpMkRef, e1, _) ->
+        let (etyp1, eloc1) = get_exp_ctx e1 in
+        let _ = unify etyp (TypRef etyp1) eloc "the types of ref() operation argument and result are inconsistent" in
+        let new_e1 = check_exp e1 env sc in
+        ExpUnOp(OpMkRef, new_e1, ctx)
+
+    | ExpUnOp(OpDeref, e1, _) ->
+        let (etyp1, eloc1) = get_exp_ctx e1 in
+        let _ = unify (TypRef etyp) etyp1 eloc "the types of unary '*' operation argument and result are inconsistent" in
+        let new_e1 = check_exp e1 env sc in
+        ExpUnOp(OpDeref, new_e1, ctx)
 
     | ExpUnOp(uop, e1, _) ->
         let new_e1 = check_exp e1 env sc in
@@ -936,8 +934,8 @@ and check_exp e env sc =
             unify etyp1 TypBool eloc1 "the argument of ! operator must be a boolean";
             unify etyp TypBool eloc "the result of ! operator must be a boolean";
             ExpUnOp(uop, new_e1, ctx)
-        | OpExpand ->
-            raise_compile_err eloc "the expand (\\...) operation is not implemented yet")
+        | _ ->
+            raise_compile_err eloc (sprintf "unsupported unary operation '%s'" (unop_to_string uop)))
     | ExpSeq(eseq, _) ->
         let eseq_typ = get_eseq_typ eseq in
         let _ = unify etyp eseq_typ eloc "the expected type of block expression does not match its actual type" in
@@ -1020,7 +1018,8 @@ and check_exp e env sc =
             (fun (for_clauses1, dims1, env1, idset1) (pi, ei) ->
                 let (pi, ei, dims, env1, idset1) = check_for_clause pi ei env1 idset1 for_sc in
                 if dims1 != 0 && dims1 != dims then
-                    raise_compile_err (get_exp_loc ei) "the dimensionalities of simultaneously iterated containers/ranges do not match"
+                    raise_compile_err (get_exp_loc ei)
+                        "the dimensionalities of simultaneously iterated containers/ranges do not match"
                 else ();
                 ((pi, ei) :: for_clauses1, dims, env1, idset1)) ([], 0, env, IdSet.empty) for_clauses in
         let (btyp, bloc) = get_exp_ctx body in
@@ -1409,13 +1408,18 @@ and reg_deffun df env sc =
     let df_name1 = dup_id df_name in
     let rt = (match df_typ with TypFun(_, rt) -> rt | _ -> raise_compile_err df_loc "incorrect function type") in
     let df_sc = (ScFun df_name1) :: sc in
-    let (args1, argtyps1, env1, idset1, templ_args1) = List.fold_left (fun (args1, argtyps1, env1, idset1, templ_args1) arg ->
+    let (args1, argtyps1, env1, idset1, templ_args1) = List.fold_left
+            (fun (args1, argtyps1, env1, idset1, templ_args1) arg ->
             let t = make_new_typ() in
-            let (arg1, env1, idset1, templ_args1) = check_pat arg t env1 idset1 templ_args1 df_sc true true false in
-            ((arg1 :: args1), (t :: argtyps1), env1, idset1, templ_args1)) ([], [], env, IdSet.empty, IdSet.empty) df_args in
+            let (arg1, env1, idset1, templ_args1) =
+                check_pat arg t env1 idset1 templ_args1 df_sc true true false in
+            ((arg1 :: args1), (t :: argtyps1), env1, idset1, templ_args1))
+            ([], [], env, IdSet.empty, IdSet.empty) df_args in
     let dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc) in
-    let (dummy_rt_pat1, env1, idset1, templ_args1) = check_pat dummy_rt_pat (make_new_typ()) env1 idset1 templ_args1 df_sc true true false in
-    let rt = match dummy_rt_pat1 with PatTyped(_, rt, _) -> rt | _ -> raise_compile_err df_loc "invalid return pattern after check" in
+    let (dummy_rt_pat1, env1, idset1, templ_args1) =
+            check_pat dummy_rt_pat (make_new_typ()) env1 idset1 templ_args1 df_sc true true false in
+    let rt = match dummy_rt_pat1 with PatTyped(_, rt, _) -> rt
+            | _ -> raise_compile_err df_loc "invalid return pattern after check" in
     let df_typ1 = TypFun((List.rev argtyps1), rt) in
     let env1 = add_id_to_env_check df_name df_name1 env1 (check_for_duplicate_fun df_typ1 env1 sc df_loc) in
     df := { df_name=df_name1; df_templ_args=(IdSet.elements templ_args1);
@@ -1550,20 +1554,26 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let fun_sc = (ScFun inst_name) :: inst_sc in
     let (df_inst_args, inst_env, _) = List.fold_left2
         (fun (df_inst_args, inst_env, idset) df_arg arg_typ ->
-            let (df_inst_arg, inst_env, idset, _) = check_pat (dup_pat df_arg) arg_typ inst_env idset IdSet.empty fun_sc false true false in
+            let (df_inst_arg, inst_env, idset, _) =
+                check_pat (dup_pat df_arg) arg_typ inst_env idset IdSet.empty fun_sc false true false in
             ((df_inst_arg :: df_inst_args), inst_env, idset)) ([], inst_env, IdSet.empty) df_args arg_typs in
     let df_inst_args = List.rev df_inst_args in
     let rt = check_typ rt inst_env df_scope inst_loc in
     let inst_body = if instantiate then (dup_exp df_body) else df_body in
-    (*let _ = ((printf "processing function %s " (id2str inst_name)); pprint_pat_x (PatTuple(df_inst_args, noloc)); printf "<";
-            List.iteri (fun i n -> printf "%s%s" (if i=0 then "" else ", ") (id2str n)) df_templ_args; printf ">\n") in
+    (*let _ = ((printf "processing function %s " (id2str inst_name));
+        pprint_pat_x (PatTuple(df_inst_args, noloc)); printf "<";
+        List.iteri (fun i n -> printf "%s%s" (if i=0 then "" else ", ") (id2str n)) df_templ_args;
+        printf ">\n") in
     let _ = (printf "\tof typ: "; pprint_typ_x inst_ftyp; printf "\n") in
-    let _ = (printf "\tfun before type checking: "; pprint_exp_x (DefFun templ_df); printf "\n~~~~~~~~~~~~~~~~\n") in
-    let _ = print_env (sprintf "before processing function body of %s defined at %s" (id2str inst_name) (loc2str df_loc)) inst_env inst_loc in*)
+    let _ = (printf "\tfun before type checking: ";
+        pprint_exp_x (DefFun templ_df); printf "\n~~~~~~~~~~~~~~~~\n") in
+    let _ = print_env (sprintf "before processing function body of %s defined at %s"
+        (id2str inst_name) (loc2str df_loc)) inst_env inst_loc in*)
     let (body_typ, body_loc) = get_exp_ctx inst_body in
     let _ = if is_constr then () else unify body_typ rt body_loc "the function body type does not match the function type" in
     let inst_ftyp = match (arg_typs, is_constr) with ([], true) -> rt | _ -> TypFun(arg_typs, rt) in
-    (*let _ = (printf "instantiated '%s' with nargs=%d, typ=" (id2str inst_name) nargs; pprint_typ_x inst_ftyp; printf "\n") in*)
+    (*let _ = (printf "instantiated '%s' with nargs=%d, typ=" (id2str inst_name) nargs;
+        pprint_typ_x inst_ftyp; printf "\n") in*)
     let inst_df = ref { df_name=inst_name; df_templ_args=[]; df_args=df_inst_args;
                         df_typ=inst_ftyp; df_body=inst_body;
                         df_flags; df_scope=inst_sc; df_loc=inst_loc; df_templ_inst=[]; df_env=inst_env0 } in
@@ -1617,7 +1627,8 @@ and instantiate_variant ty_args dvar env sc loc =
                 raise_compile_err loc
                 (sprintf "cannot instantiate case '%s' of variant '%s' defined at '%s': wrong number of actual parameters %d (vs %d expected)"
                 (id2str cname) (id2str dvar_name) (loc2str dvar_loc) nrealargs nargs) in
-        let (inst_cname, _) = register_typ_constructor cname (!inst_dvar.dvar_templ_args) argtyps inst_app_typ env dvar_scope dvar_loc in
+        let (inst_cname, _) = register_typ_constructor cname (!inst_dvar.dvar_templ_args)
+            argtyps inst_app_typ env dvar_scope dvar_loc in
         if instantiate then
             match id_info cname with
             | IdFun c_def -> !c_def.df_templ_inst <- inst_cname :: !c_def.df_templ_inst
@@ -1684,11 +1695,13 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                         let ni = (match ti with
                         | TypTuple(tl) -> List.length tl
                         | TypVoid -> raise_compile_err loc
-                            (sprintf "a variant label '%s' with no arguments may not be used in a formal function parameter" (pp_id2str vi))
+                            (sprintf "a variant label '%s' with no arguments may not be used in a formal function parameter"
+                                (pp_id2str vi))
                         | _ -> 1) in
                         if ni != (List.length pl) then
                             raise_compile_err loc
-                            (sprintf "the number of variant pattern arguments does not match to the description of variant case '%s'" (pp_id2str vi))
+                            (sprintf "the number of variant pattern arguments does not match to the description of variant case '%s'"
+                                (pp_id2str vi))
                             else ();
                         PatVariant(v, pl, loc)
                     with Not_found ->
