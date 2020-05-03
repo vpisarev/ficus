@@ -649,7 +649,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
     let atyp = get_atom_ktyp a loc in
     let is_variant = match atyp with
                 | KTypExn -> true
-                | KTypName(tname) -> (match (kinfo tname) with
+                | KTypName(tname) -> (match (kinfo_ tname loc) with
                     | KVariant _ -> true
                     | _ -> false)
                 | _ -> false in

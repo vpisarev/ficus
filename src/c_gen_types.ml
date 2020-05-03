@@ -51,9 +51,9 @@ and ktyp2ctyp t loc =
         | KTypUInt n -> CTypUInt n
         | KTypFloat n -> CTypFloat n
         | KTypVoid -> CTypVoid
-        | KTypNil -> CTypNil
+        | KTypNil -> CTypRawPtr([], CTypVoid)
         | KTypBool -> CTypBool
-        | KTypChar -> CTypUChar
+        | KTypChar -> CTypUniChar
         | KTypString -> CTypString
         | KTypCPointer -> CTypCSmartPtr
         | KTypFun (args, rt) ->
@@ -74,7 +74,7 @@ and ktyp2ctyp t loc =
 and get_ctprops ct loc =
     match ct with
     | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _
-    | CTypFloat _ | CTypVoid | CTypNil | CTypBool | CTypUChar ->
+    | CTypFloat _ | CTypVoid | CTypBool | CTypUniChar ->
         {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=false}
     | CTypCSmartPtr ->
@@ -105,7 +105,7 @@ and get_ctprops ct loc =
         {ctp_make=[]; ctp_free=(!std_FX_FREE_ARR, !std_fx_free_arr); ctp_copy=(noid, !std_fx_copy_arr);
         ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypName i ->
-        (match (cinfo i) with
+        (match (cinfo_ i loc) with
         | CTyp {contents={ct_props}} -> ct_props
         | _ -> raise_compile_err loc
             (sprintf "properties of non-type '%s' cannot be requested" (id2str i)))
@@ -115,7 +115,7 @@ and get_ctprops ct loc =
         raise_compile_err loc "properties of 'any type' cannot be requested"
 
 let get_constructor ctyp required loc =
-    let {ctp_make} = C_gen_types.get_ctprops ctyp loc in
+    let {ctp_make} = get_ctprops ctyp loc in
     match ctp_make with
     | i :: [] -> i
     | _ -> if required then raise_compile_err loc "cgen: missing type constructor" else noid
@@ -240,7 +240,7 @@ let convert_all_typs top_code =
         let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in
         match Env.find_opt kvar_base_name !all_var_enums with
         | Some(e_id) ->
-            (match (cinfo e_id) with
+            (match (cinfo_ e_id kvar_loc) with
             | CEnum {contents={ce_members}} -> (e_id, ce_members)
             | _ -> raise_compile_err kvar_loc (sprintf "invalid variant enumeration '%s'" (id2str e_id)))
         | _ ->
@@ -300,7 +300,7 @@ let convert_all_typs top_code =
             let struct_id_opt = match !struct_decl with
                 | {ct_typ=CTypRawPtr(_, CTypStruct(struct_id_opt, _))} -> struct_id_opt
                 | _ -> Some tn in
-            let process_deps () = IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep in cvt2ctyp dep dep_loc) deps in
+            let process_deps () = IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep loc in cvt2ctyp dep dep_loc) deps in
             all_decls := IdSet.add tn !all_decls;
             (*printf "deps for %s: " (id2str tn); IdSet.iter (fun d -> printf "%s, " (id2str d)) deps; printf "\n";*)
             if recursive_variant then process_deps() else ();

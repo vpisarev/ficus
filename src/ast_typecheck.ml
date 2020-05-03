@@ -67,7 +67,7 @@ let print_env msg env loc =
                         | IdTyp {contents={dt_typ}} -> dt_typ
                         | _ -> TypVar(ref None)
                     in printf "%s%s<" (if i = 0 then " => [" else ", ") (id2str ni);
-                    pprint_typ_x t; printf ">") templ_inst;
+                    pprint_typ_x t loc; printf ">") templ_inst;
                 printf "]")
         | EnvTyp t -> printf "<some type>") entries);
         printf ";\n") env;
@@ -421,7 +421,7 @@ let unify t1 t2 loc msg =
     if maybe_unify t1 t2 true then () else
     raise_compile_err loc msg
 
-let coerce_types t1 t2 allow_tuples allow_fp =
+let coerce_types t1 t2 allow_tuples allow_fp loc =
     let safe_max_ubits = if options.arch64 then 32 else 16 in
     let rec coerce_types_ t1 t2 =
     match (t1, t2) with
@@ -433,16 +433,20 @@ let coerce_types t1 t2 allow_tuples allow_fp =
         if b <= safe_max_ubits then TypInt else TypUInt(b)
     | TypInt, (TypSInt b) -> if b <= 32 then TypInt else TypSInt(b)
     | TypInt, (TypUInt b) -> if b <= safe_max_ubits then TypInt else
-        failwith "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
+        raise_compile_err loc
+            "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
     | (TypSInt b), TypInt -> if b <= 32 then TypInt else TypSInt(b)
     | (TypUInt b), TypInt -> if b <= safe_max_ubits then TypInt else
-        failwith "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
+        raise_compile_err loc
+            "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
     | (TypSInt b1), (TypUInt b2) ->
         if b1 <= 32 && b2 <= safe_max_ubits then TypInt else
-        failwith "implicit type coercion for this (signed, unsigned) pair of integer is not allowed; use explicit type cast"
+        raise_compile_err loc
+            "implicit type coercion for this (signed, unsigned) pair of integer is not allowed; use explicit type cast"
     | (TypUInt b1), (TypSInt b2) ->
         if b1 <= safe_max_ubits && b2 <= 32 then TypInt else
-        failwith "implicit type coercion for this (unsigned, signed) pair of integer is not allowed; use explicit type cast"
+        raise_compile_err loc
+            "implicit type coercion for this (unsigned, signed) pair of integer is not allowed; use explicit type cast"
     | ((TypFloat b1), (TypFloat b2)) when allow_fp ->
         let max_b = max (max b1 b2) 32 in TypFloat(max_b)
     | ((TypFloat b), TypInt) when allow_fp -> TypFloat(max b 32)
@@ -453,13 +457,13 @@ let coerce_types t1 t2 allow_tuples allow_fp =
     | ((TypUInt _), (TypFloat b)) when allow_fp -> TypFloat(max b 32)
     | ((TypTuple tl1), (TypTuple tl2)) ->
         if not allow_tuples then
-            failwith "tuples are not allowed in this operation"
+            raise_compile_err loc "tuples are not allowed in this operation"
         else if (List.length tl1) = (List.length tl2) then
             TypTuple (List.map2 (fun et1 et2 -> coerce_types_ et1 et2) tl1 tl2)
         else
-            failwith "tuples have different number of elements"
-    | _ -> failwith "the types cannot be implicitly coerced; use explicit type cast"
-    in try Some(coerce_types_ (deref_typ t1) (deref_typ t2)) with Failure _ -> None
+            raise_compile_err loc "tuples have different number of elements"
+    | _ -> raise_compile_err loc "the types cannot be implicitly coerced; use explicit type cast"
+    in try Some(coerce_types_ (deref_typ t1) (deref_typ t2)) with CompileError(_, _) -> None
 
 let find_all n env =
     match Env.find_opt n env with
@@ -627,7 +631,8 @@ let rec lookup_id n t env sc loc =
                             match id_info inst with
                             | IdFun {contents={df_typ=inst_typ}} ->
                                 maybe_unify inst_typ t true
-                            | _ -> raise_compile_err loc (sprintf "invalid (non-function) instance %s of template function %s" (id2str inst) (pp_id2str n))
+                            | _ -> raise_compile_err loc
+                                (sprintf "invalid (non-function) instance %s of template function %s" (id2str inst) (pp_id2str n))
                             ) df_templ_inst)
                         with Not_found ->
                             (* the generic function matches the requested type,
@@ -833,7 +838,7 @@ and check_exp e env sc =
         (match bop with
         | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight ->
             let allow_fp = bop != OpShiftLeft && bop != OpShiftRight in
-            coerce_types etyp1_ etyp2_ true allow_fp
+            coerce_types etyp1_ etyp2_ true allow_fp eloc
         | OpBitwiseAnd | OpBitwiseOr | OpBitwiseXor ->
             let rec check_bitwise t1 t2 =
                 (match (t1, t2) with
@@ -847,7 +852,7 @@ and check_exp e env sc =
                     else
                         TypTuple(List.map2 check_bitwise tl1 tl2)
                 | _ -> invalid_arg "")
-            in (try Some(check_bitwise etyp1_ etyp2_) with Failure _ -> None)
+            in (try Some(check_bitwise etyp1_ etyp2_) with Invalid_argument _ -> None)
         | OpLogicAnd | OpLogicOr ->
             unify etyp1 TypBool eloc1 "arguments of logical operation must be boolean";
             unify etyp2 TypBool eloc2 "arguments of logical operation must be boolean";
@@ -880,7 +885,7 @@ and check_exp e env sc =
         | _ ->
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)
-            let f_id = get_binop_fname bop in
+            let f_id = get_binop_fname bop eloc in
             check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1; new_e2], ctx)) env sc)
 
     | ExpThrow(e1, _) ->
@@ -906,13 +911,13 @@ and check_exp e env sc =
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
         (match uop with
         | OpNegate | OpPlus ->
-            let t_opt = coerce_types etyp1 etyp1 true true in
+            let t_opt = coerce_types etyp1 etyp1 true true eloc in
             (match t_opt with
             | Some(t) ->
                 unify etyp t eloc "improper type of the unary '-' operator result";
                 ExpUnOp(uop, new_e1, ctx)
             | None ->
-                let f_id = get_unop_fname uop in
+                let f_id = get_unop_fname uop eloc in
                 check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1], ctx)) env sc)
         | OpBitwiseNot ->
             (let rec check_bitwise t =
@@ -927,8 +932,8 @@ and check_exp e env sc =
             try
                 unify etyp (check_bitwise etyp1) eloc "invalid type of bitwise-not result";
                 ExpUnOp(uop, new_e1, ctx)
-            with Failure _ ->
-                let f_id = get_unop_fname uop in
+            with Invalid_argument _ ->
+                let f_id = get_unop_fname uop eloc in
                 check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1], ctx)) env sc)
         | OpLogicNot ->
             unify etyp1 TypBool eloc1 "the argument of ! operator must be a boolean";
@@ -1237,7 +1242,11 @@ and check_eseq eseq env sc create_sc =
                         raise_compile_err eloc
                         "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error"));
                 (e :: eseq, env)
-        with CompileError(_, _) as err -> raise err(*; (e :: eseq, env)*) in
+        with
+        | CompileError(_, _) as err ->
+            push_compile_err err; (e :: eseq, env)
+        | PropagateCompileError -> (e :: eseq, env)
+        in
         (eseq1, env1, idx+1)) ([], env, 0) eseq in
 
     check_compile_errs();
@@ -1297,7 +1306,7 @@ and check_directives eseq env sc =
             ((List.fold_left (fun env (m, alias) ->
                 try
                     import_mod env alias m false eloc
-                with CompileError(_, _) -> env) env impdirs), mlist)
+                with CompileError(_, _) as err -> push_compile_err err; env) env impdirs), mlist)
         | DirImportFrom(m, implist, eloc) ->
             let env =
             (try
@@ -1312,8 +1321,8 @@ and check_directives eseq env sc =
                             raise_compile_err eloc
                                 (sprintf "no symbol %s found in %s" (pp_id2str k) (pp_id2str m))) in
                         import_entries env m k entries eloc
-                    with CompileError(_, _) -> env) env keys
-            with CompileError(_, _) -> env) in
+                    with CompileError(_, _) as err -> push_compile_err err; env) env keys
+            with CompileError(_, _) as err -> push_compile_err err; env) in
             (env, (m, eloc) :: mlist)
         | _ -> (env, mlist)) (env, []) eseq) in
 
@@ -1561,7 +1570,7 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let rt = check_typ rt inst_env df_scope inst_loc in
     let inst_body = if instantiate then (dup_exp df_body) else df_body in
     (*let _ = ((printf "processing function %s " (id2str inst_name));
-        pprint_pat_x (PatTuple(df_inst_args, noloc)); printf "<";
+        pprint_pat_x (PatTuple(df_inst_args, inst_loc)); printf "<";
         List.iteri (fun i n -> printf "%s%s" (if i=0 then "" else ", ") (id2str n)) df_templ_args;
         printf ">\n") in
     let _ = (printf "\tof typ: "; pprint_typ_x inst_ftyp; printf "\n") in
@@ -1747,10 +1756,11 @@ and check_cases cases inptyp outtyp env sc loc =
 
 and check_mod m =
     let minfo = !(get_module m) in
-    (*try*)
+    try
         let modsc = (ScModule m) :: [] in
         let (seq, env) = check_eseq minfo.dm_defs Env.empty modsc false in
         minfo.dm_defs <- seq;
         minfo.dm_env <- env;
-    (*with e ->
-        compile_errs := e :: !compile_errs*)
+    with
+    | CompileError(_, _) as err -> push_compile_err err
+    | PropagateCompileError -> ()

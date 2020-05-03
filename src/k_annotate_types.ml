@@ -98,13 +98,14 @@ let find_recursive top_code =
         | Some rdeps -> IdSet.mem n !rdeps
         | _ -> false in
     List.iter (fun n ->
-        let isrec = is_recursive n in
-        let info = kinfo n in
-        match info with
-        | KVariant kvar ->
-            let {kvar_flags} = !kvar in
-            if isrec then kvar := {!kvar with kvar_flags=VariantRecursive :: kvar_flags} else ()
-        | _ -> ()) all_typs;
+        if (is_recursive n) then
+            match (kinfo_ n noloc) with
+            | KVariant kvar ->
+                let {kvar_flags} = !kvar in
+                kvar := {!kvar with kvar_flags=VariantRecursive :: kvar_flags}
+            | _ -> ()
+        else
+            ()) all_typs;
     top_code
 
 (* returns the ktprops_t structure for each value of ktyp_t:
@@ -153,7 +154,7 @@ let get_ktprops t loc =
         { ktp_complex=true; ktp_ptr=true; ktp_pass_by_ref=false;
           ktp_custom_free=have_complex; ktp_custom_copy=false }
     | KTypName n ->
-        (match (kinfo n) with
+        (match (kinfo_ n loc) with
         | KVariant kvar ->
             let {kvar_name; kvar_cname; kvar_cases; kvar_props; kvar_flags; kvar_loc} = !kvar in
             (match kvar_props with

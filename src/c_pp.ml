@@ -82,20 +82,20 @@ let unop2str_ uop = match uop with
     | COpMacroName -> ("#", 1600, AssocLeft)
     | COpMacroDefined -> ("defined ", 1600, AssocLeft)
 
-let pprint_id n =
-    let cname = get_idc_cname n in
+let pprint_id n loc =
+    let cname = get_idc_cname n loc in
     pstr (if cname = "" then (pp_id2str n) else cname)
 
-let rec pprint_ctyp__ prefix0 t id_opt fwd_mode =
+let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
     let pr_id_opt_ add_space = match id_opt with
-        | Some(i) -> if add_space then pspace() else (); pprint_id i
+        | Some(i) -> if add_space then pspace() else (); pprint_id i loc
         | _ -> () in
     let pr_id_opt () = pr_id_opt_ true in
     let pr_struct prefix n_opt elems suffix =
         (ohbox();
         pstr (prefix ^ " ");
         (match n_opt with
-        | Some n -> pprint_id n; pstr " "
+        | Some n -> pprint_id n loc; pstr " "
         | _ -> ()
         );
         cbox(); pspace(); pstr "{"; ovbox_brace();
@@ -104,49 +104,38 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode =
                 | CTypStruct _ | CTypUnion _ | CTypRawPtr(_, CTypStruct _) -> false
                 | _ -> true in
             if need_nested_box then ohbox() else ();
-            pprint_ctyp__ "" ti (Some ni) true; pstr ";";
+            pprint_ctyp__ "" ti (Some ni) true loc; pstr ";";
             if need_nested_box then cbox() else ()) elems;
         cbox(); pbreak(); ohbox(); pstr ("} " ^ suffix); pr_id_opt_ false; cbox()) in
     (match t with
-    | CTypInt -> pstr "int_"; pr_id_opt ()
-    | CTypCInt -> pstr "int"; pr_id_opt ()
-    | CTypSize_t -> pstr "size_t"; pr_id_opt ()
-    | CTypSInt(b) -> pstr ("int" ^ (string_of_int b) ^ "_t"); pr_id_opt ()
-    | CTypUInt(b) -> pstr ("unt" ^ (string_of_int b) ^ "_t"); pr_id_opt ()
-    | CTypFloat(16) -> pstr "float16_t"; pr_id_opt ()
-    | CTypFloat(32) -> pstr "float"; pr_id_opt ()
-    | CTypFloat(64) -> pstr "double"; pr_id_opt ()
-    | CTypFloat(b) -> failwith (sprintf "invalid type CTypFloat(%d)" b)
-    | CTypString -> pstr "fx_str_t"; pr_id_opt ()
-    | CTypUChar -> pstr "char_"; pr_id_opt ()
-    | CTypBool -> pstr "bool_"; pr_id_opt ()
+    | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _ | CTypFloat _
+    | CTypString | CTypUniChar | CTypBool | CTypExn | CTypCSmartPtr | CTypArray(_, _) ->
+        let (cname, _) = ctyp2str t loc in
+        pstr cname; pr_id_opt ()
     | CTypVoid -> pstr "void";
         (match id_opt with
-        | Some i -> raise_compile_err noloc (sprintf "c_pp.ml: void cannot be used with id '%s'" (id2str i))
+        | Some i -> raise_compile_err loc (sprintf "c_pp.ml: void cannot be used with id '%s'" (id2str i))
         | _ -> ())
-    | CTypNil -> pstr "nil_t"; pr_id_opt ()
-    | CTypExn -> pstr "fx_exn_t"; pr_id_opt ()
     | CTypFun(args, rt) ->
-        obox(); pprint_ctyp_ rt None;
+        obox(); pprint_ctyp_ rt None loc;
         pspace(); pstr "(*";
         pr_id_opt_ false; pstr ")(";
         obox();
         (match args with
         | [] -> pstr "void"
-        | t :: [] -> pprint_ctyp_ t None
-        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
+        | t :: [] -> pprint_ctyp_ t None loc
+        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None loc) args);
         cbox(); pstr ")"; cbox()
     | CTypFunRawPtr(args, rt) ->
-        obox(); pprint_ctyp_ rt None;
+        obox(); pprint_ctyp_ rt None loc;
         pspace(); pstr "(*";
         pr_id_opt_ false; pstr ")(";
         obox();
         (match args with
         | [] -> pstr "void"
-        | t :: [] -> pprint_ctyp_ t None
-        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None) args);
+        | t :: [] -> pprint_ctyp_ t None loc
+        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None loc) args);
         cbox(); pstr ")"; cbox()
-    | CTypCSmartPtr -> pstr "fx_cptr_t"; pr_id_opt ()
     | CTypStruct (n_opt, selems) -> pr_struct (prefix0 ^ "struct") n_opt selems ""
     | CTypRawPtr ([], CTypStruct(n_opt, selems)) -> pr_struct (prefix0 ^ "struct") n_opt selems "*"
     | CTypUnion (n_opt, uelems) -> pr_struct (prefix0 ^ "union") n_opt uelems ""
@@ -154,31 +143,30 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode =
         obox();
         if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
         if (List.mem CTypConst attrs) then pstr "const " else ();
-        pprint_ctyp__ "" t None fwd_mode;
+        pprint_ctyp__ "" t None fwd_mode loc;
         pstr "*"; pr_id_opt();
         cbox()
-    | CTypArray _ -> pstr "fx_arr_t"; pr_id_opt()
     | CTypName n ->
         (match (fwd_mode, n) with
-        | (false, _) -> pprint_id n
-        | (true, Id.Name _) -> pprint_id n
-        | _ -> (match (cinfo n) with
+        | (false, _) -> pprint_id n loc
+        | (true, Id.Name _) -> pprint_id n loc
+        | _ -> (match (cinfo_ n loc) with
             | CTyp {contents={ct_typ=CTypRawPtr(_, CTypStruct((Some struct_id), _))}} ->
-                pstr "struct "; pprint_id struct_id; pstr "*"
-            | _ -> pprint_id n));
+                pstr "struct "; pprint_id struct_id loc; pstr "*"
+            | _ -> pprint_id n loc));
         pr_id_opt()
     | CTypLabel -> pstr "/*<label>*/"; pr_id_opt()
     | CTypAny -> pstr "void"; pr_id_opt())
 
-and pprint_ctyp_ t id_opt = pprint_ctyp__ "" t id_opt false
+and pprint_ctyp_ t id_opt loc = pprint_ctyp__ "" t id_opt false loc
 
 and pprint_cexp_ e pr =
     match e with
-    | CExpIdent(i, _) -> pprint_id i
-    | CExpLit(l, _) ->
+    | CExpIdent(i, (_, loc)) -> pprint_id i loc
+    | CExpLit(l, (_, loc)) ->
         let s = match l with
         | LitNil -> "0"
-        | _ -> Ast_pp.lit_to_string l in
+        | _ -> Ast_pp.lit_to_string l loc in
         pstr s
     | CExpBinOp (COpArrayElem as bop, a, b, _) ->
         let (_, pr0, _) = binop2str_ bop in
@@ -203,12 +191,12 @@ and pprint_cexp_ e pr =
         | _ ->
             pstr uop_str; pprint_cexp_ e pr0);
         if pr0 < pr then (pcut(); pstr ")") else (); cbox()
-    | CExpMem(e, m, _) ->
-        pprint_cexp_ e 1400; pstr "."; pprint_id m
-    | CExpArrow(e, m, _) ->
-        pprint_cexp_ e 1400; pstr "->"; pprint_id m
-    | CExpCast(e, t, _) ->
-        obox(); pstr "("; pprint_ctyp_ t None; pstr ")"; pcut(); pprint_cexp_ e 1301; cbox()
+    | CExpMem(e, m, (_, loc)) ->
+        pprint_cexp_ e 1400; pstr "."; pprint_id m loc
+    | CExpArrow(e, m, (_, loc)) ->
+        pprint_cexp_ e 1400; pstr "->"; pprint_id m loc
+    | CExpCast(e, t, loc) ->
+        obox(); pstr "("; pprint_ctyp_ t None loc; pstr ")"; pcut(); pprint_cexp_ e 1301; cbox()
     | CExpTernary (e1, e2, e3, _) ->
         let pr0 = 200 in
         obox(); (if pr0 < pr then (pstr "("; pcut()) else ());
@@ -236,7 +224,8 @@ and pprint_elist el =
         pprint_cexp_ e 0) el; cbox())
 
 and pprint_fun_hdr fname semicolon loc fwd_mode =
-    let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = match (cinfo fname) with
+    let { cf_typ; cf_cname; cf_args; cf_body; cf_flags; cf_loc } =
+        match (cinfo_ fname loc) with
         | CFun cf -> !cf
         | _ -> raise_compile_err loc (sprintf "the forward declaration of %s does not reference a function" (pp_id2str fname))
     in
@@ -248,16 +237,16 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
     obox();
     if List.mem FunStatic cf_flags then pstr "static " else ();
     if List.mem FunInline cf_flags then pstr "inline " else ();
-    pprint_ctyp_ rt None;
+    pprint_ctyp_ rt None cf_loc;
     pspace();
-    pprint_id cf_name;
+    pstr cf_cname;
     pstr "(";
     pcut();
     (*ovbox();*)
     Format.open_vbox 0;
     List.iteri (fun i (n, t) ->
         if i = 0 then () else (pstr ","; pspace());
-        ohbox(); pprint_ctyp__ "" t (Some n) true; cbox()) typed_args;
+        ohbox(); pprint_ctyp__ "" t (Some n) true cf_loc; cbox()) typed_args;
     cbox(); pstr (")" ^ (if semicolon then ";" else "")); cbox();
     pbreak()
 
@@ -286,8 +275,8 @@ and pprint_cstmt s =
         (match s2 with
         | CStmtNop _ | CStmtBlock ([], _) -> ()
         | _ -> pstr "else"; obox(); pprint_cstmt s2; cbox())
-    | CStmtGoto(n, _) -> pstr "goto "; pprint_id n
-    | CStmtLabel (n, _) -> pbreak(); pprint_id n; pstr ":"
+    | CStmtGoto(n, loc) -> pstr "goto "; pprint_id n loc
+    | CStmtLabel (n, loc) -> pbreak(); pprint_id n loc; pstr ":"
     | CStmtFor(e1, e2_opt, e3, body, _) ->
         pstr "for (";
         (match e1 with
@@ -327,8 +316,8 @@ and pprint_cstmt s =
             pbreak()
             ) cases;
         pstr "}"
-    | CDefVal (t, n, e_opt, l) ->
-        pprint_ctyp_ t (Some n);
+    | CDefVal (t, n, e_opt, loc) ->
+        pprint_ctyp_ t (Some n) loc;
         (match e_opt with
         | Some e -> pspace(); pstr "="; pspace(); pprint_cexp_ e 0
         | _ -> ());
@@ -342,12 +331,12 @@ and pprint_cstmt s =
     | CDefForwardFun (cf_name, cf_loc) ->
         pprint_fun_hdr cf_name true cf_loc true
     | CDefTyp ct ->
-        let { ct_name; ct_typ } = !ct in
-        pprint_ctyp__ "typedef " ct_typ (Some ct_name) true; pstr ";"; pbreak()
-    | CDefForwardTyp (n, _) ->
-        pstr "struct "; pprint_id n; pstr ";"
+        let { ct_name; ct_typ; ct_loc } = !ct in
+        pprint_ctyp__ "typedef " ct_typ (Some ct_name) true ct_loc; pstr ";"; pbreak()
+    | CDefForwardTyp (n, loc) ->
+        pstr "struct "; pprint_id n loc; pstr ";"
     | CDefEnum ce ->
-        let { ce_name; ce_members } = !ce in
+        let { ce_cname; ce_members; ce_loc } = !ce in
         ohbox();
         pstr "typedef enum {";
         cbox();
@@ -355,31 +344,31 @@ and pprint_cstmt s =
         ovbox();
         List.iteri (fun i (n, e_opt) ->
             if i = 0 then pstr "   " else (pstr ","; pspace());
-            pprint_id n;
+            pprint_id n ce_loc;
             match e_opt with
             | Some e -> pstr "="; pprint_cexp_ e 0
             | _ -> ()) ce_members;
-        cbox(); pbreak(); pstr "} "; pprint_id ce_name; pstr ";"; pbreak()
+        cbox(); pbreak(); pstr "} "; pstr ce_cname; pstr ";"; pbreak()
     | CMacroDef cm ->
-        let {cm_name=n; cm_args=args; cm_body=body} = !cm in
-        pstr "#define "; pprint_id n;
-        (match args with
+        let {cm_cname; cm_args; cm_body; cm_loc} = !cm in
+        pstr "#define "; pstr cm_cname;
+        (match cm_args with
         | [] -> ()
         | _ ->
             pstr "(";
             List.iteri (fun i a ->
                 if i = 0 then () else pstr ", ";
-                pprint_id a) args;
+                pprint_id a cm_loc) cm_args;
             pstr ")");
-        (match body with
+        (match cm_body with
         | [] -> ()
         | _ -> List.iter (fun s ->
             pspace();
             pstr "\\";
             pbreak();
             pstr "    ";
-            pprint_cstmt s) body)
-    | CMacroUndef (n, _) -> ohbox(); pstr "#undef "; pprint_id n; cbox()
+            pprint_cstmt s) cm_body)
+    | CMacroUndef (n, loc) -> ohbox(); pstr "#undef "; pprint_id n loc; cbox()
     | CMacroIf (cs_l, else_l, _) ->
         List.iteri (fun i (c, sl) ->
             pbreak(); ohbox();
@@ -394,7 +383,7 @@ and pprint_cstmt s =
         ohbox(); pstr "#endif"
     | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox())
 
-let pprint_ktyp_x t = Format.print_flush (); Format.open_box 0; pprint_ctyp_ t None; Format.close_box(); Format.print_flush ()
+let pprint_ctyp_x t loc = Format.print_flush (); Format.open_box 0; pprint_ctyp_ t None loc; Format.close_box(); Format.print_flush ()
 let pprint_cexp_x e = Format.print_flush (); Format.open_box 0; pprint_cexp_ e 0; Format.close_box(); Format.print_flush ()
 let pprint_cstmt_x s = Format.print_flush (); Format.open_box 0; pprint_cstmt s; Format.close_box(); Format.print_flush ()
 let pprint_top code = Format.print_flush (); Format.open_vbox 0; List.iter (fun s -> pprint_cstmt s; pbreak()) code; Format.close_box(); pbreak(); Format.print_flush ()

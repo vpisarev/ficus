@@ -171,11 +171,12 @@ let print_all_compile_errs () =
     let nerrs = List.length !compile_errs in
     if nerrs = 0 then ()
     else
-        (List.iter print_compile_err !compile_errs;
-        printf "\n\n%d errors occured during type checking.\n" nerrs)
+        (List.iter print_compile_err (List.rev !compile_errs);
+        printf "\n%d errors occured during type checking.\n" nerrs)
 
 let process_all fname0 =
     init();
+    let ok =
     try
         let _ = if (parse_all fname0) then () else raise CumulativeParseError in
         let graph = Hashtbl.fold (fun mfname m gr ->
@@ -196,3 +197,6 @@ let process_all fname0 =
     with
     | Failure msg -> print_string msg; false
     | e -> (printf "\n\nException %s occured" (Printexc.to_string e)); false
+    in if not ok then
+        print_all_compile_errs()
+    else (); ok

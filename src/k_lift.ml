@@ -270,7 +270,7 @@ let lift_all top_code =
     let _ = finalize_sets iters0 (List.rev (Env.fold (fun f _ ll_all -> f :: ll_all) !ll_env [])) in
     let all_fvars = Env.fold (fun _ ll_info all_fvars ->
         IdSet.union (ll_info.ll_fvars) all_fvars) !ll_env IdSet.empty in
-    let all_mut_fvars = IdSet.filter (fun i -> is_mutable i (get_idk_loc i)) all_fvars in
+    let all_mut_fvars = IdSet.filter (fun i -> is_mutable i (get_idk_loc i noloc)) all_fvars in
     (*
       for each mutable variable:
       - convert its type from 't' to 't*' (reference)
@@ -341,7 +341,7 @@ let lift_all top_code =
             (match (Env.find_opt n !curr_subst_env) with
             | Some n2 -> Atom.Id n2
             | _ ->
-                (match (kinfo n) with
+                (match (kinfo_ n loc) with
                 | KFun {contents={kf_flags}} ->
                     if List.mem FunConstr kf_flags then a
                     else raise_compile_err loc

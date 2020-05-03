@@ -28,8 +28,8 @@ enum
     FX_FILE_OPEN_ERR = -7,
     FX_FILE_NULLHANDLE_ERR = -8,
     FX_FILE_IO_ERR = -9,
-    FX_BREAK = -10,
-    FX_CONTINUE = -11,
+    FX_BREAK_ERR = -10,
+    FX_CONTINUE_ERR = -11,
 };
 
 /////////////////// Various Basic Definitions ////////////////
@@ -105,8 +105,23 @@ void fx_free(void* ptr);
     typ* ptr = (typ*)fx_malloc(sz); \
     if(!ptr) return FX_OUT_OF_MEM_ERR
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
-#define FX_BREAK(label) fx_status = FX_BREAK; goto label
-#define FX_CONTINUE(label) fx_status = FX_CONTINUE; goto label
+#define FX_BREAK(label) fx_status = FX_BREAK_ERR; goto label
+#define FX_CONTINUE(label) fx_status = FX_CONTINUE_ERR; goto label
+#define FX_LOOP_CATCH_BREAK_CONTINUE(label) \
+    if(fx_status >= 0) \
+        ; \
+    else if(fx_status == FX_BREAK_ERR) { \
+        fx_status = FX_OK; \
+        break; \
+    } \
+    else if(fx_status == FX_CONTINUE_ERR) \
+        fx_status = FX_OK; \
+    else goto label
+
+#define FX_LOOP_CATCH(label) \
+    if(fx_status >= 0) \
+        ; \
+    else goto label
 
 #define FX_COPY_PTR(src, dst) FX_INCREF((src)->rc); *(dst) = (src)
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)

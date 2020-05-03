@@ -160,7 +160,6 @@ let new_idk_idx() =
     if new_idx = new_kidx then new_idx else
         failwith "internal error: unsynchronized outputs from new_id_idx() and new_idk_idx()"
 
-let kinfo i = dynvec_get all_idks (id2idx i)
 let kinfo_ i loc = dynvec_get all_idks (id2idx_ i loc)
 
 let gen_temp_idk s =
@@ -239,7 +238,7 @@ let get_kinfo_loc info =
     | KTyp {contents = {kt_loc}} -> kt_loc
     | KClosureVars {contents = {kcv_loc}} -> kcv_loc
 
-let get_idk_loc i = get_kinfo_loc (kinfo i)
+let get_idk_loc i loc = get_kinfo_loc (kinfo_ i loc)
 
 let check_kinfo info i loc =
     match info with
@@ -388,7 +387,8 @@ and check_n_walk_id n loc callb =
     | Some(f) ->
         (match f (Atom.Id n) loc callb with
         | Atom.Id n -> n
-        | _ -> failwith "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
+        | _ -> raise_compile_err loc
+            "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
     | _ -> n
 
 and walk_ktyp t loc callb =

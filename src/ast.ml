@@ -310,17 +310,16 @@ exception SyntaxError of string*Lexing.position*Lexing.position
 let loc2str loc = sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
 
 exception CompileError of loc_t * string
+exception PropagateCompileError
 
 let compile_errs = ref ([]: exn list)
 
-let raise_compile_err_ err =
-    compile_errs := err :: !compile_errs;
-    raise err
-
 let raise_compile_err loc msg =
-    let whole_msg = sprintf "%s: %s\n" (loc2str loc) msg in
-    let err = CompileError(loc, whole_msg) in
-    raise_compile_err_ err
+    let whole_msg = sprintf "%s: %s" (loc2str loc) msg in
+    raise (CompileError(loc, whole_msg))
+
+let push_compile_err err =
+    compile_errs := err :: !compile_errs
 
 let pop_compile_err loc =
     match !compile_errs with
@@ -329,14 +328,14 @@ let pop_compile_err loc =
 
 let check_compile_errs () =
     match !compile_errs with
-    | err :: _ -> raise err
+    | err :: _ -> raise PropagateCompileError
     | _ -> ()
 
 let print_compile_err err =
     match err with
     (* error message has been formatted already in raise_typecheck_err(); just print it *)
     | CompileError(_, msg) -> printf "%s\n" msg
-    | Failure msg -> printf "%s\n" msg
+    | Failure msg -> printf "Failure: %s\n" msg
     | _ -> printf "\n\nException %s occured\n" (Printexc.to_string err)
 
 let id2prefix i =
@@ -493,8 +492,8 @@ let get_idinfo_loc id_info = match id_info with
     | IdClass {contents = {dcl_loc}} -> dcl_loc
     | IdInterface {contents = {di_loc}} -> di_loc
 
-let get_idinfo_typ id_info = match id_info with
-    | IdNone -> failwith "attempt to request type of non-existing symbol"
+let get_idinfo_typ id_info loc = match id_info with
+    | IdNone -> raise_compile_err loc "attempt to request type of non-existing symbol"
     | IdModule _ -> TypModule
     | IdVal {dv_typ} -> dv_typ
     | IdFun {contents = {df_typ}} -> df_typ
@@ -504,7 +503,7 @@ let get_idinfo_typ id_info = match id_info with
     | IdClass {contents = {dcl_typ}} -> dcl_typ
     | IdInterface {contents = {di_name}} -> TypApp([], di_name)
 
-let get_id_typ i = match i with Id.Name _ -> TypVar (ref None) | _ -> get_idinfo_typ (id_info i)
+let get_id_typ i loc = match i with Id.Name _ -> TypVar (ref None) | _ -> get_idinfo_typ (id_info i) loc
 
 (* used by the type checker *)
 let get_lit_typ l = match l with
@@ -585,7 +584,7 @@ let fname_to_double() = get_id "double"
 let fname_to_bool() = get_id "bool"
 let fname_to_string() = get_id "string"
 
-let get_binop_fname bop =
+let get_binop_fname bop loc =
     match bop with
     | OpAdd -> fname_op_add()
     | OpSub -> fname_op_sub()
@@ -605,15 +604,17 @@ let get_binop_fname bop =
     | OpCompareGT -> fname_op_gt()
     | OpCompareGE -> fname_op_ge()
     | OpLogicAnd | OpLogicOr | OpCons ->
-        failwith (sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
+        raise_compile_err loc
+            (sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
 
-let get_unop_fname uop =
+let get_unop_fname uop loc =
     match uop with
     | OpPlus -> fname_op_plus()
     | OpNegate -> fname_op_negate()
     | OpBitwiseNot -> fname_op_bit_not()
     | OpLogicNot | OpExpand | OpMkRef | OpDeref ->
-        failwith (sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
+        raise_compile_err loc
+            (sprintf "for unary operation \"%s\" there is no corresponding function" (unop_to_string uop))
 
 let fname_always_import () =
 [

@@ -82,8 +82,8 @@ let make_label basename sc loc =
     let li = gen_temp_idc basename in
     let cname = if basename = "cleanup" then "_fx_cleanup"
         else (sprintf "_fx_%s%d" basename (id2idx li)) in
-    set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_scope=sc; loc=loc});
-    (li, CStmtLabel(li, loc))
+    set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_scope=sc; cl_loc=loc});
+    li
 
 (* Finds a set of immutable values that can potentially be replaced
    with the expressions that they are initalized with, e.g.
@@ -148,24 +148,27 @@ type block_ctx_t =
     bctx_label: id_t;
     mutable bctx_prologue: cstmt_t list;
     mutable bctx_cleanup: cstmt_t list;
-    mutable bctx_have_break: bool;
-    mutable bctx_have_continue: bool;
+    mutable bctx_break_used: int;
+    mutable bctx_continue_used: int;
+    mutable bctx_label_used: int;
 }
 
 let gen_ccode topcode =
     let i2e = ref (Env.empty: cexp_t env_t) in
     let u1vals = find_single_use_vals topcode in
     let block_stack = ref ([]: block_ctx_t list) in
+    let curr_fun = ref noid in
 
     let check_inside_loop is_break loc =
         let rec check_inside_loop_ s =
             match s with
             | ({bctx_kind=BlockKind_Loop;} as top) :: _ ->
                 if is_break then
-                    top.bctx_have_break <- true
+                    top.bctx_break_used <- top.bctx_break_used + 1
                 else
-                    top.bctx_have_continue <- true
-            | {bctx_kind=BlockKind_General} :: _ ->
+                    top.bctx_continue_used <- top.bctx_continue_used + 1
+            | {bctx_kind=BlockKind_General} :: _
+            | {bctx_kind=BlockKind_Fun} :: _ ->
                 raise_compile_err loc
                     (sprintf "'%s' is used outside of a loop" (if is_break then "break" else "continue"))
             | _ :: rest -> check_inside_for rest
@@ -177,9 +180,30 @@ let gen_ccode topcode =
         | _ -> raise_compile_err loc "cgen internal err: empty block stack!"
     in
 
+    let new_block_ctx kind sc loc =
+        let l_basename = match kind with
+            | BlockKind_Global | BlockKind_Fun -> "cleanup"
+            | _ -> "catch" in
+        let l = make_label l_basename sc loc in
+        let bctx = {bctx_kind = kind; bctx_scope=sc; bctx_label=l;
+                    bctx_prologue=[]; bctx_cleanup=[];
+                    bctx_break_used=0; bctx_continue_used=0;
+                    bctx_label_used=0} in
+        block_stack := bctx :: !block_stack
+    in
+
     let curr_block_label loc =
-        let {bctx_label} = curr_block_ctx loc in
-        make_id_exp bctx_label loc
+        let bctx = curr_block_ctx loc in
+        bctx.bctx_label_used <- bctx.bctx_label_used + 1;
+        make_id_exp bctx.bctx_label loc
+    in
+
+    let parent_block_label loc = match !block_stack with
+        | _ :: parent :: _ ->
+            parent.bctx_label_used <- parent.bctx_label_used + 1;
+            made_id_exp parent.bctx_label loc
+        | _ ->
+            raise_compile_err loc "cgen internal err: there is no parent block!"
     in
 
     let add_fx_call call_exp ccode loc =
@@ -215,12 +239,13 @@ let gen_ccode topcode =
             | _ ->
                 (match ctyp with
                 | CTypName tn ->
-                    (match (cinfo tn) with
+                    (match (cinfo_ tn cloc) with
                     | CTyp {contents={ct_typ=CTypStruct(_, relems)}} ->
                         (c_e, relems)
                     | CTyp {contents={ct_typ=CTypRawPtr(_, CTypStruct(_, relems))}} ->
                         ((cexp_deref ce), relems)
-                    | _ -> raise_compile_err cloc (sprintf "the type '%s' is not a structure" (get_idc_cname tn)))
+                    | _ -> raise_compile_err cloc
+                        (sprintf "the type '%s' is not a structure" (get_idc_cname tn cloc)))
                 | CTypStruct(_, relems) -> (ce, relems)
                 | _ -> raise_compile_err cloc "a structure is expected here")
         in try_deref c_e ctyp
@@ -243,6 +268,7 @@ let gen_ccode topcode =
         let (ktyp, kloc) = get_kexp_ctx kexp in
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = CExpStructInit([], (CTypVoid, kloc)) in
+        let is_dummy_exp e = match e with CExpStructInit([], (CTypVoid, _)) -> true | _ -> false in
         (* generate exp and then optionally generate the assignment if needed *)
         let (assign, cexp, ccode) = match kexp with
         | KExpNop _ -> (false, dummy_exp, ccode)
@@ -274,7 +300,7 @@ let gen_ccode topcode =
                 | Some(e) -> e
                 | _ ->
                     let e = make_id_exp i kloc in
-                    let add_deref = match cinfo i with
+                    let add_deref = match cinfo_ i kloc with
                     | CDefVal {cv_typ} ->
                         (match cv_typ with
                         | CTypRawPtr(_, ctyp2) when ctyp2 = ctyp -> true
@@ -508,7 +534,7 @@ let gen_ccode topcode =
                fx_status = FX_OK; goto next_label_in_stack; // propagate the unhandled exception
             end_catch:
                // here we jump after each successful try or after successful catch.
-               *)
+            *)
         | KExpThrow(i, _) -> raise_compile_err kloc "cgen: unsupported KExpThrow"
             (*
                 set the current exception to i, which includes setting fx_status=i.tag;

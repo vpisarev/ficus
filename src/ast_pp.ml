@@ -24,21 +24,21 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
-let lit_to_string c = match c with
+let lit_to_string c loc = match c with
     | LitInt(v) -> sprintf "%Li" v
     | LitSInt(b, v) -> sprintf "%Lii%d" v b
     | LitUInt(b, v) -> sprintf "%Luu%d" v b
     | LitFloat(16, v) -> sprintf "%.4gh" v
     | LitFloat(32, v) -> sprintf "%.8gf" v
     | LitFloat(64, v) -> sprintf "%.16g" v
-    | LitFloat(b, v) -> failwith (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
+    | LitFloat(b, v) -> raise_compile_err loc (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
     | LitString(s) -> "\"" ^ (String.escaped s) ^ "\""
     | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
     | LitBool(true) -> "True"
     | LitBool(false) -> "False"
     | LitNil -> "Nil"
 
-let pprint_lit x = pstr (lit_to_string x)
+let pprint_lit x loc = pstr (lit_to_string x loc)
 let pprint_id x = pstr (match x with Id.Name(0) -> "__" | _ -> id2str x)
 
 type typ_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
@@ -58,25 +58,25 @@ let rec get_typ_pr t = match t with
 let need_parens p p1 = p1 > p
 let opt_parens p p1 = if (need_parens p p1) then ("(", ")") else ("", "")
 
-let rec pptype_ t p1 =
-    let p = get_typ_pr t in
+let rec pptype_ t p1 loc =
+    let prec = get_typ_pr t in
     let pptypsuf t1 suf =
-        let (lp, rp) = opt_parens p p1 in
-        (obox(); pstr lp; pptype_ t1 p; pstr rp; pstr " "; pstr suf; cbox()) in
+        let (lp, rp) = opt_parens prec p1 in
+        (obox(); pstr lp; pptype_ t1 prec loc; pstr rp; pstr " "; pstr suf; cbox()) in
     let pptypelist_ prefix args =
         pstr prefix; pcut(); obox();
-        (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pptype_ t TypPr0) args);
+        (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pptype_ t TypPr0 loc) args);
         cbox(); pcut(); pstr ")" in
     match t with
     | TypVar {contents=None} -> pstr "Auto"
-    | TypVar {contents=Some(t1)} -> pptype_ t1 p1
+    | TypVar {contents=Some(t1)} -> pptype_ t1 p1 loc
     | TypInt -> pstr "Int"
     | TypSInt(b) -> pstr ("Int" ^ (string_of_int b))
     | TypUInt(b) -> pstr ("UInt" ^ (string_of_int b))
     | TypFloat(16) -> pstr "Half"
     | TypFloat(32) -> pstr "Float"
     | TypFloat(64) -> pstr "Double"
-    | TypFloat(b) -> failwith (sprintf "invalid type TypFloat(%d)" b)
+    | TypFloat(b) -> raise_compile_err loc (sprintf "invalid type TypFloat(%d)" b)
     | TypString -> pstr "String"
     | TypChar -> pstr "Char"
     | TypBool -> pstr "Bool"
@@ -86,10 +86,10 @@ let rec pptype_ t p1 =
         obox(); pstr "(";
         (match tl with
         | [] -> pstr "Void"
-        | t1 :: [] -> pptype_ t1 p
-        | _ -> pptype_ (TypTuple tl) p);
+        | t1 :: [] -> pptype_ t1 prec loc
+        | _ -> pptype_ (TypTuple tl) prec loc);
         pspace(); pstr "->";
-        pptype_ t2 p;
+        pptype_ t2 prec loc;
         pstr ")"; cbox()
     | TypList(t1) -> pptypsuf t1 "List"
     | TypRef(t1) -> pptypsuf t1 "Ref"
@@ -101,8 +101,8 @@ let rec pptype_ t p1 =
     | TypRecord {contents=(rec_elems, ordered)} ->
         pstr (if ordered then "{" else "~{"); pcut(); obox();
         (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
-            pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0;
-            match v0_opt with Some(v0) -> pprint_lit v0 | _ -> ()) rec_elems);
+            pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0 loc;
+            match v0_opt with Some(v0) -> pprint_lit v0 loc | _ -> ()) rec_elems);
         cbox(); pcut(); pstr "}"
     | TypExn -> pstr "Exn"
     | TypErr -> pstr "Err"
@@ -110,7 +110,7 @@ let rec pptype_ t p1 =
     | TypDecl -> pstr "Declaration"
     | TypModule -> pstr "Module"
 
-let pprint_typ t = pptype_ t TypPr0
+let pprint_typ t loc = pptype_ t TypPr0 loc
 let pprint_templ_args tt = match tt with
     | [] -> ()
     | t :: [] -> pprint_id t; pspace()
@@ -128,9 +128,9 @@ let pprint_for_flags flags =
         | _ -> "")) flags); pstr ">"; pspace()
 
 let rec pprint_exp e =
-    let t = get_exp_typ e in
+    let (t, eloc) = get_exp_ctx e in
     let obox_cnt = ref 0 in
-    let obox_() = obox(); pstr "<"; pptype_ t TypPr0; pstr ">"; obox_cnt := !obox_cnt + 1 in
+    let obox_() = obox(); pstr "<"; pptype_ t TypPr0 eloc; pstr ">"; obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
     let ppcases pe_l = pstr "{"; pcut(); obox(); (List.iter (fun (pl, e) ->
             (List.iter (fun p -> pspace(); pstr "|"; pspace(); pprint_pat p) pl);
@@ -143,7 +143,7 @@ let rec pprint_exp e =
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace(); pprint_exp e0; cbox()
     | DefFun {contents={df_name; df_templ_args; df_args; df_typ;
-                df_body; df_flags; df_templ_inst }} ->
+                df_body; df_flags; df_templ_inst; df_loc}} ->
         let fkind = ref "FUN" in
         let is_constr = List.mem FunConstr df_flags in
         (obox(); (List.iter (fun ff -> match ff with
@@ -159,26 +159,27 @@ let rec pprint_exp e =
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
         cbox(); pcut(); pstr ")";
-        pspace(); pstr ":"; pspace(); pprint_typ df_typ; pspace();
+        pspace(); pstr ":"; pspace(); pprint_typ df_typ df_loc; pspace();
         pstr "="; pspace(); if is_constr then pstr "Constructor" else pprint_exp df_body; cbox())
-    | DefExn { contents = {dexn_name; dexn_typ } } ->
+    | DefExn { contents = {dexn_name; dexn_typ; dexn_loc} } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
         (match dexn_typ with
         | TypVoid -> ()
-        | _ -> pspace(); pstr "OF"; pspace(); pprint_typ dexn_typ); cbox()
-    | DefTyp { contents = {dt_name; dt_templ_args; dt_typ }} ->
+        | _ -> pspace(); pstr "OF"; pspace(); pprint_typ dexn_typ dexn_loc); cbox()
+    | DefTyp { contents = {dt_name; dt_templ_args; dt_typ; dt_loc}} ->
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
-        pspace(); pstr "="; pspace(); pprint_typ dt_typ; cbox()
-    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases; dvar_constr; dvar_flags; dvar_templ_inst; dvar_loc} } ->
+        pspace(); pstr "="; pspace(); pprint_typ dt_typ dt_loc; cbox()
+    | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases;
+                                dvar_constr; dvar_flags; dvar_templ_inst; dvar_loc} } ->
         obox(); if (List.mem VariantRecord dvar_flags) then pstr "TYPE RECORD" else pstr "TYPE";
         pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name; pstr "<";
-        pprint_typ dvar_alias; pstr ">";
+        pprint_typ dvar_alias dvar_loc; pstr ">";
         pspace(); pstr "="; pspace();
         let var_cases_constr = Utils.zip dvar_cases
             (if dvar_constr != [] then dvar_constr else List.map (fun (n, _) -> n) dvar_cases) in
         List.iteri (fun i ((n, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id n;
-            pstr "<"; pprint_id c; pstr ": "; pprint_typ (get_id_typ c); pstr ">: "; pprint_typ t)
+            pstr "<"; pprint_id c; pstr ": "; pprint_typ (get_id_typ c dvar_loc) dvar_loc; pstr ">: "; pprint_typ t dvar_loc)
         var_cases_constr;
         cbox();
         (match dvar_templ_inst with
@@ -220,7 +221,7 @@ let rec pprint_exp e =
             | Some(e3) -> pstr ":"; pprint_exp e3
             | None -> ());
             pstr ")"
-        | ExpLit(x, _) -> pprint_lit x
+        | ExpLit(x, (_, loc)) -> pprint_lit x loc
         | ExpIdent(n, _) -> pprint_id n
         | ExpBinOp(o, e1, e2, _) ->
             let ostr = binop_to_string o in
@@ -290,10 +291,12 @@ let rec pprint_exp e =
         | ExpTryCatch(e, pe_l, _) ->
             obox(); pstr "TRY"; pspace(); pprint_exp e; pspace();
             pstr "CATCH"; ppcases pe_l; cbox()
-        | ExpCast(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_typ t; cbox(); pstr ")"
-        | ExpTyped(e, t, _) -> pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_typ t; cbox(); pstr ")"
+        | ExpCast(e, t, (_, loc)) ->
+            pstr "("; obox(); pprint_exp e; pspace(); pstr ":>"; pspace(); pprint_typ t loc; cbox(); pstr ")"
+        | ExpTyped(e, t, (_, loc)) ->
+            pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_typ t loc; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
-        | _ -> printf "\n\n\n\nunknown exp!!!!!!!!!!!!!!!!!!!!\n\n\n\n"; failwith "unknown exp"
+        | _ -> raise_compile_err (get_exp_loc e) "pprint_exp: unknown exp"
         ); cbox_()
 and pprint_exp_as_seq e = match e with
     | ExpSeq(es, _) -> pprint_expseq es false
@@ -306,7 +309,7 @@ and pprint_expseq el braces =
 and pprint_pat p = match p with
     | PatAny(_) -> pstr "_<ANY>"
     | PatAs(p, n, _) -> pstr "("; pprint_pat p; pspace(); pstr "AS"; pspace(); pprint_id n; pstr ")"
-    | PatLit(c, _) -> pprint_lit c
+    | PatLit(c, loc) -> pprint_lit c loc
     | PatCons(p1, p2, _) -> pstr "("; pprint_pat p1; pspace(); pstr "::"; pspace(); pprint_pat p2; pstr ")"
     | PatIdent(n, _) -> pprint_id n
     | PatTuple(pl, _) -> pstr "("; obox();
@@ -318,7 +321,7 @@ and pprint_pat p = match p with
         List.iteri (fun i (n, p) -> if i = 0 then () else (pstr ","; pspace());
                     pprint_id n; pstr "="; pprint_pat p) elems;
         pstr "}"; cbox()
-    | PatTyped(p, t, _) -> pprint_pat p; pstr ":"; pspace(); pprint_typ t
+    | PatTyped(p, t, loc) -> pprint_pat p; pstr ":"; pspace(); pprint_typ t loc
 
 let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     Format.print_flush ();
@@ -336,6 +339,6 @@ let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     Format.close_box();
     Format.print_flush ()
 
-let pprint_typ_x t = Format.print_flush (); Format.open_box 0; pprint_typ t; Format.close_box(); Format.print_flush ()
+let pprint_typ_x t loc = Format.print_flush (); Format.open_box 0; pprint_typ t loc; Format.close_box(); Format.print_flush ()
 let pprint_exp_x e = Format.print_flush (); Format.open_box 0; pprint_exp e; Format.close_box(); Format.print_flush ()
 let pprint_pat_x p = Format.print_flush (); Format.open_box 0; pprint_pat p; Format.close_box(); Format.print_flush ()

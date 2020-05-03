@@ -272,11 +272,11 @@ let cfold_cast a res_t loc =
     let (c_opt, a_opt) = retain_atom ac a at in
     finalize_cfold_result c_opt a_opt res_t loc
 
-let print_subst_map m =
+let print_subst_map m loc =
     printf "subsitution map {\n";
     Env.iter (fun n a ->
         printf "\t%s: " (id2str n);
-        K_pp.pprint_atom_x a;
+        K_pp.pprint_atom_x a loc;
         printf ";\n") m;
     printf "}\n"
 

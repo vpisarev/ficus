@@ -111,9 +111,8 @@ type ctyp_t =
     | CTypUInt of int
     | CTypFloat of int
     | CTypVoid
-    | CTypNil
     | CTypBool
-    | CTypUChar
+    | CTypUniChar
     | CTypCSmartPtr
     | CTypString
     | CTypExn
@@ -196,7 +195,7 @@ let new_idc_idx() =
     if new_idx = new_kidx && new_idx = new_cidx then new_idx else
         failwith "internal error: unsynchronized outputs from new_id_idx(), new_idk_idx() and new_idc_idx()"
 
-let cinfo i = dynvec_get all_idcs (id2idx i)
+let cinfo_ i loc = dynvec_get all_idcs (id2idx_ i loc)
 
 let gen_temp_idc s =
     let i_name = get_id_prefix s in
@@ -279,7 +278,7 @@ let get_cinfo_loc info =
     | CLabel {cl_loc} -> cl_loc
     | CMacro {contents={cm_loc}} -> cm_loc
 
-let get_idc_loc i = get_cinfo_loc (cinfo i)
+let get_idc_loc i loc = get_cinfo_loc (cinfo_ i loc)
 
 let check_cinfo info i loc =
     match info with
@@ -290,8 +289,8 @@ let check_cinfo info i loc =
 let get_cinfo_typ info i loc =
     check_cinfo info i loc;
     match info with
-    | CNone -> CTypNil
-    | CText _ -> CTypNil
+    | CNone -> CTypAny
+    | CText _ -> CTypAny
     | CVal {cv_typ} -> cv_typ
     | CFun {contents = {cf_typ}} -> cf_typ
     | CTyp {contents = {ct_typ}} -> ct_typ
@@ -305,12 +304,12 @@ let get_cinfo_typ info i loc =
 let get_idc_typ i loc =
     match i with
     | Id.Name _ -> CTypAny
-    | _ -> get_cinfo_typ (cinfo i) i loc
+    | _ -> get_cinfo_typ (cinfo_ i loc) i loc
 
-let get_idc_cname i =
+let get_idc_cname i loc =
     match i with
     | Id.Name _ -> pp_id2str i
-    | _ -> (match (cinfo i) with
+    | _ -> (match (cinfo_ i loc) with
         | CNone -> ""
         | CText _ -> ""
         | CVal {cv_cname} -> cv_cname
@@ -320,32 +319,15 @@ let get_idc_cname i =
         | CEnum {contents = {ce_cname}} -> ce_cname
         | CMacro {contents = {cm_cname}} -> cm_cname)
 
-(*let get_ctyp_cname ctyp loc =
-    match ctyp with
-    | CTypInt -> "int_"
-    | CTypCInt -> "int"
-    | CTypSize_t -> "size_t"
-    | CTypSInt n -> sprintf "int%d_t" n
-    | CTypUInt n -> sprintf "uint%d_t" n
-    | CTypFloat 16 -> "half"
-    | CTypFloat 32 -> "float"
-    | CTypFloat 64 -> "double"
-    | CTypFloat n -> raise_compile_err loc (sprintf "cgen: invalid type CTypFloat(%d)" n)
-    | CTypVoid -> "void"
-    | CTypNil -> raise_compile_err loc (sprintf "cgen: invalid type CTypNil")
-    | CTypBool -> "bool"
-    | CTypUChar -> "char_"
-    | CTypCSmartPtr ->*)
-
 let get_lit_ctyp l = match l with
     | LitInt(_) -> CTypInt
     | LitSInt(b, _) -> CTypSInt(b)
     | LitUInt(b, _) -> CTypUInt(b)
     | LitFloat(b, _) -> CTypFloat(b)
     | LitString(_) -> CTypString
-    | LitChar(_) -> CTypUChar
+    | LitChar(_) -> CTypUniChar
     | LitBool(_) -> CTypBool
-    | LitNil -> CTypNil
+    | LitNil -> CTypRawPtr([], CTypVoid)
 
 let create_cdefval n t flags e_opt code sc loc =
     let dv = { cv_name=n; cv_typ=t; cv_cname=""; cv_flags=flags; cv_scope=sc; cv_loc=loc } in
@@ -425,8 +407,8 @@ and walk_ctyp t callb =
     let walk_ctyp_ t = check_n_walk_ctyp t callb in
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
-    | CTypSize_t | CTypVoid | CTypNil | CTypBool | CTypExn | CTypAny
-    | CTypUChar | CTypCSmartPtr | CTypString -> t
+    | CTypSize_t | CTypVoid | CTypBool | CTypExn | CTypAny
+    | CTypUniChar | CTypCSmartPtr | CTypString -> t
     | CTypStruct (n_opt, selems) ->
         CTypStruct((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) selems))
     | CTypUnion (n_opt, uelems) ->
@@ -563,8 +545,8 @@ and fold_ctyp t callb =
     let fold_id_opt_ i_opt = match i_opt with Some(i) -> check_n_fold_id i callb | _ -> () in
     (match t with
     | CTypInt | CTypCInt | CTypSInt _ | CTypUInt _ | CTypFloat _
-    | CTypSize_t | CTypVoid | CTypNil | CTypBool | CTypExn | CTypAny
-    | CTypUChar | CTypString | CTypCSmartPtr -> ()
+    | CTypSize_t | CTypVoid | CTypBool | CTypExn | CTypAny
+    | CTypUniChar | CTypString | CTypCSmartPtr -> ()
     | CTypStruct (n_opt, selems) ->
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) selems
     | CTypUnion (n_opt, uelems) ->
@@ -648,6 +630,43 @@ and fold_cstmt s callb =
         List.iter (fun (c, sl) -> fold_cexp_ c; fold_csl_ sl) cs_l;
         fold_csl_ else_l
     | CMacroInclude (_, l) -> ()
+
+let rec ctyp2str t loc =
+    match t with
+    | CTypInt -> ("int_", noid)
+    | CTypCInt -> ("int", noid)
+    | CTypSize_t -> ("size_t", noid)
+    | CTypSInt(b) -> (("int" ^ (string_of_int b) ^ "_t"), noid)
+    | CTypUInt(b) -> (("uint" ^ (string_of_int b) ^ "_t"), noid)
+    | CTypFloat(16) -> ("float16_t", noid)
+    | CTypFloat(32) -> ("float", noid)
+    | CTypFloat(64) -> ("double", noid)
+    | CTypFloat(b) -> raise_compile_err loc (sprintf "invalid type CTypFloat(%d)" b)
+    | CTypString -> ("fx_str_t", noid)
+    | CTypUniChar -> ("char_", noid)
+    | CTypBool -> ("bool_", noid)
+    | CTypVoid -> ("void", noid)
+    | CTypExn -> ("fx_exn_t", noid)
+    | CTypFun(_, _) ->
+        raise_compile_err loc "ctyp2str: function pointer type is not supported; use CTypName(...) instead"
+    | CTypFunRawPtr(args, rt) ->
+        raise_compile_err loc "ctyp2str: raw function pointer type is not supported; use CTypName(...) instead"
+    | CTypCSmartPtr -> ("fx_cptr_t", noid)
+    | CTypStruct (_, _) ->
+        raise_compile_err loc "ctyp2str: CTypStruct(...) is not supported; use CTypName(...) instead"
+    | CTypUnion (_, _) ->
+        raise_compile_err loc "ctyp2str: CTypUnion(...) is not supported; use CTypName(...) instead"
+    | CTypRawPtr (attrs, t) ->
+        let (s, _) = ctyp2str t loc in
+        let s = if (List.mem CTypConst attrs) then ("const " ^ s) else s in
+        let s = if (List.mem CTypVolatile attrs) then ("volatile " ^ s) else s in
+        ((s ^ "*"), noid)
+    | CTypArray _ -> ("fx_arr_t", noid)
+    | CTypName n -> let cname = get_idc_cname n loc in (cname, n)
+    | CTypLabel ->
+        raise_compile_err loc "ctyp2str: CTypLabel is not supported"
+    | CTypAny ->
+        raise_compile_err loc "ctyp2str: CTypAny is not supported"
 
 let make_ptr t = CTypRawPtr([], t)
 let make_const_ptr t = CTypRawPtr((CTypConst :: []), t)
