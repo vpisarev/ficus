@@ -37,6 +37,8 @@ let init_std_names () =
     std_FX_NOP := gen_std_macro "FX_NOP" 1;
     std_FX_BREAK := gen_std_macro "FX_BREAK" 1;
     std_FX_CONTINUE := gen_std_macro "FX_CONTINUE" 1;
+    std_FX_LOOP_CATCH_BREAK_CONTINUE := gen_std_macro "std_FX_LOOP_CATCH_BREAK_CONTINUE" 1;
+    std_FX_LOOP_CATCH := gen_std_macro "std_FX_LOOP_CATCH" 1;
 
     std_fx_copy_ptr := gen_std_fun "fx_copy_ptr" (std_CTypConstVoidPtr :: std_CTypVoidPtr :: []) CTypVoid;
 

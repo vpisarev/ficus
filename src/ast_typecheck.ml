@@ -176,7 +176,7 @@ and walk_exp e callb =
     | ExpIf(c, then_e, else_e, ctx) ->
         ExpIf((walk_exp_ c), (walk_exp_ then_e), (walk_exp_ else_e), (walk_ctx_ ctx))
     | ExpWhile(c, e, loc) -> ExpWhile((walk_exp_ c), (walk_exp_ e), loc)
-    | ExpDoWhile(c, e, loc) -> ExpDoWhile((walk_exp_ c), (walk_exp_ e), loc)
+    | ExpDoWhile(e, c, loc) -> ExpDoWhile((walk_exp_ e), (walk_exp_ c), loc)
     | ExpFor(pe_l, body, flags, loc) ->
         ExpFor((walk_pe_l_ pe_l), (walk_exp_ body), flags, loc)
     | ExpMap(pew_ll, body, flags, ctx) ->
@@ -1009,14 +1009,14 @@ and check_exp e env sc =
         let new_c = check_exp c env sc in
         let new_body = check_exp body env sc in
         ExpWhile (new_c, new_body, eloc)
-    | ExpDoWhile(c, body, _) ->
+    | ExpDoWhile(body, c, _) ->
         let (ctyp, cloc) = get_exp_ctx c in
         let (btyp, bloc) = get_exp_ctx body in
         let _ = unify ctyp TypBool cloc "do-while() loop condition should have 'bool' type" in
         let _ = unify btyp TypVoid bloc "do-while() loop body should have 'void' type" in
         let new_c = check_exp c env sc in
         let new_body = check_exp body env sc in
-        ExpDoWhile (new_c, new_body, eloc)
+        ExpDoWhile (new_body, new_c, eloc)
     | ExpFor(for_clauses, body, flags, _) ->
         let for_sc = new_block_scope() :: sc in
         let (for_clauses1, _, env1, _) = List.fold_left

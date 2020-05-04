@@ -177,10 +177,10 @@ let gen_ccode topcode =
 
     let curr_block_ctx loc = match !block_stack with
         | top :: _ -> top
-        | _ -> raise_compile_err loc "cgen internal err: empty block stack!"
+        | _ -> raise_compile_err loc "cgen: empty block stack!"
     in
 
-    let new_block_ctx kind sc loc =
+    let push_block_ctx kind sc loc =
         let l_basename = match kind with
             | BlockKind_Global | BlockKind_Fun -> "cleanup"
             | _ -> "catch" in
@@ -191,6 +191,11 @@ let gen_ccode topcode =
                     bctx_label_used=0} in
         block_stack := bctx :: !block_stack
     in
+
+    let pop_block_ctx loc =
+        match !block_stack with
+        | _ :: rest -> block_stack := rest
+        | _ -> raise_compile_err loc "cgen: empty block stack!"
 
     let curr_block_label loc =
         let bctx = curr_block_ctx loc in
@@ -251,6 +256,33 @@ let gen_ccode topcode =
         in try_deref c_e ctyp
     in
 
+    let gen_break_continue_stmt is_break loc =
+        let _ = check_inside_loop is_break loc in
+        let f = if is_break then !std_FX_BREAK else !std_FX_CONTINUE in
+        let l = curr_block_label loc in
+        CExp (make_call f (l::[]) CTypVoid loc)
+    in
+
+    let finalize_loop_body body_code loc =
+        let bctx = curr_block_ctx loc in
+        let {bctx_prologue; bctx_cleanup;
+            bctx_break_used;bctx_continue_used;
+            bctx_label_used} = bctx in
+        let epilogue =
+            if bctx_label_used = 0 then
+                bctx_cleanup
+            else
+                let parent_label_exp = parent_block_label loc in
+                let catch_m = if bctx_break_used + bctx_continue_used > 0 then
+                    !std_FX_LOOP_CATCH_BREAK_CONTINUE else !std_FX_LOOP_CATCH in
+                let handle_exn = make_call catch_m (parent_label_exp::[]) CTypVoid kloc in
+                (CExp handle_exn) :: bctx_cleanup
+            in
+        let body_code = epilogue @ body_code @ bctx_prologue in
+        let body_stmt = rccode2stmt body_code loc in
+        pop_block_ctx loc; body_stmt
+    in
+
     (*
         cases:
            - input kexp is void:
@@ -269,19 +301,16 @@ let gen_ccode topcode =
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = CExpStructInit([], (CTypVoid, kloc)) in
         let is_dummy_exp e = match e with CExpStructInit([], (CTypVoid, _)) -> true | _ -> false in
+
         (* generate exp and then optionally generate the assignment if needed *)
         let (assign, cexp, ccode) = match kexp with
         | KExpNop _ -> (false, dummy_exp, ccode)
         | KExpBreak _ ->
-            let _ = check_inside_loop true loc in
-            let f = make_id_exp !std_FX_BREAK loc in
-            let l = curr_block_label loc in
-            (false, dummy_exp, (CExp (CExpCall(f, l::[], (CTypVoid, loc)))) :: ccode)
+            let break_stmt = gen_break_continue_stmt true kloc in
+            (false, dummy_exp, break_stmt :: ccode)
         | KExpContinue _ ->
-            let _ = check_inside_loop false loc in
-            let f = make_id_exp !std_FX_CONTINUE loc in
-            let l = curr_block_label loc in
-            (false, dummy_exp, (CExp (CExpCall(f, l::[], (CTypVoid, loc)))) :: ccode)
+            let continue_stmt = gen_break_continue_stmt false kloc in
+            (false, dummy_exp, continue_stmt :: ccode)
         | KExpAtom(a, _) ->
             (match a with
             | Atom.Lit(l) ->
@@ -553,6 +582,7 @@ let gen_ccode topcode =
                 TBD
             *)
         | KExpWhile(c, body, _) ->
+            let _ = new_block_ctx BlockKind_Loop sc kloc in
             let (cc, cc_code) = kexp2cexp c (ref None) [] sc in
             let (is_for_loop, check_code) =
                 match (cc, cc_code) with
@@ -561,31 +591,42 @@ let gen_ccode topcode =
                 | _ ->
                     let cc_loc = get_cexp_loc cc in
                     let not_cc = CExpUnOp(COpLogicNot, cc, (CTypBool, cc_loc)) in
-                    let check_cc = CStmtIf(not_cc, CStmtBreak(cc_loc), CStmtNop(cc_loc), cc_loc) in
+                    let break_stmt = gen_break_continue_stmt cc_loc in
+                    let check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc) in
                     (true, check_cc :: cc_code)
                 in
-            (*
-                for body translation generate a new context
-                if c == true, replace with "for(;;) { body_ccode }"
-                if c is simple expression, but not "true", replace with "while(c) { body_ccode }"
-                otherwise replace with
-                for(;;) {
-                    ccode_for_c;
-                    if(!c) break;
-                    body_ccode;
-                }
-            *)
-        | KExpDoWhile(body, c, _) -> raise_compile_err kloc "cgen: unsupported KExpDoWhile"
-            (*
-                for body translation generate a new context
-                if c == true, replace with "for(;;) { body_ccode }
-                otherwise translate to
-                do {
-                    body_ccode;
-                    ccode_for_c;
-                }
-                while(final_c_exp);
-            *)
+            let (e, body_code) = kexp2cexp body (ref None) [] sc in
+            let body_code = ((CExp e) :: body_code) @ check_code in
+            let body_stmt = finalize_loop_body body_code kloc in
+            let loop_stmt = if is_for_loop then
+                    CStmtFor([], None, [], body_stmt, kloc)
+                else
+                    CStmtWhile(cc, loop_stmt, kloc)
+            in
+            (false, dummy_exp, loop_stmt :: ccode)
+        | KExpDoWhile(body, c, _) ->
+            let _ = new_block_ctx BlockKind_Loop sc kloc in
+            let (e, body_code) = kexp2cexp body (ref None) [] sc in
+            let (cc, cc_code) = kexp2cexp c (ref None) [] in
+            let (is_for_loop, check_code) =
+                match (cc, cc_code) with
+                | (CExp(CExpLit(LitBool(true), _)), []) -> (true, [])
+                | (_, []) -> (false, [])
+                | _ ->
+                    let cc_loc = get_cexp_loc cc in
+                    let not_cc = CExpUnOp(COpLogicNot, cc, (CTypBool, cc_loc)) in
+                    let break_stmt = gen_break_continue_stmt cc_loc in
+                    let check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc) in
+                    (true, check_cc :: cc_code)
+                in
+            let body_code = check_code :: body_code in
+            let body_stmt = finalize_loop_body body_code kloc in
+            let loop_stmt = if is_for_loop then
+                    CStmtFor([], None, [], body_stmt, kloc)
+                else
+                    CStmtDoWhile(loop_stmt, cc, kloc)
+            in
+            (false, dummy_exp, loop_stmt :: ccode)
         | KExpCCode(ccode_str, _) ->
             (false, CExpCCode(ccode_str, kloc), ccode)
         | KDefVal(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KDefVal"

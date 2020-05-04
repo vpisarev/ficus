@@ -114,8 +114,10 @@ void fx_free(void* ptr);
         fx_status = FX_OK; \
         break; \
     } \
-    else if(fx_status == FX_CONTINUE_ERR) \
+    else if(fx_status == FX_CONTINUE_ERR) { \
         fx_status = FX_OK; \
+        continue; \
+    } \
     else goto label
 
 #define FX_LOOP_CATCH(label) \

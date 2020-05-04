@@ -188,7 +188,6 @@ let process_all fname0 =
         let _ = if ok && options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
         let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
-        (*let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in*)
         let (code, ok) = if ok then k_optimize_all code else ([], false) in
         let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in
         let (ccode, ok) = if ok then k2c_all code else ([], false) in

@@ -214,7 +214,7 @@ let rec exp2kexp e code tref sc =
         let (e1, code1) = exp2kexp e1 [] false sc in
         let (e2, code2) = exp2kexp e2 [] false sc in
         let c = rcode2kexp (e1 :: code1) loc1 in
-        let body = rcode2kexp (e1 :: code2) loc2 in
+        let body = rcode2kexp (e2 :: code2) loc2 in
         (KExpWhile(c, body, eloc), code)
     | ExpDoWhile(e1, e2, _) ->
         let (e1, code1) = exp2kexp e1 [] false sc in

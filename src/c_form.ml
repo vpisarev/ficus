@@ -738,6 +738,8 @@ let std_FX_COPY_SIMPLE_BY_PTR = ref noid
 let std_FX_NOP = ref noid
 let std_FX_BREAK = ref noid
 let std_FX_CONTINUE = ref noid
+let std_FX_LOOP_CATCH_BREAK_CONTINUE = ref noid
+let std_FX_LOOP_CATCH = ref noid
 
 let std_fx_copy_ptr = ref noid
 

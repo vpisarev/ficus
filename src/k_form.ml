@@ -597,7 +597,7 @@ and fold_kexp e callb =
     | KExpMem(k, _, ctx) -> fold_id_ k; ctx
     | KExpThrow(k, loc) -> fold_id_ k; (KTypErr, loc)
     | KExpWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
-    | KExpDoWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
+    | KExpDoWhile(e, c, loc) -> fold_kexp_ e; fold_kexp_ c; (KTypErr, loc)
     | KExpFor(kdl, body, _, loc) ->
         fold_kdl_ kdl; fold_kexp_ body; (KTypVoid, loc)
     | KExpMap(e_kdl_l, body, _, ctx) ->
