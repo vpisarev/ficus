@@ -18,7 +18,7 @@ fun ignore(_: 't) {}
 
 type 't option = None | Some: 't
 
-fun getOpt(x: 't option, defval: 't) = match (x) { | Some(x) => x | _ => defval }
+fun getOpt(x: 't option, defval: 't) = match x { | Some(x) -> x | _ -> defval }
 
 pure nothrow fun length(s: string): int = ccode "return s->length;"
 fun string(a: bool) = (a :> string)
@@ -46,9 +46,9 @@ fun atoi(a: string): int option
 {
     fun atoi_(a: string): (int, bool) = ccode
         "return fx_atoi(a, &fx_result->t0, &fx_result->t1, 10);"
-    match (atoi_(a)) {
-    | (x, true) => Some(x)
-    | _ => None
+    match atoi_(a) {
+    | (x, true) -> Some(x)
+    | _ -> None
     }
 }
 
@@ -66,9 +66,9 @@ pure nothrow fun sat_uint8(d: double): uint8 = ccode "
 pure nothrow fun round(x: float): int = ccode "return (int_)lrintf(x);"
 pure nothrow fun round(x: double): int = ccode "return (int_)lrint(x);"
 
-fun min(a: 't, b: 't) = if (a <= b) a else b
-fun max(a: 't, b: 't) = if (a >= b) a else b
-fun abs(a: 't) = if (a >= (0 :> 't)) a else -a
+fun min(a: 't, b: 't) = if a <= b {a} else {b}
+fun max(a: 't, b: 't) = if a >= b {a} else {b}
+fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
 
 fun print_string(a: string): void = ccode "return fx_puts(stdout, a->data);"
 
@@ -80,8 +80,8 @@ fun print(a: string) = print_string(a)
 fun print(l: 't list)
 {
     print("[")
-    for (i in 0:, x in l) {
-        if (i > 0) print(", ")
+    for i in 0:, x in l {
+        if i > 0 {print(", ")}
         print (x)
     }
     print("]")
@@ -90,9 +90,9 @@ fun print(l: 't list)
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
-fun array(n: int, x: 't) = [for (i in 0:n) x]
-fun array((m: int, n: int), x: 't) = [for (i in 0:m) for (j in 0:n) x]
-fun array((m: int, n: int, l: int), x: 't) = [for (i in 0:m) for (j in 0:n) for (k in 0:l) x]
+fun array(n: int, x: 't) = [for i in 0:n {x}]
+fun array((m: int, n: int), x: 't) = [for i in 0:m for j in 0:n {x}]
+fun array((m: int, n: int, l: int), x: 't) = [for i in 0:m for j in 0:n for k in 0:l {x}]
 
 pure nothrow fun size(a: 't []): int = ccode "return a->dim[0];"
 pure fun size(a: 't [,]): (int, int) = ccode

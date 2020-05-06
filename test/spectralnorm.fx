@@ -10,40 +10,43 @@ fun Au(u: double[])
 {
     val N = size(u)
 
-    [for (i in 0:N)
-        fold (t = 0.; j in 0:N)
+    [for i in 0:N {
+        fold t = 0. for j in 0:N {
             t += A(i, j) * u[j]
-    ]
+        }
+    }]
 }
 
 fun Atu(u: double[])
 {
     val N = size(u)
 
-    [for (i in 0:N)
-        fold (t = 0.; j in 0:N)
+    [for i in 0:N {
+        fold t = 0. for j in 0:N {
             t += A(j, i) * u[j]
-    ]
+        }
+    }]
 }
 
 fun AtAu(u: double[]) = Atu(Au(u))
 
 fun spectralnorm(n: int)
 {
-    val fold ((u, v) = (array(n, 1.), array(0, 0.)); i in 0:10)
+    val fold (u, v) = (array(n, 1.), array(0, 0.)) for i in 0:10
     {
         val v_ = AtAu(u)
         u = AtAu(v_)
         v = v_
     }
-    val fold((vBv, vv) = (0., 0.); ui in u, vi in v)
-        { vBv += ui*vi; vv += vi*vi }
+    val fold (vBv, vv) = (0., 0.) for ui in u, vi in v {
+        vBv += ui*vi
+        vv += vi*vi
+    }
     Math.sqrt(vBv/vv)
 }
 
-val N = match (Args.arguments())
-        {
-        | n_str :: [] => getOpt(atoi(n_str), 5500)
-        | _ => 5500
-        }
+val N = match Args.arguments() {
+    | n_str :: [] -> getOpt(atoi(n_str), 5500)
+    | _ -> 5500
+    }
 println(spectralnorm(N))

@@ -15,7 +15,7 @@ val ir = rect_ {x=0, y=0, width=10, height=10}
 val fr = rect_ {x=0.f, y=0.f, width=10.f, height=10.f}
 
 fun inside_outside(p: 't point_, r: 't rect_) =
-    if(contains(r, p)) "inside" else "outside of"
+    if contains(r, p) {"inside"} else {"outside of"}
 
 println("\(ip) is \(inside_outside(ip, ir)) \(ir)")
 println("\(fp) is \(inside_outside(fp, fr)) \(fr)")

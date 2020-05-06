@@ -8,9 +8,9 @@ println(str + c)
 val _2 = 2
 val a = (_2 + 2) | 8
 val a = a + 1
-fun fib(n: int) = if (n <= 1) 1 else fib(n-1) + fib(n-2)
+fun fib(n: int) = if n <= 1 {1} else {fib(n-1) + fib(n-2)}
 fun fib2(n: int) {
-    fun fib2_(a: int, b: int, n: int) = if (n <= 1) a else fib2_(a+b, a, n-1)
+    fun fib2_(a: int, b: int, n: int) = if n <= 1 {a} else {fib2_(a+b, a, n-1)}
     fib2_(1, 1, n)
 }
 fun fib_seq()
@@ -29,13 +29,23 @@ val fib3 = fib_seq()
 
 println("factorial(5)=\(testmod.fact(5))")
 
-for (i in 1:31) {
+var i = 0
+val a=[0, 1, 2, -1, 7]
+do
+{
+    val v = a[i]
+    if v < 0 {break}
+    i += 1
+}
+while i < 5
+
+for i in 1:31 {
     fun foo() {
         print(fib(i))
     }
-    print("fib(\(i))=");
-    foo();
-    print(", fib2(\(i))=\(fib2(i)), ");
+    print("fib(\(i))=")
+    foo()
+    print(", fib2(\(i))=\(fib2(i)), ")
     println("fib3(\(i))=\(fib3())")
 }
 
@@ -46,36 +56,45 @@ fun find_idx(a: 't [], elem: 't)
     val n = size(a)
     try
     {
-        for (i in 0:n) if (a[i] == elem) throw Break(i)
+        for i in 0:n {if a[i] == elem {throw Break(i)}}
         -1
     }
     catch
     {
-    | Break(i) => i
+    | Break(i) -> i
     }
 }
 
 val fixed_choice = "five"
 
-match (fixed_choice)
+match fixed_choice
 {
-    | "пять" => println("нашли 5")
-    | "five" => println("found 5")
-    | "五" => println("找到五个")
-    | _ => println("some other number")
+    | "пять" -> println("нашли 5")
+    | "five" -> println("found 5")
+    | "五" -> println("找到五个")
+    | _ -> println("some other number")
 }
 
-val fpair = List.find_opt(("a", 0) :: ("b", 1) :: ("rest", 2) :: [], (fun ((key, i): (string, int)) => key == "xyz"))
-println(match (fpair) {
-    | Some((x, y)) => y
-    | _ => -1
+if Math.sin(1.) > 0.7 {
+    println("sin(1) is greater than 0.7")
+} elif Math.sin(1.) < 0.1 {
+    println("sin(1) is smaller than 0.1")
+} else {
+    println("sin(1) is in between 0.1 and 0.7")
+}
+
+val fpair = List.find_opt(("a", 0) :: ("b", 1) :: ("rest", 2) :: [], fun ((key, i): (string, int)) {key == "xyz"})
+
+println(match fpair {
+    | Some((x, y)) -> y
+    | _ -> -1
     })
 
 val n = 30
-val a = [for (i in 0:n) 1]
-for (i in 1:n) a[i] += a[i-1]
+val a = [for i in 0:n {1}]
+for i in 1:n {a[i] += a[i-1]}
 
 println(find_idx([1, 2, 5], 5))
-val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], (fun (a: int, b: int) => a > b))
+val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], fun (a: int, b: int) {a > b})
 print("sorted: ")
 println(sorted)

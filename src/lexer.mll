@@ -28,10 +28,12 @@ let token2str t = match t with
     | CLASS -> "CLASS"
     | CONTINUE -> "CONTINUE"
     | DO -> "DO"
+    | ELIF -> "ELIF"
     | ELSE -> "ELSE"
     | EXCEPTION -> "EXCEPTION"
     | EXTENDS -> "EXTENDS"
     | FOLD -> "FOLD"
+    | B_FOR -> "B_FOR"
     | FOR -> "FOR"
     | FROM -> "FROM"
     | FUN -> "FUN"
@@ -73,7 +75,6 @@ let token2str t = match t with
     | CONS -> "CONS"
     | CAST -> "CAST"
     | BACKSLASH -> "BACKSLASH"
-    | DOUBLE_ARROW -> "DOUBLE_ARROW"
     | ARROW -> "ARROW"
     | QUESTION -> "QUESTION"
     | EOF -> "EOF"
@@ -101,7 +102,7 @@ let token2str t = match t with
     | MINUS_EQUAL -> "MINUS_EQUAL"
     | STAR_EQUAL -> "STAR_EQUAL"
     | SLASH_EQUAL -> "SLASH_EQUAL"
-    | BACKSLASH_EQUAL -> "BACKSLASH_EQUAL"
+    | DOT_EQUAL -> "DOT_EQUAL"
     | MOD_EQUAL -> "MOD_EQUAL"
     | AND_EQUAL -> "AND_EQUAL"
     | OR_EQUAL -> "OR_EQUAL"
@@ -124,7 +125,6 @@ let token2str_pp t =
     | RSQUARE -> "]"
     | RBRACE -> "}"
     | SEMICOLON -> ";"
-    | DOUBLE_ARROW -> "=>"
     | _ -> String.lowercase_ascii (token2str t)) ^ "'"
 
 let keywords = Hashtbl.create 101
@@ -140,25 +140,19 @@ let fname = ref "unknown"
        some explicit operator or a separator
    3 - a keyword that can play a role of a connector (type 1) or an expression beginning (type 2),
        depending on context
-   4 - a keyword 'kwd' (where 'kwd' = if, for, fold, while, match, ...) that starts a construction: 'kwd' (expr) ...
-        Such keywords must be handled in a special way.
-        Normally, after ')' there can be no new expressions/statements without a separator,
-        but not in the case of whose constructions: 'kwd' (...) new_expression.
-        So, as soon as we encountered such special keyword, we start counting parentheses and
-        set new_exp flag as soon as we closed all the parentheses. See the use of 'paren_stack'
 *)
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
         ("as", AS, 1); ("break", BREAK, 0);
         ("catch", CATCH, 1); ("ccode", CCODE, 2); ("class", CLASS, 2); ("continue", CONTINUE, 0);
-        ("do", DO, 2); ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
-        ("false", FALSE, 0); ("fold", FOLD, 4); ("for", FOR, 4); ("from", FROM, 2); ("fun", FUN, 2);
-        ("if", IF, 4); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3);
+        ("do", DO, 2); ("elif", ELIF, 1); ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
+        ("false", FALSE, 0); ("fold", FOLD, 2); ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2);
+        ("if", IF, 2); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3);
         ("in", IN, 1); ("inline", INLINE, 2); ("interface", INTERFACE, 2);
-        ("match", MATCH, 4); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
+        ("match", MATCH, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
         ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
-        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 4);
+        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2);
     ]
 
 let incr_lineno lexbuf =
@@ -195,11 +189,8 @@ let new_exp = ref true
    LPAREN, LSQUARE, LBRACE - corresponds to various parentheses;
                     wait for the corresponding closing bracket.
    IF, FOLD, FOR, WHILE - wait for the immediate ()
-   DO - wait for WHILE (after optional {})
    CLASS, INTERFACE - wait for {}
    FROM - wait for IMPORT
-   MATCH - wait for (), then wait for { | ... }.
-       when { | is met, remove MATCH from the stack.
    TRY - wait for CATCH (after optional {})
    CATCH - wait for { | ... }
    when IMPORT is met, remove FROM from the stack (if it is there)
@@ -226,13 +217,7 @@ let unmatchedTokenMsg t0 expected_list =
             | (LPAREN, _) :: _ -> ("Unmatched '('", "")
             | (LSQUARE, _) :: _ -> ("Unmatched '['", "")
             | (LBRACE, _) :: _ -> ("Unmatched '{'", "")
-            | (IF, _) :: _ -> ("Unfinished 'if'", "'()'")
-            | (DO, _) :: _ -> ("Unfinished do-while body", "'while'")
             | (FROM, _) :: _ -> ("Unfinished 'from'", "'import'")
-            | (FOLD, _) :: _ -> ("Unfinished 'fold'", "'()'")
-            | (FOR, _) :: _ -> ("Unfinished 'for'", "'()'")
-            | (WHILE, _) :: _ -> ("Unfinished 'while'", "'()'")
-            | (MATCH, _) :: _ -> ("Unfinished 'match'", "'()'")
             | (TRY, _) :: _ -> ("Unfinished 'try'", "catch")
             | (CATCH, _) :: _ -> ("Unfinished exception handling clause", "{| ... }")
             | (t1, _) :: _ -> ((token2str t1), "")
@@ -327,16 +312,6 @@ rule tokens = parse
     | ')'
         {
             (match (!paren_stack) with
-            | (LPAREN, _) :: (IF, _) :: rest ->
-                paren_stack := rest; new_exp := true; [RPAREN]
-            | (LPAREN, _) :: (FOLD, _) :: rest ->
-                paren_stack := rest; new_exp := true; [RPAREN]
-            | (LPAREN, _) :: (FOR, _) :: rest ->
-                paren_stack := rest; new_exp := true; [RPAREN]
-            | (LPAREN, _) :: (MATCH, _) :: rest ->
-                paren_stack := rest; new_exp := true; [RPAREN]
-            | (LPAREN, _) :: (WHILE, _) :: rest ->
-                paren_stack := rest; new_exp := true; [RPAREN]
             | (LPAREN, _) :: rest ->
                 paren_stack := rest; new_exp := false; [RPAREN]
             (* handle string interpolation e.g. "f(x)=\(f(x))" *)
@@ -418,7 +393,10 @@ rule tokens = parse
             (try
                 let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
                 match tokdata with
-                | (DO, _) | (TRY, _) | (IF, _) | (FOLD, _) | (FOR, _) | (MATCH, _) | (FROM, _) ->
+                | (FOR, _) ->
+                    let t = if !new_exp then B_FOR else FOR in
+                    new_exp := true; [t]
+                | (TRY, _) | (FROM, _) ->
                     check_ne lexbuf;
                     paren_stack := (tok, p0) :: !paren_stack; new_exp := true; [tok]
                 | (CATCH, _) ->
@@ -480,7 +458,7 @@ rule tokens = parse
     | "-="  { new_exp := true; [MINUS_EQUAL] }
     | "*="  { new_exp := true; [STAR_EQUAL] }
     | "/="  { new_exp := true; [SLASH_EQUAL] }
-    | "\\="  { new_exp := true; [BACKSLASH_EQUAL] }
+    | ".="  { new_exp := true; [DOT_EQUAL] }
     | "%="  { new_exp := true; [MOD_EQUAL] }
     | "&="  { new_exp := true; [AND_EQUAL] }
     | "|="  { new_exp := true; [OR_EQUAL] }
@@ -501,11 +479,6 @@ rule tokens = parse
     | "::"  { new_exp := true; [CONS] }
     | "\\"  { new_exp := true; [BACKSLASH] }
     | ":>"  { new_exp := true; [CAST] }
-    | "=>"
-        {
-            new_exp := true;
-            [DOUBLE_ARROW]
-        }
     | "->"  { new_exp := true; [ARROW] }
     | "?"   { new_exp := false; [QUESTION] }
     | eof   { [EOF] }

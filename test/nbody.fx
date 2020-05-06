@@ -66,21 +66,22 @@ val bodies = [sun, jupiter, saturn, uranus, neptune]
 
 fun offsetMomentum()
 {
-    bodies[0] \=
+    bodies[0] .=
     {
-        vel = fold(p = Vec{x=0., y=0., z=0.}; body in bodies)
-                p += body.vel * (body.mass / SolarMass)
+        vel = fold p=Vec{x=0., y=0., z=0.} for body in bodies {
+            p += body.vel * (body.mass / SolarMass)
+        }
     }
 }
 
 fun energy()
 {
     val n = size(bodies)
-    fold (e = 0.; i in 0:n)
+    fold e = 0. for i in 0:n
     {
         val bi = bodies[i]
         e += 0.5 * bi.mass * dot(bi.vel, bi.vel) -
-        (fold(e1 = 0.; j in (i+1):n)
+        (fold e1 = 0. for j in (i+1):n
         {
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
@@ -93,10 +94,10 @@ fun energy()
 fun advance(dt: double)
 {
     val n = size(bodies)
-    for (i in 0:n)
+    for i in 0:n
     {
         var bi = bodies[i]
-        for (j in (i+1):n)
+        for j in (i+1):n
         {
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
@@ -105,12 +106,12 @@ fun advance(dt: double)
             bi.vel -= diff * (bj.mass * mag)
             bodies[j].vel = bj.vel + diff * (bi.mass * mag)
         }
-        bodies[i] = bi \ { pos=bi.pos + bi.vel * dt }
+        bodies[i] = bi.{ pos=bi.pos + bi.vel * dt }
     }
 }
 
 offsetMomentum()
 println(energy())
-for (i in 0:50000000) advance(0.01)
+for i in 0:50000000 {advance(0.01)}
 println(energy())
 println("Done")

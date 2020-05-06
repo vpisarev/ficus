@@ -114,7 +114,7 @@ fun join(sep: string, sl:string list)
     "
     return fx_strjoin(sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);
     "
-    join_(sep, [for (s in sl) s])
+    join_(sep, [for s in sl {s}])
 }
 
 pure nothrow fun isalpha(c: char): bool = ccode "return fx_isalpha(c);"
