@@ -39,8 +39,8 @@ let token2str t = match t with
     | FUN -> "FUN"
     | IF -> "IF"
     | IMPLEMENTS -> "IMPLEMENTS"
+    | B_IMPORT -> "B_IMPORT"
     | IMPORT -> "IMPORT"
-    | IN -> "IN"
     | INLINE -> "INLINE"
     | INTERFACE -> "INTERFACE"
     | MATCH -> "MATCH"
@@ -57,6 +57,7 @@ let token2str t = match t with
     | VAL -> "VAL"
     | VAR -> "VAR"
     | WHEN -> "WHEN"
+    | B_WHILE -> "B_WHILE"
     | WHILE -> "WHILE"
     | B_LPAREN -> "B_LPAREN"
     | LPAREN -> "LPAREN"
@@ -75,6 +76,8 @@ let token2str t = match t with
     | CONS -> "CONS"
     | CAST -> "CAST"
     | BACKSLASH -> "BACKSLASH"
+    | BACK_ARROW -> "BACK_ARROW"
+    | DOUBLE_ARROW -> "DOUBLE_ARROW"
     | ARROW -> "ARROW"
     | QUESTION -> "QUESTION"
     | EOF -> "EOF"
@@ -125,6 +128,7 @@ let token2str_pp t =
     | RSQUARE -> "]"
     | RBRACE -> "}"
     | SEMICOLON -> ";"
+    | DOUBLE_ARROW -> "=>"
     | _ -> String.lowercase_ascii (token2str t)) ^ "'"
 
 let keywords = Hashtbl.create 101
@@ -143,13 +147,12 @@ let fname = ref "unknown"
 *)
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
-        ("as", AS, 1); ("break", BREAK, 0);
-        ("catch", CATCH, 1); ("ccode", CCODE, 2); ("class", CLASS, 2); ("continue", CONTINUE, 0);
-        ("do", DO, 2); ("elif", ELIF, 1); ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
-        ("false", FALSE, 0); ("fold", FOLD, 2); ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2);
-        ("if", IF, 2); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3);
-        ("in", IN, 1); ("inline", INLINE, 2); ("interface", INTERFACE, 2);
-        ("match", MATCH, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
+        ("as", AS, 1); ("break", BREAK, 0); ("catch", CATCH, 1); ("ccode", CCODE, 2);
+        ("class", CLASS, 2); ("continue", CONTINUE, 0); ("do", DO, 2); ("elif", ELIF, 1);
+        ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1); ("false", FALSE, 0);
+        ("fold", FOLD, 2); ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2);
+        ("if", IF, 2); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("inline", INLINE, 2);
+        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
         ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
         ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2);
@@ -188,12 +191,6 @@ let new_exp = ref true
 (* the stack of tokens. Can contain the following characters:
    LPAREN, LSQUARE, LBRACE - corresponds to various parentheses;
                     wait for the corresponding closing bracket.
-   IF, FOLD, FOR, WHILE - wait for the immediate ()
-   CLASS, INTERFACE - wait for {}
-   FROM - wait for IMPORT
-   TRY - wait for CATCH (after optional {})
-   CATCH - wait for { | ... }
-   when IMPORT is met, remove FROM from the stack (if it is there)
    when } is met, remove the corresponding { or { | from stack.
    when '|' is met and { | is on the top, return BAR token.
       otherwise return BITWISE_OR token.
@@ -217,9 +214,6 @@ let unmatchedTokenMsg t0 expected_list =
             | (LPAREN, _) :: _ -> ("Unmatched '('", "")
             | (LSQUARE, _) :: _ -> ("Unmatched '['", "")
             | (LBRACE, _) :: _ -> ("Unmatched '{'", "")
-            | (FROM, _) :: _ -> ("Unfinished 'from'", "'import'")
-            | (TRY, _) :: _ -> ("Unfinished 'try'", "catch")
-            | (CATCH, _) :: _ -> ("Unfinished exception handling clause", "{| ... }")
             | (t1, _) :: _ -> ((token2str t1), "")
             | _ -> ("<START>", ""))
         in let expected_msg = if expected <> "" then ", " ^ expected ^ " is expected" else "" in
@@ -346,9 +340,7 @@ rule tokens = parse
     | '}'
         {
             (match (!paren_stack) with
-            | (CATCH, _) :: (BAR, _) :: (LBRACE, _) :: rest -> paren_stack := rest
             | (BAR, _) :: (LBRACE, _) :: rest -> paren_stack := rest
-            | (CATCH, _) :: (LBRACE, _) :: rest -> paren_stack := rest
             | (LBRACE, _) :: rest -> paren_stack := rest
             | _ -> raise (lexErr "Unexpected '}'" lexbuf));
             new_exp := false;
@@ -388,7 +380,6 @@ rule tokens = parse
 
     | ("\'" ? as prefix) ((['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident)
         {
-            let (p0, p1) = get_token_pos lexbuf in
             if prefix <> "" then (check_ne(lexbuf); new_exp := false; [TYVAR ("\'" ^ ident)]) else
             (try
                 let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
@@ -396,30 +387,12 @@ rule tokens = parse
                 | (FOR, _) ->
                     let t = if !new_exp then B_FOR else FOR in
                     new_exp := true; [t]
-                | (TRY, _) | (FROM, _) ->
-                    check_ne lexbuf;
-                    paren_stack := (tok, p0) :: !paren_stack; new_exp := true; [tok]
-                | (CATCH, _) ->
-                    (match !paren_stack with
-                    | (TRY, _) :: rest -> paren_stack := (CATCH, p0) :: rest
-                    | _ -> raise (lexErr (unmatchedTokenMsg tok [TRY]) lexbuf));
-                    new_exp := true; [tok]
-                | (WHILE, _) ->
-                    (match !paren_stack with
-                    | (DO, _) :: rest ->
-                        paren_stack := (tok, p0) :: rest (* end of the do-while loop *)
-                    | rest ->
-                        check_ne lexbuf; (* if 'while' does not finish do-while loop,
-                                            it should start a new expression *)
-                        paren_stack := (tok, p0) :: rest);
-                    new_exp := true; [tok]
                 | (IMPORT, _) ->
-                    (match !paren_stack with
-                    | (FROM, _) :: rest ->
-                        paren_stack := rest
-                    | _ ->
-                        check_ne lexbuf);
-                    new_exp := true; [tok]
+                    let t = if !new_exp then B_IMPORT else IMPORT in
+                    new_exp := true; [t]
+                | (WHILE, _) ->
+                    let t = if !new_exp then B_WHILE else WHILE in
+                    new_exp := true; [t]
                 | (REF, _) -> let t = if !new_exp then [REF] else [REF_TYPE] in t
                 | (t, 0) -> check_ne(lexbuf); new_exp := false; [t]
                 | (t, 1) -> new_exp := true; [t]
@@ -479,6 +452,8 @@ rule tokens = parse
     | "::"  { new_exp := true; [CONS] }
     | "\\"  { new_exp := true; [BACKSLASH] }
     | ":>"  { new_exp := true; [CAST] }
+    | "<-"  { new_exp := true; [BACK_ARROW] }
+    | "=>"  { new_exp := true; [DOUBLE_ARROW] }
     | "->"  { new_exp := true; [ARROW] }
     | "?"   { new_exp := false; [QUESTION] }
     | eof   { [EOF] }

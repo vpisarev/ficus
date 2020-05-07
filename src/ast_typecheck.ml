@@ -877,11 +877,11 @@ and check_exp e env sc =
         | ((Some typ), _, _, _) ->
             unify typ etyp eloc "improper type of the arithmetic operation result";
             ExpBinOp(bop, new_e1, new_e2, ctx)
-        | (_, OpAdd, TypString, TypString)
+        (*| (_, OpAdd, TypString, TypString)
         | (_, OpAdd, TypString, TypChar)
         | (_, OpAdd, TypChar, TypString) ->
             unify TypString etyp eloc "improper type of the string concatenation operation (string is expected)";
-            ExpBinOp(bop, new_e1, new_e2, ctx)
+            ExpBinOp(bop, new_e1, new_e2, ctx)*)
         | _ ->
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)

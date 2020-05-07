@@ -6,7 +6,7 @@ fun fact(n: int)
 
 fun rgb2gray(rgbimg: (uint8, uint8, uint8) [,]) =
 [
-    for (r, g, b) in rgbimg {
+    for (r, g, b) <- rgbimg {
         sat_uint8(r*0.299f + g*0.587f + b*0.114f)
     }
 ]

@@ -12,14 +12,14 @@ fun make(i: 'a, d: int): 'a tree =
 
 fun check(_: 'a tree)
 {
-    | Empty -> (0 :> 'a)
-    | Node(l, i, r) -> i + check(l) - check(r)
+    | Empty => (0 :> 'a)
+    | Node(l, i, r) => i + check(l) - check(r)
 }
 
 val min_depth = 4
 val max_depth = match Args.arguments() {
-    | n_str :: [] -> getOpt(atoi(n_str), 20)
-    | _ -> 20
+    | n_str :: [] => getOpt(atoi(n_str), 20)
+    | _ => 20
     }
 val stretch_depth = max_depth + 1
 
@@ -34,9 +34,9 @@ val long_lived_tree = make(0, max_depth)
 val long_lived_tree_dbl = make(0.0, max_depth)
 
 parallel
-for depth in min_depth:(max_depth+1):2 {
+for depth <- min_depth:(max_depth+1):2 {
     val iterations = 1 << (max_depth - depth + min_depth)
-    val fold c = 0 for i in 1:(iterations+1) {
+    val fold c = 0 for i <- 1:(iterations+1) {
         c += check(make(i, depth)) + check(make(-i, depth))
     }
     println("\(iterations * 2)\t trees of depth \(depth)\t check: \(c)")

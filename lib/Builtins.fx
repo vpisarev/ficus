@@ -18,37 +18,48 @@ fun ignore(_: 't) {}
 
 type 't option = None | Some: 't
 
-fun getOpt(x: 't option, defval: 't) = match x { | Some(x) -> x | _ -> defval }
+fun getOpt(x: 't option, defval: 't) = match x { | Some(x) => x | _ => defval }
 
 pure nothrow fun length(s: string): int = ccode "return s->length;"
-fun string(a: bool) = (a :> string)
-fun string(a: int) = (a :> string)
-fun string(a: float) = (a :> string)
-fun string(a: double) = (a :> string)
+pure fun join(sep: string, strs:string []): string = ccode
+    "return fx_strjoin(sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);"
+
+fun join(sep: string, strs: string list) =
+    join(sep, [for s <- strs {s}])
+
+fun string(a: bool): string = if a {"true"} else {"false"}
+fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_cstr2str(buf, -1, fx_result);"
+fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_cstr2str(buf, -1, fx_result);"
+fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_cstr2str(buf, -1, fx_result);"
 fun string(a: string) = a
+fun string(a: 't []) {
+    val n = size(a)
+    join(", ",
+        [for i <- 0:n {
+            val ai = string(a[i])
+            if 0 <= i && i < n {ai} elif i == 0 {"["+ai} else {ai+"]"}
+        }])
+}
 
 operator == (a: string, b: string): bool = ccode "
     *fx_result = (bool)(a->length == b->length && (a->length == 0 || memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
     return FX_OK;"
 operator != (a: string, b: string): bool = !(a == b)
-/*fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_cstr2str(buf, -1, fx_result);"
-fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_cstr2str(buf, -1, fx_result);"
-fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_cstr2str(buf, -1, fx_result);"
 operator + (a: string, b: string): string = ccode "fx_str_t s[] = {*a, *b}; return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: string, b: char): string = ccode "
     fx_str_t s[] = {*a, {0, &b, 1}};
     return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: char, b: string): string = ccode "
     fx_str_t s[] = {{0, &a, 1}, *b};
-    return fx_strjoin(0, s, 2, fx_result);"*/
+    return fx_strjoin(0, s, 2, fx_result);"
 
 fun atoi(a: string): int option
 {
     fun atoi_(a: string): (int, bool) = ccode
         "return fx_atoi(a, &fx_result->t0, &fx_result->t1, 10);"
     match atoi_(a) {
-    | (x, true) -> Some(x)
-    | _ -> None
+    | (x, true) => Some(x)
+    | _ => None
     }
 }
 
@@ -80,7 +91,7 @@ fun print(a: string) = print_string(a)
 fun print(l: 't list)
 {
     print("[")
-    for i in 0:, x in l {
+    for i <- 0:, x <- l {
         if i > 0 {print(", ")}
         print (x)
     }
@@ -90,9 +101,9 @@ fun print(l: 't list)
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
-fun array(n: int, x: 't) = [for i in 0:n {x}]
-fun array((m: int, n: int), x: 't) = [for i in 0:m for j in 0:n {x}]
-fun array((m: int, n: int, l: int), x: 't) = [for i in 0:m for j in 0:n for k in 0:l {x}]
+fun array(n: int, x: 't) = [for i <- 0:n {x}]
+fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
+fun array((m: int, n: int, l: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
 
 pure nothrow fun size(a: 't []): int = ccode "return a->dim[0];"
 pure fun size(a: 't [,]): (int, int) = ccode

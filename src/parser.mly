@@ -123,6 +123,52 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_bod
 let rec compress_nested_map_exp nested_for =
     List.fold_left (fun l (loc, for_cl) -> (for_cl, None) :: l) [] nested_for
 
+let make_chained_cmp chain = match chain with
+    | (_, e1) :: [] -> e1
+    | (cmpop, e2) :: (_, e1) :: [] -> ExpBinOp(cmpop, e1, e2, (TypBool, curr_loc()))
+    | _ ->
+        (*
+            `first_e cmpop1 e1 cmpop2 ... last_cmpop last_e`
+            is transformed to
+            { val t1=e1
+              ...
+              val tn=en
+              first_e cmpop1 t1 && t1 cmpop2 t2 ... && tn last_cmpop last_e
+            }
+            if ej is a literal or identifier, it does not need tj;
+            instead ej is used as-is in the comparisons
+        *)
+        let (last_cmpop, last_e) = List.hd chain in
+        let chain = List.rev (List.tl chain) in
+        let (_, first_e) = List.hd chain in
+        let chain = List.tl chain in
+        let (chain, code) = List.fold_left (fun (chain, code) (cmpop, e) ->
+            let (new_e, code) = match e with
+                    | (ExpLit _) | (ExpIdent _) -> (e, code)
+                    | _ ->
+                        let e_loc = get_exp_loc e in
+                        let tmp_id = gen_temp_id "t" in
+                        let tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e, [], e_loc) in
+                        (ExpIdent(tmp_id, (make_new_typ(), e_loc)), (tmp_decl :: code))
+            in (((cmpop, new_e) :: chain), code)) ([], []) (List.rev chain) in
+        let rec process_chain result a chain =
+            let (cmpop, b, rest) = match chain with
+                | (cmpop, b) :: rest -> (cmpop, b, rest)
+                | _ -> (last_cmpop, last_e, [])
+                in
+            let cmp_e_loc = loclist2loc [get_exp_loc a] (get_exp_loc b) in
+            let cmp_e = ExpBinOp(cmpop, a, b, (TypBool, cmp_e_loc)) in
+            let result = match result with
+                | ExpNop _ -> cmp_e
+                | _ ->
+                    let result_loc = loclist2loc [get_exp_loc result] cmp_e_loc in
+                    ExpBinOp(OpLogicAnd, result, cmp_e, (TypBool, result_loc))
+                in
+            if chain = [] then result else process_chain result b rest
+        in
+        let chained_cmp_e = process_chain (ExpNop noloc) first_e chain in
+        expseq2exp (code @ (chained_cmp_e :: [])) 1
+
 %}
 
 %token TRUE FALSE
@@ -137,14 +183,14 @@ let rec compress_nested_map_exp nested_for =
 %token <string> TYVAR
 
 /* keywords */
-%token AS BREAK CATCH CCODE CLASS CONTINUE DO ELIF ELSE EXCEPTION
-%token EXTENDS FOLD B_FOR FOR FROM FUN IF IMPLEMENTS IMPORT IN INLINE INTERFACE
+%token AS BREAK CATCH CCODE CLASS CONTINUE DO ELIF ELSE EXCEPTION EXTENDS
+%token FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
 %token MATCH NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
-%token THROW TRY TYPE VAL VAR WHEN WHILE
+%token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE
-%token COMMA DOT SEMICOLON COLON BAR CONS CAST BACKSLASH ARROW QUESTION EOF
+%token COMMA DOT SEMICOLON COLON BAR CONS CAST BACKSLASH QUESTION ARROW DOUBLE_ARROW BACK_ARROW EOF
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
@@ -158,6 +204,7 @@ let rec compress_nested_map_exp nested_for =
 
 %right SEMICOLON
 %left COMMA
+%right DOUBLE_ARROW
 %left BAR
 %right THROW
 %right EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
@@ -201,20 +248,20 @@ top_level_exp:
 | stmt { $1 :: [] }
 | decl { $1 }
 | ccode_exp { ExpCCode($1, (TypVoid, curr_loc())) :: [] }
-| IMPORT module_name_list_
+| B_IMPORT module_name_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         [DirImport ((List.map (fun (a, b) ->
         let a1 = Utils.update_imported_modules a (pos0, pos1) in (a1, b)) $2), curr_loc())]
     }
-| FROM dot_ident IMPORT STAR
+| FROM dot_ident any_import STAR
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         let a = get_id $2 in
         let a1 = Utils.update_imported_modules a (pos0, pos1) in
         [DirImportFrom (a1, [], curr_loc())]
     }
-| FROM dot_ident IMPORT ident_list_
+| FROM dot_ident any_import ident_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         let a = get_id $2 in
@@ -332,8 +379,8 @@ stmt:
         let (tp, loc) = make_new_ctx() in
         ExpAssign($1, ExpUpdateRecord($1, (List.rev $4), (tp, loc)), loc)
     }
-| WHILE exp_or_block block { ExpWhile($2, $3, curr_loc()) }
-| DO stmt_or_block WHILE exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
+| B_WHILE exp_or_block block { ExpWhile($2, $3, curr_loc()) }
+| DO stmt_or_block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
 | for_flags B_FOR nested_for_ block { make_for $4 $3 $1 }
 | complex_exp { $1 }
 
@@ -356,6 +403,15 @@ simple_exp:
 | simple_exp DOT B_IDENT { ExpMem($1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
 | simple_exp DOT INT { ExpMem($1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
 | simple_exp DOT LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
+| simple_exp ARROW B_IDENT %prec DOT {
+    ExpMem(ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
+        ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
+| simple_exp ARROW INT %prec DOT {
+    ExpMem(ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
+        ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
+| simple_exp ARROW LBRACE id_exp_list_ RBRACE %prec DOT {
+    ExpUpdateRecord(ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
+        (List.rev $4), make_new_ctx()) }
 | B_LPAREN complex_exp RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }
@@ -429,36 +485,42 @@ complex_exp:
     { ExpMkRecord($1, [], make_new_ctx()) }
 | exp { $1 }
 
-exp:
+ncexp:
 | simple_exp { $1 }
-| exp PLUS exp { make_bin_op(OpAdd, $1, $3) }
-| exp MINUS exp { make_bin_op(OpSub, $1, $3) }
-| exp STAR exp { make_bin_op(OpMul, $1, $3) }
-| exp SLASH exp { make_bin_op(OpDiv, $1, $3) }
-| exp MOD exp { make_bin_op(OpMod, $1, $3) }
-| exp POWER exp { make_bin_op(OpPow, $1, $3) }
-| exp SHIFT_LEFT exp { make_bin_op(OpShiftLeft, $1, $3) }
-| exp SHIFT_RIGHT exp { make_bin_op(OpShiftRight, $1, $3) }
-| exp LOGICAL_AND exp { make_bin_op(OpLogicAnd, $1, $3) }
-| exp BITWISE_AND exp { make_bin_op(OpBitwiseAnd, $1, $3) }
-| exp LOGICAL_OR exp { make_bin_op(OpLogicOr, $1, $3) }
-| exp BITWISE_OR exp { make_bin_op(OpBitwiseOr, $1, $3) }
-| exp BITWISE_XOR exp { make_bin_op(OpBitwiseXor, $1, $3) }
-| exp EQUAL_TO exp { make_bin_op(OpCompareEQ, $1, $3) }
-| exp NOT_EQUAL exp { make_bin_op(OpCompareNE, $1, $3) }
-| exp LESS exp { make_bin_op(OpCompareLT, $1, $3) }
-| exp LESS_EQUAL exp { make_bin_op(OpCompareLE, $1, $3) }
-| exp GREATER exp { make_bin_op(OpCompareGT, $1, $3) }
-| exp GREATER_EQUAL exp { make_bin_op(OpCompareGE, $1, $3) }
-| exp CONS exp { make_bin_op(OpCons, $1, $3) }
-| B_STAR exp %prec deref_prec { make_un_op(OpDeref, $2) }
-| B_POWER exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
-| REF exp { make_un_op(OpMkRef, $2) }
-| B_MINUS exp { make_un_op(OpNegate, $2) }
-| B_PLUS exp { make_un_op(OpPlus, $2) }
+| ncexp PLUS ncexp { make_bin_op(OpAdd, $1, $3) }
+| ncexp MINUS ncexp { make_bin_op(OpSub, $1, $3) }
+| ncexp STAR ncexp { make_bin_op(OpMul, $1, $3) }
+| ncexp SLASH ncexp { make_bin_op(OpDiv, $1, $3) }
+| ncexp MOD ncexp { make_bin_op(OpMod, $1, $3) }
+| ncexp POWER ncexp { make_bin_op(OpPow, $1, $3) }
+| ncexp SHIFT_LEFT ncexp { make_bin_op(OpShiftLeft, $1, $3) }
+| ncexp SHIFT_RIGHT ncexp { make_bin_op(OpShiftRight, $1, $3) }
+| ncexp BITWISE_AND ncexp { make_bin_op(OpBitwiseAnd, $1, $3) }
+| ncexp BITWISE_OR ncexp { make_bin_op(OpBitwiseOr, $1, $3) }
+| ncexp BITWISE_XOR ncexp { make_bin_op(OpBitwiseXor, $1, $3) }
+| ncexp CONS ncexp { make_bin_op(OpCons, $1, $3) }
+| B_STAR ncexp %prec deref_prec { make_un_op(OpDeref, $2) }
+| B_POWER ncexp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
+| REF ncexp { make_un_op(OpMkRef, $2) }
+| B_MINUS ncexp { make_un_op(OpNegate, $2) }
+| B_PLUS ncexp { make_un_op(OpPlus, $2) }
+| BITWISE_NOT ncexp { make_un_op(OpBitwiseNot, $2) }
+| EXPAND ncexp { make_un_op(OpExpand, $2) }
+
+chained_cmp_exp:
+| chained_cmp_exp EQUAL_TO ncexp { (OpCompareEQ, $3) :: $1 }
+| chained_cmp_exp NOT_EQUAL ncexp  { (OpCompareNE, $3) :: $1 }
+| chained_cmp_exp LESS ncexp { (OpCompareLT, $3) :: $1 }
+| chained_cmp_exp LESS_EQUAL ncexp { (OpCompareLE, $3) :: $1 }
+| chained_cmp_exp GREATER ncexp { (OpCompareGT, $3) :: $1 }
+| chained_cmp_exp GREATER_EQUAL ncexp { (OpCompareGE, $3) :: $1 }
+| ncexp { (OpCompareEQ, $1) :: [] }
+
+exp:
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
-| BITWISE_NOT exp { make_un_op(OpBitwiseNot, $2) }
-| EXPAND exp { make_un_op(OpExpand, $2) }
+| exp LOGICAL_OR exp { make_bin_op(OpLogicOr, $1, $3) }
+| exp LOGICAL_AND exp { make_bin_op(OpLogicAnd, $1, $3) }
+| chained_cmp_exp { make_chained_cmp($1) }
 
 stmt_or_block:
 | stmt { $1 }
@@ -560,8 +622,8 @@ nested_for_:
 | for_in_list_ { ((curr_loc_n 1), $1) :: [] }
 
 for_in_list_:
-| for_in_list_ COMMA simple_pat IN loop_range_exp { ($3, $5) :: $1 }
-| simple_pat IN loop_range_exp { ($1, $3) :: [] }
+| for_in_list_ COMMA simple_pat BACK_ARROW loop_range_exp { ($3, $5) :: $1 }
+| simple_pat BACK_ARROW loop_range_exp { ($1, $3) :: [] }
 
 fold_clause:
 | simple_pat EQUAL complex_exp any_for nested_for_ { (($1, $3), $5) }
@@ -588,9 +650,9 @@ idx_list_:
 | range_exp { $1 :: [] }
 
 pattern_matching_clauses_:
-| pattern_matching_clauses_ BAR matching_patterns_ ARROW exp_seq_or_none
+| pattern_matching_clauses_ BAR matching_patterns_ DOUBLE_ARROW exp_seq_or_none
 { ((List.rev $3), $5) :: $1 }
-| matching_patterns_ ARROW exp_seq_or_none
+| matching_patterns_ DOUBLE_ARROW exp_seq_or_none
 { ((List.rev $1), $3) :: [] }
 
 matching_patterns_:
@@ -653,7 +715,7 @@ pat:
                 PatIdent(i, loc)
     }
 | literal { PatLit($1, curr_loc()) }
-| B_LPAREN typed_pat_list_ RPAREN
+| B_LPAREN pat_list_ RPAREN
     {
         match $2 with
         | p :: [] -> p
@@ -663,24 +725,21 @@ pat:
 | pat AS B_IDENT { PatAs($1, (get_id $3), curr_loc()) }
 | dot_ident LBRACE id_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
 | LBRACE id_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
-| dot_ident LPAREN typed_pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
+| dot_ident LPAREN pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident IDENT { PatVariant((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
 | dot_ident literal { PatVariant((get_id $1), [PatLit($2, (curr_loc_n 2))], curr_loc()) }
-
-typed_pat_list_:
-| typed_pat_list_ COMMA typed_pat { $3 :: $1 }
-| typed_pat { $1 :: [] }
-
-typed_pat:
-| pat { $1 }
 | pat COLON typespec { PatTyped($1, $3, curr_loc()) }
+
+pat_list_:
+| pat_list_ COMMA pat { $3 :: $1 }
+| pat { $1 :: [] }
 
 id_pat_list_:
 | id_pat_list_ COMMA id_pat { $3 :: $1 }
 | id_pat { $1 :: [] }
 
 id_pat:
-| B_IDENT EQUAL typed_pat { (get_id $1, $3) }
+| B_IDENT EQUAL pat { (get_id $1, $3) }
 | B_IDENT { let n = (get_id $1) in
             let p = PatIdent(n, curr_loc()) in (n, p) }
 
@@ -869,6 +928,14 @@ variant_elem:
 any_for:
 | B_FOR { 0 }
 | FOR { 0 }
+
+any_import:
+| B_IMPORT { 0 }
+| IMPORT { 0 }
+
+any_while:
+| B_WHILE { 0 }
+| WHILE { 0 }
 
 lparen:
 | B_LPAREN { 0 }

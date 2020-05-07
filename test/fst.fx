@@ -39,7 +39,7 @@ do
 }
 while i < 5
 
-for i in 1:31 {
+for i <- 1:31 {
     fun foo() {
         print(fib(i))
     }
@@ -51,17 +51,23 @@ for i in 1:31 {
 
 exception Break: int
 
+type complex_t = {re: float; im: float}
+val c = ref (complex_t {re=0.f, im=1.f})
+val d = c->{re=c->re*2, im=c->im*2}
+fun abs(c:complex_t) = Math.sqrt(c.re**2.0f + c.im**2.0f)
+println("abs(d)=\(abs(d))")
+
 fun find_idx(a: 't [], elem: 't)
 {
     val n = size(a)
     try
     {
-        for i in 0:n {if a[i] == elem {throw Break(i)}}
+        for i <- 0:n {if a[i] == elem {throw Break(i)}}
         -1
     }
     catch
     {
-    | Break(i) -> i
+    | Break(i) => i
     }
 }
 
@@ -69,30 +75,31 @@ val fixed_choice = "five"
 
 match fixed_choice
 {
-    | "пять" -> println("нашли 5")
-    | "five" -> println("found 5")
-    | "五" -> println("找到五个")
-    | _ -> println("some other number")
+    | "пять" => println("нашли 5")
+    | "five" => println("found 5")
+    | "五" => println("找到五个")
+    | _ => println("some other number")
 }
 
-if Math.sin(1.) > 0.7 {
-    println("sin(1) is greater than 0.7")
-} elif Math.sin(1.) < 0.1 {
-    println("sin(1) is smaller than 0.1")
-} else {
-    println("sin(1) is in between 0.1 and 0.7")
-}
+println(if 0.1 <= Math.sin(1.) < 0.7 {
+        "sin(1) is between 0.1 and 0.7"
+    } elif Math.sin(1.) < 0.1 {
+        "sin(1) is smaller than 0.1"
+    } else {
+        "sin(1) is greater or equal than 0.7"
+    })
 
 val fpair = List.find_opt(("a", 0) :: ("b", 1) :: ("rest", 2) :: [], fun ((key, i): (string, int)) {key == "xyz"})
 
 println(match fpair {
-    | Some((x, y)) -> y
-    | _ -> -1
+    | Some((x, y)) => y
+    | _ => -1
     })
 
 val n = 30
-val a = [for i in 0:n {1}]
-for i in 1:n {a[i] += a[i-1]}
+val a = [for i <- 0:n {i+1}]
+for i <- 0:n {a[i] += a[i-1]}
+println("triangular numbers: \(a)")
 
 println(find_idx([1, 2, 5], 5))
 val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], fun (a: int, b: int) {a > b})

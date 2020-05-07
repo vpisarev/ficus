@@ -9,6 +9,8 @@ import List
 ccode "#include <string.h>"
 
 inline fun length(s: string) = Builtins.length(s)
+inline fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
+inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
 
 nothrow pure fun empty(s: string): bool = ccode "return s->length == 0;"
 
@@ -107,15 +109,6 @@ pure fun strip(s: string): string = ccode
         ;
     return fx_substr(s, i, sz, fx_result);
     "
-
-fun join(sep: string, sl:string list)
-{
-    pure fun join_(sep: string, strs: string []): string = ccode
-    "
-    return fx_strjoin(sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);
-    "
-    join_(sep, [for s in sl {s}])
-}
 
 pure nothrow fun isalpha(c: char): bool = ccode "return fx_isalpha(c);"
 pure nothrow fun isalnum(c: char): bool = ccode "return fx_isalnum(c);"
