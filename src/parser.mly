@@ -189,7 +189,7 @@ let make_chained_cmp chain = match chain with
 %token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE
 
 /* parens/delimiters */
-%token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE
+%token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE LLIST RLIST
 %token COMMA DOT SEMICOLON COLON BAR CONS CAST BACKSLASH QUESTION ARROW DOUBLE_ARROW BACK_ARROW EOF
 
 /* operations */
@@ -421,20 +421,20 @@ simple_exp:
         let map_clauses = compress_nested_map_exp $4 in
         ExpMap(map_clauses, $5, ForMakeArray :: $2, make_new_ctx())
     }
-| B_LSQUARE CONS for_flags B_FOR nested_for_ block RSQUARE
+| LLIST for_flags B_FOR nested_for_ block RLIST
     {
-        let map_clauses = compress_nested_map_exp $5 in
-        ExpMap(map_clauses, $6, ForMakeList :: $3, make_new_ctx())
+        let map_clauses = compress_nested_map_exp $4 in
+        ExpMap(map_clauses, $5, ForMakeList :: $2, make_new_ctx())
     }
 | B_LSQUARE array_elems_ RSQUARE
     {
         let ae = List.rev $2 in
         ExpMkArray(ae, make_new_ctx())
     }
-| B_LSQUARE CONS complex_exp COMMA exp_list RSQUARE
+| LLIST complex_exp COMMA exp_list RLIST
     {
-        let l = List.rev ($3 :: $5) in
-        let e0 = ExpLit(LitNil, ((TypList (make_new_typ())), curr_loc_n 6)) in
+        let l = List.rev ($2 :: $4) in
+        let e0 = ExpLit(LitNil, ((TypList (make_new_typ())), curr_loc_n 5)) in
         List.fold_left (fun e i -> make_bin_op(OpCons, i, e)) e0 l
     }
 | simple_exp LPAREN exp_list RPAREN

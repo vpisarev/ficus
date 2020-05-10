@@ -68,6 +68,8 @@ let token2str t = match t with
     | RSQUARE -> "RSQUARE"
     | LBRACE -> "LBRACE"
     | RBRACE -> "RBRACE"
+    | LLIST -> "LLIST"
+    | RLIST -> "RLIST"
     | COMMA -> "COMMA"
     | DOT -> "DOT"
     | SEMICOLON -> "SEMICOLON"
@@ -214,6 +216,7 @@ let unmatchedTokenMsg t0 expected_list =
             | (LPAREN, _) :: _ -> ("Unmatched '('", "")
             | (LSQUARE, _) :: _ -> ("Unmatched '['", "")
             | (LBRACE, _) :: _ -> ("Unmatched '{'", "")
+            | (LLIST, _) :: _ -> ("Unmatched '[:'", "")
             | (t1, _) :: _ -> ((token2str t1), "")
             | _ -> ("<START>", ""))
         in let expected_msg = if expected <> "" then ", " ^ expected ^ " is expected" else "" in
@@ -311,7 +314,7 @@ rule tokens = parse
             (* handle string interpolation e.g. "f(x)=\(f(x))" *)
             | (STR_INTERP_LPAREN, _) :: rest ->
                 paren_stack := rest; strings lexbuf; RPAREN :: PLUS :: (!string_tokens)
-            | _ -> raise (lexErr "Unexpected ')'" lexbuf));
+            | _ -> raise (lexErr "Unexpected ')', check parens" lexbuf));
         }
     | '['
         {
@@ -322,9 +325,24 @@ rule tokens = parse
         {
             (match (!paren_stack) with
             | (LSQUARE, _) :: rest -> paren_stack := rest
-            | _ -> raise (lexErr "Unexpected ']'" lexbuf));
+            | _ -> raise (lexErr "Unexpected ']', check parens" lexbuf));
             new_exp := false;
             [RSQUARE]
+        }
+    | "[:"
+        {
+            check_ne(lexbuf);
+            paren_stack := (LLIST, lexbuf.lex_start_p) :: !paren_stack;
+            new_exp := true;
+            [LLIST]
+        }
+    | ":]"
+        {
+            (match (!paren_stack) with
+            | (LLIST, _) :: rest -> paren_stack := rest
+            | _ -> raise (lexErr "Unexpected ':]', check parens" lexbuf));
+            new_exp := false;
+            [RLIST]
         }
     | '{'
         {
@@ -342,7 +360,7 @@ rule tokens = parse
             (match (!paren_stack) with
             | (BAR, _) :: (LBRACE, _) :: rest -> paren_stack := rest
             | (LBRACE, _) :: rest -> paren_stack := rest
-            | _ -> raise (lexErr "Unexpected '}'" lexbuf));
+            | _ -> raise (lexErr "Unexpected '}', check parens" lexbuf));
             new_exp := false;
             [RBRACE]
         }

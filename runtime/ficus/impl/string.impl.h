@@ -337,7 +337,7 @@ int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base)
 int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr)
 {
     if(start < 0 || start > str->length || end < 0 || end > str->length)
-        return FX_OUT_OF_RANGE_ERR;
+        return FX_INDEX_ERR;
     if(start >= end)
         return FX_OK;
     substr->rc = str->rc;

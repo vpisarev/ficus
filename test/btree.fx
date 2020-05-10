@@ -32,15 +32,15 @@ test_1()
 
 val long_lived_tree = make(0, max_depth)
 val long_lived_tree_dbl = make(0.0, max_depth)
+val report = [
+    parallel for depth <- min_depth:(max_depth+1):2 {
+        val iterations = 1 << (max_depth - depth + min_depth)
+        val fold c = 0 for i <- 1:(iterations+1) {
+            c += check(make(i, depth)) + check(make(-i, depth))
+        }
+        "\(iterations * 2)\t trees of depth \(depth)\t check: \(c)"
+    }]
 
-parallel
-for depth <- min_depth:(max_depth+1):2 {
-    val iterations = 1 << (max_depth - depth + min_depth)
-    val fold c = 0 for i <- 1:(iterations+1) {
-        c += check(make(i, depth)) + check(make(-i, depth))
-    }
-    println("\(iterations * 2)\t trees of depth \(depth)\t check: \(c)")
-}
-
+for line <- report {println(line)}
 println("long lived tree of depth \(max_depth)\t check: \(check(long_lived_tree))")
 println("long lived tree of depth \(max_depth)\t check: \(check(long_lived_tree_dbl))")

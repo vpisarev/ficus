@@ -19,17 +19,19 @@
 enum
 {
     FX_OK = 0,
-    FX_OUT_OF_MEM_ERR = -1,
-    FX_OUT_OF_RANGE_ERR = -2,
-    FX_DIV_BY_ZERO_ERR = -3,
-    FX_UNMATCHED_SIZE_ERR = -4,
-    FX_DIM_ERR = -5,
-    FX_SIZE_ERR = -6,
-    FX_FILE_OPEN_ERR = -7,
-    FX_FILE_NULLHANDLE_ERR = -8,
-    FX_FILE_IO_ERR = -9,
-    FX_BREAK_ERR = -10,
-    FX_CONTINUE_ERR = -11,
+    FX_FAILURE = -1,
+    FX_OUT_OF_MEM_ERR = -2,
+    FX_INDEX_ERR = -3,
+    FX_DIV_BY_ZERO_ERR = -4,
+    FX_SIZE_MISMATCH_ERR = -5,
+    FX_DIM_ERR = -6,
+    FX_SIZE_ERR = -7,
+    FX_FILE_OPEN_ERR = -8,
+    FX_NULL_FILE_ERR = -9,
+    FX_IO_ERR = -10,
+    FX_BREAK_ERR = -11,
+    FX_CONTINUE_ERR = -12,
+    FX_NULLPTR_ERR = -13,
 };
 
 /////////////////// Various Basic Definitions ////////////////
@@ -320,6 +322,8 @@ typedef struct fx_arr_t
     int_* rc;
     int flags;
     int ndims;
+    fx_free_t free_elem;
+    fx_copy_t copy_elem;
     // put 'data' together with the interleaved '(size, step)' pairs
     // in order to improve the cache locality, e.g. in the case of
     // 2D array element access we just need to read 4
@@ -327,8 +331,6 @@ typedef struct fx_arr_t
     // data, dim[0].size, dim[0].step, dim[1].size
     char*  data;
     fx_arrdim_t dim[FX_MAX_DIMS];
-    fx_free_t free_elem;
-    fx_copy_t copy_elem;
 }
 fx_arr_t;
 
@@ -350,7 +352,7 @@ void fx_arr_nextiter(fx_arriter_t* it);
 #define FX_CHKIDX(arr, i, idx) \
     ((size_t)(idx) >= (size_t)(arr).dim[i].size)
 #define FX_THROW_OUT_OF_RANGE(catch_label) \
-    { fx_status = FX_OUT_OF_RANGE_ERR; goto catch_label; }
+    { fx_status = FX_INDEX_ERR; goto catch_label; }
 
 #define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))

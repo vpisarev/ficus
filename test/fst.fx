@@ -54,7 +54,7 @@ exception Break: int
 type complex_t = {re: float; im: float}
 val c = ref (complex_t {re=0.f, im=1.f})
 val d = c->{re=c->re*2, im=c->im*2}
-fun abs(c:complex_t) = Math.sqrt(c.re**2.0f + c.im**2.0f)
+fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
 println("abs(d)=\(abs(d))")
 
 fun find_idx(a: 't [], elem: 't)
@@ -102,6 +102,6 @@ for i <- 0:n {a[i] += a[i-1]}
 println("triangular numbers: \(a)")
 
 println(find_idx([1, 2, 5], 5))
-val sorted = List.mergeSort([:: 2, -1, 100, 8, 7], fun (a: int, b: int) {a > b})
+val sorted = List.mergeSort([: 2, -1, 100, 8, 7 :], fun (a: int, b: int) {a > b})
 print("sorted: ")
 println(sorted)

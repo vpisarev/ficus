@@ -21,67 +21,37 @@ fun nth(_: 't list, n: int)
     | _ => throw IndexError
 }
 
-fun length(l: 't list)
-{
-    fun length_(l: 't list, n: int) =
-        match l {
-        | _ :: rest => length(rest, n+1)
-        | _ => n
-        }
-    length_(l, 0)
-}
+fun length(l: 't list) =
+    fold n=0 for _ <- l {n += 1}
 
-fun rev(l: 't list): 't list = rev(l, [])
-
-fun rev(l: 't list, rl: 't list): 't list =
-    match l {
-    | a :: rest => rev(rest, a :: rl)
-    | _ => rl
-    }
+fun rev(l: 't list): 't list =
+    fold r=([]: t list) for a <- l {r = a :: r}
 
 fun array(l: 't list): 't [] = [for x <- l {x}]
 
 fun all(l: 't list, f: 't -> bool): bool =
-    match l {
-    | a :: rest => if f(a) {all(rest, f)} else {false}
-    | _ => true
-    }
+    fold r=true for a <- l {if !f(a) { r=false; break }}
 
 fun all2((la, lb): ('a list, 'b list), f: ('a, 'b) -> bool): bool =
-    match (la, lb) {
-    | (a :: rest_a, b :: rest_b) => if f(a, b) {all2((rest_a, rest_b), f)} else {false}
-    | ([], []) => true
-    | _ => throw ListSizeMismatchError
-    }
+    fold r=true for a <- l, b <- l {if !f(a, b) { r=false; break }}
 
 fun exists(l: 't list, f: 't -> bool): bool =
-    match l {
-    | a :: rest => if f(a) {true} else {exists(rest, f)}
-    | _ => false
-    }
+    fold r=false for a <- l {if f(a) {r=true; break}}
 
 fun mem(l: 't list, a: 't): bool =
-    match (l) {
-    | b :: rest => if a == b {true} else {mem(rest, a)}
-    | _ => false
-    }
+    fold r=false for b <- l {if a == b {r=true; break}}
 
-fun find_opt(l: 't list, f: 't -> bool): 't option =
-    match (l) {
-    | a :: rest => if f(a) {Some(a)} else {find_opt(rest, f)}
-    | _ => None
-    }
+fun find_opt(l: 't list, f: 't -> bool): 't? =
+    fold r=None for a <- l {if f(a) {r=Some(a); break}}
 
 fun concat(ll: 't list list): 't list =
-    fold s = [] for l <- rev(ll) {
-        s = l + s
-    }
+    fold s = ([]: 't list) for l <- rev(ll) {s = l + s}
 
 fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
-    [:: for x <- la, y <- lb {(x, y)}]
+    [: for x <- la, y <- lb {(x, y)} :]
 
 fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
-    unzip([:: for x <- lab {x}])
+    unzip([: for x <- lab {x} :])
 
 // O(n log n) merge sort
 fun mergeSort(l: 't list, gt: ('t,'t)->bool): 't list =
@@ -108,5 +78,5 @@ fun mergeSort(l: 't list, gt: ('t,'t)->bool): 't list =
             | l => loop(scan(l))
         }
 
-        loop([:: for a <- l {a :: []}])
+        loop([: for a <- l {a :: []} :])
     }

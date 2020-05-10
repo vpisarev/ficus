@@ -694,7 +694,8 @@ let cexp_get_addr e =
     | CExpUnOp(COpDeref, x, _) -> x
     | _ ->
         let (t, loc) = get_cexp_ctx e in
-        CExpUnOp(COpGetAddr, e, (CTypRawPtr([], t), loc))
+        let t = CTypRawPtr([], (match t with CTypAny -> CTypVoid | _ -> t)) in
+        CExpUnOp(COpGetAddr, e, (t, loc))
 
 let cexp_deref e =
     match e with

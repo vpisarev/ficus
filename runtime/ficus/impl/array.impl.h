@@ -8,6 +8,9 @@
 
 int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it)
 {
+    if(narrays <= 0) return FX_SIZE_ERR;
+    if(!arrs || !arrs[0]) return FX_NULLPTR_ERR;
+
     const fx_arr_t* arr0 = arrs[0];
     int i, j, d1=0, d=arr0->ndims;
     int iterdepth = 0;
@@ -25,7 +28,7 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
         {
             const fx_arr_t* arri = arrs[i];
             if( arri->ndims != 1 || arri->dim[0].size != size )
-                return FX_UNMATCHED_SIZE_ERR;
+                return FX_SIZE_MISMATCH_ERR;
             ptrs[i] = arri->data;
         }
         it->iterdepth = 0;
@@ -42,7 +45,7 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
         {
             const fx_arr_t* arri = arrs[i];
             if( arri->ndims != 2 || arri->dim[0].size != size0 || arri->dim[1].size != size1 )
-                return FX_UNMATCHED_SIZE_ERR;
+                return FX_SIZE_MISMATCH_ERR;
             flags &= arri->flags;
             ptrs[i] = arri->data;
         }
@@ -70,10 +73,10 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
         const fx_arr_t* arri = arrs[i];
         if( i > 0 )
         {
-            if( arri->ndims != d ) return FX_UNMATCHED_SIZE_ERR;
+            if( arri->ndims != d ) return FX_SIZE_MISMATCH_ERR;
             for( j = 0; j < d; j++ )
                 if(arri->dim[j].size != arr0->dim[j].size)
-                    return FX_UNMATCHED_SIZE_ERR;
+                    return FX_SIZE_MISMATCH_ERR;
         }
 
         if( !FX_IS_ARR_CONTINUOUS(arri->flags) )
@@ -127,7 +130,7 @@ void fx_arr_nextiter(fx_arriter_t* it)
     // this check covers non-continuous 2D case
     if( iterdepth == 1 )
     {
-        int idx = it->idx;
+        int_ idx = it->idx;
         for( int i = 0; i < narrays; i++ )
         {
             const fx_arr_t* arri = arrs[i];
@@ -139,11 +142,11 @@ void fx_arr_nextiter(fx_arriter_t* it)
         for( int i = 0; i < narrays; i++ )
         {
             const fx_arr_t* arri = arrs[i];
-            int_ idx = (int_)it->idx;
+            int_ idx = it->idx;
             char* data = arri->data;
             for( int j = iterdepth-1; j >= 0 && idx > 0; j-- )
             {
-                int szi = arri->dim[j].size, t = idx/szi;
+                int_ szi = arri->dim[j].size, t = idx/szi;
                 data += (idx - t * szi)*arri->dim[j].step;
                 idx = t;
             }
@@ -219,12 +222,14 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     size_t netw = elemsize;
     for(int i = ndims-1; i >= 0; i--)
     {
-        int szi = size[i];
+        int_ szi = size[i];
         // let's allow size[i] == 0 case for now
         if(szi < 0) return FX_SIZE_ERR;
         arr->dim[i].size = szi;
         arr->dim[i].step = netw;
-        netw *= szi;
+        size_t netw_ = netw*szi;
+        if (netw_ < netw) return FX_SIZE_ERR;
+        netw = netw_;
     }
     size_t dataoffset = elemsize % 8 == 0 ? (size_t)8 : sizeof(*arr->rc);
     size_t grossw = netw + dataoffset;

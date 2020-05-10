@@ -17,7 +17,7 @@ int fx_puts(FILE* f, const fx_str_t* str)
     for( i = 0; i < len; i += BUFSZ ) {
         _fx_str2cstr_slice(str, i, BUFSZ, buf);
         if(fputs(buf, f) == EOF)
-            return FX_FILE_IO_ERR;
+            return FX_IO_ERR;
     }
     return FX_OK;
 }
@@ -37,7 +37,7 @@ int fx_gets(FILE* f, fx_str_t* str)
         if(!ptr)
         {
             if(!feof(f))
-                fx_status = FX_FILE_IO_ERR;
+                fx_status = FX_IO_ERR;
             break;
         }
         int blocksz = (int)strlen(ptr);

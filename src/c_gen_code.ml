@@ -217,23 +217,29 @@ let gen_ccode topcode =
         (CExp fx_call_e) :: ccode
     in
 
-    let add_val i ctyp flags init sc loc =
-        let bctx = curr_block_ctx loc in
-        let {ctp_ptr; ctp_free=(freem,freef)} = get_ctprops ctyp loc in
-        let e0 = if ctp_ptr then CExpLit(LitNil, (ctyp, loc)) else CExpStructInit([], (ctyp, loc)) in
+    let add_val i ctyp flags e0_opt ccode sc loc =
+        let {ctp_ptr; ctp_free=(freem, freef)} = get_ctprops ctyp loc in
         let i_exp = make_id_exp i loc in
-        if init then bctx.bctx_prologue <- create_cdefval i ctyp flags (Some e0) bctx.bctx_prologue sc loc else ();
-        bctx.bctx_cleanup <- C_gen_types.gen_free_code i_exp ctyp true true bctx.bctx_cleanup loc;
-        i_exp
+        let need_dtor = freem <> noid || freef <> noid in
+        let ccode = if need_dtor then
+                (let bctx = curr_block_ctx loc in
+                let init_exp = if ctp_ptr then CExpLit(LitNil, (ctyp, loc)) else CExpStructInit([], (ctyp, loc)) in
+                bctx.bctx_prologue <- create_cdefval i ctyp flags (Some init_exp) bctx.bctx_prologue sc loc;
+                bctx.bctx_cleanup <- C_gen_types.gen_free_code i_exp ctyp true true bctx.bctx_cleanup loc;
+                ccode)
+            else
+                create_cdefval i ctyp flags e0_opt ccode sc loc in
+        (i_exp, ccode)
     in
 
-    let get_dstexp dstexp_r prefix ctyp flags init sc loc =
+    let get_dstexp dstexp_r prefix ctyp flags ccode sc loc =
         match !dstexp_r with
-        | Some(dstexp) -> dstexp
+        | Some(dstexp) -> (dstexp, ccode)
         | _ ->
             let i = gen_temp_idc prefix in
-            let i_exp = add_val i ctyp flags init sc loc in
-            (dstid_r := (Some i_exp); i_exp)
+            let (i_exp, ccode) = add_val i ctyp flags None ccode sc loc in
+            dstid_r := (Some i_exp);
+            (i_exp, ccode)
     in
 
     let get_struct c_e =
@@ -262,6 +268,38 @@ let gen_ccode topcode =
         let l = curr_block_label loc in
         CExp (make_call f (l::[]) CTypVoid loc)
     in
+
+    let handle_temp_ref flags lhs_e ctyp =
+        if List.mem ValTempRef flags then
+            (true, (cexp_get_addr lhs_e), CTypRawPtr([], ctyp))
+        else
+            (false, lhs_e, ctyp)
+
+    let id2cexp i save ccode sc loc =
+        match (Env.find_opt i !i2e) with
+        | Some(e) ->
+            if not save then (false, e, ccode)
+            else
+                let (ctyp, eloc) = get_cexp_ctx e in
+                let flags = match (kinfo_ i loc) with
+                    | KVal {kv_flags} -> kv_flags
+                    | _ -> raise_compile_err loc ("gen: id2cexp: %s is not identifier" (id2str i))
+                    in
+                let i2 = dup_idc i in
+                let (add_ref, lhs_e, ctyp) = handle_temp_ref flags e ctyp in
+                let (i2_exp, ccode) = add_val i2 ctyp flags (Some lhs_e) ccode sc loc in
+                i2e := Env.add i !i2e;
+                ((if add_deref then cexp_deref e else e), ccode)
+        | _ ->
+            let e = make_id_exp i kloc in
+            let add_deref = (match cinfo_ i kloc with
+            | CDefVal {cv_typ} ->
+                (match cv_typ with
+                | CTypRawPtr(_, ctyp2) when ctyp2 = ctyp -> true
+                | _ -> false)
+            | _ -> false)
+            in ((if add_deref then cexp_deref e else e), ccode)
+        in
 
     let finalize_loop_body body_code loc =
         let bctx = curr_block_ctx loc in
@@ -324,20 +362,7 @@ let gen_ccode topcode =
                     (true, (make_id_exp i kloc), ccode)
                 | _ ->
                     let e = make_lit_exp l kloc in (true, e, ccode))
-            | Atom.Id(i) ->
-                (true, (match (Env.find_opt i !i2e) with
-                | Some(e) -> e
-                | _ ->
-                    let e = make_id_exp i kloc in
-                    let add_deref = match cinfo_ i kloc with
-                    | CDefVal {cv_typ} ->
-                        (match cv_typ with
-                        | CTypRawPtr(_, ctyp2) when ctyp2 = ctyp -> true
-                        | _ -> false)
-                    | _ -> false
-                    in
-                    if add_deref then cexp_deref e else e), ccode)
-            )
+            | Atom.Id(i) -> (true, (id2cexp i kloc), ccode))
         | KExpBinOp(bop, e1, e2, _) ->
             let (ce1, ccode) = kexp2cexp e1 (ref None) ccode sc in
             let (ce2, ccode) = kexp2cexp e2 (ref None) ccode sc in
@@ -365,8 +390,8 @@ let gen_ccode topcode =
                 *)
                 let e2_id = match e2 with KExpAtom(Atom.Id i, _) when IdSet.mem i u1vals -> i | _ -> noid in
                 let ce2_id = match ce2 with CExpIdent(i, _) -> i | _ -> noid in
-                let (reuse_ce2, l_exp) = (Utils.is_none !dstexp_r) && e2_id <> noid && ce2_id <> noid then
-                        (true, ce2_id)
+                let (reuse_ce2, (l_exp, _)) = (Utils.is_none !dstexp_r) && e2_id <> noid && ce2_id <> noid then
+                        (true, (ce2_id, []))
                     else (false, (get_dstexp dstexp_r "lst" ctyp [] true sc kloc)) in
                 let lcon = C_gen_types.get_constructor ctyp true kloc in
                 let call_cons = make_call lcon
@@ -395,7 +420,7 @@ let gen_ccode topcode =
                 in (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))
         | KExpUnOp(OpMkRef, e1, _) ->
             let (ce1, ccode) = kexp2cexp e1 (ref None) ccode sc in
-            let r_exp = get_dstexp dstexp_r "r" ctyp [] true sc kloc in
+            let (r_exp, _) = get_dstexp dstexp_r "r" ctyp None [] sc kloc in
             let rcon = C_gen_types.get_constructor ctyp true kloc in
             let call_mkref = make_call rcon
                 (ce1 :: (cexp_get_addr r_exp) :: []) CTypCInt kloc in
@@ -447,9 +472,9 @@ let gen_ccode topcode =
                     process_seq rest ccode
             in let (e, ccode) = process_seq el ccode in
             (false, e, ccode)
-        | KExpIf(c, e1, e2, _) -> raise_compile_err kloc "cgen: unsupported KExpIf"
+        | KExpIf(c, e1, e2, _) ->
             let (cc, ccode) = kexp2cexp c (ref None) ccode sc in
-            let dstexp = get_dstexp dstexp_r "t" ctyp [] true sc kloc in
+            let (dstexp, ccode) = get_dstexp dstexp_r "t" ctyp None [] sc kloc in
             let (c_e1, ccode1) = kexp2cexp e1 dstid_r [] sc in
             let (c_e2, ccode2) = kexp2cexp e2 dstid_r [] sc in
             let c_e1 = rccode2stmt ((cexp2stmt c_e1) :: ccode1) (get_kexp_loc e1) in
@@ -478,16 +503,14 @@ let gen_ccode topcode =
                 ((a :: cargs), ccode)) ([], ccode) args in
             let tcon = C_gen_types.get_constructor ctyp true kloc in
             if tcon <> noid then
-                let t_exp = get_dstexp dstexp_r prefix ctyp [] true sc kloc in
+                let (t_exp, _) = get_dstexp dstexp_r prefix ctyp None [] true sc kloc in
                 let call_mktup = make_call tcon
                     ((List.rev cargs) @ [cexp_get_addr t_exp]) CTypVoid kloc in
-                (false, t_exp, call_mktup :: ccode)
+                (false, t_exp, (CExp call_mktup) :: ccode)
             else
                 let tup = gen_temp_idc prefix in
                 let e0 = CExpStructInit((List.rev cargs), (ctyp, kloc)) in
-                let _ = add_val i ctyp flags init sc loc in
-                let ccode = create_cdefval tup ctyp [] (Some e0) ccode sc kloc in
-                let t_exp = make_id_exp tup kloc in
+                let (t_exp, ccode) = add_val tup ctyp flags (Some e0) ccode sc loc in
                 (true, t_exp, ccode)
         | KExpMkClosure(f, fcv, args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkClosure"
             (* TBD *)
@@ -497,7 +520,7 @@ let gen_ccode topcode =
                or array comprehension or a pure function, maybe
                we can avoid allocation of the memory on heap and copying data there?
                call fx_make_arrNd(...); *)
-        | KExpAt(a, idxs, _) -> raise_compile_err kloc "cgen: unsupported KExpAt"
+        | KExpAt(a, idxs, _) ->
             (*
                 there are 2 major cases:
                 1. some of the idxs are ranges. Then the result is fx_arr_t
@@ -539,9 +562,22 @@ let gen_ccode topcode =
                 else () in
             let (n_id, _) = List.nth relems n in
             (true, (cexp_mem ce1 n_id ctyp), ccode)
-        | KExpAssign(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KExpAssign"
-            (* 1. if needed, call destructor for i.
-               2. then call _fx_copy(e1, &i), fx_copy(e1, &i) or simply do assignment i=e1 *)
+        | KExpAssign(i, e2, _) ->
+            let (ktyp2, kloc2) = get_kexp_ctx e2 in
+            let {ktp_complex} = K_annotate_types.get_ktprops ktyp2 kloc2 in
+            let (i_exp, ccode) =
+                if ktp_complex then
+                    let (i_exp, ccode) = id2cexp i true ccode sc kloc in
+                    let ctyp = get_cexp_typ i_exp in
+                    let ccode = C_gen_types.gen_free_code i_exp ctyp true false ccode kloc
+                    in (i_exp, ccode)
+                else
+                    (* if the type is simple then there is no need to save lhs into
+                       intermediate variable, because it's used just once: lhs = rhs *)
+                    id2cexp i false ccode sc kloc in
+                in
+            let (_, ccode) = kexp2cexp e2 (ref i_exp) ccode sc in
+            (false, dummy_exp, ccode)
         | KExpMatch(cases, _) -> raise_compile_err kloc "cgen: unsupported KExpMatch"
             (* very similar to if, just a little bit more complex *)
         | KExpTryCatch(try_e, catch_e, _) -> raise_compile_err kloc "cgen: unsupported KExpCatch"
@@ -585,7 +621,7 @@ let gen_ccode topcode =
             let _ = new_block_ctx BlockKind_Loop sc kloc in
             let (cc, cc_code) = kexp2cexp c (ref None) [] sc in
             let (is_for_loop, check_code) =
-                match (cc, cc_code) with
+                (match (cc, cc_code) with
                 | (CExp(CExpLit(LitBool(true), _)), []) -> (true, [])
                 | (_, []) -> (false, [])
                 | _ ->
@@ -593,7 +629,7 @@ let gen_ccode topcode =
                     let not_cc = CExpUnOp(COpLogicNot, cc, (CTypBool, cc_loc)) in
                     let break_stmt = gen_break_continue_stmt cc_loc in
                     let check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc) in
-                    (true, check_cc :: cc_code)
+                    (true, check_cc :: cc_code))
                 in
             let (e, body_code) = kexp2cexp body (ref None) [] sc in
             let body_code = ((CExp e) :: body_code) @ check_code in
@@ -609,7 +645,7 @@ let gen_ccode topcode =
             let (e, body_code) = kexp2cexp body (ref None) [] sc in
             let (cc, cc_code) = kexp2cexp c (ref None) [] in
             let (is_for_loop, check_code) =
-                match (cc, cc_code) with
+                (match (cc, cc_code) with
                 | (CExp(CExpLit(LitBool(true), _)), []) -> (true, [])
                 | (_, []) -> (false, [])
                 | _ ->
@@ -617,7 +653,7 @@ let gen_ccode topcode =
                     let not_cc = CExpUnOp(COpLogicNot, cc, (CTypBool, cc_loc)) in
                     let break_stmt = gen_break_continue_stmt cc_loc in
                     let check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc) in
-                    (true, check_cc :: cc_code)
+                    (true, check_cc :: cc_code))
                 in
             let body_code = check_code :: body_code in
             let body_stmt = finalize_loop_body body_code kloc in
@@ -628,7 +664,7 @@ let gen_ccode topcode =
             in
             (false, dummy_exp, loop_stmt :: ccode)
         | KExpCCode(ccode_str, _) ->
-            (false, CExpCCode(ccode_str, kloc), ccode)
+            (true, CExpCCode(ccode_str, kloc), ccode)
         | KDefVal(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KDefVal"
             (*
                 * if e1/i has complex type:

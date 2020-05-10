@@ -14,20 +14,20 @@ inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
 
 nothrow pure fun empty(s: string): bool = ccode "return s->length == 0;"
 
-pure nothrow fun startsWith(s: string, prefix: string): bool = ccode
+pure nothrow fun startswith(s: string, prefix: string): bool = ccode
     "
     int_ sz1 = s->length;
     int_ sz2 = prefix->length;
     return sz2 <= sz1 && memcmp(s->data, prefix->data,
-                                (size_t)(sz2*sizeof(s->data[0]))) == 0;
+        (size_t)(sz2*sizeof(s->data[0]))) == 0;
     "
 
-pure nothrow fun endsWith(s: string, suffix: string): bool = ccode
+pure nothrow fun endswith(s: string, suffix: string): bool = ccode
     "
     int_ sz1 = s->length;
     int_ sz2 = suffix->length;
     return sz2 <= sz1 && memcmp(s->data + (sz1 - sz2), suffix->data,
-                                (size_t)(sz2*sizeof(s->data[0]))) == 0;
+        (size_t)(sz2*sizeof(s->data[0]))) == 0;
     "
 
 pure nothrow fun find(s: string, part: string): int = ccode
@@ -35,10 +35,9 @@ pure nothrow fun find(s: string, part: string): int = ccode
     int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
     if (sz2 == 0 || l <= 0)
         return 0;
-    for( i = 0; i < l; i++ )
-    {
+    for( i = 0; i < l; i++ ) {
         if( s->data[i] == part->data[0] &&
-            memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0)
+            memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0 )
             return i;
     }
     return -1;
@@ -58,8 +57,7 @@ pure fun tolower(s: string): string = ccode
     "
     int_ sz = s->length;
     int fx_status = fx_make_str(0, sz, fx_result);
-    if( fx_status >= 0 )
-    {
+    if( fx_status >= 0 ) {
         char_* ptr = (char_*)fx_result->data;
         for (size_t i = 0; i < sz; i++)
             ptr[i] = fx_tolower(ptr[i]);
@@ -71,8 +69,7 @@ pure fun toupper(s: string): string = ccode
     "
     int_ sz = s->length;
     int fx_status = fx_make_str(0, sz, fx_result);
-    if( fx_status >= 0 )
-    {
+    if( fx_status >= 0 ) {
         char_* ptr = (char_*)fx_result->data;
         for (size_t i = 0; i < sz; i++)
             ptr[i] = fx_toupper(ptr[i]);

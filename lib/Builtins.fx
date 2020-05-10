@@ -12,13 +12,17 @@ exception IndexError
 exception NoMatchError
 exception OptionError
 exception NullListError
-exception ListSizeMismatchError
+exception SizeMismatchError
+exception FileOpenError
+exception NullFileError
+exception IOError
 
 fun ignore(_: 't) {}
 
+// 't?, int? etc. can be used instead of 't option, int option ...
 type 't option = None | Some: 't
 
-fun getOpt(x: 't option, defval: 't) = match x { | Some(x) => x | _ => defval }
+fun getOpt(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
 
 pure nothrow fun length(s: string): int = ccode "return s->length;"
 pure fun join(sep: string, strs:string []): string = ccode
@@ -53,7 +57,7 @@ operator + (a: char, b: string): string = ccode "
     fx_str_t s[] = {{0, &a, 1}, *b};
     return fx_strjoin(0, s, 2, fx_result);"
 
-fun atoi(a: string): int option
+fun atoi(a: string): int?
 {
     fun atoi_(a: string): (int, bool) = ccode
         "return fx_atoi(a, &fx_result->t0, &fx_result->t1, 10);"

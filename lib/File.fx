@@ -56,7 +56,7 @@ nothrow fun isOpened(f: file_t): bool = ccode
 fun isEOF(f: file_t): bool = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     *fx_result = feof((FILE*)(f->ptr)) != 0;
     return FX_OK;
     "
@@ -64,7 +64,7 @@ fun isEOF(f: file_t): bool = ccode
 fun seek(f: file_t, pos: int64, origin: int): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     int code = fseek((FILE*)(f->handle->ptr), (long)pos, origin);
     return code == 0 ? FX_OK : FX_FILE_IO_ERR;
     "
@@ -72,7 +72,7 @@ fun seek(f: file_t, pos: int64, origin: int): void = ccode
 fun tell(f: file_t): int64 = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     long code = ftell((FILE*)(f->handle->ptr));
     if(code == -1) return FX_FILE_IO_ERR;
     *fx_result = (int64)code;
@@ -82,7 +82,7 @@ fun tell(f: file_t): int64 = ccode
 fun flush(f: file_t): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     fflush((FILE*)(f->handle->ptr));
     return FX_OK;
     "
@@ -92,14 +92,14 @@ fun print(f: file_t, x: 't) = print(f, string(x))
 fun print(f: file_t, x: string): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     return fx_fputs((FILE*)(f->handle->ptr), str);
     "
 
 fun print(f: file_t, x: int): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     fprintf((FILE*)(f->handle->ptr), \"%zd\", x);
     return FX_OK;
     "
@@ -107,7 +107,7 @@ fun print(f: file_t, x: int): void = ccode
 fun print(f: file_t, x: float): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     fprintf((FILE*)(f->handle->ptr), \"%.8g\", x);
     return FX_OK;
     "
@@ -115,7 +115,7 @@ fun print(f: file_t, x: float): void = ccode
 fun print(f: file_t, x: double): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     fprintf((FILE*)(f->handle->ptr), \"%.16g\", x);
     return FX_OK;
     "
@@ -129,7 +129,7 @@ fun println(f: file_t, x: 't): void
 fun write(f: file_t, a: 't []): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     size_t elem_size = a->dim[0].step, count0 = (size_t)a->dim[0].size;
     size_t count = fwrite(a->data, elem_size, count0, (FILE*)f->handle->ptr);
     return count == count0 ? FX_OK : FX_FILE_IO_ERR;
@@ -141,7 +141,7 @@ fun write(f: file_t, a: 't [,]): void = ccode
     size_t count0 = (size_t)a->dim[1].size;
     int_ i, m = a->dim[0].size;
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
 
     for(i = 0; i < m; i++) {
         size_t count = fwrite(a->data + i*step, elem_size, count0, (FILE*)f->handle->ptr);
@@ -153,7 +153,7 @@ fun write(f: file_t, a: 't [,]): void = ccode
 fun read(f: file_t, buf: 't []): int = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     FILE* fh = (FILE*)f->handle->ptr;
     size_t elem_size = a->dim[0].step, count0 = (size_t)a->dim[0].size;
     size_t count = fread(a->data, elem_size, count0, fh);
@@ -164,7 +164,7 @@ fun read(f: file_t, buf: 't []): int = ccode
 fun readln(f: file_t): string = ccode
     "
     if(!f->handle || !f->handle->ptr)
-        return FX_FILE_NULL_HANDLE_ERR;
+        return FX_NULL_FILE_ERR;
     return fx_fgets((FILE*)(f->handle->ptr), fx_result);
     "
 
