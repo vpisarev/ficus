@@ -53,7 +53,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(break|catch|continue|if|in|do|else|fold|for|match|parallel|throw|try|with|while)\b</string>
+			<string>\b(break|catch|continue|if|elif|do|else|fold|for|match|parallel|throw|try|with|while)\b</string>
 			<key>name</key>
 			<string>keyword.control.fx</string>
 		</dict>
