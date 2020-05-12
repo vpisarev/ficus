@@ -63,6 +63,7 @@ type intrin_t =
 type ktprops_t =
 {
     ktp_complex: bool;
+    ktp_scalar: bool;
     ktp_ptr: bool;
     ktp_pass_by_ref: bool;
     ktp_custom_free: bool;

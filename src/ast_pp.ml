@@ -138,6 +138,7 @@ let rec pprint_exp e =
     match e with
     | DefVal(p, e0, vflags, _) -> obox(); (List.iter (fun vf -> match vf with
         | ValTempRef -> pstr "TEMP_REF"; pspace()
+        | ValTemp -> pstr "TEMP"; pspace()
         | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);

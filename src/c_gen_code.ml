@@ -124,9 +124,15 @@ let find_single_use_vals topcode =
         *)
         match e with
         | KDefVal(k, e1, loc) ->
-            if K_deadcode_elim.pure_kexp e1 then
-                decl_const_vals := IdSet.add k !decl_const_val
-            else ();
+            (match (kinfo_ k loc) with
+            | KVal {kv_flags} ->
+                (* We only replace those values with expressions which are temporary
+                   and computed using pure expressions *)
+                let good_temp = (List.mem ValTempRef kv_flags) || (List.mem ValTemp kv_flags) in
+                if good_temp && (K_deadcode_elim.pure_kexp e1) then
+                    decl_const_vals := IdSet.add k !decl_const_val
+                else ()
+            | _ -> ());
             count_kexp e1 callb
         | _ -> fold_kexp e callb
     in count_callb =
@@ -139,7 +145,7 @@ let find_single_use_vals topcode =
     List.iter (fun e -> count_kexp e) topcode;
     IdSet.filter (fun i -> match (Env.find_opt i !count_map) with Some 1 -> true | _ -> false) !decl_const_vals)
 
-type block_kind_t = BlockKind_Global | BlockKind_Fun | BlockKind_Try | BlockKind_Loop | BlockKind_General
+type block_kind_t = BlockKind_Global | BlockKind_Fun | BlockKind_Try | BlockKind_Loop | BlockKind_General | BlockKind_Case
 
 type block_ctx_t =
 {
@@ -233,8 +239,9 @@ let gen_ccode topcode =
     in
 
     let get_dstexp dstexp_r prefix ctyp flags ccode sc loc =
-        match !dstexp_r with
-        | Some(dstexp) -> (dstexp, ccode)
+        match (ctyp, !dstexp_r) with
+        | (_, Some(dstexp)) -> (dstexp, ccode)
+        | (CTypVoid, _) -> ((make_dummy_exp loc), ccode)
         | _ ->
             let i = gen_temp_idc prefix in
             let (i_exp, ccode) = add_val i ctyp flags None ccode sc loc in
@@ -337,7 +344,7 @@ let gen_ccode topcode =
         let fname = match sc with ScFun f :: _ -> f | _ -> noid in
         let (ktyp, kloc) = get_kexp_ctx kexp in
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
-        let dummy_exp = CExpStructInit([], (CTypVoid, kloc)) in
+        let dummy_exp = make_dummy_exp kloc in
         let is_dummy_exp e = match e with CExpStructInit([], (CTypVoid, _)) -> true | _ -> false in
 
         (* generate exp and then optionally generate the assignment if needed *)
@@ -634,10 +641,10 @@ let gen_ccode topcode =
             let (e, body_code) = kexp2cexp body (ref None) [] sc in
             let body_code = ((CExp e) :: body_code) @ check_code in
             let body_stmt = finalize_loop_body body_code kloc in
-            let loop_stmt = if is_for_loop then
+            let loop_stmt = (if is_for_loop then
                     CStmtFor([], None, [], body_stmt, kloc)
                 else
-                    CStmtWhile(cc, loop_stmt, kloc)
+                    CStmtWhile(cc, loop_stmt, kloc))
             in
             (false, dummy_exp, loop_stmt :: ccode)
         | KExpDoWhile(body, c, _) ->
@@ -665,16 +672,44 @@ let gen_ccode topcode =
             (false, dummy_exp, loop_stmt :: ccode)
         | KExpCCode(ccode_str, _) ->
             (true, CExpCCode(ccode_str, kloc), ccode)
-        | KDefVal(i, e1, _) -> raise_compile_err kloc "cgen: unsupported KDefVal"
-            (*
-                * if e1/i has complex type:
-                    ** generate "type i={};",
-                    ** add it to prologue, add destuctor to cleanup.
-                    ** set dstid = i
-                * otherwise dstid = noid
-                convert e1 to cexp. if e1/i has simple type, then do "some_type i = e1;"
-                (otherwise during the conversion the result of e1 will automatically be stored to dstid)
+        | KDefVal(i, e2, _) ->
+            let {kv_typ; kv_flags} = match (kinfo_ i kloc) with
+                | KVal kv -> kv
+                | _ -> raise_compile_err kloc ("'%s' is not a value/variable" (id2str i))
+                in
+            let {ktp_complex; ktp_scalar} = K_annotate_types.get_ktprops kv_typ kloc in
+            let ctyp = C_gen_types.ktyp2ctyp kv_typ kloc in
+            let bctx = curr_block_ctx kloc in
+            let is_global = bctx.bctx_kind == BlockKind_Global in
+            (* there are 3 cases (ce2 denotes e2 converted to C):
+                1. definition "ctyp i = ce2" is not added; instead, i is replaced with ce2.
+                2. i is defined separately: "ctyp i[={}|0];" and then
+                   expression is compiled with 'i' as the destination.
+                3. i is defined and initialized at once: "ctyp i=ce2;"
             *)
+            let ccode =
+                if ((List.mem ValTempRef kv_flags) ||
+                    (ktp_scalar && (List.mem ValTemp kv_flags))) &&
+                    (IdSet.mem i u1vals) then
+                    let (ce2, ccode) = kexp2cexp e2 (ref None) ccode sc in
+                    let _ = i2e := Env.add i ce2 !i2e in ccode
+                else if ktp_complex || is_global ||
+                    (match e2 with
+                    | KExpUnOp(OpMkRef, _, _) -> true
+                    | KExpBinOp _ | KExpUnOp _ | KExpIntrin _ | KExpMkTuple
+                    | KExpMkRecord _ | KExpAt _ | KExpMem _ | KExpCast _ | KExpCCode _ -> false
+                    | _ -> true) then
+                    let (i_exp, delta_code) = add_val i ctyp kv_flags None [] sc kloc in
+                    let ccode = if is_global then (bctx.bctx_prologue <- delta_code @ bctx.bctx_prologue; ccode)
+                        else delta_code @ ccode in
+                    let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode sc in
+                    ccode
+                else
+                    let (ce2, ccode) = kexp2cexp e2 (re None) ccode sc in
+                    let (_, ccode) = add_val i ctyp kv_flags (Some ce2) ccode sc kloc in
+                    ccode
+                in
+            (false, dummy_exp, ccode)
         | KDefFun kf -> raise_compile_err kloc "cgen: unsupported KDefFun"
             (*
                 generate new context.

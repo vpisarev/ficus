@@ -689,6 +689,8 @@ let make_call f args rt loc =
     let f_exp = make_id_exp f loc in
     CExpCall(f_exp, args, (rt, loc))
 
+let make_dummy_exp loc = CExpStructInit([], (CTypVoid, loc))
+
 let cexp_get_addr e =
     match e with
     | CExpUnOp(COpDeref, x, _) -> x

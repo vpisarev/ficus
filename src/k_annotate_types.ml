@@ -127,31 +127,31 @@ let get_ktprops t loc =
     match t with
     | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypVoid | KTypNil | KTypBool | KTypChar | KTypErr ->
-        { ktp_complex=false; ktp_ptr=false; ktp_pass_by_ref=false;
+        { ktp_complex=false; ktp_scalar=true; ktp_ptr=false; ktp_pass_by_ref=false;
           ktp_custom_free=false; ktp_custom_copy=false }
     | KTypString | KTypArray _ | KTypExn | KTypFun _ | KTypModule ->
-        { ktp_complex=true; ktp_ptr=false; ktp_pass_by_ref=true;
+        { ktp_complex=true; ktp_scalar=false; ktp_ptr=false; ktp_pass_by_ref=true;
           ktp_custom_free=false; ktp_custom_copy=false }
     | KTypCPointer ->
-        { ktp_complex=true; ktp_ptr=true; ktp_pass_by_ref=false;
+        { ktp_complex=true; ktp_scalar=false; ktp_ptr=true; ktp_pass_by_ref=false;
           ktp_custom_free=false; ktp_custom_copy=false }
     | KTypTuple(elems) ->
         let have_complex = List.exists (fun ti ->
             (get_ktprops_ ti loc).ktp_complex) elems in
-        { ktp_complex=have_complex; ktp_ptr=false; ktp_pass_by_ref=true;
+        { ktp_complex=have_complex; ktp_scalar=false; ktp_ptr=false; ktp_pass_by_ref=true;
           ktp_custom_free=have_complex; ktp_custom_copy=have_complex }
     | KTypRecord(_, relems) ->
         let have_complex = List.exists (fun (_, ti) ->
             (get_ktprops_ ti loc).ktp_complex) relems in
-        { ktp_complex=have_complex; ktp_ptr=false; ktp_pass_by_ref=true;
+        { ktp_complex=have_complex; ktp_scalar=false; ktp_ptr=false; ktp_pass_by_ref=true;
           ktp_custom_free=have_complex; ktp_custom_copy=have_complex }
     | KTypList et ->
         let have_complex = (get_ktprops_ et loc).ktp_complex in
-        { ktp_complex=true; ktp_ptr=true; ktp_pass_by_ref=false;
+        { ktp_complex=true; ktp_scalar=false; ktp_ptr=true; ktp_pass_by_ref=false;
           ktp_custom_free=have_complex; ktp_custom_copy=false }
     | KTypRef et ->
         let have_complex = (get_ktprops_ et loc).ktp_complex in
-        { ktp_complex=true; ktp_ptr=true; ktp_pass_by_ref=false;
+        { ktp_complex=true; ktp_scalar=false; ktp_ptr=true; ktp_pass_by_ref=false;
           ktp_custom_free=have_complex; ktp_custom_copy=false }
     | KTypName n ->
         (match (kinfo_ n loc) with
@@ -161,7 +161,7 @@ let get_ktprops t loc =
             | Some(kvp) -> kvp
             | _ ->
                 let kvp = (if List.mem VariantRecursive kvar_flags then
-                    { ktp_complex=true; ktp_ptr=true; ktp_pass_by_ref=false;
+                    { ktp_complex=true; ktp_scalar=false; ktp_ptr=true; ktp_pass_by_ref=false;
                       ktp_custom_free=true; ktp_custom_copy=false }
                 else
                     let _ = if IdSet.mem n !visited then raise_compile_err loc
@@ -169,7 +169,7 @@ let get_ktprops t loc =
                     let _ = visited := IdSet.add n !visited in
                     let have_complex = List.exists (fun (_, ti) -> (get_ktprops_ ti kvar_loc).ktp_complex) kvar_cases
                     in
-                    { ktp_complex=have_complex; ktp_ptr=false; ktp_pass_by_ref=true;
+                    { ktp_complex=have_complex; ktp_scalar=false; ktp_ptr=false; ktp_pass_by_ref=true;
                      ktp_custom_free=have_complex; ktp_custom_copy=have_complex })
                 in
                     kvar := {!kvar with kvar_props=Some(kvp)};

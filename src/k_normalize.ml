@@ -363,7 +363,7 @@ and exp2atom e code tref sc =
     | (_, KExpAtom(a, _)) -> (a, code)
     | (_, _) ->
         let kv_name = gen_temp_idk "v" in
-        let kv_flags = if tref then ValTempRef :: [] else [] in
+        let kv_flags = if tref then ValTempRef :: [] else ValTemp :: [] in
         let code = create_defval kv_name t kv_flags (Some e) code sc eloc in
         ((Atom.Id kv_name), code)
 

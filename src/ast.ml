@@ -160,7 +160,7 @@ type binop_t =
 
 type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
-type val_flag_t = ValArg | ValMutable | ValTempRef | ValImplicitDeref
+type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
@@ -636,3 +636,29 @@ let init_all_ids () =
     let _ = get_id_prefix "" in
     let _ = get_id_prefix "_" in
     fname_always_import()
+
+let reserved_keywords = Hashtbl.create 1001
+let _ = List.iter (fun kwd -> Hashtbl.add reserved_keywords kwd 1)
+    ["alignas"; "alignof"; "and"; "and_eq"; "asm"; "atomic_cancel";
+    "atomic_commit"; "atomic_noexcept"; "auto"; "bitand"; "bitor";
+    "break"; "case"; "catch"; "char8_t"; "char16_t";
+    "char32_t"; "class"; "compl"; "concept"; "const"; "consteval";
+    "constexpr"; "constinit"; "const_cast"; "continue"; "co_await";
+    "co_return"; "co_yield"; "decltype"; "default"; "delete"; "do";
+    "dynamic_cast"; "else"; "enum"; "explicit"; "export";
+    "extern"; "false"; "for"; "friend"; "goto"; "if"; "inline";
+    "long"; "mutable"; "namespace"; "new"; "noexcept"; "not";
+    "not"; "not_eq"; "nullptr"; "operator"; "or"; "or_eq"; "private";
+    "protected"; "public"; "reflexpr"; "register"; "reinterpret_cast";
+    "requires"; "restricted"; "return"; "short"; "signed"; "sizeof"; "static";
+    "static_assert"; "static_cast"; "struct"; "switch"; "synchronized";
+    "template"; "this"; "thread_local"; "throw"; "true"; "try"; "typedef";
+    "typeid"; "typename"; "union"; "unsigned"; "using"; "virtual";
+    "volatile"; "wchar_t"; "while"; "xor"; "xor_eq";
+
+    "_Alignas"; "_Alignof"; "_Atomic"; "_Bool"; "_Complex";
+    "_Generic"; "_Imaginary"; "_Noreturn"; "_Static_assert";
+    "_Thread_local";
+
+    "int8_t"; "uint8_t"; "int16_t"; "uint16_t"; "int32_t"; "uint32_t";
+    "int64_t"; "uint64_t"; "char_"; "fx_result"; "fx_status"; "fx_fv"]

@@ -5,6 +5,7 @@
 *)
 
 (* lexer *)
+open Ast
 open Parser
 open Lexing
 open Printf
@@ -248,7 +249,6 @@ let make_char_literal lexbuf c =
     check_ne(lexbuf);
     new_exp := false;
     [CHAR c]
-
 }
 
 let newline = '\n' | '\r' | "\r\n"
@@ -417,6 +417,13 @@ rule tokens = parse
                 | (t, 2) -> check_ne(lexbuf); new_exp := true; [t]
                 | _ -> raise (lexErr (sprintf "Unexpected keyword '%s'" ident) lexbuf)
             with Not_found ->
+                (try
+                    if (Hashtbl.find reserved_keywords ident) == 1 then
+                        raise (lexErr (sprintf
+                            "the identifier '%s' cannot be used; it's reserved by C++, C or by Ficus compiler"
+                            ident) lexbuf)
+                    else ()
+                with Not_found -> ());
                 let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t))
         }
     | '+'   { let t = if !new_exp then [B_PLUS] else [PLUS] in (new_exp := true; t) }
