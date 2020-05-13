@@ -31,13 +31,13 @@ open C_form
 let rec ktyp2ctyp_fargs args rt loc =
     let args_ = List.map (fun kt ->
         let ct = ktyp2ctyp kt loc in
-        let {ctp_pass_by_ref} = get_ctprops ct loc in
+        let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kt loc in
         let ptr_attr = match (ktyp_deref kt loc) with
                 | KTypArray(_, _) -> []
                 | _ -> [CTypConst] in
-        if ctp_pass_by_ref then CTypRawPtr(ptr_attr, ct) else ct) args in
+        if ktp_pass_by_ref then CTypRawPtr(ptr_attr, ct) else ct) args in
     let rct = CTypRawPtr([], ktyp2ctyp rt loc) in
-    args_ @ (rct :: [])
+    args_ @ (rct :: std_CTypVoidPtr :: [])
 
 (* ktyp_t -> ctyp_t *)
 and ktyp2ctyp t loc =

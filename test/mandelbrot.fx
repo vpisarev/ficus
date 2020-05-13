@@ -47,16 +47,11 @@ val result: int8 [,] = [
 
             if bits == 0 {break}
         }
-        (bits :> int8)
+        bits :> int8
     }
 ]
 
-fun write_file()
-{
-    val f: File.file_t = File.open("result.pgm", "wb")
-    File.print(f, "P4\n\(w) \(h)\n")
-    File.write(f, result)
-    File.close(f)
-}
-
-write_file()
+val f: File.file_t = File.open("result.pgm", "wb")
+File.print(f, "P4\n\(w) \(h)\n")
+File.write(f, result)
+File.close(f)

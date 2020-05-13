@@ -23,34 +23,52 @@ let convert_all_fdecls top_code =
             let {kf_name; kf_cname; kf_typ; kf_args; kf_flags; kf_closure=(kf_fv_arg, _); kf_body; kf_scope; kf_loc} = !kf in
             let (argtyps, rt) = match kf_typ with
                 | KTypFun(argtyps, rt) -> (argtyps, rt)
-                | _ -> ([], rt)
+                | _ -> ([], kf_typ)
                 in
-            let argctyps = List.map (fun t -> ktyp2ctyp t kf_loc) argtyps in
-            let crt = ktyp2ctyp rt kf_loc in
             let cbody = match kf_body with KExpCCode _ -> true | _ -> false in
-            let _ = List.iter2 (fun arg t ->
+            let (args, argctyps) = List.fold_left2 (fun (args, argctyps) arg t ->
+                let arg = if arg = (get_orig_id arg) then (dup_idc arg) else arg in
                 let cname = if cbody then pp_id2str arg else "" in
-                add_farg arg t cname) kf_args argctyps
+                let ctyp = C_gen_types.ktyp2ctyp t kf_loc in
+                let {ktp_pass_by_ref} = K_annotate_types.get_ktprops t kf_loc in
+                let ctyp = if ktp_pass_by_ref then
+                    (match ctyp with
+                    | CTypArray _ -> (make_ptr ctyp)
+                    | _ -> (make_const_ptr ctyp)) else ctyp in
+                add_farg arg ctyp cname kf_scope kf_loc;
+                ((arg :: args), (ctyp :: argctyps))) ([], []) kf_args argtyps
+                in
+            let {ktp_scalar=rt_scalar} = K_annotate_types.get_ktprops rt kf_loc in
+            let crt = C_gen_types.ktyp2ctyp rt kf_loc in
+            let is_nothrow = List.mem FunNoThrow kf_flags in
+            let (new_crt, args, argctyps) =
+                if is_nothrow && rt_scalar then
+                    (crt, args, argctyps)
+                else if crt = CTypVoid then
+                    (CTypCInt, args, argctyps)
+                else
+                    let v = gen_temp_idc "fx_result" in
+                    let crt = make_ptr crt in
+                    (add_farg v crt "fx_result" kf_scope kf_loc;
+                    ((if is_nothrow then CTypVoid else CTypCInt), v :: args, crt :: argctyps))
                 in
             let (fv_arg, fv_cname) = if kf_fv_arg = noid then
-                    ((gen_temp_idc "fx_fv_unused"), "fv_fv_unused")
+                    ((gen_temp_idc "fx_fv"), "fx_fv")
                 else
                     (kf_fv_arg, "fx_fv")
                 in
-            let _ = add_farg fv_arg std_CTypVoidPtr fv_cname kf_scope kf_loc in
-            let (extra_args, extra_argctyps) = ([fv_arg], [std_CTypVoidPtr]) in
-            let (new_crt, extra_args, extra_argctyps) = if (List.mem FunNoThrow kf_flags) then
-                    (crt, extra_args, extra_argctyps)
+            let (args, argctyps) =
+                if List.mem FunConstr kf_flags then
+                    (args, argctyps)
                 else
-                    let v = gen_temp_idc "fx_result" in
-                    (add_farg v crt "fx_result" kf_scope kf_loc;
-                    (CTypCInt, v :: extra_args, crt :: extra_argctyps))
+                    (add_farg fv_arg std_CTypVoidPtr fv_cname kf_scope kf_loc;
+                    ((fv_arg :: args), (std_CTypVoidPtr :: argctyps)))
                 in
-            let (args, argctyps) = ((kf_args @ extra_args), (argctyps @ extra_argctyps)) in
-            let cf = ref {cf_name=kf_name; cf_typ=CTypFunRawPtr(argctyps, new_crt);
-                cf_args=args; cf_cname=kf_cname; cf_body=CStmtNop(kf_loc);
+            let _ = printf("\tbuild args\n") in
+            let cf = ref {cf_name=kf_name; cf_typ=CTypFun((List.rev argctyps), new_crt);
+                cf_args=(List.rev args); cf_cname=kf_cname; cf_body=[];
                 cf_flags=kf_flags; cf_scope=kf_scope; cf_loc=kf_loc } in
-            set_idc_entry cf_name (CFun cf);
+            set_idc_entry kf_name (CFun cf);
             top_func_decl := (CDefFun cf) :: !top_func_decl
         | _ -> ()) top_code;
     List.rev !top_func_decl

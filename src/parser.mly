@@ -380,7 +380,7 @@ stmt:
         ExpAssign($1, ExpUpdateRecord($1, (List.rev $4), (tp, loc)), loc)
     }
 | B_WHILE exp_or_block block { ExpWhile($2, $3, curr_loc()) }
-| DO stmt_or_block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
+| DO block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
 | for_flags B_FOR nested_for_ block { make_for $4 $3 $1 }
 | complex_exp { $1 }
 
@@ -415,7 +415,6 @@ simple_exp:
 | B_LPAREN complex_exp RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }
-| B_LPAREN exp CAST typespec RPAREN { ExpCast($2, $4, make_new_ctx()) }
 | B_LSQUARE for_flags B_FOR nested_for_ block RSQUARE
     {
         let map_clauses = compress_nested_map_exp $4 in
@@ -458,7 +457,7 @@ complex_exp:
         | _ -> else_exp
     in
     let (elif_seq, else_exp) = $2 in make_if elif_seq else_exp }
-| TRY stmt_or_block CATCH LBRACE BAR pattern_matching_clauses_ RBRACE { ExpTryCatch ($2, (List.rev $6), make_new_ctx()) }
+| TRY block CATCH LBRACE BAR pattern_matching_clauses_ RBRACE { ExpTryCatch ($2, (List.rev $6), make_new_ctx()) }
 | MATCH exp_or_block LBRACE BAR pattern_matching_clauses_ RBRACE
     {
         ExpMatch ($2, (List.rev $5), make_new_ctx())
@@ -484,47 +483,50 @@ complex_exp:
     %prec fcall_prec
     { ExpMkRecord($1, [], make_new_ctx()) }
 | exp { $1 }
+| cast_exp { $1 }
 
-ncexp:
+cast_exp:
+| unary_exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
+
+unary_exp:
 | simple_exp { $1 }
-| ncexp PLUS ncexp { make_bin_op(OpAdd, $1, $3) }
-| ncexp MINUS ncexp { make_bin_op(OpSub, $1, $3) }
-| ncexp STAR ncexp { make_bin_op(OpMul, $1, $3) }
-| ncexp SLASH ncexp { make_bin_op(OpDiv, $1, $3) }
-| ncexp MOD ncexp { make_bin_op(OpMod, $1, $3) }
-| ncexp POWER ncexp { make_bin_op(OpPow, $1, $3) }
-| ncexp SHIFT_LEFT ncexp { make_bin_op(OpShiftLeft, $1, $3) }
-| ncexp SHIFT_RIGHT ncexp { make_bin_op(OpShiftRight, $1, $3) }
-| ncexp BITWISE_AND ncexp { make_bin_op(OpBitwiseAnd, $1, $3) }
-| ncexp BITWISE_OR ncexp { make_bin_op(OpBitwiseOr, $1, $3) }
-| ncexp BITWISE_XOR ncexp { make_bin_op(OpBitwiseXor, $1, $3) }
-| ncexp CONS ncexp { make_bin_op(OpCons, $1, $3) }
-| B_STAR ncexp %prec deref_prec { make_un_op(OpDeref, $2) }
-| B_POWER ncexp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
-| REF ncexp { make_un_op(OpMkRef, $2) }
-| B_MINUS ncexp { make_un_op(OpNegate, $2) }
-| B_PLUS ncexp { make_un_op(OpPlus, $2) }
-| BITWISE_NOT ncexp { make_un_op(OpBitwiseNot, $2) }
-| EXPAND ncexp { make_un_op(OpExpand, $2) }
+| B_STAR unary_exp %prec deref_prec { make_un_op(OpDeref, $2) }
+| B_POWER unary_exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
+| REF unary_exp { make_un_op(OpMkRef, $2) }
+| B_MINUS unary_exp { make_un_op(OpNegate, $2) }
+| B_PLUS unary_exp { make_un_op(OpPlus, $2) }
+| BITWISE_NOT unary_exp { make_un_op(OpBitwiseNot, $2) }
+| EXPAND unary_exp { make_un_op(OpExpand, $2) }
+
+binary_exp:
+| binary_exp PLUS binary_exp { make_bin_op(OpAdd, $1, $3) }
+| binary_exp MINUS binary_exp { make_bin_op(OpSub, $1, $3) }
+| binary_exp STAR binary_exp { make_bin_op(OpMul, $1, $3) }
+| binary_exp SLASH binary_exp { make_bin_op(OpDiv, $1, $3) }
+| binary_exp MOD binary_exp { make_bin_op(OpMod, $1, $3) }
+| binary_exp POWER binary_exp { make_bin_op(OpPow, $1, $3) }
+| binary_exp SHIFT_LEFT binary_exp { make_bin_op(OpShiftLeft, $1, $3) }
+| binary_exp SHIFT_RIGHT binary_exp { make_bin_op(OpShiftRight, $1, $3) }
+| binary_exp BITWISE_AND binary_exp { make_bin_op(OpBitwiseAnd, $1, $3) }
+| binary_exp BITWISE_OR binary_exp { make_bin_op(OpBitwiseOr, $1, $3) }
+| binary_exp BITWISE_XOR binary_exp { make_bin_op(OpBitwiseXor, $1, $3) }
+| binary_exp CONS binary_exp { make_bin_op(OpCons, $1, $3) }
+| unary_exp { $1 }
 
 chained_cmp_exp:
-| chained_cmp_exp EQUAL_TO ncexp { (OpCompareEQ, $3) :: $1 }
-| chained_cmp_exp NOT_EQUAL ncexp  { (OpCompareNE, $3) :: $1 }
-| chained_cmp_exp LESS ncexp { (OpCompareLT, $3) :: $1 }
-| chained_cmp_exp LESS_EQUAL ncexp { (OpCompareLE, $3) :: $1 }
-| chained_cmp_exp GREATER ncexp { (OpCompareGT, $3) :: $1 }
-| chained_cmp_exp GREATER_EQUAL ncexp { (OpCompareGE, $3) :: $1 }
-| ncexp { (OpCompareEQ, $1) :: [] }
+| chained_cmp_exp EQUAL_TO binary_exp { (OpCompareEQ, $3) :: $1 }
+| chained_cmp_exp NOT_EQUAL binary_exp  { (OpCompareNE, $3) :: $1 }
+| chained_cmp_exp LESS binary_exp { (OpCompareLT, $3) :: $1 }
+| chained_cmp_exp LESS_EQUAL binary_exp { (OpCompareLE, $3) :: $1 }
+| chained_cmp_exp GREATER binary_exp { (OpCompareGT, $3) :: $1 }
+| chained_cmp_exp GREATER_EQUAL binary_exp { (OpCompareGE, $3) :: $1 }
+| binary_exp { (OpCompareEQ, $1) :: [] }
 
 exp:
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
 | exp LOGICAL_OR exp { make_bin_op(OpLogicOr, $1, $3) }
 | exp LOGICAL_AND exp { make_bin_op(OpLogicAnd, $1, $3) }
 | chained_cmp_exp { make_chained_cmp($1) }
-
-stmt_or_block:
-| stmt { $1 }
-| block { $1 }
 
 exp_or_block:
 | exp { $1 }
@@ -637,12 +639,12 @@ loop_range_exp:
 | exp COLON COLON exp { ExpRange(Some($1), None, Some($4), make_new_ctx()) }
 
 range_exp:
-| exp { $1 }
+| complex_exp { $1 }
 | opt_exp COLON opt_exp { ExpRange($1, $3, None, make_new_ctx()) }
 | opt_exp COLON opt_exp COLON exp { ExpRange($1, $3, Some($5), make_new_ctx()) }
 
 opt_exp:
-| exp { Some($1) }
+| complex_exp { Some($1) }
 | /* empty */ { None }
 
 idx_list_:

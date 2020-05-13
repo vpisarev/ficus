@@ -127,7 +127,7 @@ and pprint_kexp_ e prtyp =
             | _ -> raise_compile_err loc (sprintf "there is no information about defined value '%s'" (id2str n)) in
         (List.iter (fun vf -> match vf with
         | ValTempRef -> pstr "TEMP_REF"; pspace()
-        | ValTemp -> pstr "TEMP "; pspace()
+        | ValTemp -> pstr "TEMP"; pspace()
         | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
