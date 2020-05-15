@@ -7,7 +7,6 @@
 import String
 
 ccode "#include <stdio.h>"
-exception NullFileError
 
 val SEEK_SET: int = ccode "(int)SEEK_SET"
 val SEEK_CURR: int = ccode "(int)SEEK_CUR"

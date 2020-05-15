@@ -374,38 +374,7 @@ void fx_free_arr(fx_arr_t* arr);
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
-                 fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr );
-FX_INLINE int fx_make_arr1d(int_ size0, size_t elemsize,
-                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
-{ return fx_make_arr(1, &size0, elemsize, free_elem, copy_elem, arr); }
-
-FX_INLINE int fx_make_arr2d(int_ size0, int_ size1, size_t elemsize,
-                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
-{
-    int_ size[] = { size0, size1 };
-    return fx_make_arr(2, size, elemsize, free_elem, copy_elem, arr);
-}
-
-FX_INLINE int fx_make_arr3d(int_ size0, int_ size1, int_ size2, size_t elemsize,
-                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
-{
-    int_ size[] = { size0, size1, size2 };
-    return fx_make_arr(3, size, elemsize, free_elem, copy_elem, arr);
-}
-
-FX_INLINE int fx_make_arr4d(int_ size0, int_ size1, int_ size2, int_ size3, size_t elemsize,
-                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
-{
-    int_ size[] = { size0, size1, size2, size3 };
-    return fx_make_arr(4, size, elemsize, free_elem, copy_elem, arr);
-}
-
-FX_INLINE int fx_make_arr5d(int_ size0, int_ size1, int_ size2, int_ size3, int_ size4, size_t elemsize,
-                fx_free_t free_elem, fx_copy_t copy_elem, fx_arr_t* arr)
-{
-    int_ size[] = { size0, size1, size2, size3, size4 };
-    return fx_make_arr(5, size, elemsize, free_elem, copy_elem, arr);
-}
+                 fx_free_t free_elem, fx_copy_t copy_elem, const void* elems, fx_arr_t* arr );
 
 ////////////////////////// References //////////////////////////
 

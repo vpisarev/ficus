@@ -146,6 +146,14 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
         pprint_ctyp__ "" t None fwd_mode loc;
         pstr "*"; pr_id_opt();
         cbox()
+    | CTypRawArray (attrs, et) ->
+        obox();
+        if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
+        if (List.mem CTypConst attrs) then pstr "const " else ();
+        pprint_ctyp__ "" t None fwd_mode loc;
+        pspace();
+        pr_id_opt_ false; pstr "[]";
+        cbox()
     | CTypName n ->
         (match (fwd_mode, n) with
         | (false, _) -> pprint_id n loc
@@ -213,6 +221,10 @@ and pprint_cexp_ e pr =
             List.iteri (fun i e ->
                 if i = 0 then pcut() else (pstr ","; pspace());
                 pprint_cexp_ e 0) eseq;
+        cbox()
+    | CExpTyp(t, loc) ->
+        obox();
+        pprint_ctyp_ t None loc;
         cbox()
     | CExpCCode (ccode, l) ->
         obox(); pstr ccode; cbox()

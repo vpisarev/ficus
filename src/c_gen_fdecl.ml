@@ -64,7 +64,6 @@ let convert_all_fdecls top_code =
                     (add_farg fv_arg std_CTypVoidPtr fv_cname kf_scope kf_loc;
                     ((fv_arg :: args), (std_CTypVoidPtr :: argctyps)))
                 in
-            let _ = printf("\tbuild args\n") in
             let cf = ref {cf_name=kf_name; cf_typ=CTypFun((List.rev argctyps), new_crt);
                 cf_args=(List.rev args); cf_cname=kf_cname; cf_body=[];
                 cf_flags=kf_flags; cf_scope=kf_scope; cf_loc=kf_loc } in

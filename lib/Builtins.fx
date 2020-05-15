@@ -41,13 +41,16 @@ fun string(a: 't []) {
     join(", ",
         [for i <- 0:n {
             val ai = string(a[i])
-            if 0 <= i && i < n {ai} elif i == 0 {"["+ai} else {ai+"]"}
+            if i == 0 {"["+ai} elif i < n-1 {ai} else {ai+"]"}
         }])
 }
 
-operator == (a: string, b: string): bool = ccode "
-    *fx_result = (bool)(a->length == b->length && (a->length == 0 || memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
-    return FX_OK;"
+pure nothrow operator == (a: string, b: string): bool = ccode
+    "
+    return (bool)(a->length == b->length &&
+            (a->length == 0 ||
+            memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
+    "
 operator != (a: string, b: string): bool = !(a == b)
 operator + (a: string, b: string): string = ccode "fx_str_t s[] = {*a, *b}; return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: string, b: char): string = ccode "
@@ -97,7 +100,7 @@ fun print(l: 't list)
     print("[")
     for i <- 0:, x <- l {
         if i > 0 {print(", ")}
-        print (x)
+        print(x)
     }
     print("]")
 }
@@ -110,10 +113,14 @@ fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
 fun array((m: int, n: int, l: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
 
 pure nothrow fun size(a: 't []): int = ccode "return a->dim[0];"
-pure fun size(a: 't [,]): (int, int) = ccode
-    "fx_result->t0=a->dim[0].size; fx_result->t1=a->dim[1].size; return FX_OK;"
-pure fun size(a: 't [,,]): (int, int, int) = ccode
-    "fx_result->t0=a->dim[0].size;
+pure nothrow fun size(a: 't [,]): (int, int) = ccode
+    "
+    fx_result->t0=a->dim[0].size;
+    fx_result->t1=a->dim[1].size;
+    "
+pure nothrow fun size(a: 't [,,]): (int, int, int) = ccode
+    "
+    fx_result->t0=a->dim[0].size;
     fx_result->t1=a->dim[1].size;
     fx_result->t2=a->dim[2].size;
-    return FX_OK;"
+    "

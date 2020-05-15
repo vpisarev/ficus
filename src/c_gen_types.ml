@@ -72,7 +72,8 @@ and ktyp2ctyp t loc =
 
 (* returns some basic information about ctyp_t instance *)
 and get_ctprops ct loc =
-    match ct with
+    let ctp =
+    (match ct with
     | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _
     | CTypFloat _ | CTypVoid | CTypBool | CTypUniChar ->
         {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
@@ -101,6 +102,9 @@ and get_ctprops ct loc =
     | CTypRawPtr(_, t) ->
         {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=true}
+    | CTypRawArray(_, t) ->
+        {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        ctp_pass_by_ref=false; ctp_ptr=false}
     | CTypArray(_, _) ->
         {ctp_make=[]; ctp_free=(!std_FX_FREE_ARR, !std_fx_free_arr); ctp_copy=(noid, !std_fx_copy_arr);
         ctp_pass_by_ref=true; ctp_ptr=false}
@@ -112,7 +116,11 @@ and get_ctprops ct loc =
     | CTypLabel ->
         raise_compile_err loc "properties of label cannot be requested"
     | CTypAny ->
-        raise_compile_err loc "properties of 'any type' cannot be requested"
+        raise_compile_err loc "properties of 'any type' cannot be requested") in
+    let {ctp_free=(free_m, free_f); ctp_copy=(copy_m, copy_f)} = ctp in
+    (if free_m != noid && free_f = noid then raise_compile_err loc "cgen: if free_m is non-empty then free_f must also be non-empty" else ();
+    if copy_m != noid && copy_f = noid then raise_compile_err loc "cgen: if copy_m is non-empty then copy_f must also be non-empty" else ();
+    ctp)
 
 let get_constructor ctyp required loc =
     let {ctp_make} = get_ctprops ctyp loc in
@@ -130,13 +138,13 @@ let get_free_f ct let_none let_macro loc =
             else (false, !std_FX_NOP) in
         (use_if, Some (make_id_exp i loc))
 
-let get_copy_f ct let_none loc =
+let get_copy_f ct let_none let_macro loc =
     let {ctp_pass_by_ref; ctp_copy=(copym, copyf)} = get_ctprops ct loc in
     (ctp_pass_by_ref,
     (if copym = noid && copyf = noid && let_none then
         None
     else
-        let i = if copym <> noid then copym
+        let i = if copym <> noid && let_macro then copym
             else if copyf <> noid then copyf
             else if ctp_pass_by_ref then !std_FX_COPY_SIMPLE_BY_PTR
             else !std_FX_COPY_SIMPLE in
@@ -146,7 +154,7 @@ let get_copy_f ct let_none loc =
    It's assumed that the destination is empty, i.e. not initialized.
    If it's initialized then the compiler should call the destructor for it first *)
 let gen_copy_code src_exp dst_exp ct code loc =
-    let (pass_by_ref, copy_f_opt) = get_copy_f ct true loc in
+    let (pass_by_ref, copy_f_opt) = get_copy_f ct true true loc in
     let ctx = (CTypVoid, loc) in
     let src_exp = if pass_by_ref then (cexp_get_addr src_exp) else src_exp in
     let e = match copy_f_opt with
@@ -405,7 +413,7 @@ let convert_all_typs top_code =
                         (freef_decl := {!freef_decl with cf_body=free_code}; (noid, freef)) in
                     let cons_id = gen_temp_idc "cons" in
                     let make_list_m = make_id_exp !std_FX_MAKE_LIST_IMPL kt_loc in
-                    let (pass_by_ref, copy_hd_f) = match (get_copy_f ct_hd false loc) with
+                    let (pass_by_ref, copy_hd_f) = match (get_copy_f ct_hd false true loc) with
                         | (pbr, Some(f)) -> (pbr, f)
                         | _ -> raise_compile_err loc
                             (sprintf "missing element copy operator when converting %s" (get_idk_cname tn loc)) in
@@ -441,7 +449,7 @@ let convert_all_typs top_code =
                             (freef_decl := {!freef_decl with cf_body=free_code}; (noid, freef)) in
                     let mkref_id = gen_temp_idc "mkref" in
                     let mkref_m = make_id_exp !std_FX_MAKE_REF_IMPL kt_loc in
-                    let (pass_by_ref, copy_data_f) = match (get_copy_f ct false loc) with
+                    let (pass_by_ref, copy_data_f) = match (get_copy_f ct false true loc) with
                         | (pbr, Some(f)) -> (pbr, f)
                         | _ -> raise_compile_err loc
                             (sprintf "missing element copy operator when converting %s" (get_idk_cname tn loc)) in

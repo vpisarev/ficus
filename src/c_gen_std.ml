@@ -27,6 +27,7 @@ let gen_std_macro cname nargs =
 let init_std_names () =
     (curr_exn_val := -1024;
 
+    std_sizeof := gen_std_fun "sizeof" (CTypAny :: []) CTypSize_t;
     std_fx_malloc := gen_std_fun "fx_malloc" (CTypSize_t :: std_CTypVoidPtr :: []) CTypCInt;
     std_fx_free := gen_std_fun "fx_free" (std_CTypVoidPtr :: []) CTypVoid;
 
@@ -60,22 +61,16 @@ let init_std_names () =
     std_FX_FREE_LIST_IMPL := gen_std_macro "FX_FREE_LIST_IMPL" 2;
     std_FX_MAKE_LIST_IMPL := gen_std_macro "FX_MAKE_LIST_IMPL" 2;
 
-    std_FX_CHKIDX_xD := [];
-    std_FX_EPTR_xD_ := [];
-    std_FX_EPTR_xD := [];
-    std_fx_make_arrxd := [];
+    std_FX_CHKIDX := gen_std_macro "FX_CHKIDX" 3;
+    std_FX_THROW_OUT_OF_RANGE := gen_std_macro "std_FX_THROW_OUT_OF_RANGE" 1;
 
-    let make_arr_args0 = CTypSize_t :: std_CTypVoidPtr :: std_CTypVoidPtr :: (make_ptr std_CTypAnyArray) :: [] in
-
+    std_FX_PTR_xD := [];
     for i = std_FX_MAX_DIMS - 1 downto 1 do
-        std_FX_CHKIDX_xD := (gen_std_macro (sprintf "FX_CHKIDX_%dD" i) (2+i)) :: !std_FX_CHKIDX_xD;
-        std_FX_EPTR_xD_ := (gen_std_macro (sprintf "FX_EPTR_%dD_" i) (2+i)) :: !std_FX_EPTR_xD_;
-        std_FX_EPTR_xD := (gen_std_macro (sprintf "FX_EPTR_%dD" i) (4+i)) :: !std_FX_EPTR_xD;
-
-        let make_arr_args = (List.init i (fun j -> CTypInt)) @ make_arr_args0 in
-        std_fx_make_arrxd := (gen_std_fun (sprintf "fx_make_arr%dd" i) make_arr_args CTypCInt) :: !std_fx_make_arrxd
+        std_FX_PTR_xD := (gen_std_macro (sprintf "FX_PTR_%dD" i) (2+i)) :: !std_FX_PTR_xD;
     done;
 
+    std_fx_make_arr := gen_std_fun "fx_make_arr" [CTypCInt; (make_const_ptr CTypInt); CTypSize_t;
+        std_CTypVoidPtr; std_CTypVoidPtr; std_CTypConstVoidPtr; (make_ptr std_CTypAnyArray)] CTypCInt;
     std_FX_FREE_ARR := gen_std_macro "FX_FREE_ARR" 1;
     std_fx_free_arr := gen_std_fun "fx_free_arr" ((make_ptr std_CTypAnyArray) :: []) CTypVoid;
     std_fx_copy_arr := gen_std_fun "fx_copy_arr"

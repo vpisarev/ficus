@@ -4,8 +4,6 @@
 */
 
 // String operations
-import List
-
 ccode "#include <string.h>"
 
 inline fun length(s: string) = Builtins.length(s)

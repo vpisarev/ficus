@@ -6,16 +6,19 @@
 (*
     Converts K-form into C-form (see c_form.ml).
     We assume that K-form has been prepared for the conversion,
-    i.e. lambda lifting has been performed, all the complex
+    i.e. lambda lifting has been done, all the complex
     data structures, such as records, tuple, lists etc. have
     been converted to KTypName(...) etc.
 
     The algorithm:
         1. do the 1st pass through the K-form, convert all the types and exceptions (see c_gen_types.ml).
-        2. do the 2nd pass through the K-form, generate headers for all the functions.
-            - each function gets extra "free variables"/"closure data" parameter fx_fv, even if it's not used.
-            - the return value becomes the output parameter fx_result (before the closure pointer).
-            - the function gets "int" return value, the status.
+        2. do the 2nd pass through the K-form, generate headers for all the functions (see c_gen_fdecl.ml):
+            - each function, except for the constructors, gets extra "free variables"/"closure data"
+              parameter fx_fv, even if it's not used.
+            - the return value becomes the output parameter fx_result (before the closure pointer), unless
+              the function is "nothrow" and the return type is scalar.
+            - the non-"nothrow" function gets "int" return value, the status.
+              "nothrow" functions return the result or return "void".
         3. do the 3rd pass through the K-form:
             - convert body of each function to C-form
             - put all the global calculations to a dedicated function _fx_init();
@@ -365,6 +368,38 @@ let gen_ccode topcode =
         | Atom.Id(i) -> id2cexp i false ccode sc loc
     in
 
+    let decl_arr arr_ctyp shape data dstexp_r ccode sc loc =
+        let dims = List.length shape in
+        let shape_ctyp = CTypRawArray ([CTypConst], CTypInt) in
+        let shape_arr = CExpStructInit(shape, (shape_ctyp, loc)) in
+        let shape_id = gen_temp_idc "shape" in
+        let ccode = create_cdefval shape_id shape_ctyp [] (Some shape_arr) ccode sc loc in
+        let elem_ctyp = match arr_ctyp with
+            | CTypArray(_, elem_ctyp) -> elem_ctyp
+            | _ -> raise_compile_err loc "cgen: invalid output type of array construction expression"
+            in
+        let (data_exp, ccode) = match data with
+            | [] -> ((make_nullptr loc), ccode)
+            | _ ->
+                let elems_ctyp = CTypRawArray ([CTypConst], elem_ctyp) in
+                let elems_arr = CExpStructInit((List.rev es), (elems_ctyp, loc)) in
+                let elems_id = gen_temp_idc "data" in
+                let ccode = create_cdefval elems_id elems_ctyp [] (Some elems_arr) ccode sc loc in
+                (make_id_exp elems_id loc)
+        let sizeof_elem_exp = make_call !std_sizeof [CExpTyp(elem_ctyp, loc)] CTypSize_t loc in
+        let free_f_exp = match (get_free_f elem_ctyp true false loc) with
+            | (_, (Some free_f)) -> make_id_exp free_f loc
+            | _ -> make_nullptr loc
+            in
+        let copy_f_exp = match (get_copy_f elem_ctyp true false loc) with
+            | Some(copy_f) -> make_id_exp copy_f loc
+            | _ -> make_nullptr loc
+            in
+        let (arr_exp, _) = get_dstexp dstexp_r "arr" arr_ctyp None [] sc loc in
+        let call_mkarr = make_call !std_fx_make_arr [(make_int_exp dims loc), (make_id_exp shape_id loc),
+            sizeof_elem_exp, free_f_exp, copy_f_exp, data_exp, (cexp_get_addr arr_exp)] CTypCInt loc in
+        (arr_exp, (add_fx_call call_mkarr ccode loc))
+
     (*
         cases:
            - input kexp is void:
@@ -394,11 +429,11 @@ let gen_ccode topcode =
             let continue_stmt = gen_break_continue_stmt false kloc in
             (false, dummy_exp, continue_stmt :: ccode)
         | KExpAtom(a, _) ->
-            let (e, ccode) = atom2cexp a ccode sc loc in
+            let (e, ccode) = atom2cexp a ccode sc kloc in
             (true, e, ccode)
         | KExpBinOp(bop, a1, a2, _) ->
-            let (ce1, ccode) = atom2cexp e1 ccode sc in
-            let (ce2, ccode) = atom2cexp e2 ccode sc in
+            let (ce1, ccode) = atom2cexp e1 ccode sc kloc in
+            let (ce2, ccode) = atom2cexp e2 ccode sc kloc in
             (match bop with
             | OpLogicAnd | OpLogicOr ->
                 raise_compile_err kloc "cgen: unexpected operation"
@@ -452,17 +487,17 @@ let gen_ccode topcode =
                     | _ -> raise_compile_err kloc (sprintf "cgen: unsupported op '%s'" (binop_to_string bop))
                 in (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))
         | KExpUnOp(OpMkRef, a1, _) ->
-            let (ce1, ccode) = atom2cexp a1 ccode sc in
+            let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
             let (r_exp, _) = get_dstexp dstexp_r "r" ctyp None [] sc kloc in
             let rcon = C_gen_types.get_constructor ctyp true kloc in
             let call_mkref = make_call rcon
                 (ce1 :: (cexp_get_addr r_exp) :: []) CTypCInt kloc in
             (false, r_exp, (add_fx_call call_mkref ccode kloc))
         | KExpUnOp(OpDeref, a1, _) ->
-            let (ce1, ccode) = atom2cexp a1 ccode sc in
+            let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
             (true, (cexp_deref ce1), ccode)
         | KExpUnOp(uop, a1, _) ->
-            let (ce1, ccode) = atom2cexp a1 ccode sc in
+            let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
             let c_uop = match uop with
                 | OpPlus -> COpPlus
                 | OpNegate -> COpNegate
@@ -473,7 +508,7 @@ let gen_ccode topcode =
         | KExpIntrin(intr, args, _) ->
             (match (intr, args) with
             | (IntrinVariantTag, v :: []) ->
-                let (cv, ccode) = atom2cexp v ccode sc in
+                let (cv, ccode) = atom2cexp v ccode sc kloc in
                 let {ktp_ptr} = get_ktprops (get_atom_ktyp v kloc) kloc in
                 let ctag = if ktp_ptr then
                         cexp_arrow cv (get_id "tag") CTypCInt
@@ -481,7 +516,7 @@ let gen_ccode topcode =
                         cexp_mem cv (get_id "tag") CTypCInt in
                 (true, ctag, ccode)
             | (IntrinVariantCase, v :: (KExpAtom((Atom.Id vn), _)) :: []) ->
-                let cv = atom2cexp v ccode sc in
+                let cv = atom2cexp v ccode sc kloc in
                 let {ktp_ptr} = get_ktprops (get_atom_ktyp v kloc) kloc in
                 let cvu = if ktp_ptr then
                         cexp_arrow cv (get_id "u") CTypAny
@@ -490,10 +525,10 @@ let gen_ccode topcode =
                 let celem = cexp_mem cvu (get_orig_id vn) ctyp in
                 (true, celem, ccode)
             | (IntrinListHead, l :: []) ->
-                let (cl, ccode) = atom2cexp l ccode sc in
+                let (cl, ccode) = atom2cexp l ccode sc kloc in
                 (true, (cexp_arrow cl (get_id "hd") ctyp), ccode)
             | (IntrinListTail, l :: []) ->
-                let (cl, ccode) = atom2cexp l ccode sc in
+                let (cl, ccode) = atom2cexp l ccode sc kloc in
                 (true, (cexp_arrow cl (get_id "hd") ctyp), ccode)
             | _ -> raise_compile_err kloc "cgen: unsupported KExpIntrin")
         | KExpSeq(el, _) ->
@@ -521,7 +556,7 @@ let gen_ccode topcode =
                 | _ -> ([], ftyp)
                 in
             let (args, ccode) = List.fold_left2 (fun (args, ccode) arg kt ->
-                let (carg, ccode) = atom2cexp arg ccode sc loc in
+                let (carg, ccode) = atom2cexp arg ccode sc kloc in
                 let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kt kloc in
                 let carg = if ktp_pass_by_ref then (cexp_get_addr carg) else carg in
                 (carg :: args, ccode)) ([], ccode) args argtyps
@@ -568,7 +603,7 @@ let gen_ccode topcode =
         | KExpMkTuple(args, _) | KExpMkRecord(args, _) ->
             let prefix = match kexp with KExpMkTuple(_, _) -> "tup" | _ -> "rec" in
             let (cargs, ccode) = List.fold_left (fun (cargs, ccode) a ->
-                let (ca, ccode) = atom2cexp a ccode sc in
+                let (ca, ccode) = atom2cexp a ccode sc kloc in
                 ((a :: cargs), ccode)) ([], ccode) args in
             let tcon = C_gen_types.get_constructor ctyp true kloc in
             if tcon <> noid then
@@ -584,11 +619,12 @@ let gen_ccode topcode =
         | KExpMkClosure(f, fcv, args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkClosure"
             (* TBD *)
         | KExpMkArray(shape, elems, _) -> raise_compile_err kloc "cgen: unsupported KExpMkArray"
-            (* declare array with initializer expressions.
-               [TODO] if array is just an argument to some simple arithmetic operation
-               or array comprehension or a pure function, maybe
-               we can avoid allocation of the memory on heap and copying data there?
-               call fx_make_arrNd(...); *)
+            let shape = List.map (fun i -> make_lit_exp (LitInt i) kloc) shape in
+            let (data, ccode) = List.fold_left (fun (data, ccode) a ->
+                    let (e, ccode) = atom2cexp a ccode sc kloc in
+                    (e :: data, ccode)) ([], ccode) elems in
+            let (arr_exp, ccode) = decl_arr ctyp shape (List.rev data) dstexp_r ccode sc kloc in
+            (false, arr_exp, ccode)
         | KExpAt(a, idxs, _) ->
             (*
                 there are 2 major cases:
@@ -623,7 +659,7 @@ let gen_ccode topcode =
                     and we return `(true, FX_PTR_{dims}D(elemtypname, arr, idx0, ..., idx{dims-1}, ccode)`
             *)
         | KExpMem(a1, n, _) ->
-            let ce1 = atom2cexp a1 ccode sc in
+            let ce1 = atom2cexp a1 ccode sc kloc in
             let (ce1, relems) = get_struct ce1 in
             let nelems = List.length relems in
             let _ = if n < 0 || n >= nelems then
@@ -675,7 +711,7 @@ let gen_ccode topcode =
                 then "goto try_cleanup";
             *)
         | KExpCast(a1, kt, _) ->
-            let ce1 = atom2cexp a1 ccode sc in
+            let ce1 = atom2cexp a1 ccode sc kloc in
             let ct = C_gen_types.ktyp2ctyp kt kloc in
             (true, CExpCast(ce1, ct, kloc), ccode)
         | KExpMap(e_kdl_l, body, flags, _) -> raise_compile_err kloc "cgen: unsupported KExpMap"

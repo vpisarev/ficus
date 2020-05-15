@@ -102,6 +102,6 @@ for i <- 0:n {a[i] += a[i-1]}
 println("triangular numbers: \(a)")
 
 println(find_idx([1, 2, 5], 5))
-val sorted = List.mergeSort([: 2, -1, 100, 8, 7 :], fun (a: int, b: int) {a > b})
+val sorted = List.mergeSort([: 2, -1, 100, 8, 7 :], fun (a: int, b: int) {a < b})
 print("sorted: ")
 println(sorted)

@@ -121,6 +121,7 @@ type ctyp_t =
     | CTypFun of ctyp_t list * ctyp_t
     | CTypFunRawPtr of ctyp_t list * ctyp_t
     | CTypRawPtr of ctyp_attr_t list * ctyp_t
+    | CTypRawArray of ctyp_attr_t list * ctyp_t
     | CTypArray of int * ctyp_t
     | CTypName of id_t
     | CTypLabel
@@ -137,6 +138,7 @@ and cexp_t =
     | CExpTernary of cexp_t * cexp_t * cexp_t * cctx_t
     | CExpCall of cexp_t * cexp_t list * cctx_t
     | CExpStructInit of cexp_t list * cctx_t (* {a, b, c, ...} *)
+    | CExpTyp of ctyp_t * loc_t
     | CExpCCode of string * loc_t
 and cstmt_t =
     | CStmtNop of loc_t
@@ -226,6 +228,7 @@ let get_cexp_ctx e = match e with
     | CExpTernary(_, _, _, c) -> c
     | CExpCall(_, _, c) -> c
     | CExpStructInit(_, c) -> c
+    | CExpTyp(t, l) -> (t, l)
     | CExpCCode (_, l) -> (CTypAny, l)
 
 let get_cexp_typ e = let (t, l) = (get_cexp_ctx e) in t
@@ -417,6 +420,7 @@ and walk_ctyp t callb =
     | CTypFunRawPtr (args, rt) -> CTypFunRawPtr((List.map walk_ctyp_ args), (walk_ctyp_ rt))
     | CTypArray(d, et) -> CTypArray(d, walk_ctyp_ et)
     | CTypRawPtr(attrs, t) -> CTypRawPtr(attrs, (walk_ctyp_ t))
+    | CTypRawArray(attrs, et) -> CTypRawArray(attrs, (walk_ctyp_ et))
     | CTypName n -> CTypName(walk_id_ n)
     | CTypLabel -> t)
 
@@ -436,6 +440,7 @@ and walk_cexp e callb =
     | CExpArrow (e, m, ctx) -> CExpArrow((walk_cexp_ e), m, (walk_ctx_ ctx))
     | CExpCast (e, t, loc) -> CExpCast((walk_cexp_ e), (walk_ctyp_ t), loc)
     | CExpTernary (e1, e2, e3, ctx) -> CExpTernary((walk_cexp_ e1), (walk_cexp_ e2), (walk_cexp_ e3), (walk_ctx_ ctx))
+    | CExpTyp (t, loc) -> CExpTyp((walk_ctyp_ t), loc)
     | CExpCall (f, args, ctx) -> CExpCall((walk_cexp_ f), (List.map walk_cexp_ args), (walk_ctx_ ctx))
     | CExpStructInit (eseq, ctx) -> CExpStructInit((List.map walk_cexp_ eseq), (walk_ctx_ ctx))
     | CExpCCode(s, loc) -> e)
@@ -554,6 +559,7 @@ and fold_ctyp t callb =
     | CTypFun (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypFunRawPtr (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypRawPtr(_, t) -> fold_ctyp_ t
+    | CTypRawArray(_, et) -> fold_ctyp_ et
     | CTypArray(_, t) -> fold_ctyp_ t
     | CTypName n -> fold_id_ n
     | CTypLabel -> ())
@@ -574,6 +580,7 @@ and fold_cexp e callb =
     | CExpTernary (e1, e2, e3, ctx) -> fold_cexp_ e1; fold_cexp_ e2; fold_cexp_ e3; ctx
     | CExpCall (f, args, ctx) -> fold_cexp_ f; List.iter fold_cexp_ args; ctx
     | CExpStructInit (eseq, ctx) -> List.iter fold_cexp_ eseq; ctx
+    | CExpTyp (t, loc) -> (t, loc)
     | CExpCCode (s, loc) -> (CTypAny, loc))
 
 and fold_cstmt s callb =
@@ -644,7 +651,7 @@ let rec ctyp2str t loc =
     | CTypFloat(b) -> raise_compile_err loc (sprintf "invalid type CTypFloat(%d)" b)
     | CTypString -> ("fx_str_t", noid)
     | CTypUniChar -> ("char_", noid)
-    | CTypBool -> ("bool_", noid)
+    | CTypBool -> ("bool", noid)
     | CTypVoid -> ("void", noid)
     | CTypExn -> ("fx_exn_t", noid)
     | CTypFun(_, _) ->
@@ -661,6 +668,11 @@ let rec ctyp2str t loc =
         let s = if (List.mem CTypConst attrs) then ("const " ^ s) else s in
         let s = if (List.mem CTypVolatile attrs) then ("volatile " ^ s) else s in
         ((s ^ "*"), noid)
+    | CTypRawArray (attrs, t) ->
+        let (s, _) = ctyp2str t loc in
+        let s = if (List.mem CTypConst attrs) then ("const " ^ s) else s in
+        let s = if (List.mem CTypVolatile attrs) then ("volatile " ^ s) else s in
+        ((s ^ " []"), noid)
     | CTypArray _ -> ("fx_arr_t", noid)
     | CTypName n -> let cname = get_idc_cname n loc in (cname, n)
     | CTypLabel ->
@@ -670,8 +682,16 @@ let rec ctyp2str t loc =
 
 let make_ptr t = CTypRawPtr([], t)
 let make_const_ptr t = CTypRawPtr((CTypConst :: []), t)
+
+let std_CTypVoidPtr = make_ptr CTypVoid
+let std_CTypConstVoidPtr = make_const_ptr CTypVoid
+let std_CTypAnyArray = CTypArray(0, CTypInt)
+let std_CTypAnyPtr = make_ptr CTypAny
+let std_CTypConstAnyPtr = make_const_ptr CTypAny
+
 let make_lit_exp l loc = let t = get_lit_ctyp l in CExpLit (l, (t, loc))
 let make_int_exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
+let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_cid prefix ctyp e_opt code sc loc =
     let n = gen_temp_idc prefix in
@@ -722,14 +742,10 @@ let cexp_mem e m_id t =
     | CExpUnOp(COpDeref, x, _) -> CExpArrow(x, m_id, (t, loc))
     | _ -> CExpMem(e, m_id, (t, loc))
 
-let std_CTypVoidPtr = make_ptr CTypVoid
-let std_CTypConstVoidPtr = make_const_ptr CTypVoid
-let std_CTypAnyArray = CTypArray(0, CTypInt)
-let std_CTypAnyPtr = make_ptr CTypAny
-let std_CTypConstAnyPtr = make_const_ptr CTypAny
-
 let curr_exn_val = ref (-1024)
 let std_FX_MAX_DIMS = 5
+
+let std_sizeof = ref noid
 
 let std_fx_malloc = ref noid
 let std_fx_free = ref noid
@@ -763,9 +779,9 @@ let std_fx_free_list_simple = ref noid
 let std_FX_FREE_LIST_IMPL = ref noid
 let std_FX_MAKE_LIST_IMPL = ref noid
 
-let std_FX_CHKIDX_xD = ref ([] : id_t list)
-let std_FX_EPTR_xD_ = ref ([] : id_t list)
-let std_FX_EPTR_xD = ref ([] : id_t list)
+let std_FX_CHKIDX = ref noid
+let std_FX_THROW_OUT_OF_RANGE = ref noid
+let std_FX_PTR_xD = ref ([] : id_t list)
 
 let std_FX_FREE_ARR = ref noid
 let std_fx_free_arr = ref noid

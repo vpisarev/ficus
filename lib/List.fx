@@ -54,16 +54,16 @@ fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
     unzip([: for x <- lab {x} :])
 
 // O(n log n) merge sort
-fun mergeSort(l: 't list, gt: ('t,'t)->bool): 't list =
+fun mergeSort(l: 't list, lt: ('t,'t)->bool): 't list =
     match l {
     | [] => []
     | l =>
         fun merge(_: 't list, _: 't list)
         {
             | ((a :: at) as l, (b :: bt) as r) =>
-                if gt(a, b) {b :: merge(l, bt)} else {a :: merge(at, r)}
+                if lt(b, a) {b :: merge(l, bt)} else {a :: merge(at, r)}
             | (l, []) => l
-            | ([], r) => r
+            | (_, r) => r
         }
 
         fun scan(_: 't list list)
