@@ -779,15 +779,15 @@ let std_fx_free_list_simple = ref noid
 let std_FX_FREE_LIST_IMPL = ref noid
 let std_FX_MAKE_LIST_IMPL = ref noid
 
+let std_FX_CHKIDX1 = ref noid
 let std_FX_CHKIDX = ref noid
-let std_FX_THROW_OUT_OF_RANGE = ref noid
 let std_FX_PTR_xD = ref ([] : id_t list)
 
 let std_FX_FREE_ARR = ref noid
 let std_fx_free_arr = ref noid
 let std_fx_copy_arr = ref noid
 let std_fx_make_arr = ref noid
-let std_fx_make_arrxd = ref ([] : id_t list)
+let std_fx_subarr = ref noid
 
 let std_FX_FREE_REF_SIMPLE = ref noid
 let std_fx_free_ref_simple = ref noid

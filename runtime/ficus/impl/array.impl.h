@@ -249,4 +249,86 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     return FX_OK;
 }
 
+int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
+{
+    int i, ndims = arr->ndims;
+    size_t offset = 0;
+    int state = 0;
+
+    for( i = 0; i < ndims; i++ )
+    {
+        int_ size_i = arr->dim[i].size;
+        size_t step_i = arr->dim[i].step;
+
+        int_ tag = ranges[0];
+        int_ a, b, delta;
+        if( tag == 0 )
+        {
+            a = ranges[1];
+            b = a+1;
+            delta = 1;
+            ranges += 2;
+        }
+        else if( tag == 1 )
+        {
+            nc_stage |= 1;
+            a = ranges[1];
+            b = ranges[2];
+            delta = ranges[3];
+            ranges += 4;
+        }
+        else if( tag == 2 )
+        {
+            nc_stage |= 1;
+            a = ranges[1];
+            b = size_i;
+            delta = ranges[2];
+            ranges += 3;
+        }
+        else
+            return FX_SIZE_ERR;
+        if( delta <= 0 || a >= b )
+            return FX_SIZE_ERR;
+        if( i == ndims-1 && delta != 1)
+            return FX_SIZE_ERR;
+        if( a < 0 || b > size_i )
+            return FX_INDEX_ERR;
+
+        // a little state machine:
+        //    the subarray is continuous
+        //    iff zero or more leading dimensions
+        //    are 1's and then there is at most one
+        //    "non-full range" dimension immediately after them.
+        // that is, if we denote a dimension with size 1 as I,
+        // full range dimension as F and all other dimensions as D,
+        // then the "regular expression" for continuous subarray of continuous array
+        // will be I*D?F* (zero or more 1-dimensions, then at most one non-full range,
+        // and then zero or more full ranges):
+        // state 0: all 1/I's so far
+        // state 1: D or F occured
+        // state 3: D occured
+        // state 7: I or D occured after D or F -> the subarray is non-continuous
+        if( state != 0 && b - a < size_i )
+        {
+            if( state == 3 )
+                state = 7;
+            state |= 2;
+        }
+
+        offset += a*step_i;
+        subarr->dim[i].size = (b - a + delta - 1)/delta;
+        subarr->dim[i].step = delta*step_i;
+    }
+
+    subarr->rc = arr->rc;
+    FX_INCREF(*subarr->rc);
+    subarr->free_elem = arr->free_elem;
+    subarr->copy_elem = arr->copy_elem;
+    subarr->flags = arr->flags & (state == 7 ? ~FX_ARR_CONTINUOUS : -1);
+    subarr->ndims = arr->ndims;
+    subarr->data = arr->data + offset;
+
+    return FX_OK;
+}
+
 #endif

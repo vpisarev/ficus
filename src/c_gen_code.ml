@@ -352,7 +352,7 @@ let gen_ccode topcode =
         pop_block_ctx loc; body_stmt
     in
 
-    let atom2cexp a ccode sc loc =
+    let atom2cexp_ a save ccode sc loc =
         match a with
         | Atom.Lit(l) ->
             (match l with
@@ -365,8 +365,10 @@ let gen_ccode topcode =
                 ((make_id_exp i loc), ccode)
             | _ ->
                 let e = make_lit_exp l kloc in (e, ccode))
-        | Atom.Id(i) -> id2cexp i false ccode sc loc
+        | Atom.Id(i) -> id2cexp i save ccode sc loc
     in
+
+    let atom2cexp a ccode sc loc = atom2cexp_ a false ccode sc loc
 
     let decl_arr arr_ctyp shape data dstexp_r ccode sc loc =
         let dims = List.length shape in
@@ -587,18 +589,18 @@ let gen_ccode topcode =
                 let args = if have_fv_arg then fv_exp :: args else args in
                 (true, CExpCall(f_exp, (List.rev args), (crt, kloc)), ccode)
             else
-                let (args, ccode) = if crt = CTypVoid then (args, ccode) else
+                let (args, dstexp, ccode) = if crt = CTypVoid then (args, dummy_exp, ccode) else
                     let (dstexp, ccode) = get_dstexp dstexp_r "res" crt None ccode sc kloc in
-                    (((cexp_get_addr dstexp) :: args), ccode)
+                    (((cexp_get_addr dstexp) :: args), dstexp, ccode)
                     in
                 let args = if have_fv_arg then fv_exp :: args else args in
                 let fcall_rt = if is_nothrow then CTypVoid else CTypCInt in
                 let fcall_exp = CExpCall(f_exp, (List.rev args), (fcall_rt, kloc)) in
                 if is_nothrow then
-                    (false, dummy_exp, (CExp fcall_exp) :: ccode)
+                    (false, dstexp, (CExp fcall_exp) :: ccode)
                 else
                     let ccode = add_fx_call fcall_exp ccode kloc in
-                    (false, dummy_exp, ccode)
+                    (false, dstexp, ccode)
 
         | KExpMkTuple(args, _) | KExpMkRecord(args, _) ->
             let prefix = match kexp with KExpMkTuple(_, _) -> "tup" | _ -> "rec" in
@@ -625,39 +627,91 @@ let gen_ccode topcode =
                     (e :: data, ccode)) ([], ccode) elems in
             let (arr_exp, ccode) = decl_arr ctyp shape (List.rev data) dstexp_r ccode sc kloc in
             (false, arr_exp, ccode)
-        | KExpAt(a, idxs, _) ->
+        | KExpAt(arr, idxs, _) ->
             (*
                 there are 2 major cases:
                 1. some of the idxs are ranges. Then the result is fx_arr_t
-                2. all the ranges are scalars. Then the result is scalar.
+                2. all the ranges are scalars. Then the result is array element
 
                 1. In the first case need to call a special function
-                    `FX_CALL(fx_subarr(arr, temp_idx, &dst, kind0, {idx0_data}, kind1, {idx1_data}, ..., -1), catch_label)`.
-                    where kind{i} is type of i-th index:
-                    =0 scalar index, followed by the index itself
-                    =1 normal range [a, b), followed by a and b
-                    =2 open range [a,end_of_dim), followed by the a;
-                       the whole range is equivalent to [0,end_of_dim)
-                    =3 normal range with stride [a..stride..b), followed by a, b and stride
-                    =4 open range with stride [a..stride..end_of_dim), followed by a and a and stride
-                    -1 end of the range spec; strictly speaking, it's not needed,
-                       because we know the dimensionality
-                also obtain `dst` using `get_dstexp()`
-                and then call
-                return `(false, dst, ccode)`.
+                    `FX_CALL(fx_subarr(arr, ranges, subarr));`.
+                    where ranges is array, concatenation of the following groups:
+                    (0, idx) scalar indices
+                    (1, a, b, delta) closed ranges [a:b:delta]
+                        (if a was missing, it's set to 0, if delta was missing, it's set to 1)
+                    (2, a, delta) open ranges [a::delta]
+                        (if delta was missing, it's set to 1)
 
-                2. In the second case need first to process each index idx_k (k=0..dims-1):
+                2. In the second case need first to process each index idx_k (k=0..ndims-1):
                    2.1. If idx_k is "fast index" - great, just use the expression for the index
-                        (process it via `kexp2cexp (KExpAtom i) (ref None) ccode sc`)
+                        (process it via `atom2cexp`)
                    2.2. Otherwise we need to use the index more than once, so we need to
                         store it to temporary variable (unless it's already an indentifier or constant)
                         and add it to the check
-                        `if(FX_CHKIDX(arr, k1, idx_k1) || FX_CHKIDX(arr, k2, idx_k2) ...)
-                            FX_THROW_OUT_OF_RANGE(catch_label);`
-                    if all the indices are fast indices, the check is excluded, of course,
-                    otherwise it's added to ccode
-                    and we return `(true, FX_PTR_{dims}D(elemtypname, arr, idx0, ..., idx{dims-1}, ccode)`
+                        `FX_CHKIDX(FX_CHKIDX1(arr, k1, idx_k1) || FX_CHKIDX1(arr, k2, idx_k2) ..., catch_label);`
+                    if all the indices are fast indices, the whole check is excluded, of course.
+                    then we return `(true, FX_PTR_{ndims}D(elem_ctyp, arr, idx0, ..., idx{ndims-1}), ccode)`
             *)
+            let (arr_exp, ccode) = atom2cexp_ arr true ccode sc kloc in
+            let need_subarr = List.exist (fun d -> match d with Domain.Range _ -> true | _ -> false) idxs in
+            if need_subarr then
+                let elem_ctyp = match ctyp with
+                | CTypArray(_, elem_ctyp) -> elem_ctyp
+                | _ -> raise_compile_err loc "cgen: invalid output type of array construction expression"
+                in
+                let (range_data, ccode) = List.fold_left (fun (range_data, ccode) d ->
+                    match d with
+                    | Domain.Elem i | Domain.Fast i ->
+                        let (i_exp, ccode) = atom2cexp i ccode sc kloc in
+                        ((i_exp :: (make_int_exp 0 kloc) :: range_data), ccode)
+                    | Domain.Range (a, b, delta) ->
+                        let (a_exp, ccode) = atom2cexp a ccode sc kloc in
+                        let (range_delta, ccode) = match b with
+                            | Atom.Lit LitNil -> ((a_exp :: (make_int_exp 2 kloc) :: []), ccode)
+                            | _ ->
+                                let (b_exp, ccode) = atom2cexp b ccode sc kloc in
+                                ((b :: exp :: a_exp :: (make_int_exp 1 kloc) :: []), ccode)
+                            in
+                        let (d_exp, ccode) = atom2cexp delta ccode sc kloc in
+                        (((d_exp :: range_delta) @ range_data), ccode)) ([], ccode) idxs
+                    in
+                let rdata_ctyp = CTypRawArray ([CTypConst], CTypInt) in
+                let rdata_arr = CExpStructInit((List.rev range_data), (rdata_ctyp, kloc)) in
+                let rdata_id = gen_temp_idc "ranges" in
+                let ccode = create_cdefval rdata_id rdata_ctyp [] (Some rdata_arr) ccode sc kloc in
+                let (subarr_exp, _) = get_dstexp dstexp_r "arr" arr_ctyp None [] sc loc in
+                let call_subarr = make_call !std_fx_subarr [(cexp_get_addr arr_exp);
+                    (make_id_exp rdata_id kloc), (cexp_get_addr subarr_exp)] CTypCInt kloc in
+                (false, subarr_exp, (add_fx_call call_subarr ccode kloc))
+            else
+                let elem_ctyp = ctyp in
+                let (_, chk_exp_opt, i_exps, ccode) = List.fold_left (fun (dim, chk_exp_opt, i_exps, ccode) d ->
+                    match d with
+                    | Domain.Fast i ->
+                        let (i_exp, ccode) = atom2cexp i ccode sc kloc in
+                        (dim+1, chk_exp_opt, i_exp :: i_exps, ccode)
+                    | Domain.Elem i ->
+                        let (i_exp, ccode) = atom2cexp_ i true ccode sc kloc in
+                        let chk_exp1 = make_call !std_FX_CHKIDX1 [arr_exp; (make_int_exp dim kloc); i_exp] CTypBool kloc in
+                        let chk_exp_opt = match chk_exp_opt with
+                            | Some(chk_exp) ->
+                                let chk_exp = CExpBinOp(COpLogicOr, chk_exp, chk_exp1, (CTypBool, kloc)) in
+                                Some chk_exp
+                            | _ -> Some(chk_exp1)
+                            in
+                        (dim+1, chk_exp_opt, i_exp :: i_exps, ccode)) (0, None, [], ccode) idxs
+                    in
+                let ccode = match chk_exp_opt with
+                    | Some (chk_exp) ->
+                        let l = curr_block_label kloc in
+                        let call_chkidx = make_call !std_FX_CHKIDX [chk_exp; l] CTypVoid kloc in
+                        (CExp call_chkidx) :: ccode
+                    | _ -> ccode
+                    in
+                let ndims = List.length idxs in
+                let get_elem_exp = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
+                    ((CExpTyp elem_ctyp kloc) :: arr_exp :: (List.rev i_exps)) elem_ctyp kloc in
+                (true, get_elem_exp, ccode)
         | KExpMem(a1, n, _) ->
             let ce1 = atom2cexp a1 ccode sc kloc in
             let (ce1, relems) = get_struct ce1 in

@@ -320,10 +320,10 @@ typedef void (*fx_copy_t)(const void* src, void* dst);
 typedef struct fx_arr_t
 {
     int_* rc;
-    int flags;
-    int ndims;
     fx_free_t free_elem;
     fx_copy_t copy_elem;
+    int flags;
+    int ndims;
     // put 'data' together with the interleaved '(size, step)' pairs
     // in order to improve the cache locality, e.g. in the case of
     // 2D array element access we just need to read 4
@@ -349,10 +349,10 @@ typedef struct fx_arriter_t
 int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it);
 void fx_arr_nextiter(fx_arriter_t* it);
 
-#define FX_CHKIDX(arr, i, idx) \
+#define FX_CHKIDX1(arr, i, idx) \
     ((size_t)(idx) >= (size_t)(arr).dim[i].size)
-#define FX_THROW_OUT_OF_RANGE(catch_label) \
-    { fx_status = FX_INDEX_ERR; goto catch_label; }
+#define FX_CHKIDX(oor_check, catch_label) \
+    if(oor_check) { fx_status = FX_INDEX_ERR; goto catch_label; }
 
 #define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))
@@ -375,6 +375,7 @@ void fx_free_arr(fx_arr_t* arr);
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_free_t free_elem, fx_copy_t copy_elem, const void* elems, fx_arr_t* arr );
+int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
 
 ////////////////////////// References //////////////////////////
 
