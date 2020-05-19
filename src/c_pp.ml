@@ -214,7 +214,7 @@ and pprint_cexp_ e pr =
         (if pr0 < pr then (pcut(); pstr ")") else ()); cbox()
     | CExpCall(f, args, _) ->
         obox(); pprint_cexp_ f 1400; pstr "("; pprint_elist args; pstr ")"; cbox()
-    | CExpStructInit(eseq, _) ->
+    | CExpInit(eseq, _) ->
         obox();
         if eseq=[] then pstr "{}"
         else

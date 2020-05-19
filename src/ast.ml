@@ -101,6 +101,12 @@ let loclist2loc llist default_loc =
             loc_line1=max loc_line1 loci_line1;
             loc_pos1=max loc_pos1 loci_pos1
         }) default_loc llist
+let get_start_loc loc =
+    let { loc_fname; loc_line0; loc_pos0; loc_line1; loc_pos1 } = loc in
+    { loc_fname; loc_line0; loc_pos0; loc_line1=loc_line0; loc_pos1=loc_pos0 }
+let get_end_loc loc =
+    let { loc_fname; loc_line0; loc_pos0; loc_line1; loc_pos1 } = loc in
+    { loc_fname; loc_line0=loc_line1; loc_pos0=loc_pos1; loc_line1; loc_pos1 }
 
 (* the primitive objects in the programs, literals, that represent themselves *)
 type lit_t =

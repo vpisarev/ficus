@@ -50,25 +50,23 @@
       call optimization, the relative overhead of the cleanup sections should decrease.
       In the catch blocks we jump to the underlying label in the stack,
       thus providing the exception propagation mechanism.
-    - the map of id->cexp_t pairs. It does not make sense to represent all the values in K form as C variables.
+    - the map of id->cexp_t pairs (i2e); not passed as argument, but maintained separately.
+      It does not make sense to represent all the values in K form as C variables.
       If the value (id) is:
       1. used just once
       2. immutable (val, not var)
       3. a result of expression, which operands are also values
       then the id can be just replaced with the expression in C-form.
-    - the name of currently processed function (noid in the case of global/module scope expressions).
-      First of all, it helps us to detect and efficiently translate the recursive calls of the function itself:
+    - the stack of scopes where we need to do some cleanup:
 
-      int _fx_foo(...args..., void* fx_fv) {... _fx_foo(...new_args..., fx_fv); } // just pass fx_fv directly
+      global -> [fun -> ] [try -> ] [for/while/do-while ->] [match case ->] ...
 
-      It also lets us to distinguish between 2 cases: global and non-global. We need to handle
-      KDefVal() differently, depending on the context.
-    - id of the value to store the result at, or noid.
+    - reference to the destination expression, or ref None.
         - when the translated kexp_t has type KTypVoid, no output value is needed.
-        - in some other cases, there is no pre-defined id.
-          Then we need to generate a new temporary id and store the result there.
+        - in some other cases, there is no pre-defined target for expression.
+          Then we need to generate a new temporary value and store the result there.
           Or even postpone the temporary value assignment and put the pair (id, cexp) to the map.
-        - in some cases we are given the pre-defined id.
+        - in some cases we are given the pre-defined expression target.
         - For example, the function body expression result should be stored in fx_result.
         - When we have K-form code "var x=val0; ... x=new_val;", new_val should be stored in x,
           no need to generate a temporary value, because we want to avoid unnecessary data copying.
@@ -80,13 +78,6 @@
 open Ast
 open K_form
 open C_form
-
-let make_label basename sc loc =
-    let li = gen_temp_idc basename in
-    let cname = if basename = "cleanup" then "_fx_cleanup"
-        else (sprintf "_fx_%s%d" basename (id2idx li)) in
-    set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_scope=sc; cl_loc=loc});
-    li
 
 (* Finds a set of immutable values that can potentially be replaced
    with the expressions that they are initalized with, e.g.
@@ -253,12 +244,12 @@ let gen_ccode topcode =
         let need_dtor = freem <> noid || freef <> noid in
         let ccode = if need_dtor then
                 (let bctx = curr_block_ctx loc in
-                let init_exp = if ctp_ptr then CExpLit(LitNil, (ctyp, loc)) else CExpStructInit([], (ctyp, loc)) in
-                bctx.bctx_prologue <- create_cdefval i ctyp flags (Some init_exp) bctx.bctx_prologue sc loc;
+                let init_exp = if ctp_ptr then CExpLit(LitNil, (ctyp, loc)) else CExpInit([], (ctyp, loc)) in
+                bctx.bctx_prologue <- create_cdefval i ctyp flags "" (Some init_exp) bctx.bctx_prologue sc loc;
                 bctx.bctx_cleanup <- C_gen_types.gen_free_code i_exp ctyp true true bctx.bctx_cleanup loc;
                 ccode)
             else
-                create_cdefval i ctyp flags e0_opt ccode sc loc in
+                create_cdefval i ctyp flags "" e0_opt ccode sc loc in
         (i_exp, ccode)
     in
 
@@ -323,33 +314,36 @@ let gen_ccode topcode =
                 ((if add_deref then cexp_deref e else e), ccode)
         | _ ->
             let e = make_id_exp i kloc in
-            let add_deref = (match cinfo_ i kloc with
-            | CDefVal {cv_typ} ->
+            let e = (match cinfo_ i kloc with
+            | CDefVal {cv_typ; cv_flags} ->
+                let e = if (List.mem ValImplicitDeref cv_flags) then (cexp_deref e) else e in
                 (match cv_typ with
-                | CTypRawPtr(_, ctyp2) when ctyp2 = ctyp -> true
-                | _ -> false)
-            | _ -> false)
-            in ((if add_deref then cexp_deref e else e), ccode)
+                | CTypRawPtr(_, ctyp2) when ctyp2 = ctyp -> cexp_deref e
+                | _ -> e)
+            | _ -> e)
+            in (e, ccode)
         in
 
     let finalize_loop_body body_code loc =
+        let end_loc = get_end_loc loc in
         let bctx = curr_block_ctx loc in
         let {bctx_prologue; bctx_cleanup;
             bctx_break_used;bctx_continue_used;
-            bctx_label_used} = bctx in
+            bctx_label; bctx_label_used} = bctx in
+        let epilogue = List.rev epilogue in
         let epilogue =
             if bctx_label_used = 0 then
-                bctx_cleanup
+                epilogue
             else
-                let parent_label_exp = parent_block_label loc in
+                let parent_label_exp = parent_block_label end_loc in
                 let catch_m = if bctx_break_used + bctx_continue_used > 0 then
                     !std_FX_LOOP_CATCH_BREAK_CONTINUE else !std_FX_LOOP_CATCH in
-                let handle_exn = make_call catch_m (parent_label_exp::[]) CTypVoid kloc in
-                (CExp handle_exn) :: bctx_cleanup
+                let handle_exn = make_call catch_m (parent_label_exp::[]) CTypVoid end_loc in
+                (CExp handle_exn) :: (epilogue @ ((CStmtLabel bctx_label end_loc) :: []))
             in
         let body_code = epilogue @ body_code @ bctx_prologue in
         let body_stmt = rccode2stmt body_code loc in
-        pop_block_ctx loc; body_stmt
+        pop_block_ctx end_loc; body_stmt
     in
 
     let atom2cexp_ a save ccode sc loc =
@@ -361,7 +355,7 @@ let gen_ccode topcode =
                 without allocating string in memory heap, there is no need to call destructor for it *)
                 let e0 = make_call !std_FX_MAKE_STR ((make_lit_exp l loc) :: []) CTypString loc in
                 let i = gen_temp_idc "slit" in
-                let ccode = create_cdefval i CTypString [] (Some e0) ccode sc loc in
+                let ccode = create_cdefval i CTypString [] "" (Some e0) ccode sc loc in
                 ((make_id_exp i loc), ccode)
             | _ ->
                 let e = make_lit_exp l kloc in (e, ccode))
@@ -373,9 +367,9 @@ let gen_ccode topcode =
     let decl_arr arr_ctyp shape data dstexp_r ccode sc loc =
         let dims = List.length shape in
         let shape_ctyp = CTypRawArray ([CTypConst], CTypInt) in
-        let shape_arr = CExpStructInit(shape, (shape_ctyp, loc)) in
+        let shape_arr = CExpInit(shape, (shape_ctyp, loc)) in
         let shape_id = gen_temp_idc "shape" in
-        let ccode = create_cdefval shape_id shape_ctyp [] (Some shape_arr) ccode sc loc in
+        let ccode = create_cdefval shape_id shape_ctyp [] "" (Some shape_arr) ccode sc loc in
         let elem_ctyp = match arr_ctyp with
             | CTypArray(_, elem_ctyp) -> elem_ctyp
             | _ -> raise_compile_err loc "cgen: invalid output type of array construction expression"
@@ -384,9 +378,9 @@ let gen_ccode topcode =
             | [] -> ((make_nullptr loc), ccode)
             | _ ->
                 let elems_ctyp = CTypRawArray ([CTypConst], elem_ctyp) in
-                let elems_arr = CExpStructInit((List.rev es), (elems_ctyp, loc)) in
+                let elems_arr = CExpInit((List.rev es), (elems_ctyp, loc)) in
                 let elems_id = gen_temp_idc "data" in
-                let ccode = create_cdefval elems_id elems_ctyp [] (Some elems_arr) ccode sc loc in
+                let ccode = create_cdefval elems_id elems_ctyp [] "" (Some elems_arr) ccode sc loc in
                 (make_id_exp elems_id loc)
         let sizeof_elem_exp = make_call !std_sizeof [CExpTyp(elem_ctyp, loc)] CTypSize_t loc in
         let free_f_exp = match (get_free_f elem_ctyp true false loc) with
@@ -419,7 +413,7 @@ let gen_ccode topcode =
         let (ktyp, kloc) = get_kexp_ctx kexp in
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = make_dummy_exp kloc in
-        let is_dummy_exp e = match e with CExpStructInit([], (CTypVoid, _)) -> true | _ -> false in
+        let is_dummy_exp e = match e with CExpInit([], (CTypVoid, _)) -> true | _ -> false in
 
         (* generate exp and then optionally generate the assignment if needed *)
         let (assign, cexp, ccode) = match kexp with
@@ -615,7 +609,7 @@ let gen_ccode topcode =
                 (false, t_exp, (CExp call_mktup) :: ccode)
             else
                 let tup = gen_temp_idc prefix in
-                let e0 = CExpStructInit((List.rev cargs), (ctyp, kloc)) in
+                let e0 = CExpInit((List.rev cargs), (ctyp, kloc)) in
                 let (t_exp, ccode) = add_val tup ctyp flags (Some e0) ccode sc loc in
                 (true, t_exp, ccode)
         | KExpMkClosure(f, fcv, args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkClosure"
@@ -676,9 +670,9 @@ let gen_ccode topcode =
                         (((d_exp :: range_delta) @ range_data), ccode)) ([], ccode) idxs
                     in
                 let rdata_ctyp = CTypRawArray ([CTypConst], CTypInt) in
-                let rdata_arr = CExpStructInit((List.rev range_data), (rdata_ctyp, kloc)) in
+                let rdata_arr = CExpInit((List.rev range_data), (rdata_ctyp, kloc)) in
                 let rdata_id = gen_temp_idc "ranges" in
-                let ccode = create_cdefval rdata_id rdata_ctyp [] (Some rdata_arr) ccode sc kloc in
+                let ccode = create_cdefval rdata_id rdata_ctyp [] "" (Some rdata_arr) ccode sc kloc in
                 let (subarr_exp, _) = get_dstexp dstexp_r "arr" arr_ctyp None [] sc loc in
                 let call_subarr = make_call !std_fx_subarr [(cexp_get_addr arr_exp);
                     (make_id_exp rdata_id kloc), (cexp_get_addr subarr_exp)] CTypCInt kloc in
@@ -870,13 +864,73 @@ let gen_ccode topcode =
                     ccode
                 in
             (false, dummy_exp, ccode)
-        | KDefFun kf -> raise_compile_err kloc "cgen: unsupported KDefFun"
+        | KDefFun kf ->
             (*
                 generate new context.
                 generate ccode for the body with dstid=fx_result.
-                after cleanup section add "return fx_status;"
-                check the case of 'c code' body
+                add the prologue and the cleanup sections to the generated c code.
+                before cleanup possibly insert a label if needed.
+                prior to the cleanup save the output expression if needed
+                (because it may use elements that will be released)
+                after cleanup section add "return fx_status;" if needed or
+                "return ret_exp"; if the function is nothrow and is not void.
+
+                handle the case of 'c code'-body separately
             *)
+            let {kf_name; kf_typ; kf_closure=(arg_id, _); kf_body; kf_flags; kf_scope; kf_loc} = !kf in
+            let _ = new_block_ctx (BlockKind_Fun kf_name) sc kloc in
+            let (argtyps, rt, args, cf) = match (cinfo_ kf_name kf_loc) with
+                | CFun {contents={cf_typ=CTypFun(argtyps, rt); cf_args}} as cf -> (argtyps, rt, cf_args, cf)
+                | _ -> raise_compile_err kf_loc "cgen: the function declaration was not properly converted"
+                in
+            (* in the list of parameters the return value (if any) can be the last one
+               (in the case of no-throw functions) or pre-last one
+               (in the case of functions that may throw exceptions)
+            *)
+            let new_body = (match kf_body with
+                | KExpCCode(code, (_, loc)) -> CExp (CExpCCode(code, loc)) :: []
+                | _ ->
+                    let retid0 = get_id "fx_result" in
+                    let retid = match (List.rev argtyps) with
+                        | (retid :: _) when (get_orig_id retid) = retid0 -> retid
+                        | (_ :: retid :: _) when (get_orig_id retid) = retid0 -> retid
+                        | _ -> noid
+                        in
+                    let dstexp_r = ref (if retid = noid then None else
+                        (Some (cexp_deref (make_id_exp retid kf_loc))))
+                        in
+                    let status_id = if (List.mem FunNoThrow kf_flags) then noid else gen_temp_idc "fx_status" in
+                    let ccode = if status_id = noid then []
+                        else create_cdefval status_id CTypCInt [ValMutable] "fx_status"
+                            (Some (make_int_exp 0 kf_loc)) [] kf_scope kf_loc
+                        in
+                    let (ret_e, ccode) = kexp2cexp kf_body dstexp_r ccode kf_scope in
+                    let end_loc = get_kexp_end kf_body in
+                    let {bctx_label; bctx_prologue; bctx_cleanup; bctx_label_used} = curr_block_ctx end_loc in
+                    let ccode = if bctx_label_used > 0 then (StmtLabel bctx_label end_loc) :: ccode else ccode in
+                    let (ret_e, ccode) = if bctx_cleanup = [] then (ret_e, ccode) else
+                        let (ret_e, ccode) = if retid <> noid || status_id <> noid || (Utils.is_some !dstexp_r) then
+                                (ret_e, ccode)
+                            else
+                            (match ret_e with
+                            | CExpInit([], _) | CExpLit _ | CExpIdent _ -> ret_e
+                            | _ ->
+                                let new_ret_id = gen_temp_idc "result" in
+                                let ccode = create_cdefval new_ret_id (get_cexp_typ) [] ""
+                                    (Some ret_e) ccode kf_scope end_loc in
+                                ((make_id_exp new_ret_id end_loc), ccode)
+                                in
+                                (ret_e, (bctx_cleanup @ ccode)))
+                        in
+                    let ccode = if status_id <> noid then
+                            (CStmtReturn (Some (make_id_exp status_id end_loc)) end_loc) :: ccode
+                        else if rt = CTypVoid then ccode
+                        else (CStmtReturn (Some ret_e) end_loc) :: ccode
+                        in
+                    (List.rev bctx_prologue) @ (List.rev ccode))
+                in
+            cf := {!cf with cf_body = new_body};
+            (false, dummy_exp, ccode)
         | KDefExn ke -> raise_compile_err kloc "cgen: unsupported KDefExn"
             (*
                 should generate constructor in the case of exception with argument(s) (TBD).

@@ -217,6 +217,8 @@ let get_kexp_ctx e = match e with
 
 let get_kexp_typ e = let (t, l) = (get_kexp_ctx e) in t
 let get_kexp_loc e = let (t, l) = (get_kexp_ctx e) in l
+let get_kexp_start e = let l = get_kexp_loc e in get_start_loc l
+let get_kexp_end e = let l = get_kexp_loc e in get_end_loc l
 
 let get_kscope info =
     match info with

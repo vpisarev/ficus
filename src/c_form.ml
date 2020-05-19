@@ -137,7 +137,7 @@ and cexp_t =
     | CExpCast of cexp_t * ctyp_t * loc_t
     | CExpTernary of cexp_t * cexp_t * cexp_t * cctx_t
     | CExpCall of cexp_t * cexp_t list * cctx_t
-    | CExpStructInit of cexp_t list * cctx_t (* {a, b, c, ...} *)
+    | CExpInit of cexp_t list * cctx_t (* {a, b, c, ...} *)
     | CExpTyp of ctyp_t * loc_t
     | CExpCCode of string * loc_t
 and cstmt_t =
@@ -227,7 +227,7 @@ let get_cexp_ctx e = match e with
     | CExpCast(_, t, l) -> (t, l)
     | CExpTernary(_, _, _, c) -> c
     | CExpCall(_, _, c) -> c
-    | CExpStructInit(_, c) -> c
+    | CExpInit(_, c) -> c
     | CExpTyp(t, l) -> (t, l)
     | CExpCCode (_, l) -> (CTypAny, l)
 
@@ -332,8 +332,8 @@ let get_lit_ctyp l = match l with
     | LitBool(_) -> CTypBool
     | LitNil -> CTypRawPtr([], CTypVoid)
 
-let create_cdefval n t flags e_opt code sc loc =
-    let dv = { cv_name=n; cv_typ=t; cv_cname=""; cv_flags=flags; cv_scope=sc; cv_loc=loc } in
+let create_cdefval n t flags cname e_opt code sc loc =
+    let dv = { cv_name=n; cv_typ=t; cv_cname=cname; cv_flags=flags; cv_scope=sc; cv_loc=loc } in
     match t with
     | CTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
@@ -371,7 +371,7 @@ let stmt2ccode s =
 
 let cexp2stmt e =
     match e with
-    | CExpStructInit([], (CTypVoid, loc)) -> CStmtNop loc
+    | CExpInit([], (CTypVoid, loc)) -> CStmtNop loc
     | _ -> CExp e
 
 (* walk through a C-form and produce another one *)
@@ -442,7 +442,7 @@ and walk_cexp e callb =
     | CExpTernary (e1, e2, e3, ctx) -> CExpTernary((walk_cexp_ e1), (walk_cexp_ e2), (walk_cexp_ e3), (walk_ctx_ ctx))
     | CExpTyp (t, loc) -> CExpTyp((walk_ctyp_ t), loc)
     | CExpCall (f, args, ctx) -> CExpCall((walk_cexp_ f), (List.map walk_cexp_ args), (walk_ctx_ ctx))
-    | CExpStructInit (eseq, ctx) -> CExpStructInit((List.map walk_cexp_ eseq), (walk_ctx_ ctx))
+    | CExpInit (eseq, ctx) -> CExpInit((List.map walk_cexp_ eseq), (walk_ctx_ ctx))
     | CExpCCode(s, loc) -> e)
 
 and walk_cstmt s callb =
@@ -579,7 +579,7 @@ and fold_cexp e callb =
     | CExpCast (e, t, loc) -> fold_cexp_ e; (t, loc)
     | CExpTernary (e1, e2, e3, ctx) -> fold_cexp_ e1; fold_cexp_ e2; fold_cexp_ e3; ctx
     | CExpCall (f, args, ctx) -> fold_cexp_ f; List.iter fold_cexp_ args; ctx
-    | CExpStructInit (eseq, ctx) -> List.iter fold_cexp_ eseq; ctx
+    | CExpInit (eseq, ctx) -> List.iter fold_cexp_ eseq; ctx
     | CExpTyp (t, loc) -> (t, loc)
     | CExpCCode (s, loc) -> (CTypAny, loc))
 
@@ -693,10 +693,12 @@ let make_lit_exp l loc = let t = get_lit_ctyp l in CExpLit (l, (t, loc))
 let make_int_exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
 let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
-let make_cid prefix ctyp e_opt code sc loc =
-    let n = gen_temp_idc prefix in
-    let code = create_cdefval n ctyp (ValMutable :: []) e_opt code sc loc in
-    (n, code)
+let make_label basename sc loc =
+    let li = gen_temp_idc basename in
+    let cname = if basename = "cleanup" then "_fx_cleanup"
+        else (sprintf "_fx_%s%d" basename (id2idx li)) in
+    set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_scope=sc; cl_loc=loc});
+    li
 
 let make_cfor_inc i ityp a b delta body loc =
     let i_exp = CExpIdent(i, (ityp, loc)) in
@@ -709,7 +711,7 @@ let make_call f args rt loc =
     let f_exp = make_id_exp f loc in
     CExpCall(f_exp, args, (rt, loc))
 
-let make_dummy_exp loc = CExpStructInit([], (CTypVoid, loc))
+let make_dummy_exp loc = CExpInit([], (CTypVoid, loc))
 
 let cexp_get_addr e =
     match e with
