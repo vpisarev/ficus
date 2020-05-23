@@ -29,9 +29,10 @@ enum
     FX_FILE_OPEN_ERR = -8,
     FX_NULL_FILE_ERR = -9,
     FX_IO_ERR = -10,
-    FX_BREAK_ERR = -11,
-    FX_CONTINUE_ERR = -12,
-    FX_NULLPTR_ERR = -13,
+    FX_NO_MATCH_ERR = -11,
+    FX_BREAK_EXN = -12,
+    FX_CONTINUE_EXN = -13,
+    FX_NULLPTR_ERR = -14,
 };
 
 /////////////////// Various Basic Definitions ////////////////
@@ -107,22 +108,22 @@ void fx_free(void* ptr);
     typ* ptr = (typ*)fx_malloc(sz); \
     if(!ptr) return FX_OUT_OF_MEM_ERR
 #define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
-#define FX_BREAK(label) fx_status = FX_BREAK_ERR; goto label
-#define FX_CONTINUE(label) fx_status = FX_CONTINUE_ERR; goto label
-#define FX_LOOP_CATCH_BREAK_CONTINUE(label) \
+#define FX_BREAK(label) fx_status = FX_BREAK_EXN; goto label
+#define FX_CONTINUE(label) fx_status = FX_CONTINUE_EXN; goto label
+#define FX_CHECK_EXN_BREAK_CONTINUE(label) \
     if(fx_status >= 0) \
         ; \
-    else if(fx_status == FX_BREAK_ERR) { \
+    else if(fx_status == FX_BREAK_EXN) { \
         fx_status = FX_OK; \
         break; \
     } \
-    else if(fx_status == FX_CONTINUE_ERR) { \
+    else if(fx_status == FX_CONTINUE_EXN) { \
         fx_status = FX_OK; \
         continue; \
     } \
     else goto label
 
-#define FX_LOOP_CATCH(label) \
+#define FX_CHECK_EXN(label) \
     if(fx_status >= 0) \
         ; \
     else goto label
@@ -256,7 +257,7 @@ int fx_atoi(const fx_str_t* str, int* result, bool* ok, int base);
 
 ////////////////////////// Exceptions //////////////////////
 
-#define FX_THROW_LIGHT(exn_name, catch_label) \
+#define FX_THROW_FAST(exn_name, catch_label) \
     fx_status = exn_name; goto catch_label
 
 void fx_free_exn(fx_exn_t* exn);

@@ -759,8 +759,8 @@ let std_FX_COPY_SIMPLE_BY_PTR = ref noid
 let std_FX_NOP = ref noid
 let std_FX_BREAK = ref noid
 let std_FX_CONTINUE = ref noid
-let std_FX_LOOP_CATCH_BREAK_CONTINUE = ref noid
-let std_FX_LOOP_CATCH = ref noid
+let std_FX_CHECK_EXN_BREAK_CONTINUE = ref noid
+let std_FX_CHECK_EXN = ref noid
 
 let std_fx_copy_ptr = ref noid
 
@@ -769,7 +769,7 @@ let std_FX_FREE_STR = ref noid
 let std_fx_free_str = ref noid
 let std_fx_copy_str = ref noid
 
-let std_FX_THROW_LIGHT = ref noid
+let std_FX_THROW_FAST = ref noid
 let std_FX_FREE_EXN = ref noid
 let std_FX_COPY_EXN = ref noid
 let std_FX_MAKE_EXN_IMPL = ref noid
