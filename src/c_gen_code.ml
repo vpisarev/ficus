@@ -150,7 +150,6 @@ type block_kind_t =
     | BlockKind_Fun of id_t
     | BlockKind_Try
     | BlockKind_Loop
-    | BlockKind_General
     | BlockKind_Case
 
 type block_ctx_t =
@@ -166,6 +165,7 @@ type block_ctx_t =
 }
 
 let gen_ccode topcode =
+    let top_ccode = ref ([]: cstmt_t list) in
     let i2e = ref (Env.empty: cexp_t env_t) in
     let u1vals = find_single_use_vals topcode in
     let block_stack = ref ([]: block_ctx_t list) in
@@ -179,11 +179,13 @@ let gen_ccode topcode =
                     top.bctx_break_used <- top.bctx_break_used + 1
                 else
                     top.bctx_continue_used <- top.bctx_continue_used + 1
-            | {bctx_kind=BlockKind_General} :: _
             | {bctx_kind=BlockKind_Fun} :: _ ->
                 raise_compile_err loc
                     (sprintf "'%s' is used outside of a loop" (if is_break then "break" else "continue"))
             | _ :: rest -> check_inside_for rest
+            | _ ->
+                raise_compile_err loc
+                    (sprintf "'%s' is used outside of a loop" (if is_break then "break" else "continue"))
         in check_inside_loop_ !block_stack
     in
 
@@ -614,7 +616,7 @@ let gen_ccode topcode =
                 (true, t_exp, ccode)
         | KExpMkClosure(f, fcv, args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkClosure"
             (* TBD *)
-        | KExpMkArray(shape, elems, _) -> raise_compile_err kloc "cgen: unsupported KExpMkArray"
+        | KExpMkArray(shape, elems, _) ->
             let shape = List.map (fun i -> make_lit_exp (LitInt i) kloc) shape in
             let (data, ccode) = List.fold_left (fun (data, ccode) a ->
                     let (e, ccode) = atom2cexp a ccode sc kloc in
@@ -848,9 +850,24 @@ let gen_ccode topcode =
             (*
                 TBD
             *)
-        | KExpFor(kdl, body, flags, _) -> raise_compile_err kloc "cgen: unsupported KExpFor"
+        | KExpFor(kdl, body, flags, _) ->
+            let l = curr_block_label kloc in
+            let for_loc = get_start_loc kloc in
+            let (nclauses, init_ccode, ndims, iter_list, first_arr_opt, i_exps, n_exps) = List.fold_left
+                (fun (k, init_ccode, ndims, iter_list, first_arr_opt, i_exps, n_exps) (i, dom_i) ->
+                    let (idx_exps, elem_exp, ndims_i, ctyp_i, is_arr_i, is_list_i, is_open_i, init_code, n_exps) =
+                        match dom_i with
+                        | Domain.Range(a, b, delta) ->
+                            let (idx_exp, n_exp_opt, is_open_i, body_code, init_code) =
+                                match (a, b, delta) with
+                                | (Atom.Lit(LitInt 0)), n, (Atom.Lit(LitInt 1)) ->
+                                    let n_exp = atom2cexp_ n true init_code sc for_loc in
+                                |
+
+
             (*
-                TBD
+                KExpFor of (id_t * dom_t) list * kexp_t * for_flag_t list * loc_t
+
             *)
         | KExpWhile(c, body, _) ->
             let _ = new_block_ctx BlockKind_Loop sc kloc in
@@ -899,13 +916,17 @@ let gen_ccode topcode =
             in
             (false, dummy_exp, loop_stmt :: ccode)
         | KExpCCode(ccode_str, _) ->
-            (true, CExpCCode(ccode_str, kloc), ccode)
+            if (curr_block_ctx kloc).bctx_kind <> BlockKind_Global then
+                raise_compile_err kloc "cgen: unexpected ccode expression"
+            else ();
+            top_ccode := CExp (CExpCCode(ccode_str, kloc)) :: !top_ccode;
+            (false, dummy_exp, ccode)
         | KDefVal(i, e2, _) ->
             let {kv_typ; kv_flags} = match (kinfo_ i kloc) with
                 | KVal kv -> kv
                 | _ -> raise_compile_err kloc ("'%s' is not a value/variable" (id2str i))
                 in
-            let {ktp_complex; ktp_scalar} = K_annotate_types.get_ktprops kv_typ kloc in
+            let {ktp_ptr; ktp_complex; ktp_scalar} = K_annotate_types.get_ktprops kv_typ kloc in
             let ctyp = C_gen_types.ktyp2ctyp kv_typ kloc in
             let bctx = curr_block_ctx kloc in
             let is_global = bctx.bctx_kind == BlockKind_Global in
@@ -941,7 +962,11 @@ let gen_ccode topcode =
                     let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode sc in
                     ccode
                 else
-                    let (ce2, ccode) = kexp2cexp e2 (re None) ccode sc in
+                    let (ce2, ccode) = match (ktp_ptr, e2) with
+                        | (_, KExpCCode(s, (_, loc))) -> (CExpCCode(s, loc), ccode)
+                        | (false, KExpAtom((Atom.Lit LitNil), (_, loc))) -> (CExpInit([], (ctyp, loc)), ccode)
+                        | _ -> kexp2cexp e2 (re None) ccode sc in
+                        in
                     let (_, ccode) = add_val i ctyp kv_flags (Some ce2) ccode sc kloc in
                     ccode
                 in

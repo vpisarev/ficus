@@ -29,7 +29,6 @@ let token2str t = match t with
     | CLASS -> "CLASS"
     | CONTINUE -> "CONTINUE"
     | DO -> "DO"
-    | ELIF -> "ELIF"
     | ELSE -> "ELSE"
     | EXCEPTION -> "EXCEPTION"
     | EXTENDS -> "EXTENDS"
@@ -151,7 +150,7 @@ let fname = ref "unknown"
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
         ("as", AS, 1); ("break", BREAK, 0); ("catch", CATCH, 1); ("ccode", CCODE, 2);
-        ("class", CLASS, 2); ("continue", CONTINUE, 0); ("do", DO, 2); ("elif", ELIF, 1);
+        ("class", CLASS, 2); ("continue", CONTINUE, 0); ("do", DO, 2);
         ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1); ("false", FALSE, 0);
         ("fold", FOLD, 2); ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2);
         ("if", IF, 2); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("inline", INLINE, 2);

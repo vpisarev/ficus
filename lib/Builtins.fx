@@ -16,6 +16,9 @@ exception SizeMismatchError
 exception FileOpenError
 exception NullFileError
 exception IOError
+exception AssertError
+
+fun assert(f: bool) = if !f {throw AssertError}
 
 fun ignore(_: 't) {}
 
@@ -41,9 +44,11 @@ fun string(a: 't []) {
     join(", ",
         [for i <- 0:n {
             val ai = string(a[i])
-            if i == 0 {"["+ai} elif i < n-1 {ai} else {ai+"]"}
+            if i == 0 {"["+ai} else if i < n-1 {ai} else {ai+"]"}
         }])
 }
+
+operator != (a: 't, b: 't): bool = !(a == b)
 
 pure nothrow operator == (a: string, b: string): bool = ccode
     "
@@ -51,7 +56,9 @@ pure nothrow operator == (a: string, b: string): bool = ccode
             (a->length == 0 ||
             memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
     "
-operator != (a: string, b: string): bool = !(a == b)
+pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
+    "return a == b;"
+
 operator + (a: string, b: string): string = ccode "fx_str_t s[] = {*a, *b}; return fx_strjoin(0, s, 2, fx_result);"
 operator + (a: string, b: char): string = ccode "
     fx_str_t s[] = {*a, {0, &b, 1}};
@@ -81,12 +88,46 @@ pure nothrow fun sat_uint8(d: double): uint8 = ccode "
     int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
     return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
 
+pure nothrow fun sat_int8(i: int): int8 = ccode "
+    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
+
+pure nothrow fun sat_int8(f: float): int8 = ccode "
+    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
+
+pure nothrow fun sat_int8(d: double): int8 = ccode "
+    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
+
+pure nothrow fun sat_uint16(i: int): uint16 = ccode "
+    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
+
+pure nothrow fun sat_uint16(f: float): uint16 = ccode "
+    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
+
+pure nothrow fun sat_uint16(d: double): uint16 = ccode "
+    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
+
+pure nothrow fun sat_int16(i: int): int16 = ccode "
+    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
+
+pure nothrow fun sat_int16(f: float): int16 = ccode "
+    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
+
+pure nothrow fun sat_int16(d: double): int16 = ccode "
+    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
+
 pure nothrow fun round(x: float): int = ccode "return (int_)lrintf(x);"
 pure nothrow fun round(x: double): int = ccode "return (int_)lrint(x);"
 
 fun min(a: 't, b: 't) = if a <= b {a} else {b}
 fun max(a: 't, b: 't) = if a >= b {a} else {b}
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
+fun clip(x: 't, a: 't, b: 't) = if a <= x < b {x} else if x < a {a} else {b}
 
 fun print_string(a: string): void = ccode "return fx_puts(stdout, a->data);"
 

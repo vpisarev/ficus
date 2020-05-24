@@ -183,7 +183,7 @@ let make_chained_cmp chain = match chain with
 %token <string> TYVAR
 
 /* keywords */
-%token AS BREAK CATCH CCODE CLASS CONTINUE DO ELIF ELSE EXCEPTION EXTENDS
+%token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION EXTENDS
 %token FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
 %token MATCH NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
 %token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE
@@ -611,12 +611,12 @@ aug_op:
 | SHIFT_RIGHT_EQUAL { OpShiftRight }
 
 elif_seq:
-| elif_seq_ ELIF exp_or_block block { ((($3, $4) :: $1), ExpNop(curr_loc_n 4)) }
+| elif_seq_ ELSE IF exp_or_block block { ((($4, $5) :: $1), ExpNop(curr_loc_n 5)) }
 | elif_seq_ ELSE block { ($1, $3) }
 | exp_or_block block { ((($1, $2) :: []), ExpNop(curr_loc_n 2)) }
 
 elif_seq_:
-| elif_seq_ ELIF exp_or_block block { ($3, $4) :: $1 }
+| elif_seq_ ELSE IF exp_or_block block { ($4, $5) :: $1 }
 | exp_or_block block { ($1, $2) :: [] }
 
 nested_for_:
