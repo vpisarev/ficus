@@ -289,11 +289,15 @@ and pprint_cstmt s =
         | _ -> pstr "else"; obox(); pprint_cstmt s2; cbox())
     | CStmtGoto(n, loc) -> pstr "goto "; pprint_id n loc
     | CStmtLabel (n, loc) -> pbreak(); pprint_id n loc; pstr ":"
-    | CStmtFor(e1, e2_opt, e3, body, _) ->
+    | CStmtFor(t_opt, e1, e2_opt, e3, body, loc) ->
         pstr "for (";
         (match e1 with
         | [] -> ();
-        | _ -> pprint_elist e1);
+        | _ ->
+            (match t_opt with
+            | Some t -> pprint_ctyp_ t None loc; pspace()
+            | _ -> ());
+            pprint_elist e1);
         pstr ";";
         (match e2_opt with
         | Some e2 -> pspace(); pprint_cexp_ e2 0

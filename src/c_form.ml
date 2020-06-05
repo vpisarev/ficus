@@ -151,7 +151,7 @@ and cstmt_t =
     | CStmtIf of cexp_t * cstmt_t * cstmt_t * loc_t
     | CStmtGoto of id_t * loc_t
     | CStmtLabel of id_t * loc_t
-    | CStmtFor of cexp_t list * cexp_t option * cexp_t list * cstmt_t * loc_t
+    | CStmtFor of ctyp_t option * cexp_t list * cexp_t option * cexp_t list * cstmt_t * loc_t
     | CStmtWhile of cexp_t * cstmt_t * loc_t
     | CStmtDoWhile of cstmt_t * cexp_t * loc_t
     | CStmtSwitch of cexp_t * (cexp_t list * cstmt_t list) list * loc_t
@@ -245,7 +245,7 @@ let get_cstmt_loc s = match s with
     | CStmtIf (_, _, _, l) -> l
     | CStmtGoto (_, l) -> l
     | CStmtLabel (_, l) -> l
-    | CStmtFor (_, _, _, _, l) -> l
+    | CStmtFor (_, _, _, _, _, l) -> l
     | CStmtWhile (_, _, l) -> l
     | CStmtDoWhile (_, _, l) -> l
     | CStmtSwitch (_, _, l) -> l
@@ -448,6 +448,9 @@ and walk_cexp e callb =
 and walk_cstmt s callb =
     let walk_id_ n = check_n_walk_ident n callb in
     let walk_ctyp_ t = check_n_walk_ctyp t callb in
+    let walk_ctyp_opt_ t_opt = match t_opt with
+        | Some t -> Some (walk_ctyp_ t)
+        | _ -> t_opt in
     let walk_cexp_ e = check_n_walk_cexp e callb in
     let walk_cel_ el = List.map walk_cexp_ el in
     let walk_cstmt_ s = check_n_walk_cstmt s callb in
@@ -466,8 +469,8 @@ and walk_cstmt s callb =
     | CStmtIf (e, s1, s2, l) -> CStmtIf ((walk_cexp_ e), (walk_cstmt_ s1), (walk_cstmt_ s2), l)
     | CStmtGoto (n, l) -> CStmtGoto ((walk_id_ n), l)
     | CStmtLabel (n, l) -> CStmtLabel ((walk_id_ n), l)
-    | CStmtFor (e1, e2_opt, e3, body, l) ->
-        CStmtFor((walk_cel_ e1), (walk_cexp_opt_ e2_opt), (walk_cel_ e3), (walk_cstmt_ body), l)
+    | CStmtFor (t_opt, e1, e2_opt, e3, body, l) ->
+        CStmtFor((walk_ctyp_opt_ t_opt), (walk_cel_ e1), (walk_cexp_opt_ e2_opt), (walk_cel_ e3), (walk_cstmt_ body), l)
     | CStmtWhile (e, body, l) ->
         CStmtWhile((walk_cexp_ e), (walk_cstmt_ body), l)
     | CStmtDoWhile (body, e, l) ->
@@ -604,7 +607,8 @@ and fold_cstmt s callb =
     | CStmtIf (e, s1, s2, _) -> fold_cexp_ e; fold_cstmt_ s1; fold_cstmt_ s2
     | CStmtGoto (n, _) -> fold_id_ n
     | CStmtLabel (n, _) -> fold_id_ n
-    | CStmtFor (e1, e2_opt, e3, body, _) ->
+    | CStmtFor (t_opt, e1, e2_opt, e3, body, _) ->
+        (match t_opt with Some t -> fold_ctyp_ t | _ -> ());
         fold_cel_ e1; fold_cexp_opt_ e2_opt; fold_cel_ e3; fold_cstmt_ body
     | CStmtWhile (e, body, _) ->
         fold_cexp_ e; fold_cstmt_ body
@@ -680,8 +684,12 @@ let rec ctyp2str t loc =
     | CTypAny ->
         raise_compile_err loc "ctyp2str: CTypAny is not supported"
 
-let make_ptr t = CTypRawPtr([], t)
-let make_const_ptr t = CTypRawPtr((CTypConst :: []), t)
+let make_ptr t = match t with
+    | CTypAny -> CTypRawPtr([], CTypVoid)
+    | _ -> CTypRawPtr([], t)
+let make_const_ptr t = match t with
+    | CTypAny -> CTypRawPtr([CTypConst], CTypVoid)
+    | _ -> CTypRawPtr([CTypConst], t)
 
 let std_CTypVoidPtr = make_ptr CTypVoid
 let std_CTypConstVoidPtr = make_const_ptr CTypVoid
@@ -690,7 +698,8 @@ let std_CTypAnyPtr = make_ptr CTypAny
 let std_CTypConstAnyPtr = make_const_ptr CTypAny
 
 let make_lit_exp l loc = let t = get_lit_ctyp l in CExpLit (l, (t, loc))
-let make_int_exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
+let make_int__exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
+let make_int_exp i loc = CExpLit ((LitInt (Int64.of_int i)), (CTypInt, loc))
 let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_label basename sc loc =
@@ -699,13 +708,6 @@ let make_label basename sc loc =
         else (sprintf "_fx_%s%d" basename (id2idx li)) in
     set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_scope=sc; cl_loc=loc});
     li
-
-let make_cfor_inc i ityp a b delta body loc =
-    let i_exp = CExpIdent(i, (ityp, loc)) in
-    let e0 = CExpBinOp(COpAssign, i_exp, a, (ityp, loc)) in
-    let e1 = CExpBinOp(COpCompareLT, i_exp, b, (CTypBool, loc)) in
-    let e2 = CExpUnOp(COpSuffixInc, i_exp, (ityp, loc)) in
-    CStmtFor ((e0 :: []), (Some e1), (e2 :: []), body, loc)
 
 let make_call f args rt loc =
     let f_exp = make_id_exp f loc in
@@ -716,21 +718,28 @@ let make_dummy_exp loc = CExpInit([], (CTypVoid, loc))
 let cexp_get_addr e =
     match e with
     | CExpUnOp(COpDeref, x, _) -> x
+    | CExpBinOp(COpArrayElem, x, i, (t, loc)) ->
+        CExpBinOp(COpAdd, x, i, ((make_ptr t), loc))
     | _ ->
         let (t, loc) = get_cexp_ctx e in
         let t = CTypRawPtr([], (match t with CTypAny -> CTypVoid | _ -> t)) in
         CExpUnOp(COpGetAddr, e, (t, loc))
 
+let cexp_deref_typ t =
+    match t with
+    | CTypRawPtr(_, CTypVoid) -> CTypAny
+    | CTypRawPtr(_, t) -> t
+    | _ -> CTypAny
+
 let cexp_deref e =
     match e with
     | CExpUnOp(COpGetAddr, x, _) -> x
+    | CExpBinOp(COpAdd, x, i, (t, loc)) ->
+        CExpBinOp(COpArrayElem, x, i, ((cexp_deref_typ t), loc))
     | _ ->
         let (t, loc) = get_cexp_ctx e in
-        let t = match t with
-            | CTypRawPtr(_, CTypVoid) -> CTypAny
-            | CTypRawPtr(_, t) -> t
-            | _ -> CTypAny
-        in CExpUnOp(COpDeref, e, (t, loc))
+        let t = cexp_deref_typ t in
+        CExpUnOp(COpDeref, e, (t, loc))
 
 let cexp_arrow e m_id t =
     let loc = get_cexp_loc e in
@@ -761,6 +770,9 @@ let std_FX_BREAK = ref noid
 let std_FX_CONTINUE = ref noid
 let std_FX_CHECK_EXN_BREAK_CONTINUE = ref noid
 let std_FX_CHECK_EXN = ref noid
+let std_FX_CHECK_ZERO_STEP = ref noid
+let std_FX_LOOP_COUNT = ref noid
+let std_FX_CHECK_NE_SIZE = ref noid
 
 let std_fx_copy_ptr = ref noid
 
@@ -785,6 +797,7 @@ let std_FX_CHKIDX1 = ref noid
 let std_FX_CHKIDX = ref noid
 let std_FX_PTR_xD = ref ([] : id_t list)
 
+let std_FX_ARR_SIZE = ref noid
 let std_FX_FREE_ARR = ref noid
 let std_fx_free_arr = ref noid
 let std_fx_copy_arr = ref noid

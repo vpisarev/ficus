@@ -133,9 +133,11 @@ void fx_free(void* ptr);
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
-#define FX_LOOP_COUNT(n, a, b, delta, label) \
-    if(delta == 0) { fx_status = FX_ZERO_STEP_ERR; goto label; } \
-    int_ n = (delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta)
+#define FX_CHECK_ZERO_STEP(delta, label) \
+    if(delta == 0) { fx_status = FX_ZERO_STEP_ERR; goto label; }
+#define FX_LOOP_COUNT(a, b, delta) \
+    ((delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta))
+#define FX_CHECK_NE_SIZE(check, label) if(check) { fx_status=FX_SIZE_MISMATCH_ERR; goto label }
 
 void fx_copy_ptr(const void* src, void* pdst);
 
@@ -357,6 +359,7 @@ typedef struct fx_arriter_t
 int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it);
 void fx_arr_nextiter(fx_arriter_t* it);
 
+#define FX_ARR_SIZE(arr, i) ((arr).dim[i].size)
 #define FX_CHKIDX1(arr, i, idx) \
     ((size_t)(idx) >= (size_t)(arr).dim[i].size)
 #define FX_CHKIDX(oor_check, catch_label) \
@@ -376,28 +379,6 @@ void fx_arr_nextiter(fx_arriter_t* it);
     ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
     (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2) + \
     (arr).dim[3].step*(idx3)) + (idx4))
-#define FX_CHECK_EQSIZE_1D(a, b, label) \
-    if((a).dim[0].size != (b).dim[0].size) { fx_status = FX_SIZE_MISMATCH_ERR; goto label }
-#define FX_CHECK_EQSIZE_2D(a, b, label) \
-    if((a).dim[0].size != (b).dim[0].size || \
-       (a).dim[1].size != (b).dim[1].size) { fx_status = FX_SIZE_MISMATCH_ERR; goto label }
-#define FX_CHECK_EQSIZE_3D(a, b, label) \
-    if((a).dim[0].size != (b).dim[0].size || \
-       (a).dim[1].size != (b).dim[1].size || \
-       (a).dim[2].size != (b).dim[2].size) { fx_status = FX_SIZE_MISMATCH_ERR; goto label }
-#define FX_CHECK_EQSIZE_4D(a, b, label) \
-    if((a).dim[0].size != (b).dim[0].size || \
-       (a).dim[1].size != (b).dim[1].size || \
-       (a).dim[2].size != (b).dim[2].size || \
-       (a).dim[3].size != (b).dim[3].size) { fx_status = FX_SIZE_MISMATCH_ERR; goto label }
-#define FX_CHECK_EQSIZE_5D(a, b, label) \
-    if((a).dim[0].size != (b).dim[0].size || \
-       (a).dim[1].size != (b).dim[1].size || \
-       (a).dim[2].size != (b).dim[2].size || \
-       (a).dim[3].size != (b).dim[3].size || \
-       (a).dim[4].size != (b).dim[4].size) { fx_status = FX_SIZE_MISMATCH_ERR; goto label }
-#define FX_CHECK_EQSIZE_1D_N(a, n, label) \
-    if((a).dim[0].size != n) { fx_status = FX_SIZE_MISMATCH_ERR; goto label }
 
 void fx_free_arr(fx_arr_t* arr);
 #define FX_FREE_ARR(arr) if(!(arr)->rc) ; else fx_free_arr(arr)

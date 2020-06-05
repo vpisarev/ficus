@@ -38,8 +38,11 @@ let init_std_names () =
     std_FX_NOP := gen_std_macro "FX_NOP" 1;
     std_FX_BREAK := gen_std_macro "FX_BREAK" 1;
     std_FX_CONTINUE := gen_std_macro "FX_CONTINUE" 1;
-    std_FX_CHECK_EXN_BREAK_CONTINUE := gen_std_macro "std_FX_CHECK_EXN_BREAK_CONTINUE" 1;
-    std_FX_CHECK_EXN := gen_std_macro "std_FX_CHECK_EXN" 1;
+    std_FX_CHECK_EXN_BREAK_CONTINUE := gen_std_macro "FX_CHECK_EXN_BREAK_CONTINUE" 1;
+    std_FX_CHECK_EXN := gen_std_macro "FX_CHECK_EXN" 1;
+    std_FX_CHECK_ZERO_STEP := gen_std_macro "FX_CHECK_ZERO_STEP" 2;
+    std_FX_LOOP_COUNT := gen_std_macro "FX_LOOP_COUNT" 3;
+    std_FX_CHECK_NE_SIZE := gen_std_macro "FX_CHECK_NE_SIZE" 2;
 
     std_fx_copy_ptr := gen_std_fun "fx_copy_ptr" (std_CTypConstVoidPtr :: std_CTypVoidPtr :: []) CTypVoid;
 
@@ -71,6 +74,7 @@ let init_std_names () =
 
     std_fx_make_arr := gen_std_fun "fx_make_arr" [CTypCInt; (make_const_ptr CTypInt); CTypSize_t;
         std_CTypVoidPtr; std_CTypVoidPtr; std_CTypConstVoidPtr; (make_ptr std_CTypAnyArray)] CTypCInt;
+    std_FX_ARR_SIZE := gen_std_macro "FX_ARR_SIZE" 2;
     std_FX_FREE_ARR := gen_std_macro "FX_FREE_ARR" 1;
     std_fx_free_arr := gen_std_fun "fx_free_arr" ((make_ptr std_CTypAnyArray) :: []) CTypVoid;
     std_fx_copy_arr := gen_std_fun "fx_copy_arr"
