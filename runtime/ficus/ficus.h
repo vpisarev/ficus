@@ -108,15 +108,28 @@ void fx_free(void* ptr);
 #define FX_DECL_AND_MALLOC(typ, ptr, sz) \
     typ* ptr = (typ*)fx_malloc(sz); \
     if(!ptr) return FX_OUT_OF_MEM_ERR
-#define FX_CALL(f, label) fx_status = f; if(fx_status < 0) goto label
-#define FX_BREAK(label) fx_status = FX_BREAK_EXN; goto label
-#define FX_CONTINUE(label) fx_status = FX_CONTINUE_EXN; goto label
+#define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else goto label
+#define FX_BREAK(label) { fx_status = FX_BREAK_EXN; goto label; }
+#define FX_CONTINUE(label) { fx_status = FX_CONTINUE_EXN; goto label; }
 #define FX_CHECK_EXN_BREAK_CONTINUE(label) \
     if(fx_status >= 0) \
         ; \
     else if(fx_status == FX_BREAK_EXN) { \
         fx_status = FX_OK; \
         break; \
+    } \
+    else if(fx_status == FX_CONTINUE_EXN) { \
+        fx_status = FX_OK; \
+        continue; \
+    } \
+    else goto label
+
+#define FX_CHECK_EXN_BREAK_CONTINUE_ND(label, br_label) \
+    if(fx_status >= 0) \
+        ; \
+    else if(fx_status == FX_BREAK_EXN) { \
+        fx_status = FX_OK; \
+        goto br_label; \
     } \
     else if(fx_status == FX_CONTINUE_EXN) { \
         fx_status = FX_OK; \

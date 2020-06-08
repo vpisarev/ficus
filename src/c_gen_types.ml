@@ -76,16 +76,16 @@ and get_ctprops ct loc =
     (match ct with
     | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _
     | CTypFloat _ | CTypVoid | CTypBool | CTypUniChar ->
-        {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        {ctp_complex=false; ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=false}
     | CTypCSmartPtr ->
-        {ctp_make=[]; ctp_free=(noid, !std_fx_free_cptr); ctp_copy=(noid, !std_fx_copy_cptr);
+        {ctp_complex=true; ctp_make=[]; ctp_free=(noid, !std_fx_free_cptr); ctp_copy=(noid, !std_fx_copy_cptr);
         ctp_pass_by_ref=false; ctp_ptr=true}
     | CTypString ->
-        {ctp_make=[]; ctp_free=(!std_FX_FREE_STR, !std_fx_free_str);
+        {ctp_complex=true; ctp_make=[]; ctp_free=(!std_FX_FREE_STR, !std_fx_free_str);
         ctp_copy=(noid, !std_fx_copy_str); ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypExn ->
-        {ctp_make=[]; ctp_free=(noid, !std_fx_free_exn); ctp_copy=(noid, !std_fx_copy_exn);
+        {ctp_complex=true; ctp_make=[]; ctp_free=(noid, !std_fx_free_exn); ctp_copy=(noid, !std_fx_copy_exn);
         ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypStruct(Some(i), _) -> get_ctprops (CTypName i) loc
     | CTypStruct _ -> raise_compile_err loc "there is no type properties for the anonymoous struct"
@@ -93,20 +93,20 @@ and get_ctprops ct loc =
         raise_compile_err loc (sprintf "there is no type properties for union '%s'" (id2str i))
     | CTypUnion _ -> raise_compile_err loc "there is no type properties for the anonymoous union"
     | CTypFun(_, _) ->
-        {ctp_make=[]; ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
+        {ctp_complex=true; ctp_make=[]; ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
         ctp_copy=(!std_FX_COPY_FP, !std_fx_copy_fp);
         ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypFunRawPtr(_, _) ->
-        {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        {ctp_complex=false; ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=true}
     | CTypRawPtr(_, t) ->
-        {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        {ctp_complex=false; ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=true}
     | CTypRawArray(_, t) ->
-        {ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
+        {ctp_complex=false; ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
         ctp_pass_by_ref=false; ctp_ptr=false}
     | CTypArray(_, _) ->
-        {ctp_make=[]; ctp_free=(!std_FX_FREE_ARR, !std_fx_free_arr); ctp_copy=(noid, !std_fx_copy_arr);
+        {ctp_complex=true; ctp_make=[]; ctp_free=(!std_FX_FREE_ARR, !std_fx_free_arr); ctp_copy=(noid, !std_fx_copy_arr);
         ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypName i ->
         (match (cinfo_ i loc) with
@@ -211,6 +211,7 @@ let convert_all_typs top_code =
             ct_ktyp=KTypName tn; ct_cname=cname; ct_tagenum=noid;
             ct_scope=ScGlobal::[]; ct_loc=loc;
             ct_props={
+                ctp_complex=ktp_custom_free || ktp_custom_copy;
                 ctp_ptr=ktp_ptr; ctp_pass_by_ref=ktp_pass_by_ref;
                 ctp_make=[]; ctp_free=(freem, freef); ctp_copy=(copym, copyf)
                 }

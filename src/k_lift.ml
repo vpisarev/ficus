@@ -463,7 +463,7 @@ let lift_all top_code =
                 (match (kinfo_ f loc) with
                 | KFun {contents={kf_closure=(_, cl_vt)}} ->
                     if cl_vt = noid then
-                        KExpCall(f, (args @ [(Atom.Lit LitNil)]), kctx)
+                        KExpCall(f, args (*@ [(Atom.Lit LitNil)]*), kctx)
                     else
                         KExpCall((check_n_walk_id f loc callb), args, kctx)
                 | _ -> KExpCall((check_n_walk_id f loc callb), args, kctx))

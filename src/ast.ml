@@ -299,14 +299,16 @@ let dump_id i = match i with
     | Id.Val(i, j) -> (sprintf "Id.Val(%d, %d)" i j)
     | Id.Temp(i, j) -> (sprintf "Id.Temp(%d, %d)" i j)
 
-let id2str_ i pp =
+let id2str__ i pp val_decor temp_decor =
     let (infix, prefix, suffix) = match i with
         | Id.Name(i) -> ("", i, -1)
-        | Id.Val(i, j) -> ("@", i, j)
-        | Id.Temp(i, j) -> ("@@", i, j) in
+        | Id.Val(i, j) -> (val_decor, i, j)
+        | Id.Temp(i, j) -> (temp_decor, i, j) in
     let prefix = dynvec_get all_strings prefix in
     if pp || suffix < 0 then (sprintf "%s" prefix)
     else (sprintf "%s%s%d" prefix infix suffix)
+
+let id2str_ i pp = id2str__ i pp "@" "@@"
 
 let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true

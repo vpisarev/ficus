@@ -39,6 +39,7 @@ let init_std_names () =
     std_FX_BREAK := gen_std_macro "FX_BREAK" 1;
     std_FX_CONTINUE := gen_std_macro "FX_CONTINUE" 1;
     std_FX_CHECK_EXN_BREAK_CONTINUE := gen_std_macro "FX_CHECK_EXN_BREAK_CONTINUE" 1;
+    std_FX_CHECK_EXN_BREAK_CONTINUE_ND := gen_std_macro "FX_CHECK_EXN_BREAK_CONTINUE_ND" 2;
     std_FX_CHECK_EXN := gen_std_macro "FX_CHECK_EXN" 1;
     std_FX_CHECK_ZERO_STEP := gen_std_macro "FX_CHECK_ZERO_STEP" 2;
     std_FX_LOOP_COUNT := gen_std_macro "FX_LOOP_COUNT" 3;

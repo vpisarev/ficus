@@ -99,7 +99,15 @@ type ctyp_flag_t =
                                do not need a tag either. *)
 
 
-type ctprops_t = { ctp_ptr: bool; ctp_pass_by_ref: bool; ctp_make:id_t list; ctp_free: id_t*id_t; ctp_copy: id_t*id_t }
+type ctprops_t =
+{
+    ctp_complex: bool;
+    ctp_ptr: bool;
+    ctp_pass_by_ref: bool;
+    ctp_make: id_t list;
+    ctp_free: id_t*id_t;
+    ctp_copy: id_t*id_t
+}
 
 type ctyp_t =
     | CTypInt (* this is a direct mapping from TypInt and CTypInt.
@@ -769,6 +777,7 @@ let std_FX_NOP = ref noid
 let std_FX_BREAK = ref noid
 let std_FX_CONTINUE = ref noid
 let std_FX_CHECK_EXN_BREAK_CONTINUE = ref noid
+let std_FX_CHECK_EXN_BREAK_CONTINUE_ND = ref noid
 let std_FX_CHECK_EXN = ref noid
 let std_FX_CHECK_ZERO_STEP = ref noid
 let std_FX_LOOP_COUNT = ref noid

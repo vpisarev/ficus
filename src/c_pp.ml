@@ -84,7 +84,7 @@ let unop2str_ uop = match uop with
 
 let pprint_id n loc =
     let cname = get_idc_cname n loc in
-    pstr (if cname = "" then (pp_id2str n) else cname)
+    pstr (if cname = "" then (id2str__ n false "_" "_") else cname)
 
 let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
     let pr_id_opt_ add_space = match id_opt with
@@ -216,11 +216,13 @@ and pprint_cexp_ e pr =
         obox(); pprint_cexp_ f 1400; pstr "("; pprint_elist args; pstr ")"; cbox()
     | CExpInit(eseq, _) ->
         obox();
-        if eseq=[] then pstr "{}"
+        pstr "{"; pcut();
+        (if eseq=[] then ()
         else
             List.iteri (fun i e ->
                 if i = 0 then pcut() else (pstr ","; pspace());
-                pprint_cexp_ e 0) eseq;
+                pprint_cexp_ e 0) eseq);
+        pcut(); pstr "}";
         cbox()
     | CExpTyp(t, loc) ->
         obox();
@@ -247,6 +249,7 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
             raise_compile_err cf_loc "invalid function type (should be a function)") in
     let typed_args = Utils.zip cf_args argtyps in
     obox();
+    let cf_flags = FunStatic :: cf_flags in
     if List.mem FunStatic cf_flags then pstr "static " else ();
     if List.mem FunInline cf_flags then pstr "inline " else ();
     pprint_ctyp_ rt None cf_loc;
@@ -262,31 +265,46 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
     cbox(); pstr (")" ^ (if semicolon then ";" else "")); cbox();
     pbreak()
 
+and pprint_cstmt_or_block_cbox s =
+    match s with
+    | CStmtBlock (sl, _) ->
+        pstr "{"; pbreak(); ohvbox();
+        List.iteri (fun i s -> if i = 0 then () else pbreak(); pprint_cstmt s) sl;
+        cbox(); cbox(); pbreak(); pstr "}"
+    | _ -> pprint_cstmt s; cbox()
+
 and pprint_cstmt s =
     (match s with
     | CStmtNop _ -> pstr "{}"
     | CComment (s, _) -> pstr s
-    | CExp e -> pprint_cexp_ e 0; pstr ";"
+    | CExp e ->
+        pprint_cexp_ e 0;
+        (match e with
+        | CExpCCode _ -> ()
+        | _ -> pstr ";")
     | CStmtBreak _ -> pstr "break;"
     | CStmtContinue _ -> pstr "continue;"
-    | CStmtReturn (e_opt, l) -> pstr "return";
+    | CStmtReturn (e_opt, l) -> obox(); pstr "return";
         (match e_opt with
         | Some e -> pspace(); pprint_cexp_ e 0
         | _ -> ());
-        pstr ";"
+        pstr ";";
+        cbox();
     | CStmtBlock (sl, _) ->
         (match sl with
         | [] -> pstr "{}"
         | s :: [] -> pprint_cstmt s
-        | _ ->  pstr "{"; ovbox();
-            List.iter (fun s -> pprint_cstmt s; pbreak()) sl;
-            cbox(); pstr "}")
+        | _ ->  pstr "{"; pbreak(); ohvbox();
+            List.iteri (fun i s -> if i = 0 then () else pbreak(); pprint_cstmt s) sl;
+            cbox(); pbreak(); pstr "}")
     | CStmtIf (e, s1, s2, _) ->
+        obox();
         pstr "if ("; pprint_cexp_ e 0; pstr ")";
-        obox(); pspace(); pprint_cstmt s1; cbox();
+        pspace();
+        pprint_cstmt_or_block_cbox s1;
         (match s2 with
         | CStmtNop _ | CStmtBlock ([], _) -> ()
-        | _ -> pstr "else"; obox(); pprint_cstmt s2; cbox())
+        | _ -> pspace(); obox(); pstr "else"; pspace(); pprint_cstmt_or_block_cbox s2)
     | CStmtGoto(n, loc) -> pstr "goto "; pprint_id n loc
     | CStmtLabel (n, loc) -> pbreak(); pprint_id n loc; pstr ":"
     | CStmtFor(t_opt, e1, e2_opt, e3, body, loc) ->
@@ -333,11 +351,13 @@ and pprint_cstmt s =
             ) cases;
         pstr "}"
     | CDefVal (t, n, e_opt, loc) ->
+        obox();
         pprint_ctyp_ t (Some n) loc;
         (match e_opt with
         | Some e -> pspace(); pstr "="; pspace(); pprint_cexp_ e 0
         | _ -> ());
-        pstr ";"
+        pstr ";";
+        cbox()
     | CDefFun cf ->
         let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = !cf in
         pprint_fun_hdr cf_name false cf_loc false;

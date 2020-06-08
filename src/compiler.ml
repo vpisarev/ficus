@@ -69,7 +69,7 @@ let parse_all _fname0 =
     let dir0 = Filename.dirname fname0 in
     let inc_dirs0 = (if dir0 = cwd then [cwd] else [dir0; cwd]) @ options.include_path in
     let inc_dirs0 = List.map (fun d -> normalize_path cwd d) inc_dirs0 in
-    let _ = print_string ("Module search path:\n\t" ^ (String.concat ",\n\t" inc_dirs0) ^ "\n") in
+    (*let _ = print_string ("Module search path:\n\t" ^ (String.concat ",\n\t" inc_dirs0) ^ "\n") in*)
     let name0_id = get_id (Utils.remove_extension (Filename.basename fname0)) in
     let minfo = find_module name0_id fname0 in
     let queue = ref [!minfo.dm_name] in
@@ -164,9 +164,8 @@ let k2c_all code =
     let _ = (compile_errs := []) in
     let _ = C_form.init_all_idcs() in
     let _ = C_gen_std.init_std_names() in
-    let ccode_types = C_gen_types.convert_all_typs code in
-    let fdecls = C_gen_fdecl.convert_all_fdecls code in
-    ((ccode_types @ fdecls), !compile_errs = [])
+    let ccode = C_gen_code.gen_ccode code in
+    (ccode, !compile_errs = [])
 
 let print_all_compile_errs () =
     let nerrs = List.length !compile_errs in
@@ -184,7 +183,7 @@ let process_all fname0 =
             let minfo = get_module m in
             (m, !minfo.dm_deps) :: gr) all_modules [] in
         let _ = (sorted_modules := List.rev (toposort graph)) in
-        let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in
+        (*let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in*)
         let ok = typecheck_all !sorted_modules in
         let _ = if ok && options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in

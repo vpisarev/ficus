@@ -24,19 +24,22 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
+let add_dot s suffix =
+    (if (String.contains s '.') || (String.contains s 'e') then s else s ^ ".") ^ suffix
+
 let lit_to_string c loc = match c with
     | LitInt(v) -> sprintf "%Li" v
     | LitSInt(b, v) -> sprintf "%Lii%d" v b
     | LitUInt(b, v) -> sprintf "%Luu%d" v b
-    | LitFloat(16, v) -> sprintf "%.4gh" v
-    | LitFloat(32, v) -> sprintf "%.8gf" v
-    | LitFloat(64, v) -> sprintf "%.16g" v
+    | LitFloat(16, v) -> let s = sprintf "%.4g" v in (add_dot s "h")
+    | LitFloat(32, v) -> let s = sprintf "%.8g" v in (add_dot s "f")
+    | LitFloat(64, v) -> let s = sprintf "%.16g" v in (add_dot s "")
     | LitFloat(b, v) -> raise_compile_err loc (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
     | LitString(s) -> "\"" ^ (String.escaped s) ^ "\""
     | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
-    | LitBool(true) -> "True"
-    | LitBool(false) -> "False"
-    | LitNil -> "Nil"
+    | LitBool(true) -> "true"
+    | LitBool(false) -> "false"
+    | LitNil -> "nullptr"
 
 let pprint_lit x loc = pstr (lit_to_string x loc)
 let pprint_id x = pstr (match x with Id.Name(0) -> "__" | _ -> id2str x)
