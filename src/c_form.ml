@@ -101,6 +101,7 @@ type ctyp_flag_t =
 
 type ctprops_t =
 {
+    ctp_scalar: bool;
     ctp_complex: bool;
     ctp_ptr: bool;
     ctp_pass_by_ref: bool;

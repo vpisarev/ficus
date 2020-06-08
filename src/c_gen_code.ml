@@ -375,6 +375,17 @@ let gen_ccode top_code =
             in (e, ccode)
     in
 
+    let is_immutable_atomic_cexp e =
+        match e with
+        | CExpLit _ -> true
+        | CExpIdent(i, (t, loc)) ->
+            let {ctp_scalar} = C_gen_types.get_ctprops t loc in
+            ctp_scalar && (match (cinfo_ i loc) with
+                | CVal {cv_flags} -> not (List.mem ValMutable cv_flags)
+                | _ -> false)
+        | _ -> false
+        in
+
     let finalize_loop_body body_code loc =
         let end_loc = get_end_loc loc in
         let bctx = curr_block_ctx loc in
@@ -1055,21 +1066,39 @@ let gen_ccode top_code =
                                 *)
                                 let (a_exp, init_ccode) = atom2cexp_ a true init_ccode sc for_loc in
                                 let (b_exp, init_ccode) = atom2cexp_ b true init_ccode sc for_loc in
-                                let calc_n_exp = make_call !std_FX_LOOP_COUNT [a_exp; b_exp; d_exp] CTypInt for_loc in
-                                let (i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
+                                let is_canonical_for = match (a, delta) with
+                                    | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> true
+                                    | _ -> false
+                                    in
+                                let calc_n_exp = if is_canonical_for then b_exp else
+                                    make_call !std_FX_LOOP_COUNT [a_exp; b_exp; d_exp] CTypInt for_loc
+                                    in
+                                let (add_pair, i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
                                     | (prev_i :: _, prev_n :: _) ->
-                                        (prev_i, i_exps, n_exps,
+                                        (true, prev_i, i_exps, n_exps,
                                         (CExpBinOp(COpCompareNE, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
                                         init_ccode)
                                     | _ ->
-                                        let (n_exp, init_ccode) = add_val (gen_temp_idc "n") CTypInt
-                                            [] (Some calc_n_exp) init_ccode sc for_loc in
-                                        let (i_exp, _) = add_val (gen_temp_idc "i") CTypInt [ValMutable] None [] sc for_loc in
-                                        (i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
+                                        let (add_pair, i_id) = match (a, delta) with
+                                            | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> (false, iter_val_i)
+                                            | _ -> (true, (gen_temp_idc "i"))
+                                            in
+                                        let (n_exp, init_ccode) =
+                                            if is_canonical_for && (is_immutable_atomic_cexp b_exp) then
+                                                (b_exp, init_ccode)
+                                            else
+                                                add_val (gen_temp_idc "n") CTypInt [] (Some calc_n_exp) init_ccode sc for_loc
+                                            in
+                                        let (i_exp, _) = add_val i_id CTypInt [ValMutable] None [] sc for_loc in
+                                        (add_pair, i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
                                     in
-                                let calc_i_exp = CExpBinOp(add_delta, a_exp, CExpBinOp(COpMul, i_exp, d_exp, (CTypInt, for_loc)), (CTypInt, for_loc)) in
-                                (i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode, pre_body_ccode,
-                                    ((iter_val_i, calc_i_exp) :: body_pairs), post_checks))
+                                let body_pairs = if not add_pair then body_pairs else
+                                    let calc_i_exp = CExpBinOp(add_delta, a_exp,
+                                        CExpBinOp(COpMul, i_exp, d_exp, (CTypInt, for_loc)), (CTypInt, for_loc)) in
+                                    (iter_val_i, calc_i_exp) :: body_pairs
+                                    in
+                                (i_exps, n_exps, for_checks, incr_exps, init_checks,
+                                init_ccode, pre_body_ccode, body_pairs, post_checks))
                         | Domain.Elem(Atom.Id col) ->
                             let ktyp = get_idk_typ col for_loc in
                             let ctyp = C_gen_types.ktyp2ctyp ktyp for_loc in

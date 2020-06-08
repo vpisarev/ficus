@@ -257,12 +257,15 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
     pstr cf_cname;
     pstr "(";
     pcut();
-    (*ovbox();*)
-    Format.open_vbox 0;
-    List.iteri (fun i (n, t) ->
-        if i = 0 then () else (pstr ","; pspace());
-        ohbox(); pprint_ctyp__ "" t (Some n) true cf_loc; cbox()) typed_args;
-    cbox(); pstr (")" ^ (if semicolon then ";" else "")); cbox();
+    (match typed_args with
+    | [] -> pstr "void"; pcut()
+    | _ ->
+        Format.open_vbox 0;
+        List.iteri (fun i (n, t) ->
+            if i = 0 then () else (pstr ","; pspace());
+            ohbox(); pprint_ctyp__ "" t (Some n) true cf_loc; cbox()) typed_args;
+        cbox());
+    pstr (")" ^ (if semicolon then ";" else "")); cbox();
     pbreak()
 
 and pprint_cstmt_or_block_cbox s =

@@ -752,6 +752,11 @@ let is_mutable i loc =
     | KExn _ -> false
     | KClosureVars _ | KVariant _ | KTyp _ -> false
 
+let is_mutable_atom a loc =
+    match a with
+    | Atom.Id i -> is_mutable i loc
+    | _ -> false
+
 let is_implicit_deref i loc =
     let info = kinfo_ i loc in
     check_kinfo info i loc;
