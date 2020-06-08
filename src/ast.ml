@@ -166,7 +166,7 @@ type binop_t =
 
 type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
-type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref
+type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip

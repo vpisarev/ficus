@@ -130,6 +130,7 @@ and pprint_kexp_ e prtyp =
         | ValTemp -> pstr "TEMP"; pspace()
         | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
+        | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp vt loc; pspace(); pstr "="; pspace();
         if List.mem ValImplicitDeref vflags then

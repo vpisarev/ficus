@@ -12,7 +12,7 @@
 
     The algorithm:
         1. do the 1st pass through the K-form, convert all the types and exceptions (see c_gen_types.ml).
-        2. do the 2nd pass through the K-form, generate headers for all the functions (see c_gen_fdecl.ml):
+        2. do the 2nd pass through the K-form, generate headers for all the functions (see c_gen_fdecls.ml):
             - each function, except for the constructors, gets extra "free variables"/"closure data"
               parameter fx_fv, even if it's not used.
             - the return value becomes the output parameter fx_result (before the closure pointer), unless
@@ -285,7 +285,8 @@ let gen_ccode top_code =
         let {ctp_ptr; ctp_free=(freem, freef)} = C_gen_types.get_ctprops ctyp loc in
         let i_exp = CExpIdent(i, (ctyp, loc)) in
         let need_dtor = freem <> noid || freef <> noid in
-        let ccode = if need_dtor then
+        let ccode =
+            if need_dtor then
                 (let bctx = curr_block_ctx loc in
                 let init_exp = if ctp_ptr then CExpLit(LitNil, (ctyp, loc)) else CExpInit([], (ctyp, loc)) in
                 bctx.bctx_prologue <- create_cdefval i ctyp flags "" (Some init_exp) bctx.bctx_prologue sc loc;
@@ -294,7 +295,8 @@ let gen_ccode top_code =
                 | Some(e0) -> C_gen_types.gen_copy_code e0 i_exp ctyp ccode loc
                 | _ -> ccode)
             else
-                create_cdefval i ctyp flags "" e0_opt ccode sc loc in
+                create_cdefval i ctyp flags "" e0_opt ccode sc loc
+            in
         (i_exp, ccode)
     in
 
@@ -1296,8 +1298,9 @@ let gen_ccode top_code =
             let {ktp_ptr; ktp_complex; ktp_scalar} = K_annotate_types.get_ktprops kv_typ kloc in
             let ctyp = C_gen_types.ktyp2ctyp kv_typ kloc in
             let bctx = curr_block_ctx kloc in
-            let is_global = bctx.bctx_kind == BlockKind_Global in
+            let is_temp = List.mem ValTemp kv_flags in
             let is_temp_ref = List.mem ValTempRef kv_flags in
+            let is_global = bctx.bctx_kind == BlockKind_Global && not is_temp && not is_temp_ref in
             (* there are 3 cases (ce2 denotes e2 converted to C):
                 1. definition "ctyp i = ce2" is not added; instead, i is replaced with ce2.
                 2. i is defined separately: "ctyp i[={}|0];" and then
@@ -1305,9 +1308,7 @@ let gen_ccode top_code =
                 3. i is defined and initialized at once: "ctyp i=ce2;"
             *)
             let ccode =
-                if (is_temp_ref ||
-                    (ktp_scalar && (List.mem ValTemp kv_flags))) &&
-                    (IdSet.mem i u1vals) then
+                if (is_temp_ref || (ktp_scalar && is_temp)) && (IdSet.mem i u1vals) then
                     let (ce2, ccode) = kexp2cexp e2 (ref None) ccode sc in
                     (* we still need to declare i to be able to access its type *)
                     let _ = create_cdefval i ctyp kv_flags "" None [] sc kloc in
@@ -1325,7 +1326,12 @@ let gen_ccode top_code =
                     | KExpBinOp _ | KExpUnOp _ | KExpIntrin _ | KExpMkTuple _
                     | KExpMkRecord _ | KExpAt _ | KExpMem _ | KExpCast _ | KExpCCode _ -> false
                     | _ -> true) then
-                    let (i_exp, delta_code) = add_val i ctyp kv_flags None [] sc kloc in
+                    let (flags, e0_opt) = if not is_global then (kv_flags, None) else
+                        let init_exp = if ktp_ptr then CExpLit(LitNil, (ctyp, kloc)) else CExpInit([], (ctyp, kloc)) in
+                        let e0_opt = if ktp_complex then None else (Some init_exp) in
+                        (ValPrivate :: kv_flags, e0_opt)
+                        in
+                    let (i_exp, delta_code) = add_val i ctyp flags e0_opt [] sc kloc in
                     let ccode = if is_global then (bctx.bctx_prologue <- delta_code @ bctx.bctx_prologue; ccode)
                         else delta_code @ ccode in
                     let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode sc in
@@ -1336,7 +1342,12 @@ let gen_ccode top_code =
                         | (false, KExpAtom((Atom.Lit LitNil), (_, loc))) -> (CExpInit([], (ctyp, loc)), ccode)
                         | _ -> kexp2cexp e2 (ref None) ccode sc
                         in
-                    let (_, ccode) = add_val i ctyp kv_flags (Some ce2) ccode sc kloc in
+                    let (_, ccode) = match (e2, ccode) with
+                        | ((KExpMkRecord _), (CDefVal (t, tval, (Some rhs), loc) :: rest))
+                        | ((KExpMkTuple _), (CDefVal (t, tval, (Some rhs), loc) :: rest)) ->
+                            add_val i ctyp kv_flags (Some rhs) rest sc kloc
+                        | _ -> add_val i ctyp kv_flags (Some ce2) ccode sc kloc
+                        in
                     ccode
                 in
             (false, dummy_exp, ccode)
@@ -1485,5 +1496,5 @@ let gen_ccode top_code =
         cf_args=[]; cf_cname=toplevel_cname; cf_body=(List.rev ccode); cf_flags=[]; cf_scope=sc0; cf_loc=end_loc} in
     let _ = set_idc_entry toplevel_name (CFun toplevel_f) in
     let all_ccode = (make_ccode_prologue start_loc) @ !top_ccode @
-        c_types_ccode @ c_fdecls @ [CDefFun toplevel_f] @ (make_ccode_epilogue end_loc) in
+        c_types_ccode @ (List.rev bctx_prologue) @ c_fdecls @ [CDefFun toplevel_f] @ (make_ccode_epilogue end_loc) in
     all_ccode
