@@ -150,7 +150,7 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
         obox();
         if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
         if (List.mem CTypConst attrs) then pstr "const " else ();
-        pprint_ctyp__ "" t None fwd_mode loc;
+        pprint_ctyp__ "" et None fwd_mode loc;
         pspace();
         pr_id_opt_ false; pstr "[]";
         cbox()
@@ -213,7 +213,7 @@ and pprint_cexp_ e pr =
         pprint_cexp_ e3 0;
         (if pr0 < pr then (pcut(); pstr ")") else ()); cbox()
     | CExpCall(f, args, _) ->
-        obox(); pprint_cexp_ f 1400; pstr "("; pprint_elist args; pstr ")"; cbox()
+        obox(); pprint_cexp_ f 1400; pstr "("; pcut(); pprint_elist args; pstr ")"; cbox()
     | CExpInit(eseq, _) ->
         obox();
         pstr "{"; pcut();
@@ -306,9 +306,13 @@ and pprint_cstmt s =
         | CStmtNop _ | CStmtBlock ([], _) -> ()
         | _ -> pspace(); obox(); pstr "else"; pspace(); pprint_cstmt_or_block_cbox s2)
     | CStmtGoto(n, loc) -> pstr "goto "; pprint_id n loc
-    | CStmtLabel (n, loc) -> pbreak(); pprint_id n loc; pstr ":"
+    | CStmtLabel (n, loc) ->
+        Format.print_break 1 (- !base_indent);
+        pprint_id n loc; pstr ":"
     | CStmtFor(t_opt, e1, e2_opt, e3, body, loc) ->
+        obox();
         pstr "for (";
+        pcut();
         (match e1 with
         | [] -> ();
         | _ ->
@@ -323,9 +327,10 @@ and pprint_cstmt s =
         pstr ";";
         (match e3 with
         | [] -> ();
-        | _ -> pprint_elist e3);
-        pstr ")";
-        obox(); pprint_cstmt body; cbox()
+        | _ -> pspace(); pprint_elist e3);
+        pcut();
+        pstr ")"; pspace();
+        pprint_cstmt_or_block_cbox body
     | CStmtWhile (e, body, _) ->
         pstr "while ("; pprint_cexp_ e 0; pstr ")"; obox(); pspace(); pprint_cstmt body; cbox()
     | CStmtDoWhile (body, e, _) ->

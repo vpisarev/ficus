@@ -1167,7 +1167,7 @@ let gen_ccode top_code =
                                 let slice_idxs = List.rev ((make_int_exp 0 for_loc) :: (List.tl rev_i_exps)) in
                                 let get_arr_slice = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
                                     (CExpTyp (c_et, for_loc) :: col_exp :: slice_idxs) c_et_ptr for_loc in
-                                let ptr_id = get_id ("ptr_" ^ (pp_id2str col)) in
+                                let ptr_id = gen_temp_idc ("ptr_" ^ (pp_id2str col)) in
                                 let pre_body_ccode = create_cdefval ptr_id c_et_ptr [] "" (Some get_arr_slice) pre_body_ccode sc for_loc in
                                 let ptr_exp = make_id_exp ptr_id for_loc in
                                 let get_arr_elem = CExpBinOp(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc)) in
@@ -1190,10 +1190,10 @@ let gen_ccode top_code =
                 body_ccode) [] body_pairs
                 in
             (* add the loop body itself *)
-            let (e, body_ccode) = kexp2cexp body (ref None) body_ccode sc in
+            let (_, body_ccode) = kexp2cexp body (ref None) body_ccode sc in
             let body_loc = get_kexp_loc body in
             (* add the initialization and the cleanup sections, if needed *)
-            let (br_label, body_stmt) = finalize_loop_body ((cexp2stmt e) :: body_ccode) body_loc in
+            let (br_label, body_stmt) = finalize_loop_body body_ccode body_loc in
 
             (* add initial size checks *)
             let init_ccode = add_ne_size_check (List.rev init_checks) init_ccode lbl for_loc in
