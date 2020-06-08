@@ -1366,11 +1366,22 @@ let gen_ccode top_code =
             let new_body = (match kf_body with
                 | KExpCCode(code, (_, loc)) -> CExp (CExpCCode(code, loc)) :: []
                 | _ ->
-                    let (real_args, real_argtyps, retid) = match ((List.rev args), (List.rev argtyps)) with
-                        | ((retid :: rargs), (_ :: ratyps)) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, ratyps, retid)
-                        | ((_ :: retid :: rargs), (_ :: _ :: ratyps)) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, ratyps, retid)
-                        | (rargs, ratyps) -> (rargs, ratyps, noid)
+                    let kargtyps = match kf_typ with
+                        | KTypFun(kargtyps, _) -> List.rev kargtyps
+                        | _ -> []
                         in
+                    let nkargtyps = List.length kargtyps in
+                    let (real_args, retid) = match (List.rev args) with
+                        | (retid :: rargs) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, retid)
+                        | (_ :: retid :: rargs) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, retid)
+                        | rargs ->
+                            let nargs = List.length args in
+                            (* cut off fx_vf if needed *)
+                            let rargs = if nargs > nkargtyps then (List.tl rargs) else rargs in
+                            (rargs, noid)
+                        in
+                    let _ = if nkargtyps = (List.length real_args) then () else
+                        raise_compile_err kf_loc "cgen: inconsistent number of argument types after conversion to C" in
                     let dstexp_r = ref (if retid = noid then None else
                         (Some (cexp_deref (make_id_exp retid kf_loc))))
                         in
@@ -1379,10 +1390,11 @@ let gen_ccode top_code =
                         else create_cdefval status_id CTypCInt [ValMutable] "fx_status"
                             (Some (make_int_exp 0 kf_loc)) [] kf_scope kf_loc
                         in
-                    let _ = List.iter2 (fun a t ->
-                        match t with
-                        | CTypRawPtr _ -> i2e := Env.add a (cexp_deref (make_id_exp a kf_loc)) !i2e
-                        | _ -> ()) real_args real_argtyps
+                    let _ = List.iter2 (fun a kt ->
+                        let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kt kf_loc in
+                        if not ktp_pass_by_ref then () else
+                            i2e := Env.add a (cexp_deref (make_id_exp a kf_loc)) !i2e)
+                        real_args kargtyps
                         in
                     let (ret_e, ccode) = kexp2cexp kf_body dstexp_r ccode kf_scope in
                     let end_loc = get_kexp_end kf_body in
