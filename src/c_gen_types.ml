@@ -156,15 +156,15 @@ let get_copy_f ct let_none let_macro loc =
 let gen_copy_code src_exp dst_exp ct code loc =
     let (pass_by_ref, copy_f_opt) = get_copy_f ct true true loc in
     let ctx = (CTypVoid, loc) in
-    let src_exp = if pass_by_ref then (cexp_get_addr src_exp) else src_exp in
     let e = match copy_f_opt with
-            | Some(f) ->
-                let dst_exp = cexp_get_addr dst_exp in
-                CExpCall(f, src_exp :: dst_exp :: [], ctx)
-            | _ -> (* in C the assignment operator returns assigned value,
-                    but since in this particular case we are not going to chain
-                    assignment operators, we assume that it returns 'void' *)
-                    CExpBinOp(COpAssign, dst_exp, src_exp, ctx)
+        | Some(f) ->
+            let src_exp = if pass_by_ref then (cexp_get_addr src_exp) else src_exp in
+            let dst_exp = cexp_get_addr dst_exp in
+            CExpCall(f, src_exp :: dst_exp :: [], ctx)
+        | _ -> (* in C the assignment operator returns assigned value,
+                but since in this particular case we are not going to chain
+                assignment operators, we assume that it returns 'void' *)
+                CExpBinOp(COpAssign, dst_exp, src_exp, ctx)
     in (CExp e) :: code
 
 (* generates the destructor call if needed *)

@@ -1353,7 +1353,7 @@ let gen_ccode top_code =
 
                 handle the case of 'c code'-body separately
             *)
-            let {kf_name; kf_typ; kf_closure=(arg_id, _); kf_body; kf_flags; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_typ; kf_closure=(arg_id, _); kf_body; kf_cname; kf_flags; kf_scope; kf_loc} = !kf in
             let _ = new_block_ctx (BlockKind_Fun kf_name) sc kloc in
             let (argtyps, rt, args, cf) = match (cinfo_ kf_name kf_loc) with
                 | CFun ({contents={cf_typ=CTypFun(argtyps, rt); cf_args}} as cf) -> (argtyps, rt, cf_args, cf)
@@ -1366,11 +1366,10 @@ let gen_ccode top_code =
             let new_body = (match kf_body with
                 | KExpCCode(code, (_, loc)) -> CExp (CExpCCode(code, loc)) :: []
                 | _ ->
-                    let retid0 = get_id "fx_result" in
-                    let retid = match (List.rev args) with
-                        | (retid :: _) when (get_orig_id retid) = retid0 -> retid
-                        | (_ :: retid :: _) when (get_orig_id retid) = retid0 -> retid
-                        | _ -> noid
+                    let (real_args, real_argtyps, retid) = match ((List.rev args), (List.rev argtyps)) with
+                        | ((retid :: rargs), (_ :: ratyps)) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, ratyps, retid)
+                        | ((_ :: retid :: rargs), (_ :: _ :: ratyps)) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, ratyps, retid)
+                        | (rargs, ratyps) -> (rargs, ratyps, noid)
                         in
                     let dstexp_r = ref (if retid = noid then None else
                         (Some (cexp_deref (make_id_exp retid kf_loc))))
@@ -1379,6 +1378,11 @@ let gen_ccode top_code =
                     let ccode = if status_id = noid then []
                         else create_cdefval status_id CTypCInt [ValMutable] "fx_status"
                             (Some (make_int_exp 0 kf_loc)) [] kf_scope kf_loc
+                        in
+                    let _ = List.iter2 (fun a t ->
+                        match t with
+                        | CTypRawPtr _ -> i2e := Env.add a (cexp_deref (make_id_exp a kf_loc)) !i2e
+                        | _ -> ()) real_args real_argtyps
                         in
                     let (ret_e, ccode) = kexp2cexp kf_body dstexp_r ccode kf_scope in
                     let end_loc = get_kexp_end kf_body in
