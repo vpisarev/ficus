@@ -343,7 +343,7 @@ let lift_all top_code =
             | _ ->
                 (match (kinfo_ n loc) with
                 | KFun {contents={kf_flags}} ->
-                    if List.mem FunConstr kf_flags then a
+                    if is_fun_constr kf_flags then a
                     else raise_compile_err loc
                         (sprintf "for the function '%s' there is no corresponding closure" (id2str n))
                 | _ -> a))

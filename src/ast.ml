@@ -167,7 +167,7 @@ type binop_t =
 type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate
-type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr
+type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr of int
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
 type ctx_t = typ_t * loc_t
@@ -670,3 +670,16 @@ let _ = List.iter (fun kwd -> Hashtbl.add reserved_keywords kwd 1)
 
     "int8_t"; "uint8_t"; "int16_t"; "uint16_t"; "int32_t"; "uint32_t";
     "int64_t"; "uint64_t"; "char_"; "fx_result"; "fx_status"; "fx_fv"]
+
+let builtin_exceptions = ((Hashtbl.create 101): (id_t, id_t) Hashtbl.t)
+let get_builtin_exception n0 loc =
+    match Hashtbl.find_all builtin_exceptions n0 with
+    | n :: _ -> n
+    | _ -> raise_compile_err loc (sprintf "cannot find built-in exception '%s'" (id2str n0))
+
+let get_fun_constr flags =
+    match (List.find_opt (fun f -> match f with FunConstr _ -> true | _ -> false) flags) with
+    | Some (FunConstr i) -> i
+    | _ -> -1
+
+let is_fun_constr flags = (get_fun_constr flags) >= 0

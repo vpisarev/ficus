@@ -27,7 +27,10 @@ let convert_all_fdecls top_code =
                 in
             let cbody = match kf_body with KExpCCode _ -> true | _ -> false in
             let (args, argctyps) = List.fold_left2 (fun (args, argctyps) arg t ->
-                let arg = if arg = (get_orig_id arg) then (dup_idc arg) else arg in
+                let arg = match arg with
+                    | Id.Name _ -> dup_idc arg
+                    | _ -> arg
+                    in
                 let cname = if cbody then pp_id2str arg else "" in
                 let ctyp = C_gen_types.ktyp2ctyp t kf_loc in
                 let {ktp_pass_by_ref} = K_annotate_types.get_ktprops t kf_loc in
@@ -58,7 +61,7 @@ let convert_all_fdecls top_code =
                     (kf_fv_arg, "fx_fv")
                 in
             let (args, argctyps) =
-                if List.mem FunConstr kf_flags then
+                if is_fun_constr kf_flags then
                     (args, argctyps)
                 else
                     (add_farg fv_arg std_CTypVoidPtr fv_cname kf_scope kf_loc;

@@ -1363,13 +1363,13 @@ and reg_types eseq env sc =
         | DefInterface {contents={di_loc=loc}} -> raise_compile_err loc "interfaces are not supported yet"
         | _ -> env) env eseq
 
-and register_typ_constructor n templ_args argtyps rt env sc decl_loc =
+and register_typ_constructor n idx templ_args argtyps rt env sc decl_loc =
     let ctyp = match argtyps with [] -> rt | _ -> TypFun(argtyps, rt) in
     let args = List.mapi (fun i _ -> PatIdent((get_id (sprintf "arg%d" i)), decl_loc)) argtyps in
     let cname = dup_id n in
     let df = ref { df_name=cname; df_templ_args=templ_args;
             df_args=args; df_typ=ctyp;
-            df_body=(ExpNop decl_loc); df_flags=FunConstr :: [];
+            df_body=(ExpNop decl_loc); df_flags=(FunConstr idx) :: [];
             df_templ_inst=[]; df_scope=sc; df_env=env; df_loc=decl_loc } in
     set_id_entry cname (IdFun df);
     (cname, ctyp)
@@ -1389,7 +1389,7 @@ and check_types eseq env sc =
                to support the constructions 'record_name { f1=e1, f2=e2, ..., fn=en }' gracefully *)
             (match dt_typ with
             | TypRecord _ ->
-                let (cname, ctyp) = register_typ_constructor dt_name dt_templ_args (dt_typ::[]) dt_typ env1 dt_scope dt_loc in
+                let (cname, ctyp) = register_typ_constructor dt_name 0 dt_templ_args (dt_typ::[]) dt_typ env1 dt_scope dt_loc in
                 add_id_to_env_check (get_orig_id dt_name) cname env (check_for_duplicate_fun ctyp env dt_scope dt_loc)
             | _ -> env)
         | DefVariant dvar ->
@@ -1439,13 +1439,19 @@ and reg_deffun df env sc =
     env1
 
 and check_defexn de env sc =
-    let { dexn_name=alias; dexn_typ=t; dexn_loc=loc } = !de in
+    let { dexn_name=n0; dexn_typ=t; dexn_loc=loc } = !de in
     let t = check_typ t env sc loc in
-    let n = dup_id alias in
+    let n = dup_id n0 in
     let ftyp = typ2constr t TypExn in
     de := { dexn_name=n; dexn_typ=t; dexn_scope=sc; dexn_loc=loc };
     set_id_entry n (IdExn de);
-    add_id_to_env_check alias n env (check_for_duplicate_fun ftyp env sc loc)
+    (match sc with
+    | ScModule m :: _ when (pp_id2str m) = "Builtins" ->
+        (* add both forward and inverse mapping *)
+        Hashtbl.add builtin_exceptions n0 n;
+        Hashtbl.add builtin_exceptions n n0
+    | _ -> ());
+    add_id_to_env_check n0 n env (check_for_duplicate_fun ftyp env sc loc)
 
 and check_deffun df env =
     let { df_typ; df_scope; df_loc } = !df in
@@ -1540,7 +1546,7 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let { df_name; df_templ_args; df_args; df_body; df_flags; df_scope; df_loc; df_templ_inst } = !templ_df in
     let nargs = List.length df_args in
     let inst_env = inst_env0 in
-    let is_constr = List.mem FunConstr df_flags in
+    let is_constr = is_fun_constr df_flags in
     (*let _ = (printf "before instantiation of %s %s with type<" (if is_constr then
         "constructor" else "function") (id2str df_name); pprint_typ_x inst_ftyp; printf ">:\n") in
     let _ = print_env "" inst_env inst_loc in*)
@@ -1623,7 +1629,7 @@ and instantiate_variant ty_args dvar env sc loc =
     let _ = if instantiate then
         (set_id_entry inst_name (IdVariant inst_dvar);
         !dvar.dvar_templ_inst <- inst_name :: !dvar.dvar_templ_inst) else () in
-    let (inst_cases, inst_constr) = List.fold_left2 (fun (inst_cases, inst_constr) (n, t) cname ->
+    let (_, inst_cases, inst_constr) = List.fold_left2 (fun (idx, inst_cases, inst_constr) (n, t) cname ->
         let nargs = match t with TypTuple(telems) -> List.length telems | TypVoid -> 0 | _ -> 1 in
         let t = check_typ (dup_typ t) env sc loc in
         let t = finalize_record_typ t loc in
@@ -1636,14 +1642,14 @@ and instantiate_variant ty_args dvar env sc loc =
                 raise_compile_err loc
                 (sprintf "cannot instantiate case '%s' of variant '%s' defined at '%s': wrong number of actual parameters %d (vs %d expected)"
                 (id2str cname) (id2str dvar_name) (loc2str dvar_loc) nrealargs nargs) in
-        let (inst_cname, _) = register_typ_constructor cname (!inst_dvar.dvar_templ_args)
+        let (inst_cname, _) = register_typ_constructor cname idx (!inst_dvar.dvar_templ_args)
             argtyps inst_app_typ env dvar_scope dvar_loc in
         if instantiate then
             match id_info cname with
             | IdFun c_def -> !c_def.df_templ_inst <- inst_cname :: !c_def.df_templ_inst
             | _ -> raise_compile_err loc (sprintf "invalid constructor %s of variant %s" (id2str cname) (id2str dvar_name))
         else ();
-        ((n, t) :: inst_cases, inst_cname :: inst_constr)) ([], []) dvar_cases dvar_constr in
+        (idx+1, (n, t) :: inst_cases, inst_cname :: inst_constr)) (0, [], []) dvar_cases dvar_constr in
     !inst_dvar.dvar_cases <- List.rev inst_cases;
     !inst_dvar.dvar_constr <- List.rev inst_constr;
     (*printf "variant after instantiation: {{{ "; pprint_exp_x (DefVariant inst_dvar); printf " }}}\n";*)

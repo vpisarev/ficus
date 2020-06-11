@@ -146,13 +146,13 @@ and pprint_kexp_ e prtyp =
         let (argtyps, rt) = match kf_typ with
             | KTypFun(argtyps, rt) -> (argtyps, rt)
             | _ ->
-                if List.mem FunConstr kf_flags then
+                if is_fun_constr kf_flags then
                     ([], kf_typ)
                 else
                     raise_compile_err kf_loc (sprintf "the function '%s' type is not KTypFun(...)" (id2str kf_name)) in
         let kf_all_args = (Utils.zip kf_args argtyps) @ kf_freevars in
         let fkind = ref "FUN" in
-        let is_constr = List.mem FunConstr kf_flags in
+        let constr_id = get_fun_constr kf_flags in
         (obox(); (List.iter (fun ff -> match ff with
                     | FunPure -> pstr "PURE"; pspace()
                     | FunImpure -> pstr "IMPURE"; pspace()
@@ -160,7 +160,7 @@ and pprint_kexp_ e prtyp =
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunStatic -> pstr "STATIC"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
-                    | FunConstr -> ()
+                    | FunConstr _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
         pstr (!fkind); pspace(); pprint_id_label kf_name; pspace();
         pstr "("; pcut(); obox();
@@ -171,7 +171,7 @@ and pprint_kexp_ e prtyp =
         if (List.length kf_all_args) > nargs then pstr "}" else (); cbox(); pcut();
         pstr ")";
         pspace(); pstr ":"; pspace(); pprint_ktyp rt kf_loc; pspace();
-        pstr "="; pspace(); if is_constr then pstr "Constructor" else pprint_kexp kf_body; cbox())
+        pstr "="; pspace(); if constr_id >= 0 then pstr (sprintf "Constructor(%d)" constr_id) else pprint_kexp kf_body; cbox())
     | KDefExn { contents = {ke_name; ke_typ; ke_loc} } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id_label ke_name;
         (match ke_typ with

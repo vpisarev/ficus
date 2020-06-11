@@ -19,21 +19,25 @@
 enum
 {
     FX_OK = 0,
-    FX_FAILURE = -1,
-    FX_OUT_OF_MEM_ERR = -2,
-    FX_INDEX_ERR = -3,
-    FX_DIV_BY_ZERO_ERR = -4,
-    FX_SIZE_MISMATCH_ERR = -5,
-    FX_DIM_ERR = -6,
-    FX_SIZE_ERR = -7,
-    FX_FILE_OPEN_ERR = -8,
-    FX_NULL_FILE_ERR = -9,
-    FX_IO_ERR = -10,
-    FX_NO_MATCH_ERR = -11,
-    FX_BREAK_EXN = -12,
-    FX_CONTINUE_EXN = -13,
-    FX_NULLPTR_ERR = -14,
-    FX_ZERO_STEP_ERR = -15
+    FX_EXN_Failure = -1,
+    FX_EXN_AssertError = -2,
+    FX_EXN_NotFoundError = -3,
+    FX_EXN_OutOfMemError = -4,
+    FX_EXN_OutOfRangeError = -5,
+    FX_EXN_DivByZeroError = -6,
+    FX_EXN_SizeMismatchError = -7,
+    FX_EXN_DimError = -8,
+    FX_EXN_SizeError = -9,
+    FX_EXN_FileOpenError = -10,
+    FX_EXN_NullFileError = -11,
+    FX_EXN_IOError = -12,
+    FX_EXN_NoMatchError = -13,
+    FX_EXN_Break = -14,
+    FX_EXN_Continue = -15,
+    FX_EXN_NullPtrError = -16,
+    FX_EXN_ZeroStepError = -17,
+
+    FX_EXN_User = -1024,
 };
 
 /////////////////// Various Basic Definitions ////////////////
@@ -107,7 +111,7 @@ void* fx_realloc(void* ptr, size_t sz);
 void fx_free(void* ptr);
 #define FX_DECL_AND_MALLOC(typ, ptr, sz) \
     typ* ptr = (typ*)fx_malloc(sz); \
-    if(!ptr) return FX_OUT_OF_MEM_ERR
+    if(!ptr) return FX_EXN_OutOfMemError
 #define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else goto label
 #define FX_BREAK(label) { fx_status = FX_BREAK_EXN; goto label; }
 #define FX_CONTINUE(label) { fx_status = FX_CONTINUE_EXN; goto label; }
@@ -147,10 +151,10 @@ void fx_free(void* ptr);
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
 #define FX_CHECK_ZERO_STEP(delta, label) \
-    if(delta == 0) { fx_status = FX_ZERO_STEP_ERR; goto label; }
+    if(delta == 0) { fx_status = FX_EXN_ZeroStepError; goto label; }
 #define FX_LOOP_COUNT(a, b, delta) \
     ((delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta))
-#define FX_CHECK_NE_SIZE(check, label) if(check) { fx_status=FX_SIZE_MISMATCH_ERR; goto label }
+#define FX_CHECK_NE_SIZE(check, label) if(check) { fx_status=FX_EXN_SizeMismatchError; goto label }
 
 void fx_copy_ptr(const void* src, void* pdst);
 
@@ -376,7 +380,7 @@ void fx_arr_nextiter(fx_arriter_t* it);
 #define FX_CHKIDX1(arr, i, idx) \
     ((size_t)(idx) >= (size_t)(arr).dim[i].size)
 #define FX_CHKIDX(oor_check, catch_label) \
-    if(oor_check) { fx_status = FX_INDEX_ERR; goto catch_label; }
+    if(oor_check) { fx_status = FX_EXN_OutOfRangeError; goto catch_label; }
 
 #define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))
@@ -467,6 +471,7 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);
 
 int fx_fputs(FILE* f, const fx_str_t* str);
 int fx_fgets(FILE* f, fx_str_t* str);
+void fx_file_destructor(void* ptr);
 
 fx_cptr_t fx_get_stdin(void);
 fx_cptr_t fx_get_stdout(void);

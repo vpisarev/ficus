@@ -557,25 +557,31 @@ and transform_pat_matching a cases code sc loc catch_mode =
         in
         let get_var_tag_cmp_and_extract n pinfo (checks, code) vn sc loc =
             (* [TODO] avoid tag check when the variant has just a single case *)
-            let {pinfo_tag=var_tag0} = pinfo in
+            let {pinfo_tag=var_tag0; pinfo_typ} = pinfo in
+            let (c_args, vn_val) = match (kinfo_ vn loc) with
+                | KFun {contents={kf_typ; kf_flags}} ->
+                    let c_args = (match kf_typ with KTypFun(args, rt) -> args | _ -> []) in
+                    let constr_id = get_fun_constr kf_flags in
+                    (c_args, (if constr_id >= 0 then Atom.Lit (LitInt (Int64.of_int constr_id)) else (Atom.Id vn)))
+                | KExn {contents={ke_typ}} ->
+                    ((match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: []), (Atom.Id vn))
+                | KVal _ -> ([], (Atom.Id vn))
+                | k -> K_pp.pprint_kinfo_x k; raise_compile_err loc (sprintf "a variant constructor ('%s') is expected here" (id2str vn)) in
             let (tag_n, code) =
                 if var_tag0 != noid then (var_tag0, code) else
                 (let tag_n = gen_temp_idk "tag" in
                 let extract_tag_exp = KExpIntrin(IntrinVariantTag, (Atom.Id n) :: [], (KTypInt, loc)) in
                 let code = create_defval tag_n KTypInt [] (Some extract_tag_exp) code sc loc in
                 (tag_n, code))
-            in let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), (Atom.Id vn), (KTypBool, loc)) in
+                in
+            let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), vn_val, (KTypBool, loc)) in
             let checks = (rcode2kexp (cmp_tag_exp :: code) loc) :: checks in
-            let c_args = match (kinfo_ vn loc) with
-                | KFun {contents={kf_typ}} -> (match kf_typ with KTypFun(args, rt) -> args | _ -> [])
-                | KExn {contents={ke_typ}} -> (match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: [])
-                | k -> K_pp.pprint_kinfo_x k; raise_compile_err loc (sprintf "a variant constructor ('%s') is expected here" (id2str vn)) in
             let (case_n, code, alt_e_opt) = match c_args with
                 | [] -> (noid, [], None)
                 | _ ->
                     let (is_tuple, case_typ) = match c_args with t :: [] -> (false, t) | _ -> (true, KTypTuple(c_args)) in
                     let extract_case_exp = KExpIntrin(IntrinVariantCase,
-                        (Atom.Id n) :: (Atom.Id vn) :: [], (case_typ, loc)) in
+                        (Atom.Id n) :: vn_val :: [], (case_typ, loc)) in
                     if is_tuple then
                         let case_n = gen_temp_idk "case" in
                         let code = create_defval case_n case_typ (ValTempRef :: [])
@@ -749,21 +755,28 @@ and transform_all_types_and_cons elist code sc =
                                         kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
                         let _ = set_idk_entry inst_name (KVariant kvar) in
                         let code = (KDefVariant kvar) :: code in
-                        List.fold_left (fun code constr ->
+                        let (_, code) = List.fold_left (fun (idx, code) constr ->
                             match (id_info constr) with
                             | IdFun {contents={df_name; df_typ}} ->
                                 let kf_typ=(typ2ktyp df_typ dvar_loc) in
-                                let argtypes = match kf_typ with
-                                        | KTypFun(argtypes, _) -> argtypes
+                                let argtyps = match kf_typ with
+                                        | KTypFun(argtyps, _) -> argtyps
                                         | _ -> [] in
-                                let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtypes;
-                                            kf_body=KExpNop(dvar_loc); kf_flags=FunConstr :: [];
-                                            kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
-                                set_idk_entry df_name (KFun kf);
-                                (KDefFun kf) :: code
+                                let code = match argtyps with
+                                | [] ->
+                                    let e0 = KExpAtom(Atom.Lit (LitInt (Int64.of_int idx)), (kf_typ, dvar_loc)) in
+                                    create_defval df_name kf_typ [ValMutable] (Some e0) code sc dvar_loc
+                                | _ ->
+                                    let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtyps;
+                                                kf_body=KExpNop(dvar_loc); kf_flags=(FunConstr idx):: [];
+                                                kf_closure=(noid, noid); kf_scope=sc; kf_loc=dvar_loc } in
+                                    set_idk_entry df_name (KFun kf);
+                                    (KDefFun kf) :: code
+                                in (idx+1, code)
                             | _ -> raise_compile_err dvar_loc
                                 (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))
-                        code dvar_constr)
+                            (0, code) dvar_constr in
+                        code)
                     in code
                 | _ -> raise_compile_err dvar_loc
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))

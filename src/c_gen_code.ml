@@ -201,6 +201,8 @@ let make_ccode_epilogue loc =
     []
 
 let gen_ccode top_code =
+    (*let user_exceptions_ofs = ref 0 in
+    let top_exn_vals = ref ([]: (id_t*cexp_t) list) in*)
     let top_ccode = ref ([]: cstmt_t list) in
     let i2e = ref (Env.empty: cexp_t Env.t) in
     let u1vals = find_single_use_vals top_code in
@@ -479,6 +481,17 @@ let gen_ccode top_code =
         | _ -> ccode
     in
 
+    let get_variant_cases vartyp loc =
+        match vartyp with
+        | KTypName n ->
+            (match (kinfo_ n loc) with
+            | KVariant kvar ->
+                let {kvar_cases; kvar_constr} = !kvar in
+                (kvar_cases, kvar_constr)
+            | _ -> raise_compile_err loc (sprintf "type '%s' is not a variant" (get_idk_cname n loc)))
+        | _ -> raise_compile_err loc "the type is not a variant, not even named type"
+    in
+
     (*
         cases:
            - input kexp is void:
@@ -593,14 +606,23 @@ let gen_ccode top_code =
                     else
                         cexp_mem cv (get_id "tag") CTypCInt in
                 (true, ctag, ccode)
-            | (IntrinVariantCase, v :: (Atom.Id vn) :: []) ->
+            | (IntrinVariantCase, v :: vn_val :: []) ->
                 let (cv, ccode) = atom2cexp v ccode sc kloc in
-                let {ktp_ptr} = K_annotate_types.get_ktprops (get_atom_ktyp v kloc) kloc in
+                let vktyp = get_atom_ktyp v kloc in
+                let {ktp_ptr} = K_annotate_types.get_ktprops vktyp kloc in
+                let vn_val = match vn_val with
+                    | Atom.Id vn -> (get_orig_id vn)
+                    | Atom.Lit (LitInt i) ->
+                        let i = Int64.to_int i in
+                        let (_, var_constr) = get_variant_cases vktyp kloc in
+                        get_orig_id (List.nth var_constr i)
+                    | _ -> raise_compile_err kloc "cgen: invalid IntrinVariantCase 2nd parameter"
+                    in
                 let cvu = if ktp_ptr then
                         cexp_arrow cv (get_id "u") CTypAny
                     else
                         cexp_mem cv (get_id "u") CTypAny in
-                let celem = cexp_mem cvu (get_orig_id vn) ctyp in
+                let celem = cexp_mem cvu vn_val ctyp in
                 (true, celem, ccode)
             | (IntrinListHead, l :: []) ->
                 let (cl, ccode) = atom2cexp l ccode sc kloc in
@@ -643,7 +665,7 @@ let gen_ccode top_code =
                 | KFun {contents={kf_typ; kf_flags; kf_closure=(fv_arg, _); kf_loc}} ->
                     (* [TODO] check if f is declared already; if not, need to add it to the forward decl list *)
                     let f_exp = make_id_exp f kf_loc in
-                    let have_fv_arg = List.mem FunConstr kf_flags in
+                    let have_fv_arg = is_fun_constr kf_flags in
                     let fv_exp = if fv_arg = noid then (make_lit_exp LitNil kloc) else
                         if f = (curr_func kloc) then CExpIdent((get_id "fx_fv"), (std_CTypVoidPtr, kf_loc)) else
                         raise_compile_err kloc "cgen: calling functions that need free vars is not supported yet"
@@ -836,7 +858,7 @@ let gen_ccode top_code =
             #if <have_default_action>
             default_action; // if there is default case
             #else
-            fx_status = FX_NO_MATCH_ERR;
+            fx_status = FX_EXN_NoMatchError;
             #endif
             [_fx_endmatch...:]
             FX_CHECK_EXN(parent_label);
@@ -897,7 +919,7 @@ let gen_ccode top_code =
                 in
             let ccode = if have_default then ccode else
                 let fx_status = CExpIdent((get_id "fx_status"), (CTypCInt, end_loc)) in
-                let fx_no_match_err = CExpIdent((get_id "FX_NO_MATCH_ERR"), (CTypCInt, end_loc)) in
+                let fx_no_match_err = CExpIdent((get_id "FX_EXN_NoMatchError"), (CTypCInt, end_loc)) in
                 CExp (CExpBinOp(COpAssign, fx_status, fx_no_match_err, (CTypVoid, end_loc))) :: ccode
                 in
             let ccode = if not need_em_label then ccode
@@ -1468,10 +1490,12 @@ let gen_ccode top_code =
             pop_block_ctx kloc;
             cf := {!cf with cf_body = (filter_out_nops new_body)};
             (false, dummy_exp, ccode)
-        | KDefExn ke -> raise_compile_err kloc "cgen: unsupported KDefExn"
-            (*
-                should generate constructor in the case of exception with argument(s) (TBD).
-            *)
+        | KDefExn ke ->
+            let {ke_name; ke_scope} = !ke in
+            (match Hashtbl.find_all builtin_exceptions ke_name with
+            | [] -> raise_compile_err kloc "cgen: non built-in exceptions are not supported yet"
+            | _ -> ());
+            (false, dummy_exp, ccode)
         | KDefVariant kvar -> (false, dummy_exp, ccode) (* handled in c_gen_types *)
         | KDefTyp kt -> (false, dummy_exp, ccode) (* handled in c_gen_types *)
         | KDefClosureVars kcv -> raise_compile_err kloc "cgen: unsupported KDefClosureVars"
@@ -1505,7 +1529,7 @@ let gen_ccode top_code =
             (Some (make_int_exp 0 start_loc)) [] sc0 start_loc in
     (* 5. convert all the code to C. It will automatically update functions bodies *)
     let (e, ccode) = kexp2cexp (code2kexp top_code start_loc) (ref None) ccode sc0 in
-
+    (*let e = make_dummy_exp start_loc in*)
     let end_loc = get_cexp_loc e in
 
     (* 6. bctx_prologue will contain all the global definitions.

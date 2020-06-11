@@ -150,7 +150,7 @@ let rec pprint_exp e =
     | DefFun {contents={df_name; df_templ_args; df_args; df_typ;
                 df_body; df_flags; df_templ_inst; df_loc}} ->
         let fkind = ref "FUN" in
-        let is_constr = List.mem FunConstr df_flags in
+        let constr_id = get_fun_constr df_flags in
         (obox(); (List.iter (fun ff -> match ff with
                     | FunPure -> pstr "PURE"; pspace()
                     | FunImpure -> pstr "IMPURE"; pspace()
@@ -158,14 +158,14 @@ let rec pprint_exp e =
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunStatic -> pstr "STATIC"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
-                    | FunConstr -> ()
+                    | FunConstr _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
         cbox(); pcut(); pstr ")";
         pspace(); pstr ":"; pspace(); pprint_typ df_typ df_loc; pspace();
-        pstr "="; pspace(); if is_constr then pstr "Constructor" else pprint_exp df_body; cbox())
+        pstr "="; pspace(); if constr_id >= 0 then pstr (sprintf "Constructor(%d)" constr_id) else pprint_exp df_body; cbox())
     | DefExn { contents = {dexn_name; dexn_typ; dexn_loc} } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
         (match dexn_typ with

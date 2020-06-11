@@ -66,7 +66,7 @@ let lift top_code =
             | KTyp _ -> true
             | KVal _ -> false
             | KFun {contents={kf_flags}} ->
-                (List.mem FunInC kf_flags) || (List.mem FunConstr kf_flags)
+                (List.mem FunInC kf_flags) || (is_fun_constr kf_flags)
             | KNone -> raise_compile_err (!kf.kf_loc)
                 (sprintf "attempt to request type of non-existing symbol '%s' when checking free variable of function '%s'"
                 (id2str n) (id2str (!kf.kf_name)))
