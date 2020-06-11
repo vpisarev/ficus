@@ -10,6 +10,14 @@
 *)
 open Ast
 
+let num_suffix n =
+    let d = n mod 10 in
+    match d with
+    | 1 -> "st"
+    | 2 -> "nd"
+    | 3 -> "rd"
+    | _ -> "th"
+
 let is_some x_opt = match x_opt with Some _ -> true | _ -> false
 let is_none x_opt = match x_opt with Some _ -> false | _ -> true
 

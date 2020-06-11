@@ -21,8 +21,8 @@ fun nth(_: 't list, n: int)
     | _ => throw IndexError
 }
 
-fun length(l: 't list) =
-    fold n=0 for _ <- l {n += 1}
+pure nothrow fun length(l: 't list): int = ccode
+    "return fx_list_length(l);"
 
 fun rev(l: 't list): 't list =
     fold r=([]: t list) for a <- l {r = a :: r}

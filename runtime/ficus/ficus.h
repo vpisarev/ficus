@@ -281,7 +281,7 @@ int fx_atoi(const fx_str_t* str, int* result, bool* ok, int base);
 ////////////////////////// Exceptions //////////////////////
 
 #define FX_THROW_FAST(exn_name, catch_label) \
-    fx_status = exn_name; goto catch_label
+    { fx_status = exn_name; goto catch_label; }
 
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
@@ -323,11 +323,15 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     *fx_result = l; \
     return FX_OK
 
+int_ fx_list_length(void* pl);
 void fx_free_list_simple(void* pl);
 #define FX_FREE_LIST_SIMPLE(pl) if(!*(pl)) ; else fx_free_list_simple(pl)
 
 #define FX_LIST_APPEND(l_first, l_last, x) \
     if(l_last) l_last = l_last->tl = (x) else l_first = l_last = (x)
+
+#define FX_MOVE_LIST(src, dst) \
+    { (dst) = (src); (src) = 0; }
 
 //////////////////////////// Arrays /////////////////////////
 
@@ -399,6 +403,8 @@ void fx_arr_nextiter(fx_arriter_t* it);
 
 void fx_free_arr(fx_arr_t* arr);
 #define FX_FREE_ARR(arr) if(!(arr)->rc) ; else fx_free_arr(arr)
+#define FX_MOVE_ARR(src, dst) \
+    { (dst) = (src); (src).rc = 0; (src).data = 0; }
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,

@@ -62,8 +62,11 @@ let init_std_names () =
 
     std_FX_FREE_LIST_SIMPLE := gen_std_macro "FX_FREE_LIST_SIMPLE" 1;
     std_fx_free_list_simple := gen_std_fun "fx_free_list_simple" (std_CTypVoidPtr :: []) CTypVoid;
+    std_fx_list_length := gen_std_fun "fx_list_length" (std_CTypVoidPtr :: []) CTypInt;
     std_FX_FREE_LIST_IMPL := gen_std_macro "FX_FREE_LIST_IMPL" 2;
     std_FX_MAKE_LIST_IMPL := gen_std_macro "FX_MAKE_LIST_IMPL" 2;
+    std_FX_LIST_APPEND := gen_std_macro "FX_LIST_APPEND" 3;
+    std_FX_MOVE_LIST := gen_std_macro "FX_MOVE_LIST" 2;
 
     std_FX_CHKIDX1 := gen_std_macro "FX_CHKIDX1" 3;
     std_FX_CHKIDX := gen_std_macro "FX_CHKIDX" 2;
@@ -77,6 +80,7 @@ let init_std_names () =
         std_CTypVoidPtr; std_CTypVoidPtr; std_CTypConstVoidPtr; (make_ptr std_CTypAnyArray)] CTypCInt;
     std_FX_ARR_SIZE := gen_std_macro "FX_ARR_SIZE" 2;
     std_FX_FREE_ARR := gen_std_macro "FX_FREE_ARR" 1;
+    std_FX_MOVE_ARR := gen_std_macro "FX_MOVE_ARR" 2;
     std_fx_free_arr := gen_std_fun "fx_free_arr" ((make_ptr std_CTypAnyArray) :: []) CTypVoid;
     std_fx_copy_arr := gen_std_fun "fx_copy_arr"
         ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: []) CTypVoid;

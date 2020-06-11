@@ -168,8 +168,16 @@ let occurs_id_kexp i0 e =
         kcb_fold_atom=Some(occurs_atom);
         kcb_fold_result=0
     } in
-    occurs_kexp e occurs_callb;
-    !r_occurs
+    let loc = get_kexp_loc e in
+    (* occurs_id_kexp main use is to find some loop or other complex expression invariants.
+       if "i0" is temp ref, i.e. a pointer to some part of a complex data type,
+       its contents can be implictly modified via a variable/value with different name.
+       so we always return true, i.e. "i0" cannot be considered a constant w.r.t "e" *)
+    let f = match (kinfo_ i0 loc) with
+        | KVal {kv_flags} -> List.mem ValTempRef kv_flags
+        | _ -> false
+        in
+    f || (occurs_kexp e occurs_callb; !r_occurs)
 
 type block_kind_t =
     | BlockKind_Global
@@ -207,6 +215,7 @@ let gen_ccode top_code =
     let i2e = ref (Env.empty: cexp_t Env.t) in
     let u1vals = find_single_use_vals top_code in
     let block_stack = ref ([]: block_ctx_t list) in
+    let for_letters = ["i"; "j"; "k"; "l"; "m"] in
 
     let check_inside_loop is_break loc =
         let rec check_inside_loop_ s =
@@ -490,6 +499,328 @@ let gen_ccode top_code =
                 (kvar_cases, kvar_constr)
             | _ -> raise_compile_err loc (sprintf "type '%s' is not a variant" (get_idk_cname n loc)))
         | _ -> raise_compile_err loc "the type is not a variant, not even named type"
+    in
+
+    let for_err_msg for_idx nfors i msg =
+        let for_msg_prefix = if nfors = 1 then "" else if for_idx = 0 then "outer "
+        else if for_idx = nfors-1 then "inner " else
+            (sprintf "%d-%s nested " for_idx (Utils.num_suffix for_idx)) in
+        sprintf "cgen: %sfor-loop, %i-th iteration clause: %s" for_msg_prefix i msg
+    in
+
+    let compute_for_ndims for_idx nfors kdl for_loc =
+        let (_, ndims) = List.fold_left (fun (k, ndims) (_, dom_i) ->
+            let ndims_i =
+                match dom_i with
+                | Domain.Elem(Atom.Id d) ->
+                    (match (get_idk_typ d for_loc) with
+                    | KTypArray(n, _) -> n
+                    | _ -> 1)
+                | _ -> 1
+            in
+            if ndims <> 0 && ndims <> ndims_i then
+                raise_compile_err for_loc (for_err_msg k for_idx nfors
+                (sprintf "dimensionalities of the simultaneously iterated collections/ranges are not the same (...%d...%d...)" ndims ndims_i))
+            else ();
+            (k+1, ndims_i)) (0, 0) kdl
+        in ndims
+    in
+
+    let process_for lbl kdl for_idx nfors ndims dims_ofs nested_exps sc loc =
+        let for_loc = get_start_loc loc in
+        let end_for_loc = get_end_loc loc in
+
+        (*
+            [TODO] parallel loops are not supported yet.
+
+            Compute various elements/attributes/parts of the for loop:
+
+            list_exps: lst0, lst1, ... - lists (if any) which are iterated.
+            i_exps: i, j, k etc. - for-loop integer iteration variables (only for closed ranges and arrays, not for open ranges or lists)
+            n_exps: n0, n1, n2 etc. - for-loop limits (also integers)
+            for_checks0: extra checks (besides `i < n0`, `j < n1`, `k < n2` etc.). Used for iteration over list(s): lst0[!=0], lst1[!=0] etc. ...
+            incr_exps0: extra increment operations (besides `i++`, `j++`, `k++`). Used for iteration over lists(s): lst0=lst0->tl, lst1=lst1->tl, ...
+            init_checks: the checks that we need to put before the loop into FX_CHECK_NE_SIZE((check0 || check1 || check2 ...), catch_label) macro.
+                We check that all closed ranges and all simultaneously iterated 1D or nD arrays have the same shape.
+                The lists sizes are not checked because we don't know their sizes before the loop,
+                    and we don't want to make extra loop to count their lengths.
+            init_ccode: inital code for the loop:
+                Save all the arrays, lists etc. if needed to guarantee that they are not destroyed
+                    in the middle of loop (and that they are computed just once).
+                Save start:stop:step expressions in the ranges.
+                Compute n_i=FX_LOOP_COUNT(start_i, stop_i, step_i) for each range.
+                Save n0_i,n1_i,...=arr_i.dim[0,1,...].size.
+                init_ccode does not include the check for size/shape equality/inequality (see init_checks). It's added after this let statement.
+            pre_body_ccode: code before the inner-most loop. Now it's used only for arrays:
+                elem_type0* ptr_arr0 = FX_PTR_<ndims>D(arr_0, i, j, ..., 0);
+                elem_type1* ptr_arr1 = FX_PTR_<ndims>D(arr_1, i, j, ..., 0);
+                that is, get the pointers to the linear slices of the iterated arrays.
+                [TODO] we can check whether all the iterated arrays are continuous and modify n_exps accordingly,
+                    e.g. in 2D case with 2 arrays A and B:
+                    if(FX_ARR_CONTINUOUS(A) && FX_ARR_CONTINUOUS(B)) {
+                        n1 *= n0;
+                        n0 = 1;
+                    }
+                    with such a trick, the arrays are processed completely with a single run of inner loop with minimal overhead.
+                note that in the case of 1D array processing pre_body_ccode immediately follows init_ccode and init_checks.
+            body_pairs: a list of pairs (v_0, exp_0), (v_1, exp_1), ...
+                This is a list of values that need to be extracted in the beginning of loop body.
+                We keep them separately without forming expressions v_0 = exp_0, because in the case of complex types, e.g. strings or nested arrays,
+                we need to initalize v_i separately and put the destructors to the for-loop body cleanup section. All this is done using add_val,
+                but for that we need to form a nested for-loop body context, which we form after this let.
+            post_checks: the checks that we need to put after the loop into FX_CHECK_NE_SIZE((check0 || check1 || check2 ...), catch_label) macro.
+                We check that all closed ranges/arrays and all simultaneously iterated lists finished at once.
+                In this let statement we put only lists. The range check is added later if needed.
+                a) just list case:
+                fx_list0_t lst0 = list0;
+                fx_list1_t lst1 = list1;
+                for(; lst0 && lst1; lst0=lst0->tl, lst1=lst1->tl) {
+                    int a=lst0->hd, b=lst1->hd;
+                    s += abs(a-b);
+                }
+                FX_CHECK_NE_SIZE(lst0 || lst1, catch_label); // check that both lists finished simultaneously.
+                b) list and "closed range"/array case:
+                fx_list0_t lst0 = list0;
+                fx_list1_t lst1 = list1;
+                for(int i = 0; i < n && lst0 && lst1; lst0=lst0->tl, lst1=lst1->tl) {
+                    int a=lst0->hd, b=lst1->hd;
+                    if(a!=b) {printf("diff=%d at %d\n", abs(a-b), i);}
+                }
+                FX_CHECK_NE_SIZE(i < n || lst0 || lst1, catch_label); // check that both lists and the range finished simultaneously.
+        *)
+        let (_, list_exps, i_exps, n_exps, for_checks0, incr_exps0, init_checks,
+            init_ccode, pre_body_ccode, body_pairs, post_checks) = List.fold_left
+            (fun (k, list_exps, i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
+                pre_body_ccode, body_pairs, post_checks) (iter_val_i, dom_i) ->
+                let (lists_i, i_exps, n_exps, for_checks, incr_exps, init_checks,
+                    init_ccode, pre_body_ccode, body_pairs, post_checks) = match dom_i with
+                    | Domain.Range(a, b, delta) ->
+                        let (aug_add_delta, add_delta, d_exp, init_ccode) = match delta with
+                            | Atom.Lit(LitInt 0L) ->
+                                raise_compile_err for_loc (for_err_msg for_idx nfors k "the iteration step is zero")
+                            | Atom.Lit (LitInt i) ->
+                                let (aug_add_delta, add_delta, i) = if i > 0L then
+                                        (COpAugAdd, COpAdd, i)
+                                    else
+                                        (COpAugSub, COpSub, (Int64.neg i))
+                                    in
+                                (aug_add_delta, add_delta, (make_int__exp i for_loc), init_ccode)
+                            | _ ->
+                                let (d_exp, init_ccode) = atom2cexp_ delta true init_ccode sc for_loc in
+                                let init_ccode = (CExp (make_call !std_FX_CHECK_ZERO_STEP [d_exp; lbl] CTypVoid for_loc)) :: init_ccode in
+                                (COpAugAdd, COpAdd, d_exp, init_ccode)
+                            in
+                        (match b with
+                        | Atom.Lit LitNil ->
+                            (*
+                                int iter_var = a;
+                                for(;;iter_var += delta) {
+                                    ...
+                                }
+                            *)
+                            let (a_exp, init_ccode) = atom2cexp_ a false init_ccode sc for_loc in
+                            let init_ccode = create_cdefval iter_val_i CTypInt [ValMutable] "" (Some a_exp) init_ccode sc for_loc in
+                            let i_exp = make_id_exp iter_val_i for_loc in
+                            let incr_i_exp = CExpBinOp(aug_add_delta, i_exp, d_exp, (CTypVoid, for_loc)) in
+                            ([], i_exps, n_exps, for_checks, incr_i_exp :: incr_exps, init_checks, init_ccode, pre_body_ccode, body_pairs, post_checks)
+                        | _ ->
+                            (*
+                                // save the loop counter
+                                int n = FX_LOOP_COUNT(a, b, delta); // n === loop_counter
+                                // or check it
+                                FX_CHECK_NE_SIZE(FX_LOOP_COUNT(a, b, delta) != loop_counter, catch_label);
+                                for(int i = 0; i < loop_counter; i++) {
+                                    int iter_var = a + i*delta; // compute the current value
+                                }
+                            *)
+                            let (a_exp, init_ccode) = atom2cexp_ a true init_ccode sc for_loc in
+                            let (b_exp, init_ccode) = atom2cexp_ b true init_ccode sc for_loc in
+                            let is_canonical_for = match (a, delta) with
+                                | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> true
+                                | _ -> false
+                                in
+                            let calc_n_exp = if is_canonical_for then b_exp else
+                                make_call !std_FX_LOOP_COUNT [a_exp; b_exp; d_exp] CTypInt for_loc
+                                in
+                            let (add_pair, i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
+                                | (prev_i :: _, prev_n :: _) ->
+                                    (true, prev_i, i_exps, n_exps,
+                                    (CExpBinOp(COpCompareNE, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
+                                    init_ccode)
+                                | _ ->
+                                    let (add_pair, i_id) = match (a, delta) with
+                                        | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> (false, iter_val_i)
+                                        | _ -> (true, (dup_idc iter_val_i))
+                                        in
+                                    let (n_exp, init_ccode) =
+                                        if is_canonical_for && (is_immutable_atomic_cexp b_exp) then
+                                            (b_exp, init_ccode)
+                                        else
+                                            add_val (gen_temp_idc "n") CTypInt [] (Some calc_n_exp) init_ccode sc for_loc
+                                        in
+                                    let (i_exp, _) = add_val i_id CTypInt [ValMutable] None [] sc for_loc in
+                                    (add_pair, i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
+                                in
+                            let body_pairs = if not add_pair then body_pairs else
+                                let calc_i_exp = CExpBinOp(add_delta, a_exp,
+                                    CExpBinOp(COpMul, i_exp, d_exp, (CTypInt, for_loc)), (CTypInt, for_loc)) in
+                                (iter_val_i, calc_i_exp) :: body_pairs
+                                in
+                            ([], i_exps, n_exps, for_checks, incr_exps, init_checks,
+                            init_ccode, pre_body_ccode, body_pairs, post_checks))
+                    | Domain.Elem(Atom.Id col) ->
+                        let ktyp = get_idk_typ col for_loc in
+                        let ctyp = C_gen_types.ktyp2ctyp ktyp for_loc in
+                        (* before running iteration over a collection,
+                            we need to make sure that it will not be deallocated in the middle *)
+                        let (col_exp, init_ccode) = if List.exists (fun e -> occurs_id_kexp col e) nested_exps then
+                                let (src_exp, init_ccode) = atom2cexp (Atom.Id col) init_ccode sc for_loc in
+                                let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col) ctyp [] init_ccode sc for_loc in
+                                let init_ccode = C_gen_types.gen_copy_code src_exp col_exp ctyp init_ccode for_loc in
+                                (col_exp, init_ccode)
+                            else
+                                atom2cexp_ (Atom.Id col) true init_ccode sc for_loc
+                            in
+                        (match ktyp with
+                        | KTypList et ->
+                            (*
+                                some_lst_t lst = col;
+                                for(; lst [&& ...]; lst=lst->tl) {
+                                    some_lst_elem_t x = lst->hd;
+                                    ...
+                                }
+                                // optional check
+                                FX_CHECK_NE_SIZE(!lst || ..., catch_label);
+                            *)
+                            let l_id = gen_temp_idc "lst" in
+                            let init_ccode = create_cdefval l_id ctyp [ValMutable] "" (Some col_exp) init_ccode sc for_loc in
+                            let l_exp = make_id_exp l_id for_loc in
+                            let l_next_exp = CExpBinOp(COpAssign, l_exp, (cexp_arrow l_exp (get_id "tl") ctyp), (CTypVoid, for_loc)) in
+                            let c_et = C_gen_types.ktyp2ctyp et for_loc in
+                            let get_hd_exp = cexp_arrow l_exp (get_id "hd") c_et in
+                            ([l_exp], i_exps, n_exps, (l_exp :: for_checks), (l_next_exp :: incr_exps), init_checks, init_ccode,
+                            pre_body_ccode, ((iter_val_i, get_hd_exp) :: body_pairs), (l_exp :: post_checks))
+                        | KTypString ->
+                            (*
+                                // either save the length
+                                int_ len = str->length; // loop_counter === len
+                                // or check it
+                                FX_CHECK_NE_SIZE(str->length != loop_counter, catch_label);
+                                for(int i = 0; i < loop_counter; i++) {
+                                    char_ x = str->data[i];
+                                    ...
+                                }
+                            *)
+                            let calc_n_exp = cexp_mem col_exp (get_id "length") CTypInt in
+                            let (i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
+                                | (prev_i :: _, prev_n :: _) ->
+                                    (prev_i, i_exps, n_exps,
+                                    (CExpBinOp(COpCompareNE, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
+                                    init_ccode)
+                                | _ ->
+                                    let (n_exp, init_ccode) = add_val (gen_temp_idc "len") CTypInt
+                                        [] (Some calc_n_exp) init_ccode sc for_loc in
+                                    let (i_exp, _) = add_val (gen_temp_idc (List.nth for_letters dims_ofs)) CTypInt [ValMutable] None [] sc for_loc in
+                                    (i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
+                                in
+                            let get_chars = cexp_mem col_exp (get_id "data") (make_const_ptr CTypUniChar) in
+                            let get_char_i = CExpBinOp(COpArrayElem, get_chars, i_exp, (CTypUniChar, for_loc)) in
+                            ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
+                            pre_body_ccode, ((iter_val_i, get_char_i) :: body_pairs), post_checks)
+                        | KTypArray(ndims, et) ->
+                            (*
+                                // either save all the dimensions
+                                int_ ni = FX_ARR_SIZE(arr, 0);
+                                int_ nj = FX_ARR_SIZE(arr, 1);
+                                ...
+                                // or check them
+                                FX_CHECK_NE_SIZE(FX_ARR_SIZE(arr, 0) != ni || FX_ARR_SIZE(arr, 1) != nj ..., catch_label);
+                                for(int i = 0; i < ni; i++) {
+                                    // before the inner-most loop
+                                    arr_elem_t* ptr
+                                    for(int j = 0; j < nj; j++) {
+                                    char_ x = str->data[i];
+                                    ...
+                                }
+                            *)
+                            let (i_exps, n_exps, init_checks, init_ccode) = if n_exps = [] then
+                                    let (i_exps, n_exps, init_ccode) = List.fold_left (fun (i_exps, n_exps, init_ccode) k ->
+                                        let calc_n_exp = make_call !std_FX_ARR_SIZE [col_exp; (make_int_exp k for_loc)] CTypInt for_loc in
+                                        let iter_letter = List.nth for_letters (k + dims_ofs) in
+                                        let (n_exp, init_ccode) = add_val (gen_temp_idc ("n" ^ iter_letter)) CTypInt
+                                            [] (Some calc_n_exp) init_ccode sc for_loc in
+                                        let (i_exp, _) = add_val (gen_temp_idc iter_letter) CTypInt [ValMutable] None [] sc for_loc in
+                                        (i_exp :: i_exps, n_exp :: n_exps, init_ccode))
+                                        ([], [], init_ccode) (List.init ndims (fun k -> k))
+                                    in ((List.rev i_exps), (List.rev n_exps), init_checks, init_ccode)
+                                else
+                                    let (_, init_checks) = List.fold_left (fun (k, init_checks) prev_nk ->
+                                        let calc_n_exp = make_call !std_FX_ARR_SIZE [col_exp; (make_int_exp k for_loc)] CTypInt for_loc in
+                                        let init_check_k = CExpBinOp(COpCompareNE, prev_nk, calc_n_exp, (CTypBool, for_loc)) in
+                                        (k+1, init_check_k :: init_checks)) (0, init_checks) n_exps
+                                    in (i_exps, n_exps, init_checks, init_ccode)
+                                in
+                            let c_et = C_gen_types.ktyp2ctyp et for_loc in
+                            let c_et_ptr = make_ptr c_et in
+                            let rev_i_exps = List.rev i_exps in
+                            let inner_idx = List.hd rev_i_exps in
+                            let slice_idxs = List.rev ((make_int_exp 0 for_loc) :: (List.tl rev_i_exps)) in
+                            let get_arr_slice = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
+                                (CExpTyp (c_et, for_loc) :: col_exp :: slice_idxs) c_et_ptr for_loc in
+                            let ptr_id = gen_temp_idc ("ptr_" ^ (pp_id2str col)) in
+                            let pre_body_ccode = create_cdefval ptr_id c_et_ptr [] "" (Some get_arr_slice) pre_body_ccode sc for_loc in
+                            let ptr_exp = make_id_exp ptr_id for_loc in
+                            let get_arr_elem = CExpBinOp(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc)) in
+                            ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
+                            pre_body_ccode, ((iter_val_i, get_arr_elem) :: body_pairs), post_checks)
+                        | _ -> raise_compile_err for_loc (for_err_msg for_idx nfors k
+                            (sprintf "cannot iterate over '%s'; it needs to be array, list or string" (id2str col)))
+                        )
+                    | _ ->
+                        raise_compile_err for_loc (for_err_msg for_idx nfors k "unsupported type of the for loop iteration domain")
+                in (k+1, lists_i @ list_exps, i_exps, n_exps, for_checks, incr_exps, init_checks,
+                    init_ccode, pre_body_ccode, body_pairs, post_checks))
+                (0, [], [], [], [], [], [], [], [], [], []) kdl
+            in
+        (* add initial size checks *)
+        let init_ccode = add_ne_size_check (List.rev init_checks) init_ccode lbl for_loc in
+        (* in the case of 1D arrays put pre_body_ccode immediately after initialization code *)
+        let (init_ccode, pre_body_ccode) = if ndims > 1 then (init_ccode, pre_body_ccode)
+            else (pre_body_ccode @ init_ccode, []) in
+        (* add "post" checks, if needed *)
+        let post_checks = List.rev post_checks in
+        let post_checks = if post_checks = [] || i_exps = [] then post_checks else
+            (CExpBinOp(COpCompareLT, (List.hd i_exps), (List.hd n_exps), (CTypBool, end_for_loc))) :: post_checks
+            in
+        let post_ccode = add_ne_size_check post_checks [] lbl end_for_loc in
+
+        (* form for-loop headers *)
+        let i_exps = List.rev i_exps in
+        let n_exps = List.rev n_exps in
+        let (k_final, for_headers) = List.fold_left2 (fun (k, for_headers) i_exp n_exp ->
+            let ifor_loc = get_cexp_loc n_exp in
+            let init_exps = [CExpBinOp(COpAssign, i_exp, (make_int_exp 0 ifor_loc), (CTypVoid, ifor_loc))] in
+            let check_exp = CExpBinOp(COpCompareLT, i_exp, n_exp, (CTypBool, ifor_loc)) in
+            let incr_exps = [CExpUnOp(COpSuffixInc, i_exp, (CTypInt, ifor_loc))] in
+            let (check_exp, incr_exps) = if k > 0 then (check_exp, incr_exps) else
+                let check_exp = List.fold_left (fun check_exp e ->
+                    CExpBinOp(COpLogicAnd, check_exp, e, (CTypBool, ifor_loc)))
+                    check_exp (List.rev for_checks0) in
+                (check_exp, incr_exps @ (List.rev incr_exps0))
+                in
+            (k+1, (((Some CTypInt), init_exps, (Some check_exp), incr_exps) :: for_headers))) (0, []) i_exps n_exps
+            in
+        (* if we have open loop or loop over lists (i.e. i_exps and n_exps are empty lists),
+           we still need to form the for-loop statement *)
+        let for_headers = if k_final > 0 then for_headers else
+            let check_exp_opt = List.fold_left (fun check_exp_opt check_i ->
+                Some (match check_exp_opt with
+                | Some e -> CExpBinOp(COpLogicAnd, e, check_i, (CTypBool, for_loc))
+                | _ -> check_i)) None (List.rev for_checks0) in
+            [(None, [], check_exp_opt, incr_exps0)]
+            in
+
+        (for_headers, list_exps, i_exps, n_exps, init_ccode, pre_body_ccode, body_pairs, post_ccode)
     in
 
     (*
@@ -947,294 +1278,59 @@ let gen_ccode top_code =
             end_catch:
                // here we jump after each successful try or after successful catch.
             *)
-        | KExpThrow(i, _) -> raise_compile_err kloc "cgen: unsupported KExpThrow"
-            (*
-                set the current exception to i, which includes setting fx_status=i.tag;
-                then "goto try_cleanup";
-            *)
+        | KExpThrow(i, _) ->
+            let lbl = curr_block_label kloc in
+            let ccode = match Hashtbl.find_all builtin_exceptions i with
+            | [] -> raise_compile_err kloc "cgen: non-builtin exceptions are not supported yet"
+            | _ ->
+                let i = get_id ("FX_EXN_" ^ (pp_id2str i)) in
+                let i_exp = CExpIdent(i, (CTypCInt, kloc)) in
+                let throw_exp = make_call !std_FX_THROW_FAST [i_exp;lbl] CTypVoid kloc in
+                (CExp throw_exp) :: ccode
+                in
+            (false, dummy_exp, ccode)
         | KExpCast(a1, kt, _) ->
             let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
             let ct = C_gen_types.ktyp2ctyp kt kloc in
             (true, CExpCast(ce1, ct, kloc), ccode)
         | KExpMap(e_kdl_l, body, flags, _) -> raise_compile_err kloc "cgen: unsupported KExpMap"
             (*
-                TBD
+                TODO:
+                CStmtFor(None, [], check_exp_opt, incr_exps0, body_stmt, kloc)
+                in
+
+                    let for_stmt = CStmtFor((Some CTypInt), init_exps, (Some check_exp), incr_exps, for_stmt, kloc) in
+                    (k+1, (if k > 0 || pre_body_ccode = [] then for_stmt else
+                        rccode2stmt (for_stmt :: pre_body_ccode) for_loc))) (0, body_stmt) (List.rev i_exps) (List.rev n_exps)
+                        for_loc "cgen: for-loop fold_left2"
+                    in
+
+
+
+                let (init_ccode, len_exps) = if not need_make_arr then (init_ccode, [])
+                    else
+                        let (init_ccode, cmp_n_exps, len_exps) =
+                            (match (n_exps, (List.rev list_exps)) with
+                            | ((n_exp :: _), _) -> (init_ccode, n_exps, [])
+                            | ([], l_exp :: _) ->
+                                let len_id = gen_temp_idc "len" in
+                                let call_list_len = make_call !std_fx_list_length [l_exp] sc for_loc in
+                                let init_ccode = create_cdefval len_id CTypInt [] "" (Some call_list_len) init_ccode sc for_loc in
+                                let len_exps = [make_id_exp len_id for_loc] in
+                                (init_ccode, len_exps, len_exps)
+                            | _ -> raise_compile_err for_loc "infitite loop cannot be used in array comprehension")
+                        in
+                    in
             *)
         | KExpFor(kdl, body, flags, _) ->
             let lbl = curr_block_label kloc in
             let for_loc = get_start_loc kloc in
             let end_for_loc = get_end_loc kloc in
-            let for_letters = ["i"; "j"; "k"; "l"; "m"] in
-            let for_err_msg i msg = sprintf "cgen: %i-th iteration clause: %s" i msg in
-            let (_, ndims, nlists, is_open_loop) = List.fold_left (fun (k, ndims, nlists, is_open_loop) (_, dom_i) ->
-                let (ndims_i, nlists_i, is_open_loop_i) =
-                    (match dom_i with
-                    | Domain.Range(_, (Atom.Lit LitNil), _) -> (1, 0, true)
-                    | Domain.Range(_, _, _) -> (1, 0, false)
-                    | Domain.Elem (Atom.Id d) ->
-                        (match (get_idk_typ d for_loc) with
-                        | KTypList _ -> (1, 1, true)
-                        | KTypString -> (1, 0, false)
-                        | KTypArray(n, _) -> (n, 0, false)
-                        | _ -> raise_compile_err for_loc (for_err_msg k "unsupported type of collection in the for loop"))
-                    | _ -> raise_compile_err for_loc (for_err_msg k "unsupported type of the for loop iteration domain"))
-                    in
-                if ndims <> 0 && ndims <> ndims_i then
-                    raise_compile_err for_loc (for_err_msg k
-                    (sprintf "dimensionalities of the simultaneously iterated collections/ranges are not the same (...%d...%d...)" ndims ndims_i))
-                else ();
-                (k+1, ndims_i, nlists + nlists_i, (is_open_loop && is_open_loop_i))) (0, 0, 0, true) kdl
+            let ndims = compute_for_ndims 0 1 kdl for_loc in
+            let (for_headers, list_exps, i_exps, n_exps, init_ccode, pre_body_ccode, body_pairs, post_ccode) =
+                process_for lbl kdl 0 1 ndims 0 [body] sc kloc
                 in
-            (*
-                [TODO] parallel loops are not supported yet.
 
-                Compute various elements/attributes/parts of the for loop:
-
-                i_exps: i, j, k etc. - for-loop integer iteration variables (only for closed ranges and arrays, not for open ranges or lists)
-                n_exps: n0, n1, n2 etc. - for-loop limits (also integers)
-                for_checks0: extra checks (besides `i < n0`, `j < n1`, `k < n2` etc.). Used for iteration over list(s): lst0[!=0], lst1[!=0] etc. ...
-                incr_exps0: extra increment operations (besides `i++`, `j++`, `k++`). Used for iteration over lists(s): lst0=lst0->tl, lst1=lst1->tl, ...
-                init_checks: the checks that we need to put before the loop into FX_CHECK_NE_SIZE((check0 || check1 || check2 ...), catch_label) macro.
-                    We check that all closed ranges and all simultaneously iterated 1D or nD arrays have the same shape.
-                    The lists sizes are not checked because we don't know their sizes before the loop,
-                        and we don't want to make extra loop to count their lengths.
-                init_ccode: inital code for the loop:
-                    Save all the arrays, lists etc. if needed to guarantee that they are not destroyed
-                        in the middle of loop (and that they are computed just once).
-                    Save start:stop:step expressions in the ranges.
-                    Compute n_i=FX_LOOP_COUNT(start_i, stop_i, step_i) for each range.
-                    Save n0_i,n1_i,...=arr_i.dim[0,1,...].size.
-                    init_ccode does not include the check for size/shape equality/inequality (see init_checks). It's added after this let statement.
-                pre_body_ccode: code before the inner-most loop. Now it's used only for arrays:
-                    elem_type0* ptr_arr0 = FX_PTR_<ndims>D(arr_0, i, j, ..., 0);
-                    elem_type1* ptr_arr1 = FX_PTR_<ndims>D(arr_1, i, j, ..., 0);
-                    that is, get the pointers to the linear slices of the iterated arrays.
-                    [TODO] we can check whether all the iterated arrays are continuous and modify n_exps accordingly,
-                        e.g. in 2D case with 2 arrays A and B:
-                        if(FX_ARR_CONTINUOUS(A) && FX_ARR_CONTINUOUS(B)) {
-                            n1 *= n0;
-                            n0 = 1;
-                        }
-                        with such a trick, the arrays are processed completely with a single run of inner loop with minimal overhead.
-                    note that in the case of 1D array processing pre_body_ccode immediately follows init_ccode and init_checks.
-                body_pairs: a list of pairs (v_0, exp_0), (v_1, exp_1), ...
-                    This is a list of values that need to be extracted in the beginning of loop body.
-                    We keep them separately without forming expressions v_0 = exp_0, because in the case of complex types, e.g. strings or nested arrays,
-                    we need to initalize v_i separately and put the destructors to the for-loop body cleanup section. All this is done using add_val,
-                    but for that we need to form a nested for-loop body context, which we form after this let.
-                post_checks: the checks that we need to put after the loop into FX_CHECK_NE_SIZE((check0 || check1 || check2 ...), catch_label) macro.
-                    We check that all closed ranges/arrays and all simultaneously iterated lists finished at once.
-                    In this let statement we put only lists. The range check is added later if needed.
-                    a) just list case:
-                    fx_list0_t lst0 = list0;
-                    fx_list1_t lst1 = list1;
-                    for(; lst0 && lst1; lst0=lst0->tl, lst1=lst1->tl) {
-                        int a=lst0->hd, b=lst1->hd;
-                        s += abs(a-b);
-                    }
-                    FX_CHECK_NE_SIZE(lst0 || lst1, catch_label); // check that both lists finished simultaneously.
-                    b) list and "closed range"/array case:
-                    fx_list0_t lst0 = list0;
-                    fx_list1_t lst1 = list1;
-                    for(int i = 0; i < n && lst0 && lst1; lst0=lst0->tl, lst1=lst1->tl) {
-                        int a=lst0->hd, b=lst1->hd;
-                        if(a!=b) {printf("diff=%d at %d\n", abs(a-b), i);}
-                    }
-                    FX_CHECK_NE_SIZE(i < n || lst0 || lst1, catch_label); // check that both lists and the range finished simultaneously.
-            *)
-            let (_, i_exps, n_exps, for_checks0, incr_exps0, init_checks, init_ccode, pre_body_ccode, body_pairs, post_checks) = List.fold_left
-                (fun (k, i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
-                    pre_body_ccode, body_pairs, post_checks) (iter_val_i, dom_i) ->
-                    let (i_exps, n_exps, for_checks, incr_exps, init_checks,
-                        init_ccode, pre_body_ccode, body_pairs, post_checks) = match dom_i with
-                        | Domain.Range(a, b, delta) ->
-                            let (aug_add_delta, add_delta, d_exp, init_ccode) = match delta with
-                                | Atom.Lit(LitInt 0L) ->
-                                    raise_compile_err for_loc (for_err_msg k "the iteration step is zero")
-                                | Atom.Lit (LitInt i) ->
-                                    let (aug_add_delta, add_delta, i) = if i > 0L then
-                                            (COpAugAdd, COpAdd, i)
-                                        else
-                                            (COpAugSub, COpSub, (Int64.neg i))
-                                        in
-                                    (aug_add_delta, add_delta, (make_int__exp i for_loc), init_ccode)
-                                | _ ->
-                                    let (d_exp, init_ccode) = atom2cexp_ delta true init_ccode sc for_loc in
-                                    let init_ccode = (CExp (make_call !std_FX_CHECK_ZERO_STEP [d_exp; lbl] CTypVoid for_loc)) :: init_ccode in
-                                    (COpAugAdd, COpAdd, d_exp, init_ccode)
-                                in
-                            (match b with
-                            | Atom.Lit LitNil ->
-                                (*
-                                    int iter_var = a;
-                                    for(;;iter_var += delta) {
-                                        ...
-                                    }
-                                *)
-                                let (a_exp, init_ccode) = atom2cexp_ a false init_ccode sc for_loc in
-                                let init_ccode = create_cdefval iter_val_i CTypInt [ValMutable] "" (Some a_exp) init_ccode sc for_loc in
-                                let i_exp = make_id_exp iter_val_i for_loc in
-                                let incr_i_exp = CExpBinOp(aug_add_delta, i_exp, d_exp, (CTypVoid, for_loc)) in
-                                (i_exps, n_exps, for_checks, incr_i_exp :: incr_exps, init_checks, init_ccode, pre_body_ccode, body_pairs, post_checks)
-                            | _ ->
-                                (*
-                                    // save the loop counter
-                                    int n = FX_LOOP_COUNT(a, b, delta); // n === loop_counter
-                                    // or check it
-                                    FX_CHECK_NE_SIZE(FX_LOOP_COUNT(a, b, delta) != loop_counter, catch_label);
-                                    for(int i = 0; i < loop_counter; i++) {
-                                        int iter_var = a + i*delta; // compute the current value
-                                    }
-                                *)
-                                let (a_exp, init_ccode) = atom2cexp_ a true init_ccode sc for_loc in
-                                let (b_exp, init_ccode) = atom2cexp_ b true init_ccode sc for_loc in
-                                let is_canonical_for = match (a, delta) with
-                                    | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> true
-                                    | _ -> false
-                                    in
-                                let calc_n_exp = if is_canonical_for then b_exp else
-                                    make_call !std_FX_LOOP_COUNT [a_exp; b_exp; d_exp] CTypInt for_loc
-                                    in
-                                let (add_pair, i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
-                                    | (prev_i :: _, prev_n :: _) ->
-                                        (true, prev_i, i_exps, n_exps,
-                                        (CExpBinOp(COpCompareNE, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
-                                        init_ccode)
-                                    | _ ->
-                                        let (add_pair, i_id) = match (a, delta) with
-                                            | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> (false, iter_val_i)
-                                            | _ -> (true, (gen_temp_idc "i"))
-                                            in
-                                        let (n_exp, init_ccode) =
-                                            if is_canonical_for && (is_immutable_atomic_cexp b_exp) then
-                                                (b_exp, init_ccode)
-                                            else
-                                                add_val (gen_temp_idc "n") CTypInt [] (Some calc_n_exp) init_ccode sc for_loc
-                                            in
-                                        let (i_exp, _) = add_val i_id CTypInt [ValMutable] None [] sc for_loc in
-                                        (add_pair, i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
-                                    in
-                                let body_pairs = if not add_pair then body_pairs else
-                                    let calc_i_exp = CExpBinOp(add_delta, a_exp,
-                                        CExpBinOp(COpMul, i_exp, d_exp, (CTypInt, for_loc)), (CTypInt, for_loc)) in
-                                    (iter_val_i, calc_i_exp) :: body_pairs
-                                    in
-                                (i_exps, n_exps, for_checks, incr_exps, init_checks,
-                                init_ccode, pre_body_ccode, body_pairs, post_checks))
-                        | Domain.Elem(Atom.Id col) ->
-                            let ktyp = get_idk_typ col for_loc in
-                            let ctyp = C_gen_types.ktyp2ctyp ktyp for_loc in
-                            (* before running iteration over a collection,
-                               we need to make sure that it will not be deallocated in the middle *)
-                            let (col_exp, init_ccode) = if occurs_id_kexp col body then
-                                    let (src_exp, init_ccode) = atom2cexp (Atom.Id col) init_ccode sc for_loc in
-                                    let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col) ctyp [] init_ccode sc for_loc in
-                                    let init_ccode = C_gen_types.gen_copy_code src_exp col_exp ctyp ccode kloc in
-                                    (col_exp, init_ccode)
-                                else
-                                    atom2cexp_ (Atom.Id col) true init_ccode sc for_loc
-                                in
-                            (match ktyp with
-                            | KTypList et ->
-                                (*
-                                    some_lst_t lst = col;
-                                    for(; lst [&& ...]; lst=lst->tl) {
-                                        some_lst_elem_t x = lst->hd;
-                                        ...
-                                    }
-                                    // optional check
-                                    FX_CHECK_NE_SIZE(!lst || ..., catch_label);
-                                *)
-                                let l_id = gen_temp_idc "lst" in
-                                let init_ccode = create_cdefval l_id ctyp [ValMutable] "" (Some col_exp) init_ccode sc for_loc in
-                                let l_exp = make_id_exp l_id for_loc in
-                                let l_next_exp = CExpBinOp(COpAssign, l_exp, (cexp_arrow l_exp (get_id "tl") ctyp), (CTypVoid, for_loc)) in
-                                let c_et = C_gen_types.ktyp2ctyp et for_loc in
-                                let get_hd_exp = cexp_arrow l_exp (get_id "hd") c_et in
-                                (i_exps, n_exps, (l_exp :: for_checks), (l_next_exp :: incr_exps), init_checks, init_ccode,
-                                pre_body_ccode, ((iter_val_i, get_hd_exp) :: body_pairs), (l_exp :: post_checks))
-                            | KTypString ->
-                                (*
-                                    // either save the length
-                                    int_ len = str->length; // loop_counter === len
-                                    // or check it
-                                    FX_CHECK_NE_SIZE(str->length != loop_counter, catch_label);
-                                    for(int i = 0; i < loop_counter; i++) {
-                                        char_ x = str->data[i];
-                                        ...
-                                    }
-                                *)
-                                let calc_n_exp = cexp_mem col_exp (get_id "length") CTypInt in
-                                let (i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
-                                    | (prev_i :: _, prev_n :: _) ->
-                                        (prev_i, i_exps, n_exps,
-                                        (CExpBinOp(COpCompareNE, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
-                                        init_ccode)
-                                    | _ ->
-                                        let (n_exp, init_ccode) = add_val (gen_temp_idc "len") CTypInt
-                                            [] (Some calc_n_exp) init_ccode sc for_loc in
-                                        let (i_exp, _) = add_val (gen_temp_idc "i") CTypInt [ValMutable] None [] sc for_loc in
-                                        (i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
-                                    in
-                                let get_chars = cexp_mem col_exp (get_id "data") (make_const_ptr CTypUniChar) in
-                                let get_char_i = CExpBinOp(COpArrayElem, get_chars, i_exp, (CTypUniChar, for_loc)) in
-                                (i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
-                                pre_body_ccode, ((iter_val_i, get_char_i) :: body_pairs), post_checks)
-                            | KTypArray(ndims, et) ->
-                                (*
-                                    // either save all the dimensions
-                                    int_ ni = FX_ARR_SIZE(arr, 0);
-                                    int_ nj = FX_ARR_SIZE(arr, 1);
-                                    ...
-                                    // or check them
-                                    FX_CHECK_NE_SIZE(FX_ARR_SIZE(arr, 0) != ni || FX_ARR_SIZE(arr, 1) != nj ..., catch_label);
-                                    for(int i = 0; i < ni; i++) {
-                                        // before the inner-most loop
-                                        arr_elem_t* ptr
-                                        for(int j = 0; j < nj; j++) {
-                                        char_ x = str->data[i];
-                                        ...
-                                    }
-                                *)
-                                let (i_exps, n_exps, init_checks, init_ccode) = if n_exps = [] then
-                                        let (i_exps, n_exps, init_ccode) = List.fold_left (fun (i_exps, n_exps, init_ccode) k ->
-                                            let calc_n_exp = make_call !std_FX_ARR_SIZE [col_exp; (make_int_exp k for_loc)] CTypInt for_loc in
-                                            let iter_letter = List.nth for_letters k in
-                                            let (n_exp, init_ccode) = add_val (gen_temp_idc ("n" ^ iter_letter)) CTypInt
-                                                [] (Some calc_n_exp) init_ccode sc for_loc in
-                                            let (i_exp, _) = add_val (gen_temp_idc iter_letter) CTypInt [ValMutable] None [] sc for_loc in
-                                            (i_exp :: i_exps, n_exp :: n_exps, init_ccode))
-                                            ([], [], init_ccode) (List.init ndims (fun k -> k))
-                                        in ((List.rev i_exps), (List.rev n_exps), init_checks, init_ccode)
-                                    else
-                                        let (_, init_checks) = List.fold_left (fun (k, init_checks) prev_nk ->
-                                            let calc_n_exp = make_call !std_FX_ARR_SIZE [col_exp; (make_int_exp k for_loc)] CTypInt for_loc in
-                                            let init_check_k = CExpBinOp(COpCompareNE, prev_nk, calc_n_exp, (CTypBool, for_loc)) in
-                                            (k+1, init_check_k :: init_checks)) (0, init_checks) n_exps
-                                        in (i_exps, n_exps, init_checks, init_ccode)
-                                    in
-                                let c_et = C_gen_types.ktyp2ctyp et for_loc in
-                                let c_et_ptr = make_ptr c_et in
-                                let rev_i_exps = List.rev i_exps in
-                                let inner_idx = List.hd rev_i_exps in
-                                let slice_idxs = List.rev ((make_int_exp 0 for_loc) :: (List.tl rev_i_exps)) in
-                                let get_arr_slice = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
-                                    (CExpTyp (c_et, for_loc) :: col_exp :: slice_idxs) c_et_ptr for_loc in
-                                let ptr_id = gen_temp_idc ("ptr_" ^ (pp_id2str col)) in
-                                let pre_body_ccode = create_cdefval ptr_id c_et_ptr [] "" (Some get_arr_slice) pre_body_ccode sc for_loc in
-                                let ptr_exp = make_id_exp ptr_id for_loc in
-                                let get_arr_elem = CExpBinOp(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc)) in
-                                (i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
-                                pre_body_ccode, ((iter_val_i, get_arr_elem) :: body_pairs), post_checks)
-                            | _ -> raise_compile_err for_loc (for_err_msg k
-                                (sprintf "cannot iterate over '%s'; it needs to be array, list or string" (id2str col)))
-                            )
-                        | _ ->
-                            raise_compile_err for_loc (for_err_msg k "unsupported type of the for loop iteration domain")
-                    in (k+1, i_exps, n_exps, for_checks, incr_exps, init_checks,
-                        init_ccode, pre_body_ccode, body_pairs, post_checks))
-                    (0, [], [], [], [], [], [], [], [], []) kdl
-                in
             let _ = new_block_ctx (if ndims = 1 then BlockKind_Loop else BlockKind_LoopND) sc kloc in
             (* inside the loop body context form `<etyp> v=e` expressions (or more complex ones in the case of complex types) *)
             let body_ccode = List.fold_left (fun body_ccode (v, e) ->
@@ -1248,43 +1344,12 @@ let gen_ccode top_code =
             (* add the initialization and the cleanup sections, if needed *)
             let (br_label, body_stmt) = finalize_loop_body body_ccode body_loc in
 
-            (* add initial size checks *)
-            let init_ccode = add_ne_size_check (List.rev init_checks) init_ccode lbl for_loc in
-            (* in the case of 1D arrays put pre_body_ccode immediately after initialization code *)
-            let (init_ccode, pre_body_ccode) = if ndims > 1 then (init_ccode, pre_body_ccode)
-                else (pre_body_ccode @ init_ccode, []) in
-            (* for (possibly nested) for statement *)
-            let (k_final, for_stmt) = do_fold_left2 (fun (k, for_stmt) i_exp n_exp ->
-                let ifor_loc = get_cexp_loc n_exp in
-                let init_exps = [CExpBinOp(COpAssign, i_exp, (make_int_exp 0 ifor_loc), (CTypVoid, ifor_loc))] in
-                let check_exp = CExpBinOp(COpCompareLT, i_exp, n_exp, (CTypBool, ifor_loc)) in
-                let incr_exps = [CExpUnOp(COpSuffixInc, i_exp, (CTypInt, ifor_loc))] in
-                let (check_exp, incr_exps) = if k > 0 then (check_exp, incr_exps) else
-                    let check_exp = List.fold_left (fun check_exp e ->
-                        CExpBinOp(COpLogicAnd, check_exp, e, (CTypBool, ifor_loc)))
-                        check_exp (List.rev for_checks0) in
-                    (check_exp, incr_exps @ (List.rev incr_exps0))
-                    in
-                let for_stmt = CStmtFor((Some CTypInt), init_exps, (Some check_exp), incr_exps, for_stmt, kloc) in
+            (* form (possibly nested) for statement *)
+            let (_, for_stmt) = List.fold_left (fun (k, for_stmt) (t_opt, for_inits, for_check_opt, for_incrs) ->
+                let for_stmt = CStmtFor(t_opt, for_inits, for_check_opt, for_incrs, for_stmt, kloc) in
                 (k+1, (if k > 0 || pre_body_ccode = [] then for_stmt else
-                    rccode2stmt (for_stmt :: pre_body_ccode) for_loc))) (0, body_stmt) (List.rev i_exps) (List.rev n_exps)
-                    for_loc "cgen: for-loop fold_left2"
+                    rccode2stmt (for_stmt :: pre_body_ccode) for_loc))) (0, body_stmt) for_headers
                 in
-            (* if we have open loop (i.e. i_exps and n_exps are empty lists),
-               we still need to form the for-loop statement *)
-            let for_stmt = if k_final > 0 then for_stmt else
-                let check_exp_opt = List.fold_left (fun check_exp_opt check_i ->
-                    Some (match check_exp_opt with
-                    | Some e -> CExpBinOp(COpLogicAnd, e, check_i, (CTypBool, for_loc))
-                    | _ -> check_i)) None (List.rev for_checks0) in
-                CStmtFor(None, [], check_exp_opt, incr_exps0, body_stmt, kloc)
-                in
-            (* add "post" checks, if needed *)
-            let post_checks = List.rev post_checks in
-            let post_checks = if post_checks = [] || i_exps = [] then post_checks else
-                (CExpBinOp(COpCompareLT, (List.hd i_exps), (List.hd n_exps), (CTypBool, end_for_loc))) :: post_checks
-                in
-            let post_ccode = add_ne_size_check post_checks [] lbl end_for_loc in
             (* add the non-local "break" label if needed *)
             let post_ccode = if br_label = noid then post_ccode else (CStmtLabel(br_label, end_for_loc)) :: post_ccode in
             (* add it all to ccode; nothing to return/assign, since "for-loop" is "void" expression *)

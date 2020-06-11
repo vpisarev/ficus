@@ -204,8 +204,8 @@ void fx_free_arr(fx_arr_t* arr)
             fx_free(arr->rc);
         }
         arr->rc = 0;
-        arr->data = 0;
     }
+    arr->data = 0;
 }
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst)

@@ -64,6 +64,15 @@ void fx_free_list_simple(void* pl_)
     FX_FREE_LIST_IMPL(fx_list_simple_t, FX_NOP)
 }
 
+int_ fx_list_length(void* pl_)
+{
+    fx_list_simple_t *pl = (fx_list_simple_t*)pl_;
+    int_ len = 0;
+    for(; pl != 0; pl=p->tl)
+        len++;
+    return len;
+}
+
 ///////////// references ////////////
 
 typedef struct fx_ref_simple_data_t
