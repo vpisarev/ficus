@@ -352,11 +352,11 @@ let gen_ccode top_code =
         CExp (make_call !std_FX_CONTINUE [curr_block_label loc] CTypVoid loc))
     in
 
-    let handle_temp_ref flags lhs_e ctyp =
+    let handle_temp_ref flags e ctyp =
         if List.mem ValTempRef flags then
-            (true, (cexp_get_addr lhs_e), CTypRawPtr([], ctyp))
+            (true, (cexp_get_addr e), CTypRawPtr([], ctyp))
         else
-            (false, lhs_e, ctyp)
+            (false, e, ctyp)
     in
 
     let id2cexp i save ccode sc loc =
@@ -370,10 +370,14 @@ let gen_ccode top_code =
                     | _ -> raise_compile_err loc (sprintf "cgen: id2cexp: %s is not identifier" (id2str i))
                     in
                 let i2 = dup_idc i in
-                let (add_deref, lhs_e, ctyp) = handle_temp_ref flags e ctyp in
+                (*let (add_deref, lhs_e, ctyp) = handle_temp_ref flags e ctyp in
                 let (i2_exp, ccode) = add_val i2 ctyp flags (Some lhs_e) ccode sc loc in
-                i2e := Env.add i lhs_e !i2e;
-                ((if add_deref then cexp_deref lhs_e else lhs_e), ccode)
+                i2e := Env.add i i2_exp !i2e;
+                ((if add_deref then cexp_deref lhs_e else lhs_e), ccode)*)
+                let (add_deref, e, ctyp) = handle_temp_ref flags e ctyp in
+                let (i2_exp, ccode) = add_val i2 ctyp flags (Some e) ccode sc loc in
+                i2e := Env.add i i2_exp !i2e;
+                ((if add_deref then (cexp_deref i2_exp) else i2_exp), ccode)
         | _ ->
             let e = make_id_exp i loc in
             let e = (match cinfo_ i loc with
@@ -996,7 +1000,7 @@ let gen_ccode top_code =
                 | KFun {contents={kf_typ; kf_flags; kf_closure=(fv_arg, _); kf_loc}} ->
                     (* [TODO] check if f is declared already; if not, need to add it to the forward decl list *)
                     let f_exp = make_id_exp f kf_loc in
-                    let have_fv_arg = is_fun_constr kf_flags in
+                    let have_fv_arg = not (is_fun_constr kf_flags) in
                     let fv_exp = if fv_arg = noid then (make_lit_exp LitNil kloc) else
                         if f = (curr_func kloc) then CExpIdent((get_id "fx_fv"), (std_CTypVoidPtr, kf_loc)) else
                         raise_compile_err kloc "cgen: calling functions that need free vars is not supported yet"
@@ -1012,11 +1016,12 @@ let gen_ccode top_code =
                     (f_exp, fv_exp, true, false, ccode)
                 | _ -> raise_compile_err kloc (sprintf "cgen: the called '%s' is not a function nor value" (id2str f))
                 in
-            let {ktp_scalar=rt_scalar} = K_annotate_types.get_ktprops rt kloc in
             let crt = C_gen_types.ktyp2ctyp rt kloc in
-            if is_nothrow && rt_scalar then
+            let {ctp_scalar=rt_scalar} = C_gen_types.get_ctprops crt kloc in
+            if is_nothrow && rt_scalar && crt <> CTypVoid then
                 let args = if have_fv_arg then fv_exp :: args else args in
-                (true, CExpCall(f_exp, (List.rev args), (crt, kloc)), ccode)
+                let call_exp = CExpCall(f_exp, (List.rev args), (crt, kloc)) in
+                (true, call_exp, ccode)
             else
                 let (args, dstexp, ccode) = if crt = CTypVoid then (args, dummy_exp, ccode) else
                     let (dstexp, ccode) = get_dstexp dstexp_r "res" crt [] ccode sc kloc in

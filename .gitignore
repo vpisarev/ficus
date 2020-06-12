@@ -4,6 +4,7 @@
 *.cmi
 *.a
 *.o
+*.out
 *.cmx
 *.cmxs
 *.cmxa

@@ -53,22 +53,22 @@ void fx_free(void* ptr)
 
 typedef struct fx_list_simple_data_t
 {
-    fx_rc_t rc;
-    struct fx_list_simple_cell_t* tl;
+    int_ rc;
+    struct fx_list_simple_data_t* tl;
     int hd;
 }* fx_list_simple_t;
 
 void fx_free_list_simple(void* pl_)
 {
     fx_list_simple_t *pl = (fx_list_simple_t*)pl_;
-    FX_FREE_LIST_IMPL(fx_list_simple_t, FX_NOP)
+    FX_FREE_LIST_IMPL(fx_list_simple_t, FX_NOP);
 }
 
 int_ fx_list_length(void* pl_)
 {
-    fx_list_simple_t *pl = (fx_list_simple_t*)pl_;
+    fx_list_simple_t pl = (fx_list_simple_t)pl_;
     int_ len = 0;
-    for(; pl != 0; pl=p->tl)
+    for(; pl != 0; pl = pl->tl)
         len++;
     return len;
 }
@@ -77,9 +77,9 @@ int_ fx_list_length(void* pl_)
 
 typedef struct fx_ref_simple_data_t
 {
-    fx_rc_t rc;
+    int_ rc;
     int data;
-} fx_ref_simple_t;
+}* fx_ref_simple_t;
 
 void fx_free_ref_simple(void* pr_)
 {
@@ -91,8 +91,8 @@ void fx_free_ref_simple(void* pr_)
 
 void fx_copy_ptr(const void* src, void* dst)
 {
-    fx_rc_t* src_ = (fx_rc_t*)src;
-    fx_rc_t** dst_ = (fx_rc_t**)dst;
+    int_* src_ = (int_*)src;
+    int_** dst_ = (int_**)dst;
     if(src_) FX_INCREF(*src_);
     *dst_ = src_;
 }
@@ -133,15 +133,16 @@ void fx_copy_fp(const void* src, void* pdst)
 
 void fx_cptr_no_free(void* ptr) {}
 
-void fx_free_cptr(fx_cptr_t* cptr)
+void fx_free_cptr(fx_cptr_t* pcptr)
 {
-    if(*cptr)
+    if(*pcptr)
     {
-        if((*cptr)->free_f && FX_DECREF((*cptr)->rc) == 1) {
-            (*cptr)->free_f(*(cptr)->ptr);
-            fx_free(*cptr);
+        fx_cptr_t cptr = *pcptr;
+        if(cptr->free_f && FX_DECREF(cptr->rc) == 1) {
+            cptr->free_f(cptr->ptr);
+            fx_free(cptr);
         }
-        *cptr = 0;
+        *pcptr = 0;
     }
 }
 
@@ -153,7 +154,7 @@ void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* dst)
 
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 {
-    FX_DECL_AND_MALLOC(fx_cptr_t, p, sizeof(fx_cptr_t));
+    FX_DECL_AND_MALLOC(fx_cptr_data_t, p, sizeof(fx_cptr_data_t));
     p->rc = 1;
     p->free_f = free_f;
     p->ptr = ptr;

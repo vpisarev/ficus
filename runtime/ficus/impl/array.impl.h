@@ -174,7 +174,7 @@ void fx_free_arr(fx_arr_t* arr)
         if(FX_DECREF(arr->rc) == 1)
         {
             fx_free_t free_f = arr->free_elem;
-            size_t elemsize = arr->elemsize;
+            size_t elemsize = arr->dim[arr->ndims-1].step;
             if(free_f)
             {
                 if(arr->ndims == 1)
@@ -215,10 +215,11 @@ void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst)
 }
 
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
-                 fx_free_t free_elem, fx_copy_t copy_elem,
+                 fx_free_t free_elem, fx_copy_t copy_elem, const void* elems,
                  fx_arr_t* arr )
 {
-    if(ndims <= 0 || ndims > FX_MAX_DIMS) return FX_EXN_DimError;
+    if (ndims <= 0 || ndims > FX_MAX_DIMS)
+        return FX_EXN_DimError;
     size_t netw = elemsize;
     for(int i = ndims-1; i >= 0; i--)
     {
@@ -234,7 +235,8 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     size_t dataoffset = elemsize % 8 == 0 ? (size_t)8 : sizeof(*arr->rc);
     size_t grossw = netw + dataoffset;
     arr->rc = (int_*)fx_malloc(grossw);
-    if(!arr->rc) return FX_EXN_OutOfMemError;
+    if( !arr->rc )
+        return FX_EXN_OutOfMemError;
     *arr->rc = 1;
     arr->flags = FX_ARR_CONTINUOUS;
     arr->ndims = ndims;
@@ -245,7 +247,12 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     // otherwise, if there is an exception during the array initialization,
     // we might not be able to tell, which elements are valid and needs to
     // be destructed.
-    if(free_elem && netw > 0) memset(arr->data, 0, netw);
+    if (netw > 0) {
+        if(elems)
+            memcpy(arr->data, elems, netw);
+        else if(free_elem)
+            memset(arr->data, 0, netw);
+    }
     return FX_OK;
 }
 
@@ -271,7 +278,6 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         }
         else if( tag == 1 )
         {
-            nc_stage |= 1;
             a = ranges[1];
             b = ranges[2];
             delta = ranges[3];
@@ -279,7 +285,6 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         }
         else if( tag == 2 )
         {
-            nc_stage |= 1;
             a = ranges[1];
             b = size_i;
             delta = ranges[2];

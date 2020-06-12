@@ -25,9 +25,6 @@ void fx_copy_str(const fx_str_t* src, fx_str_t* dst)
 
 int fx_make_str(const char_* strdata, int_ length, fx_str_t* str)
 {
-    if( !strdata )
-        length = 0;
-
     size_t total = sizeof(*str->rc) + length*sizeof(strdata[0]);
     str->rc = (int_*)fx_malloc(total);
     if(!str->rc) return FX_EXN_OutOfMemError;
@@ -50,10 +47,11 @@ void fx_free_cstr(fx_cstr_t* str)
     }
 }
 
-static size_t _fx_str2cstr_size(const fx_str_t* str)
+static size_t fx_str2cstr_size(const fx_str_t* str)
 {
     size_t sz = 1;
     int_ i, len = str->length;
+    const char_* src = str->data;
     for( i = 0; i < len; i++ )
     {
         char_ ch = src[i];
@@ -65,7 +63,7 @@ static size_t _fx_str2cstr_size(const fx_str_t* str)
     return sz;
 }
 
-size_t _fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf)
+size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf)
 {
     const char_* src = str->data + start;
     int_ i, count = str->length - start;
@@ -104,7 +102,7 @@ size_t _fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* 
 
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz)
 {
-    size_t sz = _fx_str2cstr_size(str);
+    size_t sz = fx_str2cstr_size(str);
     if( buf && sz <= bufsz )
     {
         cstr->rc = 0;
@@ -120,11 +118,11 @@ int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz)
         *cstr->rc = 1;
     }
     cstr->length = sz-1;
-    _fx_str2cstr_slice(str, 0, str->length, cstr->data);
+    fx_str2cstr_slice(str, 0, str->length, cstr->data);
     return FX_OK;
 }
 
-static int_ _fx_cstr2str_len(const char* src, int_ srclen)
+static int_ fx_cstr2str_len(const char* src, int_ srclen)
 {
     int_ i, dstlen = 0;
     for( i = 0; i < srclen; i++ )
@@ -142,20 +140,20 @@ static int_ _fx_cstr2str_len(const char* src, int_ srclen)
     return dstlen;
 }
 
-int fx_cstr2str(const char* cstr, int_ srclen, fx_str_t* str)
+int fx_cstr2str(const char* src, int_ srclen, fx_str_t* str)
 {
     if(srclen < 0)
-        srclen = (int_)strlen(strdata);
-    int_ dstlen = _fx_cstr2str_len(cstr, srclen);
+        srclen = (int_)strlen(src);
+    int_ dstlen = fx_cstr2str_len(src, srclen);
     size_t total = sizeof(*str->rc) + dstlen*sizeof(str->data[0]);
     str->rc = (int_*)fx_malloc(total);
     if( !str->rc )
         return FX_EXN_OutOfMemError;
 
-    str->rc = 1;
+    *str->rc = 1;
     str->data = (char_*)(str->rc + 1);
     str->length = dstlen;
-    char_* dst = src->data;
+    char_* dst = str->data;
 
     for( int_ i = 0; i < srclen; i++ )
     {
@@ -173,6 +171,7 @@ int fx_cstr2str(const char* cstr, int_ srclen, fx_str_t* str)
         else if( ch <= 247 && i+3 < srclen && (src[i+1] & 0xc0) == 0x80 && (src[i+2] & 0xc0) == 0x80 && (src[i+3] & 0xc0) == 0x80) {
             char_ val = (char_)(((ch & 15) << 18) | ((src[i+1] & 63) << 12) | ((src[i+2] & 63) << 6) | (src[i+3] & 63));
             if( val > 1114111 ) val = (char_)65533;
+            *dst++ = val;
             i += 3;
         }
         else {
@@ -181,6 +180,35 @@ int fx_cstr2str(const char* cstr, int_ srclen, fx_str_t* str)
                 i++;
         }
     }
+    assert(dst - str->data == dstlen);
+    return FX_OK;
+}
+
+int fx_ascii2str(const char* src, int_ srclen, fx_str_t* str)
+{
+    if(srclen < 0)
+        srclen = (int_)strlen(src);
+
+    size_t total = sizeof(*str->rc) + srclen*sizeof(str->data[0]);
+    int_* rcptr = (int_*)fx_malloc(total);
+    if( !rcptr )
+        return FX_EXN_OutOfMemError;
+
+    char_* dst = (char_*)(rcptr + 1);
+    for( int_ i = 0; i < srclen; i++ )
+    {
+        unsigned char ch = (unsigned char)src[i];
+        if( ch > 127 ) {
+            fx_free(rcptr);
+            return FX_EXN_ASCIIError;
+        }
+        dst[i] = ch;
+    }
+
+    *rcptr = 1;
+    str->rc = rcptr;
+    str->data = dst;
+    str->length = srclen;
     return FX_OK;
 }
 
@@ -269,7 +297,7 @@ int fx_bidirectional(char_ ch)
 
 int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base)
 {
-    int_ len = str->length;
+    int_ i, len = str->length;
     int_ s = 1, r = 0;
     const char_ *ptr = str->data;
     *result = 0;
@@ -350,10 +378,14 @@ int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr)
 int fx_strjoin(const fx_str_t* sep, fx_str_t* s, int_ count, fx_str_t* result)
 {
     int_ seplen = sep ? sep->length : 0;
-    if(count == 0)
+    if(count == 0) {
+        // result should already be initialized with empty string
         return FX_OK;
-    if(count == 1)
-        return fx_copy_str(&s[0], result);
+    }
+    if(count == 1) {
+        fx_copy_str(&s[0], result);
+        return FX_OK;
+    }
     int_ i, total = seplen*(count-1);
     for( i = 0; i < count; i++ )
         total += s[i].length;
@@ -368,7 +400,9 @@ int fx_strjoin(const fx_str_t* sep, fx_str_t* s, int_ count, fx_str_t* result)
             memcpy(result->data + ofs, sep->data, seplen*sizeof(result->data[0]));
             ofs += seplen;
         }
-        memcpy(result->data + ofs, s[i].data, s[i].length*sizeof(result->data[0]));
+        int_ len_i = s[i].length;
+        memcpy(result->data + ofs, s[i].data, len_i*sizeof(result->data[0]));
+        ofs += len_i;
     }
     return FX_OK;
 }

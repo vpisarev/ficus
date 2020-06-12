@@ -36,6 +36,7 @@ enum
     FX_EXN_Continue = -15,
     FX_EXN_NullPtrError = -16,
     FX_EXN_ZeroStepError = -17,
+    FX_EXN_ASCIIError = -18,
 
     FX_EXN_User = -1024,
 };
@@ -260,8 +261,9 @@ int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
 #define FX_MAKE_STR(strlit) { 0, U##strlit, (int_)(sizeof(U##strlit)/sizeof(char_)-1) }
 
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
-size_t _fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
+size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
 
+int fx_ascii2str(const char* cstr, int_ length, fx_str_t* str);
 int fx_cstr2str(const char* cstr, int_ length, fx_str_t* str);
 int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr);
 int fx_strjoin(const fx_str_t* sep, fx_str_t* strs, int_ count, fx_str_t* result);
@@ -276,7 +278,7 @@ char_ fx_tolower(char_ ch);
 char_ fx_toupper(char_ ch);
 int fx_todigit(char_ ch);
 int fx_bidirectional(char_ ch);
-int fx_atoi(const fx_str_t* str, int* result, bool* ok, int base);
+int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base);
 
 ////////////////////////// Exceptions //////////////////////
 
@@ -461,12 +463,12 @@ void fx_copy_fp(const void* src, void* pdst);
 
 ///////////////////////////// C pointers ///////////////////////////
 
-typedef struct fx_cptr_cell_t
+typedef struct fx_cptr_data_t
 {
     int_ rc;
     fx_free_t free_f;
     void* ptr;
-} fx_cptr_cell_t, *fx_cptr_t;
+} fx_cptr_data_t, *fx_cptr_t;
 
 void fx_cptr_no_free(void* ptr);
 void fx_free_cptr(fx_cptr_t* cptr);
@@ -475,12 +477,17 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);
 
 //////////////////////////// File I/O //////////////////////////////
 
-int fx_fputs(FILE* f, const fx_str_t* str);
+//int fx_fputs(FILE* f, const fx_str_t* str);
 int fx_fgets(FILE* f, fx_str_t* str);
 void fx_file_destructor(void* ptr);
 
 fx_cptr_t fx_get_stdin(void);
 fx_cptr_t fx_get_stdout(void);
 fx_cptr_t fx_get_stderr(void);
+
+#include "ficus/impl/ficus.impl.h"
+#include "ficus/impl/array.impl.h"
+#include "ficus/impl/file.impl.h"
+#include "ficus/impl/string.impl.h"
 
 #endif

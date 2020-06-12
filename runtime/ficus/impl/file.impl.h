@@ -6,23 +6,27 @@
 #ifndef __FICUS_FILE_IMPL_H__
 #define __FICUS_FILE_IMPL_H__
 
+#include "limits.h"
+
 enum { FX_FILE_ROW_BUFSIZE=128 };
 
-int fx_puts(FILE* f, const fx_str_t* str)
+int fx_fputs(FILE* f, const fx_str_t* str)
 {
     const int BUFSZ = FX_FILE_ROW_BUFSIZE;
     char buf[FX_FILE_ROW_BUFSIZE*4 + 16];
 
     int_ i, len = str->length;
     for( i = 0; i < len; i += BUFSZ ) {
-        _fx_str2cstr_slice(str, i, BUFSZ, buf);
+        // overflow is handled automatically inside fx_str2cstr_slice,
+        // so no need to compute MIN(BUFSZ, len - i)
+        fx_str2cstr_slice(str, i, BUFSZ, buf);
         if(fputs(buf, f) == EOF)
             return FX_EXN_IOError;
     }
     return FX_OK;
 }
 
-int fx_gets(FILE* f, fx_str_t* str)
+int fx_fgets(FILE* f, fx_str_t* str)
 {
     int_ bufsz = FX_FILE_ROW_BUFSIZE, bufofs = 0;
     char buf0[FX_FILE_ROW_BUFSIZE];
@@ -68,19 +72,22 @@ int fx_gets(FILE* f, fx_str_t* str)
 
 fx_cptr_t fx_get_stdin(void)
 {
-    static fx_cptr_cell_t f = {1, 0, stdin};
+    static fx_cptr_data_t f = {1, 0, 0};
+    f.ptr = stdin;
     return &f;
 }
 
 fx_cptr_t fx_get_stdout(void)
 {
-    static fx_cptr_cell_t f = {1, 0, stdout};
+    static fx_cptr_data_t f = {1, 0, 0};
+    f.ptr = stdout;
     return &f;
 }
 
 fx_cptr_t fx_get_stderr(void)
 {
-    static fx_cptr_cell_t f = {1, 0, stderr};
+    static fx_cptr_data_t f = {1, 0, 0};
+    f.ptr = stderr;
     return &f;
 }
 

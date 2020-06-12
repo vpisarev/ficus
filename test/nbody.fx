@@ -67,7 +67,7 @@ val bodies = [sun, jupiter, saturn, uranus, neptune]
 fun offsetMomentum()
 {
     bodies[0].vel = fold p=Vec{x=0., y=0., z=0.} for body <- bodies {
-            p += body.vel * (body.mass / SolarMass)
+            p -= body.vel * (body.mass / SolarMass)
         }
 }
 
@@ -103,7 +103,7 @@ fun advance(dt: double)
             bi.vel -= diff * (bj.mass * mag)
             bodies[j].vel = bj.vel + diff * (bi.mass * mag)
         }
-        bodies[i].pos = bi.pos + bi.vel * dt
+        bodies[i] = bi.{pos = bi.pos + bi.vel * dt}
     }
 }
 

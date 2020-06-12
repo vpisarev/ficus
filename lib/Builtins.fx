@@ -35,9 +35,9 @@ fun join(sep: string, strs: string list) =
     join(sep, [for s <- strs {s}])
 
 fun string(a: bool): string = if a {"true"} else {"false"}
-fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%d\", a); return fx_cstr2str(buf, -1, fx_result);"
-fun string(a: float): string = ccode "char buf[32]; sprintf(buf, \"%.10g\", a); return fx_cstr2str(buf, -1, fx_result);"
-fun string(a: double): string = ccode "char buf[32]; sprintf(buf, \"%.20g\", a); return fx_cstr2str(buf, -1, fx_result);"
+fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%zd\", a); return fx_ascii2str(buf, -1, fx_result);"
+fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
+fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: string) = a
 fun string(a: 't []) {
     val n = size(a)
@@ -129,12 +129,12 @@ fun max(a: 't, b: 't) = if a >= b {a} else {b}
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
 fun clip(x: 't, a: 't, b: 't) = if a <= x < b {x} else if x < a {a} else {b}
 
-fun print_string(a: string): void = ccode "return fx_puts(stdout, a->data);"
+fun print_string(a: string): void = ccode "return fx_fputs(stdout, a);"
 
 fun print(a: 't) = print_string(string(a))
 nothrow fun print(a: int): void = ccode "printf(\"%zd\", a);"
-nothrow fun print(a: float): void = ccode "printf(\"%.8g\", a);"
-nothrow fun print(a: double): void = ccode "printf(\"%.16g\", a);"
+nothrow fun print(a: float): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.8g\"), a);"
+nothrow fun print(a: double): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.16g\"), a);"
 fun print(a: string) = print_string(a)
 fun print(l: 't list)
 {

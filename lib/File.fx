@@ -92,7 +92,7 @@ fun print(f: file_t, x: string): void = ccode
     "
     if(!f->handle || !f->handle->ptr)
         return FX_EXN_NullFileError;
-    return fx_fputs((FILE*)(f->handle->ptr), str);
+    return fx_fputs((FILE*)(f->handle->ptr), x);
     "
 
 fun print(f: file_t, x: int): void = ccode
