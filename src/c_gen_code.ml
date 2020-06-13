@@ -362,8 +362,11 @@ let gen_ccode top_code =
     let id2cexp i save ccode sc loc =
         match (Env.find_opt i !i2e) with
         | Some(e) ->
-            if not save then (e, ccode)
-            else
+            (match (save, e) with
+            | (false, _) | (_, CExpIdent _) | (_, CExpLit _)
+            | (_, CExpUnOp(COpDeref, (CExpIdent _), _))
+                -> (e, ccode)
+            | _ ->
                 let (ctyp, eloc) = get_cexp_ctx e in
                 let flags = match (kinfo_ i loc) with
                     | KVal {kv_flags} -> kv_flags
@@ -377,7 +380,7 @@ let gen_ccode top_code =
                 let (add_deref, e, ctyp) = handle_temp_ref flags e ctyp in
                 let (i2_exp, ccode) = add_val i2 ctyp flags (Some e) ccode sc loc in
                 i2e := Env.add i i2_exp !i2e;
-                ((if add_deref then (cexp_deref i2_exp) else i2_exp), ccode)
+                ((if add_deref then (cexp_deref i2_exp) else i2_exp), ccode))
         | _ ->
             let e = make_id_exp i loc in
             let e = (match cinfo_ i loc with
