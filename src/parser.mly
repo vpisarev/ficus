@@ -135,8 +135,7 @@ let make_chained_cmp chain = match chain with
               val tn=en
               first_e cmpop1 t1 && t1 cmpop2 t2 ... && tn last_cmpop last_e
             }
-            if ej is a literal or identifier, it does not need tj;
-            instead ej is used as-is in the comparisons
+            if ej is a literal or identifier, it does not need tj, it's used as-is
         *)
         let (last_cmpop, last_e) = List.hd chain in
         let chain = List.rev (List.tl chain) in

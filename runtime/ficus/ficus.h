@@ -147,7 +147,7 @@ void fx_free(void* ptr);
         ; \
     else goto label
 
-#define FX_COPY_PTR(src, dst) FX_INCREF((src)->rc); *(dst) = (src)
+#define FX_COPY_PTR(src, dst) { FX_INCREF((src)->rc); *(dst) = (src); }
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
@@ -414,6 +414,11 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
 
 ////////////////////////// References //////////////////////////
+
+typedef struct fx_ref_simple_data_t
+{
+    int_ rc;
+}* fx_ref_simple_t;
 
 #define FX_FREE_REF_IMPL(typ, arg_free_f) \
     typ r = *pr; \

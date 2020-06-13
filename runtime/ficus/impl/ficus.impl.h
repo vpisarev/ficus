@@ -75,12 +75,6 @@ int_ fx_list_length(void* pl_)
 
 ///////////// references ////////////
 
-typedef struct fx_ref_simple_data_t
-{
-    int_ rc;
-    int data;
-}* fx_ref_simple_t;
-
 void fx_free_ref_simple(void* pr_)
 {
     fx_ref_simple_t *pr = (fx_ref_simple_t*)pr_;

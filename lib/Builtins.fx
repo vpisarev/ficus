@@ -41,11 +41,14 @@ fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ?
 fun string(a: string) = a
 fun string(a: 't []) {
     val n = size(a)
-    join(", ",
-        [for i <- 0:n {
-            val ai = string(a[i])
-            if i == 0 {"["+ai} else if i < n-1 {ai} else {ai+"]"}
+    if n == 0 {"[]"}
+    else {
+        join(", ",
+            [for i <- 0:n {
+                val ai = string(a[i])
+                if i == 0 {if n > 1 {"["+ai} else {"["+ai+"]"}} else if i < n-1 {ai} else {ai+"]"}
         }])
+    }
 }
 
 operator != (a: 't, b: 't): bool = !(a == b)

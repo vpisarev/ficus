@@ -161,10 +161,17 @@ static void fx_free_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_fre
     for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
 }
 
-static void fx_copy_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_t free_f)
+static void fx_copy_arr_elems(const void* src_, void* dst_, int_ nelems, size_t elemsize, fx_copy_t copy_f)
 {
-    char* elems = (char*)elems_;
-    for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
+    if(!copy_f)
+        memcpy(dst_, src_, nelems*elemsize);
+    else if(copy_f == fx_copy_ptr) {
+        fx_ref_simple_t *src = (fx_ref_simple_t*)src_, *dst = (fx_ref_simple_t*)dst_;
+        for(int_ i = 0; i < nelems; i++) FX_COPY_PTR(src[i], dst+i);
+    } else {
+        char *src = (char*)src_, *dst = (char*)dst_;
+        for(int_ i = 0; i < nelems; i++) copy_f(src + i*elemsize, dst + i*elemsize);
+    }
 }
 
 void fx_free_arr(fx_arr_t* arr)
@@ -224,42 +231,47 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     for(int i = ndims-1; i >= 0; i--)
     {
         int_ szi = size[i];
-        // let's allow size[i] == 0 case for now
         if(szi < 0) return FX_EXN_SizeError;
         arr->dim[i].size = szi;
         arr->dim[i].step = netw;
         size_t netw_ = netw*szi;
-        if (netw_ < netw) return FX_EXN_SizeError;
+        if (szi > 0 && netw_ < netw) return FX_EXN_SizeError;
         netw = netw_;
     }
+    int_ total = (int_)(netw/elemsize);
+    if (total < 0)
+        return FX_EXN_SizeError;
+
     size_t dataoffset = elemsize % 8 == 0 ? (size_t)8 : sizeof(*arr->rc);
     size_t grossw = netw + dataoffset;
-    arr->rc = (int_*)fx_malloc(grossw);
-    if( !arr->rc )
-        return FX_EXN_OutOfMemError;
-    *arr->rc = 1;
+    if (netw > 0) {
+        arr->rc = (int_*)fx_malloc(grossw);
+        if( !arr->rc )
+            return FX_EXN_OutOfMemError;
+        *arr->rc = 1;
+        arr->data = (char*)arr->rc + dataoffset;
+
+        // if there is destructor for elements specified, we must clear the array.
+        // otherwise, if there is an exception during further array initialization,
+        // we might not be able to tell, which elements are valid and needs to
+        // be destructed.
+        if(free_elem)
+            memset(arr->data, 0, netw);
+        if(elems)
+            fx_copy_arr_elems(elems, arr->data, total, elemsize, copy_elem);
+    }
     arr->flags = FX_ARR_CONTINUOUS;
     arr->ndims = ndims;
-    arr->data = (char*)arr->rc + dataoffset;
     arr->free_elem = free_elem;
     arr->copy_elem = copy_elem;
-    // if there is destructor for elements specified, we must clear the array.
-    // otherwise, if there is an exception during the array initialization,
-    // we might not be able to tell, which elements are valid and needs to
-    // be destructed.
-    if (netw > 0) {
-        if(elems)
-            memcpy(arr->data, elems, netw);
-        else if(free_elem)
-            memset(arr->data, 0, netw);
-    }
+
     return FX_OK;
 }
 
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
 {
     int i, ndims = arr->ndims;
-    size_t offset = 0;
+    size_t total = 1, offset = 0;
     int state = 0;
 
     for( i = 0; i < ndims; i++ )
@@ -292,7 +304,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         }
         else
             return FX_EXN_SizeError;
-        if( delta <= 0 || a >= b )
+        if( delta <= 0 || a > b )
             return FX_EXN_SizeError;
         if( i == ndims-1 && delta != 1)
             return FX_EXN_SizeError;
@@ -321,17 +333,26 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         }
 
         offset += a*step_i;
-        subarr->dim[i].size = (b - a + delta - 1)/delta;
+        size_i = (b - a + delta - 1)/delta;
+        total *= (size_t)size_i;
+        subarr->dim[i].size = size_i;
         subarr->dim[i].step = delta*step_i;
     }
 
-    subarr->rc = arr->rc;
-    FX_INCREF(*subarr->rc);
     subarr->free_elem = arr->free_elem;
     subarr->copy_elem = arr->copy_elem;
     subarr->flags = arr->flags & (state == 7 ? ~FX_ARR_CONTINUOUS : -1);
     subarr->ndims = arr->ndims;
-    subarr->data = arr->data + offset;
+
+    if (total > 0) {
+        subarr->rc = arr->rc;
+        if (subarr->rc)
+            FX_INCREF(*subarr->rc);
+        subarr->data = arr->data + offset;
+    } else {
+        subarr->rc = 0;
+        subarr->data = 0;
+    }
 
     return FX_OK;
 }
