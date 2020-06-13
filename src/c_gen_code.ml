@@ -471,11 +471,11 @@ let gen_ccode top_code =
             in
         let sizeof_elem_exp = make_call !std_sizeof [CExpTyp(elem_ctyp, loc)] CTypSize_t loc in
         let free_f_exp = match (C_gen_types.get_free_f elem_ctyp true false loc) with
-            | (_, (Some free_f)) -> free_f
+            | (_, (Some free_f)) -> CExpCast(free_f, (CTypName !std_fx_free_t), loc)
             | _ -> make_nullptr loc
             in
         let copy_f_exp = match (C_gen_types.get_copy_f elem_ctyp true false loc) with
-            | (_, Some(copy_f)) -> copy_f
+            | (_, Some(copy_f)) -> CExpCast(copy_f, (CTypName !std_fx_copy_t), loc)
             | _ -> make_nullptr loc
             in
         let (arr_exp, _) = get_dstexp dstexp_r "arr" arr_ctyp [] [] sc loc in
@@ -678,7 +678,8 @@ let gen_ccode top_code =
                         (* before running iteration over a collection,
                             we need to make sure that it will not be deallocated in the middle *)
                         let (col_exp, init_ccode) = if List.exists (fun e -> occurs_id_kexp col e) nested_exps then
-                                let (src_exp, init_ccode) = atom2cexp (Atom.Id col) init_ccode sc for_loc in
+                                (*let (src_exp, init_ccode) = atom2cexp (Atom.Id col) init_ccode sc for_loc in*)
+                                let src_exp = make_id_exp col (get_idk_loc col for_loc) in
                                 let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col) ctyp [] init_ccode sc for_loc in
                                 let init_ccode = C_gen_types.gen_copy_code src_exp col_exp ctyp init_ccode for_loc in
                                 (col_exp, init_ccode)
@@ -1086,7 +1087,7 @@ let gen_ccode top_code =
                     if all the indices are fast indices, the whole check is excluded, of course.
                     then we return `(true, FX_PTR_{ndims}D(elem_ctyp, arr, idx0, ..., idx{ndims-1}), ccode)`
             *)
-            let (arr_exp, ccode) = atom2cexp_ arr true ccode sc kloc in
+            let (arr_exp, ccode) = atom2cexp_ arr false ccode sc kloc in
             let need_subarr = List.exists (fun d -> match d with Domain.Range _ -> true | _ -> false) idxs in
             if need_subarr then
                 let (range_data, ccode) = List.fold_left (fun (range_data, ccode) d ->
@@ -1444,11 +1445,11 @@ let gen_ccode top_code =
                 else if ktp_complex || is_global ||
                     (match e2 with
                     | KExpUnOp(OpMkRef, _, _) -> true
-                    | KExpBinOp _ | KExpUnOp _ | KExpIntrin _ | KExpMkTuple _
+                    | KExpAtom _ | KExpBinOp _ | KExpUnOp _ | KExpIntrin _ | KExpMkTuple _
                     | KExpMkRecord _ | KExpAt _ | KExpMem _ | KExpCast _ | KExpCCode _ -> false
                     | _ -> true) then
                     let (flags, e0_opt) = if not is_global then (kv_flags, None) else
-                        let init_exp = if ktp_ptr then CExpLit(LitNil, (ctyp, kloc)) else CExpInit([], (ctyp, kloc)) in
+                        let init_exp = if ktp_ptr || ktp_scalar then CExpLit(LitNil, (ctyp, kloc)) else CExpInit([], (ctyp, kloc)) in
                         let e0_opt = if ktp_complex then None else (Some init_exp) in
                         (ValPrivate :: kv_flags, e0_opt)
                         in
@@ -1456,7 +1457,10 @@ let gen_ccode top_code =
                     let ccode = if is_global then (bctx.bctx_prologue <- delta_code @ bctx.bctx_prologue; ccode)
                         else delta_code @ ccode in
                     let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode sc in
-                    ccode
+                    match ccode with
+                    | CExp (CExpBinOp(COpAssign, CExpIdent(j, _), e, (_, loc))) :: CDefVal(t, i, None, _) :: rest when j = i ->
+                        CDefVal(t, i, (Some e), loc) :: rest
+                    | _ -> ccode
                 else
                     let (ce2, ccode) = match (ktp_ptr, e2) with
                         | (_, KExpCCode(s, (_, loc))) -> (CExpCCode(s, loc), ccode)
@@ -1608,6 +1612,19 @@ let gen_ccode top_code =
           form its body
     *)
     let {bctx_prologue; bctx_label; bctx_cleanup; bctx_label_used} = curr_block_ctx end_loc in
+    let (global_prologue, temp_toplevel_vals) = List.fold_left (fun (global_prologue, temp_toplevel_vals) s ->
+        let is_global = match s with
+            | CDefVal (_, i, _, loc) ->
+                (match (cinfo_ i loc) with
+                | CVal {cv_flags} -> not ((List.mem ValTemp cv_flags) || (List.mem ValTempRef cv_flags))
+                | _ -> true)
+            | _ -> true
+            in
+        if is_global then
+            (s :: global_prologue, temp_toplevel_vals)
+        else
+            (global_prologue, s :: temp_toplevel_vals))
+        ([], []) bctx_prologue in
     let _ = pop_block_ctx end_loc in
     let ccode = (cexp2stmt e) :: ccode in
     let ccode = if bctx_label_used = 0 then ccode else (CStmtLabel(bctx_label, end_loc)) :: ccode in
@@ -1616,8 +1633,10 @@ let gen_ccode top_code =
     let toplevel_cname = "fx_toplevel" in
     let toplevel_name = (gen_temp_idc toplevel_cname) in
     let toplevel_f = ref {cf_name=toplevel_name; cf_typ=CTypFun([], CTypCInt);
-        cf_args=[]; cf_cname=toplevel_cname; cf_body=(List.rev ccode); cf_flags=[]; cf_scope=sc0; cf_loc=end_loc} in
+        cf_args=[]; cf_cname=toplevel_cname;
+        cf_body=temp_toplevel_vals @ (List.rev ccode);
+        cf_flags=[]; cf_scope=sc0; cf_loc=end_loc} in
     let _ = set_idc_entry toplevel_name (CFun toplevel_f) in
     let all_ccode = (make_ccode_prologue start_loc) @ !top_ccode @
-        c_types_ccode @ (List.rev bctx_prologue) @ c_fdecls @ [CDefFun toplevel_f] @ (make_ccode_epilogue end_loc) in
+        c_types_ccode @ (List.rev global_prologue) @ c_fdecls @ [CDefFun toplevel_f] @ (make_ccode_epilogue end_loc) in
     all_ccode

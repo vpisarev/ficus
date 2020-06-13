@@ -769,6 +769,8 @@ let std_sizeof = ref noid
 
 let std_fx_malloc = ref noid
 let std_fx_free = ref noid
+let std_fx_free_t = ref noid
+let std_fx_copy_t = ref noid
 
 let std_FX_CALL = ref noid
 let std_FX_COPY_PTR = ref noid

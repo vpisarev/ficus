@@ -30,6 +30,8 @@ let init_std_names () =
     std_sizeof := gen_std_fun "sizeof" (CTypAny :: []) CTypSize_t;
     std_fx_malloc := gen_std_fun "fx_malloc" (CTypSize_t :: std_CTypVoidPtr :: []) CTypCInt;
     std_fx_free := gen_std_fun "fx_free" (std_CTypVoidPtr :: []) CTypVoid;
+    std_fx_free_t := get_id "fx_free_t";
+    std_fx_copy_t := get_id "fx_copy_t";
 
     std_FX_CALL := gen_std_macro "FX_CALL" 2;
     std_FX_COPY_PTR := gen_std_macro "FX_COPY_PTR" 2;
