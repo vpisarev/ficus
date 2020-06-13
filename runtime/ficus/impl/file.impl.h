@@ -91,4 +91,11 @@ fx_cptr_t fx_get_stderr(void)
     return &f;
 }
 
+void fx_file_destructor(void* ptr) {
+    FILE* f = (FILE*)ptr;
+    if(f) {
+        fclose(f);
+    }
+}
+
 #endif

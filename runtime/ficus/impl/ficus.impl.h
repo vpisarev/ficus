@@ -156,11 +156,4 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
     return FX_OK;
 }
 
-void fx_file_destructor(void* ptr) {
-    FILE* f = (FILE*)ptr;
-    if(f) {
-        fclose(f);
-    }
-}
-
 #endif

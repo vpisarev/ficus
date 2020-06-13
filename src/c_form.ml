@@ -7,13 +7,14 @@
     C code represented in a hierarhical form (just like Ast or K_form).
 
     The main differences from K-form are:
-    * there is no nested functions; the functions are converted to closures and moved to the top level.
-    * we add fx_ctx and also the closure pointer to the list of parameters of each function
+    * there is no nested functions; the functions are converted to closures,
+      if needed, and moved to the top level
+    * we add the closure pointer to the list of parameters in most functions
       (i.e. the pointer to the structure that contains 'free variables':
       non-local and yet non-global variables accessed by the function).
       If some function does not need a closure, there is still such a parameter, but it'is not used.
       The parameter is needed because when we call a function indirectly,
-      via pointer, we don't know whether it needs closure or not.
+      via pointer, we don't know whether it needs closure or not. See k_lift module.
       ==
       [TODO] We can analyze the code and check whether we call some function only directly or not.
       If we call the function only directly and it does not need closure,
@@ -28,10 +29,11 @@
         a unique name (signature) is generated and is used to reference the type.
         For example, KTypList(KTypInt) becomes _fx_Li_t,
         KTypTuple(KTypFloat :: KTypFloat :: KTypFloat :: []) becomes _fx_Ta3f etc.
+        See k_mangle module.
     * the memory is now managed manually.
-      Reference counting is involved when copying and releasing the references to objects.
-      Cleanup blocks are added to each function (including 'main') to try to reclaim
-      the allocated yet unused memory.
+      Reference counting is involved when copying and releasing smart pointers to actual data
+      (for those data structures that need it: arrays, strings, references, lists, recursive variants)
+      Cleanup blocks are added to each function to free the allocated objects that are not used anymore.
     * all the data types are classified into 2 categories: dynamic and static.
       * Static types are allocated on stack.
         Those are primitive types (numbers, bool), tuples, records, non-recursive variants,
@@ -40,32 +42,30 @@
         There is also a reference counter used to track down the number of 'users'
         sharing the pointer. The dynamic structures are lists, references and recursive variants.
       The situation is actually more complex than that:
-        * The string characters may be allocated on the heap or
-          stack (attached to the header), depending on the string size.
         * The array elements are always allocated on the heap and bundled with the reference counter.
-        * Even the static types, when they are non-primitive (numbers, characters or booleans),
+        * Even the static but non-primitive types,
           are passed to functions via pointers. They all, except for arrays,
           are passed as 'const' pointers, e.g.
           int _fx_print_vec(fx_ctx_t* fx_ctx, const _fx_v3f_t* mytup) { ... }
         * Static data types may have fields that are represented by dynamic data types.
           For example, KTypTuple(KTypBool :: KTypList(KTypInt) :: KTypList(KTypInt) :: []).
-    * Expression does not represent any element of the code anymore.
+    * an expression does not represent any element of the code anymore.
       There are now expressions and statements, just like in C/C++.
     * the complex (nested) expressions are re-introduced.
       This is needed to make the final C code more readable
       and to avoid eccessive use of temporary variables. For example,
       `foo((n+1)*2)` looks much better than
       `val t0 = n+1, t1=t0*2; foo(t1)`.
-      Of course, the use of expressions is limited to the cases where
-      no exceptions may occur when computing them.
-    * there is no exceptions; after each function that may throw an exception
-      (by itself or from within the nested calls) a error check is added.
+      Of course, the use of expressions is limited to scalar values and
+      to the cases when no exceptions may occur when computing them.
+    * there is no exceptions anymore; after each function that may throw an exception
+      (by itself or from within the nested calls) is called, a error check is added.
       So far, we do not use 'zero-cost exceptions' or such. This is probably TBD.
     * all the multi-dimensional array access operations are converted to the raw 1D accesses
       with proper range checks where needed.
     * comprehensions are reduced to for-loops:
       * array comprehensions are replaced with for-loops over pre-allocated arrays;
-      * list comprehensions are replaced with a for-loop that constructs the output list.
+      * list comprehensions are replaced with a for-loop that constructs the output list on-fly.
 *)
 
 open Ast

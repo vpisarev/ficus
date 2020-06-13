@@ -21,6 +21,8 @@ type options_t =
 
 let options =
 {
+    (* [TODO] change it to max_int > 2147483647 after rewriting compiler in ficus
+       when on 32-bit platforms we will be using all 32 bits for int's *)
     arch64 = (max_int > 1073741823);
     include_path = [];
     optimize_level = 1;
