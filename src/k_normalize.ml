@@ -302,6 +302,7 @@ let rec exp2kexp e code tref sc =
         let (a_id, code) = exp2id e1 code true sc "a literal cannot be assigned" in
         let kv = get_kval a_id eloc in
         let {kv_flags} = kv in
+        let kv_flags = match e1 with ExpAt _ -> ValSubArray :: kv_flags | _ -> kv_flags in
         let kv = {kv with kv_flags = if List.mem ValMutable kv_flags then
             kv_flags else ValMutable :: kv_flags} in
         set_idk_entry a_id (KVal kv);

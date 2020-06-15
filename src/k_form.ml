@@ -764,6 +764,13 @@ let is_implicit_deref i loc =
     | KVal {kv_flags} -> List.mem ValImplicitDeref kv_flags
     | _ -> false
 
+let is_subarray i loc =
+    let info = kinfo_ i loc in
+    check_kinfo info i loc;
+    match info with
+    | KVal {kv_flags} -> List.mem ValSubArray kv_flags
+    | _ -> false
+
 let get_closure_freevars i loc =
     if i = noid then ([], []) else
     (let info = kinfo_ i loc in

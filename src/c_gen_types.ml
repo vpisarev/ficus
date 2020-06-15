@@ -183,6 +183,7 @@ let gen_free_code elem_exp ct let_macro use_if code loc =
 let convert_all_typs top_code =
     let top_fwd_decl = ref ([]: cstmt_t list) in
     let top_typ_decl = ref ([]: cstmt_t list) in
+    let top_typfun_decl = ref ([]: cstmt_t list) in
     let all_decls = ref (IdSet.empty) in
     let all_fwd_decls = ref (IdSet.empty) in
     let all_visited = ref (IdSet.empty) in
@@ -191,9 +192,15 @@ let convert_all_typs top_code =
     let add_fwd_decl fwd_decl decl =
         if fwd_decl then
             top_fwd_decl := decl :: !top_fwd_decl
-        else () in
+        else ()
+    in
     let add_decl decl =
-        top_typ_decl := decl :: !top_typ_decl in
+        match decl with
+        | CDefFun _ ->
+            top_typfun_decl := decl :: !top_typfun_decl
+        | _ ->
+            top_typ_decl := decl :: !top_typ_decl
+    in
     (* creates declaration of the data structure with optional forward declaration;
        if needed, creates declarations of the destructor and
        copy operator (with empty bodies; the bodies are updated later on),
@@ -271,7 +278,7 @@ let convert_all_typs top_code =
                 ce_cname=K_mangle.add_fx e_cname; ce_scope=ScGlobal::[]; ce_loc=kvar_loc } in
             set_idc_entry e_id (CEnum ce);
             all_var_enums := Env.add kvar_base_name e_id !all_var_enums;
-            top_typ_decl := (CDefEnum ce) :: !top_typ_decl;
+            add_decl (CDefEnum ce);
             (e_id, members)
     in
     (* converts named type to C *)
@@ -576,4 +583,4 @@ let convert_all_typs top_code =
         kcb_fold_result = 0
     }
     in List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) top_code;
-    (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl)
+    (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl) @ (List.rev !top_typfun_decl)

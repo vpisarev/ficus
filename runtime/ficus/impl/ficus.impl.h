@@ -6,7 +6,9 @@
 #ifndef __FICUS_IMPL_H__
 #define __FICUS_IMPL_H__
 
-#include "ficus/ficus.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 FX_THREAD_LOCAL fx_exn_t fx_exn;
 FX_THREAD_LOCAL fx_rng_t fx_rng;
@@ -58,9 +60,9 @@ typedef struct fx_list_simple_data_t
     int hd;
 }* fx_list_simple_t;
 
-void fx_free_list_simple(void* pl_)
+void fx_free_list_simple(void* dst_)
 {
-    fx_list_simple_t *pl = (fx_list_simple_t*)pl_;
+    fx_list_simple_t *dst = (fx_list_simple_t*)dst_;
     FX_FREE_LIST_IMPL(fx_list_simple_t, FX_NOP);
 }
 
@@ -75,9 +77,9 @@ int_ fx_list_length(void* pl_)
 
 ///////////// references ////////////
 
-void fx_free_ref_simple(void* pr_)
+void fx_free_ref_simple(void* dst_)
 {
-    fx_ref_simple_t *pr = (fx_ref_simple_t*)pr_;
+    fx_ref_simple_t *dst = (fx_ref_simple_t*)dst_;
     FX_FREE_REF_IMPL(fx_ref_simple_t, FX_NOP);
 }
 
@@ -148,12 +150,20 @@ void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* dst)
 
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 {
-    FX_DECL_AND_MALLOC(fx_cptr_data_t, p, sizeof(fx_cptr_data_t));
+    FX_DECL_AND_MALLOC(fx_cptr_t, p, sizeof(*p));
     p->rc = 1;
     p->free_f = free_f;
     p->ptr = ptr;
     *fx_result = p;
     return FX_OK;
 }
+
+#ifdef __cplusplus
+}
+#endif
+
+#include "ficus/impl/array.impl.h"
+#include "ficus/impl/file.impl.h"
+#include "ficus/impl/string.impl.h"
 
 #endif

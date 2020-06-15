@@ -194,11 +194,22 @@ let mangle_all top_code =
         | KTypArray _ -> t (*create_gen_typ t "arr" loc*)
         | KTypList _ -> create_gen_typ t "lst" loc
         | KTypRef _ -> create_gen_typ t "ref" loc
+    and mangle_id_typ i loc callb =
+        match i with
+        | Id.Name _ -> ()
+        | _ -> (match (kinfo_ i loc) with
+            | KVal kv ->
+                let {kv_typ} = kv in
+                let t = walk_ktyp_n_mangle kv_typ loc callb in
+                set_idk_entry i (KVal {kv with kv_typ=t})
+            | _ -> ())
     and mangle_ktyp_retain_record t loc callb =
         match t with
         | KTypRecord(rn, relems) ->
             KTypRecord(rn, List.map (fun (ni, ti) -> (ni, walk_ktyp_n_mangle ti loc callb)) relems)
         | t -> walk_ktyp_n_mangle t loc callb
+    and mangle_kdl kdl loc callb =
+        List.iter (fun (k, _) -> mangle_id_typ k loc callb) kdl
     and walk_kexp_n_mangle e callb =
         match e with
         | KDefVal(n, e, loc) ->
@@ -224,6 +235,7 @@ let mangle_all top_code =
             let (_, cname) = mangle_make_unique kf_name "F" bare_name suffix mangle_map in
             let cname = compress_name cname kf_scope kf_loc in
             kf := { !kf with kf_cname=add_fx cname; kf_typ=t; kf_body=new_body };
+            List.iter (fun i -> mangle_id_typ i kf_loc callb) kf_args;
             e
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_scope; ke_loc} = !ke in
@@ -255,6 +267,12 @@ let mangle_all top_code =
             (* since KDefGenTyp's are formed during this step, we should not get here.
                If we are here, retain the definition as-is *)
             e
+        | KExpFor (kdl, body, flags, loc) ->
+            mangle_kdl kdl loc callb;
+            walk_kexp e callb
+        | KExpMap (e_kdl_l, body, flags, (_, loc)) ->
+            List.iter (fun (_, kdl) -> mangle_kdl kdl loc callb) e_kdl_l;
+            walk_kexp e callb
         | _ -> walk_kexp e callb
         in
     let walk_n_mangle_callb =

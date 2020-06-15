@@ -145,6 +145,7 @@ let rec pprint_exp e =
         | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
+        | ValSubArray -> pstr "SUB_ARRAY"; pspace()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace(); pprint_exp e0; cbox()
     | DefFun {contents={df_name; df_templ_args; df_args; df_typ;

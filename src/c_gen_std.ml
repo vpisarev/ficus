@@ -45,7 +45,7 @@ let init_std_names () =
     std_FX_CHECK_EXN := gen_std_macro "FX_CHECK_EXN" 1;
     std_FX_CHECK_ZERO_STEP := gen_std_macro "FX_CHECK_ZERO_STEP" 2;
     std_FX_LOOP_COUNT := gen_std_macro "FX_LOOP_COUNT" 3;
-    std_FX_CHECK_NE_SIZE := gen_std_macro "FX_CHECK_NE_SIZE" 2;
+    std_FX_CHECK_EQ_SIZE := gen_std_macro "FX_CHECK_EQ_SIZE" 2;
 
     std_fx_copy_ptr := gen_std_fun "fx_copy_ptr" (std_CTypConstVoidPtr :: std_CTypVoidPtr :: []) CTypVoid;
 
@@ -85,6 +85,8 @@ let init_std_names () =
     std_FX_MOVE_ARR := gen_std_macro "FX_MOVE_ARR" 2;
     std_fx_free_arr := gen_std_fun "fx_free_arr" ((make_ptr std_CTypAnyArray) :: []) CTypVoid;
     std_fx_copy_arr := gen_std_fun "fx_copy_arr"
+        ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: []) CTypVoid;
+    std_fx_copy_arr_data := gen_std_fun "fx_copy_arr_data"
         ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: []) CTypVoid;
     std_fx_subarr := gen_std_fun "fx_subarr" [(make_const_ptr std_CTypAnyArray);
         (make_const_ptr CTypInt); (make_ptr std_CTypAnyArray)] CTypCInt;

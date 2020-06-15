@@ -308,7 +308,7 @@ and pprint_cstmt s =
         (match s2 with
         | CStmtNop _ | CStmtBlock ([], _) -> ()
         | _ -> pspace(); obox(); pstr "else"; pspace(); pprint_cstmt_or_block_cbox s2)
-    | CStmtGoto(n, loc) -> pstr "goto "; pprint_id n loc
+    | CStmtGoto(n, loc) -> obox(); pstr "goto"; pspace(); pprint_id n loc; pstr ";"; cbox()
     | CStmtLabel (n, loc) ->
         Format.print_break 1 (- !base_indent);
         pprint_id n loc; pstr ":"

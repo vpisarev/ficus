@@ -6,6 +6,10 @@
 #ifndef __FICUS_STRING_IMPL_H__
 #define __FICUS_STRING_IMPL_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void fx_free_str(fx_str_t* str)
 {
     if( str->rc )
@@ -406,5 +410,9 @@ int fx_strjoin(const fx_str_t* sep, fx_str_t* s, int_ count, fx_str_t* result)
     }
     return FX_OK;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

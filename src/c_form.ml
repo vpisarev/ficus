@@ -347,7 +347,7 @@ let create_cdefval n t flags cname e_opt code sc loc =
     | CTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
     set_idc_entry n (CVal dv);
-    (CDefVal(t, n, e_opt, loc)) :: code
+    (CExpIdent(n, (t, loc)), (CDefVal(t, n, e_opt, loc)) :: code)
 
 let get_ccode_loc ccode default_loc =
     loclist2loc (List.map get_cstmt_loc ccode) default_loc
@@ -709,6 +709,7 @@ let std_CTypConstAnyPtr = make_const_ptr CTypAny
 let make_lit_exp l loc = let t = get_lit_ctyp l in CExpLit (l, (t, loc))
 let make_int__exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
 let make_int_exp i loc = CExpLit ((LitInt (Int64.of_int i)), (CTypInt, loc))
+let make_bool_exp b loc = CExpLit ((LitBool b), (CTypBool, loc))
 let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_label basename sc loc =
@@ -784,7 +785,7 @@ let std_FX_CHECK_EXN_BREAK_CONTINUE_ND = ref noid
 let std_FX_CHECK_EXN = ref noid
 let std_FX_CHECK_ZERO_STEP = ref noid
 let std_FX_LOOP_COUNT = ref noid
-let std_FX_CHECK_NE_SIZE = ref noid
+let std_FX_CHECK_EQ_SIZE = ref noid
 
 let std_fx_copy_ptr = ref noid
 
@@ -817,6 +818,7 @@ let std_FX_FREE_ARR = ref noid
 let std_FX_MOVE_ARR = ref noid
 let std_fx_free_arr = ref noid
 let std_fx_copy_arr = ref noid
+let std_fx_copy_arr_data = ref noid
 let std_fx_make_arr = ref noid
 let std_fx_subarr = ref noid
 

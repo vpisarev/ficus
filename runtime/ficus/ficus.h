@@ -15,6 +15,10 @@
 
 #include "ficus/version.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////////////// Error Codes //////////////////////
 enum
 {
@@ -26,17 +30,18 @@ enum
     FX_EXN_OutOfRangeError = -5,
     FX_EXN_DivByZeroError = -6,
     FX_EXN_SizeMismatchError = -7,
-    FX_EXN_DimError = -8,
-    FX_EXN_SizeError = -9,
-    FX_EXN_FileOpenError = -10,
-    FX_EXN_NullFileError = -11,
-    FX_EXN_IOError = -12,
-    FX_EXN_NoMatchError = -13,
-    FX_EXN_Break = -14,
-    FX_EXN_Continue = -15,
-    FX_EXN_NullPtrError = -16,
-    FX_EXN_ZeroStepError = -17,
-    FX_EXN_ASCIIError = -18,
+    FX_EXN_TypeMismatchError = -8,
+    FX_EXN_DimError = -9,
+    FX_EXN_SizeError = -10,
+    FX_EXN_FileOpenError = -11,
+    FX_EXN_NullFileError = -12,
+    FX_EXN_IOError = -13,
+    FX_EXN_NoMatchError = -14,
+    FX_EXN_Break = -15,
+    FX_EXN_Continue = -16,
+    FX_EXN_NullPtrError = -17,
+    FX_EXN_ZeroStepError = -18,
+    FX_EXN_ASCIIError = -19,
 
     FX_EXN_User = -1024,
 };
@@ -110,8 +115,8 @@ char* fx_argv(int_ idx);
 void* fx_malloc(size_t sz);
 void* fx_realloc(void* ptr, size_t sz);
 void fx_free(void* ptr);
-#define FX_DECL_AND_MALLOC(typ, ptr, sz) \
-    typ* ptr = (typ*)fx_malloc(sz); \
+#define FX_DECL_AND_MALLOC(ptrtyp, ptr, sz) \
+    ptrtyp ptr = (ptrtyp)fx_malloc(sz); \
     if(!ptr) return FX_EXN_OutOfMemError
 #define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else goto label
 #define FX_BREAK(label) { fx_status = FX_BREAK_EXN; goto label; }
@@ -152,10 +157,10 @@ void fx_free(void* ptr);
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
 #define FX_CHECK_ZERO_STEP(delta, label) \
-    if(delta == 0) { fx_status = FX_EXN_ZeroStepError; goto label; }
+    if(delta == 0) ; else { fx_status = FX_EXN_ZeroStepError; goto label; }
 #define FX_LOOP_COUNT(a, b, delta) \
     ((delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta))
-#define FX_CHECK_NE_SIZE(check, label) if(check) { fx_status=FX_EXN_SizeMismatchError; goto label }
+#define FX_CHECK_EQ_SIZE(check, label) if(check) ; else { fx_status=FX_EXN_SizeMismatchError; goto label; }
 
 void fx_copy_ptr(const void* src, void* pdst);
 
@@ -292,7 +297,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
 
 #define FX_MAKE_EXN_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy_f) \
-    FX_DECL_AND_MALLOC(exndata_typ, data, sizeof(exndata_typ)); \
+    FX_DECL_AND_MALLOC(exndata_typ*, data, sizeof(exndata_typ)); \
         \
     data->base.rc = 1; \
     data->base.free_f = exndata_free; \
@@ -305,7 +310,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 //////////////////////////// Lists /////////////////////////
 
 #define FX_FREE_LIST_IMPL(typ, hd_free_f) \
-    typ l = *pl; \
+    typ l = *dst; \
     while(l) { \
         if(FX_DECREF(l->rc) > 1) \
             break; \
@@ -314,10 +319,10 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
         fx_free(l); \
         l = tl; \
     } \
-    *pl = 0
+    *dst = 0
 
 #define FX_MAKE_LIST_IMPL(typ, hd_copy_f) \
-    FX_DECL_AND_MALLOC(typ, l, sizeof(typ)); \
+    FX_DECL_AND_MALLOC(typ, l, sizeof(*l)); \
     l->rc = 1; \
     l->tl = tl; \
     if(addref_tl && tl) FX_INCREF(tl->rc); \
@@ -384,9 +389,9 @@ void fx_arr_nextiter(fx_arriter_t* it);
 
 #define FX_ARR_SIZE(arr, i) ((arr).dim[i].size)
 #define FX_CHKIDX1(arr, i, idx) \
-    ((size_t)(idx) >= (size_t)(arr).dim[i].size)
-#define FX_CHKIDX(oor_check, catch_label) \
-    if(oor_check) { fx_status = FX_EXN_OutOfRangeError; goto catch_label; }
+    ((size_t)(idx) < (size_t)(arr).dim[i].size)
+#define FX_CHKIDX(ir_check, catch_label) \
+    if(ir_check) ; else { fx_status = FX_EXN_OutOfRangeError; goto catch_label; }
 
 #define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))
@@ -409,6 +414,7 @@ void fx_free_arr(fx_arr_t* arr);
     { (dst) = (src); (src).rc = 0; (src).data = 0; }
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
+int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_free_t free_elem, fx_copy_t copy_elem, const void* elems, fx_arr_t* arr );
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
@@ -421,16 +427,16 @@ typedef struct fx_ref_simple_data_t
 }* fx_ref_simple_t;
 
 #define FX_FREE_REF_IMPL(typ, arg_free_f) \
-    typ r = *pr; \
+    typ r = *dst; \
     if(r && FX_DECREF(r->rc) == 1) \
     { \
         arg_free_f(&r->data); \
         fx_free(r); \
     } \
-    *pr = 0
+    *dst = 0
 
 #define FX_MAKE_REF_IMPL(typ, arg_copy_f) \
-    FX_DECL_AND_MALLOC(typ, r, sizeof(typ)); \
+    FX_DECL_AND_MALLOC(typ, r, sizeof(*r)); \
     r->rc = 1; \
     arg_copy_f(arg, &r->data); \
     *fx_result = r; \
@@ -461,7 +467,7 @@ typedef struct fx_fp_t
 #define FX_FREE_FP(f) \
     if((f)->fv) { (f)->fv->base.free_f((f)->fv); (f)->fv=0; }
 #define FX_COPY_FP(src, dst) \
-    if((src)->fv) FX_INCREF((src)->fv->base.rc); *(dst) = *(src)
+    { if((src)->fv) FX_INCREF((src)->fv->base.rc); *(dst) = *(src); }
 
 void fx_free_fp(void* fp);
 void fx_copy_fp(const void* src, void* pdst);
@@ -490,9 +496,8 @@ fx_cptr_t fx_get_stdin(void);
 fx_cptr_t fx_get_stdout(void);
 fx_cptr_t fx_get_stderr(void);
 
-#include "ficus/impl/ficus.impl.h"
-#include "ficus/impl/array.impl.h"
-#include "ficus/impl/file.impl.h"
-#include "ficus/impl/string.impl.h"
+#ifdef __cplusplus
+}
+#endif
 
 #endif

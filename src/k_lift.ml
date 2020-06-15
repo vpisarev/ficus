@@ -455,10 +455,11 @@ let lift_all top_code =
             let args = List.map (fun a -> walk_atom_n_lift_all a loc callb) args in
             let (curr_f, curr_cl_arg, curr_cl_vt) = !curr_clo in
             if f = curr_f then
-                let cl_arg =
+                (*let cl_arg =
                     if curr_cl_arg = noid then Atom.Lit LitNil
                     else Atom.Id curr_cl_arg
-                in KExpCall(f, args @ [cl_arg], kctx)
+                in KExpCall(f, args @ [cl_arg], kctx)*)
+                KExpCall(f, args, kctx)
             else
                 (match (kinfo_ f loc) with
                 | KFun {contents={kf_closure=(_, cl_vt)}} ->

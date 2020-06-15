@@ -8,6 +8,10 @@
 
 #include "limits.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum { FX_FILE_ROW_BUFSIZE=128 };
 
 int fx_fputs(FILE* f, const fx_str_t* str)
@@ -97,5 +101,9 @@ void fx_file_destructor(void* ptr) {
         fclose(f);
     }
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
