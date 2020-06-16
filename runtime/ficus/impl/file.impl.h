@@ -74,25 +74,16 @@ int fx_fgets(FILE* f, fx_str_t* str)
     return fx_status;
 }
 
-fx_cptr_t fx_get_stdin(void)
+fx_cptr_t fx_get_stdstream(int stridx)
 {
-    static fx_cptr_data_t f = {1, 0, 0};
-    f.ptr = stdin;
-    return &f;
-}
+    static fx_cptr_data_t stdin_cptr = {1, 0, 0};
+    static fx_cptr_data_t stdout_cptr = {1, 0, 0};
+    static fx_cptr_data_t stderr_cptr = {1, 0, 0};
 
-fx_cptr_t fx_get_stdout(void)
-{
-    static fx_cptr_data_t f = {1, 0, 0};
-    f.ptr = stdout;
-    return &f;
-}
-
-fx_cptr_t fx_get_stderr(void)
-{
-    static fx_cptr_data_t f = {1, 0, 0};
-    f.ptr = stderr;
-    return &f;
+    stdin_cptr.ptr = stdin;
+    stdout_cptr.ptr = stdout;
+    stderr_cptr.ptr = stderr;
+    return stridx == 0 ? &stdin_cptr : stridx == 1 ? &stdout_cptr : &stderr_cptr;
 }
 
 void fx_file_destructor(void* ptr) {

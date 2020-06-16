@@ -166,7 +166,7 @@ type binop_t =
 
 type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
-type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate | ValSubArray
+type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate | ValSubArray | ValConstr of int
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr of int
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
@@ -676,6 +676,11 @@ let get_builtin_exception n0 loc =
     match Hashtbl.find_all builtin_exceptions n0 with
     | n :: _ -> n
     | _ -> raise_compile_err loc (sprintf "cannot find built-in exception '%s'" (id2str n0))
+
+let get_val_constr flags =
+    match (List.find_opt (fun f -> match f with ValConstr _ -> true | _ -> false) flags) with
+    | Some (ValConstr i) -> i
+    | _ -> -1
 
 let get_fun_constr flags =
     match (List.find_opt (fun f -> match f with FunConstr _ -> true | _ -> false) flags) with

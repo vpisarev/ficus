@@ -146,8 +146,12 @@ let rec pprint_exp e =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
+        | ValConstr _ -> ()
         | ValArg -> pstr "ARG"; pspace()) vflags);
-        pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace(); pprint_exp e0; cbox()
+        let constr_id = get_val_constr vflags in
+        pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace();
+        if constr_id >= 0 then pstr (sprintf "Constructor(%d)" constr_id) else pprint_exp e0;
+        cbox()
     | DefFun {contents={df_name; df_templ_args; df_args; df_typ;
                 df_body; df_flags; df_templ_inst; df_loc}} ->
         let fkind = ref "FUN" in

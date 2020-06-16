@@ -132,7 +132,7 @@ fun max(a: 't, b: 't) = if a >= b {a} else {b}
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
 fun clip(x: 't, a: 't, b: 't) = if a <= x < b {x} else if x < a {a} else {b}
 
-fun print_string(a: string): void = ccode "return fx_fputs(stdout, a);"
+nothrow fun print_string(a: string): void = ccode "fx_fputs(stdout, a);"
 
 fun print(a: 't) = print_string(string(a))
 nothrow fun print(a: int): void = ccode "printf(\"%zd\", a);"

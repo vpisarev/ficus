@@ -5,6 +5,7 @@
 *.a
 *.o
 *.out
+*.out.*
 *.cmx
 *.cmxs
 *.cmxa

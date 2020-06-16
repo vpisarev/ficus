@@ -108,7 +108,8 @@ let rec elim_unused code =
         match e with
         | KDefVal(i, e, loc) ->
             let e = elim_unused_kexp_ e callb in
-            if (used i) then KDefVal(i, e, loc)
+            let is_ccode = match e with KExpCCode _ -> true | _ -> false in
+            if (used i) || is_ccode then KDefVal(i, e, loc)
             (* [TODO] issue a warning about unused identifier *)
             else if not (pure_kexp e) then
                 e
@@ -145,7 +146,9 @@ let rec elim_unused code =
             else KExpNop(kt_loc)
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
-            code2kexp code loc
+            (match code with
+            | KDefVal(i, rhs, _) :: KExpAtom((Atom.Id j), _) :: [] when i = j -> rhs
+            | _ -> code2kexp code loc)
         | _ -> walk_kexp e callb
     and elim_unused_ code result callb =
         match code with

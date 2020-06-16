@@ -271,7 +271,7 @@ let rec exp2kexp e code tref sc =
         let (last_e, body_code) = exp2kexp body body_code false body_sc in
         let bloc = get_exp_loc body in
         let body_kexp = rcode2kexp (last_e :: body_code) bloc in
-        (KExpMap(pre_idom_ll, body_kexp, flags, kctx), code)
+        (KExpMap((List.rev pre_idom_ll), body_kexp, flags, kctx), code)
     | ExpAt(e, idxlist, _) ->
         let (dlist, code) = List.fold_left (fun (dlist, code) idx ->
             let (d, code) = exp2dom idx code sc in
@@ -456,10 +456,21 @@ and pat_propose_id p ptyp temp_prefix is_simple mutable_leaves sc =
         else (p, noid, false)
 
 and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
+    let (tup_elems, need_tref) = match e_opt with
+        | Some e ->
+            (match e with
+            | KExpIntrin _ | KExpAt _ | KExpMem _ | KExpUnOp(OpDeref, _, _) -> ([], true)
+            | KExpMkTuple(elems, _) -> (elems, false)
+            | _ -> ([], false))
+        | None -> ([], true)
+        in
     let mutable_leaves = List.mem ValMutable flags in
     let n_flags = List.filter (fun f -> f != ValMutable && f != ValTempRef) flags in
     let (p, n, tref) = pat_propose_id p ptyp temp_prefix true mutable_leaves sc in
-    if n = noid then (n, code) else
+    let tref = tref && need_tref in
+    if n = noid then
+        (n, code)
+    else
     let loc = get_pat_loc p in
     let n_flags = if mutable_leaves && not tref then ValMutable :: n_flags
                 else if tref then ValTempRef :: n_flags else n_flags in
@@ -476,7 +487,12 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
                 | _ -> raise_compile_err loc "invalid type of the tuple pattern (it must be a tuple as well)" in
         let (_, code) = List.fold_left2 (fun (idx, code) pi ti ->
             let loci = get_pat_loc pi in
-            let ei = KExpMem(n, idx, (ti, loci)) in
+            let ei =
+                if tup_elems <> [] then
+                    KExpAtom((List.nth tup_elems idx), (ti, loc))
+                else
+                    KExpMem(n, idx, (ti, loci))
+                in
             let (_, code) = pat_simple_unpack pi ti (Some ei) code temp_prefix flags sc in
             (idx + 1, code)) (0, code) pl tl in
         code
@@ -563,10 +579,14 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 | KFun {contents={kf_typ; kf_flags}} ->
                     let c_args = (match kf_typ with KTypFun(args, rt) -> args | _ -> []) in
                     let constr_id = get_fun_constr kf_flags in
-                    (c_args, (if constr_id >= 0 then Atom.Lit (LitInt (Int64.of_int constr_id)) else (Atom.Id vn)))
+                    let vn_val = if constr_id >= 0 then Atom.Lit (LitInt (Int64.of_int constr_id)) else (Atom.Id vn) in
+                    (c_args, vn_val)
                 | KExn {contents={ke_typ}} ->
                     ((match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: []), (Atom.Id vn))
-                | KVal _ -> ([], (Atom.Id vn))
+                | KVal {kv_flags} ->
+                    let constr_id = get_val_constr kv_flags in
+                    let vn_val = if constr_id >= 0 then Atom.Lit (LitInt (Int64.of_int constr_id)) else (Atom.Id vn) in
+                    ([], vn_val)
                 | k -> K_pp.pprint_kinfo_x k; raise_compile_err loc (sprintf "a variant constructor ('%s') is expected here" (id2str vn)) in
             let (tag_n, code) =
                 if var_tag0 != noid then (var_tag0, code) else
@@ -766,7 +786,7 @@ and transform_all_types_and_cons elist code sc =
                                 let code = match argtyps with
                                 | [] ->
                                     let e0 = KExpAtom(Atom.Lit (LitInt (Int64.of_int idx)), (kf_typ, dvar_loc)) in
-                                    create_defval df_name kf_typ [ValMutable] (Some e0) code sc dvar_loc
+                                    create_defval df_name kf_typ [ValMutable; ValConstr idx] (Some e0) code sc dvar_loc
                                 | _ ->
                                     let kf = ref { kf_name=df_name; kf_cname=""; kf_typ=kf_typ; kf_args=List.map (fun _ -> noid) argtyps;
                                                 kf_body=KExpNop(dvar_loc); kf_flags=(FunConstr idx):: [];

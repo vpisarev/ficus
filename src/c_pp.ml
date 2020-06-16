@@ -82,9 +82,11 @@ let unop2str_ uop = match uop with
     | COpMacroName -> ("#", 1600, AssocLeft)
     | COpMacroDefined -> ("defined ", 1600, AssocLeft)
 
-let pprint_id n loc =
+let pprint_id2str n loc =
     let cname = get_idc_cname n loc in
-    pstr (if cname = "" then (id2str__ n false "_" "_") else cname)
+    if cname = "" then (id2str__ n false "_" "_") else cname
+
+let pprint_id n loc = pstr (pprint_id2str n loc)
 
 let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
     let pr_id_opt_ add_space = match id_opt with
@@ -137,7 +139,12 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
         | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None loc) args);
         cbox(); pstr ")"; cbox()
     | CTypStruct (n_opt, selems) -> pr_struct (prefix0 ^ "struct") n_opt selems ""
-    | CTypRawPtr ([], CTypStruct(n_opt, selems)) -> pr_struct (prefix0 ^ "struct") n_opt selems "*"
+    | CTypRawPtr ([], CTypStruct(n_opt, selems)) ->
+        let suffix = match n_opt with
+            | Some n -> (pprint_id2str n loc) ^ ", *"
+            | _ -> "*"
+        in
+        pr_struct (prefix0 ^ "struct") n_opt selems suffix
     | CTypUnion (n_opt, uelems) -> pr_struct (prefix0 ^ "union") n_opt uelems ""
     | CTypRawPtr (attrs, t) ->
         obox();
@@ -185,9 +192,12 @@ and pprint_cexp_ e pr =
     | CExpBinOp (bop, a, b, _) ->
         let (bop_str, pr0, assoc) = binop2str_ bop in
         obox(); if pr0 < pr then (pstr "("; pcut()) else ();
-        pprint_cexp_ a (if assoc=AssocLeft then pr0 else pr0+1);
+        let is_shift = bop = COpShiftLeft || bop = COpShiftRight in
+        let a_pr = if is_shift then 1350 else if assoc=AssocLeft then pr0 else pr0+1 in
+        let b_pr = if is_shift then 1350 else if assoc=AssocRight then pr0 else pr0+1 in
+        pprint_cexp_ a a_pr;
         pspace(); pstr bop_str; pspace();
-        pprint_cexp_ b (if assoc=AssocRight then pr0 else pr0+1);
+        pprint_cexp_ b b_pr;
         if pr0 < pr then (pcut(); pstr ")") else (); cbox()
     | CExpUnOp (uop, e, _) ->
         let (uop_str, pr0, _) = unop2str_ uop in

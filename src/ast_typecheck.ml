@@ -1237,10 +1237,11 @@ and check_eseq eseq env sc create_sc =
                 | _ ->
                     (match (deref_typ etyp) with
                     | TypVoid | TypDecl -> ()
+                    | TypVar {contents=None} -> ()
                     | _ -> if idx = nexps - 1 then () else
-                        (*((printf "exp type: "; pprint_typ_x (deref_typ etyp); printf "\n");*)
+                        ((printf "exp type: "; pprint_typ_x (deref_typ etyp) eloc; printf "\n");
                         raise_compile_err eloc
-                        "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error"));
+                        "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error")));
                 (e :: eseq, env)
         with
         | CompileError(_, _) as err ->

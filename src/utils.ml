@@ -18,6 +18,7 @@ let num_suffix n =
     | 3 -> "rd"
     | _ -> "th"
 
+let opt_get x_opt default_val = match x_opt with Some x -> x | _ -> default_val
 let is_some x_opt = match x_opt with Some _ -> true | _ -> false
 let is_none x_opt = match x_opt with Some _ -> false | _ -> true
 

@@ -14,18 +14,26 @@ val SEEK_END: int = ccode "(int)SEEK_END"
 
 type file_t = { handle: cptr }
 
-val stdin: file_t = ccode "{ fx_get_stdin() }"
-val stdout: file_t = ccode "{ fx_get_stdout() }"
-val stderr: file_t = ccode "{ fx_get_stderr() }"
+fun get_stdstream(i: int): file_t = ccode
+    "
+    if(i != 0 && i != 1 && i != 2)
+        return FX_EXN_NullFileError;
+    fx_result->handle = fx_get_stdstream(i);
+    return FX_OK;
+    "
+
+val stdin = get_stdstream(0)
+val stdout = get_stdstream(1)
+val stderr = get_stdstream(2)
 
 fun open(fname: string, mode: string)
 {
     fun open_(fname: string, mode: string): cptr = ccode
     "
     fx_cstr_t fname_, mode_;
-    int fx_status = fx_str2cstr(&fname_, fname);
+    int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
     if (fx_status >= 0) {
-        fx_status = fx_str2cstr(&mode_, mode);
+        fx_status = fx_str2cstr(mode, &mode_, 0, 0);
         if (fx_status >= 0) {
             FILE* f = fopen(fname_.data, mode_.data);
             if (f)
@@ -167,12 +175,13 @@ fun readln(f: file_t): string = ccode
     return fx_fgets((FILE*)(f->handle->ptr), fx_result);
     "
 
-fun remove(name: string): bool = ccode
+fun remove(name: string): void = ccode
     "
     fx_cstr_t name_;
-    int fx_status = fx_str2cstr(&name_, name, 0, 0);
+    int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
-        *fx_result = remove(name_.data) == 0;
+        if(remove(name_.data) != 0)
+            fx_status = FX_EXN_IOError;
         fx_free_cstr(&name_);
     }
     return fx_status;
@@ -181,11 +190,12 @@ fun remove(name: string): bool = ccode
 fun rename(name: string, new_name: string): bool = ccode
     "
     fx_cstr_t name_, new_name_;
-    int fx_status = fx_str2cstr(&name_, name, 0, 0);
+    int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
-        fx_status = fx_str2cstr(&new_name_, new_name, 0, 0);
+        fx_status = fx_str2cstr(new_name, &new_name_, 0, 0);
         if (fx_status >= 0) {
-            *fx_result = rename(name_.data, new_name_.data) == 0;
+            if(rename(name_.data, new_name_.data) != 0)
+                fx_status = FX_EXN_IOError;
             fx_free_cstr(&new_name_);
         }
         fx_free_cstr(&name_);

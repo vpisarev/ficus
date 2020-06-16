@@ -171,10 +171,10 @@ let gen_copy_code src_exp dst_exp ct code loc =
 let gen_free_code elem_exp ct let_macro use_if code loc =
     let (can_use_if, free_f_opt) = get_free_f ct true let_macro loc in
     let ctx = (CTypVoid, loc) in
-    let elem_exp = cexp_get_addr elem_exp in
+    let elem_exp_ptr = cexp_get_addr elem_exp in
     match free_f_opt with
     | Some(f) ->
-        let call_stmt = CExp(CExpCall(f, elem_exp :: [], ctx)) in
+        let call_stmt = CExp(CExpCall(f, elem_exp_ptr :: [], ctx)) in
         let stmt = if can_use_if && use_if then
             CStmtIf(elem_exp, call_stmt, (CStmtNop loc), loc) else call_stmt in
         stmt :: code
@@ -313,10 +313,27 @@ let convert_all_typs top_code =
                 create_ctyp_decl tn ktp fwd_decl loc in
             let {ct_props} = !struct_decl in
             let tp_cname = K_mangle.add_fx tp_cname_wo_prefix in
-            let struct_id_opt = match !struct_decl with
-                | {ct_typ=CTypRawPtr(_, CTypStruct(struct_id_opt, _))} -> struct_id_opt
-                | _ -> Some tn in
+            let (struct_typ, struct_id_opt) = match !struct_decl with
+                | {ct_typ=CTypRawPtr(_, (CTypStruct(struct_id_opt, _) as a_struct_typ))} ->
+                    let struct_typ = match struct_id_opt with
+                        | Some tn -> CTypName tn
+                        | _ -> a_struct_typ
+                        in
+                    (struct_typ, struct_id_opt)
+                | _ -> ((CTypName tn), (Some tn))
+                in
             let process_deps () = IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep loc in cvt2ctyp dep dep_loc) deps in
+            let decref_and_free dst_exp free_code loc =
+                let rc_exp = CExpArrow(dst_exp, (get_id "rc"), (CTypInt, loc)) in
+                let decref_exp = make_call !std_FX_DECREF [rc_exp] CTypInt loc in
+                let cmp_1_exp = CExpBinOp(COpCompareEQ, decref_exp, (make_int_exp 1 loc), (CTypBool, loc)) in
+                let cc_exp = CExpBinOp(COpLogicAnd, dst_exp, cmp_1_exp, (CTypBool, loc)) in
+                let call_free = make_call !std_fx_free [dst_exp] CTypVoid loc in
+                let then_exp = rccode2stmt ((CExp call_free) :: free_code) loc in
+                let clear_ptr = CExpBinOp(COpAssign, dst_exp, (make_nullptr loc), (CTypVoid, loc)) in
+                [(CExp clear_ptr); CStmtIf(cc_exp, then_exp, (CStmtNop loc), loc)]
+            in
+
             all_decls := IdSet.add tn !all_decls;
             (*printf "deps for %s: " (id2str tn); IdSet.iter (fun d -> printf "%s, " (id2str d)) deps; printf "\n";*)
             if recursive_variant then process_deps() else ();
@@ -477,11 +494,11 @@ let convert_all_typs top_code =
                         | _ -> ())
             | KVariant kvar ->
                 let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in
-                (*let isrecursive = List.mem VariantRecursive kvar_flags in*)
                 let int_ctx = (CTypCInt, kvar_loc) in
                 let void_ctx = (CTypVoid, kvar_loc) in
                 let tag_id = get_id "tag" in
                 let u_id = get_id "u" in
+                let dst_exp = if recursive_variant then CExpUnOp(COpDeref, dst_exp, (struct_typ, kvar_loc)) else dst_exp in
                 let src_tag_exp = CExpArrow(src_exp, tag_id, int_ctx) in
                 let dst_tag_exp = CExpArrow(dst_exp, tag_id, int_ctx) in
                 let src_u_exp = CExpArrow(src_exp, u_id, (CTypAny, kvar_loc)) in
@@ -510,8 +527,16 @@ let convert_all_typs top_code =
                     | _ ->
                         (* add "default: ;" case *)
                         let free_cases = ([], []) :: free_cases in
-                        let clear_tag = CExp(CExpBinOp(COpAssign, dst_tag_exp, CExpLit((LitInt 0L), int_ctx), void_ctx)) in
-                        clear_tag :: CStmtSwitch(dst_tag_exp, (List.rev free_cases), kvar_loc) :: [] in
+                        [CStmtSwitch(dst_tag_exp, (List.rev free_cases), kvar_loc)]
+                    in
+                let free_code = if recursive_variant then
+                        decref_and_free dst_exp free_code kvar_loc
+                    else
+                        let clear_tag = CExpBinOp(COpAssign, dst_tag_exp, (make_int_exp 1 kvar_loc), void_ctx) in
+                        if free_code = [] then
+                            (CExp clear_tag) :: free_code
+                        else []
+                    in
                 let copy_code = gen_copy_code src_tag_exp dst_tag_exp CTypCInt [] kvar_loc in
                 let default_copy_code = CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
                 let copy_code = match copy_cases with

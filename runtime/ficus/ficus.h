@@ -42,6 +42,8 @@ enum
     FX_EXN_NullPtrError = -17,
     FX_EXN_ZeroStepError = -18,
     FX_EXN_ASCIIError = -19,
+    FX_EXN_NullListError = -20,
+    FX_EXN_OptionError = -21,
 
     FX_EXN_User = -1024,
 };
@@ -119,16 +121,16 @@ void fx_free(void* ptr);
     ptrtyp ptr = (ptrtyp)fx_malloc(sz); \
     if(!ptr) return FX_EXN_OutOfMemError
 #define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else goto label
-#define FX_BREAK(label) { fx_status = FX_BREAK_EXN; goto label; }
-#define FX_CONTINUE(label) { fx_status = FX_CONTINUE_EXN; goto label; }
+#define FX_BREAK(label) { fx_status = FX_EXN_Break; goto label; }
+#define FX_CONTINUE(label) { fx_status = FX_EXN_Continue; goto label; }
 #define FX_CHECK_EXN_BREAK_CONTINUE(label) \
     if(fx_status >= 0) \
         ; \
-    else if(fx_status == FX_BREAK_EXN) { \
+    else if(fx_status == FX_EXN_Break) { \
         fx_status = FX_OK; \
         break; \
     } \
-    else if(fx_status == FX_CONTINUE_EXN) { \
+    else if(fx_status == FX_EXN_Continue) { \
         fx_status = FX_OK; \
         continue; \
     } \
@@ -137,11 +139,11 @@ void fx_free(void* ptr);
 #define FX_CHECK_EXN_BREAK_CONTINUE_ND(label, br_label) \
     if(fx_status >= 0) \
         ; \
-    else if(fx_status == FX_BREAK_EXN) { \
+    else if(fx_status == FX_EXN_Break) { \
         fx_status = FX_OK; \
         goto br_label; \
     } \
-    else if(fx_status == FX_CONTINUE_EXN) { \
+    else if(fx_status == FX_EXN_Continue) { \
         fx_status = FX_OK; \
         continue; \
     } \
@@ -152,7 +154,7 @@ void fx_free(void* ptr);
         ; \
     else goto label
 
-#define FX_COPY_PTR(src, dst) { FX_INCREF((src)->rc); *(dst) = (src); }
+#define FX_COPY_PTR(src, dst) { if(src) FX_INCREF((src)->rc); *(dst) = (src); }
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
@@ -335,7 +337,7 @@ void fx_free_list_simple(void* pl);
 #define FX_FREE_LIST_SIMPLE(pl) if(!*(pl)) ; else fx_free_list_simple(pl)
 
 #define FX_LIST_APPEND(l_first, l_last, x) \
-    if(l_last) l_last = l_last->tl = (x) else l_first = l_last = (x)
+    if(l_last) l_last = l_last->tl = (x); else l_first = l_last = (x)
 
 #define FX_MOVE_LIST(src, dst) \
     { (dst) = (src); (src) = 0; }
@@ -492,9 +494,7 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);
 int fx_fgets(FILE* f, fx_str_t* str);
 void fx_file_destructor(void* ptr);
 
-fx_cptr_t fx_get_stdin(void);
-fx_cptr_t fx_get_stdout(void);
-fx_cptr_t fx_get_stderr(void);
+fx_cptr_t fx_get_stdstream(int);
 
 #ifdef __cplusplus
 }

@@ -702,9 +702,7 @@ let make_const_ptr t = match t with
 
 let std_CTypVoidPtr = make_ptr CTypVoid
 let std_CTypConstVoidPtr = make_const_ptr CTypVoid
-let std_CTypAnyArray = CTypArray(0, CTypInt)
-let std_CTypAnyPtr = make_ptr CTypAny
-let std_CTypConstAnyPtr = make_const_ptr CTypAny
+let std_CTypAnyArray = CTypArray(0, CTypAny)
 
 let make_lit_exp l loc = let t = get_lit_ctyp l in CExpLit (l, (t, loc))
 let make_int__exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
@@ -772,6 +770,8 @@ let std_fx_malloc = ref noid
 let std_fx_free = ref noid
 let std_fx_free_t = ref noid
 let std_fx_copy_t = ref noid
+let std_FX_INCREF = ref noid
+let std_FX_DECREF = ref noid
 
 let std_FX_CALL = ref noid
 let std_FX_COPY_PTR = ref noid
