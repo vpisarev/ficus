@@ -52,14 +52,16 @@ let make_lexer fname =
 let parse_file fname inc_dirs =
     let fname_id = get_id fname in
     let lexer = make_lexer fname in
-    let inchan = open_in fname in
+    let use_stdin = fname = "stdin" in
+    let inchan = if use_stdin then stdin else open_in fname in
     let l = Lexing.from_channel inchan in
     let _ = (Utils.parser_ctx_file := fname_id) in
     let _ = (Utils.parser_ctx_deps := []) in
     let _ = (Utils.parser_ctx_inc_dirs := inc_dirs) in
     try
         let ast = Parser.ficus_module lexer l in
-        close_in inchan; ast
+        (if use_stdin then () else close_in inchan;
+        ast)
     with
     | e -> close_in inchan; raise e
 
@@ -67,6 +69,7 @@ let parse_all _fname0 =
     let cwd = Sys.getcwd() in
     let fname0 = normalize_path cwd _fname0 in
     let dir0 = Filename.dirname fname0 in
+    let fname0 = if _fname0 = "stdin" then _fname0 else fname0 in
     let inc_dirs0 = (if dir0 = cwd then [cwd] else [dir0; cwd]) @ options.include_path in
     let inc_dirs0 = List.map (fun d -> normalize_path cwd d) inc_dirs0 in
     (*let _ = print_string ("Module search path:\n\t" ^ (String.concat ",\n\t" inc_dirs0) ^ "\n") in*)
@@ -167,6 +170,23 @@ let k2c_all code =
     let ccode = C_gen_code.gen_ccode code in
     (ccode, !compile_errs = [])
 
+let run_compiler () =
+    let opt_level = options.optimize_level in
+    let cmd = "cc" in
+    let cmd = cmd ^ (sprintf " -O%d%s" opt_level (if opt_level = 0 then " -ggdb" else "")) in
+    let cmd = cmd ^ " -o " ^ options.app_filename in
+    let cmd = cmd ^ " -I" ^ options.runtime_path in
+    let cmd = cmd ^ " " ^ options.c_filename in
+    let ok = (Sys.command cmd) = 0 in
+    if not ok || options.write_c then () else Sys.remove options.c_filename;
+    ok
+
+let run_app () =
+    let cmd = String.concat " " (options.app_filename :: options.app_args) in
+    let ok = (Sys.command cmd) = 0 in
+    if options.make_app then () else Sys.remove options.app_filename;
+    ok
+
 let print_all_compile_errs () =
     let nerrs = List.length !compile_errs in
     if nerrs = 0 then ()
@@ -190,9 +210,11 @@ let process_all fname0 =
         let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
         let (code, ok) = if ok then k_optimize_all code else ([], false) in
         let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in
-        if not options.print_c then ok else
+        if not options.gen_c then ok else
             let (ccode, ok) = if ok then k2c_all code else ([], false) in
-            let _ = if ok && options.print_c then (C_pp.pprint_top ccode) else () in
+            let ok = if ok then (C_pp.pprint_top_to_file options.c_filename ccode) else ok in
+            let ok = if ok && (options.make_app || options.run_app) then run_compiler() else ok in
+            let ok = if ok && options.run_app then run_app() else ok in
             ok
     with
     | Failure msg -> print_string msg; false

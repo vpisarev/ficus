@@ -443,3 +443,11 @@ let pprint_ctyp_x t loc = Format.print_flush (); Format.open_box 0; pprint_ctyp_
 let pprint_cexp_x e = Format.print_flush (); Format.open_box 0; pprint_cexp_ e 0; Format.close_box(); Format.print_flush ()
 let pprint_cstmt_x s = Format.print_flush (); Format.open_box 0; pprint_cstmt s; Format.close_box(); Format.print_flush ()
 let pprint_top code = Format.print_flush (); Format.open_vbox 0; List.iter (fun s -> pprint_cstmt s; pbreak()) code; Format.close_box(); pbreak(); Format.print_flush ()
+let pprint_top_to_file filename code =
+    (let outch = open_out filename in
+    Format.set_formatter_out_channel outch;
+    pprint_top code;
+    Format.print_flush();
+    Format.set_formatter_out_channel stdout;
+    close_out outch;
+    true)

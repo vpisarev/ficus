@@ -1,3 +1,5 @@
+import Args
+
 type 't point_ = {x: 't; y: 't}
 type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
 

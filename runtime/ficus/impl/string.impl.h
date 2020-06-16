@@ -379,34 +379,50 @@ int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr)
     return FX_OK;
 }
 
-int fx_strjoin(const fx_str_t* sep, fx_str_t* s, int_ count, fx_str_t* result)
+int fx_strjoin(const fx_str_t* begin, const fx_str_t* end, const fx_str_t* sep,
+               const fx_str_t* s, int_ count, fx_str_t* result)
 {
     int_ seplen = sep ? sep->length : 0;
-    if(count == 0) {
-        // result should already be initialized with empty string
-        return FX_OK;
+    int_ beginlen = begin ? begin->length : 0;
+    int_ endlen = end ? end->length : 0;
+
+    if(beginlen == 0 && endlen == 0) {
+        if(count == 0) {
+            // result should already be initialized with empty string
+            return FX_OK;
+        }
+        if(count == 1) {
+            fx_copy_str(&s[0], result);
+            return FX_OK;
+        }
     }
-    if(count == 1) {
-        fx_copy_str(&s[0], result);
-        return FX_OK;
-    }
-    int_ i, total = seplen*(count-1);
+    int_ i, total = seplen*(count > 1 ? count-1 : 0);
     for( i = 0; i < count; i++ )
         total += s[i].length;
+    if(begin)
+        total += begin->length;
+    if(end)
+        total += end->length;
     int status = fx_make_str(0, total, result);
     if(status < 0) return status;
 
+    size_t szch = sizeof(result->data[0]);
     int_ ofs = 0;
-    for( i = 0; i < count; i++ )
-    {
-        if(i > 0 && seplen > 0)
-        {
-            memcpy(result->data + ofs, sep->data, seplen*sizeof(result->data[0]));
+    if (beginlen) {
+        memcpy(result->data, begin->data, beginlen*szch);
+        ofs = beginlen;
+    }
+    for( i = 0; i < count; i++ ) {
+        if (i > 0 && seplen > 0) {
+            memcpy(result->data + ofs, sep->data, seplen*szch);
             ofs += seplen;
         }
         int_ len_i = s[i].length;
-        memcpy(result->data + ofs, s[i].data, len_i*sizeof(result->data[0]));
+        memcpy(result->data + ofs, s[i].data, len_i*szch);
         ofs += len_i;
+    }
+    if (endlen) {
+        memcpy(result->data + ofs, end->data, endlen*szch);
     }
     return FX_OK;
 }

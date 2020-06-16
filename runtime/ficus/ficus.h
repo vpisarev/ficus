@@ -273,7 +273,8 @@ size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* b
 int fx_ascii2str(const char* cstr, int_ length, fx_str_t* str);
 int fx_cstr2str(const char* cstr, int_ length, fx_str_t* str);
 int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr);
-int fx_strjoin(const fx_str_t* sep, fx_str_t* strs, int_ count, fx_str_t* result);
+int fx_strjoin(const fx_str_t* begin, const fx_str_t* end, const fx_str_t* sep,
+                const fx_str_t* strs, int_ count, fx_str_t* result);
 
 bool fx_isalpha(char_ ch);
 bool fx_isdigit(char_ ch);
@@ -490,7 +491,7 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);
 
 //////////////////////////// File I/O //////////////////////////////
 
-//int fx_fputs(FILE* f, const fx_str_t* str);
+int fx_fputs(FILE* f, const fx_str_t* str);
 int fx_fgets(FILE* f, fx_str_t* str);
 void fx_file_destructor(void* ptr);
 

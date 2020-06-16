@@ -29,26 +29,37 @@ fun getOpt(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
 
 pure nothrow fun length(s: string): int = ccode "return s->length;"
 pure fun join(sep: string, strs:string []): string = ccode
-    "return fx_strjoin(sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);"
+    "return fx_strjoin(0, 0, sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);"
+pure fun join_embrace(begin: string, end: string, sep: string, strs:string []): string = ccode
+    "return fx_strjoin(begin, end, sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);"
 
 fun join(sep: string, strs: string list) =
     join(sep, [for s <- strs {s}])
+
+operator + (a: string, b: string): string = ccode "fx_str_t s[] = {*a, *b}; return fx_strjoin(0, 0, 0, s, 2, fx_result);"
+operator + (a: string, b: char): string = ccode "
+    fx_str_t s[] = {*a, {0, &b, 1}};
+    return fx_strjoin(0, 0, 0, s, 2, fx_result);"
+operator + (a: char, b: string): string = ccode "
+    fx_str_t s[] = {{0, &a, 1}, *b};
+    return fx_strjoin(0, 0, 0, s, 2, fx_result);"
 
 fun string(a: bool): string = if a {"true"} else {"false"}
 fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%zd\", a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: string) = a
-fun string(a: 't []) {
-    val n = size(a)
-    if n == 0 {"[]"}
-    else {
-        join(", ",
-            [for i <- 0:n {
-                val ai = string(a[i])
-                if i == 0 {if n > 1 {"["+ai} else {"["+ai+"]"}} else if i < n-1 {ai} else {ai+"]"}
-        }])
-    }
+fun repr(a: 't): string = string(a)
+fun repr(a: string) = "\"" + a + "\""
+
+fun string(a: 't [])
+{
+    join_embrace("[", "]", ", ", [for x <- a {repr(x)}])
+}
+
+fun string(l: 't list)
+{
+    join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
 }
 
 operator != (a: 't, b: 't): bool = !(a == b)
@@ -61,14 +72,6 @@ pure nothrow operator == (a: string, b: string): bool = ccode
     "
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
     "return a == b;"
-
-operator + (a: string, b: string): string = ccode "fx_str_t s[] = {*a, *b}; return fx_strjoin(0, s, 2, fx_result);"
-operator + (a: string, b: char): string = ccode "
-    fx_str_t s[] = {*a, {0, &b, 1}};
-    return fx_strjoin(0, s, 2, fx_result);"
-operator + (a: char, b: string): string = ccode "
-    fx_str_t s[] = {{0, &a, 1}, *b};
-    return fx_strjoin(0, s, 2, fx_result);"
 
 fun atoi(a: string): int?
 {
@@ -139,6 +142,15 @@ nothrow fun print(a: int): void = ccode "printf(\"%zd\", a);"
 nothrow fun print(a: float): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.8g\"), a);"
 nothrow fun print(a: double): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.16g\"), a);"
 fun print(a: string) = print_string(a)
+fun print(l: 't [])
+{
+    print("[")
+    for i <- 0:, x <- l {
+        if i > 0 {print(", ")}
+        print(x)
+    }
+    print("]")
+}
 fun print(l: 't list)
 {
     print("[")
