@@ -316,8 +316,19 @@ let rec exp2kexp e code tref sc =
         (KExpAtom(a, (t, eloc)), code)
     | ExpCCode(s, _) -> (KExpCCode(s, kctx), code)
     | ExpMatch(e1, cases, _) ->
+        let loc1 = get_exp_loc e1 in
         let (a, code) = exp2atom e1 code false sc in
-        let (k_cases, code) = transform_pat_matching a cases code sc eloc false in
+        let (b, code) = if not (is_mutable_atom a loc1) then (a, code) else
+            let a_id = match a with
+                | Atom.Id a_id -> a_id
+                | _ -> raise_compile_err loc1 "k-norm: invalid mutable atom (id is expected)"
+                in
+            let t = get_atom_ktyp a loc1 in
+            let b = dup_idk a_id in
+            let code = create_defval b t [ValTemp] (Some (KExpAtom (a, (t, loc1)))) code sc loc1 in
+            ((Atom.Id b), code)
+            in
+        let (k_cases, code) = transform_pat_matching b cases code sc eloc false in
         (KExpMatch(k_cases, kctx), code)
     | ExpTryCatch(e1, cases, _) ->
         let e1loc = get_exp_loc e1 in
@@ -626,7 +637,11 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (n, code) = match (ke, tref) with
                 | (KExpAtom((Atom.Id n0), _), true) -> (n0, code)
                 | _ ->
-                    let flags = if tref then ValTempRef :: [] else [] in
+                    let is_scalar = match ptyp with
+                        | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> true
+                        | _ -> false
+                        in
+                    let flags = if is_scalar then ValTemp :: [] else ValTempRef :: [] in
                     let code = create_defval n ptyp flags (Some ke) code sc loc in
                     (n, code) in
             let (plists, checks, code) =
