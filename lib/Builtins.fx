@@ -73,15 +73,10 @@ pure nothrow operator == (a: string, b: string): bool = ccode
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
     "return a == b;"
 
-fun atoi(a: string): int?
-{
-    fun atoi_(a: string): (int, bool) = ccode
-        "return fx_atoi(a, &fx_result->t0, &fx_result->t1, 10);"
-    match atoi_(a) {
-    | (x, true) => Some(x)
-    | _ => None
-    }
-}
+nothrow fun atoi(a: string): int? = ccode
+    "bool ok = true;
+    fx_atoi(a, &fx_result->u.Some, &ok, 10);
+    fx_result->tag = (int)ok;"
 
 pure nothrow fun sat_uint8(i: int): uint8 = ccode "
     return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"

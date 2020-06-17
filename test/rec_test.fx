@@ -4,8 +4,8 @@ type 't point_ = {x: 't; y: 't}
 type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
 
 fun contains(r: 'z rect_, p: 'z point_) =
-    r.x <= p.x && p.x < r.x + r.width &&
-    r.y <= p.y && p.y < r.y + r.height
+    r.x <= p.x < r.x + r.width &&
+    r.y <= p.y < r.y + r.height
 
 fun string(p: 't point_) = "point {x=\(p.x), y=\(p.y)}"
 fun string(r: 't rect_) = "rect {x=\(r.x), y=\(r.y), width=\(r.width), height=\(r.height)}"

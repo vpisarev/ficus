@@ -773,6 +773,7 @@ let std_fx_copy_t = ref noid
 let std_FX_INCREF = ref noid
 let std_FX_DECREF = ref noid
 
+let std_FX_RESULT_MALLOC = ref noid
 let std_FX_CALL = ref noid
 let std_FX_COPY_PTR = ref noid
 let std_FX_COPY_SIMPLE = ref noid

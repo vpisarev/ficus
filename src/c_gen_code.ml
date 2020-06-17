@@ -1711,29 +1711,76 @@ let gen_ccode top_code =
                 | CFun ({contents={cf_typ=CTypFun(argtyps, rt); cf_args}} as cf) -> (argtyps, rt, cf_args, cf)
                 | _ -> raise_compile_err kf_loc "cgen: the function declaration was not properly converted"
                 in
+            let (kargtyps, krt) = match kf_typ with
+                | KTypFun(kargtyps, krt) -> (kargtyps, krt)
+                | _ -> ([], kf_typ)
+                in
+            let nkargtyps = List.length kargtyps in
+            let (real_args, retid) = match (List.rev args) with
+                | (retid :: rargs) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, retid)
+                | (_ :: retid :: rargs) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, retid)
+                | rargs ->
+                    let nargs = List.length args in
+                    (* cut off fx_vf if needed *)
+                    let rargs = if nargs > nkargtyps then (List.tl rargs) else rargs in
+                    (rargs, noid)
+                in
+            let real_args = List.rev real_args in
+            let _ = if nkargtyps = (List.length real_args) then () else
+                raise_compile_err kf_loc "cgen: inconsistent number of argument types after conversion to C" in
+            let constr_idx = get_fun_constr kf_flags in
             (* in the list of parameters the return value (if any) can be the last one
                (in the case of no-throw functions) or pre-last one
                (in the case of functions that may throw exceptions)
             *)
-            let new_body = (match kf_body with
-                | KExpCCode(code, (_, loc)) -> CExp (CExpCCode(code, loc)) :: []
+            let new_body = (match (kf_body, constr_idx >= 0) with
+                | (KExpCCode(code, (_, loc)), _) -> CExp (CExpCCode(code, loc)) :: []
+                | (_, true) ->
+                    let is_recursive_variant = match krt with
+                        | KTypName vn ->
+                            (match (kinfo_ vn kf_loc) with
+                            | KVariant {contents={kvar_flags}} -> List.mem VariantRecursive kvar_flags
+                            | _ -> raise_compile_err kf_loc
+                                (sprintf "cgen: the return type of variant constructor %s is not variant" (id2str kf_name)))
+                        | _ -> raise_compile_err kf_loc
+                            (sprintf "cgen: the return type of variant constructor %s is not variant" (id2str kf_name))
+                        in
+                    let var_exp = (make_id_exp retid kf_loc) in
+                    let result_ctyp = C_gen_types.ktyp2ctyp krt kf_loc in
+                    let (var_exp, ccode, ret_ccode) =
+                        if is_recursive_variant then
+                            let var_exp = cexp_deref var_exp in
+                            let call_malloc = make_call !std_FX_RESULT_MALLOC [CExpTyp(result_ctyp, kf_loc); var_exp] CTypVoid kf_loc in
+                            let ccode = (CExp call_malloc) :: [] in
+                            let (var_exp, ccode) = create_cdefval (gen_temp_idc "result") result_ctyp
+                                    [ValMutable] "v" (Some var_exp) ccode kf_scope kf_loc in
+                            let init_rc = CExpBinOp(COpAssign, (cexp_arrow var_exp (get_id "rc") CTypInt),
+                                (make_int_exp 1 kf_loc), (CTypVoid, kf_loc)) in
+                            let ret_ccode = CStmtReturn (Some (make_int_exp 0 kf_loc), kf_loc) :: [] in
+                            (var_exp, (CExp init_rc) :: ccode, ret_ccode)
+                        else
+                            (var_exp, [], [])
+                        in
+                    let init_tag = CExpBinOp(COpAssign, (cexp_arrow var_exp (get_id "tag") CTypInt),
+                        (make_int_exp constr_idx kloc), (CTypVoid, kloc)) in
+                    let ccode = (CExp init_tag) :: ccode in
+                    let dstbase = cexp_arrow var_exp (get_id "u") CTypAny in
+                    let dstbase = cexp_mem dstbase (get_orig_id kf_name) CTypAny in
+                    let (_, ccode) = List.fold_left2 (fun (idx, ccode) a kt ->
+                        let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kt kf_loc in
+                        let srcexp = make_id_exp a kf_loc in
+                        let srcexp = if ktp_pass_by_ref then (cexp_deref srcexp) else srcexp in
+                        let dstexp = dstbase in
+                        let ctyp = C_gen_types.ktyp2ctyp kt kf_loc in
+                        let dstexp = if nkargtyps = 1 then dstexp else
+                            let tup_elem = get_id ("t" ^ (string_of_int idx)) in
+                            (cexp_mem dstexp tup_elem ctyp)
+                            in
+                        let ccode = C_gen_types.gen_copy_code srcexp dstexp ctyp ccode kf_loc in
+                        (idx+1, ccode)) (0, ccode) real_args kargtyps
+                    in
+                    List.rev (ret_ccode @ ccode)
                 | _ ->
-                    let kargtyps = match kf_typ with
-                        | KTypFun(kargtyps, _) -> List.rev kargtyps
-                        | _ -> []
-                        in
-                    let nkargtyps = List.length kargtyps in
-                    let (real_args, retid) = match (List.rev args) with
-                        | (retid :: rargs) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, retid)
-                        | (_ :: retid :: rargs) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, retid)
-                        | rargs ->
-                            let nargs = List.length args in
-                            (* cut off fx_vf if needed *)
-                            let rargs = if nargs > nkargtyps then (List.tl rargs) else rargs in
-                            (rargs, noid)
-                        in
-                    let _ = if nkargtyps = (List.length real_args) then () else
-                        raise_compile_err kf_loc "cgen: inconsistent number of argument types after conversion to C" in
                     let dstexp_r = ref (if retid = noid then None else
                         (Some (cexp_deref (make_id_exp retid kf_loc))))
                         in
@@ -1742,8 +1789,10 @@ let gen_ccode top_code =
                         else create_cdefval status_id CTypCInt [ValMutable] "fx_status"
                             (Some (make_int_exp 0 kf_loc)) [] kf_scope kf_loc
                         in
+                    (*let _ = printf "converting function %s:\n" kf_cname in*)
                     let _ = List.iter2 (fun a kt ->
                         let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kt kf_loc in
+                        (*printf "\t%s%s:" (if ktp_pass_by_ref then "by ref " else "by value ") (id2str a); K_pp.pprint_ktyp_x kt kf_loc; printf "\n";*)
                         if not ktp_pass_by_ref then () else
                             i2e := Env.add a (cexp_deref (make_id_exp a kf_loc)) !i2e)
                         real_args kargtyps

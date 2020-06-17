@@ -120,6 +120,9 @@ void fx_free(void* ptr);
 #define FX_DECL_AND_MALLOC(ptrtyp, ptr, sz) \
     ptrtyp ptr = (ptrtyp)fx_malloc(sz); \
     if(!ptr) return FX_EXN_OutOfMemError
+#define FX_RESULT_MALLOC(ptrtyp, ptr) \
+    if (((ptr)=(ptrtyp)fx_malloc(sizeof(*(ptr)))) != 0) ; else return FX_EXN_OutOfMemError
+
 #define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else goto label
 #define FX_BREAK(label) { fx_status = FX_EXN_Break; goto label; }
 #define FX_CONTINUE(label) { fx_status = FX_EXN_Continue; goto label; }
