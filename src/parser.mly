@@ -7,6 +7,8 @@
 (* ficus parser *)
 open Ast
 
+let get_fold_result() = get_id "__fold_result__"
+
 let make_loc(pos0, pos1) =
     let { Lexing.pos_lnum=l0; Lexing.pos_bol=b0; Lexing.pos_cnum=c0 } = pos0 in
     let { Lexing.pos_lnum=l1; Lexing.pos_bol=b1; Lexing.pos_cnum=c1 } = pos1 in
@@ -85,40 +87,31 @@ let make_variant_type (targs, tname) var_elems0 is_record =
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
 
-let rec make_for body nested flags = match nested with
+let rec make_for body nested flags each_for_flags = match nested with
     | (loc, for_cl_) :: rest ->
-        make_for (ExpFor((List.rev for_cl_), body, (if rest=[] then flags else []), loc)) rest flags
+        let curr_flags = if rest=[] then flags else [ForNested] in
+        make_for (ExpFor((List.rev for_cl_), body, each_for_flags @ curr_flags, loc)) rest flags each_for_flags
     | _ -> body
 
 let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_body =
     (* `fold p=e0 for ... e1`
             is transformed to
         `{
-        var p = e0
-        for ... e1
-        p
+        var __fold_result__ = e0
+        for ... { val p=__fold_result__; __fold_result__ = e1 }
+        __fold_result__
         }`
     *)
-    let rec fold_pat2exp p =
-        (let (ptype, ploc) as ctx = (make_new_typ(), get_pat_loc p) in
-        match p with
-        | PatTuple(pl, _) -> ExpMkTuple((List.map fold_pat2exp pl), ctx)
-        | PatTyped(p, t, _) -> ExpTyped((fold_pat2exp p), t, ctx)
-        | PatIdent(i, _) -> ExpIdent(i, ctx)
-        | PatVariant(f, pl, _) ->
-            ExpCall(ExpIdent(f, (make_new_typ(), ploc)), (List.map fold_pat2exp pl), ctx)
-        | _ ->
-            let (pos0, pos1) = ((Parsing.rhs_start_pos fold_pat_n), (Parsing.rhs_end_pos fold_pat_n)) in
-            raise (SyntaxError
-                (("unsupported accumulator pattern in the fold() expression; " ^
-                "only identifiers, tuples, single-case variants, type annotations " ^
-                "and various combinations of those are currently supported."),
-                pos0, pos1))) in
     let acc_loc = get_pat_loc fold_pat in
-    let acc_decl = DefVal(fold_pat, fold_init_exp, [ValMutable], acc_loc) in
-    let for_exp = make_for fold_body nested_fold_cl [] in
-    let acc_exp = fold_pat2exp fold_pat in
-    ExpSeq([acc_decl; for_exp; acc_exp], (make_new_typ(), curr_loc()))
+    let fr_id = get_fold_result() in
+    let fr_exp = ExpIdent(fr_id, (make_new_typ(), acc_loc)) in
+    let fr_decl = DefVal(PatIdent(fr_id, acc_loc), fold_init_exp, [ValMutable], acc_loc) in
+    let acc_decl = DefVal(fold_pat, fr_exp, [], acc_loc) in
+    let body_loc = get_exp_loc fold_body in
+    let update_fr = ExpAssign(fr_exp, fold_body, body_loc) in
+    let new_body = ExpSeq([acc_decl; update_fr], (TypVoid, body_loc)) in
+    let for_exp = make_for new_body nested_fold_cl [] [ForFold] in
+    ExpSeq([fr_decl; for_exp; fr_exp], (make_new_typ(), curr_loc()))
 
 let rec compress_nested_map_exp nested_for =
     List.fold_left (fun l (loc, for_cl) -> (for_cl, None) :: l) [] nested_for
@@ -185,7 +178,10 @@ let make_chained_cmp chain = match chain with
 %token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION EXTENDS
 %token FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
 %token MATCH NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
-%token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE
+%token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE WITH
+
+/* reserved/internal-use keywords */
+%token FOLD_RESULT
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE LLIST RLIST
@@ -364,7 +360,14 @@ exception_decl:
     }
 
 stmt:
-| BREAK { ExpBreak (curr_loc()) }
+| BREAK { ExpBreak (false, curr_loc()) }
+| BREAK WITH exp
+    {
+        let (tp, loc) = make_new_ctx() in
+        let fr = ExpIdent(get_fold_result(), (tp, loc)) in
+        let set_fr = ExpAssign(fr, $3, loc) in
+        ExpSeq ([set_fr; ExpBreak(true, loc)], (TypVoid, loc))
+    }
 | CONTINUE { ExpContinue(curr_loc()) }
 | THROW exp { ExpThrow($2, curr_loc()) }
 | simple_exp EQUAL complex_exp { ExpAssign($1, $3, curr_loc()) }
@@ -380,7 +383,7 @@ stmt:
     }
 | B_WHILE exp_or_block block { ExpWhile($2, $3, curr_loc()) }
 | DO block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
-| for_flags B_FOR nested_for_ block { make_for $4 $3 $1 }
+| for_flags B_FOR nested_for_ block { make_for $4 $3 $1 [] }
 | complex_exp { $1 }
 
 ccode_exp:
@@ -433,6 +436,12 @@ simple_exp:
     {
         let l = List.rev ($2 :: $4) in
         let e0 = ExpLit(LitNil, ((TypList (make_new_typ())), curr_loc_n 5)) in
+        List.fold_left (fun e i -> make_bin_op(OpCons, i, e)) e0 l
+    }
+| LLIST complex_exp RLIST
+    {
+        let l = $2 :: [] in
+        let e0 = ExpLit(LitNil, ((TypList (make_new_typ())), curr_loc_n 3)) in
         List.fold_left (fun e i -> make_bin_op(OpCons, i, e)) e0 l
     }
 | simple_exp LPAREN exp_list RPAREN

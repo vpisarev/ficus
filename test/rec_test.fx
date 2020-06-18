@@ -1,4 +1,4 @@
-import Args
+import Args, Math
 
 type 't point_ = {x: 't; y: 't}
 type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
@@ -21,3 +21,15 @@ fun inside_outside(p: 't point_, r: 't rect_) =
 
 println("\(ip) is \(inside_outside(ip, ir)) \(ir)")
 println("\(fp) is \(inside_outside(fp, fr)) \(fr)")
+
+fun is_prime(n: int) {
+    if n == 1 {false} else if n == 2 {true} else if n % 2 == 0 {false}
+    else {
+        fold r=true for p<-3:Math.floor(Math.sqrt(n :> double))+1:2 {
+            if n % p == 0 {break with false};
+            r
+        }
+    }
+}
+
+println("primes <100: \([: for i <- 0:100 {if !is_prime(i) {continue}; i} :])")

@@ -25,27 +25,27 @@ pure nothrow fun length(l: 't list): int = ccode
     "return fx_list_length(l);"
 
 fun rev(l: 't list): 't list =
-    fold r=([]: t list) for a <- l {r = a :: r}
+    fold r=([]: t list) for a <- l {a :: r}
 
 fun array(l: 't list): 't [] = [for x <- l {x}]
 
 fun all(l: 't list, f: 't -> bool): bool =
-    fold r=true for a <- l {if !f(a) { r=false; break }}
+    fold r=true for a <- l {if !f(a) { break with false}; r}
 
 fun all2((la, lb): ('a list, 'b list), f: ('a, 'b) -> bool): bool =
-    fold r=true for a <- l, b <- l {if !f(a, b) { r=false; break }}
+    fold r=true for a <- l, b <- l {if !f(a, b) {break with false}; r}
 
 fun exists(l: 't list, f: 't -> bool): bool =
-    fold r=false for a <- l {if f(a) {r=true; break}}
+    fold r=false for a <- l {if f(a) {break with true}; r}
 
 fun mem(l: 't list, a: 't): bool =
-    fold r=false for b <- l {if a == b {r=true; break}}
+    fold r=false for b <- l {if a == b {break with true}; r}
 
 fun find_opt(l: 't list, f: 't -> bool): 't? =
-    fold r=None for a <- l {if f(a) {r=Some(a); break}}
+    fold r=None for a <- l {if f(a) {break with Some(a)}; r}
 
 fun concat(ll: 't list list): 't list =
-    fold s = ([]: 't list) for l <- rev(ll) {s = l + s}
+    fold s = ([]: 't list) for l <- rev(ll) {l + s}
 
 fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
     [: for x <- la, y <- lb {(x, y)} :]

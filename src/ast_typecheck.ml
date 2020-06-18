@@ -734,6 +734,37 @@ and check_exp e env sc =
             | _ -> raise_compile_err eloc "unsupported iteration domain; it should be a range, array, list or a string") in
         let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true false in
         (p, e, dims, env, idset) in
+    let check_inside_for expect_fold_loop isbr =
+        let kw = if not isbr then "continue" else if expect_fold_loop then "break with" else "break" in
+        let rec check_inside_ sc =
+            match sc with
+            | ScTry _ :: _ ->
+                raise_compile_err eloc (sprintf "cannot use '%s' inside 'try-catch' block" kw)
+            | ScFun _ :: _ | ScModule _ :: _ | ScGlobal :: _ | ScClass _ :: _ | ScInterface _ :: _ | [] ->
+                raise_compile_err eloc (sprintf "cannot use '%s' outside of loop" kw)
+            | ScLoop (nested, _) :: _ ->
+                if expect_fold_loop then
+                    raise_compile_err eloc (sprintf "'%s' can only be used inside 'fold' loop" kw)
+                else if isbr && nested then
+                    raise_compile_err eloc
+                    ("break cannot be used inside nested for-loop because of ambiguity.\n" ^
+                    "\tUse explicit curly braces, e.g. 'for ... { for ... { for ... { break }}} to'\n" ^
+                    "\texit a single for-loop, or use exceptions, e.g. standard Break exception to exit nested loops.")
+                else ()
+            | ScFold _ :: _ ->
+                if expect_fold_loop then ()
+                else raise_compile_err eloc (sprintf "cannot use '%s' inside 'fold' loop" kw)
+            | ScArrMap _ :: _ ->
+                raise_compile_err eloc (sprintf "cannot use '%s' inside array comprehension" kw)
+            | ScMap _ :: _ ->
+                if expect_fold_loop then
+                    raise_compile_err eloc (sprintf "'%s' can only be used inside 'fold' loop" kw)
+                else ()
+            | ScBlock _ :: outer_sc ->
+                check_inside_ outer_sc
+        in
+            check_inside_ sc
+    in
     let new_e =
     (match e with
     | ExpNop(_) -> e
@@ -886,7 +917,7 @@ and check_exp e env sc =
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)
             let f_id = get_binop_fname bop eloc in
-            check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1; new_e2], ctx)) env sc)
+            check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [e1; e2], ctx)) env sc)
 
     | ExpThrow(e1, _) ->
         let (etyp1, eloc1) = get_exp_ctx e1 in
@@ -1007,7 +1038,8 @@ and check_exp e env sc =
         let _ = unify ctyp TypBool cloc "while() loop condition should have 'bool' type" in
         let _ = unify btyp TypVoid bloc "while() loop body should have 'void' type" in
         let new_c = check_exp c env sc in
-        let new_body = check_exp body env sc in
+        let loop_sc = new_loop_scope(false) :: sc in
+        let new_body = check_exp body env loop_sc in
         ExpWhile (new_c, new_body, eloc)
     | ExpDoWhile(body, c, _) ->
         let (ctyp, cloc) = get_exp_ctx c in
@@ -1015,10 +1047,13 @@ and check_exp e env sc =
         let _ = unify ctyp TypBool cloc "do-while() loop condition should have 'bool' type" in
         let _ = unify btyp TypVoid bloc "do-while() loop body should have 'void' type" in
         let new_c = check_exp c env sc in
-        let new_body = check_exp body env sc in
+        let loop_sc = new_loop_scope(false) :: sc in
+        let new_body = check_exp body env loop_sc in
         ExpDoWhile (new_body, new_c, eloc)
     | ExpFor(for_clauses, body, flags, _) ->
-        let for_sc = new_block_scope() :: sc in
+        let is_fold = List.mem ForFold flags in
+        let is_nested = List.mem ForNested flags in
+        let for_sc = (if is_fold then new_fold_scope() else new_loop_scope(is_nested)) :: sc in
         let (for_clauses1, _, env1, _) = List.fold_left
             (fun (for_clauses1, dims1, env1, idset1) (pi, ei) ->
                 let (pi, ei, dims, env1, idset1) = check_for_clause pi ei env1 idset1 for_sc in
@@ -1033,7 +1068,7 @@ and check_exp e env sc =
         ExpFor((List.rev for_clauses1), new_body, flags, eloc)
     | ExpMap (map_clauses, body, flags, ctx) ->
         let make_list = List.mem ForMakeList flags in
-        let for_sc = new_block_scope() :: sc in
+        let for_sc = (if make_list then new_map_scope() else new_arr_map_scope()) :: sc in
         let (map_clauses1, total_dims, env1, _) = List.fold_left
             (fun (map_clauses1, total_dims, env1, idset1) (for_clauses, opt_c) ->
                 let (for_clauses1, dims1, env1, idset1) = List.fold_left
@@ -1061,9 +1096,12 @@ and check_exp e env sc =
                 unify etyp (TypArray(total_dims, btyp)) bloc
                 (sprintf "the map should return %d-dimensional array with elements of the same type as the map body" total_dims) in
         let new_body = check_exp body env1 for_sc in
+        if deref_typ (get_exp_typ new_body) = TypVoid then
+            raise_compile_err eloc "array comprehension body cannot have 'void' type"
+        else ();
         ExpMap((List.rev map_clauses1), new_body, flags, ctx)
-    | ExpBreak _ -> e
-    | ExpContinue _ -> e
+    | ExpBreak (f, _) -> check_inside_for f true; e
+    | ExpContinue _ -> check_inside_for false false; e
     | ExpMkArray (arows, _) ->
         (* [TODO] support extended syntax of array initialization *)
         let dims = if (List.length arows) > 1 then 2 else 1 in
@@ -1106,6 +1144,7 @@ and check_exp e env sc =
                 "there is no record field '%s' in the updated record" (id2str ni))) r_initializers in
         ExpUpdateRecord(new_r_e, new_r_initializers, ctx)
     | ExpTryCatch(e1, cases, _) ->
+        let sc = new_try_scope() :: sc in
         let (e1typ, e1loc) = get_exp_ctx e1 in
         let _ = unify etyp e1typ e1loc "try body type does match the whole try-catch type" in
         let new_e1 = check_exp e1 env sc in

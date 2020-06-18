@@ -188,6 +188,7 @@ let occurs_id_kexp i0 e =
 type block_kind_t =
     | BlockKind_Global
     | BlockKind_Fun of id_t
+    | BlockKind_Branch
     | BlockKind_Try
     | BlockKind_Loop
     | BlockKind_LoopND
@@ -199,6 +200,7 @@ type block_ctx_t =
     bctx_scope: scope_t list;
     bctx_label: id_t;
     bctx_br_label: id_t;
+    bctx_for_flags: for_flag_t list;
     mutable bctx_prologue: cstmt_t list;
     mutable bctx_cleanup: cstmt_t list;
     mutable bctx_break_used: int;
@@ -230,16 +232,21 @@ let gen_ccode top_code =
     let check_inside_loop is_break loc =
         let rec check_inside_loop_ s =
             match s with
-            | ({bctx_kind=BlockKind_Loop} as top) :: _
-            | ({bctx_kind=BlockKind_LoopND} as top) :: _ ->
-                if is_break then
-                    top.bctx_break_used <- top.bctx_break_used + 1
-                else
-                    top.bctx_continue_used <- top.bctx_continue_used + 1
-            | {bctx_kind=BlockKind_Fun _} :: _ ->
-                raise_compile_err loc
-                    (sprintf "'%s' is used outside of a loop" (if is_break then "break" else "continue"))
-            | _ :: rest -> check_inside_loop_ rest
+            | top :: rest ->
+                let {bctx_kind; bctx_for_flags} = top in
+                (match bctx_kind with
+                | BlockKind_Loop | BlockKind_LoopND ->
+                    if (List.mem ForNested bctx_for_flags) then
+                        check_inside_loop_ rest
+                    else
+                        if is_break then
+                            top.bctx_break_used <- top.bctx_break_used + 1
+                        else
+                            top.bctx_continue_used <- top.bctx_continue_used + 1
+                | BlockKind_Fun _ | BlockKind_Global ->
+                    raise_compile_err loc
+                        (sprintf "'%s' is used outside of a loop" (if is_break then "break" else "continue"))
+                | _ -> check_inside_loop_ rest)
             | _ ->
                 raise_compile_err loc
                     (sprintf "'%s' is used outside of a loop" (if is_break then "break" else "continue"))
@@ -261,7 +268,7 @@ let gen_ccode top_code =
         | _ -> noid
     in
 
-    let new_block_ctx kind sc loc =
+    let new_block_ctx_ kind for_flags sc loc =
         let l_basename = match kind with
             | BlockKind_Global | BlockKind_Fun _ -> "cleanup"
             | _ -> "catch" in
@@ -270,10 +277,19 @@ let gen_ccode top_code =
             make_label "break" sc (get_end_loc loc) in
         let bctx = {bctx_kind = kind; bctx_scope=sc; bctx_label=l;
                     bctx_br_label = br_l;
+                    bctx_for_flags = for_flags;
                     bctx_prologue=[]; bctx_cleanup=[];
                     bctx_break_used=0; bctx_continue_used=0;
                     bctx_label_used=0} in
         block_stack := bctx :: !block_stack
+    in
+
+    let new_block_ctx kind sc loc = new_block_ctx_ kind [] sc loc
+    in
+
+    let new_for_block_ctx ndims for_flags sc loc =
+        let kind = if ndims = 1 then BlockKind_Loop else BlockKind_LoopND in
+        new_block_ctx_ kind for_flags sc loc
     in
 
     let pop_block_ctx loc =
@@ -415,31 +431,30 @@ let gen_ccode top_code =
         let end_loc = get_end_loc loc in
         let bctx = curr_block_ctx loc in
         let {bctx_kind; bctx_prologue; bctx_cleanup;
-            bctx_break_used; bctx_continue_used;
+            bctx_break_used; bctx_continue_used; bctx_for_flags;
             bctx_label; bctx_br_label; bctx_label_used} = bctx in
         let _ = if bctx_kind = BlockKind_Loop || bctx_kind = BlockKind_LoopND then
             () else raise_compile_err loc "cgen: the current context is not a loop" in
         let epilogue = List.rev bctx_cleanup in
         let (br_label, epilogue) =
-            if bctx_label_used = 0 then
+            if bctx_label_used + bctx_break_used + bctx_continue_used = 0 then
                 (noid, epilogue)
             else
                 (let parent_label_exp = parent_block_label end_loc in
-                let (br_label, check_exn, args) =
-                    if bctx_break_used + bctx_continue_used = 0 then
-                        (noid, !std_FX_CHECK_EXN, [parent_label_exp])
+                let epilogue = CStmtLabel(bctx_label, end_loc) :: epilogue in
+                let _ = if enable_break_continue || bctx_continue_used + bctx_break_used = 0 then [] else
+                    raise_compile_err loc "cgen: cannot use break/continue inside comprehensions" in
+                let continue_code = if bctx_continue_used = 0 then []
+                    else [CExp (make_call !std_FX_CHECK_CONTINUE [] CTypVoid end_loc)] in
+                let (br_label, break_code) = if bctx_break_used = 0 then (noid, []) else
+                    if bctx_br_label = noid then
+                        (noid, [CExp (make_call !std_FX_CHECK_BREAK [] CTypVoid end_loc)])
                     else
-                        (if enable_break_continue then () else
-                        raise_compile_err loc "cgen: cannot use break/continue inside array comprehension";
-                        if bctx_br_label = noid then
-                            (noid, !std_FX_CHECK_EXN_BREAK_CONTINUE, [parent_label_exp])
-                        else
-                            let br_label_exp = make_id_exp bctx_br_label end_loc in
-                            (bctx_br_label, !std_FX_CHECK_EXN_BREAK_CONTINUE_ND,
-                            [parent_label_exp; br_label_exp]))
+                        let br_label_exp = make_id_exp bctx_br_label end_loc in
+                        (bctx_br_label, [CExp (make_call !std_FX_CHECK_BREAK_ND [br_label_exp] CTypVoid end_loc)])
                     in
-                let handle_exn = make_call check_exn args CTypVoid end_loc in
-                (br_label, ((CExp handle_exn) :: (epilogue @ ((CStmtLabel(bctx_label, end_loc)) :: [])))))
+                let check_exn_code = CExp (make_call !std_FX_CHECK_EXN [parent_label_exp] CTypVoid end_loc) in
+                (br_label, check_exn_code :: (break_code @ continue_code @ epilogue)))
             in
         let body_code = epilogue @ body_code @ bctx_prologue in
         let body_stmt = rccode2stmt body_code loc in
@@ -884,7 +899,7 @@ let gen_ccode top_code =
         let (ktyp, kloc) = get_kexp_ctx kexp in
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = make_dummy_exp kloc in
-        (*let _ = (printf "processing kexp: "; K_pp.pprint_kexp_x kexp; printf "\n") in*)
+        let _ = (printf "processing kexp: "; K_pp.pprint_kexp_x kexp; printf "\n") in
 
         (* generate exp and then optionally generate the assignment if needed *)
         let (assign, result_exp, ccode) = match kexp with
@@ -1024,7 +1039,9 @@ let gen_ccode top_code =
 
         | KExpCall(f, args, _) ->
             let ftyp = get_idk_typ f kloc in
-            let (argtyps, rt) = match ftyp with
+            let ftyp_ = ktyp_deref ftyp kloc in
+            let _ = (printf "called function typ: "; K_pp.pprint_ktyp_x ftyp_ kloc; printf "\n") in
+            let (argtyps, rt) = match ftyp_ with
                 | KTypFun(argtyps, rt) -> (argtyps, rt)
                 | _ -> ([], ftyp)
                 in
@@ -1048,7 +1065,7 @@ let gen_ccode top_code =
                     let (fclo_exp, ccode) = id2cexp f true ccode sc kloc in
                     let fclo_exp = make_id_exp f kv_loc in
                     let cftyp = C_gen_types.ktyp2ctyp kv_typ kloc in
-                    let f_exp = cexp_mem fclo_exp (get_id "f") cftyp in
+                    let f_exp = cexp_mem fclo_exp (get_id "fp") cftyp in
                     let fv_exp = cexp_mem fclo_exp (get_id "fv") std_CTypVoidPtr in
                     (f_exp, fv_exp, true, false, ccode)
                 | _ -> raise_compile_err kloc (sprintf "cgen: the called '%s' is not a function nor value" (id2str f))
@@ -1455,7 +1472,8 @@ let gen_ccode top_code =
                             (rccode2stmt else_ccode nested_loc), nested_loc) in
                         check_or_create :: init_ccode
                     in
-                let _ = new_block_ctx (if ndims = 1 then BlockKind_Loop else BlockKind_LoopND) sc kloc in
+                let for_flags = if for_idx > 0 then [ForNested] else [] in
+                let _ = new_for_block_ctx ndims for_flags sc kloc in
                 (* inside the loop body context form `<etyp> v=e` expressions (or more complex ones in the case of complex types) *)
                 let body_ccode = List.fold_left (fun body_ccode (v, e) ->
                     let (ctyp, loc) = get_cexp_ctx e in
@@ -1524,7 +1542,7 @@ let gen_ccode top_code =
             let (for_headers, _, _, ccode, pre_body_ccode, body_pairs, post_ccode) =
                 process_for lbl kdl 0 1 ndims 0 [(body, [])] ccode sc kloc
                 in
-            let _ = new_block_ctx (if ndims = 1 then BlockKind_Loop else BlockKind_LoopND) sc kloc in
+            let _ = new_for_block_ctx ndims flags sc kloc in
             (* inside the loop body context form `<etyp> v=e` expressions (or more complex ones in the case of complex types) *)
             let body_ccode = List.fold_left (fun body_ccode (v, e) ->
                 let (ctyp, loc) = get_cexp_ctx e in
@@ -1860,6 +1878,7 @@ let gen_ccode top_code =
 
     (* 3. convert function declarations to C *)
     let c_fdecls = C_gen_fdecls.convert_all_fdecls top_code in
+    let _ = C_pp.pprint_top (c_types_ccode @ c_fdecls) in
 
     (* 4. all the global code should be put into fx_toplevel() function. Let's form its body,
           starting with the classical `int fx_status = 0;` *)

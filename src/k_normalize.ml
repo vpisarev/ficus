@@ -104,7 +104,7 @@ let rec exp2kexp e code tref sc =
         ((List.rev idom_list), code, body_code) in
     match e with
     | ExpNop(loc) -> ((KExpNop loc), code)
-    | ExpBreak(loc) -> ((KExpBreak loc), code)
+    | ExpBreak(_, loc) -> ((KExpBreak loc), code)
     | ExpContinue(loc) -> ((KExpContinue loc), code)
     | ExpRange(e1_opt, e2_opt, e3_opt, _) ->
         let process_rpart e_opt code defval =

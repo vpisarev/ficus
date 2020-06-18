@@ -126,32 +126,18 @@ void fx_free(void* ptr);
 #define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else goto label
 #define FX_BREAK(label) { fx_status = FX_EXN_Break; goto label; }
 #define FX_CONTINUE(label) { fx_status = FX_EXN_Continue; goto label; }
-#define FX_CHECK_EXN_BREAK_CONTINUE(label) \
-    if(fx_status >= 0) \
-        ; \
-    else if(fx_status == FX_EXN_Break) { \
+#define FX_CHECK_CONTINUE() \
+    if (fx_status != FX_EXN_Continue) ; else fx_status = FX_OK
+#define FX_CHECK_BREAK() \
+    if(fx_status != FX_EXN_Break) ; else { \
         fx_status = FX_OK; \
         break; \
-    } \
-    else if(fx_status == FX_EXN_Continue) { \
-        fx_status = FX_OK; \
-        continue; \
-    } \
-    else goto label
-
-#define FX_CHECK_EXN_BREAK_CONTINUE_ND(label, br_label) \
-    if(fx_status >= 0) \
-        ; \
-    else if(fx_status == FX_EXN_Break) { \
+    }
+#define FX_CHECK_BREAK_ND(br_label) \
+    if(fx_status != FX_EXN_Break) ; else { \
         fx_status = FX_OK; \
         goto br_label; \
-    } \
-    else if(fx_status == FX_EXN_Continue) { \
-        fx_status = FX_OK; \
-        continue; \
-    } \
-    else goto label
-
+    }
 #define FX_CHECK_EXN(label) \
     if(fx_status >= 0) \
         ; \
@@ -453,27 +439,16 @@ void fx_free_ref_simple(void* pr);
 
 //////////////////////// Function pointers /////////////////////////
 
-typedef struct fx_base_fv_t
+typedef struct fx_fv_t
 {
     int_ rc;
     fx_free_t free_f;
-} fx_base_fv_t;
-
-typedef struct fx_fv_t
-{
-    fx_base_fv_t base;
 } fx_fv_t;
 
-typedef struct fx_fp_t
-{
-    void (*fp)(void);
-    fx_fv_t* fv;
-} fx_fp_t;
-
 #define FX_FREE_FP(f) \
-    if((f)->fv) { (f)->fv->base.free_f((f)->fv); (f)->fv=0; }
+    if((f)->fv && (f)->fv->free_f) { (f)->fv->free_f((f)->fv); (f)->fv=0; }
 #define FX_COPY_FP(src, dst) \
-    { if((src)->fv) FX_INCREF((src)->fv->base.rc); *(dst) = *(src); }
+    { if((src)->fv && (src)->fv->free_f) FX_INCREF((src)->fv->rc); *(dst) = *(src); }
 
 void fx_free_fp(void* fp);
 void fx_copy_fp(const void* src, void* pdst);

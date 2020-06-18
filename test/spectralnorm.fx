@@ -12,7 +12,7 @@ fun Au(u: double[])
 
     [for i <- 0:N {
         fold t = 0. for j <- 0:N {
-            t += A(i, j) * u[j]
+            t + A(i, j) * u[j]
         }
     }]
 }
@@ -23,7 +23,7 @@ fun Atu(u: double[])
 
     [for i <- 0:N {
         fold t = 0. for j <- 0:N {
-            t += A(j, i) * u[j]
+            t + A(j, i) * u[j]
         }
     }]
 }
@@ -32,15 +32,10 @@ fun AtAu(u: double[]) = Atu(Au(u))
 
 fun spectralnorm(n: int)
 {
-    val fold (u, v) = (array(n, 1.), array(0, 0.)) for i <- 0:10 {
-        val v_ = AtAu(u)
-        u = AtAu(v_)
-        v = v_
-    }
-    val fold (vBv, vv) = (0., 0.) for ui <- u, vi <- v {
-        vBv += ui*vi
-        vv += vi*vi
-    }
+    val fold (u, v) = (array(n, 1.), array(0, 0.))
+        for i <- 0:10 { val v = AtAu(u); (AtAu(v), v) }
+    val fold (vBv, vv) = (0., 0.)
+        for ui <- u, vi <- v { (vBv + ui*vi, vv + vi*vi) }
     Math.sqrt(vBv/vv)
 }
 

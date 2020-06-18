@@ -36,8 +36,8 @@ let rec ktyp2ctyp_fargs args rt loc =
                 | KTypArray(_, _) -> []
                 | _ -> [CTypConst] in
         if ktp_pass_by_ref then CTypRawPtr(ptr_attr, ct) else ct) args in
-    let rct = CTypRawPtr([], ktyp2ctyp rt loc) in
-    args_ @ (rct :: std_CTypVoidPtr :: [])
+    let rct = if rt = KTypVoid then [] else [CTypRawPtr([], ktyp2ctyp rt loc)] in
+    args_ @ rct @ [std_CTypVoidPtr]
 
 (* ktyp_t -> ctyp_t *)
 and ktyp2ctyp t loc =
@@ -58,7 +58,7 @@ and ktyp2ctyp t loc =
         | KTypCPointer -> CTypCSmartPtr
         | KTypFun (args, rt) ->
             let args_ = ktyp2ctyp_fargs args rt loc in
-            CTypFun(args_, CTypInt)
+            CTypFun(args_, CTypCInt)
         | KTypTuple _ -> report_err "KTypTuple"
         | KTypRecord _ -> report_err "KTypRecord"
         | KTypName i -> CTypName i
@@ -491,7 +491,15 @@ let convert_all_typs top_code =
                     add_decl (CDefFun mkref_decl);
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
                         ct_props={ct_props with ctp_free=(freem, freef); ctp_make=mkref_id::[]}}
-                        | _ -> ())
+                | KTypFun(argtyps, rt) ->
+                    let cargs = ktyp2ctyp_fargs argtyps rt loc in
+                    let fp_ctyp = CTypFunRawPtr(cargs, CTypCInt) in
+                    let fv_ctyp = make_ptr (CTypName(get_id "fx_fv_t")) in
+                    let relems = ((get_id "fp"), fp_ctyp) :: ((get_id "fv"), fv_ctyp) :: [] in
+                    struct_decl := {!struct_decl with ct_typ=CTypStruct(struct_id_opt, relems);
+                        ct_props={ct_props with ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
+                                ctp_copy=(!std_FX_COPY_FP, !std_fx_copy_fp)}}
+                | _ -> ())
             | KVariant kvar ->
                 let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in
                 let int_ctx = (CTypCInt, kvar_loc) in

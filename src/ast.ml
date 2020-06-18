@@ -80,8 +80,10 @@ module IdSet = Set.Make(Id)
    Scope of the definition
 
 *)
-type scope_t = ScBlock of int | ScFun of id_t | ScClass of id_t
-            | ScInterface of id_t | ScModule of id_t | ScGlobal
+type scope_t =
+    | ScBlock of int | ScLoop of bool*int | ScFold of int | ScArrMap of int | ScMap of int
+    | ScTry of int | ScFun of id_t | ScClass of id_t
+    | ScInterface of id_t | ScModule of id_t | ScGlobal
 
 type loc_t = { loc_fname: id_t; loc_line0: int; loc_pos0: int; loc_line1: int; loc_pos1: int }
 let noloc = { loc_fname=noid; loc_line0=0; loc_pos0=0; loc_line1=0; loc_pos1=0 }
@@ -169,12 +171,12 @@ type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref 
 type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate | ValSubArray | ValConstr of int
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr of int
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
-type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip
+type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
 type ctx_t = typ_t * loc_t
 
 type exp_t =
     | ExpNop of loc_t (* empty expression {} *)
-    | ExpBreak of loc_t
+    | ExpBreak of bool * loc_t
     | ExpContinue of loc_t
     | ExpRange of exp_t option * exp_t option * exp_t option * ctx_t
     | ExpLit of lit_t * ctx_t
@@ -397,7 +399,7 @@ let set_id_entry i n =
 
 let get_exp_ctx e = match e with
     | ExpNop(l) -> (TypVoid, l)
-    | ExpBreak(l) -> (TypVoid, l)
+    | ExpBreak(_, l) -> (TypVoid, l)
     | ExpContinue(l) -> (TypVoid, l)
     | ExpRange(_, _, _, c) -> c
     | ExpLit(_, c) -> c
@@ -469,9 +471,30 @@ let block_scope_idx = ref (-1)
 let new_block_scope () =
     block_scope_idx := !block_scope_idx + 1;
     ScBlock !block_scope_idx
+let new_loop_scope nested =
+    block_scope_idx := !block_scope_idx + 1;
+    ScLoop (nested, !block_scope_idx)
+let new_map_scope () =
+    block_scope_idx := !block_scope_idx + 1;
+    ScMap !block_scope_idx
+let new_arr_map_scope () =
+    block_scope_idx := !block_scope_idx + 1;
+    ScArrMap !block_scope_idx
+let new_fold_scope () =
+    block_scope_idx := !block_scope_idx + 1;
+    ScFold !block_scope_idx
+let new_try_scope () =
+    block_scope_idx := !block_scope_idx + 1;
+    ScTry !block_scope_idx
+
 let rec scope2str sc =
     match sc with
     | ScBlock b :: r -> (sprintf "block(%d)." b) ^ (scope2str r)
+    | ScLoop (f, b) :: r -> (sprintf "%sloop_block(%d)." (if f then "nested" else "") b) ^ (scope2str r)
+    | ScArrMap b :: r -> (sprintf "arr_map_block(%d)." b) ^ (scope2str r)
+    | ScMap b :: r -> (sprintf "map_block(%d)." b) ^ (scope2str r)
+    | ScFold b :: r -> (sprintf "fold_block(%d)." b) ^ (scope2str r)
+    | ScTry b :: r -> (sprintf "try_block(%d)." b) ^ (scope2str r)
     | ScFun f :: r -> (sprintf "fun(%s)." (id2str f)) ^ (scope2str r)
     | ScClass c :: r -> (sprintf "class(%s)." (id2str c)) ^ (scope2str r)
     | ScInterface i :: r -> (sprintf "interface(%s)." (id2str i)) ^ (scope2str r)

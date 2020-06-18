@@ -17,6 +17,7 @@ exception FileOpenError
 exception NullFileError
 exception IOError
 exception AssertError
+exception Break
 
 fun assert(f: bool) = if !f {throw AssertError}
 

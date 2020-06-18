@@ -49,7 +49,7 @@ for i <- 1:31 {
     println("fib3(\(i))=\(fib3())")
 }
 
-exception Break: int
+exception BreakWith: int
 
 type complex_t = {re: float; im: float}
 val c = ref (complex_t {re=0.f, im=1.f})
@@ -62,14 +62,26 @@ fun find_idx(a: 't [], elem: 't)
     val n = size(a)
     try
     {
-        for i <- 0:n {if a[i] == elem {throw Break(i)}}
+        for i <- 0:n {if a[i] == elem {throw BreakWith(i)}}
         -1
     }
     catch
     {
-    | Break(i) => i
+    | BreakWith(i) => i
     }
 }
+
+for i <- 0:10 { for j <-0:10 { if i!=j {break}} }
+fun is_prime(n: int) {
+    if n == 1 {false} else if n == 2 {true} else if n % 2 == 0 {false}
+    else {
+        fold r=true for p<-3:Math.floor(Math.sqrt(n :> double))+1:2 {
+            if n % p == 0 {break with false};
+            r
+        }
+    }
+}
+val primes = [: for i <- 0:100 {if !is_prime(i) {continue}; i} :]
 
 val fixed_choice = "five"
 

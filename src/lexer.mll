@@ -57,6 +57,7 @@ let token2str t = match t with
     | VAL -> "VAL"
     | VAR -> "VAR"
     | WHEN -> "WHEN"
+    | WITH -> "WITH"
     | B_WHILE -> "B_WHILE"
     | WHILE -> "WHILE"
     | B_LPAREN -> "B_LPAREN"
@@ -120,6 +121,7 @@ let token2str t = match t with
     | GREATER_EQUAL -> "GREATER_EQUAL"
     | LESS -> "LESS"
     | GREATER -> "GREATER"
+    | FOLD_RESULT -> "FOLD_RESULT"
 
 let token2str_pp t =
     "'" ^ (match t with
@@ -157,7 +159,8 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("interface", INTERFACE, 2); ("match", MATCH, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
         ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
-        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2);
+        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2); ("with", WITH, 1);
+        ("__fold_result__", FOLD_RESULT, -1)
     ]
 
 let incr_lineno lexbuf =
@@ -411,6 +414,10 @@ rule tokens = parse
                     let t = if !new_exp then B_WHILE else WHILE in
                     new_exp := true; [t]
                 | (REF, _) -> let t = if !new_exp then [REF] else [REF_TYPE] in t
+                | (t, -1) ->
+                    raise (lexErr (sprintf
+                        "the identifier '%s' is reserved and cannot be used"
+                        ident) lexbuf)
                 | (t, 0) -> check_ne(lexbuf); new_exp := false; [t]
                 | (t, 1) -> new_exp := true; [t]
                 | (t, 2) -> check_ne(lexbuf); new_exp := true; [t]

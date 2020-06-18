@@ -131,7 +131,7 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
     | CTypFunRawPtr(args, rt) ->
         obox(); pprint_ctyp_ rt None loc;
         pspace(); pstr "(*";
-        pr_id_opt_ false; pstr ")(";
+        pr_id_opt_ false; pstr ")("; pcut();
         obox();
         (match args with
         | [] -> pstr "void"

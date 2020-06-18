@@ -204,6 +204,8 @@ let process_all fname0 =
             (m, !minfo.dm_deps) :: gr) all_modules [] in
         let _ = (sorted_modules := List.rev (toposort graph)) in
         (*let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in*)
+        (*let _ = if options.print_ast then
+            (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in*)
         let ok = typecheck_all !sorted_modules in
         let _ = if ok && options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in

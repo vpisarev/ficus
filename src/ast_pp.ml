@@ -133,7 +133,7 @@ let pprint_for_flags flags =
 let rec pprint_exp e =
     let (t, eloc) = get_exp_ctx e in
     let obox_cnt = ref 0 in
-    let obox_() = obox(); pstr "<"; pptype_ t TypPr0 eloc; pstr ">"; obox_cnt := !obox_cnt + 1 in
+    let obox_() = obox(); pstr "<"; pptype_ t TypPr0 eloc; pstr ">"; pcut(); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
     let ppcases pe_l = pstr "{"; pcut(); obox(); (List.iter (fun (pl, e) ->
             (List.iter (fun p -> pspace(); pstr "|"; pspace(); pprint_pat p) pl);
@@ -215,9 +215,9 @@ let rec pprint_exp e =
         | _ -> List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) nl); cbox()
     | ExpSeq(el, _) -> pprint_expseq el true
     | _ -> obox_(); (match e with
-        | ExpNop(_) -> pstr "{}"
-        | ExpBreak(_) -> pstr "BREAK"
-        | ExpContinue(_) -> pstr "CONTINUE"
+        | ExpNop _ -> pstr "{}"
+        | ExpBreak (f, _) -> pstr (if f then "FOLD_BREAK" else "BREAK")
+        | ExpContinue _ -> pstr "CONTINUE"
         | ExpRange(e1_opt, e2_opt, e3_opt, _) ->
             pstr "(";
             (match e1_opt with
