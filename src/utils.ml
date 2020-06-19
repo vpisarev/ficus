@@ -39,6 +39,10 @@ let trim_left s n =
     let n0 = String.length s in
     if n >= n0 then "" else String.sub s n (n0-n)
 
+let trim_right s n =
+    let n0 = String.length s in
+    if n >= n0 then "" else String.sub s 0 (n0-n)
+
 let rec normalize_path dir fname =
     let sep = Filename.dir_sep in
     let seplen = String.length sep in

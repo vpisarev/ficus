@@ -184,7 +184,7 @@ and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
                   cf_args: id_t list; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
-                  ct_props: ctprops_t; ct_tagenum: id_t;
+                  ct_props: ctprops_t; ct_tagenum: id_t; ct_data_start: int;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
                    ce_scope: scope_t list; ce_loc: loc_t }

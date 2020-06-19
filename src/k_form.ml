@@ -684,6 +684,7 @@ and used_by_kexp_ e callb =
         let (uv_body, dv_body) = used_decl_by_kexp kf_body in
         let uv = IdSet.union uv_typ (IdSet.remove kf_name uv_body) in
         add_to_decl1 kf_c_arg callb;
+        add_to_used1 kf_c_arg callb;
         add_to_used1 kf_c_vt callb;
         add_to_used uv callb;
         add_to_decl dv_body callb;

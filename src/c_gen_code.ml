@@ -144,7 +144,7 @@ let find_single_use_vals topcode =
         | KExpCall(f, _, (_, loc)) ->
             (* count f twice to make sure it will be included into u1vals, because if
                f is function pointer, then in C the call will be converted to
-               `f.fptr(args, f.fv)`, i.e. f is used twice here, so we need to save it anyway *)
+               `f.fp(args, f.fcv)`, i.e. f is used twice here, so we need to save it anyway *)
             count_atom (Atom.Id f) loc callb;
             fold_kexp e callb
         | _ -> fold_kexp e callb
@@ -354,13 +354,13 @@ let gen_ccode top_code =
                 (match ctyp with
                 | CTypName tn ->
                     (match (cinfo_ tn cloc) with
-                    | CTyp {contents={ct_typ=CTypStruct(_, relems)}} ->
-                        (tn, cexp, relems)
-                    | CTyp {contents={ct_typ=CTypRawPtr(_, CTypStruct(rn, relems))}} ->
-                        ((Utils.opt_get rn noid), (cexp_deref cexp), relems)
+                    | CTyp {contents={ct_typ=CTypStruct(_, relems); ct_data_start}} ->
+                        (tn, cexp, relems, ct_data_start)
+                    | CTyp {contents={ct_typ=CTypRawPtr(_, CTypStruct(rn, relems)); ct_data_start}} ->
+                        ((Utils.opt_get rn noid), (cexp_deref cexp), relems, ct_data_start)
                     | _ -> raise_compile_err cloc
                         (sprintf "the type '%s' is not a structure" (get_idc_cname tn cloc)))
-                | CTypStruct(rn, relems) -> ((Utils.opt_get rn noid), cexp, relems)
+                | CTypStruct(rn, relems) -> ((Utils.opt_get rn noid), cexp, relems, 0)
                 | _ -> raise_compile_err cloc "a structure is expected here")
         in try_deref cexp ctyp
     in
@@ -1040,7 +1040,7 @@ let gen_ccode top_code =
         | KExpCall(f, args, _) ->
             let ftyp = get_idk_typ f kloc in
             let ftyp_ = ktyp_deref ftyp kloc in
-            let _ = (printf "called function typ: "; K_pp.pprint_ktyp_x ftyp_ kloc; printf "\n") in
+            (*let _ = (printf "called function typ: "; K_pp.pprint_ktyp_x ftyp_ kloc; printf "\n") in*)
             let (argtyps, rt) = match ftyp_ with
                 | KTypFun(argtyps, rt) -> (argtyps, rt)
                 | _ -> ([], ftyp)
@@ -1066,7 +1066,7 @@ let gen_ccode top_code =
                     let fclo_exp = make_id_exp f kv_loc in
                     let cftyp = C_gen_types.ktyp2ctyp kv_typ kloc in
                     let f_exp = cexp_mem fclo_exp (get_id "fp") cftyp in
-                    let fv_exp = cexp_mem fclo_exp (get_id "fv") std_CTypVoidPtr in
+                    let fv_exp = cexp_mem fclo_exp (get_id "fcv") std_CTypVoidPtr in
                     (f_exp, fv_exp, true, false, ccode)
                 | _ -> raise_compile_err kloc (sprintf "cgen: the called '%s' is not a function nor value" (id2str f))
                 in
@@ -1107,8 +1107,11 @@ let gen_ccode top_code =
                 let e0 = CExpInit((List.rev cargs), (ctyp, kloc)) in
                 let (t_exp, ccode) = add_local tup ctyp [] (Some e0) ccode sc kloc in
                 (true, t_exp, ccode)
-        | KExpMkClosure(f, fcv, args, _) -> raise_compile_err kloc "cgen: unsupported KExpMkClosure"
-            (* TBD *)
+        | KExpMkClosure(f, fcv, args, _) ->
+            let f_exp = make_id_exp f kloc in
+            let init_simple_cl = CExpInit([f_exp; (make_nullptr kloc)], (ctyp, kloc)) in
+            (true, init_simple_cl, ccode)
+            (* [TODO] *)
         | KExpMkArray(shape, elems, _) ->
             let shape = List.map (fun i -> make_int_exp i kloc) shape in
             let (data, ccode) = List.fold_left (fun (data, ccode) a ->
@@ -1200,12 +1203,12 @@ let gen_ccode top_code =
                 (true, (cexp_deref get_elem_exp), ccode)
         | KExpMem(a1, n, _) ->
             let (ce1, ccode) = id2cexp a1 false ccode sc kloc in
-            let (_, ce1, relems) = get_struct ce1 in
+            let (_, ce1, relems, ofs) = get_struct ce1 in
             let nelems = List.length relems in
-            let _ = if n < 0 || n >= nelems then
+            let _ = if n < 0 || n+ofs >= nelems then
                 raise_compile_err kloc (sprintf "the tuple/record element index %d is out of range [0, %d]" n nelems)
                 else () in
-            let (n_id, _) = List.nth relems n in
+            let (n_id, _) = List.nth relems (n+ofs) in
             (true, (cexp_mem ce1 n_id ctyp), ccode)
         | KExpAssign(i, e2, _) ->
             let (ktyp2, kloc2) = get_kexp_ctx e2 in
@@ -1649,7 +1652,7 @@ let gen_ccode top_code =
                     let (init_exp, delta_ccode) = if ktp_ptr then
                         (* temporarily put (i, ctyp) into the value table *)
                             let (i_exp, _) = create_cdefval i ctyp [] "" None [] sc kloc in
-                            let (rn, _, _) = get_struct i_exp in
+                            let (rn, _, _, _) = get_struct i_exp in
                             let struct_ctyp = CTypName rn in
                             let data_id = gen_temp_idc ((pp_id2str i) ^ "_data") in
                             let rc_exp = make_int_exp 1 kloc in
@@ -1723,7 +1726,7 @@ let gen_ccode top_code =
 
                 handle the case of 'c code'-body separately
             *)
-            let {kf_name; kf_typ; kf_closure=(arg_id, _); kf_body; kf_cname; kf_flags; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_typ; kf_closure=(cv_arg_id, cv_arg_tn); kf_body; kf_cname; kf_flags; kf_scope; kf_loc} = !kf in
             let _ = new_block_ctx (BlockKind_Fun kf_name) sc kloc in
             let (argtyps, rt, args, cf) = match (cinfo_ kf_name kf_loc) with
                 | CFun ({contents={cf_typ=CTypFun(argtyps, rt); cf_args}} as cf) -> (argtyps, rt, cf_args, cf)
@@ -1815,6 +1818,14 @@ let gen_ccode top_code =
                             i2e := Env.add a (cexp_deref (make_id_exp a kf_loc)) !i2e)
                         real_args kargtyps
                         in
+                    let ccode = if cv_arg_id = noid then ccode else
+                        let cv_ptr_ctyp = make_ptr (CTypName cv_arg_tn) in
+                        let cv_arg_exp0 = CExpIdent((get_id "fx_fv"), (std_CTypVoidPtr, kf_loc)) in
+                        let cast_ptr = CExpCast(cv_arg_exp0, cv_ptr_ctyp, kf_loc) in
+                        let (_, ccode) = create_cdefval cv_arg_id cv_ptr_ctyp [] ""
+                            (Some cast_ptr) ccode kf_scope kf_loc in
+                        ccode
+                        in
                     let (ret_e, ccode) = kexp2cexp kf_body dstexp_r ccode kf_scope in
                     let end_loc = get_kexp_end kf_body in
                     let {bctx_label; bctx_prologue; bctx_cleanup; bctx_label_used} = curr_block_ctx end_loc in
@@ -1858,8 +1869,7 @@ let gen_ccode top_code =
             (false, dummy_exp, ccode)
         | KDefVariant kvar -> (false, dummy_exp, ccode) (* handled in c_gen_types *)
         | KDefTyp kt -> (false, dummy_exp, ccode) (* handled in c_gen_types *)
-        | KDefClosureVars kcv -> raise_compile_err kloc "cgen: unsupported KDefClosureVars"
-            (* TBD *)
+        | KDefClosureVars kcv -> (false, dummy_exp, ccode) (* handled in c_gen_fdecls *)
         in
         if not assign || ctyp = CTypVoid then
             (result_exp, ccode)
@@ -1878,7 +1888,7 @@ let gen_ccode top_code =
 
     (* 3. convert function declarations to C *)
     let c_fdecls = C_gen_fdecls.convert_all_fdecls top_code in
-    let _ = C_pp.pprint_top (c_types_ccode @ c_fdecls) in
+    (*let _ = C_pp.pprint_top (c_types_ccode @ c_fdecls) in*)
 
     (* 4. all the global code should be put into fx_toplevel() function. Let's form its body,
           starting with the classical `int fx_status = 0;` *)

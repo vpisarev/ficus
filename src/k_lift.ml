@@ -451,6 +451,9 @@ let lift_all top_code =
                 in (e, idom_l)) e_idom_ll
             in let body = walk_kexp_n_lift_all body callb in
             KExpMap(e_idom_ll, body, flags, kctx)
+        | KExpMkClosure(f, cl_id, args, (typ, loc)) ->
+            let args = List.map (fun a -> walk_atom_n_lift_all a loc callb) args in
+            KExpMkClosure(f, cl_id, args, (typ, loc))
         | KExpCall(f, args, ((_, loc) as kctx)) ->
             let args = List.map (fun a -> walk_atom_n_lift_all a loc callb) args in
             let (curr_f, curr_cl_arg, curr_cl_vt) = !curr_clo in

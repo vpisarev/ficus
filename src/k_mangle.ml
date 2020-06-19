@@ -74,7 +74,7 @@ let mangle_make_unique n_id prefix name suffix mangle_map =
     make_unique_ 0
 
 let add_fx str = if Utils.starts_with str "_fx_" then str else "_fx_" ^ str
-let remove_fx str = if Utils.starts_with str "_fx_" then String.sub str 4 ((String.length str) - 4) else str
+let remove_fx str = if Utils.starts_with str "_fx_" then Utils.trim_left str 4 else str
 
 (* Convert type to a string, i.e. mangle it.
    Use mangle_map to control uniqueness when mangling KTypName _ and KTypRecord _.
@@ -222,7 +222,7 @@ let mangle_all top_code =
             | _ -> raise_compile_err loc (sprintf "invalid description of '%s'; should be KVal _" (id2str n)));
             KDefVal(n, e, loc)
         | KDefFun kf ->
-            let {kf_name; kf_typ; kf_args; kf_closure; kf_body; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_typ; kf_args; kf_body; kf_closure=(kf_c_arg, kf_c_vt); kf_scope; kf_loc} = !kf in
             let t = walk_ktyp kf_typ kf_loc callb in
             let t = match t with
                 | KTypFun (_, _) -> t
@@ -234,6 +234,15 @@ let mangle_all top_code =
             let bare_name = mangle_name kf_name (Some kf_scope) kf_loc in
             let (_, cname) = mangle_make_unique kf_name "F" bare_name suffix mangle_map in
             let cname = compress_name cname kf_scope kf_loc in
+            (if kf_c_vt = noid then () else
+                match (kinfo_ kf_c_vt kf_loc) with
+                | KClosureVars kcv ->
+                    let { kcv_freevars; kcv_loc } = !kcv in
+                    let cv_cname = add_fx (cname ^ "_cldata_t") in
+                    let freevars = List.map (fun (n, t) -> (n, (walk_ktyp_n_mangle t kcv_loc callb))) kcv_freevars in
+                    kcv := { !kcv with kcv_cname=cv_cname; kcv_freevars=freevars };
+                | _ ->
+                    raise_compile_err kf_loc "mangle: invalid closure datatype (should be KClosureVars)");
             kf := { !kf with kf_cname=add_fx cname; kf_typ=t; kf_body=new_body };
             List.iter (fun i -> mangle_id_typ i kf_loc callb) kf_args;
             e
@@ -266,6 +275,8 @@ let mangle_all top_code =
         | KDefTyp _ ->
             (* since KDefGenTyp's are formed during this step, we should not get here.
                If we are here, retain the definition as-is *)
+            e
+        | KDefClosureVars kcv ->
             e
         | KExpFor (kdl, body, flags, loc) ->
             mangle_kdl kdl loc callb;

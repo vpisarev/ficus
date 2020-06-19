@@ -1097,7 +1097,7 @@ and check_exp e env sc =
                 (sprintf "the map should return %d-dimensional array with elements of the same type as the map body" total_dims) in
         let new_body = check_exp body env1 for_sc in
         if deref_typ (get_exp_typ new_body) = TypVoid then
-            raise_compile_err eloc "array comprehension body cannot have 'void' type"
+            raise_compile_err eloc "array/list comprehension body cannot have 'void' type"
         else ();
         ExpMap((List.rev map_clauses1), new_body, flags, ctx)
     | ExpBreak (f, _) -> check_inside_for f true; e

@@ -113,10 +113,16 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst)
 
 //////////////// function pointers ////////////////
 
+typedef struct fx_fv_t
+{
+    int_ rc;
+    fx_free_t free_f;
+} fx_fv_t;
+
 typedef struct fx_fp_t
 {
     void (*fp)(void);
-    fx_fv_t* fv;
+    fx_fv_t* fcv;
 } fx_fp_t;
 
 void fx_free_fp(void* fp)

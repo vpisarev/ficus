@@ -439,16 +439,17 @@ void fx_free_ref_simple(void* pr);
 
 //////////////////////// Function pointers /////////////////////////
 
-typedef struct fx_fv_t
-{
-    int_ rc;
-    fx_free_t free_f;
-} fx_fv_t;
-
 #define FX_FREE_FP(f) \
-    if((f)->fv && (f)->fv->free_f) { (f)->fv->free_f((f)->fv); (f)->fv=0; }
-#define FX_COPY_FP(src, dst) \
-    { if((src)->fv && (src)->fv->free_f) FX_INCREF((src)->fv->rc); *(dst) = *(src); }
+    if((f)->fcv) { \
+        if((f)->fcv->free_f && FX_DECREF((f)->fcv->rc) == 1) \
+            (f)->fcv->free_f((f)->fcv); \
+        (f)->fcv=0; \
+    }
+#define FX_COPY_FP(src, dst) { \
+    if((src)->fcv && (src)->fcv->free_f) \
+        FX_INCREF((src)->fcv->rc); \
+    *(dst) = *(src); \
+}
 
 void fx_free_fp(void* fp);
 void fx_copy_fp(const void* src, void* pdst);

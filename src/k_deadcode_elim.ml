@@ -43,11 +43,13 @@ let rec pure_kexp_ e callb =
 
     (* [TODO] make it more sophisticated. A block of expressions may change value
        of a locally-defined variable and yet, as a whole, stay a pure expression *)
+    | KExpAssign (i, KExpAtom((Atom.Id j), _), _) when i = j -> ()
     | KExpAssign _ -> set_impure()
     | KExpTryCatch _ -> set_impure()
     | KExpThrow _ -> set_impure()
     | KExpCCode _ -> set_impure()
     | _ -> if callb.kcb_fold_result then fold_kexp e callb else ()
+
 and new_pure_callb () =
 {
     kcb_fold_atom=None;
@@ -102,6 +104,8 @@ let rec elim_unused code =
     let _ = reset_purity_flags code in
     let uv = used_by code in
     let used i = IdSet.mem i uv in
+    let fold_result = get_id "__fold_result__" in
+    let fold_values = ref (IdSet.empty) in
 
     let rec elim_unused_ktyp_ t loc callb = t
     and elim_unused_kexp_ e callb =
@@ -109,6 +113,10 @@ let rec elim_unused code =
         | KDefVal(i, e, loc) ->
             let e = elim_unused_kexp_ e callb in
             let is_ccode = match e with KExpCCode _ -> true | _ -> false in
+            (match e with
+            | KExpAtom((Atom.Id fr), _) when (get_orig_id fr) = fold_result ->
+                fold_values := IdSet.add i !fold_values
+            | _ -> ());
             if (used i) || is_ccode then KDefVal(i, e, loc)
             (* [TODO] issue a warning about unused identifier *)
             else if not (pure_kexp e) then
@@ -144,6 +152,10 @@ let rec elim_unused code =
                some of its used constructors. *)
             if (used kt_name) then e
             else KExpNop(kt_loc)
+        | KDefClosureVars kcv ->
+            let {kcv_name; kcv_loc} = !kcv in
+            if (used kcv_name) then e
+            else KExpNop(kcv_loc)
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
             (match code with
@@ -157,7 +169,10 @@ let rec elim_unused code =
             let result = (match e with
             | KExpNop _ ->
                 if rest = [] then e :: result else result
-            | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _ | KDefTyp _ ->
+            | KExpAssign(fr, KExpAtom((Atom.Id r), _), loc)
+                when (get_orig_id fr) = fold_result && (IdSet.mem r !fold_values) ->
+                result
+            | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _ | KDefTyp _ | KDefClosureVars _ ->
                 e :: result
             | _ -> if (pure_kexp e) && rest != [] then result
                     else e :: result) in

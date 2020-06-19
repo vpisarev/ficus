@@ -129,23 +129,23 @@ let get_constructor ctyp required loc =
     | _ -> if required then raise_compile_err loc "cgen: missing type constructor" else noid
 
 let get_free_f ct let_none let_macro loc =
-    let {ctp_ptr; ctp_free=(freem, freef)} = get_ctprops ct loc in
-    if freem = noid && freef = noid && let_none then
+    let {ctp_ptr; ctp_free=(free_m, free_f)} = get_ctprops ct loc in
+    if free_m = noid && free_f = noid && let_none then
         (false, None)
     else
-        let (use_if, i) = if let_macro && freem <> noid then (false, freem)
-            else if freef <> noid then (ctp_ptr, freef)
+        let (use_if, i) = if let_macro && free_m <> noid then (false, free_m)
+            else if free_f <> noid then (ctp_ptr, free_f)
             else (false, !std_FX_NOP) in
         (use_if, Some (make_id_exp i loc))
 
 let get_copy_f ct let_none let_macro loc =
-    let {ctp_pass_by_ref; ctp_copy=(copym, copyf)} = get_ctprops ct loc in
+    let {ctp_pass_by_ref; ctp_copy=(copy_m, copy_f)} = get_ctprops ct loc in
     (ctp_pass_by_ref,
-    (if copym = noid && copyf = noid && let_none then
+    (if copy_m = noid && copy_f = noid && let_none then
         None
     else
-        let i = if copym <> noid && let_macro then copym
-            else if copyf <> noid then copyf
+        let i = if copy_m <> noid && let_macro then copy_m
+            else if copy_f <> noid then copy_f
             else if ctp_pass_by_ref then !std_FX_COPY_SIMPLE_BY_PTR
             else !std_FX_COPY_SIMPLE in
         Some (make_id_exp i loc)))
@@ -207,20 +207,20 @@ let convert_all_typs top_code =
        together with thier optional forward declarations *)
     let create_ctyp_decl tn ktp fwd_decl loc =
         let {ktp_ptr; ktp_pass_by_ref; ktp_custom_free; ktp_custom_copy} = ktp in
-        let (freem, freef) = if ktp_custom_free then (noid, (gen_temp_idc "free")) else (noid, noid) in
-        let (copym, copyf) = if ktp_custom_copy then (noid, (gen_temp_idc "copy")) else
+        let (free_m, free_f) = if ktp_custom_free then (noid, (gen_temp_idc "free")) else (noid, noid) in
+        let (copy_m, copy_f) = if ktp_custom_copy then (noid, (gen_temp_idc "copy")) else
             if ktp_ptr then (!std_FX_COPY_PTR, !std_fx_copy_ptr) else (noid, noid) in
         let cname = get_idk_cname tn loc in
         let struct_id = if ktp_ptr then get_id (cname ^ "_data_t") else tn in
         let struct_typ = CTypStruct((Some struct_id), []) in
         let struct_or_ptr_typ = if ktp_ptr then (make_ptr struct_typ) else struct_typ in
         let struct_decl = ref { ct_name=tn; ct_typ = struct_or_ptr_typ;
-            ct_ktyp=KTypName tn; ct_cname=cname; ct_tagenum=noid;
+            ct_ktyp=KTypName tn; ct_cname=cname; ct_tagenum=noid; ct_data_start=0;
             ct_scope=ScGlobal::[]; ct_loc=loc;
             ct_props={
                 ctp_scalar=false; ctp_complex=ktp_custom_free || ktp_custom_copy;
                 ctp_ptr=ktp_ptr; ctp_pass_by_ref=ktp_pass_by_ref;
-                ctp_make=[]; ctp_free=(freem, freef); ctp_copy=(copym, copyf)
+                ctp_make=[]; ctp_free=(free_m, free_f); ctp_copy=(copy_m, copy_f)
                 }
             } in
         let ctyp = CTypName tn in
@@ -232,23 +232,23 @@ let convert_all_typs top_code =
         let dst_exp = CExpIdent(dst_id, (dst_typ, loc)) in
         let cname_wo_prefix = K_mangle.remove_fx cname in
         let freef_decl = ref {
-            cf_name=freef; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ cname_wo_prefix;
+            cf_name=free_f; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ cname_wo_prefix;
             cf_args=dst_id :: [];  cf_body=[];
             cf_flags=FunNoThrow :: []; cf_scope=ScGlobal :: []; cf_loc=loc } in
         let copyf_decl = ref { !freef_decl with
-            cf_name=copyf; cf_typ=CTypFun(src_typ :: dst_typ :: [], CTypVoid); cf_cname="_fx_copy_" ^ cname_wo_prefix;
+            cf_name=copy_f; cf_typ=CTypFun(src_typ :: dst_typ :: [], CTypVoid); cf_cname="_fx_copy_" ^ cname_wo_prefix;
             cf_args=src_id :: dst_id :: [] } in
         if ktp_ptr then
             add_fwd_decl fwd_decl (CDefForwardTyp (struct_id, loc))
         else ();
         set_idc_entry tn (CTyp struct_decl);
         if ktp_custom_free then
-            (set_idc_entry freef (CFun freef_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun (freef, loc)))
+            (set_idc_entry free_f (CFun freef_decl);
+            add_fwd_decl fwd_decl (CDefForwardFun (free_f, loc)))
         else ();
         if ktp_custom_copy then
-            (set_idc_entry copyf (CFun copyf_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun (copyf, loc)))
+            (set_idc_entry copy_f (CFun copyf_decl);
+            add_fwd_decl fwd_decl (CDefForwardFun (copy_f, loc)))
         else ();
         (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp, cname_wo_prefix)
     in
@@ -423,11 +423,11 @@ let convert_all_typs top_code =
                 | KTypList et ->
                     let ct_hd = ktyp2ctyp et kt_loc in
                     let ct_tl = fx_result_ct in
-                    let {ctp_free=(_, freef)} = ct_props in
+                    let {ctp_free=(_, free_f)} = ct_props in
                     let relems = ((get_id "rc"), CTypInt) ::
                         ((get_id "tl"), ct_tl) ::
                         ((get_id "hd"), ct_hd) :: [] in
-                    let (freem, freef) = if freef = noid then (!std_FX_FREE_LIST_SIMPLE, !std_fx_free_list_simple) else
+                    let (free_m, free_f) = if free_f = noid then (!std_FX_FREE_LIST_SIMPLE, !std_fx_free_list_simple) else
                         let f = make_id_exp !std_FX_FREE_LIST_IMPL loc in
                         let tn_arg = make_id_exp tn loc in
                         let free_hd_f = match (get_free_f ct_hd true false loc) with
@@ -435,7 +435,7 @@ let convert_all_typs top_code =
                             | _ -> raise_compile_err loc
                                 (sprintf "unexpected element destructor when converting %s" (get_idk_cname tn loc))
                         in let free_code = [CExp(CExpCall(f, tn_arg :: free_hd_f :: [], (CTypVoid, loc)))] in
-                        (freef_decl := {!freef_decl with cf_body=free_code}; (noid, freef)) in
+                        (freef_decl := {!freef_decl with cf_body=free_code}; (noid, free_f)) in
                     let cons_id = gen_temp_idc "cons" in
                     let make_list_m = make_id_exp !std_FX_MAKE_LIST_IMPL kt_loc in
                     let (pass_by_ref, copy_hd_f) = match (get_copy_f ct_hd false true loc) with
@@ -455,13 +455,13 @@ let convert_all_typs top_code =
                     add_decl (CDefFun cons_decl);
                     struct_decl := {!struct_decl with
                         ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
-                        ct_props={ct_props with ctp_free=(freem, freef); ctp_make=cons_id::[]}}
+                        ct_props={ct_props with ctp_free=(free_m, free_f); ctp_make=cons_id::[]}}
                 | KTypRef(et) ->
                     let ct = ktyp2ctyp et kt_loc in
-                    let {ctp_free=(_, freef)} = ct_props in
+                    let {ctp_free=(_, free_f)} = ct_props in
                     let relems = ((get_id "rc"), CTypInt) ::
                         ((get_id "data"), ct) :: [] in
-                    let (freem, freef) = if freef = noid then
+                    let (free_m, free_f) = if free_f = noid then
                             (!std_FX_FREE_REF_SIMPLE, !std_fx_free_ref_simple)
                         else
                             let f = make_id_exp !std_FX_FREE_REF_IMPL loc in
@@ -471,7 +471,7 @@ let convert_all_typs top_code =
                                 | _ -> raise_compile_err loc
                                     (sprintf "unexpected element destructor when converting %s" (get_idk_cname tn loc))
                             in let free_code = [CExp(CExpCall(f, tn_arg :: free_hd_f :: [], (CTypVoid, loc)))] in
-                            (freef_decl := {!freef_decl with cf_body=free_code}; (noid, freef)) in
+                            (freef_decl := {!freef_decl with cf_body=free_code}; (noid, free_f)) in
                     let mkref_id = gen_temp_idc "mkref" in
                     let mkref_m = make_id_exp !std_FX_MAKE_REF_IMPL kt_loc in
                     let (pass_by_ref, copy_data_f) = match (get_copy_f ct false true loc) with
@@ -490,12 +490,12 @@ let convert_all_typs top_code =
                     set_idc_entry mkref_id (CFun mkref_decl);
                     add_decl (CDefFun mkref_decl);
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
-                        ct_props={ct_props with ctp_free=(freem, freef); ctp_make=mkref_id::[]}}
+                        ct_props={ct_props with ctp_free=(free_m, free_f); ctp_make=mkref_id::[]}}
                 | KTypFun(argtyps, rt) ->
                     let cargs = ktyp2ctyp_fargs argtyps rt loc in
                     let fp_ctyp = CTypFunRawPtr(cargs, CTypCInt) in
                     let fv_ctyp = make_ptr (CTypName(get_id "fx_fv_t")) in
-                    let relems = ((get_id "fp"), fp_ctyp) :: ((get_id "fv"), fv_ctyp) :: [] in
+                    let relems = ((get_id "fp"), fp_ctyp) :: ((get_id "fcv"), fv_ctyp) :: [] in
                     struct_decl := {!struct_decl with ct_typ=CTypStruct(struct_id_opt, relems);
                         ct_props={ct_props with ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
                                 ctp_copy=(!std_FX_COPY_FP, !std_fx_copy_fp)}}
@@ -567,9 +567,10 @@ let convert_all_typs top_code =
     let rec fold_n_cvt_ktyp t loc callb = ()
     and fold_n_cvt_kexp e callb =
         match e with
-        | KDefTyp {contents={kt_name; kt_loc}} -> cvt2ctyp kt_name kt_loc
+        | KDefTyp {contents={kt_name; kt_cname; kt_loc}} ->
+            cvt2ctyp kt_name kt_loc
         | KDefVariant {contents={kvar_name; kvar_loc}} -> cvt2ctyp kvar_name kvar_loc
-        | KDefClosureVars {contents={kcv_name; kcv_loc}} -> cvt2ctyp kcv_name kcv_loc
+        | KDefClosureVars _ -> ()
         | KDefExn {contents={ke_name; ke_loc}} -> () (* [TODO] convert exception to C *)
             (*
                 // simple exceptions
@@ -615,5 +616,6 @@ let convert_all_typs top_code =
         kcb_fold_atom = None;
         kcb_fold_result = 0
     }
-    in List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) top_code;
+    in
+    List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) top_code;
     (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl) @ (List.rev !top_typfun_decl)

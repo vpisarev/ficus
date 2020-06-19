@@ -1,4 +1,4 @@
-import Args, Math
+/*import Args, Math
 
 type 't point_ = {x: 't; y: 't}
 type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
@@ -22,8 +22,9 @@ fun inside_outside(p: 't point_, r: 't rect_) =
 println("\(ip) is \(inside_outside(ip, ir)) \(ir)")
 println("\(fp) is \(inside_outside(fp, fr)) \(fr)")
 
-fun is_prime(n: int) {
-    if n == 1 {false} else if n == 2 {true} else if n % 2 == 0 {false}
+fun is_prime(n: int)
+{
+    if n <= 1 {false} else if n % 2 == 0 {n == 2}
     else {
         fold r=true for p<-3:Math.floor(Math.sqrt(n :> double))+1:2 {
             if n % p == 0 {break with false};
@@ -33,3 +34,8 @@ fun is_prime(n: int) {
 }
 
 println("primes <100: \([: for i <- 0:100 {if !is_prime(i) {continue}; i} :])")
+*/
+
+import List
+val sorted = List.mergeSort([: 2, -1, 100, 8, 7 :], fun (a: int, b: int) {a < b})
+println("sorted: \(sorted)")
