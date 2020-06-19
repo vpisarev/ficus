@@ -46,7 +46,7 @@ operator + (a: char, b: string): string = ccode "
     return fx_strjoin(0, 0, 0, s, 2, fx_result);"
 
 fun string(a: bool): string = if a {"true"} else {"false"}
-fun string(a: int): string = ccode "char buf[32]; sprintf(buf, \"%zd\", a); return fx_ascii2str(buf, -1, fx_result);"
+fun string(a: int): string = ccode "return fx_itoa(a, fx_result);"
 fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: string) = a

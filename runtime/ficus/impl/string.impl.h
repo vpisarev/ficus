@@ -366,6 +366,57 @@ int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base)
     return FX_OK;
 }
 
+int fx_itoa(int_ n, fx_str_t* str)
+{
+    static const char* tab =
+        "0001020304050607080910111213141516171819202122232425262728293031323334353637383940414243444546474849"
+        "5051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899";
+    int_ len = 1;
+    int_ neg = -(n < 0);
+
+    n = (n ^ neg) - neg;
+    size_t a = (size_t)n;
+    if(a >= 100000000) {
+        if(a >= 10000000000000000ULL) {
+            a = (size_t)(a/10000000000000000ULL);
+            len += 16;
+            // at most 3-4 digits left, so we skip the second check for >=10**8
+        }
+        else {
+            a /= 100000000;
+            len += 8;
+        }
+    }
+    if(a >= 10000) {
+        a /= 10000;
+        len += 4;
+    }
+    if(a >= 100) {
+        a /= 100;
+        len += 2;
+    }
+    len += a >= 10;
+
+    int status = fx_make_str(0, len-neg, str);
+    if(status < 0) return status;
+
+    char_* buf = str->data;
+    *buf = '-';
+    buf -= neg;
+    char_* ptr = buf + len;
+
+    a = (size_t)n;
+    while((ptr -= 2) >= buf) {
+        size_t q = a / 100;
+        size_t r = a - q*100;
+        ptr[0] = (char_)tab[r*2];
+        ptr[1] = (char_)tab[r*2+1];
+        a = q;
+    }
+    if(ptr+1 == buf) buf[0] = (char_)(a + '0');
+    return FX_OK;
+}
+
 int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr)
 {
     if(start < 0 || start > str->length || end < 0 || end > str->length)
