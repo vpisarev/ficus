@@ -383,13 +383,13 @@ let cfold_dealias top_code =
                         // k-normalization step makes sure that there is always the 'else' branch.
                         actionN.
 
-                    If some of the actual_check(i,j) are == true or == false,
+                    If some of the actual_check(i,j) are constant "true" or "false",
                     we can optimize the conditions a bit:
 
-                    * if some actual_check(i,j) == false,
+                    * if some actual_check(i,j) === false,
                       then the remaining checks {expressions(i,k) ... actual_check(i,k)} for k > j can be removed;
                       the corresponding action(i) can probably be converted into a 'nop' (or 'nil').
-                    * if some actual_check(i,j) == true then
+                    * if some actual_check(i,j) === true then
                       expressions(i,j) ... should be added to the next expressions(i,j+1).
                       if it was the last check in case, then the expressions should be added
                       to the action(i).
@@ -398,7 +398,7 @@ let cfold_dealias top_code =
                        else if( {expressions(i,1) ... true }) action(i)
                        ...", then we replace it with
                        "... else { expressions(i,1) ... action(i) }". The remaining cases are removed.
-                       if i==1 then the whole KExpMatch is replaced with KExpSeq({expressions(1,1) ... action(1)}).
+                       if i=1 then the whole KExpMatch is replaced with KExpSeq({expressions(1,1) ... action(1)}).
                     Sounds rather complex, but the code is not much longer than this description.
                 *)
                 let rec process_case_checks checks next_check_code result_checks =

@@ -800,6 +800,10 @@ let rec ktyp_deref kt loc =
         | _ -> raise_compile_err loc (sprintf "named 'type' '%s' does not represent a type" (id2str i)))
     | _ -> kt
 
+let is_ktyp_scalar ktyp = match ktyp with
+    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> true
+    | _ -> false
+
 let print_set setname s =
     printf "%s:[" setname;
     IdSet.iter (fun i -> printf " %s" (id2str i)) s;

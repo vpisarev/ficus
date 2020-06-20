@@ -202,7 +202,7 @@ let annotate_types top_code =
             let have_null = match kvar_cases with
                     | (_, KTypVoid) :: _ -> true
                     | _ -> false in
-            let no_tag = ncases == 1 || (is_recursive && ncases == 2 && have_null) in
+            let no_tag = ncases = 1 || (is_recursive && ncases = 2 && have_null) in
             if is_recursive then () else
                 List.iter (fun constr ->
                     match (kinfo_ constr kvar_loc) with

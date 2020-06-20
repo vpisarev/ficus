@@ -61,17 +61,21 @@ typedef char32_t char_;
 #endif
 
 #ifndef FX_XADD
-#ifdef _MSC_VER
-#include <intrin.h>
-#if defined _M_X64 || defined _M_ARM64
-#define FX_XADD(addr, delta) (int_)_InterlockedExchangeAdd64((__int64 volatile*)addr, delta)
+#if 0
+    #define FX_XADD(addr, delta) ({ int_ prev = *(addr); *(addr) += (delta); prev; })
 #else
-#define FX_XADD(addr, delta) (int)_InterlockedExchangeAdd((long volatile*)addr, delta)
-#endif
-#elif defined __ATOMIC_ACQ_REL
-#define FX_XADD(addr, delta) __c11_atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, __ATOMIC_ACQ_REL)
-#else
-#define FX_XADD(addr, delta) __atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, 4)
+    #ifdef _MSC_VER
+        #include <intrin.h>
+        #if defined _M_X64 || defined _M_ARM64
+        #define FX_XADD(addr, delta) (int_)_InterlockedExchangeAdd64((__int64 volatile*)addr, delta)
+        #else
+        #define FX_XADD(addr, delta) (int)_InterlockedExchangeAdd((long volatile*)addr, delta)
+        #endif
+    #elif defined __clang__ && defined __ATOMIC_ACQ_REL
+        #define FX_XADD(addr, delta) __c11_atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, __ATOMIC_ACQ_REL)
+    #else
+        #define FX_XADD(addr, delta) __atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, 4)
+    #endif
 #endif
 #endif
 
@@ -325,6 +329,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 
 int_ fx_list_length(void* pl);
 void fx_free_list_simple(void* pl);
+void fx_link_lists(void* l1, void* l2, void* result);
 #define FX_FREE_LIST_SIMPLE(pl) if(!*(pl)) ; else fx_free_list_simple(pl)
 
 #define FX_LIST_APPEND(l_first, l_last, x) \
@@ -344,9 +349,6 @@ typedef struct fx_arrdim_t
     int_ size;
     size_t step;
 } fx_arrdim_t;
-
-typedef void (*fx_free_t)(void* elem);
-typedef void (*fx_copy_t)(const void* src, void* dst);
 
 typedef struct fx_arr_t
 {
@@ -413,11 +415,6 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
 
 ////////////////////////// References //////////////////////////
-
-typedef struct fx_ref_simple_data_t
-{
-    int_ rc;
-}* fx_ref_simple_t;
 
 #define FX_FREE_REF_IMPL(typ, arg_free_f) \
     typ r = *dst; \

@@ -184,7 +184,7 @@ void fx_free_arr(fx_arr_t* arr)
 {
     if(arr->rc)
     {
-        if(FX_DECREF(arr->rc) == 1)
+        if(FX_DECREF(*arr->rc) == 1)
         {
             fx_free_t free_f = arr->free_elem;
             size_t elemsize = arr->dim[arr->ndims-1].step;

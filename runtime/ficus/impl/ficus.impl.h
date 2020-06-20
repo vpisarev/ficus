@@ -57,7 +57,6 @@ typedef struct fx_list_simple_data_t
 {
     int_ rc;
     struct fx_list_simple_data_t* tl;
-    int hd;
 }* fx_list_simple_t;
 
 void fx_free_list_simple(void* dst_)
@@ -75,7 +74,28 @@ int_ fx_list_length(void* pl_)
     return len;
 }
 
+void fx_link_lists(void* l1_, void* l2_, void* result_)
+{
+    fx_list_simple_t l1 = (fx_list_simple_t)l1_;
+    fx_list_simple_t l2 = (fx_list_simple_t)l2_;
+    fx_list_simple_t* result = (fx_list_simple_t*)result_;
+
+    if(!l1)
+        l1 = l2;
+    else {
+        fx_list_simple_t tmp = l1;
+        while(tmp->tl) tmp=tmp->tl;
+        FX_COPY_PTR(l2, &tmp->tl);
+    }
+    FX_COPY_PTR(l1, result);
+}
+
 ///////////// references ////////////
+
+typedef struct fx_ref_simple_data_t
+{
+    int_ rc;
+}* fx_ref_simple_t;
 
 void fx_free_ref_simple(void* dst_)
 {

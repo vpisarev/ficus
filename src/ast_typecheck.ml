@@ -904,15 +904,21 @@ and check_exp e env sc =
             | _ -> None)
         | _ -> raise_compile_err eloc (sprintf "unsupported binary operation %s" (binop_to_string bop))) in
 
-        (match (typ_opt, bop, etyp1_, etyp2_) with
-        | ((Some typ), _, _, _) ->
+        (match (typ_opt, bop, etyp1_, etyp2_, e1, e2) with
+        | ((Some typ), _, _, _, _, _) ->
             unify typ etyp eloc "improper type of the arithmetic operation result";
             ExpBinOp(bop, new_e1, new_e2, ctx)
-        (*| (_, OpAdd, TypString, TypString)
-        | (_, OpAdd, TypString, TypChar)
-        | (_, OpAdd, TypChar, TypString) ->
+        (*| (_, OpAdd, TypString, TypString, _)
+        | (_, OpAdd, TypString, TypChar, _)
+        | (_, OpAdd, TypChar, TypString, _) ->
             unify TypString etyp eloc "improper type of the string concatenation operation (string is expected)";
             ExpBinOp(bop, new_e1, new_e2, ctx)*)
+        | (_, OpAdd, TypList _, TypList _, ExpBinOp(OpAdd, sub_e1, sub_e2, _), _) ->
+            (* make list concatenation right-associative instead of left-associative *)
+            let sub_e2_loc = get_exp_loc sub_e2 in
+            let e2_loc = loclist2loc [sub_e2_loc; eloc2] eloc2 in
+            let e2_ = ExpBinOp(OpAdd, sub_e2, e2, (make_new_typ(), e2_loc)) in
+            check_exp (ExpBinOp (OpAdd, sub_e1, e2_, (etyp, eloc))) env sc
         | _ ->
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)
