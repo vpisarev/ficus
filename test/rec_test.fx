@@ -36,6 +36,21 @@ fun is_prime(n: int)
 println("primes <100: \([: for i <- 0:100 {if !is_prime(i) {continue}; i} :])")
 */
 
-import List
-val sorted = List.mergeSort([: 2, -1, 100, 8, 7 :], fun (a: int, b: int) {a < b})
-println("sorted: \(sorted)")
+//import List
+//val sorted = List.mergeSort([: 2, -1, 100, 8, 7 :], fun (a: int, b: int) {a < b})
+//println("sorted: \(sorted)")
+
+/*val fpair = List.find_opt(("a", 0) :: ("b", 1) :: ("rest", 2) :: [], fun ((key, i): (string, int)) {key == "xyz"})
+
+println(match fpair {
+    | Some((x, y)) => y
+    | _ => -1
+    })
+*/
+import Math
+
+type complex_t = {re: float; im: float}
+val c = complex_t {re=0.f, im=1.f}
+val d = c->{re=c->re*2, im=c->im*2}
+fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
+println("abs(d)=\(abs(d))")

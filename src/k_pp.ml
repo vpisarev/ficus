@@ -88,12 +88,13 @@ let rec ppktyp_ t p1 loc =
 
 let pprint_ktyp t loc = ppktyp_ t KTypPr0 loc
 let pprint_atom a impderef loc = match a with
+    | Atom.Id ((Id.Name _) as k) -> pprint_id k loc
     | Atom.Id k ->
         if impderef && (is_implicit_deref k loc) then
             (pstr "(*"; pprint_id k loc; pstr ")")
         else
             pprint_id k loc
-    | Atom.Lit l -> pstr (Ast_pp.lit_to_string l loc)
+    | Atom.Lit l -> pstr (lit2str l loc)
 let pprint_dom r loc = match r with
     | Domain.Elem(a) -> pprint_atom a true loc
     | Domain.Fast(a) -> pstr "<"; pprint_atom a true loc; pstr ">"
@@ -108,6 +109,7 @@ let pprint_dom r loc = match r with
 
 let rec pprint_kexp e = pprint_kexp_ e true
 and pprint_kexp_ e prtyp =
+    (*let _ = printf "printing: %s\n" (kexp2str e) in*)
     let t = get_kexp_typ e in
     let eloc = get_kexp_loc e in
     let ppktp ktp = match ktp with
@@ -132,25 +134,25 @@ and pprint_kexp_ e prtyp =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
-        | ValConstr _ -> ()
+        | ValCtor _ -> ()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp vt loc; pspace(); pstr "="; pspace();
         if List.mem ValImplicitDeref vflags then
         (pstr "MAKE_REF("; pprint_kexp_ e0 false; pstr ")")
         else pprint_kexp_ e0 false; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_typ; kf_body; kf_closure; kf_flags; kf_loc }} ->
-        let (kf_cl_arg, kf_cl_vt) = kf_closure in
+        let {kci_arg; kci_fcv_t} = kf_closure in
         let nargs = List.length kf_args in
         let (argtyps, rt) = match kf_typ with
             | KTypFun(argtyps, rt) -> (argtyps, rt)
             | _ ->
-                if is_fun_constr kf_flags then
+                if is_fun_ctor kf_flags then
                     ([], kf_typ)
                 else
                     raise_compile_err kf_loc (sprintf "the function '%s' type is not KTypFun(...)" (id2str kf_name)) in
         let kf_all_args = Utils.zip kf_args argtyps in
         let fkind = ref "FUN" in
-        let constr_id = get_fun_constr kf_flags in
+        let ctor_id = get_fun_ctor kf_flags in
         (obox(); (List.iter (fun ff -> match ff with
                     | FunPure -> pstr "PURE"; pspace()
                     | FunImpure -> pstr "IMPURE"; pspace()
@@ -158,21 +160,21 @@ and pprint_kexp_ e prtyp =
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunStatic -> pstr "STATIC"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
-                    | FunConstr _ -> ()
+                    | FunCtor _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
         pstr (!fkind); pspace(); pprint_id_label kf_name; pspace();
         pstr "("; pcut(); obox();
         List.iteri (fun i (n, t) ->
-            if i = 0 then ()
-            else (pstr ","; pspace()); pprint_id n kf_loc; pstr ":"; pspace(); pprint_ktyp t kf_loc) kf_all_args;
-        if kf_cl_arg = noid then () else
+            if i > 0 then (pstr ","; pspace()) else ();
+            pprint_id n kf_loc; pstr ":"; pspace(); pprint_ktyp t kf_loc) kf_all_args;
+        if kci_arg = noid then () else
             (if nargs > 0 then pstr ";" else (); pspace();
-            pprint_id kf_cl_arg kf_loc; pstr ":"; pspace();
-            pprint_id_ kf_cl_vt);
+            pprint_id kci_arg kf_loc; pstr ":"; pspace();
+            pprint_id_ kci_fcv_t);
         cbox(); pcut();
         pstr ")";
         pspace(); pstr ":"; pspace(); pprint_ktyp rt kf_loc; pspace();
-        pstr "="; pspace(); if constr_id >= 0 then pstr (sprintf "Constructor(%d)" constr_id) else pprint_kexp kf_body; cbox())
+        pstr "="; pspace(); if ctor_id <> CtorNone then pstr (ctor2str ctor_id) else pprint_kexp kf_body; cbox())
     | KDefExn { contents = {ke_name; ke_typ; ke_loc} } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id_label ke_name;
         (match ke_typ with
@@ -251,17 +253,18 @@ and pprint_kexp_ e prtyp =
             (match al with
             a :: [] -> pstr ","
             | _ -> ()); cbox(); pstr "}"
-        | KExpMkClosure(f, cl_id, args, (_, loc)) ->
-            let (fvars, _) = get_closure_freevars cl_id loc in
-            let ant = Utils.zip args fvars in
+        | KExpMkClosure(make_fp, f, args, (_, loc)) ->
             obox();
-            pstr "MAKE_CLOSURE ("; pcut(); pprint_id_ f;
-            if cl_id = noid then () else
-                (pstr ";"; pspace(); pprint_id_ cl_id; pspace(); pstr "{"; pcut();
+            pstr "MAKE_CLOSURE ("; pcut();
+            pprint_id_ make_fp; pstr ","; pspace(); pprint_id_ f;
+            if make_fp = noid then () else
+                (let (fvars, _) = get_closure_freevars f loc in
+                let ant = Utils.zip args fvars in
+                pstr ";"; pspace(); pstr "{"; pcut();
                 List.iteri (fun i (a, (n, _)) ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_id n loc; pstr "="; pprint_atom a false eloc) ant;
                 pcut(); pstr "}");
-            pcut(); cbox(); pstr ")"
+            pcut(); pstr ")"; cbox()
         | KExpMkArray(shape, elems, (_, l)) ->
             let total_elems = List.length elems in
             let total_elems2 = List.fold_left (fun p di -> p*di) 1 shape in

@@ -121,8 +121,8 @@ char* fx_argv(int_ idx);
 void* fx_malloc(size_t sz);
 void* fx_realloc(void* ptr, size_t sz);
 void fx_free(void* ptr);
-#define FX_DECL_AND_MALLOC(ptrtyp, ptr, sz) \
-    ptrtyp ptr = (ptrtyp)fx_malloc(sz); \
+#define FX_DECL_AND_MALLOC(ptrtyp, ptr) \
+    ptrtyp ptr = (ptrtyp)fx_malloc(sizeof(*ptr)); \
     if(!ptr) return FX_EXN_OutOfMemError
 #define FX_RESULT_MALLOC(ptrtyp, ptr) \
     if (((ptr)=(ptrtyp)fx_malloc(sizeof(*(ptr)))) != 0) ; else return FX_EXN_OutOfMemError
@@ -259,6 +259,7 @@ int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
 #define FX_FREE_STR(str) if(!(str)->rc) ; else fx_free_str(str)
 #define FX_FREE_CSTR(cstr) if(!(cstr)->rc) ; else fx_free_cstr(cstr)
 #define FX_MAKE_STR(strlit) { 0, U##strlit, (int_)(sizeof(U##strlit)/sizeof(char_)-1) }
+#define FX_CHAR(c) U##c
 
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
 size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
@@ -294,7 +295,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
 
 #define FX_MAKE_EXN_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy_f) \
-    FX_DECL_AND_MALLOC(exndata_typ*, data, sizeof(exndata_typ)); \
+    FX_DECL_AND_MALLOC(exndata_typ*, data); \
         \
     data->base.rc = 1; \
     data->base.free_f = exndata_free; \
@@ -319,7 +320,7 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
     *dst = 0
 
 #define FX_MAKE_LIST_IMPL(typ, hd_copy_f) \
-    FX_DECL_AND_MALLOC(typ, l, sizeof(*l)); \
+    FX_DECL_AND_MALLOC(typ, l); \
     l->rc = 1; \
     l->tl = tl; \
     if(addref_tl && tl) FX_INCREF(tl->rc); \
@@ -426,7 +427,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
     *dst = 0
 
 #define FX_MAKE_REF_IMPL(typ, arg_copy_f) \
-    FX_DECL_AND_MALLOC(typ, r, sizeof(*r)); \
+    FX_DECL_AND_MALLOC(typ, r); \
     r->rc = 1; \
     arg_copy_f(arg, &r->data); \
     *fx_result = r; \
@@ -435,7 +436,20 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
 void fx_free_ref_simple(void* pr);
 #define FX_FREE_REF_SIMPLE(pr) if(!*(pr)) ; else fx_free_list_simple(pr)
 
-//////////////////////// Function pointers /////////////////////////
+/////////////////////////// Variants /////////////////////////
+
+#define FX_MAKE_RECURSIVE_VARIANT_IMPL_START(variant_ptr_t) \
+    FX_DECL_AND_MALLOC(variant_ptr_t, v); \
+    *fx_result = v; \
+    v->rc = 1
+
+//////////////////////// Function Pointers/Closures /////////////////////////
+
+typedef struct fx_fcv_t
+{
+    int_ rc;
+    fx_free_t free_f;
+} fx_fcv_t;
 
 #define FX_FREE_FP(f) \
     if((f)->fcv) { \
@@ -448,6 +462,13 @@ void fx_free_ref_simple(void* pr);
         FX_INCREF((src)->fcv->rc); \
     *(dst) = *(src); \
 }
+
+#define FX_MAKE_FP_IMPL_START(fcv_t, free_f_, fname) \
+    FX_DECL_AND_MALLOC(fcv_t*, fcv); \
+    fx_result->fp = fname; \
+    fx_result->fcv = (fx_fcv_t*)fcv; \
+    fcv->rc = 1; \
+    fcv->free_f = (fx_free_t)free_f_
 
 void fx_free_fp(void* fp);
 void fx_copy_fp(const void* src, void* pdst);

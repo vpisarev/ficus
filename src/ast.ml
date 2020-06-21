@@ -168,8 +168,9 @@ type binop_t =
 
 type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
-type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate | ValSubArray | ValConstr of int
-type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunConstr of int
+type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate | ValSubArray | ValCtor of int
+type fun_constr_t = CtorNone | CtorStruct | CtorVariant of int | CtorFP of id_t | CtorExn of id_t
+type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunCtor of fun_constr_t
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
 type ctx_t = typ_t * loc_t
@@ -302,13 +303,15 @@ let dump_id i = match i with
     | Id.Temp(i, j) -> (sprintf "Id.Temp(%d, %d)" i j)
 
 let id2str__ i pp val_decor temp_decor =
-    let (infix, prefix, suffix) = match i with
-        | Id.Name(i) -> ("", i, -1)
-        | Id.Val(i, j) -> (val_decor, i, j)
-        | Id.Temp(i, j) -> (temp_decor, i, j) in
-    let prefix = dynvec_get all_strings prefix in
-    if pp || suffix < 0 then (sprintf "%s" prefix)
-    else (sprintf "%s%s%d" prefix infix suffix)
+    if i = noid then "<noid>"
+    else
+        let (infix, prefix, suffix) = match i with
+            | Id.Name(i) -> ("", i, -1)
+            | Id.Val(i, j) -> (val_decor, i, j)
+            | Id.Temp(i, j) -> (temp_decor, i, j) in
+        let prefix = dynvec_get all_strings prefix in
+        if pp || suffix < 0 then (sprintf "%s" prefix)
+        else (sprintf "%s%s%d" prefix infix suffix)
 
 let id2str_ i pp = id2str__ i pp "@" "@@"
 
@@ -700,14 +703,61 @@ let get_builtin_exception n0 loc =
     | n :: _ -> n
     | _ -> raise_compile_err loc (sprintf "cannot find built-in exception '%s'" (id2str n0))
 
-let get_val_constr flags =
-    match (List.find_opt (fun f -> match f with ValConstr _ -> true | _ -> false) flags) with
-    | Some (ValConstr i) -> i
+let get_val_ctor flags =
+    match (List.find_opt (fun f -> match f with ValCtor _ -> true | _ -> false) flags) with
+    | Some (ValCtor i) -> i
     | _ -> -1
 
-let get_fun_constr flags =
-    match (List.find_opt (fun f -> match f with FunConstr _ -> true | _ -> false) flags) with
-    | Some (FunConstr i) -> i
-    | _ -> -1
+let get_fun_ctor flags =
+    match (List.find_opt (fun f -> match f with FunCtor _ -> true | _ -> false) flags) with
+    | Some (FunCtor i) -> i
+    | _ -> CtorNone
 
-let is_fun_constr flags = (get_fun_constr flags) >= 0
+let is_fun_ctor flags = (get_fun_ctor flags) <> CtorNone
+
+let ctor2str f =
+    let s = match f with
+    | CtorNone -> ""
+    | CtorStruct -> "record_or_tuple"
+    | CtorVariant d -> sprintf "variant(%d)" d
+    | CtorFP i -> sprintf "fp(%s)" (id2str i)
+    | CtorExn i -> sprintf "exn(%s)" (id2str i)
+    in if f = CtorNone then "not_a_constructor" else
+    ("Constructor(" ^ s ^ ")")
+
+let lit2str c loc =
+    let add_dot s suffix =
+        (if (String.contains s '.') || (String.contains s 'e') then s else s ^ ".") ^ suffix
+    in
+    match c with
+    | LitInt(v) -> sprintf "%Li" v
+    | LitSInt(b, v) -> sprintf "%Lii%d" v b
+    | LitUInt(b, v) -> sprintf "%Luu%d" v b
+    | LitFloat(16, v) -> let s = sprintf "%.4g" v in (add_dot s "h")
+    | LitFloat(32, v) -> let s = sprintf "%.8g" v in (add_dot s "f")
+    | LitFloat(64, v) -> let s = sprintf "%.16g" v in (add_dot s "")
+    | LitFloat(b, v) -> raise_compile_err loc (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
+    | LitString(s) -> "\"" ^ (Utils.escaped_uni s) ^ "\""
+    | LitChar(c) -> "\'" ^ (Utils.escaped_uni c) ^ "\'"
+    | LitBool(true) -> "true"
+    | LitBool(false) -> "false"
+    | LitNil -> "nullptr"
+
+let print_set setname s =
+    printf "%s:[" setname;
+    IdSet.iter (fun i -> printf " %s" (id2str i)) s;
+    printf " ]\n"
+
+let parser_ctx_file = ref noid
+let parser_ctx_deps = ref ([] : id_t list)
+let parser_ctx_inc_dirs= ref ([] : string list)
+
+let update_imported_modules mname_id (pos0, pos1) =
+    let mname = pp_id2str mname_id in
+    match Utils.locate_module_file mname !parser_ctx_inc_dirs with
+    | Some(mfname) ->
+        let dep_minfo = find_module mname_id mfname in
+        let mname_unique_id = !dep_minfo.dm_name in
+        (parser_ctx_deps := mname_unique_id :: !parser_ctx_deps;
+        mname_unique_id)
+    | _ -> raise (SyntaxError(("module " ^ mname ^ " is not found"), pos0, pos1))

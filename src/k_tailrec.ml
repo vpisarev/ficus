@@ -43,8 +43,13 @@ let tailrec2loop kf =
             | KTypFun(argtyps, KTypVoid) -> (argtyps, KTypVoid, noid, [])
             | KTypFun(argtyps, rt) ->
                 let res_n = gen_temp_idk "res" in
-                let res_val0 = KExpAtom((Atom.Lit LitNil), (rt, kf_loc)) in
-                let f_init_code = create_defval res_n rt (ValMutable :: [])
+                let {ktp_scalar} = K_annotate_types.get_ktprops rt kf_loc in
+                let a0 = match ktp_scalar with
+                    | false -> (Atom.Lit LitNil)
+                    | _ -> Atom.Lit (LitInt 0L)
+                    in
+                let res_val0 = KExpAtom(a0, (rt, kf_loc)) in
+                let f_init_code = create_kdefval res_n rt (ValMutable :: [])
                     (Some res_val0) [] kf_scope kf_loc in
                 (argtyps, rt, res_n, f_init_code)
             | _ -> raise_compile_err kf_loc
@@ -117,9 +122,9 @@ let tailrec2loop kf =
                 let _ = set_idk_entry a1i (KVal dv1) in
                 let a1i_as_exp = KExpAtom((Atom.Id a1i), (ti, kf_loc)) in
                 let a2i_as_exp = KExpAtom((Atom.Id a2i), (ti, kf_loc)) in
-                let f_init_code = create_defval a2i ti (ValMutable :: [])
+                let f_init_code = create_kdefval a2i ti (ValMutable :: [])
                     (Some a1i_as_exp) f_init_code kf_scope kf_loc in
-                let loop_init_code = create_defval ai ti []
+                let loop_init_code = create_kdefval ai ti []
                     (Some a2i_as_exp) loop_init_code loop_scope kf_loc in
                 (a1i :: new_kf_args, (a2i, ti) :: trec_args, f_init_code, loop_init_code))
             ([], [], f_init_code, []) kf_args argtyps in
@@ -137,6 +142,8 @@ let tailrec2loop kf =
                     else KExpAssign(res_n, final_e, eloc) in
                 KExpSeq((final_e :: (KExpBreak eloc) :: []), (KTypVoid, eloc))
         in let rec transform_tcalls e =
+            let eloc = get_kexp_loc e in
+            let new_ctx = (KTypVoid, eloc) in
             match e with
             | KExpSeq(elist, (_, eloc)) ->
                 let rcode = match (List.rev elist) with
@@ -144,10 +151,10 @@ let tailrec2loop kf =
                     | final_e :: rest ->
                         (transform_tcalls final_e) :: rest
                 in rcode2kexp rcode eloc
-            | KExpIf(c, then_e, else_e, kctx) ->
+            | KExpIf(c, then_e, else_e, _) ->
                 let then_e = transform_tcalls then_e in
                 let else_e = transform_tcalls else_e in
-                KExpIf(c, then_e, else_e, kctx)
+                KExpIf(c, then_e, else_e, new_ctx)
             | KExpCall(f, real_args, (_, eloc)) ->
                 if f = kf_name then
                     let tcall_rcode = List.fold_left2 (fun tcall_rcode (trec_ai, ti) real_ai ->
@@ -156,15 +163,15 @@ let tailrec2loop kf =
                     rcode2kexp tcall_rcode eloc
                 else
                     process_func_ending e
-            | KExpMatch(cases, kctx) ->
+            | KExpMatch(cases, _) ->
                 let cases = List.map (fun (checks_i, e_i) ->
                     let e_i = transform_tcalls e_i in
                     (checks_i, e_i)) cases in
-                KExpMatch(cases, kctx)
-            | KExpTryCatch(try_e, catch_e, kctx) ->
+                KExpMatch(cases, new_ctx)
+            | KExpTryCatch(try_e, catch_e, _) ->
                 let try_e = transform_tcalls try_e in
                 let catch_e = transform_tcalls catch_e in
-                KExpTryCatch(try_e, catch_e, kctx)
+                KExpTryCatch(try_e, catch_e, new_ctx)
             | _ ->
                 process_func_ending e
         in

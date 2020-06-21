@@ -722,6 +722,9 @@ let make_call f args rt loc =
     CExpCall(f_exp, args, (rt, loc))
 
 let make_dummy_exp loc = CExpInit([], (CTypVoid, loc))
+let make_assign lhs rhs =
+    let loc = get_cexp_loc rhs in
+    CExpBinOp(COpAssign, lhs, rhs, (CTypVoid, loc))
 
 let cexp_get_addr e =
     match e with
@@ -773,7 +776,8 @@ let std_fx_copy_t = ref noid
 let std_FX_INCREF = ref noid
 let std_FX_DECREF = ref noid
 
-let std_FX_RESULT_MALLOC = ref noid
+let std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START = ref noid
+let std_FX_MAKE_FP_IMPL_START = ref noid
 let std_FX_CALL = ref noid
 let std_FX_COPY_PTR = ref noid
 let std_FX_COPY_SIMPLE = ref noid

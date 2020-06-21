@@ -133,16 +133,10 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst)
 
 //////////////// function pointers ////////////////
 
-typedef struct fx_fv_t
-{
-    int_ rc;
-    fx_free_t free_f;
-} fx_fv_t;
-
 typedef struct fx_fp_t
 {
     void (*fp)(void);
-    fx_fv_t* fcv;
+    fx_fcv_t* fcv;
 } fx_fp_t;
 
 void fx_free_fp(void* fp)
@@ -182,7 +176,7 @@ void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* dst)
 
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 {
-    FX_DECL_AND_MALLOC(fx_cptr_t, p, sizeof(*p));
+    FX_DECL_AND_MALLOC(fx_cptr_t, p);
     p->rc = 1;
     p->free_f = free_f;
     p->ptr = ptr;

@@ -158,7 +158,7 @@ let rec mangle_ktyp t mangle_map loc =
             mangle_ktyp_ t result
         | KTypList(t) -> mangle_ktyp_ t ("L" :: result)
         | KTypRef(t) -> mangle_ktyp_ t ("r" :: result)
-        | KTypExn -> "e" :: result
+        | KTypExn -> "E" :: result
         | KTypErr -> raise_compile_err loc "KTypErr cannot be mangled"
         | KTypModule -> raise_compile_err loc "KTypModule cannot be mangled"
     in String.concat "" (List.rev (mangle_ktyp_ t []))
@@ -222,28 +222,35 @@ let mangle_all top_code =
             | _ -> raise_compile_err loc (sprintf "invalid description of '%s'; should be KVal _" (id2str n)));
             KDefVal(n, e, loc)
         | KDefFun kf ->
-            let {kf_name; kf_typ; kf_args; kf_body; kf_closure=(kf_c_arg, kf_c_vt); kf_scope; kf_loc} = !kf in
-            let t = walk_ktyp kf_typ kf_loc callb in
-            let t = match t with
-                | KTypFun (_, _) -> t
-                | _ -> KTypFun([], t)
+            let {kf_name; kf_typ; kf_args; kf_body; kf_closure; kf_scope; kf_loc} = !kf in
+            let {kci_fcv_t} = kf_closure in
+            let ktyp = walk_ktyp kf_typ kf_loc callb in
+            let ktyp = match ktyp with
+                | KTypFun (_, _) -> ktyp
+                | _ -> KTypFun([], ktyp)
                 in
-            let suffix = mangle_ktyp t mangle_map kf_loc in
+            let suffix = mangle_ktyp ktyp mangle_map kf_loc in
             let suffix = String.sub suffix 2 ((String.length suffix) - 2) in
             let new_body = walk_kexp_n_mangle kf_body callb in
             let bare_name = mangle_name kf_name (Some kf_scope) kf_loc in
             let (_, cname) = mangle_make_unique kf_name "F" bare_name suffix mangle_map in
-            let cname = compress_name cname kf_scope kf_loc in
-            (if kf_c_vt = noid then () else
-                match (kinfo_ kf_c_vt kf_loc) with
+            let cname = add_fx (compress_name cname kf_scope kf_loc) in
+            let mangled_ktyp = walk_ktyp_n_mangle ktyp kf_loc callb in
+            let mangled_ktyp_id = match mangled_ktyp with
+                | KTypName tn -> tn
+                | _ -> raise_compile_err kf_loc (sprintf "mangle: cannot mangle '%s' type down to alias" cname)
+                in
+            (if kci_fcv_t = noid then () else
+                match (kinfo_ kci_fcv_t kf_loc) with
                 | KClosureVars kcv ->
                     let { kcv_freevars; kcv_loc } = !kcv in
-                    let cv_cname = add_fx (cname ^ "_cldata_t") in
+                    let cv_cname = cname ^ "_cldata_t" in
                     let freevars = List.map (fun (n, t) -> (n, (walk_ktyp_n_mangle t kcv_loc callb))) kcv_freevars in
                     kcv := { !kcv with kcv_cname=cv_cname; kcv_freevars=freevars };
                 | _ ->
                     raise_compile_err kf_loc "mangle: invalid closure datatype (should be KClosureVars)");
-            kf := { !kf with kf_cname=add_fx cname; kf_typ=t; kf_body=new_body };
+            kf := { !kf with kf_cname=cname; kf_typ=ktyp; kf_body=new_body;
+                kf_closure={kf_closure with kci_fp_typ=mangled_ktyp_id} };
             List.iter (fun i -> mangle_id_typ i kf_loc callb) kf_args;
             e
         | KDefExn ke ->

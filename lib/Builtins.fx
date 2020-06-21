@@ -78,13 +78,16 @@ pure nothrow operator == (a: string, b: string): bool = ccode
             (a->length == 0 ||
             memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
     "
+
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
     "return a == b;"
 
 nothrow fun atoi(a: string): int? = ccode
-    "bool ok = true;
+    "
+    bool ok = true;
     fx_atoi(a, &fx_result->u.Some, &ok, 10);
-    fx_result->tag = (int)ok;"
+    fx_result->tag = (int)ok;
+    "
 
 pure nothrow fun sat_uint8(i: int): uint8 = ccode "
     return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"

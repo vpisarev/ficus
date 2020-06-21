@@ -24,24 +24,7 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
-let add_dot s suffix =
-    (if (String.contains s '.') || (String.contains s 'e') then s else s ^ ".") ^ suffix
-
-let lit_to_string c loc = match c with
-    | LitInt(v) -> sprintf "%Li" v
-    | LitSInt(b, v) -> sprintf "%Lii%d" v b
-    | LitUInt(b, v) -> sprintf "%Luu%d" v b
-    | LitFloat(16, v) -> let s = sprintf "%.4g" v in (add_dot s "h")
-    | LitFloat(32, v) -> let s = sprintf "%.8g" v in (add_dot s "f")
-    | LitFloat(64, v) -> let s = sprintf "%.16g" v in (add_dot s "")
-    | LitFloat(b, v) -> raise_compile_err loc (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
-    | LitString(s) -> "\"" ^ (String.escaped s) ^ "\""
-    | LitChar(c) -> "\'" ^ (String.escaped c) ^ "\'"
-    | LitBool(true) -> "true"
-    | LitBool(false) -> "false"
-    | LitNil -> "nullptr"
-
-let pprint_lit x loc = pstr (lit_to_string x loc)
+let pprint_lit x loc = pstr (lit2str x loc)
 let pprint_id x = pstr (match x with Id.Name(0) -> "__" | _ -> id2str x)
 
 type typ_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
@@ -146,16 +129,16 @@ let rec pprint_exp e =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
-        | ValConstr _ -> ()
+        | ValCtor _ -> ()
         | ValArg -> pstr "ARG"; pspace()) vflags);
-        let constr_id = get_val_constr vflags in
+        let ctor_id = get_val_ctor vflags in
         pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace();
-        if constr_id >= 0 then pstr (sprintf "Constructor(%d)" constr_id) else pprint_exp e0;
+        if ctor_id <> 0 then pstr (sprintf "Constructor(%d)" ctor_id) else pprint_exp e0;
         cbox()
     | DefFun {contents={df_name; df_templ_args; df_args; df_typ;
                 df_body; df_flags; df_templ_inst; df_loc}} ->
         let fkind = ref "FUN" in
-        let constr_id = get_fun_constr df_flags in
+        let ctor_id = get_fun_ctor df_flags in
         (obox(); (List.iter (fun ff -> match ff with
                     | FunPure -> pstr "PURE"; pspace()
                     | FunImpure -> pstr "IMPURE"; pspace()
@@ -163,14 +146,14 @@ let rec pprint_exp e =
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunStatic -> pstr "STATIC"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
-                    | FunConstr _ -> ()
+                    | FunCtor _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
         cbox(); pcut(); pstr ")";
         pspace(); pstr ":"; pspace(); pprint_typ df_typ df_loc; pspace();
-        pstr "="; pspace(); if constr_id >= 0 then pstr (sprintf "Constructor(%d)" constr_id) else pprint_exp df_body; cbox())
+        pstr "="; pspace(); if ctor_id <> CtorNone then pstr (ctor2str ctor_id) else pprint_exp df_body; cbox())
     | DefExn { contents = {dexn_name; dexn_typ; dexn_loc} } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id dexn_name;
         (match dexn_typ with

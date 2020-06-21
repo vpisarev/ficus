@@ -13,10 +13,10 @@ let make_loc(pos0, pos1) =
     let { Lexing.pos_lnum=l0; Lexing.pos_bol=b0; Lexing.pos_cnum=c0 } = pos0 in
     let { Lexing.pos_lnum=l1; Lexing.pos_bol=b1; Lexing.pos_cnum=c1 } = pos1 in
     if c0 <= c1 then
-        { loc_fname = !Utils.parser_ctx_file; loc_line0 = l0;
+        { loc_fname = !parser_ctx_file; loc_line0 = l0;
           loc_pos0 = c0 - b0+1; loc_line1 = l1; loc_pos1 = c1 - b1+1 }
     else
-        { loc_fname = !Utils.parser_ctx_file; loc_line0 = l1;
+        { loc_fname = !parser_ctx_file; loc_line0 = l1;
           loc_pos0 = c1 - b1+1; loc_line1 = l0; loc_pos1 = c0 - b0+1 }
 
 let curr_loc() = make_loc(Parsing.symbol_start_pos(), Parsing.symbol_end_pos())
@@ -247,20 +247,20 @@ top_level_exp:
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         [DirImport ((List.map (fun (a, b) ->
-        let a1 = Utils.update_imported_modules a (pos0, pos1) in (a1, b)) $2), curr_loc())]
+        let a1 = update_imported_modules a (pos0, pos1) in (a1, b)) $2), curr_loc())]
     }
 | FROM dot_ident any_import STAR
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         let a = get_id $2 in
-        let a1 = Utils.update_imported_modules a (pos0, pos1) in
+        let a1 = update_imported_modules a (pos0, pos1) in
         [DirImportFrom (a1, [], curr_loc())]
     }
 | FROM dot_ident any_import ident_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         let a = get_id $2 in
-        let a1 = Utils.update_imported_modules a (pos0, pos1) in
+        let a1 = update_imported_modules a (pos0, pos1) in
         [DirImportFrom (a1, (List.rev $4), curr_loc())]
     }
 | error

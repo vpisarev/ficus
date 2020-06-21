@@ -55,9 +55,9 @@ let parse_file fname inc_dirs =
     let use_stdin = fname = "stdin" in
     let inchan = if use_stdin then stdin else open_in fname in
     let l = Lexing.from_channel inchan in
-    let _ = (Utils.parser_ctx_file := fname_id) in
-    let _ = (Utils.parser_ctx_deps := []) in
-    let _ = (Utils.parser_ctx_inc_dirs := inc_dirs) in
+    let _ = (parser_ctx_file := fname_id) in
+    let _ = (parser_ctx_deps := []) in
+    let _ = (parser_ctx_inc_dirs := inc_dirs) in
     try
         let ast = Parser.ficus_module lexer l in
         (if use_stdin then () else close_in inchan;
@@ -88,7 +88,7 @@ let parse_all _fname0 =
             let dir1 = Filename.dirname mfname in
             let inc_dirs = (if dir1 = dir0 then [] else [dir1]) @ inc_dirs0 in
             let defs = parse_file mfname inc_dirs in
-            let deps = !Utils.parser_ctx_deps in
+            let deps = !parser_ctx_deps in
             let _ = (!minfo.dm_defs <- defs) in
             let _ = (!minfo.dm_parsed <- true) in
             let _ = (!minfo.dm_deps <- deps) in

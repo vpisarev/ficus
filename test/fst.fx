@@ -13,19 +13,19 @@ fun fib2(n: int) {
     fun fib2_(a: int, b: int, n: int) = if n <= 1 {a} else {fib2_(a+b, a, n-1)}
     fib2_(1, 1, n)
 }
-fun fib_seq()
+/*fun fib_seq()
 {
-    var a=1, b=1
+    val a=ref(1), b=ref(1)
     fun next_fib()
     {
-        val t = b
-        b = a
-        a += t
+        val t = *b
+        (*b) = *a
+        (*a) += t
         t
     }
     next_fib
 }
-val fib3 = fib_seq()
+val fib3 = fib_seq()*/
 
 println("factorial(5)=\(testmod.fact(5))")
 
@@ -45,19 +45,19 @@ for i <- 1:31 {
     }
     print("fib(\(i))=")
     foo()
-    print(", fib2(\(i))=\(fib2(i)), ")
-    println("fib3(\(i))=\(fib3())")
+    print(", fib2(\(i))=\(fib2(i))\n")
+    //println("fib3(\(i))=\(fib3())")
 }
 
-exception BreakWith: int
+//exception BreakWith: int
 
 type complex_t = {re: float; im: float}
-val c = ref (complex_t {re=0.f, im=1.f})
+/*val c = ref (complex_t {re=0.f, im=1.f})
 val d = c->{re=c->re*2, im=c->im*2}
 fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
-println("abs(d)=\(abs(d))")
+println("abs(d)=\(abs(d))")*/
 
-fun find_idx(a: 't [], elem: 't)
+/*fun find_idx(a: 't [], elem: 't)
 {
     val n = size(a)
     try
@@ -69,6 +69,14 @@ fun find_idx(a: 't [], elem: 't)
     {
     | BreakWith(i) => i
     }
+}*/
+
+fun find_idx(a: 't [], elem: 't)
+{
+    val n = size(a)
+    var idx = -1
+    for i <- 0:n {if a[i] == elem {idx = i; break}}
+    idx
 }
 
 for i <- 0:10 { for j <-0:10 { if i!=j {break}} }
@@ -112,7 +120,7 @@ println(match fpair {
 
 val n = 30
 val a = [for i <- 0:n {i+1}]
-for i <- 0:n {a[i] += a[i-1]}
+for i <- 1:n {a[i] += a[i-1]}
 println("triangular numbers: \(a)")
 
 println(find_idx([1, 2, 5], 5))

@@ -8,8 +8,6 @@
    [TODO] when the compiler is rewritten in Ficus,
    those functions should be put to Ficus Std Lib
 *)
-open Ast
-
 let num_suffix n =
     let d = n mod 10 in
     match d with
@@ -43,6 +41,20 @@ let trim_right s n =
     let n0 = String.length s in
     if n >= n0 then "" else String.sub s 0 (n0-n)
 
+let escaped_uni s =
+    let result = ref ([]: string list) in
+    String.iter (fun c ->
+        match c with
+        | '\n' -> result := "\\n" :: !result
+        | '\r' -> result := "\\r" :: !result
+        | '\t' -> result := "\\t" :: !result
+        | '\'' -> result := "\\\'" :: !result
+        | '\"' -> result := "\\\"" :: !result
+        | '\\' -> result := "\\\\" :: !result
+        | '\000' -> result := "\\0" :: !result
+        | _ -> result := (String.make 1 c) :: !result) s;
+    String.concat "" (List.rev !result)
+
 let rec normalize_path dir fname =
     let sep = Filename.dir_sep in
     let seplen = String.length sep in
@@ -57,6 +69,13 @@ let rec normalize_path dir fname =
 let remove_extension fname =
     try Filename.chop_extension fname with Invalid_argument _ -> fname
 
+let ipower a b =
+    let rec ipower_ a b p =
+        if b = 0L then p else
+            let p = if (Int64.logand b 1L) != 0L then (Int64.mul p a) else p in
+            ipower_ (Int64.mul a a) (Int64.div b 2L) p in
+    ipower_ a b 1L
+
 let dot_regexp = Str.regexp "\\."
 let rec locate_module_file mname inc_dirs =
     let mfname = (Str.global_replace dot_regexp Filename.dir_sep mname) ^ ".fx" in
@@ -66,24 +85,3 @@ let rec locate_module_file mname inc_dirs =
             mfname in
         Some(normalize_path (Sys.getcwd()) mfname_full)
     with Not_found -> None
-
-let parser_ctx_file = ref noid
-let parser_ctx_deps = ref ([] : id_t list)
-let parser_ctx_inc_dirs= ref ([] : string list)
-
-let update_imported_modules mname_id (pos0, pos1) =
-    let mname = pp_id2str mname_id in
-    match locate_module_file mname !parser_ctx_inc_dirs with
-    | Some(mfname) ->
-        let dep_minfo = find_module mname_id mfname in
-        let mname_unique_id = !dep_minfo.dm_name in
-        (parser_ctx_deps := mname_unique_id :: !parser_ctx_deps;
-        mname_unique_id)
-    | _ -> raise (SyntaxError(("module " ^ mname ^ " is not found"), pos0, pos1))
-
-let ipower a b =
-    let rec ipower_ a b p =
-        if b = 0L then p else
-            let p = if (Int64.logand b 1L) != 0L then (Int64.mul p a) else p in
-            ipower_ (Int64.mul a a) (Int64.div b 2L) p in
-    ipower_ a b 1L

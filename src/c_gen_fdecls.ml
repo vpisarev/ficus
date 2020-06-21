@@ -21,20 +21,20 @@ let convert_all_fdecls top_code =
     let top_func_decls = ref ([]: cstmt_t list) in
     List.iter (fun e -> match e with
         | KDefFun kf ->
-            let {kf_name; kf_cname; kf_typ; kf_args; kf_flags; kf_closure=(kf_fv_arg, _); kf_body; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_cname; kf_typ; kf_args; kf_flags; kf_body; kf_scope; kf_loc} = !kf in
             let (argtyps, rt) = match kf_typ with
                 | KTypFun(argtyps, rt) -> (argtyps, rt)
                 | _ -> ([], kf_typ)
                 in
             let cbody = match kf_body with KExpCCode _ -> true | _ -> false in
-            let constr_idx = get_fun_constr kf_flags in
+            let ctor = get_fun_ctor kf_flags in
             let (_, args, argctyps) = List.fold_left2 (fun (arg_idx, args, argctyps) arg t ->
                 let arg = match arg with
                     | Id.Name _ -> dup_idc arg
                     | _ -> arg
                     in
                 let cname = if cbody then pp_id2str arg else
-                    if constr_idx >= 0 then (sprintf "arg%d" arg_idx) else "" in
+                    if ctor <> CtorNone then (sprintf "arg%d" arg_idx) else "" in
                 let ctyp = C_gen_types.ktyp2ctyp t kf_loc in
                 let {ktp_pass_by_ref} = K_annotate_types.get_ktprops t kf_loc in
                 let ctyp = if ktp_pass_by_ref then
@@ -60,7 +60,7 @@ let convert_all_fdecls top_code =
                 in
             let (fv_arg, fv_cname) = ((gen_temp_idc "fx_fv"), "fx_fv") in
             let (args, argctyps) =
-                if constr_idx >= 0 then
+                if ctor <> CtorNone then
                     (args, argctyps)
                 else
                     (add_farg fv_arg std_CTypVoidPtr fv_cname kf_scope kf_loc;
@@ -73,30 +73,65 @@ let convert_all_fdecls top_code =
             top_func_decls := (CDefFun cf) :: !top_func_decls
         | KDefClosureVars kcv ->
             let {kcv_name; kcv_cname; kcv_freevars; kcv_loc} = !kcv in
-            (*let _ = printf "processing closure vars '%s'\n" kcv_cname in*)
-            let dst_typ = CTypRawPtr([], (CTypName kcv_name)) in
+            let fcv_typ = make_ptr (CTypName kcv_name) in
             let dst_id = get_id "dst" in
-            let dst_exp = CExpIdent(dst_id, (dst_typ, kcv_loc)) in
+            let dst_exp = CExpIdent(dst_id, (fcv_typ, kcv_loc)) in
             let relems = ((get_id "free_f"), (CTypName (get_id "fx_free_t"))) :: ((get_id "rc"), CTypInt) :: [] in
-            let (_, relems, freecode) = List.fold_left(fun (idx, relems, freecode) (n, kt) ->
-                let ctyp = C_gen_types.ktyp2ctyp kt kcv_loc in
-                let c_id = get_id ("t" ^ (string_of_int idx)) in
-                let elem_exp = cexp_arrow dst_exp c_id ctyp in
-                let freecode = C_gen_types.gen_free_code elem_exp ctyp true false freecode kcv_loc in
-                (idx+1, (c_id, ctyp) :: relems, freecode)) (0, relems, []) kcv_freevars
+            let fcv_id = get_id "fcv" in
+            let fcv_exp = CExpIdent(fcv_id, (fcv_typ, kcv_loc)) in
+            let (_, relems, make_args, make_ccode, free_ccode) =
+                List.fold_left(fun (idx, relems, make_args, make_ccode, free_ccode) (n, kt) ->
+                    let ctyp = C_gen_types.ktyp2ctyp kt kcv_loc in
+                    let c_id = get_id ("t" ^ (string_of_int idx)) in
+                    let elem_exp = cexp_arrow dst_exp c_id ctyp in
+                    let free_ccode = C_gen_types.gen_free_code elem_exp ctyp true false free_ccode kcv_loc in
+                    let arg_id = get_id ("arg" ^ (string_of_int idx)) in
+                    let arg_exp = CExpIdent(arg_id, (ctyp, kcv_loc)) in
+                    let {ctp_pass_by_ref} = C_gen_types.get_ctprops ctyp kcv_loc in
+                    let (arg_typ, arg_exp) = if not ctp_pass_by_ref then (ctyp, arg_exp)
+                        else ((make_const_ptr ctyp), (cexp_deref arg_exp)) in
+                    let dst_exp = cexp_arrow fcv_exp c_id ctyp in
+                    let make_ccode = C_gen_types.gen_copy_code arg_exp dst_exp ctyp make_ccode kcv_loc in
+                    (idx+1, ((c_id, ctyp) :: relems), ((arg_id, arg_typ) :: make_args), make_ccode, free_ccode))
+                        (0, relems, [], [], []) kcv_freevars
                 in
-            let (free_f, decl_free_f) = if freecode = [] then (!std_fx_free, []) else
+            let (free_f, decl_free_f) = if free_ccode = [] then (!std_fx_free, []) else
                 let call_free = make_call !std_fx_free [dst_exp] CTypVoid kcv_loc in
-                let freecode = (CExp call_free) :: freecode in
+                let freecode = (CExp call_free) :: free_ccode in
                 let free_f = gen_temp_idc "free_cv" in
-                let free_f_cname = Utils.trim_right (K_mangle.remove_fx kcv_cname) (String.length "_cldata_t") in
+                let free_f_cname = "_fx_free_" ^ (K_mangle.remove_fx
+                    (Utils.trim_right kcv_cname (String.length "_cldata_t"))) in
                 let cf = ref {
-                    cf_name=free_f; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ free_f_cname;
+                    cf_name=free_f; cf_typ=CTypFun(fcv_typ :: [], CTypVoid); cf_cname=free_f_cname;
                     cf_args=dst_id :: []; cf_body=(List.rev freecode);
                     cf_flags=FunNoThrow :: []; cf_scope=ScGlobal :: []; cf_loc=kcv_loc } in
                 let _ = set_idc_entry free_f (CFun cf) in
                 (free_f, [CDefFun cf])
                 in
+            (*let f_cname = K_mangle.remove_fx (get_idk_cname f_id kcv_loc) in
+            let fp_ktyp = get_idk_typ f_id kcv_loc in
+            let fp_typ = C_gen_types.ktyp2ctyp fp_ktyp kcv_loc in
+            let fp_id = get_id "fp" in
+            let decl_and_malloc = make_call !std_FX_DECL_AND_MALLOC [CExpTyp(fcv_typ, kcv_loc); fcv_exp] CTypVoid kcv_loc in
+            let init_rc = make_assign (cexp_arrow fcv_exp (get_id "rc") CTypInt) (make_int_exp 1 kcv_loc) in
+            let cast_free_f = CExpCast(CExpIdent(free_f, (std_CTypVoidPtr, kcv_loc)), CTypName(!std_fx_free_t), kcv_loc) in
+            let init_free_f = make_assign (cexp_arrow fcv_exp (get_id "free_f") std_CTypVoidPtr) cast_free_f in
+            let fpcv_typ = make_ptr (CTypName f_typ_id) in
+            let dstfp_exp = CExpIdent(dst_id, (fpcv_typ, kcv_loc)) in
+            let init_fp = make_assign (cexp_arrow dstfp_exp fp_id fp_typ) (CExpIdent(f_id, (fp_typ, kcv_loc))) in
+            let cast_fcv = CExpCast(fcv_exp, (make_ptr (CTypName (get_id "fx_fcv_t"))), kcv_loc) in
+            let init_fcv = make_assign (cexp_arrow dstfp_exp fcv_id fp_typ) cast_fcv in
+            let ret_ok = CStmtReturn (Some (make_int_exp 0 kcv_loc), kcv_loc) in
+            let make_ccode = List.rev ([ret_ok; CExp init_fcv; CExp init_fp] @ make_ccode @
+                [CExp init_free_f; CExp init_rc; CExp decl_and_malloc]) in
+            let make_fp = gen_temp_idc "make_fp" in
+            let make_fp_cname = "_fx_make_" ^ f_cname in
+            let (make_arg_ids, make_arg_typs) = Utils.unzip (List.rev ((dst_id, fpcv_typ) :: make_args)) in
+            let mf = ref {
+                cf_name=make_fp; cf_typ=CTypFun(make_arg_typs, CTypInt); cf_cname=make_fp_cname;
+                cf_args=make_arg_ids; cf_body=make_ccode;
+                cf_flags=[]; cf_scope=ScGlobal :: []; cf_loc=kcv_loc } in
+            let _ = set_idc_entry make_fp (CFun mf) in*)
             let ct = ref { ct_name=kcv_name; ct_typ = CTypStruct(None, (List.rev relems));
                 ct_ktyp=KTypName kcv_name; ct_cname=kcv_cname; ct_tagenum=noid; ct_data_start=2;
                 ct_scope=ScGlobal::[]; ct_loc=kcv_loc;

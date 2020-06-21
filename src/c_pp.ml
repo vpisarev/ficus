@@ -181,7 +181,8 @@ and pprint_cexp_ e pr =
     | CExpLit(l, (_, loc)) ->
         let s = match l with
         | LitNil -> "0"
-        | _ -> Ast_pp.lit_to_string l loc in
+        | LitChar c -> "FX_CHAR('" ^ (Utils.escaped_uni c) ^ "')"
+        | _ -> lit2str l loc in
         pstr s
     | CExpBinOp (COpArrayElem as bop, a, b, _) ->
         let (_, pr0, _) = binop2str_ bop in

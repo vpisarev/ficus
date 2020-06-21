@@ -30,12 +30,12 @@ open C_form
 *)
 let rec ktyp2ctyp_fargs args rt loc =
     let args_ = List.map (fun kt ->
-        let ct = ktyp2ctyp kt loc in
+        let ctyp = ktyp2ctyp kt loc in
         let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kt loc in
-        let ptr_attr = match (ktyp_deref kt loc) with
+        let ptr_attr = match (deref_ktyp kt loc) with
                 | KTypArray(_, _) -> []
                 | _ -> [CTypConst] in
-        if ktp_pass_by_ref then CTypRawPtr(ptr_attr, ct) else ct) args in
+        if ktp_pass_by_ref then CTypRawPtr(ptr_attr, ctyp) else ctyp) args in
     let rct = if rt = KTypVoid then [] else [CTypRawPtr([], ktyp2ctyp rt loc)] in
     args_ @ rct @ [std_CTypVoidPtr]
 
@@ -71,9 +71,9 @@ and ktyp2ctyp t loc =
     in ktyp2ctyp_ t
 
 (* returns some basic information about ctyp_t instance *)
-and get_ctprops ct loc =
+and get_ctprops ctyp loc =
     let ctp =
-    (match ct with
+    (match ctyp with
     | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _
     | CTypFloat _ | CTypVoid | CTypBool | CTypUniChar ->
         {ctp_scalar=true; ctp_complex=false; ctp_make=[]; ctp_free=(noid, noid); ctp_copy=(noid, noid);
@@ -128,8 +128,8 @@ let get_constructor ctyp required loc =
     | i :: [] -> i
     | _ -> if required then raise_compile_err loc "cgen: missing type constructor" else noid
 
-let get_free_f ct let_none let_macro loc =
-    let {ctp_ptr; ctp_free=(free_m, free_f)} = get_ctprops ct loc in
+let get_free_f ctyp let_none let_macro loc =
+    let {ctp_ptr; ctp_free=(free_m, free_f)} = get_ctprops ctyp loc in
     if free_m = noid && free_f = noid && let_none then
         (false, None)
     else
@@ -138,8 +138,8 @@ let get_free_f ct let_none let_macro loc =
             else (false, !std_FX_NOP) in
         (use_if, Some (make_id_exp i loc))
 
-let get_copy_f ct let_none let_macro loc =
-    let {ctp_pass_by_ref; ctp_copy=(copy_m, copy_f)} = get_ctprops ct loc in
+let get_copy_f ctyp let_none let_macro loc =
+    let {ctp_pass_by_ref; ctp_copy=(copy_m, copy_f)} = get_ctprops ctyp loc in
     (ctp_pass_by_ref,
     (if copy_m = noid && copy_f = noid && let_none then
         None
@@ -153,8 +153,8 @@ let get_copy_f ct let_none let_macro loc =
 (* generates the copy/assignment expression.
    It's assumed that the destination is empty, i.e. not initialized.
    If it's initialized then the compiler should call the destructor for it first *)
-let gen_copy_code src_exp dst_exp ct code loc =
-    let (pass_by_ref, copy_f_opt) = get_copy_f ct true true loc in
+let gen_copy_code src_exp dst_exp ctyp code loc =
+    let (pass_by_ref, copy_f_opt) = get_copy_f ctyp true true loc in
     let ctx = (CTypVoid, loc) in
     let e = match copy_f_opt with
         | Some(f) ->
@@ -168,8 +168,8 @@ let gen_copy_code src_exp dst_exp ct code loc =
     in (CExp e) :: code
 
 (* generates the destructor call if needed *)
-let gen_free_code elem_exp ct let_macro use_if code loc =
-    let (can_use_if, free_f_opt) = get_free_f ct true let_macro loc in
+let gen_free_code elem_exp ctyp let_macro use_if code loc =
+    let (can_use_if, free_f_opt) = get_free_f ctyp true let_macro loc in
     let ctx = (CTypVoid, loc) in
     let elem_exp_ptr = cexp_get_addr elem_exp in
     match free_f_opt with
@@ -180,6 +180,16 @@ let gen_free_code elem_exp ct let_macro use_if code loc =
         stmt :: code
     | _ -> code
 
+type ctyp_temp_info_t =
+{
+    ctti_struct_decl: cdeftyp_t ref;
+    ctti_freef_decl: cdeffun_t ref;
+    ctti_copyf_decl: cdeffun_t ref;
+    ctti_src_exp: cexp_t;
+    ctti_dst_exp: cexp_t;
+    ctti_cname_wo_prefix: string
+}
+
 let convert_all_typs top_code =
     let top_fwd_decl = ref ([]: cstmt_t list) in
     let top_typ_decl = ref ([]: cstmt_t list) in
@@ -188,24 +198,33 @@ let convert_all_typs top_code =
     let all_fwd_decls = ref (IdSet.empty) in
     let all_visited = ref (IdSet.empty) in
     let all_var_enums = ref (Env.empty : id_t Env.t) in
+    let all_saved_rec_vars = ref (Env.empty: ctyp_temp_info_t Env.t) in
 
-    let add_fwd_decl fwd_decl decl =
-        if fwd_decl then
-            top_fwd_decl := decl :: !top_fwd_decl
-        else ()
+    let add_fwd_decl i fwd_decl decl =
+        if i = noid then ()
+        else
+            let have_fwd_decl = IdSet.mem i !all_fwd_decls in
+            if (not have_fwd_decl) && fwd_decl then
+                (all_fwd_decls := IdSet.add i !all_fwd_decls;
+                top_fwd_decl := decl :: !top_fwd_decl)
+            else ()
     in
-    let add_decl decl =
-        match decl with
-        | CDefFun _ ->
-            top_typfun_decl := decl :: !top_typfun_decl
-        | _ ->
-            top_typ_decl := decl :: !top_typ_decl
+    let add_decl i decl =
+        if i = noid then ()
+        else
+            let _ = all_decls := IdSet.add i !all_decls in
+            match decl with
+            | CDefFun _ ->
+                top_typfun_decl := decl :: !top_typfun_decl
+            | _ ->
+                top_typ_decl := decl :: !top_typ_decl
     in
     (* creates declaration of the data structure with optional forward declaration;
        if needed, creates declarations of the destructor and
        copy operator (with empty bodies; the bodies are updated later on),
        together with thier optional forward declarations *)
-    let create_ctyp_decl tn ktp fwd_decl loc =
+    let create_ctyp_decl tn fwd_decl loc =
+        let ktp = K_annotate_types.get_ktprops (KTypName tn) loc in
         let {ktp_ptr; ktp_pass_by_ref; ktp_custom_free; ktp_custom_copy} = ktp in
         let (free_m, free_f) = if ktp_custom_free then (noid, (gen_temp_idc "free")) else (noid, noid) in
         let (copy_m, copy_f) = if ktp_custom_copy then (noid, (gen_temp_idc "copy")) else
@@ -238,19 +257,23 @@ let convert_all_typs top_code =
         let copyf_decl = ref { !freef_decl with
             cf_name=copy_f; cf_typ=CTypFun(src_typ :: dst_typ :: [], CTypVoid); cf_cname="_fx_copy_" ^ cname_wo_prefix;
             cf_args=src_id :: dst_id :: [] } in
-        if ktp_ptr then
-            add_fwd_decl fwd_decl (CDefForwardTyp (struct_id, loc))
-        else ();
         set_idc_entry tn (CTyp struct_decl);
+        if not ktp_ptr then () else
+            add_fwd_decl tn fwd_decl (CDefForwardTyp (struct_id, loc));
         if ktp_custom_free then
             (set_idc_entry free_f (CFun freef_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun (free_f, loc)))
+            add_fwd_decl free_f fwd_decl (CDefForwardFun (free_f, loc)))
         else ();
         if ktp_custom_copy then
             (set_idc_entry copy_f (CFun copyf_decl);
-            add_fwd_decl fwd_decl (CDefForwardFun (copy_f, loc)))
+            add_fwd_decl copy_f fwd_decl (CDefForwardFun (copy_f, loc)))
         else ();
-        (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp, cname_wo_prefix)
+        {ctti_struct_decl=struct_decl;
+        ctti_freef_decl=freef_decl;
+        ctti_copyf_decl=copyf_decl;
+        ctti_src_exp=src_exp;
+        ctti_dst_exp=dst_exp;
+        ctti_cname_wo_prefix=cname_wo_prefix}
     in
     let get_var_enum kvar =
         let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in
@@ -278,15 +301,15 @@ let convert_all_typs top_code =
                 ce_cname=K_mangle.add_fx e_cname; ce_scope=ScGlobal::[]; ce_loc=kvar_loc } in
             set_idc_entry e_id (CEnum ce);
             all_var_enums := Env.add kvar_base_name e_id !all_var_enums;
-            add_decl (CDefEnum ce);
+            add_decl e_id (CDefEnum ce);
             (e_id, members)
     in
     (* converts named type to C *)
     let rec cvt2ctyp tn loc =
-        (*let _ = printf "cvt2ctyp %s\n" (id2str tn) in*)
+        (*let _ = printf "cvt2ctyp %s\n" (get_idk_cname tn loc) in*)
         if (IdSet.mem tn !all_decls) then ()
         else
-            (*let _ = printf "proceeding with %s\n" (id2str tn) in*)
+            (*let _ = printf "proceeding with %s\n" (get_idk_cname tn loc) in*)
             let visited = IdSet.mem tn !all_visited in
             let deps = K_annotate_types.get_typ_deps tn loc in
             let kt_info = kinfo_ tn loc in
@@ -309,8 +332,17 @@ let convert_all_typs top_code =
             let fx_result_id = get_id "fx_result" in
             let fx_result_exp = make_id_exp fx_result_id loc in
             let fx_result_ct = CTypName tn in
-            let (struct_decl, freef_decl, copyf_decl, src_exp, dst_exp, tp_cname_wo_prefix) =
-                create_ctyp_decl tn ktp fwd_decl loc in
+            let {ctti_struct_decl=struct_decl; ctti_freef_decl=freef_decl; ctti_copyf_decl=copyf_decl;
+                ctti_src_exp=src_exp; ctti_dst_exp=dst_exp; ctti_cname_wo_prefix=tp_cname_wo_prefix} =
+                if not recursive_variant then create_ctyp_decl tn fwd_decl loc
+                else (match (Env.find_opt tn !all_saved_rec_vars) with
+                | Some i -> i
+                | _ -> raise_compile_err loc
+                    (sprintf "cgen: missing information about recursive variant '%s'"
+                        (get_idk_cname tn loc)))
+                in
+            let {cf_name=free_f} = !freef_decl in
+            let {cf_name=copy_f} = !copyf_decl in
             let {ct_props} = !struct_decl in
             let tp_cname = K_mangle.add_fx tp_cname_wo_prefix in
             let (struct_typ, struct_id_opt) = match !struct_decl with
@@ -321,8 +353,13 @@ let convert_all_typs top_code =
                         in
                     (struct_typ, struct_id_opt)
                 | _ -> ((CTypName tn), (Some tn))
-                in
-            let process_deps () = IdSet.iter (fun dep -> let dep_loc = get_idk_loc dep loc in cvt2ctyp dep dep_loc) deps in
+            in
+            let process_deps () = IdSet.iter (fun dep ->
+                if (Env.mem dep !all_saved_rec_vars) then ()
+                else
+                    let dep_loc = get_idk_loc dep loc
+                    in cvt2ctyp dep dep_loc) deps
+            in
             let decref_and_free dst_exp free_code loc =
                 let rc_exp = CExpArrow(dst_exp, (get_id "rc"), (CTypInt, loc)) in
                 let decref_exp = make_call !std_FX_DECREF [rc_exp] CTypInt loc in
@@ -336,15 +373,15 @@ let convert_all_typs top_code =
 
             all_decls := IdSet.add tn !all_decls;
             (*printf "deps for %s: " (id2str tn); IdSet.iter (fun d -> printf "%s, " (id2str d)) deps; printf "\n";*)
-            if recursive_variant then process_deps() else ();
-            add_decl (CDefTyp struct_decl);
+            process_deps();
+            add_decl tn (CDefTyp struct_decl);
             if ktp.ktp_custom_free then
-                add_decl (CDefFun freef_decl)
+                add_decl free_f (CDefFun freef_decl)
             else ();
             if ktp.ktp_custom_copy then
-                add_decl (CDefFun copyf_decl)
+                add_decl copy_f (CDefFun copyf_decl)
             else ();
-            if not recursive_variant then process_deps() else ();
+            (*if not recursive_variant then process_deps() else ();*)
             match kt_info with
             | KTyp kt ->
                 let {kt_typ; kt_loc} = !kt in
@@ -378,7 +415,7 @@ let convert_all_typs top_code =
                             cf_args=make_args; cf_body=(List.rev make_code);
                             cf_flags=FunNoThrow::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                         set_idc_entry mktup_id (CFun mktup_decl);
-                        add_decl (CDefFun mktup_decl);
+                        add_decl mktup_id (CDefFun mktup_decl);
                         freef_decl := {!freef_decl with cf_body=List.rev free_code};
                         copyf_decl := {!copyf_decl with cf_body=List.rev copy_code};
                         mktup_id :: [])
@@ -413,7 +450,7 @@ let convert_all_typs top_code =
                             cf_args=make_args; cf_body=(List.rev make_code);
                             cf_flags=FunNoThrow::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                         set_idc_entry mkrec_id (CFun mkrec_decl);
-                        add_decl (CDefFun mkrec_decl);
+                        add_decl mkrec_id (CDefFun mkrec_decl);
                         freef_decl := {!freef_decl with cf_body=List.rev free_code};
                         copyf_decl := {!copyf_decl with cf_body=List.rev copy_code};
                         mkrec_id :: [])
@@ -452,21 +489,21 @@ let convert_all_typs top_code =
                         cf_body=make_list_body;
                         cf_flags=[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                     set_idc_entry cons_id (CFun cons_decl);
-                    add_decl (CDefFun cons_decl);
+                    add_decl cons_id (CDefFun cons_decl);
                     struct_decl := {!struct_decl with
                         ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
                         ct_props={ct_props with ctp_free=(free_m, free_f); ctp_make=cons_id::[]}}
                 | KTypRef(et) ->
-                    let ct = ktyp2ctyp et kt_loc in
+                    let ctyp = ktyp2ctyp et kt_loc in
                     let {ctp_free=(_, free_f)} = ct_props in
                     let relems = ((get_id "rc"), CTypInt) ::
-                        ((get_id "data"), ct) :: [] in
+                        ((get_id "data"), ctyp) :: [] in
                     let (free_m, free_f) = if free_f = noid then
                             (!std_FX_FREE_REF_SIMPLE, !std_fx_free_ref_simple)
                         else
                             let f = make_id_exp !std_FX_FREE_REF_IMPL loc in
                             let tn_arg = make_id_exp tn loc in
-                            let free_hd_f = match (get_free_f ct true false loc) with
+                            let free_hd_f = match (get_free_f ctyp true false loc) with
                                 | (_, Some(free_hd_f)) -> free_hd_f
                                 | _ -> raise_compile_err loc
                                     (sprintf "unexpected element destructor when converting %s" (get_idk_cname tn loc))
@@ -474,11 +511,11 @@ let convert_all_typs top_code =
                             (freef_decl := {!freef_decl with cf_body=free_code}; (noid, free_f)) in
                     let mkref_id = gen_temp_idc "mkref" in
                     let mkref_m = make_id_exp !std_FX_MAKE_REF_IMPL kt_loc in
-                    let (pass_by_ref, copy_data_f) = match (get_copy_f ct false true loc) with
+                    let (pass_by_ref, copy_data_f) = match (get_copy_f ctyp false true loc) with
                         | (pbr, Some(f)) -> (pbr, f)
                         | _ -> raise_compile_err loc
                             (sprintf "missing element copy operator when converting %s" (get_idk_cname tn loc)) in
-                    let ct_arg = if pass_by_ref then (make_const_ptr ct) else ct in
+                    let ct_arg = if pass_by_ref then (make_const_ptr ctyp) else ctyp in
                     let mkref_body = CExp(CExpCall(mkref_m,
                         (make_id_exp (get_id tp_cname) loc) :: copy_data_f :: [], (CTypInt, loc))) :: [] in
                     let mkref_decl = ref {
@@ -488,16 +525,17 @@ let convert_all_typs top_code =
                         cf_body=mkref_body;
                         cf_flags=[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                     set_idc_entry mkref_id (CFun mkref_decl);
-                    add_decl (CDefFun mkref_decl);
+                    add_decl mkref_id (CDefFun mkref_decl);
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));
                         ct_props={ct_props with ctp_free=(free_m, free_f); ctp_make=mkref_id::[]}}
                 | KTypFun(argtyps, rt) ->
                     let cargs = ktyp2ctyp_fargs argtyps rt loc in
                     let fp_ctyp = CTypFunRawPtr(cargs, CTypCInt) in
-                    let fv_ctyp = make_ptr (CTypName(get_id "fx_fv_t")) in
+                    let fv_ctyp = make_ptr (CTypName(get_id "fx_fcv_t")) in
                     let relems = ((get_id "fp"), fp_ctyp) :: ((get_id "fcv"), fv_ctyp) :: [] in
                     struct_decl := {!struct_decl with ct_typ=CTypStruct(struct_id_opt, relems);
-                        ct_props={ct_props with ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
+                        ct_props={ct_props with ctp_ptr=false; ctp_pass_by_ref=true;
+                                ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
                                 ctp_copy=(!std_FX_COPY_FP, !std_fx_copy_fp)}}
                 | _ -> ())
             | KVariant kvar ->
@@ -617,5 +655,15 @@ let convert_all_typs top_code =
         kcb_fold_result = 0
     }
     in
-    List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) top_code;
-    (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl) @ (List.rev !top_typfun_decl)
+    let _ = List.iter (fun e ->
+        match e with
+        | KDefVariant {contents={kvar_name; kvar_flags; kvar_loc}} ->
+            if not (List.mem VariantRecursive kvar_flags) then ()
+            else
+                let i = create_ctyp_decl kvar_name true kvar_loc in
+                all_saved_rec_vars := Env.add kvar_name i !all_saved_rec_vars
+        | _ -> ()) top_code in
+    let _ = List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) top_code in
+    let ccode = (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl) @ (List.rev !top_typfun_decl) in
+    (*C_pp.pprint_top ccode;*)
+    ccode
