@@ -47,10 +47,42 @@ println(match fpair {
     | _ => -1
     })
 */
-import Math
+/*import Math
 
 type complex_t = {re: float; im: float}
-val c = complex_t {re=0.f, im=1.f}
+val c = ref(complex_t {re=0.f, im=1.f})
 val d = c->{re=c->re*2, im=c->im*2}
 fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
-println("abs(d)=\(abs(d))")
+println("abs(d)=\(abs(d))")*/
+/*
+import List
+val lstr = [: "2", "-1", "-", "100", "8", "7" :]
+val l = [: 2, -1, 5, 100, 8, 7 :]
+
+val lstr = lstr + lstr + lstr + lstr + lstr
+val l = l + l + l + l + l
+val sorted = List.mergeSort(lstr, fun (a: string, b: string) {a > b})
+println("sorted: \(sorted)")
+*/
+
+//println([: ref (1, 2), ref (2, 3), ref (3, 4) :])
+//println(ref("a"))
+//println("a" :: [])
+
+fun fib_seq()
+{
+    val a=ref(1), b=ref(1)
+    fun next_fib()
+    {
+        val t = *b
+        (*b) = *a
+        (*a) += t
+        t
+    }
+    next_fib
+}
+val fib3 = fib_seq()
+
+for i <- 1:31 {
+    println("fib3(\(i))=\(fib3())")
+}

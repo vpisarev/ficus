@@ -71,12 +71,34 @@ fun string(l: 't list)
 }
 
 operator != (a: 't, b: 't): bool = !(a == b)
+operator > (a: 't, b: 't): bool = b < a
+operator >= (a: 't, b: 't): bool = !(a < b)
+operator <= (a: 't, b: 't): bool = !(b < a)
 
 pure nothrow operator == (a: string, b: string): bool = ccode
     "
     return (bool)(a->length == b->length &&
             (a->length == 0 ||
             memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
+    "
+
+// [TODO] implement more clever string comparison operation
+pure operator < (a: string, b: string): bool = ccode
+    "
+    int_ alen = a->length, blen = b->length;
+    bool ashorter = alen < blen;
+    int_ minlen = ashorter ? alen : blen;
+    const char_ *adata = a->data, *bdata = b->data;
+    for(int_ i = 0; i < minlen; i++) {
+        int_ ai = (int_)adata[i], bi = (int_)bdata[i];
+        int_ diff = ai - bi;
+        if(diff != 0) {
+            *fx_result = diff < 0;
+            return FX_OK;
+        }
+    }
+    *fx_result = ashorter;
+    return FX_OK;
     "
 
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
@@ -167,6 +189,13 @@ fun print(l: 't list)
         print_repr(x)
     }
     print("]")
+}
+fun print((a, b): ('a, 'b)) {
+    print("("); print_repr(a); print(", ");
+    print_repr(b); print(")")
+}
+fun print(a: 't ref) {
+    print("ref("); print_repr(*a); print(")")
 }
 
 fun println() = print("\n")

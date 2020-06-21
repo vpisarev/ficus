@@ -1,7 +1,7 @@
 // the first test script
 import testmod, Math, List
 
-val str = "привет! 你好吗?\nBTW,\n\t2*2=\(2*2),\n\tπ (the area of circle with radius 1) = \(Math.Pi),\n\te = \(Math.exp(1.)),\n\tφ (golden ratio) = \((1+5.**0.5)/2) "
+val str = "привет! 你好吗?\nBTW,\n\t2*2 = \(2*2),\n\tπ (the area of circle with radius 1) = \(Math.Pi),\n\te = \(Math.exp(1.)),\n\tφ (golden ratio) = \((1+5.**0.5)/2) "
 val c = '😄'
 println(str + c)
 
@@ -13,7 +13,7 @@ fun fib2(n: int) {
     fun fib2_(a: int, b: int, n: int) = if n <= 1 {a} else {fib2_(a+b, a, n-1)}
     fib2_(1, 1, n)
 }
-/*fun fib_seq()
+fun fib_seq()
 {
     val a=ref(1), b=ref(1)
     fun next_fib()
@@ -25,9 +25,9 @@ fun fib2(n: int) {
     }
     next_fib
 }
-val fib3 = fib_seq()*/
+val fib3 = fib_seq()
 
-println("factorial(5)=\(testmod.fact(5))")
+println("factorial(20)=\(testmod.fact(20))")
 
 var i = 0
 val a=[0, 1, 2, -1, 7]
@@ -39,23 +39,23 @@ do
 }
 while i < 5
 
-for i <- 1:31 {
+for i <- 0:30 {
     fun foo() {
         print(fib(i))
     }
     print("fib(\(i))=")
     foo()
-    print(", fib2(\(i))=\(fib2(i))\n")
-    //println("fib3(\(i))=\(fib3())")
+    print(", fib2(\(i))=\(fib2(i))")
+    println(", fib3(\(i))=\(fib3())")
 }
 
 //exception BreakWith: int
 
 type complex_t = {re: float; im: float}
-/*val c = ref (complex_t {re=0.f, im=1.f})
+val c = ref (complex_t {re=0.f, im=1.f})
 val d = c->{re=c->re*2, im=c->im*2}
 fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
-println("abs(d)=\(abs(d))")*/
+println("abs(d)=\(abs(d))")
 
 /*fun find_idx(a: 't [], elem: 't)
 {
@@ -113,16 +113,17 @@ println(if 0.1 <= Math.sin(1.) < 0.7 {
 
 val fpair = List.find_opt(("a", 0) :: ("b", 1) :: ("rest", 2) :: [], fun ((key, i): (string, int)) {key == "xyz"})
 
-println(match fpair {
+println("find_opt result: \(match fpair {
     | Some((x, y)) => y
     | _ => -1
-    })
+    })")
 
 val n = 30
 val a = [for i <- 0:n {i+1}]
 for i <- 1:n {a[i] += a[i-1]}
 println("triangular numbers: \(a)")
 
+print("find_idx result: ")
 println(find_idx([1, 2, 5], 5))
 val sorted = List.mergeSort([: 2, -1, 100, 8, 7 :], fun (a: int, b: int) {a < b})
 print("sorted: ")

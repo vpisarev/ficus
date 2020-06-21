@@ -555,6 +555,14 @@ let gen_ccode top_code =
         add_fx_call call_cons ccode loc
     in
 
+    let make_mkref_call arg_exp r_exp ccode loc =
+        let ctyp = get_cexp_typ r_exp in
+        let arg_exp = make_fun_arg arg_exp loc in
+        let rcon = C_gen_types.get_constructor ctyp true loc in
+        let call_mkref = make_call rcon [arg_exp; cexp_get_addr r_exp] CTypCInt loc in
+        add_fx_call call_mkref ccode loc
+    in
+
     let add_size_eq_check check_list ccode lbl loc =
         match check_list with
         | e0 :: rest ->
@@ -1007,13 +1015,16 @@ let gen_ccode top_code =
         | KExpUnOp(OpMkRef, a1, _) ->
             let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
             let (r_exp, _) = get_dstexp dstexp_r "r" ctyp [] [] sc kloc in
-            let rcon = C_gen_types.get_constructor ctyp true kloc in
-            let call_mkref = make_call rcon
-                (ce1 :: (cexp_get_addr r_exp) :: []) CTypCInt kloc in
-            (false, r_exp, (add_fx_call call_mkref ccode kloc))
+            let ccode = make_mkref_call ce1 r_exp ccode kloc in
+            (false, r_exp, ccode)
         | KExpUnOp(OpDeref, a1, _) ->
-            let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
-            (true, (cexp_deref ce1), ccode)
+            let a_id = match a1 with
+                | Atom.Id a_id -> a_id
+                | _ -> raise_compile_err kloc "cgen: deref operand is not an identifier"
+                in
+            let (ce, ccode) = id2cexp a_id false ccode sc kloc in
+            let n_id = get_id "data" in
+            (true, (cexp_arrow ce n_id ctyp), ccode)
         | KExpUnOp(uop, a1, _) ->
             let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
             let c_uop = match uop with
@@ -1733,7 +1744,7 @@ let gen_ccode top_code =
                     ccode
                 else if ktp_complex || is_global ||
                     (match e2 with
-                    | KExpUnOp(OpMkRef, _, _) -> true
+                    (*| KExpUnOp(OpMkRef, _, _) -> true*)
                     | KExpAtom _ | KExpBinOp _ | KExpUnOp _ | KExpIntrin _ | KExpMkTuple _
                     | KExpMkRecord _ | KExpAt _ | KExpMem _ | KExpCast _ | KExpCCode _ -> false
                     | _ -> true) then

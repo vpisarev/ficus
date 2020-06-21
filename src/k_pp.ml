@@ -224,6 +224,8 @@ and pprint_kexp_ e prtyp =
             | _ -> pstr (string_of_int i))
         | KExpUnOp(OpDeref, (Atom.Id n), (_, loc)) ->
             pstr (if (is_implicit_deref n loc) then "**" else "*"); pprint_id n loc
+        | KExpUnOp(OpMkRef, a, _) ->
+            pstr "MAKE_REF "; pprint_atom_ a
         | KExpUnOp(o, a, _) ->
             let ostr = unop_to_string o in
             pstr ostr; pprint_atom_ a
