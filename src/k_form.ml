@@ -431,7 +431,7 @@ and walk_kexp e callb =
             match elist with
             | e :: rest ->
                 let new_e = walk_kexp_ e in
-                let new_result = match e with
+                let new_result = match new_e with
                     | KExpNop _ -> if rest != [] then result
                                    else new_e :: result
                     | KExpSeq(el, _) -> (List.rev el) @ result
@@ -757,13 +757,6 @@ let is_mutable i loc =
 let is_mutable_atom a loc =
     match a with
     | Atom.Id i -> is_mutable i loc
-    | _ -> false
-
-let is_implicit_deref i loc =
-    let info = kinfo_ i loc in
-    check_kinfo info i loc;
-    match info with
-    | KVal {kv_flags} -> List.mem ValImplicitDeref kv_flags
     | _ -> false
 
 let is_subarray i loc =

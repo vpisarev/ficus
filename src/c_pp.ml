@@ -149,7 +149,9 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
     | CTypRawPtr (attrs, t) ->
         obox();
         if (List.mem CTypVolatile attrs) then pstr "volatile " else ();
-        if (List.mem CTypConst attrs) then pstr "const " else ();
+
+        (* for now disable constant pointers to avoid warnings from C compilers *)
+        (*if (List.mem CTypConst attrs) then pstr "const " else ();*)
         pprint_ctyp__ "" t None fwd_mode loc;
         pstr "*"; pr_id_opt();
         cbox()
@@ -346,10 +348,12 @@ and pprint_cstmt s =
         pstr ")"; pspace();
         pprint_cstmt_or_block_cbox body
     | CStmtWhile (e, body, _) ->
-        pstr "while ("; pprint_cexp_ e 0; pstr ")"; obox(); pspace(); pprint_cstmt body; cbox()
+        obox();
+        pstr "while ("; pcut(); pprint_cexp_ e 0; pcut(); pstr ")";
+        pspace(); pprint_cstmt_or_block_cbox body
     | CStmtDoWhile (body, e, _) ->
-        pstr "do"; obox(); pspace(); pprint_cstmt body; pspace(); cbox();
-        pstr "while ("; pprint_cexp_ e 0; pstr ");"
+        obox(); pstr "do"; pprint_cstmt_or_block_cbox body;
+        obox(); pstr "while ("; pcut(); pprint_cexp_ e 0; pcut(); pstr ");"; cbox()
     | CStmtSwitch (e, cases, _) ->
         ohbox(); pstr "switch ("; obox(); pprint_cexp_ e 0; cbox();
         pstr ") {"; cbox(); pbreak();

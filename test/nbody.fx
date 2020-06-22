@@ -1,6 +1,6 @@
 import Math
 
-val SolarMass = 4.0 * Math.Pi * Math.Pi
+val SolarMass = 4.0 * Math.pi * Math.pi
 val Year = 365.24
 
 type Vec = {x: double; y: double; z: double}

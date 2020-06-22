@@ -7,7 +7,7 @@
 
 ccode "#include <math.h>"
 
-val Pi = 3.1415926535897932384626433832795
+val pi = 3.1415926535897932384626433832795
 
 fun round(x: float) = Builtins.round(x)
 fun round(x: double) = Builtins.round(x)

@@ -345,7 +345,12 @@ let gen_ccode top_code =
 
     let add_local_tempref i ctyp flags e0 ccode sc loc =
         let {ctp_ptr} = C_gen_types.get_ctprops ctyp loc in
-        let (e, ctyp) = if ctp_ptr then (e0, ctyp) else ((cexp_get_addr e0), (make_ptr ctyp)) in
+        let (e, ctyp) = if ctp_ptr then (e0, ctyp) else
+            let ctyp_ptr = make_ptr ctyp in
+            let deref_i_exp = CExpUnOp(COpDeref, CExpIdent(i, (ctyp_ptr, loc)), (ctyp, loc)) in
+            let _ = i2e := Env.add i deref_i_exp !i2e in
+            ((cexp_get_addr e0), ctyp_ptr)
+        in
         create_cdefval i ctyp flags "" (Some e) ccode sc loc
     in
 
@@ -411,10 +416,6 @@ let gen_ccode top_code =
                     | _ -> raise_compile_err loc (sprintf "cgen: id2cexp: %s is not identifier" (id2str i))
                     in
                 let i2 = dup_idc i in
-                (*let (add_deref, lhs_e, ctyp) = handle_temp_ref flags e ctyp in
-                let (i2_exp, ccode) = add_local i2 ctyp flags (Some lhs_e) ccode sc loc in
-                i2e := Env.add i i2_exp !i2e;
-                ((if add_deref then cexp_deref lhs_e else lhs_e), ccode)*)
                 let (add_deref, e, ctyp) = handle_temp_ref flags e ctyp in
                 let (i2_exp, ccode) = add_local i2 ctyp flags (Some e) ccode sc loc in
                 i2e := Env.add i i2_exp !i2e;
@@ -423,7 +424,6 @@ let gen_ccode top_code =
             let e = make_id_exp i loc in
             let e = (match cinfo_ i loc with
             | CVal {cv_typ; cv_flags} ->
-                let e = if (List.mem ValImplicitDeref cv_flags) then (cexp_deref e) else e in
                 (match cv_typ with
                 | CTypRawPtr(_, ctyp2) when ctyp2 = cv_typ -> cexp_deref e
                 | _ -> e)
@@ -1639,8 +1639,8 @@ let gen_ccode top_code =
                     let check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc) in
                     (true, check_cc :: cc_code))
                 in
-            let (e, body_ccode) = kexp2cexp body (ref None) [] sc in
-            let body_ccode = ((cexp2stmt e) :: body_ccode) @ check_code in
+            let (_, body_ccode) = kexp2cexp body (ref None) [] sc in
+            let body_ccode = body_ccode @ check_code in
             let (_, body_stmt) = finalize_loop_body body_ccode true kloc in
             let loop_stmt = (if is_for_loop then
                     CStmtFor(None, [], None, [], body_stmt, kloc)
@@ -1650,7 +1650,7 @@ let gen_ccode top_code =
             (false, dummy_exp, loop_stmt :: ccode)
         | KExpDoWhile(body, c, _) ->
             let _ = new_block_ctx BlockKind_Loop sc kloc in
-            let (e, body_ccode) = kexp2cexp body (ref None) [] sc in
+            let (_, body_ccode) = kexp2cexp body (ref None) [] sc in
             let (cc, cc_code) = kexp2cexp c (ref None) [] sc in
             let (is_for_loop, check_code) =
                 (match (cc, cc_code) with
@@ -1827,11 +1827,11 @@ let gen_ccode top_code =
                     let dstexp_r = ref (if retid = noid then None else
                         (Some (cexp_deref (make_id_exp retid kf_loc))))
                         in
-                    let status_id = if (List.mem FunNoThrow kf_flags) then noid else gen_temp_idc "fx_status" in
-                    let (status_exp, ccode) = if status_id = noid then ((make_dummy_exp kf_loc), [])
-                        else create_cdefval status_id CTypCInt [ValMutable] "fx_status"
-                            (Some (make_int_exp 0 kf_loc)) [] kf_scope kf_loc
-                        in
+                    let is_nothrow = List.mem FunNoThrow kf_flags in
+                    let orig_status_id = gen_temp_idc "fx_status" in
+                    let (status_exp, ccode) = create_cdefval orig_status_id CTypCInt [ValMutable] "fx_status"
+                        (Some (make_int_exp 0 kf_loc)) [] kf_scope kf_loc in
+                    let status_id = if is_nothrow then noid else orig_status_id in
                     (*let _ = printf "converting function %s:\n" kf_cname in*)
                     let _ = List.iter2 (fun a kt ->
                         let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kt kf_loc in

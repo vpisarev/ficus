@@ -158,8 +158,9 @@ let rec elim_unused code =
             else KExpNop(kcv_loc)
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
-            (match code with
-            | KDefVal(i, rhs, _) :: KExpAtom((Atom.Id j), _) :: [] when i = j -> rhs
+            (match (List.rev code) with
+            | KExpAtom((Atom.Id j), _) :: KDefVal(i, rhs, _) :: rest when i = j ->
+                rcode2kexp (rhs :: rest) loc
             | _ -> code2kexp code loc)
         | _ -> walk_kexp e callb
     and elim_unused_ code result callb =

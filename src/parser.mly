@@ -278,7 +278,7 @@ decl:
 | val_spec_list_ val_decls_
     {
         let vflags = List.rev $1 in
-        List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2
+        List.rev (List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2)
     }
 | fun_decl_start fun_args EQUAL stmt_or_ccode
     {
@@ -370,13 +370,13 @@ stmt:
     }
 | CONTINUE { ExpContinue(curr_loc()) }
 | THROW exp { ExpThrow($2, curr_loc()) }
-| simple_exp EQUAL complex_exp { ExpAssign($1, $3, curr_loc()) }
-| simple_exp aug_op complex_exp
+| deref_exp EQUAL complex_exp { ExpAssign($1, $3, curr_loc()) }
+| deref_exp aug_op complex_exp
     {
         let (tp, loc) = make_new_ctx() in
         ExpAssign($1, ExpBinOp($2, $1, $3, (tp, loc)), loc)
     }
-| simple_exp DOT_EQUAL LBRACE id_exp_list_ RBRACE
+| deref_exp DOT_EQUAL LBRACE id_exp_list_ RBRACE
     {
         let (tp, loc) = make_new_ctx() in
         ExpAssign($1, ExpUpdateRecord($1, (List.rev $4), (tp, loc)), loc)
@@ -451,6 +451,11 @@ simple_exp:
     %prec lsquare_prec
     { ExpAt($1, (List.rev $3), make_new_ctx()) }
 
+deref_exp:
+| simple_exp { $1 }
+| B_STAR deref_exp %prec deref_prec { make_un_op(OpDeref, $2) }
+| B_POWER deref_exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
+
 for_flags:
 | PARALLEL { [ForParallel] }
 | /* empty */ { [] }
@@ -497,9 +502,7 @@ cast_exp:
 | unary_exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
 
 unary_exp:
-| simple_exp { $1 }
-| B_STAR unary_exp %prec deref_prec { make_un_op(OpDeref, $2) }
-| B_POWER unary_exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
+| deref_exp { $1 }
 | REF unary_exp { make_un_op(OpMkRef, $2) }
 | B_MINUS unary_exp { make_un_op(OpNegate, $2) }
 | B_PLUS unary_exp { make_un_op(OpPlus, $2) }

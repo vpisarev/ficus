@@ -1024,7 +1024,7 @@ and check_exp e env sc =
             (if nrange_idx = 0 then
                 unify etyp et eloc "the type of array access expression does not match the array element type"
             else
-                unify etyp (TypArray(nrange_idx, et)) eloc
+                unify etyp (TypArray(nidx, et)) eloc
                   "the number of ranges does not match dimensionality of the result, or the element type is incorrect");
             ExpAt(new_arr, (List.rev new_idxs), ctx))
     | ExpIf(c, e1, e2, _) ->

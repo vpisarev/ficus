@@ -52,13 +52,23 @@ operator + (l1: 't list, l2: 't list) {
     }
 }
 
-fun string(a: bool): string = if a {"true"} else {"false"}
-fun string(a: int): string = ccode "return fx_itoa(a, fx_result);"
-fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
-fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
+fun string(a: bool) = if a {"true"} else {"false"}
+pure fun string(a: int): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
+pure fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: string) = a
+pure fun string(a: char []): string = ccode "return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);"
+pure fun string(a: char [,]): string = ccode
+    "
+    if(a->dim[0].size != 1) return FX_EXN_SizeError;
+    return fx_make_str((char_*)a->data, a->dim[1].size, fx_result);
+    "
+
 fun repr(a: 't): string = string(a)
 fun repr(a: string) = "\"" + a + "\""
+
+fun string((a, b): ('a, 'b)) = "(" + repr(a) + ", " + repr(b) + ")"
+fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
 {

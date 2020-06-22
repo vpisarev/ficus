@@ -87,25 +87,21 @@ let rec ppktyp_ t p1 loc =
     | KTypModule -> pstr "Module"
 
 let pprint_ktyp t loc = ppktyp_ t KTypPr0 loc
-let pprint_atom a impderef loc = match a with
+let pprint_atom a loc = match a with
     | Atom.Id ((Id.Name _) as k) -> pprint_id k loc
-    | Atom.Id k ->
-        if impderef && (is_implicit_deref k loc) then
-            (pstr "(*"; pprint_id k loc; pstr ")")
-        else
-            pprint_id k loc
+    | Atom.Id k -> pprint_id k loc
     | Atom.Lit l -> pstr (lit2str l loc)
 let pprint_dom r loc = match r with
-    | Domain.Elem(a) -> pprint_atom a true loc
-    | Domain.Fast(a) -> pstr "<"; pprint_atom a true loc; pstr ">"
-    | Domain.Range(i,j,k) -> pprint_atom i true loc; pstr ":";
+    | Domain.Elem(a) -> pprint_atom a loc
+    | Domain.Fast(a) -> pstr "<"; pprint_atom a loc; pstr ">"
+    | Domain.Range(i,j,k) -> pprint_atom i loc; pstr ":";
           (match j with
           | Atom.Lit(LitNil) -> ()
-          | _ -> pprint_atom j true loc);
+          | _ -> pprint_atom j loc);
           (match k with
           | Atom.Lit(LitNil) -> ()
           | Atom.Lit(LitInt 1L) -> ()
-          | _ -> pstr ":"; pprint_atom k true loc)
+          | _ -> pstr ":"; pprint_atom k loc)
 
 let rec pprint_kexp e = pprint_kexp_ e true
 and pprint_kexp_ e prtyp =
@@ -115,7 +111,7 @@ and pprint_kexp_ e prtyp =
     let ppktp ktp = match ktp with
         Some({ktp_complex}) -> pstr (if ktp_complex then "COMPLEX" else "SIMPLE"); pspace()
         | _ -> () in
-    let pprint_atom_ a = pprint_atom a true eloc in
+    let pprint_atom_ a = pprint_atom a eloc in
     let pprint_dom_ r = pprint_dom r eloc in
     let pprint_id_ i = pprint_atom_ (Atom.Id i) in
     let pprint_id_label i = pstr (idk2str i eloc) in
@@ -130,16 +126,13 @@ and pprint_kexp_ e prtyp =
         (List.iter (fun vf -> match vf with
         | ValTempRef -> pstr "TEMP_REF"; pspace()
         | ValTemp -> pstr "TEMP"; pspace()
-        | ValImplicitDeref -> pstr "IMPLICIT_DEREF"; pspace()
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
         | ValCtor _ -> ()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp vt loc; pspace(); pstr "="; pspace();
-        if List.mem ValImplicitDeref vflags then
-        (pstr "MAKE_REF("; pprint_kexp_ e0 false; pstr ")")
-        else pprint_kexp_ e0 false; cbox()
+        pprint_kexp_ e0 false; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_typ; kf_body; kf_closure; kf_flags; kf_loc }} ->
         let {kci_arg; kci_fcv_t} = kf_closure in
         let nargs = List.length kf_args in
@@ -216,14 +209,13 @@ and pprint_kexp_ e prtyp =
             pprint_atom_ a; pspace(); pstr ostr; pspace(); pprint_atom_ b
         | KExpAssign(n, e, _) -> pprint_id_ n; pspace(); pstr "="; pspace(); pprint_kexp e
         | KExpMem(n, i, (_, loc)) ->
-            pprint_id n loc;
-            pstr (if (is_implicit_deref n loc) then "->" else ".");
+            pprint_id n loc; pstr ".";
             (match (get_idk_typ n loc) with
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
             | _ -> pstr (string_of_int i))
         | KExpUnOp(OpDeref, (Atom.Id n), (_, loc)) ->
-            pstr (if (is_implicit_deref n loc) then "**" else "*"); pprint_id n loc
+            pstr "*"; pprint_id n loc
         | KExpUnOp(OpMkRef, a, _) ->
             pstr "MAKE_REF "; pprint_atom_ a
         | KExpUnOp(o, a, _) ->
@@ -264,7 +256,7 @@ and pprint_kexp_ e prtyp =
                 let ant = Utils.zip args fvars in
                 pstr ";"; pspace(); pstr "{"; pcut();
                 List.iteri (fun i (a, (n, _)) ->
-                if i = 0 then () else (pstr ","; pspace()); pprint_id n loc; pstr "="; pprint_atom a false eloc) ant;
+                if i = 0 then () else (pstr ","; pspace()); pprint_id n loc; pstr "="; pprint_atom_ a) ant;
                 pcut(); pstr "}");
             pcut(); pstr ")"; cbox()
         | KExpMkArray(shape, elems, (_, l)) ->
@@ -343,7 +335,7 @@ and pprint_kexpseq el braces =
     (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_kexp e) el); cbox();
     if braces then pstr "}" else ()
 
-let pprint_atom_x a loc = Format.print_flush (); Format.open_box 0; pprint_atom a true loc; Format.close_box(); Format.print_flush ()
+let pprint_atom_x a loc = Format.print_flush (); Format.open_box 0; pprint_atom a loc; Format.close_box(); Format.print_flush ()
 let pprint_ktyp_x t loc = Format.print_flush (); Format.open_box 0; pprint_ktyp t loc; Format.close_box(); Format.print_flush ()
 let pprint_kexp_x e = Format.print_flush (); Format.open_box 0; pprint_kexp e; Format.close_box(); Format.print_flush ()
 let pprint_top code = Format.print_flush (); Format.open_box 0; pprint_kexpseq code false; Format.close_box(); pbreak(); Format.print_flush ()

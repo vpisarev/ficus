@@ -168,7 +168,7 @@ type binop_t =
 
 type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
-type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValImplicitDeref | ValPrivate | ValSubArray | ValCtor of int
+type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValPrivate | ValSubArray | ValCtor of int
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of int | CtorFP of id_t | CtorExn of id_t
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunCtor of fun_constr_t
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
