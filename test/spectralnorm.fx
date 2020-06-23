@@ -2,7 +2,7 @@ import Args, Math
 
 fun A(i: int, j: int)
 {
-    val i = i :> double, j = j :> double
+    val i = (i :> double), j = (j :> double)
     1. / ((i + j) * (i + j + 1) / 2. + i + 1)
 }
 

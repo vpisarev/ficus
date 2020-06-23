@@ -17,6 +17,7 @@ let token2str t = match t with
     | SINT(b, i) -> sprintf "SINT(%d, %Ld)" b i
     | UINT(b, i) -> sprintf "UINT(%d, %Ld)" b i
     | FLOAT(b, f) -> sprintf "FLOAT(%d, %g)" b f
+    | FLOAT_LIKE(s) -> sprintf "FLOAT_LIKE(%s)" s
     | IDENT(s) -> sprintf "IDENT(%s)" s
     | B_IDENT(s) -> sprintf "B_IDENT(%s)" s
     | STRING(s) -> sprintf "STRING(%s)" s
@@ -234,6 +235,7 @@ let check_ne lexbuf =
 
 let decode_special_char lexbuf c = match c with
     | "\\\"" -> "\""
+    | "\\\\" -> "\\"
     | "\\n" -> "\n"
     | "\\t" -> "\t"
     | "\\r" -> "\r"
@@ -260,7 +262,7 @@ let octdigit = ['0' - '7']
 let hexdigit = ['0' - '9' 'a' - 'f' 'A' - 'F']
 let lower = ['a'-'z']
 let upper = ['A'-'Z']
-let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0"
+let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0" | "\\\\"
 let hexcode = "\\x" hexdigit hexdigit
 let octcode = "\\" octdigit octdigit octdigit
 
@@ -333,18 +335,21 @@ rule tokens = parse
         }
     | "[:"
         {
-            check_ne(lexbuf);
-            paren_stack := (LLIST, lexbuf.lex_start_p) :: !paren_stack;
+            let tl = if !new_exp then [LLIST] else [LSQUARE; COLON] in
+            paren_stack := ((List.hd tl), lexbuf.lex_start_p) :: !paren_stack;
             new_exp := true;
-            [LLIST]
+            tl
         }
     | ":]"
         {
-            (match (!paren_stack) with
-            | (LLIST, _) :: rest -> paren_stack := rest
-            | _ -> raise (lexErr "Unexpected ':]', check parens" lexbuf));
+            let tl =
+                match (!paren_stack) with
+                | (LLIST, _) :: rest -> paren_stack := rest; [RLIST]
+                | (LSQUARE, _) :: rest -> paren_stack := rest; [COLON; RSQUARE]
+                | _ -> raise (lexErr "Unexpected ':]', check parens" lexbuf)
+                in
             new_exp := false;
-            [RLIST]
+            tl
         }
     | '{'
         {
@@ -392,8 +397,16 @@ rule tokens = parse
             | _ -> raise (lexErr (sprintf "Invalid suffix '%s'" suffix) lexbuf)]
         }
 
-    | ((digit+ '.' digit* (['e' 'E'] ['+' '-']? digit+)?) as num) (['f' 'F']? as suffix)
-        { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
+    | ((digit+ '.' (digit* as frac) (['e' 'E'] ['+' '-']? digit+)?) as num) (['f' 'F']? as suffix)
+        {
+            check_ne(lexbuf); new_exp := false;
+            let is_float = (String.contains num 'e') ||
+                (String.contains num 'E') || suffix <> "" || frac = "" in
+            if is_float then
+                [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))]
+            else
+                [FLOAT_LIKE(num)]
+        }
 
     | ((digit+ ['e' 'E'] ['+' '-']? digit+) as num) (['f' 'F']? as suffix)
         { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
@@ -529,7 +542,7 @@ and strings = parse
       { string_literal := !string_literal ^ (decode_hex_char hc); strings lexbuf }
     | octcode as oc
       { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }
-    | '\\' (_ as s)
+    | "\\" (_ as s)
       { raise (lexErrAt (sprintf "Illegal escape \\%s" (Char.escaped s)) (!string_start, lexbuf.lex_curr_p)) }
     | eof
       { raise (lexErrAt "Unterminated string" (!string_start, lexbuf.lex_curr_p)) }

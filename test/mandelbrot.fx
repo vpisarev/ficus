@@ -47,7 +47,7 @@ val result: int8 [,] = [
 
             if bits == 0 {break}
         }
-        bits :> int8
+        (bits :> int8)
     }
 ]
 

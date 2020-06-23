@@ -26,6 +26,7 @@ let make_new_ctx () = (make_new_typ(), curr_loc())
 
 let make_bin_op(op, a, b) = ExpBinOp(op, a, b, make_new_ctx())
 let make_un_op(op, a) = ExpUnOp(op, a, make_new_ctx())
+let make_int_lit i n = ExpLit((LitInt i), (TypInt, curr_loc_n n))
 
 let expseq2exp es n = match es with
     | [] -> ExpNop (curr_loc_n n)
@@ -168,6 +169,7 @@ let make_chained_cmp chain = match chain with
 %token <int * int64> SINT
 %token <int * int64> UINT
 %token <int * float> FLOAT
+%token <string> FLOAT_LIKE
 %token <string> IDENT
 %token <string> B_IDENT
 %token <string> STRING
@@ -185,13 +187,14 @@ let make_chained_cmp chain = match chain with
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE LLIST RLIST
-%token COMMA DOT SEMICOLON COLON BAR CONS CAST BACKSLASH QUESTION ARROW DOUBLE_ARROW BACK_ARROW EOF
+%token COMMA DOT SEMICOLON COLON BAR BACKSLASH QUESTION ARROW DOUBLE_ARROW BACK_ARROW EOF
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
 %token B_STAR STAR SLASH MOD
 %token B_POWER POWER SHIFT_RIGHT SHIFT_LEFT
 %token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT
+%token CONS CAST
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
 %token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL
 %token AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
@@ -207,7 +210,7 @@ let make_chained_cmp chain = match chain with
 %right CONS
 %left LOGICAL_OR
 %left LOGICAL_AND
-%left COLON
+%left COLON CAST
 %left BITWISE_OR
 %left BITWISE_XOR
 %left BITWISE_AND
@@ -235,8 +238,8 @@ ficus_module:
 | /* empty */ { [] }
 
 top_level_seq_:
-| top_level_seq_ top_level_exp { (List.rev $2) @ $1 }
-| top_level_seq_ SEMICOLON top_level_exp { (List.rev $3) @ $1 }
+| top_level_seq_ top_level_exp { $2 @ $1 }
+| top_level_seq_ SEMICOLON top_level_exp { $3 @ $1 }
 | top_level_exp { (List.rev $1) }
 
 top_level_exp:
@@ -268,9 +271,9 @@ top_level_exp:
 
 exp_seq_:
 | exp_seq_ stmt { $2 :: $1 }
-| exp_seq_ decl { (List.rev $2) @ $1 }
+| exp_seq_ decl { $2 @ $1 }
 | exp_seq_ SEMICOLON stmt { $3 :: $1 }
-| exp_seq_ SEMICOLON decl { (List.rev $3) @ $1 }
+| exp_seq_ SEMICOLON decl { $3 @ $1 }
 | stmt { $1 :: [] }
 | decl { $1 }
 
@@ -278,7 +281,7 @@ decl:
 | val_spec_list_ val_decls_
     {
         let vflags = List.rev $1 in
-        List.rev (List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2)
+        List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2
     }
 | fun_decl_start fun_args EQUAL stmt_or_ccode
     {
@@ -403,20 +406,39 @@ simple_exp:
         ExpLit(lit, (typ, curr_loc()))
     }
 | simple_exp DOT B_IDENT { ExpMem($1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
-| simple_exp DOT INT { ExpMem($1, ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
+| simple_exp DOT INT { ExpMem($1, (make_int_lit $3 3), make_new_ctx()) }
+| simple_exp DOT FLOAT_LIKE %prec DOT
+    {
+        let ab = String.split_on_char '.' $3 in
+        let a = Int64.of_string (List.nth ab 0) in
+        let b = Int64.of_string (List.nth ab 1) in
+        let mem1 = ExpMem($1, (make_int_lit a 3), make_new_ctx()) in
+        ExpMem(mem1, (make_int_lit b 3), make_new_ctx())
+    }
 | simple_exp DOT LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
 | simple_exp ARROW B_IDENT %prec DOT {
     ExpMem(ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
         ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
-| simple_exp ARROW INT %prec DOT {
-    ExpMem(ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
-        ExpLit((LitInt $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
+| simple_exp ARROW INT %prec DOT
+    {
+        let deref_exp = ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)) in
+        ExpMem(deref_exp, (make_int_lit $3 3), make_new_ctx())
+    }
+| simple_exp ARROW FLOAT_LIKE %prec DOT
+    {
+        let ab = String.split_on_char '.' $3 in
+        let a = Int64.of_string (List.nth ab 0) in
+        let b = Int64.of_string (List.nth ab 1) in
+        let deref_exp = ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)) in
+        let mem1 = ExpMem(deref_exp, (make_int_lit a 3), make_new_ctx()) in
+        ExpMem(mem1, (make_int_lit b 3), make_new_ctx())
+    }
 | simple_exp ARROW LBRACE id_exp_list_ RBRACE %prec DOT {
     ExpUpdateRecord(ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
         (List.rev $4), make_new_ctx()) }
 | B_LPAREN complex_exp RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
-| B_LPAREN exp COLON typespec RPAREN { ExpTyped($2, $4, make_new_ctx()) }
+| B_LPAREN typed_exp RPAREN { $2 }
 | B_LSQUARE for_flags B_FOR nested_for_ block RSQUARE
     {
         let map_clauses = compress_nested_map_exp $4 in
@@ -447,6 +469,9 @@ simple_exp:
 | simple_exp LPAREN exp_list RPAREN
     %prec fcall_prec
     { ExpCall($1, $3, make_new_ctx()) }
+| simple_exp LPAREN typed_exp RPAREN
+    %prec fcall_prec
+    { ExpCall($1, $3 :: [], make_new_ctx()) }
 | simple_exp LSQUARE idx_list_ RSQUARE
     %prec lsquare_prec
     { ExpAt($1, (List.rev $3), make_new_ctx()) }
@@ -496,10 +521,10 @@ complex_exp:
     %prec fcall_prec
     { ExpMkRecord($1, [], make_new_ctx()) }
 | exp { $1 }
-| cast_exp { $1 }
 
-cast_exp:
-| unary_exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
+typed_exp:
+| exp COLON typespec { ExpTyped($1, $3, make_new_ctx()) }
+| exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
 
 unary_exp:
 | deref_exp { $1 }
@@ -557,6 +582,7 @@ literal:
 | SINT { let (b, v) = $1 in LitSInt (b, v) }
 | UINT { let (b, v) = $1 in LitUInt (b, v) }
 | FLOAT { let (b, v) = $1 in LitFloat (b, v) }
+| FLOAT_LIKE { let v = float_of_string $1 in LitFloat (64, v) }
 | STRING { LitString $1 }
 | CHAR { LitChar $1 }
 | TRUE { LitBool true }
@@ -823,9 +849,9 @@ class_members:
 | class_members_ SEMICOLON { List.rev $1 }
 
 class_members_:
-| class_members_ decl { (List.rev $2) @ $1 }
-| class_members_ SEMICOLON decl { (List.rev $3) @ $1 }
-| decl { List.rev $1 }
+| class_members_ decl { $2 @ $1 }
+| class_members_ SEMICOLON decl { $3 @ $1 }
+| decl { $1 }
 
 base_iface:
 | EXTENDS dot_ident { get_id $2 }

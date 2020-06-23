@@ -12,7 +12,7 @@ fun make(i: 'a, d: int): 'a tree =
 
 fun check(_: 'a tree)
 {
-    | Empty => 0 :> 'a
+    | Empty => (0 :> 'a)
     | Node(l, i, r) => i + check(l) - check(r)
 }
 

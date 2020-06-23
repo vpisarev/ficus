@@ -49,7 +49,7 @@ operator ** (a: (('t, 't), ('t, 't)), n: int)
 fun fib3(n: int) {
     val a = ((1, 1), (1, 0))
     val a = a ** n
-    a . 1 . 0
+    a.1.0
 }
 
 fun fib_seq_gen()
@@ -188,9 +188,9 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
         screen[h-itab[x]-1, x] = '*'
     }
     for y <- 0:h {
-        println(screen[y,: ])
+        println(screen[y,:])
     }
 }
 
-val a = Math.pi*(-0.5), b = -a*5
-plot((a :> float), (b :> float), (Math.sin: float->float), 80, 10)
+val a = (Math.pi*(-0.5) :> float), b = (-a*5 :> float)
+plot(a, b, (Math.sin: float->float), 80, 10)
