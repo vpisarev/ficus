@@ -177,6 +177,7 @@ let run_compiler () =
     let cmd = cmd ^ " -o " ^ options.app_filename in
     let cmd = cmd ^ " -I" ^ options.runtime_path in
     let cmd = cmd ^ " " ^ options.c_filename in
+    let cmd = cmd ^ " -lm" in
     let ok = (Sys.command cmd) = 0 in
     if not ok || options.write_c then () else Sys.remove options.c_filename;
     ok

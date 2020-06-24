@@ -24,6 +24,7 @@ type options_t =
     mutable c_filename: string;
     mutable app_filename: string;
     mutable app_args: string list;
+    mutable osname: string;
 }
 
 let options =
@@ -45,7 +46,8 @@ let options =
     filename = "";
     c_filename = "";
     app_filename = "";
-    app_args = []
+    app_args = [];
+    osname = "*nix";
 }
 
 let parse_options () =
@@ -115,5 +117,11 @@ let parse_options () =
                 Filename.temp_file (Filename.basename output_name) "";
 
         options.app_args <- List.rev options.app_args;
+
+        let ch = Unix.open_process_in "uname" in
+        let uname_output = input_line ch in
+        let _ = close_in ch in
+        options.osname <- String.trim uname_output;
+
         true
     with Arg.Bad msg -> print_string ("error: " ^ msg ^ "\n"); false
