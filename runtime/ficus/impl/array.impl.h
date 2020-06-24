@@ -321,10 +321,12 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
             fx_status = fx_copy_arr_data(arr, result);
         }
     }
-    result->ndims = 1;
-    result->dim[0].size = total;
-    result->dim[0].step = elemsize;
-    return FX_OK;
+    if( fx_status >= 0 ) {
+        result->ndims = 1;
+        result->dim[0].size = total;
+        result->dim[0].step = elemsize;
+    }
+    return fx_status;
 }
 
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)

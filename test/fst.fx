@@ -150,8 +150,8 @@ fun assoc_result(r: ('a, 'b)?)
     | _ => "not found"
 }
 
-println("find_opt '\(key1)' @ \(pairs) result: \(assoc_result(r1))")
-println("find_opt '\(key2)' @ \(pairs) result: \(assoc_result(r2))")
+println("assoc '\(key1)' @ \(pairs): \(assoc_result(r1))")
+println("assoc '\(key2)' @ \(pairs): \(assoc_result(r2))")
 
 val n = 30
 val a = [for i <- 0:n {i+1}]
