@@ -1868,12 +1868,14 @@ let gen_ccode top_code =
                         in
                     let (ret_e, ccode) = kexp2cexp kf_body dstexp_r ccode kf_scope in
                     let end_loc = get_kexp_end kf_body in
-                    let {bctx_label; bctx_prologue; bctx_cleanup; bctx_label_used} = curr_block_ctx end_loc in
+                    let bctx = curr_block_ctx end_loc in
                     (* exclude FX_CHECK_EXN() if it's in the very end of function *)
                     let ccode = match ccode with
-                        | CExp (CExpCall(CExpIdent (f, _), _, _)) :: rest when f = !std_FX_CHECK_EXN -> rest
+                        | CExp (CExpCall(CExpIdent (f, _), _, _)) :: rest when f = !std_FX_CHECK_EXN ->
+                            bctx.bctx_label_used <- bctx.bctx_label_used - 1; rest
                         | _ -> ccode
                         in
+                    let {bctx_label; bctx_prologue; bctx_cleanup; bctx_label_used} = bctx in
                     let ccode = if bctx_label_used > 0 then CStmtLabel(bctx_label, end_loc) :: ccode else ccode in
                     let (ret_e, ccode) =
                         if bctx_cleanup = [] then

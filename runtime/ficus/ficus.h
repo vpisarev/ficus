@@ -111,7 +111,7 @@ void fx_free(void* ptr);
 #define FX_RESULT_MALLOC(ptrtyp, ptr) \
     if (((ptr)=(ptrtyp)fx_malloc(sizeof(*(ptr)))) != 0) ; else FX_FAST_THROW_RET(FX_EXN_OutOfMemError)
 
-#define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else { FX_UPDATE_BT(); goto label; }
+#define FX_CALL(f, label) if((fx_status=(f)) < 0) { FX_UPDATE_BT(); goto label; } else fx_status=fx_status
 // break/continue are execution flow control operators, not real exceptions,
 // and they are guaranteed to be "caught" (one cannot place them outside of loops),
 // so we don't use FX_SET_EXN_EXN_FAST() etc.
