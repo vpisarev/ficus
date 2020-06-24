@@ -1201,6 +1201,8 @@ let gen_ccode top_code =
                         (if a was missing, it's set to 0, if delta was missing, it's set to 1)
                     (2, a, delta) open ranges [a::delta]
                         (if delta was missing, it's set to 1)
+                1.1. special case if a single [:] range, which means flattening operation.
+                    just call fx_flatten_arr().
 
                 2. In the second case need first to process each index idx_k (k=0..ndims-1):
                    2.1. If idx_k is "fast index" - great, just use the expression for the index
@@ -1214,7 +1216,17 @@ let gen_ccode top_code =
             *)
             let (arr_exp, ccode) = atom2cexp_ arr false ccode sc kloc in
             let need_subarr = List.exists (fun d -> match d with Domain.Range _ -> true | _ -> false) idxs in
-            if need_subarr then
+            let need_flatten = need_subarr && (match idxs with
+                | Domain.Range((Atom.Lit LitNil), (Atom.Lit LitNil), (Atom.Lit LitNil)) :: []
+                | Domain.Range((Atom.Lit (LitInt 0L)), (Atom.Lit LitNil), (Atom.Lit (LitInt 1L))) :: [] -> true
+                | _ -> false)
+                in
+            if need_flatten then
+                let (subarr_exp, _) = get_dstexp dstexp_r "arr" ctyp [] [] sc kloc in
+                let call_flatten = make_call (get_id "fx_flatten_arr")
+                    [(cexp_get_addr arr_exp); (cexp_get_addr subarr_exp)] CTypCInt kloc in
+                (false, subarr_exp, (add_fx_call call_flatten ccode kloc))
+            else if need_subarr then
                 let (range_data, ccode) = List.fold_left (fun (range_data, ccode) d ->
                     match d with
                     | Domain.Elem i | Domain.Fast i ->

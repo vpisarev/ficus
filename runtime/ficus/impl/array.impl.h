@@ -24,6 +24,7 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
     it->arrs = arrs;
     it->ptrs = ptrs;
     it->idx = 0;
+    it->ptrs[0] = arr0->data;
 
     if( d == 1 )
     {
@@ -295,6 +296,37 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     return FX_OK;
 }
 
+int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
+{
+    int fx_status = FX_OK;
+    int_ arrsize[FX_MAX_DIMS];
+    int i, ndims = arr->ndims;
+    size_t elemsize = arr->dim[ndims-1].step;
+    int_ total = 1;
+    for(i=0; i < ndims; i++) {
+        int_ szi = arr->dim[i].size;
+        arrsize[i] = szi;
+        total *= szi;
+    }
+
+    if(FX_IS_ARR_CONTINUOUS(arr->flags) || total == 0) {
+        *result = *arr;
+        if(result->rc) FX_INCREF(result->rc);
+    }
+    else {
+        fx_status = fx_make_arr(ndims, arrsize, elemsize,
+            arr->free_elem, arr->copy_elem, 0, result);
+        if(fx_status >= 0) {
+            assert(FX_IS_ARR_CONTINUOUS(result->flags));
+            fx_status = fx_copy_arr_data(arr, result);
+        }
+    }
+    result->ndims = 1;
+    result->dim[0].size = total;
+    result->dim[0].step = elemsize;
+    return FX_OK;
+}
+
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
 {
     int i, ndims = arr->ndims;
@@ -349,15 +381,15 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         // will be I*D?F* (zero or more 1-dimensions, then at most one non-full range,
         // and then zero or more full ranges):
         // state 0: all 1/I's so far
-        // state 1: D or F occured
-        // state 3: D occured
-        // state 7: I or D occured after D or F -> the subarray is non-continuous
-        if( state != 0 && b - a < size_i )
-        {
-            if( state == 3 )
-                state = 7;
-            state |= 2;
-        }
+        // state 1: D or F occured once, followed by zero or more F's
+        // state 2: I or D occured after D or F -> the subarray is non-continuous
+        int_ subsize_i = b - a;
+        if (state == 0 && subsize_i == 1)
+            ; // all 1's/I's so far
+        else if (subsize_i < size_i)
+            state = state == 0 ? 1 : 2;
+        else if (state == 0)
+            state = 1;
 
         offset += a*step_i;
         size_i = (b - a + delta - 1)/delta;
@@ -366,10 +398,10 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         subarr->dim[i].step = delta*step_i;
     }
 
+    subarr->ndims = arr->ndims;
+    subarr->flags = arr->flags & (state > 1 ? ~FX_ARR_CONTINUOUS : -1);
     subarr->free_elem = arr->free_elem;
     subarr->copy_elem = arr->copy_elem;
-    subarr->flags = arr->flags & (state == 7 ? ~FX_ARR_CONTINUOUS : -1);
-    subarr->ndims = arr->ndims;
 
     if (total > 0) {
         subarr->rc = arr->rc;

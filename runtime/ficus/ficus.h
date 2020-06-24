@@ -454,7 +454,8 @@ void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_free_t free_elem, fx_copy_t copy_elem, const void* elems, fx_arr_t* arr );
-int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
+int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);
+int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* farr);
 
 ////////////////////////// References //////////////////////////
 

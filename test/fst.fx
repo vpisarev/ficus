@@ -28,22 +28,18 @@ operator ** (a: (('t, 't), ('t, 't)), n: int)
 {
     val _0 = (0:>'t), _1 = (1:>'t)
     var p = ((_1, _0), (_0, _1))
-    if n == 0 {p}
-    else {
-        var a = a
-        var n = n
-        while n > 0 {
-            if n % 2 == 0 {
-                n /= 2
-                a *= a
-            }
-            else {
-                p *= a
-                n -= 1
-            }
+    var a = a, n = n
+    while n > 0 {
+        if n % 2 == 0 {
+            n /= 2
+            a *= a
         }
-        p
+        else {
+            p *= a
+            n -= 1
+        }
     }
+    p
 }
 
 fun fib3(n: int) {
@@ -52,7 +48,7 @@ fun fib3(n: int) {
     a.1.0
 }
 
-fun fib_seq_gen()
+fun start_fib_seq()
 {
     var a=1, b=1
     fun next_fib()
@@ -64,7 +60,7 @@ fun fib_seq_gen()
     }
     next_fib
 }
-val fib_seq = fib_seq_gen()
+val fib_seq = start_fib_seq()
 
 for i <- 1:31 {
     fun foo() {
@@ -78,27 +74,26 @@ for i <- 1:31 {
 }
 println()
 
-var i = 0
 val a=[0, 1, 2, -10, 7]
+var i1 = 0, n = size(a)
 do
 {
-    val v = a[i]
+    val v = a[i1]
     if v < 0 {break}
-    i += 1
+    i1 += 1
 }
-while i < 5
-val msg = if i >= size(a) {"not found"} else {"a[\(i)]=\(a[i])"}
-println("negative number in \(a): \(msg)")
+while i1 < n
 
-//exception BreakWith: int
+fun gen_msg(i: int, a: 't []) = if i >= size(a) {"not found"} else {"a[\(i)]=\(a[i])"}
+println("imperative search: negative number in \(a): \(gen_msg(i1, a))")
 
-type complex_t = {re: float; im: float}
-val c = ref (complex_t {re=1.f, im=1.f})
-val d = c->{re=c->re*2, im=c->im*2}
-fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
-println("abs((1+1i)*2)=\(abs(d))")
+val fold i2=0 for i<-0:n { if a[i] < 0 {break with i}; i2 }
+println("fold-based search: negative number in \(a): \(gen_msg(i2, a))")
 
-/*fun find_idx(a: 't [], elem: 't)
+/*
+exception BreakWith: int
+
+fun find_idx(a: 't [], elem: 't)
 {
     val n = size(a)
     try
@@ -110,7 +105,15 @@ println("abs((1+1i)*2)=\(abs(d))")
     {
     | BreakWith(i) => i
     }
-}*/
+}
+println("excepion-based search: negative number in \(a): \(gen_msg(find_idx(a), a))")
+*/
+
+type complex_t = {re: float; im: float}
+val c = ref (complex_t {re=1.f, im=1.f})
+val d = c->{re=c->re*2, im=c->im*2}
+fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
+println("abs((1+1i)*2)=\(abs(d))")
 
 val fixed_choice = "five"
 
@@ -181,15 +184,16 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     val v0 = tab[0]
     val fold (minv, maxv)=(v0, v0) for y <- tab { (min(minv, y), max(maxv, y)) }
     val scale = (h-1)/(maxv - minv)
-    val itab = [for y <- tab {clip(Math.round((y-minv)*scale), 0, h-1)}]
 
     val screen: char [,] = array((h, w+1), ' ')
-    for x <- 0:w {
-        screen[h-1-itab[x], x] = '*'
+    for x <- 0:w, y <- tab {
+        val iy = Math.round((y-minv)*scale)
+        screen[h-1-clip(iy, 0, h-1), x] = '*'
     }
     for y <- 0:h {
-        println(screen[y,:])
+        screen[y,w] = '\n'
     }
+    println(screen[:])
 }
 
 val a = (Math.pi*(-0.5) :> float), b = (-a*5 :> float)

@@ -1004,9 +1004,12 @@ and check_exp e env sc =
         (match idxs with
         (* flatten case "arr[:]" *)
         | ExpRange(None, None, None, _) :: [] ->
-            unify new_atyp (TypArray(-1, et)) new_aloc "the argument of the flatten operation must be an array";
-            unify etyp (TypArray(1, et)) eloc "the result of the flatten operation must be 1D array";
-            ExpAt(new_arr, idxs, ctx)
+            let new_idx = check_exp (List.hd idxs) env sc in
+            (match (deref_typ new_atyp) with
+            | TypArray(d, et) -> unify etyp (TypArray(1, et)) eloc
+                "the result of flatten operation ([:]) must be 1D array with elements of the same type as input array";
+                ExpAt(new_arr, new_idx :: [], ctx)
+            | _ -> raise_compile_err eloc "the argument of the flatten operation must be an array")
         (* other cases: check each index, it should be either a scalar or a range;
            in the first case it should have integer type.
            If all the indices are scalars, then the result should have et type,
