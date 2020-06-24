@@ -247,8 +247,8 @@ let convert_all_typs top_code =
         let src_typ = if ktp_ptr then src_typ0 else (make_const_ptr src_typ0) in
         let src_id = get_id "src" in
         let dst_id = get_id "dst" in
-        let src_exp = CExpIdent(src_id, (src_typ, loc)) in
-        let dst_exp = CExpIdent(dst_id, (dst_typ, loc)) in
+        let src_exp = make_id_t_exp src_id src_typ loc in
+        let dst_exp = make_id_t_exp dst_id dst_typ loc in
         let cname_wo_prefix = K_mangle.remove_fx cname in
         let freef_decl = ref {
             cf_name=free_f; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ cname_wo_prefix;
@@ -558,15 +558,15 @@ let convert_all_typs top_code =
                             let ni_clean = get_orig_id ni in
                             let selem_i = CExpMem(src_u_exp, ni_clean, (ti, kvar_loc)) in
                             let delem_i = CExpMem(dst_u_exp, ni_clean, (ti, kvar_loc)) in
-                            let label_i_exp = [CExpIdent(label_i, int_ctx)] in
+                            let switch_label_i_exps = [make_id_t_exp label_i CTypCInt kvar_loc] in
                             let free_code_i = gen_free_code delem_i ti false false [] kvar_loc in
                             let free_cases = match free_code_i with
                                 | [] -> free_cases
-                                | _ -> (label_i_exp, free_code_i) :: free_cases in
+                                | _ -> (switch_label_i_exps, free_code_i) :: free_cases in
                             let copy_code_i = gen_copy_code selem_i delem_i ti [] kvar_loc in
                             let copy_cases = match copy_code_i with
                                 | CExp(CExpBinOp(COpAssign, _, _, _)) :: [] -> copy_cases
-                                | _ -> (label_i_exp, copy_code_i) :: copy_cases in
+                                | _ -> (switch_label_i_exps, copy_code_i) :: copy_cases in
                             (free_cases, copy_cases, (ni_clean, ti) :: uelems)) ([], [], []) kvar_cases ce_members in
                 let free_code = match free_cases with
                     | [] -> []

@@ -60,7 +60,7 @@ let init_std_names () =
     std_fx_free_str := gen_std_fun "fx_free_str" ((make_ptr CTypString) :: []) CTypVoid;
     std_fx_copy_str := gen_std_fun "fx_copy_str" ((make_const_ptr CTypString) :: (make_ptr CTypString) :: []) CTypVoid;
 
-    std_FX_THROW_FAST := gen_std_macro "FX_THROW_FAST" 2;
+    std_FX_FAST_THROW := gen_std_macro "FX_FAST_THROW" 2;
     std_FX_FREE_EXN := gen_std_macro "FX_FREE_EXN" 1;
     std_FX_COPY_EXN := gen_std_macro "FX_COPY_EXN" 2;
     std_FX_MAKE_EXN_IMPL := gen_std_macro "FX_EXN_MAKE_IMPL" 4;

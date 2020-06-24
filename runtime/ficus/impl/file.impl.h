@@ -25,7 +25,7 @@ int fx_fputs(FILE* f, const fx_str_t* str)
         // so no need to compute MIN(BUFSZ, len - i)
         fx_str2cstr_slice(str, i, BUFSZ, buf);
         if(fputs(buf, f) == EOF)
-            return FX_EXN_IOError;
+            FX_FAST_THROW_RET(FX_EXN_IOError);
     }
     return FX_OK;
 }
@@ -45,7 +45,7 @@ int fx_fgets(FILE* f, fx_str_t* str)
         if(!ptr)
         {
             if(!feof(f))
-                fx_status = FX_EXN_IOError;
+                fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
             break;
         }
         int blocksz = (int)strlen(ptr);
@@ -56,7 +56,7 @@ int fx_fgets(FILE* f, fx_str_t* str)
             bufsz = bufsz*3/2;
             char* newbuf = fx_realloc((buf == buf0 ? 0 : buf), (size_t)bufsz);
             if(!newbuf) {
-                fx_status = FX_EXN_OutOfMemError;
+                fx_status = FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
                 break;
             }
             if(buf == buf0 && bufofs > 0)

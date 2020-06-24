@@ -217,8 +217,12 @@ let make_ccode_prologue loc =
     []
 
 let make_ccode_epilogue loc =
-    CExp(CExpCCode("int main(int argc, char** argv)\n{\n   fx_init(argc, argv);\n   return fx_toplevel();\n}", loc)) ::
-    []
+    [CExp(CExpCCode((
+    "int main(int argc, char** argv)\n{\n" ^
+    "   fx_init(argc, argv);\n" ^
+    "   int fx_status = fx_toplevel();\n" ^
+    "   return fx_finit(fx_status);\n" ^
+    "}"), loc))]
 
 let gen_ccode top_code =
     (*let user_exceptions_ofs = ref 0 in
@@ -347,7 +351,7 @@ let gen_ccode top_code =
         let {ctp_ptr} = C_gen_types.get_ctprops ctyp loc in
         let (e, ctyp) = if ctp_ptr then (e0, ctyp) else
             let ctyp_ptr = make_ptr ctyp in
-            let deref_i_exp = CExpUnOp(COpDeref, CExpIdent(i, (ctyp_ptr, loc)), (ctyp, loc)) in
+            let deref_i_exp = CExpUnOp(COpDeref, (make_id_t_exp i ctyp_ptr loc), (ctyp, loc)) in
             let _ = i2e := Env.add i deref_i_exp !i2e in
             ((cexp_get_addr e0), ctyp_ptr)
         in
@@ -1107,7 +1111,7 @@ let gen_ccode top_code =
                     let f_exp = make_id_exp f kf_loc in
                     let have_fv_arg = not (is_fun_ctor kf_flags) in
                     let fv_exp = if kci_arg = noid then (make_lit_exp LitNil kloc) else
-                        if f = (curr_func kloc) then CExpIdent((get_id "fx_fv"), (std_CTypVoidPtr, kf_loc))
+                        if f = (curr_func kloc) then make_id_t_exp (get_id "fx_fv") std_CTypVoidPtr kf_loc
                         else raise_compile_err kloc
                         (sprintf "cgen: %s '%s' %s" "cgen: looks like lambda lifting did not transform"
                         kf_cname "call correctly. Functions that access free variables must be called via closure")
@@ -1319,7 +1323,7 @@ let gen_ccode top_code =
             #if <have_default_action>
             default_action; // if there is default case
             #else
-            fx_status = FX_EXN_NoMatchError;
+            FX_SET_EXN_FAST(FX_EXN_NoMatchError);
             #endif
             [_fx_endmatch...:]
             FX_CHECK_EXN(parent_label);
@@ -1382,9 +1386,10 @@ let gen_ccode top_code =
                 (new_have_default, new_need_em_label, case_ccode @ ccode)) (false, false, ccode) cases
                 in
             let ccode = if have_default then ccode else
-                let fx_status = CExpIdent((get_id "fx_status"), (CTypCInt, end_loc)) in
-                let fx_no_match_err = CExpIdent((get_id "FX_EXN_NoMatchError"), (CTypCInt, end_loc)) in
-                CExp (make_assign fx_status fx_no_match_err) :: ccode
+                let no_match_err = make_id_t_exp (get_id "FX_EXN_NoMatchError") CTypCInt end_loc in
+                let set_no_match = make_call (get_id "FX_SET_EXN_FAST") [no_match_err] CTypVoid end_loc in
+                let status = make_id_t_exp (get_id "fx_status") CTypCInt end_loc in
+                CExp (make_assign status set_no_match) :: ccode
                 in
             let ccode = if not need_em_label then ccode
                 else (CStmtLabel (endmatch, end_loc)) :: ccode in
@@ -1417,8 +1422,8 @@ let gen_ccode top_code =
             | [] -> raise_compile_err kloc "cgen: non-builtin exceptions are not supported yet"
             | _ ->
                 let i = get_id ("FX_EXN_" ^ (pp_id2str i)) in
-                let i_exp = CExpIdent(i, (CTypCInt, kloc)) in
-                let throw_exp = make_call !std_FX_THROW_FAST [i_exp;lbl] CTypVoid kloc in
+                let i_exp = make_id_t_exp i CTypCInt kloc in
+                let throw_exp = make_call !std_FX_FAST_THROW [i_exp;lbl] CTypVoid kloc in
                 (CExp throw_exp) :: ccode
                 in
             (false, dummy_exp, ccode)
@@ -1843,7 +1848,7 @@ let gen_ccode top_code =
                         in
                     let ccode = if kci_arg = noid then ccode else
                         let fcv_ptr_ctyp = make_ptr (CTypName kci_fcv_t) in
-                        let fcv_arg_exp0 = CExpIdent((get_id "fx_fv"), (std_CTypVoidPtr, kf_loc)) in
+                        let fcv_arg_exp0 = make_id_t_exp (get_id "fx_fv") std_CTypVoidPtr kf_loc in
                         let cast_ptr = CExpCast(fcv_arg_exp0, fcv_ptr_ctyp, kf_loc) in
                         let (_, ccode) = create_cdefval kci_arg fcv_ptr_ctyp [] ""
                             (Some cast_ptr) ccode kf_scope kf_loc in
@@ -1939,7 +1944,7 @@ let gen_ccode top_code =
                         in
                     let alloc_fcv = make_call !std_FX_MAKE_FP_IMPL_START
                         [CExpTyp(fcv_t, kf_loc); free_f_exp;
-                        CExpIdent(f_id, (std_CTypVoidPtr, kloc))] CTypVoid kf_loc
+                        make_id_t_exp f_id std_CTypVoidPtr kloc] CTypVoid kf_loc
                         in
                     let (fcv_exp, _) = create_cdefval (gen_temp_idc "fcv") (make_ptr fcv_t)
                         [] "fcv" None [] kf_scope kf_loc in

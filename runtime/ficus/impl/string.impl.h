@@ -31,7 +31,7 @@ int fx_make_str(const char_* strdata, int_ length, fx_str_t* str)
 {
     size_t total = sizeof(*str->rc) + length*sizeof(strdata[0]);
     str->rc = (int_*)fx_malloc(total);
-    if(!str->rc) return FX_EXN_OutOfMemError;
+    if(!str->rc) FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
 
     *str->rc = 1;
     str->data = (char_*)(str->rc + 1);
@@ -117,7 +117,7 @@ int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz)
         size_t total = sizeof(*cstr->rc) + sz*sizeof(cstr->data[0]);
         cstr->rc = (int_*)fx_malloc(total);
         if( !cstr->rc )
-            return FX_EXN_OutOfMemError;
+            FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
         cstr->data = (char*)(cstr->rc + 1);
         *cstr->rc = 1;
     }
@@ -152,7 +152,7 @@ int fx_cstr2str(const char* src, int_ srclen, fx_str_t* str)
     size_t total = sizeof(*str->rc) + dstlen*sizeof(str->data[0]);
     str->rc = (int_*)fx_malloc(total);
     if( !str->rc )
-        return FX_EXN_OutOfMemError;
+        FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
 
     *str->rc = 1;
     str->data = (char_*)(str->rc + 1);
@@ -196,7 +196,7 @@ int fx_ascii2str(const char* src, int_ srclen, fx_str_t* str)
     size_t total = sizeof(*str->rc) + srclen*sizeof(str->data[0]);
     int_* rcptr = (int_*)fx_malloc(total);
     if( !rcptr )
-        return FX_EXN_OutOfMemError;
+        FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
 
     char_* dst = (char_*)(rcptr + 1);
     for( int_ i = 0; i < srclen; i++ )
@@ -204,7 +204,7 @@ int fx_ascii2str(const char* src, int_ srclen, fx_str_t* str)
         unsigned char ch = (unsigned char)src[i];
         if( ch > 127 ) {
             fx_free(rcptr);
-            return FX_EXN_ASCIIError;
+            FX_FAST_THROW_RET(FX_EXN_ASCIIError);
         }
         dst[i] = ch;
     }
@@ -420,7 +420,7 @@ int fx_itoa(int_ n, fx_str_t* str)
 int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr)
 {
     if(start < 0 || start > str->length || end < 0 || end > str->length)
-        return FX_EXN_OutOfRangeError;
+        FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
     if(start >= end)
         return FX_OK;
     substr->rc = str->rc;

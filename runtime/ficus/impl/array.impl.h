@@ -12,8 +12,8 @@ extern "C" {
 
 int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it)
 {
-    if(narrays <= 0) return FX_EXN_SizeError;
-    if(!arrs || !arrs[0]) return FX_EXN_NullPtrError;
+    if(narrays <= 0) FX_FAST_THROW_RET(FX_EXN_SizeError);
+    if(!arrs || !arrs[0]) FX_FAST_THROW_RET(FX_EXN_NullPtrError);
 
     const fx_arr_t* arr0 = arrs[0];
     int i, j, d1=0, d=arr0->ndims;
@@ -32,7 +32,7 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
         {
             const fx_arr_t* arri = arrs[i];
             if( arri->ndims != 1 || arri->dim[0].size != size )
-                return FX_EXN_SizeMismatchError;
+                FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
             ptrs[i] = arri->data;
         }
         it->iterdepth = 0;
@@ -48,7 +48,7 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
         {
             const fx_arr_t* arri = arrs[i];
             if( arri->ndims != 2 || arri->dim[0].size != size0 || arri->dim[1].size != size1 )
-                return FX_EXN_SizeMismatchError;
+                FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
             flags &= arri->flags;
             ptrs[i] = arri->data;
         }
@@ -76,10 +76,10 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
             const fx_arr_t* arri = arrs[i];
             if( i > 0 )
             {
-                if( arri->ndims != d ) return FX_EXN_SizeMismatchError;
+                if( arri->ndims != d ) FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
                 for( j = 0; j < d; j++ )
                     if(arri->dim[j].size != arr0->dim[j].size)
-                        return FX_EXN_SizeMismatchError;
+                        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
             }
 
             if( !FX_IS_ARR_CONTINUOUS(arri->flags) )
@@ -232,7 +232,7 @@ int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst)
     int ndims = src->ndims;
     size_t elemsize = src->dim[ndims-1].step;
     if( src->copy_elem != dst->copy_elem || elemsize != dst->dim[ndims-1].step )
-        return FX_EXN_TypeMismatchError;
+        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
 
     for( int_ i = 0; i < it.nblocks; i++ ) {
         fx_copy_arr_elems(ptrs[0], ptrs[1], it.blocksize, elemsize, src->copy_elem);
@@ -253,28 +253,28 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_arr_t* arr )
 {
     if (ndims <= 0 || ndims > FX_MAX_DIMS)
-        return FX_EXN_DimError;
+        FX_FAST_THROW_RET(FX_EXN_DimError);
     size_t netw = elemsize;
     for(int i = ndims-1; i >= 0; i--)
     {
         int_ szi = size[i];
-        if(szi < 0) return FX_EXN_SizeError;
+        if(szi < 0) FX_FAST_THROW_RET(FX_EXN_SizeError);
         arr->dim[i].size = szi;
         arr->dim[i].step = netw;
         size_t netw_ = netw*szi;
-        if (szi > 0 && netw_ < netw) return FX_EXN_SizeError;
+        if (szi > 0 && netw_ < netw) FX_FAST_THROW_RET(FX_EXN_SizeError);
         netw = netw_;
     }
     int_ total = (int_)(netw/elemsize);
     if (total < 0)
-        return FX_EXN_SizeError;
+        FX_FAST_THROW_RET(FX_EXN_SizeError);
 
     size_t dataoffset = elemsize % 8 == 0 ? (size_t)8 : sizeof(*arr->rc);
     size_t grossw = netw + dataoffset;
     if (netw > 0) {
         arr->rc = (int_*)fx_malloc(grossw);
         if( !arr->rc )
-            return FX_EXN_OutOfMemError;
+            FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
         *arr->rc = 1;
         arr->data = (char*)arr->rc + dataoffset;
 
@@ -330,13 +330,13 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
             ranges += 3;
         }
         else
-            return FX_EXN_SizeError;
+            FX_FAST_THROW_RET(FX_EXN_SizeError);
         if( delta <= 0 || a > b )
-            return FX_EXN_SizeError;
+            FX_FAST_THROW_RET(FX_EXN_SizeError);
         if( i == ndims-1 && delta != 1)
-            return FX_EXN_SizeError;
+            FX_FAST_THROW_RET(FX_EXN_SizeError);
         if( a < 0 || b > size_i )
-            return FX_EXN_OutOfRangeError;
+            FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
 
         // a little state machine:
         //    the subarray is continuous

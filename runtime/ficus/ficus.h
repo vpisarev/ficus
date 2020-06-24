@@ -44,6 +44,9 @@ enum
     FX_EXN_ASCIIError = -19,
     FX_EXN_NullListError = -20,
     FX_EXN_OptionError = -21,
+    FX_EXN_UnknownExnError = -22,
+
+    FX_EXN_StdMax = -48,
 
     FX_EXN_User = -1024,
 };
@@ -91,43 +94,27 @@ typedef char32_t char_;
 typedef void (*fx_free_t)(void*);
 typedef void (*fx_copy_t)(const void*, void*);
 
-typedef struct fx_rng_t
-{
-    uint64_t state;
-} fx_rng_t;
+int fx_init(int argc, char** argv);
+int fx_init_thread(int t_idx);
+int fx_finit(int status);
 
-struct fx_exndata_t;
-
-typedef struct fx_exndata_t
-{
-    int_ rc;
-    fx_free_t free_f;
-} fx_exndata_t;
-
-typedef struct fx_exn_t
-{
-    int tag;
-    struct fx_exndata_t* data;
-} fx_exn_t;
-
-extern FX_THREAD_LOCAL fx_exn_t fx_exn;
-extern FX_THREAD_LOCAL fx_rng_t fx_rng;
-
-void fx_init(int argc, char** argv);
-void fx_init_thread(int t_idx);
 int_ fx_argc(void);
 char* fx_argv(int_ idx);
 
 void* fx_malloc(size_t sz);
 void* fx_realloc(void* ptr, size_t sz);
 void fx_free(void* ptr);
+
 #define FX_DECL_AND_MALLOC(ptrtyp, ptr) \
     ptrtyp ptr = (ptrtyp)fx_malloc(sizeof(*ptr)); \
-    if(!ptr) return FX_EXN_OutOfMemError
+    if(!ptr) FX_FAST_THROW_RET(FX_EXN_OutOfMemError)
 #define FX_RESULT_MALLOC(ptrtyp, ptr) \
-    if (((ptr)=(ptrtyp)fx_malloc(sizeof(*(ptr)))) != 0) ; else return FX_EXN_OutOfMemError
+    if (((ptr)=(ptrtyp)fx_malloc(sizeof(*(ptr)))) != 0) ; else FX_FAST_THROW_RET(FX_EXN_OutOfMemError)
 
-#define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else goto label
+#define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else { FX_UPDATE_BT(); goto label; }
+// break/continue are execution flow control operators, not real exceptions,
+// and they are guaranteed to be "caught" (one cannot place them outside of loops),
+// so we don't use FX_SET_EXN_EXN_FAST() etc.
 #define FX_BREAK(label) { fx_status = FX_EXN_Break; goto label; }
 #define FX_CONTINUE(label) { fx_status = FX_EXN_Continue; goto label; }
 #define FX_CHECK_CONTINUE() \
@@ -152,7 +139,7 @@ void fx_free(void* ptr);
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
 #define FX_CHECK_ZERO_STEP(delta, label) \
-    if(delta == 0) ; else { fx_status = FX_EXN_ZeroStepError; goto label; }
+    if(delta == 0) ; else FX_FAST_THROW(FX_EXN_ZeroStepError, label}
 #define FX_LOOP_COUNT(a, b, delta) \
     ((delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta))
 #define FX_CHECK_EQ_SIZE(check, label) if(check) ; else { fx_status=FX_EXN_SizeMismatchError; goto label; }
@@ -285,8 +272,62 @@ int fx_itoa(int_ n, fx_str_t* str);
 
 ////////////////////////// Exceptions //////////////////////
 
-#define FX_THROW_FAST(exn_name, catch_label) \
-    { fx_status = exn_name; goto catch_label; }
+struct fx_exn_data_t;
+struct fx_exn_t;
+
+typedef struct fx_exn_info_t
+{
+    int tag;
+    fx_str_t name;
+    fx_free_t free_f;
+    int (*to_string)(const struct fx_exn_t* exn, fx_str_t* str);
+    void (*print_repr)(const struct fx_exn_t* exn);
+} fx_exn_info_t;
+
+#define FX_DECL_EXN(tab, base, exn, free_f_, to_string_, print_repr_) \
+{ \
+    fx_exn_info_t temp = { exn, FX_MAKE_STR(#exn), free_f_, to_string_, print_repr_ }; \
+    tab[base-exn] = temp; \
+}
+
+typedef struct fx_exn_data_t
+{
+    int_ rc;
+} fx_exn_data_t;
+
+typedef struct fx_exn_t
+{
+    int tag;
+    struct fx_exn_info_t* info;
+    struct fx_exn_data_t* data;
+} fx_exn_t;
+
+#define FX_SET_EXN_FAST(exn) \
+    fx_exn_set_fast(exn, __func__, __FILE__, __LINE__)
+
+#define FX_FAST_THROW(exn, catch_label) \
+    { fx_status = FX_SET_EXN_FAST(exn); goto catch_label; }
+
+#define FX_FAST_THROW_RET(exn) \
+    return FX_SET_EXN_FAST(exn);
+
+#define FX_SET_EXN(exn) \
+    fx_set_exn(exn, true, __func__, __FILE__, __LINE__)
+
+#define FX_UPDATE_BT() fx_update_bt(__func__, __FILE__, __LINE__)
+
+int fx_set_exn_fast(int code, const char* funcname, const char* filename, int lineno);
+int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filename, int lineno);
+int fx_rethrow_exn(fx_exn_t* exn);
+int fx_exn_get_and_reset(fx_exn_t* exn);
+
+const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn);
+int fx_exn_name(const fx_exn_t* exn, fx_str_t* exn_name);
+int fx_exn_to_string(const fx_exn_t* exn, fx_str_t* str);
+int fx_print_repr_exn(const fx_exn_t* exn, bool quiet);
+
+void fx_update_bt(const char* funcname, const char* filename, int lineno);
+void fx_print_bt(void);
 
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
@@ -294,15 +335,15 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 #define FX_FREE_EXN(exn) if(!(exn)->data) ; else fx_free_exn(exn)
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
 
-#define FX_MAKE_EXN_IMPL(exn_tag, exndata_typ, exndata_free, arg_copy_f) \
-    FX_DECL_AND_MALLOC(exndata_typ*, data); \
+#define FX_MAKE_EXN_IMPL(exn_tag, exn_data_typ, exndata_free, arg_copy_f) \
+    FX_DECL_AND_MALLOC(exn_data_typ*, data); \
         \
     data->base.rc = 1; \
     data->base.free_f = exndata_free; \
     arg_copy_f(arg, &data->arg); \
         \
     fx_result->tag = exn_tag; \
-    fx_result->data = (fx_exndata_t*)data; \
+    fx_result->data = (fx_exn_data_t*)data; \
     return FX_OK
 
 //////////////////////////// Lists /////////////////////////
@@ -387,7 +428,7 @@ void fx_arr_nextiter(fx_arriter_t* it);
 #define FX_CHKIDX1(arr, i, idx) \
     ((size_t)(idx) < (size_t)(arr).dim[i].size)
 #define FX_CHKIDX(ir_check, catch_label) \
-    if(ir_check) ; else { fx_status = FX_EXN_OutOfRangeError; goto catch_label; }
+    if(ir_check) ; else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
 
 #define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))
@@ -434,7 +475,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr);
     return FX_OK
 
 void fx_free_ref_simple(void* pr);
-#define FX_FREE_REF_SIMPLE(pr) if(!*(pr)) ; else fx_free_list_simple(pr)
+#define FX_FREE_REF_SIMPLE(pr) if(!*(pr)) ; else fx_free_ref_simple(pr)
 
 /////////////////////////// Variants /////////////////////////
 

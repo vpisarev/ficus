@@ -710,6 +710,7 @@ let make_int_exp i loc = CExpLit ((LitInt (Int64.of_int i)), (CTypInt, loc))
 let make_bool_exp b loc = CExpLit ((LitBool b), (CTypBool, loc))
 let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
+let make_id_t_exp i t loc = CExpIdent(i, (t, loc))
 let make_label basename sc loc =
     let li = gen_temp_idc basename in
     let cname = if basename = "cleanup" then "_fx_cleanup"
@@ -800,7 +801,7 @@ let std_FX_FREE_STR = ref noid
 let std_fx_free_str = ref noid
 let std_fx_copy_str = ref noid
 
-let std_FX_THROW_FAST = ref noid
+let std_FX_FAST_THROW = ref noid
 let std_FX_FREE_EXN = ref noid
 let std_FX_COPY_EXN = ref noid
 let std_FX_MAKE_EXN_IMPL = ref noid

@@ -185,7 +185,7 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
 
     val screen: char [,] = array((h, w+1), ' ')
     for x <- 0:w {
-        screen[h-itab[x]-1, x] = '*'
+        screen[h-1-itab[x], x] = '*'
     }
     for y <- 0:h {
         println(screen[y,:])

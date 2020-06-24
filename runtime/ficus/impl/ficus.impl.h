@@ -10,8 +10,7 @@
 extern "C" {
 #endif
 
-FX_THREAD_LOCAL fx_exn_t fx_exn;
-FX_THREAD_LOCAL fx_rng_t fx_rng;
+/////////////////////////// initialization /////////////////////
 
 static int _fx_argc = 0;
 static char** _fx_argv = 0;
@@ -19,20 +18,54 @@ static char** _fx_argv = 0;
 int_ fx_argc(void) { return _fx_argc; }
 char* fx_argv(int_ idx) { return _fx_argv[idx]; }
 
-void fx_init(int argc, char** argv)
+static fx_exn_info_t fx_std_exn_info[-FX_EXN_StdMax];
+#define FX_DECL_STD_EXN(exn) FX_DECL_EXN(fx_std_exn_info, 0, exn, 0, 0, 0)
+
+int fx_init(int argc, char** argv)
 {
     _fx_argc = argc;
     _fx_argv = argv;
-    fx_init_thread(0);
+
+    FX_DECL_STD_EXN(FX_OK);
+    FX_DECL_STD_EXN(FX_EXN_Failure);
+    FX_DECL_STD_EXN(FX_EXN_AssertError);
+    FX_DECL_STD_EXN(FX_EXN_NotFoundError);
+    FX_DECL_STD_EXN(FX_EXN_OutOfMemError);
+    FX_DECL_STD_EXN(FX_EXN_OutOfRangeError);
+    FX_DECL_STD_EXN(FX_EXN_DivByZeroError);
+    FX_DECL_STD_EXN(FX_EXN_SizeMismatchError);
+    FX_DECL_STD_EXN(FX_EXN_TypeMismatchError);
+    FX_DECL_STD_EXN(FX_EXN_DimError);
+    FX_DECL_STD_EXN(FX_EXN_SizeError);
+    FX_DECL_STD_EXN(FX_EXN_FileOpenError);
+    FX_DECL_STD_EXN(FX_EXN_NullFileError);
+    FX_DECL_STD_EXN(FX_EXN_IOError);
+    FX_DECL_STD_EXN(FX_EXN_NoMatchError);
+    FX_DECL_STD_EXN(FX_EXN_Break);
+    FX_DECL_STD_EXN(FX_EXN_Continue);
+    FX_DECL_STD_EXN(FX_EXN_NullPtrError);
+    FX_DECL_STD_EXN(FX_EXN_ZeroStepError);
+    FX_DECL_STD_EXN(FX_EXN_ASCIIError);
+    FX_DECL_STD_EXN(FX_EXN_NullListError);
+    FX_DECL_STD_EXN(FX_EXN_OptionError);
+    FX_DECL_STD_EXN(FX_EXN_UnknownExnError);
+
+    return fx_init_thread(0);
 }
 
-void fx_init_thread(int t_idx)
+int fx_init_thread(int t_idx)
 {
-    uint64_t state = (uint64_t)-1;
-    for(int i = 0; i < t_idx*2 + 10; i++)
-        state = (uint64_t)(unsigned)state*4187999619U + (unsigned)(state >> 32);
-    fx_rng.state = state;
+    return FX_OK;
 }
+
+int fx_finit(int status)
+{
+    if(status < 0)
+        fx_print_bt();
+    return status;
+}
+
+////////////////////////// memory allocation ////////////////////
 
 /* [TODO] replace it with something more efficient,
    e.g. mimalloc (https://github.com/microsoft/mimalloc) */
@@ -51,7 +84,7 @@ void fx_free(void* ptr)
     free(ptr);
 }
 
-/////////////// list ////////////////
+///////////////////////////// lists /////////////////////////////
 
 typedef struct fx_list_simple_data_t
 {
@@ -90,7 +123,7 @@ void fx_link_lists(void* l1_, void* l2_, void* result_)
     FX_COPY_PTR(l1, result);
 }
 
-///////////// references ////////////
+///////////////////////// references /////////////////////////
 
 typedef struct fx_ref_simple_data_t
 {
@@ -103,7 +136,7 @@ void fx_free_ref_simple(void* dst_)
     FX_FREE_REF_IMPL(fx_ref_simple_t, FX_NOP);
 }
 
-////// reference-counted cells //////
+////////////////// reference-counted cells ////////////////////
 
 void fx_copy_ptr(const void* src, void* dst)
 {
@@ -113,14 +146,14 @@ void fx_copy_ptr(const void* src, void* dst)
     *dst_ = src_;
 }
 
-///////////// exceptions /////////////
+///////////////////////// exceptions //////////////////////////
 
 void fx_free_exn(fx_exn_t* exn)
 {
     if(exn->data)
     {
         if(FX_DECREF(exn->data->rc) == 1)
-            exn->data->free_f(exn->data);
+            exn->info->free_f(exn->data);
         exn->data = 0;
     }
 }
@@ -129,6 +162,188 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst)
 {
     if(src->data) FX_INCREF(src->data->rc);
     *dst = *src;
+}
+
+enum
+{
+    FX_BT_HALF_SIZE = 16
+};
+
+typedef struct fx_bt_entry_t
+{
+    const char* funcname;
+    const char* filename;
+    int lineno;
+} fx_bt_entry_t;
+
+typedef struct fx_bt_t
+{
+    fx_exn_t curr_exn;
+    int istack_top;
+    int ostack_top;
+    int ostack_bottom;
+    fx_bt_entry_t istack[FX_BT_HALF_SIZE];
+    fx_bt_entry_t ostack[FX_BT_HALF_SIZE];
+} fx_bt_t;
+
+FX_THREAD_LOCAL fx_bt_t fx_bt;
+
+int fx_exn_set_fast(int code, const char* funcname, const char* filename, int lineno)
+{
+    fx_bt_t* curr_bt = &fx_bt;
+    fx_exn_t* curr_exn = &curr_bt->curr_exn;
+    assert(curr_exn->data == 0);
+    curr_exn->tag = code;
+    curr_exn->info = 0;
+    curr_exn->data = 0; // well, it must be NULL already
+    fx_bt_entry_t* curr_loc = &curr_bt->istack[0];
+    curr_loc->funcname = funcname;
+    curr_loc->filename = filename;
+    curr_loc->lineno = lineno;
+    curr_bt->istack_top = 1;
+    curr_bt->ostack_top = curr_bt->ostack_bottom = 0;
+    return code;
+}
+
+int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filename, int lineno)
+{
+    fx_bt_t* curr_bt = &fx_bt;
+    fx_exn_t* curr_exn = &curr_bt->curr_exn;
+    assert(curr_exn->data == 0);
+    *curr_exn = *exn;
+    if(move)
+        exn->data = 0;
+    else if(exn->data)
+        FX_INCREF(exn->data->rc);
+    fx_bt_entry_t* curr_loc = &curr_bt->istack[0];
+    curr_loc->funcname = funcname;
+    curr_loc->filename = filename;
+    curr_loc->lineno = lineno;
+    curr_bt->istack_top = 1;
+    curr_bt->ostack_top = curr_bt->ostack_bottom = 0;
+    return exn->tag;
+}
+
+// ligher version of above:
+//   1. rethrowing exception always means moving it
+//   2. do not reset backtrace stack
+int fx_rethrow_exn(fx_exn_t* exn)
+{
+    fx_bt_t* curr_bt = &fx_bt;
+    fx_exn_t* curr_exn = &curr_bt->curr_exn;
+    assert(curr_exn->data == 0);
+    *curr_exn = *exn;
+    exn->data = 0;
+    return curr_exn->tag;
+}
+
+// it's always used in the beginning of "catch"
+int fx_exn_get_and_reset(fx_exn_t* exn)
+{
+    fx_bt_t* curr_bt = &fx_bt;
+    fx_exn_t* curr_exn = &curr_bt->curr_exn;
+    *exn = *curr_exn;
+    curr_exn->data = 0;
+    return exn->tag;
+}
+
+const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn)
+{
+    if(exn->info) return exn->info;
+    int tag = exn->tag;
+    if(tag > 0 || tag < FX_EXN_StdMax) return 0;
+    const fx_exn_info_t* info = &fx_std_exn_info[-tag];
+    if(info->tag != tag) return 0;
+    return info;
+}
+
+int fx_exn_name(const fx_exn_t* exn, fx_str_t* exn_name)
+{
+    const fx_exn_info_t* info = fx_exn_info(exn);
+    if(!info) FX_FAST_THROW_RET(FX_EXN_UnknownExnError);
+    // name is always declared with FX_MAKE_STR(),
+    // so there is no need to "incref" it.
+    *exn_name = info->name;
+    return FX_OK;
+}
+
+int fx_exn_to_string(const fx_exn_t* exn, fx_str_t* str)
+{
+    const fx_exn_info_t* info = fx_exn_info(exn);
+    if(!info) FX_FAST_THROW_RET(FX_EXN_UnknownExnError);
+    if(info->to_string) return info->to_string(exn, str);
+    // if there is no dedicated to_string function, just return the name
+    *str = info->name;
+    return FX_OK;
+}
+
+int fx_print_repr_exn(const fx_exn_t* exn, bool quiet)
+{
+    const fx_exn_info_t* info = fx_exn_info(exn);
+    if(!info) {
+        if(quiet) {
+            printf("Unknown_exception(%d)", exn->tag);
+            return FX_OK;
+        }
+        FX_FAST_THROW_RET(FX_EXN_UnknownExnError);
+    }
+    if(info->print_repr)
+        info->print_repr(exn);
+    else
+        // if there is no dedicated to_string function, just print the name
+        fx_fputs(stdout, &info->name);
+    return FX_OK;
+}
+
+void fx_print_bt_entry(const fx_bt_entry_t* entry, const char* prefix)
+{
+    const char* filename = entry->filename;
+    const char* barename1 = strrchr(filename, '/');
+    const char* barename2 = strrchr(filename, '\\');
+    const char* barename = barename1 > barename2 ? barename1 : barename2;
+    barename = barename ? barename + 1 : filename;
+    printf("%s%s at %s:%d\n", prefix, entry->funcname, barename, entry->lineno);
+}
+
+void fx_update_bt(const char* funcname, const char* filename, int lineno)
+{
+    fx_bt_t* curr_bt = &fx_bt;
+    fx_bt_entry_t* currloc;
+    int itop = curr_bt->istack_top;
+    if(itop < FX_BT_HALF_SIZE) {
+        currloc = curr_bt->istack + itop;
+        curr_bt->istack_top = itop+1;
+    } else {
+        int otop = curr_bt->ostack_top;
+        currloc = curr_bt->istack + otop;
+        otop = (otop + 1) % FX_BT_HALF_SIZE;
+        if(curr_bt->ostack_bottom == otop)
+            curr_bt->ostack_bottom = (otop + 1) % FX_BT_HALF_SIZE;
+    }
+    currloc->funcname = funcname;
+    currloc->filename = filename;
+    currloc->lineno = lineno;
+}
+
+void fx_print_bt(void)
+{
+    fx_bt_t* curr_bt = &fx_bt;
+    fx_exn_t* curr_exn = &curr_bt->curr_exn;
+    if(curr_exn->tag == 0) return;
+    printf("\33[31;1mException ");
+    fx_print_repr_exn(curr_exn, true);
+    printf("\33[0m occured in ");
+    for (int i = 0; i < curr_bt->istack_top; i++) {
+        fx_print_bt_entry(curr_bt->istack+i,
+            i == 0 ? "" : "\tcalled from ");
+    }
+
+    if(curr_bt->ostack_top != curr_bt->ostack_bottom) {
+        printf("\t...\n");
+        for(int i = curr_bt->ostack_top; i != curr_bt->ostack_bottom; i = (i + 1) % FX_BT_HALF_SIZE) {
+            fx_print_bt_entry(curr_bt->ostack+i, "\tcalled from");
+        }
+    }
 }
 
 //////////////// function pointers ////////////////

@@ -60,7 +60,7 @@ fun string(a: string) = a
 pure fun string(a: char []): string = ccode "return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);"
 pure fun string(a: char [,]): string = ccode
     "
-    if(a->dim[0].size != 1) return FX_EXN_SizeError;
+    if(a->dim[0].size != 1) FX_FAST_THROW_RET(FX_EXN_SizeError);
     return fx_make_str((char_*)a->data, a->dim[1].size, fx_result);
     "
 
@@ -200,7 +200,8 @@ fun print(l: 't list)
     }
     print("]")
 }
-fun print((a, b): ('a, 'b)) {
+fun print((a, b): ('a, 'b))
+{
     print("("); print_repr(a); print(", ");
     print_repr(b); print(")")
 }
