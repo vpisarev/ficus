@@ -25,7 +25,7 @@ let gen_std_macro cname nargs =
     n
 
 let init_std_names () =
-    (curr_exn_val := -1024;
+    (std_curr_exn_ofs := 0;
 
     std_sizeof := gen_std_fun "sizeof" (CTypAny :: []) CTypSize_t;
     std_fx_malloc := gen_std_fun "fx_malloc" (CTypSize_t :: std_CTypVoidPtr :: []) CTypCInt;

@@ -6,7 +6,7 @@
 /* Ficus built-in module, i.e. each Ficus module is compiled
    as if it has "from Builtins import *" directive in the beginning */
 
-exception Failure: string
+exception Fail: string
 exception NotFoundError
 exception IndexError
 exception NoMatchError
@@ -22,6 +22,11 @@ exception Break
 fun assert(f: bool) = if !f {throw AssertError}
 
 fun ignore(_: 't) {}
+
+operator != (a: 't, b: 't): bool = !(a == b)
+operator > (a: 't, b: 't): bool = b < a
+operator >= (a: 't, b: 't): bool = !(a < b)
+operator <= (a: 't, b: 't): bool = !(b < a)
 
 // 't?, int? etc. can be used instead of 't option, int option ...
 type 't option = None | Some: 't
@@ -44,10 +49,14 @@ operator + (a: string, b: char): string = ccode "
 operator + (a: char, b: string): string = ccode "
     fx_str_t s[] = {{0, &a, 1}, *b};
     return fx_strjoin(0, 0, 0, s, 2, fx_result);"
+operator + (a: char, b: char): string = ccode "
+    char_ cc[] = {a, b};
+    return fx_make_str(cc, 2, fx_result);"
 operator + (l1: 't list, l2: 't list) {
     nothrow fun link2(l1: 't list, l2: 't list): 't list = ccode "fx_link_lists(l1, l2, fx_result);"
-    match l2 {
-        | [] => l1
+    match (l1, l2) {
+        | ([], _) => l2
+        | (_, []) => l1
         | _ => link2([: for x <- l1 {x} :], l2)
     }
 }
@@ -57,13 +66,17 @@ pure fun string(a: int): string = ccode "return fx_itoa(a, fx_result);"
 pure fun string(c: char): char = ccode "return fx_make_str(&c, 1, fx_result);"
 pure fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 pure fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
-pure fun string(a: char []): string = ccode "return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);"
 fun string(a: string) = a
+fun ord(c: char) = (c :> int)
+fun chr(i: int) = (i :> char)
 
 fun repr(a: 't): string = string(a)
 fun repr(a: string) = "\"" + a + "\""
 
 fun string((a, b): ('a, 'b)) = "(" + repr(a) + ", " + repr(b) + ")"
+fun string((a, b, c): ('a, 'b, 'c)) = "(" + repr(a) + ", " + repr(b) + ", " + repr(c) + ")"
+fun string((a, b, c, d): ('a, 'b, 'c, 'd)) =
+    "(" + repr(a) + ", " + repr(b) + ", " + repr(c) + repr(d) + ")"
 fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
@@ -75,11 +88,7 @@ fun string(l: 't list)
 {
     join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
 }
-
-operator != (a: 't, b: 't): bool = !(a == b)
-operator > (a: 't, b: 't): bool = b < a
-operator >= (a: 't, b: 't): bool = !(a < b)
-operator <= (a: 't, b: 't): bool = !(b < a)
+pure fun string(a: char []): string = ccode "return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);"
 
 pure nothrow operator == (a: string, b: string): bool = ccode
     "
@@ -89,24 +98,21 @@ pure nothrow operator == (a: string, b: string): bool = ccode
     "
 
 // [TODO] implement more clever string comparison operation
-pure operator < (a: string, b: string): bool = ccode
+pure nothrow operator < (a: string, b: string): bool = ccode
     "
     int_ alen = a->length, blen = b->length;
     bool ashorter = alen < blen;
     int_ minlen = ashorter ? alen : blen;
     const char_ *adata = a->data, *bdata = b->data;
     for(int_ i = 0; i < minlen; i++) {
-        int_ ai = (int_)adata[i], bi = (int_)bdata[i];
-        int_ diff = ai - bi;
-        if(diff != 0) {
-            *fx_result = diff < 0;
-            return FX_OK;
-        }
+        int_ ai = (int_)adata[i], bi = (int_)bdata[i], diff = ai - bi;
+        if(diff != 0)
+            return diff < 0;
     }
-    *fx_result = ashorter;
-    return FX_OK;
+    return ashorter;
     "
 
+// compare the pointers, not the content. Maybe need a separate operator for that.
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
     "return a == b;"
 
@@ -121,48 +127,49 @@ pure nothrow fun sat_uint8(i: int): uint8 = ccode "
     return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
 
 pure nothrow fun sat_uint8(f: float): uint8 = ccode "
-    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    int i = fx_roundf2i(f);
     return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
 
 pure nothrow fun sat_uint8(d: double): uint8 = ccode "
-    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    int_ i = fx_round2I(d);
     return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
 
 pure nothrow fun sat_int8(i: int): int8 = ccode "
     return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
 
 pure nothrow fun sat_int8(f: float): int8 = ccode "
-    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    int i = fx_roundf2i(f);
     return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
 
 pure nothrow fun sat_int8(d: double): int8 = ccode "
-    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    int_ i = fx_round2I(d);
     return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
 
 pure nothrow fun sat_uint16(i: int): uint16 = ccode "
     return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
 
 pure nothrow fun sat_uint16(f: float): uint16 = ccode "
-    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    int i = fx_roundf2i(f);
     return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
 
 pure nothrow fun sat_uint16(d: double): uint16 = ccode "
-    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    int_ i = fx_round2I(d);
     return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
 
 pure nothrow fun sat_int16(i: int): int16 = ccode "
     return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
 
 pure nothrow fun sat_int16(f: float): int16 = ccode "
-    int i = (int)(f < 0 ? f - 0.5f : f + 0.5f);
+    int i = fx_roundf2i(f);
     return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
 
 pure nothrow fun sat_int16(d: double): int16 = ccode "
-    int i = (int)(d < 0 ? d - 0.5 : d + 0.5);
+    int_ i = fx_round2I(d);
     return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
 
-pure nothrow fun round(x: float): int = ccode "return (int_)lrintf(x);"
-pure nothrow fun round(x: double): int = ccode "return (int_)lrint(x);"
+// do not use lrint(x), since it's slow. and (int)round(x) is even slower
+pure nothrow fun round(x: float): int = ccode "return fx_roundf2I(x);"
+pure nothrow fun round(x: double): int = ccode "return fx_round2I(x);"
 
 fun min(a: 't, b: 't) = if a <= b {a} else {b}
 fun max(a: 't, b: 't) = if a >= b {a} else {b}
@@ -218,6 +225,17 @@ fun print((a, b): ('a, 'b))
 {
     print("("); print_repr(a); print(", ");
     print_repr(b); print(")")
+}
+fun print((a, b, c): ('a, 'b, 'c))
+{
+    print("("); print_repr(a); print(", ");
+    print_repr(b); print(", "); print_repr(c); print(")")
+}
+fun print((a, b, c, d): ('a, 'b, 'c, 'd))
+{
+    print("("); print_repr(a); print(", ");
+    print_repr(b); print(", "); print_repr(c);
+    print(", "); print_repr(d); print(")")
 }
 fun print(a: 't ref) {
     print("ref("); print_repr(*a); print(")")

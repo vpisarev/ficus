@@ -19,6 +19,16 @@
 extern "C" {
 #endif
 
+#if !defined FX_ARCH_32 && !defined FX_ARCH_64
+
+#if (defined __SIZEOF_POINTER__ && __SIZEOF_POINTER__ == 8) || defined _M_ARM64 || defined _M_X64
+#define FX_ARCH_64 1
+#else
+#define FX_ARCH_32 1
+#endif
+
+#endif
+
 //////////////////////// Error Codes //////////////////////
 enum
 {
@@ -146,7 +156,61 @@ void fx_free(void* ptr);
 
 void fx_copy_ptr(const void* src, void* pdst);
 
-////////////////////////// Strings //////////////////////
+///////////////////////////// Numbers ////////////////////////////
+
+typedef union fx_round64_t {double d; int64_t i;} fx_round64_t;
+typedef union fx_round32_t {float f; int i;} fx_round32_t;
+
+#if FX_ARCH_64
+
+// use well-known trick that effectively rounds x by adding it to
+// the magic constant with almost all zero mantissa bits and big-enough exponent.
+// it looks like compilers are smart enough to avoid store/load operations;
+// instead, they do "reinterpret_cast<int64_t>(x+magic_number)" right in the registers.
+// in the end we propagate the sign bit of the 51-bit result.
+FX_INLINE int_ fx_roundf2I(float x) {
+    fx_round64_t u;
+    u.d = x + 6755399441055744.0;
+    return (u.i << 13) >> 13;
+}
+
+FX_INLINE int_ fx_round2I(double x) {
+    fx_round64_t u;
+    u.d = x + 6755399441055744.0;
+    return (u.i << 13) >> 13;
+}
+#else
+// on 32-bit machines we need just lower 32 bits of the result.
+FX_INLINE int_ fx_roundf2I(float x) {
+    fx_round64_t u;
+    u.d = x + 6755399441055744.0;
+    return (int_)(int)u.i;
+}
+
+FX_INLINE int_ fx_round2I(double x) {
+    fx_round64_t u;
+    u.d = x + 6755399441055744.0;
+    return (int_)(int)u.i;
+}
+#endif
+
+FX_INLINE int fx_roundf2i(float x) {
+    // special 32-bit version that can be converted to very
+    // fast vectorized version inside vectorized loops.
+    // the result is limited to [-2**22,2**22) value range,
+    // it's still useful for float -> [u]int16 or [u]int8 conversion
+    fx_round32_t u;
+    u.f = x + 12582912.0f;
+    return (u.i << 10) >> 10;
+}
+
+FX_INLINE int fx_round2i(double x) {
+    fx_round64_t u;
+    u.d = x + 6755399441055744.0;
+    return (int)u.i;
+}
+
+///////////////////////////// Strings ////////////////////////////
 
 // Unicode character category
 enum

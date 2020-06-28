@@ -11,10 +11,10 @@ val pi = 3.1415926535897932384626433832795
 
 fun round(x: float) = Builtins.round(x)
 fun round(x: double) = Builtins.round(x)
-pure nothrow fun floor(x: float): int = ccode "return (int_)floorf(x);"
-pure nothrow fun floor(x: double): int = ccode "return (int_)floor(x);"
-pure nothrow fun ceil(x: float): int = ccode "return (int_)ceilf(x);"
-pure nothrow fun ceil(x: double): int = ccode "return (int_)ceil(x);"
+pure nothrow fun floor(x: float): int = ccode "int i = (int)x; return i - (i > x);"
+pure nothrow fun floor(x: double): int = ccode "int i = (int)x; return i - (i > x);"
+pure nothrow fun ceil(x: float): int = ccode "int i = (int)x; return i + (i < x);"
+pure nothrow fun ceil(x: double): int = ccode "int i = (int)x; return i + (i < x);"
 
 pure nothrow fun pow(x: float, y: float): float = ccode "return powf(x, y);"
 pure nothrow fun pow(x: double, y: double): double = ccode "return pow(x, y);"

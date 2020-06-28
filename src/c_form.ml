@@ -765,7 +765,7 @@ let cexp_mem e m_id t =
     | CExpUnOp(COpDeref, x, _) -> CExpArrow(x, m_id, (t, loc))
     | _ -> CExpMem(e, m_id, (t, loc))
 
-let curr_exn_val = ref (-1024)
+let std_curr_exn_ofs = ref (0)
 let std_FX_MAX_DIMS = 5
 
 let std_sizeof = ref noid
