@@ -222,22 +222,21 @@ let make_wrappers_for_nothrow top_code =
     and wrapf_kexp_ e callb =
         match e with
         | KDefFun kf ->
-            let {kf_name; kf_typ; kf_args; kf_flags; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
+            let {kf_name; kf_args; kf_rt; kf_flags; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
             let new_body = wrapf_kexp_ kf_body callb in
             let _ = kf := {!kf with kf_body=new_body} in
             if not (List.mem FunNoThrow kf_flags) || (is_fun_ctor kf_flags) then e
             else
-                (let w_name = dup_idk (get_id ((pp_id2str kf_name) ^ "_w")) in
+                (let w_name = gen_idk ((pp_id2str kf_name) ^ "_w") in
                 let _ = kf := {!kf with kf_closure={kf_closure with kci_wrap_f=w_name}} in
                 let w_flags = List.filter (fun f -> f != FunNoThrow) kf_flags in
-                let (argtyps, rt) = match kf_typ with KTypFun(argtyps, rt) -> (argtyps, rt) | _ -> ([], kf_typ) in
-                let w_args = List.map2 (fun a t ->
+                let w_args = List.map (fun (a, t) ->
                     let w_a = dup_idk a in
                     let _ = create_kdefval w_a t [ValArg] None [] kf_scope kf_loc in
-                    w_a) kf_args argtyps
+                    (w_a, t)) kf_args
                     in
-                let w_body = KExpCall(kf_name, (List.map (fun i -> Atom.Id i) w_args), (rt, kf_loc)) in
-                let code = create_kdeffun w_name kf_typ w_args w_flags (Some w_body) [e] kf_scope kf_loc in
+                let w_body = KExpCall(kf_name, (List.map (fun (i, _) -> Atom.Id i) w_args), (kf_rt, kf_loc)) in
+                let code = create_kdeffun w_name w_args kf_rt w_flags (Some w_body) [e] kf_scope kf_loc in
                 rcode2kexp code kf_loc)
         | KExpCall(f, args, (t, loc)) ->
             let args = List.map (fun a -> wrapf_atom a loc callb) args in
@@ -355,7 +354,7 @@ let lift_all top_code =
         fold_kexp e callb; (* process all the sub-expressions in any case *)
         match e with
         | KDefFun kf ->
-            let {kf_name; kf_typ; kf_closure; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_args; kf_rt; kf_closure; kf_scope; kf_loc} = !kf in
             (match Env.find_opt kf_name !ll_env with
             | Some ll_info ->
                 let fvars = ll_info.ll_fvars in
@@ -376,10 +375,11 @@ let lift_all top_code =
                 let fcv_t = ref { kcv_name=fcv_tn; kcv_cname=""; kcv_freevars=(List.rev fvars_wt);
                     kcv_orig_freevars=fvars_final; kcv_scope=kf_scope; kcv_loc=kf_loc } in
                 let (_, make_args_ktyps) = Utils.unzip fvars_wt in
-                let make_fp_ktyp = KTypFun((List.rev make_args_ktyps), kf_typ) in
+                let kf_typ = get_kf_typ kf_args kf_rt in
                 let cl_arg = gen_temp_idk "cv" in
                 let make_fp = gen_temp_idk "make_fp" in
-                let _ = create_kdefconstr make_fp make_fp_ktyp [FunCtor (CtorFP kf_name)] [] kf_scope kf_loc in
+                let _ = create_kdefconstr make_fp (List.rev make_args_ktyps) kf_typ
+                    [FunCtor (CtorFP kf_name)] [] kf_scope kf_loc in
                 let _ = create_kdefval cl_arg (KTypName fcv_tn) [] None [] kf_scope kf_loc in
                 let new_kf_closure = {kf_closure with kci_arg=cl_arg; kci_fcv_t=fcv_tn; kci_make_fp=make_fp} in
                 set_idk_entry fcv_tn (KClosureVars fcv_t);
@@ -425,16 +425,17 @@ let lift_all top_code =
     and walk_kexp_n_lift_all e callb =
         match e with
         | KDefFun kf ->
-            let { kf_name; kf_typ; kf_args; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
+            let { kf_name; kf_args; kf_rt; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
             let { kci_arg; kci_fcv_t; kci_make_fp } = kf_closure in
             let saved_dsf = !defined_so_far in
             let saved_clo = !curr_clo in
             let saved_subst_env = !curr_subst_env in
             let _ = curr_clo := (kf_name, kci_arg, kci_fcv_t) in
-            let _ = defined_so_far := List.fold_left (fun dsf arg -> IdSet.add arg dsf) !defined_so_far kf_args in
+            let _ = defined_so_far := List.fold_left (fun dsf (arg, _) -> IdSet.add arg dsf) !defined_so_far kf_args in
 
             let create_defclosure kf code =
-                let {kf_name; kf_typ; kf_closure={kci_make_fp=make_fp}; kf_scope; kf_loc} = !kf in
+                let {kf_name; kf_args; kf_rt; kf_closure={kci_make_fp=make_fp}; kf_scope; kf_loc} = !kf in
+                let kf_typ = get_kf_typ kf_args kf_rt in
                 let cl_name = dup_idk kf_name in
                 let _ = curr_subst_env := Env.add kf_name (cl_name, cl_name) !curr_subst_env in
                 let _ = defined_so_far := IdSet.add cl_name !defined_so_far in
@@ -486,7 +487,7 @@ let lift_all top_code =
                                 (KExpMem(kci_arg, idx, (t, kf_loc)), prologue, fv_proxy)
                             else
                                 let ref_typ = KTypRef t in
-                                let fv_ref = dup_idk (get_id ((pp_id2str fv) ^ "_ref")) in
+                                let fv_ref = gen_idk ((pp_id2str fv) ^ "_ref") in
                                 let get_fv = KExpMem(kci_arg, idx, (ref_typ, kf_loc)) in
                                 let ref_flags = ValTempRef :: (List.filter (fun f -> f != ValMutable) kv_flags) in
                                 let prologue = create_kdefval fv_ref ref_typ ref_flags
@@ -505,7 +506,7 @@ let lift_all top_code =
                             IdSet.fold (fun called_f prologue ->
                                 match (kinfo_ called_f kf_loc) with
                                 | KFun called_kf ->
-                                    let {kf_typ=called_ftyp; kf_closure={kci_fcv_t=called_fcv_t}} = !called_kf in
+                                    let {kf_closure={kci_fcv_t=called_fcv_t}} = !called_kf in
                                     if called_fcv_t = noid then prologue
                                     else create_defclosure called_kf prologue
                                 | _ -> prologue) called_fs prologue

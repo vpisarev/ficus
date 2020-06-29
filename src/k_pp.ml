@@ -133,17 +133,9 @@ and pprint_kexp_ e prtyp =
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp vt loc; pspace(); pstr "="; pspace();
         pprint_kexp_ e0 false; cbox()
-    | KDefFun {contents={kf_name; kf_args; kf_typ; kf_body; kf_closure; kf_flags; kf_loc }} ->
+    | KDefFun {contents={kf_name; kf_args; kf_rt; kf_body; kf_closure; kf_flags; kf_loc }} ->
         let {kci_arg; kci_fcv_t} = kf_closure in
         let nargs = List.length kf_args in
-        let (argtyps, rt) = match kf_typ with
-            | KTypFun(argtyps, rt) -> (argtyps, rt)
-            | _ ->
-                if is_fun_ctor kf_flags then
-                    ([], kf_typ)
-                else
-                    raise_compile_err kf_loc (sprintf "the function '%s' type is not KTypFun(...)" (id2str kf_name)) in
-        let kf_all_args = Utils.zip kf_args argtyps in
         let fkind = ref "FUN" in
         let ctor_id = get_fun_ctor kf_flags in
         (obox(); (List.iter (fun ff -> match ff with
@@ -159,14 +151,14 @@ and pprint_kexp_ e prtyp =
         pstr "("; pcut(); obox();
         List.iteri (fun i (n, t) ->
             if i > 0 then (pstr ","; pspace()) else ();
-            pprint_id n kf_loc; pstr ":"; pspace(); pprint_ktyp t kf_loc) kf_all_args;
+            pprint_id n kf_loc; pstr ":"; pspace(); pprint_ktyp t kf_loc) kf_args;
         if kci_arg = noid then () else
             (if nargs > 0 then pstr ";" else (); pspace();
             pprint_id kci_arg kf_loc; pstr ":"; pspace();
             pprint_id_ kci_fcv_t);
         cbox(); pcut();
         pstr ")";
-        pspace(); pstr ":"; pspace(); pprint_ktyp rt kf_loc; pspace();
+        pspace(); pstr ":"; pspace(); pprint_ktyp kf_rt kf_loc; pspace();
         pstr "="; pspace(); if ctor_id <> CtorNone then pstr (ctor2str ctor_id) else pprint_kexp kf_body; cbox())
     | KDefExn { contents = {ke_name; ke_typ; ke_loc} } ->
         obox(); pstr "EXCEPTION"; pspace(); pprint_id_label ke_name;
@@ -185,7 +177,7 @@ and pprint_kexp_ e prtyp =
         pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then (if nullable0 then pstr "NULLABLE " else ()) else pstr " | "; pprint_id v kvar_loc;
-            pstr "<"; pprint_id c kvar_loc; pstr ": "; pprint_ktyp (get_idk_typ c kvar_loc)
+            pstr "<"; pprint_id c kvar_loc; pstr ": "; pprint_ktyp (get_idk_ktyp c kvar_loc)
             kvar_loc; pstr ">: "; pprint_ktyp t kvar_loc)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr
             else (List.map (fun (v, _) -> v) kvar_cases))));
@@ -210,7 +202,7 @@ and pprint_kexp_ e prtyp =
         | KExpAssign(n, e, _) -> pprint_id_ n; pspace(); pstr "="; pspace(); pprint_kexp e
         | KExpMem(n, i, (_, loc)) ->
             pprint_id n loc; pstr ".";
-            (match (get_idk_typ n loc) with
+            (match (get_idk_ktyp n loc) with
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
             | _ -> pstr (string_of_int i))

@@ -25,7 +25,9 @@ let rec mangle_scope sc result loc =
     | [] -> result
 
 (* [TODO] when we add support for non-English characters in the identifiers,
-    they should be "transliterated" into English *)
+    they should be "transliterated" into English
+    (however, it looks like recent versions of clang/GCC
+    support Unicode identifiers) *)
 let mangle_name n sc_opt loc =
     let sc = match sc_opt with
         | Some sc -> sc
@@ -195,14 +197,12 @@ let mangle_all top_code =
         | KTypList _ -> create_gen_typ t "lst" loc
         | KTypRef _ -> create_gen_typ t "ref" loc
     and mangle_id_typ i loc callb =
-        match i with
-        | Id.Name _ -> ()
-        | _ -> (match (kinfo_ i loc) with
-            | KVal kv ->
-                let {kv_typ} = kv in
-                let t = walk_ktyp_n_mangle kv_typ loc callb in
-                set_idk_entry i (KVal {kv with kv_typ=t})
-            | _ -> ())
+        match (kinfo_ i loc) with
+        | KVal kv ->
+            let {kv_typ} = kv in
+            let t = walk_ktyp_n_mangle kv_typ loc callb in
+            set_idk_entry i (KVal {kv with kv_typ=t})
+        | _ -> ()
     and mangle_ktyp_retain_record t loc callb =
         match t with
         | KTypRecord(rn, relems) ->
@@ -214,21 +214,16 @@ let mangle_all top_code =
         match e with
         | KDefVal(n, e, loc) ->
             let e = walk_kexp_n_mangle e callb in
-            (match (kinfo_ n loc) with
-            | KVal kv ->
-                let {kv_typ} = kv in
-                let t = walk_ktyp_n_mangle kv_typ loc callb in
-                set_idk_entry n (KVal {kv with kv_typ=t})
-            | _ -> raise_compile_err loc (sprintf "invalid description of '%s'; should be KVal _" (id2str n)));
+            mangle_id_typ n loc callb;
             KDefVal(n, e, loc)
         | KDefFun kf ->
-            let {kf_name; kf_typ; kf_args; kf_body; kf_closure; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_args; kf_rt; kf_body; kf_closure; kf_scope; kf_loc} = !kf in
             let {kci_fcv_t} = kf_closure in
-            let ktyp = walk_ktyp kf_typ kf_loc callb in
-            let ktyp = match ktyp with
-                | KTypFun (_, _) -> ktyp
-                | _ -> KTypFun([], ktyp)
-                in
+            let args = List.map (fun (a, t) ->
+                mangle_id_typ a kf_loc callb;
+                (a, (get_idk_ktyp a kf_loc))) kf_args in
+            let rt = walk_ktyp_n_mangle kf_rt kf_loc callb in
+            let ktyp = get_kf_typ args rt in
             let suffix = mangle_ktyp ktyp mangle_map kf_loc in
             let suffix = String.sub suffix 2 ((String.length suffix) - 2) in
             let new_body = walk_kexp_n_mangle kf_body callb in
@@ -249,17 +244,16 @@ let mangle_all top_code =
                     kcv := { !kcv with kcv_cname=cv_cname; kcv_freevars=freevars };
                 | _ ->
                     raise_compile_err kf_loc "mangle: invalid closure datatype (should be KClosureVars)");
-            kf := { !kf with kf_cname=cname; kf_typ=ktyp; kf_body=new_body;
+            kf := { !kf with kf_cname=cname; kf_args=args; kf_rt=rt; kf_body=new_body;
                 kf_closure={kf_closure with kci_fp_typ=mangled_ktyp_id} };
-            List.iter (fun i -> mangle_id_typ i kf_loc callb) kf_args;
             e
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_scope; ke_loc} = !ke in
             let t = mangle_ktyp_retain_record ke_typ ke_loc callb in
             let suffix = mangle_ktyp t mangle_map ke_loc in
             let bare_name = mangle_name ke_name (Some ke_scope) ke_loc in
-            let (base_name, cname) = mangle_make_unique ke_name "E" bare_name suffix mangle_map in
-            ke := { !ke with ke_cname=add_fx cname; ke_typ=t; ke_base_name=get_id base_name };
+            let (base_cname, cname) = mangle_make_unique ke_name "E" bare_name suffix mangle_map in
+            ke := { !ke with ke_cname=add_fx cname; ke_typ=t; ke_base_cname=base_cname };
             e
         | KDefVariant kvar ->
             let {kvar_name; kvar_cases; kvar_loc} = !kvar in

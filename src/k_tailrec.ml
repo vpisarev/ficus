@@ -17,7 +17,7 @@ open Ast
 open K_form
 
 let tailrec2loop kf =
-    let { kf_name; kf_typ; kf_args; kf_body; kf_flags; kf_scope; kf_loc } = !kf in
+    let { kf_name; kf_args; kf_rt=rt; kf_body; kf_flags; kf_scope; kf_loc } = !kf in
     let rec have_tailrec_calls_ e =
         match e with
         | KExpSeq(elist, _) ->
@@ -38,10 +38,10 @@ let tailrec2loop kf =
            let's transform the whole loop body into a loop
            where the tail calls update the parameter values and
            jump to the beginning of the loop *)
-        let (argtyps, rt, res_n, f_init_code) =
-            match kf_typ with
-            | KTypFun(argtyps, KTypVoid) -> (argtyps, KTypVoid, noid, [])
-            | KTypFun(argtyps, rt) ->
+        let (res_n, f_init_code) =
+            match rt with
+            | KTypVoid -> (noid, [])
+            | _ ->
                 let res_n = gen_temp_idk "res" in
                 let {ktp_scalar} = K_annotate_types.get_ktprops rt kf_loc in
                 let a0 = match ktp_scalar with
@@ -51,16 +51,8 @@ let tailrec2loop kf =
                 let res_val0 = KExpAtom(a0, (rt, kf_loc)) in
                 let f_init_code = create_kdefval res_n rt (ValMutable :: [])
                     (Some res_val0) [] kf_scope kf_loc in
-                (argtyps, rt, res_n, f_init_code)
-            | _ -> raise_compile_err kf_loc
-                (sprintf "the function '%s' has invalid (non-function type)" (id2str kf_name))
+                (res_n, f_init_code)
             in
-        let nargs = List.length kf_args in
-        let nargtyps = List.length argtyps in
-        let _ = if nargs = nargtyps then ()
-            else raise_compile_err kf_loc
-                (sprintf "function '%s': the number of arguments (=%d) and its types (=%d) do not match"
-                (id2str kf_name) nargs nargtyps) in
         (* For each function argument we create 2 aliases.
             The first will become the new function formal argument.
             The second will become a variable to which we assign a new value in the case of 'tail call'.
@@ -110,7 +102,7 @@ let tailrec2loop kf =
         *)
         let loop_scope = new_block_scope() :: kf_scope in
         let (new_kf_args, trec_args, f_init_code, loop_init_code) =
-            List.fold_left2 (fun (new_kf_args, trec_args, f_init_code, loop_init_code) ai ti ->
+            List.fold_left (fun (new_kf_args, trec_args, f_init_code, loop_init_code) (ai, ti) ->
                 let dv0 = match (kinfo_ ai kf_loc) with
                     | KVal dv -> dv
                     | _ -> raise_compile_err kf_loc
@@ -126,8 +118,8 @@ let tailrec2loop kf =
                     (Some a1i_as_exp) f_init_code kf_scope kf_loc in
                 let loop_init_code = create_kdefval ai ti []
                     (Some a2i_as_exp) loop_init_code loop_scope kf_loc in
-                (a1i :: new_kf_args, (a2i, ti) :: trec_args, f_init_code, loop_init_code))
-            ([], [], f_init_code, []) kf_args argtyps in
+                ((a1i, ti) :: new_kf_args, (a2i, ti) :: trec_args, f_init_code, loop_init_code))
+            ([], [], f_init_code, []) kf_args in
         let new_kf_args = List.rev new_kf_args in
         let trec_args = List.rev trec_args in
         (* the function prologue is ready; the loop prologue is ready;

@@ -281,7 +281,7 @@ let rec exp2kexp e code tref sc =
     | ExpMem(e1, elem, _) ->
         let e1loc = get_exp_loc e1 in
         let (a_id, code) = exp2id e1 code true sc "the literal does not have members to access" in
-        let ktyp = get_idk_typ a_id e1loc in
+        let ktyp = get_idk_ktyp a_id e1loc in
         let i = (match (ktyp, elem) with
                 | (KTypTuple(tl), ExpLit((LitInt i_), (ityp, iloc))) ->
                     let i = Int64.to_int i_ in
@@ -587,8 +587,8 @@ and transform_pat_matching a cases code sc loc catch_mode =
             (* [TODO] avoid tag check when the variant has just a single case *)
             let {pinfo_tag=var_tag0; pinfo_typ} = pinfo in
             let (c_args, vn_val) = match (kinfo_ vn loc) with
-                | KFun {contents={kf_typ; kf_flags}} ->
-                    let c_args = (match kf_typ with KTypFun(args, rt) -> args | _ -> []) in
+                | KFun {contents={kf_args; kf_flags}} ->
+                    let (_, c_args) = Utils.unzip kf_args in
                     let ctor = get_fun_ctor kf_flags in
                     let tag_value = match ctor with CtorVariant tv -> tv | _ -> -1 in
                     let vn_val = if tag_value >= 0 then Atom.Lit (LitInt (Int64.of_int tag_value)) else (Atom.Id vn) in
@@ -745,18 +745,19 @@ and transform_fun df code sc =
                     (sprintf "the number of argument patterns (%d) and the number of argument types (%d) do not match"
                     nargs nargtypes) in
             let body_sc = new_block_scope() :: sc in
-            let (argids, body_code) = List.fold_left2 (fun (argids, body_code) pi ti ->
-                let (i, body_code) = pat_simple_unpack pi ti None body_code "arg" [] body_sc in
+            let (_, args, body_code) = List.fold_left2 (fun (idx, args, body_code) pi ti ->
+                let arg_defname = "arg" ^ (string_of_int idx) in
+                let (i, body_code) = pat_simple_unpack pi ti None body_code arg_defname [] body_sc in
                 let i = match i with Id.Name _ -> dup_idk i | _ -> i in
                 let _ = create_kdefval i ti [ValArg] None [] sc inst_loc in
-                (i :: argids, body_code)) ([], []) inst_args argtyps in
+                (idx+1, ((i, ti) :: args), body_code)) (0, [], []) inst_args argtyps in
             let inst_flags = match inst_body with ExpCCode _ -> FunInC :: inst_flags | _ -> inst_flags in
             (* create initial function definition to handle recursive functions *)
-            let _ = create_kdeffun inst_name ktyp (List.rev argids) inst_flags None code sc inst_loc in
+            let _ = create_kdeffun inst_name (List.rev args) rt inst_flags None code sc inst_loc in
             let body_loc = get_exp_loc inst_body in
             let (e, body_code) = exp2kexp inst_body body_code false body_sc in
             let body_kexp = rcode2kexp (e :: body_code) body_loc in
-            create_kdeffun inst_name ktyp (List.rev argids) inst_flags (Some body_kexp) code sc inst_loc
+            create_kdeffun inst_name (List.rev args) rt inst_flags (Some body_kexp) code sc inst_loc
         | i -> raise_compile_err (get_idinfo_loc i)
             (sprintf "the entry '%s' (an instance of '%s'?) is supposed to be a function, but it's not"
                 (id2str inst) (id2str df_name)))
@@ -793,15 +794,15 @@ and transform_all_types_and_cons elist code sc =
                             match (id_info constr) with
                             | IdFun {contents={df_name; df_typ}} ->
                                 let kf_typ=(typ2ktyp df_typ dvar_loc) in
-                                let argtyps = match kf_typ with
-                                        | KTypFun(argtyps, _) -> argtyps
-                                        | _ -> [] in
+                                let (argtyps, rt) = match kf_typ with
+                                        | KTypFun(argtyps, rt) -> (argtyps, rt)
+                                        | _ -> ([], kf_typ) in
                                 let code = match argtyps with
                                 | [] ->
                                     let e0 = KExpAtom(Atom.Lit (LitInt (Int64.of_int idx)), (kf_typ, dvar_loc)) in
                                     create_kdefval df_name kf_typ [ValMutable; ValCtor idx] (Some e0) code sc dvar_loc
                                 | _ ->
-                                    create_kdefconstr df_name kf_typ [FunCtor (CtorVariant idx)] code sc dvar_loc
+                                    create_kdefconstr df_name argtyps rt [FunCtor (CtorVariant idx)] code sc dvar_loc
                                 in (idx+1, code)
                             | _ -> raise_compile_err dvar_loc
                                 (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))
@@ -812,7 +813,7 @@ and transform_all_types_and_cons elist code sc =
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
         | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
-            let ke = ref { ke_name=dexn_name; ke_cname=""; ke_base_name=noid;
+            let ke = ref { ke_name=dexn_name; ke_cname=""; ke_base_cname="";
                 ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
             let _ = match dexn_scope with
                     (ScModule m) :: _ when (pp_id2str m) = "Builtins" ->

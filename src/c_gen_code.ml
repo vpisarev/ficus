@@ -602,7 +602,7 @@ let gen_ccode top_code =
             let ndims_i =
                 match dom_i with
                 | Domain.Elem(Atom.Id d) ->
-                    (match (get_idk_typ d for_loc) with
+                    (match (get_idk_ktyp d for_loc) with
                     | KTypArray(n, _) -> n
                     | _ -> 1)
                 | _ -> 1
@@ -761,7 +761,7 @@ let gen_ccode top_code =
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks,
                             init_ccode, pre_body_ccode, body_elems, post_checks))
                     | Domain.Elem(Atom.Id col) ->
-                        let ktyp = get_idk_typ col for_loc in
+                        let ktyp = get_idk_ktyp col for_loc in
                         let ctyp = C_gen_types.ktyp2ctyp ktyp for_loc in
                         (* before running iteration over a collection,
                             we need to make sure that it will not be deallocated in the middle *)
@@ -1092,7 +1092,7 @@ let gen_ccode top_code =
             (false, dst_exp, (CStmtIf(cc, c_e1, c_e2, kloc)) :: ccode)
 
         | KExpCall(f, args, _) ->
-            let ftyp = get_idk_typ f kloc in
+            let ftyp = get_idk_ktyp f kloc in
             let ftyp_ = deref_ktyp ftyp kloc in
             (*let _ = (printf "called function '%s'('%s') typ: " (id2str f) (idk2str f kloc); K_pp.pprint_ktyp_x ftyp_ kloc; printf "\n") in*)
             let (argtyps, rt) = match ftyp_ with
@@ -1107,7 +1107,7 @@ let gen_ccode top_code =
             let (f_exp, fv_exp, have_fv_arg, is_nothrow, ccode) = match (kinfo_ f kloc) with
                 | KFun kf ->
                     let _ = ensure_func_is_defined_or_declared f kloc in
-                    let {kf_typ; kf_flags; kf_cname; kf_closure={kci_arg}; kf_loc} = !kf in
+                    let {kf_args; kf_flags; kf_cname; kf_closure={kci_arg}; kf_loc} = !kf in
                     let f_exp = make_id_exp f kf_loc in
                     let have_fv_arg = not (is_fun_ctor kf_flags) in
                     let fv_exp = if kci_arg = noid then (make_lit_exp LitNil kloc) else
@@ -1805,7 +1805,7 @@ let gen_ccode top_code =
 
                 handle the case of 'c code'-body separately
             *)
-            let {kf_name; kf_typ; kf_closure; kf_body; kf_cname; kf_flags; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_args; kf_rt=krt; kf_closure; kf_body; kf_cname; kf_flags; kf_scope; kf_loc} = !kf in
             let {kci_arg; kci_fcv_t} = kf_closure in
             let _ = if kci_arg = noid then () else ensure_func_is_defined_or_declared kf_name kf_loc in
             let _ = defined_funcs := IdSet.add kf_name !defined_funcs in
@@ -1814,10 +1814,7 @@ let gen_ccode top_code =
                 | CFun ({contents={cf_typ=CTypFun(argtyps, rt); cf_args}} as cf) -> (argtyps, rt, cf_args, cf)
                 | _ -> raise_compile_err kf_loc "cgen: the function declaration was not properly converted"
                 in
-            let (kargtyps, krt) = match kf_typ with
-                | KTypFun(kargtyps, krt) -> (kargtyps, krt)
-                | _ -> ([], kf_typ)
-                in
+            let (_, kargtyps) = Utils.unzip kf_args in
             let nkargtyps = List.length kargtyps in
             let (real_args, retid) = match (List.rev args) with
                 | (retid :: rargs) when (get_idc_cname retid kloc) = "fx_result" -> (rargs, retid)

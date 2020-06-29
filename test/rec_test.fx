@@ -19,4 +19,4 @@ fun inside_outside(p: 't point_, r: 't rect_) =
 
 println("\(ip) is \(inside_outside(ip, ir)) \(ir)")
 println("\(fp) is \(inside_outside(fp, fr)) \(fr)")
-throw Fail("test")
+//throw Fail("test")

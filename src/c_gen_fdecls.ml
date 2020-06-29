@@ -21,14 +21,10 @@ let convert_all_fdecls top_code =
     let top_func_decls = ref ([]: cstmt_t list) in
     List.iter (fun e -> match e with
         | KDefFun kf ->
-            let {kf_name; kf_cname; kf_typ; kf_args; kf_flags; kf_body; kf_scope; kf_loc} = !kf in
-            let (argtyps, rt) = match kf_typ with
-                | KTypFun(argtyps, rt) -> (argtyps, rt)
-                | _ -> ([], kf_typ)
-                in
+            let {kf_name; kf_cname; kf_args; kf_rt=rt; kf_flags; kf_body; kf_scope; kf_loc} = !kf in
             let cbody = match kf_body with KExpCCode _ -> true | _ -> false in
             let ctor = get_fun_ctor kf_flags in
-            let (_, args, argctyps) = List.fold_left2 (fun (arg_idx, args, argctyps) arg t ->
+            let (_, args, argctyps) = List.fold_left (fun (arg_idx, args, argctyps) (arg, t) ->
                 let arg = match arg with
                     | Id.Name _ -> dup_idc arg
                     | _ -> arg
@@ -42,7 +38,7 @@ let convert_all_fdecls top_code =
                     | CTypArray _ -> (make_ptr ctyp)
                     | _ -> (make_const_ptr ctyp)) else ctyp in
                 add_farg arg ctyp cname kf_scope kf_loc;
-                (arg_idx+1, (arg :: args), (ctyp :: argctyps))) (0, [], []) kf_args argtyps
+                (arg_idx+1, (arg :: args), (ctyp :: argctyps))) (0, [], []) kf_args
                 in
             let {ktp_scalar=rt_scalar} = K_annotate_types.get_ktprops rt kf_loc in
             let crt = C_gen_types.ktyp2ctyp rt kf_loc in
