@@ -157,7 +157,12 @@ let printf = Printf.printf
 let builtin_exn_NoMatchError = ref noid
 let builtin_exn_IndexError = ref noid
 
+let idks_frozen = ref true
+let freeze_idks f = idks_frozen := f
+
 let new_idk_idx() =
+    let _ = if not !idks_frozen then () else
+        failwith "internal error: new idk is requested when they are frozen" in
     let new_idx = dynvec_push all_ids in
     let new_kidx = dynvec_push all_idks in
     if new_idx = new_kidx then new_idx else
@@ -186,6 +191,8 @@ let set_idk_entry i n =
     let idx = id2idx i in dynvec_set all_idks idx n
 
 let init_all_idks () =
+    freeze_ids true;
+    freeze_idks false;
     dynvec_init all_idks all_ids.dynvec_count
 
 let get_kexp_ctx e = match e with

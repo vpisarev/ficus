@@ -118,16 +118,6 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
         (match id_opt with
         | Some i -> raise_compile_err loc (sprintf "c_pp.ml: void cannot be used with id '%s'" (id2str i))
         | _ -> ())
-    | CTypFun(args, rt) ->
-        obox(); pprint_ctyp_ rt None loc;
-        pspace(); pstr "(*";
-        pr_id_opt_ false; pstr ")(";
-        obox();
-        (match args with
-        | [] -> pstr "void"
-        | t :: [] -> pprint_ctyp_ t None loc
-        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None loc) args);
-        cbox(); pstr ")"; cbox()
     | CTypFunRawPtr(args, rt) ->
         obox(); pprint_ctyp_ rt None loc;
         pspace(); pstr "(*";
@@ -251,32 +241,27 @@ and pprint_elist el =
         pprint_cexp_ e 0) el; cbox())
 
 and pprint_fun_hdr fname semicolon loc fwd_mode =
-    let { cf_typ; cf_cname; cf_args; cf_body; cf_flags; cf_loc } =
+    let { cf_args; cf_rt; cf_cname; cf_body; cf_flags; cf_loc } =
         match (cinfo_ fname loc) with
         | CFun cf -> !cf
         | _ -> raise_compile_err loc (sprintf "the forward declaration of %s does not reference a function" (pp_id2str fname))
     in
-    let (argtyps, rt) = (match cf_typ with
-        | CTypFun(argtyps, rt) -> argtyps, rt
-        | _ ->
-            raise_compile_err cf_loc "invalid function type (should be a function)") in
-    let typed_args = Utils.zip cf_args argtyps in
     obox();
     let cf_flags = FunStatic :: cf_flags in
     if List.mem FunStatic cf_flags then pstr "static " else ();
     if List.mem FunInline cf_flags then pstr "inline " else ();
-    pprint_ctyp_ rt None cf_loc;
+    pprint_ctyp_ cf_rt None cf_loc;
     pspace();
     pstr cf_cname;
     pstr "(";
     pcut();
-    (match typed_args with
+    (match cf_args with
     | [] -> pstr "void"; pcut()
     | _ ->
         Format.open_vbox 0;
-        List.iteri (fun i (n, t) ->
+        List.iteri (fun i (n, t, _) ->
             if i = 0 then () else (pstr ","; pspace());
-            ohbox(); pprint_ctyp__ "" t (Some n) true cf_loc; cbox()) typed_args;
+            ohbox(); pprint_ctyp__ "" t (Some n) true cf_loc; cbox()) cf_args;
         cbox());
     pstr (")" ^ (if semicolon then ";" else "")); cbox();
     pbreak()
@@ -384,7 +369,7 @@ and pprint_cstmt s =
         pstr ";";
         cbox()
     | CDefFun cf ->
-        let { cf_name; cf_typ; cf_args; cf_body; cf_flags; cf_loc } = !cf in
+        let { cf_name; cf_body; cf_loc } = !cf in
         pprint_fun_hdr cf_name false cf_loc false;
         ovbox(); pstr "{";
         List.iter (fun s -> pbreak(); pprint_cstmt s) cf_body;

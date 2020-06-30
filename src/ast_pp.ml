@@ -145,6 +145,7 @@ let rec pprint_exp e =
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunStatic -> pstr "STATIC"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
+                    | FunUseFV -> pstr "USE_FV"; pspace()
                     | FunCtor _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();

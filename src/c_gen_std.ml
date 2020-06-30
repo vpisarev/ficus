@@ -5,9 +5,9 @@ let gen_std_fun cname argtyps rt =
     let n = gen_temp_idc cname in
     let cf = ref
     {
-        cf_name=n; cf_typ=CTypFun(argtyps, rt); cf_cname=cname;
-        cf_args=List.map (fun a -> noid) argtyps;
-        cf_body=[];
+        cf_name=n; cf_rt=rt;
+        cf_args=List.map (fun t -> (noid, t, [])) argtyps;
+        cf_cname=cname; cf_body=[];
         cf_flags=FunInC :: FunStd :: FunImpure :: [];
         cf_scope=ScGlobal :: []; cf_loc=noloc
     } in

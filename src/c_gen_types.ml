@@ -58,7 +58,7 @@ and ktyp2ctyp t loc =
         | KTypCPointer -> CTypCSmartPtr
         | KTypFun (args, rt) ->
             let args_ = ktyp2ctyp_fargs args rt loc in
-            CTypFun(args_, CTypCInt)
+            CTypFunRawPtr(args_, CTypCInt)
         | KTypTuple _ -> report_err "KTypTuple"
         | KTypRecord _ -> report_err "KTypRecord"
         | KTypName i -> CTypName i
@@ -93,9 +93,6 @@ and get_ctprops ctyp loc =
     | CTypUnion(Some(i), _) ->
         raise_compile_err loc (sprintf "there is no type properties for union '%s'" (id2str i))
     | CTypUnion _ -> raise_compile_err loc "there is no type properties for the anonymoous union"
-    | CTypFun(_, _) ->
-        {ctp_scalar=false; ctp_complex=true; ctp_make=[]; ctp_free=(!std_FX_FREE_FP, !std_fx_free_fp);
-        ctp_copy=(!std_FX_COPY_FP, !std_fx_copy_fp); ctp_pass_by_ref=true; ctp_ptr=false}
     | CTypFunRawPtr(_, _) ->
         {ctp_scalar=true; ctp_complex=false; ctp_make=[]; ctp_free=(noid, noid);
         ctp_copy=(noid, noid); ctp_pass_by_ref=false; ctp_ptr=true}
@@ -244,19 +241,20 @@ let convert_all_typs top_code =
             } in
         let ctyp = CTypName tn in
         let (src_typ0, dst_typ) = (ctyp, (make_ptr ctyp)) in
-        let src_typ = if ktp_ptr then src_typ0 else (make_const_ptr src_typ0) in
+        let (src_typ, src_flags) = if ktp_pass_by_ref then
+            ((make_const_ptr src_typ0), [CArgPassByPtr]) else (src_typ0, []) in
         let src_id = get_id "src" in
         let dst_id = get_id "dst" in
         let src_exp = make_id_t_exp src_id src_typ loc in
         let dst_exp = make_id_t_exp dst_id dst_typ loc in
         let cname_wo_prefix = K_mangle.remove_fx cname in
         let freef_decl = ref {
-            cf_name=free_f; cf_typ=CTypFun(dst_typ :: [], CTypVoid); cf_cname="_fx_free_" ^ cname_wo_prefix;
-            cf_args=dst_id :: [];  cf_body=[];
+            cf_name=free_f; cf_args=[(dst_id, dst_typ, [CArgPassByPtr])]; cf_rt=CTypVoid;
+            cf_cname="_fx_free_" ^ cname_wo_prefix; cf_body=[];
             cf_flags=FunNoThrow :: []; cf_scope=ScGlobal :: []; cf_loc=loc } in
-        let copyf_decl = ref { !freef_decl with
-            cf_name=copy_f; cf_typ=CTypFun(src_typ :: dst_typ :: [], CTypVoid); cf_cname="_fx_copy_" ^ cname_wo_prefix;
-            cf_args=src_id :: dst_id :: [] } in
+        let copyf_decl = ref { !freef_decl with cf_name=copy_f;
+            cf_args=[(src_id, src_typ, src_flags); (dst_id, dst_typ, [CArgPassByPtr])];
+            cf_rt = CTypVoid; cf_cname="_fx_copy_" ^ cname_wo_prefix } in
         set_idc_entry tn (CTyp struct_decl);
         if not ktp_ptr then () else
             add_fwd_decl tn fwd_decl (CDefForwardTyp (struct_id, loc));
@@ -387,32 +385,32 @@ let convert_all_typs top_code =
                 let {kt_typ; kt_loc} = !kt in
                 (match kt_typ with
                 | KTypTuple(telems) ->
-                    let (_, free_code, copy_code, make_code, relems, make_argtyps, make_args) =
+                    let (_, free_code, copy_code, make_code, relems, make_args) =
                         List.fold_left (fun (i, free_code, copy_code, make_code,
-                            relems, make_argtyps, make_args) kti ->
+                            relems, make_args) kti ->
                             let ni = get_id (sprintf "t%i" i) in
                             let cti = ktyp2ctyp kti kt_loc in
                             let selem = CExpArrow(src_exp, ni, (cti, loc)) in
                             let delem = CExpArrow(dst_exp, ni, (cti, loc)) in
                             let free_code = gen_free_code delem cti false false free_code kt_loc in
                             let copy_code = gen_copy_code selem delem cti copy_code kt_loc in
-                            let ktpi = K_annotate_types.get_ktprops kti kt_loc in
+                            let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kti kt_loc in
                             let selem2 = (make_id_exp ni loc) in
-                            let (cti_arg, selem2) = if ktpi.ktp_pass_by_ref then
-                                    ((make_const_ptr cti), (cexp_deref selem2))
-                                else (cti, selem2) in
+                            let (cti_arg, cti_arg_flags, selem2) = if ktp_pass_by_ref then
+                                    ((make_const_ptr cti), [CArgPassByPtr], (cexp_deref selem2))
+                                else (cti, [], selem2) in
                             let delem2 = CExpArrow(fx_result_exp, ni, (cti, loc)) in
                             let make_code = gen_copy_code selem2 delem2 cti make_code kt_loc in
-                            (i+1, free_code, copy_code, make_code, (ni, cti) :: relems, cti_arg::make_argtyps, ni::make_args))
-                            (0, [], [], [], [], [], []) telems in
+                            (i+1, free_code, copy_code, make_code, (ni, cti) :: relems,
+                            (ni, cti_arg, cti_arg_flags)::make_args))
+                            (0, [], [], [], [], []) telems in
                     let mktupl = if ktp.ktp_complex then
-                        (let make_args = List.rev (fx_result_id :: make_args) in
-                        let make_argtyps = List.rev ((make_ptr fx_result_ct) :: make_argtyps) in
+                        (let make_args = (fx_result_id, (make_ptr fx_result_ct), [CArgPassByPtr;CArgRetVal]) :: make_args in
                         let mktup_id = gen_temp_idc "mktup" in
                         let mktup_decl = ref {
-                            cf_name=mktup_id; cf_typ=CTypFun(make_argtyps, CTypVoid);
+                            cf_name=mktup_id; cf_args=List.rev make_args; cf_rt=CTypVoid;
                             cf_cname="_fx_make_" ^ tp_cname_wo_prefix;
-                            cf_args=make_args; cf_body=(List.rev make_code);
+                            cf_body=(List.rev make_code);
                             cf_flags=FunNoThrow::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                         set_idc_entry mktup_id (CFun mktup_decl);
                         add_decl mktup_id (CDefFun mktup_decl);
@@ -423,31 +421,31 @@ let convert_all_typs top_code =
                     struct_decl := {!struct_decl with ct_typ=CTypStruct((Some tn), List.rev relems);
                         ct_props={ct_props with ctp_make=mktupl}}
                 | KTypRecord(_, relems) ->
-                    let (free_code, copy_code, make_code, relems, make_argtyps, make_args) =
-                        List.fold_left (fun (free_code, copy_code, make_code, relems, make_argtyps, make_args) (ni, kti) ->
+                    let (free_code, copy_code, make_code, relems, make_args) =
+                        List.fold_left (fun (free_code, copy_code, make_code, relems, make_args) (ni, kti) ->
                             let cti = ktyp2ctyp kti loc in
                             let selem = CExpArrow(src_exp, ni, (cti, kt_loc)) in
                             let delem = CExpArrow(dst_exp, ni, (cti, kt_loc)) in
                             let free_code = gen_free_code delem cti false false free_code kt_loc in
                             let copy_code = gen_copy_code selem delem cti copy_code kt_loc in
-                            let ktpi = K_annotate_types.get_ktprops kti kt_loc in
+                            let {ktp_pass_by_ref} = K_annotate_types.get_ktprops kti kt_loc in
                             let arg_ni = get_id ("r_" ^ (pp_id2str ni)) in
                             let selem2 = (make_id_exp arg_ni loc) in
-                            let (cti_arg, selem2) = if ktpi.ktp_pass_by_ref then
-                                    ((make_const_ptr cti), (cexp_deref selem2))
-                                else (cti, selem2) in
+                            let (cti_arg, cti_arg_flags, selem2) = if ktp_pass_by_ref then
+                                    ((make_const_ptr cti), [CArgPassByPtr], (cexp_deref selem2))
+                                else (cti, [], selem2) in
                             let delem2 = CExpArrow(fx_result_exp, ni, (cti, loc)) in
                             let make_code = gen_copy_code selem2 delem2 cti make_code kt_loc in
-                            (free_code, copy_code, make_code, (ni, cti) :: relems, cti_arg::make_argtyps, arg_ni::make_args))
-                            ([], [], [], [], [], []) relems in
+                            (free_code, copy_code, make_code, (ni, cti) :: relems,
+                            (arg_ni, cti_arg, cti_arg_flags)::make_args))
+                            ([], [], [], [], []) relems in
                     let mkrecl = if ktp.ktp_complex then
-                        (let make_args = List.rev (fx_result_id :: make_args) in
-                        let make_argtyps = List.rev ((make_ptr fx_result_ct) :: make_argtyps) in
+                        (let make_args = (fx_result_id, (make_ptr fx_result_ct), [CArgPassByPtr;CArgRetVal]) :: make_args in
                         let mkrec_id = gen_temp_idc "mktup" in
                         let mkrec_decl = ref {
-                            cf_name=mkrec_id; cf_typ=CTypFun(make_argtyps, CTypVoid);
+                            cf_name=mkrec_id; cf_args=List.rev make_args; cf_rt=CTypVoid;
                             cf_cname="_fx_make_" ^ tp_cname_wo_prefix;
-                            cf_args=make_args; cf_body=(List.rev make_code);
+                            cf_body=(List.rev make_code);
                             cf_flags=FunNoThrow::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                         set_idc_entry mkrec_id (CFun mkrec_decl);
                         add_decl mkrec_id (CDefFun mkrec_decl);
@@ -479,13 +477,17 @@ let convert_all_typs top_code =
                         | (pbr, Some(f)) -> (pbr, f)
                         | _ -> raise_compile_err loc
                             (sprintf "missing element copy operator when converting %s" (get_idk_cname tn loc)) in
-                    let ct_hd_arg = if pass_by_ref then (make_const_ptr ct_hd) else ct_hd in
+                    let (ct_hd_arg, hd_arg_flags) = if pass_by_ref then
+                        ((make_const_ptr ct_hd), [CArgPassByPtr]) else (ct_hd, []) in
                     let make_list_body = CExp(CExpCall(make_list_m,
                         (make_id_exp (get_id tp_cname) loc) :: copy_hd_f :: [], (CTypInt, loc))) :: [] in
                     let cons_decl = ref {
-                        cf_name=cons_id; cf_typ=CTypFun(ct_hd_arg :: ct_tl :: CTypBool :: (make_ptr ct_tl) :: [], CTypCInt);
+                        cf_name=cons_id; cf_rt = CTypCInt;
+                        cf_args=[((get_id "hd"), ct_hd_arg, hd_arg_flags);
+                                 ((get_id "tl"), ct_tl, []);
+                                 ((get_id "addref_tl"), CTypBool, []);
+                                 (fx_result_id, (make_ptr ct_tl), [CArgPassByPtr; CArgRetVal])];
                         cf_cname="_fx_cons_" ^ tp_cname_wo_prefix;
-                        cf_args=(get_id "hd") :: (get_id "tl") :: (get_id "addref_tl") :: fx_result_id :: [];
                         cf_body=make_list_body;
                         cf_flags=[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                     set_idc_entry cons_id (CFun cons_decl);
@@ -515,13 +517,15 @@ let convert_all_typs top_code =
                         | (pbr, Some(f)) -> (pbr, f)
                         | _ -> raise_compile_err loc
                             (sprintf "missing element copy operator when converting %s" (get_idk_cname tn loc)) in
-                    let ct_arg = if pass_by_ref then (make_const_ptr ctyp) else ctyp in
+                    let (ct_arg, ct_arg_flags) = if pass_by_ref then
+                        ((make_const_ptr ctyp), [CArgPassByPtr]) else (ctyp, []) in
                     let mkref_body = CExp(CExpCall(mkref_m,
                         (make_id_exp (get_id tp_cname) loc) :: copy_data_f :: [], (CTypInt, loc))) :: [] in
                     let mkref_decl = ref {
-                        cf_name=mkref_id; cf_typ=CTypFun(ct_arg :: (make_ptr fx_result_ct) :: [], CTypCInt);
+                        cf_name=mkref_id; cf_rt = CTypCInt;
+                        cf_args=[((get_id "arg"), ct_arg, ct_arg_flags);
+                                 (fx_result_id, (make_ptr fx_result_ct), [CArgPassByPtr; CArgRetVal])];
                         cf_cname="_fx_make_" ^ tp_cname_wo_prefix;
-                        cf_args=(get_id "arg") :: fx_result_id :: [];
                         cf_body=mkref_body;
                         cf_flags=[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
                     set_idc_entry mkref_id (CFun mkref_decl);

@@ -170,7 +170,8 @@ type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref 
 
 type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValPrivate | ValSubArray | ValCtor of int
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of int | CtorFP of id_t | CtorExn of id_t
-type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunPure | FunStatic | FunCtor of fun_constr_t
+type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow
+    | FunPure | FunStatic | FunCtor of fun_constr_t | FunUseFV
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
 type ctx_t = typ_t * loc_t
@@ -295,7 +296,13 @@ let sorted_modules: id_t list ref = ref []
 let sprintf = Printf.sprintf
 let printf = Printf.printf
 
-let new_id_idx() = dynvec_push all_ids
+let ids_frozen = ref true
+let freeze_ids f = ids_frozen := f
+
+let new_id_idx() =
+    if not !ids_frozen then () else
+        failwith "internal error: attempt to add new AST id during K-phase of C code generation phase";
+    dynvec_push all_ids
 
 let dump_id i = match i with
     | Id.Name(i) -> (sprintf "Id.Name(%d)" i)
@@ -665,6 +672,7 @@ let fname_always_import () =
 ]
 
 let init_all_ids () =
+    freeze_ids false;
     dynvec_clear all_ids;
     (Hashtbl.reset all_strhash);
     let _ = get_id_prefix "" in

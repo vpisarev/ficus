@@ -85,6 +85,7 @@ type cunop_t =
     | COpPrefixInc | COpPrefixDec | COpSuffixInc | COpSuffixDec | COpMacroName | COpMacroDefined
 
 type ctyp_attr_t = CTypConst | CTypVolatile
+type carg_attr_t = CArgPassByPtr | CArgRetVal | CArgFV
 
 type ctyp_flag_t =
     | CTypFlagVariantNilCase of int (* if the type is a recursive variant and one of its cases has "void" type,
@@ -127,7 +128,6 @@ type ctyp_t =
     | CTypExn
     | CTypStruct of id_t option * (id_t * ctyp_t) list
     | CTypUnion of id_t option * (id_t * ctyp_t) list
-    | CTypFun of ctyp_t list * ctyp_t
     | CTypFunRawPtr of ctyp_t list * ctyp_t
     | CTypRawPtr of ctyp_attr_t list * ctyp_t
     | CTypRawArray of ctyp_attr_t list * ctyp_t
@@ -180,8 +180,9 @@ and cstmt_t =
     | CMacroInclude of string * loc_t
 and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list;
                   cv_scope: scope_t list; cv_loc: loc_t }
-and cdeffun_t = { cf_name: id_t; cf_typ: ctyp_t; cf_cname: string;
-                  cf_args: id_t list; cf_body: cstmt_t list;
+and cdeffun_t = { cf_name: id_t; cf_cname: string;
+                  cf_args: (id_t * ctyp_t * (carg_attr_t list)) list;
+                  cf_rt: ctyp_t; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
                   ct_props: ctprops_t; ct_tagenum: id_t; ct_data_start: int;
@@ -198,8 +199,12 @@ type cinfo_t =
     | CMacro of cdefmacro_t ref
 
 let all_idcs = dynvec_create CNone
+let idcs_frozen = ref true
+let freeze_idcs f = idcs_frozen := f
 
 let new_idc_idx() =
+    let _ = if not !idcs_frozen then () else
+        failwith "internal error: attempt to add new idc when they are frozen" in
     let new_idx = dynvec_push all_ids in
     let new_kidx = dynvec_push K_form.all_idks in
     let new_cidx = dynvec_push all_idcs in
@@ -224,6 +229,7 @@ let set_idc_entry i n =
     let idx = id2idx i in dynvec_set all_idcs idx n
 
 let init_all_idcs () =
+    freeze_ids true; freeze_idks true; freeze_idcs false;
     dynvec_init all_idcs K_form.all_idks.dynvec_count
 
 let get_cexp_ctx e = match e with
@@ -304,12 +310,13 @@ let get_cinfo_typ info i loc =
     | CNone -> CTypAny
     | CText _ -> CTypAny
     | CVal {cv_typ} -> cv_typ
-    | CFun {contents = {cf_typ}} -> cf_typ
+    | CFun {contents = {cf_args; cf_rt}} ->
+        CTypFunRawPtr((List.map (fun (_, t, _) -> t) cf_args), cf_rt)
     | CTyp {contents = {ct_typ}} -> ct_typ
     | CMacro {contents = {cm_args}} ->
         (match cm_args with
         | [] -> CTypAny
-        | _ -> CTypFun((List.map (fun a -> CTypAny) cm_args), CTypAny))
+        | _ -> CTypFunRawPtr((List.map (fun a -> CTypAny) cm_args), CTypAny))
     | CLabel _ -> CTypLabel
     | CEnum _ -> CTypCInt
 
@@ -348,6 +355,11 @@ let create_cdefval n t flags cname e_opt code sc loc =
     | _ -> ();
     set_idc_entry n (CVal dv);
     (CExpIdent(n, (t, loc)), (CDefVal(t, n, e_opt, loc)) :: code)
+
+let add_cf_arg v ctyp cname sc loc =
+    let cv = { cv_name=v; cv_typ=ctyp; cv_cname=cname;
+        cv_flags=ValArg::[]; cv_scope=sc; cv_loc=loc }
+    in set_idc_entry v (CVal cv)
 
 let get_ccode_loc ccode default_loc =
     loclist2loc (List.map get_cstmt_loc ccode) default_loc
@@ -425,7 +437,6 @@ and walk_ctyp t callb =
         CTypStruct((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) selems))
     | CTypUnion (n_opt, uelems) ->
         CTypUnion((walk_id_opt_ n_opt), (List.map (fun (n, t) -> ((walk_id_ n), (walk_ctyp_ t))) uelems))
-    | CTypFun (args, rt) -> CTypFun((List.map walk_ctyp_ args), (walk_ctyp_ rt))
     | CTypFunRawPtr (args, rt) -> CTypFunRawPtr((List.map walk_ctyp_ args), (walk_ctyp_ rt))
     | CTypArray(d, et) -> CTypArray(d, walk_ctyp_ et)
     | CTypRawPtr(attrs, t) -> CTypRawPtr(attrs, (walk_ctyp_ t))
@@ -488,11 +499,12 @@ and walk_cstmt s callb =
         CStmtSwitch((walk_cexp_ e), (List.map (fun (ll, sl) -> (walk_cel_ ll, walk_csl_ sl)) cases), l)
     | CDefVal (t, n, e_opt, l) -> CDefVal((walk_ctyp_ t), (walk_id_ n), (walk_cexp_opt_ e_opt), l)
     | CDefFun cf ->
-        let { cf_name; cf_typ; cf_args; cf_body } = !cf in
+        let { cf_name; cf_args; cf_rt; cf_body } = !cf in
         cf := { !cf with
             cf_name = (walk_id_ cf_name);
-            cf_typ = (walk_ctyp_ cf_typ);
-            cf_args = (List.map walk_id_ cf_args);
+            cf_args = (List.map (fun (a, t, flags) ->
+                ((walk_id_ a), (walk_ctyp_ t), flags)) cf_args);
+            cf_rt = (walk_ctyp_ cf_rt);
             cf_body = (walk_csl_ cf_body) };
         s
     | CDefTyp ct ->
@@ -568,7 +580,6 @@ and fold_ctyp t callb =
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) selems
     | CTypUnion (n_opt, uelems) ->
         fold_id_opt_ n_opt; List.iter (fun (n, t) -> fold_id_ n; fold_ctyp_ t) uelems
-    | CTypFun (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypFunRawPtr (args, rt) -> fold_tl_ args; fold_ctyp_ rt
     | CTypRawPtr(_, t) -> fold_ctyp_ t
     | CTypRawArray(_, et) -> fold_ctyp_ et
@@ -628,9 +639,11 @@ and fold_cstmt s callb =
     | CDefVal (t, n, e_opt, _) ->
         fold_ctyp_ t; fold_id_ n; fold_cexp_opt_ e_opt
     | CDefFun cf ->
-        let { cf_name; cf_typ; cf_args; cf_body } = !cf in
-        fold_id_ cf_name; fold_ctyp_ cf_typ;
-        List.iter fold_id_ cf_args; fold_csl_ cf_body
+        let { cf_name; cf_args; cf_rt; cf_body } = !cf in
+        fold_id_ cf_name;
+        List.iter (fun (a, t, _) -> fold_id_ a; fold_ctyp_ t) cf_args;
+        fold_ctyp_ cf_rt;
+        fold_csl_ cf_body
     | CDefTyp ct ->
         let { ct_name; ct_typ } = !ct in
         fold_id_ ct_name; fold_ctyp_ ct_typ
@@ -667,8 +680,6 @@ let rec ctyp2str t loc =
     | CTypBool -> ("bool", noid)
     | CTypVoid -> ("void", noid)
     | CTypExn -> ("fx_exn_t", noid)
-    | CTypFun(_, _) ->
-        raise_compile_err loc "ctyp2str: function pointer type is not supported; use CTypName(...) instead"
     | CTypFunRawPtr(args, rt) ->
         raise_compile_err loc "ctyp2str: raw function pointer type is not supported; use CTypName(...) instead"
     | CTypCSmartPtr -> ("fx_cptr_t", noid)

@@ -63,7 +63,7 @@ enum
 
 /////////////////// Various Basic Definitions ////////////////
 
-#define FX_INLINE __inline
+#define FX_INLINE static __inline
 
 typedef intptr_t int_; // int size in ficus is equal to the pointer size
 #ifdef __APPLE__
