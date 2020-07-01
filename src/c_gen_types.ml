@@ -613,43 +613,7 @@ let convert_all_typs top_code =
             cvt2ctyp kt_name kt_loc
         | KDefVariant {contents={kvar_name; kvar_loc}} -> cvt2ctyp kvar_name kvar_loc
         | KDefClosureVars _ -> ()
-        | KDefExn {contents={ke_name; ke_loc}} -> () (* [TODO] convert exception to C *)
-            (*
-                // simple exceptions
-                #define _FX_EXN_MyException -500
-                FX_INLINE int _fx_make_E11MyException(fx_exn_t* fx_result)
-                {
-                    fx_result->tag = _FX_EXN_MyException;
-                    fx_result->data = 0;
-                    return FX_OK;
-                }
-                // or simply fx_exn_t exn = {_FX_EXN_MyException, 0};
-
-                // complex exceptions
-                #define _FX_EXN_Failwith -501
-                typedef struct _fx_E8Failwith_data_t
-                {
-                    fx_exndata_t base; // contains refcount and destructor ptr
-                    fx_str_t arg;
-                } _fx_E8Failwith_data_t;
-
-                void _fx_free_E8Failwith(fx_exndata_t* data_)
-                {
-                    _fx_E8Failwith_data_t* data = (_fx_E8Failwith_data_t* )data_;
-                    fx_free_str(&data->arg);
-                    fx_free(data;
-                }
-
-                int _fx_make_E8Failwith(const fx_str_t* arg, fx_exn_t* fx_result)
-                {
-                    FX_EXN_MAKE_IMPL(_FX_EXN_Failwith, _fx_E8Failwith_data_t, _fx_free_E8Failwith,
-                                    fx_copy_str(arg, &data->arg));
-                }
-
-                #define _FX_THROW_E8Failwith(arg, catch_label) \
-                    fx_status = _fx_make_E8Failwith(arg, &fx_ctx->exn, false); \
-                    goto catch_label
-            *)
+        | KDefExn _ -> ()
         | _ -> fold_kexp e callb
     in let fold_n_cvt_callb =
     {

@@ -1,4 +1,4 @@
-type 't point_ = {x: 't; y: 't}
+/*type 't point_ = {x: 't; y: 't}
 type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
 
 fun contains(r: 'z rect_, p: 'z point_) =
@@ -18,5 +18,20 @@ fun inside_outside(p: 't point_, r: 't rect_) =
     if contains(r, p) {"inside"} else {"outside of"}
 
 println("\(ip) is \(inside_outside(ip, ir)) \(ir)")
-println("\(fp) is \(inside_outside(fp, fr)) \(fr)")
+println("\(fp) is \(inside_outside(fp, fr)) \(fr)")*/
+
+//type pt = {x: int; y: int}
+type tt = Empty | Node: {left: tt; v: int; right: tt}
+val t0 = Node {left=Empty, v=5, right=Node{left=Empty, v=6, right=Empty}}
+
+exception MySimpleException : tt
+throw MySimpleException(t0)
+
+//exception MyException: (int, string)
+
+//throw MyException(5, "...4321, exception is thrown!")
+
+//for c <- "hello" { print("'\(c)' ") }
+//println()
+
 //throw Fail("test")

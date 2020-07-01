@@ -563,9 +563,9 @@ let get_record_elems t loc =
             | IdVariant {contents={dvar_flags;
                 dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []}}
                 when (List.mem VariantRecord dvar_flags) -> relems
-            | _ -> raise_compile_err loc "attempt to treat non-record as a record")
+            | _ -> raise_compile_err loc "attempt to treat non-record as a record #1")
         | _ -> raise_compile_err loc "proper instance of the template [record?] type is not found")
-    | _ -> raise_compile_err loc "attempt to treat non-record as a record"
+    | _ -> raise_compile_err loc "attempt to treat non-record as a record #2"
 
 let is_real_typ t =
     let have_typ_vars = ref false in

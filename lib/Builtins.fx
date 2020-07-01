@@ -63,7 +63,7 @@ operator + (l1: 't list, l2: 't list) {
 
 fun string(a: bool) = if a {"true"} else {"false"}
 pure fun string(a: int): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(c: char): char = ccode "return fx_make_str(&c, 1, fx_result);"
+pure fun string(c: char): string = ccode "return fx_make_str(&c, 1, fx_result);"
 pure fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 pure fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 fun string(a: string) = a
@@ -72,6 +72,7 @@ fun chr(i: int) = (i :> char)
 
 fun repr(a: 't): string = string(a)
 fun repr(a: string) = "\"" + a + "\""
+fun repr(a: char) = "'" + a + "'"
 
 fun string((a, b): ('a, 'b)) = "(" + repr(a) + ", " + repr(b) + ")"
 fun string((a, b, c): ('a, 'b, 'c)) = "(" + repr(a) + ", " + repr(b) + ", " + repr(c) + ")"

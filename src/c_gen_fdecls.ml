@@ -110,5 +110,64 @@ let convert_all_fdecls top_code =
             let _ = set_idc_entry kcv_name (CTyp ct) in
             let decl_fcvt = [CDefTyp ct] in
             top_fcv_decls := decl_free_f @ decl_fcvt @ !top_fcv_decls
+        | KDefExn ke -> ()
+            (*
+                exception MyException[: (int, string)]
+
+                // 1) simple exceptions
+                static int _FX_E11MyException = 0;
+                static fx_exn_info_t _FX_E11MyException_info;
+                static fx_exn_t _fx_E11MyException;
+                ...
+                int fx_toplevel() {
+                    ...
+                    fx_register_simple_exn("CurrModule.MyException", &_FX_E11MyException, &_FX_E11MyException_info, &_fx_E11MyException);
+                    // 1. sets _FX_E11MyException to global exn counter and decrements global exn counter (e.g. -1100 => -1101)
+                    // 2. sets _FX_E11MyException_info to {name="CurrModule.MyException", free_f=0, to_string=0, print_repr=0}
+                    // 3. sets _fx_E11MyException = {_FX_E11MyException, &_FX_E11MyException_info, 0}.
+                }
+
+                `throw MyException` will do the following
+                `FX_THROW(_FX_E11MyException, false, label)`
+
+                // 2) complex exceptions
+                static int _FX_E11MyException = 0;
+                static fx_exn_info_t _FX_E11MyException_info;
+
+                typedef struct _fx_E11MyException_data_t
+                {
+                    int_ rc;
+                    _fx_T2iS data;
+                } _fx_E11MyException_data_t;
+
+                static void _fx_free_E11MyException(_fx_E11MyException_data_t* dst)
+                {
+                    if(dst) {
+                        fx_free_str(&dst->data.t1);
+                        fx_free(dst);
+                    }
+                }
+
+                static int _fx_make_E11MyException(int arg0, fx_str_t* arg1, fx_exn_t* fx_result)
+                {
+                    FX_MAKE_EXN_IMPL_START(_FX_E11MyException, _fx_E11MyException);
+                    exn_data->data.t0 = arg0;
+                    fx_copy_str(arg1, &exn_data->data.t1);
+                    return FX_OK;
+                }
+
+                `throw MyException(3, "abc")` will be converted at K-normalization to
+
+                `TEMP val e = MyException(3, "abc")
+                throw e`,
+
+                which will be converted to
+                fx_exn_t e = {};
+                fx_str_t abc_str = FX_MAKE_STR("abc");
+                FX_CALL(_fx_make_E11MyException(3, &abc_str, &e), catch_label);
+                FX_THROW(e, true, catch_label);
+
+                fx_register_exn(name, tag, info_ptr, free_f, to_string, print_f);
+            *)
         | _ -> ()) top_code;
     (List.rev !top_fcv_decls) @ (List.rev !top_func_decls)

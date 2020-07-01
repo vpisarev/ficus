@@ -775,19 +775,20 @@ let gen_ccode top_code =
                                 in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks,
                             init_ccode, pre_body_ccode, body_elems, post_checks))
-                    | Domain.Elem(Atom.Id col) ->
-                        let ktyp = get_idk_ktyp col for_loc in
+                    | Domain.Elem(a) ->
+                        let col_ = match a with Atom.Id i -> i | _ -> noid in
+                        let ktyp = get_atom_ktyp a for_loc in
                         let ctyp = C_gen_types.ktyp2ctyp ktyp for_loc in
                         (* before running iteration over a collection,
                             we need to make sure that it will not be deallocated in the middle *)
-                        let (col_exp, init_ccode) = if List.exists (fun (e, _) -> occurs_id_kexp col e) nested_e_kdl then
+                        let (col_exp, init_ccode) = if col_ <> noid && List.exists (fun (e, _) -> occurs_id_kexp col_ e) nested_e_kdl then
                                 (*let (src_exp, init_ccode) = atom2cexp (Atom.Id col) init_ccode sc for_loc in*)
-                                let src_exp = make_id_exp col (get_idk_loc col for_loc) in
-                                let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col) ctyp [] init_ccode sc for_loc in
+                                let src_exp = make_id_exp col_ (get_idk_loc col_ for_loc) in
+                                let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col_) ctyp [] init_ccode sc for_loc in
                                 let init_ccode = C_gen_types.gen_copy_code src_exp col_exp ctyp init_ccode for_loc in
                                 (col_exp, init_ccode)
                             else
-                                atom2cexp_ (Atom.Id col) true init_ccode sc for_loc
+                                atom2cexp_ a true init_ccode sc for_loc
                             in
                         (match (deref_ktyp ktyp for_loc) with
                         | KTypList et ->
@@ -875,13 +876,13 @@ let gen_ccode top_code =
                             let slice_idxs = List.rev ((make_int_exp 0 for_loc) :: (List.tl rev_i_exps)) in
                             let get_arr_slice = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
                                 (CExpTyp (c_et, for_loc) :: col_exp :: slice_idxs) c_et_ptr for_loc in
-                            let ptr_id = gen_temp_idc ("ptr_" ^ (pp_id2str col)) in
+                            let ptr_id = gen_temp_idc ("ptr_" ^ (pp_id2str col_)) in
                             let (ptr_exp, pre_body_ccode) = create_cdefval ptr_id c_et_ptr [] "" (Some get_arr_slice) pre_body_ccode sc for_loc in
                             let get_arr_elem = CExpBinOp(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc)) in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
                             pre_body_ccode, ((iter_val_i, get_arr_elem, [ValTemp]) :: body_elems), post_checks)
                         | _ -> raise_compile_err for_loc (for_err_msg for_idx nfors k
-                            (sprintf "cannot iterate over '%s'; it needs to be array, list or string" (id2str col)))
+                            (sprintf "cannot iterate over '%s'; it needs to be array, list or string" (atom2str a)))
                         )
                     | _ ->
                         raise_compile_err for_loc (for_err_msg for_idx nfors k "unsupported type of the for loop iteration domain")

@@ -19,36 +19,44 @@ int_ fx_argc(void) { return _fx_argc; }
 char* fx_argv(int_ idx) { return _fx_argv[idx]; }
 
 static fx_exn_info_t fx_std_exn_info[-FX_EXN_StdMax];
-#define FX_DECL_STD_EXN(exn) FX_DECL_EXN(fx_std_exn_info, 0, exn, 0, 0, 0)
 
 int fx_init(int argc, char** argv)
 {
     _fx_argc = argc;
     _fx_argv = argv;
 
-    FX_DECL_STD_EXN(FX_OK);
-    FX_DECL_STD_EXN(FX_EXN_Failure);
-    FX_DECL_STD_EXN(FX_EXN_AssertError);
-    FX_DECL_STD_EXN(FX_EXN_NotFoundError);
-    FX_DECL_STD_EXN(FX_EXN_OutOfMemError);
-    FX_DECL_STD_EXN(FX_EXN_OutOfRangeError);
-    FX_DECL_STD_EXN(FX_EXN_DivByZeroError);
-    FX_DECL_STD_EXN(FX_EXN_SizeMismatchError);
-    FX_DECL_STD_EXN(FX_EXN_TypeMismatchError);
-    FX_DECL_STD_EXN(FX_EXN_DimError);
-    FX_DECL_STD_EXN(FX_EXN_SizeError);
-    FX_DECL_STD_EXN(FX_EXN_FileOpenError);
-    FX_DECL_STD_EXN(FX_EXN_NullFileError);
-    FX_DECL_STD_EXN(FX_EXN_IOError);
-    FX_DECL_STD_EXN(FX_EXN_NoMatchError);
-    FX_DECL_STD_EXN(FX_EXN_Break);
-    FX_DECL_STD_EXN(FX_EXN_Continue);
-    FX_DECL_STD_EXN(FX_EXN_NullPtrError);
-    FX_DECL_STD_EXN(FX_EXN_ZeroStepError);
-    FX_DECL_STD_EXN(FX_EXN_ASCIIError);
-    FX_DECL_STD_EXN(FX_EXN_NullListError);
-    FX_DECL_STD_EXN(FX_EXN_OptionError);
-    FX_DECL_STD_EXN(FX_EXN_UnknownExnError);
+    #undef FX_DECL_STD_EXN
+    #define FX_DECL_STD_EXN(exn) \
+        { fx_exn_info_t tmp = {FX_MAKE_STR(#exn), 0, 0, 0}; fx_std_exn_info[-FX_EXN_##exn]=tmp; }
+
+    fx_str_t okstr = FX_MAKE_STR("OK");
+    fx_std_exn_info[0].name = okstr;
+
+    //FX_DECL_STD_EXN(FX_OK);
+    //FX_DECL_STD_EXN(Failure);
+    FX_DECL_STD_EXN(AssertError);
+    FX_DECL_STD_EXN(NotFoundError);
+    FX_DECL_STD_EXN(OutOfMemError);
+    FX_DECL_STD_EXN(OutOfRangeError);
+    FX_DECL_STD_EXN(DivByZeroError);
+    FX_DECL_STD_EXN(SizeMismatchError);
+    FX_DECL_STD_EXN(TypeMismatchError);
+    FX_DECL_STD_EXN(DimError);
+    FX_DECL_STD_EXN(SizeError);
+    FX_DECL_STD_EXN(FileOpenError);
+    FX_DECL_STD_EXN(NullFileError);
+    FX_DECL_STD_EXN(IOError);
+    FX_DECL_STD_EXN(NoMatchError);
+    FX_DECL_STD_EXN(Break);
+    FX_DECL_STD_EXN(Continue);
+    FX_DECL_STD_EXN(NullPtrError);
+    FX_DECL_STD_EXN(ZeroStepError);
+    FX_DECL_STD_EXN(ASCIIError);
+    FX_DECL_STD_EXN(NullListError);
+    FX_DECL_STD_EXN(OptionError);
+    FX_DECL_STD_EXN(UnknownExnError);
+
+    #undef FX_DECL_STD_EXN
 
     return fx_init_thread(0);
 }
@@ -253,7 +261,6 @@ const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn)
     int tag = exn->tag;
     if(tag > 0 || tag < FX_EXN_StdMax) return 0;
     const fx_exn_info_t* info = &fx_std_exn_info[-tag];
-    if(info->tag != tag) return 0;
     return info;
 }
 
@@ -261,7 +268,7 @@ int fx_exn_name(const fx_exn_t* exn, fx_str_t* exn_name)
 {
     const fx_exn_info_t* info = fx_exn_info(exn);
     if(!info) FX_FAST_THROW_RET(FX_EXN_UnknownExnError);
-    // name is always declared with FX_MAKE_STR(),
+    // exception name is a literal, defined with FX_MAKE_STR(),
     // so there is no need to "incref" it.
     *exn_name = info->name;
     return FX_OK;
@@ -271,8 +278,8 @@ int fx_exn_to_string(const fx_exn_t* exn, fx_str_t* str)
 {
     const fx_exn_info_t* info = fx_exn_info(exn);
     if(!info) FX_FAST_THROW_RET(FX_EXN_UnknownExnError);
-    if(info->to_string) return info->to_string(exn, str);
-    // if there is no dedicated to_string function, just return the name
+    if(info->to_string_f) return info->to_string_f((fx_exn_t*)exn, str, 0);
+    // if there is no dedicated to_string_f function, just return the name
     *str = info->name;
     return FX_OK;
 }
@@ -287,8 +294,8 @@ int fx_print_repr_exn(const fx_exn_t* exn, bool quiet)
         }
         FX_FAST_THROW_RET(FX_EXN_UnknownExnError);
     }
-    if(info->print_repr)
-        info->print_repr(exn);
+    if(info->print_repr_f)
+        info->print_repr_f((fx_exn_t*)exn, 0);
     else
         // if there is no dedicated to_string function, just print the name
         fx_fputs(stdout, &info->name);
@@ -344,6 +351,28 @@ void fx_print_bt(void)
             fx_print_bt_entry(curr_bt->ostack+i, "\tcalled from");
         }
     }
+}
+
+static int fx_global_exn_id = FX_EXN_User;
+
+void fx_register_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_free_t free_f,
+                    fx_to_string_t to_string_f, fx_print_t print_repr_f)
+{
+    fx_str_t nstr = {0, (char_*)name, fx_strlen(name)};
+    info->name = nstr;
+    info->free_f = free_f;
+    info->to_string_f = to_string_f;
+    info->print_repr_f = print_repr_f;
+
+    *tag = fx_global_exn_id--;
+}
+
+void fx_register_simple_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_exn_t* exn)
+{
+    fx_register_exn(name, tag, info, 0, 0, 0);
+    exn->tag = *tag;
+    exn->info = info;
+    exn->data = 0;
 }
 
 //////////////// function pointers ////////////////

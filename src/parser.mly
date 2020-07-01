@@ -357,7 +357,7 @@ exception_decl:
     {
         DefExn(ref { dexn_name=(get_id $2); dexn_typ=TypVoid; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
     }
-| EXCEPTION B_IDENT COLON typespec
+| EXCEPTION B_IDENT COLON typespec_or_record
     {
         DefExn(ref { dexn_name=(get_id $2); dexn_typ = $4; dexn_scope=ScGlobal :: []; dexn_loc=curr_loc() })
     }

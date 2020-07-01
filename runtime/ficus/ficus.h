@@ -303,6 +303,7 @@ typedef struct fx_cstr_t
     int_ length;
 } fx_cstr_t;
 
+int_ fx_strlen(const char_* rawstr);
 void fx_free_str(fx_str_t* str);
 void fx_free_cstr(fx_cstr_t* cstr);
 void fx_copy_str(const fx_str_t* src, fx_str_t* dst);
@@ -336,23 +337,22 @@ int fx_itoa(int_ n, fx_str_t* str);
 
 ////////////////////////// Exceptions //////////////////////
 
+typedef int (*fx_to_string_t)(void*, fx_str_t*, void*);
+typedef int (*fx_print_t)(void*, void*);
+
 struct fx_exn_data_t;
 struct fx_exn_t;
 
 typedef struct fx_exn_info_t
 {
-    int tag;
     fx_str_t name;
     fx_free_t free_f;
-    int (*to_string)(const struct fx_exn_t* exn, fx_str_t* str);
-    void (*print_repr)(const struct fx_exn_t* exn);
+    fx_to_string_t to_string_f;
+    fx_print_t print_repr_f;
 } fx_exn_info_t;
 
-#define FX_DECL_EXN(tab, base, exn, free_f_, to_string_, print_repr_) \
-{ \
-    fx_exn_info_t temp = { exn, FX_MAKE_STR(#exn), free_f_, to_string_, print_repr_ }; \
-    tab[base-exn] = temp; \
-}
+#define FX_MAKE_EXN(exn, free_f_, to_string_, print_expr_) \
+    { FX_MAKE_STR(#exn), free_f_, to_string_, print_repr_ };
 
 typedef struct fx_exn_data_t
 {
@@ -375,10 +375,20 @@ typedef struct fx_exn_t
 #define FX_FAST_THROW_RET(exn) \
     return FX_SET_EXN_FAST(exn);
 
-#define FX_SET_EXN(exn) \
-    fx_set_exn(exn, true, __func__, __FILE__, __LINE__)
+#define FX_SET_EXN(exn, move_exn) \
+    fx_set_exn(exn, move_exn, __func__, __FILE__, __LINE__)
+
+#define FX_THROW(exn, move_exn, catch_label) \
+    { fx_status = FX_SET_EXN(exn, move_exn); goto catch_label; }
 
 #define FX_UPDATE_BT() fx_update_bt(__func__, __FILE__, __LINE__)
+
+#define FX_MAKE_EXN_IMPL_START(tag, exn_t_prefix) \
+    FX_DECL_AND_MALLOC(exn_t_prefix##_data_t*, exn_data); \
+    fx_result->tag = tag; \
+    fx_result->info = &exn_t_prefix##_info; \
+    fx_result->data = (fx_exn_data_t*)exn_data; \
+    exn_data->rc = 1
 
 int fx_set_exn_fast(int code, const char* funcname, const char* filename, int lineno);
 int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filename, int lineno);
@@ -395,6 +405,10 @@ void fx_print_bt(void);
 
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
+
+void fx_register_simple_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_exn_t* exn);
+void fx_register_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_free_t free_f,
+                    fx_to_string_t to_string_f, fx_print_t print_repr_f);
 
 #define FX_FREE_EXN(exn) if(!(exn)->data) ; else fx_free_exn(exn)
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))

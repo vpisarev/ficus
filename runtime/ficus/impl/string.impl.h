@@ -10,6 +10,14 @@
 extern "C" {
 #endif
 
+int_ fx_strlen(const char_* rawstr)
+{
+    int_ len = 0;
+    while(rawstr[len] != 0)
+        len++;
+    return len;
+}
+
 void fx_free_str(fx_str_t* str)
 {
     if( str->rc )
