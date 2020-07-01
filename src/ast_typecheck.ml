@@ -551,21 +551,27 @@ let find_typ_instance t loc =
             with Not_found -> None)
     | _ -> Some t
 
-let get_record_elems t loc =
+let get_record_elems vn_exp_opt t loc =
     let t = deref_typ t in
+    let rn_opt = match vn_exp_opt with Some(ExpIdent(rn, _)) -> Some rn | _ -> None in
     match t with
-    | TypRecord {contents=(relems, true)} -> relems
+    | TypRecord {contents=(relems, true)} -> (noid, relems)
     | TypRecord _ -> raise_compile_err loc "the records, which elements we request, is not finalized"
     | TypApp _ ->
         (match (find_typ_instance t loc) with
         | Some (TypApp([], n)) ->
-            (match (id_info n) with
-            | IdVariant {contents={dvar_flags;
-                dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []}}
-                when (List.mem VariantRecord dvar_flags) -> relems
-            | _ -> raise_compile_err loc "attempt to treat non-record as a record #1")
+            (match (rn_opt, (id_info n)) with
+            | (None, IdVariant {contents={dvar_flags;
+                dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []}})
+                when (List.mem VariantRecord dvar_flags) -> (noid, relems)
+            | ((Some rn), IdVariant {contents={dvar_cases; dvar_constr}}) ->
+                let dvar_cases_ctors = Utils.zip dvar_cases dvar_constr in
+                (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id rn)) dvar_cases_ctors) with
+                | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
+                | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str rn)))
+            | _ -> raise_compile_err loc "attempt to treat named type, non-record and non-variant, as a record")
         | _ -> raise_compile_err loc "proper instance of the template [record?] type is not found")
-    | _ -> raise_compile_err loc "attempt to treat non-record as a record #2"
+    | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record #2"
 
 let is_real_typ t =
     let have_typ_vars = ref false in
@@ -809,7 +815,7 @@ and check_exp e env sc =
             unify etyp et eloc "incorrect type of the tuple element";
             ExpMem(new_e1, e2, ctx)
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) ->
-            let relems = get_record_elems etyp1 eloc1 in
+            let (_, relems) = get_record_elems None etyp1 eloc1 in
             (try
                 let (_, t1, _) = List.find (fun (n1, t1, _) -> n1 = n2) relems in
                 unify etyp t1 eloc "incorrect type of the record element";
@@ -1140,7 +1146,7 @@ and check_exp e env sc =
         let (rtyp, rloc) = get_exp_ctx r_e in
         let _ = unify rtyp etyp eloc "the types of the update-record argument and the result do not match" in
         let new_r_e = check_exp r_e env sc in
-        let relems = get_record_elems rtyp rloc in
+        let (_, relems) = get_record_elems None rtyp rloc in
         let new_r_initializers = List.map (fun (ni, ei) ->
             let (ei_typ, ei_loc) = get_exp_ctx ei in
             try

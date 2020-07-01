@@ -22,7 +22,7 @@ println("\(fp) is \(inside_outside(fp, fr)) \(fr)")*/
 
 //type pt = {x: int; y: int}
 type tt = Empty | Node: {left: tt; v: int; right: tt}
-val t0 = Node {left=Empty, v=5, right=Node{left=Empty, v=6, right=Empty}}
+val t0 = Node {right=Node{left=Empty, v=6, right=Empty}, left=Empty, v=5}
 
 exception MySimpleException : tt
 throw MySimpleException(t0)

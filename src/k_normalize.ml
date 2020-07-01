@@ -161,8 +161,9 @@ let rec exp2kexp e code tref sc =
             (elems, code) erow) ([], code) erows in
         let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
         (KExpMkArray(shape, (List.rev elems), kctx), code)
-    | ExpMkRecord (_, rinitelems, _) ->
-        let relems = Ast_typecheck.get_record_elems etyp eloc in
+    | ExpMkRecord (rn, rinitelems, _) ->
+        let _ = printf "k-normalization of ExpMkRecord\n" in
+        let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn) etyp eloc in
         let (ratoms, code) = List.fold_left (fun (ratoms, code) (ni, ti, opt_vi) ->
             let (a, code) = try
                 let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rinitelems in
@@ -175,10 +176,15 @@ let rec exp2kexp e code tref sc =
                     "there is no explicit inializer for the field '%s' nor there is default initializer for it"
                     (id2str ni)))
             in (a::ratoms, code)) ([], code) relems in
-        (KExpMkRecord((List.rev ratoms), kctx), code)
+        let _ = printf "k-normalization of ExpMkRecord: finished\n" in
+        if ctor = noid then
+            (KExpMkRecord((List.rev ratoms), kctx), code)
+        else
+            let _ = printf "converted to call %s\n" (id2str ctor) in
+            (KExpCall(ctor, (List.rev ratoms), kctx), code)
     | ExpUpdateRecord(e, rupdelems, _) ->
         let (rec_n, code) = exp2id e code true sc "the updated record cannot be a literal" in
-        let relems = Ast_typecheck.get_record_elems etyp eloc in
+        let (_, relems) = Ast_typecheck.get_record_elems None etyp eloc in
         let (_, ratoms, code) = List.fold_left (fun (idx, ratoms, code) (ni, ti, _) ->
             let (a, code) = try
                 let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rupdelems in
@@ -793,10 +799,16 @@ and transform_all_types_and_cons elist code sc =
                         let (_, code) = List.fold_left (fun (idx, code) constr ->
                             match (id_info constr) with
                             | IdFun {contents={df_name; df_typ}} ->
+                                let df_typ = match df_typ with
+                                    | TypFun([TypRecord {contents=(relems, true)}], rt) ->
+                                        TypFun((List.map (fun (n, t, _) -> t) relems), rt)
+                                    | _ -> df_typ
+                                    in
                                 let kf_typ=(typ2ktyp df_typ dvar_loc) in
                                 let (argtyps, rt) = match kf_typ with
                                         | KTypFun(argtyps, rt) -> (argtyps, rt)
-                                        | _ -> ([], kf_typ) in
+                                        | _ -> ([], kf_typ)
+                                    in
                                 let code = match argtyps with
                                 | [] ->
                                     let e0 = KExpAtom(Atom.Lit (LitInt (Int64.of_int idx)), (kf_typ, dvar_loc)) in
