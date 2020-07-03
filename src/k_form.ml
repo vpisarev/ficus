@@ -158,7 +158,7 @@ let sprintf = Printf.sprintf
 let printf = Printf.printf
 
 let builtin_exn_NoMatchError = ref noid
-let builtin_exn_IndexError = ref noid
+let builtin_exn_OutOfRangeError = ref noid
 
 let idks_frozen = ref true
 let freeze_idks f = idks_frozen := f

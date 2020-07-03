@@ -21,12 +21,12 @@ println("\(ip) is \(inside_outside(ip, ir)) \(ir)")
 println("\(fp) is \(inside_outside(fp, fr)) \(fr)")*/
 
 //type pt = (int, int)
-type tt = Empty | Node: {left: tt, v: int, right: tt}
-val t0 = Node {right=Node{left=Empty, v=6, right=Empty}, left=Empty, v=5}
+//type tt = Empty | Node: {left: tt, v: int, right: tt}
+//val t0 = Node {right=Node{left=Empty, v=6, right=Empty}, left=Empty, v=5}
 //type tt = Empty | Node: (tt, int, tt)
 //val t0 = Node (Empty, 5, Node(Empty, 6, Empty))
 
-fun print_tt(a: tt, indent: int)
+/*fun print_tt(a: tt, indent: int)
 {
     | Node {left, v, right} =>
         print("Node{left=")
@@ -40,7 +40,7 @@ fun print_tt(a: tt, indent: int)
 fun print_ttln(a: tt)
 {
     print_tt(a, 0); println()
-}
+}*/
 
 //exception MySimpleException
 //throw MySimpleException
@@ -52,3 +52,25 @@ fun print_ttln(a: tt)
 //println()
 
 //throw Fail("test")
+
+exception BreakWith: int
+
+fun find_neg(a: 't [])
+{
+    val n = size(a)
+    try
+    {
+        for i <- 0:n {if a[i] < 0 {throw BreakWith(i)}}
+        -1
+    }
+    catch
+    {
+    | BreakWith(i) => i
+    | OutOfRangeError => println("out of range error happened"); -100
+    | Fail(s) => println("Failure \(s)"); -100
+    | _ => println("unknown exception"); -100
+    }
+}
+
+val a=[0, 1, 2, -10, 7]
+println("excepion-based search: negative number in \(a): \(find_neg(a))")

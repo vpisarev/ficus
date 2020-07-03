@@ -8,7 +8,7 @@
 
 exception Fail: string
 exception NotFoundError
-exception IndexError
+exception OutOfRangeError
 exception NoMatchError
 exception OptionError
 exception NullListError

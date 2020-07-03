@@ -74,6 +74,7 @@ let rec exp2kexp e code tref sc =
     let (etyp, eloc) = get_exp_ctx e in
     let ktyp = typ2ktyp etyp eloc in
     let kctx = (ktyp, eloc) in
+    (*let _ = (printf "translating "; Ast_pp.pprint_exp_x e; printf "\n") in*)
     (*
         scans through (pi, ei) pairs in for(p1<-e1, p2<-e2, ..., pn<-en) operators;
         * updates the code that needs to be put before the for loop
@@ -589,19 +590,22 @@ and transform_pat_matching a cases code sc loc catch_mode =
         let get_var_tag_cmp_and_extract n pinfo (checks, code) vn sc loc =
             (* [TODO] avoid tag check when the variant has just a single case *)
             let {pinfo_tag=var_tag0; pinfo_typ} = pinfo in
-            let (c_args, vn_val) = match (kinfo_ vn loc) with
+            let (c_args, vn_tag_val, vn_case_val) = match (kinfo_ vn loc) with
                 | KFun {contents={kf_args; kf_flags}} ->
                     let (_, c_args) = Utils.unzip kf_args in
                     let ctor = get_fun_ctor kf_flags in
                     let tag_value = match ctor with CtorVariant tv -> tv | _ -> -1 in
                     let vn_val = if tag_value >= 0 then Atom.Lit (LitInt (Int64.of_int tag_value)) else (Atom.Id vn) in
-                    (c_args, vn_val)
-                | KExn {contents={ke_typ}} ->
-                    ((match ke_typ with KTypTuple(args) -> args | _ -> ke_typ :: []), (Atom.Id vn))
+                    (c_args, vn_val, vn_val)
+                | KExn {contents={ke_typ; ke_tag}} ->
+                    ((match ke_typ with
+                    | KTypTuple(args) -> args
+                    | KTypVoid -> []
+                    | _ -> ke_typ :: []), (Atom.Id ke_tag), (Atom.Id vn))
                 | KVal {kv_flags} ->
                     let ctor_id = get_val_ctor kv_flags in
                     let vn_val = if ctor_id >= 0 then Atom.Lit (LitInt (Int64.of_int ctor_id)) else (Atom.Id vn) in
-                    ([], vn_val)
+                    ([], vn_val, vn_val)
                 | k -> K_pp.pprint_kinfo_x k; raise_compile_err loc (sprintf "a variant constructor ('%s') is expected here" (id2str vn)) in
             let (tag_n, code) =
                 if var_tag0 != noid then (var_tag0, code) else
@@ -610,14 +614,14 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 let code = create_kdefval tag_n KTypCInt [] (Some extract_tag_exp) code sc loc in
                 (tag_n, code))
                 in
-            let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), vn_val, (KTypBool, loc)) in
+            let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), vn_tag_val, (KTypBool, loc)) in
             let checks = (rcode2kexp (cmp_tag_exp :: code) loc) :: checks in
             let (case_n, code, alt_e_opt) = match c_args with
                 | [] -> (noid, [], None)
                 | _ ->
                     let (is_tuple, case_typ) = match c_args with t :: [] -> (false, t) | _ -> (true, KTypTuple(c_args)) in
                     let extract_case_exp = KExpIntrin(IntrinVariantCase,
-                        (Atom.Id n) :: vn_val :: [], (case_typ, loc)) in
+                        (Atom.Id n) :: vn_case_val :: [], (case_typ, loc)) in
                     if is_tuple then
                         let case_n = gen_temp_idk "case" in
                         let code = create_kdefval case_n case_typ (ValTempRef :: [])
@@ -822,11 +826,11 @@ and transform_all_types_and_cons elist code sc =
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
         | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
-            let is_std = match dexn_scope with
-                    (ScModule m) :: _ when (pp_id2str m) = "Builtins" ->
+            let is_std = match (dexn_scope, (deref_typ dexn_typ)) with
+                    (((ScModule m) :: _), TypVoid) when (pp_id2str m) = "Builtins" ->
                         let exn_name_str = pp_id2str dexn_name in
-                        if exn_name_str = "IndexError" then
-                            builtin_exn_IndexError := dexn_name
+                        if exn_name_str = "OutOfRangeError" then
+                            builtin_exn_OutOfRangeError := dexn_name
                         else if exn_name_str = "NoMatchError" then
                             builtin_exn_NoMatchError := dexn_name
                         else

@@ -111,7 +111,7 @@ let convert_all_fdecls top_code =
             let _ = set_idc_entry kcv_name (CTyp ct) in
             let decl_fcvt = [CDefTyp ct] in
             top_fcv_decls := decl_free_f @ decl_fcvt @ !top_fcv_decls
-        | KDefExn {contents={ke_std=true}} -> ()
+        | KDefExn {contents={ke_std=true; ke_typ=KTypVoid}} -> ()
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_std; ke_tag; ke_cname; ke_base_cname; ke_make; ke_scope; ke_loc} = !ke in
             let exn_strname = get_qualified_name (pp_id2str ke_name) ke_scope in
@@ -242,7 +242,7 @@ let convert_all_fdecls top_code =
                     let free_f_exp = make_id_t_exp free_f !std_fx_free_t ke_loc in
                     let cexn = ref {
                         cexn_name=ke_name; cexn_cname=ke_cname; cexn_base_cname=ke_base_cname;
-                        cexn_typ=(C_gen_types.ktyp2ctyp ke_typ ke_loc);
+                        cexn_typ=(C_gen_types.ktyp2ctyp ke_typ ke_loc); cexn_std=ke_std;
                         cexn_tag=ke_tag; cexn_data=exn_data_id; cexn_info=exn_info;
                         cexn_make=ke_make; cexn_scope=ke_scope; cexn_loc=ke_loc
                         } in

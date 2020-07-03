@@ -33,7 +33,7 @@ extern "C" {
 enum
 {
     FX_OK = 0,
-    FX_EXN_Failure = -1,
+    FX_EXN_UnknownExnError = -1,
     FX_EXN_AssertError = -2,
     FX_EXN_NotFoundError = -3,
     FX_EXN_OutOfMemError = -4,
@@ -54,7 +54,6 @@ enum
     FX_EXN_ASCIIError = -19,
     FX_EXN_NullListError = -20,
     FX_EXN_OptionError = -21,
-    FX_EXN_UnknownExnError = -22,
 
     FX_EXN_StdMax = -48,
 
@@ -144,7 +143,7 @@ void fx_free(void* ptr);
         ; \
     else goto label
 
-#define FX_COPY_PTR(src, dst) { if(src) FX_INCREF((src)->rc); *(dst) = (src); }
+#define FX_COPY_PTR(src, dst) if(src) { FX_INCREF((src)->rc); *(dst) = (src); } else *(dst) = 0
 #define FX_COPY_SIMPLE(src, dst) *(dst) = (src)
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)

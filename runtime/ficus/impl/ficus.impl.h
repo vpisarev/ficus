@@ -32,8 +32,6 @@ int fx_init(int argc, char** argv)
     fx_str_t okstr = FX_MAKE_STR("OK");
     fx_std_exn_info[0].name = okstr;
 
-    //FX_DECL_STD_EXN(FX_OK);
-    //FX_DECL_STD_EXN(Failure);
     FX_DECL_STD_EXN(AssertError);
     FX_DECL_STD_EXN(NotFoundError);
     FX_DECL_STD_EXN(OutOfMemError);

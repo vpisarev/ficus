@@ -28,17 +28,15 @@ open Ast
 open K_form
 
 let find_globals top_code set0 = List.fold_left (fun globals e ->
-    let n_opt =
+    let n_list =
     match e with
-    | KDefVal(n, e, _) -> Some n
-    | KDefFun {contents={kf_name}} -> Some kf_name
-    | KDefExn {contents={ke_name}} -> Some ke_name
-    | KDefVariant {contents={kvar_name}} -> Some kvar_name
-    | KDefTyp {contents={kt_name}} -> Some kt_name
-    | _ -> None in
-    match n_opt with
-    | Some n -> IdSet.add n globals
-    | _ -> globals) set0 top_code
+    | KDefVal(n, e, _) -> n::[]
+    | KDefFun {contents={kf_name}} -> kf_name::[]
+    | KDefExn {contents={ke_name; ke_tag}} -> ke_name::ke_tag::[]
+    | KDefVariant {contents={kvar_name}} -> kvar_name::[]
+    | KDefTyp {contents={kt_name}} -> kt_name::[]
+    | _ -> [] in
+    List.fold_left (fun globals n -> IdSet.add n globals) globals n_list) set0 top_code
 
 let lift top_code =
     let new_top_code = ref ([]: kexp_t list) in

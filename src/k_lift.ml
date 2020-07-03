@@ -527,6 +527,9 @@ let lift_all top_code =
             kf := {!kf with kf_body=body};
             curr_top_code := (KDefFun kf) :: !curr_top_code;
             List.hd (create_defclosure kf [])
+        | KDefExn {contents={ke_tag}} ->
+            defined_so_far := IdSet.add ke_tag !defined_so_far;
+            walk_kexp e callb
         | KDefVal(n, rhs, loc) ->
             let rhs = walk_kexp_n_lift_all rhs callb in
             let is_mutable_fvar = IdSet.mem n all_mut_fvars in

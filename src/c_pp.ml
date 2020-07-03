@@ -299,17 +299,21 @@ and pprint_cstmt s =
             List.iteri (fun i s -> if i = 0 then () else pbreak(); pprint_cstmt s) sl;
             cbox(); pbreak(); pstr "}")
     | CStmtIf (e, s1, s2, _) ->
-        obox();
-        pstr "if ("; pprint_cexp_ e 0; pstr ")";
-        pspace();
-        pprint_cstmt_or_block_cbox s1;
-        (match s2 with
-        | CStmtNop _ | CStmtBlock ([], _) -> ()
-        | _ -> pspace(); obox(); pstr "else"; pspace(); pprint_cstmt_or_block_cbox s2)
+        let rec print_cascade_if prefix e s1 s2 =
+            obox();
+            pstr (prefix ^ " ("); pprint_cexp_ e 0; pstr ")";
+            pspace();
+            pprint_cstmt_or_block_cbox s1;
+            (match s2 with
+            | CStmtNop _ | CStmtBlock ([], _) -> ()
+            | CStmtIf(e_, s1_, s2_, _) -> pspace(); print_cascade_if "else if" e_ s1_ s2_
+            | _ -> pspace(); obox(); pstr "else"; pspace(); pprint_cstmt_or_block_cbox s2)
+            in
+        print_cascade_if "if" e s1 s2
     | CStmtGoto(n, loc) -> obox(); pstr "goto"; pspace(); pprint_id n loc; pstr ";"; cbox()
     | CStmtLabel (n, loc) ->
         Format.print_break 1 (- !base_indent);
-        pprint_id n loc; pstr ":"
+        pprint_id n loc; pstr ": ;"
     | CStmtFor(t_opt, e1, e2_opt, e3, body, loc) ->
         obox();
         pstr "for (";

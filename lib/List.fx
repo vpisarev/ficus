@@ -18,7 +18,7 @@ fun last(_: 't list)
 fun nth(_: 't list, n: int)
 {
     | a :: rest => if n == 0 {a} else {nth(rest, n-1)}
-    | _ => throw IndexError
+    | _ => throw OutOfRangeError
 }
 
 pure nothrow fun length(l: 't list): int = ccode
