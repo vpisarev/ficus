@@ -245,13 +245,12 @@ int fx_rethrow_exn(fx_exn_t* exn)
 }
 
 // it's always used in the beginning of "catch"
-int fx_exn_get_and_reset(fx_exn_t* exn)
+void fx_exn_get_and_reset(fx_exn_t* exn)
 {
     fx_bt_t* curr_bt = &fx_bt;
     fx_exn_t* curr_exn = &curr_bt->curr_exn;
     *exn = *curr_exn;
     curr_exn->data = 0;
-    return exn->tag;
 }
 
 const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn)

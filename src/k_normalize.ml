@@ -202,7 +202,7 @@ let rec exp2kexp e code tref sc =
         (KExpCall(f_id, (List.rev args), kctx), code)
     | ExpThrow(e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be thrown as exception" in
-        (KExpThrow(a_id, eloc), code)
+        (KExpThrow(a_id, false, eloc), code)
     | ExpIf(e1, e2, e3, _) ->
         let (c, code) = exp2kexp e1 code false sc in
         let loc2 = get_exp_loc e2 in
@@ -724,12 +724,12 @@ and transform_pat_matching a cases code sc loc catch_mode =
         ((List.rev checks), ke)) cases in
     let k_cases = if !have_else then k_cases else
         if catch_mode then
-            let rethrow_exp = KExpThrow((atom2id a loc "internal error: a literal cannot occur here"), loc) in
+            let rethrow_exp = KExpThrow((atom2id a loc "internal error: a literal cannot occur here"), true, loc) in
             k_cases @ [([], rethrow_exp)]
         else
             let _ = if !builtin_exn_NoMatchError != noid then () else
                 raise_compile_err loc "internal error: NoMatchError exception is not found" in
-            let nomatch_err = KExpThrow(!builtin_exn_NoMatchError, loc) in
+            let nomatch_err = KExpThrow(!builtin_exn_NoMatchError, false, loc) in
             k_cases @ [([], nomatch_err)]
     in (k_cases, code)
 

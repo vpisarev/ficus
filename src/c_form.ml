@@ -844,7 +844,7 @@ let std_FX_COPY_EXN = ref noid
 let std_FX_MAKE_EXN_IMPL = ref noid
 let std_fx_free_exn = ref noid
 let std_fx_copy_exn = ref noid
-let std_fx_rethrow_exn = ref noid
+let std_FX_RETHROW = ref noid
 
 let std_FX_FREE_LIST_SIMPLE = ref noid
 let std_fx_free_list_simple = ref noid

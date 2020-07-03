@@ -111,7 +111,11 @@ let convert_all_fdecls top_code =
             let _ = set_idc_entry kcv_name (CTyp ct) in
             let decl_fcvt = [CDefTyp ct] in
             top_fcv_decls := decl_free_f @ decl_fcvt @ !top_fcv_decls
-        | KDefExn {contents={ke_std=true; ke_typ=KTypVoid}} -> ()
+        | KDefExn {contents={ke_std=true; ke_tag; ke_typ=KTypVoid; ke_scope; ke_loc}} ->
+            (match (kinfo_ ke_tag ke_loc) with
+            | KVal {kv_flags; kv_cname} ->
+                ignore(create_cdefval ke_tag CTypCInt [ValMutable] kv_cname None [] ke_scope ke_loc)
+            | _ -> raise_compile_err ke_loc (sprintf "information about exception tag '%s' is invalid" (id2str ke_tag)))
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_std; ke_tag; ke_cname; ke_base_cname; ke_make; ke_scope; ke_loc} = !ke in
             let exn_strname = get_qualified_name (pp_id2str ke_name) ke_scope in

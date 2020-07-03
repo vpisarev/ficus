@@ -365,6 +365,8 @@ typedef struct fx_exn_t
     struct fx_exn_data_t* data;
 } fx_exn_t;
 
+#define FX_EXN_DATA(typ, data_) (((typ*)(data_))->data)
+
 #define FX_SET_EXN_FAST(exn) \
     fx_exn_set_fast(exn, __func__, __FILE__, __LINE__)
 
@@ -379,6 +381,8 @@ typedef struct fx_exn_t
 
 #define FX_THROW(exn, move_exn, catch_label) \
     { fx_status = FX_SET_EXN(exn, move_exn); goto catch_label; }
+#define FX_RETHROW(exn, catch_label) \
+    { fx_status = fx_rethrow_exn(exn); goto catch_label; }
 
 #define FX_UPDATE_BT() fx_update_bt(__func__, __FILE__, __LINE__)
 
@@ -392,7 +396,7 @@ typedef struct fx_exn_t
 int fx_set_exn_fast(int code, const char* funcname, const char* filename, int lineno);
 int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filename, int lineno);
 int fx_rethrow_exn(fx_exn_t* exn);
-int fx_exn_get_and_reset(fx_exn_t* exn);
+void fx_exn_get_and_reset(fx_exn_t* exn);
 
 const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn);
 int fx_exn_name(const fx_exn_t* exn, fx_str_t* exn_name);

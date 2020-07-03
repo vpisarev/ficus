@@ -234,6 +234,9 @@ let gen_ccode top_code =
     let u1vals = find_single_use_vals top_code in
     let block_stack = ref ([]: block_ctx_t list) in
     let for_letters = ["i"; "j"; "k"; "l"; "m"] in
+    let fx_status = get_id "fx_status" in
+
+    let make_fx_status loc = make_id_t_exp fx_status CTypCInt loc in
 
     let ensure_func_is_defined_or_declared f loc =
         if (IdSet.mem f !defined_funcs) then () else
@@ -955,6 +958,132 @@ let gen_ccode top_code =
             body_ccode) body_ccode body_elems
     in
 
+    let rec process_cases cases dstexp_r ccode is_catch_case sc kloc =
+        let end_loc = get_end_loc kloc in
+        let endmatch = make_label (if is_catch_case then "endcatch" else "endmatch") sc end_loc in
+        let (have_default, em_label_used, have_epilogues, have_complex_branches, all_cases_ccode) =
+            List.fold_left
+            (fun (have_default, em_label_used, have_epilogues,
+                have_complex_branches, all_cases_ccode) (checks_i, action_i) ->
+            let (cchecks_i, pre_cchecks_i) = List.fold_left (fun (checks_i, pre_checks_i) check_ij ->
+                let (ccheck_ij, ccode_ij) = kexp2cexp check_ij (ref None) [] sc in
+                (ccheck_ij :: checks_i, ccode_ij :: pre_checks_i)) ([], []) checks_i
+                in
+            let ai_loc = get_kexp_loc action_i in
+            let new_have_default =
+                match checks_i with
+                | [] -> if have_default then raise_compile_err ai_loc
+                    "cgen: more than one default action" else true
+                | _ -> have_default
+                in
+            (* for each action we create a dedicated scope with its own cleanup section;
+                this is because it can be very lengthy match expressions with
+                many cases (like in compilers), so if we put all the
+                non-trivial locals into the common scope, the cleanup section
+                will be very inefficient *)
+            let ai_end_loc = get_end_loc ai_loc in
+            let (ai_ccode, em_label_used_i, have_epilogue_i) =
+                match action_i with
+                | KExpThrow _ ->
+                    let (_, ai_ccode) = kexp2cexp action_i dstexp_r [] sc in
+                    (ai_ccode, false, false)
+                | _ ->
+                    let _ = new_block_ctx BlockKind_Case sc ai_loc in
+                    let (_, ai_ccode) = kexp2cexp action_i dstexp_r [] sc in
+                    let bctx_i = curr_block_ctx kloc in
+                    let {bctx_prologue; bctx_cleanup;
+                        bctx_label; bctx_label_used} = bctx_i in
+                    let prologue = bctx_prologue in
+                    let epilogue = List.rev bctx_cleanup in
+                    let (ai_ccode, epilogue, have_epilogue_i) =
+                        if epilogue = [] && prologue = [] then
+                            let _ = pop_block_ctx ai_end_loc in
+                            (* recompile the action code inside the parent context.
+                                that is, in the case of exception, jump to the higher-level label
+                                instead of this one. that probably makes compile the graph somewhat
+                                simpler to analyze.
+                                [TODO]
+                                instead of complete re-compilation of the branch,
+                                we could just replace all the bctx_label
+                                occurences with the parent label *)
+                            let (_, ai_ccode) = kexp2cexp action_i dstexp_r [] sc in
+                            (ai_ccode, epilogue, false)
+                        else
+                            let epilogue =
+                                if bctx_label_used = 0 then
+                                    epilogue
+                                else
+                                    epilogue @ (CStmtLabel (bctx_label, ai_end_loc) :: [])
+                                in
+                            let _ = pop_block_ctx ai_end_loc in
+                            (ai_ccode, epilogue, true)
+                        in
+                    let (em_label_used_i, epilogue) = if new_have_default then
+                        (false, epilogue)
+                    else
+                        (true, ((CStmtGoto (endmatch, ai_end_loc)) :: epilogue))
+                    in
+                    let ai_ccode = epilogue @ ai_ccode @ prologue in
+                    (ai_ccode, em_label_used_i, have_epilogue_i)
+                in
+            let complex_branch_i = match (cchecks_i, pre_cchecks_i) with
+                | ([], []) -> false
+                | (c::[], []::[]) -> false
+                | _ -> true
+                in
+            let case_ccode = match (cchecks_i, pre_cchecks_i) with
+                | ([], []) -> ai_ccode
+                | _ ->
+                    let ai_stmt = rccode2stmt ai_ccode ai_loc in
+                    (* generate the nested if statement;
+                    [TODO] need to replace it with one
+                    `if (expi0 && expi1 && ... && expi{n-1}) { action_i }`
+                    if possible (i.e. when all pre_check_ij's are empty) *)
+                    do_fold_left2 (fun case_ccode check_ij pre_check_ij ->
+                        let case_stmt = rccode2stmt case_ccode ai_end_loc in
+                        let checkij_loc = get_cexp_loc check_ij in
+                        let if_stmt = CStmtIf(check_ij, case_stmt, (CStmtNop ai_end_loc), checkij_loc) in
+                        if_stmt :: pre_check_ij) (ai_stmt :: []) cchecks_i pre_cchecks_i ai_end_loc
+                        "cgen: KExpMatch fold_left2"
+                        in
+            (new_have_default, em_label_used || em_label_used_i,
+            have_epilogues || have_epilogue_i,
+            have_complex_branches || complex_branch_i,
+            case_ccode :: all_cases_ccode)) (false, false, false, false, []) cases
+            in
+        let parent_lbl = curr_block_label end_loc in
+        let all_cases_ccode = if have_default then all_cases_ccode else
+            let no_match_err = make_id_t_exp (get_id "FX_EXN_NoMatchError") CTypCInt end_loc in
+            let throw_no_match = make_call !std_FX_FAST_THROW [no_match_err; parent_lbl] CTypVoid end_loc in
+            [CExp throw_no_match] :: all_cases_ccode
+            in
+        let (em_label_used, ccode) =
+            match (have_complex_branches, all_cases_ccode) with
+            | (false, else_s :: ifs) ->
+                let complex_if = List.fold_left (fun complex_if s_i ->
+                    match s_i with
+                    | CStmtIf(c_i, then_i, (CStmtNop _), loc_i) :: [] ->
+                        let then_i =
+                            match List.rev (stmt2ccode then_i) with
+                            | (CStmtGoto(i, _) :: rest) when i = endmatch ->
+                                rccode2stmt rest loc_i
+                            | _ -> then_i
+                        in CStmtIf(c_i, then_i, complex_if, loc_i)
+                    | _ ->
+                        raise_compile_err end_loc
+                            "cgen: unexpected statement in the chained match statement")
+                    (rccode2stmt else_s end_loc) ifs
+                in
+                (false, complex_if :: ccode)
+            | _ -> (em_label_used, (List.concat all_cases_ccode) @ ccode)
+            in
+        let ccode = if not em_label_used then ccode
+            else (CStmtLabel (endmatch, end_loc)) :: ccode in
+        let ccode = if not have_epilogues then ccode else
+            let check_exn = make_call !std_FX_CHECK_EXN (parent_lbl::[]) CTypVoid end_loc in
+            (CExp check_exn) :: ccode
+        in ccode
+
     (*
         cases:
            - input kexp is void:
@@ -967,7 +1096,7 @@ let gen_ccode top_code =
                 the result should be returned as expression
                 if needed, some temporary id is generated where the result is stored.
     *)
-    let rec kexp2cexp kexp dstexp_r ccode sc =
+    and kexp2cexp kexp dstexp_r ccode sc =
         let (ktyp, kloc) = get_kexp_ctx kexp in
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = make_dummy_exp kloc in
@@ -1079,26 +1208,37 @@ let gen_ccode top_code =
                 let (cv, ccode) = atom2cexp v ccode sc kloc in
                 let vktyp = get_atom_ktyp v kloc in
                 let {ktp_ptr} = K_annotate_types.get_ktprops vktyp kloc in
-                let vn_val = match vn_val with
-                    | Atom.Id vn -> (get_orig_id vn)
-                    | Atom.Lit (LitInt i) ->
-                        let i = Int64.to_int i in
-                        let (_, var_constr) = get_variant_cases vktyp kloc in
-                        get_orig_id (List.nth var_constr i)
-                    | _ -> raise_compile_err kloc "cgen: invalid IntrinVariantCase 2nd parameter"
-                    in
-                let cvu = if ktp_ptr then
+                (match (vktyp, vn_val) with
+                | (KTypExn, (Atom.Id vn)) ->
+                    (match (cinfo_ vn kloc) with
+                    | CExn {contents={cexn_data}} ->
+                        let exn_data = cexp_mem cv (get_id "data") CTypAny in
+                        let exn_data = make_call (get_id "FX_EXN_DATA")
+                            [CExpTyp ((CTypName cexn_data), kloc); exn_data] ctyp kloc in
+                        (true, exn_data, ccode)
+                    | _ -> raise_compile_err kloc (sprintf "cgen: information about exception '%s' is not found"
+                        (idk2str vn kloc)))
+                | (_, Atom.Lit (LitInt i)) ->
+                    let i = Int64.to_int i in
+                    let (_, var_constr) = get_variant_cases vktyp kloc in
+                    let vn_val = get_orig_id (List.nth var_constr i) in
+                    let cvu = if ktp_ptr then
                         cexp_arrow cv (get_id "u") CTypAny
                     else
                         cexp_mem cv (get_id "u") CTypAny in
-                let celem = cexp_mem cvu vn_val ctyp in
-                (true, celem, ccode)
+                    let celem = cexp_mem cvu vn_val ctyp in
+                    (true, celem, ccode)
+                | _ -> raise_compile_err kloc "cgen: invalid IntrinVariantCase 2nd parameter")
             | (IntrinListHead, l :: []) ->
                 let (cl, ccode) = atom2cexp l ccode sc kloc in
                 (true, (cexp_arrow cl (get_id "hd") ctyp), ccode)
             | (IntrinListTail, l :: []) ->
                 let (cl, ccode) = atom2cexp l ccode sc kloc in
                 (true, (cexp_arrow cl (get_id "tl") ctyp), ccode)
+            | (IntrinPopExn, []) ->
+                let (dst_exp, ccode) = get_dstexp dstexp_r "curr_exn" CTypExn [ValTemp] ccode sc kloc in
+                let e = make_call (get_id "fx_exn_get_and_reset") [cexp_get_addr dst_exp] CTypVoid kloc in
+                (false, dst_exp, (CExp e) :: ccode)
             | _ -> raise_compile_err kloc "cgen: unsupported KExpIntrin")
         | KExpSeq(el, _) ->
             let rec process_seq el ccode = match el with
@@ -1372,180 +1512,53 @@ let gen_ccode top_code =
             ...
             *)
             let (dst_exp, ccode) = get_dstexp dstexp_r "res" ctyp [] ccode sc kloc in
-            let end_loc = get_end_loc kloc in
-            let endmatch = make_label "endmatch" sc end_loc in
-            let (have_default, em_label_used, have_epilogues, have_complex_branches, all_cases_ccode) =
-                List.fold_left
-                (fun (have_default, em_label_used, have_epilogues,
-                    have_complex_branches, all_cases_ccode) (checks_i, action_i) ->
-                let (cchecks_i, pre_cchecks_i) = List.fold_left (fun (checks_i, pre_checks_i) check_ij ->
-                    let (ccheck_ij, ccode_ij) = kexp2cexp check_ij (ref None) [] sc in
-                    (ccheck_ij :: checks_i, ccode_ij :: pre_checks_i)) ([], []) checks_i
-                    in
-                let ai_loc = get_kexp_loc action_i in
-                let new_have_default =
-                    match checks_i with
-                    | [] -> if have_default then raise_compile_err ai_loc
-                        "cgen: more than one default action" else true
-                    | _ -> have_default
-                    in
-                (* for each action we create a dedicated scope with its own cleanup section;
-                   this is because it can be very lengthy match expressions with
-                   many cases (like in compilers), so if we put all the
-                   non-trivial locals into the common scope, the cleanup section
-                   will be very inefficient *)
-                let ai_end_loc = get_end_loc ai_loc in
-                let (ai_ccode, em_label_used_i, have_epilogue_i) =
-                    match action_i with
-                    | KExpThrow _ ->
-                        let (_, ai_ccode) = kexp2cexp action_i dstexp_r [] sc in
-                        (ai_ccode, false, false)
-                    | _ ->
-                        let _ = new_block_ctx BlockKind_Case sc ai_loc in
-                        let (_, ai_ccode) = kexp2cexp action_i dstexp_r [] sc in
-                        let bctx_i = curr_block_ctx kloc in
-                        let {bctx_prologue; bctx_cleanup;
-                            bctx_label; bctx_label_used} = bctx_i in
-                        let prologue = bctx_prologue in
-                        let epilogue = List.rev bctx_cleanup in
-                        let (ai_ccode, epilogue, have_epilogue_i) =
-                            if epilogue = [] && prologue = [] then
-                                let _ = pop_block_ctx ai_end_loc in
-                                (* recompile the action code inside the parent context.
-                                   that is, in the case of exception, jump to the higher-level label
-                                   instead of this one. that probably makes compile the graph somewhat
-                                   simpler to analyze.
-                                   [TODO]
-                                   instead of complete re-compilation of the branch,
-                                   we could just replace all the bctx_label
-                                   occurences with the parent label *)
-                                let (_, ai_ccode) = kexp2cexp action_i dstexp_r [] sc in
-                                (ai_ccode, epilogue, false)
-                            else
-                                let epilogue =
-                                    if bctx_label_used = 0 then
-                                        epilogue
-                                    else
-                                        epilogue @ (CStmtLabel (bctx_label, ai_end_loc) :: [])
-                                    in
-                                let _ = pop_block_ctx ai_end_loc in
-                                (ai_ccode, epilogue, true)
-                            in
-                        let (em_label_used_i, epilogue) = if new_have_default then
-                            (false, epilogue)
-                        else
-                            (true, ((CStmtGoto (endmatch, ai_end_loc)) :: epilogue))
-                        in
-                        let ai_ccode = epilogue @ ai_ccode @ prologue in
-                        (ai_ccode, em_label_used_i, have_epilogue_i)
-                    in
-                let complex_branch_i = match (cchecks_i, pre_cchecks_i) with
-                    | ([], []) -> false
-                    | (c::[], []::[]) -> false
-                    | _ -> true
-                    in
-                let case_ccode = match (cchecks_i, pre_cchecks_i) with
-                    | ([], []) -> ai_ccode
-                    | _ ->
-                        let ai_stmt = rccode2stmt ai_ccode ai_loc in
-                        (* generate the nested if statement;
-                        [TODO] need to replace it with one
-                        `if (expi0 && expi1 && ... && expi{n-1}) { action_i }`
-                        if possible (i.e. when all pre_check_ij's are empty) *)
-                        do_fold_left2 (fun case_ccode check_ij pre_check_ij ->
-                            let case_stmt = rccode2stmt case_ccode ai_end_loc in
-                            let checkij_loc = get_cexp_loc check_ij in
-                            let if_stmt = CStmtIf(check_ij, case_stmt, (CStmtNop ai_end_loc), checkij_loc) in
-                            if_stmt :: pre_check_ij) (ai_stmt :: []) cchecks_i pre_cchecks_i ai_end_loc
-                            "cgen: KExpMatch fold_left2"
-                            in
-                (new_have_default, em_label_used || em_label_used_i,
-                have_epilogues || have_epilogue_i,
-                have_complex_branches || complex_branch_i,
-                case_ccode :: all_cases_ccode)) (false, false, false, false, []) cases
-                in
-            let parent_lbl = curr_block_label end_loc in
-            let all_cases_ccode = if have_default then all_cases_ccode else
-                let no_match_err = make_id_t_exp (get_id "FX_EXN_NoMatchError") CTypCInt end_loc in
-                let throw_no_match = make_call !std_FX_FAST_THROW [no_match_err; parent_lbl] CTypVoid end_loc in
-                [CExp throw_no_match] :: all_cases_ccode
-                in
-            let (em_label_used, ccode) =
-                match (have_complex_branches, all_cases_ccode) with
-                | (false, else_s :: ifs) ->
-                    let complex_if = List.fold_left (fun complex_if s_i ->
-                        match s_i with
-                        | CStmtIf(c_i, then_i, (CStmtNop _), loc_i) :: [] ->
-                            let then_i =
-                                match List.rev (stmt2ccode then_i) with
-                                | (CStmtGoto(i, _) :: rest) when i = endmatch ->
-                                    rccode2stmt rest loc_i
-                                | _ -> then_i
-                            in CStmtIf(c_i, then_i, complex_if, loc_i)
-                        | _ ->
-                            raise_compile_err end_loc
-                                "cgen: unexpected statement in the chained match statement")
-                        (rccode2stmt else_s end_loc) ifs
-                    in
-                    (false, complex_if :: ccode)
-                | _ -> (em_label_used, (List.concat all_cases_ccode) @ ccode)
-                in
-            let ccode = if not em_label_used then ccode
-                else (CStmtLabel (endmatch, end_loc)) :: ccode in
-            let ccode = if not have_epilogues then ccode else
-                let check_exn = make_call !std_FX_CHECK_EXN (parent_lbl::[]) CTypVoid end_loc in
-                (CExp check_exn) :: ccode
-                in
+            let ccode = process_cases cases dstexp_r ccode false sc kloc in
             (false, dst_exp, ccode)
-        | KExpTryCatch(try_e, catch_e, _) -> raise_compile_err kloc "cgen: unsupported KExpCatch"
+
+        | KExpTryCatch(try_e, catch_e, _) ->
             (*
-            initialize/get dst if needed.
-            try_code writing to dst
+            [dst_exp =] try_block
             if(fx_status < 0) {
-
-                code00; if(exp00) {
-                    code01; if(exp01) {
-                    ... if(exp0N0) {
-                        action0; goto _fx_endcatch...;
-                }...}}
-                code10; if(exp01) {
-                    code11; if(exp11) {
-                    ... if(exp1N1) {
-                        action1; goto _fx_endcatch...;
-                }...}}
-                ...
-                #if <have_default_action>
-                default_action; // if there is default case
-                #else
-                FX_SET_EXN_FAST(FX_EXN_NoMatchError);
-                #endif
-                [_fx_endcatch...:]
-                FX_CHECK_EXN(parent_label);
-            ...
+                fx_status = 0;
+                [destruct dst_exp] // because it maybe partially constructed at this point,
+                                   // but we are going to re-use it
+                catch_code
+            }
             *)
-
-            (* create new block context, generate temporary value to assign the try result.
-               generate code for try_e. then generate code for catch similarly to kexpmatch:
-
-               tvtype try_val = ...;
-               try_code;
-               try_val = try_code_result;
-
-            try_cleanup:
-               ...; // call destructors for complex data structures used in try
-               if(fx_status >= 0) goto end_catch;
-
-               int code = fx_status;
-               fx_status = FX_OK;
-               ... // code to match the exception
-               // if not caught
-               fx_status = FX_OK; goto next_label_in_stack; // propagate the unhandled exception
-            end_catch:
-               // here we jump after each successful try or after successful catch.
-            *)
-        | KExpThrow(i, _) ->
+            let (dst_exp, ccode) = get_dstexp dstexp_r "res" ctyp [] ccode sc kloc in
+            let try_loc = get_kexp_loc try_e in
+            let try_end_loc = get_end_loc try_loc in
+            let _ = new_block_ctx BlockKind_Try sc try_loc in
+            let (_, try_ccode) = kexp2cexp try_e dstexp_r [] sc in
+            let bctx_try = curr_block_ctx kloc in
+            let {bctx_prologue; bctx_cleanup; bctx_label; bctx_label_used} = bctx_try in
+            let epilogue =
+                if bctx_label_used = 0 then bctx_cleanup
+                else bctx_cleanup @ (CStmtLabel (bctx_label, try_end_loc) :: [])
+                in
+            let ccode = epilogue @ try_ccode @ bctx_prologue @ ccode in
+            let _ = pop_block_ctx try_end_loc in
+            let fx_status_exp = make_fx_status try_end_loc in
+            let catch_ccode = [CExp (CExpBinOp(COpAssign, fx_status_exp,
+                (make_int_exp 0 try_end_loc), (CTypVoid, try_end_loc)))] in
+            let catch_ccode = match ctyp with
+                | CTypVoid -> catch_ccode
+                | _ -> C_gen_types.gen_free_code dst_exp ctyp true true catch_ccode try_end_loc
+                in
+            let (_, catch_ccode) = kexp2cexp catch_e dstexp_r catch_ccode sc in
+            let check_neg_status = CExpBinOp(COpCompareLT, (make_fx_status try_end_loc),
+                (make_int_exp 0 try_end_loc), (CTypBool, try_end_loc)) in
+            let catch_loc = get_kexp_loc catch_e in
+            let catch_clause = CStmtIf(check_neg_status,
+                (rccode2stmt catch_ccode catch_loc), (CStmtNop try_end_loc), catch_loc) in
+            (false, dst_exp, catch_clause :: ccode)
+        | KExpThrow(i, rethrow, _) ->
             let lbl = curr_block_label kloc in
-            let ccode = match Hashtbl.find_all builtin_exceptions i with
+            let ccode = if rethrow then
+                let (i_exp, ccode) = id2cexp i false ccode sc kloc in
+                let throw_exp = make_call !std_FX_RETHROW [(cexp_get_addr i_exp); lbl] CTypVoid kloc in
+                (CExp throw_exp) :: ccode
+            else match Hashtbl.find_all builtin_exceptions i with
             | [] ->
                 let move_f = match (kinfo_ i kloc) with
                     | KExn _ -> false

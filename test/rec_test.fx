@@ -60,15 +60,15 @@ fun find_neg(a: 't [])
     val n = size(a)
     try
     {
-        for i <- 0:n {if a[i] < 0 {throw BreakWith(i)}}
+        for i <- 0:n {if a[i] > 0 {throw Fail(">0")} else if a[i] < 0 {throw BreakWith(i)}}
         -1
     }
     catch
     {
     | BreakWith(i) => i
     | OutOfRangeError => println("out of range error happened"); -100
-    | Fail(s) => println("Failure \(s)"); -100
-    | _ => println("unknown exception"); -100
+    | Fail(s) => println("Failure '\(s)'"); -100
+    //| _ => println("unknown exception"); -100
     }
 }
 

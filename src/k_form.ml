@@ -113,7 +113,7 @@ and kexp_t =
     | KExpAssign of id_t * kexp_t * loc_t
     | KExpMatch of ((kexp_t list) * kexp_t) list * kctx_t
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
-    | KExpThrow of id_t * loc_t
+    | KExpThrow of id_t * bool * loc_t
     | KExpCast of atom_t * ktyp_t * loc_t
     | KExpMap of (kexp_t * (id_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
     | KExpFor of (id_t * dom_t) list * kexp_t * for_flag_t list * loc_t
@@ -218,7 +218,7 @@ let get_kexp_ctx e = match e with
     | KExpAssign(_, _, l) -> (KTypVoid, l)
     | KExpMatch(_, c) -> c
     | KExpTryCatch(_, _, c) -> c
-    | KExpThrow(_, l) -> (KTypErr, l)
+    | KExpThrow(_, _, l) -> (KTypErr, l)
     | KExpCast(_, t, l) -> (t, l)
     | KExpMap(_, _, _, c) -> c
     | KExpFor(_, _, _, l) -> (KTypVoid, l)
@@ -471,7 +471,7 @@ and walk_kexp e callb =
     | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
     | KExpAssign(lv, rv, loc) -> KExpAssign((walk_id_ lv), (walk_kexp_ rv), loc)
     | KExpMem(k, member, ctx) -> KExpMem((walk_id_ k), member, (walk_kctx_ ctx))
-    | KExpThrow(k, loc) -> KExpThrow((walk_id_ k), loc)
+    | KExpThrow(k, f, loc) -> KExpThrow((walk_id_ k), f, loc)
     | KExpWhile(c, e, loc) -> KExpWhile((walk_kexp_ c), (walk_kexp_ e), loc)
     | KExpDoWhile(e, c, loc) -> KExpDoWhile((walk_kexp_ e), (walk_kexp_ c), loc)
     | KExpFor(kdl, body, flags, loc) ->
@@ -615,7 +615,7 @@ and fold_kexp e callb =
     | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
     | KExpAssign(lv, rv, loc) -> fold_id_ lv; fold_kexp_ rv; (KTypVoid, loc)
     | KExpMem(k, _, ctx) -> fold_id_ k; ctx
-    | KExpThrow(k, loc) -> fold_id_ k; (KTypErr, loc)
+    | KExpThrow(k, _, loc) -> fold_id_ k; (KTypErr, loc)
     | KExpWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
     | KExpDoWhile(e, c, loc) -> fold_kexp_ e; fold_kexp_ c; (KTypErr, loc)
     | KExpFor(kdl, body, _, loc) ->
@@ -908,7 +908,7 @@ and kexp2str e =
     | KExpAssign (i, _, _) -> sprintf "KExpAssign(%s=...)" (idk2str i l)
     | KExpMatch _ -> "KExpMatch(...)"
     | KExpTryCatch _ -> "KExpTryCatch(...)"
-    | KExpThrow (i, _) -> sprintf "KExpThrow(%s)" (idk2str i l)
+    | KExpThrow (i, f, _) -> sprintf "KExp%s(%s)" (if f then "ReThrow" else "Throw") (idk2str i l)
     | KExpCast _ -> "KExpCast(...)"
     | KExpMap _ -> "KExpMap(...)"
     | KExpFor _ -> "KExpFor(...)"

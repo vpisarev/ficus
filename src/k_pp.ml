@@ -219,7 +219,7 @@ and pprint_kexp_ e prtyp =
             pstr (intrin2str iop); pstr "(";
             List.iteri (fun i a -> if i = 0 then () else (pstr ","; pspace()); pprint_atom_ a) args;
             pstr ")"
-        | KExpThrow(n, _) -> pstr "THROW "; pprint_id_ n
+        | KExpThrow(n, f, _) -> pstr (if f then "RETHROW " else "THROW "); pprint_id_ n
         | KExpMkTuple(al, _) ->
             pstr "("; obox();
             (List.iteri (fun i a ->
