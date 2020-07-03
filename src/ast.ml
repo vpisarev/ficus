@@ -512,6 +512,18 @@ let rec scope2str sc =
     | ScGlobal :: r -> "global." ^ (scope2str r)
     | [] -> ""
 
+let rec get_module_scope sc =
+    match sc with
+    | ScModule _ :: _ -> sc | ScGlobal :: _ | [] -> sc
+    | sc_top :: r -> get_module_scope r
+
+let rec get_qualified_name name sc =
+    match sc with
+    | ScModule m :: _ when (pp_id2str m) = "Builtins" -> name
+    | ScModule m :: r -> get_qualified_name ((pp_id2str m) ^ "." ^ name) r
+    | ScGlobal :: _ | [] -> name
+    | sc_top :: r -> get_qualified_name name r
+
 let get_scope id_info = match id_info with
     | IdNone -> ScGlobal :: []
     | IdVal {dv_scope} -> dv_scope

@@ -72,6 +72,7 @@ type ktprops_t =
 
 type ktyp_t =
     | KTypInt
+    | KTypCInt
     | KTypSInt of int
     | KTypUInt of int
     | KTypFloat of int
@@ -132,7 +133,9 @@ and kdeffun_t = { kf_name: id_t; kf_cname: string;
                   kf_args: (id_t * ktyp_t) list; kf_rt: ktyp_t; kf_body: kexp_t;
                   kf_flags: fun_flag_t list; kf_closure: kdefclosureinfo_t;
                   kf_scope: scope_t list; kf_loc: loc_t }
-and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_base_cname: string; ke_typ: ktyp_t; ke_scope: scope_t list; ke_loc: loc_t }
+and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_base_cname: string;
+                  ke_typ: ktyp_t; ke_std: bool; ke_tag: id_t; ke_make: id_t;
+                  ke_scope: scope_t list; ke_loc: loc_t }
 and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_base_name: id_t;
                       kvar_props: ktprops_t option; kvar_targs: ktyp_t list;
                       kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
@@ -406,7 +409,7 @@ and walk_ktyp t loc callb =
     let walk_ktl_ tl = List.map walk_ktyp_ tl in
     let walk_id_ k = check_n_walk_id k loc callb in
     (match t with
-    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypVoid | KTypNil | KTypBool
     | KTypChar | KTypString | KTypCPointer
     | KTypExn | KTypErr | KTypModule -> t
@@ -500,8 +503,9 @@ and walk_kexp e callb =
                     kci_wrap_f=(walk_id_ kci_wrap_f)} };
         e
     | KDefExn(ke) ->
-        let { ke_name; ke_cname; ke_typ } = !ke in
-        ke := { !ke with ke_name = (walk_id_ ke_name); ke_typ=(walk_ktyp_ ke_typ) };
+        let { ke_name; ke_cname; ke_tag; ke_make; ke_typ } = !ke in
+        ke := { !ke with ke_name = (walk_id_ ke_name); ke_typ=(walk_ktyp_ ke_typ);
+                ke_tag=(walk_id_ ke_tag); ke_make=(walk_id_ ke_make) };
         e
     | KDefVariant(kvar) ->
         let { kvar_name; kvar_cases; kvar_constr } = !kvar in
@@ -568,7 +572,7 @@ and fold_ktyp t loc callb =
     let fold_ktl_ tl = List.iter fold_ktyp_ tl in
     let fold_id_ i = check_n_fold_id i loc callb in
     (match t with
-    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypVoid | KTypNil | KTypBool
     | KTypChar | KTypString | KTypCPointer
     | KTypExn | KTypErr | KTypModule -> ()
@@ -638,8 +642,9 @@ and fold_kexp e callb =
         fold_id_ kci_make_fp; fold_id_ kci_wrap_f; fold_kexp_ kf_body;
         (KTypVoid, kf_loc)
     | KDefExn(ke) ->
-        let { ke_name; ke_typ; ke_loc } = !ke in
+        let { ke_name; ke_typ; ke_tag; ke_make; ke_loc } = !ke in
         fold_id_ ke_name; fold_ktyp_ ke_typ;
+        fold_id_ ke_tag; fold_id_ ke_make;
         (KTypVoid, ke_loc)
     | KDefVariant(kvar) ->
         let { kvar_name; kvar_cases; kvar_constr; kvar_loc } = !kvar in
@@ -710,9 +715,11 @@ and used_by_kexp_ e callb =
        "weak" backward reference to the function. we do not need to add any of those into the "used" set *)
     | KDefClosureVars {contents={kcv_name}} ->
         add_to_decl1 kcv_name callb;
-    | KDefExn {contents={ke_name; ke_typ; ke_loc}} ->
+    | KDefExn {contents={ke_name; ke_typ; ke_tag; ke_make; ke_loc}} ->
         let uv = used_by_ktyp ke_typ ke_loc in
         add_to_used uv callb;
+        add_to_used1 ke_tag callb;
+        add_to_used1 ke_make callb;
         add_to_decl1 ke_name callb
     | KDefVariant {contents={kvar_name; kvar_cases; kvar_loc}} ->
         let uv = List.fold_left (fun uv (ni, ti) ->
@@ -819,7 +826,7 @@ let rec deref_ktyp kt loc =
     | _ -> kt
 
 let is_ktyp_scalar ktyp = match ktyp with
-    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> true
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> true
     | _ -> false
 
 let create_kdefval n ktyp flags e_opt code sc loc =
@@ -853,6 +860,7 @@ let create_kdefconstr n argtyps rt flags code sc loc =
 let rec ktyp2str t =
     match t with
     | KTypInt -> "KTypInt"
+    | KTypCInt -> "KTypCInt"
     | KTypSInt n -> sprintf "KTypSInt(%d)" n
     | KTypUInt n -> sprintf "KTypUInt(%d)" n
     | KTypFloat n -> sprintf "KTypFloat(%d)" n

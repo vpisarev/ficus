@@ -7,42 +7,52 @@
     C code represented in a hierarhical form (just like Ast or K_form).
 
     The main differences from K-form are:
-    * there is no nested functions; the functions are converted to closures,
-      if needed, and moved to the top level
+    * there is no nested functions; at Lambda lifting step, all the nested functions
+      are converted to closures (if needed) and moved to the top level
     * we add the closure pointer to the list of parameters in most functions
       (i.e. the pointer to the structure that contains 'free variables':
       non-local and yet non-global variables accessed by the function).
-      If some function does not need a closure, there is still such a parameter, but it'is not used.
-      The parameter is needed because when we call a function indirectly,
+      Many of the functions do need a closure, but there is still such a parameter,
+      it's just not used. The parameter is needed because when we call a function indirectly,
       via pointer, we don't know whether it needs closure or not. See k_lift module.
       ==
-      [TODO] We can analyze the code and check whether we call some function only directly or not.
-      If we call the function only directly and it does not need closure,
+      [TODO] In the "monolitic mode" for all functions and if separate build mode for
+      internal functions we can analyze the code and check whether we call some
+      function only directly or not. If we call the function only directly and it does not need closure,
       we can eliminate the extra parameter. Or we can have a 'bare' variant of the function without
       the closure parameter, and use this variant when we call it directly; and then have
       a wrapper with the closure parameter which we use for indirect calls.
       ==
     * the type system is further shrinked:
-      * tuples are converted to records (C structures).
-      * for each complex type (where complex means "non-primitive",
-        i.e. a list, reference, array, tuple, structure, variant etc.)
-        a unique name (signature) is generated and is used to reference the type.
+      * Tuples, records, list cells, reference cells, recursive and non-recursive variants,
+        "closure variables" data, function pointers (closures themselves) etc.
+        are all converted to C structures.
+        For some complex data types, such as strings, arrays, exceptions there are
+        already standard structures defined in Ficus runtime,
+        so no new structures are generated for them.
+        For other complex types a unique name (signature) is generated and is used
+        to reference the type and name the corresponding C structure.
         For example, KTypList(KTypInt) becomes _fx_Li_t,
         KTypTuple(KTypFloat :: KTypFloat :: KTypFloat :: []) becomes _fx_Ta3f etc.
         See k_mangle module.
     * the memory is now managed manually.
       Reference counting is involved when copying and releasing smart pointers to actual data
-      (for those data structures that need it: arrays, strings, references, lists, recursive variants)
-      Cleanup blocks are added to each function to free the allocated objects that are not used anymore.
+      (for those data structures that need it: arrays, strings, references, lists,
+      recursive variants, exceptions, closures, smart "C" pointers).
+      Cleanup blocks are added to each function (and often to its nested blocks, such as loops,
+      "match" cases, try-blocks etc.) to free the allocated objects that are not used anymore.
     * all the data types are classified into 2 categories: dynamic and static.
       * Static types are allocated on stack.
-        Those are primitive types (numbers, bool), tuples, records, non-recursive variants,
-        arrays (their headers, not data) and strings (their headers and maybe data).
-      * Dynamic types are allocated on heap and are referenced by their pointer.
-        There is also a reference counter used to track down the number of 'users'
-        sharing the pointer. The dynamic structures are lists, references and recursive variants.
+        Those are primitive types (numbers, bool, char), tuples, records, non-recursive variants,
+        arrays (their headers, not data), strings (their headers and maybe data),
+        exceptions (their headers), closures (their headers).
+      * Dynamic types are allocated on heap and are referenced by their pointers.
+        There is also a reference counter used to track the number of 'users'
+        that share the pointer. The dynamic structures are lists, references and recursive variants,
       The situation is actually more complex than that:
-        * The array elements are always allocated on the heap and bundled with the reference counter.
+        * Array elements, string characters, closure free variables, exception parameters and some
+          other "variable-size" data that are "underwater parts" of some data type' "icebergs",
+          are also stored in the heap and supplied with the associated reference counters.
         * Even the static but non-primitive types,
           are passed to functions via pointers. They all, except for arrays,
           are passed as 'const' pointers, e.g.
@@ -50,12 +60,12 @@
         * Static data types may have fields that are represented by dynamic data types.
           For example, KTypTuple(KTypBool :: KTypList(KTypInt) :: KTypList(KTypInt) :: []).
     * an expression does not represent any element of the code anymore.
-      There are now expressions and statements, just like in C/C++.
+      There are now expressions and statements, since it's C/C++.
     * the complex (nested) expressions are re-introduced.
       This is needed to make the final C code more readable
       and to avoid eccessive use of temporary variables. For example,
       `foo((n+1)*2)` looks much better than
-      `val t0 = n+1, t1=t0*2; foo(t1)`.
+      `int t0=n+1; int t1=t0*2; foo(t1)`.
       Of course, the use of expressions is limited to scalar values and
       to the cases when no exceptions may occur when computing them.
     * there is no exceptions anymore; after each function that may throw an exception
@@ -184,19 +194,22 @@ and cdeffun_t = { cf_name: id_t; cf_cname: string;
                   cf_args: (id_t * ctyp_t * (carg_attr_t list)) list;
                   cf_rt: ctyp_t; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
-and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_ktyp: ktyp_t; ct_cname: string;
-                  ct_props: ctprops_t; ct_tagenum: id_t; ct_data_start: int;
+and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_cname: string;
+                  ct_props: ctprops_t; ct_data_start: int;
                   ct_scope: scope_t list; ct_loc: loc_t }
-and cdefenum_t = { ce_name: id_t; ce_members: (id_t * cexp_t option) list; ce_cname: string;
-                   ce_scope: scope_t list; ce_loc: loc_t }
+and cdefenum_t = { cenum_name: id_t; cenum_members: (id_t * cexp_t option) list; cenum_cname: string;
+                   cenum_scope: scope_t list; cenum_loc: loc_t }
 and cdeflabel_t = { cl_name: id_t; cl_cname: string; cl_scope: scope_t list; cl_loc: loc_t }
 and cdefmacro_t = { cm_name: id_t; cm_cname: string; cm_args: id_t list; cm_body: cstmt_t list;
                     cm_scope: scope_t list; cm_loc: loc_t }
+and cdefexn_t = { cexn_name: id_t; cexn_cname: string; cexn_base_cname: string;
+                  cexn_typ: ctyp_t; cexn_tag: id_t; cexn_data: id_t;
+                  cexn_info: id_t; cexn_make: id_t; cexn_scope: scope_t list; cexn_loc: loc_t }
 
 type cinfo_t =
     | CNone | CText of string | CVal of cdefval_t | CFun of cdeffun_t ref
-    | CTyp of cdeftyp_t ref | CEnum of cdefenum_t ref | CLabel of cdeflabel_t
-    | CMacro of cdefmacro_t ref
+    | CTyp of cdeftyp_t ref | CExn of cdefexn_t ref | CEnum of cdefenum_t ref
+    | CLabel of cdeflabel_t | CMacro of cdefmacro_t ref
 
 let all_idcs = dynvec_create CNone
 let idcs_frozen = ref true
@@ -217,6 +230,11 @@ let gen_temp_idc s =
     let i_name = get_id_prefix s in
     let i_real = new_idc_idx() in
     Id.Temp(i_name, i_real)
+
+let gen_idc s =
+    let i_name = get_id_prefix s in
+    let i_real = new_idc_idx() in
+    Id.Val(i_name, i_real)
 
 let dup_idc old_id =
     let k = new_idc_idx() in
@@ -269,7 +287,7 @@ let get_cstmt_loc s = match s with
     | CDefTyp {contents={ct_loc}} -> ct_loc
     | CDefForwardFun (_, cff_loc) -> cff_loc
     | CDefForwardTyp (_, cft_loc) -> cft_loc
-    | CDefEnum {contents={ce_loc}} -> ce_loc
+    | CDefEnum {contents={cenum_loc}} -> cenum_loc
     | CMacroDef {contents={cm_loc}} -> cm_loc
     | CMacroUndef (_, l) -> l
     | CMacroIf (_, _, l) -> l
@@ -282,7 +300,8 @@ let get_cscope info =
     | CVal {cv_scope} -> cv_scope
     | CFun {contents = {cf_scope}} -> cf_scope
     | CTyp {contents = {ct_scope}} -> ct_scope
-    | CEnum {contents = {ce_scope}} -> ce_scope
+    | CEnum {contents = {cenum_scope}} -> cenum_scope
+    | CExn {contents = {cexn_scope}} -> cexn_scope
     | CLabel {cl_scope} -> cl_scope
     | CMacro {contents={cm_scope}} -> cm_scope
 
@@ -292,7 +311,8 @@ let get_cinfo_loc info =
     | CVal {cv_loc} -> cv_loc
     | CFun {contents = {cf_loc}} -> cf_loc
     | CTyp {contents = {ct_loc}} -> ct_loc
-    | CEnum {contents = {ce_loc}} -> ce_loc
+    | CExn {contents = {cexn_loc}} -> cexn_loc
+    | CEnum {contents = {cenum_loc}} -> cenum_loc
     | CLabel {cl_loc} -> cl_loc
     | CMacro {contents={cm_loc}} -> cm_loc
 
@@ -313,6 +333,7 @@ let get_cinfo_typ info i loc =
     | CFun {contents = {cf_args; cf_rt}} ->
         CTypFunRawPtr((List.map (fun (_, t, _) -> t) cf_args), cf_rt)
     | CTyp {contents = {ct_typ}} -> ct_typ
+    | CExn _ -> CTypExn
     | CMacro {contents = {cm_args}} ->
         (match cm_args with
         | [] -> CTypAny
@@ -335,7 +356,8 @@ let get_idc_cname i loc =
         | CFun {contents = {cf_cname}} -> cf_cname
         | CTyp {contents = {ct_cname}} -> ct_cname
         | CLabel {cl_cname} -> cl_cname
-        | CEnum {contents = {ce_cname}} -> ce_cname
+        | CEnum {contents = {cenum_cname}} -> cenum_cname
+        | CExn {contents = {cexn_cname}} -> cexn_cname
         | CMacro {contents = {cm_cname}} -> cm_cname)
 
 let get_lit_ctyp l = match l with
@@ -518,10 +540,10 @@ and walk_cstmt s callb =
     | CDefForwardTyp (n, loc) ->
         CDefForwardTyp (walk_id_ n, loc)
     | CDefEnum ce ->
-        let { ce_name; ce_members } = !ce in
+        let { cenum_name; cenum_members } = !ce in
         ce := { !ce with
-            ce_name = (walk_id_ ce_name);
-            ce_members = (List.map (fun (n, e_opt) -> ((walk_id_ n), (walk_cexp_opt_ e_opt))) ce_members) };
+            cenum_name = (walk_id_ cenum_name);
+            cenum_members = (List.map (fun (n, e_opt) -> ((walk_id_ n), (walk_cexp_opt_ e_opt))) cenum_members) };
         s
     | CMacroDef cm ->
         let { cm_name; cm_args; cm_body } = !cm in
@@ -652,9 +674,9 @@ and fold_cstmt s callb =
     | CDefForwardTyp (n, _) ->
         fold_id_ n
     | CDefEnum ce ->
-        let { ce_name; ce_members } = !ce in
-        fold_id_ ce_name;
-        List.iter (fun (n, e_opt) -> fold_id_ n; fold_cexp_opt_ e_opt) ce_members
+        let { cenum_name; cenum_members } = !ce in
+        fold_id_ cenum_name;
+        List.iter (fun (n, e_opt) -> fold_id_ n; fold_cexp_opt_ e_opt) cenum_members
     | CMacroDef cm ->
         let { cm_name; cm_args; cm_body } = !cm in
         fold_id_ cm_name; List.iter fold_id_ cm_args; List.iter fold_cstmt_ cm_body
@@ -777,13 +799,12 @@ let cexp_mem e m_id t =
     | _ -> CExpMem(e, m_id, (t, loc))
 
 let std_FX_MAX_DIMS = 5
-
 let std_sizeof = ref noid
 
 let std_fx_malloc = ref noid
 let std_fx_free = ref noid
-let std_fx_free_t = ref noid
-let std_fx_copy_t = ref noid
+let std_fx_free_t = ref CTypVoid
+let std_fx_copy_t = ref CTypVoid
 let std_FX_INCREF = ref noid
 let std_FX_DECREF = ref noid
 
@@ -811,6 +832,12 @@ let std_FX_FREE_STR = ref noid
 let std_fx_free_str = ref noid
 let std_fx_copy_str = ref noid
 
+let std_fx_exn_info_t = ref CTypVoid
+let std_FX_REG_SIMPLE_EXN = ref noid
+let std_FX_REG_EXN = ref noid
+let std_FX_MAKE_EXN_IMPL_START = ref noid
+
+let std_FX_THROW = ref noid
 let std_FX_FAST_THROW = ref noid
 let std_FX_FREE_EXN = ref noid
 let std_FX_COPY_EXN = ref noid

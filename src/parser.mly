@@ -949,7 +949,7 @@ nobreak_dot_ident:
 | IDENT { $1 }
 
 id_typ_list_:
-| id_typ_list_ SEMICOLON id_typ_elem { $3 :: $1 }
+| id_typ_list_ COMMA id_typ_elem { $3 :: $1 }
 | id_typ_elem { $1 :: [] }
 
 id_typ_elem:

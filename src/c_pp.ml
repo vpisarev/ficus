@@ -382,7 +382,7 @@ and pprint_cstmt s =
     | CDefForwardTyp (n, loc) ->
         pstr "struct "; pprint_id n loc; pstr ";"
     | CDefEnum ce ->
-        let { ce_cname; ce_members; ce_loc } = !ce in
+        let { cenum_cname; cenum_members; cenum_loc } = !ce in
         ohbox();
         pstr "typedef enum {";
         cbox();
@@ -390,11 +390,11 @@ and pprint_cstmt s =
         ovbox();
         List.iteri (fun i (n, e_opt) ->
             if i = 0 then pstr "   " else (pstr ","; pspace());
-            pprint_id n ce_loc;
+            pprint_id n cenum_loc;
             match e_opt with
             | Some e -> pstr "="; pprint_cexp_ e 0
-            | _ -> ()) ce_members;
-        cbox(); pbreak(); pstr "} "; pstr ce_cname; pstr ";"; pbreak()
+            | _ -> ()) cenum_members;
+        cbox(); pbreak(); pstr "} "; pstr cenum_cname; pstr ";"; pbreak()
     | CMacroDef cm ->
         let {cm_cname; cm_args; cm_body; cm_loc} = !cm in
         pstr "#define "; pstr cm_cname;

@@ -109,7 +109,7 @@ fun find_idx(a: 't [], elem: 't)
 println("excepion-based search: negative number in \(a): \(gen_msg(find_idx(a), a))")
 */
 
-type complex_t = {re: float; im: float}
+type complex_t = {re: float, im: float}
 val c = ref (complex_t {re=1.f, im=1.f})
 val d = c->{re=c->re*2, im=c->im*2}
 fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)

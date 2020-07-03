@@ -120,6 +120,8 @@ let rec mangle_ktyp t mangle_map loc =
         | KTypSInt(8) -> "c" :: result
         | KTypSInt(16) -> "s" :: result
         | KTypSInt(32) -> "n" :: result
+        (* maybe it's not very good, but essentially CInt~"int" is equivalent to "int32_t" *)
+        | KTypCInt -> "n" :: result
         | KTypSInt(64) -> "l" :: result
         | KTypSInt n -> raise_compile_err loc (sprintf "unsupported typ KTypSInt(%d)" n)
         | KTypUInt(8) -> "b" :: result
@@ -185,7 +187,7 @@ let mangle_all top_code =
     let rec walk_ktyp_n_mangle t loc callb =
         let t = walk_ktyp t loc callb in
         match t with
-        | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+        | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
         | KTypVoid | KTypNil | KTypBool | KTypChar
         | KTypString | KTypCPointer | KTypExn
         | KTypErr | KTypModule -> t
@@ -248,12 +250,23 @@ let mangle_all top_code =
                 kf_closure={kf_closure with kci_fp_typ=mangled_ktyp_id} };
             e
         | KDefExn ke ->
-            let {ke_name; ke_typ; ke_scope; ke_loc} = !ke in
+            let {ke_name; ke_typ; ke_scope; ke_std; ke_tag; ke_make; ke_loc} = !ke in
             let t = mangle_ktyp_retain_record ke_typ ke_loc callb in
             let suffix = mangle_ktyp t mangle_map ke_loc in
             let bare_name = mangle_name ke_name (Some ke_scope) ke_loc in
             let (base_cname, cname) = mangle_make_unique ke_name "E" bare_name suffix mangle_map in
-            ke := { !ke with ke_cname=add_fx cname; ke_typ=t; ke_base_cname=base_cname };
+            let exn_cname = add_fx cname in
+            ke := { !ke with ke_cname=exn_cname; ke_typ=t; ke_base_cname=base_cname };
+            (match (kinfo_ ke_tag ke_loc) with
+            | KVal kv ->
+                let tag_cname =
+                    if ke_std then "FX_EXN_" ^ (pp_id2str ke_name)
+                    else "_FX_EXN_" ^ base_cname in
+                let kv = {kv with kv_cname=tag_cname} in
+                set_idk_entry ke_tag (KVal kv)
+            | _ -> raise_compile_err ke_loc (sprintf
+                "mangle: '%s', tag of exception '%s', is not valid value"
+                (id2str ke_tag) exn_cname));
             e
         | KDefVariant kvar ->
             let {kvar_name; kvar_cases; kvar_loc} = !kvar in

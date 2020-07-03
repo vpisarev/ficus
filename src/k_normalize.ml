@@ -162,7 +162,6 @@ let rec exp2kexp e code tref sc =
         let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
         (KExpMkArray(shape, (List.rev elems), kctx), code)
     | ExpMkRecord (rn, rinitelems, _) ->
-        let _ = printf "k-normalization of ExpMkRecord\n" in
         let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn) etyp eloc in
         let (ratoms, code) = List.fold_left (fun (ratoms, code) (ni, ti, opt_vi) ->
             let (a, code) = try
@@ -176,11 +175,9 @@ let rec exp2kexp e code tref sc =
                     "there is no explicit inializer for the field '%s' nor there is default initializer for it"
                     (id2str ni)))
             in (a::ratoms, code)) ([], code) relems in
-        let _ = printf "k-normalization of ExpMkRecord: finished\n" in
         if ctor = noid then
             (KExpMkRecord((List.rev ratoms), kctx), code)
         else
-            let _ = printf "converted to call %s\n" (id2str ctor) in
             (KExpCall(ctor, (List.rev ratoms), kctx), code)
     | ExpUpdateRecord(e, rupdelems, _) ->
         let (rec_n, code) = exp2id e code true sc "the updated record cannot be a literal" in
@@ -609,8 +606,8 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (tag_n, code) =
                 if var_tag0 != noid then (var_tag0, code) else
                 (let tag_n = gen_temp_idk "tag" in
-                let extract_tag_exp = KExpIntrin(IntrinVariantTag, (Atom.Id n) :: [], (KTypInt, loc)) in
-                let code = create_kdefval tag_n KTypInt [] (Some extract_tag_exp) code sc loc in
+                let extract_tag_exp = KExpIntrin(IntrinVariantTag, (Atom.Id n) :: [], (KTypCInt, loc)) in
+                let code = create_kdefval tag_n KTypCInt [] (Some extract_tag_exp) code sc loc in
                 (tag_n, code))
                 in
             let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), vn_val, (KTypBool, loc)) in
@@ -700,8 +697,8 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 | _ -> false in
     let (var_tag0, code) = if not is_variant then (noid, code) else
         (let tag_n = gen_temp_idk "tag" in
-        let extract_tag_exp = KExpIntrin(IntrinVariantTag, a :: [], (KTypInt, loc)) in
-        let code = create_kdefval tag_n KTypInt [] (Some extract_tag_exp) code sc loc in
+        let extract_tag_exp = KExpIntrin(IntrinVariantTag, a :: [], (KTypCInt, loc)) in
+        let code = create_kdefval tag_n KTypCInt [] (Some extract_tag_exp) code sc loc in
         (tag_n, code)) in
     let have_else = ref false in
     let k_cases = List.map (fun (pl, e) ->
@@ -825,9 +822,7 @@ and transform_all_types_and_cons elist code sc =
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))
             code inst_list
         | DefExn {contents={dexn_name; dexn_typ; dexn_loc; dexn_scope}} ->
-            let ke = ref { ke_name=dexn_name; ke_cname=""; ke_base_cname="";
-                ke_typ=(typ2ktyp dexn_typ dexn_loc); ke_scope=sc; ke_loc=dexn_loc } in
-            let _ = match dexn_scope with
+            let is_std = match dexn_scope with
                     (ScModule m) :: _ when (pp_id2str m) = "Builtins" ->
                         let exn_name_str = pp_id2str dexn_name in
                         if exn_name_str = "IndexError" then
@@ -835,10 +830,38 @@ and transform_all_types_and_cons elist code sc =
                         else if exn_name_str = "NoMatchError" then
                             builtin_exn_NoMatchError := dexn_name
                         else
-                            ()
-                    | _ -> () in
+                            ();
+                        true
+                    | _ -> false in
+            let tagname = gen_idk ((pp_id2str dexn_name) ^ "_tag") in
+            let tag_sc = get_module_scope sc in
+            let decl_tag = create_kdefval tagname KTypCInt [ValMutable]
+                (Some (KExpAtom(Atom.Lit (LitInt 0L), (KTypInt, dexn_loc))))
+                [] tag_sc dexn_loc in
+            let code = if is_std then code else decl_tag @ code in
+            let dexn_typ = match dexn_typ with
+                | TypRecord {contents=(relems, true)} ->
+                    TypTuple(List.map (fun (_, t, _) -> t) relems)
+                | _ -> dexn_typ
+                in
+            let ke_typ = typ2ktyp dexn_typ dexn_loc in
+            let (make_id, delta_code) = match ke_typ with
+                | KTypVoid -> (noid, [])
+                | _ ->
+                    let make_id = gen_idk ("make_" ^ (pp_id2str dexn_name)) in
+                    let argtyps = match ke_typ with
+                        | KTypTuple(telems) -> telems
+                        | _ -> ke_typ :: []
+                        in
+                    let delta_code = create_kdefconstr make_id argtyps KTypExn
+                        [FunCtor (CtorExn dexn_name)] [] dexn_scope dexn_loc in
+                    (make_id, delta_code)
+                in
+            let ke = ref { ke_name=dexn_name; ke_cname=""; ke_base_cname="";
+                ke_typ=ke_typ; ke_std=is_std; ke_tag=tagname; ke_make=make_id;
+                ke_scope=sc; ke_loc=dexn_loc } in
             set_idk_entry dexn_name (KExn ke);
-            (KDefExn ke) :: code
+            delta_code @ ((KDefExn ke) :: code)
         | _ -> code) code elist
 
 let normalize_mod m =

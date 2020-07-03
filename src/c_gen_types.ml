@@ -47,6 +47,7 @@ and ktyp2ctyp t loc =
     let rec ktyp2ctyp_ t =
         match t with
         | KTypInt -> CTypInt
+        | KTypCInt -> CTypCInt
         | KTypSInt n -> CTypSInt n
         | KTypUInt n -> CTypUInt n
         | KTypFloat n -> CTypFloat n
@@ -231,7 +232,7 @@ let convert_all_typs top_code =
         let struct_typ = CTypStruct((Some struct_id), []) in
         let struct_or_ptr_typ = if ktp_ptr then (make_ptr struct_typ) else struct_typ in
         let struct_decl = ref { ct_name=tn; ct_typ = struct_or_ptr_typ;
-            ct_ktyp=KTypName tn; ct_cname=cname; ct_tagenum=noid; ct_data_start=0;
+            ct_cname=cname; ct_data_start=0;
             ct_scope=ScGlobal::[]; ct_loc=loc;
             ct_props={
                 ctp_scalar=false; ctp_complex=ktp_custom_free || ktp_custom_copy;
@@ -278,7 +279,7 @@ let convert_all_typs top_code =
         match Env.find_opt kvar_base_name !all_var_enums with
         | Some(e_id) ->
             (match (cinfo_ e_id kvar_loc) with
-            | CEnum {contents={ce_members}} -> (e_id, ce_members)
+            | CEnum {contents={cenum_members}} -> (e_id, cenum_members)
             | _ -> raise_compile_err kvar_loc (sprintf "invalid variant enumeration '%s'" (id2str e_id)))
         | _ ->
             let e_base_cname = (pp_id2str kvar_base_name) ^ "_" in
@@ -295,8 +296,8 @@ let convert_all_typs top_code =
                 let vali = Some (CExpLit((LitInt (Int64.of_int idx)), ctx)) in
                 (idx+1, (ni, vali) :: members)) (start_idx, []) kvar_cases in
             let members = List.rev members in
-            let ce = ref { ce_name=e_id; ce_members=members;
-                ce_cname=K_mangle.add_fx e_cname; ce_scope=ScGlobal::[]; ce_loc=kvar_loc } in
+            let ce = ref { cenum_name=e_id; cenum_members=members;
+                cenum_cname=K_mangle.add_fx e_cname; cenum_scope=ScGlobal::[]; cenum_loc=kvar_loc } in
             set_idc_entry e_id (CEnum ce);
             all_var_enums := Env.add kvar_base_name e_id !all_var_enums;
             add_decl e_id (CDefEnum ce);

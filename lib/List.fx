@@ -53,8 +53,9 @@ fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
 fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
     unzip([: for x <- lab {x} :])
 
-// O(n log n) merge sort
-// (not very efficient algorithm, but useful to test closures and function pointers)
+// O(n log n) merge sort.
+// Not very efficient algorithm (or rather very inefficient),
+// but it's useful to test closures and function pointers.
 fun mergeSort(l: 't list, lt: ('t,'t)->bool): 't list =
     match l {
     | [] => []

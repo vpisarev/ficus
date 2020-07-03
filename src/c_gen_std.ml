@@ -29,8 +29,8 @@ let init_std_names () =
     std_sizeof := gen_std_fun "sizeof" (CTypAny :: []) CTypSize_t;
     std_fx_malloc := gen_std_fun "fx_malloc" (CTypSize_t :: std_CTypVoidPtr :: []) CTypCInt;
     std_fx_free := gen_std_fun "fx_free" (std_CTypVoidPtr :: []) CTypVoid;
-    std_fx_free_t := get_id "fx_free_t";
-    std_fx_copy_t := get_id "fx_copy_t";
+    std_fx_free_t := CTypName (get_id "fx_free_t");
+    std_fx_copy_t := CTypName (get_id "fx_copy_t");
     std_FX_INCREF := gen_std_macro "FX_INCREF" 1;
     std_FX_DECREF := gen_std_macro "FX_DECREF" 1;
 
@@ -59,6 +59,12 @@ let init_std_names () =
     std_fx_free_str := gen_std_fun "fx_free_str" ((make_ptr CTypString) :: []) CTypVoid;
     std_fx_copy_str := gen_std_fun "fx_copy_str" ((make_const_ptr CTypString) :: (make_ptr CTypString) :: []) CTypVoid;
 
+    std_fx_exn_info_t := CTypName(get_id "fx_exn_info_t");
+    std_FX_REG_SIMPLE_EXN := gen_std_macro "FX_REG_SIMPLE_EXN" 4;
+    std_FX_REG_EXN := gen_std_macro "FX_REG_EXN" 4;
+    std_FX_MAKE_EXN_IMPL_START := gen_std_macro "FX_MAKE_EXN_IMPL_START" 3;
+
+    std_FX_THROW := gen_std_macro "FX_THROW" 3;
     std_FX_FAST_THROW := gen_std_macro "FX_FAST_THROW" 2;
     std_FX_FREE_EXN := gen_std_macro "FX_FREE_EXN" 1;
     std_FX_COPY_EXN := gen_std_macro "FX_COPY_EXN" 2;

@@ -383,10 +383,10 @@ typedef struct fx_exn_t
 
 #define FX_UPDATE_BT() fx_update_bt(__func__, __FILE__, __LINE__)
 
-#define FX_MAKE_EXN_IMPL_START(tag, exn_t_prefix) \
-    FX_DECL_AND_MALLOC(exn_t_prefix##_data_t*, exn_data); \
-    fx_result->tag = tag; \
-    fx_result->info = &exn_t_prefix##_info; \
+#define FX_MAKE_EXN_IMPL_START(exn_tag, exn_data_t, exn_info) \
+    FX_DECL_AND_MALLOC(exn_data_t*, exn_data); \
+    fx_result->tag = exn_tag; \
+    fx_result->info = &exn_info; \
     fx_result->data = (fx_exn_data_t*)exn_data; \
     exn_data->rc = 1
 
@@ -406,23 +406,17 @@ void fx_print_bt(void);
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 
+#define FX_REG_SIMPLE_EXN(name, tag, info, exn) \
+    fx_register_simple_exn(U##name, &tag, &info, &exn)
+#define FX_REG_EXN(name, tag, info, free_f) \
+    fx_register_exn(U##name, &tag, &info, (fx_free_t)free_f, 0, 0)
+
 void fx_register_simple_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_exn_t* exn);
 void fx_register_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_free_t free_f,
                     fx_to_string_t to_string_f, fx_print_t print_repr_f);
 
 #define FX_FREE_EXN(exn) if(!(exn)->data) ; else fx_free_exn(exn)
 #define FX_COPY_EXN(src, dst) if(!(src)->data) *(dst)=*(src) else fx_copy_exn((src), (dst))
-
-#define FX_MAKE_EXN_IMPL(exn_tag, exn_data_typ, exndata_free, arg_copy_f) \
-    FX_DECL_AND_MALLOC(exn_data_typ*, data); \
-        \
-    data->base.rc = 1; \
-    data->base.free_f = exndata_free; \
-    arg_copy_f(arg, &data->arg); \
-        \
-    fx_result->tag = exn_tag; \
-    fx_result->data = (fx_exn_data_t*)data; \
-    return FX_OK
 
 //////////////////////////// Lists /////////////////////////
 

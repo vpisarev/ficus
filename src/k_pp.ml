@@ -31,7 +31,7 @@ let pprint_id n loc = pstr (idk2str n loc)
 type ktyp_pr_t = KTypPr0 | KTypPrFun | KTypPrComplex | KTypPrBase
 
 let rec get_ktyp_pr t = match t with
-    | KTypInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
     | KTypErr | KTypCPointer | KTypNil | KTypModule | KTypName _ -> KTypPrBase
     | KTypTuple _ | KTypRecord _ -> KTypPrBase
@@ -52,6 +52,7 @@ let rec ppktyp_ t p1 loc =
         cbox(); pcut(); pstr ")" in
     match t with
     | KTypInt -> pstr "Int"
+    | KTypCInt -> pstr "CInt"
     | KTypSInt(b) -> pstr ("Int" ^ (string_of_int b))
     | KTypUInt(b) -> pstr ("UInt" ^ (string_of_int b))
     | KTypFloat(16) -> pstr "Half"

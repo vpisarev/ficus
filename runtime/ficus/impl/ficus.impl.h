@@ -76,7 +76,8 @@ int fx_finit(int status)
 ////////////////////////// memory allocation ////////////////////
 
 /* [TODO] replace it with something more efficient,
-   e.g. mimalloc (https://github.com/microsoft/mimalloc) */
+   e.g. mimalloc (https://github.com/microsoft/mimalloc) or
+   jemalloc or tcmalloc */
 void* fx_malloc(size_t sz)
 {
     return malloc(sz);
