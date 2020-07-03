@@ -20,15 +20,33 @@ fun inside_outside(p: 't point_, r: 't rect_) =
 println("\(ip) is \(inside_outside(ip, ir)) \(ir)")
 println("\(fp) is \(inside_outside(fp, fr)) \(fr)")*/
 
-//type pt = {x: int; y: int}
+//type pt = (int, int)
 type tt = Empty | Node: {left: tt, v: int, right: tt}
 val t0 = Node {right=Node{left=Empty, v=6, right=Empty}, left=Empty, v=5}
+//type tt = Empty | Node: (tt, int, tt)
+//val t0 = Node (Empty, 5, Node(Empty, 6, Empty))
+
+fun print_tt(a: tt, indent: int)
+{
+    | Node {left, v, right} =>
+        print("Node{left=")
+        print_tt(left)
+        print(", \(v), right=")
+        print_tt(right)
+        print("}")
+    | _ => print("Empty")
+}
+
+fun print_ttln(a: tt)
+{
+    print_tt(a, 0); println()
+}
 
 //exception MySimpleException
 //throw MySimpleException
 
-exception MyException: (int, string)
-throw MyException(5, "...4321, exception is thrown!")
+//exception MyException: tt
+//throw MyException(t0)
 
 //for c <- "hello" { print("'\(c)' ") }
 //println()

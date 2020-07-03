@@ -839,7 +839,7 @@ and transform_all_types_and_cons elist code sc =
                 (Some (KExpAtom(Atom.Lit (LitInt 0L), (KTypInt, dexn_loc))))
                 [] tag_sc dexn_loc in
             let code = if is_std then code else decl_tag @ code in
-            let dexn_typ = match dexn_typ with
+            let dexn_typ = match (deref_typ dexn_typ) with
                 | TypRecord {contents=(relems, true)} ->
                     TypTuple(List.map (fun (_, t, _) -> t) relems)
                 | _ -> dexn_typ

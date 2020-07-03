@@ -561,7 +561,7 @@ let get_record_elems vn_exp_opt t loc =
         (match (find_typ_instance t loc) with
         | Some (TypApp([], n)) ->
             (match (rn_opt, (id_info n)) with
-            | (None, IdVariant {contents={dvar_flags;
+            | (_, IdVariant {contents={dvar_flags;
                 dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []}})
                 when (List.mem VariantRecord dvar_flags) -> (noid, relems)
             | ((Some rn), IdVariant {contents={dvar_cases; dvar_constr}}) ->
@@ -569,9 +569,9 @@ let get_record_elems vn_exp_opt t loc =
                 (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id rn)) dvar_cases_ctors) with
                 | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
                 | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str rn)))
-            | _ -> raise_compile_err loc "attempt to treat named type, non-record and non-variant, as a record")
+            | _ -> raise_compile_err loc (sprintf "cannot find a proper record constructor in type '%s'" (id2str n)))
         | _ -> raise_compile_err loc "proper instance of the template [record?] type is not found")
-    | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record #2"
+    | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record"
 
 let is_real_typ t =
     let have_typ_vars = ref false in
