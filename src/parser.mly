@@ -198,7 +198,7 @@ let make_chained_cmp chain = match chain with
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
 %token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL
 %token AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
-%token EQUAL_TO NOT_EQUAL LESS_EQUAL GREATER_EQUAL LESS GREATER
+%token EQUAL_TO NOT_EQUAL LESS_EQUAL GREATER_EQUAL LESS GREATER SPACESHIP
 
 %right SEMICOLON
 %left COMMA
@@ -216,6 +216,7 @@ let make_chained_cmp chain = match chain with
 %left BITWISE_AND
 %left AS
 %left EQUAL_TO NOT_EQUAL LESS_EQUAL GREATER_EQUAL LESS GREATER
+%left SPACESHIP
 %left SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS
 %left STAR SLASH MOD
@@ -541,6 +542,7 @@ binary_exp:
 | binary_exp SLASH binary_exp { make_bin_op(OpDiv, $1, $3) }
 | binary_exp MOD binary_exp { make_bin_op(OpMod, $1, $3) }
 | binary_exp POWER binary_exp { make_bin_op(OpPow, $1, $3) }
+| binary_exp SPACESHIP binary_exp { make_bin_op(OpSpaceship, $1, $3) }
 | binary_exp SHIFT_LEFT binary_exp { make_bin_op(OpShiftLeft, $1, $3) }
 | binary_exp SHIFT_RIGHT binary_exp { make_bin_op(OpShiftRight, $1, $3) }
 | binary_exp BITWISE_AND binary_exp { make_bin_op(OpBitwiseAnd, $1, $3) }
@@ -622,6 +624,7 @@ op_name:
 | SLASH  { fname_op_div() }
 | MOD  { fname_op_mod() }
 | B_POWER  { fname_op_pow() }
+| SPACESHIP  { fname_op_spc() }
 | SHIFT_LEFT  { fname_op_shl() }
 | SHIFT_RIGHT  { fname_op_shr() }
 | BITWISE_AND  { fname_op_bit_and() }

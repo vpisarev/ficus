@@ -95,6 +95,7 @@ let token2str t = match t with
     | MOD -> "MOD"
     | B_POWER -> "B_POWER"
     | POWER -> "POWER"
+    | SPACESHIP -> "SPACESHIP"
     | SHIFT_RIGHT -> "SHIFT_RIGHT"
     | SHIFT_LEFT -> "SHIFT_LEFT"
     | BITWISE_AND -> "BITWISE_AND"
@@ -484,6 +485,7 @@ rule tokens = parse
     | ">>=" { new_exp := true; [SHIFT_RIGHT_EQUAL] }
 
     | "=="  { new_exp := true; [EQUAL_TO] }
+    | "<=>" { new_exp := true; [SPACESHIP] }
     | "!="  { new_exp := true; [NOT_EQUAL] }
     | "<="  { new_exp := true; [LESS_EQUAL] }
     | ">="  { new_exp := true; [GREATER_EQUAL] }

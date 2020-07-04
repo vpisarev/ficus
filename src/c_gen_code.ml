@@ -1902,23 +1902,29 @@ let gen_ccode top_code =
                     | KExpAtom _ | KExpBinOp _ | KExpUnOp _ | KExpIntrin _ | KExpMkTuple _
                     | KExpMkRecord _ | KExpAt _ | KExpMem _ | KExpCast _ | KExpCCode _ -> false
                     | _ -> true) then
+                    (* disable i=e2 assignment if i has complex type and e2 is "Nil".
+                       If i is complex, it will be initialized anyway with "0" or "{}".
+                       We do not need to re-initialize it once again *)
+                    let assign_e2 =
+                        match (ktp_complex, e2) with
+                        | (true, KExpAtom((Atom.Lit LitNil), _)) -> false
+                        | _ -> true
+                        in
                     let (flags, e0_opt, assign_e2) =
-                        if not is_global then (kv_flags, None, true)
+                        if not is_global then (kv_flags, None, assign_e2)
                         else
                             (* if a global value/variable is initialized with constant,
                             we just use this constant for its initialization instead of
                             setting it to "0" and reassigning inside fx_toplevel() *)
                             let (e0_opt, assign_e2) =
-                            if ktp_complex then
-                                (None, true)
-                            else if ktp_ptr || ktp_scalar then
+                            if ktp_ptr || ktp_scalar then
                                 (match e2 with
                                 | KExpAtom((Atom.Lit l), (e2_ktyp, e2_loc)) ->
                                     let e2_ctyp = C_gen_types.ktyp2ctyp e2_ktyp e2_loc in
                                     (Some (CExpLit(l, (e2_ctyp, e2_loc))), false)
-                                | _ -> (None, true))
+                                | _ -> (None, assign_e2))
                             else
-                                (None, true)
+                                (None, assign_e2)
                             in
                         (ValPrivate :: kv_flags, e0_opt, assign_e2)
                         in

@@ -161,7 +161,7 @@ type typ_t =
 let make_new_typ () = TypVar (ref (None: typ_t option))
 
 type binop_t =
-      OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
+      OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpSpaceship | OpShiftLeft | OpShiftRight
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
     | OpCons
@@ -577,6 +577,7 @@ let binop_to_string bop = match bop with
     | OpDiv -> "/"
     | OpMod -> "%"
     | OpPow -> "**"
+    | OpSpaceship -> "<=>"
     | OpShiftLeft -> "<<"
     | OpShiftRight -> ">>"
     | OpBitwiseAnd -> "&"
@@ -607,6 +608,7 @@ let fname_op_mul() = get_id "__mul__"
 let fname_op_div() = get_id "__div__"
 let fname_op_mod() = get_id "__mod__"
 let fname_op_pow() = get_id "__pow__"
+let fname_op_spc() = get_id "__spc__"
 let fname_op_shl() = get_id "__shl__"
 let fname_op_shr() = get_id "__shr__"
 let fname_op_bit_and() = get_id "__bit_and__"
@@ -645,6 +647,7 @@ let get_binop_fname bop loc =
     | OpDiv -> fname_op_div()
     | OpMod -> fname_op_mod()
     | OpPow -> fname_op_pow()
+    | OpSpaceship -> fname_op_spc()
     | OpShiftLeft -> fname_op_shl()
     | OpShiftRight -> fname_op_shr()
     | OpBitwiseAnd -> fname_op_bit_and()
@@ -672,7 +675,7 @@ let get_unop_fname uop loc =
 let fname_always_import () =
 [
     fname_op_add(); fname_op_sub(); fname_op_mul();
-    fname_op_div(); fname_op_mod(); fname_op_pow(); fname_op_shl(); fname_op_shr();
+    fname_op_div(); fname_op_mod(); fname_op_pow(); fname_op_spc(); fname_op_shl(); fname_op_shr();
     fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor(); fname_op_eq();
     fname_op_ne(); fname_op_lt(); fname_op_gt(); fname_op_le(); fname_op_gt();
 

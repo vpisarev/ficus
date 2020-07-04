@@ -151,7 +151,7 @@ void fx_free(void* ptr);
     if(delta == 0) ; else FX_FAST_THROW(FX_EXN_ZeroStepError, label}
 #define FX_LOOP_COUNT(a, b, delta) \
     ((delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta))
-#define FX_CHECK_EQ_SIZE(check, label) if(check) ; else { fx_status=FX_EXN_SizeMismatchError; goto label; }
+#define FX_CHECK_EQ_SIZE(check, label) if(check) ; else FX_FAST_THROW(FX_EXN_SizeMismatchError, label)
 
 void fx_copy_ptr(const void* src, void* pdst);
 

@@ -23,10 +23,26 @@ fun assert(f: bool) = if !f {throw AssertError}
 
 fun ignore(_: 't) {}
 
+operator <=> (a: int, b: int): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: int8, b: int8): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: uint8, b: uint8): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: int16, b: int16): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: uint16, b: uint16): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: int32, b: int32): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: uint32, b: uint32): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: int64, b: int64): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: uint64, b: uint64): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: float, b: float): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: double, b: double): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: char, b: char): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: bool, b: bool): int = (a > b :> int) - (a < b :> int)
+
+operator == (a: 't, b: 't): bool = a <=> b == 0
 operator != (a: 't, b: 't): bool = !(a == b)
-operator > (a: 't, b: 't): bool = b < a
-operator >= (a: 't, b: 't): bool = !(a < b)
-operator <= (a: 't, b: 't): bool = !(b < a)
+operator < (a: 't, b: 't): bool = a <=> b < 0
+operator > (a: 't, b: 't): bool = a <=> b > 0
+operator >= (a: 't, b: 't): bool = a <=> b >= 0
+operator <= (a: 't, b: 't): bool = a <=> b <= 0
 
 // 't?, int? etc. can be used instead of 't option, int option ...
 type 't option = None | Some: 't
@@ -34,6 +50,8 @@ type 't option = None | Some: 't
 fun getOpt(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
 
 pure nothrow fun length(s: string): int = ccode "return s->length;"
+pure nothrow fun length(l: 't list): int = ccode "return fx_list_length(l);"
+
 pure fun join(sep: string, strs:string []): string = ccode
     "return fx_strjoin(0, 0, sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);"
 pure fun join_embrace(begin: string, end: string, sep: string, strs:string []): string = ccode
@@ -99,23 +117,41 @@ pure nothrow operator == (a: string, b: string): bool = ccode
     "
 
 // [TODO] implement more clever string comparison operation
-pure nothrow operator < (a: string, b: string): bool = ccode
+pure nothrow operator <=> (a: string, b: string): int = ccode
     "
     int_ alen = a->length, blen = b->length;
-    bool ashorter = alen < blen;
-    int_ minlen = ashorter ? alen : blen;
+    int_ minlen = alen < blen ? alen : blen;
     const char_ *adata = a->data, *bdata = b->data;
     for(int_ i = 0; i < minlen; i++) {
         int_ ai = (int_)adata[i], bi = (int_)bdata[i], diff = ai - bi;
         if(diff != 0)
-            return diff < 0;
+            return diff > 0 ? 1 : -1;
     }
-    return ashorter;
+    return alen < blen ? -1 : alen > blen;
     "
 
 // compare the pointers, not the content. Maybe need a separate operator for that.
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
     "return a == b;"
+
+operator <=> (a: 't list, b: 't list): int =
+    try {
+        fold r=0 for xa <- a, xb <- b {
+            val d = xa <=> xb
+            if d != 0 {break with d}
+            r
+        }
+    }
+    catch {
+    | SizeMismatchError => length(a) <=> length(b)
+    }
+
+operator <=> (a: 't [], b: 't []): int =
+    fold r=0 for xa <- a, xb <- b {
+        val d = xa <=> xb
+        if d != 0 {break with d}
+        r
+    }
 
 nothrow fun atoi(a: string): int? = ccode
     "

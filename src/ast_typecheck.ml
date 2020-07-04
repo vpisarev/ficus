@@ -906,8 +906,12 @@ and check_exp e env sc =
         | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE ->
             unify etyp1 etyp2 eloc "only equal types can be compared";
             (match (deref_typ etyp1) with
-            | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypBool -> Some(TypBool)
+            | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypBool | TypChar -> Some(TypBool)
             | _ -> None)
+        | OpSpaceship ->
+            unify etyp1 etyp2 eloc "only values of the same type can fly on the same spaceship";
+            unify etyp TypInt eloc "result of spaceship operator needs to be 'int'";
+            None
         | _ -> raise_compile_err eloc (sprintf "unsupported binary operation %s" (binop_to_string bop))) in
 
         (match (typ_opt, bop, etyp1_, etyp2_, e1, e2) with
