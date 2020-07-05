@@ -311,7 +311,7 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
 
     if(FX_IS_ARR_CONTINUOUS(arr->flags) || total == 0) {
         *result = *arr;
-        if(result->rc) FX_INCREF(result->rc);
+        if(*result->rc) FX_INCREF(*result->rc);
     }
     else {
         fx_status = fx_make_arr(ndims, arrsize, elemsize,

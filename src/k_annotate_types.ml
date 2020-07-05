@@ -200,7 +200,7 @@ let annotate_types top_code =
             let is_recursive = List.mem VariantRecursive kvar_flags in
             let ncases = List.length kvar_cases in
             let have_null = match kvar_cases with
-                    | (_, KTypVoid) :: _ -> true
+                    | (_, KTypVoid) :: _ -> is_recursive
                     | _ -> false in
             let no_tag = ncases = 1 || (is_recursive && ncases = 2 && have_null) in
             if is_recursive then () else

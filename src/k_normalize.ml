@@ -618,6 +618,24 @@ and transform_pat_matching a cases code sc loc catch_mode =
             (* nothing to do with p, just discard it *)
             (pl_c, pl_cu, pl_u)
     in
+    let get_extract_tag_exp a atyp loc =
+        let single_case = match (deref_ktyp atyp loc) with
+            | KTypExn -> false
+            | KTypRecord _ -> true
+            | KTypName tn -> (match (kinfo_ tn loc) with
+                | KVariant {contents={kvar_cases}} ->
+                    (List.length kvar_cases) = 1
+                | _ -> raise_compile_err loc (sprintf
+                    "k-normalize: enxpected type '%s'; record, variant of exception is expected here" (id2str tn)))
+            | t -> raise_compile_err loc (sprintf
+                "k-normalize: enxpected type '%s'; record, variant of exception is expected here" (ktyp2str t))
+            in
+        if single_case then
+            KExpAtom(Atom.Lit (LitInt 0L), (KTypCInt, loc))
+        else
+            KExpIntrin(IntrinVariantTag, a :: [], (KTypCInt, loc))
+        in
+
     let rec process_next_subpat plists (checks, code) case_sc =
         let temp_prefix = "v" in
         let process_pat_list tup_id pti_l plists alt_ei_opt =
@@ -658,10 +676,11 @@ and transform_pat_matching a cases code sc loc catch_mode =
                     let vn_val = if ctor_id >= 0 then Atom.Lit (LitInt (Int64.of_int ctor_id)) else (Atom.Id vn) in
                     ([], vn_val, vn_val)
                 | k -> K_pp.pprint_kinfo_x k; raise_compile_err loc (sprintf "a variant constructor ('%s') is expected here" (id2str vn)) in
+
             let (tag_n, code) =
                 if var_tag0 != noid then (var_tag0, code) else
                 (let tag_n = gen_temp_idk "tag" in
-                let extract_tag_exp = KExpIntrin(IntrinVariantTag, (Atom.Id n) :: [], (KTypCInt, loc)) in
+                let extract_tag_exp = get_extract_tag_exp (Atom.Id n) pinfo_typ loc in
                 let code = create_kdefval tag_n KTypCInt [] (Some extract_tag_exp) code sc loc in
                 (tag_n, code))
                 in
@@ -762,14 +781,14 @@ and transform_pat_matching a cases code sc loc catch_mode =
     in
     let atyp = get_atom_ktyp a loc in
     let is_variant = match atyp with
-                | KTypExn -> true
-                | KTypName(tname) -> (match (kinfo_ tname loc) with
-                    | KVariant _ -> true
-                    | _ -> false)
-                | _ -> false in
+        | KTypExn -> true
+        | KTypName(tname) -> (match (kinfo_ tname loc) with
+            | KVariant _ -> true
+            | _ -> false)
+        | _ -> false in
     let (var_tag0, code) = if not is_variant then (noid, code) else
         (let tag_n = gen_temp_idk "tag" in
-        let extract_tag_exp = KExpIntrin(IntrinVariantTag, a :: [], (KTypCInt, loc)) in
+        let extract_tag_exp = get_extract_tag_exp a atyp loc in
         let code = create_kdefval tag_n KTypCInt [] (Some extract_tag_exp) code sc loc in
         (tag_n, code)) in
     let have_else = ref false in

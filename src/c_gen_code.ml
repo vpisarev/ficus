@@ -1198,12 +1198,28 @@ let gen_ccode top_code =
             (match (intr, args) with
             | (IntrinVariantTag, v :: []) ->
                 let (cv, ccode) = atom2cexp v ccode sc kloc in
-                let {ktp_ptr} = K_annotate_types.get_ktprops (get_atom_ktyp v kloc) kloc in
-                let ctag = if ktp_ptr then
+                let ktyp = get_atom_ktyp v kloc in
+                let {ktp_ptr} = K_annotate_types.get_ktprops ktyp kloc in
+                let extract_ctag = if ktp_ptr then
                         cexp_arrow cv (get_id "tag") CTypCInt
                     else
-                        cexp_mem cv (get_id "tag") CTypCInt in
-                (true, ctag, ccode)
+                        cexp_mem cv (get_id "tag") CTypCInt
+                    in
+                let extract_ctag = match ktyp with
+                    | KTypName tn -> (match (kinfo_ tn kloc) with
+                        | KVariant {contents={kvar_flags; kvar_cases}} ->
+                            let have_tag = not (List.mem VariantNoTag kvar_flags) in
+                            let ncases = List.length kvar_cases in
+                            if have_tag then extract_ctag
+                            else if ncases = 1 then (make_int_exp 0 kloc)
+                            else if ncases = 2 then CExpBinOp(COpCompareNE, cv, (make_nullptr kloc), (CTypBool, kloc))
+                            else raise_compile_err kloc "variants with no tag may have either 1 or 2 cases"
+                        | _ -> raise_compile_err kloc (sprintf
+                            "cgen: unexpected type '%s'; should be variant of exception"
+                            (idk2str tn kloc)))
+                    | _ -> extract_ctag
+                    in
+                (true, extract_ctag, ccode)
             | (IntrinVariantCase, v :: vn_val :: []) ->
                 let (cv, ccode) = atom2cexp v ccode sc kloc in
                 let vktyp = get_atom_ktyp v kloc in
@@ -1868,8 +1884,22 @@ let gen_ccode top_code =
                     ccode
                 else if ctor_id >= 0 then
                     let tag_exp = make_int_exp ctor_id kloc in
-                    let (init_exp, delta_ccode) = if ktp_ptr then
-                        (* temporarily put (i, ctyp) into the value table *)
+                    let is_null = ctor_id = 0 && (match kv_typ with
+                        | KTypName tn -> (match (kinfo_ tn kloc) with
+                            | KVariant {contents={kvar_flags}} ->
+                                (List.mem VariantNoTag kvar_flags) &&
+                                (List.mem VariantHaveNull kvar_flags)
+                            | _ -> false)
+                        | _ -> false)
+                        in
+                    let (init_exp, delta_ccode) =
+                        if not ktp_ptr then
+                            let init_exp = CExpInit([tag_exp], (ctyp, kloc)) in
+                            (init_exp, [])
+                        else if is_null then
+                            ((make_nullptr kloc), [])
+                        else
+                            (* temporarily put (i, ctyp) into the value table *)
                             let (i_exp, _) = create_cdefval i ctyp [] "" None [] sc kloc in
                             let (rn, _, _, _) = get_struct i_exp in
                             let struct_ctyp = CTypName rn in
@@ -1879,9 +1909,6 @@ let gen_ccode top_code =
                             let (data_exp, delta_ccode) = create_cdefval data_id struct_ctyp [ValPrivate] ""
                                 (Some data_init) [] sc kloc in
                             ((cexp_get_addr data_exp), delta_ccode)
-                        else
-                            let init_exp = CExpInit([tag_exp], (ctyp, kloc)) in
-                            (init_exp, [])
                         in
                     let (_, delta_ccode) = create_cdefval i ctyp [ValPrivate] "" (Some init_exp) delta_ccode sc kloc in
                     (* just put initialization into the global scope, no destructors are needed *)
@@ -2054,10 +2081,13 @@ let gen_ccode top_code =
                     (List.rev bctx_prologue) @ (List.rev ccode)
                 (* recursive or non-recursive variant constructor *)
                 | (_, CtorVariant(tag_value)) ->
-                    let is_recursive_variant = match kf_rt with
+                    let (have_tag, is_recursive_variant) = match kf_rt with
                         | KTypName vn ->
                             (match (kinfo_ vn kf_loc) with
-                            | KVariant {contents={kvar_flags}} -> List.mem VariantRecursive kvar_flags
+                            | KVariant {contents={kvar_flags}} ->
+                                let have_tag = not (List.mem VariantNoTag kvar_flags) in
+                                let is_recursive = List.mem VariantRecursive kvar_flags in
+                                (have_tag, is_recursive)
                             | _ -> raise_compile_err kf_loc
                                 (sprintf "cgen: the return type of variant constructor %s is not variant" (id2str kf_name)))
                         | _ -> raise_compile_err kf_loc
@@ -2078,7 +2108,7 @@ let gen_ccode top_code =
                         in
                     let init_tag = make_assign (cexp_arrow var_exp (get_id "tag") CTypInt)
                         (make_int_exp tag_value kloc) in
-                    let ccode = (CExp init_tag) :: ccode in
+                    let ccode = if have_tag then (CExp init_tag) :: ccode else ccode in
                     let dst_base = cexp_arrow var_exp (get_id "u") CTypAny in
                     let dst_base = cexp_mem dst_base (get_orig_id kf_name) CTypAny in
                     let (_, ccode) = List.fold_left (fun (idx, ccode) (a, t, flags) ->

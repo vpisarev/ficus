@@ -177,7 +177,11 @@ let run_compiler () =
     let cmd = cmd ^ (sprintf " -O%d%s" opt_level (if opt_level = 0 then " -ggdb" else "")) in
     let cmd = cmd ^ " -o " ^ options.app_filename in
     let cmd = cmd ^ " -I" ^ options.runtime_path in
+    let custom_cflags = try " " ^ (Sys.getenv "FICUS_CFLAGS") with Not_found -> "" in
+    let cmd = cmd ^ custom_cflags in
     let cmd = cmd ^ " " ^ options.c_filename in
+    let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
+    let cmd = cmd ^ custom_linked_libs in
     let cmd = cmd ^ " -lm" in
     let ok = (Sys.command cmd) = 0 in
     if not ok || options.write_c then () else Sys.remove options.c_filename;

@@ -544,7 +544,8 @@ let convert_all_typs top_code =
                                 ctp_copy=(!std_FX_COPY_FP, !std_fx_copy_fp)}}
                 | _ -> ())
             | KVariant kvar ->
-                let {kvar_name; kvar_base_name; kvar_cases; kvar_flags; kvar_loc} = !kvar in
+                let {kvar_name; kvar_base_name; kvar_cname; kvar_cases; kvar_flags; kvar_loc} = !kvar in
+                let have_tag = not (List.mem VariantNoTag kvar_flags) in
                 let int_ctx = (CTypCInt, kvar_loc) in
                 let void_ctx = (CTypVoid, kvar_loc) in
                 let tag_id = get_id "tag" in
@@ -573,8 +574,13 @@ let convert_all_typs top_code =
                                 | CExp(CExpBinOp(COpAssign, _, _, _)) :: [] -> copy_cases
                                 | _ -> (switch_label_i_exps, copy_code_i) :: copy_cases in
                             (free_cases, copy_cases, (ni_clean, ti) :: uelems)) ([], [], []) kvar_cases ce_members in
-                let free_code = match free_cases with
-                    | [] -> []
+                let free_code = match (have_tag, free_cases) with
+                    | (_, []) -> []
+                    | (false, (_, free_code) :: rest) ->
+                        if rest = [] then () else
+                            raise_compile_err kvar_loc (sprintf
+                                "cgen: variant '%s' with no tag somehow has multiple cases in the destructor" kvar_cname);
+                        free_code
                     | _ ->
                         (* add "default: ;" case *)
                         let free_cases = ([], []) :: free_cases in
@@ -597,7 +603,7 @@ let convert_all_typs top_code =
                         CStmtSwitch(src_tag_exp, (List.rev copy_cases), kvar_loc) :: copy_code
                 in
                 let relems = if uelems = [] then [] else (u_id, CTypUnion(None, List.rev uelems)) :: [] in
-                let relems = (tag_id, CTypCInt) :: relems in
+                let relems = if have_tag then (tag_id, CTypCInt) :: relems else relems in
                 if recursive_variant then
                     let relems = ((get_id "rc"), CTypInt) :: relems in
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)))};
