@@ -574,11 +574,11 @@ typedef struct fx_fcv_t
             (f)->fcv->free_f((f)->fcv); \
         (f)->fcv=0; \
     }
-#define FX_COPY_FP(src, dst) { \
-    if((src)->fcv && (src)->fcv->free_f) \
+#define FX_COPY_FP(src, dst) \
+    if((src)->fcv && (src)->fcv->free_f) { \
         FX_INCREF((src)->fcv->rc); \
-    *(dst) = *(src); \
-}
+        *(dst) = *(src); \
+    } else *(dst) = *(src)
 
 #define FX_MAKE_FP_IMPL_START(fcv_t, free_f_, fname) \
     FX_DECL_AND_MALLOC(fcv_t*, fcv); \

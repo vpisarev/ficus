@@ -53,7 +53,7 @@ fun print_ttln(a: tt)
 
 //throw Fail("test")
 
-exception BreakWith: int
+/*exception BreakWith: int
 
 fun find_neg(a: 't [])
 {
@@ -74,3 +74,13 @@ fun find_neg(a: 't [])
 
 val a=[0, 1, 2, -10, 7]
 println("excepion-based search: negative number in \(a): \(find_neg(a))")
+*/
+//val arr=["false", "true", "maybe"]
+//val idx = (5 <= 6)
+//println("arr[\(idx)]=\(arr[idx])")
+val a = [1, 0; 0, 1]
+println(a[: ]+a[ :])
+
+clip
+neumann
+//println(5 <=> 6)

@@ -70,6 +70,12 @@ let make_deffun fname args rt body flags loc =
       df_body=body; df_flags=flags; df_scope=ScGlobal :: [];
       df_loc=loc; df_templ_inst=[]; df_env=Env.empty }
 
+let make_pmatch_deffun (flags, fname) (args, rt, prologue) pmatch_clauses args_pos pmatch_pos =
+    let (args_upd, match_arg) = plist2exp args args_pos in
+    let match_e = ExpMatch(match_arg, (List.rev pmatch_clauses), make_new_ctx()) in
+    let body = expseq2exp (prologue @ [match_e]) pmatch_pos in
+    DefFun (ref (make_deffun fname args_upd rt body flags (curr_loc())))
+
 let good_variant_name s =
     let c0 = String.get s 0 in
     ('A' <= c0 && c0 <= 'Z') || (String.contains s '.')
@@ -300,12 +306,7 @@ decl:
     }
 | fun_decl_start fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
     {
-        let (flags, fname) = $1 in
-        let (args, rt, prologue) = $2 in
-        let (args_upd, match_arg) = plist2exp args 2 in
-        let match_e = ExpMatch(match_arg, (List.rev $5), make_new_ctx()) in
-        let body = expseq2exp (prologue @ [match_e]) 5 in
-        [DefFun (ref (make_deffun fname args_upd rt body flags (curr_loc())))]
+        [make_pmatch_deffun $1 $2 $5 2 5]
     }
 | simple_type_decl { [$1] }
 | exception_decl { [$1] }
@@ -514,6 +515,13 @@ complex_exp:
         let fname = gen_temp_id "lambda" in
         let df = make_deffun fname args rt body [] (curr_loc()) in
         ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
+    }
+| FUN fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
+    {
+        let ctx = make_new_ctx() in
+        let fname = gen_temp_id "lambda" in
+        let df = make_pmatch_deffun ([], fname) $2 $5 2 5 in
+        ExpSeq([df; ExpIdent (fname, ctx)], ctx)
     }
 | simple_exp LBRACE id_exp_list_ RBRACE
     %prec fcall_prec

@@ -119,14 +119,14 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
         | Some i -> raise_compile_err loc (sprintf "c_pp.ml: void cannot be used with id '%s'" (id2str i))
         | _ -> ())
     | CTypFunRawPtr(args, rt) ->
-        obox(); pprint_ctyp_ rt None loc;
+        obox(); pprint_ctyp__ "" rt None true loc;
         pspace(); pstr "(*";
         pr_id_opt_ false; pstr ")("; pcut();
         obox();
         (match args with
         | [] -> pstr "void"
         | t :: [] -> pprint_ctyp_ t None loc
-        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp_ ti None loc) args);
+        | _ -> List.iteri (fun i ti -> if i = 0 then () else (pstr ","; pspace()); pprint_ctyp__ "" ti None true loc) args);
         cbox(); pstr ")"; cbox()
     | CTypStruct (n_opt, selems) -> pr_struct (prefix0 ^ "struct") n_opt selems ""
     | CTypRawPtr ([], CTypStruct(n_opt, selems)) ->
