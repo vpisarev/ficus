@@ -23,19 +23,19 @@ fun assert(f: bool) = if !f {throw AssertError}
 
 fun ignore(_: 't) {}
 
-operator <=> (a: int, b: int): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: int8, b: int8): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: uint8, b: uint8): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: int16, b: int16): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: uint16, b: uint16): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: int32, b: int32): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: uint32, b: uint32): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: int64, b: int64): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: uint64, b: uint64): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: float, b: float): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: double, b: double): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: char, b: char): int = (a > b :> int) - (a < b :> int)
-operator <=> (a: bool, b: bool): int = (a > b :> int) - (a < b :> int)
+operator <=> (a: int, b: int): int = (a > b) - (a < b)
+operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
+operator <=> (a: uint8, b: uint8): int = (a > b) - (a < b)
+operator <=> (a: int16, b: int16): int = (a > b) - (a < b)
+operator <=> (a: uint16, b: uint16): int = (a > b) - (a < b)
+operator <=> (a: int32, b: int32): int = (a > b) - (a < b)
+operator <=> (a: uint32, b: uint32): int = (a > b) - (a < b)
+operator <=> (a: int64, b: int64): int = (a > b) - (a < b)
+operator <=> (a: uint64, b: uint64): int = (a > b) - (a < b)
+operator <=> (a: float, b: float): int = (a > b) - (a < b)
+operator <=> (a: double, b: double): int = (a > b) - (a < b)
+operator <=> (a: char, b: char): int = (a > b) - (a < b)
+operator <=> (a: bool, b: bool): int = (a > b) - (a < b)
 
 operator == (a: 't, b: 't): bool = a <=> b == 0
 operator != (a: 't, b: 't): bool = !(a == b)
@@ -81,6 +81,14 @@ operator + (l1: 't list, l2: 't list) {
 
 fun string(a: bool) = if a {"true"} else {"false"}
 pure fun string(a: int): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: uint8): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: int8): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: uint16): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: int16): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: uint32): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: int32): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: uint64): string = ccode "return fx_itoa(a, fx_result);"
+pure fun string(a: int64): string = ccode "return fx_itoa(a, fx_result);"
 pure fun string(c: char): string = ccode "return fx_make_str(&c, 1, fx_result);"
 pure fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
 pure fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
@@ -217,7 +225,16 @@ nothrow fun print_string(a: string): void = ccode "fx_fputs(stdout, a);"
 
 fun print(a: 't) = print_string(string(a))
 fun print_repr(a: 't) = print(a)
+nothrow fun print(a: bool): void = ccode "puts(a ? \"true\" : \"false\");"
 nothrow fun print(a: int): void = ccode "printf(\"%zd\", a);"
+nothrow fun print(a: uint8): void = ccode "printf(\"%d\", (int)a);"
+nothrow fun print(a: int8): void = ccode "printf(\"%d\", (int)a);"
+nothrow fun print(a: uint16): void = ccode "printf(\"%d\", (int)a);"
+nothrow fun print(a: int16): void = ccode "printf(\"%d\", (int)a);"
+nothrow fun print(a: uint32): void = ccode "printf(\"%u\", a);"
+nothrow fun print(a: int32): void = ccode "printf(\"%d\", a);"
+nothrow fun print(a: uint64): void = ccode "printf(\"%Lu\", a);"
+nothrow fun print(a: int64): void = ccode "printf(\"%Ld\", a);"
 nothrow fun print(a: float): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.8g\"), a);"
 nothrow fun print(a: double): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.16g\"), a);"
 fun print(a: string) = print_string(a)

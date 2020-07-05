@@ -91,7 +91,7 @@ let pprint_ktyp t loc = ppktyp_ t KTypPr0 loc
 let pprint_atom a loc = match a with
     | Atom.Id ((Id.Name _) as k) -> pprint_id k loc
     | Atom.Id k -> pprint_id k loc
-    | Atom.Lit l -> pstr (lit2str l loc)
+    | Atom.Lit l -> pstr (lit2str l false loc)
 let pprint_dom r loc = match r with
     | Domain.Elem(a) -> pprint_atom a loc
     | Domain.Fast(a) -> pstr "<"; pprint_atom a loc; pstr ">"

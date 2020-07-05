@@ -884,7 +884,7 @@ let rec ktyp2str t =
     | KTypErr -> "KTypErr"
     | KTypModule -> "KTypModule"
 and ktl2str tl = String.concat ", " (List.map (fun t -> ktyp2str t) tl)
-and atom2str a = match a with Atom.Id i -> idk2str i noloc | Atom.Lit l -> lit2str l noloc
+and atom2str a = match a with Atom.Id i -> idk2str i noloc | Atom.Lit l -> lit2str l false noloc
 and kexp2str e =
     let l = get_kexp_loc e in
     match e with

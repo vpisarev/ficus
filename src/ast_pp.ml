@@ -24,7 +24,7 @@ let ovbox () = Format.open_vbox (!base_indent)
 let ohvbox () = Format.open_hvbox 0
 let ohvbox_indent () = Format.open_hvbox (!base_indent)
 
-let pprint_lit x loc = pstr (lit2str x loc)
+let pprint_lit x loc = pstr (lit2str x false loc)
 let pprint_id x = pstr (match x with Id.Name(0) -> "__" | _ -> id2str x)
 
 type typ_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase

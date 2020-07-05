@@ -455,6 +455,9 @@ let coerce_types t1 t2 allow_tuples allow_fp loc =
     | (TypInt, (TypFloat b)) when allow_fp -> TypFloat(max b 32)
     | ((TypSInt _), (TypFloat b)) when allow_fp -> TypFloat(max b 32)
     | ((TypUInt _), (TypFloat b)) when allow_fp -> TypFloat(max b 32)
+    | (TypBool, TypBool) -> TypInt
+    | (TypBool, t2) -> coerce_types_ TypInt t2
+    | (t1, TypBool) -> coerce_types_ t1 TypInt
     | ((TypTuple tl1), (TypTuple tl2)) ->
         if not allow_tuples then
             raise_compile_err loc "tuples are not allowed in this operation"
@@ -1053,7 +1056,13 @@ and check_exp e env sc =
                 | ExpRange(_, _, _, _) -> (new_idx :: new_idxs, nidx+1, nrange_idx+1)
                 | _ ->
                     let (new_ityp, new_iloc) = get_exp_ctx new_idx in
-                    unify new_ityp TypInt new_iloc "each scalar index in array access op must be an integer";
+                    let new_idx = if (maybe_unify new_ityp TypInt true) then new_idx else
+                        let possible_idx_typs=[TypBool; TypUInt(8); TypSInt(8); TypUInt(16);
+                            TypSInt(16); TypUInt(32); TypSInt(32); TypUInt(64); TypSInt(64)] in
+                        if List.exists(fun t -> maybe_unify new_ityp t true) possible_idx_typs then
+                            ExpCast(new_idx, TypInt, (TypInt, new_iloc))
+                        else raise_compile_err new_iloc
+                            "each scalar index in array access op must have some integer type or bool" in
                     (new_idx :: new_idxs, nidx+1, nrange_idx)) ([], 0, 0) idxs in
             unify new_atyp (TypArray(nidx, et)) new_aloc "the array dimensionality does not match the number of indices";
             (if nrange_idx = 0 then

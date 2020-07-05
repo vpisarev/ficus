@@ -748,14 +748,14 @@ let ctor2str f =
     in if f = CtorNone then "not_a_constructor" else
     ("Constructor(" ^ s ^ ")")
 
-let lit2str c loc =
+let lit2str c cmode loc =
     let add_dot s suffix =
         (if (String.contains s '.') || (String.contains s 'e') then s else s ^ ".") ^ suffix
     in
     match c with
     | LitInt(v) -> sprintf "%Li" v
-    | LitSInt(b, v) -> sprintf "%Lii%d" v b
-    | LitUInt(b, v) -> sprintf "%Luu%d" v b
+    | LitSInt(b, v) -> if cmode then sprintf "%Li" v else sprintf "%Lii%d" v b
+    | LitUInt(b, v) -> if cmode then sprintf "%Lu" v else sprintf "%Luu%d" v b
     | LitFloat(16, v) -> let s = sprintf "%.4g" v in (add_dot s "h")
     | LitFloat(32, v) -> let s = sprintf "%.8g" v in (add_dot s "f")
     | LitFloat(64, v) -> let s = sprintf "%.16g" v in (add_dot s "")
