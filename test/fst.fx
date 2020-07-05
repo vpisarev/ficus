@@ -84,21 +84,20 @@ do
 }
 while i1 < n
 
-fun gen_msg(i: int, a: 't []) = if i >= size(a) {"not found"} else {"a[\(i)]=\(a[i])"}
+fun gen_msg(i: int, a: 't []) = if i < 0 || i >= size(a) {"not found"} else {"a[\(i)]=\(a[i])"}
 println("imperative search: negative number in \(a): \(gen_msg(i1, a))")
 
 val fold i2=0 for i<-0:n { if a[i] < 0 {break with i}; i2 }
 println("fold-based search: negative number in \(a): \(gen_msg(i2, a))")
 
-/*
 exception BreakWith: int
 
-fun find_idx(a: 't [], elem: 't)
+fun find_idx(a: 't [], f: 't -> bool): int
 {
     val n = size(a)
     try
     {
-        for i <- 0:n {if a[i] == elem {throw BreakWith(i)}}
+        for i <- 0:n {if f(a[i]) {throw BreakWith(i)}}
         -1
     }
     catch
@@ -106,8 +105,7 @@ fun find_idx(a: 't [], elem: 't)
     | BreakWith(i) => i
     }
 }
-println("excepion-based search: negative number in \(a): \(gen_msg(find_idx(a), a))")
-*/
+println("excepion-based search: negative number in \(a): \(gen_msg(find_idx(a, fun (i: int): bool {i < 0}), a))")
 
 type complex_t = {re: float, im: float}
 val c = ref (complex_t {re=1.f, im=1.f})

@@ -163,7 +163,12 @@ let rec exp2kexp e code tref sc =
         let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
         (KExpMkArray(shape, (List.rev elems), kctx), code)
     | ExpMkRecord (rn, rinitelems, _) ->
-        let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn) etyp eloc in
+        let rn_id = match rn with
+            | ExpIdent(rn_id, _) -> rn_id
+            | _ -> raise_compile_err (get_exp_loc rn)
+                "k-normalization: in the record construction identifier is expected after type check"
+            in
+        let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn_id) etyp eloc in
         let (ratoms, code) = List.fold_left (fun (ratoms, code) (ni, ti, opt_vi) ->
             let (a, code) = try
                 let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rinitelems in
@@ -431,6 +436,55 @@ and pat_have_vars p = match p with
     | PatVariant(_, pl, _) -> List.exists pat_have_vars pl
     | PatRec(_, ip_l, _) -> List.exists (fun (_, pi) -> pat_have_vars pi) ip_l
 
+(* version of Ast_typecheck.get_record_elems, but for already transformed types *)
+and get_record_elems_k vn_opt t loc =
+    let t = deref_ktyp t loc in
+    let input_vn = match vn_opt with
+        | Some(vn) -> get_orig_id vn
+        | _ -> noid
+        in
+    match t with
+    | KTypRecord (_, relems) -> (noid, relems)
+    | KTypName tn ->
+        (match (kinfo_ tn loc) with
+        | KVariant {contents={kvar_flags; kvar_cases=(vn0, KTypRecord (_, relems))::[]}}
+            when (List.mem VariantRecord kvar_flags) ->
+                if input_vn = noid || input_vn = (get_orig_id vn0) then ()
+                else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
+                    (pp_id2str input_vn) (pp_id2str vn0));
+                (noid, relems)
+        | KVariant {contents={kvar_cases; kvar_constr}} ->
+            let kvar_cases_ctors = Utils.zip kvar_cases kvar_constr in
+            (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id input_vn)) kvar_cases_ctors) with
+            | Some(((_, KTypRecord (_, relems)), ctor)) -> (ctor, relems)
+            | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str input_vn)))
+        | _ -> raise_compile_err loc (sprintf "type '%s' is expected to be variant" (id2str tn)))
+    | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record"
+
+and ktyp_record_pat pat ptyp =
+    match pat with
+    | PatRec(rn_opt, relems, loc) ->
+        let (ctor, relems_found) = get_record_elems_k rn_opt ptyp loc in
+        let typed_rec_pl = List.fold_left (fun typed_rec_pl (ni, pi) ->
+            let ni_orig = get_orig_id ni in
+            let (_, found_idx, found_t) = List.fold_left
+                (fun (idx, found_idx, found_t) (nj, tj) ->
+                    if (get_orig_id nj) = ni_orig then
+                        (idx+1, idx, tj)
+                    else
+                        (idx+1, found_idx, found_t))
+                (0, -1, KTypVoid) relems_found
+                in
+            if found_idx >= 0 then
+                (ni, pi, found_t, found_idx) :: typed_rec_pl
+            else
+                raise_compile_err loc (sprintf "element '%s' is not found in the record '%s'"
+                    (pp_id2str ni) (pp_id2str (Utils.opt_get rn_opt noid))))
+            [] relems
+            in
+        (ctor, typed_rec_pl)
+    | _ -> raise_compile_err (get_pat_loc pat) "record pattern is expected"
+
 and pat_need_checks p ptyp = match p with
     | PatAny _ | PatIdent _ | PatAs _ -> false
     | PatLit _ -> true
@@ -445,11 +499,11 @@ and pat_need_checks p ptyp = match p with
         true
         (* [TODO] it's not necessarily true if the variant has a single case *)
         (*List.exists pat_need_checks pl*)
-    | PatRec(rn_opt, ip_l, _) ->
+    | PatRec (rn_opt, _, _) ->
+        let (ctor, typed_rec_pl) = ktyp_record_pat p ptyp in
+        (Option.is_some rn_opt) || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
         (* [TODO] if rn_opt = Some(rn), the condition is not necessarily true,
                   because the variant may have a single case *)
-        (*(Option.is_some rn_opt) || List.exists (fun (ni, pi) -> pat_need_checks pi) ip_l*)
-        raise_compile_err (get_pat_loc p) "record patterns are not supported yet"
 
 and pat_skip_typed p = match p with
     | PatTyped(p, _, _) -> pat_skip_typed p
@@ -513,9 +567,9 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
         code
     | PatIdent _ -> code
     | PatVariant(_, _, loc) ->
-        raise_compile_err loc "variant patterns are not supported yet"
+        raise_compile_err loc "simple variant patterns are not supported yet"
     | PatRec(_, ip_l, loc) ->
-        raise_compile_err loc "record patterns are not supported yet"
+        raise_compile_err loc "simple record patterns are not supported yet"
     | PatAs _ ->
         let e = KExpAtom(Atom.Id n, (ptyp, loc)) in
         let (_, code) = pat_simple_unpack p ptyp (Some e) code temp_prefix flags sc in
@@ -566,14 +620,11 @@ and transform_pat_matching a cases code sc loc catch_mode =
     in
     let rec process_next_subpat plists (checks, code) case_sc =
         let temp_prefix = "v" in
-        let process_pltl tup_id pl tl plists alt_ei_opt =
-            match pl with
-            | PatAny _ :: [] -> plists
+        let process_pat_list tup_id pti_l plists alt_ei_opt =
+            match pti_l with
+            | (PatAny _, _, _) :: [] -> plists
             | _ ->
-                let _ = if (List.length tl) != (List.length pl) then
-                    raise_compile_err (get_pat_loc (List.hd pl)) "wrong number of the pattern elements"
-                else () in
-                let (_, plists_delta) = List.fold_left2 (fun (idx, plists_delta) pi ti ->
+                let (_, plists_delta) = List.fold_left (fun (idx, plists_delta) (pi, ti, idxi) ->
                 let loci = get_pat_loc pi in
                 let ei = match alt_ei_opt with
                     | Some(ei) ->
@@ -581,9 +632,9 @@ and transform_pat_matching a cases code sc loc catch_mode =
                             "a code for singe-argument variant case handling is used with a case with multiple patterns";
                         ei
                     | _ ->
-                        KExpMem(tup_id, idx, (ti, loci)) in
+                        KExpMem(tup_id, idxi, (ti, loci)) in
                 let pinfo_i = {pinfo_p=pi; pinfo_typ=ti; pinfo_e=ei; pinfo_tag=noid} in
-                (idx + 1, pinfo_i :: plists_delta)) (0, []) pl tl in
+                (idx + 1, pinfo_i :: plists_delta)) (0, []) pti_l in
                 let plists = List.fold_left (fun plists pinfo -> dispatch_pat pinfo plists) plists plists_delta in
                 plists
         in
@@ -672,16 +723,33 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 let tl = match ptyp with
                     | KTypTuple(tl) -> tl
                     | _ -> raise_compile_err loc "invalid type of the tuple pattern (it must be a tuple as well)" in
-                let plists = process_pltl n pl tl plists None in
+                let (_, pti_l) = List.fold_left2 (fun (idx, pti_l) pi ti ->
+                    (idx+1, ((pi, ti, idx) :: pti_l))) (0, []) pl tl in
+                let plists = process_pat_list n pti_l plists None in
                 (plists, checks, code)
             | PatVariant(vn, pl, loc) ->
                 let (case_n, tl, checks, code, alt_e_opt) =
                     get_var_tag_cmp_and_extract n pinfo (checks, code) vn case_sc loc in
-                let plists = if case_n = noid && (Utils.is_none alt_e_opt) then plists
-                             else process_pltl case_n pl tl plists alt_e_opt in
+                let plists =
+                    if case_n = noid && (Utils.is_none alt_e_opt) then plists
+                    else
+                        let (_, pti_l) = List.fold_left2 (fun (idx, pti_l) pi ti ->
+                            (idx+1, ((pi, ti, idx) :: pti_l))) (0, []) pl tl in
+                        process_pat_list case_n pti_l plists alt_e_opt
+                    in
                 (plists, checks, code)
-            | PatRec(_, ip_l, loc) ->
-                raise_compile_err loc "record patterns are not supported yet"
+            | PatRec(rn_opt, _, loc) ->
+                let (case_n, _, checks, code, alt_e_opt) = match rn_opt with
+                    | Some rn -> get_var_tag_cmp_and_extract n pinfo (checks, code) rn case_sc loc
+                    | _ -> (n, [], checks, code, None)
+                    in
+                let plists = if case_n = noid && (Utils.is_none alt_e_opt) then plists
+                    else
+                        let (_, ktyp_rec_pl) = ktyp_record_pat p ptyp in
+                        let pti_l = List.map (fun (_, pi, ti, idxi) -> (pi, ti, idxi)) ktyp_rec_pl in
+                        process_pat_list case_n pti_l plists alt_e_opt
+                    in
+                (plists, checks, code)
             | PatAs (p, _, _) ->
                 let pinfo = {pinfo_p=p; pinfo_typ=ptyp; pinfo_e=KExpAtom((Atom.Id n), (ptyp, loc)); pinfo_tag=var_tag0} in
                 let plists = dispatch_pat pinfo plists in
@@ -797,25 +865,23 @@ and transform_all_types_and_cons elist code sc =
                                         kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
                         let _ = set_idk_entry inst_name (KVariant kvar) in
                         let code = (KDefVariant kvar) :: code in
+                        let new_rt = KTypName inst_name in
                         let (_, code) = List.fold_left (fun (idx, code) constr ->
                             match (id_info constr) with
                             | IdFun {contents={df_name; df_typ}} ->
-                                let df_typ = match df_typ with
-                                    | TypFun([TypRecord {contents=(relems, true)}], rt) ->
-                                        TypFun((List.map (fun (n, t, _) -> t) relems), rt)
-                                    | _ -> df_typ
+                                let argtyps = match df_typ with
+                                    | TypFun([TypRecord {contents=(relems, true)}], _) ->
+                                        List.map (fun (n, t, _) -> t) relems
+                                    | TypFun(argtyps, _) -> argtyps
+                                    | _ -> []
                                     in
-                                let kf_typ=(typ2ktyp df_typ dvar_loc) in
-                                let (argtyps, rt) = match kf_typ with
-                                        | KTypFun(argtyps, rt) -> (argtyps, rt)
-                                        | _ -> ([], kf_typ)
-                                    in
-                                let code = match argtyps with
+                                let kargtyps = List.map (fun t -> typ2ktyp t dvar_loc) argtyps in
+                                let code = match kargtyps with
                                 | [] ->
-                                    let e0 = KExpAtom(Atom.Lit (LitInt (Int64.of_int idx)), (kf_typ, dvar_loc)) in
-                                    create_kdefval df_name kf_typ [ValMutable; ValCtor idx] (Some e0) code sc dvar_loc
+                                    let e0 = KExpAtom(Atom.Lit (LitInt (Int64.of_int idx)), (new_rt, dvar_loc)) in
+                                    create_kdefval df_name new_rt [ValMutable; ValCtor idx] (Some e0) code sc dvar_loc
                                 | _ ->
-                                    create_kdefconstr df_name argtyps rt [FunCtor (CtorVariant idx)] code sc dvar_loc
+                                    create_kdefconstr df_name kargtyps new_rt [FunCtor (CtorVariant idx)] code sc dvar_loc
                                 in (idx+1, code)
                             | _ -> raise_compile_err dvar_loc
                                 (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))

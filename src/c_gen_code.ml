@@ -1917,7 +1917,9 @@ let gen_ccode top_code =
                             we just use this constant for its initialization instead of
                             setting it to "0" and reassigning inside fx_toplevel() *)
                             let (e0_opt, assign_e2) =
-                            if ktp_ptr || ktp_scalar then
+                            if ktp_complex then
+                                (None, assign_e2)
+                            else if ktp_ptr || ktp_scalar then
                                 (match e2 with
                                 | KExpAtom((Atom.Lit l), (e2_ktyp, e2_loc)) ->
                                     let e2_ctyp = C_gen_types.ktyp2ctyp e2_ktyp e2_loc in

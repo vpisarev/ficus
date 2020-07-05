@@ -551,24 +551,31 @@ let find_typ_instance t loc =
             with Not_found -> None)
     | _ -> Some t
 
-let get_record_elems vn_exp_opt t loc =
+let get_record_elems vn_opt t loc =
     let t = deref_typ t in
-    let rn_opt = match vn_exp_opt with Some(ExpIdent(rn, _)) -> Some rn | _ -> None in
+    let input_vn = match vn_opt with
+        | Some(vn) -> get_orig_id vn
+        | _ -> noid
+        in
     match t with
     | TypRecord {contents=(relems, true)} -> (noid, relems)
     | TypRecord _ -> raise_compile_err loc "the records, which elements we request, is not finalized"
     | TypApp _ ->
         (match (find_typ_instance t loc) with
         | Some (TypApp([], n)) ->
-            (match (rn_opt, (id_info n)) with
-            | (_, IdVariant {contents={dvar_flags;
-                dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []}})
-                when (List.mem VariantRecord dvar_flags) -> (noid, relems)
-            | ((Some rn), IdVariant {contents={dvar_cases; dvar_constr}}) ->
+            (match (id_info n) with
+            | IdVariant {contents={dvar_flags;
+                dvar_cases=(vn0, TypRecord {contents=(relems, true)}) :: []}}
+                when (List.mem VariantRecord dvar_flags) ->
+                if input_vn = noid || input_vn = (get_orig_id vn0) then ()
+                else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
+                    (pp_id2str input_vn) (pp_id2str vn0));
+                (noid, relems)
+            | IdVariant {contents={dvar_cases; dvar_constr}} ->
                 let dvar_cases_ctors = Utils.zip dvar_cases dvar_constr in
-                (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id rn)) dvar_cases_ctors) with
+                (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id input_vn)) dvar_cases_ctors) with
                 | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
-                | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str rn)))
+                | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str input_vn)))
             | _ -> raise_compile_err loc (sprintf "cannot find a proper record constructor in type '%s'" (id2str n)))
         | _ -> raise_compile_err loc "proper instance of the template [record?] type is not found")
     | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record"
@@ -771,6 +778,17 @@ and check_exp e env sc =
         in
             check_inside_ sc
     in
+    (* find the proper function and make "call" expression
+       given that all the parameters are already type-checked *)
+    let rec check_and_make_call f_id args =
+        let arg_typs = List.map (fun a -> get_exp_typ a) args in
+        let f_expected_typ = TypFun(arg_typs, etyp) in
+        let f_exp = ExpIdent(f_id, (make_new_typ(), eloc)) in
+        let (f_real_typ, floc) = get_exp_ctx f_exp in
+        let _ = unify f_real_typ f_expected_typ floc "the real and expected function type do not match" in
+        let new_f = check_exp f_exp env sc in
+        ExpCall(new_f, args, ctx)
+    in
     let new_e =
     (match e with
     | ExpNop(_) -> e
@@ -859,7 +877,10 @@ and check_exp e env sc =
             let _ = unify etyp2 (TypList etyp1) eloc2 "incorrect type of the second argument of '::' operation" in
             ExpBinOp(OpCons, new_e1, new_e2, ctx)
         else
-            check_exp (ExpRange((Some e1), None, (Some e2), ctx)) env sc
+            let _ = unify etyp1 TypInt eloc1 "explicitly specified component of a range must be an integer" in
+            let _ = unify etyp2 TypInt eloc2 "explicitly specified component of a range must be an integer" in
+            let _ = unify etyp (TypTuple [TypInt;TypInt;TypInt]) eloc "the range type should have (int, int, int) type" in
+            ExpRange((Some new_e1), None, (Some new_e2), ctx)
     | ExpBinOp(bop, e1, e2, _) ->
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
@@ -927,13 +948,14 @@ and check_exp e env sc =
             (* make list concatenation right-associative instead of left-associative *)
             let sub_e2_loc = get_exp_loc sub_e2 in
             let e2_loc = loclist2loc [sub_e2_loc; eloc2] eloc2 in
+            (* [TODO] fix bug with repetitive check of the same expression (since the check has some side effects) *)
             let e2_ = ExpBinOp(OpAdd, sub_e2, e2, (make_new_typ(), e2_loc)) in
             check_exp (ExpBinOp (OpAdd, sub_e1, e2_, (etyp, eloc))) env sc
         | _ ->
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)
             let f_id = get_binop_fname bop eloc in
-            check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [e1; e2], ctx)) env sc)
+            check_and_make_call f_id [new_e1; new_e2])
 
     | ExpThrow(e1, _) ->
         let (etyp1, eloc1) = get_exp_ctx e1 in
@@ -965,7 +987,7 @@ and check_exp e env sc =
                 ExpUnOp(uop, new_e1, ctx)
             | None ->
                 let f_id = get_unop_fname uop eloc in
-                check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1], ctx)) env sc)
+                check_and_make_call f_id [new_e1])
         | OpBitwiseNot ->
             (let rec check_bitwise t =
                 match (deref_typ t) with
@@ -981,7 +1003,7 @@ and check_exp e env sc =
                 ExpUnOp(uop, new_e1, ctx)
             with Invalid_argument _ ->
                 let f_id = get_unop_fname uop eloc in
-                check_exp (ExpCall (ExpIdent(f_id, (make_new_typ(), eloc)), [new_e1], ctx)) env sc)
+                check_and_make_call f_id [new_e1])
         | OpLogicNot ->
             unify etyp1 TypBool eloc1 "the argument of ! operator must be a boolean";
             unify etyp TypBool eloc "the result of ! operator must be a boolean";
@@ -1783,8 +1805,24 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                         (sprintf "the variant constructor '%s' is not found" (pp_id2str v)))
                 | _ -> raise_compile_err loc "variant pattern is used with non-variant type")
             | _ -> raise_compile_err loc "variant pattern is used with non-variant type")
-        | PatRec(r_opt, relems, loc) ->
-            raise_compile_err loc "record patterns are not supported yet"
+        | PatRec(rn_opt, relems, loc) ->
+            if not proto_mode then
+                (* [TODO] in the ideal case this branch should work fine in the prototype mode as well,
+                   just need to make lookup_id smart enough (maybe add some extra parameters to
+                   avoid preliminary type instantiation) *)
+                let (ctor, relems_found) = get_record_elems rn_opt t loc in
+                let new_relems = List.fold_left (fun new_relems (n, p) ->
+                    let n_orig = get_orig_id n in
+                    match (List.find_opt (fun (nj, tj, _) -> (get_orig_id nj) = n_orig) relems_found) with
+                    | Some((nj, tj, _)) ->
+                        let p = check_pat_ p tj in (n, p) :: new_relems
+                    | _ -> raise_compile_err loc
+                        (sprintf "element '%s' is not found in the record '%s'" (pp_id2str n) (pp_id2str (Utils.opt_get rn_opt noid))))
+                    [] relems
+                    in
+                PatRec((if ctor <> noid then Some ctor else None), new_relems, loc)
+            else
+                raise_compile_err loc "record patterns are not supported in function prototypes yet"
         | PatCons(p1, p2, loc) ->
             let t1 = make_new_typ() in
             let t2 = TypList t1 in
