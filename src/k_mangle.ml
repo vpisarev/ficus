@@ -272,12 +272,16 @@ let mangle_all top_code =
             let {kvar_name; kvar_cases; kvar_loc} = !kvar in
             (* compute and set kvar_cname *)
             let _ = mangle_ktyp (KTypName kvar_name) mangle_map kvar_loc in
-            let var_cases = List.map (fun (n, t) ->
-                let t = match (deref_ktyp t kvar_loc) with
-                    | KTypRecord(_, relems) -> KTypTuple(List.map (fun (_, ti) -> ti) relems)
-                    | _ -> t
+            let tag_base_name = "_FX_" ^ (pp_id2str (!kvar).kvar_base_name) ^ "_" in
+            let var_cases = List.map (fun (ni, ti) ->
+                let tag_name = tag_base_name ^ (pp_id2str ni) in
+                let kv = get_kval ni kvar_loc in
+                let _ = set_idk_entry ni (KVal {kv with kv_cname=tag_name}) in
+                let ti = match (deref_ktyp ti kvar_loc) with
+                    | KTypRecord(_, relems) -> KTypTuple(List.map (fun (_, tj) -> tj) relems)
+                    | _ -> ti
                     in
-                (n, mangle_ktyp_retain_record t kvar_loc callb)) kvar_cases in
+                (ni, mangle_ktyp_retain_record ti kvar_loc callb)) kvar_cases in
             kvar := { !kvar with kvar_cases=var_cases };
             e
         | KDefTyp ({contents={kt_typ=KTypRecord(_, _)}} as kt) ->

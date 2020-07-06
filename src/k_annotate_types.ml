@@ -199,10 +199,10 @@ let annotate_types top_code =
             let {kvar_flags} = !kvar in
             let is_recursive = List.mem VariantRecursive kvar_flags in
             let ncases = List.length kvar_cases in
-            let have_null = match kvar_cases with
-                    | (_, KTypVoid) :: _ -> is_recursive
+            let recursive_option = match kvar_cases with
+                    | (_, KTypVoid) :: (_, _) :: [] -> is_recursive
                     | _ -> false in
-            let no_tag = ncases = 1 || (is_recursive && ncases = 2 && have_null) in
+            let no_tag = ncases = 1 || recursive_option in
             if is_recursive then () else
                 List.iter (fun constr ->
                     match (kinfo_ constr kvar_loc) with
@@ -211,7 +211,7 @@ let annotate_types top_code =
                         kf := {!kf with kf_flags=FunNoThrow :: kf_flags}
                     | _ -> ()) kvar_constr;
             kvar := {!kvar with kvar_flags =
-                (if have_null then [VariantHaveNull] else []) @
+                (if recursive_option then [VariantRecOpt] else []) @
                 (if no_tag then [VariantNoTag] else []) @ kvar_flags}
         | KDefTyp {contents={kt_name; kt_loc}} ->
             ignore(get_ktprops (KTypName kt_name) kt_loc)

@@ -168,11 +168,12 @@ type binop_t =
 
 type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
-type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef | ValPrivate | ValSubArray | ValCtor of int
-type fun_constr_t = CtorNone | CtorStruct | CtorVariant of int | CtorFP of id_t | CtorExn of id_t
+type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
+    | ValPrivate | ValSubArray | ValCtor of id_t | ValGlobal
+type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow
     | FunPure | FunStatic | FunCtor of fun_constr_t | FunUseFV
-type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantHaveNull
+type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantRecOpt
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
 type ctx_t = typ_t * loc_t
 
@@ -729,7 +730,7 @@ let get_builtin_exception n0 loc =
 let get_val_ctor flags =
     match (List.find_opt (fun f -> match f with ValCtor _ -> true | _ -> false) flags) with
     | Some (ValCtor i) -> i
-    | _ -> -1
+    | _ -> noid
 
 let get_fun_ctor flags =
     match (List.find_opt (fun f -> match f with FunCtor _ -> true | _ -> false) flags) with
@@ -742,7 +743,7 @@ let ctor2str f =
     let s = match f with
     | CtorNone -> ""
     | CtorStruct -> "record_or_tuple"
-    | CtorVariant d -> sprintf "variant(%d)" d
+    | CtorVariant i -> sprintf "variant(%s)" (id2str i)
     | CtorFP i -> sprintf "fp(%s)" (id2str i)
     | CtorExn i -> sprintf "exn(%s)" (id2str i)
     in if f = CtorNone then "not_a_constructor" else

@@ -633,7 +633,8 @@ let rec lookup_id n t env sc loc =
         | EnvId i ->
             (match id_info i with
             | IdVal {dv_typ} -> unify dv_typ t loc "incorrect value type"; Some(i)
-            | IdFun ({contents={ df_templ_args; df_typ; df_templ_inst; df_env }} as df) ->
+            | IdFun df ->
+                let { df_templ_args; df_typ; df_flags; df_env; df_scope } = !df in
                 if df_templ_args = [] then
                     if maybe_unify df_typ t true then
                         Some(i)
@@ -643,13 +644,26 @@ let rec lookup_id n t env sc loc =
                     let (ftyp, env1) = preprocess_templ_typ df_templ_args df_typ df_env sc loc in
                     if maybe_unify ftyp t true then
                         try
+                            (* a necessary extra step to do before function instantiation;
+                               if it's a constructor, we first need to check the return type.
+                               this check may implicitly instantiate generic variant type, and so
+                               the df_templ_inst list of this constructor will be expanded with new instance.
+                               In theory, with such an extra step we should never enter
+                               'instantiate_fun' for constructors, because they all will be
+                               instantiated from check_typ => instantiate_variant => register_typ_constructor. *)
+                            let _ = if not (is_fun_ctor df_flags) then () else
+                                let rt = match ftyp with
+                                    | TypFun(_, rt) -> rt
+                                    | rt -> rt in
+                                ignore(check_typ rt env1 sc loc) in
+
                             Some(List.find (fun inst ->
                             match id_info inst with
                             | IdFun {contents={df_typ=inst_typ}} ->
                                 maybe_unify inst_typ t true
                             | _ -> raise_compile_err loc
                                 (sprintf "invalid (non-function) instance %s of template function %s" (id2str inst) (pp_id2str n))
-                            ) df_templ_inst)
+                            ) (!df).df_templ_inst)
                         with Not_found ->
                             (* the generic function matches the requested type,
                                but there is no appropriate instance;
@@ -1328,7 +1342,7 @@ and check_eseq eseq env sc create_sc =
                     | TypVoid | TypDecl -> ()
                     | TypVar {contents=None} -> ()
                     | _ -> if idx = nexps - 1 then () else
-                        ((printf "exp type: "; pprint_typ_x (deref_typ etyp) eloc; printf "\n");
+                        ((*(printf "exp type: "; pprint_typ_x (deref_typ etyp) eloc; printf "\n");*)
                         raise_compile_err eloc
                         "non-void expression occurs before the end of code block. Check the line breaks; if it's valid, use ignore() function to dismiss the error")));
                 (e :: eseq, env)
@@ -1457,6 +1471,7 @@ and register_typ_constructor n ctor templ_args argtyps rt env sc decl_loc =
     let ctyp = match argtyps with [] -> rt | _ -> TypFun(argtyps, rt) in
     let args = List.mapi (fun i _ -> PatIdent((get_id (sprintf "arg%d" i)), decl_loc)) argtyps in
     let cname = dup_id n in
+    (*let _ = (printf "registering constructor '%s' of type " (id2str cname); pprint_typ_x (TypFun(argtyps, rt)) decl_loc; printf "\n") in*)
     let df = ref { df_name=cname; df_templ_args=templ_args;
             df_args=args; df_typ=ctyp;
             df_body=(ExpNop decl_loc); df_flags=[FunCtor ctor];
@@ -1634,12 +1649,11 @@ and check_typ t env sc loc =
 
 and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let { df_name; df_templ_args; df_args; df_body; df_flags; df_scope; df_loc; df_templ_inst } = !templ_df in
+    let is_constr = is_fun_ctor df_flags in
+    let _ = if not is_constr then () else raise_compile_err inst_loc
+        (sprintf "internal error: attempt to instantiate constructor '%s'. it should be instantiated in a different way. try to use explicit type specification somewhere" (id2str df_name)) in
     let nargs = List.length df_args in
     let inst_env = inst_env0 in
-    let is_constr = is_fun_ctor df_flags in
-    (*let _ = (printf "before instantiation of %s %s with type<" (if is_constr then
-        "constructor" else "function") (id2str df_name); pprint_typ_x inst_ftyp; printf ">:\n") in
-    let _ = print_env "" inst_env inst_loc in*)
     let inst_ftyp = deref_typ inst_ftyp in
     let (arg_typs, rt) = (match inst_ftyp with
                     | TypFun((TypVoid :: []), rt) -> ([], rt)
@@ -1656,6 +1670,9 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
                         (sprintf "during instantion at %s: incorrect number of actual parameters =%d (vs expected %d)"
                         (loc2str inst_loc) ninst_args nargs)) in
     let inst_name = if instantiate then (dup_id df_name) else df_name in
+    (*let _ = (printf "instantiation of %s %s with type<" (if is_constr then
+        "constructor" else "function") (id2str inst_name); pprint_typ_x inst_ftyp inst_loc; printf ">:\n") in*)
+    (*let _ = print_env "" inst_env inst_loc in*)
     let fun_sc = (ScFun inst_name) :: inst_sc in
     let (df_inst_args, inst_env, _) = List.fold_left2
         (fun (df_inst_args, inst_env, idset) df_arg arg_typ ->
@@ -1732,7 +1749,7 @@ and instantiate_variant ty_args dvar env sc loc =
                 raise_compile_err loc
                 (sprintf "cannot instantiate case '%s' of variant '%s' defined at '%s': wrong number of actual parameters %d (vs %d expected)"
                 (id2str cname) (id2str dvar_name) (loc2str dvar_loc) nrealargs nargs) in
-        let (inst_cname, _) = register_typ_constructor cname (CtorVariant idx) (!inst_dvar.dvar_templ_args)
+        let (inst_cname, _) = register_typ_constructor cname (CtorVariant n) (!inst_dvar.dvar_templ_args)
             argtyps inst_app_typ env dvar_scope dvar_loc in
         if instantiate then
             match id_info cname with

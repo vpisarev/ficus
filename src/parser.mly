@@ -341,18 +341,22 @@ simple_type_decl:
                        dt_finalized=false; dt_loc=curr_loc() } in
             DefTyp (ref dt)
     }
-| TYPE type_lhs EQUAL B_IDENT BITWISE_OR variant_elems_
+| TYPE type_lhs EQUAL variant_decl_start BITWISE_OR variant_elems_
     {
         make_variant_type $2 (($4, TypVoid) :: (List.rev $6)) false
     }
-| TYPE type_lhs EQUAL B_IDENT COLON typespec_or_record BITWISE_OR variant_elems_
+| TYPE type_lhs EQUAL variant_decl_start COLON typespec_or_record BITWISE_OR variant_elems_
     {
         make_variant_type $2 (($4, $6) :: (List.rev $8)) false
     }
-| TYPE type_lhs EQUAL B_IDENT COLON typespec_or_record
+| TYPE type_lhs EQUAL variant_decl_start COLON typespec_or_record
     {
         make_variant_type $2 (($4, $6) :: []) false
     }
+
+variant_decl_start:
+| B_IDENT { $1 }
+| BITWISE_OR B_IDENT { $2 }
 
 exception_decl:
 | EXCEPTION B_IDENT
@@ -611,6 +615,7 @@ ident_list_:
 
 exp_list:
 | exp_list_ { List.rev $1 }
+| exp_list_ COMMA { List.rev $1 }
 | /* empty */ { [] }
 
 exp_list_:
@@ -619,11 +624,15 @@ exp_list_:
 
 array_elems_:
 | array_elems_ SEMICOLON exp_list_ { (List.rev $3) :: $1 }
+| array_elems_ SEMICOLON exp_list_ SEMICOLON { (List.rev $3) :: $1 }
 | exp_list_ { (List.rev $1) :: [] }
+| exp_list_ COMMA { (List.rev $1) :: [] }
 
 id_exp_list_:
 | id_exp_list_ COMMA B_IDENT EQUAL complex_exp { (get_id $3, $5) :: $1 }
+| id_exp_list_ COMMA B_IDENT EQUAL complex_exp COMMA { (get_id $3, $5) :: $1 }
 | B_IDENT EQUAL complex_exp { (get_id $1, $3) :: [] }
+| B_IDENT EQUAL complex_exp COMMA { (get_id $1, $3) :: [] }
 
 op_name:
 | B_PLUS { fname_op_add() }
@@ -711,6 +720,7 @@ matching_patterns_:
 
 exp_seq_or_none:
 | exp_seq_ { expseq2exp (List.rev $1) 1 }
+| exp_seq_ SEMICOLON { expseq2exp (List.rev $1) 1 }
 | LBRACE RBRACE { expseq2exp [] 1 }
 
 simple_pat:
@@ -889,6 +899,7 @@ iface_decl:
 typespec_or_record:
 | typespec { $1 }
 | LBRACE id_typ_list_ RBRACE { TypRecord {contents=((List.rev $2), true)} }
+| LBRACE id_typ_list_ COMMA RBRACE { TypRecord {contents=((List.rev $2), true)} }
 
 typespec:
 | typespec_nf { $1 }

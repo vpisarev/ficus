@@ -128,11 +128,12 @@ let rec pprint_exp e =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
+        | ValGlobal -> pstr "GLOBAL"; pspace()
         | ValCtor _ -> ()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         let ctor_id = get_val_ctor vflags in
         pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace();
-        if ctor_id <> 0 then pstr (sprintf "Constructor(%d)" ctor_id) else pprint_exp e0;
+        if ctor_id <> noid then pstr (sprintf "Constructor(%s)" (id2str ctor_id)) else pprint_exp e0;
         cbox()
     | DefFun {contents={df_name; df_templ_args; df_args; df_typ;
                 df_body; df_flags; df_templ_inst; df_loc}} ->

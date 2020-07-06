@@ -130,6 +130,7 @@ and pprint_kexp_ e prtyp =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
+        | ValGlobal -> pstr "GLOBAL"; pspace()
         | ValCtor _ -> ()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp vt loc; pspace(); pstr "="; pspace();
@@ -172,13 +173,14 @@ and pprint_kexp_ e prtyp =
         pstr "TYPE"; pspace(); pprint_id_label kt_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kt_typ kt_loc; cbox()
     | KDefVariant { contents = {kvar_name; kvar_cases; kvar_props; kvar_constr; kvar_flags; kvar_loc} } ->
-        let nullable0 = List.mem VariantHaveNull kvar_flags in
+        let is_rec_opt0 = List.mem VariantRecOpt kvar_flags in
         let is_recursive = List.mem VariantRecursive kvar_flags in
-        obox(); ppktp kvar_props; if is_recursive then pstr "RECURSIVE " else ();
-        if (List.mem VariantNoTag kvar_flags) then pstr "NO_TAG " else ();
+        obox(); ppktp kvar_props; if is_rec_opt0 then pstr "RECURSIVE_OPTION " else
+            if is_recursive then pstr "RECURSIVE " else ();
+        if (List.mem VariantNoTag kvar_flags) && not is_rec_opt0 then pstr "NO_TAG " else ();
         pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
-            if i = 0 then (if nullable0 then pstr "NULLABLE " else ()) else pstr " | "; pprint_id v kvar_loc;
+            if i = 0 then () else pstr " | "; pprint_id v kvar_loc;
             pstr "<"; pprint_id c kvar_loc; pstr ": "; pprint_ktyp (get_idk_ktyp c kvar_loc)
             kvar_loc; pstr ">: "; pprint_ktyp t kvar_loc)
             (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr

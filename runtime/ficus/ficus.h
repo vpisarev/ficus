@@ -331,7 +331,7 @@ char_ fx_tolower(char_ ch);
 char_ fx_toupper(char_ ch);
 int fx_todigit(char_ ch);
 int fx_bidirectional(char_ ch);
-int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base);
+bool fx_atoi(const fx_str_t* str, int_* result, int base);
 int fx_itoa(int_ n, fx_str_t* str);
 
 ////////////////////////// Exceptions //////////////////////

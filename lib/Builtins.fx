@@ -111,6 +111,16 @@ fun string(a: 't [])
     join_embrace("[", "]", ", ", [for x <- a {repr(x)}])
 }
 
+fun string(a: 't [,])
+{
+    val (m, n) = size(a)
+    val rows = [for i <- 0:m {
+        val elems = [for j <- 0:n {repr(a[i, j])}]
+        join(", ", elems)
+    }]
+    join_embrace("[", "]", ";\n", rows)
+}
+
 fun string(l: 't list)
 {
     join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
@@ -163,9 +173,8 @@ operator <=> (a: 't [], b: 't []): int =
 
 nothrow fun atoi(a: string): int? = ccode
     "
-    bool ok = true;
-    fx_atoi(a, &fx_result->u.Some, &ok, 10);
-    fx_result->tag = (int)ok;
+    bool ok = fx_atoi(a, &fx_result->u.Some, 10);
+    fx_result->tag = (int)ok + 1;
     "
 
 pure nothrow fun sat_uint8(i: int): uint8 = ccode "

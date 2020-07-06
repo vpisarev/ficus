@@ -606,7 +606,7 @@ let gen_ccode top_code =
         | _ -> ccode
     in
 
-    let get_variant_cases vartyp loc =
+    (*let get_variant_cases vartyp loc =
         match vartyp with
         | KTypName n ->
             (match (kinfo_ n loc) with
@@ -615,7 +615,7 @@ let gen_ccode top_code =
                 (kvar_cases, kvar_constr)
             | _ -> raise_compile_err loc (sprintf "type '%s' is not a variant" (get_idk_cname n loc)))
         | _ -> raise_compile_err loc "the type is not a variant, not even named type"
-    in
+    in*)
 
     let for_err_msg for_idx nfors i msg =
         let for_msg_prefix = if nfors = 1 then "" else if for_idx = 0 then "outer "
@@ -796,8 +796,8 @@ let gen_ccode top_code =
                         (* before running iteration over a collection,
                             we need to make sure that it will not be deallocated in the middle *)
                         let (col_exp, init_ccode) = if col_ <> noid && List.exists (fun (e, _) -> occurs_id_kexp col_ e) nested_e_kdl then
-                                (*let (src_exp, init_ccode) = atom2cexp (Atom.Id col) init_ccode sc for_loc in*)
-                                let src_exp = make_id_exp col_ (get_idk_loc col_ for_loc) in
+                                let (src_exp, init_ccode) = atom2cexp (Atom.Id col_) init_ccode sc for_loc in
+                                (*let src_exp = make_id_exp col_ (get_idk_loc col_ for_loc) in*)
                                 let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col_) ctyp [] init_ccode sc for_loc in
                                 let init_ccode = C_gen_types.gen_copy_code src_exp col_exp ctyp init_ccode for_loc in
                                 (col_exp, init_ccode)
@@ -1234,10 +1234,8 @@ let gen_ccode top_code =
                         (true, exn_data, ccode)
                     | _ -> raise_compile_err kloc (sprintf "cgen: information about exception '%s' is not found"
                         (idk2str vn kloc)))
-                | (_, Atom.Lit (LitInt i)) ->
-                    let i = Int64.to_int i in
-                    let (_, var_constr) = get_variant_cases vktyp kloc in
-                    let vn_val = get_orig_id (List.nth var_constr i) in
+                | (_, (Atom.Id vn)) ->
+                    let vn_val = get_orig_id vn in
                     let cvu = if ktp_ptr then
                         cexp_arrow cv (get_id "u") CTypAny
                     else
@@ -1882,13 +1880,11 @@ let gen_ccode top_code =
                     let (_, delta_ccode) = create_cdefval i ctyp [] "" (Some (CExpCCode(ccode_lit, ccode_loc))) [] sc kloc in
                     let _ = bctx.bctx_prologue <- delta_ccode @ bctx.bctx_prologue in
                     ccode
-                else if ctor_id >= 0 then
-                    let tag_exp = make_int_exp ctor_id kloc in
-                    let is_null = ctor_id = 0 && (match kv_typ with
+                else if ctor_id <> noid then
+                    let tag_exp = make_id_t_exp ctor_id CTypCInt kloc in
+                    let is_null = (match kv_typ with
                         | KTypName tn -> (match (kinfo_ tn kloc) with
-                            | KVariant {contents={kvar_flags}} ->
-                                (List.mem VariantNoTag kvar_flags) &&
-                                (List.mem VariantHaveNull kvar_flags)
+                            | KVariant {contents={kvar_flags}} -> List.mem VariantRecOpt kvar_flags
                             | _ -> false)
                         | _ -> false)
                         in
@@ -2107,7 +2103,7 @@ let gen_ccode top_code =
                             (var_exp, [], [])
                         in
                     let init_tag = make_assign (cexp_arrow var_exp (get_id "tag") CTypInt)
-                        (make_int_exp tag_value kloc) in
+                        (make_id_t_exp tag_value CTypCInt kloc) in
                     let ccode = if have_tag then (CExp init_tag) :: ccode else ccode in
                     let dst_base = cexp_arrow var_exp (get_id "u") CTypAny in
                     let dst_base = cexp_mem dst_base (get_orig_id kf_name) CTypAny in

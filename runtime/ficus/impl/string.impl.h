@@ -307,20 +307,20 @@ int fx_bidirectional(char_ ch)
     return (cdata >> FX_UNICODE_CAT_Shift) & FX_UNICODE_BIDIR_Mask;
 }
 
-int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base)
+bool fx_atoi(const fx_str_t* str, int_* result, int base)
 {
     int_ i, len = str->length;
     int_ s = 1, r = 0;
     const char_ *ptr = str->data;
+    bool ok = false;
     *result = 0;
-    *ok = false;
     if(len == 0)
-        return FX_OK;
+        return false;
     if(*ptr == '-') {
         s = -1;
         ptr++;
         if(--len == 0)
-            return FX_OK;
+            return false;
     }
     if( base == 0 ) {
         if( ptr[0] == '0' ) {
@@ -339,10 +339,10 @@ int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base)
         else if( fx_isdecimal(ptr[0]))
             base = 10;
         else
-            return FX_OK;
+            return false;
     }
     else if( base < 2 || base > 36 )
-        return FX_OK;
+        return false;
 
     if( base == 10 ) {
         for( i = 0; i < len; i++ ) {
@@ -370,8 +370,7 @@ int fx_atoi(const fx_str_t* str, int_* result, bool* ok, int base)
         }
     }
     *result = r;
-    *ok = i == len;
-    return FX_OK;
+    return i == len;
 }
 
 int fx_itoa(int_ n, fx_str_t* str)

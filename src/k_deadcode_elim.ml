@@ -132,7 +132,7 @@ let rec elim_unused code =
             else KExpNop(kf_loc)
         | KDefExn ke ->
             let {ke_name; ke_std; ke_loc} = !ke in
-            if ke_std || (used ke_name) then e
+            if (used ke_name) then e
             else KExpNop(ke_loc)
         | KDefVariant kvar ->
             let {kvar_name; kvar_loc} = !kvar in

@@ -78,9 +78,131 @@ println("excepion-based search: negative number in \(a): \(find_neg(a))")
 //val arr=["false", "true", "maybe"]
 //val idx = (5 <= 6)
 //println("arr[\(idx)]=\(arr[idx])")
-val a = [1, 0; 0, 1]
-println(a[: ]+a[ :])
-
-clip
-neumann
+//val a = [1, 0; 0, 1;]
+//println(a[: ])
 //println(5 <=> 6)
+
+
+/*type month = Jan | Feb:int | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec
+
+fun str(m: month)
+{
+    | Jan => "Jan"
+    | Feb(n) => "Feb(\(n))"
+    | Mar => "Mar"
+    | Apr => "Apr"
+    | May => "May"
+    | Jun => "Jun"
+    | Jul => "Jul"
+    | Aug => "Aug"
+    | Sep => "Sep"
+    | Oct => "Oct"
+    | Nov => "Nov"
+    | Dec => "Dec"
+}
+
+for m <- [Jan, Feb(28), Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec] {
+    println(str(m))
+}
+*/
+
+type 't expand_t =
+    | ExpandElem: 't
+    | ExpandList: 't list
+    | ExpandArray1D: 't []
+    | ExpandArray2D: 't [,]
+    | ExpandNextRow
+
+fun str(a: 't expand_t) {
+    | ExpandElem (v) => string(v)
+    | ExpandList (l) => "\\" + string(l)
+    | ExpandArray1D (a) => "\\" + string(a)
+    | ExpandArray2D (a) => "\\" + string(a)
+    | ExpandNextRow => ";"
+}
+
+exception BuildArrayError: string
+
+fun build_array_2d(spec: 't expand_t []): 't [,]
+{
+    val fold (h, w0, i, j, curr_h, curr_w) = (0, 0, 0, 0, 0, 0) for s <- spec {
+        match s {
+        | ExpandElem v =>
+            if curr_h > 1 {
+                throw BuildArrayError("scalar at row \(i), column \(j) (0-based) occurs after multi-row array")
+            }
+            (h, w0, i, j+1, 1, curr_w+1)
+        | ExpandList (l) =>
+            val len = length(l)
+            if curr_h > 1 {
+                throw BuildArrayError("list at row \(i), column \(j) (0-based) occurs after multi-row array")
+            }
+            (h, w0, i, j+1, 1, curr_w+len)
+        | ExpandArray1D (a) =>
+            val len = size(a)
+            if curr_h > 1 {
+                throw BuildArrayError("1D array at row \(i), column \(j) (0-based) occurs after multi-row array")
+            }
+            (h, w0, i, j+1, 1, curr_w+len)
+        | ExpandArray2D (a) =>
+            val (ma, na) = size(a)
+            if curr_h != 0 && curr_h != ma {
+                throw BuildArrayError("2D array at row \(i), column \(j) (0-based) occurs after multi-row array")
+            }
+            (h, w0, i, j+1, ma, curr_w+na)
+        | _ =>
+            if w0 != 0 && w0 != curr_w {
+                throw BuildArrayError("row \(i) (0-based) does not match the size of the previous rows")
+            }
+            (h + curr_h, curr_w, i+1, 0, 0, 0)
+        }
+    }
+
+    val result = array((h, w0), (0 :> 't))
+    ignore (fold (i, j, di) = (0, 0, 0) for s <- spec {
+        match s {
+        | ExpandElem v =>
+            result[i, j] = v
+            (i, j+1, 1)
+        | ExpandList (l) =>
+            val len = length(l)
+            for v <- l, k <- 0: {
+                result[i, j+k] = v
+            }
+            (i, j+len, 1)
+        | ExpandArray1D (a) =>
+            val len = size(a)
+            for v <- a, k <- 0: {
+                result[i, j+k] = v
+            }
+            (i, j+len, 1)
+        | ExpandArray2D (a) =>
+            val (ma, na) = size(a)
+            for i1 <- 0:ma for j1 <- 0:na {
+                result[i+i1, j+j1] = a[i1, j1]
+            }
+            (i, j+na, ma)
+        | _ =>
+            (i + di, 0, 0)
+        }
+    })
+    result
+}
+
+/*val spec = [ExpandElem(5), ExpandElem(6), ExpandNextRow,
+        ExpandElem(7), ExpandElem(8), ExpandNextRow]
+
+//for s <- spec {println(str(s))}
+//println(str(ExpandElem(5)))
+
+val a = build_array_2d(spec)
+println(size(a[:]))*/
+val a = [1, 2, 3, 4]
+
+val spec2 = [ExpandArray1D(a), ExpandNextRow,
+            ExpandArray1D(a), ExpandNextRow,
+            ExpandArray1D(a), ExpandNextRow,
+            ExpandArray1D(a), ExpandNextRow,
+            ExpandArray1D(a), ExpandNextRow,]
+val b = build_array_2d(spec2)
+println(b)

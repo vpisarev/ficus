@@ -285,12 +285,10 @@ let convert_all_typs top_code =
             let e_base_cname = (pp_id2str kvar_base_name) ^ "_" in
             let e_cname = e_base_cname ^ "tag_t" in
             let e_id = gen_temp_idc e_cname in
-            let start_idx = if (List.mem VariantHaveNull kvar_flags) then 0 else 1 in
+            let start_idx = if (List.mem VariantRecOpt kvar_flags) then 0 else 1 in
             let ctx = (CTypCInt, kvar_loc) in
             let (_, members) = List.fold_left (fun (idx, members) (ni, ti) ->
-                let cname_i = pp_id2str ni in
-                let cname_i = "_FX_" ^ e_base_cname ^ cname_i in
-                let ni = dup_idc ni in
+                let {kv_cname=cname_i} = get_kval ni kvar_loc in
                 let dv = { cv_name=ni; cv_typ=CTypCInt; cv_cname=cname_i; cv_flags=[]; cv_scope=ScGlobal::[]; cv_loc=kvar_loc } in
                 let _ = set_idc_entry ni (CVal dv) in
                 let vali = Some (CExpLit((LitInt (Int64.of_int idx)), ctx)) in
@@ -589,10 +587,8 @@ let convert_all_typs top_code =
                 let free_code = if recursive_variant then
                         decref_and_free dst_exp free_code kvar_loc
                     else
-                        let clear_tag = CExpBinOp(COpAssign, dst_tag_exp, (make_int_exp 1 kvar_loc), void_ctx) in
-                        if free_code = [] then
-                            (CExp clear_tag) :: free_code
-                        else []
+                        let clear_tag = CExpBinOp(COpAssign, dst_tag_exp, (make_int_exp 0 kvar_loc), void_ctx) in
+                        if free_code = [] then [] else (CExp clear_tag) :: free_code
                     in
                 let copy_code = gen_copy_code src_tag_exp dst_tag_exp CTypCInt [] kvar_loc in
                 let default_copy_code = CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
