@@ -1201,7 +1201,7 @@ let gen_ccode top_code =
                 let ktyp = get_atom_ktyp v kloc in
                 let {ktp_ptr} = K_annotate_types.get_ktprops ktyp kloc in
                 let extract_ctag = if ktp_ptr then
-                        cexp_arrow cv (get_id "tag") CTypCInt
+                        make_call !std_FX_REC_VARIANT_TAG [cv] CTypCInt kloc
                     else
                         cexp_mem cv (get_id "tag") CTypCInt
                     in
@@ -1209,11 +1209,15 @@ let gen_ccode top_code =
                     | KTypName tn -> (match (kinfo_ tn kloc) with
                         | KVariant {contents={kvar_flags; kvar_cases}} ->
                             let have_tag = not (List.mem VariantNoTag kvar_flags) in
+                            let is_recursive = List.mem VariantRecursive kvar_flags in
                             let ncases = List.length kvar_cases in
                             if have_tag then extract_ctag
-                            else if ncases = 1 then (make_int_exp 0 kloc)
-                            else if ncases = 2 then CExpBinOp(COpCompareNE, cv, (make_nullptr kloc), (CTypBool, kloc))
-                            else raise_compile_err kloc "variants with no tag may have either 1 or 2 cases"
+                            else if ncases = 1 && not is_recursive then
+                                (make_int_exp 1 kloc)
+                            else if is_recursive then
+                                CExpBinOp(COpCompareNE, cv, (make_nullptr kloc), (CTypBool, kloc))
+                            else
+                                raise_compile_err kloc "variants with no tag may have either 1 or 2 cases"
                         | _ -> raise_compile_err kloc (sprintf
                             "cgen: unexpected type '%s'; should be variant of exception"
                             (idk2str tn kloc)))

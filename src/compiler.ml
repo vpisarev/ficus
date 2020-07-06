@@ -151,7 +151,8 @@ let k_optimize_all code =
     for i = 0 to niters-1 do
         temp_code := K_deadcode_elim.elim_unused !temp_code;
         if i <= 1 then
-            temp_code := K_simple_ll.lift !temp_code
+            (temp_code := K_simple_ll.lift !temp_code;
+            temp_code := K_annotate_types.annotate_types !temp_code)
         else ();
         temp_code := K_tailrec.tailrec2loops !temp_code;
         temp_code := K_flatten.flatten !temp_code;

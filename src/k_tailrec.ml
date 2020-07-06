@@ -43,10 +43,9 @@ let tailrec2loop kf =
             | KTypVoid -> (noid, [])
             | _ ->
                 let res_n = gen_temp_idk "res" in
-                let {ktp_scalar} = K_annotate_types.get_ktprops rt kf_loc in
-                let a0 = match ktp_scalar with
-                    | false -> (Atom.Lit LitNil)
-                    | _ -> Atom.Lit (LitInt 0L)
+                let a0 = match is_ktyp_scalar rt with
+                    | true -> Atom.Lit (LitInt 0L)
+                    | _ -> Atom.Lit LitNil
                     in
                 let res_val0 = KExpAtom(a0, (rt, kf_loc)) in
                 let f_init_code = create_kdefval res_n rt (ValMutable :: [])

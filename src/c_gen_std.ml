@@ -34,6 +34,7 @@ let init_std_names () =
     std_FX_INCREF := gen_std_macro "FX_INCREF" 1;
     std_FX_DECREF := gen_std_macro "FX_DECREF" 1;
 
+    std_FX_REC_VARIANT_TAG := gen_std_macro "FX_REC_VARIANT_TAG" 1;
     std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START := gen_std_macro "FX_MAKE_RECURSIVE_VARIANT_IMPL_START" 1;
     std_FX_MAKE_FP_IMPL_START := gen_std_macro "FX_MAKE_FP_IMPL_START" 3;
 

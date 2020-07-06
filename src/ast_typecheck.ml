@@ -421,7 +421,7 @@ let unify t1 t2 loc msg =
     if maybe_unify t1 t2 true then () else
     raise_compile_err loc msg
 
-let coerce_types t1 t2 allow_tuples allow_fp loc =
+let coerce_types t1 t2 allow_tuples allow_fp is_shift loc =
     let safe_max_ubits = if options.arch64 then 32 else 16 in
     let rec coerce_types_ t1 t2 =
     match (t1, t2) with
@@ -435,8 +435,8 @@ let coerce_types t1 t2 allow_tuples allow_fp loc =
     | TypInt, (TypUInt b) -> if b <= safe_max_ubits then TypInt else
         raise_compile_err loc
             "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
-    | (TypSInt b), TypInt -> if b <= 32 then TypInt else TypSInt(b)
-    | (TypUInt b), TypInt -> if b <= safe_max_ubits then TypInt else
+    | (TypSInt b), TypInt -> if is_shift then TypSInt(b) else if b <= 32 then TypInt else TypSInt(b)
+    | (TypUInt b), TypInt -> if is_shift then TypUInt(b) else if b <= safe_max_ubits then TypInt else
         raise_compile_err loc
             "implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast"
     | (TypSInt b1), (TypUInt b2) ->
@@ -912,8 +912,9 @@ and check_exp e env sc =
         let typ_opt =
         (match bop with
         | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight ->
-            let allow_fp = bop != OpShiftLeft && bop != OpShiftRight in
-            coerce_types etyp1_ etyp2_ true allow_fp eloc
+            let is_shift = bop = OpShiftLeft || bop == OpShiftRight in
+            let allow_fp = not is_shift in
+            coerce_types etyp1_ etyp2_ true allow_fp is_shift eloc
         | OpBitwiseAnd | OpBitwiseOr | OpBitwiseXor ->
             let rec check_bitwise t1 t2 =
                 (match (t1, t2) with
@@ -997,7 +998,7 @@ and check_exp e env sc =
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
         (match uop with
         | OpNegate | OpPlus ->
-            let t_opt = coerce_types etyp1 etyp1 true true eloc in
+            let t_opt = coerce_types etyp1 etyp1 true true false eloc in
             (match t_opt with
             | Some(t) ->
                 unify etyp t eloc "improper type of the unary '-' operator result";

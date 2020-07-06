@@ -755,8 +755,10 @@ let lit2str c cmode loc =
     in
     match c with
     | LitInt(v) -> sprintf "%Li" v
+    | LitSInt(64, v) -> if cmode then sprintf "%LiLL" v else sprintf "%Lii%d" v 64
+    | LitUInt(64, v) -> if cmode then sprintf "%LiULL" v else sprintf "%Lii%d" v 64
     | LitSInt(b, v) -> if cmode then sprintf "%Li" v else sprintf "%Lii%d" v b
-    | LitUInt(b, v) -> if cmode then sprintf "%Lu" v else sprintf "%Luu%d" v b
+    | LitUInt(b, v) -> if cmode then sprintf "%LuU" v else sprintf "%Luu%d" v b
     | LitFloat(16, v) -> let s = sprintf "%.4g" v in (add_dot s "h")
     | LitFloat(32, v) -> let s = sprintf "%.8g" v in (add_dot s "f")
     | LitFloat(64, v) -> let s = sprintf "%.16g" v in (add_dot s "")

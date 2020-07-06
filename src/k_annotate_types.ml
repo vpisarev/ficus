@@ -190,7 +190,16 @@ let get_ktprops t loc =
 
     in get_ktprops_ t loc
 
+let clear_typ_annotations top_code =
+    List.iter (fun e -> match e with
+        | KDefVariant kvar ->
+            kvar := {!kvar with kvar_props=None}
+        | KDefTyp kt ->
+            kt := {!kt with kt_props=None}
+        | _ -> ()) top_code
+
 let annotate_types top_code =
+    let _ = clear_typ_annotations top_code in
     let top_code = find_recursive top_code in
     List.iter (fun e -> match e with
         | KDefVariant kvar ->

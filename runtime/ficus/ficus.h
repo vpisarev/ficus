@@ -555,6 +555,8 @@ void fx_free_ref_simple(void* pr);
 
 /////////////////////////// Variants /////////////////////////
 
+#define FX_REC_VARIANT_TAG(v) ((v) ? (v)->tag : 0)
+
 #define FX_MAKE_RECURSIVE_VARIANT_IMPL_START(variant_ptr_t) \
     FX_DECL_AND_MALLOC(variant_ptr_t, v); \
     *fx_result = v; \

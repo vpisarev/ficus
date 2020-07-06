@@ -74,7 +74,7 @@ let convert_all_fdecls top_code =
             let fcv_typ = make_ptr (CTypName kcv_name) in
             let dst_id = get_id "dst" in
             let dst_exp = make_id_t_exp dst_id fcv_typ kcv_loc in
-            let relems = ((get_id "free_f"), (CTypName (get_id "fx_free_t"))) :: ((get_id "rc"), CTypInt) :: [] in
+            let relems = ((get_id "free_f"), !std_fx_free_t) :: ((get_id "rc"), CTypInt) :: [] in
             let (_, relems, free_ccode) =
                 List.fold_left(fun (idx, relems, free_ccode) (n, kt) ->
                     let ctyp = C_gen_types.ktyp2ctyp kt kcv_loc in
