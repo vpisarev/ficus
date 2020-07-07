@@ -256,17 +256,13 @@ let mangle_all top_code =
             let bare_name = mangle_name ke_name (Some ke_scope) ke_loc in
             let (base_cname, cname) = mangle_make_unique ke_name "E" bare_name suffix mangle_map in
             let exn_cname = add_fx cname in
-            ke := { !ke with ke_cname=exn_cname; ke_typ=t; ke_base_cname=base_cname };
-            (match (kinfo_ ke_tag ke_loc) with
-            | KVal kv ->
-                let tag_cname =
-                    if ke_std then "FX_EXN_" ^ (pp_id2str ke_name)
-                    else "_FX_EXN_" ^ base_cname in
-                let kv = {kv with kv_cname=tag_cname} in
-                set_idk_entry ke_tag (KVal kv)
-            | _ -> raise_compile_err ke_loc (sprintf
-                "mangle: '%s', tag of exception '%s', is not valid value"
-                (id2str ke_tag) exn_cname));
+            let _ = ke := { !ke with ke_cname=exn_cname; ke_typ=t; ke_base_cname=base_cname } in
+            (* also, mangle the exception tag *)
+            let tag_kv = get_kval ke_tag ke_loc in
+            let tag_cname = if ke_std then "FX_EXN_" ^ (pp_id2str ke_name)
+                            else "_FX_EXN_" ^ base_cname in
+            let tag_kv = {tag_kv with kv_cname=tag_cname} in
+            set_idk_entry ke_tag (KVal tag_kv);
             e
         | KDefVariant kvar ->
             let {kvar_name; kvar_cases; kvar_loc} = !kvar in

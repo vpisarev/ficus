@@ -290,8 +290,9 @@ let rec pprint_exp e =
         | ExpTyped(e, t, (_, loc)) ->
             pstr "("; obox(); pprint_exp e; pspace(); pstr ":"; pspace(); pprint_typ t loc; cbox(); pstr ")"
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
-        | _ -> raise_compile_err (get_exp_loc e) "pprint_exp: unknown exp"
-        ); cbox_()
+        | DefVal _ | DefFun _ | DefExn _ | DefTyp _ | DefVariant _
+        | DefClass _ | DefInterface _
+        | DirImport _ | DirImportFrom _ | ExpSeq _ -> ()); cbox_()
 and pprint_exp_as_seq e = match e with
     | ExpSeq(es, _) -> pprint_expseq es false
     | _ -> pprint_exp e

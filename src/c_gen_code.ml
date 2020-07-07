@@ -131,15 +131,13 @@ let find_single_use_vals topcode =
         *)
         match e with
         | KDefVal(k, e1, loc) ->
-            (match (kinfo_ k loc) with
-            | KVal {kv_flags} ->
-                (* We only replace those values with expressions which are temporary
-                   and computed using pure expressions *)
-                let good_temp = (List.mem ValTempRef kv_flags) || (List.mem ValTemp kv_flags) in
-                if good_temp && (K_deadcode_elim.pure_kexp e1) then
-                    decl_const_vals := IdSet.add k !decl_const_vals
-                else ()
-            | _ -> ());
+            let {kv_flags} = get_kval k loc in
+            (* We only replace those values with expressions which are temporary
+                and computed using pure expressions *)
+            let good_temp = (List.mem ValTempRef kv_flags) || (List.mem ValTemp kv_flags) in
+            if good_temp && (K_deadcode_elim.pure_kexp e1) then
+                decl_const_vals := IdSet.add k !decl_const_vals
+            else ();
             count_kexp e1 callb
         | KExpCall(f, _, (_, loc)) ->
             (* count f twice to make sure it will not be included into u1vals, because if
@@ -433,13 +431,10 @@ let gen_ccode top_code =
                 -> (e, ccode)
             | _ ->
                 let (ctyp, eloc) = get_cexp_ctx e in
-                let flags = match (kinfo_ i loc) with
-                    | KVal {kv_flags} -> kv_flags
-                    | _ -> raise_compile_err loc (sprintf "cgen: id2cexp: %s is not identifier" (id2str i))
-                    in
+                let {kv_flags} = get_kval i loc in
                 let i2 = dup_idc i in
-                let (add_deref, e, ctyp) = handle_temp_ref flags e ctyp in
-                let (i2_exp, ccode) = add_local i2 ctyp flags (Some e) ccode sc loc in
+                let (add_deref, e, ctyp) = handle_temp_ref kv_flags e ctyp in
+                let (i2_exp, ccode) = add_local i2 ctyp kv_flags (Some e) ccode sc loc in
                 i2e := Env.add i i2_exp !i2e;
                 ((if add_deref then (cexp_deref i2_exp) else i2_exp), ccode))
         | _ ->
@@ -1124,8 +1119,6 @@ let gen_ccode top_code =
             let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
             let (ce2, ccode) = atom2cexp a2 ccode sc kloc in
             (match bop with
-            | OpLogicAnd | OpLogicOr ->
-                raise_compile_err kloc "cgen: unexpected operation"
             | OpPow ->
                 let (need_cast, ce1, ce2, rtyp, f) = match ctyp with
                     | CTypFloat(32) -> (false, ce1, ce2, ctyp, get_id "powf")
@@ -1170,7 +1163,9 @@ let gen_ccode top_code =
                     | OpCompareLE -> COpCompareLE
                     | OpCompareGT -> COpCompareGT
                     | OpCompareGE -> COpCompareGE
-                    | _ -> raise_compile_err kloc (sprintf "cgen: unsupported op '%s'" (binop_to_string bop))
+                    | OpCons | OpPow | OpLogicAnd | OpLogicOr | OpSpaceship ->
+                        raise_compile_err kloc (sprintf "cgen: unsupported op '%s' at this stage"
+                        (binop_to_string bop))
                 in (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))
         | KExpUnOp(OpMkRef, a1, _) ->
             let (ce1, ccode) = atom2cexp a1 ccode sc kloc in
@@ -1192,7 +1187,8 @@ let gen_ccode top_code =
                 | OpNegate -> COpNegate
                 | OpBitwiseNot -> COpBitwiseNot
                 | OpLogicNot -> COpLogicNot
-                | _ -> raise_compile_err kloc "cgen: unsupported unary op"
+                | OpDeref | OpMkRef | OpExpand ->
+                    raise_compile_err kloc (sprintf "cgen: unsupported unary op '%s'" (unop_to_string uop))
             in (true, CExpUnOp(c_uop, ce1, (ctyp, kloc)), ccode)
         | KExpIntrin(intr, args, _) ->
             (match (intr, args) with
@@ -1214,10 +1210,10 @@ let gen_ccode top_code =
                             if have_tag then extract_ctag
                             else if ncases = 1 && not is_recursive then
                                 (make_int_exp 1 kloc)
-                            else if is_recursive then
+                            else if ncases <= 2 && is_recursive then
                                 CExpBinOp(COpCompareNE, cv, (make_nullptr kloc), (CTypBool, kloc))
                             else
-                                raise_compile_err kloc "variants with no tag may have either 1 or 2 cases"
+                                raise_compile_err kloc "cgen: variants with no tag may have either 1 or 2 cases"
                         | _ -> raise_compile_err kloc (sprintf
                             "cgen: unexpected type '%s'; should be variant of exception"
                             (idk2str tn kloc)))
@@ -1303,8 +1299,9 @@ let gen_ccode top_code =
                             [make_id_t_exp (get_id "fx_fv") std_CTypVoidPtr cf_loc]
                         else
                             raise_compile_err kloc
-                                (sprintf "cgen: %s '%s' %s" "cgen: looks like lambda lifting did not transform"
-                                cf_cname "call correctly. Functions that access free variables must be called via closure")
+                                (sprintf "cgen: %s '%s' %s %s" "cgen: looks like lambda lifting did not transform"
+                                cf_cname "call correctly. Functions that access free variables must be called via closure"
+                                "(except for the case when function calls itself)")
                         in
                     (f_exp, ret_id <> noid, fv_args, is_nothrow, ccode)
                 | CVal {cv_typ; cv_loc} ->
@@ -1474,7 +1471,7 @@ let gen_ccode top_code =
             let (_, ce1, relems, ofs) = get_struct ce1 in
             let nelems = List.length relems in
             let _ = if n < 0 || n+ofs >= nelems then
-                raise_compile_err kloc (sprintf "the tuple/record element index %d is out of range [0, %d]" n nelems)
+                raise_compile_err kloc (sprintf "cgen: the tuple/record element index %d is out of range [0, %d]" n nelems)
                 else () in
             let (n_id, _) = List.nth relems (n+ofs) in
             (true, (cexp_mem ce1 n_id ctyp), ccode)
@@ -1851,10 +1848,7 @@ let gen_ccode top_code =
             top_ccode := CExp (CExpCCode(ccode_str, kloc)) :: !top_ccode;
             (false, dummy_exp, ccode)
         | KDefVal(i, e2, _) ->
-            let {kv_typ; kv_cname; kv_flags} = match (kinfo_ i kloc) with
-                | KVal kv -> kv
-                | _ -> raise_compile_err kloc (sprintf "'%s' is not a value/variable" (id2str i))
-                in
+            let {kv_typ; kv_cname; kv_flags} = get_kval i kloc in
             let {ktp_ptr; ktp_complex; ktp_scalar} = K_annotate_types.get_ktprops kv_typ kloc in
             let ctyp = C_gen_types.ktyp2ctyp kv_typ kloc in
             let bctx = curr_block_ctx kloc in

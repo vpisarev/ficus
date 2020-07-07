@@ -55,7 +55,7 @@ let lift top_code =
        type names, constructor names or C functions, i.e. they will
        definitely can be promoted to the top level. *)
     let can_lift_fun kf =
-        let {kf_loc} = !kf in
+        let {kf_name; kf_loc} = !kf in
         let fv = free_vars_kexp (KDefFun kf) in
         let can_lift = IdSet.for_all (fun n ->
             (is_global n) ||
@@ -66,10 +66,13 @@ let lift top_code =
             | KVal _ -> false
             | KFun {contents={kf_flags}} ->
                 (List.mem FunInC kf_flags) || (is_fun_ctor kf_flags)
-            | KNone -> raise_compile_err (!kf.kf_loc)
-                (sprintf "attempt to request type of non-existing symbol '%s' when checking free variable of function '%s'"
-                (id2str n) (id2str (!kf.kf_name)))
-            | _ -> false)) fv in
+            | KClosureVars _ ->
+                raise_compile_err kf_loc
+                (sprintf "simple LL: KClosureVars '%s' is not expected at this step, it should appear in the end after full-scale lambda lifting"
+                (id2str n))
+            | KNone -> raise_compile_err kf_loc
+                (sprintf "simple LL: attempt to request type of non-existing symbol '%s' when checking free variables of function '%s'"
+                (id2str n) (id2str kf_name)))) fv in
         (*print_set ((id2str !kf.kf_name) ^ " free vars") fv; printf "\tcan lift: %B\n" can_lift;*)
         can_lift in
 

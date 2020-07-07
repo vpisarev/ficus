@@ -951,7 +951,7 @@ and check_exp e env sc =
             unify etyp1 etyp2 eloc "only values of the same type can fly on the same spaceship";
             unify etyp TypInt eloc "result of spaceship operator needs to be 'int'";
             None
-        | _ -> raise_compile_err eloc (sprintf "unsupported binary operation %s" (binop_to_string bop))) in
+        | OpCons -> raise_compile_err eloc (sprintf "unsupported binary operation %s" (binop_to_string bop))) in
 
         (match (typ_opt, bop, etyp1_, etyp2_, e1, e2) with
         | ((Some typ), _, _, _, _, _) ->

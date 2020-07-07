@@ -147,7 +147,7 @@ and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
 
 type kinfo_t =
-    | KNone | KText of string | KVal of kdefval_t | KFun of kdeffun_t ref
+    | KNone | KVal of kdefval_t | KFun of kdeffun_t ref
     | KExn of kdefexn_t ref | KVariant of kdefvariant_t ref
     | KClosureVars of kdefclosurevars_t ref
     | KTyp of kdeftyp_t ref
@@ -240,7 +240,6 @@ let get_kexp_end e = let l = get_kexp_loc e in get_end_loc l
 let get_kscope info =
     match info with
     | KNone -> ScGlobal :: []
-    | KText _ -> ScGlobal :: []
     | KVal {kv_scope} -> kv_scope
     | KFun {contents = {kf_scope}} -> kf_scope
     | KExn {contents = {ke_scope}} -> ke_scope
@@ -250,7 +249,7 @@ let get_kscope info =
 
 let get_kinfo_loc info =
     match info with
-    | KNone | KText _ -> noloc
+    | KNone -> noloc
     | KVal {kv_loc} -> kv_loc
     | KFun {contents = {kf_loc}} -> kf_loc
     | KExn {contents = {ke_loc}} -> ke_loc
@@ -263,12 +262,11 @@ let get_idk_loc i loc = get_kinfo_loc (kinfo_ i loc)
 let check_kinfo info i loc =
     match info with
     | KNone -> raise_compile_err loc (sprintf "attempt to request information about uninitialized symbol '%s'" (id2str i))
-    | KText s -> raise_compile_err loc (sprintf "attempt to request information about symbolic name '%s'" s)
     | _ -> ()
 
 let get_kinfo_cname info loc =
     match info with
-    | KNone | KText _ -> raise_compile_err loc "attempt to request cname of uninitialized symbol"
+    | KNone -> raise_compile_err loc "attempt to request cname of uninitialized symbol"
     | KVal {kv_cname} -> kv_cname
     | KFun {contents = {kf_cname}} -> kf_cname
     | KExn {contents = {ke_cname}} -> ke_cname
@@ -295,7 +293,6 @@ let get_kinfo_typ info i loc =
     check_kinfo info i loc;
     match info with
     | KNone -> KTypNil
-    | KText _ -> KTypNil
     | KVal {kv_typ} -> kv_typ
     | KFun {contents = {kf_args; kf_rt}} -> get_kf_typ kf_args kf_rt
     | KExn {contents = {ke_typ}} -> ke_typ
@@ -774,7 +771,7 @@ let is_mutable i loc =
     let info = kinfo_ i loc in
     check_kinfo info i loc;
     match info with
-    | KNone | KText _ -> false
+    | KNone -> false
     | KVal {kv_flags} -> List.mem ValMutable kv_flags
     | KFun _ -> false
     | KExn _ -> false
@@ -813,7 +810,7 @@ let get_kval i loc =
     | KVal kv -> kv
     | _ ->
         let loc = if loc!=noloc then loc else get_kinfo_loc info in
-        raise_compile_err loc (sprintf "invalid symbol '%s' - should be KVal ..." (id2str i))
+        raise_compile_err loc (sprintf "symbol '%s' is expected to be KVal ..." (id2str i))
 
 let rec deref_ktyp kt loc =
     match kt with

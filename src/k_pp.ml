@@ -58,7 +58,7 @@ let rec ppktyp_ t p1 loc =
     | KTypFloat(16) -> pstr "Half"
     | KTypFloat(32) -> pstr "Float"
     | KTypFloat(64) -> pstr "Double"
-    | KTypFloat(b) -> raise_compile_err loc (sprintf "invalid type TypFloat(%d)" b)
+    | KTypFloat(b) -> raise_compile_err loc (sprintf "K_pp: invalid type TypFloat(%d)" b)
     | KTypString -> pstr "String"
     | KTypChar -> pstr "Char"
     | KTypBool -> pstr "Bool"
@@ -121,9 +121,7 @@ and pprint_kexp_ e prtyp =
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
     match e with
     | KDefVal(n, e0, loc) -> obox();
-        let (vt, vflags) = match (kinfo_ n loc) with
-            | KVal {kv_typ; kv_flags} -> (kv_typ, kv_flags)
-            | _ -> raise_compile_err loc (sprintf "there is no information about defined value '%s'" (id2str n)) in
+        let {kv_typ; kv_flags} = get_kval n loc in
         (List.iter (fun vf -> match vf with
         | ValTempRef -> pstr "TEMP_REF"; pspace()
         | ValTemp -> pstr "TEMP"; pspace()
@@ -132,8 +130,8 @@ and pprint_kexp_ e prtyp =
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
         | ValGlobal -> pstr "GLOBAL"; pspace()
         | ValCtor _ -> ()
-        | ValArg -> pstr "ARG"; pspace()) vflags);
-        pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp vt loc; pspace(); pstr "="; pspace();
+        | ValArg -> pstr "ARG"; pspace()) kv_flags);
+        pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp kv_typ loc; pspace(); pstr "="; pspace();
         pprint_kexp_ e0 false; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_rt; kf_body; kf_closure; kf_flags; kf_loc }} ->
         let {kci_arg; kci_fcv_t} = kf_closure in
@@ -234,8 +232,8 @@ and pprint_kexp_ e prtyp =
                 | KTypRecord(rn, relems) -> (rn, relems)
                 | KTypName n -> (match (kinfo_ n loc) with
                     | KTyp {contents={kt_name; kt_typ=KTypRecord(_, rec_elems)}} -> (kt_name, rec_elems)
-                    | _ -> raise_compile_err loc "invalid record type in KExpMkRecord(...)")
-                | _ -> raise_compile_err loc "invalid record type in KExpMkRecord(...)" in
+                    | _ -> raise_compile_err loc "K_pp: invalid record type in KExpMkRecord(...)")
+                | _ -> raise_compile_err loc "K_pp: invalid record type in KExpMkRecord(...)" in
             let ant = Utils.zip al relems in
             pstr "MAKE_RECORD "; pprint_id rn loc; pstr " {"; obox();
             List.iteri (fun i (a, (n, t)) ->
@@ -261,7 +259,7 @@ and pprint_kexp_ e prtyp =
             let cols = Utils.last_elem shape in
             let _ = if total_elems != total_elems2 then
                 raise_compile_err l
-                    (sprintf "%s: the number of array elements does not match the product of dimensions (%d vs %d)"
+                    (sprintf "K_pp: %s: the number of array elements does not match the product of dimensions (%d vs %d)"
                     (loc2str l) total_elems total_elems2)
                 else () in
             obox(); pstr "["; obox();
@@ -319,8 +317,10 @@ and pprint_kexp_ e prtyp =
             pstr "CATCH"; pprint_kexp e2; cbox()
         | KExpCast(a, t, loc) -> pstr "("; obox(); pprint_atom_ a; pspace(); pstr ":>"; pspace(); pprint_ktyp t loc; cbox(); pstr ")"
         | KExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
-        | _ -> raise_compile_err (get_kexp_loc e) "pprint_kexp: unknown exp"
-        ); cbox_()
+        (* those are already handled above; duplicate it here once again to get compile-time warning
+           about uncovered constructions *)
+        | KDefVal _ | KDefFun _ | KDefTyp _ | KDefVariant _
+        | KDefClosureVars _  | KDefExn _ | KExpSeq _ -> ()); cbox_()
 
 and pprint_kexp_as_seq e = match e with
     | KExpSeq(es, _) -> pprint_kexpseq es false
@@ -339,7 +339,6 @@ let pprint_kinfo_x ki =
     (Format.print_flush (); Format.open_box 0;
     (match ki with
     | KNone -> pstr "KNone"
-    | KText s -> pstr ("KText: " ^ s)
     | KVal {kv_name; kv_typ; kv_loc} ->
         pstr "KVal: "; pprint_id kv_name kv_loc; pstr ": "; pprint_ktyp kv_typ kv_loc
     | KFun kf -> pstr "KFun: "; pprint_kexp (KDefFun kf)

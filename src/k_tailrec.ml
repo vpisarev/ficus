@@ -102,11 +102,7 @@ let tailrec2loop kf =
         let loop_scope = new_block_scope() :: kf_scope in
         let (new_kf_args, trec_args, f_init_code, loop_init_code) =
             List.fold_left (fun (new_kf_args, trec_args, f_init_code, loop_init_code) (ai, ti) ->
-                let dv0 = match (kinfo_ ai kf_loc) with
-                    | KVal dv -> dv
-                    | _ -> raise_compile_err kf_loc
-                        (sprintf "incorrect information about parameter '%s' of function '%s'. It should be KVal"
-                            (id2str ai) (id2str kf_name)) in
+                let dv0 = get_kval ai kf_loc in
                 let a1i = dup_idk ai in
                 let a2i = dup_idk ai in
                 let dv1 = { dv0 with kv_name=a1i } in
