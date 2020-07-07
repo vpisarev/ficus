@@ -1492,34 +1492,27 @@ let gen_ccode top_code =
                 else () in
             let (n_id, _) = List.nth relems (n+ofs) in
             (true, (cexp_mem ce1 n_id ctyp), ccode)
-        | KExpAssign(i, e2, _) ->
-            let (ktyp2, kloc2) = get_kexp_ctx e2 in
-            let {ktp_complex} = K_annotate_types.get_ktprops ktyp2 kloc2 in
+        | KExpAssign(i, a, _) ->
+            let ktyp = get_idk_ktyp i kloc in
+            let {ktp_complex} = K_annotate_types.get_ktprops ktyp kloc in
             let ccode =
                 if ktp_complex then
                     let (i_exp, ccode) = id2cexp i true ccode sc kloc in
+                    let (e_exp, ccode) = atom2cexp_ a true ccode sc kloc in
                     let ctyp = get_cexp_typ i_exp in
                     (if is_subarray i kloc then
-                        let (e_exp, ccode) = kexp2cexp e2 (ref None) ccode sc in
-                        let copy_arr_data = make_call !std_fx_copy_arr_data [(cexp_get_addr e_exp); (cexp_get_addr i_exp)] CTypInt kloc in
+                        let copy_arr_data = make_call !std_fx_copy_arr_data [(cexp_get_addr e_exp);
+                            (cexp_get_addr i_exp); (make_bool_exp true kloc)] CTypInt kloc in
                         add_fx_call copy_arr_data ccode kloc
-                    else if occurs_id_kexp i e2 then
-                        (* if "i" occurs in "e2", we need to be safe and free "i" only after "e2" is computed *)
-                        let (e_exp, ccode) = kexp2cexp e2 (ref None) ccode sc in
-                        let ccode = C_gen_types.gen_free_code i_exp ctyp true false ccode kloc in
-                        C_gen_types.gen_copy_code e_exp i_exp ctyp ccode kloc
                     else
-                        (* otherwise, we can free "i" first and then compute "e2" directly at "i",
-                           i.e. avoid extra copy in the end *)
+                        (* if "i" occurs in "e2", we need to be safe and free "i" only after "e2" is computed *)
                         let ccode = C_gen_types.gen_free_code i_exp ctyp true false ccode kloc in
-                        let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode sc in
-                        ccode)
+                        C_gen_types.gen_copy_code e_exp i_exp ctyp ccode kloc)
                 else
-                    (* if the type is simple then there is no need to save lhs into
-                        intermediate variable, because it's used just once: lhs = rhs *)
+                    (* if the type is simple, copy it rhs directly to lhs *)
                     let (i_exp, ccode) = id2cexp i false ccode sc kloc in
-                    let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode sc in
-                    ccode
+                    let (a_exp, ccode) = atom2cexp a ccode sc kloc in
+                    C_gen_types.gen_copy_code a_exp i_exp ctyp ccode kloc
                 in
             (false, dummy_exp, ccode)
         | KExpMatch(cases, _) ->

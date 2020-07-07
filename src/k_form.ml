@@ -110,7 +110,7 @@ and kexp_t =
     | KExpMkArray of int list * atom_t list * kctx_t
     | KExpAt of atom_t * dom_t list * kctx_t
     | KExpMem of id_t * int * kctx_t
-    | KExpAssign of id_t * kexp_t * loc_t
+    | KExpAssign of id_t * atom_t * loc_t
     | KExpMatch of ((kexp_t list) * kexp_t) list * kctx_t
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of id_t * bool * loc_t
@@ -466,7 +466,7 @@ and walk_kexp e callb =
     | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
     | KExpCall(f, args, ctx) -> KExpCall((walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
     | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
-    | KExpAssign(lv, rv, loc) -> KExpAssign((walk_id_ lv), (walk_kexp_ rv), loc)
+    | KExpAssign(lv, rv, loc) -> KExpAssign((walk_id_ lv), (walk_atom_ rv), loc)
     | KExpMem(k, member, ctx) -> KExpMem((walk_id_ k), member, (walk_kctx_ ctx))
     | KExpThrow(k, f, loc) -> KExpThrow((walk_id_ k), f, loc)
     | KExpWhile(c, e, loc) -> KExpWhile((walk_kexp_ c), (walk_kexp_ e), loc)
@@ -610,7 +610,7 @@ and fold_kexp e callb =
     | KExpMkArray(_, elems, ctx) -> fold_al_ elems; ctx
     | KExpCall(f, args, ctx) -> fold_id_ f; fold_al_ args; ctx
     | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
-    | KExpAssign(lv, rv, loc) -> fold_id_ lv; fold_kexp_ rv; (KTypVoid, loc)
+    | KExpAssign(lv, rv, loc) -> fold_id_ lv; fold_atom_ rv; (KTypVoid, loc)
     | KExpMem(k, _, ctx) -> fold_id_ k; ctx
     | KExpThrow(k, _, loc) -> fold_id_ k; (KTypErr, loc)
     | KExpWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
@@ -841,6 +841,18 @@ let create_kdefval n ktyp flags e_opt code sc loc =
     match e_opt with
     | Some(e) -> KDefVal(n, e, loc) :: code
     | _ -> code
+
+let kexp2atom prefix e tref code sc =
+    match e with
+    | KExpAtom (a, _) -> (a, code)
+    | _ ->
+        let tmp_id = gen_temp_idk prefix in
+        let (ktyp, kloc) = get_kexp_ctx e in
+        let _ = if ktyp <> KTypVoid then () else
+            raise_compile_err kloc "'void' expression or declaration cannot be converted to an atom" in
+        let flags = if tref then [ValTempRef] else [ValTemp] in
+        let code = create_kdefval tmp_id ktyp flags (Some e) code sc kloc in
+        ((Atom.Id tmp_id), code)
 
 let create_kdeffun n args rt flags body_opt code sc loc =
     let body = match body_opt with

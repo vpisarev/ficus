@@ -43,7 +43,7 @@ let rec pure_kexp_ e callb =
 
     (* [TODO] make it more sophisticated. A block of expressions may change value
        of a locally-defined variable and yet, as a whole, stay a pure expression *)
-    | KExpAssign (i, KExpAtom((Atom.Id j), _), _) when i = j -> ()
+    | KExpAssign (i, (Atom.Id j), _) when i = j -> ()
     | KExpAssign _ -> set_impure()
     | KExpTryCatch _ -> set_impure()
     | KExpThrow _ -> set_impure()
@@ -170,7 +170,7 @@ let rec elim_unused code =
             let result = (match e with
             | KExpNop _ ->
                 if rest = [] then e :: result else result
-            | KExpAssign(fr, KExpAtom((Atom.Id r), _), loc)
+            | KExpAssign(fr, (Atom.Id r), loc)
                 when (get_orig_id fr) = fold_result && (IdSet.mem r !fold_values) ->
                 result
             | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _ | KDefTyp _ | KDefClosureVars _ ->

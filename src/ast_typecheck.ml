@@ -914,19 +914,14 @@ and check_exp e env sc =
         | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight ->
             let is_shift = bop = OpShiftLeft || bop == OpShiftRight in
             let allow_fp = not is_shift in
-            coerce_types etyp1_ etyp2_ true allow_fp is_shift eloc
+            coerce_types etyp1_ etyp2_ false allow_fp is_shift eloc
         | OpBitwiseAnd | OpBitwiseOr | OpBitwiseXor ->
-            let rec check_bitwise t1 t2 =
+            let check_bitwise t1 t2 =
                 (match (t1, t2) with
                 | (TypInt, TypInt) -> TypInt
                 | (TypSInt(b1), TypSInt(b2)) when b1 = b2 -> TypSInt(b1)
                 | (TypUInt(b1), TypUInt(b2)) when b1 = b2 -> TypUInt(b1)
                 | (TypBool, TypBool) -> TypBool
-                | (TypTuple tl1), (TypTuple tl2) ->
-                    if (List.length tl1) != (List.length tl2) then
-                        invalid_arg ""
-                    else
-                        TypTuple(List.map2 check_bitwise tl1 tl2)
                 | _ -> invalid_arg "")
             in (try Some(check_bitwise etyp1_ etyp2_) with Invalid_argument _ -> None)
         | OpLogicAnd | OpLogicOr ->
@@ -998,7 +993,7 @@ and check_exp e env sc =
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
         (match uop with
         | OpNegate | OpPlus ->
-            let t_opt = coerce_types etyp1 etyp1 true true false eloc in
+            let t_opt = coerce_types etyp1 etyp1 false true false eloc in
             (match t_opt with
             | Some(t) ->
                 unify etyp t eloc "improper type of the unary '-' operator result";

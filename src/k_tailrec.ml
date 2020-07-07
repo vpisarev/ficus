@@ -123,12 +123,17 @@ let tailrec2loop kf =
             match final_e with
             | KExpThrow _ -> final_e
             | _ ->
-                let eloc = get_kexp_loc final_e in
-                let final_e = if res_n = noid
-                    then final_e
-                    else KExpAssign(res_n, final_e, eloc) in
-                KExpSeq((final_e :: (KExpBreak eloc) :: []), (KTypVoid, eloc))
-        in let rec transform_tcalls e =
+                let (ktyp, kloc) = get_kexp_ctx final_e in
+                let (final_e, code) = if res_n = noid
+                    then (final_e, [])
+                    else
+                        let (final_atom, code) = kexp2atom "result" final_e (not (is_ktyp_scalar ktyp)) [] kf_scope in
+                        (KExpAssign(res_n, final_atom, kloc), code)
+                    in
+                let code = (KExpBreak kloc) :: final_e :: code in
+                rcode2kexp code kloc
+        in
+        let rec transform_tcalls e =
             let eloc = get_kexp_loc e in
             let new_ctx = (KTypVoid, eloc) in
             match e with
@@ -145,7 +150,7 @@ let tailrec2loop kf =
             | KExpCall(f, real_args, (_, eloc)) ->
                 if f = kf_name then
                     let tcall_rcode = List.fold_left2 (fun tcall_rcode (trec_ai, ti) real_ai ->
-                        let set_new = KExpAssign(trec_ai, (KExpAtom(real_ai, (ti, eloc))), eloc) in
+                        let set_new = KExpAssign(trec_ai, real_ai, eloc) in
                         set_new :: tcall_rcode) [] trec_args real_args in
                     rcode2kexp tcall_rcode eloc
                 else

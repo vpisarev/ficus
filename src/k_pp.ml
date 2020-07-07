@@ -201,7 +201,7 @@ and pprint_kexp_ e prtyp =
         | KExpBinOp(o, a, b, _) ->
             let ostr = binop_to_string o in
             pprint_atom_ a; pspace(); pstr ostr; pspace(); pprint_atom_ b
-        | KExpAssign(n, e, _) -> pprint_id_ n; pspace(); pstr "="; pspace(); pprint_kexp e
+        | KExpAssign(n, a, _) -> pprint_id_ n; pspace(); pstr "="; pspace(); pprint_atom_ a
         | KExpMem(n, i, (_, loc)) ->
             pprint_id n loc; pstr ".";
             (match (get_idk_ktyp n loc) with

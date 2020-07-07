@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it)
+int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it, bool reverse)
 {
     if(narrays <= 0) FX_FAST_THROW_RET(FX_EXN_SizeError);
     if(!arrs || !arrs[0]) FX_FAST_THROW_RET(FX_EXN_NullPtrError);
@@ -25,12 +25,11 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
     it->ptrs = ptrs;
     it->idx = 0;
     it->ptrs[0] = arr0->data;
+    it->reverse = reverse;
 
-    if( d == 1 )
-    {
+    if( d == 1 ) {
         int_ size = arr0->dim[0].size;
-        for( i = 1; i < narrays; i++ )
-        {
+        for( i = 1; i < narrays; i++ ) {
             const fx_arr_t* arri = arrs[i];
             if( arri->ndims != 1 || arri->dim[0].size != size )
                 FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
@@ -39,52 +38,41 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
         it->iterdepth = 0;
         it->nblocks = 1;
         it->blocksize = size;
-    }
-    else if( d == 2 )
-    {
+    } else if( d == 2 ) {
         int_ size0 = arr0->dim[0].size;
         int_ size1 = arr0->dim[1].size;
         int flags = arr0->flags;
-        for( i = 1; i < narrays; i++ )
-        {
+        for( i = 1; i < narrays; i++ ) {
             const fx_arr_t* arri = arrs[i];
             if( arri->ndims != 2 || arri->dim[0].size != size0 || arri->dim[1].size != size1 )
                 FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
             flags &= arri->flags;
             ptrs[i] = arri->data;
         }
-        if( FX_IS_ARR_CONTINUOUS(flags) )
-        {
+        if( FX_IS_ARR_CONTINUOUS(flags) ) {
             it->iterdepth = 0;
             it->nblocks = 1;
             it->blocksize = size0*size1;
-        }
-        else
-        {
+        } else {
             it->iterdepth = 1;
             it->nblocks = size0;
             it->blocksize = size1;
         }
-    }
-    else
-    {
+    } else {
         for( d1 = 0; d1 < d; d1++ )
             if( arr0->dim[d1].size > 1 )
                 break;
 
-        for( i = 0; i < narrays; i++ )
-        {
+        for( i = 0; i < narrays; i++ ) {
             const fx_arr_t* arri = arrs[i];
-            if( i > 0 )
-            {
+            if( i > 0 ) {
                 if( arri->ndims != d ) FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
                 for( j = 0; j < d; j++ )
                     if(arri->dim[j].size != arr0->dim[j].size)
                         FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
             }
 
-            if( !FX_IS_ARR_CONTINUOUS(arri->flags) )
-            {
+            if( !FX_IS_ARR_CONTINUOUS(arri->flags) ) {
                 for( j = d-1; j > d1; j-- )
                     if( arri->dim[j].step*arri->dim[j].size < arri->dim[j-1].step )
                         break;
@@ -117,17 +105,18 @@ int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it
     }
     if( it->nblocks == 0 || it->blocksize == 0 )
         it->nblocks = 0;
+    if (reverse && it->nblocks > 1)
+        fx_arr_nextiter(it);
+
     return FX_OK;
 }
 
 void fx_arr_nextiter(fx_arriter_t* it)
 {
-    // this check covers the continuous case
-    // (all the arrays can be processed as a single block),
-    // including 1D case
-    if(it->idx >= it->nblocks-1)
+    if (it->nblocks <= 1)
         return;
-    ++it->idx;
+    bool reverse = it->reverse;
+    it->idx = (it->idx + (reverse ? -1 : 1) + it->nblocks) % it->nblocks;
 
     int narrays = it->narrays;
     fx_arr_t** arrs = it->arrs;
@@ -207,7 +196,7 @@ void fx_free_arr(fx_arr_t* arr)
                 {
                     fx_arriter_t it;
                     char* ptr = 0;
-                    fx_arr_startiter(1, &arr, &ptr, &it);
+                    fx_arr_startiter(1, &arr, &ptr, &it, false);
                     for(int_ i = 0; i < it.nblocks; i++)
                     {
                         fx_free_arr_elems(ptr, it.blocksize, elemsize, free_f);
@@ -222,23 +211,87 @@ void fx_free_arr(fx_arr_t* arr)
     arr->data = 0;
 }
 
-int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst)
+int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst, bool free_dst)
 {
+    int ndims = src->ndims;
+    const char* srcdata = src->data;
+    char* dstdata = dst->data;
+    size_t elemsize = src->dim[ndims-1].step;
+    size_t src_range = src->dim[0].size*src->dim[0].step;
+    size_t dst_range = dst->dim[0].size*dst->dim[0].step;
+    fx_copy_t copy_elem = src->copy_elem;
+    fx_free_t free_elem = src->free_elem;
+    if( ndims != dst->ndims || elemsize != dst->dim[ndims-1].step ||
+        copy_elem != dst->copy_elem || free_elem != dst->free_elem )
+        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+    if( ndims == 0 )
+        return FX_OK;
+
+    // fast path: non-overlapping copy of simple elements, 1D or 2D case
+    if (ndims <= 2 && !copy_elem && (srcdata + src_range <= dstdata || dstdata + dst_range <= srcdata) )
+    {
+        int_ nrows = ndims == 1 ? 1 : src->dim[0].size, ncols = src->dim[ndims-1].size;
+        size_t srcstep = src->dim[0].step, dststep = dst->dim[0].step;
+
+        if ((ndims > 1 && nrows != dst->dim[0].size) || ncols != dst->dim[ndims-1].size)
+            FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+        if (FX_IS_ARR_CONTINUOUS(src->flags & dst->flags)) {
+            ncols *= nrows;
+            nrows = 1;
+        }
+        if (ncols > 0) {
+            for (int_ i = 0; i < nrows; i++ )
+                memcpy(dstdata + i*dststep, srcdata + i*srcstep, ncols*elemsize);
+        }
+        return FX_OK;
+    }
+
     fx_arr_t* arrs[] = {(fx_arr_t*)src, dst};
     char* ptrs[] = {0, 0};
     fx_arriter_t it = {};
-    int fx_status = fx_arr_startiter(2, arrs, ptrs, &it);
-    if( fx_status < 0 )
+    bool reverse = srcdata < dstdata && srcdata + src_range > dstdata;
+    int fx_status = fx_arr_startiter(2, arrs, ptrs, &it, reverse);
+    size_t raw_blocksize = it.blocksize*elemsize;
+    if( fx_status < 0 || raw_blocksize == 0 || it.nblocks == 0 )
         return fx_status;
-    int ndims = src->ndims;
-    size_t elemsize = src->dim[ndims-1].step;
-    if( src->copy_elem != dst->copy_elem || elemsize != dst->dim[ndims-1].step )
-        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+
+    if (!copy_elem)
+        free_dst = false;
 
     for( int_ i = 0; i < it.nblocks; i++ ) {
-        fx_copy_arr_elems(ptrs[0], ptrs[1], it.blocksize, elemsize, src->copy_elem);
+        char* p0 = ptrs[0], *p1 = ptrs[1];
         if(i+1 < it.nblocks)
             fx_arr_nextiter(&it);
+        if (p0 == p1) continue;
+        if (p0 + raw_blocksize <= p1 || p1 + raw_blocksize <= p0) {
+            if (free_dst)
+                fx_free_arr_elems(p1, it.blocksize, elemsize, free_elem);
+            fx_copy_arr_elems(p0, p1, it.blocksize, elemsize, copy_elem);
+        } else if (!copy_elem) {
+            memmove(p1, p0, raw_blocksize);
+        } else {
+            int_ delta = (int_)elemsize;
+            if(p0 < p1) {
+                p0 += raw_blocksize - elemsize;
+                p1 += raw_blocksize - elemsize;
+                delta = -delta;
+            }
+            if (copy_elem == fx_copy_ptr) {
+                for(int_ j = 0; j < it.blocksize; j++, p0 += delta, p1 += delta) {
+                    fx_ref_simple_t *p0_ = (fx_ref_simple_t*)p0;
+                    fx_ref_simple_t *p1_ = (fx_ref_simple_t*)p1;
+                    if(free_dst)
+                        free_elem(p1_);
+                    FX_COPY_PTR(*p0_, p1_);
+                }
+            } else {
+                for(int_ j = 0; j < it.blocksize; j++, p0 += delta, p1 += delta) {
+                    if(free_dst)
+                        free_elem(p1);
+                    copy_elem(p0, p1);
+                }
+            }
+        }
     }
     return FX_OK;
 }
@@ -255,6 +308,8 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
 {
     if (ndims <= 0 || ndims > FX_MAX_DIMS)
         FX_FAST_THROW_RET(FX_EXN_DimError);
+    if ((copy_elem != 0) != (free_elem != 0))
+        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
     size_t netw = elemsize;
     for(int i = ndims-1; i >= 0; i--)
     {
@@ -318,7 +373,7 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
             arr->free_elem, arr->copy_elem, 0, result);
         if(fx_status >= 0) {
             assert(FX_IS_ARR_CONTINUOUS(result->flags));
-            fx_status = fx_copy_arr_data(arr, result);
+            fx_status = fx_copy_arr_data(arr, result, false);
         }
     }
     if( fx_status >= 0 ) {

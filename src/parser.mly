@@ -932,6 +932,8 @@ typespec_nf:
 | TYVAR { TypApp([], get_id $1) }
 | B_LPAREN typespec_list_ RPAREN { match $2 with t::[] -> t | _ -> TypTuple(List.rev $2) }
 | B_LPAREN typespec_list_ COMMA RPAREN { TypTuple(List.rev $2) }
+| B_LPAREN typespec_nf STAR INT RPAREN { TypTuple(List.init (Int64.to_int $4) (fun i -> $2)) }
+| B_LPAREN INT STAR typespec_nf RPAREN { TypTuple(List.init (Int64.to_int $2) (fun i -> $4)) }
 | typespec_nf nobreak_dot_ident
 %prec app_type_prec
 { match ($1, $2) with

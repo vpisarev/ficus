@@ -24,6 +24,8 @@ void fx_free_str(fx_str_t* str)
     {
         if(FX_DECREF(*str->rc) == 1)
             fx_free(str->rc);
+        str->data = 0;
+        str->length = 0;
         str->rc = 0;
     }
 }

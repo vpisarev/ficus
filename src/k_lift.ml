@@ -545,14 +545,8 @@ let lift_all top_code =
                     | _ -> raise_compile_err loc
                         (sprintf "k-lift: not found subst info about mutable free var '%s'" (id2str n))
                     in
-                let (a, code) = match rhs with
-                    | KExpAtom(a, _) -> (a, [])
-                    | _ ->
-                        let nr_arg = gen_temp_idk ((pp_id2str n) ^ "_arg") in
-                        let {kv_scope} = get_kval n loc in
-                        let code = create_kdefval nr_arg t [ValTemp] (Some rhs) [] kv_scope loc in
-                        ((Atom.Id nr_arg), code)
-                    in
+                let {kv_scope} = get_kval n loc in
+                let (a, code) = kexp2atom ((pp_id2str n) ^ "_arg") rhs false [] kv_scope in
                 let code = KDefVal(nr, KExpUnOp(OpMkRef, a, (ref_typ, loc)), loc) :: code in
                 let code = KDefVal(n, KExpUnOp(OpDeref, (Atom.Id nr), (t, loc)), loc) :: code in
                 KExpSeq((List.rev code), (KTypVoid, loc))

@@ -495,9 +495,10 @@ typedef struct fx_arriter_t
     char** ptrs;
     int iterdepth;
     int_ idx;
+    bool reverse;
 } fx_arriter_t;
 
-int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it);
+int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it, bool reverse);
 void fx_arr_nextiter(fx_arriter_t* it);
 
 #define FX_ARR_SIZE(arr, i) ((arr).dim[i].size)
@@ -527,7 +528,7 @@ void fx_free_arr(fx_arr_t* arr);
     { (dst) = (src); (src).rc = 0; (src).data = 0; }
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
-int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst);
+int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst, bool free_dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_free_t free_elem, fx_copy_t copy_elem, const void* elems, fx_arr_t* arr );
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);

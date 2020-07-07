@@ -307,15 +307,18 @@ let rec exp2kexp e code tref sc =
                     raise_compile_err e1loc "unsupported access operation") in
         (KExpMem(a_id, i, kctx), code)
     | ExpAssign(e1, e2, _) ->
-        let (e2, code) = exp2kexp e2 code true sc in
+        let (a2, code) = exp2atom e2 code false sc in
         let (a_id, code) = exp2id e1 code true sc "a literal cannot be assigned" in
         let kv = get_kval a_id eloc in
-        let {kv_flags} = kv in
-        let kv_flags = match e1 with ExpAt _ -> ValSubArray :: kv_flags | _ -> kv_flags in
+        let {kv_flags; kv_typ} = kv in
+        let kv_flags = match (e1, kv_typ) with
+            | (ExpAt _, KTypArray _) -> ValSubArray :: kv_flags
+            | _ -> kv_flags
+            in
         let kv = {kv with kv_flags = if List.mem ValMutable kv_flags then
             kv_flags else ValMutable :: kv_flags} in
         set_idk_entry a_id (KVal kv);
-        (KExpAssign(a_id, e2, eloc), code)
+        (KExpAssign(a_id, a2, eloc), code)
     | ExpCast(e, _, _) ->
         let (a, code) = exp2atom e code false sc in
         (KExpCast(a, ktyp, eloc), code)
@@ -378,15 +381,7 @@ let rec exp2kexp e code tref sc =
 
 and exp2atom e code tref sc =
     let (e, code) = exp2kexp e code tref sc in
-    let (t, eloc) = get_kexp_ctx e in
-    match (t, e) with
-    | (KTypVoid, _) -> raise_compile_err eloc "no-value operator or declaration cannot be represented as an atom"
-    | (_, KExpAtom(a, _)) -> (a, code)
-    | (_, _) ->
-        let kv_name = gen_temp_idk "v" in
-        let kv_flags = if tref then ValTempRef :: [] else ValTemp :: [] in
-        let code = create_kdefval kv_name t kv_flags (Some e) code sc eloc in
-        ((Atom.Id kv_name), code)
+    kexp2atom "v" e tref code sc
 
 and atom2id a loc msg =
     match a with

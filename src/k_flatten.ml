@@ -30,10 +30,6 @@ and flatten_kexp_ e callb =
         let else_e = flatten_kexp_ else_e callb in
         let new_if = KExpIf(c, then_e, else_e, kctx) in
         rcode2kexp (new_if :: code) loc
-    | KExpAssign(n, e, loc) ->
-        let (e, code) = try_flatten e [] callb in
-        let new_assign = KExpAssign(n, e, loc) in
-        rcode2kexp (new_assign :: code) loc
     | KExpMatch _ ->
         (* just call walk_kexp to flatten all
             the nested expressions with 1 line of code *)

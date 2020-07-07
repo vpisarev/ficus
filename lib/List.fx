@@ -16,17 +16,18 @@ fun last(_: 't list)
     | _ => throw NullListError
 }
 
-fun nth(_: 't list, n: int)
-{
-    | a :: rest => if n == 0 {a} else {nth(rest, n-1)}
-    | _ => throw OutOfRangeError
-}
+fun nth(l: 't list, n: int) =
+    match l
+    {
+        | a :: rest => if n == 0 {a} else {nth(rest, n-1)}
+        | _ => throw OutOfRangeError
+    }
 
 pure nothrow fun length(l: 't list): int = ccode
     "return fx_list_length(l);"
 
 fun rev(l: 't list): 't list =
-    fold r=([]: t list) for a <- l {a :: r}
+    fold r=[] for a <- l {a :: r}
 
 fun array(l: 't list): 't [] = [for x <- l {x}]
 
@@ -54,32 +55,14 @@ fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
 fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
     unzip([: for x <- lab {x} :])
 
-// O(n log n) merge sort.
-// Not very efficient algorithm (or rather very inefficient),
-// but it's useful to test closures and function pointers.
-fun mergeSort(l: 't list, lt: ('t,'t)->bool): 't list =
-    match l {
-    | [] => []
-    | l =>
-        fun merge(_: 't list, _: 't list)
-        {
-            | ((a :: at) as l, (b :: bt) as r) =>
-                if lt(b, a) {b :: merge(l, bt)} else {a :: merge(at, r)}
-            | (l, []) => l
-            | (_, r) => r
-        }
-
-        fun scan(_: 't list list)
-        {
-            | a :: b :: rest => merge(a, b) :: scan(rest)
-            | l => l
-        }
-
-        fun loop(_: 't list list)
-        {
-            | a :: [] => a
-            | l => loop(scan(l))
-        }
-
-        loop([: for a <- l {a :: []} :])
+fun sort(l: 't list, lt: ('t, 't)->bool) =
+    match l
+    {
+        | [] => l
+        | a :: [] => l
+        | a :: b :: [] => if lt(b, a) {b::a::[]} else {l}
+        | _ =>
+            val arr = [for x <- l {x}]
+            sort(arr, lt)
+            [: for x <- arr {x} :]
     }

@@ -20,11 +20,11 @@ fun fib2(n: int) {
     fib2_(1, 1, n)
 }
 
-operator * (((a11, a12), (a21, a22)): (('t, 't), ('t, 't)),
-            ((b11, b12), (b21, b22)): (('t, 't), ('t, 't))) =
+operator * (((a11, a12), (a21, a22)): (('t * 2) * 2),
+            ((b11, b12), (b21, b22)): (('t * 2) * 2)) =
     ((a11*b11 + a12*b21, a11*b12 + a12*b22),
      (a21*b11 + a22*b21, a21*b12 + a22*b22))
-operator ** (a: (('t, 't), ('t, 't)), n: int)
+operator ** (a: (('t * 2) * 2), n: int)
 {
     val _0 = (0:>'t), _1 = (1:>'t)
     var p = ((_1, _0), (_0, _1))
@@ -169,7 +169,7 @@ nothrow fun is_prime(n: int)
 
 println("primes <100: \([: for i <- 0:100 {if !is_prime(i) {continue}; i} :])")
 
-val sorted = List.mergeSort(
+val sorted = List.sort(
     [: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
     -460, 451, -11034, 8848 :],
     fun (a: int, b: int) {a < b})

@@ -100,7 +100,7 @@ let init_std_names () =
     std_fx_copy_arr := gen_std_fun "fx_copy_arr"
         ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: []) CTypVoid;
     std_fx_copy_arr_data := gen_std_fun "fx_copy_arr_data"
-        ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: []) CTypVoid;
+        ((make_const_ptr std_CTypAnyArray) :: (make_ptr std_CTypAnyArray) :: CTypBool :: []) CTypVoid;
     std_fx_subarr := gen_std_fun "fx_subarr" [(make_const_ptr std_CTypAnyArray);
         (make_const_ptr CTypInt); (make_ptr std_CTypAnyArray)] CTypCInt;
 

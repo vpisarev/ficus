@@ -23,19 +23,20 @@ fun assert(f: bool) = if !f {throw AssertError}
 
 fun ignore(_: 't) {}
 
-operator <=> (a: int, b: int): int = (a > b) - (a < b)
-operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
-operator <=> (a: uint8, b: uint8): int = (a > b) - (a < b)
-operator <=> (a: int16, b: int16): int = (a > b) - (a < b)
-operator <=> (a: uint16, b: uint16): int = (a > b) - (a < b)
-operator <=> (a: int32, b: int32): int = (a > b) - (a < b)
-operator <=> (a: uint32, b: uint32): int = (a > b) - (a < b)
-operator <=> (a: int64, b: int64): int = (a > b) - (a < b)
-operator <=> (a: uint64, b: uint64): int = (a > b) - (a < b)
-operator <=> (a: float, b: float): int = (a > b) - (a < b)
-operator <=> (a: double, b: double): int = (a > b) - (a < b)
-operator <=> (a: char, b: char): int = (a > b) - (a < b)
-operator <=> (a: bool, b: bool): int = (a > b) - (a < b)
+fun __is_scalar__(x: 't) = false
+fun __is_scalar__(x: int) = true
+fun __is_scalar__(x: int8) = true
+fun __is_scalar__(x: uint8) = true
+fun __is_scalar__(x: int16) = true
+fun __is_scalar__(x: uint16) = true
+fun __is_scalar__(x: int32) = true
+fun __is_scalar__(x: uint32) = true
+fun __is_scalar__(x: int64) = true
+fun __is_scalar__(x: uint64) = true
+fun __is_scalar__(x: float) = true
+fun __is_scalar__(x: double) = true
+fun __is_scalar__(x: char) = true
+fun __is_scalar__(x: bool) = true
 
 operator == (a: 't, b: 't): bool = a <=> b == 0
 operator != (a: 't, b: 't): bool = !(a == b)
@@ -127,6 +128,39 @@ fun string(l: 't list)
 }
 pure fun string(a: char []): string = ccode "return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);"
 
+operator <=> (a: 't list, b: 't list): int =
+    try {
+        fold r=0 for xa <- a, xb <- b {
+            val d = xa <=> xb
+            if d != 0 {break with d}
+            r
+        }
+    }
+    catch {
+    | SizeMismatchError => length(a) <=> length(b)
+    }
+
+operator <=> (a: 't [], b: 't []): int =
+    fold r=0 for xa <- a, xb <- b {
+        val d = xa <=> xb
+        if d != 0 {break with d}
+        r
+    }
+
+operator <=> (a: int, b: int): int = (a > b) - (a < b)
+operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
+operator <=> (a: uint8, b: uint8): int = (a > b) - (a < b)
+operator <=> (a: int16, b: int16): int = (a > b) - (a < b)
+operator <=> (a: uint16, b: uint16): int = (a > b) - (a < b)
+operator <=> (a: int32, b: int32): int = (a > b) - (a < b)
+operator <=> (a: uint32, b: uint32): int = (a > b) - (a < b)
+operator <=> (a: int64, b: int64): int = (a > b) - (a < b)
+operator <=> (a: uint64, b: uint64): int = (a > b) - (a < b)
+operator <=> (a: float, b: float): int = (a > b) - (a < b)
+operator <=> (a: double, b: double): int = (a > b) - (a < b)
+operator <=> (a: char, b: char): int = (a > b) - (a < b)
+operator <=> (a: bool, b: bool): int = (a > b) - (a < b)
+
 pure nothrow operator == (a: string, b: string): bool = ccode
     "
     return (bool)(a->length == b->length &&
@@ -151,25 +185,6 @@ pure nothrow operator <=> (a: string, b: string): int = ccode
 // compare the pointers, not the content. Maybe need a separate operator for that.
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
     "return a == b;"
-
-operator <=> (a: 't list, b: 't list): int =
-    try {
-        fold r=0 for xa <- a, xb <- b {
-            val d = xa <=> xb
-            if d != 0 {break with d}
-            r
-        }
-    }
-    catch {
-    | SizeMismatchError => length(a) <=> length(b)
-    }
-
-operator <=> (a: 't [], b: 't []): int =
-    fold r=0 for xa <- a, xb <- b {
-        val d = xa <=> xb
-        if d != 0 {break with d}
-        r
-    }
 
 nothrow fun atoi(a: string): int? = ccode
     "
@@ -323,3 +338,90 @@ pure nothrow fun size(a: 't [,,]): (int, int, int) = ccode
     fx_result->t1=a->dim[1].size;
     fx_result->t2=a->dim[2].size;
     "
+
+fun sort(arr: 't [], lt: ('t, 't) -> bool)
+{
+    nothrow fun swap(arr: 't [], i: int, j: int): void = ccode
+    "
+    size_t esz = arr->dim[0].step;
+    if(esz % sizeof(int) == 0) {
+        int* ptr0 = (int*)(arr->data + i*esz);
+        int* ptr1 = (int*)(arr->data + j*esz);
+        esz /= sizeof(int);
+        for( size_t k = 0; k < esz; k++ ) {
+            int t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
+        }
+    } else {
+        char* ptr0 = arr->data + i*esz;
+        char* ptr1 = arr->data + j*esz;
+        for( size_t k = 0; k < esz; k++ ) {
+            char t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
+        }
+    }
+    "
+
+    fun qsort_(lo: int, hi: int) =
+        if lo+1 < hi {
+            val m = (lo+hi)/2
+            val a = arr[lo], b = arr[m], p = arr[hi]
+            val p =
+                if lt(a, b) {
+                    if lt(b, p) {arr[m]=p; b} else if lt(a, p) {p} else {arr[lo]=p; a}
+                } else {
+                    if lt(a, p) {arr[lo]=p; a} else if lt(b, p) {p} else {arr[m]=p; b}
+                }
+            val i0 =
+                if __is_scalar__(p) {
+                    fold i0 = lo for j <- lo:hi {
+                        val b = arr[j]
+                        if lt(b, p) {
+                            val a = arr[i0]
+                            arr[i0] = b; arr[j] = a;
+                            i0 + 1
+                        } else {i0}
+                    }
+                } else {
+                    fold i0 = lo for j <- lo:hi {
+                        if lt(arr[j], p) {
+                            swap(arr, i0, j)
+                            i0 + 1
+                        } else {i0}
+                    }
+                }
+            val a = arr[i0]
+            arr[hi] = a; arr[i0] = p
+            val fold i1 = hi for j <- i0:hi {
+                if lt(p, arr[j+1]) {break with j}
+                i1
+            }
+            // convert the shortest qsort call into tail recursion to save stack space
+            if i0 - lo > hi - i1 {
+                qsort_(lo, i0-1)
+                qsort_(i1+1, hi)
+            } else {
+                qsort_(lo, i0-1)
+                qsort_(i1+1, hi)
+            }
+        } else if lo < hi {
+            val a = arr[lo], b = arr[hi]
+            if lt(b, a) {
+                arr[hi] = a
+                arr[lo] = b
+            }
+        }
+
+    qsort_(0, size(arr)-1)
+}
+
+fun new_uniform_rng(seed: int) {
+    var state = if seed != 0 {(seed :> uint64)} else {0xffffffffu64}
+    fun (a: int, b: int) {
+        state = (state :> uint32) * 4204114314u64 + (state >> 32)
+        val (a, b) = (min(a, b), max(a, b))
+        val diff = b - a + 1
+        val x = (state :> uint32) % diff + a
+        (x :> int)
+    }
+}
