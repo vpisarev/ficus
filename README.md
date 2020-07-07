@@ -1,18 +1,43 @@
 # Ficus
 
-**WIP: no C code is generated yet.**
+**WIP**
 
 This is a new functional language with the first-class array support
 and _planned_ object-oriented features. `ficus` compiler generates
 a portable C/C++ code out of .fx files.
 
+## License
+
 The code is distributed under Apache 2 license, see the [LICENSE](LICENSE)
+
+## How to build
 
 The compiler has been written in OCaml and needs `ocaml`
 (including `ocamlyacc` and `ocamllex` utilities),
 `ocamlbuild` and `make` utility to build it.
 Tested with OCaml 4.07 and 4.08.
-In the near future it's planned to rewrite the compiler entirely in ficus.
+(In the near future it's planned to rewrite the compiler entirely in ficus)
+
+```
+cd <ficus_root>/src
+make
+./ficus -run -O3 ../test/fst.fx # can also run other programs in <ficus_root>/test
+```
+
+## How to use
+
+run `ficus --help` to get more complete up-to-date information about command line parameters
+
+here is brief summary:
+```
+ficus [-app|-run|-c|...] [-O0|-O1|-O3] [-I<extra_module_path>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
+```
+
+* `-c` generates C code and writes it to `scriptname.c`. use `-o` option to override output name.
+* `-app` generates C code to temporary file and tries to compile it with C compiler (`cc`). Use `FICUS_CFLAGS` and `FICUS_LINK_LIBRARIES` are environment variables to pass extra options to C compiler, e.g. `-ffast-math -mavx2` `-lmimalloc` etc. Stores the app to `<scriptname>`. Override it with `-o` option.
+* `-run` generates application in a temporary file and runs it. After execution the application is deleted.
+
+## Credits
 
 The compiler was inspired by min-caml
 (http://esumii.github.io/min-caml/index-e.html) by Eijiro Sumii et al.
