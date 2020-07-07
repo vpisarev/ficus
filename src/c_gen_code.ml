@@ -1130,6 +1130,24 @@ let gen_ccode top_code =
                 let e = make_call f (ce1 :: ce2 :: []) rtyp kloc in
                 let e = if need_cast then CExpCast(e, ctyp, kloc) else e in
                 (true, e, ccode)
+            | OpMod ->
+                let e =
+                if (is_ktyp_integer (get_atom_ktyp a1 kloc) true) &&
+                   (is_ktyp_integer (get_atom_ktyp a2 kloc) true) then
+                    CExpBinOp(COpMod, ce1, ce2, (ctyp, kloc))
+                else
+                    let (need_cast, ce1, ce2, rtyp, f) = match ctyp with
+                        | CTypInt
+                        | CTypFloat(32) -> (false, ce1, ce2, ctyp, get_id "fmodf")
+                        | CTypFloat(64) -> (false, ce1, ce2, ctyp, get_id "fmod")
+                        | _ ->
+                            let ce1 = CExpCast(ce1, (CTypFloat 64), kloc) in
+                            let ce2 = CExpCast(ce2, (CTypFloat 64), kloc) in
+                            (true, ce1, ce2, (CTypFloat 64), get_id "fmod") in
+                    let e = make_call f (ce1 :: ce2 :: []) rtyp kloc in
+                    if need_cast then CExpCast(e, ctyp, kloc) else e
+                in
+                (true, e, ccode)
             | OpCons ->
                 (*
                     l = e1 :: e2;
@@ -1151,7 +1169,6 @@ let gen_ccode top_code =
                     | OpSub -> COpSub
                     | OpMul -> COpMul
                     | OpDiv -> COpDiv
-                    | OpMod -> COpMod
                     | OpShiftLeft -> COpShiftLeft
                     | OpShiftRight -> COpShiftRight
                     | OpBitwiseAnd -> COpBitwiseAnd
@@ -1163,7 +1180,7 @@ let gen_ccode top_code =
                     | OpCompareLE -> COpCompareLE
                     | OpCompareGT -> COpCompareGT
                     | OpCompareGE -> COpCompareGE
-                    | OpCons | OpPow | OpLogicAnd | OpLogicOr | OpSpaceship ->
+                    | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship ->
                         raise_compile_err kloc (sprintf "cgen: unsupported op '%s' at this stage"
                         (binop_to_string bop))
                 in (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))

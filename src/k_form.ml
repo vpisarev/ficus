@@ -826,6 +826,12 @@ let is_ktyp_scalar ktyp = match ktyp with
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar -> true
     | _ -> false
 
+let is_ktyp_integer t allow_bool =
+    match t with
+    | KTypCInt | KTypInt | KTypSInt _ | KTypUInt _ -> true
+    | KTypBool -> allow_bool
+    | _ -> false
+
 let create_kdefval n ktyp flags e_opt code sc loc =
     let dv = { kv_name=n; kv_cname=""; kv_typ=ktyp; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
     match ktyp with

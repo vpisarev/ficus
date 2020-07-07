@@ -29,6 +29,15 @@ type aclass_t =
     | ConstString of string
     | NonConst
 
+let aclass2str a =
+    match a with
+    | ConstZero -> "Zero"
+    | ConstInt i -> sprintf "ConstInt(%Li)" i
+    | ConstFloat f -> sprintf "ConstInt(%g)" f
+    | ConstBool b -> sprintf "ConstBool(%B)" b
+    | ConstString s -> sprintf "ConstString(%s)" s
+    | NonConst -> "NonConst"
+
 let classify_atom a z =
     match a with
     | Atom.Lit la ->
@@ -169,21 +178,20 @@ let cfold_bop bop a b res_t loc =
     | (OpMul, (ConstInt ia), (ConstFloat fb)) -> ((Some (ConstFloat((Int64.to_float ia) *. fb))), None)
     | (OpMul, (ConstFloat fa), (ConstInt ib)) -> ((Some (ConstFloat(fa *. (Int64.to_float ib)))), None)
     | (OpMul, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstFloat(fa *. fb))), None)
+    | (OpDiv, (ConstInt _), ConstZero)
+    | (OpDiv, (ConstBool _), ConstZero)
+    | (OpDiv, ConstZero, ConstZero)
+    | (OpMod, (ConstInt _), ConstZero)
+    | (OpMod, (ConstBool _), ConstZero)
+    | (OpMod, ConstZero, ConstZero) ->
+        raise_compile_err loc "division by constant 0"
     | (OpDiv, _, (ConstInt 1L)) -> retain_a()
     | (OpDiv, _, (ConstFloat 1.0)) -> retain_a()
-    | (OpDiv, (ConstInt ia), (ConstInt ib)) ->
-        if ib != 0L then
-            ((Some (ConstInt(Int64.div ia ib))), None)
-        else (* [TODO] just throw div-by-zero exception in this case *)
-            (None, None)
+    | (OpDiv, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstInt(Int64.div ia ib))), None)
     | (OpDiv, (ConstInt ia), (ConstFloat fb)) -> ((Some (ConstFloat((Int64.to_float ia) /. fb))), None)
     | (OpDiv, (ConstFloat fa), (ConstInt ib)) -> ((Some (ConstFloat(fa /. (Int64.to_float ib)))), None)
     | (OpDiv, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstFloat(fa /. fb))), None)
-    | (OpMod, (ConstInt ia), (ConstInt ib)) ->
-        if ib != 0L then
-            ((Some (ConstInt(Int64.rem ia ib))), None)
-        else (* [TODO] just throw div-by-zero exception in this case *)
-            (None, None)
+    | (OpMod, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstInt(Int64.rem ia ib))), None)
     | (OpMod, (ConstInt ia), (ConstFloat fb)) -> ((Some (ConstFloat(Float.rem (Int64.to_float ia) fb))), None)
     | (OpMod, (ConstFloat fa), (ConstInt ib)) -> ((Some (ConstFloat(Float.rem fa (Int64.to_float ib)))), None)
     | (OpMod, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstFloat(Float.rem fa fb))), None)
@@ -204,8 +212,7 @@ let cfold_bop bop a b res_t loc =
         if ib >= 0L then
             ((Some (ConstInt (Utils.ipower ia ib))), None)
         else
-            (* [TODO] should probably issue a warning in this case *)
-            (None, None)
+            raise_compile_err loc "integer is raised to negative power; just use literal '0' instead"
     | (OpPow, (ConstInt ia), (ConstFloat fb)) ->
         ((Some (ConstFloat (Float.pow (Int64.to_float ia) fb))), None)
     | (OpPow, (ConstFloat fa), (ConstInt ib)) ->
