@@ -21,7 +21,7 @@ Tested with OCaml 4.07 and 4.08.
 ```
 cd <ficus_root>/src
 make
-./ficus -run -O3 ../test/fst.fx # can also run other programs in <ficus_root>/test
+./ficus -run -O3 ../examples/fst.fx # can also run other programs in <ficus_root>/test
 ```
 
 ## How to use

@@ -33,6 +33,11 @@ let starts_with s subs =
     let l1 = String.length subs in
     l0 >= l1 && (String.sub s 0 l1) = subs
 
+let ends_with s subs =
+    let l0 = String.length s in
+    let l1 = String.length subs in
+    l0 >= l1 && (String.sub s (l0-l1) l1) = subs
+
 let trim_left s n =
     let n0 = String.length s in
     if n >= n0 then "" else String.sub s n (n0-n)

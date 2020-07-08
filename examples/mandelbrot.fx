@@ -54,6 +54,6 @@ val result: int8 [,] = [
 ]
 
 val f: File.file_t = File.open("result.pgm", "wb")
-File.print(f, "P4\n\(w) \(h)\n")
+File.print(f, "P4\n{w} {h}\n")
 File.write(f, result)
 File.close(f)

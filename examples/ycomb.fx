@@ -24,7 +24,7 @@ fun fib (f: int->int) =
     }
 
 val recfac = ycomb(fac)
-println(recfac(5))
+println("5! = {recfac(5)}")
 
 val recfib = ycomb(fib)
-println(recfib(8))
+println("fib(8) = {recfib(8)}")

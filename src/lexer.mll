@@ -207,9 +207,21 @@ let lexErr msg lexbuf =
 
 let string_literal = ref ""
 let string_start = ref dummy_pos
-let comment_start = ref dummy_pos
 let string_interp_elem = ref 0
 let string_tokens = ref ([] : token list)
+
+let comment_start = ref dummy_pos
+let comments_level = ref 0
+
+let ccode_mode = ref false
+let ccode_literal = ref ""
+let ccode_start = ref dummy_pos
+let ccode_string_quote = ref ' '
+let ccode_string_start = ref dummy_pos
+
+let add_ccode s = ccode_literal := !ccode_literal ^ s
+let add_ccode_char c = ccode_literal := !ccode_literal ^ (String.make 1 c)
+
 let new_exp = ref true
 
 (* the stack of tokens. Can contain the following characters:
@@ -222,6 +234,9 @@ let new_exp = ref true
    when ')' is met, remove => (if any) and the matching '('.
 *)
 let paren_stack = ref []
+
+let push_paren_stack tk lexbuf =
+    paren_stack := (tk, lexbuf.lex_start_p) :: !paren_stack
 
 let unmatchedTokenMsg t0 expected_list =
     let expected_str = List.fold_left (fun str t -> let t_str = token2str_pp t in
@@ -258,6 +273,7 @@ let decode_special_char lexbuf c = match c with
     | "\\t" -> "\t"
     | "\\r" -> "\r"
     | "\\b" -> "\b"
+    | "\\{" -> "{"
     | "\\0" -> "\x00"
     | _ -> raise (lexErr (sprintf "Invalid control character '%s'" c) lexbuf)
 
@@ -271,6 +287,7 @@ let make_char_literal lexbuf c =
     check_ne(lexbuf);
     new_exp := false;
     [CHAR c]
+
 }
 
 let newline = '\n' | '\r' | "\r\n"
@@ -280,7 +297,7 @@ let octdigit = ['0' - '7']
 let hexdigit = ['0' - '9' 'a' - 'f' 'A' - 'F']
 let lower = ['a'-'z']
 let upper = ['A'-'Z']
-let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0" | "\\\\"
+let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0" | "\\\\" | "\\{"
 let hexcode = "\\x" hexdigit hexdigit
 let octcode = "\\" octdigit octdigit octdigit
 
@@ -297,8 +314,14 @@ rule tokens = parse
     | space +  { tokens lexbuf }
 
     | "/*/" { tokens lexbuf }
-    | "/*"  { comment_start := lexbuf.lex_start_p; comments 0 lexbuf }
-    | "//"  { eol_comments lexbuf }
+    | "/*"
+        {
+            comment_start := lexbuf.lex_start_p;
+            comments_level := 1;
+            comments lexbuf;
+            tokens lexbuf
+        }
+    | "//"  { if (eol_comments lexbuf) = EOF then [EOF] else tokens lexbuf }
 
     | "\""
         {
@@ -306,6 +329,10 @@ rule tokens = parse
             if !string_interp_elem <> 0 then
                raise (lexErr "Unexpected '\"'; nested interpolations are not allowed" lexbuf)
             else ();
+            (match !paren_stack with
+            | (CCODE, _) :: _ ->
+                raise (lexErr "Unexpected string literal, after 'ccode' it should be code block in C" lexbuf)
+            | _ -> ());
             string_start := lexbuf.lex_start_p;
             string_literal := "" ;
             strings lexbuf;
@@ -325,7 +352,7 @@ rule tokens = parse
 
     | '('
         {
-            paren_stack := (LPAREN, lexbuf.lex_start_p) :: !paren_stack;
+            push_paren_stack LPAREN lexbuf;
             let t = if !new_exp then [B_LPAREN] else [LPAREN] in (new_exp := true; t)
         }
     | ')'
@@ -333,14 +360,11 @@ rule tokens = parse
             (match (!paren_stack) with
             | (LPAREN, _) :: rest ->
                 paren_stack := rest; new_exp := false; [RPAREN]
-            (* handle string interpolation e.g. "f(x)=\(f(x))" *)
-            | (STR_INTERP_LPAREN, _) :: rest ->
-                paren_stack := rest; strings lexbuf; RPAREN :: PLUS :: (!string_tokens)
             | _ -> raise (lexErr "Unexpected ')', check parens" lexbuf));
         }
     | '['
         {
-            paren_stack := (LSQUARE, lexbuf.lex_start_p) :: !paren_stack;
+            push_paren_stack LSQUARE lexbuf;
             let t = if !new_exp then [B_LSQUARE] else [LSQUARE] in (new_exp := true; t)
         }
     | ']'
@@ -354,7 +378,7 @@ rule tokens = parse
     | "[:"
         {
             let tl = if !new_exp then [LLIST] else [LSQUARE; COLON] in
-            paren_stack := ((List.hd tl), lexbuf.lex_start_p) :: !paren_stack;
+            push_paren_stack (List.hd tl) lexbuf;
             new_exp := true;
             tl
         }
@@ -371,23 +395,35 @@ rule tokens = parse
         }
     | '{'
         {
-            paren_stack := (LBRACE, lexbuf.lex_start_p) :: !paren_stack; new_exp := true;
-            let ts = tokens lexbuf in
-            LBRACE ::
-            (* if '|' follows immediately after '{', we emit BAR token (instead of BITWISE_OR) and
-               put it to the stack to mark that we are inside a pattern matching clause *)
-            (match ts with
-            | BITWISE_OR :: rest -> paren_stack := (BAR, lexbuf.lex_curr_p) :: !paren_stack; BAR :: rest
-            | _ -> ts)
+            push_paren_stack LBRACE lexbuf;
+            new_exp := true;
+            match !paren_stack with
+            | (LBRACE, _) :: (CCODE, _) :: _ ->
+                ccode_literal := "";
+                ccode_start := lexbuf.lex_curr_p;
+                ccode_mode := true;
+                ccode lexbuf
+            | _ ->
+                let ts = tokens lexbuf in
+                LBRACE ::
+                (* if '|' follows immediately after '{', we emit BAR token (instead of BITWISE_OR) and
+                put it to the stack to mark that we are inside a pattern matching clause *)
+                (match ts with
+                | BITWISE_OR :: rest ->
+                    paren_stack := (BAR, lexbuf.lex_curr_p) :: !paren_stack; BAR :: rest
+                | _ -> ts)
         }
     | '}'
         {
-            (match (!paren_stack) with
-            | (BAR, _) :: (LBRACE, _) :: rest -> paren_stack := rest
-            | (LBRACE, _) :: rest -> paren_stack := rest
-            | _ -> raise (lexErr "Unexpected '}', check parens" lexbuf));
-            new_exp := false;
-            [RBRACE]
+            match (!paren_stack) with
+            (* handle string interpolation e.g. "f({x})={f(x)}" *)
+            | (STR_INTERP_LPAREN, _) :: rest ->
+                paren_stack := rest; strings lexbuf; RPAREN :: PLUS :: (!string_tokens)
+            | ((BAR, _) :: (LBRACE, _) :: rest) | ((LBRACE, _) :: rest) ->
+                paren_stack := rest;
+                new_exp := false;
+                [RBRACE]
+            | _ -> raise (lexErr "Unexpected '}', check parens" lexbuf)
         }
 
     | (((('0' ['x' 'X'] hexdigit+) | ('0' ['b' 'B'] ['0'-'1']+) | (['1'-'9'] digit*)) as num_) | ((['0'] octdigit*) as octnum_))
@@ -435,6 +471,10 @@ rule tokens = parse
             (try
                 let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
                 match tokdata with
+                | (CCODE, _) ->
+                    check_ne(lexbuf);
+                    push_paren_stack CCODE lexbuf;
+                    new_exp := true; [CCODE]
                 | (FOR, _) ->
                     let t = if !new_exp then B_FOR else FOR in
                     new_exp := true; [t]
@@ -545,11 +585,12 @@ rule tokens = parse
     | _ as s { raise (lexErr (sprintf "Illegal character '%s'" (Char.escaped s)) lexbuf) }
 
 and strings = parse
-    | (([^ '\"' '\\' '\n' '\r']+) as string_part)
+    | (([^ '\"' '\\' '{' '\n' '\r']+) as string_part)
         { string_literal := !string_literal ^ string_part; strings lexbuf }
-    | '\"'
+    | ("\"" | "{\"" ) as s
         {
-            let string_lit = STRING !string_literal in
+            let s = if s = "{\"" then "{" else "" in
+            let string_lit = STRING (!string_literal ^ s) in
             if !string_interp_elem = 0 then
                 string_tokens := [string_lit]
             else
@@ -559,10 +600,9 @@ and strings = parse
             new_exp := false
             (* return to 'tokens' rule *)
         }
-    | "\\("
+    | "{"
         {
-            let (p0, _) = get_token_pos lexbuf in
-            paren_stack := (STR_INTERP_LPAREN, p0) :: !paren_stack;
+            push_paren_stack STR_INTERP_LPAREN lexbuf;
             string_tokens := [(STRING !string_literal); PLUS; (B_IDENT "string"); LPAREN];
             if !string_interp_elem = 0 then
                 string_tokens := B_LPAREN :: !string_tokens
@@ -578,26 +618,136 @@ and strings = parse
     | newline { incr_lineno lexbuf; string_literal := !string_literal ^ "\n"; strings lexbuf }
 
     | special_char as c
-      { string_literal := !string_literal ^ (decode_special_char lexbuf c); strings lexbuf }
+        { string_literal := !string_literal ^ (decode_special_char lexbuf c); strings lexbuf }
     | hexcode as hc
-      { string_literal := !string_literal ^ (decode_hex_char hc); strings lexbuf }
+        { string_literal := !string_literal ^ (decode_hex_char hc); strings lexbuf }
     | octcode as oc
-      { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }
+        { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }
     | "\\" (_ as s)
-      { raise (lexErrAt (sprintf "Illegal escape \\%s" (Char.escaped s)) (!string_start, lexbuf.lex_curr_p)) }
+        { raise (lexErrAt (sprintf "Illegal escape \\%s" (Char.escaped s)) (!string_start, lexbuf.lex_curr_p)) }
     | eof
-      { raise (lexErrAt "Unterminated string" (!string_start, lexbuf.lex_curr_p)) }
-    | _ as s
-      { raise (lexErr (sprintf "Illegal character '%s' inside string literal" (Char.escaped s)) lexbuf) }
+        { raise (lexErrAt "Unterminated string" (!string_start, lexbuf.lex_curr_p)) }
+    | _ as c
+        { raise (lexErr (sprintf "Illegal character '%s' inside string literal" (Char.escaped c)) lexbuf) }
 
-and comments level = parse
-    | "*/" { if level = 0 then tokens lexbuf else comments (level-1) lexbuf }
-    | "/*" { comments (level+1) lexbuf }
-    | newline { incr_lineno lexbuf; comments level lexbuf }
+and comments = parse
+    | "*/"
+        {
+            comments_level := !comments_level - 1;
+            if !comments_level = 0 then
+                (* returns to tokens or ccode or the outer comment *)
+                ()
+            else comments lexbuf
+        }
+
+    | "/*"
+        {
+            if !ccode_mode then () else comments_level := !comments_level + 1;
+            comments lexbuf
+        }
+    | newline { incr_lineno lexbuf; comments lexbuf }
     | eof  { raise (lexErrAt "Unterminated comment" (!comment_start, lexbuf.lex_curr_p)) }
-    | _  { comments level lexbuf }
+    | _  { comments lexbuf }
 
 and eol_comments = parse
-    | newline { incr_lineno lexbuf; new_exp := true; tokens lexbuf }
-    | eof  { [EOF] }
+    | newline { incr_lineno lexbuf; new_exp := true; DOT }
+    | eof  { EOF }
     | _  { eol_comments lexbuf }
+
+and ccode = parse
+    | (([^ '(' ')' '{' '}' '[' ']' '\"' '\'' '\n' '\r' '/']+) as ccode_part)
+        { add_ccode ccode_part; ccode lexbuf }
+    | (['{' '[' '(']) as c
+        {
+            let tk = if c = '{' then LBRACE else if c = '[' then LSQUARE else LPAREN in
+            push_paren_stack tk lexbuf;
+            add_ccode_char c;
+            ccode lexbuf
+        }
+    | ([']' ')' '}']) as c
+        {
+            let expected_tk = if c = '}' then LBRACE else if c = ']' then LSQUARE else LPAREN in
+            match (!paren_stack) with
+            | (LBRACE, _) :: (CCODE, _) :: rest when expected_tk = LBRACE ->
+                paren_stack := rest;
+                ccode_mode := false;
+                new_exp := false;
+                (* return the fetched ccode string; the terminal '}' is not included *)
+                [STRING(!ccode_literal)]
+            | (tk, _) :: rest when tk = expected_tk ->
+                paren_stack := rest;
+                add_ccode_char c;
+                ccode lexbuf
+            | _ -> raise (lexErr (sprintf "Unexpected '%c', check parens" c) lexbuf)
+        }
+    | newline
+        {
+            incr_lineno lexbuf;
+            add_ccode "\n";
+            ccode lexbuf
+        }
+    | "/*"
+        {
+            comments_level := 1;
+            comment_start := lexbuf.lex_start_p;
+            comments lexbuf;
+            ccode lexbuf
+        }
+    | "//"
+        {
+            if (eol_comments lexbuf) = EOF then
+                raise (lexErrAt "Unterminated ccode block" (!ccode_start, lexbuf.lex_curr_p))
+            else
+                ccode lexbuf
+        }
+
+    | ['\'' '\"' ] as c
+        {
+            ccode_string_start := lexbuf.lex_start_p;
+            ccode_string_quote := c;
+            add_ccode_char c;
+            ccode_strings lexbuf;
+            ccode lexbuf
+        }
+    | eof
+        { raise (lexErrAt "Unterminated ccode block" (!ccode_start, lexbuf.lex_curr_p)) }
+    | _ as c
+        {
+            add_ccode_char c;
+            ccode lexbuf
+        }
+
+and ccode_strings = parse
+    | (([^ '\"' '\'' '\\' '\n' '\r']+) as ccode_part)
+        { add_ccode ccode_part; ccode_strings lexbuf }
+    | ['\"' '\''] as c
+        {
+            add_ccode_char c;
+            if c = !ccode_string_quote then
+                (* exit from the ccode_strings back to ccode *)
+                ()
+            else
+                ccode_strings lexbuf
+        }
+
+    (* we want the produced string literal to be the same, regardless of the actual EOL encoding,
+       so we always add '\n', not the occured <newline> character(s) *)
+    | newline
+        {
+            incr_lineno lexbuf; add_ccode "\n"; ccode_strings lexbuf
+        }
+
+    | ("\\\'" | "\\\"") as ccode_part
+        {
+            add_ccode ccode_part;
+            ccode_strings lexbuf
+        }
+
+    | eof
+        { raise (lexErrAt "Unterminated string in ccode block" (!ccode_string_start, lexbuf.lex_curr_p)) }
+
+    | _ as c
+        {
+            add_ccode_char c;
+            ccode_strings lexbuf
+        }

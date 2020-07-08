@@ -1225,13 +1225,16 @@ and check_exp e env sc =
         let _ = unify e1typ new_t1 e1loc "improper explicit type of the expression" in
         let new_e1 = check_exp e1 env sc in
         ExpTyped(new_e1, new_t1, ctx)
-    | ExpCCode(_, _) ->
+    | ExpCCode(str, _) ->
         (match sc with
-        | ScModule(_) :: _ -> () (*unify etyp TypVoid eloc "module-level ccode should have 'void' type"*)
-        | ScFun(_) :: _ -> ()
+        | ScModule(_) :: _ -> e (*unify etyp TypVoid eloc "module-level ccode should have 'void' type"*)
+        | ScFun(_) :: _ ->
+            (* do some favor for those who start to forget to put the final ';' before } *)
+            let str = String.trim str in
+            let str = if (Utils.ends_with str "}") || (Utils.ends_with str ";") then str else str ^ ";" in
+            ExpCCode(str, ctx)
         | _ -> raise_compile_err eloc
-            "ccode may be used only at the top (module level) or as a single expression in function definition");
-        e
+            "ccode may be used only at the top (module level) or as a single expression in function definition")
     (* all the declarations are checked in check_eseq *)
     | DefVal(_, _, _, _)
     | DefFun(_)

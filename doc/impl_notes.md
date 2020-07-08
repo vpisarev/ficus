@@ -20,12 +20,12 @@
    - [x] alpha/beta reduction, flattening (helper transformations)
    - [x] const folding
    - [ ] (optionally) optimize out array index boundary checks during sequential array access
-   - [ ] lambda lifting
-- [ ] C-form
-- [ ] C-form generation
+   - [x] lambda lifting
+- [x] C-form
+- [x] C-form generation
 - [ ] C-form optimization (if needed)
-- [ ] emit C code
-- [ ] basic runtime
+- [x] emit C code
+- [x] basic runtime
 - [ ] initial set of tests
 
 ### minimal set of features for the version **0.1**:
@@ -47,11 +47,11 @@
 - [x] option type
 - [x] pattern matching
 - [x] array & list comprehensions
-- [ ] array initializations
+- [+/-] array initializations
 - [ ] automatically generated operations (==, string(), ...)
 - [ ] parallel loops
-- [ ] efficient thread-safe runtime using atomic operations when necessary
-- [ ] good Unicode support (comments, string literals, string processing functions, conversion to/from UTF8, file I/O)
+- [x] efficient thread-safe runtime using atomic operations when necessary
+- [+/-] good Unicode support (comments, string literals, string processing functions, conversion to/from UTF8, file I/O)
 - [ ] classes
 - [ ] interfaces (could be postponed till v1.1)
 - [ ] separate compilation, let people build libs, not just apps (could be postponed till v1.1)

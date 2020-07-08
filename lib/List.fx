@@ -23,9 +23,6 @@ fun nth(l: 't list, n: int) =
         | _ => throw OutOfRangeError
     }
 
-pure nothrow fun length(l: 't list): int = ccode
-    "return fx_list_length(l);"
-
 fun rev(l: 't list): 't list =
     fold r=[] for a <- l {a :: r}
 

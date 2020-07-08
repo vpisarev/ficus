@@ -26,7 +26,7 @@ fun print_js(js: json_t, ofs: int, indent: string)
     fun process_comments(j: json_t, indent: string) =
         match j {
         | JsonCommented(comm, nested_j) =>
-            print("// \(comm)\n\(indent)")
+            print("// {comm}\n{indent}")
             process_comments(nested_j, indent)
         | _ => j
         }
@@ -47,12 +47,12 @@ fun print_js(js: json_t, ofs: int, indent: string)
         for (k, v) <- m, i <- 0: {
             print(newind)
             val v = process_comments(v, newind)
-            val prefix = "\(repr(k)) : "
+            val prefix = "{repr(k)} : "
             print(prefix)
             ignore(print_js(v, l_newind + length(prefix), newind))
             if i < n-1 {print(",\n")}
         }
-        print("\n\(indent)}")
+        print("\n{indent}}")
         l_oldind+1
     | JsonSeq(l) =>
         if all_scalars(l) {
@@ -64,14 +64,14 @@ fun print_js(js: json_t, ofs: int, indent: string)
                     val str = jsc2str(sc)
                     val lstr = length(str)
                     val ofs = if ofs > l_newind && ofs + lstr > W1 {
-                        print("\n\(newind)"); l_newind
+                        print("\n{newind}"); l_newind
                     } else { ofs }
                     print(str)
                     val ofs = ofs + lstr
                     if i < n-1 {
                         print(",")
                         if ofs+1 > W0 {
-                            print("\n\(newind)"); l_newind
+                            print("\n{newind}"); l_newind
                         } else { print(" "); ofs + 2 }
                     } else { print(" "); ofs }
                 | _ => throw Fail("scalar is expected here")
@@ -87,7 +87,7 @@ fun print_js(js: json_t, ofs: int, indent: string)
                 ignore(print_js(v, l_newind, newind))
                 if i < n-1 {print(",\n")}
             }
-            print("\n\(indent)]")
+            print("\n{indent}]")
             l_oldind+1
         }
     }
@@ -107,7 +107,7 @@ fun new_uniform_rng(seed: int) {
 val rng = new_uniform_rng(123)
 val s_list_list = [: for i <- 0:10 {
     val n = rng(0, 100)
-    JsonCommented("#\(i)", JsonSeq([: for j <- 0:n {
+    JsonCommented("#{i}", JsonSeq([: for j <- 0:n {
         JsonScalar(JsonScInt(rng(0, 100000)))} :]))
     } :]
 

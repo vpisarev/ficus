@@ -4,15 +4,15 @@ import testmod, Math, List
 val str = "
 привет! 你好吗?
 BTW,
-    2*2 = \(2*2),
-    π (the area of circle with radius 1) = \(Math.pi),
-    e = \(Math.exp(1.)),
-    φ (golden ratio) = \((1+5.**0.5)/2)
+    2*2 = {2*2},
+    π (the area of circle with radius 1) = {Math.pi},
+    e = {Math.exp(1.)},
+    φ (golden ratio) = {(1+5.**0.5)/2}
 "
 val c = '😄'
 println(str + c)
 
-println("\nfactorial(20)=\(testmod.fact(20))\n")
+println("\nfactorial(20)={testmod.fact(20)}\n")
 
 fun fib(n: int) = if n <= 2 {1} else {fib(n-1) + fib(n-2)}
 fun fib2(n: int) {
@@ -66,11 +66,11 @@ for i <- 1:31 {
     fun foo() {
         print(fib(i))
     }
-    print("fib(\(i))=")
+    print("fib({i})=")
     foo()
-    print(", fib2(\(i))=\(fib2(i))")
-    print(", fib3(\(i))=\(fib3(i))")
-    println(", fib_seq()=\(fib_seq())")
+    print(", fib2({i})={fib2(i)}")
+    print(", fib3({i})={fib3(i)}")
+    println(", fib_seq()={fib_seq()}")
 }
 println()
 
@@ -84,11 +84,11 @@ do
 }
 while i1 < n
 
-fun gen_msg(i: int, a: 't []) = if i < 0 || i >= size(a) {"not found"} else {"a[\(i)]=\(a[i])"}
-println("imperative search: negative number in \(a): \(gen_msg(i1, a))")
+fun gen_msg(i: int, a: 't []) = if i < 0 || i >= size(a) {"not found"} else {"a[{i}]={a[i]}"}
+println("imperative search: negative number in {a}: {gen_msg(i1, a)}")
 
 val fold i2=0 for i<-0:n { if a[i] < 0 {break with i}; i2 }
-println("fold-based search: negative number in \(a): \(gen_msg(i2, a))")
+println("fold-based search: negative number in {a}: {gen_msg(i2, a)}")
 
 exception BreakWith: int
 
@@ -105,13 +105,14 @@ fun find_idx(a: 't [], f: 't -> bool): int
     | BreakWith(i) => i
     }
 }
-println("excepion-based search: negative number in \(a): \(gen_msg(find_idx(a, fun (i: int): bool {i < 0}), a))")
+val i3 = find_idx(a, fun (i: int): bool {i < 0})
+println("excepion-based search: negative number in {a}: {gen_msg(i3, a)}")
 
 type complex_t = {re: float, im: float}
 val c = ref (complex_t {re=1.f, im=1.f})
 val d = c->{re=c->re*2, im=c->im*2}
 fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
-println("abs((1+1i)*2)=\(abs(d))")
+println("abs((1+1i)*2)={abs(d)}")
 
 val fixed_choice = "five"
 
@@ -123,7 +124,7 @@ val result = match fixed_choice
     | _ => "some other number"
 }
 
-println("\(fixed_choice) ==> \(result)")
+println("{fixed_choice} => {result}")
 assert(result == "found 5")
 
 println(if 0.1 <= Math.sin(1.) < 0.7 {
@@ -148,13 +149,13 @@ fun assoc_result(r: ('a, 'b)?)
     | _ => "not found"
 }
 
-println("assoc '\(key1)' @ \(pairs): \(assoc_result(r1))")
-println("assoc '\(key2)' @ \(pairs): \(assoc_result(r2))")
+println("assoc '{key1}' @ {pairs}: {assoc_result(r1)}")
+println("assoc '{key2}' @ {pairs}: {assoc_result(r2)}")
 
 val n = 30
 val a = [for i <- 0:n {i+1}]
 for i <- 1:n {a[i] += a[i-1]}
-println("triangular numbers: \(a)")
+println("triangular numbers: {a}")
 
 nothrow fun is_prime(n: int)
 {
@@ -167,7 +168,7 @@ nothrow fun is_prime(n: int)
     }
 }
 
-println("primes <100: \([: for i <- 0:100 {if !is_prime(i) {continue}; i} :])")
+println("primes <100: {[: for i <- 0:100 {if !is_prime(i) {continue}; i} :]}")
 
 val sorted = List.sort(
     [: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,

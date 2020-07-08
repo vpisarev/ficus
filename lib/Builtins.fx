@@ -50,29 +50,53 @@ type 't option = None | Some: 't
 
 fun getOpt(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
 
-pure nothrow fun length(s: string): int = ccode "return s->length;"
-pure nothrow fun length(l: 't list): int = ccode "return fx_list_length(l);"
+pure nothrow fun length(s: string): int = ccode { return s->length }
+pure nothrow fun length(l: 't list): int = ccode { return fx_list_length(l) }
 
 pure fun join(sep: string, strs:string []): string = ccode
-    "return fx_strjoin(0, 0, sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);"
-pure fun join_embrace(begin: string, end: string, sep: string, strs:string []): string = ccode
-    "return fx_strjoin(begin, end, sep, (fx_str_t*)strs->data, strs->dim[0].size, fx_result);"
+{
+    return fx_strjoin(0, 0, sep, (fx_str_t*)strs->data,
+                    strs->dim[0].size, fx_result);
+}
+
+pure fun join_embrace(begin: string, end: string,
+        sep: string, strs:string []): string = ccode
+{
+    return fx_strjoin(begin, end, sep,
+        (fx_str_t*)strs->data,
+        strs->dim[0].size, fx_result);
+}
 
 fun join(sep: string, strs: string list) =
     join(sep, [for s <- strs {s}])
 
-operator + (a: string, b: string): string = ccode "fx_str_t s[] = {*a, *b}; return fx_strjoin(0, 0, 0, s, 2, fx_result);"
-operator + (a: string, b: char): string = ccode "
+operator + (a: string, b: string): string = ccode
+{
+    fx_str_t s[] = {*a, *b};
+    return fx_strjoin(0, 0, 0, s, 2, fx_result);
+}
+
+operator + (a: string, b: char): string = ccode
+{
     fx_str_t s[] = {*a, {0, &b, 1}};
-    return fx_strjoin(0, 0, 0, s, 2, fx_result);"
-operator + (a: char, b: string): string = ccode "
+    return fx_strjoin(0, 0, 0, s, 2, fx_result);
+}
+
+operator + (a: char, b: string): string = ccode
+{
     fx_str_t s[] = {{0, &a, 1}, *b};
-    return fx_strjoin(0, 0, 0, s, 2, fx_result);"
-operator + (a: char, b: char): string = ccode "
+    return fx_strjoin(0, 0, 0, s, 2, fx_result);
+}
+
+operator + (a: char, b: char): string = ccode
+{
     char_ cc[] = {a, b};
-    return fx_make_str(cc, 2, fx_result);"
-operator + (l1: 't list, l2: 't list) {
-    nothrow fun link2(l1: 't list, l2: 't list): 't list = ccode "fx_link_lists(l1, l2, fx_result);"
+    return fx_make_str(cc, 2, fx_result);
+}
+
+operator + (l1: 't list, l2: 't list)
+{
+    nothrow fun link2(l1: 't list, l2: 't list): 't list = ccode { fx_link_lists(l1, l2, fx_result) }
     match (l1, l2) {
         | ([], _) => l2
         | (_, []) => l1
@@ -81,18 +105,28 @@ operator + (l1: 't list, l2: 't list) {
 }
 
 fun string(a: bool) = if a {"true"} else {"false"}
-pure fun string(a: int): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: uint8): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: int8): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: uint16): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: int16): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: uint32): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: int32): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: uint64): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(a: int64): string = ccode "return fx_itoa(a, fx_result);"
-pure fun string(c: char): string = ccode "return fx_make_str(&c, 1, fx_result);"
-pure fun string(a: float): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.8g\"), a); return fx_ascii2str(buf, -1, fx_result);"
-pure fun string(a: double): string = ccode "char buf[32]; sprintf(buf, (a == (int)a ? \"%.1f\" : \"%.16g\"), a); return fx_ascii2str(buf, -1, fx_result);"
+pure fun string(a: int): string = ccode  { return fx_itoa(a, fx_result) }
+pure fun string(a: uint8): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(a: int8): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(a: uint16): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(a: int16): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(a: uint32): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(a: int32): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(a: uint64): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(a: int64): string = ccode { return fx_itoa(a, fx_result) }
+pure fun string(c: char): string = ccode { return fx_make_str(&c, 1, fx_result) }
+pure fun string(a: float): string = ccode
+{
+    char buf[32];
+    sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
+    return fx_ascii2str(buf, -1, fx_result);
+}
+pure fun string(a: double): string = ccode
+{
+    char buf[32];
+    sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
+    return fx_ascii2str(buf, -1, fx_result);
+}
 fun string(a: string) = a
 fun ord(c: char) = (c :> int)
 fun chr(i: int) = (i :> char)
@@ -126,7 +160,9 @@ fun string(l: 't list)
 {
     join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
 }
-pure fun string(a: char []): string = ccode "return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);"
+pure fun string(a: char []): string = ccode {
+    return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
+}
 
 operator <=> (a: 't list, b: 't list): int =
     try {
@@ -185,15 +221,15 @@ operator <=> (a: char, b: char): int = (a > b) - (a < b)
 operator <=> (a: bool, b: bool): int = (a > b) - (a < b)
 
 pure nothrow operator == (a: string, b: string): bool = ccode
-    "
+{
     return (bool)(a->length == b->length &&
             (a->length == 0 ||
             memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
-    "
+}
 
 // [TODO] implement more clever string comparison operation
 pure nothrow operator <=> (a: string, b: string): int = ccode
-    "
+{
     int_ alen = a->length, blen = b->length;
     int_ minlen = alen < blen ? alen : blen;
     const char_ *adata = a->data, *bdata = b->data;
@@ -203,86 +239,105 @@ pure nothrow operator <=> (a: string, b: string): int = ccode
             return diff > 0 ? 1 : -1;
     }
     return alen < blen ? -1 : alen > blen;
-    "
+}
 
 // compare the pointers, not the content. Maybe need a separate operator for that.
-pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode
-    "return a == b;"
+pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode { return a == b }
 
 nothrow fun atoi(a: string): int? = ccode
-    "
+{
     bool ok = fx_atoi(a, &fx_result->u.Some, 10);
-    fx_result->tag = (int)ok + 1;
-    "
+    fx_result->tag = (int)ok + 1
+}
 
-pure nothrow fun sat_uint8(i: int): uint8 = ccode "
-    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
+pure nothrow fun sat_uint8(i: int): uint8 = ccode
+{ return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255); }
 
-pure nothrow fun sat_uint8(f: float): uint8 = ccode "
+pure nothrow fun sat_uint8(f: float): uint8 = ccode
+{
     int i = fx_roundf2i(f);
-    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
+    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);
+}
 
-pure nothrow fun sat_uint8(d: double): uint8 = ccode "
+pure nothrow fun sat_uint8(d: double): uint8 = ccode
+{
     int_ i = fx_round2I(d);
-    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);"
+    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);
+}
 
-pure nothrow fun sat_int8(i: int): int8 = ccode "
-    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
+pure nothrow fun sat_int8(i: int): int8 = ccode
+{ return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127); }
 
-pure nothrow fun sat_int8(f: float): int8 = ccode "
+pure nothrow fun sat_int8(f: float): int8 = ccode
+{
     int i = fx_roundf2i(f);
-    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
+    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);
+}
 
-pure nothrow fun sat_int8(d: double): int8 = ccode "
+pure nothrow fun sat_int8(d: double): int8 = ccode
+{
     int_ i = fx_round2I(d);
-    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);"
+    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);
+}
 
-pure nothrow fun sat_uint16(i: int): uint16 = ccode "
-    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
+pure nothrow fun sat_uint16(i: int): uint16 = ccode
+{
+    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);
+}
 
-pure nothrow fun sat_uint16(f: float): uint16 = ccode "
+pure nothrow fun sat_uint16(f: float): uint16 = ccode
+{
     int i = fx_roundf2i(f);
-    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
+    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);
+}
 
-pure nothrow fun sat_uint16(d: double): uint16 = ccode "
+pure nothrow fun sat_uint16(d: double): uint16 = ccode
+{
     int_ i = fx_round2I(d);
-    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);"
+    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);
+}
 
-pure nothrow fun sat_int16(i: int): int16 = ccode "
-    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
+pure nothrow fun sat_int16(i: int): int16 = ccode
+{
+    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);
+}
 
-pure nothrow fun sat_int16(f: float): int16 = ccode "
+pure nothrow fun sat_int16(f: float): int16 = ccode
+{
     int i = fx_roundf2i(f);
-    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
+    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);
+}
 
-pure nothrow fun sat_int16(d: double): int16 = ccode "
+pure nothrow fun sat_int16(d: double): int16 = ccode
+{
     int_ i = fx_round2I(d);
-    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);"
+    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);
+}
 
 // do not use lrint(x), since it's slow. and (int)round(x) is even slower
-pure nothrow fun round(x: float): int = ccode "return fx_roundf2I(x);"
-pure nothrow fun round(x: double): int = ccode "return fx_round2I(x);"
+pure nothrow fun round(x: float): int = ccode { return fx_roundf2I(x) }
+pure nothrow fun round(x: double): int = ccode { return fx_round2I(x) }
 
 fun min(a: 't, b: 't) = if a <= b {a} else {b}
 fun max(a: 't, b: 't) = if a >= b {a} else {b}
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
 fun clip(x: 't, a: 't, b: 't) = if a <= x < b {x} else if x < a {a} else {b}
 
-nothrow fun print_string(a: string): void = ccode "fx_fputs(stdout, a);"
+nothrow fun print_string(a: string): void = ccode { fx_fputs(stdout, a) }
 
 fun print(a: 't) = print_string(string(a))
-nothrow fun print(a: bool): void = ccode "fputs(a ? \"true\" : \"false\", stdout);"
-nothrow fun print(a: int): void = ccode "printf(\"%zd\", a);"
-nothrow fun print(a: uint8): void = ccode "printf(\"%d\", (int)a);"
-nothrow fun print(a: int8): void = ccode "printf(\"%d\", (int)a);"
-nothrow fun print(a: uint16): void = ccode "printf(\"%d\", (int)a);"
-nothrow fun print(a: int16): void = ccode "printf(\"%d\", (int)a);"
-nothrow fun print(a: uint32): void = ccode "printf(\"%u\", a);"
-nothrow fun print(a: int32): void = ccode "printf(\"%d\", a);"
-nothrow fun print(a: uint64): void = ccode "printf(\"%Lu\", a);"
-nothrow fun print(a: int64): void = ccode "printf(\"%Ld\", a);"
-nothrow fun print(a: float): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.8g\"), a);"
-nothrow fun print(a: double): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.16g\"), a);"
+nothrow fun print(a: bool): void = ccode { fputs(a ? "true" : "false", stdout) }
+nothrow fun print(a: int): void = ccode { printf("%zd", a) }
+nothrow fun print(a: uint8): void = ccode { printf("%d", (int)a) }
+nothrow fun print(a: int8): void = ccode { printf("%d", (int)a) }
+nothrow fun print(a: uint16): void = ccode { printf("%d", (int)a) }
+nothrow fun print(a: int16): void = ccode { printf("%d", (int)a) }
+nothrow fun print(a: uint32): void = ccode { printf("%u", a) }
+nothrow fun print(a: int32): void = ccode { printf("%d", a) }
+nothrow fun print(a: uint64): void = ccode { printf("%Lu", a) }
+nothrow fun print(a: int64): void = ccode { printf("%Ld", a) }
+nothrow fun print(a: float): void = ccode { printf((a == (int)a ? "%.1f" : "%.8g"), a) }
+nothrow fun print(a: double): void = ccode { printf((a == (int)a ? "%.1f" : "%.16g"), a) }
 fun print(a: string) = print_string(a)
 fun print_repr(a: 't) = print(a)
 fun print_repr(a: string) { print("\""); print(a); print("\"") }
@@ -295,11 +350,10 @@ fun print(a: 't [])
     }
     print("]")
 }
-nothrow fun print(a: char []): void = ccode
-    "
+nothrow fun print(a: char []): void = ccode {
     fx_str_t str = {0, (char_*)a->data, a->dim[0].size};
-    fx_fputs(stdout, &str);
-    "
+    fx_fputs(stdout, &str)
+}
 
 fun print(a: 't [,])
 {
@@ -349,41 +403,42 @@ fun array(n: int, x: 't) = [for i <- 0:n {x}]
 fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
 fun array((m: int, n: int, l: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
 
-pure nothrow fun size(a: 't []): int = ccode "return a->dim[0].size;"
+pure nothrow fun size(a: 't []): int = ccode { return a->dim[0].size }
 pure nothrow fun size(a: 't [,]): (int, int) = ccode
-    "
+{
     fx_result->t0=a->dim[0].size;
-    fx_result->t1=a->dim[1].size;
-    "
+    fx_result->t1=a->dim[1].size
+}
+
 pure nothrow fun size(a: 't [,,]): (int, int, int) = ccode
-    "
+{
     fx_result->t0=a->dim[0].size;
     fx_result->t1=a->dim[1].size;
-    fx_result->t2=a->dim[2].size;
-    "
+    fx_result->t2=a->dim[2].size
+}
 
 fun sort(arr: 't [], lt: ('t, 't) -> bool)
 {
     nothrow fun swap(arr: 't [], i: int, j: int): void = ccode
-    "
-    size_t esz = arr->dim[0].step;
-    if(esz % sizeof(int) == 0) {
-        int* ptr0 = (int*)(arr->data + i*esz);
-        int* ptr1 = (int*)(arr->data + j*esz);
-        esz /= sizeof(int);
-        for( size_t k = 0; k < esz; k++ ) {
-            int t0 = ptr0[k], t1 = ptr1[k];
-            ptr0[k] = t1; ptr1[k] = t0;
-        }
-    } else {
-        char* ptr0 = arr->data + i*esz;
-        char* ptr1 = arr->data + j*esz;
-        for( size_t k = 0; k < esz; k++ ) {
-            char t0 = ptr0[k], t1 = ptr1[k];
-            ptr0[k] = t1; ptr1[k] = t0;
+    {
+        size_t esz = arr->dim[0].step;
+        if(esz % sizeof(int) == 0) {
+            int* ptr0 = (int*)(arr->data + i*esz);
+            int* ptr1 = (int*)(arr->data + j*esz);
+            esz /= sizeof(int);
+            for( size_t k = 0; k < esz; k++ ) {
+                int t0 = ptr0[k], t1 = ptr1[k];
+                ptr0[k] = t1; ptr1[k] = t0;
+            }
+        } else {
+            char* ptr0 = arr->data + i*esz;
+            char* ptr1 = arr->data + j*esz;
+            for( size_t k = 0; k < esz; k++ ) {
+                char t0 = ptr0[k], t1 = ptr1[k];
+                ptr0[k] = t1; ptr1[k] = t0;
+            }
         }
     }
-    "
 
     fun qsort_(lo: int, hi: int) =
         if lo+1 < hi {
