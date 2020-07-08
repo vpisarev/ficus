@@ -30,11 +30,11 @@ run `ficus --help` to get more complete up-to-date information about command lin
 
 here is brief summary:
 ```
-ficus [-app|-run|-c|...] [-O0|-O1|-O3] [-I<extra_module_path>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
+ficus [-c|-app|-run|...] [-O0|-O1|-O3] [-I<extra_module_path>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
 ```
 
-* `-c` generates C code and writes it to `scriptname.c`. use `-o` option to override output name.
-* `-app` generates C code to temporary file and tries to compile it with C compiler (`cc`). Use `FICUS_CFLAGS` and `FICUS_LINK_LIBRARIES` are environment variables to pass extra options to C compiler, e.g. `-ffast-math -mavx2` `-lmimalloc` etc. Stores the app to `<scriptname>`. Override it with `-o` option.
+* `-c` generates C code and writes it to `<scriptname>.c`. Use `-o` option to override output name.
+* `-app` generates C code to temporary file and tries to compile it with C compiler (`cc`). Use `FICUS_CFLAGS` and `FICUS_LINK_LIBRARIES` environment variables to pass extra options to C compiler, e.g. `-ffast-math -mavx2` `-lmimalloc` etc. The compiled app is stored to `<scriptname>`. Override the name with `-o` option.
 * `-run` generates application in a temporary file and runs it. After execution the application is deleted.
 
 ## Credits
