@@ -396,8 +396,8 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
                 if lt(p, arr[j+1]) {break with j}
                 i1
             }
-            // convert the shortest qsort call into tail recursion to save stack space
-            if i0 - lo > hi - i1 {
+            // do the longest half sorting via tail recursion to save stack space
+            if i0 - lo < hi - i1 {
                 qsort_(lo, i0-1)
                 qsort_(i1+1, hi)
             } else {
