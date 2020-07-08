@@ -12,9 +12,9 @@ val inv = 2.0 / w
 type vec8d = (8 * double)
 operator + (a: vec8d, b: vec8d) = (a.0+b.0, a.1+b.1, a.2+b.2, a.3+b.3, a.4+b.4, a.5+b.5, a.6+b.6, a.7+b.7)
 operator - (a: vec8d, b: vec8d) = (a.0-b.0, a.1-b.1, a.2-b.2, a.3-b.3, a.4-b.4, a.5-b.5, a.6-b.6, a.7-b.7)
-operator * (a: vec8d, b: vec8d) = (a.0*b.0, a.1*b.1, a.2*b.2, a.3*b.3, a.4*b.4, a.5*b.5, a.6*b.6, a.7*b.7)
+operator .* (a: vec8d, b: vec8d) = (a.0*b.0, a.1*b.1, a.2*b.2, a.3*b.3, a.4*b.4, a.5*b.5, a.6*b.6, a.7*b.7)
 type bool8 = (bool * 8)
-fun gt (a: vec8d, d: double) = (a.0 > d, a.1 > d, a.2 > d, a.3 > d, a.4 > d, a.5 > d, a.6 > d, a.7 > d)
+operator .> (a: vec8d, d: double) = (a.0 > d, a.1 > d, a.2 > d, a.3 > d, a.4 > d, a.5 > d, a.6 > d, a.7 > d)
 operator | (a: bool8, b: bool8) = (a.0 | b.0, a.1 | b.1, a.2 | b.2, a.3 | b.3,
                               a.4 | b.4, a.5 | b.5, a.6 | b.6, a.7 | b.7)
 fun all(a: bool8) = a.0 & a.1 & a.2 & a.3 & a.4 & a.5 & a.6 & a.7
@@ -34,13 +34,13 @@ val result: int8 [,] = [
 
         for iter <- 0:MAX_ITER
         {
-            val rr = zr * zr
-            val ii = zi * zi
+            val rr = zr .* zr
+            val ii = zi .* zi
 
             val mag = rr + ii
-            bits |= gt(mag, 4.0)
+            bits |= mag .> 4.0
 
-            val ir = zr * zi
+            val ir = zr .* zi
             zr = (rr - ii) + cr
             zi = (ir + ir) + ci
 

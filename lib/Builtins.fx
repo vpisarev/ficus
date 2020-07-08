@@ -147,6 +147,29 @@ operator <=> (a: 't [], b: 't []): int =
         r
     }
 
+operator .<=> (a: 't [], b: 't []): int [] =
+    [for x <- a, y <- b {x <=> y}]
+operator .== (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {x == y}]
+operator .< (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {x < y}]
+operator .!= (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {!(x == y)}]
+operator .<= (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {!(y < x)}]
+operator .>= (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {!(x < y)}]
+operator .> (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {y < x}]
+operator .* (a: 't [], b: 't []) =
+    [for x <- a, y <- b {y .* x}]
+operator ./ (a: 't [], b: 't []) =
+    [for x <- a, y <- b {y ./ x}]
+operator .% (a: 't [], b: 't []) =
+    [for x <- a, y <- b {y .% x}]
+operator .** (a: 't [], b: 't []) =
+    [for x <- a, y <- b {y .** x}]
+
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
 operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
 operator <=> (a: uint8, b: uint8): int = (a > b) - (a < b)
@@ -248,8 +271,7 @@ fun clip(x: 't, a: 't, b: 't) = if a <= x < b {x} else if x < a {a} else {b}
 nothrow fun print_string(a: string): void = ccode "fx_fputs(stdout, a);"
 
 fun print(a: 't) = print_string(string(a))
-fun print_repr(a: 't) = print(a)
-nothrow fun print(a: bool): void = ccode "puts(a ? \"true\" : \"false\");"
+nothrow fun print(a: bool): void = ccode "fputs(a ? \"true\" : \"false\", stdout);"
 nothrow fun print(a: int): void = ccode "printf(\"%zd\", a);"
 nothrow fun print(a: uint8): void = ccode "printf(\"%d\", (int)a);"
 nothrow fun print(a: int8): void = ccode "printf(\"%d\", (int)a);"
@@ -262,6 +284,7 @@ nothrow fun print(a: int64): void = ccode "printf(\"%Ld\", a);"
 nothrow fun print(a: float): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.8g\"), a);"
 nothrow fun print(a: double): void = ccode "printf((a == (int)a ? \"%.1f\" : \"%.16g\"), a);"
 fun print(a: string) = print_string(a)
+fun print_repr(a: 't) = print(a)
 fun print_repr(a: string) { print("\""); print(a); print("\"") }
 fun print(a: 't [])
 {

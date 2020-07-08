@@ -19,7 +19,6 @@ open K_form
 (* the data type used for pattern matching transformation *)
 type pat_info_t = { pinfo_p: pat_t; pinfo_typ: ktyp_t; pinfo_e: kexp_t; pinfo_tag: id_t }
 
-let deref_typ = Ast_typecheck.deref_typ
 let zero_env = (Env.empty : env_t)
 
 let typ2ktyp t loc =

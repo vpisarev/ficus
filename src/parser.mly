@@ -193,25 +193,28 @@ let make_chained_cmp chain = match chain with
 
 /* parens/delimiters */
 %token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE LLIST RLIST
-%token COMMA DOT SEMICOLON COLON BAR BACKSLASH QUESTION ARROW DOUBLE_ARROW BACK_ARROW EOF
+%token COMMA DOT SEMICOLON COLON BAR BACKSLASH QUESTION ARROW DOUBLE_ARROW BACK_ARROW EOF AT ELLIPSIS
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
 %token B_STAR STAR SLASH MOD
 %token B_POWER POWER SHIFT_RIGHT SHIFT_LEFT
+%token B_DOT_MINUS DOT_STAR DOT_SLASH DOT_MOD DOT_POWER
 %token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT
 %token CONS CAST
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
 %token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL
 %token AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
-%token EQUAL_TO NOT_EQUAL LESS_EQUAL GREATER_EQUAL LESS GREATER SPACESHIP
+%token DOT_STAR_EQUAL DOT_SLASH_EQUAL DOT_MOD_EQUAL
+%token CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT SPACESHIP
+%token DOT_CMP_EQ DOT_CMP_NE DOT_CMP_LE DOT_CMP_GE DOT_CMP_LT DOT_CMP_GT DOT_SPACESHIP
 
 %right SEMICOLON
 %left COMMA
 %right DOUBLE_ARROW
 %left BAR
 %right THROW
-%right EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
+%right EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL DOT_STAR_EQUAL DOT_SLASH_EQUAL DOT_MOD_EQUAL
 %left WHEN
 %right CONS
 %left LOGICAL_OR
@@ -221,14 +224,15 @@ let make_chained_cmp chain = match chain with
 %left BITWISE_XOR
 %left BITWISE_AND
 %left AS
-%left EQUAL_TO NOT_EQUAL LESS_EQUAL GREATER_EQUAL LESS GREATER
+%left CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT
 %left SPACESHIP
+%left DOT_CMP_EQ DOT_CMP_NE DOT_CMP_LE DOT_CMP_GE DOT_CMP_LT DOT_CMP_GT DOT_SPACESHIP
 %left SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS
-%left STAR SLASH MOD
-%right POWER
+%left STAR SLASH MOD DOT_STAR DOT_SLASH DOT_MOD
+%right POWER DOT_POWER
 %left BACKSLASH
-%right B_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT deref_prec REF EXPAND
+%right B_MINUS B_DOT_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT deref_prec REF EXPAND
 %right ARROW
 %left lsquare_prec fcall_prec
 %left app_type_prec arr_type_prec option_type_prec ref_type_prec
@@ -554,23 +558,38 @@ binary_exp:
 | binary_exp SLASH binary_exp { make_bin_op(OpDiv, $1, $3) }
 | binary_exp MOD binary_exp { make_bin_op(OpMod, $1, $3) }
 | binary_exp POWER binary_exp { make_bin_op(OpPow, $1, $3) }
-| binary_exp SPACESHIP binary_exp { make_bin_op(OpSpaceship, $1, $3) }
 | binary_exp SHIFT_LEFT binary_exp { make_bin_op(OpShiftLeft, $1, $3) }
 | binary_exp SHIFT_RIGHT binary_exp { make_bin_op(OpShiftRight, $1, $3) }
 | binary_exp BITWISE_AND binary_exp { make_bin_op(OpBitwiseAnd, $1, $3) }
 | binary_exp BITWISE_OR binary_exp { make_bin_op(OpBitwiseOr, $1, $3) }
 | binary_exp BITWISE_XOR binary_exp { make_bin_op(OpBitwiseXor, $1, $3) }
 | binary_exp CONS binary_exp { make_bin_op(OpCons, $1, $3) }
+| binary_exp DOT_STAR binary_exp { make_bin_op(OpDotMul, $1, $3) }
+| binary_exp DOT_SLASH binary_exp { make_bin_op(OpDotDiv, $1, $3) }
+| binary_exp DOT_MOD binary_exp { make_bin_op(OpDotMod, $1, $3) }
+| binary_exp DOT_POWER binary_exp { make_bin_op(OpDotPow, $1, $3) }
+| binary_exp SPACESHIP binary_exp { make_bin_op(OpSpaceship, $1, $3) }
+| binary_exp DOT_SPACESHIP binary_exp { make_bin_op(OpDotSpaceship, $1, $3) }
+| binary_exp DOT_CMP_EQ binary_exp { make_bin_op(OpDotCompareEQ, $1, $3) }
+| binary_exp DOT_CMP_NE binary_exp { make_bin_op(OpDotCompareNE, $1, $3) }
+| binary_exp DOT_CMP_LE binary_exp { make_bin_op(OpDotCompareLE, $1, $3) }
+| binary_exp DOT_CMP_GE binary_exp { make_bin_op(OpDotCompareGE, $1, $3) }
+| binary_exp DOT_CMP_LT binary_exp { make_bin_op(OpDotCompareLT, $1, $3) }
+| binary_exp DOT_CMP_GT binary_exp { make_bin_op(OpDotCompareGT, $1, $3) }
 | unary_exp { $1 }
 
 chained_cmp_exp:
-| chained_cmp_exp EQUAL_TO binary_exp { (OpCompareEQ, $3) :: $1 }
-| chained_cmp_exp NOT_EQUAL binary_exp  { (OpCompareNE, $3) :: $1 }
-| chained_cmp_exp LESS binary_exp { (OpCompareLT, $3) :: $1 }
-| chained_cmp_exp LESS_EQUAL binary_exp { (OpCompareLE, $3) :: $1 }
-| chained_cmp_exp GREATER binary_exp { (OpCompareGT, $3) :: $1 }
-| chained_cmp_exp GREATER_EQUAL binary_exp { (OpCompareGE, $3) :: $1 }
-| binary_exp { (OpCompareEQ, $1) :: [] }
+| chained_cmp_exp CMP_EQ binary_exp { (OpCompareEQ, $3) :: $1 }
+| chained_cmp_exp CMP_NE binary_exp { (OpCompareNE, $3) :: $1 }
+| chained_cmp_exp CMP_LE binary_exp { (OpCompareLE, $3) :: $1 }
+| chained_cmp_exp CMP_GE binary_exp { (OpCompareGE, $3) :: $1 }
+| chained_cmp_exp CMP_LT binary_exp { (OpCompareLT, $3) :: $1 }
+| chained_cmp_exp CMP_GT binary_exp { (OpCompareGT, $3) :: $1 }
+| binary_exp
+    {
+        (* the actual operation is not used here; just put some weird one *)
+        (OpCons, $1) :: []
+    }
 
 exp:
 | LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
@@ -641,19 +660,31 @@ op_name:
 | SLASH  { fname_op_div() }
 | MOD  { fname_op_mod() }
 | B_POWER  { fname_op_pow() }
-| SPACESHIP  { fname_op_spc() }
+| B_DOT_MINUS  { fname_op_dot_minus() }
+| DOT_STAR  { fname_op_dot_mul() }
+| DOT_SLASH  { fname_op_dot_div() }
+| DOT_MOD  { fname_op_dot_mod() }
+| DOT_POWER  { fname_op_dot_pow() }
 | SHIFT_LEFT  { fname_op_shl() }
 | SHIFT_RIGHT  { fname_op_shr() }
 | BITWISE_AND  { fname_op_bit_and() }
 | BITWISE_OR   { fname_op_bit_or() }
 | BITWISE_XOR  { fname_op_bit_xor() }
 | BITWISE_NOT  { fname_op_bit_not() }
-| EQUAL_TO  { fname_op_eq() }
-| NOT_EQUAL  { fname_op_ne() }
-| LESS  { fname_op_lt() }
-| LESS_EQUAL  { fname_op_le() }
-| GREATER  { fname_op_gt() }
-| GREATER_EQUAL  { fname_op_ge() }
+| SPACESHIP  { fname_op_spc() }
+| CMP_EQ  { fname_op_eq() }
+| CMP_NE  { fname_op_ne() }
+| CMP_LE  { fname_op_le() }
+| CMP_GE  { fname_op_ge() }
+| CMP_LT  { fname_op_lt() }
+| CMP_GT  { fname_op_gt() }
+| DOT_SPACESHIP  { fname_op_dot_spc() }
+| DOT_CMP_EQ  { fname_op_dot_eq() }
+| DOT_CMP_NE  { fname_op_dot_ne() }
+| DOT_CMP_LE  { fname_op_dot_le() }
+| DOT_CMP_GE  { fname_op_dot_ge() }
+| DOT_CMP_LT  { fname_op_dot_lt() }
+| DOT_CMP_GT  { fname_op_dot_gt() }
 
 aug_op:
 | PLUS_EQUAL { OpAdd }
@@ -661,6 +692,9 @@ aug_op:
 | STAR_EQUAL { OpMul }
 | SLASH_EQUAL { OpDiv }
 | MOD_EQUAL { OpMod }
+| DOT_STAR_EQUAL { OpDotMul }
+| DOT_SLASH_EQUAL { OpDotDiv }
+| DOT_MOD_EQUAL { OpDotMod }
 | AND_EQUAL { OpBitwiseAnd }
 | OR_EQUAL { OpBitwiseOr }
 | XOR_EQUAL { OpBitwiseXor }

@@ -161,12 +161,14 @@ type typ_t =
 let make_new_typ () = TypVar (ref (None: typ_t option))
 
 type binop_t =
-      OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpSpaceship | OpShiftLeft | OpShiftRight
+    | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
+    | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
-    | OpCons
+    | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLT | OpDotCompareLE | OpDotCompareGT | OpDotCompareGE
+    | OpSpaceship | OpDotSpaceship | OpCons
 
-type unop_t = OpPlus | OpNegate | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
+type unop_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
     | ValPrivate | ValSubArray | ValCtor of id_t | ValGlobal
@@ -571,6 +573,33 @@ let get_lit_typ l = match l with
     (* in the case of NIL ([]) we cannot infere the type; we postpone this step *)
     | LitNil -> TypList(TypVar(ref None))
 
+(* shorten type specification by redirecting the references in TypVar
+   to the "root" of each connected component tree - a cluster of equivalent/unified types.
+   In other words, if we had
+   t -> t2 -> t3 ... -> root
+   before the call, after the call we will have
+   t -> root, t2 -> root, t3 -> root, ...
+   Returns the root. *)
+let rec deref_typ t =
+    match t with
+    | TypVar _ ->
+        let rec find_root t = match t with
+            | TypVar {contents=Some(t2)} -> find_root t2
+            | _ -> t in
+        let root = find_root t in
+        let rec update_refs t =
+            match t with
+            | TypVar ({contents=Some((TypVar {contents=(Some _)}) as t1)} as r) ->
+                r := Some(root); update_refs t1
+            | _ -> root
+        in update_refs t
+    | _ -> t
+
+let is_typ_scalar t =
+    match (deref_typ t) with
+    | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypBool | TypChar -> true
+    | _ -> false
+
 let binop_to_string bop = match bop with
     | OpAdd -> "+"
     | OpSub -> "-"
@@ -578,7 +607,10 @@ let binop_to_string bop = match bop with
     | OpDiv -> "/"
     | OpMod -> "%"
     | OpPow -> "**"
-    | OpSpaceship -> "<=>"
+    | OpDotMul -> ".*"
+    | OpDotDiv -> "./"
+    | OpDotMod -> ".%"
+    | OpDotPow -> ".**"
     | OpShiftLeft -> "<<"
     | OpShiftRight -> ">>"
     | OpBitwiseAnd -> "&"
@@ -586,17 +618,26 @@ let binop_to_string bop = match bop with
     | OpBitwiseOr -> "|"
     | OpLogicOr -> "||"
     | OpBitwiseXor -> "^"
+    | OpSpaceship -> "<=>"
     | OpCompareEQ -> "=="
     | OpCompareNE -> "!="
-    | OpCompareLT -> "<"
     | OpCompareLE -> "<="
-    | OpCompareGT -> ">"
     | OpCompareGE -> ">="
+    | OpCompareLT -> "<"
+    | OpCompareGT -> ">"
+    | OpDotSpaceship -> ".<=>"
+    | OpDotCompareEQ -> ".=="
+    | OpDotCompareNE -> ".!="
+    | OpDotCompareLE -> ".<="
+    | OpDotCompareGE -> ".>="
+    | OpDotCompareLT -> ".<"
+    | OpDotCompareGT -> ".>"
     | OpCons -> "::"
 
 let unop_to_string uop = match uop with
     | OpPlus -> "+"
     | OpNegate -> "-"
+    | OpDotMinus -> ".-"
     | OpBitwiseNot -> "~"
     | OpLogicNot -> "!"
     | OpExpand -> "\\"
@@ -609,21 +650,33 @@ let fname_op_mul() = get_id "__mul__"
 let fname_op_div() = get_id "__div__"
 let fname_op_mod() = get_id "__mod__"
 let fname_op_pow() = get_id "__pow__"
-let fname_op_spc() = get_id "__spc__"
+let fname_op_dot_mul() = get_id "__dot_mul__"
+let fname_op_dot_div() = get_id "__dot_div__"
+let fname_op_dot_mod() = get_id "__dot_mod__"
+let fname_op_dot_pow() = get_id "__dot_pow__"
 let fname_op_shl() = get_id "__shl__"
 let fname_op_shr() = get_id "__shr__"
 let fname_op_bit_and() = get_id "__bit_and__"
 let fname_op_bit_or() = get_id "__bit_or__"
 let fname_op_bit_xor() = get_id "__bit_xor__"
+let fname_op_spc() = get_id "__spc__"
 let fname_op_eq() = get_id "__eq__"
 let fname_op_ne() = get_id "__ne__"
 let fname_op_lt() = get_id "__lt__"
 let fname_op_gt() = get_id "__gt__"
 let fname_op_le() = get_id "__le__"
 let fname_op_ge() = get_id "__ge__"
+let fname_op_dot_spc() = get_id "__dot_spc__"
+let fname_op_dot_eq() = get_id "__dot_eq__"
+let fname_op_dot_ne() = get_id "__dot_ne__"
+let fname_op_dot_lt() = get_id "__dot_lt__"
+let fname_op_dot_gt() = get_id "__dot_gt__"
+let fname_op_dot_le() = get_id "__dot_le__"
+let fname_op_dot_ge() = get_id "__dot_ge__"
 
 let fname_op_plus() = get_id "__plus__"
 let fname_op_negate() = get_id "__negate__"
+let fname_op_dot_minus() = get_id "__dot_minus__"
 let fname_op_bit_not() = get_id "__bit_not__"
 
 let fname_to_int() = get_id "int"
@@ -640,6 +693,21 @@ let fname_to_double() = get_id "double"
 let fname_to_bool() = get_id "bool"
 let fname_to_string() = get_id "string"
 
+let binop_try_remove_dot bop =
+    match bop with
+    | OpDotMul -> OpMul
+    | OpDotDiv -> OpDiv
+    | OpDotMod -> OpMod
+    | OpDotPow -> OpPow
+    | OpDotSpaceship -> OpSpaceship
+    | OpDotCompareEQ -> OpCompareEQ
+    | OpDotCompareNE -> OpCompareNE
+    | OpDotCompareLE -> OpCompareLE
+    | OpDotCompareGE -> OpCompareGE
+    | OpDotCompareLT -> OpCompareLT
+    | OpDotCompareGT -> OpCompareGT
+    | _ -> bop
+
 let get_binop_fname bop loc =
     match bop with
     | OpAdd -> fname_op_add()
@@ -648,18 +716,29 @@ let get_binop_fname bop loc =
     | OpDiv -> fname_op_div()
     | OpMod -> fname_op_mod()
     | OpPow -> fname_op_pow()
-    | OpSpaceship -> fname_op_spc()
+    | OpDotMul -> fname_op_dot_mul()
+    | OpDotDiv -> fname_op_dot_div()
+    | OpDotMod -> fname_op_dot_mod()
+    | OpDotPow -> fname_op_dot_pow()
     | OpShiftLeft -> fname_op_shl()
     | OpShiftRight -> fname_op_shr()
     | OpBitwiseAnd -> fname_op_bit_and()
     | OpBitwiseOr -> fname_op_bit_or()
     | OpBitwiseXor -> fname_op_bit_xor()
+    | OpSpaceship -> fname_op_spc()
     | OpCompareEQ -> fname_op_eq()
     | OpCompareNE -> fname_op_ne()
-    | OpCompareLT -> fname_op_lt()
     | OpCompareLE -> fname_op_le()
-    | OpCompareGT -> fname_op_gt()
     | OpCompareGE -> fname_op_ge()
+    | OpCompareLT -> fname_op_lt()
+    | OpCompareGT -> fname_op_gt()
+    | OpDotSpaceship -> fname_op_dot_spc()
+    | OpDotCompareEQ -> fname_op_dot_eq()
+    | OpDotCompareNE -> fname_op_dot_ne()
+    | OpDotCompareLE -> fname_op_dot_le()
+    | OpDotCompareGE -> fname_op_dot_ge()
+    | OpDotCompareLT -> fname_op_dot_lt()
+    | OpDotCompareGT -> fname_op_dot_gt()
     | OpLogicAnd | OpLogicOr | OpCons ->
         raise_compile_err loc
             (sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))
@@ -668,6 +747,7 @@ let get_unop_fname uop loc =
     match uop with
     | OpPlus -> fname_op_plus()
     | OpNegate -> fname_op_negate()
+    | OpDotMinus -> fname_op_dot_minus()
     | OpBitwiseNot -> fname_op_bit_not()
     | OpLogicNot | OpExpand | OpMkRef | OpDeref ->
         raise_compile_err loc
@@ -675,12 +755,17 @@ let get_unop_fname uop loc =
 
 let fname_always_import () =
 [
-    fname_op_add(); fname_op_sub(); fname_op_mul();
-    fname_op_div(); fname_op_mod(); fname_op_pow(); fname_op_spc(); fname_op_shl(); fname_op_shr();
-    fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor(); fname_op_eq();
-    fname_op_ne(); fname_op_lt(); fname_op_gt(); fname_op_le(); fname_op_gt();
+    fname_op_add(); fname_op_sub();
+    fname_op_mul(); fname_op_div(); fname_op_mod(); fname_op_pow();
+    fname_op_dot_mul(); fname_op_dot_div(); fname_op_dot_mod(); fname_op_dot_pow();
+    fname_op_shl(); fname_op_shr();
+    fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor();
+    fname_op_spc(); fname_op_dot_spc();
+    fname_op_eq(); fname_op_ne(); fname_op_le(); fname_op_ge(); fname_op_lt(); fname_op_gt();
+    fname_op_dot_eq(); fname_op_dot_ne(); fname_op_dot_le();
+    fname_op_dot_ge(); fname_op_dot_lt(); fname_op_dot_gt();
 
-    fname_op_plus(); fname_op_negate(); fname_op_bit_not();
+    fname_op_plus(); fname_op_negate(); fname_op_dot_minus(); fname_op_bit_not();
 
     fname_to_int(); fname_to_uint8(); fname_to_int8(); fname_to_uint16(); fname_to_int16();
     fname_to_uint32(); fname_to_int32(); fname_to_uint64(); fname_to_int64();

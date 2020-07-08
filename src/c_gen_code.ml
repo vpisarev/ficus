@@ -1176,11 +1176,14 @@ let gen_ccode top_code =
                     | OpBitwiseXor -> COpBitwiseXor
                     | OpCompareEQ -> COpCompareEQ
                     | OpCompareNE -> COpCompareNE
-                    | OpCompareLT -> COpCompareLT
                     | OpCompareLE -> COpCompareLE
-                    | OpCompareGT -> COpCompareGT
                     | OpCompareGE -> COpCompareGE
-                    | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship ->
+                    | OpCompareLT -> COpCompareLT
+                    | OpCompareGT -> COpCompareGT
+                    | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship | OpDotSpaceship
+                    | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
+                    | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLE
+                    | OpDotCompareGE | OpDotCompareLT | OpDotCompareGT ->
                         raise_compile_err kloc (sprintf "cgen: unsupported op '%s' at this stage"
                         (binop_to_string bop))
                 in (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))
@@ -1204,7 +1207,7 @@ let gen_ccode top_code =
                 | OpNegate -> COpNegate
                 | OpBitwiseNot -> COpBitwiseNot
                 | OpLogicNot -> COpLogicNot
-                | OpDeref | OpMkRef | OpExpand ->
+                | OpDeref | OpMkRef | OpExpand | OpDotMinus ->
                     raise_compile_err kloc (sprintf "cgen: unsupported unary op '%s'" (unop_to_string uop))
             in (true, CExpUnOp(c_uop, ce1, (ctyp, kloc)), ccode)
         | KExpIntrin(intr, args, _) ->

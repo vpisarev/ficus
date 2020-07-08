@@ -24,12 +24,14 @@ let token2str t = match t with
     | CHAR(s) -> sprintf "CHAR(%s)" s
     | TYVAR(s) -> sprintf "TYVAR(%s)" s
     | AS -> "AS"
+    | AT -> "AT"
     | BREAK -> "BREAK"
     | CATCH -> "CATCH"
     | CCODE -> "CCODE"
     | CLASS -> "CLASS"
     | CONTINUE -> "CONTINUE"
     | DO -> "DO"
+    | ELLIPSIS -> "ELLIPSIS"
     | ELSE -> "ELSE"
     | EXCEPTION -> "EXCEPTION"
     | EXTENDS -> "EXTENDS"
@@ -95,7 +97,11 @@ let token2str t = match t with
     | MOD -> "MOD"
     | B_POWER -> "B_POWER"
     | POWER -> "POWER"
-    | SPACESHIP -> "SPACESHIP"
+    | DOT_STAR -> "DOT_STAR"
+    | B_DOT_MINUS -> "B_DOT_MINUS"
+    | DOT_SLASH -> "DOT_SLASH"
+    | DOT_MOD -> "DOT_MOD"
+    | DOT_POWER -> "DOT_POWER"
     | SHIFT_RIGHT -> "SHIFT_RIGHT"
     | SHIFT_LEFT -> "SHIFT_LEFT"
     | BITWISE_AND -> "BITWISE_AND"
@@ -117,12 +123,23 @@ let token2str t = match t with
     | XOR_EQUAL -> "XOR_EQUAL"
     | SHIFT_LEFT_EQUAL -> "SHIFT_LEFT_EQUAL"
     | SHIFT_RIGHT_EQUAL -> "SHIFT_RIGHT_EQUAL"
-    | EQUAL_TO -> "EQUAL_TO"
-    | NOT_EQUAL -> "NOT_EQUAL"
-    | LESS_EQUAL -> "LESS_EQUAL"
-    | GREATER_EQUAL -> "GREATER_EQUAL"
-    | LESS -> "LESS"
-    | GREATER -> "GREATER"
+    | DOT_STAR_EQUAL -> "DOT_STAR_EQUAL"
+    | DOT_SLASH_EQUAL -> "DOT_SLASH_EQUAL"
+    | DOT_MOD_EQUAL -> "DOT_MOD_EQUAL"
+    | SPACESHIP -> "SPACESHIP"
+    | CMP_EQ -> "CMP_EQ"
+    | CMP_NE -> "CMP_NE"
+    | CMP_LE -> "CMP_LE"
+    | CMP_GE -> "CMP_GE"
+    | CMP_LT -> "CMP_LT"
+    | CMP_GT -> "CMP_GT"
+    | DOT_SPACESHIP -> "DOT_SPACESHIP"
+    | DOT_CMP_EQ -> "DOT_CMP_EQ"
+    | DOT_CMP_NE -> "DOT_CMP_NE"
+    | DOT_CMP_LE -> "DOT_CMP_LE"
+    | DOT_CMP_GE -> "DOT_CMP_GE"
+    | DOT_CMP_LT -> "DOT_CMP_LT"
+    | DOT_CMP_GT -> "DOT_CMP_GT"
     | FOLD_RESULT -> "FOLD_RESULT"
 
 let token2str_pp t =
@@ -463,10 +480,10 @@ rule tokens = parse
             | _ -> [BITWISE_OR]
         }
     | '^'   { new_exp := true; [BITWISE_XOR] }
-    | '~'   { new_exp := true; [BITWISE_NOT] }
+    | '~'   { check_ne(lexbuf); [BITWISE_NOT] }
     | "&&"  { new_exp := true; [LOGICAL_AND] }
     | "||"  { new_exp := true; [LOGICAL_OR] }
-    | '!'   { new_exp := true; [LOGICAL_NOT] }
+    | '!'   { check_ne(lexbuf); [LOGICAL_NOT] }
     | '='
         {
             new_exp := true;
@@ -484,13 +501,32 @@ rule tokens = parse
     | "<<=" { new_exp := true; [SHIFT_LEFT_EQUAL] }
     | ">>=" { new_exp := true; [SHIFT_RIGHT_EQUAL] }
 
-    | "=="  { new_exp := true; [EQUAL_TO] }
     | "<=>" { new_exp := true; [SPACESHIP] }
-    | "!="  { new_exp := true; [NOT_EQUAL] }
-    | "<="  { new_exp := true; [LESS_EQUAL] }
-    | ">="  { new_exp := true; [GREATER_EQUAL] }
-    | '<'   { new_exp := true; [LESS] }
-    | '>'   { new_exp := true; [GREATER] }
+    | "=="  { new_exp := true; [CMP_EQ] }
+    | "!="  { new_exp := true; [CMP_NE] }
+    | "<="  { new_exp := true; [CMP_LE] }
+    | ">="  { new_exp := true; [CMP_GE] }
+    | '<'   { new_exp := true; [CMP_LT] }
+    | '>'   { new_exp := true; [CMP_GT] }
+
+    | ".-"  { check_ne(lexbuf); [B_DOT_MINUS] }
+    | ".*"  { new_exp := true; [DOT_STAR] }
+    | "./"  { new_exp := true; [DOT_SLASH] }
+    | ".%"  { new_exp := true; [DOT_MOD] }
+    | ".**" { new_exp := true; [DOT_POWER] }
+
+    | ".<=>" { new_exp := true; [DOT_SPACESHIP] }
+    | ".=="  { new_exp := true; [DOT_CMP_EQ] }
+    | ".!="  { new_exp := true; [DOT_CMP_NE] }
+    | ".<="  { new_exp := true; [DOT_CMP_LE] }
+    | ".>="  { new_exp := true; [DOT_CMP_GE] }
+    | ".<"   { new_exp := true; [DOT_CMP_LT] }
+    | ".>"   { new_exp := true; [DOT_CMP_GT] }
+
+    | ".*="  { new_exp := true; [DOT_STAR_EQUAL] }
+    | "./="  { new_exp := true; [DOT_SLASH_EQUAL] }
+    | ".%="  { new_exp := true; [DOT_MOD_EQUAL] }
+
     | ','   { new_exp := true; [COMMA] }
     | '.'   { new_exp := true; [DOT] }
     | ';'   { new_exp := true; [SEMICOLON] }
@@ -502,6 +538,9 @@ rule tokens = parse
     | "=>"  { new_exp := true; [DOUBLE_ARROW] }
     | "->"  { new_exp := true; [ARROW] }
     | "?"   { new_exp := false; [QUESTION] }
+    | "@"   { new_exp := true; [AT] }
+    | "..."   { new_exp := true; [ELLIPSIS] }
+
     | eof   { [EOF] }
     | _ as s { raise (lexErr (sprintf "Illegal character '%s'" (Char.escaped s)) lexbuf) }
 
