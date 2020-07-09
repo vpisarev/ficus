@@ -171,10 +171,12 @@ type binop_t =
 type unop_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
 
 type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
-    | ValPrivate | ValSubArray | ValCtor of id_t | ValGlobal
+    | ValPrivate | ValSubArray
+    | ValCtor of id_t (* when the value is 0-parameter constructor of variant (or exception) *)
+    | ValGlobal of scope_t list (* global public values at module level or public static class members *)
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow
-    | FunPure | FunStatic | FunCtor of fun_constr_t | FunUseFV
+    | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantRecOpt
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
 type ctx_t = typ_t * loc_t
@@ -232,8 +234,8 @@ and env_t = env_entry_t list Env.t
 and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
                  dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
-                 mutable df_body: exp_t; df_flags: fun_flag_t list; df_scope: scope_t list; df_loc: loc_t;
-                 mutable df_templ_inst: id_t list; mutable df_env: env_t }
+                 df_body: exp_t; df_flags: fun_flag_t list; df_scope: scope_t list; df_loc: loc_t;
+                 df_templ_inst: id_t list; df_env: env_t }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
                  dt_finalized: bool; dt_scope: scope_t list; dt_loc: loc_t }
@@ -538,6 +540,18 @@ let get_scope id_info = match id_info with
     | IdInterface {contents = {di_scope}} -> di_scope
     | IdModule _ -> ScGlobal :: []
 
+(* retains meaningful scope for name mangling *)
+let simplify_scope sc =
+    let sc1 =
+    List.filter (function
+    | ScModule _ | ScClass _ | ScInterface _ | ScGlobal -> true
+    | ScBlock _ | ScLoop _ | ScFold _ | ScArrMap _ | ScMap _
+    | ScTry _ | ScFun _ -> false) sc in
+    let is_private = (List.length sc) > (List.length sc1) in
+    (is_private, (match sc1 with
+    | ScGlobal :: rest -> rest
+    | _ -> sc1))
+
 let get_idinfo_loc id_info = match id_info with
     | IdNone | IdModule _ -> noloc
     | IdVal {dv_loc} -> dv_loc
@@ -812,6 +826,12 @@ let get_builtin_exception n0 loc =
     | n :: _ -> n
     | _ -> raise_compile_err loc (sprintf "cannot find built-in exception '%s'" (id2str n0))
 
+let remove_flag f0 flags =
+    List.filter (fun f -> f <> f0) flags
+
+let add_flag f0 flags =
+    if List.mem f0 flags then flags else f0 :: flags
+
 let get_val_ctor flags =
     match (List.find_opt (fun f -> match f with ValCtor _ -> true | _ -> false) flags) with
     | Some (ValCtor i) -> i
@@ -863,7 +883,7 @@ let parser_ctx_file = ref noid
 let parser_ctx_deps = ref ([] : id_t list)
 let parser_ctx_inc_dirs= ref ([] : string list)
 
-let update_imported_modules mname_id (pos0, pos1) =
+let add_to_imported_modules mname_id (pos0, pos1) =
     let mname = pp_id2str mname_id in
     match Utils.locate_module_file mname !parser_ctx_inc_dirs with
     | Some(mfname) ->

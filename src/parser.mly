@@ -261,20 +261,20 @@ top_level_exp:
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         [DirImport ((List.map (fun (a, b) ->
-        let a1 = update_imported_modules a (pos0, pos1) in (a1, b)) $2), curr_loc())]
+        let a1 = add_to_imported_modules a (pos0, pos1) in (a1, b)) $2), curr_loc())]
     }
 | FROM dot_ident any_import STAR
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         let a = get_id $2 in
-        let a1 = update_imported_modules a (pos0, pos1) in
+        let a1 = add_to_imported_modules a (pos0, pos1) in
         [DirImportFrom (a1, [], curr_loc())]
     }
 | FROM dot_ident any_import ident_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         let a = get_id $2 in
-        let a1 = update_imported_modules a (pos0, pos1) in
+        let a1 = add_to_imported_modules a (pos0, pos1) in
         [DirImportFrom (a1, (List.rev $4), curr_loc())]
     }
 | error
@@ -869,7 +869,7 @@ fun_flag:
 | INLINE { FunInline }
 | NOTHROW { FunNoThrow }
 | PURE { FunPure }
-| STATIC { FunStatic }
+| STATIC { FunPrivate }
 
 fun_args:
 | lparen simple_pat_list RPAREN opt_typespec { ($2, $4, []) }

@@ -128,7 +128,7 @@ and pprint_kexp_ e prtyp =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
-        | ValGlobal -> pstr "GLOBAL"; pspace()
+        | ValGlobal _ -> pstr "GLOBAL"; pspace()
         | ValCtor _ -> ()
         | ValArg -> pstr "ARG"; pspace()) kv_flags);
         pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp kv_typ loc; pspace(); pstr "="; pspace();
@@ -143,7 +143,7 @@ and pprint_kexp_ e prtyp =
                     | FunImpure -> pstr "IMPURE"; pspace()
                     | FunInline -> pstr "INLINE"; pspace()
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
-                    | FunStatic -> pstr "STATIC"; pspace()
+                    | FunPrivate -> pstr "PRIVATE"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
                     | FunUseFV -> pstr "USE_FV"; pspace()
                     | FunCtor _ -> ()

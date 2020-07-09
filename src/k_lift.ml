@@ -232,7 +232,7 @@ let make_wrappers_for_nothrow top_code =
                 let w_flags = List.filter (fun f -> f != FunNoThrow) kf_flags in
                 let w_args = List.map (fun (a, t) ->
                     let w_a = dup_idk a in
-                    let _ = create_kdefval w_a t [ValArg] None [] kf_scope kf_loc in
+                    let _ = create_kdefval w_a t [ValArg] None [] kf_loc in
                     (w_a, t)) kf_args
                     in
                 let w_body = KExpCall(kf_name, (List.map (fun (i, _) -> Atom.Id i) w_args), (kf_rt, kf_loc)) in
@@ -334,11 +334,11 @@ let lift_all top_code =
     *)
     let _ = IdSet.iter (fun mut_fv ->
         let kv = get_kval mut_fv noloc in
-        let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = kv in
+        let { kv_name; kv_typ; kv_flags; kv_loc } = kv in
         let new_kv_name = gen_temp_idk ((pp_id2str kv_name) ^ "_ref") in
         let new_kv_typ = KTypRef(kv_typ) in
         let new_kv_flags = (List.filter (fun f -> f != ValMutable) kv_flags) in
-        let new_kv = { kv_name=new_kv_name; kv_cname=""; kv_typ=new_kv_typ; kv_flags=new_kv_flags; kv_scope; kv_loc } in
+        let new_kv = { kv_name=new_kv_name; kv_cname=""; kv_typ=new_kv_typ; kv_flags=new_kv_flags; kv_loc } in
         let new_old_kv = { kv with kv_flags=ValTempRef::kv_flags } in
         set_idk_entry new_kv_name (KVal new_kv);
         set_idk_entry kv_name (KVal new_old_kv);
@@ -366,11 +366,11 @@ let lift_all top_code =
                 let fvars_final = List.map (fun (_, fv) -> fv) fvar_pairs_sorted in
                 let fcv_tn = gen_temp_idk ((id2prefix kf_name) ^ "_closure") in
                 let (_, make_args, fvars_wt) = List.fold_left (fun (idx, make_args, fvars_wt) fv ->
-                    let { kv_name; kv_typ; kv_flags; kv_scope; kv_loc } = get_kval fv kf_loc in
+                    let { kv_name; kv_typ; kv_flags; kv_loc } = get_kval fv kf_loc in
                     let kv_typ = if IdSet.mem fv all_mut_fvars then KTypRef kv_typ else kv_typ in
                     let new_fv = dup_idk fv in
                     let arg = get_id (sprintf "arg%d" idx) in
-                    let _ = create_kdefval new_fv kv_typ kv_flags None [] kv_scope kv_loc in
+                    let _ = create_kdefval new_fv kv_typ kv_flags None [] kv_loc in
                     (idx+1, (arg :: make_args), ((new_fv, kv_typ) :: fvars_wt))) (0, [], []) fvars_final in
                 let fcv_t = ref { kcv_name=fcv_tn; kcv_cname=""; kcv_freevars=(List.rev fvars_wt);
                     kcv_orig_freevars=fvars_final; kcv_scope=kf_scope; kcv_loc=kf_loc } in
@@ -380,7 +380,7 @@ let lift_all top_code =
                 let make_fp = gen_temp_idk "make_fp" in
                 let _ = create_kdefconstr make_fp (List.rev make_args_ktyps) kf_typ
                     [FunCtor (CtorFP kf_name)] [] kf_scope kf_loc in
-                let _ = create_kdefval cl_arg (KTypName fcv_tn) [] None [] kf_scope kf_loc in
+                let _ = create_kdefval cl_arg (KTypName fcv_tn) [] None [] kf_loc in
                 let new_kf_closure = {kf_closure with kci_arg=cl_arg; kci_fcv_t=fcv_tn; kci_make_fp=make_fp} in
                 set_idk_entry fcv_tn (KClosureVars fcv_t);
                 kf := { !kf with kf_closure=new_kf_closure })
@@ -448,7 +448,7 @@ let lift_all top_code =
                     walk_atom_n_lift_all_adv (Atom.Id fv) kf_loc true) orig_freevars
                     in
                 let make_cl = KExpMkClosure(make_fp, kf_name, cl_args, (kf_typ, kf_loc)) in
-                create_kdefval cl_name kf_typ [] (Some make_cl) code kf_scope kf_loc
+                create_kdefval cl_name kf_typ [] (Some make_cl) code kf_loc
                 in
 
             let (prologue, def_fcv_t_n_make) =
@@ -491,12 +491,12 @@ let lift_all top_code =
                                 let get_fv = KExpMem(kci_arg, idx, (ref_typ, kf_loc)) in
                                 let ref_flags = ValTempRef :: (List.filter (fun f -> f != ValMutable) kv_flags) in
                                 let prologue = create_kdefval fv_ref ref_typ ref_flags
-                                    (Some get_fv) prologue kf_scope kf_loc in
+                                    (Some get_fv) prologue kf_loc in
                                 (KExpUnOp(OpDeref, (Atom.Id fv_ref), (t, kf_loc)), prologue, fv_ref)
                             in
                         let _ = curr_subst_env := Env.add fv_orig (fv_proxy, fv_proxy_mkclo_arg) !curr_subst_env in
                         let new_kv_flags = ValTempRef :: kv_flags in
-                        let prologue = create_kdefval fv_proxy t new_kv_flags (Some e) prologue kf_scope kf_loc in
+                        let prologue = create_kdefval fv_proxy t new_kv_flags (Some e) prologue kf_loc in
                         (idx+1, prologue)) (0, []) kcv_freevars kcv_orig_freevars in
                     (* we also create a closure for each function with free variables
                         that is called from 'kf_name', but is not declared in 'kf_name' *)
@@ -545,8 +545,7 @@ let lift_all top_code =
                     | _ -> raise_compile_err loc
                         (sprintf "k-lift: not found subst info about mutable free var '%s'" (id2str n))
                     in
-                let {kv_scope} = get_kval n loc in
-                let (a, code) = kexp2atom ((pp_id2str n) ^ "_arg") rhs false [] kv_scope in
+                let (a, code) = kexp2atom ((pp_id2str n) ^ "_arg") rhs false [] in
                 let code = KDefVal(nr, KExpUnOp(OpMkRef, a, (ref_typ, loc)), loc) :: code in
                 let code = KDefVal(n, KExpUnOp(OpDeref, (Atom.Id nr), (t, loc)), loc) :: code in
                 KExpSeq((List.rev code), (KTypVoid, loc))

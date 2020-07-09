@@ -188,8 +188,7 @@ and cstmt_t =
        but it's probably good enough for our purposes *)
     | CMacroIf of (cexp_t * cstmt_t list) list * cstmt_t list * loc_t
     | CMacroInclude of string * loc_t
-and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list;
-                  cv_scope: scope_t list; cv_loc: loc_t }
+and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list; cv_loc: loc_t }
 and cdeffun_t = { cf_name: id_t; cf_cname: string;
                   cf_args: (id_t * ctyp_t * (carg_attr_t list)) list;
                   cf_rt: ctyp_t; cf_body: cstmt_t list;
@@ -199,7 +198,7 @@ and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_cname: string;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { cenum_name: id_t; cenum_members: (id_t * cexp_t option) list; cenum_cname: string;
                    cenum_scope: scope_t list; cenum_loc: loc_t }
-and cdeflabel_t = { cl_name: id_t; cl_cname: string; cl_scope: scope_t list; cl_loc: loc_t }
+and cdeflabel_t = { cl_name: id_t; cl_cname: string; cl_loc: loc_t }
 and cdefmacro_t = { cm_name: id_t; cm_cname: string; cm_args: id_t list; cm_body: cstmt_t list;
                     cm_scope: scope_t list; cm_loc: loc_t }
 and cdefexn_t = { cexn_name: id_t; cexn_cname: string; cexn_base_cname: string;
@@ -293,18 +292,6 @@ let get_cstmt_loc s = match s with
     | CMacroIf (_, _, l) -> l
     | CMacroInclude (_, l) -> l
 
-let get_cscope info =
-    match info with
-    | CNone -> ScGlobal :: []
-    | CText _ -> ScGlobal :: []
-    | CVal {cv_scope} -> cv_scope
-    | CFun {contents = {cf_scope}} -> cf_scope
-    | CTyp {contents = {ct_scope}} -> ct_scope
-    | CEnum {contents = {cenum_scope}} -> cenum_scope
-    | CExn {contents = {cexn_scope}} -> cexn_scope
-    | CLabel {cl_scope} -> cl_scope
-    | CMacro {contents={cm_scope}} -> cm_scope
-
 let get_cinfo_loc info =
     match info with
     | CNone | CText _ -> noloc
@@ -370,17 +357,17 @@ let get_lit_ctyp l = match l with
     | LitBool(_) -> CTypBool
     | LitNil -> CTypRawPtr([], CTypVoid)
 
-let create_cdefval n t flags cname e_opt code sc loc =
-    let dv = { cv_name=n; cv_typ=t; cv_cname=cname; cv_flags=flags; cv_scope=sc; cv_loc=loc } in
+let create_cdefval n t flags cname e_opt code loc =
+    let dv = { cv_name=n; cv_typ=t; cv_cname=cname; cv_flags=flags; cv_loc=loc } in
     match t with
     | CTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
     set_idc_entry n (CVal dv);
     (CExpIdent(n, (t, loc)), (CDefVal(t, n, e_opt, loc)) :: code)
 
-let add_cf_arg v ctyp cname sc loc =
+let add_cf_arg v ctyp cname loc =
     let cv = { cv_name=v; cv_typ=ctyp; cv_cname=cname;
-        cv_flags=ValArg::[]; cv_scope=sc; cv_loc=loc }
+        cv_flags=ValArg::[]; cv_loc=loc }
     in set_idc_entry v (CVal cv)
 
 let get_ccode_loc ccode default_loc =
@@ -744,11 +731,11 @@ let make_bool_exp b loc = CExpLit ((LitBool b), (CTypBool, loc))
 let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_id_t_exp i t loc = CExpIdent(i, (t, loc))
-let make_label basename sc loc =
+let make_label basename loc =
     let li = gen_temp_idc basename in
     let cname = if basename = "cleanup" then "_fx_cleanup"
         else (sprintf "_fx_%s%d" basename (id2idx li)) in
-    set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_scope=sc; cl_loc=loc});
+    set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_loc=loc});
     li
 
 let make_call f args rt loc =

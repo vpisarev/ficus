@@ -247,8 +247,8 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
         | _ -> raise_compile_err loc (sprintf "the forward declaration of %s does not reference a function" (pp_id2str fname))
     in
     obox();
-    let cf_flags = FunStatic :: cf_flags in
-    if List.mem FunStatic cf_flags then pstr "static " else ();
+    let cf_flags = FunPrivate :: cf_flags in
+    if List.mem FunPrivate cf_flags then pstr "static " else ();
     if List.mem FunInline cf_flags then pstr "inline " else ();
     pprint_ctyp_ cf_rt None cf_loc;
     pspace();

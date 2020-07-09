@@ -17,7 +17,7 @@ open Ast
 open K_form
 
 let tailrec2loop kf =
-    let { kf_name; kf_args; kf_rt=rt; kf_body; kf_flags; kf_scope; kf_loc } = !kf in
+    let { kf_name; kf_args; kf_rt=rt; kf_body; kf_flags; kf_loc } = !kf in
     let rec have_tailrec_calls_ e =
         match e with
         | KExpSeq(elist, _) ->
@@ -49,7 +49,7 @@ let tailrec2loop kf =
                     in
                 let res_val0 = KExpAtom(a0, (rt, kf_loc)) in
                 let f_init_code = create_kdefval res_n rt (ValMutable :: [])
-                    (Some res_val0) [] kf_scope kf_loc in
+                    (Some res_val0) [] kf_loc in
                 (res_n, f_init_code)
             in
         (* For each function argument we create 2 aliases.
@@ -99,7 +99,6 @@ let tailrec2loop kf =
             (where each function argument is an immutable value) and also want to
             enable all the optimizations that compiler can do with immutable values.
         *)
-        let loop_scope = new_block_scope() :: kf_scope in
         let (new_kf_args, trec_args, f_init_code, loop_init_code) =
             List.fold_left (fun (new_kf_args, trec_args, f_init_code, loop_init_code) (ai, ti) ->
                 let dv0 = get_kval ai kf_loc in
@@ -110,9 +109,9 @@ let tailrec2loop kf =
                 let a1i_as_exp = KExpAtom((Atom.Id a1i), (ti, kf_loc)) in
                 let a2i_as_exp = KExpAtom((Atom.Id a2i), (ti, kf_loc)) in
                 let f_init_code = create_kdefval a2i ti (ValMutable :: [])
-                    (Some a1i_as_exp) f_init_code kf_scope kf_loc in
+                    (Some a1i_as_exp) f_init_code kf_loc in
                 let loop_init_code = create_kdefval ai ti []
-                    (Some a2i_as_exp) loop_init_code loop_scope kf_loc in
+                    (Some a2i_as_exp) loop_init_code kf_loc in
                 ((a1i, ti) :: new_kf_args, (a2i, ti) :: trec_args, f_init_code, loop_init_code))
             ([], [], f_init_code, []) kf_args in
         let new_kf_args = List.rev new_kf_args in
@@ -127,7 +126,7 @@ let tailrec2loop kf =
                 let (final_e, code) = if res_n = noid
                     then (final_e, [])
                     else
-                        let (final_atom, code) = kexp2atom "result" final_e (not (is_ktyp_scalar ktyp)) [] kf_scope in
+                        let (final_atom, code) = kexp2atom "result" final_e (not (is_ktyp_scalar ktyp)) [] in
                         (KExpAssign(res_n, final_atom, kloc), code)
                     in
                 let code = (KExpBreak kloc) :: final_e :: code in

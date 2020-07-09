@@ -35,7 +35,7 @@ let convert_all_fdecls top_code =
                     (match ctyp with
                     | CTypArray _ -> ((make_ptr ctyp), [CArgPassByPtr])
                     | _ -> ((make_const_ptr ctyp), [CArgPassByPtr])) else (ctyp, []) in
-                add_cf_arg arg ctyp cname kf_scope kf_loc;
+                add_cf_arg arg ctyp cname kf_loc;
                 (arg_idx+1, (arg, ctyp, arg_flags) :: args)) (0, []) kf_args
                 in
             let {ktp_scalar=rt_scalar} = K_annotate_types.get_ktprops rt kf_loc in
@@ -49,7 +49,7 @@ let convert_all_fdecls top_code =
                 else
                     let v = gen_temp_idc "fx_result" in
                     let crt = make_ptr crt in
-                    (add_cf_arg v crt "fx_result" kf_scope kf_loc;
+                    (add_cf_arg v crt "fx_result" kf_loc;
                     ((if is_nothrow then CTypVoid else CTypCInt), (v, crt,
                         [CArgPassByPtr; CArgRetVal]) :: args))
                 in
@@ -59,7 +59,7 @@ let convert_all_fdecls top_code =
                 else
                     let fv_cname = "fx_fv" in
                     let fv_arg = gen_temp_idc fv_cname in
-                    let _ = add_cf_arg fv_arg std_CTypVoidPtr fv_cname kf_scope kf_loc in
+                    let _ = add_cf_arg fv_arg std_CTypVoidPtr fv_cname kf_loc in
                     (fv_arg, std_CTypVoidPtr, [CArgFV]) :: args
                 in
             let flags = kf_flags in
@@ -113,7 +113,7 @@ let convert_all_fdecls top_code =
             top_fcv_decls := decl_free_f @ decl_fcvt @ !top_fcv_decls
         | KDefExn {contents={ke_std=true; ke_tag; ke_typ=KTypVoid; ke_scope; ke_loc}} ->
             let {kv_flags; kv_cname} = get_kval ke_tag ke_loc in
-            ignore(create_cdefval ke_tag CTypCInt [ValMutable] kv_cname None [] ke_scope ke_loc)
+            ignore(create_cdefval ke_tag CTypCInt [ValGlobal(ke_scope); ValMutable] kv_cname None [] ke_loc)
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_std; ke_tag; ke_cname; ke_base_cname; ke_make; ke_scope; ke_loc} = !ke in
             let exn_strname = get_qualified_name (pp_id2str ke_name) ke_scope in
@@ -121,7 +121,7 @@ let convert_all_fdecls top_code =
             let exn_info = gen_idc ((pp_id2str ke_name) ^ "_info") in
             let info_cname = K_mangle.add_fx (ke_base_cname ^ "_info") in
             let (info_exp, decls) = create_cdefval exn_info !std_fx_exn_info_t
-                [ValMutable] info_cname (Some (make_dummy_exp ke_loc)) [] ke_scope ke_loc in
+                [ValGlobal(ke_scope); ValMutable] info_cname (Some (make_dummy_exp ke_loc)) [] ke_loc in
             let ke_tag_exp = make_id_t_exp ke_tag CTypCInt ke_loc in
             let (reg_calls, decls) = match ke_typ with
                 | KTypVoid ->
@@ -148,8 +148,8 @@ let convert_all_fdecls top_code =
                     `throw MyException` will be converted to
                     `FX_THROW(_fx_E11MyExceptionv, false, catch_label)`
                     *)
-                    let (exn_exp, decls) = create_cdefval ke_name CTypExn [ValMutable] ke_cname
-                        (Some (make_dummy_exp ke_loc)) decls ke_scope ke_loc in
+                    let (exn_exp, decls) = create_cdefval ke_name CTypExn [ValGlobal(ke_scope);ValMutable] ke_cname
+                        (Some (make_dummy_exp ke_loc)) decls ke_loc in
                     let call_reg_exn = make_call !std_FX_REG_SIMPLE_EXN
                         [exn_strname; ke_tag_exp; info_exp; exn_exp] CTypVoid ke_loc
                     in

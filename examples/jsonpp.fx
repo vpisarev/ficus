@@ -1,11 +1,19 @@
-type json_scalar_t = JsonScInt: int | JsonScReal: double | JsonScBool: bool | JsonScString: string
+// Json pretty printing example
+
+type json_scalar_t =
+    | JsonScInt: int
+    | JsonScReal: double
+    | JsonScBool: bool
+    | JsonScString: string
+
 type json_t =
     | JsonScalar: json_scalar_t
     | JsonMap: (string, json_t) list
     | JsonSeq: json_t list
     | JsonCommented: (string, json_t)
 
-fun jsc2str(jsc: json_scalar_t) {
+fun jsc2str(jsc: json_scalar_t)
+{
     | JsonScInt i => string(i)
     | JsonScReal f => string(f)
     | JsonScBool b => string(b)
@@ -90,17 +98,6 @@ fun print_js(js: json_t, ofs: int, indent: string)
             print("\n{indent}]")
             l_oldind+1
         }
-    }
-}
-
-fun new_uniform_rng(seed: int) {
-    var state = if seed != 0 {(seed :> uint64)} else {0xffffffffu64}
-    fun (a: int, b: int) {
-        state = (state :> uint32) * 4204114314u64 + (state >> 32)
-        val (a, b) = (min(a, b), max(a, b))
-        val diff = max(b - a, 1)
-        val x = (state :> uint32) % diff + a
-        (x :> int)
     }
 }
 

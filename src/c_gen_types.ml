@@ -289,7 +289,7 @@ let convert_all_typs top_code =
             let ctx = (CTypCInt, kvar_loc) in
             let (_, members) = List.fold_left (fun (idx, members) (ni, ti) ->
                 let {kv_cname=cname_i} = get_kval ni kvar_loc in
-                let dv = { cv_name=ni; cv_typ=CTypCInt; cv_cname=cname_i; cv_flags=[]; cv_scope=ScGlobal::[]; cv_loc=kvar_loc } in
+                let dv = { cv_name=ni; cv_typ=CTypCInt; cv_cname=cname_i; cv_flags=[]; cv_loc=kvar_loc } in
                 let _ = set_idc_entry ni (CVal dv) in
                 let vali = Some (CExpLit((LitInt (Int64.of_int idx)), ctx)) in
                 (idx+1, (ni, vali) :: members)) (start_idx, []) kvar_cases in

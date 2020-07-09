@@ -128,7 +128,7 @@ let rec pprint_exp e =
         | ValMutable -> pstr "MUTABLE"; pspace()
         | ValPrivate -> pstr "PRIVATE"; pspace()
         | ValSubArray -> pstr "SUB_ARRAY"; pspace()
-        | ValGlobal -> pstr "GLOBAL"; pspace()
+        | ValGlobal _ -> pstr "GLOBAL"; pspace()
         | ValCtor _ -> ()
         | ValArg -> pstr "ARG"; pspace()) vflags);
         let ctor_id = get_val_ctor vflags in
@@ -144,7 +144,7 @@ let rec pprint_exp e =
                     | FunImpure -> pstr "IMPURE"; pspace()
                     | FunInline -> pstr "INLINE"; pspace()
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
-                    | FunStatic -> pstr "STATIC"; pspace()
+                    | FunPrivate -> pstr "PRIVATE"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
                     | FunUseFV -> pstr "USE_FV"; pspace()
                     | FunCtor _ -> ()

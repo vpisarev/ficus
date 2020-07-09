@@ -1313,14 +1313,15 @@ and check_eseq eseq env sc create_sc =
                 let (p1, env1, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true is_mutable in
                 (DefVal(p1, e1, flags, loc) :: eseq, env1)
             | DefFun (df) ->
-                let _ = if !df.df_templ_args = [] then
-                        (check_deffun df env)
-                    else
-                        (* update environment of the template function
-                           to give it access to the above defined
-                           non-template values *)
-                        ((!df.df_env <- env); df) in
-                (e :: eseq, env)
+                let df = if !df.df_templ_args = [] then
+                    check_deffun df env
+                else
+                    (* update environment of the template function
+                        to give it access to the above defined
+                        non-template values *)
+                    (df := {!df with df_env = env}; df)
+                in
+                ((DefFun df) :: eseq, env)
             | _ ->
                 let e = check_exp e env sc in
                 let (etyp, eloc) = get_exp_ctx e in
@@ -1677,7 +1678,7 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
             ((df_inst_arg :: df_inst_args), inst_env, idset)) ([], inst_env, IdSet.empty) df_args arg_typs in
     let df_inst_args = List.rev df_inst_args in
     let rt = check_typ rt inst_env df_scope inst_loc in
-    let inst_body = if instantiate then (dup_exp df_body) else df_body in
+    let inst_body = if instantiate then dup_exp df_body else df_body in
     (*let _ = ((printf "processing function %s " (id2str inst_name));
         pprint_pat_x (PatTuple(df_inst_args, inst_loc)); printf "<";
         List.iteri (fun i n -> printf "%s%s" (if i=0 then "" else ", ") (id2str n)) df_templ_args;
@@ -1696,14 +1697,15 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
                         df_typ=inst_ftyp; df_body=inst_body;
                         df_flags; df_scope=inst_sc; df_loc=inst_loc; df_templ_inst=[]; df_env=inst_env0 } in
     let _ = set_id_entry inst_name (IdFun inst_df) in
-    let inst_or_templ_df = if instantiate then
-        (!templ_df.df_templ_inst <- inst_name :: !templ_df.df_templ_inst; inst_df)
+    let _ = if instantiate then
+        templ_df := {!templ_df with df_templ_inst = inst_name :: !templ_df.df_templ_inst}
     else
-        (templ_df := !inst_df; templ_df) in
+        () in
     let inst_body = check_exp inst_body inst_env fun_sc in
-    !inst_or_templ_df.df_body <- inst_body;
+    inst_df := {!inst_df with df_body=inst_body};
+    (*!inst_or_templ_df.df_body <- inst_body;*)
     (*(printf "<<<processed function:\n"; (pprint_exp_x (DefFun inst_or_templ_df)); printf "\n>>>\n");*)
-    inst_or_templ_df
+    inst_df
 
 and instantiate_variant ty_args dvar env sc loc =
     let { dvar_name; dvar_templ_args; dvar_alias; dvar_flags; dvar_cases;
@@ -1749,7 +1751,7 @@ and instantiate_variant ty_args dvar env sc loc =
             argtyps inst_app_typ env dvar_scope dvar_loc in
         if instantiate then
             match id_info cname with
-            | IdFun c_def -> !c_def.df_templ_inst <- inst_cname :: !c_def.df_templ_inst
+            | IdFun c_def -> c_def := {!c_def with df_templ_inst = inst_cname :: !c_def.df_templ_inst }
             | _ -> raise_compile_err loc (sprintf "invalid constructor %s of variant %s" (id2str cname) (id2str dvar_name))
         else ();
         (idx+1, (n, t) :: inst_cases, inst_cname :: inst_constr)) (0, [], []) dvar_cases dvar_constr in

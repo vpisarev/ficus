@@ -127,7 +127,7 @@ and kexp_t =
     | KDefTyp of kdeftyp_t ref
     | KDefClosureVars of kdefclosurevars_t ref
 and kdefval_t = { kv_name: id_t; kv_cname: string; kv_typ: ktyp_t;
-                  kv_flags: val_flag_t list; kv_scope: scope_t list; kv_loc: loc_t }
+                  kv_flags: val_flag_t list; kv_loc: loc_t }
 and kdefclosureinfo_t = { kci_arg: id_t; kci_fcv_t: id_t; kci_fp_typ: id_t; kci_make_fp: id_t; kci_wrap_f: id_t }
 and kdeffun_t = { kf_name: id_t; kf_cname: string;
                   kf_args: (id_t * ktyp_t) list; kf_rt: ktyp_t; kf_body: kexp_t;
@@ -237,10 +237,15 @@ let get_kexp_loc e = let (t, l) = (get_kexp_ctx e) in l
 let get_kexp_start e = let l = get_kexp_loc e in get_start_loc l
 let get_kexp_end e = let l = get_kexp_loc e in get_end_loc l
 
+let get_val_scope flags =
+    match (List.find_opt (function | ValGlobal _ -> true | _ -> false) flags) with
+    | Some(ValGlobal(sc)) -> sc
+    | _ -> [ScBlock 0]
+
 let get_kscope info =
     match info with
     | KNone -> ScGlobal :: []
-    | KVal {kv_scope} -> kv_scope
+    | KVal {kv_flags} -> get_val_scope kv_flags
     | KFun {contents = {kf_scope}} -> kf_scope
     | KExn {contents = {ke_scope}} -> ke_scope
     | KVariant {contents = {kvar_scope}} -> kvar_scope
@@ -832,8 +837,8 @@ let is_ktyp_integer t allow_bool =
     | KTypBool -> allow_bool
     | _ -> false
 
-let create_kdefval n ktyp flags e_opt code sc loc =
-    let dv = { kv_name=n; kv_cname=""; kv_typ=ktyp; kv_flags=flags; kv_scope=sc; kv_loc=loc } in
+let create_kdefval n ktyp flags e_opt code loc =
+    let dv = { kv_name=n; kv_cname=""; kv_typ=ktyp; kv_flags=flags; kv_loc=loc } in
     match ktyp with
     | KTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
     | _ -> ();
@@ -842,7 +847,7 @@ let create_kdefval n ktyp flags e_opt code sc loc =
     | Some(e) -> KDefVal(n, e, loc) :: code
     | _ -> code
 
-let kexp2atom prefix e tref code sc =
+let kexp2atom prefix e tref code =
     match e with
     | KExpAtom (a, _) -> (a, code)
     | _ ->
@@ -851,7 +856,7 @@ let kexp2atom prefix e tref code sc =
         let _ = if ktyp <> KTypVoid then () else
             raise_compile_err kloc "'void' expression or declaration cannot be converted to an atom" in
         let flags = if tref then [ValTempRef] else [ValTemp] in
-        let code = create_kdefval tmp_id ktyp flags (Some e) code sc kloc in
+        let code = create_kdefval tmp_id ktyp flags (Some e) code kloc in
         ((Atom.Id tmp_id), code)
 
 let create_kdeffun n args rt flags body_opt code sc loc =
@@ -868,7 +873,7 @@ let create_kdeffun n args rt flags body_opt code sc loc =
 let create_kdefconstr n argtyps rt flags code sc loc =
     let (_, args) = List.fold_left (fun (idx, args) t ->
         let arg = gen_idk (sprintf "arg%d" idx) in
-        let _ = create_kdefval arg t [ValArg] None [] sc loc in
+        let _ = create_kdefval arg t [ValArg] None [] loc in
         (idx + 1, (arg, t) :: args)) (0, []) argtyps in
     create_kdeffun n (List.rev args) rt flags None code sc loc
 
