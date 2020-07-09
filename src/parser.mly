@@ -643,9 +643,7 @@ exp_list_:
 
 array_elems_:
 | array_elems_ SEMICOLON exp_list_ { (List.rev $3) :: $1 }
-| array_elems_ SEMICOLON exp_list_ SEMICOLON { (List.rev $3) :: $1 }
 | exp_list_ { (List.rev $1) :: [] }
-| exp_list_ COMMA { (List.rev $1) :: [] }
 
 id_exp_list_:
 | id_exp_list_ COMMA B_IDENT EQUAL complex_exp { (get_id $3, $5) :: $1 }

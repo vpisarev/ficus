@@ -815,10 +815,15 @@ let std_FX_CHECK_EQ_SIZE = ref noid
 
 let std_fx_copy_ptr = ref noid
 
+let std_FX_STR_LENGTH = ref noid
+let std_FX_STR_CHKIDX = ref noid
+let std_FX_STR_ELEM = ref noid
 let std_FX_MAKE_STR = ref noid
 let std_FX_FREE_STR = ref noid
 let std_fx_free_str = ref noid
+let std_FX_COPY_STR = ref noid
 let std_fx_copy_str = ref noid
+let std_fx_substr = ref noid
 
 let std_fx_exn_info_t = ref CTypVoid
 let std_FX_REG_SIMPLE_EXN = ref noid

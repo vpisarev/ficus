@@ -32,9 +32,7 @@ void fx_free_str(fx_str_t* str)
 
 void fx_copy_str(const fx_str_t* src, fx_str_t* dst)
 {
-    if(src->rc)
-        FX_INCREF(*src->rc);
-    *dst = *src;
+    FX_COPY_STR(src, dst);
 }
 
 int fx_make_str(const char_* strdata, int_ length, fx_str_t* str)
@@ -426,16 +424,38 @@ int fx_itoa(int_ n, fx_str_t* str)
     return FX_OK;
 }
 
-int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr)
+int fx_substr(const fx_str_t* str, int_ start, int_ end, int_ delta, int mask, fx_str_t* substr)
 {
-    if(start < 0 || start > str->length || end < 0 || end > str->length)
+    int_ len = FX_STR_LENGTH(*str);
+    start = delta < 0 && (mask & 1) ? len - 1 : start;
+    end = delta > 0 && (mask & 2) ? len : end;
+    printf("fx_substr: start=%zd, end=%zd, delta=%zd, mask=%d, len=%zd\n", start, end, delta, mask, len);
+    if (start < 0 || start > end || end > len)
         FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
-    if(start >= end)
-        return FX_OK;
-    substr->rc = str->rc;
-    if(str->rc) FX_INCREF(*str->rc);
-    substr->data = str->data + start;
-    substr->length = end - start;
+    if (delta == 0)
+        FX_FAST_THROW_RET(FX_EXN_ZeroStepError);
+    if (delta != 1)
+    {
+        int_ dstlen = FX_LOOP_COUNT(start, end, delta);
+        if(dstlen == 0)
+            return FX_OK;
+
+        int status = fx_make_str(0, dstlen, substr);
+        if(status < 0) return status;
+        const char_* src = str->data;
+        char_* dst = substr->data;
+        for(int_ i = 0; i < dstlen; i++)
+            dst[i] = src[start + i*delta];
+    }
+    else
+    {
+        if (start == end)
+            return FX_OK;
+        substr->rc = str->rc;
+        if(str->rc) FX_INCREF(*str->rc);
+        substr->data = str->data + start;
+        substr->length = end - start;
+    }
     return FX_OK;
 }
 

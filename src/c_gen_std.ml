@@ -53,12 +53,17 @@ let init_std_names () =
     std_FX_LOOP_COUNT := gen_std_macro "FX_LOOP_COUNT" 3;
     std_FX_CHECK_EQ_SIZE := gen_std_macro "FX_CHECK_EQ_SIZE" 2;
 
-    std_fx_copy_ptr := gen_std_fun "fx_copy_ptr" (std_CTypConstVoidPtr :: std_CTypVoidPtr :: []) CTypVoid;
+    std_fx_copy_ptr := gen_std_fun "fx_copy_ptr" [std_CTypConstVoidPtr; std_CTypVoidPtr] CTypVoid;
 
+    std_FX_STR_LENGTH := gen_std_macro "FX_STR_LENGTH" 1;
+    std_FX_STR_CHKIDX := gen_std_macro "FX_STR_CHKIDX" 3;
+    std_FX_STR_ELEM := gen_std_macro "FX_STR_ELEM" 2;
     std_FX_MAKE_STR := gen_std_macro "FX_MAKE_STR" 1;
     std_FX_FREE_STR := gen_std_macro "FX_FREE_STR" 1;
-    std_fx_free_str := gen_std_fun "fx_free_str" ((make_ptr CTypString) :: []) CTypVoid;
-    std_fx_copy_str := gen_std_fun "fx_copy_str" ((make_const_ptr CTypString) :: (make_ptr CTypString) :: []) CTypVoid;
+    std_FX_COPY_STR := gen_std_macro "FX_COPY_STR" 2;
+    std_fx_free_str := gen_std_fun "fx_free_str" [make_ptr CTypString] CTypVoid;
+    std_fx_copy_str := gen_std_fun "fx_copy_str" [make_const_ptr CTypString; make_ptr CTypString] CTypVoid;
+    std_fx_substr := gen_std_fun "fx_substr" [make_ptr CTypString; CTypInt; CTypInt; CTypInt; CTypCInt; make_ptr CTypString] CTypVoid;
 
     std_fx_exn_info_t := CTypName(get_id "fx_exn_info_t");
     std_FX_REG_SIMPLE_EXN := gen_std_macro "FX_REG_SIMPLE_EXN" 4;

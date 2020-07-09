@@ -111,7 +111,7 @@ let rec exp2kexp e code tref sc =
             match e_opt with
             | Some(e) -> exp2atom e code false sc
             | _ -> (defval, code) in
-        let (a1, code) = process_rpart e1_opt code (Atom.Lit (LitInt 0L)) in
+        let (a1, code) = process_rpart e1_opt code (Atom.Lit LitNil) in
         let (a2, code) = process_rpart e2_opt code (Atom.Lit LitNil) in
         let (a3, code) = process_rpart e3_opt code (Atom.Lit (LitInt 1L)) in
         (KExpMkTuple(a1 :: a2 :: a3 :: [], kctx), code)

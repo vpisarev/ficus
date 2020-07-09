@@ -386,14 +386,16 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
 
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
 {
-    int i, ndims = arr->ndims;
+    int k = 0, i, ndims = arr->ndims;
     size_t total = 1, offset = 0;
     int state = 0;
+    int nranges = 0;
 
     for( i = 0; i < ndims; i++ )
     {
         int_ size_i = arr->dim[i].size;
         size_t step_i = arr->dim[i].step;
+        bool scalar_range = false;
 
         int_ tag = ranges[0];
         int_ a, b, delta;
@@ -403,6 +405,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
             b = a+1;
             delta = 1;
             ranges += 2;
+            scalar_range = nranges == 0;
         }
         else if( tag == 1 )
         {
@@ -410,6 +413,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
             b = ranges[2];
             delta = ranges[3];
             ranges += 4;
+            nranges++;
         }
         else if( tag == 2 )
         {
@@ -417,13 +421,14 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
             b = size_i;
             delta = ranges[2];
             ranges += 3;
+            nranges++;
         }
         else
-            FX_FAST_THROW_RET(FX_EXN_SizeError);
+            FX_FAST_THROW_RET(FX_EXN_RangeError);
         if( delta <= 0 || a > b )
-            FX_FAST_THROW_RET(FX_EXN_SizeError);
+            FX_FAST_THROW_RET(FX_EXN_RangeError);
         if( i == ndims-1 && delta != 1)
-            FX_FAST_THROW_RET(FX_EXN_SizeError);
+            FX_FAST_THROW_RET(FX_EXN_RangeError);
         if( a < 0 || b > size_i )
             FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
 
@@ -451,16 +456,20 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         offset += a*step_i;
         size_i = (b - a + delta - 1)/delta;
         total *= (size_t)size_i;
-        subarr->dim[i].size = size_i;
-        subarr->dim[i].step = delta*step_i;
+
+        if( scalar_range )
+            continue;
+        subarr->dim[k].size = size_i;
+        subarr->dim[k].step = delta*step_i;
+        k++;
     }
 
-    subarr->ndims = arr->ndims;
+    subarr->ndims = k;
     subarr->flags = arr->flags & (state > 1 ? ~FX_ARR_CONTINUOUS : -1);
     subarr->free_elem = arr->free_elem;
     subarr->copy_elem = arr->copy_elem;
 
-    if (total > 0) {
+    if (total > 0 && subarr->ndims > 0) {
         subarr->rc = arr->rc;
         if (subarr->rc)
             FX_INCREF(*subarr->rc);

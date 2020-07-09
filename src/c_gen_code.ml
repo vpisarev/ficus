@@ -553,7 +553,7 @@ let gen_ccode top_code =
     in
 
     let decl_arr arr_ctyp shape data dstexp_r ccode loc =
-        let (arr_exp, _) = get_dstexp dstexp_r "arr" arr_ctyp [] [] loc in
+        let (arr_exp, ccode) = get_dstexp dstexp_r "arr" arr_ctyp [] ccode loc in
         (arr_exp, (make_make_arr_call arr_exp shape data ccode loc))
     in
 
@@ -828,7 +828,7 @@ let gen_ccode top_code =
                                     ...
                                 }
                             *)
-                            let calc_n_exp = cexp_mem col_exp (get_id "length") CTypInt in
+                            let calc_n_exp = make_call !std_FX_STR_LENGTH [col_exp] CTypInt for_loc in
                             let (i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
                                 | (prev_i :: _, prev_n :: _) ->
                                     (prev_i, i_exps, n_exps,
@@ -1358,7 +1358,7 @@ let gen_ccode top_code =
                 let ca = if tcon = noid then ca else make_fun_arg ca kloc in
                 ((ca :: cargs), ccode)) ([], ccode) args in
             if tcon <> noid then
-                let (t_exp, _) = get_dstexp dstexp_r prefix ctyp [] [] kloc in
+                let (t_exp, ccode) = get_dstexp dstexp_r prefix ctyp [] ccode kloc in
                 let call_mktup = make_call tcon
                     ((List.rev cargs) @ [cexp_get_addr t_exp]) CTypVoid kloc in
                 (false, t_exp, (CExp call_mktup) :: ccode)
@@ -1380,7 +1380,7 @@ let gen_ccode top_code =
                     let (ca, ccode) = atom2cexp a ccode kloc in
                     let ca = make_fun_arg ca kloc in
                     ((ca :: cargs), ccode)) ([], ccode) args in
-                let (fp_exp, _) = get_dstexp dstexp_r fp_prefix ctyp [] [] kloc in
+                let (fp_exp, ccode) = get_dstexp dstexp_r fp_prefix ctyp [] ccode kloc in
                 let call_mkclo = make_call make_fp
                     ((List.rev cargs) @ [cexp_get_addr fp_exp]) CTypVoid kloc in
                 (false, fp_exp, (CExp call_mkclo) :: ccode)
@@ -1419,72 +1419,108 @@ let gen_ccode top_code =
                     then we return `(true, FX_PTR_{ndims}D(elem_ctyp, arr, idx0, ..., idx{ndims-1}), ccode)`
             *)
             let (arr_exp, ccode) = atom2cexp_ arr false ccode kloc in
-            let need_subarr = List.exists (fun d -> match d with Domain.Range _ -> true | _ -> false) idxs in
-            let need_flatten = need_subarr && (match idxs with
-                | Domain.Range((Atom.Lit LitNil), (Atom.Lit LitNil), (Atom.Lit LitNil)) :: []
-                | Domain.Range((Atom.Lit (LitInt 0L)), (Atom.Lit LitNil), (Atom.Lit (LitInt 1L))) :: [] -> true
-                | _ -> false)
-                in
-            if need_flatten then
-                let (subarr_exp, _) = get_dstexp dstexp_r "arr" ctyp [] [] kloc in
-                let call_flatten = make_call (get_id "fx_flatten_arr")
-                    [(cexp_get_addr arr_exp); (cexp_get_addr subarr_exp)] CTypCInt kloc in
-                (false, subarr_exp, (add_fx_call call_flatten ccode kloc))
-            else if need_subarr then
-                let (range_data, ccode) = List.fold_left (fun (range_data, ccode) d ->
-                    match d with
-                    | Domain.Elem i | Domain.Fast i ->
-                        let (i_exp, ccode) = atom2cexp i ccode kloc in
-                        ((i_exp :: (make_int_exp 0 kloc) :: range_data), ccode)
-                    | Domain.Range (a, b, delta) ->
-                        let (a_exp, ccode) = atom2cexp a ccode kloc in
-                        let (range_delta, ccode) = match b with
-                            | Atom.Lit LitNil -> ((a_exp :: (make_int_exp 2 kloc) :: []), ccode)
-                            | _ ->
-                                let (b_exp, ccode) = atom2cexp b ccode kloc in
-                                ((b_exp :: a_exp :: (make_int_exp 1 kloc) :: []), ccode)
-                            in
-                        let (d_exp, ccode) = atom2cexp delta ccode kloc in
-                        (((d_exp :: range_delta) @ range_data), ccode)) ([], ccode) idxs
+            let lbl = curr_block_label kloc in
+            let arr_ctyp = get_cexp_typ arr_exp in
+            (match arr_ctyp with
+            | CTypString ->
+                (match idxs with
+                | Domain.Fast i :: [] ->
+                    let (i_exp, ccode) = atom2cexp i ccode kloc in
+                    let get_elem_exp = make_call !std_FX_STR_ELEM [arr_exp; i_exp] CTypUniChar kloc in
+                    (true, get_elem_exp, ccode)
+                | Domain.Elem i :: [] ->
+                    let (i_exp, ccode) = atom2cexp_ i true ccode kloc in
+                    let chk_exp = make_call !std_FX_STR_CHKIDX [arr_exp; i_exp; lbl] CTypBool kloc in
+                    let get_elem_exp = make_call !std_FX_STR_ELEM [arr_exp; i_exp] CTypUniChar kloc in
+                    (true, get_elem_exp, (CExp chk_exp) :: ccode)
+                | Domain.Range(a, b, delta) :: [] ->
+                    let (mask, (a_exp, ccode)) = match a with
+                        | Atom.Lit LitNil -> (1, ((make_int_exp 0 kloc), ccode))
+                        | _ -> (0, (atom2cexp a ccode kloc))
+                        in
+                    let (mask, (b_exp, ccode)) = match b with
+                        | Atom.Lit LitNil -> (2+mask, ((make_int_exp 0 kloc), ccode))
+                        | _ -> (mask, (atom2cexp b ccode kloc))
+                        in
+                    let (delta_exp, ccode) = atom2cexp delta ccode kloc in
+                    let (substr_exp, ccode) = get_dstexp dstexp_r "substr" ctyp [] ccode kloc in
+                    let call_substr = make_call !std_fx_substr
+                        [(cexp_get_addr arr_exp); a_exp; b_exp; delta_exp; (make_int_exp mask kloc);
+                            (cexp_get_addr substr_exp)] CTypCInt kloc in
+                    (false, dummy_exp, (add_fx_call call_substr ccode kloc))
+                | _ -> raise_compile_err kloc
+                    "cgen: unexpected index type when accessing string (should be a single scalar index or range)")
+            | CTypArray _ ->
+                let need_subarr = List.exists (fun d -> match d with Domain.Range _ -> true | _ -> false) idxs in
+                let need_flatten = need_subarr && (match idxs with
+                    | Domain.Range((Atom.Lit LitNil), (Atom.Lit LitNil), (Atom.Lit LitNil)) :: []
+                    | Domain.Range((Atom.Lit (LitInt 0L)), (Atom.Lit LitNil), (Atom.Lit (LitInt 1L))) :: [] -> true
+                    | _ -> false)
                     in
-                let rdata_ctyp = CTypRawArray ([CTypConst], CTypInt) in
-                let rdata_arr = CExpInit((List.rev range_data), (rdata_ctyp, kloc)) in
-                let (rdata_exp, ccode) = create_cdefval (gen_temp_idc "ranges") rdata_ctyp [] "" (Some rdata_arr) ccode kloc in
-                let (subarr_exp, _) = get_dstexp dstexp_r "arr" ctyp [] [] kloc in
-                let call_subarr = make_call !std_fx_subarr [(cexp_get_addr arr_exp);
-                    rdata_exp; (cexp_get_addr subarr_exp)] CTypCInt kloc in
-                (false, subarr_exp, (add_fx_call call_subarr ccode kloc))
-            else
-                let elem_ctyp = ctyp in
-                let (_, chk_exp_opt, i_exps, ccode) = List.fold_left (fun (dim, chk_exp_opt, i_exps, ccode) d ->
-                    match d with
-                    | Domain.Fast i ->
-                        let (i_exp, ccode) = atom2cexp i ccode kloc in
-                        (dim+1, chk_exp_opt, i_exp :: i_exps, ccode)
-                    | Domain.Elem i ->
-                        let (i_exp, ccode) = atom2cexp_ i true ccode kloc in
-                        let chk_exp1 = make_call !std_FX_CHKIDX1 [arr_exp; (make_int_exp dim kloc); i_exp] CTypBool kloc in
-                        let chk_exp_opt = match chk_exp_opt with
-                            | Some(chk_exp) ->
-                                let chk_exp = CExpBinOp(COpLogicAnd, chk_exp, chk_exp1, (CTypBool, kloc)) in
-                                Some chk_exp
-                            | _ -> Some(chk_exp1)
-                            in
-                        (dim+1, chk_exp_opt, i_exp :: i_exps, ccode)
-                    | _ -> raise_compile_err kloc "cgen: unexpected index type")
-                    (0, None, [], ccode) idxs
-                    in
-                let ccode = match chk_exp_opt with
-                    | Some (chk_exp) ->
-                        let l = curr_block_label kloc in
-                        let call_chkidx = make_call !std_FX_CHKIDX [chk_exp; l] CTypVoid kloc in
-                        (CExp call_chkidx) :: ccode
-                    | _ -> ccode
-                    in
-                let ndims = List.length idxs in
-                let get_elem_exp = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
-                    (CExpTyp (elem_ctyp,kloc) :: arr_exp :: (List.rev i_exps)) (make_ptr elem_ctyp) kloc in
-                (true, (cexp_deref get_elem_exp), ccode)
+                if need_flatten then
+                    let (subarr_exp, _) = get_dstexp dstexp_r "arr" ctyp [] ccode kloc in
+                    let call_flatten = make_call (get_id "fx_flatten_arr")
+                        [(cexp_get_addr arr_exp); (cexp_get_addr subarr_exp)] CTypCInt kloc in
+                    (false, subarr_exp, (add_fx_call call_flatten ccode kloc))
+                else if need_subarr then
+                    let (range_data, ccode) = List.fold_left (fun (range_data, ccode) d ->
+                        match d with
+                        | Domain.Elem i | Domain.Fast i ->
+                            let (i_exp, ccode) = atom2cexp i ccode kloc in
+                            ((i_exp :: (make_int_exp 0 kloc) :: range_data), ccode)
+                        | Domain.Range (a, b, delta) ->
+                            let (a_exp, ccode) =
+                                match a with
+                                | Atom.Lit LitNil -> ((make_int_exp 0 kloc), ccode)
+                                | _ -> atom2cexp a ccode kloc
+                                in
+                            let (range_delta, ccode) = match b with
+                                | Atom.Lit LitNil -> ((a_exp :: (make_int_exp 2 kloc) :: []), ccode)
+                                | _ ->
+                                    let (b_exp, ccode) = atom2cexp b ccode kloc in
+                                    ((b_exp :: a_exp :: (make_int_exp 1 kloc) :: []), ccode)
+                                in
+                            let (d_exp, ccode) = atom2cexp delta ccode kloc in
+                            (((d_exp :: range_delta) @ range_data), ccode)) ([], ccode) idxs
+                        in
+                    let rdata_ctyp = CTypRawArray ([CTypConst], CTypInt) in
+                    let rdata_arr = CExpInit((List.rev range_data), (rdata_ctyp, kloc)) in
+                    let (rdata_exp, ccode) = create_cdefval (gen_temp_idc "ranges") rdata_ctyp [] "" (Some rdata_arr) ccode kloc in
+                    let (subarr_exp, ccode) = get_dstexp dstexp_r "arr" ctyp [] ccode kloc in
+                    let call_subarr = make_call !std_fx_subarr [(cexp_get_addr arr_exp);
+                        rdata_exp; (cexp_get_addr subarr_exp)] CTypInt kloc in
+                    (false, subarr_exp, (add_fx_call call_subarr ccode kloc))
+                else
+                    let elem_ctyp = ctyp in
+                    let (_, chk_exp_opt, i_exps, ccode) = List.fold_left (fun (dim, chk_exp_opt, i_exps, ccode) d ->
+                        match d with
+                        | Domain.Fast i ->
+                            let (i_exp, ccode) = atom2cexp i ccode kloc in
+                            (dim+1, chk_exp_opt, i_exp :: i_exps, ccode)
+                        | Domain.Elem i ->
+                            let (i_exp, ccode) = atom2cexp_ i true ccode kloc in
+                            let chk_exp1 = make_call !std_FX_CHKIDX1 [arr_exp; (make_int_exp dim kloc); i_exp] CTypBool kloc in
+                            let chk_exp_opt = match chk_exp_opt with
+                                | Some(chk_exp) ->
+                                    let chk_exp = CExpBinOp(COpLogicAnd, chk_exp, chk_exp1, (CTypBool, kloc)) in
+                                    Some chk_exp
+                                | _ -> Some(chk_exp1)
+                                in
+                            (dim+1, chk_exp_opt, i_exp :: i_exps, ccode)
+                        | _ -> raise_compile_err kloc "cgen: unexpected index type")
+                        (0, None, [], ccode) idxs
+                        in
+                    let ccode = match chk_exp_opt with
+                        | Some (chk_exp) ->
+                            let call_chkidx = make_call !std_FX_CHKIDX [chk_exp; lbl] CTypVoid kloc in
+                            (CExp call_chkidx) :: ccode
+                        | _ -> ccode
+                        in
+                    let ndims = List.length idxs in
+                    let get_elem_exp = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
+                        (CExpTyp (elem_ctyp,kloc) :: arr_exp :: (List.rev i_exps)) (make_ptr elem_ctyp) kloc in
+                    (true, (cexp_deref get_elem_exp), ccode)
+            | _ -> raise_compile_err kloc "unknown/unsupported type of the container, should be CTypArray _ or CTypString")
         | KExpMem(a1, n, _) ->
             let (ce1, ccode) = id2cexp a1 false ccode kloc in
             let (_, ce1, relems, ofs) = get_struct ce1 in

@@ -32,27 +32,29 @@ int fx_init(int argc, char** argv)
     fx_str_t okstr = FX_MAKE_STR("OK");
     fx_std_exn_info[0].name = okstr;
 
+    FX_DECL_STD_EXN(ASCIIError);
     FX_DECL_STD_EXN(AssertError);
+    FX_DECL_STD_EXN(Break);
+    FX_DECL_STD_EXN(DimError);
+    FX_DECL_STD_EXN(DivByZeroError);
+    FX_DECL_STD_EXN(FileOpenError);
+    FX_DECL_STD_EXN(IOError);
     FX_DECL_STD_EXN(NotFoundError);
+    FX_DECL_STD_EXN(NoMatchError);
+    FX_DECL_STD_EXN(NullFileError);
+    FX_DECL_STD_EXN(NullListError);
+    FX_DECL_STD_EXN(NullPtrError);
+    FX_DECL_STD_EXN(OptionError);
     FX_DECL_STD_EXN(OutOfMemError);
     FX_DECL_STD_EXN(OutOfRangeError);
-    FX_DECL_STD_EXN(DivByZeroError);
-    FX_DECL_STD_EXN(SizeMismatchError);
-    FX_DECL_STD_EXN(TypeMismatchError);
-    FX_DECL_STD_EXN(DimError);
+    FX_DECL_STD_EXN(RangeError);
     FX_DECL_STD_EXN(SizeError);
-    FX_DECL_STD_EXN(FileOpenError);
-    FX_DECL_STD_EXN(NullFileError);
-    FX_DECL_STD_EXN(IOError);
-    FX_DECL_STD_EXN(NoMatchError);
-    FX_DECL_STD_EXN(Break);
-    FX_DECL_STD_EXN(Continue);
-    FX_DECL_STD_EXN(NullPtrError);
-    FX_DECL_STD_EXN(ZeroStepError);
-    FX_DECL_STD_EXN(ASCIIError);
-    FX_DECL_STD_EXN(NullListError);
-    FX_DECL_STD_EXN(OptionError);
+    FX_DECL_STD_EXN(SizeMismatchError);
+    FX_DECL_STD_EXN(SysBreak);
+    FX_DECL_STD_EXN(SysContinue);
+    FX_DECL_STD_EXN(TypeMismatchError);
     FX_DECL_STD_EXN(UnknownExnError);
+    FX_DECL_STD_EXN(ZeroStepError);
 
     #undef FX_DECL_STD_EXN
 

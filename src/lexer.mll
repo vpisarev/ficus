@@ -210,6 +210,9 @@ let string_start = ref dummy_pos
 let string_interp_elem = ref 0
 let string_tokens = ref ([] : token list)
 
+type string_literal_t = StrLitPlain | StrLitFmt
+let string_literal_typ = ref StrLitPlain
+
 let comment_start = ref dummy_pos
 let comments_level = ref 0
 
@@ -273,7 +276,6 @@ let decode_special_char lexbuf c = match c with
     | "\\t" -> "\t"
     | "\\r" -> "\r"
     | "\\b" -> "\b"
-    | "\\{" -> "{"
     | "\\0" -> "\x00"
     | _ -> raise (lexErr (sprintf "Invalid control character '%s'" c) lexbuf)
 
@@ -323,7 +325,7 @@ rule tokens = parse
         }
     | "//"  { if (eol_comments lexbuf) = EOF then [EOF] else tokens lexbuf }
 
-    | "\""
+    | ("\"" | "f\"") as s
         {
             check_ne(lexbuf);
             if !string_interp_elem <> 0 then
@@ -335,6 +337,7 @@ rule tokens = parse
             | _ -> ());
             string_start := lexbuf.lex_start_p;
             string_literal := "" ;
+            string_literal_typ := if Utils.starts_with s "f" then StrLitFmt else StrLitPlain;
             strings lexbuf;
             !string_tokens
         }
@@ -602,15 +605,30 @@ and strings = parse
         }
     | "{"
         {
-            push_paren_stack STR_INTERP_LPAREN lexbuf;
-            string_tokens := [(STRING !string_literal); PLUS; (B_IDENT "string"); LPAREN];
-            if !string_interp_elem = 0 then
-                string_tokens := B_LPAREN :: !string_tokens
-            else ();
-            string_literal := "";
-            string_interp_elem := !string_interp_elem + 1;
-            new_exp := true
-            (* return to 'tokens' rule *)
+            match !string_literal_typ with
+            | StrLitPlain ->
+                string_literal := !string_literal ^ "{";
+                strings lexbuf
+            | StrLitFmt ->
+                push_paren_stack STR_INTERP_LPAREN lexbuf;
+                string_tokens := [(STRING !string_literal); PLUS; (B_IDENT "string"); LPAREN];
+                if !string_interp_elem = 0 then
+                    string_tokens := B_LPAREN :: !string_tokens
+                else ();
+                string_literal := "";
+                string_interp_elem := !string_interp_elem + 1;
+                new_exp := true
+                (* return to 'tokens' rule *)
+        }
+
+    | "\\{"
+        {
+            let string_part = match !string_literal_typ with
+                | StrLitPlain -> "\\{"
+                | StrLitFmt -> "{"
+                in
+            string_literal := !string_literal ^ string_part;
+            strings lexbuf
         }
 
     (* we want the produced string literal to be the same, regardless of the actual EOL encoding,

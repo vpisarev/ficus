@@ -28,6 +28,9 @@ fun rev(l: 't list): 't list =
 
 fun array(l: 't list): 't [] = [for x <- l {x}]
 
+fun assoc_opt(l: ('a, 'b) list, x: 'a) =
+    fold r=None for (a, b) <- l {if a == x {break with Some(b)}; r}
+
 fun all(l: 't list, f: 't -> bool): bool =
     fold r=true for a <- l {if !f(a) { break with false}; r}
 

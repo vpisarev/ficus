@@ -4,6 +4,9 @@
 */
 
 // String operations
+
+import List
+
 ccode { #include <string.h> }
 
 inline fun length(s: string) = Builtins.length(s)
@@ -53,24 +56,60 @@ pure nothrow fun rfind(s: string, part: string): int = ccode
 
 pure fun tolower(s: string): string = ccode
 {
-    int_ sz = s->length;
+    int_ i, sz = s->length;
+    const char_* src = s->data;
+    for (i = 0; i < sz; i++ ) {
+        char_ c = src[i];
+        if (fx_tolower(c) != c) break;
+    }
+    if (i == 0) {
+        fx_copy_str(s, fx_result);
+        return FX_OK;
+    }
     int fx_status = fx_make_str(0, sz, fx_result);
     if( fx_status >= 0 ) {
-        char_* ptr = (char_*)fx_result->data;
+        char_* dst = fx_result->data;
         for (size_t i = 0; i < sz; i++)
-            ptr[i] = fx_tolower(ptr[i]);
+            dst[i] = fx_tolower(src[i]);
     }
     return fx_status;
 }
 
 pure fun toupper(s: string): string = ccode
 {
-    int_ sz = s->length;
+    int_ i, sz = s->length;
+    const char_* src = s->data;
+    for (i = 0; i < sz; i++ ) {
+        char_ c = src[i];
+        if (fx_toupper(c) != c) break;
+    }
+    if (i == 0) {
+        fx_copy_str(s, fx_result);
+        return FX_OK;
+    }
     int fx_status = fx_make_str(0, sz, fx_result);
     if( fx_status >= 0 ) {
-        char_* ptr = (char_*)fx_result->data;
+        char_* dst = fx_result->data;
         for (size_t i = 0; i < sz; i++)
-            ptr[i] = fx_toupper(ptr[i]);
+            dst[i] = fx_toupper(src[i]);
+    }
+    return fx_status;
+}
+
+pure fun capitalize(s: string): string = ccode
+{
+    int_ sz = s->length;
+    const char_* src = s->data;
+    if (sz == 0 || fx_toupper(src[0]) == src[0]) {
+        fx_copy_str(s, fx_result);
+        return FX_OK;
+    }
+    int fx_status = fx_make_str(0, sz, fx_result);
+    if( fx_status >= 0 ) {
+        char_* dst = fx_result->data;
+        dst[0] = fx_toupper(src[0]);
+        for (size_t i = 1; i < sz; i++)
+            dst[i] = src[i];
     }
     return fx_status;
 }
@@ -82,7 +121,7 @@ pure fun lstrip(s: string): string = ccode
     size_t i = 0;
     for (; i < sz && fx_isspace(ptr[i]); i++)
         ;
-    return fx_substr(s, i, sz, fx_result);
+    return fx_substr(s, i, sz, 1, 0, fx_result);
 }
 
 pure fun rstrip(s: string): string = ccode
@@ -91,7 +130,7 @@ pure fun rstrip(s: string): string = ccode
     size_t sz = s->length;
     for (; sz > 0 && fx_isspace(ptr[sz - 1]); sz--)
         ;
-    return fx_substr(s, 0, sz, fx_result);
+    return fx_substr(s, 0, sz, 1, 0, fx_result);
 }
 
 pure fun strip(s: string): string = ccode
@@ -102,7 +141,23 @@ pure fun strip(s: string): string = ccode
         ;
     for (; sz > i && fx_isspace(ptr[sz - 1]); sz--)
         ;
-    return fx_substr(s, i, sz, fx_result);
+    return fx_substr(s, i, sz, 1, 0, fx_result);
+}
+
+fun tokens(s: string, f: char->bool)
+{
+    val len = length(s)
+    val fold (sl, start, sep) = ([], 0, true) for c <- s, i <- 0: {
+        if f(c) {
+            if sep { (sl, start, sep) }
+            else { (s[start:i] :: sl, start, true) }
+        } else {
+            val start = if sep {i} else {start}
+            if i+1 < len { (sl, start, false) }
+            else { (s[start:] :: sl, start, sep) }
+        }
+    }
+    List.rev(sl)
 }
 
 pure nothrow fun isalpha(c: char): bool = ccode { return fx_isalpha(c) }

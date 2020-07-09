@@ -34,27 +34,30 @@ extern "C" {
 enum
 {
     FX_OK = 0,
-    FX_EXN_UnknownExnError = -1,
+
+    FX_EXN_ASCIIError = -1,
     FX_EXN_AssertError = -2,
-    FX_EXN_NotFoundError = -3,
-    FX_EXN_OutOfMemError = -4,
-    FX_EXN_OutOfRangeError = -5,
-    FX_EXN_DivByZeroError = -6,
-    FX_EXN_SizeMismatchError = -7,
-    FX_EXN_TypeMismatchError = -8,
-    FX_EXN_DimError = -9,
-    FX_EXN_SizeError = -10,
-    FX_EXN_FileOpenError = -11,
-    FX_EXN_NullFileError = -12,
-    FX_EXN_IOError = -13,
-    FX_EXN_NoMatchError = -14,
-    FX_EXN_Break = -15,
-    FX_EXN_Continue = -16,
-    FX_EXN_NullPtrError = -17,
-    FX_EXN_ZeroStepError = -18,
-    FX_EXN_ASCIIError = -19,
-    FX_EXN_NullListError = -20,
-    FX_EXN_OptionError = -21,
+    FX_EXN_Break = -3,
+    FX_EXN_DimError = -4,
+    FX_EXN_DivByZeroError = -5,
+    FX_EXN_FileOpenError = -6,
+    FX_EXN_IOError = -7,
+    FX_EXN_NotFoundError = -8,
+    FX_EXN_NoMatchError = -9,
+    FX_EXN_NullFileError = -10,
+    FX_EXN_NullListError = -11,
+    FX_EXN_NullPtrError = -12,
+    FX_EXN_OptionError = -13,
+    FX_EXN_OutOfMemError = -14,
+    FX_EXN_OutOfRangeError = -15,
+    FX_EXN_RangeError = -16,
+    FX_EXN_SizeError = -17,
+    FX_EXN_SizeMismatchError = -18,
+    FX_EXN_SysBreak = -19,
+    FX_EXN_SysContinue = -20,
+    FX_EXN_TypeMismatchError = -21,
+    FX_EXN_UnknownExnError = -22,
+    FX_EXN_ZeroStepError = -23,
 
     FX_EXN_StdMax = -48,
 
@@ -125,17 +128,17 @@ void fx_free(void* ptr);
 // break/continue are execution flow control operators, not real exceptions,
 // and they are guaranteed to be "caught" (one cannot place them outside of loops),
 // so we don't use FX_SET_EXN_EXN_FAST() etc.
-#define FX_BREAK(label) { fx_status = FX_EXN_Break; goto label; }
-#define FX_CONTINUE(label) { fx_status = FX_EXN_Continue; goto label; }
+#define FX_BREAK(label) { fx_status = FX_EXN_SysBreak; goto label; }
+#define FX_CONTINUE(label) { fx_status = FX_EXN_SysContinue; goto label; }
 #define FX_CHECK_CONTINUE() \
-    if (fx_status != FX_EXN_Continue) ; else fx_status = FX_OK
+    if (fx_status != FX_EXN_SysContinue) ; else fx_status = FX_OK
 #define FX_CHECK_BREAK() \
-    if(fx_status != FX_EXN_Break) ; else { \
+    if(fx_status != FX_EXN_SysBreak) ; else { \
         fx_status = FX_OK; \
         break; \
     }
 #define FX_CHECK_BREAK_ND(br_label) \
-    if(fx_status != FX_EXN_Break) ; else { \
+    if(fx_status != FX_EXN_SysBreak) ; else { \
         fx_status = FX_OK; \
         goto br_label; \
     }
@@ -308,17 +311,24 @@ void fx_free_str(fx_str_t* str);
 void fx_free_cstr(fx_cstr_t* cstr);
 void fx_copy_str(const fx_str_t* src, fx_str_t* dst);
 int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
+
+#define FX_COPY_STR(src, dst) if((src)->rc) { FX_INCREF(*(src)->rc); *(dst) = *(src); } else *(dst) = *(src);
 #define FX_FREE_STR(str) if(!(str)->rc) ; else fx_free_str(str)
 #define FX_FREE_CSTR(cstr) if(!(cstr)->rc) ; else fx_free_cstr(cstr)
 #define FX_MAKE_STR(strlit) { 0, U##strlit, (int_)(sizeof(U##strlit)/sizeof(char_)-1) }
 #define FX_CHAR(c) U##c
+
+#define FX_STR_LENGTH(str) (str).length
+#define FX_STR_CHKIDX(str, idx, catch_label) \
+    if((size_t)(idx) < (size_t)(str).length) ; else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
+#define FX_STR_ELEM(str, idx) (str).data[idx]
 
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
 size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
 
 int fx_ascii2str(const char* cstr, int_ length, fx_str_t* str);
 int fx_cstr2str(const char* cstr, int_ length, fx_str_t* str);
-int fx_substr(const fx_str_t* str, int_ start, int_ end, fx_str_t* substr);
+int fx_substr(const fx_str_t* str, int_ start, int_ end, int_ delta, int mask, fx_str_t* substr);
 int fx_strjoin(const fx_str_t* begin, const fx_str_t* end, const fx_str_t* sep,
                 const fx_str_t* strs, int_ count, fx_str_t* result);
 

@@ -5,8 +5,8 @@ fun contains(r: 'z rect_, p: 'z point_) =
     r.x <= p.x < r.x + r.width &&
     r.y <= p.y < r.y + r.height
 
-fun string(p: 't point_) = "point \{x={p.x}, y={p.y}}"
-fun string(r: 't rect_) = "rect \{x={r.x}, y={r.y}, width={r.width}, height={r.height}}"
+fun string(p: 't point_) = f"point \{x={p.x}, y={p.y}}"
+fun string(r: 't rect_) = f"rect \{x={r.x}, y={r.y}, width={r.width}, height={r.height}}"
 
 val ip = point_ {x=1, y=2}
 val fp = point_ {x=10.f, y=20.f}
@@ -17,5 +17,5 @@ val fr = rect_ {x=0.f, y=0.f, width=10.f, height=10.f}
 fun inside_outside(p: 't point_, r: 't rect_) =
     if contains(r, p) {"inside"} else {"outside of"}
 
-println("{ip} is {inside_outside(ip, ir)} {ir}")
-println("{fp} is {inside_outside(fp, fr)} {fr}")
+println(f"{ip} is {inside_outside(ip, ir)} {ir}")
+println(f"{fp} is {inside_outside(fp, fr)} {fr}")

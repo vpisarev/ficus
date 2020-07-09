@@ -6,18 +6,27 @@
 /* Ficus built-in module, i.e. each Ficus module is compiled
    as if it has "from Builtins import *" directive in the beginning */
 
-exception Fail: string
-exception NotFoundError
-exception OutOfRangeError
-exception NoMatchError
-exception OptionError
-exception NullListError
-exception SizeMismatchError
-exception FileOpenError
-exception NullFileError
-exception IOError
+exception ASCIIError
 exception AssertError
 exception Break
+exception DimError
+exception DivByZeroError
+exception Fail: string
+exception FileOpenError
+exception IOError
+exception NoMatchError
+exception NotFoundError
+exception NullFileError
+exception NullListError
+exception NullPtrError
+exception OptionError
+exception OutOfMemError
+exception OutOfRangeError
+exception RangeError
+exception SizeError
+exception SizeMismatchError
+exception TypeMismatchError
+exception ZeroStepError
 
 fun assert(f: bool) = if !f {throw AssertError}
 
@@ -341,6 +350,7 @@ nothrow fun print(a: double): void = ccode { printf((a == (int)a ? "%.1f" : "%.1
 fun print(a: string) = print_string(a)
 fun print_repr(a: 't) = print(a)
 fun print_repr(a: string) { print("\""); print(a); print("\"") }
+fun print_repr(a: char) { print("'"); print(a); print("'") }
 fun print(a: 't [])
 {
     print("[")
@@ -364,7 +374,7 @@ fun print(a: 't [,])
             if j > 0 {print(", ")}
             print_repr(a[i,j])
         }
-        if i < m-1 {print(";\n ")} else {print("]\n")}
+        if i < m-1 {print(";\n ")} else {print("]")}
     }
 }
 fun print(l: 't list)

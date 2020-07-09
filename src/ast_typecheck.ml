@@ -879,10 +879,8 @@ and check_exp e env sc =
     | ExpBinOp(bop, e1, e2, _) ->
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
-        let etyp1 = deref_typ etyp1 in
         let new_e2 = check_exp e2 env sc in
         let (etyp2, eloc2) = get_exp_ctx new_e2 in
-        let etyp2 = deref_typ etyp2 in
         let bop_wo_dot = binop_try_remove_dot bop in
 
         (* depending on the operation, figure out the type of result
@@ -902,7 +900,7 @@ and check_exp e env sc =
             | _ -> (bop, typ_opt))
         | OpBitwiseAnd | OpBitwiseOr | OpBitwiseXor ->
             let check_bitwise t1 t2 =
-                (match (t1, t2) with
+                (match ((deref_typ t1), (deref_typ t2)) with
                 | (TypInt, TypInt) -> TypInt
                 | (TypSInt(b1), TypSInt(b2)) when b1 = b2 -> TypSInt(b1)
                 | (TypUInt(b1), TypUInt(b2)) when b1 = b2 -> TypUInt(b1)
@@ -939,7 +937,7 @@ and check_exp e env sc =
                 (bop, None)
         | OpSpaceship | OpDotSpaceship ->
             if ((is_typ_scalar etyp1) && (is_typ_scalar etyp2)) ||
-                (etyp1 = TypString && etyp2 = TypString) then
+                ((deref_typ etyp1) = TypString && (deref_typ etyp2) = TypString) then
                 (bop_wo_dot, None)
             else
                 (bop, None)
@@ -1042,25 +1040,30 @@ and check_exp e env sc =
     | ExpAt(arr, idxs, _) ->
         let new_arr = check_exp arr env sc in
         let (new_atyp, new_aloc) = get_exp_ctx new_arr in
-        let et = make_new_typ() in
         (match idxs with
         (* flatten case "arr[:]" *)
         | ExpRange(None, None, None, _) :: [] ->
             let new_idx = check_exp (List.hd idxs) env sc in
             (match (deref_typ new_atyp) with
-            | TypArray(d, et) -> unify etyp (TypArray(1, et)) eloc
-                "the result of flatten operation ([:]) must be 1D array with elements of the same type as input array";
+            | TypArray(d, et) ->
+                unify etyp (TypArray(1, et)) eloc
+                "the result of flatten operation ([:]) applied to N-D array must be 1D array with elements of the same type as input array";
                 ExpAt(new_arr, new_idx :: [], ctx)
+            | TypString ->
+                unify etyp TypString eloc
+                "the result of flatten operation ([:]) applied to string must be string";
+                new_arr
             | _ -> raise_compile_err eloc "the argument of the flatten operation must be an array")
         (* other cases: check each index, it should be either a scalar or a range;
            in the first case it should have integer type.
            If all the indices are scalars, then the result should have et type,
            otherwise it's an array of as high dimensionality as the number of range indices *)
         | _ ->
-            let (new_idxs, nidx, nrange_idx) = List.fold_left (fun (new_idxs, nidx, nrange_idx) idx ->
+            let (new_idxs, ndims, nfirst_scalars, nranges) =
+                List.fold_left (fun (new_idxs, ndims, nfirst_scalars, nranges) idx ->
                 let new_idx = check_exp idx env sc in
                 match new_idx with
-                | ExpRange(_, _, _, _) -> (new_idx :: new_idxs, nidx+1, nrange_idx+1)
+                | ExpRange(_, _, _, _) -> (new_idx :: new_idxs, ndims+1, nfirst_scalars, nranges+1)
                 | _ ->
                     let (new_ityp, new_iloc) = get_exp_ctx new_idx in
                     let new_idx = if (maybe_unify new_ityp TypInt true) then new_idx else
@@ -1070,13 +1073,21 @@ and check_exp e env sc =
                             ExpCast(new_idx, TypInt, (TypInt, new_iloc))
                         else raise_compile_err new_iloc
                             "each scalar index in array access op must have some integer type or bool" in
-                    (new_idx :: new_idxs, nidx+1, nrange_idx)) ([], 0, 0) idxs in
-            unify new_atyp (TypArray(nidx, et)) new_aloc "the array dimensionality does not match the number of indices";
-            (if nrange_idx = 0 then
-                unify etyp et eloc "the type of array access expression does not match the array element type"
-            else
-                unify etyp (TypArray(nidx, et)) eloc
-                  "the number of ranges does not match dimensionality of the result, or the element type is incorrect");
+                    let nfirst_scalars = if nranges = 0 then nfirst_scalars + 1 else nfirst_scalars in
+                    (new_idx :: new_idxs, ndims+1, nfirst_scalars, nranges)) ([], 0, 0, 0) idxs in
+            (match (ndims, nranges, (deref_typ new_atyp)) with
+            | (1, 0, TypString) ->
+                unify etyp TypChar new_aloc "indexing string should give a char"
+            | (1, 1, TypString) ->
+                unify etyp TypString new_aloc "indexing string with a range should give a string"
+            | _ ->
+                let et = make_new_typ() in
+                unify new_atyp (TypArray(ndims, et)) new_aloc "the array dimensionality does not match the number of indices";
+                (if nranges = 0 then
+                    unify etyp et eloc "the type of array access expression does not match the array element type"
+                else
+                    unify etyp (TypArray(ndims - nfirst_scalars, et)) eloc
+                    "the number of ranges does not match dimensionality of the result, or the element type is incorrect"));
             ExpAt(new_arr, (List.rev new_idxs), ctx))
     | ExpIf(c, e1, e2, _) ->
         let (ctyp, cloc) = get_exp_ctx c in
