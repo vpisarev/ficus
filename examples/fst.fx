@@ -181,15 +181,12 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     val fold (minv, maxv)=(v0, v0) for y <- tab { (min(minv, y), max(maxv, y)) }
     val scale = (h-1)/(maxv - minv)
 
-    val screen: char [,] = array((h, w+1), ' ')
+    val screen: char [,] = array((h, w), ' ')
     for x <- 0:w, y <- tab {
         val iy = Math.round((y-minv)*scale)
         screen[h-1-clip(iy, 0, h-1), x] = '*'
     }
-    for y <- 0:h {
-        screen[y,w] = '\n'
-    }
-    println(screen[:])
+    for y <- 0:h { println(screen[y,:]) }
 }
 
 val a = (Math.pi*(-0.5) :> float), b = (-a*5 :> float)
