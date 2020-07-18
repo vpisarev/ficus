@@ -116,6 +116,21 @@ and pprint_kexp_ e prtyp =
     let pprint_dom_ r = pprint_dom r eloc in
     let pprint_id_ i = pprint_atom_ (Atom.Id i) in
     let pprint_id_label i = pstr (idk2str i eloc) in
+    let pprint_for_hdr pre_exp for_cl at_ids =
+        pstr "FOR ("; pcut();
+        (match pre_exp with
+        | KExpNop _ -> ()
+        | _ -> pprint_kexp_ e false; pstr ";"; pspace());
+        (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
+        pprint_id n eloc; pspace(); pstr "<-"; pspace(); pprint_dom_ dom) for_cl);
+        if at_ids = [] then () else
+        (pspace(); pstr "@(";
+        List.iteri (fun i at_id ->
+            if i = 0 then pcut() else (pstr ","; pspace());
+            pprint_id_ at_id) at_ids;
+        pcut(); pstr ")");
+        pcut(); pstr ")"
+        in
     let obox_cnt = ref 0 in
     let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0 eloc; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
     let cbox_() = if !obox_cnt <> 0 then (cbox(); obox_cnt := !obox_cnt - 1) else () in
@@ -290,18 +305,15 @@ and pprint_kexp_ e prtyp =
             obox(); pstr "WHILE ("; pprint_kexp c; pstr ")"; pspace(); pprint_kexp body; cbox()
         | KExpDoWhile(body, c, _) ->
             obox(); pstr "DO"; pprint_kexp body; pspace(); pstr "WHILE ("; pprint_kexp c; pstr ")"; cbox()
-        | KExpFor (for_cl, for_body, flags, loc) ->
+        | KExpFor (for_cl, at_ids, for_body, flags, loc) ->
             obox(); Ast_pp.pprint_for_flags flags;
-            pstr "FOR ("; (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
-                pprint_id n loc; pspace(); pstr "<-"; pspace(); pprint_dom_ dom) for_cl);
-            pstr ")"; pspace(); pprint_kexp for_body; cbox()
+            pprint_for_hdr (KExpNop loc) for_cl at_ids;
+            pspace(); pprint_kexp for_body; cbox()
         | KExpMap(map_cl, map_body, flags, (_, loc)) ->
             obox(); Ast_pp.pprint_for_flags flags;
             pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else ();
-            (List.iter (fun (pre_e, pe_l) -> pstr "FOR ("; pprint_kexp pre_e; pstr ";"; pcut();
-              (List.iteri (fun i (n, dom) -> if i = 0 then () else (pstr ","; pspace());
-              pprint_id n loc; pspace(); pstr "<-"; pspace(); pprint_dom_ dom) pe_l);
-              pstr ")"; pspace()) map_cl);
+            (List.iter (fun (pre_e, pe_l, at_ids) ->
+              pprint_for_hdr pre_e pe_l at_ids; pspace ()) map_cl);
             pprint_kexp map_body; pstr "]"; cbox()
         | KExpMatch (cases, _) ->
             obox(); List.iteri (fun i (checks_i, e_i) ->

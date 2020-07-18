@@ -146,18 +146,14 @@ pure fun strip(s: string): string = ccode
 
 fun tokens(s: string, f: char->bool)
 {
-    val len = length(s)
     val fold (sl, start, sep) = ([], 0, true) for c <- s, i <- 0: {
         if f(c) {
-            if sep { (sl, start, sep) }
-            else { (s[start:i] :: sl, start, true) }
+            (if sep {sl} else {s[start:i] :: sl}, start, true)
         } else {
-            val start = if sep {i} else {start}
-            if i+1 < len { (sl, start, false) }
-            else { (s[start:] :: sl, start, sep) }
+            (sl, if sep {i} else {start}, false)
         }
     }
-    List.rev(sl)
+    List.rev(if sep {sl} else {s[start:] :: sl})
 }
 
 pure nothrow fun isalpha(c: char): bool = ccode { return fx_isalpha(c) }

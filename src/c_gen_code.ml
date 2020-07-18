@@ -620,7 +620,7 @@ let gen_ccode top_code =
         sprintf "cgen: %sfor-loop%s: %s" for_msg_prefix it_clause msg
     in
 
-    let compute_for_ndims for_idx nfors kdl for_loc =
+    let compute_for_ndims for_idx nfors idoml for_loc =
         let (_, ndims) = List.fold_left (fun (k, ndims) (_, dom_i) ->
             let ndims_i =
                 match dom_i with
@@ -634,17 +634,46 @@ let gen_ccode top_code =
                 raise_compile_err for_loc (for_err_msg k for_idx nfors
                 (sprintf "dimensionalities of the simultaneously iterated collections/ranges are not the same (...%d...%d...)" ndims ndims_i))
             else ();
-            (k+1, ndims_i)) (0, 0) kdl
+            (k+1, ndims_i)) (0, 0) idoml
         in ndims
     in
 
-    let process_for lbl kdl for_idx nfors ndims dims_ofs nested_e_kdl init_ccode loc =
+    let process_for lbl idoml at_ids for_idx nfors ndims dims_ofs nested_e_idoml init_ccode loc =
         let for_loc = get_start_loc loc in
         let end_for_loc = get_end_loc loc in
-        let _ = if kdl <> [] then () else
+        let _ = if idoml <> [] then () else
             raise_compile_err loc (for_err_msg for_idx nfors (-1) "empty list of for iteration values")
             in
-
+        let (idoml, at_ids) = if at_ids = [] then (idoml, at_ids) else
+            (let have_good_idx = List.exists (fun (_, dom_i) -> match dom_i with
+                | Domain.Elem (Atom.Id k) | Domain.Fast (Atom.Id k) ->
+                    (match (deref_ktyp (get_idk_ktyp k loc) loc) with
+                    | KTypList _ -> false
+                    | _ -> true)
+                (* [TODO] make an alias in this case instead of adding another iteration variable;
+                   but C compiler should eliminate it anyway *)
+                | Domain.Range (_, _, Atom.Lit (LitInt 1L)) -> false
+                | Domain.Range (_, Atom.Lit (LitNil), _) -> false
+                | _ -> true) idoml
+                in
+            (match (have_good_idx, at_ids) with
+            | (true, _) -> (idoml, at_ids)
+            | (false, i :: []) ->
+                let i_iter = (i, Domain.Range(Atom.Lit(LitInt 0L), Atom.Lit LitNil, Atom.Lit(LitInt 1L))) in
+                ((i_iter :: idoml), [])
+            | _ -> raise_compile_err loc
+                (for_err_msg for_idx nfors 0 "here @ clause should contain just one scalar index")))
+            in
+        let get_iter_id k at_ids prefix =
+            match at_ids with
+            | [] -> gen_temp_idc prefix
+            | _ ->
+                if k < (List.length at_ids) then
+                    (List.nth at_ids k)
+                else
+                    raise_compile_err loc (for_err_msg for_idx nfors 0
+                        "the list of '@' indices is too short for array; looks like it's bug in type checker")
+            in
         (*
             [TODO] parallel loops are not supported yet.
 
@@ -765,7 +794,7 @@ let gen_ccode top_code =
                                 | _ ->
                                     let (add_pair, i_id) = match (a, delta) with
                                         | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> (false, iter_val_i)
-                                        | _ -> (true, (dup_idc iter_val_i))
+                                        | _ -> (true, get_iter_id 0 at_ids (pp_id2str iter_val_i))
                                         in
                                     let (n_exp, init_ccode) =
                                         if is_canonical_for && (is_immutable_atomic_cexp b_exp) then
@@ -789,7 +818,8 @@ let gen_ccode top_code =
                         let ctyp = C_gen_types.ktyp2ctyp ktyp for_loc in
                         (* before running iteration over a collection,
                             we need to make sure that it will not be deallocated in the middle *)
-                        let (col_exp, init_ccode) = if col_ <> noid && List.exists (fun (e, _) -> occurs_id_kexp col_ e) nested_e_kdl then
+                        let (col_exp, init_ccode) = if col_ <> noid &&
+                            List.exists (fun (e, _, _) -> occurs_id_kexp col_ e) nested_e_idoml then
                                 let (src_exp, init_ccode) = atom2cexp (Atom.Id col_) init_ccode for_loc in
                                 (*let src_exp = make_id_exp col_ (get_idk_loc col_ for_loc) in*)
                                 let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col_) ctyp [] init_ccode for_loc in
@@ -837,7 +867,8 @@ let gen_ccode top_code =
                                 | _ ->
                                     let (n_exp, init_ccode) = add_local (gen_temp_idc "len") CTypInt
                                         [] (Some calc_n_exp) init_ccode for_loc in
-                                    let (i_exp, _) = add_local (gen_temp_idc (List.nth for_letters dims_ofs)) CTypInt [ValMutable] None [] for_loc in
+                                    let i_id = get_iter_id 0 at_ids (List.nth for_letters dims_ofs) in
+                                    let (i_exp, _) = add_local i_id CTypInt [ValMutable] None [] for_loc in
                                     (i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
                                 in
                             let get_chars = cexp_mem col_exp (get_id "data") (make_const_ptr CTypUniChar) in
@@ -866,7 +897,8 @@ let gen_ccode top_code =
                                         let iter_letter = List.nth for_letters (k + dims_ofs) in
                                         let (n_exp, init_ccode) = add_local (gen_temp_idc ("n" ^ iter_letter)) CTypInt
                                             [] (Some calc_n_exp) init_ccode for_loc in
-                                        let (i_exp, _) = add_local (gen_temp_idc iter_letter) CTypInt [ValMutable] None [] for_loc in
+                                        let i_id = get_iter_id k at_ids iter_letter in
+                                        let (i_exp, _) = add_local i_id CTypInt [ValMutable] None [] for_loc in
                                         (i_exp :: i_exps, n_exp :: n_exps, init_ccode))
                                         ([], [], init_ccode) (List.init ndims (fun k -> k))
                                     in ((List.rev i_exps), (List.rev n_exps), init_checks, init_ccode)
@@ -896,7 +928,7 @@ let gen_ccode top_code =
                         raise_compile_err for_loc (for_err_msg for_idx nfors k "unsupported type of the for loop iteration domain")
                 in (k+1, lists_i @ list_exps, i_exps, n_exps, for_checks, incr_exps, init_checks,
                     init_ccode, pre_body_ccode, body_elems, post_checks))
-                (0, [], [], [], [], [], [], init_ccode, [], [], []) kdl
+                (0, [], [], [], [], [], [], init_ccode, [], [], []) idoml
             in
         (* add initial size checks *)
         let init_ccode = add_size_eq_check (List.rev init_checks) init_ccode lbl for_loc in
@@ -1644,7 +1676,7 @@ let gen_ccode top_code =
             let (ce1, ccode) = atom2cexp a1 ccode kloc in
             let ctyp = C_gen_types.ktyp2ctyp kt kloc in
             (true, CExpCast(ce1, ctyp, kloc), ccode)
-        | KExpMap(e_kdl_l, body, flags, _) ->
+        | KExpMap(e_idoml_l, body, flags, _) ->
             (*
                 1. generate output collection (`arr/list_first = get_dstexp).
                    in the case of list also declare `_fx_L... list_last=0;`
@@ -1681,11 +1713,11 @@ let gen_ccode top_code =
             let end_for_loc = get_end_loc kloc in
             let need_make_list = List.mem ForMakeList flags in
             let need_make_array = (List.mem ForMakeArray flags) || not need_make_list in
-            let nfors = List.length e_kdl_l in
+            let nfors = List.length e_idoml_l in
             (* compute the total array dimensionality *)
-            let (_, ndims) = List.fold_left (fun (for_idx, ndims) (e, kdl) ->
-                let ndims_i = compute_for_ndims for_idx nfors kdl for_loc in
-                (for_idx+1, ndims + ndims_i)) (0, 0) e_kdl_l
+            let (_, ndims) = List.fold_left (fun (for_idx, ndims) (e, idoml, _) ->
+                let ndims_i = compute_for_ndims for_idx nfors idoml for_loc in
+                (for_idx+1, ndims + ndims_i)) (0, 0) e_idoml_l
                 in
             (* declare the output array/list; in the case of array also declare the output pointer;
                in the case of list also declare pointer to the last list element *)
@@ -1709,11 +1741,11 @@ let gen_ccode top_code =
                     "cgen: invalid combination of comprehension type (%s) and the output collection type"
                     (if need_make_array then "MAKE_ARRAY" else if need_make_list then "MAKE_LIST" else "???"))
                 in
-            let rec form_map for_idx e_kdl_l prev_n_exps =
-                let (init_kexp, kdl, nested_e_kdl) =
-                    match e_kdl_l with
-                    | (e, kdl) :: rest -> (e, kdl, rest)
-                    | _ -> raise_compile_err for_loc "cgen: empty e_kdl_l in KExpMap"
+            let rec form_map for_idx e_idoml_l prev_n_exps =
+                let (init_kexp, idoml, at_ids, nested_e_idoml) =
+                    match e_idoml_l with
+                    | (e, idoml, at_ids) :: rest -> (e, idoml, at_ids, rest)
+                    | _ -> raise_compile_err for_loc "cgen: empty e_idoml_l in KExpMap"
                     in
                 let dims_ofs = List.length prev_n_exps in
                 let nested_loc = get_kexp_loc init_kexp in
@@ -1721,7 +1753,7 @@ let gen_ccode top_code =
                 let (_, init_ccode) = kexp2cexp init_kexp (ref None) [] in
                 let lbl = curr_block_label nested_loc in
                 let (for_headers, list_exps, n_exps, init_ccode, pre_body_ccode, body_elems, post_ccode) =
-                    process_for lbl kdl for_idx nfors ndims dims_ofs nested_e_kdl init_ccode nested_loc in
+                    process_for lbl idoml at_ids for_idx nfors ndims dims_ofs nested_e_idoml init_ccode nested_loc in
                 let (ndims_i, n_exps, init_ccode) = match (list_exps, n_exps, need_make_array) with
                     | (_, n_exp :: _, _) -> ((List.length n_exps), n_exps, init_ccode)
                     | (l_exp :: _, [], true) ->
@@ -1762,8 +1794,8 @@ let gen_ccode top_code =
                 let _ = new_for_block_ctx ndims for_flags kloc in
                 (* inside the loop body context form `<etyp> v=e` expressions (or more complex ones in the case of complex types) *)
                 let body_ccode = decl_for_body_elems body_elems [] in
-                let (add_incr_dstptr, body_ccode) = match nested_e_kdl with
-                    | (body, []) :: [] ->
+                let (add_incr_dstptr, body_ccode) = match nested_e_idoml with
+                    | (body, [], []) :: [] ->
                         (* add the loop body itself *)
                         let (result, body_ccode) = kexp2cexp body (ref None) body_ccode in
                         let body_loc = get_kexp_loc body in
@@ -1796,7 +1828,7 @@ let gen_ccode top_code =
                             let append_call = make_call !std_FX_LIST_APPEND [dst_exp; lstend; node_exp] CTypVoid body_loc in
                             (false, (CExp append_call) :: body_ccode)
                     | _ ->
-                        (false, (form_map (for_idx+1) nested_e_kdl n_exps))
+                        (false, (form_map (for_idx+1) nested_e_idoml n_exps))
                     in
                 (* add the initialization and the cleanup sections, if needed *)
                 let (br_label, body_stmt) = finalize_loop_body body_ccode (not need_make_array) kloc in
@@ -1814,15 +1846,15 @@ let gen_ccode top_code =
                 let post_ccode = if br_label = noid then post_ccode else (CStmtLabel(br_label, end_for_loc)) :: post_ccode in
                 post_ccode @ (for_stmt :: init_ccode)
             in
-            let map_ccode = form_map 0 (e_kdl_l@[(body, [])]) [] in
+            let map_ccode = form_map 0 (e_idoml_l@[(body, [], [])]) [] in
             (false, dummy_exp, map_ccode @ ccode)
-        | KExpFor(kdl, body, flags, _) ->
+        | KExpFor(idoml, at_ids, body, flags, _) ->
             let lbl = curr_block_label kloc in
             let for_loc = get_start_loc kloc in
             let end_for_loc = get_end_loc kloc in
-            let ndims = compute_for_ndims 0 1 kdl for_loc in
+            let ndims = compute_for_ndims 0 1 idoml for_loc in
             let (for_headers, _, _, ccode, pre_body_ccode, body_elems, post_ccode) =
-                process_for lbl kdl 0 1 ndims 0 [(body, [])] ccode kloc
+                process_for lbl idoml at_ids 0 1 ndims 0 [(body, [], [])] ccode kloc
                 in
             let _ = new_for_block_ctx ndims flags kloc in
             (* inside the loop body context form `<etyp> v=e` expressions (or more complex ones in the case of complex types) *)

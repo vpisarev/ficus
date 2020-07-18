@@ -400,6 +400,8 @@ let lift_all top_code =
     let curr_clo = ref (noid, noid, noid) in
     let curr_top_code = ref ([]: kexp_t list) in
     let curr_subst_env = ref (Env.empty : ll_subst_env_t) in
+    let add_to_defined_so_far i =
+        defined_so_far := IdSet.add i !defined_so_far in
 
     let rec walk_atom_n_lift_all_adv a loc get_mkclosure_arg =
         match a with
@@ -431,14 +433,14 @@ let lift_all top_code =
             let saved_clo = !curr_clo in
             let saved_subst_env = !curr_subst_env in
             let _ = curr_clo := (kf_name, kci_arg, kci_fcv_t) in
-            let _ = defined_so_far := List.fold_left (fun dsf (arg, _) -> IdSet.add arg dsf) !defined_so_far kf_args in
+            let _ = List.iter (fun (arg, _) -> add_to_defined_so_far arg) kf_args in
 
             let create_defclosure kf code =
                 let {kf_name; kf_args; kf_rt; kf_closure={kci_make_fp=make_fp}; kf_scope; kf_loc} = !kf in
                 let kf_typ = get_kf_typ kf_args kf_rt in
                 let cl_name = dup_idk kf_name in
                 let _ = curr_subst_env := Env.add kf_name (cl_name, cl_name) !curr_subst_env in
-                let _ = defined_so_far := IdSet.add cl_name !defined_so_far in
+                let _ = add_to_defined_so_far cl_name in
                 let (_, orig_freevars) = get_closure_freevars kf_name kf_loc in
                 let cl_args = List.map (fun fv ->
                     if IdSet.mem fv !defined_so_far then ()
@@ -476,7 +478,7 @@ let lift_all top_code =
                             (sprintf "free variable '%s' of function '%s' is not defined before the function body"
                             (id2str fv_orig) (id2str kf_name)) in
                         let fv_proxy = dup_idk fv in
-                        let _ = defined_so_far := IdSet.add fv_proxy !defined_so_far in
+                        let _ = add_to_defined_so_far fv_proxy in
                         let (t, kv_flags) = match (kinfo_ fv_orig kf_loc) with
                             | KVal {kv_typ; kv_flags} -> (kv_typ, kv_flags)
                             | _ -> (t, []) in
@@ -528,12 +530,12 @@ let lift_all top_code =
             curr_top_code := (KDefFun kf) :: !curr_top_code;
             List.hd (create_defclosure kf [])
         | KDefExn {contents={ke_tag}} ->
-            defined_so_far := IdSet.add ke_tag !defined_so_far;
+            add_to_defined_so_far ke_tag;
             walk_kexp e callb
         | KDefVal(n, rhs, loc) ->
             let rhs = walk_kexp_n_lift_all rhs callb in
             let is_mutable_fvar = IdSet.mem n all_mut_fvars in
-            defined_so_far := IdSet.add n !defined_so_far;
+            add_to_defined_so_far n;
             if not is_mutable_fvar then
                 KDefVal(n, rhs, loc)
             else
@@ -549,21 +551,21 @@ let lift_all top_code =
                 let code = KDefVal(nr, KExpUnOp(OpMkRef, a, (ref_typ, loc)), loc) :: code in
                 let code = KDefVal(n, KExpUnOp(OpDeref, (Atom.Id nr), (t, loc)), loc) :: code in
                 KExpSeq((List.rev code), (KTypVoid, loc))
-        | KExpFor(idom_l, body, flags, loc) ->
+        | KExpFor(idom_l, at_ids, body, flags, loc) ->
             let idom_l = List.map (fun (i, dom_i) ->
                 let dom_i = check_n_walk_dom dom_i loc callb in
-                defined_so_far := IdSet.add i !defined_so_far;
-                (i, dom_i)) idom_l in
+                add_to_defined_so_far i; (i, dom_i)) idom_l in
+            let _ = List.iter (fun i -> add_to_defined_so_far i) at_ids in
             let body = walk_kexp_n_lift_all body callb in
-            KExpFor(idom_l, body, flags, loc)
+            KExpFor(idom_l, at_ids, body, flags, loc)
         | KExpMap(e_idom_ll, body, flags, ((etyp, eloc) as kctx)) ->
-            let e_idom_ll = List.map (fun (e, idom_l) ->
+            let e_idom_ll = List.map (fun (e, idom_l, at_ids) ->
                 let e = walk_kexp_n_lift_all e callb in
                 let idom_l = List.map (fun (i, dom_i) ->
                     let dom_i = check_n_walk_dom dom_i eloc callb in
-                    defined_so_far := IdSet.add i !defined_so_far;
-                    (i, dom_i)) idom_l
-                in (e, idom_l)) e_idom_ll
+                    add_to_defined_so_far i; (i, dom_i)) idom_l in
+                List.iter (fun i -> add_to_defined_so_far i) at_ids;
+                (e, idom_l, at_ids)) e_idom_ll
             in let body = walk_kexp_n_lift_all body callb in
             KExpMap(e_idom_ll, body, flags, kctx)
         | KExpMkClosure(make_fp, f, args, (typ, loc)) ->

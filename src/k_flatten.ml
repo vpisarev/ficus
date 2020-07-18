@@ -53,9 +53,10 @@ and flatten_kexp_ e callb =
            very first match case.
            That's all we can do here *)
         (match e with
-        | KExpMap((e0, for_iters0) :: other_map_clauses, body, flags, ((_, loc) as kctx)) ->
+        | KExpMap((e0, for_iters0, at_ids0) :: other_map_clauses, body, flags, ((_, loc) as kctx)) ->
             let code = List.rev (kexp2code e0) in
-            let new_map = KExpMap(((KExpNop (get_kexp_loc e0)), for_iters0) :: other_map_clauses, body, flags, kctx) in
+            let new_map = KExpMap(((KExpNop (get_kexp_loc e0)), for_iters0, at_ids0) ::
+                other_map_clauses, body, flags, kctx) in
             rcode2kexp (new_map :: code) loc
         | _ -> e)
     | KExpDoWhile(body, c, loc) ->

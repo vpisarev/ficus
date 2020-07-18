@@ -199,6 +199,7 @@ let mangle_all top_code =
         | KTypList _ -> create_gen_typ t "lst" loc
         | KTypRef _ -> create_gen_typ t "ref" loc
     and mangle_id_typ i loc callb =
+        if i = noid then () else
         match (kinfo_ i loc) with
         | KVal kv ->
             let {kv_typ} = kv in
@@ -210,8 +211,9 @@ let mangle_all top_code =
         | KTypRecord(rn, relems) ->
             KTypRecord(rn, List.map (fun (ni, ti) -> (ni, walk_ktyp_n_mangle ti loc callb)) relems)
         | t -> walk_ktyp_n_mangle t loc callb
-    and mangle_kdl kdl loc callb =
-        List.iter (fun (k, _) -> mangle_id_typ k loc callb) kdl
+    and mangle_idoml idoml at_ids loc callb =
+        List.iter (fun i -> mangle_id_typ i loc callb) at_ids;
+        List.iter (fun (k, _) -> mangle_id_typ k loc callb) idoml
     and walk_kexp_n_mangle e callb =
         match e with
         | KDefVal(n, e, loc) ->
@@ -296,11 +298,11 @@ let mangle_all top_code =
             e
         | KDefClosureVars kcv ->
             e
-        | KExpFor (kdl, body, flags, loc) ->
-            mangle_kdl kdl loc callb;
+        | KExpFor (idoml, at_ids, body, flags, loc) ->
+            mangle_idoml idoml at_ids loc callb;
             walk_kexp e callb
-        | KExpMap (e_kdl_l, body, flags, (_, loc)) ->
-            List.iter (fun (_, kdl) -> mangle_kdl kdl loc callb) e_kdl_l;
+        | KExpMap (e_idoml_l, body, flags, (_, loc)) ->
+            List.iter (fun (_, idoml, idx) -> mangle_idoml idoml idx loc callb) e_idoml_l;
             walk_kexp e callb
         | _ -> walk_kexp e callb
         in

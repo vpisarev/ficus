@@ -36,10 +36,10 @@ let rec get_typ_pr t = match t with
     | TypString | TypChar | TypBool | TypVoid | TypExn
     | TypErr | TypCPointer | TypDecl | TypModule -> TypPrBase
     | TypApp([], _) -> TypPrBase
-    | TypTuple(_) -> TypPrBase
-    | TypRecord(_) -> TypPrBase
-    | TypList(_) | TypRef(_) | TypArray(_, _) | TypApp(_, _) -> TypPrComplex
-    | TypFun(_, _) -> TypPrFun
+    | TypTuple _ | TypVarTuple _ -> TypPrBase
+    | TypRecord _ -> TypPrBase
+    | TypList _ | TypRef _ | TypArray _ | TypVarArray _ | TypApp _ -> TypPrComplex
+    | TypFun _ -> TypPrFun
 
 let need_parens p p1 = p1 > p
 let opt_parens p p1 = if (need_parens p p1) then ("(", ")") else ("", "")
@@ -49,10 +49,6 @@ let rec pptype_ t p1 loc =
     let pptypsuf t1 suf =
         let (lp, rp) = opt_parens prec p1 in
         (obox(); pstr lp; pptype_ t1 prec loc; pstr rp; pstr " "; pstr suf; cbox()) in
-    let pptypelist_ prefix args =
-        pstr prefix; pcut(); obox();
-        (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pptype_ t TypPr0 loc) args);
-        cbox(); pcut(); pstr ")" in
     match t with
     | TypVar {contents=None} -> pstr "Auto"
     | TypVar {contents=Some(t1)} -> pptype_ t1 p1 loc
@@ -79,11 +75,22 @@ let rec pptype_ t p1 loc =
         pstr ")"; cbox()
     | TypList(t1) -> pptypsuf t1 "List"
     | TypRef(t1) -> pptypsuf t1 "Ref"
-    | TypArray(d, t1) -> pptypsuf t1 ("[" ^ (String.make (d - 1) ',') ^ "]")
+    | TypArray(d, t1) -> pptypsuf t1 ("[" ^
+        (if d = 0 then "+" else (String.make (d - 1) ',')) ^ "]")
+    | TypVarArray t1 -> pptypsuf t1 "[+]"
     | TypApp([], n) -> pprint_id n
     | TypApp(t1 :: [], n) -> pptypsuf t1 (id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (id2str n)
-    | TypTuple(tl) -> pptypelist_ "(" tl
+    | TypTuple tl ->
+        pstr "("; pcut(); obox();
+        (List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace()); pptype_ t TypPr0 loc) tl);
+        pcut(); cbox(); pstr ")"
+    | TypVarTuple t_opt ->
+        pstr "(";
+        (match t_opt with
+        | Some t -> pptype_ t TypPr0 loc; pspace()
+        | _ -> ());
+        pstr "...)"
     | TypRecord {contents=(rec_elems, ordered)} ->
         pstr (if ordered then "{" else "~{"); pcut(); obox();
         (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
@@ -261,26 +268,32 @@ let rec pprint_exp e =
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"
         | ExpIf(if_seq, if_then, if_else, _) ->
-            obox(); pstr "IF ("; pprint_exp if_seq; pstr ")"; pspace(); pprint_exp if_then; pspace();
+            obox(); pstr "IF"; pspace(); pprint_exp if_seq; pspace(); pprint_exp if_then; pspace();
             pstr "ELSE"; pspace(); pprint_exp if_else; cbox()
         | ExpWhile(c, body, _) ->
-            obox(); pstr "WHILE ("; pprint_exp c; pstr ")"; pspace(); pprint_exp body; cbox()
+            obox(); pstr "WHILE"; pspace(); pprint_exp c; pspace(); pprint_exp_as_block body; cbox()
         | ExpDoWhile(body, c, _) ->
-            obox(); pstr "DO"; pprint_exp body; pspace(); pstr "WHILE ("; pprint_exp c; pstr ")"; cbox()
-        | ExpFor (for_cl, for_body, flags, _) ->
-            obox(); pprint_for_flags flags;
-            pstr "FOR ("; (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
+            obox(); pstr "DO"; pspace(); pprint_exp_as_block body; pspace(); pstr "WHILE ("; pcut(); pprint_exp c; pcut(); pstr ")"; cbox()
+        | ExpFor (for_cl, idx_pat, for_body, flags, _) ->
+            obox(); pprint_for_flags flags; pcut();
+            pstr "FOR"; pspace(); (match idx_pat with
+            | PatAny _ -> ()
+            | _ -> pstr "@"; pprint_pat idx_pat; pstr ","; pspace());
+            (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
                 pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) for_cl);
-            pstr ")"; pspace(); pprint_exp for_body; cbox()
+            pspace(); pprint_exp_as_block for_body; cbox()
         | ExpMap(map_cl, map_body, flags, _) ->
             obox(); pprint_for_flags flags;
-            pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else ();
-            (List.iter (fun (pe_l, opt_when) -> pstr "FOR ("; (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
-            pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) pe_l);
-            pstr ")"; pspace(); match opt_when with Some(e) -> pstr "WHEN "; pprint_exp e; pspace() | _ -> ()) map_cl);
-            pprint_exp map_body; pstr "]"; cbox()
+            pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else (); pspace();
+            (List.iter (fun (pe_l, idx_pat) -> pstr "FOR"; pspace();
+            (match idx_pat with
+            | PatAny _ -> ()
+            | _ -> pstr "@"; pprint_pat idx_pat; pstr ","; pspace());
+            (List.iteri (fun i (p, e) -> if i = 0 then () else (pstr ","; pspace());
+            pprint_pat p; pspace(); pstr "IN"; pspace(); pprint_exp e) pe_l)) map_cl);
+            pprint_exp_as_block map_body; pstr "]"; cbox()
         | ExpMatch(e, pe_l, _) ->
-            obox(); pstr "MATCH ("; pprint_exp e; pstr ")"; pspace();
+            obox(); pstr "MATCH"; pspace(); pprint_exp e; pspace();
             ppcases pe_l; cbox()
         | ExpTryCatch(e, pe_l, _) ->
             obox(); pstr "TRY"; pspace(); pprint_exp e; pspace();
@@ -293,6 +306,9 @@ let rec pprint_exp e =
         | DefVal _ | DefFun _ | DefExn _ | DefTyp _ | DefVariant _
         | DefClass _ | DefInterface _
         | DirImport _ | DirImportFrom _ | ExpSeq _ -> ()); cbox_()
+and pprint_exp_as_block e = match e with
+    | ExpSeq(es, _) -> pprint_expseq es true
+    | _ -> pprint_expseq [e] true
 and pprint_exp_as_seq e = match e with
     | ExpSeq(es, _) -> pprint_expseq es false
     | _ -> pprint_exp e
@@ -317,6 +333,8 @@ and pprint_pat p = match p with
                     pprint_id n; pstr "="; pprint_pat p) elems;
         pstr "}"; cbox()
     | PatTyped(p, t, loc) -> pprint_pat p; pstr ":"; pspace(); pprint_typ t loc
+    | PatRef(p, loc) -> pstr "REF ("; pcut(); pprint_pat p; pcut(); pstr ")"
+    | PatWhen(p, e, loc) -> pprint_pat p; pspace(); pstr "WHEN"; pspace(); pprint_exp e
 
 let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     Format.print_flush ();

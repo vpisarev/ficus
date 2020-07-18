@@ -94,10 +94,27 @@ let make_variant_type (targs, tname) var_elems0 is_record =
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
 
-let rec make_for body nested flags each_for_flags = match nested with
+let process_for_clauses for_cl loc =
+    List.fold_left (fun (for_cl_, idx_pat) (p, idxp, e) ->
+        let idx_pat = match (idxp, idx_pat) with
+            | (PatAny _, idx_pat) -> idx_pat
+            | (_, PatAny _) -> idxp
+            | _ -> raise
+                (SyntaxErrorLoc ("@ is used more than once, which does not make sence and is not supported", loc))
+            in
+        (((p, e) :: for_cl_), idx_pat)) ([], PatAny loc) for_cl
+
+let rec process_nested_for nested_for =
+    List.fold_left (fun l (loc, for_cl) ->
+        let (for_cl, idx_pat) = process_for_clauses for_cl loc in
+        (for_cl, idx_pat) :: l) [] nested_for
+
+let rec make_for nested_for body flags each_for_flags =
+    match nested_for with
     | (loc, for_cl_) :: rest ->
         let curr_flags = if rest=[] then flags else [ForNested] in
-        make_for (ExpFor((List.rev for_cl_), body, each_for_flags @ curr_flags, loc)) rest flags each_for_flags
+        let (for_cl, idx_pat) = process_for_clauses for_cl_ loc in
+        make_for rest (ExpFor(for_cl, idx_pat, body, each_for_flags @ curr_flags, loc)) flags each_for_flags
     | _ -> body
 
 let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_body =
@@ -117,11 +134,8 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_bod
     let body_loc = get_exp_loc fold_body in
     let update_fr = ExpAssign(fr_exp, fold_body, body_loc) in
     let new_body = ExpSeq([acc_decl; update_fr], (TypVoid, body_loc)) in
-    let for_exp = make_for new_body nested_fold_cl [] [ForFold] in
+    let for_exp = make_for nested_fold_cl new_body [] [ForFold] in
     ExpSeq([fr_decl; for_exp; fr_exp], (make_new_typ(), curr_loc()))
-
-let rec compress_nested_map_exp nested_for =
-    List.fold_left (fun l (loc, for_cl) -> (for_cl, None) :: l) [] nested_for
 
 let make_chained_cmp chain = match chain with
     | (_, e1) :: [] -> e1
@@ -396,7 +410,7 @@ stmt:
     }
 | B_WHILE exp_or_block block { ExpWhile($2, $3, curr_loc()) }
 | DO block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
-| for_flags B_FOR nested_for_ block { make_for $4 $3 $1 [] }
+| for_flags B_FOR nested_for_ block { make_for $3 $4 $1 [] }
 | complex_exp { $1 }
 
 ccode_exp:
@@ -451,12 +465,12 @@ simple_exp:
 | B_LPAREN typed_exp RPAREN { $2 }
 | B_LSQUARE for_flags B_FOR nested_for_ block RSQUARE
     {
-        let map_clauses = compress_nested_map_exp $4 in
+        let map_clauses = process_nested_for $4 in
         ExpMap(map_clauses, $5, ForMakeArray :: $2, make_new_ctx())
     }
 | LLIST for_flags B_FOR nested_for_ block RLIST
     {
-        let map_clauses = compress_nested_map_exp $4 in
+        let map_clauses = process_nested_for $4 in
         ExpMap(map_clauses, $5, ForMakeList :: $2, make_new_ctx())
     }
 | B_LSQUARE array_elems_ RSQUARE
@@ -713,8 +727,10 @@ nested_for_:
 | for_in_list_ { ((curr_loc_n 1), $1) :: [] }
 
 for_in_list_:
-| for_in_list_ COMMA simple_pat BACK_ARROW loop_range_exp { ($3, $5) :: $1 }
-| simple_pat BACK_ARROW loop_range_exp { ($1, $3) :: [] }
+| for_in_list_ COMMA simple_pat BACK_ARROW loop_range_exp { ($3, PatAny(curr_loc_n 3), $5) :: $1 }
+| for_in_list_ COMMA simple_pat AT simple_pat BACK_ARROW loop_range_exp { ($3, $5, $7) :: $1 }
+| simple_pat BACK_ARROW loop_range_exp { ($1, PatAny(curr_loc_n 1), $3) :: [] }
+| simple_pat AT simple_pat BACK_ARROW loop_range_exp { ($1, $3, $5) :: [] }
 
 fold_clause:
 | simple_pat EQUAL complex_exp any_for nested_for_ { (($1, $3), $5) }
@@ -747,8 +763,8 @@ pattern_matching_clauses_:
 { ((List.rev $1), $3) :: [] }
 
 matching_patterns_:
-| matching_patterns_ BAR pat { $3 :: $1 }
-| pat { $1 :: [] }
+| matching_patterns_ BAR pat_when { $3 :: $1 }
+| pat_when { $1 :: [] }
 
 exp_seq_or_none:
 | exp_seq_ { expseq2exp (List.rev $1) 1 }
@@ -772,7 +788,15 @@ simple_pat:
 | LBRACE id_simple_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
 | dot_ident LBRACE id_simple_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident LPAREN simple_pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
-| dot_ident IDENT { PatVariant((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
+| dot_ident IDENT
+    {
+        let arg_loc = curr_loc_n 2 in
+        let arg = match $2 with
+            | "_" -> PatAny(arg_loc)
+            | _ -> PatIdent((get_id $2), arg_loc)
+            in
+        PatVariant((get_id $1), [arg], curr_loc())
+    }
 | simple_pat COLON typespec { PatTyped($1, $3, curr_loc()) }
 
 simple_pat_list:
@@ -821,6 +845,7 @@ pat:
 | dot_ident IDENT { PatVariant((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
 | dot_ident literal { PatVariant((get_id $1), [PatLit($2, (curr_loc_n 2))], curr_loc()) }
 | pat COLON typespec { PatTyped($1, $3, curr_loc()) }
+| REF pat { PatRef ($2, curr_loc()) }
 
 pat_list_:
 | pat_list_ COMMA pat { $3 :: $1 }
@@ -834,6 +859,10 @@ id_pat:
 | B_IDENT EQUAL pat { (get_id $1, $3) }
 | B_IDENT { let n = (get_id $1) in
             let p = PatIdent(n, curr_loc()) in (n, p) }
+
+pat_when:
+| pat { $1 }
+| pat WHEN exp { PatWhen($1, $3, curr_loc()) }
 
 val_spec_list_:
 | VAL { [] }
@@ -966,6 +995,8 @@ typespec_nf:
 | B_LPAREN typespec_list_ COMMA RPAREN { TypTuple(List.rev $2) }
 | B_LPAREN typespec_nf STAR INT RPAREN { TypTuple(List.init (Int64.to_int $4) (fun i -> $2)) }
 | B_LPAREN INT STAR typespec_nf RPAREN { TypTuple(List.init (Int64.to_int $2) (fun i -> $4)) }
+| B_LPAREN ELLIPSIS RPAREN { TypVar {contents=Some (TypVarTuple None)} }
+| B_LPAREN typespec ELLIPSIS RPAREN { TypVar {contents=Some (TypVarTuple (Some $2))} }
 | typespec_nf nobreak_dot_ident
 %prec app_type_prec
 { match ($1, $2) with
@@ -984,6 +1015,9 @@ typespec_nf:
 | typespec_nf LSQUARE shapespec RSQUARE
 %prec arr_type_prec
 { TypArray($3, $1) }
+| typespec_nf LSQUARE B_PLUS RSQUARE
+%prec arr_type_prec
+{ TypVar {contents=Some (TypVarArray($1))} }
 | typespec_nf REF_TYPE
 %prec ref_type_prec
 { TypRef($1) }

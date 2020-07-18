@@ -103,6 +103,8 @@ let parse_all _fname0 =
             printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
         | SyntaxError(err, p0, p1) ->
             printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
+        | SyntaxErrorLoc(err, loc) ->
+            printf "%s: %s\n" (loc2str loc) err; ok := false
         | Failure(msg) -> (printf "%s: %s\n" mfname msg); ok := false
         | e -> (printf "%s: exception %s occured" mfname (Printexc.to_string e)); ok := false)
     done;

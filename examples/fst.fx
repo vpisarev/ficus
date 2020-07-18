@@ -78,8 +78,7 @@ val a=[0, 1, 2, -10, 7]
 var i1 = 0, n = size(a)
 do
 {
-    val v = a[i1]
-    if v < 0 {break}
+    if a[i1] < 0 {break}
     i1 += 1
 }
 while i1 < n

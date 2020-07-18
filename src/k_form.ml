@@ -115,8 +115,8 @@ and kexp_t =
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of id_t * bool * loc_t
     | KExpCast of atom_t * ktyp_t * loc_t
-    | KExpMap of (kexp_t * (id_t * dom_t) list) list * kexp_t * for_flag_t list * kctx_t
-    | KExpFor of (id_t * dom_t) list * kexp_t * for_flag_t list * loc_t
+    | KExpMap of (kexp_t * (id_t * dom_t) list * id_t list) list * kexp_t * for_flag_t list * kctx_t
+    | KExpFor of (id_t * dom_t) list * id_t list * kexp_t * for_flag_t list * loc_t
     | KExpWhile of kexp_t * kexp_t * loc_t
     | KExpDoWhile of kexp_t * kexp_t * loc_t
     | KExpCCode of string * kctx_t
@@ -221,7 +221,7 @@ let get_kexp_ctx e = match e with
     | KExpThrow(_, _, l) -> (KTypErr, l)
     | KExpCast(_, t, l) -> (t, l)
     | KExpMap(_, _, _, c) -> c
-    | KExpFor(_, _, _, l) -> (KTypVoid, l)
+    | KExpFor(_, _, _, _, l) -> (KTypVoid, l)
     | KExpWhile(_, _, l) -> (KTypVoid, l)
     | KExpDoWhile(_, _, l) -> (KTypVoid, l)
     | KExpCCode(_, c) -> c
@@ -430,11 +430,11 @@ and walk_kexp e callb =
     let walk_atom_ a = check_n_walk_atom a loc callb in
     let walk_al_ al = List.map walk_atom_ al in
     let walk_ktyp_ t = check_n_walk_ktyp t loc callb in
-    let walk_id_ k = check_n_walk_id k loc callb in
+    let walk_id_ i = check_n_walk_id i loc callb in
     let walk_kexp_ e = check_n_walk_kexp e callb in
     let walk_kctx_ (t, loc) = ((walk_ktyp_ t), loc) in
     let walk_dom_ d = check_n_walk_dom d loc callb in
-    let walk_kdl_ kdl = List.map (fun (k, d) -> ((walk_id_ k), (walk_dom_ d))) kdl in
+    let walk_idomlist_ idoml = List.map (fun (i, d) -> ((walk_id_ i), (walk_dom_ d))) idoml in
     (match e with
     | KExpNop (_) -> e
     | KExpBreak _ -> e
@@ -476,10 +476,11 @@ and walk_kexp e callb =
     | KExpThrow(k, f, loc) -> KExpThrow((walk_id_ k), f, loc)
     | KExpWhile(c, e, loc) -> KExpWhile((walk_kexp_ c), (walk_kexp_ e), loc)
     | KExpDoWhile(e, c, loc) -> KExpDoWhile((walk_kexp_ e), (walk_kexp_ c), loc)
-    | KExpFor(kdl, body, flags, loc) ->
-        KExpFor((walk_kdl_ kdl), (walk_kexp_ body), flags, loc)
-    | KExpMap(e_kdl_l, body, flags, ctx) ->
-        KExpMap((List.map (fun (e, kdl) -> ((walk_kexp_ e), (walk_kdl_ kdl))) e_kdl_l),
+    | KExpFor(idoml, at_ids, body, flags, loc) ->
+        KExpFor((walk_idomlist_ idoml), (List.map walk_id_ at_ids), (walk_kexp_ body), flags, loc)
+    | KExpMap(e_idoml_l, body, flags, ctx) ->
+        KExpMap((List.map (fun (e, idoml, at_ids) ->
+            ((walk_kexp_ e), (walk_idomlist_ idoml), (List.map walk_id_ at_ids))) e_idoml_l),
                 (walk_kexp_ body), flags, (walk_kctx_ ctx))
     | KExpMatch(cases, ctx) ->
         KExpMatch((List.map (fun (checks_i, ei) ->
@@ -596,7 +597,7 @@ and fold_kexp e callb =
     let fold_kexp_ e = check_n_fold_kexp e callb in
     let fold_kctx_ (t, _) = fold_ktyp_ t in
     let fold_dom_ d = check_n_fold_dom d loc callb in
-    let fold_kdl_ kdl = List.iter (fun (k, d) -> fold_id_ k; fold_dom_ d) kdl in
+    let fold_idoml_ idoml = List.iter (fun (k, d) -> fold_id_ k; fold_dom_ d) idoml in
     fold_kctx_ (match e with
     | KExpNop (l) -> (KTypVoid, l)
     | KExpBreak (l) -> (KTypVoid, l)
@@ -620,10 +621,10 @@ and fold_kexp e callb =
     | KExpThrow(k, _, loc) -> fold_id_ k; (KTypErr, loc)
     | KExpWhile(c, e, loc) -> fold_kexp_ c; fold_kexp_ e; (KTypErr, loc)
     | KExpDoWhile(e, c, loc) -> fold_kexp_ e; fold_kexp_ c; (KTypErr, loc)
-    | KExpFor(kdl, body, _, loc) ->
-        fold_kdl_ kdl; fold_kexp_ body; (KTypVoid, loc)
-    | KExpMap(e_kdl_l, body, _, ctx) ->
-        List.iter (fun (e, kdl) -> fold_kexp_ e; fold_kdl_ kdl) e_kdl_l;
+    | KExpFor(idoml, at_ids, body, _, loc) ->
+        fold_idoml_ idoml; List.iter fold_id_ at_ids; fold_kexp_ body; (KTypVoid, loc)
+    | KExpMap(e_idoml_l, body, _, ctx) ->
+        List.iter (fun (e, idoml, at_ids) -> fold_kexp_ e; fold_idoml_ idoml; List.iter fold_id_ at_ids) e_idoml_l;
         fold_kexp_ body; ctx
     | KExpMatch(cases, ctx) ->
         List.iter (fun (checks_i, ei) ->
@@ -737,10 +738,12 @@ and used_by_kexp_ e callb =
         add_to_decl1 kt_name callb
     | KExpMap (clauses, body, _, (t, _)) ->
         fold_kexp e callb;
-        List.iter (fun (_, id_l) ->
+        List.iter (fun (_, id_l, at_ids) ->
+            List.iter (fun i -> add_to_decl1 i callb) at_ids;
             List.iter (fun (i, _) -> add_to_decl1 i callb) id_l) clauses
-    | KExpFor (id_l, body, _, _) ->
+    | KExpFor (id_l, at_ids, body, _, _) ->
         fold_kexp e callb;
+        List.iter (fun i -> add_to_decl1 i callb) at_ids;
         List.iter (fun (i, _) -> add_to_decl1 i callb) id_l
     | _ -> fold_kexp e callb
 

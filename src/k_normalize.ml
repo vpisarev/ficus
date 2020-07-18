@@ -43,8 +43,12 @@ let typ2ktyp t loc =
     | TypModule -> KTypModule
     | TypList(t) -> KTypList(typ2ktyp_ t )
     | TypTuple(tl) -> KTypTuple(List.map typ2ktyp_ tl)
+    | TypVarTuple _ ->
+        raise_compile_err loc "variable tuple type cannot be inferenced; please, use explicit type annotation"
     | TypRef(t) -> KTypRef(typ2ktyp_ t)
     | TypArray(d, t) -> KTypArray(d, typ2ktyp_ t)
+    | TypVarArray _ ->
+        raise_compile_err loc "variable array type cannot be inferenced; please, use explicit type annotation"
     | TypFun(args, rt) -> KTypFun((List.map typ2ktyp_ args), (typ2ktyp_ rt))
     | TypRecord {contents=(relems, true)} ->
         KTypRecord(noid, List.map (fun (ni, ti, _) -> (ni, (typ2ktyp_ ti))) relems)
@@ -86,7 +90,7 @@ let rec exp2kexp e code tref sc =
             val temp@@105 = GaussianBlur(img)
             for (i@@105 <- temp@@123) { val r=i@@105.0, g=i@@105.1, b = i@@105.2; ... }
     *)
-    let transform_for pe_l code sc body_sc =
+    let transform_for pe_l idx_pat code sc body_sc =
         let (idom_list, code, body_code) =
             List.fold_left (fun (idom_list, code, body_code) (pi, ei) ->
                 let (di, code) = exp2dom ei code sc in
@@ -101,7 +105,46 @@ let rec exp2kexp e code tref sc =
                 let (i, body_code) = pat_simple_unpack pi ptyp None body_code "i" [] body_sc
                 in ((i, di) :: idom_list, code, body_code))
             ([], code, []) pe_l in
-        ((List.rev idom_list), code, body_code) in
+        let loc = get_pat_loc idx_pat in
+        let (at_ids, body_code) = match idx_pat with
+            | PatAny _ -> ([], body_code)
+            | PatTyped(p, TypInt, loc) ->
+                let (i, body_code) = pat_simple_unpack p KTypInt None body_code "i" [] body_sc in
+                ([i], body_code)
+            | PatTyped(p, TypTuple(tl), _) ->
+                let p = pat_skip_typed p in
+                (match p with
+                | PatTuple(pl, _) ->
+                    if (List.length pl) = (List.length tl) then () else
+                        raise_compile_err loc "the '@' tuple pattern and its type do not match";
+                    let (at_ids, body_code) =
+                        List.fold_left2 (fun (at_ids, body_code) pi ti ->
+                            if ti = TypInt then () else
+                                raise_compile_err loc "some of '@' indices is not an integer";
+                            let (i, body_code) = pat_simple_unpack pi KTypInt None body_code "i" [] body_sc in
+                            (i :: at_ids, body_code)) ([], body_code) pl tl
+                        in
+                    ((List.rev at_ids), body_code)
+                | PatIdent(idx, _) ->
+                    let prefix = pp_id2str idx in
+                    let (_, at_ids, ktl) = List.fold_left (fun (k, at_ids, ktl) ti ->
+                        if ti = TypInt then () else
+                            raise_compile_err loc "some of '@' indices is not an integer";
+                        let i = gen_idk (sprintf "%s%d" prefix k) in
+                        let _ = create_kdefval i KTypInt [] None [] loc in
+                        (k+1, (i :: at_ids), KTypInt :: ktl)) (0, [], []) tl
+                        in
+                    let ktyp = KTypTuple ktl in
+                    let at_ids = (List.rev at_ids) in
+                    let body_code = create_kdefval idx ktyp []
+                        (Some (KExpMkTuple ((List.map (fun i -> Atom.Id i) at_ids), (ktyp, loc)))) body_code loc in
+                    (at_ids, body_code)
+                | _ -> raise_compile_err loc
+                    "'@' pattern is expected to be either an integer scalar or a tuple of integer scalars")
+            | _ -> raise_compile_err loc
+                "'@' pattern is expected to be either an integer scalar or a tuple of integer scalars"
+            in
+        ((List.rev idom_list), at_ids, code, body_code) in
     match e with
     | ExpNop(loc) -> ((KExpNop loc), code)
     | ExpBreak(_, loc) -> ((KExpBreak loc), code)
@@ -229,13 +272,13 @@ let rec exp2kexp e code tref sc =
         let (e2, code2) = exp2kexp e2 (e1 :: code1) false sc in
         let body = rcode2kexp code2 eloc in
         (KExpDoWhile(body, e2, eloc), code)
-    | ExpFor(pe_l, body, flags, _) ->
+    | ExpFor(pe_l, idx_pat, body, flags, _) ->
         let body_sc = new_block_scope() :: sc in
-        let (idom_list, code, body_code) = transform_for pe_l code sc body_sc in
+        let (idom_list, at_ids, code, body_code) = transform_for pe_l idx_pat code sc body_sc in
         let (last_e, body_code) = exp2kexp body body_code false body_sc in
         let bloc = get_exp_loc body in
         let body_kexp = rcode2kexp (last_e :: body_code) bloc in
-        (KExpFor(idom_list, body_kexp, flags, eloc), code)
+        (KExpFor(idom_list, at_ids, body_kexp, flags, eloc), code)
     | ExpMap(pew_ll, body, flags, _) ->
         (*
             process the nested for clauses. since there can be non-trivial patterns
@@ -265,17 +308,11 @@ let rec exp2kexp e code tref sc =
         *)
         let body_sc = new_block_scope() :: sc in
         let (pre_idom_ll, body_code) = List.fold_left
-            (fun (pre_idom_ll, prev_body_code) (pe_l, when_opt) ->
-                let (idom_list, pre_code, body_code) = transform_for pe_l prev_body_code sc body_sc in
-                let body_code = match when_opt with
-                    | Some(when_e) ->
-                        let (e, body_code) = exp2kexp when_e body_code true body_sc in
-                        let eloc = get_kexp_loc e in
-                        let check_when = KExpIf(e, (KExpNop eloc), (KExpContinue eloc), (KTypVoid, eloc)) in
-                        check_when :: body_code
-                    | _ -> body_code in
+            (fun (pre_idom_ll, prev_body_code) (pe_l, idx_pat) ->
+                let (idom_list, at_ids, pre_code, body_code) =
+                    transform_for pe_l idx_pat prev_body_code sc body_sc in
                 let pre_exp = rcode2kexp pre_code eloc in
-                ((pre_exp, idom_list) :: pre_idom_ll, body_code)) ([], []) pew_ll in
+                ((pre_exp, idom_list, at_ids) :: pre_idom_ll, body_code)) ([], []) pew_ll in
         let (last_e, body_code) = exp2kexp body body_code false body_sc in
         let bloc = get_exp_loc body in
         let body_kexp = rcode2kexp (last_e :: body_code) bloc in
@@ -429,6 +466,8 @@ and pat_have_vars p = match p with
     | PatTuple(pl, _) -> List.exists pat_have_vars pl
     | PatVariant(_, pl, _) -> List.exists pat_have_vars pl
     | PatRec(_, ip_l, _) -> List.exists (fun (_, pi) -> pat_have_vars pi) ip_l
+    | PatRef(p, _) -> pat_have_vars p
+    | PatWhen(p, _, _) -> pat_have_vars p
 
 (* version of Ast_typecheck.get_record_elems, but for already transformed types *)
 and get_record_elems_k vn_opt t loc =
@@ -484,10 +523,10 @@ and pat_need_checks p ptyp = match p with
     | PatLit _ -> true
     | PatCons(_, _, _) -> true (* the check for non-empty list is needed *)
     | PatTyped(p, _, _) -> pat_need_checks p ptyp
-    | PatTuple(pl, _) ->
+    | PatTuple(pl, loc) ->
         let tl = match ptyp with
             | KTypTuple(tl) -> tl
-            | _ -> raise_compile_err (get_pat_loc p) "this pattern needs a tuple as argument" in
+            | _ -> raise_compile_err loc "this pattern needs a tuple as argument" in
         List.exists2 (fun pi ti -> pat_need_checks pi ti) pl tl
     | PatVariant(_, _, _) ->
         true
@@ -498,10 +537,13 @@ and pat_need_checks p ptyp = match p with
         (Option.is_some rn_opt) || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
         (* [TODO] if rn_opt = Some(rn), the condition is not necessarily true,
                   because the variant may have a single case *)
-
-and pat_skip_typed p = match p with
-    | PatTyped(p, _, _) -> pat_skip_typed p
-    | _ -> p
+    | PatRef (p, loc) ->
+        let t = match ptyp with
+            | KTypRef t -> t
+            | _ -> raise_compile_err loc "this pattern needs a reference as argument"
+            in
+        pat_need_checks p t
+    | PatWhen _ -> true
 
 and pat_propose_id p ptyp temp_prefix is_simple mutable_leaves sc =
     let p = pat_skip_typed p in
@@ -542,12 +584,12 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
     (match p with
     | PatTuple(pl, loc) ->
         let tl = match ptyp with
-                | KTypTuple(tl) ->
-                    if (List.length tl) != (List.length pl) then
-                        raise_compile_err loc "the number of elements in the pattern and in the tuple type are different"
-                    else
-                        tl
-                | _ -> raise_compile_err loc "invalid type of the tuple pattern (it must be a tuple as well)" in
+            | KTypTuple(tl) ->
+                if (List.length tl) != (List.length pl) then
+                    raise_compile_err loc "the number of elements in the pattern and in the tuple type are different"
+                else
+                    tl
+            | _ -> raise_compile_err loc "invalid type of the tuple pattern (it must be a tuple as well)" in
         let (_, code) = List.fold_left2 (fun (idx, code) pi ti ->
             let loci = get_pat_loc pi in
             let ei =
@@ -567,6 +609,14 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
     | PatAs _ ->
         let e = KExpAtom(Atom.Id n, (ptyp, loc)) in
         let (_, code) = pat_simple_unpack p ptyp (Some e) code temp_prefix flags sc in
+        code
+    | PatRef(p, loc) ->
+        let t = match ptyp with
+            | KTypRef(t) -> t
+            | _ -> raise_compile_err loc "the argument of ref() pattern must be a reference"
+            in
+        let e = KExpUnOp(OpDeref, (Atom.Id n), (t, loc)) in
+        let (_, code) = pat_simple_unpack p t (Some e) code temp_prefix n_flags sc in
         code
     | _ ->
         (*printf "pattern: "; Ast_pp.pprint_pat_x p; printf "\n";*)
@@ -764,6 +814,23 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 let pinfo = {pinfo_p=p; pinfo_typ=ptyp; pinfo_e=KExpAtom((Atom.Id n), (ptyp, loc)); pinfo_tag=var_tag0} in
                 let plists = dispatch_pat pinfo plists in
                 (plists, checks, code)
+            | PatRef (p, _) ->
+                let t = match ptyp with
+                    | KTypRef t -> t
+                    | _ -> raise_compile_err loc "the ref() pattern needs reference type" in
+                let get_val = KExpUnOp(OpDeref, (Atom.Id n), (t, loc)) in
+                let pinfo_p = {pinfo_p=p; pinfo_typ=t; pinfo_e=get_val; pinfo_tag=noid} in
+                let plists = dispatch_pat pinfo_p plists in
+                (plists, checks, code)
+            | PatWhen (p, e, _) ->
+                let pinfo = {pinfo_p=p; pinfo_typ=ptyp; pinfo_e=KExpAtom((Atom.Id n), (ptyp, loc)); pinfo_tag=var_tag0} in
+                let plists = dispatch_pat pinfo plists in
+                (* process everything inside *)
+                let (checks, code) = process_next_subpat plists (checks, code) case_sc in
+                (* and add the final check in the end *)
+                let (ke, code) = exp2kexp e code true sc in
+                let c_exp = rcode2kexp (ke :: code) loc in
+                (([], [], []), (c_exp :: checks), [])
             | _ ->
                 (*printf "pattern: "; Ast_pp.pprint_pat_x p; printf "\n";*)
                 raise_compile_err loc "this type of pattern is not supported yet")

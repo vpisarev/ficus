@@ -429,7 +429,7 @@ int fx_substr(const fx_str_t* str, int_ start, int_ end, int_ delta, int mask, f
     int_ len = FX_STR_LENGTH(*str);
     start = delta < 0 && (mask & 1) ? len - 1 : start;
     end = delta > 0 && (mask & 2) ? len : end;
-    printf("fx_substr: start=%zd, end=%zd, delta=%zd, mask=%d, len=%zd\n", start, end, delta, mask, len);
+    //printf("fx_substr: start=%zd, end=%zd, delta=%zd, mask=%d, len=%zd\n", start, end, delta, mask, len);
     if (start < 0 || start > end || end > len)
         FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
     if (delta == 0)

@@ -110,7 +110,7 @@ let parse_options () =
         options.app_filename <-
             if options.make_app then
                 (if use_stdin && options.output_name = "" then
-                    Utils.normalize_path curr_dir "a.out.c"
+                    Utils.normalize_path curr_dir "a.out"
                 else
                     output_name)
             else

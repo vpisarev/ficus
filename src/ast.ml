@@ -135,6 +135,8 @@ type typ_t =
                         equalize types by redirecting those references to
                         other types (i.e. we use so-called destructive
                         type unification algorithm) *)
+    | TypVarTuple of typ_t option  (* (...) or ('t...) *)
+    | TypVarArray of typ_t (* 't [+] *)
     | TypInt
     | TypSInt of int
     | TypUInt of int
@@ -203,8 +205,8 @@ type exp_t =
     | ExpIf of exp_t * exp_t * exp_t * ctx_t
     | ExpWhile of exp_t * exp_t * loc_t
     | ExpDoWhile of exp_t * exp_t * loc_t
-    | ExpFor of (pat_t * exp_t) list * exp_t * for_flag_t list * loc_t
-    | ExpMap of ((pat_t * exp_t) list * exp_t option) list * exp_t * for_flag_t list * ctx_t
+    | ExpFor of (pat_t * exp_t) list * pat_t * exp_t * for_flag_t list * loc_t
+    | ExpMap of ((pat_t * exp_t) list * pat_t) list * exp_t * for_flag_t list * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpCast of exp_t * typ_t * ctx_t
@@ -229,6 +231,8 @@ and pat_t =
     | PatCons of pat_t * pat_t * loc_t
     | PatAs of pat_t * id_t * loc_t
     | PatTyped of pat_t * typ_t * loc_t
+    | PatWhen of pat_t * exp_t * loc_t
+    | PatRef of pat_t * loc_t
 and env_entry_t = EnvId of id_t | EnvTyp of typ_t
 and env_t = env_entry_t list Env.t
 and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
@@ -331,7 +335,8 @@ let id2str i = id2str_ i false
 let pp_id2str i = id2str_ i true
 
 (* used by the parser *)
-exception SyntaxError of string*Lexing.position*Lexing.position
+exception SyntaxError of string * Lexing.position*Lexing.position
+exception SyntaxErrorLoc of string * loc_t
 let loc2str loc = sprintf "%s: %d" (pp_id2str loc.loc_fname) loc.loc_line0
 
 exception CompileError of loc_t * string
@@ -434,7 +439,7 @@ let get_exp_ctx e = match e with
     | ExpIf(_, _, _, c) -> c
     | ExpWhile(_, _, l) -> (TypVoid, l)
     | ExpDoWhile(_, _, l) -> (TypVoid, l)
-    | ExpFor(_, _, _, l) -> (TypVoid, l)
+    | ExpFor(_, _, _, _, l) -> (TypVoid, l)
     | ExpMap(_, _, _, c) -> c
     | ExpTryCatch(_, _, c) -> c
     | ExpMatch(_, _, c) -> c
@@ -464,6 +469,12 @@ let get_pat_loc p = match p with
     | PatCons(_, _, l) -> l
     | PatAs(_, _, l) -> l
     | PatTyped(_, _, l) -> l
+    | PatRef(_, l) -> l
+    | PatWhen(_, _, l) -> l
+
+let rec pat_skip_typed p = match p with
+    | PatTyped(p, _, _) -> pat_skip_typed p
+    | _ -> p
 
 let get_module m =
     match id_info m with
@@ -598,6 +609,8 @@ let rec deref_typ t =
     match t with
     | TypVar _ ->
         let rec find_root t = match t with
+            | TypVar {contents=Some(TypVarArray _)} -> t
+            | TypVar {contents=Some(TypVarTuple _)} -> t
             | TypVar {contents=Some(t2)} -> find_root t2
             | _ -> t in
         let root = find_root t in
