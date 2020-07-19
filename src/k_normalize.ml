@@ -534,7 +534,7 @@ and pat_need_checks p ptyp = match p with
         (*List.exists pat_need_checks pl*)
     | PatRec (rn_opt, _, _) ->
         let (ctor, typed_rec_pl) = ktyp_record_pat p ptyp in
-        (Option.is_some rn_opt) || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
+        (Utils.is_some rn_opt) || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
         (* [TODO] if rn_opt = Some(rn), the condition is not necessarily true,
                   because the variant may have a single case *)
     | PatRef (p, loc) ->
