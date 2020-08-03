@@ -95,14 +95,18 @@ let pprint_atom a loc = match a with
 let pprint_dom r loc = match r with
     | Domain.Elem(a) -> pprint_atom a loc
     | Domain.Fast(a) -> pstr "<"; pprint_atom a loc; pstr ">"
-    | Domain.Range(i,j,k) -> pprint_atom i loc; pstr ":";
-          (match j with
-          | Atom.Lit(LitNil) -> ()
-          | _ -> pprint_atom j loc);
-          (match k with
-          | Atom.Lit(LitNil) -> ()
-          | Atom.Lit(LitInt 1L) -> ()
-          | _ -> pstr ":"; pprint_atom k loc)
+    | Domain.Range(i,j,k) ->
+        (match i with
+        | Atom.Lit(LitNil) -> ()
+        | _ -> pprint_atom i loc);
+        pstr ":";
+        (match j with
+        | Atom.Lit(LitNil) -> ()
+        | _ -> pprint_atom j loc);
+        (match k with
+        | Atom.Lit(LitNil) -> ()
+        | Atom.Lit(LitInt 1L) -> ()
+        | _ -> pstr ":"; pprint_atom k loc)
 
 let rec pprint_kexp e = pprint_kexp_ e true
 and pprint_kexp_ e prtyp =

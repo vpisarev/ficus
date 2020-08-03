@@ -1304,7 +1304,28 @@ let gen_ccode top_code =
                 let (dst_exp, ccode) = get_dstexp dstexp_r "curr_exn" CTypExn [ValTemp] ccode kloc in
                 let e = make_call (get_id "fx_exn_get_and_reset") [cexp_get_addr dst_exp] CTypVoid kloc in
                 (false, dst_exp, (CExp e) :: ccode)
-            | _ -> raise_compile_err kloc "cgen: unsupported KExpIntrin")
+            | (IntrinStrConcat, al) ->
+                let (strs, ccode) = List.fold_left (fun (strs, ccode) a ->
+                    let (c_exp, ccode) = atom2cexp_ a true ccode kloc in
+                    let s_exp = match (a, (get_cexp_typ c_exp)) with
+                        | (Atom.Lit (LitChar s), CTypUniChar) ->
+                            make_call (get_id "FX_MAKE_STR1") [make_lit_exp (LitString s) kloc] CTypString kloc
+                        | ((Atom.Id n), CTypUniChar) ->
+                            make_call (get_id "FX_MAKE_VAR_STR1") [c_exp] CTypString kloc
+                        | _ -> c_exp
+                        in
+                    ((s_exp :: strs), ccode)) ([], ccode) al in
+                let strs_id = gen_temp_idc "strs" in
+                let strs_ctyp = CTypRawArray([CTypConst], CTypString) in
+                let strs0 = CExpInit((List.rev strs), (strs_ctyp, kloc)) in
+                let (strs_exp, ccode) = create_cdefval strs_id strs_ctyp [] "" (Some strs0) ccode kloc in
+                let (dst_exp, ccode) = get_dstexp dstexp_r "concat_str" CTypString [ValTemp] ccode kloc in
+                let call_exp = make_call (get_id "fx_strjoin")
+                    [make_nullptr kloc; make_nullptr kloc; make_nullptr kloc;
+                    strs_exp; (make_int_exp (List.length strs) kloc); (cexp_get_addr dst_exp)] CTypInt kloc in
+                let ccode = add_fx_call call_exp ccode kloc in
+                (false, dst_exp, ccode)
+            | _ -> raise_compile_err kloc (sprintf "cgen: unsupported KExpIntrin(%s, ...)" (intrin2str intr)))
         | KExpSeq(el, _) ->
             let rec process_seq el ccode = match el with
                 | [] -> (dummy_exp, ccode)

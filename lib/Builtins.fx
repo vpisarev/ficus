@@ -380,7 +380,7 @@ fun print(a: 't [,])
 fun print(l: 't list)
 {
     print("[")
-    for i <- 0:, x <- l {
+    for x@i <- l {
         if i > 0 {print(", ")}
         print_repr(x)
     }
@@ -506,7 +506,7 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
 fun new_uniform_rng(seed: int) {
     var state = if seed != 0 {(seed :> uint64)} else {0xffffffffu64}
     fun (a: int, b: int) {
-        state = (state :> uint32) * 4204114314u64 + (state >> 32)
+        state = (state :> uint32) * 4197999714u64 + (state >> 32)
         val (a, b) = (min(a, b), max(a, b))
         val diff = b - a + 1
         val x = (state :> uint32) % diff + a

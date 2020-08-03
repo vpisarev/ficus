@@ -427,19 +427,19 @@ int fx_itoa(int_ n, fx_str_t* str)
 int fx_substr(const fx_str_t* str, int_ start, int_ end, int_ delta, int mask, fx_str_t* substr)
 {
     int_ len = FX_STR_LENGTH(*str);
-    start = delta < 0 && (mask & 1) ? len - 1 : start;
-    end = delta > 0 && (mask & 2) ? len : end;
+    start = !(mask & 1) ? start : delta > 0 ? 0 : len-1;
+    end = !(mask & 2) ? end : delta > 0 ? len : -1;
     //printf("fx_substr: start=%zd, end=%zd, delta=%zd, mask=%d, len=%zd\n", start, end, delta, mask, len);
-    if (start < 0 || start > end || end > len)
-        FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
     if (delta == 0)
         FX_FAST_THROW_RET(FX_EXN_ZeroStepError);
+    if ((delta > 0 && (start < 0 || start > end || end > len)) ||
+        (delta < 0 && (end < -1 || start < end || start >= len)))
+        FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
     if (delta != 1)
     {
         int_ dstlen = FX_LOOP_COUNT(start, end, delta);
         if(dstlen == 0)
             return FX_OK;
-
         int status = fx_make_str(0, dstlen, substr);
         if(status < 0) return status;
         const char_* src = str->data;

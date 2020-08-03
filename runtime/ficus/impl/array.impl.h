@@ -390,6 +390,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
     size_t total = 1, offset = 0;
     int state = 0;
     int nranges = 0;
+    bool need_copy = false;
 
     for( i = 0; i < ndims; i++ )
     {
@@ -425,11 +426,12 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         }
         else
             FX_FAST_THROW_RET(FX_EXN_RangeError);
-        if( delta <= 0 || a > b )
-            FX_FAST_THROW_RET(FX_EXN_RangeError);
+        if( delta == 0 )
+            FX_FAST_THROW_RET(FX_EXN_ZeroStepError);
         if( i == ndims-1 && delta != 1)
             FX_FAST_THROW_RET(FX_EXN_RangeError);
-        if( a < 0 || b > size_i )
+        if( (delta > 0 && (a < 0 || b > size_i)) ||
+            (delta < 0 && (b < -1 || a >= size_i)) )
             FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
 
         // a little state machine:
@@ -453,14 +455,19 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         else if (state == 0)
             state = 1;
 
-        offset += a*step_i;
-        size_i = (b - a + delta - 1)/delta;
+        size_i = FX_LOOP_COUNT(a, b, delta);
+        if( delta < 0 ) {
+            need_copy = true;
+            a = b + 1;
+        }
+
         total *= (size_t)size_i;
+        offset += a*step_i;
 
         if( scalar_range )
             continue;
         subarr->dim[k].size = size_i;
-        subarr->dim[k].step = delta*step_i;
+        subarr->dim[k].step = (delta > 0 ? delta : -delta)*step_i;
         k++;
     }
 
@@ -469,17 +476,22 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
     subarr->free_elem = arr->free_elem;
     subarr->copy_elem = arr->copy_elem;
 
-    if (total > 0 && subarr->ndims > 0) {
+    if (total == 0 && subarr->ndims == 0) {
+        subarr->rc = 0;
+        subarr->data = 0;
+        return FX_OK;
+    }
+
+    if (!need_copy) {
         subarr->rc = arr->rc;
         if (subarr->rc)
             FX_INCREF(*subarr->rc);
         subarr->data = arr->data + offset;
-    } else {
-        subarr->rc = 0;
-        subarr->data = 0;
+        return FX_OK;
     }
 
-    return FX_OK;
+    // [TODO] implement array flip
+    FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
 }
 
 #ifdef __cplusplus

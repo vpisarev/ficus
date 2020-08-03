@@ -289,7 +289,9 @@ let print_subst_map m loc =
 
 let cfold_dealias top_code =
     let id_map = ref (Env.empty : atom_t Env.t) in
+    let concat_map = ref (Env.empty : atom_t list Env.t) in
     let add_to_map n a = id_map := Env.add n a !id_map in
+    let add_to_concat_map n al = concat_map := Env.add n al !concat_map in
     let rec cfd_atom_ a loc callb =
         match a with
         | Atom.Id n ->
@@ -322,20 +324,20 @@ let cfold_dealias top_code =
                         | Atom.Id n2 -> n2
                         | _ -> n in
             let e = KDefVal(n, rhs_e, loc) in
-            (match rhs_e with
-            | KExpAtom(a, (_, loc2)) ->
-                if not (is_mutable n loc) then
+            if not (is_mutable n loc) then
+                (match rhs_e with
+                | KExpAtom(a, (_, loc2)) ->
                     (match a with
                     | Atom.Id n2 ->
                         (* in order to do a safe substitution, both values
-                           must be immutable, otherwise the change may affect the semantics
+                            must be immutable, otherwise the change may affect the semantics
                         *)
                         if not (is_mutable n2 loc2) then
                             match (n, n2) with
                             | ((Id.Val _), (Id.Temp _)) ->
                                 (* if a temporary value is assigned to the user-defined value,
-                                   we'd better keep the user-specified name so that the output code is cleaner.
-                                   We will do the inverse substitution n2<-n rather than n<-n2 *)
+                                    we'd better keep the user-specified name so that the output code is cleaner.
+                                    We will do the inverse substitution n2<-n rather than n<-n2 *)
                                 add_to_map n2 (Atom.Id n);
                                 KExpNop(loc)
                             | _ ->
@@ -347,8 +349,34 @@ let cfold_dealias top_code =
                         (*printf "will replace '%s' with literal '%s'\n" (id2str n) (Ast_pp.lit2str c);*)
                         add_to_map n a;
                         KExpNop(loc))
-                else e
-            | _ -> e)
+                | KExpIntrin(IntrinStrConcat, al, (_, loc)) when
+                    List.for_all (fun a -> not (is_mutable_atom a loc)) al ->
+                    add_to_concat_map n al; e
+                | _ -> e)
+            else e
+        | KExpIntrin(IntrinStrConcat, al, (res_t, loc)) ->
+            let try_cfold_str_concat a res_al =
+                match (a, res_al) with
+                | (Atom.Lit (LitChar s1), (Atom.Lit (LitChar s2) :: rest))
+                | (Atom.Lit (LitString s1), (Atom.Lit (LitChar s2) :: rest))
+                | (Atom.Lit (LitChar s1), (Atom.Lit (LitString s2) :: rest))
+                | (Atom.Lit (LitString s1), (Atom.Lit (LitString s2) :: rest)) ->
+                    Atom.Lit (LitString (s1 ^ s2)) :: rest
+                | (Atom.Lit (LitString ""), res_al) -> res_al
+                | (a, (Atom.Lit (LitString "") :: rest)) -> a :: rest
+                | _ -> a :: res_al
+                in
+            let res_al = List.fold_left (fun res_al a ->
+                match a with
+                | Atom.Id n ->
+                    (match (Env.find_opt n !concat_map) with
+                    | Some(a :: rest) -> (List.rev rest) @ (try_cfold_str_concat a res_al)
+                    | _ -> a :: res_al)
+                | _ -> try_cfold_str_concat a res_al) [] al
+                in
+            (match res_al with
+            | a :: [] -> KExpAtom(a, (res_t, loc))
+            | _ -> KExpIntrin(IntrinStrConcat, (List.rev res_al), (res_t, loc)))
         | KExpBinOp(bop, a, b, (res_t, loc)) ->
             (match (cfold_bop bop a b res_t loc) with
             | Some(new_e) -> new_e

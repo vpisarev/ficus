@@ -59,6 +59,7 @@ type intrin_t =
     | IntrinVariantCase
     | IntrinListHead
     | IntrinListTail
+    | IntrinStrConcat
 
 type ktprops_t =
 {
@@ -330,6 +331,7 @@ let intrin2str iop = match iop with
     | IntrinVariantCase -> "INTRIN_VARIANT_CASE"
     | IntrinListHead -> "INTRIN_LIST_HD"
     | IntrinListTail -> "INTRIN_LIST_TL"
+    | IntrinStrConcat -> "INTRIN_STR_CONCAT"
 
 let get_code_loc code default_loc =
     loclist2loc (List.map get_kexp_loc code) default_loc

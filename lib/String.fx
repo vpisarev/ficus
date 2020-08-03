@@ -146,7 +146,7 @@ pure fun strip(s: string): string = ccode
 
 fun tokens(s: string, f: char->bool)
 {
-    val fold (sl, start, sep) = ([], 0, true) for c <- s, i <- 0: {
+    val fold (sl, start, sep) = ([], 0, true) for c@i <- s {
         if f(c) {
             (if sep {sl} else {s[start:i] :: sl}, start, true)
         } else {

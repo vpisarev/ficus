@@ -986,15 +986,16 @@ and check_exp e env sc =
                 (bop, None)
         | OpCons -> raise_compile_err eloc (sprintf "unsupported binary operation %s" (binop_to_string bop))) in
 
-        (match (typ_opt, bop, etyp1, etyp2, e1, e2) with
+        (match (typ_opt, bop, (deref_typ etyp1), (deref_typ etyp2), e1, e2) with
         | ((Some typ), _, _, _, _, _) ->
             unify typ etyp eloc "improper type of the arithmetic operation result";
             ExpBinOp(bop, new_e1, new_e2, ctx)
-        (*| (_, OpAdd, TypString, TypString, _)
-        | (_, OpAdd, TypString, TypChar, _)
-        | (_, OpAdd, TypChar, TypString, _) ->
+        | (_, OpAdd, TypString, TypString, _, _)
+        | (_, OpAdd, TypString, TypChar, _, _)
+        | (_, OpAdd, TypChar, TypString, _, _)
+        | (_, OpAdd, TypChar, TypChar, _, _) ->
             unify TypString etyp eloc "improper type of the string concatenation operation (string is expected)";
-            ExpBinOp(bop, new_e1, new_e2, ctx)*)
+            ExpBinOp(bop, new_e1, new_e2, ctx)
         | (_, OpAdd, TypList _, TypList _, ExpBinOp(OpAdd, sub_e1, sub_e2, _), _) ->
             (* make list concatenation right-associative instead of left-associative *)
             let sub_e2_loc = get_exp_loc sub_e2 in

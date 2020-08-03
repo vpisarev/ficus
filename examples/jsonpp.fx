@@ -52,7 +52,7 @@ fun print_js(js: json_t, ofs: int, indent: string)
     | JsonMap(m) =>
         println("{")
         val n = length(m)
-        for (k, v) <- m, i <- 0: {
+        for (k, v)@i <- m {
             print(newind)
             val v = process_comments(v, newind)
             val prefix = f"{repr(k)} : "
@@ -66,7 +66,7 @@ fun print_js(js: json_t, ofs: int, indent: string)
         if all_scalars(l) {
             val n = length(l)
             print("[ ")
-            val fold ofs = ofs + 2 for x <- l, i <- 0: {
+            val fold ofs = ofs + 2 for x@i <- l {
                 match x {
                 | JsonScalar(sc) =>
                     val str = jsc2str(sc)

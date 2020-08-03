@@ -316,6 +316,8 @@ int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
 #define FX_FREE_STR(str) if(!(str)->rc) ; else fx_free_str(str)
 #define FX_FREE_CSTR(cstr) if(!(cstr)->rc) ; else fx_free_cstr(cstr)
 #define FX_MAKE_STR(strlit) { 0, U##strlit, (int_)(sizeof(U##strlit)/sizeof(char_)-1) }
+#define FX_MAKE_STR1(clit) { 0, U##clit, 1 }
+#define FX_MAKE_VAR_STR1(c) { 0, &c, 1 }
 #define FX_CHAR(c) U##c
 
 #define FX_STR_LENGTH(str) (str).length

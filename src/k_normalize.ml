@@ -175,7 +175,11 @@ let rec exp2kexp e code tref sc =
     | ExpBinOp(bop, e1, e2, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         let (a2, code) = exp2atom e2 code false sc in
-        (KExpBinOp(bop, a1, a2, kctx), code)
+        (match (bop, (get_atom_ktyp a1 eloc), (get_atom_ktyp a2 eloc)) with
+        | (OpAdd, KTypString, KTypString)
+        | (OpAdd, KTypChar, KTypString)
+        | (OpAdd, KTypString, KTypChar) -> (KExpIntrin(IntrinStrConcat, [a1; a2], kctx), code)
+        | _ -> (KExpBinOp(bop, a1, a2, kctx), code))
     | ExpUnOp(OpDeref, e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
         (KExpUnOp(OpDeref, (Atom.Id a_id), kctx), code)
