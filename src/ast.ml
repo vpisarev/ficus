@@ -177,8 +177,8 @@ type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
     | ValCtor of id_t (* when the value is 0-parameter constructor of variant (or exception) *)
     | ValGlobal of scope_t list (* global public values at module level or public static class members *)
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
-type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow
-    | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV
+type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunReallyNoThrow
+    | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV | FunRecursive
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantRecOpt
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
 type ctx_t = typ_t * loc_t

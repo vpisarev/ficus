@@ -151,9 +151,11 @@ let rec pprint_exp e =
                     | FunImpure -> pstr "IMPURE"; pspace()
                     | FunInline -> pstr "INLINE"; pspace()
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
+                    | FunReallyNoThrow -> pstr "REALLY_NOTHROW"; pspace()
                     | FunPrivate -> pstr "PRIVATE"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
                     | FunUseFV -> pstr "USE_FV"; pspace()
+                    | FunRecursive -> pstr "RECURSIVE"; pspace()
                     | FunCtor _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();

@@ -162,9 +162,11 @@ and pprint_kexp_ e prtyp =
                     | FunImpure -> pstr "IMPURE"; pspace()
                     | FunInline -> pstr "INLINE"; pspace()
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
+                    | FunReallyNoThrow -> pstr "REALLY_NOTHROW"; pspace()
                     | FunPrivate -> pstr "PRIVATE"; pspace()
                     | FunStd -> pstr "STANDARD"; pspace()
                     | FunUseFV -> pstr "USE_FV"; pspace()
+                    | FunRecursive -> pstr "RECURSIVE"; pspace()
                     | FunCtor _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
         pstr (!fkind); pspace(); pprint_id_label kf_name; pspace();

@@ -12,6 +12,7 @@ type options_t =
     mutable include_path: string list;
     mutable runtime_path: string;
     mutable optimize_level: int;
+    mutable inline_thresh: int;
     mutable output_name: string;
     mutable print_tokens: bool;
     mutable print_ast: bool;
@@ -35,6 +36,7 @@ let options =
     include_path = [];
     runtime_path = "";
     optimize_level = 1;
+    inline_thresh = 100;
     output_name = "";
     print_tokens = false;
     print_ast = false;
@@ -70,6 +72,7 @@ let parse_options () =
         ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for the most essential ones");
         ("-O1", (Arg.Unit (fun () -> options.optimize_level <- 1)), "   Optimization level 1: enable most of optimizations");
         ("-O3", (Arg.Unit (fun () -> options.optimize_level <- 3)), "   Optimization level 3: enable all optimizations");
+        ("--inline-threshold=", (Arg.Int (fun i -> options.inline_thresh <- i)), "   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion");
         ("-o", (Arg.String (fun s -> options.output_name <- s)), "<output_filename>    Output file name");
         ("-I", (Arg.String (fun ipath -> options.include_path <- options.include_path @ [ipath])), "<path>    Add directory to the module search path");
         ("--", (Arg.Rest (fun s -> options.app_args <- s :: options.app_args)), "Specify the application parameters (e.g. './ficus -run myprog.fx -- arg1 arg2')")
@@ -77,6 +80,10 @@ let parse_options () =
         (fun s -> _files := !_files @ [s])
         ("Ficus Compiler v0.1\n" ^
         sprintf "Usage: %s [options ...] [input_file.fx]" Sys.argv.(0));
+
+        if options.optimize_level = 0 then
+            options.inline_thresh <- 0
+        else ();
 
         let use_stdin = !_files = [] in
 

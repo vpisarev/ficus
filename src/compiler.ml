@@ -158,6 +158,7 @@ let k_optimize_all code =
         else ();
         temp_code := K_tailrec.tailrec2loops !temp_code;
         temp_code := K_flatten.flatten !temp_code;
+        if options.inline_thresh > 0 then temp_code := K_inline.inline_some !temp_code else ();
         temp_code := K_cfold_dealias.cfold_dealias !temp_code
     done;
     temp_code := K_lift.lift_all !temp_code;
