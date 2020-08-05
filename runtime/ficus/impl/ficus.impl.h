@@ -62,8 +62,8 @@ int fx_init(int argc, char** argv)
     return fx_init_thread(0);
 }
 
-FX_THREAD_LOCAL static bool fx_is_main_thread = false;
-FX_THREAD_LOCAL static char* fx_stack_top = 0;
+static FX_THREAD_LOCAL bool fx_is_main_thread = false;
+static FX_THREAD_LOCAL char* fx_stack_top = 0;
 static int_ FX_MAX_STACK_SIZE = 1000000;
 
 int fx_init_thread(int t_idx)
@@ -216,7 +216,7 @@ typedef struct fx_bt_t
     fx_bt_entry_t ostack[FX_BT_HALF_SIZE];
 } fx_bt_t;
 
-FX_THREAD_LOCAL static fx_bt_t fx_bt;
+static FX_THREAD_LOCAL fx_bt_t fx_bt;
 
 int fx_exn_set_fast(int code, const char* funcname, const char* filename, int lineno)
 {
