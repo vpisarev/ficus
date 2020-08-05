@@ -227,7 +227,6 @@ let inline_some top_code =
                 | _ -> true) kf_flags in
             let fsize = calc_exp_size kf_body in
             r_fi := {!r_fi with fi_can_inline=can_inline; fi_size=fsize; fi_flags=kf_flags};
-            (*printf "fname=%s, can_inline=%B, size = %d\n" (idk2str kf_name kf_loc) can_inline fsize;*)
             all_funcs_info := Env.add kf_name r_fi !all_funcs_info;
             curr_fi := r_fi;
             fold_kexp e callb;

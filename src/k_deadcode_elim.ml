@@ -32,35 +32,47 @@
 open Ast
 open K_form
 
-let pure_ktyp_ t loc callb = ()
-let rec pure_kexp_ e callb =
-    let set_impure () = callb.kcb_fold_result <- false in
-    match e with
-    | KExpBreak _ -> set_impure()
-    | KExpContinue _ -> set_impure()
-    | KExpIntrin(IntrinPopExn, _, _) -> set_impure()
-    | KExpCall(f, _, (_, loc)) -> if (pure_fun f loc) then () else set_impure()
-
-    (* [TODO] make it more sophisticated. A block of expressions may change value
-       of a locally-defined variable and yet, as a whole, stay a pure expression *)
-    | KExpAssign (i, (Atom.Id j), _) when i = j -> ()
-    | KExpAssign _ -> set_impure()
-    | KExpTryCatch _ -> set_impure()
-    | KExpThrow _ -> set_impure()
-    | KExpCCode _ -> set_impure()
-    | _ -> if callb.kcb_fold_result then fold_kexp e callb else ()
-
-and new_pure_callb () =
-{
-    kcb_fold_atom=None;
-    kcb_fold_ktyp=Some(pure_ktyp_);
-    kcb_fold_kexp=Some(pure_kexp_);
-    kcb_fold_result=true
-}
-and pure_kexp e =
-    let callb = new_pure_callb() in
-    pure_kexp_ e callb;
-    callb.kcb_fold_result
+let rec pure_kexp e =
+    let ispure = ref true in
+    let local_vars = ref IdSet.empty in
+    let pure_ktyp_ t loc callb = () in
+    let rec pure_kexp_ e callb =
+        match e with
+        | KExpBreak _ -> ispure := false
+        | KExpContinue _ -> ispure := false
+        | KExpIntrin(IntrinPopExn, _, _) -> ispure := false
+        | KExpCall(f, _, (_, loc)) -> if (pure_fun f loc) then () else ispure := false
+        | KExpAssign (i, (Atom.Id j), _) when i = j -> ()
+        | KExpAssign (i, _, _) ->
+            if (IdSet.mem i !local_vars) then () else ispure := false
+            (*ispure := false*)
+        | KExpTryCatch _ -> ispure := false
+        | KExpThrow _ -> ispure := false
+        | KExpCCode _ -> ispure := false
+        | KExpSeq(elist, (_, loc)) ->
+            let saved_local_vars = !local_vars in
+            let (_, dv) = used_decl_by_kexp e in
+            let _ = IdSet.iter (fun i ->
+                match (kinfo_ i loc) with
+                | KVal {kv_flags} ->
+                    if (List.mem ValMutable kv_flags) && not (List.mem ValTempRef kv_flags) then
+                        local_vars := IdSet.add i !local_vars
+                    else ()
+                | _ -> ()) dv
+                in
+            ignore(List.for_all (fun e ->
+                pure_kexp_ e callb; !ispure) elist);
+            local_vars := saved_local_vars
+        | _ -> if !ispure then fold_kexp e callb else ()
+    in let pure_callb =
+    {
+        kcb_fold_atom = None;
+        kcb_fold_ktyp = Some(pure_ktyp_);
+        kcb_fold_kexp = Some(pure_kexp_);
+        kcb_fold_result = 0
+    } in
+    pure_kexp_ e pure_callb;
+    !ispure
 and pure_fun f loc =
     match (kinfo_ f loc) with
     | KFun df ->
