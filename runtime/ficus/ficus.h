@@ -58,6 +58,7 @@ enum
     FX_EXN_TypeMismatchError = -21,
     FX_EXN_UnknownExnError = -22,
     FX_EXN_ZeroStepError = -23,
+    FX_EXN_StackOverflowError = -24,
 
     FX_EXN_StdMax = -48,
 
@@ -406,7 +407,7 @@ typedef struct fx_exn_t
     fx_result->data = (fx_exn_data_t*)exn_data; \
     exn_data->rc = 1
 
-int fx_set_exn_fast(int code, const char* funcname, const char* filename, int lineno);
+int fx_exn_set_fast(int code, const char* funcname, const char* filename, int lineno);
 int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filename, int lineno);
 int fx_rethrow_exn(fx_exn_t* exn);
 void fx_exn_get_and_reset(fx_exn_t* exn);

@@ -55,14 +55,35 @@ int fx_init(int argc, char** argv)
     FX_DECL_STD_EXN(TypeMismatchError);
     FX_DECL_STD_EXN(UnknownExnError);
     FX_DECL_STD_EXN(ZeroStepError);
+    FX_DECL_STD_EXN(StackOverflowError);
 
     #undef FX_DECL_STD_EXN
 
     return fx_init_thread(0);
 }
 
+FX_THREAD_LOCAL static bool fx_is_main_thread = false;
+FX_THREAD_LOCAL static char* fx_stack_top = 0;
+static int_ FX_MAX_STACK_SIZE = 1000000;
+
 int fx_init_thread(int t_idx)
 {
+    if(t_idx == 0)
+        fx_is_main_thread = true;
+    char local_val = 0;
+    fx_stack_top = &local_val;
+    return FX_OK;
+}
+
+int fx_check_stack()
+{
+    if (fx_is_main_thread) {
+        char local_val = 0;
+        char* stack_bottom = &local_val;
+        char* stack_top = fx_stack_top;
+        if (stack_bottom < stack_top && stack_top - stack_bottom > FX_MAX_STACK_SIZE)
+            FX_FAST_THROW_RET(FX_EXN_StackOverflowError);
+    }
     return FX_OK;
 }
 
@@ -195,7 +216,7 @@ typedef struct fx_bt_t
     fx_bt_entry_t ostack[FX_BT_HALF_SIZE];
 } fx_bt_t;
 
-FX_THREAD_LOCAL fx_bt_t fx_bt;
+FX_THREAD_LOCAL static fx_bt_t fx_bt;
 
 int fx_exn_set_fast(int code, const char* funcname, const char* filename, int lineno)
 {
@@ -322,10 +343,12 @@ void fx_update_bt(const char* funcname, const char* filename, int lineno)
         curr_bt->istack_top = itop+1;
     } else {
         int otop = curr_bt->ostack_top;
-        currloc = curr_bt->istack + otop;
+        printf("itop=%d, otop=%d, obottom = %d\n", itop, otop, curr_bt->ostack_bottom);
+        currloc = curr_bt->ostack + otop;
         otop = (otop + 1) % FX_BT_HALF_SIZE;
         if(curr_bt->ostack_bottom == otop)
             curr_bt->ostack_bottom = (otop + 1) % FX_BT_HALF_SIZE;
+        curr_bt->ostack_top = otop;
     }
     currloc->funcname = funcname;
     currloc->filename = filename;
@@ -347,7 +370,7 @@ void fx_print_bt(void)
 
     if(curr_bt->ostack_top != curr_bt->ostack_bottom) {
         printf("\t...\n");
-        for(int i = curr_bt->ostack_top; i != curr_bt->ostack_bottom; i = (i + 1) % FX_BT_HALF_SIZE) {
+        for(int i = curr_bt->ostack_bottom; i != curr_bt->ostack_top; i = (i + 1) % FX_BT_HALF_SIZE) {
             fx_print_bt_entry(curr_bt->ostack+i, "\tcalled from");
         }
     }

@@ -105,7 +105,8 @@ let find_recursive_funcs top_code =
             let flags = remove_flag FunRecursive kf_flags in
             let flags = if (IdSet.mem f !fcalled) then FunRecursive :: flags else flags in
             kf := {!kf with kf_flags = flags}
-        | _ -> ()) all_funcs
+        | _ -> ()) all_funcs;
+    top_code
 
 let calc_exp_size e =
     let sz = ref 0 in

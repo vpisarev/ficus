@@ -165,6 +165,7 @@ let k_optimize_all code =
     temp_code := K_deadcode_elim.elim_unused !temp_code;
     temp_code := K_mangle.mangle_all !temp_code;
     temp_code := K_deadcode_elim.elim_unused !temp_code;
+    temp_code := K_inline.find_recursive_funcs !temp_code;
     temp_code := K_annotate_types.annotate_types !temp_code;
     (!temp_code, !compile_errs = [])
 

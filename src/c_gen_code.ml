@@ -2127,6 +2127,10 @@ let gen_ccode top_code =
                     let (status_exp, ccode) = create_cdefval orig_status_id CTypCInt [ValMutable] "fx_status"
                         (Some (make_int_exp 0 kf_loc)) [] kf_loc in
                     let status_id = if is_nothrow then noid else orig_status_id in
+                    let ccode = if status_id = noid || not (List.mem FunRecursive kf_flags) then ccode else
+                        let call_chkstk = make_call (get_id "fx_check_stack") [] CTypCInt kf_loc in
+                        add_fx_call call_chkstk ccode kf_loc
+                        in
                     (*let _ = printf "converting function %s:\n" kf_cname in*)
                     let _ = List.iter (fun (a, t, flags) ->
                         if not (List.mem CArgPassByPtr flags) then () else
