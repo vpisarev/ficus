@@ -148,8 +148,20 @@ let calc_exp_size e =
     fold_size_kexp_ e size_callb;
     !sz
 
-let expand_call e =
-    let subst_env = ref (Env.empty: atom_t Env.t) in
+let subst_names e subst_env0 rename_locals =
+    let subst_env0 = if not rename_locals then subst_env0 else
+        let (_, decl_set) = used_decl_by_kexp e in
+        let loc = get_kexp_loc e in
+        IdSet.fold (fun i subst_env ->
+            match (kinfo_ i loc) with
+            | KVal kv ->
+                let {kv_name; kv_typ; kv_flags; kv_loc} = kv in
+                let new_name = dup_idk kv_name in
+                let _ = create_kdefval new_name kv_typ kv_flags None [] kv_loc in
+                Env.add kv_name (Atom.Id new_name) subst_env
+            | _ -> subst_env) decl_set subst_env0
+        in
+    let subst_env = ref subst_env0 in
     let subst_atom_ a loc callb =
         match a with
         | Atom.Id i ->
@@ -167,25 +179,25 @@ let expand_call e =
         kcb_typ=Some(subst_ktyp_);
         kcb_exp=Some(subst_kexp_)
     } in
+    subst_kexp_ e subst_callb
+
+let expand_call e =
     match e with
     | KExpCall(f, real_args, (_, loc)) ->
         (match (kinfo_ f loc) with
         | KFun kf ->
             let {kf_args; kf_body} = !kf in
+            let subst_env = List.fold_left2 (fun subst_env (formal_arg, _) real_arg ->
+                Env.add formal_arg real_arg subst_env) (Env.empty : atom_t Env.t) kf_args real_args
+                in
             let (_, decl_set) = used_decl_by_kexp kf_body in
-            let have_bad_defs = ref false in
-            List.iter2 (fun (formal_arg, _) real_arg ->
-                subst_env := Env.add formal_arg real_arg !subst_env) kf_args real_args;
-            IdSet.iter (fun i ->
-                match (kinfo_ i loc) with
-                | KVal kv ->
-                    let {kv_name; kv_typ; kv_flags; kv_loc} = kv in
-                    let new_name = dup_idk kv_name in
-                    let _ = create_kdefval new_name kv_typ kv_flags None [] kv_loc in
-                    subst_env := Env.add kv_name (Atom.Id new_name) !subst_env
-                | _ -> have_bad_defs := true) decl_set;
-            if !have_bad_defs then (e, false) else
-            ((subst_kexp_ kf_body subst_callb), true)
+            let have_bad_defs = IdSet.fold (fun i have_bad_defs ->
+                have_bad_defs ||
+                (match (kinfo_ i loc) with
+                | KVal kv -> false
+                | _ -> true)) decl_set false in
+            if have_bad_defs then (e, false) else
+            ((subst_names kf_body subst_env true), true)
         | _ -> (e, false))
     | _ -> (e, false)
 
