@@ -343,7 +343,6 @@ void fx_update_bt(const char* funcname, const char* filename, int lineno)
         curr_bt->istack_top = itop+1;
     } else {
         int otop = curr_bt->ostack_top;
-        printf("itop=%d, otop=%d, obottom = %d\n", itop, otop, curr_bt->ostack_bottom);
         currloc = curr_bt->ostack + otop;
         otop = (otop + 1) % FX_BT_HALF_SIZE;
         if(curr_bt->ostack_bottom == otop)

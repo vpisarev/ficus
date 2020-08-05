@@ -1147,8 +1147,16 @@ let gen_ccode top_code =
             let e = fix_nil e ktyp in
             (true, e, ccode)
         | KExpBinOp(bop, a1, a2, _) ->
+            let (save_flag, a1_is_int, a2_is_int) =
+                match bop with
+                | OpDiv | OpMod ->
+                    let f1 = is_ktyp_integer (get_atom_ktyp a1 kloc) true in
+                    let f2 = is_ktyp_integer (get_atom_ktyp a2 kloc) true in
+                    ((f1 && f2), f1, f2)
+                | _ -> (false, false, false)
+                in
             let (ce1, ccode) = atom2cexp a1 ccode kloc in
-            let (ce2, ccode) = atom2cexp a2 ccode kloc in
+            let (ce2, ccode) = atom2cexp_ a2 save_flag ccode kloc in
             (match bop with
             | OpPow ->
                 let (need_cast, ce1, ce2, rtyp, f) = match ctyp with
@@ -1161,24 +1169,31 @@ let gen_ccode top_code =
                 let e = make_call f (ce1 :: ce2 :: []) rtyp kloc in
                 let e = if need_cast then CExpCast(e, ctyp, kloc) else e in
                 (true, e, ccode)
+            | OpDiv ->
+                if a1_is_int && a2_is_int then
+                    let lbl = curr_block_label kloc in
+                    let chk_denom = make_call (get_id "FX_CHECK_DIV_BY_ZERO") [ce2; lbl] CTypVoid kloc in
+                    let div_exp = CExpBinOp(COpDiv, ce1, ce2, (ctyp, kloc)) in
+                    (true, div_exp, (CExp chk_denom) :: ccode)
+                else
+                    (true, CExpBinOp(COpDiv, ce1, ce2, (ctyp, kloc)), ccode)
             | OpMod ->
-                let e =
-                if (is_ktyp_integer (get_atom_ktyp a1 kloc) true) &&
-                   (is_ktyp_integer (get_atom_ktyp a2 kloc) true) then
-                    CExpBinOp(COpMod, ce1, ce2, (ctyp, kloc))
+                if a1_is_int && a2_is_int then
+                    let lbl = curr_block_label kloc in
+                    let chk_denom = make_call (get_id "FX_CHECK_DIV_BY_ZERO") [ce2; lbl] CTypVoid kloc in
+                    let mod_exp = CExpBinOp(COpMod, ce1, ce2, (ctyp, kloc)) in
+                    (true, mod_exp, (CExp chk_denom) :: ccode)
                 else
                     let (need_cast, ce1, ce2, rtyp, f) = match ctyp with
-                        | CTypInt
-                        | CTypFloat(32) -> (false, ce1, ce2, ctyp, get_id "fmodf")
+                        | CTypInt | CTypFloat(32) -> (false, ce1, ce2, ctyp, get_id "fmodf")
                         | CTypFloat(64) -> (false, ce1, ce2, ctyp, get_id "fmod")
                         | _ ->
                             let ce1 = CExpCast(ce1, (CTypFloat 64), kloc) in
                             let ce2 = CExpCast(ce2, (CTypFloat 64), kloc) in
                             (true, ce1, ce2, (CTypFloat 64), get_id "fmod") in
                     let e = make_call f (ce1 :: ce2 :: []) rtyp kloc in
-                    if need_cast then CExpCast(e, ctyp, kloc) else e
-                in
-                (true, e, ccode)
+                    let e = if need_cast then CExpCast(e, ctyp, kloc) else e in
+                    (true, e, ccode)
             | OpCons ->
                 (*
                     l = e1 :: e2;
