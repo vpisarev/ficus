@@ -178,13 +178,10 @@ let cfold_bop bop a b res_t loc =
     | (OpMul, (ConstInt ia), (ConstFloat fb)) -> ((Some (ConstFloat((Int64.to_float ia) *. fb))), None)
     | (OpMul, (ConstFloat fa), (ConstInt ib)) -> ((Some (ConstFloat(fa *. (Int64.to_float ib)))), None)
     | (OpMul, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstFloat(fa *. fb))), None)
-    | (OpDiv, (ConstInt _), ConstZero)
-    | (OpDiv, (ConstBool _), ConstZero)
-    | (OpDiv, ConstZero, ConstZero)
-    | (OpMod, (ConstInt _), ConstZero)
-    | (OpMod, (ConstBool _), ConstZero)
-    | (OpMod, ConstZero, ConstZero) ->
-        raise_compile_err loc "division by constant 0"
+    | (OpDiv, _, ConstZero)
+    | (OpMod, _, ConstZero) ->
+        if not (is_ktyp_integer at true) then (None, None) else
+            raise_compile_err loc "division by constant 0"
     | (OpDiv, _, (ConstInt 1L)) -> retain_a()
     | (OpDiv, _, (ConstFloat 1.0)) -> retain_a()
     | (OpDiv, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstInt(Int64.div ia ib))), None)
@@ -361,7 +358,8 @@ let cfold_dealias top_code =
                 | (Atom.Lit (LitString s1), (Atom.Lit (LitChar s2) :: rest))
                 | (Atom.Lit (LitChar s1), (Atom.Lit (LitString s2) :: rest))
                 | (Atom.Lit (LitString s1), (Atom.Lit (LitString s2) :: rest)) ->
-                    Atom.Lit (LitString (s1 ^ s2)) :: rest
+                    (* the order s2 + s1 is correct here, since we operate on reversed lists *)
+                    Atom.Lit (LitString (s2 ^ s1)) :: rest
                 | (Atom.Lit (LitString ""), res_al) -> res_al
                 | (a, (Atom.Lit (LitString "") :: rest)) -> a :: rest
                 | _ -> a :: res_al

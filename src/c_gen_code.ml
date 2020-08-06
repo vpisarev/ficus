@@ -1147,16 +1147,19 @@ let gen_ccode top_code =
             let e = fix_nil e ktyp in
             (true, e, ccode)
         | KExpBinOp(bop, a1, a2, _) ->
-            let (save_flag, a1_is_int, a2_is_int) =
+            let (save_and_check, a1_is_int, a2_is_int) =
                 match bop with
                 | OpDiv | OpMod ->
                     let f1 = is_ktyp_integer (get_atom_ktyp a1 kloc) true in
                     let f2 = is_ktyp_integer (get_atom_ktyp a2 kloc) true in
+                    (* if a2 is constant, k_cfold_dealias stage has already checked
+                       that a2 is non-zero; we can skip non-zero check here *)
+                    let f2 = f2 && (match a2 with Atom.Id _ -> true | _ -> false) in
                     ((f1 && f2), f1, f2)
                 | _ -> (false, false, false)
                 in
             let (ce1, ccode) = atom2cexp a1 ccode kloc in
-            let (ce2, ccode) = atom2cexp_ a2 save_flag ccode kloc in
+            let (ce2, ccode) = atom2cexp_ a2 save_and_check ccode kloc in
             (match bop with
             | OpPow ->
                 let (need_cast, ce1, ce2, rtyp, f) = match ctyp with
@@ -1170,7 +1173,7 @@ let gen_ccode top_code =
                 let e = if need_cast then CExpCast(e, ctyp, kloc) else e in
                 (true, e, ccode)
             | OpDiv ->
-                if a1_is_int && a2_is_int then
+                if save_and_check then
                     let lbl = curr_block_label kloc in
                     let chk_denom = make_call (get_id "FX_CHECK_DIV_BY_ZERO") [ce2; lbl] CTypVoid kloc in
                     let div_exp = CExpBinOp(COpDiv, ce1, ce2, (ctyp, kloc)) in
@@ -1178,7 +1181,7 @@ let gen_ccode top_code =
                 else
                     (true, CExpBinOp(COpDiv, ce1, ce2, (ctyp, kloc)), ccode)
             | OpMod ->
-                if a1_is_int && a2_is_int then
+                if save_and_check then
                     let lbl = curr_block_label kloc in
                     let chk_denom = make_call (get_id "FX_CHECK_DIV_BY_ZERO") [ce2; lbl] CTypVoid kloc in
                     let mod_exp = CExpBinOp(COpMod, ce1, ce2, (ctyp, kloc)) in
