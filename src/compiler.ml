@@ -157,6 +157,7 @@ let k_optimize_all code =
             temp_code := K_annotate_types.annotate_types !temp_code)
         else ();
         temp_code := K_tailrec.tailrec2loops !temp_code;
+        temp_code := K_loop_inv.move_loop_invs !temp_code;
         temp_code := K_flatten.flatten !temp_code;
         if options.inline_thresh > 0 then temp_code := K_inline.inline_some !temp_code else ();
         temp_code := K_cfold_dealias.cfold_dealias !temp_code
@@ -179,6 +180,8 @@ let k2c_all code =
 let run_compiler () =
     let opt_level = options.optimize_level in
     let cmd = "cc" in
+    let cmd = cmd ^ " -Wno-unknown-warning-option" in
+    let cmd = cmd ^ " -Wno-dangling-else" in
     let cmd = cmd ^ (sprintf " -O%d%s" opt_level (if opt_level = 0 then " -ggdb" else "")) in
     let cmd = cmd ^ " -o " ^ options.app_filename in
     let cmd = cmd ^ " -I" ^ options.runtime_path in

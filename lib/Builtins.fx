@@ -208,13 +208,13 @@ operator .>= (a: 't [], b: 't []): bool [] =
 operator .> (a: 't [], b: 't []): bool [] =
     [for x <- a, y <- b {y < x}]
 operator .* (a: 't [], b: 't []) =
-    [for x <- a, y <- b {y .* x}]
+    [for x <- a, y <- b {x .* y}]
 operator ./ (a: 't [], b: 't []) =
-    [for x <- a, y <- b {y ./ x}]
+    [for x <- a, y <- b {x ./ y}]
 operator .% (a: 't [], b: 't []) =
-    [for x <- a, y <- b {y .% x}]
+    [for x <- a, y <- b {x .% y}]
 operator .** (a: 't [], b: 't []) =
-    [for x <- a, y <- b {y .** x}]
+    [for x <- a, y <- b {x .** y}]
 
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
 operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
