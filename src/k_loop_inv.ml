@@ -88,11 +88,10 @@ let rec move_loop_invs code =
             let (outer_moved_c, _, c) = mli_process_loop [((KExpNop loc), [], [])] c loc callb in
             code2kexp (outer_moved @ outer_moved_c @ [KExpDoWhile(body, c, loc)]) loc
         | KDefVal(n, rhs, loc) ->
-            let n_is_inloop = IdSet.mem n !curr_inloop in
-            let ismut = (is_mutable n loc) in
-            let isprhs = (K_deadcode_elim.pure_kexp rhs) in
-            let isinvrhs = (is_loop_invariant rhs) in
-            if not n_is_inloop || ismut || not isprhs || not isinvrhs then e
+            if not (IdSet.mem n !curr_inloop) ||
+               (is_mutable n loc) ||
+               not (K_deadcode_elim.pure_kexp rhs) ||
+               not (is_loop_invariant rhs) then e
             else
             (
                 curr_moved := e :: !curr_moved;
