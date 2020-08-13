@@ -73,7 +73,7 @@ let lift top_code =
             | KNone -> raise_compile_err kf_loc
                 (sprintf "simple LL: attempt to request type of non-existing symbol '%s' when checking free variables of function '%s'"
                 (id2str n) (id2str kf_name)))) fv in
-        (*print_set ((id2str !kf.kf_name) ^ " free vars") fv; printf "\tcan lift: %B\n" can_lift;*)
+        (*print_idset ((id2str !kf.kf_name) ^ " free vars") fv; printf "\tcan lift: %B\n" can_lift;*)
         can_lift in
 
     let rec walk_ktyp_n_lift t loc callb = t

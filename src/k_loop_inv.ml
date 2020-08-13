@@ -9,11 +9,6 @@
 open Ast
 open K_form
 
-let pprint_idset name iset =
-    printf "%s: { " name;
-    IdSet.iter (fun i -> printf "%s " (id2str i)) iset;
-    printf "}\n"
-
 let rec move_loop_invs code =
     let curr_inloop = ref IdSet.empty in
     let curr_moved = ref ([]: kexp_t list) in
@@ -38,8 +33,7 @@ let rec move_loop_invs code =
             kcb_fold_kexp = Some(isinv_kexp_);
             kcb_fold_result = 0
         } in
-        isinv_kexp_ e isinv_callb;
-        !isinv
+        (K_deadcode_elim.pure_kexp e) && (isinv_kexp_ e isinv_callb; !isinv)
     in
     let mli_ktyp t loc callb = t in
     let rec mli_process_loop e_idl_l body loc callb =
@@ -90,7 +84,6 @@ let rec move_loop_invs code =
         | KDefVal(n, rhs, loc) ->
             if not (IdSet.mem n !curr_inloop) ||
                (is_mutable n loc) ||
-               not (K_deadcode_elim.pure_kexp rhs) ||
                not (is_loop_invariant rhs) then e
             else
             (

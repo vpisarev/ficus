@@ -887,7 +887,7 @@ let lit2str c cmode loc =
     | LitBool(false) -> "false"
     | LitNil -> "nullptr"
 
-let print_set setname s =
+let print_idset setname s =
     printf "%s:[" setname;
     IdSet.iter (fun i -> printf " %s" (id2str i)) s;
     printf " ]\n"
