@@ -148,7 +148,7 @@ let k_normalize_all modules =
 
 let k_optimize_all code =
     let _ = (compile_errs := []) in
-    let niters = 5 in
+    let niters = 1 in
     let temp_code = ref code in
     for i = 0 to niters-1 do
         temp_code := K_deadcode_elim.elim_unused !temp_code;
@@ -158,8 +158,9 @@ let k_optimize_all code =
         else ();
         temp_code := K_tailrec.tailrec2loops !temp_code;
         temp_code := K_loop_inv.move_loop_invs !temp_code;
-        temp_code := K_flatten.flatten !temp_code;
         if options.inline_thresh > 0 then temp_code := K_inline.inline_some !temp_code else ();
+        temp_code := K_flatten.flatten !temp_code;
+        temp_code := K_fuse_loops.fuse_loops !temp_code;
         temp_code := K_cfold_dealias.cfold_dealias !temp_code
     done;
     temp_code := K_lift.lift_all !temp_code;
