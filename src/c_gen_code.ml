@@ -675,8 +675,6 @@ let gen_ccode top_code =
                         "the list of '@' indices is too short for array; looks like it's bug in type checker")
             in
         (*
-            [TODO] parallel loops are not supported yet.
-
             Compute various elements/attributes/parts of the for loop:
 
             list_exps: lst0, lst1, ... - lists (if any) which are iterated.
@@ -1753,10 +1751,48 @@ let gen_ccode top_code =
             let need_make_list = List.mem ForMakeList flags in
             let need_make_array = (List.mem ForMakeArray flags) || not need_make_list in
             let nfors = List.length e_idoml_l in
+            (* collect all the variables/values declared inside for (include iterations variables) *)
+            let (pre_alloc_array, _) = if not need_make_array then (false, IdSet.empty) else
+                List.fold_left (fun (pre_alloc_array, decl_inside_for) (e, idoml, idxl) ->
+                    if not pre_alloc_array then
+                        (pre_alloc_array, decl_inside_for)
+                    else
+                        let decl_inside_for = List.fold_left (fun decl_inside_for i ->
+                            IdSet.add i decl_inside_for) decl_inside_for idxl in
+                        let (_, decl_inside_e) = used_decl_by_kexp e in
+                        let decl_inside_for = IdSet.union decl_inside_for decl_inside_e in
+                        List.fold_left (fun (pre_alloc_array, decl_inside_for) (i, dom) ->
+                            let decl_inside_for = IdSet.add i decl_inside_for in
+                            let pre_alloc_array = (match dom with
+                                | Domain.Elem (Atom.Id col) ->
+                                    let {kv_typ; kv_flags} = get_kval col kloc in
+                                    if not (List.mem ValMutable kv_flags) &&
+                                        (match kv_typ with KTypArray _ | KTypString -> true | _ -> false) &&
+                                        not (IdSet.mem col decl_inside_for) then
+                                        pre_alloc_array else false
+                                | Domain.Elem (Atom.Lit (LitString _)) -> pre_alloc_array
+                                | Domain.Range (a, b, delta) ->
+                                    let check_range_elem e =
+                                        match e with
+                                        | Atom.Id k ->
+                                            if (is_mutable k kloc) || (IdSet.mem k decl_inside_for)
+                                            then false
+                                            else pre_alloc_array
+                                        | _ -> pre_alloc_array
+                                        in
+                                    (check_range_elem a) &&
+                                    (check_range_elem b) &&
+                                    (check_range_elem delta)
+                                | _ -> false)
+                                in
+                        (pre_alloc_array, decl_inside_for)) (true, decl_inside_for) idoml)
+                (true, IdSet.empty) e_idoml_l
+            in
             (* compute the total array dimensionality *)
-            let (_, ndims) = List.fold_left (fun (for_idx, ndims) (e, idoml, _) ->
-                let ndims_i = compute_for_ndims for_idx nfors idoml for_loc in
-                (for_idx+1, ndims + ndims_i)) (0, 0) e_idoml_l
+            let (_, ndims) = List.fold_left
+                (fun (for_idx, ndims) (e, idoml, _) ->
+                    let ndims_i = compute_for_ndims for_idx nfors idoml for_loc in
+                    (for_idx+1, ndims + ndims_i)) (0, 0) e_idoml_l
                 in
             (* declare the output array/list; in the case of array also declare the output pointer;
                in the case of list also declare pointer to the last list element *)
@@ -1780,7 +1816,7 @@ let gen_ccode top_code =
                     "cgen: invalid combination of comprehension type (%s) and the output collection type"
                     (if need_make_array then "MAKE_ARRAY" else if need_make_list then "MAKE_LIST" else "???"))
                 in
-            let rec form_map for_idx e_idoml_l prev_n_exps =
+            let rec form_map pre_map_ccode for_idx e_idoml_l prev_n_exps =
                 let (init_kexp, idoml, at_ids, nested_e_idoml) =
                     match e_idoml_l with
                     | (e, idoml, at_ids) :: rest -> (e, idoml, at_ids, rest)
@@ -1791,24 +1827,24 @@ let gen_ccode top_code =
                 let nested_loc = if nested_loc = noloc then for_loc else nested_loc in
                 let (_, init_ccode) = kexp2cexp init_kexp (ref None) [] in
                 let lbl = curr_block_label nested_loc in
-                let (for_headers, list_exps, n_exps, init_ccode, pre_body_ccode, body_elems, post_ccode) =
-                    process_for lbl idoml at_ids for_idx nfors ndims dims_ofs nested_e_idoml init_ccode nested_loc in
-                let (ndims_i, n_exps, init_ccode) = match (list_exps, n_exps, need_make_array) with
-                    | (_, n_exp :: _, _) -> ((List.length n_exps), n_exps, init_ccode)
+                let (for_headers, list_exps, n_exps, pre_map_ccode_delta, pre_body_ccode, body_elems, post_ccode) =
+                    process_for lbl idoml at_ids for_idx nfors ndims dims_ofs nested_e_idoml [] nested_loc in
+                let (ndims_i, n_exps, lst_len_ccode) = match (list_exps, n_exps, need_make_array) with
+                    | (_, n_exp :: _, _) -> ((List.length n_exps), n_exps, [])
                     | (l_exp :: _, [], true) ->
                         (* if there is no fixed range or array iterated, just list(s),
                            and we need to make array, we need to compute length of the list. *)
                         let call_list_len = make_call !std_fx_list_length [l_exp] CTypInt nested_loc in
-                        let (lstlen, init_ccode) = create_cdefval (gen_temp_idc "len")
-                            CTypInt [] "" (Some call_list_len) init_ccode nested_loc in
-                        (1, [lstlen], init_ccode)
+                        let (lstlen, lst_len_ccode) = create_cdefval (gen_temp_idc "len")
+                            CTypInt [] "" (Some call_list_len) [] nested_loc in
+                        (1, [lstlen], lst_len_ccode)
                     | ([], [], true) ->
                         raise_compile_err nested_loc
                             (for_err_msg for_idx nfors (-1) "array comprehension uses 'for' with indefinite range")
-                    | _ -> (1, n_exps, init_ccode)
+                    | _ -> (1, n_exps, [])
                     in
                 let n_exps = prev_n_exps @ n_exps in
-                let init_ccode = if (not need_make_array) || (dims_ofs + ndims_i < ndims) then init_ccode else
+                let alloc_array_ccode = if (not need_make_array) || (dims_ofs + ndims_i < ndims) then [] else
                     let (_, cmp_size_list) = List.fold_left (fun (k, cmp_size_list) n_exp ->
                         let size_i = make_call !std_FX_ARR_SIZE [dst_exp; (make_int_exp k nested_loc)] CTypInt nested_loc in
                         let cmp_size_i = CExpBinOp(COpCompareEQ, size_i, n_exp, (CTypBool, nested_loc)) in
@@ -1818,8 +1854,8 @@ let gen_ccode top_code =
                     let arr_data = CExpCast((cexp_mem dst_exp (get_id "data") std_CTypVoidPtr), (make_ptr elemtyp), nested_loc) in
                     let set_dstptr = make_assign dstptr arr_data in
                     let then_ccode = (CExp set_dstptr) :: then_ccode in
-                    if for_idx = 0 then
-                        then_ccode @ init_ccode
+                    if for_idx = 0 || pre_alloc_array then
+                        then_ccode
                     else
                         let cc_exp = cexp_mem dst_exp (get_id "data") std_CTypVoidPtr in
                         let cc_exp = CExpUnOp(COpLogicNot, cc_exp, (CTypBool, nested_loc)) in
@@ -1827,13 +1863,19 @@ let gen_ccode top_code =
                         let check_or_create = CStmtIf(cc_exp,
                             (rccode2stmt then_ccode nested_loc),
                             (rccode2stmt else_ccode nested_loc), nested_loc) in
-                        check_or_create :: init_ccode
+                        check_or_create :: []
+                    in
+                let (pre_map_ccode, init_ccode) =
+                    if pre_alloc_array then
+                        ((alloc_array_ccode @ pre_map_ccode_delta @ pre_map_ccode), (lst_len_ccode @ init_ccode))
+                    else
+                        (pre_map_ccode, (alloc_array_ccode @ lst_len_ccode @ pre_map_ccode_delta @ init_ccode))
                     in
                 let for_flags = if for_idx > 0 then [ForNested] else [] in
                 let _ = new_for_block_ctx ndims for_flags kloc in
                 (* inside the loop body context form `<etyp> v=e` expressions (or more complex ones in the case of complex types) *)
                 let body_ccode = decl_for_body_elems body_elems [] in
-                let (add_incr_dstptr, body_ccode) = match nested_e_idoml with
+                let (add_incr_dstptr, (pre_map_ccode, body_ccode)) = match nested_e_idoml with
                     | (body, [], []) :: [] ->
                         (* add the loop body itself *)
                         let (result, body_ccode) = kexp2cexp body (ref None) body_ccode in
@@ -1857,17 +1899,17 @@ let gen_ccode top_code =
                                 only with array comprehensions.
                         *)
                         if need_make_array then
-                            (true, (C_gen_types.gen_copy_code result
-                                    (cexp_deref dstptr) elemtyp body_ccode body_loc))
+                            (true, (pre_map_ccode, (C_gen_types.gen_copy_code result
+                                    (cexp_deref dstptr) elemtyp body_ccode body_loc)))
                         else
                             let (node_exp, body_ccode) = create_cdefval (gen_temp_idc "node") ctyp [] ""
                                 (Some (make_nullptr body_loc)) body_ccode body_loc in
                             let body_ccode = make_cons_call result (make_nullptr body_loc)
                                 false node_exp body_ccode body_loc in
                             let append_call = make_call !std_FX_LIST_APPEND [dst_exp; lstend; node_exp] CTypVoid body_loc in
-                            (false, (CExp append_call) :: body_ccode)
+                            (false, (pre_map_ccode, ((CExp append_call) :: body_ccode)))
                     | _ ->
-                        (false, (form_map (for_idx+1) nested_e_idoml n_exps))
+                        (false, (form_map pre_map_ccode (for_idx+1) nested_e_idoml n_exps))
                     in
                 (* add the initialization and the cleanup sections, if needed *)
                 let (br_label, body_stmt) = finalize_loop_body body_ccode (not need_make_array) kloc in
@@ -1883,10 +1925,10 @@ let gen_ccode top_code =
                 in
                 (* add the non-local "break" label if needed *)
                 let post_ccode = if br_label = noid then post_ccode else (CStmtLabel(br_label, end_for_loc)) :: post_ccode in
-                post_ccode @ (for_stmt :: init_ccode)
+                (pre_map_ccode, (post_ccode @ (for_stmt :: init_ccode)))
             in
-            let map_ccode = form_map 0 (e_idoml_l@[(body, [], [])]) [] in
-            (false, dummy_exp, map_ccode @ ccode)
+            let (pre_map_ccode, map_ccode) = form_map [] 0 (e_idoml_l@[(body, [], [])]) [] in
+            (false, dummy_exp, map_ccode @ pre_map_ccode @ ccode)
         | KExpFor(idoml, at_ids, body, flags, _) ->
             let lbl = curr_block_label kloc in
             let for_loc = get_start_loc kloc in
@@ -2370,7 +2412,11 @@ let gen_ccode top_code =
             (global_prologue, s :: temp_toplevel_vals))
         ([], []) bctx_prologue in
     let _ = pop_block_ctx end_loc in
-    let ccode = (cexp2stmt e) :: ccode in
+    let ccode =
+        match e with
+        | CExpIdent _ | CExpLit _ -> ccode
+        | _ -> (cexp2stmt e) :: ccode
+        in
     let ccode = if bctx_label_used = 0 then ccode else (CStmtLabel(bctx_label, end_loc)) :: ccode in
     let ccode = filter_out_nops (bctx_cleanup @ ccode) in
     let ccode = CStmtReturn ((Some status_exp), end_loc) :: ccode in

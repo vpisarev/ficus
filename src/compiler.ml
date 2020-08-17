@@ -148,7 +148,7 @@ let k_normalize_all modules =
 
 let k_optimize_all code =
     let _ = (compile_errs := []) in
-    let niters = 1 in
+    let niters = 5 in
     let temp_code = ref code in
     for i = 0 to niters-1 do
         temp_code := K_deadcode_elim.elim_unused !temp_code;

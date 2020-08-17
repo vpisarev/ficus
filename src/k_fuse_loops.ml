@@ -56,8 +56,8 @@ let rec fuse_loops code =
             List.iter (fun (_, idl, _) -> process_idl nfors idl) e_idl_i_l
         | _ -> ()) code
     in
-    let _ = Env.iter (fun k {arr_nused; arr_nused_for} ->
-        printf "array: %s; arr_nused=%d; arr_nused_for=%d\n" (id2str k) arr_nused arr_nused_for) !counters in
+    (*let _ = Env.iter (fun k {arr_nused; arr_nused_for} ->
+        printf "array: %s; arr_nused=%d; arr_nused_for=%d\n" (id2str k) arr_nused arr_nused_for) !counters in*)
     let arrs_to_fuse = Env.filter (fun i ainfo ->
         match ainfo with
         | { arr_nused = 1; arr_nused_for = 1} -> true
