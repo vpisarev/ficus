@@ -431,7 +431,8 @@ and pprint_cstmt s =
             List.iter (fun s -> pprint_cstmt s) else_l);
         pbreak();
         ohbox(); pstr "#endif"
-    | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox())
+    | CMacroInclude (s, _) -> pbreak(); ohbox(); pstr "#include "; pstr s; cbox()
+    | CMacroPragma (s, _) -> pbreak(); ohbox(); pstr "#pragma "; pstr s; cbox())
 
 let pprint_ctyp_x t loc = Format.print_flush (); Format.open_box 0; pprint_ctyp_ t None loc; Format.close_box(); Format.print_flush ()
 let pprint_cexp_x e = Format.print_flush (); Format.open_box 0; pprint_cexp_ e 0; Format.close_box(); Format.print_flush ()

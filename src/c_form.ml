@@ -188,6 +188,7 @@ and cstmt_t =
        but it's probably good enough for our purposes *)
     | CMacroIf of (cexp_t * cstmt_t list) list * cstmt_t list * loc_t
     | CMacroInclude of string * loc_t
+    | CMacroPragma of string * loc_t
 and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list; cv_loc: loc_t }
 and cdeffun_t = { cf_name: id_t; cf_cname: string;
                   cf_args: (id_t * ctyp_t * (carg_attr_t list)) list;
@@ -291,6 +292,7 @@ let get_cstmt_loc s = match s with
     | CMacroUndef (_, l) -> l
     | CMacroIf (_, _, l) -> l
     | CMacroInclude (_, l) -> l
+    | CMacroPragma (_, l) -> l
 
 let get_cinfo_loc info =
     match info with
@@ -541,7 +543,8 @@ and walk_cstmt s callb =
     | CMacroUndef (n, l) -> CMacroUndef((walk_id_ n), l)
     | CMacroIf (cs_l, else_l, l) ->
         CMacroIf((List.map (fun (c, sl) -> ((walk_cexp_ c), (walk_csl_ sl))) cs_l), (walk_csl_ else_l), l)
-    | CMacroInclude (_, l) -> s
+    | CMacroInclude _ -> s
+    | CMacroPragma _ -> s
 
 (* walk through a K-normalized syntax tree and perform some actions;
    do not construct/return anything (though, it's expected that
@@ -671,7 +674,8 @@ and fold_cstmt s callb =
     | CMacroIf (cs_l, else_l, _) ->
         List.iter (fun (c, sl) -> fold_cexp_ c; fold_csl_ sl) cs_l;
         fold_csl_ else_l
-    | CMacroInclude (_, l) -> ()
+    | CMacroInclude _ -> ()
+    | CMacroPragma _ -> ()
 
 let rec ctyp2str t loc =
     match t with

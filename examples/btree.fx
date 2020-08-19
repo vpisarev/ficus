@@ -24,14 +24,16 @@ println(f"stretch tree of depth {stretch_depth}\t check: {c}")
 
 val long_lived_tree = make(max_depth)
 
-for i <- 0 : (max_depth - min_depth) / 2 + 1
+val report = [parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
 {
     val d = min_depth + i * 2
     val niter = 1 << (max_depth - d + min_depth)
     val fold c = 0 for i <- 0:niter {
         c + check(make(d))
     }
-    println(f"{niter}\t trees of depth {d}\t check: {c}")
-}
+    f"{niter}\t trees of depth {d}\t check: {c}"
+}]
+
+for l <- report {println(l)}
 
 println(f"long lived tree of depth {max_depth}\t check: {check(long_lived_tree)}")

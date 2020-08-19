@@ -59,6 +59,7 @@ enum
     FX_EXN_UnknownExnError = -22,
     FX_EXN_ZeroStepError = -23,
     FX_EXN_StackOverflowError = -24,
+    FX_EXN_ParallelForError = -25,
 
     FX_EXN_StdMax = -48,
 
@@ -412,6 +413,10 @@ int fx_exn_set_fast(int code, const char* funcname, const char* filename, int li
 int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filename, int lineno);
 int fx_rethrow_exn(fx_exn_t* exn);
 void fx_exn_get_and_reset(fx_exn_t* exn);
+int fx_exn_check_parallel(int status, int* glob_status);
+
+#define FX_CHECK_EXN_PARALLEL(status, par_status) \
+    if((status) >= 0) ; else (status) = fx_exn_check_parallel((status), &(par_status))
 
 const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn);
 int fx_exn_name(const fx_exn_t* exn, fx_str_t* exn_name);
