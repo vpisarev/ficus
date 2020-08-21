@@ -860,6 +860,10 @@ let kexp2atom prefix e tref code =
         let (ktyp, kloc) = get_kexp_ctx e in
         let _ = if ktyp <> KTypVoid then () else
             raise_compile_err kloc "'void' expression or declaration cannot be converted to an atom" in
+        let tref = match e with
+            | KExpMem _ | KExpAt _ | KExpUnOp(OpDeref, _, _) -> tref
+            | _ -> false
+            in
         let flags = if tref then [ValTempRef] else [ValTemp] in
         let code = create_kdefval tmp_id ktyp flags (Some e) code kloc in
         ((Atom.Id tmp_id), code)

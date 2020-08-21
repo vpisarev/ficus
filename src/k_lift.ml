@@ -57,10 +57,10 @@
       fun foo(n: int) {
         fun bar(m: int) = m*n
         fun baz(m: int) = m+1
-        if (generate_random_number() % 2 == 0) bar else baz
+        if generate_random_number() % 2 == 0 {bar} else {baz}
       }
       val transform_f = foo(5)
-      for (i <- 0:10) println(transform_f(i))
+      for i <- 0:10 {println(transform_f(i))}
 
       is transformed to:
 
@@ -68,17 +68,17 @@
       fun baz( m: int, _: nil_closure_t* ) = m+1
 
       fun foo(n: int) =
-        if (generate_random_number() % 2 == 0)
-          make_closure(bar, bar_closure_t {n})
+        if generate_random_number() % 2 == 0
+          {make_closure(bar, bar_closure_t {n})}
         else
-          make_closure(baz, nil)
+          {make_closure(baz, nil)}
 
       val (transform_f_ptr, transform_f_fvars) = foo(5)
-      for (i <- 0:10) println(transform_f_ptr(i, transform_f_fvars))
+      for i <- 0:10 {println(transform_f_ptr(i, transform_f_fvars))}
 
       However, in the case (b) when we call the function directly, e.g.
-      we call 'baz' as 'baz', not via 'transform_f' pointer, we can
-      avoid the closure creation step and just call it as 'baz(real_arg, nil)'.
+      we call 'baz' as 'baz' directly, not via 'transform_f' pointer, we can
+      avoid the closure creation step and just call it as, e.g., 'baz(real_arg, nil)'.
 
     From the above description it may seem that the algorithm is very simple,
     but there are some nuances:
@@ -114,7 +114,7 @@
 
     2. besides the free variables, the nested function may also call:
        2a. itself. This is a simple case. We just call it and pass the same closure data
-          fun bar( n: int, c: bar_closure_t* ) = if (n <= 1) 1 else { ... bar(n-1, c) }
+          fun bar( n: int, c: bar_closure_t* ) = if n <= 1 {1} else { ... bar(n-1, c) }
        2b. another function that needs some free variables from the outer scope
           fun foo(n: int) {
               fun bar(m: int) = baz(m+1)
@@ -188,7 +188,7 @@
           (normally hotspot functions operate on huge arrays and/or they can be
           transformed into tail-recursive functions, so 'mutually-recursive functions'
           and 'hotspots' are the words that rarely occur in the same sentence).
-        [TODO] The option are not mutually exclusive; for example, we can use the third,
+        [TODO] The options 1, 2 and 3 are not mutually exclusive; for example, we can use the 3rd,
         most efficient option in some easy-to-detect partial cases (e.g. when the nested functions
         go sequentially without any non-trivially defined values between them) and use
         the first option everywhere else.

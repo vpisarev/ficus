@@ -9,21 +9,19 @@
 open Ast
 open K_form
 
-type array_stat_t = { mutable arr_nused: int; mutable arr_nused_for: int; mutable arr_idl: (id_t*dom_t) list; mutable arr_body: kexp_t }
+type array_stat_t = { mutable arr_nused: int; mutable arr_nused_for: int; mutable arr_idl: (id_t*dom_t) list;
+                      mutable arr_body: kexp_t; arr_map_flags: for_flag_t list }
 
 let rec fuse_loops code =
     let counters = ref (Env.empty : array_stat_t Env.t) in
-    let arrs = ref IdSet.empty in
 
     let process_atom a loc callb =
         match a with
         | Atom.Id i ->
-            if not (IdSet.mem i !arrs) then ()
-            else
-                (match (Env.find_opt i !counters) with
-                | Some(arr_stat) ->
-                    arr_stat.arr_nused <- arr_stat.arr_nused+1
-                | _ -> ())
+            (match (Env.find_opt i !counters) with
+            | Some(arr_stat) ->
+                arr_stat.arr_nused <- arr_stat.arr_nused+1
+            | _ -> ())
         | _->()
     in
     let process_ktyp_ t loc callb = () in
@@ -33,42 +31,42 @@ let rec fuse_loops code =
         kcb_fold_kexp = None;
         kcb_fold_result = 0
     } in
-    let process_idl nfors idl = List.iter (fun (_, dom) ->
+    let process_idl inside_for idl = List.iter (fun (_, dom) ->
         match dom with
         | Domain.Elem(Atom.Id col) ->
             (match (Env.find_opt col !counters) with
             | Some(arr_stat) ->
-                arr_stat.arr_nused_for <- arr_stat.arr_nused_for+nfors
+                let is_parallel = List.mem ForParallel arr_stat.arr_map_flags in
+                if inside_for && is_parallel then () else
+                    arr_stat.arr_nused_for <- arr_stat.arr_nused_for + 1
             | _ -> ())
         | _ -> ()) idl
         in
     let _ = List.iter (fun e ->
         fold_kexp e process_callb;
         match e with
-        | KDefVal(i, KExpMap ((_, idl, []) :: [], body, _, ((KTypArray _), _)), loc) ->
+        | KDefVal(i, KExpMap ((_, idl, []) :: [], body, flags, ((KTypArray _), _)), loc) ->
             if (K_deadcode_elim.pure_kexp body) then
-                (arrs := IdSet.add i !arrs;
-                counters := Env.add i {arr_nused = 0; arr_nused_for = 0; arr_idl=idl; arr_body=body} !counters;
-                process_idl 1 idl)
+                (counters := Env.add i {arr_nused = 0; arr_nused_for = 0;
+                    arr_idl=idl; arr_body=body; arr_map_flags=flags} !counters;
+                process_idl false idl)
             else ()
-        | KExpFor(idl, [], _, _, _) -> () (*process_idl 1 idl*)
-        | KExpMap((_, idl, []) :: [], _, _, _) -> process_idl 1 idl
+        | KExpFor(idl, [], _, _, _) -> process_idl true idl
+        | KExpMap((_, idl, []) :: [], _, _, _) -> process_idl false idl
         | _ -> ()) code
     in
-    (*let _ = Env.iter (fun k {arr_nused; arr_nused_for} ->
-        printf "array: %s; arr_nused=%d; arr_nused_for=%d\n" (id2str k) arr_nused arr_nused_for) !counters in*)
-    let arrs_to_fuse = ref (Env.filter (fun i ainfo ->
+    let arrs_to_fuse = Env.filter (fun i ainfo ->
         match ainfo with
-        | { arr_nused = 1; arr_nused_for = 1} -> true
+        | {arr_nused = 1; arr_nused_for = 1} -> true
         | _ -> false
-        ) !counters)
+        ) !counters
     in
     let fuse_for idl body loc =
         let (arr_env, a2f) = List.fold_left (fun (arr_env, a2f) (i, dom) ->
                 match dom with
                 | Domain.Elem (Atom.Id arr) ->
                     let arr_env = Env.add arr i arr_env in
-                    (match (Env.find_opt arr !arrs_to_fuse) with
+                    (match (Env.find_opt arr arrs_to_fuse) with
                     | Some(ainfo) -> arr_env, ((arr, ainfo) :: a2f)
                     | _ -> arr_env, a2f)
                 | _ -> (arr_env, a2f)) ((Env.empty : id_t Env.t), []) idl in
@@ -84,7 +82,6 @@ let rec fuse_loops code =
                             (match (Env.find_opt nested_arr arr_env) with
                             | Some(outer_i) ->
                                 let t = get_idk_ktyp outer_i loc in
-                                (*let def_alias = KDefVal(nested_i, KExpAtom((Atom.Id outer_i), (t, loc)), loc)*)
                                 let pbody2 = create_kdefval nested_i t [ValTemp]
                                     (Some (KExpAtom((Atom.Id outer_i), (t, loc)))) pbody2 loc in
                                 (new_idl2, pbody2, arr_env2)
@@ -112,7 +109,7 @@ let rec fuse_loops code =
         | KExpSeq(elist, (t, loc)) -> code2kexp (fuse_loops elist) loc
         | KDefVal(i, KExpMap ((e0, idl, idxs) :: [], body, _, _), loc) ->
             (
-                match (Env.find_opt i !arrs_to_fuse) with
+                match (Env.find_opt i arrs_to_fuse) with
                 | Some (ainfo) ->
                     ainfo.arr_idl <- idl;
                     ainfo.arr_body <- body;

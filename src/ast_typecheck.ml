@@ -889,17 +889,18 @@ and check_exp e env sc =
         (* check that new_e1 is lvalue and that new_e1 and new_e2 have equal types;
            in future we can let etyp1_ and etyp2_ be different as long as the assignment
            is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
-        let rec is_lvalue e = (match e with
-            | ExpAt _ -> true (* an_arr[idx] = e2 *)
-            | ExpUnOp(OpDeref, _, _) -> true (* *a_ref = e2 *)
+        let rec is_lvalue need_mutable_id e = (match e with
+            | ExpAt (arr, _, _) -> is_lvalue false arr (* an_arr[idx] = e2 *)
+            | ExpUnOp(OpDeref, r, _) -> is_lvalue false r (* *a_ref = e2 *)
             | ExpIdent(n1, _) -> (* a_var = e2 *)
+                (not need_mutable_id) ||
                 (match (id_info n1) with
                 | IdVal { dv_flags } -> (List.mem ValMutable dv_flags)
                 | _ -> false)
-            | ExpMem(rcrd, ExpIdent(_, _), _) -> is_lvalue rcrd
-            | ExpMem(tup, ExpLit(_, _), _) -> is_lvalue tup
+            | ExpMem(rcrd, ExpIdent(_, _), _) -> is_lvalue need_mutable_id rcrd
+            | ExpMem(tup, ExpLit(_, _), _) -> is_lvalue need_mutable_id tup
             | _ -> false) in
-        if not (is_lvalue new_e1) then raise_compile_err eloc "the left side of assignment is not an l-value"
+        if not (is_lvalue true new_e1) then raise_compile_err eloc "the left side of assignment is not an l-value"
         else ();
         ExpAssign(new_e1, new_e2, eloc)
 
