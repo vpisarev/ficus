@@ -963,8 +963,6 @@ let gen_ccode top_code =
         let post_ccode = add_size_eq_check post_checks [] lbl end_for_loc in
 
         (* form for-loop headers *)
-        let i_exps = List.rev i_exps in
-        let n_exps = List.rev n_exps in
         let (k_final, for_headers) = List.fold_left2 (fun (k, for_headers) i_exp n_exp ->
             let ifor_loc = get_cexp_loc n_exp in
             let init_exps = [make_assign i_exp (make_int_exp 0 ifor_loc)] in
@@ -987,8 +985,7 @@ let gen_ccode top_code =
                 | _ -> check_i)) None (List.rev for_checks0) in
             [(None, [], check_exp_opt, incr_exps0)]
             in
-
-        (for_headers, list_exps, i_exps, n_exps, init_ccode, pre_body_ccode, body_elems, post_ccode)
+        ((List.rev for_headers), list_exps, i_exps, n_exps, init_ccode, pre_body_ccode, body_elems, post_ccode)
     in
 
     let decl_for_body_elems body_elems body_ccode =
