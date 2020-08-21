@@ -123,7 +123,10 @@ let calc_exp_size e =
         | KExpSeq(elist, _) -> List.length elist
         | KExpMkRecord(args, _) -> List.length args
         | KExpMkTuple(args, _) -> List.length args
-        | KExpMkArray(_, args, _) -> List.length args
+        | KExpMkArray(args, _) ->
+            List.fold_left (fun s al ->
+                List.fold_left (fun s (f, a) -> s + (if f then 5 else 1)) s al)
+            0 args
         | KExpMkClosure(_, _, args, _) -> List.length args
         | KExpCall(_, args, _) -> 1 + (List.length args)
         | KExpAt(_, idxs, _) -> List.length idxs

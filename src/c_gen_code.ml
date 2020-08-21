@@ -1471,13 +1471,21 @@ let gen_ccode top_code =
                 let call_mkclo = make_call make_fp
                     ((List.rev cargs) @ [cexp_get_addr fp_exp]) CTypVoid kloc in
                 (false, fp_exp, (CExp call_mkclo) :: ccode)
-        | KExpMkArray(shape, elems, _) ->
-            let shape = List.map (fun i -> make_int_exp i kloc) shape in
-            let (data, ccode) = List.fold_left (fun (data, ccode) a ->
-                    let (e, ccode) = atom2cexp a ccode kloc in
-                    (e :: data, ccode)) ([], ccode) elems in
-            let (arr_exp, ccode) = decl_arr ctyp shape (List.rev data) dstexp_r ccode kloc in
-            (false, arr_exp, ccode)
+        | KExpMkArray(arows, _) ->
+            let have_expanded = List.exists (fun arow -> List.exists (fun (f, _) -> f) arow) arows in
+            if have_expanded then (false, (make_dummy_exp kloc), ccode)
+            else
+                let nrows = List.length arows in
+                let ncols = List.length (List.hd arows) in
+                let shape = if nrows > 1 then [nrows; ncols] else [ncols] in
+                let shape = List.map (fun i -> make_int_exp i kloc) shape in
+                let (data, ccode) = List.fold_left (fun (data, ccode) arow ->
+                    List.fold_left (fun (data, ccode) (_, a) ->
+                        let (e, ccode) = atom2cexp a ccode kloc in
+                        (e :: data, ccode)) (data, ccode) arow)
+                    ([], ccode) arows in
+                let (arr_exp, ccode) = decl_arr ctyp shape (List.rev data) dstexp_r ccode kloc in
+                (false, arr_exp, ccode)
         | KExpAt(arr, idxs, _) ->
             (*
                 there are 2 major cases:

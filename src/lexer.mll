@@ -34,6 +34,7 @@ let token2str t = match t with
     | ELLIPSIS -> "ELLIPSIS"
     | ELSE -> "ELSE"
     | EXCEPTION -> "EXCEPTION"
+    | EXPAND -> "EXPAND"
     | EXTENDS -> "EXTENDS"
     | FOLD -> "FOLD"
     | B_FOR -> "B_FOR"
@@ -527,6 +528,7 @@ rule tokens = parse
     | "&&"  { new_exp := true; [LOGICAL_AND] }
     | "||"  { new_exp := true; [LOGICAL_OR] }
     | '!'   { check_ne(lexbuf); [LOGICAL_NOT] }
+    | '\\'   { check_ne(lexbuf); [EXPAND] }
     | '='
         {
             new_exp := true;

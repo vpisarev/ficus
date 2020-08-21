@@ -108,7 +108,7 @@ and kexp_t =
     | KExpMkTuple of atom_t list * kctx_t
     | KExpMkRecord of atom_t list * kctx_t
     | KExpMkClosure of id_t * id_t * atom_t list * kctx_t (* (function id, list of actual free vars) *)
-    | KExpMkArray of int list * atom_t list * kctx_t
+    | KExpMkArray of (bool * atom_t) list list * kctx_t
     | KExpAt of atom_t * dom_t list * kctx_t
     | KExpMem of id_t * int * kctx_t
     | KExpAssign of id_t * atom_t * loc_t
@@ -213,7 +213,7 @@ let get_kexp_ctx e = match e with
     | KExpMkTuple(_, c) -> c
     | KExpMkRecord(_, c) -> c
     | KExpMkClosure(_, _, _, c) -> c
-    | KExpMkArray(_, _, c) -> c
+    | KExpMkArray(_, c) -> c
     | KExpAt(_, _, c) -> c
     | KExpMem(_, _, c) -> c
     | KExpAssign(_, _, l) -> (KTypVoid, l)
@@ -470,7 +470,7 @@ and walk_kexp e callb =
     | KExpMkRecord(alist, ctx) -> KExpMkRecord((walk_al_ alist), (walk_kctx_ ctx))
     | KExpMkClosure(make_fp, f, args, ctx) ->
         KExpMkClosure((walk_id_ make_fp), (walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
-    | KExpMkArray(shape, elems, ctx) -> KExpMkArray(shape, (walk_al_ elems), (walk_kctx_ ctx))
+    | KExpMkArray(elems, ctx) -> KExpMkArray((List.map (List.map (fun (f, a) -> (f, walk_atom_ a))) elems), (walk_kctx_ ctx))
     | KExpCall(f, args, ctx) -> KExpCall((walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
     | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
     | KExpAssign(lv, rv, loc) -> KExpAssign((walk_id_ lv), (walk_atom_ rv), loc)
@@ -615,7 +615,7 @@ and fold_kexp e callb =
     | KExpMkTuple(alist, ctx) -> fold_al_ alist; ctx
     | KExpMkRecord(alist, ctx) -> fold_al_ alist; ctx
     | KExpMkClosure(make_fp, f, args, ctx) -> fold_id_ make_fp; fold_id_ f; fold_al_ args; ctx
-    | KExpMkArray(_, elems, ctx) -> fold_al_ elems; ctx
+    | KExpMkArray(elems, ctx) -> List.iter (List.iter (fun (_, a) -> fold_atom_ a)) elems; ctx
     | KExpCall(f, args, ctx) -> fold_id_ f; fold_al_ args; ctx
     | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
     | KExpAssign(lv, rv, loc) -> fold_id_ lv; fold_atom_ rv; (KTypVoid, loc)

@@ -273,19 +273,15 @@ and pprint_kexp_ e prtyp =
                 if i = 0 then () else (pstr ","; pspace()); pprint_id n loc; pstr "="; pprint_atom_ a) ant;
                 pcut(); pstr "}");
             pcut(); pstr ")"; cbox()
-        | KExpMkArray(shape, elems, (_, l)) ->
-            let total_elems = List.length elems in
-            let total_elems2 = List.fold_left (fun p di -> p*di) 1 shape in
-            let cols = Utils.last_elem shape in
-            let _ = if total_elems != total_elems2 then
-                raise_compile_err l
-                    (sprintf "K_pp: %s: the number of array elements does not match the product of dimensions (%d vs %d)"
-                    (loc2str l) total_elems total_elems2)
-                else () in
+        | KExpMkArray(elems, (_, l)) ->
             obox(); pstr "["; obox();
-            (List.iteri (fun i a ->
-                if i mod cols != 0 then pstr ", " else if i = 0 then () else (cbox(); pstr ";"; pcut(); obox());
-                pprint_atom_ a) elems);
+            List.iteri (fun i arow ->
+                if i > 0 then (pstr ";"; pspace()) else ();
+                obox(); List.iteri (fun j (f, a) ->
+                    if i > 0 then (pstr ","; pspace()) else ();
+                    if f then pstr "\\" else ();
+                    pprint_atom_ a) arow;
+                cbox()) elems;
             cbox(); pstr "]"; cbox()
         | KExpCall(f, args, (_, loc)) ->
             obox(); pprint_id_ f;

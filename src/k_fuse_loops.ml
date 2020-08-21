@@ -4,7 +4,9 @@
 *)
 
 (*
-    try to fuse sequential loops/comprehensions inside basic blocks
+    try to fuse sequential loops/comprehensions inside basic blocks.
+    [TODO] handle nested-for array comprehensions.
+       Currently only single for's are supported (even though they can be over multi-dimensional arrays)
 *)
 open Ast
 open K_form

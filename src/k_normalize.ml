@@ -197,17 +197,20 @@ let rec exp2kexp e code tref sc =
                 let (ai, code) = exp2atom ei code false sc in
                 (ai :: args, code)) ([], code) args in
         (KExpMkTuple((List.rev args), kctx), code)
-    | ExpMkArray(erows, _) ->
-        let nrows = List.length erows in
-        if nrows = 0 then raise_compile_err eloc "empty arrays are not supported" else
-        let ncols = List.length (List.hd erows) in
-        if ncols = 0 then raise_compile_err eloc "empty arrays are not supported" else
-        let (elems, code) = List.fold_left (fun (elems, code) erow ->
-            List.fold_left (fun (elems, code) e ->
-                let (a, code) = exp2atom e code false sc in (a :: elems, code))
-            (elems, code) erow) ([], code) erows in
-        let shape = if nrows = 1 then ncols :: [] else nrows :: ncols :: [] in
-        (KExpMkArray(shape, (List.rev elems), kctx), code)
+    | ExpMkArray(arows, _) ->
+        let _ = if arows <> [] then () else raise_compile_err eloc "empty arrays are not supported" in
+        let (krows, code) = List.fold_left (fun (krows, code) arow ->
+            let (krow, code) = List.fold_left (fun (krow, code) e ->
+                let (f, e) = match e with
+                    | ExpUnOp(OpExpand, e, _) -> (true, e)
+                    | _ -> (false, e)
+                    in
+                let (a, code) = exp2atom e code false sc in
+                (((f, a) :: krow), code)) ([], code) arow
+                in
+            (((List.rev krow) :: krows), code)) ([], code) arows
+            in
+        (KExpMkArray((List.rev krows), kctx), code)
     | ExpMkRecord (rn, rinitelems, _) ->
         let rn_id = match rn with
             | ExpIdent(rn_id, _) -> rn_id

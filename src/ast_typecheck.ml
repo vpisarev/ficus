@@ -1195,29 +1195,55 @@ and check_exp e env sc =
     | ExpBreak (f, _) -> check_inside_for f true; e
     | ExpContinue _ -> check_inside_for false false; e
     | ExpMkArray (arows, _) ->
-        (* [TODO] support extended syntax of array initialization *)
-        let dims = if (List.length arows) > 1 then 2 else 1 in
         let elemtyp = make_new_typ() in
-        let atyp = TypArray(dims, elemtyp) in
-        let _ = unify atyp etyp eloc "the array literal should produce an array" in
-        let (_, _, arows) = List.fold_left (fun (k, ncols, arows) arow ->
-            let arow = List.map (fun elem ->
-                let (elemtyp1, eloc1) = get_exp_ctx elem in
-                let _ = unify elemtyp elemtyp1 eloc1 "all the array literal elements should have the same type" in
-                check_exp elem env sc) arow in
+        let (_, _, arows, have_expanded, dims) = List.fold_left (fun (k, ncols, arows, have_expanded, dims) arow ->
+            let (have_expanded_i, row_dims, arow) = List.fold_left (fun (have_expanded_i, row_dims, arow) elem ->
+                let (is_expanded, elem_dims, elem1, elem_loc) = match elem with
+                    | ExpUnOp(OpExpand, e1, (t, loc)) ->
+                        let e1 = check_exp e1 env sc in
+                        let (arrtyp1, eloc1) = get_exp_ctx e1 in
+                        let _ = unify t arrtyp1 loc "incorrect type of expanded collection" in
+                        let (colname, d, elemtyp1) = match (deref_typ arrtyp1) with
+                            | TypArray(d, elemtyp1) -> ("array", d, elemtyp1)
+                            | TypList(elemtyp1) -> ("list", 1, elemtyp1)
+                            | TypString -> ("string", 1, TypChar)
+                            | _ -> raise_compile_err loc "incorrect type of expanded collection (it should be an array, list or string)"
+                            in
+                        let _ = if d <= 2 then () else raise_compile_err loc
+                            "currently expansion of more than 2-dimensional arrays is not supported" in
+                        let _ = unify elemtyp elemtyp1 eloc1 (sprintf "the expanded %s elem type does not match the previous elements" colname) in
+                        (true, d, ExpUnOp(OpExpand, e1, (arrtyp1, loc)), loc)
+                    | _ ->
+                        let (elemtyp1, eloc1) = get_exp_ctx elem in
+                        let _ = unify elemtyp elemtyp1 eloc1 "all the array literal elements should have the same type" in
+                        (false, 1, (check_exp elem env sc), eloc1)
+                    in
+                let row_dims = if row_dims >= 0 then row_dims else elem_dims in
+                let _ = if row_dims = elem_dims then () else raise_compile_err elem_loc
+                    (sprintf "dimensionality of array element (=%d) does not match the previous elements dimensionality (=%d) in the same row"
+                    elem_dims row_dims)
+                in
+                ((have_expanded_i || is_expanded), row_dims, (elem1 :: arow))) (false, -1, []) arow in
             let ncols_i = List.length arow in
             let elem_loc = match arow with
                 | e :: _ -> get_exp_loc e
-                | _ -> (match arows with
+                | _ ->
+                    (match arows with
                     | r :: _ -> get_exp_loc (Utils.last_elem r)
                     | _ -> eloc)
-                in
-            if ncols_i <> 0 then () else raise_compile_err elem_loc
-                (sprintf "the %d-%s matrix row is empty" (k+1) (Utils.num_suffix (k+1)));
-            if ncols = 0 || ncols = ncols_i then () else raise_compile_err elem_loc
-                (sprintf "the %d-%s matrix row contains a different number of elements"
-                (k+1) (Utils.num_suffix (k+1)));
-            (k+1, ncols_i, arow :: arows)) (0, 0, []) arows in
+            in
+            let _ = if ncols_i <> 0 then () else raise_compile_err elem_loc
+                (sprintf "the %d-%s matrix row is empty" (k+1) (Utils.num_suffix (k+1))) in
+            let have_expanded = have_expanded || have_expanded_i in
+            let _ = if have_expanded || ncols = 0 || ncols = ncols_i then () else
+                raise_compile_err elem_loc
+                    (sprintf "the %d-%s matrix row contains a different number of elements"
+                    (k+1) (Utils.num_suffix (k+1))) in
+            let dims = if dims < 0 then row_dims else 2 in
+            (k+1, (if have_expanded_i then ncols_i else ncols),
+            ((List.rev arow) :: arows), have_expanded, dims)) (0, 0, [], false, -1) arows in
+        let atyp = TypArray(dims, elemtyp) in
+        let _ = unify atyp etyp eloc "the array literal should produce an array" in
         ExpMkArray((List.rev arows), ctx)
     | ExpMkRecord (r_e, r_initializers, _) ->
         let _ = check_for_rec_field_duplicates (List.map (fun (n, _) -> n) r_initializers) eloc in
@@ -1357,7 +1383,12 @@ and check_eseq eseq env sc create_sc =
             | DefVal (p, e, flags, loc) ->
                 let is_mutable = List.mem ValMutable flags in
                 let t = get_exp_typ e in
-                let e1 = check_exp e env sc in
+                let e1 =
+                    (try
+                        check_exp e env sc
+                    with
+                    | CompileError(_, _) as err ->
+                        push_compile_err err; e) in
                 let (p1, env1, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true is_mutable in
                 (DefVal(p1, e1, flags, loc) :: eseq, env1)
             | DefFun (df) ->
