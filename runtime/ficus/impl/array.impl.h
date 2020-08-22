@@ -494,6 +494,146 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
     FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
 }
 
+int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
+                    const int8_t* tags, const void** data, fx_arr_t* arr )
+{
+    int_ nrows = 0, ncols = 0, nrows_i = 0, ncols_i = 0;
+    printf("ndims=%d, copy_elem=%p, free_elem=%p\n", ndims, copy_elem, free_elem);
+
+    if (ndims <= 0 || ndims > 2)
+        FX_FAST_THROW_RET(FX_EXN_DimError);
+    if ((copy_elem != 0) != (free_elem != 0))
+        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+
+    const void** dataptr = data;
+    for( int k = 0;; k++ )
+    {
+        int tag = tags[k];
+        if (tag == 127 || tag < 0) {
+            if (ncols_i == 0 || (ncols != 0 && ncols_i != ncols)) {
+                printf("throwing FX_EXN_SizeMismatchError\n");
+                FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
+            }
+            nrows += nrows_i;
+            ncols = ncols_i;
+            nrows_i = ncols_i = 0;
+            if (tag < 0)
+                break;
+            continue;
+        }
+
+        int_ nrows_k = 1, ncols_k = 1;
+        switch (tag)
+        {
+        case 0:
+            ++dataptr;
+            break;
+        case 1: case 2: {
+            const fx_arr_t* arr_k = (const fx_arr_t*)*dataptr++;
+            if (tag == 1)
+                ncols_k = arr_k->dim[0].size;
+            else {
+                nrows_k = arr_k->dim[0].size;
+                ncols_k = arr_k->dim[1].size;
+            }}
+            break;
+        case 100:
+            ncols_k = fx_list_length(*dataptr++);
+            break;
+        default:
+            FX_FAST_THROW_RET(FX_EXN_NoMatchError);
+        }
+
+        if (nrows_i != 0 && nrows_i != nrows_k)
+            FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
+        nrows_i = nrows_k;
+        ncols_i += ncols_k;
+    }
+
+    if( ndims == 1 && nrows != 1 )
+        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
+
+    int_ size[] = {(ndims == 1 ? ncols : nrows), ncols};
+    printf("ndims=%d, nrows=%d, ncols=%d\n", ndims, (int)nrows, (int)ncols);
+    int fx_status = fx_make_arr( ndims, size, elemsize, free_elem, copy_elem, 0, arr);
+    if (fx_status < 0)
+        return fx_status;
+
+    nrows = 0;
+    dataptr = data;
+    char* dstdata = arr->data;
+    size_t dststep = arr->dim[0].step;
+    for( int k = 0;; k++ )
+    {
+        int tag = tags[k];
+        if (tag == 127 || tag < 0) {
+            nrows += nrows_i;
+            nrows_i = 0;
+            dstdata = arr->data + arr->dim[0].step*nrows;
+            if (tag < 0)
+                break;
+            continue;
+        }
+
+        int_ nrows_k = 1;
+        switch (tag)
+        {
+        case 0:
+            if (!copy_elem)
+                memcpy(dstdata, *dataptr, elemsize);
+            else if(copy_elem != fx_copy_ptr)
+                copy_elem(*dataptr, dstdata);
+            else {
+                fx_ref_simple_t *src = (fx_ref_simple_t*)*dataptr;
+                fx_ref_simple_t *dst = (fx_ref_simple_t*)dstdata;
+                FX_COPY_PTR(*src, dst);
+            }
+            ++dataptr;
+            dstdata += elemsize;
+            break;
+        case 1: case 2: {
+            const fx_arr_t* arr_k = (const fx_arr_t*)*dataptr++;
+            int ncols_k;
+            size_t srcstep = arr_k->dim[0].step;
+            if (tag == 1)
+                ncols_k = arr_k->dim[0].size;
+            else {
+                nrows_k = arr_k->dim[0].size;
+                ncols_k = arr_k->dim[1].size;
+            }
+            for( int_ i = 0; i < nrows_k; i++ )
+                fx_copy_arr_elems(arr_k->data + i*srcstep,
+                                  dstdata + i*dststep,
+                                  ncols_k, elemsize, copy_elem);
+            dstdata += ncols_k*elemsize;
+            }
+            break;
+        case 100: {
+            fx_list_simple_t lst = (fx_list_simple_t)*dataptr++;
+            if (!copy_elem) {
+                for(; lst != 0; lst = lst->tl, dstdata += elemsize) {
+                    memcpy(dstdata, &lst->hd, elemsize);
+                }
+            } else if (copy_elem != fx_copy_ptr) {
+                for(; lst != 0; lst = lst->tl, dstdata += elemsize) {
+                    copy_elem(&lst->hd, dstdata);
+                }
+            } else {
+                for(; lst != 0; lst = lst->tl, dstdata += elemsize) {
+                    fx_ref_simple_t* src = (fx_ref_simple_t*)&lst->hd;
+                    fx_ref_simple_t *dst = (fx_ref_simple_t*)dstdata;
+                    FX_COPY_PTR(*src, dst);
+                }
+            }}
+            break;
+        default:
+            FX_FAST_THROW_RET(FX_EXN_NoMatchError);
+        }
+        nrows_i = nrows_k;
+    }
+    return FX_OK;
+}
+
 #ifdef __cplusplus
 }
 #endif

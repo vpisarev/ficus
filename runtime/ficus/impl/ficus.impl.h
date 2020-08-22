@@ -121,6 +121,7 @@ typedef struct fx_list_simple_data_t
 {
     int_ rc;
     struct fx_list_simple_data_t* tl;
+    int_ hd;
 }* fx_list_simple_t;
 
 void fx_free_list_simple(void* dst_)
@@ -129,7 +130,7 @@ void fx_free_list_simple(void* dst_)
     FX_FREE_LIST_IMPL(fx_list_simple_t, FX_NOP);
 }
 
-int_ fx_list_length(void* pl_)
+int_ fx_list_length(const void* pl_)
 {
     fx_list_simple_t pl = (fx_list_simple_t)pl_;
     int_ len = 0;

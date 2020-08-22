@@ -464,7 +464,7 @@ void fx_register_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_free_t
     *fx_result = l; \
     return FX_OK
 
-int_ fx_list_length(void* pl);
+int_ fx_list_length(const void* pl);
 void fx_free_list_simple(void* pl);
 void fx_link_lists(void* l1, void* l2, void* result);
 #define FX_FREE_LIST_SIMPLE(pl) if(!*(pl)) ; else fx_free_list_simple(pl)
@@ -550,6 +550,8 @@ void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst, bool free_dst);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_free_t free_elem, fx_copy_t copy_elem, const void* elems, fx_arr_t* arr );
+int fx_compose_arr( int dims, size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
+                    const int8_t* tags, const void** data, fx_arr_t* arr );
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);
 int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* farr);
 

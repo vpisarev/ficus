@@ -539,6 +539,15 @@ let gen_ccode top_code =
         | _ -> e
     in
 
+    let decl_plain_arr arr_id elem_ctyp arr_data ccode loc =
+        match arr_data with
+        | [] -> ((make_nullptr loc), ccode)
+        | _ ->
+            let arr_ctyp = CTypRawArray ([CTypConst], elem_ctyp) in
+            let arr_data_exp = CExpInit(arr_data, (arr_ctyp, loc)) in
+            create_cdefval arr_id arr_ctyp [] "" (Some arr_data_exp) ccode loc
+    in
+
     let make_make_arr_call arr_exp shape data ccode lbl loc =
         let arr_ctyp = get_cexp_typ arr_exp in
         let dims = List.length shape in
@@ -552,13 +561,7 @@ let gen_ccode top_code =
                 elem_ctyp
             | _ -> raise_compile_err loc "cgen: invalid output type of array construction expression"
             in
-        let (data_exp, ccode) = match data with
-            | [] -> ((make_nullptr loc), ccode)
-            | _ ->
-                let elems_ctyp = CTypRawArray ([CTypConst], elem_ctyp) in
-                let elems_arr = CExpInit(data, (elems_ctyp, loc)) in
-                create_cdefval (gen_temp_idc "data") elems_ctyp [] "" (Some elems_arr) ccode loc
-            in
+        let (data_exp, ccode) = decl_plain_arr (gen_temp_idc "data") elem_ctyp data ccode loc in
         let sizeof_elem_exp = make_call !std_sizeof [CExpTyp(elem_ctyp, loc)] CTypSize_t loc in
         let free_f_exp = match (C_gen_types.get_free_f elem_ctyp true false loc) with
             | (_, (Some free_f)) -> CExpCast(free_f, !std_fx_free_t, loc)
@@ -620,17 +623,6 @@ let gen_ccode top_code =
             (CExp check_call) :: ccode
         | _ -> ccode
     in
-
-    (*let get_variant_cases vartyp loc =
-        match vartyp with
-        | KTypName n ->
-            (match (kinfo_ n loc) with
-            | KVariant kvar ->
-                let {kvar_cases; kvar_constr} = !kvar in
-                (kvar_cases, kvar_constr)
-            | _ -> raise_compile_err loc (sprintf "type '%s' is not a variant" (get_idk_cname n loc)))
-        | _ -> raise_compile_err loc "the type is not a variant, not even named type"
-    in*)
 
     let for_err_msg for_idx nfors i msg =
         let for_msg_prefix = if nfors = 1 then "" else if for_idx = 0 then "outer "
@@ -1473,7 +1465,67 @@ let gen_ccode top_code =
                 (false, fp_exp, (CExp call_mkclo) :: ccode)
         | KExpMkArray(arows, _) ->
             let have_expanded = List.exists (fun arow -> List.exists (fun (f, _) -> f) arow) arows in
-            if have_expanded then (false, (make_dummy_exp kloc), ccode)
+            if have_expanded then
+                let (arr_exp, ccode) = get_dstexp dstexp_r "arr" ctyp [] ccode kloc in
+                let (dims, elem_ctyp) = match ctyp with
+                    | CTypArray(dims, elem_ctyp) ->
+                        (dims, elem_ctyp)
+                    | _ -> raise_compile_err kloc "cgen: invalid output type of array construction expression"
+                    in
+                let scalars_id = gen_temp_idc "scalars" in
+                let scalars_exp = make_id_t_exp scalars_id (make_ptr elem_ctyp) kloc in
+                let (_, scalars_data, tags_data, arr_data, ccode) = List.fold_left
+                    (fun (nscalars, scalars_data, tags_data, arr_data, ccode) arow ->
+                        let (nscalars, scalars_data, tags_data, arr_data, ccode) = List.fold_left
+                            (fun (nscalars, scalars_data, tags_data, arr_data, ccode) (f, a) ->
+                                let (e, ccode) = atom2cexp a ccode kloc in
+                                if f then
+                                    let elem_ktyp = get_atom_ktyp a kloc in
+                                    let (tag, elem_ptr) = match (deref_ktyp elem_ktyp kloc) with
+                                        | KTypArray (d, _) -> (d, (cexp_get_addr e))
+                                        | KTypList _ -> (100, e)
+                                        | _ -> raise_compile_err kloc
+                                            (sprintf "cgen: the expanded structure %s is not an array nor list" (atom2str a))
+                                        in
+                                    (nscalars, scalars_data, ((make_int_exp tag kloc) :: tags_data),
+                                    (elem_ptr :: arr_data), ccode)
+                                else
+                                    let (nscalars, scalars_data, arr_data_elem) = match e with
+                                        | CExpIdent _ -> (nscalars, scalars_data, (cexp_get_addr e))
+                                        | _ -> (nscalars+1, (e :: scalars_data),
+                                            CExpBinOp(COpAdd, scalars_exp, (make_int_exp nscalars kloc), (std_CTypVoidPtr, kloc)))
+                                        in
+                                    (nscalars, scalars_data, ((make_int_exp 0 kloc) :: tags_data),
+                                    (arr_data_elem :: arr_data), ccode))
+                            (nscalars, scalars_data, tags_data, arr_data, ccode) arow
+                            in
+                        (nscalars, scalars_data, ((make_int_exp 127 kloc) :: tags_data), arr_data, ccode))
+                    (0, [], [], [], ccode) arows
+                    in
+                let (scalars_exp, ccode) = if scalars_data = [] then ((make_nullptr kloc), ccode) else
+                    let scalars_ctyp = CTypRawArray ([CTypConst], elem_ctyp) in
+                    let scalars_arr = CExpInit((List.rev scalars_data), (scalars_ctyp, kloc)) in
+                    create_cdefval scalars_id scalars_ctyp [] "" (Some scalars_arr) ccode kloc
+                    in
+                let (scalars_exp, ccode) = decl_plain_arr scalars_id elem_ctyp (List.rev scalars_data) ccode kloc in
+                let tags_data = List.rev ((make_int_exp (-1) kloc) :: (List.tl tags_data)) in
+                let (tags_exp, ccode) = decl_plain_arr (gen_temp_idc "tags") (CTypSInt 8) tags_data ccode kloc in
+                let (arr_data_exp, ccode) = decl_plain_arr (gen_temp_idc "parts") std_CTypVoidPtr
+                    (List.rev arr_data) ccode kloc in
+                let sizeof_elem_exp = make_call !std_sizeof [CExpTyp(elem_ctyp, kloc)] CTypSize_t kloc in
+                let free_f_exp = match (C_gen_types.get_free_f elem_ctyp true false kloc) with
+                    | (_, (Some free_f)) -> CExpCast(free_f, !std_fx_free_t, kloc)
+                    | _ -> make_nullptr kloc
+                    in
+                let copy_f_exp = match (C_gen_types.get_copy_f elem_ctyp true false kloc) with
+                    | (_, Some(copy_f)) -> CExpCast(copy_f, !std_fx_copy_t, kloc)
+                    | _ -> make_nullptr kloc
+                    in
+                let call_mkarr = make_call (get_id "fx_compose_arr") [(make_int_exp dims kloc);
+                    sizeof_elem_exp; free_f_exp; copy_f_exp; tags_exp; arr_data_exp; (cexp_get_addr arr_exp)] CTypCInt kloc
+                    in
+                let ccode = add_fx_call call_mkarr ccode kloc in
+                (false, arr_exp, ccode)
             else
                 let nrows = List.length arows in
                 let ncols = List.length (List.hd arows) in
