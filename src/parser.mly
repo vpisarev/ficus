@@ -498,7 +498,7 @@ simple_exp:
     { ExpCall($1, $3 :: [], make_new_ctx()) }
 | simple_exp LSQUARE idx_list_ RSQUARE
     %prec lsquare_prec
-    { ExpAt($1, (List.rev $3), make_new_ctx()) }
+    { ExpAt($1, BorderNone, InterpNone, (List.rev $3), make_new_ctx()) }
 
 deref_exp:
 | simple_exp { $1 }
@@ -744,12 +744,14 @@ loop_range_exp:
 | exp COLON COLON exp { ExpRange(Some($1), None, Some($4), make_new_ctx()) }
 
 range_exp:
+| B_DOT_MINUS simple_exp { ExpUnOp(OpDotMinus, $2, make_new_ctx()) }
 | complex_exp { $1 }
 | opt_exp COLON opt_exp { ExpRange($1, $3, None, make_new_ctx()) }
 | opt_exp COLON opt_exp COLON exp { ExpRange($1, $3, Some($5), make_new_ctx()) }
 | CONS complex_exp { ExpRange(None, None, Some($2), make_new_ctx()) }
 
 opt_exp:
+| B_DOT_MINUS simple_exp { Some(ExpUnOp(OpDotMinus, $2, make_new_ctx())) }
 | complex_exp { Some($1) }
 | /* empty */ { None }
 

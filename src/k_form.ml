@@ -48,7 +48,10 @@ end
 type atom_t = Atom.t
 
 module Domain = struct
-    type t = Elem of atom_t | Fast of atom_t | Range of atom_t * atom_t * atom_t
+    type t =
+        | Elem of atom_t
+        | Fast of atom_t
+        | Range of atom_t * atom_t * atom_t
 end
 
 type dom_t = Domain.t
@@ -60,6 +63,7 @@ type intrin_t =
     | IntrinListHead
     | IntrinListTail
     | IntrinStrConcat
+    | IntrinGetSize
 
 type ktprops_t =
 {
@@ -109,7 +113,7 @@ and kexp_t =
     | KExpMkRecord of atom_t list * kctx_t
     | KExpMkClosure of id_t * id_t * atom_t list * kctx_t (* (function id, list of actual free vars) *)
     | KExpMkArray of (bool * atom_t) list list * kctx_t
-    | KExpAt of atom_t * dom_t list * kctx_t
+    | KExpAt of atom_t * border_t * interpolate_t * dom_t list * kctx_t
     | KExpMem of id_t * int * kctx_t
     | KExpAssign of id_t * atom_t * loc_t
     | KExpMatch of ((kexp_t list) * kexp_t) list * kctx_t
@@ -214,7 +218,7 @@ let get_kexp_ctx e = match e with
     | KExpMkRecord(_, c) -> c
     | KExpMkClosure(_, _, _, c) -> c
     | KExpMkArray(_, c) -> c
-    | KExpAt(_, _, c) -> c
+    | KExpAt(_, _, _, _, c) -> c
     | KExpMem(_, _, c) -> c
     | KExpAssign(_, _, l) -> (KTypVoid, l)
     | KExpMatch(_, c) -> c
@@ -332,6 +336,7 @@ let intrin2str iop = match iop with
     | IntrinListHead -> "INTRIN_LIST_HD"
     | IntrinListTail -> "INTRIN_LIST_TL"
     | IntrinStrConcat -> "INTRIN_STR_CONCAT"
+    | IntrinGetSize -> "INTRIN_GET_SIZE"
 
 let get_code_loc code default_loc =
     loclist2loc (List.map get_kexp_loc code) default_loc
@@ -472,7 +477,8 @@ and walk_kexp e callb =
         KExpMkClosure((walk_id_ make_fp), (walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
     | KExpMkArray(elems, ctx) -> KExpMkArray((List.map (List.map (fun (f, a) -> (f, walk_atom_ a))) elems), (walk_kctx_ ctx))
     | KExpCall(f, args, ctx) -> KExpCall((walk_id_ f), (walk_al_ args), (walk_kctx_ ctx))
-    | KExpAt(a, idx, ctx) -> KExpAt((walk_atom_ a), (List.map walk_dom_ idx), (walk_kctx_ ctx))
+    | KExpAt(a, border, interp, idx, ctx) ->
+        KExpAt((walk_atom_ a), border, interp, (List.map walk_dom_ idx), (walk_kctx_ ctx))
     | KExpAssign(lv, rv, loc) -> KExpAssign((walk_id_ lv), (walk_atom_ rv), loc)
     | KExpMem(k, member, ctx) -> KExpMem((walk_id_ k), member, (walk_kctx_ ctx))
     | KExpThrow(k, f, loc) -> KExpThrow((walk_id_ k), f, loc)
@@ -617,7 +623,7 @@ and fold_kexp e callb =
     | KExpMkClosure(make_fp, f, args, ctx) -> fold_id_ make_fp; fold_id_ f; fold_al_ args; ctx
     | KExpMkArray(elems, ctx) -> List.iter (List.iter (fun (_, a) -> fold_atom_ a)) elems; ctx
     | KExpCall(f, args, ctx) -> fold_id_ f; fold_al_ args; ctx
-    | KExpAt(a, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
+    | KExpAt(a, border, interp, idx, ctx) -> fold_atom_ a; List.iter fold_dom_ idx; ctx
     | KExpAssign(lv, rv, loc) -> fold_id_ lv; fold_atom_ rv; (KTypVoid, loc)
     | KExpMem(k, _, ctx) -> fold_id_ k; ctx
     | KExpThrow(k, _, loc) -> fold_id_ k; (KTypErr, loc)
@@ -861,7 +867,7 @@ let kexp2atom prefix e tref code =
         let _ = if ktyp <> KTypVoid then () else
             raise_compile_err kloc "'void' expression or declaration cannot be converted to an atom" in
         let tref = match e with
-            | KExpMem _ | KExpAt _ | KExpUnOp(OpDeref, _, _) -> tref
+            | KExpMem _ | KExpAt (_, BorderNone, InterpNone, _, _) | KExpUnOp(OpDeref, _, _) -> tref
             | _ -> false
             in
         let flags = if tref then [ValTempRef] else [ValTemp] in

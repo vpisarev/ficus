@@ -170,7 +170,7 @@ and walk_exp e callb =
     | ExpMkRecord(e, ne_l, ctx) -> ExpMkRecord((walk_exp_ e), (walk_ne_l_ ne_l), (walk_ctx_ ctx))
     | ExpUpdateRecord(e, ne_l, ctx) -> ExpUpdateRecord((walk_exp_ e), (walk_ne_l_ ne_l), (walk_ctx_ ctx))
     | ExpCall(f, args, ctx) -> ExpCall((walk_exp_ f), (walk_elist_ args), (walk_ctx_ ctx))
-    | ExpAt(arr, idx, ctx) -> ExpAt((walk_exp_ arr), (walk_elist_ idx), (walk_ctx_ ctx))
+    | ExpAt(arr, border, interp, idx, ctx) -> ExpAt((walk_exp_ arr), border, interp, (walk_elist_ idx), (walk_ctx_ ctx))
     | ExpAssign(lv, rv, loc) -> ExpAssign((walk_exp_ lv), (walk_exp_ rv), loc)
     | ExpMem(a, member, ctx) -> ExpMem((walk_exp_ a), (walk_exp_ member), (walk_ctx_ ctx))
     | ExpThrow(a, loc) -> ExpThrow((walk_exp_ a), loc)
@@ -890,7 +890,7 @@ and check_exp e env sc =
            in future we can let etyp1_ and etyp2_ be different as long as the assignment
            is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
         let rec is_lvalue need_mutable_id e = (match e with
-            | ExpAt (arr, _, _) -> is_lvalue false arr (* an_arr[idx] = e2 *)
+            | ExpAt (arr, BorderNone, InterpNone, _, _) -> is_lvalue false arr (* an_arr[idx] = e2 *)
             | ExpUnOp(OpDeref, r, _) -> is_lvalue false r (* *a_ref = e2 *)
             | ExpIdent(n1, _) -> (* a_var = e2 *)
                 (not need_mutable_id) ||
@@ -1032,8 +1032,9 @@ and check_exp e env sc =
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
         (match uop with
-        | OpNegate | OpPlus ->
-            let t_opt = coerce_types etyp1 etyp1 false true false eloc in
+        | OpNegate | OpPlus | OpDotMinus ->
+            let allow_fp = uop = OpNegate || uop = OpPlus in
+            let t_opt = coerce_types etyp1 etyp1 false allow_fp false eloc in
             (match t_opt with
             | Some(t) ->
                 unify etyp t eloc "improper type of the unary '-' operator result";
@@ -1082,18 +1083,22 @@ and check_exp e env sc =
         let new_args = List.map (fun a -> check_exp a env sc) args in
         let new_f = check_exp f env sc in
         ExpCall(new_f, new_args, ctx)
-    | ExpAt(arr, idxs, _) ->
+    | ExpAt(arr, border, interp, idxs, _) ->
         let new_arr = check_exp arr env sc in
         let (new_atyp, new_aloc) = get_exp_ctx new_arr in
         (match idxs with
         (* flatten case "arr[:]" *)
         | ExpRange(None, None, None, _) :: [] ->
             let new_idx = check_exp (List.hd idxs) env sc in
+            let _ = if border = BorderNone then () else
+                raise_compile_err eloc "border extrapolation with ranges is not supported yet" in
+            let _ = if interp = InterpNone then () else
+                raise_compile_err eloc "inter-element interpolation with ranges is not supported yet" in
             (match (deref_typ new_atyp) with
             | TypArray(d, et) ->
                 unify etyp (TypArray(1, et)) eloc
                 "the result of flatten operation ([:]) applied to N-D array must be 1D array with elements of the same type as input array";
-                ExpAt(new_arr, new_idx :: [], ctx)
+                ExpAt(new_arr, BorderNone, InterpNone, new_idx :: [], ctx)
             | TypString ->
                 unify etyp TypString eloc
                 "the result of flatten operation ([:]) applied to string must be string";
@@ -1108,7 +1113,12 @@ and check_exp e env sc =
                 List.fold_left (fun (new_idxs, ndims, nfirst_scalars, nranges) idx ->
                 let new_idx = check_exp idx env sc in
                 match new_idx with
-                | ExpRange(_, _, _, _) -> (new_idx :: new_idxs, ndims+1, nfirst_scalars, nranges+1)
+                | ExpRange(_, _, _, _) ->
+                    let _ = if border = BorderNone then () else
+                        raise_compile_err eloc "border extrapolation with ranges is not supported yet" in
+                    let _ = if interp = InterpNone then () else
+                        raise_compile_err eloc "inter-element interpolation with ranges is not supported yet" in
+                    (new_idx :: new_idxs, ndims+1, nfirst_scalars, nranges+1)
                 | _ ->
                     let (new_ityp, new_iloc) = get_exp_ctx new_idx in
                     let new_idx = if (maybe_unify new_ityp TypInt true) then new_idx else
@@ -1116,8 +1126,12 @@ and check_exp e env sc =
                             TypSInt(16); TypUInt(32); TypSInt(32); TypUInt(64); TypSInt(64)] in
                         if List.exists(fun t -> maybe_unify new_ityp t true) possible_idx_typs then
                             ExpCast(new_idx, TypInt, (TypInt, new_iloc))
-                        else raise_compile_err new_iloc
-                            "each scalar index in array access op must have some integer type or bool" in
+                        else if interp = InterpLinear &&
+                            ((maybe_unify new_ityp (TypFloat 32) true) ||
+                             (maybe_unify new_ityp (TypFloat 64) true)) then new_idx else
+                            raise_compile_err new_iloc
+                            ("each scalar index in array access op must have some integer type or bool; " ^
+                            "in the case of interpolation it can also be float or double") in
                     let nfirst_scalars = if nranges = 0 then nfirst_scalars + 1 else nfirst_scalars in
                     (new_idx :: new_idxs, ndims+1, nfirst_scalars, nranges)) ([], 0, 0, 0) idxs in
             (match (ndims, nranges, (deref_typ new_atyp)) with
@@ -1133,7 +1147,10 @@ and check_exp e env sc =
                 else
                     unify etyp (TypArray(ndims - nfirst_scalars, et)) eloc
                     "the number of ranges does not match dimensionality of the result, or the element type is incorrect"));
-            ExpAt(new_arr, (List.rev new_idxs), ctx))
+            if interp <> InterpLinear then () else
+            if (is_typ_numeric etyp true) then () else
+                raise_compile_err eloc "in the case of interpolation the array type should be numeric";
+            ExpAt(new_arr, border, interp, (List.rev new_idxs), ctx))
     | ExpIf(c, e1, e2, _) ->
         let (ctyp, cloc) = get_exp_ctx c in
         let (typ1, loc1) = get_exp_ctx e1 in

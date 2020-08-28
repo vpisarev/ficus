@@ -181,6 +181,9 @@ type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunReal
     | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV | FunRecursive
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantRecOpt
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
+type border_t = BorderNone | BorderClip | BorderZero
+type interpolate_t = InterpNone | InterpLinear
+
 type ctx_t = typ_t * loc_t
 
 type exp_t =
@@ -198,7 +201,7 @@ type exp_t =
     | ExpMkRecord of exp_t * (id_t * exp_t) list * ctx_t
     | ExpUpdateRecord of exp_t * (id_t * exp_t) list * ctx_t
     | ExpCall of exp_t * exp_t list * ctx_t
-    | ExpAt of exp_t * exp_t list * ctx_t
+    | ExpAt of exp_t * border_t * interpolate_t * exp_t list * ctx_t
     | ExpAssign of exp_t * exp_t * loc_t
     | ExpMem of exp_t * exp_t * ctx_t
     | ExpThrow of exp_t * loc_t
@@ -432,7 +435,7 @@ let get_exp_ctx e = match e with
     | ExpMkArray(_, c) -> c
     | ExpUpdateRecord(_, _, c) -> c
     | ExpCall(_, _, c) -> c
-    | ExpAt(_, _, c) -> c
+    | ExpAt(_, _, _, _, c) -> c
     | ExpAssign(_, _, l) -> (TypVoid, l)
     | ExpMem(_, _, c) -> c
     | ExpThrow(_, l) -> (TypErr, l)
@@ -627,6 +630,13 @@ let is_typ_scalar t =
     | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypBool | TypChar -> true
     | _ -> false
 
+let rec is_typ_numeric t allow_vec_tuples =
+    match (deref_typ t) with
+    | TypInt | TypSInt _ | TypUInt _ | TypFloat _ -> true
+    | TypTuple(t0 :: trest) -> allow_vec_tuples && (is_typ_numeric t0 true) &&
+        List.for_all (fun t -> (deref_typ t) = (deref_typ t0)) trest
+    | _ -> false
+
 let binop_to_string bop = match bop with
     | OpAdd -> "+"
     | OpSub -> "-"
@@ -670,6 +680,21 @@ let unop_to_string uop = match uop with
     | OpExpand -> "\\"
     | OpMkRef -> "REF"
     | OpDeref -> "*"
+
+let border2str border f =
+    let pt = if f then "." else "" in
+    match (border, f) with
+    | (BorderNone, true) -> ""
+    | (BorderNone, _) -> "NONE"
+    | (BorderClip, _) -> pt ^ "CLIP"
+    | (BorderZero, _) -> pt ^ "ZERO"
+
+let interp2str interp f =
+    let pt = if f then "." else "" in
+    match (interp, f) with
+    | (InterpNone, true) -> ""
+    | (InterpNone, _) -> "NONE"
+    | (InterpLinear, _) -> pt ^ "LINEAR"
 
 let fname_op_add() = get_id "__add__"
 let fname_op_sub() = get_id "__sub__"

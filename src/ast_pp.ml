@@ -264,8 +264,11 @@ let rec pprint_exp e =
             (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             pstr ")"; cbox();
-        | ExpAt(a, args, _) ->
-            pprint_exp a; pstr "[";
+        | ExpAt(a, border, interp, args, _) ->
+            pprint_exp a;
+            pstr (border2str border true);
+            pstr (interp2str interp true);
+            pstr "[";
             obox(); (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
             cbox(); pstr "]"

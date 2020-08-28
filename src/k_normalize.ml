@@ -73,6 +73,8 @@ let typ2ktyp t loc =
         | _ -> raise_compile_err loc "the proper instance of the template type is not found")
     in typ2ktyp_ t
 
+let idx_access_stack = ref ([]: (atom_t*int) list)
+
 let rec exp2kexp e code tref sc =
     let (etyp, eloc) = get_exp_ctx e in
     let ktyp = typ2ktyp etyp eloc in
@@ -183,6 +185,15 @@ let rec exp2kexp e code tref sc =
     | ExpUnOp(OpDeref, e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
         (KExpUnOp(OpDeref, (Atom.Id a_id), kctx), code)
+    | ExpUnOp(OpDotMinus, e, _) ->
+        let (arr, idx_i) = match !idx_access_stack with
+            | (arr, idx_i) :: _ -> (arr, idx_i)
+            | _ -> raise_compile_err eloc ".- is only allowed inside array access op"
+            in
+        let (a, code) = exp2atom e code false sc in
+        let args = if idx_i = 0 then [arr] else [arr; Atom.Lit (LitInt (Int64.of_int idx_i))] in
+        let (sz, code) = kexp2atom "sz" (KExpIntrin (IntrinGetSize, args, (KTypInt, eloc))) false code in
+        (KExpBinOp(OpSub, sz, a, kctx), code)
     | ExpUnOp(uop, e1, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         (KExpUnOp(uop, a1, kctx), code)
@@ -324,12 +335,14 @@ let rec exp2kexp e code tref sc =
         let bloc = get_exp_loc body in
         let body_kexp = rcode2kexp (last_e :: body_code) bloc in
         (KExpMap((List.rev pre_idom_ll), body_kexp, flags, kctx), code)
-    | ExpAt(e, idxlist, _) ->
-        let (dlist, code) = List.fold_left (fun (dlist, code) idx ->
-            let (d, code) = exp2dom idx code sc in
-            (d :: dlist, code)) ([], code) idxlist in
+    | ExpAt(e, border, interp, idxlist, _) ->
         let (arr, code) = exp2atom e code true sc in
-        (KExpAt(arr, (List.rev dlist), kctx), code)
+        let (_, dlist, code) = List.fold_left (fun (i, dlist, code) idx ->
+            let _ = idx_access_stack := (arr, i) :: !idx_access_stack in
+            let (d, code) = exp2dom idx code sc in
+            let _ = idx_access_stack := List.tl !idx_access_stack in
+            (i + 1, (d :: dlist), code)) (0, [], code) idxlist in
+        (KExpAt(arr, border, interp, (List.rev dlist), kctx), code)
     | ExpMem(e1, elem, _) ->
         let e1loc = get_exp_loc e1 in
         let (a_id, code) = exp2id e1 code true sc "the literal does not have members to access" in
@@ -1024,6 +1037,7 @@ and transform_all_types_and_cons elist code sc =
         | _ -> code) code elist
 
 let normalize_mod m =
+    let _ = idx_access_stack := [] in
     let minfo = !(get_module m) in
     let modsc = (ScModule m) :: [] in
     eseq2code (minfo.dm_defs) [] modsc

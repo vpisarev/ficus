@@ -129,7 +129,7 @@ let calc_exp_size e =
             0 args
         | KExpMkClosure(_, _, args, _) -> List.length args
         | KExpCall(_, args, _) -> 1 + (List.length args)
-        | KExpAt(_, idxs, _) -> List.length idxs
+        | KExpAt(_, _, _, idxs, _) -> List.length idxs
         | KExpCCode _ -> 100
         | KExpThrow _ -> 10
         | KExpWhile _ | KExpDoWhile _ | KExpIf _ -> 2

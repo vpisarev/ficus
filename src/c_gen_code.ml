@@ -1351,6 +1351,24 @@ let gen_ccode top_code =
                     strs_exp; (make_int_exp (List.length strs) kloc); (cexp_get_addr dst_exp)] CTypInt kloc in
                 let ccode = add_fx_call call_exp ccode kloc in
                 (false, dst_exp, ccode)
+            | (IntrinGetSize, arr_or_str :: []) ->
+                let (arr_exp, ccode) = atom2cexp arr_or_str ccode kloc in
+                let c_e = match (get_atom_ktyp arr_or_str kloc) with
+                | KTypString -> make_call (get_id "FX_STR_LENGTH") [arr_exp] CTypInt kloc
+                | KTypArray _ -> make_call (get_id "FX_ARR_SIZE") [arr_exp; (make_int_exp 0 kloc)] CTypInt kloc
+                | _ -> raise_compile_err kloc "cgen: unsupported container type in KExpIntrin(IntrinGetSize...)"
+                in
+                (true, c_e, ccode)
+            | (IntrinGetSize, arr_or_str :: (Atom.Lit (LitInt i)) :: []) ->
+                let (arr_exp, ccode) = atom2cexp arr_or_str ccode kloc in
+                let c_e = match (get_atom_ktyp arr_or_str kloc) with
+                | KTypArray(ndims, _) ->
+                    if 0L <= i && i < (Int64.of_int ndims) then () else raise_compile_err kloc
+                        (sprintf "array dimension index %Li is beyond dimensionality %d" i ndims);
+                    make_call (get_id "FX_ARR_SIZE") [arr_exp; (make_int__exp i kloc)] CTypInt kloc
+                | _ -> raise_compile_err kloc "cgen: unsupported container type in KExpIntrin(IntrinGetSize...)"
+                in
+                (true, c_e, ccode)
             | _ -> raise_compile_err kloc (sprintf "cgen: unsupported KExpIntrin(%s, ...)" (intrin2str intr)))
         | KExpSeq(el, _) ->
             let rec process_seq el ccode = match el with
@@ -1538,7 +1556,7 @@ let gen_ccode top_code =
                     ([], ccode) arows in
                 let (arr_exp, ccode) = decl_arr ctyp shape (List.rev data) dstexp_r ccode kloc in
                 (false, arr_exp, ccode)
-        | KExpAt(arr, idxs, _) ->
+        | KExpAt(arr, border, interp, idxs, _) ->
             (*
                 there are 2 major cases:
                 1. some of the idxs are ranges. Then the result is fx_arr_t
@@ -1565,6 +1583,10 @@ let gen_ccode top_code =
                     if all the indices are fast indices, the whole check is excluded, of course.
                     then we return `(true, FX_PTR_{ndims}D(elem_ctyp, arr, idx0, ..., idx{ndims-1}), ccode)`
             *)
+            let _ = if border = BorderNone then () else
+                raise_compile_err kloc "cgen: border extrapolation is not supported yet" in
+            let _ = if interp = InterpNone then () else
+                raise_compile_err kloc "cgen: inter-element interpolation is not supported yet" in
             let (arr_exp, ccode) = atom2cexp_ arr false ccode kloc in
             let lbl = curr_block_label kloc in
             let arr_ctyp = get_cexp_typ arr_exp in

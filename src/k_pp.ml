@@ -293,8 +293,11 @@ and pprint_kexp_ e prtyp =
             (List.iteri (fun i a ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_atom_ a) args);
             pstr ")"; cbox();
-        | KExpAt(a, args, _) ->
-            pprint_atom_ a; pstr "[";
+        | KExpAt(a, border, interp, args, _) ->
+            pprint_atom_ a;
+            pstr (border2str border true);
+            pstr (interp2str interp true);
+            pstr "[";
             obox(); (List.iteri (fun i dom ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_dom_ dom) args);
             cbox(); pstr "]"
