@@ -288,7 +288,7 @@ let dup_pat p = walk_pat p dup_callb
   in the very end, when we are out of candidates.
 *)
 let rec maybe_unify t1 t2 update_refs =
-    (*let _ = (printf "\n<<<trying to unify types: "; pprint_typ_x t1; printf " and "; pprint_typ_x t2; printf "\n"; flush stdout) in*)
+    (*let _ = (printf "\n<<<trying to unify types: "; pprint_typ_x t1 noloc; printf " and "; pprint_typ_x t2 noloc; printf "\n"; flush stdout) in*)
     let undo_stack = ref [] in
     let rec_undo_stack = ref [] in
     (* checks if a reference to undefined type (an argument of TypVar (ref None))
@@ -315,6 +315,7 @@ let rec maybe_unify t1 t2 update_refs =
         | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypString | TypChar
         | TypBool | TypVoid | TypExn | TypErr | TypCPointer | TypDecl | TypModule -> false) in
     let rec maybe_unify_ t1 t2 =
+        (*let _ = (printf "\tmaybe_unify_: "; pprint_typ_x t1 noloc; printf " and "; pprint_typ_x t2 noloc; printf "\n"; flush stdout) in*)
         (match (t1, t2) with
         (* a type should be unified successfully with itself *)
         | (TypInt, TypInt) | (TypString, TypString) | (TypChar, TypChar)
@@ -331,7 +332,7 @@ let rec maybe_unify t1 t2 update_refs =
         | (TypTuple (tl1), TypTuple (tl2)) ->
             (List.length tl1) = (List.length tl2) &&
             List.for_all2 maybe_unify_ tl1 tl2
-        | (TypVar {contents=Some(TypVarTuple _)}, TypTuple _) ->
+        | (TypVar {contents=Some(TypVarTuple _)}, _) ->
             maybe_unify_ t2 t1
         | (TypTuple tl1, TypVar ({contents=Some(TypVarTuple t2_opt)} as r2)) ->
             if List.exists (occurs r2) tl1 then false
@@ -408,7 +409,7 @@ let rec maybe_unify t1 t2 update_refs =
         | (_, _) -> false) in
 
     let ok = maybe_unify_ (deref_typ t1) (deref_typ t2) in
-    (*((printf "result (%B): " ok); pprint_typ_x t1; printf " and "; pprint_typ_x t2; printf ">>>\n");*)
+    (*((printf "result (%B): " ok); pprint_typ_x t1 noloc; printf " and "; pprint_typ_x t2 noloc; printf ">>>\n");*)
     if ok && update_refs then () else
     (* restore the original types in the case of type unification failure
        or when update_refs=false *)
@@ -683,7 +684,7 @@ let rec lookup_id n t env sc loc =
         | EnvTyp _ -> None)) with
     | Some(x) -> x
     | None ->
-        (*print_env "env @ report_not_found: " env loc;*)
+        (*print_env (sprintf "env @ report_not_found for %s: " (id2str n)) env loc;*)
         report_not_found n loc
 
 and preprocess_templ_typ templ_args typ env sc loc =
@@ -730,7 +731,7 @@ and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
 
 (*
     One of the main functions in type checker:
-    inferes the proper type of expression and recursively process sub-expressions.
+    infers the proper type of expression and recursively processes sub-expressions.
 
     Whenever possible, we try to do type unification before processing sub-expressions.
     This is because sometimes we know type of the outer expression (type of the expression result)
@@ -741,9 +742,9 @@ and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
     with `integrate(0.f, 10.f, Math.sin)` instead of more explicit `integrate(0.f, 10.f, (Math.sin: float->float))`.
 
     Also, note that the function does not modify the environment. When a complex expression
-    is analyzed (such as for loop), a temporary environment can be created with extra content
+    is analyzed (such as for-loop), a temporary environment can be created with extra content
     (like iteration variables in the case of for loop), but that temporary environment
-    is discared as soon the analysis is over.
+    is discared as soon the analysis is over. But the function may alter the global symbol table.
 
     The declarations should modify the environment, e.g. `val (a, b) = (cos(0.5), sin(0.5))` should introduce
     some fresh ids like `a12345`, `b12346`, add the pairs (a, a12345) and (b, b12346) into the environment
@@ -756,35 +757,88 @@ and check_exp e env sc =
     let (etyp, eloc) as ctx = get_exp_ctx e in
     let check_for_clause p e env idset sc =
         let e = check_exp e env sc in
+        let is_range = match e with ExpRange _ -> true | _ -> false in
         let (etyp, eloc) = get_exp_ctx e in
-        let (ptyp, dims) = (match (e, (deref_typ etyp)) with
-            | (ExpRange(_, _, _, _), _) -> (TypInt, 1)
-            | (_, TypArray(d, et)) -> (et, d)
-            | (_, TypList(et)) -> (et, 1)
-            | (_, TypString) -> (TypChar, 1)
-            | _ -> raise_compile_err eloc "unsupported iteration domain; it should be a range, array, list or a string") in
-        let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true false in
-        (p, e, dims, env, idset)
+        let etyp = deref_typ etyp in
+        match (is_range, etyp) with
+        | (false, (TypTuple tl)) ->
+            let tup_pat = PatIdent((gen_temp_id "tup"), eloc) in
+            let (tup_pat, env, idset, _) = check_pat tup_pat etyp env idset IdSet.empty sc false true false in
+            let def_e = DefVal(tup_pat, e, [ValTemp], eloc) in
+            let tup_e = match tup_pat with
+                | PatIdent(i, _) -> ExpIdent(i, (etyp, eloc))
+                | PatTyped(PatIdent(i, _), _, _) -> ExpIdent(i, (etyp, eloc))
+                | _ -> raise_compile_err eloc "for over tuple: invalid result of check_pat result (id is expected)"
+                in
+            ((List.length tl), (p, tup_e), [def_e], 1, env, idset)
+        | _ ->
+            let (ptyp, dims) = (match (e, etyp) with
+                | (ExpRange(_, _, _, _), _) -> (TypInt, 1)
+                | (_, TypArray(d, et)) -> (et, d)
+                | (_, TypList(et)) -> (et, 1)
+                | (_, TypString) -> (TypChar, 1)
+                | _ -> raise_compile_err eloc "unsupported iteration domain; it should be a range, array, list, string or a tuple")
+                in
+            let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true false in
+            (0, (p, e), [], dims, env, idset)
     in
     let check_for_clauses for_clauses idx_pat env idset for_sc =
-        let (for_clauses, dims, env, idset) = List.fold_left
-            (fun (for_clauses, dims, env, idset) (pi, ei) ->
-                let (pi, ei, dims_i, env, idset) = check_for_clause pi ei env idset for_sc in
-                if dims != 0 && dims_i != dims then
+        let (_, tupsz, for_clauses, code, dims, env, idset) = List.fold_left
+            (fun (idx, tupsz, for_clauses, code, dims, env, idset) (pi, ei) ->
+                let (tupszj, (pi, ei), code_i, dims_i, env, idset) = check_for_clause pi ei env idset for_sc in
+                if idx > 0 && dims_i != dims then
                     raise_compile_err (get_exp_loc ei)
                         "the dimensionalities of simultaneously iterated containers/ranges do not match"
                 else ();
-            ((pi, ei) :: for_clauses, dims_i, env, idset)) ([], 0, env, idset) for_clauses in
+                if idx > 0 && tupszj != tupsz then
+                    raise_compile_err (get_exp_loc ei)
+                        (if (tupsz = 0 || tupszj = 0) then
+                            "simultaneous iteration over tuples and non-tuples is not supported yet"
+                        else
+                            "cannot iterate over tuples of different size")
+                else ();
+            (idx+1, tupszj, ((pi, ei) :: for_clauses), (code_i @ code), dims_i, env, idset))
+                (0, 0, [], [], 0, env, idset) for_clauses in
         let idx_typ = if dims = 1 then TypInt else TypTuple(List.init dims (fun _ -> TypInt)) in
-        let (idx_pat, env, idset) = match idx_pat with
+        let (idx_pat, env, idset) = if tupsz != 0 then (idx_pat, env, idset) else
+            (match idx_pat with
             | PatAny _ -> (idx_pat, env, idset)
             | _ ->
                 let (idx_pat, env, idset, _) = check_pat idx_pat idx_typ env idset
                     IdSet.empty for_sc false true false in
-                (PatTyped(idx_pat, idx_typ, (get_pat_loc idx_pat)), env, idset)
+                (PatTyped(idx_pat, idx_typ, (get_pat_loc idx_pat)), env, idset))
             in
-        ((List.rev for_clauses), idx_pat, dims, env, idset)
+        (tupsz, (List.rev code), (List.rev for_clauses), idx_pat, dims, env, idset)
     in
+    let gen_for_in_tuple_it idx for_clauses idx_pat body env for_sc =
+        let sc = new_block_scope () :: for_sc in
+        let (_, code, env, idset) = List.fold_left (fun (j, code, env, idset) (pj, tupj) ->
+            let (ttj, locj) = get_exp_ctx tupj in
+            let tj = match ttj with
+                | TypTuple tl -> List.nth tl idx
+                | _ -> raise_compile_err locj (sprintf "gen_for_in_tuple_it: expression '%d' is expected to have tuple type" (j+1))
+                in
+            let ej = ExpMem(tupj, ExpLit(LitInt (Int64.of_int idx), (TypInt, locj)), (tj, locj)) in
+            let pj = dup_pat pj in
+            let (pj, env, idset, _) = check_pat pj tj env idset IdSet.empty sc false true false in
+            let def_pj = DefVal(pj, ej, [ValTemp], locj) in
+            (j+1, (def_pj :: code), env, idset)) (0, [], env, IdSet.empty) for_clauses
+            in
+        let (code, env, idset) = match idx_pat with
+            | PatAny _ -> (code, env, idset)
+            | _ ->
+                let idx_pat = dup_pat idx_pat in
+                let (idx_pat, env, idset, _) = check_pat idx_pat TypInt env idset
+                    IdSet.empty sc false true false in
+                let idx_loc = get_pat_loc idx_pat in
+                let def_idx = DefVal(idx_pat, ExpLit(LitInt (Int64.of_int idx), (TypInt, idx_loc)), [ValTemp], idx_loc) in
+                ((def_idx :: code), env, idset)
+            in
+        let body = check_exp (dup_exp body) env sc in
+        let (body_typ, body_loc) = get_exp_ctx body in
+        ExpSeq(List.rev (body :: code), (body_typ, body_loc))
+    in
+
     let check_inside_for expect_fold_loop isbr =
         let kw = if not isbr then "continue" else if expect_fold_loop then "break with" else "break" in
         let rec check_inside_ sc =
@@ -846,6 +900,10 @@ and check_exp e env sc =
         ExpRange(new_e1_opt, new_e2_opt, new_e3_opt, ctx)
     | ExpLit(lit, _) -> unify etyp (get_lit_typ lit) eloc "the literal has improper type"; e
     | ExpIdent(n, _) ->
+        (*let _ = if (pp_id2str n) = "println_tup" then
+            printf "break here\n"
+            else ()
+            in*)
         let n = lookup_id n etyp env sc eloc in
         ExpIdent(n, ctx)
     | ExpMem(e1, e2, _) ->
@@ -1184,31 +1242,72 @@ and check_exp e env sc =
         let is_fold = List.mem ForFold flags in
         let is_nested = List.mem ForNested flags in
         let for_sc = (if is_fold then new_fold_scope() else new_loop_scope(is_nested)) :: sc in
-        let (for_clauses, idx_pat, dims, env, _) = check_for_clauses for_clauses idx_pat env IdSet.empty for_sc in
-        let (btyp, bloc) = get_exp_ctx body in
-        let _ = unify btyp TypVoid bloc "'for()' body should have 'void' type" in
-        let new_body = check_exp body env for_sc in
-        ExpFor(for_clauses, idx_pat, new_body, flags, eloc)
+        let (tupsz, pre_code, for_clauses, idx_pat, dims, env, _) = check_for_clauses for_clauses idx_pat env IdSet.empty for_sc in
+        if tupsz > 0 then
+            (* iteration over tuple(s) is replaced with unrolled code.
+               * this is possible, since we know the tuple size at compile time
+               * this is necessary, because tuple elements may have different type,
+                 so for each "iteration" potentially a completely different code could be generated *)
+            let code = List.init tupsz (fun idx ->
+                let it_j = gen_for_in_tuple_it idx for_clauses idx_pat body env for_sc in
+                let (tj, locj) = get_exp_ctx it_j in
+                let _ = unify tj TypVoid locj "'for()' body should have 'void' type" in
+                it_j) in
+            ExpSeq((pre_code @ code), (TypVoid, eloc))
+        else
+            let (btyp, bloc) = get_exp_ctx body in
+            let _ = unify btyp TypVoid bloc "'for()' body should have 'void' type" in
+            let new_body = check_exp body env for_sc in
+            ExpFor(for_clauses, idx_pat, new_body, flags, eloc)
     | ExpMap (map_clauses, body, flags, ctx) ->
         let make_list = List.mem ForMakeList flags in
-        let for_sc = (if make_list then new_map_scope() else new_arr_map_scope()) :: sc in
-        let (map_clauses, total_dims, env, _) = List.fold_left
-            (fun (map_clauses, total_dims, env, idset) (for_clauses, idx_pat) ->
-                let (for_clauses, idx_pat, dims, env, idset) = check_for_clauses for_clauses idx_pat env idset for_sc in
-                ((for_clauses, idx_pat) :: map_clauses,
-                total_dims + dims, env, idset)) ([], 0, env, IdSet.empty) map_clauses in
-        let (btyp, bloc) = get_exp_ctx body in
-        let _ = if make_list then
-                (if total_dims = 1 then () else raise_compile_err eloc "the list comprehension should be 1-dimensional";
-                unify etyp (TypList btyp) bloc "the map should return a list with elements of the same type as the map body")
-            else
-                unify etyp (TypArray(total_dims, btyp)) bloc
-                (sprintf "the map should return %d-dimensional array with elements of the same type as the map body" total_dims) in
-        let new_body = check_exp body env for_sc in
-        if deref_typ (get_exp_typ new_body) = TypVoid then
-            raise_compile_err eloc "array/list comprehension body cannot have 'void' type"
-        else ();
-        ExpMap((List.rev map_clauses), new_body, flags, ctx)
+        let make_tuple = List.mem ForMakeTuple flags in
+        let for_sc = (if make_tuple then new_block_scope() else if make_list then new_map_scope() else new_arr_map_scope()) :: sc in
+        let (tupsz, pre_code, map_clauses, total_dims, env, _) = List.fold_left
+            (fun (tupsz, pre_code, map_clauses, total_dims, env, idset) (for_clauses, idx_pat) ->
+                let (tupsz_k, pre_code_k, for_clauses, idx_pat, dims, env, idset) = check_for_clauses for_clauses idx_pat env idset for_sc in
+                ((tupsz + tupsz_k), (pre_code_k @ pre_code), (for_clauses, idx_pat) :: map_clauses,
+                total_dims + dims, env, idset)) (0, [], [], 0, env, IdSet.empty) map_clauses in
+        let _ = if tupsz > 0 || not make_tuple then () else
+            raise_compile_err eloc "tuple comprehension with iteration over non-tuples is not supported"
+            in
+        if tupsz > 0 then
+            let (for_clauses, idx_pat) = match map_clauses with
+                | (for_clauses, idx_pat) :: [] -> (for_clauses, idx_pat)
+                | _ -> raise_compile_err eloc "tuple comprehension with nested for is not supported yet"
+            in
+            let elem_typ = make_new_typ() in
+            let elems = List.init tupsz (fun idx ->
+                let it_j = gen_for_in_tuple_it idx for_clauses idx_pat body env for_sc in
+                let (tj, locj) = get_exp_ctx it_j in
+                let _ = if make_tuple then () else
+                    unify tj elem_typ locj "array/list comprehension should produce elements of the same type" in
+                it_j) in
+            let mk_struct_exp = if make_tuple then
+                    let tl = List.map get_exp_typ elems in
+                    ExpMkTuple(elems, (TypTuple(tl), eloc))
+                else if make_list then
+                    let ltyp = TypList(elem_typ) in
+                    List.fold_left (fun l_exp ej ->
+                        ExpBinOp(OpCons, ej, l_exp, (ltyp, eloc))) (ExpLit(LitNil, (ltyp, eloc))) (List.rev elems)
+                else
+                    ExpMkArray(elems :: [], (TypArray (1, elem_typ), eloc))
+                in
+            let coll_typ = get_exp_typ mk_struct_exp in
+            ExpSeq((pre_code @ [mk_struct_exp]), (coll_typ, eloc))
+        else
+            let (btyp, bloc) = get_exp_ctx body in
+            let _ = if make_list then
+                    (if total_dims = 1 then () else raise_compile_err eloc "the list comprehension should be 1-dimensional";
+                    unify etyp (TypList btyp) bloc "the map should return a list with elements of the same type as the map body")
+                else
+                    unify etyp (TypArray(total_dims, btyp)) bloc
+                    (sprintf "the map should return %d-dimensional array with elements of the same type as the map body" total_dims) in
+            let new_body = check_exp body env for_sc in
+            let _ = if deref_typ (get_exp_typ new_body) = TypVoid then
+                raise_compile_err eloc "array/list comprehension body cannot have 'void' type"
+            else () in
+            ExpMap((List.rev map_clauses), new_body, flags, ctx)
     | ExpBreak (f, _) -> check_inside_for f true; e
     | ExpContinue _ -> check_inside_for false false; e
     | ExpMkArray (arows, _) ->
@@ -1730,6 +1829,13 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
                 r_env := add_typ_to_env n t !r_env;
                 t
             | _ -> report_not_found n loc)
+        | TypVarTuple t_opt ->
+            (match r_opt_typ_vars with
+            | Some(r_typ_vars) -> r_typ_vars := IdSet.add (get_id "__var_tuple__") !r_typ_vars
+            | _ -> ());
+            TypVarTuple(match t_opt with
+                | Some(t) -> Some(walk_typ t callb)
+                | _ -> None)
         | TypRecord {contents=(relems, _)} ->
             check_for_rec_field_duplicates (List.map (fun (n, _, _) -> n) relems) loc;
             walk_typ t callb
@@ -1798,7 +1904,10 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     else
         () in
     let inst_body = check_exp inst_body inst_env fun_sc in
-    inst_df := {!inst_df with df_body=inst_body};
+    (* update the function return type *)
+    let _ = unify (get_exp_typ inst_body) rt inst_loc "the function body has inconsistent type" in
+    let inst_ftyp = match (arg_typs, is_constr) with ([], true) -> rt | _ -> TypFun(arg_typs, rt) in
+    inst_df := {!inst_df with df_body=inst_body; df_typ=inst_ftyp};
     (*!inst_or_templ_df.df_body <- inst_body;*)
     (*(printf "<<<processed function:\n"; (pprint_exp_x (DefFun inst_or_templ_df)); printf "\n>>>\n");*)
     inst_df

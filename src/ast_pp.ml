@@ -70,7 +70,7 @@ let rec pptype_ t p1 loc =
         | [] -> pstr "Void"
         | t1 :: [] -> pptype_ t1 prec loc
         | _ -> pptype_ (TypTuple tl) prec loc);
-        pspace(); pstr "->";
+        pspace(); pstr "->"; pspace();
         pptype_ t2 prec loc;
         pstr ")"; cbox()
     | TypList(t1) -> pptypsuf t1 "List"

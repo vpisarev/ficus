@@ -10,14 +10,10 @@ val w = N, h = N, MAX_ITER = 50
 val inv = 2.0 / w
 
 type vec8d = (8 * double)
-operator + (a: vec8d, b: vec8d) = (a.0+b.0, a.1+b.1, a.2+b.2, a.3+b.3, a.4+b.4, a.5+b.5, a.6+b.6, a.7+b.7)
-operator - (a: vec8d, b: vec8d) = (a.0-b.0, a.1-b.1, a.2-b.2, a.3-b.3, a.4-b.4, a.5-b.5, a.6-b.6, a.7-b.7)
-operator .* (a: vec8d, b: vec8d) = (a.0*b.0, a.1*b.1, a.2*b.2, a.3*b.3, a.4*b.4, a.5*b.5, a.6*b.6, a.7*b.7)
 type bool8 = (bool * 8)
-operator .> (a: vec8d, d: double) = (a.0 > d, a.1 > d, a.2 > d, a.3 > d, a.4 > d, a.5 > d, a.6 > d, a.7 > d)
-operator | (a: bool8, b: bool8) = (a.0 | b.0, a.1 | b.1, a.2 | b.2, a.3 | b.3,
-                              a.4 | b.4, a.5 | b.5, a.6 | b.6, a.7 | b.7)
-fun all(a: bool8) = a.0 & a.1 & a.2 & a.3 & a.4 & a.5 & a.6 & a.7
+operator .> (a: vec8d, d: double) = (for aj <- a {aj > d})
+operator | (a: bool8, b: bool8) = (for aj <- a, bj <- b {aj | bj})
+fun all(a: (bool...)) = fold f=true for x <- a {if x {f} else {false}}
 
 val x_ = [parallel for x <- 0:w {(x :> double) * inv - 1.5}]
 val result: int8 [,] = [

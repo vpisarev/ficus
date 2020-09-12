@@ -463,6 +463,11 @@ simple_exp:
 | B_LPAREN complex_exp RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN typed_exp RPAREN { $2 }
+| B_LPAREN B_FOR nested_for_ block RPAREN
+    {
+        let map_clauses = process_nested_for $3 in
+        ExpMap(map_clauses, $4, ForMakeTuple :: [], make_new_ctx())
+    }
 | B_LSQUARE for_flags B_FOR nested_for_ block RSQUARE
     {
         let map_clauses = process_nested_for $4 in

@@ -49,7 +49,6 @@ fun __is_scalar__(x: double) = true
 fun __is_scalar__(x: char) = true
 fun __is_scalar__(x: bool) = true
 
-operator == (a: 't, b: 't): bool = a <=> b == 0
 operator != (a: 't, b: 't): bool = !(a == b)
 operator < (a: 't, b: 't): bool = a <=> b < 0
 operator > (a: 't, b: 't): bool = a <=> b > 0
@@ -146,10 +145,7 @@ fun repr(a: 't): string = string(a)
 fun repr(a: string) = "\"" + a + "\""
 fun repr(a: char) = "'" + a + "'"
 
-fun string((a, b): ('a, 'b)) = "(" + repr(a) + ", " + repr(b) + ")"
-fun string((a, b, c): ('a, 'b, 'c)) = "(" + repr(a) + ", " + repr(b) + ", " + repr(c) + ")"
-fun string((a, b, c, d): ('a, 'b, 'c, 'd)) =
-    "(" + repr(a) + ", " + repr(b) + ", " + repr(c) + repr(d) + ")"
+fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
 fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
@@ -167,13 +163,22 @@ fun string(a: 't [,])
     join_embrace("[", "]", ";\n", rows)
 }
 
-fun string(l: 't list)
-{
-    join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
-}
+fun string(l: 't list) = join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
+
 pure fun string(a: char []): string = ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
+
+operator == (a: 't list, b: 't list): int =
+    try {
+        fold r=0 for xa <- a, xb <- b {
+            if xa != xb {break with false}
+            r
+        }
+    }
+    catch {
+    | SizeMismatchError => false
+    }
 
 operator <=> (a: 't list, b: 't list): int =
     try {
@@ -187,27 +192,48 @@ operator <=> (a: 't list, b: 't list): int =
     | SizeMismatchError => length(a) <=> length(b)
     }
 
-operator <=> (a: 't [], b: 't []): int =
-    fold r=0 for xa <- a, xb <- b {
+operator == (a: 't [], b: 't []): int =
+    if size(a) != size(b) {false} else
+    {
+        fold r=0 for xa <- a, xb <- b {
+            if xa != xb {break with false}
+            r
+        }
+    }
+
+operator <=> (a: 't [], b: 't []): int
+{
+    val na = size(a), nb = size(b)
+    val n = min(na, nb)
+    val fold r=0 for i <- 0:n {
+        val xa = a[i], xb = b[i]
         val d = xa <=> xb
         if d != 0 {break with d}
         r
     }
+    if na == nb {r} else if na < nb {-1} else {1}
+}
+
+operator == (a: (...), b: (...)) =
+    fold f=true for aj <- a, bj <- b {if aj == bj {f} else {false}}
+operator <=> (a: (...), b: (...)) =
+    fold d=0 for aj <- a, bj <- b {if d != 0 {d} else {aj <=> bj}}
 
 operator .<=> (a: 't [], b: 't []): int [] =
     [for x <- a, y <- b {x <=> y}]
 operator .== (a: 't [], b: 't []): bool [] =
     [for x <- a, y <- b {x == y}]
-operator .< (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {x < y}]
 operator .!= (a: 't [], b: 't []): bool [] =
     [for x <- a, y <- b {!(x == y)}]
+operator .< (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {x < y}]
 operator .<= (a: 't [], b: 't []): bool [] =
     [for x <- a, y <- b {!(y < x)}]
-operator .>= (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {!(x < y)}]
 operator .> (a: 't [], b: 't []): bool [] =
     [for x <- a, y <- b {y < x}]
+operator .>= (a: 't [], b: 't []): bool [] =
+    [for x <- a, y <- b {!(x < y)}]
+
 operator .* (a: 't [], b: 't []) =
     [for x <- a, y <- b {x .* y}]
 operator ./ (a: 't [], b: 't []) =
@@ -230,6 +256,19 @@ operator <=> (a: float, b: float): int = (a > b) - (a < b)
 operator <=> (a: double, b: double): int = (a > b) - (a < b)
 operator <=> (a: char, b: char): int = (a > b) - (a < b)
 operator <=> (a: bool, b: bool): int = (a > b) - (a < b)
+
+operator + (a: (...), b: (...)) = (for aj <- a, bj <- b {aj+bj})
+operator - (a: (...), b: (...)) = (for aj <- a, bj <- b {aj-bj})
+operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj.*bj})
+operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj./bj})
+operator | (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj | bj})
+operator & (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj & bj})
+operator .== (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj .== bj})
+operator .!= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj .!= bj})
+operator .< (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj < bj})
+operator .<= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj <= bj})
+operator .> (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj > bj})
+operator .>= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj >= bj})
 
 pure nothrow operator == (a: string, b: string): bool = ccode
 {
@@ -388,21 +427,14 @@ fun print(l: 't list)
     }
     print("]")
 }
-fun print((a, b): ('a, 'b))
+fun print(t: (...))
 {
-    print("("); print_repr(a); print(", ");
-    print_repr(b); print(")")
-}
-fun print((a, b, c): ('a, 'b, 'c))
-{
-    print("("); print_repr(a); print(", ");
-    print_repr(b); print(", "); print_repr(c); print(")")
-}
-fun print((a, b, c, d): ('a, 'b, 'c, 'd))
-{
-    print("("); print_repr(a); print(", ");
-    print_repr(b); print(", "); print_repr(c);
-    print(", "); print_repr(d); print(")")
+    print("(");
+    for x@i <- t {
+        if i > 0 {print(", ")}
+        print_repr(x)
+    }
+    print(")")
 }
 fun print(a: 't ref) {
     print("ref("); print_repr(*a); print(")")
@@ -510,7 +542,7 @@ fun new_uniform_rng(seed: int) {
     fun (a: int, b: int) {
         state = (state :> uint32) * 4197999714u64 + (state >> 32)
         val (a, b) = (min(a, b), max(a, b))
-        val diff = b - a + 1
+        val diff = b - a
         val x = (state :> uint32) % diff + a
         (x :> int)
     }

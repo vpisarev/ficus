@@ -180,7 +180,7 @@ type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunReallyNoThrow
     | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV | FunRecursive
 type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantRecOpt
-type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForUnzip | ForFold | ForNested
+type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForMakeTuple | ForUnzip | ForFold | ForNested
 type border_t = BorderNone | BorderClip | BorderZero
 type interpolate_t = InterpNone | InterpLinear
 
