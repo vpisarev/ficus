@@ -332,7 +332,17 @@ let rec maybe_unify t1 t2 update_refs =
         | (TypTuple (tl1), TypTuple (tl2)) ->
             (List.length tl1) = (List.length tl2) &&
             List.for_all2 maybe_unify_ tl1 tl2
-        | (TypVar {contents=Some(TypVarTuple _)}, _) ->
+        | (TypVar ({contents=Some(TypVarTuple t1_opt)} as r1), TypVar ({contents=Some(TypVarTuple t2_opt)} as r2)) ->
+            if (occurs r2 t1) || (occurs r1 t2) then false
+            else if (match (t1_opt, t2_opt) with
+                | (Some t1_), (Some t2_) -> maybe_unify_ t1_ t2_
+                | _ -> true) then
+                (undo_stack := r2 :: !undo_stack;
+                r2 := Some(t1); true)
+            else false
+        | (TypVar {contents=Some(TypVarTuple _)}, TypVar {contents=Some(t2_)}) ->
+            maybe_unify_ t2_ t1
+        | (TypVar {contents=Some(TypVarTuple _)}, TypTuple _) ->
             maybe_unify_ t2 t1
         | (TypTuple tl1, TypVar ({contents=Some(TypVarTuple t2_opt)} as r2)) ->
             if List.exists (occurs r2) tl1 then false
@@ -1271,6 +1281,7 @@ and check_exp e env sc =
         let _ = if tupsz > 0 || not make_tuple then () else
             raise_compile_err eloc "tuple comprehension with iteration over non-tuples is not supported"
             in
+        let coll_name = if make_list then "list" else if make_tuple then "tuple" else "array" in
         if tupsz > 0 then
             let (for_clauses, idx_pat) = match map_clauses with
                 | (for_clauses, idx_pat) :: [] -> (for_clauses, idx_pat)
@@ -1281,7 +1292,7 @@ and check_exp e env sc =
                 let it_j = gen_for_in_tuple_it idx for_clauses idx_pat body env for_sc in
                 let (tj, locj) = get_exp_ctx it_j in
                 let _ = if make_tuple then () else
-                    unify tj elem_typ locj "array/list comprehension should produce elements of the same type" in
+                    unify tj elem_typ locj (sprintf "%s comprehension should produce elements of the same type" coll_name) in
                 it_j) in
             let mk_struct_exp = if make_tuple then
                     let tl = List.map get_exp_typ elems in
@@ -1294,6 +1305,7 @@ and check_exp e env sc =
                     ExpMkArray(elems :: [], (TypArray (1, elem_typ), eloc))
                 in
             let coll_typ = get_exp_typ mk_struct_exp in
+            let _ = unify etyp coll_typ eloc (sprintf "inconsistent type of the constructed %s" coll_name) in
             ExpSeq((pre_code @ [mk_struct_exp]), (coll_typ, eloc))
         else
             let (btyp, bloc) = get_exp_ctx body in
@@ -1833,9 +1845,7 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
             (match r_opt_typ_vars with
             | Some(r_typ_vars) -> r_typ_vars := IdSet.add (get_id "__var_tuple__") !r_typ_vars
             | _ -> ());
-            TypVarTuple(match t_opt with
-                | Some(t) -> Some(walk_typ t callb)
-                | _ -> None)
+            walk_typ t callb
         | TypRecord {contents=(relems, _)} ->
             check_for_rec_field_duplicates (List.map (fun (n, _, _) -> n) relems) loc;
             walk_typ t callb

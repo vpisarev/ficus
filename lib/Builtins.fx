@@ -263,12 +263,27 @@ operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj.*bj})
 operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj./bj})
 operator | (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj | bj})
 operator & (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj & bj})
-operator .== (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj .== bj})
-operator .!= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj .!= bj})
+
+operator .== (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj == bj})
+operator .!= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj != bj})
 operator .< (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj < bj})
 operator .<= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj <= bj})
 operator .> (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj > bj})
 operator .>= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj >= bj})
+
+operator .== (a: ('t...), b: 't) = (for aj <- a {aj == b})
+operator .!= (a: ('t...), b: 't) = (for aj <- a {aj != b})
+operator .< (a: ('t...), b: 't) = (for aj <- a {aj < b})
+operator .<= (a: ('t...), b: 't) = (for aj <- a {aj <= b})
+operator .> (a: ('t...), b: 't) = (for aj <- a {aj > b})
+operator .>= (a: ('t...), b: 't) = (for aj <- a {aj >= b})
+
+operator .== (b: 't, a: ('t...)) = a .== b
+operator .!= (b: 't, a: ('t...)) = a .!= b
+operator .< (b: 't, a: ('t...)) = a .> b
+operator .<= (b: 't, a: ('t...)) = a .>= b
+operator .> (b: 't, a: ('t...)) = a .< b
+operator .>= (b: 't, a: ('t...)) = a .<= b
 
 pure nothrow operator == (a: string, b: string): bool = ccode
 {
