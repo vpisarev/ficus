@@ -192,7 +192,7 @@ operator <=> (a: 't list, b: 't list): int =
     | SizeMismatchError => length(a) <=> length(b)
     }
 
-operator == (a: 't [], b: 't []): int =
+operator == (a: 't [+], b: 't [+]): bool =
     if size(a) != size(b) {false} else
     {
         fold r=0 for xa <- a, xb <- b {
@@ -219,28 +219,17 @@ operator == (a: (...), b: (...)) =
 operator <=> (a: (...), b: (...)) =
     fold d=0 for aj <- a, bj <- b {if d != 0 {d} else {aj <=> bj}}
 
-operator .<=> (a: 't [], b: 't []): int [] =
-    [for x <- a, y <- b {x <=> y}]
-operator .== (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {x == y}]
-operator .!= (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {!(x == y)}]
-operator .< (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {x < y}]
-operator .<= (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {!(y < x)}]
-operator .> (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {y < x}]
-operator .>= (a: 't [], b: 't []): bool [] =
-    [for x <- a, y <- b {!(x < y)}]
-
-operator .* (a: 't [], b: 't []) =
+operator + (a: 'ta [+], b: 'tb [+]) =
+    [for x <- a, y <- b {x + y}]
+operator - (a: 'ta [+], b: 'tb [+]) =
+    [for x <- a, y <- b {x - y}]
+operator .* (a: 'ta [+], b: 'tb [+]) =
     [for x <- a, y <- b {x .* y}]
-operator ./ (a: 't [], b: 't []) =
+operator ./ (a: 'ta [+], b: 'tb [+]) =
     [for x <- a, y <- b {x ./ y}]
-operator .% (a: 't [], b: 't []) =
+operator .% (a: 'ta [+], b: 'tb [+]) =
     [for x <- a, y <- b {x .% y}]
-operator .** (a: 't [], b: 't []) =
+operator .** (a: 'ta [+], b: 'tb [+]) =
     [for x <- a, y <- b {x .** y}]
 
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
@@ -261,29 +250,44 @@ operator + (a: (...), b: (...)) = (for aj <- a, bj <- b {aj+bj})
 operator - (a: (...), b: (...)) = (for aj <- a, bj <- b {aj-bj})
 operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj.*bj})
 operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj./bj})
-operator | (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj | bj})
-operator & (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj & bj})
+operator | (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj | bj})
+operator & (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj & bj})
 
-operator .== (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj == bj})
-operator .!= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj != bj})
-operator .< (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj < bj})
-operator .<= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj <= bj})
-operator .> (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj > bj})
-operator .>= (a: ('t...), b: ('t...)) = (for aj <- a, bj <- b {aj >= bj})
+operator .== (a: ('t...), b: 't): (bool...) = (for aj <- a {aj == b})
+operator .!= (a: ('t...), b: 't): (bool...) = (for aj <- a {aj != b})
+operator .< (a: ('t...), b: 't): (bool...) = (for aj <- a {aj < b})
+operator .<= (a: ('t...), b: 't): (bool...) = (for aj <- a {aj <= b})
+operator .> (a: ('t...), b: 't): (bool ...) = (for aj <- a {aj > b})
+operator .>= (a: ('t...), b: 't): (bool...) = (for aj <- a {aj >= b})
 
-operator .== (a: ('t...), b: 't) = (for aj <- a {aj == b})
-operator .!= (a: ('t...), b: 't) = (for aj <- a {aj != b})
-operator .< (a: ('t...), b: 't) = (for aj <- a {aj < b})
-operator .<= (a: ('t...), b: 't) = (for aj <- a {aj <= b})
-operator .> (a: ('t...), b: 't) = (for aj <- a {aj > b})
-operator .>= (a: ('t...), b: 't) = (for aj <- a {aj >= b})
+operator .== (b: 't, a: ('t...)): (bool...) = a .== b
+operator .!= (b: 't, a: ('t...)): (bool...) = a .!= b
+operator .< (b: 't, a: ('t...)): (bool...) = a .> b
+operator .<= (b: 't, a: ('t...)): (bool...) = a .>= b
+operator .> (b: 't, a: ('t...)): (bool...) = a .< b
+operator .>= (b: 't, a: ('t...)): (bool...) = a .<= b
 
-operator .== (b: 't, a: ('t...)) = a .== b
-operator .!= (b: 't, a: ('t...)) = a .!= b
-operator .< (b: 't, a: ('t...)) = a .> b
-operator .<= (b: 't, a: ('t...)) = a .>= b
-operator .> (b: 't, a: ('t...)) = a .< b
-operator .>= (b: 't, a: ('t...)) = a .<= b
+operator .== (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj == bj})
+operator .!= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj != bj})
+operator .< (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj < bj})
+operator .<= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj <= bj})
+operator .> (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj > bj})
+operator .>= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj >= bj})
+
+operator .<=> (a: 't [+], b: 't [+]): int [+] =
+    [for x <- a, y <- b {x <=> y}]
+operator .== (a: 't [+], b: 't [+]): bool [+] =
+    [for x <- a, y <- b {x == y}]
+operator .!= (a: 't [+], b: 't [+]): bool [+] =
+    [for x <- a, y <- b {!(x == y)}]
+operator .< (a: 't [+], b: 't [+]) =
+    [for x <- a, y <- b {x < y}]
+operator .<= (a: 't [+], b: 't [+]): bool [+] =
+    [for x <- a, y <- b {!(y < x)}]
+operator .> (a: 't [+], b: 't [+]): bool [+] =
+    [for x <- a, y <- b {y < x}]
+operator .>= (a: 't [+], b: 't [+]): bool [+] =
+    [for x <- a, y <- b {!(x < y)}]
 
 pure nothrow operator == (a: string, b: string): bool = ccode
 {

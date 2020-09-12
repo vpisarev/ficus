@@ -333,7 +333,8 @@ let rec maybe_unify t1 t2 update_refs =
             (List.length tl1) = (List.length tl2) &&
             List.for_all2 maybe_unify_ tl1 tl2
         | (TypVar ({contents=Some(TypVarTuple t1_opt)} as r1), TypVar ({contents=Some(TypVarTuple t2_opt)} as r2)) ->
-            if (occurs r2 t1) || (occurs r1 t2) then false
+            if r1 == r2 then true
+            else if (occurs r2 t1) || (occurs r1 t2) then false
             else if (match (t1_opt, t2_opt) with
                 | (Some t1_), (Some t2_) -> maybe_unify_ t1_ t2_
                 | _ -> true) then
@@ -377,6 +378,15 @@ let rec maybe_unify t1 t2 update_refs =
             else (); ok
         | (TypArray (d1, et1), TypArray (d2, et2)) ->
             d1 = d2 && maybe_unify_ et1 et2
+        | (TypVar ({contents=Some(TypVarArray t1_)} as r1), TypVar ({contents=Some(TypVarArray t2_)} as r2)) ->
+            if r1 == r2 then true
+            else if (occurs r2 t1) || (occurs r1 t2) then false
+            else if maybe_unify_ t1_ t2_ then
+                (undo_stack := r2 :: !undo_stack;
+                r2 := Some(t1); true)
+            else false
+        | (TypVar {contents=Some(TypVarArray _)}, TypVar {contents=Some(t2_)}) ->
+            maybe_unify_ t2_ t1
         | (TypVar {contents=Some(TypVarArray _)}, TypArray _) ->
             maybe_unify_ t2 t1
         | (TypArray (d1, et1), TypVar ({contents=Some(TypVarArray (et2))} as r2)) ->
@@ -681,6 +691,7 @@ let rec lookup_id n t env sc loc =
                                but there is no appropriate instance;
                                let's create a new one *)
                             let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp env1 sc loc true) in
+                            unify inst_typ t loc "inconsistent type of the instantiated function";
                             Some(inst_name)
                     else
                         None
@@ -1449,7 +1460,7 @@ and check_exp e env sc =
     | DirImportFrom(_, _, _) ->
         raise_compile_err eloc "internal err: should not get here; all the declarations must be handled in check_eseq") in
     (*let _ = match new_e with ExpSeq _ -> () | _ -> (printf "\ninferenced type: \n";
-        (pprint_typ_x etyp); printf "\n========\n") in*)
+        (pprint_typ_x etyp noloc); printf "\n========\n") in*)
     new_e
 
 and check_eseq eseq env sc create_sc =
@@ -1846,6 +1857,11 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
             | Some(r_typ_vars) -> r_typ_vars := IdSet.add (get_id "__var_tuple__") !r_typ_vars
             | _ -> ());
             walk_typ t callb
+        | TypVarArray t_opt ->
+            (match r_opt_typ_vars with
+            | Some(r_typ_vars) -> r_typ_vars := IdSet.add (get_id "__var_array__") !r_typ_vars
+            | _ -> ());
+            walk_typ t callb
         | TypRecord {contents=(relems, _)} ->
             check_for_rec_field_duplicates (List.map (fun (n, _, _) -> n) relems) loc;
             walk_typ t callb
@@ -1919,7 +1935,7 @@ and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let inst_ftyp = match (arg_typs, is_constr) with ([], true) -> rt | _ -> TypFun(arg_typs, rt) in
     inst_df := {!inst_df with df_body=inst_body; df_typ=inst_ftyp};
     (*!inst_or_templ_df.df_body <- inst_body;*)
-    (*(printf "<<<processed function:\n"; (pprint_exp_x (DefFun inst_or_templ_df)); printf "\n>>>\n");*)
+    (*(printf "<<<processed function:\n"; (pprint_exp_x (DefFun inst_df)); printf "\n>>>\n");*)
     inst_df
 
 and instantiate_variant ty_args dvar env sc loc =
