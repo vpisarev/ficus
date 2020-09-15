@@ -90,8 +90,8 @@ and flatten_ code callb =
 let flatten top_code =
     let callb =
     {
-        kcb_typ=Some(flatten_ktyp_);
-        kcb_exp=Some(flatten_kexp_);
+        kcb_ktyp=Some(flatten_ktyp_);
+        kcb_kexp=Some(flatten_kexp_);
         kcb_atom=None
     }
     in List.rev (flatten_ top_code callb)

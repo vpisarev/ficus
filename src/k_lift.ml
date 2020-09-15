@@ -246,8 +246,8 @@ let make_wrappers_for_nothrow top_code =
     in
     let callb =
     {
-        kcb_typ=Some(wrapf_ktyp_);
-        kcb_exp=Some(wrapf_kexp_);
+        kcb_ktyp=Some(wrapf_ktyp_);
+        kcb_kexp=Some(wrapf_kexp_);
         kcb_atom=Some(wrapf_atom)
     }
     in
@@ -592,8 +592,8 @@ let lift_all top_code =
     in let walk_n_lift_all_callb =
     {
         kcb_atom = Some(walk_atom_n_lift_all);
-        kcb_typ = Some(walk_ktyp_n_lift_all);
-        kcb_exp = Some(walk_kexp_n_lift_all)
+        kcb_ktyp = Some(walk_ktyp_n_lift_all);
+        kcb_kexp = Some(walk_kexp_n_lift_all)
     } in
 
     let top_code = make_wrappers_for_nothrow top_code in

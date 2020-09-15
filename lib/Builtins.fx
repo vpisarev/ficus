@@ -193,13 +193,11 @@ operator <=> (a: 't list, b: 't list): int =
     }
 
 operator == (a: 't [+], b: 't [+]): bool =
-    if size(a) != size(b) {false} else
-    {
-        fold r=0 for xa <- a, xb <- b {
-            if xa != xb {break with false}
-            r
-        }
-    }
+    size(a) == size(b) &&
+    (fold r=true for xa <- a, xb <- b {
+        if xa != xb {break with false}
+        r
+    })
 
 operator <=> (a: 't [], b: 't []): int
 {
@@ -246,10 +244,10 @@ operator <=> (a: double, b: double): int = (a > b) - (a < b)
 operator <=> (a: char, b: char): int = (a > b) - (a < b)
 operator <=> (a: bool, b: bool): int = (a > b) - (a < b)
 
-operator + (a: (...), b: (...)) = (for aj <- a, bj <- b {aj+bj})
-operator - (a: (...), b: (...)) = (for aj <- a, bj <- b {aj-bj})
-operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj.*bj})
-operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj./bj})
+operator + (a: (...), b: (...)) = (for aj <- a, bj <- b {aj + bj})
+operator - (a: (...), b: (...)) = (for aj <- a, bj <- b {aj - bj})
+operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj .* bj})
+operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj ./ bj})
 operator | (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj | bj})
 operator & (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj & bj})
 

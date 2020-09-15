@@ -112,7 +112,7 @@ val sample_js = JsonCommented(
     "small Json pretty-printing example",
     JsonMap([:
     ("ain't it cool?", JsonScalar(JsonScBool(true))),
-    ("pi", JsonCommented("a famous constant", JsonScalar(JsonScReal(3.1415926)))),
+    ("pi", JsonCommented("the famous constant", JsonScalar(JsonScReal(3.1415926)))),
     ("a little array of arrays", JsonCommented("demonstrates compact representation of scalar arrays",
         JsonSeq(s_list_list))),
     ("greeting", JsonCommented("'hello' in Chinese", JsonScalar(JsonScString("你好")))),

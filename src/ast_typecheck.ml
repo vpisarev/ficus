@@ -428,7 +428,7 @@ let rec maybe_unify t1 t2 update_refs =
         (* in all other cases the types cannot be unified *)
         | (_, _) -> false) in
 
-    let ok = maybe_unify_ (deref_typ t1) (deref_typ t2) in
+    let ok = maybe_unify_ t1 t2 in
     (*((printf "result (%B): " ok); pprint_typ_x t1 noloc; printf " and "; pprint_typ_x t2 noloc; printf ">>>\n");*)
     if ok && update_refs then () else
     (* restore the original types in the case of type unification failure

@@ -6,8 +6,9 @@
 (* ficus abstract syntax definition + helper structures and functions *)
 
 (*
-   we represent all the symbols in the code by a pair of integers <a, b>.
-   Initially, a=b and they both represent the textual name as it occurs in the code, e.g. "i".
+   we represent all the symbols in the code using Id.t variant, essentially, by a pair of integers <a, b>.
+   Initially, b=0 (i.e. id ~ Id.Name(a)) and it represents the textual name as it occurs in the code, e.g. "i".
+   "a" is the index in the array of strings that contains identifiers occured in the program.
    Later on, the type checker resolves the names and replaces b with
    some unique integer representing the particular object ("i") referenced in the particular
    context. For example:
@@ -31,7 +32,7 @@
    There is a big global table of all symbols, so for each symbol we can retrieve its properties:
    the original name, inferred type, when and how it's defined.
 
-   Sometimes we need a temporary value or a temporary function, i.e. when we do not have the original
+   Sometimes we need a temporary value or a temporary function, i.e. when we do not have a user-specified
    name. In this case we use some common prefix, e.g. "t" for intermediate results in complex expressions,
    "lambda" for anonymous functions etc. but we represent the id as Id.Temp(prefix, N). Such id is
    always displayed as prefix@@N, e.g. "t@@1000" or "lambda@@777", and it can only be matched with
@@ -63,10 +64,9 @@ let dummyid = Id.Name(1)
   Why have a list of possible matches? Because:
    * in the nested scopes we can redefine a symbol from the outer scope
    * a defined value can be redefined later in the same block: val a = 5; val a = a + 1
-     (we can set a certain compiler option in order to get a warning in such cases)
    * we can have overloaded functions, e.g. sin:float->float and sin:double->double
    * types and functions/values with the same name can co-exist without conflicts, e.g.
-     string type and string:'t->string function.
+     string type and string:'t->string functions.
 
   Note that we use purely-functional data structure (Map) to store the environment.
   Such immutable data structure let us forget about the neccesity to "undo" environment changes

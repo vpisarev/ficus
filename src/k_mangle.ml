@@ -308,8 +308,8 @@ let mangle_all top_code =
         in
     let walk_n_mangle_callb =
     {
-        kcb_typ=Some(walk_ktyp_n_mangle);
-        kcb_exp=Some(walk_kexp_n_mangle);
+        kcb_ktyp=Some(walk_ktyp_n_mangle);
+        kcb_kexp=Some(walk_kexp_n_mangle);
         kcb_atom=None
     } in
 

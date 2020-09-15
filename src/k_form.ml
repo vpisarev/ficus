@@ -64,6 +64,8 @@ type intrin_t =
     | IntrinListTail
     | IntrinStrConcat
     | IntrinGetSize
+    | IntrinCheckIdx (* (arr_sz, idx) *)
+    | IntrinCheckIdxRange (* (arr_sz, a, b, delta, scale, shift) *)
 
 type ktprops_t =
 {
@@ -373,18 +375,18 @@ let kexp2code e =
 
 type k_callb_t =
 {
-    kcb_typ: (ktyp_t -> loc_t -> k_callb_t -> ktyp_t) option;
-    kcb_exp: (kexp_t -> k_callb_t -> kexp_t) option;
+    kcb_ktyp: (ktyp_t -> loc_t -> k_callb_t -> ktyp_t) option;
+    kcb_kexp: (kexp_t -> k_callb_t -> kexp_t) option;
     kcb_atom: (atom_t -> loc_t -> k_callb_t -> atom_t) option;
 }
 
 let rec check_n_walk_ktyp t loc callb =
-    match callb.kcb_typ with
+    match callb.kcb_ktyp with
     | Some(f) -> f t loc callb
     | _ -> walk_ktyp t loc callb
 
 and check_n_walk_kexp e callb =
-    match callb.kcb_exp with
+    match callb.kcb_kexp with
     | Some(f) -> f e callb
     | _ -> walk_kexp e callb
 

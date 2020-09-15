@@ -498,7 +498,7 @@ int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t c
                     const int8_t* tags, const void** data, fx_arr_t* arr )
 {
     int_ nrows = 0, ncols = 0, nrows_i = 0, ncols_i = 0;
-    printf("ndims=%d, copy_elem=%p, free_elem=%p\n", ndims, copy_elem, free_elem);
+    //printf("ndims=%d, copy_elem=%p, free_elem=%p\n", ndims, copy_elem, free_elem);
 
     if (ndims <= 0 || ndims > 2)
         FX_FAST_THROW_RET(FX_EXN_DimError);
@@ -554,7 +554,6 @@ int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t c
         FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
 
     int_ size[] = {(ndims == 1 ? ncols : nrows), ncols};
-    printf("ndims=%d, nrows=%d, ncols=%d\n", ndims, (int)nrows, (int)ncols);
     int fx_status = fx_make_arr( ndims, size, elemsize, free_elem, copy_elem, 0, arr);
     if (fx_status < 0)
         return fx_status;

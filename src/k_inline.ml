@@ -179,8 +179,8 @@ let subst_names e subst_env0 rename_locals =
     let subst_callb =
     {
         kcb_atom=Some(subst_atom_);
-        kcb_typ=Some(subst_ktyp_);
-        kcb_exp=Some(subst_kexp_)
+        kcb_ktyp=Some(subst_ktyp_);
+        kcb_kexp=Some(subst_kexp_)
     } in
     subst_kexp_ e subst_callb
 
@@ -298,7 +298,7 @@ let inline_some top_code =
     in let inline_callb =
     {
         kcb_atom = None;
-        kcb_typ=Some(inline_ktyp_);
-        kcb_exp=Some(inline_kexp_)
+        kcb_ktyp=Some(inline_ktyp_);
+        kcb_kexp=Some(inline_kexp_)
     } in
     List.map (fun e -> inline_kexp_ e inline_callb) top_code

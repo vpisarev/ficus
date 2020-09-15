@@ -33,7 +33,10 @@ let rec move_loop_invs code =
             kcb_fold_kexp = Some(isinv_kexp_);
             kcb_fold_result = 0
         } in
-        (K_deadcode_elim.pure_kexp e) && (isinv_kexp_ e isinv_callb; !isinv)
+        is_ktyp_scalar (get_kexp_typ e) &&
+        (K_deadcode_elim.pure_kexp e) &&
+        (match e with KExpAt _ -> false | _ -> true) &&
+        (isinv_kexp_ e isinv_callb; !isinv)
     in
     let mli_ktyp t loc callb = t in
     let rec mli_process_loop e_idl_l body loc callb =
@@ -93,8 +96,8 @@ let rec move_loop_invs code =
         | _ -> walk_kexp e callb
     in let mli_callb =
     {
-        kcb_typ=Some(mli_ktyp);
-        kcb_exp=Some(mli_kexp);
+        kcb_ktyp=Some(mli_ktyp);
+        kcb_kexp=Some(mli_kexp);
         kcb_atom=None
     }
     in List.map (fun e -> mli_kexp e mli_callb) code

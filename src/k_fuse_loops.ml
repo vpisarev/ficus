@@ -128,8 +128,8 @@ let rec fuse_loops code =
         in
     let fuse_callb =
     {
-        kcb_typ=Some(fuse_ktyp_);
-        kcb_exp=Some(fuse_kexp_);
+        kcb_ktyp=Some(fuse_ktyp_);
+        kcb_kexp=Some(fuse_kexp_);
         kcb_atom=None
     }
     in List.map (fun e -> fuse_kexp_ e fuse_callb) code

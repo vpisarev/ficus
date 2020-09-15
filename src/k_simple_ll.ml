@@ -100,8 +100,8 @@ let lift top_code =
     in let walk_n_lift_callb =
     {
         kcb_atom = None;
-        kcb_typ = Some(walk_ktyp_n_lift);
-        kcb_exp = Some(walk_kexp_n_lift)
+        kcb_ktyp = Some(walk_ktyp_n_lift);
+        kcb_kexp = Some(walk_kexp_n_lift)
     } in
 
     let process top_code =
