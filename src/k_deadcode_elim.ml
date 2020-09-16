@@ -40,7 +40,9 @@ let rec pure_kexp e =
         match e with
         | KExpBreak _ -> ispure := false
         | KExpContinue _ -> ispure := false
-        | KExpIntrin(IntrinPopExn, _, _) -> ispure := false
+        | KExpIntrin(intr, _, _) when
+            intr = IntrinPopExn || intr = IntrinCheckIdx || intr = IntrinCheckIdxRange
+            -> ispure := false
         | KExpCall(f, _, (_, loc)) -> if (pure_fun f loc) then () else ispure := false
         | KExpAssign (i, (Atom.Id j), _) when i = j -> ()
         | KExpAssign (i, _, _) ->

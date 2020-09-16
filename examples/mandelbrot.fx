@@ -9,8 +9,6 @@ val N = match Args.arguments() {
 val w = N, h = N, MAX_ITER = 50
 val inv = 2.0 / w
 
-fun all(a: (bool...)) = fold f=true for x <- a {f & x}
-
 val x_ = [parallel for x <- 0:w {(x :> double) * inv - 1.5}]
 val result: int8 [,] = [
     parallel

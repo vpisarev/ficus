@@ -1369,6 +1369,23 @@ let gen_ccode top_code =
                 | _ -> raise_compile_err kloc "cgen: unsupported container type in KExpIntrin(IntrinGetSize...)"
                 in
                 (true, c_e, ccode)
+            | (IntrinCheckIdx, arrsz :: idx :: []) ->
+                let lbl = curr_block_label kloc in
+                let (arrsz_exp, ccode) = atom2cexp arrsz ccode kloc in
+                let (idx_exp, ccode) = atom2cexp idx ccode kloc in
+                let chk = make_call (get_id "FX_CHKIDX_SCALAR") [arrsz_exp; idx_exp; lbl] CTypVoid kloc in
+                (false, dummy_exp, ((CExp chk) :: ccode))
+            | (IntrinCheckIdxRange, arrsz :: a :: b :: delta :: scale :: shift :: []) ->
+                let lbl = curr_block_label kloc in
+                let (arrsz_exp, ccode) = atom2cexp arrsz ccode kloc in
+                let (a_exp, ccode) = atom2cexp a ccode kloc in
+                let (b_exp, ccode) = atom2cexp b ccode kloc in
+                let (delta_exp, ccode) = atom2cexp delta ccode kloc in
+                let (scale_exp, ccode) = atom2cexp scale ccode kloc in
+                let (shift_exp, ccode) = atom2cexp shift ccode kloc in
+                let chk = make_call (get_id "FX_CHKIDX_RANGE")
+                    [arrsz_exp; a_exp; b_exp; delta_exp; scale_exp; shift_exp; lbl] CTypVoid kloc in
+                (false, dummy_exp, ((CExp chk) :: ccode))
             | _ -> raise_compile_err kloc (sprintf "cgen: unsupported KExpIntrin(%s, ...)" (intrin2str intr)))
         | KExpSeq(el, _) ->
             let rec process_seq el ccode = match el with

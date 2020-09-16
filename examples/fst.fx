@@ -131,7 +131,7 @@ println(if 0.1 <= Math.sin(1.) < 0.7 {
     } else if Math.sin(1.) < 0.1 {
         "sin(1) is smaller than 0.1"
     } else {
-        "sin(1) is greater or equal than 0.7"
+        "sin(1) is no smaller than 0.7"
     })
 
 val key1 = "xyz", key2 = "b"

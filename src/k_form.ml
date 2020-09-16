@@ -339,6 +339,8 @@ let intrin2str iop = match iop with
     | IntrinListTail -> "INTRIN_LIST_TL"
     | IntrinStrConcat -> "INTRIN_STR_CONCAT"
     | IntrinGetSize -> "INTRIN_GET_SIZE"
+    | IntrinCheckIdx -> "INTRIN_CHECK_IDX"
+    | IntrinCheckIdxRange -> "INTRIN_CHECK_IDX_RANGE"
 
 let get_code_loc code default_loc =
     loclist2loc (List.map get_kexp_loc code) default_loc

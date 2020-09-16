@@ -154,7 +154,7 @@ void fx_free(void* ptr);
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
 #define FX_CHECK_ZERO_STEP(delta, label) \
-    if(delta == 0) ; else FX_FAST_THROW(FX_EXN_ZeroStepError, label}
+    if(delta == 0) ; else FX_FAST_THROW(FX_EXN_ZeroStepError, label)
 #define FX_LOOP_COUNT(a, b, delta) \
     ((delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta))
 #define FX_CHECK_EQ_SIZE(check, label) if(check) ; else FX_FAST_THROW(FX_EXN_SizeMismatchError, label)
@@ -525,6 +525,23 @@ void fx_arr_nextiter(fx_arriter_t* it);
     ((size_t)(idx) < (size_t)(arr).dim[i].size)
 #define FX_CHKIDX(ir_check, catch_label) \
     if(ir_check) ; else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
+#define FX_CHKIDX_SCALAR(arrsz, idx, catch_label) \
+    FX_CHKIDX((uintptr_t)idx < (uintptr_t)arrsz, catch_label)
+FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ scale, int_ shift)
+{
+    if (delta == 0) FX_FAST_THROW_RET(FX_EXN_ZeroStepError);
+    int n = FX_LOOP_COUNT(a, b, delta);
+    if (n > 0) {
+        int_ b_ = a + (n - 1)*delta;
+        if((uintptr_t)(a*scale + shift) >= (uintptr_t)arrsz ||
+           (uintptr_t)(b_*scale + shift) >= (uintptr_t)arrsz)
+           FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
+    }
+    return FX_OK;
+}
+#define FX_CHKIDX_RANGE(arrsz, a, b, delta, scale, shift, catch_label) \
+    if(fx_check_idx_range(arrsz, a, b, delta, scale, shift) >= 0) ; \
+    else goto catch_label
 
 #define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))

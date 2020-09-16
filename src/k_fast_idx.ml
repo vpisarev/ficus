@@ -200,7 +200,7 @@ let optimize_idx_checks topcode =
                     IdxSimple(i, Atom.Lit(LitInt 1L), Atom.Lit(LitInt 0L))
                 else if (is_loop_invariant a inloop_vals loc) then
                     IdxSimple(noid, Atom.Lit(LitInt 0L), a)
-                (* we analyze array index expression (including nested expressions) and try to bring it to
+                (* we analyze array index expression (including nested sub-expressions) and try to bring it to
                    the form 'array_idx = alpha*loop_idx + beta', where alpha and beta are loop invariants
                    and loop_idx is a loop index. The partial case is alpha == 0, i.e. when
                    array_idx is loop invariant. When we do it, we may need to introduce some temporary values
@@ -336,24 +336,74 @@ let optimize_idx_checks topcode =
                 (for_clauses, body)
             in
         (* step 7. insert checks before the loop body *)
+        let get_arrsz arr i arrsz_env pre_for_code =
+            match (List.assoc_opt (arr, i) arrsz_env) with
+            | Some(arrsz) -> (arrsz, arrsz_env, pre_for_code)
+            | _ ->
+                let arrsz = gen_temp_idk "sz" in
+                let arrsz_exp = KExpIntrin(IntrinGetSize,
+                    [(Atom.Id arr); (Atom.Lit (LitInt (Int64.of_int i)))],
+                    (KTypInt, for_loc))
+                    in
+                let pre_for_code = create_kdefval arrsz KTypInt [ValTemp] (Some arrsz_exp) pre_for_code for_loc in
+                (arrsz, (((arr, i), arrsz) :: arrsz_env), pre_for_code)
+            in
         let pre_for_code = if !all_accesses = [] then !pre_for_code else
             let (_, pre_for_code) = List.fold_left
                 (fun (arrsz_env, pre_for_code) {aa_arr; aa_dim; aa_class} ->
                 match aa_class with
                 | IdxSimple(i, scale, shift) ->
+                    let (arrsz, arrsz_env, pre_for_code) = get_arrsz aa_arr aa_dim arrsz_env pre_for_code in
+                    if i = noid then
+                        let check_idx_exp = KExpIntrin(IntrinCheckIdx, [(Atom.Id arrsz); shift], (KTypVoid, for_loc)) in
+                        (arrsz_env, (check_idx_exp :: pre_for_code))
+                    else
+                        let (a, b, delta, arrsz_env, pre_for_code) =
+                            match (Env.find_opt i loop_idx) with
+                            | Some(LoopOverRange(a, b, delta)) ->
+                                (a, b, delta, arrsz_env, pre_for_code)
+                            | Some(LoopOverArr(arr, j)) ->
+                                let (arrsz2, arrsz_env, pre_for_code) = get_arrsz arr j arrsz_env pre_for_code in
+                                let a = Atom.Lit (LitInt 0L) in
+                                let b = Atom.Id arrsz2 in
+                                let delta = Atom.Lit (LitInt 1L) in
+                                (a, b, delta, arrsz_env, pre_for_code)
+                            | _ -> raise_compile_err for_loc
+                                (sprintf "fast_idx: index '%s' is not found in the loop_idx, but it should be there" (id2str i))
+                            in
+                        let check_idx_range_exp = KExpIntrin(IntrinCheckIdxRange,
+                            [(Atom.Id arrsz); a; b; delta; scale; shift], (KTypVoid, for_loc)) in
+                        (arrsz_env, (check_idx_range_exp :: pre_for_code))
                 | _ -> (arrsz_env, pre_for_code)) ([], !pre_for_code) !all_accesses
                 in
             pre_for_code
             in
         (pre_for_code, for_clauses, body)
     in
-    let process_ktyp t loc callb = t
-    let process_kexp e callb =
-        let e = walk_kexp e callb in
+    let process_ktyp t loc callb = t in
+    let rec process_kexp e callb =
         match e with
         | KExpFor(idl, idxl, body, flags, loc) ->
             let (pre_for_code, for_clauses, body) =
                 optimize_for e [((KExpNop loc), idl, idxl)] body in
+
+            (* process nested for's, if any, after the call to optimize_for;
+               we do it in this order to put the 'batch range checks' as high as
+               possible in the hierarchy of nested loops, e.g.:
+                for i <- 0:N {
+                    for j <- 0:i {
+                        for k <- 0:j {
+                            foo(a[i, k]*b[k, j]) // we want to
+                                                // put the check for the whole "i" range (0:N) outside of the outermost i-loop,
+                                                // instead of checking the k-loop-invariant "i" right before k-loop;
+                                                // and put the check for "j" range (0:i) outside of the j-loop
+                                                // instead of checking the k-loop-invariant "j" right before k-loop.
+                        }
+                    }
+                }
+            *)
+            let body = process_kexp body callb in
+
             let e = match for_clauses with
                 | ((KExpNop _), idl, idxl) :: [] ->
                     KExpFor(idl, idxl, body, flags, loc)
@@ -363,8 +413,9 @@ let optimize_idx_checks topcode =
             rcode2kexp (e :: pre_for_code) loc
         | KExpMap(for_clauses, body, flags, (t, loc)) ->
             let (pre_for_code, for_clauses, body) = optimize_for e for_clauses body in
+            let body = process_kexp body callb in
             rcode2kexp ((KExpMap(for_clauses, body, flags, (t, loc))) :: pre_for_code) loc
-        | _ -> e
+        | _ -> walk_kexp e callb
         in
     let process_callb =
     {

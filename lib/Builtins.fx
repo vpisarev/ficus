@@ -229,6 +229,12 @@ operator .% (a: 'ta [+], b: 'tb [+]) =
     [for x <- a, y <- b {x .% y}]
 operator .** (a: 'ta [+], b: 'tb [+]) =
     [for x <- a, y <- b {x .** y}]
+operator & (a: 't [+], b: 't [+]) =
+    [for x <- a, y <- b {x & y}]
+operator | (a: 't [+], b: 't [+]) =
+    [for x <- a, y <- b {x | y}]
+operator ^ (a: 't [+], b: 't [+]) =
+    [for x <- a, y <- b {x ^ y}]
 
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
 operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
@@ -250,6 +256,7 @@ operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj .* bj})
 operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj ./ bj})
 operator | (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj | bj})
 operator & (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj & bj})
+operator ^ (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj ^ bj})
 
 operator .== (a: ('t...), b: 't): (bool...) = (for aj <- a {aj == b})
 operator .!= (a: ('t...), b: 't): (bool...) = (for aj <- a {aj != b})
@@ -271,6 +278,9 @@ operator .< (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj < bj
 operator .<= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj <= bj})
 operator .> (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj > bj})
 operator .>= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj >= bj})
+
+fun all(a: (bool...)) = fold f=true for x <- a {f & x}
+fun any(a: (bool...)) = fold f=false for x <- a {f | x}
 
 operator .<=> (a: 't [+], b: 't [+]): int [+] =
     [for x <- a, y <- b {x <=> y}]
