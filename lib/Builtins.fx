@@ -332,6 +332,18 @@ nothrow fun atoi(a: string): int? = ccode
     fx_result->tag = (int)ok + 1
 }
 
+fun int(x: 't) = (x :> int)
+fun uint8(x: 't) = (x :> uint8)
+fun int8(x: 't) = (x :> int8)
+fun uint16(x: 't) = (x :> uint16)
+fun int16(x: 't) = (x :> int16)
+fun uint32(x: 't) = (x :> uint32)
+fun int32(x: 't) = (x :> int32)
+fun uint64(x: 't) = (x :> uint64)
+fun int64(x: 't) = (x :> int64)
+fun float(x: 't) = (x :> float)
+fun double(x: 't) = (x :> double)
+
 pure nothrow fun sat_uint8(i: int): uint8 = ccode
 { return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255); }
 

@@ -9,13 +9,13 @@ val N = match Args.arguments() {
 val w = N, h = N, MAX_ITER = 50
 val inv = 2.0 / w
 
-val x_ = [parallel for x <- 0:w {(x :> double) * inv - 1.5}]
+val x_ = [parallel for x <- 0:w {double(x) * inv - 1.5}]
 val result: int8 [,] = [
     parallel
         for y <- 0:h
             for x8 <- 0:(w/8)
     {
-        val y_ = (y :> double) * inv - 1.0
+        val y_ = double(y) * inv - 1.0
         val x = x8*8
         val cr = (x_[x + 0], x_[x + 1], x_[x + 2], x_[x + 3], x_[x + 4], x_[x + 5], x_[x + 6], x_[x + 7])
         val ci = (y_, y_, y_, y_, y_, y_, y_, y_)
@@ -39,7 +39,7 @@ val result: int8 [,] = [
         val mask = (bits.0 << 7) + (bits.1 << 6) + (bits.2 << 5) + (bits.3 << 4) +
             (bits.4 << 3) + (bits.5 << 2) + (bits.6 << 1) + (bits.7 << 0)
 
-        ((mask ^ 255) :> int8)
+        int8(mask ^ 255)
     }
 ]
 

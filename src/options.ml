@@ -82,7 +82,7 @@ let parse_options () =
         sprintf "Usage: %s [options ...] [input_file.fx]" Sys.argv.(0));
 
         if options.optimize_level = 0 then
-            options.inline_thresh <- 0
+            options.inline_thresh <- 1
         else ();
 
         let use_stdin = !_files = [] in

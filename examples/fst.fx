@@ -157,7 +157,7 @@ nothrow fun is_prime(n: int)
 {
     if n <= 1 {false} else if n % 2 == 0 {n == 2}
     else {
-        fold r=true for p<-3:Math.floor(Math.sqrt(n :> double))+1:2 {
+        fold r=true for p<-3:Math.floor(Math.sqrt(double(n)))+1:2 {
             if n % p == 0 {break with false};
             r
         }
@@ -188,5 +188,5 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     for y <- 0:h { println(screen[y,:]) }
 }
 
-val a = (Math.pi*(-0.5) :> float), b = (-a*5 :> float)
+val a = float(-0.5*Math.pi), b = float(-a*5)
 plot(a, b, (Math.sin: float->float), 80, 10)
