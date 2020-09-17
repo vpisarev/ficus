@@ -146,6 +146,7 @@ fun repr(a: string) = "\"" + a + "\""
 fun repr(a: char) = "'" + a + "'"
 
 fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
+fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
 fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
@@ -216,6 +217,10 @@ operator == (a: (...), b: (...)) =
     fold f=true for aj <- a, bj <- b {if aj == bj {f} else {false}}
 operator <=> (a: (...), b: (...)) =
     fold d=0 for aj <- a, bj <- b {if d != 0 {d} else {aj <=> bj}}
+operator == (a: {...}, b: {...}) =
+    fold f=true for (_, aj) <- a, (_, bj) <- b {if aj == bj {f} else {false}}
+operator <=> (a: {...}, b: {...}) =
+    fold d=0 for (_, aj) <- a, (_, bj) <- b {if d != 0 {d} else {aj <=> bj}}
 
 operator + (a: 'ta [+], b: 'tb [+]) =
     [for x <- a, y <- b {x + y}]
@@ -428,6 +433,7 @@ fun print(a: 't [])
     }
     print("]")
 }
+
 nothrow fun print(a: char []): void = ccode {
     fx_str_t str = {0, (char_*)a->data, a->dim[0].size};
     fx_fputs(stdout, &str)
@@ -445,6 +451,7 @@ fun print(a: 't [,])
         if i < m-1 {print(";\n ")} else {print("]")}
     }
 }
+
 fun print(l: 't list)
 {
     print("[")
@@ -454,6 +461,7 @@ fun print(l: 't list)
     }
     print("]")
 }
+
 fun print(t: (...))
 {
     print("(");
@@ -463,6 +471,18 @@ fun print(t: (...))
     }
     print(")")
 }
+
+fun print(r: {...})
+{
+    print("{")
+    for (n, x)@i <- r {
+        if i > 0 {print(", ")}
+        print(n + "=");
+        print_repr(x)
+    }
+    print("}")
+}
+
 fun print(a: 't ref) {
     print("ref("); print_repr(*a); print(")")
 }

@@ -6,7 +6,7 @@
 (* optimizes out index range checks when accessing arrays sequentially
   inside for-loops (including comprehensions).
 
-  For example, the following code
+  For example, without this optimization the following code
   [for i <- 1:n-1 {(arr[i-1] + arr[i]*2 + arr[i+1])/4}]]
 
   is translated to the following pseudo-C code:

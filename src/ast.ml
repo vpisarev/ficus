@@ -137,6 +137,7 @@ type typ_t =
                         type unification algorithm) *)
     | TypVarTuple of typ_t option  (* (...) or ('t...) *)
     | TypVarArray of typ_t (* 't [+] *)
+    | TypVarRecord
     | TypInt
     | TypSInt of int
     | TypUInt of int
@@ -614,6 +615,7 @@ let rec deref_typ t =
         let rec find_root t = match t with
             | TypVar {contents=Some(TypVarArray _)} -> t
             | TypVar {contents=Some(TypVarTuple _)} -> t
+            | TypVar {contents=Some(TypVarRecord)} -> t
             | TypVar {contents=Some(t2)} -> find_root t2
             | _ -> t in
         let root = find_root t in

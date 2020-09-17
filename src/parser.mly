@@ -1004,6 +1004,7 @@ typespec_nf:
 | B_LPAREN typespec_nf STAR INT RPAREN { TypTuple(List.init (Int64.to_int $4) (fun i -> $2)) }
 | B_LPAREN INT STAR typespec_nf RPAREN { TypTuple(List.init (Int64.to_int $2) (fun i -> $4)) }
 | B_LPAREN ELLIPSIS RPAREN { TypVar {contents=Some (TypVarTuple None)} }
+| LBRACE ELLIPSIS RBRACE { TypVar {contents=Some (TypVarRecord)} }
 | B_LPAREN typespec ELLIPSIS RPAREN { TypVar {contents=Some (TypVarTuple (Some $2))} }
 | typespec_nf nobreak_dot_ident
 %prec app_type_prec

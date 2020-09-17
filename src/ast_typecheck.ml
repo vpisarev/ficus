@@ -127,6 +127,7 @@ and walk_typ t callb =
     | TypRef t -> TypRef(walk_typ_ t)
     | TypArray(d, et) -> TypArray(d, walk_typ_ et)
     | TypVarArray et -> TypVarArray(walk_typ_ et)
+    | TypVarRecord -> t
     | TypRecord ({contents=(relems, ordered)} as r) ->
         let new_relems = List.map (fun (n, t, v) -> (n, (walk_typ_ t), v)) relems in
         r := (new_relems, ordered); t
@@ -313,7 +314,7 @@ let rec maybe_unify t1 t2 update_refs =
         | TypVar({ contents = Some(t2_) }) -> occurs r1 t2_
         | TypApp(tl2, _) -> List.exists (occurs r1) tl2
         | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypString | TypChar
-        | TypBool | TypVoid | TypExn | TypErr | TypCPointer | TypDecl | TypModule -> false) in
+        | TypBool | TypVoid | TypExn | TypErr | TypCPointer | TypDecl | TypModule | TypVarRecord -> false) in
     let rec maybe_unify_ t1 t2 =
         (*let _ = (printf "\tmaybe_unify_: "; pprint_typ_x t1 noloc; printf " and "; pprint_typ_x t2 noloc; printf "\n"; flush stdout) in*)
         (match (t1, t2) with
@@ -338,7 +339,7 @@ let rec maybe_unify t1 t2 update_refs =
             else if (match (t1_opt, t2_opt) with
                 | (Some t1_), (Some t2_) -> maybe_unify_ t1_ t2_
                 | _ -> true) then
-                (undo_stack := r2 :: !undo_stack;
+                (undo_stack := (r2, !r2) :: !undo_stack;
                 r2 := Some(t1); true)
             else false
         | (TypVar {contents=Some(TypVarTuple _)}, TypVar {contents=Some(t2_)}) ->
@@ -350,9 +351,32 @@ let rec maybe_unify t1 t2 update_refs =
             else if (match t2_opt with
                 | Some t2_ -> List.for_all (maybe_unify_ t2_) tl1
                 | _ -> true) then
-                (undo_stack := r2 :: !undo_stack;
+                (undo_stack := (r2, !r2) :: !undo_stack;
                 r2 := Some(t1); true)
             else false
+        | (TypVar ({contents=Some(TypVarRecord)} as r1), t2) ->
+            let t2 = deref_typ t2 in
+            (match t2 with
+            | TypVar ({contents=Some(TypVarRecord)} as r2) ->
+                if r1 == r2 then ()
+                else (undo_stack := (r2, !r2) :: !undo_stack; r2 := Some(t1));
+                true
+            | TypVar ({contents=None} as r2) ->
+                undo_stack := (r2, !r2) :: !undo_stack; r2 := Some(t1);
+                true
+            | TypRecord _ ->
+                undo_stack := (r1, !r1) :: !undo_stack; r1 := Some(t2);
+                true
+            | TypApp(t_args, tn) ->
+                (match (id_info tn) with
+                | IdVariant {contents={dvar_cases=(_, TypRecord _) :: []}}
+                    ->
+                    undo_stack := (r1, !r1) :: !undo_stack; r1 := Some(t2);
+                    true
+                | _ -> false)
+            | _ -> false)
+        | (_, TypVar {contents=Some(TypVarRecord)}) ->
+            maybe_unify_ t2 t1
         | ((TypRef drt1), (TypRef drt2)) -> maybe_unify_ drt1 drt2
         | (TypRecord r1, TypRecord r2) when r1 == r2 -> true
         | (TypRecord {contents=(_, false)}, TypRecord {contents=(_, true)}) -> maybe_unify_ t2 t1
@@ -382,7 +406,7 @@ let rec maybe_unify t1 t2 update_refs =
             if r1 == r2 then true
             else if (occurs r2 t1) || (occurs r1 t2) then false
             else if maybe_unify_ t1_ t2_ then
-                (undo_stack := r2 :: !undo_stack;
+                (undo_stack := (r2, !r2) :: !undo_stack;
                 r2 := Some(t1); true)
             else false
         | (TypVar {contents=Some(TypVarArray _)}, TypVar {contents=Some(t2_)}) ->
@@ -392,7 +416,7 @@ let rec maybe_unify t1 t2 update_refs =
         | (TypArray (d1, et1), TypVar ({contents=Some(TypVarArray (et2))} as r2)) ->
             if occurs r2 et1 then false
             else if maybe_unify_ et1 et2 then
-                (undo_stack := r2 :: !undo_stack;
+                (undo_stack := (r2, !r2) :: !undo_stack;
                 r2 := Some(t1); true)
             else false
         | (TypApp (args1, id1), TypApp (args2, id2)) ->
@@ -414,13 +438,13 @@ let rec maybe_unify t1 t2 update_refs =
                to memorize the previous value of r1, because we know that it's None. *)
             ((match t2 with
             | TypErr -> ()
-            | _ -> undo_stack := r1 :: !undo_stack; r1 := Some(t2)); true)
+            | _ -> undo_stack := (r1, !r1) :: !undo_stack; r1 := Some(t2)); true)
           (* symmetrical case *)
         | (_, (TypVar ({contents = None} as r2))) ->
             if occurs r2 t1 then false else
             ((match t1 with
             | TypErr -> ()
-            | _ -> undo_stack := r2 :: !undo_stack; r2 := Some(t1)); true)
+            | _ -> undo_stack := (r2, !r2) :: !undo_stack; r2 := Some(t1)); true)
         (* a declaration cannot be unified with any non-decl type *)
         | (TypErr, _ ) -> true
         | (_, TypErr) -> true
@@ -434,7 +458,7 @@ let rec maybe_unify t1 t2 update_refs =
     (* restore the original types in the case of type unification failure
        or when update_refs=false *)
         ((List.iter (fun (r, prev) -> r := prev) !rec_undo_stack);
-        (List.iter (fun r -> r := None) !undo_stack));
+        (List.iter (fun (r, old_val) -> r := old_val) !undo_stack));
     ok
 
 (* this is another flavor of type unification function;
@@ -781,8 +805,15 @@ and check_exp e env sc =
         let is_range = match e with ExpRange _ -> true | _ -> false in
         let (etyp, eloc) = get_exp_ctx e in
         let etyp = deref_typ etyp in
-        match (is_range, etyp) with
-        | (false, (TypTuple tl)) ->
+        let (_, relems) = match etyp with
+            | TypApp _ ->
+                (try
+                    get_record_elems None etyp eloc
+                with CompileError _ -> (noid, []))
+            | _ -> (noid, [])
+            in
+        match (is_range, etyp, relems) with
+        | (false, (TypTuple tl), _) ->
             let tup_pat = PatIdent((gen_temp_id "tup"), eloc) in
             let (tup_pat, env, idset, _) = check_pat tup_pat etyp env idset IdSet.empty sc false true false in
             let def_e = DefVal(tup_pat, e, [ValTemp], eloc) in
@@ -792,36 +823,46 @@ and check_exp e env sc =
                 | _ -> raise_compile_err eloc "for over tuple: invalid result of check_pat result (id is expected)"
                 in
             ((List.length tl), (p, tup_e), [def_e], 1, env, idset)
+        | (false, _, relems) when relems != [] ->
+            let rec_pat = PatIdent((gen_temp_id "rec"), eloc) in
+            let (rec_pat, env, idset, _) = check_pat rec_pat etyp env idset IdSet.empty sc false true false in
+            let def_e = DefVal(rec_pat, e, [ValTemp], eloc) in
+            let rec_e = match rec_pat with
+                | PatIdent(i, _) -> ExpIdent(i, (etyp, eloc))
+                | PatTyped(PatIdent(i, _), _, _) -> ExpIdent(i, (etyp, eloc))
+                | _ -> raise_compile_err eloc "for over record: invalid result of check_pat result (id is expected)"
+                in
+            ((List.length relems), (p, rec_e), [def_e], 1, env, idset)
         | _ ->
             let (ptyp, dims) = (match (e, etyp) with
                 | (ExpRange(_, _, _, _), _) -> (TypInt, 1)
                 | (_, TypArray(d, et)) -> (et, d)
                 | (_, TypList(et)) -> (et, 1)
                 | (_, TypString) -> (TypChar, 1)
-                | _ -> raise_compile_err eloc "unsupported iteration domain; it should be a range, array, list, string or a tuple")
+                | _ -> raise_compile_err eloc "unsupported iteration domain; it should be a range, array, list, string, tuple or a record")
                 in
             let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true false in
             (0, (p, e), [], dims, env, idset)
     in
     let check_for_clauses for_clauses idx_pat env idset for_sc =
-        let (_, tupsz, for_clauses, code, dims, env, idset) = List.fold_left
-            (fun (idx, tupsz, for_clauses, code, dims, env, idset) (pi, ei) ->
-                let (tupszj, (pi, ei), code_i, dims_i, env, idset) = check_for_clause pi ei env idset for_sc in
+        let (_, trsz, for_clauses, code, dims, env, idset) = List.fold_left
+            (fun (idx, trsz, for_clauses, code, dims, env, idset) (pi, ei) ->
+                let (trszj, (pi, ei), code_i, dims_i, env, idset) = check_for_clause pi ei env idset for_sc in
                 if idx > 0 && dims_i != dims then
                     raise_compile_err (get_exp_loc ei)
                         "the dimensionalities of simultaneously iterated containers/ranges do not match"
                 else ();
-                if idx > 0 && tupszj != tupsz then
+                if idx > 0 && trszj != trsz then
                     raise_compile_err (get_exp_loc ei)
-                        (if (tupsz = 0 || tupszj = 0) then
-                            "simultaneous iteration over tuples and non-tuples is not supported yet"
+                        (if (trsz = 0 || trszj = 0) then
+                            "simultaneous iteration over tuples/records and some other containers or ranges is not supported yet"
                         else
-                            "cannot iterate over tuples of different size")
+                            "cannot iterate over tuples/records of different size")
                 else ();
-            (idx+1, tupszj, ((pi, ei) :: for_clauses), (code_i @ code), dims_i, env, idset))
+            (idx+1, trszj, ((pi, ei) :: for_clauses), (code_i @ code), dims_i, env, idset))
                 (0, 0, [], [], 0, env, idset) for_clauses in
         let idx_typ = if dims = 1 then TypInt else TypTuple(List.init dims (fun _ -> TypInt)) in
-        let (idx_pat, env, idset) = if tupsz != 0 then (idx_pat, env, idset) else
+        let (idx_pat, env, idset) = if trsz != 0 then (idx_pat, env, idset) else
             (match idx_pat with
             | PatAny _ -> (idx_pat, env, idset)
             | _ ->
@@ -829,21 +870,34 @@ and check_exp e env sc =
                     IdSet.empty for_sc false true false in
                 (PatTyped(idx_pat, idx_typ, (get_pat_loc idx_pat)), env, idset))
             in
-        (tupsz, (List.rev code), (List.rev for_clauses), idx_pat, dims, env, idset)
+        (trsz, (List.rev code), (List.rev for_clauses), idx_pat, dims, env, idset)
     in
-    let gen_for_in_tuple_it idx for_clauses idx_pat body env for_sc =
+    let gen_for_in_tuprec_it idx for_clauses idx_pat body env for_sc =
         let sc = new_block_scope () :: for_sc in
-        let (_, code, env, idset) = List.fold_left (fun (j, code, env, idset) (pj, tupj) ->
-            let (ttj, locj) = get_exp_ctx tupj in
-            let tj = match ttj with
-                | TypTuple tl -> List.nth tl idx
-                | _ -> raise_compile_err locj (sprintf "gen_for_in_tuple_it: expression '%d' is expected to have tuple type" (j+1))
-                in
-            let ej = ExpMem(tupj, ExpLit(LitInt (Int64.of_int idx), (TypInt, locj)), (tj, locj)) in
-            let pj = dup_pat pj in
-            let (pj, env, idset, _) = check_pat pj tj env idset IdSet.empty sc false true false in
-            let def_pj = DefVal(pj, ej, [ValTemp], locj) in
-            (j+1, (def_pj :: code), env, idset)) (0, [], env, IdSet.empty) for_clauses
+        let (_, code, env, idset) = List.fold_left (fun (j, code, env, idset) (pj, trj) ->
+            let (ttrj, locj) = get_exp_ctx trj in
+            match ttrj with
+            | TypTuple tl ->
+                let tj = List.nth tl idx in
+                let ej = ExpMem(trj, ExpLit(LitInt (Int64.of_int idx), (TypInt, locj)), (tj, locj)) in
+                let pj = dup_pat pj in
+                let (pj, env, idset, _) = check_pat pj tj env idset IdSet.empty sc false true false in
+                let def_pj = DefVal(pj, ej, [ValTemp], locj) in
+                (j+1, (def_pj :: code), env, idset)
+            | _ ->
+                let (_, relems) = get_record_elems None ttrj locj in
+                let (nj, tj, _) = List.nth relems idx in
+                let ej = ExpMem(trj, ExpIdent(nj, (TypString, locj)), (tj, locj)) in
+                let pj = dup_pat pj in
+                let (pnj, pvj) = match (pat_skip_typed pj) with
+                    | PatTuple([pnj; pvj], _) -> (pnj, pvj)
+                    | _ -> raise_compile_err eloc "when iterating through record, a 2-element tuple should be used as pattern"
+                    in
+                let (pnj, env, idset, _) = check_pat pnj TypString env idset IdSet.empty sc false true false in
+                let (pvj, env, idset, _) = check_pat pvj tj env idset IdSet.empty sc false true false in
+                let def_pvj = DefVal(pvj, ej, [ValTemp], locj) in
+                let def_pnj = DefVal(pnj, ExpLit(LitString (pp_id2str nj), (TypString, locj)), [ValTemp], locj) in
+                (j+1, (def_pvj :: def_pnj :: code), env, idset)) (0, [], env, IdSet.empty) for_clauses
             in
         let (code, env, idset) = match idx_pat with
             | PatAny _ -> (code, env, idset)
@@ -950,6 +1004,7 @@ and check_exp e env sc =
             unify etyp et eloc "incorrect type of the tuple element";
             ExpMem(new_e1, e2, ctx)
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) ->
+            (*printf "accessing '%s': " (id2str n2); Ast_pp.pprint_typ_x etyp eloc; printf "\n";*)
             let (_, relems) = get_record_elems None etyp1 eloc1 in
             (try
                 let (_, t1, _) = List.find (fun (n1, t1, _) -> n1 = n2) relems in
@@ -1048,9 +1103,10 @@ and check_exp e env sc =
         | OpCompareLE | OpCompareGT | OpCompareGE
         | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLT
         | OpDotCompareLE | OpDotCompareGT | OpDotCompareGE ->
-            (*if bop <> bop_wo_dot then () else
+            if bop <> bop_wo_dot then () else
+                (unify etyp1 etyp2 eloc "the compared elements must have the same type";
                 unify etyp TypBool eloc (sprintf "result of comparison operation '%s' must be bool"
-                    (binop_to_string bop));*)
+                    (binop_to_string bop)));
             if (is_typ_scalar etyp1) && (is_typ_scalar etyp2) then
                 (unify etyp1 etyp2 eloc "only equal types can be compared";
                 (bop_wo_dot, Some(TypBool)))
@@ -1263,14 +1319,14 @@ and check_exp e env sc =
         let is_fold = List.mem ForFold flags in
         let is_nested = List.mem ForNested flags in
         let for_sc = (if is_fold then new_fold_scope() else new_loop_scope(is_nested)) :: sc in
-        let (tupsz, pre_code, for_clauses, idx_pat, dims, env, _) = check_for_clauses for_clauses idx_pat env IdSet.empty for_sc in
-        if tupsz > 0 then
+        let (trsz, pre_code, for_clauses, idx_pat, dims, env, _) = check_for_clauses for_clauses idx_pat env IdSet.empty for_sc in
+        if trsz > 0 then
             (* iteration over tuple(s) is replaced with unrolled code.
                * this is possible, since we know the tuple size at compile time
                * this is necessary, because tuple elements may have different type,
                  so for each "iteration" potentially a completely different code could be generated *)
-            let code = List.init tupsz (fun idx ->
-                let it_j = gen_for_in_tuple_it idx for_clauses idx_pat body env for_sc in
+            let code = List.init trsz (fun idx ->
+                let it_j = gen_for_in_tuprec_it idx for_clauses idx_pat body env for_sc in
                 let (tj, locj) = get_exp_ctx it_j in
                 let _ = unify tj TypVoid locj "'for()' body should have 'void' type" in
                 it_j) in
@@ -1284,23 +1340,23 @@ and check_exp e env sc =
         let make_list = List.mem ForMakeList flags in
         let make_tuple = List.mem ForMakeTuple flags in
         let for_sc = (if make_tuple then new_block_scope() else if make_list then new_map_scope() else new_arr_map_scope()) :: sc in
-        let (tupsz, pre_code, map_clauses, total_dims, env, _) = List.fold_left
-            (fun (tupsz, pre_code, map_clauses, total_dims, env, idset) (for_clauses, idx_pat) ->
-                let (tupsz_k, pre_code_k, for_clauses, idx_pat, dims, env, idset) = check_for_clauses for_clauses idx_pat env idset for_sc in
-                ((tupsz + tupsz_k), (pre_code_k @ pre_code), (for_clauses, idx_pat) :: map_clauses,
+        let (trsz, pre_code, map_clauses, total_dims, env, _) = List.fold_left
+            (fun (trsz, pre_code, map_clauses, total_dims, env, idset) (for_clauses, idx_pat) ->
+                let (trsz_k, pre_code_k, for_clauses, idx_pat, dims, env, idset) = check_for_clauses for_clauses idx_pat env idset for_sc in
+                ((trsz + trsz_k), (pre_code_k @ pre_code), (for_clauses, idx_pat) :: map_clauses,
                 total_dims + dims, env, idset)) (0, [], [], 0, env, IdSet.empty) map_clauses in
-        let _ = if tupsz > 0 || not make_tuple then () else
-            raise_compile_err eloc "tuple comprehension with iteration over non-tuples is not supported"
+        let _ = if trsz > 0 || not make_tuple then () else
+            raise_compile_err eloc "tuple comprehension with iteration over non-tuples and non-records is not supported"
             in
         let coll_name = if make_list then "list" else if make_tuple then "tuple" else "array" in
-        if tupsz > 0 then
+        if trsz > 0 then
             let (for_clauses, idx_pat) = match map_clauses with
                 | (for_clauses, idx_pat) :: [] -> (for_clauses, idx_pat)
                 | _ -> raise_compile_err eloc "tuple comprehension with nested for is not supported yet"
             in
             let elem_typ = make_new_typ() in
-            let elems = List.init tupsz (fun idx ->
-                let it_j = gen_for_in_tuple_it idx for_clauses idx_pat body env for_sc in
+            let elems = List.init trsz (fun idx ->
+                let it_j = gen_for_in_tuprec_it idx for_clauses idx_pat body env for_sc in
                 let (tj, locj) = get_exp_ctx it_j in
                 let _ = if make_tuple then () else
                     unify tj elem_typ locj (sprintf "%s comprehension should produce elements of the same type" coll_name) in
@@ -1860,6 +1916,11 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
         | TypVarArray t_opt ->
             (match r_opt_typ_vars with
             | Some(r_typ_vars) -> r_typ_vars := IdSet.add (get_id "__var_array__") !r_typ_vars
+            | _ -> ());
+            walk_typ t callb
+        | TypVarRecord ->
+            (match r_opt_typ_vars with
+            | Some(r_typ_vars) -> r_typ_vars := IdSet.add (get_id "__var_record__") !r_typ_vars
             | _ -> ());
             walk_typ t callb
         | TypRecord {contents=(relems, _)} ->

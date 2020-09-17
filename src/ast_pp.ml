@@ -37,7 +37,7 @@ let rec get_typ_pr t = match t with
     | TypErr | TypCPointer | TypDecl | TypModule -> TypPrBase
     | TypApp([], _) -> TypPrBase
     | TypTuple _ | TypVarTuple _ -> TypPrBase
-    | TypRecord _ -> TypPrBase
+    | TypRecord _ | TypVarRecord -> TypPrBase
     | TypList _ | TypRef _ | TypArray _ | TypVarArray _ | TypApp _ -> TypPrComplex
     | TypFun _ -> TypPrFun
 
@@ -78,6 +78,7 @@ let rec pptype_ t p1 loc =
     | TypArray(d, t1) -> pptypsuf t1 ("[" ^
         (if d = 0 then "+" else (String.make (d - 1) ',')) ^ "]")
     | TypVarArray t1 -> pptypsuf t1 "[+]"
+    | TypVarRecord -> pstr "{...}"
     | TypApp([], n) -> pprint_id n
     | TypApp(t1 :: [], n) -> pptypsuf t1 (id2str n)
     | TypApp(tl, n) -> pptypsuf (TypTuple tl) (id2str n)

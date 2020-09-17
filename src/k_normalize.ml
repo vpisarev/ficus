@@ -49,6 +49,8 @@ let typ2ktyp t loc =
     | TypArray(d, t) -> KTypArray(d, typ2ktyp_ t)
     | TypVarArray _ ->
         raise_compile_err loc "variable array type cannot be inferenced; please, use explicit type annotation"
+    | TypVarRecord ->
+        raise_compile_err loc "variable record type cannot be inferenced; please, use explicit type annotation"
     | TypFun(args, rt) -> KTypFun((List.map typ2ktyp_ args), (typ2ktyp_ rt))
     | TypRecord {contents=(relems, true)} ->
         KTypRecord(noid, List.map (fun (ni, ti, _) -> (ni, (typ2ktyp_ ti))) relems)
