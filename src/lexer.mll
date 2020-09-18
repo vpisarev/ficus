@@ -23,6 +23,7 @@ let token2str t = match t with
     | STRING(s) -> sprintf "STRING(%s)" s
     | CHAR(s) -> sprintf "CHAR(%s)" s
     | TYVAR(s) -> sprintf "TYVAR(%s)" s
+    | APOS -> "APOS"
     | AS -> "AS"
     | AT -> "AT"
     | BREAK -> "BREAK"
@@ -176,7 +177,7 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1); ("false", FALSE, 0);
         ("fold", FOLD, 2); ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2);
         ("if", IF, 2); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("inline", INLINE, 2);
-        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 2);
+        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 0);
         ("parallel", PARALLEL, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
         ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2); ("with", WITH, 1);
@@ -287,7 +288,6 @@ let decode_oct_char octcode =
     String.make 1 (Char.chr (int_of_string ("0o" ^ (String.sub octcode 1 ((String.length octcode)-1)))))
 
 let make_char_literal lexbuf c =
-    check_ne(lexbuf);
     new_exp := false;
     [CHAR c]
 
@@ -343,11 +343,17 @@ rule tokens = parse
             !string_tokens
         }
 
-    | "'" (['\032' - '\127'] as c) "'" { make_char_literal lexbuf (String.make 1 c) }
-    | "'" (special_char as c) "'" { make_char_literal lexbuf (decode_special_char lexbuf c) }
-    | "'" (hexcode as hc) "'" { make_char_literal lexbuf (decode_hex_char hc) }
-    | "'" (octcode as oc) "'" { make_char_literal lexbuf (decode_oct_char oc) }
-    | "'" ((['\192' - '\247'] ['\128' - '\191']+) as uc) "'" { make_char_literal lexbuf uc }
+    | "\'"
+        {
+            if !new_exp then
+                (string_start := lexbuf.lex_start_p;
+                string_literal := "" ;
+                string_literal_typ := StrLitPlain;
+                characters lexbuf;
+                make_char_literal lexbuf !string_literal)
+            else
+                [APOS]
+        }
 
     | "\\" space* newline
         {   (* '\' just before the end of line means that we should ignore the subsequent line break *)
@@ -649,6 +655,13 @@ and strings = parse
         { raise (lexErrAt "Unterminated string" (!string_start, lexbuf.lex_curr_p)) }
     | _ as c
         { raise (lexErr (sprintf "Illegal character '%s' inside string literal" (Char.escaped c)) lexbuf) }
+
+and characters = parse
+    | (['\032' - '\127'] as c) "'" { string_literal := String.make 1 c }
+    | (special_char as c) "'" { string_literal := decode_special_char lexbuf c }
+    | (hexcode as hc) "'" { string_literal := decode_hex_char hc }
+    | (octcode as oc) "'" { string_literal := decode_oct_char oc }
+    | ((['\192' - '\247'] ['\128' - '\191']+) as uc) "'" { string_literal := uc }
 
 and comments = parse
     | "*/"

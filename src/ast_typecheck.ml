@@ -1197,6 +1197,9 @@ and check_exp e env sc =
             unify etyp1 TypBool eloc1 "the argument of ! operator must be a boolean";
             unify etyp TypBool eloc "the result of ! operator must be a boolean";
             ExpUnOp(uop, new_e1, ctx)
+        | OpApos ->
+            let f_id = get_unop_fname uop eloc in
+            check_and_make_call f_id [new_e1]
         | _ ->
             raise_compile_err eloc (sprintf "unsupported unary operation '%s'" (unop_to_string uop)))
     | ExpSeq(eseq, _) ->

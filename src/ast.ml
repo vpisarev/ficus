@@ -171,7 +171,7 @@ type binop_t =
     | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLT | OpDotCompareLE | OpDotCompareGT | OpDotCompareGE
     | OpSpaceship | OpDotSpaceship | OpCons
 
-type unop_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand
+type unop_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand | OpApos
 
 type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
     | ValPrivate | ValSubArray
@@ -682,6 +682,7 @@ let unop_to_string uop = match uop with
     | OpExpand -> "\\"
     | OpMkRef -> "REF"
     | OpDeref -> "*"
+    | OpApos -> "'"
 
 let border2str border f =
     let pt = if f then "." else "" in
@@ -698,6 +699,7 @@ let interp2str interp f =
     | (InterpNone, _) -> "NONE"
     | (InterpLinear, _) -> pt ^ "LINEAR"
 
+let fname_op_apos() = get_id "__apos__"
 let fname_op_add() = get_id "__add__"
 let fname_op_sub() = get_id "__sub__"
 let fname_op_mul() = get_id "__mul__"
@@ -799,6 +801,7 @@ let get_binop_fname bop loc =
 
 let get_unop_fname uop loc =
     match uop with
+    | OpApos -> fname_op_apos()
     | OpPlus -> fname_op_plus()
     | OpNegate -> fname_op_negate()
     | OpDotMinus -> fname_op_dot_minus()
@@ -819,7 +822,7 @@ let fname_always_import () =
     fname_op_dot_eq(); fname_op_dot_ne(); fname_op_dot_le();
     fname_op_dot_ge(); fname_op_dot_lt(); fname_op_dot_gt();
 
-    fname_op_plus(); fname_op_negate(); fname_op_dot_minus(); fname_op_bit_not();
+    fname_op_plus(); fname_op_negate(); fname_op_dot_minus(); fname_op_bit_not(); fname_op_apos();
 
     fname_to_int(); fname_to_uint8(); fname_to_int8(); fname_to_uint16(); fname_to_int16();
     fname_to_uint32(); fname_to_int32(); fname_to_uint64(); fname_to_int64();

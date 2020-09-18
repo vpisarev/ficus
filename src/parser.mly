@@ -215,7 +215,7 @@ let make_chained_cmp chain = match chain with
 %token B_POWER POWER SHIFT_RIGHT SHIFT_LEFT
 %token B_DOT_MINUS DOT_STAR DOT_SLASH DOT_MOD DOT_POWER
 %token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT
-%token CONS CAST EXPAND
+%token APOS CONS CAST EXPAND
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
 %token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL
 %token AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
@@ -246,7 +246,9 @@ let make_chained_cmp chain = match chain with
 %left STAR SLASH MOD DOT_STAR DOT_SLASH DOT_MOD
 %right POWER DOT_POWER
 %left BACKSLASH
-%right B_MINUS B_DOT_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT deref_prec REF EXPAND
+%right B_MINUS B_DOT_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT REF EXPAND
+%left APOS
+%right deref_prec
 %right ARROW
 %left lsquare_prec fcall_prec
 %left app_type_prec arr_type_prec option_type_prec ref_type_prec
@@ -510,6 +512,10 @@ deref_exp:
 | B_STAR deref_exp %prec deref_prec { make_un_op(OpDeref, $2) }
 | B_POWER deref_exp %prec deref_prec { make_un_op(OpDeref, make_un_op(OpDeref, $2)) }
 
+apos_exp:
+| apos_exp APOS { make_un_op(OpApos, $1) }
+| deref_exp { $1 }
+
 for_flags:
 | PARALLEL { [ForParallel] }
 | /* empty */ { [] }
@@ -559,11 +565,11 @@ complex_exp:
 | exp { $1 }
 
 typed_exp:
-| exp COLON typespec { ExpTyped($1, $3, make_new_ctx()) }
-| exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
+| complex_exp COLON typespec { ExpTyped($1, $3, make_new_ctx()) }
+| complex_exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
 
 unary_exp:
-| deref_exp { $1 }
+| apos_exp { $1 }
 | REF unary_exp { make_un_op(OpMkRef, $2) }
 | B_MINUS unary_exp { make_un_op(OpNegate, $2) }
 | B_PLUS unary_exp { make_un_op(OpPlus, $2) }
@@ -671,13 +677,13 @@ id_exp_list_:
 | B_IDENT EQUAL complex_exp COMMA { (get_id $1, $3) :: [] }
 
 op_name:
-| B_PLUS { fname_op_add() }
-| B_MINUS  { fname_op_sub() }
-| B_STAR  { fname_op_mul() }
+| APOS { fname_op_apos() }
+| PLUS { fname_op_add() }
+| MINUS  { fname_op_sub() }
+| STAR  { fname_op_mul() }
 | SLASH  { fname_op_div() }
 | MOD  { fname_op_mod() }
-| B_POWER  { fname_op_pow() }
-| B_DOT_MINUS  { fname_op_dot_minus() }
+| POWER  { fname_op_pow() }
 | DOT_STAR  { fname_op_dot_mul() }
 | DOT_SLASH  { fname_op_dot_div() }
 | DOT_MOD  { fname_op_dot_mod() }

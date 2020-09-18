@@ -1264,7 +1264,7 @@ let gen_ccode top_code =
                 | OpNegate -> COpNegate
                 | OpBitwiseNot -> COpBitwiseNot
                 | OpLogicNot -> COpLogicNot
-                | OpDeref | OpMkRef | OpExpand | OpDotMinus ->
+                | OpDeref | OpMkRef | OpExpand | OpDotMinus | OpApos ->
                     raise_compile_err kloc (sprintf "cgen: unsupported unary op '%s'" (unop_to_string uop))
             in (true, CExpUnOp(c_uop, ce1, (ctyp, kloc)), ccode)
         | KExpIntrin(intr, args, _) ->

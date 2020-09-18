@@ -241,6 +241,12 @@ operator | (a: 't [+], b: 't [+]) =
 operator ^ (a: 't [+], b: 't [+]) =
     [for x <- a, y <- b {x ^ y}]
 
+operator ' (a: 't [,])
+{
+    val (m, n) = size(a)
+    [for j <- 0:n for i <- 0:m {a[i, j]}]
+}
+
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
 operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
 operator <=> (a: uint8, b: uint8): int = (a > b) - (a < b)
