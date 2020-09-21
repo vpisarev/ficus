@@ -247,6 +247,66 @@ operator ' (a: 't [,])
     [for j <- 0:n for i <- 0:m {a[i, j]}]
 }
 
+operator ' (a: 't [])
+{
+    val n = size(a)
+    [for j <- 0:n for i <- 0:1 {a[j]}]
+}
+
+// matrix product: not very efficient and is put here for now just as a placeholder
+operator * (a: 't [,], b: 't [,])
+{
+    val (ma, na) = size(a), (mb, nb) = size(b)
+    assert(na == mb)
+    val c = array((ma, nb), (0 :> 't))
+
+    if ma*na*nb < (1<<20)
+    {
+        for i <- 0:ma for k <- 0:na {
+            val alpha = a[i, k]
+            for j <- 0:nb {
+                c[i, j] += alpha*b[k, j]
+            }
+        }
+    }
+    else
+    {
+        parallel for i <- 0:ma for k <- 0:na {
+            val alpha = a[i, k]
+            for j <- 0:nb {
+                c[i, j] += alpha*b[k, j]
+            }
+        }
+    }
+    c
+}
+
+fun row2matrix(a: 't [])
+{
+    val n = size(a)
+    [for i <- 0:1 for j <- 0:n {a[j]}]
+}
+
+operator * (a: 't [], b: 't [,]) = row2matrix(a)*b
+operator * (a: 't [,], b: 't []) = a*row2matrix(b)
+
+fun diag(d: 't[])
+{
+    val n = size(a)
+    val a = array((n, n), (0 :> 't))
+    for i <- 0:n {a[i, i] = d[i]}
+    a
+}
+
+fun diag(n: int, d: 't)
+{
+    val a = array((n, n), (0 :> 't))
+    if d != (0 :> 't) {
+        for i <- 0:n {a[i, i] = d}
+    }
+    a
+}
+
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
 operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
 operator <=> (a: uint8, b: uint8): int = (a > b) - (a < b)
@@ -421,7 +481,7 @@ pure nothrow fun round(x: double): int = ccode { return fx_round2I(x) }
 fun min(a: 't, b: 't) = if a <= b {a} else {b}
 fun max(a: 't, b: 't) = if a >= b {a} else {b}
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
-fun clip(x: 't, a: 't, b: 't) = if a <= x < b {x} else if x < a {a} else {b}
+fun clip(x: 't, a: 't, b: 't) = if a <= x <= b {x} else if x < a {a} else {b}
 
 nothrow fun print_string(a: string): void = ccode { fx_fputs(stdout, a) }
 

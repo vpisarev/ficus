@@ -175,7 +175,7 @@ let make_chained_cmp chain = match chain with
                 | ExpNop _ -> cmp_e
                 | _ ->
                     let result_loc = loclist2loc [get_exp_loc result] cmp_e_loc in
-                    ExpBinOp(OpLogicAnd, result, cmp_e, (TypBool, result_loc))
+                    ExpBinOp(OpBitwiseAnd, result, cmp_e, (TypBool, result_loc))
                 in
             if chain = [] then result else process_chain result b rest
         in

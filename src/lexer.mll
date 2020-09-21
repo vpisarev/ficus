@@ -207,6 +207,7 @@ let lexErrAt msg pos = LexError (msg, pos)
 let lexErr msg lexbuf =
     LexError(msg, (get_token_pos lexbuf))
 
+let string_literal_typvar = ref false
 let string_literal = ref ""
 let string_start = ref dummy_pos
 let string_interp_elem = ref 0
@@ -287,10 +288,6 @@ let decode_hex_char hexcode =
 let decode_oct_char octcode =
     String.make 1 (Char.chr (int_of_string ("0o" ^ (String.sub octcode 1 ((String.length octcode)-1)))))
 
-let make_char_literal lexbuf c =
-    new_exp := false;
-    [CHAR c]
-
 }
 
 let newline = '\n' | '\r' | "\r\n"
@@ -347,10 +344,15 @@ rule tokens = parse
         {
             if !new_exp then
                 (string_start := lexbuf.lex_start_p;
+                string_literal_typvar := false;
                 string_literal := "" ;
                 string_literal_typ := StrLitPlain;
                 characters lexbuf;
-                make_char_literal lexbuf !string_literal)
+                new_exp := false;
+                if !string_literal_typvar then
+                    [TYVAR ("\'" ^ !string_literal)]
+                else
+                    [CHAR !string_literal])
             else
                 [APOS]
         }
@@ -475,10 +477,9 @@ rule tokens = parse
     | ((digit+ ['e' 'E'] ['+' '-']? digit+) as num) (['f' 'F']? as suffix)
         { check_ne(lexbuf); new_exp := false; [FLOAT((if suffix = "" then 64 else 32), float_of_string (num))] }
 
-    | ("\'" ? as prefix) ((['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident)
+    | (['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident
         {
-            if prefix <> "" then (check_ne(lexbuf); new_exp := false; [TYVAR ("\'" ^ ident)]) else
-            (try
+            try
                 let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
                 match tokdata with
                 | (CCODE, _) ->
@@ -511,7 +512,7 @@ rule tokens = parse
                             ident) lexbuf)
                     else ()
                 with Not_found -> ());
-                let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t))
+                let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t)
         }
     | '+'   { let t = if !new_exp then [B_PLUS] else [PLUS] in (new_exp := true; t) }
     | '-'   { let t = if !new_exp then [B_MINUS] else [MINUS] in (new_exp := true; t) }
@@ -662,6 +663,8 @@ and characters = parse
     | (hexcode as hc) "'" { string_literal := decode_hex_char hc }
     | (octcode as oc) "'" { string_literal := decode_oct_char oc }
     | ((['\192' - '\247'] ['\128' - '\191']+) as uc) "'" { string_literal := uc }
+    | (['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident
+    { string_literal := ident; string_literal_typvar := true }
 
 and comments = parse
     | "*/"

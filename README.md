@@ -15,7 +15,7 @@ The code is distributed under Apache 2 license, see the [LICENSE](LICENSE)
 The compiler has been written in OCaml and needs `ocaml`
 (including `ocamlyacc` and `ocamllex` utilities),
 `ocamlbuild` and `make` utility to build it.
-Tested with OCaml 4.07 and 4.08.
+Tested with OCaml 4.07-4.10.
 (In the near future it's planned to rewrite the compiler entirely in ficus)
 
 ```
