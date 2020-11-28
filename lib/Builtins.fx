@@ -29,6 +29,7 @@ exception TypeMismatchError
 exception ZeroStepError
 exception StackOverflowError
 exception ParallelForError
+exception BadArgError
 
 fun assert(f: bool) = if !f {throw AssertError}
 

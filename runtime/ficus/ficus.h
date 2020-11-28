@@ -60,6 +60,7 @@ enum
     FX_EXN_ZeroStepError = -23,
     FX_EXN_StackOverflowError = -24,
     FX_EXN_ParallelForError = -25,
+    FX_EXN_BadArgError = -26,
 
     FX_EXN_StdMax = -48,
 
@@ -653,6 +654,13 @@ int fx_fgets(FILE* f, fx_str_t* str);
 void fx_file_destructor(void* ptr);
 
 fx_cptr_t fx_get_stdstream(int);
+
+////////////////////////// Regular expressions /////////////////////
+
+typedef fx_cptr_t fx_regex_t;
+int fx_re_compile(const fx_str_t* str, fx_regex_t* fx_result);
+int fx_re_match(const fx_regex_t fx_regexp, const fx_str_t* str, bool* fx_result/*, fx_arr_t* fx_result_subs*/);
+//int fx_re_find(const fx_regex_t fx_regexp, const fx_str_t* str, fx_arr_t* fx_result_subs);
 
 #ifdef __cplusplus
 }
