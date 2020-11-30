@@ -513,7 +513,7 @@ int fx_re_match(const fx_regex_t fx_regexp, const fx_str_t* str, bool* fx_result
         memset(sub, 0, sizeof sub);
         fx_Prog* prog = (fx_Prog*)(fx_regexp->ptr);
 		*fx_result = fx_re_pikevm_(prog, cstr.data, sub, fx_re_nelem_(sub));
-        if (sub[0] != cstr.data)
+        if (sub[0] != cstr.data || sub[1] != cstr.data + cstr.length)
             *fx_result = false;
         fx_free_cstr(&cstr);
     }
