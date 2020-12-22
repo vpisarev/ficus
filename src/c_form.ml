@@ -736,9 +736,9 @@ let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_id_t_exp i t loc = CExpIdent(i, (t, loc))
 let make_label basename loc =
+    let basename = if Utils.starts_with basename "_fx_" then basename else "_fx_" ^ basename in
     let li = gen_temp_idc basename in
-    let cname = if basename = "cleanup" then "_fx_cleanup"
-        else (sprintf "_fx_%s%d" basename (id2idx li)) in
+    let cname = if basename = "_fx_cleanup" then basename else "" in
     set_idc_entry li (CLabel {cl_name=li; cl_cname=cname; cl_loc=loc});
     li
 

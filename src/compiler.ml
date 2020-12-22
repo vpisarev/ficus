@@ -177,6 +177,7 @@ let k2c_all code =
     let _ = C_form.init_all_idcs() in
     let _ = C_gen_std.init_std_names() in
     let ccode = C_gen_code.gen_ccode code in
+    let ccode = C_rename_locals.rename_locals ccode in
     (ccode, !compile_errs = [])
 
 let run_compiler () =
