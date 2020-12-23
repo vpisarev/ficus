@@ -3,10 +3,35 @@
     See ficus/LICENSE for the licensing terms
 *)
 
-(*  rename the local variables in each generated C function so that
-    the function body does not change if neither its source was changed
-    nor the source of inline functions it calls. It's crucial feature
-    for separate compilation *)
+(*
+    separates declarations from initialization in some cases, e.g.
+
+    {
+    if (foo(x, y) < 0) goto catch;
+    int a = 5;
+    ...
+  catch:
+    ...
+    }
+
+    =>
+
+    {
+    int a;
+    if (foo(x, y) < 0) goto catch;
+    a = 5;
+    ...
+  catch:
+    ...
+    }
+
+    this is necessary to shutup C++ compiler that reports error in such case,
+    even though C compiler processes the same code just fine.
+    the extra trick is applied not to retain the array initializations as-is (we
+    take care in c_gen_code.ml that such array initializations are enclosed into dedicated
+    code blocks without jumps in the middle) and to retain declarations+initializations
+    in the beginning of each code block.
+*)
 
 open Ast
 open K_form
