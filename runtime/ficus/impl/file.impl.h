@@ -54,7 +54,7 @@ int fx_fgets(FILE* f, fx_str_t* str)
             break;
         if(bufsz - bufofs < 16) {
             bufsz = bufsz*3/2;
-            char* newbuf = fx_realloc((buf == buf0 ? 0 : buf), (size_t)bufsz);
+            char* newbuf = (char*)fx_realloc((buf == buf0 ? 0 : buf), (size_t)bufsz);
             if(!newbuf) {
                 fx_status = FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
                 break;

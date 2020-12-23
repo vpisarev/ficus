@@ -548,12 +548,12 @@ let gen_ccode top_code =
             create_cdefval arr_id arr_ctyp [] "" (Some arr_data_exp) ccode loc
     in
 
-    let make_make_arr_call arr_exp shape data ccode lbl loc =
+    let make_make_arr_call arr_exp shape data ccode0 lbl loc =
         let arr_ctyp = get_cexp_typ arr_exp in
         let dims = List.length shape in
         let shape_ctyp = CTypRawArray ([CTypConst], CTypInt) in
         let shape_arr = CExpInit(shape, (shape_ctyp, loc)) in
-        let (shape_exp, ccode) = create_cdefval (gen_temp_idc "shape") shape_ctyp [] "" (Some shape_arr) ccode loc in
+        let (shape_exp, ccode) = create_cdefval (gen_temp_idc "shape") shape_ctyp [] "" (Some shape_arr) [] loc in
         let elem_ctyp = match arr_ctyp with
             | CTypArray(dims0, elem_ctyp) ->
                 if dims0 = dims then () else
@@ -573,7 +573,8 @@ let gen_ccode top_code =
             in
         let call_mkarr = make_call !std_fx_make_arr [(make_int_exp dims loc); shape_exp;
             sizeof_elem_exp; free_f_exp; copy_f_exp; data_exp; (cexp_get_addr arr_exp)] CTypCInt loc in
-        add_fx_call_ call_mkarr ccode lbl loc
+        let ccode = add_fx_call_ call_mkarr ccode lbl loc in
+        (rccode2stmt ccode loc) :: ccode0
     in
 
     let decl_arr arr_ctyp shape data dstexp_r ccode loc =
@@ -1228,8 +1229,10 @@ let gen_ccode top_code =
                     | OpDiv -> COpDiv
                     | OpShiftLeft -> COpShiftLeft
                     | OpShiftRight -> COpShiftRight
-                    | OpBitwiseAnd -> COpBitwiseAnd
-                    | OpBitwiseOr -> COpBitwiseOr
+                    | OpBitwiseAnd ->
+                        (match ktyp with KTypBool -> COpLogicAnd | _ -> COpBitwiseAnd)
+                    | OpBitwiseOr ->
+                        (match ktyp with KTypBool -> COpLogicOr | _ -> COpBitwiseOr)
                     | OpBitwiseXor -> COpBitwiseXor
                     | OpCompareEQ -> COpCompareEQ
                     | OpCompareNE -> COpCompareNE
@@ -1344,12 +1347,13 @@ let gen_ccode top_code =
                 let strs_id = gen_temp_idc "strs" in
                 let strs_ctyp = CTypRawArray([CTypConst], CTypString) in
                 let strs0 = CExpInit((List.rev strs), (strs_ctyp, kloc)) in
-                let (strs_exp, ccode) = create_cdefval strs_id strs_ctyp [] "" (Some strs0) ccode kloc in
                 let (dst_exp, ccode) = get_dstexp dstexp_r "concat_str" CTypString [ValTemp] ccode kloc in
+                let (strs_exp, sub_ccode) = create_cdefval strs_id strs_ctyp [] "" (Some strs0) [] kloc in
                 let call_exp = make_call (get_id "fx_strjoin")
                     [make_nullptr kloc; make_nullptr kloc; make_nullptr kloc;
                     strs_exp; (make_int_exp (List.length strs) kloc); (cexp_get_addr dst_exp)] CTypInt kloc in
-                let ccode = add_fx_call call_exp ccode kloc in
+                let sub_ccode = add_fx_call call_exp sub_ccode kloc in
+                let ccode = (rccode2stmt sub_ccode kloc) :: ccode in
                 (false, dst_exp, ccode)
             | (IntrinGetSize, arr_or_str :: []) ->
                 let (arr_exp, ccode) = atom2cexp arr_or_str ccode kloc in
@@ -1537,16 +1541,11 @@ let gen_ccode top_code =
                         (nscalars, scalars_data, ((make_int_exp 127 kloc) :: tags_data), arr_data, ccode))
                     (0, [], [], [], ccode) arows
                     in
-                let (scalars_exp, ccode) = if scalars_data = [] then ((make_nullptr kloc), ccode) else
-                    let scalars_ctyp = CTypRawArray ([CTypConst], elem_ctyp) in
-                    let scalars_arr = CExpInit((List.rev scalars_data), (scalars_ctyp, kloc)) in
-                    create_cdefval scalars_id scalars_ctyp [] "" (Some scalars_arr) ccode kloc
-                    in
-                let (scalars_exp, ccode) = decl_plain_arr scalars_id elem_ctyp (List.rev scalars_data) ccode kloc in
+                let (scalars_exp, sub_ccode) = decl_plain_arr scalars_id elem_ctyp (List.rev scalars_data) [] kloc in
                 let tags_data = List.rev ((make_int_exp (-1) kloc) :: (List.tl tags_data)) in
-                let (tags_exp, ccode) = decl_plain_arr (gen_temp_idc "tags") (CTypSInt 8) tags_data ccode kloc in
-                let (arr_data_exp, ccode) = decl_plain_arr (gen_temp_idc "parts") std_CTypVoidPtr
-                    (List.rev arr_data) ccode kloc in
+                let (tags_exp, sub_ccode) = decl_plain_arr (gen_temp_idc "tags") (CTypSInt 8) tags_data sub_ccode kloc in
+                let (arr_data_exp, sub_ccode) = decl_plain_arr (gen_temp_idc "parts") std_CTypVoidPtr
+                    (List.rev arr_data) sub_ccode kloc in
                 let sizeof_elem_exp = make_call !std_sizeof [CExpTyp(elem_ctyp, kloc)] CTypSize_t kloc in
                 let free_f_exp = match (C_gen_types.get_free_f elem_ctyp true false kloc) with
                     | (_, (Some free_f)) -> CExpCast(free_f, !std_fx_free_t, kloc)
@@ -1559,7 +1558,8 @@ let gen_ccode top_code =
                 let call_mkarr = make_call (get_id "fx_compose_arr") [(make_int_exp dims kloc);
                     sizeof_elem_exp; free_f_exp; copy_f_exp; tags_exp; arr_data_exp; (cexp_get_addr arr_exp)] CTypCInt kloc
                     in
-                let ccode = add_fx_call call_mkarr ccode kloc in
+                let sub_ccode = add_fx_call call_mkarr sub_ccode kloc in
+                let ccode = (rccode2stmt sub_ccode kloc) :: ccode in
                 (false, arr_exp, ccode)
             else
                 let nrows = List.length arows in
@@ -1669,13 +1669,15 @@ let gen_ccode top_code =
                             let (d_exp, ccode) = atom2cexp delta ccode kloc in
                             (((d_exp :: range_delta) @ range_data), ccode)) ([], ccode) idxs
                         in
+                    let (subarr_exp, ccode) = get_dstexp dstexp_r "arr" ctyp [] ccode kloc in
                     let rdata_ctyp = CTypRawArray ([CTypConst], CTypInt) in
                     let rdata_arr = CExpInit((List.rev range_data), (rdata_ctyp, kloc)) in
-                    let (rdata_exp, ccode) = create_cdefval (gen_temp_idc "ranges") rdata_ctyp [] "" (Some rdata_arr) ccode kloc in
-                    let (subarr_exp, ccode) = get_dstexp dstexp_r "arr" ctyp [] ccode kloc in
+                    let (rdata_exp, sub_ccode) = create_cdefval (gen_temp_idc "ranges") rdata_ctyp [] "" (Some rdata_arr) [] kloc in
                     let call_subarr = make_call !std_fx_subarr [(cexp_get_addr arr_exp);
                         rdata_exp; (cexp_get_addr subarr_exp)] CTypInt kloc in
-                    (false, subarr_exp, (add_fx_call call_subarr ccode kloc))
+                    let sub_ccode = add_fx_call call_subarr sub_ccode kloc in
+                    let ccode = (rccode2stmt sub_ccode kloc) :: ccode in
+                    (false, subarr_exp, ccode)
                 else
                     let elem_ctyp = ctyp in
                     let (_, chk_exp_opt, i_exps, ccode) = List.fold_left (fun (dim, chk_exp_opt, i_exps, ccode) d ->

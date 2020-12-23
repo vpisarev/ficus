@@ -177,11 +177,13 @@ let k2c_all code =
     let _ = C_form.init_all_idcs() in
     let _ = C_gen_std.init_std_names() in
     let ccode = C_gen_code.gen_ccode code in
-    let ccode = C_rename_locals.rename_locals ccode in
+    let ccode = C_post_rename_locals.rename_locals ccode in
+    (*let ccode = C_post_adjust_decls.adjust_decls ccode in*)
     (ccode, !compile_errs = [])
 
 let run_compiler () =
     let opt_level = options.optimize_level in
+    (*let cmd = "cc -x c++ -std=c++11" in*)
     let cmd = "cc" in
     let cmd = cmd ^ " -Wno-unknown-warning-option" in
     let cmd = cmd ^ " -Wno-dangling-else" in

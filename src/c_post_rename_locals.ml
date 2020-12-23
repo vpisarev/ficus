@@ -58,7 +58,8 @@ let rename_locals top =
             fold_cstmt s callb;
             prefix_hash := saved_hash
         | _ -> fold_cstmt s callb
-    in let rename_callb =
+        in
+    let rename_callb =
     {
         ccb_fold_ident = None;
         ccb_fold_typ = None;
