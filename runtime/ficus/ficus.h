@@ -96,6 +96,8 @@ typedef char32_t char_;
         #endif
     #elif defined __clang__ && defined __ATOMIC_ACQ_REL
         #define FX_XADD(addr, delta) __c11_atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, __ATOMIC_ACQ_REL)
+    #elif defined __cplusplus
+        #define FX_XADD(addr, delta) __atomic_fetch_add((intptr_t volatile *)(addr), delta, 4)
     #else
         #define FX_XADD(addr, delta) __atomic_fetch_add((_Atomic(intptr_t)*)(addr), delta, 4)
     #endif

@@ -26,6 +26,7 @@ type options_t =
     mutable app_filename: string;
     mutable app_args: string list;
     mutable osname: string;
+    mutable compile_by_cpp: bool;
 }
 
 let options =
@@ -50,6 +51,7 @@ let options =
     app_filename = "";
     app_args = [];
     osname = "*nix";
+    compile_by_cpp = false;
 }
 
 let parse_options () =
@@ -75,6 +77,7 @@ let parse_options () =
         ("--inline-threshold=", (Arg.Int (fun i -> options.inline_thresh <- i)), "   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion");
         ("-o", (Arg.String (fun s -> options.output_name <- s)), "<output_filename>    Output file name");
         ("-I", (Arg.String (fun ipath -> options.include_path <- options.include_path @ [ipath])), "<path>    Add directory to the module search path");
+        ("-c++", (Arg.Unit (fun f -> options.compile_by_cpp <- true)), "   Use C++ instead of C for compilation");
         ("--", (Arg.Rest (fun s -> options.app_args <- s :: options.app_args)), "Specify the application parameters (e.g. './ficus -run myprog.fx -- arg1 arg2')")
         ]
         (fun s -> _files := !_files @ [s])
@@ -92,8 +95,8 @@ let parse_options () =
             | [] -> "stdin"
             | _ -> raise (Arg.Bad "multiple input files are specified"));
 
-        if (options.make_app || options.run_app || options.write_c) && not options.gen_c then
-            raise (Arg.Bad "-no-c option cannot be used together with -app, -run or -c")
+        if (options.make_app || options.run_app || options.write_c || options.compile_by_cpp) && not options.gen_c then
+            raise (Arg.Bad "-no-c option cannot be used together with -app, -run, -c or -c++")
         else ();
 
         if options.gen_c && (not options.make_app) && (not options.run_app) then

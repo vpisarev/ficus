@@ -81,7 +81,7 @@
 
 
 static int yylex(void);
-static void yyerror(char*);
+static void yyerror(const char*);
 static fx_Regexp *parsed_regexp;
 static int nparen;
 
@@ -1649,8 +1649,6 @@ yyreturn:
 
 
 static char *input;
-static fx_Regexp *parsed_regexp;
-static int nparen;
 int gen;
 
 static int
@@ -1668,7 +1666,7 @@ yylex(void)
 }
 
 static void
-fx_re_fatal_(char *fmt, ...)
+fx_re_fatal_(const char *fmt, ...)
 {
 	va_list arg;
 
@@ -1681,7 +1679,7 @@ fx_re_fatal_(char *fmt, ...)
 }
 
 static void
-yyerror(char *s)
+yyerror(const char *s)
 {
 	fx_re_fatal_("%s", s);
 }
@@ -1711,7 +1709,7 @@ reg(int type, fx_Regexp *left, fx_Regexp *right)
 {
 	fx_Regexp *r;
 
-	r = fx_malloc(sizeof *r);
+	r = (fx_Regexp*)fx_malloc(sizeof *r);
   memset(r, 0, sizeof *r);
 	r->type = type;
 	r->left = left;
