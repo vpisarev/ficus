@@ -194,7 +194,7 @@ let run_compiler () =
     let cmd = cmd ^ " " ^ options.c_filename in
     let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
     let cmd = cmd ^ custom_linked_libs in
-    let cmd = cmd ^ " -lm" in
+    let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
     let ok = (Sys.command cmd) = 0 in
     if not ok || options.write_c then () else Sys.remove options.c_filename;
     ok
