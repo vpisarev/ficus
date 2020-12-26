@@ -178,13 +178,12 @@ let k2c_all code =
     let _ = C_gen_std.init_std_names() in
     let ccode = C_gen_code.gen_ccode code in
     (*let ccode = C_post_rename_locals.rename_locals ccode in*)
-    (*let ccode = C_post_adjust_decls.adjust_decls ccode in*)
+    let ccode = if options.compile_by_cpp then C_post_adjust_decls.adjust_decls ccode else ccode in
     (ccode, !compile_errs = [])
 
 let run_compiler () =
     let opt_level = options.optimize_level in
-    (*let cmd = "cc -x c++ -std=c++11" in*)
-    let cmd = "cc" in
+    let cmd = if options.compile_by_cpp then "cc -x c++ -std=c++11" else "cc" in
     let cmd = cmd ^ " -Wno-unknown-warning-option" in
     let cmd = cmd ^ " -Wno-dangling-else" in
     let cmd = cmd ^ (sprintf " -O%d%s" opt_level (if opt_level = 0 then " -ggdb" else "")) in
@@ -195,7 +194,7 @@ let run_compiler () =
     let cmd = cmd ^ " " ^ options.c_filename in
     let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
     let cmd = cmd ^ custom_linked_libs in
-    let cmd = cmd ^ " -lm" in
+    let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
     let ok = (Sys.command cmd) = 0 in
     if not ok || options.write_c then () else Sys.remove options.c_filename;
     ok

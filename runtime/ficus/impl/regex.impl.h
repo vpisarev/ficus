@@ -52,7 +52,7 @@ enum	/* fx_Regexp.type */
 static fx_Regexp *fx_re_parse(char*);
 static fx_Regexp *reg(int type, fx_Regexp *left, fx_Regexp *right);
 static void fx_re_printre_(fx_Regexp*);
-static void fx_re_fatal_(char*, ...);
+static void fx_re_fatal_(const char*, ...);
 
 static void fx_re_free_regexp_(fx_Regexp* regexp)
 {
@@ -120,7 +120,7 @@ fx_re_newsub_(int n)
 		freesub = (fx_re_Sub*)s->sub[0];
 	else
     {
-		s = fx_malloc(sizeof *s);
+		s = (fx_re_Sub*)fx_malloc(sizeof *s);
         memset(s, 0, sizeof *s);
     }
 	s->nsub = n;
@@ -179,7 +179,7 @@ fx_re_compile_(fx_Regexp *r)
 	fx_Prog *p;
 
 	n = fx_re_count_(r) + 1;
-	p = fx_malloc(sizeof *p + n*sizeof p->start[0]);
+	p = (fx_Prog*)fx_malloc(sizeof *p + n*sizeof p->start[0]);
 	p->start = (fx_Inst*)(p+1);
 	pc = p->start;
 	fx_re_emit_(r);
