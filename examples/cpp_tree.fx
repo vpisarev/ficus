@@ -5,6 +5,10 @@
 
 ccode //Imitation of very big included third-party library.
 {
+    #ifndef __cplusplus
+    #error "recompile this example with -c++ option passed to Ficus"
+    #endif
+
     #include <typeinfo> 
     #include <set> 
     #include <string> 
