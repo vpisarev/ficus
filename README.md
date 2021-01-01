@@ -40,6 +40,7 @@ ficus [-c|-app|-run|...] [-O0|-O1|-O3] [-I<extra_module_path>] <scriptname.fx> [
 ## Ficus 1.0
 
 ![TODO](/doc/ficus1.0.png)
+
 (see https://github.com/vpisarev/ficus/issues/4 for the decryption and the status)
 
 ## Credits
