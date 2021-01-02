@@ -601,6 +601,10 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
     let loc = get_pat_loc p in
     let n_flags = if mutable_leaves && not tref then ValMutable :: n_flags
                 else if tref then ValTempRef :: n_flags else n_flags in
+    let n_flags = match sc with
+        | ScGlobal :: _ | ScModule _ :: _ -> (ValGlobal sc) :: n_flags
+        | _ -> n_flags
+        in
     let code = create_kdefval n ptyp n_flags e_opt code loc in
     let code =
     (match p with

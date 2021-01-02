@@ -30,31 +30,45 @@ let rename_locals top =
         let prefix = dynvec_get all_strings prefix in
         sprintf "%s_%d" prefix j1
         in
-    let rename_cstmt s callb =
-        match s with
-        | CDefVal(t, n, e_opt, l) when
-            (match n with Id.Name _ -> false | _ -> true) ->
-            (match e_opt with
-            | Some e -> fold_cexp e callb
-            | _ -> ());
-            (match cinfo_ n l with
+    let gen_cval_cname n loc =
+        match n with
+        | Id.Name _ -> ()
+        | _ ->
+            (match cinfo_ n loc with
             | CVal cv ->
                 let { cv_cname } = cv in
                 if cv_cname <> "" then () else
                     let new_cname = gen_cname n in
                     set_idc_entry n (CVal {cv with cv_cname=new_cname})
-            | _ -> raise_compile_err l (sprintf "invalid id info for '%s'; it must be CVal" (id2str n)))
-        | CStmtLabel(n, l) when (match n with Id.Name _ -> false | _ -> true) ->
-            (match cinfo_ n l with
+            | _ -> raise_compile_err loc (sprintf "invalid id info for '%s'; it must be CVal" (id2str n)))
+        in
+    let rename_cstmt s callb =
+        match s with
+        | CDefVal(t, n, e_opt, loc) when
+            (match n with Id.Name _ -> false | _ -> true) ->
+            (match e_opt with
+            | Some e -> fold_cexp e callb
+            | _ -> ());
+            gen_cval_cname n loc
+        | CStmtLabel(n, loc) when (match n with Id.Name _ -> false | _ -> true) ->
+            (match cinfo_ n loc with
             | CLabel cl ->
                 let { cl_cname } = cl in
                 if cl_cname <> "" then () else
                     let new_cname = gen_cname n in
                     set_idc_entry n (CLabel {cl with cl_cname=new_cname})
-            | _ -> raise_compile_err l (sprintf "invalid id info for '%s'; it must be CLabel" (id2str n)))
-        | CDefFun _ ->
+            | _ -> raise_compile_err loc (sprintf "invalid id info for '%s'; it must be CLabel" (id2str n)))
+        | CStmtFor((Some t), decls, _, _, _, loc) ->
+            List.iter (fun e ->
+                match e with
+                | CExpBinOp(COpAssign, CExpIdent(n, _), _, _) -> gen_cval_cname n loc
+                | _ -> ()) decls;
+            fold_cstmt s callb
+        | CDefFun cf ->
+            let { cf_args; cf_loc } = !cf in
             let saved_hash = !prefix_hash in
             prefix_hash := Intmap.empty;
+            List.iter (fun (argname, _, _) -> gen_cval_cname argname cf_loc) cf_args;
             fold_cstmt s callb;
             prefix_hash := saved_hash
         | _ -> fold_cstmt s callb

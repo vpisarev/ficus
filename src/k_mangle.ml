@@ -202,9 +202,16 @@ let mangle_all top_code =
         if i = noid then () else
         match (kinfo_ i loc) with
         | KVal kv ->
-            let {kv_typ} = kv in
+            let {kv_typ; kv_flags} = kv in
             let t = walk_ktyp_n_mangle kv_typ loc callb in
-            set_idk_entry i (KVal {kv with kv_typ=t})
+            let cname = match (List.find_opt (fun f -> match f with ValGlobal sc -> true | _ -> false) kv_flags) with
+                | Some(ValGlobal(sc)) ->
+                    let bare_name = mangle_name i (Some sc) loc in
+                    let (_, cname) = mangle_make_unique i "_fx_g" bare_name "" mangle_map in
+                    cname
+                | _ -> ""
+                in
+            set_idk_entry i (KVal {kv with kv_typ=t; kv_cname=cname})
         | _ -> ()
     and mangle_ktyp_retain_record t loc callb =
         match t with
@@ -315,5 +322,14 @@ let mangle_all top_code =
 
     List.iter (fun e ->
         let e = walk_kexp_n_mangle e walk_n_mangle_callb in
+        (match e with
+        | KDefVal (n, e, loc) ->
+            let kv = get_kval n loc in
+            let {kv_cname; kv_flags} = kv in
+            if kv_cname <> "" then () else
+                (set_idk_entry n (KVal {kv with kv_flags=ValGlobal (ScGlobal :: []) :: kv_flags});
+                mangle_id_typ n loc walk_n_mangle_callb)
+        | _ -> ());
         curr_top_code := e :: !curr_top_code) top_code;
+
     List.rev !curr_top_code
