@@ -351,6 +351,9 @@ let pprint_atom_x a loc = Format.print_flush (); Format.open_box 0; pprint_atom 
 let pprint_ktyp_x t loc = Format.print_flush (); Format.open_box 0; pprint_ktyp t loc; Format.close_box(); Format.print_flush ()
 let pprint_kexp_x e = Format.print_flush (); Format.open_box 0; pprint_kexp e; Format.close_box(); Format.print_flush ()
 let pprint_top code = Format.print_flush (); Format.open_box 0; pprint_kexpseq code false; Format.close_box(); pbreak(); Format.print_flush ()
+let pprint_kmods kmods = List.iteri (fun i {km_cname; km_top} -> Format.print_flush (); Format.open_box 0; if i > 0 then pstr "\n" else ();
+            pstr ("///////// module " ^ km_cname ^ " //////////"); pbreak();
+            pprint_kexpseq km_top false; Format.close_box(); pbreak(); Format.print_flush ()) kmods
 let pprint_kinfo_x ki =
     (Format.print_flush (); Format.open_box 0;
     (match ki with

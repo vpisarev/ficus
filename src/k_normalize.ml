@@ -906,6 +906,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
 
 and transform_fun df code sc =
     let {df_name; df_templ_args; df_templ_inst; df_body; df_loc} = !df in
+    let extra_fflags = match sc with ScGlobal :: _ | ScModule _ :: _ -> [] | _ -> FunPrivate :: [] in
     let inst_list = if df_templ_args = [] then df_name :: [] else df_templ_inst in
     List.fold_left (fun code inst ->
         match (id_info inst) with
@@ -936,7 +937,7 @@ and transform_fun df code sc =
             let body_loc = get_exp_loc inst_body in
             let (e, body_code) = exp2kexp inst_body body_code false body_sc in
             let body_kexp = rcode2kexp (e :: body_code) body_loc in
-            create_kdeffun inst_name (List.rev args) rt inst_flags (Some body_kexp) code sc inst_loc
+            create_kdeffun inst_name (List.rev args) rt (extra_fflags @ inst_flags) (Some body_kexp) code sc inst_loc
         | i -> raise_compile_err (get_idinfo_loc i)
             (sprintf "the entry '%s' (an instance of '%s'?) is supposed to be a function, but it's not"
                 (id2str inst) (id2str df_name)))
@@ -1042,8 +1043,9 @@ and transform_all_types_and_cons elist code sc =
             delta_code @ ((KDefExn ke) :: code)
         | _ -> code) code elist
 
-let normalize_mod m =
+let normalize_mod m is_main =
     let _ = idx_access_stack := [] in
     let minfo = !(get_module m) in
     let modsc = (ScModule m) :: [] in
-    eseq2code (minfo.dm_defs) [] modsc
+    let kcode = eseq2code (minfo.dm_defs) [] modsc in
+    {km_name=m; km_cname=(pp_id2str m); km_top=kcode; km_main=is_main}

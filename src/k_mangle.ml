@@ -167,7 +167,7 @@ let rec mangle_ktyp t mangle_map loc =
         | KTypModule -> raise_compile_err loc "KTypModule cannot be mangled"
     in String.concat "" (List.rev (mangle_ktyp_ t []))
 
-let mangle_all top_code =
+let mangle_all kmods =
     let mangle_map = (Hashtbl.create 1000 : mangle_map_t) in
     let curr_top_code = ref ([]: kexp_t list) in
     let create_gen_typ t name_prefix loc =
@@ -204,12 +204,12 @@ let mangle_all top_code =
         | KVal kv ->
             let {kv_typ; kv_flags} = kv in
             let t = walk_ktyp_n_mangle kv_typ loc callb in
-            let cname = match (List.find_opt (fun f -> match f with ValGlobal sc -> true | _ -> false) kv_flags) with
-                | Some(ValGlobal(sc)) ->
+            let cname = match (get_val_scope kv_flags) with
+                | ScBlock _ :: _ -> ""
+                | sc ->
                     let bare_name = mangle_name i (Some sc) loc in
                     let (_, cname) = mangle_make_unique i "_fx_g" bare_name "" mangle_map in
                     cname
-                | _ -> ""
                 in
             set_idk_entry i (KVal {kv with kv_typ=t; kv_cname=cname})
         | _ -> ()
@@ -320,16 +320,18 @@ let mangle_all top_code =
         kcb_atom=None
     } in
 
-    List.iter (fun e ->
-        let e = walk_kexp_n_mangle e walk_n_mangle_callb in
-        (match e with
-        | KDefVal (n, e, loc) ->
-            let kv = get_kval n loc in
-            let {kv_cname; kv_flags} = kv in
-            if kv_cname <> "" then () else
-                (set_idk_entry n (KVal {kv with kv_flags=ValGlobal (ScGlobal :: []) :: kv_flags});
-                mangle_id_typ n loc walk_n_mangle_callb)
-        | _ -> ());
-        curr_top_code := e :: !curr_top_code) top_code;
-
-    List.rev !curr_top_code
+    List.map (fun km ->
+        let {km_name; km_top} = km in
+        curr_top_code := [];
+        List.iter (fun e ->
+            let e = walk_kexp_n_mangle e walk_n_mangle_callb in
+            (match e with
+            | KDefVal (n, e, loc) ->
+                let kv = get_kval n loc in
+                let {kv_cname; kv_flags} = kv in
+                if kv_cname <> "" then () else
+                    (set_idk_entry n (KVal {kv with kv_flags=ValGlobal ((ScModule km_name) :: []) :: kv_flags});
+                    mangle_id_typ n loc walk_n_mangle_callb)
+            | _ -> ());
+            curr_top_code := e :: !curr_top_code) km_top;
+        {km with km_top=List.rev !curr_top_code}) kmods

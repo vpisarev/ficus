@@ -141,38 +141,39 @@ let typecheck_all modules =
 let k_normalize_all modules =
     let _ = (compile_errs := []) in
     let _ = K_form.init_all_idks() in
-    let rkcode = List.fold_left (fun rkcode m ->
-        let rkcode_i = K_normalize.normalize_mod m in
-        rkcode_i @ rkcode) [] modules in
-    (List.rev rkcode, !compile_errs = [])
+    let n = List.length modules in
+    let (_, kmods) = List.fold_left (fun (i, kmods) m ->
+        let km = K_normalize.normalize_mod m (i+1=n) in
+        (i+1, (km :: kmods))) (0, []) modules in
+    (List.rev kmods, !compile_errs = [])
 
-let k_optimize_all code =
+let k_optimize_all kmods =
     let _ = (compile_errs := []) in
     let niters = 5 in
-    let temp_code = ref code in
+    let temp_kmods = ref kmods in
     for i = 0 to niters-1 do
-        temp_code := K_deadcode_elim.elim_unused !temp_code;
+        temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
         if i <= 1 then
-            (temp_code := K_simple_ll.lift !temp_code;
-            temp_code := K_annotate_types.annotate_types !temp_code)
+            (temp_kmods := K_simple_ll.lift !temp_kmods;
+            temp_kmods := K_annotate_types.annotate_types !temp_kmods)
         else ();
-        temp_code := K_tailrec.tailrec2loops !temp_code;
-        temp_code := K_loop_inv.move_loop_invs !temp_code;
-        if options.inline_thresh > 0 then temp_code := K_inline.inline_some !temp_code else ();
-        temp_code := K_flatten.flatten !temp_code;
-        temp_code := K_fuse_loops.fuse_loops !temp_code;
-        temp_code := K_fast_idx.optimize_idx_checks !temp_code;
-        temp_code := K_cfold_dealias.cfold_dealias !temp_code
+        temp_kmods := K_tailrec.tailrec2loops !temp_kmods;
+        (*temp_kmods := K_loop_inv.move_loop_invs !temp_kmods;
+        if options.inline_thresh > 0 then temp_kmods := K_inline.inline_some !temp_kmods else ();*)
+        temp_kmods := K_flatten.flatten !temp_kmods;
+        (*temp_kmods := K_fuse_loops.fuse_loops !temp_kmods;
+        temp_kmods := K_fast_idx.optimize_idx_checks !temp_kmods;*)
+        temp_kmods := K_cfold_dealias.cfold_dealias !temp_kmods
     done;
-    temp_code := K_lift.lift_all !temp_code;
-    temp_code := K_deadcode_elim.elim_unused !temp_code;
-    temp_code := K_mangle.mangle_all !temp_code;
-    temp_code := K_deadcode_elim.elim_unused !temp_code;
-    temp_code := K_inline.find_recursive_funcs !temp_code;
-    temp_code := K_annotate_types.annotate_types !temp_code;
-    (!temp_code, !compile_errs = [])
+    temp_kmods := K_lift.lift_all !temp_kmods;
+    temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
+    temp_kmods := K_mangle.mangle_all !temp_kmods;
+    temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
+    (*temp_kmods := K_inline.find_recursive_funcs !temp_kmods;*)
+    temp_kmods := K_annotate_types.annotate_types !temp_kmods;
+    (!temp_kmods, !compile_errs = [])
 
-let k2c_all code =
+let k2c_all kmods =
     let _ = (compile_errs := []) in
     let _ = C_form.init_all_idcs() in
     let _ = C_gen_std.init_std_names() in
@@ -181,7 +182,7 @@ let k2c_all code =
     let ccode = if options.compile_by_cpp then C_post_adjust_decls.adjust_decls ccode else ccode in
     (ccode, !compile_errs = [])
 
-let run_compiler () =
+let run_compiler cmods =
     let opt_level = options.optimize_level in
     let cmd = if options.compile_by_cpp then "cc -x c++ -std=c++11" else "cc" in
     let cmd = cmd ^ " -Wno-unknown-warning-option" in
@@ -190,9 +191,11 @@ let run_compiler () =
     let cmd = cmd ^ " -o " ^ options.app_filename in
     let cmd = cmd ^ " -I" ^ options.runtime_path in
     let custom_cflags = try " " ^ (Sys.getenv "FICUS_CFLAGS") with Not_found -> "" in
+    let custom_cflags = if options.cflags = "" then custom_cflags else options.cflags ^ " " ^ custom_cflags in
     let cmd = cmd ^ custom_cflags in
     let cmd = cmd ^ " " ^ options.c_filename in
     let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
+    let custom_linked_libs = if options.clibs = "" then custom_linked_libs else options.clibs ^ " " ^ custom_linked_libs in
     let cmd = cmd ^ custom_linked_libs in
     let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
     let ok = (Sys.command cmd) = 0 in
@@ -227,14 +230,14 @@ let process_all fname0 =
         let ok = typecheck_all !sorted_modules in
         let _ = if ok && options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
-        let (code, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
+        let (kmods, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
         (*let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in*)
-        let (code, ok) = if ok then k_optimize_all code else ([], false) in
-        let _ = if ok && options.print_k then (K_pp.pprint_top code) else () in
+        let (kmods, ok) = if ok then k_optimize_all kmods else ([], false) in
+        let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in
         if not options.gen_c then ok else
-            let (ccode, ok) = if ok then k2c_all code else ([], false) in
-            let ok = if ok then (C_pp.pprint_top_to_file options.c_filename ccode) else ok in
-            let ok = if ok && (options.make_app || options.run_app) then run_compiler() else ok in
+            let (cmods, ok) = if ok then k2c_all kmods else ([], false) in
+            let ok = if ok then (C_pp.pprint_top_to_file options.c_filename cmods) else ok in
+            let ok = if ok && (options.make_app || options.run_app) then (run_compiler cmods) else ok in
             let ok = if ok && options.run_app then run_app() else ok in
             ok
     with

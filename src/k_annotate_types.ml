@@ -105,8 +105,7 @@ let find_recursive top_code =
                 kvar := {!kvar with kvar_flags=VariantRecursive :: kvar_flags}
             | _ -> ()
         else
-            ()) all_typs;
-    top_code
+            ()) all_typs
 
 (* returns the ktprops_t structure for each value of ktyp_t:
     1. whether the type is complex, i.e. needs any special handling (non-trivial destructor and non-trivial copy operator)
@@ -198,9 +197,10 @@ let clear_typ_annotations top_code =
             kt := {!kt with kt_props=None}
         | _ -> ()) top_code
 
-let annotate_types top_code =
-    let _ = clear_typ_annotations top_code in
-    let top_code = find_recursive top_code in
+let annotate_types kmods =
+    let top_code = List.rev (List.fold_left (fun top_code {km_top} -> (List.rev km_top) @ top_code) [] kmods) in
+    clear_typ_annotations top_code;
+    find_recursive top_code;
     List.iter (fun e -> match e with
         | KDefVariant kvar ->
             let {kvar_name; kvar_cases; kvar_constr; kvar_loc} = !kvar in
@@ -225,4 +225,4 @@ let annotate_types top_code =
         | KDefTyp {contents={kt_name; kt_loc}} ->
             ignore(get_ktprops (KTypName kt_name) kt_loc)
         | _ -> ()) top_code;
-    top_code
+    kmods

@@ -114,12 +114,15 @@ let reset_purity_flags code =
     }
     in List.iter (fun e -> reset_purity_flags_kexp_ e callb) code
 
-let rec elim_unused code =
-    let _ = reset_purity_flags code in
-    let uv = used_by code in
+let elim_unused kmods =
+    let _ = List.iter (fun {km_top} -> reset_purity_flags km_top) kmods in
+    let uv = List.fold_left (fun uv {km_top} ->
+        let uv_i = used_by km_top in
+        IdSet.union uv_i uv) IdSet.empty kmods in
     let used i = IdSet.mem i uv in
     let fold_result = get_id "__fold_result__" in
     let fold_values = ref (IdSet.empty) in
+    let is_main = ref false in
 
     let rec elim_unused_ktyp_ t loc callb = t
     and elim_unused_kexp_ e callb =
@@ -131,22 +134,27 @@ let rec elim_unused code =
             | KExpAtom((Atom.Id fr), _) when (get_orig_id fr) = fold_result ->
                 fold_values := IdSet.add i !fold_values
             | _ -> ());
-            if (used i) || is_ccode then KDefVal(i, e, loc)
+            if (used i) || is_ccode || (not !is_main) ||
+                (let {kv_flags} = get_kval i loc in
+                match (get_val_scope kv_flags) with
+                | ScBlock _ :: _ -> false
+                | _ -> true) then
+                KDefVal(i, e, loc)
             (* [TODO] issue a warning about unused identifier *)
             else if not (pure_kexp e) then
                 e
             else
                 KExpNop(loc)
         | KDefFun kf ->
-            let {kf_name; kf_body; kf_loc} = !kf in
-            if (used kf_name) then
+            let {kf_name; kf_body; kf_flags; kf_loc} = !kf in
+            if (used kf_name) || (not !is_main) || not (List.mem FunPrivate kf_flags) then
                 (let new_body = elim_unused_kexp_ kf_body callb in
                 kf := {!kf with kf_body=new_body};
                 e)
             else KExpNop(kf_loc)
         | KDefExn ke ->
             let {ke_name; ke_std; ke_loc} = !ke in
-            if (used ke_name) then e
+            if (used ke_name) || (not !is_main) then e
             else KExpNop(ke_loc)
         | KDefVariant kvar ->
             let {kvar_name; kvar_loc} = !kvar in
@@ -155,7 +163,7 @@ let rec elim_unused code =
                i.e. the variant name gets used. So, we may be sure that
                we will never eliminate variant definition and yet retain
                some of its used constructors. *)
-            if (used kvar_name) then e
+            if (used kvar_name) || (not !is_main) then e
             else KExpNop(kvar_loc)
         | KDefTyp kt ->
             let {kt_name; kt_loc} = !kt in
@@ -164,11 +172,11 @@ let rec elim_unused code =
                i.e. the variant name gets used. So, we may be sure that
                we will never eliminate variant definition and yet retain
                some of its used constructors. *)
-            if (used kt_name) then e
+            if (used kt_name) || (not !is_main) then e
             else KExpNop(kt_loc)
         | KDefClosureVars kcv ->
             let {kcv_name; kcv_loc} = !kcv in
-            if (used kcv_name) then e
+            if (used kcv_name) || (not !is_main) then e
             else KExpNop(kcv_loc)
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
@@ -199,4 +207,8 @@ let rec elim_unused code =
         kcb_kexp=Some(elim_unused_kexp_);
         kcb_atom=None
     }
-    in elim_unused_ code [] elim_callb
+    in List.map (fun km ->
+        let {km_top; km_main} = km in
+        let _ = is_main := km_main in
+        let new_top = elim_unused_ km_top [] elim_callb in
+        {km with km_top=new_top}) kmods

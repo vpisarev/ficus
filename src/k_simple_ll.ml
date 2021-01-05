@@ -39,10 +39,11 @@ let find_globals top_code set0 = List.fold_left (fun globals e ->
     | _ -> [] in
     List.fold_left (fun globals n -> IdSet.add n globals) globals n_list) set0 top_code
 
-let lift top_code =
+let lift kmods =
     let new_top_code = ref ([]: kexp_t list) in
     (* first, let's see which definitions are already at the top level *)
-    let globals = ref (find_globals top_code IdSet.empty) in
+    let globals = ref (List.fold_left (fun curr_globals {km_top} ->
+        find_globals km_top curr_globals) IdSet.empty kmods) in
     let add_to_globals i = globals := IdSet.add i !globals in
     let add_to_globals_and_lift i e loc =
         add_to_globals i;
@@ -113,5 +114,10 @@ let lift top_code =
             | _ -> new_top_code := new_e :: !new_top_code) top_code;
         List.rev !new_top_code in
 
-    let top_code = process top_code in
-    process top_code
+    List.map (fun km ->
+        let {km_top=top_code} = km in
+        (* process each module twice since in each module there can be cyclic dependencies between functions
+           (but not inter-module cyclic dependencies, so we process each module separately)*)
+        let top_code = process top_code in
+        let top_code = process top_code in
+        {km with km_top=top_code}) kmods

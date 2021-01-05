@@ -284,7 +284,7 @@ let print_subst_map m loc =
         printf ";\n") m;
     printf "}\n"
 
-let cfold_dealias top_code =
+let cfold_dealias kmods =
     let id_map = ref (Env.empty : atom_t Env.t) in
     let concat_map = ref (Env.empty : atom_t list Env.t) in
     let add_to_map n a = id_map := Env.add n a !id_map in
@@ -494,9 +494,11 @@ let cfold_dealias top_code =
         kcb_ktyp=Some(cfd_ktyp_);
         kcb_kexp=Some(cfd_kexp_)
     } in
-    (* do 2 passes to implement the backward subsitution properly
-       (see the comments in KDefVal case above) *)
-    let top_code = List.map (fun e -> cfd_kexp_ e cfd_callb) top_code in
-    let top_code = List.map (fun e -> cfd_kexp_ e cfd_callb) top_code in
-    (*print_subst_map !id_map;*)
-    top_code
+    List.map (fun km ->
+        let {km_top=top_code} = km in
+        (* do 2 passes to implement the backward subsitution properly
+        (see the comments in KDefVal case above) *)
+        let top_code = List.map (fun e -> cfd_kexp_ e cfd_callb) top_code in
+        let top_code = List.map (fun e -> cfd_kexp_ e cfd_callb) top_code in
+        (*print_subst_map !id_map;*)
+        {km with km_top=top_code}) kmods

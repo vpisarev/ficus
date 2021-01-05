@@ -177,18 +177,21 @@ let tailrec2loop kf =
         let new_kf_body = rcode2kexp f_code kf_loc in
         kf := { !kf with kf_args=new_kf_args; kf_body=new_kf_body }
 
-let tailrec2loops top_code =
-    let rec tailrec2loop_ktyp_ t loc callb = t
-    and tailrec2loop_kexp_ e callb =
-        let e = walk_kexp e callb in
+let tailrec2loops kmods =
+    let tailrec2loop_ktyp_ t loc callb = () in
+    let tailrec2loop_kexp_ e callb =
+        fold_kexp e callb;
         (match e with
         | KDefFun kf ->
             tailrec2loop kf
-        | _ -> ()); e in
+        | _ -> ())
+        in
     let trec2loop_callb =
     {
-        kcb_atom=None;
-        kcb_ktyp=Some(tailrec2loop_ktyp_);
-        kcb_kexp=Some(tailrec2loop_kexp_)
+        kcb_fold_atom=None;
+        kcb_fold_ktyp=Some(tailrec2loop_ktyp_);
+        kcb_fold_kexp=Some(tailrec2loop_kexp_);
+        kcb_fold_result=0
     } in
-    List.map (fun e -> tailrec2loop_kexp_ e trec2loop_callb) top_code
+    List.iter (fun {km_top} -> List.iter (fun e -> tailrec2loop_kexp_ e trec2loop_callb) km_top) kmods;
+    kmods

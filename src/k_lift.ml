@@ -257,8 +257,8 @@ let make_wrappers_for_nothrow top_code =
     let top_kexp = wrapf_kexp_ top_kexp callb in
     kexp2code top_kexp
 
-let lift_all top_code =
-    let globals = ref (K_simple_ll.find_globals top_code IdSet.empty) in
+let lift_all kmods =
+    let globals = ref (List.fold_left (fun globals {km_top} -> K_simple_ll.find_globals km_top globals) IdSet.empty kmods) in
     let is_global n = IdSet.mem n !globals in
     let ll_env = ref (Env.empty : ll_env_t) in
     let orig_subst_env = ref (Env.empty: ll_subst_env_t) in
@@ -293,7 +293,7 @@ let lift_all top_code =
     } in
     (* for each function, top-level or not, find the initial set of free variables,
        as well as the set of called functions *)
-    let _ = List.iter (fun e -> fold_fv0_kexp_ e fv0_callb) top_code in
+    let _ = List.iter (fun {km_top} -> List.iter (fun e -> fold_fv0_kexp_ e fv0_callb) km_top) kmods in
 
     (* now expand those sets. recursively add to the list of free variables
        all the free variables from the called functions
@@ -393,8 +393,6 @@ let lift_all top_code =
         kcb_fold_kexp = Some(fold_defcl_kexp_);
         kcb_fold_result = 0
     } in
-    (* recursively process each top-level expression; define the closures etc. *)
-    let _ = List.iter (fun e -> fold_defcl_kexp_ e defcl_callb) top_code in
 
     let defined_so_far = ref IdSet.empty in
     let curr_clo = ref (noid, noid, noid) in
@@ -596,10 +594,13 @@ let lift_all top_code =
         kcb_kexp = Some(walk_kexp_n_lift_all)
     } in
 
-    let top_code = make_wrappers_for_nothrow top_code in
-
-    List.iter (fun e ->
-        let e = walk_kexp_n_lift_all e walk_n_lift_all_callb in
-        curr_top_code := e :: !curr_top_code) top_code;
-
-    List.rev !curr_top_code
+    List.map (fun km ->
+        let {km_top} = km in
+        let new_top = make_wrappers_for_nothrow km_top in
+        let _ = curr_top_code := [] in
+        (* recursively process each top-level expression; define the closures etc. *)
+        List.iter (fun e -> fold_defcl_kexp_ e defcl_callb) new_top;
+        List.iter (fun e ->
+            let e = walk_kexp_n_lift_all e walk_n_lift_all_callb in
+            curr_top_code := e :: !curr_top_code) new_top;
+        {km with km_top=List.rev !curr_top_code}) kmods

@@ -27,6 +27,9 @@ type options_t =
     mutable app_args: string list;
     mutable osname: string;
     mutable compile_by_cpp: bool;
+    mutable build_parentdir: string;
+    mutable cflags: string;
+    mutable clibs: string;
 }
 
 let options =
@@ -52,6 +55,9 @@ let options =
     app_args = [];
     osname = "*nix";
     compile_by_cpp = false;
+    build_parentdir = ".";
+    cflags = "";
+    clibs = "";
 }
 
 let parse_options () =
@@ -74,10 +80,13 @@ let parse_options () =
         ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for the most essential ones");
         ("-O1", (Arg.Unit (fun () -> options.optimize_level <- 1)), "   Optimization level 1: enable most of optimizations");
         ("-O3", (Arg.Unit (fun () -> options.optimize_level <- 3)), "   Optimization level 3: enable all optimizations");
-        ("--inline-threshold=", (Arg.Int (fun i -> options.inline_thresh <- i)), "   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion");
+        ("-inline-threshold", (Arg.Int (fun i -> options.inline_thresh <- i)), "<n>   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion");
         ("-o", (Arg.String (fun s -> options.output_name <- s)), "<output_filename>    Output file name");
         ("-I", (Arg.String (fun ipath -> options.include_path <- options.include_path @ [ipath])), "<path>    Add directory to the module search path");
+        ("-B", (Arg.String (fun s -> options.build_parentdir <- s)), "<build_parent_dir> The parent directory where __build__/appname subdirectory will be created");
         ("-c++", (Arg.Unit (fun f -> options.compile_by_cpp <- true)), "   Use C++ instead of C for compilation");
+        ("-cflags", (Arg.String (fun s -> options.cflags <- s)), "<cflags>   Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler (after $FICUS_CFLAGS)");
+        ("-clibs", (Arg.String (fun s -> options.clibs <- s)), "<clibs>   Pass the specified libs/linker flags to C/C++ compiler (before $FICUS_LINK_LIBRARIES)");
         ("--", (Arg.Rest (fun s -> options.app_args <- s :: options.app_args)), "Specify the application parameters (e.g. './ficus -run myprog.fx -- arg1 arg2')")
         ]
         (fun s -> _files := !_files @ [s])

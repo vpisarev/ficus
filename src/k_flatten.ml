@@ -87,11 +87,14 @@ and flatten_ code callb =
             (List.rev nested_elist) @ code
         | _ -> new_e :: code) [] code
 
-let flatten top_code =
+let flatten kmods =
     let callb =
     {
         kcb_ktyp=Some(flatten_ktyp_);
         kcb_kexp=Some(flatten_kexp_);
         kcb_atom=None
     }
-    in List.rev (flatten_ top_code callb)
+    in List.map (fun km ->
+        let {km_top} = km in
+        let new_top = List.rev (flatten_ km_top callb) in
+        {km with km_top=new_top}) kmods

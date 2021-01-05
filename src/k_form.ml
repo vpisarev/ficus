@@ -152,6 +152,7 @@ and kdeftyp_t = { kt_name: id_t; kt_cname: string; kt_props: ktprops_t option;
 and kdefclosurevars_t = { kcv_name: id_t; kcv_cname: string;
                           kcv_freevars: (id_t * ktyp_t) list; kcv_orig_freevars: id_t list;
                           kcv_scope: scope_t list; kcv_loc: loc_t }
+and kmodule_t = { km_name: id_t; km_cname: string; km_top: kexp_t list; km_main: bool }
 
 type kinfo_t =
     | KNone | KVal of kdefval_t | KFun of kdeffun_t ref
