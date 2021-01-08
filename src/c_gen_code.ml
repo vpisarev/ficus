@@ -215,17 +215,20 @@ let make_ccode_prologue loc =
         ), loc)) ::
     []
 
-let make_ccode_epilogue loc =
+let make_ccode_epilogue ismain toplevel_cname loc =
+    if not ismain then [] else
     [CExp(CExpCCode((
     "int main(int argc, char** argv)\n{\n" ^
     "   fx_init(argc, argv);\n" ^
-    "   int fx_status = fx_toplevel();\n" ^
+    (sprintf "   int fx_status = %s();\n" toplevel_cname) ^
     "   return fx_finit(fx_status);\n" ^
     "}"), loc))]
 
-let gen_ccode top_code =
+let gen_ccode kmod c_types_ccode c_fdecls mod_init_calls =
     (*let user_exceptions_ofs = ref 0 in
     let top_exn_vals = ref ([]: (id_t*cexp_t) list) in*)
+    let {km_cname; km_top; km_main} = kmod in
+    let top_code = km_top in
     let top_ccode = ref ([]: cstmt_t list) in
     let fwd_fdecls = ref ([]: cstmt_t list) in
     let defined_funcs = ref (IdSet.empty) in
@@ -2570,24 +2573,24 @@ let gen_ccode top_code =
     (* ok, here is the top-level C code generation procedure *)
 
     (* 1. convert all types to C *)
-    let c_types_ccode = C_gen_types.convert_all_typs top_code in
+    (*let c_types_ccode = C_gen_types.convert_all_typs top_code in*)
 
-    (* 3. convert function declarations to C *)
-    let (c_fdecls, mod_init_calls) = C_gen_fdecls.convert_all_fdecls top_code in
+    (* 2. convert function declarations to C *)
+    (*let (c_fdecls, mod_init_calls) = C_gen_fdecls.convert_all_fdecls top_code in*)
     (*let _ = C_pp.pprint_top (c_types_ccode @ c_fdecls) in*)
 
-    (* 4. all the global code should be put into fx_toplevel() function. Let's form its body,
+    (* 3. all the global code should be put into fx_toplevel_...() function. Let's form its body,
           starting with the classical `int fx_status = 0;` *)
     let start_loc = if top_code = [] then noloc else get_kexp_loc(List.hd top_code) in
     let _ = new_block_ctx BlockKind_Global start_loc in
     let (status_exp, ccode) = create_cdefval (gen_temp_idc "fx_status") CTypCInt
         [ValMutable] "fx_status" (Some (make_int_exp 0 start_loc)) [] start_loc in
-    (* 5. convert all the code to C. It will automatically update functions bodies *)
+    (* 4. convert all the code to C. It will automatically update functions bodies *)
     let (e, ccode) = kexp2cexp (code2kexp top_code start_loc) (ref None) ccode in
     (*let e = make_dummy_exp start_loc in*)
     let end_loc = get_cexp_loc e in
 
-    (* 6. bctx_prologue will contain all the global definitions.
+    (* 5. bctx_prologue will contain all the global definitions.
           bctx_cleanup will contain destructor calls for all the global definitions.
           Need to add it to end of fx_toplevel() and
           form its body
@@ -2615,7 +2618,7 @@ let gen_ccode top_code =
     let ccode = if bctx_label_used = 0 then ccode else (CStmtLabel(bctx_label, end_loc)) :: ccode in
     let ccode = filter_out_nops (bctx_cleanup @ ccode) in
     let ccode = CStmtReturn ((Some status_exp), end_loc) :: ccode in
-    let toplevel_cname = "fx_toplevel" in
+    let toplevel_cname = "fx_toplevel_" ^ km_cname in
     let toplevel_name = (gen_temp_idc toplevel_cname) in
     let toplevel_f = ref {cf_name=toplevel_name; cf_args=[]; cf_rt=CTypCInt;
         cf_cname=toplevel_cname; cf_body=temp_toplevel_vals @ mod_init_calls @ (List.rev ccode);
@@ -2623,5 +2626,25 @@ let gen_ccode top_code =
     let _ = set_idc_entry toplevel_name (CFun toplevel_f) in
     let all_ccode = (make_ccode_prologue start_loc) @ (List.rev !top_ccode) @
         c_types_ccode @ global_prologue @ (List.rev !fwd_fdecls) @ c_fdecls @
-        [CDefFun toplevel_f] @ (make_ccode_epilogue end_loc) in
+        [CDefFun toplevel_f] @ (make_ccode_epilogue km_main toplevel_cname end_loc) in
     all_ccode
+
+let gen_ccode_all kmods =
+    (* ok, here is the top-level C code generation procedure *)
+
+    (* 1. convert all types to C from all modules *)
+    let kmods_plus = List.map (fun km -> (km, (C_gen_types.convert_all_typs km.km_top))) kmods in
+
+    (* 2. convert function declarations to C *)
+    let kmods_plus = List.map (fun (km, c_types) ->
+        let (c_fdecls, mod_init_calls) = C_gen_fdecls.convert_all_fdecls km.km_top in
+        (km, c_types, c_fdecls, mod_init_calls)) kmods_plus in
+
+    (* 3. convert each module to C *)
+    let cmods = List.map (fun (km, c_types, c_fdecls, mod_init_calls) ->
+        let {km_name; km_cname; km_top; km_main} = km in
+        let ccode = gen_ccode km c_types c_fdecls mod_init_calls in
+        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=ccode; cmod_main=km_main }) kmods_plus
+
+    in
+    cmods

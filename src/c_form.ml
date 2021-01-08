@@ -205,6 +205,7 @@ and cdefmacro_t = { cm_name: id_t; cm_cname: string; cm_args: id_t list; cm_body
 and cdefexn_t = { cexn_name: id_t; cexn_cname: string; cexn_base_cname: string;
                   cexn_typ: ctyp_t; cexn_std: bool; cexn_tag: id_t; cexn_data: id_t;
                   cexn_info: id_t; cexn_make: id_t; cexn_scope: scope_t list; cexn_loc: loc_t }
+and cdefmodule_t = { cmod_name: id_t; cmod_cname: string; cmod_ccode: cstmt_t list; cmod_main: bool }
 
 type cinfo_t =
     | CNone | CText of string | CVal of cdefval_t | CFun of cdeffun_t ref

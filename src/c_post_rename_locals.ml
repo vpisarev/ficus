@@ -14,7 +14,8 @@ open C_form
 
 module Intmap = Map.Make(struct type t = int let compare = compare end)
 
-let rename_locals top =
+let rename_locals_ cmod =
+    let {cmod_ccode} = cmod in
     let prefix_hash = ref (Intmap.empty : int Intmap.t) in
     let gen_cname n =
         let prefix = match n with
@@ -81,5 +82,8 @@ let rename_locals top =
         ccb_fold_stmt = Some(rename_cstmt);
         ccb_fold_result = 0;
     } in
-    List.iter (fun s -> rename_cstmt s rename_callb) top;
-    top
+    List.iter (fun s -> rename_cstmt s rename_callb) cmod_ccode
+
+let rename_locals cmods =
+    List.iter rename_locals_ cmods;
+    cmods

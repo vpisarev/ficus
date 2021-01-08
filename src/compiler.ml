@@ -21,6 +21,7 @@ open Lexing
 open Options
 open Ast
 open K_form
+open C_form
 open Utils
 
 exception CumulativeParseError
@@ -177,12 +178,29 @@ let k2c_all kmods =
     let _ = (compile_errs := []) in
     let _ = C_form.init_all_idcs() in
     let _ = C_gen_std.init_std_names() in
-    let ccode = C_gen_code.gen_ccode code in
-    let ccode = C_post_rename_locals.rename_locals ccode in
-    let ccode = if options.compile_by_cpp then C_post_adjust_decls.adjust_decls ccode else ccode in
-    (ccode, !compile_errs = [])
+    let cmods = C_gen_code.gen_ccode_all kmods in
+    let cmods = C_post_rename_locals.rename_locals cmods in
+    let cmods = if options.compile_by_cpp then C_post_adjust_decls.adjust_decls cmods else cmods in
+    (cmods, !compile_errs = [])
 
-let run_compiler cmods =
+let emit_c_files fname0 cmods =
+    let build_root_dir = Unix.getcwd() in
+    let build_root_dir = Utils.normalize_path build_root_dir "__build__" in
+    let _ = Unix.mkdir build_root_dir 0o755 in
+    let output_dir = Filename.basename fname0 in
+    let output_dir = Utils.remove_extension output_dir in
+    let output_dir = Utils.normalize_path build_root_dir output_dir in
+    Unix.mkdir output_dir 0o755;
+    let (cmods, ok) = List.fold_left (fun (cmods, ok) cmod ->
+        let {cmod_cname; cmod_ccode} = cmod in
+        let output_fname = Filename.basename cmod_cname in
+        let output_fname = (Utils.remove_extension output_fname) ^ ".c" in
+        let output_fname = Utils.normalize_path output_dir output_fname in
+        let ok = if ok then C_pp.pprint_top_to_file output_fname cmod_ccode else ok in
+        (({cmod with cmod_cname = output_fname} :: cmods), ok)) ([], true) cmods in
+    ((List.rev cmods), output_dir, ok)
+
+let run_compiler cmods output_dir =
     let opt_level = options.optimize_level in
     let cmd = if options.compile_by_cpp then "cc -x c++ -std=c++11" else "cc" in
     let cmd = cmd ^ " -Wno-unknown-warning-option" in
@@ -236,9 +254,9 @@ let process_all fname0 =
         let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in
         if not options.gen_c then ok else
             let (cmods, ok) = if ok then k2c_all kmods else ([], false) in
-            let ok = if ok then (C_pp.pprint_top_to_file options.c_filename cmods) else ok in
-            let ok = if ok && (options.make_app || options.run_app) then (run_compiler cmods) else ok in
-            let ok = if ok && options.run_app then run_app() else ok in
+            let (cmods, builddir, ok) = if ok then emit_c_files fname0 cmods else (cmods, ".", ok) in
+            (*let ok = if ok && (options.make_app || options.run_app) then (run_compiler cmods builddir) else ok in
+            let ok = if ok && options.run_app then run_app() else ok in*)
             ok
     with
     | Failure msg -> print_string msg; false

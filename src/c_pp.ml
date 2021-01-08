@@ -446,3 +446,13 @@ let pprint_top_to_file filename code =
     Format.set_formatter_out_channel stdout;
     close_out outch;
     true)
+let pprint_top_to_string code =
+    (let (std_print, std_flush) = Format.get_formatter_output_functions () in
+    let all_strings = ref ([]: string list) in
+    let str_print s p n = all_strings := (String.sub s p n) :: !all_strings in
+    let str_flush () = () in
+    Format.set_formatter_output_functions str_print str_flush;
+    pprint_top code;
+    Format.print_flush();
+    Format.set_formatter_output_functions std_print std_flush;
+    String.concat "" (List.rev !all_strings))

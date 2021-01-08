@@ -37,7 +37,8 @@ open Ast
 open K_form
 open C_form
 
-let adjust_decls top =
+let adjust_decls_ cmod =
+    let {cmod_ccode} = cmod in
     let local_decls = ref ([]: cstmt_t list) in
     let local_have_ops = ref false in
     let rec adjust_sseq sseq callb =
@@ -79,4 +80,8 @@ let adjust_decls top =
         ccb_exp = None;
         ccb_stmt = Some(adjust_cstmt);
     } in
-    List.map (fun s -> adjust_cstmt s adjust_callb) top
+    let ccode = List.map (fun s -> adjust_cstmt s adjust_callb) cmod_ccode in
+    {cmod with cmod_ccode=ccode}
+
+let adjust_decls cmods =
+    List.map adjust_decls_ cmods
