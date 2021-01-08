@@ -1048,4 +1048,4 @@ let normalize_mod m is_main =
     let minfo = !(get_module m) in
     let modsc = (ScModule m) :: [] in
     let kcode = eseq2code (minfo.dm_defs) [] modsc in
-    {km_name=m; km_cname=(pp_id2str m); km_top=kcode; km_main=is_main}
+    {km_name=m; km_cname=(pp_id2str m); km_top=(List.rev kcode); km_main=is_main}

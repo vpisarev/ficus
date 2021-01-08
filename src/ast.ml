@@ -578,7 +578,7 @@ let get_idinfo_loc id_info = match id_info with
     | IdInterface {contents = {di_loc}} -> di_loc
 
 let get_idinfo_typ id_info loc = match id_info with
-    | IdNone -> raise_compile_err loc "attempt to request type of non-existing symbol"
+    | IdNone -> raise_compile_err loc "ast: attempt to request type of non-existing symbol"
     | IdModule _ -> TypModule
     | IdVal {dv_typ} -> dv_typ
     | IdFun {contents = {df_typ}} -> df_typ

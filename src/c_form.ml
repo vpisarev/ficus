@@ -310,8 +310,8 @@ let get_idc_loc i loc = get_cinfo_loc (cinfo_ i loc)
 
 let check_cinfo info i loc =
     match info with
-    | CNone -> raise_compile_err loc (sprintf "attempt to request type of non-existing symbol '%s'" (id2str i))
-    | CText s -> raise_compile_err loc (sprintf "attempt to request type of symbol '%s'" s)
+    | CNone -> raise_compile_err loc (sprintf "check_cinfo: attempt to request type of non-existing symbol '%s'" (id2str i))
+    | CText s -> raise_compile_err loc (sprintf "check_cinfo: attempt to request type of symbol '%s'" s)
     | _ -> ()
 
 let get_cinfo_typ info i loc =

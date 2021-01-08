@@ -18,6 +18,9 @@ src/ficus
 # ocamlbuild working directory
 _build/
 
+# ficus build directory
+__build__/
+
 # ocamlbuild targets
 *.byte
 *.native

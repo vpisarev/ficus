@@ -2643,6 +2643,7 @@ let gen_ccode_all kmods =
     (* 3. convert each module to C *)
     let cmods = List.map (fun (km, c_types, c_fdecls, mod_init_calls) ->
         let {km_name; km_cname; km_top; km_main} = km in
+        (*let _ = printf "converting '%s' to c\n" km_cname in*)
         let ccode = gen_ccode km c_types c_fdecls mod_init_calls in
         { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=ccode; cmod_main=km_main }) kmods_plus
 

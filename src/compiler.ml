@@ -171,7 +171,7 @@ let k_optimize_all kmods =
     temp_kmods := K_mangle.mangle_all !temp_kmods;
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
     (*temp_kmods := K_inline.find_recursive_funcs !temp_kmods;*)
-    temp_kmods := K_annotate_types.annotate_types !temp_kmods;
+    (*temp_kmods := K_annotate_types.annotate_types !temp_kmods;*)
     (!temp_kmods, !compile_errs = [])
 
 let k2c_all kmods =
@@ -186,11 +186,11 @@ let k2c_all kmods =
 let emit_c_files fname0 cmods =
     let build_root_dir = Unix.getcwd() in
     let build_root_dir = Utils.normalize_path build_root_dir "__build__" in
-    let _ = Unix.mkdir build_root_dir 0o755 in
+    let _ = try Unix.mkdir build_root_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> () in
     let output_dir = Filename.basename fname0 in
     let output_dir = Utils.remove_extension output_dir in
     let output_dir = Utils.normalize_path build_root_dir output_dir in
-    Unix.mkdir output_dir 0o755;
+    (try Unix.mkdir output_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> ());
     let (cmods, ok) = List.fold_left (fun (cmods, ok) cmod ->
         let {cmod_cname; cmod_ccode} = cmod in
         let output_fname = Filename.basename cmod_cname in
