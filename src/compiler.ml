@@ -167,6 +167,7 @@ let k_optimize_all kmods =
         temp_kmods := K_cfold_dealias.cfold_dealias !temp_kmods
     done;
     temp_kmods := K_lift.lift_all !temp_kmods;
+    temp_kmods := K_flatten.flatten !temp_kmods;
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
     temp_kmods := K_mangle.mangle_all !temp_kmods;
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
@@ -191,14 +192,14 @@ let emit_c_files fname0 cmods =
     let output_dir = Utils.remove_extension output_dir in
     let output_dir = Utils.normalize_path build_root_dir output_dir in
     (try Unix.mkdir output_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> ());
-    let (cmods, ok) = List.fold_left (fun (cmods, ok) cmod ->
+    let ok = List.fold_left (fun ok cmod ->
         let {cmod_cname; cmod_ccode} = cmod in
         let output_fname = Filename.basename cmod_cname in
         let output_fname = (Utils.remove_extension output_fname) ^ ".c" in
         let output_fname = Utils.normalize_path output_dir output_fname in
         let ok = if ok then C_pp.pprint_top_to_file output_fname cmod_ccode else ok in
-        (({cmod with cmod_cname = output_fname} :: cmods), ok)) ([], true) cmods in
-    ((List.rev cmods), output_dir, ok)
+        ok) true cmods in
+    (cmods, output_dir, ok)
 
 let run_compiler cmods output_dir =
     let opt_level = options.optimize_level in
@@ -206,19 +207,28 @@ let run_compiler cmods output_dir =
     let cmd = cmd ^ " -Wno-unknown-warning-option" in
     let cmd = cmd ^ " -Wno-dangling-else" in
     let cmd = cmd ^ (sprintf " -O%d%s" opt_level (if opt_level = 0 then " -ggdb" else "")) in
-    let cmd = cmd ^ " -o " ^ options.app_filename in
     let cmd = cmd ^ " -I" ^ options.runtime_path in
     let custom_cflags = try " " ^ (Sys.getenv "FICUS_CFLAGS") with Not_found -> "" in
     let custom_cflags = if options.cflags = "" then custom_cflags else options.cflags ^ " " ^ custom_cflags in
     let cmd = cmd ^ custom_cflags in
-    let cmd = cmd ^ " " ^ options.c_filename in
-    let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
-    let custom_linked_libs = if options.clibs = "" then custom_linked_libs else options.clibs ^ " " ^ custom_linked_libs in
-    let cmd = cmd ^ custom_linked_libs in
-    let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
-    let ok = (Sys.command cmd) = 0 in
-    if not ok || options.write_c then () else Sys.remove options.c_filename;
-    ok
+    let (ok, objs) = List.fold_left (fun (ok, objs) {cmod_cname} ->
+        let cname = Utils.normalize_path output_dir cmod_cname in
+        let cmd = cmd ^ " -o " ^ cname ^ ".o" in
+        let cmd = cmd ^ " -c " ^ cname ^ ".c" in
+        let _ = (printf "%s\n" cmd; flush stdout) in
+        let ok_j = (Sys.command cmd) = 0 in
+        ((ok && ok_j), ((cname ^ ".o") :: objs))) (true, []) cmods
+        in
+    if not ok then ok else
+        let cmd = "cc -o " ^ options.app_filename in
+        let cmd = cmd ^ " " ^ (String.concat " " objs) in
+        let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
+        let custom_linked_libs = if options.clibs = "" then custom_linked_libs else options.clibs ^ " " ^ custom_linked_libs in
+        let cmd = cmd ^ custom_linked_libs in
+        let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
+        let _ = (printf "%s\n" cmd; flush stdout) in
+        let ok = (Sys.command cmd) = 0 in
+        ok
 
 let run_app () =
     let cmd = String.concat " " (options.app_filename :: options.app_args) in
@@ -255,8 +265,8 @@ let process_all fname0 =
         if not options.gen_c then ok else
             let (cmods, ok) = if ok then k2c_all kmods else ([], false) in
             let (cmods, builddir, ok) = if ok then emit_c_files fname0 cmods else (cmods, ".", ok) in
-            (*let ok = if ok && (options.make_app || options.run_app) then (run_compiler cmods builddir) else ok in
-            let ok = if ok && options.run_app then run_app() else ok in*)
+            let ok = if ok && (options.make_app || options.run_app) then (run_compiler cmods builddir) else ok in
+            (*let ok = if ok && options.run_app then run_app() else ok in*)
             ok
     with
     | Failure msg -> print_string msg; false

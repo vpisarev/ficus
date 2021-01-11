@@ -118,7 +118,7 @@ typedef void (*fx_copy_t)(const void*, void*);
 
 int fx_init(int argc, char** argv);
 int fx_init_thread(int t_idx);
-int fx_finit(int status);
+int fx_deinit(int status);
 
 int_ fx_argc(void);
 char* fx_argv(int_ idx);

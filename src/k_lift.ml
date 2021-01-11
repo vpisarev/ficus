@@ -206,7 +206,7 @@ open K_form
 
 type ll_func_info_t = { mutable ll_fvars: IdSet.t; ll_declared_inside: IdSet.t; ll_called_funcs: IdSet.t }
 type ll_env_t = ll_func_info_t Env.t
-type ll_subst_env_t = (id_t*id_t) Env.t
+type ll_subst_env_t = (id_t*id_t*(ktyp_t option)) Env.t
 
 let make_wrappers_for_nothrow top_code =
     let rec wrapf_atom a loc callb =
@@ -225,7 +225,7 @@ let make_wrappers_for_nothrow top_code =
             let {kf_name; kf_args; kf_rt; kf_flags; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
             let new_body = wrapf_kexp_ kf_body callb in
             let _ = kf := {!kf with kf_body=new_body} in
-            if not (List.mem FunNoThrow kf_flags) || (is_fun_ctor kf_flags) then e
+            if not (List.mem FunNoThrow kf_flags) || (is_fun_ctor kf_flags) || (kf_closure.kci_wrap_f <> noid) then e
             else
                 (let w_name = gen_idk ((pp_id2str kf_name) ^ "_w") in
                 let _ = kf := {!kf with kf_closure={kf_closure with kci_wrap_f=w_name}} in
@@ -344,8 +344,8 @@ let lift_all kmods =
         set_idk_entry kv_name (KVal new_old_kv);
         (* in the original function where mutable free var is declared,
            we retain its name in most operations except for KExpMkClosure,
-           where the use just created reference *)
-        orig_subst_env := Env.add kv_name (kv_name, new_kv_name) !orig_subst_env)
+           where we use just created reference *)
+        orig_subst_env := Env.add kv_name (kv_name, new_kv_name, None) !orig_subst_env)
         all_mut_fvars in
     (* iterate through all the functions; for each function with
        free variables define a closure and add an extra parameter *)
@@ -398,6 +398,7 @@ let lift_all kmods =
     let curr_clo = ref (noid, noid, noid) in
     let curr_top_code = ref ([]: kexp_t list) in
     let curr_subst_env = ref (Env.empty : ll_subst_env_t) in
+    let curr_lift_extra_decls = ref ([]: kexp_t list) in
     let add_to_defined_so_far i =
         defined_so_far := IdSet.add i !defined_so_far in
 
@@ -406,7 +407,14 @@ let lift_all kmods =
         | Atom.Id (Id.Name _) -> a
         | Atom.Id n ->
             (match (Env.find_opt n !curr_subst_env) with
-            | Some ((nv, nr)) -> if get_mkclosure_arg then (Atom.Id nr) else (Atom.Id nv)
+            | Some ((_, _, (Some f_typ))) ->
+                let temp_cl = dup_idk n in
+                let make_cl = KExpMkClosure(noid, n, [], (f_typ, loc)) in
+                let _ = curr_lift_extra_decls := create_kdefval temp_cl f_typ []
+                    (Some make_cl) !curr_lift_extra_decls loc in
+                Atom.Id temp_cl
+            | Some ((nv, nr, _)) ->
+                if get_mkclosure_arg then (Atom.Id nr) else (Atom.Id nv)
             | _ ->
                 (match (kinfo_ n loc) with
                 | KFun {contents={kf_flags}} ->
@@ -417,38 +425,47 @@ let lift_all kmods =
                 if not get_mkclosure_arg then a
                 else
                     (match (Env.find_opt n !orig_subst_env) with
-                    | Some ((_, nr)) -> Atom.Id nr
+                    | Some ((_, nr, _)) -> Atom.Id nr
                     | _ -> a))
         | _ -> a
     and walk_atom_n_lift_all a loc callb = walk_atom_n_lift_all_adv a loc false
     and walk_ktyp_n_lift_all t loc callb = t
     and walk_kexp_n_lift_all e callb =
-        match e with
-        | KDefFun kf ->
+        let saved_extra_decls = !curr_lift_extra_decls in
+        let _ = curr_lift_extra_decls := [] in
+        let e =
+        (match e with
+        | KDefFun kf  ->
             let { kf_name; kf_args; kf_rt; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
-            let { kci_arg; kci_fcv_t; kci_make_fp } = kf_closure in
+            let { kci_arg; kci_fcv_t; kci_make_fp; kci_wrap_f } = kf_closure in
             let saved_dsf = !defined_so_far in
             let saved_clo = !curr_clo in
             let saved_subst_env = !curr_subst_env in
             let _ = curr_clo := (kf_name, kci_arg, kci_fcv_t) in
             let _ = List.iter (fun (arg, _) -> add_to_defined_so_far arg) kf_args in
+            (*let _ = printf "processing %s\n" (id2str kf_name) in
+            let _ = flush_all () in*)
 
             let create_defclosure kf code =
-                let {kf_name; kf_args; kf_rt; kf_closure={kci_make_fp=make_fp}; kf_scope; kf_loc} = !kf in
+                let {kf_name; kf_args; kf_rt; kf_closure={kci_make_fp=make_fp}; kf_flags; kf_scope; kf_loc} = !kf in
                 let kf_typ = get_kf_typ kf_args kf_rt in
-                let cl_name = dup_idk kf_name in
-                let _ = curr_subst_env := Env.add kf_name (cl_name, cl_name) !curr_subst_env in
-                let _ = add_to_defined_so_far cl_name in
                 let (_, orig_freevars) = get_closure_freevars kf_name kf_loc in
-                let cl_args = List.map (fun fv ->
-                    if IdSet.mem fv !defined_so_far then ()
-                    else raise_compile_err kf_loc
-                        (sprintf "free variable '%s' of '%s' is not defined yet"
-                        (id2str fv) (id2str kf_name));
-                    walk_atom_n_lift_all_adv (Atom.Id fv) kf_loc true) orig_freevars
-                    in
-                let make_cl = KExpMkClosure(make_fp, kf_name, cl_args, (kf_typ, kf_loc)) in
-                create_kdefval cl_name kf_typ [] (Some make_cl) code kf_loc
+                if orig_freevars = [] && not (is_fun_ctor kf_flags) then
+                    (curr_subst_env := Env.add kf_name (noid, noid, (Some kf_typ)) !curr_subst_env;
+                    code)
+                else
+                    let cl_name = dup_idk kf_name in
+                    let _ = curr_subst_env := Env.add kf_name (cl_name, cl_name, None) !curr_subst_env in
+                    let _ = add_to_defined_so_far cl_name in
+                    let cl_args = List.map (fun fv ->
+                        if IdSet.mem fv !defined_so_far then ()
+                        else raise_compile_err kf_loc
+                            (sprintf "free variable '%s' of '%s' is not defined yet"
+                            (id2str fv) (id2str kf_name));
+                        walk_atom_n_lift_all_adv (Atom.Id fv) kf_loc true) orig_freevars
+                        in
+                    let make_cl = KExpMkClosure(make_fp, kf_name, cl_args, (kf_typ, kf_loc)) in
+                    create_kdefval cl_name kf_typ [] (Some make_cl) code kf_loc
                 in
 
             let (prologue, def_fcv_t_n_make) =
@@ -494,7 +511,7 @@ let lift_all kmods =
                                     (Some get_fv) prologue kf_loc in
                                 (KExpUnOp(OpDeref, (Atom.Id fv_ref), (t, kf_loc)), prologue, fv_ref)
                             in
-                        let _ = curr_subst_env := Env.add fv_orig (fv_proxy, fv_proxy_mkclo_arg) !curr_subst_env in
+                        let _ = curr_subst_env := Env.add fv_orig (fv_proxy, fv_proxy_mkclo_arg, None) !curr_subst_env in
                         let new_kv_flags = ValTempRef :: kv_flags in
                         let prologue = create_kdefval fv_proxy t new_kv_flags (Some e) prologue kf_loc in
                         (idx+1, prologue)) (0, []) kcv_freevars kcv_orig_freevars in
@@ -523,10 +540,16 @@ let lift_all kmods =
             defined_so_far := saved_dsf;
             curr_clo := saved_clo;
             curr_subst_env := saved_subst_env;
-            curr_top_code := def_fcv_t_n_make @ !curr_top_code;
             kf := {!kf with kf_body=body};
-            curr_top_code := (KDefFun kf) :: !curr_top_code;
-            List.hd (create_defclosure kf [])
+            let e = if kci_wrap_f <> noid then
+                    (KDefFun kf)
+                else
+                    let extra_code = create_defclosure kf [KDefFun kf] in
+                    let _ = curr_top_code := (List.tl extra_code) @ def_fcv_t_n_make @ !curr_top_code in
+                    List.hd extra_code
+                in
+            (*printf "finished processing %s\n" (id2str kf_name);*)
+            e
         | KDefExn {contents={ke_tag}} ->
             add_to_defined_so_far ke_tag;
             walk_kexp e callb
@@ -541,7 +564,7 @@ let lift_all kmods =
                 let ref_typ = KTypRef t in
                 let nr =
                     match (Env.find_opt n !orig_subst_env) with
-                    | Some ((_, nr)) -> nr
+                    | Some ((_, nr, None)) -> nr
                     | _ -> raise_compile_err loc
                         (sprintf "k-lift: not found subst info about mutable free var '%s'" (id2str n))
                     in
@@ -586,7 +609,12 @@ let lift_all kmods =
                     else
                         KExpCall((check_n_walk_id f loc callb), args, kctx)
                 | _ -> KExpCall((check_n_walk_id f loc callb), args, kctx))
-        | _ -> walk_kexp e callb
+        | _ -> walk_kexp e callb)
+        in
+        let e = if !curr_lift_extra_decls = [] then e
+            else rcode2kexp (e :: !curr_lift_extra_decls) (get_kexp_loc e) in
+        curr_lift_extra_decls := saved_extra_decls;
+        e
     in let walk_n_lift_all_callb =
     {
         kcb_atom = Some(walk_atom_n_lift_all);

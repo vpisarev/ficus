@@ -215,16 +215,23 @@ let make_ccode_prologue loc =
         ), loc)) ::
     []
 
-let make_ccode_epilogue ismain toplevel_cname loc =
+let make_main ismain mod_names loc =
     if not ismain then [] else
-    [CExp(CExpCCode((
-    "int main(int argc, char** argv)\n{\n" ^
-    "   fx_init(argc, argv);\n" ^
-    (sprintf "   int fx_status = %s();\n" toplevel_cname) ^
-    "   return fx_finit(fx_status);\n" ^
-    "}"), loc))]
+        let (init_calls, deinit_calls) = List.fold_left
+            (fun (init_calls, deinit_calls) m ->
+                ((sprintf "   if (status >= 0) status = fx_init_%s();\n" m) :: init_calls),
+                ((sprintf "   fx_deinit_%s();\n" m) :: deinit_calls)) ([], []) mod_names
+            in
+        [CExp(CExpCCode((
+        "int main(int argc, char** argv)\n{\n" ^
+        "   fx_init(argc, argv);\n" ^
+        "   int fx_status = FX_OK;\n" ^
+        (String.concat "" init_calls) ^
+        (String.concat "" (List.rev deinit_calls)) ^
+        "   return fx_deinit(fx_status);\n" ^
+        "}"), loc))]
 
-let gen_ccode kmod c_types_ccode c_fdecls mod_init_calls =
+let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
     (*let user_exceptions_ofs = ref 0 in
     let top_exn_vals = ref ([]: (id_t*cexp_t) list) in*)
     let {km_cname; km_top; km_main} = kmod in
@@ -2295,7 +2302,7 @@ let gen_ccode kmod c_types_ccode c_fdecls mod_init_calls =
                         else
                             (* if a global value/variable is initialized with constant,
                             we just use this constant for its initialization instead of
-                            setting it to "0" and reassigning inside fx_toplevel() *)
+                            setting it to "0" and reassigning inside fx_init() *)
                             let (e0_opt, assign_e2) =
                             if ktp_complex then
                                 (None, assign_e2)
@@ -2579,7 +2586,7 @@ let gen_ccode kmod c_types_ccode c_fdecls mod_init_calls =
     (*let (c_fdecls, mod_init_calls) = C_gen_fdecls.convert_all_fdecls top_code in*)
     (*let _ = C_pp.pprint_top (c_types_ccode @ c_fdecls) in*)
 
-    (* 3. all the global code should be put into fx_toplevel_...() function. Let's form its body,
+    (* 3. all the global code should be put into fx_init_...() function. Let's form its body,
           starting with the classical `int fx_status = 0;` *)
     let start_loc = if top_code = [] then noloc else get_kexp_loc(List.hd top_code) in
     let _ = new_block_ctx BlockKind_Global start_loc in
@@ -2592,11 +2599,11 @@ let gen_ccode kmod c_types_ccode c_fdecls mod_init_calls =
 
     (* 5. bctx_prologue will contain all the global definitions.
           bctx_cleanup will contain destructor calls for all the global definitions.
-          Need to add it to end of fx_toplevel() and
+          Need to add it to end of fx_deinit_...() and
           form its body
     *)
     let {bctx_prologue; bctx_label; bctx_cleanup; bctx_label_used} = curr_block_ctx end_loc in
-    let (global_prologue, temp_toplevel_vals) = List.fold_left (fun (global_prologue, temp_toplevel_vals) s ->
+    let (global_prologue, temp_init_vals) = List.fold_left (fun (global_prologue, temp_init_vals) s ->
         let is_global = match s with
             | CDefVal (_, i, _, loc) ->
                 (match (cinfo_ i loc) with
@@ -2605,9 +2612,9 @@ let gen_ccode kmod c_types_ccode c_fdecls mod_init_calls =
             | _ -> true
             in
         if is_global then
-            (s :: global_prologue, temp_toplevel_vals)
+            (s :: global_prologue, temp_init_vals)
         else
-            (global_prologue, s :: temp_toplevel_vals))
+            (global_prologue, s :: temp_init_vals))
         ([], []) bctx_prologue in
     let _ = pop_block_ctx end_loc in
     let ccode =
@@ -2616,17 +2623,25 @@ let gen_ccode kmod c_types_ccode c_fdecls mod_init_calls =
         | _ -> (cexp2stmt e) :: ccode
         in
     let ccode = if bctx_label_used = 0 then ccode else (CStmtLabel(bctx_label, end_loc)) :: ccode in
-    let ccode = filter_out_nops (bctx_cleanup @ ccode) in
+    let ccode = filter_out_nops ccode in
     let ccode = CStmtReturn ((Some status_exp), end_loc) :: ccode in
-    let toplevel_cname = "fx_toplevel_" ^ km_cname in
-    let toplevel_name = (gen_temp_idc toplevel_cname) in
-    let toplevel_f = ref {cf_name=toplevel_name; cf_args=[]; cf_rt=CTypCInt;
-        cf_cname=toplevel_cname; cf_body=temp_toplevel_vals @ mod_init_calls @ (List.rev ccode);
+    let deinit_ccode = bctx_cleanup in
+    let init_cname = "fx_init_" ^ km_cname in
+    let init_name = (gen_temp_idc init_cname) in
+    let init_f = ref {cf_name=init_name; cf_args=[]; cf_rt=CTypCInt;
+        cf_cname=init_cname; cf_body=temp_init_vals @ mod_init_calls @ (List.rev ccode);
         cf_flags=[]; cf_scope=ScGlobal::[]; cf_loc=end_loc} in
-    let _ = set_idc_entry toplevel_name (CFun toplevel_f) in
+    let deinit_cname = "fx_deinit_" ^ km_cname in
+    let deinit_name = (gen_temp_idc deinit_cname) in
+    let deinit_f = ref {cf_name=deinit_name; cf_args=[]; cf_rt=CTypVoid;
+        cf_cname=deinit_cname; cf_body=(List.rev deinit_ccode);
+        cf_flags=[]; cf_scope=ScGlobal::[]; cf_loc=end_loc} in
+    let _ = set_idc_entry init_name (CFun init_f) in
+    let _ = set_idc_entry deinit_name (CFun deinit_f) in
+    let mod_names = if km_main then km_cname :: (List.map (fun {cmod_cname} -> cmod_cname) cmods) else [] in
     let all_ccode = (make_ccode_prologue start_loc) @ (List.rev !top_ccode) @
         c_types_ccode @ global_prologue @ (List.rev !fwd_fdecls) @ c_fdecls @
-        [CDefFun toplevel_f] @ (make_ccode_epilogue km_main toplevel_cname end_loc) in
+        [CDefFun init_f; CDefFun deinit_f] @ (make_main km_main mod_names end_loc) in
     all_ccode
 
 let gen_ccode_all kmods =
@@ -2641,11 +2656,11 @@ let gen_ccode_all kmods =
         (km, c_types, c_fdecls, mod_init_calls)) kmods_plus in
 
     (* 3. convert each module to C *)
-    let cmods = List.map (fun (km, c_types, c_fdecls, mod_init_calls) ->
+    let cmods = List.fold_left (fun cmods (km, c_types, c_fdecls, mod_init_calls) ->
         let {km_name; km_cname; km_top; km_main} = km in
-        (*let _ = printf "converting '%s' to c\n" km_cname in*)
-        let ccode = gen_ccode km c_types c_fdecls mod_init_calls in
-        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=ccode; cmod_main=km_main }) kmods_plus
-
+        (*let _ = printf "converting '%s' to C\n" km_cname in*)
+        let ccode = gen_ccode cmods km c_types c_fdecls mod_init_calls in
+        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=ccode; cmod_main=km_main } :: cmods)
+        [] kmods_plus
     in
-    cmods
+    List.rev cmods

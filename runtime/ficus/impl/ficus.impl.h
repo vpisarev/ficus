@@ -89,7 +89,7 @@ int fx_check_stack()
     return FX_OK;
 }
 
-int fx_finit(int status)
+int fx_deinit(int status)
 {
     if(status < 0)
         fx_print_bt();
