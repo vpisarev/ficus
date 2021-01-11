@@ -74,7 +74,7 @@ for i <- 1:31 {
 }
 println()
 
-val a=[0, 1, 2, -10, 7]
+val a=[0, 1, 2, -10, 7, -3]
 var i1 = 0, n = size(a)
 do
 {

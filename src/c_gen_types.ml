@@ -261,11 +261,11 @@ let convert_all_typs kmods =
             add_fwd_decl tn fwd_decl (CDefForwardTyp (struct_id, loc));
         if ktp_custom_free then
             (set_idc_entry free_f (CFun freef_decl);
-            add_fwd_decl free_f fwd_decl (CDefForwardFun (free_f, loc)))
+            add_fwd_decl free_f fwd_decl (CDefForwardSym (free_f, loc)))
         else ();
         if ktp_custom_copy then
             (set_idc_entry copy_f (CFun copyf_decl);
-            add_fwd_decl copy_f fwd_decl (CDefForwardFun (copy_f, loc)))
+            add_fwd_decl copy_f fwd_decl (CDefForwardSym (copy_f, loc)))
         else ();
         {ctti_struct_decl=struct_decl;
         ctti_freef_decl=freef_decl;
@@ -334,7 +334,8 @@ let convert_all_typs kmods =
                 if not recursive_variant then create_ctyp_decl tn fwd_decl loc
                 else (match (Env.find_opt tn !all_saved_rec_vars) with
                 | Some i -> i
-                | _ -> raise_compile_err loc
+                | _ ->
+                    raise_compile_err loc
                     (sprintf "cgen: missing information about recursive variant '%s'"
                         (get_idk_cname tn loc)))
                 in
@@ -618,26 +619,26 @@ let convert_all_typs kmods =
         | KDefClosureVars _ -> ()
         | KDefExn _ -> ()
         | _ -> fold_kexp e callb
-    in let fold_n_cvt_callb =
-    {
-        kcb_fold_ktyp = Some(fold_n_cvt_ktyp);
-        kcb_fold_kexp = Some(fold_n_cvt_kexp);
-        kcb_fold_atom = None;
-        kcb_fold_result = 0
-    }
-    in
-    let kmods_plus = List.fold_left (fun kmods_plus km ->
-        let {km_top} = km in
-        let _ = List.iter (fun e ->
+        in
+    let fold_n_cvt_callb =
+        {
+            kcb_fold_ktyp = Some(fold_n_cvt_ktyp);
+            kcb_fold_kexp = Some(fold_n_cvt_kexp);
+            kcb_fold_atom = None;
+            kcb_fold_result = 0
+        }
+        in
+
+    List.iter (fun {km_top} ->
+        List.iter (fun e ->
             match e with
             | KDefVariant {contents={kvar_name; kvar_flags; kvar_loc}} ->
                 if not (List.mem VariantRecursive kvar_flags) then ()
                 else
                     let i = create_ctyp_decl kvar_name true kvar_loc in
                     all_saved_rec_vars := Env.add kvar_name i !all_saved_rec_vars
-            | _ -> ()) km_top in
-        let _ = List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) km_top in
-        let c_types = (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl) @ (List.rev !top_typfun_decl) in
-        (km, c_types) :: kmods_plus) [] kmods
-        in
-    List.rev kmods_plus
+            | _ -> ()) km_top) kmods;
+    List.iter (fun {km_top} ->
+        List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) km_top) kmods;
+    let all_c_types = (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl) @ (List.rev !top_typfun_decl) in
+    List.map (fun km -> (km, all_c_types)) kmods;

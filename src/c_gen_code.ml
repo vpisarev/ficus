@@ -236,11 +236,12 @@ let gen_main ismain mod_names loc =
 let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
     (*let user_exceptions_ofs = ref 0 in
     let top_exn_vals = ref ([]: (id_t*cexp_t) list) in*)
-    let {km_cname; km_top; km_main} = kmod in
+    let {km_name; km_cname; km_top; km_main} = kmod in
+    let mod_sc = [ScModule km_name] in
     let top_code = km_top in
     let top_ccode = ref ([]: cstmt_t list) in
     let fwd_fdecls = ref ([]: cstmt_t list) in
-    let defined_funcs = ref (IdSet.empty) in
+    let defined_syms = ref (IdSet.empty) in
     let i2e = ref (Env.empty: cexp_t Env.t) in
     let u1vals = find_single_use_vals top_code in
     let block_stack = ref ([]: block_ctx_t list) in
@@ -249,10 +250,13 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
 
     let make_fx_status loc = make_id_t_exp fx_status CTypCInt loc in
 
-    let ensure_func_is_defined_or_declared f loc =
-        if (IdSet.mem f !defined_funcs) then () else
-            (defined_funcs := IdSet.add f !defined_funcs;
-            fwd_fdecls := CDefForwardFun (f, loc) :: !fwd_fdecls)
+    let add_to_defined f =
+        defined_syms := IdSet.add f !defined_syms
+    in
+    let ensure_sym_is_defined_or_declared f loc =
+        if (IdSet.mem f !defined_syms) then () else
+            (add_to_defined f;
+            fwd_fdecls := CDefForwardSym (f, loc) :: !fwd_fdecls)
     in
 
     let check_inside_loop is_break loc =
@@ -462,6 +466,9 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
             let e = make_id_exp i loc in
             let e = (match cinfo_ i loc with
             | CVal {cv_typ; cv_flags} ->
+                if (is_val_global cv_flags) || (get_val_ctor cv_flags) <> noid then
+                    ensure_sym_is_defined_or_declared i loc
+                else ();
                 (match cv_typ with
                 | CTypRawPtr(_, ctyp2) when ctyp2 = cv_typ -> cexp_deref e
                 | _ -> e)
@@ -1434,8 +1441,8 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                 in
             let (f_exp, have_out_arg, fv_args, is_nothrow, ccode) = match ci with
                 | CFun cf ->
-                    let _ = ensure_func_is_defined_or_declared f kloc in
                     let {cf_args; cf_rt; cf_flags; cf_cname; cf_loc} = !cf in
+                    let _ = ensure_sym_is_defined_or_declared f kloc in
                     let is_nothrow = List.mem FunNoThrow cf_flags in
                     let (_, ret_id, _, have_fv_arg) = unpack_fun_args cf_args cf_rt is_nothrow in
                     let f_exp = make_id_exp f cf_loc in
@@ -1453,7 +1460,9 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                                 "(except for the case when function calls itself)")
                         in
                     (f_exp, ret_id <> noid, fv_args, is_nothrow, ccode)
-                | CVal {cv_typ; cv_loc} ->
+                | CVal {cv_typ; cv_flags; cv_loc} ->
+                    let _ = if (is_val_global cv_flags) || (get_val_ctor cv_flags) <> noid then
+                        ensure_sym_is_defined_or_declared f kloc else () in
                     let (fclo_exp, ccode) = id2cexp f false ccode kloc in
                     let ftyp = deref_ktyp (get_idk_ktyp f kloc) kloc in
                     let cftyp = C_gen_types.ktyp2ctyp ftyp kloc in
@@ -1501,6 +1510,7 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
             let fp_prefix = ((pp_id2str f) ^ "_fp") in
             if args = [] && make_fp = noid then
                 let fp_id = gen_temp_idc fp_prefix in
+                let _ = ensure_sym_is_defined_or_declared f kloc in
                 let f_exp = make_id_exp f kloc in
                 let e0 = CExpInit([f_exp; (make_nullptr kloc)], (ctyp, kloc)) in
                 let (fp_exp, ccode) = create_cdefval fp_id ctyp [] "" (Some e0) ccode kloc in
@@ -2217,6 +2227,8 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
             (false, dummy_exp, ccode)
         | KDefVal(i, e2, _) ->
             let {kv_typ; kv_cname; kv_flags} = get_kval i kloc in
+            let _ = if (is_val_global kv_flags) || (get_val_ctor kv_flags) <> noid then
+                add_to_defined i else () in
             let {ktp_ptr; ktp_complex; ktp_scalar} = K_annotate_types.get_ktprops kv_typ kloc in
             let ctyp = C_gen_types.ktyp2ctyp kv_typ kloc in
             let bctx = curr_block_ctx kloc in
@@ -2272,7 +2284,7 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                                 (Some data_init) [] kloc in
                             ((cexp_get_addr data_exp), delta_ccode)
                         in
-                    let (_, delta_ccode) = create_cdefval i ctyp [ValPrivate] "" (Some init_exp) delta_ccode kloc in
+                    let (_, delta_ccode) = create_cdefval i ctyp [ValGlobal mod_sc] "" (Some init_exp) delta_ccode kloc in
                     (* just put initialization into the global scope, no destructors are needed *)
                     let _ = bctx.bctx_prologue <- delta_ccode @ bctx.bctx_prologue in
                     ccode
@@ -2367,8 +2379,8 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
             let {kf_name; kf_rt; kf_closure; kf_body; kf_cname; kf_flags; kf_loc} = !kf in
             let {kci_arg; kci_fcv_t} = kf_closure in
             let ctor = get_fun_ctor kf_flags in
-            let _ = if kci_arg = noid then () else ensure_func_is_defined_or_declared kf_name kf_loc in
-            let _ = defined_funcs := IdSet.add kf_name !defined_funcs in
+            let _ = if kci_arg = noid then () else ensure_sym_is_defined_or_declared kf_name kf_loc in
+            let _ = add_to_defined kf_name in
             let _ = new_block_ctx (BlockKind_Fun kf_name) kloc in
             let (args, rt, is_nothrow, cf) = match (cinfo_ kf_name kf_loc) with
                 | CFun ({contents={cf_args; cf_flags; cf_rt}} as cf) ->

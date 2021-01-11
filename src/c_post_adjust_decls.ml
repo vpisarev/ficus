@@ -57,7 +57,7 @@ let adjust_decls_ cmod =
             | _ -> true) ->
             local_decls := CDefVal(t, n, None, loc) :: !local_decls;
             CExp (CExpBinOp (COpAssign, (make_id_t_exp n t loc), e, (CTypVoid, loc)))
-        | CDefVal _ | CDefForwardFun _ | CDefForwardTyp _ | CDefTyp _
+        | CDefVal _ | CDefForwardSym _ | CDefForwardTyp _ | CDefTyp _
         | CDefEnum _ | CMacroDef _ | CMacroUndef _ | CMacroIf _
         | CMacroInclude _ | CMacroPragma _ | CExp (CExpCCode _) -> s
         | CDefFun cf ->

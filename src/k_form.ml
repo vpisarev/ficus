@@ -245,6 +245,7 @@ let get_kexp_loc e = let (t, l) = (get_kexp_ctx e) in l
 let get_kexp_start e = let l = get_kexp_loc e in get_start_loc l
 let get_kexp_end e = let l = get_kexp_loc e in get_end_loc l
 
+let is_val_global flags = List.exists (function | ValGlobal _ -> true | _ -> false) flags
 let get_val_scope flags =
     match (List.find_opt (function | ValGlobal _ -> true | _ -> false) flags) with
     | Some(ValGlobal(sc)) -> sc

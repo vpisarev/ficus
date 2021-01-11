@@ -160,7 +160,9 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
         | _ -> (match (cinfo_ n loc) with
             | CTyp {contents={ct_typ=CTypRawPtr(_, CTypStruct((Some struct_id), _))}} ->
                 pstr "struct "; pprint_id struct_id loc; pstr "*"
-            | _ -> pprint_id n loc));
+            | _ ->
+                if prefix0 <> "" then (pstr prefix0; pspace()) else ();
+                pprint_id n loc));
         pr_id_opt()
     | CTypLabel -> pstr "/*<label>*/"; pr_id_opt()
     | CTypAny -> pstr "void"; pr_id_opt())
@@ -377,8 +379,16 @@ and pprint_cstmt s =
         ovbox(); pstr "{";
         List.iter (fun s -> pbreak(); pprint_cstmt s) cf_body;
         cbox(); pbreak(); pstr "}"; pbreak()
-    | CDefForwardFun (cf_name, cf_loc) ->
-        pprint_fun_hdr cf_name true cf_loc true
+    | CDefForwardSym (cf_name, cf_loc) ->
+        (match (cinfo_ cf_name cf_loc) with
+        | CFun _ -> pprint_fun_hdr cf_name true cf_loc true
+        | CVal {cv_typ} ->
+            ohbox();
+            pprint_ctyp__ "extern" cv_typ (Some cf_name) true cf_loc;
+            pstr ";";
+            cbox()
+        | _ ->
+            raise_compile_err cf_loc (sprintf "the forward declaration of %s does not reference a function or a value" (pp_id2str cf_name)))
     | CDefTyp ct ->
         let { ct_name; ct_typ; ct_loc } = !ct in
         pprint_ctyp__ "typedef " ct_typ (Some ct_name) true ct_loc; pstr ";"; pbreak()
