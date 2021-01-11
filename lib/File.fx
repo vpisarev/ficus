@@ -64,7 +64,7 @@ fun isEOF(f: file_t): bool = ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
-    *fx_result = feof((FILE*)(f->ptr)) != 0;
+    *fx_result = feof((FILE*)(f->handle->ptr)) != 0;
     return FX_OK;
 }
 
@@ -82,7 +82,7 @@ fun tell(f: file_t): int64 = ccode
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     long code = ftell((FILE*)(f->handle->ptr));
     if(code == -1) FX_FAST_THROW_RET(FX_EXN_IOError);
-    *fx_result = (int64)code;
+    *fx_result = (int64_t)code;
     return FX_OK;
 }
 

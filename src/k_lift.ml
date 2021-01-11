@@ -450,8 +450,9 @@ let lift_all kmods =
                 let {kf_name; kf_args; kf_rt; kf_closure={kci_make_fp=make_fp}; kf_flags; kf_scope; kf_loc} = !kf in
                 let kf_typ = get_kf_typ kf_args kf_rt in
                 let (_, orig_freevars) = get_closure_freevars kf_name kf_loc in
-                if orig_freevars = [] && not (is_fun_ctor kf_flags) then
-                    (curr_subst_env := Env.add kf_name (noid, noid, (Some kf_typ)) !curr_subst_env;
+                if orig_freevars = [] then
+                    (if is_fun_ctor kf_flags then () else
+                        curr_subst_env := Env.add kf_name (noid, noid, (Some kf_typ)) !curr_subst_env;
                     code)
                 else
                     let cl_name = dup_idk kf_name in

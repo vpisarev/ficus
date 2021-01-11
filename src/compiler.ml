@@ -172,7 +172,7 @@ let k_optimize_all kmods =
     temp_kmods := K_mangle.mangle_all !temp_kmods;
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
     (*temp_kmods := K_inline.find_recursive_funcs !temp_kmods;*)
-    (*temp_kmods := K_annotate_types.annotate_types !temp_kmods;*)
+    temp_kmods := K_annotate_types.annotate_types !temp_kmods;
     (!temp_kmods, !compile_errs = [])
 
 let k2c_all kmods =
