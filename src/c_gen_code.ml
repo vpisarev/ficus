@@ -2638,6 +2638,10 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
         in
     let ccode = if bctx_label_used = 0 then ccode else (CStmtLabel(bctx_label, end_loc)) :: ccode in
     let ccode = filter_out_nops ccode in
+    (* [TODO] in principle, non-main modules may contain some expressions at the top level,
+       which will use some temporary values, and those values should be initialized and deinitialized
+       inside init_...(), rather than deinit_...(), so the branch else should be made
+       more complex; it has to split bctx_cleanup into 2 parts *)
     let (ccode, deinit_ccode) = if km_main then ((bctx_cleanup @ ccode), []) else (ccode, bctx_cleanup) in
     let ccode = CStmtReturn ((Some status_exp), end_loc) :: ccode in
     let init_cname = "fx_init_" ^ km_cname in

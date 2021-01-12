@@ -2177,14 +2177,30 @@ and check_cases cases inptyp outtyp env sc loc =
         let (plist1, env1, capt1) = List.fold_left (fun (plist1, env1, capt1) p ->
             let (p2, env2, capt2, _) = check_pat p inptyp env1 capt1 IdSet.empty case_sc false false false in
             (p2 :: plist1, env2, capt2)) ([], env, IdSet.empty) plist in
-        if not (IdSet.is_empty capt1) && (List.length plist1) > 1 then
-            raise_compile_err loc "captured variables may not be used in the case of several alternatives"
-        else
-            let (e1_typ, e1_loc) = get_exp_ctx e in
-            unify e1_typ outtyp e1_loc
-                "the case expression type does not match the whole expression type (or the type of previous case(s))";
-            ((List.rev plist1), (check_exp e env1 case_sc))
-        ) cases
+        let (plist1, env1, capt1) = if (List.length plist1) = 1 then (plist1, env1, capt1) else
+            let _ = if (IdSet.is_empty capt1) then () else
+                raise_compile_err loc "captured variables may not be used in the case of multiple alternatives ('|' pattern)" in
+            let temp_id = gen_temp_id "p" in
+            let temp_dv = { dv_name=temp_id; dv_typ=inptyp; dv_flags=[ValTemp]; dv_scope=sc; dv_loc=loc } in
+            let _ = set_id_entry temp_id (IdVal temp_dv) in
+            let capt1 = IdSet.add temp_id capt1 in
+            let env1 = add_id_to_env temp_id temp_id env1 in
+            let temp_pat = PatIdent(temp_id, loc) in
+            let temp_id_exp = ExpIdent(temp_id, (inptyp, loc)) in
+            let bool_ctx = (TypBool, loc) in
+            let when_cases = List.map (fun p ->
+                match p with
+                | PatAny _ | PatIdent _ ->
+                    raise_compile_err loc "in the case of multiple alternatives ('|' pattern) '_' or indent cannot be used"
+                | _ -> ([p], ExpLit((LitBool true), bool_ctx))) plist1 in
+            let when_cases = when_cases @ [([PatAny(loc)], ExpLit((LitBool false), bool_ctx))] in
+            let when_pat = PatWhen(temp_pat, ExpMatch(temp_id_exp, when_cases, bool_ctx), loc) in
+            ([when_pat], env1, capt1)
+            in
+        let (e1_typ, e1_loc) = get_exp_ctx e in
+        unify e1_typ outtyp e1_loc
+            "the case expression type does not match the whole expression type (or the type of previous case(s))";
+        ((List.rev plist1), (check_exp e env1 case_sc))) cases
 
 and check_mod m =
     let minfo = !(get_module m) in
