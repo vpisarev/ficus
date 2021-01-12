@@ -3,8 +3,6 @@
     See ficus/LICENSE for the licensing terms
 */
 
-import List
-
 val argv =
 {
     pure nothrow fun argc(): int = ccode { return fx_argc() }

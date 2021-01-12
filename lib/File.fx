@@ -4,15 +4,13 @@
 */
 
 // C-style operations on files
-import String
-
 ccode { #include <stdio.h> }
 
 val SEEK_SET: int = ccode { (int)SEEK_SET }
 val SEEK_CURR: int = ccode { (int)SEEK_CUR }
 val SEEK_END: int = ccode { (int)SEEK_END }
 
-type file_t = { handle: cptr }
+module type file_t = { handle: cptr }
 
 fun get_stdstream(i: int): file_t = ccode
 {
