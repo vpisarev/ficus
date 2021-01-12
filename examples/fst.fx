@@ -1,5 +1,5 @@
 // the first test script
-import testmod, Math, List
+import testmod, Math
 
 val str = f"
 привет! 你好吗?

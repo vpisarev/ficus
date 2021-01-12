@@ -89,7 +89,7 @@ let make_variant_type (targs, tname) var_elems0 is_record is_mod_typ =
             "syntax error: variant tag '%s' does not start with a capital latin letter" n),
             pos0, pos1))) var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
-               dvar_flags={(default_typ_flags()) with var_flag_record=is_record};
+               dvar_flags={(default_var_flags()) with var_flag_record=is_record; var_flag_module=is_mod_typ};
                dvar_cases=var_elems; dvar_constr=[];
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
@@ -357,8 +357,12 @@ simple_type_decl:
         | TypRecord _ ->
             make_variant_type (targs, i) (((id2str i), dt_body) :: []) true $1
         | _ ->
+            if $1 = noid then () else
+                raise (SyntaxError
+                    ("type alias cannot be a module type; it should be a record or variant",
+                    Parsing.symbol_start_pos(),
+                    Parsing.symbol_end_pos()));
             let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_finalized=false;
-                       dt_flags={(default_typ_flags()) with typ_flag_module=$1};
                        dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
             DefTyp (ref dt)
     }
@@ -376,8 +380,8 @@ simple_type_decl:
     }
 
 typ_attr:
-| TYPE { false }
-| MODULE TYPE { true }
+| TYPE { noid }
+| MODULE TYPE { !parser_ctx_module }
 
 variant_decl_start:
 | B_IDENT { $1 }

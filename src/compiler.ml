@@ -32,7 +32,13 @@ let make_lexer fname =
     let prev_lnum = ref 0 in
     (* the standard preamble *)
     let tokenbuf = (if bare_name = "Builtins" then ref [] else
-        ref [Parser.FROM; Parser.B_IDENT "Builtins"; Parser.IMPORT; Parser.STAR; Parser.SEMICOLON]) in
+        let from_builtins_import_all = [Parser.FROM; Parser.B_IDENT "Builtins"; Parser.IMPORT; Parser.STAR; Parser.SEMICOLON] in
+        let import_list = if bare_name = "List" then []
+            else [Parser.B_IMPORT; Parser.B_IDENT "List"; Parser.SEMICOLON] in
+        let import_string = if bare_name = "List" || bare_name = "String" then []
+            else [Parser.B_IMPORT; Parser.B_IDENT "String"; Parser.SEMICOLON] in
+        let import_basics = from_builtins_import_all @ import_list @ import_string in
+        ref import_basics) in
     let print_token lexbuf t =
       (let s = Lexer.token2str t in
        let pos_lnum = lexbuf.lex_curr_p.pos_lnum in
@@ -50,12 +56,13 @@ let make_lexer fname =
                 | _ -> failwith "unexpected end of stream")
         in (if options.print_tokens then print_token lexbuf t else ()); t)
 
-let parse_file fname inc_dirs =
+let parse_file mname_id fname inc_dirs =
     let fname_id = get_id fname in
     let lexer = make_lexer fname in
     let use_stdin = fname = "stdin" in
     let inchan = if use_stdin then stdin else open_in fname in
     let l = Lexing.from_channel inchan in
+    let _ = (parser_ctx_module := mname_id) in
     let _ = (parser_ctx_file := fname_id) in
     let _ = (parser_ctx_deps := []) in
     let _ = (parser_ctx_inc_dirs := inc_dirs) in
@@ -88,7 +95,7 @@ let parse_all _fname0 =
         (try
             let dir1 = Filename.dirname mfname in
             let inc_dirs = (if dir1 = dir0 then [] else [dir1]) @ inc_dirs0 in
-            let defs = parse_file mfname inc_dirs in
+            let defs = parse_file mname mfname inc_dirs in
             let deps = !parser_ctx_deps in
             let _ = (!minfo.dm_defs <- defs) in
             let _ = (!minfo.dm_parsed <- true) in

@@ -1208,16 +1208,45 @@ and check_exp e env sc =
         let tl = List.map (fun e -> get_exp_typ e) el in
         let _ = unify etyp (TypTuple tl) eloc "improper type of tuple elements or the number of elements" in
         ExpMkTuple((List.map (fun e -> check_exp e env sc) el), ctx)
-    | ExpCall(f, args, _) ->
+    | ExpCall(f0, args0, _) ->
         (* [TODO] implement more sophisticated algorithm; try to look for possible overloaded functions first;
            if there is just one obvious match, take it first and use to figure out the argument types *)
+        let f = dup_exp f0 in
+        let args = List.map dup_exp args0 in
         let arg_typs = List.map (fun a -> get_exp_typ a) args in
         let f_expected_typ = TypFun(arg_typs, etyp) in
         let (f_real_typ, floc) = get_exp_ctx f in
         let _ = unify f_real_typ f_expected_typ floc "the real and expected function type do not match" in
         let new_args = List.map (fun a -> check_exp a env sc) args in
-        let new_f = check_exp f env sc in
-        ExpCall(new_f, new_args, ctx)
+        (try
+            let new_f = check_exp f env sc in
+            ExpCall(new_f, new_args, ctx)
+        with (CompileError _) as ex ->
+            (* fallback for so called "module types": if we have expression like
+                some_exp.foo(args) where some_exp's type is "module type"
+                (i.e. "list", "string" or some user type declared as "module type = ...")
+                then the call is transformed to <Module>.foo(some_exp, args)
+            *)
+            (match f0 with
+            | ExpMem(r0, (ExpIdent (mem_f, _) as mem_f_exp), mem_ctx) ->
+                let r = check_exp (dup_exp r0) env sc in
+                let r_t = get_exp_typ r in
+                let mstr = match (deref_typ r_t) with
+                    | TypList _ -> "List"
+                    | TypString -> "String"
+                    | TypApp(_, tn) ->
+                        (match (id_info tn) with
+                        | IdVariant {contents={dvar_flags={var_flag_module=m}}} when m <> noid -> pp_id2str m
+                        | _ -> "")
+                    | _ -> ""
+                    in
+                let m_id = if mstr <> "" then (get_id mstr) else raise ex in
+                let (ftyp, floc) = mem_ctx in
+                let new_f = ExpMem(ExpIdent(m_id, (make_new_typ(), floc)), mem_f_exp, mem_ctx) in
+                let new_exp = ExpCall(new_f, r0 :: args0, ctx) in
+                check_exp new_exp env sc
+            | _ -> raise ex)
+        )
     | ExpAt(arr, border, interp, idxs, _) ->
         let new_arr = check_exp arr env sc in
         let (new_atyp, new_aloc) = get_exp_ctx new_arr in
@@ -1720,9 +1749,9 @@ and reg_types eseq env sc =
     List.fold_left (fun env e ->
         match e with
         | DefTyp dt ->
-            let {dt_name; dt_templ_args; dt_typ; dt_flags; dt_loc} = !dt in
+            let {dt_name; dt_templ_args; dt_typ; dt_loc} = !dt in
             let dt_name1 = dup_id dt_name in
-            dt := { dt_name=dt_name1; dt_templ_args; dt_typ; dt_finalized=false; dt_flags; dt_scope=sc; dt_loc };
+            dt := { dt_name=dt_name1; dt_templ_args; dt_typ; dt_finalized=false; dt_scope=sc; dt_loc };
             set_id_entry dt_name1 (IdTyp dt);
             add_id_to_env_check dt_name dt_name1 env (check_for_duplicate_typ dt_name sc dt_loc)
         | DefVariant dvar ->
@@ -1755,12 +1784,12 @@ and check_types eseq env sc =
     List.fold_left (fun env e ->
         match e with
         | DefTyp dt ->
-            let {dt_name; dt_templ_args; dt_typ; dt_flags; dt_scope; dt_loc} = !dt in
+            let {dt_name; dt_templ_args; dt_typ; dt_scope; dt_loc} = !dt in
             let env1 = List.fold_left (fun env1 t_arg ->
                 add_typ_to_env t_arg (TypApp([], t_arg)) env1) env dt_templ_args in
             let dt_typ = deref_typ (check_typ dt_typ env1 dt_scope dt_loc) in
             let dt_typ = finalize_record_typ dt_typ dt_loc in
-            dt := {dt_name; dt_templ_args; dt_typ=dt_typ; dt_flags; dt_finalized=true; dt_scope; dt_loc};
+            dt := {dt_name; dt_templ_args; dt_typ=dt_typ; dt_finalized=true; dt_scope; dt_loc};
             (* in the case of record we add the record constructor function
                to support the constructions 'record_name { f1=e1, f2=e2, ..., fn=en }' gracefully *)
             (match dt_typ with
