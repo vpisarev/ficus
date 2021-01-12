@@ -80,7 +80,7 @@ let good_variant_name s =
     let c0 = String.get s 0 in
     ('A' <= c0 && c0 <= 'Z') || (String.contains s '.')
 
-let make_variant_type (targs, tname) var_elems0 is_record =
+let make_variant_type (targs, tname) var_elems0 is_record is_mod_typ =
     let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
     let loc = make_loc(pos0, pos1) in
     let var_elems = List.map (fun (n, t) ->
@@ -89,7 +89,7 @@ let make_variant_type (targs, tname) var_elems0 is_record =
             "syntax error: variant tag '%s' does not start with a capital latin letter" n),
             pos0, pos1))) var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
-               dvar_flags=(if is_record then [VariantRecord] else []);
+               dvar_flags={(default_typ_flags()) with var_flag_record=is_record};
                dvar_cases=var_elems; dvar_constr=[];
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
@@ -199,7 +199,7 @@ let make_chained_cmp chain = match chain with
 /* keywords */
 %token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION EXTENDS
 %token FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
-%token MATCH NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
+%token MATCH MODULE NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
 %token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE WITH
 
 /* reserved/internal-use keywords */
@@ -349,30 +349,35 @@ decl:
     }
 
 simple_type_decl:
-| TYPE type_lhs EQUAL typespec_or_record
+| typ_attr type_lhs EQUAL typespec_or_record
     {
         let (targs, i) = $2 in
         let dt_body = $4 in
         match dt_body with
         | TypRecord _ ->
-            make_variant_type (targs, i) (((id2str i), dt_body) :: []) true
+            make_variant_type (targs, i) (((id2str i), dt_body) :: []) true $1
         | _ ->
-            let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_scope=ScGlobal :: [];
-                       dt_finalized=false; dt_loc=curr_loc() } in
+            let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_finalized=false;
+                       dt_flags={(default_typ_flags()) with typ_flag_module=$1};
+                       dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
             DefTyp (ref dt)
     }
-| TYPE type_lhs EQUAL variant_decl_start BITWISE_OR variant_elems_
+| typ_attr type_lhs EQUAL variant_decl_start BITWISE_OR variant_elems_
     {
-        make_variant_type $2 (($4, TypVoid) :: (List.rev $6)) false
+        make_variant_type $2 (($4, TypVoid) :: (List.rev $6)) false $1
     }
-| TYPE type_lhs EQUAL variant_decl_start COLON typespec_or_record BITWISE_OR variant_elems_
+| typ_attr type_lhs EQUAL variant_decl_start COLON typespec_or_record BITWISE_OR variant_elems_
     {
-        make_variant_type $2 (($4, $6) :: (List.rev $8)) false
+        make_variant_type $2 (($4, $6) :: (List.rev $8)) false $1
     }
-| TYPE type_lhs EQUAL variant_decl_start COLON typespec_or_record
+| typ_attr type_lhs EQUAL variant_decl_start COLON typespec_or_record
     {
-        make_variant_type $2 (($4, $6) :: []) false
+        make_variant_type $2 (($4, $6) :: []) false $1
     }
+
+typ_attr:
+| TYPE { false }
+| MODULE TYPE { true }
 
 variant_decl_start:
 | B_IDENT { $1 }

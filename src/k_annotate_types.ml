@@ -102,7 +102,7 @@ let find_recursive top_code =
             match (kinfo_ n noloc) with
             | KVariant kvar ->
                 let {kvar_flags} = !kvar in
-                kvar := {!kvar with kvar_flags=VariantRecursive :: kvar_flags}
+                kvar := {!kvar with kvar_flags={kvar_flags with var_flag_recursive=true}}
             | _ -> ()
         else
             ()) all_typs
@@ -159,7 +159,7 @@ let get_ktprops t loc =
             (match kvar_props with
             | Some(kvp) -> kvp
             | _ ->
-                let kvp = (if List.mem VariantRecursive kvar_flags then
+                let kvp = (if kvar_flags.var_flag_recursive then
                     { ktp_complex=true; ktp_scalar=false; ktp_ptr=true; ktp_pass_by_ref=false;
                       ktp_custom_free=true; ktp_custom_copy=false }
                 else
@@ -206,7 +206,7 @@ let annotate_types kmods =
             let {kvar_name; kvar_cases; kvar_constr; kvar_loc} = !kvar in
             let _ = get_ktprops (KTypName kvar_name) kvar_loc in
             let {kvar_flags} = !kvar in
-            let is_recursive = List.mem VariantRecursive kvar_flags in
+            let is_recursive = kvar_flags.var_flag_recursive in
             let ncases = List.length kvar_cases in
             let recursive_option = match kvar_cases with
                     | (_, KTypVoid) :: (_, _) :: [] -> is_recursive
@@ -219,9 +219,9 @@ let annotate_types kmods =
                         let {kf_flags} = !kf in
                         kf := {!kf with kf_flags=FunNoThrow :: kf_flags}
                     | _ -> ()) kvar_constr;
-            kvar := {!kvar with kvar_flags =
-                (if recursive_option then [VariantRecOpt] else []) @
-                (if no_tag then [VariantNoTag] else []) @ kvar_flags}
+            kvar := {!kvar with kvar_flags = {kvar_flags with
+                var_flag_rec_opt = recursive_option;
+                var_flag_have_tag = not no_tag}}
         | KDefTyp {contents={kt_name; kt_loc}} ->
             ignore(get_ktprops (KTypName kt_name) kt_loc)
         | _ -> ()) top_code;

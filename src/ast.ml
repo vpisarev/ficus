@@ -180,10 +180,13 @@ type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
 type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunReallyNoThrow
     | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV | FunRecursive
-type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantRecOpt
+(*type variant_flag_t = VariantRecord | VariantRecursive | VariantNoTag | VariantRecOpt*)
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForMakeTuple | ForUnzip | ForFold | ForNested
 type border_t = BorderNone | BorderClip | BorderZero
 type interpolate_t = InterpNone | InterpLinear
+
+type typ_flags_t = { typ_flag_module: bool; var_flag_record: bool; var_flag_recursive: bool; var_flag_have_tag: bool; var_flag_rec_opt: bool }
+let default_typ_flags() = {typ_flag_module=false; var_flag_record=false; var_flag_recursive=false; var_flag_have_tag=true; var_flag_rec_opt=false}
 
 type ctx_t = typ_t * loc_t
 
@@ -246,7 +249,7 @@ and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; d
                  df_templ_inst: id_t list; df_env: env_t }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
-                 dt_finalized: bool; dt_scope: scope_t list; dt_loc: loc_t }
+                 dt_finalized: bool; dt_flags: typ_flags_t; dt_scope: scope_t list; dt_loc: loc_t }
 (* variants are represented in a seemingly complex but logical way;
    the structure contains the list of variant cases (dvar_cases, a list of (id_t, typ_t) pairs),
    as well as the variant constructors (dvar_constr). Think of the id_t's in dvar_cases
@@ -263,7 +266,7 @@ and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
    to the corresponding df_templ_inst' lists of the generic constructors.
 *)
 and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_alias: typ_t;
-                     dvar_flags: variant_flag_t list; mutable dvar_cases: (id_t * typ_t) list;
+                     dvar_flags: typ_flags_t; mutable dvar_cases: (id_t * typ_t) list;
                      mutable dvar_constr: id_t list; mutable dvar_templ_inst: id_t list;
                      dvar_scope: scope_t list; dvar_loc: loc_t }
 and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_typ: typ_t;

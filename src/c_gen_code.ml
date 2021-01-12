@@ -1303,8 +1303,8 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                 let extract_ctag = match ktyp with
                     | KTypName tn -> (match (kinfo_ tn kloc) with
                         | KVariant {contents={kvar_flags; kvar_cases}} ->
-                            let have_tag = not (List.mem VariantNoTag kvar_flags) in
-                            let is_recursive = List.mem VariantRecursive kvar_flags in
+                            let have_tag = kvar_flags.var_flag_have_tag in
+                            let is_recursive = kvar_flags.var_flag_recursive in
                             let ncases = List.length kvar_cases in
                             if have_tag then extract_ctag
                             else if ncases = 1 && not is_recursive then
@@ -2262,7 +2262,7 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                     let tag_exp = make_id_t_exp ctor_id CTypCInt kloc in
                     let is_null = (match kv_typ with
                         | KTypName tn -> (match (kinfo_ tn kloc) with
-                            | KVariant {contents={kvar_flags}} -> List.mem VariantRecOpt kvar_flags
+                            | KVariant {contents={kvar_flags}} -> kvar_flags.var_flag_rec_opt
                             | _ -> false)
                         | _ -> false)
                         in
@@ -2463,8 +2463,8 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                         | KTypName vn ->
                             (match (kinfo_ vn kf_loc) with
                             | KVariant {contents={kvar_flags}} ->
-                                let have_tag = not (List.mem VariantNoTag kvar_flags) in
-                                let is_recursive = List.mem VariantRecursive kvar_flags in
+                                let have_tag = kvar_flags.var_flag_have_tag in
+                                let is_recursive = kvar_flags.var_flag_recursive in
                                 (have_tag, is_recursive)
                             | _ -> raise_compile_err kf_loc
                                 (sprintf "cgen: the return type of variant constructor %s is not variant" (id2str kf_name)))

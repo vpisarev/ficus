@@ -175,7 +175,7 @@ let rec pprint_exp e =
         pspace(); pstr "="; pspace(); pprint_typ dt_typ dt_loc; cbox()
     | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases;
                                 dvar_constr; dvar_flags; dvar_templ_inst; dvar_loc} } ->
-        obox(); if (List.mem VariantRecord dvar_flags) then pstr "TYPE RECORD" else pstr "TYPE";
+        obox(); if dvar_flags.var_flag_record then pstr "TYPE RECORD" else pstr "TYPE";
         pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name; pstr "<";
         pprint_typ dvar_alias dvar_loc; pstr ">";
         pspace(); pstr "="; pspace();

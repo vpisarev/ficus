@@ -196,25 +196,22 @@ and walk_exp e callb =
         DefVal((walk_pat_ p), (walk_exp_ v), flags, loc)
     | DefFun(df) ->
         if !df.df_templ_args != [] then e else
-        (let { df_name; df_templ_args; df_args; df_typ; df_body;
-               df_flags; df_scope; df_loc; df_templ_inst; df_env } = !df in
-        df := { df_name; df_templ_args; df_args=(walk_plist_ df_args); df_typ=(walk_typ_ df_typ);
-                df_body=(walk_exp_ df_body); df_flags; df_scope; df_loc; df_templ_inst; df_env };
+        (let { df_args; df_typ; df_body } = !df in
+        df := { !df with df_args=(walk_plist_ df_args); df_typ=(walk_typ_ df_typ);
+                df_body=(walk_exp_ df_body) };
         e)
     | DefExn(de) ->
-        let { dexn_name; dexn_typ; dexn_scope; dexn_loc } = !de in
-        de := { dexn_name; dexn_typ=(walk_typ_ dexn_typ); dexn_scope; dexn_loc };
+        let { dexn_typ } = !de in
+        de := { !de with dexn_typ=(walk_typ_ dexn_typ) };
         e
     | DefTyp(dt) ->
-        let { dt_name; dt_templ_args; dt_typ; dt_finalized; dt_scope; dt_loc } = !dt in
-        dt := { dt_name; dt_templ_args; dt_typ=(walk_typ_ dt_typ); dt_finalized; dt_scope; dt_loc };
+        let { dt_typ } = !dt in
+        dt := { !dt with dt_typ=(walk_typ_ dt_typ) };
         e
     | DefVariant(dvar) ->
-        let { dvar_name; dvar_templ_args; dvar_alias; dvar_flags; dvar_cases;
-               dvar_constr; dvar_templ_inst; dvar_scope; dvar_loc } = !dvar in
-        dvar := { dvar_name; dvar_templ_args; dvar_alias=(walk_typ_ dvar_alias); dvar_flags;
-                  dvar_cases=(List.map (fun (n, t) -> (n, walk_typ_ t)) dvar_cases);
-                  dvar_constr; dvar_templ_inst; dvar_scope; dvar_loc };
+        let { dvar_alias; dvar_cases } = !dvar in
+        dvar := { !dvar with dvar_alias=(walk_typ_ dvar_alias);
+                  dvar_cases=(List.map (fun (n, t) -> (n, walk_typ_ t)) dvar_cases) };
         e
     | DefClass(dc) -> (* [TODO] *) e
     | DefInterface(di) -> (* [TODO] *) e
@@ -615,7 +612,7 @@ let get_record_elems vn_opt t loc =
             (match (id_info n) with
             | IdVariant {contents={dvar_flags;
                 dvar_cases=(vn0, TypRecord {contents=(relems, true)}) :: []}}
-                when (List.mem VariantRecord dvar_flags) ->
+                when dvar_flags.var_flag_record ->
                 if input_vn = noid || input_vn = (get_orig_id vn0) then ()
                 else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
                     (pp_id2str input_vn) (pp_id2str vn0));
@@ -1723,9 +1720,9 @@ and reg_types eseq env sc =
     List.fold_left (fun env e ->
         match e with
         | DefTyp dt ->
-            let {dt_name; dt_templ_args; dt_typ; dt_loc} = !dt in
+            let {dt_name; dt_templ_args; dt_typ; dt_flags; dt_loc} = !dt in
             let dt_name1 = dup_id dt_name in
-            dt := { dt_name=dt_name1; dt_templ_args; dt_typ; dt_finalized=false; dt_scope=sc; dt_loc };
+            dt := { dt_name=dt_name1; dt_templ_args; dt_typ; dt_finalized=false; dt_flags; dt_scope=sc; dt_loc };
             set_id_entry dt_name1 (IdTyp dt);
             add_id_to_env_check dt_name dt_name1 env (check_for_duplicate_typ dt_name sc dt_loc)
         | DefVariant dvar ->
@@ -1758,12 +1755,12 @@ and check_types eseq env sc =
     List.fold_left (fun env e ->
         match e with
         | DefTyp dt ->
-            let {dt_name; dt_templ_args; dt_typ; dt_scope; dt_loc} = !dt in
+            let {dt_name; dt_templ_args; dt_typ; dt_flags; dt_scope; dt_loc} = !dt in
             let env1 = List.fold_left (fun env1 t_arg ->
                 add_typ_to_env t_arg (TypApp([], t_arg)) env1) env dt_templ_args in
             let dt_typ = deref_typ (check_typ dt_typ env1 dt_scope dt_loc) in
             let dt_typ = finalize_record_typ dt_typ dt_loc in
-            dt := {dt_name; dt_templ_args; dt_typ=dt_typ; dt_finalized=true; dt_scope; dt_loc};
+            dt := {dt_name; dt_templ_args; dt_typ=dt_typ; dt_flags; dt_finalized=true; dt_scope; dt_loc};
             (* in the case of record we add the record constructor function
                to support the constructions 'record_name { f1=e1, f2=e2, ..., fn=en }' gracefully *)
             (match dt_typ with

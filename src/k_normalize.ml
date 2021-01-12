@@ -62,7 +62,7 @@ let typ2ktyp t loc =
         | Some (TypApp([], n)) ->
             (match (id_info n) with
             | IdVariant {contents={dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []; dvar_flags}}
-                when (List.mem VariantRecord dvar_flags) ->
+                when dvar_flags.var_flag_record ->
                 if (List.mem n !id_stack) then
                         raise_compile_err loc
                             (sprintf "the record '%s' directly or indirectly references itself" (id2str n))
@@ -503,7 +503,7 @@ and get_record_elems_k vn_opt t loc =
     | KTypName tn ->
         (match (kinfo_ tn loc) with
         | KVariant {contents={kvar_flags; kvar_cases=(vn0, KTypRecord (_, relems))::[]}}
-            when (List.mem VariantRecord kvar_flags) ->
+            when kvar_flags.var_flag_record ->
                 if input_vn = noid || input_vn = (get_orig_id vn0) then ()
                 else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
                     (pp_id2str input_vn) (pp_id2str vn0));
@@ -961,7 +961,7 @@ and transform_all_types_and_cons elist code sc =
                                 | _ -> raise_compile_err inst_loc
                                     (sprintf "invalid variant type alias '%s'; should be TypApp(_, _)" (id2str inst_name))
                                 in
-                    let code = (match (dvar_cases, (List.mem VariantRecord dvar_flags)) with
+                    let code = (match (dvar_cases, dvar_flags.var_flag_record) with
                     | (((rn, TypRecord {contents=(relems, _)}) :: []), true) ->
                         let rec_elems=List.map (fun (i, t, _) -> (i, typ2ktyp t inst_loc)) relems in
                         let kt = ref { kt_name=inst_name; kt_cname=""; kt_targs=targs; kt_props=None;
