@@ -18,16 +18,15 @@ type options_t =
     mutable print_ast: bool;
     mutable print_k: bool;
     mutable gen_c: bool;
-    mutable write_c: bool;
     mutable make_app: bool;
     mutable run_app: bool;
     mutable filename: string;
-    mutable c_filename: string;
     mutable app_filename: string;
     mutable app_args: string list;
     mutable osname: string;
     mutable compile_by_cpp: bool;
-    mutable build_parentdir: string;
+    mutable build_rootdir: string;
+    mutable build_dir: string;
     mutable cflags: string;
     mutable clibs: string;
 }
@@ -46,16 +45,15 @@ let options =
     print_ast = false;
     print_k = false;
     gen_c = true;
-    write_c = false;
-    make_app = false;
+    make_app = true;
     run_app = false;
     filename = "";
-    c_filename = "";
     app_filename = "";
     app_args = [];
     osname = "*nix";
     compile_by_cpp = false;
-    build_parentdir = ".";
+    build_rootdir = ".";
+    build_dir = "";
     cflags = "";
     clibs = "";
 }
@@ -74,7 +72,6 @@ let parse_options () =
         ("-pr-ast", (Arg.Unit (fun f -> options.print_ast <- true)), "   Print typechecked AST of the parsed files");
         ("-pr-k", (Arg.Unit (fun f -> options.print_k <- true)), "   Print the generated and optimized K-form");
         ("-no-c", (Arg.Unit (fun f -> options.gen_c <- false)), "   Do not generate C code");
-        ("-c", (Arg.Unit (fun f -> options.write_c <- true)), "   Write .c file (by default, if -app or -run are specified, .c file is not stored)");
         ("-app", (Arg.Unit (fun f -> options.make_app <- true)), "   Compile and store application");
         ("-run", (Arg.Unit (fun f -> options.run_app <- true)), "   Compile and run application");
         ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for the most essential ones");
@@ -83,7 +80,7 @@ let parse_options () =
         ("-inline-threshold", (Arg.Int (fun i -> options.inline_thresh <- i)), "<n>   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion");
         ("-o", (Arg.String (fun s -> options.output_name <- s)), "<output_filename>    Output file name");
         ("-I", (Arg.String (fun ipath -> options.include_path <- options.include_path @ [ipath])), "<path>    Add directory to the module search path");
-        ("-B", (Arg.String (fun s -> options.build_parentdir <- s)), "<build_parent_dir> The parent directory where __build__/appname subdirectory will be created");
+        ("-B", (Arg.String (fun s -> options.build_rootdir <- s)), "<build_parent_dir> The parent directory where __build__/appname subdirectory will be created");
         ("-c++", (Arg.Unit (fun f -> options.compile_by_cpp <- true)), "   Use C++ instead of C for compilation");
         ("-cflags", (Arg.String (fun s -> options.cflags <- s)), "<cflags>   Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler (after $FICUS_CFLAGS)");
         ("-clibs", (Arg.String (fun s -> options.clibs <- s)), "<clibs>   Pass the specified libs/linker flags to C/C++ compiler (before $FICUS_LINK_LIBRARIES)");
@@ -97,44 +94,25 @@ let parse_options () =
             options.inline_thresh <- 1
         else ();
 
-        let use_stdin = !_files = [] in
-
         options.filename <- (match !_files with
             | f :: [] -> Utils.normalize_path curr_dir f
-            | [] -> "stdin"
-            | _ -> raise (Arg.Bad "multiple input files are specified"));
+            | _ -> raise (Arg.Bad "there should be exactly one input file"));
 
-        if (options.make_app || options.run_app || options.write_c || options.compile_by_cpp) && not options.gen_c then
+        if (options.make_app || options.run_app || options.compile_by_cpp) && not options.gen_c then
             raise (Arg.Bad "-no-c option cannot be used together with -app, -run, -c or -c++")
         else ();
 
-        if options.gen_c && (not options.make_app) && (not options.run_app) then
-            options.write_c <- true
-        else ();
-
-        let bare_filename = Filename.basename options.filename in
-        let output_name = if options.output_name <> "" then options.output_name else bare_filename in
+        let output_name = Filename.basename options.filename in
         let output_name = Utils.remove_extension output_name in
-        let output_name = Utils.normalize_path curr_dir output_name in
-
-        options.c_filename <-
-            if options.write_c then
-                (if use_stdin && options.output_name = "" then
-                    Utils.normalize_path curr_dir "a.out.c"
-                else
-                    output_name ^ ".c")
-            else
-                Filename.temp_file (Filename.basename output_name) ".c";
+        options.build_rootdir <- Utils.normalize_path
+            (Utils.normalize_path curr_dir options.build_rootdir) "__build__";
+        options.build_dir <- Utils.normalize_path options.build_rootdir output_name;
 
         options.app_filename <-
-            if options.make_app then
-                (if use_stdin && options.output_name = "" then
-                    Utils.normalize_path curr_dir "a.out"
-                else
-                    output_name)
+            if options.output_name <> "" then
+                (Utils.normalize_path curr_dir options.output_name)
             else
-                Filename.temp_file (Filename.basename output_name) "";
-
+                (Utils.normalize_path options.build_dir output_name);
         options.app_args <- List.rev options.app_args;
 
         let ch = Unix.open_process_in "uname" in

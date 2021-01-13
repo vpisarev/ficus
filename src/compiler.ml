@@ -192,21 +192,18 @@ let k2c_all kmods =
     (cmods, !compile_errs = [])
 
 let emit_c_files fname0 cmods =
-    let build_root_dir = Unix.getcwd() in
-    let build_root_dir = Utils.normalize_path build_root_dir "__build__" in
+    let build_root_dir = options.build_rootdir in
     let _ = try Unix.mkdir build_root_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> () in
-    let output_dir = Filename.basename fname0 in
-    let output_dir = Utils.remove_extension output_dir in
-    let output_dir = Utils.normalize_path build_root_dir output_dir in
-    (try Unix.mkdir output_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> ());
+    let build_dir = options.build_dir in
+    (try Unix.mkdir build_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> ());
     let ok = List.fold_left (fun ok cmod ->
         let {cmod_cname; cmod_ccode} = cmod in
         let output_fname = Filename.basename cmod_cname in
         let output_fname = (Utils.remove_extension output_fname) ^ ".c" in
-        let output_fname = Utils.normalize_path output_dir output_fname in
+        let output_fname = Utils.normalize_path build_dir output_fname in
         let ok = if ok then C_pp.pprint_top_to_file output_fname cmod_ccode else ok in
         ok) true cmods in
-    (cmods, output_dir, ok)
+    (cmods, build_dir, ok)
 
 let run_compiler cmods output_dir =
     let opt_level = options.optimize_level in
@@ -240,7 +237,6 @@ let run_compiler cmods output_dir =
 let run_app () =
     let cmd = String.concat " " (options.app_filename :: options.app_args) in
     let ok = (Sys.command cmd) = 0 in
-    if options.make_app then () else Sys.remove options.app_filename;
     ok
 
 let print_all_compile_errs () =
@@ -273,7 +269,7 @@ let process_all fname0 =
             let (cmods, ok) = if ok then k2c_all kmods else ([], false) in
             let (cmods, builddir, ok) = if ok then emit_c_files fname0 cmods else (cmods, ".", ok) in
             let ok = if ok && (options.make_app || options.run_app) then (run_compiler cmods builddir) else ok in
-            (*let ok = if ok && options.run_app then run_app() else ok in*)
+            let ok = if ok && options.run_app then run_app() else ok in
             ok
     with
     | Failure msg -> print_string msg; false
