@@ -133,3 +133,9 @@ let rec fuse_loops code =
         kcb_atom=None
     }
     in List.map (fun e -> fuse_kexp_ e fuse_callb) code
+
+let fuse_loops_all kmods =
+    List.map (fun km ->
+        let {km_top} = km in
+        let new_top = fuse_loops km_top in
+        {km with km_top=new_top}) kmods

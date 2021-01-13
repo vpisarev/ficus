@@ -2329,7 +2329,7 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                             else
                                 (None, assign_e2)
                             in
-                        (ValPrivate :: kv_flags, e0_opt, assign_e2)
+                        (kv_flags, e0_opt, assign_e2)
                         in
                     let (i_exp, delta_ccode) = add_local i ctyp flags e0_opt [] kloc in
                     let ccode = if is_global then (bctx.bctx_prologue <- delta_ccode @ bctx.bctx_prologue; ccode)

@@ -424,3 +424,9 @@ let optimize_idx_checks topcode =
         kcb_atom = None
     } in
     List.map (fun e -> process_kexp e process_callb) topcode
+
+let optimize_idx_checks_all kmods =
+    List.map (fun km ->
+        let {km_top} = km in
+        let new_top = optimize_idx_checks km_top in
+        {km with km_top=new_top}) kmods

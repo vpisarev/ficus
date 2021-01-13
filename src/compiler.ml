@@ -165,20 +165,20 @@ let k_optimize_all kmods =
             (temp_kmods := K_simple_ll.lift !temp_kmods;
             temp_kmods := K_annotate_types.annotate_types !temp_kmods)
         else ();
-        temp_kmods := K_tailrec.tailrec2loops !temp_kmods;
-        (*temp_kmods := K_loop_inv.move_loop_invs !temp_kmods;
-        if options.inline_thresh > 0 then temp_kmods := K_inline.inline_some !temp_kmods else ();*)
-        temp_kmods := K_flatten.flatten !temp_kmods;
-        (*temp_kmods := K_fuse_loops.fuse_loops !temp_kmods;
-        temp_kmods := K_fast_idx.optimize_idx_checks !temp_kmods;*)
+        temp_kmods := K_tailrec.tailrec2loops_all !temp_kmods;
+        temp_kmods := K_loop_inv.move_loop_invs_all !temp_kmods;
+        if options.inline_thresh > 0 then temp_kmods := K_inline.inline_some !temp_kmods else ();
+        temp_kmods := K_flatten.flatten_all !temp_kmods;
+        temp_kmods := K_fuse_loops.fuse_loops_all !temp_kmods;
+        temp_kmods := K_fast_idx.optimize_idx_checks_all !temp_kmods;
         temp_kmods := K_cfold_dealias.cfold_dealias !temp_kmods
     done;
     temp_kmods := K_lift.lift_all !temp_kmods;
-    temp_kmods := K_flatten.flatten !temp_kmods;
+    temp_kmods := K_flatten.flatten_all !temp_kmods;
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
     temp_kmods := K_mangle.mangle_all !temp_kmods;
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
-    (*temp_kmods := K_inline.find_recursive_funcs !temp_kmods;*)
+    temp_kmods := K_inline.find_recursive_funcs_all !temp_kmods;
     temp_kmods := K_annotate_types.annotate_types !temp_kmods;
     (!temp_kmods, !compile_errs = [])
 

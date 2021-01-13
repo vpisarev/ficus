@@ -108,6 +108,12 @@ let find_recursive_funcs top_code =
         | _ -> ()) all_funcs;
     top_code
 
+let find_recursive_funcs_all kmods =
+    List.map (fun km ->
+        let {km_top} = km in
+        let new_top = find_recursive_funcs km_top in
+        {km with km_top=new_top}) kmods
+
 let calc_exp_size e =
     let sz = ref 0 in
     let fold_size_ktyp_ t loc callb = () in
@@ -204,13 +210,12 @@ let expand_call e =
         | _ -> (e, false))
     | _ -> (e, false)
 
-let inline_some top_code =
+let inline_some kmods =
     let all_funcs_info = ref (Env.empty : (func_info_t ref) Env.t) in
     let gen_default_func_info size nrefs =
         ref {fi_can_inline=false; fi_size=0; fi_nrefs=nrefs; fi_flags=[]}
     in
-    let global_size = calc_exp_size (code2kexp top_code noloc) in
-    let curr_fi = ref (gen_default_func_info global_size 0) in
+    let curr_fi = ref (gen_default_func_info 0 0) in
 
     (* step 1 of the actual function call expansion algorithm:
        collect information about each function *)
@@ -257,8 +262,6 @@ let inline_some top_code =
         kcb_fold_kexp = Some(fold_finfo_kexp_);
         kcb_fold_result = 0
     } in
-    let _ = find_recursive_funcs top_code in
-    let _ = List.iter (fun e -> fold_finfo_kexp_ e finfo_callb) top_code in
 
     (* step 2. try to actually expand some calls *)
     let inline_ktyp_ t loc callb = t in
@@ -282,12 +285,12 @@ let inline_some top_code =
                 let {fi_can_inline=caller_can_inline; fi_size=caller_size; fi_flags=caller_flags} = !(!curr_fi) in
                 let caller_is_inline = caller_can_inline && (List.mem FunInline caller_flags) in
                 let max_caller_size = if caller_is_inline then options.inline_thresh*3/2 else options.inline_thresh*10 in
-                let {fi_can_inline; fi_size; fi_nrefs; fi_flags} = !r_fi in
+                let {fi_can_inline; fi_size; (*fi_nrefs;*) fi_flags} = !r_fi in
                 let f_is_inline = fi_can_inline && (List.mem FunInline fi_flags) in
                 let f_max_size = if f_is_inline then options.inline_thresh*3/2 else options.inline_thresh in
                 let new_size = caller_size + fi_size - (List.length real_args) - 1 in
                 let new_size = if new_size >= 0 then new_size else 0 in
-                if fi_can_inline && (fi_nrefs = 1 ||
+                if fi_can_inline && ((*fi_nrefs = 1 ||*)
                   (fi_size <= f_max_size && new_size <= max_caller_size)) then
                     let (new_e, inlined) = expand_call e in
                     let _ = if not inlined then () else !curr_fi := {!(!curr_fi) with fi_size=new_size} in
@@ -301,4 +304,12 @@ let inline_some top_code =
         kcb_ktyp=Some(inline_ktyp_);
         kcb_kexp=Some(inline_kexp_)
     } in
-    List.map (fun e -> inline_kexp_ e inline_callb) top_code
+
+    let _ = find_recursive_funcs_all kmods in
+    let _ = List.iter (fun {km_top} -> List.iter (fun e -> fold_finfo_kexp_ e finfo_callb) km_top) kmods in
+    List.map (fun km ->
+        let {km_top} = km in
+        let global_size = calc_exp_size (code2kexp km_top noloc) in
+        let _ = curr_fi := gen_default_func_info global_size 0 in
+        let new_top = List.map (fun e -> inline_kexp_ e inline_callb) km_top in
+        {km with km_top=new_top}) kmods

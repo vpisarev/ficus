@@ -384,7 +384,8 @@ and pprint_cstmt s =
         | CFun _ -> pprint_fun_hdr cf_name true cf_loc true
         | CVal {cv_typ} ->
             ohbox();
-            pprint_ctyp__ "extern" cv_typ (Some cf_name) true cf_loc;
+            pstr "extern"; pspace();
+            pprint_ctyp__ "" cv_typ (Some cf_name) true cf_loc;
             pstr ";";
             cbox()
         | _ ->

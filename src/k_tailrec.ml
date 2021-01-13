@@ -177,7 +177,7 @@ let tailrec2loop kf =
         let new_kf_body = rcode2kexp f_code kf_loc in
         kf := { !kf with kf_args=new_kf_args; kf_body=new_kf_body }
 
-let tailrec2loops kmods =
+let tailrec2loops_all kmods =
     let tailrec2loop_ktyp_ t loc callb = () in
     let tailrec2loop_kexp_ e callb =
         fold_kexp e callb;

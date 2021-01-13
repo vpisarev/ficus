@@ -22,7 +22,7 @@ let rec flatten_ktyp_ t loc callb = t
 and flatten_kexp_ e callb =
     match e with
     | KExpSeq(elist, (_, loc)) ->
-        let new_rcode = flatten_ elist callb in
+        let new_rcode = flatten elist callb in
         rcode2kexp new_rcode loc
     | KExpIf(c, then_e, else_e, ((_, loc) as kctx)) ->
         let (c, code) = try_flatten c [] callb in
@@ -79,7 +79,7 @@ and try_flatten e code callb =
         let rnested = List.rev nested_list in
         ((List.hd rnested), ((List.tl rnested) @ code))
     | _ -> (new_e, code)
-and flatten_ code callb =
+and flatten code callb =
     List.fold_left (fun code e ->
         let new_e = flatten_kexp_ e callb in
         match new_e with
@@ -87,7 +87,7 @@ and flatten_ code callb =
             (List.rev nested_elist) @ code
         | _ -> new_e :: code) [] code
 
-let flatten kmods =
+let flatten_all kmods =
     let callb =
     {
         kcb_ktyp=Some(flatten_ktyp_);
@@ -96,5 +96,5 @@ let flatten kmods =
     }
     in List.map (fun km ->
         let {km_top} = km in
-        let new_top = List.rev (flatten_ km_top callb) in
+        let new_top = List.rev (flatten km_top callb) in
         {km with km_top=new_top}) kmods

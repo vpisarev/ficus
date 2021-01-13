@@ -421,6 +421,7 @@ int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filen
 int fx_rethrow_exn(fx_exn_t* exn);
 void fx_exn_get_and_reset(fx_exn_t* exn);
 int fx_exn_check_parallel(int status, int* glob_status);
+int fx_check_stack(void);
 
 #define FX_CHECK_EXN_PARALLEL(status, par_status) \
     if((status) >= 0) ; else (status) = fx_exn_check_parallel((status), &(par_status))

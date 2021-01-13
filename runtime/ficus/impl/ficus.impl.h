@@ -77,7 +77,7 @@ int fx_init_thread(int t_idx)
     return FX_OK;
 }
 
-int fx_check_stack()
+int fx_check_stack(void)
 {
     if (fx_is_main_thread) {
         char local_val = 0;

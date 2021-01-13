@@ -101,3 +101,9 @@ let rec move_loop_invs code =
         kcb_atom=None
     }
     in List.map (fun e -> mli_kexp e mli_callb) code
+
+let move_loop_invs_all kmods =
+    List.map (fun km ->
+        let {km_top} = km in
+        let new_top = move_loop_invs km_top in
+        {km with km_top=new_top}) kmods
