@@ -98,8 +98,8 @@ let parse_options () =
             | f :: [] -> Utils.normalize_path curr_dir f
             | _ -> raise (Arg.Bad "there should be exactly one input file"));
 
-        if (options.make_app || options.run_app || options.compile_by_cpp) && not options.gen_c then
-            raise (Arg.Bad "-no-c option cannot be used together with -app, -run, -c or -c++")
+        if (options.run_app || options.compile_by_cpp) && not options.gen_c then
+            raise (Arg.Bad "-no-c option cannot be used together with -run or -c++")
         else ();
 
         let output_name = Filename.basename options.filename in

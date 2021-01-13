@@ -90,13 +90,17 @@ let lift kmods =
             if (is_global ke_name) then e
             else add_to_globals_and_lift ke_name e ke_loc
         | KDefFun kf ->
-            let {kf_name; kf_body; kf_loc} = !kf in
+            let {kf_name; kf_body; kf_flags; kf_loc} = !kf in
             let new_body = walk_kexp_n_lift kf_body callb in
             let _ = kf := {!kf with kf_body=new_body} in
             if (is_global kf_name) then e
             else
                 if not (can_lift_fun kf) then e
-                else add_to_globals_and_lift kf_name e kf_loc
+                else
+                    let flags = List.filter (fun f ->
+                        match f with FunPrivate -> false | _ -> true) kf_flags in
+                    let _ = kf := {!kf with kf_flags=flags} in
+                    add_to_globals_and_lift kf_name e kf_loc
         | _ -> walk_kexp e callb
     in let walk_n_lift_callb =
     {
