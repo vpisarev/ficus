@@ -20,9 +20,12 @@
     3.) Use -c++ flag on compilation.
 */
 
+import List, String
+
 ccode 
 {
     #include <re2/re2.h>
+    #include <vector>
 
     void fx_re2_free(void* ptr)
     {
@@ -47,6 +50,7 @@ ccode
     class FX_RE2_Initializer
     {
     public:
+
         FX_RE2_Initializer()
         {
             FX_RE2_REGISTER_EXN(BadRegexp);
@@ -55,6 +59,22 @@ ccode
     };
     static FX_RE2_Initializer fx_re2_initializer;
 
+    static void set_sub_args(std::vector<re2::StringPiece>& a_sub_string_pieces, std::vector<re2::RE2::Arg*>& a_sub_args)
+    {
+        a_sub_args.resize(a_sub_string_pieces.size());
+        for(size_t arg_num = 0; arg_num < a_sub_string_pieces.size(); arg_num++)
+        {
+            a_sub_args[arg_num] = new re2::RE2::Arg(&(a_sub_string_pieces[arg_num]));
+        }
+    }
+
+    static void free_sub_args(const std::vector<RE2::Arg*>& a_sub_args)
+    {
+        for(size_t arg_num = 0; arg_num < a_sub_args.size(); arg_num++)
+        {
+            delete a_sub_args[arg_num];
+        }
+    }
 }
 
 type regex_t = { handle: cptr }
@@ -90,7 +110,57 @@ fun full_match(string_to_match : string, regexp : regex_t) : bool = ccode
     return fx_status;
 }
 
-fun partial_match(string_to_match : string, regexp : regex_t) : bool = ccode
+//                                                                  (success, (sub_start, sub_end)[])
+pure fun full_match_n(string_to_match : string, regexp : regex_t) : (bool   , (int      , int    )[]) = ccode
+{   
+    using namespace re2;
+    fx_cstr_t cstring_to_match;
+    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    if(fx_status>=0)
+    {
+        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
+        const int sub_amount = re_to_apply->NumberOfCapturingGroups();
+
+        std::vector<StringPiece> sub_string_pieces(sub_amount);
+        std::vector<RE2::Arg*> sub_args;
+        set_sub_args(sub_string_pieces, sub_args);
+
+        const int_ arrdims[1] = {sub_amount};
+        fx_result->t0 = RE2::FullMatchN(cstring_to_match.data, *re_to_apply, &(*sub_args.begin()), sub_amount); //TODO: try - catch!
+        free_sub_args(sub_args);
+        if(fx_result->t0)
+        {
+            std::vector<int_> starts_and_ends(sub_amount * 2);
+            for(int piece_num = 0; piece_num < sub_amount; piece_num++)
+            {
+                starts_and_ends[2 * piece_num    ] = sub_string_pieces[piece_num].begin() - cstring_to_match.data;
+                starts_and_ends[2 * piece_num + 1] = sub_string_pieces[piece_num].end()   - cstring_to_match.data;
+            }
+            fx_status = fx_make_arr( 1, arrdims, sizeof(int_)+sizeof(int_), 0, 0, &(*(starts_and_ends.begin())), &(fx_result->t1));
+        }
+        fx_free_cstr(&cstring_to_match);
+    }
+    return fx_status;
+}
+
+pure fun full_match_n_str(string_to_match : string, regexp : regex_t) : (bool, string [])
+{   
+    val (success, starts_ends) = full_match_n(string_to_match, regexp)
+    if(!success)
+    {
+        (false, array(0, ""))
+    }
+    else
+    {
+        (true, [for i <- 0: size(starts_ends)
+                {
+                    val (start, end) = starts_ends[i]
+                    String.substr(string_to_match,start, end - start)
+                }])
+    }
+}
+
+pure fun partial_match(string_to_match : string, regexp : regex_t) : bool = ccode
 {
     using namespace re2;
     fx_cstr_t cstring_to_match;
@@ -104,14 +174,91 @@ fun partial_match(string_to_match : string, regexp : regex_t) : bool = ccode
     return fx_status;
 }
 
+//                                                                     (success, (sub_start, sub_end)[])
+pure fun partial_match_n(string_to_match : string, regexp : regex_t) : (bool   , (int      , int    )[]) = ccode
+{   
+    using namespace re2;
+    fx_cstr_t cstring_to_match;
+    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    if(fx_status>=0)
+    {
+        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
+        const int sub_amount = re_to_apply->NumberOfCapturingGroups();
+
+        std::vector<StringPiece> sub_string_pieces(sub_amount);
+        std::vector<RE2::Arg*> sub_args;
+        set_sub_args(sub_string_pieces, sub_args);
+
+        const int_ arrdims[1] = {sub_amount};
+        fx_result->t0 = RE2::PartialMatchN(cstring_to_match.data, *re_to_apply, &(*sub_args.begin()), sub_amount); //TODO: try - catch!
+        free_sub_args(sub_args);
+        if(fx_result->t0)
+        {
+            std::vector<int_> starts_and_ends(sub_amount * 2);
+            for(int piece_num = 0; piece_num < sub_amount; piece_num++)
+            {
+                starts_and_ends[2 * piece_num    ] = sub_string_pieces[piece_num].begin() - cstring_to_match.data;
+                starts_and_ends[2 * piece_num + 1] = sub_string_pieces[piece_num].end()   - cstring_to_match.data;
+            }
+            fx_status = fx_make_arr( 1, arrdims, sizeof(int_)+sizeof(int_), 0, 0, &(*(starts_and_ends.begin())), &(fx_result->t1));
+        }
+        fx_free_cstr(&cstring_to_match);
+    }
+    return fx_status;
+}
+
+fun partial_match_n_str(string_to_match : string, regexp : regex_t) : (bool, string [])
+{   
+    val (success, starts_ends) = partial_match_n(string_to_match, regexp)
+    if(!success)
+    {
+        (false, array(0, ""))
+    }
+    else
+    {
+        (true, [for i <- 0: size(starts_ends)
+                {
+                    val (start, end) = starts_ends[i]
+                    String.substr(string_to_match,start, end - start)
+                }])
+    }
+}
+
+
 fun full_match(string_to_match : string, regexp : string) : bool
 {   
     val reg = compile(regexp)
     full_match(string_to_match, reg) 
 }
 
+//                                                            (success, (sub_start, sub_end)[])
+fun full_match_n(string_to_match : string, regexp : string) : (bool   , (int      , int    )[])
+{
+    val reg = compile(regexp)
+    full_match_n(string_to_match, reg) 
+}
+
+fun full_match_n_str(string_to_match : string, regexp : string) : (bool, string [])
+{
+    val reg = compile(regexp)
+    full_match_n_str(string_to_match, reg)
+}
+
 fun partial_match(string_to_match : string, regexp : string) : bool
 {
     val reg = compile(regexp)
     partial_match(string_to_match, reg)
+}
+
+//                                                               (success, (sub_start, sub_end)[])
+fun partial_match_n(string_to_match : string, regexp : string) : (bool   , (int      , int    )[])
+{   
+    val reg = compile(regexp)
+    partial_match_n(string_to_match, reg)
+}
+
+fun partial_match_n_str(string_to_match : string, regexp : string) : (bool, string [])
+{   
+    val reg = compile(regexp)
+    partial_match_n_str(string_to_match, reg)
 }

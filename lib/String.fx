@@ -144,6 +144,11 @@ pure fun strip(s: string): string = ccode
     return fx_substr(s, i, sz, 1, 0, fx_result);
 }
 
+pure fun substr(s: string, pos: int, len: int): string = ccode //TODO: make this function safe.
+{
+    return fx_substr(s, pos, pos + len, 1, 0, fx_result);
+}
+
 fun tokens(s: string, f: char->bool)
 {
     val fold (sl, start, sep) = ([], 0, true) for c@i <- s {
