@@ -196,14 +196,23 @@ let emit_c_files fname0 cmods =
     let _ = try Unix.mkdir build_root_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> () in
     let build_dir = options.build_dir in
     (try Unix.mkdir build_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> ());
-    let ok = List.fold_left (fun ok cmod ->
+    let (new_cmods, ok) = List.fold_left (fun (new_cmods, ok) cmod ->
         let {cmod_cname; cmod_ccode} = cmod in
         let output_fname = Filename.basename cmod_cname in
         let output_fname = (Utils.remove_extension output_fname) ^ ".c" in
         let output_fname = Utils.normalize_path build_dir output_fname in
-        let ok = if ok then C_pp.pprint_top_to_file output_fname cmod_ccode else ok in
-        ok) true cmods in
-    (cmods, build_dir, ok)
+        (*let ok = if ok then C_pp.pprint_top_to_file output_fname cmod_ccode else ok in*)
+        let (new_cmod, ok) = if ok then
+                let str_new = C_pp.pprint_top_to_string cmod_ccode in
+                let str_old = Utils.file2str output_fname in
+                let (recompile, ok) = if str_new = str_old then (false, ok) else
+                    (true, (Utils.str2file str_new output_fname))
+                    in
+                ({cmod with cmod_recompile=recompile}, ok)
+            else (cmod, ok)
+            in
+        ((new_cmod :: new_cmods), ok)) ([], true) cmods in
+    ((List.rev new_cmods), build_dir, ok)
 
 let run_compiler cmods output_dir =
     let opt_level = options.optimize_level in
@@ -215,15 +224,26 @@ let run_compiler cmods output_dir =
     let custom_cflags = try " " ^ (Sys.getenv "FICUS_CFLAGS") with Not_found -> "" in
     let custom_cflags = if options.cflags = "" then custom_cflags else options.cflags ^ " " ^ custom_cflags in
     let cmd = cmd ^ custom_cflags in
-    let (ok, objs) = List.fold_left (fun (ok, objs) {cmod_cname} ->
+    let (any_recompiled, ok, objs) = List.fold_left (fun (any_recompiled, ok, objs) {cmod_cname; cmod_recompile} ->
         let cname = Utils.normalize_path output_dir cmod_cname in
-        let cmd = cmd ^ " -o " ^ cname ^ ".o" in
-        let cmd = cmd ^ " -c " ^ cname ^ ".c" in
-        let _ = (printf "%s\n" cmd; flush stdout) in
-        let ok_j = (Sys.command cmd) = 0 in
-        ((ok && ok_j), ((cname ^ ".o") :: objs))) (true, []) cmods
+        let c_filename = cname ^ ".c" in
+        let obj_filename = cname ^ ".o" in
+        let _ = (printf "CC %s:\n" c_filename; flush stdout) in
+        let cmd = cmd ^ " -o " ^ obj_filename in
+        let cmd = cmd ^ " -c " ^ c_filename in
+        let (ok_j, recompiled) =
+            if cmod_recompile || not (Sys.file_exists obj_filename) then
+                (printf "\t%s\n" cmd; flush stdout;
+                ((Sys.command cmd) = 0), true)
+            else
+                (printf "\t%s is up-to-date\n" obj_filename; flush stdout;
+                (true, false))
+            in
+        ((any_recompiled || recompiled), (ok && ok_j), (obj_filename :: objs))) (false, true, []) cmods
         in
-    if not ok then ok else
+    if ok && (not any_recompiled) && (Sys.file_exists options.app_filename) then
+        (printf "%s is up-to-date\n" options.app_filename; flush stdout; ok)
+    else if not ok then ok else
         let cmd = "cc -o " ^ options.app_filename in
         let cmd = cmd ^ " " ^ (String.concat " " objs) in
         let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in

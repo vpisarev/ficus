@@ -90,3 +90,25 @@ let rec locate_module_file mname inc_dirs =
             mfname in
         Some(normalize_path (Sys.getcwd()) mfname_full)
     with Not_found -> None
+
+let file2str filename =
+    try
+        let f = open_in filename in
+        let all_lines = ref ([]: string list) in
+        (try
+            (while true do
+                all_lines := ((input_line f) ^ "\n") :: !all_lines
+            done;
+            "")
+        with End_of_file ->
+            close_in f;
+            String.concat "" (List.rev !all_lines))
+    with Sys_error _ -> ""
+
+let str2file str filename =
+    try
+        let f = open_out filename in
+        Printf.fprintf f "%s" str;
+        close_out f;
+        true
+    with Sys_error _ -> false

@@ -2678,7 +2678,8 @@ let gen_ccode_all kmods =
         let {km_name; km_cname; km_top; km_main} = km in
         (*let _ = printf "converting '%s' to C\n" km_cname in*)
         let ccode = gen_ccode cmods km c_types c_fdecls mod_init_calls in
-        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=ccode; cmod_main=km_main } :: cmods)
+        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=ccode;
+          cmod_main=km_main; cmod_recompile=true } :: cmods)
         [] kmods_plus
     in
     List.rev cmods
