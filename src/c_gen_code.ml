@@ -1662,7 +1662,7 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
                 let need_subarr = List.exists (fun d -> match d with Domain.Range _ -> true | _ -> false) idxs in
                 let need_flatten = need_subarr && (match idxs with
                     | Domain.Range((Atom.Lit LitNil), (Atom.Lit LitNil), (Atom.Lit LitNil)) :: []
-                    | Domain.Range((Atom.Lit (LitInt 0L)), (Atom.Lit LitNil), (Atom.Lit (LitInt 1L))) :: [] -> true
+                    | Domain.Range((Atom.Lit LitNil), (Atom.Lit LitNil), (Atom.Lit (LitInt 1L))) :: [] -> true
                     | _ -> false)
                     in
                 if need_flatten then
