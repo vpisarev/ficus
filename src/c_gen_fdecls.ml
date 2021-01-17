@@ -100,7 +100,7 @@ let convert_all_fdecls top_code =
                 (free_f, [CDefFun cf])
                 in
             let ct = ref { ct_name=kcv_name; ct_typ = CTypStruct(None, (List.rev relems));
-                ct_cname=kcv_cname; ct_data_start=2;
+                ct_cname=kcv_cname; ct_data_start=2; ct_enum=noid;
                 ct_scope=ScGlobal::[]; ct_loc=kcv_loc;
                 ct_props={
                     ctp_scalar=false; ctp_complex=true;
@@ -233,7 +233,7 @@ let convert_all_fdecls top_code =
                         in
                     let exn_data_ct = ref {
                         ct_name=exn_data_id; ct_typ = CTypStruct(None, relems);
-                        ct_cname=exn_data_cname; ct_data_start=1;
+                        ct_cname=exn_data_cname; ct_data_start=1; ct_enum=noid;
                         ct_scope=ScGlobal::[]; ct_loc=ke_loc;
                         ct_props={
                             ctp_scalar=false; ctp_complex=true;

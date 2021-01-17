@@ -232,7 +232,7 @@ let convert_all_typs kmods =
         let struct_typ = CTypStruct((Some struct_id), []) in
         let struct_or_ptr_typ = if ktp_ptr then (make_ptr struct_typ) else struct_typ in
         let struct_decl = ref { ct_name=tn; ct_typ = struct_or_ptr_typ;
-            ct_cname=cname; ct_data_start=0;
+            ct_cname=cname; ct_data_start=0; ct_enum=noid;
             ct_scope=ScGlobal::[]; ct_loc=loc;
             ct_props={
                 ctp_scalar=false; ctp_complex=ktp_custom_free || ktp_custom_copy;
@@ -342,7 +342,6 @@ let convert_all_typs kmods =
             let {cf_name=free_f} = !freef_decl in
             let {cf_name=copy_f} = !copyf_decl in
             let {ct_props} = !struct_decl in
-            let tp_cname = K_mangle.add_fx tp_cname_wo_prefix in
             let (struct_typ, struct_id_opt) = match !struct_decl with
                 | {ct_typ=CTypRawPtr(_, (CTypStruct(struct_id_opt, _) as a_struct_typ))} ->
                     let struct_typ = match struct_id_opt with
@@ -480,7 +479,7 @@ let convert_all_typs kmods =
                     let (ct_hd_arg, hd_arg_flags) = if pass_by_ref then
                         ((make_const_ptr ct_hd), [CArgPassByPtr]) else (ct_hd, []) in
                     let make_list_body = CExp(CExpCall(make_list_m,
-                        (make_id_exp (get_id tp_cname) loc) :: copy_hd_f :: [], (CTypInt, loc))) :: [] in
+                        (CExpTyp(CTypName(tn), loc)) :: copy_hd_f :: [], (CTypInt, loc))) :: [] in
                     let cons_decl = ref {
                         cf_name=cons_id; cf_rt = CTypCInt;
                         cf_args=[((get_id "hd"), ct_hd_arg, hd_arg_flags);
@@ -520,7 +519,7 @@ let convert_all_typs kmods =
                     let (ct_arg, ct_arg_flags) = if pass_by_ref then
                         ((make_const_ptr ctyp), [CArgPassByPtr]) else (ctyp, []) in
                     let mkref_body = CExp(CExpCall(mkref_m,
-                        (make_id_exp (get_id tp_cname) loc) :: copy_data_f :: [], (CTypInt, loc))) :: [] in
+                        (CExpTyp(CTypName(tn), loc)) :: copy_data_f :: [], (CTypInt, loc))) :: [] in
                     let mkref_decl = ref {
                         cf_name=mkref_id; cf_rt = CTypCInt;
                         cf_args=[((get_id "arg"), ct_arg, ct_arg_flags);
@@ -606,6 +605,7 @@ let convert_all_typs kmods =
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)))};
                 else
                     struct_decl := {!struct_decl with ct_typ=CTypStruct(struct_id_opt, relems)};
+                struct_decl := {!struct_decl with ct_enum=ce_id};
                 freef_decl := {!freef_decl with cf_body=List.rev free_code};
                 copyf_decl := {!copyf_decl with cf_body=List.rev copy_code}
             | _ -> raise_compile_err loc (sprintf "type '%s' cannot be converted to C" (id2str tn))
@@ -640,5 +640,102 @@ let convert_all_typs kmods =
             | _ -> ()) km_top) kmods;
     List.iter (fun {km_top} ->
         List.iter (fun e -> fold_n_cvt_kexp e fold_n_cvt_callb) km_top) kmods;
-    let all_c_types = (List.rev !top_fwd_decl) @ (List.rev !top_typ_decl) @ (List.rev !top_typfun_decl) in
-    List.map (fun km -> (km, all_c_types)) kmods;
+    ((List.rev !top_fwd_decl), (List.rev !top_typ_decl), (List.rev !top_typfun_decl))
+
+(* excludes types (together with their utility functions like _fx_copy_..., _fx_make_..., _fx_free_... etc.)
+   that are not used by the module (passed as ccode) *)
+let elim_unused_ctypes mname all_ctypes_fwd_decl all_ctypes_decl all_ctypes_fun_decl ccode =
+    (*let print_idcset setname s =
+        printf "%s:[" setname;
+        IdSet.iter (fun i -> printf " %s" (get_idc_cname i noloc)) s;
+        printf " ]\n"
+        in*)
+    let blacklist = List.fold_left (fun bl x -> IdSet.add x bl) IdSet.empty [noid; (get_id "fx_fcv_t")] in
+    let add_used_id n callb =
+        let ok = match n with
+            | Id.Name _ -> not (IdSet.mem n blacklist) && not (Utils.starts_with (pp_id2str n) "fx_")
+            | _ -> true
+            in
+        if ok then callb.ccb_fold_result <- IdSet.add n callb.ccb_fold_result else ()
+        in
+    let used_ctyp t callb =
+        fold_ctyp t callb;
+        (match t with
+        | CTypStruct (Some(n), _) -> add_used_id n callb
+        | CTypUnion (Some(n), _) -> add_used_id n callb
+        | CTypName n -> add_used_id n callb
+        | _ -> ())
+        in
+    let used_ctypes_by_cstmt s callb =
+        fold_cstmt s callb;
+        (match s with
+        | CDefTyp {contents={ct_name; ct_cname; ct_enum}} ->
+            add_used_id ct_name callb;
+            add_used_id ct_enum callb
+        | CDefForwardTyp (n, _) -> add_used_id n callb
+        | CDefEnum {contents={cenum_name; cenum_members}} ->
+            add_used_id cenum_name callb;
+            List.iter (fun (n, _) -> add_used_id n callb) cenum_members
+        | _ -> ())
+        in
+    let used_ctypes_callb set0 =
+        {
+            ccb_fold_ident = None;
+            ccb_fold_typ = Some(used_ctyp);
+            ccb_fold_exp = None;
+            ccb_fold_stmt = Some(used_ctypes_by_cstmt);
+            ccb_fold_result = set0;
+        }
+        in
+    let used_ctypes_by_stmtlist sl set0 =
+        let callb = used_ctypes_callb set0 in
+        let _ = List.iter (fun s -> used_ctypes_by_cstmt s callb) sl in
+        callb.ccb_fold_result
+        in
+    (* compute the initial set of identifiers used by ccode *)
+    let used_ctypes = used_ctypes_by_stmtlist ccode IdSet.empty in
+    (*let decl_ctypes = used_ctypes_by_stmtlist all_ctypes_decl IdSet.empty in
+    let _ = print_idcset (sprintf "%s: initial used_ctypes" (pp_id2str mname)) used_ctypes in
+    let _ = print_idcset (sprintf "%s: declared/used ctypes" (pp_id2str mname)) decl_ctypes in*)
+    (* extend this set using the declared types iteratively until there is no more id's to add *)
+    let update_used_ctypes used_ctypes =
+        let decls_plus = List.map (fun s ->
+            let uv = used_ctypes_by_stmtlist [s] IdSet.empty in
+            (s, uv)) all_ctypes_decl
+            in
+        let rec update_used_ctypes_ prev_set iters_left =
+            if iters_left = 0 then raise_compile_err noloc (sprintf "%s: too many iterations in update_used_ctypes_" (pp_id2str mname))
+            else
+            let new_set = List.fold_left (fun new_set (s, uv) ->
+                (*let add = match s with
+                    | CDefTyp {contents={ct_name}} -> IdSet.mem ct_name prev_set
+                    | _ -> false
+                    in
+                if not add then new_set else*)
+                    if IdSet.is_empty (IdSet.inter new_set uv) then new_set
+                    else IdSet.union new_set uv)
+                prev_set decls_plus
+                in
+            if (IdSet.cardinal prev_set) = (IdSet.cardinal new_set) then new_set
+            else update_used_ctypes_ new_set (iters_left - 1)
+            in
+        update_used_ctypes_ used_ctypes 100
+        in
+    let used_ctypes = update_used_ctypes used_ctypes in
+    (*let _ = print_idcset (sprintf "%s: updated used_ctypes" (pp_id2str mname)) used_ctypes in*)
+    let (ctypes_ccode, used_ctypes) = List.fold_left (fun (ctypes_ccode, used_ctypes) s ->
+        let s_ = match s with
+            | CDefForwardSym(f, loc) ->
+                (match (cinfo_ f loc) with
+                | CFun cf -> CDefFun cf
+                | _ -> s)
+            | _ -> s
+            in
+        let uv = used_ctypes_by_stmtlist [s_] IdSet.empty in
+        if IdSet.is_empty (IdSet.inter used_ctypes uv) then
+            (ctypes_ccode, used_ctypes)
+        else
+            ((s :: ctypes_ccode), (IdSet.union used_ctypes uv)))
+        ([], used_ctypes) (all_ctypes_fwd_decl @ all_ctypes_decl @ all_ctypes_fun_decl)
+        in
+    List.rev ctypes_ccode

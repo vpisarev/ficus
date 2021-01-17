@@ -195,7 +195,7 @@ and cdeffun_t = { cf_name: id_t; cf_cname: string;
                   cf_rt: ctyp_t; cf_body: cstmt_t list;
                   cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_cname: string;
-                  ct_props: ctprops_t; ct_data_start: int;
+                  ct_props: ctprops_t; ct_data_start: int; ct_enum: id_t;
                   ct_scope: scope_t list; ct_loc: loc_t }
 and cdefenum_t = { cenum_name: id_t; cenum_members: (id_t * cexp_t option) list; cenum_cname: string;
                    cenum_scope: scope_t list; cenum_loc: loc_t }
@@ -521,10 +521,11 @@ and walk_cstmt s callb =
             cf_body = (walk_csl_ cf_body) };
         s
     | CDefTyp ct ->
-        let { ct_name; ct_typ } = !ct in
+        let { ct_name; ct_typ; ct_enum } = !ct in
         ct := { !ct with
             ct_name = (walk_id_ ct_name);
-            ct_typ = (walk_ctyp_ ct_typ) };
+            ct_typ = (walk_ctyp_ ct_typ);
+            ct_enum = (walk_id_ ct_enum) };
         s
     | CDefForwardSym (n, loc) ->
         CDefForwardSym (walk_id_ n, loc)
@@ -659,8 +660,8 @@ and fold_cstmt s callb =
         fold_ctyp_ cf_rt;
         fold_csl_ cf_body
     | CDefTyp ct ->
-        let { ct_name; ct_typ } = !ct in
-        fold_id_ ct_name; fold_ctyp_ ct_typ
+        let { ct_name; ct_typ; ct_enum } = !ct in
+        fold_id_ ct_name; fold_ctyp_ ct_typ; fold_id_ ct_enum
     | CDefForwardSym (n, _) ->
         fold_id_ n
     | CDefForwardTyp (n, _) ->

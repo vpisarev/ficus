@@ -214,6 +214,9 @@ let emit_c_files fname0 cmods =
         ((new_cmod :: new_cmods), ok)) ([], true) cmods in
     ((List.rev new_cmods), build_dir, ok)
 
+let print_if_verbose s =
+    if options.verbose then (print_string s; flush stdout) else ()
+
 let run_compiler cmods output_dir =
     let opt_level = options.optimize_level in
     let cmd = if options.compile_by_cpp then "cc -x c++ -std=c++11" else "cc" in
@@ -228,21 +231,21 @@ let run_compiler cmods output_dir =
         let cname = Utils.normalize_path output_dir cmod_cname in
         let c_filename = cname ^ ".c" in
         let obj_filename = cname ^ ".o" in
-        let _ = (printf "CC %s:\n" c_filename; flush stdout) in
+        let _ = print_if_verbose (sprintf "CC %s:\n" c_filename) in
         let cmd = cmd ^ " -o " ^ obj_filename in
         let cmd = cmd ^ " -c " ^ c_filename in
         let (ok_j, recompiled) =
             if cmod_recompile || not (Sys.file_exists obj_filename) then
-                (printf "\t%s\n" cmd; flush stdout;
-                ((Sys.command cmd) = 0), true)
+                (print_if_verbose (sprintf "\t%s\n" cmd);
+                (((Sys.command cmd) = 0), true))
             else
-                (printf "\t%s is up-to-date\n" obj_filename; flush stdout;
+                (print_if_verbose (sprintf "\t%s is up-to-date\n" obj_filename);
                 (true, false))
             in
         ((any_recompiled || recompiled), (ok && ok_j), (obj_filename :: objs))) (false, true, []) cmods
         in
     if ok && (not any_recompiled) && (Sys.file_exists options.app_filename) then
-        (printf "%s is up-to-date\n" options.app_filename; flush stdout; ok)
+        (print_if_verbose (sprintf "%s is up-to-date\n" options.app_filename); ok)
     else if not ok then ok else
         let cmd = "cc -o " ^ options.app_filename in
         let cmd = cmd ^ " " ^ (String.concat " " objs) in
@@ -250,7 +253,7 @@ let run_compiler cmods output_dir =
         let custom_linked_libs = if options.clibs = "" then custom_linked_libs else options.clibs ^ " " ^ custom_linked_libs in
         let cmd = cmd ^ custom_linked_libs in
         let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
-        let _ = (printf "%s\n" cmd; flush stdout) in
+        let _ = print_if_verbose (sprintf "%s\n" cmd) in
         let ok = (Sys.command cmd) = 0 in
         ok
 

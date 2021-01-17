@@ -29,6 +29,7 @@ type options_t =
     mutable build_dir: string;
     mutable cflags: string;
     mutable clibs: string;
+    mutable verbose: bool;
 }
 
 let options =
@@ -56,6 +57,7 @@ let options =
     build_dir = "";
     cflags = "";
     clibs = "";
+    verbose = false;
 }
 
 let parse_options () =
@@ -84,6 +86,7 @@ let parse_options () =
         ("-c++", (Arg.Unit (fun f -> options.compile_by_cpp <- true)), "   Use C++ instead of C for compilation");
         ("-cflags", (Arg.String (fun s -> options.cflags <- s)), "<cflags>   Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler (after $FICUS_CFLAGS)");
         ("-clibs", (Arg.String (fun s -> options.clibs <- s)), "<clibs>   Pass the specified libs/linker flags to C/C++ compiler (before $FICUS_LINK_LIBRARIES)");
+        ("-verbose", (Arg.Unit (fun f -> options.verbose <- true)), "  Display various info during build time");
         ("--", (Arg.Rest (fun s -> options.app_args <- s :: options.app_args)), "Specify the application parameters (e.g. './ficus -run myprog.fx -- arg1 arg2')")
         ]
         (fun s -> _files := !_files @ [s])

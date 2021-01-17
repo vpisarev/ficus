@@ -233,13 +233,13 @@ let gen_main ismain mod_names loc =
         "   return fx_deinit(fx_status);\n" ^
         "}"), loc))]
 
-let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
+let gen_ccode cmods kmod c_fdecls mod_init_calls =
     (*let user_exceptions_ofs = ref 0 in
     let top_exn_vals = ref ([]: (id_t*cexp_t) list) in*)
     let {km_name; km_cname; km_top; km_main} = kmod in
     let mod_sc = [ScModule km_name] in
     let top_code = km_top in
-    let top_ccode = ref ([]: cstmt_t list) in
+    let top_inline_ccode = ref ([]: cstmt_t list) in
     let fwd_fdecls = ref ([]: cstmt_t list) in
     let defined_syms = ref (IdSet.empty) in
     let i2e = ref (Env.empty: cexp_t Env.t) in
@@ -2223,7 +2223,7 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
             if (curr_block_ctx kloc).bctx_kind <> BlockKind_Global then
                 raise_compile_err kloc "cgen: unexpected ccode expression"
             else ();
-            top_ccode := CExp (CExpCCode(ccode_str, kloc)) :: !top_ccode;
+            top_inline_ccode := CExp (CExpCCode(ccode_str, kloc)) :: !top_inline_ccode;
             (false, dummy_exp, ccode)
         | KDefVal(i, e2, _) ->
             let {kv_typ; kv_cname; kv_flags} = get_kval i kloc in
@@ -2617,7 +2617,7 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
           form its body
     *)
     let {bctx_prologue; bctx_label; bctx_cleanup; bctx_label_used} = curr_block_ctx end_loc in
-    let (global_prologue, temp_init_vals) = List.fold_left (fun (global_prologue, temp_init_vals) s ->
+    let (global_vars, temp_init_vals) = List.fold_left (fun (global_vars, temp_init_vals) s ->
         let is_global = match s with
             | CDefVal (_, i, _, loc) ->
                 (match (cinfo_ i loc) with
@@ -2626,9 +2626,9 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
             | _ -> true
             in
         if is_global then
-            (s :: global_prologue, temp_init_vals)
+            (s :: global_vars, temp_init_vals)
         else
-            (global_prologue, s :: temp_init_vals))
+            (global_vars, s :: temp_init_vals))
         ([], []) bctx_prologue in
     let _ = pop_block_ctx end_loc in
     let ccode =
@@ -2657,28 +2657,29 @@ let gen_ccode cmods kmod c_types_ccode c_fdecls mod_init_calls =
     let _ = set_idc_entry init_name (CFun init_f) in
     let _ = set_idc_entry deinit_name (CFun deinit_f) in
     let mod_names = if km_main then km_cname :: (List.map (fun {cmod_cname} -> cmod_cname) cmods) else [] in
-    let all_ccode = (gen_ccode_prologue km_main start_loc) @ (List.rev !top_ccode) @
-        c_types_ccode @ global_prologue @ (List.rev !fwd_fdecls) @ c_fdecls @
+    let all_ccode_prologue = (gen_ccode_prologue km_main start_loc) @ (List.rev !top_inline_ccode) in
+    let all_ccode = global_vars @ (List.rev !fwd_fdecls) @ c_fdecls @
         [CDefFun init_f; CDefFun deinit_f] @ (gen_main km_main mod_names end_loc) in
-    all_ccode
+    (all_ccode_prologue, all_ccode)
 
 let gen_ccode_all kmods =
     (* ok, here is the top-level C code generation procedure *)
 
     (* 1. convert all types to C from all modules *)
-    let kmods_plus = C_gen_types.convert_all_typs kmods in
+    let (all_ctypes_fwd_decl, all_ctypes_decl, all_ctypes_fun_decl) = C_gen_types.convert_all_typs kmods in
 
     (* 2. convert function declarations to C *)
-    let kmods_plus = List.map (fun (km, c_types) ->
+    let kmods_plus = List.map (fun km ->
         let (c_fdecls, mod_init_calls) = C_gen_fdecls.convert_all_fdecls km.km_top in
-        (km, c_types, c_fdecls, mod_init_calls)) kmods_plus in
+        (km, c_fdecls, mod_init_calls)) kmods in
 
     (* 3. convert each module to C *)
-    let cmods = List.fold_left (fun cmods (km, c_types, c_fdecls, mod_init_calls) ->
+    let cmods = List.fold_left (fun cmods (km, c_fdecls, mod_init_calls) ->
         let {km_name; km_cname; km_top; km_main} = km in
         (*let _ = printf "converting '%s' to C\n" km_cname in*)
-        let ccode = gen_ccode cmods km c_types c_fdecls mod_init_calls in
-        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=ccode;
+        let (prologue, ccode) = gen_ccode cmods km c_fdecls mod_init_calls in
+        let ctypes = C_gen_types.elim_unused_ctypes km.km_name all_ctypes_fwd_decl all_ctypes_decl all_ctypes_fun_decl ccode in
+        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=prologue @ ctypes @ ccode;
           cmod_main=km_main; cmod_recompile=true } :: cmods)
         [] kmods_plus
     in
