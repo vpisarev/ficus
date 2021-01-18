@@ -650,6 +650,30 @@ let elim_unused_ctypes mname all_ctypes_fwd_decl all_ctypes_decl all_ctypes_fun_
         IdSet.iter (fun i -> printf " %s" (get_idc_cname i noloc)) s;
         printf " ]\n"
         in*)
+    let rec get_ctyp_id t =
+        match t with
+        | CTypName tn -> tn
+        | CTypStruct(Some(n), _) -> n
+        | CTypUnion(Some(n), _) -> n
+        | CTypRawPtr(_, t) -> get_ctyp_id t
+        | _ -> noid
+        in
+    let is_used_decl s used_ids =
+        match s with
+        | CDefTyp {contents={ct_name; ct_typ}} ->
+            (IdSet.mem ct_name used_ids) ||
+            (IdSet.mem (get_ctyp_id ct_typ) used_ids)
+        | CDefForwardTyp(tn, loc) ->
+            IdSet.mem tn used_ids
+        | CDefForwardSym(f, loc) ->
+            IdSet.mem f used_ids
+        | CDefFun {contents={cf_name}} ->
+            IdSet.mem cf_name used_ids
+        | CDefEnum {contents={cenum_name; cenum_members}} ->
+            (IdSet.mem cenum_name used_ids) ||
+            (List.exists (fun (m, _) -> IdSet.mem m used_ids) cenum_members)
+        | _ -> false
+        in
     let blacklist = List.fold_left (fun bl x -> IdSet.add x bl) IdSet.empty [noid; (get_id "fx_fcv_t")] in
     let add_used_id n callb =
         let ok = match n with
@@ -666,76 +690,62 @@ let elim_unused_ctypes mname all_ctypes_fwd_decl all_ctypes_decl all_ctypes_fun_
         | CTypName n -> add_used_id n callb
         | _ -> ())
         in
-    let used_ctypes_by_cstmt s callb =
+    let used_ids_by_cstmt s callb =
         fold_cstmt s callb;
         (match s with
-        | CDefTyp {contents={ct_name; ct_cname; ct_enum}} ->
-            add_used_id ct_name callb;
-            add_used_id ct_enum callb
+        | CDefTyp {contents={ct_typ; ct_enum;
+            ct_props={ctp_make; ctp_free=(_, free_f); ctp_copy=(_, copy_f)}}} ->
+            List.iter (fun i -> add_used_id i callb) (ct_enum :: free_f :: copy_f :: ctp_make)
         | CDefForwardTyp (n, _) -> add_used_id n callb
-        | CDefEnum {contents={cenum_name; cenum_members}} ->
-            add_used_id cenum_name callb;
-            List.iter (fun (n, _) -> add_used_id n callb) cenum_members
+        | CDefEnum {contents={cenum_members}} -> ()
         | _ -> ())
         in
-    let used_ctypes_callb set0 =
+    let used_ids_callb set0 =
         {
             ccb_fold_ident = None;
             ccb_fold_typ = Some(used_ctyp);
             ccb_fold_exp = None;
-            ccb_fold_stmt = Some(used_ctypes_by_cstmt);
+            ccb_fold_stmt = Some(used_ids_by_cstmt);
             ccb_fold_result = set0;
         }
         in
-    let used_ctypes_by_stmtlist sl set0 =
-        let callb = used_ctypes_callb set0 in
-        let _ = List.iter (fun s -> used_ctypes_by_cstmt s callb) sl in
+    let used_ids_by_stmtlist sl set0 =
+        let callb = used_ids_callb set0 in
+        let _ = List.iter (fun s -> used_ids_by_cstmt s callb) sl in
         callb.ccb_fold_result
         in
+
     (* compute the initial set of identifiers used by ccode *)
-    let used_ctypes = used_ctypes_by_stmtlist ccode IdSet.empty in
-    (*let decl_ctypes = used_ctypes_by_stmtlist all_ctypes_decl IdSet.empty in
-    let _ = print_idcset (sprintf "%s: initial used_ctypes" (pp_id2str mname)) used_ctypes in
-    let _ = print_idcset (sprintf "%s: declared/used ctypes" (pp_id2str mname)) decl_ctypes in*)
+    let used_ids = used_ids_by_stmtlist ccode IdSet.empty in
+    (*let decl_ctypes = used_ids_by_stmtlist all_ctypes_decl IdSet.empty in*)
+    (*let _ = print_idcset (sprintf "%s: initial used_ids" (pp_id2str mname)) used_ids in*)
+    (*let _ = print_idcset (sprintf "%s: declared/used ctypes" (pp_id2str mname)) decl_ctypes in*)
     (* extend this set using the declared types iteratively until there is no more id's to add *)
-    let update_used_ctypes used_ctypes =
+    let update_used_ids used_ids =
         let decls_plus = List.map (fun s ->
-            let uv = used_ctypes_by_stmtlist [s] IdSet.empty in
+            let uv = used_ids_by_stmtlist [s] IdSet.empty in
             (s, uv)) all_ctypes_decl
             in
-        let rec update_used_ctypes_ prev_set iters_left =
+        let rec update_used_ids_ prev_set iters_left =
             if iters_left = 0 then raise_compile_err noloc (sprintf "%s: too many iterations in update_used_ctypes_" (pp_id2str mname))
             else
             let new_set = List.fold_left (fun new_set (s, uv) ->
-                (*let add = match s with
-                    | CDefTyp {contents={ct_name}} -> IdSet.mem ct_name prev_set
-                    | _ -> false
-                    in
-                if not add then new_set else*)
-                    if IdSet.is_empty (IdSet.inter new_set uv) then new_set
-                    else IdSet.union new_set uv)
+                let add = is_used_decl s new_set in
+                if add then IdSet.union new_set uv else new_set)
                 prev_set decls_plus
                 in
             if (IdSet.cardinal prev_set) = (IdSet.cardinal new_set) then new_set
-            else update_used_ctypes_ new_set (iters_left - 1)
+            else update_used_ids_ new_set (iters_left - 1)
             in
-        update_used_ctypes_ used_ctypes 100
+        update_used_ids_ used_ids 100
         in
-    let used_ctypes = update_used_ctypes used_ctypes in
-    (*let _ = print_idcset (sprintf "%s: updated used_ctypes" (pp_id2str mname)) used_ctypes in*)
-    let (ctypes_ccode, used_ctypes) = List.fold_left (fun (ctypes_ccode, used_ctypes) s ->
-        let s_ = match s with
-            | CDefForwardSym(f, loc) ->
-                (match (cinfo_ f loc) with
-                | CFun cf -> CDefFun cf
-                | _ -> s)
-            | _ -> s
-            in
-        let uv = used_ctypes_by_stmtlist [s_] IdSet.empty in
-        if IdSet.is_empty (IdSet.inter used_ctypes uv) then
-            (ctypes_ccode, used_ctypes)
+    let used_ids = update_used_ids used_ids in
+    (*let _ = print_idcset (sprintf "%s: updated used_ids" (pp_id2str mname)) used_ids in*)
+    let ctypes_ccode = List.fold_left (fun ctypes_ccode s ->
+        if (is_used_decl s used_ids) then
+            s :: ctypes_ccode
         else
-            ((s :: ctypes_ccode), (IdSet.union used_ctypes uv)))
-        ([], used_ctypes) (all_ctypes_fwd_decl @ all_ctypes_decl @ all_ctypes_fun_decl)
+            ctypes_ccode)
+        [] (all_ctypes_fwd_decl @ all_ctypes_decl @ all_ctypes_fun_decl)
         in
     List.rev ctypes_ccode
