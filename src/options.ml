@@ -74,8 +74,8 @@ let parse_options () =
         ("-pr-ast", (Arg.Unit (fun f -> options.print_ast <- true)), "   Print typechecked AST of the parsed files");
         ("-pr-k", (Arg.Unit (fun f -> options.print_k <- true)), "   Print the generated and optimized K-form");
         ("-no-c", (Arg.Unit (fun f -> options.gen_c <- false)), "   Do not generate C code");
-        ("-app", (Arg.Unit (fun f -> options.make_app <- true)), "   Compile and store application");
-        ("-run", (Arg.Unit (fun f -> options.run_app <- true)), "   Compile and run application");
+        ("-app", (Arg.Unit (fun f -> options.make_app <- true)), "   Build application (set by default)");
+        ("-run", (Arg.Unit (fun f -> options.run_app <- true)), "   Build application and run it");
         ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for the most essential ones");
         ("-O1", (Arg.Unit (fun () -> options.optimize_level <- 1)), "   Optimization level 1: enable most of optimizations");
         ("-O3", (Arg.Unit (fun () -> options.optimize_level <- 3)), "   Optimization level 3: enable all optimizations");

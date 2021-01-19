@@ -33,9 +33,8 @@ here is brief summary:
 ficus [-c|-app|-run|...] [-O0|-O1|-O3] [-I<extra_module_path>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
 ```
 
-* `-c` generates C code and writes it to `<scriptname>.c`. Use `-o` option to override the output name.
-* `-app` generates C code, stores it to temporary file and tries to compile it with C compiler (`cc`). Use `FICUS_CFLAGS` and `FICUS_LINK_LIBRARIES` environment variables to pass extra options to C compiler, e.g. `-ffast-math -mavx2` `-lmimalloc` etc. The compiled app is stored to `<scriptname>`. Override the name with `-o` option.
-* `-run` generates application in a temporary file and runs it. After execution the application is deleted.
+* `-app` (the flag is set by default) generate C code for the specified script as well as for the imported modules (one .c file per one .fx file), then run the compiler for each of the generated .c files and then link the produced object files into the finaal app. Use `FICUS_CFLAGS` and `FICUS_LINK_LIBRARIES` environment variables to pass extra options to C compiler, e.g. `-ffast-math -mavx2` `-lmimalloc` etc. The compiled app, as well as the intermediate `.c` and `.o` files, is stored in `__build__/<scriptname>/<scriptname>`. Override the output name with `-o` option.
+* `-run` builds the app (see flags `-app`) and then runs it.
 
 ## Ficus 1.0
 
