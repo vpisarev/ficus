@@ -12,7 +12,7 @@ type json_t =
     | JsonSeq: json_t list
     | JsonCommented: (string, json_t)
 
-fun jsc2str(jsc: json_scalar_t)
+fun string(jsc: json_scalar_t)
 {
     | JsonScInt i => string(i)
     | JsonScReal f => string(f)
@@ -44,7 +44,7 @@ fun print_js(js: json_t, ofs: int, indent: string)
     val js = process_comments(js, indent)
     match js {
     | JsonScalar(sc) =>
-        val str = jsc2str(sc)
+        val str = string(sc)
         print(str)
         ofs + length(str)
     | JsonCommented(comm, nested_js) =>
@@ -69,7 +69,7 @@ fun print_js(js: json_t, ofs: int, indent: string)
             val fold ofs = ofs + 2 for x@i <- l {
                 match x {
                 | JsonScalar(sc) =>
-                    val str = jsc2str(sc)
+                    val str = string(sc)
                     val lstr = length(str)
                     val ofs = if ofs > l_newind && ofs + lstr > W1 {
                         print(f"\n{newind}"); l_newind
@@ -101,7 +101,7 @@ fun print_js(js: json_t, ofs: int, indent: string)
     }
 }
 
-val rng = new_uniform_rng(123)
+val rng = new_uniform_rng(123u64)
 val s_list_list = [: for i <- 0:10 {
     val n = rng(0, 100)
     JsonCommented(f"#{i}", JsonSeq([: for j <- 0:n {

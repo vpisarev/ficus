@@ -663,8 +663,8 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
     qsort_(0, size(arr)-1)
 }
 
-fun new_uniform_rng(seed: int) {
-    var state = if seed != 0 {(seed :> uint64)} else {0xffffffffu64}
+fun new_uniform_rng(seed: uint64) {
+    var state = if seed != 0u64 {seed} else {0xffffffffu64}
     fun (a: int, b: int) {
         state = (state :> uint32) * 4197999714u64 + (state >> 32)
         val (a, b) = (min(a, b), max(a, b))

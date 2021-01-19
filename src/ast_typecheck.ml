@@ -549,6 +549,31 @@ let add_id_to_env_check key i env check =
     | _ -> true) entries in
     Env.add key ((EnvId i)::entries) env
 
+let inst_merge_env env_from env_to =
+    Env.fold (fun i entries new_env ->
+        match Env.find_opt i env_to with
+        | Some(prev_entries) ->
+            (* add only those symbols from env_from which also exist in env_to;
+               the goal is not to implement dynamic scope; the goal is to make
+               function instantiation work correctly in the presense of
+               locally overloaded functions *)
+            let extra_entries = List.fold_left (fun extra_entries e ->
+                match e with
+                | EnvId i ->
+                    let add = match (id_info i) with
+                        | IdFun _ -> true
+                        | _ -> false
+                        in
+                    if add && not (List.mem e prev_entries) then e :: extra_entries else extra_entries
+                | _ -> extra_entries) [] entries
+                in
+            if extra_entries = [] then new_env
+            else
+                let new_entries = (List.rev extra_entries) @ prev_entries in
+                Env.add i new_entries new_env
+        | _ ->
+            new_env) env_from env_to
+
 let check_for_duplicate_typ key sc loc =
     (fun i ->
     match i with
@@ -711,7 +736,8 @@ let rec lookup_id n t env sc loc =
                             (* the generic function matches the requested type,
                                but there is no appropriate instance;
                                let's create a new one *)
-                            let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp env1 sc loc true) in
+                            let inst_env = inst_merge_env env env1 in
+                            let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp inst_env sc loc true) in
                             unify inst_typ t loc "inconsistent type of the instantiated function";
                             Some(inst_name)
                     else
