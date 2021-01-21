@@ -384,13 +384,50 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
     return fx_status;
 }
 
+/* alternative and probably easier-to-use method to iterate over nD arrays;
+   it does not optimize 1D, 2D or continuous nD cases */
+typedef struct fx_arriter_pos_t
+{
+    char* ptr;
+    int_ pos, size;
+    size_t step;
+} fx_arriter_pos_t;
+
+FX_INLINE bool fx_next_slice(fx_arriter_pos_t* stack, int ndims)
+{
+    fx_arriter_pos_t* s = &stack[ndims-1];
+    int i;
+    if (++s->pos < s->size) {
+        s->ptr += s->step;
+        return true;
+    }
+    for (i = ndims-2; i >= 0 && ++stack[i].pos >= stack[i].size; i--)
+        ;
+    if (i < 0)
+        return false;
+    stack[i].ptr += stack[i].step;
+    for (++i; i < ndims; i++) {
+        stack[i].ptr = stack[i-1].ptr;
+        stack[i].pos = 0;
+    }
+    return true;
+}
+
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
 {
+    int fx_status = 0;
     int k = 0, i, ndims = arr->ndims;
     size_t total = 1, offset = 0;
     int state = 0;
     int nranges = 0;
     bool need_copy = false;
+    fx_arr_t temp;
+    int_ temp_size[FX_MAX_DIMS];
+    size_t elemsize = arr->dim[ndims-1].step;
+    fx_arriter_pos_t stack[FX_MAX_DIMS];
+    int stacksize;
+    int_ nelems;
+    char* dstptr;
 
     for( i = 0; i < ndims; i++ )
     {
@@ -421,6 +458,10 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
             a = ranges[1];
             b = size_i;
             delta = ranges[2];
+            if (delta < 0 && a == 0) {
+                a = size_i-1;
+                b = -1;
+            }
             ranges += 3;
             nranges++;
         }
@@ -428,8 +469,6 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
             FX_FAST_THROW_RET(FX_EXN_RangeError);
         if( delta == 0 )
             FX_FAST_THROW_RET(FX_EXN_ZeroStepError);
-        if( i == ndims-1 && delta != 1)
-            FX_FAST_THROW_RET(FX_EXN_RangeError);
         if( (delta > 0 && (a < 0 || b > size_i)) ||
             (delta < 0 && (b < -1 || a >= size_i)) )
             FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
@@ -456,23 +495,21 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
             state = 1;
 
         size_i = FX_LOOP_COUNT(a, b, delta);
-        if( delta < 0 ) {
+        if( (i == ndims-1 && delta != 1) || delta < 0 )
             need_copy = true;
-            a = b + 1;
-        }
 
         total *= (size_t)size_i;
         offset += a*step_i;
 
         if( scalar_range )
             continue;
-        subarr->dim[k].size = size_i;
-        subarr->dim[k].step = (delta > 0 ? delta : -delta)*step_i;
+        subarr->dim[k].size = temp_size[k] = size_i;
+        subarr->dim[k].step = delta*step_i;
         k++;
     }
 
     subarr->ndims = k;
-    subarr->flags = arr->flags & (state > 1 ? ~FX_ARR_CONTINUOUS : -1);
+    subarr->flags = arr->flags & (need_copy || state > 1 ? ~FX_ARR_CONTINUOUS : -1);
     subarr->free_elem = arr->free_elem;
     subarr->copy_elem = arr->copy_elem;
 
@@ -482,16 +519,46 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         return FX_OK;
     }
 
+    subarr->data = arr->data + offset;
+
     if (!need_copy) {
         subarr->rc = arr->rc;
         if (subarr->rc)
             FX_INCREF(*subarr->rc);
-        subarr->data = arr->data + offset;
         return FX_OK;
     }
 
-    // [TODO] implement array flip
-    FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
+    // make a copy the constructed "in-place subarray" header; then allocate fresh subarray
+    temp = *subarr;
+    fx_status = fx_make_arr(subarr->ndims, temp_size, elemsize, arr->free_elem, arr->copy_elem, 0, subarr);
+    if (fx_status < 0)
+        return fx_status;
+
+    // initialize the stack
+    for (k = 0; k < temp.ndims; k++) {
+        fx_arriter_pos_t* s = &stack[k];
+        s->ptr = temp.data;
+        s->pos = 0;
+        s->size = temp.dim[k].size;
+        s->step = temp.dim[k].step;
+    }
+
+    stacksize = temp.ndims-1;
+    nelems = temp.dim[stacksize].size;
+    if (temp.dim[stacksize].step != elemsize)
+    {
+        stacksize++;
+        nelems = 1;
+    }
+    dstptr = subarr->data;
+
+    do {
+        fx_arriter_pos_t* top = &stack[stacksize-1];
+        fx_copy_arr_elems(top->ptr, dstptr, nelems, elemsize, arr->copy_elem);
+        dstptr += nelems*elemsize;
+    } while (fx_next_slice(stack, stacksize));
+
+    return FX_OK;
 }
 
 int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
