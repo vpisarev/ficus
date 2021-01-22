@@ -144,9 +144,21 @@ pure fun strip(s: string): string = ccode
     return fx_substr(s, i, sz, 1, 0, fx_result);
 }
 
-pure fun substr(s: string, pos: int, len: int): string = ccode //TODO: make this function safe.
+fun substr(s: string, pos: int, len: int) : string
 {
-    return fx_substr(s, pos, pos + len, 1, 0, fx_result);
+    val slen = length(s)
+    if(pos < 0)
+        {throw BadArgError}
+    if(pos >= slen) 
+    {""}
+    else
+    {
+        pure fun substr_(s: string, pos: int, len: int): string = ccode
+        {
+            return fx_substr(s, pos, pos + len, 1, 0, fx_result);
+        }
+        substr_(s, pos, min(len, slen-pos))
+    }
 }
 
 fun tokens(s: string, f: char->bool)

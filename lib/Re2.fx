@@ -20,10 +20,36 @@
     3.) Use -c++ flag on compilation.
 */
 
+exception BadRegexp : string
 ccode 
 {
     #include <re2/re2.h>
     #include <vector>
+
+    int _fx_M3Re2FM14make_BadRegexpE1S(fx_str_t* arg0, fx_exn_t* fx_result); //[TODO] : Exception, declared before ccode block must be declared in program, translated to C program before this ccode for avoiding such insets. 
+
+    static int throwRe2Badregexp(const std::string& err)
+    {
+        fx_exn_t v_0 = {};
+        int fx_status = 0;
+        fx_str_t werr;
+
+        fx_status = fx_cstr2str(err.c_str(), err.size(), &werr);
+        if(fx_status >= 0) 
+        {
+            FX_CALL(_fx_M3Re2FM14make_BadRegexpE1S(&werr, &v_0), _fx_cleanup); //[TODO] : We need C-side infrastacture for user-registered exceptions. Name mangling for exception functions is a root of problem.
+            FX_THROW(&v_0, true, _fx_cleanup);
+        }
+        else
+        {
+            FX_UPDATE_BT();
+        }
+    _fx_cleanup: ;
+        fx_free_exn(&v_0);
+        return fx_status;
+    }
+
+    #define FX_RE2_THROW_BADREGEXP(str, catch_label) { fx_status = throwRe2Badregexp((str)); goto catch_label; }
 
     void fx_re2_free(void* ptr)
     {
@@ -33,70 +59,97 @@ ccode
         fx_free(re_to_delete);
     }
 
-    //TODO: Do something with these sophisticated constructions around exceptions.
-    #define FX_RE2_THROW_RET(exn) return FX_SET_EXN(&_fx_exn_re2_##exn, false);
-    #define FX_RE2_DECLARE_EXN(exn) \
-        static int FX_EXN_RE2_##exn = 0; \
-        static fx_exn_info_t FX_EXN_RE2_##exn##_info = {}; \
-        static fx_exn_t _fx_exn_re2_##exn = {};
-
-    #define FX_RE2_REGISTER_EXN(exn) fx_register_simple_exn(U"Re2."#exn, &FX_EXN_RE2_##exn, &FX_EXN_RE2_##exn##_info, &_fx_exn_re2_##exn)
     static re2::RE2::Options fx_re2_silent_opts;
-
-    FX_RE2_DECLARE_EXN(BadRegexp);
 
     class FX_RE2_Initializer
     {
     public:
-
         FX_RE2_Initializer()
         {
-            FX_RE2_REGISTER_EXN(BadRegexp);
             fx_re2_silent_opts.set_log_errors(false);
         }
     };
     static FX_RE2_Initializer fx_re2_initializer;
 
-    static void set_sub_args(std::vector<re2::StringPiece>& a_sub_string_pieces, std::vector<re2::RE2::Arg*>& a_sub_args)
+
+    static int make_sub_args(re2::StringPiece*& a_sub_string_pieces, re2::RE2::Arg**& a_sub_args, int_ a_size)
     {
-        a_sub_args.resize(a_sub_string_pieces.size());
-        for(size_t arg_num = 0; arg_num < a_sub_string_pieces.size(); arg_num++)
+        a_sub_args = 0;
+        a_sub_string_pieces = 0;
+        a_sub_string_pieces = static_cast<re2::StringPiece*>(fx_malloc(sizeof(re2::StringPiece) * a_size));
+        if( !a_sub_string_pieces ) 
+            return FX_EXN_OutOfMemError;
+        a_sub_args = static_cast<re2::RE2::Arg**>(fx_malloc(sizeof(re2::RE2::Arg*) * a_size));
+        if( !a_sub_args ) 
         {
-            a_sub_args[arg_num] = new re2::RE2::Arg(&(a_sub_string_pieces[arg_num]));
+            fx_free(a_sub_string_pieces); 
+            return FX_EXN_OutOfMemError;
         }
+        memset(a_sub_args, 0, sizeof(re2::RE2::Arg*) * a_size);
+        for(size_t arg_num = 0; arg_num < a_size; arg_num++)
+        {
+            new (a_sub_string_pieces + arg_num) re2::StringPiece();
+        }
+        for(size_t arg_num = 0; arg_num < a_size; arg_num++)
+        {
+            a_sub_args[arg_num] = static_cast<re2::RE2::Arg*>(fx_malloc(sizeof(re2::RE2::Arg)));
+            if( !a_sub_args[arg_num] ) 
+            {
+                for(size_t arg_ers = 0; arg_ers < arg_num; arg_ers++)
+                {
+                    a_sub_args[arg_num]->~Arg();
+                    fx_free(a_sub_args[arg_num]);
+                }
+                fx_free(a_sub_args); 
+                for(size_t arg_ers = 0; arg_ers < a_size; arg_ers++)
+                {
+                    a_sub_string_pieces[arg_num].~StringPiece();
+                }
+                fx_free(a_sub_string_pieces); 
+                return FX_EXN_OutOfMemError;
+            }
+            new (a_sub_args[arg_num]) re2::RE2::Arg(a_sub_string_pieces + arg_num);
+        }
+        return FX_OK;
     }
 
-    static void free_sub_args(const std::vector<RE2::Arg*>& a_sub_args)
+    static void free_sub_args(re2::StringPiece*& a_sub_string_pieces, re2::RE2::Arg**& a_sub_args, int_ a_size)
     {
-        for(size_t arg_num = 0; arg_num < a_sub_args.size(); arg_num++)
+        for(size_t arg_num = 0; arg_num < a_size; arg_num++)
         {
-            delete a_sub_args[arg_num];
+            a_sub_args[arg_num]->~Arg();
+            (a_sub_string_pieces + arg_num)->~StringPiece();
         }
+        fx_free(a_sub_args);
+        fx_free(a_sub_string_pieces);
     }
 
-    int string_pieces_to_arr(std::vector<re2::StringPiece>& sub_string_pieces, const char* string_itself, fx_arr_t* fx_result)
+    int string_pieces_to_arr(re2::StringPiece* sub_string_pieces, int_ a_size, const char* string_itself, fx_arr_t* fx_result)
     {
-        const int_ sub_amount = sub_string_pieces.size();
-        const int_ arrdims[1] = {sub_amount};
-        std::vector<int_> starts_and_ends(sub_amount * 2); //TODO: what if it's not enough memory???
-        for(int piece_num = 0; piece_num < sub_amount; piece_num++)
+        const int_ arrdims[1] = {a_size};
+        int fx_status = fx_make_arr( 1, arrdims, sizeof(int_)+sizeof(int_), 0, 0, 0, fx_result);
+        if(fx_status>=0)
         {
-            starts_and_ends[2 * piece_num    ] = sub_string_pieces[piece_num].begin() - string_itself;
-            starts_and_ends[2 * piece_num + 1] = sub_string_pieces[piece_num].end()   - string_itself;
-        }
-        return fx_make_arr( 1, arrdims, sizeof(int_)+sizeof(int_), 0, 0, &(*(starts_and_ends.begin())), fx_result);
+            int_* starts_and_ends = (int_*)fx_result->data;              //tuple of 2 * int have size = sizeof(int) + sizeof(int)
+            for(int piece_num = 0; piece_num < a_size; piece_num++)
+            {
+                starts_and_ends[2 * piece_num    ] = sub_string_pieces[piece_num].begin() - string_itself;
+                starts_and_ends[2 * piece_num + 1] = sub_string_pieces[piece_num].end()   - string_itself;
+            }
+        } 
+        return fx_status; 
     }
 }
 
-fun incise(string_to_match: string, start_end: (int, int)): string
+fun incise(str: string, start_end: (int, int)): string
 {
     val (start, end) = start_end
-    String.substr(string_to_match,start, end - start)
+    String.substr(str,start, end - start)
 }
 
-fun incise(string_to_match: string, starts_ends: (int, int)[]): string []
+fun incise(str: string, starts_ends: (int, int)[]): string []
 {
-    [for start_end <- starts_ends {incise(string_to_match, start_end)}]
+    [for start_end <- starts_ends {incise(str, start_end)}]
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +161,6 @@ fun incise(string_to_match: string, starts_ends: (int, int)[]): string []
 // replace_pattern_t describes, what to replace found matches                        ////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//[TODO]  Synchronyze function and argument naming with original Re2.
 //[TODO]  Named groups
 //[TODO]  Check all other functions
 type regex_t = { handle: cptr }
@@ -120,228 +172,243 @@ type replace_piece_t =
 //                       (pieces              , max_subnum) [TODO]: Replace it with structure, when you will understand how to do this
 type replace_pattern_t = (replace_piece_t list,        int)
 
-fun compile(rstr: string/*TODO:Options*/): regex_t = ccode
+fun compile(pattern: string/*TODO:Options*/): regex_t = ccode
 {
     using namespace re2;
-    fx_cstr_t crstr;
-    int fx_status = fx_str2cstr(rstr, &crstr, 0, 0);
+    fx_cstr_t cpattern;
+    int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
     if(fx_status>=0)
     {
         RE2* new_re = static_cast<RE2*>(fx_malloc(sizeof(re2::RE2)));
-        new (new_re) RE2(crstr.data, fx_re2_silent_opts); //TODO: After construction we have to ask this object if it's created. Ok function will help with it. If no, we have to throw some exception.
-        fx_free_cstr(&crstr);
-        fx_status = fx_make_cptr(new_re, fx_re2_free, &fx_result->handle);
+        new (new_re) RE2(cpattern.data, fx_re2_silent_opts);
+        fx_free_cstr(&cpattern);
         if(!new_re->ok())
-            FX_RE2_THROW_RET(BadRegexp);
+        {
+            std::string errorstr = new_re->error();
+            fx_re2_free(new_re);
+            FX_RE2_THROW_BADREGEXP(errorstr, fx_cleanup);
+        }
+        fx_status = fx_make_cptr(new_re, fx_re2_free, &fx_result->handle);
     }
+fx_cleanup:
     return fx_status;
 }
 
-fun compile_for_find(rstr: string/*TODO:Options*/): find_regex_t
+fun compile_for_find(pattern: string/*TODO:Options*/): find_regex_t
 {
     pure fun usual_to_find(from_who: regex_t): find_regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
     {
         fx_copy_cptr(from_who->handle, &fx_result->handle);
         return FX_OK;
     }
-    usual_to_find(compile("("+rstr+")")) 
+    usual_to_find(compile("("+pattern+")")) 
 }
 
-pure fun number_of_capturing_groups(regexp: regex_t): int = ccode
+pure fun number_of_capturing_groups(re: regex_t): int = ccode
 {
-    RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr); //[TODO]: Check if it's exists???
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr); //[TODO]: Check if it's exists???
     *fx_result = re_to_apply->NumberOfCapturingGroups();
     return FX_OK;
 }
 
-pure fun full_match(string_to_match: string, regexp: regex_t) : bool = ccode
+pure fun full_match(text: string, re: regex_t) : bool = ccode
 {   
     using namespace re2;
-    fx_cstr_t cstring_to_match;
-    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    fx_cstr_t ctext;
+    int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
-        *fx_result = re2::RE2::FullMatch(cstring_to_match.data, *re_to_apply);//TODO: Try - catch.
-        fx_free_cstr(&cstring_to_match);
+        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+        *fx_result = re2::RE2::FullMatch(ctext.data, *re_to_apply);//TODO: Try - catch.
+        fx_free_cstr(&ctext);
     }
     return fx_status;
 }
 
-//                                                                (success, (sub_start, sub_end)[])
-pure fun full_match_n(string_to_match: string, regexp: regex_t) : (bool   , (int      , int    )[]) = ccode
+//                                                 (success, (sub_start, sub_end)[])
+pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    fx_cstr_t cstring_to_match;
-    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    fx_cstr_t ctext;
+    int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
+        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
 
-        std::vector<StringPiece> sub_string_pieces(sub_amount);
-        std::vector<RE2::Arg*> sub_args;
-        set_sub_args(sub_string_pieces, sub_args);
-
-        fx_result->t0 = RE2::FullMatchN(cstring_to_match.data, *re_to_apply, &(*sub_args.begin()), sub_amount); //TODO: try - catch!
-        free_sub_args(sub_args);
-        if(fx_result->t0)
+        StringPiece* sub_string_pieces;
+        RE2::Arg** sub_args;
+        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
+        if(fx_status>=0)
         {
-            fx_status = string_pieces_to_arr(sub_string_pieces, cstring_to_match.data, &(fx_result->t1));
+            fx_result->t0 = RE2::FullMatchN(ctext.data, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
+            if(fx_result->t0)
+            {
+                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, ctext.data, &(fx_result->t1));
+            }
+            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        fx_free_cstr(&cstring_to_match);
+        fx_free_cstr(&ctext);
     }
     return fx_status;
 }
 
-pure fun full_match_n_str(string_to_match: string, regexp: regex_t) : (bool, string [])
+//                                                     (success, sub-matches [])
+pure fun full_match_n_str(text: string, re: regex_t) : (bool,         string [])
 {   
-    val (success, starts_ends) = full_match_n(string_to_match, regexp)
-    (success, incise(string_to_match, starts_ends))
+    val (success, starts_ends) = full_match_n(text, re)
+    (success, incise(text, starts_ends))
 }
 
-pure fun partial_match(string_to_match: string, regexp: regex_t) : bool = ccode
+pure fun partial_match(text: string, re: regex_t) : bool = ccode
 {
     using namespace re2;
-    fx_cstr_t cstring_to_match;
-    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    fx_cstr_t ctext;
+    int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
-        *fx_result = re2::RE2::PartialMatch(cstring_to_match.data, *re_to_apply);//TODO: Try - catch.
-        fx_free_cstr(&cstring_to_match);
+        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+        *fx_result = re2::RE2::PartialMatch(ctext.data, *re_to_apply);//TODO: Try - catch.
+        fx_free_cstr(&ctext);
     }
     return fx_status;
 }
 
-//                                                                   (success, (sub_start, sub_end)[])
-pure fun partial_match_n(string_to_match: string, regexp: regex_t) : (bool   , (int      , int    )[]) = ccode
+//                                                    (success, (sub_start, sub_end)[])
+pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    fx_cstr_t cstring_to_match;
-    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    fx_cstr_t ctext;
+    int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
+        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
 
-        std::vector<StringPiece> sub_string_pieces(sub_amount);
-        std::vector<RE2::Arg*> sub_args;
-        set_sub_args(sub_string_pieces, sub_args);
-
-        fx_result->t0 = RE2::PartialMatchN(cstring_to_match.data, *re_to_apply, &(*sub_args.begin()), sub_amount); //TODO: try - catch!
-        free_sub_args(sub_args);
-        if(fx_result->t0)
+        StringPiece* sub_string_pieces;
+        RE2::Arg** sub_args;
+        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
+        if(fx_status>=0)
         {
-            fx_status = string_pieces_to_arr(sub_string_pieces, cstring_to_match.data, &(fx_result->t1));
+            fx_result->t0 = RE2::PartialMatchN(ctext.data, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
+            if(fx_result->t0)
+            {
+                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, ctext.data, &(fx_result->t1));
+            }
+            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        fx_free_cstr(&cstring_to_match);
+        fx_free_cstr(&ctext);
     }
     return fx_status;
 }
 
-fun partial_match_n_str(string_to_match: string, regexp: regex_t) : (bool, string [])
+//                                                   (success, sub-matches [])
+fun partial_match_n_str(text: string, re: regex_t) : (bool,         string [])
 {   
-    val (success, starts_ends) = partial_match_n(string_to_match, regexp)
-    (success, incise(string_to_match, starts_ends))
+    val (success, starts_ends) = partial_match_n(text, re)
+    (success, incise(text, starts_ends))
 }
 
-//                                                                (success, newpos)
-fun consume(string_to_match: string, pos: int, regexp: regex_t) : (bool   ,    int)
+//                                                  (success, newpos)
+fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 {   
-    val (success, newpos, arr) = consume_n(string_to_match, pos, regexp)
+    val (success, newpos, arr) = consume_n(input, pos, re)
     (success, newpos)
 }
 
-//                                                                       (success, newpos, (sub_start, sub_end)[])
-pure fun consume_n(string_to_match: string, pos: int, regexp: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
+//                                                         (success, newpos, (sub_start, sub_end)[])
+pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    if(pos<0 || string_to_match->length < pos) 
+    if(pos<0 || input->length < pos) 
         FX_FAST_THROW_RET(FX_EXN_BadArgError);
-    fx_cstr_t cstring_to_match;
-    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    fx_cstr_t cinput;
+    int fx_status = fx_str2cstr(input, &cinput, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
+        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
 
-        std::vector<StringPiece> sub_string_pieces(sub_amount);
-        std::vector<RE2::Arg*> sub_args;
-        set_sub_args(sub_string_pieces, sub_args);
-
-        StringPiece string_n_position(cstring_to_match.data + pos);
-        fx_result->t0 = RE2::ConsumeN(&string_n_position, *re_to_apply, &(*sub_args.begin()), sub_amount); //TODO: try - catch!
-
-        free_sub_args(sub_args);
-        if(fx_result->t0)
+        StringPiece* sub_string_pieces;
+        RE2::Arg** sub_args;
+        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
+        if(fx_status>=0)
         {
-            fx_result->t1 = string_n_position.begin() - cstring_to_match.data;
-            fx_status = string_pieces_to_arr(sub_string_pieces, cstring_to_match.data, &(fx_result->t2));
+            StringPiece string_n_position(cinput.data + pos);
+            fx_result->t0 = RE2::ConsumeN(&string_n_position, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
+
+            if(fx_result->t0)
+            {
+                fx_result->t1 = string_n_position.begin() - cinput.data;
+                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, cinput.data, &(fx_result->t2));
+            }
+            else
+            {
+                fx_result->t1 = pos;
+            }
+            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        else
-        {
-            fx_result->t1 = pos;
-        }
-        fx_free_cstr(&cstring_to_match);
+        fx_free_cstr(&cinput);
     }
     return fx_status;
 }
 
-//                                                                      (success, newpos, sub-matches [])
-fun consume_n_str(string_to_match: string, pos: int, regexp: regex_t) : (bool   ,    int,      string [])
+//                                                        (success, newpos, sub-matches [])
+fun consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    int,      string [])
 {   
-    val (success, newpos, starts_ends) = consume_n(string_to_match, pos, regexp)
-    (success, newpos, incise(string_to_match, starts_ends))
+    val (success, newpos, starts_ends) = consume_n(input, pos, re)
+    (success, newpos, incise(input, starts_ends))
 }
 
-//                                                                         (success, newpos)
-fun find_and_consume(string_to_match: string, pos: int, regexp: regex_t) : (bool   ,    int)
+//                                                           (success, newpos)
+fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 {   
-    val (success, newpos, arr) = find_and_consume_n(string_to_match, pos, regexp)
+    val (success, newpos, arr) = find_and_consume_n(input, pos, re)
     (success, newpos)
 }
 
-//                                                                                (success, newpos, (sub_start, sub_end)[])
-pure fun find_and_consume_n(string_to_match: string, pos: int, regexp: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
+//                                                                  (success, newpos, (sub_start, sub_end)[])
+pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    if(pos<0 || string_to_match->length < pos) 
+    if(pos<0 || input->length < pos) 
         FX_FAST_THROW_RET(FX_EXN_BadArgError);
-    fx_cstr_t cstring_to_match;
-    int fx_status = fx_str2cstr(string_to_match, &cstring_to_match, 0, 0);
+    fx_cstr_t cinput;
+    int fx_status = fx_str2cstr(input, &cinput, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(regexp->handle->ptr);
+        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
 
-        std::vector<StringPiece> sub_string_pieces(sub_amount);
-        std::vector<RE2::Arg*> sub_args;
-        set_sub_args(sub_string_pieces, sub_args);
-
-        StringPiece string_n_position(cstring_to_match.data + pos);
-        fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, &(*sub_args.begin()), sub_amount); //TODO: try - catch!
-
-        free_sub_args(sub_args);
-        if(fx_result->t0)
+        StringPiece* sub_string_pieces;
+        RE2::Arg** sub_args;
+        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
+        if(fx_status>=0)
         {
-            fx_result->t1 = string_n_position.begin() - cstring_to_match.data;
-            fx_status = string_pieces_to_arr(sub_string_pieces, cstring_to_match.data, &(fx_result->t2));
+            StringPiece string_n_position(cinput.data + pos);
+            fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
+
+            if(fx_result->t0)
+            {
+                fx_result->t1 = string_n_position.begin() - cinput.data;
+                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, cinput.data, &(fx_result->t2));
+            }
+            else
+            {
+                fx_result->t1 = pos;
+            }
+            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        else
-        {
-            fx_result->t1 = pos;
-        }
-        fx_free_cstr(&cstring_to_match);
+        fx_free_cstr(&cinput);
     }
     return fx_status;
 }
 
-//                                                                               (success, newpos, sub-matches [])
-fun find_and_consume_n_str(string_to_match: string, pos: int, regexp: regex_t) : (bool   ,    int,      string [])
+//                                                                 (success, newpos, sub-matches [])
+fun find_and_consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    int,      string [])
 {   
-    val (success, newpos, starts_ends) = find_and_consume_n(string_to_match, pos, regexp)
-    (success, newpos, incise(string_to_match, starts_ends))
+    val (success, newpos, starts_ends) = find_and_consume_n(input, pos, re)
+    (success, newpos, incise(input, starts_ends))
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -352,33 +419,33 @@ fun find_and_consume_n_str(string_to_match: string, pos: int, regexp: regex_t) :
 // result array.                                                                    /////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//                                                       (success, (sub_start, sub_end)[])
-fun find(string_to_match: string, regexp: find_regex_t): (bool   , (int      , int    )[])
+//                                                   (success, (sub_start, sub_end)[])
+fun find(string_to_match: string, re: find_regex_t): (bool   , (int      , int    )[])
 {
     pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
     {
         fx_copy_cptr(from_who->handle, &fx_result->handle);
         return FX_OK;
     }
-    partial_match_n(string_to_match, find_to_usual(regexp))
+    partial_match_n(string_to_match, find_to_usual(re))
 }
 
-//                                                           (success, sub-matches[])
-fun find_str(string_to_match: string, regexp: find_regex_t): (bool   , string     [])
+//                                                       (success, sub-matches[])
+fun find_str(string_to_match: string, re: find_regex_t): (bool   , string     [])
 {   
-    val (success, starts_ends) = find(string_to_match, regexp)
+    val (success, starts_ends) = find(string_to_match, re)
     (success, incise(string_to_match, starts_ends))
 }
 
-//                                                          (success, (sub_start, sub_end)[,])
-fun findall(string_to_match: string, regexp: find_regex_t): (bool   , (int      , int    )[,])
+//                                                      (success, (sub_start, sub_end)[,])
+fun findall(string_to_match: string, re: find_regex_t): (bool   , (int      , int    )[,])
 {
     pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
     {
         fx_copy_cptr(from_who->handle, &fx_result->handle);
         return FX_OK;
     }
-    val usual = find_to_usual(regexp)
+    val usual = find_to_usual(re)
     fun result_as_list(pos: int) : (int, int)[] list
     {
         val (success, newpos, matches) = find_and_consume_n(string_to_match, pos, usual)
@@ -407,10 +474,10 @@ fun findall(string_to_match: string, regexp: find_regex_t): (bool   , (int      
     (len_i !=0, matrix_res)
 }
 
-//                                                              (success, sub-matches[,])
-fun findall_str(string_to_match: string, regexp: find_regex_t): (bool   , string     [,])
+//                                                          (success, sub-matches[,])
+fun findall_str(string_to_match: string, re: find_regex_t): (bool   , string     [,])
 {   
-    val (success, starts_ends) = findall(string_to_match, regexp)
+    val (success, starts_ends) = findall(string_to_match, re)
     val (len_i, len_j) = size(starts_ends)
     (success, [for i <- 0:len_i for j <- 0:len_j {incise(string_to_match, starts_ends[i,j])}])
 }
@@ -419,47 +486,53 @@ fun findall_str(string_to_match: string, regexp: find_regex_t): (bool   , string
 // Replaces /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-val digit_reg = compile("(\\\\[0-9])") 
-fun compile_replace_pattern(rewrite: string): replace_pattern_t //[TODO] Ugly implementation. Do something with it. Add tail recursion, e.t.c...
+fun compile_replace_pattern(rewrite: string): replace_pattern_t
 {
-    fun compile_replace_pattern_(rewrite: string, pos: int): replace_piece_t list
-    {
-        val (digit_is_found, newpos, found_range) = find_and_consume_n(rewrite, pos, digit_reg)
-        if digit_is_found
+    val digit_reg = compile_for_find("\\\\[0-9]") //[TODO] I've tryed to make this val global, but in this case, C++-output became uncompilable.
+    val (has_subs, ranges) = findall(rewrite, digit_reg)
+    val piece_lst = 
+        if(has_subs)
         {
-            val (startpos, _) = found_range[0]
-            val justzero = "0"//[TODO] Remove this super ugly atoi.
-            val placeholder_num = int(rewrite[startpos+1]) - int(justzero[0])
-            if(startpos > pos) 
+            val justzero = "0"
+            val (len_i, _) = size(ranges)
+            var pieces_list = []
+            var pos = 0
+            var incl_num =0 
+            while incl_num < len_i
             {
-                RPString(String.substr(rewrite, pos, startpos-pos))::RPInt(placeholder_num)::compile_replace_pattern_(rewrite, newpos)
+                val (substart,subend) = ranges[incl_num,0]
+                val placeholder_num = int(rewrite[substart+1]) - int(justzero[0]) //[TODO] Remove this super ugly atoi.
+                pieces_list = RPInt(placeholder_num) :: RPString(String.substr(rewrite, pos, substart-pos)) :: pieces_list
+                pos = subend
+                incl_num += 1
             }
-            else
-            {
-                RPInt(placeholder_num)::compile_replace_pattern_(rewrite, newpos)
-            }
+//            for incl_num <- 0: len_i // [TODO] For some reason, this cycle is not compilable. 'tsa boog.
+//            {   
+//                val (substart,subend) = ranges[incl_num,0]
+//                val placeholder_num = int(rewrite[substart+1]) - int(justzero[0]) //[TODO] Remove this super ugly atoi.
+//                pieces_list = RPInt(placeholder_num) :: RPString(String.substr(rewrite, pos, substart-pos)) :: pieces_list
+//                pos = subend
+//            }
+            pieces_list = RPString(String.substr(rewrite, pos, String.length(rewrite) - pos)) :: pieces_list
+            fold filtered = [] for piece <- pieces_list
+            {   
+                val ok = match piece { | RPString simple_piece => String.length(simple_piece)!=0  | RPInt sub_num => true}
+                if (ok) {piece::filtered} else {filtered}
+            }                
         }
         else
         {
-            if(pos < String.length(rewrite))
-            {
-                RPString(String.substr(rewrite, pos, String.length(rewrite)-pos))::[]
-            }
-            else
-            {
-                []
-            }
+            RPString(rewrite) :: []
         }
-    }
-    val piece_lst = compile_replace_pattern_(rewrite,0)
+    
     val fold max_sub = -1 for piece <- piece_lst
-        {   
-            match piece
-            {
-                | RPString simple_piece => max_sub
-                | RPInt sub_num => max(max_sub, sub_num) 
-            }
-        }    
+    {   
+        match piece
+        {
+            | RPString simple_piece => max_sub
+            | RPInt sub_num => max(max_sub, sub_num) 
+        }
+    }    
 
     (piece_lst, max_sub)
 }
@@ -482,8 +555,8 @@ fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_su
 }
 
 
-//                                                                          (success, result)
-fun replace(str: string, regexp: find_regex_t, rewrite: replace_pattern_t): (bool,    string)
+//                                                                      (success, result)
+fun replace(str: string, re: find_regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
     pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
     {
@@ -491,9 +564,9 @@ fun replace(str: string, regexp: find_regex_t, rewrite: replace_pattern_t): (boo
         return FX_OK;
     }
     val (_, max_sub_num) = rewrite
-    if number_of_capturing_groups(find_to_usual(regexp)) <= max_sub_num
+    if number_of_capturing_groups(find_to_usual(re)) <= max_sub_num
         {throw BadArgError} //[TODO]: BadArg or something more detailed? 
-    val (is_found, ranges) = find(str, regexp)
+    val (is_found, ranges) = find(str, re)
     (is_found,
         if(is_found)
         {
@@ -505,8 +578,8 @@ fun replace(str: string, regexp: find_regex_t, rewrite: replace_pattern_t): (boo
         {str})
 }
 
-//                                                                                 (success, result)
-fun global_replace(str: string, regexp: find_regex_t, rewrite: replace_pattern_t): (bool,    string)
+//                                                                             (success, result)
+fun global_replace(str: string, re: find_regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
     pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
     {
@@ -514,10 +587,10 @@ fun global_replace(str: string, regexp: find_regex_t, rewrite: replace_pattern_t
         return FX_OK;
     }
     val (_, max_sub_num) = rewrite
-    if number_of_capturing_groups(find_to_usual(regexp)) <= max_sub_num
+    if number_of_capturing_groups(find_to_usual(re)) <= max_sub_num
         {throw BadArgError} //[TODO]: BadArg or something more detailed? 
 
-    val (is_found, ranges) = findall(str, regexp)
+    val (is_found, ranges) = findall(str, re)
     (is_found,
         if(is_found)
         {
@@ -544,130 +617,132 @@ fun global_replace(str: string, regexp: find_regex_t, rewrite: replace_pattern_t
 // It's not recommended, when particular regexp will be used multiple times.
 /////////////////////////////////////////////////////////////////////////////////////////
 
-fun full_match(string_to_match: string, regexp: string) : bool
+fun full_match(text: string, re: string) : bool
+{
+    full_match(text, compile(re)) 
+}
+
+//                                           (success, (sub_start, sub_end)[])
+fun full_match_n(text: string, re: string) : (bool   , (int      , int    )[])
+{
+    full_match_n(text, compile(re)) 
+}
+
+//                                               (success, sub-matches [])
+fun full_match_n_str(text: string, re: string) : (bool,         string [])
+{
+    full_match_n_str(text, compile(re))
+}
+
+fun partial_match(text: string, re: string) : bool
+{
+    partial_match(text, compile(re))
+}
+
+//                                              (success, (sub_start, sub_end)[])
+fun partial_match_n(text: string, re: string) : (bool   , (int      , int    )[])
 {   
-    full_match(string_to_match, compile(regexp)) 
+    partial_match_n(text, compile(re))
 }
 
-//                                                          (success, (sub_start, sub_end)[])
-fun full_match_n(string_to_match: string, regexp: string) : (bool   , (int      , int    )[])
-{
-    full_match_n(string_to_match, compile(regexp)) 
-}
-
-fun full_match_n_str(string_to_match: string, regexp: string) : (bool, string [])
-{
-    full_match_n_str(string_to_match, compile(regexp))
-}
-
-fun partial_match(string_to_match: string, regexp: string) : bool
-{
-    partial_match(string_to_match, compile(regexp))
-}
-
-//                                                             (success, (sub_start, sub_end)[])
-fun partial_match_n(string_to_match: string, regexp: string) : (bool   , (int      , int    )[])
+//                                                  (success, sub-matches [])
+fun partial_match_n_str(text: string, re: string) : (bool,         string [])
 {   
-    partial_match_n(string_to_match, compile(regexp))
+    partial_match_n_str(text, compile(re))
 }
 
-fun partial_match_n_str(string_to_match: string, regexp: string) : (bool, string [])
+//                                                 (success, newpos)
+fun consume(input: string, pos: int, re: string) : (bool   ,    int)
 {   
-    partial_match_n_str(string_to_match, compile(regexp))
+    consume(input, pos, compile(re))
 }
 
-//                                                               (success, newpos)
-fun consume(string_to_match: string, pos: int, regexp: string) : (bool   ,    int)
+//                                                        (success, newpos, (sub_start, sub_end)[])
+pure fun consume_n(input: string, pos: int, re: string) : (bool   ,    int, (int      , int    )[])
+{
+    consume_n(input, pos, compile(re))
+}
+
+//                                                       (success, newpos, sub-matches [])
+fun consume_n_str(input: string, pos: int, re: string) : (bool   ,    int,      string [])
+{
+    consume_n_str(input, pos, compile(re))
+}
+
+//                                                          (success, newpos)
+fun find_and_consume(input: string, pos: int, re: string) : (bool   ,    int)
 {   
-    consume(string_to_match, pos, compile(regexp))
+    find_and_consume(input, pos, compile(re))
 }
 
-//                                                                      (success, newpos, (sub_start, sub_end)[])
-pure fun consume_n(string_to_match: string, pos: int, regexp: string) : (bool   ,    int, (int      , int    )[])
+//                                                                 (success, newpos, (sub_start, sub_end)[])
+pure fun find_and_consume_n(input: string, pos: int, re: string) : (bool   ,    int, (int      , int    )[])
 {
-    consume_n(string_to_match, pos, compile(regexp))
+    find_and_consume_n(input, pos, compile(re))
 }
 
-//                                                                     (success, newpos, sub-matches [])
-fun consume_n_str(string_to_match: string, pos: int, regexp: string) : (bool   ,    int,      string [])
+//                                                                (success, newpos, sub-matches [])
+fun find_and_consume_n_str(input: string, pos: int, re: string) : (bool   ,    int,      string [])
 {
-    consume_n_str(string_to_match, pos, compile(regexp))
+    find_and_consume_n_str(input, pos, compile(re))
 }
 
-//                                                                        (success, newpos)
-fun find_and_consume(string_to_match: string, pos: int, regexp: string) : (bool   ,    int)
-{   
-    find_and_consume(string_to_match, pos, compile(regexp))
-}
-
-//                                                                               (success, newpos, (sub_start, sub_end)[])
-pure fun find_and_consume_n(string_to_match: string, pos: int, regexp: string) : (bool   ,    int, (int      , int    )[])
+//                                             (success, (sub_start, sub_end)[])
+fun find(string_to_match: string, re: string): (bool   , (int      , int    )[])
 {
-    find_and_consume_n(string_to_match, pos, compile(regexp))
+    find(string_to_match, compile_for_find(re))
 }
 
-//                                                                              (success, newpos, sub-matches [])
-fun find_and_consume_n_str(string_to_match: string, pos: int, regexp: string) : (bool   ,    int,      string [])
+//                                                 (success, sub-matches[])
+fun find_str(string_to_match: string, re: string): (bool   , string     [])
 {
-    find_and_consume_n_str(string_to_match, pos, compile(regexp))
+    find_str(string_to_match, compile_for_find(re))
 }
 
-//                                                 (success, (sub_start, sub_end)[])
-fun find(string_to_match: string, regexp: string): (bool   , (int      , int    )[])
+//                                                (success, (sub_start, sub_end)[,])
+fun findall(string_to_match: string, re: string): (bool   , (int      , int    )[,])
 {
-    find(string_to_match, compile_for_find(regexp))
+    findall(string_to_match, compile_for_find(re))
 }
 
-//                                                     (success, sub-matches[])
-fun find_str(string_to_match: string, regexp: string): (bool   , string     [])
+//                                                    (success, sub-matches[,])
+fun findall_str(string_to_match: string, re: string): (bool   , string     [,])
 {
-    find_str(string_to_match, compile_for_find(regexp))
+    findall_str(string_to_match, compile_for_find(re))
 }
 
-//                                                    (success, (sub_start, sub_end)[,])
-fun findall(string_to_match: string, regexp: string): (bool   , (int      , int    )[,])
+//                                                                (success, result)
+fun replace(str: string, re: string, rewrite: replace_pattern_t): (bool,    string)
 {
-    findall(string_to_match, compile_for_find(regexp))
+    replace(str, compile_for_find(re), rewrite)
 }
 
-//                                                        (success, sub-matches[,])
-fun findall_str(string_to_match: string, regexp: string): (bool   , string     [,])
+//                                                           (success, result)
+fun replace(str: string, re: find_regex_t, rewrite: string): (bool,    string)
 {
-    findall_str(string_to_match, compile_for_find(regexp))
+    replace(str, re, compile_replace_pattern(rewrite))
 }
 
-//                                                                    (success, result)
-fun replace(str: string, regexp: string, rewrite: replace_pattern_t): (bool,    string)
+//                                                     (success, result)
+fun replace(str: string, re: string, rewrite: string): (bool,    string)
 {
-    replace(str, compile_for_find(regexp), rewrite)
+    replace(str, compile_for_find(re), rewrite)
 }
 
-//                                                               (success, result)
-fun replace(str: string, regexp: find_regex_t, rewrite: string): (bool,    string)
+//                                                                       (success, result)
+fun global_replace(str: string, re: string, rewrite: replace_pattern_t): (bool,    string)
 {
-    replace(str, regexp, compile_replace_pattern(rewrite))
+    global_replace(str, compile_for_find(re), rewrite)
 }
 
-//                                                         (success, result)
-fun replace(str: string, regexp: string, rewrite: string): (bool,    string)
+//                                                                  (success, result)
+fun global_replace(str: string, re: find_regex_t, rewrite: string): (bool,    string)
 {
-    replace(str, compile_for_find(regexp), rewrite)
+    global_replace(str, re, compile_replace_pattern(rewrite))
 }
 
-//                                                                    (success, result)
-fun global_replace(str: string, regexp: string, rewrite: replace_pattern_t): (bool,    string)
+//                                                            (success, result)
+fun global_replace(str: string, re: string, rewrite: string): (bool,    string)
 {
-    global_replace(str, compile_for_find(regexp), rewrite)
-}
-
-//                                                               (success, result)
-fun global_replace(str: string, regexp: find_regex_t, rewrite: string): (bool,    string)
-{
-    global_replace(str, regexp, compile_replace_pattern(rewrite))
-}
-
-//                                                         (success, result)
-fun global_replace(str: string, regexp: string, rewrite: string): (bool,    string)
-{
-    global_replace(str, compile_for_find(regexp), rewrite)
+    global_replace(str, compile_for_find(re), rewrite)
 }
