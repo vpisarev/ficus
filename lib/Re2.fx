@@ -59,19 +59,6 @@ ccode
         fx_free(re_to_delete);
     }
 
-    static re2::RE2::Options fx_re2_silent_opts;
-
-    class FX_RE2_Initializer
-    {
-    public:
-        FX_RE2_Initializer()
-        {
-            fx_re2_silent_opts.set_log_errors(false);
-        }
-    };
-    static FX_RE2_Initializer fx_re2_initializer;
-
-
     static int make_sub_args(re2::StringPiece*& a_sub_string_pieces, re2::RE2::Arg**& a_sub_args, int_ a_size)
     {
         a_sub_args = 0;
@@ -82,6 +69,7 @@ ccode
         a_sub_args = static_cast<re2::RE2::Arg**>(fx_malloc(sizeof(re2::RE2::Arg*) * a_size));
         if( !a_sub_args ) 
         {
+            a_sub_string_pieces = 0;
             fx_free(a_sub_string_pieces); 
             return FX_EXN_OutOfMemError;
         }
@@ -101,24 +89,28 @@ ccode
                     fx_free(a_sub_args[arg_num]);
                 }
                 fx_free(a_sub_args); 
+                a_sub_args = 0;
                 for(size_t arg_ers = 0; arg_ers < a_size; arg_ers++)
                 {
                     a_sub_string_pieces[arg_num].~StringPiece();
                 }
-                fx_free(a_sub_string_pieces); 
+                fx_free(a_sub_string_pieces);
+                a_sub_string_pieces = 0;
                 return FX_EXN_OutOfMemError;
             }
             new (a_sub_args[arg_num]) re2::RE2::Arg(a_sub_string_pieces + arg_num);
         }
         return FX_OK;
     }
-
     static void free_sub_args(re2::StringPiece*& a_sub_string_pieces, re2::RE2::Arg**& a_sub_args, int_ a_size)
     {
-        for(size_t arg_num = 0; arg_num < a_size; arg_num++)
+        if(a_sub_args)
         {
-            a_sub_args[arg_num]->~Arg();
-            (a_sub_string_pieces + arg_num)->~StringPiece();
+            for(size_t arg_num = 0; arg_num < a_size; arg_num++)
+            {
+                a_sub_args[arg_num]->~Arg();
+                (a_sub_string_pieces + arg_num)->~StringPiece();
+            }
         }
         fx_free(a_sub_args);
         fx_free(a_sub_string_pieces);
@@ -141,10 +133,16 @@ ccode
     }
 }
 
+
 fun incise(str: string, start_end: (int, int)): string
 {
+    pure fun substr(s: string, pos: int, len: int): string = ccode
+    {
+        return fx_substr(s, pos, pos + len, 1, 0, fx_result);
+    }
+
     val (start, end) = start_end
-    String.substr(str,start, end - start)
+    substr(str,start, end - start) // [TODO] [BugReport] Attempt to replace substr with slice there str[a:b] causes C++ - complitation mistakes.
 }
 
 fun incise(str: string, starts_ends: (int, int)[]): string []
@@ -153,56 +151,85 @@ fun incise(str: string, starts_ends: (int, int)[]): string []
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-// Regexp pre-compiled objects for different purposes and compilation funcions for   ////
-// them.                                                                             ////
-// regex_t - standart regexp object for full_match, partial_match, consume,          ////
-// find_and_consume functions.                                                       ////
-// find_regex_t is used for find and replace functions.                              ////
+// regex_t - precompiled regexp pattern.                                             ////
 // replace_pattern_t describes, what to replace found matches                        ////
 /////////////////////////////////////////////////////////////////////////////////////////
 
+//[TODO]  UTF32->UTF8 is not symbol-to-symbol conversion. One symbol in UTF32 can mean more than one symbol in UTF8. In such situation, submatch pairs will be useless.
 //[TODO]  Named groups
 //[TODO]  Check all other functions
-type regex_t = { handle: cptr }
-type find_regex_t = { handle: cptr }
+type regex_t = { handle: cptr, find_r: cptr}
 type replace_piece_t =
 | RPInt: int
 | RPString: string
 
-//                       (pieces              , max_subnum) [TODO]: Replace it with structure, when you will understand how to do this
-type replace_pattern_t = (replace_piece_t list,        int)
-
-fun compile(pattern: string/*TODO:Options*/): regex_t = ccode
+type options_t = 
 {
-    using namespace re2;
-    fx_cstr_t cpattern;
-    int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
-    if(fx_status>=0)
+    posix_syntax: bool = false,
+    longest_match: bool = false,
+//    max_mem: int = kDefaultMaxMem,
+    literal: bool = false,
+    never_nl: bool = false,
+    dot_nl: bool = false,
+    never_capture: bool = false,
+    case_sensitive: bool = true,
+    perl_classes: bool = false,
+    word_boundary: bool = false,
+    one_line: bool = false
+}
+
+type replace_pattern_t = {pieces: replace_piece_t list, max_subnum: int}
+
+fun compile(pattern: string, options: options_t): regex_t
+{
+    fun compile_re2(pattern: string, options: options_t): cptr = ccode
     {
-        RE2* new_re = static_cast<RE2*>(fx_malloc(sizeof(re2::RE2)));
-        new (new_re) RE2(cpattern.data, fx_re2_silent_opts);
-        fx_free_cstr(&cpattern);
-        if(!new_re->ok())
+        using namespace re2;
+        fx_cstr_t cpattern;
+        int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
+        if(fx_status>=0)
         {
-            std::string errorstr = new_re->error();
-            fx_re2_free(new_re);
-            FX_RE2_THROW_BADREGEXP(errorstr, fx_cleanup);
+            RE2* new_re = static_cast<RE2*>(fx_malloc(sizeof(re2::RE2)));
+            if(new_re != 0 )
+            {
+                RE2::Options options_(RE2::Quiet);
+                {
+                    options_.set_posix_syntax(options->posix_syntax);
+                    options_.set_longest_match(options->longest_match);
+                    options_.set_literal(options->literal);
+                    options_.set_never_nl(options->never_nl);
+                    options_.set_dot_nl(options->dot_nl);
+                    options_.set_never_capture(options->never_capture);
+                    options_.set_case_sensitive(options->case_sensitive);
+                    options_.set_perl_classes(options->perl_classes);
+                    options_.set_word_boundary(options->word_boundary);
+                    options_.set_one_line(options->one_line);
+                }
+                new (new_re) RE2(cpattern.data, options_);
+                if(!new_re->ok())
+                {
+                    std::string errorstr = new_re->error();
+                    fx_re2_free(new_re);
+                    FX_RE2_THROW_BADREGEXP(errorstr, fx_cleanup);
+                }
+                fx_status = fx_make_cptr(new_re, fx_re2_free, fx_result);
+            }
+            else
+                fx_status = FX_EXN_OutOfMemError;
         }
-        fx_status = fx_make_cptr(new_re, fx_re2_free, &fx_result->handle);
+    fx_cleanup:
+        fx_free_cstr(&cpattern);
+        return fx_status;
     }
-fx_cleanup:
-    return fx_status;
+    regex_t {handle = compile_re2(pattern, options), find_r = compile_re2("("+pattern+")", options)}
 }
 
-fun compile_for_find(pattern: string/*TODO:Options*/): find_regex_t
+fun compile(pattern: string): regex_t
 {
-    pure fun usual_to_find(from_who: regex_t): find_regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
-    {
-        fx_copy_cptr(from_who->handle, &fx_result->handle);
-        return FX_OK;
-    }
-    usual_to_find(compile("("+pattern+")")) 
+    val default_options = options_t {}
+    compile(pattern, default_options)
 }
+
 
 pure fun number_of_capturing_groups(re: regex_t): int = ccode
 {
@@ -419,46 +446,114 @@ fun find_and_consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    
 // result array.                                                                    /////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//                                                   (success, (sub_start, sub_end)[])
-fun find(string_to_match: string, re: find_regex_t): (bool   , (int      , int    )[])
+//                                              (success, (sub_start, sub_end)[])
+fun find(string_to_match: string, re: regex_t): (bool   , (int      , int    )[])
 {
-    pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
-    {
-        fx_copy_cptr(from_who->handle, &fx_result->handle);
-        return FX_OK;
-    }
-    partial_match_n(string_to_match, find_to_usual(re))
+    partial_match_n(string_to_match, regex_t {handle = re.find_r, find_r = re.find_r})
 }
 
-//                                                       (success, sub-matches[])
-fun find_str(string_to_match: string, re: find_regex_t): (bool   , string     [])
+//                                                  (success, sub-matches[])
+fun find_str(string_to_match: string, re: regex_t): (bool   , string     [])
 {   
     val (success, starts_ends) = find(string_to_match, re)
     (success, incise(string_to_match, starts_ends))
 }
 
-//                                                      (success, (sub_start, sub_end)[,])
-fun findall(string_to_match: string, re: find_regex_t): (bool   , (int      , int    )[,])
+ccode
 {
-    pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
+    struct fx_re2_findall_process
     {
-        fx_copy_cptr(from_who->handle, &fx_result->handle);
-        return FX_OK;
+        re2::StringPiece* sub_string_pieces;
+        re2::RE2::Arg** sub_args;
+        int sub_amount;
+        fx_cstr_t cloth;
+    };
+
+    void fx_re2_findall_process_free(void* ptr)
+    {
+        fx_re2_findall_process* proc = (fx_re2_findall_process*)(ptr);
+        free_sub_args(proc->sub_string_pieces, proc->sub_args, proc->sub_amount);
+        fx_free_cstr(&proc->cloth);
+        fx_free(proc);
     }
-    val usual = find_to_usual(re)
-    fun result_as_list(pos: int) : (int, int)[] list
+}
+
+//                                                 (success, (sub_start, sub_end)[,])
+fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    )[,])
+{
+    pure fun findall_init(input: string, re: regex_t) : cptr = ccode
     {
-        val (success, newpos, matches) = find_and_consume_n(string_to_match, pos, usual)
-        if(success)
+        using namespace re2;   
+        fx_re2_findall_process* resptr = static_cast<fx_re2_findall_process*>(fx_malloc(sizeof(fx_re2_findall_process)));
+        if(!resptr)
+            return FX_EXN_OutOfMemError;
+        memset(resptr, 0, sizeof(fx_re2_findall_process));
+        int fx_status = fx_str2cstr(input, &resptr->cloth, 0, 0);
+        if(fx_status < 0)
         {
-            matches::result_as_list(newpos)
+            fx_re2_findall_process_free(resptr);
         }
         else
         {
-            []
+            RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
+            resptr->sub_amount = re_to_apply->NumberOfCapturingGroups();
+            int fx_status = make_sub_args(resptr->sub_string_pieces, resptr->sub_args, resptr->sub_amount);
+            if(fx_status<0)
+            {
+                fx_re2_findall_process_free(resptr);
+            }
+            else
+            {
+                fx_status = fx_make_cptr(resptr, fx_re2_findall_process_free, fx_result);
+            }
+        }
+        return fx_status;
+    }
+
+    val proc = findall_init(string_to_match, re)
+    pure fun find_step(proc: cptr, pos: int, re: regex_t) : (bool, int, (int, int)[]) = ccode
+    {
+        int fx_status = FX_OK;
+        using namespace re2;   
+        RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
+        fx_re2_findall_process* p_proc = static_cast<fx_re2_findall_process*>(proc->ptr);
+        StringPiece string_n_position(p_proc->cloth.data + pos);
+        fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, p_proc->sub_args, p_proc->sub_amount); //TODO: try - catch!
+        if(fx_result->t0)
+        {
+            fx_result->t1 = string_n_position.begin() - p_proc->cloth.data;
+            fx_status = string_pieces_to_arr(p_proc->sub_string_pieces, p_proc->sub_amount, p_proc->cloth.data, &(fx_result->t2));
+        }
+        else
+        {
+            fx_result->t1 = pos;
+        }
+        return fx_status;
+    }
+
+    fun result_as_list(pos: int, lastend: int, reslst: (int, int) [] list) : (int, int)[] list
+    {
+        val (success, newpos, matches) = find_step(proc, pos,re)
+        if(success) 
+        {
+            val (_,newend) = matches[0]
+            val npos = if(newend == lastend) {newpos+1} else {newpos}
+            val newlst = if (newend == lastend) { reslst } else { matches :: reslst }            
+            if(npos < String.length(string_to_match)) 
+            {
+                result_as_list(npos, newend, newlst)
+            }
+            else
+            {
+                List.rev(newlst)
+            }
+        }
+        else
+        {
+            List.rev(reslst)
         }
     }
-    val larrist = result_as_list(0)
+    val larrist = result_as_list(0, -1, [])
     val len_i = List.length(larrist)
     val len_j = if len_i!=0 { size(List.hd(larrist))} else { 0 }
     val matrix_res: (int,int) [,] = array((len_i, len_j), (0,0))
@@ -474,8 +569,8 @@ fun findall(string_to_match: string, re: find_regex_t): (bool   , (int      , in
     (len_i !=0, matrix_res)
 }
 
-//                                                          (success, sub-matches[,])
-fun findall_str(string_to_match: string, re: find_regex_t): (bool   , string     [,])
+//                                                     (success, sub-matches[,])
+fun findall_str(string_to_match: string, re: regex_t): (bool   , string     [,])
 {   
     val (success, starts_ends) = findall(string_to_match, re)
     val (len_i, len_j) = size(starts_ends)
@@ -488,12 +583,11 @@ fun findall_str(string_to_match: string, re: find_regex_t): (bool   , string    
 
 fun compile_replace_pattern(rewrite: string): replace_pattern_t
 {
-    val digit_reg = compile_for_find("\\\\[0-9]") //[TODO] I've tryed to make this val global, but in this case, C++-output became uncompilable.
+    val digit_reg = compile("\\\\[0-9]") //[TODO] I've tryed to make this val global, but in this case, C++-output became uncompilable.
     val (has_subs, ranges) = findall(rewrite, digit_reg)
     val piece_lst = 
         if(has_subs)
         {
-            val justzero = "0"
             val (len_i, _) = size(ranges)
             var pieces_list = []
             var pos = 0
@@ -501,19 +595,19 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
             while incl_num < len_i
             {
                 val (substart,subend) = ranges[incl_num,0]
-                val placeholder_num = int(rewrite[substart+1]) - int(justzero[0]) //[TODO] Remove this super ugly atoi.
-                pieces_list = RPInt(placeholder_num) :: RPString(String.substr(rewrite, pos, substart-pos)) :: pieces_list
+                val placeholder_num = getOpt(atoi(rewrite[substart+1:substart+2]), 0)
+                pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
                 pos = subend
                 incl_num += 1
             }
 //            for incl_num <- 0: len_i // [TODO] For some reason, this cycle is not compilable. 'tsa boog.
 //            {   
 //                val (substart,subend) = ranges[incl_num,0]
-//                val placeholder_num = int(rewrite[substart+1]) - int(justzero[0]) //[TODO] Remove this super ugly atoi.
-//                pieces_list = RPInt(placeholder_num) :: RPString(String.substr(rewrite, pos, substart-pos)) :: pieces_list
+//                val placeholder_num = getOpt(atoi(rewrite[substart+1:substart+2]), 0)
+//                pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
 //                pos = subend
 //            }
-            pieces_list = RPString(String.substr(rewrite, pos, String.length(rewrite) - pos)) :: pieces_list
+            pieces_list = RPString(rewrite[pos:]) :: pieces_list
             fold filtered = [] for piece <- pieces_list
             {   
                 val ok = match piece { | RPString simple_piece => String.length(simple_piece)!=0  | RPInt sub_num => true}
@@ -533,61 +627,47 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
             | RPInt sub_num => max(max_sub, sub_num) 
         }
     }    
-
-    (piece_lst, max_sub)
+    replace_pattern_t {pieces = piece_lst, max_subnum = max_sub}
 }
 
 //Service function
 fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_subs: (int, int)[]) : string 
 {
-    val (frcurve, _) = french_curve
-    val fold rlist = [] for piece <- frcurve 
+    val fold rlist = [] for piece <- french_curve.pieces
         {   
             match piece
             {
                 | RPString simple_piece => simple_piece::rlist
                 | RPInt sub_num => 
                     val (sub_start, sub_end) = found_subs[sub_num]
-                    String.substr(cloth, sub_start, sub_end - sub_start)::rlist
+                    cloth[sub_start:sub_end]::rlist
             }
         }
     join("", List.rev(rlist))
 }
 
 
-//                                                                      (success, result)
-fun replace(str: string, re: find_regex_t, rewrite: replace_pattern_t): (bool,    string)
+//                                                                 (success, result)
+fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
-    pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
-    {
-        fx_copy_cptr(from_who->handle, &fx_result->handle);
-        return FX_OK;
-    }
-    val (_, max_sub_num) = rewrite
-    if number_of_capturing_groups(find_to_usual(re)) <= max_sub_num
+    if number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) <= rewrite.max_subnum
         {throw BadArgError} //[TODO]: BadArg or something more detailed? 
     val (is_found, ranges) = find(str, re)
     (is_found,
         if(is_found)
         {
             val (fullmatch_start, fullmatch_end) = ranges[0]
-            val j_list = String.substr(str, 0, fullmatch_start) :: compose_replacement(str, rewrite, ranges) :: String.substr(str, fullmatch_end, String.length(str) - fullmatch_end) :: []
+            val j_list = str[:fullmatch_start] :: compose_replacement(str, rewrite, ranges) ::str[fullmatch_end:] :: []
             String.join("", j_list)
         }
         else
         {str})
 }
 
-//                                                                             (success, result)
-fun global_replace(str: string, re: find_regex_t, rewrite: replace_pattern_t): (bool,    string)
+//                                                                        (success, result)
+fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
-    pure fun find_to_usual(from_who: find_regex_t): regex_t = ccode //[TODO] Both find_to_usual and usual_to_find, kind of stupid. It's better to avoid need in them.
-    {
-        fx_copy_cptr(from_who->handle, &fx_result->handle);
-        return FX_OK;
-    }
-    val (_, max_sub_num) = rewrite
-    if number_of_capturing_groups(find_to_usual(re)) <= max_sub_num
+    if number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) <= rewrite.max_subnum
         {throw BadArgError} //[TODO]: BadArg or something more detailed? 
 
     val (is_found, ranges) = findall(str, re)
@@ -602,10 +682,10 @@ fun global_replace(str: string, re: find_regex_t, rewrite: replace_pattern_t): (
             for i <- 0: len_i
             {   
                 val (substart,subend) = ranges[i,0]
-                str_list = compose_replacement(str, rewrite, ranges[i,:]) :: String.substr(str, pos, substart - pos) :: str_list
+                str_list = compose_replacement(str, rewrite, ranges[i,:]) :: str[pos:substart] :: str_list
                 pos = subend
             }
-            str_list = String.substr(str, pos, String.length(str) - pos) :: str_list
+            str_list = str[pos:] :: str_list
             String.join("", List.rev(str_list))
         }
         else
@@ -690,35 +770,35 @@ fun find_and_consume_n_str(input: string, pos: int, re: string) : (bool   ,    i
 //                                             (success, (sub_start, sub_end)[])
 fun find(string_to_match: string, re: string): (bool   , (int      , int    )[])
 {
-    find(string_to_match, compile_for_find(re))
+    find(string_to_match, compile(re))
 }
 
 //                                                 (success, sub-matches[])
 fun find_str(string_to_match: string, re: string): (bool   , string     [])
 {
-    find_str(string_to_match, compile_for_find(re))
+    find_str(string_to_match, compile(re))
 }
 
 //                                                (success, (sub_start, sub_end)[,])
 fun findall(string_to_match: string, re: string): (bool   , (int      , int    )[,])
 {
-    findall(string_to_match, compile_for_find(re))
+    findall(string_to_match, compile(re))
 }
 
 //                                                    (success, sub-matches[,])
 fun findall_str(string_to_match: string, re: string): (bool   , string     [,])
 {
-    findall_str(string_to_match, compile_for_find(re))
+    findall_str(string_to_match, compile(re))
 }
 
 //                                                                (success, result)
 fun replace(str: string, re: string, rewrite: replace_pattern_t): (bool,    string)
 {
-    replace(str, compile_for_find(re), rewrite)
+    replace(str, compile(re), rewrite)
 }
 
 //                                                           (success, result)
-fun replace(str: string, re: find_regex_t, rewrite: string): (bool,    string)
+fun replace(str: string, re: regex_t, rewrite: string): (bool,    string)
 {
     replace(str, re, compile_replace_pattern(rewrite))
 }
@@ -726,17 +806,17 @@ fun replace(str: string, re: find_regex_t, rewrite: string): (bool,    string)
 //                                                     (success, result)
 fun replace(str: string, re: string, rewrite: string): (bool,    string)
 {
-    replace(str, compile_for_find(re), rewrite)
+    replace(str, compile(re), rewrite)
 }
 
 //                                                                       (success, result)
 fun global_replace(str: string, re: string, rewrite: replace_pattern_t): (bool,    string)
 {
-    global_replace(str, compile_for_find(re), rewrite)
+    global_replace(str, compile(re), rewrite)
 }
 
 //                                                                  (success, result)
-fun global_replace(str: string, re: find_regex_t, rewrite: string): (bool,    string)
+fun global_replace(str: string, re: regex_t, rewrite: string): (bool,    string)
 {
     global_replace(str, re, compile_replace_pattern(rewrite))
 }
@@ -744,5 +824,5 @@ fun global_replace(str: string, re: find_regex_t, rewrite: string): (bool,    st
 //                                                            (success, result)
 fun global_replace(str: string, re: string, rewrite: string): (bool,    string)
 {
-    global_replace(str, compile_for_find(re), rewrite)
+    global_replace(str, compile(re), rewrite)
 }
