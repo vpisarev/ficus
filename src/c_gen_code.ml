@@ -1655,7 +1655,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let call_substr = make_call !std_fx_substr
                         [(cexp_get_addr arr_exp); a_exp; b_exp; delta_exp; (make_int_exp mask kloc);
                             (cexp_get_addr substr_exp)] CTypCInt kloc in
-                    (false, dummy_exp, (add_fx_call call_substr ccode kloc))
+                    (false, substr_exp, (add_fx_call call_substr ccode kloc))
                 | _ -> raise_compile_err kloc
                     "cgen: unexpected index type when accessing string (should be a single scalar index or range)")
             | CTypArray _ ->
