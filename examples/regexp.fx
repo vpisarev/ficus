@@ -42,10 +42,15 @@ println(Re2.findall_str("The hooves clattered.\nAs if singing:\n- Crib.\nGrab.\n
 println()
 println("Replace:")
 println(Re2.replace("If you'll find a Talker bird, please report me, Gromozeka@Chumaroza.org.", "(\\w+)@(\\w+)\\.(\\w+)", "\\1 from \\2"))
-val jigit = Re2.compile("\\d+")
-val repl = Re2.compile_replace_pattern("(\\0)")
-println(Re2.global_replace("2-12-85-06", jigit,repl))
+println(Re2.global_replace("2-12-85-06", "\\d+","(\\0)"))
 
 println()
 println("Exception:")
-println(Re2.full_match("hello", "h.*o["))
+try 
+{
+    println(Re2.full_match("hello", "h.*o[")) 
+}
+catch 
+{
+    | Re2.BadRegexp(s) => println(f"exception BadRegexp('{s}') was caught")
+}

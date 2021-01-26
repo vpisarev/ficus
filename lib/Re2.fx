@@ -54,76 +54,43 @@ ccode
     void fx_re2_free(void* ptr)
     {
         using namespace re2;
-        RE2* re_to_delete = static_cast<RE2*>(ptr);
-        re_to_delete->~RE2();
-        fx_free(re_to_delete);
+        delete static_cast<RE2*>(ptr);
     }
 
-    static int make_sub_args(re2::StringPiece*& a_sub_string_pieces, re2::RE2::Arg**& a_sub_args, int_ a_size)
+    static void free_sub_args(std::vector<re2::RE2::Arg*>& a_sub_args)
     {
-        a_sub_args = 0;
-        a_sub_string_pieces = 0;
-        a_sub_string_pieces = static_cast<re2::StringPiece*>(fx_malloc(sizeof(re2::StringPiece) * a_size));
-        if( !a_sub_string_pieces ) 
-            return FX_EXN_OutOfMemError;
-        a_sub_args = static_cast<re2::RE2::Arg**>(fx_malloc(sizeof(re2::RE2::Arg*) * a_size));
-        if( !a_sub_args ) 
+        for(size_t arg_num = 0; arg_num < a_sub_args.size(); arg_num++)
         {
-            a_sub_string_pieces = 0;
-            fx_free(a_sub_string_pieces); 
-            return FX_EXN_OutOfMemError;
+            delete a_sub_args[arg_num];
         }
-        memset(a_sub_args, 0, sizeof(re2::RE2::Arg*) * a_size);
-        for(size_t arg_num = 0; arg_num < a_size; arg_num++)
+    }
+
+    static int make_sub_args(std::vector<re2::StringPiece>& a_sub_string_pieces, std::vector<re2::RE2::Arg*>& a_sub_args)
+    {
+        using namespace re2;
+        for(size_t arg_num = 0; arg_num < a_sub_args.size(); arg_num++)
         {
-            new (a_sub_string_pieces + arg_num) re2::StringPiece();
-        }
-        for(size_t arg_num = 0; arg_num < a_size; arg_num++)
-        {
-            a_sub_args[arg_num] = static_cast<re2::RE2::Arg*>(fx_malloc(sizeof(re2::RE2::Arg)));
-            if( !a_sub_args[arg_num] ) 
+            try
             {
-                for(size_t arg_ers = 0; arg_ers < arg_num; arg_ers++)
-                {
-                    a_sub_args[arg_num]->~Arg();
-                    fx_free(a_sub_args[arg_num]);
-                }
-                fx_free(a_sub_args); 
-                a_sub_args = 0;
-                for(size_t arg_ers = 0; arg_ers < a_size; arg_ers++)
-                {
-                    a_sub_string_pieces[arg_num].~StringPiece();
-                }
-                fx_free(a_sub_string_pieces);
-                a_sub_string_pieces = 0;
+                a_sub_args[arg_num] = new RE2::Arg(&a_sub_string_pieces[arg_num]);
+            }
+            catch (std::bad_alloc& e)
+            {
+                free_sub_args(a_sub_args);
                 return FX_EXN_OutOfMemError;
             }
-            new (a_sub_args[arg_num]) re2::RE2::Arg(a_sub_string_pieces + arg_num);
         }
         return FX_OK;
     }
-    static void free_sub_args(re2::StringPiece*& a_sub_string_pieces, re2::RE2::Arg**& a_sub_args, int_ a_size)
-    {
-        if(a_sub_args)
-        {
-            for(size_t arg_num = 0; arg_num < a_size; arg_num++)
-            {
-                a_sub_args[arg_num]->~Arg();
-                (a_sub_string_pieces + arg_num)->~StringPiece();
-            }
-        }
-        fx_free(a_sub_args);
-        fx_free(a_sub_string_pieces);
-    }
 
-    int string_pieces_to_arr(re2::StringPiece* sub_string_pieces, int_ a_size, const char* string_itself, fx_arr_t* fx_result)
+    int string_pieces_to_arr(const std::vector<re2::StringPiece>& sub_string_pieces, const char* string_itself, fx_arr_t* fx_result)
     {
-        const int_ arrdims[1] = {a_size};
+        const int_ arrdims[1] = {static_cast<int_>(sub_string_pieces.size())};
         int fx_status = fx_make_arr( 1, arrdims, sizeof(int_)+sizeof(int_), 0, 0, 0, fx_result);
         if(fx_status>=0)
         {
             int_* starts_and_ends = (int_*)fx_result->data;              //tuple of 2 * int have size = sizeof(int) + sizeof(int)
-            for(int piece_num = 0; piece_num < a_size; piece_num++)
+            for(int piece_num = 0; piece_num < sub_string_pieces.size(); piece_num++)
             {
                 starts_and_ends[2 * piece_num    ] = sub_string_pieces[piece_num].begin() - string_itself;
                 starts_and_ends[2 * piece_num + 1] = sub_string_pieces[piece_num].end()   - string_itself;
@@ -133,21 +100,9 @@ ccode
     }
 }
 
-
-fun incise(str: string, start_end: (int, int)): string
-{
-    pure fun substr(s: string, pos: int, len: int): string = ccode
-    {
-        return fx_substr(s, pos, pos + len, 1, 0, fx_result);
-    }
-
-    val (start, end) = start_end
-    substr(str,start, end - start) // [TODO] [BugReport] Attempt to replace substr with slice there str[a:b] causes C++ - complitation mistakes.
-}
-
 fun incise(str: string, starts_ends: (int, int)[]): string []
 {
-    [for start_end <- starts_ends {incise(str, start_end)}]
+    [for (start, end) <- starts_ends {str[start:end]}]
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -189,33 +144,36 @@ fun compile(pattern: string, options: options_t): regex_t
         int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
         if(fx_status>=0)
         {
-            RE2* new_re = static_cast<RE2*>(fx_malloc(sizeof(re2::RE2)));
-            if(new_re != 0 )
+            RE2::Options options_(RE2::Quiet);
             {
-                RE2::Options options_(RE2::Quiet);
-                {
-                    options_.set_posix_syntax(options->posix_syntax);
-                    options_.set_longest_match(options->longest_match);
-                    options_.set_literal(options->literal);
-                    options_.set_never_nl(options->never_nl);
-                    options_.set_dot_nl(options->dot_nl);
-                    options_.set_never_capture(options->never_capture);
-                    options_.set_case_sensitive(options->case_sensitive);
-                    options_.set_perl_classes(options->perl_classes);
-                    options_.set_word_boundary(options->word_boundary);
-                    options_.set_one_line(options->one_line);
-                }
-                new (new_re) RE2(cpattern.data, options_);
-                if(!new_re->ok())
-                {
-                    std::string errorstr = new_re->error();
-                    fx_re2_free(new_re);
-                    FX_RE2_THROW_BADREGEXP(errorstr, fx_cleanup);
-                }
-                fx_status = fx_make_cptr(new_re, fx_re2_free, fx_result);
+                options_.set_posix_syntax(options->posix_syntax);
+                options_.set_longest_match(options->longest_match);
+                options_.set_literal(options->literal);
+                options_.set_never_nl(options->never_nl);
+                options_.set_dot_nl(options->dot_nl);
+                options_.set_never_capture(options->never_capture);
+                options_.set_case_sensitive(options->case_sensitive);
+                options_.set_perl_classes(options->perl_classes);
+                options_.set_word_boundary(options->word_boundary);
+                options_.set_one_line(options->one_line);
             }
-            else
-                fx_status = FX_EXN_OutOfMemError;
+
+            RE2* new_re = nullptr;
+            try
+            {
+                new_re = new RE2(cpattern.data, options_);
+            }
+            catch (std::bad_alloc& e)
+            {
+                FX_FAST_THROW(FX_EXN_OutOfMemError, fx_cleanup);
+            }
+            if(!new_re->ok())
+            {
+                std::string errorstr = new_re->error();
+                fx_re2_free(new_re);
+                FX_RE2_THROW_BADREGEXP(errorstr, fx_cleanup);
+            }
+            fx_status = fx_make_cptr(new_re, fx_re2_free, fx_result);
         }
     fx_cleanup:
         fx_free_cstr(&cpattern);
@@ -233,19 +191,24 @@ fun compile(pattern: string): regex_t
 
 pure fun number_of_capturing_groups(re: regex_t): int = ccode
 {
-    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr); //[TODO]: Check if it's exists???
+    using namespace re2;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
     *fx_result = re_to_apply->NumberOfCapturingGroups();
     return FX_OK;
 }
 
 pure fun full_match(text: string, re: regex_t) : bool = ccode
-{   
+{
     using namespace re2;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
     fx_cstr_t ctext;
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         *fx_result = re2::RE2::FullMatch(ctext.data, *re_to_apply);//TODO: Try - catch.
         fx_free_cstr(&ctext);
     }
@@ -256,27 +219,36 @@ pure fun full_match(text: string, re: regex_t) : bool = ccode
 pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    fx_cstr_t ctext;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
+    fx_cstr_t ctext = {};
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
-
-        StringPiece* sub_string_pieces;
-        RE2::Arg** sub_args;
-        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
-        if(fx_status>=0)
+        try
         {
-            fx_result->t0 = RE2::FullMatchN(ctext.data, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
-            if(fx_result->t0)
+            std::vector<StringPiece> sub_string_pieces(sub_amount, StringPiece());
+            std::vector<RE2::Arg*> sub_args(sub_amount, nullptr);
+            fx_status = make_sub_args(sub_string_pieces, sub_args);
+            if(fx_status>=0)
             {
-                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, ctext.data, &(fx_result->t1));
+                fx_result->t0 = RE2::FullMatchN(ctext.data, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                if(fx_result->t0)
+                {
+                    fx_status = string_pieces_to_arr(sub_string_pieces, ctext.data, &(fx_result->t1));
+                }
+                free_sub_args(sub_args);
             }
-            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        fx_free_cstr(&ctext);
+        catch (std::bad_alloc& e)
+        {
+            FX_FAST_THROW(FX_EXN_OutOfMemError, fx_cleanup);
+        }
     }
+fx_cleanup:
+    fx_free_cstr(&ctext);
     return fx_status;
 }
 
@@ -290,11 +262,13 @@ pure fun full_match_n_str(text: string, re: regex_t) : (bool,         string [])
 pure fun partial_match(text: string, re: regex_t) : bool = ccode
 {
     using namespace re2;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
     fx_cstr_t ctext;
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         *fx_result = re2::RE2::PartialMatch(ctext.data, *re_to_apply);//TODO: Try - catch.
         fx_free_cstr(&ctext);
     }
@@ -305,27 +279,36 @@ pure fun partial_match(text: string, re: regex_t) : bool = ccode
 pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    fx_cstr_t ctext;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
+    fx_cstr_t ctext = {};
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
-
-        StringPiece* sub_string_pieces;
-        RE2::Arg** sub_args;
-        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
-        if(fx_status>=0)
+        try
         {
-            fx_result->t0 = RE2::PartialMatchN(ctext.data, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
-            if(fx_result->t0)
+            std::vector<StringPiece> sub_string_pieces(sub_amount, StringPiece());
+            std::vector<RE2::Arg*> sub_args(sub_amount, nullptr);
+            fx_status = make_sub_args(sub_string_pieces, sub_args);
+            if(fx_status>=0)
             {
-                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, ctext.data, &(fx_result->t1));
+                fx_result->t0 = RE2::PartialMatchN(ctext.data, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                if(fx_result->t0)
+                {
+                    fx_status = string_pieces_to_arr(sub_string_pieces, ctext.data, &(fx_result->t1));
+                }
+                free_sub_args(sub_args);
             }
-            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        fx_free_cstr(&ctext);
+        catch (std::bad_alloc& e)
+        {
+            FX_FAST_THROW(FX_EXN_OutOfMemError, fx_cleanup);
+        }
     }
+fx_cleanup:
+    fx_free_cstr(&ctext);
     return fx_status;
 }
 
@@ -347,36 +330,42 @@ fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    if(pos<0 || input->length < pos) 
-        FX_FAST_THROW_RET(FX_EXN_BadArgError);
-    fx_cstr_t cinput;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
+    fx_cstr_t cinput = {};
     int fx_status = fx_str2cstr(input, &cinput, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
-
-        StringPiece* sub_string_pieces;
-        RE2::Arg** sub_args;
-        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
-        if(fx_status>=0)
+        try
         {
-            StringPiece string_n_position(cinput.data + pos);
-            fx_result->t0 = RE2::ConsumeN(&string_n_position, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
-
-            if(fx_result->t0)
+            std::vector<StringPiece> sub_string_pieces(sub_amount, StringPiece());
+            std::vector<RE2::Arg*> sub_args(sub_amount, nullptr);
+            fx_status = make_sub_args(sub_string_pieces, sub_args);
+            if(fx_status>=0)
             {
-                fx_result->t1 = string_n_position.begin() - cinput.data;
-                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, cinput.data, &(fx_result->t2));
+                StringPiece string_n_position(cinput.data + pos);
+                fx_result->t0 = RE2::ConsumeN(&string_n_position, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                if(fx_result->t0)
+                {
+                    fx_result->t1 = string_n_position.begin() - cinput.data;
+                    fx_status = string_pieces_to_arr(sub_string_pieces, cinput.data, &(fx_result->t2));
+                }
+                else
+                {
+                    fx_result->t1 = pos;
+                }
+                free_sub_args(sub_args);
             }
-            else
-            {
-                fx_result->t1 = pos;
-            }
-            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        fx_free_cstr(&cinput);
+        catch (std::bad_alloc& e)
+        {
+            FX_FAST_THROW(FX_EXN_OutOfMemError, fx_cleanup);
+        }
     }
+fx_cleanup:
+    fx_free_cstr(&cinput);
     return fx_status;
 }
 
@@ -398,36 +387,42 @@ fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
 {   
     using namespace re2;
-    if(pos<0 || input->length < pos) 
-        FX_FAST_THROW_RET(FX_EXN_BadArgError);
-    fx_cstr_t cinput;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
+    fx_cstr_t cinput = {};
     int fx_status = fx_str2cstr(input, &cinput, 0, 0);
     if(fx_status>=0)
     {
-        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
-
-        StringPiece* sub_string_pieces;
-        RE2::Arg** sub_args;
-        int fx_status = make_sub_args(sub_string_pieces, sub_args, sub_amount);
-        if(fx_status>=0)
+        try
         {
-            StringPiece string_n_position(cinput.data + pos);
-            fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, sub_args, sub_amount); //TODO: try - catch!
-
-            if(fx_result->t0)
+            std::vector<StringPiece> sub_string_pieces(sub_amount, StringPiece());
+            std::vector<RE2::Arg*> sub_args(sub_amount, nullptr);
+            fx_status = make_sub_args(sub_string_pieces, sub_args);
+            if(fx_status>=0)
             {
-                fx_result->t1 = string_n_position.begin() - cinput.data;
-                fx_status = string_pieces_to_arr(sub_string_pieces, sub_amount, cinput.data, &(fx_result->t2));
+                StringPiece string_n_position(cinput.data + pos);
+                fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                if(fx_result->t0)
+                {
+                    fx_result->t1 = string_n_position.begin() - cinput.data;
+                    fx_status = string_pieces_to_arr(sub_string_pieces, cinput.data, &(fx_result->t2));
+                }
+                else
+                {
+                    fx_result->t1 = pos;
+                }
+                free_sub_args(sub_args);
             }
-            else
-            {
-                fx_result->t1 = pos;
-            }
-            free_sub_args(sub_string_pieces, sub_args, sub_amount);
         }
-        fx_free_cstr(&cinput);
+        catch (std::bad_alloc& e)
+        {
+            FX_FAST_THROW(FX_EXN_OutOfMemError, fx_cleanup);
+        }
     }
+fx_cleanup:
+    fx_free_cstr(&cinput);
     return fx_status;
 }
 
@@ -463,18 +458,20 @@ ccode
 {
     struct fx_re2_findall_process
     {
-        re2::StringPiece* sub_string_pieces;
-        re2::RE2::Arg** sub_args;
-        int sub_amount;
+        std::vector<re2::StringPiece> sub_string_pieces;
+        std::vector<re2::RE2::Arg*> sub_args;
         fx_cstr_t cloth;
     };
 
     void fx_re2_findall_process_free(void* ptr)
     {
-        fx_re2_findall_process* proc = (fx_re2_findall_process*)(ptr);
-        free_sub_args(proc->sub_string_pieces, proc->sub_args, proc->sub_amount);
-        fx_free_cstr(&proc->cloth);
-        fx_free(proc);
+        if(ptr) 
+        {
+            fx_re2_findall_process* proc = (fx_re2_findall_process*)(ptr);
+            free_sub_args(proc->sub_args);
+            fx_free_cstr(&proc->cloth);
+            delete proc;
+        }
     }
 }
 
@@ -483,30 +480,42 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
 {
     pure fun findall_init(input: string, re: regex_t) : cptr = ccode
     {
-        using namespace re2;   
-        fx_re2_findall_process* resptr = static_cast<fx_re2_findall_process*>(fx_malloc(sizeof(fx_re2_findall_process)));
-        if(!resptr)
-            return FX_EXN_OutOfMemError;
-        memset(resptr, 0, sizeof(fx_re2_findall_process));
-        int fx_status = fx_str2cstr(input, &resptr->cloth, 0, 0);
+        using namespace re2;
+        RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
+        if(re_to_apply == nullptr) 
+            return FX_EXN_NullPtrError;
+        const int sub_amount = re_to_apply->NumberOfCapturingGroups();
+        fx_re2_findall_process* resptr = nullptr;
+        int fx_status = FX_OK;
+        try
+        {
+            resptr = new fx_re2_findall_process;
+            resptr->cloth = {};
+            resptr->sub_string_pieces.resize(sub_amount);
+            resptr->sub_args.resize(sub_amount, nullptr);
+            fx_status = make_sub_args(resptr->sub_string_pieces, resptr->sub_args);
+            if(fx_status < 0)
+                throw std::bad_alloc();
+        }
+        catch (std::bad_alloc& e)
+        {
+            fx_re2_findall_process_free(resptr);
+            FX_FAST_THROW(FX_EXN_OutOfMemError, fx_cleanup);
+        }
+        fx_status = fx_str2cstr(input, &resptr->cloth, 0, 0);
         if(fx_status < 0)
         {
             fx_re2_findall_process_free(resptr);
         }
         else
         {
-            RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
-            resptr->sub_amount = re_to_apply->NumberOfCapturingGroups();
-            int fx_status = make_sub_args(resptr->sub_string_pieces, resptr->sub_args, resptr->sub_amount);
-            if(fx_status<0)
+            fx_status = fx_make_cptr(resptr, fx_re2_findall_process_free, fx_result);
+            if(fx_status < 0)
             {
                 fx_re2_findall_process_free(resptr);
             }
-            else
-            {
-                fx_status = fx_make_cptr(resptr, fx_re2_findall_process_free, fx_result);
-            }
         }
+    fx_cleanup:
         return fx_status;
     }
 
@@ -514,15 +523,17 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
     pure fun find_step(proc: cptr, pos: int, re: regex_t) : (bool, int, (int, int)[]) = ccode
     {
         int fx_status = FX_OK;
-        using namespace re2;   
+        using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
+        if(re_to_apply == nullptr) 
+            return FX_EXN_NullPtrError;
         fx_re2_findall_process* p_proc = static_cast<fx_re2_findall_process*>(proc->ptr);
         StringPiece string_n_position(p_proc->cloth.data + pos);
-        fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, p_proc->sub_args, p_proc->sub_amount); //TODO: try - catch!
+        fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, &(*(p_proc->sub_args.begin())), p_proc->sub_args.size()); //TODO: try - catch!
         if(fx_result->t0)
         {
             fx_result->t1 = string_n_position.begin() - p_proc->cloth.data;
-            fx_status = string_pieces_to_arr(p_proc->sub_string_pieces, p_proc->sub_amount, p_proc->cloth.data, &(fx_result->t2));
+            fx_status = string_pieces_to_arr(p_proc->sub_string_pieces, p_proc->cloth.data, &(fx_result->t2));
         }
         else
         {
@@ -574,7 +585,12 @@ fun findall_str(string_to_match: string, re: regex_t): (bool   , string     [,])
 {   
     val (success, starts_ends) = findall(string_to_match, re)
     val (len_i, len_j) = size(starts_ends)
-    (success, [for i <- 0:len_i for j <- 0:len_j {incise(string_to_match, starts_ends[i,j])}])
+    (success, [ for i <- 0:len_i for j <- 0:len_j 
+                {
+                    val(start,end) = starts_ends[i,j]
+                    string_to_match[start:end]
+                }
+              ])
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -591,22 +607,13 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
             val (len_i, _) = size(ranges)
             var pieces_list = []
             var pos = 0
-            var incl_num =0 
-            while incl_num < len_i
-            {
+            for incl_num <- 0: len_i
+            {   
                 val (substart,subend) = ranges[incl_num,0]
                 val placeholder_num = getOpt(atoi(rewrite[substart+1:substart+2]), 0)
                 pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
                 pos = subend
-                incl_num += 1
             }
-//            for incl_num <- 0: len_i // [TODO] For some reason, this cycle is not compilable. 'tsa boog.
-//            {   
-//                val (substart,subend) = ranges[incl_num,0]
-//                val placeholder_num = getOpt(atoi(rewrite[substart+1:substart+2]), 0)
-//                pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
-//                pos = subend
-//            }
             pieces_list = RPString(rewrite[pos:]) :: pieces_list
             fold filtered = [] for piece <- pieces_list
             {   
@@ -650,8 +657,7 @@ fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_su
 //                                                                 (success, result)
 fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
-    if number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) <= rewrite.max_subnum
-        {throw BadArgError} //[TODO]: BadArg or something more detailed? 
+    assert(number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) > rewrite.max_subnum)
     val (is_found, ranges) = find(str, re)
     (is_found,
         if(is_found)
@@ -667,16 +673,13 @@ fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    str
 //                                                                        (success, result)
 fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
-    if number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) <= rewrite.max_subnum
-        {throw BadArgError} //[TODO]: BadArg or something more detailed? 
+    assert(number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) > rewrite.max_subnum)
 
     val (is_found, ranges) = findall(str, re)
     (is_found,
         if(is_found)
         {
-            val (len_i, len_j) = size(ranges) //[TODO]: Attempt to call size on matrix causes C compile error.
-            //println(len_i)
-            //""
+            val (len_i, len_j) = size(ranges)
             var str_list = []
             var pos = 0
             for i <- 0: len_i
