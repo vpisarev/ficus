@@ -15,6 +15,7 @@ let convert_all_fdecls top_code =
     let top_fcv_decls = ref ([]: cstmt_t list) in
     let top_func_decls = ref ([]: cstmt_t list) in
     let mod_init_calls = ref ([]: cstmt_t list) in
+    let mod_exn_data_decls = ref ([]: cstmt_t list) in
     List.iter (fun e -> match e with
         | KDefFun kf ->
             let {kf_name; kf_cname; kf_args; kf_rt=rt; kf_closure;
@@ -123,7 +124,7 @@ let convert_all_fdecls top_code =
             let (info_exp, decls) = create_cdefval exn_info !std_fx_exn_info_t
                 [ValGlobal(ke_scope); ValMutable] info_cname (Some (make_dummy_exp ke_loc)) [] ke_loc in
             let ke_tag_exp = make_id_t_exp ke_tag CTypCInt ke_loc in
-            let (reg_calls, decls) = match ke_typ with
+            let (reg_calls, decls, exn_data_decls) = match ke_typ with
                 | KTypVoid ->
                     (*
                     case 1. exceptions without parameters:
@@ -153,7 +154,7 @@ let convert_all_fdecls top_code =
                     let call_reg_exn = make_call !std_FX_REG_SIMPLE_EXN
                         [exn_strname; ke_tag_exp; info_exp; exn_exp] CTypVoid ke_loc
                     in
-                    ([CExp call_reg_exn], decls)
+                    ([CExp call_reg_exn], decls, [])
                 | _ ->
                     (*
                     case 2. Exceptions with parameters
@@ -252,9 +253,10 @@ let convert_all_fdecls top_code =
                     let _ = set_idc_entry exn_data_id (CTyp exn_data_ct) in
                     let call_reg_exn = make_call !std_FX_REG_EXN
                         [exn_strname; ke_tag_exp; info_exp; free_f_exp] CTypVoid ke_loc in
-                    ([CExp call_reg_exn], free_f_decl @ ((CDefTyp exn_data_ct) :: decls))
+                    ([CExp call_reg_exn], free_f_decl @ ((CDefTyp exn_data_ct) :: decls), [CDefTyp exn_data_ct])
                 in
             top_fcv_decls := decls @ !top_fcv_decls;
-            mod_init_calls := reg_calls @ !mod_init_calls
+            mod_init_calls := reg_calls @ !mod_init_calls;
+            mod_exn_data_decls := exn_data_decls @ !mod_exn_data_decls
         | _ -> ()) top_code;
-    (((List.rev !top_fcv_decls) @ (List.rev !top_func_decls)), (List.rev !mod_init_calls))
+    (((List.rev !top_fcv_decls) @ (List.rev !top_func_decls)), (List.rev !mod_init_calls), (List.rev !mod_exn_data_decls))

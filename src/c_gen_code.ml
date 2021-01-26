@@ -2669,18 +2669,20 @@ let gen_ccode_all kmods =
     let (all_ctypes_fwd_decl, all_ctypes_decl, all_ctypes_fun_decl) = C_gen_types.convert_all_typs kmods in
 
     (* 2. convert function declarations to C *)
-    let kmods_plus = List.map (fun km ->
-        let (c_fdecls, mod_init_calls) = C_gen_fdecls.convert_all_fdecls km.km_top in
-        (km, c_fdecls, mod_init_calls)) kmods in
+    let (kmods_plus, _) = List.fold_left (fun (kmods_plus, all_exn_data_decls) km ->
+        let (c_fdecls, mod_init_calls, mod_exn_data_decls) = C_gen_fdecls.convert_all_fdecls km.km_top in
+        (((km, c_fdecls, mod_init_calls, (List.rev all_exn_data_decls)) :: kmods_plus),
+        ((List.rev mod_exn_data_decls) @ all_exn_data_decls))) ([], []) kmods in
 
     (* 3. convert each module to C *)
-    let cmods = List.fold_left (fun cmods (km, c_fdecls, mod_init_calls) ->
+    let cmods = List.fold_left (fun cmods (km, c_fdecls, mod_init_calls, exn_data_decls) ->
         let {km_name; km_cname; km_top; km_main} = km in
         (*let _ = printf "converting '%s' to C\n" km_cname in*)
         let (prologue, ccode) = gen_ccode cmods km c_fdecls mod_init_calls in
-        let ctypes = C_gen_types.elim_unused_ctypes km.km_name all_ctypes_fwd_decl all_ctypes_decl all_ctypes_fun_decl ccode in
+        let ctypes = C_gen_types.elim_unused_ctypes km.km_name all_ctypes_fwd_decl
+            (all_ctypes_decl @ exn_data_decls) all_ctypes_fun_decl ccode in
         { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=prologue @ ctypes @ ccode;
           cmod_main=km_main; cmod_recompile=true } :: cmods)
-        [] kmods_plus
+        [] (List.rev kmods_plus)
     in
     List.rev cmods
