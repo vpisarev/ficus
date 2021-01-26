@@ -528,7 +528,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         return FX_OK;
     }
 
-    // make a copy the constructed "in-place subarray" header; then allocate fresh subarray
+    // make a copy of the constructed "in-place subarray" header; then allocate fresh subarray
     temp = *subarr;
     fx_status = fx_make_arr(subarr->ndims, temp_size, elemsize, arr->free_elem, arr->copy_elem, 0, subarr);
     if (fx_status < 0)

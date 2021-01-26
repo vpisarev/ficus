@@ -20,6 +20,33 @@ char* fx_argv(int_ idx) { return _fx_argv[idx]; }
 
 static fx_exn_info_t fx_std_exn_info[-FX_EXN_StdMax];
 
+int FX_EXN_ASCIIError = -1;
+int FX_EXN_AssertError = -2;
+int FX_EXN_Break = -3;
+int FX_EXN_DimError = -4;
+int FX_EXN_DivByZeroError = -5;
+int FX_EXN_FileOpenError = -6;
+int FX_EXN_IOError = -7;
+int FX_EXN_NotFoundError = -8;
+int FX_EXN_NoMatchError = -9;
+int FX_EXN_NullFileError = -10;
+int FX_EXN_NullListError = -11;
+int FX_EXN_NullPtrError = -12;
+int FX_EXN_OptionError = -13;
+int FX_EXN_OutOfMemError = -14;
+int FX_EXN_OutOfRangeError = -15;
+int FX_EXN_RangeError = -16;
+int FX_EXN_SizeError = -17;
+int FX_EXN_SizeMismatchError = -18;
+int FX_EXN_SysBreak = -19;
+int FX_EXN_SysContinue = -20;
+int FX_EXN_TypeMismatchError = -21;
+int FX_EXN_UnknownExnError = -22;
+int FX_EXN_ZeroStepError = -23;
+int FX_EXN_StackOverflowError = -24;
+int FX_EXN_ParallelForError = -25;
+int FX_EXN_BadArgError = -26;
+
 int fx_init(int argc, char** argv)
 {
     _fx_argc = argc;

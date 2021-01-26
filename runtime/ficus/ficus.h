@@ -31,40 +31,37 @@ extern "C" {
 #endif
 
 //////////////////////// Error Codes //////////////////////
-enum
-{
+extern int FX_EXN_ASCIIError;
+extern int FX_EXN_AssertError;
+extern int FX_EXN_Break;
+extern int FX_EXN_DimError;
+extern int FX_EXN_DivByZeroError;
+extern int FX_EXN_FileOpenError;
+extern int FX_EXN_IOError;
+extern int FX_EXN_NotFoundError;
+extern int FX_EXN_NoMatchError;
+extern int FX_EXN_NullFileError;
+extern int FX_EXN_NullListError;
+extern int FX_EXN_NullPtrError;
+extern int FX_EXN_OptionError;
+extern int FX_EXN_OutOfMemError;
+extern int FX_EXN_OutOfRangeError;
+extern int FX_EXN_RangeError;
+extern int FX_EXN_SizeError;
+extern int FX_EXN_SizeMismatchError;
+extern int FX_EXN_SysBreak;
+extern int FX_EXN_SysContinue;
+extern int FX_EXN_TypeMismatchError;
+extern int FX_EXN_UnknownExnError;
+extern int FX_EXN_ZeroStepError;
+extern int FX_EXN_StackOverflowError;
+extern int FX_EXN_ParallelForError;
+extern int FX_EXN_BadArgError;
+
+enum {
     FX_OK = 0,
-
-    FX_EXN_ASCIIError = -1,
-    FX_EXN_AssertError = -2,
-    FX_EXN_Break = -3,
-    FX_EXN_DimError = -4,
-    FX_EXN_DivByZeroError = -5,
-    FX_EXN_FileOpenError = -6,
-    FX_EXN_IOError = -7,
-    FX_EXN_NotFoundError = -8,
-    FX_EXN_NoMatchError = -9,
-    FX_EXN_NullFileError = -10,
-    FX_EXN_NullListError = -11,
-    FX_EXN_NullPtrError = -12,
-    FX_EXN_OptionError = -13,
-    FX_EXN_OutOfMemError = -14,
-    FX_EXN_OutOfRangeError = -15,
-    FX_EXN_RangeError = -16,
-    FX_EXN_SizeError = -17,
-    FX_EXN_SizeMismatchError = -18,
-    FX_EXN_SysBreak = -19,
-    FX_EXN_SysContinue = -20,
-    FX_EXN_TypeMismatchError = -21,
-    FX_EXN_UnknownExnError = -22,
-    FX_EXN_ZeroStepError = -23,
-    FX_EXN_StackOverflowError = -24,
-    FX_EXN_ParallelForError = -25,
-    FX_EXN_BadArgError = -26,
-
     FX_EXN_StdMax = -48,
-
-    FX_EXN_User = -1024,
+    FX_EXN_User = -1024
 };
 
 /////////////////// Various Basic Definitions ////////////////

@@ -225,7 +225,7 @@ let run_compiler cmods output_dir =
     let cmd = cmd ^ (sprintf " -O%d%s" opt_level (if opt_level = 0 then " -ggdb" else "")) in
     let cmd = cmd ^ " -I" ^ options.runtime_path in
     let custom_cflags = try " " ^ (Sys.getenv "FICUS_CFLAGS") with Not_found -> "" in
-    let custom_cflags = if options.cflags = "" then custom_cflags else options.cflags ^ " " ^ custom_cflags in
+    let custom_cflags = if options.cflags = "" then custom_cflags else " " ^ options.cflags ^ custom_cflags in
     let cmd = cmd ^ custom_cflags in
     let (any_recompiled, ok, objs) = List.fold_left (fun (any_recompiled, ok, objs) {cmod_cname; cmod_recompile} ->
         let cname = Utils.normalize_path output_dir cmod_cname in
@@ -250,7 +250,7 @@ let run_compiler cmods output_dir =
         let cmd = "cc -o " ^ options.app_filename in
         let cmd = cmd ^ " " ^ (String.concat " " objs) in
         let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
-        let custom_linked_libs = if options.clibs = "" then custom_linked_libs else options.clibs ^ " " ^ custom_linked_libs in
+        let custom_linked_libs = if options.clibs = "" then custom_linked_libs else " " ^ options.clibs ^ custom_linked_libs in
         let cmd = cmd ^ custom_linked_libs in
         let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
         let _ = print_if_verbose (sprintf "%s\n" cmd) in
