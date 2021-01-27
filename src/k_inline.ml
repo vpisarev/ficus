@@ -29,6 +29,7 @@ open Options
 
 type func_info_t =
 {
+    fi_name: id_t;
     fi_can_inline: bool;
     fi_size: int;
     fi_nrefs: int;
@@ -213,9 +214,10 @@ let expand_call e =
 let inline_some kmods =
     let all_funcs_info = ref (Env.empty : (func_info_t ref) Env.t) in
     let gen_default_func_info size nrefs =
-        ref {fi_can_inline=false; fi_size=0; fi_nrefs=nrefs; fi_flags=[]}
+        ref {fi_name=noid; fi_can_inline=false; fi_size=0; fi_nrefs=nrefs; fi_flags=[]}
     in
     let curr_fi = ref (gen_default_func_info 0 0) in
+    let curr_km_main = ref false in
 
     (* step 1 of the actual function call expansion algorithm:
        collect information about each function *)
@@ -247,7 +249,7 @@ let inline_some kmods =
                 | FunRecursive | FunInC | FunCtor _ -> false
                 | _ -> true) kf_flags in
             let fsize = calc_exp_size kf_body in
-            r_fi := {!r_fi with fi_can_inline=can_inline; fi_size=fsize; fi_flags=kf_flags};
+            r_fi := {!r_fi with fi_name=kf_name; fi_can_inline=can_inline; fi_size=fsize; fi_flags=kf_flags};
             all_funcs_info := Env.add kf_name r_fi !all_funcs_info;
             curr_fi := r_fi;
             fold_kexp e callb;
@@ -279,7 +281,11 @@ let inline_some kmods =
             kf := {!kf with kf_body=new_body};
             curr_fi := saved_fi;
             e
-        | KExpCall(f, real_args, _) ->
+        | KExpCall(f, real_args, _)
+            (* we do not expand inline calls at the top level of non-main module,
+               because it may ruin some global variables *)
+            when !curr_km_main || (!(!curr_fi)).fi_name != noid
+            ->
             (match (Env.find_opt f !all_funcs_info) with
             | Some(r_fi) ->
                 let {fi_can_inline=caller_can_inline; fi_size=caller_size; fi_flags=caller_flags} = !(!curr_fi) in
@@ -308,8 +314,9 @@ let inline_some kmods =
     let _ = find_recursive_funcs_all kmods in
     let _ = List.iter (fun {km_top} -> List.iter (fun e -> fold_finfo_kexp_ e finfo_callb) km_top) kmods in
     List.map (fun km ->
-        let {km_top} = km in
+        let {km_top; km_main} = km in
         let global_size = calc_exp_size (code2kexp km_top noloc) in
         let _ = curr_fi := gen_default_func_info global_size 0 in
+        let _ = curr_km_main := km_main in
         let new_top = List.map (fun e -> inline_kexp_ e inline_callb) km_top in
         {km with km_top=new_top}) kmods

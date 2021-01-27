@@ -250,7 +250,10 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
     in
     obox();
     if List.mem FunPrivate cf_flags then pstr "static " else ();
-    if List.mem FunInline cf_flags then pstr "inline " else ();
+    (* if all the calls of an inline function were expanded — good;
+       if not, it will still be called from the module where it is defined.
+       So, we should not declare it as inline at C/C++ level *)
+    (*if List.mem FunInline cf_flags then pstr "inline " else ();*)
     pprint_ctyp_ cf_rt None cf_loc;
     pspace();
     pstr cf_cname;
