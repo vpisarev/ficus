@@ -659,6 +659,11 @@ void fx_file_destructor(void* ptr);
 
 fx_cptr_t fx_get_stdstream(int);
 
+////////////////////// Various useful system API ///////////////////
+
+int64_t fx_tickcount(void);
+double fx_tickfreq(void);
+
 ////////////////////////// Regular expressions /////////////////////
 
 typedef fx_cptr_t fx_regex_t;

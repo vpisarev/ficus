@@ -32,8 +32,10 @@ pure nothrow fun endswith(s: string, suffix: string): bool = ccode
 pure nothrow fun find(s: string, part: string): int = ccode
 {
     int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
-    if (sz2 == 0 || l <= 0)
+    if (sz2 == 0)
         return 0;
+    if (l <= 0)
+        return -1;
     for( i = 0; i < l; i++ ) {
         if( s->data[i] == part->data[0] &&
             memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0 )

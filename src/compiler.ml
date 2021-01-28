@@ -32,7 +32,7 @@ let make_lexer fname =
     let prev_lnum = ref 0 in
     (* the standard preamble *)
     let tokenbuf = (if bare_name = "Builtins" then ref [] else
-        let from_builtins_import_all = [Parser.FROM; Parser.B_IDENT "Builtins"; Parser.IMPORT; Parser.STAR; Parser.SEMICOLON] in
+        let from_builtins_import_all = [Parser.FROM; Parser.B_IDENT "Builtins"; Parser.IMPORT; Parser.B_STAR; Parser.SEMICOLON] in
         let import_list = if bare_name = "List" then []
             else [Parser.B_IMPORT; Parser.B_IDENT "List"; Parser.SEMICOLON] in
         let import_string = if bare_name = "List" || bare_name = "String" then []

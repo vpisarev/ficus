@@ -279,7 +279,7 @@ top_level_exp:
         [DirImport ((List.map (fun (a, b) ->
         let a1 = add_to_imported_modules a (pos0, pos1) in (a1, b)) $2), curr_loc())]
     }
-| FROM dot_ident any_import STAR
+| FROM dot_ident any_import B_STAR
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
         let a = get_id $2 in

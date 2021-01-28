@@ -115,6 +115,7 @@ operator + (l1: 't list, l2: 't list)
     }
 }
 
+pure fun string(a: exn): string = ccode { return fx_exn_to_string(a, fx_result) }
 fun string(a: bool) = if a {"true"} else {"false"}
 pure fun string(a: int): string = ccode  { return fx_itoa(a, fx_result) }
 pure fun string(a: uint8): string = ccode { return fx_itoa(a, fx_result) }
