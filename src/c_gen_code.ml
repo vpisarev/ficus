@@ -241,6 +241,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
     let top_code = km_top in
     let top_inline_ccode = ref ([]: cstmt_t list) in
     let fwd_fdecls = ref ([]: cstmt_t list) in
+    let module_cleanup = ref ([]: cstmt_t list) in
     let defined_syms = ref (IdSet.empty) in
     let i2e = ref (Env.empty: cexp_t Env.t) in
     let u1vals = find_single_use_vals top_code in
@@ -2306,6 +2307,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     (* disable i=e2 assignment if i has complex type and e2 is "Nil".
                        If i is complex, it will be initialized anyway with "0" or "{}".
                        We do not need to re-initialize it once again *)
+                    let saved_cleanup = bctx.bctx_cleanup in
+                    let _ = bctx.bctx_cleanup <- [] in
                     let assign_e2 =
                         match (ktp_complex, e2) with
                         | (true, KExpAtom((Atom.Lit LitNil), _)) -> false
@@ -2334,6 +2337,11 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let (i_exp, delta_ccode) = add_local i ctyp flags e0_opt [] kloc in
                     let ccode = if is_global then (bctx.bctx_prologue <- delta_ccode @ bctx.bctx_prologue; ccode)
                         else delta_ccode @ ccode in
+                    if is_global then
+                        (module_cleanup := bctx.bctx_cleanup @ !module_cleanup;
+                        bctx.bctx_cleanup <- saved_cleanup)
+                    else
+                        bctx.bctx_cleanup <- bctx.bctx_cleanup @ saved_cleanup;
                     if assign_e2 then
                         let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode in
                         (match ccode with
@@ -2638,11 +2646,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         in
     let ccode = if bctx_label_used = 0 then ccode else (CStmtLabel(bctx_label, end_loc)) :: ccode in
     let ccode = filter_out_nops ccode in
-    (* [TODO] in principle, non-main modules may contain some expressions at the top level,
-       which will use some temporary values, and those values should be initialized and deinitialized
-       inside init_...(), rather than deinit_...(), so the branch else should be made
-       more complex; it has to split bctx_cleanup into 2 parts *)
-    let (ccode, deinit_ccode) = if km_main then ((bctx_cleanup @ ccode), []) else (ccode, bctx_cleanup) in
+    let (ccode, deinit_ccode) = ((bctx_cleanup @ ccode), !module_cleanup) in
     let ccode = CStmtReturn ((Some status_exp), end_loc) :: ccode in
     let init_cname = "fx_init_" ^ km_cname in
     let init_name = (gen_temp_idc init_cname) in
