@@ -83,21 +83,50 @@ ccode
         return FX_OK;
     }
 
-    int string_pieces_to_arr(const std::vector<re2::StringPiece>& sub_string_pieces, const char* string_itself, fx_arr_t* fx_result)
+    int string_pieces_to_arr(const std::vector<re2::StringPiece>& sub_string_pieces, const char* string_itself, fx_str_t* correction_pattern, fx_arr_t* fx_result)
     {
         const int_ arrdims[1] = {static_cast<int_>(sub_string_pieces.size())};
         int fx_status = fx_make_arr( 1, arrdims, sizeof(int_)+sizeof(int_), 0, 0, 0, fx_result);
         if(fx_status>=0)
         {
             int_* starts_and_ends = (int_*)fx_result->data;              //tuple of 2 * int have size = sizeof(int) + sizeof(int)
-            for(int piece_num = 0; piece_num < sub_string_pieces.size(); piece_num++)
+            std::map<int_, size_t> indexmap;
+            for(size_t piece_num = 0; piece_num < sub_string_pieces.size(); piece_num++)
             {
                 starts_and_ends[2 * piece_num    ] = sub_string_pieces[piece_num].begin() - string_itself;
                 starts_and_ends[2 * piece_num + 1] = sub_string_pieces[piece_num].end()   - string_itself;
+                indexmap[starts_and_ends[2 * piece_num    ]] = 2 * piece_num;
+                indexmap[starts_and_ends[2 * piece_num + 1]] = 2 * piece_num + 1;
+            }
+
+            size_t cor_sz = 0;
+            int_ len = correction_pattern->length;
+            const char_* src = correction_pattern->data;
+            int_ i = 0;
+
+            std::map<int_, size_t>::iterator iter = indexmap.begin();
+    
+            while(iter != indexmap.end())
+            {
+                while(cor_sz < iter->first)
+                {
+                    char_ ch = src[i];
+                    cor_sz++;
+                    cor_sz += ch > 127;
+                    cor_sz += ch > 2047;
+                    cor_sz += (ch > 65535) & (ch <= 1114111);
+                    i++;
+                }
+                while(iter != indexmap.end() && cor_sz == iter->first)
+                {
+                    starts_and_ends[iter->second] = i;
+                    iter++;
+                }
             }
         } 
         return fx_status; 
     }
+
 }
 
 fun incise(str: string, starts_ends: (int, int)[]): string []
@@ -110,9 +139,6 @@ fun incise(str: string, starts_ends: (int, int)[]): string []
 // replace_pattern_t describes, what to replace found matches                        ////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//[TODO]  UTF32->UTF8 is not symbol-to-symbol conversion. One symbol in UTF32 can mean more than one symbol in UTF8. In such situation, submatch pairs will be useless.
-//[TODO]  Named groups
-//[TODO]  Check all other functions
 type regex_t = { handle: cptr, find_r: cptr}
 type replace_piece_t =
 | RPInt: int
@@ -188,6 +214,55 @@ fun compile(pattern: string): regex_t
     compile(pattern, default_options)
 }
 
+val digit_reg = compile("\\\\[0-9]")
+
+fun compile_replace_pattern(rewrite: string): replace_pattern_t
+{
+    val (has_subs, ranges) = findall(rewrite, digit_reg)
+    val piece_lst = 
+        if(has_subs)
+        {
+            val (len_i, _) = size(ranges)
+            var pieces_list = []
+            var pos = 0
+            for incl_num <- 0: len_i
+            {   
+                val (substart,subend) = ranges[incl_num,0]
+                val placeholder_num = getOpt(atoi(rewrite[substart+1:substart+2]), 0)
+                pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
+                pos = subend
+            }
+            pieces_list = RPString(rewrite[pos:]) :: pieces_list
+            fold filtered = [] for piece <- pieces_list
+            {   
+                val ok = match piece { | RPString simple_piece => String.length(simple_piece)!=0  | RPInt sub_num => true}
+                if (ok) {piece::filtered} else {filtered}
+            }                
+        }
+        else
+        {
+            RPString(rewrite) :: []
+        }
+    
+    val fold max_sub = -1 for piece <- piece_lst
+    {   
+        match piece
+        {
+            | RPString simple_piece => max_sub
+            | RPInt sub_num => max(max_sub, sub_num) 
+        }
+    }    
+    replace_pattern_t {pieces = piece_lst, max_subnum = max_sub}
+}
+
+pure fun string(re: regex_t): string = ccode  
+{
+    using namespace re2;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
+    return fx_cstr2str(re_to_apply->pattern().c_str(), re_to_apply->pattern().size(), fx_result);
+}
 
 pure fun number_of_capturing_groups(re: regex_t): int = ccode
 {
@@ -197,6 +272,72 @@ pure fun number_of_capturing_groups(re: regex_t): int = ccode
         return FX_EXN_NullPtrError;
     *fx_result = re_to_apply->NumberOfCapturingGroups();
     return FX_OK;
+}
+
+fun named_capturing_groups(re: regex_t): (string, int) list
+{
+    pure fun named_capturing_groups_(re: regex_t): (string [], int []) = ccode
+    {
+        using namespace re2;
+        RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+        if(re_to_apply == nullptr) 
+            return FX_EXN_NullPtrError;
+        size_t sub_amount = re_to_apply->NumberOfCapturingGroups();
+        const int_ arrdims[1] = {static_cast<int_>(sub_amount)};
+        int fx_status = fx_make_arr( 1, arrdims, sizeof(fx_str_t), 0, 0, 0, &fx_result->t0);
+        if(fx_status<0)
+        {
+            return fx_status;
+        }
+        fx_status = fx_make_arr( 1, arrdims, sizeof(int_), 0, 0, 0, &fx_result->t1);
+        if(fx_status<0)
+        {
+            fx_free_arr(&fx_result->t0);
+            return fx_status;
+        }
+
+        int_* indexes = (int_*)fx_result->t1.data;
+        fx_str_t* names = (fx_str_t*)fx_result->t0.data;
+
+        size_t arrpos = 0;
+        std::map<std::string, int>::const_iterator rator = re_to_apply->NamedCapturingGroups().cbegin();
+        while(rator != re_to_apply->NamedCapturingGroups().cend())
+        {
+            indexes[arrpos] = rator->second;
+            fx_status = fx_cstr2str(rator->first.c_str(), rator->first.size(), names+arrpos);
+            if(fx_status<0)
+            {
+                for(size_t name_num = 0; name_num < arrpos; name_num++)
+                {
+                    fx_free_str(names+arrpos);
+                }
+                fx_free_arr(&fx_result->t0);
+                fx_free_arr(&fx_result->t1);
+                break;
+            }
+            arrpos++;
+            rator++;
+        }
+        return fx_status;
+    }
+    val (names, indexes) = named_capturing_groups_(re)
+    [: for name <- names, index <- indexes {(name, index)} :]
+}
+
+fun capturing_group_names(re: regex_t): (int, string) list
+{
+    val lst = named_capturing_groups(re)
+    [: for (name, index) <- lst {(index, name)} :]
+}
+
+fun max_submatch(rewrite: replace_pattern_t): int
+{
+    rewrite.max_subnum
+}
+
+fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool 
+{
+    number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) > max_submatch(rewrite)
 }
 
 pure fun full_match(text: string, re: regex_t) : bool = ccode
@@ -209,7 +350,7 @@ pure fun full_match(text: string, re: regex_t) : bool = ccode
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        *fx_result = re2::RE2::FullMatch(ctext.data, *re_to_apply);//TODO: Try - catch.
+        *fx_result = re2::RE2::FullMatch(ctext.data, *re_to_apply);
         fx_free_cstr(&ctext);
     }
     return fx_status;
@@ -234,10 +375,10 @@ pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    
             fx_status = make_sub_args(sub_string_pieces, sub_args);
             if(fx_status>=0)
             {
-                fx_result->t0 = RE2::FullMatchN(ctext.data, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                fx_result->t0 = RE2::FullMatchN(ctext.data, *re_to_apply, &(*(sub_args.begin())), sub_amount);
                 if(fx_result->t0)
                 {
-                    fx_status = string_pieces_to_arr(sub_string_pieces, ctext.data, &(fx_result->t1));
+                    fx_status = string_pieces_to_arr(sub_string_pieces, ctext.data, text, &(fx_result->t1));
                 }
                 free_sub_args(sub_args);
             }
@@ -269,7 +410,7 @@ pure fun partial_match(text: string, re: regex_t) : bool = ccode
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
     if(fx_status>=0)
     {
-        *fx_result = re2::RE2::PartialMatch(ctext.data, *re_to_apply);//TODO: Try - catch.
+        *fx_result = re2::RE2::PartialMatch(ctext.data, *re_to_apply);
         fx_free_cstr(&ctext);
     }
     return fx_status;
@@ -294,10 +435,10 @@ pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int 
             fx_status = make_sub_args(sub_string_pieces, sub_args);
             if(fx_status>=0)
             {
-                fx_result->t0 = RE2::PartialMatchN(ctext.data, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                fx_result->t0 = RE2::PartialMatchN(ctext.data, *re_to_apply, &(*(sub_args.begin())), sub_amount);
                 if(fx_result->t0)
                 {
-                    fx_status = string_pieces_to_arr(sub_string_pieces, ctext.data, &(fx_result->t1));
+                    fx_status = string_pieces_to_arr(sub_string_pieces, ctext.data, text, &(fx_result->t1));
                 }
                 free_sub_args(sub_args);
             }
@@ -346,11 +487,11 @@ pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (in
             if(fx_status>=0)
             {
                 StringPiece string_n_position(cinput.data + pos);
-                fx_result->t0 = RE2::ConsumeN(&string_n_position, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                fx_result->t0 = RE2::ConsumeN(&string_n_position, *re_to_apply, &(*(sub_args.begin())), sub_amount);
                 if(fx_result->t0)
                 {
                     fx_result->t1 = string_n_position.begin() - cinput.data;
-                    fx_status = string_pieces_to_arr(sub_string_pieces, cinput.data, &(fx_result->t2));
+                    fx_status = string_pieces_to_arr(sub_string_pieces, cinput.data, input, &(fx_result->t2));
                 }
                 else
                 {
@@ -403,11 +544,11 @@ pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,   
             if(fx_status>=0)
             {
                 StringPiece string_n_position(cinput.data + pos);
-                fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, &(*(sub_args.begin())), sub_amount); //TODO: try - catch!
+                fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, &(*(sub_args.begin())), sub_amount);
                 if(fx_result->t0)
                 {
                     fx_result->t1 = string_n_position.begin() - cinput.data;
-                    fx_status = string_pieces_to_arr(sub_string_pieces, cinput.data, &(fx_result->t2));
+                    fx_status = string_pieces_to_arr(sub_string_pieces, cinput.data, input, &(fx_result->t2));
                 }
                 else
                 {
@@ -432,6 +573,56 @@ fun find_and_consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    
     val (success, newpos, starts_ends) = find_and_consume_n(input, pos, re)
     (success, newpos, incise(input, starts_ends))
 }
+
+type anchor_t = 
+{
+    anchor_start: bool = false,
+    anchor_both : bool = false // [TODO]: In this case we need enum, but right now anchor_both just overrides anchor_start
+}
+
+//This function is equivalent of RE2::Match
+//                                                                                             (success, (sub_start, sub_end)[])
+fun general_match(text: string, re: regex_t, startpos: int, endpos: int, re_anchor: anchor_t): (bool   , (int      , int    )[]) = ccode
+{
+    using namespace re2;
+    RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
+    if(re_to_apply == nullptr) 
+        return FX_EXN_NullPtrError;
+    fx_cstr_t ctext = {};
+    int fx_status = fx_str2cstr(text, &ctext, 0, 0);
+    if(fx_status>=0)
+    {
+        const int sub_amount = re_to_apply->NumberOfCapturingGroups();
+        try
+        {
+            std::vector<StringPiece> sub_string_pieces(sub_amount, StringPiece());
+            if(fx_status>=0)
+            {
+                RE2::Anchor anchr = re_anchor->anchor_both ? RE2::ANCHOR_BOTH : (re_anchor->anchor_start ? RE2::ANCHOR_START : RE2::UNANCHORED);
+                fx_result->t0 = re_to_apply->Match(ctext.data, static_cast<size_t>(startpos), static_cast<size_t>(endpos), anchr, &(*(sub_string_pieces.begin())), sub_amount);
+                if(fx_result->t0)
+                {
+                    fx_status = string_pieces_to_arr(sub_string_pieces, ctext.data, text, &(fx_result->t1));
+                }
+            }
+        }
+        catch (std::bad_alloc& e)
+        {
+            FX_FAST_THROW(FX_EXN_OutOfMemError, fx_cleanup);
+        }
+    }
+fx_cleanup:
+    fx_free_cstr(&ctext);
+    return fx_status;
+}
+
+//                                                                                                 (success, sub-matches[])
+fun general_match_str(text: string, re: regex_t, startpos: int, endpos: int, re_anchor: anchor_t): (bool   ,     string [])
+{
+    val (success, starts_ends) = general_match(text, re, startpos, endpos, re_anchor)
+    (success, incise(text, starts_ends))
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Find /////////////////////////////////////////////////////////////////////////////////
@@ -461,6 +652,7 @@ ccode
         std::vector<re2::StringPiece> sub_string_pieces;
         std::vector<re2::RE2::Arg*> sub_args;
         fx_cstr_t cloth;
+        fx_str_t correction;
     };
 
     void fx_re2_findall_process_free(void* ptr)
@@ -470,6 +662,7 @@ ccode
             fx_re2_findall_process* proc = (fx_re2_findall_process*)(ptr);
             free_sub_args(proc->sub_args);
             fx_free_cstr(&proc->cloth);
+            fx_free_str(&proc->correction);
             delete proc;
         }
     }
@@ -491,6 +684,8 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
         {
             resptr = new fx_re2_findall_process;
             resptr->cloth = {};
+            resptr->correction = {};
+            fx_copy_str(input, &(resptr->correction));
             resptr->sub_string_pieces.resize(sub_amount);
             resptr->sub_args.resize(sub_amount, nullptr);
             fx_status = make_sub_args(resptr->sub_string_pieces, resptr->sub_args);
@@ -529,11 +724,11 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
             return FX_EXN_NullPtrError;
         fx_re2_findall_process* p_proc = static_cast<fx_re2_findall_process*>(proc->ptr);
         StringPiece string_n_position(p_proc->cloth.data + pos);
-        fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, &(*(p_proc->sub_args.begin())), p_proc->sub_args.size()); //TODO: try - catch!
+        fx_result->t0 = RE2::FindAndConsumeN(&string_n_position, *re_to_apply, &(*(p_proc->sub_args.begin())), p_proc->sub_args.size());
         if(fx_result->t0)
         {
             fx_result->t1 = string_n_position.begin() - p_proc->cloth.data;
-            fx_status = string_pieces_to_arr(p_proc->sub_string_pieces, p_proc->cloth.data, &(fx_result->t2));
+            fx_status = string_pieces_to_arr(p_proc->sub_string_pieces, p_proc->cloth.data, &(p_proc->correction), &(fx_result->t2));
         }
         else
         {
@@ -597,46 +792,6 @@ fun findall_str(string_to_match: string, re: regex_t): (bool   , string     [,])
 // Replaces /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-fun compile_replace_pattern(rewrite: string): replace_pattern_t
-{
-    val digit_reg = compile("\\\\[0-9]") //[TODO] I've tryed to make this val global, but in this case, C++-output became uncompilable.
-    val (has_subs, ranges) = findall(rewrite, digit_reg)
-    val piece_lst = 
-        if(has_subs)
-        {
-            val (len_i, _) = size(ranges)
-            var pieces_list = []
-            var pos = 0
-            for incl_num <- 0: len_i
-            {   
-                val (substart,subend) = ranges[incl_num,0]
-                val placeholder_num = getOpt(atoi(rewrite[substart+1:substart+2]), 0)
-                pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
-                pos = subend
-            }
-            pieces_list = RPString(rewrite[pos:]) :: pieces_list
-            fold filtered = [] for piece <- pieces_list
-            {   
-                val ok = match piece { | RPString simple_piece => String.length(simple_piece)!=0  | RPInt sub_num => true}
-                if (ok) {piece::filtered} else {filtered}
-            }                
-        }
-        else
-        {
-            RPString(rewrite) :: []
-        }
-    
-    val fold max_sub = -1 for piece <- piece_lst
-    {   
-        match piece
-        {
-            | RPString simple_piece => max_sub
-            | RPInt sub_num => max(max_sub, sub_num) 
-        }
-    }    
-    replace_pattern_t {pieces = piece_lst, max_subnum = max_sub}
-}
-
 //Service function
 fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_subs: (int, int)[]) : string 
 {
@@ -657,7 +812,7 @@ fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_su
 //                                                                 (success, result)
 fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
-    assert(number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) > rewrite.max_subnum)
+    assert(check_rewrite_string(re, rewrite))
     val (is_found, ranges) = find(str, re)
     (is_found,
         if(is_found)
@@ -673,7 +828,7 @@ fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    str
 //                                                                        (success, result)
 fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    string)
 {
-    assert(number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) > rewrite.max_subnum)
+    assert(check_rewrite_string(re, rewrite))
 
     val (is_found, ranges) = findall(str, re)
     (is_found,
@@ -768,6 +923,18 @@ pure fun find_and_consume_n(input: string, pos: int, re: string) : (bool   ,    
 fun find_and_consume_n_str(input: string, pos: int, re: string) : (bool   ,    int,      string [])
 {
     find_and_consume_n_str(input, pos, compile(re))
+}
+
+//                                                                                            (success, (sub_start, sub_end)[])
+fun general_match(text: string, re: string, startpos: int, endpos: int, re_anchor: anchor_t): (bool   , (int      , int    )[])
+{
+    general_match(text, compile(re), startpos, endpos, re_anchor)
+}
+
+//                                                                                                (success, sub-matches[])
+fun general_match_str(text: string, re: string, startpos: int, endpos: int, re_anchor: anchor_t): (bool   ,     string [])
+{
+    general_match_str(text, compile(re), startpos, endpos, re_anchor)
 }
 
 //                                             (success, (sub_start, sub_end)[])
