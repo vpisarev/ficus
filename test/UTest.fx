@@ -9,6 +9,11 @@ import Sys
 exception TestAssertError
 exception TestFailure: string
 
+type test_options_t =
+{
+    filter: string = ""
+}
+
 type test_info_t =
 {
     name: string,
@@ -128,10 +133,12 @@ fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
         g_test_state.currstatus = false
     }
 
-fun test_run_all(filter:string)
+fun test_run_all(opts: test_options_t)
 {
+    val filter = opts.filter
+    val (inverse_test, filter) = if filter.startswith("^") {(true, filter[1:])} else {(false, filter)}
     val (startswithstar, filter) = if filter.startswith("*") {(true, filter[1:])} else {(false, filter)}
-    val (endswithstar, filter) = if filter.endswith("*") {(true, filter[:-1])} else {(false, filter)}
+    val (endswithstar, filter) = if filter.endswith("*") {(true, filter[:.-1])} else {(false, filter)}
     if filter.find("*") >= 0 {
         throw TestFailure("test filter with '*' inside is currently unsupported")
     }
@@ -146,10 +153,10 @@ fun test_run_all(filter:string)
             (startswithstar && name.endswith(filter)) ||
             (endswithstar && name.startswith(filter)) ||
             (startswithstar && endswithstar && name.find(filter) != -1)
-        if (!matches) {failed}
+        if (!matches ^ inverse_test) {failed}
         else {
             nexecuted += 1
-            println(f"[ RUN      ] {name}")
+            println(f"\33[32;1m[ RUN      ]\33[0m {name}")
             g_test_state = test_init_state_before_test()
             val ts_start = Sys.getTickCount()
             try {
@@ -163,7 +170,8 @@ fun test_run_all(filter:string)
             }
             val ts_end = Sys.getTickCount()
             val ok = g_test_state.currstatus
-            val ok_fail = if ok {"[       OK ]"} else {"[     FAIL ]"}
+            val ok_fail = if ok {"\33[32;1m[       OK ]\33[0m"}
+                          else {"\33[31;1m[     FAIL ]\33[0m"}
             println(f"{ok_fail} {name} ({(ts_end - ts_start)*ts_scale} ms)\n")
             if ok {failed} else {name :: failed}
         }
@@ -171,10 +179,42 @@ fun test_run_all(filter:string)
     val ts0_end = Sys.getTickCount()
     val nfailed = failed.length()
     val npassed = nexecuted - nfailed
-    println(f"[==========] {nexecuted} test(s) ran ({(ts0_end - ts0_start)*ts_scale} ms total)\n")
-    println(f"[  PASSED  ] {npassed} test(s)")
+    println(f"[==========] {nexecuted} test(s) ran ({(ts0_end - ts0_start)*ts_scale} ms total)")
+    println(f"\33[32;1m[  PASSED  ]\33[0m {npassed} test(s)")
     if nfailed > 0 {
-        println(f"[  FAILED ] {nfailed} test(s):")
+        println(f"\33[31;1m[  FAILED ]\33[0m {nfailed} test(s):")
         for i <- failed.rev() {println(i)}
     }
+}
+
+fun test_parse_options(args: string list) {
+    var options = test_options_t {}
+    fun print_help() {
+        println("Ficus unit tests.
+The following options are available:
+-f filter - specifies glob-like regular expression for the names of tests to run.
+            May include '*' in the beginning of in the end.
+            '^' in the beginning means that the filter should be inversed.
+-l - list the available tests.
+-h or -help or --help - prints this information.")
+    }
+    fun parse(args: string list) {
+        | "-f" :: filter :: rest =>
+            options.filter = filter
+            parse(rest)
+        | "-l" :: _ =>
+            for t <- g_test_all_registered.rev() {
+                println(t.name)
+            }
+            (false, options)
+        | "-h" :: _ | "-help" :: _ | "--help" :: _ =>
+            print_help()
+            (false, options)
+        | [] => (true, options)
+        | o :: _ =>
+            println("Invalid option\n")
+            print_help()
+            (false, options)
+    }
+    parse(args)
 }

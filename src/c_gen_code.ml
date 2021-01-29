@@ -1242,7 +1242,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let ccode = make_cons_call ce1 ce2 (not reuse_ce2) l_exp ccode kloc in
                 (false, l_exp, ccode)
             | _ ->
-                let c_bop = match bop with
+                let c_bop = (match bop with
                     | OpAdd -> COpAdd
                     | OpSub -> COpSub
                     | OpMul -> COpMul
@@ -1265,8 +1265,13 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLE
                     | OpDotCompareGE | OpDotCompareLT | OpDotCompareGT ->
                         raise_compile_err kloc (sprintf "cgen: unsupported op '%s' at this stage"
-                        (binop_to_string bop))
-                in (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode))
+                        (binop_to_string bop)))
+                in (match (c_bop, (get_cexp_typ ce1)) with
+                | (COpCompareEQ, CTypString) ->
+                    let f_exp = get_id "fx_streq" in
+                    let call_streq = make_call f_exp [(cexp_get_addr ce1); (cexp_get_addr ce2)] CTypBool kloc in
+                    (true, call_streq, ccode)
+                | _ -> (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode)))
         | KExpUnOp(OpMkRef, a1, _) ->
             let (ce1, ccode) = atom2cexp a1 ccode kloc in
             let (r_exp, _) = get_dstexp dstexp_r "r" ctyp [] [] kloc in

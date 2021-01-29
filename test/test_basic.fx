@@ -1,4 +1,5 @@
 from UTest import *
+import Args
 
 TEST("Basic.literals", fun() {
     val a = 1
@@ -8,4 +9,5 @@ TEST("Basic.literals", fun() {
     EXPECT_NEAR(c-0.14, 3.0, 0.001)
 })
 
-test_run_all("")
+val (run, options) = test_parse_options(Args.arguments())
+if run {test_run_all(options)}

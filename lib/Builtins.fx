@@ -370,12 +370,7 @@ operator .> (a: 't [+], b: 't [+]): bool [+] =
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {!(x < y)}]
 
-pure nothrow operator == (a: string, b: string): bool = ccode
-{
-    return (bool)(a->length == b->length &&
-            (a->length == 0 ||
-            memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
-}
+pure nothrow operator == (a: string, b: string): bool = ccode { return fx_streq(a, b); }
 
 // [TODO] implement more clever string comparison operation
 pure nothrow operator <=> (a: string, b: string): int = ccode

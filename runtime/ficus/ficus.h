@@ -314,6 +314,7 @@ typedef struct fx_cstr_t
 } fx_cstr_t;
 
 int_ fx_strlen(const char_* rawstr);
+bool fx_streq(const fx_str_t* a, const fx_str_t* b);
 void fx_free_str(fx_str_t* str);
 void fx_free_cstr(fx_cstr_t* cstr);
 void fx_copy_str(const fx_str_t* src, fx_str_t* dst);

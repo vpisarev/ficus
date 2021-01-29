@@ -300,7 +300,7 @@ let lower = ['a'-'z']
 let upper = ['A'-'Z']
 let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0" | "\\\\" | "\\{"
 let hexcode = "\\x" hexdigit hexdigit
-let octcode = "\\" octdigit octdigit octdigit
+let octcode = "\\" octdigit octdigit octdigit?
 
 rule tokens = parse
     | newline

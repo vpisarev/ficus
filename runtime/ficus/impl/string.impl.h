@@ -18,6 +18,13 @@ int_ fx_strlen(const char_* rawstr)
     return len;
 }
 
+bool fx_streq(const fx_str_t* a, const fx_str_t* b)
+{
+    return (bool)(a->length == b->length &&
+            (a->length == 0 ||
+            memcmp(a->data, b->data, a->length*sizeof(a->data[0])) == 0));
+}
+
 void fx_free_str(fx_str_t* str)
 {
     if( str->rc )
