@@ -72,9 +72,9 @@ fun ASSERT(c: bool, msg: void->string)
     if(!c) {
         val m = msg()
         if (m == "") {
-            println(f"Error: Assertion failed.")
+            println(f"Assertion failed.")
         } else {
-            println(f"Error: Assertion failed: {m}")
+            println(f"Assertion failed: {m}")
         }
         throw TestAssertError
     }
@@ -84,11 +84,14 @@ fun ASSERT(c: bool) = ASSERT(c, test_msg(""))
 
 fun test_failed_assert_cmp(a: 't, b: 't, op: string)
 {
-    println("Error: Assertion \"computed:'{a}' {op} reference:'{b}'\" failed.")
+    print("Error: Assertion failed:\nActual:")
+    println(a)
+    print(f"Expected: {op}")
+    println(b)
     throw TestAssertError
 }
 
-fun ASSERT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_assert_cmp(a, b, "==")}
+fun ASSERT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_assert_cmp(a, b, "")}
 fun ASSERT_NE(a: 't, b: 't) = if a != b {} else {test_failed_assert_cmp(a, b, "!=")}
 fun ASSERT_LT(a: 't, b: 't) = if a < b {} else {test_failed_assert_cmp(a, b, "<")}
 fun ASSERT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_assert_cmp(a, b, "<=")}
@@ -97,7 +100,11 @@ fun ASSERT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_assert_cmp(a, b, ">
 
 fun ASSERT_NEAR(a: 't, b: 't, eps: 't) =
     if b - eps <= a <= b + eps {} else {
-        println("Error: Assertion 'computed:{a} ≈ reference:{b}' with eps={eps} failed.")
+        println("Assertion failed.\nActual: ")
+        println(a)
+        print("Expected: ")
+        print(b)
+        println(f" ±{eps}")
         throw TestAssertError
     }
 
@@ -106,7 +113,7 @@ fun EXPECT(c: bool, msg: void->string)
     if(!c) {
         val m = msg()
         if (m == "") {
-            println(f"Error: Expected: true, Computed: false.")
+            println(f"Error. EXPECT(...) is not satisfied.")
         } else {
             println(f"Error: {m}.")
         }
@@ -114,24 +121,51 @@ fun EXPECT(c: bool, msg: void->string)
     }
 }
 
-fun test_failed_expect_cmp(a: 't, b: 't, op: string)
+fun EXPECT(c: bool) = EXPECT(c, test_nomsg)
+
+fun test_failed_expect_cmp(a: 't, b: 't, op: string, eps: 't)
 {
-    println("Error: Expected \"computed:'{a}' {op} reference:'{b}'\".")
+    print("Actual:")
+    println(a)
+    print(f"Expected: {op}")
+    print(b)
+    if eps != (0 :> 't) {println(f" ±{eps}")} else {println()}
     g_test_state.currstatus = false
 }
 
-fun EXPECT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_expect_cmp(a, b, "==")}
-fun EXPECT_NE(a: 't, b: 't) = if a != b {} else {test_failed_expect_cmp(a, b, "!=")}
-fun EXPECT_LT(a: 't, b: 't) = if a < b {} else {test_failed_expect_cmp(a, b, "<")}
-fun EXPECT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_expect_cmp(a, b, "<=")}
-fun EXPECT_GT(a: 't, b: 't) = if a > b {} else {test_failed_expect_cmp(a, b, ">")}
-fun EXPECT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_expect_cmp(a, b, ">=")}
+fun EXPECT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_expect_cmp(a, b, "", (0 :> 't))}
+fun EXPECT_NE(a: 't, b: 't) = if a != b {} else {test_failed_expect_cmp(a, b, "!=", (0 :> 't))}
+fun EXPECT_LT(a: 't, b: 't) = if a < b {} else {test_failed_expect_cmp(a, b, "<", (0 :> 't))}
+fun EXPECT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_expect_cmp(a, b, "<=", (0 :> 't))}
+fun EXPECT_GT(a: 't, b: 't) = if a > b {} else {test_failed_expect_cmp(a, b, ">", (0 :> 't))}
+fun EXPECT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_expect_cmp(a, b, ">=", (0 :> 't))}
 
 fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
-    if b - eps <= a <= b + eps {} else {
-        println("Error: Expected \"computed:'{a}' ≈ reference:'{b}'\" with eps={eps}.")
-        g_test_state.currstatus = false
-    }
+    if b - eps <= a <= b + eps {} else {test_failed_expect_cmp(a, b, "", eps)}
+
+fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
+    ignore(fold r = true for ai@idx <- a, bi <- b {
+        if !(bi - eps <= ai <= bi + eps) {
+            test_failed_expect_cmp(ai, bi, "", eps)
+            break with false
+        }
+        r
+    })
+
+fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
+    ignore(fold r = true for ai@idx <- a, bi <- b {
+        if !(bi - eps <= ai <= bi + eps) {
+            test_failed_expect_cmp(ai, bi, "", eps)
+            break with false
+        }
+        r
+    })
+
+fun test_duration2str(ts_diff: double)
+{
+    val ts_rdiff = round(ts_diff)
+    if ts_rdiff < 1 {"<1 ms"} else {string(ts_rdiff) + " ms"}
+}
 
 fun test_run_all(opts: test_options_t)
 {
@@ -165,21 +199,23 @@ fun test_run_all(opts: test_options_t)
             | TestAssertError =>
                 g_test_state.currstatus = false
             | e =>
-                println("Exception {e} occured.")
+                println(f"Exception {e} occured.")
                 g_test_state.currstatus = false
             }
             val ts_end = Sys.getTickCount()
             val ok = g_test_state.currstatus
             val ok_fail = if ok {"\33[32;1m[       OK ]\33[0m"}
                           else {"\33[31;1m[     FAIL ]\33[0m"}
-            println(f"{ok_fail} {name} ({(ts_end - ts_start)*ts_scale} ms)\n")
+            val ts_diff_str = test_duration2str((ts_end - ts_start)*ts_scale)
+            println(f"{ok_fail} {name} ({ts_diff_str})\n")
             if ok {failed} else {name :: failed}
         }
     }
     val ts0_end = Sys.getTickCount()
+    val ts0_diff_str = test_duration2str((ts0_end - ts0_start)*ts_scale)
     val nfailed = failed.length()
     val npassed = nexecuted - nfailed
-    println(f"[==========] {nexecuted} test(s) ran ({(ts0_end - ts0_start)*ts_scale} ms total)")
+    println(f"[==========] {nexecuted} test(s) ran ({ts0_diff_str})")
     println(f"\33[32;1m[  PASSED  ]\33[0m {npassed} test(s)")
     if nfailed > 0 {
         println(f"\33[31;1m[  FAILED ]\33[0m {nfailed} test(s):")

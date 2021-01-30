@@ -5,9 +5,14 @@
 
 /* math functions on scalars and arrays */
 
-ccode { #include <math.h> }
+ccode {
+#include <math.h>
+#include <float.h>
+}
 
 val pi = 3.1415926535897932384626433832795
+val FLT_EPSILON: float = ccode {FLT_EPSILON}
+val DBL_EPSILON: double = ccode {DBL_EPSILON}
 
 fun round(x: float) = Builtins.round(x)
 fun round(x: double) = Builtins.round(x)

@@ -60,6 +60,8 @@ operator <= (a: 't, b: 't): bool = a <=> b <= 0
 type 't option = None | Some: 't
 
 fun getOpt(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
+fun isNone(x: 't?) { | Some _ => false | _ => true }
+fun isSome(x: 't?) { | Some _ => true | _ => false }
 
 pure nothrow fun length(s: string): int = ccode { return s->length }
 pure nothrow fun length(l: 't list): int = ccode { return fx_list_length(l) }
@@ -369,6 +371,16 @@ operator .> (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {y < x}]
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {!(x < y)}]
+
+pure nothrow operator == (a: 't list, b: 't list): bool =
+    try {
+        fold f=true for ai <- a, bi <- b {
+            if (!(ai == bi)) {break with false}
+            f
+        }
+    } catch {
+        | SizeMismatchError => false
+    }
 
 pure nothrow operator == (a: string, b: string): bool = ccode { return fx_streq(a, b); }
 
