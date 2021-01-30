@@ -68,7 +68,7 @@ example("find_and_consume_n_str", "The moon is 384467 kilometers distant.", 0, "
 
 println()
 println("Find All:")
-val fullstring_re = Re2.compile("^.*$",Re2.options_t {posix_syntax = true, one_line = false}) //TODO!!!
+val fullstring_re = Re2.compile("^.*$",Re2.options_t {posix_syntax = true, one_line = false})
 //example("findall_str", "The hooves clattered.\nAs if singing:\n— Crib.\nGrab.\nGrub.\nGruff.\n", fullstring_re, Re2.findall_str)  //[TODO] Uncomment, when bugreport will be fixed
 val fa = Re2.findall_str("The hooves clattered.\nAs if singing:\n— Crib.\nGrab.\nGrub.\nGruff.\n", fullstring_re)
 println(f"Re2.findall_str(\"The hooves clattered.\nAs if singing:\n— Crib.\nGrab.\nGrub.\nGruff.\n\", \"{Re2.string(fullstring_re)}\") = {fa}") //hyphen instead of dash, so utf8 contains 2-byte symbol.
