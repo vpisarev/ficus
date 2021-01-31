@@ -214,7 +214,7 @@ let string_start = ref dummy_pos
 let string_interp_elem = ref 0
 let string_tokens = ref ([] : token list)
 
-type string_literal_t = StrLitPlain | StrLitFmt
+type string_literal_t = StrLitPlain | StrLitFmt | StrLitRegexp
 let string_literal_typ = ref StrLitPlain
 
 let comment_start = ref dummy_pos
@@ -324,7 +324,7 @@ rule tokens = parse
         }
     | "//"  { if (eol_comments lexbuf) = EOF then [EOF] else tokens lexbuf }
 
-    | ("\"" | "f\"") as s
+    | ("\"" | "f\"" | "r\"") as s
         {
             check_ne(lexbuf);
             if !string_interp_elem <> 0 then
@@ -336,7 +336,7 @@ rule tokens = parse
             | _ -> ());
             string_start := lexbuf.lex_start_p;
             string_literal := "" ;
-            string_literal_typ := if Utils.starts_with s "f" then StrLitFmt else StrLitPlain;
+            string_literal_typ := if Utils.starts_with s "f" then StrLitFmt else if Utils.starts_with s "r" then StrLitRegexp else StrLitPlain;
             strings lexbuf;
             !string_tokens
         }
@@ -616,7 +616,7 @@ and strings = parse
     | "{"
         {
             match !string_literal_typ with
-            | StrLitPlain ->
+            | StrLitPlain | StrLitRegexp ->
                 string_literal := !string_literal ^ "{";
                 strings lexbuf
             | StrLitFmt ->
@@ -634,7 +634,7 @@ and strings = parse
     | "\\{"
         {
             let string_part = match !string_literal_typ with
-                | StrLitPlain -> "\\{"
+                | StrLitPlain | StrLitRegexp -> "\\{"
                 | StrLitFmt -> "{"
                 in
             string_literal := !string_literal ^ string_part;
@@ -652,7 +652,11 @@ and strings = parse
     | octcode as oc
         { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }
     | "\\" (_ as s)
-        { raise (lexErrAt (sprintf "Illegal escape \\%s" (Char.escaped s)) (!string_start, lexbuf.lex_curr_p)) }
+        {
+            match !string_literal_typ with
+            | StrLitRegexp -> string_literal := !string_literal ^ "\\" ^ (Char.escaped s); strings lexbuf
+            | _ -> raise (lexErrAt (sprintf "Illegal escape \\%s" (Char.escaped s)) (!string_start, lexbuf.lex_curr_p))
+        }
     | eof
         { raise (lexErrAt "Unterminated string" (!string_start, lexbuf.lex_curr_p)) }
     | _ as c
