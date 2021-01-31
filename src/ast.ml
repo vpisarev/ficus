@@ -749,7 +749,8 @@ let fname_to_int64() = get_id "int64"
 let fname_to_float() = get_id "float"
 let fname_to_double() = get_id "double"
 let fname_to_bool() = get_id "bool"
-let fname_to_string() = get_id "string"
+let fname_string() = get_id "string"
+let fname_repr() = get_id "repr"
 
 let binop_try_remove_dot bop =
     match bop with
@@ -828,7 +829,7 @@ let fname_always_import () =
 
     fname_to_int(); fname_to_uint8(); fname_to_int8(); fname_to_uint16(); fname_to_int16();
     fname_to_uint32(); fname_to_int32(); fname_to_uint64(); fname_to_int64();
-    fname_to_float(); fname_to_double(); fname_to_bool(); fname_to_string()
+    fname_to_float(); fname_to_double(); fname_to_bool(); fname_string(); fname_repr()
 ]
 
 let init_all_ids () =
@@ -938,3 +939,39 @@ let add_to_imported_modules mname_id (pos0, pos1) =
         (parser_ctx_deps := mname_unique_id :: !parser_ctx_deps;
         mname_unique_id)
     | _ -> raise (SyntaxError(("module " ^ mname ^ " is not found"), pos0, pos1))
+
+let rec typ2str t =
+    match t with
+    | TypVarTuple(Some(t)) -> sprintf "TypVarTuple(Some(%s))" (typ2str t)
+    | TypVarTuple _ -> "TypVarTuple(None)"
+    | TypVarArray(t) -> sprintf "TypVarArray(%s)" (typ2str t)
+    | TypVarRecord -> "TypVarRecord"
+    | TypVar {contents=Some(t)} -> typ2str t
+    | TypVar _ -> "<unknown>"
+    | TypApp(tl, i) -> sprintf "TypApp(%s, %s)" (tl2str tl) (id2str i)
+    | TypInt -> "TypInt"
+    | TypSInt n -> sprintf "TypSInt(%d)" n
+    | TypUInt n -> sprintf "TypUInt(%d)" n
+    | TypFloat n -> sprintf "TypFloat(%d)" n
+    | TypVoid -> "TypVoid"
+    | TypBool -> "TypBool"
+    | TypChar -> "TypChar"
+    | TypString -> "TypString"
+    | TypCPointer -> "TypCPtr"
+    | TypFun(argtyps, rt) ->
+        "TypFun(" ^ (tl2str argtyps) ^
+        " -> " ^ (typ2str rt) ^ ")"
+    | TypTuple tl ->
+        "TypTuple(" ^ (tl2str tl) ^ ")"
+    | TypRecord {contents=(relems, _)} ->
+        "TypRecord {" ^
+        (String.concat "; " (List.map (fun (i, t, _) ->
+            (id2str i) ^ ": " ^ (typ2str t)) relems)) ^ "}"
+    | TypArray (d, t) -> sprintf "TypArray(%d, %s)" d (typ2str t)
+    | TypList t -> "TypList(" ^ (typ2str t) ^ ")"
+    | TypRef t -> "TypRef(" ^ (typ2str t) ^ ")"
+    | TypExn -> "TypExn"
+    | TypErr -> "TypErr"
+    | TypDecl -> "TypDecl"
+    | TypModule -> "TypModule"
+and tl2str tl = String.concat ", " (List.map (fun t -> typ2str t) tl)

@@ -667,6 +667,9 @@ let is_real_typ t =
 let report_not_found n loc =
     raise_compile_err loc (sprintf "the appropriate match for %s is not found" (pp_id2str n))
 
+let report_not_found_typed n t loc =
+    raise_compile_err loc (sprintf "the appropriate match for %s of %s is not found" (pp_id2str n) (typ2str t))
+
 let rec find_first n env loc pred =
     let rec find_next_ elist =
         match elist with
@@ -753,7 +756,7 @@ let rec lookup_id n t env sc loc =
     | Some(x) -> x
     | None ->
         (*print_env (sprintf "env @ report_not_found for %s: " (id2str n)) env loc;*)
-        report_not_found n loc
+        report_not_found_typed n t loc
 
 and preprocess_templ_typ templ_args typ env sc loc =
     let t = dup_typ typ in
@@ -1690,6 +1693,12 @@ and check_eseq eseq env sc create_sc =
     (List.rev eseq, env)
 
 and check_directives eseq env sc =
+    (*let current_mod = match sc with
+        | ScModule m :: _ -> m
+        | _ -> noid
+        in
+    let _ = printf "\n\n===================== Checking directives for Module %s =========================\n" (pp_id2str current_mod) in
+    let _ = Ast_pp.pprint_exp_x (ExpSeq(eseq, (TypDecl, noloc))) in*)
     let is_imported alias n env allow_duplicate_import loc =
         (List.exists(fun entry ->
             match entry with
@@ -1712,6 +1721,7 @@ and check_directives eseq env sc =
                 with Failure _ -> false)
             | EnvTyp _ -> false) (find_all alias env)) in
 
+
     let import_entries env parent_mod key entries loc =
         (List.fold_left (fun env i ->
             match i with
@@ -1730,6 +1740,7 @@ and check_directives eseq env sc =
             (* add the imported module id to the env *)
             let env = add_id_to_env alias m env in
             let menv = !(get_module m).dm_env in
+            (*printf "Importing %s into %s\n" (id2str m) (id2str current_mod);*)
             (* and also import all the overloaded operators from the module
                to make them usable in the corresponding arithmetic expressions *)
             List.fold_left (fun env op_name ->
@@ -1751,7 +1762,7 @@ and check_directives eseq env sc =
                 let keys = if implist != [] then implist else
                     (Env.fold (fun k ids l -> k :: l) menv []) in
                 (*let _ = ((printf "imported from %s: " (id2str m)); (List.iter (fun k -> printf "%s, " (id2str k)) keys); (printf "\n")) in*)
-                List.fold_left (fun env k ->
+                let env = List.fold_left (fun env k ->
                     try
                         let entries = find_all k menv in
                         let _ = (if entries != [] then () else
@@ -1759,16 +1770,13 @@ and check_directives eseq env sc =
                                 (sprintf "no symbol %s found in %s" (pp_id2str k) (pp_id2str m))) in
                         import_entries env m k entries eloc
                     with CompileError(_, _) as err -> push_compile_err err; env) env keys
+                    in
+                (* after processing "from m import ..." we also implicitly insert "import m" *)
+                let alias = get_orig_id m in
+                import_mod env alias m true eloc
             with CompileError(_, _) as err -> push_compile_err err; env) in
             (env, (m, eloc) :: mlist)
         | _ -> (env, mlist)) (env, []) eseq) in
-
-    (* after processing explicit (e.g. specified by user) import directives,
-       we also implicitly import each module "m" for which we have "from m import ...".
-       Probably, this needs to be revised *)
-    let env = List.fold_left (fun env (m, eloc) ->
-        let alias = get_orig_id m in
-        import_mod env alias m true eloc) env mlist in
 
     check_compile_errs();
     env

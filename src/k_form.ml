@@ -910,7 +910,7 @@ let rec ktyp2str t =
     | KTypBool -> "KTypBool"
     | KTypChar -> "KTypChar"
     | KTypString -> "KTypString"
-    | KTypCPointer -> "KTypCtr"
+    | KTypCPointer -> "KTypCPtr"
     | KTypFun(argtyps, rt) ->
         "KTypFun(<" ^ (ktl2str argtyps) ^
         ">, " ^ (ktyp2str rt) ^ ")"
