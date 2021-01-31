@@ -376,8 +376,34 @@ bool fx_atoi(const fx_str_t* str, int_* result, int base)
             r = r*base + digit;
         }
     }
-    *result = r;
+    *result = r*s;
     return i == len;
+}
+
+enum {FX_MAX_ATOF=128};
+
+bool fx_atof(const fx_str_t* str, double* result)
+{
+    int_ i = 0, len = str->length;
+    const char_ *ptr = str->data;
+    char buf[FX_MAX_ATOF+16];
+    char* endptr;
+    bool ok = len <= FX_MAX_ATOF;
+    if (ok) {
+        for(; i < len; i++) {
+            char_ c = ptr[i];
+            if(!('0' <= c && c <= '9' || c == '+' || c == '-' || c == 'e' || c == 'E' || c == '.'))
+                break;
+            buf[i] = (char)c;
+        }
+        buf[i] = '\0';
+    }
+    ok = ok && i == len;
+    if (ok) {
+        *result = strtod(buf, &endptr);
+        ok = ok && endptr == buf + len;
+    }
+    return ok;
 }
 
 int fx_itoa(int_ n, fx_str_t* str)

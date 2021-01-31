@@ -16,6 +16,7 @@
 #include <mach/mach_time.h>
 #else
 #include <unistd.h>
+#include <time.h>
 #endif
 
 #ifdef __cplusplus
@@ -31,7 +32,7 @@ int64_t fx_tickcount(void)
 #elif defined __linux || defined __linux__
     struct timespec tp;
     clock_gettime(CLOCK_MONOTONIC, &tp);
-    return (int64)tp.tv_sec*1000000000 + tp.tv_nsec;
+    return (int64_t)tp.tv_sec*1000000000 + tp.tv_nsec;
 #elif defined __MACH__ && defined __APPLE__
     return (int64_t)mach_absolute_time();
 #else

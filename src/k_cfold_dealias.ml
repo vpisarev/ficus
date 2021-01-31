@@ -336,6 +336,7 @@ let cfold_dealias kmods =
                                     we'd better keep the user-specified name so that the output code is cleaner.
                                     We will do the inverse substitution n2<-n rather than n<-n2 *)
                                 add_to_map n2 (Atom.Id n);
+                                set_idk_entry n (kinfo_ n2 loc);
                                 KExpNop(loc)
                             | _ ->
                                 add_to_map n (Atom.Id n2);

@@ -192,7 +192,7 @@ let get_ktprops t loc =
 let clear_typ_annotations top_code =
     List.iter (fun e -> match e with
         | KDefVariant kvar ->
-            kvar := {!kvar with kvar_props=None}
+            kvar := {!kvar with kvar_props=None; kvar_flags=default_var_flags()}
         | KDefTyp kt ->
             kt := {!kt with kt_props=None}
         | _ -> ()) top_code
@@ -208,10 +208,10 @@ let annotate_types kmods =
             let {kvar_flags} = !kvar in
             let is_recursive = kvar_flags.var_flag_recursive in
             let ncases = List.length kvar_cases in
-            let recursive_option = match kvar_cases with
-                    | (_, KTypVoid) :: (_, _) :: [] -> is_recursive
+            let option_like = match kvar_cases with
+                    | (_, KTypVoid) :: (_, _) :: [] -> true
                     | _ -> false in
-            let no_tag = ncases = 1 || recursive_option in
+            let no_tag = ncases = 1 || (is_recursive && option_like) in
             if is_recursive then () else
                 List.iter (fun constr ->
                     match (kinfo_ constr kvar_loc) with
@@ -220,7 +220,7 @@ let annotate_types kmods =
                         kf := {!kf with kf_flags=FunNoThrow :: kf_flags}
                     | _ -> ()) kvar_constr;
             kvar := {!kvar with kvar_flags = {kvar_flags with
-                var_flag_rec_opt = recursive_option;
+                var_flag_opt = option_like;
                 var_flag_have_tag = not no_tag}}
         | KDefTyp {contents={kt_name; kt_loc}} ->
             ignore(get_ktprops (KTypName kt_name) kt_loc)

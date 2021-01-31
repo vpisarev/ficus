@@ -191,11 +191,12 @@ and pprint_kexp_ e prtyp =
         pstr "TYPE"; pspace(); pprint_id_label kt_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kt_typ kt_loc; cbox()
     | KDefVariant { contents = {kvar_name; kvar_cases; kvar_props; kvar_constr; kvar_flags; kvar_loc} } ->
-        let is_rec_opt0 = kvar_flags.var_flag_rec_opt in
+        let is_opt0 = kvar_flags.var_flag_opt in
         let is_recursive = kvar_flags.var_flag_recursive in
-        obox(); ppktp kvar_props; if is_rec_opt0 then pstr "RECURSIVE_OPTION " else
-            if is_recursive then pstr "RECURSIVE " else ();
-        if not (kvar_flags.var_flag_have_tag) && not is_rec_opt0 then pstr "NO_TAG " else ();
+        obox(); ppktp kvar_props;
+        if is_recursive then pstr "RECURSIVE " else ();
+        if is_opt0 then pstr "OPTION_LIKE " else ();
+        if kvar_flags.var_flag_have_tag then () else pstr "NO_TAG ";
         pstr "TYPE"; pspace(); pprint_id_label kvar_name;
         pspace(); pstr "="; pspace(); (List.iteri (fun i ((v, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id v kvar_loc;

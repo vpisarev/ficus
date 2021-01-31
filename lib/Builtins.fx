@@ -404,7 +404,12 @@ pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode { return a == b }
 nothrow fun atoi(a: string): int? = ccode
 {
     bool ok = fx_atoi(a, &fx_result->u.Some, 10);
-    fx_result->tag = (int)ok + 1
+    fx_result->tag = (int)ok
+}
+nothrow fun atof(a: string): double? = ccode
+{
+    bool ok = fx_atof(a, &fx_result->u.Some);
+    fx_result->tag = (int)ok
 }
 
 fun int(x: 't) = (x :> int)

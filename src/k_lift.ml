@@ -20,146 +20,146 @@
 
     * We analyze each function and see if the function has 'free variables',
       i.e. variables that are non-local and yet are non-global.
-    a) If the function has some 'free variables',
-      it needs a special satellite structure called 'closure data'
-      that incapsulates all the free variables. The function itself
-      is transformed, it gets an extra parameter, which is pointer to the
-      closure data (this is done at C code generation step actually).
-      All the accesses to free variables are replaced
-      with the closure data access operations. Then, when the function
-      occurs in code (if it does not occur, it's eliminated as dead code),
-      a 'closure' is created, which is a pair (function, (closure_data or 'nil')).
-      This pair is used instead of the original function. Here is the example:
+    a)  If the function has some 'free variables',
+        it needs a special satellite structure called 'closure data'
+        that incapsulates all the free variables. The function itself
+        is transformed, it gets an extra parameter, which is pointer to the
+        closure data (this is done at C code generation step actually).
+        All the accesses to free variables are replaced
+        with the closure data access operations. Then, when the function
+        occurs in code (if it does not occur, it's eliminated as dead code),
+        a 'closure' is created, which is a pair (function, (closure_data or 'nil')).
+        This pair is used instead of the original function. Here is the example:
 
-      fun foo(n: int) {
-        fun bar(m: int) = m * n
-        bar
-      }
+        fun foo(n: int) {
+            fun bar(m: int) = m * n
+            bar
+        }
 
-      is replaced with
+        is replaced with
 
-      fun bar(m: int, c: bar_closure_t) {
-        m * c->n
-      }
-      fun foo(n: int) {
-        make_closure(bar, bar_closure_t {n})
-      }
+        fun bar(m: int, c: bar_closure_t) {
+            m * c->n
+        }
+        fun foo(n: int) {
+            make_closure(bar, bar_closure_t {n})
+        }
 
-    b) If the function does not have any 'free variables', we may still
-      need a closure, i.e. we may need to represent this function as a pair,
-      because in general when we pass a function as parameter to another function
-      or store it as a value (essentially, we store a function pointer), the caller
-      of that function does not know whether it needs free variables or not, so
-      we need a consistent representation of functions that are called indirectly.
-      But in this case we can have a pair ('some function', nil), i.e. we just use something like
-      NULL pointer instead of a pointer to real closure. So, the following code:
+    b)  If the function does not have any 'free variables', we may still
+        need a closure, i.e. we may need to represent this function as a pair,
+        because in general when we pass a function as parameter to another function
+        or store it as a value (essentially, we store a function pointer), the caller
+        of that function does not know whether it needs free variables or not, so
+        we need a consistent representation of functions that are called indirectly.
+        But in this case we can have a pair ('some function', nil), i.e. we just use something like
+        NULL pointer instead of a pointer to real closure. So, the following code:
 
-      fun foo(n: int) {
-        fun bar(m: int) = m*n
-        fun baz(m: int) = m+1
-        if generate_random_number() % 2 == 0 {bar} else {baz}
-      }
-      val transform_f = foo(5)
-      for i <- 0:10 {println(transform_f(i))}
+        fun foo(n: int) {
+            fun bar(m: int) = m*n
+            fun baz(m: int) = m+1
+            if generate_random_number() % 2 == 0 {bar} else {baz}
+        }
+        val transform_f = foo(5)
+        for i <- 0:10 {println(transform_f(i))}
 
-      is transformed to:
+        is transformed to:
 
-      fun bar( m: int, c: bar_closure_t* ) = m*c->n
-      fun baz( m: int, _: nil_closure_t* ) = m+1
+        fun bar( m: int, c: bar_closure_t* ) = m*c->n
+        fun baz( m: int, _: nil_closure_t* ) = m+1
 
-      fun foo(n: int) =
-        if generate_random_number() % 2 == 0
-          {make_closure(bar, bar_closure_t {n})}
-        else
-          {make_closure(baz, nil)}
+        fun foo(n: int) =
+            if generate_random_number() % 2 == 0
+                {make_closure(bar, bar_closure_t {n})}
+            else
+                {make_closure(baz, nil)}
 
-      val (transform_f_ptr, transform_f_fvars) = foo(5)
-      for i <- 0:10 {println(transform_f_ptr(i, transform_f_fvars))}
+        val (transform_f_ptr, transform_f_fvars) = foo(5)
+        for i <- 0:10 {println(transform_f_ptr(i, transform_f_fvars))}
 
-      However, in the case (b) when we call the function directly, e.g.
-      we call 'baz' as 'baz' directly, not via 'transform_f' pointer, we can
-      avoid the closure creation step and just call it as, e.g., 'baz(real_arg, nil)'.
+        However, in the case (b) when we call the function directly, e.g.
+        we call 'baz' as 'baz' directly, not via 'transform_f' pointer, we can
+        avoid the closure creation step and just call it as, e.g., 'baz(real_arg, nil)'.
 
     From the above description it may seem that the algorithm is very simple,
     but there are some nuances:
 
-    1. the nested function with free variables may not just read some values
-      declared outside, it may modify mutable values, i.e. var's.
-      Or, it may read from a 'var', and yet it may call another nested function
-      that may access the same 'var' and modify it. We could have stored an address
-      of each var in the closure data, but that would be unsafe, because we may
-      return the created closure outside of the function
-      (which is a typical functional language pattern for generators, see below)
-      where 'var' does not exist anymore. The robust solution for this problem is
-      to convert each 'var', which is used at least once as a free variable,
-      into a reference:
+    1.  The nested function with free variables may not just read some values
+        declared outside, it may modify mutable values, i.e. var's.
+        Or, it may read from a 'var', and yet it may call another nested function
+        that may access the same 'var' and modify it. We could have stored an address
+        of each var in the closure data, but that would be unsafe, because we may
+        return the created closure outside of the function
+        (which is a typical functional language pattern for generators, see below)
+        where 'var' does not exist anymore. The robust solution for this problem is
+        to convert each 'var', which is used at least once as a free variable,
+        into a reference:
 
-      fun create_inc(start: int) {
-          var v = start
-          fun inc_me() {
-            val temp = v; v += 1; temp
-          }
-          inc_me
-      }
+        fun create_inc(start: int) {
+            var v = start
+            fun inc_me() {
+                val temp = v; v += 1; temp
+            }
+            inc_me
+        }
 
-      this is converted to:
+        this is converted to:
 
-      fun inc_me( c: inc_me_closure_t* ) {
-          val temp = *c->v; *c->v += 1; temp
-      }
-      fun create_inc(start: int) {
-          val v = ref(start)
-          make_closure(inc_me, inc_me_closure_t {v})
-      }
+        fun inc_me( c: inc_me_closure_t* ) {
+            val temp = *c->v; *c->v += 1; temp
+        }
+        fun create_inc(start: int) {
+            val v = ref(start)
+            make_closure(inc_me, inc_me_closure_t {v})
+        }
 
-    2. besides the free variables, the nested function may also call:
-       2a. itself. This is a simple case. We just call it and pass the same closure data
+    2.  Besides the free variables, the nested function may also call:
+        2a. itself. This is a simple case. We just call it and pass the same closure data
           fun bar( n: int, c: bar_closure_t* ) = if n <= 1 {1} else { ... bar(n-1, c) }
-       2b. another function that needs some free variables from the outer scope
-          fun foo(n: int) {
-              fun bar(m: int) = baz(m+1)
-              fun baz(m: int) = m*n
-              (bar, baz)
-          }
+        2b. another function that needs some free variables from the outer scope
+            fun foo(n: int) {
+                fun bar(m: int) = baz(m+1)
+                fun baz(m: int) = m*n
+                (bar, baz)
+            }
 
-          in order to form the closure for 'baz', 'bar' needs to read 'n' value, which it does not
-          access directly. That is, the code can be converted to:
+            in order to form the closure for 'baz', 'bar' needs to read 'n' value, which it does not
+            access directly. That is, the code can be converted to:
 
-          // option 1: dynamically created closure
-          fun bar( m: int, c:bar_closure_t* ) {
-              val (baz_cl_f, baz_cl_fv) = make_closure(baz, baz_closure_t {c->n})
-              baz_cl_f(m+1, baz_cl_fv)
-          }
-          fun baz( m: int, c:baz_closure_t* ) = m*c->n
-          fun foo(n: int) = (make_closure(bar, bar_closure_t {n}), make_closure(baz, baz_closure_t {n})
+            // option 1: dynamically created closure
+            fun bar( m: int, c:bar_closure_t* ) {
+                val (baz_cl_f, baz_cl_fv) = make_closure(baz, baz_closure_t {c->n})
+                baz_cl_f(m+1, baz_cl_fv)
+            }
+            fun baz( m: int, c:baz_closure_t* ) = m*c->n
+            fun foo(n: int) = (make_closure(bar, bar_closure_t {n}), make_closure(baz, baz_closure_t {n})
 
-          or it can be converted to
+            or it can be converted to
 
-          // option 2: nested closure
-          fun bar( m: int, c:bar_closure_t* ) {
-              val (baz_cl_f, baz_cl_fv) = c->baz_cl
-              baz_cl_f(m+1, baz_cl_fv)
-          }
-          fun baz( m: int, c:baz_closure_t* ) = m*c->n
-          fun foo(n: int) = {
-              val baz_cl = make_closure(baz, baz_closure_t {n})
-              val bar_cl = make_closure(bar, {baz_cl})
-              (bar_cl, baz_cl)
-          }
+            // option 2: nested closure
+            fun bar( m: int, c:bar_closure_t* ) {
+                val (baz_cl_f, baz_cl_fv) = c->baz_cl
+                baz_cl_f(m+1, baz_cl_fv)
+            }
+            fun baz( m: int, c:baz_closure_t* ) = m*c->n
+            fun foo(n: int) = {
+                val baz_cl = make_closure(baz, baz_closure_t {n})
+                val bar_cl = make_closure(bar, {baz_cl})
+                (bar_cl, baz_cl)
+            }
 
-          or it can be converted to
+            or it can be converted to
 
-          // option 3: shared closure
-          fun bar( m: int, c:foo_nested_closure_t* ) {
-              baz(m+1, c)
-          }
-          fun baz( m: int, c:foo_nested_closure_t* ) = m*c->n
-          fun foo(n: int) = {
-              val foo_nested_closure_data = foo_nested_closure_t {n}
-              val bar_cl = make_closure(bar, foo_nested_closure_data)
-              val baz_cl = make_closure(baz, foo_nested_closure_data)
-              (bar_cl, baz_cl)
-          }
+            // option 3: shared closure
+            fun bar( m: int, c:foo_nested_closure_t* ) {
+                baz(m+1, c)
+            }
+            fun baz( m: int, c:foo_nested_closure_t* ) = m*c->n
+            fun foo(n: int) = {
+                val foo_nested_closure_data = foo_nested_closure_t {n}
+                val bar_cl = make_closure(bar, foo_nested_closure_data)
+                val baz_cl = make_closure(baz, foo_nested_closure_data)
+                (bar_cl, baz_cl)
+            }
 
         The third option in this example is the most efficient. But in general it may
         be not very easy to implement, because between bar() and baz() declarations there
@@ -193,12 +193,12 @@
         go sequentially without any non-trivially defined values between them) and use
         the first option everywhere else.
 
-    3. In order to implement the first option (2.2b.1) above we need to create an
-      iterative algorithm to compute extended sets of free variables for each function.
-      First, we find directly accessed free variables. Then we check which functions
-      we call from each function and combine their free variables with the directly
-      accessible ones. We continue to do so until all the sets of free variables
-      for all the functions are stabilized and do not change on the next iteration.
+    3.  In order to implement the first option (2.2b.1) above we need to create an
+        iterative algorithm to compute extended sets of free variables for each function.
+        First, we find directly accessed free variables. Then we check which functions
+        we call from each function and combine their free variables with the directly
+        accessible ones. We continue to do so until all the sets of free variables
+        for all the functions are stabilized and do not change on the next iteration.
 *)
 
 open Ast
@@ -443,17 +443,19 @@ let lift_all kmods =
             let saved_subst_env = !curr_subst_env in
             let _ = curr_clo := (kf_name, kci_arg, kci_fcv_t) in
             let _ = List.iter (fun (arg, _) -> add_to_defined_so_far arg) kf_args in
-            (*let _ = printf "processing %s\n" (id2str kf_name) in
-            let _ = flush_all () in*)
+            (*let _ = printf "\n\n==================================================\nprocessing %s:\n" (id2str kf_name) in
+            let _ = flush_all () in
+            let _ = K_pp.pprint_kexp_x (KDefFun kf) in
+            let _ = printf "\n==================================================\n" in*)
 
-            let create_defclosure kf code =
+            let create_defclosure kf code loc =
                 let {kf_name; kf_args; kf_rt; kf_closure={kci_make_fp=make_fp}; kf_flags; kf_scope; kf_loc} = !kf in
                 let kf_typ = get_kf_typ kf_args kf_rt in
                 let (_, orig_freevars) = get_closure_freevars kf_name kf_loc in
                 if orig_freevars = [] then
                     (if is_fun_ctor kf_flags then () else
                         curr_subst_env := Env.add kf_name (noid, noid, (Some kf_typ)) !curr_subst_env;
-                    code)
+                    (KExpNop loc) :: code)
                 else
                     let cl_name = dup_idk kf_name in
                     let _ = curr_subst_env := Env.add kf_name (cl_name, cl_name, None) !curr_subst_env in
@@ -526,7 +528,7 @@ let lift_all kmods =
                                 | KFun called_kf ->
                                     let {kf_closure={kci_fcv_t=called_fcv_t}} = !called_kf in
                                     if called_fcv_t = noid then prologue
-                                    else create_defclosure called_kf prologue
+                                    else create_defclosure called_kf prologue kf_loc
                                 | _ -> prologue) called_fs prologue
                         | _ -> raise_compile_err kf_loc
                             (sprintf "missing 'lambda lifting' information about function '%s'"
@@ -545,8 +547,8 @@ let lift_all kmods =
             let e = if kci_wrap_f <> noid then
                     (KDefFun kf)
                 else
-                    let extra_code = create_defclosure kf [KDefFun kf] in
-                    let _ = curr_top_code := (List.tl extra_code) @ def_fcv_t_n_make @ !curr_top_code in
+                    let extra_code = create_defclosure kf [] kf_loc in
+                    let _ = curr_top_code := (List.tl extra_code) @ def_fcv_t_n_make @ [KDefFun kf] @ !curr_top_code in
                     List.hd extra_code
                 in
             (*printf "finished processing %s\n" (id2str kf_name);*)

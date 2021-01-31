@@ -123,30 +123,39 @@ fun EXPECT(c: bool, msg: void->string)
 
 fun EXPECT(c: bool) = EXPECT(c, test_nomsg)
 
-fun test_failed_expect_cmp(a: 't, b: 't, op: string, eps: 't)
+fun test_failed_expect_cmp(a: 't, b: 't, op: string)
 {
-    print("Actual:")
+    print("Actual: ")
     println(a)
     print(f"Expected: {op}")
-    print(b)
-    if eps != (0 :> 't) {println(f" ±{eps}")} else {println()}
+    println(b)
     g_test_state.currstatus = false
 }
 
-fun EXPECT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_expect_cmp(a, b, "", (0 :> 't))}
-fun EXPECT_NE(a: 't, b: 't) = if a != b {} else {test_failed_expect_cmp(a, b, "!=", (0 :> 't))}
-fun EXPECT_LT(a: 't, b: 't) = if a < b {} else {test_failed_expect_cmp(a, b, "<", (0 :> 't))}
-fun EXPECT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_expect_cmp(a, b, "<=", (0 :> 't))}
-fun EXPECT_GT(a: 't, b: 't) = if a > b {} else {test_failed_expect_cmp(a, b, ">", (0 :> 't))}
-fun EXPECT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_expect_cmp(a, b, ">=", (0 :> 't))}
+fun test_failed_expect_near(a: 't, b: 't, eps: 't)
+{
+    print("Actual: ")
+    println(a)
+    print(f"Expected: ")
+    print(b)
+    println(f" ±{eps}")
+    g_test_state.currstatus = false
+}
+
+fun EXPECT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_expect_cmp(a, b, "")}
+fun EXPECT_NE(a: 't, b: 't) = if a != b {} else {test_failed_expect_cmp(a, b, "!=")}
+fun EXPECT_LT(a: 't, b: 't) = if a < b {} else {test_failed_expect_cmp(a, b, "<")}
+fun EXPECT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_expect_cmp(a, b, "<=")}
+fun EXPECT_GT(a: 't, b: 't) = if a > b {} else {test_failed_expect_cmp(a, b, ">")}
+fun EXPECT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_expect_cmp(a, b, ">=")}
 
 fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
-    if b - eps <= a <= b + eps {} else {test_failed_expect_cmp(a, b, "", eps)}
+    if b - eps <= a <= b + eps {} else {test_failed_expect_near(a, b, eps)}
 
 fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
     ignore(fold r = true for ai@idx <- a, bi <- b {
         if !(bi - eps <= ai <= bi + eps) {
-            test_failed_expect_cmp(ai, bi, "", eps)
+            test_failed_expect_near(ai, bi, eps)
             break with false
         }
         r
@@ -155,7 +164,7 @@ fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
 fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
     ignore(fold r = true for ai@idx <- a, bi <- b {
         if !(bi - eps <= ai <= bi + eps) {
-            test_failed_expect_cmp(ai, bi, "", eps)
+            test_failed_expect_near(ai, bi, eps)
             break with false
         }
         r

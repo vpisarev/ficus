@@ -285,7 +285,7 @@ let convert_all_typs kmods =
             let e_base_cname = (pp_id2str kvar_base_name) ^ "_" in
             let e_cname = e_base_cname ^ "tag_t" in
             let e_id = gen_temp_idc e_cname in
-            let start_idx = if kvar_flags.var_flag_rec_opt then 0 else 1 in
+            let start_idx = if kvar_flags.var_flag_opt then 0 else 1 in
             let ctx = (CTypCInt, kvar_loc) in
             let (_, members) = List.fold_left (fun (idx, members) (ni, ti) ->
                 let {kv_cname=cname_i} = get_kval ni kvar_loc in

@@ -2268,7 +2268,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let tag_exp = make_id_t_exp ctor_id CTypCInt kloc in
                     let is_null = (match kv_typ with
                         | KTypName tn -> (match (kinfo_ tn kloc) with
-                            | KVariant {contents={kvar_flags}} -> kvar_flags.var_flag_rec_opt
+                            | KVariant {contents={kvar_flags}} -> kvar_flags.var_flag_recursive && kvar_flags.var_flag_opt
                             | _ -> false)
                         | _ -> false)
                         in
@@ -2399,7 +2399,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | CFun ({contents={cf_args; cf_flags; cf_rt}} as cf) ->
                     let is_nothrow = List.mem FunNoThrow cf_flags in
                     (cf_args, cf_rt, is_nothrow, cf)
-                | _ -> raise_compile_err kf_loc "cgen: the function declaration was not properly converted"
+                | _ -> raise_compile_err kf_loc (sprintf "cgen: the function '%s' declaration was not properly converted" (idk2str kf_name kf_loc))
                 in
             let (real_args, retid, _, _) = unpack_fun_args args rt is_nothrow in
             let nreal_args = List.length real_args in

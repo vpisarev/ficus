@@ -1633,6 +1633,13 @@ and check_eseq eseq env sc create_sc =
             | DefVal (p, e, flags, loc) ->
                 let is_mutable = List.mem ValMutable flags in
                 let t = get_exp_typ e in
+                let p = match p with
+                    | PatTyped(p1, t1, loc) ->
+                        let t1 = check_typ t1 env sc loc in
+                        unify t t1 loc "explicit type specification of the defined value does not match the assigned expression type";
+                        p1
+                    | _ -> p
+                    in
                 let e1 =
                     (try
                         check_exp e env sc

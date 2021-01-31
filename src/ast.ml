@@ -184,8 +184,8 @@ type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForMakeTuple | ForU
 type border_t = BorderNone | BorderClip | BorderZero
 type interpolate_t = InterpNone | InterpLinear
 
-type var_flags_t = { var_flag_module: id_t; var_flag_record: bool; var_flag_recursive: bool; var_flag_have_tag: bool; var_flag_rec_opt: bool }
-let default_var_flags() = {var_flag_module=noid; var_flag_record=false; var_flag_recursive=false; var_flag_have_tag=true; var_flag_rec_opt=false}
+type var_flags_t = { var_flag_module: id_t; var_flag_record: bool; var_flag_recursive: bool; var_flag_have_tag: bool; var_flag_opt: bool }
+let default_var_flags() = {var_flag_module=noid; var_flag_record=false; var_flag_recursive=false; var_flag_have_tag=true; var_flag_opt=false}
 
 type ctx_t = typ_t * loc_t
 

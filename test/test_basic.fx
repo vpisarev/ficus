@@ -10,57 +10,133 @@ import myops
 import Args
 import Math
 
+// temporary workaround
 val FLT_EPSILON = 1e-6f
 val DBL_EPSILON = 1e-12
-
-TEST("basic.match.default_pattern", fun()
-{
-    fun foo(n: int) {
-        | 1 => 1
-        | 2 => 2
-        | 3 => 3
-        | _ => 0
-    }
-
-    var n = 5
-    EXPECT_EQ(foo(n), 0)
-
-    n = 2
-    EXPECT_EQ(foo(n), 2)
-})
 
 TEST("basic.myops.mad_ccode", fun()
 {
     EXPECT_EQ(5, myops.mad(1, 2, 3))
 })
 
-TEST("basic.fib_10", fun()
+TEST("basic.fib", fun()
 {
-    fun fib(n:int) = if n == 0 {1} else if n == 1 {1} else {fib(n-1) + fib(n-2)}
-    EXPECT_EQ(fib(10), 89)
-})
-
-TEST("basic.fib.match", fun()
-{
-    fun fib2(n:int) {
-        | 0 => 1
+    fun fib(n: int) {
+        | 0 => 0
         | 1 => 1
-        | _ => fib2(n-1) + fib2(n-2)
+        | _ => fib(n-1) + fib(n-2)
     }
+
+    fun fib2(n: int) {
+        fun fib2_(a: int, b: int, n: int) = if n <= 2 {a} else {fib2_(a+b, a, n-1)}
+        fib2_(1, 1, n)
+    }
+
+    operator * (((a11, a12), (a21, a22)): (('t * 2) * 2),
+            ((b11, b12), (b21, b22)): (('t * 2) * 2)) =
+        ((a11*b11 + a12*b21, a11*b12 + a12*b22),
+        (a21*b11 + a22*b21, a21*b12 + a22*b22))
+    operator ** (a: (('t * 2) * 2), n: int)
+    {
+        val _0 = (0:>'t), _1 = (1:>'t)
+        var p = ((_1, _0), (_0, _1))
+        var a = a, n = n
+        while n > 0 {
+            if n % 2 == 0 {
+                n /= 2
+                a *= a
+            }
+            else {
+                p *= a
+                n -= 1
+            }
+        }
+        p
+    }
+
+    fun fib3(n: int) {
+        val a = ((1, 1), (1, 0))
+        val a = a ** n
+        a.1.0
+    }
+
+    fun start_fib_seq()
+    {
+        var a=1, b=1
+        fun next_fib()
+        {
+            val t = b
+            b = a
+            a += t
+            t
+        }
+        next_fib
+    }
+    val fib_seq = start_fib_seq()
 
     for x@i <- [: 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89 :] {
-        EXPECT_EQ(fib2(i), x)
+        val fib_i = fib(i+1)
+        val fib2_i = fib2(i+1)
+        val fib3_i = fib3(i+1)
+        val fib4_i = fib_seq()
+        EXPECT_EQ(fib_i, x)
+        EXPECT_EQ(fib2_i, x)
+        EXPECT_EQ(fib3_i, x)
+        EXPECT_EQ(fib4_i, x)
     }
 })
 
-/*TEST("basic.make_empty_list", fun()
+exception BreakWith: int
+
+TEST("basic.find", fun()
+{
+    fun find_iterative(a: 't [], f: 't->bool) {
+        var i1 = 0, n = size(a)
+        do
+        {
+            if f(a[i1]) {break}
+            i1 += 1
+        }
+        while i1 < n
+        if i1 < n {i1} else {-1}
+    }
+
+    fun find_fold(a: 't [], f: 't->bool) =
+        fold i2=-1 for i<-0:size(a) { if f(a[i]) {break with i}; i2 }
+
+    fun find_exn(a: 't [], f: 't -> bool): int
+    {
+        val n = size(a)
+        try
+        {
+            for i <- 0:n {if f(a[i]) {throw BreakWith(i)}}
+            -1
+        }
+        catch
+        {
+        | BreakWith(i) => i
+        }
+    }
+    val a=[0, 1, 2, -10, 7, -3]
+    fun is_negative(x: int) {x < 0}
+    fun is_five(x: int) {x == 5}
+
+    EXPECT_EQ(find_iterative(a, is_negative), 3)
+    EXPECT_EQ(find_fold(a, is_negative), 3)
+    EXPECT_EQ(find_exn(a, is_negative), 3)
+    EXPECT_EQ(find_iterative(a, is_five), -1)
+    EXPECT_EQ(find_fold(a, is_five), -1)
+    EXPECT_EQ(find_exn(a, is_five), -1)
+})
+
+TEST("basic.make_empty_list", fun()
 {
     fun make_null(a:'t):'t list = []
 
     val x = [: 1, 2, 3 :]
     EXPECT_EQ(make_null(x).length(), 0)
     EXPECT_EQ((x :: make_null(x)).length(), 1)
-})*/
+})
 
 TEST("basic.math", fun()
 {
@@ -71,7 +147,7 @@ TEST("basic.math", fun()
     }
 
     EXPECT_NEAR(c, 13.3333333333, FLT_EPSILON*1.0)
-    EXPECT_NEAR(Math.atan(1.)*4, 1., DBL_EPSILON*10)
+    EXPECT_NEAR(Math.atan(1.)*4, Math.pi, DBL_EPSILON*10)
     EXPECT_NEAR(Math.exp(-1.), 0.36787944117144233, DBL_EPSILON*10)
     val alpha = (Math.pi/3 :> float)
     EXPECT_NEAR(Math.sin(alpha), 0.8660254037844386f, FLT_EPSILON*10)
@@ -118,19 +194,19 @@ TEST("basic.function.try_catch", fun()
 {
     fun foo(x:int) =
         try {
-            fun bar(y:int) = if y >= 5 {throw Fail("bar")} else {x+y}
-            fun baz(z:int) = bar(z)+x
+            fun bar(y:int) = if y >= 10 {throw Fail("bar")} else {x+y}
+            fun baz(z:int) = bar(x+z)
 
             baz(5)
         } catch {
-            | Fail _ => println ("Intentional exception occured"); -1
+            | Fail _ => println ("Intentional exception occured; no worries"); -1
         }
 
     EXPECT_EQ(foo(1), 7)
     EXPECT_EQ(foo(5), -1)
 })
 
-/*TEST("basic.types.templates", fun()
+TEST("basic.types.templates", fun()
 {
     type ('a, 'b) template_fun_t = 'a -> 'b
     type 'a template_fun2_t = ('a, 'a) template_fun_t
@@ -162,9 +238,9 @@ TEST("basic.function.try_catch", fun()
         | C(A(f)) => f(0.f)
         | _ => -1.f
     }, 1.0f)
-})*/
+})
 
-/*TEST("basic.point_struct", fun()
+TEST("basic.point_struct", fun()
 {
     type 't point_t = {x:'t, y:'t}
     val p = point_t {x=5, y=6}
@@ -174,9 +250,9 @@ TEST("basic.function.try_catch", fun()
     EXPECT_EQ(string(p), "p=(5, 6)")
     EXPECT_EQ(string(mkpt(1, 0).{x=7}), "p=(7, 0)")
     EXPECT_EQ(string(mkpt(1, 0).{y=7}), "p=(1, 7)")
-})*/
+})
 
-/*TEST("basic.ref", fun()
+TEST("basic.ref", fun()
 {
     val y = Some("abc")
     val u = ref (None : string?)
@@ -193,7 +269,7 @@ TEST("basic.function.try_catch", fun()
 
 TEST("basic.option", fun()
 {
-    val x: int? = (None :> int?)
+    val x: int? = None
     val y = Some("abc")
     val z: string? = None
 
@@ -203,9 +279,9 @@ TEST("basic.option", fun()
     EXPECT_EQ(getOpt(x, -1), -1)
     EXPECT_EQ(getOpt(y, ""), "abc")
     EXPECT_EQ(2, getOpt(Some((1, 2, 3)), (0, 0, 0)).1)
-})*/
+})
 
-/*TEST("basic.types.variant", fun()
+TEST("basic.types.variant", fun()
 {
     type type_t = Unit | Bool | Int | Float
                 | Fun: ((type_t list), type_t)
@@ -235,8 +311,8 @@ TEST("basic.option", fun()
         f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Fun([: Int, Int :], Int) :: [])})",
         "(void, int [], bool, ((int, int) -> int))"
     )
-    EXPECT_EQ(t2str(Var(ref None)), "<unknown>")
-})*/
+    EXPECT_EQ(t2str(Var(ref (None : type_t?))), "<unknown>")
+})
 
 TEST("basic.list.reverse", fun()
 {
@@ -284,7 +360,7 @@ TEST("basic.list.zip", fun()
             | (_, _, lab_out) => lab_out.rev()
         }
 
-        zip_(la, lb, []).rev()
+        zip_(la, lb, [])
     }
 
     val zipped = list_zip((1 :: 2 :: 3 :: []), ("a" :: "b" :: "c" :: []))
@@ -307,6 +383,13 @@ TEST("basic.list.unzip", fun()
 
     val unzip = list_unzip(("a", 1) :: ("b", 2) :: ("c", 3) :: [])
     EXPECT_EQ(List.length(unzip.1), 3)
+})
+
+TEST("basic.list.sort", fun()
+{
+    EXPECT_EQ([: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
+        -460, 451, -11034, 8848 :].sort(fun (a: int, b: int) {a < b}),
+        [: -11034, -460, -1, 0, 1, 2, 10, 26, 113, 355, 451, 1949, 8848, 299792458 :])
 })
 
 TEST("basic.myops", fun()
@@ -340,7 +423,7 @@ TEST("basic.loop.squares", fun()
     EXPECT_EQ(gen_squares(4), [: 0, 1, 4, 9 :])
 })
 
-/*TEST("basic.overloaded", fun()
+TEST("basic.overloaded", fun()
 {
     val t = (1, "abc") + (0.125, "def")
     EXPECT_EQ(t, (1.125, "abcdef"))
@@ -350,14 +433,14 @@ TEST("basic.loop.squares", fun()
         point_t { x=p1.x + p2.x, y=p1.y + p2.y }
 
     EXPECT_EQ((point_t {x=1, y=2}) + (point_t {x=0, y=100}), point_t {x=1, y=102})
-})*/
+})
 
 TEST("basic.types.conversions", fun()
 {
     EXPECT_EQ(3.f, float(1) + 2)
 
-    val my_pi = getOpt(atoi("314"), 0)*0.01f
-    EXPECT_NEAR(6.28f, my_pi * 2, 1e-6f)
+    val my_pi = getOpt(atof("3.14"), 0.0)
+    EXPECT_NEAR(my_pi * 2, 6.28, 1e-10)
 })
 
 val (run, options) = test_parse_options(Args.arguments())
