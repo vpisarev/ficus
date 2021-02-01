@@ -174,12 +174,15 @@ type options_t =
 }
 
 //    Complile pattern to precompiled regex_t object.
-//        pattern - string representation of etalon to be found.
+//        pattern - string representation of etalon to be found. It's good idea to use r"" literals.
+//            Slashed in in r""-literals are just slashes, they couldn't be part of ficus 
+//            escape-sequence, therefore double slashes are not required for escape-sequences 
+//            of regular expressions.
 //        options - settings for flexible configuration.
 //
 //    E.g, pattern for separate words:
-//    Re2.compile("(\\b[:alpha:]+\\b)", Re2.options_t {posix_syntax = true, word_boundary = true})
-//        word_boundary option adds ability to use "\\b" symbol, but this option is silent, until 
+//    Re2.compile(r"(\b[:alpha:]+\b)", Re2.options_t {posix_syntax = true, word_boundary = true})
+//        word_boundary option adds ability to use r"\b" symbol, but this option is silent, until
 //        posix_syntax is switched off.
 //    
 //    See https://github.com/google/re2/wiki/Syntax for full description of regular expressions 
@@ -265,8 +268,9 @@ pure fun number_of_capturing_groups(re: regex_t): int = ccode
 
 //    There is a syntax for giving a name to particular sub-match.
 //    
-//    E.g., pattern "(?P<name>\\w+)@(?P<domain>\\w+)\\.(?P<country>\\w+)"
-//    descripts simple e-mail adress. Each part of word have name.
+//    E.g., pattern r"(?P<name>\w+)@(?P<domain>\w+)\.(?P<country>\w+)"
+//    descripts simple e-mail adress. (Note, this is r""-literal).
+//    Each part of word have name.
 //
 //    This function extracts assoc list from sub-match names to sub-match 
 //    indexes. Therefore, it's possible to get sub-match by name.
@@ -332,7 +336,7 @@ fun capturing_group_names(re: regex_t): (int, string) list
     [: for (name, index) <- lst {(index, name)} :]
 }
 
-val digit_reg = compile("\\\\[0-9]")
+val digit_reg = compile(r"\\[0-9]")
 
 //    Complile replace strings for increasing speed of substitution. 
 //    See replace for details.
@@ -414,8 +418,8 @@ fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool
 
 //    Return true, if the whole given string corresponds to pattern.
 //    E.g.,
-//    full_match("Call the function without suffix.",Re2.compile(".* ([[:alpha:]]+) suffix.")) = true
-//    full_match("Call the function without suffix. But it would be nice to get submatch.",Re2.compile(".*suffix.")) = false
+//    full_match("Call the function without suffix.",Re2.compile(r".* ([[:alpha:]]+) suffix.")) = true
+//    full_match("Call the function without suffix. But it would be nice to get submatch.",Re2.compile(r".*suffix.")) = false
 //
 //    Equivalent of RE2::FullMatch
 pure fun full_match(text: string, re: regex_t) : bool = ccode
@@ -438,7 +442,7 @@ pure fun full_match(text: string, re: regex_t) : bool = ccode
 //    pair of positions: (first symbol of submatch, first symbol after submatch).
 //
 //    E.g.,
-//    full_match_n("Call the function without suffix.",Re2.compile(".* ([[:alpha:]]+) suffix.")) = (true, [(18, 25)])
+//    full_match_n("Call the function without suffix.",Re2.compile(r".* ([[:alpha:]]+) suffix.")) = (true, [(18, 25)])
 //
 //    Equivalent of RE2::FullMatchN
 //                                                 (success, (sub_start, sub_end)[])
@@ -481,7 +485,7 @@ fx_cleanup:
 //    Same as full_match, but, in case of successful match also returns array of sub-matches, as strings.
 //
 //    E.g.,
-//    full_match_n_str("Call the function without suffix.",Re2.compile(".* ([[:alpha:]]+) suffix.")) = (true, ["without"])
+//    full_match_n_str("Call the function without suffix.",Re2.compile(r".* ([[:alpha:]]+) suffix.")) = (true, ["without"])
 //
 //    Equivalent of RE2::FullMatchN
 //                                                     (success, sub-matches [])
@@ -493,8 +497,8 @@ pure fun full_match_n_str(text: string, re: regex_t) : (bool,         string [])
 
 //    Return true, if string contains part corresponding to pattern.
 //    E.g.,
-//    partial_match("Call the function without suffix.",Re2.compile("(without|with)")) = true
-//    partial_match("Call the function to get false.",Re2.compile("(without|with)")) = false
+//    partial_match("Call the function without suffix.",Re2.compile(r"(without|with)")) = true
+//    partial_match("Call the function to get false.",Re2.compile(r"(without|with)")) = false
 //
 //    Equivalent of RE2::PartialMatch
 pure fun partial_match(text: string, re: regex_t) : bool = ccode
@@ -517,7 +521,7 @@ pure fun partial_match(text: string, re: regex_t) : bool = ccode
 //    pair of positions: (first symbol of submatch, first symbol after submatch).
 //
 //    E.g.,
-//    partial_match_n("Call the function with suffix.",Re2.compile("(without|with)")) = (true, [(18, 22)])
+//    partial_match_n("Call the function with suffix.",Re2.compile(r"(without|with)")) = (true, [(18, 22)])
 //
 //    Equivalent of RE2::PartialMatchN
 //                                                    (success, (sub_start, sub_end)[])
@@ -560,7 +564,7 @@ fx_cleanup:
 //    Same as partial_match,  but, in case of successful match also returns array of sub-matches, as strings.
 //
 //    E.g.,
-//    partial_match_n_str("Call the function with suffix.",Re2.compile("(without|with)")) = (true, ["with"])
+//    partial_match_n_str("Call the function with suffix.",Re2.compile(r"(without|with)")) = (true, ["with"])
 //
 //    Equivalent of RE2::PartialMatchN
 //                                                   (success, sub-matches [])
@@ -574,8 +578,8 @@ fun partial_match_n_str(text: string, re: regex_t) : (bool,         string [])
 //    Also return position after pattern match. If comparisson wasn't successfull, returns pos.
 //
 //    E.g.,
-//    consume("Call the function without suffix.", 0, Re2.compile("(without|with)")) = (false, 0)
-//    consume("Call the function without suffix.", 18, Re2.compile("(without|with)")) = (true, 25)
+//    consume("Call the function without suffix.", 0, Re2.compile(r"(without|with)")) = (false, 0)
+//    consume("Call the function without suffix.", 18, Re2.compile(r"(without|with)")) = (true, 25)
 //
 //    Equivalent of RE2::Consume
 //                                                  (success, newpos)
@@ -589,7 +593,7 @@ fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //    pair of positions: (first symbol of submatch, first symbol after submatch).
 //
 //    E.g.,
-//    consume_n("Call the function without suffix.", 9, Re2.compile("function (without|with) suffix")) = (true, 32,[(18,25)])
+//    consume_n("Call the function without suffix.", 9, Re2.compile(r"function (without|with) suffix")) = (true, 32,[(18,25)])
 //
 //    Equivalent of RE2::ConsumeN
 //                                                         (success, newpos, (sub_start, sub_end)[])
@@ -638,7 +642,7 @@ fx_cleanup:
 //    Same as consume, but, in case of successful match also returns array of sub-matches, as strings.
 //
 //    E.g.,
-//    consume_n_str("Call the function without suffix.", 9, Re2.compile("function (without|with) suffix")) = (true, 32, ["without"])
+//    consume_n_str("Call the function without suffix.", 9, Re2.compile(r"function (without|with) suffix")) = (true, 32, ["without"])
 //
 //    Equivalent of RE2::ConsumeN
 //                                                        (success, newpos, sub-matches [])
@@ -652,7 +656,7 @@ fun consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    int,     
 //    Also return position after pattern match. If comparisson wasn't successfull, returns pos.
 //
 //    E.g.,
-//    find_and_consume("Call the function without suffix.", 0, Re2.compile("(without|with)")) = (true, 25)
+//    find_and_consume("Call the function without suffix.", 0, Re2.compile(r"(without|with)")) = (true, 25)
 //
 //    Equivalent of RE2::FindAndConsume
 //                                                           (success, newpos)
@@ -666,9 +670,9 @@ fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //    pair of positions: (first symbol of submatch, first symbol after submatch).
 //
 //    E.g.,
-//    find_and_consume_n("Call the function without suffix. Is this string with without?", 0, Re2.compile("(without|with)")) = (true, 25,[(18,25)])
-//    find_and_consume_n("Call the function without suffix. Is this string with without?", 25, Re2.compile("(without|with)")) = (true, 53,[(49,53)])
-//    find_and_consume_n("Call the function without suffix. Is this string with without?", 53, Re2.compile("(without|with)")) = (true, 53,[(54,61)])
+//    find_and_consume_n("Call the function without suffix. Is this string with without?", 0, Re2.compile(r"(without|with)")) = (true, 25,[(18,25)])
+//    find_and_consume_n("Call the function without suffix. Is this string with without?", 25, Re2.compile(r"(without|with)")) = (true, 53,[(49,53)])
+//    find_and_consume_n("Call the function without suffix. Is this string with without?", 53, Re2.compile(r"(without|with)")) = (true, 53,[(54,61)])
 //
 //    Equivalent of RE2::FindAndConsumeN
 //                                                                  (success, newpos, (sub_start, sub_end)[])
@@ -717,9 +721,9 @@ fx_cleanup:
 //   Same as find_and_consume, but, in case of successful match also returns array of sub-matches, as strings.
 //
 //   E.g.,
-//   find_and_consume_n("Call the function without suffix. Is this string with without?", 0, Re2.compile("(without|with)")) = (true, 25,["without"])
-//   find_and_consume_n("Call the function without suffix. Is this string with without?", 25, Re2.compile("(without|with)")) = (true, 53,["with"])
-//   find_and_consume_n("Call the function without suffix. Is this string with without?", 53, Re2.compile("(without|with)")) = (true, 53,["without"])
+//   find_and_consume_n("Call the function without suffix. Is this string with without?", 0, Re2.compile(r"(without|with)")) = (true, 25,["without"])
+//   find_and_consume_n("Call the function without suffix. Is this string with without?", 25, Re2.compile(r"(without|with)")) = (true, 53,["with"])
+//   find_and_consume_n("Call the function without suffix. Is this string with without?", 53, Re2.compile(r"(without|with)")) = (true, 53,["without"])
 //
 //   Equivalent of RE2::FindAndConsumeN
 //                                                                 (success, newpos, sub-matches [])
@@ -748,7 +752,7 @@ type anchor_t =
 //    pair of positions: (first symbol of submatch, first symbol after submatch).    
 //
 //    E.g.,
-//    val strre = Re2.compile("^.*$",Re2.options_t {posix_syntax = true, one_line = false}) // Special options are needed to use ^ and $.
+//    val strre = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false}) // Special options are needed to use ^ and $.
 //    Re2.general_match("String 1\nString 2\nString 3\nString 4\n", strre, 6, 24, Re2.anchor_t {}) = (true, [(9, 17)])
 //
 //    Equivalent of RE2::Match (It's impossible to use "match" keyword as name of function in ficus)
@@ -790,7 +794,7 @@ fx_cleanup:
 //    Same, as general_match, but sub-mathes are returning as strings. 
 //
 //    E.g.,
-//    val strre = Re2.compile("^.*$",Re2.options_t {posix_syntax = true, one_line = false}) // Special options are needed to use ^ and $.
+//    val strre = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false}) // Special options are needed to use ^ and $.
 //    Re2.general_match("String 1\nString 2\nString 3\nString 4\n", strre, 6, 24, Re2.anchor_t {}) = (true, ["String 2"])
 //
 //    Equivalent of RE2::Match (It's impossible to use "match" keyword as name of function in ficus)
@@ -816,7 +820,7 @@ fun general_match_str(text: string, re: regex_t, startpos: int, endpos: int, re_
 //    partial_match_n
 //
 //    E.g.,
-//    Re2.find("Some digital field, like 156454 or 456465. Ok?", " (\\d+) ") = (true, [(24, 32), (25, 31)])
+//    Re2.find("Some digital field, like 156454 or 456465. Ok?", r" (\d+) ") = (true, [(24, 32), (25, 31)])
 
 //                                              (success, (sub_start, sub_end)[])
 fun find(string_to_match: string, re: regex_t): (bool   , (int      , int    )[])
@@ -827,7 +831,7 @@ fun find(string_to_match: string, re: regex_t): (bool   , (int      , int    )[]
 //    Same, as find, but sub-mathes are returning as strings. 
 //
 //    E.g.,
-//    Re2.find("Some digital field, like 156454 or 456465. Ok?", " (\\d+) ") = (true, [" 156454 ", "156454"])
+//    Re2.find("Some digital field, like 156454 or 456465. Ok?", r" (\d+) ") = (true, [" 156454 ", "156454"])
 
 //                                                  (success, sub-matches[])
 fun find_str(string_to_match: string, re: regex_t): (bool   , string     [])
@@ -864,7 +868,7 @@ ccode
 //    Zero-indexed pair in each row is positions for whole match.
 //
 //    E.g.,
-//    Re2.find("Some digital field, like 156454 or 456465. Ok?", " (\\d+).") = \
+//    Re2.find("Some digital field, like 156454 or 456465. Ok?", r" (\d+).") = \
 //    (true, [(24, 32), (25, 31);
 //            (34, 42), (35, 41)])
 //                                                 (success, (sub_start, sub_end)[,])
@@ -979,7 +983,7 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
 //    Zero-indexed pair in each row is positions for whole match.
 //
 //    E.g.,
-//    Re2.find("Some digital field, like 156454 or 456465. Ok?", " (\\d+).") = \
+//    Re2.find("Some digital field, like 156454 or 456465. Ok?", r" (\d+).") = \
 //    (true, [(24, 32), (25, 31);
 //            (34, 42), (35, 41)])
 //                                                     (success, sub-matches[,])
@@ -1019,14 +1023,15 @@ fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_su
 //    Replace procedure. Search for first ocurrence of pattern-corresonding substrings and 
 //    replace it with string composed from rewrite pattern. Rewrite pattern can be compiled from
 //    string with help of compile_replace_pattern. Original rewrite string can contain insertions,
-//    designated like "\\d", where d is digit from 0 to 9, represents number of submatch in
-//    found occurence. \\0 is for whole match. Number of insertions cannot be bigger, than 
-//    number of sub-matches in regular expression.
+//    designated like r"\d", where d is digit from 0 to 9, represents number of submatch in
+//    found occurence. r"\0" is for whole match. Number of insertions cannot be bigger, than 
+//    number of sub-matches in regular expression. (Note, there are used r""-literals for avoiding
+//    double slashes in replace pattern).
 //
 //    Returns true if pattern is found and string with replace made.
 //
 //    E.g.,
-//    replace("Person: name@domain.com", "(\\w+)@(\\w+)\\.(\\w+)", "\\1 from \\2") = (true, "Person: name from domain")
+//    replace("Person: name@domain.com", r"(\w+)@(\w+)\.(\w+)", r"\1 from \2") = (true, "Person: name from domain")
 //
 //    Equivalent of RE2::Replace. *It's not a wrapper, replacing part is written on ficus.
 
@@ -1052,7 +1057,7 @@ fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    str
 //    Returns true if pattern is found and string with replaces made.
 //
 //    E.g.,
-//    replace("name1@domain1.com, name2@domain2.com, name3@domain3.com", "(\\w+)@(\\w+)\\.(\\w+)", "\\1 from \\2") = (true, "name1 from domain1, name2 from domain2, name3 from domain3")
+//    replace("name1@domain1.com, name2@domain2.com, name3@domain3.com", r"(\w+)@(\w+)\.(\w+)", "\1 from \2") = (true, "name1 from domain1, name2 from domain2, name3 from domain3")
 //
 //    Equivalent of RE2::GlobalReplace. *It's not a wrapper, replacing part is written on ficus.
 
