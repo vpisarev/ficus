@@ -665,10 +665,10 @@ let is_real_typ t =
     not !have_typ_vars
 
 let report_not_found n loc =
-    raise_compile_err loc (sprintf "the appropriate match for %s is not found" (pp_id2str n))
+    raise_compile_err loc (sprintf "the appropriate match for '%s' is not found" (pp_id2str n))
 
 let report_not_found_typed n t loc =
-    raise_compile_err loc (sprintf "the appropriate match for %s of %s is not found" (pp_id2str n) (typ2str t))
+    raise_compile_err loc (sprintf "the appropriate match for '%s' of type '%s' is not found" (pp_id2str n) (typ2str t))
 
 let rec find_first n env loc pred =
     let rec find_next_ elist =
@@ -1886,6 +1886,10 @@ and reg_deffun df env sc =
 
 and check_defexn de env sc =
     let { dexn_name=n0; dexn_typ=t; dexn_loc=loc } = !de in
+    let _ = match sc with
+        | ScModule _ :: _ -> ()
+        | _ -> raise_compile_err loc "exceptions can only be defined at a module level"
+        in
     let t = check_typ t env sc loc in
     let n = dup_id n0 in
     let ftyp = typ2constr t TypExn loc in
@@ -2004,6 +2008,21 @@ and check_typ t env sc loc =
     let (t, _) = check_typ_and_collect_typ_vars t env None sc loc in t
 
 and instantiate_fun templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
+    let { df_name } = !templ_df in
+    if instantiate then
+        compile_err_ctx :=
+            (sprintf "when instantiating '%s' at %s" (pp_id2str df_name) (loc2str inst_loc)) ::
+            !compile_err_ctx
+    else ();
+    (try
+        let inst_df = instantiate_fun_ templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate in
+        let _ = if instantiate then compile_err_ctx := List.tl !compile_err_ctx else () in
+        inst_df
+    with e ->
+        if instantiate then compile_err_ctx := List.tl !compile_err_ctx else ();
+        raise e)
+
+and instantiate_fun_ templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let { df_name; df_templ_args; df_args; df_body; df_flags; df_scope; df_loc; df_templ_inst } = !templ_df in
     let is_constr = is_fun_ctor df_flags in
     let _ = if not is_constr then () else raise_compile_err inst_loc

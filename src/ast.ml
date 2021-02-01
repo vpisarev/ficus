@@ -349,9 +349,14 @@ exception CompileError of loc_t * string
 exception PropagateCompileError
 
 let compile_errs = ref ([]: exn list)
+let compile_err_ctx = ref ([]: string list)
 
 let raise_compile_err loc msg =
     let whole_msg = sprintf "%s: %s" (loc2str loc) msg in
+    let whole_msg = match !compile_err_ctx with
+        | [] -> whole_msg
+        | ctx -> String.concat "\n\t" (whole_msg :: ctx)
+        in
     raise (CompileError(loc, whole_msg))
 
 let push_compile_err err =
@@ -942,36 +947,44 @@ let add_to_imported_modules mname_id (pos0, pos1) =
 
 let rec typ2str t =
     match t with
-    | TypVarTuple(Some(t)) -> sprintf "TypVarTuple(Some(%s))" (typ2str t)
-    | TypVarTuple _ -> "TypVarTuple(None)"
-    | TypVarArray(t) -> sprintf "TypVarArray(%s)" (typ2str t)
-    | TypVarRecord -> "TypVarRecord"
+    | TypVarTuple(Some(t)) -> sprintf "(%s ...)" (typ2str t)
+    | TypVarTuple _ -> "(...)"
+    | TypVarArray(t) -> sprintf "%s [+]" (typ2str t)
+    | TypVarRecord -> "{...}"
     | TypVar {contents=Some(t)} -> typ2str t
     | TypVar _ -> "<unknown>"
-    | TypApp(tl, i) -> sprintf "TypApp(%s, %s)" (tl2str tl) (id2str i)
-    | TypInt -> "TypInt"
-    | TypSInt n -> sprintf "TypSInt(%d)" n
-    | TypUInt n -> sprintf "TypUInt(%d)" n
-    | TypFloat n -> sprintf "TypFloat(%d)" n
-    | TypVoid -> "TypVoid"
-    | TypBool -> "TypBool"
-    | TypChar -> "TypChar"
-    | TypString -> "TypString"
-    | TypCPointer -> "TypCPtr"
+    | TypApp(tl, i) -> sprintf "%s %s" (tl2str tl) (id2str i)
+    | TypInt -> "int"
+    | TypSInt n -> sprintf "int%d" n
+    | TypUInt n -> sprintf "uint%d" n
+    | TypFloat n -> (match n with 16 -> "half" | 32 -> "float" | 64 -> "double" | _ ->
+            raise_compile_err noloc (sprintf "bad floating-point type TypFloat(%d)" n))
+    | TypVoid -> "void"
+    | TypBool -> "bool"
+    | TypChar -> "char"
+    | TypString -> "string"
+    | TypCPointer -> "cptr"
     | TypFun(argtyps, rt) ->
-        "TypFun(" ^ (tl2str argtyps) ^
+        "(" ^ (tl2str argtyps) ^
         " -> " ^ (typ2str rt) ^ ")"
     | TypTuple tl ->
-        "TypTuple(" ^ (tl2str tl) ^ ")"
+        let s = tl2str tl in
+        (match tl with
+        | x :: [] -> "(" ^ s ^ ",)"
+        | _ -> s)
     | TypRecord {contents=(relems, _)} ->
-        "TypRecord {" ^
+        "{" ^
         (String.concat "; " (List.map (fun (i, t, _) ->
             (id2str i) ^ ": " ^ (typ2str t)) relems)) ^ "}"
-    | TypArray (d, t) -> sprintf "TypArray(%d, %s)" d (typ2str t)
-    | TypList t -> "TypList(" ^ (typ2str t) ^ ")"
-    | TypRef t -> "TypRef(" ^ (typ2str t) ^ ")"
-    | TypExn -> "TypExn"
-    | TypErr -> "TypErr"
-    | TypDecl -> "TypDecl"
-    | TypModule -> "TypModule"
-and tl2str tl = String.concat ", " (List.map (fun t -> typ2str t) tl)
+    | TypArray (d, t) -> sprintf "%s [%s]" (typ2str t) (String.make (d-1) ',')
+    | TypList t -> (typ2str t) ^ " list"
+    | TypRef t -> (typ2str t) ^ " ref"
+    | TypExn -> "exn"
+    | TypErr -> "<err>"
+    | TypDecl -> "<decl>"
+    | TypModule -> "<module>"
+and tl2str tl =
+    let s = String.concat ", " (List.map (fun t -> typ2str t) tl) in
+    match tl with
+    | x :: [] -> s
+    | _ -> "(" ^ s ^ ")"

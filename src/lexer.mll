@@ -646,11 +646,29 @@ and strings = parse
     | newline { incr_lineno lexbuf; string_literal := !string_literal ^ "\n"; strings lexbuf }
 
     | special_char as c
-        { string_literal := !string_literal ^ (decode_special_char lexbuf c); strings lexbuf }
+        {
+            string_literal := !string_literal ^
+                (match !string_literal_typ with
+                | StrLitRegexp -> c
+                | _ -> decode_special_char lexbuf c);
+            strings lexbuf
+        }
     | hexcode as hc
-        { string_literal := !string_literal ^ (decode_hex_char hc); strings lexbuf }
+        {
+            string_literal := !string_literal ^
+                (match !string_literal_typ with
+                | StrLitRegexp -> hc
+                | _ -> decode_hex_char hc);
+            strings lexbuf
+        }
     | octcode as oc
-        { string_literal := !string_literal ^ (decode_oct_char oc); strings lexbuf }
+        {
+            string_literal := !string_literal ^
+                (match !string_literal_typ with
+                | StrLitRegexp -> oc
+                | _ -> decode_oct_char oc);
+            strings lexbuf
+        }
     | "\\" (_ as s)
         {
             match !string_literal_typ with
