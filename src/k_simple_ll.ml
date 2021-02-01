@@ -89,6 +89,12 @@ let lift kmods =
         | KDefExn {contents={ke_name; ke_loc}} ->
             if (is_global ke_name) then e
             else add_to_globals_and_lift ke_name e ke_loc
+        | KDefVal (i, _, loc) ->
+            let {kv_flags} = get_kval i loc in
+            if (is_global i) then e
+            else if (get_val_ctor kv_flags) <> noid then
+                add_to_globals_and_lift i e loc
+            else e
         | KDefFun kf ->
             let {kf_name; kf_body; kf_flags; kf_loc} = !kf in
             let new_body = walk_kexp_n_lift kf_body callb in

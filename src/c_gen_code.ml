@@ -684,8 +684,6 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     (match (deref_ktyp (get_idk_ktyp k loc) loc) with
                     | KTypList _ -> false
                     | _ -> true)
-                (* [TODO] make an alias in this case instead of adding another iteration variable;
-                   but C compiler should eliminate it anyway *)
                 | Domain.Range (_, _, Atom.Lit (LitInt 1L)) -> false
                 | Domain.Range (_, Atom.Lit (LitNil), _) -> false
                 | _ -> true) idoml
@@ -2119,9 +2117,26 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         for_incrs @ [CExpUnOp(COpSuffixInc, dstptr, (CTypVoid, for_loc))]
                         in
                     let insert_pragma = for_idx = 0 && is_parallel_map && k+1 = nfor_headers in
-                    let for_ccode = if not insert_pragma then for_ccode else
+                    let for_body_ccode = if not insert_pragma then for_ccode else
                         for_ccode @ decl_nested_status in
-                    let for_ccode = [CStmtFor(t_opt, for_inits, for_check_opt, for_incrs, (rccode2stmt for_ccode kloc), kloc)] in
+                    let (t_opt, init_t_opt) =
+                        match (t_opt, insert_pragma, post_ccode) with
+                        | ((Some _), false, _ :: _) -> (None, t_opt)
+                        | _ -> (t_opt, None)
+                        in
+                    let for_ccode = match init_t_opt with
+                        | Some(t) ->
+                            List.fold_left (fun for_ccode e ->
+                                match e with
+                                | CExpBinOp(COpAssign, CExpIdent(i, (_, loc_i)), _, _) ->
+                                    CDefVal(t, i, None, loc_i) :: for_ccode
+                                | e ->
+                                    raise_compile_err (get_cexp_loc e)
+                                        "invalid expression in the for-loop initialization part (should be i=<exp0>)"
+                            ) [] for_inits
+                        | _ -> []
+                        in
+                    let for_ccode = (CStmtFor(t_opt, for_inits, for_check_opt, for_incrs, (rccode2stmt for_body_ccode kloc), kloc)) :: for_ccode in
                     let for_ccode = if not insert_pragma then for_ccode else
                         for_ccode @ [CMacroPragma("omp parallel for", kloc)]
                         in
@@ -2261,7 +2276,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             *)
             let ccode =
                 if is_ccode then
-                    let (_, delta_ccode) = create_cdefval i ctyp [] "" (Some (CExpCCode(ccode_lit, ccode_loc))) [] kloc in
+                    let (_, delta_ccode) = create_cdefval i ctyp kv_flags "" (Some (CExpCCode(ccode_lit, ccode_loc))) [] kloc in
                     let _ = bctx.bctx_prologue <- delta_ccode @ bctx.bctx_prologue in
                     ccode
                 else if ctor_id <> noid then

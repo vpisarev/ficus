@@ -125,7 +125,8 @@ int fx_deinit(int status)
 
 ////////////////////////// memory allocation ////////////////////
 
-/* [TODO] replace it with something more efficient,
+/* We just use the default malloc and assume that ficus programs
+   are linked with some efficient malloc implementation such as
    e.g. mimalloc (https://github.com/microsoft/mimalloc) or
    jemalloc or tcmalloc */
 void* fx_malloc(size_t sz)

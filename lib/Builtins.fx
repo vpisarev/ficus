@@ -294,6 +294,9 @@ fun row2matrix(a: 't [])
 operator * (a: 't [], b: 't [,]) = row2matrix(a)*b
 operator * (a: 't [,], b: 't []) = a*row2matrix(b)
 
+operator * (a: 't [+], alpha: 't) = [for x <- a {x*alpha}]
+operator * (alpha: 't, a: 't [+]) = [for x <- a {x*alpha}]
+
 fun diag(d: 't[])
 {
     val n = size(a)

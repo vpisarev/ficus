@@ -7,12 +7,10 @@
 
 from UTest import *
 import myops
-import Args
 import Math
 
-// temporary workaround
-val FLT_EPSILON = 1e-6f
-val DBL_EPSILON = 1e-12
+val FLT_EPSILON = Math.FLT_EPSILON
+val DBL_EPSILON = Math.DBL_EPSILON
 
 TEST("basic.myops.mad_ccode", fun()
 {
@@ -265,6 +263,9 @@ TEST("basic.ref", fun()
 
     ***nested_ref -= 5
     EXPECT_EQ(***nested_ref, 0)
+
+    val tref = ref (1, 2, 3)
+    EXPECT_EQ(tref->0 * tref->1 * tref->2, 6)
 })
 
 TEST("basic.option", fun()
@@ -366,6 +367,9 @@ TEST("basic.list.zip", fun()
     val zipped = list_zip((1 :: 2 :: 3 :: []), ("a" :: "b" :: "c" :: []))
     EXPECT_EQ(zipped.length(), 3)
     EXPECT_EQ(zipped.tl().tl().hd(), (3, "c"))
+
+    val triples = [: for c <- "abcdef", i <- [: 1, 2, 3, 4, 5, 6 :] {(i, i*i, c)} :]
+    EXPECT_EQ(triples, [: (1, 1, 'a'), (2, 4, 'b'), (3, 9, 'c'), (4, 16, 'd'), (5, 25, 'e'), (6, 36, 'f') :])
 })
 
 TEST("basic.list.unzip", fun()
@@ -381,8 +385,9 @@ TEST("basic.list.unzip", fun()
         unzip_(lab, [], [])
     }
 
-    val unzip = list_unzip(("a", 1) :: ("b", 2) :: ("c", 3) :: [])
-    EXPECT_EQ(List.length(unzip.1), 3)
+    val unzipped = list_unzip(("a", 1) :: ("b", 2) :: ("c", 3) :: [])
+    EXPECT_EQ(unzipped.0, [: "a", "b", "c" :])
+    EXPECT_EQ(unzipped.1, [: 1, 2, 3 :])
 })
 
 TEST("basic.list.sort", fun()
@@ -405,6 +410,24 @@ TEST("basic.array.compose", fun()
     val m1 = [\m0, 4; 0, \m0]
 
     EXPECT_EQ(m1, [1, 2, 3, 4; 0, 1, 2, 3])
+
+    val eye22 = [ 1., 0.;
+                  0., 1. ]
+
+    val m1 = [\(eye22 + eye22), \(eye22 - eye22);
+                 \(eye22 * 4.), \(eye22 * 5.)]
+    val expected1 = [ 2., 0., 0., 0.;
+                     0., 2., 0., 0.;
+                     4., 0., 5., 0.;
+                     0., 4., 0., 5.]
+    EXPECT_EQ(m1, expected1)
+
+    val m2 = [eye22 + eye22, eye22 - eye22;
+                 eye22 * 4., eye22 * 5.]
+    val expected2 = [ [ 2., 0.; 0., 2.], [ 0., 0.; 0., 0.];
+                     [ 4., 0.; 0., 4.], [ 5., 0.; 0., 5.]]
+
+    EXPECT_EQ(m2, expected2)
 })
 
 TEST("basic.loop.squares", fun()
@@ -443,5 +466,46 @@ TEST("basic.types.conversions", fun()
     EXPECT_NEAR(my_pi * 2, 6.28, 1e-10)
 })
 
-val (run, options) = test_parse_options(Args.arguments())
-if run {test_run_all(options)}
+TEST("basic.array.init_u", fun()
+{
+    val a = array((3, 4), 0.)
+    val (m, n) = size(a)
+    for i <- 0:m for j <- 0:n {
+        if j >= i {a[i,j] = 1.}
+    }
+    EXPECT_EQ(a, [1., 1., 1., 1.;
+                  0., 1., 1., 1.;
+                  0., 0., 1., 1.])
+})
+
+TEST("basic.assert", fun()
+{
+    val k = -1
+    EXPECT_NO_THROWS(fun () { assert (0 == k-k) }, "assert(0=0)")
+    EXPECT_THROWS(fun () { assert (1 == k-k) }, "assert(1=0)")
+})
+
+TEST("basic.string", fun()
+{
+    EXPECT_EQ("yellow", "y" + "hello"[1:5] + "w")
+    EXPECT_EQ("yellow"[:.-1], "yello")
+    EXPECT_EQ("abc" + string(6) + "def", "abc6def")
+
+    EXPECT_EQ(", ".join([: "a", "b", "c" :]), "a, b, c")
+})
+
+TEST("basic.templates.variants", fun()
+{
+    type 't tree_t = Node: { balance:int, left:'t tree_t, right:'t tree_t } | Leaf: 't
+    val node_list = Leaf(3) :: Leaf(5) :: (Node { balance=0, left=Leaf(1), right=Leaf(0) }) ::
+        (Node { balance=-1, left=Leaf(1), right=Node {balance=0, left=Leaf(10), right=Leaf(100)}}) ::
+        []
+
+    fun depth(t: 'x tree_t) {
+        | Leaf _ => 0
+        | Node {balance, left, right} => 1 + max(depth(left), depth(right))
+    }
+
+    val depth_list = [: for n <- node_list {depth(n)} :]
+    EXPECT_EQ(depth_list, [: 0, 0, 1, 2 :])
+})

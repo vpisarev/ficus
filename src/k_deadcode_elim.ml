@@ -134,8 +134,9 @@ let elim_unused kmods =
             | KExpAtom((Atom.Id fr), _) when (get_orig_id fr) = fold_result ->
                 fold_values := IdSet.add i !fold_values
             | _ -> ());
-            if (used i) || is_ccode || (not !is_main) ||
-                (let {kv_flags} = get_kval i loc in is_val_global kv_flags) then
+            let is_really_used = (used i) || is_ccode || ((not !is_main) &&
+                (let {kv_flags} = get_kval i loc in is_val_global kv_flags)) in
+            if is_really_used then
                 KDefVal(i, e, loc)
             (* [TODO] issue a warning about unused identifier *)
             else if not (pure_kexp e) then

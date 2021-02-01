@@ -16,7 +16,7 @@
       it's just not used. The parameter is needed because when we call a function indirectly,
       via pointer, we don't know whether it needs closure or not. See k_lift module.
       ==
-      [TODO] In the "monolitic mode" for all functions and if separate build mode for
+      [TODO] In the "monolitic mode" for all functions and in the separate build mode for
       internal functions we can analyze the code and check whether we call some
       function only directly or not. If we call the function only directly and it does not need closure,
       we can eliminate the extra parameter. Or we can have a 'bare' variant of the function without

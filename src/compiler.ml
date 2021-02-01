@@ -159,8 +159,8 @@ let k_optimize_all kmods =
     let _ = (compile_errs := []) in
     let niters = 5 in
     let temp_kmods = ref kmods in
+    temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
     for i = 0 to niters-1 do
-        temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
         if i <= 1 then
             (temp_kmods := K_simple_ll.lift !temp_kmods;
             temp_kmods := K_annotate_types.annotate_types !temp_kmods)
@@ -171,7 +171,12 @@ let k_optimize_all kmods =
         temp_kmods := K_flatten.flatten_all !temp_kmods;
         temp_kmods := K_fuse_loops.fuse_loops_all !temp_kmods;
         temp_kmods := K_fast_idx.optimize_idx_checks_all !temp_kmods;
-        temp_kmods := K_cfold_dealias.cfold_dealias !temp_kmods
+        (* [TODO] Dealiasing phase may produce wrong code,
+           but the subsequent deadcode elimination fixes the problems (so far).
+           It's better to fix cfold_dealias so that there is no such
+           critical dependency. *)
+        temp_kmods := K_cfold_dealias.cfold_dealias !temp_kmods;
+        temp_kmods := K_deadcode_elim.elim_unused !temp_kmods
     done;
     temp_kmods := K_lift.lift_all !temp_kmods;
     temp_kmods := K_flatten.flatten_all !temp_kmods;

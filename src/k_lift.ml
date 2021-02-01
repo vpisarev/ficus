@@ -501,7 +501,8 @@ let lift_all kmods =
                             | KVal {kv_typ; kv_flags} -> (kv_typ, kv_flags)
                             | _ -> (t, []) in
                         let is_mutable = IdSet.mem fv_orig all_mut_fvars in
-                        let kv_flags = List.filter (fun f -> f != ValTempRef && f != ValArg) kv_flags in
+                        let kv_flags = List.filter (function
+                            | ValTempRef | ValArg | ValGlobal _ -> false | _ -> true) kv_flags in
                         let (e, prologue, fv_proxy_mkclo_arg) =
                             if not is_mutable then
                                 (KExpMem(kci_arg, idx, (t, kf_loc)), prologue, fv_proxy)
@@ -509,7 +510,8 @@ let lift_all kmods =
                                 let ref_typ = KTypRef t in
                                 let fv_ref = gen_idk ((pp_id2str fv) ^ "_ref") in
                                 let get_fv = KExpMem(kci_arg, idx, (ref_typ, kf_loc)) in
-                                let ref_flags = ValTempRef :: (List.filter (fun f -> f != ValMutable) kv_flags) in
+                                let ref_flags = ValTempRef :: (List.filter (function
+                                    | ValMutable | ValGlobal _ -> false | _ -> true) kv_flags) in
                                 let prologue = create_kdefval fv_ref ref_typ ref_flags
                                     (Some get_fv) prologue kf_loc in
                                 (KExpUnOp(OpDeref, (Atom.Id fv_ref), (t, kf_loc)), prologue, fv_ref)

@@ -170,6 +170,28 @@ fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
         r
     })
 
+fun EXPECT_THROWS(f: void->void, msg: string) =
+    try {
+        f()
+        println(f"EXPECT_THROWS failed on '{msg}'")
+        println("Actual: Does not throw an exception")
+        println("Expected: Throws an exception")
+        g_test_state.currstatus = false
+    } catch {
+        | e => {}
+    }
+
+fun EXPECT_NO_THROWS(f: void->void, msg: string) =
+    try {
+        f()
+    } catch {
+        | e =>
+            println(f"EXPECT_NO_THROWS failed on '{msg}'")
+            println(f"Actual: Throws the exception '{e}'")
+            println("Expected: Does not throw an exception")
+            g_test_state.currstatus = false
+    }
+
 fun test_duration2str(ts_diff: double)
 {
     val ts_rdiff = round(ts_diff)
