@@ -6,8 +6,9 @@
 // some basic tests
 
 from UTest import *
-import myops
 import Math
+
+import myops
 
 val FLT_EPSILON = Math.FLT_EPSILON
 val DBL_EPSILON = Math.DBL_EPSILON
@@ -492,6 +493,12 @@ TEST("basic.string", fun()
     EXPECT_EQ("abc" + string(6) + "def", "abc6def")
 
     EXPECT_EQ(", ".join([: "a", "b", "c" :]), "a, b, c")
+
+    val str = "This is a sentence made of words separated by spaces."
+    EXPECT_EQ(str.tokens(fun (c: char) {c == ' '}),
+        [:"This", "is", "a", "sentence", "made", "of", "words", "separated", "by", "spaces." :])
+
+    EXPECT_EQ("Привет!".length(), 7)
 })
 
 TEST("basic.templates.variants", fun()

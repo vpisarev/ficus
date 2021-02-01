@@ -1,3 +1,10 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
+// btree.fx example converted into a test. Binary tree traversal
+
 from UTest import *
 
 TEST("btree.depth_4_10", fun() {

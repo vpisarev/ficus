@@ -376,12 +376,15 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
 
     let add_local_tempref i ctyp flags e0 ccode loc =
         let {ctp_ptr} = C_gen_types.get_ctprops ctyp loc in
-        let (e, ctyp) = if ctp_ptr then (e0, ctyp) else
-            let ctyp_ptr = make_ptr ctyp in
-            let deref_i_exp = CExpUnOp(COpDeref, (make_id_t_exp i ctyp_ptr loc), (ctyp, loc)) in
-            let _ = i2e := Env.add i deref_i_exp !i2e in
-            ((cexp_get_addr e0), ctyp_ptr)
-        in
+        let (e, ctyp) =
+            if ctp_ptr && not (List.mem ValMutable flags) then
+                (e0, ctyp)
+            else
+                let ctyp_ptr = make_ptr ctyp in
+                let deref_i_exp = CExpUnOp(COpDeref, (make_id_t_exp i ctyp_ptr loc), (ctyp, loc)) in
+                let _ = i2e := Env.add i deref_i_exp !i2e in
+                ((cexp_get_addr e0), ctyp_ptr)
+            in
         create_cdefval i ctyp flags "" (Some e) ccode loc
     in
 
@@ -1525,6 +1528,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let ca = make_fun_arg ca kloc in
                     ((ca :: cargs), ccode)) ([], ccode) args in
                 let (fp_exp, ccode) = get_dstexp dstexp_r fp_prefix ctyp [] ccode kloc in
+                let _ = ensure_sym_is_defined_or_declared make_fp kloc in
                 let call_mkclo = make_call make_fp
                     ((List.rev cargs) @ [cexp_get_addr fp_exp]) CTypVoid kloc in
                 (false, fp_exp, (CExp call_mkclo) :: ccode)

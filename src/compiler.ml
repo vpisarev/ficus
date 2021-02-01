@@ -66,6 +66,7 @@ let parse_file mname_id fname inc_dirs =
     let _ = (parser_ctx_file := fname_id) in
     let _ = (parser_ctx_deps := []) in
     let _ = (parser_ctx_inc_dirs := inc_dirs) in
+    let _ = (parser_ctx_module_idx := !parser_ctx_module_idx + 1) in
     try
         let ast = Parser.ficus_module lexer l in
         (if use_stdin then () else close_in inchan;
@@ -96,16 +97,20 @@ let parse_all _fname0 =
             let dir1 = Filename.dirname mfname in
             let inc_dirs = (if dir1 = dir0 then [] else [dir1]) @ inc_dirs0 in
             let defs = parse_file mname mfname inc_dirs in
-            let deps = !parser_ctx_deps in
+            let deps = List.rev (!parser_ctx_deps) in
             let _ = (!minfo.dm_defs <- defs) in
             let _ = (!minfo.dm_parsed <- true) in
             let _ = (!minfo.dm_deps <- deps) in
+            let _ = (!minfo.dm_idx <- !parser_ctx_module_idx) in
             (* locate the deps, update the list of deps using proper ID's of real modules *)
-            List.iter (fun dep ->
+            let queue_delta = List.fold_left (fun queue_delta dep ->
                 let dep_minfo = get_module dep in
                 if not !dep_minfo.dm_parsed then
-                    queue := !dep_minfo.dm_name :: !queue
-                else ()) deps
+                    !dep_minfo.dm_name :: queue_delta
+                else
+                    queue_delta) [] deps
+                in
+            queue := (List.rev queue_delta) @ !queue
         with
         | Lexer.LexError(err, (p0, p1)) ->
             printf "%s: %s\n" (Lexer.pos2str p0 true) err; ok := false
@@ -128,18 +133,27 @@ let init () =
   Big thanks to Victor Nicollet for the code.
 *)
 let toposort graph =
-    let dfs graph visited start_node =
-        let rec explore path visited node =
-            if List.mem node path then
-                let msg = (sprintf "error: cylic module dependency: %s\n" (String.concat " " (List.map pp_id2str path))) in
+    let graph = List.sort (fun (i, _, _) (j, _, _) -> i - j) graph in
+    let rec loop remaining result =
+        let rec find_next analyzed rest =
+            match rest with
+            | (i, m, deps) :: rest ->
+                if List.for_all (fun d -> List.mem d result) deps then
+                    (m, ((List.rev analyzed) @ rest))
+                else
+                    find_next ((i, m, deps) :: analyzed) rest
+            | _ ->
+                let msg = sprintf "error: cylic module dependency: %s\n" (String.concat " "
+                    (List.map (fun (_, m, _) -> pp_id2str m) (List.rev analyzed))) in
                 failwith msg
-            else if List.mem node visited then visited else
-                let new_path = node :: path in
-                let edges = List.assoc node graph in
-                let visited = List.fold_left (explore new_path) visited edges in
-                node :: visited
-        in explore [] visited start_node in
-    List.fold_left (fun visited (node,_) -> dfs graph visited node) [] graph
+            in
+        match remaining with
+        | [] -> (List.rev result)
+        | _ ->
+            let (next_m, remaining) = find_next [] remaining in
+            loop remaining (next_m :: result)
+        in
+    loop graph []
 
 let typecheck_all modules =
     let _ = (compile_errs := []) in
@@ -281,8 +295,8 @@ let process_all fname0 =
         let _ = if (parse_all fname0) then () else raise CumulativeParseError in
         let graph = Hashtbl.fold (fun mfname m gr ->
             let minfo = get_module m in
-            (m, !minfo.dm_deps) :: gr) all_modules [] in
-        let _ = (sorted_modules := List.rev (toposort graph)) in
+            (!minfo.dm_idx, m, !minfo.dm_deps) :: gr) all_modules [] in
+        let _ = sorted_modules := toposort graph in
         (*let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in*)
         (*let _ = if options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in*)

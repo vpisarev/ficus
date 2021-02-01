@@ -276,8 +276,8 @@ and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list;
                        di_scope: scope_t list; di_loc: loc_t }
 
 type defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
-                    mutable dm_deps: id_t list; mutable dm_env: env_t;
-                    mutable dm_parsed: bool }
+                    mutable dm_idx: int; mutable dm_deps: id_t list;
+                    mutable dm_env: env_t; mutable dm_parsed: bool }
 
 type id_info_t =
     | IdNone | IdVal of defval_t | IdFun of deffun_t ref
@@ -498,7 +498,7 @@ let find_module mname_id mfname =
     try get_module (Hashtbl.find all_modules mfname) with
     Not_found ->
         let m_fresh_id = dup_id mname_id in
-        let newmodule = ref { dm_name=m_fresh_id; dm_filename=mfname; dm_defs=[];
+        let newmodule = ref { dm_name=m_fresh_id; dm_filename=mfname; dm_idx= -1; dm_defs=[];
                               dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
         set_id_entry m_fresh_id (IdModule newmodule);
         Hashtbl.add all_modules mfname m_fresh_id;
@@ -934,6 +934,7 @@ let parser_ctx_module = ref noid
 let parser_ctx_file = ref noid
 let parser_ctx_deps = ref ([] : id_t list)
 let parser_ctx_inc_dirs= ref ([] : string list)
+let parser_ctx_module_idx = ref (-1)
 
 let add_to_imported_modules mname_id (pos0, pos1) =
     let mname = pp_id2str mname_id in

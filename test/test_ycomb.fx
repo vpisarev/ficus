@@ -1,3 +1,10 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
+// ycomb.fx example converted into a test
+
 from UTest import *
 
 TEST("ycomb.fac_fib", fun() {

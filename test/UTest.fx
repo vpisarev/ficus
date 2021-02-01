@@ -3,7 +3,8 @@
     See ficus/LICENSE for the licensing terms
 */
 
-/* Unit test system for Ficus */
+// Unit test system for Ficus
+
 import Sys
 
 exception TestAssertError

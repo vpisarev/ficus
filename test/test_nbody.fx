@@ -1,3 +1,10 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
+// nbody.fx example converted into a test
+
 from UTest import *
 import Math
 
