@@ -207,7 +207,9 @@ let k2c_all kmods =
     let _ = C_gen_std.init_std_names() in
     let cmods = C_gen_code.gen_ccode_all kmods in
     let cmods = C_post_rename_locals.rename_locals cmods in
-    let cmods = if options.compile_by_cpp then C_post_adjust_decls.adjust_decls cmods else cmods in
+    let cmods = List.map (fun cmod ->
+        let is_cpp = options.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp in
+        if is_cpp then C_post_adjust_decls.adjust_decls_ cmod else cmod) cmods in
     (cmods, !compile_errs = [])
 
 let emit_c_files fname0 cmods =
@@ -216,9 +218,11 @@ let emit_c_files fname0 cmods =
     let build_dir = options.build_dir in
     (try Unix.mkdir build_dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> ());
     let (new_cmods, ok) = List.fold_left (fun (new_cmods, ok) cmod ->
-        let {cmod_cname; cmod_ccode} = cmod in
+        let {cmod_cname; cmod_ccode; cmod_pragmas={pragma_cpp}} = cmod in
         let output_fname = Filename.basename cmod_cname in
-        let output_fname = (Utils.remove_extension output_fname) ^ ".c" in
+        let is_cpp = options.compile_by_cpp || pragma_cpp in
+        let ext = if is_cpp then ".cpp" else ".c" in
+        let output_fname = (Utils.remove_extension output_fname) ^ ext in
         let output_fname = Utils.normalize_path build_dir output_fname in
         (*let ok = if ok then C_pp.pprint_top_to_file output_fname cmod_ccode else ok in*)
         let (new_cmod, ok) = if ok then
@@ -238,20 +242,26 @@ let print_if_verbose s =
 
 let run_compiler cmods output_dir =
     let opt_level = options.optimize_level in
-    let cmd = if options.compile_by_cpp then "cc -x c++ -std=c++11" else "cc" in
-    let cmd = cmd ^ " -Wno-unknown-warning-option" in
+    let c_comp = "cc" in
+    let cpp_comp = "c++ -std=c++11" in
+    let cmd = " -Wno-unknown-warning-option" in
     let cmd = cmd ^ " -Wno-dangling-else" in
     let cmd = cmd ^ (sprintf " -O%d%s" opt_level (if opt_level = 0 then " -ggdb" else "")) in
     let cmd = cmd ^ " -I" ^ options.runtime_path in
     let custom_cflags = try " " ^ (Sys.getenv "FICUS_CFLAGS") with Not_found -> "" in
     let custom_cflags = if options.cflags = "" then custom_cflags else " " ^ options.cflags ^ custom_cflags in
     let cmd = cmd ^ custom_cflags in
-    let (any_recompiled, ok, objs) = List.fold_left (fun (any_recompiled, ok, objs) {cmod_cname; cmod_recompile} ->
+    let (any_cpp, any_recompiled, all_clibs, ok, objs) = List.fold_left
+        (fun (any_cpp, any_recompiled, all_clibs, ok, objs)
+        {cmod_cname; cmod_recompile; cmod_pragmas={pragma_cpp; pragma_clibs}} ->
         let cname = Utils.normalize_path output_dir cmod_cname in
-        let c_filename = cname ^ ".c" in
+        let is_cpp = options.compile_by_cpp || pragma_cpp in
+        let ext = if is_cpp then ".cpp" else ".c" in
+        let comp = if is_cpp then cpp_comp else c_comp in
+        let c_filename = cname ^ ext in
         let obj_filename = cname ^ ".o" in
         let _ = print_if_verbose (sprintf "CC %s:\n" c_filename) in
-        let cmd = cmd ^ " -o " ^ obj_filename in
+        let cmd = comp ^ cmd ^ " -o " ^ obj_filename in
         let cmd = cmd ^ " -c " ^ c_filename in
         let (ok_j, recompiled) =
             if cmod_recompile || not (Sys.file_exists obj_filename) then
@@ -261,17 +271,23 @@ let run_compiler cmods output_dir =
                 (print_if_verbose (sprintf "\t%s is up-to-date\n" obj_filename);
                 (true, false))
             in
-        ((any_recompiled || recompiled), (ok && ok_j), (obj_filename :: objs))) (false, true, []) cmods
+        let clibs = List.rev (List.map (fun (l, _) -> l) pragma_clibs) in
+        ((any_cpp || is_cpp), (any_recompiled || recompiled),
+        (clibs @ all_clibs), (ok && ok_j), (obj_filename :: objs)))
+        (false, false, [], true, []) cmods
         in
     if ok && (not any_recompiled) && (Sys.file_exists options.app_filename) then
         (print_if_verbose (sprintf "%s is up-to-date\n" options.app_filename); ok)
     else if not ok then ok else
-        let cmd = "cc -o " ^ options.app_filename in
+        let cmd = c_comp ^ " -o " ^ options.app_filename in
         let cmd = cmd ^ " " ^ (String.concat " " objs) in
-        let custom_linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
-        let custom_linked_libs = if options.clibs = "" then custom_linked_libs else " " ^ options.clibs ^ custom_linked_libs in
-        let cmd = cmd ^ custom_linked_libs in
-        let cmd = cmd ^ " -lm" ^ (if options.compile_by_cpp then " -lstdc++" else "") in
+        let linked_libs = try " " ^ (Sys.getenv "FICUS_LINK_LIBRARIES") with Not_found -> "" in
+        let linked_libs = if options.clibs = "" then linked_libs else linked_libs ^ " " ^ options.clibs in
+        let linked_libs = if all_clibs = [] then linked_libs else
+            linked_libs ^ " " ^ (String.concat " " (List.map (fun l -> "-l" ^ l) (List.rev all_clibs)))
+            in
+        let cmd = cmd ^ linked_libs in
+        let cmd = cmd ^ " -lm" ^ (if any_cpp then " -lstdc++" else "") in
         let _ = print_if_verbose (sprintf "%s\n" cmd) in
         let ok = (Sys.command cmd) = 0 in
         ok

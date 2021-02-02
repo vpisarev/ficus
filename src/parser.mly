@@ -199,7 +199,7 @@ let make_chained_cmp chain = match chain with
 /* keywords */
 %token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION EXTENDS
 %token FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
-%token MATCH MODULE NOTHROW OPERATOR PARALLEL PURE REF REF_TYPE STATIC
+%token MATCH MODULE NOTHROW OPERATOR PARALLEL PRAGMA PURE REF REF_TYPE STATIC
 %token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE WITH
 
 /* reserved/internal-use keywords */
@@ -273,6 +273,7 @@ top_level_exp:
 | stmt { $1 :: [] }
 | decl { $1 }
 | ccode_exp { ExpCCode($1, (TypVoid, curr_loc())) :: [] }
+| PRAGMA string_list { DirPragma ((List.rev $2), curr_loc()) :: [] }
 | B_IMPORT module_name_list_
     {
         let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
@@ -1077,6 +1078,10 @@ variant_elems_:
 variant_elem:
 | B_IDENT COLON typespec_or_record { ($1, $3) }
 | B_IDENT { ($1, TypVoid) }
+
+string_list:
+| string_list COMMA STRING { $3 :: $1 }
+| STRING { $1 :: [] }
 
 any_for:
 | B_FOR { 0 }

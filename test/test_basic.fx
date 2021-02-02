@@ -498,7 +498,7 @@ TEST("basic.string", fun()
     EXPECT_EQ(str.tokens(fun (c: char) {c == ' '}),
         [:"This", "is", "a", "sentence", "made", "of", "words", "separated", "by", "spaces." :])
 
-    EXPECT_EQ("Привет!".length(), 7)
+    EXPECT_EQ("Привет! 你好吗?".length(), 12)
 })
 
 TEST("basic.templates.variants", fun()

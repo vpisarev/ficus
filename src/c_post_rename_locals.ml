@@ -4,8 +4,8 @@
 *)
 
 (*  rename the local variables in each generated C function so that
-    the function body does not change if neither its source was changed
-    nor the source of inline functions it calls. It's crucial feature
+    the function body does not change if neither its .fx source was changed
+    nor the source of inline functions it calls. It's a crucial feature
     for separate compilation *)
 
 open Ast

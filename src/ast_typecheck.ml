@@ -216,7 +216,8 @@ and walk_exp e callb =
     | DefClass(dc) -> (* [TODO] *) e
     | DefInterface(di) -> (* [TODO] *) e
     | DirImport (_, _) -> e
-    | DirImportFrom (_, _, _) -> e)
+    | DirImportFrom (_, _, _) -> e
+    | DirPragma (_, _) -> e)
 
 and walk_pat p callb =
     let walk_typ_ t = check_n_walk_typ t callb in
@@ -1565,8 +1566,11 @@ and check_exp e env sc =
     | DefExn(_)
     | DefTyp(_)
     | DirImport(_, _)
-    | DirImportFrom(_, _, _) ->
-        raise_compile_err eloc "internal err: should not get here; all the declarations must be handled in check_eseq") in
+    | DirImportFrom(_, _, _)
+    | DirPragma(_, _) ->
+        raise_compile_err eloc
+        ("internal err: should not get here; all the declarations and " ^
+        "directives must be handled in check_eseq")) in
     (*let _ = match new_e with ExpSeq _ -> () | _ -> (printf "\ninferenced type: \n";
         (pprint_typ_x etyp noloc); printf "\n========\n") in*)
     new_e
@@ -1625,7 +1629,7 @@ and check_eseq eseq env sc create_sc =
         let (eseq1, env1) =
         try
             match e with
-            | DirImport(_, _) | DirImportFrom(_, _, _)
+            | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _)
             | DefTyp _ | DefVariant _ | DefClass _ | DefInterface _ | DefExn _ -> (e :: eseq, env)
             | DefVal (p, e, flags, loc) ->
                 let is_mutable = List.mem ValMutable flags in
@@ -1687,12 +1691,6 @@ and check_eseq eseq env sc create_sc =
     (List.rev eseq, env)
 
 and check_directives eseq env sc =
-    (*let current_mod = match sc with
-        | ScModule m :: _ -> m
-        | _ -> noid
-        in
-    let _ = printf "\n\n===================== Checking directives for Module %s =========================\n" (pp_id2str current_mod) in
-    let _ = Ast_pp.pprint_exp_x (ExpSeq(eseq, (TypDecl, noloc))) in*)
     let is_imported alias n env allow_duplicate_import loc =
         (List.exists(fun entry ->
             match entry with
@@ -1770,6 +1768,8 @@ and check_directives eseq env sc =
                 import_mod env alias m true eloc
             with CompileError(_, _) as err -> push_compile_err err; env) in
             (env, (m, eloc) :: mlist)
+        | DirPragma(ps, eloc) ->
+            (env, mlist)
         | _ -> (env, mlist)) (env, []) eseq) in
 
     check_compile_errs();

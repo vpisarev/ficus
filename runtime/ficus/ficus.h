@@ -30,43 +30,16 @@ extern "C" {
 
 #endif
 
-//////////////////////// Error Codes //////////////////////
-extern int FX_EXN_ASCIIError;
-extern int FX_EXN_AssertError;
-extern int FX_EXN_Break;
-extern int FX_EXN_DimError;
-extern int FX_EXN_DivByZeroError;
-extern int FX_EXN_FileOpenError;
-extern int FX_EXN_IOError;
-extern int FX_EXN_NotFoundError;
-extern int FX_EXN_NoMatchError;
-extern int FX_EXN_NullFileError;
-extern int FX_EXN_NullListError;
-extern int FX_EXN_NullPtrError;
-extern int FX_EXN_OptionError;
-extern int FX_EXN_OutOfMemError;
-extern int FX_EXN_OutOfRangeError;
-extern int FX_EXN_RangeError;
-extern int FX_EXN_SizeError;
-extern int FX_EXN_SizeMismatchError;
-extern int FX_EXN_SysBreak;
-extern int FX_EXN_SysContinue;
-extern int FX_EXN_TypeMismatchError;
-extern int FX_EXN_UnknownExnError;
-extern int FX_EXN_ZeroStepError;
-extern int FX_EXN_StackOverflowError;
-extern int FX_EXN_ParallelForError;
-extern int FX_EXN_BadArgError;
-
-enum {
-    FX_OK = 0,
-    FX_EXN_StdMax = -48,
-    FX_EXN_User = -1024
-};
-
 /////////////////// Various Basic Definitions ////////////////
 
 #define FX_INLINE static __inline
+#ifdef __cplusplus
+#define FX_EXTERN_C extern "C"
+#define FX_EXTERN_C_VAL(decl) extern "C" {extern decl}
+#else
+#define FX_EXTERN_C
+#define FX_EXTERN_C_VAL(decl) extern decl
+#endif
 
 typedef intptr_t int_; // int size in ficus is equal to the pointer size
 #ifdef __cplusplus
@@ -109,6 +82,40 @@ typedef char32_t char_;
 #else
 #define FX_THREAD_LOCAL __thread
 #endif
+
+//////////////////////// Error Codes //////////////////////
+extern int FX_EXN_ASCIIError;
+extern int FX_EXN_AssertError;
+extern int FX_EXN_Break;
+extern int FX_EXN_DimError;
+extern int FX_EXN_DivByZeroError;
+extern int FX_EXN_FileOpenError;
+extern int FX_EXN_IOError;
+extern int FX_EXN_NotFoundError;
+extern int FX_EXN_NoMatchError;
+extern int FX_EXN_NullFileError;
+extern int FX_EXN_NullListError;
+extern int FX_EXN_NullPtrError;
+extern int FX_EXN_OptionError;
+extern int FX_EXN_OutOfMemError;
+extern int FX_EXN_OutOfRangeError;
+extern int FX_EXN_RangeError;
+extern int FX_EXN_SizeError;
+extern int FX_EXN_SizeMismatchError;
+extern int FX_EXN_SysBreak;
+extern int FX_EXN_SysContinue;
+extern int FX_EXN_TypeMismatchError;
+extern int FX_EXN_UnknownExnError;
+extern int FX_EXN_ZeroStepError;
+extern int FX_EXN_StackOverflowError;
+extern int FX_EXN_ParallelForError;
+extern int FX_EXN_BadArgError;
+
+enum {
+    FX_OK = 0,
+    FX_EXN_StdMax = -48,
+    FX_EXN_User = -1024
+};
 
 typedef void (*fx_free_t)(void*);
 typedef void (*fx_copy_t)(const void*, void*);

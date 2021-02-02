@@ -227,6 +227,7 @@ type exp_t =
     | DefInterface of definterface_t ref
     | DirImport of (id_t * id_t) list * loc_t
     | DirImportFrom of id_t * id_t list * loc_t
+    | DirPragma of string list * loc_t
 and pat_t =
     | PatAny of loc_t
     | PatLit of lit_t * loc_t
@@ -278,6 +279,8 @@ and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list;
 type defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
                     mutable dm_idx: int; mutable dm_deps: id_t list;
                     mutable dm_env: env_t; mutable dm_parsed: bool }
+
+type pragmas_t = { pragma_cpp: bool; pragma_clibs: (string*loc_t) list }
 
 type id_info_t =
     | IdNone | IdVal of defval_t | IdFun of deffun_t ref
@@ -466,6 +469,7 @@ let get_exp_ctx e = match e with
     | DefInterface {contents = { di_loc }} -> (TypDecl, di_loc)
     | DirImport(_, l) -> (TypDecl, l)
     | DirImportFrom(_, _, l) -> (TypDecl, l)
+    | DirPragma(_, l) -> (TypDecl, l)
 
 let get_exp_typ e = let (t, l) = (get_exp_ctx e) in t
 let get_exp_loc e = let (t, l) = (get_exp_ctx e) in l
@@ -989,3 +993,19 @@ and tl2str tl =
     match tl with
     | x :: [] -> s
     | _ -> "(" ^ s ^ ")"
+
+let parse_pragmas ps =
+    let clib_regexp = Str.regexp "clib *: *\\([_A-Za-z0-9\\-\\.]+\\) *" in
+    let rec parse ps result =
+        match ps with
+        | (p, loc) :: rest ->
+            if p = "c++" || p == "C++" then
+                parse rest {result with pragma_cpp=true}
+            else if (Str.string_match clib_regexp p 0) then
+                let libname = Str.matched_group 1 p in
+                parse rest {result with pragma_clibs=(libname, loc) :: result.pragma_clibs}
+            else
+                raise_compile_err loc (sprintf "unrecognized pragma '%s'" p)
+        | [] -> result
+        in
+    parse ps {pragma_cpp=false; pragma_clibs=[]}

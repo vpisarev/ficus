@@ -201,7 +201,7 @@ let rec exp2kexp e code tref sc =
         (KExpUnOp(uop, a1, kctx), code)
     | ExpSeq(eseq, _) ->
         let sc = new_block_scope() :: sc in
-        let code = eseq2code eseq code sc in
+        let (code, _) = eseq2code eseq code sc in
         (match code with
         | c :: code -> (c, code)
         | _ -> ((KExpNop eloc), code))
@@ -341,7 +341,13 @@ let rec exp2kexp e code tref sc =
         let (arr, code) = exp2atom e code true sc in
         let (_, dlist, code) = List.fold_left (fun (i, dlist, code) idx ->
             let _ = idx_access_stack := (arr, i) :: !idx_access_stack in
-            let (d, code) = exp2dom idx code sc in
+            let (d, code) =
+                try
+                    exp2dom idx code sc
+                with e ->
+                    idx_access_stack := List.tl !idx_access_stack;
+                    raise e
+                in
             let _ = idx_access_stack := List.tl !idx_access_stack in
             (i + 1, (d :: dlist), code)) (0, [], code) idxlist in
         (KExpAt(arr, border, interp, (List.rev dlist), kctx), code)
@@ -436,6 +442,7 @@ let rec exp2kexp e code tref sc =
     | DefInterface _ -> raise_compile_err eloc "interfaces are not supported yet"
     | DirImport _ -> (KExpNop(eloc), code)
     | DirImportFrom _ -> (KExpNop(eloc), code)
+    | DirPragma _ -> (KExpNop(eloc), code)
 
 and exp2atom e code tref sc =
     let (e, code) = exp2kexp e code tref sc in
@@ -463,7 +470,11 @@ and exp2dom e code sc =
 
 and eseq2code eseq code sc =
     let code = transform_all_types_and_cons eseq code sc in
+    let pragmas = ref ([]: (string*loc_t) list) in
     let rec knorm_eseq eseq code = (match eseq with
+        | DirPragma (ps, loc) :: rest ->
+            List.iter (fun p -> pragmas := (p, loc) :: !pragmas) ps;
+            knorm_eseq rest code
         | ei :: rest ->
             let (eki, code) = exp2kexp ei code false sc in
             let code = (match eki with
@@ -471,7 +482,8 @@ and eseq2code eseq code sc =
                 | _ -> eki :: code) in
             knorm_eseq rest code
         | [] -> code) in
-    knorm_eseq eseq code
+    let code = knorm_eseq eseq code in
+    (code, !pragmas)
 
 (* finds if the pattern contains variables to capture. We could have
    combined this and the next function into one, but then we would
@@ -1047,5 +1059,6 @@ let normalize_mod m is_main =
     let _ = idx_access_stack := [] in
     let minfo = !(get_module m) in
     let modsc = (ScModule m) :: [] in
-    let kcode = eseq2code (minfo.dm_defs) [] modsc in
-    {km_name=m; km_cname=(pp_id2str m); km_top=(List.rev kcode); km_main=is_main}
+    let (kcode, pragmas) = eseq2code (minfo.dm_defs) [] modsc in
+    {km_name=m; km_cname=(pp_id2str m); km_top=(List.rev kcode);
+    km_main=is_main; km_pragmas=parse_pragmas pragmas}

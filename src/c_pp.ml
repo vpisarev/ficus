@@ -249,7 +249,7 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
         | _ -> raise_compile_err loc (sprintf "the forward declaration of %s does not reference a function" (pp_id2str fname))
     in
     obox();
-    if List.mem FunPrivate cf_flags then pstr "static " else ();
+    if List.mem FunPrivate cf_flags then pstr "static " else pstr "FX_EXTERN_C ";
     (* if all the calls of an inline function were expanded — good;
        if not, it will still be called from the module where it is defined.
        So, we should not declare it as inline at C/C++ level *)
@@ -387,9 +387,9 @@ and pprint_cstmt s =
         | CFun _ -> pprint_fun_hdr cf_name true cf_loc true
         | CVal {cv_typ} ->
             ohbox();
-            pstr "extern"; pspace();
+            pstr "FX_EXTERN_C_VAL("; pcut();
             pprint_ctyp__ "" cv_typ (Some cf_name) true cf_loc;
-            pstr ";";
+            pstr ");";
             cbox()
         | _ ->
             raise_compile_err cf_loc (sprintf "the forward declaration of %s does not reference a function or a value" (pp_id2str cf_name)))

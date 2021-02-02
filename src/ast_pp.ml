@@ -207,6 +207,10 @@ let rec pprint_exp e =
         (match nl with
         | [] -> pstr "*"
         | _ -> List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) nl); cbox()
+    | DirPragma(ps, _) ->
+        obox(); pstr "PRAGMA"; pspace();
+        List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_lit (LitString p) eloc) ps;
+        cbox()
     | ExpSeq(el, _) -> pprint_expseq el true
     | _ -> obox_(); (match e with
         | ExpNop _ -> pstr "{}"
@@ -311,7 +315,7 @@ let rec pprint_exp e =
         | ExpCCode(s, _) -> pstr "CCODE"; pspace(); pstr "\"\"\""; pstr s; pstr "\"\"\""
         | DefVal _ | DefFun _ | DefExn _ | DefTyp _ | DefVariant _
         | DefClass _ | DefInterface _
-        | DirImport _ | DirImportFrom _ | ExpSeq _ -> ()); cbox_()
+        | DirImport _ | DirImportFrom _ | DirPragma _ | ExpSeq _ -> ()); cbox_()
 and pprint_exp_as_block e = match e with
     | ExpSeq(es, _) -> pprint_expseq es true
     | _ -> pprint_expseq [e] true

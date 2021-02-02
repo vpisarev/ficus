@@ -30,7 +30,7 @@ run `ficus --help` to get more complete up-to-date information about command lin
 
 here is brief summary:
 ```
-ficus [-c|-app|-run|...] [-O0|-O1|-O3] [-I<extra_module_path>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
+ficus [-app|-run|...] [-O0|-O1|-O3] [-I<extra_module_path>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
 ```
 
 * `-app` (the flag is set by default) generate C code for the specified script as well as for the imported modules (one .c file per one .fx file), then run the compiler for each of the generated .c files and then link the produced object files into the finaal app. Use `FICUS_CFLAGS` and `FICUS_LINK_LIBRARIES` environment variables to pass extra options to C compiler, e.g. `-ffast-math -mavx2` `-lmimalloc` etc. The compiled app, as well as the intermediate `.c` and `.o` files, is stored in `__build__/<scriptname>/<scriptname>`. Override the output name with `-o` option.
