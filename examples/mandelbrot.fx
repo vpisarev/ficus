@@ -10,7 +10,7 @@ val w = N, h = N, MAX_ITER = 50
 val inv = 2.0 / w
 
 val x_ = [parallel for x <- 0:w {double(x) * inv - 1.5}]
-val result: int8 [,] = [
+val result: uint8 [,] = [
     parallel
         for y <- 0:h
             for x8 <- 0:(w/8)
@@ -39,10 +39,18 @@ val result: int8 [,] = [
         val mask = (bits.0 << 7) + (bits.1 << 6) + (bits.2 << 5) + (bits.3 << 4) +
             (bits.4 << 3) + (bits.5 << 2) + (bits.6 << 1) + (bits.7 << 0)
 
-        int8(mask ^ 255)
+        uint8(mask ^ 255)
     }
 ]
 
+val roi = result[1000-20:1000+12,8:16]
+val (m, n) = size(roi)
+for i <- 0:m {
+    for j <- 0:n {
+        print(roi[i, j]); if j < n-1 {print(", ")}
+    }
+    println(";")
+}
 val f: File.file_t = File.open("result.pgm", "wb")
 f.print(f"P4\n{w} {h}\n")
 f.write(result)

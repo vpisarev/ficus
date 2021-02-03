@@ -586,18 +586,26 @@ let convert_all_typs kmods =
                     in
                 let free_code = if recursive_variant then
                         decref_and_free dst_exp free_code kvar_loc
-                    else
+                    else if have_tag then
                         let clear_tag = CExpBinOp(COpAssign, dst_tag_exp, (make_int_exp 0 kvar_loc), void_ctx) in
                         if free_code = [] then [] else (CExp clear_tag) :: free_code
+                    else
+                        free_code
                     in
-                let copy_code = gen_copy_code src_tag_exp dst_tag_exp CTypCInt [] kvar_loc in
-                let default_copy_code = CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
-                let copy_code = match copy_cases with
-                    | [] -> default_copy_code :: copy_code
-                    | _ ->
-                        let copy_cases = ([], [default_copy_code]) :: copy_cases in
-                        CStmtSwitch(src_tag_exp, (List.rev copy_cases), kvar_loc) :: copy_code
-                in
+                let copy_code = if have_tag then
+                        let copy_code = gen_copy_code src_tag_exp dst_tag_exp CTypCInt [] kvar_loc in
+                        let default_copy_code = CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
+                        match copy_cases with
+                        | [] -> default_copy_code :: copy_code
+                        | _ ->
+                            let copy_cases = ([], [default_copy_code]) :: copy_cases in
+                            CStmtSwitch(src_tag_exp, (List.rev copy_cases), kvar_loc) :: copy_code
+                    else
+                        let default_copy_code = [CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx))] in
+                        match copy_cases with
+                        | (_, copy_code1) :: [] -> copy_code1
+                        | _ -> default_copy_code
+                    in
                 let relems = if uelems = [] then [] else (u_id, CTypUnion(None, List.rev uelems)) :: [] in
                 let relems = if have_tag then (tag_id, CTypCInt) :: relems else relems in
                 if recursive_variant then

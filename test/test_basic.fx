@@ -271,6 +271,65 @@ TEST("basic.record", fun()
     EXPECT_EQ(vtx2, vtx0)
 })
 
+TEST("basic.variant_with_record", fun()
+{
+    type tt = FF : {h: int} | Empty
+
+    fun next(t: tt) {
+        | FF {h} => FF {h=h+1}
+        | _ => Empty
+    }
+    fun string(t: tt) {
+        | FF {h} => f"FF({h})"
+        | _ => "Empty"
+    }
+
+    val t = FF {h=0}
+    EXPECT_EQ(string(next(t)), "FF(1)")
+
+    type rr = {h1: int, h2: int}
+    type tt2 = FF2 : rr | Empty2
+
+    fun next(t: tt2) {
+        | FF2 ({h1, h2}) => FF2 (rr {h1=h1+1, h2=h2-1})
+        | _ => Empty2
+    }
+    fun string(t: tt2) {
+        | FF2 ({h1, h2}) => f"FF2({h1}, {h2})"
+        | _ => "Empty2"
+    }
+
+    val t = FF2 (rr {h1=1, h2=-1})
+    EXPECT_EQ(string(next(t)), "FF2(2, -2)")
+
+    type tt1 = FF1 : {h: int}
+    fun next(t: tt1) {
+        val FF1 {h} = t
+        FF1 {h=h+1}
+    }
+
+    fun string(t: tt1) {
+        val FF1 {h} = t
+        f"FF1({h})"
+    }
+
+    val t = FF1 {h=100}
+    EXPECT_EQ(string(next(t)), "FF1(101)")
+
+    type tt15 = FF15 : {h: (int, int, int, bool, string)}
+    fun next(t: tt15) {
+        val FF15 {h=(h1, h2, h3, h4, h5)} = t
+        FF15 {h=(h1+1, h2+2, h3+3, !h4, h5+"0")}
+    }
+
+    fun string(t: tt15) {
+        | FF15 {h=(h1, h2, h3, h4, h5)} => f"FF15({h1}, {h2}, {h3}, {h4}, {repr(h5)})"
+    }
+
+    val t = FF15 {h=(10, 10, 10, false, "10")}
+    EXPECT_EQ(string(next(t)), "FF15(11, 12, 13, true, \"100\")")
+})
+
 TEST("basic.ratio", fun()
 {
     // two implementations of rational numbers using single-case variants

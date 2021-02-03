@@ -390,7 +390,8 @@ let id2prefix i =
     dynvec_get all_strings prefix
 
 let id2idx_ i loc = match i with
-    | Id.Name _ -> raise_compile_err loc (sprintf "attempt to query information about unresolved '%s'" (id2str i))
+    | Id.Name _ ->
+        raise_compile_err loc (sprintf "attempt to query information about unresolved '%s'" (id2str i))
     | Id.Val(_, i_real) -> i_real
     | Id.Temp(_, i_real) -> i_real
 

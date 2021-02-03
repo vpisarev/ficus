@@ -1,3 +1,4 @@
+# some possible output files
 *.annot
 *.cmo
 *.cma
@@ -14,12 +15,19 @@ parser.ml
 parser.mli
 parser.output
 src/ficus
+src/result.pgm
 
 # ocamlbuild working directory
 _build/
 
 # ficus build directory
 __build__/
+
+# vscode config files etc.
+.vscode/
+
+# private expriments
+mytest/
 
 # ocamlbuild targets
 *.byte

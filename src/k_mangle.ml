@@ -283,7 +283,13 @@ let mangle_all kmods =
                 let kv = get_kval ni kvar_loc in
                 let _ = set_idk_entry ni (KVal {kv with kv_cname=tag_name}) in
                 let ti = match (deref_ktyp ti kvar_loc) with
-                    | KTypRecord(_, relems) -> KTypTuple(List.map (fun (_, tj) -> tj) relems)
+                    | KTypRecord(r_id, relems) ->
+                        if r_id = noid then
+                            (match relems with
+                            | (n, t) :: [] -> t
+                            | _ -> KTypTuple(List.map (fun (_, tj) -> tj) relems))
+                        else
+                            (KTypName r_id)
                     | _ -> ti
                     in
                 (ni, mangle_ktyp_retain_record ti kvar_loc callb)) kvar_cases in

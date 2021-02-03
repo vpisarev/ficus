@@ -523,7 +523,7 @@ and get_record_elems_k vn_opt t loc =
         | KVariant {contents={kvar_cases; kvar_ctors}} ->
             let kvar_cases_ctors = Utils.zip kvar_cases kvar_ctors in
             (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id input_vn)) kvar_cases_ctors) with
-            | Some(((_, KTypRecord (_, relems)), ctor)) ->
+            | Some(((_, (KTypRecord (_, relems) (*as rectyp*))), ctor)) ->
                 let rectyp = match relems with
                     | (_, t) :: [] -> t
                     | _ -> KTypTuple (List.map (fun (_, t) -> t) relems)
@@ -554,7 +554,7 @@ and match_record_pat pat ptyp =
                     (pp_id2str ni) (pp_id2str (Utils.opt_get rn_opt noid))))
             [] relems
             in
-        ((ctor, t, multiple_cases), typed_rec_pl)
+        ((ctor, t, multiple_cases, (List.length relems_found) > 1), typed_rec_pl)
     | _ -> raise_compile_err (get_pat_loc pat) "record (or sometimes an exception) is expected"
 
 and get_kvariant t loc =
@@ -609,7 +609,7 @@ and pat_need_checks p ptyp =
         with (CompileError _) as e -> check_if_exn e loc)
     | PatRec (rn_opt, _, loc) ->
         (try
-            let ((_, _, multiple_cases), typed_rec_pl) = match_record_pat p ptyp in
+            let ((_, _, multiple_cases, _), typed_rec_pl) = match_record_pat p ptyp in
             multiple_cases || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
         with (CompileError _) as e -> check_if_exn e loc)
     | PatRef (p, loc) ->
@@ -699,17 +699,22 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
                 in
             code)
     | PatRec (rn_opt, _, _) ->
-        let ((ctor, rectyp, _), typed_rec_pl) = match_record_pat p ptyp in
-        let (r_id, code) = if ctor = noid then (n, code) else
+        let ((ctor, rectyp, _, multiple_relems), typed_rec_pl) = match_record_pat p ptyp in
+        let (r_id, get_vcase, code2) = if ctor = noid then (n, (KExpNop loc), code) else
             let case_id = match rn_opt with (Some rn) -> rn | _ -> raise_compile_err loc "record tag should be non-empty here" in
             let get_vcase = KExpIntrin(IntrinVariantCase, [(Atom.Id n); (Atom.Id case_id)], (rectyp, loc)) in
-            let (r, code) = kexp2atom "vcase" get_vcase true code in
-            ((atom2id r loc "variant case extraction should produce id, not literal"), code)
+            let (r, code2) = kexp2atom "vcase" get_vcase true code in
+            ((atom2id r loc "variant case extraction should produce id, not literal"), get_vcase, code2)
             in
-        List.fold_left (fun code (_, pi, ti, ii) ->
-            let ei = KExpMem(r_id, ii, (ti, loc)) in
-            let (_, code) = pat_simple_unpack pi ti (Some ei) code temp_prefix flags sc in
-            code) code typed_rec_pl
+        (match ((ctor <> noid), multiple_relems, typed_rec_pl) with
+        | (true, false, (_, p, t, _) :: []) ->
+            let (_, code) = pat_simple_unpack p t (Some get_vcase) code temp_prefix flags sc in
+            code
+        | _ ->
+            List.fold_left (fun code (_, pi, ti, ii) ->
+                let ei = KExpMem(r_id, ii, (ti, loc)) in
+                let (_, code) = pat_simple_unpack pi ti (Some ei) code temp_prefix flags sc in
+                code) code2 typed_rec_pl)
     | PatAs _ ->
         let e = KExpAtom(Atom.Id n, (ptyp, loc)) in
         let (_, code) = pat_simple_unpack p ptyp (Some e) code temp_prefix flags sc in
@@ -1048,9 +1053,13 @@ and transform_all_types_and_cons elist code sc =
                         let _ = set_idk_entry inst_name (KTyp kt) in
                         (KDefTyp kt) :: code
                     | _ ->
-                        let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_base_name=noid; kvar_targs=targs; kvar_props=None;
-                                        kvar_cases=List.map2 (fun (i, t) tag -> (tag, typ2ktyp t inst_loc)) dvar_cases tags;
-                                        kvar_ctors=dvar_ctors; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
+                        let kvar_cases = List.map2 (fun (i, t) tag -> (tag, typ2ktyp t inst_loc)) dvar_cases tags in
+                        let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_base_name=noid; kvar_targs=targs;
+                                        kvar_props=None; kvar_cases=kvar_cases; kvar_ctors=dvar_ctors;
+                                        kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
+                        (*let cases_str = String.concat "| " (List.map (fun (n, t) ->
+                            sprintf "%s: %s" (id2str n) (ktyp2str t)) kvar_cases) in
+                        let _ = printf "kvar_cases: %s\n" cases_str in*)
                         let _ = set_idk_entry inst_name (KVariant kvar) in
                         let code = (KDefVariant kvar) :: code in
                         let new_rt = KTypName inst_name in
