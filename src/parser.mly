@@ -90,7 +90,7 @@ let make_variant_type (targs, tname) var_elems0 is_record is_mod_typ =
             pos0, pos1))) var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
                dvar_flags={(default_var_flags()) with var_flag_record=is_record; var_flag_module=is_mod_typ};
-               dvar_cases=var_elems; dvar_constr=[];
+               dvar_cases=var_elems; dvar_ctors=[];
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
 

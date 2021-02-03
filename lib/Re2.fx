@@ -10,24 +10,24 @@
     https://github.com/google/re2/wiki/Install
 
     Sometimes(E.g.,, on Debian 10) it's also needed to run
-        sudo ldconfig 
+        sudo ldconfig
     after installation for creating appropriate soft links for shared libraries.
 
 
-    See https://github.com/google/re2/wiki/Syntax re2.h of Re2 source for more detailed information about syntax and options. 
+    See https://github.com/google/re2/wiki/Syntax re2.h of Re2 source for more detailed information about syntax and options.
     Wrapper function signatures have ficus-dependent specialization. They are described there.
 */
 
 pragma "c++", "clib:re2"
 
 exception BadRegexp : string
-ccode 
+ccode
 {
     #include <re2/re2.h>
     #include <vector>
 
-    //[TODO] : Exception, declared before ccode block must be declared in program, translated to C program before this ccode for avoiding such insets. 
-    FX_EXTERN_C int _fx_M3Re2FM14make_BadRegexpE1S(fx_str_t* arg0, fx_exn_t* fx_result); 
+    //[TODO] : Exception, declared before ccode block must be declared in program, translated to C program before this ccode for avoiding such insets.
+    FX_EXTERN_C int _fx_M3Re2FM14make_BadRegexpE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
     static int throwRe2Badregexp(const std::string& err)
     {
@@ -36,7 +36,7 @@ ccode
         fx_str_t werr;
 
         fx_status = fx_cstr2str(err.c_str(), err.size(), &werr);
-        if(fx_status >= 0) 
+        if(fx_status >= 0)
         {
             FX_CALL(_fx_M3Re2FM14make_BadRegexpE1S(&werr, &v_0), _fx_cleanup); //[TODO] : We need C-side infrastacture for user-registered exceptions. Name mangling for exception functions is a root of problem.
             FX_THROW(&v_0, true, _fx_cleanup);
@@ -89,7 +89,7 @@ ccode
             int_ i = 0;
 
             std::map<int_, size_t>::iterator iter = indexmap.begin();
-    
+
             while(iter != indexmap.end())
             {
                 while(cor_sz < iter->first)
@@ -107,8 +107,8 @@ ccode
                     iter++;
                 }
             }
-        } 
-        return fx_status; 
+        }
+        return fx_status;
     }
 
 }
@@ -123,7 +123,7 @@ fun incise(str: string, starts_ends: (int, int)[]): string []
 /////////////////////////////////////////////////////////////////////////////////////////
 
 
-//    regex_t - precompiled regexp pattern. Use it for increasing speed, when it's 
+//    regex_t - precompiled regexp pattern. Use it for increasing speed, when it's
 //    needed to check match with same pattern multiple times.
 //    Equivalent of RE2 objects.
 type regex_t = { handle: cptr, find_r: cptr}
@@ -138,7 +138,7 @@ type replace_pattern_t = {pieces: replace_piece_t list, max_subnum: int}
 
 //    options_t - regular expression options.
 //    Equivalent of RE2::Options objects. See re2.h for detailed meaning of particular option.
-type options_t = 
+type options_t =
 {
     posix_syntax: bool = false,
     longest_match: bool = false,
@@ -155,8 +155,8 @@ type options_t =
 
 //    Complile pattern to precompiled regex_t object.
 //        pattern - string representation of etalon to be found. It's good idea to use r"" literals.
-//            Slashed in in r""-literals are just slashes, they couldn't be part of ficus 
-//            escape-sequence, therefore double slashes are not required for escape-sequences 
+//            Slashed in in r""-literals are just slashes, they couldn't be part of ficus
+//            escape-sequence, therefore double slashes are not required for escape-sequences
 //            of regular expressions.
 //        options - settings for flexible configuration.
 //
@@ -164,8 +164,8 @@ type options_t =
 //    Re2.compile(r"(\b[:alpha:]+\b)", Re2.options_t {posix_syntax = true, word_boundary = true})
 //        word_boundary option adds ability to use r"\b" symbol, but this option is silent, until
 //        posix_syntax is switched off.
-//    
-//    See https://github.com/google/re2/wiki/Syntax for full description of regular expressions 
+//
+//    See https://github.com/google/re2/wiki/Syntax for full description of regular expressions
 //    syntax.
 fun compile(pattern: string, options: options_t): regex_t
 {
@@ -224,11 +224,11 @@ fun compile(pattern: string): regex_t
 //    Return original pattern string.
 //
 //    Equivalent of RE2::pattern
-pure fun string(re: regex_t): string = ccode  
+pure fun string(re: regex_t): string = ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     return fx_cstr2str(re_to_apply->pattern().c_str(), re_to_apply->pattern().size(), fx_result);
 }
@@ -240,19 +240,19 @@ pure fun number_of_capturing_groups(re: regex_t): int = ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     *fx_result = re_to_apply->NumberOfCapturingGroups();
     return FX_OK;
 }
 
 //    There is a syntax for giving a name to particular sub-match.
-//    
+//
 //    E.g., pattern r"(?P<name>\w+)@(?P<domain>\w+)\.(?P<country>\w+)"
 //    descripts simple e-mail adress. (Note, this is r""-literal).
 //    Each part of word have name.
 //
-//    This function extracts assoc list from sub-match names to sub-match 
+//    This function extracts assoc list from sub-match names to sub-match
 //    indexes. Therefore, it's possible to get sub-match by name.
 //
 //    Equivalent of RE2::NamedCapturingGroups
@@ -262,7 +262,7 @@ fun named_capturing_groups(re: regex_t): (string, int) list
     {
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-        if(re_to_apply == nullptr) 
+        if(re_to_apply == nullptr)
             return FX_EXN_NullPtrError;
         size_t sub_amount = re_to_apply->NumberOfCapturingGroups();
         const int_ arrdims[1] = {static_cast<int_>(sub_amount)};
@@ -307,7 +307,7 @@ fun named_capturing_groups(re: regex_t): (string, int) list
 }
 
 
-//    Extracts assoc list from sub-match indexes to sub-match names. 
+//    Extracts assoc list from sub-match indexes to sub-match names.
 //
 //    Equivalent of RE2::CapturingGroupNames
 fun capturing_group_names(re: regex_t): (int, string) list
@@ -318,48 +318,48 @@ fun capturing_group_names(re: regex_t): (int, string) list
 
 val digit_reg = compile(r"\\[0-9]")
 
-//    Complile replace strings for increasing speed of substitution. 
+//    Complile replace strings for increasing speed of substitution.
 //    See replace for details.
 fun compile_replace_pattern(rewrite: string): replace_pattern_t
 {
     val (has_subs, ranges) = findall(rewrite, digit_reg)
-    val piece_lst = 
+    val piece_lst =
         if(has_subs)
         {
             val (len_i, _) = size(ranges)
             var pieces_list = []
             var pos = 0
             for incl_num <- 0: len_i
-            {   
+            {
                 val (substart,subend) = ranges[incl_num,0]
-                val placeholder_num = getOpt(atoi(rewrite[substart+1:substart+2]), 0)
+                val placeholder_num = getsome(atoi(rewrite[substart+1:substart+2]), 0)
                 pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
                 pos = subend
             }
             pieces_list = RPString(rewrite[pos:]) :: pieces_list
             fold filtered = [] for piece <- pieces_list
-            {   
+            {
                 val ok = match piece { | RPString simple_piece => String.length(simple_piece)!=0  | RPInt sub_num => true}
                 if (ok) {piece::filtered} else {filtered}
-            }                
+            }
         }
         else
         {
             RPString(rewrite) :: []
         }
-    
+
     val fold max_sub = -1 for piece <- piece_lst
-    {   
+    {
         match piece
         {
             | RPString simple_piece => max_sub
-            | RPInt sub_num => max(max_sub, sub_num) 
+            | RPInt sub_num => max(max_sub, sub_num)
         }
-    }    
+    }
     replace_pattern_t {pieces = piece_lst, max_subnum = max_sub}
 }
 
-//    Returns maximal number of submatch met in replace pattern. 
+//    Returns maximal number of submatch met in replace pattern.
 //
 //    Equivalent of RE2::MaxSubmatch
 fun max_submatch(rewrite: replace_pattern_t): int
@@ -368,11 +368,11 @@ fun max_submatch(rewrite: replace_pattern_t): int
 }
 
 //    Check if regexp and replace pattern are compatible.
-//    Return true, if number of replace insertions is not bigger, than 
+//    Return true, if number of replace insertions is not bigger, than
 //    number of sub-matches in regular expression.
 //
 //    Equivalent of RE2::CheckRewriteString
-fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool 
+fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool
 {
     number_of_capturing_groups(regex_t {handle = re.find_r, find_r = re.find_r}) > max_submatch(rewrite)
 }
@@ -381,7 +381,7 @@ fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool
 // Main RE2 Functions ///////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//    There is four main RE2 functions classes: 
+//    There is four main RE2 functions classes:
 //    full_match       - Equivalent of RE2::FullMatch
 //    partial_match    - Equivalent of RE2::PartialMatch
 //    consume          - Equivalent of RE2::Consume
@@ -406,7 +406,7 @@ pure fun full_match(text: string, re: regex_t) : bool = ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     fx_cstr_t ctext;
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
@@ -427,10 +427,10 @@ pure fun full_match(text: string, re: regex_t) : bool = ccode
 //    Equivalent of RE2::FullMatchN
 //                                                 (success, (sub_start, sub_end)[])
 pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
-{   
+{
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     fx_cstr_t ctext = {};
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
@@ -467,7 +467,7 @@ fx_cleanup:
 //    Equivalent of RE2::FullMatchN
 //                                                     (success, sub-matches [])
 pure fun full_match_n_str(text: string, re: regex_t) : (bool,         string [])
-{   
+{
     val (success, starts_ends) = full_match_n(text, re)
     (success, incise(text, starts_ends))
 }
@@ -482,7 +482,7 @@ pure fun partial_match(text: string, re: regex_t) : bool = ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     fx_cstr_t ctext;
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
@@ -503,10 +503,10 @@ pure fun partial_match(text: string, re: regex_t) : bool = ccode
 //    Equivalent of RE2::PartialMatchN
 //                                                    (success, (sub_start, sub_end)[])
 pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
-{   
+{
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     fx_cstr_t ctext = {};
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
@@ -543,7 +543,7 @@ fx_cleanup:
 //    Equivalent of RE2::PartialMatchN
 //                                                   (success, sub-matches [])
 fun partial_match_n_str(text: string, re: regex_t) : (bool,         string [])
-{   
+{
     val (success, starts_ends) = partial_match_n(text, re)
     (success, incise(text, starts_ends))
 }
@@ -558,7 +558,7 @@ fun partial_match_n_str(text: string, re: regex_t) : (bool,         string [])
 //    Equivalent of RE2::Consume
 //                                                  (success, newpos)
 fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
-{   
+{
     val (success, newpos, arr) = consume_n(input, pos, re)
     (success, newpos)
 }
@@ -572,10 +572,10 @@ fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //    Equivalent of RE2::ConsumeN
 //                                                         (success, newpos, (sub_start, sub_end)[])
 pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
-{   
+{
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     fx_cstr_t cinput = {};
     int fx_status = fx_str2cstr(input, &cinput, 0, 0);
@@ -618,7 +618,7 @@ fx_cleanup:
 //    Equivalent of RE2::ConsumeN
 //                                                        (success, newpos, sub-matches [])
 fun consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    int,      string [])
-{   
+{
     val (success, newpos, starts_ends) = consume_n(input, pos, re)
     (success, newpos, incise(input, starts_ends))
 }
@@ -632,7 +632,7 @@ fun consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    int,     
 //    Equivalent of RE2::FindAndConsume
 //                                                           (success, newpos)
 fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
-{   
+{
     val (success, newpos, arr) = find_and_consume_n(input, pos, re)
     (success, newpos)
 }
@@ -648,10 +648,10 @@ fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //    Equivalent of RE2::FindAndConsumeN
 //                                                                  (success, newpos, (sub_start, sub_end)[])
 pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
-{   
+{
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     fx_cstr_t cinput = {};
     int fx_status = fx_str2cstr(input, &cinput, 0, 0);
@@ -696,7 +696,7 @@ fx_cleanup:
 //   Equivalent of RE2::FindAndConsumeN
 //                                                                 (success, newpos, sub-matches [])
 fun find_and_consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    int,      string [])
-{   
+{
     val (success, newpos, starts_ends) = find_and_consume_n(input, pos, re)
     (success, newpos, incise(input, starts_ends))
 }
@@ -705,7 +705,7 @@ fun find_and_consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    
 //    given substing, to both of ends, or will be free.
 //
 //    Equivalent of RE2::Anchor
-type anchor_t = 
+type anchor_t =
 {
     anchor_start: bool = false,
     anchor_both : bool = false // [TODO]: In this case we need enum, but right now anchor_both just overrides anchor_start
@@ -717,7 +717,7 @@ type anchor_t =
 //    re_anchor argument for this.
 //
 //    Return success bool and array of sub-matches. Each sub-match is represented as
-//    pair of positions: (first symbol of submatch, first symbol after submatch).    
+//    pair of positions: (first symbol of submatch, first symbol after submatch).
 //
 //    E.g.,
 //    val strre = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false}) // Special options are needed to use ^ and $.
@@ -729,7 +729,7 @@ fun general_match(text: string, re: regex_t, startpos: int, endpos: int, re_anch
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
-    if(re_to_apply == nullptr) 
+    if(re_to_apply == nullptr)
         return FX_EXN_NullPtrError;
     fx_cstr_t ctext = {};
     int fx_status = fx_str2cstr(text, &ctext, 0, 0);
@@ -759,7 +759,7 @@ fx_cleanup:
     return fx_status;
 }
 
-//    Same, as general_match, but sub-mathes are returning as strings. 
+//    Same, as general_match, but sub-mathes are returning as strings.
 //
 //    E.g.,
 //    val strre = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false}) // Special options are needed to use ^ and $.
@@ -779,12 +779,12 @@ fun general_match_str(text: string, re: regex_t, startpos: int, endpos: int, re_
 /////////////////////////////////////////////////////////////////////////////////////////
 
 //    C++ Re2 have no find or findall functions, but we need to declare before Re2-
-//    like replace and global_replace, because they replace are not direct wrappers 
+//    like replace and global_replace, because they replace are not direct wrappers
 //    around C++ functions, and they are dependent on find.
 //
 //    Search procedure. Returns true if pattern is found and array of sub-matches in form
 //    of pair of positions: (first symbol of submatch, first symbol after submatch).
-//    Zero-indexed pair is positions for whole match. That's the only difference to 
+//    Zero-indexed pair is positions for whole match. That's the only difference to
 //    partial_match_n
 //
 //    E.g.,
@@ -796,14 +796,14 @@ fun find(string_to_match: string, re: regex_t): (bool   , (int      , int    )[]
     partial_match_n(string_to_match, regex_t {handle = re.find_r, find_r = re.find_r})
 }
 
-//    Same, as find, but sub-mathes are returning as strings. 
+//    Same, as find, but sub-mathes are returning as strings.
 //
 //    E.g.,
 //    Re2.find("Some digital field, like 156454 or 456465. Ok?", r" (\d+) ") = (true, [" 156454 ", "156454"])
 
 //                                                  (success, sub-matches[])
 fun find_str(string_to_match: string, re: regex_t): (bool   , string     [])
-{   
+{
     val (success, starts_ends) = find(string_to_match, re)
     (success, incise(string_to_match, starts_ends))
 }
@@ -821,7 +821,7 @@ ccode
 
     void fx_re2_findall_process_free(void* ptr)
     {
-        if(ptr) 
+        if(ptr)
         {
             fx_re2_findall_process* proc = (fx_re2_findall_process*)(ptr);
             fx_free_cstr(&proc->cloth);
@@ -831,7 +831,7 @@ ccode
     }
 }
 
-//    Search procedure. Returns true if pattern is found and 2d-array of sub-matches of all matches 
+//    Search procedure. Returns true if pattern is found and 2d-array of sub-matches of all matches
 //    in form of pair of positions: (first symbol of submatch, first symbol after submatch).
 //    Zero-indexed pair in each row is positions for whole match.
 //
@@ -846,7 +846,7 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
     {
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
-        if(re_to_apply == nullptr) 
+        if(re_to_apply == nullptr)
             return FX_EXN_NullPtrError;
         const int sub_amount = re_to_apply->NumberOfCapturingGroups();
         fx_re2_findall_process* resptr = nullptr;
@@ -890,7 +890,7 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
         int fx_status = FX_OK;
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
-        if(re_to_apply == nullptr) 
+        if(re_to_apply == nullptr)
             return FX_EXN_NullPtrError;
         fx_re2_findall_process* p_proc = static_cast<fx_re2_findall_process*>(proc->ptr);
         StringPiece string_n_position(p_proc->cloth.data + pos);
@@ -910,12 +910,12 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
     fun result_as_list(pos: int, lastend: int, reslst: (int, int) [] list) : (int, int)[] list
     {
         val (success, newpos, matches) = find_step(proc, pos,re)
-        if(success) 
+        if(success)
         {
             val (_,newend) = matches[0]
             val npos = if(newend == lastend) {newpos+1} else {newpos}
-            val newlst = if (newend == lastend) { reslst } else { matches :: reslst }            
-            if(npos < String.length(string_to_match)) 
+            val newlst = if (newend == lastend) { reslst } else { matches :: reslst }
+            if(npos < String.length(string_to_match))
             {
                 result_as_list(npos, newend, newlst)
             }
@@ -940,12 +940,12 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
         {
             matrix_res[i,j] = l[j]
         }
-        i += 1 
+        i += 1
     }
     (len_i !=0, matrix_res)
 }
 
-//    Search procedure. Returns true if pattern is found and 2d-array of sub-matches of all matches 
+//    Search procedure. Returns true if pattern is found and 2d-array of sub-matches of all matches
 //    in form of pair of positions: (first symbol of submatch, first symbol after submatch).
 //    Zero-indexed pair in each row is positions for whole match.
 //
@@ -955,10 +955,10 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
 //            (34, 42), (35, 41)])
 //                                                     (success, sub-matches[,])
 fun findall_str(string_to_match: string, re: regex_t): (bool   , string     [,])
-{   
+{
     val (success, starts_ends) = findall(string_to_match, re)
     val (len_i, len_j) = size(starts_ends)
-    (success, [ for i <- 0:len_i for j <- 0:len_j 
+    (success, [ for i <- 0:len_i for j <- 0:len_j
                 {
                     val(start,end) = starts_ends[i,j]
                     string_to_match[start:end]
@@ -971,14 +971,14 @@ fun findall_str(string_to_match: string, re: regex_t): (bool   , string     [,])
 /////////////////////////////////////////////////////////////////////////////////////////
 
 //Service function
-fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_subs: (int, int)[]) : string 
+fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_subs: (int, int)[]) : string
 {
     val fold rlist = [] for piece <- french_curve.pieces
-        {   
+        {
             match piece
             {
                 | RPString simple_piece => simple_piece::rlist
-                | RPInt sub_num => 
+                | RPInt sub_num =>
                     val (sub_start, sub_end) = found_subs[sub_num]
                     cloth[sub_start:sub_end]::rlist
             }
@@ -987,11 +987,11 @@ fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_su
 }
 
 
-//    Replace procedure. Search for first ocurrence of pattern-corresonding substrings and 
+//    Replace procedure. Search for first ocurrence of pattern-corresonding substrings and
 //    replace it with string composed from rewrite pattern. Rewrite pattern can be compiled from
 //    string with help of compile_replace_pattern. Original rewrite string can contain insertions,
 //    designated like r"\d", where d is digit from 0 to 9, represents number of submatch in
-//    found occurence. r"\0" is for whole match. Number of insertions cannot be bigger, than 
+//    found occurence. r"\0" is for whole match. Number of insertions cannot be bigger, than
 //    number of sub-matches in regular expression. (Note, there are used r""-literals for avoiding
 //    double slashes in replace pattern).
 //
@@ -1041,7 +1041,7 @@ fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,
             var str_list = []
             var pos = 0
             for i <- 0: len_i
-            {   
+            {
                 val (substart,subend) = ranges[i,0]
                 str_list = compose_replacement(str, rewrite, ranges[i,:]) :: str[pos:substart] :: str_list
                 pos = subend
@@ -1060,13 +1060,13 @@ fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,
 
 fun full_match(text: string, re: string) : bool
 {
-    full_match(text, compile(re)) 
+    full_match(text, compile(re))
 }
 
 //                                           (success, (sub_start, sub_end)[])
 fun full_match_n(text: string, re: string) : (bool   , (int      , int    )[])
 {
-    full_match_n(text, compile(re)) 
+    full_match_n(text, compile(re))
 }
 
 //                                               (success, sub-matches [])
@@ -1082,19 +1082,19 @@ fun partial_match(text: string, re: string) : bool
 
 //                                              (success, (sub_start, sub_end)[])
 fun partial_match_n(text: string, re: string) : (bool   , (int      , int    )[])
-{   
+{
     partial_match_n(text, compile(re))
 }
 
 //                                                  (success, sub-matches [])
 fun partial_match_n_str(text: string, re: string) : (bool,         string [])
-{   
+{
     partial_match_n_str(text, compile(re))
 }
 
 //                                                 (success, newpos)
 fun consume(input: string, pos: int, re: string) : (bool   ,    int)
-{   
+{
     consume(input, pos, compile(re))
 }
 
@@ -1112,7 +1112,7 @@ fun consume_n_str(input: string, pos: int, re: string) : (bool   ,    int,      
 
 //                                                          (success, newpos)
 fun find_and_consume(input: string, pos: int, re: string) : (bool   ,    int)
-{   
+{
     find_and_consume(input, pos, compile(re))
 }
 

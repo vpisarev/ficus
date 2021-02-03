@@ -13,7 +13,7 @@ fun check (t: tree): int {
 
 val min_depth = 4
 val max_depth = match Args.arguments() {
-    | n_str :: [] => getOpt(atoi(n_str), 10)
+    | n_str :: [] => getsome(atoi(n_str), 10)
     | _ => 20
     }
 val max_depth = max(min_depth + 2, max_depth)

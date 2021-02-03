@@ -389,7 +389,7 @@ and pprint_cstmt s =
             ohbox();
             pstr "FX_EXTERN_C_VAL("; pcut();
             pprint_ctyp__ "" cv_typ (Some cf_name) true cf_loc;
-            pstr ");";
+            pstr ")";
             cbox()
         | _ ->
             raise_compile_err cf_loc (sprintf "the forward declaration of %s does not reference a function or a value" (pp_id2str cf_name)))

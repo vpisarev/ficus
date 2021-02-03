@@ -59,9 +59,10 @@ operator <= (a: 't, b: 't): bool = a <=> b <= 0
 // 't?, int? etc. can be used instead of 't option, int option ...
 type 't option = None | Some: 't
 
-fun getOpt(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
-fun isNone(x: 't?) { | Some _ => false | _ => true }
-fun isSome(x: 't?) { | Some _ => true | _ => false }
+fun getsome(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
+fun getsome(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
+fun isnone(x: 't?) { | Some _ => false | _ => true }
+fun issome(x: 't?) { | Some _ => true | _ => false }
 
 pure nothrow fun length(s: string): int = ccode { return s->length }
 pure nothrow fun length(l: 't list): int = ccode { return fx_list_length(l) }
@@ -118,6 +119,12 @@ operator + (l1: 't list, l2: 't list)
 }
 
 pure fun string(a: exn): string = ccode { return fx_exn_to_string(a, fx_result) }
+pure fun string(a: cptr): string = ccode
+{
+    char buf[64];
+    sprintf(buf, "cptr<%p: %p>", a, a->ptr);
+    return fx_ascii2str(buf, -1, fx_result);
+}
 fun string(a: bool) = if a {"true"} else {"false"}
 pure fun string(a: int): string = ccode  { return fx_itoa(a, fx_result) }
 pure fun string(a: uint8): string = ccode { return fx_itoa(a, fx_result) }
@@ -152,6 +159,10 @@ fun repr(a: char) = "'" + a + "'"
 fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
 fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
 fun string(a: 't ref) = "ref(" + repr(*a) + ")"
+fun string(a: 't?) {
+    | Some(a) => "Some(" + repr(a) + ")"
+    | _ => "None"
+}
 
 fun string(a: 't [])
 {
@@ -403,6 +414,18 @@ pure nothrow operator <=> (a: string, b: string): int = ccode
 
 // compare the pointers, not the content. Maybe need a separate operator for that.
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode { return a == b }
+pure nothrow operator == (a: cptr, b: cptr): bool = ccode { return a == b }
+pure nothrow operator == (a: 't?, b: 't?) {
+    | (Some(a), Some(b)) => a == b
+    | (None, None) => true
+    | _ => false
+}
+pure nothrow operator <=> (a: 't?, b: 't?) {
+    | (Some(a), Some(b)) => a <=> b
+    | (None, Some _) => -1
+    | (Some _, None) => 1
+    | _ => 0
+}
 
 nothrow fun atoi(a: string): int? = ccode
 {
@@ -515,6 +538,7 @@ nothrow fun print(a: uint64): void = ccode { printf("%llu", a) }
 nothrow fun print(a: int64): void = ccode { printf("%lld", a) }
 nothrow fun print(a: float): void = ccode { printf((a == (int)a ? "%.1f" : "%.8g"), a) }
 nothrow fun print(a: double): void = ccode { printf((a == (int)a ? "%.1f" : "%.16g"), a) }
+nothrow fun print(a: cptr): void = ccode { printf("cptr<%p: %p>", a, a->ptr) }
 fun print(a: string) = print_string(a)
 fun print_repr(a: 't) = print(a)
 fun print_repr(a: string) { print("\""); print(a); print("\"") }

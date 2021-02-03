@@ -190,7 +190,7 @@ and pprint_kexp_ e prtyp =
         obox(); ppktp kt_props;
         pstr "TYPE"; pspace(); pprint_id_label kt_name;
         pspace(); pstr "="; pspace(); pprint_ktyp kt_typ kt_loc; cbox()
-    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_props; kvar_constr; kvar_flags; kvar_loc} } ->
+    | KDefVariant { contents = {kvar_name; kvar_cases; kvar_props; kvar_ctors; kvar_flags; kvar_loc} } ->
         let is_opt0 = kvar_flags.var_flag_opt in
         let is_recursive = kvar_flags.var_flag_recursive in
         obox(); ppktp kvar_props;
@@ -202,7 +202,7 @@ and pprint_kexp_ e prtyp =
             if i = 0 then () else pstr " | "; pprint_id v kvar_loc;
             pstr "<"; pprint_id c kvar_loc; pstr ": "; pprint_ktyp (get_idk_ktyp c kvar_loc)
             kvar_loc; pstr ">: "; pprint_ktyp t kvar_loc)
-            (Utils.zip kvar_cases (if kvar_constr != [] then kvar_constr
+            (Utils.zip kvar_cases (if kvar_ctors != [] then kvar_ctors
             else (List.map (fun (v, _) -> v) kvar_cases))));
         cbox()
     | KDefClosureVars { contents = {kcv_name; kcv_freevars; kcv_loc} } ->

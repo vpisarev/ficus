@@ -145,7 +145,7 @@ and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_base_cname: string;
                   ke_scope: scope_t list; ke_loc: loc_t }
 and kdefvariant_t = { kvar_name: id_t; kvar_cname: string; kvar_base_name: id_t;
                       kvar_props: ktprops_t option; kvar_targs: ktyp_t list;
-                      kvar_cases: (id_t * ktyp_t) list; kvar_constr: id_t list;
+                      kvar_cases: (id_t * ktyp_t) list; kvar_ctors: id_t list;
                       kvar_flags: var_flags_t; kvar_scope: scope_t list; kvar_loc: loc_t }
 and kdeftyp_t = { kt_name: id_t; kt_cname: string; kt_props: ktprops_t option;
                   kt_targs: ktyp_t list; kt_typ: ktyp_t; kt_scope: scope_t list; kt_loc: loc_t }
@@ -526,10 +526,10 @@ and walk_kexp e callb =
                 ke_tag=(walk_id_ ke_tag); ke_make=(walk_id_ ke_make) };
         e
     | KDefVariant(kvar) ->
-        let { kvar_name; kvar_cases; kvar_constr } = !kvar in
+        let { kvar_name; kvar_cases; kvar_ctors } = !kvar in
         kvar := { !kvar with kvar_name = (walk_id_ kvar_name);
             kvar_cases = (List.map (fun (n, t) -> ((walk_id_ n), (walk_ktyp_ t))) kvar_cases);
-            kvar_constr = (List.map walk_id_ kvar_constr) };
+            kvar_ctors = (List.map walk_id_ kvar_ctors) };
         e
     | KDefTyp(kt) ->
         let { kt_name; kt_typ } = !kt in
@@ -665,10 +665,10 @@ and fold_kexp e callb =
         fold_id_ ke_tag; fold_id_ ke_make;
         (KTypVoid, ke_loc)
     | KDefVariant(kvar) ->
-        let { kvar_name; kvar_cases; kvar_constr; kvar_loc } = !kvar in
+        let { kvar_name; kvar_cases; kvar_ctors; kvar_loc } = !kvar in
         fold_id_ kvar_name;
         List.iter (fun (n, t) -> fold_id_ n; fold_ktyp_ t) kvar_cases;
-        List.iter fold_id_ kvar_constr;
+        List.iter fold_id_ kvar_ctors;
         (KTypVoid, kvar_loc)
     | KDefTyp(kt) ->
         let { kt_name; kt_typ; kt_loc } = !kt in

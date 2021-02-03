@@ -174,13 +174,13 @@ let rec pprint_exp e =
         obox(); pstr "TYPE"; pspace(); pprint_templ_args dt_templ_args; pprint_id dt_name;
         pspace(); pstr "="; pspace(); pprint_typ dt_typ dt_loc; cbox()
     | DefVariant { contents = {dvar_name; dvar_templ_args; dvar_alias; dvar_cases;
-                                dvar_constr; dvar_flags; dvar_templ_inst; dvar_loc} } ->
+                                dvar_ctors; dvar_flags; dvar_templ_inst; dvar_loc} } ->
         obox(); if dvar_flags.var_flag_record then pstr "TYPE RECORD" else pstr "TYPE";
         pspace(); pprint_templ_args dvar_templ_args; pprint_id dvar_name; pstr "<";
         pprint_typ dvar_alias dvar_loc; pstr ">";
         pspace(); pstr "="; pspace();
         let var_cases_constr = Utils.zip dvar_cases
-            (if dvar_constr != [] then dvar_constr else List.map (fun (n, _) -> n) dvar_cases) in
+            (if dvar_ctors != [] then dvar_ctors else List.map (fun (n, _) -> n) dvar_cases) in
         List.iteri (fun i ((n, t), c) ->
             if i = 0 then () else pstr " | "; pprint_id n;
             pstr "<"; pprint_id c; pstr ": "; pprint_typ (get_id_typ c dvar_loc) dvar_loc; pstr ">: "; pprint_typ t dvar_loc)

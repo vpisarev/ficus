@@ -217,11 +217,13 @@ let gen_ccode_prologue ismain loc =
 
 let gen_main ismain mod_names loc =
     if not ismain then [] else
-        let (fwd_decls, init_calls, deinit_calls) = List.fold_left
-            (fun (fwd_decls, init_calls, deinit_calls) m ->
-                ((sprintf "int fx_init_%s();\nvoid fx_deinit_%s();\n" m m) :: fwd_decls),
+        let (_, fwd_decls, init_calls, deinit_calls) = List.fold_left
+            (fun (idx, fwd_decls, init_calls, deinit_calls) m ->
+                (idx+1,
+                (if idx = 0 then fwd_decls else
+                (sprintf "FX_EXTERN_C int fx_init_%s();\nFX_EXTERN_C void fx_deinit_%s();\n" m m) :: fwd_decls),
                 ((sprintf "   if (fx_status >= 0) fx_status = fx_init_%s();\n" m) :: init_calls),
-                ((sprintf "   fx_deinit_%s();\n" m) :: deinit_calls)) ([], [], []) mod_names
+                ((sprintf "   fx_deinit_%s();\n" m) :: deinit_calls))) (0, [], [], []) mod_names
             in
         [CExp(CExpCCode((
         (String.concat "" fwd_decls) ^

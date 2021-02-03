@@ -643,8 +643,8 @@ let get_record_elems vn_opt t loc =
                 else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
                     (pp_id2str input_vn) (pp_id2str vn0));
                 (noid, relems)
-            | IdVariant {contents={dvar_cases; dvar_constr}} ->
-                let dvar_cases_ctors = Utils.zip dvar_cases dvar_constr in
+            | IdVariant {contents={dvar_cases; dvar_ctors}} ->
+                let dvar_cases_ctors = Utils.zip dvar_cases dvar_ctors in
                 (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id input_vn)) dvar_cases_ctors) with
                 | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
                 | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str input_vn)))
@@ -1793,9 +1793,9 @@ and reg_types eseq env sc =
             let { dvar_name; dvar_templ_args; dvar_flags; dvar_cases; dvar_loc } = !dvar in
             let dvar_name1 = dup_id dvar_name in
             let dvar_alias1 = make_default_alias dvar_templ_args dvar_name1 in
-            let dummy_constr = List.map (fun (n, _) -> n) dvar_cases in
+            let dummy_ctors = List.map (fun (n, _) -> n) dvar_cases in
             dvar := {dvar_name=dvar_name1; dvar_templ_args; dvar_alias=dvar_alias1; dvar_flags; dvar_cases;
-                    dvar_constr=dummy_constr; dvar_templ_inst=[]; dvar_scope=sc; dvar_loc};
+                    dvar_ctors=dummy_ctors; dvar_templ_inst=[]; dvar_scope=sc; dvar_loc};
             set_id_entry dvar_name1 (IdVariant dvar);
             add_id_to_env_check dvar_name dvar_name1 env (check_for_duplicate_typ dvar_name sc dvar_loc)
         | DefClass {contents={dcl_loc=loc}} -> raise_compile_err loc "classes are not supported yet"
@@ -1834,13 +1834,13 @@ and check_types eseq env sc =
             | _ -> env)
         | DefVariant dvar ->
             let _ = instantiate_variant [] dvar env sc (!dvar.dvar_loc) in
-            let { dvar_name; dvar_templ_args; dvar_cases; dvar_constr; dvar_scope; dvar_loc } = !dvar in
+            let { dvar_name; dvar_templ_args; dvar_cases; dvar_ctors; dvar_scope; dvar_loc } = !dvar in
             List.fold_left2 (fun env (n, t) cname ->
                 let {df_name; df_templ_args; df_typ} = (match (id_info cname) with
                     | IdFun df -> !df
                     | _ -> raise_compile_err dvar_loc (sprintf "internal error: constructor %s is not a function" (id2str cname))) in
                 let (t, _) = preprocess_templ_typ df_templ_args df_typ env sc dvar_loc in
-                add_id_to_env_check n cname env (check_for_duplicate_fun t env sc dvar_loc)) env dvar_cases dvar_constr
+                add_id_to_env_check n cname env (check_for_duplicate_fun t env sc dvar_loc)) env dvar_cases dvar_ctors
         | _ -> env
     ) env eseq
 
@@ -2084,7 +2084,7 @@ and instantiate_fun_ templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
 
 and instantiate_variant ty_args dvar env sc loc =
     let { dvar_name; dvar_templ_args; dvar_alias; dvar_flags; dvar_cases;
-          dvar_constr; dvar_scope; dvar_loc } = !dvar in
+          dvar_ctors; dvar_scope; dvar_loc } = !dvar in
     (*
        env - the input environment updated with the mappings from the formal variant type parameters to the actual values;
        inst_typ - the return type in the variant constructors; it is used to inference the return type of constructors.
@@ -2103,7 +2103,7 @@ and instantiate_variant ty_args dvar env sc loc =
             (true, (match_ty_templ_args ty_args dvar_templ_args env dvar_loc loc),
             inst_name, inst_app_typ,
             ref { dvar_name=inst_name; dvar_templ_args=[];
-                dvar_alias=inst_app_typ; dvar_flags; dvar_cases; dvar_constr;
+                dvar_alias=inst_app_typ; dvar_flags; dvar_cases; dvar_ctors;
                 dvar_templ_inst=[]; dvar_scope; dvar_loc=loc }) in
     (* register the incomplete-yet variant in order to avoid inifinite loop *)
     let _ = if instantiate then
@@ -2129,9 +2129,9 @@ and instantiate_variant ty_args dvar env sc loc =
             | IdFun c_def -> c_def := {!c_def with df_templ_inst = inst_cname :: !c_def.df_templ_inst }
             | _ -> raise_compile_err loc (sprintf "invalid constructor %s of variant %s" (id2str cname) (id2str dvar_name))
         else ();
-        (idx+1, (n, t) :: inst_cases, inst_cname :: inst_constr)) (0, [], []) dvar_cases dvar_constr in
+        (idx+1, (n, t) :: inst_cases, inst_cname :: inst_constr)) (0, [], []) dvar_cases dvar_ctors in
     !inst_dvar.dvar_cases <- List.rev inst_cases;
-    !inst_dvar.dvar_constr <- List.rev inst_constr;
+    !inst_dvar.dvar_ctors <- List.rev inst_constr;
     (*printf "variant after instantiation: {{{ "; pprint_exp_x (DefVariant inst_dvar); printf " }}}\n";*)
     (inst_name, inst_app_typ)
 

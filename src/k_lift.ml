@@ -19,7 +19,7 @@
     as well as some outer code that uses those functions.
 
     * We analyze each function and see if the function has 'free variables',
-      i.e. variables that are non-local and yet are non-global.
+      i.e. variables that are defined outside of this function and yet are non-global.
     a)  If the function has some 'free variables',
         it needs a special satellite structure called 'closure data'
         that incapsulates all the free variables. The function itself
@@ -28,7 +28,7 @@
         All the accesses to free variables are replaced
         with the closure data access operations. Then, when the function
         occurs in code (if it does not occur, it's eliminated as dead code),
-        a 'closure' is created, which is a pair (function, (closure_data or 'nil')).
+        a 'closure' is created, which is a pair (function_pointer, (closure_data or 'nil')).
         This pair is used instead of the original function. Here is the example:
 
         fun foo(n: int) {
@@ -47,16 +47,16 @@
 
     b)  If the function does not have any 'free variables', we may still
         need a closure, i.e. we may need to represent this function as a pair,
-        because in general when we pass a function as parameter to another function
+        because in general when we pass a function as a parameter to another function
         or store it as a value (essentially, we store a function pointer), the caller
-        of that function does not know whether it needs free variables or not, so
-        we need a consistent representation of functions that are called indirectly.
+        of that function does not know whether the called function needs free variables or not,
+        so we need a consistent representation of functions that are called indirectly.
         But in this case we can have a pair ('some function', nil), i.e. we just use something like
         NULL pointer instead of a pointer to real closure. So, the following code:
 
         fun foo(n: int) {
-            fun bar(m: int) = m*n
-            fun baz(m: int) = m+1
+            fun bar(m: int) = m*n // uses free variable 'n'
+            fun baz(m: int) = m+1 // does not use any free variables
             if generate_random_number() % 2 == 0 {bar} else {baz}
         }
         val transform_f = foo(5)
@@ -73,8 +73,8 @@
             else
                 {make_closure(baz, nil)}
 
-        val (transform_f_ptr, transform_f_fvars) = foo(5)
-        for i <- 0:10 {println(transform_f_ptr(i, transform_f_fvars))}
+        val (transform_f_ptr, transform_f_cldata) = foo(5)
+        for i <- 0:10 {println(transform_f_ptr(i, transform_f_cldata))}
 
         However, in the case (b) when we call the function directly, e.g.
         we call 'baz' as 'baz' directly, not via 'transform_f' pointer, we can
@@ -92,28 +92,30 @@
         (which is a typical functional language pattern for generators, see below)
         where 'var' does not exist anymore. The robust solution for this problem is
         to convert each 'var', which is used at least once as a free variable,
-        into a reference:
+        into a reference, which is allocated on heap:
 
-        fun create_inc(start: int) {
+        fun create_incremetor(start: int) {
             var v = start
             fun inc_me() {
                 val temp = v; v += 1; temp
             }
             inc_me
         }
+        val counter = create_incrementor(5)
+        for i<-0:10 {print(f"{counter()} ")} // 5 6 7 8 ...
 
         this is converted to:
 
         fun inc_me( c: inc_me_closure_t* ) {
             val temp = *c->v; *c->v += 1; temp
         }
-        fun create_inc(start: int) {
+        fun create_incrementor(start: int) {
             val v = ref(start)
             make_closure(inc_me, inc_me_closure_t {v})
         }
 
     2.  Besides the free variables, the nested function may also call:
-        2a. itself. This is a simple case. We just call it and pass the same closure data
+        2a. itself. This is a simple case. We just call it and pass the same closure data, e.g.:
           fun bar( n: int, c: bar_closure_t* ) = if n <= 1 {1} else { ... bar(n-1, c) }
         2b. another function that needs some free variables from the outer scope
             fun foo(n: int) {
@@ -122,8 +124,8 @@
                 (bar, baz)
             }
 
-            in order to form the closure for 'baz', 'bar' needs to read 'n' value, which it does not
-            access directly. That is, the code can be converted to:
+            in order to form the closure for 'baz', 'bar' needs to read 'n' value,
+            which it does not access directly. That is, the code can be converted to:
 
             // option 1: dynamically created closure
             fun bar( m: int, c:bar_closure_t* ) {
@@ -131,7 +133,8 @@
                 baz_cl_f(m+1, baz_cl_fv)
             }
             fun baz( m: int, c:baz_closure_t* ) = m*c->n
-            fun foo(n: int) = (make_closure(bar, bar_closure_t {n}), make_closure(baz, baz_closure_t {n})
+            fun foo(n: int) = (make_closure(bar, bar_closure_t {n}),
+                               make_closure(baz, baz_closure_t {n})
 
             or it can be converted to
 
@@ -162,7 +165,7 @@
             }
 
         The third option in this example is the most efficient. But in general it may
-        be not very easy to implement, because between bar() and baz() declarations there
+        be not easy to implement, because between bar() and baz() declarations there
         can be some value definitions, i.e. in general baz() may access some values that
         are computed using bar(), and then the properly initialized shared closure may be
         difficult to build.
@@ -171,7 +174,7 @@
         make_closure() inside bar(). However if not only 'bar' calls 'baz',
         but also 'baz' calls 'bar', it means that both closures need to reference each other,
         so we have a reference cycle and this couple of closures
-        (or a cluster of closures in more general case) will never be released.
+        (or, in general, a cluster of closures) will never be released.
 
         So, for simplicity, we just implement the first, i.e. the slowest option.
         It's not a big problem though, because:
@@ -188,17 +191,19 @@
           (normally hotspot functions operate on huge arrays and/or they can be
           transformed into tail-recursive functions, so 'mutually-recursive functions'
           and 'hotspots' are the words that rarely occur in the same sentence).
-        [TODO] The options 1, 2 and 3 are not mutually exclusive; for example, we can use the 3rd,
-        most efficient option in some easy-to-detect partial cases (e.g. when the nested functions
-        go sequentially without any non-trivially defined values between them) and use
-        the first option everywhere else.
+        [TODO] The options 1, 2 and 3 are not mutually exclusive; for example, we can use
+        the most efficient 3rd option in some easy-to-detect partial cases
+        (e.g. when the nested functions go sequentially without any non-trivially
+        defined values between them) and use the first option everywhere else.
 
     3.  In order to implement the first option (2.2b.1) above we need to create an
-        iterative algorithm to compute extended sets of free variables for each function.
-        First, we find directly accessed free variables. Then we check which functions
-        we call from each function and combine their free variables with the directly
-        accessible ones. We continue to do so until all the sets of free variables
-        for all the functions are stabilized and do not change on the next iteration.
+        iterative algorithm to compute the extended sets of free variables for each
+        function. First, for each function we find the directly accessed free variables.
+        Then we check which functions we call from this function and combine their
+        free variables with the directly accessible ones, and add free variables
+        from functions they call etc. We continue to do so until all the sets of
+        free variables for all the functions are stabilized and do not change
+        on the next iteration.
 *)
 
 open Ast

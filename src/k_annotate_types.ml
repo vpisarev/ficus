@@ -203,7 +203,7 @@ let annotate_types kmods =
     find_recursive top_code;
     List.iter (fun e -> match e with
         | KDefVariant kvar ->
-            let {kvar_name; kvar_cases; kvar_constr; kvar_loc} = !kvar in
+            let {kvar_name; kvar_cases; kvar_ctors; kvar_loc} = !kvar in
             let _ = get_ktprops (KTypName kvar_name) kvar_loc in
             let {kvar_flags} = !kvar in
             let is_recursive = kvar_flags.var_flag_recursive in
@@ -218,7 +218,7 @@ let annotate_types kmods =
                     | KFun kf ->
                         let {kf_flags} = !kf in
                         kf := {!kf with kf_flags=FunNoThrow :: kf_flags}
-                    | _ -> ()) kvar_constr;
+                    | _ -> ()) kvar_ctors;
             kvar := {!kvar with kvar_flags = {kvar_flags with
                 var_flag_opt = option_like;
                 var_flag_have_tag = not no_tag}}

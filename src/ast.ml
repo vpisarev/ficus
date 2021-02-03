@@ -252,7 +252,7 @@ and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
                  dt_finalized: bool; dt_scope: scope_t list; dt_loc: loc_t }
 (* variants are represented in a seemingly complex but logical way;
    the structure contains the list of variant cases (dvar_cases, a list of (id_t, typ_t) pairs),
-   as well as the variant constructors (dvar_constr). Think of the id_t's in dvar_cases
+   as well as the variant constructors (dvar_ctors). Think of the id_t's in dvar_cases
    as of enumeration elements that represent different "tag" values.
    Whereas the constructors will eventually (in the final compiled code)
    become real functions that take the case arguments on input and return the variant instance.
@@ -267,7 +267,7 @@ and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
 *)
 and defvariant_t = { dvar_name: id_t; dvar_templ_args: id_t list; dvar_alias: typ_t;
                      dvar_flags: var_flags_t; mutable dvar_cases: (id_t * typ_t) list;
-                     mutable dvar_constr: id_t list; mutable dvar_templ_inst: id_t list;
+                     mutable dvar_ctors: id_t list; mutable dvar_templ_inst: id_t list;
                      dvar_scope: scope_t list; dvar_loc: loc_t }
 and defclass_t = { dcl_name: id_t; dcl_templ_args: id_t list; dcl_typ: typ_t;
                    dcl_ifaces: id_t list; dcl_args: pat_t list;
@@ -958,6 +958,7 @@ let rec typ2str t =
     | TypVarRecord -> "{...}"
     | TypVar {contents=Some(t)} -> typ2str t
     | TypVar _ -> "<unknown>"
+    | TypApp([], i) -> (id2str i)
     | TypApp(tl, i) -> sprintf "%s %s" (tl2str tl) (id2str i)
     | TypInt -> "int"
     | TypSInt n -> sprintf "int%d" n

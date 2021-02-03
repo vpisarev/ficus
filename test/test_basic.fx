@@ -239,16 +239,180 @@ TEST("basic.types.templates", fun()
     }, 1.0f)
 })
 
-TEST("basic.point_struct", fun()
+TEST("basic.record", fun()
 {
     type 't point_t = {x:'t, y:'t}
     val p = point_t {x=5, y=6}
-    fun string(p: 't point_t): string = f"p=({p.x}, {p.y})"
-    fun mkpt(x: int, y:int) = point_t {x=x, y=y}
+    fun mkpt(x: 't, y: 't) = point_t {x=x, y=y}
 
-    EXPECT_EQ(string(p), "p=(5, 6)")
-    EXPECT_EQ(string(mkpt(1, 0).{x=7}), "p=(7, 0)")
-    EXPECT_EQ(string(mkpt(1, 0).{y=7}), "p=(1, 7)")
+    EXPECT_EQ(f"{p}", "{x=5, y=6}")
+    EXPECT_EQ(f"{mkpt(1, 0).{x=7}}", "{x=7, y=0}")
+    EXPECT_EQ(f"{mkpt(1.5, 0.).{y=7.}}", "{x=1.5, y=7.0}")
+
+    type 't rect_t = {x: 't, y: 't, width: 't, height: 't}
+
+    fun contains(r: 'z rect_t, p: 'z point_t) =
+        r.x <= p.x < r.x + r.width &&
+        r.y <= p.y < r.y + r.height
+
+    val ip = point_t {x=1, y=2}
+    val fp = point_t {x=10.f, y=20.f}
+
+    val ir = rect_t {x=0, y=0, width=10, height=10}
+    val fr = rect_t {x=0.f, y=0.f, width=10.f, height=10.f}
+
+    EXPECT_EQ(contains(ir, ip), true)
+    EXPECT_EQ(contains(fr, fp), false)
+
+    val vtx0 = [: (0, 0), (640, 0), (640, 480), (0, 480) :]
+    val vtx1 = [: for (x, y) <- vtx0 {point_t {x=x*2, y=y*2}} :]
+    val vtx2 = [: for {x, y} <- vtx1 {(x/2, y/2)} :]
+
+    EXPECT_EQ(vtx2, vtx0)
+})
+
+TEST("basic.ratio", fun()
+{
+    // two implementations of rational numbers using single-case variants
+
+    // 1. tuple
+    type ratio_t = Ratio: (int, int)
+
+    fun gcd(n: int, d: int) {
+        fun gcd_(n: int, d: int) =
+            if d == 0 {n} else {gcd_(d, n % d)}
+        gcd_(abs(n), abs(d))
+    }
+
+    operator + (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
+        val n = n1*d2 + n2*d1
+        val d = d1*d2
+        val r = gcd(n, d)
+        Ratio(n/r, d/r)
+    }
+    operator - (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
+        val n = n1*d2 - n2*d1
+        val d = d1*d2
+        val r = gcd(n, d)
+        Ratio(n/r, d/r)
+    }
+    operator * (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
+        val n = n1*n2
+        val d = d1*d2
+        val r = gcd(n, d)
+        Ratio(n/r, d/r)
+    }
+    operator / (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
+        val n = n1*d2
+        val d = d1*n2
+        val r = gcd(n, d)
+        Ratio(n/r, d/r)
+    }
+
+    fun string(Ratio(n, d): ratio_t) = f"{n}/{d}"
+
+    val a = Ratio(33, 100), b = Ratio(85, 1000)
+    EXPECT_EQ(string(a+b), "83/200")
+
+    // 2. record
+    type ratio2_t = Ratio2: {num: int, denom: int}
+
+    // unfortunately, for now using record patterns directly
+    // in function parameters is not yet supported
+    operator + (a: ratio2_t, b: ratio2_t) {
+        val Ratio2 {num=n1, denom=d1} = a
+        val Ratio2 {num=n2, denom=d2} = b
+        val n = n1*d2 + n2*d1
+        val d = d1*d2
+        val r = gcd(n, d)
+        Ratio2 {num=n/r, denom=d/r}
+    }
+    operator - (a: ratio2_t, b: ratio2_t) {
+        val Ratio2 {num=n1, denom=d1} = a
+        val Ratio2 {num=n2, denom=d2} = b
+        val n = n1*d2 - n2*d1
+        val d = d1*d2
+        val r = gcd(n, d)
+        Ratio2 {num=n/r, denom=d/r}
+    }
+    operator * (a: ratio2_t, b: ratio2_t) {
+        val Ratio2 {num=n1, denom=d1} = a
+        val Ratio2 {num=n2, denom=d2} = b
+        val n = n1*n2
+        val d = d1*d2
+        val r = gcd(n, d)
+        Ratio2 {num=n/r, denom=d/r}
+    }
+    operator / (a: ratio2_t, b: ratio2_t) {
+        val Ratio2 {num=n1, denom=d1} = a
+        val Ratio2 {num=n2, denom=d2} = b
+        val n = n1*d2
+        val d = d1*n2
+        val r = gcd(n, d)
+        Ratio2 {num=n/r, denom=d/r}
+    }
+
+    fun string(r: ratio2_t) {
+        val Ratio2 {num, denom} = r
+        f"{num}/{denom}"
+    }
+
+    val a = Ratio2 {num=33, denom=100}, b = Ratio2 {num=85, denom=1000}
+    EXPECT_EQ(string(a/b), "66/17")
+})
+
+TEST("basic.self_assignment", fun()
+{
+    type tree = Empty | Node: (int, tree, tree)
+
+    var a = 5
+    var b = ", ".join([: for i<-0:10 {string(i)} :])
+    var c = [[[1], [0], [0]], [[0], [1], [0]], [[0], [0], [1]]]
+    var c2 = [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]]
+    var d = ref [1, 2, 3, 4, 5]
+    var e = (1, "abc", [1, 2, 3])
+    var t = Node(5,
+        Node(1,
+            Node(-1, Empty, Empty),
+            Node(3, Empty, Empty)),
+        Node(10,
+            Node(9, Empty, Empty),
+            Node(1000, Empty, Empty)))
+    operator == (a: tree, b: tree)
+    {
+        | (Empty, Empty) => true
+        | (Node(va, a1, a2), Node(vb, b1, b2)) =>
+            va == vb && a1 == b1 && a2 == b2
+        | _ => false
+    }
+    fun string(t: tree) {
+        | Empty => "Empty"
+        | Node(v, l, r) => f"Node({v}, {l}, {r})"
+    }
+
+    a = a
+    EXPECT_EQ(a, 5)
+    b = b
+    EXPECT_EQ(b, "0, 1, 2, 3, 4, 5, 6, 7, 8, 9")
+    c = c
+    EXPECT_EQ(c, [[[1], [0], [0]], [[0], [1], [0]], [[0], [0], [1]]])
+    for i<-0:3 for j<-0:3 {c2[i][j] = c2[i][j]}
+    EXPECT_EQ(c2, [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]])
+    d = d
+    for i<-0:5 {(*d)[i] *= (*d)[i]}
+    EXPECT_EQ(*d, [1, 4, 9, 16, 25])
+    e.0 = e.0
+    e.1 = e.1
+    e.2 = e.2
+    EXPECT_EQ(e, (1, "abc", [1, 2, 3]))
+    t = t
+    EXPECT_EQ(t, Node(5,
+        Node(1,
+            Node(-1, Empty, Empty),
+            Node(3, Empty, Empty)),
+        Node(10,
+            Node(9, Empty, Empty),
+            Node(1000, Empty, Empty))))
 })
 
 TEST("basic.ref", fun()
@@ -257,7 +421,7 @@ TEST("basic.ref", fun()
     val u = ref (None : string?)
 
     *u = y
-    EXPECT_EQ(getOpt(*u, "0"), getOpt(y, "1"))
+    EXPECT_EQ(getsome(*u, "0"), getsome(y, "1"))
 
     val nested_ref: int ref ref ref = ref (ref (ref 5))
     EXPECT_EQ(***nested_ref, 5)
@@ -275,12 +439,12 @@ TEST("basic.option", fun()
     val y = Some("abc")
     val z: string? = None
 
-    EXPECT(isNone(x))
-    EXPECT(isNone(z))
-    EXPECT(isSome(y))
-    EXPECT_EQ(getOpt(x, -1), -1)
-    EXPECT_EQ(getOpt(y, ""), "abc")
-    EXPECT_EQ(2, getOpt(Some((1, 2, 3)), (0, 0, 0)).1)
+    EXPECT(isnone(x))
+    EXPECT(isnone(z))
+    EXPECT(issome(y))
+    EXPECT_EQ(getsome(x, -1), -1)
+    EXPECT_EQ(getsome(y, ""), "abc")
+    EXPECT_EQ(getsome(Some((1, 2, 3)), (0, 0, 0)), (1, 2, 3))
 })
 
 TEST("basic.types.variant", fun()
@@ -463,7 +627,7 @@ TEST("basic.types.conversions", fun()
 {
     EXPECT_EQ(3.f, float(1) + 2)
 
-    val my_pi = getOpt(atof("3.14"), 0.0)
+    val my_pi = getsome(atof("3.14"), 0.0)
     EXPECT_NEAR(my_pi * 2, 6.28, 1e-10)
 })
 

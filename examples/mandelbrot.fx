@@ -2,7 +2,7 @@ import Args
 import File
 
 val N = match Args.arguments() {
-    | n_str :: [] => getOpt(atoi(n_str), 16000)
+    | n_str :: [] => getsome(atoi(n_str), 16000)
     | _ => 16000
     }
 

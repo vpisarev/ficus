@@ -511,27 +511,32 @@ and get_record_elems_k vn_opt t loc =
         | _ -> noid
         in
     match t with
-    | KTypRecord (_, relems) -> (noid, relems)
+    | KTypRecord (_, relems) -> ((noid, t, false), relems)
     | KTypName tn ->
         (match (kinfo_ tn loc) with
-        | KVariant {contents={kvar_flags; kvar_cases=(vn0, KTypRecord (_, relems))::[]}}
+        | KVariant {contents={kvar_flags; kvar_cases=(vn0, (KTypRecord (_, relems) as rectyp))::[]}}
             when kvar_flags.var_flag_record ->
                 if input_vn = noid || input_vn = (get_orig_id vn0) then ()
                 else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
                     (pp_id2str input_vn) (pp_id2str vn0));
-                (noid, relems)
-        | KVariant {contents={kvar_cases; kvar_constr}} ->
-            let kvar_cases_ctors = Utils.zip kvar_cases kvar_constr in
+                ((noid, rectyp, false), relems)
+        | KVariant {contents={kvar_cases; kvar_ctors}} ->
+            let kvar_cases_ctors = Utils.zip kvar_cases kvar_ctors in
             (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id input_vn)) kvar_cases_ctors) with
-            | Some(((_, KTypRecord (_, relems)), ctor)) -> (ctor, relems)
+            | Some(((_, KTypRecord (_, relems)), ctor)) ->
+                let rectyp = match relems with
+                    | (_, t) :: [] -> t
+                    | _ -> KTypTuple (List.map (fun (_, t) -> t) relems)
+                    in
+                ((ctor, rectyp, (List.length kvar_cases) > 1), relems)
             | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str input_vn)))
         | _ -> raise_compile_err loc (sprintf "type '%s' is expected to be variant" (id2str tn)))
     | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record"
 
-and ktyp_record_pat pat ptyp =
+and match_record_pat pat ptyp =
     match pat with
     | PatRec(rn_opt, relems, loc) ->
-        let (ctor, relems_found) = get_record_elems_k rn_opt ptyp loc in
+        let ((ctor, t, multiple_cases), relems_found) = get_record_elems_k rn_opt ptyp loc in
         let typed_rec_pl = List.fold_left (fun typed_rec_pl (ni, pi) ->
             let ni_orig = get_orig_id ni in
             let (_, found_idx, found_t) = List.fold_left
@@ -549,10 +554,43 @@ and ktyp_record_pat pat ptyp =
                     (pp_id2str ni) (pp_id2str (Utils.opt_get rn_opt noid))))
             [] relems
             in
-        (ctor, typed_rec_pl)
-    | _ -> raise_compile_err (get_pat_loc pat) "record pattern is expected"
+        ((ctor, t, multiple_cases), typed_rec_pl)
+    | _ -> raise_compile_err (get_pat_loc pat) "record (or sometimes an exception) is expected"
 
-and pat_need_checks p ptyp = match p with
+and get_kvariant t loc =
+    let t = deref_ktyp t loc in
+    match t with
+    | KTypName tn ->
+        (match (kinfo_ tn loc) with
+        | KVariant kvar -> kvar
+        | _ -> raise_compile_err loc (sprintf "type '%s' is expected to be variant" (id2str tn)))
+    | _ -> raise_compile_err loc "variant (or sometimes an exception) is expected here"
+
+and match_variant_pat pat ptyp =
+    match pat with
+    | PatVariant(vn0, pl, loc) ->
+        let {kvar_cases; kvar_ctors; kvar_loc} = !(get_kvariant ptyp loc) in
+        let kvar_cases_ctors = Utils.zip kvar_cases kvar_ctors in
+        (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id vn0)) kvar_cases_ctors) with
+        | Some ((_, t), ctor) ->
+            let tl = match t with KTypTuple(tl) -> tl | _ -> [t] in
+            let _ = if (List.length pl) = (List.length tl) then () else
+                raise_compile_err loc
+                (sprintf "the number of variant pattern arguments does not match the number of '%s' parameters.\nSee %s"
+                (pp_id2str ctor) (loc2str kvar_loc)) in
+            let typed_var_pl = List.fold_left2 (fun typed_var_pl p t -> (p, t) :: typed_var_pl) [] pl tl in
+            ((ctor, t), (List.rev typed_var_pl))
+        | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str vn0)))
+    | _ -> raise_compile_err (get_pat_loc pat) "variant pattern is expected"
+
+and pat_need_checks p ptyp =
+    let check_if_exn e loc =
+        match (deref_ktyp ptyp loc) with
+        | KTypExn -> true (* in the case of exceptions we always need to check the tag,
+                            so the response from pat_need_checks() is 'true' *)
+        | _ -> raise e
+        in
+    match p with
     | PatAny _ | PatIdent _ | PatAs _ -> false
     | PatLit _ -> true
     | PatCons(_, _, _) -> true (* the check for non-empty list is needed *)
@@ -562,15 +600,18 @@ and pat_need_checks p ptyp = match p with
             | KTypTuple(tl) -> tl
             | _ -> raise_compile_err loc "this pattern needs a tuple as argument" in
         List.exists2 (fun pi ti -> pat_need_checks pi ti) pl tl
-    | PatVariant(_, _, _) ->
-        true
-        (* [TODO] it's not necessarily true if the variant has a single case *)
-        (*List.exists pat_need_checks pl*)
-    | PatRec (rn_opt, _, _) ->
-        let (ctor, typed_rec_pl) = ktyp_record_pat p ptyp in
-        (Utils.is_some rn_opt) || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
-        (* [TODO] if rn_opt = Some(rn), the condition is not necessarily true,
-                  because the variant may have a single case *)
+    | PatVariant(vn, pl, loc) ->
+        (try
+            let {kvar_cases; kvar_ctors} = !(get_kvariant ptyp loc) in
+            (List.length kvar_cases) > 1 ||
+            (let (_, typed_var_pl) = match_variant_pat p ptyp in
+            List.exists (fun (p, t) -> pat_need_checks p t) typed_var_pl)
+        with (CompileError _) as e -> check_if_exn e loc)
+    | PatRec (rn_opt, _, loc) ->
+        (try
+            let ((_, _, multiple_cases), typed_rec_pl) = match_record_pat p ptyp in
+            multiple_cases || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
+        with (CompileError _) as e -> check_if_exn e loc)
     | PatRef (p, loc) ->
         let t = match ptyp with
             | KTypRef t -> t
@@ -640,10 +681,35 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
             (idx + 1, code)) (0, code) pl tl in
         code
     | PatIdent _ -> code
-    | PatVariant(_, _, loc) ->
-        raise_compile_err loc "simple variant patterns are not supported yet"
-    | PatRec(_, ip_l, loc) ->
-        raise_compile_err loc "simple record patterns are not supported yet"
+    | PatVariant (vn, _, loc) ->
+        let ((_, vt), typed_var_pl) = match_variant_pat p ptyp in
+        let get_vcase = KExpIntrin(IntrinVariantCase, [(Atom.Id n); (Atom.Id vn)], (vt, loc)) in
+        (match typed_var_pl with
+        | (p, t) :: [] ->
+            let (_, code) = pat_simple_unpack p t (Some get_vcase) code temp_prefix flags sc in
+            code
+        | _ ->
+            let (ve, code) = kexp2atom "vcase" get_vcase true code in
+            let ve_id = atom2id ve loc "variant case extraction should produce id, not literal" in
+            let (_, code) = List.fold_left (fun (idx, code) (pi, ti) ->
+                let loci = get_pat_loc pi in
+                let ei = KExpMem(ve_id, idx, (ti, loci)) in
+                let (_, code) = pat_simple_unpack pi ti (Some ei) code temp_prefix flags sc in
+                (idx + 1, code)) (0, code) typed_var_pl
+                in
+            code)
+    | PatRec (rn_opt, _, _) ->
+        let ((ctor, rectyp, _), typed_rec_pl) = match_record_pat p ptyp in
+        let (r_id, code) = if ctor = noid then (n, code) else
+            let case_id = match rn_opt with (Some rn) -> rn | _ -> raise_compile_err loc "record tag should be non-empty here" in
+            let get_vcase = KExpIntrin(IntrinVariantCase, [(Atom.Id n); (Atom.Id case_id)], (rectyp, loc)) in
+            let (r, code) = kexp2atom "vcase" get_vcase true code in
+            ((atom2id r loc "variant case extraction should produce id, not literal"), code)
+            in
+        List.fold_left (fun code (_, pi, ti, ii) ->
+            let ei = KExpMem(r_id, ii, (ti, loc)) in
+            let (_, code) = pat_simple_unpack pi ti (Some ei) code temp_prefix flags sc in
+            code) code typed_rec_pl
     | PatAs _ ->
         let e = KExpAtom(Atom.Id n, (ptyp, loc)) in
         let (_, code) = pat_simple_unpack p ptyp (Some e) code temp_prefix flags sc in
@@ -772,7 +838,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                     let extract_case_exp = KExpIntrin(IntrinVariantCase,
                         (Atom.Id n) :: vn_case_val :: [], (case_typ, loc)) in
                     if is_tuple then
-                        let case_n = gen_temp_idk "case" in
+                        let case_n = gen_temp_idk "vcase" in
                         let code = create_kdefval case_n case_typ (ValTempRef :: [])
                             (Some extract_case_exp) [] loc in
                         (case_n, code, None)
@@ -843,7 +909,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                     in
                 let plists = if case_n = noid && (Utils.is_none alt_e_opt) then plists
                     else
-                        let (_, ktyp_rec_pl) = ktyp_record_pat p ptyp in
+                        let (_, ktyp_rec_pl) = match_record_pat p ptyp in
                         let pti_l = List.map (fun (_, pi, ti, idxi) -> (pi, ti, idxi)) ktyp_rec_pl in
                         process_pat_list case_n pti_l plists alt_e_opt
                     in
@@ -967,7 +1033,7 @@ and transform_all_types_and_cons elist code sc =
             List.fold_left (fun code inst ->
                 match (id_info inst) with
                 | IdVariant {contents={dvar_name=inst_name; dvar_alias=inst_alias; dvar_cases;
-                                       dvar_constr; dvar_flags; dvar_scope; dvar_loc=inst_loc}} ->
+                                       dvar_ctors; dvar_flags; dvar_scope; dvar_loc=inst_loc}} ->
                     let targs = match (deref_typ inst_alias) with
                                 | TypApp(targs, _) -> List.map (fun t -> typ2ktyp t inst_loc) targs
                                 | _ -> raise_compile_err inst_loc
@@ -984,7 +1050,7 @@ and transform_all_types_and_cons elist code sc =
                     | _ ->
                         let kvar = ref { kvar_name=inst_name; kvar_cname=""; kvar_base_name=noid; kvar_targs=targs; kvar_props=None;
                                         kvar_cases=List.map2 (fun (i, t) tag -> (tag, typ2ktyp t inst_loc)) dvar_cases tags;
-                                        kvar_constr=dvar_constr; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
+                                        kvar_ctors=dvar_ctors; kvar_flags=dvar_flags; kvar_scope=sc; kvar_loc=inst_loc } in
                         let _ = set_idk_entry inst_name (KVariant kvar) in
                         let code = (KDefVariant kvar) :: code in
                         let new_rt = KTypName inst_name in
@@ -1007,7 +1073,7 @@ and transform_all_types_and_cons elist code sc =
                                 in code
                             | _ -> raise_compile_err dvar_loc
                                 (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))
-                            code dvar_constr tags)
+                            code dvar_ctors tags)
                     in code
                 | _ -> raise_compile_err dvar_loc
                         (sprintf "the instance '%s' of variant '%s' is not a variant" (id2str inst) (id2str dvar_name)))

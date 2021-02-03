@@ -40,7 +40,7 @@ fun spectralnorm(n: int)
 }
 
 val N = match Args.arguments() {
-    | n_str :: [] => getOpt(atoi(n_str), 5500)
+    | n_str :: [] => getsome(atoi(n_str), 5500)
     | _ => 5500
     }
 println(spectralnorm(N))

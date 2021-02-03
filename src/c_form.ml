@@ -15,14 +15,6 @@
       Many of the functions do need a closure, but there is still such a parameter,
       it's just not used. The parameter is needed because when we call a function indirectly,
       via pointer, we don't know whether it needs closure or not. See k_lift module.
-      ==
-      [TODO] In the "monolitic mode" for all functions and in the separate build mode for
-      internal functions we can analyze the code and check whether we call some
-      function only directly or not. If we call the function only directly and it does not need closure,
-      we can eliminate the extra parameter. Or we can have a 'bare' variant of the function without
-      the closure parameter, and use this variant when we call it directly; and then have
-      a wrapper with the closure parameter which we use for indirect calls.
-      ==
     * the type system is further shrinked:
       * Tuples, records, list cells, reference cells, recursive and non-recursive variants,
         "closure variables" data, function pointers (closures themselves) etc.
