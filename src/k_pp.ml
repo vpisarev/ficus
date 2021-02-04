@@ -213,7 +213,7 @@ and pprint_kexp_ e prtyp =
             pprint_id n kcv_loc; pstr ": "; pspace(); pprint_ktyp t kcv_loc)
         kcv_freevars;
         pstr " }"; cbox()
-    | KExpSeq(el, _) -> pprint_kexpseq el true
+    | KExpSeq(eseq, _) -> pprint_kexpseq eseq true
     | _ -> obox_(); (match e with
         | KExpNop(_) -> pstr "{}"
         | KExpBreak(_) -> pstr "BREAK"
@@ -340,12 +340,12 @@ and pprint_kexp_ e prtyp =
         | KDefClosureVars _  | KDefExn _ | KExpSeq _ -> ()); cbox_()
 
 and pprint_kexp_as_seq e = match e with
-    | KExpSeq(es, _) -> pprint_kexpseq es false
+    | KExpSeq(eseq, _) -> pprint_kexpseq eseq false
     | _ -> pprint_kexp e
-and pprint_kexpseq el braces =
+and pprint_kexpseq eseq braces =
     if braces then pstr "{" else ();
     ohvbox();
-    (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_kexp e) el); cbox();
+    (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_kexp e) eseq); cbox();
     if braces then pstr "}" else ()
 
 let pprint_atom_x a loc = Format.print_flush (); Format.open_box 0; pprint_atom a loc; Format.close_box(); Format.print_flush ()

@@ -996,18 +996,18 @@ and tl2str tl =
     | x :: [] -> s
     | _ -> "(" ^ s ^ ")"
 
-let parse_pragmas ps =
+let parse_pragmas prl =
     let clib_regexp = Str.regexp "clib *: *\\([_A-Za-z0-9\\-\\.]+\\) *" in
-    let rec parse ps result =
-        match ps with
-        | (p, loc) :: rest ->
-            if p = "c++" || p == "C++" then
+    let rec parse prl result =
+        match prl with
+        | (pr, loc) :: rest ->
+            if pr = "c++" || pr == "C++" then
                 parse rest {result with pragma_cpp=true}
-            else if (Str.string_match clib_regexp p 0) then
-                let libname = Str.matched_group 1 p in
+            else if (Str.string_match clib_regexp pr 0) then
+                let libname = Str.matched_group 1 pr in
                 parse rest {result with pragma_clibs=(libname, loc) :: result.pragma_clibs}
             else
-                raise_compile_err loc (sprintf "unrecognized pragma '%s'" p)
+                raise_compile_err loc (sprintf "unrecognized pragma '%s'" pr)
         | [] -> result
         in
-    parse ps {pragma_cpp=false; pragma_clibs=[]}
+    parse prl {pragma_cpp=false; pragma_clibs=[]}

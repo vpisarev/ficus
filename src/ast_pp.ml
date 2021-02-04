@@ -207,11 +207,11 @@ let rec pprint_exp e =
         (match nl with
         | [] -> pstr "*"
         | _ -> List.iteri (fun i n -> if i = 0 then () else (pstr ","; pspace()); pprint_id n) nl); cbox()
-    | DirPragma(ps, _) ->
+    | DirPragma(prl, _) ->
         obox(); pstr "PRAGMA"; pspace();
-        List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_lit (LitString p) eloc) ps;
+        List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_lit (LitString p) eloc) prl;
         cbox()
-    | ExpSeq(el, _) -> pprint_expseq el true
+    | ExpSeq(eseq, _) -> pprint_expseq eseq true
     | _ -> obox_(); (match e with
         | ExpNop _ -> pstr "{}"
         | ExpBreak (f, _) -> pstr (if f then "FOLD_BREAK" else "BREAK")
@@ -317,15 +317,15 @@ let rec pprint_exp e =
         | DefClass _ | DefInterface _
         | DirImport _ | DirImportFrom _ | DirPragma _ | ExpSeq _ -> ()); cbox_()
 and pprint_exp_as_block e = match e with
-    | ExpSeq(es, _) -> pprint_expseq es true
+    | ExpSeq(eseq, _) -> pprint_expseq eseq true
     | _ -> pprint_expseq [e] true
 and pprint_exp_as_seq e = match e with
-    | ExpSeq(es, _) -> pprint_expseq es false
+    | ExpSeq(eseq, _) -> pprint_expseq eseq false
     | _ -> pprint_exp e
-and pprint_expseq el braces =
+and pprint_expseq eseq braces =
     if braces then pstr "{" else ();
     ohvbox();
-    (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_exp e) el); cbox();
+    (List.iteri (fun i e -> if i=0 then () else (pstr ";"; pspace()); pprint_exp e) eseq); cbox();
     if braces then pstr "}" else ()
 and pprint_pat p = match p with
     | PatAny(_) -> pstr "_<ANY>"

@@ -472,8 +472,8 @@ and eseq2code eseq code sc =
     let code = transform_all_types_and_cons eseq code sc in
     let pragmas = ref ([]: (string*loc_t) list) in
     let rec knorm_eseq eseq code = (match eseq with
-        | DirPragma (ps, loc) :: rest ->
-            List.iter (fun p -> pragmas := (p, loc) :: !pragmas) ps;
+        | DirPragma (prl, loc) :: rest ->
+            List.iter (fun pr -> pragmas := (pr, loc) :: !pragmas) prl;
             knorm_eseq rest code
         | ei :: rest ->
             let (eki, code) = exp2kexp ei code false sc in

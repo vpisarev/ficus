@@ -28,14 +28,14 @@ let make_bin_op(op, a, b) = ExpBinOp(op, a, b, make_new_ctx())
 let make_un_op(op, a) = ExpUnOp(op, a, make_new_ctx())
 let make_int_lit i n = ExpLit((LitInt i), (TypInt, curr_loc_n n))
 
-let expseq2exp es n = match es with
+let expseq2exp eseq n = match eseq with
     | [] -> ExpNop (curr_loc_n n)
     | e::[] -> e
-    | _ -> ExpSeq(es, (make_new_typ(), (curr_loc_n n)))
+    | _ -> ExpSeq(eseq, (make_new_typ(), (curr_loc_n n)))
 
 let exp2expseq e = match e with
     | ExpNop _ -> []
-    | ExpSeq(es, _) -> es
+    | ExpSeq(eseq, _) -> eseq
     | _ -> e :: []
 
 let plist2exp args n =

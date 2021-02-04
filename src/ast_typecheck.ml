@@ -1768,7 +1768,7 @@ and check_directives eseq env sc =
                 import_mod env alias m true eloc
             with CompileError(_, _) as err -> push_compile_err err; env) in
             (env, (m, eloc) :: mlist)
-        | DirPragma(ps, eloc) ->
+        | DirPragma(prl, eloc) ->
             (env, mlist)
         | _ -> (env, mlist)) (env, []) eseq) in
 
