@@ -852,7 +852,7 @@ let init_all_ids () =
 
 let reserved_keywords = Hashtbl.create 1001
 let _ = List.iter (fun kwd -> Hashtbl.add reserved_keywords kwd 1)
-    ["alignas"; "alignof"; "and"; "and_eq"; "asm"; "atomic_cancel";
+    [(*"alignas"; "alignof"; "and"; "and_eq"; "asm"; "atomic_cancel";
     "atomic_commit"; "atomic_noexcept"; "auto"; "bitand"; "bitor";
     "break"; "case"; "catch"; "char8_t"; "char16_t";
     "char32_t"; "class"; "compl"; "concept"; "const"; "consteval";
@@ -874,7 +874,7 @@ let _ = List.iter (fun kwd -> Hashtbl.add reserved_keywords kwd 1)
     "_Thread_local";
 
     "int8_t"; "uint8_t"; "int16_t"; "uint16_t"; "int32_t"; "uint32_t";
-    "int64_t"; "uint64_t"; "char_"; "fx_result"; "fx_status"; "fx_fv"]
+    "int64_t"; "uint64_t"; "char_";*) "fx_result"; "fx_status"; "fx_fv"]
 
 let builtin_exceptions = ((Hashtbl.create 101): (id_t, id_t) Hashtbl.t)
 let get_builtin_exception n0 loc =
