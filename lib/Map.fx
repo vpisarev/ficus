@@ -254,7 +254,7 @@ fun remove(m: ('k, 'd) map_t, xk: 'k)
     map_t { root=new_root, cmp=m.cmp }
 }
 
-fun fold_left(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
+fun foldl(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -264,7 +264,7 @@ fun fold_left(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
     update_(m.root, f, res0)
 }
 
-fun fold_right(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
+fun foldr(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -284,7 +284,7 @@ fun app(m: ('k, 'd) map_t, f: ('k, 'd) -> void)
     app_(m.root, f)
 }
 
-// similar to fold_right, but does a specific task - constructs the list of results
+// similar to foldr, but does a specific task - constructs the list of results
 fun map(m: ('k, 'd) map_t, f: ('k, 'd) -> 'r): 'res list {
     fun update_list_(t: ('k, 'd) tree_t, f: ('k, 'd) -> 'r, res: 'r list): 'r list =
     match t {

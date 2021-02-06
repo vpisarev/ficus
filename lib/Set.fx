@@ -239,7 +239,7 @@ fun remove(s: 't set_t, x: 't)
     set_t { root=new_root, size=s.size+dsz, cmp=s.cmp }
 }
 
-fun fold_left(s: 't set_t, f: ('t, 'r) -> 'r, res0: 'r)
+fun foldl(s: 't set_t, f: ('t, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -249,7 +249,7 @@ fun fold_left(s: 't set_t, f: ('t, 'r) -> 'r, res0: 'r)
     update_(s.root, f, res0)
 }
 
-fun fold_right(s: 't set_t, f: ('t, 'r) -> 'r, res0: 'r)
+fun foldr(s: 't set_t, f: ('t, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -269,7 +269,7 @@ fun app(s: 't set_t, f: 't -> void)
     app_(s.root, f)
 }
 
-// similar to fold_right, but does a specific task - constructs the list of results
+// similar to foldr, but does a specific task - constructs the list of results
 fun map(s: 't set_t, f: 't -> 'r): 'res list {
     fun update_list_(t: 't tree_t, f: 't -> 'r, res: 'r list): 'r list =
     match t {

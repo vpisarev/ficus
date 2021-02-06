@@ -34,8 +34,8 @@ TEST("ds.set", fun()
     EXPECT_EQ(i12.size, 3)
 
     val fold sum0 = 0 for i <- u12.list() {sum0 + i}
-    val sum1 = u12.fold_left(fun (i: int, s: int) {s + i}, 0)
-    val sum2 = u12.fold_right(fun (i: int, s: int) {s + i}, 0)
+    val sum1 = u12.foldl(fun (i: int, s: int) {s + i}, 0)
+    val sum2 = u12.foldr(fun (i: int, s: int) {s + i}, 0)
     EXPECT_EQ(sum1, sum0)
     EXPECT_EQ(sum2, sum0)
     EXPECT_EQ(u12.map(fun (i: int) {i*i}), [: 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 :])
@@ -200,7 +200,7 @@ TEST("ds.map", fun()
     EXPECT_EQ(wcounter2.list(), ll)
 
     val total_words_ref = fold c=0 for (_, ci) <- ll {c+ci}
-    val total_words = wcounter.fold_left(fun (_: string, ci: int, c: int) {c + ci}, 0)
+    val total_words = wcounter.foldl(fun (_: string, ci: int, c: int) {c + ci}, 0)
 
     EXPECT_EQ(total_words, total_words_ref)
 
