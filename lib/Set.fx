@@ -102,23 +102,23 @@ match t
     | Node(Red, l, y, r) =>
         val c = cmp(x, y)
         if c < 0 {
-            val (l1, dsz) = add_(l, x, cmp)
-            (Node(Red, l1, y, r), dsz)
+            val (l, dsz) = add_(l, x, cmp)
+            (Node(Red, l, y, r), dsz)
         }
         else if c > 0 {
-            val (r1, dsz) = add_(r, x, cmp)
-            (Node(Red, l, y, r1), dsz)
+            val (r, dsz) = add_(r, x, cmp)
+            (Node(Red, l, y, r), dsz)
         }
         else { (t, 0) }
     | Node(Black, l, y, r) =>
         val c = cmp(x, y)
         if c < 0 {
-            val (l1, dsz) = add_(l, x, cmp)
-            (balance_left(l1, y, r), dsz)
+            val (l, dsz) = add_(l, x, cmp)
+            (if dsz > 0 {balance_left(l, y, r)} else {Node(Black, l, y, r)}, dsz)
         }
         else if c > 0 {
-            val (r1, dsz) = add_(r, x, cmp)
-            (balance_right(l, y, r1), dsz)
+            val (r, dsz) = add_(r, x, cmp)
+            (if dsz > 0 {balance_right(l, y, r)} else {Node(Black, l, y, r)}, dsz)
         }
         else { (t, 0) }
     | _ => (Node(Red, (Empty: 't tree_t), x, (Empty: 't tree_t)), 1)
@@ -317,8 +317,10 @@ fun diff(xs: 't set_t, ys: 't set_t)
 
     // Assuming that size(ys) is much smaller than size(xs),
     // the fastest way to compute the difference is to remove
-    // ys elements one-by-one from xs.
-    // The complexity is O(log(size_xs)*size_ys)
+    // ys' elements one-by-one from xs.
+    // The complexity is O(log(size_xs)*size_ys).
+    // If size(ys) ~ size(xs) ~ N then whatever algorithm we use
+    // (using balanced trees), it will have O(log(N)*N) complexity.
     val (res, size) = update_(ys.root, xs.cmp, xs.root, xs.size)
     set_t {root=res, size=size, cmp=xs.cmp}
 }
@@ -339,8 +341,10 @@ fun intersect(xs: 't set_t, ys: 't set_t)
 
     // Assuming that size(ys) is much smaller than size(xs),
     // the fastest way to compute the intersection is to
-    // add those ys elements that also belong to xs to the final set.
-    // The complexity is O(log(size_xs)*size_ys)
+    // add those ys' elements that also belong to xs to the final set.
+    // The complexity is O(log(size_xs)*size_ys).
+    // If size(ys) ~ size(xs) ~ N then whatever algorithm we choose
+    // (using balanced trees), it will have O(log(N)*N) complexity.
     val (res, size) = update_(ys.root, xs.cmp, xs.root, (Empty : 't tree_t), 0)
     set_t {root=res, size=size, cmp=xs.cmp}
 }
@@ -361,7 +365,9 @@ fun union(xs: 't set_t, ys: 't set_t)
 
     // Assuming that size(ys) is much smaller than size(xs),
     // the fastest way to compute the union is to
-    // add ys elements xs. The complexity is O(log(size_xs)*size_ys)
+    // add ys' elements xs. The complexity is O(log(size_xs)*size_ys).
+    // If size(ys) ~ size(xs) ~ N then whatever algorithm we choose
+    // (using balanced trees), it will have O(log(N)*N) complexity.
     val (res, size) = update_(ys.root, xs.cmp, xs.root, xs.size)
     set_t {root=res, size=size, cmp=xs.cmp}
 }

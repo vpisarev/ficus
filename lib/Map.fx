@@ -299,14 +299,13 @@ fun add_list(m: ('k, 'd) map_t, l: ('k, 'd) list)
 {
     val cmp = m.cmp
     val fold new_root=m.root for (xk, xd) <- l {
-        val (new_root, dsz) = add_(new_root, xk, xd, cmp)
-        (new_root, size+dsz)
+        add_(new_root, xk, xd, cmp)
     }
-    map_t {root=new_root, size=size, cmp=cmp}
+    map_t {root=new_root, cmp=cmp}
 }
 
 fun from_list(l: ('k, 'd) list, cmp: 'k cmp_t): ('k, 'd) map_t =
-    add_list((empty(cmp) : ('k, 'd) tree_t), l)
+    add_list((empty(cmp) : ('k, 'd) map_t), l)
 
 fun list(m: ('k, 'd) map_t): ('k, 'd) list
 {

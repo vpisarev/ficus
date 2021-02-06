@@ -186,7 +186,7 @@ TEST("ds.map", fun()
 
     EXPECT_EQ(wcounter.list(), ll)
 
-    // alternative, a faster way to increment word counters is to use Map.update() function,
+    // An alternative, faster way to increment word counters is to use Map.update() function,
     // where we search for each word just once
     val fold wcounter2 = (Map.empty(scmp) : si_map) for w <- words {
             wcounter2.update(w,
