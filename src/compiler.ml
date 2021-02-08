@@ -31,14 +31,15 @@ let make_lexer fname =
     let bare_name = Utils.remove_extension (Filename.basename fname) in
     let prev_lnum = ref 0 in
     (* the standard preamble *)
-    let tokenbuf = (if bare_name = "Builtins" then ref [] else
-        let from_builtins_import_all = [Parser.FROM; Parser.B_IDENT "Builtins"; Parser.IMPORT; Parser.B_STAR; Parser.SEMICOLON] in
-        let import_list = if bare_name = "List" then []
-            else [Parser.B_IMPORT; Parser.B_IDENT "List"; Parser.SEMICOLON] in
-        let import_string = if bare_name = "List" || bare_name = "String" then []
-            else [Parser.B_IMPORT; Parser.B_IDENT "String"; Parser.SEMICOLON] in
-        let import_basics = from_builtins_import_all @ import_list @ import_string in
-        ref import_basics) in
+    let (imports, _) = List.fold_left (fun (imports, found) (mname, from_import) ->
+        if found then (imports, found) else if bare_name = mname then (imports, true)
+        else if from_import then
+            ((imports @ [Parser.FROM; Parser.B_IDENT mname;
+            Parser.IMPORT; Parser.B_STAR; Parser.SEMICOLON]), false)
+        else
+            ((imports @ [Parser.B_IMPORT; Parser.B_IDENT mname; Parser.SEMICOLON]), false))
+        ([], false) [("Builtins", true); ("Option", true); ("List", false); ("Char", false); ("String", false)] in
+    let tokenbuf = ref imports in
     let print_token lexbuf t =
       (let s = Lexer.token2str t in
        let pos_lnum = lexbuf.lex_curr_p.pos_lnum in

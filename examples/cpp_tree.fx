@@ -2,6 +2,7 @@
 // Run it with -c++ option, e.g.:
 //
 // ficus -run -O3 ../examples/cpp_tree.fx -c++
+pragma "c++"
 
 ccode //Imitation of very big included third-party library.
 {
@@ -9,9 +10,9 @@ ccode //Imitation of very big included third-party library.
     #error "recompile this example with -c++ option passed to Ficus"
     #endif
 
-    #include <typeinfo> 
-    #include <set> 
-    #include <string> 
+    #include <typeinfo>
+    #include <set>
+    #include <string>
     #include <iostream>
     #include <sstream>
     #include <memory>
@@ -20,7 +21,7 @@ ccode //Imitation of very big included third-party library.
     class Number;
     class Variable;
 
-    class Expression 
+    class Expression
     {
     friend Expression operator+(const Expression& arg1, const Expression& arg2);
     friend Expression operator*(const Expression& arg1, const Expression& arg2);
@@ -31,15 +32,15 @@ ccode //Imitation of very big included third-party library.
             eMult,
             eBinaryMinus
         } actType;
-        std::shared_ptr<Expression> arg1, arg2; 
+        std::shared_ptr<Expression> arg1, arg2;
     protected:
         Expression() {};
-        virtual std::shared_ptr<Expression> clone() const 
+        virtual std::shared_ptr<Expression> clone() const
         {
             return std::shared_ptr<Expression>(new Expression(arg1, arg2, actType));
         }
         std::string printtype() const { return typeid(*this).name();};
-        virtual std::string _printTree() const 
+        virtual std::string _printTree() const
         {
             std::string result = arg1->printtype() + std::string("{") + arg1->_printTree() + std::string("}|");
             result += (actType==ePlus ? std::string("+") : (actType==eMult ? std::string("*") : std::string("-"))) + std::string("|");
@@ -49,14 +50,14 @@ ccode //Imitation of very big included third-party library.
     private:
         Expression(const Expression& a_arg1, const Expression& a_arg2, typeOfAction a_actType):
             arg1(a_arg1.clone()),
-            arg2(a_arg2.clone()), 
+            arg2(a_arg2.clone()),
             actType(a_actType) {}
         Expression(std::shared_ptr<Expression> a_arg1, std::shared_ptr<Expression> a_arg2, typeOfAction a_actType):
             arg1(a_arg1->clone()),
-            arg2(a_arg2->clone()), 
+            arg2(a_arg2->clone()),
             actType(a_actType) {}
     public:
-        virtual std::string printTree() const 
+        virtual std::string printTree() const
         {
             return printtype() + std::string("{") + _printTree() + std::string("}");
         }
@@ -78,35 +79,35 @@ ccode //Imitation of very big included third-party library.
     }
 
 
-    class Number: public Expression 
+    class Number: public Expression
     {
-    private: 
+    private:
         double value;
     public:
         Number(double a_value): value(a_value) {}
     protected:
-        virtual std::string _printTree() const 
+        virtual std::string _printTree() const
         {
             std::stringstream o;
               if (!(o << value))
                 return "";
-            return o.str();     
+            return o.str();
         }
-        virtual std::shared_ptr<Expression> clone() const 
+        virtual std::shared_ptr<Expression> clone() const
         {
             return std::make_shared<Number>(value);
         }
     };
 
 
-    class Variable: public Expression 
+    class Variable: public Expression
     {
-    private: 
+    private:
         std::string name;
     public:
         Variable(const std::string a_name): name(a_name) {}
     protected:
-        virtual std::shared_ptr<Expression> clone() const 
+        virtual std::shared_ptr<Expression> clone() const
         {
             return std::make_shared<Variable>(name);
         }
@@ -116,7 +117,7 @@ ccode //Imitation of very big included third-party library.
         }
     };
 
-    
+
     // We need custom free function for C++ objects
     // because they are created with new.
     // Usually ficus use malloc.

@@ -156,10 +156,27 @@ fun tokens(s: string, f: char->bool)
     List.rev(if sep {sl} else {s[start:] :: sl})
 }
 
-pure nothrow fun isalpha(c: char): bool = ccode { return fx_isalpha(c) }
-pure nothrow fun isalnum(c: char): bool = ccode { return fx_isalnum(c) }
-pure nothrow fun isdigit(c: char): bool = ccode { return fx_isdigit(c) }
-pure nothrow fun isdecimal(c: char): bool = ccode { return fx_isdecimal(c) }
-pure nothrow fun isspace(c: char): bool = ccode { return fx_isspace(c) }
-pure nothrow fun tolower(c: char): char = ccode { return fx_tolower(c) }
-pure nothrow fun toupper(c: char): char = ccode { return fx_toupper(c) }
+nothrow fun to_int(a: string): int? = ccode
+{
+    bool ok = fx_atoi(a, &fx_result->u.Some, 10);
+    fx_result->tag = (int)ok
+}
+nothrow fun to_double(a: string): double? = ccode
+{
+    bool ok = fx_atof(a, &fx_result->u.Some);
+    fx_result->tag = (int)ok
+}
+
+nothrow fun to_int_or(a: string, defval: int): int = ccode
+{
+    int_ result;
+    bool ok = fx_atoi(a, &result, 10);
+    return ok ? result : defval;
+}
+
+nothrow fun to_double_or(a: string, defval: double): int = ccode
+{
+    double result;
+    bool ok = fx_atof(a, &result);
+    return ok ? result : defval;
+}

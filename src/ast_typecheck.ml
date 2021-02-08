@@ -1062,6 +1062,7 @@ and check_exp e env sc =
                 let mstr = match (deref_typ r_t) with
                     | TypList _ -> "List"
                     | TypString -> "String"
+                    | TypChar -> "Char"
                     | TypApp(_, tn) ->
                         (match (id_info tn) with
                         | IdVariant {contents={dvar_flags={var_flag_module=m}}} when m <> noid -> pp_id2str m

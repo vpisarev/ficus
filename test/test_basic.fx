@@ -480,7 +480,7 @@ TEST("basic.ref", fun()
     val u = ref (None : string?)
 
     *u = y
-    EXPECT_EQ(getsome(*u, "0"), getsome(y, "1"))
+    EXPECT_EQ(u->some_or("0"), y.some_or("1"))
 
     val nested_ref: int ref ref ref = ref (ref (ref 5))
     EXPECT_EQ(***nested_ref, 5)
@@ -498,12 +498,12 @@ TEST("basic.option", fun()
     val y = Some("abc")
     val z: string? = None
 
-    EXPECT(isnone(x))
-    EXPECT(isnone(z))
-    EXPECT(issome(y))
-    EXPECT_EQ(getsome(x, -1), -1)
-    EXPECT_EQ(getsome(y, ""), "abc")
-    EXPECT_EQ(getsome(Some((1, 2, 3)), (0, 0, 0)), (1, 2, 3))
+    EXPECT(x.isnone())
+    EXPECT(z.isnone())
+    EXPECT(y.issome())
+    EXPECT_EQ(x.some_or(-1), -1)
+    EXPECT_EQ(y.some_or(""), "abc")
+    EXPECT_EQ(Some((1, 2, 3)).some_or((0, 0, 0)), (1, 2, 3))
 })
 
 TEST("basic.types.variant", fun()
@@ -686,7 +686,7 @@ TEST("basic.types.conversions", fun()
 {
     EXPECT_EQ(3.f, float(1) + 2)
 
-    val my_pi = getsome(atof("3.14"), 0.0)
+    val my_pi = "3.14".to_double().some_or(0.0)
     EXPECT_NEAR(my_pi * 2, 6.28, 1e-10)
 })
 

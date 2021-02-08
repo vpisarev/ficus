@@ -166,7 +166,7 @@ TEST("ds.map", fun()
     Two turtle doves, and
     A partridge in a pear tree."
 
-    val words = poem.tokens(fun (c: char) {String.isspace(c) || c == '.' || c == ','})
+    val words = poem.tokens(fun (c: char) {c.isspace() || c == '.' || c == ','})
     val fold wcounter = (Map.empty(scmp) : si_map) for w <- words {
         wcounter.add(w, wcounter.find(w, 0)+1)
     }

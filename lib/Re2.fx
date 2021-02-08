@@ -332,7 +332,7 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
             for incl_num <- 0: len_i
             {
                 val (substart,subend) = ranges[incl_num,0]
-                val placeholder_num = getsome(atoi(rewrite[substart+1:substart+2]), 0)
+                val placeholder_num = rewrite[substart+1:substart+2].to_int_or(0)
                 pieces_list = RPInt(placeholder_num) :: RPString(rewrite[pos:substart]) :: pieces_list
                 pos = subend
             }

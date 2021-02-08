@@ -56,14 +56,6 @@ operator > (a: 't, b: 't): bool = a <=> b > 0
 operator >= (a: 't, b: 't): bool = a <=> b >= 0
 operator <= (a: 't, b: 't): bool = a <=> b <= 0
 
-// 't?, int? etc. can be used instead of 't option, int option ...
-type 't option = None | Some: 't
-
-fun getsome(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
-fun getsome(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
-fun isnone(x: 't?) { | Some _ => false | _ => true }
-fun issome(x: 't?) { | Some _ => true | _ => false }
-
 pure nothrow fun length(s: string): int = ccode { return s->length }
 pure nothrow fun length(l: 't list): int = ccode { return fx_list_length(l) }
 
@@ -159,10 +151,6 @@ fun repr(a: char) = "'" + a + "'"
 fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
 fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
 fun string(a: 't ref) = "ref(" + repr(*a) + ")"
-fun string(a: 't?) {
-    | Some(a) => "Some(" + repr(a) + ")"
-    | _ => "None"
-}
 
 fun string(a: 't [])
 {
@@ -415,28 +403,6 @@ pure nothrow operator <=> (a: string, b: string): int = ccode
 // compare the pointers, not the content. Maybe need a separate operator for that.
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode { return a == b }
 pure nothrow operator == (a: cptr, b: cptr): bool = ccode { return a == b }
-pure nothrow operator == (a: 't?, b: 't?) {
-    | (Some(a), Some(b)) => a == b
-    | (None, None) => true
-    | _ => false
-}
-pure nothrow operator <=> (a: 't?, b: 't?) {
-    | (Some(a), Some(b)) => a <=> b
-    | (None, Some _) => -1
-    | (Some _, None) => 1
-    | _ => 0
-}
-
-nothrow fun atoi(a: string): int? = ccode
-{
-    bool ok = fx_atoi(a, &fx_result->u.Some, 10);
-    fx_result->tag = (int)ok
-}
-nothrow fun atof(a: string): double? = ccode
-{
-    bool ok = fx_atof(a, &fx_result->u.Some);
-    fx_result->tag = (int)ok
-}
 
 fun int(x: 't) = (x :> int)
 fun uint8(x: 't) = (x :> uint8)
