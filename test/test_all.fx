@@ -11,5 +11,5 @@ import test_closure
 import test_re2
 import test_ds
 
-val (run, options) = UTest.test_parse_options(Args.arguments())
+val (run, options) = UTest.test_parse_options(Args.arguments(), "Ficus unit tests.", "")
 if run {UTest.test_run_all(options)}

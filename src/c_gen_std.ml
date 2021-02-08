@@ -8,7 +8,7 @@ let gen_std_fun cname argtyps rt =
         cf_name=n; cf_rt=rt;
         cf_args=List.map (fun t -> (noid, t, [])) argtyps;
         cf_cname=cname; cf_body=[];
-        cf_flags=FunInC :: FunStd :: FunImpure :: [];
+        cf_flags=FunInC :: FunImpure :: [];
         cf_scope=ScGlobal :: []; cf_loc=noloc
     } in
     set_idc_entry n (CFun cf);

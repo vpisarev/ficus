@@ -44,7 +44,7 @@ fun mem(l: 't list, a: 't): bool =
     fold r=false for b <- l {if a == b {break with true}; r}
 
 fun find_opt(l: 't list, f: 't -> bool): 't? =
-    fold r=None for a <- l {if f(a) {break with Some(a)}; r}
+    fold r=(None:'t?) for a <- l {if f(a) {break with Some(a)}; r}
 
 fun concat(ll: 't list list): 't list =
     fold s = ([]: 't list) for l <- rev(ll) {l + s}

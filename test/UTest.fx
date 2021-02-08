@@ -255,17 +255,26 @@ fun test_run_all(opts: test_options_t)
     }
 }
 
-fun test_parse_options(args: string list) {
-    var options = test_options_t {}
-    fun print_help() {
-        println("Ficus unit tests.
-The following options are available:
--f filter - specifies glob-like regular expression for the names of tests to run.
-            May include '*' in the beginning of in the end.
+fun test_print_options(title: string, more_opts: string) {
+    if title != "" {
+        println(title);
+        if !title.endswith("\n") { println() }
+    }
+    println("The available options are:
+-f \"filter\" - specifies glob-like regular expression for the names of tests to run.
+            May include '*' in the beginning or in the end.
             '^' in the beginning means that the filter should be inversed.
+            For example,
+                ./ficus -run ../test/test_all.fx -- -f \"basic.*\"
+            compiles and runs all the ficus unit tests which names start with \"basic.\"
 -l - list the available tests.
 -h or -help or --help - prints this information.")
-    }
+    if more_opts != "" {println(more_opts)}
+}
+
+fun test_parse_options(args: string list, title: string, more_opts: string) {
+    var options = test_options_t {}
+
     fun parse(args: string list) {
         | "-f" :: filter :: rest =>
             options.filter = filter
@@ -276,12 +285,12 @@ The following options are available:
             }
             (false, options)
         | "-h" :: _ | "-help" :: _ | "--help" :: _ =>
-            print_help()
+            test_print_options(title, more_opts)
             (false, options)
         | [] => (true, options)
         | o :: _ =>
-            println("Invalid option\n")
-            print_help()
+            println("Error: Invalid option.")
+            test_print_options("", more_opts)
             (false, options)
     }
     parse(args)

@@ -178,7 +178,7 @@ type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
     | ValCtor of id_t (* when the value is 0-parameter constructor of variant (or exception) *)
     | ValGlobal of scope_t list (* global public values at module level or public static class members *)
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
-type fun_flag_t = FunImpure | FunInC | FunStd | FunInline | FunNoThrow | FunReallyNoThrow
+type fun_flag_t = FunImpure | FunInC | FunKW | FunInline | FunNoThrow | FunReallyNoThrow
     | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV | FunRecursive
 type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForMakeTuple | ForUnzip | ForFold | ForNested
 type border_t = BorderNone | BorderClip | BorderZero
@@ -234,7 +234,7 @@ and pat_t =
     | PatIdent of id_t * loc_t
     | PatTuple of pat_t list * loc_t
     | PatVariant of id_t * pat_t list * loc_t
-    | PatRec of id_t option * (id_t * pat_t) list * loc_t
+    | PatRecord of id_t option * (id_t * pat_t) list * loc_t
     | PatCons of pat_t * pat_t * loc_t
     | PatAs of pat_t * id_t * loc_t
     | PatTyped of pat_t * typ_t * loc_t
@@ -481,7 +481,7 @@ let get_pat_loc p = match p with
     | PatIdent(_, l) -> l
     | PatTuple(_, l) -> l
     | PatVariant(_, _, l) -> l
-    | PatRec(_, _, l) -> l
+    | PatRecord(_, _, l) -> l
     | PatCons(_, _, l) -> l
     | PatAs(_, _, l) -> l
     | PatTyped(_, _, l) -> l
@@ -1011,3 +1011,199 @@ let parse_pragmas prl =
         | [] -> result
         in
     parse prl {pragma_cpp=false; pragma_clibs=[]}
+
+type ast_callb_t =
+{
+    acb_typ: (typ_t -> ast_callb_t -> typ_t) option;
+    acb_exp: (exp_t -> ast_callb_t -> exp_t) option;
+    acb_pat: (pat_t -> ast_callb_t -> pat_t) option;
+}
+
+let rec check_n_walk_typ t callb =
+    match callb.acb_typ with
+    | Some(f) -> f t callb
+    | _ -> walk_typ t callb
+and check_n_walk_tlist tlist callb =
+    List.map (fun t -> check_n_walk_typ t callb) tlist
+
+and check_n_walk_exp e callb =
+    match callb.acb_exp with
+    | Some(f) -> f e callb
+    | _ -> walk_exp e callb
+and check_n_walk_elist elist callb =
+    List.map (fun e -> check_n_walk_exp e callb) elist
+
+and check_n_walk_pat p callb =
+    match callb.acb_pat with
+    | Some(f) -> f p callb
+    | _ -> walk_pat p callb
+and check_n_walk_plist plist callb =
+    List.map (fun p -> check_n_walk_pat p callb) plist
+
+and walk_typ t callb =
+    let walk_typ_ t = check_n_walk_typ t callb in
+    let walk_tl_ tl = check_n_walk_tlist tl callb in
+    (match t with
+    | TypVar r ->
+        (match !r with
+        | Some t ->
+            let t1 = walk_typ_ t in
+            r := Some t1
+        | _ -> ());
+        t
+    | TypInt -> t
+    | TypSInt _ -> t
+    | TypUInt _ -> t
+    | TypFloat _ -> t
+    | TypString -> t
+    | TypChar -> t
+    | TypBool -> t
+    | TypVoid -> t
+    | TypFun(args, rt) -> TypFun((walk_tl_ args), (walk_typ_ rt))
+    | TypList t -> TypList(walk_typ_ t)
+    | TypTuple tl -> TypTuple(walk_tl_ tl)
+    | TypVarTuple t_opt -> TypVarTuple(match t_opt with Some t -> Some (walk_typ_ t) | _ -> None)
+    | TypRef t -> TypRef(walk_typ_ t)
+    | TypArray(d, et) -> TypArray(d, walk_typ_ et)
+    | TypVarArray et -> TypVarArray(walk_typ_ et)
+    | TypVarRecord -> t
+    | TypRecord ({contents=(relems, ordered)} as r) ->
+        let new_relems = List.map (fun (n, t, v) -> (n, (walk_typ_ t), v)) relems in
+        r := (new_relems, ordered); t
+    | TypExn -> t
+    | TypErr -> t
+    | TypCPointer -> t
+    | TypApp(ty_args, n) -> TypApp((walk_tl_ ty_args), n)
+    | TypDecl -> t
+    | TypModule -> t)
+
+and walk_exp e callb =
+    let walk_typ_ t = check_n_walk_typ t callb in
+    let walk_exp_ e = check_n_walk_exp e callb in
+    let walk_elist_ el = check_n_walk_elist el callb in
+    let walk_pat_ p = check_n_walk_pat p callb in
+    let walk_plist_ pl = check_n_walk_plist pl callb in
+    let walk_pe_l_ pe_l = List.map (fun (p, e) -> ((walk_pat_ p), (walk_exp_ e))) pe_l in
+    let walk_ne_l_ ne_l = List.map (fun (n, e) -> (n, (walk_exp_ e))) ne_l in
+    let walk_cases_ ple_l =
+        List.map (fun (pl, e) -> ((walk_plist_ pl), (walk_exp_ e))) ple_l in
+    let walk_exp_opt_ e_opt =
+        (match e_opt with
+        | Some e -> Some(walk_exp_ e)
+        | None -> None) in
+    let walk_ctx_ (t, loc) = ((walk_typ_ t), loc) in
+    (match e with
+    | ExpNop (_) -> e
+    | ExpBreak _ -> e
+    | ExpContinue _ -> e
+    | ExpRange(e1_opt, e2_opt, e3_opt, ctx) ->
+        ExpRange((walk_exp_opt_ e1_opt), (walk_exp_opt_ e2_opt),
+                    (walk_exp_opt_ e3_opt), (walk_ctx_ ctx))
+    | ExpLit(l, ctx) -> ExpLit(l, (walk_ctx_ ctx))
+    | ExpIdent(n, ctx) -> ExpIdent(n, (walk_ctx_ ctx))
+    | ExpBinOp(bop, e1, e2, ctx) ->
+        ExpBinOp(bop, (walk_exp_ e1), (walk_exp_ e2), (walk_ctx_ ctx))
+    | ExpUnOp(uop, e, ctx) -> ExpUnOp(uop, (walk_exp_ e), (walk_ctx_ ctx))
+    | ExpSeq(elist, ctx) -> ExpSeq((walk_elist_ elist), (walk_ctx_ ctx))
+    | ExpMkTuple(elist, ctx) -> ExpMkTuple((walk_elist_ elist), (walk_ctx_ ctx))
+    | ExpMkArray(ell, ctx) -> ExpMkArray((List.map walk_elist_ ell), (walk_ctx_ ctx))
+    | ExpMkRecord(e, ne_l, ctx) -> ExpMkRecord((walk_exp_ e), (walk_ne_l_ ne_l), (walk_ctx_ ctx))
+    | ExpUpdateRecord(e, ne_l, ctx) -> ExpUpdateRecord((walk_exp_ e), (walk_ne_l_ ne_l), (walk_ctx_ ctx))
+    | ExpCall(f, args, ctx) -> ExpCall((walk_exp_ f), (walk_elist_ args), (walk_ctx_ ctx))
+    | ExpAt(arr, border, interp, idx, ctx) -> ExpAt((walk_exp_ arr), border, interp, (walk_elist_ idx), (walk_ctx_ ctx))
+    | ExpAssign(lv, rv, loc) -> ExpAssign((walk_exp_ lv), (walk_exp_ rv), loc)
+    | ExpMem(a, member, ctx) -> ExpMem((walk_exp_ a), (walk_exp_ member), (walk_ctx_ ctx))
+    | ExpThrow(a, loc) -> ExpThrow((walk_exp_ a), loc)
+    | ExpIf(c, then_e, else_e, ctx) ->
+        ExpIf((walk_exp_ c), (walk_exp_ then_e), (walk_exp_ else_e), (walk_ctx_ ctx))
+    | ExpWhile(c, e, loc) -> ExpWhile((walk_exp_ c), (walk_exp_ e), loc)
+    | ExpDoWhile(e, c, loc) -> ExpDoWhile((walk_exp_ e), (walk_exp_ c), loc)
+    | ExpFor(pe_l, idx_pat, body, flags, loc) ->
+        ExpFor((walk_pe_l_ pe_l), (walk_pat_ idx_pat), (walk_exp_ body), flags, loc)
+    | ExpMap(pew_ll, body, flags, ctx) ->
+        ExpMap((List.map (fun (pe_l, idx_pat) ->
+            (walk_pe_l_ pe_l), (walk_pat_ idx_pat)) pew_ll),
+            (walk_exp_ body), flags, (walk_ctx_ ctx))
+    | ExpTryCatch(e, cases, ctx) ->
+        ExpTryCatch((walk_exp_ e), (walk_cases_ cases), (walk_ctx_ ctx))
+    | ExpMatch(e, cases, ctx) ->
+        ExpMatch((walk_exp_ e), (walk_cases_ cases), (walk_ctx_ ctx))
+    | ExpCast(e, t, ctx) -> ExpCast((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
+    | ExpTyped(e, t, ctx) -> ExpTyped((walk_exp_ e), (walk_typ_ t), (walk_ctx_ ctx))
+    | ExpCCode(str, ctx) -> ExpCCode(str, (walk_ctx_ ctx))
+    | DefVal(p, v, flags, loc) ->
+        DefVal((walk_pat_ p), (walk_exp_ v), flags, loc)
+    | DefFun(df) ->
+        if !df.df_templ_args != [] then e else
+        (let { df_args; df_typ; df_body } = !df in
+        df := { !df with df_args=(walk_plist_ df_args); df_typ=(walk_typ_ df_typ);
+                df_body=(walk_exp_ df_body) };
+        e)
+    | DefExn(de) ->
+        let { dexn_typ } = !de in
+        de := { !de with dexn_typ=(walk_typ_ dexn_typ) };
+        e
+    | DefTyp(dt) ->
+        let { dt_typ } = !dt in
+        dt := { !dt with dt_typ=(walk_typ_ dt_typ) };
+        e
+    | DefVariant(dvar) ->
+        let { dvar_alias; dvar_cases } = !dvar in
+        dvar := { !dvar with dvar_alias=(walk_typ_ dvar_alias);
+                    dvar_cases=(List.map (fun (n, t) -> (n, walk_typ_ t)) dvar_cases) };
+        e
+    | DefClass(dc) -> (* [TODO] *) e
+    | DefInterface(di) -> (* [TODO] *) e
+    | DirImport (_, _) -> e
+    | DirImportFrom (_, _, _) -> e
+    | DirPragma (_, _) -> e)
+
+and walk_pat p callb =
+    let walk_typ_ t = check_n_walk_typ t callb in
+    let walk_pat_ p = check_n_walk_pat p callb in
+    let walk_pl_ p = check_n_walk_plist p callb in
+    (match p with
+    | PatAny _ -> p
+    | PatLit _ -> p
+    | PatIdent _ -> p
+    | PatTuple(pl, loc) -> PatTuple((walk_pl_ pl), loc)
+    | PatVariant(n, args, loc) -> PatVariant(n, (walk_pl_ args), loc)
+    | PatRecord(n_opt, np_l, loc) ->
+        PatRecord(n_opt, (List.map (fun (n, p) -> (n, (walk_pat_ p))) np_l), loc)
+    | PatCons(p1, p2, loc) -> PatCons((walk_pat_ p1), (walk_pat_ p2), loc)
+    | PatAs(p, n, loc) -> PatAs((walk_pat_ p), n, loc)
+    | PatTyped(p, t, loc) -> PatTyped((walk_pat_ p), (walk_typ_ t), loc)
+    | PatWhen(p, e, loc) -> PatWhen((walk_pat_ p), (check_n_walk_exp e callb), loc)
+    | PatRef(p, loc) -> PatRef((walk_pat_ p), loc))
+
+let rec dup_typ_ t callb =
+    match t with
+    | TypVar {contents=Some(t1)} ->
+        TypVar (ref (Some(dup_typ_ t1 callb)))
+    | TypVar _ -> TypVar (ref None)
+    | TypRecord r ->
+        let (relems, ordered) = !r in
+        let new_relems = List.map (fun (n, t, v) -> (n, (dup_typ_ t callb), v)) relems in
+        TypRecord(ref (new_relems, ordered))
+    | _ -> walk_typ t callb
+
+let rec dup_exp_ e callb =
+    match e with
+    | DefFun (r) -> walk_exp (DefFun(ref (!r))) callb
+    | DefExn (r) -> walk_exp (DefExn(ref (!r))) callb
+    | DefTyp (r) -> walk_exp (DefTyp(ref (!r))) callb
+    | DefVariant (r) -> walk_exp (DefVariant(ref (!r))) callb
+    | DefClass (r) -> walk_exp (DefClass(ref (!r))) callb
+    | DefInterface (r) -> walk_exp (DefInterface(ref (!r))) callb
+    | _ -> walk_exp e callb
+
+let dup_callb =
+{
+    acb_typ = Some(dup_typ_);
+    acb_exp = Some(dup_exp_);
+    acb_pat = None;
+}
+
+let dup_typ t = dup_typ_ t dup_callb
+let dup_exp e = dup_exp_ e dup_callb
+let dup_pat p = walk_pat p dup_callb

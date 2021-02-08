@@ -356,7 +356,7 @@ let get_lit_ctyp l = match l with
 let create_cdefval n t flags cname e_opt code loc =
     let dv = { cv_name=n; cv_typ=t; cv_cname=cname; cv_flags=flags; cv_loc=loc } in
     match t with
-    | CTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
+    | CTypVoid -> raise_compile_err loc "values of 'void' type are not allowed"
     | _ -> ();
     set_idc_entry n (CVal dv);
     (CExpIdent(n, (t, loc)), (CDefVal(t, n, e_opt, loc)) :: code)

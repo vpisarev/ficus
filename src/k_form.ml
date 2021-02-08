@@ -858,7 +858,7 @@ let is_ktyp_integer t allow_bool =
 let create_kdefval n ktyp flags e_opt code loc =
     let dv = { kv_name=n; kv_cname=""; kv_typ=ktyp; kv_flags=flags; kv_loc=loc } in
     match ktyp with
-    | KTypVoid -> raise_compile_err loc "values of `void` type are not allowed"
+    | KTypVoid -> raise_compile_err loc "values of 'void' type are not allowed"
     | _ -> ();
     set_idk_entry n (KVal dv);
     match e_opt with

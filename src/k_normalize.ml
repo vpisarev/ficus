@@ -163,7 +163,10 @@ let rec exp2kexp e code tref sc =
         let (a3, code) = process_rpart e3_opt code (Atom.Lit (LitInt 1L)) in
         (KExpMkTuple(a1 :: a2 :: a3 :: [], kctx), code)
     | ExpLit(lit, _) -> (KExpAtom((Atom.Lit lit), kctx), code)
-    | ExpIdent(n, _) -> (KExpAtom((Atom.Id n), kctx), code)
+    | ExpIdent(n, _) ->
+        (match ktyp with
+        | KTypVoid -> ((KExpNop eloc), code)
+        | _ -> (KExpAtom((Atom.Id n), kctx), code))
     | ExpBinOp(OpLogicAnd, e1, e2, _) ->
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in
@@ -225,12 +228,15 @@ let rec exp2kexp e code tref sc =
             in
         (KExpMkArray((List.rev krows), kctx), code)
     | ExpMkRecord (rn, rinitelems, _) ->
-        let rn_id = match rn with
-            | ExpIdent(rn_id, _) -> rn_id
+        let (rn_id, ctor, relems) = match (rn, (deref_typ etyp)) with
+            | (ExpIdent(rn_id, _), _) ->
+                let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn_id) etyp eloc in
+                (rn_id, ctor, relems)
+            | ((ExpNop _), TypRecord {contents=(relems, true)}) ->
+                (noid, noid, relems)
             | _ -> raise_compile_err (get_exp_loc rn)
                 "k-normalization: in the record construction identifier is expected after type check"
             in
-        let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn_id) etyp eloc in
         let (ratoms, code) = List.fold_left (fun (ratoms, code) (ni, ti, opt_vi) ->
             let (a, code) = try
                 let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rinitelems in
@@ -425,14 +431,20 @@ let rec exp2kexp e code tref sc =
     | DefVal(p, e2, flags, _) ->
         let (e2, code) = exp2kexp e2 code true sc in
         let ktyp = get_kexp_typ e2 in
-        let (v, code) = pat_simple_unpack p ktyp (Some e2) code "v" flags sc in
-        (*  if pat_simple_unpack returns (noid, code), it means that the pattern p does
-            not contain variables to capture, i.e. user wrote something like
-                val _ = <exp> or
-                val (_, (_, _)) = <exp> etc.,
-            which means that the assignment was not generated, but we need to retain <exp>,
-            because it likely has some side effects *)
-        if v = noid then (e2, code) else ((KExpNop eloc), code)
+        (match (p, ktyp) with
+        | (PatIdent(n, _), KTypVoid) ->
+            let dv = { kv_name=n; kv_cname=""; kv_typ=ktyp; kv_flags=flags; kv_loc=eloc } in
+            set_idk_entry n (KVal dv);
+            (e2, code)
+        | _ ->
+            let (v, code) = pat_simple_unpack p ktyp (Some e2) code "v" flags sc in
+            (*  if pat_simple_unpack returns (noid, code), it means that the pattern p does
+                not contain variables to capture, i.e. user wrote something like
+                    val _ = <exp> or
+                    val (_, (_, _)) = <exp> etc.,
+                which means that the assignment was not generated, but we need to retain <exp>,
+                because it likely has some side effects *)
+            if v = noid then (e2, code) else ((KExpNop eloc), code))
     | DefFun df ->
         let code = transform_fun df code sc in ((KExpNop eloc), code)
     | DefTyp _ -> (KExpNop(eloc), code)
@@ -499,7 +511,7 @@ and pat_have_vars p = match p with
     | PatTyped(p, _, _) -> pat_have_vars p
     | PatTuple(pl, _) -> List.exists pat_have_vars pl
     | PatVariant(_, pl, _) -> List.exists pat_have_vars pl
-    | PatRec(_, ip_l, _) -> List.exists (fun (_, pi) -> pat_have_vars pi) ip_l
+    | PatRecord(_, ip_l, _) -> List.exists (fun (_, pi) -> pat_have_vars pi) ip_l
     | PatRef(p, _) -> pat_have_vars p
     | PatWhen(p, _, _) -> pat_have_vars p
 
@@ -535,7 +547,7 @@ and get_record_elems_k vn_opt t loc =
 
 and match_record_pat pat ptyp =
     match pat with
-    | PatRec(rn_opt, relems, loc) ->
+    | PatRecord(rn_opt, relems, loc) ->
         let ((ctor, t, multiple_cases), relems_found) = get_record_elems_k rn_opt ptyp loc in
         let typed_rec_pl = List.fold_left (fun typed_rec_pl (ni, pi) ->
             let ni_orig = get_orig_id ni in
@@ -607,7 +619,7 @@ and pat_need_checks p ptyp =
             (let (_, typed_var_pl) = match_variant_pat p ptyp in
             List.exists (fun (p, t) -> pat_need_checks p t) typed_var_pl)
         with (CompileError _) as e -> check_if_exn e loc)
-    | PatRec (rn_opt, _, loc) ->
+    | PatRecord (rn_opt, _, loc) ->
         (try
             let ((_, _, multiple_cases, _), typed_rec_pl) = match_record_pat p ptyp in
             multiple_cases || (List.exists (fun (_, pi, ti, _) -> pat_need_checks pi ti) typed_rec_pl)
@@ -698,7 +710,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
                 (idx + 1, code)) (0, code) typed_var_pl
                 in
             code)
-    | PatRec (rn_opt, _, _) ->
+    | PatRecord (rn_opt, _, _) ->
         let ((ctor, rectyp, _, multiple_relems), typed_rec_pl) = match_record_pat p ptyp in
         let (r_id, get_vcase, code2) = if ctor = noid then (n, (KExpNop loc), code) else
             let case_id = match rn_opt with (Some rn) -> rn | _ -> raise_compile_err loc "record tag should be non-empty here" in
@@ -907,7 +919,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                         process_pat_list case_n pti_l plists alt_e_opt
                     in
                 (plists, checks, code)
-            | PatRec(rn_opt, _, loc) ->
+            | PatRecord(rn_opt, _, loc) ->
                 let (case_n, _, checks, code, alt_e_opt) = match rn_opt with
                     | Some rn -> get_var_tag_cmp_and_extract n pinfo (checks, code) rn case_sc loc
                     | _ -> (n, [], checks, code, None)

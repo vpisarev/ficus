@@ -43,15 +43,10 @@ val result: uint8 [,] = [
     }
 ]
 
-val roi = result[1000-20:1000+12,8:16]
-val (m, n) = size(roi)
-for i <- 0:m {
-    for j <- 0:n {
-        print(roi[i, j]); if j < n-1 {print(", ")}
-    }
-    println(";")
-}
 val f: File.file_t = File.open("result.pgm", "wb")
-f.print(f"P4\n{w} {h}\n")
-f.write(result)
-f.close()
+try {
+    f.print(f"P4\n{w} {h}\n")
+    f.write(result)
+} finally {
+    f.close()
+}

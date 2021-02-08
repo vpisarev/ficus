@@ -37,6 +37,7 @@ let token2str t = match t with
     | EXCEPTION -> "EXCEPTION"
     | EXPAND -> "EXPAND"
     | EXTENDS -> "EXTENDS"
+    | FINALLY -> "FINALLY"
     | FOLD -> "FOLD"
     | B_FOR -> "B_FOR"
     | FOR -> "FOR"
@@ -111,7 +112,7 @@ let token2str t = match t with
     | BITWISE_AND -> "BITWISE_AND"
     | BITWISE_XOR -> "BITWISE_XOR"
     | BITWISE_OR -> "BITWISE_OR"
-    | BITWISE_NOT -> "BITWISE_NOT"
+    | TILDE -> "TILDE"
     | LOGICAL_AND -> "LOGICAL_AND"
     | LOGICAL_OR -> "LOGICAL_OR"
     | LOGICAL_NOT -> "LOGICAL_NOT"
@@ -176,9 +177,10 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
     [
         ("as", AS, 1); ("break", BREAK, 0); ("catch", CATCH, 1); ("ccode", CCODE, 2);
         ("class", CLASS, 2); ("continue", CONTINUE, 0); ("do", DO, 2);
-        ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1); ("false", FALSE, 0);
-        ("fold", FOLD, 2); ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2);
-        ("if", IF, 2); ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("inline", INLINE, 2);
+        ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
+        ("false", FALSE, 0); ("finally", FINALLY, 1); ("fold", FOLD, 2);
+        ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2); ("if", IF, 2);
+        ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("inline", INLINE, 2);
         ("interface", INTERFACE, 2); ("match", MATCH, 2); ("module", MODULE, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 0);
         ("parallel", PARALLEL, 2); ("pragma", PRAGMA, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
@@ -533,7 +535,7 @@ rule tokens = parse
             | _ -> [BITWISE_OR]
         }
     | '^'   { new_exp := true; [BITWISE_XOR] }
-    | '~'   { check_ne(lexbuf); [BITWISE_NOT] }
+    | '~'   { check_ne(lexbuf); [TILDE] }
     | "&&"  { new_exp := true; [LOGICAL_AND] }
     | "||"  { new_exp := true; [LOGICAL_OR] }
     | '!'   { check_ne(lexbuf); [LOGICAL_NOT] }

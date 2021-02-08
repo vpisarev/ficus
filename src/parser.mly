@@ -33,16 +33,31 @@ let expseq2exp eseq n = match eseq with
     | e::[] -> e
     | _ -> ExpSeq(eseq, (make_new_typ(), (curr_loc_n n)))
 
+let expseq2exp_loc eseq loc = match eseq with
+    | [] -> ExpNop loc
+    | e::[] -> e
+    | _ -> ExpSeq(eseq, (make_new_typ(), loc))
+
 let exp2expseq e = match e with
     | ExpNop _ -> []
     | ExpSeq(eseq, _) -> eseq
     | _ -> e :: []
 
-let plist2exp args n =
-    let rec plist2exp_ plist0 =
-        List.fold_right (fun p (plist, elist) -> let (p_, e_) = pat2exp_ p in ((p_::plist), (e_::elist))) plist0 ([], [])
+let raise_syntax_err msg =
+    raise (SyntaxError (msg, Parsing.symbol_start_pos(), Parsing.symbol_end_pos()))
+
+let raise_syntax_err_loc loc msg =
+    raise (SyntaxErrorLoc (msg, loc))
+
+type parser_fun_arg_t =
+    | PrFunArgPat of pat_t
+    | PrFunArgKW of id_t * typ_t * lit_t option
+
+let plist2exp pl n =
+    let rec plist2exp_ plist0 = List.fold_right (fun p (plist, elist) ->
+        let (p_, e_) = pat2exp_ p in (p_::plist, e_::elist)) plist0 ([], [])
     and pat2exp_ p =
-        (match p with
+        match p with
         | PatAny(loc) ->
             let arg_tp = make_new_typ() in
             let arg_id = gen_temp_id "arg" in
@@ -54,27 +69,13 @@ let plist2exp args n =
         | PatTyped(p, t, loc) ->
             let (p, e) = pat2exp_ p in
             (PatTyped(p, t, loc), e)
-        | _ -> raise (SyntaxError
-            ("unsupported arg pattern in the pattern-matching function",
-            Parsing.symbol_start_pos(),
-            Parsing.symbol_end_pos()))) in
-    let (plist, elist) = plist2exp_ args in
+        | _ -> raise_syntax_err_loc (get_pat_loc p) "unsupported arg pattern in the pattern-matching function"
+        in
+    let (plist, elist) = plist2exp_ pl in
     let match_arg = match elist with
         | e :: [] -> e
         | _ -> ExpMkTuple(elist, (make_new_typ(), curr_loc_n n)) in
     (plist, match_arg)
-
-let make_deffun fname args rt body flags loc =
-    let argtp = List.map (fun _ -> make_new_typ()) args in
-    { df_name=fname; df_templ_args=[]; df_args=args; df_typ=TypFun(argtp, rt);
-      df_body=body; df_flags=flags; df_scope=ScGlobal :: [];
-      df_loc=loc; df_templ_inst=[]; df_env=Env.empty }
-
-let make_pmatch_deffun (flags, fname) (args, rt, prologue) pmatch_clauses args_pos pmatch_pos =
-    let (args_upd, match_arg) = plist2exp args args_pos in
-    let match_e = ExpMatch(match_arg, (List.rev pmatch_clauses), make_new_ctx()) in
-    let body = expseq2exp (prologue @ [match_e]) pmatch_pos in
-    DefFun (ref (make_deffun fname args_upd rt body flags (curr_loc())))
 
 let good_variant_name s =
     let c0 = String.get s 0 in
@@ -84,23 +85,68 @@ let make_variant_type (targs, tname) var_elems0 is_record is_mod_typ =
     let (pos0, pos1) = (Parsing.symbol_start_pos(), Parsing.symbol_end_pos()) in
     let loc = make_loc(pos0, pos1) in
     let var_elems = List.map (fun (n, t) ->
-        if is_record || (good_variant_name n) then (get_id n, t) else
-        raise (SyntaxError ((sprintf
-            "syntax error: variant tag '%s' does not start with a capital latin letter" n),
-            pos0, pos1))) var_elems0 in
+        let nstr = pp_id2str n in
+        if is_record || (good_variant_name nstr) then (n, t) else
+        raise_syntax_err_loc loc (sprintf
+            "syntax error: variant tag '%s' does not start with a capital latin letter" nstr))
+        var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
-               dvar_flags={(default_var_flags()) with var_flag_record=is_record; var_flag_module=is_mod_typ};
+               dvar_flags={(default_var_flags()) with var_flag_record=is_record;
+               var_flag_module=is_mod_typ};
                dvar_cases=var_elems; dvar_ctors=[];
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
+
+let make_deffun fname args rt body flags loc =
+    let (args, argtp, kwargs) = List.fold_left (fun (args, argtp, kwargs) f_arg ->
+        match f_arg with
+        | PrFunArgPat(p) ->
+            if kwargs = [] then (p :: args, (make_new_typ()) :: argtp, kwargs)
+            else raise_syntax_err "keyword and positional parameters cannot be interleaved"
+        | PrFunArgKW(i, t, defval) ->
+            (args, argtp, (i, t, defval) :: kwargs))
+        ([], [], []) args
+        in
+    let (args, argtp, body) = if kwargs = [] then (args, argtp, body) else
+        let recarg = gen_temp_id "__kwargs__" in
+        let kwargs = List.rev kwargs in
+        let rectyp = TypRecord (ref (kwargs, true)) in
+        let recpat = PatRecord(None, List.map (fun (i, _, _) -> (i, PatIdent(i, loc))) kwargs, loc) in
+        let unpack_rec = DefVal(recpat, ExpIdent(recarg, (make_new_typ(), loc)), [], loc) in
+        let body_ctx = get_exp_ctx body in
+        let body_seq = exp2expseq body in
+        let body = ExpSeq(unpack_rec :: body_seq, body_ctx) in
+        (PatTyped(PatIdent(recarg, loc), rectyp, loc) :: args,
+            (make_new_typ()) :: argtp, body)
+        in
+    let df = DefFun (ref { df_name=fname; df_templ_args=[]; df_args=(List.rev args);
+        df_typ=TypFun((List.rev argtp), rt); df_body=body;
+        df_flags=(if kwargs = [] then [] else [FunKW]) @ flags;
+        df_scope=ScGlobal :: []; df_loc=loc;
+        df_templ_inst=[]; df_env=Env.empty }) in
+    [df]
+
+let make_pmatch_deffun (flags, fname) (args, rt) pmatch_clauses args_pos pmatch_pos =
+    let args_pl = List.fold_right (fun fun_arg args_pl ->
+            match fun_arg with
+            | PrFunArgPat(p) -> p :: args_pl
+            | PrFunArgKW _ -> raise_syntax_err_loc (curr_loc_n args_pos)
+                "match-based function may not use keyword arguments. Use explicit match {} expression")
+            args []
+        in
+    let (args_upd, match_arg) = plist2exp args_pl args_pos in
+    let args_upd = List.map (fun p -> PrFunArgPat p) args_upd in
+    let match_e = ExpMatch(match_arg, (List.rev pmatch_clauses), make_new_ctx()) in
+    let body = expseq2exp [match_e] pmatch_pos in
+    make_deffun fname args_upd rt body flags (curr_loc())
 
 let process_for_clauses for_cl loc =
     List.fold_left (fun (for_cl_, idx_pat) (p, idxp, e) ->
         let idx_pat = match (idxp, idx_pat) with
             | (PatAny _, idx_pat) -> idx_pat
             | (_, PatAny _) -> idxp
-            | _ -> raise
-                (SyntaxErrorLoc ("@ is used more than once, which does not make sence and is not supported", loc))
+            | _ -> raise_syntax_err_loc (get_pat_loc idxp)
+                "@ is used more than once, which does not make sence and is not supported"
             in
         (((p, e) :: for_cl_), idx_pat)) ([], PatAny loc) for_cl
 
@@ -182,6 +228,54 @@ let make_chained_cmp chain = match chain with
         let chained_cmp_e = process_chain (ExpNop noloc) first_e chain in
         expseq2exp (code @ (chained_cmp_e :: [])) 1
 
+(*
+    try {
+        block
+    } finally {
+        final_code
+    }
+
+    is converted to
+
+    try {
+        val v = block
+        final_code
+        v
+    } catch {
+        | e => final_code; throw e
+    }
+
+    i.e. the 'final_code' is duplicated twice, but normally this is fine.
+    [TODO] It's possible to avoid this duplication by using extra data type and
+    more complex construction:
+
+    type 't finally_t = FinallyOk: 't | FinallyExn: exn // this can be put into Builtins.fx
+    val v = try {
+        FinallyOk(block)
+    } catch {
+        e => FinallyExn(e)
+    }
+    final_code
+    match v {
+    | FinallyOK(v) => v
+    | FinallyExn(e) => throw e
+    }
+*)
+let make_finally e final_e loc =
+    let eloc = get_exp_loc e in
+    let fe_loc = get_exp_loc final_e in
+    let ll = loclist2loc [eloc; fe_loc] eloc in
+    let tmp = gen_temp_id "v" in
+    let def_tmp = DefVal(PatIdent(tmp, eloc), e, [], loc) in
+    let try_block = (def_tmp :: (exp2expseq final_e)) @ [ExpIdent(tmp, (make_new_typ(), loc))] in
+    let try_block = expseq2exp_loc try_block loc in
+    let some_exn = gen_temp_id "e" in
+    let some_exn_pat = PatIdent(some_exn, fe_loc) in
+    let rethrow_exn = ExpThrow(ExpIdent(some_exn, (TypExn, fe_loc)), fe_loc) in
+    let catch_block = (exp2expseq (dup_exp final_e)) @ [rethrow_exn] in
+    let catch_block = expseq2exp_loc catch_block fe_loc in
+    ExpTryCatch(try_block, [([some_exn_pat], catch_block)], (make_new_typ(), ll))
+
 %}
 
 %token TRUE FALSE
@@ -198,7 +292,7 @@ let make_chained_cmp chain = match chain with
 
 /* keywords */
 %token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION EXTENDS
-%token FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
+%token FINALLY FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
 %token MATCH MODULE NOTHROW OPERATOR PARALLEL PRAGMA PURE REF REF_TYPE STATIC
 %token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE WITH
 
@@ -214,7 +308,7 @@ let make_chained_cmp chain = match chain with
 %token B_STAR STAR SLASH MOD
 %token B_POWER POWER SHIFT_RIGHT SHIFT_LEFT
 %token B_DOT_MINUS DOT_STAR DOT_SLASH DOT_MOD DOT_POWER
-%token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT
+%token BITWISE_AND BITWISE_OR BITWISE_XOR TILDE
 %token APOS CONS CAST EXPAND
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
 %token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL
@@ -246,7 +340,7 @@ let make_chained_cmp chain = match chain with
 %left STAR SLASH MOD DOT_STAR DOT_SLASH DOT_MOD
 %right POWER DOT_POWER
 %left BACKSLASH
-%right B_MINUS B_DOT_MINUS B_PLUS BITWISE_NOT LOGICAL_NOT REF EXPAND
+%right B_MINUS B_DOT_MINUS B_PLUS TILDE LOGICAL_NOT REF EXPAND
 %left APOS
 %right deref_prec
 %right ARROW
@@ -295,7 +389,7 @@ top_level_exp:
         [DirImportFrom (a1, (List.rev $4), curr_loc())]
     }
 | error
-    { raise (SyntaxError ("syntax error", Parsing.symbol_start_pos(), Parsing.symbol_end_pos())) }
+    { raise_syntax_err "syntax error: unrecognized/unsupported top-level expression" }
 
 exp_seq_:
 | exp_seq_ stmt { $2 :: $1 }
@@ -314,20 +408,20 @@ decl:
 | fun_decl_start fun_args EQUAL stmt_or_ccode
     {
         let (flags, fname) = $1 in
-        let (args, rt, prologue) = $2 in
-        let body = expseq2exp (prologue @ [$4]) 4 in
-        [DefFun (ref (make_deffun fname args rt body flags (curr_loc())))]
+        let (args, rt) = $2 in
+        let body = expseq2exp [$4] 4 in
+        make_deffun fname args rt body flags (curr_loc())
     }
 | fun_decl_start fun_args block
     {
         let (flags, fname) = $1 in
-        let (args, rt, prologue) = $2 in
-        let body = expseq2exp (prologue @ (exp2expseq $3)) 3 in
-        [DefFun (ref (make_deffun fname args rt body flags (curr_loc())))]
+        let (args, rt) = $2 in
+        let body = expseq2exp (exp2expseq $3) 3 in
+        make_deffun fname args rt body flags (curr_loc())
     }
 | fun_decl_start fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
     {
-        [make_pmatch_deffun $1 $2 $5 2 5]
+        make_pmatch_deffun $1 $2 $5 2 5
     }
 | simple_type_decl { [$1] }
 | exception_decl { [$1] }
@@ -356,13 +450,10 @@ simple_type_decl:
         let dt_body = $4 in
         match dt_body with
         | TypRecord _ ->
-            make_variant_type (targs, i) (((id2str i), dt_body) :: []) true $1
+            make_variant_type (targs, i) ((i, dt_body) :: []) true $1
         | _ ->
             if $1 = noid then () else
-                raise (SyntaxError
-                    ("type alias cannot be a module type; it should be a record or variant",
-                    Parsing.symbol_start_pos(),
-                    Parsing.symbol_end_pos()));
+                raise_syntax_err "type alias cannot be a module type; it should be a record or variant";
             let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_finalized=false;
                        dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
             DefTyp (ref dt)
@@ -385,8 +476,8 @@ typ_attr:
 | MODULE TYPE { !parser_ctx_module }
 
 variant_decl_start:
-| B_IDENT { $1 }
-| BITWISE_OR B_IDENT { $2 }
+| B_IDENT { get_id $1 }
+| BITWISE_OR B_IDENT { get_id $2 }
 
 exception_decl:
 | EXCEPTION B_IDENT
@@ -507,12 +598,9 @@ simple_exp:
         let e0 = ExpLit(LitNil, ((TypList (make_new_typ())), curr_loc_n 3)) in
         List.fold_left (fun e i -> make_bin_op(OpCons, i, e)) e0 l
     }
-| simple_exp LPAREN exp_list RPAREN
+| simple_exp LPAREN actual_args RPAREN
     %prec fcall_prec
     { ExpCall($1, $3, make_new_ctx()) }
-| simple_exp LPAREN typed_exp RPAREN
-    %prec fcall_prec
-    { ExpCall($1, $3 :: [], make_new_ctx()) }
 | simple_exp LSQUARE idx_list_ RSQUARE
     %prec lsquare_prec
     { ExpAt($1, BorderNone, InterpNone, (List.rev $3), make_new_ctx()) }
@@ -540,10 +628,22 @@ complex_exp:
         | _ -> else_exp
     in
     let (elif_seq, else_exp) = $2 in make_if elif_seq else_exp }
-| TRY block CATCH LBRACE BAR pattern_matching_clauses_ RBRACE { ExpTryCatch ($2, (List.rev $6), make_new_ctx()) }
-| MATCH exp_or_block LBRACE BAR pattern_matching_clauses_ RBRACE
+| TRY block CATCH LBRACE pattern_matching_clauses_with_opt_bar RBRACE
+{
+    ExpTryCatch ($2, $5, make_new_ctx())
+}
+| TRY block CATCH LBRACE pattern_matching_clauses_with_opt_bar RBRACE FINALLY block
+{
+    let loc = curr_loc() in
+    make_finally (ExpTryCatch ($2, $5, make_new_ctx())) $8 loc
+}
+| TRY block FINALLY block
+{
+    make_finally $2 $4 (curr_loc())
+}
+| MATCH exp_or_block LBRACE pattern_matching_clauses_with_opt_bar RBRACE
     {
-        ExpMatch ($2, (List.rev $5), make_new_ctx())
+        ExpMatch ($2, $4, make_new_ctx())
     }
 | FOLD fold_clause block
     {
@@ -553,18 +653,18 @@ complex_exp:
 | FUN fun_args block
     {
         let ctx = make_new_ctx() in
-        let (args, rt, prologue) = $2 in
-        let body = expseq2exp (prologue @ (exp2expseq $3)) 3 in
+        let (args, rt) = $2 in
+        let body = expseq2exp (exp2expseq $3) 3 in
         let fname = gen_temp_id "lambda" in
         let df = make_deffun fname args rt body [] (curr_loc()) in
-        ExpSeq([DefFun (ref df); ExpIdent (fname, ctx)], ctx)
+        ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
     }
 | FUN fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
     {
         let ctx = make_new_ctx() in
         let fname = gen_temp_id "lambda" in
         let df = make_pmatch_deffun ([], fname) $2 $5 2 5 in
-        ExpSeq([df; ExpIdent (fname, ctx)], ctx)
+        ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
     }
 | simple_exp LBRACE id_exp_list_ RBRACE
     %prec fcall_prec
@@ -583,7 +683,7 @@ unary_exp:
 | REF unary_exp { make_un_op(OpMkRef, $2) }
 | B_MINUS unary_exp { make_un_op(OpNegate, $2) }
 | B_PLUS unary_exp { make_un_op(OpPlus, $2) }
-| BITWISE_NOT unary_exp { make_un_op(OpBitwiseNot, $2) }
+| TILDE unary_exp { make_un_op(OpBitwiseNot, $2) }
 | EXPAND unary_exp { make_un_op(OpExpand, $2) }
 
 binary_exp:
@@ -703,7 +803,7 @@ op_name:
 | BITWISE_AND  { fname_op_bit_and() }
 | BITWISE_OR   { fname_op_bit_or() }
 | BITWISE_XOR  { fname_op_bit_xor() }
-| BITWISE_NOT  { fname_op_bit_not() }
+| TILDE  { fname_op_bit_not() }
 | SPACESHIP  { fname_op_spc() }
 | CMP_EQ  { fname_op_eq() }
 | CMP_NE  { fname_op_ne() }
@@ -780,6 +880,10 @@ idx_list_:
 | idx_list_ COMMA range_exp { $3 :: $1 }
 | range_exp { $1 :: [] }
 
+pattern_matching_clauses_with_opt_bar:
+| pattern_matching_clauses_ { List.rev $1 }
+| BAR pattern_matching_clauses_ { List.rev $2 }
+
 pattern_matching_clauses_:
 | pattern_matching_clauses_ BAR matching_patterns_ DOUBLE_ARROW exp_seq_or_none
 { ((List.rev $3), $5) :: $1 }
@@ -809,8 +913,8 @@ simple_pat:
         | p :: [] -> p
         | _ -> PatTuple((List.rev $2), curr_loc())
     }
-| LBRACE id_simple_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
-| dot_ident LBRACE id_simple_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
+| LBRACE id_simple_pat_list_ RBRACE { PatRecord(None, (List.rev $2), curr_loc()) }
+| dot_ident LBRACE id_simple_pat_list_ RBRACE { PatRecord(Some(get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident LPAREN simple_pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident IDENT
     {
@@ -863,8 +967,8 @@ pat:
     }
 | pat CONS pat { PatCons($1, $3, curr_loc()) }
 | pat AS B_IDENT { PatAs($1, (get_id $3), curr_loc()) }
-| dot_ident LBRACE id_pat_list_ RBRACE { PatRec(Some(get_id $1), (List.rev $3), curr_loc()) }
-| LBRACE id_pat_list_ RBRACE { PatRec(None, (List.rev $2), curr_loc()) }
+| dot_ident LBRACE id_pat_list_ RBRACE { PatRecord(Some(get_id $1), (List.rev $3), curr_loc()) }
+| LBRACE id_pat_list_ RBRACE { PatRecord(None, (List.rev $2), curr_loc()) }
 | dot_ident LPAREN pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
 | dot_ident IDENT { PatVariant((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
 | dot_ident literal { PatVariant((get_id $1), [PatLit($2, (curr_loc_n 2))], curr_loc()) }
@@ -923,7 +1027,46 @@ fun_flag:
 | STATIC { FunPrivate }
 
 fun_args:
-| lparen simple_pat_list RPAREN opt_typespec { ($2, $4, []) }
+| lparen fun_arg_list RPAREN opt_typespec { ((List.rev $2), $4) }
+| lparen RPAREN opt_typespec { ([], $3) }
+
+fun_arg_list:
+| fun_arg_list COMMA fun_arg_decl { $3 :: $1 }
+| fun_arg_decl { $1 :: [] }
+
+fun_arg_decl:
+| simple_pat { PrFunArgPat($1) }
+| TILDE B_IDENT COLON typespec EQUAL literal { PrFunArgKW((get_id $2), $4, Some($6)) }
+| TILDE B_IDENT COLON typespec { PrFunArgKW((get_id $2), $4, None) }
+
+actual_args:
+| actual_arg_list_
+{
+    let (args, kwargs, kwloc) = List.fold_left (
+        fun (args, kwargs, kwloc) (i_opt, e, loc) ->
+        match i_opt with
+        | Some i -> (args, (i, e) :: kwargs, if kwloc=noloc then loc else kwloc)
+        | _ ->
+            if kwargs = [] then (e :: args, kwargs, loc) else
+                raise_syntax_err_loc loc "keyword and positional arguments cannot be interleaved")
+        ([], [], noloc) (List.rev $1)
+        in
+    let args = if kwargs = [] then args else
+        let mkrec = ExpMkRecord((ExpNop kwloc), (List.rev kwargs), (make_new_typ(), kwloc)) in
+        mkrec :: args
+        in
+    List.rev args
+}
+| /* empty */ { [] }
+
+actual_arg_list_:
+| actual_arg_list_ COMMA actual_arg { $3 :: $1 }
+| actual_arg { $1 :: [] }
+
+actual_arg:
+| complex_exp { (None, $1, curr_loc()) }
+| typed_exp { (None, $1, curr_loc()) }
+| B_IDENT EQUAL complex_exp { (Some(get_id $1), $3, curr_loc()) }
 
 opt_typespec:
 | COLON typespec { $2 }
@@ -968,17 +1111,17 @@ iface_members:
 | iface_members_ SEMICOLON { List.rev $1 }
 
 iface_members_:
-| iface_members_ iface_decl { $2 :: $1 }
-| iface_members_ SEMICOLON iface_decl { $3 :: $1 }
+| iface_members_ iface_decl { $2 @ $1 }
+| iface_members_ SEMICOLON iface_decl { $3 @ $1 }
 
 iface_decl:
-| simple_type_decl { $1 }
-| exception_decl { $1 }
+| simple_type_decl { [$1] }
+| exception_decl { [$1] }
 | fun_decl_start fun_args
     {
         let (flags, fname) = $1 in
-        let (args, rt, _) = $2 in
-        DefFun (ref (make_deffun fname args rt (ExpNop (curr_loc_n 1)) flags (curr_loc())))
+        let (args, rt) = $2 in
+        make_deffun fname args rt (ExpNop (curr_loc_n 1)) flags (curr_loc())
     }
 
 typespec_or_record:
@@ -1076,8 +1219,8 @@ variant_elems_:
 | variant_elem { $1 :: [] }
 
 variant_elem:
-| B_IDENT COLON typespec_or_record { ($1, $3) }
-| B_IDENT { ($1, TypVoid) }
+| B_IDENT COLON typespec_or_record { ((get_id $1), $3) }
+| B_IDENT { ((get_id $1), TypVoid) }
 
 string_list:
 | string_list COMMA STRING { $3 :: $1 }

@@ -154,9 +154,9 @@ let rec pprint_exp e =
                     | FunNoThrow -> pstr "NOTHROW"; pspace()
                     | FunReallyNoThrow -> pstr "REALLY_NOTHROW"; pspace()
                     | FunPrivate -> pstr "PRIVATE"; pspace()
-                    | FunStd -> pstr "STANDARD"; pspace()
                     | FunUseFV -> pstr "USE_FV"; pspace()
                     | FunRecursive -> pstr "RECURSIVE"; pspace()
+                    | FunKW -> pstr "WITH_KEYWORDS"; pspace()
                     | FunCtor _ -> ()
                     | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();
@@ -337,7 +337,7 @@ and pprint_pat p = match p with
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) pl);
         cbox(); pstr ")"
     | PatVariant(n, elems, loc) -> pprint_id n; pprint_pat (PatTuple (elems, loc))
-    | PatRec(n_opt, elems, loc) ->
+    | PatRecord(n_opt, elems, loc) ->
         obox(); (match n_opt with Some(n) -> pprint_id n; pspace() | _ -> ()); pstr "{";
         List.iteri (fun i (n, p) -> if i = 0 then () else (pstr ","; pspace());
                     pprint_id n; pstr "="; pprint_pat p) elems;

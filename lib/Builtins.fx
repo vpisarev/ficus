@@ -450,6 +450,18 @@ fun int64(x: 't) = (x :> int64)
 fun float(x: 't) = (x :> float)
 fun double(x: 't) = (x :> double)
 
+fun int(x: ('t...)) = (for xj <- x {int(xj)})
+fun uint8(x: ('t...)) = (for xj <- x {uint8(xj)})
+fun int8(x: ('t...)) = (for xj <- x {int8(xj)})
+fun uint16(x: ('t...)) = (for xj <- x {uint16(xj)})
+fun int16(x: ('t...)) = (for xj <- x {int16(xj)})
+fun uint32(x: ('t...)) = (for xj <- x {uint32(xj)})
+fun int32(x: ('t...)) = (for xj <- x {int32(xj)})
+fun uint64(x: ('t...)) = (for xj <- x {uint64(xj)})
+fun int64(x: ('t...)) = (for xj <- x {int64(xj)})
+fun float(x: ('t...)) = (for xj <- x {float(xj)})
+fun double(x: ('t...)) = (for xj <- x {double(xj)})
+
 pure nothrow fun sat_uint8(i: int): uint8 = ccode
 { return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255); }
 
@@ -513,6 +525,11 @@ pure nothrow fun sat_int16(d: double): int16 = ccode
     int_ i = fx_round2I(d);
     return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);
 }
+
+fun sat_uint8(x: ('t...)) = (for xj <- x {sat_uint8(xj)})
+fun sat_int8(x: ('t...)) = (for xj <- x {sat_int8(xj)})
+fun sat_uint16(x: ('t...)) = (for xj <- x {sat_uint16(xj)})
+fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
 
 // do not use lrint(x), since it's slow. and (int)round(x) is even slower
 pure nothrow fun round(x: float): int = ccode { return fx_roundf2I(x) }
