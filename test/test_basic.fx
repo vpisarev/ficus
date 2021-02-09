@@ -759,3 +759,34 @@ TEST("basic.keyword_args", fun()
     EXPECT_NEAR(sqrt(-81.0, use_abs=true, n=4), 3.0, 1e-10)
     EXPECT_NEAR(sqrt(-27.f, n=3), -3.f, 1e-6f)
 })
+
+TEST("basic.finally", fun()
+{
+    var finalized0 = "", finalized1 = ""
+    val res0 =
+        try {
+            var num = 1, denom = 0
+            num/denom
+        }
+        catch {
+            | DivByZeroError => 0
+        }
+        finally {
+            finalized0 = "ok0"
+        }
+    val res1 =
+        try {
+            var num = 1, denom = 1
+            num/denom
+        }
+        catch {
+            | DivByZeroError => 0
+        }
+        finally {
+            finalized1 = "ok1"
+        }
+    EXPECT_EQ(res0, 0)
+    EXPECT_EQ(finalized0, "ok0")
+    EXPECT_EQ(res1, 1)
+    EXPECT_EQ(finalized1, "ok1")
+})
