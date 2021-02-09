@@ -739,3 +739,23 @@ TEST("basic.templates.variants", fun()
     val depth_list = [: for n <- node_list {depth(n)} :]
     EXPECT_EQ(depth_list, [: 0, 0, 1, 2 :])
 })
+
+TEST("basic.keyword_args", fun()
+{
+    fun sqrt(a: 't, ~n: int=2, ~use_abs:bool=false)
+    {
+        if n == 2 {Math.sqrt(a)}
+        else {
+            if n % 2 == 0 || use_abs {
+                Math.pow(Math.abs(a), (1./n :> 't))
+            } else {
+                val (a, s) = if a < (0.:>'t) {(-a, -1)} else {(a, 1)}
+                s*Math.pow(a, (1./n :> 't))
+            }
+        }
+    }
+
+    EXPECT_NEAR(sqrt(81.0), 9.0, 1e-10)
+    EXPECT_NEAR(sqrt(-81.0, use_abs=true, n=4), 3.0, 1e-10)
+    EXPECT_NEAR(sqrt(-27.f, n=3), -3.f, 1e-6f)
+})

@@ -96,7 +96,7 @@ let rec pptype_ t p1 loc =
         pstr (if ordered then "{" else "~{"); pcut(); obox();
         (List.iteri (fun i (n,t,v0_opt) -> if i = 0 then () else (pstr ";"; pspace());
             pprint_id n; pstr ":"; pspace(); pptype_ t TypPr0 loc;
-            match v0_opt with Some(v0) -> pprint_lit v0 loc | _ -> ()) rec_elems);
+            match v0_opt with Some(v0) -> pstr"="; pprint_lit v0 loc | _ -> ()) rec_elems);
         cbox(); pcut(); pstr "}"
     | TypExn -> pstr "Exn"
     | TypErr -> pstr "Err"

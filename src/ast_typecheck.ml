@@ -511,6 +511,15 @@ let rec lookup_id n t env sc loc =
             | IdVal {dv_typ} -> unify dv_typ t loc "incorrect value type"; Some(i)
             | IdFun df ->
                 let { df_templ_args; df_typ; df_flags; df_env; df_scope } = !df in
+                let t = match ((List.mem FunKW df_flags), (deref_typ t)) with
+                    | (true, TypFun(argtyps, rt)) ->
+                        let argtyps = match (List.map deref_typ (List.rev argtyps)) with
+                            | TypRecord {contents=(_, false)} :: _ -> argtyps
+                            | _ -> argtyps @ [TypRecord {contents=([], false)}]
+                            in
+                        TypFun(argtyps, rt)
+                    | _ -> t
+                    in
                 if df_templ_args = [] then
                     if maybe_unify df_typ t true then
                         Some(i)
@@ -811,7 +820,11 @@ and check_exp e env sc =
             else ()
             in*)
         let n = lookup_id n etyp env sc eloc in
-        ExpIdent(n, ctx)
+        let etyp = match (id_info n) with
+            | IdFun _ | IdVal _ -> get_id_typ n eloc
+            | _ -> etyp
+            in
+        ExpIdent(n, (etyp, eloc))
     | ExpMem(e1, e2, _) ->
         (* in the case of '.' operation we do not check e2 immediately after e1,
            because e2 is a 'member' of a structure/module e1,
@@ -1048,6 +1061,15 @@ and check_exp e env sc =
         let new_args = List.map (fun a -> check_exp a env sc) args in
         (try
             let new_f = check_exp f env sc in
+            let new_args = match deref_typ (get_exp_typ new_f) with
+                | TypFun(argtyps, rt) ->
+                    if (List.length argtyps) = (List.length new_args) then new_args
+                    else
+                        let last_typ = Utils.last_elem argtyps in
+                        let mkrec = ExpMkRecord((ExpNop eloc), [], (last_typ, eloc)) in
+                        new_args @ [mkrec]
+                | _ -> new_args
+                in
             ExpCall(new_f, new_args, ctx)
         with (CompileError _) as ex ->
             (* fallback for so called "module types": if we have expression like
@@ -2029,7 +2051,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                         (sprintf "element '%s' is not found in the record '%s'" (pp_id2str n) (pp_id2str (Utils.opt_get rn_opt noid))))
                     [] relems
                     in
-                PatRecord((if ctor <> noid then Some ctor else None), new_relems, loc)
+                PatRecord((if ctor <> noid then Some ctor else None), (List.rev new_relems), loc)
             else
                 raise_compile_err loc "record patterns are not supported in function prototypes yet"
         | PatCons(p1, p2, loc) ->

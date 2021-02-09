@@ -270,9 +270,22 @@ let rec exp2kexp e code tref sc =
         (KExpMkRecord((List.rev ratoms), kctx), code)
     | ExpCall(f, args, _) ->
         let (f_id, code) = exp2id f code false sc "a function name cannot be a literal" in
+        let (args, kwarg_opt) = match (List.rev args) with
+            | (ExpMkRecord((ExpNop _), _, _) as mkrec) :: rest -> ((List.rev rest), Some mkrec)
+            | _ -> (args, None)
+            in
         let (args, code) = List.fold_left (fun (args, code) ei ->
             let (ai, code) = exp2atom ei code false sc in (ai :: args, code)) ([], code) args in
-        (KExpCall(f_id, (List.rev args), kctx), code)
+        let (args, code) = match kwarg_opt with
+            | Some(e) ->
+                let (ke, code) = exp2kexp e code false sc in
+                (match ke with
+                | KExpMkRecord(rest_args, _) ->
+                    ((List.rev args) @ rest_args, code)
+                | _ -> raise_compile_err (get_exp_loc e) "the expression should convert to KExpMkRecord()")
+            | _ -> ((List.rev args), code)
+            in
+        (KExpCall(f_id, args, kctx), code)
     | ExpThrow(e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be thrown as exception" in
         (KExpThrow(a_id, false, eloc), code)
@@ -1013,6 +1026,25 @@ and transform_fun df code sc =
                 | KTypFun(argtyps, rt) -> (argtyps, rt)
                 | _ -> raise_compile_err inst_loc
                     (sprintf "the type of non-constructor function '%s' should be TypFun(_,_)" (id2str inst_name)) in
+            let (inst_args, argtyps, inst_body) =
+                if not (List.mem FunKW inst_flags) then (inst_args, argtyps, inst_body) else
+                match ((List.rev inst_args), (List.rev argtyps), inst_body) with
+                | (_ :: rest_inst_args, KTypRecord (_, relems) :: rest_argtyps,
+                    ExpSeq((DefVal(PatRecord(_, relems_pats, _), ExpIdent(_, _), _, loc)) :: rest_inst_body, body_ctx)) ->
+                    if (List.length relems) = (List.length relems_pats) then ()
+                    else raise_compile_err loc "the number of pattern elems in the unpack operation is incorrect";
+                    if (List.length rest_argtyps) = (List.length rest_inst_args) then ()
+                    else raise_compile_err loc "the number of positional arguments and their types do not match";
+                    let (inst_args, argtyps) = List.fold_left2 (fun (inst_args, argtyps) (ni, ti) (ni_, pi) ->
+                        if ni = ni_ then () else raise_compile_err loc
+                        (sprintf "the record field '%s' does not match the record pattern field '%s'" (id2str ni) (id2str ni_));
+                        (pi :: inst_args, ti :: argtyps)) (rest_inst_args, rest_argtyps) relems relems_pats
+                        in
+                    ((List.rev inst_args), (List.rev argtyps), ExpSeq(rest_inst_body, body_ctx))
+                | _ ->
+                    raise_compile_err df_loc
+                    "the function with keyword parameters must have the anonymous record as the last parameter and should start with the record unpacking"
+                in
             let nargs = List.length inst_args in
             let nargtypes = List.length argtyps in
             let _ = if nargs = nargtypes then () else
