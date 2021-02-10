@@ -241,7 +241,7 @@ TEST("basic.types.templates", fun()
 
 TEST("basic.record", fun()
 {
-    type 't point_t = {x:'t, y:'t}
+    type 't point_t = {x:'t; y:'t}
     val p = point_t {x=5, y=6}
     fun mkpt(x: 't, y: 't) = point_t {x=x, y=y}
 
@@ -249,7 +249,7 @@ TEST("basic.record", fun()
     EXPECT_EQ(f"{mkpt(1, 0).{x=7}}", "{x=7, y=0}")
     EXPECT_EQ(f"{mkpt(1.5, 0.).{y=7.}}", "{x=1.5, y=7.0}")
 
-    type 't rect_t = {x: 't, y: 't, width: 't, height: 't}
+    type 't rect_t = {x: 't; y: 't; width: 't; height: 't}
 
     fun contains(r: 'z rect_t, p: 'z point_t) =
         r.x <= p.x < r.x + r.width &&
@@ -287,7 +287,7 @@ TEST("basic.variant_with_record", fun()
     val t = FF {h=0}
     EXPECT_EQ(string(next(t)), "FF(1)")
 
-    type rr = {h1: int, h2: int}
+    type rr = {h1: int; h2: int}
     type tt2 = FF2 : rr | Empty2
 
     fun next(t: tt2) {
@@ -374,7 +374,7 @@ TEST("basic.ratio", fun()
     EXPECT_EQ(string(a+b), "83/200")
 
     // 2. record
-    type ratio2_t = Ratio2: {num: int, denom: int}
+    type ratio2_t = Ratio2: {num: int; denom: int}
 
     // unfortunately, for now using record patterns directly
     // in function parameters is not yet supported
@@ -674,7 +674,7 @@ TEST("basic.overloaded", fun()
 {
     val t = (1, "abc") + (0.125, "def")
     EXPECT_EQ(t, (1.125, "abcdef"))
-    type 't point_t = {x: 't, y: 't}
+    type 't point_t = {x: 't; y: 't}
 
     operator + (p1: 't point_t, p2: 't point_t) =
         point_t { x=p1.x + p2.x, y=p1.y + p2.y }
@@ -726,7 +726,7 @@ TEST("basic.string", fun()
 
 TEST("basic.templates.variants", fun()
 {
-    type 't tree_t = Node: { balance:int, left:'t tree_t, right:'t tree_t } | Leaf: 't
+    type 't tree_t = Node: { balance:int; left:'t tree_t; right:'t tree_t } | Leaf: 't
     val node_list = Leaf(3) :: Leaf(5) :: (Node { balance=0, left=Leaf(1), right=Leaf(0) }) ::
         (Node { balance=-1, left=Leaf(1), right=Node {balance=0, left=Leaf(10), right=Leaf(100)}}) ::
         []

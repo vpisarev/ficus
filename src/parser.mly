@@ -1127,7 +1127,7 @@ iface_decl:
 typespec_or_record:
 | typespec { $1 }
 | LBRACE id_typ_list_ RBRACE { TypRecord {contents=((List.rev $2), true)} }
-| LBRACE id_typ_list_ COMMA RBRACE { TypRecord {contents=((List.rev $2), true)} }
+| LBRACE id_typ_list_ SEMICOLON RBRACE { TypRecord {contents=((List.rev $2), true)} }
 
 typespec:
 | typespec_nf { $1 }
@@ -1207,7 +1207,7 @@ nobreak_dot_ident:
 | IDENT { $1 }
 
 id_typ_list_:
-| id_typ_list_ COMMA id_typ_elem { $3 :: $1 }
+| id_typ_list_ SEMICOLON id_typ_elem { $3 :: $1 }
 | id_typ_elem { $1 :: [] }
 
 id_typ_elem:

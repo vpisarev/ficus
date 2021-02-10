@@ -126,7 +126,7 @@ fun incise(str: string, starts_ends: (int, int)[]): string []
 //    regex_t - precompiled regexp pattern. Use it for increasing speed, when it's
 //    needed to check match with same pattern multiple times.
 //    Equivalent of RE2 objects.
-type regex_t = { handle: cptr, find_r: cptr}
+type regex_t = { handle: cptr; find_r: cptr}
 
 //    replace_pattern_t - precompiled replace pattern. Use it for increasing speed, when it's
 //    needed to replace many found occurencies.
@@ -134,22 +134,22 @@ type replace_piece_t =
 | RPInt: int
 | RPString: string
 
-type replace_pattern_t = {pieces: replace_piece_t list, max_subnum: int}
+type replace_pattern_t = {pieces: replace_piece_t list; max_subnum: int}
 
 //    options_t - regular expression options.
 //    Equivalent of RE2::Options objects. See re2.h for detailed meaning of particular option.
 type options_t =
 {
-    posix_syntax: bool = false,
-    longest_match: bool = false,
-//    max_mem: int = kDefaultMaxMem,
-    literal: bool = false,
-    never_nl: bool = false,
-    dot_nl: bool = false,
-    never_capture: bool = false,
-    case_sensitive: bool = true,
-    perl_classes: bool = false,
-    word_boundary: bool = false,
+    posix_syntax: bool = false;
+    longest_match: bool = false;
+//    max_mem: int = kDefaultMaxMem;
+    literal: bool = false;
+    never_nl: bool = false;
+    dot_nl: bool = false;
+    never_capture: bool = false;
+    case_sensitive: bool = true;
+    perl_classes: bool = false;
+    word_boundary: bool = false;
     one_line: bool = false
 }
 
@@ -707,7 +707,7 @@ fun find_and_consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    
 //    Equivalent of RE2::Anchor
 type anchor_t =
 {
-    anchor_start: bool = false,
+    anchor_start: bool = false;
     anchor_both : bool = false // [TODO]: In this case we need enum, but right now anchor_both just overrides anchor_start
 }
 

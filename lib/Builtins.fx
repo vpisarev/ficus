@@ -35,6 +35,14 @@ fun assert(f: bool) = if !f {throw AssertError}
 
 fun ignore(_: 't) {}
 
+// 't?, int? etc. can be used instead of 't option, int option ...
+module type 't option = None | Some: 't
+
+fun some_or(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
+fun getsome(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
+fun isnone(x: 't?) { | Some _ => false | _ => true }
+fun issome(x: 't?) { | Some _ => true | _ => false }
+
 fun __is_scalar__(x: 't) = false
 fun __is_scalar__(x: int) = true
 fun __is_scalar__(x: int8) = true
@@ -141,6 +149,12 @@ pure fun string(a: double): string = ccode
     return fx_ascii2str(buf, -1, fx_result);
 }
 fun string(a: string) = a
+
+fun string(a: 't?) {
+    | Some(a) => "Some(" + repr(a) + ")"
+    | _ => "None"
+}
+
 fun ord(c: char) = (c :> int)
 fun chr(i: int) = (i :> char)
 
@@ -355,6 +369,18 @@ operator .< (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj < bj
 operator .<= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj <= bj})
 operator .> (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj > bj})
 operator .>= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj >= bj})
+
+pure nothrow operator == (a: 't?, b: 't?) {
+    | (Some(a), Some(b)) => a == b
+    | (None, None) => true
+    | _ => false
+}
+pure nothrow operator <=> (a: 't?, b: 't?) {
+    | (Some(a), Some(b)) => a <=> b
+    | (None, Some _) => -1
+    | (Some _, None) => 1
+    | _ => 0
+}
 
 fun all(a: (bool...)) = fold f=true for x <- a {f & x}
 fun any(a: (bool...)) = fold f=false for x <- a {f | x}
@@ -592,6 +618,7 @@ fun print(a: 't ref) {
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
+fun array(): 't [] = [for i<-0:0 {(None : 't?).getsome()}]
 fun array(n: int, x: 't) = [for i <- 0:n {x}]
 fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
 fun array((m: int, n: int, l: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]

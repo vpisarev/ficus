@@ -10,7 +10,7 @@
 
    Below is the original copyright and the license:
 
- * ====
+ * =====
  * Copyright (c) 2007, Benedikt Meurer <benedikt.meurer@googlemail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -38,13 +38,13 @@
  * be compatible { the Map and Set modules in the OCaml standard library
  * (which are implemented using AVL trees). You can use the Rbmap and Rbset
  * modules as drop-in replacement for the Map and Set modules.
- * ====
+ * =====
 */
 
 type 'k cmp_t = ('k, 'k) -> int
 type color_t = Red | Black
 type ('k,'d) tree_t = Empty | Node: (color_t, ('k,'d) tree_t, 'k, 'd, ('k,'d) tree_t)
-module type ('k, 'd) map_t = { root: ('k,'d) tree_t, cmp: 'k cmp_t }
+module type ('k, 'd) map_t = { root: ('k,'d) tree_t; cmp: 'k cmp_t }
 
 exception RBMapError
 

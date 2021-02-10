@@ -1,6 +1,6 @@
-import Args
+import Sys
 
-type tree = Empty | Node: {left: tree, right: tree}
+type tree = Empty | Node: {left: tree; right: tree}
 
 fun make (d: int) =
     if d == 0 { Node {left=Empty, right=Empty} }
@@ -12,7 +12,7 @@ fun check (t: tree): int {
 }
 
 val min_depth = 4
-val max_depth = match Args.arguments() {
+val max_depth = match Sys.arguments() {
     | n_str :: [] => n_str.to_int_or(10)
     | _ => 20
     }

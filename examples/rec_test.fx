@@ -1,5 +1,5 @@
-type 't point_ = {x: 't, y: 't}
-type 't rect_ = {x: 't, y: 't, width: 't, height: 't}
+type 't point_ = {x: 't; y: 't}
+type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
 
 fun contains(r: 'z rect_, p: 'z point_) =
     r.x <= p.x < r.x + r.width &&

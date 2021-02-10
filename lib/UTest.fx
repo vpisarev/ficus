@@ -17,7 +17,7 @@ type test_options_t =
 
 type test_info_t =
 {
-    name: string,
+    name: string;
     f: void->void
 }
 
@@ -44,7 +44,7 @@ fun test_rng_copy(rng: test_rng_t)
 
 type test_state_t =
 {
-    currstatus: bool,
+    currstatus: bool;
     rng: test_rng_t
 }
 

@@ -1091,9 +1091,11 @@ and check_exp e env sc =
                         | _ -> "")
                     | _ -> ""
                     in
-                let m_id = if mstr <> "" then (get_id mstr) else raise ex in
-                let (ftyp, floc) = mem_ctx in
-                let new_f = ExpMem(ExpIdent(m_id, (make_new_typ(), floc)), mem_f_exp, mem_ctx) in
+                let new_f = if mstr = "Builtins" then mem_f_exp else
+                    let m_id = if mstr <> "" then (get_id mstr) else raise ex in
+                    let (ftyp, floc) = mem_ctx in
+                    ExpMem(ExpIdent(m_id, (make_new_typ(), floc)), mem_f_exp, mem_ctx)
+                    in
                 let new_exp = ExpCall(new_f, r0 :: args0, ctx) in
                 check_exp new_exp env sc
             | _ -> raise ex)

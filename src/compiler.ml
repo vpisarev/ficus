@@ -38,7 +38,7 @@ let make_lexer fname =
             Parser.IMPORT; Parser.B_STAR; Parser.SEMICOLON]), false)
         else
             ((imports @ [Parser.B_IMPORT; Parser.B_IDENT mname; Parser.SEMICOLON]), false))
-        ([], false) [("Builtins", true); ("Option", true); ("List", false); ("Char", false); ("String", false)] in
+        ([], false) [("Builtins", true); ("List", false); ("Char", false); ("String", false)] in
     let tokenbuf = ref imports in
     let print_token lexbuf t =
       (let s = Lexer.token2str t in

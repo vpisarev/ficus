@@ -1,7 +1,7 @@
-import Args
+import Sys
 import File
 
-val N = match Args.arguments() {
+val N = match Sys.arguments() {
     | n_str :: [] => n_str.to_int_or(16000)
     | _ => 16000
     }

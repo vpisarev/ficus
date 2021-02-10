@@ -9,7 +9,7 @@ from UTest import *
 
 TEST("btree.depth_4_10", fun() {
 
-type tree = Empty | Node: {left: tree, right: tree}
+type tree = Empty | Node: {left: tree; right: tree}
 
 fun make (d: int) =
     if d == 0 { Node {left=Empty, right=Empty} }

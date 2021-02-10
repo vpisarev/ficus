@@ -1,4 +1,4 @@
-import Args, Math
+import Sys, Math
 
 fun A(i: int, j: int)
 {
@@ -39,7 +39,7 @@ fun spectralnorm(n: int)
     Math.sqrt(vBv/vv)
 }
 
-val N = match Args.arguments() {
+val N = match Sys.arguments() {
     | n_str :: [] => n_str.to_int_or(5500)
     | _ => 5500
     }
