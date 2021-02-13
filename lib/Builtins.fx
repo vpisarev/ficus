@@ -38,6 +38,8 @@ fun ignore(_: 't) {}
 // 't?, int? etc. can be used instead of 't option, int option ...
 module type 't option = None | Some: 't
 
+type byte = uint8
+
 fun some_or(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
 fun getsome(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
 fun isnone(x: 't?) { | Some _ => false | _ => true }
@@ -622,6 +624,7 @@ fun array(): 't [] = [for i<-0:0 {(None : 't?).getsome()}]
 fun array(n: int, x: 't) = [for i <- 0:n {x}]
 fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
 fun array((m: int, n: int, l: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
+fun copy(a: 't [+]) = [for x <- a {x}]
 
 pure nothrow fun size(a: 't []): int = ccode { return a->dim[0].size }
 pure nothrow fun size(a: 't [,]): (int, int) = ccode

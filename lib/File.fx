@@ -55,10 +55,10 @@ nothrow fun close(f: file_t): void = ccode
     }
 }
 
-nothrow fun isOpened(f: file_t): bool = ccode
+nothrow fun is_open(f: file_t): bool = ccode
 { return f->handle && f->handle->ptr; }
 
-fun isEOF(f: file_t): bool = ccode
+fun eof(f: file_t): bool = ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -128,6 +128,11 @@ fun print(f: file_t, x: double): void = ccode
 fun println(f: file_t, x: 't): void
 {
     print(f, x)
+    print(f, "\n")
+}
+
+fun println(f: file_t): void
+{
     print(f, "\n")
 }
 

@@ -70,6 +70,19 @@ match t
 
 fun mem(s: 't set_t, x: 't): bool = mem_(s.root, x, s.cmp)
 
+fun find_opt_(t: 't tree_t, x: 't, cmp: 't cmp_t): 't? =
+match t
+{
+    | Node(_, l, y, r) =>
+        val c = cmp(x, y)
+        if c < 0 { mem_(l, x, cmp) }
+        else if c > 0 { mem_(r, x, cmp) }
+        else { Some(y) }
+    | _ => None
+}
+
+fun find_opt(s: 't set_t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
+
 fun balance_left(l: 't tree_t, x: 't, r: 't tree_t)
 {
     | (Node(Red, Node(Red, a, x, b), y, c), z, d) =>

@@ -17,11 +17,15 @@ fun last(_: 't list)
 }
 
 fun nth(l: 't list, n: int) =
-    match l
-    {
-        | a :: rest => if n == 0 {a} else {nth(rest, n-1)}
-        | _ => throw OutOfRangeError
-    }
+match l
+{
+    | a :: rest => if n == 0 {a} else {nth(rest, n-1)}
+    | _ => throw OutOfRangeError
+}
+fun skip(l: 't list, n: int): 't list =
+    if n == 0 {l} else { match l { | a :: rest => skip(rest, n-1) | _ => throw OutOfRangeError } }
+fun skip_nothrow(l: 't list, n: int): 't list =
+    if n == 0 {l} else { match l { | a :: rest => skip_nothrow(rest, n-1) | _ => [] } }
 
 fun rev(l: 't list): 't list =
     fold r=[] for a <- l {a :: r}
