@@ -46,6 +46,7 @@ int FX_EXN_ZeroStepError = -23;
 int FX_EXN_StackOverflowError = -24;
 int FX_EXN_ParallelForError = -25;
 int FX_EXN_BadArgError = -26;
+int FX_EXN_OverflowError = -27;
 
 int fx_init(int argc, char** argv)
 {
@@ -85,6 +86,7 @@ int fx_init(int argc, char** argv)
     FX_DECL_STD_EXN(StackOverflowError);
     FX_DECL_STD_EXN(ParallelForError);
     FX_DECL_STD_EXN(BadArgError);
+    FX_DECL_STD_EXN(OverflowError);
 
     #undef FX_DECL_STD_EXN
 

@@ -727,14 +727,14 @@ let fname_op_shr() = get_id "__shr__"
 let fname_op_bit_and() = get_id "__bit_and__"
 let fname_op_bit_or() = get_id "__bit_or__"
 let fname_op_bit_xor() = get_id "__bit_xor__"
-let fname_op_spc() = get_id "__spc__"
+let fname_op_cmp() = get_id "__cmp__"
 let fname_op_eq() = get_id "__eq__"
 let fname_op_ne() = get_id "__ne__"
 let fname_op_lt() = get_id "__lt__"
 let fname_op_gt() = get_id "__gt__"
 let fname_op_le() = get_id "__le__"
 let fname_op_ge() = get_id "__ge__"
-let fname_op_dot_spc() = get_id "__dot_spc__"
+let fname_op_dot_cmp() = get_id "__dot_cmp__"
 let fname_op_dot_eq() = get_id "__dot_eq__"
 let fname_op_dot_ne() = get_id "__dot_ne__"
 let fname_op_dot_lt() = get_id "__dot_lt__"
@@ -794,14 +794,14 @@ let get_binop_fname bop loc =
     | OpBitwiseAnd -> fname_op_bit_and()
     | OpBitwiseOr -> fname_op_bit_or()
     | OpBitwiseXor -> fname_op_bit_xor()
-    | OpSpaceship -> fname_op_spc()
+    | OpSpaceship -> fname_op_cmp()
     | OpCompareEQ -> fname_op_eq()
     | OpCompareNE -> fname_op_ne()
     | OpCompareLE -> fname_op_le()
     | OpCompareGE -> fname_op_ge()
     | OpCompareLT -> fname_op_lt()
     | OpCompareGT -> fname_op_gt()
-    | OpDotSpaceship -> fname_op_dot_spc()
+    | OpDotSpaceship -> fname_op_dot_cmp()
     | OpDotCompareEQ -> fname_op_dot_eq()
     | OpDotCompareNE -> fname_op_dot_ne()
     | OpDotCompareLE -> fname_op_dot_le()
@@ -830,7 +830,7 @@ let fname_always_import () =
     fname_op_dot_mul(); fname_op_dot_div(); fname_op_dot_mod(); fname_op_dot_pow();
     fname_op_shl(); fname_op_shr();
     fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor();
-    fname_op_spc(); fname_op_dot_spc();
+    fname_op_cmp(); fname_op_dot_cmp();
     fname_op_eq(); fname_op_ne(); fname_op_le(); fname_op_ge(); fname_op_lt(); fname_op_gt();
     fname_op_dot_eq(); fname_op_dot_ne(); fname_op_dot_le();
     fname_op_dot_ge(); fname_op_dot_lt(); fname_op_dot_gt();

@@ -564,6 +564,7 @@ simple_exp:
     ExpUpdateRecord(ExpUnOp(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
         (List.rev $4), make_new_ctx()) }
 | B_LPAREN complex_exp RPAREN { $2 }
+| B_LPAREN block RPAREN { $2 }
 | B_LPAREN complex_exp COMMA exp_list RPAREN { ExpMkTuple(($2 :: $4), make_new_ctx()) }
 | B_LPAREN typed_exp RPAREN { $2 }
 | B_LPAREN B_FOR nested_for_ block RPAREN
@@ -804,14 +805,14 @@ op_name:
 | BITWISE_OR   { fname_op_bit_or() }
 | BITWISE_XOR  { fname_op_bit_xor() }
 | TILDE  { fname_op_bit_not() }
-| SPACESHIP  { fname_op_spc() }
+| SPACESHIP  { fname_op_cmp() }
 | CMP_EQ  { fname_op_eq() }
 | CMP_NE  { fname_op_ne() }
 | CMP_LE  { fname_op_le() }
 | CMP_GE  { fname_op_ge() }
 | CMP_LT  { fname_op_lt() }
 | CMP_GT  { fname_op_gt() }
-| DOT_SPACESHIP  { fname_op_dot_spc() }
+| DOT_SPACESHIP  { fname_op_dot_cmp() }
 | DOT_CMP_EQ  { fname_op_dot_eq() }
 | DOT_CMP_NE  { fname_op_dot_ne() }
 | DOT_CMP_LE  { fname_op_dot_le() }

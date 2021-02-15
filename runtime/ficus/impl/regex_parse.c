@@ -58,24 +58,11 @@
 /* Using locations.  */
 #define YYLSP_NEEDED 0
 
-
-
-/* Tokens.  */
-#ifndef YYTOKENTYPE
-# define YYTOKENTYPE
-   /* Put the tokens into the symbol table, so that GDB and other debuggers
-      know about them.  */
-   enum yytokentype {
-     CHAR = 258,
-     EOL = 259
-   };
-#endif
-/* Tokens.  */
-#define CHAR 258
-#define EOL 259
-
-
-
+enum
+{
+    CHAR = 258,
+    EOL = 259
+};
 
 /* Copy the first part of user declarations.  */
 

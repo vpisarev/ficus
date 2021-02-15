@@ -167,7 +167,6 @@ static void fx_re_emit_(fx_Regexp*);
 
 ////////////////////////////// autogenerate files //////////////////////////////
 
-#include "regex_tokens.h"
 #include "regex_parse.c"
 
 ////////////////////// compile & interpret regexps /////////////////////////////

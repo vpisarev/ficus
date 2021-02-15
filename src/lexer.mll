@@ -147,18 +147,6 @@ let token2str t = match t with
     | DOT_CMP_GT -> "DOT_CMP_GT"
     | FOLD_RESULT -> "FOLD_RESULT"
 
-let token2str_pp t =
-    "'" ^ (match t with
-    | LPAREN -> "("
-    | LSQUARE -> "["
-    | LBRACE -> "{"
-    | RPAREN -> ")"
-    | RSQUARE -> "]"
-    | RBRACE -> "}"
-    | SEMICOLON -> ";"
-    | DOUBLE_ARROW -> "=>"
-    | _ -> String.lowercase_ascii (token2str t)) ^ "'"
-
 let keywords = Hashtbl.create 101
 let fname = ref "unknown"
 
@@ -248,28 +236,6 @@ let paren_stack = ref []
 let push_paren_stack tk lexbuf =
     paren_stack := (tk, lexbuf.lex_start_p) :: !paren_stack
 
-let unmatchedTokenMsg t0 expected_list =
-    let expected_str = List.fold_left (fun str t -> let t_str = token2str_pp t in
-                if str = "" then t_str else str ^ "/" ^ t_str) "" expected_list in
-    let found_in_stack = expected_str = "" ||
-        (List.exists (fun (t, _) -> List.exists (fun t1 -> t = t1) expected_list) !paren_stack) in
-    if not found_in_stack then
-        sprintf "%s without preceding %s." (token2str_pp t0) expected_str
-    else
-    match !paren_stack with
-    | (_, p) :: _ ->
-        let (kw, expected) =
-            (match !paren_stack with
-            | (LPAREN, _) :: _ -> ("Unmatched '('", "")
-            | (LSQUARE, _) :: _ -> ("Unmatched '['", "")
-            | (LBRACE, _) :: _ -> ("Unmatched '{'", "")
-            | (LLIST, _) :: _ -> ("Unmatched '[:'", "")
-            | (t1, _) :: _ -> ((token2str t1), "")
-            | _ -> ("<START>", ""))
-        in let expected_msg = if expected <> "" then ", " ^ expected ^ " is expected" else "" in
-        sprintf "%s at %s%s." kw (pos2str p false) expected_msg
-    | _ -> sprintf "Unexpected %s." (token2str_pp t0)
-
 let check_ne lexbuf =
     if !new_exp then
         ()
@@ -278,6 +244,7 @@ let check_ne lexbuf =
 
 let decode_special_char lexbuf c = match c with
     | "\\\"" -> "\""
+    | "\\\'" -> "'"
     | "\\\\" -> "\\"
     | "\\n" -> "\n"
     | "\\t" -> "\t"
@@ -651,8 +618,9 @@ and strings = parse
     | special_char as c
         {
             string_literal := !string_literal ^
-                (match !string_literal_typ with
-                | StrLitRegexp -> c
+                (match (!string_literal_typ, c) with
+                | (_, "\\\"") -> "\""
+                | (StrLitRegexp, _) -> c
                 | _ -> decode_special_char lexbuf c);
             strings lexbuf
         }
@@ -753,6 +721,7 @@ and ccode = parse
             comments_level := 1;
             comment_start := lexbuf.lex_start_p;
             comments lexbuf;
+            add_ccode "\n";
             ccode lexbuf
         }
     | "//"
@@ -760,7 +729,8 @@ and ccode = parse
             if (eol_comments lexbuf) = EOF then
                 raise (lexErrAt "Unterminated ccode block" (!ccode_start, lexbuf.lex_curr_p))
             else
-                ccode lexbuf
+                (add_ccode "\n";
+                ccode lexbuf)
         }
 
     | ['\'' '\"' ] as c

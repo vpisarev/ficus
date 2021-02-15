@@ -10,6 +10,7 @@ ccode { #include <string.h> }
 inline fun length(s: string) = Builtins.length(s)
 inline fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
 inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
+inline fun cmp(s1: string, s2: string) = s1 <=> s2
 
 nothrow pure fun empty(s: string): bool = ccode { return s->length == 0 }
 

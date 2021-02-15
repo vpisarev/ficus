@@ -99,7 +99,7 @@ extern int FX_EXN_NullPtrError;
 extern int FX_EXN_OptionError;
 extern int FX_EXN_OutOfMemError;
 extern int FX_EXN_OutOfRangeError;
-extern int FX_EXN_RangeError;
+extern int FX_EXN_OverflowError;
 extern int FX_EXN_SizeError;
 extern int FX_EXN_SizeMismatchError;
 extern int FX_EXN_SysBreak;
@@ -326,6 +326,7 @@ void fx_free_str(fx_str_t* str);
 void fx_free_cstr(fx_cstr_t* cstr);
 void fx_copy_str(const fx_str_t* src, fx_str_t* dst);
 int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
+int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str);
 
 #define FX_COPY_STR(src, dst) if((src)->rc) { FX_INCREF(*(src)->rc); *(dst) = *(src); } else *(dst) = *(src);
 #define FX_FREE_STR(str) if(!(str)->rc) ; else fx_free_str(str)

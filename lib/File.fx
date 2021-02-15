@@ -205,3 +205,59 @@ fun rename(name: string, new_name: string): bool = ccode
     }
     return fx_status;
 }
+
+fun read_utf8(fname: string): string = ccode
+{
+    fx_cstr_t fname_;
+    int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
+    if (fx_status >= 0) {
+        FILE* f = fopen(fname_.data, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            int_ size = (int_)ftell(f);
+            fseek(f, 0, SEEK_SET);
+            fx_cstr_t buf;
+            fx_status = fx_make_cstr(0, size, &buf);
+            if (fx_status >= 0) {
+                int_ count = (int_)fread(buf.data, 1, (size_t)size, f);
+                if (count == size) {
+                    fx_status = fx_cstr2str(buf.data, size, fx_result);
+                } else {
+                    fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
+                }
+                fx_free_cstr(&buf);
+            }
+            fclose(f);
+        } else {
+            fx_status = FX_SET_EXN_FAST(FX_EXN_FileOpenError);
+        }
+        fx_free_cstr(&fname_);
+    }
+    return fx_status;
+}
+
+fun write_utf8(fname: string, text: string): void = ccode
+{
+    fx_cstr_t fname_;
+    int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
+    if (fx_status >= 0) {
+        FILE* f = fopen(fname_.data, "wb");
+        if (f) {
+            fx_cstr_t buf;
+            fx_status = fx_str2cstr(text, &buf, 0, 0);
+            if (fx_status >= 0) {
+                int_ count = (int_)fwrite(buf.data, 1, buf.length, f);
+                if (count != buf.length)
+                    fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
+                fx_free_cstr(&buf);
+            }
+            fclose(f);
+            if (fx_status < 0)
+                remove(fname_.data);
+        } else {
+            fx_status = FX_SET_EXN_FAST(FX_EXN_FileOpenError);
+        }
+        fx_free_cstr(&fname_);
+    }
+    return fx_status;
+}

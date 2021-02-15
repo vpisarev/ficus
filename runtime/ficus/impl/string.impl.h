@@ -56,6 +56,20 @@ int fx_make_str(const char_* strdata, int_ length, fx_str_t* str)
     return FX_OK;
 }
 
+int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str)
+{
+    size_t total = sizeof(*str->rc) + length*sizeof(strdata[0]);
+    str->rc = (int_*)fx_malloc(total);
+    if(!str->rc) FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+
+    *str->rc = 1;
+    str->data = (char*)(str->rc + 1);
+    str->length = length;
+    if(strdata)
+        memcpy(str->data, strdata, length*sizeof(strdata[0]));
+    return FX_OK;
+}
+
 void fx_free_cstr(fx_cstr_t* str)
 {
     if( str->rc )
