@@ -1,8 +1,9 @@
 import File, Map
 
-exception Lexer_EOS
+exception LexerEOF
 exception LexerError : (int, string)
 
+// Ficus tokens
 type token_t =
     | TRUE | FALSE
     | INT: int64 | SINT: (int, int64) | UINT: (int, uint64)
@@ -173,10 +174,15 @@ fun string(t: token_t)
 
 type stream_t =
 {
-    fname: string;
-    lineno: int ref;
-    bol: int ref;
-    buf: string;
+    fname: string;  // filename used for diagnostic messages
+    lineno: int ref;// the current line number (counted from 1)
+    bol: int ref;   // beginning-of-line. The index of the first character
+                    // of the current line (counted from 0)
+    buf: string;    // the stream content; currently we do not support reading streams
+                    // iteratively. The whole file is loaded into memory and converted
+                    // from UTF-8 or whatever encoding at once.
+                    // In principle, it should not be difficult to replace it with a
+                    // callback that reads the stream line by line.
 }
 
 fun make_stream(fname: string)
@@ -185,12 +191,32 @@ fun make_stream(fname: string)
     stream_t { fname=fname, lineno=ref(1), bol=ref(0), buf=buf }
 }
 
+/*
+   The key utility function to safely access stream within
+   it's boundaries and beyond. In the latter case we return '\0'
+   character, which means <EOF> ('end of file' or 'end of stream').
+
+   That is, the stream is represented as
+   c c c ... c EOF EOF EOF EOF ...
+   ^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^
+   the actual    the extrapolated
+    content           content
+
+   Such a function helps to eliminate multiple tedious checks
+   and/or try-catch expressions when parsing a stream
+*/
 pure nothrow fun peekch(s: string, pos: int): char = ccode
 {
     return (size_t)pos < (size_t)s->length ? s->data[pos] : (char_)0;
 }
 
-fun skip_spaces(s: stream_t, pos: int)
+/* Skips whitespaces and comments (single-line and block).
+   Nested block comments are supported by demand.
+   Automatically updates the line number and
+   the 'beginning-of-line' index.
+   Supports '\n', '\r' and '\r\n' line endings
+*/
+fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
 {
     val lineno0 = *s.lineno
     var lineno = lineno0
@@ -205,26 +231,24 @@ fun skip_spaces(s: stream_t, pos: int)
     while pos < len {
         val c = buf[pos]
         pos += 1
-        if c == '\n' || (c == '\r' && peekch(buf, pos) != '\n') {
+        val c1 = peekch(buf, pos+1)
+        if c == '\n' || (c == '\r' && c1 != '\n') {
             lineno += 1
             bol = pos
             inside_eol_comment = false
         } else if c == ' ' || c == '\t' || c == '\r' || inside_eol_comment {
         } else if inside_comment > 0 {
-            if c == '*' && peekch(buf, pos) == '/' {
+            if c == '*' && c1 == '/' {
                 inside_comment -= 1
                 pos += 1
-            } else if c == '/' && peekch(buf, pos) == '*' {
+            } else if c == '/' && c1 == '*' && allow_nested {
                 inside_comment += 1
                 pos += 1
             }
-        } else if c == '/' {
-            val c1 = peekch(buf, pos)
-            if c1 == '*' {
-                inside_comment += 1
-            } else if c1 == '/' {
-                inside_eol_comment = true
-            } else { break }
+        } else if c == '/' && c1 == '*' {
+            inside_comment = 1
+        } else if c == '/' && c1 == '/' {
+            inside_eol_comment = true
         } else {
             c_res = c
             pos -= 1
@@ -237,6 +261,30 @@ fun skip_spaces(s: stream_t, pos: int)
     (c_res, pos, lineno > lineno0, inside_comment > 0)
 }
 
+/* Extracts an integer or floating-point number literal.
+   The number should not have a sign in front and must start with a digit.
+   0x, 0b, 0o/0 prefixes are supported.
+   h, f, uNN, iNN, L and UL suffixes are also supported.
+
+   For floating-point numbers without h/f suffix and without
+   exponent (eE) specification, e.g. 1234.5678, we
+   return FLOAT_LIKE(num, str) token, where num is the decoded number
+   and str is the original representation of that number.
+
+   This is because when accessing a nested tuple element we may
+   have such "false" floating-point literals appear in the source, e.g.
+
+   val m = ((a, b), (c, d))
+   val det = m.0.0*m.1.1 - m.0.1*m.1.0
+
+   where m.0.0 should be parsed as IDENT(m) DOT INT(0) DOT INT(0)
+   instead of IDENT(m) DOT FLOAT(64, 0.0)
+   and we leave it to the parser to figure that out.
+
+   At the parser stage if FLOAT_LIKE(n,s) token follows
+   right after DOT token, it's correctly re-interpreted
+   as the nested tuple access.
+*/
 pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccode
 {
     const int MAX_ATOF = 128;
@@ -429,7 +477,21 @@ ccode
     }
 }
 
-fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool): (int, string, bool) = ccode
+/*
+    Parses the string (term is double quote)
+    or character (term is single quote) literal.
+
+    Python's f"" and r"" types of string literals are supported.
+    In the case of f"" string the decoding stops when '{' occurs and
+    so-far decoded part of the string is returned.
+
+    Special characters, such as \n, \t etc. are automatically decoded
+    (unless r"" is used where just \" is supported).
+    Numerically specified ASCII characters (\xNN, \0[N...]) and
+    Unicode characters (\uxxxx and \Uxxxxxxxx) are also decoded.
+*/
+fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool):
+    (int, string, bool) = ccode
 {
     int_ sz = 256, n = 0;
     char_ buf0[256 + 32];
@@ -533,6 +595,23 @@ fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool): (int, stri
     return fx_status;
 }
 
+/*
+    Ficus keywords, represented as string -> (token, kwtyp) dictionary, where kwtyp is:
+    0 - keyword that represents a single-keyword expression
+        (well, 'operator' is not a single-keyword expression,
+        but from lexer/parser perspective it behaves as if it was).
+    1 - a keyword that cannot start a new expression, but
+        it links the previous part of expression with the subsequent one;
+        so it can immediately follow expression (be placed on the same line),
+        e.g. "else" in if-then expression
+    2 - a keyword that starts a new expression; it cannot follow another expression
+        without some explicit operator or a separator (';' or a newline) in between.
+        Note that sometimes several such keywords are used together,
+        e.g. pure nothrow fun foo(x: int) = ...
+    3 - a keyword that can play a role of a connector (type 1)
+        or an expression beginning (type 2), depending on context
+   -1 - reserved/internal-use keyword.
+*/
 var ficus_keywords = Map.from_list(
     [: ("as", (AS, 1)), ("break", (BREAK, 0)), ("catch", (CATCH, 1)), ("ccode", (CCODE, 2)),
         ("class", (CLASS, 2)), ("continue", (CONTINUE, 0)), ("do", (DO, 2)),
@@ -548,46 +627,139 @@ var ficus_keywords = Map.from_list(
         ("with", (WITH, 1)), ("__fold_result__", (FOLD_RESULT, -1)) :],
     String.cmp)
 
+/*  The function that returns the actual tokenizer/lexer function,
+    a closure with all the necessary parameters inside.
+
+    Probably, later on this functional construction should be
+    replaced with a class and methods.
+
+    The nested/returned tokenizer function returns the "next" token on each
+    call. In fact, on each call it may return several tokens, e.g.
+
+    println(f"x={x}")
+    is parsed as
+
+    IDENT("println") LPAREN { LPAREN STRING("x=") PLUS }
+        { IDENT("string") LPAREN IDENT(x) RPAREN PLUS }
+        { STRING("") RPAREN } RPAREN
+    where {} denotes groups that are returned together by nexttokens().
+*/
 fun make_lexer(strm: stream_t)
 {
-    var new_exp = true
-    var paren_stack = ([] : (token_t, int) list)
-    var pos = *strm.bol
+    var new_exp = true  // Ficus is the language with optional ';' separators between
+                        // expressions in a block, tha's why we need to distinguish
+                        // between unary and binary operators that look the same (+, -, *),
+                        // between function calls and tuple expressions etc.
+                        // The 'new expression' flag helps with that.
+                        // It's set to true by ';', a newline characters and
+                        // many of the operators/keywords.
+                        // It's set to false after an identifier, a literal,
+                        // a closing paren or one of a few operators/keywords.
+
+    var paren_stack =   // Another helper data structure
+        ([] :           // that adds some context information to
+        (token_t, int)  // a primitive finite state machine that
+        list)           // the lexer should have been in theory.
+                        // It does not only contain a stack of so-far opened
+                        // and not closd yet parens, but also
+                        // some other selected tokens, such as CCODE, MATCH, CATCH etc.
+
+    var pos = *strm.bol // The current position that is automatically updated after each call.
+                        // Want to retrieve the position? Each returned token is supplied with
+                        // with a tuple (begin_lineno, begin_col, end_lineno, end_col)
+                        // describing where it was captured.
+                        // Want to reset position or scan the particular fragment of code?
+                        // Just create a new lexer with the same string
+                        // or its substring of interest - it's a cheap operation.
+
+    fun check_ne(ne: bool, pos: int, opname: string): void =
+        if !ne {throw LexerError(pos, f"unexpected operator {opname}. Insert ';' or newline")}
 
     fun nexttokens(): token_t list
     {
         val buf = strm.buf
         val len = buf.length()
         var c = peekch(buf, pos)
+        var c1 = peekch(buf, pos+1)
         if c.isspace() ||
-            (c == '/' && ({val c1 = peekch(buf, pos+1); c1 == '/' || c1 == '*'})) {
-            val (c1, p, nl, inside_comment) = skip_spaces(strm, pos)
-            c = c1
-            if nl {new_exp = true}
+            (c == '/' && (c1 == '/' || c1 == '*'})) {
+            val (c_, p, nl, inside_comment) = skip_spaces(strm, pos)
+            c = c_
+            if nl {
+                /* If we met a newline character during the whitespace
+                   and comments scan, we set the 'new expression' flag,
+                   which helps to distinguish between unary '-' and
+                   the binary one, array comprehension from array
+                   access operator etc.
+
+                   We do it unless we are inside square or round parentheses.
+
+                   This is because inside those parens it's all one expression
+                   anyway. Whereas at the top level or inside curly braces
+                   there can be multiple expressions, separated by a new line.
+                */
+                match paren_stack {
+                | (LPAREN, _) :: _ | (LSQUARE, _) :: _ => {}
+                | _ => new_exp = true
+                }
+            }
             if inside_comment {throw LexerError(pos, "unterminated comment")}
             pos = p
+            c1 = peekch(buf, pos+1)
         }
 
-        if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && peekch(buf, pos+1) == '"') {
+        /*
+            quote (apostrophe) symbol is used in multiple cases:
+            - as matrix transposition operator, e.g. val C = A'*B
+            - as a type varible prefix in generic type/function definition,
+              e.g. fun foo(a: 'elem_type [+]) { ... }
+            - to enclose character literals, e.g. '好'
+
+            therefore, we need to carefully order the checks
+            to correctly classify each use case.
+        */
+        if c == '\'' && !new_exp {
+            APOS :: []
+        } else if c == '\'' && c1.isalpha() && peekch(buf, pos+2) != '\'' {
+            val fold p1 = pos for p <- pos+1:len {
+                val cp = buf[p]
+                if !cp.isalnum() && cp != '_' {break with p}
+                p+1
+            }
+            new_exp = false
+            TYVAR(buf[pos:p1]) :: []
+        } else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
             val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
             val term = peekch(buf, termpos)
             val (p, res, inline_exp) = getstring(buf, termpos+1, term, c == 'r', c == 'f')
             pos = p
-            if term == '\'' && res.length() != 1 {
-                throw LexerError(pos, "character literal should contain exactly one character")
-            }
             new_exp = false
-            STRING(res) :: []
-        } else if c.isalpha() {
+            if term == '\'' {
+                if res.length() != 1 {
+                    throw LexerError(pos, "character literal should contain exactly one character")
+                }
+                CHAR(res[0]) :: []
+            } else {
+                STRING(res) :: []
+            }
+        } else if c.isalpha() || c == '_' {
             val fold p1 = pos for p <- pos:len {
-                if !buf[p].isalnum() {break with p}
+                val cp = buf[p]
+                if !cp.isalnum() && cp != '_' {break with p}
                 p+1
             }
             val ident = buf[pos:p1]
             pos = p1
-            match ficus_keywords.find_opt(ident) {
-            | Some((t, _)) => t :: []
-            | _ => new_exp = false; IDENT(ident) :: []
+            if ident.length() > 1 {
+                match ficus_keywords.find_opt(ident) {
+                | Some((t, _)) => t :: []
+                | _ =>
+                    new_exp = false
+                    IDENT(ident) :: []
+                }
+            } else {
+                new_exp = false
+                IDENT(ident) :: []
             }
         } else if '0' <= c <= '9' {
             val (p, t) = getnumber(buf, pos)
@@ -595,15 +767,102 @@ fun make_lexer(strm: stream_t)
             pos = p
             t :: []
         } else {
+            bool prev_ne = new_exp
+            new_exp = true
+            pos += 1
+            val c2 = peekch(buf, pos+2)
+            val c3 = peekch(buf, pos+3)
             match c {
-            | ':' => pos += 1; new_exp = true; if peekch(buf, pos) == ':' {pos += 1; CONS :: []} else {COLON :: []}
-            | '+' => pos += 1; new_exp = true; if peekch(buf, pos) == '=' {pos += 1; PLUS_EQUAL :: []} else {PLUS :: []}
-            | '-' => pos += 1; new_exp = true; if peekch(buf, pos) == '=' {pos += 1; MINUS_EQUAL :: []} else {MINUS :: []}
-            | ',' => pos += 1; new_exp = true; COMMA :: []
-            | ';' => pos += 1; new_exp = true; SEMICOLON :: []
-            | '.' => pos += 1; new_exp = true; if peekch(buf, pos) == '=' {pos += 1; MINUS_EQUAL :: []}
-                    else if peekch(buf, pos+1) == '.' && peekch(buf, pos+2) == '.' {pos += 2; ELLIPSIS :: []}
-                    else {DOT :: []}
+            | ':' =>
+                if c1 == ':' {pos += 1; CONS :: []}
+                else if c1 == '>' {pos += 1; CAST :: []}
+                else {COLON :: []}
+            | '+' =>
+                if c1 == '=' {pos += 1; PLUS_EQUAL :: []}
+                else if prev_ne {B_PLUS :: []} else {PLUS :: []}
+            | '-' =>
+                if c1 == '=' {pos += 1; MINUS_EQUAL :: []}
+                else if c1 == '>' {pos += 1; ARROW :: []}
+                else if prev_ne {B_MINUS :: []} else {MINUS :: []}
+            | '/' =>
+                if c1 == '=' {pos += 1; SLASH_EQUAL :: []}
+                else {SLASH :: []}
+            | '%' =>
+                if c1 == '=' {pos += 1; MOD_EQUAL :: []}
+                else {MOD :: []}
+            | '=' =>
+                if c1 == '=' {pos += 1; CMP_EQ :: []}
+                else if c1 == '>' {pos += 1; DOUBLE_ARROW :: []}
+                else {EQUAL :: []}
+            | '!' =>
+                if c1 == '=' {pos += 1; CMP_NE :: []}
+                else {check_ne(prev_ne, pos); LOGICAL_NOT :: []}
+            | '^' =>
+                if c1 == '=' {pos += 1; XOR_EQUAL :: []}
+                else { BITWISE_XOR :: [] }
+            | '&' =>
+                if c1 == '=' {pos += 1; AND_EQUAL :: []}
+                else if c1 == '&' {pos += 1; LOGICAL_AND :: []}
+                else {BITWISE_AND :: []}
+            | '~' => check_ne(prev_ne, pos); TILDE :: []
+            | '\\' => check_ne(prev_ne, pos); EXPAND :: []
+            | '@' => AT :: []
+            | '?' => new_exp = false; QUESTION :: []
+            | ',' => COMMA :: []
+            | ';' => SEMICOLON :: []
+            | '.' =>
+                if c1 == '=' {pos += 1; MINUS_EQUAL :: []}
+                else if peekch(buf, pos+1) == '.' && peekch(buf, pos+2) == '.' {pos += 2; ELLIPSIS :: []}
+                else {DOT :: []}
+            | "||"  => pos += 1; new_exp = true; LOGICAL_OR :: [] }
+
+
+
+            | "*="  => pos += 1; new_exp = true; STAR_EQUAL :: [] }
+            | ".="  => pos += 1; new_exp = true; DOT_EQUAL :: [] }
+            | "|="  => pos += 1; new_exp = true; OR_EQUAL :: [] }
+            | "<<=" => pos += 1; new_exp = true; SHIFT_LEFT_EQUAL :: [] }
+            | ">>=" => pos += 1; new_exp = true; SHIFT_RIGHT_EQUAL :: [] }
+
+            | "<=>" => pos += 1; new_exp = true; SPACESHIP :: [] }
+            | "=="  => pos += 1; new_exp = true; CMP_EQ :: [] }
+            | "!="  => pos += 1; new_exp = true; CMP_NE :: [] }
+            | "<="  => pos += 1; new_exp = true; CMP_LE :: [] }
+            | ">="  => pos += 1; new_exp = true; CMP_GE :: [] }
+            | '<'   => pos += 1; new_exp = true; CMP_LT :: [] }
+            | '>'   => pos += 1; new_exp = true; CMP_GT :: [] }
+
+            | ".-"  => check_ne(pos); pos += 1;B_DOT_MINUS :: [] }
+            | ".*"  => pos += 1; new_exp = true; DOT_STAR :: [] }
+            | "./"  => pos += 1; new_exp = true; DOT_SLASH :: [] }
+            | ".%"  => pos += 1; new_exp = true; DOT_MOD :: [] }
+            | ".**" => pos += 1; new_exp = true; DOT_POWER :: [] }
+
+            | ".<=>" => pos += 1; new_exp = true; DOT_SPACESHIP :: [] }
+            | ".=="  => pos += 1; new_exp = true; DOT_CMP_EQ :: [] }
+            | ".!="  => pos += 1; new_exp = true; DOT_CMP_NE :: [] }
+            | ".<="  => pos += 1; new_exp = true; DOT_CMP_LE :: [] }
+            | ".>="  => pos += 1; new_exp = true; DOT_CMP_GE :: [] }
+            | ".<"   => pos += 1; new_exp = true; DOT_CMP_LT :: [] }
+            | ".>"   => pos += 1; new_exp = true; DOT_CMP_GT :: [] }
+
+            | ".*="  => pos += 1; new_exp = true; DOT_STAR_EQUAL :: [] }
+            | "./="  => pos += 1; new_exp = true; DOT_SLASH_EQUAL :: [] }
+            | ".%="  => pos += 1; new_exp = true; DOT_MOD_EQUAL :: [] }
+
+            | ','   => pos += 1; new_exp = true; COMMA :: [] }
+            | '.'   => pos += 1; new_exp = true; DOT :: [] }
+            | ';'   => pos += 1; new_exp = true; SEMICOLON :: [] }
+            | ':'   => pos += 1; new_exp = true; COLON :: [] }
+            | "::"  => pos += 1; new_exp = true; CONS :: [] }
+            | "\\"  => pos += 1; new_exp = true; BACKSLASH :: [] }
+            | ":>"  => pos += 1; new_exp = true; CAST :: [] }
+            | "<-"  => pos += 1; new_exp = true; BACK_ARROW :: [] }
+            | "=>"  => pos += 1; new_exp = true; DOUBLE_ARROW :: [] }
+            | "->"  => pos += 1; new_exp = true; ARROW :: [] }
+            | "?"   { new_exp := false; QUESTION :: [] }
+            | "@"   => pos += 1; new_exp = true; AT :: [] }
+            | "..."   => pos += 1; new_exp = true; ELLIPSIS :: [] }
             | '\0' => EOF :: []
             | _ => println(f"unrecognized character '{c}' at pos={pos}"); throw LexerError(pos, f"unrecognized character {c}")
             }
