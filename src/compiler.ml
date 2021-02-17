@@ -187,8 +187,8 @@ let k_optimize_all kmods =
         else ();
         prf "tailrec";
         temp_kmods := K_tailrec.tailrec2loops_all !temp_kmods;
-        (*prf "loop inv";
-        temp_kmods := K_loop_inv.move_loop_invs_all !temp_kmods;*)
+        prf "loop inv";
+        temp_kmods := K_loop_inv.move_loop_invs_all !temp_kmods;
         prf "inline";
         if options.inline_thresh > 0 then temp_kmods := K_inline.inline_some !temp_kmods else ();
         prf "flatten";

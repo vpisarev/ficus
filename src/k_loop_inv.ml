@@ -93,7 +93,7 @@ let rec move_loop_invs code =
                 curr_moved := e :: !curr_moved;
                 KExpNop loc
             )
-        | _ -> walk_kexp e callb
+        | _ -> e
     in let mli_callb =
     {
         kcb_ktyp=Some(mli_ktyp);
