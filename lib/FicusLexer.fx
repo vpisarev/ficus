@@ -44,7 +44,7 @@ fun string(t: token_t)
     | FLOAT_LIKE(f, s) => f"FLOAT_LIKE({f}, {s})"
     | IDENT(s) => f"IDENT({s})"
     | B_IDENT(s) => f"B_IDENT({s})"
-    | STRING(s) => f"STRING({s})"
+    | STRING(s) => f"STRING(\"{s}\")"
     | CHAR(s) => f"CHAR({s})"
     | TYVAR(s) => f"TYVAR({s})"
     | APOS => "APOS"
@@ -679,7 +679,7 @@ fun make_lexer(strm: stream_t)
                         // It's set to false after an identifier, a literal,
                         // a closing paren or one of a few operators/keywords.
 
-    var paren_stack = ([] : (token_t, (int, int)) list)
+    var paren_stack = ([] : (token_t, lloc_t) list)
                         // Another helper data structure
                         // that adds some context information to
                         // a primitive finite state machine that
@@ -697,6 +697,8 @@ fun make_lexer(strm: stream_t)
                         // or its substring of interest - it's a cheap operation.
 
     fun getloc(pos: int) = (*strm.lineno, max(pos - *strm.bol, 0) + 1)
+    fun addloc(loc: lloc_t, tokens: token_t list) = [: for t <- tokens {(t, loc)} :]
+    fun removeloc(tokens_l: (token_t, lloc_t) list) = [: for (t, _) <- tokens_l {t} :]
     fun check_ne(ne: bool, loc: lloc_t, name: string): void =
         if !ne {
             throw LexerError(loc, f"unexpected '{name}'. Insert ';' or newline")
@@ -734,10 +736,10 @@ fun make_lexer(strm: stream_t)
             }
         }
         if lbraces > 0 {throw LexerError(getloc(p), "unterminated ccode block (check braces)")}
-        (q, buf[p:q])
+        (q, buf[p:q].copy())
     }
 
-    fun nexttokens(): token_t list
+    fun nexttokens(): (token_t, lloc_t) list
     {
         val buf = strm.buf
         val len = buf.length()
@@ -772,6 +774,7 @@ fun make_lexer(strm: stream_t)
             c1 = peekch(buf, pos+1)
         }
 
+        val loc = getloc(pos)
         /*
             quote (apostrophe) symbol is used in multiple cases:
             - as matrix transposition operator, e.g. val C = A'*B
@@ -783,7 +786,7 @@ fun make_lexer(strm: stream_t)
             to correctly classify each use case.
         */
         if c == '\'' && !new_exp {
-            APOS :: []
+            (APOS, loc) :: []
         } else if c == '\'' && c1.isalpha() && peekch(buf, pos+2) != '\'' {
             val fold p1 = pos for p <- pos+1:len {
                 val cp = buf[p]
@@ -792,7 +795,7 @@ fun make_lexer(strm: stream_t)
             }
             pos = p1
             new_exp = false
-            TYVAR(buf[pos:p1]) :: []
+            (TYVAR(buf[pos:p1].copy()), loc) :: []
         } else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
             val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
             val term = peekch(buf, termpos)
@@ -806,13 +809,14 @@ fun make_lexer(strm: stream_t)
                     throw LexerError(getloc(pos),
                         "character literal should contain exactly one character")
                 }
-                CHAR(res[0]) :: []
+                (CHAR(res[0]), loc) :: []
             } else if inline_exp {
                 paren_stack = (STR_INTERP_LPAREN, getloc(prev_pos)) :: paren_stack
-                (if res.empty() {LPAREN :: []} else {LPAREN :: STRING(res) :: PLUS :: []}) +
-                (IDENT("string") :: LPAREN :: [])
+                addloc(loc, (if res.empty() {LPAREN :: []}
+                        else {LPAREN :: STRING(res) :: PLUS :: []}) +
+                        (IDENT("string") :: LPAREN :: []))
             } else {
-                STRING(res) :: []
+                (STRING(res), loc) :: []
             }
         } else if c.isalpha() || c == '_' {
             val fold p1 = pos for p <- pos:len {
@@ -820,51 +824,52 @@ fun make_lexer(strm: stream_t)
                 if !cp.isalnum() && cp != '_' {break with p}
                 p+1
             }
-            val ident = buf[pos:p1]
+            val ident = buf[pos:p1].copy()
             pos = p1
-            val loc = getloc(pos)
+            val t =
             match ficus_keywords.find_opt(ident) {
             | Some((t, n)) =>
                 match (t, n) {
                 | (CCODE, _) =>
                     check_ne(new_exp, loc, "ccode")
                     paren_stack = (CCODE, loc) :: paren_stack
-                    new_exp = true; CCODE :: []
+                    new_exp = true; CCODE
                 | (FOR, _) =>
                     val t = if new_exp {B_FOR} else {FOR}
-                    new_exp = true; t :: []
+                    new_exp = true; t
                 | (IMPORT, _) =>
                     val t = if new_exp {B_IMPORT} else {IMPORT}
-                    new_exp = true; t :: []
+                    new_exp = true; t
                 | (WHILE, _) =>
                     val t = if new_exp {B_WHILE} else {WHILE}
-                    new_exp = true; t :: []
+                    new_exp = true; t
                 | (REF, _) =>
                     val t = if new_exp {REF} else {REF_TYPE}
-                    new_exp = true; t :: []
+                    new_exp = true; t
                 | (t, -1) =>
                     throw LexerError(loc, f"Identifier '{ident}' is reserved and cannot be used")
-                | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t :: []
-                | (t, 1) => new_exp = true; t :: []
-                | (t, 2) => check_ne(new_exp, loc, ident); new_exp = true; t :: []
+                | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t
+                | (t, 1) => new_exp = true; t
+                | (t, 2) => check_ne(new_exp, loc, ident); new_exp = true; t
                 | _ => throw LexerError(loc, f"Unexpected keyword '{ident}'")
                 }
             | _ =>
                 val t = if new_exp {B_IDENT(ident)} else {IDENT(ident)}
-                new_exp = false; t :: []
+                new_exp = false; t
             }
+            (t, loc) :: []
         } else if '0' <= c <= '9' {
             val (p, t) = getnumber(buf, pos, getloc(pos))
             new_exp = false
             pos = p
-            t :: []
+            (t, loc) :: []
         } else {
             val prev_ne = new_exp
-            val loc = getloc(pos-1)
             new_exp = true
             pos = min(pos+1, len)
             val c2 = peekch(buf, pos+2)
             val c3 = peekch(buf, pos+3)
+            addloc(loc,
             match c {
             | '(' =>
                 paren_stack = (LPAREN, getloc(pos-1)) :: paren_stack
@@ -913,11 +918,12 @@ fun make_lexer(strm: stream_t)
                        i.e. '|' goes immediately after '{', it's represented
                        as 'BAR', not 'BITWISE_OR'
                     */
+                    // [TODO] need to retain the locations
                     LBRACE :: (match nexttokens() {
-                    | BITWISE_OR :: rest =>
+                    | (BITWISE_OR, p) :: rest =>
                         paren_stack = (BAR, p) :: paren_stack
-                        BAR :: rest
-                    | tokens => tokens
+                        BAR :: removeloc(rest)
+                    | tokens => removeloc(tokens)
                     })
                 }
             | '}' =>
@@ -1073,7 +1079,7 @@ fun make_lexer(strm: stream_t)
             | _ =>
                 println(f"unrecognized character '{c}' at lineno={*strm.lineno}")
                 throw LexerError(loc, f"unrecognized character '{c}'")
-            }
+            })
         }
     }
     nexttokens
@@ -1082,7 +1088,7 @@ fun make_lexer(strm: stream_t)
 val strm = make_stream(Sys.arguments().hd())
 val lexer = make_lexer(strm)
 
-var n = 0
+var prev_line = 0
 try {
 while true {
     val ts =
@@ -1096,14 +1102,13 @@ while true {
             println(f"{strm.fname}:{*strm.lineno} error: unexpected exception {e} occured")
             throw e
     }
-    for t <- ts {
+    for (t, (line, _)) <- ts {
+        if line > prev_line {print(f"\n{line}: "); prev_line = line}
         val tstr = string(t)
         print(tstr); print(" ")
-        n += tstr.length() + 1
-        if n >= 60 {n = 0; println()}
     }
     match ts.last() {
-        | EOF => if n > 0 {println()}; break
+        | (EOF, _) => println(); break
         | _ => {}
     }
 }}

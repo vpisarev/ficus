@@ -11,6 +11,7 @@ inline fun length(s: string) = Builtins.length(s)
 inline fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
 inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
 inline fun cmp(s1: string, s2: string) = s1 <=> s2
+pure fun copy(s: string) = ccode { return fx_make_str(s->data, s->length, fx_result) }
 
 nothrow pure fun empty(s: string): bool = ccode { return s->length == 0 }
 

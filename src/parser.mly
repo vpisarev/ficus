@@ -389,7 +389,7 @@ top_level_exp:
         [DirImportFrom (a1, (List.rev $4), curr_loc())]
     }
 | error
-    { raise_syntax_err "syntax error: unrecognized/unsupported top-level expression" }
+    { raise_syntax_err "syntax error: unrecognized/unsupported expression" }
 
 exp_seq_:
 | exp_seq_ stmt { $2 :: $1 }
