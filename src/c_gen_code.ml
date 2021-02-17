@@ -1388,13 +1388,16 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let c_e = match (get_atom_ktyp arr_or_str kloc) with
                 | KTypString -> make_call (get_id "FX_STR_LENGTH") [arr_exp] CTypInt kloc
                 | KTypArray _ -> make_call (get_id "FX_ARR_SIZE") [arr_exp; (make_int_exp 0 kloc)] CTypInt kloc
-                | _ -> raise_compile_err kloc "cgen: unsupported container type in KExpIntrin(IntrinGetSize...)"
+                | ktyp -> raise_compile_err kloc
+                    (sprintf "cgen: unsupported container type %s of %s in KExpIntrin(IntrinGetSize...)"
+                    (ktyp2str ktyp) (atom2str arr_or_str))
                 in
                 (true, c_e, ccode)
             | (IntrinGetSize, arr_or_str :: (Atom.Lit (LitInt i)) :: []) ->
                 let (arr_exp, ccode) = atom2cexp arr_or_str ccode kloc in
-                let c_e = match (get_atom_ktyp arr_or_str kloc) with
-                | KTypArray(ndims, _) ->
+                let c_e = match ((get_atom_ktyp arr_or_str kloc), i) with
+                | (KTypString, 0L) -> make_call (get_id "FX_STR_LENGTH") [arr_exp] CTypInt kloc
+                | (KTypArray(ndims, _), i) ->
                     if 0L <= i && i < (Int64.of_int ndims) then () else raise_compile_err kloc
                         (sprintf "array dimension index %Li is beyond dimensionality %d" i ndims);
                     make_call (get_id "FX_ARR_SIZE") [arr_exp; (make_int__exp i kloc)] CTypInt kloc

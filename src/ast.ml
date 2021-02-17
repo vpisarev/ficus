@@ -382,6 +382,12 @@ let print_compile_err err =
     | Failure msg -> printf "Failure: %s\n" msg
     | _ -> printf "\n\nException %s occured\n" (Printexc.to_string err)
 
+let pr_verbose str =
+    if Options.options.verbose then
+        (printf "%s%s" str (if Utils.ends_with str "\n" then "" else "\n");
+        flush_all())
+    else ()
+
 let id2prefix i =
     let prefix = match i with
     | Id.Name(i) -> i

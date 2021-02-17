@@ -58,6 +58,7 @@ let make_lexer fname =
         in (if options.print_tokens then print_token lexbuf t else ()); t)
 
 let parse_file mname_id fname inc_dirs =
+    let _ = pr_verbose (sprintf "Parsing %s" fname) in
     let fname_id = get_id fname in
     let lexer = make_lexer fname in
     let use_stdin = fname = "stdin" in
@@ -170,35 +171,56 @@ let k_normalize_all modules =
         (i+1, (km :: kmods))) (0, []) modules in
     (List.rev kmods, !compile_errs = [])
 
+let prf str = pr_verbose (sprintf "\t%s" str)
+
 let k_optimize_all kmods =
     let _ = (compile_errs := []) in
     let niters = 5 in
     let temp_kmods = ref kmods in
+    prf "initial dead code elim";
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
     for i = 0 to niters-1 do
+        pr_verbose (sprintf "Optimization pass #%d:" i);
         if i <= 1 then
-            (temp_kmods := K_simple_ll.lift !temp_kmods;
-            temp_kmods := K_annotate_types.annotate_types !temp_kmods)
+            (prf "simple lifting"; temp_kmods := K_simple_ll.lift !temp_kmods;
+            prf "annotate types"; temp_kmods := K_annotate_types.annotate_types !temp_kmods)
         else ();
+        prf "tailrec";
         temp_kmods := K_tailrec.tailrec2loops_all !temp_kmods;
-        temp_kmods := K_loop_inv.move_loop_invs_all !temp_kmods;
+        (*prf "loop inv";
+        temp_kmods := K_loop_inv.move_loop_invs_all !temp_kmods;*)
+        prf "inline";
         if options.inline_thresh > 0 then temp_kmods := K_inline.inline_some !temp_kmods else ();
+        prf "flatten";
         temp_kmods := K_flatten.flatten_all !temp_kmods;
+        prf "fuse loops";
         temp_kmods := K_fuse_loops.fuse_loops_all !temp_kmods;
+        prf "fast idx";
         temp_kmods := K_fast_idx.optimize_idx_checks_all !temp_kmods;
         (* [TODO] Dealiasing phase may produce wrong code,
            but the subsequent deadcode elimination fixes the problems (so far).
            It's better to fix cfold_dealias so that there is no such
            critical dependency. *)
+        prf "const folding";
         temp_kmods := K_cfold_dealias.cfold_dealias !temp_kmods;
+        prf "dead code elim";
         temp_kmods := K_deadcode_elim.elim_unused !temp_kmods
     done;
+    pr_verbose "Finalizing K-form:";
+    prf "lambda lifting";
     temp_kmods := K_lift.lift_all !temp_kmods;
+    prf "flatten";
     temp_kmods := K_flatten.flatten_all !temp_kmods;
+    prf "dead code elim";
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
+    prf "mangle";
     temp_kmods := K_mangle.mangle_all !temp_kmods;
+    prf "dead code elim";
+    (* name mangling may create some unused type definitions *)
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
+    prf "mark recursive";
     temp_kmods := K_inline.find_recursive_funcs_all !temp_kmods;
+    prf "annotate types";
     temp_kmods := K_annotate_types.annotate_types !temp_kmods;
     (!temp_kmods, !compile_errs = [])
 
@@ -211,6 +233,7 @@ let k2c_all kmods =
     let cmods = List.map (fun cmod ->
         let is_cpp = options.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp in
         if is_cpp then C_post_adjust_decls.adjust_decls_ cmod else cmod) cmods in
+    let _ = pr_verbose "Conversion to C-form complete" in
     (cmods, !compile_errs = [])
 
 let emit_c_files fname0 cmods =
@@ -236,6 +259,7 @@ let emit_c_files fname0 cmods =
             else (cmod, ok)
             in
         ((new_cmod :: new_cmods), ok)) ([], true) cmods in
+    let _ = pr_verbose "C files are written" in
     ((List.rev new_cmods), build_dir, ok)
 
 let print_if_verbose s =
@@ -314,15 +338,20 @@ let process_all fname0 =
             let minfo = get_module m in
             (!minfo.dm_idx, m, !minfo.dm_deps) :: gr) all_modules [] in
         let _ = sorted_modules := toposort graph in
-        (*let _ = (printf "Sorted modules: %s\n" (String.concat ", " (List.map id2str !sorted_modules))) in*)
         (*let _ = if options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in*)
+        let _ = pr_verbose (sprintf "Parsing complete. Modules used: %s"
+            (String.concat ", " (List.map id2str !sorted_modules))) in
         let ok = typecheck_all !sorted_modules in
+        let _ = pr_verbose "Type checking complete" in
         let _ = if ok && options.print_ast then
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
         let (kmods, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
+        let _ = pr_verbose "K-normalization complete" in
+        let _ = pr_verbose "K-form optimization started" in
         (*let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in*)
         let (kmods, ok) = if ok then k_optimize_all kmods else ([], false) in
+        let _ = pr_verbose "K-form optimization complete" in
         let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in
         if not options.gen_c then ok else
             let (cmods, ok) = if ok then k2c_all kmods else ([], false) in

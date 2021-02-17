@@ -1,7 +1,7 @@
-import File, Map
+import File, Map, Sys
 
-exception LexerEOF
-exception LexerError : ((int, int), string)
+type lloc_t = (int, int)
+exception LexerError : (lloc_t, string)
 
 // Ficus tokens
 type token_t =
@@ -42,7 +42,7 @@ fun string(t: token_t)
     | UINT(b, i) => f"UINT({b}, {i})"
     | FLOAT(b, f) => f"FLOAT({b}, {f})"
     | FLOAT_LIKE(f, s) => f"FLOAT_LIKE({f}, {s})"
-    | IDENT(s) => f"IDENT(s)"
+    | IDENT(s) => f"IDENT({s})"
     | B_IDENT(s) => f"B_IDENT({s})"
     | STRING(s) => f"STRING({s})"
     | CHAR(s) => f"CHAR({s})"
@@ -231,7 +231,7 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
     while pos < len {
         val c = buf[pos]
         pos += 1
-        val c1 = peekch(buf, pos+1)
+        val c1 = peekch(buf, pos)
         if c == '\n' || (c == '\r' && c1 != '\n') {
             lineno += 1
             bol = pos
@@ -331,7 +331,7 @@ pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccod
                                 // a floating-point literal
                 buf[i] = (char)c;
                 if( i >= MAX_ATOF )
-                    return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+                    return FX_SET_EXN_FAST(FX_EXN_OverflowError);
                 r = r1;
             }
             if( c == '.' || c == 'e' || c == 'E' )
@@ -398,7 +398,7 @@ pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccod
                 return FX_SET_EXN_FAST(FX_EXN_BadArgError);
         }
         if(!ok || r > maxval)
-            return FX_SET_EXN_FAST(FX_EXN_OverflowError);
+            return FX_SET_EXN_FAST(FX_EXN_OutOfRangeError);
         fx_result->t0 = (ptr - s->data) + i;
         fx_result->t1 = (int64_t)r;
         fx_result->t2 = 0.;
@@ -451,17 +451,25 @@ pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccod
     return ok ? FX_OK : FX_SET_EXN_FAST(FX_EXN_OverflowError);
 }
 
-fun getnumber(s: string, pos: int): (int, token_t)
-{
-    val (pos1, i, f, bits, c) = getnumber_(s, pos)
-    (pos1, match (c, bits) {
-    | ('i', 0) => INT(i)
-    | ('i', _) => SINT(bits, i)
-    | ('u', _) => UINT(bits, (i :> uint64))
-    | ('f', _) => FLOAT(bits, f)
-    | ('~', _) => FLOAT_LIKE(f, s[pos:pos1])
-    })
-}
+fun getnumber(s: string, pos: int, loc: lloc_t): (int, token_t) =
+    try {
+        val (pos1, i, f, bits, c) = getnumber_(s, pos)
+        (pos1, match (c, bits) {
+        | ('i', 0) => INT(i)
+        | ('i', _) => SINT(bits, i)
+        | ('u', _) => UINT(bits, (i :> uint64))
+        | ('f', _) => FLOAT(bits, f)
+        | ('~', _) => FLOAT_LIKE(f, s[pos:pos1])
+        })
+    } catch {
+        | OverflowError => throw LexerError(loc, "too long numeric literal")
+        | OutOfRangeError =>
+            throw LexerError(loc, "the numeric literal is out of range for the specified type")
+        | BadArgError =>
+            throw LexerError(loc, "invalid i/u suffix (should be 8, 16, 32 or 64)")
+        | e =>
+            throw LexerError(loc, f"exception {e} occured when parsing numeric literal")
+    }
 
 ccode
 {
@@ -490,7 +498,7 @@ ccode
     Numerically specified ASCII characters (\xNN, \0[N...]) and
     Unicode characters (\uxxxx and \Uxxxxxxxx) are also decoded.
 */
-fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool):
+fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
     (int, string, bool) = ccode
 {
     int_ sz = 256, n = 0;
@@ -506,8 +514,10 @@ fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool):
 
     for( i = 0; i < len; i++ ) {
         c = ptr[i];
-        if (c == term)
+        if (c == term) {
+            i++;
             break;
+        }
         if (c == 92) { // backslash
             if(raw) {
                 if (i+1 < len && (ptr[i+1] == 34 || ptr[i+1] == 39)) { // quote
@@ -519,7 +529,7 @@ fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool):
             }
             else {
                 if(++i >= len)
-                    return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+                    return FX_SET_EXN_FAST(FX_EXN_OverflowError);
                 c = ptr[i];
                 if(c == 'n')
                     c = '\n';
@@ -541,7 +551,8 @@ fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool):
                     c = (char_)123;
                 else if(c == 'x') {
                     int x0=0, x1=0;
-                    if(i+2 >= len || (x0 = decodehex(ptr[i+1])) < 0 || (x1 = decodehex(ptr[i+2])) < 0)
+                    if( i+2 >= len || (x0 = decodehex(ptr[i+1])) < 0 ||
+                        (x1 = decodehex(ptr[i+2])) < 0 )
                         return FX_SET_EXN_FAST(FX_EXN_BadArgError);
                     c = x0*16+x1;
                     i++;
@@ -597,6 +608,15 @@ fun getstring(s: string, pos: int, term: char, raw: bool, fmt: bool):
     fx_result->t2 = inline_exp;
     return fx_status;
 }
+
+fun getstring(s: string, pos: int, loc: lloc_t, term: char, raw: bool, fmt: bool) =
+    try {
+        getstring_(s, pos, term, raw, fmt)
+    } catch {
+        | OverflowError => throw LexerError(loc, "unterminated string")
+        | BadArgError => throw LexerError(loc, "unvalid escape sequence")
+        | e => throw LexerError(loc, f"exception {e} occured when parsing string literal")
+    }
 
 /*
     Ficus keywords, represented as string -> (token, kwtyp) dictionary, where kwtyp is:
@@ -659,10 +679,11 @@ fun make_lexer(strm: stream_t)
                         // It's set to false after an identifier, a literal,
                         // a closing paren or one of a few operators/keywords.
 
-    var paren_stack =   // Another helper data structure
-      ([] : (token_t,   // that adds some context information to
-       (int, int))      // a primitive finite state machine that
-        list)           // the lexer should have been in theory.
+    var paren_stack = ([] : (token_t, (int, int)) list)
+                        // Another helper data structure
+                        // that adds some context information to
+                        // a primitive finite state machine that
+                        // the lexer should have been in theory.
                         // It does not only contain a stack of so-far opened
                         // and not closd yet parens, but also
                         // some other selected tokens, such as CCODE, MATCH, CATCH etc.
@@ -675,43 +696,45 @@ fun make_lexer(strm: stream_t)
                         // Just create a new lexer with the same string
                         // or its substring of interest - it's a cheap operation.
 
-    fun getpos(pos: int) = (*strm.lineno, max(pos - *strm.bol, 0) + 1)
-    fun check_ne(ne: bool, pos: int, opname: string): void =
+    fun getloc(pos: int) = (*strm.lineno, max(pos - *strm.bol, 0) + 1)
+    fun check_ne(ne: bool, loc: lloc_t, name: string): void =
         if !ne {
-            throw LexerError(getpos(pos),
-                f"unexpected operator {opname}. Insert ';' or newline")
+            throw LexerError(loc, f"unexpected '{name}'. Insert ';' or newline")
         }
 
     fun get_ccode(p: int): (int, string)
     {
         val buf = strm.buf
-        val len =
-        var ccode = ""
-        var p = p
-        while true {
-            var c = peekch(buf, p)
-            var c1 = peekch(buf, p+1)
-            if c.isspace() || (c == '/' && (c1 == '/' || c1 == '*')) {
-                val (_, p_, nl, inside_comment) = skip_spaces(strm, pos, false)
+        val len = buf.length()
+        var lbraces = 1
+        // This implementation assumes that the whole buffer is available.
+        // We just find the position q of terminating '}' of the inline C code
+        // and then capture the whole thing between '{' (at p), i.e. buf[p:q].
+        // If we ever switch to per-line buffer, the code needs to be updated
+        // to accumuate C code into some text string
+        val fold q = p for k <- p:len {
+            var c = peekch(buf, k)
+            var c1 = peekch(buf, k+1)
+            if (c == '/' && (c1 == '/' || c1 == '*')) || c == '\n' || c == '\r' {
+                val (_, q_, _, inside_comment) = skip_spaces(strm, k, false)
                 if inside_comment {
-                    throw LexerError(getpos(p), "non-terminaed comment")
+                    throw LexerError(getloc(p), "unterminated comment")
                 }
-                p = p_
-                ccode += "\n"
-                continue
+                q_
+            } else if c == '"' || c == '\'' { // "
+                val (q_, _, _) = getstring(buf, p+1, getloc(p+1), c, true, false)
+                q_
+            } else {
+                match c {
+                | '{' => lbraces += 1
+                | '}' => lbraces -= 1; if lbraces == 0 {break with k+1}
+                | _ => {}
+                }
+                k+1
             }
-
-            if c == '"' || c == '\'' { // "
-                val (p_, res, _) = getstring(buf, p+1, term, true, false)
-                ccode += c + res + c
-                p = p_
-                continue
-            }
-
-            // [TODO] count opening and closing (), [], {}
-            val fold q = p for ...
         }
-        (p, ccode)
+        if lbraces > 0 {throw LexerError(getloc(p), "unterminated ccode block (check braces)")}
+        (q, buf[p:q])
     }
 
     fun nexttokens(): token_t list
@@ -743,7 +766,7 @@ fun make_lexer(strm: stream_t)
                 }
             }
             if inside_comment {
-                throw LexerError(getpos(pos), "unterminated comment")
+                throw LexerError(getloc(pos), "unterminated comment")
             }
             pos = p
             c1 = peekch(buf, pos+1)
@@ -767,24 +790,26 @@ fun make_lexer(strm: stream_t)
                 if !cp.isalnum() && cp != '_' {break with p}
                 p+1
             }
+            pos = p1
             new_exp = false
             TYVAR(buf[pos:p1]) :: []
         } else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
             val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
             val term = peekch(buf, termpos)
-            val (p, res, inline_exp) = getstring(buf, termpos+1, term, c == 'r', c == 'f')
+            val (p, res, inline_exp) = getstring(buf, termpos+1, getloc(termpos+1),
+                                                term, c == 'r', c == 'f')
             val prev_pos = pos
             pos = p
             new_exp = false
             if term == '\'' {
                 if res.length() != 1 {
-                    throw LexerError(getpos(pos),
+                    throw LexerError(getloc(pos),
                         "character literal should contain exactly one character")
                 }
                 CHAR(res[0]) :: []
             } else if inline_exp {
-                paren_stack = (STR_INTERP_LPAREN, getpos(prev_pos)) :: paren_stack
-                (if res.empty() {LPAREN :: []} else {LPAREN :: STRING(res) :: PLUS}) +
+                paren_stack = (STR_INTERP_LPAREN, getloc(prev_pos)) :: paren_stack
+                (if res.empty() {LPAREN :: []} else {LPAREN :: STRING(res) :: PLUS :: []}) +
                 (IDENT("string") :: LPAREN :: [])
             } else {
                 STRING(res) :: []
@@ -797,31 +822,52 @@ fun make_lexer(strm: stream_t)
             }
             val ident = buf[pos:p1]
             pos = p1
-            if ident.length() > 1 {
-                match ficus_keywords.find_opt(ident) {
-                | Some((t, _)) => t :: []
-                | _ =>
-                    new_exp = false
-                    IDENT(ident) :: []
+            val loc = getloc(pos)
+            match ficus_keywords.find_opt(ident) {
+            | Some((t, n)) =>
+                match (t, n) {
+                | (CCODE, _) =>
+                    check_ne(new_exp, loc, "ccode")
+                    paren_stack = (CCODE, loc) :: paren_stack
+                    new_exp = true; CCODE :: []
+                | (FOR, _) =>
+                    val t = if new_exp {B_FOR} else {FOR}
+                    new_exp = true; t :: []
+                | (IMPORT, _) =>
+                    val t = if new_exp {B_IMPORT} else {IMPORT}
+                    new_exp = true; t :: []
+                | (WHILE, _) =>
+                    val t = if new_exp {B_WHILE} else {WHILE}
+                    new_exp = true; t :: []
+                | (REF, _) =>
+                    val t = if new_exp {REF} else {REF_TYPE}
+                    new_exp = true; t :: []
+                | (t, -1) =>
+                    throw LexerError(loc, f"Identifier '{ident}' is reserved and cannot be used")
+                | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t :: []
+                | (t, 1) => new_exp = true; t :: []
+                | (t, 2) => check_ne(new_exp, loc, ident); new_exp = true; t :: []
+                | _ => throw LexerError(loc, f"Unexpected keyword '{ident}'")
                 }
-            } else {
-                new_exp = false
-                IDENT(ident) :: []
+            | _ =>
+                val t = if new_exp {B_IDENT(ident)} else {IDENT(ident)}
+                new_exp = false; t :: []
             }
         } else if '0' <= c <= '9' {
-            val (p, t) = getnumber(buf, pos)
+            val (p, t) = getnumber(buf, pos, getloc(pos))
             new_exp = false
             pos = p
             t :: []
         } else {
-            bool prev_ne = new_exp
+            val prev_ne = new_exp
+            val loc = getloc(pos-1)
             new_exp = true
             pos = min(pos+1, len)
             val c2 = peekch(buf, pos+2)
             val c3 = peekch(buf, pos+3)
             match c {
             | '(' =>
-                paren_stack = (LPAREN, getpos(pos-1)) :: paren_stack
+                paren_stack = (LPAREN, getloc(pos-1)) :: paren_stack
                 if prev_ne {B_LPAREN :: []} else {LPAREN :: []}
             | ')' =>
                 new_exp = false
@@ -830,16 +876,16 @@ fun make_lexer(strm: stream_t)
                     paren_stack = rest
                     RPAREN :: []
                 | _ =>
-                    throw LexerError(get_pos(pos-1), "Unexpected ')', check parens")
+                    throw LexerError(loc, "Unexpected ')', check parens")
                 }
             | '[' =>
                 if c1 == ':' {
                     pos += 1
                     val tokens = if prev_ne {LLIST :: []} else {LSQUARE :: COLON :: []}
-                    paren_stack = (tokens.hd(), getpos(pos-2)) :: paren_stack
+                    paren_stack = (tokens.hd(), getloc(pos-2)) :: paren_stack
                     tokens
                 } else {
-                    paren_stack = (LSQUARE, getpos(pos-1)) :: paren_stack
+                    paren_stack = (LSQUARE, getloc(pos-1)) :: paren_stack
                     if prev_ne {B_LSQUARE :: []} else {LSQUARE :: []}
                 }
             | ']' =>
@@ -849,21 +895,24 @@ fun make_lexer(strm: stream_t)
                     paren_stack = rest
                     RSQUARE :: []
                 | _ =>
-                    throw LexerError(get_pos(pos-1), "Unexpected ']', check parens")
+                    throw LexerError(loc, "Unexpected ']', check parens")
                 }
             | '{' =>
-                paren_stack = (LBRACE, getpos(pos-1)) :: paren_stack
-                val p = getpos(pos-1)
+                paren_stack = (LBRACE, getloc(pos-1)) :: paren_stack
+                val p = getloc(pos-1)
                 match paren_stack {
                 | (LBRACE, _) :: (CCODE, _) :: rest =>
                     new_exp = false
+                    paren_stack = rest
                     val (p, s) = get_ccode(pos)
                     pos = p
-                    CCODE(s) :: []
+                    STRING(s) :: []
                 | _ =>
-                    // call nexttokens recursively; if the next token is '|',
-                    // i.e. '|' goes immediately after '{', it's represented
-                    // as 'BAR', not 'BITWISE_OR'
+                    /*
+                       call nexttokens recursively; if the next token is '|',
+                       i.e. '|' goes immediately after '{', it's represented
+                       as 'BAR', not 'BITWISE_OR'
+                    */
                     LBRACE :: (match nexttokens() {
                     | BITWISE_OR :: rest =>
                         paren_stack = (BAR, p) :: paren_stack
@@ -877,28 +926,28 @@ fun make_lexer(strm: stream_t)
                 // handle string interpolation e.g. f"f({x})={f(x)}"
                 | (STR_INTERP_LPAREN, _) :: rest =>
                     paren_stack = rest
-                    val (p, s, inline_exp) = getstring(buf, pos, chr(34), false, true)
+                    val (p, s, inline_exp) = getstring(buf, pos, getloc(pos), chr(34), false, true)
                     pos = p
-                    (if s.empty() { RPAREN :: [] } else { RPAREN :: PLUS :: STRING(s) :: [] }) +
+                    (if s.empty() {RPAREN :: []} else {RPAREN :: PLUS :: STRING(s) :: []}) +
                     (if inline_exp {
-                        paren_stack = (STR_INTERP_LPAREN, getpos(pos)) :: paren_stack
+                        paren_stack = (STR_INTERP_LPAREN, getloc(pos)) :: paren_stack
                         PLUS :: IDENT("string") :: LPAREN :: []
                     } else {
                         RPAREN :: []
-                    }
+                    })
                 | (BAR, _) :: (LBRACE, _) :: rest =>
                     paren_stack = rest
-                    [RBRACE]
+                    RBRACE :: []
                 | (LBRACE, _) :: rest =>
                     paren_stack = rest
-                    [RBRACE]
+                    RBRACE :: []
                 | _ =>
-                    throw LexerError(get_pos(pos-1), "Unexpected '}', check parens")
+                    throw LexerError(loc, "Unexpected '}', check parens")
                 }
             | '|' =>
                 if c1 == '=' {OR_EQUAL :: []}
                 else {
-                    match !paren_stack with {
+                    match paren_stack {
                     | (BAR, _) :: (LBRACE, _) :: _ => BAR :: []
                     | _ => BITWISE_OR :: []
                     }
@@ -939,8 +988,8 @@ fun make_lexer(strm: stream_t)
                 if c1 == '=' {pos += 1; AND_EQUAL :: []}
                 else if c1 == '&' {pos += 1; LOGICAL_AND :: []}
                 else {BITWISE_AND :: []}
-            | '~' => check_ne(prev_ne, pos-1, "~"); TILDE :: []
-            | '\\' => check_ne(prev_ne, pos-1, "\\"); EXPAND :: []
+            | '~' => check_ne(prev_ne, getloc(pos-1), "~"); TILDE :: []
+            | '\\' => check_ne(prev_ne, getloc(pos-1), "\\"); EXPAND :: []
             | '@' => AT :: []
             | '.' =>
                 if c1 == '=' {
@@ -956,7 +1005,7 @@ fun make_lexer(strm: stream_t)
                     if c2 == '=' {pos += 2; DOT_CMP_GE :: []}
                     else {pos += 1; DOT_CMP_GT :: []}
                 } else if c1 == '-' {
-                    check_ne(prev_ne, pos-1, ".-");
+                    check_ne(prev_ne, getloc(pos-1), ".-");
                     pos += 1
                     B_DOT_MINUS :: []
                 } else if c1 == '*' {
@@ -982,14 +1031,20 @@ fun make_lexer(strm: stream_t)
                     match paren_stack {
                         | (LLIST, _) :: rest => paren_stack = rest; RLIST :: []
                         | (LSQUARE, _) :: rest => paren_stack = rest; COLON :: RSQUARE :: []
-                        | _ => throw LexerError(getpos(pos-2),
+                        | _ => throw LexerError(getloc(pos-2),
                             "Unexpected ':]', check parens")
                     }
                 }
                 else {COLON :: []}
             | '!' =>
-                if c1 == '=' {pos += 1; CMP_NE :: []}
-                else {check_ne(prev_ne, pos-1, "!"); LOGICAL_NOT :: []}
+                if c1 == '=' {
+                    pos += 1
+                    CMP_NE :: []
+                }
+                else {
+                    check_ne(prev_ne, getloc(pos-1), "!")
+                    LOGICAL_NOT :: []
+                }
             | '?' => new_exp = false; QUESTION :: []
             | '<' =>
                 if c1 == '=' {
@@ -1012,62 +1067,46 @@ fun make_lexer(strm: stream_t)
                 } else {
                     CMP_GT :: []
                 }
-            | "@" => AT :: []
-            | "|="  => pos += 1; new_exp = true; OR_EQUAL :: [] }
+            | '@' => AT :: []
             | '\0' =>
                 EOF :: []
             | _ =>
                 println(f"unrecognized character '{c}' at lineno={*strm.lineno}")
-                throw LexerError(pos, f"unrecognized character {c}")
+                throw LexerError(loc, f"unrecognized character '{c}'")
             }
         }
     }
     nexttokens
 }
 
-val s = "-234, 0.555,0x12u8, 255u8, 5e-3, -32i16, 5.0+1e+10, 314.15e-2f, 34509.380583049530459834059304958e3"
-/*println(f"\ngrabbing floating-point numbers from {s}")
-val (p, x) = getnumber(s, 1)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+2)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+2)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+2)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+2)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+3)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+2)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+1)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+2)
-println(f"captured={x}: rest={s[p:]}")
-val (p, x) = getnumber(s, p+2)
-println(f"captured={x}: rest={s[p:]}")
-
-val slist = [: "f\"abc{s}\"", r"\"привет,\n你好吗?\"", "r\"\\n\\r\\\\\"", r"'\U0001F600'" :]
-for s <- slist {
-    val c = s[0]
-    val (fmt, raw, p0) =
-        if c == 'f' {(true, false, 2)}
-        else if c == 'r' {(false, true, 2)}
-        else {(false, false, 1)}
-    val term = s[p0-1]
-    val (p, slit, inline_e) = getstring(s, p0, term, raw, fmt)
-    println(f"orig.length()={s.length()}, slit={term}{slit}{term}, slit.length()={slit.length()}, rest={s[p:]}, raw={raw}, fmt={fmt}, inline_e={inline_e}")
-}
-*/
-val strm = stream_t { fname="noname", lineno=ref(1), bol=ref(0), buf=s }
+val strm = make_stream(Sys.arguments().hd())
 val lexer = make_lexer(strm)
 
+var n = 0
+try {
 while true {
-    val t = lexer()
-    println(t)
-    match t.last() {
-        | EOF => break
+    val ts =
+    try {
+        lexer()
+    } catch {
+        | LexerError((line, col), msg) =>
+            println(f"{strm.fname}:{line}:{col} error: {msg}")
+            throw Fail("")
+        | e =>
+            println(f"{strm.fname}:{*strm.lineno} error: unexpected exception {e} occured")
+            throw e
+    }
+    for t <- ts {
+        val tstr = string(t)
+        print(tstr); print(" ")
+        n += tstr.length() + 1
+        if n >= 60 {n = 0; println()}
+    }
+    match ts.last() {
+        | EOF => if n > 0 {println()}; break
         | _ => {}
     }
+}}
+catch {
+    | e => {}
 }

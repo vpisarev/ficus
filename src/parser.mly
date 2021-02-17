@@ -960,6 +960,17 @@ pat:
                 PatIdent(i, loc)
     }
 | literal { PatLit($1, curr_loc()) }
+| B_MINUS literal
+    {
+        let l =
+        match $2 with
+        | LitInt(x) -> LitInt(Int64.neg x)
+        | LitSInt(b, x) -> LitSInt(b, Int64.neg x)
+        | LitFloat(b, x) -> LitFloat(b, -.x)
+        | _ -> raise_syntax_err "unary minus in front of this literal is now allowed"
+        in
+        PatLit(l, curr_loc())
+    }
 | B_LPAREN pat_list_ RPAREN
     {
         match $2 with
