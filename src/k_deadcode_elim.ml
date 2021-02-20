@@ -79,14 +79,13 @@ and pure_fun f loc =
     match (kinfo_ f loc) with
     | KFun df ->
         let {kf_body; kf_flags} = !df in
-        if (List.mem FunPure kf_flags) then true
-        else if (List.mem FunImpure kf_flags) ||
-                (List.mem FunInC kf_flags) then false
+        if kf_flags.fun_flag_pure > 0 then true
+        else if kf_flags.fun_flag_pure = 0 || kf_flags.fun_flag_ccode then false
         else
         ((* temporarily mark the function as 'pure' (optimistic approach) to avoid an infinite loop *)
-        let _ = df := { !df with kf_flags = FunPure :: kf_flags } in
+        let _ = df := {!df with kf_flags = {kf_flags with fun_flag_pure=1}} in
         let pf = pure_kexp kf_body in
-        df := { !df with kf_flags = (if pf then FunPure else FunImpure) :: kf_flags };
+        df := { !df with kf_flags = {kf_flags with fun_flag_pure=(if pf then 1 else 0)} };
         pf)
     | KExn _ -> true
     (* all indirect calls via values etc. are considered impure, because of uncertainty *)
@@ -97,11 +96,7 @@ and reset_purity_flags_kexp_ e callb =
     match e with
     | KDefFun df ->
         let {kf_flags} = !df in
-        if (List.mem FunPure kf_flags) then ()
-        else if (List.mem FunInC kf_flags) then ()
-        else
-        let new_flags = List.filter (fun f -> f != FunImpure) kf_flags in
-        df := {!df with kf_flags=new_flags}
+        df := {!df with kf_flags={kf_flags with fun_flag_pure = -1}}
     | _ -> fold_kexp e callb
 
 let reset_purity_flags code =

@@ -33,7 +33,7 @@ type func_info_t =
     fi_can_inline: bool;
     fi_size: int;
     fi_nrefs: int;
-    fi_flags: fun_flag_t list
+    fi_flags: fun_flags_t
 }
 
 let find_recursive_funcs top_code =
@@ -103,8 +103,7 @@ let find_recursive_funcs top_code =
             (* because of the dead code and dead code branches elimination,
               a recursive function at some point may become non-recursive;
               so we always reset the flag and then set it back if needed *)
-            let flags = remove_flag FunRecursive kf_flags in
-            let flags = if (IdSet.mem f !fcalled) then FunRecursive :: flags else flags in
+            let flags = {kf_flags with fun_flag_recursive = (IdSet.mem f !fcalled)} in
             kf := {!kf with kf_flags = flags}
         | _ -> ()) all_funcs;
     top_code
@@ -214,7 +213,8 @@ let expand_call e =
 let inline_some kmods =
     let all_funcs_info = ref (Env.empty : (func_info_t ref) Env.t) in
     let gen_default_func_info size nrefs =
-        ref {fi_name=noid; fi_can_inline=false; fi_size=0; fi_nrefs=nrefs; fi_flags=[]}
+        ref {fi_name=noid; fi_can_inline=false; fi_size=0;
+            fi_nrefs=nrefs; fi_flags=default_fun_flags()}
     in
     let curr_fi = ref (gen_default_func_info 0 0) in
     let curr_km_main = ref false in
@@ -245,9 +245,11 @@ let inline_some kmods =
                 | Some (r_fi) -> r_fi
                 | _ -> gen_default_func_info 0 0
                 in
-            let can_inline = List.for_all (function
-                | FunRecursive | FunInC | FunCtor _ -> false
-                | _ -> true) kf_flags in
+            let can_inline =
+                not kf_flags.fun_flag_recursive &&
+                not kf_flags.fun_flag_ccode &&
+                kf_flags.fun_flag_ctor = CtorNone
+                in
             let fsize = calc_exp_size kf_body in
             r_fi := {!r_fi with fi_name=kf_name; fi_can_inline=can_inline; fi_size=fsize; fi_flags=kf_flags};
             all_funcs_info := Env.add kf_name r_fi !all_funcs_info;
@@ -289,10 +291,10 @@ let inline_some kmods =
             (match (Env.find_opt f !all_funcs_info) with
             | Some(r_fi) ->
                 let {fi_can_inline=caller_can_inline; fi_size=caller_size; fi_flags=caller_flags} = !(!curr_fi) in
-                let caller_is_inline = caller_can_inline && (List.mem FunInline caller_flags) in
+                let caller_is_inline = caller_can_inline && caller_flags.fun_flag_inline in
                 let max_caller_size = if caller_is_inline then options.inline_thresh*3/2 else options.inline_thresh*10 in
                 let {fi_can_inline; fi_size; (*fi_nrefs;*) fi_flags} = !r_fi in
-                let f_is_inline = fi_can_inline && (List.mem FunInline fi_flags) in
+                let f_is_inline = fi_can_inline && fi_flags.fun_flag_inline in
                 let f_max_size = if f_is_inline then options.inline_thresh*3/2 else options.inline_thresh in
                 let new_size = caller_size + fi_size - (List.length real_args) - 1 in
                 let new_size = if new_size >= 0 then new_size else 0 in

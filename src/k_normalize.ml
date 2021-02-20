@@ -1017,7 +1017,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
 
 and transform_fun df code sc =
     let {df_name; df_templ_args; df_templ_inst; df_body; df_loc} = !df in
-    let extra_fflags = match sc with ScGlobal :: _ | ScModule _ :: _ -> [] | _ -> FunPrivate :: [] in
+    let is_private_fun = match sc with ScGlobal :: _ | ScModule _ :: _ -> false | _ -> true in
     let inst_list = if df_templ_args = [] then df_name :: [] else df_templ_inst in
     List.fold_left (fun code inst ->
         match (id_info inst) with
@@ -1030,7 +1030,7 @@ and transform_fun df code sc =
                 | _ -> raise_compile_err inst_loc
                     (sprintf "the type of non-constructor function '%s' should be TypFun(_,_)" (id2str inst_name)) in
             let (inst_args, argtyps, inst_body) =
-                if not (List.mem FunKW inst_flags) then (inst_args, argtyps, inst_body) else
+                if not inst_flags.fun_flag_has_keywords then (inst_args, argtyps, inst_body) else
                 match ((List.rev inst_args), (List.rev argtyps), inst_body) with
                 | (_ :: rest_inst_args, KTypRecord (_, relems) :: rest_argtyps,
                     ExpSeq((DefVal(PatRecord(_, relems_pats, _), ExpIdent(_, _), _, loc)) :: rest_inst_body, body_ctx)) ->
@@ -1061,13 +1061,15 @@ and transform_fun df code sc =
                 let i = match i with Id.Name _ -> dup_idk i | _ -> i in
                 let _ = create_kdefval i ti [ValArg] None [] inst_loc in
                 (idx+1, ((i, ti) :: args), body_code)) (0, [], []) inst_args argtyps in
-            let inst_flags = match inst_body with ExpCCode _ -> FunInC :: inst_flags | _ -> inst_flags in
+            let inst_flags = {inst_flags with fun_flag_ccode =
+                (match inst_body with ExpCCode _ -> true | _ -> false);
+                fun_flag_private=is_private_fun} in
             (* create initial function definition to handle recursive functions *)
             let _ = create_kdeffun inst_name (List.rev args) rt inst_flags None code sc inst_loc in
             let body_loc = get_exp_loc inst_body in
             let (e, body_code) = exp2kexp inst_body body_code false body_sc in
             let body_kexp = rcode2kexp (e :: body_code) body_loc in
-            create_kdeffun inst_name (List.rev args) rt (extra_fflags @ inst_flags) (Some body_kexp) code sc inst_loc
+            create_kdeffun inst_name (List.rev args) rt inst_flags (Some body_kexp) code sc inst_loc
         | i -> raise_compile_err (get_idinfo_loc i)
             (sprintf "the entry '%s' (an instance of '%s'?) is supposed to be a function, but it's not"
                 (id2str inst) (id2str df_name)))
@@ -1125,7 +1127,7 @@ and transform_all_types_and_cons elist code sc =
                                     let e0 = KExpAtom((Atom.Id tag), (new_rt, dvar_loc)) in
                                     create_kdefval df_name new_rt [ValGlobal sc; ValMutable; ValCtor tag] (Some e0) code dvar_loc
                                 | _ ->
-                                    create_kdefconstr df_name kargtyps new_rt [FunCtor (CtorVariant tag)] code sc dvar_loc
+                                    create_kdefconstr df_name kargtyps new_rt (CtorVariant tag) code sc dvar_loc
                                 in code
                             | _ -> raise_compile_err dvar_loc
                                 (sprintf "the constructor '%s' of variant '%s' is not a function apparently" (id2str constr) (id2str inst)))
@@ -1167,7 +1169,7 @@ and transform_all_types_and_cons elist code sc =
                         | _ -> ke_typ :: []
                         in
                     let delta_code = create_kdefconstr make_id argtyps KTypExn
-                        [FunCtor (CtorExn dexn_name)] [] dexn_scope dexn_loc in
+                        (CtorExn dexn_name) [] dexn_scope dexn_loc in
                     (make_id, delta_code)
                 in
             let ke = ref { ke_name=dexn_name; ke_cname=""; ke_base_cname="";

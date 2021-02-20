@@ -122,8 +122,8 @@ and kexp_t =
     | KExpTryCatch of kexp_t * kexp_t * kctx_t
     | KExpThrow of id_t * bool * loc_t
     | KExpCast of atom_t * ktyp_t * loc_t
-    | KExpMap of (kexp_t * (id_t * dom_t) list * id_t list) list * kexp_t * for_flag_t list * kctx_t
-    | KExpFor of (id_t * dom_t) list * id_t list * kexp_t * for_flag_t list * loc_t
+    | KExpMap of (kexp_t * (id_t * dom_t) list * id_t list) list * kexp_t * for_flags_t * kctx_t
+    | KExpFor of (id_t * dom_t) list * id_t list * kexp_t * for_flags_t * loc_t
     | KExpWhile of kexp_t * kexp_t * loc_t
     | KExpDoWhile of kexp_t * kexp_t * loc_t
     | KExpCCode of string * kctx_t
@@ -138,7 +138,7 @@ and kdefval_t = { kv_name: id_t; kv_cname: string; kv_typ: ktyp_t;
 and kdefclosureinfo_t = { kci_arg: id_t; kci_fcv_t: id_t; kci_fp_typ: id_t; kci_make_fp: id_t; kci_wrap_f: id_t }
 and kdeffun_t = { kf_name: id_t; kf_cname: string;
                   kf_args: (id_t * ktyp_t) list; kf_rt: ktyp_t; kf_body: kexp_t;
-                  kf_flags: fun_flag_t list; kf_closure: kdefclosureinfo_t;
+                  kf_flags: fun_flags_t; kf_closure: kdefclosureinfo_t;
                   kf_scope: scope_t list; kf_loc: loc_t }
 and kdefexn_t = { ke_name: id_t; ke_cname: string; ke_base_cname: string;
                   ke_typ: ktyp_t; ke_std: bool; ke_tag: id_t; ke_make: id_t;
@@ -892,12 +892,14 @@ let create_kdeffun n args rt flags body_opt code sc loc =
     set_idk_entry n (KFun kf);
     (KDefFun kf) :: code
 
-let create_kdefconstr n argtyps rt flags code sc loc =
+let create_kdefconstr n argtyps rt ctor code sc loc =
     let (_, args) = List.fold_left (fun (idx, args) t ->
         let arg = gen_idk (sprintf "arg%d" idx) in
         let _ = create_kdefval arg t [ValArg] None [] loc in
         (idx + 1, (arg, t) :: args)) (0, []) argtyps in
-    create_kdeffun n (List.rev args) rt flags None code sc loc
+    create_kdeffun n (List.rev args) rt
+        {(default_fun_flags()) with fun_flag_ctor=ctor}
+        None code sc loc
 
 let rec ktyp2str t =
     match t with

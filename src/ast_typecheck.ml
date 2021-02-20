@@ -515,7 +515,7 @@ let rec lookup_id n t env sc loc =
             | IdVal {dv_typ} -> unify dv_typ t loc "incorrect value type"; Some(i)
             | IdFun df ->
                 let { df_templ_args; df_typ; df_flags; df_env; df_scope } = !df in
-                let t = match ((List.mem FunKW df_flags), (deref_typ t)) with
+                let t = match (df_flags.fun_flag_has_keywords, (deref_typ t)) with
                     | (true, TypFun(argtyps, rt)) ->
                         let argtyps = match (List.map deref_typ (List.rev argtyps)) with
                             | TypRecord {contents=(_, false)} :: _ -> argtyps
@@ -1209,8 +1209,8 @@ and check_exp e env sc =
         let new_body = check_exp body env loop_sc in
         ExpDoWhile (new_body, new_c, eloc)
     | ExpFor(for_clauses, idx_pat, body, flags, _) ->
-        let is_fold = List.mem ForFold flags in
-        let is_nested = List.mem ForNested flags in
+        let is_fold = flags.for_flag_fold in
+        let is_nested = flags.for_flag_nested in
         let for_sc = (if is_fold then new_fold_scope() else new_loop_scope(is_nested)) :: sc in
         let (trsz, pre_code, for_clauses, idx_pat, dims, env, _) = check_for_clauses for_clauses idx_pat env IdSet.empty for_sc in
         if trsz > 0 then
@@ -1230,8 +1230,8 @@ and check_exp e env sc =
             let new_body = check_exp body env for_sc in
             ExpFor(for_clauses, idx_pat, new_body, flags, eloc)
     | ExpMap (map_clauses, body, flags, ctx) ->
-        let make_list = List.mem ForMakeList flags in
-        let make_tuple = List.mem ForMakeTuple flags in
+        let make_list = flags.for_flag_make = ForMakeList in
+        let make_tuple = flags.for_flag_make = ForMakeTuple in
         let for_sc = (if make_tuple then new_block_scope() else if make_list then new_map_scope() else new_arr_map_scope()) :: sc in
         let (trsz, pre_code, map_clauses, total_dims, env, _) = List.fold_left
             (fun (trsz, pre_code, map_clauses, total_dims, env, idset) (for_clauses, idx_pat) ->
@@ -1653,8 +1653,8 @@ and register_typ_constructor n ctor templ_args argtyps rt env sc decl_loc =
     let cname = dup_id n in
     (*let _ = (printf "registering constructor '%s' of type " (id2str cname); pprint_typ_x (TypFun(argtyps, rt)) decl_loc; printf "\n") in*)
     let df = ref { df_name=cname; df_templ_args=templ_args;
-            df_args=args; df_typ=ctyp;
-            df_body=(ExpNop decl_loc); df_flags=[FunCtor ctor];
+            df_args=args; df_typ=ctyp; df_body=(ExpNop decl_loc);
+            df_flags={(default_fun_flags()) with fun_flag_ctor=ctor};
             df_templ_inst=[]; df_scope=sc; df_env=env; df_loc=decl_loc } in
     set_id_entry cname (IdFun df);
     (cname, ctyp)

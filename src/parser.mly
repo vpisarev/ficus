@@ -121,7 +121,7 @@ let make_deffun fname args rt body flags loc =
         in
     let df = DefFun (ref { df_name=fname; df_templ_args=[]; df_args=(List.rev args);
         df_typ=TypFun((List.rev argtp), rt); df_body=body;
-        df_flags=(if kwargs = [] then [] else [FunKW]) @ flags;
+        df_flags={flags with fun_flag_has_keywords = (kwargs != [])};
         df_scope=ScGlobal :: []; df_loc=loc;
         df_templ_inst=[]; df_env=Env.empty }) in
     [df]
@@ -155,12 +155,12 @@ let rec process_nested_for nested_for =
         let (for_cl, idx_pat) = process_for_clauses for_cl loc in
         (for_cl, idx_pat) :: l) [] nested_for
 
-let rec make_for nested_for body flags each_for_flags =
+let rec make_for nested_for body flags is_fold =
     match nested_for with
     | (loc, for_cl_) :: rest ->
-        let curr_flags = if rest=[] then flags else [ForNested] in
+        let curr_flags = {flags with for_flag_nested = (rest!=[]); for_flag_fold=is_fold} in
         let (for_cl, idx_pat) = process_for_clauses for_cl_ loc in
-        make_for rest (ExpFor(for_cl, idx_pat, body, each_for_flags @ curr_flags, loc)) flags each_for_flags
+        make_for rest (ExpFor(for_cl, idx_pat, body, curr_flags, loc)) flags is_fold
     | _ -> body
 
 let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_body =
@@ -180,7 +180,7 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_bod
     let body_loc = get_exp_loc fold_body in
     let update_fr = ExpAssign(fr_exp, fold_body, body_loc) in
     let new_body = ExpSeq([acc_decl; update_fr], (TypVoid, body_loc)) in
-    let for_exp = make_for nested_fold_cl new_body [] [ForFold] in
+    let for_exp = make_for nested_fold_cl new_body (default_for_flags()) true in
     ExpSeq([fr_decl; for_exp; fr_exp], (make_new_typ(), curr_loc()))
 
 let make_chained_cmp chain = match chain with
@@ -513,7 +513,7 @@ stmt:
     }
 | B_WHILE exp_or_block block { ExpWhile($2, $3, curr_loc()) }
 | DO block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
-| for_flags B_FOR nested_for_ block { make_for $3 $4 $1 [] }
+| for_flags B_FOR nested_for_ block { make_for $3 $4 $1 false }
 | complex_exp { $1 }
 
 ccode_exp:
@@ -570,17 +570,17 @@ simple_exp:
 | B_LPAREN B_FOR nested_for_ block RPAREN
     {
         let map_clauses = process_nested_for $3 in
-        ExpMap(map_clauses, $4, ForMakeTuple :: [], make_new_ctx())
+        ExpMap(map_clauses, $4, {(default_for_flags()) with for_flag_make=ForMakeTuple}, make_new_ctx())
     }
 | B_LSQUARE for_flags B_FOR nested_for_ block RSQUARE
     {
         let map_clauses = process_nested_for $4 in
-        ExpMap(map_clauses, $5, ForMakeArray :: $2, make_new_ctx())
+        ExpMap(map_clauses, $5, {$2 with for_flag_make=ForMakeArray}, make_new_ctx())
     }
 | LLIST for_flags B_FOR nested_for_ block RLIST
     {
         let map_clauses = process_nested_for $4 in
-        ExpMap(map_clauses, $5, ForMakeList :: $2, make_new_ctx())
+        ExpMap(map_clauses, $5, {$2 with for_flag_make=ForMakeList}, make_new_ctx())
     }
 | B_LSQUARE array_elems_ RSQUARE
     {
@@ -616,8 +616,8 @@ apos_exp:
 | deref_exp { $1 }
 
 for_flags:
-| PARALLEL { [ForParallel] }
-| /* empty */ { [] }
+| PARALLEL { {(default_for_flags()) with for_flag_parallel=true} }
+| /* empty */ { default_for_flags() }
 
 complex_exp:
 | IF elif_seq {
@@ -657,14 +657,14 @@ complex_exp:
         let (args, rt) = $2 in
         let body = expseq2exp (exp2expseq $3) 3 in
         let fname = gen_temp_id "lambda" in
-        let df = make_deffun fname args rt body [] (curr_loc()) in
+        let df = make_deffun fname args rt body (default_fun_flags()) (curr_loc()) in
         ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
     }
 | FUN fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
     {
         let ctx = make_new_ctx() in
         let fname = gen_temp_id "lambda" in
-        let df = make_pmatch_deffun ([], fname) $2 $5 2 5 in
+        let df = make_pmatch_deffun (default_fun_flags(), fname) $2 $5 2 5 in
         ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
     }
 | simple_exp LBRACE id_exp_list_ RBRACE
@@ -1023,20 +1023,20 @@ val_decl:
     }
 
 fun_decl_start:
-| fun_flags_ FUN B_IDENT { ((List.rev $1), get_id $3) }
-| FUN B_IDENT { ([], get_id $2) }
-| fun_flags_ OPERATOR op_name { ((List.rev $1), $3) }
-| OPERATOR op_name { ([], $2) }
+| fun_flags_ FUN B_IDENT { ($1, get_id $3) }
+| FUN B_IDENT { ((default_fun_flags()), get_id $2) }
+| fun_flags_ OPERATOR op_name { ($1, $3) }
+| OPERATOR op_name { ((default_fun_flags()), $2) }
 
 fun_flags_:
-| fun_flags_ fun_flag { $2 :: $1 }
-| fun_flag { $1 :: [] }
-
-fun_flag:
-| INLINE { FunInline }
-| NOTHROW { FunNoThrow }
-| PURE { FunPure }
-| STATIC { FunPrivate }
+| fun_flags_ INLINE { {$1 with fun_flag_inline=true} }
+| fun_flags_ NOTHROW { {$1 with fun_flag_nothrow=true} }
+| fun_flags_ PURE { {$1 with fun_flag_pure=1} }
+| fun_flags_ STATIC { {$1 with fun_flag_private=true} }
+| INLINE { {(default_fun_flags()) with fun_flag_inline=true} }
+| NOTHROW { {(default_fun_flags()) with fun_flag_nothrow=true} }
+| PURE { {(default_fun_flags()) with fun_flag_pure=1} }
+| STATIC { {(default_fun_flags()) with fun_flag_private=true} }
 
 fun_args:
 | lparen fun_arg_list RPAREN opt_typespec { ((List.rev $2), $4) }

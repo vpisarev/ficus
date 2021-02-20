@@ -156,18 +156,8 @@ and pprint_kexp_ e prtyp =
         let nargs = List.length kf_args in
         let fkind = ref "FUN" in
         let ctor_id = get_fun_ctor kf_flags in
-        (obox(); (List.iter (fun ff -> match ff with
-                    | FunPure -> pstr "PURE"; pspace()
-                    | FunImpure -> pstr "IMPURE"; pspace()
-                    | FunInline -> pstr "INLINE"; pspace()
-                    | FunNoThrow -> pstr "NOTHROW"; pspace()
-                    | FunReallyNoThrow -> pstr "REALLY_NOTHROW"; pspace()
-                    | FunPrivate -> pstr "PRIVATE"; pspace()
-                    | FunUseFV -> pstr "USE_FV"; pspace()
-                    | FunRecursive -> pstr "RECURSIVE"; pspace()
-                    | FunKW -> pstr "WITH_KEYWORDS"; pspace()
-                    | FunCtor _ -> ()
-                    | FunInC -> pstr "C_FUNC"; pspace()) kf_flags);
+        (obox();
+        Ast_pp.pprint_fun_flags kf_flags;
         pstr (!fkind); pspace(); pprint_id_label kf_name; pspace();
         pstr "("; pcut(); obox();
         List.iteri (fun i (n, t) ->
@@ -316,7 +306,7 @@ and pprint_kexp_ e prtyp =
             pspace(); pprint_kexp for_body; cbox()
         | KExpMap(map_cl, map_body, flags, (_, loc)) ->
             obox(); Ast_pp.pprint_for_flags flags;
-            pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else ();
+            pstr "["; if (flags.for_flag_make = ForMakeList) then pstr ":: " else ();
             (List.iter (fun (pre_e, pe_l, at_ids) ->
               pprint_for_hdr pre_e pe_l at_ids eloc; pspace ()) map_cl);
             pprint_kexp map_body; pstr "]"; cbox()

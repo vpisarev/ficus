@@ -230,11 +230,14 @@ let make_wrappers_for_nothrow top_code =
             let {kf_name; kf_args; kf_rt; kf_flags; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
             let new_body = wrapf_kexp_ kf_body callb in
             let _ = kf := {!kf with kf_body=new_body} in
-            if not (List.mem FunNoThrow kf_flags) || (is_fun_ctor kf_flags) || (kf_closure.kci_wrap_f <> noid) then e
+            if (not kf_flags.fun_flag_nothrow) ||
+               (is_fun_ctor kf_flags) ||
+               (kf_closure.kci_wrap_f <> noid)
+            then e
             else
                 (let w_name = gen_idk ((pp_id2str kf_name) ^ "_w") in
                 let _ = kf := {!kf with kf_closure={kf_closure with kci_wrap_f=w_name}} in
-                let w_flags = List.filter (fun f -> f != FunNoThrow) kf_flags in
+                let w_flags = {kf_flags with fun_flag_nothrow=false} in
                 let w_args = List.map (fun (a, t) ->
                     let w_a = dup_idk a in
                     let _ = create_kdefval w_a t [ValArg] None [] kf_loc in
@@ -384,7 +387,7 @@ let lift_all kmods =
                 let cl_arg = gen_temp_idk "cv" in
                 let make_fp = gen_temp_idk "make_fp" in
                 let _ = create_kdefconstr make_fp (List.rev make_args_ktyps) kf_typ
-                    [FunCtor (CtorFP kf_name)] [] kf_scope kf_loc in
+                                            (CtorFP kf_name) [] kf_scope kf_loc in
                 let _ = create_kdefval cl_arg (KTypName fcv_tn) [] None [] kf_loc in
                 let new_kf_closure = {kf_closure with kci_arg=cl_arg; kci_fcv_t=fcv_tn; kci_make_fp=make_fp} in
                 set_idk_entry fcv_tn (KClosureVars fcv_t);

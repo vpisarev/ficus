@@ -217,7 +217,7 @@ let annotate_types kmods =
                     match (kinfo_ constr kvar_loc) with
                     | KFun kf ->
                         let {kf_flags} = !kf in
-                        kf := {!kf with kf_flags=FunNoThrow :: kf_flags}
+                        kf := {!kf with kf_flags={kf_flags with fun_flag_nothrow=true}}
                     | _ -> ()) kvar_ctors;
             kvar := {!kvar with kvar_flags = {kvar_flags with
                 var_flag_opt = option_like;

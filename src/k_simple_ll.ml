@@ -65,8 +65,7 @@ let lift kmods =
             | KVariant _ -> true
             | KTyp _ -> true
             | KVal _ -> false
-            | KFun {contents={kf_flags}} ->
-                (List.mem FunInC kf_flags) || (is_fun_ctor kf_flags)
+            | KFun {contents={kf_flags}} -> kf_flags.fun_flag_ccode || (is_fun_ctor kf_flags)
             | KClosureVars _ ->
                 raise_compile_err kf_loc
                 (sprintf "simple LL: KClosureVars '%s' is not expected at this step, it should appear in the end after full-scale lambda lifting"
@@ -103,9 +102,7 @@ let lift kmods =
             else
                 if not (can_lift_fun kf) then e
                 else
-                    let flags = List.filter (fun f ->
-                        match f with FunPrivate -> false | _ -> true) kf_flags in
-                    let _ = kf := {!kf with kf_flags=flags} in
+                    let _ = kf := {!kf with kf_flags={kf_flags with fun_flag_private=false}} in
                     add_to_globals_and_lift kf_name e kf_loc
         | _ -> walk_kexp e callb
     in let walk_n_lift_callb =

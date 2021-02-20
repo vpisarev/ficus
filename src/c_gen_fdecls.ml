@@ -41,7 +41,7 @@ let convert_all_fdecls top_code =
                 in
             let {ktp_scalar=rt_scalar} = K_annotate_types.get_ktprops rt kf_loc in
             let crt = C_gen_types.ktyp2ctyp rt kf_loc in
-            let is_nothrow = List.mem FunNoThrow kf_flags in
+            let is_nothrow = kf_flags.fun_flag_nothrow in
             let (new_crt, args) =
                 if is_nothrow && rt_scalar then
                     (crt, args)
@@ -63,11 +63,11 @@ let convert_all_fdecls top_code =
                     let _ = add_cf_arg fv_arg std_CTypVoidPtr fv_cname kf_loc in
                     (fv_arg, std_CTypVoidPtr, [CArgFV]) :: args
                 in
-            let flags = kf_flags in
-            let flags = if kci_arg = noid then flags else FunUseFV :: flags in
             let cf = ref {cf_name=kf_name; cf_rt=new_crt;
                 cf_args=(List.rev args); cf_cname=kf_cname; cf_body=[];
-                cf_flags=flags; cf_scope=kf_scope; cf_loc=kf_loc } in
+                cf_flags=(if kci_arg=noid then kf_flags else
+                    {kf_flags with fun_flag_uses_fv=true});
+                cf_scope=kf_scope; cf_loc=kf_loc } in
             set_idc_entry kf_name (CFun cf);
             top_func_decls := (CDefFun cf) :: !top_func_decls
         | KDefClosureVars kcv ->
@@ -96,7 +96,8 @@ let convert_all_fdecls top_code =
                     cf_args=[(dst_id, fcv_typ, [CArgPassByPtr])];
                     cf_cname=free_f_cname;
                     cf_body=(List.rev freecode);
-                    cf_flags=[FunNoThrow]; cf_scope=[ScGlobal]; cf_loc=kcv_loc } in
+                    cf_flags={(default_fun_flags()) with fun_flag_nothrow=true};
+                    cf_scope=[ScGlobal]; cf_loc=kcv_loc } in
                 let _ = set_idc_entry free_f (CFun cf) in
                 (free_f, [CDefFun cf])
                 in
@@ -228,7 +229,8 @@ let convert_all_fdecls top_code =
                             cf_args=[(dst_id, exn_data_ptr_t, [CArgPassByPtr])];
                             cf_cname=free_f_cname;
                             cf_body=(List.rev freecode);
-                            cf_flags=[FunNoThrow]; cf_scope=[ScGlobal]; cf_loc=ke_loc } in
+                            cf_flags={(default_fun_flags()) with fun_flag_nothrow=true};
+                            cf_scope=[ScGlobal]; cf_loc=ke_loc } in
                         let _ = set_idc_entry free_f (CFun cf) in
                         (free_f, [CDefFun cf])
                         in

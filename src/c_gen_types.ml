@@ -252,7 +252,9 @@ let convert_all_typs kmods =
         let freef_decl = ref {
             cf_name=free_f; cf_args=[(dst_id, dst_typ, [CArgPassByPtr])]; cf_rt=CTypVoid;
             cf_cname="_fx_free_" ^ cname_wo_prefix; cf_body=[];
-            cf_flags=FunNoThrow :: FunPrivate :: []; cf_scope=ScGlobal :: []; cf_loc=loc } in
+            cf_flags={(default_fun_flags()) with
+                fun_flag_nothrow=true; fun_flag_private=true};
+            cf_scope=ScGlobal :: []; cf_loc=loc } in
         let copyf_decl = ref { !freef_decl with cf_name=copy_f;
             cf_args=[(src_id, src_typ, src_flags); (dst_id, dst_typ, [CArgPassByPtr])];
             cf_rt = CTypVoid; cf_cname="_fx_copy_" ^ cname_wo_prefix } in
@@ -410,7 +412,10 @@ let convert_all_typs kmods =
                             cf_name=mktup_id; cf_args=List.rev make_args; cf_rt=CTypVoid;
                             cf_cname="_fx_make_" ^ tp_cname_wo_prefix;
                             cf_body=(List.rev make_code);
-                            cf_flags=FunNoThrow::FunPrivate::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
+                            cf_flags={(default_fun_flags()) with
+                                fun_flag_nothrow=true;
+                                fun_flag_private=true};
+                            cf_scope=ScGlobal :: []; cf_loc=loc } in
                         set_idc_entry mktup_id (CFun mktup_decl);
                         add_decl mktup_id (CDefFun mktup_decl);
                         freef_decl := {!freef_decl with cf_body=List.rev free_code};
@@ -445,7 +450,9 @@ let convert_all_typs kmods =
                             cf_name=mkrec_id; cf_args=List.rev make_args; cf_rt=CTypVoid;
                             cf_cname="_fx_make_" ^ tp_cname_wo_prefix;
                             cf_body=(List.rev make_code);
-                            cf_flags=FunNoThrow::FunPrivate::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
+                            cf_flags={(default_fun_flags()) with
+                                fun_flag_nothrow=true; fun_flag_private=true};
+                            cf_scope=ScGlobal :: []; cf_loc=loc } in
                         set_idc_entry mkrec_id (CFun mkrec_decl);
                         add_decl mkrec_id (CDefFun mkrec_decl);
                         freef_decl := {!freef_decl with cf_body=List.rev free_code};
@@ -488,7 +495,8 @@ let convert_all_typs kmods =
                                  (fx_result_id, (make_ptr ct_tl), [CArgPassByPtr; CArgRetVal])];
                         cf_cname="_fx_cons_" ^ tp_cname_wo_prefix;
                         cf_body=make_list_body;
-                        cf_flags=FunPrivate::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
+                        cf_flags={(default_fun_flags()) with fun_flag_private=true};
+                        cf_scope=ScGlobal :: []; cf_loc=loc } in
                     set_idc_entry cons_id (CFun cons_decl);
                     add_decl cons_id (CDefFun cons_decl);
                     struct_decl := {!struct_decl with
@@ -526,7 +534,8 @@ let convert_all_typs kmods =
                                  (fx_result_id, (make_ptr fx_result_ct), [CArgPassByPtr; CArgRetVal])];
                         cf_cname="_fx_make_" ^ tp_cname_wo_prefix;
                         cf_body=mkref_body;
-                        cf_flags=FunPrivate::[]; cf_scope=ScGlobal :: []; cf_loc=loc } in
+                        cf_flags={(default_fun_flags()) with fun_flag_private=true};
+                        cf_scope=ScGlobal :: []; cf_loc=loc } in
                     set_idc_entry mkref_id (CFun mkref_decl);
                     add_decl mkref_id (CDefFun mkref_decl);
                     struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)));

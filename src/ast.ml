@@ -178,9 +178,52 @@ type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
     | ValCtor of id_t (* when the value is 0-parameter constructor of variant (or exception) *)
     | ValGlobal of scope_t list (* global public values at module level or public static class members *)
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
-type fun_flag_t = FunImpure | FunInC | FunKW | FunInline | FunNoThrow | FunReallyNoThrow
-    | FunPure | FunPrivate | FunCtor of fun_constr_t | FunUseFV | FunRecursive
-type for_flag_t = ForParallel | ForMakeArray | ForMakeList | ForMakeTuple | ForUnzip | ForFold | ForNested
+type fun_flags_t =
+{
+    fun_flag_pure: int;
+    fun_flag_ccode: bool;
+    fun_flag_has_keywords: bool;
+    fun_flag_inline: bool;
+    fun_flag_nothrow: bool;
+    fun_flag_really_nothrow: bool;
+    fun_flag_private: bool;
+    fun_flag_ctor: fun_constr_t;
+    fun_flag_uses_fv: bool;
+    fun_flag_recursive: bool
+}
+
+let default_fun_flags() =
+{
+    fun_flag_pure = -1;
+    fun_flag_ccode=false;
+    fun_flag_has_keywords=false;
+    fun_flag_inline=false;
+    fun_flag_nothrow=false;
+    fun_flag_really_nothrow=false;
+    fun_flag_private=false;
+    fun_flag_ctor=CtorNone;
+    fun_flag_uses_fv=false;
+    fun_flag_recursive=false
+}
+
+type for_make_t = ForMakeArray | ForMakeList | ForMakeTuple
+type for_flags_t =
+{
+    for_flag_parallel: bool;
+    for_flag_make: for_make_t;
+    for_flag_unzip: bool;
+    for_flag_fold: bool;
+    for_flag_nested: bool;
+}
+let default_for_flags() =
+{
+    for_flag_parallel=false;
+    for_flag_make=ForMakeArray;
+    for_flag_unzip=false;
+    for_flag_fold=false;
+    for_flag_nested=false
+}
+
 type border_t = BorderNone | BorderClip | BorderZero
 type interpolate_t = InterpNone | InterpLinear
 
@@ -211,8 +254,8 @@ type exp_t =
     | ExpIf of exp_t * exp_t * exp_t * ctx_t
     | ExpWhile of exp_t * exp_t * loc_t
     | ExpDoWhile of exp_t * exp_t * loc_t
-    | ExpFor of (pat_t * exp_t) list * pat_t * exp_t * for_flag_t list * loc_t
-    | ExpMap of ((pat_t * exp_t) list * pat_t) list * exp_t * for_flag_t list * ctx_t
+    | ExpFor of (pat_t * exp_t) list * pat_t * exp_t * for_flags_t * loc_t
+    | ExpMap of ((pat_t * exp_t) list * pat_t) list * exp_t * for_flags_t * ctx_t
     | ExpTryCatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpMatch of exp_t * (pat_t list * exp_t) list * ctx_t
     | ExpCast of exp_t * typ_t * ctx_t
@@ -245,7 +288,7 @@ and env_t = env_entry_t list Env.t
 and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
                  dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
-                 df_body: exp_t; df_flags: fun_flag_t list; df_scope: scope_t list; df_loc: loc_t;
+                 df_body: exp_t; df_flags: fun_flags_t; df_scope: scope_t list; df_loc: loc_t;
                  df_templ_inst: id_t list; df_env: env_t }
 and defexn_t = { dexn_name: id_t; dexn_typ: typ_t; dexn_scope: scope_t list; dexn_loc: loc_t }
 and deftyp_t = { dt_name: id_t; dt_templ_args: id_t list; dt_typ: typ_t;
@@ -899,12 +942,8 @@ let get_val_ctor flags =
     | Some (ValCtor i) -> i
     | _ -> noid
 
-let get_fun_ctor flags =
-    match (List.find_opt (fun f -> match f with FunCtor _ -> true | _ -> false) flags) with
-    | Some (FunCtor i) -> i
-    | _ -> CtorNone
-
-let is_fun_ctor flags = (get_fun_ctor flags) <> CtorNone
+let get_fun_ctor flags = flags.fun_flag_ctor
+let is_fun_ctor flags = flags.fun_flag_ctor <> CtorNone
 
 let ctor2str f =
     let s = match f with

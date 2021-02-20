@@ -185,7 +185,7 @@ and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val
 and cdeffun_t = { cf_name: id_t; cf_cname: string;
                   cf_args: (id_t * ctyp_t * (carg_attr_t list)) list;
                   cf_rt: ctyp_t; cf_body: cstmt_t list;
-                  cf_flags: fun_flag_t list; cf_scope: scope_t list; cf_loc: loc_t }
+                  cf_flags: fun_flags_t; cf_scope: scope_t list; cf_loc: loc_t }
 and cdeftyp_t = { ct_name: id_t; ct_typ: ctyp_t; ct_cname: string;
                   ct_props: ctprops_t; ct_data_start: int; ct_enum: id_t;
                   ct_scope: scope_t list; ct_loc: loc_t }

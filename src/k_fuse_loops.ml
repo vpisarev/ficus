@@ -12,7 +12,7 @@ open Ast
 open K_form
 
 type array_stat_t = { mutable arr_nused: int; mutable arr_nused_for: int; mutable arr_idl: (id_t*dom_t) list;
-                      mutable arr_body: kexp_t; arr_map_flags: for_flag_t list }
+                      mutable arr_body: kexp_t; arr_map_flags: for_flags_t }
 
 let rec fuse_loops code =
     let counters = ref (Env.empty : array_stat_t Env.t) in
@@ -38,7 +38,7 @@ let rec fuse_loops code =
         | Domain.Elem(Atom.Id col) ->
             (match (Env.find_opt col !counters) with
             | Some(arr_stat) ->
-                let is_parallel = List.mem ForParallel arr_stat.arr_map_flags in
+                let is_parallel = arr_stat.arr_map_flags.for_flag_parallel in
                 if inside_for && is_parallel then () else
                     arr_stat.arr_nused_for <- arr_stat.arr_nused_for + 1
             | _ -> ())

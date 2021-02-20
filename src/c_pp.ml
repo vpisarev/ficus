@@ -249,7 +249,7 @@ and pprint_fun_hdr fname semicolon loc fwd_mode =
         | _ -> raise_compile_err loc (sprintf "the forward declaration of %s does not reference a function" (pp_id2str fname))
     in
     obox();
-    if List.mem FunPrivate cf_flags then pstr "static " else pstr "FX_EXTERN_C ";
+    if cf_flags.fun_flag_private then pstr "static " else pstr "FX_EXTERN_C ";
     (* if all the calls of an inline function were expanded — good;
        if not, it will still be called from the module where it is defined.
        So, we should not declare it as inline at C/C++ level *)

@@ -27,6 +27,18 @@ let ohvbox_indent () = Format.open_hvbox (!base_indent)
 let pprint_lit x loc = pstr (lit2str x false loc)
 let pprint_id x = pstr (match x with Id.Name(0) -> "__" | _ -> id2str x)
 
+let pprint_fun_flags flags =
+    if flags.fun_flag_pure < 0 then () else
+    (pstr (if flags.fun_flag_pure > 0 then "PURE" else "IMPURE"); pspace());
+    if flags.fun_flag_inline then (pstr "INLINE"; pspace()) else ();
+    if flags.fun_flag_nothrow then (pstr "NOTHROW"; pspace()) else ();
+    if flags.fun_flag_really_nothrow then (pstr "REALLY_NOTHROW"; pspace()) else ();
+    if flags.fun_flag_private then (pstr "PRIVATE"; pspace()) else ();
+    if flags.fun_flag_uses_fv then (pstr "USE_FV"; pspace()) else ();
+    if flags.fun_flag_recursive then (pstr "RECURSIVE"; pspace()) else ();
+    if flags.fun_flag_has_keywords then (pstr "WITH_KEYWORDS"; pspace()) else ();
+    if flags.fun_flag_ccode then (pstr "C_FUNC"; pspace()) else ()
+
 type typ_pr_t = TypPr0 | TypPrFun | TypPrComplex | TypPrBase
 
 let rec get_typ_pr t = match t with
@@ -113,13 +125,10 @@ let pprint_templ_args tt = match tt with
         pstr ")"
 
 let pprint_for_flags flags =
-    match flags with
-    | [] -> ()
-    | _ -> pstr "<"; (List.iter (fun f ->
-        pstr (match f with
-        | ForParallel -> "PARALLEL, "
-        | ForUnzip -> "UNZIP, "
-        | _ -> "")) flags); pstr ">"; pspace()
+    pstr "<";
+    if flags.for_flag_parallel then (pstr "PARALLEL, "; pspace()) else ();
+    if flags.for_flag_unzip then (pstr "UNZIP, "; pspace()) else ();
+    pstr ">"; pspace()
 
 let rec pprint_exp e =
     let (t, eloc) = get_exp_ctx e in
@@ -147,18 +156,8 @@ let rec pprint_exp e =
                 df_body; df_flags; df_templ_inst; df_loc}} ->
         let fkind = ref "FUN" in
         let ctor_id = get_fun_ctor df_flags in
-        (obox(); (List.iter (fun ff -> match ff with
-                    | FunPure -> pstr "PURE"; pspace()
-                    | FunImpure -> pstr "IMPURE"; pspace()
-                    | FunInline -> pstr "INLINE"; pspace()
-                    | FunNoThrow -> pstr "NOTHROW"; pspace()
-                    | FunReallyNoThrow -> pstr "REALLY_NOTHROW"; pspace()
-                    | FunPrivate -> pstr "PRIVATE"; pspace()
-                    | FunUseFV -> pstr "USE_FV"; pspace()
-                    | FunRecursive -> pstr "RECURSIVE"; pspace()
-                    | FunKW -> pstr "WITH_KEYWORDS"; pspace()
-                    | FunCtor _ -> ()
-                    | FunInC -> pstr "C_FUNC"; pspace()) df_flags);
+        (obox();
+        pprint_fun_flags df_flags;
         pstr (!fkind); pspace(); pprint_templ_args df_templ_args; pprint_id df_name; pspace();
         pstr "("; pcut(); obox();
         (List.iteri (fun i p -> if i = 0 then () else (pstr ","; pspace()); pprint_pat p) df_args);
@@ -294,7 +293,7 @@ let rec pprint_exp e =
             pspace(); pprint_exp_as_block for_body; cbox()
         | ExpMap(map_cl, map_body, flags, _) ->
             obox(); pprint_for_flags flags;
-            pstr "["; if (List.mem ForMakeList flags) then pstr ":: " else (); pspace();
+            pstr "["; if flags.for_flag_make = ForMakeList then pstr ":: " else (); pspace();
             (List.iter (fun (pe_l, idx_pat) -> pstr "FOR"; pspace();
             (match idx_pat with
             | PatAny _ -> ()

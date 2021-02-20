@@ -197,7 +197,7 @@ type block_ctx_t =
     bctx_kind: block_kind_t;
     bctx_label: id_t;
     bctx_br_label: id_t;
-    bctx_for_flags: for_flag_t list;
+    bctx_for_flags: for_flags_t;
     mutable bctx_status: cexp_t;
     mutable bctx_par_status: cexp_t;
     mutable bctx_prologue: cstmt_t list;
@@ -269,7 +269,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let {bctx_kind; bctx_for_flags} = top in
                 (match bctx_kind with
                 | BlockKind_Loop | BlockKind_LoopND ->
-                    if (List.mem ForNested bctx_for_flags) then
+                    if bctx_for_flags.for_flag_nested then
                         check_inside_loop_ rest
                     else
                         if is_break then
@@ -319,7 +319,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         block_stack := bctx :: !block_stack
     in
 
-    let new_block_ctx kind loc = new_block_ctx_ kind [] loc
+    let new_block_ctx kind loc = new_block_ctx_ kind (default_for_flags()) loc
     in
 
     let new_for_block_ctx ndims for_flags status par_status loc =
@@ -502,7 +502,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let _ = if bctx_kind = BlockKind_Loop || bctx_kind = BlockKind_LoopND then
             () else raise_compile_err loc "cgen: the current context is not a loop" in
         let epilogue = List.rev bctx_cleanup in
-        let is_parallel = List.mem ForParallel bctx_for_flags in
+        let is_parallel = bctx_for_flags.for_flag_parallel in
         let (br_label, epilogue) =
             if bctx_label_used + bctx_break_used + bctx_continue_used = 0 then
                 (noid, epilogue)
@@ -1455,13 +1455,13 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | CFun cf ->
                     let {cf_args; cf_rt; cf_flags; cf_cname; cf_loc} = !cf in
                     let _ = ensure_sym_is_defined_or_declared f kloc in
-                    let is_nothrow = List.mem FunNoThrow cf_flags in
+                    let is_nothrow = cf_flags.fun_flag_nothrow in
                     let (_, ret_id, _, have_fv_arg) = unpack_fun_args cf_args cf_rt is_nothrow in
                     let f_exp = make_id_exp f cf_loc in
                     let fv_args =
                         if not have_fv_arg then
                             []
-                        else if not (List.mem FunUseFV cf_flags) then
+                        else if not cf_flags.fun_flag_uses_fv then
                             [make_lit_exp LitNil kloc]
                         else if f = (curr_func kloc) then
                             [make_id_t_exp (get_id "fx_fv") std_CTypVoidPtr cf_loc]
@@ -1903,8 +1903,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let map_lbl = curr_block_label kloc in
             let for_loc = get_start_loc kloc in
             let end_for_loc = get_end_loc kloc in
-            let need_make_list = List.mem ForMakeList flags in
-            let need_make_array = (List.mem ForMakeArray flags) || not need_make_list in
+            let need_make_list = flags.for_flag_make = ForMakeList in
+            let need_make_array = flags.for_flag_make = ForMakeArray in
             let nfors = List.length e_idoml_l in
             (* collect all the variables/values declared inside for (include iterations variables) *)
             let (pre_alloc_array, _) = if not need_make_array then (false, IdSet.empty) else
@@ -1949,7 +1949,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let ndims_i = compute_for_ndims for_idx nfors idoml for_loc in
                     (for_idx+1, ndims + ndims_i)) (0, 0) e_idoml_l
                 in
-            let is_parallel_map = pre_alloc_array && (List.mem ForParallel flags) in
+            let is_parallel_map = pre_alloc_array && flags.for_flag_parallel in
             let glob_status = make_id_t_exp (get_id "fx_status") CTypCInt kloc in
             let (par_status, ccode, nested_status, decl_nested_status) = if is_parallel_map then
                     let (par_status, ccode) = create_cdefval (gen_temp_idc "par_status")
@@ -2051,7 +2051,9 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     else
                         (pre_map_ccode, (alloc_array_ccode @ lst_len_ccode @ pre_map_ccode_delta @ init_ccode))
                     in
-                let for_flags = if for_idx > 0 then [ForNested] else if is_parallel_map then [ForParallel] else [] in
+                let for_flags = {(default_for_flags()) with
+                    for_flag_nested=for_idx > 0;
+                    for_flag_parallel=is_parallel_map && for_idx <= 0} in
                 let _ = new_for_block_ctx ndims for_flags nested_status par_status kloc in
                 (* inside the loop body context form `<etyp> v=e` expressions (or more complex ones in the case of complex types) *)
                 let body_ccode = decl_for_body_elems body_elems [] in
@@ -2167,7 +2169,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let end_for_loc = get_end_loc kloc in
             let ndims = compute_for_ndims 0 1 idoml for_loc in
             let glob_status = make_id_t_exp (get_id "fx_status") CTypCInt kloc in
-            let is_parallel_for = List.mem ForParallel flags in
+            let is_parallel_for = flags.for_flag_parallel in
             let (par_status, ccode, nested_status, decl_nested_status) = if is_parallel_for then
                     let (par_status, ccode) = create_cdefval (gen_temp_idc "par_status")
                         CTypCInt [ValMutable] "" (Some (make_int_exp 0 kloc)) ccode kloc in
@@ -2421,7 +2423,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let _ = new_block_ctx (BlockKind_Fun kf_name) kloc in
             let (args, rt, is_nothrow, cf) = match (cinfo_ kf_name kf_loc) with
                 | CFun ({contents={cf_args; cf_flags; cf_rt}} as cf) ->
-                    let is_nothrow = List.mem FunNoThrow cf_flags in
+                    let is_nothrow = cf_flags.fun_flag_nothrow in
                     (cf_args, cf_rt, is_nothrow, cf)
                 | _ -> raise_compile_err kf_loc (sprintf "cgen: the function '%s' declaration was not properly converted" (idk2str kf_name kf_loc))
                 in
@@ -2443,7 +2445,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let (status_exp, ccode) = create_cdefval orig_status_id CTypCInt [ValMutable] "fx_status"
                         (Some (make_int_exp 0 kf_loc)) [] kf_loc in
                     let status_id = if is_nothrow then noid else orig_status_id in
-                    let ccode = if status_id = noid || not (List.mem FunRecursive kf_flags) then ccode else
+                    let ccode = if status_id = noid || not kf_flags.fun_flag_recursive then ccode else
                         let call_chkstk = make_call (get_id "fx_check_stack") [] CTypCInt kf_loc in
                         add_fx_call call_chkstk ccode kf_loc
                         in
@@ -2681,12 +2683,12 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
     let init_name = (gen_temp_idc init_cname) in
     let init_f = ref {cf_name=init_name; cf_args=[]; cf_rt=CTypCInt;
         cf_cname=init_cname; cf_body=temp_init_vals @ mod_init_calls @ (List.rev ccode);
-        cf_flags=[]; cf_scope=ScGlobal::[]; cf_loc=end_loc} in
+        cf_flags=default_fun_flags(); cf_scope=ScGlobal::[]; cf_loc=end_loc} in
     let deinit_cname = "fx_deinit_" ^ km_cname in
     let deinit_name = (gen_temp_idc deinit_cname) in
     let deinit_f = ref {cf_name=deinit_name; cf_args=[]; cf_rt=CTypVoid;
         cf_cname=deinit_cname; cf_body=(List.rev deinit_ccode);
-        cf_flags=[]; cf_scope=ScGlobal::[]; cf_loc=end_loc} in
+        cf_flags=default_fun_flags(); cf_scope=ScGlobal::[]; cf_loc=end_loc} in
     let _ = set_idc_entry init_name (CFun init_f) in
     let _ = set_idc_entry deinit_name (CFun deinit_f) in
     let mod_names = if km_main then km_cname :: (List.map (fun {cmod_cname} -> cmod_cname) cmods) else [] in
