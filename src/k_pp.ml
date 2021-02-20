@@ -140,15 +140,7 @@ and pprint_kexp_ e prtyp =
     match e with
     | KDefVal(n, e0, loc) -> obox();
         let {kv_typ; kv_flags} = get_kval n loc in
-        (List.iter (fun vf -> match vf with
-        | ValTempRef -> pstr "TEMP_REF"; pspace()
-        | ValTemp -> pstr "TEMP"; pspace()
-        | ValMutable -> pstr "MUTABLE"; pspace()
-        | ValPrivate -> pstr "PRIVATE"; pspace()
-        | ValSubArray -> pstr "SUB_ARRAY"; pspace()
-        | ValGlobal _ -> pstr "GLOBAL"; pspace()
-        | ValCtor _ -> ()
-        | ValArg -> pstr "ARG"; pspace()) kv_flags);
+        Ast_pp.pprint_val_flags kv_flags;
         pstr "VAL"; pspace(); pprint_id_label n; pstr ": "; pprint_ktyp kv_typ loc; pspace(); pstr "="; pspace();
         pprint_kexp_ e0 false; cbox()
     | KDefFun {contents={kf_name; kf_args; kf_rt; kf_body; kf_closure; kf_flags; kf_loc }} ->

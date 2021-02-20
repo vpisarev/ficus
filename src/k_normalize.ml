@@ -106,14 +106,16 @@ let rec exp2kexp e code tref sc =
                         | KTypList(et) -> et
                         | KTypString -> KTypChar
                         | _ -> raise_compile_err eloc "unsupported typ of the domain expression in for loop" in
-                let (i, body_code) = pat_simple_unpack pi ptyp None body_code "i" [] body_sc
+                let (i, body_code) = pat_simple_unpack pi ptyp None body_code "i"
+                        (default_val_flags()) body_sc
                 in ((i, di) :: idom_list, code, body_code))
             ([], code, []) pe_l in
         let loc = get_pat_loc idx_pat in
         let (at_ids, body_code) = match idx_pat with
             | PatAny _ -> ([], body_code)
             | PatTyped(p, TypInt, loc) ->
-                let (i, body_code) = pat_simple_unpack p KTypInt None body_code "i" [] body_sc in
+                let (i, body_code) = pat_simple_unpack p KTypInt None body_code "i"
+                    (default_val_flags()) body_sc in
                 ([i], body_code)
             | PatTyped(p, TypTuple(tl), _) ->
                 let p = pat_skip_typed p in
@@ -125,7 +127,8 @@ let rec exp2kexp e code tref sc =
                         List.fold_left2 (fun (at_ids, body_code) pi ti ->
                             if ti = TypInt then () else
                                 raise_compile_err loc "some of '@' indices is not an integer";
-                            let (i, body_code) = pat_simple_unpack pi KTypInt None body_code "i" [] body_sc in
+                            let (i, body_code) = pat_simple_unpack pi KTypInt None body_code "i"
+                                (default_val_flags()) body_sc in
                             (i :: at_ids, body_code)) ([], body_code) pl tl
                         in
                     ((List.rev at_ids), body_code)
@@ -135,12 +138,12 @@ let rec exp2kexp e code tref sc =
                         if ti = TypInt then () else
                             raise_compile_err loc "some of '@' indices is not an integer";
                         let i = gen_idk (sprintf "%s%d" prefix k) in
-                        let _ = create_kdefval i KTypInt [] None [] loc in
+                        let _ = create_kdefval i KTypInt (default_val_flags()) None [] loc in
                         (k+1, (i :: at_ids), KTypInt :: ktl)) (0, [], []) tl
                         in
                     let ktyp = KTypTuple ktl in
                     let at_ids = (List.rev at_ids) in
-                    let body_code = create_kdefval idx ktyp []
+                    let body_code = create_kdefval idx ktyp (default_val_flags())
                         (Some (KExpMkTuple ((List.map (fun i -> Atom.Id i) at_ids), (ktyp, loc)))) body_code loc in
                     (at_ids, body_code)
                 | _ -> raise_compile_err loc
@@ -264,7 +267,7 @@ let rec exp2kexp e code tref sc =
                 let ni_ = dup_idk ni in
                 let ti_ = typ2ktyp ti eloc in
                 let get_ni = KExpMem(rec_n, idx, (ti_, eloc)) in
-                let code = create_kdefval ni_ ti_ (ValTempRef :: []) (Some get_ni) code eloc in
+                let code = create_kdefval ni_ ti_ (default_tempref_flags()) (Some get_ni) code eloc in
                 ((Atom.Id ni_), code)
             in (idx + 1, a::ratoms, code)) (0, [], code) relems in
         (KExpMkRecord((List.rev ratoms), kctx), code)
@@ -398,11 +401,10 @@ let rec exp2kexp e code tref sc =
         let kv = get_kval a_id eloc in
         let {kv_flags; kv_typ} = kv in
         let kv_flags = match (e1, kv_typ) with
-            | (ExpAt _, KTypArray _) -> ValSubArray :: kv_flags
+            | (ExpAt _, KTypArray _) -> {kv_flags with val_flag_subarray=true}
             | _ -> kv_flags
             in
-        let kv = {kv with kv_flags = if List.mem ValMutable kv_flags then
-            kv_flags else ValMutable :: kv_flags} in
+        let kv = {kv with kv_flags = {kv_flags with val_flag_mutable=true}} in
         set_idk_entry a_id (KVal kv);
         (KExpAssign(a_id, a2, eloc), code)
     | ExpCast(e, _, _) ->
@@ -423,7 +425,7 @@ let rec exp2kexp e code tref sc =
                 in
             let t = get_atom_ktyp a loc1 in
             let b = dup_idk a_id in
-            let code = create_kdefval b t [ValTemp] (Some (KExpAtom (a, (t, loc1)))) code loc1 in
+            let code = create_kdefval b t (default_tempval_flags()) (Some (KExpAtom (a, (t, loc1)))) code loc1 in
             ((Atom.Id b), code)
             in
         let (k_cases, code) = transform_pat_matching b cases code sc eloc false in
@@ -439,7 +441,7 @@ let rec exp2kexp e code tref sc =
         let exn_n = gen_temp_idk "exn" in
         let pop_e = KExpIntrin(IntrinPopExn, [], (KTypExn, exn_loc)) in
         let catch_sc = new_block_scope() :: sc in
-        let catch_code = create_kdefval exn_n KTypExn [] (Some pop_e) [] exn_loc in
+        let catch_code = create_kdefval exn_n KTypExn (default_val_flags()) (Some pop_e) [] exn_loc in
         let (k_cases, catch_code) = transform_pat_matching (Atom.Id exn_n) cases catch_code catch_sc exn_loc true in
         let handle_exn = KExpMatch(k_cases, (ktyp, exn_loc)) in
         let handle_exn = rcode2kexp (handle_exn :: catch_code) exn_loc in
@@ -672,18 +674,18 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
             | _ -> ([], false))
         | None -> ([], true)
         in
-    let mutable_leaves = List.mem ValMutable flags in
-    let n_flags = List.filter (fun f -> f != ValMutable && f != ValTempRef) flags in
+    let mutable_leaves = flags.val_flag_mutable in
+    let n_flags = {flags with val_flag_mutable=false; val_flag_tempref=false} in
     let (p, n, tref) = pat_propose_id p ptyp temp_prefix true mutable_leaves sc in
     let tref = tref && need_tref in
     if n = noid then
         (n, code)
     else
     let loc = get_pat_loc p in
-    let n_flags = if mutable_leaves && not tref then ValMutable :: n_flags
-                else if tref then ValTempRef :: n_flags else n_flags in
+    let n_flags = if mutable_leaves && not tref then {n_flags with val_flag_mutable=true}
+                else if tref then {n_flags with val_flag_tempref=true} else n_flags in
     let n_flags = match sc with
-        | ScGlobal :: _ | ScModule _ :: _ -> (ValGlobal sc) :: n_flags
+        | ScGlobal :: _ | ScModule _ :: _ -> {n_flags with val_flag_global=sc}
         | _ -> n_flags
         in
     let code = create_kdefval n ptyp n_flags e_opt code loc in
@@ -859,7 +861,8 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 if var_tag0 != noid then (var_tag0, code) else
                 (let tag_n = gen_temp_idk "tag" in
                 let extract_tag_exp = get_extract_tag_exp (Atom.Id n) pinfo_typ loc in
-                let code = create_kdefval tag_n KTypCInt [] (Some extract_tag_exp) code loc in
+                let code = create_kdefval tag_n KTypCInt (default_val_flags())
+                    (Some extract_tag_exp) code loc in
                 (tag_n, code))
                 in
             let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), vn_tag_val, (KTypBool, loc)) in
@@ -872,8 +875,8 @@ and transform_pat_matching a cases code sc loc catch_mode =
                         (Atom.Id n) :: vn_case_val :: [], (case_typ, loc)) in
                     if is_tuple then
                         let case_n = gen_temp_idk "vcase" in
-                        let code = create_kdefval case_n case_typ (ValTempRef :: [])
-                            (Some extract_case_exp) [] loc in
+                        let code = create_kdefval case_n case_typ
+                            (default_tempref_flags()) (Some extract_case_exp) [] loc in
                         (case_n, code, None)
                     else
                         (noid, [], (Some extract_case_exp))
@@ -893,7 +896,8 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (n, code) = match (ke, tref) with
                 | (KExpAtom((Atom.Id n0), _), true) -> (n0, code)
                 | _ ->
-                    let flags = if (is_ktyp_scalar ptyp) then [ValTemp] else [ValTempRef] in
+                    let flags = if (is_ktyp_scalar ptyp) then (default_tempval_flags())
+                        else (default_tempref_flags()) in
                     let code = create_kdefval n ptyp flags (Some ke) code loc in
                     (n, code) in
             let (plists, checks, code) =
@@ -984,7 +988,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
     let (var_tag0, code) = if not is_variant then (noid, code) else
         (let tag_n = gen_temp_idk "tag" in
         let extract_tag_exp = get_extract_tag_exp a atyp loc in
-        let code = create_kdefval tag_n KTypCInt [] (Some extract_tag_exp) code loc in
+        let code = create_kdefval tag_n KTypCInt (default_val_flags()) (Some extract_tag_exp) code loc in
         (tag_n, code)) in
     let have_else = ref false in
     let k_cases = List.map (fun (pl, e) ->
@@ -1057,9 +1061,10 @@ and transform_fun df code sc =
             let body_sc = new_block_scope() :: sc in
             let (_, args, body_code) = List.fold_left2 (fun (idx, args, body_code) pi ti ->
                 let arg_defname = "arg" ^ (string_of_int idx) in
-                let (i, body_code) = pat_simple_unpack pi ti None body_code arg_defname [] body_sc in
+                let (i, body_code) = pat_simple_unpack pi ti None body_code arg_defname
+                    (default_val_flags()) body_sc in
                 let i = match i with Id.Name _ -> dup_idk i | _ -> i in
-                let _ = create_kdefval i ti [ValArg] None [] inst_loc in
+                let _ = create_kdefval i ti (default_arg_flags()) None [] inst_loc in
                 (idx+1, ((i, ti) :: args), body_code)) (0, [], []) inst_args argtyps in
             let inst_flags = {inst_flags with fun_flag_ccode =
                 (match inst_body with ExpCCode _ -> true | _ -> false);
@@ -1082,7 +1087,8 @@ and transform_all_types_and_cons elist code sc =
             let tags = List.map (fun (n, _) ->
                 if n = noid then noid else
                     let tag_id = dup_idk n in
-                    let _ = create_kdefval tag_id KTypInt [ValGlobal dvar_scope] None [] dvar_loc in
+                    let tag_flags = {(default_val_flags()) with val_flag_global=dvar_scope} in
+                    let _ = create_kdefval tag_id KTypInt tag_flags None [] dvar_loc in
                     tag_id) dvar_cases in
             List.fold_left (fun code inst ->
                 match (id_info inst) with
@@ -1125,7 +1131,10 @@ and transform_all_types_and_cons elist code sc =
                                 let code = match kargtyps with
                                 | [] ->
                                     let e0 = KExpAtom((Atom.Id tag), (new_rt, dvar_loc)) in
-                                    create_kdefval df_name new_rt [ValGlobal sc; ValMutable; ValCtor tag] (Some e0) code dvar_loc
+                                    let cflags = {(default_val_flags()) with val_flag_global=sc;
+                                        val_flag_mutable=true; val_flag_ctor=tag}
+                                        in
+                                    create_kdefval df_name new_rt cflags (Some e0) code dvar_loc
                                 | _ ->
                                     create_kdefconstr df_name kargtyps new_rt (CtorVariant tag) code sc dvar_loc
                                 in code
@@ -1150,7 +1159,8 @@ and transform_all_types_and_cons elist code sc =
                 | _ -> false in
             let tagname = gen_idk ((pp_id2str dexn_name) ^ "_tag") in
             let tag_sc = get_module_scope sc in
-            let decl_tag = create_kdefval tagname KTypCInt [ValGlobal tag_sc; ValMutable]
+            let tag_flags = {(default_val_flags()) with val_flag_global=tag_sc; val_flag_mutable=true} in
+            let decl_tag = create_kdefval tagname KTypCInt tag_flags
                 (Some (KExpAtom(Atom.Lit (LitInt 0L), (KTypInt, dexn_loc))))
                 [] dexn_loc in
             let code = if is_std then code else decl_tag @ code in

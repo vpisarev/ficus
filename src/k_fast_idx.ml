@@ -345,7 +345,8 @@ let optimize_idx_checks topcode =
                     [(Atom.Id arr); (Atom.Lit (LitInt (Int64.of_int i)))],
                     (KTypInt, for_loc))
                     in
-                let pre_for_code = create_kdefval arrsz KTypInt [ValTemp] (Some arrsz_exp) pre_for_code for_loc in
+                let pre_for_code = create_kdefval arrsz KTypInt (default_tempval_flags())
+                    (Some arrsz_exp) pre_for_code for_loc in
                 (arrsz, (((arr, i), arrsz) :: arrsz_env), pre_for_code)
             in
         let pre_for_code = if !all_accesses = [] then !pre_for_code else

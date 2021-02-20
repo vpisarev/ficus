@@ -91,7 +91,7 @@ let make_variant_type (targs, tname) var_elems0 is_record is_mod_typ =
             "syntax error: variant tag '%s' does not start with a capital latin letter" nstr))
         var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
-               dvar_flags={(default_var_flags()) with var_flag_record=is_record;
+               dvar_flags={(default_variant_flags()) with var_flag_record=is_record;
                var_flag_module=is_mod_typ};
                dvar_cases=var_elems; dvar_ctors=[];
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
@@ -112,7 +112,7 @@ let make_deffun fname args rt body flags loc =
         let kwargs = List.rev kwargs in
         let rectyp = TypRecord (ref (kwargs, true)) in
         let recpat = PatRecord(None, List.map (fun (i, _, _) -> (i, PatIdent(i, loc))) kwargs, loc) in
-        let unpack_rec = DefVal(recpat, ExpIdent(recarg, (make_new_typ(), loc)), [], loc) in
+        let unpack_rec = DefVal(recpat, ExpIdent(recarg, (make_new_typ(), loc)), (default_val_flags()), loc) in
         let body_ctx = get_exp_ctx body in
         let body_seq = exp2expseq body in
         let body = ExpSeq(unpack_rec :: body_seq, body_ctx) in
@@ -175,8 +175,8 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_bod
     let acc_loc = get_pat_loc fold_pat in
     let fr_id = get_fold_result() in
     let fr_exp = ExpIdent(fr_id, (make_new_typ(), acc_loc)) in
-    let fr_decl = DefVal(PatIdent(fr_id, acc_loc), fold_init_exp, [ValMutable], acc_loc) in
-    let acc_decl = DefVal(fold_pat, fr_exp, [], acc_loc) in
+    let fr_decl = DefVal(PatIdent(fr_id, acc_loc), fold_init_exp, default_var_flags(), acc_loc) in
+    let acc_decl = DefVal(fold_pat, fr_exp, default_val_flags(), acc_loc) in
     let body_loc = get_exp_loc fold_body in
     let update_fr = ExpAssign(fr_exp, fold_body, body_loc) in
     let new_body = ExpSeq([acc_decl; update_fr], (TypVoid, body_loc)) in
@@ -207,7 +207,7 @@ let make_chained_cmp chain = match chain with
                     | _ ->
                         let e_loc = get_exp_loc e in
                         let tmp_id = gen_temp_id "t" in
-                        let tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e, [], e_loc) in
+                        let tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e, (default_tempval_flags()), e_loc) in
                         (ExpIdent(tmp_id, (make_new_typ(), e_loc)), (tmp_decl :: code))
             in (((cmpop, new_e) :: chain), code)) ([], []) (List.rev chain) in
         let rec process_chain result a chain =
@@ -266,7 +266,7 @@ let make_finally e final_e loc =
     let fe_loc = get_exp_loc final_e in
     let ll = loclist2loc [eloc; fe_loc] eloc in
     let tmp = gen_temp_id "v" in
-    let def_tmp = DefVal(PatIdent(tmp, eloc), e, [], loc) in
+    let def_tmp = DefVal(PatIdent(tmp, eloc), e, (default_tempval_flags()), loc) in
     let try_block = (def_tmp :: (exp2expseq final_e)) @ [ExpIdent(tmp, (make_new_typ(), loc))] in
     let try_block = expseq2exp_loc try_block loc in
     let some_exn = gen_temp_id "e" in
@@ -402,7 +402,7 @@ exp_seq_:
 decl:
 | val_spec_list_ val_decls_
     {
-        let vflags = List.rev $1 in
+        let vflags = $1 in
         List.map (fun (p, e, ctx) -> DefVal(p, e, vflags, ctx)) $2
     }
 | fun_decl_start fun_args EQUAL stmt_or_ccode
@@ -946,7 +946,7 @@ id_simple_pat:
             let p = PatIdent(n, curr_loc()) in (n, p) }
 
 pat:
-| B_IDENT
+| dot_ident
     {
         let loc = curr_loc() in
         match $1 with
@@ -1005,8 +1005,8 @@ pat_when:
 | pat WHEN exp { PatWhen($1, $3, curr_loc()) }
 
 val_spec_list_:
-| VAL { [] }
-| VAR { ValMutable :: [] }
+| VAL { default_val_flags() }
+| VAR { {(default_val_flags()) with val_flag_mutable=true} }
 
 val_decls_:
 | val_decls_ COMMA val_decl { $3 :: $1 }

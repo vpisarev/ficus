@@ -134,7 +134,7 @@ and kexp_t =
     | KDefTyp of kdeftyp_t ref
     | KDefClosureVars of kdefclosurevars_t ref
 and kdefval_t = { kv_name: id_t; kv_cname: string; kv_typ: ktyp_t;
-                  kv_flags: val_flag_t list; kv_loc: loc_t }
+                  kv_flags: val_flags_t; kv_loc: loc_t }
 and kdefclosureinfo_t = { kci_arg: id_t; kci_fcv_t: id_t; kci_fp_typ: id_t; kci_make_fp: id_t; kci_wrap_f: id_t }
 and kdeffun_t = { kf_name: id_t; kf_cname: string;
                   kf_args: (id_t * ktyp_t) list; kf_rt: ktyp_t; kf_body: kexp_t;
@@ -246,11 +246,9 @@ let get_kexp_loc e = let (t, l) = (get_kexp_ctx e) in l
 let get_kexp_start e = let l = get_kexp_loc e in get_start_loc l
 let get_kexp_end e = let l = get_kexp_loc e in get_end_loc l
 
-let is_val_global flags = List.exists (function | ValGlobal _ -> true | _ -> false) flags
+let is_val_global flags = flags.val_flag_global != []
 let get_val_scope flags =
-    match (List.find_opt (function | ValGlobal _ -> true | _ -> false) flags) with
-    | Some(ValGlobal(sc)) -> sc
-    | _ -> [ScBlock 0]
+    let sc = flags.val_flag_global in if sc != [] then sc else [ScBlock 0]
 
 let get_kscope info =
     match info with
@@ -795,7 +793,7 @@ let is_mutable i loc =
     check_kinfo info i loc;
     match info with
     | KNone -> false
-    | KVal {kv_flags} -> List.mem ValMutable kv_flags
+    | KVal {kv_flags} -> kv_flags.val_flag_mutable
     | KFun _ -> false
     | KExn _ -> false
     | KClosureVars _ | KVariant _ | KTyp _ -> false
@@ -809,7 +807,7 @@ let is_subarray i loc =
     let info = kinfo_ i loc in
     check_kinfo info i loc;
     match info with
-    | KVal {kv_flags} -> List.mem ValSubArray kv_flags
+    | KVal {kv_flags} -> kv_flags.val_flag_subarray
     | _ -> false
 
 let get_closure_freevars f loc =
@@ -877,8 +875,9 @@ let kexp2atom prefix e tref code =
             | KExpMem _ | KExpAt (_, BorderNone, InterpNone, _, _) | KExpUnOp(OpDeref, _, _) -> tref
             | _ -> false
             in
-        let flags = if tref then [ValTempRef] else [ValTemp] in
-        let code = create_kdefval tmp_id ktyp flags (Some e) code kloc in
+        let code = create_kdefval tmp_id ktyp
+            {(default_val_flags()) with val_flag_tempref=tref}
+            (Some e) code kloc in
         ((Atom.Id tmp_id), code)
 
 let create_kdeffun n args rt flags body_opt code sc loc =
@@ -895,7 +894,7 @@ let create_kdeffun n args rt flags body_opt code sc loc =
 let create_kdefconstr n argtyps rt ctor code sc loc =
     let (_, args) = List.fold_left (fun (idx, args) t ->
         let arg = gen_idk (sprintf "arg%d" idx) in
-        let _ = create_kdefval arg t [ValArg] None [] loc in
+        let _ = create_kdefval arg t {(default_val_flags()) with val_flag_arg=true} None [] loc in
         (idx + 1, (arg, t) :: args)) (0, []) argtyps in
     create_kdeffun n (List.rev args) rt
         {(default_fun_flags()) with fun_flag_ctor=ctor}

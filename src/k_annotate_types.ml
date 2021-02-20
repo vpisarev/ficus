@@ -192,7 +192,7 @@ let get_ktprops t loc =
 let clear_typ_annotations top_code =
     List.iter (fun e -> match e with
         | KDefVariant kvar ->
-            kvar := {!kvar with kvar_props=None; kvar_flags=default_var_flags()}
+            kvar := {!kvar with kvar_props=None; kvar_flags=default_variant_flags()}
         | KDefTyp kt ->
             kt := {!kt with kt_props=None}
         | _ -> ()) top_code

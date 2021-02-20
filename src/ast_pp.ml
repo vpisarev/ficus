@@ -27,6 +27,15 @@ let ohvbox_indent () = Format.open_hvbox (!base_indent)
 let pprint_lit x loc = pstr (lit2str x false loc)
 let pprint_id x = pstr (match x with Id.Name(0) -> "__" | _ -> id2str x)
 
+let pprint_val_flags flags =
+    if flags.val_flag_tempref then (pstr "TEMP_REF"; pspace()) else ();
+    if flags.val_flag_temp then (pstr "TEMP"; pspace()) else ();
+    if flags.val_flag_mutable then (pstr "MUTABLE"; pspace()) else ();
+    if flags.val_flag_private then (pstr "PRIVATE"; pspace()) else ();
+    if flags.val_flag_subarray then (pstr "SUB_ARRAY"; pspace()) else ();
+    if flags.val_flag_global!=[] then (pstr "GLOBAL"; pspace()) else ();
+    if flags.val_flag_arg then (pstr "ARG"; pspace()) else ()
+
 let pprint_fun_flags flags =
     if flags.fun_flag_pure < 0 then () else
     (pstr (if flags.fun_flag_pure > 0 then "PURE" else "IMPURE"); pspace());
@@ -139,15 +148,8 @@ let rec pprint_exp e =
             (List.iter (fun p -> pspace(); pstr "|"; pspace(); pprint_pat p) pl);
             pspace(); pstr "=>"; pspace(); pprint_exp_as_seq e) pe_l); pcut(); cbox(); pstr "}" in
     match e with
-    | DefVal(p, e0, vflags, _) -> obox(); (List.iter (fun vf -> match vf with
-        | ValTempRef -> pstr "TEMP_REF"; pspace()
-        | ValTemp -> pstr "TEMP"; pspace()
-        | ValMutable -> pstr "MUTABLE"; pspace()
-        | ValPrivate -> pstr "PRIVATE"; pspace()
-        | ValSubArray -> pstr "SUB_ARRAY"; pspace()
-        | ValGlobal _ -> pstr "GLOBAL"; pspace()
-        | ValCtor _ -> ()
-        | ValArg -> pstr "ARG"; pspace()) vflags);
+    | DefVal(p, e0, vflags, _) -> obox();
+        pprint_val_flags vflags;
         let ctor_id = get_val_ctor vflags in
         pstr "VAL"; pspace(); pprint_pat p; pspace(); pstr "="; pspace();
         if ctor_id <> noid then pstr (sprintf "Constructor(%s)" (id2str ctor_id)) else pprint_exp e0;

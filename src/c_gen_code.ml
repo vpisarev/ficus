@@ -134,7 +134,7 @@ let find_single_use_vals topcode =
             let {kv_flags} = get_kval k loc in
             (* We only replace those values with expressions which are temporary
                 and computed using pure expressions *)
-            let good_temp = (List.mem ValTempRef kv_flags) || (List.mem ValTemp kv_flags) in
+            let good_temp = kv_flags.val_flag_tempref || kv_flags.val_flag_temp in
             if good_temp && (K_deadcode_elim.pure_kexp e1) then
                 decl_const_vals := IdSet.add k !decl_const_vals
             else ();
@@ -178,7 +178,7 @@ let occurs_id_kexp i0 e =
        its contents can be implictly modified via a variable/value with different name.
        so we always return true, i.e. "i0" cannot be considered a constant w.r.t "e" *)
     let f = match (kinfo_ i0 loc) with
-        | KVal {kv_flags} -> List.mem ValTempRef kv_flags
+        | KVal {kv_flags} -> kv_flags.val_flag_tempref
         | _ -> false
         in
     f || (occurs_kexp e occurs_callb; !r_occurs)
@@ -379,7 +379,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
     let add_local_tempref i ctyp flags e0 ccode loc =
         let {ctp_ptr} = C_gen_types.get_ctprops ctyp loc in
         let (e, ctyp) =
-            if ctp_ptr && not (List.mem ValMutable flags) then
+            if ctp_ptr && not flags.val_flag_mutable then
                 (e0, ctyp)
             else
                 let ctyp_ptr = make_ptr ctyp in
@@ -396,7 +396,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         | (_, Some(dst_exp)) -> (dst_exp, ccode)
         | _ ->
             let i = gen_temp_idc prefix in
-            let (i_exp, ccode) = add_local i ctyp [ValTemp] None ccode loc in
+            let (i_exp, ccode) = add_local i ctyp (default_tempval_flags()) None ccode loc in
             dstexp_r := (Some i_exp);
             (i_exp, ccode)
     in
@@ -447,7 +447,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
     in
 
     let handle_temp_ref flags e ctyp =
-        if List.mem ValTempRef flags then
+        if flags.val_flag_tempref then
             (true, (cexp_get_addr e), CTypRawPtr([], ctyp))
         else
             (false, e, ctyp)
@@ -488,7 +488,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         | CExpIdent(i, (t, loc)) ->
             let {ctp_scalar} = C_gen_types.get_ctprops t loc in
             ctp_scalar && (match (cinfo_ i loc) with
-                | CVal {cv_flags} -> not (List.mem ValMutable cv_flags)
+                | CVal {cv_flags} -> not (cv_flags.val_flag_mutable)
                 | _ -> false)
         | _ -> false
         in
@@ -546,7 +546,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 (* since FX_MAKE_STR(<string_literal>) creates a string with NULL reference counter and
                 without allocating string in memory heap, there is no need to call destructor for it *)
                 let e0 = make_call !std_FX_MAKE_STR ((make_lit_exp l loc) :: []) CTypString loc in
-                create_cdefval (gen_temp_idc "slit") CTypString [] "" (Some e0) ccode loc
+                create_cdefval (gen_temp_idc "slit") CTypString (default_val_flags()) "" (Some e0) ccode loc
             | _ ->
                 let e = make_lit_exp l loc in (e, ccode))
         | Atom.Id(i) -> id2cexp i save ccode loc
@@ -570,7 +570,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         | _ ->
             let arr_ctyp = CTypRawArray ([CTypConst], elem_ctyp) in
             let arr_data_exp = CExpInit(arr_data, (arr_ctyp, loc)) in
-            create_cdefval arr_id arr_ctyp [] "" (Some arr_data_exp) ccode loc
+            create_cdefval arr_id arr_ctyp (default_val_flags()) "" (Some arr_data_exp) ccode loc
     in
 
     let make_make_arr_call arr_exp shape data ccode0 lbl loc =
@@ -578,7 +578,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let dims = List.length shape in
         let shape_ctyp = CTypRawArray ([CTypConst], CTypInt) in
         let shape_arr = CExpInit(shape, (shape_ctyp, loc)) in
-        let (shape_exp, ccode) = create_cdefval (gen_temp_idc "shape") shape_ctyp [] "" (Some shape_arr) [] loc in
+        let (shape_exp, ccode) = create_cdefval (gen_temp_idc "shape") shape_ctyp
+            (default_val_flags()) "" (Some shape_arr) [] loc in
         let elem_ctyp = match arr_ctyp with
             | CTypArray(dims0, elem_ctyp) ->
                 if dims0 = dims then () else
@@ -798,7 +799,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 }
                             *)
                             let (a_exp, init_ccode) = atom2cexp_ a false init_ccode for_loc in
-                            let (i_exp, init_ccode) = create_cdefval iter_val_i CTypInt [ValMutable] "" (Some a_exp) init_ccode for_loc in
+                            let (i_exp, init_ccode) = create_cdefval iter_val_i CTypInt
+                                (default_val_flags()) "" (Some a_exp) init_ccode for_loc in
                             let incr_i_exp = CExpBinOp(aug_add_delta, i_exp, d_exp, (CTypVoid, for_loc)) in
                             ([], i_exps, n_exps, for_checks, incr_i_exp :: incr_exps, init_checks,
                             init_ccode, pre_body_ccode, body_elems, post_checks)
@@ -835,15 +837,17 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                         if is_canonical_for && (is_immutable_atomic_cexp b_exp) then
                                             (b_exp, init_ccode)
                                         else
-                                            add_local (gen_temp_idc "n") CTypInt [ValTemp] (Some calc_n_exp) init_ccode for_loc
+                                            add_local (gen_temp_idc "n") CTypInt (default_tempval_flags())
+                                                (Some calc_n_exp) init_ccode for_loc
                                         in
-                                    let (i_exp, _) = add_local i_id CTypInt [ValMutable; ValTemp] None [] for_loc in
+                                    let (i_exp, _) = add_local i_id CTypInt
+                                            (default_tempvaR_flags()) None [] for_loc in
                                     (add_pair, i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
                                 in
                             let body_elems = if not add_elem then body_elems else
                                 let calc_i_exp = CExpBinOp(add_delta, a_exp,
                                     CExpBinOp(COpMul, i_exp, d_exp, (CTypInt, for_loc)), (CTypInt, for_loc)) in
-                                (iter_val_i, calc_i_exp, []) :: body_elems
+                                (iter_val_i, calc_i_exp, (default_var_flags())) :: body_elems
                                 in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks,
                             init_ccode, pre_body_ccode, body_elems, post_checks))
@@ -874,12 +878,13 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 // optional check
                                 FX_CHECK_NE_SIZE(!lst || ..., catch_label);
                             *)
-                            let (l_exp, init_ccode) = create_cdefval (gen_temp_idc "lst") ctyp [ValMutable] "" (Some col_exp) init_ccode for_loc in
+                            let (l_exp, init_ccode) = create_cdefval (gen_temp_idc "lst") ctyp
+                                (default_var_flags()) "" (Some col_exp) init_ccode for_loc in
                             let not_l_exp = CExpUnOp(COpLogicNot, l_exp, (CTypBool, end_for_loc)) in
                             let l_next_exp = make_assign l_exp (cexp_arrow l_exp (get_id "tl") ctyp) in
                             let c_et = C_gen_types.ktyp2ctyp et for_loc in
                             let get_hd_exp = cexp_arrow l_exp (get_id "hd") c_et in
-                            let hd_flags = if (is_ktyp_scalar et) then [ValTemp] else [ValTempRef] in
+                            let hd_flags = if (is_ktyp_scalar et) then default_tempvaR_flags() else default_tempref_flags() in
                             ([l_exp], i_exps, n_exps, (l_exp :: for_checks), (l_next_exp :: incr_exps), init_checks, init_ccode,
                             pre_body_ccode, ((iter_val_i, get_hd_exp, hd_flags) :: body_elems), not_l_exp :: post_checks)
                         | KTypString ->
@@ -901,15 +906,16 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                     init_ccode)
                                 | _ ->
                                     let (n_exp, init_ccode) = add_local (gen_temp_idc "len") CTypInt
-                                        [] (Some calc_n_exp) init_ccode for_loc in
+                                        (default_val_flags()) (Some calc_n_exp) init_ccode for_loc in
                                     let i_id = get_iter_id 0 at_ids (List.nth for_letters dims_ofs) in
-                                    let (i_exp, _) = add_local i_id CTypInt [ValMutable; ValTemp] None [] for_loc in
+                                    let (i_exp, _) = add_local i_id CTypInt
+                                        (default_tempvaR_flags()) None [] for_loc in
                                     (i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
                                 in
                             let get_chars = cexp_mem col_exp (get_id "data") (make_const_ptr CTypUniChar) in
                             let get_char_i = CExpBinOp(COpArrayElem, get_chars, i_exp, (CTypUniChar, for_loc)) in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
-                            pre_body_ccode, ((iter_val_i, get_char_i, []) :: body_elems), post_checks)
+                            pre_body_ccode, ((iter_val_i, get_char_i, (default_var_flags())) :: body_elems), post_checks)
                         | KTypArray(ndims, et) ->
                             (*
                                 // either save all the dimensions
@@ -931,9 +937,9 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                         let calc_n_exp = make_call !std_FX_ARR_SIZE [col_exp; (make_int_exp k for_loc)] CTypInt for_loc in
                                         let iter_letter = List.nth for_letters (k + dims_ofs) in
                                         let (n_exp, init_ccode) = add_local (gen_temp_idc ("n" ^ iter_letter)) CTypInt
-                                            [ValTemp] (Some calc_n_exp) init_ccode for_loc in
+                                            (default_val_flags()) (Some calc_n_exp) init_ccode for_loc in
                                         let i_id = get_iter_id k at_ids iter_letter in
-                                        let (i_exp, _) = add_local i_id CTypInt [ValMutable; ValTemp] None [] for_loc in
+                                        let (i_exp, _) = add_local i_id CTypInt (default_tempvaR_flags()) None [] for_loc in
                                         (i_exp :: i_exps, n_exp :: n_exps, init_ccode))
                                         ([], [], init_ccode) (List.init ndims (fun k -> k))
                                     in ((List.rev i_exps), (List.rev n_exps), init_checks, init_ccode)
@@ -952,10 +958,11 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let get_arr_slice = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
                                 (CExpTyp (c_et, for_loc) :: col_exp :: slice_idxs) c_et_ptr for_loc in
                             let ptr_id = gen_temp_idc ("ptr_" ^ (pp_id2str col_)) in
-                            let (ptr_exp, pre_body_ccode) = create_cdefval ptr_id c_et_ptr [] "" (Some get_arr_slice) pre_body_ccode for_loc in
+                            let (ptr_exp, pre_body_ccode) = create_cdefval ptr_id c_et_ptr (default_val_flags())
+                                "" (Some get_arr_slice) pre_body_ccode for_loc in
                             let get_arr_elem = CExpBinOp(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc)) in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
-                            pre_body_ccode, ((iter_val_i, get_arr_elem, [ValTemp]) :: body_elems), post_checks)
+                            pre_body_ccode, ((iter_val_i, get_arr_elem, default_tempvaR_flags()) :: body_elems), post_checks)
                         | _ -> raise_compile_err for_loc (for_err_msg for_idx nfors k
                             (sprintf "cannot iterate over '%s'; it needs to be array, list or string" (atom2str a)))
                         )
@@ -1008,7 +1015,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         List.fold_left (fun body_ccode (v, e, flags) ->
             let (ctyp, loc) = get_cexp_ctx e in
             let (_, body_ccode) =
-                if List.mem ValTempRef flags then
+                if flags.val_flag_tempref then
                     add_local_tempref v ctyp flags e body_ccode loc
                 else
                     add_local v ctyp flags (Some e) body_ccode loc
@@ -1376,7 +1383,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let strs_ctyp = CTypRawArray([CTypConst], CTypString) in
                 let strs0 = CExpInit((List.rev strs), (strs_ctyp, kloc)) in
                 let (dst_exp, ccode) = get_dstexp dstexp_r "concat_str" CTypString ccode kloc in
-                let (strs_exp, sub_ccode) = create_cdefval strs_id strs_ctyp [] "" (Some strs0) [] kloc in
+                let (strs_exp, sub_ccode) = create_cdefval strs_id strs_ctyp
+                    (default_val_flags()) "" (Some strs0) [] kloc in
                 let call_exp = make_call (get_id "fx_strjoin")
                     [make_nullptr kloc; make_nullptr kloc; make_nullptr kloc;
                     strs_exp; (make_int_exp (List.length strs) kloc); (cexp_get_addr dst_exp)] CTypInt kloc in
@@ -1516,7 +1524,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             else
                 let tup = gen_temp_idc prefix in
                 let e0 = CExpInit((List.rev cargs), (ctyp, kloc)) in
-                let (t_exp, ccode) = create_cdefval tup ctyp [] "" (Some e0) ccode kloc in
+                let (t_exp, ccode) = create_cdefval tup ctyp (default_val_flags()) "" (Some e0) ccode kloc in
                 (true, t_exp, ccode)
         | KExpMkClosure(make_fp, f, args, _) ->
             let fp_prefix = ((pp_id2str f) ^ "_fp") in
@@ -1525,7 +1533,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let _ = ensure_sym_is_defined_or_declared f kloc in
                 let f_exp = make_id_exp f kloc in
                 let e0 = CExpInit([f_exp; (make_nullptr kloc)], (ctyp, kloc)) in
-                let (fp_exp, ccode) = create_cdefval fp_id ctyp [] "" (Some e0) ccode kloc in
+                let (fp_exp, ccode) = create_cdefval fp_id ctyp (default_val_flags()) "" (Some e0) ccode kloc in
                 (true, fp_exp, ccode)
             else
                 let (cargs, ccode) = List.fold_left (fun (cargs, ccode) a ->
@@ -1707,7 +1715,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let (subarr_exp, ccode) = get_dstexp dstexp_r "arr" ctyp ccode kloc in
                     let rdata_ctyp = CTypRawArray ([CTypConst], CTypInt) in
                     let rdata_arr = CExpInit((List.rev range_data), (rdata_ctyp, kloc)) in
-                    let (rdata_exp, sub_ccode) = create_cdefval (gen_temp_idc "ranges") rdata_ctyp [] "" (Some rdata_arr) [] kloc in
+                    let (rdata_exp, sub_ccode) = create_cdefval (gen_temp_idc "ranges") rdata_ctyp
+                        (default_val_flags()) "" (Some rdata_arr) [] kloc in
                     let call_subarr = make_call !std_fx_subarr [(cexp_get_addr arr_exp);
                         rdata_exp; (cexp_get_addr subarr_exp)] CTypInt kloc in
                     let sub_ccode = add_fx_call call_subarr sub_ccode kloc in
@@ -1921,7 +1930,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let pre_alloc_array = (match dom with
                                 | Domain.Elem (Atom.Id col) ->
                                     let {kv_typ; kv_flags} = get_kval col kloc in
-                                    if not (List.mem ValMutable kv_flags) &&
+                                    if not kv_flags.val_flag_mutable &&
                                         (match kv_typ with KTypArray _ | KTypString -> true | _ -> false) &&
                                         not (IdSet.mem col decl_inside_for) then
                                         pre_alloc_array else false
@@ -1953,9 +1962,9 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let glob_status = make_id_t_exp (get_id "fx_status") CTypCInt kloc in
             let (par_status, ccode, nested_status, decl_nested_status) = if is_parallel_map then
                     let (par_status, ccode) = create_cdefval (gen_temp_idc "par_status")
-                        CTypCInt [ValMutable] "" (Some (make_int_exp 0 kloc)) ccode kloc in
+                        CTypCInt (default_var_flags()) "" (Some (make_int_exp 0 kloc)) ccode kloc in
                     let (nested_status, decl_nested_status) = create_cdefval (gen_temp_idc "status")
-                        CTypCInt [ValMutable] "fx_status" (Some (make_int_exp 0 kloc)) [] kloc in
+                        CTypCInt (default_var_flags()) "fx_status" (Some (make_int_exp 0 kloc)) [] kloc in
                     (par_status, ccode, nested_status, decl_nested_status)
                 else
                     ((make_dummy_exp kloc), ccode, glob_status, [])
@@ -1971,7 +1980,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             ((make_dummy_exp kloc), ccode)
                         else
                             create_cdefval (gen_temp_idc "dstptr") (make_ptr elemtyp)
-                                [ValMutable] "" (Some (make_nullptr for_loc)) ccode for_loc
+                                (default_var_flags()) "" (Some (make_nullptr for_loc)) ccode for_loc
                         in
                     if nd <> ndims then
                         raise_compile_err kloc
@@ -1981,7 +1990,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let elemtyp = C_gen_types.ktyp2ctyp kelemtyp for_loc in
                     let (dst_exp, ccode) = get_dstexp dstexp_r "lst" ctyp ccode for_loc in
                     let (lst_end, ccode) = create_cdefval (gen_temp_idc "lstend") ctyp
-                        [ValMutable] "" (Some (make_nullptr for_loc)) ccode for_loc in
+                        (default_var_flags()) "" (Some (make_nullptr for_loc)) ccode for_loc in
                     (elemtyp, dst_exp, (make_dummy_exp for_loc), lst_end, ccode)
                 | _ -> raise_compile_err kloc (sprintf
                     "cgen: invalid combination of comprehension type (%s) and the output collection type"
@@ -2008,7 +2017,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                            and we need to make array, we need to compute length of the list. *)
                         let call_list_len = make_call !std_fx_list_length [l_exp] CTypInt nested_loc in
                         let (lstlen, lst_len_ccode) = create_cdefval (gen_temp_idc "len")
-                            CTypInt [] "" (Some call_list_len) [] nested_loc in
+                            CTypInt (default_val_flags()) "" (Some call_list_len) [] nested_loc in
                         (1, [lstlen], lst_len_ccode)
                     | ([], [], true) ->
                         raise_compile_err nested_loc
@@ -2079,7 +2088,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                     (CExpTyp (elemtyp, body_loc) :: dst_exp :: dst_idxs) elemtyp_ptr body_loc in
                                 let (dstptr, decl_dstptr_ccode) =
                                     create_cdefval (gen_temp_idc "dstptr") elemtyp_ptr
-                                        [ValMutable] "" (Some get_arr_slice) [] body_loc in
+                                        (default_var_flags()) "" (Some get_arr_slice) [] body_loc in
                                 if ndims = 1 then (false, dstptr, pre_body_ccode, (decl_dstptr_ccode @ body_ccode))
                                 else (true, dstptr, (decl_dstptr_ccode @ pre_body_ccode), body_ccode)
                             in
@@ -2109,8 +2118,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 (pre_map_ccode, (C_gen_types.gen_copy_code result
                                     (cexp_deref dstptr) elemtyp body_ccode body_loc)))
                         else
-                            let (node_exp, body_ccode) = create_cdefval (gen_temp_idc "node") ctyp [] ""
-                                (Some (make_nullptr body_loc)) body_ccode body_loc in
+                            let (node_exp, body_ccode) = create_cdefval (gen_temp_idc "node") ctyp
+                                (default_val_flags()) "" (Some (make_nullptr body_loc)) body_ccode body_loc in
                             let body_ccode = make_cons_call result (make_nullptr body_loc)
                                 false node_exp body_ccode body_loc in
                             let append_call = make_call !std_FX_LIST_APPEND [dst_exp; lstend; node_exp] CTypVoid body_loc in
@@ -2172,9 +2181,9 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let is_parallel_for = flags.for_flag_parallel in
             let (par_status, ccode, nested_status, decl_nested_status) = if is_parallel_for then
                     let (par_status, ccode) = create_cdefval (gen_temp_idc "par_status")
-                        CTypCInt [ValMutable] "" (Some (make_int_exp 0 kloc)) ccode kloc in
+                        CTypCInt (default_var_flags()) "" (Some (make_int_exp 0 kloc)) ccode kloc in
                     let (nested_status, decl_nested_status) = create_cdefval (gen_temp_idc "status")
-                        CTypCInt [ValMutable] "fx_status" (Some (make_int_exp 0 kloc)) [] kloc in
+                        CTypCInt (default_var_flags()) "fx_status" (Some (make_int_exp 0 kloc)) [] kloc in
                     (par_status, ccode, nested_status, decl_nested_status)
                 else
                     ((make_dummy_exp kloc), ccode, glob_status, [])
@@ -2269,13 +2278,13 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | _ -> (false, "", kloc)
                 in
             let ctor_id = get_val_ctor kv_flags in
-            let is_temp = List.mem ValTemp kv_flags in
-            let is_temp_ref = List.mem ValTempRef kv_flags in
+            let is_temp = kv_flags.val_flag_temp in
+            let is_temp_ref = kv_flags.val_flag_tempref in
             let is_global = bctx.bctx_kind == BlockKind_Global && not is_temp && not is_temp_ref in
             let is_fast_cons = is_temp && (match e2 with
                 | KExpBinOp(OpCons, a, (Atom.Id l), _) when (IdSet.mem l u1vals) ->
                     (match (kinfo_ l kloc) with
-                    | KVal {kv_flags} -> List.mem ValTemp kv_flags
+                    | KVal {kv_flags} -> kv_flags.val_flag_temp
                     | _ -> false)
                 | _ -> false)
                 in
@@ -2306,17 +2315,20 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             ((make_nullptr kloc), [])
                         else
                             (* temporarily put (i, ctyp) into the value table *)
-                            let (i_exp, _) = create_cdefval i ctyp [] "" None [] kloc in
+                            let (i_exp, _) = create_cdefval i ctyp (default_val_flags()) "" None [] kloc in
                             let (rn, _, _, _) = get_struct i_exp in
                             let struct_ctyp = CTypName rn in
                             let data_id = gen_temp_idc ((pp_id2str i) ^ "_data") in
                             let rc_exp = make_int_exp 1 kloc in
                             let data_init = CExpInit([rc_exp; tag_exp], (struct_ctyp, kloc)) in
-                            let (data_exp, delta_ccode) = create_cdefval data_id struct_ctyp [ValPrivate] ""
+                            let (data_exp, delta_ccode) = create_cdefval data_id struct_ctyp
+                                {(default_val_flags()) with val_flag_private=true} ""
                                 (Some data_init) [] kloc in
                             ((cexp_get_addr data_exp), delta_ccode)
                         in
-                    let (_, delta_ccode) = create_cdefval i ctyp [ValGlobal mod_sc] "" (Some init_exp) delta_ccode kloc in
+                    let (_, delta_ccode) = create_cdefval i ctyp
+                        {(default_val_flags()) with val_flag_global=mod_sc}
+                        "" (Some init_exp) delta_ccode kloc in
                     (* just put initialization into the global scope, no destructors are needed *)
                     let _ = bctx.bctx_prologue <- delta_ccode @ bctx.bctx_prologue in
                     ccode
@@ -2442,7 +2454,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         (Some (cexp_deref (make_id_exp retid kf_loc))))
                         in
                     let orig_status_id = gen_temp_idc "fx_status" in
-                    let (status_exp, ccode) = create_cdefval orig_status_id CTypCInt [ValMutable] "fx_status"
+                    let (status_exp, ccode) = create_cdefval orig_status_id CTypCInt
+                        (default_var_flags()) "fx_status"
                         (Some (make_int_exp 0 kf_loc)) [] kf_loc in
                     let status_id = if is_nothrow then noid else orig_status_id in
                     let ccode = if status_id = noid || not kf_flags.fun_flag_recursive then ccode else
@@ -2458,7 +2471,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         let fcv_ptr_ctyp = make_ptr (CTypName kci_fcv_t) in
                         let fcv_arg_exp0 = make_id_t_exp (get_id "fx_fv") std_CTypVoidPtr kf_loc in
                         let cast_ptr = CExpCast(fcv_arg_exp0, fcv_ptr_ctyp, kf_loc) in
-                        let (_, ccode) = create_cdefval kci_arg fcv_ptr_ctyp [] ""
+                        let (_, ccode) = create_cdefval kci_arg fcv_ptr_ctyp (default_val_flags()) ""
                             (Some cast_ptr) ccode kf_loc in
                         ccode
                         in
@@ -2486,7 +2499,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                     | CExpInit([], _) | CExpLit _ | CExpIdent _ -> (ret_e, ccode)
                                     | _ ->
                                         create_cdefval (gen_temp_idc "result") (get_cexp_typ ret_e)
-                                                        [] "" (Some ret_e) ccode end_loc)
+                                            (default_val_flags()) "" (Some ret_e) ccode end_loc)
                             in
                                 (ret_e, (bctx_cleanup @ ccode))
                         in
@@ -2517,7 +2530,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let alloc_var = make_call !std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START
                                 [CExpTyp(result_ctyp, kf_loc)] CTypVoid kf_loc in
                             let (var_exp, _) = create_cdefval (gen_temp_idc "v") result_ctyp
-                                    [ValMutable] "v" None [] kf_loc in
+                                    (default_var_flags()) "v" None [] kf_loc in
                             let ret_ccode = [CStmtReturn (Some (make_int_exp 0 kf_loc), kf_loc)] in
                             (var_exp, [CExp alloc_var], ret_ccode)
                         else
@@ -2559,7 +2572,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         make_id_t_exp f_id std_CTypVoidPtr kloc] CTypVoid kf_loc
                         in
                     let (fcv_exp, _) = create_cdefval (gen_temp_idc "fcv") (make_ptr fcv_t)
-                        [] "fcv" None [] kf_loc in
+                        (default_val_flags()) "fcv" None [] kf_loc in
                     let ret_ccode = [CStmtReturn (Some (make_int_exp 0 kf_loc), kf_loc)] in
                     let ccode = [CExp alloc_fcv] in
                     let (_, ccode) = List.fold_left (fun (idx, ccode) (a, t, flags) ->
@@ -2644,7 +2657,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
     let start_loc = if top_code = [] then noloc else get_kexp_loc(List.hd top_code) in
     let _ = new_block_ctx BlockKind_Global start_loc in
     let (status_exp, ccode) = create_cdefval (gen_temp_idc "fx_status") CTypCInt
-        [ValMutable] "fx_status" (Some (make_int_exp 0 start_loc)) [] start_loc in
+        (default_var_flags()) "fx_status" (Some (make_int_exp 0 start_loc)) [] start_loc in
     (* 4. convert all the code to C. It will automatically update functions bodies *)
     let (e, ccode) = kexp2cexp (code2kexp top_code start_loc) (ref None) ccode in
     (*let e = make_dummy_exp start_loc in*)
@@ -2660,7 +2673,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let is_global = match s with
             | CDefVal (_, i, _, loc) ->
                 (match (cinfo_ i loc) with
-                | CVal {cv_flags} -> not ((List.mem ValTemp cv_flags) || (List.mem ValTempRef cv_flags))
+                | CVal {cv_flags} -> not (cv_flags.val_flag_temp || cv_flags.val_flag_tempref)
                 | _ -> true)
             | _ -> true
             in

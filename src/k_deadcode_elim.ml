@@ -57,7 +57,7 @@ let rec pure_kexp e =
             let _ = IdSet.iter (fun i ->
                 match (kinfo_ i loc) with
                 | KVal {kv_flags} ->
-                    if (List.mem ValMutable kv_flags) && not (List.mem ValTempRef kv_flags) then
+                    if kv_flags.val_flag_mutable && not kv_flags.val_flag_tempref then
                         local_vars := IdSet.add i !local_vars
                     else ()
                 | _ -> ()) dv

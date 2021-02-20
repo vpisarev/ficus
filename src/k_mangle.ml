@@ -336,7 +336,8 @@ let mangle_all kmods =
                 let kv = get_kval n loc in
                 let {kv_cname; kv_flags} = kv in
                 if kv_cname <> "" then () else
-                    (set_idk_entry n (KVal {kv with kv_flags=ValGlobal ((ScModule km_name) :: []) :: kv_flags});
+                    (set_idk_entry n (KVal {kv with
+                        kv_flags={kv_flags with val_flag_global=(ScModule km_name) :: []}});
                     mangle_id_typ n loc walk_n_mangle_callb)
             | _ -> ());
             curr_top_code := e :: !curr_top_code) km_top;

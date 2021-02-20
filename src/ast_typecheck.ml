@@ -660,7 +660,7 @@ and check_exp e env sc =
         | (false, (TypTuple tl), _) ->
             let tup_pat = PatIdent((gen_temp_id "tup"), eloc) in
             let (tup_pat, env, idset, _) = check_pat tup_pat etyp env idset IdSet.empty sc false true false in
-            let def_e = DefVal(tup_pat, e, [ValTemp], eloc) in
+            let def_e = DefVal(tup_pat, e, default_tempval_flags(), eloc) in
             let tup_e = match tup_pat with
                 | PatIdent(i, _) -> ExpIdent(i, (etyp, eloc))
                 | PatTyped(PatIdent(i, _), _, _) -> ExpIdent(i, (etyp, eloc))
@@ -670,7 +670,7 @@ and check_exp e env sc =
         | (false, _, relems) when relems != [] ->
             let rec_pat = PatIdent((gen_temp_id "rec"), eloc) in
             let (rec_pat, env, idset, _) = check_pat rec_pat etyp env idset IdSet.empty sc false true false in
-            let def_e = DefVal(rec_pat, e, [ValTemp], eloc) in
+            let def_e = DefVal(rec_pat, e, default_tempval_flags(), eloc) in
             let rec_e = match rec_pat with
                 | PatIdent(i, _) -> ExpIdent(i, (etyp, eloc))
                 | PatTyped(PatIdent(i, _), _, _) -> ExpIdent(i, (etyp, eloc))
@@ -726,7 +726,7 @@ and check_exp e env sc =
                 let ej = ExpMem(trj, ExpLit(LitInt (Int64.of_int idx), (TypInt, locj)), (tj, locj)) in
                 let pj = dup_pat pj in
                 let (pj, env, idset, _) = check_pat pj tj env idset IdSet.empty sc false true false in
-                let def_pj = DefVal(pj, ej, [ValTemp], locj) in
+                let def_pj = DefVal(pj, ej, default_tempval_flags(), locj) in
                 (j+1, (def_pj :: code), env, idset)
             | _ ->
                 let (_, relems) = get_record_elems None ttrj locj in
@@ -739,8 +739,9 @@ and check_exp e env sc =
                     in
                 let (pnj, env, idset, _) = check_pat pnj TypString env idset IdSet.empty sc false true false in
                 let (pvj, env, idset, _) = check_pat pvj tj env idset IdSet.empty sc false true false in
-                let def_pvj = DefVal(pvj, ej, [ValTemp], locj) in
-                let def_pnj = DefVal(pnj, ExpLit(LitString (pp_id2str nj), (TypString, locj)), [ValTemp], locj) in
+                let def_pvj = DefVal(pvj, ej, default_tempval_flags(), locj) in
+                let def_pnj = DefVal(pnj, ExpLit(LitString (pp_id2str nj),
+                    (TypString, locj)), default_tempval_flags(), locj) in
                 (j+1, (def_pvj :: def_pnj :: code), env, idset)) (0, [], env, IdSet.empty) for_clauses
             in
         let (code, env, idset) = match idx_pat with
@@ -750,7 +751,8 @@ and check_exp e env sc =
                 let (idx_pat, env, idset, _) = check_pat idx_pat TypInt env idset
                     IdSet.empty sc false true false in
                 let idx_loc = get_pat_loc idx_pat in
-                let def_idx = DefVal(idx_pat, ExpLit(LitInt (Int64.of_int idx), (TypInt, idx_loc)), [ValTemp], idx_loc) in
+                let def_idx = DefVal(idx_pat, ExpLit(LitInt (Int64.of_int idx),
+                    (TypInt, idx_loc)), default_tempval_flags(), idx_loc) in
                 ((def_idx :: code), env, idset)
             in
         let body = check_exp (dup_exp body) env sc in
@@ -884,7 +886,7 @@ and check_exp e env sc =
             | ExpIdent(n1, _) -> (* a_var = e2 *)
                 (not need_mutable_id) ||
                 (match (id_info n1) with
-                | IdVal { dv_flags } -> (List.mem ValMutable dv_flags)
+                | IdVal { dv_flags } -> dv_flags.val_flag_mutable
                 | _ -> false)
             | ExpMem(rcrd, ExpIdent(_, _), _) -> is_lvalue need_mutable_id rcrd
             | ExpMem(tup, ExpLit(_, _), _) -> is_lvalue need_mutable_id tup
@@ -1477,7 +1479,7 @@ and check_eseq eseq env sc create_sc =
             | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _)
             | DefTyp _ | DefVariant _ | DefClass _ | DefInterface _ | DefExn _ -> (e :: eseq, env)
             | DefVal (p, e, flags, loc) ->
-                let is_mutable = List.mem ValMutable flags in
+                let is_mutable = flags.val_flag_mutable in
                 let t = get_exp_typ e in
                 let p = match p with
                     | PatTyped(p1, t1, loc) ->
@@ -1984,7 +1986,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
     let r_idset = ref idset in
     let r_env = ref env in
     let r_typ_vars = ref typ_vars in
-    let captured_val_flags = if is_mutable then ValMutable :: [] else [] in
+    let captured_val_flags = {(default_val_flags()) with val_flag_mutable=is_mutable} in
     let rec process_id i t loc =
         let i0 = get_orig_id i in
         (if (IdSet.mem i0 !r_idset) then
@@ -2106,7 +2108,8 @@ and check_cases cases inptyp outtyp env sc loc =
             let _ = if (IdSet.is_empty capt1) then () else
                 raise_compile_err loc "captured variables may not be used in the case of multiple alternatives ('|' pattern)" in
             let temp_id = gen_temp_id "p" in
-            let temp_dv = { dv_name=temp_id; dv_typ=inptyp; dv_flags=[ValTemp]; dv_scope=sc; dv_loc=loc } in
+            let temp_dv = { dv_name=temp_id; dv_typ=inptyp;
+                dv_flags=default_tempval_flags(); dv_scope=sc; dv_loc=loc } in
             let _ = set_id_entry temp_id (IdVal temp_dv) in
             let capt1 = IdSet.add temp_id capt1 in
             let env1 = add_id_to_env temp_id temp_id env1 in

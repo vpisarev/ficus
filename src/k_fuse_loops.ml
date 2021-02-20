@@ -84,7 +84,7 @@ let rec fuse_loops code =
                             (match (Env.find_opt nested_arr arr_env) with
                             | Some(outer_i) ->
                                 let t = get_idk_ktyp outer_i loc in
-                                let pbody2 = create_kdefval nested_i t [ValTemp]
+                                let pbody2 = create_kdefval nested_i t (default_tempval_flags())
                                     (Some (KExpAtom((Atom.Id outer_i), (t, loc)))) pbody2 loc in
                                 (new_idl2, pbody2, arr_env2)
                             | _ ->
@@ -94,7 +94,7 @@ let rec fuse_loops code =
                         (new_idl, pbody, arr_env) arr_idl
                         in
                     let t = get_kexp_typ arr_body in
-                    let pbody2 = create_kdefval i t [ValTemp] (Some arr_body) pbody2 loc in
+                    let pbody2 = create_kdefval i t (default_tempval_flags()) (Some arr_body) pbody2 loc in
                     (new_idl2, pbody2, arr_env2)
                 | _ ->
                     let arr_env = Env.add arr i arr_env in

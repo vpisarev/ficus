@@ -367,9 +367,9 @@ and pprint_cstmt s =
             ) cases;
         pstr "}"
     | CDefVal (t, n, e_opt, loc) ->
-        let cv_flags = match (cinfo_ n loc) with CVal {cv_flags} -> cv_flags | _ -> [] in
+        let is_private = match (cinfo_ n loc) with CVal {cv_flags} -> cv_flags.val_flag_private | _ -> false in
         obox();
-        if (List.mem ValPrivate cv_flags) then (pstr "static"; pspace()) else ();
+        if is_private then (pstr "static"; pspace()) else ();
         pprint_ctyp_ t (Some n) loc;
         (match e_opt with
         | Some e -> pspace(); pstr "="; pspace(); pprint_cexp_ e 0

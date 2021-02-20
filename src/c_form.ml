@@ -181,7 +181,7 @@ and cstmt_t =
     | CMacroIf of (cexp_t * cstmt_t list) list * cstmt_t list * loc_t
     | CMacroInclude of string * loc_t
     | CMacroPragma of string * loc_t
-and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flag_t list; cv_loc: loc_t }
+and cdefval_t = { cv_name: id_t; cv_typ: ctyp_t; cv_cname: string; cv_flags: val_flags_t; cv_loc: loc_t }
 and cdeffun_t = { cf_name: id_t; cf_cname: string;
                   cf_args: (id_t * ctyp_t * (carg_attr_t list)) list;
                   cf_rt: ctyp_t; cf_body: cstmt_t list;
@@ -363,7 +363,7 @@ let create_cdefval n t flags cname e_opt code loc =
 
 let add_cf_arg v ctyp cname loc =
     let cv = { cv_name=v; cv_typ=ctyp; cv_cname=cname;
-        cv_flags=ValArg::[]; cv_loc=loc }
+        cv_flags={(default_val_flags()) with val_flag_arg=true}; cv_loc=loc }
     in set_idc_entry v (CVal cv)
 
 let get_ccode_loc ccode default_loc =

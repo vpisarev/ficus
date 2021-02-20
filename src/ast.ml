@@ -173,10 +173,35 @@ type binop_t =
 
 type unop_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand | OpApos
 
-type val_flag_t = ValArg | ValMutable | ValTemp | ValTempRef
-    | ValPrivate | ValSubArray
-    | ValCtor of id_t (* when the value is 0-parameter constructor of variant (or exception) *)
-    | ValGlobal of scope_t list (* global public values at module level or public static class members *)
+type val_flags_t =
+{
+    val_flag_arg: bool;
+    val_flag_mutable: bool;
+    val_flag_temp: bool;
+    val_flag_tempref: bool;
+    val_flag_private: bool;
+    val_flag_subarray: bool;
+    val_flag_ctor: id_t; (* when the value is 0-parameter constructor of variant (or exception) *)
+    val_flag_global: scope_t list; (* global public values at module level or public static class members *)
+}
+
+let default_val_flags() =
+{
+    val_flag_arg=false;
+    val_flag_mutable=false;
+    val_flag_temp=false;
+    val_flag_tempref=false;
+    val_flag_private=false;
+    val_flag_subarray=false;
+    val_flag_ctor=noid;
+    val_flag_global=[]
+}
+let default_arg_flags() = {(default_val_flags()) with val_flag_arg=true}
+let default_var_flags() = {(default_val_flags()) with val_flag_mutable=true}
+let default_tempval_flags() = {(default_val_flags()) with val_flag_temp=true}
+let default_tempref_flags() = {(default_val_flags()) with val_flag_tempref=true}
+let default_tempvaR_flags() = {(default_tempval_flags()) with val_flag_mutable=true}
+
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
 type fun_flags_t =
 {
@@ -228,7 +253,7 @@ type border_t = BorderNone | BorderClip | BorderZero
 type interpolate_t = InterpNone | InterpLinear
 
 type var_flags_t = { var_flag_module: id_t; var_flag_record: bool; var_flag_recursive: bool; var_flag_have_tag: bool; var_flag_opt: bool }
-let default_var_flags() = {var_flag_module=noid; var_flag_record=false; var_flag_recursive=false; var_flag_have_tag=true; var_flag_opt=false}
+let default_variant_flags() = {var_flag_module=noid; var_flag_record=false; var_flag_recursive=false; var_flag_have_tag=true; var_flag_opt=false}
 
 type ctx_t = typ_t * loc_t
 
@@ -261,7 +286,7 @@ type exp_t =
     | ExpCast of exp_t * typ_t * ctx_t
     | ExpTyped of exp_t * typ_t * ctx_t
     | ExpCCode of string * ctx_t
-    | DefVal of pat_t * exp_t * val_flag_t list * loc_t
+    | DefVal of pat_t * exp_t * val_flags_t * loc_t
     | DefFun of deffun_t ref
     | DefExn of defexn_t ref
     | DefTyp of deftyp_t ref
@@ -285,7 +310,7 @@ and pat_t =
     | PatRef of pat_t * loc_t
 and env_entry_t = EnvId of id_t | EnvTyp of typ_t
 and env_t = env_entry_t list Env.t
-and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flag_t list;
+and defval_t = { dv_name: id_t; dv_typ: typ_t; dv_flags: val_flags_t;
                  dv_scope: scope_t list; dv_loc: loc_t }
 and deffun_t = { df_name: id_t; df_templ_args: id_t list; df_args: pat_t list; df_typ: typ_t;
                  df_body: exp_t; df_flags: fun_flags_t; df_scope: scope_t list; df_loc: loc_t;
@@ -937,10 +962,7 @@ let remove_flag f0 flags =
 let add_flag f0 flags =
     if List.mem f0 flags then flags else f0 :: flags
 
-let get_val_ctor flags =
-    match (List.find_opt (fun f -> match f with ValCtor _ -> true | _ -> false) flags) with
-    | Some (ValCtor i) -> i
-    | _ -> noid
+let get_val_ctor flags = flags.val_flag_ctor
 
 let get_fun_ctor flags = flags.fun_flag_ctor
 let is_fun_ctor flags = flags.fun_flag_ctor <> CtorNone
