@@ -1,3 +1,10 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
+// Ficus lexer/tokenizer
+
 import File, Map, Sys
 
 type lloc_t = (int, int)
@@ -1085,7 +1092,7 @@ fun make_lexer(strm: stream_t)
     nexttokens
 }
 
-val strm = make_stream(Sys.arguments().hd())
+/*val strm = make_stream(Sys.arguments().hd())
 val lexer = make_lexer(strm)
 
 var prev_line = 0
@@ -1114,4 +1121,4 @@ while true {
 }}
 catch {
     | e => {}
-}
+}*/

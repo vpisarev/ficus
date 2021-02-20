@@ -374,21 +374,24 @@ let rec exp2kexp e code tref sc =
         let e1loc = get_exp_loc e1 in
         let (a_id, code) = exp2id e1 code true sc "the literal does not have members to access" in
         let ktyp = get_idk_ktyp a_id e1loc in
-        let i = (match (ktyp, elem) with
-                | (KTypTuple(tl), ExpLit((LitInt i_), (ityp, iloc))) ->
-                    let i = Int64.to_int i_ in
-                    let n = List.length tl in
-                    if 0 <= i && i < n then () else
-                        raise_compile_err iloc (sprintf "the tuple index is outside of the range [0, %d)" n);
-                    i
-                | (KTypRecord(rn, relems), ExpIdent(n, (_, nloc))) ->
-                    let (i, j) = List.fold_left (fun (i, j) (ni, _) ->
-                        if n = ni then (j, j+1) else (i, j+1)) (-1, 0) relems in
-                    if i >= 0 then i else raise_compile_err nloc
-                        (sprintf "there is no record field '%s' in the record '%s'" (id2str n) (id2str rn))
-                | (_, _) ->
-                    raise_compile_err e1loc "unsupported access operation") in
-        (KExpMem(a_id, i, kctx), code)
+        (match (ktyp, elem) with
+        | (KTypTuple(tl), ExpLit((LitInt i_), (ityp, iloc))) ->
+            let i = Int64.to_int i_ in
+            let n = List.length tl in
+            if 0 <= i && i < n then () else
+                raise_compile_err iloc (sprintf "the tuple index is outside of the range [0, %d)" n);
+            (KExpMem(a_id, i, kctx), code)
+        | (KTypRecord(rn, relems), ExpIdent(n, (_, nloc))) ->
+            let (i, j) = List.fold_left (fun (i, j) (ni, _) ->
+                if n = ni then (j, j+1) else (i, j+1)) (-1, 0) relems in
+            if i >= 0 then
+                (KExpMem(a_id, i, kctx), code)
+            else raise_compile_err nloc
+                (sprintf "there is no record field '%s' in the record '%s'" (id2str n) (id2str rn))
+        | (KTypName(vn), ExpIdent(n2, (etyp2, eloc2))) when (pp_id2str n2) = "__tag__" ->
+            (KExpIntrin(IntrinVariantTag, (Atom.Id a_id) :: [], (KTypCInt, eloc)), code)
+        | (_, _) ->
+            raise_compile_err e1loc "unsupported access operation")
     | ExpAssign(e1, e2, _) ->
         let (a2, code) = exp2atom e2 code false sc in
         let (a_id, code) = exp2id e1 code true sc "a literal cannot be assigned" in

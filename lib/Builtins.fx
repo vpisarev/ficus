@@ -718,9 +718,9 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
 }
 
 fun new_uniform_rng(seed: uint64) {
-    var state = if seed != 0u64 {seed} else {0xffffffffu64}
+    var state = if seed != 0UL {seed} else {0xffffffffUL}
     fun (a: int, b: int) {
-        state = (state :> uint32) * 4197999714u64 + (state >> 32)
+        state = (state :> uint32) * 4197999714UL + (state >> 32)
         val (a, b) = (min(a, b), max(a, b))
         val diff = b - a
         val x = (state :> uint32) % diff + a

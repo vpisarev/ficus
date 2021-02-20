@@ -361,6 +361,7 @@ let process_all fname0 =
             ok
     with
     | Failure msg -> print_string msg; false
+    | Ast.CompileError (loc, msg) as e -> Ast.print_compile_err e; false
     | e -> (printf "\n\nException %s occured" (Printexc.to_string e)); false
     in if not ok then
         print_all_compile_errs()

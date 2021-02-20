@@ -134,8 +134,8 @@ let elim_unused kmods =
             | KExpAtom((Atom.Id fr), _) when (get_orig_id fr) = fold_result ->
                 fold_values := IdSet.add i !fold_values
             | _ -> ());
-            let is_really_used = (used i) || is_ccode || ((not !is_main) &&
-                (let {kv_flags} = get_kval i loc in is_val_global kv_flags)) in
+            let is_really_used = (used i) || is_ccode (*|| ((not !is_main) &&
+                (let {kv_flags} = get_kval i loc in is_val_global kv_flags))*) in
             if is_really_used then
                 KDefVal(i, e, loc)
             (* [TODO] issue a warning about unused identifier *)
@@ -145,7 +145,7 @@ let elim_unused kmods =
                 KExpNop(loc)
         | KDefFun kf ->
             let {kf_name; kf_body; kf_flags; kf_loc} = !kf in
-            if (used kf_name) || (not !is_main) || not (List.mem FunPrivate kf_flags) then
+            if (used kf_name) (*|| ((not !is_main) && not (List.mem FunPrivate kf_flags))*) then
                 (let new_body = elim_unused_kexp_ kf_body callb in
                 kf := {!kf with kf_body=new_body};
                 e)
@@ -161,7 +161,7 @@ let elim_unused kmods =
                i.e. the variant name gets used. So, we may be sure that
                we will never eliminate variant definition and yet retain
                some of its used constructors. *)
-            if (used kvar_name) || (not !is_main) then e
+            if (used kvar_name) (*|| (not !is_main)*) then e
             else KExpNop(kvar_loc)
         | KDefTyp kt ->
             let {kt_name; kt_loc} = !kt in
@@ -170,11 +170,11 @@ let elim_unused kmods =
                i.e. the variant name gets used. So, we may be sure that
                we will never eliminate variant definition and yet retain
                some of its used constructors. *)
-            if (used kt_name) || (not !is_main) then e
+            if (used kt_name) (*|| (not !is_main)*) then e
             else KExpNop(kt_loc)
         | KDefClosureVars kcv ->
             let {kcv_name; kcv_loc} = !kcv in
-            if (used kcv_name) || (not !is_main) then e
+            if (used kcv_name) (*|| (not !is_main)*) then e
             else KExpNop(kcv_loc)
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in

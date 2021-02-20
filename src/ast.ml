@@ -355,7 +355,7 @@ let compile_errs = ref ([]: exn list)
 let compile_err_ctx = ref ([]: string list)
 
 let raise_compile_err loc msg =
-    let whole_msg = sprintf "%s: %s" (loc2str loc) msg in
+    let whole_msg = sprintf "%s: error: %s" (loc2str loc) msg in
     let whole_msg = match !compile_err_ctx with
         | [] -> whole_msg
         | ctx -> String.concat "\n\t" (whole_msg :: ctx)
@@ -378,7 +378,7 @@ let check_compile_errs () =
 let print_compile_err err =
     match err with
     (* error message has been formatted already in raise_typecheck_err(); just print it *)
-    | CompileError(_, msg) -> printf "%s\n" msg
+    | CompileError(loc, msg) -> printf "%s\n" msg
     | Failure msg -> printf "Failure: %s\n" msg
     | _ -> printf "\n\nException %s occured\n" (Printexc.to_string err)
 
