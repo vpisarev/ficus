@@ -16,6 +16,7 @@ parser.mli
 parser.output
 src/ficus
 src/result.pgm
+tools/ocaml2fx/ocaml2fx
 
 # ocamlbuild working directory
 _build/

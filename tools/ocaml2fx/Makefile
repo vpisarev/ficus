@@ -12,18 +12,16 @@ clean:
 	@rm -f parser.ml
 	@rm -f parser.mli
 	@rm -f parser.output
-	@rm -f *.pgm
-	@rm -f *.c
 
 native:
-	$(OCB) ficus.native
-	@cp ficus.native ficus
+	$(OCB) ocaml2fx.native
+	@cp ocaml2fx.native ocaml2fx
 
 byte:
-	$(OCB) ficus.byte
+	$(OCB) ocaml2fx.byte
 
 debug:
-	$(OCB) -tag debug ficus.d.byte
+	$(OCB) -tag debug ocaml2fx.d.byte
 
 test: native
-	./ficus -run ../test/test_all.fx
+	./ficus -C test fst.fcs

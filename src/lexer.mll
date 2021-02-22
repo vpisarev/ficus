@@ -147,7 +147,6 @@ let token2str t = match t with
     | DOT_CMP_GT -> "DOT_CMP_GT"
     | FOLD_RESULT -> "FOLD_RESULT"
 
-let keywords = Hashtbl.create 101
 let fname = ref "unknown"
 
 (* kwtyp:
@@ -161,6 +160,7 @@ let fname = ref "unknown"
    3 - a keyword that can play a role of a connector (type 1) or an expression beginning (type 2),
        depending on context
 *)
+let keywords = Hashtbl.create 101
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
         ("as", AS, 1); ("break", BREAK, 0); ("catch", CATCH, 1); ("ccode", CCODE, 2);
