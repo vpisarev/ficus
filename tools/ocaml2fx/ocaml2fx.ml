@@ -3,13 +3,33 @@
     See ficus/LICENSE for the licensing terms
 *)
 
+let printf = Format.printf
+
+let make_lexer () =
+    if !Syntax.opt_pr_tokens then
+        (fun lexbuf ->
+            let t = Lexer.token lexbuf in
+            printf "%s " (Lexer.token2str t); t)
+    else
+        Lexer.token
+
 let parse_ocaml fname =
-    let inchan = open_in (fname ^ ".ml") in
+    let inchan = open_in fname in
     try
-        let t = Parser.toplevel Lexer.token (Lexing.from_channel inchan) in
+        let _ = Syntax.lineno := 1 in
+        let lexer = make_lexer () in
+        let t = Parser.toplevel lexer (Lexing.from_channel inchan) in
         close_in inchan;
         t
-    with e -> (close_in inchan; raise e)
+    with e ->
+        (close_in inchan;
+        (match e with
+        | Lexer.LexError(msg, (p1, p2)) ->
+            printf "\n%s:%d: error: Lexer error '%s'\n" fname !Syntax.lineno msg
+        | Syntax.SyntaxError(msg, p1, p2) ->
+            printf "\n%s:%d: error: Parser error '%s'\n" fname !Syntax.lineno msg
+        | _ -> printf "\n%s:%d: error: Unknown exception\n" fname !Syntax.lineno);
+        raise e)
 
 let convert_ocaml fname =
     let ocode = parse_ocaml fname in
@@ -26,7 +46,8 @@ let convert_ocaml fname =
 let _ =
   let files = ref [] in
   Arg.parse
-      [("-infer_types", Arg.Unit(fun () -> Syntax.opt_infer_types := true), "try to infer some types")]
+      [("-infer-types", Arg.Unit(fun () -> Syntax.opt_infer_types := true), "try to infer some types");
+      ("-pr-tokens", Arg.Unit(fun () -> Syntax.opt_pr_tokens := true), "print tokens when parsing .ml files")]
       (fun s -> files := !files @ [s])
       ("Ocaml to Ficus converter.\n"
       ^"Usage: ocaml2fx [-infer_types] filename1 ...\n");

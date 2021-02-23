@@ -56,35 +56,6 @@ let unop2str_ uop = match uop with
 let pprint_id2str n = n
 let pprint_id n = pstr (pprint_id2str n)
 
-let rec octyp2str t =
-    match t with
-    | CtUnit -> "void"
-    | CtBool -> "bool"
-    | CtInt -> "int"
-    | CtFloat -> "double"
-    | CtString -> "string"
-    | CtChar -> "char"
-    | CtList t -> (octyp2str t) ^ " list"
-    | CtRef t -> (octyp2str t) ^ " ref"
-    | CtTuple(tl) -> "(" ^ (String.concat ", " (List.map octyp2str tl)) ^ ")"
-    | CtRecord(relems) -> "{" ^ (String.concat "; " (List.map (fun (m, n, t) ->
-        let t = if m then CtRef(t) else t in n ^ ": " ^ (octyp2str t)) relems)) ^ "}"
-    | CtApp(args, n) ->
-        let argt = match args with t :: [] -> t | _ -> CtTuple(args) in
-        (octyp2str argt) ^ (if n = "option" then "?" else if n = "vector" then " []" else (" " ^ n))
-    | CtFun(arg, rt) -> "(" ^ (octyp2str arg) ^ " -> " ^ (octyp2str rt) ^ ")"
-    | CtName(n) -> n
-
-let lit2str lit =
-    match lit with
-    | ClInt(n) -> sprintf "%d" n
-    | ClFloat(f) -> sprintf "%.16g" f
-    | ClString(s) -> "\"" ^ s ^ "\""
-    | ClChar(c) -> "'" ^ (String.make 1 c) ^ "'"
-    | ClBool(b) -> if b then "true" else "false"
-    | ClNil -> "[]"
-    | ClUnit -> "{}"
-
 let rec pprint_octyp_ t fparen =
     (match t with
     | CtInt | CtFloat | CtString | CtChar | CtBool | CtUnit -> pstr (octyp2str t)
@@ -126,7 +97,7 @@ and pprint_pat_ p parens =
     match p with
     | CpLit(l) -> pstr (lit2str l)
     | CpIdent(n) -> pstr n
-    | CpAny -> pstr "_"
+    | CpAny -> pstr "<Any>"
     | CpTuple(pl) ->
         obox(); pstr "("; pcut();
         List.iteri (fun i p ->
@@ -183,10 +154,10 @@ and pprint_pat_ p parens =
         pprint_octyp t;
         cboxp()
 
-and check_if_none e_opt =
+and check_if_none p e_opt =
     match e_opt with
     | None -> ()
-    | _ -> failwith "met 'let in' with non-empty 'in' part"
+    | _ -> failwith (sprintf "met 'let %s= ... in' with non-empty 'in' part" (pat2str p))
 
 and pprint_ocexp_ e pr : unit =
     match e with
@@ -219,22 +190,22 @@ and pprint_ocexp_ e pr : unit =
             in
         print_cascade_if "if" e e1 e2
     | CeLet(p, e1, e2_opt) ->
-        check_if_none e2_opt;
+        check_if_none p e2_opt;
         obox();
         pstr "val"; pspace(); pprint_pat_ p false;
         pspace(); pstr "="; pspace();
         pprint_ocexp_ e1 0;
         cbox()
     | CeLetRec(fdefs, e2_opt) ->
-        check_if_none e2_opt;
+        check_if_none (CpIdent "<funcs...>") e2_opt;
         List.iter (fun fdef ->
             let {ocf_name; ocf_args; ocf_body} = fdef in
-            obox(); pstr ("fun " ^ ocf_name); pcut();
+            obox(); obox(); pstr ("fun " ^ ocf_name); pcut();
             pprint_pat_ (CpTuple ocf_args) false;
             (match ocf_body with
-            | CeBlock _ -> cbox(); pprint_block_cbox ocf_body
-            | _ -> pspace(); pstr "="; cbox(); pprint_ocexp_ ocf_body 0);
-            cbox(); pbreak()) fdefs
+            | CeBlock _ -> cbox(); pspace(); pprint_block_cbox ocf_body
+            | _ -> pspace(); pstr "="; cbox(); pspace(); pprint_ocexp_ ocf_body 0; cbox());
+            pbreak()) fdefs
     | CeLambda(args, body) ->
         obox(); pstr "("; pcut();
         pstr "fun "; pprint_pat_ (CpTuple args) false;
@@ -310,7 +281,7 @@ and pprint_ocexp_ e pr : unit =
         | _ -> pstr ":"; pspace(); pprint_octyp t);
         cbox()
     | CeOpen(mods) ->
-        List.iter (fun m -> pstr ("from " ^ m ^ " import *"); pcut()) mods
+        List.iter (fun m -> ohbox(); pstr ("from " ^ m ^ " import *"); cbox(); pbreak()) mods
 
 and pprint_elist el =
     List.iteri (fun i e ->
@@ -355,5 +326,5 @@ and pprint_cases_cbox_ cases opening closing =
 
 and print_top code =
     ovbox();
-    List.iteri (fun i e -> if i = 0 then () else pbreak(); pprint_ocexp_ e 0) code;
+    List.iter (fun e -> pprint_ocexp_ e 0; pbreak()) code;
     cbox()

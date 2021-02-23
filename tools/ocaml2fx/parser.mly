@@ -31,7 +31,6 @@ let make_variant_pat vn args =
 %}
 
 /* tokens with attributes */
-%token <bool> BOOL
 %token <char> CHAR
 %token <float> FLOAT
 %token <int> INT
@@ -47,7 +46,7 @@ let make_variant_pat vn args =
 /* symbols */
 %token LPAREN RPAREN DOT_LPAREN LSQUARE RSQUARE LSQUARE_VEC RSQUARE_VEC LBRACE RBRACE
 %token PLUS MINUS STAR SLASH MINUS_DOT PLUS_DOT STAR_DOT SLASH_DOT
-%token LOGICAL_AND LOGICAL_OR LOGICAL_NOT STRING_CONCAT LIST_CONCAT CONS
+%token LOGICAL_AND LOGICAL_OR STRING_CONCAT LIST_CONCAT CONS
 %token EQUAL NOT_EQUAL LESS_EQUAL GREATER_EQUAL LESS GREATER COMMA ASSIGN
 %token EXCLAMATION DOT ARROW BACK_ARROW COLON SEMICOLON BAR EOF
 
@@ -66,9 +65,11 @@ let make_variant_pat vn args =
 %left AS
 %left EQUAL NOT_EQUAL LESS GREATER LESS_EQUAL GREATER_EQUAL
 %left LSL LSR
-%left PLUS MINUS PLUS_DOT MINUS_DOT STRING_CONCAT LIST_CONCAT
+%right LIST_CONCAT
+%left PLUS MINUS PLUS_DOT MINUS_DOT STRING_CONCAT
 %left STAR SLASH MOD STAR_DOT SLASH_DOT
-%right prec_app LOGICAL_NOT EXCLAMATION
+%right prec_app NOT EXCLAMATION
+%left DOT DOT_LPAREN
 
 %type <Syntax.ocexp_t list> toplevel
 %type <Syntax.ocexp_t> exp, simple_exp
@@ -97,7 +98,8 @@ toplevel_def:
 
 literal:
 | LPAREN RPAREN { ClUnit }
-| BOOL { ClBool($1) }
+| TRUE { ClBool(true) }
+| FALSE { ClBool(false) }
 | INT { ClInt($1) }
 | FLOAT { ClFloat($1) }
 | STRING { ClString($1) }
@@ -110,12 +112,15 @@ simple_exp:
 | LPAREN complex_exp COMMA exp_list_ RPAREN
     { CeMkTuple($2 :: (List.rev $4)) }
 | LPAREN exp COLON typespec RPAREN { $2 }
-| LBRACE rec_init_elems_ RPAREN { CeMkRecord(List.rev $2) }
-| LBRACE simple_exp WITH rec_init_elems_ RPAREN { CeUpdateRecord($2, (List.rev $4)) }
+| LBRACE rec_init_elems_ RBRACE { CeMkRecord(List.rev $2) }
+| LBRACE simple_exp WITH rec_init_elems_ RBRACE { CeUpdateRecord($2, (List.rev $4)) }
 | LSQUARE exp_seq_ RPAREN { CeMkList(List.rev $2) }
 | LSQUARE_VEC exp_seq_ RSQUARE_VEC { CeMkVector(List.rev $2) }
 | ident_ { CeIdent($1) }
 | simple_exp DOT_LPAREN exp RPAREN { CeBinary(COpAt, $1, $3) }
+| EXCLAMATION simple_exp
+    %prec prec_app
+    { CeUnary(COpDeref, $2) }
 
 exp:
 | simple_exp
@@ -126,6 +131,10 @@ exp:
 | MINUS exp
     %prec prec_app
     { CeUnary(COpNeg, $2) }
+| exp LIST_CONCAT exp
+    { CeBinary(COpConcat, $1, $3) }
+| exp STRING_CONCAT exp
+    { CeBinary(COpConcat, $1, $3) }
 | exp PLUS exp
     { CeBinary(COpAdd, $1, $3) }
 | exp MINUS exp
@@ -173,9 +182,6 @@ exp:
 | MINUS_DOT exp
     %prec prec_app
     { CeUnary(COpNeg, $2) }
-| EXCLAMATION exp
-    %prec prec_app
-    { CeUnary(COpDeref, $2) }
 | REF exp
     %prec prec_app
     { CeUnary(COpMkRef, $2) }
@@ -188,22 +194,19 @@ exp:
     {
         let args = match $2 with
             | CeLit(ClUnit) :: [] -> []
-            | args -> args
+            | args -> List.rev args
             in
         CeCall($1, args)
     }
 | error
-    { failwith
-        (Printf.sprintf "parse error near characters %d-%d"
-           (Parsing.symbol_start ())
-           (Parsing.symbol_end ())) }
+    { raise_syntax_err "unexpected token" }
 
 complex_exp:
 | exp { $1 }
 | IF exp THEN complex_exp ELSE complex_exp
     %prec prec_if
     { CeIf($2, $4, $6) }
-| LET simple_pat EQUAL exp IN exp_seq
+| LET simple_pat EQUAL complex_exp IN exp_seq
     %prec prec_let
     { CeLet($2, $4, Some $6) }
 | LET IDENT simple_pats_ EQUAL exp_seq IN exp_seq
@@ -238,7 +241,7 @@ fundefs_:
 | fundef { $1 :: [] }
 
 fundef:
-| IDENT simple_pats_ EQUAL exp { make_fundef $1 $2 $4 }
+| IDENT simple_pats_ EQUAL exp_seq { make_fundef $1 $2 $4 }
 
 actual_args_:
 | actual_args_ simple_exp
@@ -304,12 +307,12 @@ pat:
     | _ -> if good_variant_name i then CpVariant(i, []) else CpIdent(i)
 }
 | LPAREN patx RPAREN { $2 }
-| LBRACE rec_pat_list_ RPAREN { CpRecord(noid, (List.rev $2)) }
+| LBRACE rec_pat_list_ RBRACE { CpRecord(noid, (List.rev $2)) }
 | ident_ IDENT { make_variant_pat $1 ((CpIdent $2) :: []) }
 | ident_ literal { make_variant_pat $1 ((CpLit $2) :: []) }
 | ident_ LPAREN pat RPAREN { make_variant_pat $1 ($3 :: []) }
 | ident_ LPAREN pat COMMA pat_list_ RPAREN { make_variant_pat $1 ($3 :: (List.rev $5)) }
-| ident_ LBRACE rec_pat_list_ RPAREN
+| ident_ LBRACE rec_pat_list_ RBRACE
 {
     let vn = $1 in
     if good_variant_name vn then () else
@@ -326,7 +329,7 @@ simple_pat:
 | simple_pat AS IDENT { CpAs($1, $3) }
 | LPAREN simple_pat COMMA simple_pat_list_ RPAREN { CpTuple($2 :: (List.rev $4)) }
 | LPAREN simple_pat COLON typespec RPAREN { CpTyped($2, $4) }
-| LBRACE simple_rec_pat_list_ RPAREN { CpRecord(noid, (List.rev $2)) }
+| LBRACE simple_rec_pat_list_ RBRACE { CpRecord(noid, (List.rev $2)) }
 
 simple_pat_list_:
 | simple_pat_list_ COMMA simple_pat { $3 :: $1 }

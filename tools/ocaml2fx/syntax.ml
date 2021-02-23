@@ -87,6 +87,8 @@ and octypdef_t = { oct_name: id_t; oct_args: id_t list; oct_body: octyp_t }
 and ocvardef_t = { ocv_name: id_t; ocv_args: id_t list; ocv_cases: (id_t * octyp_t) list }
 
 let opt_infer_types = ref false
+let opt_pr_tokens = ref false
+let lineno = ref 1
 
 let good_variant_name s =
     let c0 = String.get s 0 in
@@ -94,3 +96,48 @@ let good_variant_name s =
 
 let printf = Format.printf
 let sprintf = Format.sprintf
+
+let rec octyp2str t =
+    match t with
+    | CtUnit -> "void"
+    | CtBool -> "bool"
+    | CtInt -> "int"
+    | CtFloat -> "double"
+    | CtString -> "string"
+    | CtChar -> "char"
+    | CtList t -> (octyp2str t) ^ " list"
+    | CtRef t -> (octyp2str t) ^ " ref"
+    | CtTuple(tl) -> "(" ^ (String.concat ", " (List.map octyp2str tl)) ^ ")"
+    | CtRecord(relems) -> "{" ^ (String.concat "; " (List.map (fun (m, n, t) ->
+        let t = if m then CtRef(t) else t in n ^ ": " ^ (octyp2str t)) relems)) ^ "}"
+    | CtApp(args, n) ->
+        let argt = match args with t :: [] -> t | _ -> CtTuple(args) in
+        (octyp2str argt) ^ (if n = "option" then "?" else if n = "vector" then " []" else (" " ^ n))
+    | CtFun(arg, rt) -> "(" ^ (octyp2str arg) ^ " -> " ^ (octyp2str rt) ^ ")"
+    | CtName(n) -> n
+
+let lit2str lit =
+    match lit with
+    | ClInt(n) -> sprintf "%d" n
+    | ClFloat(f) -> sprintf "%.16g" f
+    | ClString(s) -> "\"" ^ s ^ "\""
+    | ClChar(c) -> "'" ^ (String.make 1 c) ^ "'"
+    | ClBool(b) -> if b then "true" else "false"
+    | ClNil -> "[]"
+    | ClUnit -> "{}"
+
+let rec pat2str p =
+    match p with
+    | CpLit(l) -> lit2str l
+    | CpIdent(n) -> n
+    | CpAny -> "<Any>"
+    | CpTuple(pl) -> "(" ^ (String.concat ", " (List.map pat2str pl)) ^ ")"
+    | CpVariant(vn, pl) ->
+        vn ^ (pat2str (CpTuple pl))
+    | CpRecord (vn, relems) ->
+        vn ^ "{" ^ (String.concat ", " (List.map
+            (fun (n, p) -> n ^ "=" ^ (pat2str p)) relems)) ^ "}"
+    | CpCons(p1, p2) -> "(" ^ (pat2str p1) ^ " :: " ^ (pat2str p2) ^ ")"
+    | CpAs(p, n) -> "(" ^ (pat2str p) ^ " as " ^ n ^ ")"
+    | CpWhen(p, n) -> "(" ^ (pat2str p) ^ " when ... )"
+    | CpTyped(p, t) -> "(" ^ (pat2str p) ^ ": " ^ (octyp2str t) ^ ")"

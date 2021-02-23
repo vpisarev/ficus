@@ -81,6 +81,17 @@ let transform_let code =
             | e :: [] -> e
             | _ -> CeBlock(List.rev new_el))
         | CeLet(p, e1, e2_opt) ->
+            (*let rec let2str e =
+                match e with
+                | CeLet(p, e1, e2_opt) -> sprintf "LET %s=...%s" (pat2str p)
+                    (match e2_opt with
+                    | Some((CeLet _) as e2) -> " IN " ^ (let2str e2)
+                    | Some _ -> " IN ..."
+                    | _ -> "")
+                | _ -> "..."
+                in
+            let _ = printf "\nTRANSFORM: %s\n" (let2str e) in*)
+            let e1 = trlet_ e1 in
             let e1 = match p with
                 | CpAny | CpLit(ClUnit) -> e1
                 | _ -> CeLet(p, e1, None)
