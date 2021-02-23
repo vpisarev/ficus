@@ -1,4 +1,9 @@
-(* OCaml syntax and Ficus Syntax *)
+(*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(* Syntax of (a subset of) OCaml *)
 
 exception SyntaxError of string * Lexing.position*Lexing.position
 
@@ -11,6 +16,7 @@ type oclit_t =
 | ClInt of int
 | ClFloat of float
 | ClString of string
+| ClChar of char
 | ClNil
 
 type octyp_t =
@@ -55,6 +61,7 @@ type ocexp_t =
     | CeUpdateRecord of ocexp_t * (id_t * ocexp_t) list
     | CeMatch of ocexp_t * (ocpat_t list * ocexp_t) list
     | CeTry of ocexp_t * (ocpat_t list * ocexp_t) list
+    | CeRaise of ocexp_t
     | CeWhile of ocexp_t * ocexp_t
     | CeFor of bool * id_t * ocexp_t * ocexp_t * ocexp_t
     | CeBlock of ocexp_t list

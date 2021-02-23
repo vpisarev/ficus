@@ -1,3 +1,8 @@
+(*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
 let parse_ocaml fname =
     let inchan = open_in (fname ^ ".ml") in
     try
@@ -8,12 +13,13 @@ let parse_ocaml fname =
 
 let convert_ocaml fname =
     let ocode = parse_ocaml fname in
+    let ocode = Transform.transform_let ocode in
     let ofname = Filename.basename fname in
     let ofname = try Filename.chop_extension ofname with Invalid_argument _ -> ofname in
     let ofname = ofname ^ ".fx" in
     let outchan = open_out ofname in
     try
-        Print_ficus.print_code ocode;
+        Print_ficus.print_top ocode;
         close_out outchan
     with e -> (close_out outchan; raise e)
 

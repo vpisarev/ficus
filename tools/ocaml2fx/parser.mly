@@ -1,4 +1,9 @@
 %{
+(*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
 (* parser for a subset of Ocaml, which is used to implement Ficus compiler *)
 open Syntax
 
@@ -37,7 +42,7 @@ let make_variant_pat vn args =
 /* keywords */
 %token AND AS BEGIN DO DONE DOWNTO ELSE END EXCEPTION FALSE FOR
 %token FUN FUNCTION IF IN LET LSL LSR MATCH MOD MUTABLE NOT OF OPEN
-%token REC REF THEN TO TRUE TRY TYPE VAL WHEN WHILE WITH
+%token RAISE REC REF THEN TO TRUE TRY TYPE VAL WHEN WHILE WITH
 
 /* symbols */
 %token LPAREN RPAREN DOT_LPAREN LSQUARE RSQUARE LSQUARE_VEC RSQUARE_VEC LBRACE RBRACE
@@ -48,7 +53,8 @@ let make_variant_pat vn args =
 
 %nonassoc IN
 %right prec_let
-%right SEMICOLON
+%left SEMICOLON
+%right RAISE
 %right prec_if
 %right BACK_ARROW ASSIGN
 %nonassoc prec_tuple
@@ -95,6 +101,7 @@ literal:
 | INT { ClInt($1) }
 | FLOAT { ClFloat($1) }
 | STRING { ClString($1) }
+| CHAR { ClChar($1) }
 | LSQUARE RSQUARE { ClNil }
 
 simple_exp:
@@ -172,9 +179,7 @@ exp:
 | REF exp
     %prec prec_app
     { CeUnary(COpMkRef, $2) }
-| IF exp THEN exp ELSE exp
-    %prec prec_if
-    { CeIf($2, $4, $6) }
+| RAISE simple_exp { CeRaise($2) }
 | WHILE exp DO exp_seq DONE { CeWhile($2, $4) }
 | FOR IDENT EQUAL exp TO exp DO exp_seq DONE { CeFor(true, $2, $4, $6, $8) }
 | FOR IDENT EQUAL exp DOWNTO exp DO exp_seq DONE { CeFor(false, $2, $4, $6, $8) }
@@ -195,6 +200,9 @@ exp:
 
 complex_exp:
 | exp { $1 }
+| IF exp THEN complex_exp ELSE complex_exp
+    %prec prec_if
+    { CeIf($2, $4, $6) }
 | LET simple_pat EQUAL exp IN exp_seq
     %prec prec_let
     { CeLet($2, $4, Some $6) }

@@ -13,9 +13,9 @@ let _ = List.iter (fun(kwd, tok) -> Hashtbl.add keywords kwd tok)
       ("false", FALSE); ("for", FOR); ("fun", FUN); ("function", FUNCTION);
       ("if", IF); ("in", IN); ("let", LET); ("lsl", LSL); ("lsr", LSR);
       ("match", MATCH); ("mod", MOD); ("mutable", MUTABLE); ("not", NOT);
-      ("of", OF); ("open", OPEN); ("rec", REC); ("ref", REF); ("then", THEN);
-      ("to", TO); ("true", TRUE); ("try", TRY); ("type", TYPE); ("val", VAL);
-      ("when", WHEN); ("while", WHILE); ("with", WITH)
+      ("of", OF); ("open", OPEN); ("raise", RAISE); ("rec", REC); ("ref", REF);
+      ("then", THEN); ("to", TO); ("true", TRUE); ("try", TRY); ("type", TYPE);
+      ("val", VAL); ("when", WHEN); ("while", WHILE); ("with", WITH)
     ]
 
 exception LexError of string * (position * position)
