@@ -163,7 +163,7 @@ let get_ktprops t loc =
                     { ktp_complex=true; ktp_scalar=false; ktp_ptr=true; ktp_pass_by_ref=false;
                       ktp_custom_free=true; ktp_custom_copy=false }
                 else
-                    let _ = if IdSet.mem n !visited then raise_compile_err loc
+                    let _ = if not (IdSet.mem n !visited) then () else raise_compile_err loc
                         (sprintf "unexpected recursive variant %s" (if kvar_cname<>"" then kvar_cname else pp_id2str kvar_name)) in
                     let _ = visited := IdSet.add n !visited in
                     let have_complex = List.exists (fun (_, ti) -> (get_ktprops_ ti kvar_loc).ktp_complex) kvar_cases
@@ -178,7 +178,7 @@ let get_ktprops t loc =
             (match kt_props with
             | Some(ktp) -> ktp
             | _ ->
-                let _ = if IdSet.mem n !visited then raise_compile_err loc
+                let _ = if not (IdSet.mem n !visited) then () else raise_compile_err loc
                     (sprintf "unexpected recursive type %s" (if kt_cname<>"" then kt_cname else pp_id2str kt_name)) in
                 let _ = visited := IdSet.add n !visited in
                 let ktp = get_ktprops_ kt_typ kt_loc

@@ -275,7 +275,7 @@ and pprint_kexp_ e prtyp =
             pstr "(";
             (List.iteri (fun i a ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_atom_ a) args);
-            pstr ")"; cbox();
+            pstr ")"; cbox()
         | KExpAt(a, border, interp, args, _) ->
             pprint_atom_ a;
             pstr (border2str border true);
@@ -310,7 +310,7 @@ and pprint_kexp_ e prtyp =
                     pprint_kexp cj) checks_i;
                 if checks_i = [] then () else pstr ")";
                 pspace(); pprint_kexp e_i; pspace()) cases;
-            cbox();
+            cbox()
         | KExpTryCatch(e1, e2, _) ->
             obox(); pstr "TRY"; pspace(); pprint_kexp e1; pspace();
             pstr "CATCH"; pprint_kexp e2; cbox()

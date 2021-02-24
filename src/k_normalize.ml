@@ -1122,7 +1122,7 @@ and transform_all_types_and_cons elist code sc =
                             match (id_info constr) with
                             | IdFun {contents={df_name; df_typ}} ->
                                 let argtyps = match df_typ with
-                                    | TypFun([TypRecord {contents=(relems, true)}], _) ->
+                                    | TypFun((TypRecord {contents=(relems, true)}) :: [], _) ->
                                         List.map (fun (n, t, _) -> t) relems
                                     | TypFun(argtyps, _) -> argtyps
                                     | _ -> []

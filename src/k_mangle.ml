@@ -252,7 +252,7 @@ let mangle_all kmods =
                     let { kcv_freevars; kcv_loc } = !kcv in
                     let cv_cname = cname ^ "_cldata_t" in
                     let freevars = List.map (fun (n, t) -> (n, (walk_ktyp_n_mangle t kcv_loc callb))) kcv_freevars in
-                    kcv := { !kcv with kcv_cname=cv_cname; kcv_freevars=freevars };
+                    kcv := { !kcv with kcv_cname=cv_cname; kcv_freevars=freevars }
                 | _ ->
                     raise_compile_err kf_loc "mangle: invalid closure datatype (should be KClosureVars)");
             kf := { !kf with kf_cname=cname; kf_args=args; kf_rt=rt; kf_body=new_body;

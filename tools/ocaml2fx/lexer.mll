@@ -103,6 +103,7 @@ let token2str t = match t with
     | STRING(s) -> sprintf "STRING(\"%s\")" s
     | IDENT(s) -> sprintf "IDENT(%s)" s
     | INT(i) -> sprintf "INT(%d)" i
+    | INT64(i) -> sprintf "INT64(%d)" i
     | FLOAT(f) -> sprintf "FLOAT(%g)" f
     | TYVAR(s) -> sprintf "TYVAR(%s)" s
 
@@ -118,6 +119,27 @@ rule token = parse
 | "(*" { comment lexbuf; token lexbuf }
 | '"' { string_literal := []; strings lexbuf }
 | "'" ([^ '\n' '\r' '\t'] as c) "'" { CHAR(c) }
+| "'\\" ([^ '\n' '\r' '\t'] as c) "'"
+    {
+        let c = match c with
+            | 'n' -> '\n'
+            | 'r' -> '\r'
+            | 't' -> '\t'
+            | '\'' -> '\''
+            | '\"' -> '\"'
+            | '\\' -> '\\'
+            | '0' -> '\000'
+            | _ -> raise_lexer_err lexbuf "invalid escape symbol"
+            in
+        CHAR(c)
+    }
+| "'\\" (['0' - '7']['0' - '7']['0' - '7'] as code) "'"
+{
+    let c0 = Char.code(String.get code 0) - Char.code('0') in
+    let c1 = Char.code(String.get code 1) - Char.code('0') in
+    let c2 = Char.code(String.get code 2) - Char.code('0') in
+    CHAR(Char.chr(c0*64+c1*8+c2))
+}
 | '(' { LPAREN }
 | ')' { RPAREN }
 | ".(" { DOT_LPAREN }
@@ -127,8 +149,11 @@ rule token = parse
 | ']' { RSQUARE }
 | "[|" { LSQUARE_VEC }
 | "|]" { RSQUARE_VEC }
-| digit+
-    { INT(int_of_string (Lexing.lexeme lexbuf)) }
+| (digit+ as num)("L" as suffix)?
+    {
+        let num = int_of_string num in
+        match suffix with Some _ -> INT64(num) | _ -> INT(num)
+    }
 | digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?
     { FLOAT(float_of_string (Lexing.lexeme lexbuf)) }
 | '-' { MINUS }
@@ -144,6 +169,7 @@ rule token = parse
 | "^" { STRING_CONCAT }
 | "@" { LIST_CONCAT }
 | '=' { EQUAL }
+| "==" { EQUAL }
 | "<>" { NOT_EQUAL }
 | "!=" { NOT_EQUAL }
 | "<=" { LESS_EQUAL }
@@ -161,7 +187,7 @@ rule token = parse
     | Some kw -> kw
     | _ -> IDENT(k)
 }
-| '\'' (lower|upper) (lower|upper|digit|"_") { TYVAR(Lexing.lexeme lexbuf) }
+| '\'' (lower|upper) (lower|upper|digit|"_")* { TYVAR(Lexing.lexeme lexbuf) }
 | '.' { DOT }
 | "<-" { BACK_ARROW }
 | "->" { ARROW }
@@ -182,6 +208,8 @@ and comment = parse
 
 and strings = parse
 | "\\\"" { string_literal := "\\\"" :: !string_literal; strings lexbuf }
+| "\\\\" { string_literal := "\\\\" :: !string_literal; strings lexbuf }
+| "\\" { string_literal := "\\" :: !string_literal; strings lexbuf }
 | "\"" { STRING(String.concat "" (List.rev !string_literal)) }
 | eof
     { raise_lexer_err lexbuf "error: unterminated comment."; }

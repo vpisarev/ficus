@@ -2280,7 +2280,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let ctor_id = get_val_ctor kv_flags in
             let is_temp = kv_flags.val_flag_temp in
             let is_temp_ref = kv_flags.val_flag_tempref in
-            let is_global = bctx.bctx_kind == BlockKind_Global && not is_temp && not is_temp_ref in
+            let is_global = bctx.bctx_kind = BlockKind_Global && not is_temp && not is_temp_ref in
             let is_fast_cons = is_temp && (match e2 with
                 | KExpBinOp(OpCons, a, (Atom.Id l), _) when (IdSet.mem l u1vals) ->
                     (match (kinfo_ l kloc) with

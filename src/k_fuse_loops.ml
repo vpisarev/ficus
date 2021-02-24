@@ -69,8 +69,8 @@ let rec fuse_loops code =
                 | Domain.Elem (Atom.Id arr) ->
                     let arr_env = Env.add arr i arr_env in
                     (match (Env.find_opt arr arrs_to_fuse) with
-                    | Some(ainfo) -> arr_env, ((arr, ainfo) :: a2f)
-                    | _ -> arr_env, a2f)
+                    | Some(ainfo) -> (arr_env, ((arr, ainfo) :: a2f))
+                    | _ -> (arr_env, a2f))
                 | _ -> (arr_env, a2f)) ((Env.empty : id_t Env.t), []) idl in
         let (new_idl, pbody, _) = List.fold_left (fun (new_idl, pbody, arr_env) (i, dom) ->
             match dom with

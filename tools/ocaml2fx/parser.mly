@@ -12,7 +12,7 @@ let raise_syntax_err msg =
 
 let make_fundef f args body =
     let args = match args with
-        | CpLit(ClUnit) :: [] -> []
+        | PLit(LUnit) :: [] -> []
         | _ -> List.rev args
         in
     {ocf_name = f; ocf_args = args; ocf_body = body }
@@ -26,7 +26,7 @@ let make_variant (tyvars, n) cases =
 let make_variant_pat vn args =
     if good_variant_name vn then () else
         raise_syntax_err (sprintf "'%s' is not an appropriate variant name" vn);
-    CpVariant(vn, args)
+    PVariant(vn, args)
 
 %}
 
@@ -34,6 +34,7 @@ let make_variant_pat vn args =
 %token <char> CHAR
 %token <float> FLOAT
 %token <int> INT
+%token <int> INT64
 %token <string> STRING
 %token <string> TYVAR
 %token <string> IDENT
@@ -56,7 +57,7 @@ let make_variant_pat vn args =
 %right RAISE
 %right prec_if
 %right BACK_ARROW ASSIGN
-%nonassoc prec_tuple
+%left prec_tuple
 %left COMMA
 %left WHEN
 %right CONS
@@ -68,6 +69,7 @@ let make_variant_pat vn args =
 %right LIST_CONCAT
 %left PLUS MINUS PLUS_DOT MINUS_DOT STRING_CONCAT
 %left STAR SLASH MOD STAR_DOT SLASH_DOT
+%left type_app
 %right prec_app NOT EXCLAMATION
 %left DOT DOT_LPAREN
 
@@ -88,144 +90,147 @@ toplevel_defs:
 | toplevel_def { $1 :: [] }
 
 toplevel_def:
-| EXCEPTION IDENT { CeDefExn($2, CtUnit) }
-| EXCEPTION IDENT OF typespec { CeDefExn($2, $4) }
-| OPEN idlist_ { CeOpen(List.rev $2) }
-| TYPE typedefs_ { CeDefTyp(List.rev $2) }
-| LET REC fundefs_ { CeLetRec(List.rev $3, None) }
-| LET IDENT simple_pats_ EQUAL exp_seq { CeLetRec((make_fundef $2 $3 $5)::[], None) }
-| LET simple_pat EQUAL exp_seq { CeLet($2, $4, None) }
+| EXCEPTION IDENT { EDefExn($2, TUnit) }
+| EXCEPTION IDENT OF typespec { EDefExn($2, $4) }
+| OPEN idlist_ { EOpen(List.rev $2) }
+| TYPE typedefs_ { EDefTyp(List.rev $2) }
+| LET REC fundefs_ { ELetRec(List.rev $3, None) }
+| LET IDENT simple_pats_ EQUAL exp_seq { ELetRec((make_fundef $2 $3 $5)::[], None) }
+| LET simple_pat EQUAL exp_seq { ELet($2, $4, None) }
 
 literal:
-| LPAREN RPAREN { ClUnit }
-| TRUE { ClBool(true) }
-| FALSE { ClBool(false) }
-| INT { ClInt($1) }
-| FLOAT { ClFloat($1) }
-| STRING { ClString($1) }
-| CHAR { ClChar($1) }
-| LSQUARE RSQUARE { ClNil }
+| LPAREN RPAREN { LUnit }
+| TRUE { LBool(true) }
+| FALSE { LBool(false) }
+| INT { LInt($1) }
+| INT64 { LInt64($1) }
+| FLOAT { LFloat($1) }
+| STRING { LString($1) }
+| CHAR { LChar($1) }
+| LSQUARE RSQUARE { LNil }
 
 simple_exp:
-| literal { CeLit($1) }
+| literal { ELit($1) }
+| IDENT { EIdent($1) }
 | LPAREN exp_seq RPAREN { $2 }
 | LPAREN complex_exp COMMA exp_list_ RPAREN
-    { CeMkTuple($2 :: (List.rev $4)) }
+    { EMkTuple($2 :: (List.rev $4)) }
 | LPAREN exp COLON typespec RPAREN { $2 }
-| LBRACE rec_init_elems_ RBRACE { CeMkRecord(List.rev $2) }
-| LBRACE simple_exp WITH rec_init_elems_ RBRACE { CeUpdateRecord($2, (List.rev $4)) }
-| LSQUARE exp_seq_ RPAREN { CeMkList(List.rev $2) }
-| LSQUARE_VEC exp_seq_ RSQUARE_VEC { CeMkVector(List.rev $2) }
-| ident_ { CeIdent($1) }
-| simple_exp DOT_LPAREN exp RPAREN { CeBinary(COpAt, $1, $3) }
+| LBRACE rec_init_elems_ RBRACE { EMkRecord(List.rev $2) }
+| LBRACE rec_init_elems_ SEMICOLON RBRACE { EMkRecord(List.rev $2) }
+| LBRACE simple_exp WITH rec_init_elems_ RBRACE { EUpdateRecord($2, (List.rev $4)) }
+| LSQUARE exp_seq_ RSQUARE { EMkList(List.rev $2) }
+| LSQUARE_VEC exp_seq_ RSQUARE_VEC { EMkVector(List.rev $2) }
+| simple_exp DOT IDENT { EBinary(OpMem, $1, EIdent($3)) }
+| simple_exp DOT_LPAREN exp RPAREN { EBinary(OpAt, $1, $3) }
 | EXCLAMATION simple_exp
     %prec prec_app
-    { CeUnary(COpDeref, $2) }
+    { EUnary(OpDeref, $2) }
 
 exp:
 | simple_exp
     { $1 }
 | NOT exp
     %prec prec_app
-    { CeUnary(COpNot, $2) }
+    { EUnary(OpNot, $2) }
 | MINUS exp
     %prec prec_app
-    { CeUnary(COpNeg, $2) }
+    { EUnary(OpNeg, $2) }
 | exp LIST_CONCAT exp
-    { CeBinary(COpConcat, $1, $3) }
+    { EBinary(OpConcat, $1, $3) }
 | exp STRING_CONCAT exp
-    { CeBinary(COpConcat, $1, $3) }
+    { EBinary(OpConcat, $1, $3) }
 | exp PLUS exp
-    { CeBinary(COpAdd, $1, $3) }
+    { EBinary(OpAdd, $1, $3) }
 | exp MINUS exp
-    { CeBinary(COpSub, $1, $3) }
+    { EBinary(OpSub, $1, $3) }
 | exp STAR exp
-    { CeBinary(COpMul, $1, $3) }
+    { EBinary(OpMul, $1, $3) }
 | exp SLASH exp
-    { CeBinary(COpDiv, $1, $3) }
+    { EBinary(OpDiv, $1, $3) }
 | exp PLUS_DOT exp
-    { CeBinary(COpAdd, $1, $3) }
+    { EBinary(OpAdd, $1, $3) }
 | exp MINUS_DOT exp
-    { CeBinary(COpSub, $1, $3) }
+    { EBinary(OpSub, $1, $3) }
 | exp STAR_DOT exp
-    { CeBinary(COpMul, $1, $3) }
+    { EBinary(OpMul, $1, $3) }
 | exp SLASH_DOT exp
-    { CeBinary(COpDiv, $1, $3) }
+    { EBinary(OpDiv, $1, $3) }
 | exp MOD exp
-    { CeBinary(COpMod, $1, $3) }
+    { EBinary(OpMod, $1, $3) }
 | exp LSL exp
-    { CeBinary(COpSHL, $1, $3) }
+    { EBinary(OpSHL, $1, $3) }
 | exp LSR exp
-    { CeBinary(COpSHR, $1, $3) }
+    { EBinary(OpSHR, $1, $3) }
 | exp EQUAL exp
-    { CeBinary(COpEQ, $1, $3) }
+    { EBinary(OpEQ, $1, $3) }
 | exp NOT_EQUAL exp
-    { CeBinary(COpNE, $1, $3) }
+    { EBinary(OpNE, $1, $3) }
 | exp LESS exp
-    { CeBinary(COpLT, $1, $3) }
+    { EBinary(OpLT, $1, $3) }
 | exp GREATER exp
-    { CeBinary(COpGT, $1, $3) }
+    { EBinary(OpGT, $1, $3) }
 | exp LESS_EQUAL exp
-    { CeBinary(COpLE, $1, $3) }
+    { EBinary(OpLE, $1, $3) }
 | exp GREATER_EQUAL exp
-    { CeBinary(COpGE, $1, $3) }
+    { EBinary(OpGE, $1, $3) }
 | exp CONS exp
-    { CeBinary(COpCons, $1, $3) }
+    { EBinary(OpCons, $1, $3) }
 | exp LOGICAL_AND exp
-    { CeBinary(COpLogicAnd, $1, $3) }
+    { EBinary(OpLogicAnd, $1, $3) }
 | exp LOGICAL_OR exp
-    { CeBinary(COpLogicOr, $1, $3) }
-| exp BACK_ARROW exp
-    { CeBinary(COpAssign, $1, $3) }
-| exp ASSIGN exp
-    { CeBinary(COpAssign, $1, $3) }
+    { EBinary(OpLogicOr, $1, $3) }
 | MINUS_DOT exp
     %prec prec_app
-    { CeUnary(COpNeg, $2) }
+    { EUnary(OpNeg, $2) }
 | REF exp
     %prec prec_app
-    { CeUnary(COpMkRef, $2) }
-| RAISE simple_exp { CeRaise($2) }
-| WHILE exp DO exp_seq DONE { CeWhile($2, $4) }
-| FOR IDENT EQUAL exp TO exp DO exp_seq DONE { CeFor(true, $2, $4, $6, $8) }
-| FOR IDENT EQUAL exp DOWNTO exp DO exp_seq DONE { CeFor(false, $2, $4, $6, $8) }
+    { EUnary(OpMkRef, $2) }
+| RAISE simple_exp { ERaise($2) }
+| WHILE exp DO exp_seq DONE { EWhile($2, $4) }
+| FOR IDENT EQUAL exp TO exp DO exp_seq DONE { EFor(true, $2, $4, $6, $8) }
+| FOR IDENT EQUAL exp DOWNTO exp DO exp_seq DONE { EFor(false, $2, $4, $6, $8) }
 | simple_exp actual_args_
     %prec prec_app
     {
         let args = match $2 with
-            | CeLit(ClUnit) :: [] -> []
+            | ELit(LUnit) :: [] -> []
             | args -> List.rev args
             in
-        CeCall($1, args)
+        ECall($1, args)
     }
 | error
     { raise_syntax_err "unexpected token" }
 
 complex_exp:
 | exp { $1 }
+| exp BACK_ARROW complex_exp
+    { EBinary(OpAssign, $1, $3) }
+| exp ASSIGN complex_exp
+    { EBinary(OpAssign, $1, $3) }
 | IF exp THEN complex_exp ELSE complex_exp
     %prec prec_if
-    { CeIf($2, $4, $6) }
+    { EIf($2, $4, $6) }
 | LET simple_pat EQUAL complex_exp IN exp_seq
     %prec prec_let
-    { CeLet($2, $4, Some $6) }
+    { ELet($2, $4, Some $6) }
 | LET IDENT simple_pats_ EQUAL exp_seq IN exp_seq
     %prec prec_let
-    { CeLetRec((make_fundef $2 $3 $5)::[], (Some $7)) }
+    { ELetRec((make_fundef $2 $3 $5)::[], (Some $7)) }
 | LET REC fundefs_ IN exp_seq
     %prec prec_let
-    { CeLetRec((List.rev $3), Some $5) }
-| MATCH exp WITH match_cases { CeMatch($2, $4) }
-| TRY exp WITH match_cases { CeTry($2, $4) }
-| FUNCTION match_cases { CeLambdaCases($2) }
-| FUN simple_pats_ ARROW exp_seq { CeLambda($2, $4) }
+    { ELetRec((List.rev $3), Some $5) }
+| MATCH exp WITH match_cases { EMatch($2, $4) }
+| TRY exp_seq WITH match_cases { ETry($2, $4) }
+| FUNCTION match_cases { ELambdaCases($2) }
+| FUN simple_pats_ ARROW exp_seq { ELambda($2, $4) }
 
 exp_seq:
 | exp_seq_
 {
     match $1 with
     | x :: [] -> x
-    | xs -> CeBlock(List.rev xs)
+    | xs -> EBlock(List.rev xs)
 }
 
 exp_seq_:
@@ -257,6 +262,7 @@ rec_init_elems_:
 
 rec_init_elem:
 | IDENT EQUAL exp { ($1, $3) }
+| IDENT { ($1, EIdent($1)) }
 
 match_cases:
 | match_cases_ { List.rev $1 }
@@ -282,7 +288,7 @@ patx:
 {
     match $1 with
     | p :: [] -> p
-    | ps -> CpTuple(List.rev ps)
+    | ps -> PTuple(List.rev ps)
 }
 
 pat_list_:
@@ -294,22 +300,22 @@ rec_pat_list_:
 | rec_pat_elem { $1 :: [] }
 
 rec_pat_elem:
-| IDENT { ($1, CpIdent($1)) }
+| IDENT { ($1, PIdent($1)) }
 | IDENT EQUAL pat { ($1, $3) }
 
 pat:
-| literal { CpLit($1) }
+| literal { PLit($1) }
 | ident_
 {
     let i = $1 in
     match i with
-    | "_" -> CpAny
-    | _ -> if good_variant_name i then CpVariant(i, []) else CpIdent(i)
+    | "_" -> PAny
+    | _ -> if good_variant_name i then PVariant(i, []) else PIdent(i)
 }
 | LPAREN patx RPAREN { $2 }
-| LBRACE rec_pat_list_ RBRACE { CpRecord(noid, (List.rev $2)) }
-| ident_ IDENT { make_variant_pat $1 ((CpIdent $2) :: []) }
-| ident_ literal { make_variant_pat $1 ((CpLit $2) :: []) }
+| LBRACE rec_pat_list_ RBRACE { PRecord(noid, (List.rev $2)) }
+| ident_ IDENT { make_variant_pat $1 ((PIdent $2) :: []) }
+| ident_ literal { make_variant_pat $1 ((PLit $2) :: []) }
 | ident_ LPAREN pat RPAREN { make_variant_pat $1 ($3 :: []) }
 | ident_ LPAREN pat COMMA pat_list_ RPAREN { make_variant_pat $1 ($3 :: (List.rev $5)) }
 | ident_ LBRACE rec_pat_list_ RBRACE
@@ -317,19 +323,20 @@ pat:
     let vn = $1 in
     if good_variant_name vn then () else
         raise_syntax_err (sprintf "'%s' is not an appropriate variant name" vn);
-    CpRecord(vn, (List.rev $3))
+    PRecord(vn, (List.rev $3))
 }
-| pat AS IDENT { CpAs($1, $3) }
-| pat WHEN exp { CpWhen($1, $3) }
-| pat CONS pat { CpCons($1, $3) }
-| LPAREN pat COLON typespec RPAREN { CpTyped($2, $4) }
+| pat AS IDENT { PAs($1, $3) }
+| pat WHEN exp { PWhen($1, $3) }
+| pat CONS pat { PCons($1, $3) }
+| LPAREN pat COLON typespec RPAREN { PTyped($2, $4) }
 
 simple_pat:
-| ident_ { CpIdent($1) }
-| simple_pat AS IDENT { CpAs($1, $3) }
-| LPAREN simple_pat COMMA simple_pat_list_ RPAREN { CpTuple($2 :: (List.rev $4)) }
-| LPAREN simple_pat COLON typespec RPAREN { CpTyped($2, $4) }
-| LBRACE simple_rec_pat_list_ RBRACE { CpRecord(noid, (List.rev $2)) }
+| ident_ { PIdent($1) }
+| simple_pat AS IDENT { PAs($1, $3) }
+| LPAREN RPAREN { PLit(LUnit) }
+| LPAREN simple_pat COMMA simple_pat_list_ RPAREN { PTuple($2 :: (List.rev $4)) }
+| LPAREN simple_pat COLON typespec RPAREN { PTyped($2, $4) }
+| LBRACE simple_rec_pat_list_ RBRACE { PRecord(noid, (List.rev $2)) }
 
 simple_pat_list_:
 | simple_pat_list_ COMMA simple_pat { $3 :: $1 }
@@ -340,7 +347,7 @@ simple_rec_pat_list_:
 | simple_rec_pat_elem { $1 :: [] }
 
 simple_rec_pat_elem:
-| IDENT { ($1, CpIdent($1)) }
+| IDENT { ($1, PIdent($1)) }
 | IDENT EQUAL simple_pat { ($1, $3) }
 
 typedefs_:
@@ -372,42 +379,59 @@ tyvar_list_:
 | TYVAR { $1 :: [] }
 
 typespec:
-| typespec_nf { $1 }
-| typespec_nf ARROW typespec { CtFun($1, $3) }
+| typespec_t { $1 }
+| typespec_t ARROW typespec { TFun($1, $3) }
+
+typespec_t:
+| typespec_t_
+    {
+        match $1 with
+        | t :: [] -> t
+        | _ -> TTuple(List.rev $1)
+    }
+
+typespec_t_:
+| typespec_t_ STAR typespec_nf { $3 :: $1 }
+| typespec_nf { $1 :: [] }
 
 typespec_nf:
-| LPAREN typespec_list_ RPAREN
-{
-    match $2 with
-    | t :: [] -> t
-    | tl -> CtTuple tl
-}
+| LPAREN typespec RPAREN { $2 }
 | ident_
-{
-    match $1 with
-    | "int" -> CtInt
-    | "bool" -> CtBool
-    | "float" -> CtFloat
-    | "string" -> CtString
-    | "char" -> CtChar
-    | "unit" -> CtUnit
-    | _ -> CtName $1
-}
-| TYVAR { CtName $1 }
-| typespec_nf IDENT
+    {
+        match $1 with
+        | "int" -> TInt
+        | "bool" -> TBool
+        | "float" -> TFloat
+        | "string" -> TString
+        | "char" -> TChar
+        | "unit" -> TUnit
+        | _ -> TName $1
+    }
+| TYVAR { TName $1 }
+| typespec_nf ident_
+%prec type_app
     {
         let t = $1 in
         let n = $2 in
         match n with
-        | "list" -> CtList(t)
-        | "ref" -> CtRef(t)
-        | _ ->
-            let tl = match t with
-            | CtTuple(tl) -> tl
-            | _ -> t :: []
-            in CtApp(tl, n)
+        | "list" -> TList(t)
+        | _ -> TApp(t :: [], n)
     }
-| LBRACE rec_elems_decls_ RBRACE { CtRecord(List.rev $2) }
+| typespec_nf REF
+%prec type_app
+    {
+        let t = $1 in
+        TRef(t)
+    }
+| LPAREN typespec COMMA typespec_list_ RPAREN ident_
+%prec prec_app
+    {
+        let tl = $2 :: (List.rev $4) in
+        let n = $6 in
+        TApp(tl, n)
+    }
+| LBRACE rec_elems_decls_ RBRACE { TRecord(List.rev $2) }
+| LBRACE rec_elems_decls_ SEMICOLON RBRACE { TRecord(List.rev $2) }
 
 typespec_list_:
 | typespec_list_ COMMA typespec { $3 :: $1 }
@@ -426,7 +450,7 @@ var_cases_:
 | var_case { $1 :: [] }
 
 var_case:
-| IDENT { ($1, CtUnit) }
+| IDENT { ($1, TUnit) }
 | IDENT OF typespec { ($1, $3) }
 
 ident_:

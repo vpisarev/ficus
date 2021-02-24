@@ -269,7 +269,7 @@ let rec pprint_exp e =
             obox(); pprint_exp f; pstr "(";
             (List.iteri (fun i e ->
                 if i = 0 then () else (pstr ","; pspace()); pprint_exp e) args);
-            pstr ")"; cbox();
+            pstr ")"; cbox()
         | ExpAt(a, border, interp, args, _) ->
             pprint_exp a;
             pstr (border2str border true);

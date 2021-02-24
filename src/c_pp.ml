@@ -294,7 +294,7 @@ and pprint_cstmt s =
         | Some e -> pspace(); pprint_cexp_ e 0
         | _ -> ());
         pstr ";";
-        cbox();
+        cbox()
     | CStmtBlock (sl, _) ->
         (match sl with
         | [] -> pstr "{}"
@@ -323,7 +323,7 @@ and pprint_cstmt s =
         pstr "for (";
         pcut();
         (match e1 with
-        | [] -> ();
+        | [] -> ()
         | _ ->
             (match t_opt with
             | Some t -> pprint_ctyp_ t None loc; pspace()
@@ -335,7 +335,7 @@ and pprint_cstmt s =
         | _ -> ());
         pstr ";";
         (match e3 with
-        | [] -> ();
+        | [] -> ()
         | _ -> pspace(); pprint_elist e3);
         pcut();
         pstr ")"; pspace();

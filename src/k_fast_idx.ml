@@ -210,8 +210,8 @@ let optimize_idx_checks topcode =
                         let a_class = classify_idx a_ loc in
                         let b_class = classify_idx b_ loc in
                         let (c_idx, c_scale_exp, c_shift_exp) = match (bop, a_class, b_class) with
-                            | ((OpAdd|OpSub), IdxSimple(a_idx, a_scale, a_shift), IdxSimple(b_idx, b_scale, b_shift)) when
-                                a_idx = b_idx || a_idx = noid || b_idx = noid ->
+                            | (bop, IdxSimple(a_idx, a_scale, a_shift), IdxSimple(b_idx, b_scale, b_shift)) when
+                                (bop = OpAdd || bop = OpSub) && (a_idx = b_idx || a_idx = noid || b_idx = noid) ->
                                 let optimized_op = if bop = OpAdd then optimized_add else optimized_sub in
                                 ((if a_idx = noid then b_idx else a_idx),
                                 (Some(optimized_op a_scale b_scale loc)),
