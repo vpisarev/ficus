@@ -54,7 +54,7 @@ let unop2str_ uop = match uop with
     | OpNeg -> ("-", 1300, AssocRight)
     | OpNot -> ("!", 1300, AssocRight)
     | OpDeref -> ("*", 1300, AssocRight)
-    | OpMkRef -> ("ref", 1600, AssocRight)
+    | OpMkRef -> ("ref ", 1600, AssocRight)
 
 let pprint_id2str n = n
 let pprint_id n = pstr (pprint_id2str n)
@@ -62,9 +62,8 @@ let pprint_id n = pstr (pprint_id2str n)
 let rec pprint_octyp_ t fparen =
     (match t with
     | TInt | TFloat | TString | TChar | TBool | TUnit -> pstr (octyp2str t)
-    | TList(t) | TRef(t) ->
-        let n = match t with TList _ -> "list" | _ -> "ref" in
-        obox(); pprint_octyp_ t true; pspace(); pstr n; cbox()
+    | TList(t) -> obox(); pprint_octyp_ t true; pspace(); pstr "list"; cbox()
+    | TRef(t) -> obox(); pprint_octyp_ t true; pspace(); pstr "ref"; cbox()
     | TTuple(tl) ->
         obox(); pstr "("; pcut(); List.iteri (fun i t -> if i = 0 then () else (pstr ","; pspace());
           pprint_octyp t) tl; pcut(); pstr ")"; cbox()
@@ -168,12 +167,26 @@ and pprint_ocexp_ e pr : unit =
     | EIdent(i) -> pstr i
     | EUnary(uop, e) ->
         let (uop_str, pr0, _) = unop2str_ uop in
-        obox(); if pr0 < pr then (pstr "("; pcut()) else ();
+        ohvbox_indent(); if pr0 < pr then (pstr "("; pcut()) else ();
         pstr uop_str; pprint_ocexp_ e pr0;
         if pr0 < pr then (pcut(); pstr ")") else (); cbox()
+    | EBinary(OpAssign, e1, e2) ->
+        ohvbox_indent(); pstr "*"; pprint_ocexp_ e1 1300;
+        pspace(); pstr "="; pspace();
+        pprint_ocexp_ e2 0; cbox()
+    | EBinary(OpMem, e1, e2) ->
+        ohvbox_indent();
+        (match e1 with
+        | EUnary(OpDeref, at_e1) ->
+            pprint_ocexp_ at_e1 highest_unary_pr;
+            pstr "->"
+        | _ ->
+            pprint_ocexp_ e1 highest_unary_pr;
+            pstr ".");
+        pprint_ocexp_ e2 0; cbox()
     | EBinary(bop, e1, e2) ->
         let (bop_str, pr0, assoc) = binop2str_ bop in
-        obox(); if pr0 < pr then (pstr "("; pcut()) else ();
+        ohvbox_indent(); if pr0 < pr then (pstr "("; pcut()) else ();
         let is_shift = match bop with OpSHL | OpSHR -> true | _ -> false in
         let pr1 = if is_shift then 1350 else if assoc=AssocLeft then pr0 else pr0+1 in
         let pr2 = if is_shift then 1350 else if assoc=AssocRight then pr0 else pr0+1 in
@@ -184,21 +197,32 @@ and pprint_ocexp_ e pr : unit =
         if pr0 < pr then (pcut(); pstr ")") else (); cbox()
     | EIf(e, e1, e2) ->
         let rec print_cascade_if prefix e e1 e2 =
-            ovbox_indent(); ohbox(); pstr prefix; pspace(); pprint_ocexp_ e 0; pspace();
-            pprint_block_cbox e1;
+            pstr prefix; pspace(); pprint_ocexp_ e 0; pspace();
+            pprint_block_ e1 "{" "";
             (match e2 with
             | ELit(LUnit) -> ()
-            | EIf(e_, e1_, e2_) -> pspace(); print_cascade_if "else if" e_ e1_ e2_
-            | _ -> pspace(); ovbox_indent(); ohbox(); pstr "else"; pspace(); pprint_block_cbox e2)
+            | EIf(e_, e1_, e2_) ->
+                ovbox_indent(); ohbox();
+                (match e1 with
+                | ELit(LUnit) -> ()
+                | _ -> pstr "} ");
+                print_cascade_if "else if" e_ e1_ e2_
+            | _ ->
+                ovbox_indent();
+                ohbox();
+                (match e1 with
+                | ELit(LUnit) -> ()
+                | _ -> pstr "} ");
+                pstr "else"; pspace();
+                pprint_block e2)
             in
+        ovbox_indent(); ohbox();
         print_cascade_if "if" e e1 e2
     | ELet(p, e1, e2_opt) ->
         check_if_none p e2_opt;
-        ohvbox_indent();
-        ohbox(); pstr "val"; pspace(); pprint_pat_ p false;
+        ohvbox(); ohbox(); pstr "val"; pspace(); pprint_pat_ p false;
         pspace(); pstr "="; cbox(); pspace();
-        pprint_ocexp_ e1 0;
-        cbox()
+        pprint_ocexp_ e1 0; cbox()
     | ELetRec(fdefs, e2_opt) ->
         check_if_none (PIdent "<funcs...>") e2_opt;
         List.iter (fun fdef ->
@@ -209,52 +233,57 @@ and pprint_ocexp_ e pr : unit =
             pprint_pat_ (PTuple ocf_args) false;
             pspace();
             if is_block then
-                pprint_block_cbox ocf_body
+                pprint_block ocf_body
             else
                 (pstr "="; cbox(); pspace(); pprint_ocexp_ ocf_body 0; cbox());
             pbreak()) fdefs
     | ELambda(args, body) ->
-        ohvbox(); ohbox(); pstr "fun "; pprint_pat_ (PTuple args) false;
-        pspace(); pprint_block_cbox body
+        ovbox_indent(); ohbox(); pstr "fun "; pprint_pat_ (PTuple args) false;
+        pspace(); pprint_block body
     | ELambdaCases(cases) ->
         ovbox_indent(); ohbox(); pstr "fun (...)"; pspace(); pstr "{"; cbox(); pprint_cases cases
     | ETyped(e, t) ->
-        obox(); pstr "("; pcut();
+        ohvbox_indent(); pstr "("; pcut();
         pprint_ocexp_ e 0; pstr ":"; pspace();
         pprint_octyp_ t false; pcut(); pstr ")"; cbox()
     | ECall(f, args) ->
-        obox(); pprint_ocexp_ f highest_unary_pr;
-        pstr "("; pcut(); obox();
-        pprint_elist args; cbox(); pcut(); pstr ")"; cbox()
+        ohvbox_indent();
+        ohbox(); pprint_ocexp_ f highest_unary_pr; pstr "("; cbox(); pcut();
+        pprint_elist args; pstr ")"; cbox();
     | EMkTuple(el) ->
-        obox(); pstr "("; pcut();
+        ohvbox_indent(); pstr "("; pcut();
         pprint_elist el; pcut(); pstr ")"; cbox()
     | EMkList(el) ->
-        obox(); pstr "[:"; pspace();
+        ohvbox_indent(); pstr "[:"; pspace();
         pprint_elist el; pspace(); pstr ":]"; cbox()
     | EMkVector(el) ->
-        obox(); pstr "["; pcut();
+        ohvbox_indent(); pstr "["; pcut();
         pprint_elist el; pcut(); pstr "]"; cbox()
     | EMkRecord(relems) ->
-        obox(); pprint_relems_ relems; cbox()
+        ohvbox_indent(); pprint_relems_ relems; cbox()
     | EUpdateRecord(r, relems) ->
-        obox(); pprint_ocexp_ r highest_unary_pr; pstr ".";
+        ohvbox_indent();
+        (match r with
+        | EUnary(OpDeref, at_r) ->
+            pprint_ocexp_ at_r highest_unary_pr; pstr "->"
+        | _ ->
+            pprint_ocexp_ r highest_unary_pr; pstr ".");
         pprint_relems_ relems; cbox()
     | EMatch(e, cases) ->
         ovbox(); ohbox(); pstr "match"; pspace(); pprint_ocexp_ e 0; pspace(); pstr "{"; cbox();
         pprint_cases cases
     | ETry(e, cases) ->
-        ovbox_indent(); ohbox(); pstr "try"; pspace(); pprint_block_cbox e; obox();
-        ohbox(); pstr "catch"; pspace(); pstr "{"; cbox();
+        ovbox_indent(); ohbox(); pstr "try"; pspace(); pprint_block_ e "{" "";
+        ohvbox(); ohbox(); pstr "} catch"; pspace(); pstr "{"; cbox();
         pprint_cases cases
     | ERaise(e) ->
-        obox(); pstr "throw"; pspace(); pprint_ocexp_ e 0; cbox()
+        ohvbox_indent(); pstr "throw"; pspace(); pprint_ocexp_ e 0; cbox()
     | EWhile(e1, e2) ->
-        obox();
+        ovbox_indent();
         pstr "while"; pspace(); pprint_ocexp_ e1 0; pspace();
-        pprint_block_cbox e2
+        pprint_block e2
     | EFor(asc, i, e1, e2, body) ->
-        obox();
+        ovbox_indent(); ohbox();
         pstr ("for " ^ i ^ " <-");
         pspace(); pprint_ocexp_ e1 0;
         pcut(); pstr ":"; pcut();
@@ -262,11 +291,34 @@ and pprint_ocexp_ e pr : unit =
         (match asc with
         | true -> pstr "+1";
         | false -> pstr "-1:-1");
-        pspace(); pprint_block_cbox body
-    | EBlock _ -> obox(); pprint_block_cbox_ e "({" "})"
+        pspace(); pprint_block body
+    | EForEach(p, idx, lst, body) ->
+        ovbox_indent(); ohbox();
+        pstr "for"; pspace(); pprint_pat_ p false;
+        (match idx with
+        | PAny -> ()
+        | _ -> pstr "@"; pprint_pat_ p false);
+        pspace(); pstr "<-";
+        pspace(); pprint_ocexp_ lst 0;
+        pspace(); pprint_block body
+    | EMap(p, lst, body) ->
+        ovbox_indent(); ohbox();
+        pstr "[: for"; pspace(); pprint_pat_ p false; pspace(); pstr "<-";
+        pspace(); pprint_ocexp_ lst 0;
+        pspace(); pprint_block_ body "{" "} :]"
+    | EFold(defv, (acc, acc0), (p, lst), body) ->
+        ovbox_indent(); ohbox();
+        if defv then pstr "val fold" else pstr "fold";
+        pspace(); pprint_pat_ acc false;
+        pstr " ="; pspace(); pprint_ocexp_ acc0 0;
+        pspace(); pstr "for"; pspace(); pprint_pat_ p false;
+        pspace(); pstr "<-";
+        pspace(); pprint_ocexp_ lst 0;
+        pspace(); pprint_block body
+    | EBlock _ -> ovbox_indent(); ohbox(); pprint_block_ e "({" "})"
     | EDefTyp(tdefs) ->
         List.iter (fun tdef ->
-            obox();
+            ovbox_indent();
             (match tdef with
             | DefTyp dt ->
                 let {oct_name; oct_args; oct_body} = dt in
@@ -283,7 +335,7 @@ and pprint_ocexp_ e pr : unit =
                 cbox());
             cbox(); pbreak()) tdefs
     | EDefExn(i, t) ->
-        obox(); pstr ("exception " ^ i);
+        ohbox(); pstr ("exception " ^ i);
         (match t with
         | TUnit -> ()
         | _ -> pstr ":"; pspace(); pprint_octyp t);
@@ -303,7 +355,7 @@ and pprint_relems_ relems =
     pcut(); pstr "}"
 
 and pprint_tdef_hdr targs tn =
-    obox(); pstr "type ";
+    ohbox(); pstr "type ";
     (match targs with
     | [] -> ()
     | t :: [] -> pstr t; pspace()
@@ -311,30 +363,35 @@ and pprint_tdef_hdr targs tn =
     pstr (tn ^ " =");
     cbox()
 
-and pprint_block_cbox e = pprint_block_cbox_ e "{" "}"
+and pprint_block e = pprint_block_ e "{" "}"
 
-and pprint_block_cbox_ e opening closing =
+and pprint_block_ e opening closing =
     let el = match e with EBlock(el) -> el | _ -> e :: [] in
     pstr opening;
     (match el with
-    | [] | ELit(LUnit) :: [] -> pstr closing; cbox(); cbox()
+    | [] | ELit(LUnit) :: [] ->
+        pstr (if closing <> "" then closing else "}"); cbox(); cbox();
+        (*pbreak()*)
+        Format.force_newline()
     | _ ->
         cbox(); pbreak();
         List.iteri (fun i e -> if i = 0 then () else pbreak(); pprint_ocexp_ e 0) el;
-        cbox(); pbreak(); pstr closing)
+        cbox(); (*pbreak();*)
+        Format.force_newline();
+        if closing = "" then () else pstr closing)
 
 and pprint_cases cases =
-    pbreak();
-    List.iteri (fun i (pl, e) ->
-        if i = 0 then () else pbreak();
+    List.iter (fun (pl, e) ->
+        pbreak();
         ohvbox_indent();
         ohbox(); List.iter (fun p -> pstr "| "; pprint_pat_ p false; pspace()) pl;
         pstr "=>";
         cbox(); pbreak();
+        ovbox();
         let el = match e with EBlock(el) -> el | _ -> e :: [] in
         List.iteri (fun j e -> if j = 0 then () else pbreak();
-            obox(); pprint_ocexp_ e 0; cbox()) el;
-        cbox()) cases;
+            pprint_ocexp_ e 0) el;
+        cbox(); cbox()) cases;
     pbreak(); pstr "}"; cbox()
 
 and print_top code =

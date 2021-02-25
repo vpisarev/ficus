@@ -33,7 +33,7 @@ let parse_ocaml fname =
 
 let convert_ocaml fname =
     let ocode = parse_ocaml fname in
-    let ocode = Transform.transform_let ocode in
+    let ocode = Transform.transform_let_comp ocode in
     let ofname = Filename.basename fname in
     let ofname = try Filename.chop_extension ofname with Invalid_argument _ -> ofname in
     let ofname = ofname ^ ".fx" in

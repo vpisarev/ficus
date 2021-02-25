@@ -115,13 +115,19 @@ simple_exp:
 | LPAREN exp_seq RPAREN { $2 }
 | LPAREN complex_exp COMMA exp_list_ RPAREN
     { EMkTuple($2 :: (List.rev $4)) }
-| LPAREN exp COLON typespec RPAREN { $2 }
+| LPAREN exp COLON typespec RPAREN { ETyped($2, $4) }
 | LBRACE rec_init_elems_ RBRACE { EMkRecord(List.rev $2) }
 | LBRACE rec_init_elems_ SEMICOLON RBRACE { EMkRecord(List.rev $2) }
 | LBRACE simple_exp WITH rec_init_elems_ RBRACE { EUpdateRecord($2, (List.rev $4)) }
 | LSQUARE exp_seq_ RSQUARE { EMkList(List.rev $2) }
 | LSQUARE_VEC exp_seq_ RSQUARE_VEC { EMkVector(List.rev $2) }
-| simple_exp DOT IDENT { EBinary(OpMem, $1, EIdent($3)) }
+| simple_exp DOT IDENT
+    {
+        let e = $1 in let m = $3 in
+        match e with
+        | EIdent n -> EIdent(n ^ "." ^ m)
+        | _ -> EBinary(OpMem, e, EIdent(m))
+    }
 | simple_exp DOT_LPAREN exp RPAREN { EBinary(OpAt, $1, $3) }
 | EXCLAMATION simple_exp
     %prec prec_app
@@ -223,7 +229,7 @@ complex_exp:
 | MATCH exp WITH match_cases { EMatch($2, $4) }
 | TRY exp_seq WITH match_cases { ETry($2, $4) }
 | FUNCTION match_cases { ELambdaCases($2) }
-| FUN simple_pats_ ARROW exp_seq { ELambda($2, $4) }
+| FUN simple_pats_ ARROW exp_seq { ELambda((List.rev $2), $4) }
 
 exp_seq:
 | exp_seq_
@@ -331,7 +337,13 @@ pat:
 | LPAREN pat COLON typespec RPAREN { PTyped($2, $4) }
 
 simple_pat:
-| ident_ { PIdent($1) }
+| ident_
+    {
+        let i = $1 in
+        match i with
+        | "_" -> PAny
+        | _ -> PIdent($1)
+    }
 | simple_pat AS IDENT { PAs($1, $3) }
 | LPAREN RPAREN { PLit(LUnit) }
 | LPAREN simple_pat COMMA simple_pat_list_ RPAREN { PTuple($2 :: (List.rev $4)) }

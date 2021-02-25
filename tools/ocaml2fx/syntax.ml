@@ -65,9 +65,9 @@ type ocexp_t =
     | ERaise of ocexp_t
     | EWhile of ocexp_t * ocexp_t
     | EFor of bool * id_t * ocexp_t * ocexp_t * ocexp_t
-    (*| EForEach of ocpat_t * ocexp_t * ocexp_t
+    | EForEach of ocpat_t * ocpat_t * ocexp_t * ocexp_t
     | EMap of ocpat_t * ocexp_t * ocexp_t
-    | EFold of (ocpat_t * ocexp_t) * (ocpat_t * ocexp_t) * ocexp_t*)
+    | EFold of bool * (ocpat_t * ocexp_t) * (ocpat_t * ocexp_t) * ocexp_t
     | EBlock of ocexp_t list
     | EDefTyp of octvdef_t list
     | EDefExn of id_t * octyp_t
