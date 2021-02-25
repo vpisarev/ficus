@@ -40,21 +40,6 @@ type token_t =
     | DOT_SPACESHIP | DOT_CMP_EQ | DOT_CMP_NE | DOT_CMP_LE
     | DOT_CMP_GE | DOT_CMP_LT | DOT_CMP_GT | FOLD_RESULT
 
-operator == (a: token_t, b: token_t): bool
-{
-| (INT(i1), INT(i2)) => i1 == i2
-| (SINT(b1, i1), SINT(b2, i2)) => b1 == b2 && i1 == i2
-| (UINT(b1, i1), UINT(b2, i2)) => b1 == b2 && i1 == i2
-| (FLOAT(b1, f1), FLOAT(b2, f2)) => b1 == b2 && f1 == f2
-| (FLOAT_LIKE(f1, s1), FLOAT_LIKE(f2, s2)) => f1 == f2 && s1 == s2
-| (IDENT(s1), IDENT(s2)) => s1 == s2
-| (B_IDENT(s1), B_IDENT(s2)) => s1 == s2
-| (STRING(s1), STRING(s2)) => s1 == s2
-| (CHAR(c1), CHAR(c2)) => c1 == c2
-| (TYVAR(s1), TYVAR(s2)) => s1 == s2
-| _ => a.__tag__ == b.__tag__
-}
-
 fun string(t: token_t)
 {
     | TRUE => "TRUE"

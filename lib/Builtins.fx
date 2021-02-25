@@ -433,6 +433,9 @@ pure nothrow operator <=> (a: string, b: string): int = ccode
 pure nothrow operator == (a: 't ref, b: 't ref): bool = ccode { return a == b }
 pure nothrow operator == (a: cptr, b: cptr): bool = ccode { return a == b }
 
+// this is pseudo-function that is treated specially by the compiler
+pure nothrow fun __eq_variants__(a: 't, b: 't): bool = a.__tag__ == b.__tag__
+
 fun int(x: 't) = (x :> int)
 fun uint8(x: 't) = (x :> uint8)
 fun int8(x: 't) = (x :> int8)

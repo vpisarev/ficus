@@ -207,6 +207,7 @@ let rec exp2kexp e code tref sc =
         (KExpUnOp(uop, a1, kctx), code)
     | ExpSeq(eseq, _) ->
         let sc = new_block_scope() :: sc in
+        let code = transform_all_types_and_cons eseq code sc in
         let (code, _) = eseq2code eseq code sc in
         (match code with
         | c :: code -> (c, code)
@@ -499,7 +500,6 @@ and exp2dom e code sc =
         (Domain.Elem i, code)
 
 and eseq2code eseq code sc =
-    let code = transform_all_types_and_cons eseq code sc in
     let pragmas = ref ([]: (string*loc_t) list) in
     let rec knorm_eseq eseq code = (match eseq with
         | DirPragma (prl, loc) :: rest ->
@@ -1189,10 +1189,22 @@ and transform_all_types_and_cons elist code sc =
             delta_code @ ((KDefExn ke) :: code)
         | _ -> code) code elist
 
-let normalize_mod m is_main =
+let normalize_mod m minfo kcode_typedefs is_main =
     let _ = idx_access_stack := [] in
-    let minfo = !(get_module m) in
     let modsc = (ScModule m) :: [] in
-    let (kcode, pragmas) = eseq2code (minfo.dm_defs) [] modsc in
+    let (kcode, pragmas) = eseq2code (minfo.dm_defs) kcode_typedefs modsc in
     {km_name=m; km_cname=(pp_id2str m); km_top=(List.rev kcode);
     km_main=is_main; km_pragmas=parse_pragmas pragmas}
+
+let normalize_all_modules modules =
+    let n = List.length modules in
+    let modules_plus = List.fold_left (fun modules_plus m ->
+        let minfo = !(get_module m) in
+        let modsc = (ScModule m) :: [] in
+        let kcode_typedefs = transform_all_types_and_cons (minfo.dm_defs) [] modsc in
+        (m, minfo, kcode_typedefs) :: modules_plus) [] modules
+        in
+    let (_, kmods) = List.fold_left (fun (i, kmods) (m, minfo, kcode_typedefs) ->
+        let km = normalize_mod m minfo kcode_typedefs (i+1=n) in
+        (i+1, (km :: kmods))) (0, []) (List.rev modules_plus) in
+    kmods

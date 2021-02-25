@@ -574,7 +574,18 @@ let rec lookup_id n t env sc loc =
     | Some(x) -> x
     | None ->
         (*print_env (sprintf "env @ report_not_found for %s: " (id2str n)) env loc;*)
-        report_not_found_typed n t loc
+        (match (try_autogen_symbols n t env sc loc) with
+        | Some(n1) -> n1
+        | _ -> report_not_found_typed n t loc)
+
+and try_autogen_symbols n t env sc loc =
+    let nstr = id2str n in
+    (*printf "try_autogen_symbol: nstr = %s; t = %s\n" nstr (typ2str (deref_typ t));*)
+    match (nstr, (deref_typ_rec t)) with
+    | ("__eq__", TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool))
+        when n1 = n2 && (match (id_info n1) with IdVariant _ -> true | _ -> false) ->
+        Some(lookup_id (get_id "__eq_variants__") t env sc loc)
+    | _ -> None
 
 and preprocess_templ_typ templ_args typ env sc loc =
     let t = dup_typ typ in
@@ -1920,7 +1931,8 @@ and instantiate_fun_ templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
         templ_df := {!templ_df with df_templ_inst = inst_name :: !templ_df.df_templ_inst}
     else
         () in
-    let inst_body = check_exp inst_body inst_env fun_sc in
+    let inst_body = instantiate_fun_body inst_name inst_ftyp
+        df_inst_args inst_body inst_env fun_sc inst_loc in
     (* update the function return type *)
     let _ = unify (get_exp_typ inst_body) rt inst_loc "the function body has inconsistent type" in
     let inst_ftyp = match (arg_typs, is_constr) with ([], true) -> rt | _ -> TypFun(arg_typs, rt) in
@@ -1928,6 +1940,97 @@ and instantiate_fun_ templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     (*!inst_or_templ_df.df_body <- inst_body;*)
     (*(printf "<<<processed function:\n"; (pprint_exp_x (DefFun inst_df)); printf "\n>>>\n");*)
     inst_df
+
+and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc inst_loc =
+    let ftyp = deref_typ_rec inst_ftyp in
+    let body_loc = get_exp_loc inst_body in
+    match (pp_id2str inst_name) with
+    | "__eq_variants__" ->
+        (match (ftyp, inst_args) with
+        | (TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool),
+            PatTyped(PatIdent(a, _), _, _) :: PatTyped(PatIdent(b, _), _, _) :: [])
+            when n1 = n2 && (match (id_info n1) with IdVariant _ -> true | _ -> false) ->
+            (*
+               if the variant is an instance of template variant,
+               we take the variant cases from the original prototype, not from the instance.
+               This is because we need to correctly calculate the number of parameters for each
+               variant constructor.
+
+               e.g. type 't option = None | Some: 't
+               type_t i2_opt = (int, int) option
+               Some() for i2_opt will still have 1 parameter.
+            *)
+            let argtyp = TypApp([], n1) in
+            let astr = pp_id2str a in
+            let bstr = pp_id2str b in
+            let (var_ctors, proto_cases) = match (id_info n1) with
+                | IdVariant {contents={dvar_ctors; dvar_alias=TypApp(_, proto_n)}} ->
+                    (match (id_info proto_n) with
+                    | IdVariant {contents={dvar_cases=proto_cases}} -> (dvar_ctors, proto_cases)
+                    | _ -> raise_compile_err inst_loc "the prototype of variant instance should be a variant")
+                | _ -> raise_compile_err inst_loc "variant is expected here"
+                in
+            let complex_cases = List.fold_left2 (fun complex_cases n (n_orig, t_orig) ->
+                let t = deref_typ_rec t_orig in
+                match t with
+                | TypVoid -> complex_cases
+                | TypRecord {contents=(relems, _)} ->
+                    let (_, al, bl, cmp_code) = List.fold_left (fun (idx, al, bl, cmp_code) (rn, _, _) ->
+                        let ai = get_id (astr ^ (string_of_int idx)) in
+                        let bi = get_id (bstr ^ (string_of_int idx)) in
+                        let cmp_ab = ExpBinOp(OpCompareEQ,
+                            ExpIdent(ai, (make_new_typ(), body_loc)),
+                            ExpIdent(bi, (make_new_typ(), body_loc)),
+                            (TypBool, body_loc)) in
+                        let cmp_code = if idx = 1 then cmp_ab else
+                            ExpBinOp(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc))
+                            in
+                        (idx+1, (rn, PatIdent(ai, body_loc)) :: al, (rn, PatIdent(bi, body_loc)) :: bl, cmp_code))
+                        (1, [], [], ExpNop(body_loc)) relems
+                        in
+                    let a_case_pat = PatRecord((Some n), (List.rev al), body_loc) in
+                    let b_case_pat = PatRecord((Some n), (List.rev bl), body_loc) in
+                    let ab_case_pat = PatTuple([a_case_pat; b_case_pat], body_loc) in
+                    (ab_case_pat :: [], cmp_code) :: complex_cases
+                | _ ->
+                    let args = match t with TypTuple(tl) -> tl | _ -> t :: [] in
+                    let (_, al, bl, cmp_code) = List.fold_left (fun (idx, al, bl, cmp_code) _ ->
+                        let ai = get_id (astr ^ (string_of_int idx)) in
+                        let bi = get_id (bstr ^ (string_of_int idx)) in
+                        let cmp_ab = ExpBinOp(OpCompareEQ,
+                            ExpIdent(ai, (make_new_typ(), body_loc)),
+                            ExpIdent(bi, (make_new_typ(), body_loc)),
+                            (TypBool, body_loc)) in
+                        let cmp_code = if idx = 1 then cmp_ab else
+                            ExpBinOp(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc))
+                            in
+                        (idx+1, PatIdent(ai, body_loc) :: al, PatIdent(bi, body_loc) :: bl, cmp_code))
+                        (1, [], [], ExpNop(body_loc)) args
+                        in
+                    let a_case_pat = PatVariant(n, (List.rev al), body_loc) in
+                    let b_case_pat = PatVariant(n, (List.rev bl), body_loc) in
+                    let ab_case_pat = PatTuple([a_case_pat; b_case_pat], body_loc) in
+                    (ab_case_pat :: [], cmp_code) :: complex_cases) [] var_ctors proto_cases
+                in
+            let a = ExpIdent((get_id astr), (argtyp, body_loc)) in
+            let b = ExpIdent((get_id bstr), (argtyp, body_loc)) in
+            let tag = ExpIdent((get_id "__tag__"), (TypString, body_loc)) in
+            let a_tag = ExpMem(a, tag, (TypInt, body_loc)) in
+            let b_tag = ExpMem(b, tag, (TypInt, body_loc)) in
+            let cmp_tags = ExpBinOp(OpCompareEQ, a_tag, b_tag, (TypBool, body_loc)) in
+            let inst_body = match complex_cases with
+                | [] -> cmp_tags
+                | _ ->
+                    let default_case = (PatAny(body_loc) :: [], cmp_tags) in
+                    let ab = ExpMkTuple([a; b], (TypTuple([argtyp; argtyp]), body_loc)) in
+                    ExpMatch(ab, List.rev (default_case :: complex_cases), (TypBool, body_loc))
+                in
+            let body = check_exp inst_body inst_env fun_sc in
+            (*(printf "generated and typechecked body:\n"; (pprint_exp_x body); printf "\n");*)
+            body
+        | _ -> raise_compile_err inst_loc
+            "__eq_variants__ can only be applied to 2 variants of the same type")
+    | _ -> check_exp inst_body inst_env fun_sc
 
 and instantiate_variant ty_args dvar env sc loc =
     let { dvar_name; dvar_templ_args; dvar_alias; dvar_flags; dvar_cases;

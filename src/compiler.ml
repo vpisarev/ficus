@@ -165,10 +165,7 @@ let typecheck_all modules =
 let k_normalize_all modules =
     let _ = (compile_errs := []) in
     let _ = K_form.init_all_idks() in
-    let n = List.length modules in
-    let (_, kmods) = List.fold_left (fun (i, kmods) m ->
-        let km = K_normalize.normalize_mod m (i+1=n) in
-        (i+1, (km :: kmods))) (0, []) modules in
+    let kmods = K_normalize.normalize_all_modules modules in
     (List.rev kmods, !compile_errs = [])
 
 let prf str = pr_verbose (sprintf "\t%s" str)

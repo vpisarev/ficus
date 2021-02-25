@@ -1274,3 +1274,16 @@ let dup_callb =
 let dup_typ t = dup_typ_ t dup_callb
 let dup_exp e = dup_exp_ e dup_callb
 let dup_pat p = walk_pat p dup_callb
+
+let deref_typ_rec t =
+    let deref_typ_rec_ t callb =
+        let t = deref_typ t in
+        walk_typ t callb
+        in
+    let deref_callb =
+    {
+        acb_typ = Some(deref_typ_rec_);
+        acb_exp = None;
+        acb_pat = None
+    } in
+    deref_typ_rec_ t deref_callb
