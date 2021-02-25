@@ -108,19 +108,24 @@ and pprint_pat_ p parens =
         pcut(); pstr ")";
         cbox()
     | PVariant(vn, pl) ->
-        obox(); pstr vn; pspace();
+        obox(); pstr vn; pcut();
         let (p, need_parens) =
             match pl with
-            | PLit _ :: [] | PIdent _ :: [] | PAny :: [] -> ((List.hd pl), false)
+            | PLit _ :: [] | PIdent _ :: [] | PAny :: [] -> ((List.hd pl), true)
             | p :: [] -> (p, true)
             | _ -> (PTuple(pl), false)
             in
         if need_parens then (pstr "("; pcut()) else ();
-        pprint_pat_ p false;
+        if pl = [] then () else pprint_pat_ p false;
         if need_parens then (pcut(); pstr ")") else ();
         cbox()
     | PRecord (vn, relems) ->
-        obox(); if vn = noid then () else (pstr vn; pspace()); pstr "{"; pcut();
+        let is_ref = match relems with
+            | ("contents", _) :: [] -> true
+            | _ -> false
+            in
+        obox(); if vn = noid then () else (pstr vn; pspace());
+        pstr (if is_ref then "(" else "{"); pcut();
         List.iteri (fun i (n, p) ->
             if i = 0 then () else (pstr ","; pspace());
             if n = "contents" then
@@ -131,7 +136,7 @@ and pprint_pat_ p parens =
               | PIdent(n1) when n1=n -> ()
               | _ -> pstr "="; pcut(); pprint_pat_ p false)
         ) relems;
-        pcut(); pstr "}"; cbox()
+        pcut(); pstr (if is_ref then ")" else "}"); cbox()
     | PCons(p1, p2) ->
         oboxp();
         pprint_pat_ p1 true;
@@ -146,7 +151,7 @@ and pprint_pat_ p parens =
     | PWhen(p, e) ->
         oboxp();
         pprint_pat_ p true;
-        pspace();
+        pspace(); pstr "when ";
         pprint_ocexp_ e 0;
         cboxp()
     | PTyped(p, t) ->
@@ -331,7 +336,10 @@ and pprint_ocexp_ e pr : unit =
                 pspace();
                 ovbox();
                 List.iter (fun (n, t) ->
-                    pstr "| "; pstr (n ^ ": "); pprint_octyp_ t false; pspace()) ocv_cases;
+                    pstr "| "; pstr n;
+                    if t = TUnit then () else
+                        (pstr ": "; pprint_octyp_ t false);
+                    pspace()) ocv_cases;
                 cbox());
             cbox(); pbreak()) tdefs
     | EDefExn(i, t) ->
@@ -351,7 +359,7 @@ and pprint_elist el =
 and pprint_relems_ relems =
     pstr "{"; pcut();
     List.iteri (fun i (n, e) -> if i = 0 then () else (pstr ","; pspace());
-            pstr (n ^ "="); pcut(); pprint_ocexp_ e 0) relems;
+            ohbox(); pstr (n ^ "="); pcut(); pprint_ocexp_ e 0; cbox()) relems;
     pcut(); pstr "}"
 
 and pprint_tdef_hdr targs tn =
@@ -394,8 +402,16 @@ and pprint_cases cases =
         cbox(); cbox()) cases;
     pbreak(); pstr "}"; cbox()
 
-and print_top code =
+and pprint_top code =
     Format.set_margin margin;
     ovbox();
     List.iter (fun e -> pprint_ocexp_ e 0; pbreak()) code;
     cbox()
+
+let pprint_top_to_file filename code =
+    let outch = open_out filename in
+    Format.set_formatter_out_channel outch;
+    pprint_top code;
+    Format.print_flush();
+    Format.set_formatter_out_channel stdout;
+    close_out outch

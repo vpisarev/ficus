@@ -37,11 +37,7 @@ let convert_ocaml fname =
     let ofname = Filename.basename fname in
     let ofname = try Filename.chop_extension ofname with Invalid_argument _ -> ofname in
     let ofname = ofname ^ ".fx" in
-    let outchan = open_out ofname in
-    try
-        Print_ficus.print_top ocode;
-        close_out outchan
-    with e -> (close_out outchan; raise e)
+    Print_ficus.pprint_top_to_file ofname ocode
 
 let _ =
   let files = ref [] in

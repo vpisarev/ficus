@@ -97,6 +97,7 @@ toplevel_def:
 | LET REC fundefs_ { ELetRec(List.rev $3, None) }
 | LET IDENT simple_pats_ EQUAL exp_seq { ELetRec((make_fundef $2 $3 $5)::[], None) }
 | LET simple_pat EQUAL exp_seq { ELet($2, $4, None) }
+| LET simple_pat COLON typespec EQUAL exp_seq { ELet($2, ETyped($6, $4), None) }
 
 literal:
 | LPAREN RPAREN { LUnit }
