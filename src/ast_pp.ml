@@ -349,6 +349,8 @@ and pprint_pat p = match p with
 
 let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     Format.print_flush ();
+    let prev_margin = Format.get_margin() in
+    Format.set_margin 120;
     Format.open_vbox 0;
     pcut();
     pstr dm_filename;
@@ -361,7 +363,8 @@ let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     pstr "---------------------------------------------------------"; pcut();
     (List.iter (fun e -> pprint_exp e; pstr ";"; pcut()) dm_defs);
     Format.close_box();
-    Format.print_flush ()
+    Format.print_flush ();
+    Format.set_margin prev_margin
 
 let pprint_typ_x t loc = Format.print_flush (); Format.open_box 0; pprint_typ t loc; Format.close_box(); Format.print_flush ()
 let pprint_exp_x e = Format.print_flush (); Format.open_box 0; pprint_exp e; Format.close_box(); Format.print_flush ()

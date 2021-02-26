@@ -44,14 +44,14 @@
 type 'k cmp_t = ('k, 'k) -> int
 type color_t = Red | Black
 type ('k,'d) tree_t = Empty | Node: (color_t, ('k,'d) tree_t, 'k, 'd, ('k,'d) tree_t)
-module type ('k, 'd) map_t = { root: ('k,'d) tree_t; cmp: 'k cmp_t }
+module type ('k, 'd) t = { root: ('k,'d) tree_t; cmp: 'k cmp_t }
 
 exception RBMapError
 
-fun empty(cmp: 'k cmp_t): ('k, 'd) map_t =
-    map_t { root=(Empty : ('k, 'd) tree_t), cmp=cmp }
+fun empty(cmp: 'k cmp_t): ('k, 'd) t =
+    t { root=(Empty : ('k, 'd) tree_t), cmp=cmp }
 
-fun empty(s: 't map_t): bool
+fun empty(s: 't t): bool
 {
     | { root=(Empty : ('k, 'd) tree_t) } => true
     | _ => false
@@ -68,9 +68,9 @@ match t
     | _ => None
 }
 
-fun find_opt(m: ('k, 'd) map_t, x: 'k): 'd? = find_opt_(m.root, x, m.cmp)
+fun find_opt(m: ('k, 'd) t, x: 'k): 'd? = find_opt_(m.root, x, m.cmp)
 
-fun find(m: ('k, 'd) map_t, xk: 'k, def_xd: 'd): 'd =
+fun find(m: ('k, 'd) t, xk: 'k, def_xd: 'd): 'd =
 match find_opt(m, xk)
 {
     | Some(xd) => xd
@@ -119,10 +119,10 @@ match t
     | _ => Node(Red, (Empty: ('k, 'd) tree_t), xk, xd, (Empty: ('k, 'd) tree_t))
 }
 
-fun add(m: ('k, 'd) map_t, xk: 'k, xd: 'd): ('k, 'd) map_t
+fun add(m: ('k, 'd) t, xk: 'k, xd: 'd): ('k, 'd) t
 {
     val new_root = blackify(add_(m.root, xk, xd, m.cmp)).0
-    map_t { root=new_root, cmp=m.cmp }
+    t { root=new_root, cmp=m.cmp }
 }
 
 fun update_(t: ('k, 'd) tree_t, xk: 'k, f: ('k, 'd?) -> 'd, cmp: 'k cmp_t): ('k, 'd) tree_t =
@@ -143,10 +143,10 @@ match t
             f(xk, (None : 'd?)), (Empty: ('k, 'd) tree_t))
 }
 
-fun update(m: ('k, 'd) map_t, xk: 'k, f: ('k, 'd?) -> 'd): ('k, 'd) map_t
+fun update(m: ('k, 'd) t, xk: 'k, f: ('k, 'd?) -> 'd): ('k, 'd) t
 {
     val new_root = blackify(update_(m.root, xk, f, m.cmp)).0
-    map_t { root=new_root, cmp=m.cmp }
+    t { root=new_root, cmp=m.cmp }
 }
 
 fun unbalanced_left(t: ('k, 'd) tree_t): (('k, 'd) tree_t, bool) =
@@ -248,13 +248,13 @@ match t
         (Empty, false)
 }
 
-fun remove(m: ('k, 'd) map_t, xk: 'k)
+fun remove(m: ('k, 'd) t, xk: 'k)
 {
     val (new_root, _) = remove_(m.root, xk, m.cmp)
-    map_t { root=new_root, cmp=m.cmp }
+    t { root=new_root, cmp=m.cmp }
 }
 
-fun foldl(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
+fun foldl(m: ('k, 'd) t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -264,7 +264,7 @@ fun foldl(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
     update_(m.root, f, res0)
 }
 
-fun foldr(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
+fun foldr(m: ('k, 'd) t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -274,7 +274,7 @@ fun foldr(m: ('k, 'd) map_t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
     update_(m.root, f, res0)
 }
 
-fun app(m: ('k, 'd) map_t, f: ('k, 'd) -> void)
+fun app(m: ('k, 'd) t, f: ('k, 'd) -> void)
 {
     fun app_(t: 't rbtree, f: ('k, 'd) -> void): void =
     match t {
@@ -285,7 +285,7 @@ fun app(m: ('k, 'd) map_t, f: ('k, 'd) -> void)
 }
 
 // similar to foldr, but does a specific task - constructs the list of results
-fun map(m: ('k, 'd) map_t, f: ('k, 'd) -> 'r): 'res list {
+fun map(m: ('k, 'd) t, f: ('k, 'd) -> 'r): 'res list {
     fun update_list_(t: ('k, 'd) tree_t, f: ('k, 'd) -> 'r, res: 'r list): 'r list =
     match t {
         | Node(_, l, xk, xd, r) =>
@@ -295,19 +295,19 @@ fun map(m: ('k, 'd) map_t, f: ('k, 'd) -> 'r): 'res list {
     update_list_(m.root, f, [])
 }
 
-fun add_list(m: ('k, 'd) map_t, l: ('k, 'd) list)
+fun add_list(m: ('k, 'd) t, l: ('k, 'd) list)
 {
     val cmp = m.cmp
     val fold new_root=m.root for (xk, xd) <- l {
         add_(new_root, xk, xd, cmp)
     }
-    map_t {root=new_root, cmp=cmp}
+    t {root=new_root, cmp=cmp}
 }
 
-fun from_list(l: ('k, 'd) list, cmp: 'k cmp_t): ('k, 'd) map_t =
-    add_list((empty(cmp) : ('k, 'd) map_t), l)
+fun from_list(cmp: 'k cmp_t, l: ('k, 'd) list): ('k, 'd) t =
+    add_list((empty(cmp) : ('k, 'd) t), l)
 
-fun list(m: ('k, 'd) map_t): ('k, 'd) list
+fun list(m: ('k, 'd) t): ('k, 'd) list
 {
     fun update_list_(t: ('k, 'd) tree_t, res: ('k, 'd) list): ('k, 'd)  list =
     match t {

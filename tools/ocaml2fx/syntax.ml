@@ -41,7 +41,7 @@ type bop_t =
     | OpAdd | OpSub | OpMul | OpDiv
     | OpMod | OpLogicAnd | OpLogicOr | OpConcat
     | OpEQ | OpNE | OpLT | OpLE | OpGE | OpGT
-    | OpSHL | OpSHR | OpCons | OpAssign | OpAt | OpMem
+    | OpSHL | OpSHR | OpCons | OpAssign | OpAt | OpMem | OpArrow
 
 type ocexp_t =
     | ELit of oclit_t

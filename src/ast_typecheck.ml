@@ -854,7 +854,11 @@ and check_exp e env sc =
             let n1_env = get_module_env n1 in
             (*let _ = printf "looking for %s in module %s ...\n" (id2str n2) (id2str n1) in*)
             let new_n2 = lookup_id n2 etyp n1_env sc eloc in
-            ExpIdent(new_n2, ctx)
+            let etyp = match (id_info new_n2) with
+                | IdFun _ | IdVal _ -> get_id_typ new_n2 eloc
+                | _ -> etyp
+                in
+            ExpIdent(new_n2, (etyp, eloc))
         | ((TypTuple tl), _, ExpLit((LitInt idx), (etyp2, eloc2))) ->
             unify etyp2 TypInt eloc2 "index must be int!";
             (* we do not handle negative indices, because the parser would not allow that;
@@ -872,7 +876,6 @@ and check_exp e env sc =
             | _ ->
                 raise_compile_err eloc "__tag__ can only be requestd for variants")
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) ->
-            (*printf "accessing '%s': " (id2str n2); Ast_pp.pprint_typ_x etyp eloc; printf "\n";*)
             let (_, relems) = get_record_elems None etyp1 eloc1 in
             (try
                 let (_, t1, _) = List.find (fun (n1, t1, _) -> n1 = n2) relems in

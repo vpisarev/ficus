@@ -86,11 +86,16 @@ fx_cptr_t fx_get_stdstream(int stridx)
     return stridx == 0 ? &stdin_cptr : stridx == 1 ? &stdout_cptr : &stderr_cptr;
 }
 
-void fx_file_destructor(void* ptr) {
+void fx_file_destructor(void* ptr)
+{
     FILE* f = (FILE*)ptr;
-    if(f) {
-        fclose(f);
-    }
+    if(f) fclose(f);
+}
+
+void fx_pipe_destructor(void* ptr)
+{
+    FILE* f = (FILE*)ptr;
+    if(f) pclose(f);
 }
 
 #ifdef __cplusplus

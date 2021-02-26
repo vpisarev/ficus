@@ -875,10 +875,6 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
         else
         {
             fx_status = fx_make_cptr(resptr, fx_re2_findall_process_free, fx_result);
-            if(fx_status < 0)
-            {
-                fx_re2_findall_process_free(resptr);
-            }
         }
     fx_cleanup:
         return fx_status;

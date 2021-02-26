@@ -139,7 +139,7 @@ fun create_eExpr(varname: string): eExpr_t = ccode
     if(stat>=0)
     {
         Variable* toWrap = new Variable(cvarname.data);
-        fx_make_cptr(toWrap, expression_free, &fx_result->handle);
+        stat = fx_make_cptr(toWrap, expression_free, &fx_result->handle);
     }
     return stat;
 }
@@ -147,8 +147,7 @@ fun create_eExpr(varname: string): eExpr_t = ccode
 fun create_eExpr(value: double): eExpr_t = ccode
 {
     Number* toWrap = new Number(value);
-    fx_make_cptr(toWrap, expression_free, &fx_result->handle);
-    return 0;
+    return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
 fun to_string(expression: eExpr_t): string = ccode
@@ -163,8 +162,7 @@ operator +(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
     Expression& cpp_expr1 = *((Expression*)(exp1->handle->ptr));
     Expression& cpp_expr2 = *((Expression*)(exp2->handle->ptr));
     Expression* toWrap = new Expression(cpp_expr1 + cpp_expr2);
-    fx_make_cptr(toWrap, expression_free, &fx_result->handle);
-    return 0;
+    return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
 operator -(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
@@ -172,8 +170,7 @@ operator -(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
     Expression& cpp_expr1 = *((Expression*)(exp1->handle->ptr));
     Expression& cpp_expr2 = *((Expression*)(exp2->handle->ptr));
     Expression* toWrap = new Expression(cpp_expr1 - cpp_expr2);
-    fx_make_cptr(toWrap, expression_free, &fx_result->handle);
-    return 0;
+    return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
 operator *(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
@@ -181,8 +178,7 @@ operator *(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
     Expression& cpp_expr1 = *((Expression*)(exp1->handle->ptr));
     Expression& cpp_expr2 = *((Expression*)(exp2->handle->ptr));
     Expression* toWrap = new Expression(cpp_expr1 * cpp_expr2);
-    fx_make_cptr(toWrap, expression_free, &fx_result->handle);
-    return 0;
+    return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
 fun cpp_tree_example(): void = ccode

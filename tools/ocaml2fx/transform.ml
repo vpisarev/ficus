@@ -54,6 +54,7 @@ let transform_let_comp code =
         | EIdent _ -> e
         | ETyped (e, t) -> ETyped((trexp_ e), t)
         | EUnary(uop, e1) -> EUnary(uop, (trexp_ e1))
+        | EBinary(OpMem, EUnary(OpDeref, e1), e2) -> EBinary(OpArrow, e1, e2)
         | EBinary(bop, e1, e2) -> EBinary(bop, (trexp_ e1), (trexp_ e2))
         | EIf(e1, e2, e3) -> EIf((trexp_ e1), (trexp_ e2), (trexp_ e3))
         | ELambda(pl, e) -> ELambda(pl, (trexp_ e))
@@ -74,6 +75,11 @@ let transform_let_comp code =
                 EForEach(p, i, lst, body)
             | (EIdent("List.fold_left"), ELambda(acc :: p :: [], body) :: acc0 :: lst :: []) ->
                 EFold(false, (acc, acc0), (p, lst), body)
+            | (EIdent("List.rev"), lst :: []) ->
+                ECall(EBinary(OpMem, lst, EIdent("rev")), [])
+            | (EIdent("String.concat"), s :: lst :: []) ->
+                ECall(EBinary(OpMem, s, EIdent("join")), lst :: [])
+            | (f, EMkTuple(args) :: []) -> ECall(f, args)
             | _ -> ECall(f, args))
         | EMkTuple(args) -> EMkTuple(trexp_list_ args)
         | EMkList(args) -> EMkList(trexp_list_ args)

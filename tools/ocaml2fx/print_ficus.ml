@@ -31,6 +31,7 @@ let highest_unary_pr = 1700
 let binop2str_ bop = match bop with
     | OpAt -> ("", highest_unary_pr, AssocLeft)
     | OpMem -> (".", highest_unary_pr, AssocLeft)
+    | OpArrow -> ("->", highest_unary_pr, AssocLeft)
     | OpMul -> ("*", 1200, AssocLeft)
     | OpDiv -> ("/", 1200, AssocLeft)
     | OpMod -> ("%", 1200, AssocLeft)
@@ -121,7 +122,7 @@ and pprint_pat_ p parens =
         cbox()
     | PRecord (vn, relems) ->
         let is_ref = match relems with
-            | ("contents", _) :: [] -> true
+            | ("contents", _) :: _ -> true
             | _ -> false
             in
         obox(); if vn = noid then () else (pstr vn; pspace());
@@ -179,6 +180,9 @@ and pprint_ocexp_ e pr : unit =
         ohvbox_indent(); pstr "*"; pprint_ocexp_ e1 1300;
         pspace(); pstr "="; pspace();
         pprint_ocexp_ e2 0; cbox()
+    | EBinary(OpAt, e1, e2) ->
+        ohvbox_indent(); pprint_ocexp_ e1 highest_unary_pr;
+        pstr "["; pcut(); pprint_ocexp_ e2 0; pstr "]"; cbox()
     | EBinary(OpMem, e1, e2) ->
         ohvbox_indent();
         (match e1 with

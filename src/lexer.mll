@@ -486,7 +486,15 @@ rule tokens = parse
                 let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t)
         }
     | '+'   { let t = if !new_exp then [B_PLUS] else [PLUS] in (new_exp := true; t) }
-    | '-'   { let t = if !new_exp then [B_MINUS] else [MINUS] in (new_exp := true; t) }
+    | '-'
+        {
+            if not !new_exp then (new_exp := true; [MINUS]) else
+            (match (tokens lexbuf) with
+            | INT(x) :: rest -> INT(Int64.neg x) :: rest
+            | SINT(b, x) :: rest -> SINT(b, Int64.neg x) :: rest
+            | FLOAT(b, x) :: rest -> FLOAT(b, -.x) :: rest
+            | ts -> B_MINUS :: ts)
+        }
     | '*'   { let t = if !new_exp then [B_STAR] else [STAR] in (new_exp := true; t) }
     | '/'   { new_exp := true; [SLASH] }
     | "%"   { new_exp := true; [MOD] }

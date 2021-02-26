@@ -666,6 +666,7 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result);
 int fx_fputs(FILE* f, const fx_str_t* str);
 int fx_fgets(FILE* f, fx_str_t* str);
 void fx_file_destructor(void* ptr);
+void fx_pipe_destructor(void* ptr);
 
 fx_cptr_t fx_get_stdstream(int);
 

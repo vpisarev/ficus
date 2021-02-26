@@ -44,7 +44,7 @@ import Map, Set
 
 type id_t = IdName: int | IdVal: (int, int) | IdTemp: (int, int)
 
-operator <=>(a: id_t, b: id_t) {
+fun cmp_id(a: id_t, b: id_t) {
     | (IdName(a1), IdName(b1)) => a1 <=> b1
     | (IdVal(a1, a2), IdVal(b1, b2)) =>
         val d1 = a1 <=> b1
@@ -54,6 +54,8 @@ operator <=>(a: id_t, b: id_t) {
         if d1 != 0 {d1} else {a2 <=> b2}
     | _ => a.__tag__ <=> b.__tag__
 }
+
+operator <=> (a: id_t, b: id_t) = cmp_id(a, b)
 
 val noid = IdName(0)
 val dummyid = IdName(1)
@@ -101,15 +103,17 @@ fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
         }
     }
 
-fun get_start_loc(loc) {
+fun get_start_loc(loc: loc_t) {
     val {fname, line0, pos0, line1, pos1} = loc
-    {fname=fname, line0=line0, pos0=pos0, line1=line0, pos1=pos0}
+    loc_t {fname=fname, line0=line0, pos0=pos0, line1=line0, pos1=pos0}
 }
 
 fun get_end_loc(loc: loc_t) {
     val {fname, line0, pos0, line1, pos1} = loc
-    {fname=fname, line0=line1, pos0=pos1, line1=line1, pos1=pos1}
+    loc_t {fname=fname, line0=line1, pos0=pos1, line1=line1, pos1=pos1}
 }
+
+fun string(loc: loc_t) = f"{pp_id2str(loc.fname)}: {loc.line0}"
 
 type lit_t =
     | LitInt: int64
@@ -212,7 +216,7 @@ type for_flags_t =
     for_flag_nested: bool = false
 }
 
-fun default_for_flags() =
+fun default_for_flags() = for_flags_t
 {
     for_flag_parallel=false,
     for_flag_make=ForMakeArray,
@@ -320,8 +324,9 @@ type env_entry_t =
   when we get back from the nested expression analysis, at the expense of slight loss in efficiency
   (however, the type checker is very inexpensive compiler stage, even in "-O0" compile mode)
 */
-type env_t = (id_t, env_entry_t list) Map.map_t
-type idset_t = id_t Set.set_t
+type env_t = (id_t, env_entry_t list) Map.t
+type idset_t = id_t Set.t
+fun empty_idset() = Set.empty(cmp_id)
 
 type defval_t =
 {
@@ -418,69 +423,68 @@ type id_info_t =
 
 type 't dynvec_t =
 {
-    count: int ref;
-    data: 't [] ref;
+    count: int;
+    data: 't [];
     val0: 't
 }
 
-fun dynvec_create(v0: 't) = dynvec_t {
+fun dynvec_create(v0: 't): 't dynvec_t ref = ref (dynvec_t {
     count=0,
-    data=ref (array(): 't []),
+    data=(array(): 't []),
     val0=v0
+    })
+
+fun dynvec_clear(v: 't dynvec_t ref) {
+    v->count = 0
+    v->data = (array() : 't [])
 }
 
-fun dynvec_clear(v: 't dynvec_t) {
-    v.count = 0
-    *v.data = (array() : 't [])
+fun dynvec_isempty(v: 't dynvec_t ref) = v->count == 0
+
+fun dynvec_init(v: 't dynvec_t ref, n: int) {
+    v->count = n
+    v->data = array(n, v->val0)
 }
 
-fun dynvec_isempty(v: 't dynvec_t) = v.count == 0
-
-fun dynvec_init(v: 't dynvec_t, n: int) {
-    *v.count = n
-    *v.data = array(n, v.val0)
-}
-
-fun dynvec_push(v: 't dynvec_t) {
-    val sz = size(v.data)
-    val n0 = *v.count
+fun dynvec_push(v: 't dynvec_t ref) {
+    val sz = size(v->data)
+    val n0 = v->count
     if sz <= n0 {
         val n1 = max(n0, 128)*3/2
-        val old_data = *v.data
-        val new_data = [for i <- 0:n1 { if i < n0 {old_data[i]} else {v.val0}]
-        v.data = new_data
+        val old_data = v->data
+        val new_data = [for i <- 0:n1 { if i < n0 {old_data[i]} else {v->val0} }]
+        v->data = new_data
     }
     val i = n0
-    *v.count = n0 + 1
+    v->count = n0 + 1
     i
 }
 
-fun dynvec_get(v: 't dynvec_t, i: int) = (*v.data)[i]
-fun dynvec_set(v: 't dynvec_t, i: int, newv: 't) = (*v.data)[i] = newv
+fun dynvec_get(v: 't dynvec_t ref, i: int) = v->data[i]
+fun dynvec_set(v: 't dynvec_t ref, i: int, newv: 't) = v->data[i] = newv
 
 var all_ids = dynvec_create(IdNone)
-var all_strhash = (Hashtbl.create(1000): (string, int) Hashtbl.t)
+var all_strhash: (string, int) Map.t = Map.empty(String.cmp)
 var all_strings = dynvec_create("")
-val all_modules = (Hashtbl.create(100): (string, id_t) Hashtbl.t)
-val sorted_modules = (ref []: id_t list ref)
-val ids_frozen = ref true
-fun freeze_ids(f) = *ids_frozen = f
+val all_modules: (string, id_t) Map.t = Map.empty(String.cmp)
+var sorted_modules: id_t list = []
+var freeze_ids = false
 
 fun new_id_idx() {
-    if !*ids_frozen {}
+    if !freeze_ids {}
     else {
-        raise Fail("internal error: attempt to add new AST id during K-phase or C code generation phase")
+        throw Fail("internal error: attempt to add new AST id during K-phase or C code generation phase")
     }
     dynvec_push(all_ids)
 }
 
 fun dump_id(i: id_t) {
-    | IdName(i) => f"IdName(%d)", i)
-    | IdVal(i, j) => f"IdVal(%d, %d)", i, j)
-    | IdTemp(i, j) => f"IdTemp(%d, %d)", i, j)
+    | IdName(i) => f"IdName({i})"
+    | IdVal(i, j) => f"IdVal({i}, {j})"
+    | IdTemp(i, j) => f"IdTemp({i}, {j})"
 }
 
-fun id2str__(i: id_t, pp: bool, val_decor: string, temp_decor: string) =
+fun id2str__(i: id_t, pp: bool, val_decor: string, temp_decor: string): string =
     if i == noid { "<noid>" }
     else {
         val (infix, prefix, suffix) =
@@ -494,34 +498,27 @@ fun id2str__(i: id_t, pp: bool, val_decor: string, temp_decor: string) =
         else { f"{prefix}{infix}{suffix}" }
     }
 
-fun id2str_(i: id_t, pp: bool) = id2str__(i, pp, "@", "@@")
+fun id2str_(i: id_t, pp: bool): string = id2str__(i, pp, "@", "@@")
+fun id2str(i: id_t): string = id2str_(i, false)
+fun pp_id2str(i: id_t): string = id2str_(i, true)
 
-fun id2str(i) = id2str_(i, false)
-
-fun pp_id2str(i) = id2str_(i, true)
-
-exception SyntaxError: (string, Lexing.position, Lexing.position)
-exception SyntaxErrorLoc: (string, loc_t)
-fun loc2str(loc) = f"%s: %d", pp_id2str(loc.fname), loc.line0)
-
+exception SyntaxError: (loc_t, string)
 exception CompileError: (loc_t, string)
 exception PropagateCompileError
 
-var compile_errs = []: exn list
-var compile_err_ctx = []: string list
+var compile_errs: exn list = []
+var compile_err_ctx: string list = []
 
 fun raise_compile_err(loc: loc_t, msg: string) {
-    val whole_msg = f"{loc2str(loc): error: {msg}"
+    val whole_msg = f"{loc}: error: {msg}"
     val whole_msg = match compile_err_ctx {
         | [] => whole_msg
-        | ctx => "\n\t".concat(whole_msg :: ctx)
+        | ctx => "\n\t".join(whole_msg :: ctx)
         }
     throw CompileError(loc, whole_msg)
 }
 
-fun push_compile_err(err: exn) {
-    compile_errs = err :: compile_errs
-}
+fun push_compile_err(err: exn) { compile_errs = err :: compile_errs }
 
 fun check_compile_errs() =
     match compile_errs {
@@ -531,36 +528,37 @@ fun check_compile_errs() =
 
 fun print_compile_err(err: exn) {
     | CompileError(loc, msg) => println(msg)
-    | Failure(msg) => println(f"Failure: {msg}")
+    | Fail(msg) => println(f"Failure: {msg}")
     | _ => println("\n\nException {err} occured")
 }
 
 fun pr_verbose(str: string) =
     if Options.verbose() {
-        val eol = Utils.endswith(str, "\n") {""} else {"\n"}
+        val eol = if str.endswith("\n") {""} else {"\n"}
         print(f"{str}{eol}")
     }
     File.flush_all()
 
-fun id2prefix(i) {
-    val prefix = match i {
-                 | IdName(i) => i
-                 | IdVal(i, _) => i
-                 | IdTemp(i, _) => i
-                 }
+fun id2prefix(i: id_t) {
+    val prefix =
+        match i {
+        | IdName(i) => i
+        | IdVal(i, _) => i
+        | IdTemp(i, _) => i
+        }
     dynvec_get(all_strings, prefix)
 }
 
 fun id2idx_(i, loc) =
     match i {
-    | IdName(_) => raise_compile_err(loc, f"attempt to query information about unresolved '%s'", id2str(i)))
+    | IdName(_) => raise_compile_err(loc,
+        f"attempt to query information about unresolved '{id2str(i)}'")
     | IdVal(_, i_real) => i_real
     | IdTemp(_, i_real) => i_real
     }
 
-fun id2idx(i) = id2idx_(i, noloc)
-
-fun id_info(i) = dynvec_get(all_ids, id2idx(i))
+fun id2idx(i: id_t) = id2idx_(i, noloc)
+fun id_info(i: id_t) = dynvec_get(all_ids, id2idx(i))
 
 fun is_unique_id(i) = match i {
                       | IdName(_) => false
@@ -637,12 +635,12 @@ fun get_exp_ctx(e: exp_t) {
     | ExpTyped(_, _, c) => c
     | ExpCCode(_, c) => c
     | DefVal(_, _, _, dv_loc) => (TypDecl, dv_loc)
-    | DefFun {ref {df_loc}} => (TypDecl, df_loc)
-    | DefExn {ref {dexn_loc}} => (TypDecl, dexn_loc)
-    | DefTyp {ref {dt_loc}} => (TypDecl, dt_loc)
-    | DefVariant {ref {dvar_loc}} => (TypDecl, dvar_loc)
-    | DefClass {ref {dcl_loc}} => (TypDecl, dcl_loc)
-    | DefInterface {ref {di_loc}} => (TypDecl, di_loc)
+    | DefFun (ref {df_loc}) => (TypDecl, df_loc)
+    | DefExn (ref {dexn_loc}) => (TypDecl, dexn_loc)
+    | DefTyp (ref {dt_loc}) => (TypDecl, dt_loc)
+    | DefVariant (ref {dvar_loc}) => (TypDecl, dvar_loc)
+    | DefClass (ref {dcl_loc}) => (TypDecl, dcl_loc)
+    | DefInterface (ref {di_loc}) => (TypDecl, di_loc)
     | DirImport(_, l) => (TypDecl, l)
     | DirImportFrom(_, _, l) => (TypDecl, l)
     | DirPragma(_, l) => (TypDecl, l)
@@ -665,15 +663,15 @@ fun get_pat_loc(p: pat_t) {
     | PatWhen(_, _, l) => l
 }
 
-fun pat_skip_typed(p) = match p {
-                        | PatTyped(p, _, _) => pat_skip_typed(p)
-                        | _ => p
-                        }
+fun pat_skip_typed(p: pat_t) {
+    | PatTyped(p, _, _) => pat_skip_typed(p)
+    | _ => p
+}
 
 fun get_module(m) =
     match id_info(m) {
     | IdModule(minfo) => minfo
-    | _ => failwith(f"internal error in process_all: %s is not a module", pp_id2str(m)))
+    | _ => throw Fail(f"internal error in process_all: {pp_id2str(m)} is not a module")
     }
 
 fun get_module_env(m) = *get_module(m).dm_env
@@ -684,13 +682,17 @@ fun find_module(mname_id, mfname) =
     } catch {
     | Not_found =>
         val m_fresh_id = dup_id(mname_id)
-        val newmodule = ref {dm_name=m_fresh_id, dm_filename=mfname, dm_idx=-1, dm_defs=[], dm_deps=[], dm_env=Env.empty, dm_parsed=false}
+        val newmodule = ref (defmodule_t {
+            dm_name=m_fresh_id, dm_filename=mfname,
+            dm_idx=-1, dm_defs=[], dm_deps=[],
+            dm_env=Env.empty, dm_parsed=false
+            })
         set_id_entry(m_fresh_id, IdModule(newmodule))
         Hashtbl.add(all_modules, mfname, m_fresh_id)
         newmodule
     }
 
-val block_scope_idx = ref (-1)
+val block_scope_idx = ref -1
 fun new_block_scope() {
     *block_scope_idx = *block_scope_idx + 1
     ScBlock(*block_scope_idx)
@@ -724,19 +726,19 @@ fun new_try_scope() {
 fun scope2str(sc: scope_t list) {
     | scj :: rest =>
         val prefix = match scj {
-            | ScBlock(b) => f"block({b})" + scope2str(r)
+            | ScBlock(b) => f"block({b})"
             | ScLoop(f, b) =>
                 val nested = if f {"nested_"} else {""}
                 f"{nested}loop_block({b})"
             | ScArrMap(b) => f"arr_map_block({b})"
-            | ScMap(b) :: r => f"map_block({b})"
-            | ScFold(b) :: r => f"fold_block({b})"
-            | ScTry(b) :: r => f"try_block({b})"
-            | ScFun(f) :: r => f"fun({id2str(f)})"
-            | ScClass(c) :: r => f"class({id2str(c)})"
-            | ScInterface(i) :: r => f"interface({id2str(i)})"
-            | ScModule(m) :: r => f"mod({id2str(m)})"
-            | ScGlobal :: r => "global"
+            | ScMap(b) => f"map_block({b})"
+            | ScFold(b) => f"fold_block({b})"
+            | ScTry(b) => f"try_block({b})"
+            | ScFun(f) => f"fun({id2str(f)})"
+            | ScClass(c) => f"class({id2str(c)})"
+            | ScInterface(i) => f"interface({id2str(i)})"
+            | ScModule(m) => f"mod({id2str(m)})"
+            | ScGlobal => "global"
             }
         match rest {
         | _ :: _ => prefix + "." + scope2str(rest)
@@ -759,42 +761,42 @@ fun get_qualified_name(name: id_t, sc: scope_t list) =
     | sc_top :: r => get_qualified_name(name, r)
     }
 
-fun get_scope(id_info) =
+fun get_scope(id_info: id_info_t) =
     match id_info {
     | IdNone => ScGlobal :: []
     | IdVal {dv_scope} => dv_scope
-    | IdFun {ref {df_scope}} => df_scope
-    | IdExn {ref {dexn_scope}} => dexn_scope
-    | IdTyp {ref {dt_scope}} => dt_scope
-    | IdVariant {ref {dvar_scope}} => dvar_scope
-    | IdClass {ref {dcl_scope}} => dcl_scope
-    | IdInterface {ref {di_scope}} => di_scope
+    | IdFun (ref {df_scope}) => df_scope
+    | IdExn (ref {dexn_scope}) => dexn_scope
+    | IdTyp (ref {dt_scope}) => dt_scope
+    | IdVariant (ref {dvar_scope}) => dvar_scope
+    | IdClass (ref {dcl_scope}) => dcl_scope
+    | IdInterface (ref {di_scope}) => di_scope
     | IdModule(_) => ScGlobal :: []
     }
 
-fun get_idinfo_loc(id_info) =
+fun get_idinfo_loc(id_info: id_info_t) =
     match id_info {
     | IdNone | IdModule(_) => noloc
     | IdVal {dv_loc} => dv_loc
-    | IdFun {ref {df_loc}} => df_loc
-    | IdExn {ref {dexn_loc}} => dexn_loc
-    | IdTyp {ref {dt_loc}} => dt_loc
-    | IdVariant {ref {dvar_loc}} => dvar_loc
-    | IdClass {ref {dcl_loc}} => dcl_loc
-    | IdInterface {ref {di_loc}} => di_loc
+    | IdFun (ref {df_loc}) => df_loc
+    | IdExn (ref {dexn_loc}) => dexn_loc
+    | IdTyp (ref {dt_loc}) => dt_loc
+    | IdVariant (ref {dvar_loc}) => dvar_loc
+    | IdClass (ref {dcl_loc}) => dcl_loc
+    | IdInterface (ref {di_loc}) => di_loc
     }
 
-fun get_idinfo_typ(id_info, loc) =
+fun get_idinfo_typ(id_info: id_info_t, loc: loc_t) =
     match id_info {
     | IdNone => raise_compile_err(loc, "ast: attempt to request type of non-existing symbol")
     | IdModule(_) => TypModule
     | IdVal {dv_typ} => dv_typ
-    | IdFun {ref {df_typ}} => df_typ
-    | IdExn {ref {dexn_typ}} => dexn_typ
-    | IdTyp {ref {dt_typ}} => dt_typ
-    | IdVariant {ref {dvar_alias}} => dvar_alias
-    | IdClass {ref {dcl_typ}} => dcl_typ
-    | IdInterface {ref {di_name}} => TypApp(([], di_name))
+    | IdFun (ref {df_typ}) => df_typ
+    | IdExn (ref {dexn_typ}) => dexn_typ
+    | IdTyp (ref {dt_typ}) => dt_typ
+    | IdVariant (ref {dvar_alias}) => dvar_alias
+    | IdClass (ref {dcl_typ}) => dcl_typ
+    | IdInterface (ref {di_name}) => TypApp(([], di_name))
     }
 
 fun get_id_typ(i: id_t, loc: loc_t) =
@@ -824,16 +826,16 @@ fun get_lit_typ(l: lit_t) {
 fun deref_typ(t: typ_t) {
     | TypVar(_) =>
         fun find_root(t: typ_t) {
-            | TypVar (ref (Some(TypVarArray(_))) => t
-            | TypVar (ref (Some(TypVarTuple(_))) => t
-            | TypVar (ref (Some(TypVarRecord)) => t
-            | TypVar (ref (Some(t2)) => find_root(t2)
+            | TypVar (ref Some(TypVarArray(_))) => t
+            | TypVar (ref Some(TypVarTuple(_))) => t
+            | TypVar (ref Some(TypVarRecord)) => t
+            | TypVar (ref Some(t2)) => find_root(t2)
             | _ => t
         }
 
         val root = find_root(t)
         fun update_refs(t: typ_t) {
-            | TypVar(ref(Some(TypVar(ref Some(_)) as t1)) as r) =>
+            | TypVar((ref Some(TypVar(ref Some(_)) as t1)) as r) =>
                 *r = Some(root); update_refs(t1)
             | _ => root
         }
@@ -852,7 +854,7 @@ fun is_typ_numeric(t: typ_t, allow_vec_tuples: bool) =
     | TypTuple(t0 :: trest) =>
         if allow_vec_tuples && is_typ_numeric(t0, true) {
             val t0 = deref_typ(t0)
-            fold all=true for t in trest {if deref_typ(t) != t0 {break with false}; true}
+            fold all=true for t <- trest {if deref_typ(t) != t0 {break with false}; true}
         }
     | _ => false
     }
@@ -892,7 +894,7 @@ fun string(bop: binop_t) {
     | OpCons => "::"
 }
 
-fun unop_to_string(uop: unop_t) {
+fun string(uop: unop_t) {
     | OpPlus => "+"
     | OpNegate => "-"
     | OpDotMinus => ".-"
@@ -1018,7 +1020,8 @@ fun get_binop_fname(bop: binop_t, loc: loc_t) =
     | OpDotCompareLT => fname_op_dot_lt()
     | OpDotCompareGT => fname_op_dot_gt()
     | OpLogicAnd | OpLogicOr | OpCons =>
-        raise_compile_err(loc, f"for binary operation \"%s\" there is no corresponding function", binop_to_string(bop)))
+        raise_compile_err(loc,
+            f"for binary operation \"{bop}\" there is no corresponding function")
     }
 
 fun get_unop_fname(uop, loc) =
@@ -1029,7 +1032,8 @@ fun get_unop_fname(uop, loc) =
     | OpDotMinus => fname_op_dot_minus()
     | OpBitwiseNot => fname_op_bit_not()
     | OpLogicNot | OpExpand | OpMkRef | OpDeref =>
-        raise_compile_err(loc, f"for unary operation \"%s\" there is no corresponding function", unop_to_string(uop)))
+        raise_compile_err(loc,
+            f"for unary operation \"{uop}\" there is no corresponding function")
     }
 
 fun fname_always_import() = [:
@@ -1058,16 +1062,13 @@ fun init_all_ids() {
     fname_always_import()
 }
 
-val reserved_keywords = Hashtbl.create(1001)
-for kwd <- [: "fx_result", "fx_status", "fx_fv" :] {
-    Hashtbl.add(reserved_keywords, kwd, 1)
-}
+var reserved_keywords = Set.from_list(String.cmp, [: "fx_result", "fx_status", "fx_fv" :])
 
-val builtin_exceptions = (id_t, id_t) Map.map_t (Hashtbl.create(101): (id_t, id_t) Hashtbl.t)
+var builtin_exceptions = (Map.empty(cmp_id): (id_t, id_t) Map.t map_t)
 fun get_builtin_exception(n0: id_t, loc: loc_t) =
-    match Hashtbl.find_all(builtin_exceptions, n0) {
-    | n :: _ => n
-    | _ => raise_compile_err(loc, f"cannot find built-in exception '%s'", id2str(n0)))
+    match builtin_exceptions.find_opt(n0) {
+    | Some(n) => n
+    | _ => raise_compile_err(loc, f"cannot find built-in exception '{id2str(n0)}'")
     }
 
 fun is_fun_ctor(flags) = flags.fun_flag_ctor != CtorNone
@@ -1079,11 +1080,11 @@ fun ctor2str(f) =
         val s = match f {
             | CtorNone => ""
             | CtorStruct => "record_or_tuple"
-            | CtorVariant(i) => f"variant(%s)", id2str(i))
-            | CtorFP(i) => f"fp(%s)", id2str(i))
-            | CtorExn(i) => f"exn(%s)", id2str(i))
+            | CtorVariant(i) => f"variant({id2str(i)})"
+            | CtorFP(i) => f"fp({id2str(i)})"
+            | CtorExn(i) => f"exn({id2str(i)})"
         }
-        "Constructor(" + s + ")"
+        f"Constructor({s})"
     }
 
 fun lit2str(c: lit_t, cmode: bool, loc: loc_t) {
@@ -1092,36 +1093,17 @@ fun lit2str(c: lit_t, cmode: bool, loc: loc_t) {
         else { s + "." + suffix }
 
     match c {
-    | LitInt(v) => f"%Li", v)
-    | LitSInt(64, v) => if cmode {
-                            f"%LiLL", v)
-                        } else {
-                            f"%Lii%d", v, 64)
-                        }
-    | LitUInt(64, v) => if cmode {
-                            f"%LiULL", v)
-                        } else {
-                            f"%Lii%d", v, 64)
-                        }
-    | LitSInt(b, v) => if cmode {
-                           f"%Li", v)
-                       } else {
-                           f"%Lii%d", v, b)
-                       }
-    | LitUInt(b, v) => if cmode {
-                           f"%LuU", v)
-                       } else {
-                           f"%Luu%d", v, b)
-                       }
-    | LitFloat(16, v) => val s = f"%.4g", v)
-                         add_dot(s, "h")
-    | LitFloat(32, v) => val s = f"%.8g", v)
-                         add_dot(s, "f")
-    | LitFloat(64, v) => val s = f"%.16g", v)
-                         add_dot(s, "")
-    | LitFloat(b, v) => raise_compile_err(loc, f"invalid literal LitFloat(%d, %.16g)", b, v))
-    | LitString(s) => "\"" + Utils.escaped_uni(s) + "\""
-    | LitChar(c) => "\'" + Utils.escaped_uni(c) + "\'"
+    | LitInt(v) => string(v)
+    | LitSInt(64, v) => if cmode { f"{v}LL" } else { f"{v}L" }
+    | LitUInt(64, v) => if cmode { f"{v}ULL" } else { f"{v}UL" }
+    | LitSInt(b, v) => if cmode { f"{v}" } else { f"{v}i{b}" }
+    | LitUInt(b, v) => if cmode { f"{v}U" } else { f"{v}u{b}" }
+    | LitFloat(16, v) => add_dot( f"{float(v)}", "h" )
+    | LitFloat(32, v) => add_dot( f"{float(v)}", "f" )
+    | LitFloat(64, v) => add_dot( string(v), "" )
+    | LitFloat(b, v) => raise_compile_err(loc, f"invalid literal LitFloat({b}, {v})")
+    | LitString(s) => s.escaped(true)
+    | LitChar(c) => c.escaped(true)
     | LitBool(true) => "true"
     | LitBool(false) => "false"
     | LitNil => "nullptr"
@@ -1136,69 +1118,74 @@ fun print_idset(setname, s) {
     printf(" ]\n")
 }
 
-val parser_ctx_module = ref noid
-val parser_ctx_file = ref noid
-val parser_ctx_deps = ref ([]: id_t list)
-val parser_ctx_inc_dirs = ref ([]: string list)
-val parser_ctx_module_idx = ref (-1)
-fun add_to_imported_modules(mname_id, (pos0, pos1)) {
+type parser_ctx_t =
+{
+    module_id: id_t;
+    module_idx: int;
+    file: id_t;
+    deps: id_t list;
+    inc_dirs: string list;
+}
+
+var parser_ctx = parser_ctx_t { module_idx=noid, module_idx=-1, file=noid, deps=[], inc_dirs=[]}
+
+fun add_to_imported_modules(mname_id: id_t, loc: loc_t) {
     val mname = pp_id2str(mname_id)
     match Utils.locate_module_file(mname, *parser_ctx_inc_dirs) {
     | Some(mfname) =>
         val dep_minfo = find_module(mname_id, mfname)
-        val mname_unique_id = *dep_minfo.dm_name
-        *parser_ctx_deps = mname_unique_id :: *parser_ctx_deps
+        val mname_unique_id = dep_minfo->dm_name
+        parser_ctx.deps = mname_unique_id :: parser_ctx.deps
         mname_unique_id
-    | _ => throw SyntaxError(("module " + mname + " is not found", pos0, pos1))
+    | _ => throw SyntaxError(loc, f"module {mname} is not found")
     }
 }
 
 fun typ2str(t) =
     match t {
-    | TypVarTuple(Some(t)) => f"(%s ...)", typ2str(t))
+    | TypVarTuple(Some(t)) => f"({typ2str(t)} ...)"
     | TypVarTuple(_) => "(...)"
-    | TypVarArray(t) => f"%s [+]", typ2str(t))
+    | TypVarArray(t) => f"{typ2str(t)} [+]"
     | TypVarRecord => "{...}"
-    | TypVar {ref Some(t)} => typ2str(t)
+    | TypVar (ref (Some(t))) => typ2str(t)
     | TypVar(_) => "<unknown>"
     | TypApp([], i) => id2str(i)
-    | TypApp(tl, i) => f"%s %s", tl2str(tl), id2str(i))
+    | TypApp(tl, i) => f"{tl2str(tl)} {id2str(i)}"
     | TypInt => "int"
-    | TypSInt(n) => f"int%d", n)
-    | TypUInt(n) => f"uint%d", n)
+    | TypSInt(n) => f"int{n}"
+    | TypUInt(n) => f"uint{n}"
     | TypFloat(n) =>
         match n {
         | 16 => "half"
         | 32 => "float"
         | 64 => "double"
-        | _ => raise_compile_err(noloc, f"bad floating-point type TypFloat(%d)", n))
+        | _ => raise_compile_err(noloc, f"bad floating-point type TypFloat({n})")
         }
     | TypVoid => "void"
     | TypBool => "bool"
     | TypChar => "char"
     | TypString => "string"
     | TypCPointer => "cptr"
-    | TypFun(argtyps, rt) => "(" + tl2str(argtyps) + " -> " + typ2str(rt) + ")"
-    | TypTuple(tl) => val s = tl2str(tl)
-                      match tl {
-                      | x :: [] => "(" + s + ",)"
-                      | _ => s
-                      }
-    | TypRecord {ref (relems, _)} => "{" + String.concat("; ", [: for (i, t, _) <- relems {
-                                                                   id2str(i) + ": " + typ2str(t)
-                                               } :]) + "}"
-    | TypArray(d, t) => f"%s [%s]", typ2str(t), String.make(d - 1, ','))
-    | TypList(t) => typ2str(t) + " list"
-    | TypRef(t) => typ2str(t) + " ref"
+    | TypFun(argtyps, rt) => f"({tl2str(argtyps)} -> {typ2str(rt)})"
+    | TypTuple(tl) =>
+        val s = tl2str(tl)
+        match tl {
+        | x :: [] => "(" + s + ",)"
+        | _ => s
+        }
+    | TypRecord (ref (relems, _)) =>
+        join_embrace("{", "}", "; ",
+            [: for (i, t, _) <- relems { f"{id2str(i)}: {typ2str(t)}" } :])
+    | TypArray(d, t) => f"{typ2str(t)} [{','*(d-1)}]"
+    | TypList(t) => f"{typ2str(t)} list"
+    | TypRef(t) => f"{typ2str(t)} ref"
     | TypExn => "exn"
     | TypErr => "<err>"
     | TypDecl => "<decl>"
     | TypModule => "<module>"
     }
 fun tl2str(tl) {
-    val s = String.concat(", ", [: for t <- tl {
-                                    typ2str(t)
-                } :])
+    val s = ", ".join([: for t <- tl {typ2str(t)} :])
     match tl {
     | x :: [] => s
     | _ => "(" + s + ")"
@@ -1216,17 +1203,20 @@ fun parse_pragmas(prl) {
                 val libname = Str.matched_group(1, pr)
                 parse(rest, result.{pragma_clibs=(libname, loc) :: result.pragma_clibs})
             } else {
-                raise_compile_err(loc, f"unrecognized pragma '%s'", pr))
+                raise_compile_err(loc, f"unrecognized pragma '{pr}'")
             }
         | [] => result
         }
 
-    parse(prl, {pragma_cpp=false, pragma_clibs=[]})
+    parse(prl, pragmas_t {pragma_cpp=false, pragma_clibs=[]})
 }
 
 type ast_callb_t =
-    {acb_typ: (typ_t -> ast_callb_t -> typ_t) option; acb_exp: (exp_t -> ast_callb_t -> exp_t) option; acb_pat:
-        (pat_t -> ast_callb_t -> pat_t) option}
+{
+    acb_typ: ((typ_t, ast_callb_t) -> typ_t)?;
+    acb_exp: ((exp_t, ast_callb_t) -> exp_t)?;
+    acb_pat: ((pat_t, ast_callb_t) -> pat_t)?
+}
 
 fun check_n_walk_typ(t: typ_t, callb: ast_callb_t) =
     match callb.acb_typ {
@@ -1235,31 +1225,27 @@ fun check_n_walk_typ(t: typ_t, callb: ast_callb_t) =
     }
 fun check_n_walk_tlist(tlist: typ_t list, callb: ast_callb_t) =
     [: for t <- tlist {check_n_walk_typ(t, callb)} :]
-fun check_n_walk_exp(e: exp_t, callb) = match callb.acb_exp {
-                                 | Some(f) => f(e, callb)
-                                 | _ => walk_exp(e, callb)
-                                 }
+fun check_n_walk_exp(e: exp_t, callb: ast_callb_t) =
+    match callb.acb_exp {
+    | Some(f) => f(e, callb)
+    | _ => walk_exp(e, callb)
+    }
 fun check_n_walk_elist(elist, callb) =
     [: for e <- elist { check_n_walk_exp(e, callb) } :]
-fun check_n_walk_pat(p: pat_t, callb) = match callb.acb_pat {
-                                 | Some(f) => f(p, callb)
-                                 | _ => walk_pat(p, callb)
-                                 }
-fun check_n_walk_plist(plist, callb) = [: for p <- plist {
-                                           check_n_walk_pat(p, callb)
-    } :]
-fun walk_typ(t, callb) {
-    fun walk_typ_(t) = check_n_walk_typ(t, callb)
+fun check_n_walk_pat(p: pat_t, callb: ast_callb_t) =
+    match callb.acb_pat {
+    | Some(f) => f(p, callb)
+    | _ => walk_pat(p, callb)
+    }
+fun check_n_walk_plist(plist, callb: ast_callb_t) =
+    [: for p <- plist { check_n_walk_pat(p, callb) } :]
 
+fun walk_typ(t, callb: ast_callb_t) {
+    fun walk_typ_(t) = check_n_walk_typ(t, callb)
     fun walk_tl_(tl) = check_n_walk_tlist(tl, callb)
 
     match t {
-    | TypVar(r) => match *r {
-                   | Some(t) => val t1 = walk_typ_(t)
-                                *r = Some(t1)
-                   | _ => {}
-                   }
-                   t
+    | TypVar(r) => match *r { | Some(t) => *r = Some(walk_typ_(t)) | _ => {} }; t
     | TypInt => t
     | TypSInt(_) => t
     | TypUInt(_) => t
@@ -1271,27 +1257,25 @@ fun walk_typ(t, callb) {
     | TypFun(args, rt) => TypFun((walk_tl_(args), walk_typ_(rt)))
     | TypList(t) => TypList(walk_typ_(t))
     | TypTuple(tl) => TypTuple(walk_tl_(tl))
-    | TypVarTuple(t_opt) => TypVarTuple(match t_opt {
-                                        | Some(t) => Some(walk_typ_(t))
-                                        | _ => None
-                                        })
+    | TypVarTuple(t_opt) =>
+        TypVarTuple(match t_opt { | Some(t) => Some(walk_typ_(t)) | _ => None})
     | TypRef(t) => TypRef(walk_typ_(t))
     | TypArray(d, et) => TypArray((d, walk_typ_(et)))
     | TypVarArray(et) => TypVarArray(walk_typ_(et))
     | TypVarRecord => t
-    | TypRecord({ref (relems, ordered)} as r) => val new_relems = [: for (n, t, v) <- relems {
-                                                                    (n, walk_typ_(t), v)
-                                                 } :]
-                                                 *r = (new_relems, ordered)
-                                                 t
+    | TypRecord((ref (relems, ordered)) as r) =>
+        val new_relems = [: for (n, t, v) <- relems {(n, walk_typ_(t), v)} :]
+        *r = (new_relems, ordered)
+        t
     | TypExn => t
     | TypErr => t
     | TypCPointer => t
-    | TypApp(ty_args, n) => TypApp((walk_tl_(ty_args), n))
+    | TypApp(ty_args, n) => TypApp(walk_tl_(ty_args), n)
     | TypDecl => t
     | TypModule => t
     }
 }
+
 fun walk_exp(e, callb) {
     fun walk_typ_(t) = check_n_walk_typ(t, callb)
     fun walk_exp_(e) = check_n_walk_exp(e, callb)
@@ -1301,66 +1285,70 @@ fun walk_exp(e, callb) {
     fun walk_pe_l_(pe_l) = [: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) } :]
     fun walk_ne_l_(ne_l) = [: for (n, e) <- ne_l { (n, walk_exp_(e)) } :]
     fun walk_cases_(ple_l) = [: for (pl, e) <- ple_l { (walk_plist_(pl), walk_exp_(e)) } :]
-
     fun walk_exp_opt_(e_opt: exp_t?) {
         | Some(e) => Some(walk_exp_(e))
         | _ => None
     }
-
     fun walk_ctx_((t, loc): ctx_t) = (walk_typ_(t), loc)
 
     match e {
     | ExpNop(_) => e
     | ExpBreak(_) => e
     | ExpContinue(_) => e
-    | ExpRange(e1_opt, e2_opt, e3_opt, ctx) => ExpRange((walk_exp_opt_(e1_opt), walk_exp_opt_(e2_opt), walk_exp_opt_(e3_opt), walk_ctx_(ctx)))
-    | ExpLit(l, ctx) => ExpLit((l, walk_ctx_(ctx)))
-    | ExpIdent(n, ctx) => ExpIdent((n, walk_ctx_(ctx)))
-    | ExpBinOp(bop, e1, e2, ctx) => ExpBinOp((bop, walk_exp_(e1), walk_exp_(e2), walk_ctx_(ctx)))
-    | ExpUnOp(uop, e, ctx) => ExpUnOp((uop, walk_exp_(e), walk_ctx_(ctx)))
-    | ExpSeq(elist, ctx) => ExpSeq((walk_elist_(elist), walk_ctx_(ctx)))
-    | ExpMkTuple(elist, ctx) => ExpMkTuple((walk_elist_(elist), walk_ctx_(ctx)))
-    | ExpMkArray(ell, ctx) => ExpMkArray((ell.map(walk_elist_), walk_ctx_(ctx)))
-    | ExpMkRecord(e, ne_l, ctx) => ExpMkRecord((walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx)))
-    | ExpUpdateRecord(e, ne_l, ctx) => ExpUpdateRecord((walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx)))
-    | ExpCall(f, args, ctx) => ExpCall((walk_exp_(f), walk_elist_(args), walk_ctx_(ctx)))
-    | ExpAt(arr, border, interp, idx, ctx) => ExpAt((walk_exp_(arr), border, interp, walk_elist_(idx), walk_ctx_(ctx)))
-    | ExpAssign(lv, rv, loc) => ExpAssign((walk_exp_(lv), walk_exp_(rv), loc))
-    | ExpMem(a, member, ctx) => ExpMem((walk_exp_(a), walk_exp_(member), walk_ctx_(ctx)))
-    | ExpThrow(a, loc) => ExpThrow((walk_exp_(a), loc))
+    | ExpRange(e1_opt, e2_opt, e3_opt, ctx) => ExpRange(walk_exp_opt_(e1_opt), walk_exp_opt_(e2_opt), walk_exp_opt_(e3_opt), walk_ctx_(ctx))
+    | ExpLit(l, ctx) => ExpLit(l, walk_ctx_(ctx))
+    | ExpIdent(n, ctx) => ExpIdent(n, walk_ctx_(ctx))
+    | ExpBinOp(bop, e1, e2, ctx) => ExpBinOp(bop, walk_exp_(e1), walk_exp_(e2), walk_ctx_(ctx))
+    | ExpUnOp(uop, e, ctx) => ExpUnOp(uop, walk_exp_(e), walk_ctx_(ctx))
+    | ExpSeq(elist, ctx) => ExpSeq(walk_elist_(elist), walk_ctx_(ctx))
+    | ExpMkTuple(elist, ctx) => ExpMkTuple(walk_elist_(elist), walk_ctx_(ctx))
+    | ExpMkArray(ell, ctx) => ExpMkArray(ell.map(walk_elist_), walk_ctx_(ctx))
+    | ExpMkRecord(e, ne_l, ctx) => ExpMkRecord(walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx))
+    | ExpUpdateRecord(e, ne_l, ctx) => ExpUpdateRecord(walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx))
+    | ExpCall(f, args, ctx) => ExpCall(walk_exp_(f), walk_elist_(args), walk_ctx_(ctx))
+    | ExpAt(arr, border, interp, idx, ctx) => ExpAt(walk_exp_(arr), border, interp, walk_elist_(idx), walk_ctx_(ctx))
+    | ExpAssign(lv, rv, loc) => ExpAssign(walk_exp_(lv), walk_exp_(rv), loc)
+    | ExpMem(a, member, ctx) => ExpMem(walk_exp_(a), walk_exp_(member), walk_ctx_(ctx))
+    | ExpThrow(a, loc) => ExpThrow(walk_exp_(a), loc)
     | ExpIf(c, then_e, else_e, ctx) => ExpIf((walk_exp_(c), walk_exp_(then_e), walk_exp_(else_e), walk_ctx_(ctx)))
     | ExpWhile(c, e, loc) => ExpWhile((walk_exp_(c), walk_exp_(e), loc))
     | ExpDoWhile(e, c, loc) => ExpDoWhile((walk_exp_(e), walk_exp_(c), loc))
-    | ExpFor(pe_l, idx_pat, body, flags, loc) => ExpFor((walk_pe_l_(pe_l), walk_pat_(idx_pat), walk_exp_(body), flags, loc))
+    | ExpFor(pe_l, idx_pat, body, flags, loc) =>
+        ExpFor(walk_pe_l_(pe_l), walk_pat_(idx_pat), walk_exp_(body), flags, loc)
     | ExpMap(pew_ll, body, flags, ctx) =>
-        ExpMap((pew_ll.map((fun ((pe_l, idx_pat)) {
-                                walk_pe_l_(pe_l)
-                               }, walk_pat_(idx_pat))), walk_exp_(body), flags, walk_ctx_(ctx)))
-    | ExpTryCatch(e, cases, ctx) => ExpTryCatch((walk_exp_(e), walk_cases_(cases), walk_ctx_(ctx)))
-    | ExpMatch(e, cases, ctx) => ExpMatch((walk_exp_(e), walk_cases_(cases), walk_ctx_(ctx)))
-    | ExpCast(e, t, ctx) => ExpCast((walk_exp_(e), walk_typ_(t), walk_ctx_(ctx)))
-    | ExpTyped(e, t, ctx) => ExpTyped((walk_exp_(e), walk_typ_(t), walk_ctx_(ctx)))
-    | ExpCCode(str, ctx) => ExpCCode((str, walk_ctx_(ctx)))
-    | DefVal(p, v, flags, loc) => DefVal((walk_pat_(p), walk_exp_(v), flags, loc))
+        ExpMap([: for (pe_l, idx_pat) <- pew_ll { (walk_pe_l_(pe_l), walk_pat_(idx_pat)) } :],
+            walk_exp_(body), flags, walk_ctx_(ctx))
+    | ExpTryCatch(e, cases, ctx) => ExpTryCatch(walk_exp_(e), walk_cases_(cases), walk_ctx_(ctx))
+    | ExpMatch(e, cases, ctx) => ExpMatch(walk_exp_(e), walk_cases_(cases), walk_ctx_(ctx))
+    | ExpCast(e, t, ctx) => ExpCast(walk_exp_(e), walk_typ_(t), walk_ctx_(ctx))
+    | ExpTyped(e, t, ctx) => ExpTyped(walk_exp_(e), walk_typ_(t), walk_ctx_(ctx))
+    | ExpCCode(str, ctx) => ExpCCode(str, walk_ctx_(ctx))
+    | DefVal(p, v, flags, loc) => DefVal(walk_pat_(p), walk_exp_(v), flags, loc)
     | DefFun(df) =>
-        if *df.df_templ_args != [] {
+        if df->df_templ_args != [] {
             e
         } else {
             val {df_args, df_typ, df_body} = *df
-            *df = df->{df_args=walk_plist_(df_args), df_typ=walk_typ_(df_typ), df_body=walk_exp_(df_body)}
+            *df = df->{df_args=walk_plist_(df_args),
+                df_typ=walk_typ_(df_typ),
+                df_body=walk_exp_(df_body)
+            }
             e
         }
-    | DefExn(de) => val {dexn_typ} = *de
-                    *de = de->{dexn_typ=walk_typ_(dexn_typ)}
-                    e
-    | DefTyp(dt) => val {dt_typ} = *dt
-                    *dt = dt->{dt_typ=walk_typ_(dt_typ)}
-                    e
+    | DefExn(de) =>
+        val {dexn_typ} = *de
+        *de = de->{dexn_typ=walk_typ_(dexn_typ)}
+        e
+    | DefTyp(dt) =>
+        val {dt_typ} = *dt
+        *dt = dt->{dt_typ=walk_typ_(dt_typ)}
+        e
     | DefVariant(dvar) =>
         val {dvar_alias, dvar_cases} = *dvar
-        *dvar = dvar->{dvar_alias=walk_typ_(dvar_alias), dvar_cases=[: for (n, t) <- dvar_cases {
-                                                                    (n, walk_typ_(t))
-                                                         } :]}
+        *dvar = dvar->{
+            dvar_alias=walk_typ_(dvar_alias),
+            dvar_cases=[: for (n, t) <- dvar_cases {(n, walk_typ_(t))}:]
+        }
         e
     | DefClass(dc) => e
     | DefInterface(di) => e
@@ -1369,44 +1357,40 @@ fun walk_exp(e, callb) {
     | DirPragma(_, _) => e
     }
 }
-fun walk_pat(p, callb) {
-    fun walk_typ_(t) = check_n_walk_typ(t, callb)
 
-    fun walk_pat_(p) = check_n_walk_pat(p, callb)
-
-    fun walk_pl_(p) = check_n_walk_plist(p, callb)
+fun walk_pat(p: pat_t, callb: ast_callb_t) {
+    fun walk_typ_(t: typ_t) = check_n_walk_typ(t, callb)
+    fun walk_pat_(p: pat_t) = check_n_walk_pat(p, callb)
+    fun walk_pl_(pl: pat_t list) = check_n_walk_plist(pl, callb)
 
     match p {
     | PatAny(_) => p
     | PatLit(_) => p
     | PatIdent(_) => p
-    | PatTuple(pl, loc) => PatTuple((walk_pl_(pl), loc))
-    | PatVariant(n, args, loc) => PatVariant((n, walk_pl_(args), loc))
-    | PatRecord(n_opt, np_l, loc) => PatRecord((n_opt, [: for (n, p) <- np_l {
-                                                           (n, walk_pat_(p))
-                                                   } :], loc))
-    | PatCons(p1, p2, loc) => PatCons((walk_pat_(p1), walk_pat_(p2), loc))
-    | PatAs(p, n, loc) => PatAs((walk_pat_(p), n, loc))
-    | PatTyped(p, t, loc) => PatTyped((walk_pat_(p), walk_typ_(t), loc))
-    | PatWhen(p, e, loc) => PatWhen((walk_pat_(p), check_n_walk_exp(e, callb), loc))
-    | PatRef(p, loc) => PatRef((walk_pat_(p), loc))
+    | PatTuple(pl, loc) => PatTuple(walk_pl_(pl), loc)
+    | PatVariant(n, args, loc) => PatVariant(n, walk_pl_(args), loc)
+    | PatRecord(n_opt, np_l, loc) => PatRecord(n_opt,
+            [: for (n, p) <- np_l {(n, walk_pat_(p))} :], loc)
+    | PatCons(p1, p2, loc) => PatCons(walk_pat_(p1), walk_pat_(p2), loc)
+    | PatAs(p, n, loc) => PatAs(walk_pat_(p), n, loc)
+    | PatTyped(p, t, loc) => PatTyped(walk_pat_(p), walk_typ_(t), loc)
+    | PatWhen(p, e, loc) => PatWhen(walk_pat_(p), check_n_walk_exp(e, callb), loc)
+    | PatRef(p, loc) => PatRef(walk_pat_(p), loc)
     }
 }
 
-fun dup_typ_(t, callb) =
+fun dup_typ_(t: typ_t, callb: ast_callb_t) =
     match t {
-    | TypVar {ref Some(t1)} => TypVar(ref Some(dup_typ_(t1, callb)))
+    | TypVar (ref (Some(t1))) => TypVar(ref (Some(dup_typ_(t1, callb))))
     | TypVar(_) => TypVar(ref None)
     | TypRecord(r) =>
         val (relems, ordered) = *r
-        val new_relems = [: for (n, t, v) <- relems {
-                             (n, dup_typ_(t, callb), v)
-        } :]
+        val new_relems = [: for (n, t, v) <- relems {(n, dup_typ_(t, callb), v)} :]
         TypRecord(ref (new_relems, ordered))
     | _ => walk_typ(t, callb)
     }
 
-fun dup_exp_(e, callb) =
+fun dup_exp_(e: exp_t, callb: ast_callb_t) =
     match e {
     | DefFun(r) => walk_exp(DefFun(ref (*r)), callb)
     | DefExn(r) => walk_exp(DefExn(ref (*r)), callb)
@@ -1417,19 +1401,17 @@ fun dup_exp_(e, callb) =
     | _ => walk_exp(e, callb)
     }
 
-val dup_callb = {acb_typ=Some(dup_typ_), acb_exp=Some(dup_exp_), acb_pat=None}
-fun dup_typ(t) = dup_typ_(t, dup_callb)
+val dup_callb = acb_callb_t {acb_typ=Some(dup_typ_), acb_exp=Some(dup_exp_), acb_pat=None}
+fun dup_typ(t: typ_t) = dup_typ_(t, dup_callb)
+fun dup_exp(e: exp_t) = dup_exp_(e, dup_callb)
+fun dup_pat(p: pat_t) = walk_pat(p, dup_callb)
 
-fun dup_exp(e) = dup_exp_(e, dup_callb)
-
-fun dup_pat(p) = walk_pat(p, dup_callb)
-
-fun deref_typ_rec(t) {
-    fun deref_typ_rec_(t, callb) {
+fun deref_typ_rec(t: typ_t) {
+    fun deref_typ_rec_(t: typ_t, callb: ast_callb_t) {
         val t = deref_typ(t)
         walk_typ(t, callb)
     }
 
-    val deref_callb = {acb_typ=Some(deref_typ_rec_), acb_exp=None, acb_pat=None}
+    val deref_callb = acb_callb_t {acb_typ=Some(deref_typ_rec_), acb_exp=None, acb_pat=None}
     deref_typ_rec_(t, deref_callb)
 }

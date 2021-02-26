@@ -488,11 +488,7 @@ int fx_re_compile(const fx_str_t* str, fx_regex_t* fx_result)
             fx_Prog* prog = fx_re_compile_(regexp);
             fx_re_free_regexp_(regexp);
             if(prog!=0)
-            {
                 fx_status = fx_make_cptr(prog, fx_free, fx_result);
-                if(fx_status<0)
-                    fx_free(prog);
-            }
             else
                 fx_status = FX_SET_EXN_FAST(FX_EXN_BadArgError);
         }

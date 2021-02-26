@@ -487,7 +487,12 @@ void fx_copy_cptr(const fx_cptr_t src, fx_cptr_t* dst)
 
 int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 {
-    FX_DECL_AND_MALLOC(fx_cptr_t, p);
+    fx_cptr_t p = (fx_cptr_t)fx_malloc(sizeof(*p));
+    if (!p) {
+        if (free_f && ptr)
+            free_f(ptr);
+        FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+    }
     p->rc = 1;
     p->free_f = free_f;
     p->ptr = ptr;

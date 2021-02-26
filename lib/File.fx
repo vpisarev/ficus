@@ -24,33 +24,39 @@ val stdin = get_stdstream(0)
 val stdout = get_stdstream(1)
 val stderr = get_stdstream(2)
 
-fun open(fname: string, mode: string)
+static fun open_(fname: string, mode: string, ispipe: bool): cptr = ccode
 {
-    fun open_(fname: string, mode: string): cptr = ccode
-    {
-        fx_cstr_t fname_, mode_;
-        int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
+    fx_cstr_t fname_, mode_;
+    int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
+    if (fx_status >= 0) {
+        fx_status = fx_str2cstr(mode, &mode_, 0, 0);
         if (fx_status >= 0) {
-            fx_status = fx_str2cstr(mode, &mode_, 0, 0);
-            if (fx_status >= 0) {
-                FILE* f = fopen(fname_.data, mode_.data);
-                if (f)
-                    fx_status = fx_make_cptr(f, fx_file_destructor, fx_result);
-                else
-                    fx_status = FX_SET_EXN_FAST(FX_EXN_FileOpenError);
-                fx_free_cstr(&mode_);
+            FILE* f = ispipe ? popen(fname_.data, mode_.data) :
+                            fopen(fname_.data, mode_.data);
+            if (f) {
+                fx_status = fx_make_cptr(f, (ispipe ? fx_pipe_destructor :
+                                        fx_file_destructor), fx_result);
             }
-            fx_free_cstr(&fname_);
+            else {
+                fx_status = FX_SET_EXN_FAST(FX_EXN_FileOpenError);
+            }
+            fx_free_cstr(&mode_);
         }
-        return fx_status;
+        fx_free_cstr(&fname_);
     }
-    file_t { handle=open_(fname, mode) }
+    return fx_status;
 }
+
+fun open(fname: string, mode: string) =
+    file_t { handle=open_(fname, mode, false) }
+
+fun popen(cmdname: string, mode: string) =
+    file_t { handle=open_(cmdname, mode, true) }
 
 nothrow fun close(f: file_t): void = ccode
 {
     if(f->handle && f->handle->ptr) {
-        fclose((FILE*)(f->handle->ptr));
+        f->handle->free_f(f->handle->ptr);
         f->handle->ptr = 0;
     }
 }
@@ -176,34 +182,6 @@ fun readln(f: file_t): string = ccode
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     return fx_fgets((FILE*)(f->handle->ptr), fx_result);
-}
-
-fun remove(name: string): void = ccode
-{
-    fx_cstr_t name_;
-    int fx_status = fx_str2cstr(name, &name_, 0, 0);
-    if (fx_status >= 0) {
-        if(remove(name_.data) != 0)
-            fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
-        fx_free_cstr(&name_);
-    }
-    return fx_status;
-}
-
-fun rename(name: string, new_name: string): bool = ccode
-{
-    fx_cstr_t name_, new_name_;
-    int fx_status = fx_str2cstr(name, &name_, 0, 0);
-    if (fx_status >= 0) {
-        fx_status = fx_str2cstr(new_name, &new_name_, 0, 0);
-        if (fx_status >= 0) {
-            if(rename(name_.data, new_name_.data) != 0)
-                fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
-            fx_free_cstr(&new_name_);
-        }
-        fx_free_cstr(&name_);
-    }
-    return fx_status;
 }
 
 fun read_utf8(fname: string): string = ccode

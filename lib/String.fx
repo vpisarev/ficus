@@ -182,3 +182,31 @@ nothrow fun to_double_or(a: string, defval: double): int = ccode
     bool ok = fx_atof(a, &result);
     return ok ? result : defval;
 }
+
+fun escaped(s: string, ~quotes: bool=true)
+{
+    val sn = "\\n", sr = "\\r", st = "\\t",
+        ssq = "\\\'", sdq = "\\\"", ss = "\\", sz = "\\0"
+    val q = if quotes {"\""} else {""}
+    val fold (ll, verb) = (q :: [], 0) for c@i <- s {
+        if ord(c) >= 40 { (ll, verb) }
+        else {
+            val (esc_s, esc) = match c {
+            | '\n' => (sn, true)
+            | '\r' => (sr, true)
+            | '\t' => (st, true)
+            | '\'' => (ssq, true)
+            | '"' /*"*/ => (sdq, true)
+            | '\\' => (ss, true)
+            | '\0' => (sz, true)
+            | _ => (sz, false)
+            }
+            if esc {
+                val ll = esc_s :: (if i > verb {s[verb:i] :: ll} else {ll})
+                (ll, i+1)
+            }
+            else { (ll, verb) }
+        }
+    }
+    join("", List.rev(q :: s[verb:] :: ll))
+}

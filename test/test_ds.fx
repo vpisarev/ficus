@@ -12,12 +12,12 @@ TEST("ds.set", fun()
     EXPECT_EQ(scmp("bar", "baz"), -1)
     EXPECT_EQ(scmp("foo", "foo"), 0)
 
-    type intset = int Set.set_t
-    type strset = string Set.set_t
+    type intset = int Set.t
+    type strset = string Set.t
 
-    val s1 = Set.from_list([: 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, -1, -2, -3 :], icmp)
+    val s1 = Set.from_list(icmp, [: 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, -1, -2, -3 :])
     EXPECT_EQ(s1.list(), [: -3, -2, -1, 1, 2, 3, 4, 5, 6 :])
-    val s2 = Set.from_list([: 100, -1, 4, -2, 7 :], icmp)
+    val s2 = Set.from_list(icmp, [: 100, -1, 4, -2, 7 :])
 
     val d12 = s1.diff(s2)
     EXPECT_EQ(d12.list(), [: -3, 1, 2, 3, 5, 6 :])
@@ -40,7 +40,7 @@ TEST("ds.set", fun()
     EXPECT_EQ(sum2, sum0)
     EXPECT_EQ(u12.map(fun (i: int) {i*i}), [: 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 :])
 
-    val s1 = Set.from_list([: "this", "is", "a", "very", "simple", "test", "for", "an", "implementation", "of", "binary", "set" :], scmp)
+    val s1 = Set.from_list(scmp, [: "this", "is", "a", "very", "simple", "test", "for", "an", "implementation", "of", "binary", "set" :])
     EXPECT_EQ(s1.list(), [: "a", "an", "binary", "for", "implementation", "is", "of", "set", "simple", "test", "this", "very" :])
 })
 
@@ -49,7 +49,7 @@ TEST("ds.map", fun()
     fun cmp(a: 't, b: 't) = a <=> b
     val scmp = (cmp: (string, string)->int)
 
-    type si_map = (string, int) Map.map_t
+    type si_map = (string, int) Map.t
 
     val poem =
     "The first day of Christmas,

@@ -161,6 +161,13 @@ fun string(a: 't?) {
 fun ord(c: char) = (c :> int)
 fun chr(i: int) = (i :> char)
 
+fun odd(i: 't) = i % 2 != 0
+fun odd(i: int64) = i % 2 != 0L
+fun odd(i: uint64) = i % 2u64 != 0UL
+fun even(i: 't) = i % 2 == 0
+fun even(i: int64) = i % 2 == 0L
+fun even(i: uint64) = i % 2u64 == 0UL
+
 fun repr(a: 't): string = string(a)
 fun repr(a: string) = "\"" + a + "\""
 fun repr(a: char) = "'" + a + "'"
