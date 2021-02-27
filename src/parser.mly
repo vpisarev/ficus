@@ -971,7 +971,15 @@ pat:
 | dot_ident LBRACE id_pat_list_ RBRACE { PatRecord(Some(get_id $1), (List.rev $3), curr_loc()) }
 | LBRACE id_pat_list_ RBRACE { PatRecord(None, (List.rev $2), curr_loc()) }
 | dot_ident LPAREN pat_list_ RPAREN { PatVariant((get_id $1), (List.rev $3), curr_loc()) }
-| dot_ident IDENT { PatVariant((get_id $1), [PatIdent((get_id $2), (curr_loc_n 2))], curr_loc()) }
+| dot_ident IDENT
+    {
+        let arg_loc = curr_loc_n 2 in
+        let arg = match $2 with
+            | "_" -> PatAny(arg_loc)
+            | _ -> PatIdent((get_id $2), arg_loc)
+            in
+        PatVariant((get_id $1), [arg], curr_loc())
+    }
 | dot_ident literal { PatVariant((get_id $1), [PatLit($2, (curr_loc_n 2))], curr_loc()) }
 | pat COLON typespec { PatTyped($1, $3, curr_loc()) }
 | REF pat { PatRef ($2, curr_loc()) }

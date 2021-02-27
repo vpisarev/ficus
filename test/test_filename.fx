@@ -8,7 +8,7 @@ import Filename
 
 TEST("filename.regression", fun() {
     val cwd = "/home/joe/project"
-    val sep = Filename.separator()
+    val sep = Filename.dir_sep()
 
     val reg_data = [:
         ("note.txt", ".", "note.txt", "note", cwd+sep+"note.txt"),

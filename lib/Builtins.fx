@@ -93,6 +93,10 @@ pure fun join_embrace(begin: string, end: string,
         strs->dim[0].size, fx_result);
 }
 
+fun join_embrace(begin: string, end: string,
+                 sep: string, strs: string list) =
+    join_embrace(begin, end, sep, [for s <- strs {s}])
+
 fun join(sep: string, strs: string list) =
     join(sep, [for s <- strs {s}])
 
@@ -205,6 +209,30 @@ fun string(l: 't list) = join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
 pure fun string(a: char []): string = ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
+
+pure operator * (c: char, n: int): string = ccode
+{
+    int fx_status = fx_make_str(0, n, fx_result);
+    if (fx_status >= 0) {
+        for( int_ i = 0; i < n; i++ )
+            fx_result->data[i] = c;
+    }
+    return fx_status;
+}
+
+pure operator * (s: string, n: int): string = ccode
+{
+    int_ sz = s->length;
+    int fx_status = fx_make_str(0, n*sz, fx_result);
+    if (fx_status >= 0 && (n*sz) > 0) {
+        for( int_ i = 0; i < n; i++ )
+            memcpy(fx_result->data + i*sz, s->data, sz*sizeof(s->data[0]));
+    }
+    return fx_status;
+}
+
+operator * (n: int, c: char) = c * n
+operator * (n: int, s: string) = s * n
 
 operator == (a: 't list, b: 't list): int =
     try {

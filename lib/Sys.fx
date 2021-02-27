@@ -9,6 +9,7 @@ import File
 ccode {
     #include <limits.h>
     #include <stdio.h>
+    #include <sys/stat.h>
     #include <unistd.h>
 
     #ifndef PATH_MAX
@@ -101,6 +102,18 @@ fun rename(name: string, new_name: string): bool = ccode
                 fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
             fx_free_cstr(&new_name_);
         }
+        fx_free_cstr(&name_);
+    }
+    return fx_status;
+}
+
+fun file_exists(name: string): bool = ccode
+{
+    fx_cstr_t name_;
+    int fx_status = fx_str2cstr(name, &name_, 0, 0);
+    if (fx_status >= 0) {
+        struct stat s;
+        *fx_result = stat(name_.data, &s) == 0;
         fx_free_cstr(&name_);
     }
     return fx_status;

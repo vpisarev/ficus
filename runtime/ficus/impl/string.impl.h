@@ -44,16 +44,25 @@ void fx_copy_str(const fx_str_t* src, fx_str_t* dst)
 
 int fx_make_str(const char_* strdata, int_ length, fx_str_t* str)
 {
-    size_t total = sizeof(*str->rc) + length*sizeof(strdata[0]);
-    str->rc = (int_*)fx_malloc(total);
-    if(!str->rc) FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+    if (length <= 0) {
+        if (length == 0) {
+            fx_str_t temp = {0, 0, 0};
+            *str = temp;
+            return FX_OK;
+        }
+        FX_FAST_THROW_RET(FX_EXN_SizeError);
+    } else {
+        size_t total = sizeof(*str->rc) + length*sizeof(strdata[0]);
+        str->rc = (int_*)fx_malloc(total);
+        if(!str->rc) FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
 
-    *str->rc = 1;
-    str->data = (char_*)(str->rc + 1);
-    str->length = length;
-    if(strdata)
-        memcpy(str->data, strdata, length*sizeof(strdata[0]));
-    return FX_OK;
+        *str->rc = 1;
+        str->data = (char_*)(str->rc + 1);
+        str->length = length;
+        if(strdata)
+            memcpy(str->data, strdata, length*sizeof(strdata[0]));
+        return FX_OK;
+    }
 }
 
 int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str)

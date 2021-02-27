@@ -274,7 +274,7 @@ fun foldr(s: 't t, f: ('t, 'r) -> 'r, res0: 'r)
 
 fun app(s: 't t, f: 't -> void)
 {
-    fun app_(t: 't rbtree, f: 't -> void): void =
+    fun app_(t: 't tree_t, f: 't -> void): void =
     match t {
         | Node(_, l, x, r) => app_(l, f); f(x); app_(r, f)
         | _ => {}

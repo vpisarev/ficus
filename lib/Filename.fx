@@ -5,17 +5,17 @@
 
 import Sys
 
-fun separator() = if Sys.win32 {"\\"} else {"/"}
+fun dir_sep() = if Sys.win32 {"\\"} else {"/"}
 
 fun is_absolute(path: string) =
-    path.startswith(separator()) ||
+    path.startswith(dir_sep()) ||
     path.startswith("/") ||
     path.find(":") >= 0
 
 fun is_relative(path: string) = !is_absolute(path)
 
 fun split(path: string) {
-    val sep = separator()
+    val sep = dir_sep()
     val sep0 = "/"
     assert(sep.length() == 1)
     if path.endswith(sep) || (sep != sep0 && path.endswith(sep0)) {
@@ -39,7 +39,7 @@ fun dirname(path: string) = split(path).0
 fun basename(path: string) = split(path).1
 
 fun concat(dir: string, fname: string) {
-    val sep = separator()
+    val sep = dir_sep()
     val sep0 = "/"
     if dir.endswith(sep) || dir.endswith(sep0) {
         dir + fname
@@ -50,7 +50,7 @@ fun concat(dir: string, fname: string) {
 
 fun normalize(dir: string, fname: string)
 {
-    val sep = separator()
+    val sep = dir_sep()
     val sep0 = "/"
     assert(sep.length() == 1)
     if is_absolute(fname) {
@@ -65,7 +65,7 @@ fun normalize(dir: string, fname: string)
 }
 
 fun remove_extension(path: string) {
-    val sep = separator()
+    val sep = dir_sep()
     val sep0 = "/"
     val dotpos = path.rfind(".")
     if dotpos < 0 {

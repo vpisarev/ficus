@@ -915,8 +915,8 @@ and check_exp e env sc =
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
         let (etyp2, eloc2) = get_exp_ctx new_e2 in
 
-        if (maybe_unify etyp (TypList etyp1) false) &&
-           (maybe_unify etyp2 (TypList etyp1) false) then
+        if (maybe_unify etyp (TypList (make_new_typ())) false) ||
+           (maybe_unify etyp2 (TypList (make_new_typ())) false) then
             let _ = unify etyp (TypList etyp1) eloc1 "'::' operation should produce a list" in
             let _ = unify etyp2 (TypList etyp1) eloc2 "incorrect type of the second argument of '::' operation" in
             ExpBinOp(OpCons, new_e1, new_e2, ctx)
@@ -2096,7 +2096,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
     let rec process_id i t loc =
         let i0 = get_orig_id i in
         (if (IdSet.mem i0 !r_idset) then
-            raise_compile_err loc "duplicate identifier"
+            raise_compile_err loc (sprintf "duplicate identifier '%s' in the pattern" (id2str i0))
         else
             r_idset := IdSet.add i0 !r_idset;
         if proto_mode then i0 else
@@ -2113,6 +2113,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
             unify t (get_lit_typ l) loc "the literal of unexpected type";
             p
         | PatIdent(i, loc) ->
+            if (pp_id2str i) = "_" then raise_compile_err loc "'_' occured in PatIdent()" else ();
             PatIdent((process_id i t loc), loc)
         | PatTuple(pl, loc) ->
             let tl = List.map (fun p -> make_new_typ ()) pl in

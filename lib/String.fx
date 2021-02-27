@@ -19,7 +19,7 @@ pure nothrow fun startswith(s: string, prefix: string): bool = ccode
 {
     int_ sz1 = s->length;
     int_ sz2 = prefix->length;
-    return sz2 <= sz1 && memcmp(s->data, prefix->data,
+    return sz2 == 0 ? true : sz2 <= sz1 && memcmp(s->data, prefix->data,
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
 
@@ -27,7 +27,7 @@ pure nothrow fun endswith(s: string, suffix: string): bool = ccode
 {
     int_ sz1 = s->length;
     int_ sz2 = suffix->length;
-    return sz2 <= sz1 && memcmp(s->data + (sz1 - sz2), suffix->data,
+    return sz2 == 0 ? true : sz2 <= sz1 && memcmp(s->data + (sz1 - sz2), suffix->data,
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
 
@@ -49,11 +49,59 @@ pure nothrow fun find(s: string, part: string): int = ccode
 pure nothrow fun rfind(s: string, part: string): int = ccode
 {
     int_ sz1 = s->length, sz2 = part->length, pos = sz1 - sz2;
+    if (sz2 == 0)
+        return sz1 - 1;
     for ( ; pos >= 0; pos--) {
         if( memcmp(s->data + pos, part->data, sz2*sizeof(part->data[0])) == 0)
             break;
     }
     return pos;
+}
+
+pure nothrow fun has(s: string, c: char): bool = ccode
+{
+    int_ i, sz = s->length;
+    char_* data = s->data;
+
+    for ( i = 0; i < sz; pos--) {
+        if (data[i] == c) return true;
+    }
+    return false;
+}
+
+pure fun replace(s: string, substr: string, new_substr: string): string = ccode
+{
+    int_ i, j = 0, sz = s->length, sz1 = substr->length, sz2 = new_substr->length;
+    int_ newsz = 0;
+    if (sz == 0 || sz1 == 0) {
+        fx_copy_str(s, fx_result);
+        return FX_OK;
+    }
+    for( i = 0; i < sz; ) {
+        if( i <= sz - sz1 && s->data[i] == substr->data[0] &&
+            memcmp(s->data + i, substr->data, sz1*sizeof(s->data[0])) == 0 ) {
+            newsz += sz2;
+            i += sz1;
+        } else {
+            newsz++;
+            i++;
+        }
+    }
+    int fx_status = fx_make_str(0, newsz, fx_result);
+    if (fx_status >= 0) {
+        for( i = 0; i < sz; ) {
+            if( i <= sz - sz1 && s->data[i] == substr->data[0] &&
+                memcmp(s->data + i, substr->data, sz1*sizeof(s->data[0])) == 0 ) {
+                if (sz2 > 0)
+                    memcpy(fx_result->data + j, new_substr->data, sz2*sizeof(s->data[0]));
+                j += sz2;
+                i += sz1;
+            } else {
+                fx_result->data[j++] = s->data[i++];
+            }
+        }
+    }
+    return fx_status;
 }
 
 pure fun tolower(s: string): string = ccode
@@ -71,7 +119,7 @@ pure fun tolower(s: string): string = ccode
     int fx_status = fx_make_str(0, sz, fx_result);
     if( fx_status >= 0 ) {
         char_* dst = fx_result->data;
-        for (size_t i = 0; i < sz; i++)
+        for (int_ i = 0; i < sz; i++)
             dst[i] = fx_tolower(src[i]);
     }
     return fx_status;
@@ -92,7 +140,7 @@ pure fun toupper(s: string): string = ccode
     int fx_status = fx_make_str(0, sz, fx_result);
     if( fx_status >= 0 ) {
         char_* dst = fx_result->data;
-        for (size_t i = 0; i < sz; i++)
+        for (int_ i = 0; i < sz; i++)
             dst[i] = fx_toupper(src[i]);
     }
     return fx_status;
@@ -110,7 +158,7 @@ pure fun capitalize(s: string): string = ccode
     if( fx_status >= 0 ) {
         char_* dst = fx_result->data;
         dst[0] = fx_toupper(src[0]);
-        for (size_t i = 1; i < sz; i++)
+        for (int_ i = 1; i < sz; i++)
             dst[i] = src[i];
     }
     return fx_status;
@@ -119,8 +167,7 @@ pure fun capitalize(s: string): string = ccode
 pure fun lstrip(s: string): string = ccode
 {
     const char_* ptr = s->data;
-    size_t sz = s->length;
-    size_t i = 0;
+    int_ i = 0, sz = s->length;
     for (; i < sz && fx_isspace(ptr[i]); i++)
         ;
     return fx_substr(s, i, sz, 1, 0, fx_result);
@@ -129,7 +176,7 @@ pure fun lstrip(s: string): string = ccode
 pure fun rstrip(s: string): string = ccode
 {
     const char_* ptr = s->data;
-    size_t sz = s->length;
+    int_ sz = s->length;
     for (; sz > 0 && fx_isspace(ptr[sz - 1]); sz--)
         ;
     return fx_substr(s, 0, sz, 1, 0, fx_result);
