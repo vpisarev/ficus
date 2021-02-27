@@ -10,6 +10,7 @@
 *.cmx
 *.cmxs
 *.cmxa
+config.ml
 lexer.ml
 parser.ml
 parser.mli

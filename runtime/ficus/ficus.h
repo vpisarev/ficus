@@ -117,12 +117,15 @@ enum {
     FX_EXN_User = -1024
 };
 
+struct fx_str_t;
+
 typedef void (*fx_free_t)(void*);
 typedef void (*fx_copy_t)(const void*, void*);
 
 int fx_init(int argc, char** argv);
 int fx_init_thread(int t_idx);
 int fx_deinit(int status);
+int fx_cc_version(struct fx_str_t* ver);
 
 int_ fx_argc(void);
 char* fx_argv(int_ idx);

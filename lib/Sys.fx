@@ -4,6 +4,7 @@
 */
 
 // Various system services
+import File
 
 ccode {
     #include <limits.h>
@@ -40,6 +41,36 @@ val unix : bool = ccode {
     false
 #endif
 }
+
+fun osname_() {
+    var osname = ""
+    var osinfo = ""
+    fun(get_version: bool) {
+        if !get_version && win32 { "Windows" }
+        else {
+            if osinfo == "" {
+                var str = ""
+                val p = File.popen(if win32 {"ver"} else {"uname -msr"},
+                                   if win32 {"rt"} else {"r"})
+                while true {
+                    str = p.readln()
+                    if str.empty() { break }
+                    str = str.strip()
+                    if !str.empty() { break }
+                }
+                p.close()
+                osinfo = if !str.empty() { str } else if win32 { "Windows" } else { "Unix" }
+                val sp = osinfo.find(" ")
+                osname = if sp >= 0 {osinfo[:sp]} else {osinfo}
+            }
+            if get_version {osinfo} else {osname}
+        }
+    }
+}
+
+val osname = osname_()
+
+pure fun cc_version(): string = ccode { return fx_cc_version(fx_result) }
 
 fun appname() = List.hd(argv)
 fun arguments() = List.tl(argv)

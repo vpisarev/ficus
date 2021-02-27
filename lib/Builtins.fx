@@ -6,6 +6,11 @@
 /* Ficus built-in module, i.e. each Ficus module is compiled
    as if it has "from Builtins import *" directive in the beginning */
 
+val __ficus__ : int = ccode { FX_VERSION_MAJOR }
+val __ficus_minor__ : int = ccode { FX_VERSION_MINOR }
+val __ficus_patchlevel__ : int = ccode { FX_VERSION_PATCH }
+val __ficus_version__ = f"{__ficus__}.{__ficus_minor__}.{__ficus_patchlevel__}"
+
 exception ASCIIError
 exception AssertError
 exception Break

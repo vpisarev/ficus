@@ -4,6 +4,7 @@
 
 OCB_FLAGS = -pkgs str,unix
 OCB = ocamlbuild $(OCB_FLAGS)
+FICUS_GIT := $(shell git rev-parse HEAD | cut -c 1-8)
 
 all: native # byte profile debug
 
@@ -12,10 +13,12 @@ clean:
 	@rm -f parser.ml
 	@rm -f parser.mli
 	@rm -f parser.output
+	@rm -f config.ml
 	@rm -f *.pgm
 	@rm -f *.c
 
 native:
+	@echo 'let git_commit = "$(FICUS_GIT)"' > config.ml
 	$(OCB) ficus.native
 	@cp ficus.native ficus
 

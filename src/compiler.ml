@@ -31,15 +31,18 @@ let make_lexer fname =
     let bare_name = Utils.remove_extension (Filename.basename fname) in
     let prev_lnum = ref 0 in
     (* the standard preamble *)
-    let (imports, _) = List.fold_left (fun (imports, found) (mname, from_import) ->
-        if found then (imports, found) else if bare_name = mname then (imports, true)
+    let (preamble, _) = List.fold_left (fun (preamble, found) (mname, from_import) ->
+        if found then (preamble, found) else if bare_name = mname then (preamble, true)
         else if from_import then
-            ((imports @ [Parser.FROM; Parser.B_IDENT mname;
+            ((preamble @ [Parser.FROM; Parser.B_IDENT mname;
             Parser.IMPORT; Parser.B_STAR; Parser.SEMICOLON]), false)
         else
-            ((imports @ [Parser.B_IMPORT; Parser.B_IDENT mname; Parser.SEMICOLON]), false))
+            ((preamble @ [Parser.B_IMPORT; Parser.B_IDENT mname; Parser.SEMICOLON]), false))
         ([], false) [("Builtins", true); ("List", false); ("Char", false); ("String", false)] in
-    let tokenbuf = ref imports in
+    let preamble = if bare_name <> "Builtins" then preamble else
+        [Parser.VAL; Parser.B_IDENT("__ficus_git_commit__");
+        Parser.EQUAL; Parser.STRING(Config.git_commit); Parser.SEMICOLON] @ preamble in
+    let tokenbuf = ref preamble in
     let print_token lexbuf t =
       (let s = Lexer.token2str t in
        let pos_lnum = lexbuf.lex_curr_p.pos_lnum in

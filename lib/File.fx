@@ -31,8 +31,13 @@ static fun open_(fname: string, mode: string, ispipe: bool): cptr = ccode
     if (fx_status >= 0) {
         fx_status = fx_str2cstr(mode, &mode_, 0, 0);
         if (fx_status >= 0) {
-            FILE* f = ispipe ? popen(fname_.data, mode_.data) :
-                            fopen(fname_.data, mode_.data);
+            FILE* f = ispipe ?
+            #ifdef _WIN32
+                _popen(fname_.data, mode_.data) :
+            #else
+                popen(fname_.data, mode_.data) :
+            #endif
+                fopen(fname_.data, mode_.data);
             if (f) {
                 fx_status = fx_make_cptr(f, (ispipe ? fx_pipe_destructor :
                                         fx_file_destructor), fx_result);

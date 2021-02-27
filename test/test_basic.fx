@@ -713,7 +713,9 @@ TEST("basic.string", fun()
 {
     EXPECT_EQ("yellow", "y" + "hello"[1:5] + "w")
     EXPECT_EQ("yellow"[:.-1], "yello")
-    EXPECT_EQ("abc" + string(6) + "def", "abc6def")
+    EXPECT_EQ(f"abc{2*2}def", "abc4def")
+    EXPECT_EQ(f"abc{{2*2}}def", "abc{2*2}def")
+    EXPECT_EQ(r"Dear (\w+),.+Best regards,\n(\w+)", "Dear (\\w+),.+Best regards,\\n(\\w+)")
 
     EXPECT_EQ(", ".join([: "a", "b", "c" :]), "a, b, c")
 

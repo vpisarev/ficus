@@ -548,6 +548,8 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
                     c = '\t';
                 else if(c == 'b') // backspace
                     c = 8;
+                else if(c == ' ')
+                    c = ' ';
                 else if(c == 39) // single quote
                     c = (char_)39;
                 else if(c == 34) // double quote

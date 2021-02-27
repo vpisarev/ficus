@@ -125,6 +125,41 @@ int fx_deinit(int status)
     return status;
 }
 
+int fx_cc_version(struct fx_str_t* ver)
+{
+#ifdef __VERSION__
+    char cver[] = __VERSION__;
+#elif defined _MSC_VER
+    char cver[128];
+    int revision =
+    #ifdef _MSC_BUILD
+        _MSC_BUILD;
+    #else
+        0;
+    #endif
+    int fullver =
+    #ifdef _MSC_FULL_VER
+        _MSC_FULL_VER;
+    #else
+        _MSC_VER*10000;
+    #endif
+    if (fullver / 10000 == _MSC_VER) {
+        fullver *= 100000;
+    }
+    int major = fullver / 10000000;
+    int minor = (fullver % 10000000) / 100000;
+    int build = fullver % 100000;
+    sprintf(cver, "Microsoft MSVC %d.%02d.%05d.%d", major, minor, build, revision);
+#elif defined __STDC_VERSION__
+    char cver[128];
+    int stdc_ver = (int)__STDC_VERSION__;
+    sprintf(cver, "ISO %d.%d-complaint C compiler", (int)stdc_ver/100, (int)stdc_ver%100);
+#else
+    char cver[] = "Unknown C compiler"
+#endif
+    return fx_cstr2str(cver, -1, ver);
+}
+
 ////////////////////////// memory allocation ////////////////////
 
 /* We just use the default malloc and assume that ficus programs

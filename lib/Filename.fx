@@ -7,28 +7,36 @@ import Sys
 
 fun separator() = if Sys.win32 {"\\"} else {"/"}
 
-fun is_absolute(path: string) = path.startswith(separator()) || path.find(":") >= 0
+fun is_absolute(path: string) =
+    path.startswith(separator()) ||
+    path.startswith("/") ||
+    path.find(":") >= 0
+
 fun is_relative(path: string) = !is_absolute(path)
-fun dirname(path: string) {
+
+fun split(path: string) {
     val sep = separator()
     val sep0 = "/"
     assert(sep.length() == 1)
     if path.endswith(sep) || (sep != sep0 && path.endswith(sep0)) {
-        if path.length() == 1 { sep }
-        else { dirname(path[:.-1]) }
+        if path.length() == 1 { (sep, sep) }
+        else { split(path[:.-1]) }
     } else {
         val pos = path.rfind(sep)
         val pos0 = if sep == sep0 { pos } else { path.rfind(sep0) }
         val pos = if pos < 0 {pos0} else if pos0 < 0 {pos} else {max(pos, pos0)}
         if pos < 0 {
-            ". "
+            (".", path)
         } else if pos == 0 || path[pos-1] == ':' {
-            path[:pos+1]
+            (path[:pos+1], path[pos+1:])
         } else {
-            path[:pos]
+            (path[:pos], path[pos+1:])
         }
     }
 }
+
+fun dirname(path: string) = split(path).0
+fun basename(path: string) = split(path).1
 
 fun concat(dir: string, fname: string) {
     val sep = separator()

@@ -6,7 +6,8 @@
 #ifndef __FICUS_FILE_IMPL_H__
 #define __FICUS_FILE_IMPL_H__
 
-#include "limits.h"
+#include <stdio.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,7 +96,12 @@ void fx_file_destructor(void* ptr)
 void fx_pipe_destructor(void* ptr)
 {
     FILE* f = (FILE*)ptr;
-    if(f) pclose(f);
+    if(f)
+#ifdef _WIN32
+        _pclose(f);
+#else
+        pclose(f);
+#endif
 }
 
 #ifdef __cplusplus

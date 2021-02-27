@@ -250,6 +250,7 @@ let decode_special_char lexbuf c = match c with
     | "\\t" -> "\t"
     | "\\r" -> "\r"
     | "\\b" -> "\b"
+    | "\\ " -> " "
     | "\\0" -> "\x00"
     | _ -> raise (lexErr (sprintf "Invalid control character '%s'" c) lexbuf)
 
@@ -268,7 +269,7 @@ let octdigit = ['0' - '7']
 let hexdigit = ['0' - '9' 'a' - 'f' 'A' - 'F']
 let lower = ['a'-'z']
 let upper = ['A'-'Z']
-let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0" | "\\\\" | "\\{"
+let special_char = "\\'" | "\\\"" | "\\n" | "\\t" | "\\r" | "\\b" | "\\0" | "\\ " | "\\\\"
 let hexcode = "\\x" hexdigit hexdigit
 let octcode = "\\" octdigit octdigit octdigit?
 
@@ -576,7 +577,7 @@ rule tokens = parse
     | _ as s { raise (lexErr (sprintf "Illegal character '%s'" (Char.escaped s)) lexbuf) }
 
 and strings = parse
-    | (([^ '\"' '\\' '{' '\n' '\r']+) as string_part)
+    | (([^ '\"' '\\' '{' '}' '\n' '\r']+) as string_part)
         { string_literal := !string_literal ^ string_part; strings lexbuf }
     | ("\"" | "{\"" ) as s
         {
@@ -591,6 +592,33 @@ and strings = parse
             new_exp := false
             (* return to 'tokens' rule *)
         }
+
+    | "{{"
+        {
+            let string_part = match !string_literal_typ with
+                | StrLitPlain | StrLitRegexp -> "{{"
+                | StrLitFmt -> "{"
+                in
+            string_literal := !string_literal ^ string_part;
+            strings lexbuf
+        }
+
+    | "}}"
+        {
+            let string_part = match !string_literal_typ with
+                | StrLitPlain | StrLitRegexp -> "}}"
+                | StrLitFmt -> "}"
+                in
+            string_literal := !string_literal ^ string_part;
+            strings lexbuf
+        }
+
+    | "}"
+        {
+            string_literal := !string_literal ^ "}";
+            strings lexbuf
+        }
+
     | "{"
         {
             match !string_literal_typ with
@@ -607,16 +635,6 @@ and strings = parse
                 string_interp_elem := !string_interp_elem + 1;
                 new_exp := true
                 (* return to 'tokens' rule *)
-        }
-
-    | "\\{"
-        {
-            let string_part = match !string_literal_typ with
-                | StrLitPlain | StrLitRegexp -> "\\{"
-                | StrLitFmt -> "{"
-                in
-            string_literal := !string_literal ^ string_part;
-            strings lexbuf
         }
 
     (* we want the produced string literal to be the same, regardless of the actual EOL encoding,
