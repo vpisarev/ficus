@@ -20,7 +20,6 @@ type options_t =
     inline_thresh: int = 100;
     make_app: bool = true;
     optimize_level: int = 1;
-    osname: string = "*nix";
     output_name: string = "";
     print_ast: bool = false;
     print_k: bool = false;
@@ -34,342 +33,164 @@ fun default_options() = options_t {}
 var opt = default_options()
 
 fun print_help() {
-    "Ficus Compiler v0.1\n" + sprintf("Usage: %s [options ...] [input_file.fx]", Sys.argv  0))
-    Arg.parse(
-            [:
-                ("-pr-tokens", Arg.Unit(fun (f) {
-                                            opt.print_tokens = true
-                                   }), "   Print all the tokens in parsed files"),
-                ("-pr-ast", Arg.Unit(fun (f) {
-                                         opt.print_ast = true
-                                }), "   Print typechecked AST of the parsed files"),
-                ("-pr-k", Arg.Unit(fun (f) {
-                                       opt.print_k = true
-                              }), "   Print the generated and optimized K-form"),
-                ("-no-c", Arg.Unit(fun (f) {
-                                       opt.gen_c = false
-                              }), "   Do not generate C code"),
-                ("-app", Arg.Unit(fun (f) {
-                                      opt.make_app = true
-                             }), "   Build application (set by default)"),
-                ("-run", Arg.Unit(fun (f) {
-                                      opt.run_app = true
-                             }), "   Build application and run it"),
-                (
-                    "-O0",
-                    Arg.Unit(fun ({}) {
-                                 opt.optimize_level = 0
-                        }),
-                    "   Optimization level 0: disable optimizations except for the most essential ones"
-                    ),
-                ("-O1", Arg.Unit(fun ({}) {
-                                     opt.optimize_level = 1
-                            }), "   Optimization level 1: enable most of optimizations"),
-                ("-O3", Arg.Unit(fun ({}) {
-                                     opt.optimize_level = 3
-                            }), "   Optimization level 3: enable all optimizations"),
-                (
-                    "-inline-threshold",
-                    Arg.Int(fun (i) {
-                                opt.inline_thresh = i
-                        }),
-                    "<n>   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion"
-                    ),
-                ("-o", Arg.String(fun (s) {
-                                      opt.output_name = s
-                           }), "<output_filename>    Output file name"),
-                (
-                    "-I",
-                    Arg.String(fun (ipath) {
-                                   opt.include_path = options.include_path + [: ipath :]
-                        }),
-                    "<path>    Add directory to the module search path"
-                    ),
-                (
-                    "-B",
-                    Arg.String(fun (s) {
-                                   opt.build_rootdir = s
-                        }),
-                    "<build_parent_dir> The parent directory where __build__/appname subdirectory will be created"
-                    ),
-                ("-c++", Arg.Unit(fun (f) {
-                                      opt.compile_by_cpp = true
-                             }), "   Use C++ instead of C for compilation"),
-                (
-                    "-cflags",
-                    Arg.String(fun (s) {
-                                   opt.cflags = s
-                        }),
-                    "<cflags>   Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler (after $FICUS_CFLAGS)"
-                    ),
-                (
-                    "-clibs",
-                    Arg.String(fun (s) {
-                                   opt.clibs = s
-                        }),
-                    "<clibs>   Pass the specified libs/linker flags to C/C++ compiler (before $FICUS_LINK_LIBRARIES)"
-                    ),
-                ("-verbose", Arg.Unit(fun (f) {
-                                          opt.verbose = true
-                                 }), "  Display various info during build time"),
-                (
-                    "--",
-                    Arg.Rest(fun (s) {
-                                 opt.app_args = s :: options.app_args
-                        }),
-                    "Specify the application parameters (e.g. './ficus -run myprog.fx -- arg1 arg2')"
-                    )
-                :],
-            fun (s) {
-                *_files = *_files + [: s :]
-            },
-            "Ficus Compiler v0.1\n" + sprintf("Usage: %s [options ...] [input_file.fx]", Sys.argv  0))
-        if options.optimize_level == 0 {
+    print(f"Ficus compiler v{__ficus_version_str__} (git {__ficus_git_commit__})
+Usage: {Sys.argv.hd()} [options ...] [input_file.fx]
 
-
+where options can be some of:
+    -pr-tokens      Print all the tokens in parsed files
+    -pr-ast         Print typechecked AST of the parsed files
+    -pr-k           Print optimized K-form of the parsed files
+                    (only a part of the generated K-form is retained
+                    because of the deadcode elimination step)
+    -no-c           Do not generate C code
+    -app            Build application (default mode)
+    -run            Build application and run it
+    -O0             Optimization level 0: disable all optimizations
+                                         except for the most essential ones
+    -O1             Optimization level 1: enable most of optimizations
+    -O3             Optimization level 3: enable all optimizations
+    -inline-threshold  Inline threshold (100 by default); the higher it is,
+                    the bigger functions are inlined;
+                    --inline-thresh=0 disables inline expansion
+    -o <output_name> Output file name (by default it matches the
+                    input filename without .fx extension)
+    -I <dir>        Add specified directory to the module search path
+    -B <build_root> Specifies the parent directory <build_dir> where subdirectory
+                    <build_root>/__build__/<input_file> with the generated files will be created.
+                    By default, <build_root> is the current working directory.
+    -c++            Use C++ compiler instead of C to compile the generated sources.
+                    'pragma \"c++\"' in .fx file also instructs ficus compiler to use C++.
+    -cflags <cflags> Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler.
+                    If environment variable FICUS_CFLAGS is set,
+                    its value is inserted before <cflags>
+    -clibs <clibs>  Pass the specified libs/linker flags to C/C++ compiler.
+                    If environment variable FICUS_LINK_LIBRARIES is set,
+                    its value is inserted after <clibs>
+    -verbose        Display various info during the build
+    -h or -help or --help  Display this information
+    -v or -version  Display information about compiler and the platform, then exit.
+    --              Specify the application parameters when '-run' flag is used,
+                    e.g. './ficus -run myprog.fx -- arg1 arg2'
+")
 }
 
-fun parse_options() {
+val is_arch64 : bool = ccode {(bool)(sizeof(void*) > 4)}
+
+fun parse_options(): bool {
     opt = default_options()
-    val is_arch64 : bool = ccode {(bool)(sizeof(void*) > 4)}
+    opt.arch64 = is_arch64
     val curr_dir = Sys.getcwd()
     val abs_ficus_path = Filename.normalize(curr_dir, Sys.argv.hd())
     val abs_ficus_dir = Filename.dirname(abs_ficus_path)
     val stdlib_dir = Filename.normalize(abs_ficus_dir, "../lib")
-    val _files = ref []
     opt.include_path = stdlib_dir :: []
     opt.runtime_path = Filename.normalize(abs_ficus_dir, "../runtime")
     var args = Sys.argv
-    val ok = try {
-        while !args.empty() {
-            args = match args {
-                | "-pr-tokens" :: next =>
-                    opt.print_tokens = true; next
-                | "-pr-ast" :: next =>
-                    opt.print_ast = true; next
-                | "-pr-k" :: next =>
-                    opt.print_k = true; next
-                | "-no-c" :: next =>
-                    opt.gen_c = false; next
-                | "-app" :: next =>
-                    opt.make_app = true; next
-                | "-run" :: next =>
-                    opt.run_app = true; next
-                | "-O0" :: next =>
-                    opt.optimize_level = 0; next
-                | "-O1" :: next =>
-                    opt.optimize_level = 1; next
-                | "-O3" :: next =>
-                    opt.optimize_level = 3; next
-                | "-inline-threshold" :: i :: next =>
-                    match i.to_int() {
-                        | Some(i) when i >= 0 => opt.inline_thresh = i
-                        | _ => throw Fail("invalid inline threshold: must be a non-negative integer")
+    var inputfile = ""
+    var prhelp = false
+    var prver = false
+    var ok = true
+    while !args.empty() {
+        args = match args {
+            | "-pr-tokens" :: next =>
+                opt.print_tokens = true; next
+            | "-pr-ast" :: next =>
+                opt.print_ast = true; next
+            | "-pr-k" :: next =>
+                opt.print_k = true; next
+            | "-no-c" :: next =>
+                opt.gen_c = false; next
+            | "-app" :: next =>
+                opt.make_app = true; next
+            | "-run" :: next =>
+                opt.run_app = true; next
+            | "-O0" :: next =>
+                opt.optimize_level = 0; next
+            | "-O1" :: next =>
+                opt.optimize_level = 1; next
+            | "-O3" :: next =>
+                opt.optimize_level = 3; next
+            | "-inline-threshold" :: i :: next =>
+                match i.to_int() {
+                    | Some(i) when i >= 0 => opt.inline_thresh = i; next
+                    | _ =>
+                        println("error: invalid -inline-threshold arument {i}: must be a non-negative integer")
+                        ok = false; []
+                }
+            | "-verbose" :: next =>
+                opt.verbose = true; next
+            | "-o" :: oname :: next =>
+                opt.output_name = oname; next
+            | "-I" :: incdir :: next =>
+                opt.include_path = opt.include_path + (incdir :: []); next
+            | "-B" :: bdir :: next =>
+                opt.build_rootdir = bdir; next
+            | "-c++" :: next =>
+                opt.compile_by_cpp = true; next
+            | "-cflags" :: cflags :: next =>
+                opt.cflags = if opt.cflags == "" {cflags} else {opt.cflags + " " + cflags}
+                next
+            | "-clibs" :: clibs :: next =>
+                opt.clibs = if opt.clibs == "" {clibs} else {opt.clibs + " " + clibs}
+                next
+            | "-h" :: _ | "-help" :: _ | "--help" :: _ =>
+                prhelp = true; []
+            | "-v" :: _ | "-version" :: _ | "--version" :: _ =>
+                prver = true; []
+            | "--" :: next =>
+                opt.app_args = next; []
+            | a :: next =>
+                if a.startswith("-") {
+                    if [: "-inline-threshold", "-o", "-B", "-cflags", "-clibs" :].mem(a) {
+                        println(f"error: option {a} needs an argument")
+                    } else {
+                        println(f"error: unrecognized option {a}")
                     }
-            }
+                    ok = false; []
+                } else if inputfile == "" {
+                    inputfile = a; next
+                } else {
+                    println("error: more than one input file is specified: {inputfile :: a :: []}")
+                    ok = false; []
+                }
         }
-    } catch {
-        | Fail(msg) => println(f"error: {msg}"); false
-        | e => println(f"error: exception {e} occurred when parsing command line parameters"); false
     }
-    if !ok {
-        print_help(); ok
+    if !prver && ok {
+        if inputfile == "" {
+            println("error: input file name is missing")
+            ok = false
+        }
+        if (opt.run_app || opt.compile_by_cpp) && !opt.gen_c {
+            println("error: -no-c option cannot be used together with -run or -c++")
+            ok = false
+        }
+    }
+    if prver {
+        println(f"Ficus version: {__ficus_version_str__} (git commit: {__ficus_git_commit__})")
+        println(f"Plaform: {Sys.osname(true)}")
+        println(f"C/C++ Compiler: {Sys.cc_version()}")
+        false
+    } else if !ok || prhelp {
+        print_help()
+        false
     } else {
-
-
-
-
-("-no-c", Arg.Unit(fun (f) {
-                                       opt.gen_c = false
-                              }), "   Do not generate C code"),
-                ("-app", Arg.Unit(fun (f) {
-                                      opt.make_app = true
-                             }), "   Build application (set by default)"),
-                ("-run", Arg.Unit(fun (f) {
-                                      opt.run_app = true
-                             }), "   Build application and run it"),
-                (
-                    "-O0",
-                    Arg.Unit(fun ({}) {
-                                 opt.optimize_level = 0
-                        }),
-                    "   Optimization level 0: disable optimizations except for the most essential ones"
-                    ),
-                ("-O1", Arg.Unit(fun ({}) {
-                                     opt.optimize_level = 1
-                            }), "   Optimization level 1: enable most of optimizations"),
-                ("-O3", Arg.Unit(fun ({}) {
-                                     opt.optimize_level = 3
-                            }), "   Optimization level 3: enable all optimizations"),
-                (
-                    "-inline-threshold",
-                    Arg.Int(fun (i) {
-                                opt.inline_thresh = i
-                        }),
-                    "<n>   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion"
-                    ),
-                ("-o", Arg.String(fun (s) {
-                                      opt.output_name = s
-                           }), "<output_filename>    Output file name"),
-                (
-                    "-I",
-                    Arg.String(fun (ipath) {
-                                   opt.include_path = options.include_path + [: ipath :]
-                        }),
-                    "<path>    Add directory to the module search path"
-                    ),
-                (
-                    "-B",
-                    Arg.String(fun (s) {
-                                   opt.build_rootdir = s
-                        }),
-                    "<build_parent_dir> The parent directory where __build__/appname subdirectory will be created"
-                    ),
-                ("-c++", Arg.Unit(fun (f) {
-                                      opt.compile_by_cpp = true
-                             }), "   Use C++ instead of C for compilation"),
-                (
-                    "-cflags",
-                    Arg.String(fun (s) {
-                                   opt.cflags = s
-                        }),
-                    "<cflags>   Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler (after $FICUS_CFLAGS)"
-                    ),
-                (
-                    "-clibs",
-                    Arg.String(fun (s) {
-                                   opt.clibs = s
-                        }),
-                    "<clibs>   Pass the specified libs/linker flags to C/C++ compiler (before $FICUS_LINK_LIBRARIES)"
-                    ),
-                ("-verbose", Arg.Unit(fun (f) {
-                                          opt.verbose = true
-                                 }), "  Display various info during build time"),
-                (
-                    "--",
-
-
-        }
-    }
-    try {
-        Arg.parse(
-            [:
-                ("-pr-tokens", Arg.Unit(fun (f) {
-                                            opt.print_tokens = true
-                                   }), "   Print all the tokens in parsed files"),
-                ("-pr-ast", Arg.Unit(fun (f) {
-                                         opt.print_ast = true
-                                }), "   Print typechecked AST of the parsed files"),
-                ("-pr-k", Arg.Unit(fun (f) {
-                                       opt.print_k = true
-                              }), "   Print the generated and optimized K-form"),
-                ("-no-c", Arg.Unit(fun (f) {
-                                       opt.gen_c = false
-                              }), "   Do not generate C code"),
-                ("-app", Arg.Unit(fun (f) {
-                                      opt.make_app = true
-                             }), "   Build application (set by default)"),
-                ("-run", Arg.Unit(fun (f) {
-                                      opt.run_app = true
-                             }), "   Build application and run it"),
-                (
-                    "-O0",
-                    Arg.Unit(fun ({}) {
-                                 opt.optimize_level = 0
-                        }),
-                    "   Optimization level 0: disable optimizations except for the most essential ones"
-                    ),
-                ("-O1", Arg.Unit(fun ({}) {
-                                     opt.optimize_level = 1
-                            }), "   Optimization level 1: enable most of optimizations"),
-                ("-O3", Arg.Unit(fun ({}) {
-                                     opt.optimize_level = 3
-                            }), "   Optimization level 3: enable all optimizations"),
-                (
-                    "-inline-threshold",
-                    Arg.Int(fun (i) {
-                                opt.inline_thresh = i
-                        }),
-                    "<n>   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion"
-                    ),
-                ("-o", Arg.String(fun (s) {
-                                      opt.output_name = s
-                           }), "<output_filename>    Output file name"),
-                (
-                    "-I",
-                    Arg.String(fun (ipath) {
-                                   opt.include_path = options.include_path + [: ipath :]
-                        }),
-                    "<path>    Add directory to the module search path"
-                    ),
-                (
-                    "-B",
-                    Arg.String(fun (s) {
-                                   opt.build_rootdir = s
-                        }),
-                    "<build_parent_dir> The parent directory where __build__/appname subdirectory will be created"
-                    ),
-                ("-c++", Arg.Unit(fun (f) {
-                                      opt.compile_by_cpp = true
-                             }), "   Use C++ instead of C for compilation"),
-                (
-                    "-cflags",
-                    Arg.String(fun (s) {
-                                   opt.cflags = s
-                        }),
-                    "<cflags>   Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler (after $FICUS_CFLAGS)"
-                    ),
-                (
-                    "-clibs",
-                    Arg.String(fun (s) {
-                                   opt.clibs = s
-                        }),
-                    "<clibs>   Pass the specified libs/linker flags to C/C++ compiler (before $FICUS_LINK_LIBRARIES)"
-                    ),
-                ("-verbose", Arg.Unit(fun (f) {
-                                          opt.verbose = true
-                                 }), "  Display various info during build time"),
-                (
-                    "--",
-                    Arg.Rest(fun (s) {
-                                 opt.app_args = s :: options.app_args
-                        }),
-                    "Specify the application parameters (e.g. './ficus -run myprog.fx -- arg1 arg2')"
-                    )
-                :],
-            fun (s) {
-                *_files = *_files + [: s :]
-            },
-            "Ficus Compiler v0.1\n" + sprintf("Usage: %s [options ...] [input_file.fx]", Sys.argv  0))
-        if options.optimize_level == 0 {
+        if opt.optimize_level == 0 {
             opt.inline_thresh = 1
+        }
 
-        opt.filename
-            =
-            match *_files {
-            | f :: [] => Utils.normalize_path(curr_dir, f)
-            | _ => throw Arg.Bad("there should be exactly one input file")
-            }
-        if (options.run_app || options.compile_by_cpp) && !options.gen_c {
-            throw Arg.Bad("-no-c option cannot be used together with -run or -c++")
-
-        val output_name = Filename.basename(options.filename)
-        val output_name = Utils.remove_extension(output_name)
-        opt.build_rootdir = Utils.normalize_path(Utils.normalize_path(curr_dir, options.build_rootdir), "__build__")
-        opt.build_dir = Utils.normalize_path(options.build_rootdir, output_name)
-        opt.app_filename
-            =
-            if options.output_name != "" {
-                Utils.normalize_path(curr_dir, options.output_name)
+        opt.filename = Filename.normalize(curr_dir, inputfile)
+        val output_name = Filename.basename(opt.filename)
+        val output_name = Filename.remove_extension(output_name)
+        opt.build_rootdir = Filename.normalize(curr_dir, opt.build_rootdir)
+        opt.build_rootdir = Filename.normalize(opt.build_rootdir, "__build__")
+        opt.build_dir = Filename.normalize(opt.build_rootdir, output_name)
+        opt.app_filename =
+            if opt.output_name != "" {
+                Filename.normalize(curr_dir, opt.output_name)
             } else {
-                Utils.normalize_path(options.build_dir, output_name)
+                Filename.normalize(opt.build_dir, output_name)
             }
-        opt.app_args = options.app_args.rev()
-        val ch = Unix.open_process_in("uname")
-        val uname_output = input_line(ch)
-        close_in(ch)
-        opt.osname = String.trim(uname_output)
+        opt.app_args = opt.app_args.rev()
         true
-    } catch { | Arg.Bad(msg) => print_string("error: " + msg + "\n")
-                                false }
+    }
 }

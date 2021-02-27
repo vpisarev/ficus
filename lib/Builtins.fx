@@ -6,10 +6,14 @@
 /* Ficus built-in module, i.e. each Ficus module is compiled
    as if it has "from Builtins import *" directive in the beginning */
 
-val __ficus__ : int = ccode { FX_VERSION_MAJOR }
+val __ficus_major__ : int = ccode { FX_VERSION_MAJOR }
 val __ficus_minor__ : int = ccode { FX_VERSION_MINOR }
 val __ficus_patchlevel__ : int = ccode { FX_VERSION_PATCH }
-val __ficus_version__ = f"{__ficus__}.{__ficus_minor__}.{__ficus_patchlevel__}"
+
+// __ficus_version__, as a tuple, can be easily compared with a specific version, e.g.
+// if __ficus_version__ >= (1, 0, 0) {...}
+val __ficus_version__ = (__ficus_major__, __ficus_minor__, __ficus_patchlevel__)
+val __ficus_version_str__ = f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}"
 
 exception ASCIIError
 exception AssertError
