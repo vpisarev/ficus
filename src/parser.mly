@@ -927,6 +927,7 @@ simple_pat:
         PatVariant((get_id $1), [arg], curr_loc())
     }
 | simple_pat COLON typespec { PatTyped($1, $3, curr_loc()) }
+| simple_pat AS B_IDENT { PatAs($1, (get_id $3), curr_loc()) }
 
 simple_pat_list:
 | simple_pat_list_ { List.rev $1 }

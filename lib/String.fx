@@ -205,6 +205,18 @@ fun tokens(s: string, f: char->bool)
     List.rev(if sep {sl} else {s[start:] :: sl})
 }
 
+fun split(s: string, c: char)
+{
+    val fold (sl, start, sep) = ([], 0, true) for ci@i <- s {
+        if ci == c {
+            (if sep {sl} else {s[start:i] :: sl}, start, true)
+        } else {
+            (sl, if sep {i} else {start}, false)
+        }
+    }
+    List.rev(if sep {sl} else {s[start:] :: sl})
+}
+
 nothrow fun to_int(a: string): int? = ccode
 {
     bool ok = fx_atoi(a, &fx_result->u.Some, 10);
@@ -229,6 +241,14 @@ nothrow fun to_double_or(a: string, defval: double): int = ccode
     bool ok = fx_atof(a, &result);
     return ok ? result : defval;
 }
+
+fun num_suffix(n: int) =
+    match n % 10 {
+    | 1 => "st"
+    | 2 => "nd"
+    | 3 => "rd"
+    | _ => "th"
+    }
 
 fun escaped(s: string, ~quotes: bool=true)
 {

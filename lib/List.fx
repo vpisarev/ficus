@@ -36,11 +36,14 @@ fun array(l: 't list): 't [] = [for x <- l {x}]
 fun assoc_opt(l: ('a, 'b) list, x: 'a) =
     fold r=(None:'b?) for (a, b) <- l {if a == x {break with Some(b)}; r}
 
+fun map(l: 't list, f: 't -> 'rt): 'rt list =
+    [: for x <- l {f(x)} :]
+
 fun all(l: 't list, f: 't -> bool): bool =
     fold r=true for a <- l {if !f(a) { break with false}; r}
 
-fun all2((la, lb): ('a list, 'b list), f: ('a, 'b) -> bool): bool =
-    fold r=true for a <- l, b <- l {if !f(a, b) {break with false}; r}
+fun all2(la: 'a list, lb: 'b list, f: ('a, 'b) -> bool): bool =
+    fold r=true for a <- la, b <- lb {if !f(a, b) {break with false}; r}
 
 fun exists(l: 't list, f: 't -> bool): bool =
     fold r=false for a <- l {if f(a) {break with true}; r}
@@ -53,6 +56,9 @@ fun find_opt(l: 't list, f: 't -> bool): 't? =
 
 fun concat(ll: 't list list): 't list =
     fold s = ([]: 't list) for l <- rev(ll) {l + s}
+
+fun filter(l: 't list, f: 't -> bool): 't list =
+    [: for x <- l { if !f(x) {continue}; x } :]
 
 fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
     [: for x <- la, y <- lb {(x, y)} :]

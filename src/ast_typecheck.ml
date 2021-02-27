@@ -393,7 +393,8 @@ let check_for_duplicate_typ key sc loc =
 let check_for_rec_field_duplicates rfnames loc =
     List.iteri (fun i ni ->
         List.iteri (fun j nj -> if i > j && ni = nj then
-            raise_compile_err loc (sprintf "duplicate record field '%s'" (id2str ni)))
+                raise_compile_err loc (sprintf "duplicate record field '%s'" (id2str ni))
+            else ())
         rfnames) rfnames
 
 let finalize_record_typ t loc =
@@ -745,7 +746,7 @@ and check_exp e env sc =
                 let ej = ExpMem(trj, ExpIdent(nj, (TypString, locj)), (tj, locj)) in
                 let pj = dup_pat pj in
                 let (pnj, pvj) = match (pat_skip_typed pj) with
-                    | PatTuple([pnj; pvj], _) -> (pnj, pvj)
+                    | PatTuple(pnj :: pvj :: [], _) -> (pnj, pvj)
                     | _ -> raise_compile_err eloc "when iterating through record, a 2-element tuple should be used as pattern"
                     in
                 let (pnj, env, idset, _) = check_pat pnj TypString env idset IdSet.empty sc false true false in
@@ -1581,8 +1582,10 @@ and check_directives eseq env sc =
             | EnvId(i) ->
                 (let info = id_info i in
                 let sc = get_scope info in
-                match sc with
-                | (ScModule(m) :: _) when parent_mod = noid || parent_mod = m ->
+                match (info, sc) with
+                | (_, ScModule(m) :: _) when parent_mod = noid || parent_mod = m ->
+                    add_id_to_env key i env
+                | (IdModule _, _) ->
                     add_id_to_env key i env
                 | _ -> env)
             | EnvTyp _ -> env) env (List.rev entries)) in
@@ -1606,7 +1609,7 @@ and check_directives eseq env sc =
         | DirImport(impdirs, eloc) ->
             ((List.fold_left (fun env (m, alias) ->
                 try
-                    import_mod env alias m false eloc
+                    import_mod env alias m true eloc
                 with CompileError(_, _) as err -> push_compile_err err; env) env impdirs), mlist)
         | DirImportFrom(m, implist, eloc) ->
             let env =
@@ -2243,7 +2246,7 @@ and check_mod m =
         let modsc = (ScModule m) :: [] in
         let (seq, env) = check_eseq minfo.dm_defs Env.empty modsc false in
         minfo.dm_defs <- seq;
-        minfo.dm_env <- env;
+        minfo.dm_env <- env
     with
     | CompileError(_, _) as err -> push_compile_err err
     | PropagateCompileError -> ()

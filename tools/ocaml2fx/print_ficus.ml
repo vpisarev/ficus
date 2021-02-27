@@ -209,7 +209,7 @@ and pprint_ocexp_ e pr : unit =
             pstr prefix; pspace(); pprint_ocexp_ e 0; pspace();
             pprint_block_ e1 "{" "";
             (match e2 with
-            | ELit(LUnit) -> ()
+            | ELit(LUnit) -> pstr "}"
             | EIf(e_, e1_, e2_) ->
                 ovbox_indent(); ohbox();
                 (match e1 with
@@ -306,7 +306,7 @@ and pprint_ocexp_ e pr : unit =
         pstr "for"; pspace(); pprint_pat_ p false;
         (match idx with
         | PAny -> ()
-        | _ -> pstr "@"; pprint_pat_ p false);
+        | _ -> pstr "@"; pprint_pat_ idx false);
         pspace(); pstr "<-";
         pspace(); pprint_ocexp_ lst 0;
         pspace(); pprint_block body

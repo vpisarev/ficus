@@ -77,6 +77,10 @@ let transform_let_comp code =
                 EFold(false, (acc, acc0), (p, lst), body)
             | (EIdent("List.rev"), lst :: []) ->
                 ECall(EBinary(OpMem, lst, EIdent("rev")), [])
+            | (EIdent("List.length"), lst :: []) ->
+                ECall(EBinary(OpMem, lst, EIdent("length")), [])
+            | (EIdent("List.nth"), lst :: idx :: []) ->
+                ECall(EBinary(OpMem, lst, EIdent("nth")), [idx])
             | (EIdent("String.concat"), s :: lst :: []) ->
                 ECall(EBinary(OpMem, s, EIdent("join")), lst :: [])
             | (f, EMkTuple(args) :: []) -> ECall(f, args)
