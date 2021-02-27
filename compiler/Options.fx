@@ -32,9 +32,22 @@ type options_t =
 fun default_options() = options_t {}
 var opt = default_options()
 
-fun print_help() {
-    print(f"Ficus compiler v{__ficus_version_str__} (git {__ficus_git_commit__})
-Usage: {Sys.argv.hd()} [options ...] [input_file.fx]
+fun print_help(detailed: bool) {
+    val fxname = Filename.basename(Sys.argv.hd())
+    println(f"Ficus compiler v{__ficus_version_str__} (git {__ficus_git_commit__})")
+
+    if !detailed {
+        println(f"
+Usage: {fxname} [-pr-tokens | -pr-ast | -pr-k | -no-c
+    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n>
+    | -o <output_name> | -I <incdir> | -B <build_root>
+    | -c++ | -cflags <cflags> | -clibs <clibs
+    | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]
+
+Run '{fxname} -h' to get more detailed help")
+    } else {
+        println(f"
+Usage: {fxname} [options ...] <input_file.fx> [-- <app_args ...>]
 
 where options can be some of:
     -pr-tokens      Print all the tokens in parsed files
@@ -71,12 +84,13 @@ where options can be some of:
     -v or -version  Display information about compiler and the platform, then exit.
     --              Specify the application parameters when '-run' flag is used,
                     e.g. './ficus -run myprog.fx -- arg1 arg2'
-")
+")}
 }
 
 val is_arch64 : bool = ccode {(bool)(sizeof(void*) > 4)}
 
 fun parse_options(): bool {
+    val error = "\33[31;1merror:\33[0m"
     opt = default_options()
     opt.arch64 = is_arch64
     val curr_dir = Sys.getcwd()
@@ -85,9 +99,9 @@ fun parse_options(): bool {
     val stdlib_dir = Filename.normalize(abs_ficus_dir, "../lib")
     opt.include_path = stdlib_dir :: []
     opt.runtime_path = Filename.normalize(abs_ficus_dir, "../runtime")
-    var args = Sys.argv
+    var args = Sys.argv.tl()
     var inputfile = ""
-    var prhelp = false
+    var prhelp = 0
     var prver = false
     var ok = true
     while !args.empty() {
@@ -114,7 +128,7 @@ fun parse_options(): bool {
                 match i.to_int() {
                     | Some(i) when i >= 0 => opt.inline_thresh = i; next
                     | _ =>
-                        println("error: invalid -inline-threshold arument {i}: must be a non-negative integer")
+                        println(f"{error} invalid -inline-threshold arument {i}: must be a non-negative integer")
                         ok = false; []
                 }
             | "-verbose" :: next =>
@@ -134,7 +148,7 @@ fun parse_options(): bool {
                 opt.clibs = if opt.clibs == "" {clibs} else {opt.clibs + " " + clibs}
                 next
             | "-h" :: _ | "-help" :: _ | "--help" :: _ =>
-                prhelp = true; []
+                prhelp = 2; []
             | "-v" :: _ | "-version" :: _ | "--version" :: _ =>
                 prver = true; []
             | "--" :: next =>
@@ -142,26 +156,30 @@ fun parse_options(): bool {
             | a :: next =>
                 if a.startswith("-") {
                     if [: "-inline-threshold", "-o", "-B", "-cflags", "-clibs" :].mem(a) {
-                        println(f"error: option {a} needs an argument")
+                        println(f"{error} option {a} needs an argument")
                     } else {
-                        println(f"error: unrecognized option {a}")
+                        println(f"{error} unrecognized option {a}")
                     }
                     ok = false; []
                 } else if inputfile == "" {
                     inputfile = a; next
                 } else {
-                    println("error: more than one input file is specified: {inputfile :: a :: []}")
+                    println(f"{error} more than one input file is specified: {inputfile :: a :: []}")
                     ok = false; []
                 }
         }
     }
-    if !prver && ok {
+    if !prver && prhelp == 0 && ok {
         if inputfile == "" {
-            println("error: input file name is missing")
-            ok = false
+            if !Sys.argv.tl().empty() {
+                println(f"{error} input file name is missing")
+                ok = false
+            } else {
+                prhelp = 1
+            }
         }
         if (opt.run_app || opt.compile_by_cpp) && !opt.gen_c {
-            println("error: -no-c option cannot be used together with -run or -c++")
+            println(f"{error} -no-c option cannot be used together with -run or -c++")
             ok = false
         }
     }
@@ -170,14 +188,13 @@ fun parse_options(): bool {
         println(f"Plaform: {Sys.osname(true)}")
         println(f"C/C++ Compiler: {Sys.cc_version()}")
         false
-    } else if !ok || prhelp {
-        print_help()
+    } else if prhelp > 0 {
+        print_help(prhelp > 1)
         false
-    } else {
+    } else if ok {
         if opt.optimize_level == 0 {
             opt.inline_thresh = 1
         }
-
         opt.filename = Filename.normalize(curr_dir, inputfile)
         val output_name = Filename.basename(opt.filename)
         val output_name = Filename.remove_extension(output_name)
@@ -192,5 +209,16 @@ fun parse_options(): bool {
             }
         opt.app_args = opt.app_args.rev()
         true
-    }
+    } else { false }
 }
+
+/*
+val ok = parse_options()
+if ok {
+    print(f"inputfile: {opt.filename}
+app_filename: {opt.app_filename}
+build_dir: {opt.build_dir}
+optimize_level: {opt.optimize_level}
+inline_threshold: {opt.inline_thresh}
+") }
+*/
