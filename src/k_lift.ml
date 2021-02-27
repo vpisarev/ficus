@@ -424,12 +424,12 @@ let lift_all kmods =
             | Some ((nv, nr, _)) ->
                 if get_mkclosure_arg then (Atom.Id nr) else (Atom.Id nv)
             | _ ->
-                (match (kinfo_ n loc) with
+                (*(match (kinfo_ n loc) with
                 | KFun {contents={kf_flags}} ->
                     if is_fun_ctor kf_flags then ()
                     else raise_compile_err loc
                         (sprintf "for the function '%s' there is no corresponding closure" (id2str n))
-                | _ -> ());
+                | _ -> ());*)
                 if not get_mkclosure_arg then a
                 else
                     (match (Env.find_opt n !orig_subst_env) with

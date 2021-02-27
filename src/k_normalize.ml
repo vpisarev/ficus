@@ -659,7 +659,7 @@ and pat_propose_id p ptyp temp_prefix is_simple mutable_leaves sc =
         if mutable_leaves then
             raise_compile_err ploc "'as' pattern cannot be used with var's, only with values"
         else ();
-        ((pat_skip_typed p), n, true)
+        ((pat_skip_typed p), n, false)
     | _ ->
         if (pat_have_vars p) || (not is_simple && (pat_need_checks p ptyp))
         then (p, (gen_temp_idk temp_prefix), true)

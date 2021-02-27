@@ -175,7 +175,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | (TypVar (ref Some(TypVarTuple(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1)
         | (TypVar (ref Some(TypVarTuple(_))), TypTuple(_)) => maybe_unify_(t2, t1)
         | (TypTuple(tl1), TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
-            if tl1.exists(fun (t: typ_t) {occurs(r2, t)}) { false }
+            if (fold ok=false for t <- tl1 {if occurs(r2, t) {break with true}; ok}) { false }
             else {
                 val ok = match t2_opt {
                     | Some(t2_) => tl1.all(fun (t: typ_t) {maybe_unify_(t2_, t)})
@@ -1061,7 +1061,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | _ => (bop, typ_opt)
             }
         | OpBitwiseAnd | OpBitwiseOr | OpBitwiseXor =>
-            fun check_bitwise(t1, t2) =
+            fun check_bitwise(t1: typ_t, t2: typ_t): typ_t =
                 match (deref_typ(t1), deref_typ(t2)) {
                 | (TypInt, TypInt) => TypInt
                 | (TypSInt(b1), TypSInt(b2)) when b1 == b2 => TypSInt(b1)
@@ -1150,18 +1150,18 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                       check_and_make_call(f_id, [: new_e1 :])
             }
         | OpBitwiseNot =>
-            fun check_bitwise(t) =
+            fun check_unary_bitwise(t: typ_t): typ_t =
                 match deref_typ(t) {
                 | TypInt => TypInt
                 | TypSInt(b) => TypSInt(b)
                 | TypUInt(b) => TypUInt(b)
                 | TypBool => TypBool
-                | TypTuple(tl) => TypTuple(tl.map(check_bitwise))
+                | TypTuple(tl) => TypTuple(tl.map(check_unary_bitwise))
                 | _ => throw BadArgError
                 }
 
             try {
-                unify(etyp, check_bitwise(etyp1), eloc, "invalid type of bitwise-not result")
+                unify(etyp, check_unary_bitwise(etyp1), eloc, "invalid type of bitwise-not result")
                 ExpUnOp(uop, new_e1, ctx)
             } catch {
             | BadArgError =>
@@ -1647,7 +1647,7 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                     p1
                 | _ => p
                 }
-                val e1 = try { check_exp(e, env, sc) } catch { | CompileError(loc, msg) => push_compile_err(CompileError(loc, msg)); e }
+                val e1 = try { check_exp(e, env, sc) } catch { | CompileError(_, _) as err => push_compile_err(err); e }
                 val (p1, env1, _, _) = check_pat(p, t, env, make_empty_idset(), make_empty_idset(), sc, false, true, is_mutable)
                 (DefVal(p1, e1, flags, loc) :: eseq, env1)
             | DefFun(df) =>
@@ -1686,8 +1686,8 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                 (e :: eseq, env)
             }
         } catch {
-            | CompileError(loc, msg) =>
-                push_compile_err(CompileError(loc, msg))
+            | CompileError(_, _) as err =>
+                push_compile_err(err)
                 (e :: eseq, env)
             | PropagateCompileError => (e :: eseq, env)
         }
@@ -1753,7 +1753,7 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
             (fold env = env for (m, alias) <- impdirs {
                 try {
                     import_mod(env, alias, m, true, eloc)
-                } catch { | CompileError(loc, msg) => push_compile_err(CompileError(loc, msg)); env }
+                } catch { | CompileError(_, _) as err => push_compile_err(err); env }
             }, mlist)
         | DirImportFrom(m, implist, eloc) =>
             val env =
@@ -1767,13 +1767,13 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
                         if entries != [] {}
                         else { throw compile_err(eloc, f"no symbol {pp_id2str(k)} found in {pp_id2str(m)}") }
                         import_entries(env, m, k, entries, eloc)
-                    } catch { | CompileError(loc, msg) => push_compile_err(CompileError(loc, msg)); env }
+                    } catch { | CompileError(_, _) as err => push_compile_err(err); env }
                 }
                 // after processing "from m import ..." we also implicitly insert "import m"
                 // [TODO] for each 'imported from' variant type we also need to import all its constructors
                 val alias = get_orig_id(m)
                 import_mod(env, alias, m, true, eloc)
-            } catch { | CompileError(loc, msg) => push_compile_err(CompileError(loc, msg));  env }
+            } catch { | CompileError(_, _) as err => push_compile_err(err);  env }
             (env, (m, eloc) :: mlist)
         | DirPragma(prl, eloc) => (env, mlist)
         | _ => (env, mlist)
@@ -2492,5 +2492,5 @@ fun check_mod(m: id_t) {
 
         minfo->dm_defs = seq
         minfo->dm_env = env
-    } catch { | CompileError(loc, msg) => push_compile_err(CompileError(loc, msg)) | PropagateCompileError => {} }
+    } catch { | CompileError(_, _) as err => push_compile_err(err) | PropagateCompileError => {} }
 }
