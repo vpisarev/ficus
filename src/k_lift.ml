@@ -424,12 +424,12 @@ let lift_all kmods =
             | Some ((nv, nr, _)) ->
                 if get_mkclosure_arg then (Atom.Id nr) else (Atom.Id nv)
             | _ ->
-                (*(match (kinfo_ n loc) with
+                (match (kinfo_ n loc) with
                 | KFun {contents={kf_flags}} ->
                     if is_fun_ctor kf_flags then ()
                     else raise_compile_err loc
                         (sprintf "for the function '%s' there is no corresponding closure" (id2str n))
-                | _ -> ());*)
+                | _ -> ());
                 if not get_mkclosure_arg then a
                 else
                     (match (Env.find_opt n !orig_subst_env) with
@@ -446,15 +446,6 @@ let lift_all kmods =
         | KDefFun kf  ->
             let { kf_name; kf_args; kf_rt; kf_body; kf_closure; kf_scope; kf_loc } = !kf in
             let { kci_arg; kci_fcv_t; kci_make_fp; kci_wrap_f } = kf_closure in
-            let saved_dsf = !defined_so_far in
-            let saved_clo = !curr_clo in
-            let saved_subst_env = !curr_subst_env in
-            let _ = curr_clo := (kf_name, kci_arg, kci_fcv_t) in
-            let _ = List.iter (fun (arg, _) -> add_to_defined_so_far arg) kf_args in
-            (*let _ = printf "\n\n==================================================\nprocessing %s:\n" (id2str kf_name) in
-            let _ = flush_all () in
-            let _ = K_pp.pprint_kexp_x (KDefFun kf) in
-            let _ = printf "\n==================================================\n" in*)
 
             let create_defclosure kf code loc =
                 let {kf_name; kf_args; kf_rt; kf_closure={kci_make_fp=make_fp}; kf_flags; kf_scope; kf_loc} = !kf in
@@ -479,19 +470,49 @@ let lift_all kmods =
                     create_kdefval cl_name kf_typ (default_val_flags()) (Some make_cl) code kf_loc
                 in
 
-            let (prologue, def_fcv_t_n_make) =
-                if kci_fcv_t = noid then ([], []) else
+            let def_fcv_t_n_make =
+                if kci_fcv_t = noid then [] else
+                    let kcv = match (kinfo_ kci_fcv_t kf_loc) with
+                    | KClosureVars kcv -> kcv
+                    | _ -> raise_compile_err kf_loc
+                        (sprintf "closure type '%s' for '%s' information is not valid (should be KClosureVars ...)"
+                        (id2str kci_fcv_t) (id2str kf_name))
+                    in
+                    let make_kf = match (kinfo_ kci_make_fp kf_loc) with
+                    | KFun make_kf -> make_kf
+                    | _ -> raise_compile_err kf_loc
+                        (sprintf "make_fp '%s' for '%s' information is not valid (should be KClosureVars ...)"
+                        (id2str kci_make_fp) (id2str kf_name))
+                    in
+                    [KDefFun make_kf; KDefClosureVars kcv]
+                in
+
+            let out_e =
+                if kci_wrap_f <> noid then
+                    (KDefFun kf)
+                else
+                    let extra_code = create_defclosure kf [] kf_loc in
+                    let _ = curr_top_code := (List.tl extra_code) @ def_fcv_t_n_make @ [KDefFun kf] @ !curr_top_code in
+                    List.hd extra_code
+                in
+
+            let saved_dsf = !defined_so_far in
+            let saved_clo = !curr_clo in
+            let saved_subst_env = !curr_subst_env in
+            let _ = curr_clo := (kf_name, kci_arg, kci_fcv_t) in
+            let _ = List.iter (fun (arg, _) -> add_to_defined_so_far arg) kf_args in
+            (*let _ = printf "\n\n==================================================\nprocessing %s:\n" (id2str kf_name) in
+            let _ = flush_all () in
+            let _ = K_pp.pprint_kexp_x (KDefFun kf) in
+            let _ = printf "\n==================================================\n" in*)
+
+            let prologue =
+                if kci_fcv_t = noid then [] else
                     let kcv = match (kinfo_ kci_fcv_t kf_loc) with
                         | KClosureVars kcv -> kcv
                         | _ -> raise_compile_err kf_loc
                             (sprintf "closure type '%s' for '%s' information is not valid (should be KClosureVars ...)"
                             (id2str kci_fcv_t) (id2str kf_name))
-                        in
-                    let make_kf = match (kinfo_ kci_make_fp kf_loc) with
-                        | KFun make_kf -> make_kf
-                        | _ -> raise_compile_err kf_loc
-                            (sprintf "make_fp '%s' for '%s' information is not valid (should be KClosureVars ...)"
-                            (id2str kci_make_fp) (id2str kf_name))
                         in
                     let {kcv_freevars; kcv_orig_freevars} = !kcv in
                     (* for each free variable 'fv' we create a proxy 'val fv_proxy = kf_cl_arg.fv'
@@ -535,21 +556,19 @@ let lift_all kmods =
                         (idx+1, prologue)) (0, []) kcv_freevars kcv_orig_freevars in
                     (* we also create a closure for each function with free variables
                         that is called from 'kf_name', but is not declared in 'kf_name' *)
-                    let prologue = match Env.find_opt kf_name !ll_env with
-                        | Some ({ll_declared_inside; ll_called_funcs}) ->
-                            let called_fs = IdSet.diff ll_called_funcs ll_declared_inside in
-                            IdSet.fold (fun called_f prologue ->
-                                match (kinfo_ called_f kf_loc) with
-                                | KFun called_kf ->
-                                    let {kf_closure={kci_fcv_t=called_fcv_t}} = !called_kf in
-                                    if called_fcv_t = noid then prologue
-                                    else create_defclosure called_kf prologue kf_loc
-                                | _ -> prologue) called_fs prologue
-                        | _ -> raise_compile_err kf_loc
-                            (sprintf "missing 'lambda lifting' information about function '%s'"
-                            (id2str kf_name))
-                        in
-                    (prologue, [KDefFun make_kf; KDefClosureVars kcv])
+                    match Env.find_opt kf_name !ll_env with
+                    | Some ({ll_declared_inside; ll_called_funcs}) ->
+                        let called_fs = IdSet.diff ll_called_funcs ll_declared_inside in
+                        IdSet.fold (fun called_f prologue ->
+                            match (kinfo_ called_f kf_loc) with
+                            | KFun called_kf ->
+                                let {kf_closure={kci_fcv_t=called_fcv_t}} = !called_kf in
+                                if called_fcv_t = noid then prologue
+                                else create_defclosure called_kf prologue kf_loc
+                            | _ -> prologue) called_fs prologue
+                    | _ -> raise_compile_err kf_loc
+                        (sprintf "missing 'lambda lifting' information about function '%s'"
+                        (id2str kf_name))
                 in
             (* add the generated prologue to the function body, then transform it alltogether *)
             let body_loc = get_kexp_loc kf_body in
@@ -559,15 +578,9 @@ let lift_all kmods =
             curr_clo := saved_clo;
             curr_subst_env := saved_subst_env;
             kf := {!kf with kf_body=body};
-            let e = if kci_wrap_f <> noid then
-                    (KDefFun kf)
-                else
-                    let extra_code = create_defclosure kf [] kf_loc in
-                    let _ = curr_top_code := (List.tl extra_code) @ def_fcv_t_n_make @ [KDefFun kf] @ !curr_top_code in
-                    List.hd extra_code
-                in
+
             (*printf "finished processing %s\n" (id2str kf_name);*)
-            e
+            out_e
         | KDefExn {contents={ke_tag}} ->
             add_to_defined_so_far ke_tag;
             walk_kexp e callb
