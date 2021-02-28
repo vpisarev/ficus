@@ -134,7 +134,7 @@ let calc_exp_size e =
                 List.fold_left (fun s (f, a) -> s + (if f then 5 else 1)) s al)
             0 args
         | KExpMkClosure(_, _, args, _) -> List.length args
-        | KExpCall(_, args, _) -> 1 + (List.length args)
+        | KExpCall(_, args, _) -> 10 + (List.length args)
         | KExpAt(_, _, _, idxs, _) -> List.length idxs
         | KExpCCode _ -> 100
         | KExpThrow _ -> 10

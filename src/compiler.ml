@@ -175,7 +175,7 @@ let prf str = pr_verbose (sprintf "\t%s" str)
 
 let k_optimize_all kmods =
     let _ = (compile_errs := []) in
-    let niters = 2 in
+    let niters = 3 in
     let temp_kmods = ref kmods in
     prf "initial dead code elim";
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;

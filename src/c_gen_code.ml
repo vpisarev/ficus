@@ -1064,7 +1064,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let prologue = bctx_prologue in
                     let epilogue = List.rev bctx_cleanup in
                     let (ai_ccode, epilogue, have_epilogue_i) =
-                        if epilogue = [] && prologue = [] then
+                        (*if epilogue = [] && prologue = [] then
                             let _ = pop_block_ctx ai_end_loc in
                             (* recompile the action code inside the parent context.
                                 that is, in the case of exception, jump to the higher-level label
@@ -1076,7 +1076,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 occurences with the parent label *)
                             let (_, ai_ccode) = kexp2cexp action_i dstexp_r [] in
                             (ai_ccode, epilogue, false)
-                        else
+                        else*)
                             let epilogue =
                                 if bctx_label_used = 0 then
                                     epilogue
@@ -1169,12 +1169,11 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = make_dummy_exp kloc in
         (*let _ = (printf "processing kexp: "; K_pp.pprint_kexp_x kexp; printf "\n") in*)
-        let _ = match kexp with
-            | KDefFun {contents={kf_name}} when (pp_id2str kf_name) = "search_path" ->
+        (*let _ = match kexp with
+            | KDefFun {contents={kf_name}} ->
                 printf "processing function '%s'\n" (idk2str kf_name kloc);
                 K_pp.pprint_kexp_x kexp
-            | _ -> ()
-        in
+            | _ -> () in*)
 
         (* generate exp and then optionally generate the assignment if needed *)
         let (assign, result_exp, ccode) = match kexp with

@@ -153,12 +153,15 @@ let get_copy_f ctyp let_none let_macro loc =
 let gen_copy_code src_exp dst_exp ctyp code loc =
     let (pass_by_ref, copy_f_opt) = get_copy_f ctyp true true loc in
     let ctx = (CTypVoid, loc) in
-    let e = match copy_f_opt with
-        | Some(f) ->
-            let src_exp = if pass_by_ref then (cexp_get_addr src_exp) else src_exp in
-            let dst_exp = cexp_get_addr dst_exp in
-            CExpCall(f, src_exp :: dst_exp :: [], ctx)
-        | _ -> (* in C the assignment operator returns assigned value,
+    let e = match (src_exp, copy_f_opt) with
+            | (CExpLit(KLitNil _, _), Some(CExpIdent(f, _))) when f = !std_FX_COPY_PTR ->
+                CExpBinOp(COpAssign, dst_exp, src_exp, ctx)
+            | (_, Some(f)) ->
+                let src_exp = if pass_by_ref then (cexp_get_addr src_exp) else src_exp in
+                let dst_exp = cexp_get_addr dst_exp in
+                CExpCall(f, src_exp :: dst_exp :: [], ctx)
+            | (_, _) ->
+                (* in C the assignment operator returns assigned value,
                 but since in this particular case we are not going to chain
                 assignment operators, we assume that it returns 'void' *)
                 CExpBinOp(COpAssign, dst_exp, src_exp, ctx)

@@ -144,8 +144,8 @@ void fx_free(void* ptr);
 // break/continue are execution flow control operators, not real exceptions,
 // and they are guaranteed to be "caught" (one cannot place them outside of loops),
 // so we don't use FX_SET_EXN_EXN_FAST() etc.
-#define FX_BREAK(label) { fx_status = FX_EXN_SysBreak; goto label; }
-#define FX_CONTINUE(label) { fx_status = FX_EXN_SysContinue; goto label; }
+#define FX_BREAK(label) ({ fx_status = FX_EXN_SysBreak; goto label; })
+#define FX_CONTINUE(label) ({ fx_status = FX_EXN_SysContinue; goto label; })
 #define FX_CHECK_CONTINUE() \
     if (fx_status != FX_EXN_SysContinue) ; else fx_status = FX_OK
 #define FX_CHECK_BREAK() \
