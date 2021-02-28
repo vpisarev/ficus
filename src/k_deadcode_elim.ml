@@ -44,7 +44,7 @@ let rec pure_kexp e =
             intr = IntrinPopExn || intr = IntrinCheckIdx || intr = IntrinCheckIdxRange
             -> ispure := false
         | KExpCall(f, _, (_, loc)) -> if (pure_fun f loc) then () else ispure := false
-        | KExpAssign (i, (Atom.Id j), _) when i = j -> ()
+        | KExpAssign (i, (AtomId j), _) when i = j -> ()
         | KExpAssign (i, _, _) ->
             if (IdSet.mem i !local_vars) then () else ispure := false
             (*ispure := false*)
@@ -126,7 +126,7 @@ let elim_unused kmods =
             let e = elim_unused_kexp_ e callb in
             let is_ccode = match e with KExpCCode _ -> true | _ -> false in
             (match e with
-            | KExpAtom((Atom.Id fr), _) when (get_orig_id fr) = fold_result ->
+            | KExpAtom((AtomId fr), _) when (get_orig_id fr) = fold_result ->
                 fold_values := IdSet.add i !fold_values
             | _ -> ());
             let is_really_used = (used i) || is_ccode (*|| ((not !is_main) &&
@@ -174,7 +174,7 @@ let elim_unused kmods =
         | KExpSeq(code, (ktyp, loc)) ->
             let code = elim_unused_ code [] callb in
             (match (List.rev code) with
-            | KExpAtom((Atom.Id j), _) :: KDefVal(i, rhs, _) :: rest when i = j ->
+            | KExpAtom((AtomId j), _) :: KDefVal(i, rhs, _) :: rest when i = j ->
                 rcode2kexp (rhs :: rest) loc
             | _ -> code2kexp code loc)
         | _ -> walk_kexp e callb
@@ -185,7 +185,7 @@ let elim_unused kmods =
             let result = (match e with
             | KExpNop _ ->
                 if rest = [] then e :: result else result
-            | KExpAssign(fr, (Atom.Id r), loc)
+            | KExpAssign(fr, (AtomId r), loc)
                 when (get_orig_id fr) = fold_result && (IdSet.mem r !fold_values) ->
                 result
             | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _ | KDefTyp _ | KDefClosureVars _ ->

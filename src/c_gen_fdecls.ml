@@ -121,7 +121,7 @@ let convert_all_fdecls top_code =
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_std; ke_tag; ke_cname; ke_base_cname; ke_make; ke_scope; ke_loc} = !ke in
             let exn_strname = get_qualified_name (pp_id2str ke_name) ke_scope in
-            let exn_strname = CExpLit ((LitString exn_strname), (CTypString, ke_loc)) in
+            let exn_strname = CExpLit ((KLitString exn_strname), (CTypString, ke_loc)) in
             let exn_info = gen_idc ((pp_id2str ke_name) ^ "_info") in
             let info_cname = K_mangle.add_fx (ke_base_cname ^ "_info") in
             let cv_flags = {(default_val_flags()) with

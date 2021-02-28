@@ -39,23 +39,6 @@
 *)
 open Ast
 
-(* it looks like OCaml generates some default compare operation for the types,
-   so we do not have to define it explicitly *)
-module Atom = struct
-    type t = Id of id_t | Lit of lit_t
-end
-
-type atom_t = Atom.t
-
-module Domain = struct
-    type t =
-        | Elem of atom_t
-        | Fast of atom_t
-        | Range of atom_t * atom_t * atom_t
-end
-
-type dom_t = Domain.t
-
 type intrin_t =
     | IntrinPopExn
     | IntrinVariantTag
@@ -84,7 +67,6 @@ type ktyp_t =
     | KTypUInt of int
     | KTypFloat of int
     | KTypVoid
-    | KTypNil
     | KTypBool
     | KTypChar
     | KTypString
@@ -99,6 +81,17 @@ type ktyp_t =
     | KTypExn
     | KTypErr
     | KTypModule
+and klit_t =
+    | KLitInt of int64
+    | KLitSInt of int * int64
+    | KLitUInt of int * int64
+    | KLitFloat of int * float
+    | KLitString of string
+    | KLitChar of string
+    | KLitBool of bool
+    | KLitNil of ktyp_t
+and atom_t = AtomId of id_t | AtomLit of klit_t
+and dom_t = DomainElem of atom_t | DomainFast of atom_t | DomainRange of atom_t*atom_t*atom_t
 and kctx_t = ktyp_t * loc_t
 and kexp_t =
     | KExpNop of loc_t
@@ -160,6 +153,9 @@ type kinfo_t =
     | KExn of kdefexn_t ref | KVariant of kdefvariant_t ref
     | KClosureVars of kdefclosurevars_t ref
     | KTyp of kdeftyp_t ref
+
+let _KLitVoid = KLitNil(KTypVoid)
+let _ALitVoid = AtomLit(_KLitVoid)
 
 let all_idks = dynvec_create KNone
 
@@ -305,7 +301,7 @@ let get_kf_typ kf_args kf_rt =
 let get_kinfo_typ info i loc =
     check_kinfo info i loc;
     match info with
-    | KNone -> KTypNil
+    | KNone -> KTypVoid
     | KVal {kv_typ} -> kv_typ
     | KFun {contents = {kf_args; kf_rt}} -> get_kf_typ kf_args kf_rt
     | KExn {contents = {ke_typ}} -> ke_typ
@@ -318,19 +314,19 @@ let get_idk_ktyp i loc = get_kinfo_typ (kinfo_ i loc) i loc
 
 (* used by the type checker *)
 let get_lit_ktyp l = match l with
-    | LitInt(_) -> KTypInt
-    | LitSInt(b, _) -> KTypSInt(b)
-    | LitUInt(b, _) -> KTypUInt(b)
-    | LitFloat(b, _) -> KTypFloat(b)
-    | LitString(_) -> KTypString
-    | LitChar(_) -> KTypChar
-    | LitBool(_) -> KTypBool
-    | LitNil -> KTypNil
+    | KLitInt(_) -> KTypInt
+    | KLitSInt(b, _) -> KTypSInt(b)
+    | KLitUInt(b, _) -> KTypUInt(b)
+    | KLitFloat(b, _) -> KTypFloat(b)
+    | KLitString(_) -> KTypString
+    | KLitChar(_) -> KTypChar
+    | KLitBool(_) -> KTypBool
+    | KLitNil(t) -> t
 
 let get_atom_ktyp a loc =
     match a with
-    | Atom.Id i -> get_idk_ktyp i loc
-    | Atom.Lit l -> get_lit_ktyp l
+    | AtomId i -> get_idk_ktyp i loc
+    | AtomLit l -> get_lit_ktyp l
 
 let intrin2str iop = match iop with
     | IntrinPopExn -> "INTRIN_POP_EXN"
@@ -396,24 +392,28 @@ and check_n_walk_kexp e callb =
 and check_n_walk_atom a loc callb =
     match callb.kcb_atom with
     | Some(f) -> f a loc callb
-    | _ -> a
+    | _ ->
+        (match a with
+        | AtomLit (KLitNil t) -> AtomLit(KLitNil (check_n_walk_ktyp t loc callb))
+        | _ -> a)
+
 and check_n_walk_al al loc callb =
     List.map (fun a -> check_n_walk_atom a loc callb) al
 
 and check_n_walk_dom d loc callb =
     match d with
-    | Domain.Elem a -> Domain.Elem (check_n_walk_atom a loc callb)
-    | Domain.Fast a -> Domain.Fast (check_n_walk_atom a loc callb)
-    | Domain.Range (a, b, c) ->
-        Domain.Range ((check_n_walk_atom a loc callb),
+    | DomainElem a -> DomainElem (check_n_walk_atom a loc callb)
+    | DomainFast a -> DomainFast (check_n_walk_atom a loc callb)
+    | DomainRange (a, b, c) ->
+        DomainRange ((check_n_walk_atom a loc callb),
                       (check_n_walk_atom b loc callb),
                       (check_n_walk_atom c loc callb))
 
 and check_n_walk_id n loc callb =
     match callb.kcb_atom with
     | Some(f) ->
-        (match f (Atom.Id n) loc callb with
-        | Atom.Id n -> n
+        (match f (AtomId n) loc callb with
+        | AtomId n -> n
         | _ -> raise_compile_err loc
             "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.")
     | _ -> n
@@ -424,8 +424,7 @@ and walk_ktyp t loc callb =
     let walk_id_ k = check_n_walk_id k loc callb in
     (match t with
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
-    | KTypVoid | KTypNil | KTypBool
-    | KTypChar | KTypString | KTypCPointer
+    | KTypVoid | KTypBool | KTypChar | KTypString | KTypCPointer
     | KTypExn | KTypErr | KTypModule -> t
     | KTypFun (args, rt) -> KTypFun((walk_ktl_ args), (walk_ktyp_ rt))
     | KTypTuple elems -> KTypTuple(walk_ktl_ elems)
@@ -565,22 +564,26 @@ and check_n_fold_kexp e callb =
 and check_n_fold_atom a loc callb =
     match callb.kcb_fold_atom with
     | Some(f) -> f a loc callb
-    | _ -> ()
+    | _ ->
+        match a with
+        | AtomLit(KLitNil t) -> check_n_fold_ktyp t loc callb
+        | _ -> ()
+
 and check_n_fold_al al loc callb =
     List.iter (fun a -> check_n_fold_atom a loc callb) al
 
 and check_n_fold_dom d loc callb =
     match d with
-    | Domain.Elem a -> check_n_fold_atom a loc callb
-    | Domain.Fast a -> check_n_fold_atom a loc callb
-    | Domain.Range (a, b, c) ->
+    | DomainElem a -> check_n_fold_atom a loc callb
+    | DomainFast a -> check_n_fold_atom a loc callb
+    | DomainRange (a, b, c) ->
         check_n_fold_atom a loc callb;
         check_n_fold_atom b loc callb;
         check_n_fold_atom c loc callb
 
 and check_n_fold_id k loc callb =
     match callb.kcb_fold_atom with
-    | Some(f) when k != noid -> f (Atom.Id k) loc callb
+    | Some(f) when k != noid -> f (AtomId k) loc callb
     | _ -> ()
 
 and fold_ktyp t loc callb =
@@ -589,8 +592,7 @@ and fold_ktyp t loc callb =
     let fold_id_ i = check_n_fold_id i loc callb in
     (match t with
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
-    | KTypVoid | KTypNil | KTypBool
-    | KTypChar | KTypString | KTypCPointer
+    | KTypVoid | KTypBool | KTypChar | KTypString | KTypCPointer
     | KTypExn | KTypErr | KTypModule -> ()
     | KTypFun (args, rt) -> fold_ktl_ args; fold_ktyp_ rt
     | KTypTuple elems -> fold_ktl_ elems
@@ -701,8 +703,9 @@ let add_to_decl dv_set callb =
 
 let rec used_by_atom_ a loc callb =
     match a with
-    | Atom.Id (Id.Name i) -> ()
-    | Atom.Id i -> add_to_used1 i callb
+    | AtomId (Id.Name i) -> ()
+    | AtomId i -> add_to_used1 i callb
+    | AtomLit(KLitNil t) -> used_by_ktyp_ t loc callb
     | _ -> ()
 and used_by_ktyp_ t loc callb = fold_ktyp t loc callb
 and used_by_kexp_ e callb =
@@ -800,7 +803,7 @@ let is_mutable i loc =
 
 let is_mutable_atom a loc =
     match a with
-    | Atom.Id i -> is_mutable i loc
+    | AtomId i -> is_mutable i loc
     | _ -> false
 
 let is_subarray i loc =
@@ -878,7 +881,7 @@ let kexp2atom prefix e tref code =
         let code = create_kdefval tmp_id ktyp
             {(default_val_flags()) with val_flag_tempref=tref}
             (Some e) code kloc in
-        ((Atom.Id tmp_id), code)
+        ((AtomId tmp_id), code)
 
 let create_kdeffun n args rt flags body_opt code sc loc =
     let body = match body_opt with
@@ -908,7 +911,6 @@ let rec ktyp2str t =
     | KTypUInt n -> sprintf "KTypUInt(%d)" n
     | KTypFloat n -> sprintf "KTypFloat(%d)" n
     | KTypVoid -> "KTypVoid"
-    | KTypNil -> "KTypNil"
     | KTypBool -> "KTypBool"
     | KTypChar -> "KTypChar"
     | KTypString -> "KTypString"
@@ -926,8 +928,27 @@ let rec ktyp2str t =
     | KTypExn -> "KTypExn"
     | KTypErr -> "KTypErr"
     | KTypModule -> "KTypModule"
+and klit2str lit cmode loc =
+    let add_dot s suffix =
+        (if (String.contains s '.') || (String.contains s 'e') then s else s ^ ".") ^ suffix
+    in
+    match lit with
+    | KLitInt(v) -> sprintf "%Li" v
+    | KLitSInt(64, v) -> if cmode then sprintf "%LiLL" v else sprintf "%Lii%d" v 64
+    | KLitUInt(64, v) -> if cmode then sprintf "%LiULL" v else sprintf "%Lii%d" v 64
+    | KLitSInt(b, v) -> if cmode then sprintf "%Li" v else sprintf "%Lii%d" v b
+    | KLitUInt(b, v) -> if cmode then sprintf "%LuU" v else sprintf "%Luu%d" v b
+    | KLitFloat(16, v) -> let s = sprintf "%.4g" v in (add_dot s "h")
+    | KLitFloat(32, v) -> let s = sprintf "%.8g" v in (add_dot s "f")
+    | KLitFloat(64, v) -> let s = sprintf "%.16g" v in (add_dot s "")
+    | KLitFloat(b, v) -> raise_compile_err loc (sprintf "invalid literal LitFloat(%d, %.16g)" b v)
+    | KLitString(s) -> "\"" ^ (Utils.escaped_uni s) ^ "\""
+    | KLitChar(c) -> "\'" ^ (Utils.escaped_uni c) ^ "\'"
+    | KLitBool(true) -> "true"
+    | KLitBool(false) -> "false"
+    | KLitNil _ -> "nullptr"
 and ktl2str tl = String.concat ", " (List.map (fun t -> ktyp2str t) tl)
-and atom2str a = match a with Atom.Id i -> idk2str i noloc | Atom.Lit l -> lit2str l false noloc
+and atom2str a = match a with AtomId i -> idk2str i noloc | AtomLit l -> klit2str l false noloc
 and kexp2str e =
     let l = get_kexp_loc e in
     match e with

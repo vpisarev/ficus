@@ -40,17 +40,17 @@ let aclass2str a =
 
 let classify_atom a z =
     match a with
-    | Atom.Lit la ->
+    | AtomLit la ->
         (match la with
-        | LitInt x -> if z && x = 0L then ConstZero else ConstInt(x)
-        | LitSInt(_, x) -> if z && x = 0L then ConstZero else ConstInt(x)
-        | LitUInt(_, x) -> if z && x = 0L then ConstZero else ConstInt(x)
-        | LitFloat(_, x) -> if z && x = 0.0 then ConstZero else ConstFloat(x)
-        | LitBool x -> if z && x = false then ConstZero else ConstBool(x)
-        | LitChar x -> ConstString(x)
-        | LitString x -> if z && x = "" then ConstZero else ConstString(x)
-        | LitNil -> ConstZero)
-    | Atom.Id _ -> NonConst
+        | KLitInt x -> if z && x = 0L then ConstZero else ConstInt(x)
+        | KLitSInt(_, x) -> if z && x = 0L then ConstZero else ConstInt(x)
+        | KLitUInt(_, x) -> if z && x = 0L then ConstZero else ConstInt(x)
+        | KLitFloat(_, x) -> if z && x = 0.0 then ConstZero else ConstFloat(x)
+        | KLitBool x -> if z && x = false then ConstZero else ConstBool(x)
+        | KLitChar x -> ConstString(x)
+        | KLitString x -> if z && x = "" then ConstZero else ConstString(x)
+        | KLitNil _ -> NonConst)
+    | AtomId _ -> NonConst
 
 let retain_atom ac a at =
     match ac with
@@ -69,7 +69,7 @@ let retain_atom ac a at =
    otherwise if the second option is Some((atom, atom_type)) then
    we output either the original atom, or the casting expression to res_t. *)
 let finalize_cfold_result c_opt at_opt res_t loc =
-    let mk_some_lit_atom l = Some (KExpAtom((Atom.Lit l), (res_t, loc))) in
+    let mk_some_lit_atom l = Some (KExpAtom((AtomLit l), (res_t, loc))) in
     let f2i x = Int64.of_float x in
     let b2i x = if x then 1L else 0L in
     match (c_opt, at_opt) with
@@ -77,46 +77,45 @@ let finalize_cfold_result c_opt at_opt res_t loc =
         (match c with
         | ConstZero ->
             (match res_t with
-            | KTypInt -> mk_some_lit_atom (LitInt 0L)
-            | KTypSInt b -> mk_some_lit_atom (LitSInt(b, 0L))
-            | KTypUInt b -> mk_some_lit_atom (LitUInt(b, 0L))
-            | KTypFloat b -> mk_some_lit_atom (LitFloat(b, 0.0))
-            | KTypBool -> mk_some_lit_atom (LitBool false)
-            | KTypString -> mk_some_lit_atom (LitString "")
-            | KTypNil -> mk_some_lit_atom LitNil
+            | KTypInt -> mk_some_lit_atom (KLitInt 0L)
+            | KTypSInt b -> mk_some_lit_atom (KLitSInt(b, 0L))
+            | KTypUInt b -> mk_some_lit_atom (KLitUInt(b, 0L))
+            | KTypFloat b -> mk_some_lit_atom (KLitFloat(b, 0.0))
+            | KTypBool -> mk_some_lit_atom (KLitBool false)
+            | KTypString -> mk_some_lit_atom (KLitString "")
             | _ -> None)
         | ConstInt x ->
             (match res_t with
-            | KTypInt -> mk_some_lit_atom (LitInt x)
-            | KTypSInt b -> mk_some_lit_atom (LitSInt(b, x))
-            | KTypUInt b -> mk_some_lit_atom (LitUInt(b, x))
-            | KTypFloat b -> mk_some_lit_atom (LitFloat(b, (Int64.to_float x)))
-            | KTypBool -> mk_some_lit_atom (LitBool (x != 0L))
-            | KTypString -> mk_some_lit_atom (LitString (Int64.to_string x))
+            | KTypInt -> mk_some_lit_atom (KLitInt x)
+            | KTypSInt b -> mk_some_lit_atom (KLitSInt(b, x))
+            | KTypUInt b -> mk_some_lit_atom (KLitUInt(b, x))
+            | KTypFloat b -> mk_some_lit_atom (KLitFloat(b, (Int64.to_float x)))
+            | KTypBool -> mk_some_lit_atom (KLitBool (x != 0L))
+            | KTypString -> mk_some_lit_atom (KLitString (Int64.to_string x))
             | _ -> None)
         | ConstFloat x ->
             (* we do not round floating-point numbers, because when
             C/C++/Java etc. programmers write (int)5.9, they expect 5, not 6 *)
             (match res_t with
-            | KTypInt -> mk_some_lit_atom (LitInt (f2i x))
-            | KTypSInt b -> mk_some_lit_atom (LitSInt(b, (f2i x)))
-            | KTypUInt b -> mk_some_lit_atom (LitUInt(b, (f2i x)))
-            | KTypFloat b -> mk_some_lit_atom (LitFloat(b, x))
-            | KTypBool -> mk_some_lit_atom (LitBool (x != 0.0))
-            | KTypString -> mk_some_lit_atom (LitString (Float.to_string x))
+            | KTypInt -> mk_some_lit_atom (KLitInt (f2i x))
+            | KTypSInt b -> mk_some_lit_atom (KLitSInt(b, (f2i x)))
+            | KTypUInt b -> mk_some_lit_atom (KLitUInt(b, (f2i x)))
+            | KTypFloat b -> mk_some_lit_atom (KLitFloat(b, x))
+            | KTypBool -> mk_some_lit_atom (KLitBool (x != 0.0))
+            | KTypString -> mk_some_lit_atom (KLitString (Float.to_string x))
             | _ -> None)
         | ConstBool x ->
             (match res_t with
-            | KTypInt -> mk_some_lit_atom (LitInt (b2i x))
-            | KTypSInt b -> mk_some_lit_atom (LitSInt(b, (b2i x)))
-            | KTypUInt b -> mk_some_lit_atom (LitUInt(b, (b2i x)))
-            | KTypFloat b -> mk_some_lit_atom (LitFloat(b, (if x then 1.0 else 0.0)))
-            | KTypBool -> mk_some_lit_atom (LitBool x)
-            | KTypString -> mk_some_lit_atom (LitString (if x then "true" else "false"))
+            | KTypInt -> mk_some_lit_atom (KLitInt (b2i x))
+            | KTypSInt b -> mk_some_lit_atom (KLitSInt(b, (b2i x)))
+            | KTypUInt b -> mk_some_lit_atom (KLitUInt(b, (b2i x)))
+            | KTypFloat b -> mk_some_lit_atom (KLitFloat(b, (if x then 1.0 else 0.0)))
+            | KTypBool -> mk_some_lit_atom (KLitBool x)
+            | KTypString -> mk_some_lit_atom (KLitString (if x then "true" else "false"))
             | _ -> None)
         | ConstString x ->
             (match res_t with
-            | KTypString -> mk_some_lit_atom (LitString x)
+            | KTypString -> mk_some_lit_atom (KLitString x)
             | _ -> None)
         | _ -> None)
     | (_, (Some (a, at))) ->
@@ -291,7 +290,7 @@ let cfold_dealias kmods =
     let add_to_concat_map n al = concat_map := Env.add n al !concat_map in
     let rec cfd_atom_ a loc callb =
         match a with
-        | Atom.Id n ->
+        | AtomId n ->
             (match (Env.find_opt n !id_map) with
             | Some a2 ->
                 a2
@@ -317,15 +316,15 @@ let cfold_dealias kmods =
         | KDefVal(n, rhs_e, loc) ->
             (*printf "defval: "; K_pp.pprint_kexp_x e; printf "\n";*)
             let rhs_e = cfd_kexp_ rhs_e callb in
-            let n = match cfd_atom_ (Atom.Id n) loc callb with
-                        | Atom.Id n2 -> n2
+            let n = match cfd_atom_ (AtomId n) loc callb with
+                        | AtomId n2 -> n2
                         | _ -> n in
             let e = KDefVal(n, rhs_e, loc) in
             if not (is_mutable n loc) then
                 (match rhs_e with
                 | KExpAtom(a, (_, loc2)) ->
                     (match a with
-                    | Atom.Id n2 ->
+                    | AtomId n2 ->
                         (* in order to do a safe substitution, both values
                             must be immutable, otherwise the change may affect the semantics
                         *)
@@ -335,15 +334,15 @@ let cfold_dealias kmods =
                                 (* if a temporary value is assigned to the user-defined value,
                                     we'd better keep the user-specified name so that the output code is cleaner.
                                     We will do the inverse substitution n2<-n rather than n<-n2 *)
-                                add_to_map n2 (Atom.Id n);
+                                add_to_map n2 (AtomId n);
                                 set_idk_entry n (kinfo_ n2 loc);
                                 KExpNop(loc)
                             | _ ->
-                                add_to_map n (Atom.Id n2);
+                                add_to_map n (AtomId n2);
                                 KExpNop(loc)
                         else
                             e
-                    | Atom.Lit c ->
+                    | AtomLit c ->
                         (*printf "will replace '%s' with literal '%s'\n" (id2str n) (Ast_pp.lit2str c);*)
                         add_to_map n a;
                         KExpNop(loc))
@@ -355,19 +354,19 @@ let cfold_dealias kmods =
         | KExpIntrin(IntrinStrConcat, al, (res_t, loc)) ->
             let try_cfold_str_concat a res_al =
                 match (a, res_al) with
-                | (Atom.Lit (LitChar s1), (Atom.Lit (LitChar s2) :: rest))
-                | (Atom.Lit (LitString s1), (Atom.Lit (LitChar s2) :: rest))
-                | (Atom.Lit (LitChar s1), (Atom.Lit (LitString s2) :: rest))
-                | (Atom.Lit (LitString s1), (Atom.Lit (LitString s2) :: rest)) ->
+                | (AtomLit (KLitChar s1), (AtomLit (KLitChar s2) :: rest))
+                | (AtomLit (KLitString s1), (AtomLit (KLitChar s2) :: rest))
+                | (AtomLit (KLitChar s1), (AtomLit (KLitString s2) :: rest))
+                | (AtomLit (KLitString s1), (AtomLit (KLitString s2) :: rest)) ->
                     (* the order s2 + s1 is correct here, since we operate on reversed lists *)
-                    Atom.Lit (LitString (s2 ^ s1)) :: rest
-                | (Atom.Lit (LitString ""), res_al) -> res_al
-                | (a, (Atom.Lit (LitString "") :: rest)) -> a :: rest
+                    AtomLit (KLitString (s2 ^ s1)) :: rest
+                | (AtomLit (KLitString ""), res_al) -> res_al
+                | (a, (AtomLit (KLitString "") :: rest)) -> a :: rest
                 | _ -> a :: res_al
                 in
             let res_al = List.fold_left (fun res_al a ->
                 match a with
-                | Atom.Id n ->
+                | AtomId n ->
                     (match (Env.find_opt n !concat_map) with
                     | Some(a :: rest) -> (List.rev rest) @ (try_cfold_str_concat a res_al)
                     | _ -> a :: res_al)
@@ -391,13 +390,13 @@ let cfold_dealias kmods =
         | KExpIf(c, then_e, else_e, kctx) ->
             (* eliminate dead branches *)
             (match c with
-            | KExpAtom(Atom.Lit (LitBool true), _) -> then_e
-            | KExpAtom(Atom.Lit (LitBool false), _) -> else_e
+            | KExpAtom(AtomLit (KLitBool true), _) -> then_e
+            | KExpAtom(AtomLit (KLitBool false), _) -> else_e
             | _ -> KExpIf(c, then_e, else_e, kctx))
         | KExpWhile(c, body, loc) ->
             (* eliminate dead branches *)
             (match c with
-            | KExpAtom(Atom.Lit (LitBool false), _) -> KExpNop(loc)
+            | KExpAtom(AtomLit (KLitBool false), _) -> KExpNop(loc)
             | _ -> e)
         (* we do not convert KExpDoWhile(body, false, loc)
            into a nested KExpSeq(), because then we will have to
@@ -444,13 +443,13 @@ let cfold_dealias kmods =
                         | _ ->
                             let actual_check = Utils.last_elem code in
                             (match actual_check with
-                            | KExpAtom((Atom.Lit (LitBool false)), _) ->
+                            | KExpAtom((AtomLit (KLitBool false)), _) ->
                                 (* skip the remaining checks,
                                    report that the action will not be executed *)
                                 let loc = get_kexp_loc actual_check in
                                 let new_c = code2kexp code loc in
                                 (false, [], List.rev (new_c :: result_checks))
-                            | KExpAtom((Atom.Lit (LitBool true)), _) ->
+                            | KExpAtom((AtomLit (KLitBool true)), _) ->
                                 let code_wo_check = List.rev (List.tl (List.rev code)) in
                                 process_case_checks other_checks code_wo_check result_checks
                             | _ ->
@@ -470,9 +469,9 @@ let cfold_dealias kmods =
                                 code2kexp (action_extra_code @ (e :: [])) eloc
                             else (match match_ktyp with
                                 | KTypVoid -> KExpNop(eloc)
-                                | _ -> KExpAtom((Atom.Lit LitNil), (match_ktyp, eloc))) in
+                                | _ -> KExpAtom((AtomLit (KLitNil match_ktyp)), (match_ktyp, eloc))) in
                         (match (keep_action, checks) with
-                        | (false, (KExpAtom((Atom.Lit (LitBool false)), _)) :: []) ->
+                        | (false, (KExpAtom((AtomLit (KLitBool false)), _)) :: []) ->
                             (* drop the case completely, because the check is trivial (==FALSE) *)
                             process_cases other_cases result
                         | (true, []) ->

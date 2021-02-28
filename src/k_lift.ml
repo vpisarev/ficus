@@ -216,11 +216,11 @@ type ll_subst_env_t = (id_t*id_t*(ktyp_t option)) Env.t
 let make_wrappers_for_nothrow top_code =
     let rec wrapf_atom a loc callb =
         match a with
-        | Atom.Id (Id.Name _) -> a
-        | Atom.Id n ->
+        | AtomId (Id.Name _) -> a
+        | AtomId n ->
             (match (kinfo_ n loc) with
             | KFun {contents={kf_closure={kci_wrap_f}}} ->
-                if kci_wrap_f = noid then a else (Atom.Id kci_wrap_f)
+                if kci_wrap_f = noid then a else (AtomId kci_wrap_f)
             | _ -> a)
         | _ -> a
     and wrapf_ktyp_ t loc callb = t
@@ -243,7 +243,7 @@ let make_wrappers_for_nothrow top_code =
                     let _ = create_kdefval w_a t (default_arg_flags()) None [] kf_loc in
                     (w_a, t)) kf_args
                     in
-                let w_body = KExpCall(kf_name, (List.map (fun (i, _) -> Atom.Id i) w_args), (kf_rt, kf_loc)) in
+                let w_body = KExpCall(kf_name, (List.map (fun (i, _) -> AtomId i) w_args), (kf_rt, kf_loc)) in
                 let code = create_kdeffun w_name w_args kf_rt w_flags (Some w_body) [e] kf_scope kf_loc in
                 rcode2kexp code kf_loc)
         | KExpCall(f, args, (t, loc)) ->
@@ -412,17 +412,17 @@ let lift_all kmods =
 
     let rec walk_atom_n_lift_all_adv a loc get_mkclosure_arg =
         match a with
-        | Atom.Id (Id.Name _) -> a
-        | Atom.Id n ->
+        | AtomId (Id.Name _) -> a
+        | AtomId n ->
             (match (Env.find_opt n !curr_subst_env) with
             | Some ((_, _, (Some f_typ))) ->
                 let temp_cl = dup_idk n in
                 let make_cl = KExpMkClosure(noid, n, [], (f_typ, loc)) in
                 let _ = curr_lift_extra_decls := create_kdefval temp_cl f_typ
                     (default_val_flags()) (Some make_cl) !curr_lift_extra_decls loc in
-                Atom.Id temp_cl
+                AtomId temp_cl
             | Some ((nv, nr, _)) ->
-                if get_mkclosure_arg then (Atom.Id nr) else (Atom.Id nv)
+                if get_mkclosure_arg then (AtomId nr) else (AtomId nv)
             | _ ->
                 (match (kinfo_ n loc) with
                 | KFun {contents={kf_flags}} ->
@@ -433,7 +433,7 @@ let lift_all kmods =
                 if not get_mkclosure_arg then a
                 else
                     (match (Env.find_opt n !orig_subst_env) with
-                    | Some ((_, nr, _)) -> Atom.Id nr
+                    | Some ((_, nr, _)) -> AtomId nr
                     | _ -> a))
         | _ -> a
     and walk_atom_n_lift_all a loc callb = walk_atom_n_lift_all_adv a loc false
@@ -464,7 +464,7 @@ let lift_all kmods =
                         else raise_compile_err kf_loc
                             (sprintf "free variable '%s' of '%s' is not defined yet"
                             (id2str fv) (id2str kf_name));
-                        walk_atom_n_lift_all_adv (Atom.Id fv) kf_loc true) orig_freevars
+                        walk_atom_n_lift_all_adv (AtomId fv) kf_loc true) orig_freevars
                         in
                     let make_cl = KExpMkClosure(make_fp, kf_name, cl_args, (kf_typ, kf_loc)) in
                     create_kdefval cl_name kf_typ (default_val_flags()) (Some make_cl) code kf_loc
@@ -548,7 +548,7 @@ let lift_all kmods =
                                     val_flag_global=[]} in
                                 let prologue = create_kdefval fv_ref ref_typ ref_flags
                                     (Some get_fv) prologue kf_loc in
-                                (KExpUnOp(OpDeref, (Atom.Id fv_ref), (t, kf_loc)), prologue, fv_ref)
+                                (KExpUnOp(OpDeref, (AtomId fv_ref), (t, kf_loc)), prologue, fv_ref)
                             in
                         let _ = curr_subst_env := Env.add fv_orig (fv_proxy, fv_proxy_mkclo_arg, None) !curr_subst_env in
                         let new_kv_flags = {kv_flags with val_flag_tempref=true} in
@@ -601,7 +601,7 @@ let lift_all kmods =
                     in
                 let (a, code) = kexp2atom ((pp_id2str n) ^ "_arg") rhs false [] in
                 let code = KDefVal(nr, KExpUnOp(OpMkRef, a, (ref_typ, loc)), loc) :: code in
-                let code = KDefVal(n, KExpUnOp(OpDeref, (Atom.Id nr), (t, loc)), loc) :: code in
+                let code = KDefVal(n, KExpUnOp(OpDeref, (AtomId nr), (t, loc)), loc) :: code in
                 KExpSeq((List.rev code), (KTypVoid, loc))
         | KExpFor(idom_l, at_ids, body, flags, loc) ->
             let idom_l = List.map (fun (i, dom_i) ->
@@ -628,8 +628,8 @@ let lift_all kmods =
             let (curr_f, curr_arg, curr_fvt_t) = !curr_clo in
             if f = curr_f then
                 (*let cl_arg =
-                    if curr_cl_arg = noid then Atom.Lit LitNil
-                    else Atom.Id curr_cl_arg
+                    if curr_cl_arg = noid then AtomLit KLitNil
+                    else AtomId curr_cl_arg
                 in KExpCall(f, args @ [cl_arg], kctx)*)
                 KExpCall(f, args, kctx)
             else

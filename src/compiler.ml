@@ -175,7 +175,7 @@ let prf str = pr_verbose (sprintf "\t%s" str)
 
 let k_optimize_all kmods =
     let _ = (compile_errs := []) in
-    let niters = 5 in
+    let niters = 2 in
     let temp_kmods = ref kmods in
     prf "initial dead code elim";
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
@@ -226,15 +226,19 @@ let k_optimize_all kmods =
     (!temp_kmods, !compile_errs = [])
 
 let k2c_all kmods =
+    pr_verbose "Generating C code:";
     let _ = (compile_errs := []) in
     let _ = C_form.init_all_idcs() in
     let _ = C_gen_std.init_std_names() in
+    let _ = pr_verbose "\tstd calls initialized" in
     let cmods = C_gen_code.gen_ccode_all kmods in
+    let _ = pr_verbose "C code generated" in
     let cmods = C_post_rename_locals.rename_locals cmods in
+    let _ = pr_verbose "\tlocal variables renamed" in
     let cmods = List.map (fun cmod ->
         let is_cpp = options.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp in
         if is_cpp then C_post_adjust_decls.adjust_decls_ cmod else cmod) cmods in
-    let _ = pr_verbose "Conversion to C-form complete" in
+    let _ = pr_verbose "\tConversion to C-form complete" in
     (cmods, !compile_errs = [])
 
 let emit_c_files fname0 cmods =
@@ -350,10 +354,10 @@ let process_all fname0 =
         let (kmods, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
         let _ = pr_verbose "K-normalization complete" in
         let _ = pr_verbose "K-form optimization started" in
-        let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in
+        (*let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in*)
         let (kmods, ok) = if ok then k_optimize_all kmods else ([], false) in
         let _ = pr_verbose "K-form optimization complete" in
-        (*let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in*)
+        let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in
         if not options.gen_c then ok else
             let (cmods, ok) = if ok then k2c_all kmods else ([], false) in
             let (cmods, builddir, ok) = if ok then emit_c_files fname0 cmods else (cmods, ".", ok) in

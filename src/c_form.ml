@@ -88,6 +88,7 @@ type cunop_t =
 
 type ctyp_attr_t = CTypConst | CTypVolatile
 type carg_attr_t = CArgPassByPtr | CArgRetVal | CArgFV
+type clit_t = klit_t
 
 type ctyp_flag_t =
     | CTypFlagVariantNilCase of int (* if the type is a recursive variant and one of its cases has "void" type,
@@ -140,7 +141,7 @@ type ctyp_t =
 and cctx_t = ctyp_t * loc_t
 and cexp_t =
     | CExpIdent of id_t * cctx_t
-    | CExpLit of lit_t * cctx_t
+    | CExpLit of clit_t * cctx_t
     | CExpBinOp of cbinop_t * cexp_t * cexp_t * cctx_t
     | CExpUnOp of cunop_t * cexp_t * cctx_t
     | CExpMem of cexp_t * id_t * cctx_t
@@ -344,14 +345,17 @@ let get_idc_cname i loc =
         | CMacro {contents = {cm_cname}} -> cm_cname)
 
 let get_lit_ctyp l = match l with
-    | LitInt(_) -> CTypInt
-    | LitSInt(b, _) -> CTypSInt(b)
-    | LitUInt(b, _) -> CTypUInt(b)
-    | LitFloat(b, _) -> CTypFloat(b)
-    | LitString(_) -> CTypString
-    | LitChar(_) -> CTypUniChar
-    | LitBool(_) -> CTypBool
-    | LitNil -> CTypRawPtr([], CTypVoid)
+    | KLitInt(_) -> CTypInt
+    | KLitSInt(b, _) -> CTypSInt(b)
+    | KLitUInt(b, _) -> CTypUInt(b)
+    | KLitFloat(b, _) -> CTypFloat(b)
+    | KLitString(_) -> CTypString
+    | KLitChar(_) -> CTypUniChar
+    | KLitBool(_) -> CTypBool
+    | KLitNil(t) ->
+        (match t with
+        | KTypName(n) -> CTypName(n)
+        | _ -> CTypRawPtr([], CTypVoid))
 
 let create_cdefval n t flags cname e_opt code loc =
     let dv = { cv_name=n; cv_typ=t; cv_cname=cname; cv_flags=flags; cv_loc=loc } in
@@ -456,6 +460,7 @@ and walk_cexp e callb =
     let walk_ctx_ (t, loc) = ((walk_ctyp_ t), loc) in
     (match e with
     | CExpIdent (n, ctx) -> CExpIdent((walk_id_ n), (walk_ctx_ ctx))
+    | CExpLit (KLitNil (KTypName(n)), ctx) -> CExpLit(KLitNil (KTypName(walk_id_ n)), (walk_ctx_ ctx))
     | CExpLit (lit, ctx) -> CExpLit(lit, (walk_ctx_ ctx))
     | CExpBinOp (bop, e1, e2, ctx) -> CExpBinOp(bop, (walk_cexp_ e1), (walk_cexp_ e2), (walk_ctx_ ctx))
     | CExpUnOp (uop, e, ctx) -> CExpUnOp(uop, (walk_cexp_ e), (walk_ctx_ ctx))
@@ -601,6 +606,7 @@ and fold_cexp e callb =
     let fold_ctx_ (t, _) = fold_ctyp_ t in
     fold_ctx_ (match e with
     | CExpIdent (n, ctx) -> fold_id_ n; ctx
+    | CExpLit (KLitNil (KTypName(n)), ctx) -> fold_id_ n; ctx
     | CExpLit (_, ctx) -> ctx
     | CExpBinOp (_, e1, e2, ctx) -> fold_cexp_ e1; fold_cexp_ e2; ctx
     | CExpUnOp (_, e, ctx) -> fold_cexp_ e; ctx
@@ -724,10 +730,10 @@ let std_CTypConstVoidPtr = make_const_ptr CTypVoid
 let std_CTypAnyArray = CTypArray(0, CTypAny)
 
 let make_lit_exp l loc = let t = get_lit_ctyp l in CExpLit (l, (t, loc))
-let make_int__exp i loc = CExpLit ((LitInt i), (CTypInt, loc))
-let make_int_exp i loc = CExpLit ((LitInt (Int64.of_int i)), (CTypInt, loc))
-let make_bool_exp b loc = CExpLit ((LitBool b), (CTypBool, loc))
-let make_nullptr loc = CExpLit (LitNil, (std_CTypVoidPtr, loc))
+let make_int__exp i loc = CExpLit ((KLitInt i), (CTypInt, loc))
+let make_int_exp i loc = CExpLit ((KLitInt (Int64.of_int i)), (CTypInt, loc))
+let make_bool_exp b loc = CExpLit ((KLitBool b), (CTypBool, loc))
+let make_nullptr loc = CExpLit (KLitNil(KTypVoid), (std_CTypVoidPtr, loc))
 let make_id_exp i loc = let t = get_idc_typ i loc in CExpIdent(i, (t, loc))
 let make_id_t_exp i t loc = CExpIdent(i, (t, loc))
 let make_label basename loc =

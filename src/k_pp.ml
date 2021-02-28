@@ -33,7 +33,7 @@ type ktyp_pr_t = KTypPr0 | KTypPrFun | KTypPrComplex | KTypPrBase
 let rec get_ktyp_pr t = match t with
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
-    | KTypErr | KTypCPointer | KTypNil | KTypModule | KTypName _ -> KTypPrBase
+    | KTypErr | KTypCPointer | KTypModule | KTypName _ -> KTypPrBase
     | KTypTuple _ | KTypRecord _ -> KTypPrBase
     | KTypList _ | KTypRef _ | KTypArray _ -> KTypPrComplex
     | KTypFun _ -> KTypPrFun
@@ -63,7 +63,6 @@ let rec ppktyp_ t p1 loc =
     | KTypChar -> pstr "Char"
     | KTypBool -> pstr "Bool"
     | KTypVoid -> pstr "Void"
-    | KTypNil -> pstr "Nil"
     | KTypFun(tl, t2) ->
             (*let (lp, rp) = opt_parens p p1 in*)
             obox(); pstr "(";
@@ -89,23 +88,23 @@ let rec ppktyp_ t p1 loc =
 
 let pprint_ktyp t loc = ppktyp_ t KTypPr0 loc
 let pprint_atom a loc = match a with
-    | Atom.Id ((Id.Name _) as k) -> pprint_id k loc
-    | Atom.Id k -> pprint_id k loc
-    | Atom.Lit l -> pstr (lit2str l false loc)
+    | AtomId ((Id.Name _) as k) -> pprint_id k loc
+    | AtomId k -> pprint_id k loc
+    | AtomLit l -> pstr (klit2str l false loc)
 let pprint_dom r loc = match r with
-    | Domain.Elem(a) -> pprint_atom a loc
-    | Domain.Fast(a) -> pstr "<"; pprint_atom a loc; pstr ">"
-    | Domain.Range(i,j,k) ->
+    | DomainElem(a) -> pprint_atom a loc
+    | DomainFast(a) -> pstr "<"; pprint_atom a loc; pstr ">"
+    | DomainRange(i,j,k) ->
         (match i with
-        | Atom.Lit(LitNil) -> ()
+        | AtomLit(KLitNil _) -> ()
         | _ -> pprint_atom i loc);
         pstr ":";
         (match j with
-        | Atom.Lit(LitNil) -> ()
+        | AtomLit(KLitNil _) -> ()
         | _ -> pprint_atom j loc);
         (match k with
-        | Atom.Lit(LitNil) -> ()
-        | Atom.Lit(LitInt 1L) -> ()
+        | AtomLit(KLitNil _) -> ()
+        | AtomLit(KLitInt 1L) -> ()
         | _ -> pstr ":"; pprint_atom k loc)
 
 let rec pprint_kexp e = pprint_kexp_ e true
@@ -132,7 +131,7 @@ and pprint_kexp_ e prtyp =
         | _ -> () in
     let pprint_atom_ a = pprint_atom a eloc in
     let pprint_dom_ r = pprint_dom r eloc in
-    let pprint_id_ i = pprint_atom_ (Atom.Id i) in
+    let pprint_id_ i = pprint_atom_ (AtomId i) in
     let pprint_id_label i = pstr (idk2str i eloc) in
     let obox_cnt = ref 0 in
     let obox_() = obox(); if prtyp then (pstr "<"; ppktyp_ t KTypPr0 eloc; pstr ">") else (); obox_cnt := !obox_cnt + 1 in
@@ -211,7 +210,7 @@ and pprint_kexp_ e prtyp =
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
             | _ -> pstr (string_of_int i))
-        | KExpUnOp(OpDeref, (Atom.Id n), (_, loc)) ->
+        | KExpUnOp(OpDeref, (AtomId n), (_, loc)) ->
             pstr "*"; pprint_id n loc
         | KExpUnOp(OpMkRef, a, _) ->
             pstr "MAKE_REF "; pprint_atom_ a

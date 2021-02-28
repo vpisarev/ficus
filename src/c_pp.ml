@@ -174,9 +174,9 @@ and pprint_cexp_ e pr =
     | CExpIdent(i, (_, loc)) -> pprint_id i loc
     | CExpLit(l, (_, loc)) ->
         let s = match l with
-        | LitNil -> "0"
-        | LitChar c -> "FX_CHAR('" ^ (Utils.escaped_uni c) ^ "')"
-        | _ -> lit2str l true loc in
+        | KLitNil _ -> "0"
+        | KLitChar c -> "FX_CHAR('" ^ (Utils.escaped_uni c) ^ "')"
+        | _ -> K_form.klit2str l true loc in
         pstr s
     | CExpBinOp (COpArrayElem as bop, a, b, _) ->
         let (_, pr0, _) = binop2str_ bop in

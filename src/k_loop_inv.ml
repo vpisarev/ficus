@@ -17,7 +17,7 @@ let rec move_loop_invs code =
         let isinv = ref true in
         let isinv_atom_ a loc callb =
             match a with
-            | Atom.Id i ->
+            | AtomId i ->
                 if  (is_mutable i loc) ||
                     not (is_ktyp_scalar (get_idk_ktyp i loc)) ||
                     (IdSet.mem i !curr_inloop) then isinv := false else ()

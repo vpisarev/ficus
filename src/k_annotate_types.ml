@@ -20,7 +20,7 @@ let get_typ_deps n loc =
     let rec get_ktyp_deps_ t deps =
         match t with
         | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _  | KTypFloat _
-        | KTypVoid | KTypNil | KTypBool | KTypChar | KTypString
+        | KTypVoid | KTypBool | KTypChar | KTypString
         | KTypCPointer | KTypExn | KTypErr | KTypModule -> deps
         | KTypFun (args, rt) ->
             List.fold_left (fun deps t -> get_ktyp_deps_ t deps) deps (rt :: args)
@@ -125,7 +125,7 @@ let get_ktprops t loc =
     let rec get_ktprops_ t loc =
     match t with
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
-    | KTypVoid | KTypNil | KTypBool | KTypChar | KTypErr ->
+    | KTypVoid | KTypBool | KTypChar | KTypErr ->
         { ktp_complex=false; ktp_scalar=true; ktp_ptr=false; ktp_pass_by_ref=false;
           ktp_custom_free=false; ktp_custom_copy=false }
     | KTypString | KTypArray _ | KTypExn | KTypFun _ | KTypModule ->

@@ -23,9 +23,11 @@ native:
 	@cp ficus.native ficus
 
 byte:
+	@echo 'let git_commit = "$(FICUS_GIT)"' > config.ml
 	$(OCB) ficus.byte
 
 debug:
+	@echo 'let git_commit = "$(FICUS_GIT)"' > config.ml
 	$(OCB) -tag debug ficus.d.byte
 
 test: native

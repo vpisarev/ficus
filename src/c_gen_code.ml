@@ -112,7 +112,7 @@ let find_single_use_vals topcode =
     let decl_const_vals = ref (IdSet.empty) in
     let rec count_atom a loc callb =
         match a with
-        | Atom.Id i ->
+        | AtomId i ->
             if IdSet.mem i !decl_const_vals then
                 let n = match (Env.find_opt i !count_map) with
                     | Some(n) -> n
@@ -143,7 +143,7 @@ let find_single_use_vals topcode =
             (* count f twice to make sure it will not be included into u1vals, because if
                f is function pointer, then in C the call will be converted to
                `f.fp(args, f.fcv)`, i.e. f is used twice here, so we need to save it anyway *)
-            count_atom (Atom.Id f) loc callb;
+            count_atom (AtomId f) loc callb;
             fold_kexp e callb
         | _ -> fold_kexp e callb
     in let count_callb =
@@ -160,7 +160,7 @@ let occurs_id_kexp i0 e =
     let r_occurs = ref false in
     let rec occurs_atom a loc callb =
         match a with
-        | Atom.Id i ->
+        | AtomId i ->
             if i = i0 then r_occurs := true else ()
         | _ -> ()
     and occurs_ktyp t loc callb = ()
@@ -369,7 +369,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             bctx.bctx_prologue <- prologue;
             bctx.bctx_cleanup <- C_gen_types.gen_free_code i_exp ctyp true true bctx.bctx_cleanup loc;
             (i_exp, (match (e0_opt, ctp_ptr) with
-            | (Some(CExpLit(LitNil, _)), true) -> ccode
+            | (Some(CExpLit(KLitNil _, _)), true) -> ccode
             | (Some(e0), _) -> C_gen_types.gen_copy_code e0 i_exp ctyp ccode loc
             | _ -> ccode)))
         else
@@ -540,16 +540,16 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
 
     let atom2cexp_ a save ccode loc =
         match a with
-        | Atom.Lit(l) ->
+        | AtomLit(l) ->
             (match l with
-            | LitString _ ->
+            | KLitString _ ->
                 (* since FX_MAKE_STR(<string_literal>) creates a string with NULL reference counter and
                 without allocating string in memory heap, there is no need to call destructor for it *)
                 let e0 = make_call !std_FX_MAKE_STR ((make_lit_exp l loc) :: []) CTypString loc in
                 create_cdefval (gen_temp_idc "slit") CTypString (default_val_flags()) "" (Some e0) ccode loc
             | _ ->
                 let e = make_lit_exp l loc in (e, ccode))
-        | Atom.Id(i) -> id2cexp i save ccode loc
+        | AtomId(i) -> id2cexp i save ccode loc
     in
 
     let atom2cexp a ccode loc = atom2cexp_ a false ccode loc
@@ -664,7 +664,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let (_, ndims) = List.fold_left (fun (k, ndims) (_, dom_i) ->
             let ndims_i =
                 match dom_i with
-                | Domain.Elem(Atom.Id d) ->
+                | DomainElem(AtomId d) ->
                     (match (get_idk_ktyp d for_loc) with
                     | KTypArray(n, _) -> n
                     | _ -> 1)
@@ -686,18 +686,19 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             in
         let (idoml, at_ids) = if at_ids = [] then (idoml, at_ids) else
             (let have_good_idx = List.exists (fun (_, dom_i) -> match dom_i with
-                | Domain.Elem (Atom.Id k) | Domain.Fast (Atom.Id k) ->
+                | DomainElem (AtomId k) | DomainFast (AtomId k) ->
                     (match (deref_ktyp (get_idk_ktyp k loc) loc) with
                     | KTypList _ -> false
                     | _ -> true)
-                | Domain.Range (_, _, Atom.Lit (LitInt 1L)) -> false
-                | Domain.Range (_, Atom.Lit (LitNil), _) -> false
+                | DomainElem (AtomLit (KLitNil _)) -> false
+                | DomainRange (_, _, AtomLit (KLitInt 1L)) -> false
+                | DomainRange (_, AtomLit (KLitNil _), _) -> false
                 | _ -> true) idoml
                 in
             (match (have_good_idx, at_ids) with
             | (true, _) -> (idoml, at_ids)
             | (false, i :: []) ->
-                let i_iter = (i, Domain.Range(Atom.Lit(LitInt 0L), Atom.Lit LitNil, Atom.Lit(LitInt 1L))) in
+                let i_iter = (i, DomainRange(AtomLit(KLitInt 0L), _ALitVoid, AtomLit(KLitInt 1L))) in
                 ((i_iter :: idoml), [])
             | _ -> raise_compile_err loc
                 (for_err_msg for_idx nfors 0 "here @ clause should contain just one scalar index")))
@@ -772,13 +773,14 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             init_ccode, pre_body_ccode, body_elems, post_checks) = List.fold_left
             (fun (k, list_exps, i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
                 pre_body_ccode, body_elems, post_checks) (iter_val_i, dom_i) ->
+                let iter_val_i = if iter_val_i != noid then iter_val_i else (gen_temp_idc "i") in
                 let (lists_i, i_exps, n_exps, for_checks, incr_exps, init_checks,
                     init_ccode, pre_body_ccode, body_elems, post_checks) = match dom_i with
-                    | Domain.Range(a, b, delta) ->
+                    | DomainRange(a, b, delta) ->
                         let (aug_add_delta, add_delta, d_exp, init_ccode) = match delta with
-                            | Atom.Lit(LitInt 0L) ->
+                            | AtomLit(KLitInt 0L) ->
                                 raise_compile_err for_loc (for_err_msg for_idx nfors k "the iteration step is zero")
-                            | Atom.Lit (LitInt i) ->
+                            | AtomLit (KLitInt i) ->
                                 let (aug_add_delta, add_delta, i) = if i > 0L then
                                         (COpAugAdd, COpAdd, i)
                                     else
@@ -791,7 +793,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 (COpAugAdd, COpAdd, d_exp, init_ccode)
                             in
                         (match b with
-                        | Atom.Lit LitNil ->
+                        | AtomLit (KLitNil _) ->
                             (*
                                 int iter_var = a;
                                 for(;;iter_var += delta) {
@@ -817,7 +819,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let (a_exp, init_ccode) = atom2cexp_ a true init_ccode for_loc in
                             let (b_exp, init_ccode) = atom2cexp_ b true init_ccode for_loc in
                             let is_canonical_for = match (a, delta) with
-                                | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> true
+                                | ((AtomLit (KLitInt 0L)), (AtomLit (KLitInt 1L))) -> true
                                 | _ -> false
                                 in
                             let calc_n_exp = if is_canonical_for then b_exp else
@@ -830,9 +832,10 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                     init_ccode)
                                 | _ ->
                                     let (add_pair, i_id) = match (a, delta) with
-                                        | ((Atom.Lit (LitInt 0L)), (Atom.Lit (LitInt 1L))) -> (false, iter_val_i)
+                                        | ((AtomLit (KLitInt 0L)), (AtomLit (KLitInt 1L))) -> (false, iter_val_i)
                                         | _ -> (true, get_iter_id 0 at_ids (pp_id2str iter_val_i))
                                         in
+                                    let i_id = if i_id != noid then i_id else (gen_temp_idc "i") in
                                     let (n_exp, init_ccode) =
                                         if is_canonical_for && (is_immutable_atomic_cexp b_exp) then
                                             (b_exp, init_ccode)
@@ -851,15 +854,15 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks,
                             init_ccode, pre_body_ccode, body_elems, post_checks))
-                    | Domain.Elem(a) ->
-                        let col_ = match a with Atom.Id i -> i | _ -> noid in
+                    | DomainElem(a) ->
+                        let col_ = match a with AtomId i -> i | _ -> noid in
                         let ktyp = get_atom_ktyp a for_loc in
                         let ctyp = C_gen_types.ktyp2ctyp ktyp for_loc in
                         (* before running iteration over a collection,
                             we need to make sure that it will not be deallocated in the middle *)
                         let (col_exp, init_ccode) = if col_ <> noid &&
                             List.exists (fun (e, _, _) -> occurs_id_kexp col_ e) nested_e_idoml then
-                                let (src_exp, init_ccode) = atom2cexp (Atom.Id col_) init_ccode for_loc in
+                                let (src_exp, init_ccode) = atom2cexp (AtomId col_) init_ccode for_loc in
                                 (*let src_exp = make_id_exp col_ (get_idk_loc col_ for_loc) in*)
                                 let (col_exp, init_ccode) = get_dstexp (ref None) (pp_id2str col_) ctyp init_ccode for_loc in
                                 let init_ccode = C_gen_types.gen_copy_code src_exp col_exp ctyp init_ccode for_loc in
@@ -1166,11 +1169,12 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let ctyp = C_gen_types.ktyp2ctyp ktyp kloc in
         let dummy_exp = make_dummy_exp kloc in
         (*let _ = (printf "processing kexp: "; K_pp.pprint_kexp_x kexp; printf "\n") in*)
-        (*let _ = match kexp with
-            | KDefFun {contents={kf_name}} ->
-                printf "processing function '%s'\n" (idk2str kf_name kloc)
+        let _ = match kexp with
+            | KDefFun {contents={kf_name}} when (pp_id2str kf_name) = "search_path" ->
+                printf "processing function '%s'\n" (idk2str kf_name kloc);
+                K_pp.pprint_kexp_x kexp
             | _ -> ()
-        in*)
+        in
 
         (* generate exp and then optionally generate the assignment if needed *)
         let (assign, result_exp, ccode) = match kexp with
@@ -1193,7 +1197,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let f2 = is_ktyp_integer (get_atom_ktyp a2 kloc) true in
                     (* if a2 is constant, k_cfold_dealias stage has already checked
                        that a2 is non-zero; we can skip non-zero check here *)
-                    let f2 = f2 && (match a2 with Atom.Id _ -> true | _ -> false) in
+                    let f2 = f2 && (match a2 with AtomId _ -> true | _ -> false) in
                     ((f1 && f2), f1, f2)
                 | _ -> (false, false, false)
                 in
@@ -1244,7 +1248,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     else
                         obtain l using get_dstexp.
                 *)
-                let a2_id = match a2 with (Atom.Id i) when IdSet.mem i u1vals -> i | _ -> noid in
+                let a2_id = match a2 with (AtomId i) when IdSet.mem i u1vals -> i | _ -> noid in
                 let ce2_id = match ce2 with CExpIdent(i, _) -> i | _ -> noid in
                 let (reuse_ce2, (l_exp, _)) = if (Utils.is_none !dstexp_r) && a2_id <> noid && ce2_id <> noid then
                         (true, (ce2, []))
@@ -1289,7 +1293,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             (false, r_exp, ccode)
         | KExpUnOp(OpDeref, a1, _) ->
             let a_id = match a1 with
-                | Atom.Id a_id -> a_id
+                | AtomId a_id -> a_id
                 | _ -> raise_compile_err kloc "cgen: deref operand is not an identifier"
                 in
             let (ce, ccode) = id2cexp a_id false ccode kloc in
@@ -1340,7 +1344,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let vktyp = get_atom_ktyp v kloc in
                 let {ktp_ptr} = K_annotate_types.get_ktprops vktyp kloc in
                 (match (vktyp, vn_val) with
-                | (KTypExn, (Atom.Id vn)) ->
+                | (KTypExn, (AtomId vn)) ->
                     (match (cinfo_ vn kloc) with
                     | CExn {contents={cexn_data}} ->
                         let exn_data = cexp_mem cv (get_id "data") CTypAny in
@@ -1349,7 +1353,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         (true, exn_data, ccode)
                     | _ -> raise_compile_err kloc (sprintf "cgen: information about exception '%s' is not found"
                         (idk2str vn kloc)))
-                | (_, (Atom.Id vn)) ->
+                | (_, (AtomId vn)) ->
                     let vn_val = get_orig_id vn in
                     let cvu = if ktp_ptr then
                         cexp_arrow cv (get_id "u") CTypAny
@@ -1372,9 +1376,9 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let (strs, ccode) = List.fold_left (fun (strs, ccode) a ->
                     let (c_exp, ccode) = atom2cexp_ a true ccode kloc in
                     let s_exp = match (a, (get_cexp_typ c_exp)) with
-                        | (Atom.Lit (LitChar s), CTypUniChar) ->
-                            make_call (get_id "FX_MAKE_STR1") [make_lit_exp (LitString s) kloc] CTypString kloc
-                        | ((Atom.Id n), CTypUniChar) ->
+                        | (AtomLit (KLitChar s), CTypUniChar) ->
+                            make_call (get_id "FX_MAKE_STR1") [make_lit_exp (KLitString s) kloc] CTypString kloc
+                        | ((AtomId n), CTypUniChar) ->
                             make_call (get_id "FX_MAKE_VAR_STR1") [c_exp] CTypString kloc
                         | _ -> c_exp
                         in
@@ -1401,7 +1405,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     (ktyp2str ktyp) (atom2str arr_or_str))
                 in
                 (true, c_e, ccode)
-            | (IntrinGetSize, arr_or_str :: (Atom.Lit (LitInt i)) :: []) ->
+            | (IntrinGetSize, arr_or_str :: (AtomLit (KLitInt i)) :: []) ->
                 let (arr_exp, ccode) = atom2cexp arr_or_str ccode kloc in
                 let c_e = match ((get_atom_ktyp arr_or_str kloc), i) with
                 | (KTypString, 0L) -> make_call (get_id "FX_STR_LENGTH") [arr_exp] CTypInt kloc
@@ -1470,7 +1474,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         if not have_fv_arg then
                             []
                         else if not cf_flags.fun_flag_uses_fv then
-                            [make_lit_exp LitNil kloc]
+                            [make_nullptr kloc]
                         else if f = (curr_func kloc) then
                             [make_id_t_exp (get_id "fx_fv") std_CTypVoidPtr cf_loc]
                         else
@@ -1653,22 +1657,22 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             (match arr_ctyp with
             | CTypString ->
                 (match idxs with
-                | Domain.Fast i :: [] ->
+                | DomainFast i :: [] ->
                     let (i_exp, ccode) = atom2cexp i ccode kloc in
                     let get_elem_exp = make_call !std_FX_STR_ELEM [arr_exp; i_exp] CTypUniChar kloc in
                     (true, get_elem_exp, ccode)
-                | Domain.Elem i :: [] ->
+                | DomainElem i :: [] ->
                     let (i_exp, ccode) = atom2cexp_ i true ccode kloc in
                     let chk_exp = make_call !std_FX_STR_CHKIDX [arr_exp; i_exp; lbl] CTypBool kloc in
                     let get_elem_exp = make_call !std_FX_STR_ELEM [arr_exp; i_exp] CTypUniChar kloc in
                     (true, get_elem_exp, (CExp chk_exp) :: ccode)
-                | Domain.Range(a, b, delta) :: [] ->
+                | DomainRange(a, b, delta) :: [] ->
                     let (mask, (a_exp, ccode)) = match a with
-                        | Atom.Lit LitNil -> (1, ((make_int_exp 0 kloc), ccode))
+                        | AtomLit (KLitNil _) -> (1, ((make_int_exp 0 kloc), ccode))
                         | _ -> (0, (atom2cexp a ccode kloc))
                         in
                     let (mask, (b_exp, ccode)) = match b with
-                        | Atom.Lit LitNil -> (2+mask, ((make_int_exp 0 kloc), ccode))
+                        | AtomLit (KLitNil _) -> (2+mask, ((make_int_exp 0 kloc), ccode))
                         | _ -> (mask, (atom2cexp b ccode kloc))
                         in
                     let (delta_exp, ccode) = atom2cexp delta ccode kloc in
@@ -1680,10 +1684,10 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | _ -> raise_compile_err kloc
                     "cgen: unexpected index type when accessing string (should be a single scalar index or range)")
             | CTypArray _ ->
-                let need_subarr = List.exists (fun d -> match d with Domain.Range _ -> true | _ -> false) idxs in
+                let need_subarr = List.exists (fun d -> match d with DomainRange _ -> true | _ -> false) idxs in
                 let need_flatten = need_subarr && (match idxs with
-                    | Domain.Range((Atom.Lit LitNil), (Atom.Lit LitNil), (Atom.Lit LitNil)) :: []
-                    | Domain.Range((Atom.Lit LitNil), (Atom.Lit LitNil), (Atom.Lit (LitInt 1L))) :: [] -> true
+                    | DomainRange((AtomLit (KLitNil _)), (AtomLit (KLitNil _)), (AtomLit (KLitNil _))) :: []
+                    | DomainRange((AtomLit (KLitNil _)), (AtomLit (KLitNil _)), (AtomLit (KLitInt 1L))) :: [] -> true
                     | _ -> false)
                     in
                 if need_flatten then
@@ -1694,17 +1698,17 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 else if need_subarr then
                     let (range_data, ccode) = List.fold_left (fun (range_data, ccode) d ->
                         match d with
-                        | Domain.Elem i | Domain.Fast i ->
+                        | DomainElem i | DomainFast i ->
                             let (i_exp, ccode) = atom2cexp i ccode kloc in
                             ((i_exp :: (make_int_exp 0 kloc) :: range_data), ccode)
-                        | Domain.Range (a, b, delta) ->
+                        | DomainRange (a, b, delta) ->
                             let (a_exp, ccode) =
                                 match a with
-                                | Atom.Lit LitNil -> ((make_int_exp 0 kloc), ccode)
+                                | AtomLit (KLitNil _) -> ((make_int_exp 0 kloc), ccode)
                                 | _ -> atom2cexp a ccode kloc
                                 in
                             let (range_delta, ccode) = match b with
-                                | Atom.Lit LitNil -> ((a_exp :: (make_int_exp 2 kloc) :: []), ccode)
+                                | AtomLit (KLitNil _) -> ((a_exp :: (make_int_exp 2 kloc) :: []), ccode)
                                 | _ ->
                                     let (b_exp, ccode) = atom2cexp b ccode kloc in
                                     ((b_exp :: a_exp :: (make_int_exp 1 kloc) :: []), ccode)
@@ -1726,10 +1730,10 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let elem_ctyp = ctyp in
                     let (_, chk_exp_opt, i_exps, ccode) = List.fold_left (fun (dim, chk_exp_opt, i_exps, ccode) d ->
                         match d with
-                        | Domain.Fast i ->
+                        | DomainFast i ->
                             let (i_exp, ccode) = atom2cexp i ccode kloc in
                             (dim+1, chk_exp_opt, i_exp :: i_exps, ccode)
-                        | Domain.Elem i ->
+                        | DomainElem i ->
                             let (i_exp, ccode) = atom2cexp_ i true ccode kloc in
                             let chk_exp1 = make_call !std_FX_CHKIDX1 [arr_exp; (make_int_exp dim kloc); i_exp] CTypBool kloc in
                             let chk_exp_opt = match chk_exp_opt with
@@ -1928,17 +1932,17 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         List.fold_left (fun (pre_alloc_array, decl_inside_for) (i, dom) ->
                             let decl_inside_for = IdSet.add i decl_inside_for in
                             let pre_alloc_array = (match dom with
-                                | Domain.Elem (Atom.Id col) ->
+                                | DomainElem (AtomId col) ->
                                     let {kv_typ; kv_flags} = get_kval col kloc in
                                     if not kv_flags.val_flag_mutable &&
                                         (match kv_typ with KTypArray _ | KTypString -> true | _ -> false) &&
                                         not (IdSet.mem col decl_inside_for) then
                                         pre_alloc_array else false
-                                | Domain.Elem (Atom.Lit (LitString _)) -> pre_alloc_array
-                                | Domain.Range (a, b, delta) ->
+                                | DomainElem (AtomLit (KLitString _)) -> pre_alloc_array
+                                | DomainRange (a, b, delta) ->
                                     let check_range_elem e =
                                         match e with
-                                        | Atom.Id k ->
+                                        | AtomId k ->
                                             if (is_mutable k kloc) || (IdSet.mem k decl_inside_for)
                                             then false
                                             else pre_alloc_array
@@ -2219,7 +2223,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let (cc, cc_code) = kexp2cexp c (ref None) [] in
             let (is_for_loop, check_code) =
                 (match (cc, cc_code) with
-                | (CExpLit((LitBool true), _), []) -> (true, [])
+                | (CExpLit((KLitBool true), _), []) -> (true, [])
                 | (_, []) -> (false, [])
                 | _ ->
                     let cc_loc = get_cexp_loc cc in
@@ -2243,7 +2247,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let (cc, cc_code) = kexp2cexp c (ref None) [] in
             let (is_for_loop, check_code) =
                 (match (cc, cc_code) with
-                | (CExpLit((LitBool true), _), []) -> (true, [])
+                | (CExpLit((KLitBool true), _), []) -> (true, [])
                 | (_, []) -> (false, [])
                 | _ ->
                     let cc_loc = get_cexp_loc cc in
@@ -2282,7 +2286,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let is_temp_ref = kv_flags.val_flag_tempref in
             let is_global = bctx.bctx_kind = BlockKind_Global && not is_temp && not is_temp_ref in
             let is_fast_cons = is_temp && (match e2 with
-                | KExpBinOp(OpCons, a, (Atom.Id l), _) when (IdSet.mem l u1vals) ->
+                | KExpBinOp(OpCons, a, (AtomId l), _) when (IdSet.mem l u1vals) ->
                     (match (kinfo_ l kloc) with
                     | KVal {kv_flags} -> kv_flags.val_flag_temp
                     | _ -> false)
@@ -2354,7 +2358,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let _ = bctx.bctx_cleanup <- [] in
                     let assign_e2 =
                         match (ktp_complex, e2) with
-                        | (true, KExpAtom((Atom.Lit LitNil), _)) -> false
+                        | (true, KExpAtom((AtomLit (KLitNil _)), _)) -> false
                         | _ -> true
                         in
                     let (flags, e0_opt, assign_e2) =
@@ -2368,7 +2372,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 (None, assign_e2)
                             else if ktp_ptr || ktp_scalar then
                                 (match e2 with
-                                | KExpAtom((Atom.Lit l), (e2_ktyp, e2_loc)) ->
+                                | KExpAtom((AtomLit l), (e2_ktyp, e2_loc)) ->
                                     let e2_ctyp = C_gen_types.ktyp2ctyp e2_ktyp e2_loc in
                                     (Some (CExpLit(l, (e2_ctyp, e2_loc))), false)
                                 | _ -> (None, assign_e2))
@@ -2396,7 +2400,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         ccode
                 else
                     let (ce2, ccode) = match (ktp_ptr, e2) with
-                        | (false, KExpAtom((Atom.Lit LitNil), (_, loc))) -> (CExpInit([], (ctyp, loc)), ccode)
+                        | (false, KExpAtom((AtomLit (KLitNil _)), (_, loc))) -> (CExpInit([], (ctyp, loc)), ccode)
                         | _ -> kexp2cexp e2 (ref None) ccode
                         in
                     let (_, ccode) = match (e2, ccode) with
@@ -2634,7 +2638,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         else match !dstexp_r with
         | Some (dst_exp) ->
             let skip_copy = (match result_exp with
-            | CExpLit(LitNil, _) ->
+            | CExpLit((KLitNil _), _) ->
                 let {ctp_ptr} = C_gen_types.get_ctprops ctyp kloc in ctp_ptr
             | _ -> false) in
             let ccode = if skip_copy then ccode else
@@ -2660,6 +2664,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         (default_var_flags()) "fx_status" (Some (make_int_exp 0 start_loc)) [] start_loc in
     (* 4. convert all the code to C. It will automatically update functions bodies *)
     let (e, ccode) = kexp2cexp (code2kexp top_code start_loc) (ref None) ccode in
+    let _ = pr_verbose (sprintf "\ttop-level code for '%s' has been translated. Finalizing the produced code ..." (pp_id2str km_name)) in
     (*let e = make_dummy_exp start_loc in*)
     let end_loc = get_cexp_loc e in
 
@@ -2715,12 +2720,14 @@ let gen_ccode_all kmods =
 
     (* 1. convert all types to C from all modules *)
     let (all_ctypes_fwd_decl, all_ctypes_decl, all_ctypes_fun_decl) = C_gen_types.convert_all_typs kmods in
+    let _ = pr_verbose "\ttypes definitions have been translated to C" in
 
     (* 2. convert function declarations to C *)
     let (kmods_plus, _) = List.fold_left (fun (kmods_plus, all_exn_data_decls) km ->
         let (c_fdecls, mod_init_calls, mod_exn_data_decls) = C_gen_fdecls.convert_all_fdecls km.km_top in
         (((km, c_fdecls, mod_init_calls, (List.rev all_exn_data_decls)) :: kmods_plus),
         ((List.rev mod_exn_data_decls) @ all_exn_data_decls))) ([], []) kmods in
+    let _ = pr_verbose "\tfunction declarations and exceptinos have been translated to C" in
 
     (* 3. convert each module to C *)
     let cmods = List.fold_left (fun cmods (km, c_fdecls, mod_init_calls, exn_data_decls) ->
@@ -2734,4 +2741,5 @@ let gen_ccode_all kmods =
           cmod_main=km_main; cmod_recompile=true; cmod_pragmas=km_pragmas } :: cmods)
         [] (List.rev kmods_plus)
     in
+    let _ = pr_verbose "\tall modules have been translated" in
     List.rev cmods

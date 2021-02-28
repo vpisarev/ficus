@@ -44,8 +44,8 @@ let tailrec2loop kf =
             | _ ->
                 let res_n = gen_temp_idk "res" in
                 let a0 = match is_ktyp_scalar rt with
-                    | true -> Atom.Lit (LitInt 0L)
-                    | _ -> Atom.Lit LitNil
+                    | true -> AtomLit (KLitInt 0L)
+                    | _ -> AtomLit (KLitNil rt)
                     in
                 let res_val0 = KExpAtom(a0, (rt, kf_loc)) in
                 let f_init_code = create_kdefval res_n rt (default_var_flags())
@@ -106,8 +106,8 @@ let tailrec2loop kf =
                 let a2i = dup_idk ai in
                 let dv1 = { dv0 with kv_name=a1i } in
                 let _ = set_idk_entry a1i (KVal dv1) in
-                let a1i_as_exp = KExpAtom((Atom.Id a1i), (ti, kf_loc)) in
-                let a2i_as_exp = KExpAtom((Atom.Id a2i), (ti, kf_loc)) in
+                let a1i_as_exp = KExpAtom((AtomId a1i), (ti, kf_loc)) in
+                let a2i_as_exp = KExpAtom((AtomId a2i), (ti, kf_loc)) in
                 let f_init_code = create_kdefval a2i ti (default_var_flags())
                     (Some a1i_as_exp) f_init_code kf_loc in
                 let loop_init_code = create_kdefval ai ti (default_val_flags())
@@ -169,10 +169,10 @@ let tailrec2loop kf =
         let body_ = transform_tcalls kf_body in
         let loop_body = rcode2kexp (body_ :: loop_init_code) kf_loc in
         let lloc = get_kexp_loc loop_body in
-        let loop_exp = KExpWhile((KExpAtom((Atom.Lit (LitBool true)),
+        let loop_exp = KExpWhile((KExpAtom((AtomLit (KLitBool true)),
             (KTypBool, lloc))), loop_body, lloc) in
         let f_code = (if res_n = noid then [] else
-            KExpAtom((Atom.Id res_n), (rt, kf_loc)) :: []) @
+            KExpAtom((AtomId res_n), (rt, kf_loc)) :: []) @
             (loop_exp :: f_init_code) in
         let new_kf_body = rcode2kexp f_code kf_loc in
         kf := { !kf with kf_args=new_kf_args; kf_body=new_kf_body }

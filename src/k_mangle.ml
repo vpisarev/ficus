@@ -134,7 +134,6 @@ let rec mangle_ktyp t mangle_map loc =
         | KTypFloat(64) -> "d" :: result
         | KTypFloat n -> raise_compile_err loc (sprintf "unsupported typ KTypFloat(%d)" n)
         | KTypVoid -> "v" :: result
-        | KTypNil -> "z" :: result
         | KTypBool -> "B" :: result
         | KTypChar -> "C" :: result
         | KTypString -> "S" :: result
@@ -188,8 +187,7 @@ let mangle_all kmods =
         let t = walk_ktyp t loc callb in
         match t with
         | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
-        | KTypVoid | KTypNil | KTypBool | KTypChar
-        | KTypString | KTypCPointer | KTypExn
+        | KTypVoid |KTypBool | KTypChar | KTypString | KTypCPointer | KTypExn
         | KTypErr | KTypModule -> t
         | KTypName n -> ignore(mangle_ktyp t mangle_map loc); t
         | KTypRecord(rn, _) -> ignore(mangle_ktyp t mangle_map loc); KTypName rn

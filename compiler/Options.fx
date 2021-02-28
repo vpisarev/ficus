@@ -211,14 +211,3 @@ fun parse_options(): bool {
         true
     } else { false }
 }
-
-/*
-val ok = parse_options()
-if ok {
-    print(f"inputfile: {opt.filename}
-app_filename: {opt.app_filename}
-build_dir: {opt.build_dir}
-optimize_level: {opt.optimize_level}
-inline_threshold: {opt.inline_thresh}
-") }
-*/

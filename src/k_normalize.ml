@@ -75,6 +75,17 @@ let typ2ktyp t loc =
         | _ -> raise_compile_err loc "the proper instance of the template type is not found")
     in typ2ktyp_ t
 
+and lit2klit l ktyp =
+    match l with
+    | LitInt(v) -> KLitInt(v)
+    | LitSInt(b, v) -> KLitSInt(b, v)
+    | LitUInt(b, v) -> KLitUInt(b, v)
+    | LitFloat(b, v) -> KLitFloat(b, v)
+    | LitString(s) -> KLitString(s)
+    | LitChar(c) -> KLitChar(c)
+    | LitBool(f) -> KLitBool(f)
+    | LitNil -> KLitNil(ktyp)
+
 let idx_access_stack = ref ([]: (atom_t*int) list)
 
 let rec exp2kexp e code tref sc =
@@ -99,8 +110,8 @@ let rec exp2kexp e code tref sc =
             List.fold_left (fun (idom_list, code, body_code) (pi, ei) ->
                 let (di, code) = exp2dom ei code sc in
                 let ptyp = match di with
-                    | Domain.Range _ -> KTypInt
-                    | Domain.Fast i | Domain.Elem i ->
+                    | DomainRange _ -> KTypInt
+                    | DomainFast i | DomainElem i ->
                         match (get_atom_ktyp i eloc) with
                         | KTypArray(_, et) -> et
                         | KTypList(et) -> et
@@ -144,7 +155,7 @@ let rec exp2kexp e code tref sc =
                     let ktyp = KTypTuple ktl in
                     let at_ids = (List.rev at_ids) in
                     let body_code = create_kdefval idx ktyp (default_val_flags())
-                        (Some (KExpMkTuple ((List.map (fun i -> Atom.Id i) at_ids), (ktyp, loc)))) body_code loc in
+                        (Some (KExpMkTuple ((List.map (fun i -> AtomId i) at_ids), (ktyp, loc)))) body_code loc in
                     (at_ids, body_code)
                 | _ -> raise_compile_err loc
                     "'@' pattern is expected to be either an integer scalar or a tuple of integer scalars")
@@ -161,27 +172,27 @@ let rec exp2kexp e code tref sc =
             match e_opt with
             | Some(e) -> exp2atom e code false sc
             | _ -> (defval, code) in
-        let (a1, code) = process_rpart e1_opt code (Atom.Lit LitNil) in
-        let (a2, code) = process_rpart e2_opt code (Atom.Lit LitNil) in
-        let (a3, code) = process_rpart e3_opt code (Atom.Lit (LitInt 1L)) in
+        let (a1, code) = process_rpart e1_opt code _ALitVoid in
+        let (a2, code) = process_rpart e2_opt code _ALitVoid in
+        let (a3, code) = process_rpart e3_opt code (AtomLit (KLitInt 1L)) in
         (KExpMkTuple(a1 :: a2 :: a3 :: [], kctx), code)
-    | ExpLit(lit, _) -> (KExpAtom((Atom.Lit lit), kctx), code)
+    | ExpLit(lit, _) -> (KExpAtom((AtomLit (lit2klit lit ktyp)), kctx), code)
     | ExpIdent(n, _) ->
         (match ktyp with
         | KTypVoid -> ((KExpNop eloc), code)
-        | _ -> (KExpAtom((Atom.Id n), kctx), code))
+        | _ -> (KExpAtom((AtomId n), kctx), code))
     | ExpBinOp(OpLogicAnd, e1, e2, _) ->
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in
         let (e2, code2) = exp2kexp e2 [] false sc in
         let e2 = rcode2kexp (e2 :: code2) eloc2 in
-        (KExpIf(e1, e2, KExpAtom((Atom.Lit (LitBool false)), (KTypBool, eloc2)), kctx), code)
+        (KExpIf(e1, e2, KExpAtom((AtomLit (KLitBool false)), (KTypBool, eloc2)), kctx), code)
     | ExpBinOp(OpLogicOr, e1, e2, _) ->
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in
         let (e2, code2) = exp2kexp e2 [] false sc in
         let e2 = rcode2kexp (e2 :: code2) eloc2 in
-        (KExpIf(e1, KExpAtom((Atom.Lit (LitBool true)), (KTypBool, eloc2)), e2, kctx), code)
+        (KExpIf(e1, KExpAtom((AtomLit (KLitBool true)), (KTypBool, eloc2)), e2, kctx), code)
     | ExpBinOp(bop, e1, e2, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         let (a2, code) = exp2atom e2 code false sc in
@@ -192,14 +203,14 @@ let rec exp2kexp e code tref sc =
         | _ -> (KExpBinOp(bop, a1, a2, kctx), code))
     | ExpUnOp(OpDeref, e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
-        (KExpUnOp(OpDeref, (Atom.Id a_id), kctx), code)
+        (KExpUnOp(OpDeref, (AtomId a_id), kctx), code)
     | ExpUnOp(OpDotMinus, e, _) ->
         let (arr, idx_i) = match !idx_access_stack with
             | (arr, idx_i) :: _ -> (arr, idx_i)
             | _ -> raise_compile_err eloc ".- is only allowed inside array access op"
             in
         let (a, code) = exp2atom e code false sc in
-        let args = if idx_i = 0 then [arr] else [arr; Atom.Lit (LitInt (Int64.of_int idx_i))] in
+        let args = if idx_i = 0 then [arr] else [arr; AtomLit (KLitInt (Int64.of_int idx_i))] in
         let (sz, code) = kexp2atom "sz" (KExpIntrin (IntrinGetSize, args, (KTypInt, eloc))) false code in
         (KExpBinOp(OpSub, sz, a, kctx), code)
     | ExpUnOp(uop, e1, _) ->
@@ -247,7 +258,7 @@ let rec exp2kexp e code tref sc =
                 exp2atom ej code false sc
             with Not_found ->
                 (match opt_vi with
-                | Some(vi) -> ((Atom.Lit vi), code)
+                | Some(vi) -> ((AtomLit (lit2klit vi (typ2ktyp ti eloc))), code)
                 | _ -> raise_compile_err eloc
                     (sprintf
                     "there is no explicit inializer for the field '%s' nor there is default initializer for it"
@@ -269,7 +280,7 @@ let rec exp2kexp e code tref sc =
                 let ti_ = typ2ktyp ti eloc in
                 let get_ni = KExpMem(rec_n, idx, (ti_, eloc)) in
                 let code = create_kdefval ni_ ti_ (default_tempref_flags()) (Some get_ni) code eloc in
-                ((Atom.Id ni_), code)
+                ((AtomId ni_), code)
             in (idx + 1, a::ratoms, code)) (0, [], code) relems in
         (KExpMkRecord((List.rev ratoms), kctx), code)
     | ExpCall(f, args, _) ->
@@ -393,7 +404,7 @@ let rec exp2kexp e code tref sc =
             else raise_compile_err nloc
                 (sprintf "there is no record field '%s' in the record '%s'" (id2str n) (id2str rn))
         | (KTypName(vn), ExpIdent(n2, (etyp2, eloc2))) when (pp_id2str n2) = "__tag__" ->
-            (KExpIntrin(IntrinVariantTag, (Atom.Id a_id) :: [], (KTypCInt, eloc)), code)
+            (KExpIntrin(IntrinVariantTag, (AtomId a_id) :: [], (KTypCInt, eloc)), code)
         | (_, _) ->
             raise_compile_err e1loc "unsupported access operation")
     | ExpAssign(e1, e2, _) ->
@@ -421,13 +432,13 @@ let rec exp2kexp e code tref sc =
         let (a, code) = exp2atom e1 code false sc in
         let (b, code) = if not (is_mutable_atom a loc1) then (a, code) else
             let a_id = match a with
-                | Atom.Id a_id -> a_id
+                | AtomId a_id -> a_id
                 | _ -> raise_compile_err loc1 "k-norm: invalid mutable atom (id is expected)"
                 in
             let t = get_atom_ktyp a loc1 in
             let b = dup_idk a_id in
             let code = create_kdefval b t (default_tempval_flags()) (Some (KExpAtom (a, (t, loc1)))) code loc1 in
-            ((Atom.Id b), code)
+            ((AtomId b), code)
             in
         let (k_cases, code) = transform_pat_matching b cases code sc eloc false in
         (KExpMatch(k_cases, kctx), code)
@@ -443,7 +454,7 @@ let rec exp2kexp e code tref sc =
         let pop_e = KExpIntrin(IntrinPopExn, [], (KTypExn, exn_loc)) in
         let catch_sc = new_block_scope() :: sc in
         let catch_code = create_kdefval exn_n KTypExn (default_val_flags()) (Some pop_e) [] exn_loc in
-        let (k_cases, catch_code) = transform_pat_matching (Atom.Id exn_n) cases catch_code catch_sc exn_loc true in
+        let (k_cases, catch_code) = transform_pat_matching (AtomId exn_n) cases catch_code catch_sc exn_loc true in
         let handle_exn = KExpMatch(k_cases, (ktyp, exn_loc)) in
         let handle_exn = rcode2kexp (handle_exn :: catch_code) exn_loc in
         (KExpTryCatch(try_body, handle_exn, kctx), code)
@@ -481,8 +492,8 @@ and exp2atom e code tref sc =
 
 and atom2id a loc msg =
     match a with
-    | Atom.Id i -> i
-    | Atom.Lit _ -> raise_compile_err loc msg
+    | AtomId i -> i
+    | AtomLit _ -> raise_compile_err loc msg
 
 and exp2id e code tref sc msg =
     let (a, code) = exp2atom e code tref sc in
@@ -493,11 +504,11 @@ and exp2dom e code sc =
     | ExpRange _ ->
         let (ek, code) = exp2kexp e code false sc in
         (match ek with
-        | KExpMkTuple(a :: b :: c :: [], _) -> (Domain.Range(a, b, c), code)
+        | KExpMkTuple(a :: b :: c :: [], _) -> (DomainRange(a, b, c), code)
         | _ -> raise_compile_err (get_exp_loc e) "the range was not converted to a 3-element tuple as expected")
     | _ ->
         let (i, code) = exp2atom e code false sc in
-        (Domain.Elem i, code)
+        (DomainElem i, code)
 
 and eseq2code eseq code sc =
     let pragmas = ref ([]: (string*loc_t) list) in
@@ -713,7 +724,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
     | PatIdent _ -> code
     | PatVariant (vn, _, loc) ->
         let ((_, vt), typed_var_pl) = match_variant_pat p ptyp in
-        let get_vcase = KExpIntrin(IntrinVariantCase, [(Atom.Id n); (Atom.Id vn)], (vt, loc)) in
+        let get_vcase = KExpIntrin(IntrinVariantCase, [(AtomId n); (AtomId vn)], (vt, loc)) in
         (match typed_var_pl with
         | (p, t) :: [] ->
             let (_, code) = pat_simple_unpack p t (Some get_vcase) code temp_prefix flags sc in
@@ -732,7 +743,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
         let ((ctor, rectyp, _, multiple_relems), typed_rec_pl) = match_record_pat p ptyp in
         let (r_id, get_vcase, code2) = if ctor = noid then (n, (KExpNop loc), code) else
             let case_id = match rn_opt with (Some rn) -> rn | _ -> raise_compile_err loc "record tag should be non-empty here" in
-            let get_vcase = KExpIntrin(IntrinVariantCase, [(Atom.Id n); (Atom.Id case_id)], (rectyp, loc)) in
+            let get_vcase = KExpIntrin(IntrinVariantCase, [(AtomId n); (AtomId case_id)], (rectyp, loc)) in
             let (r, code2) = kexp2atom "vcase" get_vcase true code in
             ((atom2id r loc "variant case extraction should produce id, not literal"), get_vcase, code2)
             in
@@ -746,7 +757,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
                 let (_, code) = pat_simple_unpack pi ti (Some ei) code temp_prefix flags sc in
                 code) code2 typed_rec_pl)
     | PatAs _ ->
-        let e = KExpAtom(Atom.Id n, (ptyp, loc)) in
+        let e = KExpAtom(AtomId n, (ptyp, loc)) in
         let (_, code) = pat_simple_unpack p ptyp (Some e) code temp_prefix flags sc in
         code
     | PatRef(p, loc) ->
@@ -754,7 +765,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
             | KTypRef(t) -> t
             | _ -> raise_compile_err loc "the argument of ref() pattern must be a reference"
             in
-        let e = KExpUnOp(OpDeref, (Atom.Id n), (t, loc)) in
+        let e = KExpUnOp(OpDeref, (AtomId n), (t, loc)) in
         let (_, code) = pat_simple_unpack p t (Some e) code temp_prefix n_flags sc in
         code
     | _ ->
@@ -804,11 +815,11 @@ and transform_pat_matching a cases code sc loc catch_mode =
     let get_extract_tag_exp a atyp loc =
         match (deref_ktyp atyp loc) with
         | KTypExn -> KExpIntrin(IntrinVariantTag, a :: [], (KTypCInt, loc))
-        | KTypRecord _ -> KExpAtom(Atom.Lit (LitInt 0L), (KTypCInt, loc))
+        | KTypRecord _ -> KExpAtom(AtomLit (KLitInt 0L), (KTypCInt, loc))
         | KTypName tn -> (match (kinfo_ tn loc) with
             | KVariant {contents={kvar_cases}} ->
                 (match kvar_cases with
-                | (n, _) :: [] -> KExpAtom((Atom.Id n), (KTypCInt, loc))
+                | (n, _) :: [] -> KExpAtom((AtomId n), (KTypCInt, loc))
                 | _ -> KExpIntrin(IntrinVariantTag, a :: [], (KTypCInt, loc)))
             | _ -> raise_compile_err loc (sprintf
                 "k-normalize: enxpected type '%s'; record, variant of exception is expected here" (id2str tn)))
@@ -843,16 +854,16 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 | KFun {contents={kf_args; kf_flags}} ->
                     let (_, c_args) = Utils.unzip kf_args in
                     let ctor = get_fun_ctor kf_flags in
-                    let vn_val = match ctor with CtorVariant tv -> (Atom.Id tv) | _ -> Atom.Lit (LitInt 0L) in
+                    let vn_val = match ctor with CtorVariant tv -> (AtomId tv) | _ -> AtomLit (KLitInt 0L) in
                     (c_args, vn_val, vn_val)
                 | KExn {contents={ke_typ; ke_tag}} ->
                     ((match ke_typ with
                     | KTypTuple(args) -> args
                     | KTypVoid -> []
-                    | _ -> ke_typ :: []), (Atom.Id ke_tag), (Atom.Id vn))
+                    | _ -> ke_typ :: []), (AtomId ke_tag), (AtomId vn))
                 | KVal {kv_flags} ->
                     let ctor_id = get_val_ctor kv_flags in
-                    let vn_val = if ctor_id <> noid then (Atom.Id ctor_id) else Atom.Lit (LitInt 0L) in
+                    let vn_val = if ctor_id <> noid then (AtomId ctor_id) else AtomLit (KLitInt 0L) in
                     ([], vn_val, vn_val)
                 | k ->
                     raise_compile_err loc (sprintf "a variant constructor ('%s') is expected here" (id2str vn)) in
@@ -860,19 +871,19 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (tag_n, code) =
                 if var_tag0 != noid then (var_tag0, code) else
                 (let tag_n = gen_temp_idk "tag" in
-                let extract_tag_exp = get_extract_tag_exp (Atom.Id n) pinfo_typ loc in
+                let extract_tag_exp = get_extract_tag_exp (AtomId n) pinfo_typ loc in
                 let code = create_kdefval tag_n KTypCInt (default_val_flags())
                     (Some extract_tag_exp) code loc in
                 (tag_n, code))
                 in
-            let cmp_tag_exp = KExpBinOp(OpCompareEQ, (Atom.Id tag_n), vn_tag_val, (KTypBool, loc)) in
+            let cmp_tag_exp = KExpBinOp(OpCompareEQ, (AtomId tag_n), vn_tag_val, (KTypBool, loc)) in
             let checks = (rcode2kexp (cmp_tag_exp :: code) loc) :: checks in
             let (case_n, code, alt_e_opt) = match c_args with
                 | [] -> (noid, [], None)
                 | _ ->
                     let (is_tuple, case_typ) = match c_args with t :: [] -> (false, t) | _ -> (true, KTypTuple(c_args)) in
                     let extract_case_exp = KExpIntrin(IntrinVariantCase,
-                        (Atom.Id n) :: vn_case_val :: [], (case_typ, loc)) in
+                        (AtomId n) :: vn_case_val :: [], (case_typ, loc)) in
                     if is_tuple then
                         let case_n = gen_temp_idk "vcase" in
                         let code = create_kdefval case_n case_typ
@@ -894,7 +905,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
             if n = noid then process_next_subpat plists (checks, code) case_sc else
             let loc = get_pat_loc p in
             let (n, code) = match (ke, tref) with
-                | (KExpAtom((Atom.Id n0), _), true) -> (n0, code)
+                | (KExpAtom((AtomId n0), _), true) -> (n0, code)
                 | _ ->
                     let flags = if (is_ktyp_scalar ptyp) then (default_tempval_flags())
                         else (default_tempref_flags()) in
@@ -903,18 +914,18 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (plists, checks, code) =
             (match p with
             | PatLit (l, _) ->
-                let code = KExpBinOp(OpCompareEQ, (Atom.Id n), (Atom.Lit l), (KTypBool, loc)) :: code in
+                let code = KExpBinOp(OpCompareEQ, (AtomId n), (AtomLit (lit2klit l ptyp)), (KTypBool, loc)) :: code in
                 let c_exp = rcode2kexp code loc in
                 (plists, c_exp :: checks, [])
             | PatIdent _ -> (plists, checks, code)
             | PatCons(p1, p2, _) ->
-                let code = KExpBinOp(OpCompareNE, (Atom.Id n), (Atom.Lit LitNil), (KTypBool, loc)) :: code in
+                let code = KExpBinOp(OpCompareNE, (AtomId n), (AtomLit (KLitNil ptyp)), (KTypBool, loc)) :: code in
                 let c_exp = rcode2kexp code loc in
                 let et = match ptyp with
                         | KTypList et -> et
                         | _ -> raise_compile_err loc "the pattern needs list type" in
-                let get_hd_exp = KExpIntrin(IntrinListHead, (Atom.Id n) :: [], (et, loc)) in
-                let get_tl_exp = KExpIntrin(IntrinListTail, (Atom.Id n) :: [], (ptyp, loc)) in
+                let get_hd_exp = KExpIntrin(IntrinListHead, (AtomId n) :: [], (et, loc)) in
+                let get_tl_exp = KExpIntrin(IntrinListTail, (AtomId n) :: [], (ptyp, loc)) in
                 let p_hd = {pinfo_p=p1; pinfo_typ=et; pinfo_e=get_hd_exp; pinfo_tag=noid} in
                 let p_tl = {pinfo_p=p2; pinfo_typ=ptyp; pinfo_e=get_tl_exp; pinfo_tag=noid} in
                 let plists = dispatch_pat p_hd plists in
@@ -952,19 +963,19 @@ and transform_pat_matching a cases code sc loc catch_mode =
                     in
                 (plists, checks, code)
             | PatAs (p, _, _) ->
-                let pinfo = {pinfo_p=p; pinfo_typ=ptyp; pinfo_e=KExpAtom((Atom.Id n), (ptyp, loc)); pinfo_tag=var_tag0} in
+                let pinfo = {pinfo_p=p; pinfo_typ=ptyp; pinfo_e=KExpAtom((AtomId n), (ptyp, loc)); pinfo_tag=var_tag0} in
                 let plists = dispatch_pat pinfo plists in
                 (plists, checks, code)
             | PatRef (p, _) ->
                 let t = match ptyp with
                     | KTypRef t -> t
                     | _ -> raise_compile_err loc "the ref() pattern needs reference type" in
-                let get_val = KExpUnOp(OpDeref, (Atom.Id n), (t, loc)) in
+                let get_val = KExpUnOp(OpDeref, (AtomId n), (t, loc)) in
                 let pinfo_p = {pinfo_p=p; pinfo_typ=t; pinfo_e=get_val; pinfo_tag=noid} in
                 let plists = dispatch_pat pinfo_p plists in
                 (plists, checks, code)
             | PatWhen (p, e, _) ->
-                let pinfo = {pinfo_p=p; pinfo_typ=ptyp; pinfo_e=KExpAtom((Atom.Id n), (ptyp, loc)); pinfo_tag=var_tag0} in
+                let pinfo = {pinfo_p=p; pinfo_typ=ptyp; pinfo_e=KExpAtom((AtomId n), (ptyp, loc)); pinfo_tag=var_tag0} in
                 let plists = dispatch_pat pinfo plists in
                 (* process everything inside *)
                 let (checks, code) = process_next_subpat plists (checks, code) case_sc in
@@ -1130,7 +1141,7 @@ and transform_all_types_and_cons elist code sc =
                                 let kargtyps = List.map (fun t -> typ2ktyp t dvar_loc) argtyps in
                                 let code = match kargtyps with
                                 | [] ->
-                                    let e0 = KExpAtom((Atom.Id tag), (new_rt, dvar_loc)) in
+                                    let e0 = KExpAtom((AtomId tag), (new_rt, dvar_loc)) in
                                     let cflags = {(default_val_flags()) with val_flag_global=sc;
                                         val_flag_mutable=true; val_flag_ctor=tag}
                                         in
@@ -1161,7 +1172,7 @@ and transform_all_types_and_cons elist code sc =
             let tag_sc = get_module_scope sc in
             let tag_flags = {(default_val_flags()) with val_flag_global=tag_sc; val_flag_mutable=true} in
             let decl_tag = create_kdefval tagname KTypCInt tag_flags
-                (Some (KExpAtom(Atom.Lit (LitInt 0L), (KTypInt, dexn_loc))))
+                (Some (KExpAtom(AtomLit (KLitInt 0L), (KTypInt, dexn_loc))))
                 [] dexn_loc in
             let code = if is_std then code else decl_tag @ code in
             let dexn_typ = match (deref_typ dexn_typ) with

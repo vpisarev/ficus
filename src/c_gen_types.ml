@@ -52,7 +52,6 @@ and ktyp2ctyp t loc =
         | KTypUInt n -> CTypUInt n
         | KTypFloat n -> CTypFloat n
         | KTypVoid -> CTypVoid
-        | KTypNil -> CTypRawPtr([], CTypVoid)
         | KTypBool -> CTypBool
         | KTypChar -> CTypUniChar
         | KTypString -> CTypString
@@ -294,7 +293,7 @@ let convert_all_typs kmods =
                 let dv = { cv_name=ni; cv_typ=CTypCInt; cv_cname=cname_i;
                     cv_flags=default_val_flags(); cv_loc=kvar_loc } in
                 let _ = set_idc_entry ni (CVal dv) in
-                let vali = Some (CExpLit((LitInt (Int64.of_int idx)), ctx)) in
+                let vali = Some (CExpLit((KLitInt (Int64.of_int idx)), ctx)) in
                 (idx+1, (ni, vali) :: members)) (start_idx, []) kvar_cases in
             let members = List.rev members in
             let ce = ref { cenum_name=e_id; cenum_members=members;

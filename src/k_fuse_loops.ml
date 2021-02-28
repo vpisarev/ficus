@@ -19,7 +19,7 @@ let rec fuse_loops code =
 
     let process_atom a loc callb =
         match a with
-        | Atom.Id i ->
+        | AtomId i ->
             (match (Env.find_opt i !counters) with
             | Some(arr_stat) ->
                 arr_stat.arr_nused <- arr_stat.arr_nused+1
@@ -35,7 +35,7 @@ let rec fuse_loops code =
     } in
     let process_idl inside_for idl = List.iter (fun (_, dom) ->
         match dom with
-        | Domain.Elem(Atom.Id col) ->
+        | DomainElem(AtomId col) ->
             (match (Env.find_opt col !counters) with
             | Some(arr_stat) ->
                 let is_parallel = arr_stat.arr_map_flags.for_flag_parallel in
@@ -66,7 +66,7 @@ let rec fuse_loops code =
     let fuse_for idl body loc =
         let (arr_env, a2f) = List.fold_left (fun (arr_env, a2f) (i, dom) ->
                 match dom with
-                | Domain.Elem (Atom.Id arr) ->
+                | DomainElem (AtomId arr) ->
                     let arr_env = Env.add arr i arr_env in
                     (match (Env.find_opt arr arrs_to_fuse) with
                     | Some(ainfo) -> (arr_env, ((arr, ainfo) :: a2f))
@@ -74,18 +74,18 @@ let rec fuse_loops code =
                 | _ -> (arr_env, a2f)) ((Env.empty : id_t Env.t), []) idl in
         let (new_idl, pbody, _) = List.fold_left (fun (new_idl, pbody, arr_env) (i, dom) ->
             match dom with
-            | Domain.Elem (Atom.Id arr) ->
+            | DomainElem (AtomId arr) ->
                 (match (List.find_opt (fun (arr2, _) -> arr = arr2) a2f) with
                 | Some((_, {arr_idl; arr_body})) ->
                     let (new_idl2, pbody2, arr_env2) =
                         List.fold_left (fun (new_idl2, pbody2, arr_env2) (nested_i, nested_dom) ->
                         match nested_dom with
-                        | Domain.Elem (Atom.Id nested_arr) ->
+                        | DomainElem (AtomId nested_arr) ->
                             (match (Env.find_opt nested_arr arr_env) with
                             | Some(outer_i) ->
                                 let t = get_idk_ktyp outer_i loc in
                                 let pbody2 = create_kdefval nested_i t (default_tempval_flags())
-                                    (Some (KExpAtom((Atom.Id outer_i), (t, loc)))) pbody2 loc in
+                                    (Some (KExpAtom((AtomId outer_i), (t, loc)))) pbody2 loc in
                                 (new_idl2, pbody2, arr_env2)
                             | _ ->
                                 let arr_env2 = Env.add nested_arr nested_i arr_env2 in

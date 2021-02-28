@@ -84,7 +84,7 @@ type affine_def_t = kexp_t * bool * idx_class_t
 let optimize_idx_checks topcode =
     let is_loop_invariant a inloop_vals loc =
         match a with
-        | Atom.Id i -> not ((IdSet.mem i inloop_vals) || (is_mutable i loc))
+        | AtomId i -> not ((IdSet.mem i inloop_vals) || (is_mutable i loc))
         | _ -> true
     in
     (*
@@ -101,7 +101,7 @@ let optimize_idx_checks topcode =
           'val' arrays that are affine transformations of loop indices.
           Because the index expressions can be quite complex, we make use of 'affine_defs',
           collected at step 2.
-        5. replace all those accesses with fast accesses: Domain.Elem a => Domain.Fast a
+        5. replace all those accesses with fast accesses: DomainElem a => DomainFast a
         6. update body of the loop with possibly updated index expressions
         7. for each optimized access operation insert a check before the loop.
            Group similar accesses to avoid duplicated checks.
@@ -147,15 +147,15 @@ let optimize_idx_checks topcode =
         let loop_idx = List.fold_left (fun loop_idx (e, idl, idxl) ->
             let (arr_id, loop_idx) = List.fold_left (fun (arr_id, loop_idx) (i, dom) ->
                 match dom with
-                | Domain.Range(a, b, delta) when
-                    b <> Atom.Lit (LitNil) &&
+                | DomainRange(a, b, delta) when
+                    b <> _ALitVoid &&
                     (is_loop_invariant a inloop_vals for_loc) &&
                     (is_loop_invariant b inloop_vals for_loc) &&
                     (is_loop_invariant delta inloop_vals for_loc)
                     -> (arr_id, (Env.add i (LoopOverRange(a, b, delta)) loop_idx))
-                | Domain.Elem(Atom.Id i) when
+                | DomainElem(AtomId i) when
                     (match (get_idk_ktyp i for_loc) with KTypArray _ -> true | _ -> false) &&
-                    (is_loop_invariant (Atom.Id i) inloop_vals for_loc)
+                    (is_loop_invariant (AtomId i) inloop_vals for_loc)
                     -> (i, loop_idx)
                 | _ -> (arr_id, loop_idx)) (noid, loop_idx) idl
                 in
@@ -169,37 +169,37 @@ let optimize_idx_checks topcode =
         let optimized_add a b loc =
             let ctx = (KTypInt, loc) in
             match (a, b) with
-            | (Atom.Lit (LitInt ia), Atom.Lit (LitInt ib)) ->
-                KExpAtom(Atom.Lit (LitInt (Int64.add ia ib)), ctx)
-            | (Atom.Lit (LitInt 0L), b) -> KExpAtom(b, ctx)
-            | (a, Atom.Lit (LitInt 0L)) -> KExpAtom(a, ctx)
+            | (AtomLit (KLitInt ia), AtomLit (KLitInt ib)) ->
+                KExpAtom(AtomLit (KLitInt (Int64.add ia ib)), ctx)
+            | (AtomLit (KLitInt 0L), b) -> KExpAtom(b, ctx)
+            | (a, AtomLit (KLitInt 0L)) -> KExpAtom(a, ctx)
             | _ -> KExpBinOp(OpAdd, a, b, ctx)
             in
         let optimized_sub a b loc =
             let ctx = (KTypInt, loc) in
             match (a, b) with
-            | (Atom.Lit (LitInt ia), Atom.Lit (LitInt ib)) ->
-                KExpAtom(Atom.Lit (LitInt (Int64.sub ia ib)), ctx)
-            | (Atom.Lit (LitInt 0L), b) -> KExpUnOp(OpNegate, b, ctx)
-            | (a, Atom.Lit (LitInt 0L)) -> KExpAtom(a, ctx)
+            | (AtomLit (KLitInt ia), AtomLit (KLitInt ib)) ->
+                KExpAtom(AtomLit (KLitInt (Int64.sub ia ib)), ctx)
+            | (AtomLit (KLitInt 0L), b) -> KExpUnOp(OpNegate, b, ctx)
+            | (a, AtomLit (KLitInt 0L)) -> KExpAtom(a, ctx)
             | _ -> KExpBinOp(OpSub, a, b, ctx)
             in
         let optimized_mul a b loc =
             let ctx = (KTypInt, loc) in
             match (a, b) with
-            | (Atom.Lit (LitInt ia), Atom.Lit (LitInt ib)) ->
-                KExpAtom(Atom.Lit (LitInt (Int64.mul ia ib)), ctx)
-            | (Atom.Lit (LitInt 1L), b) -> KExpAtom(b, ctx)
-            | (a, Atom.Lit (LitInt 1L)) -> KExpAtom(a, ctx)
+            | (AtomLit (KLitInt ia), AtomLit (KLitInt ib)) ->
+                KExpAtom(AtomLit (KLitInt (Int64.mul ia ib)), ctx)
+            | (AtomLit (KLitInt 1L), b) -> KExpAtom(b, ctx)
+            | (a, AtomLit (KLitInt 1L)) -> KExpAtom(a, ctx)
             | _ -> KExpBinOp(OpMul, a, b, ctx)
             in
         let rec classify_idx a loc =
             match a with
-            | Atom.Id i ->
+            | AtomId i ->
                 if Env.mem i loop_idx then
-                    IdxSimple(i, Atom.Lit(LitInt 1L), Atom.Lit(LitInt 0L))
+                    IdxSimple(i, AtomLit(KLitInt 1L), AtomLit(KLitInt 0L))
                 else if (is_loop_invariant a inloop_vals loc) then
-                    IdxSimple(noid, Atom.Lit(LitInt 0L), a)
+                    IdxSimple(noid, AtomLit(KLitInt 0L), a)
                 (* we analyze array index expression (including nested sub-expressions) and try to bring it to
                    the form 'array_idx = alpha*loop_idx + beta', where alpha and beta are loop invariants
                    and loop_idx is a loop index. The partial case is alpha == 0, i.e. when
@@ -236,9 +236,9 @@ let optimize_idx_checks topcode =
                                 let (idx_scaled_exp, idx_code) = if c_idx = noid then
                                         (KExpAtom(c_shift, (get_kexp_ctx c_shift_exp)), [])
                                     else
-                                        let idx_scaled_exp = optimized_mul (Atom.Id c_idx) c_scale loc in
+                                        let idx_scaled_exp = optimized_mul (AtomId c_idx) c_scale loc in
                                         (match c_shift with
-                                        | Atom.Lit (LitInt 0L) -> (idx_scaled_exp, [])
+                                        | AtomLit (KLitInt 0L) -> (idx_scaled_exp, [])
                                         | _ ->
                                             let (idx_scaled, idx_code) = kexp2atom "t" idx_scaled_exp false [] in
                                             let idx_scaled_exp = optimized_add idx_scaled c_shift loc in
@@ -260,19 +260,19 @@ let optimize_idx_checks topcode =
                         idx_class
                     | Some((_, _, idx_class)) -> idx_class
                     | _ -> IdxComplex)
-            | _ -> IdxSimple(noid, Atom.Lit (LitInt 0L), a)
+            | _ -> IdxSimple(noid, AtomLit (KLitInt 0L), a)
             in
         let optimize_idx_ktyp t loc callb = t in
         let rec optimize_idx_kexp e callb =
             match e with
             | KExpIf(c, then_e, else_e, ctx) ->
                 KExpIf((optimize_idx_kexp c callb), then_e, else_e, ctx)
-            | KExpAt((Atom.Id arr), BorderNone, InterpNone, idxs, (t, loc)) when
-                (is_loop_invariant (Atom.Id arr) inloop_vals loc) ->
+            | KExpAt((AtomId arr), BorderNone, InterpNone, idxs, (t, loc)) when
+                (is_loop_invariant (AtomId arr) inloop_vals loc) ->
                 let (have_ranges, have_slow) = List.fold_left (fun (have_ranges, have_slow) idx ->
                     match idx with
-                    | Domain.Range _ -> (true, have_slow)
-                    | Domain.Elem _ -> (have_ranges, true)
+                    | DomainRange _ -> (true, have_slow)
+                    | DomainElem _ -> (have_ranges, true)
                     | _ -> (have_ranges, have_slow)) (false, false) idxs
                     in
                 if have_ranges then e
@@ -280,18 +280,18 @@ let optimize_idx_checks topcode =
                 else
                     let new_idxs = List.mapi (fun i idx ->
                         match idx with
-                        | Domain.Elem a ->
+                        | DomainElem a ->
                             let aa_class = classify_idx a loc in
                             (match aa_class with
                             | IdxSimple _ ->
                                 let aa_entry = {aa_arr=arr; aa_dim=i; aa_class} in
                                 if (List.mem aa_entry !all_accesses) then () else
                                     all_accesses := aa_entry :: !all_accesses;
-                                Domain.Fast a
+                                DomainFast a
                             | _ -> idx)
                         | _ -> idx) idxs
                         in
-                    KExpAt((Atom.Id arr), BorderNone, InterpNone, new_idxs, (t, loc))
+                    KExpAt((AtomId arr), BorderNone, InterpNone, new_idxs, (t, loc))
             | KExpMatch _ | KExpTryCatch _ | KExpWhile _ | KExpDoWhile _
             | KDefFun _ | KDefExn _ | KDefVariant _ | KDefTyp _ | KDefClosureVars _ -> e
             | _ -> walk_kexp e callb
@@ -342,7 +342,7 @@ let optimize_idx_checks topcode =
             | _ ->
                 let arrsz = gen_temp_idk "sz" in
                 let arrsz_exp = KExpIntrin(IntrinGetSize,
-                    [(Atom.Id arr); (Atom.Lit (LitInt (Int64.of_int i)))],
+                    [(AtomId arr); (AtomLit (KLitInt (Int64.of_int i)))],
                     (KTypInt, for_loc))
                     in
                 let pre_for_code = create_kdefval arrsz KTypInt (default_tempval_flags())
@@ -356,7 +356,7 @@ let optimize_idx_checks topcode =
                 | IdxSimple(i, scale, shift) ->
                     let (arrsz, arrsz_env, pre_for_code) = get_arrsz aa_arr aa_dim arrsz_env pre_for_code in
                     if i = noid then
-                        let check_idx_exp = KExpIntrin(IntrinCheckIdx, [(Atom.Id arrsz); shift], (KTypVoid, for_loc)) in
+                        let check_idx_exp = KExpIntrin(IntrinCheckIdx, [(AtomId arrsz); shift], (KTypVoid, for_loc)) in
                         (arrsz_env, (check_idx_exp :: pre_for_code))
                     else
                         let (a, b, delta, arrsz_env, pre_for_code) =
@@ -365,15 +365,15 @@ let optimize_idx_checks topcode =
                                 (a, b, delta, arrsz_env, pre_for_code)
                             | Some(LoopOverArr(arr, j)) ->
                                 let (arrsz2, arrsz_env, pre_for_code) = get_arrsz arr j arrsz_env pre_for_code in
-                                let a = Atom.Lit (LitInt 0L) in
-                                let b = Atom.Id arrsz2 in
-                                let delta = Atom.Lit (LitInt 1L) in
+                                let a = AtomLit (KLitInt 0L) in
+                                let b = AtomId arrsz2 in
+                                let delta = AtomLit (KLitInt 1L) in
                                 (a, b, delta, arrsz_env, pre_for_code)
                             | _ -> raise_compile_err for_loc
                                 (sprintf "fast_idx: index '%s' is not found in the loop_idx, but it should be there" (id2str i))
                             in
                         let check_idx_range_exp = KExpIntrin(IntrinCheckIdxRange,
-                            [(Atom.Id arrsz); a; b; delta; scale; shift], (KTypVoid, for_loc)) in
+                            [(AtomId arrsz); a; b; delta; scale; shift], (KTypVoid, for_loc)) in
                         (arrsz_env, (check_idx_range_exp :: pre_for_code))
                 | _ -> (arrsz_env, pre_for_code)) ([], !pre_for_code) !all_accesses
                 in

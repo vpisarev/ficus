@@ -167,13 +167,13 @@ let subst_names e subst_env0 rename_locals =
                 let {kv_name; kv_typ; kv_flags; kv_loc} = kv in
                 let new_name = dup_idk kv_name in
                 let _ = create_kdefval new_name kv_typ kv_flags None [] kv_loc in
-                Env.add kv_name (Atom.Id new_name) subst_env
+                Env.add kv_name (AtomId new_name) subst_env
             | _ -> subst_env) decl_set subst_env0
         in
     let subst_env = ref subst_env0 in
     let subst_atom_ a loc callb =
         match a with
-        | Atom.Id i ->
+        | AtomId i ->
             if i = noid then a else
             (match (Env.find_opt i !subst_env) with
             | Some(new_a) -> new_a
@@ -224,7 +224,7 @@ let inline_some kmods =
     (* we calculate not only direct calls, but any references to each function *)
     let fold_finfo_atom_ a loc callb =
         match a with
-        | Atom.Id f -> if f = noid then () else
+        | AtomId f -> if f = noid then () else
             (match (kinfo_ f loc) with
             | KFun kf ->
                 (match (Env.find_opt f !all_funcs_info) with
