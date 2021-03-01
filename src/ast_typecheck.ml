@@ -1100,10 +1100,11 @@ and check_exp e env sc =
                 in
             ExpCall(new_f, new_args, ctx)
         with (CompileError _) as ex ->
-            (* fallback for so called "module types": if we have expression like
-                some_exp.foo(args) where some_exp's type is "module type"
-                (i.e. "list", "string" or some user type declared as "module type = ...")
-                then the call is transformed to <Module>.foo(some_exp, args)
+            (* fallback for so called "object types": if we have expression like
+                some_exp.foo(args) where some_exp's type is "object type"
+                (i.e. "list", "string" or some user type declared in a module <Module>
+                as "object type = ...") then the call is transformed to
+                <Module>.foo(some_exp, args)
             *)
             (match f0 with
             | ExpMem(r0, (ExpIdent (mem_f, _) as mem_f_exp), mem_ctx) ->
@@ -1115,7 +1116,7 @@ and check_exp e env sc =
                     | TypChar -> "Char"
                     | TypApp(_, tn) ->
                         (match (id_info tn) with
-                        | IdVariant {contents={dvar_flags={var_flag_module=m}}} when m <> noid -> pp_id2str m
+                        | IdVariant {contents={dvar_flags={var_flag_object=m}}} when m <> noid -> pp_id2str m
                         | _ -> "")
                     | _ -> ""
                     in

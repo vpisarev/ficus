@@ -1213,27 +1213,27 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             ExpCall(new_f, new_args, ctx)
         } catch {
         | CompileError(_, _) as ex =>
-            /* fallback for so called "module types": if we have expression like
-                some_exp.foo(args) where some_exp's type is "module type"
-                (i.e. "list", "string" or some user type declared as "module type = ...")
-                then the call is transformed to <Module>.foo(some_exp, args)
+            /* fallback for so called "object types": if we have expression like
+                some_exp.foo(args) where some_exp's type is "object type"
+                (i.e. "list", "string" or some user type declared in some <Module>
+                as "object type = ...") then the call is transformed to
+                <Module>.foo(some_exp, args)
             */
             match f0 {
             | ExpMem(r0, ExpIdent(mem_f, _) as mem_f_exp, mem_ctx) =>
                 val r = check_exp(dup_exp(r0), env, sc)
                 val r_t = get_exp_typ(r)
-                val mstr =
-                match deref_typ(r_t) {
-                | TypList(_) => "List"
-                | TypString => "String"
-                | TypChar => "Char"
-                | TypApp(_, tn) =>
-                    match id_info(tn) {
-                    | IdVariant (ref {dvar_flags={var_flag_module=m}}) when m != noid => pp_id2str(m)
-                    | _ => ""
-                    }
-                | _ => ""
-                }
+                val mstr =  match deref_typ(r_t) {
+                            | TypList(_) => "List"
+                            | TypString => "String"
+                            | TypChar => "Char"
+                            | TypApp(_, tn) =>
+                                match id_info(tn) {
+                                | IdVariant (ref {dvar_flags={var_flag_object=m}}) when m != noid => pp_id2str(m)
+                                | _ => ""
+                                }
+                            | _ => ""
+                            }
                 val new_f = if mstr == "Builtins" { mem_f_exp }
                             else {
                                 val m_id = if mstr != "" { get_id(mstr) } else { throw ex }

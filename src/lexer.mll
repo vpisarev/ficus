@@ -50,8 +50,8 @@ let token2str t = match t with
     | INLINE -> "INLINE"
     | INTERFACE -> "INTERFACE"
     | MATCH -> "MATCH"
-    | MODULE -> "MODULE"
     | NOTHROW -> "NOTHROW"
+    | OBJECT -> "OBJECT"
     | OPERATOR -> "OPERATOR"
     | PARALLEL -> "PARALLEL"
     | PRAGMA -> "PRAGMA"
@@ -169,11 +169,12 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("false", FALSE, 0); ("finally", FINALLY, 1); ("fold", FOLD, 2);
         ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2); ("if", IF, 2);
         ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("inline", INLINE, 2);
-        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("module", MODULE, 2); ("nothrow", NOTHROW, 2); ("operator", OPERATOR, 0);
-        ("parallel", PARALLEL, 2); ("pragma", PRAGMA, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
+        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("nothrow", NOTHROW, 2);
+        ("object", OBJECT, 2); ("operator", OPERATOR, 0); ("parallel", PARALLEL, 2);
+        ("pragma", PRAGMA, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
         ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
-        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2); ("with", WITH, 1);
-        ("__fold_result__", FOLD_RESULT, -1)
+        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2);
+        ("with", WITH, 1); ("__fold_result__", FOLD_RESULT, -1)
     ]
 
 let incr_lineno lexbuf =

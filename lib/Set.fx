@@ -44,7 +44,7 @@
 type 't cmp_t = ('t, 't) -> int
 type color_t = Red | Black
 type 't tree_t = Empty | Node: (color_t, 't tree_t, 't, 't tree_t)
-module type 't t = { root: 't tree_t; size: int; cmp: 't cmp_t }
+object type 't t = { root: 't tree_t; size: int; cmp: 't cmp_t }
 
 exception RBSetError
 

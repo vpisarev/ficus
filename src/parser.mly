@@ -92,7 +92,7 @@ let make_variant_type (targs, tname) var_elems0 is_record is_mod_typ =
         var_elems0 in
     let dv = { dvar_name=tname; dvar_templ_args=targs; dvar_alias=make_new_typ();
                dvar_flags={(default_variant_flags()) with var_flag_record=is_record;
-               var_flag_module=is_mod_typ};
+               var_flag_object=is_mod_typ};
                dvar_cases=var_elems; dvar_ctors=[];
                dvar_templ_inst=[]; dvar_scope=ScGlobal::[]; dvar_loc=loc } in
     DefVariant (ref dv)
@@ -162,6 +162,10 @@ let rec make_for nested_for body flags is_fold =
         let (for_cl, idx_pat) = process_for_clauses for_cl_ loc in
         make_for rest (ExpFor(for_cl, idx_pat, body, curr_flags, loc)) flags is_fold
     | _ -> body
+
+let forever_for(n) =
+    let loc = curr_loc_n n in
+    ((PatAny loc), (PatAny loc), ExpRange(Some(ExpLit(LitInt 0L, (TypInt, loc))), None, None, (make_new_typ(), loc))) :: []
 
 let transform_fold_exp fold_pat fold_pat_n fold_init_exp nested_fold_cl fold_body =
     (* `fold p=e0 for ... e1`
@@ -293,7 +297,7 @@ let make_finally e final_e loc =
 /* keywords */
 %token AS BREAK CATCH CCODE CLASS CONTINUE DO ELSE EXCEPTION EXTENDS
 %token FINALLY FOLD B_FOR FOR FROM FUN IF IMPLEMENTS B_IMPORT IMPORT INLINE INTERFACE
-%token MATCH MODULE NOTHROW OPERATOR PARALLEL PRAGMA PURE REF REF_TYPE STATIC
+%token MATCH NOTHROW OBJECT OPERATOR PARALLEL PRAGMA PURE REF REF_TYPE STATIC
 %token THROW TRY TYPE VAL VAR WHEN B_WHILE WHILE WITH
 
 /* reserved/internal-use keywords */
@@ -453,7 +457,7 @@ simple_type_decl:
             make_variant_type (targs, i) ((i, dt_body) :: []) true $1
         | _ ->
             if $1 = noid then () else
-                raise_syntax_err "type alias cannot be a module type; it should be a record or variant";
+                raise_syntax_err "type alias cannot be an object type, only a record or variant could be";
             let dt = { dt_name=i; dt_templ_args=targs; dt_typ=$4; dt_finalized=false;
                        dt_scope=ScGlobal :: []; dt_loc=curr_loc() } in
             DefTyp (ref dt)
@@ -473,7 +477,7 @@ simple_type_decl:
 
 typ_attr:
 | TYPE { noid }
-| MODULE TYPE { !parser_ctx_module }
+| OBJECT TYPE { !parser_ctx_module }
 
 variant_decl_start:
 | B_IDENT { get_id $1 }
@@ -846,7 +850,9 @@ elif_seq_:
 
 nested_for_:
 | nested_for_ any_for for_in_list_ { ((curr_loc_n 2), $3) :: $1 }
+| nested_for_ any_for ELLIPSIS { ((curr_loc_n 2), (forever_for 3)) :: $1 }
 | for_in_list_ { ((curr_loc_n 1), $1) :: [] }
+| ELLIPSIS { ((curr_loc_n 1), (forever_for 1)) :: [] }
 
 for_in_list_:
 | for_in_list_ COMMA simple_pat BACK_ARROW loop_range_exp { ($3, PatAny(curr_loc_n 3), $5) :: $1 }

@@ -46,7 +46,7 @@ fun assert(f: bool) = if !f {throw AssertError}
 fun ignore(_: 't) {}
 
 // 't?, int? etc. can be used instead of 't option, int option ...
-module type 't option = None | Some: 't
+object type 't option = None | Some: 't
 
 type byte = uint8
 
@@ -182,6 +182,7 @@ fun even(i: int64) = i % 2 == 0L
 fun even(i: uint64) = i % 2u64 == 0UL
 
 fun repr(a: 't): string = string(a)
+// [TODO]: move String.escaped() to runtime and call it here
 fun repr(a: string) = "\"" + a + "\""
 fun repr(a: char) = "'" + a + "'"
 
@@ -234,16 +235,17 @@ pure operator * (s: string, n: int): string = ccode
 operator * (n: int, c: char) = c * n
 operator * (n: int, s: string) = s * n
 
-operator == (a: 't list, b: 't list): int =
-    try {
-        fold r=0 for xa <- a, xb <- b {
-            if xa != xb {break with false}
-            r
-        }
-    }
-    catch {
-    | SizeMismatchError => false
-    }
+operator == (a: 't list, b: 't list): bool
+{
+    fun eq(la: 't list, lb: 't list) =
+        __identical__(la, lb) ||
+        (match (la, lb) {
+        | (a :: la, b :: lb) => a == b && eq(la, lb)
+        | ([], []) => true
+        | _ => false
+        })
+    eq(a, b)
+}
 
 operator <=> (a: 't list, b: 't list): int =
     try {
@@ -417,12 +419,13 @@ operator .<= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj <= 
 operator .> (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj > bj})
 operator .>= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj >= bj})
 
-pure nothrow operator == (a: 't?, b: 't?) {
+operator == (a: 't?, b: 't?) {
     | (Some(a), Some(b)) => a == b
     | (None, None) => true
     | _ => false
 }
-pure nothrow operator <=> (a: 't?, b: 't?) {
+
+operator <=> (a: 't?, b: 't?) {
     | (Some(a), Some(b)) => a <=> b
     | (None, Some _) => -1
     | (Some _, None) => 1
@@ -447,16 +450,6 @@ operator .> (a: 't [+], b: 't [+]): bool [+] =
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {!(x < y)}]
 
-pure nothrow operator == (a: 't list, b: 't list): bool =
-    try {
-        fold f=true for ai <- a, bi <- b {
-            if (!(ai == bi)) {break with false}
-            f
-        }
-    } catch {
-        | SizeMismatchError => false
-    }
-
 pure nothrow operator == (a: string, b: string): bool = ccode { return fx_streq(a, b); }
 
 // [TODO] implement more clever string comparison operation
@@ -479,6 +472,7 @@ pure nothrow operator == (a: cptr, b: cptr): bool = ccode { return a == b }
 
 // this is pseudo-function that is treated specially by the compiler
 pure nothrow fun __eq_variants__(a: 't, b: 't): bool = a.__tag__ == b.__tag__
+pure nothrow fun __identical__(a: 't, b: 't): bool = ccode {return a == b}
 
 fun int(x: 't) = (x :> int)
 fun uint8(x: 't) = (x :> uint8)

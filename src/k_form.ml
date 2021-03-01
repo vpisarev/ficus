@@ -733,7 +733,7 @@ and used_by_kexp_ e callb =
     (* closure vars structure contains names of free variables and their types, as well as
        "weak" backward reference to the function. we do not need to add any of those into the "used" set *)
     | KDefClosureVars {contents={kcv_name}} ->
-        add_to_decl1 kcv_name callb;
+        add_to_decl1 kcv_name callb
     | KDefExn {contents={ke_name; ke_typ; ke_tag; ke_make; ke_loc}} ->
         let uv = used_by_ktyp ke_typ ke_loc in
         add_to_used uv callb;

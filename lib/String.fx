@@ -164,6 +164,24 @@ pure fun capitalize(s: string): string = ccode
     return fx_status;
 }
 
+pure fun decapitalize(s: string): string = ccode
+{
+    int_ sz = s->length;
+    const char_* src = s->data;
+    if (sz == 0 || fx_tolower(src[0]) == src[0]) {
+        fx_copy_str(s, fx_result);
+        return FX_OK;
+    }
+    int fx_status = fx_make_str(0, sz, fx_result);
+    if( fx_status >= 0 ) {
+        char_* dst = fx_result->data;
+        dst[0] = fx_tolower(src[0]);
+        for (int_ i = 1; i < sz; i++)
+            dst[i] = src[i];
+    }
+    return fx_status;
+}
+
 pure fun lstrip(s: string): string = ccode
 {
     const char_* ptr = s->data;

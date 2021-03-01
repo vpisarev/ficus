@@ -119,10 +119,10 @@ fun string(loc: loc_t) = f"{pp_id2str(loc.fname)}: {loc.line0}"
 type lit_t =
     | LitInt: int64
     | LitSInt: (int, int64)
-    | LitUInt: (int, int64)
+    | LitUInt: (int, uint64)
     | LitFloat: (int, double)
     | LitString: string
-    | LitChar: string
+    | LitChar: char
     | LitBool: bool
     | LitNil
 
@@ -153,6 +153,7 @@ type typ_t =
     | TypModule
 
 fun make_new_typ() = TypVar(ref (None: typ_t?))
+fun make_new_ctx(l: loc_t) = (make_new_typ(), l)
 
 type binop_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
     | OpShiftLeft | OpShiftRight | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
@@ -206,7 +207,7 @@ type fun_flags_t =
 
 fun default_fun_flags() = fun_flags_t {fun_flag_ctor=CtorNone}
 
-type for_make_t = ForMakeArray | ForMakeList | ForMakeTuple
+type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeTuple
 
 type for_flags_t =
 {
@@ -220,7 +221,7 @@ type for_flags_t =
 fun default_for_flags() = for_flags_t
 {
     for_flag_parallel=false,
-    for_flag_make=ForMakeArray,
+    for_flag_make=ForMakeNone,
     for_flag_unzip=false,
     for_flag_fold=false,
     for_flag_nested=false
@@ -237,14 +238,14 @@ type interpolate_t =
 
 type var_flags_t =
 {
-    var_flag_module: id_t;
+    var_flag_object: id_t;
     var_flag_record: bool = false;
     var_flag_recursive: bool = false;
     var_flag_have_tag: bool = false;
     var_flag_opt: bool = false
 }
 
-fun default_variant_flags() = var_flags_t {var_flag_module=noid}
+fun default_variant_flags() = var_flags_t {var_flag_object=noid}
 
 type ctx_t = (typ_t, loc_t)
 
@@ -1088,26 +1089,25 @@ fun ctor2str(f: fun_constr_t) {
     | CtorExn(i) => f"Constructor(exn({id2str(i)}))"
 }
 
-fun lit2str(c: lit_t, cmode: bool, loc: loc_t) {
+fun lit2str(c: lit_t) {
     fun add_dot(s: string, suffix: string) =
         if s.has('.') || s.has('e') { s+suffix }
         else { s + "." + suffix }
 
     match c {
     | LitInt(v) => string(v)
-    | LitSInt(64, v) => if cmode { f"{v}LL" } else { f"{v}L" }
-    | LitUInt(64, v) => if cmode { f"{v}ULL" } else { f"{v}UL" }
-    | LitSInt(b, v) => if cmode { f"{v}" } else { f"{v}i{b}" }
-    | LitUInt(b, v) => if cmode { f"{v}U" } else { f"{v}u{b}" }
-    | LitFloat(16, v) => add_dot( f"{float(v)}", "h" )
-    | LitFloat(32, v) => add_dot( f"{float(v)}", "f" )
-    | LitFloat(64, v) => add_dot( string(v), "" )
-    | LitFloat(b, v) => throw compile_err(loc, f"invalid literal LitFloat({b}, {v})")
+    | LitSInt(64, v) => f"{v}L"
+    | LitUInt(64, v) => f"{v}UL"
+    | LitSInt(b, v) => f"{v}i{b}"
+    | LitUInt(b, v) => f"{v}u{b}"
+    | LitFloat(16, v) => add_dot(f"{float(v)}", "h")
+    | LitFloat(32, v) => add_dot(f"{float(v)}", "f")
+    | LitFloat(_, v) => add_dot(string(v), "")
     | LitString(s) => s.escaped(quotes=true)
     | LitChar(c) => "'" + string(c).escaped(quotes=false) + "'"
     | LitBool(true) => "true"
     | LitBool(false) => "false"
-    | LitNil => "nullptr"
+    | LitNil => "[]"
     }
 }
 

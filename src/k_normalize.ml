@@ -75,7 +75,7 @@ let typ2ktyp t loc =
         | _ -> raise_compile_err loc "the proper instance of the template type is not found")
     in typ2ktyp_ t
 
-and lit2klit l ktyp =
+let lit2klit l ktyp =
     match l with
     | LitInt(v) -> KLitInt(v)
     | LitSInt(b, v) -> KLitSInt(b, v)

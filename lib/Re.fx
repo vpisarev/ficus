@@ -4,7 +4,7 @@
 */
 
 // C-style operations on files
-module type regex_t = { handle: cptr }
+object type regex_t = { handle: cptr }
 
 fun compile(rstr: string): regex_t = ccode
 {

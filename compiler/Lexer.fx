@@ -6,177 +6,155 @@
 // Ficus lexer/tokenizer
 
 import File, Map, Sys
+import Ast
 
 type lloc_t = (int, int)
 exception LexerError : (lloc_t, string)
 
 // Ficus tokens
 type token_t =
-    | TRUE | FALSE
-    | INT: int64 | SINT: (int, int64) | UINT: (int, uint64)
-    | FLOAT: (int, double) | FLOAT_LIKE: (double, string)
-    | IDENT: string | B_IDENT: string
-    | STRING: string | CHAR: char | TYVAR: string
+    | LITERAL: Ast.lit_t | IDENT: (bool, string) | TYVAR: string
     | APOS | AS | AT | BREAK | CATCH | CCODE | CLASS | CONTINUE | DO
-    | ELLIPSIS | ELSE | EXCEPTION | EXPAND | EXTENDS | FINALLY | FOLD
-    | B_FOR | FOR | FROM | FUN | IF | IMPLEMENTS | B_IMPORT | IMPORT
-    | INLINE | INTERFACE | MATCH | MODULE | NOTHROW | OPERATOR
-    | PARALLEL | PRAGMA | PURE | REF | REF_TYPE | STATIC
-    | THROW | TRY | TYPE | VAL | VAR | WHEN | WITH | B_WHILE | WHILE
-    | B_LPAREN | LPAREN | STR_INTERP_LPAREN | RPAREN
-    | B_LSQUARE | LSQUARE | RSQUARE | LBRACE | RBRACE
+    | ELLIPSIS | ELSE | EXCEPTION | EXTENDS | FINALLY | FOLD
+    | FOR: bool | FROM | FUN | IF | IMPLEMENTS | IMPORT: bool
+    | INLINE | INTERFACE | MATCH | NOTHROW | OBJECT | OPERATOR
+    | PARALLEL | PRAGMA | PURE | REF: bool | STATIC | THROW
+    | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
+    | LPAREN: bool | STR_INTERP_LPAREN | RPAREN
+    | LSQUARE: bool | RSQUARE | LBRACE | RBRACE
     | LLIST | RLIST | COMMA | DOT | SEMICOLON | COLON
     | BAR | CONS | CAST | BACKSLASH | BACK_ARROW | DOUBLE_ARROW
-    | ARROW | QUESTION | EOF | B_MINUS | MINUS | B_PLUS | PLUS
-    | B_STAR | STAR | SLASH | MOD | B_POWER | POWER | DOT_STAR
-    | B_DOT_MINUS | DOT_SLASH | DOT_MOD | DOT_POWER
+    | ARROW | QUESTION | EOF | MINUS: bool | PLUS: bool
+    | STAR: bool | SLASH | PERCENT | POWER: bool | DOT_STAR
+    | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
-    | PLUS_EQUAL | MINUS_EQUAL | STAR_EQUAL | SLASH_EQUAL
-    | DOT_EQUAL | MOD_EQUAL | AND_EQUAL | OR_EQUAL | XOR_EQUAL
-    | SHIFT_LEFT_EQUAL | SHIFT_RIGHT_EQUAL | DOT_STAR_EQUAL
-    | DOT_SLASH_EQUAL | DOT_MOD_EQUAL | SPACESHIP
+    | DOT_EQUAL | AUG_BINOP: Ast.binop_t | SPACESHIP
     | CMP_EQ | CMP_NE | CMP_LE | CMP_GE | CMP_LT | CMP_GT
     | DOT_SPACESHIP | DOT_CMP_EQ | DOT_CMP_NE | DOT_CMP_LE
     | DOT_CMP_GE | DOT_CMP_LT | DOT_CMP_GT | FOLD_RESULT
 
-fun string(t: token_t)
+fun ne2u(ne: bool, s: string) = if ne {s} else {s.decapitalize()}
+
+fun tok2str(t: token_t)
 {
-    | TRUE => "TRUE"
-    | FALSE => "FALSE"
-    | INT(i) => f"INT({i})"
-    | SINT(b, i) => f"SINT({b}, {i})"
-    | UINT(b, i) => f"UINT({b}, {i})"
-    | FLOAT(b, f) => f"FLOAT({b}, {f})"
-    | FLOAT_LIKE(f, s) => f"FLOAT_LIKE({f}, {s})"
-    | IDENT(s) => f"IDENT({s})"
-    | B_IDENT(s) => f"B_IDENT({s})"
-    | STRING(s) => f"STRING(\"{s}\")"
-    | CHAR(s) => f"CHAR({s})"
-    | TYVAR(s) => f"TYVAR({s})"
-    | APOS => "APOS"
-    | AS => "AS"
-    | AT => "AT"
-    | BREAK => "BREAK"
-    | CATCH => "CATCH"
-    | CCODE => "CCODE"
-    | CLASS => "CLASS"
-    | CONTINUE => "CONTINUE"
-    | DO => "DO"
-    | ELLIPSIS => "ELLIPSIS"
-    | ELSE => "ELSE"
-    | EXCEPTION => "EXCEPTION"
-    | EXPAND => "EXPAND"
-    | EXTENDS => "EXTENDS"
-    | FINALLY => "FINALLY"
-    | FOLD => "FOLD"
-    | B_FOR => "B_FOR"
-    | FOR => "FOR"
-    | FROM => "FROM"
-    | FUN => "FUN"
-    | IF => "IF"
-    | IMPLEMENTS => "IMPLEMENTS"
-    | B_IMPORT => "B_IMPORT"
-    | IMPORT => "IMPORT"
-    | INLINE => "INLINE"
-    | INTERFACE => "INTERFACE"
-    | MATCH => "MATCH"
-    | MODULE => "MODULE"
-    | NOTHROW => "NOTHROW"
-    | OPERATOR => "OPERATOR"
-    | PARALLEL => "PARALLEL"
-    | PRAGMA => "PRAGMA"
-    | PURE => "PURE"
-    | REF => "MAKE_REF"
-    | REF_TYPE => "REF_TYPE"
-    | STATIC => "STATIC"
-    | THROW => "THROW"
-    | TRY => "TRY"
-    | TYPE => "TYPE"
-    | VAL => "VAL"
-    | VAR => "VAR"
-    | WHEN => "WHEN"
-    | WITH => "WITH"
-    | B_WHILE => "B_WHILE"
-    | WHILE => "WHILE"
-    | B_LPAREN => "B_LPAREN"
-    | LPAREN => "LPAREN"
-    | STR_INTERP_LPAREN => "STR_INTERP_LPAREN"
-    | RPAREN => "RPAREN"
-    | B_LSQUARE => "B_LSQUARE"
-    | LSQUARE => "LSQUARE"
-    | RSQUARE => "RSQUARE"
-    | LBRACE => "LBRACE"
-    | RBRACE => "RBRACE"
-    | LLIST => "LLIST"
-    | RLIST => "RLIST"
-    | COMMA => "COMMA"
-    | DOT => "DOT"
-    | SEMICOLON => "SEMICOLON"
-    | COLON => "COLON"
-    | BAR => "BAR"
-    | CONS => "CONS"
-    | CAST => "CAST"
-    | BACKSLASH => "BACKSLASH"
-    | BACK_ARROW => "BACK_ARROW"
-    | DOUBLE_ARROW => "DOUBLE_ARROW"
-    | ARROW => "ARROW"
-    | QUESTION => "QUESTION"
-    | EOF => "EOF"
-    | B_MINUS => "B_MINUS"
-    | MINUS => "MINUS"
-    | B_PLUS => "B_PLUS"
-    | PLUS => "PLUS"
-    | B_STAR => "B_STAR"
-    | STAR => "STAR"
-    | SLASH => "SLASH"
-    | MOD => "MOD"
-    | B_POWER => "B_POWER"
-    | POWER => "POWER"
-    | DOT_STAR => "DOT_STAR"
-    | B_DOT_MINUS => "B_DOT_MINUS"
-    | DOT_SLASH => "DOT_SLASH"
-    | DOT_MOD => "DOT_MOD"
-    | DOT_POWER => "DOT_POWER"
-    | SHIFT_RIGHT => "SHIFT_RIGHT"
-    | SHIFT_LEFT => "SHIFT_LEFT"
-    | BITWISE_AND => "BITWISE_AND"
-    | BITWISE_XOR => "BITWISE_XOR"
-    | BITWISE_OR => "BITWISE_OR"
-    | TILDE => "TILDE"
-    | LOGICAL_AND => "LOGICAL_AND"
-    | LOGICAL_OR => "LOGICAL_OR"
-    | LOGICAL_NOT => "LOGICAL_NOT"
-    | EQUAL => "EQUAL"
-    | PLUS_EQUAL => "PLUS_EQUAL"
-    | MINUS_EQUAL => "MINUS_EQUAL"
-    | STAR_EQUAL => "STAR_EQUAL"
-    | SLASH_EQUAL => "SLASH_EQUAL"
-    | DOT_EQUAL => "DOT_EQUAL"
-    | MOD_EQUAL => "MOD_EQUAL"
-    | AND_EQUAL => "AND_EQUAL"
-    | OR_EQUAL => "OR_EQUAL"
-    | XOR_EQUAL => "XOR_EQUAL"
-    | SHIFT_LEFT_EQUAL => "SHIFT_LEFT_EQUAL"
-    | SHIFT_RIGHT_EQUAL => "SHIFT_RIGHT_EQUAL"
-    | DOT_STAR_EQUAL => "DOT_STAR_EQUAL"
-    | DOT_SLASH_EQUAL => "DOT_SLASH_EQUAL"
-    | DOT_MOD_EQUAL => "DOT_MOD_EQUAL"
-    | SPACESHIP => "SPACESHIP"
-    | CMP_EQ => "CMP_EQ"
-    | CMP_NE => "CMP_NE"
-    | CMP_LE => "CMP_LE"
-    | CMP_GE => "CMP_GE"
-    | CMP_LT => "CMP_LT"
-    | CMP_GT => "CMP_GT"
-    | DOT_SPACESHIP => "DOT_SPACESHIP"
-    | DOT_CMP_EQ => "DOT_CMP_EQ"
-    | DOT_CMP_NE => "DOT_CMP_NE"
-    | DOT_CMP_LE => "DOT_CMP_LE"
-    | DOT_CMP_GE => "DOT_CMP_GE"
-    | DOT_CMP_LT => "DOT_CMP_LT"
-    | DOT_CMP_GT => "DOT_CMP_GT"
-    | FOLD_RESULT => "FOLD_RESULT"
+    | LITERAL(l) => (f"LITERAL({Ast.lit2str(l)}", Ast.lit2str(l))
+    | IDENT(ne, s) => (ne2u(ne, f"IDENT({s})"), s)
+    | TYVAR(s) => (f"TYVAR({s})", s)
+    | APOS => ("APOS", "'")
+    | AS => ("AS", "as")
+    | AT => ("AT", "@")
+    | BREAK => ("BREAK", "break")
+    | CATCH => ("CATCH", "catch")
+    | CCODE => ("CCODE", "ccode")
+    | CLASS => ("CLASS", "class")
+    | CONTINUE => ("CONTINUE", "continue")
+    | DO => ("DO", "do")
+    | ELLIPSIS => ("ELLIPSIS", "...")
+    | ELSE => ("ELSE", "else")
+    | EXCEPTION => ("EXCEPTION", "exception")
+    | EXTENDS => ("EXTENDS", "extends")
+    | FINALLY => ("FINALLY", "finally")
+    | FOLD => ("FOLD", "fold")
+    | FOR(ne) => (ne2u(ne, "FOR"), "for")
+    | FROM => ("FROM", "from")
+    | FUN => ("FUN", "fun")
+    | IF => ("IF", "if")
+    | IMPLEMENTS => ("IMPLEMENTS", "implements")
+    | IMPORT(ne) => (ne2u(ne, "IMPORT"), "import")
+    | INLINE => ("INLINE", "inline")
+    | INTERFACE => ("INTERFACE", "interface")
+    | MATCH => ("MATCH", "match")
+    | NOTHROW => ("NOTHROW", "nothrow")
+    | OBJECT => ("OBJECT", "object")
+    | OPERATOR => ("OPERATOR", "operator")
+    | PARALLEL => ("PARALLEL", "parallel")
+    | PRAGMA => ("PRAGMA", "pragma")
+    | PURE => ("PURE", "pure")
+    | REF(ne) => (ne2u(ne, "REF"), "ref")
+    | STATIC => ("STATIC", "static")
+    | THROW => ("THROW", "throw")
+    | TRY => ("TRY", "try")
+    | TYPE => ("TYPE", "type")
+    | VAL => ("VAL", "val")
+    | VAR => ("VAR", "var")
+    | WHEN => ("WHEN", "when")
+    | WITH => ("WITH", "with")
+    | WHILE(ne) => (ne2u(ne, "WHILE"), "while")
+    | UNZIP => ("UNZIP", "unzip")
+    | LPAREN(ne) => (ne2u(ne, "LPAREN"), "(")
+    | STR_INTERP_LPAREN => ("STR_INTERP_LPAREN", "<str_interp>{")
+    | RPAREN => ("RPAREN", ")")
+    | LSQUARE(ne) => (ne2u(ne, "LSQUARE"), "[")
+    | RSQUARE => ("RSQUARE", "]")
+    | LBRACE => ("LBRACE", "{")
+    | RBRACE => ("RBRACE", "}")
+    | LLIST => ("LLIST", "[:")
+    | RLIST => ("RLIST", ":]")
+    | COMMA => ("COMMA", ",")
+    | DOT => ("DOT", ".")
+    | SEMICOLON => ("SEMICOLON", ";")
+    | COLON => ("COLON", ":")
+    | BAR => ("BAR", "|")
+    | CONS => ("CONS", "::")
+    | CAST => ("CAST", ":>")
+    | BACKSLASH => ("BACKSLASH", "\\")
+    | ARROW => ("ARROW", "->")
+    | BACK_ARROW => ("BACK_ARROW", "<-")
+    | DOUBLE_ARROW => ("DOUBLE_ARROW", "=>")
+    | QUESTION => ("QUESTION", "?")
+    | EOF => ("EOF", "<EOF>")
+    | MINUS(ne) => (ne2u(ne, "MINUS"), "-")
+    | PLUS(ne) => (ne2u(ne, "PLUS"), "+")
+    | STAR(ne) => (ne2u(ne, "STAR"), "*")
+    | SLASH => ("SLASH", "/")
+    | PERCENT => ("PERCENT", "%")
+    | POWER(ne) => (ne2u(ne, "POWER"), "**")
+    | DOT_MINUS(ne) => (ne2u(ne, "DOT_MINUS"), ".-")
+    | DOT_STAR => ("DOT_STAR", ".*")
+    | DOT_SLASH => ("DOT_SLASH", "./")
+    | DOT_PERCENT => ("DOT_PERCENT", ".%")
+    | DOT_POWER => ("DOT_POWER", ".**")
+    | SHIFT_LEFT => ("SHIFT_LEFT", "<<")
+    | SHIFT_RIGHT => ("SHIFT_RIGHT", ">>")
+    | BITWISE_AND => ("BITWISE_AND", "&")
+    | BITWISE_XOR => ("BITWISE_XOR", "^")
+    | BITWISE_OR => ("BITWISE_OR", "|")
+    | TILDE => ("TILDE", "~")
+    | LOGICAL_AND => ("LOGICAL_AND", "&&")
+    | LOGICAL_OR => ("LOGICAL_OR", "||")
+    | LOGICAL_NOT => ("LOGICAL_NOT", "!")
+    | EQUAL => ("EQUAL", "=")
+    | DOT_EQUAL => ("DOT_EQUAL", ".=")
+    | AUG_BINOP(o) => (f"AUG_BINOP(binop2_str() PLUS_EQUAL", "+=")
+    | MINUS_EQUAL => ("MINUS_EQUAL", "-=")
+    | STAR_EQUAL => ("STAR_EQUAL", "*=")
+    | SLASH_EQUAL => ("SLASH_EQUAL", "/=")
+    | PERCENT_EQUAL => ("PERCENT_EQUAL", "%=")
+    | AND_EQUAL => ("AND_EQUAL", "&=")
+    | OR_EQUAL => ("OR_EQUAL", "|=")
+    | XOR_EQUAL => ("XOR_EQUAL", "^=")
+    | SHIFT_LEFT_EQUAL => ("SHIFT_LEFT_EQUAL", "<<=")
+    | SHIFT_RIGHT_EQUAL => ("SHIFT_RIGHT_EQUAL", ">>=")
+
+    | DOT_STAR_EQUAL => ("DOT_STAR_EQUAL", ".*=")
+    | DOT_SLASH_EQUAL => ("DOT_SLASH_EQUAL", "./=")
+    | DOT_PERCENT_EQUAL => ("DOT_PERCENT_EQUAL", ".%=")
+    | SPACESHIP => ("SPACESHIP", "<=>")
+    | CMP_EQ => ("CMP_EQ", "==")
+    | CMP_NE => ("CMP_NE", "!=")
+    | CMP_LT => ("CMP_LT", "<")
+    | CMP_LE => ("CMP_LE", "<=")
+    | CMP_GE => ("CMP_GE", ">=")
+    | CMP_GT => ("CMP_GT", ">")
+    | DOT_SPACESHIP => ("DOT_SPACESHIP", ".<=>")
+    | DOT_CMP_EQ => ("DOT_CMP_EQ", ".==")
+    | DOT_CMP_NE => ("DOT_CMP_NE", ".!=")
+    | DOT_CMP_LT => ("DOT_CMP_LT", ".<")
+    | DOT_CMP_LE => ("DOT_CMP_LE", ".<=")
+    | DOT_CMP_GE => ("DOT_CMP_GE", ".>=")
+    | DOT_CMP_GT => ("DOT_CMP_GT", ".>")
+    | FOLD_RESULT => ("FOLD_RESULT", "__fold_result__")
 }
 
 type stream_t =
@@ -292,7 +270,7 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
    right after DOT token, it's correctly re-interpreted
    as the nested tuple access.
 */
-pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccode
+pure fun getnumber_(s: string, pos: int, just_int: bool): (int, int64, double, int, char) = ccode
 {
     const int MAX_ATOF = 128;
     char buf[128 + 16];
@@ -320,7 +298,7 @@ pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccod
             base = 8;
             ptr += 2;
             len -= 2;
-        } else if(len >= 2 && (ptr[1] == '.' || ptr[1] == 'e' || ptr[1] == 'E')) {
+        } else if(!just_int && len >= 2 && (ptr[1] == '.' || ptr[1] == 'e' || ptr[1] == 'E')) {
             flt = true;
         }
         else base = 8;
@@ -341,7 +319,7 @@ pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccod
                     return FX_SET_EXN_FAST(FX_EXN_OverflowError);
                 r = r1;
             }
-            if( c == '.' || c == 'e' || c == 'E' )
+            if( !just_int && (c == '.' || c == 'e' || c == 'E') )
                 flt = true;
         } else {
             for( i = 0; i < len; i++ ) {
@@ -453,20 +431,20 @@ pure fun getnumber_(s: string, pos: int): (int, int64, double, int, char) = ccod
         fx_result->t0 = (ptr - s->data) + (endptr - buf);
         fx_result->t1 = 0;
         fx_result->t3 = bits;
-        fx_result->t4 = bits == 64 && have_dot && !have_e ? '~' : 'f';
+        fx_result->t4 = 'f';
     }
     return ok ? FX_OK : FX_SET_EXN_FAST(FX_EXN_OverflowError);
 }
 
-fun getnumber(s: string, pos: int, loc: lloc_t): (int, token_t) =
+fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, token_t) =
     try {
-        val (pos1, i, f, bits, c) = getnumber_(s, pos)
+        val (pos1, i, f, bits, c) = getnumber_(s, pos, just_int)
         (pos1, match (c, bits) {
-        | ('i', 0) => INT(i)
-        | ('i', _) => SINT(bits, i)
-        | ('u', _) => UINT(bits, (i :> uint64))
-        | ('f', _) => FLOAT(bits, f)
-        | ('~', _) => FLOAT_LIKE(f, s[pos:pos1])
+        | ('i', 0) => LITERAL(Ast.LitInt(i))
+        | ('i', _) => LITERAL(Ast.LitSInt(bits, i))
+        | ('u', _) => LITERAL(Ast.LitUInt(bits, uint64(i)))
+        | ('f', _) => LITERAL(Ast.LitFloat(bits, f))
+        | (c, _) => throw LexerError(loc, f"unknown type '{c}' of numeric literal")
         })
     } catch {
         | OverflowError => throw LexerError(loc, "too long numeric literal")
@@ -646,17 +624,17 @@ fun getstring(s: string, pos: int, loc: lloc_t, term: char, raw: bool, fmt: bool
 */
 var ficus_keywords = Map.from_list(String.cmp,
     [: ("as", (AS, 1)), ("break", (BREAK, 0)), ("catch", (CATCH, 1)), ("ccode", (CCODE, 2)),
-        ("class", (CLASS, 2)), ("continue", (CONTINUE, 0)), ("do", (DO, 2)),
-        ("else", (ELSE, 1)), ("exception", (EXCEPTION, 2)), ("extends", (EXTENDS, 1)),
-        ("false", (FALSE, 0)), ("finally", (FINALLY, 1)), ("fold", (FOLD, 2)),
-        ("for", (FOR, 2)), ("from", (FROM, 2)), ("fun", (FUN, 2)), ("if", (IF, 2)),
-        ("implements", (IMPLEMENTS, 1)), ("import", (IMPORT, 3)), ("inline", (INLINE, 2)),
-        ("interface", (INTERFACE, 2)), ("match", (MATCH, 2)), ("module", (MODULE, 2)),
-        ("nothrow", (NOTHROW, 2)), ("operator", (OPERATOR, 0)), ("parallel", (PARALLEL, 2)),
-        ("pragma", (PRAGMA, 2)), ("pure", (PURE, 2)), ("ref", (REF, 3)), ("static", (STATIC, 2)),
-        ("throw", (THROW, 2)), ("true", (TRUE, 0)), ("try", (TRY, 2)), ("type", (TYPE, 2)),
-        ("val", (VAL, 2)), ("var", (VAR, 2)), ("when", (WHEN, 1)), ("while", (WHILE, 2)),
-        ("with", (WITH, 1)), ("__fold_result__", (FOLD_RESULT, -1)) :])
+    ("class", (CLASS, 2)), ("continue", (CONTINUE, 0)), ("do", (DO, 2)),
+    ("else", (ELSE, 1)), ("exception", (EXCEPTION, 2)), ("extends", (EXTENDS, 1)),
+    ("false", (LITERAL(Ast.LitBool(false)), 0)), ("finally", (FINALLY, 1)), ("fold", (FOLD, 2)),
+    ("for", (FOR(true), 2)), ("from", (FROM, 2)), ("fun", (FUN, 2)), ("if", (IF, 2)),
+    ("implements", (IMPLEMENTS, 1)), ("import", (IMPORT(true), 3)), ("inline", (INLINE, 2)),
+    ("interface", (INTERFACE, 2)), ("match", (MATCH, 2)), ("nothrow", (NOTHROW, 2)),
+    ("object", (OBJECT, 2)), ("operator", (OPERATOR, 0)), ("parallel", (PARALLEL, 2)),
+    ("pragma", (PRAGMA, 2)), ("pure", (PURE, 2)), ("ref", (REF(true), 3)), ("static", (STATIC, 2)),
+    ("throw", (THROW, 2)), ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)), ("type", (TYPE, 2)),
+    ("val", (VAL, 2)), ("var", (VAR, 2)), ("when", (WHEN, 1)), ("while", (WHILE(true), 2)),
+    ("with", (WITH, 1)), ("unzip", (UNZIP, 2)), ("__fold_result__", (FOLD_RESULT, -1)) :])
 
 /*  The function that returns the actual tokenizer/lexer function,
     a closure with all the necessary parameters inside.
@@ -703,6 +681,7 @@ fun make_lexer(strm: stream_t)
                         // Want to reset position or scan the particular fragment of code?
                         // Just create a new lexer with the same string
                         // or its substring of interest - it's a cheap operation.
+    var prev_dot = false
 
     fun getloc(pos: int) = (*strm.lineno, max(pos - *strm.bol, 0) + 1)
     fun addloc(loc: lloc_t, tokens: token_t list) = [: for t <- tokens {(t, loc)} :]
@@ -711,6 +690,10 @@ fun make_lexer(strm: stream_t)
         if !ne {
             throw LexerError(loc, f"unexpected '{name}'. Insert ';' or newline")
         }
+    fun lloc2str(l: lloc_t) {
+        val colspec = if l.1 == 1 {""} else {f":{l.1}"}
+        f"{strm.fname}:{l.0}{colspec}"
+    }
 
     fun get_ccode(p: int): (int, string)
     {
@@ -771,7 +754,7 @@ fun make_lexer(strm: stream_t)
                    there can be multiple expressions, separated by a new line.
                 */
                 match paren_stack {
-                | (LPAREN, _) :: _ | (LSQUARE, _) :: _ => {}
+                | (LPAREN _, _) :: _ | (LSQUARE _, _) :: _ => {}
                 | _ => new_exp = true
                 }
             }
@@ -783,50 +766,8 @@ fun make_lexer(strm: stream_t)
         }
 
         val loc = getloc(pos)
-        /*
-            quote (apostrophe) symbol is used in multiple cases:
-            - as matrix transposition operator, e.g. val C = A'*B
-            - as a type varible prefix in generic type/function definition,
-              e.g. fun foo(a: 'elem_type [+]) { ... }
-            - to enclose character literals, e.g. '好'
 
-            therefore, we need to carefully order the checks
-            to correctly classify each use case.
-        */
-        if c == '\'' && !new_exp {
-            (APOS, loc) :: []
-        } else if c == '\'' && c1.isalpha() && peekch(buf, pos+2) != '\'' {
-            val fold p1 = pos for p <- pos+1:len {
-                val cp = buf[p]
-                if !cp.isalnum() && cp != '_' {break with p}
-                p+1
-            }
-            pos = p1
-            new_exp = false
-            (TYVAR(buf[pos:p1].copy()), loc) :: []
-        } else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
-            val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
-            val term = peekch(buf, termpos)
-            val (p, res, inline_exp) = getstring(buf, termpos+1, getloc(termpos+1),
-                                                term, c == 'r', c == 'f')
-            val prev_pos = pos
-            pos = p
-            new_exp = false
-            if term == '\'' {
-                if res.length() != 1 {
-                    throw LexerError(getloc(pos),
-                        "character literal should contain exactly one character")
-                }
-                (CHAR(res[0]), loc) :: []
-            } else if inline_exp {
-                paren_stack = (STR_INTERP_LPAREN, getloc(prev_pos)) :: paren_stack
-                addloc(loc, (if res.empty() {LPAREN :: []}
-                        else {LPAREN :: STRING(res) :: PLUS :: []}) +
-                        (IDENT("string") :: LPAREN :: []))
-            } else {
-                (STRING(res), loc) :: []
-            }
-        } else if c.isalpha() || c == '_' {
+        if c.isalpha() || c == '_' {
             val fold p1 = pos for p <- pos:len {
                 val cp = buf[p]
                 if !cp.isalnum() && cp != '_' {break with p}
@@ -842,18 +783,14 @@ fun make_lexer(strm: stream_t)
                     check_ne(new_exp, loc, "ccode")
                     paren_stack = (CCODE, loc) :: paren_stack
                     new_exp = true; CCODE
-                | (FOR, _) =>
-                    val t = if new_exp {B_FOR} else {FOR}
-                    new_exp = true; t
-                | (IMPORT, _) =>
-                    val t = if new_exp {B_IMPORT} else {IMPORT}
-                    new_exp = true; t
-                | (WHILE, _) =>
-                    val t = if new_exp {B_WHILE} else {WHILE}
-                    new_exp = true; t
-                | (REF, _) =>
-                    val t = if new_exp {REF} else {REF_TYPE}
-                    new_exp = true; t
+                | (FOR _, _) =>
+                    val t = FOR(new_exp); new_exp = true; t
+                | (IMPORT _, _) =>
+                    val t = IMPORT(new_exp); new_exp = true; t
+                | (WHILE _, _) =>
+                    val t = WHILE(new_exp); new_exp = true; t
+                | (REF _, _) =>
+                    val t = REF(new_exp); /* retain new_exp as-is */ t
                 | (t, -1) =>
                     throw LexerError(loc, f"Identifier '{ident}' is reserved and cannot be used")
                 | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t
@@ -862,29 +799,80 @@ fun make_lexer(strm: stream_t)
                 | _ => throw LexerError(loc, f"Unexpected keyword '{ident}'")
                 }
             | _ =>
-                val t = if new_exp {B_IDENT(ident)} else {IDENT(ident)}
-                new_exp = false; t
+                val t = IDENT(new_exp, ident); new_exp = false; t
             }
+            prev_dot = false
             (t, loc) :: []
         } else if '0' <= c <= '9' {
-            val (p, t) = getnumber(buf, pos, getloc(pos))
+            val (p, t) = getnumber(buf, pos, getloc(pos), prev_dot)
             new_exp = false
             pos = p
+            prev_dot = false
             (t, loc) :: []
+        }
+        /*
+            single-quote (apostrophe) symbol is used in multiple cases:
+            - as matrix transposition operator, e.g. val C = A'*B
+            - as a type varible prefix in generic type/function definition,
+              e.g. fun foo(a: 'elem_type [+]) { ... }
+            - to enclose character literals, e.g. '好'
+
+            therefore, we need to carefully order the checks
+            to correctly classify each use case.
+        */
+        else if c == '\'' && !new_exp {
+            prev_dot = false
+            (APOS, loc) :: []
+        } else if c == '\'' && c1.isalpha() && peekch(buf, pos+2) != '\'' {
+            val fold p1 = pos for p <- pos+1:len {
+                val cp = buf[p]
+                if !cp.isalnum() && cp != '_' {break with p}
+                p+1
+            }
+            pos = p1
+            new_exp = false
+            prev_dot = false
+            (TYVAR(buf[pos:p1].copy()), loc) :: []
+        }
+        else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
+            val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
+            val term = peekch(buf, termpos)
+            val (p, res, inline_exp) = getstring(buf, termpos+1, getloc(termpos+1),
+                                                term, c == 'r', c == 'f')
+            val prev_pos = pos
+            pos = p
+            new_exp = false
+            prev_dot = false
+            if term == '\'' {
+                if res.length() != 1 {
+                    throw LexerError(getloc(pos),
+                        "character literal should contain exactly one character")
+                }
+                (LITERAL(Ast.LitChar(res[0])), loc) :: []
+            } else if inline_exp {
+                paren_stack = (STR_INTERP_LPAREN, getloc(prev_pos)) :: paren_stack
+                addloc(loc, (if res.empty() {LPAREN(true) :: []}
+                        else {LPAREN(true) :: LITERAL(Ast.LitString(res)) :: PLUS(false) :: []}) +
+                        (IDENT(true, "string") :: LPAREN(false) :: []))
+            } else {
+                (LITERAL(Ast.LitString(res)), loc) :: []
+            }
         } else {
             val prev_ne = new_exp
+            val prev_prev_dot = prev_dot
+            prev_dot = false
             new_exp = true
             pos = min(pos+1, len)
             val c2 = peekch(buf, pos+2)
             val c3 = peekch(buf, pos+3)
             match c {
             | '(' =>
-                paren_stack = (LPAREN, getloc(pos-1)) :: paren_stack
-                if prev_ne {(B_LPAREN, loc) :: []} else {(LPAREN, loc) :: []}
+                paren_stack = (LPAREN(prev_ne), getloc(pos-1)) :: paren_stack
+                (LPAREN(prev_ne), loc) :: []
             | ')' =>
                 new_exp = false
                 match paren_stack {
-                | (LPAREN, _) :: rest =>
+                | (LPAREN _, _) :: rest =>
                     paren_stack = rest
                     (RPAREN, loc) :: []
                 | _ =>
@@ -894,17 +882,17 @@ fun make_lexer(strm: stream_t)
                 if c1 == ':' {
                     pos += 1
                     val tokens = if prev_ne {(LLIST, loc) :: []}
-                        else {(LSQUARE, loc) :: (COLON, loc) :: []}
+                        else {(LSQUARE(false), loc) :: (COLON, loc) :: []}
                     paren_stack = tokens.hd() :: paren_stack
                     tokens
                 } else {
-                    paren_stack = (LSQUARE, getloc(pos-1)) :: paren_stack
-                    if prev_ne {(B_LSQUARE, loc) :: []} else {(LSQUARE, loc) :: []}
+                    paren_stack = (LSQUARE(prev_ne), getloc(pos-1)) :: paren_stack
+                    (LSQUARE(prev_ne), loc) :: []
                 }
             | ']' =>
                 new_exp = false
                 match paren_stack {
-                | (LSQUARE, _) :: rest =>
+                | (LSQUARE _, _) :: rest =>
                     paren_stack = rest
                     (RSQUARE, loc) :: []
                 | _ =>
@@ -919,7 +907,7 @@ fun make_lexer(strm: stream_t)
                     paren_stack = rest
                     val (p, s) = get_ccode(pos)
                     pos = p
-                    (STRING(s), loc) :: []
+                    (LITERAL(Ast.LitString(s)), loc) :: []
                 | _ =>
                     /*
                        call nexttokens recursively; if the next token is '|',
@@ -942,10 +930,10 @@ fun make_lexer(strm: stream_t)
                     val (p, s, inline_exp) = getstring(buf, pos, getloc(pos), chr(34), false, true)
                     pos = p
                     (if s.empty() {(RPAREN, loc) :: []}
-                    else {(RPAREN, loc) :: (PLUS, loc) :: (STRING(s), loc) :: []}) +
+                    else {(RPAREN, loc) :: (PLUS(false), loc) :: (LITERAL(Ast.LitString(s)), loc) :: []}) +
                     (if inline_exp {
                         paren_stack = (STR_INTERP_LPAREN, getloc(pos)) :: paren_stack
-                        (PLUS, loc) :: (IDENT("string"), loc) :: (LPAREN, loc) :: []
+                        (PLUS(false), loc) :: (IDENT(true, "string"), loc) :: (LPAREN(false), loc) :: []
                     } else {
                         (RPAREN, loc) :: []
                     })
@@ -968,36 +956,28 @@ fun make_lexer(strm: stream_t)
                 }
             | '+' =>
                 if c1 == '=' {pos += 1; (PLUS_EQUAL, loc) :: []}
-                else if prev_ne {(B_PLUS, loc) :: []} else {(PLUS, loc) :: []}
+                else {(PLUS(prev_ne), loc) :: []}
             | '-' =>
                 if c1 == '=' {pos += 1; (MINUS_EQUAL, loc) :: []}
                 else if c1 == '>' {pos += 1; (ARROW, loc) :: []}
-                else if !prev_ne {(MINUS, loc) :: []} else {
+                else if !prev_ne {(MINUS(false), loc) :: []} else {
                     match nexttokens() {
-                    | (INT(x), _) :: rest => (INT(-x), loc) :: rest
-                    | (SINT(b, x), _) :: rest => (SINT(b, -x), loc) :: rest
-                    | (FLOAT(b, x), _) :: rest => (FLOAT(b, -x), loc) :: rest
-                    | ts => (B_MINUS, loc) :: ts
+                    | (LITERAL(Ast.LitInt(x)), _) :: rest => (LITERAL(Ast.LitInt(-x)), loc) :: rest
+                    | (LITERAL(Ast.LitSInt(b, x)), _) :: rest => (LITERAL(Ast.LitSInt(b, -x)), loc) :: rest
+                    | (LITERAL(Ast.LitFloat(b, x)), _) :: rest => (LITERAL(Ast.LitFloat(b, -x)), loc) :: rest
+                    | ts => (MINUS(true), loc) :: ts
                     }
                 }
             | '*' =>
-                if c1 == '=' {
-                    pos += 1; (STAR_EQUAL, loc) :: []
-                } else if c1 == '*' {
-                    pos += 1
-                    if prev_ne {(B_POWER, loc) :: []}
-                    else {(POWER, loc) :: []}
-                } else if prev_ne {
-                    (B_STAR, loc) :: []
-                } else {
-                    (STAR, loc) :: []
-                }
+                if c1 == '=' {pos += 1; (STAR_EQUAL, loc) :: []}
+                else if c1 == '*' {pos += 1; (POWER(prev_ne), loc) :: []}
+                else {(STAR(prev_ne), loc) :: []}
             | '/' =>
                 if c1 == '=' {pos += 1; (SLASH_EQUAL, loc) :: []}
                 else {(SLASH, loc) :: []}
             | '%' =>
-                if c1 == '=' {pos += 1; (MOD_EQUAL, loc) :: []}
-                else {(MOD, loc) :: []}
+                if c1 == '=' {pos += 1; (PERCENT_EQUAL, loc) :: []}
+                else {(PERCENT, loc) :: []}
             | '=' =>
                 if c1 == '=' {pos += 1; (CMP_EQ, loc) :: []}
                 else if c1 == '>' {pos += 1; (DOUBLE_ARROW, loc) :: []}
@@ -1010,7 +990,7 @@ fun make_lexer(strm: stream_t)
                 else if c1 == '&' {pos += 1; (LOGICAL_AND, loc) :: []}
                 else {(BITWISE_AND, loc) :: []}
             | '~' => check_ne(prev_ne, getloc(pos-1), "~"); (TILDE, loc) :: []
-            | '\\' => check_ne(prev_ne, getloc(pos-1), "\\"); (EXPAND, loc) :: []
+            | '\\' => check_ne(prev_ne, getloc(pos-1), "\\"); (BACKSLASH, loc) :: []
             | '@' => (AT, loc) :: []
             | '.' =>
                 if c1 == '=' {
@@ -1028,7 +1008,7 @@ fun make_lexer(strm: stream_t)
                 } else if c1 == '-' {
                     check_ne(prev_ne, getloc(pos-1), ".-");
                     pos += 1
-                    (B_DOT_MINUS, loc) :: []
+                    (DOT_MINUS(true), loc) :: []
                 } else if c1 == '*' {
                     if c2 == '*' {pos += 2; (DOT_POWER, loc) :: []}
                     else if c2 == '=' {pos += 2; (DOT_STAR_EQUAL, loc) :: []}
@@ -1037,10 +1017,13 @@ fun make_lexer(strm: stream_t)
                     if c2 == '=' {pos += 2; (DOT_SLASH_EQUAL, loc) :: []}
                     else {pos += 1; (DOT_SLASH, loc) :: []}
                 } else if c1 == '%' {
-                    if c2 == '=' {pos += 2; (DOT_MOD_EQUAL, loc) :: []}
-                    else {pos += 1; (DOT_MOD, loc) :: []}
-                } else if c1 == '.' && c2 == '.' {pos += 2; (ELLIPSIS, loc) :: []}
-                else {(DOT, loc) :: []}
+                    if c2 == '=' {pos += 2; (DOT_PERCENT_EQUAL, loc) :: []}
+                    else {pos += 1; (DOT_PERCENT, loc) :: []}
+                } else if c1 == '.' && c2 == '.' {
+                    pos += 2; (ELLIPSIS, loc) :: []
+                } else {
+                    prev_dot = true; (DOT, loc) :: []
+                }
             | ',' => (COMMA, loc) :: []
             | ';' => (SEMICOLON, loc) :: []
             | ':' =>
@@ -1052,7 +1035,7 @@ fun make_lexer(strm: stream_t)
                     match paren_stack {
                         | (LLIST, _) :: rest =>
                             paren_stack = rest; (RLIST, loc) :: []
-                        | (LSQUARE, _) :: rest =>
+                        | (LSQUARE _, _) :: rest =>
                             paren_stack = rest; (COLON, loc) :: (RSQUARE, loc) :: []
                         | _ => throw LexerError(getloc(pos-2),
                             "Unexpected ':]', check parens")
@@ -1092,6 +1075,10 @@ fun make_lexer(strm: stream_t)
                 }
             | '@' => (AT, loc) :: []
             | '\0' =>
+                match paren_stack {
+                | (_, l) :: _ => throw LexerError(loc, f"some braces (around {lloc2str(l)}) are not closed")
+                | _ => {}
+                }
                 (EOF, loc) :: []
             | _ =>
                 println(f"unrecognized character '{c}' at lineno={*strm.lineno}")

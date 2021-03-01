@@ -10,7 +10,7 @@ val SEEK_SET: int = ccode { (int)SEEK_SET }
 val SEEK_CURR: int = ccode { (int)SEEK_CUR }
 val SEEK_END: int = ccode { (int)SEEK_END }
 
-module type file_t = { handle: cptr }
+object type file_t = { handle: cptr }
 
 fun get_stdstream(i: int): file_t = ccode
 {
