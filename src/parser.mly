@@ -710,21 +710,21 @@ binary_exp:
 | binary_exp DOT_POWER binary_exp { make_bin_op(OpDotPow, $1, $3) }
 | binary_exp SPACESHIP binary_exp { make_bin_op(OpSpaceship, $1, $3) }
 | binary_exp DOT_SPACESHIP binary_exp { make_bin_op(OpDotSpaceship, $1, $3) }
-| binary_exp DOT_CMP_EQ binary_exp { make_bin_op(OpDotCompareEQ, $1, $3) }
-| binary_exp DOT_CMP_NE binary_exp { make_bin_op(OpDotCompareNE, $1, $3) }
-| binary_exp DOT_CMP_LE binary_exp { make_bin_op(OpDotCompareLE, $1, $3) }
-| binary_exp DOT_CMP_GE binary_exp { make_bin_op(OpDotCompareGE, $1, $3) }
-| binary_exp DOT_CMP_LT binary_exp { make_bin_op(OpDotCompareLT, $1, $3) }
-| binary_exp DOT_CMP_GT binary_exp { make_bin_op(OpDotCompareGT, $1, $3) }
+| binary_exp DOT_CMP_EQ binary_exp { make_bin_op(OpDotCmp(CmpEQ), $1, $3) }
+| binary_exp DOT_CMP_NE binary_exp { make_bin_op(OpDotCmp(CmpNE), $1, $3) }
+| binary_exp DOT_CMP_LE binary_exp { make_bin_op(OpDotCmp(CmpLE), $1, $3) }
+| binary_exp DOT_CMP_GE binary_exp { make_bin_op(OpDotCmp(CmpGE), $1, $3) }
+| binary_exp DOT_CMP_LT binary_exp { make_bin_op(OpDotCmp(CmpLT), $1, $3) }
+| binary_exp DOT_CMP_GT binary_exp { make_bin_op(OpDotCmp(CmpGT), $1, $3) }
 | unary_exp { $1 }
 
 chained_cmp_exp:
-| chained_cmp_exp CMP_EQ binary_exp { (OpCompareEQ, $3) :: $1 }
-| chained_cmp_exp CMP_NE binary_exp { (OpCompareNE, $3) :: $1 }
-| chained_cmp_exp CMP_LE binary_exp { (OpCompareLE, $3) :: $1 }
-| chained_cmp_exp CMP_GE binary_exp { (OpCompareGE, $3) :: $1 }
-| chained_cmp_exp CMP_LT binary_exp { (OpCompareLT, $3) :: $1 }
-| chained_cmp_exp CMP_GT binary_exp { (OpCompareGT, $3) :: $1 }
+| chained_cmp_exp CMP_EQ binary_exp { (OpCmp(CmpEQ), $3) :: $1 }
+| chained_cmp_exp CMP_NE binary_exp { (OpCmp(CmpNE), $3) :: $1 }
+| chained_cmp_exp CMP_LE binary_exp { (OpCmp(CmpLE), $3) :: $1 }
+| chained_cmp_exp CMP_GE binary_exp { (OpCmp(CmpGE), $3) :: $1 }
+| chained_cmp_exp CMP_LT binary_exp { (OpCmp(CmpLT), $3) :: $1 }
+| chained_cmp_exp CMP_GT binary_exp { (OpCmp(CmpGT), $3) :: $1 }
 | binary_exp
     {
         (* the actual operation is not used here; just put some weird one *)

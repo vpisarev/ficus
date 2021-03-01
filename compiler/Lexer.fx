@@ -20,19 +20,16 @@ type token_t =
     | INLINE | INTERFACE | MATCH | NOTHROW | OBJECT | OPERATOR
     | PARALLEL | PRAGMA | PURE | REF: bool | STATIC | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
-    | LPAREN: bool | STR_INTERP_LPAREN | RPAREN
-    | LSQUARE: bool | RSQUARE | LBRACE | RBRACE
-    | LLIST | RLIST | COMMA | DOT | SEMICOLON | COLON
-    | BAR | CONS | CAST | BACKSLASH | BACK_ARROW | DOUBLE_ARROW
-    | ARROW | QUESTION | EOF | MINUS: bool | PLUS: bool
+    | LPAREN: bool | STR_INTERP_LPAREN | RPAREN | LSQUARE: bool
+    | RSQUARE | LBRACE | RBRACE | LLIST | RLIST | COMMA | DOT
+    | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH | BACK_ARROW
+    | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool | PLUS: bool
     | STAR: bool | SLASH | PERCENT | POWER: bool | DOT_STAR
     | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
-    | DOT_EQUAL | AUG_BINOP: Ast.binop_t | SPACESHIP
-    | CMP_EQ | CMP_NE | CMP_LE | CMP_GE | CMP_LT | CMP_GT
-    | DOT_SPACESHIP | DOT_CMP_EQ | DOT_CMP_NE | DOT_CMP_LE
-    | DOT_CMP_GE | DOT_CMP_LT | DOT_CMP_GT | FOLD_RESULT
+    | DOT_EQUAL | AUG_BINOP: Ast.binary_t | SPACESHIP | CMP: Ast.cmp_t
+    | DOT_SPACESHIP | DOT_CMP: Ast.cmp_t | FOLD_RESULT
 
 fun ne2u(ne: bool, s: string) = if ne {s} else {s.decapitalize()}
 
@@ -126,34 +123,11 @@ fun tok2str(t: token_t)
     | LOGICAL_NOT => ("LOGICAL_NOT", "!")
     | EQUAL => ("EQUAL", "=")
     | DOT_EQUAL => ("DOT_EQUAL", ".=")
-    | AUG_BINOP(o) => (f"AUG_BINOP(binop2_str() PLUS_EQUAL", "+=")
-    | MINUS_EQUAL => ("MINUS_EQUAL", "-=")
-    | STAR_EQUAL => ("STAR_EQUAL", "*=")
-    | SLASH_EQUAL => ("SLASH_EQUAL", "/=")
-    | PERCENT_EQUAL => ("PERCENT_EQUAL", "%=")
-    | AND_EQUAL => ("AND_EQUAL", "&=")
-    | OR_EQUAL => ("OR_EQUAL", "|=")
-    | XOR_EQUAL => ("XOR_EQUAL", "^=")
-    | SHIFT_LEFT_EQUAL => ("SHIFT_LEFT_EQUAL", "<<=")
-    | SHIFT_RIGHT_EQUAL => ("SHIFT_RIGHT_EQUAL", ">>=")
-
-    | DOT_STAR_EQUAL => ("DOT_STAR_EQUAL", ".*=")
-    | DOT_SLASH_EQUAL => ("DOT_SLASH_EQUAL", "./=")
-    | DOT_PERCENT_EQUAL => ("DOT_PERCENT_EQUAL", ".%=")
+    | AUG_BINOP(o) => (f"AUG_BINOP({o})", f"{o}=")
     | SPACESHIP => ("SPACESHIP", "<=>")
-    | CMP_EQ => ("CMP_EQ", "==")
-    | CMP_NE => ("CMP_NE", "!=")
-    | CMP_LT => ("CMP_LT", "<")
-    | CMP_LE => ("CMP_LE", "<=")
-    | CMP_GE => ("CMP_GE", ">=")
-    | CMP_GT => ("CMP_GT", ">")
+    | CMP(c) => (f"CMP({c})", string(c))
     | DOT_SPACESHIP => ("DOT_SPACESHIP", ".<=>")
-    | DOT_CMP_EQ => ("DOT_CMP_EQ", ".==")
-    | DOT_CMP_NE => ("DOT_CMP_NE", ".!=")
-    | DOT_CMP_LT => ("DOT_CMP_LT", ".<")
-    | DOT_CMP_LE => ("DOT_CMP_LE", ".<=")
-    | DOT_CMP_GE => ("DOT_CMP_GE", ".>=")
-    | DOT_CMP_GT => ("DOT_CMP_GT", ".>")
+    | DOT_CMP(c) => (f"DOT_CMP({c})", f".{c}")
     | FOLD_RESULT => ("FOLD_RESULT", "__fold_result__")
 }
 
@@ -947,7 +921,7 @@ fun make_lexer(strm: stream_t)
                     throw LexerError(loc, "Unexpected '}', check parens")
                 }
             | '|' =>
-                if c1 == '=' {(OR_EQUAL, loc) :: []}
+                if c1 == '=' {(AUG_BINOP(Ast.OpBitwiseOr), loc) :: []}
                 else {
                     match paren_stack {
                     | (BAR, _) :: (LBRACE, _) :: _ => (BAR, loc) :: []
@@ -955,10 +929,10 @@ fun make_lexer(strm: stream_t)
                     }
                 }
             | '+' =>
-                if c1 == '=' {pos += 1; (PLUS_EQUAL, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpAdd), loc) :: []}
                 else {(PLUS(prev_ne), loc) :: []}
             | '-' =>
-                if c1 == '=' {pos += 1; (MINUS_EQUAL, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpSub), loc) :: []}
                 else if c1 == '>' {pos += 1; (ARROW, loc) :: []}
                 else if !prev_ne {(MINUS(false), loc) :: []} else {
                     match nexttokens() {
@@ -969,24 +943,24 @@ fun make_lexer(strm: stream_t)
                     }
                 }
             | '*' =>
-                if c1 == '=' {pos += 1; (STAR_EQUAL, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpMul), loc) :: []}
                 else if c1 == '*' {pos += 1; (POWER(prev_ne), loc) :: []}
                 else {(STAR(prev_ne), loc) :: []}
             | '/' =>
-                if c1 == '=' {pos += 1; (SLASH_EQUAL, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpDiv), loc) :: []}
                 else {(SLASH, loc) :: []}
             | '%' =>
-                if c1 == '=' {pos += 1; (PERCENT_EQUAL, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpMod), loc) :: []}
                 else {(PERCENT, loc) :: []}
             | '=' =>
-                if c1 == '=' {pos += 1; (CMP_EQ, loc) :: []}
+                if c1 == '=' {pos += 1; (CMP(Ast.CmpEQ), loc) :: []}
                 else if c1 == '>' {pos += 1; (DOUBLE_ARROW, loc) :: []}
                 else {(EQUAL, loc) :: []}
             | '^' =>
-                if c1 == '=' {pos += 1; (XOR_EQUAL, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseXor), loc) :: []}
                 else { (BITWISE_XOR, loc) :: [] }
             | '&' =>
-                if c1 == '=' {pos += 1; (AND_EQUAL, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseAnd), loc) :: []}
                 else if c1 == '&' {pos += 1; (LOGICAL_AND, loc) :: []}
                 else {(BITWISE_AND, loc) :: []}
             | '~' => check_ne(prev_ne, getloc(pos-1), "~"); (TILDE, loc) :: []
@@ -994,30 +968,30 @@ fun make_lexer(strm: stream_t)
             | '@' => (AT, loc) :: []
             | '.' =>
                 if c1 == '=' {
-                    if c2 == '=' {pos += 2; (DOT_CMP_EQ, loc) :: []}
+                    if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpEQ), loc) :: []}
                     else {pos += 1; (DOT_EQUAL, loc) :: []}
                 } else if c1 == '!' && c2 == '=' {
-                    pos += 2; (DOT_CMP_NE, loc) :: []
+                    pos += 2; (DOT_CMP(Ast.CmpNE), loc) :: []
                 } else if c1 == '<' {
                     if c2 == '=' && c3 == '>' {pos += 3; (DOT_SPACESHIP, loc) :: []}
-                    else if c2 == '=' {pos += 2; (DOT_CMP_LE, loc) :: []}
-                    else {pos += 1; (DOT_CMP_LT, loc) :: []}
+                    else if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpLE), loc) :: []}
+                    else {pos += 1; (DOT_CMP(Ast.CmpLT), loc) :: []}
                 } else if c1 == '>' {
-                    if c2 == '=' {pos += 2; (DOT_CMP_GE, loc) :: []}
-                    else {pos += 1; (DOT_CMP_GT, loc) :: []}
+                    if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpGE), loc) :: []}
+                    else {pos += 1; (DOT_CMP(Ast.CmpGT), loc) :: []}
                 } else if c1 == '-' {
                     check_ne(prev_ne, getloc(pos-1), ".-");
                     pos += 1
                     (DOT_MINUS(true), loc) :: []
                 } else if c1 == '*' {
                     if c2 == '*' {pos += 2; (DOT_POWER, loc) :: []}
-                    else if c2 == '=' {pos += 2; (DOT_STAR_EQUAL, loc) :: []}
+                    else if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotMul), loc) :: []}
                     else {pos += 1; (DOT_STAR, loc) :: []}
                 } else if c1 == '/' {
-                    if c2 == '=' {pos += 2; (DOT_SLASH_EQUAL, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotDiv), loc) :: []}
                     else {pos += 1; (DOT_SLASH, loc) :: []}
                 } else if c1 == '%' {
-                    if c2 == '=' {pos += 2; (DOT_PERCENT_EQUAL, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotMod), loc) :: []}
                     else {pos += 1; (DOT_PERCENT, loc) :: []}
                 } else if c1 == '.' && c2 == '.' {
                     pos += 2; (ELLIPSIS, loc) :: []
@@ -1045,7 +1019,7 @@ fun make_lexer(strm: stream_t)
             | '!' =>
                 if c1 == '=' {
                     pos += 1
-                    (CMP_NE, loc) :: []
+                    (CMP(Ast.CmpNE), loc) :: []
                 }
                 else {
                     check_ne(prev_ne, getloc(pos-1), "!")
@@ -1055,23 +1029,23 @@ fun make_lexer(strm: stream_t)
             | '<' =>
                 if c1 == '=' {
                     if c2 == '>' {pos += 2; (SPACESHIP, loc) :: []}
-                    else {pos += 1; (CMP_LE, loc) :: []}
+                    else {pos += 1; (CMP(Ast.CmpLE), loc) :: []}
                 } else if c1 == '<' {
-                    if c2 == '=' {pos += 2; (SHIFT_LEFT_EQUAL, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpShiftLeft), loc) :: []}
                     else {pos += 1; (SHIFT_LEFT, loc) :: []}
                 } else if c1 == '-' {
                     pos += 1; (BACK_ARROW, loc) :: []
                 } else {
-                    (CMP_LT, loc) :: []
+                    (CMP(Ast.CmpLT), loc) :: []
                 }
             | '>' =>
                 if c1 == '=' {
-                    pos += 1; (CMP_GE, loc) :: []
+                    pos += 1; (CMP(Ast.CmpGE), loc) :: []
                 } else if c1 == '>' {
-                    if c2 == '=' {pos += 2; (SHIFT_RIGHT_EQUAL, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpShiftRight), loc) :: []}
                     else {pos += 1; (SHIFT_RIGHT, loc) :: []}
                 } else {
-                    (CMP_GT, loc) :: []
+                    (CMP(Ast.CmpGT), loc) :: []
                 }
             | '@' => (AT, loc) :: []
             | '\0' =>

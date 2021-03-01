@@ -876,7 +876,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                     (Some extract_tag_exp) code loc in
                 (tag_n, code))
                 in
-            let cmp_tag_exp = KExpBinOp(OpCompareEQ, (AtomId tag_n), vn_tag_val, (KTypBool, loc)) in
+            let cmp_tag_exp = KExpBinOp(OpCmp(CmpEQ), (AtomId tag_n), vn_tag_val, (KTypBool, loc)) in
             let checks = (rcode2kexp (cmp_tag_exp :: code) loc) :: checks in
             let (case_n, code, alt_e_opt) = match c_args with
                 | [] -> (noid, [], None)
@@ -914,12 +914,12 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (plists, checks, code) =
             (match p with
             | PatLit (l, _) ->
-                let code = KExpBinOp(OpCompareEQ, (AtomId n), (AtomLit (lit2klit l ptyp)), (KTypBool, loc)) :: code in
+                let code = KExpBinOp(OpCmp(CmpEQ), (AtomId n), (AtomLit (lit2klit l ptyp)), (KTypBool, loc)) :: code in
                 let c_exp = rcode2kexp code loc in
                 (plists, c_exp :: checks, [])
             | PatIdent _ -> (plists, checks, code)
             | PatCons(p1, p2, _) ->
-                let code = KExpBinOp(OpCompareNE, (AtomId n), (AtomLit (KLitNil ptyp)), (KTypBool, loc)) :: code in
+                let code = KExpBinOp(OpCmp(CmpNE), (AtomId n), (AtomLit (KLitNil ptyp)), (KTypBool, loc)) :: code in
                 let c_exp = rcode2kexp code loc in
                 let et = match ptyp with
                         | KTypList et -> et

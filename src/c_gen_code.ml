@@ -1267,16 +1267,15 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     | OpBitwiseOr ->
                         (match ktyp with KTypBool -> COpLogicOr | _ -> COpBitwiseOr)
                     | OpBitwiseXor -> COpBitwiseXor
-                    | OpCompareEQ -> COpCompareEQ
-                    | OpCompareNE -> COpCompareNE
-                    | OpCompareLE -> COpCompareLE
-                    | OpCompareGE -> COpCompareGE
-                    | OpCompareLT -> COpCompareLT
-                    | OpCompareGT -> COpCompareGT
+                    | OpCmp(CmpEQ) -> COpCompareEQ
+                    | OpCmp(CmpNE) -> COpCompareNE
+                    | OpCmp(CmpLE) -> COpCompareLE
+                    | OpCmp(CmpGE) -> COpCompareGE
+                    | OpCmp(CmpLT) -> COpCompareLT
+                    | OpCmp(CmpGT) -> COpCompareGT
                     | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship | OpDotSpaceship
                     | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
-                    | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLE
-                    | OpDotCompareGE | OpDotCompareLT | OpDotCompareGT ->
+                    | OpDotCmp _ ->
                         raise_compile_err kloc (sprintf "cgen: unsupported op '%s' at this stage"
                         (binop_to_string bop)))
                 in (match (c_bop, (get_cexp_typ ce1)) with

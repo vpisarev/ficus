@@ -163,13 +163,12 @@ type typ_t =
 
 let make_new_typ () = TypVar (ref (None: typ_t option))
 
+type cmp_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
 type binop_t =
     | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow | OpShiftLeft | OpShiftRight
     | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
-    | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
-    | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLT | OpDotCompareLE | OpDotCompareGT | OpDotCompareGE
-    | OpSpaceship | OpDotSpaceship | OpCons
+    | OpCmp of cmp_t | OpDotCmp of cmp_t | OpSpaceship | OpDotSpaceship | OpCons
 
 type unop_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot | OpMkRef | OpDeref | OpExpand | OpApos
 
@@ -725,6 +724,14 @@ let rec is_typ_numeric t allow_vec_tuples =
         List.for_all (fun t -> (deref_typ t) = (deref_typ t0)) trest
     | _ -> false
 
+let cmp2str c = match c with
+    | CmpEQ -> "=="
+    | CmpNE -> "!="
+    | CmpLT -> "<"
+    | CmpLE -> "<="
+    | CmpGE -> ">="
+    | CmpGT -> ">"
+
 let binop_to_string bop = match bop with
     | OpAdd -> "+"
     | OpSub -> "-"
@@ -744,19 +751,9 @@ let binop_to_string bop = match bop with
     | OpLogicOr -> "||"
     | OpBitwiseXor -> "^"
     | OpSpaceship -> "<=>"
-    | OpCompareEQ -> "=="
-    | OpCompareNE -> "!="
-    | OpCompareLE -> "<="
-    | OpCompareGE -> ">="
-    | OpCompareLT -> "<"
-    | OpCompareGT -> ">"
+    | OpCmp(c) -> cmp2str c
     | OpDotSpaceship -> ".<=>"
-    | OpDotCompareEQ -> ".=="
-    | OpDotCompareNE -> ".!="
-    | OpDotCompareLE -> ".<="
-    | OpDotCompareGE -> ".>="
-    | OpDotCompareLT -> ".<"
-    | OpDotCompareGT -> ".>"
+    | OpDotCmp(c) -> "." ^ (cmp2str c)
     | OpCons -> "::"
 
 let unop_to_string uop = match uop with
@@ -843,12 +840,7 @@ let binop_try_remove_dot bop =
     | OpDotMod -> OpMod
     | OpDotPow -> OpPow
     | OpDotSpaceship -> OpSpaceship
-    | OpDotCompareEQ -> OpCompareEQ
-    | OpDotCompareNE -> OpCompareNE
-    | OpDotCompareLE -> OpCompareLE
-    | OpDotCompareGE -> OpCompareGE
-    | OpDotCompareLT -> OpCompareLT
-    | OpDotCompareGT -> OpCompareGT
+    | OpDotCmp(c) -> OpCmp(c)
     | _ -> bop
 
 let get_binop_fname bop loc =
@@ -869,19 +861,19 @@ let get_binop_fname bop loc =
     | OpBitwiseOr -> fname_op_bit_or()
     | OpBitwiseXor -> fname_op_bit_xor()
     | OpSpaceship -> fname_op_cmp()
-    | OpCompareEQ -> fname_op_eq()
-    | OpCompareNE -> fname_op_ne()
-    | OpCompareLE -> fname_op_le()
-    | OpCompareGE -> fname_op_ge()
-    | OpCompareLT -> fname_op_lt()
-    | OpCompareGT -> fname_op_gt()
+    | OpCmp(CmpEQ) -> fname_op_eq()
+    | OpCmp(CmpNE) -> fname_op_ne()
+    | OpCmp(CmpLT) -> fname_op_lt()
+    | OpCmp(CmpLE) -> fname_op_le()
+    | OpCmp(CmpGE) -> fname_op_ge()
+    | OpCmp(CmpGT) -> fname_op_gt()
     | OpDotSpaceship -> fname_op_dot_cmp()
-    | OpDotCompareEQ -> fname_op_dot_eq()
-    | OpDotCompareNE -> fname_op_dot_ne()
-    | OpDotCompareLE -> fname_op_dot_le()
-    | OpDotCompareGE -> fname_op_dot_ge()
-    | OpDotCompareLT -> fname_op_dot_lt()
-    | OpDotCompareGT -> fname_op_dot_gt()
+    | OpDotCmp(CmpEQ) -> fname_op_dot_eq()
+    | OpDotCmp(CmpNE) -> fname_op_dot_ne()
+    | OpDotCmp(CmpLT) -> fname_op_dot_lt()
+    | OpDotCmp(CmpLE) -> fname_op_dot_le()
+    | OpDotCmp(CmpGE) -> fname_op_dot_ge()
+    | OpDotCmp(CmpGT) -> fname_op_dot_gt()
     | OpLogicAnd | OpLogicOr | OpCons ->
         raise_compile_err loc
             (sprintf "for binary operation \"%s\" there is no corresponding function" (binop_to_string bop))

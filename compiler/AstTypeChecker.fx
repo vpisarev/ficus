@@ -1007,7 +1007,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         fun is_lvalue(need_mutable_id: bool, e: exp_t) =
             match e {
             | ExpAt(arr, BorderNone, InterpNone, _, _) => is_lvalue(false, arr)
-            | ExpUnOp(OpDeref, r, _) => is_lvalue(false, r)
+            | ExpUnary(OpDeref, r, _) => is_lvalue(false, r)
             | ExpIdent(n1, _) => !need_mutable_id ||
                 (match id_info(n1) {
                 | IdDVal ({dv_flags}) => dv_flags.val_flag_mutable
@@ -1022,7 +1022,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             throw compile_err(eloc, "the left side of assignment is not an l-value")
         }
         ExpAssign(new_e1, new_e2, eloc)
-    | ExpBinOp(OpCons, e1, e2, _) =>
+    | ExpBinary(OpCons, e1, e2, _) =>
         val new_e1 = check_exp(e1, env, sc)
         val new_e2 = check_exp(e2, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
@@ -1030,19 +1030,19 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         if maybe_unify(etyp, TypList(make_new_typ()), false) || maybe_unify(etyp2, TypList(make_new_typ()), false) {
             unify(etyp, TypList(etyp1), eloc1, "'::' operation should produce a list")
             unify(etyp2, TypList(etyp1), eloc2, "incorrect type of the second argument of '::' operation")
-            ExpBinOp(OpCons, new_e1, new_e2, ctx)
+            ExpBinary(OpCons, new_e1, new_e2, ctx)
         } else {
             unify(etyp1, TypInt, eloc1, "explicitly specified component of a range must be an integer")
             unify(etyp2, TypInt, eloc2, "explicitly specified component of a range must be an integer")
             unify(etyp, TypTuple([: TypInt, TypInt, TypInt :]), eloc, "the range type should have (int, int, int) type")
             ExpRange(Some(new_e1), (None: exp_t?), Some(new_e2), ctx)
         }
-    | ExpBinOp(bop, e1, e2, _) =>
+    | ExpBinary(bop, e1, e2, _) =>
         val new_e1 = check_exp(e1, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
         val new_e2 = check_exp(e2, env, sc)
         val (etyp2, eloc2) = get_exp_ctx(new_e2)
-        val bop_wo_dot = binop_try_remove_dot(bop)
+        val bop_wo_dot = binary_try_remove_dot(bop)
 
         /* depending on the operation, figure out the type of result
            (or set it to None if there is no embedded implementation)
@@ -1077,10 +1077,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp2, TypBool, eloc2, "arguments of logical operation must be boolean")
             (bop, Some(TypBool))
         /* [TODO] comparison operations are now implemented for anything but variants (except for OpCompareEQ & OpCompareNE, which are implemented) */
-        | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLT | OpDotCompareLE
-                                                                     | OpDotCompareGT | OpDotCompareGE =>
-            if bop != bop_wo_dot {}
-            else {
+        | OpCmp _ | OpDotCmp _ =>
+            match bop {
+            | OpDotCmp _ => {}
+            | _ =>
                 unify(etyp1, etyp2, eloc, "the compared elements must have the same type")
                 unify(etyp, TypBool, eloc, f"result of comparison operation '{bop}' must be bool")
             }
@@ -1102,23 +1102,23 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         }
         match (typ_opt, bop, deref_typ(etyp1), deref_typ(etyp2), e1, e2) {
         | (Some(typ), _, _, _, _, _) => unify(typ, etyp, eloc, "improper type of the arithmetic operation result")
-                                        ExpBinOp(bop, new_e1, new_e2, ctx)
+                                        ExpBinary(bop, new_e1, new_e2, ctx)
         | (_, OpAdd, TypString, TypString, _, _) | (_, OpAdd, TypString, TypChar, _, _) | (_, OpAdd, TypChar, TypString, _, _) | (_, OpAdd,
                                                                     TypChar, TypChar, _, _) =>
             unify(TypString, etyp, eloc, "improper type of the string concatenation operation (string is expected)")
-            ExpBinOp(bop, new_e1, new_e2, ctx)
-        | (_, OpAdd, TypList(_), TypList(_), ExpBinOp(OpAdd, sub_e1, sub_e2, _), _) =>
+            ExpBinary(bop, new_e1, new_e2, ctx)
+        | (_, OpAdd, TypList(_), TypList(_), ExpBinary(OpAdd, sub_e1, sub_e2, _), _) =>
             /* make list concatenation right-associative instead of left-associative */
             val sub_e2_loc = get_exp_loc(sub_e2)
             val e2_loc = loclist2loc([: sub_e2_loc, eloc2 :], eloc2)
             /* [TODO: not that relevant anymore]
             fix the general bug with repetitive check of the same expression (since the check has some side effects) */
-            val e2_ = ExpBinOp(OpAdd, sub_e2, e2, (make_new_typ(), e2_loc))
-            check_exp(ExpBinOp(OpAdd, sub_e1, e2_, (etyp, eloc)), env, sc)
+            val e2_ = ExpBinary(OpAdd, sub_e2, e2, (make_new_typ(), e2_loc))
+            check_exp(ExpBinary(OpAdd, sub_e1, e2_, (etyp, eloc)), env, sc)
         | _ =>
             /* try to find an overloaded function that will handle such operation with combination of types, e.g.
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } */
-            val f_id = get_binop_fname(bop, eloc)
+            val f_id = get_binary_fname(bop, eloc)
             check_and_make_call(f_id, [: new_e1, new_e2 :])
         }
     | ExpThrow(e1, _) =>
@@ -1126,17 +1126,17 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         unify(TypExn, etyp1, eloc, "the argument of 'throw' operator must be an exception")
         val new_e1 = check_exp(e1, env, sc)
         ExpThrow(new_e1, eloc)
-    | ExpUnOp(OpMkRef, e1, _) =>
+    | ExpUnary(OpMkRef, e1, _) =>
         val (etyp1, eloc1) = get_exp_ctx(e1)
         unify(etyp, TypRef(etyp1), eloc, "the types of ref() operation argument and result are inconsistent")
         val new_e1 = check_exp(e1, env, sc)
-        ExpUnOp(OpMkRef, new_e1, ctx)
-    | ExpUnOp(OpDeref, e1, _) =>
+        ExpUnary(OpMkRef, new_e1, ctx)
+    | ExpUnary(OpDeref, e1, _) =>
         val (etyp1, eloc1) = get_exp_ctx(e1)
         unify(TypRef(etyp), etyp1, eloc, "the types of unary '*' operation argument and result are inconsistent")
         val new_e1 = check_exp(e1, env, sc)
-        ExpUnOp(OpDeref, new_e1, ctx)
-    | ExpUnOp(uop, e1, _) =>
+        ExpUnary(OpDeref, new_e1, ctx)
+    | ExpUnary(uop, e1, _) =>
         val new_e1 = check_exp(e1, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
         match uop {
@@ -1145,8 +1145,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val t_opt = coerce_types(etyp1, etyp1, false, allow_fp, false, eloc)
             match t_opt {
             | Some(t) => unify(etyp, t, eloc, "improper type of the unary '-' operator result")
-                         ExpUnOp(uop, new_e1, ctx)
-            | None => val f_id = get_unop_fname(uop, eloc)
+                         ExpUnary(uop, new_e1, ctx)
+            | None => val f_id = get_unary_fname(uop, eloc)
                       check_and_make_call(f_id, [: new_e1 :])
             }
         | OpBitwiseNot =>
@@ -1162,18 +1162,18 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
 
             try {
                 unify(etyp, check_unary_bitwise(etyp1), eloc, "invalid type of bitwise-not result")
-                ExpUnOp(uop, new_e1, ctx)
+                ExpUnary(uop, new_e1, ctx)
             } catch {
             | BadArgError =>
-                val f_id = get_unop_fname(uop, eloc)
+                val f_id = get_unary_fname(uop, eloc)
                 check_and_make_call(f_id, [: new_e1 :])
             }
         | OpLogicNot =>
             unify(etyp1, TypBool, eloc1, "the argument of ! operator must be a boolean")
             unify(etyp, TypBool, eloc, "the result of ! operator must be a boolean")
-            ExpUnOp(uop, new_e1, ctx)
+            ExpUnary(uop, new_e1, ctx)
         | OpApos =>
-            val f_id = get_unop_fname(uop, eloc)
+            val f_id = get_unary_fname(uop, eloc)
             check_and_make_call(f_id, [: new_e1 :])
         | _ => throw compile_err(eloc, f"unsupported unary operation '{uop}'")
         }
@@ -1415,7 +1415,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             } else if make_list {
                 val ltyp = TypList(elem_typ)
                 fold l_exp = ExpLit(LitNil, (ltyp, eloc)) for ej <- elems.rev() {
-                    ExpBinOp(OpCons, ej, l_exp, (ltyp, eloc))
+                    ExpBinary(OpCons, ej, l_exp, (ltyp, eloc))
                 }
             } else {
                 ExpMkArray(elems :: [], (TypArray(1, elem_typ), eloc))
@@ -1449,7 +1449,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val fold (have_expanded_i, row_dims, arow) = (false, -1, []) for elem <- arow {
                 val (is_expanded, elem_dims, elem1, elem_loc) =
                 match elem {
-                | ExpUnOp(OpExpand, e1, (t, loc)) =>
+                | ExpUnary(OpExpand, e1, (t, loc)) =>
                     val e1 = check_exp(e1, env, sc)
                     val (arrtyp1, eloc1) = get_exp_ctx(e1)
                     unify(t, arrtyp1, loc, "incorrect type of expanded collection")
@@ -1463,7 +1463,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                         throw compile_err(loc, "currently expansion of more than 2-dimensional arrays is not supported")
                     }
                     unify(elemtyp, elemtyp1, eloc1, f"the expanded {colname} elem type does not match the previous elements")
-                    (true, d, ExpUnOp(OpExpand, e1, (arrtyp1, loc)), loc)
+                    (true, d, ExpUnary(OpExpand, e1, (arrtyp1, loc)), loc)
                 | _ =>
                     val (elemtyp1, eloc1) = get_exp_ctx(elem)
                     unify(elemtyp, elemtyp1, eloc1, "all the array literal elements should have the same type")
@@ -2186,12 +2186,12 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                         val ai = get_id(f"{astr}{idx}")
                         val bi = get_id(f"{bstr}{idx}")
                         val cmp_ab =
-                        ExpBinOp(OpCompareEQ,
+                        ExpBinary(OpCmp(CmpEQ),
                             ExpIdent(ai, (make_new_typ(), body_loc)),
                             ExpIdent(bi, (make_new_typ(), body_loc)),
                             (TypBool, body_loc))
                         val cmp_code = if idx == 1 { cmp_ab }
-                                    else { ExpBinOp(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc)) }
+                                    else { ExpBinary(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc)) }
                         (idx + 1, (rn, PatIdent(ai, body_loc)) :: al, (rn, PatIdent(bi, body_loc)) :: bl, cmp_code)
                     }
                     val a_case_pat = PatRecord(Some(n), al.rev(), body_loc)
@@ -2207,12 +2207,12 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                     fold (idx, al, bl, cmp_code) = (1, [], [], ExpNop(body_loc)) for _ <- args {
                         val ai = get_id(f"{astr}{idx}")
                         val bi = get_id(f"{bstr}{idx}")
-                        val cmp_ab = ExpBinOp(OpCompareEQ,
+                        val cmp_ab = ExpBinary(OpCmp(CmpEQ),
                             ExpIdent(ai, (make_new_typ(), body_loc)),
                             ExpIdent(bi, (make_new_typ(), body_loc)),
                             (TypBool, body_loc))
                         val cmp_code = if idx == 1 { cmp_ab }
-                                    else { ExpBinOp(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc)) }
+                                    else { ExpBinary(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc)) }
                         (idx + 1, PatIdent(ai, body_loc) :: al, PatIdent(bi, body_loc) :: bl, cmp_code)
                     }
                     val a_case_pat = PatVariant(n, al.rev(), body_loc)
@@ -2226,7 +2226,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
             val tag = ExpIdent(get_id("__tag__"), (TypString, body_loc))
             val a_tag = ExpMem(a, tag, (TypInt, body_loc))
             val b_tag = ExpMem(b, tag, (TypInt, body_loc))
-            val cmp_tags = ExpBinOp(OpCompareEQ, a_tag, b_tag, (TypBool, body_loc))
+            val cmp_tags = ExpBinary(OpCmp(CmpEQ), a_tag, b_tag, (TypBool, body_loc))
             val inst_body =
             match complex_cases {
             | [] => cmp_tags

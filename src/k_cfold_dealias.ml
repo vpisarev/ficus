@@ -128,9 +128,7 @@ let finalize_cfold_result c_opt at_opt res_t loc =
 let cfold_bop bop a b res_t loc =
     let at = get_atom_ktyp a loc in
     let bt = get_atom_ktyp b loc in
-    let z = match bop with
-        | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE
-        | OpCompareGE | OpCompareGT | OpPow -> false
+    let z = match bop with | OpCmp _  | OpPow -> false
         | _ -> true in
     let ac = classify_atom a z in
     let bc = classify_atom b z in
@@ -147,8 +145,8 @@ let cfold_bop bop a b res_t loc =
             | OpSub | OpBitwiseXor -> ((Some ConstZero), None)
             (* OpDiv and OpMod are skipped because there can be a=b=0 *)
             | OpBitwiseAnd | OpBitwiseOr -> retain_a()
-            | OpCompareEQ | OpCompareLE | OpCompareGE -> ((Some (ConstBool true)), None)
-            | OpCompareNE | OpCompareLT | OpCompareGT -> ((Some (ConstBool false)), None)
+            | OpCmp(CmpEQ) | OpCmp(CmpLE) | OpCmp(CmpGE) -> ((Some (ConstBool true)), None)
+            | OpCmp(CmpNE) | OpCmp(CmpLT) | OpCmp(CmpGT) -> ((Some (ConstBool false)), None)
             | _ -> (None, None)
         else
             (None, None)
@@ -216,31 +214,31 @@ let cfold_bop bop a b res_t loc =
     | (OpPow, (ConstFloat fa), (ConstFloat fb)) ->
         ((Some (ConstFloat (Float.pow fa fb))), None)
 
-    | (OpCompareEQ, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia = ib))), None)
-    | (OpCompareNE, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia != ib))), None)
-    | (OpCompareLT, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia < ib))), None)
-    | (OpCompareGT, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia > ib))), None)
-    | (OpCompareLE, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia <= ib))), None)
-    | (OpCompareGE, (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia >= ib))), None)
+    | (OpCmp(CmpEQ), (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia = ib))), None)
+    | (OpCmp(CmpNE), (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia != ib))), None)
+    | (OpCmp(CmpLT), (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia < ib))), None)
+    | (OpCmp(CmpGT), (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia > ib))), None)
+    | (OpCmp(CmpLE), (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia <= ib))), None)
+    | (OpCmp(CmpGE), (ConstInt ia), (ConstInt ib)) -> ((Some (ConstBool (ia >= ib))), None)
 
     (* [TODO] we do not have >, >=, < and <= comparison operations on strings yet,
        because it requires a better Unicode support *)
-    | (OpCompareEQ, (ConstString sa), (ConstString sb)) -> ((Some (ConstBool (sa = sb))), None)
-    | (OpCompareNE, (ConstString sa), (ConstString sb)) -> ((Some (ConstBool (sa != sb))), None)
+    | (OpCmp(CmpEQ), (ConstString sa), (ConstString sb)) -> ((Some (ConstBool (sa = sb))), None)
+    | (OpCmp(CmpNE), (ConstString sa), (ConstString sb)) -> ((Some (ConstBool (sa != sb))), None)
 
-    | (OpCompareEQ, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa = fb))), None)
-    | (OpCompareNE, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa != fb))), None)
-    | (OpCompareLT, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa < fb))), None)
-    | (OpCompareGT, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa > fb))), None)
-    | (OpCompareLE, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa <= fb))), None)
-    | (OpCompareGE, (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa >= fb))), None)
+    | (OpCmp(CmpEQ), (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa = fb))), None)
+    | (OpCmp(CmpNE), (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa != fb))), None)
+    | (OpCmp(CmpLT), (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa < fb))), None)
+    | (OpCmp(CmpGT), (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa > fb))), None)
+    | (OpCmp(CmpLE), (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa <= fb))), None)
+    | (OpCmp(CmpGE), (ConstFloat fa), (ConstFloat fb)) -> ((Some (ConstBool (fa >= fb))), None)
 
-    | (OpCompareEQ, (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba = bb))), None)
-    | (OpCompareNE, (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba != bb))), None)
-    | (OpCompareLT, (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba < bb))), None)
-    | (OpCompareGT, (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba > bb))), None)
-    | (OpCompareLE, (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba >= bb))), None)
-    | (OpCompareGE, (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba <= bb))), None)
+    | (OpCmp(CmpEQ), (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba = bb))), None)
+    | (OpCmp(CmpNE), (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba != bb))), None)
+    | (OpCmp(CmpLT), (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba < bb))), None)
+    | (OpCmp(CmpGT), (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba > bb))), None)
+    | (OpCmp(CmpLE), (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba <= bb))), None)
+    | (OpCmp(CmpGE), (ConstBool ba), (ConstBool bb)) -> ((Some (ConstBool (ba >= bb))), None)
 
     | (OpShiftLeft, ConstZero, _) -> ((Some ConstZero), None)
     | (OpShiftLeft, _, ConstZero) -> retain_a()

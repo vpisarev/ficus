@@ -964,10 +964,7 @@ and check_exp e env sc =
             unify etyp2 TypBool eloc2 "arguments of logical operation must be boolean";
             (bop, Some(TypBool))
         (* [TODO] comparison operations are now implemented for anything but variants *)
-        | OpCompareEQ | OpCompareNE | OpCompareLT
-        | OpCompareLE | OpCompareGT | OpCompareGE
-        | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLT
-        | OpDotCompareLE | OpDotCompareGT | OpDotCompareGE ->
+        | OpCmp _ | OpDotCmp _ ->
             if bop <> bop_wo_dot then () else
                 (unify etyp1 etyp2 eloc "the compared elements must have the same type";
                 unify etyp TypBool eloc (sprintf "result of comparison operation '%s' must be bool"
@@ -1985,7 +1982,7 @@ and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc
                     let (_, al, bl, cmp_code) = List.fold_left (fun (idx, al, bl, cmp_code) (rn, _, _) ->
                         let ai = get_id (astr ^ (string_of_int idx)) in
                         let bi = get_id (bstr ^ (string_of_int idx)) in
-                        let cmp_ab = ExpBinOp(OpCompareEQ,
+                        let cmp_ab = ExpBinOp(OpCmp(CmpEQ),
                             ExpIdent(ai, (make_new_typ(), body_loc)),
                             ExpIdent(bi, (make_new_typ(), body_loc)),
                             (TypBool, body_loc)) in
@@ -2004,7 +2001,7 @@ and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc
                     let (_, al, bl, cmp_code) = List.fold_left (fun (idx, al, bl, cmp_code) _ ->
                         let ai = get_id (astr ^ (string_of_int idx)) in
                         let bi = get_id (bstr ^ (string_of_int idx)) in
-                        let cmp_ab = ExpBinOp(OpCompareEQ,
+                        let cmp_ab = ExpBinOp(OpCmp(CmpEQ),
                             ExpIdent(ai, (make_new_typ(), body_loc)),
                             ExpIdent(bi, (make_new_typ(), body_loc)),
                             (TypBool, body_loc)) in
@@ -2024,7 +2021,7 @@ and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc
             let tag = ExpIdent((get_id "__tag__"), (TypString, body_loc)) in
             let a_tag = ExpMem(a, tag, (TypInt, body_loc)) in
             let b_tag = ExpMem(b, tag, (TypInt, body_loc)) in
-            let cmp_tags = ExpBinOp(OpCompareEQ, a_tag, b_tag, (TypBool, body_loc)) in
+            let cmp_tags = ExpBinOp(OpCmp(CmpEQ), a_tag, b_tag, (TypBool, body_loc)) in
             let inst_body = match complex_cases with
                 | [] -> cmp_tags
                 | _ ->

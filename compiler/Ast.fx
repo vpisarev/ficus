@@ -155,14 +155,13 @@ type typ_t =
 fun make_new_typ() = TypVar(ref (None: typ_t?))
 fun make_new_ctx(l: loc_t) = (make_new_typ(), l)
 
-type binop_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
+type cmp_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
+type binary_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
     | OpShiftLeft | OpShiftRight | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
-    | OpCompareEQ | OpCompareNE | OpCompareLT | OpCompareLE | OpCompareGT | OpCompareGE
-    | OpDotCompareEQ | OpDotCompareNE | OpDotCompareLT | OpDotCompareLE
-    | OpDotCompareGT | OpDotCompareGE | OpSpaceship | OpDotSpaceship | OpCons
+    | OpCmp: cmp_t | OpDotCmp: cmp_t | OpSpaceship | OpDotSpaceship | OpCons
 
-type unop_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
+type unary_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
     | OpMkRef | OpDeref | OpExpand | OpApos
 
 type val_flags_t =
@@ -256,8 +255,8 @@ type exp_t =
     | ExpRange: (exp_t?, exp_t?, exp_t?, ctx_t)
     | ExpLit: (lit_t, ctx_t)
     | ExpIdent: (id_t, ctx_t)
-    | ExpBinOp: (binop_t, exp_t, exp_t, ctx_t)
-    | ExpUnOp: (unop_t, exp_t, ctx_t)
+    | ExpBinary: (binary_t, exp_t, exp_t, ctx_t)
+    | ExpUnary: (unary_t, exp_t, ctx_t)
     | ExpSeq: (exp_t list, ctx_t)
     | ExpMkTuple: (exp_t list, ctx_t)
     | ExpMkArray: (exp_t list list, ctx_t)
@@ -616,8 +615,8 @@ fun get_exp_ctx(e: exp_t) {
     | ExpRange(_, _, _, c) => c
     | ExpLit(_, c) => c
     | ExpIdent(_, c) => c
-    | ExpBinOp(_, _, _, c) => c
-    | ExpUnOp(_, _, c) => c
+    | ExpBinary(_, _, _, c) => c
+    | ExpUnary(_, _, c) => c
     | ExpSeq(_, c) => c
     | ExpMkTuple(_, c) => c
     | ExpMkRecord(_, _, c) => c
@@ -862,7 +861,16 @@ fun is_typ_numeric(t: typ_t, allow_vec_tuples: bool) =
     | _ => false
     }
 
-fun string(bop: binop_t) {
+fun string(c: cmp_t) {
+    | CmpEQ => "=="
+    | CmpNE => "!="
+    | CmpLT => "<"
+    | CmpLE => "<="
+    | CmpGE => ">="
+    | CmpGT => ">"
+}
+
+fun string(bop: binary_t) {
     | OpAdd => "+"
     | OpSub => "-"
     | OpMul => "*"
@@ -881,23 +889,12 @@ fun string(bop: binop_t) {
     | OpLogicOr => "||"
     | OpBitwiseXor => "^"
     | OpSpaceship => "<=>"
-    | OpCompareEQ => "=="
-    | OpCompareNE => "!="
-    | OpCompareLE => "<="
-    | OpCompareGE => ">="
-    | OpCompareLT => "<"
-    | OpCompareGT => ">"
-    | OpDotSpaceship => ".<=>"
-    | OpDotCompareEQ => ".=="
-    | OpDotCompareNE => ".!="
-    | OpDotCompareLE => ".<="
-    | OpDotCompareGE => ".>="
-    | OpDotCompareLT => ".<"
-    | OpDotCompareGT => ".>"
+    | OpCmp(c) => string(c)
+    | OpDotCmp(c) => "."+string(c)
     | OpCons => "::"
 }
 
-fun string(uop: unop_t) {
+fun string(uop: unary_t) {
     | OpPlus => "+"
     | OpNegate => "-"
     | OpDotMinus => ".-"
@@ -976,23 +973,18 @@ fun fname_to_bool() = get_id("bool")
 fun fname_string() = get_id("string")
 fun fname_repr() = get_id("repr")
 
-fun binop_try_remove_dot(bop: binop_t) =
+fun binary_try_remove_dot(bop: binary_t) =
     match bop {
     | OpDotMul => OpMul
     | OpDotDiv => OpDiv
     | OpDotMod => OpMod
     | OpDotPow => OpPow
     | OpDotSpaceship => OpSpaceship
-    | OpDotCompareEQ => OpCompareEQ
-    | OpDotCompareNE => OpCompareNE
-    | OpDotCompareLE => OpCompareLE
-    | OpDotCompareGE => OpCompareGE
-    | OpDotCompareLT => OpCompareLT
-    | OpDotCompareGT => OpCompareGT
+    | OpDotCmp(c) => OpCmp(c)
     | _ => bop
     }
 
-fun get_binop_fname(bop: binop_t, loc: loc_t) =
+fun get_binary_fname(bop: binary_t, loc: loc_t) =
     match bop {
     | OpAdd => fname_op_add()
     | OpSub => fname_op_sub()
@@ -1010,25 +1002,25 @@ fun get_binop_fname(bop: binop_t, loc: loc_t) =
     | OpBitwiseOr => fname_op_bit_or()
     | OpBitwiseXor => fname_op_bit_xor()
     | OpSpaceship => fname_op_cmp()
-    | OpCompareEQ => fname_op_eq()
-    | OpCompareNE => fname_op_ne()
-    | OpCompareLE => fname_op_le()
-    | OpCompareGE => fname_op_ge()
-    | OpCompareLT => fname_op_lt()
-    | OpCompareGT => fname_op_gt()
+    | OpCmp(CmpEQ) => fname_op_eq()
+    | OpCmp(CmpNE) => fname_op_ne()
+    | OpCmp(CmpLT) => fname_op_lt()
+    | OpCmp(CmpLE) => fname_op_le()
+    | OpCmp(CmpGE) => fname_op_ge()
+    | OpCmp(CmpGT) => fname_op_gt()
     | OpDotSpaceship => fname_op_dot_cmp()
-    | OpDotCompareEQ => fname_op_dot_eq()
-    | OpDotCompareNE => fname_op_dot_ne()
-    | OpDotCompareLE => fname_op_dot_le()
-    | OpDotCompareGE => fname_op_dot_ge()
-    | OpDotCompareLT => fname_op_dot_lt()
-    | OpDotCompareGT => fname_op_dot_gt()
+    | OpDotCmp(CmpEQ) => fname_op_dot_eq()
+    | OpDotCmp(CmpNE) => fname_op_dot_ne()
+    | OpDotCmp(CmpLT) => fname_op_dot_lt()
+    | OpDotCmp(CmpLE) => fname_op_dot_le()
+    | OpDotCmp(CmpGE) => fname_op_dot_ge()
+    | OpDotCmp(CmpGT) => fname_op_dot_gt()
     | OpLogicAnd | OpLogicOr | OpCons =>
         throw compile_err(loc,
             f"for binary operation \"{bop}\" there is no corresponding function")
     }
 
-fun get_unop_fname(uop, loc) =
+fun get_unary_fname(uop, loc) =
     match uop {
     | OpApos => fname_op_apos()
     | OpPlus => fname_op_plus()
@@ -1317,8 +1309,8 @@ fun walk_exp(e, callb) {
     | ExpRange(e1_opt, e2_opt, e3_opt, ctx) => ExpRange(walk_exp_opt_(e1_opt), walk_exp_opt_(e2_opt), walk_exp_opt_(e3_opt), walk_ctx_(ctx))
     | ExpLit(l, ctx) => ExpLit(l, walk_ctx_(ctx))
     | ExpIdent(n, ctx) => ExpIdent(n, walk_ctx_(ctx))
-    | ExpBinOp(bop, e1, e2, ctx) => ExpBinOp(bop, walk_exp_(e1), walk_exp_(e2), walk_ctx_(ctx))
-    | ExpUnOp(uop, e, ctx) => ExpUnOp(uop, walk_exp_(e), walk_ctx_(ctx))
+    | ExpBinary(bop, e1, e2, ctx) => ExpBinary(bop, walk_exp_(e1), walk_exp_(e2), walk_ctx_(ctx))
+    | ExpUnary(uop, e, ctx) => ExpUnary(uop, walk_exp_(e), walk_ctx_(ctx))
     | ExpSeq(elist, ctx) => ExpSeq(walk_elist_(elist), walk_ctx_(ctx))
     | ExpMkTuple(elist, ctx) => ExpMkTuple(walk_elist_(elist), walk_ctx_(ctx))
     | ExpMkArray(ell, ctx) => ExpMkArray([: for el <- ell {walk_elist_(el)} :], walk_ctx_(ctx))
