@@ -161,7 +161,7 @@ type typ_t =
                  and this is not "void" by the way *)
     | TypModule
 
-let make_new_typ () = TypVar (ref (None: typ_t option))
+let make_new_typ () = TypVar (ref None)
 
 type cmp_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
 type binop_t =
@@ -1279,3 +1279,20 @@ let deref_typ_rec t =
         acb_pat = None
     } in
     deref_typ_rec_ t deref_callb
+
+let is_fixed_typ t =
+    let is_fixed_typ_ t callb =
+        match (deref_typ t) with
+        | TypVar {contents=None} -> raise Exit
+        | t -> walk_typ t callb
+        in
+    let callb =
+    {
+        acb_typ = Some(is_fixed_typ_);
+        acb_exp = None;
+        acb_pat = None
+    } in
+    try
+        ignore(is_fixed_typ_ t callb);
+        true
+    with Exit -> false

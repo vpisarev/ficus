@@ -477,7 +477,7 @@ TEST("basic.self_assignment", fun()
 TEST("basic.ref", fun()
 {
     val y = Some("abc")
-    val u = ref (None : string?)
+    val u : string? ref = ref None
 
     *u = y
     EXPECT_EQ(u->some_or("0"), y.some_or("1"))
@@ -536,7 +536,7 @@ TEST("basic.types.variant", fun()
         f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Fun([: Int, Int :], Int) :: [])})",
         "(void, int [], bool, ((int, int) -> int))"
     )
-    EXPECT_EQ(t2str(Var(ref (None : type_t?))), "<unknown>")
+    EXPECT_EQ(t2str(Var(ref None)), "<unknown>")
 })
 
 TEST("basic.list.reverse", fun()

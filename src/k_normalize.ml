@@ -57,8 +57,8 @@ let typ2ktyp t loc =
     | TypRecord _ ->
         raise_compile_err loc "the record type cannot be inferenced; use explicit type annotation"
     | TypApp(args, n) ->
-        let t = Ast_typecheck.find_typ_instance t loc in
-        (match t with
+        let t_opt = Ast_typecheck.find_typ_instance t loc in
+        (match t_opt with
         | Some (TypApp([], n)) ->
             (match (id_info n) with
             | IdVariant {contents={dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []; dvar_flags}}
@@ -72,7 +72,9 @@ let typ2ktyp t loc =
                 id_stack := List.tl !id_stack;
                 new_t
             | _ -> KTypName(n))
-        | _ -> raise_compile_err loc "the proper instance of the template type is not found")
+        | _ ->
+            raise_compile_err loc
+                (sprintf "the proper instance of the template type '%s' is not found" (typ2str t)))
     in typ2ktyp_ t
 
 let lit2klit l ktyp =
@@ -178,9 +180,21 @@ let rec exp2kexp e code tref sc =
         (KExpMkTuple(a1 :: a2 :: a3 :: [], kctx), code)
     | ExpLit(lit, _) -> (KExpAtom((AtomLit (lit2klit lit ktyp)), kctx), code)
     | ExpIdent(n, _) ->
-        (match ktyp with
-        | KTypVoid -> ((KExpNop eloc), code)
-        | _ -> (KExpAtom((AtomId n), kctx), code))
+        let new_n =
+            match ktyp with
+            | KTypVoid -> noid
+            | KTypName(tn) ->
+                (match (kinfo_ tn eloc) with
+                | KVariant {contents={kvar_targs; kvar_base_name; kvar_ctors}} ->
+                    (try
+                        List.find (fun nj -> (get_orig_id nj) = (get_orig_id n)) kvar_ctors
+                    with Not_found -> n)
+                    (*printf "finding '%s' in '(%s) %s' -> '%s'\n"
+                        (id2str n) (ktyp2str (KTypTuple kvar_targs)) (pp_id2str tn);*)
+                | _ -> n)
+            | _ -> n
+            in
+        ((if new_n = noid then (KExpNop eloc) else KExpAtom((AtomId new_n), kctx)), code)
     | ExpBinOp(OpLogicAnd, e1, e2, _) ->
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in

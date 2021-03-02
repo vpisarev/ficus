@@ -513,9 +513,10 @@ let rec lookup_id n t env sc loc =
         | EnvId(Id.Name _) -> None
         | EnvId i ->
             (match id_info i with
-            | IdVal {dv_typ} -> unify dv_typ t loc "incorrect value type"; Some(i)
+            | IdVal {dv_typ} ->
+                unify dv_typ t loc "incorrect value type"; Some((i, t))
             | IdFun df ->
-                let { df_templ_args; df_typ; df_flags; df_env; df_scope } = !df in
+                let { df_name; df_templ_args; df_typ; df_flags; df_env; df_scope } = !df in
                 let t = match (df_flags.fun_flag_has_keywords, (deref_typ t)) with
                     | (true, TypFun(argtyps, rt)) ->
                         let argtyps = match (List.map deref_typ (List.rev argtyps)) with
@@ -527,48 +528,57 @@ let rec lookup_id n t env sc loc =
                     in
                 if df_templ_args = [] then
                     if maybe_unify df_typ t true then
-                        Some(i)
+                        Some((i, t))
                     else
                         None
                 else
                     let (ftyp, env1) = preprocess_templ_typ df_templ_args df_typ df_env sc loc in
-                    if maybe_unify ftyp t true then
-                        try
-                            (* a necessary extra step to do before function instantiation;
-                               if it's a constructor, we first need to check the return type.
-                               this check may implicitly instantiate generic variant type, and so
-                               the df_templ_inst list of this constructor will be expanded with new instance.
-                               In theory, with such an extra step we should never enter
-                               'instantiate_fun' for constructors, because they all will be
-                               instantiated from check_typ => instantiate_variant => register_typ_constructor. *)
-                            let _ = if not (is_fun_ctor df_flags) then () else
-                                let rt = match ftyp with
-                                    | TypFun(_, rt) -> rt
-                                    | rt -> rt in
-                                ignore(check_typ rt env1 sc loc) in
-
-                            Some(List.find (fun inst ->
+                    if not (maybe_unify ftyp t true) then None
+                    else
+                    (try
+                        (* a necessary extra step to do before function instantiation;
+                            if it's a constructor, we first need to check the return type.
+                            this check may implicitly instantiate generic variant type, and so
+                            the df_templ_inst list of this constructor will be expanded with new instance.
+                            In theory, with such an extra step we should never enter
+                            'instantiate_fun' for constructors, because they all will be
+                            instantiated from check_typ => instantiate_variant => register_typ_constructor. *)
+                        let return_orig =
+                            if not (is_fun_ctor df_flags) then
+                                false
+                            else
+                                match ftyp with
+                                | TypFun(_, rt) ->
+                                    ignore(check_typ rt env1 sc loc);
+                                    false
+                                | rt ->
+                                    (*printf "got here for n='%s', t='%s'\n" (id2str n) (typ2str t);*)
+                                    not (is_fixed_typ t)
+                            in
+                        if return_orig then
+                            Some((df_name, t))
+                        else
+                            Some((List.find (fun inst ->
                             match id_info inst with
                             | IdFun {contents={df_typ=inst_typ}} ->
                                 maybe_unify inst_typ t true
                             | _ -> raise_compile_err loc
-                                (sprintf "invalid (non-function) instance %s of template function %s" (id2str inst) (pp_id2str n))
-                            ) (!df).df_templ_inst)
-                        with Not_found ->
-                            (* the generic function matches the requested type,
-                               but there is no appropriate instance;
-                               let's create a new one *)
-                            let inst_env = inst_merge_env env env1 in
-                            let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp inst_env sc loc true) in
-                            unify inst_typ t loc "inconsistent type of the instantiated function";
-                            Some(inst_name)
-                    else
-                        None
-            | IdModule _ -> unify TypModule t loc "unexpected module name"; Some(i)
+                                (sprintf "invalid (non-function) instance %s of template function %s"
+                                (id2str inst) (pp_id2str n))
+                            ) (!df).df_templ_inst, t))
+                    with Not_found ->
+                        (* the generic function matches the requested type,
+                            but there is no appropriate instance;
+                            let's create a new one *)
+                        let inst_env = inst_merge_env env env1 in
+                        let { df_name=inst_name; df_typ=inst_typ } = !(instantiate_fun df ftyp inst_env sc loc true) in
+                        unify inst_typ t loc "inconsistent type of the instantiated function";
+                        Some(inst_name, t))
+            | IdModule _ -> unify TypModule t loc "unexpected module name"; Some((i, t))
             | IdExn {contents={ dexn_typ; dexn_loc }} ->
                 let ctyp = typ2constr dexn_typ TypExn dexn_loc in
                 unify ctyp t loc "uncorrect type of exception constructor and/or its arguments";
-                Some(i)
+                Some((i, t))
             | IdNone | IdTyp _ | IdVariant _
             | IdClass _ | IdInterface _ -> None)
         | EnvTyp _ -> None)) with
@@ -837,12 +847,8 @@ and check_exp e env sc =
             printf "break here\n"
             else ()
             in*)
-        let n = lookup_id n etyp env sc eloc in
-        let etyp = match (id_info n) with
-            | IdFun _ | IdVal _ -> get_id_typ n eloc
-            | _ -> etyp
-            in
-        ExpIdent(n, (etyp, eloc))
+        let (n, t) = lookup_id n etyp env sc eloc in
+        ExpIdent(n, (t, eloc))
     | ExpMem(e1, e2, _) ->
         (* in the case of '.' operation we do not check e2 immediately after e1,
            because e2 is a 'member' of a structure/module e1,
@@ -854,12 +860,8 @@ and check_exp e env sc =
         | (TypModule, ExpIdent(n1, _), ExpIdent(n2, (etyp2, eloc2))) ->
             let n1_env = get_module_env n1 in
             (*let _ = printf "looking for %s in module %s ...\n" (id2str n2) (id2str n1) in*)
-            let new_n2 = lookup_id n2 etyp n1_env sc eloc in
-            let etyp = match (id_info new_n2) with
-                | IdFun _ | IdVal _ -> get_id_typ new_n2 eloc
-                | _ -> etyp
-                in
-            ExpIdent(new_n2, (etyp, eloc))
+            let (new_n2, t) = lookup_id n2 etyp n1_env sc eloc in
+            ExpIdent(new_n2, (t, eloc))
         | ((TypTuple tl), _, ExpLit((LitInt idx), (etyp2, eloc2))) ->
             unify etyp2 TypInt eloc2 "index must be int!";
             (* we do not handle negative indices, because the parser would not allow that;
@@ -1353,7 +1355,7 @@ and check_exp e env sc =
         let (r_new_initializers, relems) = List.fold_left (fun (r_new_initializers, relems) (n, e) ->
             let e = check_exp e env sc in
             let etyp = get_exp_typ e in
-            ((n, e) :: r_new_initializers, (n, etyp, (None : lit_t option)) :: relems)) ([], []) r_initializers in
+            ((n, e) :: r_new_initializers, (n, etyp, None) :: relems)) ([], []) r_initializers in
         let rtyp = TypRecord(ref ((List.rev relems), false)) in
         (match r_e with
         | ExpNop (nop_loc) ->
@@ -2128,7 +2130,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                 let tl = List.map (fun p -> make_new_typ()) pl in
                 let ctyp = match tl with [] -> t | _ -> TypFun(tl, t) in
                 (*let _ = print_env "env @ report_not_found: " env loc in*)
-                let v_new = lookup_id v ctyp !r_env sc loc in
+                let (v_new, _) = lookup_id v ctyp !r_env sc loc in
                 (*let _ = printf "checking '%s'~'%s' with %d params at %s\n" (id2str v) (id2str v_new) (List.length pl) (loc2str loc) in*)
                 PatVariant(v_new, (List.map2 (fun p t -> check_pat_ p t) pl tl), loc)
             else

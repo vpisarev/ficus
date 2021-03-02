@@ -495,7 +495,7 @@ fun find_typ_instance(t: typ_t, loc: loc_t): typ_t? {
                 | IdVariant (ref {dvar_templ_inst}) => *dvar_templ_inst
                 | _ => []
                 }
-            fold t_opt = (None: typ_t?) for inst <- inst_list {
+            fold t_opt = None for inst <- inst_list {
                 match id_info(inst) {
                 | IdVariant (ref {dvar_alias=inst_alias}) =>
                     if maybe_unify(t, inst_alias, false) {break with Some(TypApp([], inst))}
@@ -558,7 +558,7 @@ fun is_real_typ(t: typ_t) {
         | _ => walk_typ(t, callb)
         }
 
-    val callb = ast_callb_t {ast_cb_typ=Some(is_real_typ_), ast_cb_exp=ast_cb_exp_None, ast_cb_pat=ast_cb_pat_None}
+    val callb = ast_callb_t {ast_cb_typ=Some(is_real_typ_), ast_cb_exp=None, ast_cb_pat=None}
     val _ = is_real_typ_(t, callb)
     !have_typ_vars
 }
@@ -766,7 +766,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val (etyp, eloc) = get_exp_ctx(e)
         val etyp = deref_typ(etyp)
         val (_, relems) = match etyp {
-            | TypApp(_, _) => try { get_record_elems((None: id_t?), etyp, eloc) } catch { | CompileError(_, _) => (noid, []) }
+            | TypApp(_, _) => try { get_record_elems(None, etyp, eloc) } catch { | CompileError(_, _) => (noid, []) }
             | _ => (noid, [])
             }
         match (is_range, etyp, relems) {
@@ -853,7 +853,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val def_pj = DefVal(pj, ej, default_tempval_flags(), locj)
                 (j + 1, def_pj :: code, env, idset)
             | _ =>
-                val (_, relems) = get_record_elems((None: id_t?), ttrj, locj)
+                val (_, relems) = get_record_elems(None, ttrj, locj)
                 val (nj, tj, _) = List.nth(relems, idx)
                 val ej = ExpMem(trj, ExpIdent(nj, (TypString, locj)), (tj, locj))
                 val pj = dup_pat(pj)
@@ -986,7 +986,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | _ => throw compile_err(eloc, "__tag__ can only be requestd for variants")
             }
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) =>
-            val (_, relems) = get_record_elems((None: id_t?), etyp1, eloc1)
+            val (_, relems) = get_record_elems(None, etyp1, eloc1)
             match relems.find_opt(fun ((n1, _, _): rec_elem_t) {n1 == n2}) {
             | Some((_, t, _)) =>
                 unify(etyp, t, eloc, "incorrect type of the record element")
@@ -1035,7 +1035,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp1, TypInt, eloc1, "explicitly specified component of a range must be an integer")
             unify(etyp2, TypInt, eloc2, "explicitly specified component of a range must be an integer")
             unify(etyp, TypTuple([: TypInt, TypInt, TypInt :]), eloc, "the range type should have (int, int, int) type")
-            ExpRange(Some(new_e1), (None: exp_t?), Some(new_e2), ctx)
+            ExpRange(Some(new_e1), None, Some(new_e2), ctx)
         }
     | ExpBinary(bop, e1, e2, _) =>
         val new_e1 = check_exp(e1, env, sc)
@@ -1502,7 +1502,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val fold (r_new_initializers, relems) = ([], []) for (n, e) <- r_initializers {
             val e = check_exp(e, env, sc)
             val etyp = get_exp_typ(e)
-            ((n, e) :: r_new_initializers, (n, etyp, (None: lit_t option)) :: relems)
+            ((n, e) :: r_new_initializers, (n, etyp, None) :: relems)
         }
         val rtyp = TypRecord(ref (relems.rev(), false))
         match r_e {
@@ -1521,7 +1521,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val (rtyp, rloc) = get_exp_ctx(r_e)
         unify(rtyp, etyp, eloc, "the types of the update-record argument and the result do not match")
         val new_r_e = check_exp(r_e, env, sc)
-        val (_, relems) = get_record_elems((None: id_t?), rtyp, rloc)
+        val (_, relems) = get_record_elems(None, rtyp, rloc)
         val new_r_initializers =
         [: for (ni, ei) <- r_initializers {
             val (ei_typ, ei_loc) = get_exp_ctx(ei)
@@ -2054,11 +2054,12 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
         | _ => walk_typ(t, callb)
         }
 
-    val callb = ast_callb_t {ast_cb_typ=Some(check_typ_), ast_cb_exp=ast_cb_exp_None, ast_cb_pat=ast_cb_pat_None}
+    val callb = ast_callb_t {ast_cb_typ=Some(check_typ_), ast_cb_exp=None, ast_cb_pat=None}
     (check_typ_(t, callb), r_env)
 }
 
-fun check_typ(t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): typ_t = check_typ_and_collect_typ_vars(t, env, (None: idset_t ref?), sc, loc).0
+fun check_typ(t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): typ_t =
+    check_typ_and_collect_typ_vars(t, env, None, sc, loc).0
 
 fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                     inst_sc: scope_t list, inst_loc: loc_t, instantiate: bool): deffun_t ref {
@@ -2182,7 +2183,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                 | TypVoid => complex_cases
                 | TypRecord (ref (relems, _)) =>
                     val (_, al, bl, cmp_code) =
-                    fold (idx, al, bl, cmp_code) = (1, ([] : (id_t, pat_t) list), ([] : (id_t, pat_t) list), ExpNop(body_loc)) for (rn, _, _) <- relems {
+                    fold (idx, al, bl, cmp_code) = (1, [], [], ExpNop(body_loc)) for (rn, _, _) <- relems {
                         val ai = get_id(f"{astr}{idx}")
                         val bi = get_id(f"{bstr}{idx}")
                         val cmp_ab =
@@ -2279,7 +2280,8 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref, env: env_t,
         *dvar->dvar_templ_inst = inst_name :: *dvar->dvar_templ_inst
     }
 
-    val fold (idx, inst_cases, inst_ctors) = (0, ([] : (id_t, typ_t) list), ([]: id_t list)) for (n, t) <- dvar_cases, ctor_name <- dvar_ctors {
+    val fold (idx, inst_cases, inst_ctors) =
+        (0, [], []) for (n, t) <- dvar_cases, ctor_name <- dvar_ctors {
         val nargs = match t {
                     | TypTuple(telems) => telems.length()
                     | TypVoid => 0

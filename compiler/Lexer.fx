@@ -639,7 +639,7 @@ fun make_lexer(strm: stream_t)
                         // It's set to false after an identifier, a literal,
                         // a closing paren or one of a few operators/keywords.
 
-    var paren_stack = ([] : (token_t, lloc_t) list)
+    var paren_stack = []
                         // Another helper data structure
                         // that adds some context information to
                         // a primitive finite state machine that

@@ -12,6 +12,8 @@ from Lexer import *
 exception ParseError: (loc_t, string)
 var last_loc = noloc
 
+fun make_unary(uop: unop_t, e: exp_t, l: loc_t) = ExpUnary
+
 fun parse_err(ts: token_t list, msg: string)
 {
     val loc = match ts {
@@ -164,7 +166,7 @@ fun parse_simple_exp(ts: token_t list)
     }
 }
 
-fun parse_deref_apos_exp(ts: token_t list)
+fun parse_deref_exp(ts: token_t list)
 {
     | (STAR(true), l1) :: rest =>
         val (e, ts) = parse_deref_exp(rest)
@@ -174,19 +176,30 @@ fun parse_deref_apos_exp(ts: token_t list)
         (ExnUnOp(OpDerf, ExpUnOp(OpDeref, e, make_new_ctx(l1)), make_new_ctx(l1)), ts)
     | _ =>
         parse_simple_exp(ts)
-        match ts {
-        | (APOS, l1) :: rest =>
-
-        }
 }
 
-apos_exp:
-| apos_exp APOS { make_un_op(OpApos, $1) }
-| deref_exp { $1 }
+fun parse_apos_exp(ts: token_t list)
+{
+    val (ts, e) = parse_deref_exp(ts)
+    match ts {
+    | (APOS, l1) :: rest => (ExpUnOp(OpApos, e, make_new_ctx(l1)), rest)
+    | _ => (ts, e)
+    }
+}
 
-for_flags:
-| PARALLEL { {(default_for_flags()) with for_flag_parallel=true} }
-| /* empty */ { default_for_flags() }
+fun parse_unary_exp(ts: token_t list)
+{
+    | (REF(true), l1) :: rest =>
+        val (e, ts) = parse_unary_exp(rest)
+        (ExpUnOp(OpMkRef, e, make_new_ctx ))
+unary_exp:
+| apos_exp { $1 }
+| REF unary_exp { make_un_op(OpMkRef, $2) }
+| B_MINUS unary_exp { make_un_op(OpNegate, $2) }
+| B_PLUS unary_exp { make_un_op(OpPlus, $2) }
+| TILDE unary_exp { make_un_op(OpBitwiseNot, $2) }
+| EXPAND unary_exp { make_un_op(OpExpand, $2) }
+
 
 fun parse_complex_exp(ts: token_t list)
 {
@@ -253,14 +266,6 @@ complex_exp:
 typed_exp:
 | complex_exp COLON typespec { ExpTyped($1, $3, make_new_ctx()) }
 | complex_exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
-
-unary_exp:
-| apos_exp { $1 }
-| REF unary_exp { make_un_op(OpMkRef, $2) }
-| B_MINUS unary_exp { make_un_op(OpNegate, $2) }
-| B_PLUS unary_exp { make_un_op(OpPlus, $2) }
-| TILDE unary_exp { make_un_op(OpBitwiseNot, $2) }
-| EXPAND unary_exp { make_un_op(OpExpand, $2) }
 
 binary_exp:
 | binary_exp PLUS binary_exp { make_bin_op(OpAdd, $1, $3) }

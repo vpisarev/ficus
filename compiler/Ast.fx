@@ -152,7 +152,7 @@ type typ_t =
     | TypDecl
     | TypModule
 
-fun make_new_typ() = TypVar(ref (None: typ_t?))
+fun make_new_typ() = TypVar(ref None)
 fun make_new_ctx(l: loc_t) = (make_new_typ(), l)
 
 type cmp_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
@@ -1225,10 +1225,6 @@ type ast_callb_t =
     ast_cb_pat: ((pat_t, ast_callb_t) -> pat_t)?
 }
 
-val ast_cb_typ_None = (None : ((typ_t, ast_callb_t) -> typ_t)?)
-val ast_cb_exp_None = (None : ((exp_t, ast_callb_t) -> exp_t)?)
-val ast_cb_pat_None = (None : ((pat_t, ast_callb_t) -> pat_t)?)
-
 fun check_n_walk_typ(t: typ_t, callb: ast_callb_t) =
     match callb.ast_cb_typ {
     | Some(f) => f(t, callb)
@@ -1393,7 +1389,7 @@ fun walk_pat(p: pat_t, callb: ast_callb_t) {
 fun dup_typ_(t: typ_t, callb: ast_callb_t): typ_t =
     match t {
     | TypVar (ref Some(t1)) => TypVar(ref Some(dup_typ_(t1, callb)))
-    | TypVar (_) => TypVar(ref (None: typ_t?))
+    | TypVar (_) => TypVar(ref None)
     | TypRecord(r) =>
         val (relems, ordered) = *r
         val new_relems = [: for (n, t, v) <- relems {(n, dup_typ_(t, callb), v)} :]
@@ -1412,7 +1408,7 @@ fun dup_exp_(e: exp_t, callb: ast_callb_t): exp_t =
     | _ => walk_exp(e, callb)
     }
 
-val dup_callb = ast_callb_t {ast_cb_typ=Some(dup_typ_), ast_cb_exp=Some(dup_exp_), ast_cb_pat=ast_cb_pat_None}
+val dup_callb = ast_callb_t {ast_cb_typ=Some(dup_typ_), ast_cb_exp=Some(dup_exp_), ast_cb_pat=None}
 fun dup_typ(t: typ_t) = dup_typ_(t, dup_callb)
 fun dup_exp(e: exp_t) = dup_exp_(e, dup_callb)
 fun dup_pat(p: pat_t) = walk_pat(p, dup_callb)
@@ -1422,6 +1418,6 @@ fun deref_typ_rec(t: typ_t) {
         val t = deref_typ(t)
         walk_typ(t, callb)
     }
-    val deref_callb = ast_callb_t {ast_cb_typ=Some(deref_typ_rec_), ast_cb_exp=ast_cb_exp_None, ast_cb_pat=ast_cb_pat_None}
+    val deref_callb = ast_callb_t {ast_cb_typ=Some(deref_typ_rec_), ast_cb_exp=None, ast_cb_pat=None}
     deref_typ_rec_(t, deref_callb)
 }
