@@ -195,30 +195,30 @@ let rec exp2kexp e code tref sc =
             | _ -> n
             in
         ((if new_n = noid then (KExpNop eloc) else KExpAtom((AtomId new_n), kctx)), code)
-    | ExpBinOp(OpLogicAnd, e1, e2, _) ->
+    | ExpBinary(OpLogicAnd, e1, e2, _) ->
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in
         let (e2, code2) = exp2kexp e2 [] false sc in
         let e2 = rcode2kexp (e2 :: code2) eloc2 in
         (KExpIf(e1, e2, KExpAtom((AtomLit (KLitBool false)), (KTypBool, eloc2)), kctx), code)
-    | ExpBinOp(OpLogicOr, e1, e2, _) ->
+    | ExpBinary(OpLogicOr, e1, e2, _) ->
         let (e1, code) = exp2kexp e1 code false sc in
         let eloc2 = get_exp_loc e2 in
         let (e2, code2) = exp2kexp e2 [] false sc in
         let e2 = rcode2kexp (e2 :: code2) eloc2 in
         (KExpIf(e1, KExpAtom((AtomLit (KLitBool true)), (KTypBool, eloc2)), e2, kctx), code)
-    | ExpBinOp(bop, e1, e2, _) ->
+    | ExpBinary(bop, e1, e2, _) ->
         let (a1, code) = exp2atom e1 code false sc in
         let (a2, code) = exp2atom e2 code false sc in
         (match (bop, (get_atom_ktyp a1 eloc), (get_atom_ktyp a2 eloc)) with
         | (OpAdd, KTypString, KTypString)
         | (OpAdd, KTypChar, KTypString)
         | (OpAdd, KTypString, KTypChar) -> (KExpIntrin(IntrinStrConcat, [a1; a2], kctx), code)
-        | _ -> (KExpBinOp(bop, a1, a2, kctx), code))
-    | ExpUnOp(OpDeref, e, _) ->
+        | _ -> (KExpBinary(bop, a1, a2, kctx), code))
+    | ExpUnary(OpDeref, e, _) ->
         let (a_id, code) = exp2id e code false sc "a literal cannot be dereferenced" in
-        (KExpUnOp(OpDeref, (AtomId a_id), kctx), code)
-    | ExpUnOp(OpDotMinus, e, _) ->
+        (KExpUnary(OpDeref, (AtomId a_id), kctx), code)
+    | ExpUnary(OpDotMinus, e, _) ->
         let (arr, idx_i) = match !idx_access_stack with
             | (arr, idx_i) :: _ -> (arr, idx_i)
             | _ -> raise_compile_err eloc ".- is only allowed inside array access op"
@@ -226,10 +226,10 @@ let rec exp2kexp e code tref sc =
         let (a, code) = exp2atom e code false sc in
         let args = if idx_i = 0 then [arr] else [arr; AtomLit (KLitInt (Int64.of_int idx_i))] in
         let (sz, code) = kexp2atom "sz" (KExpIntrin (IntrinGetSize, args, (KTypInt, eloc))) false code in
-        (KExpBinOp(OpSub, sz, a, kctx), code)
-    | ExpUnOp(uop, e1, _) ->
+        (KExpBinary(OpSub, sz, a, kctx), code)
+    | ExpUnary(uop, e1, _) ->
         let (a1, code) = exp2atom e1 code false sc in
-        (KExpUnOp(uop, a1, kctx), code)
+        (KExpUnary(uop, a1, kctx), code)
     | ExpSeq(eseq, _) ->
         let sc = new_block_scope() :: sc in
         let code = transform_all_types_and_cons eseq code sc in
@@ -247,7 +247,7 @@ let rec exp2kexp e code tref sc =
         let (krows, code) = List.fold_left (fun (krows, code) arow ->
             let (krow, code) = List.fold_left (fun (krow, code) e ->
                 let (f, e) = match e with
-                    | ExpUnOp(OpExpand, e, _) -> (true, e)
+                    | ExpUnary(OpExpand, e, _) -> (true, e)
                     | _ -> (false, e)
                     in
                 let (a, code) = exp2atom e code false sc in
@@ -694,7 +694,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
     let (tup_elems, need_tref) = match e_opt with
         | Some e ->
             (match e with
-            | KExpIntrin _ | KExpAt _ | KExpMem _ | KExpUnOp(OpDeref, _, _) -> ([], true)
+            | KExpIntrin _ | KExpAt _ | KExpMem _ | KExpUnary(OpDeref, _, _) -> ([], true)
             | KExpMkTuple(elems, _) -> (elems, false)
             | _ -> ([], false))
         | None -> ([], true)
@@ -779,7 +779,7 @@ and pat_simple_unpack p ptyp e_opt code temp_prefix flags sc =
             | KTypRef(t) -> t
             | _ -> raise_compile_err loc "the argument of ref() pattern must be a reference"
             in
-        let e = KExpUnOp(OpDeref, (AtomId n), (t, loc)) in
+        let e = KExpUnary(OpDeref, (AtomId n), (t, loc)) in
         let (_, code) = pat_simple_unpack p t (Some e) code temp_prefix n_flags sc in
         code
     | _ ->
@@ -890,7 +890,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                     (Some extract_tag_exp) code loc in
                 (tag_n, code))
                 in
-            let cmp_tag_exp = KExpBinOp(OpCmp(CmpEQ), (AtomId tag_n), vn_tag_val, (KTypBool, loc)) in
+            let cmp_tag_exp = KExpBinary(OpCmp(CmpEQ), (AtomId tag_n), vn_tag_val, (KTypBool, loc)) in
             let checks = (rcode2kexp (cmp_tag_exp :: code) loc) :: checks in
             let (case_n, code, alt_e_opt) = match c_args with
                 | [] -> (noid, [], None)
@@ -928,12 +928,12 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (plists, checks, code) =
             (match p with
             | PatLit (l, _) ->
-                let code = KExpBinOp(OpCmp(CmpEQ), (AtomId n), (AtomLit (lit2klit l ptyp)), (KTypBool, loc)) :: code in
+                let code = KExpBinary(OpCmp(CmpEQ), (AtomId n), (AtomLit (lit2klit l ptyp)), (KTypBool, loc)) :: code in
                 let c_exp = rcode2kexp code loc in
                 (plists, c_exp :: checks, [])
             | PatIdent _ -> (plists, checks, code)
             | PatCons(p1, p2, _) ->
-                let code = KExpBinOp(OpCmp(CmpNE), (AtomId n), (AtomLit (KLitNil ptyp)), (KTypBool, loc)) :: code in
+                let code = KExpBinary(OpCmp(CmpNE), (AtomId n), (AtomLit (KLitNil ptyp)), (KTypBool, loc)) :: code in
                 let c_exp = rcode2kexp code loc in
                 let et = match ptyp with
                         | KTypList et -> et
@@ -984,7 +984,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 let t = match ptyp with
                     | KTypRef t -> t
                     | _ -> raise_compile_err loc "the ref() pattern needs reference type" in
-                let get_val = KExpUnOp(OpDeref, (AtomId n), (t, loc)) in
+                let get_val = KExpUnary(OpDeref, (AtomId n), (t, loc)) in
                 let pinfo_p = {pinfo_p=p; pinfo_typ=t; pinfo_e=get_val; pinfo_tag=noid} in
                 let plists = dispatch_pat pinfo_p plists in
                 (plists, checks, code)

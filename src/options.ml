@@ -15,7 +15,9 @@ type options_t =
     mutable inline_thresh: int;
     mutable output_name: string;
     mutable print_tokens: bool;
+    mutable print_ast0: bool;
     mutable print_ast: bool;
+    mutable print_k0: bool;
     mutable print_k: bool;
     mutable gen_c: bool;
     mutable make_app: bool;
@@ -43,7 +45,9 @@ let options =
     inline_thresh = 30;
     output_name = "";
     print_tokens = false;
+    print_ast0 = false;
     print_ast = false;
+    print_k0 = false;
     print_k = false;
     gen_c = true;
     make_app = true;
@@ -71,8 +75,10 @@ let parse_options () =
     try
         Arg.parse
         [("-pr-tokens", (Arg.Unit (fun f -> options.print_tokens <- true)), "   Print all the tokens in parsed files");
-        ("-pr-ast", (Arg.Unit (fun f -> options.print_ast <- true)), "   Print typechecked AST of the parsed files");
-        ("-pr-k", (Arg.Unit (fun f -> options.print_k <- true)), "   Print the generated and optimized K-form");
+        ("-pr-ast0", (Arg.Unit (fun f -> options.print_ast0 <- true)), "   Print retrieved AST of the parsed files");
+        ("-pr-ast", (Arg.Unit (fun f -> options.print_ast <- true)), "   Print AST after type checker");
+        ("-pr-k0", (Arg.Unit (fun f -> options.print_k0 <- true)), "   Print the generated from AST K-form");
+        ("-pr-k", (Arg.Unit (fun f -> options.print_k <- true)), "   Print the generated K-form after optimization");
         ("-no-c", (Arg.Unit (fun f -> options.gen_c <- false)), "   Do not generate C code");
         ("-app", (Arg.Unit (fun f -> options.make_app <- true)), "   Build application (set by default)");
         ("-run", (Arg.Unit (fun f -> options.run_app <- true)), "   Build application and run it");

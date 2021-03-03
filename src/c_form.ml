@@ -142,8 +142,8 @@ and cctx_t = ctyp_t * loc_t
 and cexp_t =
     | CExpIdent of id_t * cctx_t
     | CExpLit of clit_t * cctx_t
-    | CExpBinOp of cbinop_t * cexp_t * cexp_t * cctx_t
-    | CExpUnOp of cunop_t * cexp_t * cctx_t
+    | CExpBinary of cbinop_t * cexp_t * cexp_t * cctx_t
+    | CExpUnary of cunop_t * cexp_t * cctx_t
     | CExpMem of cexp_t * id_t * cctx_t
     | CExpArrow of cexp_t * id_t * cctx_t
     | CExpCast of cexp_t * ctyp_t * loc_t
@@ -248,8 +248,8 @@ let init_all_idcs () =
 let get_cexp_ctx e = match e with
     | CExpIdent(_, c) -> c
     | CExpLit(_, c) -> c
-    | CExpBinOp(_, _, _, c) -> c
-    | CExpUnOp(_, _, c) -> c
+    | CExpBinary(_, _, _, c) -> c
+    | CExpUnary(_, _, c) -> c
     | CExpMem(_, _, c) -> c
     | CExpArrow(_, _, c) -> c
     | CExpCast(_, t, l) -> (t, l)
@@ -462,8 +462,8 @@ and walk_cexp e callb =
     | CExpIdent (n, ctx) -> CExpIdent((walk_id_ n), (walk_ctx_ ctx))
     | CExpLit (KLitNil (KTypName(n)), ctx) -> CExpLit(KLitNil (KTypName(walk_id_ n)), (walk_ctx_ ctx))
     | CExpLit (lit, ctx) -> CExpLit(lit, (walk_ctx_ ctx))
-    | CExpBinOp (bop, e1, e2, ctx) -> CExpBinOp(bop, (walk_cexp_ e1), (walk_cexp_ e2), (walk_ctx_ ctx))
-    | CExpUnOp (uop, e, ctx) -> CExpUnOp(uop, (walk_cexp_ e), (walk_ctx_ ctx))
+    | CExpBinary (bop, e1, e2, ctx) -> CExpBinary(bop, (walk_cexp_ e1), (walk_cexp_ e2), (walk_ctx_ ctx))
+    | CExpUnary (uop, e, ctx) -> CExpUnary(uop, (walk_cexp_ e), (walk_ctx_ ctx))
     (* we exclude the second arguments of CExpMem/CExpArrow from the traversal procedure,
        because they are not real id's; they are just symbolic representation of the accessed record fields *)
     | CExpMem (e, m, ctx) -> CExpMem((walk_cexp_ e), m, (walk_ctx_ ctx))
@@ -608,8 +608,8 @@ and fold_cexp e callb =
     | CExpIdent (n, ctx) -> fold_id_ n; ctx
     | CExpLit (KLitNil (KTypName(n)), ctx) -> fold_id_ n; ctx
     | CExpLit (_, ctx) -> ctx
-    | CExpBinOp (_, e1, e2, ctx) -> fold_cexp_ e1; fold_cexp_ e2; ctx
-    | CExpUnOp (_, e, ctx) -> fold_cexp_ e; ctx
+    | CExpBinary (_, e1, e2, ctx) -> fold_cexp_ e1; fold_cexp_ e2; ctx
+    | CExpUnary (_, e, ctx) -> fold_cexp_ e; ctx
     | CExpMem (e, _, ctx) -> fold_cexp_ e; ctx
     | CExpArrow (e, _, ctx) -> fold_cexp_ e; ctx
     | CExpCast (e, t, loc) -> fold_cexp_ e; (t, loc)
@@ -750,17 +750,17 @@ let make_call f args rt loc =
 let make_dummy_exp loc = CExpInit([], (CTypVoid, loc))
 let make_assign lhs rhs =
     let loc = get_cexp_loc rhs in
-    CExpBinOp(COpAssign, lhs, rhs, (CTypVoid, loc))
+    CExpBinary(COpAssign, lhs, rhs, (CTypVoid, loc))
 
 let cexp_get_addr e =
     match e with
-    | CExpUnOp(COpDeref, x, _) -> x
-    | CExpBinOp(COpArrayElem, x, i, (t, loc)) ->
-        CExpBinOp(COpAdd, x, i, ((make_ptr t), loc))
+    | CExpUnary(COpDeref, x, _) -> x
+    | CExpBinary(COpArrayElem, x, i, (t, loc)) ->
+        CExpBinary(COpAdd, x, i, ((make_ptr t), loc))
     | _ ->
         let (t, loc) = get_cexp_ctx e in
         let t = CTypRawPtr([], (match t with CTypAny -> CTypVoid | _ -> t)) in
-        CExpUnOp(COpGetAddr, e, (t, loc))
+        CExpUnary(COpGetAddr, e, (t, loc))
 
 let cexp_deref_typ t =
     match t with
@@ -770,24 +770,24 @@ let cexp_deref_typ t =
 
 let cexp_deref e =
     match e with
-    | CExpUnOp(COpGetAddr, x, _) -> x
-    | CExpBinOp(COpAdd, x, i, (t, loc)) ->
-        CExpBinOp(COpArrayElem, x, i, ((cexp_deref_typ t), loc))
+    | CExpUnary(COpGetAddr, x, _) -> x
+    | CExpBinary(COpAdd, x, i, (t, loc)) ->
+        CExpBinary(COpArrayElem, x, i, ((cexp_deref_typ t), loc))
     | _ ->
         let (t, loc) = get_cexp_ctx e in
         let t = cexp_deref_typ t in
-        CExpUnOp(COpDeref, e, (t, loc))
+        CExpUnary(COpDeref, e, (t, loc))
 
 let cexp_arrow e m_id t =
     let loc = get_cexp_loc e in
     match e with
-    | CExpUnOp(COpGetAddr, x, _) -> CExpMem(x, m_id, (t, loc))
+    | CExpUnary(COpGetAddr, x, _) -> CExpMem(x, m_id, (t, loc))
     | _ -> CExpArrow(e, m_id, (t, loc))
 
 let cexp_mem e m_id t =
     let loc = get_cexp_loc e in
     match e with
-    | CExpUnOp(COpDeref, x, _) -> CExpArrow(x, m_id, (t, loc))
+    | CExpUnary(COpDeref, x, _) -> CExpArrow(x, m_id, (t, loc))
     | _ -> CExpMem(e, m_id, (t, loc))
 
 let std_FX_MAX_DIMS = 5

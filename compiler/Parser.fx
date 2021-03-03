@@ -121,7 +121,7 @@ fun parse_atomic_exp(ts: token_t list)
     | (LLIST, l1) :: rest =>
         val (el, _, ts) = parse_exp_list(rest, parse_typed_exp, KwNone, RLIST, false, allow_empty=true,)
         (fold mklist_e = ExpLit(LitNil, make_new_ctx(ol)) for e <- el.rev() {
-            ExpBinOp(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
+            ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
         }, ts)
     | t :: _ -> throw parse_err(ts, f"unxpected token '{tok2str(t).1}. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here")
     | _ -> throw parse_err(ts, f"premature end of the stream; check the parens")
@@ -148,7 +148,7 @@ fun parse_simple_exp(ts: token_t list)
             // [TODO] add support for alternating patterns right into the pattern matching syntax
             (match t1 {| DOT | ARROW => true | _ => false}) &&
             (match t2 {| IDENT(false, _) | LITERAL(LitInt _) => true | _ => false}) =>
-            val e = match t1 { | ARROW => ExpUnOp(OpDeref, e, make_new_ctx(eloc)) | _ => e }
+            val e = match t1 { | ARROW => ExpUnary(OpDeref, e, make_new_ctx(eloc)) | _ => e }
             val i = match t2 {
                 | IDENT(false, i) => ExpIdent(get_id(i), make_new_ctx(l2))
                 | LITERAL(LitInt(i)) => ExpLit(LitInt(i), (TypInt, l2))
@@ -156,7 +156,7 @@ fun parse_simple_exp(ts: token_t list)
                 }
             (true, ExpMem(e, i, make_new_ctx(eloc)), rest)
         | (t1, _) :: (LBRACE, l2) :: rest when (match t1 {| DOT | ARROW => true | _ => false}) =>
-            val e = match t1 { | ARROW => ExpUnOp(OpDeref, e, make_new_ctx(eloc)) | _ => e }
+            val e = match t1 { | ARROW => ExpUnary(OpDeref, e, make_new_ctx(eloc)) | _ => e }
             val (_, rec_init_elems, ts) = parse_exp_list(rest, parse_typed_exp, KwMust, RBRACE, allow_empty=true)
             (true, ExpUpdateRecord(e, rec_init_elems, make_new_ctx(eloc)), rest)
         | _ => (false, e, ts)
@@ -170,10 +170,10 @@ fun parse_deref_exp(ts: token_t list)
 {
     | (STAR(true), l1) :: rest =>
         val (e, ts) = parse_deref_exp(rest)
-        (ExpUnOp(OpDeref, e, make_new_ctx(l1)), ts)
+        (ExpUnary(OpDeref, e, make_new_ctx(l1)), ts)
     | (POWER(true), l1) :: rest =>
         val (e, ts) = parse_deref_exp(rest)
-        (ExnUnOp(OpDerf, ExpUnOp(OpDeref, e, make_new_ctx(l1)), make_new_ctx(l1)), ts)
+        (ExnUnOp(OpDerf, ExpUnary(OpDeref, e, make_new_ctx(l1)), make_new_ctx(l1)), ts)
     | _ =>
         parse_simple_exp(ts)
 }
@@ -182,7 +182,7 @@ fun parse_apos_exp(ts: token_t list)
 {
     val (ts, e) = parse_deref_exp(ts)
     match ts {
-    | (APOS, l1) :: rest => (ExpUnOp(OpApos, e, make_new_ctx(l1)), rest)
+    | (APOS, l1) :: rest => (ExpUnary(OpApos, e, make_new_ctx(l1)), rest)
     | _ => (ts, e)
     }
 }
@@ -191,7 +191,7 @@ fun parse_unary_exp(ts: token_t list)
 {
     | (REF(true), l1) :: rest =>
         val (e, ts) = parse_unary_exp(rest)
-        (ExpUnOp(OpMkRef, e, make_new_ctx ))
+        (ExpUnary(OpMkRef, e, make_new_ctx ))
 unary_exp:
 | apos_exp { $1 }
 | REF unary_exp { make_un_op(OpMkRef, $2) }

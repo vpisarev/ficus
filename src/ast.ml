@@ -239,13 +239,14 @@ type for_flags_t =
     for_flag_fold: bool;
     for_flag_nested: bool;
 }
+
 let default_for_flags() =
 {
     for_flag_parallel=false;
     for_flag_make=ForMakeArray;
     for_flag_unzip=false;
     for_flag_fold=false;
-    for_flag_nested=false
+    for_flag_nested=false;
 }
 
 type border_t = BorderNone | BorderClip | BorderZero
@@ -263,8 +264,8 @@ type exp_t =
     | ExpRange of exp_t option * exp_t option * exp_t option * ctx_t
     | ExpLit of lit_t * ctx_t
     | ExpIdent of id_t * ctx_t
-    | ExpBinOp of binop_t * exp_t * exp_t * ctx_t
-    | ExpUnOp of unop_t * exp_t * ctx_t
+    | ExpBinary of binop_t * exp_t * exp_t * ctx_t
+    | ExpUnary of unop_t * exp_t * ctx_t
     | ExpSeq of exp_t list * ctx_t
     | ExpMkTuple of exp_t list * ctx_t
     | ExpMkArray of exp_t list list * ctx_t
@@ -512,8 +513,8 @@ let get_exp_ctx e = match e with
     | ExpRange(_, _, _, c) -> c
     | ExpLit(_, c) -> c
     | ExpIdent(_, c) -> c
-    | ExpBinOp(_, _, _, c) -> c
-    | ExpUnOp(_, _, c) -> c
+    | ExpBinary(_, _, _, c) -> c
+    | ExpUnary(_, _, c) -> c
     | ExpSeq(_, c) -> c
     | ExpMkTuple(_, c) -> c
     | ExpMkRecord(_, _, c) -> c
@@ -639,18 +640,6 @@ let get_scope id_info = match id_info with
     | IdClass {contents = {dcl_scope}} -> dcl_scope
     | IdInterface {contents = {di_scope}} -> di_scope
     | IdModule _ -> ScGlobal :: []
-
-(* retains meaningful scope for name mangling *)
-let simplify_scope sc =
-    let sc1 =
-    List.filter (function
-    | ScModule _ | ScClass _ | ScInterface _ | ScGlobal -> true
-    | ScBlock _ | ScLoop _ | ScFold _ | ScArrMap _ | ScMap _
-    | ScTry _ | ScFun _ -> false) sc in
-    let is_private = (List.length sc) > (List.length sc1) in
-    (is_private, (match sc1 with
-    | ScGlobal :: rest -> rest
-    | _ -> sc1))
 
 let get_idinfo_loc id_info = match id_info with
     | IdNone | IdModule _ -> noloc
@@ -1160,9 +1149,9 @@ and walk_exp e callb =
                     (walk_exp_opt_ e3_opt), (walk_ctx_ ctx))
     | ExpLit(l, ctx) -> ExpLit(l, (walk_ctx_ ctx))
     | ExpIdent(n, ctx) -> ExpIdent(n, (walk_ctx_ ctx))
-    | ExpBinOp(bop, e1, e2, ctx) ->
-        ExpBinOp(bop, (walk_exp_ e1), (walk_exp_ e2), (walk_ctx_ ctx))
-    | ExpUnOp(uop, e, ctx) -> ExpUnOp(uop, (walk_exp_ e), (walk_ctx_ ctx))
+    | ExpBinary(bop, e1, e2, ctx) ->
+        ExpBinary(bop, (walk_exp_ e1), (walk_exp_ e2), (walk_ctx_ ctx))
+    | ExpUnary(uop, e, ctx) -> ExpUnary(uop, (walk_exp_ e), (walk_ctx_ ctx))
     | ExpSeq(elist, ctx) -> ExpSeq((walk_elist_ elist), (walk_ctx_ ctx))
     | ExpMkTuple(elist, ctx) -> ExpMkTuple((walk_elist_ elist), (walk_ctx_ ctx))
     | ExpMkArray(ell, ctx) -> ExpMkArray((List.map walk_elist_ ell), (walk_ctx_ ctx))

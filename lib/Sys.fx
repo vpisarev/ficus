@@ -6,7 +6,7 @@
 // Various system services
 import File
 
-ccode {
+@ccode {
     #include <limits.h>
     #include <stdio.h>
     #include <sys/stat.h>
@@ -19,13 +19,13 @@ ccode {
 
 val argv =
 {
-    pure nothrow fun argc(): int = ccode { return fx_argc() }
-    pure fun argv(i: int): string = ccode { return fx_cstr2str(fx_argv(i), -1, fx_result) }
+    @pure @nothrow fun argc(): int = @ccode { return fx_argc() }
+    @pure fun argv(i: int): string = @ccode { return fx_cstr2str(fx_argv(i), -1, fx_result) }
 
     [: for i <- 0:argc() {argv(i)} :]
 }
 
-val win32 : bool = ccode {
+val win32 : bool = @ccode {
 #if defined _WIN32 || defined WINCE
     true
 #else
@@ -33,7 +33,7 @@ val win32 : bool = ccode {
 #endif
 }
 
-val unix : bool = ccode {
+val unix : bool = @ccode {
 #if defined __linux__ || defined __unix__ || defined __MACH__ || \
     defined __APPLE__ || defined BSD || defined __hpux || \
     defined _AIX || defined __sun
@@ -71,15 +71,15 @@ fun osname_() {
 
 val osname = osname_()
 
-pure fun cc_version(): string = ccode { return fx_cc_version(fx_result) }
+@pure fun cc_version(): string = @ccode { return fx_cc_version(fx_result) }
 
 fun appname() = List.hd(argv)
 fun arguments() = List.tl(argv)
 
-pure nothrow fun getTickCount(): int64 = ccode { return fx_tickcount() }
-pure nothrow fun getTickFrequency(): double = ccode { return fx_tickfreq() }
+@pure @nothrow fun getTickCount(): int64 = @ccode { return fx_tickcount() }
+@pure @nothrow fun getTickFrequency(): double = @ccode { return fx_tickfreq() }
 
-fun remove(name: string): void = ccode
+fun remove(name: string): void = @ccode
 {
     fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
@@ -91,7 +91,7 @@ fun remove(name: string): void = ccode
     return fx_status;
 }
 
-fun rename(name: string, new_name: string): bool = ccode
+fun rename(name: string, new_name: string): bool = @ccode
 {
     fx_cstr_t name_, new_name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
@@ -107,7 +107,7 @@ fun rename(name: string, new_name: string): bool = ccode
     return fx_status;
 }
 
-fun file_exists(name: string): bool = ccode
+fun file_exists(name: string): bool = @ccode
 {
     fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
@@ -119,13 +119,13 @@ fun file_exists(name: string): bool = ccode
     return fx_status;
 }
 
-fun getcwd(): string = ccode {
+fun getcwd(): string = @ccode {
     char buf[PATH_MAX+16];
     char* p = getcwd(buf, PATH_MAX);
     return fx_cstr2str(p, p ? -1 : 0, fx_result);
 }
 
-fun command(cmd: string): int = ccode {
+fun command(cmd: string): int = @ccode {
     fx_cstr_t cmd_;
     int fx_status = fx_str2cstr(cmd, &cmd_, 0, 0);
     if (fx_status >= 0) {

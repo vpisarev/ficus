@@ -98,8 +98,8 @@ and kexp_t =
     | KExpBreak of loc_t
     | KExpContinue of loc_t
     | KExpAtom of atom_t * kctx_t
-    | KExpBinOp of binop_t * atom_t * atom_t * kctx_t
-    | KExpUnOp of unop_t * atom_t * kctx_t
+    | KExpBinary of binop_t * atom_t * atom_t * kctx_t
+    | KExpUnary of unop_t * atom_t * kctx_t
     | KExpIntrin of intrin_t * atom_t list * kctx_t
     | KExpSeq of kexp_t list * kctx_t
     | KExpIf of kexp_t * kexp_t * kexp_t * kctx_t
@@ -208,8 +208,8 @@ let get_kexp_ctx e = match e with
     | KExpBreak(l) -> (KTypVoid, l)
     | KExpContinue(l) -> (KTypVoid, l)
     | KExpAtom(_, c) -> c
-    | KExpBinOp(_, _, _, c) -> c
-    | KExpUnOp(_, _, c) -> c
+    | KExpBinary(_, _, _, c) -> c
+    | KExpUnary(_, _, c) -> c
     | KExpIntrin(_, _, c) -> c
     | KExpSeq(_, c) -> c
     | KExpIf(_, _, _, c) -> c
@@ -451,9 +451,9 @@ and walk_kexp e callb =
     | KExpBreak _ -> e
     | KExpContinue _ -> e
     | KExpAtom (a, ctx) -> KExpAtom((walk_atom_ a), (walk_kctx_ ctx))
-    | KExpBinOp(bop, a1, a2, ctx) ->
-        KExpBinOp(bop, (walk_atom_ a1), (walk_atom_ a2), (walk_kctx_ ctx))
-    | KExpUnOp(uop, a, ctx) -> KExpUnOp(uop, (walk_atom_ a), (walk_kctx_ ctx))
+    | KExpBinary(bop, a1, a2, ctx) ->
+        KExpBinary(bop, (walk_atom_ a1), (walk_atom_ a2), (walk_kctx_ ctx))
+    | KExpUnary(uop, a, ctx) -> KExpUnary(uop, (walk_atom_ a), (walk_kctx_ ctx))
     | KExpIntrin(iop, args, ctx) -> KExpIntrin(iop, (walk_al_ args), (walk_kctx_ ctx))
     | KExpIf(c, then_e, else_e, ctx) ->
         KExpIf((walk_kexp_ c), (walk_kexp_ then_e), (walk_kexp_ else_e), (walk_kctx_ ctx))
@@ -618,9 +618,9 @@ and fold_kexp e callb =
     | KExpBreak (l) -> (KTypVoid, l)
     | KExpContinue (l) -> (KTypVoid, l)
     | KExpAtom (a, ctx) -> fold_atom_ a; ctx
-    | KExpBinOp(_, a1, a2, ctx) ->
+    | KExpBinary(_, a1, a2, ctx) ->
         fold_atom_ a1; fold_atom_ a2; ctx
-    | KExpUnOp(_, a, ctx) -> fold_atom_ a; ctx
+    | KExpUnary(_, a, ctx) -> fold_atom_ a; ctx
     | KExpIntrin(_, args, ctx) -> fold_al_ args; ctx
     | KExpIf(c, then_e, else_e, ctx) ->
         fold_kexp_ c; fold_kexp_ then_e; fold_kexp_ else_e; ctx
@@ -875,7 +875,7 @@ let kexp2atom prefix e tref code =
         let _ = if ktyp <> KTypVoid then () else
             raise_compile_err kloc "'void' expression or declaration cannot be converted to an atom" in
         let tref = match e with
-            | KExpMem _ | KExpAt (_, BorderNone, InterpNone, _, _) | KExpUnOp(OpDeref, _, _) -> tref
+            | KExpMem _ | KExpAt (_, BorderNone, InterpNone, _, _) | KExpUnary(OpDeref, _, _) -> tref
             | _ -> false
             in
         let code = create_kdefval tmp_id ktyp
@@ -956,9 +956,9 @@ and kexp2str e =
     | KExpBreak _ -> "KExpBreak"
     | KExpContinue _ -> "KExpContinue"
     | KExpAtom (a, _) -> "KExpAtom(" ^ (atom2str a) ^ ")"
-    | KExpBinOp (bop, a, b, _) -> sprintf "KExpBinOp(%s, %s, %s)"
+    | KExpBinary (bop, a, b, _) -> sprintf "KExpBinary(%s, %s, %s)"
         (binop_to_string bop) (atom2str a) (atom2str b)
-    | KExpUnOp (uop, a, _) -> sprintf "KExpUnOp(%s, %s)" (unop_to_string uop) (atom2str a)
+    | KExpUnary (uop, a, _) -> sprintf "KExpUnary(%s, %s)" (unop_to_string uop) (atom2str a)
     | KExpIntrin (i, _, _) -> sprintf "KExpIntrin(%s, ...)" (intrin2str i)
     | KExpSeq _ -> "KExpSeq(...)"
     | KExpIf _ -> "KExpIf(...)"

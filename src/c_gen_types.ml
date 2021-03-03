@@ -155,7 +155,7 @@ let gen_copy_code src_exp dst_exp ctyp code loc =
     let ctx = (CTypVoid, loc) in
     let e = match (src_exp, copy_f_opt) with
             | (CExpLit(KLitNil _, _), Some(CExpIdent(f, _))) when f = !std_FX_COPY_PTR ->
-                CExpBinOp(COpAssign, dst_exp, src_exp, ctx)
+                CExpBinary(COpAssign, dst_exp, src_exp, ctx)
             | (_, Some(f)) ->
                 let src_exp = if pass_by_ref then (cexp_get_addr src_exp) else src_exp in
                 let dst_exp = cexp_get_addr dst_exp in
@@ -164,7 +164,7 @@ let gen_copy_code src_exp dst_exp ctyp code loc =
                 (* in C the assignment operator returns assigned value,
                 but since in this particular case we are not going to chain
                 assignment operators, we assume that it returns 'void' *)
-                CExpBinOp(COpAssign, dst_exp, src_exp, ctx)
+                CExpBinary(COpAssign, dst_exp, src_exp, ctx)
     in (CExp e) :: code
 
 (* generates the destructor call if needed *)
@@ -365,11 +365,11 @@ let convert_all_typs kmods =
             let decref_and_free dst_exp free_code loc =
                 let rc_exp = CExpArrow(dst_exp, (get_id "rc"), (CTypInt, loc)) in
                 let decref_exp = make_call !std_FX_DECREF [rc_exp] CTypInt loc in
-                let cmp_1_exp = CExpBinOp(COpCompareEQ, decref_exp, (make_int_exp 1 loc), (CTypBool, loc)) in
-                let cc_exp = CExpBinOp(COpLogicAnd, dst_exp, cmp_1_exp, (CTypBool, loc)) in
+                let cmp_1_exp = CExpBinary(COpCompareEQ, decref_exp, (make_int_exp 1 loc), (CTypBool, loc)) in
+                let cc_exp = CExpBinary(COpLogicAnd, dst_exp, cmp_1_exp, (CTypBool, loc)) in
                 let call_free = make_call !std_fx_free [dst_exp] CTypVoid loc in
                 let then_exp = rccode2stmt ((CExp call_free) :: free_code) loc in
-                let clear_ptr = CExpBinOp(COpAssign, dst_exp, (make_nullptr loc), (CTypVoid, loc)) in
+                let clear_ptr = CExpBinary(COpAssign, dst_exp, (make_nullptr loc), (CTypVoid, loc)) in
                 [(CExp clear_ptr); CStmtIf(cc_exp, then_exp, (CStmtNop loc), loc)]
             in
 
@@ -560,7 +560,7 @@ let convert_all_typs kmods =
                 let void_ctx = (CTypVoid, kvar_loc) in
                 let tag_id = get_id "tag" in
                 let u_id = get_id "u" in
-                let dst_exp = if recursive_variant then CExpUnOp(COpDeref, dst_exp, (struct_typ, kvar_loc)) else dst_exp in
+                let dst_exp = if recursive_variant then CExpUnary(COpDeref, dst_exp, (struct_typ, kvar_loc)) else dst_exp in
                 let src_tag_exp = CExpArrow(src_exp, tag_id, int_ctx) in
                 let dst_tag_exp = CExpArrow(dst_exp, tag_id, int_ctx) in
                 let src_u_exp = CExpArrow(src_exp, u_id, (CTypAny, kvar_loc)) in
@@ -581,7 +581,7 @@ let convert_all_typs kmods =
                                 | _ -> (switch_label_i_exps, free_code_i) :: free_cases in
                             let copy_code_i = gen_copy_code selem_i delem_i ti [] kvar_loc in
                             let copy_cases = match copy_code_i with
-                                | CExp(CExpBinOp(COpAssign, _, _, _)) :: [] -> copy_cases
+                                | CExp(CExpBinary(COpAssign, _, _, _)) :: [] -> copy_cases
                                 | _ -> (switch_label_i_exps, copy_code_i) :: copy_cases in
                             (free_cases, copy_cases, (ni_clean, ti) :: uelems)) ([], [], []) kvar_cases ce_members in
                 let free_code = match (have_tag, free_cases) with
@@ -599,21 +599,21 @@ let convert_all_typs kmods =
                 let free_code = if recursive_variant then
                         decref_and_free dst_exp free_code kvar_loc
                     else if have_tag then
-                        let clear_tag = CExpBinOp(COpAssign, dst_tag_exp, (make_int_exp 0 kvar_loc), void_ctx) in
+                        let clear_tag = CExpBinary(COpAssign, dst_tag_exp, (make_int_exp 0 kvar_loc), void_ctx) in
                         if free_code = [] then [] else (CExp clear_tag) :: free_code
                     else
                         free_code
                     in
                 let copy_code = if have_tag then
                         let copy_code = gen_copy_code src_tag_exp dst_tag_exp CTypCInt [] kvar_loc in
-                        let default_copy_code = CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
+                        let default_copy_code = CExp(CExpBinary(COpAssign, dst_u_exp, src_u_exp, void_ctx)) in
                         match copy_cases with
                         | [] -> default_copy_code :: copy_code
                         | _ ->
                             let copy_cases = ([], [default_copy_code]) :: copy_cases in
                             CStmtSwitch(src_tag_exp, (List.rev copy_cases), kvar_loc) :: copy_code
                     else
-                        let default_copy_code = [CExp(CExpBinOp(COpAssign, dst_u_exp, src_u_exp, void_ctx))] in
+                        let default_copy_code = [CExp(CExpBinary(COpAssign, dst_u_exp, src_u_exp, void_ctx))] in
                         match copy_cases with
                         | (_, copy_code1) :: [] -> copy_code1
                         | _ -> default_copy_code

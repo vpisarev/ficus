@@ -9,9 +9,9 @@ val N = match Sys.arguments() {
 val w = N, h = N, MAX_ITER = 50
 val inv = 2.0 / w
 
-val x_ = [parallel for x <- 0:w {double(x) * inv - 1.5}]
+val x_ = [@parallel for x <- 0:w {double(x) * inv - 1.5}]
 val result: uint8 [,] = [
-    parallel
+    @parallel
         for y <- 0:h
             for x8 <- 0:(w/8)
     {

@@ -21,12 +21,12 @@
 pragma "c++", "clib:re2"
 
 exception BadRegexp : string
-ccode
+@ccode
 {
     #include <re2/re2.h>
     #include <vector>
 
-    //[TODO] : Exception, declared before ccode block must be declared in program, translated to C program before this ccode for avoiding such insets.
+    //[TODO] : Exception, declared before @ccode block must be declared in program, translated to C program before this @ccode for avoiding such insets.
     FX_EXTERN_C int _fx_M3Re2FM14make_BadRegexpE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
     static int throwRe2Badregexp(const std::string& err)
@@ -169,7 +169,7 @@ type options_t =
 //    syntax.
 fun compile(pattern: string, options: options_t): regex_t
 {
-    fun compile_re2(pattern: string, options: options_t): cptr = ccode
+    fun compile_re2(pattern: string, options: options_t): cptr = @ccode
     {
         using namespace re2;
         fx_cstr_t cpattern;
@@ -224,7 +224,7 @@ fun compile(pattern: string): regex_t
 //    Return original pattern string.
 //
 //    Equivalent of RE2::pattern
-pure fun string(re: regex_t): string = ccode
+@pure fun string(re: regex_t): string = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -236,7 +236,7 @@ pure fun string(re: regex_t): string = ccode
 //    Number of sub-matches. Full match isn't counted.
 //
 //    Equivalent of RE2::NumberOfCapturingGroups
-pure fun number_of_capturing_groups(re: regex_t): int = ccode
+@pure fun number_of_capturing_groups(re: regex_t): int = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -258,7 +258,7 @@ pure fun number_of_capturing_groups(re: regex_t): int = ccode
 //    Equivalent of RE2::NamedCapturingGroups
 fun named_capturing_groups(re: regex_t): (string, int) list
 {
-    pure fun named_capturing_groups_(re: regex_t): (string [], int []) = ccode
+    @pure fun named_capturing_groups_(re: regex_t): (string [], int []) = @ccode
     {
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -402,7 +402,7 @@ fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool
 //    full_match("Call the function without suffix. But it would be nice to get submatch.",Re2.compile(r".*suffix.")) = false
 //
 //    Equivalent of RE2::FullMatch
-pure fun full_match(text: string, re: regex_t) : bool = ccode
+@pure fun full_match(text: string, re: regex_t) : bool = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -426,7 +426,7 @@ pure fun full_match(text: string, re: regex_t) : bool = ccode
 //
 //    Equivalent of RE2::FullMatchN
 //                                                 (success, (sub_start, sub_end)[])
-pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
+@pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -466,7 +466,7 @@ fx_cleanup:
 //
 //    Equivalent of RE2::FullMatchN
 //                                                     (success, sub-matches [])
-pure fun full_match_n_str(text: string, re: regex_t) : (bool,         string [])
+@pure fun full_match_n_str(text: string, re: regex_t) : (bool,         string [])
 {
     val (success, starts_ends) = full_match_n(text, re)
     (success, incise(text, starts_ends))
@@ -478,7 +478,7 @@ pure fun full_match_n_str(text: string, re: regex_t) : (bool,         string [])
 //    partial_match("Call the function to get false.",Re2.compile(r"(without|with)")) = false
 //
 //    Equivalent of RE2::PartialMatch
-pure fun partial_match(text: string, re: regex_t) : bool = ccode
+@pure fun partial_match(text: string, re: regex_t) : bool = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -502,7 +502,7 @@ pure fun partial_match(text: string, re: regex_t) : bool = ccode
 //
 //    Equivalent of RE2::PartialMatchN
 //                                                    (success, (sub_start, sub_end)[])
-pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = ccode
+@pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -571,7 +571,7 @@ fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //
 //    Equivalent of RE2::ConsumeN
 //                                                         (success, newpos, (sub_start, sub_end)[])
-pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
+@pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -647,7 +647,7 @@ fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //
 //    Equivalent of RE2::FindAndConsumeN
 //                                                                  (success, newpos, (sub_start, sub_end)[])
-pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = ccode
+@pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -725,7 +725,7 @@ type anchor_t =
 //
 //    Equivalent of RE2::Match (It's impossible to use "match" keyword as name of function in ficus)
 //                                                                                             (success, (sub_start, sub_end)[])
-fun general_match(text: string, re: regex_t, startpos: int, endpos: int, re_anchor: anchor_t): (bool   , (int      , int    )[]) = ccode
+fun general_match(text: string, re: regex_t, startpos: int, endpos: int, re_anchor: anchor_t): (bool   , (int      , int    )[]) = @ccode
 {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
@@ -808,7 +808,7 @@ fun find_str(string_to_match: string, re: regex_t): (bool   , string     [])
     (success, incise(string_to_match, starts_ends))
 }
 
-ccode
+@ccode
 {
     struct fx_re2_findall_process
     {
@@ -842,7 +842,7 @@ ccode
 //                                                 (success, (sub_start, sub_end)[,])
 fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    )[,])
 {
-    pure fun findall_init(input: string, re: regex_t) : cptr = ccode
+    @pure fun findall_init(input: string, re: regex_t) : cptr = @ccode
     {
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
@@ -881,7 +881,7 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
     }
 
     val proc = findall_init(string_to_match, re)
-    pure fun find_step(proc: cptr, pos: int, re: regex_t) : (bool, int, (int, int)[]) = ccode
+    @pure fun find_step(proc: cptr, pos: int, re: regex_t) : (bool, int, (int, int)[]) = @ccode
     {
         int fx_status = FX_OK;
         using namespace re2;
@@ -1095,7 +1095,7 @@ fun consume(input: string, pos: int, re: string) : (bool   ,    int)
 }
 
 //                                                        (success, newpos, (sub_start, sub_end)[])
-pure fun consume_n(input: string, pos: int, re: string) : (bool   ,    int, (int      , int    )[])
+@pure fun consume_n(input: string, pos: int, re: string) : (bool   ,    int, (int      , int    )[])
 {
     consume_n(input, pos, compile(re))
 }
@@ -1113,7 +1113,7 @@ fun find_and_consume(input: string, pos: int, re: string) : (bool   ,    int)
 }
 
 //                                                                 (success, newpos, (sub_start, sub_end)[])
-pure fun find_and_consume_n(input: string, pos: int, re: string) : (bool   ,    int, (int      , int    )[])
+@pure fun find_and_consume_n(input: string, pos: int, re: string) : (bool   ,    int, (int      , int    )[])
 {
     find_and_consume_n(input, pos, compile(re))
 }

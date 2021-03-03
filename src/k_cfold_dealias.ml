@@ -373,11 +373,11 @@ let cfold_dealias kmods =
             (match res_al with
             | a :: [] when (get_atom_ktyp a loc) = KTypString -> KExpAtom(a, (res_t, loc))
             | _ -> KExpIntrin(IntrinStrConcat, (List.rev res_al), (res_t, loc)))
-        | KExpBinOp(bop, a, b, (res_t, loc)) ->
+        | KExpBinary(bop, a, b, (res_t, loc)) ->
             (match (cfold_bop bop a b res_t loc) with
             | Some(new_e) -> new_e
             | _ -> e)
-        | KExpUnOp(uop, a, (res_t, loc)) ->
+        | KExpUnary(uop, a, (res_t, loc)) ->
             (match (cfold_uop uop a res_t loc) with
             | Some(new_e) -> new_e
             | _ -> e)

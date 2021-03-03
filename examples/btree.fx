@@ -24,7 +24,7 @@ println(f"stretch tree of depth {stretch_depth}\t check: {c}")
 
 val long_lived_tree = make(max_depth)
 
-val report = [parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
+val report = [@parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
 {
     val d = min_depth + i * 2
     val niter = 1 << (max_depth - d + min_depth)

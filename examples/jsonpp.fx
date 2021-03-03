@@ -24,13 +24,10 @@ fun print_js(js: json_t, ofs: int, indent: string)
 {
     val W0 = 80, W1 = 100
     fun all_scalars(l: json_t list) =
-        fold f=true for x <- l {
-            match x {
-            | JsonScalar _ => {}
-            | _ => break with false
-            }
-            f
-        }
+        all(for x <- l {
+            | JsonScalar _ => true
+            | _ => false
+            })
     fun process_comments(j: json_t, indent: string) =
         match j {
         | JsonCommented(comm, nested_j) =>

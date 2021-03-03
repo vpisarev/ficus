@@ -4,7 +4,7 @@
 // ficus -run -O3 ../examples/cpp_tree.fx -c++
 pragma "c++"
 
-ccode //Imitation of very big included third-party library.
+@ccode //Imitation of very big included third-party library.
 {
     #ifndef __cplusplus
     #error "recompile this example with -c++ option passed to Ficus"
@@ -132,7 +132,7 @@ ccode //Imitation of very big included third-party library.
 // Ficus interface for declared C++ terms
 type eExpr_t = { handle: cptr }
 
-fun create_eExpr(varname: string): eExpr_t = ccode
+fun create_eExpr(varname: string): eExpr_t = @ccode
 {
     fx_cstr_t cvarname;
     int stat = fx_str2cstr(varname, &cvarname, 0, 0);
@@ -144,20 +144,20 @@ fun create_eExpr(varname: string): eExpr_t = ccode
     return stat;
 }
 
-fun create_eExpr(value: double): eExpr_t = ccode
+fun create_eExpr(value: double): eExpr_t = @ccode
 {
     Number* toWrap = new Number(value);
     return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
-fun to_string(expression: eExpr_t): string = ccode
+fun to_string(expression: eExpr_t): string = @ccode
 {
     Expression* cpp_expr = (Expression*)(expression->handle->ptr);
     std::string cstr = cpp_expr->printTree();
     return fx_cstr2str(cstr.c_str(), cstr.size(), fx_result);
 }
 
-operator +(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
+operator +(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = @ccode
 {
     Expression& cpp_expr1 = *((Expression*)(exp1->handle->ptr));
     Expression& cpp_expr2 = *((Expression*)(exp2->handle->ptr));
@@ -165,7 +165,7 @@ operator +(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
     return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
-operator -(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
+operator -(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = @ccode
 {
     Expression& cpp_expr1 = *((Expression*)(exp1->handle->ptr));
     Expression& cpp_expr2 = *((Expression*)(exp2->handle->ptr));
@@ -173,7 +173,7 @@ operator -(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
     return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
-operator *(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
+operator *(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = @ccode
 {
     Expression& cpp_expr1 = *((Expression*)(exp1->handle->ptr));
     Expression& cpp_expr2 = *((Expression*)(exp2->handle->ptr));
@@ -181,7 +181,7 @@ operator *(exp1: eExpr_t, exp2: eExpr_t): eExpr_t = ccode
     return fx_make_cptr(toWrap, expression_free, &fx_result->handle);
 }
 
-fun cpp_tree_example(): void = ccode
+fun cpp_tree_example(): void = @ccode
 {
     Variable x("x");
     Number five(5);

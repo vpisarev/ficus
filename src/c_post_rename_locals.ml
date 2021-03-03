@@ -62,7 +62,7 @@ let rename_locals_ cmod =
         | CStmtFor((Some t), decls, _, _, _, loc) ->
             List.iter (fun e ->
                 match e with
-                | CExpBinOp(COpAssign, CExpIdent(n, _), _, _) -> gen_cval_cname n loc
+                | CExpBinary(COpAssign, CExpIdent(n, _), _, _) -> gen_cval_cname n loc
                 | _ -> ()) decls;
             fold_cstmt s callb
         | CDefFun cf ->

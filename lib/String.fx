@@ -5,17 +5,17 @@
 
 // String operations
 
-ccode { #include <string.h> }
+@ccode { #include <string.h> }
 
-inline fun length(s: string) = Builtins.length(s)
-inline fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
-inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
-inline fun cmp(s1: string, s2: string) = s1 <=> s2
-pure fun copy(s: string): string = ccode { return fx_make_str(s->data, s->length, fx_result) }
+fun length(s: string) = Builtins.length(s)
+fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
+fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
+fun cmp(s1: string, s2: string) = s1 <=> s2
+@pure fun copy(s: string): string = @ccode { return fx_make_str(s->data, s->length, fx_result) }
 
-nothrow pure fun empty(s: string): bool = ccode { return s->length == 0 }
+@nothrow @pure fun empty(s: string): bool = @ccode { return s->length == 0 }
 
-pure nothrow fun startswith(s: string, prefix: string): bool = ccode
+@pure @nothrow fun startswith(s: string, prefix: string): bool = @ccode
 {
     int_ sz1 = s->length;
     int_ sz2 = prefix->length;
@@ -23,7 +23,7 @@ pure nothrow fun startswith(s: string, prefix: string): bool = ccode
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
 
-pure nothrow fun endswith(s: string, suffix: string): bool = ccode
+@pure @nothrow fun endswith(s: string, suffix: string): bool = @ccode
 {
     int_ sz1 = s->length;
     int_ sz2 = suffix->length;
@@ -31,7 +31,7 @@ pure nothrow fun endswith(s: string, suffix: string): bool = ccode
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
 
-pure nothrow fun find(s: string, part: string): int = ccode
+@pure @nothrow fun find(s: string, part: string): int = @ccode
 {
     int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
     if (sz2 == 0)
@@ -46,7 +46,7 @@ pure nothrow fun find(s: string, part: string): int = ccode
     return -1;
 }
 
-pure nothrow fun rfind(s: string, part: string): int = ccode
+@pure @nothrow fun rfind(s: string, part: string): int = @ccode
 {
     int_ sz1 = s->length, sz2 = part->length, pos = sz1 - sz2;
     if (sz2 == 0)
@@ -58,7 +58,7 @@ pure nothrow fun rfind(s: string, part: string): int = ccode
     return pos;
 }
 
-pure nothrow fun has(s: string, c: char): bool = ccode
+@pure @nothrow fun has(s: string, c: char): bool = @ccode
 {
     int_ i, sz = s->length;
     char_* data = s->data;
@@ -69,7 +69,7 @@ pure nothrow fun has(s: string, c: char): bool = ccode
     return false;
 }
 
-pure fun replace(s: string, substr: string, new_substr: string): string = ccode
+@pure fun replace(s: string, substr: string, new_substr: string): string = @ccode
 {
     int_ i, j = 0, sz = s->length, sz1 = substr->length, sz2 = new_substr->length;
     int_ newsz = 0;
@@ -104,7 +104,7 @@ pure fun replace(s: string, substr: string, new_substr: string): string = ccode
     return fx_status;
 }
 
-pure fun tolower(s: string): string = ccode
+@pure fun tolower(s: string): string = @ccode
 {
     int_ i, sz = s->length;
     const char_* src = s->data;
@@ -125,7 +125,7 @@ pure fun tolower(s: string): string = ccode
     return fx_status;
 }
 
-pure fun toupper(s: string): string = ccode
+@pure fun toupper(s: string): string = @ccode
 {
     int_ i, sz = s->length;
     const char_* src = s->data;
@@ -146,7 +146,7 @@ pure fun toupper(s: string): string = ccode
     return fx_status;
 }
 
-pure fun capitalize(s: string): string = ccode
+@pure fun capitalize(s: string): string = @ccode
 {
     int_ sz = s->length;
     const char_* src = s->data;
@@ -164,7 +164,7 @@ pure fun capitalize(s: string): string = ccode
     return fx_status;
 }
 
-pure fun decapitalize(s: string): string = ccode
+@pure fun decapitalize(s: string): string = @ccode
 {
     int_ sz = s->length;
     const char_* src = s->data;
@@ -182,7 +182,7 @@ pure fun decapitalize(s: string): string = ccode
     return fx_status;
 }
 
-pure fun lstrip(s: string): string = ccode
+@pure fun lstrip(s: string): string = @ccode
 {
     const char_* ptr = s->data;
     int_ i = 0, sz = s->length;
@@ -191,7 +191,7 @@ pure fun lstrip(s: string): string = ccode
     return fx_substr(s, i, sz, 1, 0, fx_result);
 }
 
-pure fun rstrip(s: string): string = ccode
+@pure fun rstrip(s: string): string = @ccode
 {
     const char_* ptr = s->data;
     int_ sz = s->length;
@@ -200,7 +200,7 @@ pure fun rstrip(s: string): string = ccode
     return fx_substr(s, 0, sz, 1, 0, fx_result);
 }
 
-pure fun strip(s: string): string = ccode
+@pure fun strip(s: string): string = @ccode
 {
     const char_* ptr = s->data;
     int_ i = 0, sz = s->length;
@@ -235,25 +235,25 @@ fun split(s: string, c: char)
     List.rev(if sep {sl} else {s[start:] :: sl})
 }
 
-nothrow fun to_int(a: string): int? = ccode
+@nothrow fun to_int(a: string): int? = @ccode
 {
     bool ok = fx_atoi(a, &fx_result->u.Some, 10);
     fx_result->tag = (int)ok
 }
-nothrow fun to_double(a: string): double? = ccode
+@nothrow fun to_double(a: string): double? = @ccode
 {
     bool ok = fx_atof(a, &fx_result->u.Some);
     fx_result->tag = (int)ok
 }
 
-nothrow fun to_int_or(a: string, defval: int): int = ccode
+@nothrow fun to_int_or(a: string, defval: int): int = @ccode
 {
     int_ result;
     bool ok = fx_atoi(a, &result, 10);
     return ok ? result : defval;
 }
 
-nothrow fun to_double_or(a: string, defval: double): int = ccode
+@nothrow fun to_double_or(a: string, defval: double): int = @ccode
 {
     double result;
     bool ok = fx_atof(a, &result);

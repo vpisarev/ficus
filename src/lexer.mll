@@ -31,6 +31,7 @@ let token2str t = match t with
     | CCODE -> "CCODE"
     | CLASS -> "CLASS"
     | CONTINUE -> "CONTINUE"
+    | DATA -> "DATA"
     | DO -> "DO"
     | ELLIPSIS -> "ELLIPSIS"
     | ELSE -> "ELSE"
@@ -50,24 +51,25 @@ let token2str t = match t with
     | INLINE -> "INLINE"
     | INTERFACE -> "INTERFACE"
     | MATCH -> "MATCH"
-    | NOTHROW -> "NOTHROW"
+    | NOTHROW -> "@NOTHROW"
     | OBJECT -> "OBJECT"
     | OPERATOR -> "OPERATOR"
-    | PARALLEL -> "PARALLEL"
+    | PARALLEL -> "@PARALLEL"
     | PRAGMA -> "PRAGMA"
-    | PURE -> "PURE"
+    | PURE -> "@PURE"
     | REF -> "MAKE_REF"
     | REF_TYPE -> "REF_TYPE"
-    | STATIC -> "STATIC"
+    | PRIVATE -> "@PRIVATE"
     | THROW -> "THROW"
     | TRY -> "TRY"
     | TYPE -> "TYPE"
     | VAL -> "VAL"
     | VAR -> "VAR"
     | WHEN -> "WHEN"
-    | WITH -> "WITH"
     | B_WHILE -> "B_WHILE"
     | WHILE -> "WHILE"
+    | WITH -> "WITH"
+    | UNZIP -> "@UNZIP"
     | B_LPAREN -> "B_LPAREN"
     | LPAREN -> "LPAREN"
     | STR_INTERP_LPAREN -> "STR_INTERP_LPAREN"
@@ -163,18 +165,18 @@ let fname = ref "unknown"
 let keywords = Hashtbl.create 101
 let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp))
     [
-        ("as", AS, 1); ("break", BREAK, 0); ("catch", CATCH, 1); ("ccode", CCODE, 2);
+        ("as", AS, 1); ("break", BREAK, 0); ("catch", CATCH, 1);
         ("class", CLASS, 2); ("continue", CONTINUE, 0); ("do", DO, 2);
         ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
         ("false", FALSE, 0); ("finally", FINALLY, 1); ("fold", FOLD, 2);
         ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2); ("if", IF, 2);
-        ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); ("inline", INLINE, 2);
-        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("nothrow", NOTHROW, 2);
-        ("object", OBJECT, 2); ("operator", OPERATOR, 0); ("parallel", PARALLEL, 2);
-        ("pragma", PRAGMA, 2); ("pure", PURE, 2); ("ref", REF, 3); ("static", STATIC, 2);
-        ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
-        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2);
-        ("with", WITH, 1); ("__fold_result__", FOLD_RESULT, -1)
+        ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); (* ("inline", INLINE, 2); *)
+        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("operator", OPERATOR, 0);
+        ("pragma", PRAGMA, 2); ("ref", REF, 3); ("throw", THROW, 2); ("true", TRUE, 0);
+        ("try", TRY, 2); ("type", TYPE, 2); ("val", VAL, 2); ("var", VAR, 2);
+        ("when", WHEN, 1); ("while", WHILE, 2); ("with", WITH, 1); ("__fold_result__", FOLD_RESULT, -1);
+        ("@ccode", CCODE, 2); ("@data", DATA, 2); ("@nothrow", NOTHROW, 2); ("@parallel", PARALLEL, 2);
+        ("@private", PRIVATE, 2); ("@pure", PURE, 2); ("@object", OBJECT, 2); ("@unzip", UNZIP, 2);
     ]
 
 let incr_lineno lexbuf =
@@ -453,12 +455,7 @@ rule tokens = parse
     | (['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as ident
         {
             try
-                let (tok, toktype) as tokdata = Hashtbl.find keywords ident in
-                match tokdata with
-                | (CCODE, _) ->
-                    check_ne(lexbuf);
-                    push_paren_stack CCODE lexbuf;
-                    new_exp := true; [CCODE]
+                match (Hashtbl.find keywords ident) with
                 | (FOR, _) ->
                     let t = if !new_exp then B_FOR else FOR in
                     new_exp := true; [t]
@@ -487,6 +484,22 @@ rule tokens = parse
                 with Not_found -> ());
                 let t = if !new_exp then [B_IDENT ident] else [IDENT ident] in (new_exp := false; t)
         }
+
+    | ('@' ['_' 'A'-'Z' 'a'-'z'] ['_' 'A'-'Z' 'a'-'z' '0'-'9']*) as attr
+        {
+            if !new_exp then
+                (try
+                    let (t, _) = Hashtbl.find keywords attr in
+                    (match t with
+                    | CCODE -> push_paren_stack CCODE lexbuf
+                    | _ -> ());
+                    new_exp := true; [t]
+                with Not_found ->
+                    raise (lexErr (sprintf "unknown attribute '%s'" attr) lexbuf))
+            else
+                [AT; B_IDENT(Utils.trim_left attr 1)]
+        }
+
     | '+'   { let t = if !new_exp then [B_PLUS] else [PLUS] in (new_exp := true; t) }
     | '-'
         {

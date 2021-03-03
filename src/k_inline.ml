@@ -123,7 +123,7 @@ let calc_exp_size e =
         | KExpNop _ | KExpAtom _ | KDefFun _ | KDefExn _
         | KDefVariant _ | KDefTyp _ | KDefClosureVars _ -> 0
         | KExpIntrin(IntrinStrConcat, args, _) -> (List.length args)
-        | KExpBinOp _ | KExpUnOp _ | KExpCast _
+        | KExpBinary _ | KExpUnary _ | KExpCast _
         | KExpIntrin _ | KExpBreak _ | KExpContinue _
         | KExpMem _ | KExpAssign _ | KDefVal _ -> 1
         | KExpSeq(elist, _) -> List.length elist

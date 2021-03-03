@@ -153,7 +153,7 @@ val a = [for i <- 0:n {i+1}]
 for i <- 1:n {a[i] += a[i-1]}
 println(f"triangular numbers: {a}")
 
-nothrow fun is_prime(n: int)
+@nothrow fun is_prime(n: int)
 {
     if n <= 1 {false} else if n % 2 == 0 {n == 2}
     else {

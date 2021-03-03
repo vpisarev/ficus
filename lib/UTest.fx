@@ -133,9 +133,12 @@ fun test_failed_expect_cmp(a: 't, b: 't, op: string)
     g_test_state.currstatus = false
 }
 
-fun test_failed_expect_near(a: 't, b: 't, eps: 't)
+fun test_failed_expect_near(a: 't, b: 't, idx:'idx?, eps: 't)
 {
-    print("Actual: ")
+    match idx {
+    | Some(idx) => print(f"Actual at {idx}: ")
+    | _ => print("Actual: ")
+    }
     println(a)
     print(f"Expected: ")
     print(b)
@@ -151,12 +154,12 @@ fun EXPECT_GT(a: 't, b: 't) = if a > b {} else {test_failed_expect_cmp(a, b, ">"
 fun EXPECT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_expect_cmp(a, b, ">=")}
 
 fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
-    if b - eps <= a <= b + eps {} else {test_failed_expect_near(a, b, eps)}
+    if b - eps <= a <= b + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
 
 fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
     ignore(fold r = true for ai@idx <- a, bi <- b {
         if !(bi - eps <= ai <= bi + eps) {
-            test_failed_expect_near(ai, bi, eps)
+            test_failed_expect_near(ai, bi, Some(idx), eps)
             break with false
         }
         r
@@ -165,7 +168,7 @@ fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
 fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
     ignore(fold r = true for ai@idx <- a, bi <- b {
         if !(bi - eps <= ai <= bi + eps) {
-            test_failed_expect_near(ai, bi, eps)
+            test_failed_expect_near(ai, bi, Some(idx), eps)
             break with false
         }
         r

@@ -178,13 +178,13 @@ and pprint_cexp_ e pr =
         | KLitChar c -> "FX_CHAR('" ^ (Utils.escaped_uni c) ^ "')"
         | _ -> K_form.klit2str l true loc in
         pstr s
-    | CExpBinOp (COpArrayElem as bop, a, b, _) ->
+    | CExpBinary (COpArrayElem as bop, a, b, _) ->
         let (_, pr0, _) = binop2str_ bop in
         obox(); pprint_cexp_ a pr0; pstr "["; pcut();
         pprint_cexp_ b 0; pcut(); pstr "]"; cbox()
-    | CExpBinOp (COpMacroConcat, a, b, _) ->
+    | CExpBinary (COpMacroConcat, a, b, _) ->
         pprint_cexp_ a 0; pstr "##"; pprint_cexp_ b 0
-    | CExpBinOp (bop, a, b, _) ->
+    | CExpBinary (bop, a, b, _) ->
         let (bop_str, pr0, assoc) = binop2str_ bop in
         obox(); if pr0 < pr then (pstr "("; pcut()) else ();
         let is_shift = bop = COpShiftLeft || bop = COpShiftRight in
@@ -194,7 +194,7 @@ and pprint_cexp_ e pr =
         pspace(); pstr bop_str; pspace();
         pprint_cexp_ b b_pr;
         if pr0 < pr then (pcut(); pstr ")") else (); cbox()
-    | CExpUnOp (uop, e, _) ->
+    | CExpUnary (uop, e, _) ->
         let (uop_str, pr0, _) = unop2str_ uop in
         obox(); if pr0 < pr then (pstr "("; pcut()) else ();
         (match uop with

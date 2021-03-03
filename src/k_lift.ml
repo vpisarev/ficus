@@ -548,7 +548,7 @@ let lift_all kmods =
                                     val_flag_global=[]} in
                                 let prologue = create_kdefval fv_ref ref_typ ref_flags
                                     (Some get_fv) prologue kf_loc in
-                                (KExpUnOp(OpDeref, (AtomId fv_ref), (t, kf_loc)), prologue, fv_ref)
+                                (KExpUnary(OpDeref, (AtomId fv_ref), (t, kf_loc)), prologue, fv_ref)
                             in
                         let _ = curr_subst_env := Env.add fv_orig (fv_proxy, fv_proxy_mkclo_arg, None) !curr_subst_env in
                         let new_kv_flags = {kv_flags with val_flag_tempref=true} in
@@ -600,8 +600,8 @@ let lift_all kmods =
                         (sprintf "k-lift: not found subst info about mutable free var '%s'" (id2str n))
                     in
                 let (a, code) = kexp2atom ((pp_id2str n) ^ "_arg") rhs false [] in
-                let code = KDefVal(nr, KExpUnOp(OpMkRef, a, (ref_typ, loc)), loc) :: code in
-                let code = KDefVal(n, KExpUnOp(OpDeref, (AtomId nr), (t, loc)), loc) :: code in
+                let code = KDefVal(nr, KExpUnary(OpMkRef, a, (ref_typ, loc)), loc) :: code in
+                let code = KDefVal(n, KExpUnary(OpDeref, (AtomId nr), (t, loc)), loc) :: code in
                 KExpSeq((List.rev code), (KTypVoid, loc))
         | KExpFor(idom_l, at_ids, body, flags, loc) ->
             let idom_l = List.map (fun (i, dom_i) ->

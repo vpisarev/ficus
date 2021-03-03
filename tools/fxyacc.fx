@@ -201,12 +201,11 @@ fun ginit()
         changed = false
         for r <- g_yacc.rs {
             val Sym(lhs) = r.lhs
-            val fold have_nonul = false for s <- r.rhs {
+            val have_nonul = any(for s <- r.rhs {
                 val Sym(s_idx) = s
-                if s_idx == 0 { break with have_nonul }
-                if !g_yacc.is[s_idx].nul { break with true }
-                have_nonul
-            }
+                //if s_idx == 0 { break with false }
+                !g_yacc.is[s_idx].nul
+            })
             if !have_nonul {
                 changed |= !g_yacc.is[lhs].nul
                 g_yacc.is[lhs].nul = true

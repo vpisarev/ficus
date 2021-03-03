@@ -899,7 +899,7 @@ and check_exp e env sc =
            is safe and does not loose precision, e.g. int8 to int, float to double etc. *)
         let rec is_lvalue need_mutable_id e = (match e with
             | ExpAt (arr, BorderNone, InterpNone, _, _) -> is_lvalue false arr (* an_arr[idx] = e2 *)
-            | ExpUnOp(OpDeref, r, _) -> is_lvalue false r (* *a_ref = e2 *)
+            | ExpUnary(OpDeref, r, _) -> is_lvalue false r (* *a_ref = e2 *)
             | ExpIdent(n1, _) -> (* a_var = e2 *)
                 (not need_mutable_id) ||
                 (match (id_info n1) with
@@ -912,7 +912,7 @@ and check_exp e env sc =
         else ();
         ExpAssign(new_e1, new_e2, eloc)
 
-    | ExpBinOp(OpCons, e1, e2, _) ->
+    | ExpBinary(OpCons, e1, e2, _) ->
         let new_e1 = check_exp e1 env sc in
         let new_e2 = check_exp e2 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
@@ -922,13 +922,13 @@ and check_exp e env sc =
            (maybe_unify etyp2 (TypList (make_new_typ())) false) then
             let _ = unify etyp (TypList etyp1) eloc1 "'::' operation should produce a list" in
             let _ = unify etyp2 (TypList etyp1) eloc2 "incorrect type of the second argument of '::' operation" in
-            ExpBinOp(OpCons, new_e1, new_e2, ctx)
+            ExpBinary(OpCons, new_e1, new_e2, ctx)
         else
             let _ = unify etyp1 TypInt eloc1 "explicitly specified component of a range must be an integer" in
             let _ = unify etyp2 TypInt eloc2 "explicitly specified component of a range must be an integer" in
             let _ = unify etyp (TypTuple [TypInt;TypInt;TypInt]) eloc "the range type should have (int, int, int) type" in
             ExpRange((Some new_e1), None, (Some new_e2), ctx)
-    | ExpBinOp(bop, e1, e2, _) ->
+    | ExpBinary(bop, e1, e2, _) ->
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
         let new_e2 = check_exp e2 env sc in
@@ -989,21 +989,21 @@ and check_exp e env sc =
         (match (typ_opt, bop, (deref_typ etyp1), (deref_typ etyp2), e1, e2) with
         | ((Some typ), _, _, _, _, _) ->
             unify typ etyp eloc "improper type of the arithmetic operation result";
-            ExpBinOp(bop, new_e1, new_e2, ctx)
+            ExpBinary(bop, new_e1, new_e2, ctx)
         | (_, OpAdd, TypString, TypString, _, _)
         | (_, OpAdd, TypString, TypChar, _, _)
         | (_, OpAdd, TypChar, TypString, _, _)
         | (_, OpAdd, TypChar, TypChar, _, _) ->
             unify TypString etyp eloc "improper type of the string concatenation operation (string is expected)";
-            ExpBinOp(bop, new_e1, new_e2, ctx)
-        | (_, OpAdd, TypList _, TypList _, ExpBinOp(OpAdd, sub_e1, sub_e2, _), _) ->
+            ExpBinary(bop, new_e1, new_e2, ctx)
+        | (_, OpAdd, TypList _, TypList _, ExpBinary(OpAdd, sub_e1, sub_e2, _), _) ->
             (* make list concatenation right-associative instead of left-associative *)
             let sub_e2_loc = get_exp_loc sub_e2 in
             let e2_loc = loclist2loc [sub_e2_loc; eloc2] eloc2 in
             (* [TODO: not that relevant anymore]
             fix bug with repetitive check of the same expression (since the check has some side effects) *)
-            let e2_ = ExpBinOp(OpAdd, sub_e2, e2, (make_new_typ(), e2_loc)) in
-            check_exp (ExpBinOp (OpAdd, sub_e1, e2_, (etyp, eloc))) env sc
+            let e2_ = ExpBinary(OpAdd, sub_e2, e2, (make_new_typ(), e2_loc)) in
+            check_exp (ExpBinary (OpAdd, sub_e1, e2_, (etyp, eloc))) env sc
         | _ ->
             (* try to find an overloaded function that will handle such operation with combination of types, e.g.
                operator + (p: point, q: point) = point { p.x + q.x, p.y + q.y } *)
@@ -1016,19 +1016,19 @@ and check_exp e env sc =
         let new_e1 = check_exp e1 env sc in
         ExpThrow(new_e1, eloc)
 
-    | ExpUnOp(OpMkRef, e1, _) ->
+    | ExpUnary(OpMkRef, e1, _) ->
         let (etyp1, eloc1) = get_exp_ctx e1 in
         let _ = unify etyp (TypRef etyp1) eloc "the types of ref() operation argument and result are inconsistent" in
         let new_e1 = check_exp e1 env sc in
-        ExpUnOp(OpMkRef, new_e1, ctx)
+        ExpUnary(OpMkRef, new_e1, ctx)
 
-    | ExpUnOp(OpDeref, e1, _) ->
+    | ExpUnary(OpDeref, e1, _) ->
         let (etyp1, eloc1) = get_exp_ctx e1 in
         let _ = unify (TypRef etyp) etyp1 eloc "the types of unary '*' operation argument and result are inconsistent" in
         let new_e1 = check_exp e1 env sc in
-        ExpUnOp(OpDeref, new_e1, ctx)
+        ExpUnary(OpDeref, new_e1, ctx)
 
-    | ExpUnOp(uop, e1, _) ->
+    | ExpUnary(uop, e1, _) ->
         let new_e1 = check_exp e1 env sc in
         let (etyp1, eloc1) = get_exp_ctx new_e1 in
         (match uop with
@@ -1038,7 +1038,7 @@ and check_exp e env sc =
             (match t_opt with
             | Some(t) ->
                 unify etyp t eloc "improper type of the unary '-' operator result";
-                ExpUnOp(uop, new_e1, ctx)
+                ExpUnary(uop, new_e1, ctx)
             | None ->
                 let f_id = get_unop_fname uop eloc in
                 check_and_make_call f_id [new_e1])
@@ -1054,14 +1054,14 @@ and check_exp e env sc =
                 | _ -> invalid_arg "" in
             try
                 unify etyp (check_bitwise etyp1) eloc "invalid type of bitwise-not result";
-                ExpUnOp(uop, new_e1, ctx)
+                ExpUnary(uop, new_e1, ctx)
             with Invalid_argument _ ->
                 let f_id = get_unop_fname uop eloc in
                 check_and_make_call f_id [new_e1])
         | OpLogicNot ->
             unify etyp1 TypBool eloc1 "the argument of ! operator must be a boolean";
             unify etyp TypBool eloc "the result of ! operator must be a boolean";
-            ExpUnOp(uop, new_e1, ctx)
+            ExpUnary(uop, new_e1, ctx)
         | OpApos ->
             let f_id = get_unop_fname uop eloc in
             check_and_make_call f_id [new_e1]
@@ -1277,7 +1277,7 @@ and check_exp e env sc =
                 else if make_list then
                     let ltyp = TypList(elem_typ) in
                     List.fold_left (fun l_exp ej ->
-                        ExpBinOp(OpCons, ej, l_exp, (ltyp, eloc))) (ExpLit(LitNil, (ltyp, eloc))) (List.rev elems)
+                        ExpBinary(OpCons, ej, l_exp, (ltyp, eloc))) (ExpLit(LitNil, (ltyp, eloc))) (List.rev elems)
                 else
                     ExpMkArray(elems :: [], (TypArray (1, elem_typ), eloc))
                 in
@@ -1304,7 +1304,7 @@ and check_exp e env sc =
         let (_, _, arows, have_expanded, dims) = List.fold_left (fun (k, ncols, arows, have_expanded, dims) arow ->
             let (have_expanded_i, row_dims, arow) = List.fold_left (fun (have_expanded_i, row_dims, arow) elem ->
                 let (is_expanded, elem_dims, elem1, elem_loc) = match elem with
-                    | ExpUnOp(OpExpand, e1, (t, loc)) ->
+                    | ExpUnary(OpExpand, e1, (t, loc)) ->
                         let e1 = check_exp e1 env sc in
                         let (arrtyp1, eloc1) = get_exp_ctx e1 in
                         let _ = unify t arrtyp1 loc "incorrect type of expanded collection" in
@@ -1317,7 +1317,7 @@ and check_exp e env sc =
                         let _ = if d <= 2 then () else raise_compile_err loc
                             "currently expansion of more than 2-dimensional arrays is not supported" in
                         let _ = unify elemtyp elemtyp1 eloc1 (sprintf "the expanded %s elem type does not match the previous elements" colname) in
-                        (true, d, ExpUnOp(OpExpand, e1, (arrtyp1, loc)), loc)
+                        (true, d, ExpUnary(OpExpand, e1, (arrtyp1, loc)), loc)
                     | _ ->
                         let (elemtyp1, eloc1) = get_exp_ctx elem in
                         let _ = unify elemtyp elemtyp1 eloc1 "all the array literal elements should have the same type" in
@@ -1984,12 +1984,12 @@ and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc
                     let (_, al, bl, cmp_code) = List.fold_left (fun (idx, al, bl, cmp_code) (rn, _, _) ->
                         let ai = get_id (astr ^ (string_of_int idx)) in
                         let bi = get_id (bstr ^ (string_of_int idx)) in
-                        let cmp_ab = ExpBinOp(OpCmp(CmpEQ),
+                        let cmp_ab = ExpBinary(OpCmp(CmpEQ),
                             ExpIdent(ai, (make_new_typ(), body_loc)),
                             ExpIdent(bi, (make_new_typ(), body_loc)),
                             (TypBool, body_loc)) in
                         let cmp_code = if idx = 1 then cmp_ab else
-                            ExpBinOp(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc))
+                            ExpBinary(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc))
                             in
                         (idx+1, (rn, PatIdent(ai, body_loc)) :: al, (rn, PatIdent(bi, body_loc)) :: bl, cmp_code))
                         (1, [], [], ExpNop(body_loc)) relems
@@ -2003,12 +2003,12 @@ and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc
                     let (_, al, bl, cmp_code) = List.fold_left (fun (idx, al, bl, cmp_code) _ ->
                         let ai = get_id (astr ^ (string_of_int idx)) in
                         let bi = get_id (bstr ^ (string_of_int idx)) in
-                        let cmp_ab = ExpBinOp(OpCmp(CmpEQ),
+                        let cmp_ab = ExpBinary(OpCmp(CmpEQ),
                             ExpIdent(ai, (make_new_typ(), body_loc)),
                             ExpIdent(bi, (make_new_typ(), body_loc)),
                             (TypBool, body_loc)) in
                         let cmp_code = if idx = 1 then cmp_ab else
-                            ExpBinOp(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc))
+                            ExpBinary(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc))
                             in
                         (idx+1, PatIdent(ai, body_loc) :: al, PatIdent(bi, body_loc) :: bl, cmp_code))
                         (1, [], [], ExpNop(body_loc)) args
@@ -2023,7 +2023,7 @@ and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc
             let tag = ExpIdent((get_id "__tag__"), (TypString, body_loc)) in
             let a_tag = ExpMem(a, tag, (TypInt, body_loc)) in
             let b_tag = ExpMem(b, tag, (TypInt, body_loc)) in
-            let cmp_tags = ExpBinOp(OpCmp(CmpEQ), a_tag, b_tag, (TypBool, body_loc)) in
+            let cmp_tags = ExpBinary(OpCmp(CmpEQ), a_tag, b_tag, (TypBool, body_loc)) in
             let inst_body = match complex_cases with
                 | [] -> cmp_tags
                 | _ ->

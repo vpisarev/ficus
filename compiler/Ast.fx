@@ -856,7 +856,7 @@ fun is_typ_numeric(t: typ_t, allow_vec_tuples: bool) =
     | TypTuple(t0 :: trest) =>
         if allow_vec_tuples && is_typ_numeric(t0, true) {
             val t0 = deref_typ(t0)
-            fold all=true for t <- trest {if deref_typ(t) != t0 {break with false}; true}
+            all(for t <- trest {deref_typ(t) == t0})
         } else { false }
     | _ => false
     }

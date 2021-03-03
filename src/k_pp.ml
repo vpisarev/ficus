@@ -200,7 +200,7 @@ and pprint_kexp_ e prtyp =
         | KExpBreak(_) -> pstr "BREAK"
         | KExpContinue(_) -> pstr "CONTINUE"
         | KExpAtom(a, _) -> pprint_atom_ a
-        | KExpBinOp(o, a, b, _) ->
+        | KExpBinary(o, a, b, _) ->
             let ostr = binop_to_string o in
             pprint_atom_ a; pspace(); pstr ostr; pspace(); pprint_atom_ b
         | KExpAssign(n, a, _) -> pprint_id_ n; pspace(); pstr "="; pspace(); pprint_atom_ a
@@ -210,11 +210,11 @@ and pprint_kexp_ e prtyp =
             | KTypRecord(rn, relems) ->
                 let (ni, _) = List.nth relems i in pstr (pp_id2str ni)
             | _ -> pstr (string_of_int i))
-        | KExpUnOp(OpDeref, (AtomId n), (_, loc)) ->
+        | KExpUnary(OpDeref, (AtomId n), (_, loc)) ->
             pstr "*"; pprint_id n loc
-        | KExpUnOp(OpMkRef, a, _) ->
+        | KExpUnary(OpMkRef, a, _) ->
             pstr "MAKE_REF "; pprint_atom_ a
-        | KExpUnOp(o, a, _) ->
+        | KExpUnary(o, a, _) ->
             let ostr = unop_to_string o in
             pstr ostr; pprint_atom_ a
         | KExpIntrin(iop, args, _) ->

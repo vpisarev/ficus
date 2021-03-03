@@ -145,7 +145,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
 
     fun maybe_unify_(tl1: typ_t list, tl2: typ_t list) =
         tl1.length() == tl2.length() &&
-        (fold ok=true for t1 <- tl1, t2 <- tl2 { if !maybe_unify_(t1, t2) {break with false}; ok })
+        all(for t1 <- tl1, t2 <- tl2 {maybe_unify_(t1, t2)})
 
     fun maybe_unify_(t1: typ_t, t2: typ_t): bool =
         match (t1, t2) {
@@ -175,7 +175,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | (TypVar (ref Some(TypVarTuple(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1)
         | (TypVar (ref Some(TypVarTuple(_))), TypTuple(_)) => maybe_unify_(t2, t1)
         | (TypTuple(tl1), TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
-            if (fold ok=false for t <- tl1 {if occurs(r2, t) {break with true}; ok}) { false }
+            if any(for t <- tl1 {occurs(r2, t)}) { false }
             else {
                 val ok = match t2_opt {
                     | Some(t2_) => tl1.all(fun (t: typ_t) {maybe_unify_(t2_, t)})

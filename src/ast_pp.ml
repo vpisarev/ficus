@@ -232,12 +232,12 @@ let rec pprint_exp e =
             pstr ")"
         | ExpLit(x, (_, loc)) -> pprint_lit x loc
         | ExpIdent(n, _) -> pprint_id n
-        | ExpBinOp(o, e1, e2, _) ->
+        | ExpBinary(o, e1, e2, _) ->
             let ostr = binop_to_string o in
             pstr "("; pprint_exp e1; pspace(); pstr ostr; pspace(); pprint_exp e2; pstr ")"
         | ExpAssign(e1, e2, _) -> pprint_exp e1; pspace(); pstr "="; pspace(); pprint_exp e2
         | ExpMem(e1, e2, _) -> pprint_exp e1; pstr "."; pprint_exp e2
-        | ExpUnOp(o, e1, _) ->
+        | ExpUnary(o, e1, _) ->
             let ostr = unop_to_string o in
             pstr "("; pstr ostr; pspace(); pprint_exp e1; pstr ")"
         | ExpThrow(e1, _) -> pstr "THROW ("; pprint_exp e1; pstr ")"

@@ -343,8 +343,8 @@ let process_all fname0 =
             let minfo = get_module m in
             (!minfo.dm_idx, m, !minfo.dm_deps) :: gr) all_modules [] in
         let _ = sorted_modules := toposort graph in
-        (*let _ = if options.print_ast then
-            (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in*)
+        let _ = if options.print_ast0 then
+            (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
         let _ = pr_verbose (sprintf "Parsing complete. Modules used: %s"
             (String.concat ", " (List.map id2str !sorted_modules))) in
         let ok = typecheck_all !sorted_modules in
@@ -354,7 +354,7 @@ let process_all fname0 =
         let (kmods, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
         let _ = pr_verbose "K-normalization complete" in
         let _ = pr_verbose "K-form optimization started" in
-        (*let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in*)
+        let _ = if ok && options.print_k0 then (K_pp.pprint_kmods kmods) else () in
         let (kmods, ok) = if ok then k_optimize_all kmods else ([], false) in
         let _ = pr_verbose "K-form optimization complete" in
         let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in

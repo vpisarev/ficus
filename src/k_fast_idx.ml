@@ -125,7 +125,7 @@ let optimize_idx_checks topcode =
                and so we cannot optimize the range check
                (unless i is defined outside of the loop, but we
                catch such cases separately) *)
-            | KDefVal(i, ((KExpBinOp(bop, a, b, (t, _))) as rhs), loc)
+            | KDefVal(i, ((KExpBinary(bop, a, b, (t, _))) as rhs), loc)
                 when t = KTypInt &&
                     (bop = OpAdd || bop = OpSub || bop = OpMul) &&
                     not (is_mutable i loc)
@@ -173,16 +173,16 @@ let optimize_idx_checks topcode =
                 KExpAtom(AtomLit (KLitInt (Int64.add ia ib)), ctx)
             | (AtomLit (KLitInt 0L), b) -> KExpAtom(b, ctx)
             | (a, AtomLit (KLitInt 0L)) -> KExpAtom(a, ctx)
-            | _ -> KExpBinOp(OpAdd, a, b, ctx)
+            | _ -> KExpBinary(OpAdd, a, b, ctx)
             in
         let optimized_sub a b loc =
             let ctx = (KTypInt, loc) in
             match (a, b) with
             | (AtomLit (KLitInt ia), AtomLit (KLitInt ib)) ->
                 KExpAtom(AtomLit (KLitInt (Int64.sub ia ib)), ctx)
-            | (AtomLit (KLitInt 0L), b) -> KExpUnOp(OpNegate, b, ctx)
+            | (AtomLit (KLitInt 0L), b) -> KExpUnary(OpNegate, b, ctx)
             | (a, AtomLit (KLitInt 0L)) -> KExpAtom(a, ctx)
-            | _ -> KExpBinOp(OpSub, a, b, ctx)
+            | _ -> KExpBinary(OpSub, a, b, ctx)
             in
         let optimized_mul a b loc =
             let ctx = (KTypInt, loc) in
@@ -191,7 +191,7 @@ let optimize_idx_checks topcode =
                 KExpAtom(AtomLit (KLitInt (Int64.mul ia ib)), ctx)
             | (AtomLit (KLitInt 1L), b) -> KExpAtom(b, ctx)
             | (a, AtomLit (KLitInt 1L)) -> KExpAtom(a, ctx)
-            | _ -> KExpBinOp(OpMul, a, b, ctx)
+            | _ -> KExpBinary(OpMul, a, b, ctx)
             in
         let rec classify_idx a loc =
             match a with
@@ -206,7 +206,7 @@ let optimize_idx_checks topcode =
                    array_idx is loop invariant. When we do it, we may need to introduce some temporary values
                    and redefine array_idx *)
                 else (match (Env.find_opt i !affine_defs) with
-                    | Some((KExpBinOp(bop, a_, b_, (t, loc)) as idx_exp0, _, IdxUnknown)) ->
+                    | Some((KExpBinary(bop, a_, b_, (t, loc)) as idx_exp0, _, IdxUnknown)) ->
                         let a_class = classify_idx a_ loc in
                         let b_class = classify_idx b_ loc in
                         let (c_idx, c_scale_exp, c_shift_exp) = match (bop, a_class, b_class) with
@@ -246,7 +246,7 @@ let optimize_idx_checks topcode =
                                     in
                                 let idx_class = IdxSimple(c_idx, c_scale, c_shift) in
                                 (match (idx_scaled_exp, idx_code) with
-                                | (KExpBinOp(bop1, a1, b1, _), []) when
+                                | (KExpBinary(bop1, a1, b1, _), []) when
                                     bop = bop1 && ((a1 = a_ && b1 = b_) ||
                                         ((bop = OpAdd || bop = OpMul) && a1 = b_ && b1 = a_))
                                     -> (idx_exp0, false, idx_class)

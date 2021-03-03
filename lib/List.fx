@@ -40,16 +40,16 @@ fun map(l: 't list, f: 't -> 'rt): 'rt list =
     [: for x <- l {f(x)} :]
 
 fun all(l: 't list, f: 't -> bool): bool =
-    fold r=true for a <- l {if !f(a) { break with false}; r}
+    all(for a <- l {f(a)})
 
 fun all2(la: 'a list, lb: 'b list, f: ('a, 'b) -> bool): bool =
-    fold r=true for a <- la, b <- lb {if !f(a, b) {break with false}; r}
+    all(for a <- la, b <- lb {f(a, b)})
 
 fun exists(l: 't list, f: 't -> bool): bool =
-    fold r=false for a <- l {if f(a) {break with true}; r}
+    any(for a <- l {f(a)})
 
 fun mem(l: 't list, a: 't): bool =
-    fold r=false for b <- l {if a == b {break with true}; r}
+    any(for b <- l {a == b})
 
 fun find_opt(l: 't list, f: 't -> bool): 't? =
     fold r=None for a <- l {if f(a) {break with Some(a)}; r}
@@ -64,7 +64,7 @@ fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
     [: for x <- la, y <- lb {(x, y)} :]
 
 fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
-    unzip([: for x <- lab {x} :])
+    [: @unzip for x <- lab {x} :]
 
 fun sort(l: 't list, lt: ('t, 't)->bool) =
     match l

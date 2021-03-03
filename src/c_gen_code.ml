@@ -383,7 +383,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 (e0, ctyp)
             else
                 let ctyp_ptr = make_ptr ctyp in
-                let deref_i_exp = CExpUnOp(COpDeref, (make_id_t_exp i ctyp_ptr loc), (ctyp, loc)) in
+                let deref_i_exp = CExpUnary(COpDeref, (make_id_t_exp i ctyp_ptr loc), (ctyp, loc)) in
                 let _ = i2e := Env.add i deref_i_exp !i2e in
                 ((cexp_get_addr e0), ctyp_ptr)
             in
@@ -458,7 +458,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         | Some(e) ->
             (match (save, e) with
             | (false, _) | (_, CExpIdent _) | (_, CExpLit _)
-            | (_, CExpUnOp(COpDeref, (CExpIdent _), _))
+            | (_, CExpUnary(COpDeref, (CExpIdent _), _))
                 -> (e, ccode)
             | _ ->
                 let (ctyp, eloc) = get_cexp_ctx e in
@@ -645,7 +645,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         match check_list with
         | e0 :: rest ->
             let check_exp = List.fold_left (fun e check_i ->
-                CExpBinOp(COpLogicAnd, e, check_i, (CTypBool, loc))) e0 rest in
+                CExpBinary(COpLogicAnd, e, check_i, (CTypBool, loc))) e0 rest in
             let check_call = make_call !std_FX_CHECK_EQ_SIZE [check_exp; lbl] CTypVoid loc in
             (CExp check_call) :: ccode
         | _ -> ccode
@@ -803,7 +803,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let (a_exp, init_ccode) = atom2cexp_ a false init_ccode for_loc in
                             let (i_exp, init_ccode) = create_cdefval iter_val_i CTypInt
                                 (default_val_flags()) "" (Some a_exp) init_ccode for_loc in
-                            let incr_i_exp = CExpBinOp(aug_add_delta, i_exp, d_exp, (CTypVoid, for_loc)) in
+                            let incr_i_exp = CExpBinary(aug_add_delta, i_exp, d_exp, (CTypVoid, for_loc)) in
                             ([], i_exps, n_exps, for_checks, incr_i_exp :: incr_exps, init_checks,
                             init_ccode, pre_body_ccode, body_elems, post_checks)
                         | _ ->
@@ -828,7 +828,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let (add_elem, i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
                                 | (prev_i :: _, prev_n :: _) ->
                                     (true, prev_i, i_exps, n_exps,
-                                    (CExpBinOp(COpCompareEQ, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
+                                    (CExpBinary(COpCompareEQ, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
                                     init_ccode)
                                 | _ ->
                                     let (add_pair, i_id) = match (a, delta) with
@@ -848,8 +848,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                     (add_pair, i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
                                 in
                             let body_elems = if not add_elem then body_elems else
-                                let calc_i_exp = CExpBinOp(add_delta, a_exp,
-                                    CExpBinOp(COpMul, i_exp, d_exp, (CTypInt, for_loc)), (CTypInt, for_loc)) in
+                                let calc_i_exp = CExpBinary(add_delta, a_exp,
+                                    CExpBinary(COpMul, i_exp, d_exp, (CTypInt, for_loc)), (CTypInt, for_loc)) in
                                 (iter_val_i, calc_i_exp, (default_var_flags())) :: body_elems
                                 in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks,
@@ -883,7 +883,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             *)
                             let (l_exp, init_ccode) = create_cdefval (gen_temp_idc "lst") ctyp
                                 (default_var_flags()) "" (Some col_exp) init_ccode for_loc in
-                            let not_l_exp = CExpUnOp(COpLogicNot, l_exp, (CTypBool, end_for_loc)) in
+                            let not_l_exp = CExpUnary(COpLogicNot, l_exp, (CTypBool, end_for_loc)) in
                             let l_next_exp = make_assign l_exp (cexp_arrow l_exp (get_id "tl") ctyp) in
                             let c_et = C_gen_types.ktyp2ctyp et for_loc in
                             let get_hd_exp = cexp_arrow l_exp (get_id "hd") c_et in
@@ -905,7 +905,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let (i_exp, i_exps, n_exps, init_checks, init_ccode) = match (i_exps, n_exps) with
                                 | (prev_i :: _, prev_n :: _) ->
                                     (prev_i, i_exps, n_exps,
-                                    (CExpBinOp(COpCompareEQ, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
+                                    (CExpBinary(COpCompareEQ, prev_n, calc_n_exp, (CTypBool, for_loc))) :: init_checks,
                                     init_ccode)
                                 | _ ->
                                     let (n_exp, init_ccode) = add_local (gen_temp_idc "len") CTypInt
@@ -916,7 +916,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                     (i_exp, i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
                                 in
                             let get_chars = cexp_mem col_exp (get_id "data") (make_const_ptr CTypUniChar) in
-                            let get_char_i = CExpBinOp(COpArrayElem, get_chars, i_exp, (CTypUniChar, for_loc)) in
+                            let get_char_i = CExpBinary(COpArrayElem, get_chars, i_exp, (CTypUniChar, for_loc)) in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
                             pre_body_ccode, ((iter_val_i, get_char_i, (default_var_flags())) :: body_elems), post_checks)
                         | KTypArray(ndims, et) ->
@@ -949,7 +949,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 else
                                     let (_, init_checks) = List.fold_left (fun (k, init_checks) prev_nk ->
                                         let calc_n_exp = make_call !std_FX_ARR_SIZE [col_exp; (make_int_exp k for_loc)] CTypInt for_loc in
-                                        let init_check_k = CExpBinOp(COpCompareEQ, prev_nk, calc_n_exp, (CTypBool, for_loc)) in
+                                        let init_check_k = CExpBinary(COpCompareEQ, prev_nk, calc_n_exp, (CTypBool, for_loc)) in
                                         (k+1, init_check_k :: init_checks)) (0, init_checks) n_exps
                                     in (i_exps, n_exps, init_checks, init_ccode)
                                 in
@@ -963,7 +963,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let ptr_id = gen_temp_idc ("ptr_" ^ (pp_id2str col_)) in
                             let (ptr_exp, pre_body_ccode) = create_cdefval ptr_id c_et_ptr (default_val_flags())
                                 "" (Some get_arr_slice) pre_body_ccode for_loc in
-                            let get_arr_elem = CExpBinOp(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc)) in
+                            let get_arr_elem = CExpBinary(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc)) in
                             ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode,
                             pre_body_ccode, ((iter_val_i, get_arr_elem, default_tempvaR_flags()) :: body_elems), post_checks)
                         | _ -> raise_compile_err for_loc (for_err_msg for_idx nfors k
@@ -983,7 +983,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         (* add "post" checks, if needed *)
         let post_checks = List.rev post_checks in
         let post_checks = if post_checks <> [] && i_exps <> [] then
-                (CExpBinOp(COpCompareEQ, (List.hd i_exps), (List.hd n_exps), (CTypBool, end_for_loc))) :: post_checks
+                (CExpBinary(COpCompareEQ, (List.hd i_exps), (List.hd n_exps), (CTypBool, end_for_loc))) :: post_checks
             else if (List.length post_checks) > 1 then post_checks else []
             in
         let post_ccode = add_size_eq_check post_checks [] lbl end_for_loc in
@@ -992,11 +992,11 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let (k_final, for_headers) = List.fold_left2 (fun (k, for_headers) i_exp n_exp ->
             let ifor_loc = get_cexp_loc n_exp in
             let init_exps = [make_assign i_exp (make_int_exp 0 ifor_loc)] in
-            let check_exp = CExpBinOp(COpCompareLT, i_exp, n_exp, (CTypBool, ifor_loc)) in
-            let incr_exps = [CExpUnOp(COpSuffixInc, i_exp, (CTypInt, ifor_loc))] in
+            let check_exp = CExpBinary(COpCompareLT, i_exp, n_exp, (CTypBool, ifor_loc)) in
+            let incr_exps = [CExpUnary(COpSuffixInc, i_exp, (CTypInt, ifor_loc))] in
             let (check_exp, incr_exps) = if k > 0 then (check_exp, incr_exps) else
                 let check_exp = List.fold_left (fun check_exp e ->
-                    CExpBinOp(COpLogicAnd, check_exp, e, (CTypBool, ifor_loc)))
+                    CExpBinary(COpLogicAnd, check_exp, e, (CTypBool, ifor_loc)))
                     check_exp (List.rev for_checks0) in
                 (check_exp, incr_exps @ (List.rev incr_exps0))
                 in
@@ -1007,7 +1007,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         let for_headers = if k_final > 0 then for_headers else
             let check_exp_opt = List.fold_left (fun check_exp_opt check_i ->
                 Some (match check_exp_opt with
-                | Some e -> CExpBinOp(COpLogicAnd, e, check_i, (CTypBool, for_loc))
+                | Some e -> CExpBinary(COpLogicAnd, e, check_i, (CTypBool, for_loc))
                 | _ -> check_i)) None (List.rev for_checks0) in
             [(None, [], check_exp_opt, incr_exps0)]
             in
@@ -1188,7 +1188,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let (e, ccode) = atom2cexp a ccode kloc in
             let e = fix_nil e ktyp in
             (true, e, ccode)
-        | KExpBinOp(bop, a1, a2, _) ->
+        | KExpBinary(bop, a1, a2, _) ->
             let (save_and_check, a1_is_int, a2_is_int) =
                 match bop with
                 | OpDiv | OpMod ->
@@ -1218,15 +1218,15 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 if save_and_check then
                     let lbl = curr_block_label kloc in
                     let chk_denom = make_call (get_id "FX_CHECK_DIV_BY_ZERO") [ce2; lbl] CTypVoid kloc in
-                    let div_exp = CExpBinOp(COpDiv, ce1, ce2, (ctyp, kloc)) in
+                    let div_exp = CExpBinary(COpDiv, ce1, ce2, (ctyp, kloc)) in
                     (true, div_exp, (CExp chk_denom) :: ccode)
                 else
-                    (true, CExpBinOp(COpDiv, ce1, ce2, (ctyp, kloc)), ccode)
+                    (true, CExpBinary(COpDiv, ce1, ce2, (ctyp, kloc)), ccode)
             | OpMod ->
                 if save_and_check then
                     let lbl = curr_block_label kloc in
                     let chk_denom = make_call (get_id "FX_CHECK_DIV_BY_ZERO") [ce2; lbl] CTypVoid kloc in
-                    let mod_exp = CExpBinOp(COpMod, ce1, ce2, (ctyp, kloc)) in
+                    let mod_exp = CExpBinary(COpMod, ce1, ce2, (ctyp, kloc)) in
                     (true, mod_exp, (CExp chk_denom) :: ccode)
                 else
                     let (need_cast, ce1, ce2, rtyp, f) = match ctyp with
@@ -1283,13 +1283,13 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let f_exp = get_id "fx_streq" in
                     let call_streq = make_call f_exp [(cexp_get_addr ce1); (cexp_get_addr ce2)] CTypBool kloc in
                     (true, call_streq, ccode)
-                | _ -> (true, CExpBinOp(c_bop, ce1, ce2, (ctyp, kloc)), ccode)))
-        | KExpUnOp(OpMkRef, a1, _) ->
+                | _ -> (true, CExpBinary(c_bop, ce1, ce2, (ctyp, kloc)), ccode)))
+        | KExpUnary(OpMkRef, a1, _) ->
             let (ce1, ccode) = atom2cexp a1 ccode kloc in
             let (r_exp, _) = get_dstexp dstexp_r "r" ctyp [] kloc in
             let ccode = make_mkref_call ce1 r_exp ccode kloc in
             (false, r_exp, ccode)
-        | KExpUnOp(OpDeref, a1, _) ->
+        | KExpUnary(OpDeref, a1, _) ->
             let a_id = match a1 with
                 | AtomId a_id -> a_id
                 | _ -> raise_compile_err kloc "cgen: deref operand is not an identifier"
@@ -1297,7 +1297,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let (ce, ccode) = id2cexp a_id false ccode kloc in
             let n_id = get_id "data" in
             (true, (cexp_arrow ce n_id ctyp), ccode)
-        | KExpUnOp(uop, a1, _) ->
+        | KExpUnary(uop, a1, _) ->
             let (ce1, ccode) = atom2cexp a1 ccode kloc in
             let c_uop = match uop with
                 | OpPlus -> COpPlus
@@ -1306,7 +1306,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | OpLogicNot -> COpLogicNot
                 | OpDeref | OpMkRef | OpExpand | OpDotMinus | OpApos ->
                     raise_compile_err kloc (sprintf "cgen: unsupported unary op '%s'" (unop_to_string uop))
-            in (true, CExpUnOp(c_uop, ce1, (ctyp, kloc)), ccode)
+            in (true, CExpUnary(c_uop, ce1, (ctyp, kloc)), ccode)
         | KExpIntrin(intr, args, _) ->
             (match (intr, args) with
             | (IntrinVariantTag, v :: []) ->
@@ -1328,7 +1328,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             else if ncases = 1 && not is_recursive then
                                 (make_int_exp 1 kloc)
                             else if ncases <= 2 && is_recursive then
-                                CExpBinOp(COpCompareNE, cv, (make_nullptr kloc), (CTypBool, kloc))
+                                CExpBinary(COpCompareNE, cv, (make_nullptr kloc), (CTypBool, kloc))
                             else
                                 raise_compile_err kloc "cgen: variants with no tag may have either 1 or 2 cases"
                         | _ -> raise_compile_err kloc (sprintf
@@ -1577,7 +1577,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                     let (nscalars, scalars_data, arr_data_elem) = match e with
                                         | CExpIdent _ -> (nscalars, scalars_data, (cexp_get_addr e))
                                         | _ -> (nscalars+1, (e :: scalars_data),
-                                            CExpBinOp(COpAdd, scalars_exp, (make_int_exp nscalars kloc), (std_CTypVoidPtr, kloc)))
+                                            CExpBinary(COpAdd, scalars_exp, (make_int_exp nscalars kloc), (std_CTypVoidPtr, kloc)))
                                         in
                                     (nscalars, scalars_data, ((make_int_exp 0 kloc) :: tags_data),
                                     (arr_data_elem :: arr_data), ccode))
@@ -1736,7 +1736,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             let chk_exp1 = make_call !std_FX_CHKIDX1 [arr_exp; (make_int_exp dim kloc); i_exp] CTypBool kloc in
                             let chk_exp_opt = match chk_exp_opt with
                                 | Some(chk_exp) ->
-                                    let chk_exp = CExpBinOp(COpLogicAnd, chk_exp, chk_exp1, (CTypBool, kloc)) in
+                                    let chk_exp = CExpBinary(COpLogicAnd, chk_exp, chk_exp1, (CTypBool, kloc)) in
                                     Some chk_exp
                                 | _ -> Some(chk_exp1)
                                 in
@@ -1836,14 +1836,14 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let ccode = epilogue @ try_ccode @ bctx_prologue @ ccode in
             let _ = pop_block_ctx try_end_loc in
             let fx_status_exp = make_fx_status try_end_loc in
-            let catch_ccode = [CExp (CExpBinOp(COpAssign, fx_status_exp,
+            let catch_ccode = [CExp (CExpBinary(COpAssign, fx_status_exp,
                 (make_int_exp 0 try_end_loc), (CTypVoid, try_end_loc)))] in
             let catch_ccode = match ctyp with
                 | CTypVoid -> catch_ccode
                 | _ -> C_gen_types.gen_free_code dst_exp ctyp true true catch_ccode try_end_loc
                 in
             let (_, catch_ccode) = kexp2cexp catch_e dstexp_r catch_ccode in
-            let check_neg_status = CExpBinOp(COpCompareLT, (make_fx_status try_end_loc),
+            let check_neg_status = CExpBinary(COpCompareLT, (make_fx_status try_end_loc),
                 (make_int_exp 0 try_end_loc), (CTypBool, try_end_loc)) in
             let catch_loc = get_kexp_loc catch_e in
             let catch_clause = CStmtIf(check_neg_status,
@@ -2031,7 +2031,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let alloc_array_ccode = if (not need_make_array) || (dims_ofs + ndims_i < ndims) then [] else
                     let (_, cmp_size_list) = List.fold_left (fun (k, cmp_size_list) n_exp ->
                         let size_i = make_call !std_FX_ARR_SIZE [dst_exp; (make_int_exp k nested_loc)] CTypInt nested_loc in
-                        let cmp_size_i = CExpBinOp(COpCompareEQ, size_i, n_exp, (CTypBool, nested_loc)) in
+                        let cmp_size_i = CExpBinary(COpCompareEQ, size_i, n_exp, (CTypBool, nested_loc)) in
                         (k+1, cmp_size_i :: cmp_size_list)) (0, []) n_exps
                         in
                     let lbl = if pre_alloc_array then map_lbl else (curr_block_label nested_loc) in
@@ -2049,7 +2049,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         then_ccode
                     else
                         let cc_exp = cexp_mem dst_exp (get_id "data") std_CTypVoidPtr in
-                        let cc_exp = CExpUnOp(COpLogicNot, cc_exp, (CTypBool, nested_loc)) in
+                        let cc_exp = CExpUnary(COpLogicNot, cc_exp, (CTypBool, nested_loc)) in
                         let else_ccode = add_size_eq_check cmp_size_list [] lbl nested_loc in
                         let check_or_create = CStmtIf(cc_exp,
                             (rccode2stmt then_ccode nested_loc),
@@ -2136,7 +2136,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let nfor_headers = List.length for_headers in
                 let (_, for_ccode) = List.fold_left (fun (k, for_ccode) (t_opt, for_inits, for_check_opt, for_incrs) ->
                     let for_incrs = if k > 0 || (not add_incr_dstptr) then for_incrs else
-                        for_incrs @ [CExpUnOp(COpSuffixInc, dstptr, (CTypVoid, for_loc))]
+                        for_incrs @ [CExpUnary(COpSuffixInc, dstptr, (CTypVoid, for_loc))]
                         in
                     let insert_pragma = for_idx = 0 && is_parallel_map && k+1 = nfor_headers in
                     let for_body_ccode = if not insert_pragma then for_ccode else
@@ -2150,7 +2150,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         | Some(t) ->
                             List.fold_left (fun for_ccode e ->
                                 match e with
-                                | CExpBinOp(COpAssign, CExpIdent(i, (_, loc_i)), _, _) ->
+                                | CExpBinary(COpAssign, CExpIdent(i, (_, loc_i)), _, _) ->
                                     CDefVal(t, i, None, loc_i) :: for_ccode
                                 | e ->
                                     raise_compile_err (get_cexp_loc e)
@@ -2225,7 +2225,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | (_, []) -> (false, [])
                 | _ ->
                     let cc_loc = get_cexp_loc cc in
-                    let not_cc = CExpUnOp(COpLogicNot, cc, (CTypBool, cc_loc)) in
+                    let not_cc = CExpUnary(COpLogicNot, cc, (CTypBool, cc_loc)) in
                     let break_stmt = make_break_stmt cc_loc in
                     let check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc) in
                     (true, check_cc :: cc_code))
@@ -2249,7 +2249,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | (_, []) -> (false, [])
                 | _ ->
                     let cc_loc = get_cexp_loc cc in
-                    let not_cc = CExpUnOp(COpLogicNot, cc, (CTypBool, cc_loc)) in
+                    let not_cc = CExpUnary(COpLogicNot, cc, (CTypBool, cc_loc)) in
                     let break_stmt = make_break_stmt cc_loc in
                     let check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc) in
                     (true, check_cc :: cc_code))
@@ -2284,7 +2284,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             let is_temp_ref = kv_flags.val_flag_tempref in
             let is_global = bctx.bctx_kind = BlockKind_Global && not is_temp && not is_temp_ref in
             let is_fast_cons = is_temp && (match e2 with
-                | KExpBinOp(OpCons, a, (AtomId l), _) when (IdSet.mem l u1vals) ->
+                | KExpBinary(OpCons, a, (AtomId l), _) when (IdSet.mem l u1vals) ->
                     (match (kinfo_ l kloc) with
                     | KVal {kv_flags} -> kv_flags.val_flag_temp
                     | _ -> false)
@@ -2346,7 +2346,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     ccode
                 else if ktp_complex || is_global ||
                     (match e2 with
-                    | KExpAtom _ | KExpBinOp _ | KExpUnOp _ | KExpIntrin _ | KExpMkTuple _
+                    | KExpAtom _ | KExpBinary _ | KExpUnary _ | KExpIntrin _ | KExpMkTuple _
                     | KExpMkRecord _ | KExpAt _ | KExpMem _ | KExpCast _ | KExpCCode _ -> false
                     | _ -> true) then
                     (* disable i=e2 assignment if i has complex type and e2 is "Nil".
@@ -2390,7 +2390,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     if assign_e2 then
                         let (_, ccode) = kexp2cexp e2 (ref (Some i_exp)) ccode in
                         (match ccode with
-                        | CExp (CExpBinOp(COpAssign, CExpIdent(j, _), e, (_, loc))) ::
+                        | CExp (CExpBinary(COpAssign, CExpIdent(j, _), e, (_, loc))) ::
                             CDefVal(t, i, None, _) :: rest when j = i ->
                             CDefVal(t, i, (Some e), loc) :: rest
                         | _ -> ccode)
