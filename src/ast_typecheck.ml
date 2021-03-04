@@ -514,7 +514,8 @@ let rec lookup_id n t env sc loc =
         | EnvId i ->
             (match id_info i with
             | IdVal {dv_typ} ->
-                unify dv_typ t loc "incorrect value type"; Some((i, t))
+                unify dv_typ t loc (sprintf "incorrect type of value '%s': expected='%s', actual='%s')"
+                    (pp_id2str n) (typ2str t) (typ2str dv_typ)); Some((i, t))
             | IdFun df ->
                 let { df_name; df_templ_args; df_typ; df_flags; df_env; df_scope } = !df in
                 let t = match (df_flags.fun_flag_has_keywords, (deref_typ t)) with
@@ -757,6 +758,8 @@ and check_exp e env sc =
                 let pj = dup_pat pj in
                 let (pnj, pvj) = match (pat_skip_typed pj) with
                     | PatTuple(pnj :: pvj :: [], _) -> (pnj, pvj)
+                    | PatAs(PatTuple(pnj :: pvj :: [], _), as_id, _)
+                        when (match as_id with Id.Temp _ -> true | _ -> false) -> (pnj, pvj)
                     | _ -> raise_compile_err eloc "when iterating through record, a 2-element tuple should be used as pattern"
                     in
                 let (pnj, env, idset, _) = check_pat pnj TypString env idset IdSet.empty sc false true false in
@@ -783,7 +786,7 @@ and check_exp e env sc =
     in
 
     let check_inside_for expect_fold_loop isbr =
-        let kw = if not isbr then "continue" else if expect_fold_loop then "break with" else "break" in
+        let kw = if not isbr then "continue" else if expect_fold_loop then "fold break" else "break" in
         let rec check_inside_ sc =
             match sc with
             | ScTry _ :: _ ->

@@ -180,10 +180,10 @@ fun parse_deref_exp(ts: token_t list)
 
 fun parse_apos_exp(ts: token_t list)
 {
-    val (ts, e) = parse_deref_exp(ts)
+    val (e, ts) = parse_deref_exp(ts)
     match ts {
     | (APOS, l1) :: rest => (ExpUnary(OpApos, e, make_new_ctx(l1)), rest)
-    | _ => (ts, e)
+    | _ => (e, ts)
     }
 }
 
@@ -266,6 +266,67 @@ complex_exp:
 typed_exp:
 | complex_exp COLON typespec { ExpTyped($1, $3, make_new_ctx()) }
 | complex_exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
+
+type op_assoc_t = AssocLeft | AssocRight
+
+
+%right CONS
+%left LOGICAL_OR
+%left LOGICAL_AND
+%left COLON CAST
+%left BITWISE_OR
+%left BITWISE_XOR
+%left BITWISE_AND
+%left AS
+%left CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT SAME
+%left SPACESHIP
+%left DOT_CMP_EQ DOT_CMP_NE DOT_CMP_LE DOT_CMP_GE DOT_CMP_LT DOT_CMP_GT DOT_SPACESHIP
+%left SHIFT_LEFT SHIFT_RIGHT
+%left PLUS MINUS
+%left STAR SLASH MOD DOT_STAR DOT_SLASH DOT_MOD
+%right POWER DOT_POWER
+
+val min_binary_pr = 10
+
+fun parse_binary_(ts: token_t list, min_priority: int) {
+    val (result, ts) = parse_unary(ts)
+    val op_info = match ts {
+    | (CONS, _) :: _ => Some((OpCons, 1, AssocRight))
+    | (BITWISE_OR, _) :: _ => Some((OpLogicOr, 2, AssocLeft))
+    | (BITWISE_XOR, _) :: _ => Some((OpLogicOr, 3, AssocLeft))
+    | (BITWISE_AND, _) :: _ => Some((OpLogicOr, 4, AssocLeft))
+    | (SPACESHIP, _) :: _ => Some((OpSpaceship, 5, AssocLeft))
+    | (DOT_CMP(cmpop), _) :: _ => Some((OpCmp(cmpop), 6, AssocLeft))
+    | (SHIFT_LEFT, _) :: _ => Some((OpShiftLeft, 7, AssocLeft))
+    | (SHIFT_RIGHT, _) :: _ => Some((OpShiftLeft, 7, AssocLeft))
+    | (PLUS, _) :: _ => Some((OpAdd, 8, AssocLeft))
+    | (MINUS, _) :: _ => Some((OpSub, 8, AssocLeft))
+    | (STAR, _) :: _ => Some((OpMul, 9, AssocLeft))
+    | (SLASH, _) :: _ => Some((OpDiv, 9, AssocLeft))
+    | (PERCENT, _) :: _ => Some((OpMod, 9, AssocLeft))
+    | (DOT_STAR, _) :: _ => Some((OpDotMul, 9, AssocLeft))
+    | (DOT_SLASH, _) :: _ => Some((OpDotDiv, 9, AssocLeft))
+    | (DOT_PERCENT, _) :: _ => Some((OpDotMod, 9, AssocLeft))
+    | (POWER, _) :: _ => Some((OpPow, 9, AssocLeft))
+    | (DOT_POWER, _) :: _ => Some((OpDotPow, 9, AssocLeft))
+    | _ => None
+    }
+
+}
+
+compute_expr(min_prec):
+  result = compute_atom()
+
+  while cur token is a binary operator with precedence >= min_prec:
+    prec, assoc = precedence and associativity of current token
+    if assoc is left:
+      next_min_prec = prec + 1
+    else:
+      next_min_prec = prec
+    rhs = compute_expr(next_min_prec)
+    result = compute operator(result, rhs)
+
+  return result
 
 binary_exp:
 | binary_exp PLUS binary_exp { make_bin_op(OpAdd, $1, $3) }

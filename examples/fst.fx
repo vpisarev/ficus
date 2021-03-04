@@ -86,7 +86,7 @@ while i1 < n
 fun gen_msg(i: int, a: 't []) = if i < 0 || i >= size(a) {"not found"} else {f"a[{i}]={a[i]}"}
 println(f"imperative search: negative number in {a}: {gen_msg(i1, a)}")
 
-val fold i2=0 for i<-0:n { if a[i] < 0 {break with i}; i2 }
+val i2 = try find(for i<-0:n {a[i] < 0}) catch {|NotFoundError => -1}
 println(f"fold-based search: negative number in {a}: {gen_msg(i2, a)}")
 
 exception BreakWith: int
@@ -157,10 +157,7 @@ println(f"triangular numbers: {a}")
 {
     if n <= 1 {false} else if n % 2 == 0 {n == 2}
     else {
-        fold r=true for p<-3:Math.floor(Math.sqrt(double(n)))+1:2 {
-            if n % p == 0 {break with false};
-            r
-        }
+        all(for p<-3:Math.floor(Math.sqrt(double(n)))+1:2 {n % p != 0})
     }
 }
 

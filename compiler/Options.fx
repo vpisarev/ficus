@@ -87,7 +87,7 @@ where options can be some of:
 ")}
 }
 
-val is_arch64 : bool = ccode {(bool)(sizeof(void*) > 4)}
+val is_arch64 : bool = @ccode {(bool)(sizeof(void*) > 4)}
 
 fun parse_options(): bool {
     val error = "\33[31;1merror:\33[0m"

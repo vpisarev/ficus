@@ -495,13 +495,14 @@ fun find_typ_instance(t: typ_t, loc: loc_t): typ_t? {
                 | IdVariant (ref {dvar_templ_inst}) => *dvar_templ_inst
                 | _ => []
                 }
-            fold t_opt = None for inst <- inst_list {
+            match find_opt(for inst <- inst_list {
                 match id_info(inst) {
                 | IdVariant (ref {dvar_alias=inst_alias}) =>
-                    if maybe_unify(t, inst_alias, false) {break with Some(TypApp([], inst))}
-                | _ => {}
-                }
-                t_opt
+                    maybe_unify(t, inst_alias, false)
+                | _ => false
+                }}) {
+            | Some inst => Some(TypApp([], inst))
+            | _ => None
             }
         }
     | _ => Some(t)
@@ -525,20 +526,12 @@ fun get_record_elems(vn_opt: id_t?, t: typ_t, loc: loc_t) {
                 }
                 (noid, relems)
             | IdVariant (ref {dvar_name, dvar_cases, dvar_ctors}) =>
-                val fold (ctor, t) = (noid, TypVoid) for (vn, t) <- dvar_cases, c_id <- dvar_ctors {
-                    if get_orig_id(vn) == get_orig_id(input_vn) {break with (c_id, t)}
-                    (ctor, t)
-                }
-                match t {
-                    | TypRecord(ref (relems, true)) => (ctor, relems)
-                    | _ =>
-                        val dvar_name_str = pp_id2str(dvar_name)
-                        throw compile_err(loc,
-                            if input_vn == noid {
-                                f"variant '{dvar_name_str}' is not a record"
-                            } else {
-                                f"'{pp_id2str(input_vn)}' is not found or '{dvar_name_str}' is not a record"
-                            })
+                match find_opt(for (vn, t) <- dvar_cases, c_id <- dvar_ctors {
+                        get_orig_id(vn) == get_orig_id(input_vn)
+                    }) {
+                | Some(((_, TypRecord(ref (relems, true))), ctor)) => (ctor, relems)
+                | Some(_) => throw compile_err(loc, f"variant '{pp_id2str(dvar_name)}' is not a record")
+                | _ => throw compile_err(loc, f"'{pp_id2str(input_vn)}' is not found in '{pp_id2str(dvar_name)}'")
                 }
             | _ => throw compile_err(loc, f"cannot find a proper record constructor in type '{pp_id2str(n)}'")
             }
@@ -860,6 +853,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val (pnj, pvj) =
                 match pat_skip_typed(pj) {
                 | PatTuple(pnj :: pvj :: [], _) => (pnj, pvj)
+                | PatAs(PatTuple(pnj :: pvj :: [], _), as_id, _)
+                    when (match as_id {| IdTemp(_,_) => true | _ => false}) => (pnj, pvj)
                 | _ => throw compile_err(eloc, "when iterating through record, a 2-element tuple should be used as pattern")
                 }
                 val (pnj, env, idset, _) = check_pat(pnj, TypString, env, idset, make_empty_idset(), sc, false, true, false)
@@ -885,7 +880,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     }
 
     fun check_inside_for(expect_fold_loop: bool, isbr: bool, sc: scope_t list) {
-        val kw = if !isbr { "continue" } else if expect_fold_loop { "break with" } else { "break" }
+        val kw = if !isbr { "continue" } else if expect_fold_loop { "fold_break" } else { "break" }
         fun check_inside_(sc: scope_t list) {
             | ScTry(_) :: _ => throw compile_err(eloc, f"cannot use '{kw}' inside 'try-catch' block")
             | ScFun(_) :: _ | ScModule(_) :: _ | ScGlobal :: _ | ScClass(_) :: _ | ScInterface(_) :: _ | [] =>
@@ -2407,7 +2402,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                         (n, p) :: new_relems
                     | _ =>
                         throw compile_err( loc,
-                            f"element '{pp_id2str(n)}' is not found in the record '{pp_id2str(rn_opt.some_or(noid))}'")
+                            f"element '{pp_id2str(n)}' is not found in the record '{pp_id2str(rn_opt.getsome(noid))}'")
                     }
                 }
                 PatRecord(if ctor != noid {Some(ctor)} else {None}, new_relems.rev(), loc)

@@ -259,9 +259,10 @@ fun iclose(i0: item_t)
                     else {
                         val m = i.ts.length()
                         smap[s - StartNT] = m
-                        val fold new_ts = ([]: term_t list) for r <- r0:r1 {
-                            if get_rule(r).lhs != Sym(s) {break with new_ts}
-                            (term_t {rule=r, dot=0, lk=copy(lk)}) :: new_ts
+                        var new_ts = []
+                        for r <- r0:r1 {
+                            if get_rule(r).lhs != Sym(s) {break}
+                            new_ts = (term_t {rule=r, dot=0, lk=copy(lk)}) :: new_ts
                         }
                         i.ts += new_ts.rev()
                         changed = true
@@ -510,8 +511,10 @@ fun actgen()
     sort(aidx, fun(j: int, k: int) {g_yacc.atbl[j].ndef - g_yacc.atbl[k].ndef})
     for idx <- aidx {
         val r_tab = g_yacc.atbl[idx].tab
-        var fold dsp = 0 for rm <- r_tab {
-            if rm != 0 {break with dsp} else {dsp-1}
+        var dsp = 0
+        for rm <- r_tab {
+            if rm != 0 {break}
+            dsp -= 1
         }
         var retrya = true
         while retrya {
@@ -549,8 +552,11 @@ fun actgen()
 
     for idx <- gidx {
         val r_tab = g_yacc.gtbk[idx]
-        var fold (dsp, m) = (0, 0) for rm <- r_tab {
-            if rm != 0 {break with (dsp, m)} else {(dsp-1, m+1)}
+        var dsp = 0, m = 0
+        for rm <- r_tab {
+            if rm != 0 {break}
+            dst -= 1
+            m += 1
         }
         var retryg = true
         while retryg {

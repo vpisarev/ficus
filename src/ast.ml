@@ -788,6 +788,7 @@ let fname_op_bit_and() = get_id "__bit_and__"
 let fname_op_bit_or() = get_id "__bit_or__"
 let fname_op_bit_xor() = get_id "__bit_xor__"
 let fname_op_cmp() = get_id "__cmp__"
+let fname_op_same() = get_id "__same__"
 let fname_op_eq() = get_id "__eq__"
 let fname_op_ne() = get_id "__ne__"
 let fname_op_lt() = get_id "__lt__"
@@ -885,7 +886,7 @@ let fname_always_import () =
     fname_op_dot_mul(); fname_op_dot_div(); fname_op_dot_mod(); fname_op_dot_pow();
     fname_op_shl(); fname_op_shr();
     fname_op_bit_and(); fname_op_bit_or(); fname_op_bit_xor();
-    fname_op_cmp(); fname_op_dot_cmp();
+    fname_op_cmp(); fname_op_dot_cmp(); fname_op_same();
     fname_op_eq(); fname_op_ne(); fname_op_le(); fname_op_ge(); fname_op_lt(); fname_op_gt();
     fname_op_dot_eq(); fname_op_dot_ne(); fname_op_dot_le();
     fname_op_dot_ge(); fname_op_dot_lt(); fname_op_dot_gt();

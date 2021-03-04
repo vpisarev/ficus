@@ -33,8 +33,14 @@ fun rev(l: 't list): 't list =
 
 fun array(l: 't list): 't [] = [for x <- l {x}]
 
+fun assoc(l: ('a, 'b) list, x: 'a): 'b =
+    find(for (a, b) <- l {a == x}).1
+
 fun assoc_opt(l: ('a, 'b) list, x: 'a): 'b? =
-    fold r=None for (a, b) <- l {if a == x {break with Some(b)}; r}
+    match find_opt(for (a, b) <- l {a == x}) {
+    | Some((_, b)) => Some(b)
+    | _ => None
+    }
 
 fun map(l: 't list, f: 't -> 'rt): 'rt list =
     [: for x <- l {f(x)} :]
@@ -52,7 +58,7 @@ fun mem(l: 't list, a: 't): bool =
     any(for b <- l {a == b})
 
 fun find_opt(l: 't list, f: 't -> bool): 't? =
-    fold r=None for a <- l {if f(a) {break with Some(a)}; r}
+    find_opt(for a <- l {f(a)})
 
 fun concat(ll: 't list list): 't list =
     fold s = ([]: 't list) for l <- rev(ll) {l + s}

@@ -157,22 +157,25 @@ fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
     if b - eps <= a <= b + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
 
 fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
-    ignore(fold r = true for ai@idx <- a, bi <- b {
-        if !(bi - eps <= ai <= bi + eps) {
-            test_failed_expect_near(ai, bi, Some(idx), eps)
-            break with false
-        }
-        r
-    })
+    try {
+        val (ai, idx, bi) = find(
+            for ai@idx <- a, bi <- b {!(bi - eps <= ai <= bi + eps)})
+        println("got here")
+        test_failed_expect_near(ai, bi, Some(idx), eps)
+    }
+    catch {
+    | NotFoundError => {}
+    }
 
 fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
-    ignore(fold r = true for ai@idx <- a, bi <- b {
-        if !(bi - eps <= ai <= bi + eps) {
-            test_failed_expect_near(ai, bi, Some(idx), eps)
-            break with false
-        }
-        r
-    })
+    try {
+        val (ai, idx, bi) = find(
+            for ai@idx <- a, bi <- b {!(bi - eps <= ai <= bi + eps)})
+        test_failed_expect_near(ai, bi, Some(idx), eps)
+    }
+    catch {
+    | NotFoundError => {}
+    }
 
 fun EXPECT_THROWS(f: void->void, msg: string) =
     try {

@@ -22,6 +22,8 @@ let make_loc(pos0, pos1) =
 let curr_loc() = make_loc(Parsing.symbol_start_pos(), Parsing.symbol_end_pos())
 let curr_loc_n n = make_loc((Parsing.rhs_start_pos n), (Parsing.rhs_end_pos n))
 
+let make_ident i loc = ExpIdent(i, (make_new_typ(), loc))
+let make_typed_ident i t loc = ExpIdent(i, (t, loc))
 let make_new_ctx () = (make_new_typ(), curr_loc())
 
 let make_bin_op(op, a, b) = ExpBinary(op, a, b, make_new_ctx())
@@ -43,6 +45,15 @@ let exp2expseq e = match e with
     | ExpSeq(eseq, _) -> eseq
     | _ -> e :: []
 
+let explist2exp el =
+    match el with
+    | e :: [] -> e
+    | _ ->
+        let floc = get_exp_loc (List.hd el) in
+        let lloc = get_exp_loc (Utils.last_elem el) in
+        let loc = loclist2loc [floc; lloc] floc in
+        ExpMkTuple(el, (make_new_typ(), loc))
+
 let raise_syntax_err msg =
     raise (SyntaxError (msg, Parsing.symbol_start_pos(), Parsing.symbol_end_pos()))
 
@@ -53,23 +64,23 @@ type parser_fun_arg_t =
     | PrFunArgPat of pat_t
     | PrFunArgKW of id_t * typ_t * lit_t option
 
-let plist2exp pl loc =
+let plist2exp pl prefix loc =
     let rec plist2exp_ plist0 = List.fold_right (fun p (plist, elist) ->
         let (p_, e_) = pat2exp_ p in (p_::plist, e_::elist)) plist0 ([], [])
     and pat2exp_ p =
         match p with
         | PatAny(loc) ->
-            let arg_tp = make_new_typ() in
-            let arg_id = gen_temp_id "arg" in
-            (PatIdent(arg_id, loc), ExpIdent(arg_id, (arg_tp, loc)))
-        | PatIdent(i, loc) -> (p, ExpIdent(i, (make_new_typ(), loc)))
-        | PatTuple(plist, loc) ->
-            let (plist_new, elist_new) = plist2exp_ plist in
-            (PatTuple(plist_new, loc), (expseq2exp_loc elist_new loc))
+            let arg_id = gen_temp_id prefix in
+            (PatIdent(arg_id, loc), (make_ident arg_id loc))
+        | PatIdent(i, loc) -> (p, (make_ident i loc))
+        | PatAs(p, i, loc) -> (p, (make_ident i loc))
         | PatTyped(p, t, loc) ->
             let (p, e) = pat2exp_ p in
             (PatTyped(p, t, loc), e)
-        | _ -> raise_syntax_err_loc (get_pat_loc p) "unsupported arg pattern in the pattern-matching function"
+        | _ ->
+            let loc = get_pat_loc p in
+            let arg_id = gen_temp_id prefix in
+            (PatAs(p, arg_id, loc), (make_ident arg_id loc))
         in
     let (plist, elist) = plist2exp_ pl in
     let match_arg = match elist with
@@ -112,7 +123,7 @@ let make_deffun fname args rt body flags loc =
         let kwargs = List.rev kwargs in
         let rectyp = TypRecord (ref (kwargs, true)) in
         let recpat = PatRecord(None, List.map (fun (i, _, _) -> (i, PatIdent(i, loc))) kwargs, loc) in
-        let unpack_rec = DefVal(recpat, ExpIdent(recarg, (make_new_typ(), loc)), (default_val_flags()), loc) in
+        let unpack_rec = DefVal(recpat, (make_ident recarg loc), default_val_flags(), loc) in
         let body_ctx = get_exp_ctx body in
         let body_seq = exp2expseq body in
         let body = ExpSeq(unpack_rec :: body_seq, body_ctx) in
@@ -134,10 +145,14 @@ let make_pmatch_deffun (flags, fname) (args, rt) pmatch_clauses args_pos pmatch_
                 "match-based function may not use keyword arguments. Use explicit match {} expression")
             args []
         in
-    let (args_upd, match_arg) = plist2exp args_pl (curr_loc_n args_pos) in
+    let (args_upd, match_arg) = plist2exp args_pl "arg" (curr_loc_n args_pos) in
     let args_upd = List.map (fun p -> PrFunArgPat p) args_upd in
     let match_e = ExpMatch(match_arg, (List.rev pmatch_clauses), make_new_ctx()) in
     make_deffun fname args_upd rt match_e flags (curr_loc())
+
+let forever_for(n) =
+    let loc = curr_loc_n n in
+    ((PatAny loc), (PatAny loc), ExpRange(Some(ExpLit(LitInt 0L, (TypInt, loc))), None, None, (make_new_typ(), loc))) :: []
 
 let process_for_clauses for_cl loc =
     List.fold_left (fun (for_cl_, idx_pat) (p, idxp, e) ->
@@ -152,42 +167,32 @@ let process_for_clauses for_cl loc =
 type for_body_t = ForBody of exp_t | ForMatchBody of (pat_t list * exp_t) list * loc_t
 
 let process_nested_for nested_for body =
-    match body with
-    | ForBody body ->
-        let nested_for_cl = List.fold_left (fun l (loc, for_cl) ->
-            let (for_cl, idx_pat) = process_for_clauses for_cl loc in
-            (for_cl, idx_pat) :: l) [] nested_for in
-        (nested_for_cl, body)
-    | ForMatchBody (pmatch_clauses, clauses_loc) ->
-        let (glob_el, nested_for_cl) = List.fold_left (fun
-                (glob_el, nested_for_cl) (loc, for_cl) ->
-                let (glob_el, for_cl_, idx_pat) =
-                    List.fold_left (fun (glob_el, for_cl_, idx_pat) (p, idxp, e) ->
-                        let (p_, p_e) = plist2exp [p] (get_pat_loc p) in
-                        let p = List.hd p_ in
-                        let glob_el = p_e :: glob_el in
-                        match (idxp, idx_pat) with
-                        | (PatAny _, idx_pat) -> (glob_el, (p, e) :: for_cl_, idx_pat)
-                        | (_, PatAny _) ->
-                            let (idxp_, idxp_e) = plist2exp [idxp] (get_pat_loc idxp) in
-                            (idxp_e :: glob_el, (p, e) :: for_cl_, idxp)
-                        | _ -> raise_syntax_err_loc (get_pat_loc idxp)
-                        "@ is used more than once, which does not make sence and is not supported")
-                    (glob_el, [], PatAny loc) for_cl
-                    in
-                (glob_el, (for_cl_, idx_pat) :: nested_for_cl)) ([], []) nested_for
+    let (glob_el, nested_for_cl) = List.fold_left (fun
+        (glob_el, nested_for_cl) (loc, for_cl) ->
+        let (glob_el, for_cl_, idx_pat) =
+            List.fold_left (fun (glob_el, for_cl_, idx_pat) (p, idxp, e) ->
+                let (p_, p_e) = plist2exp [p] "x" (get_pat_loc p) in
+                let p = List.hd p_ in
+                match (idxp, idx_pat) with
+                | (PatAny _, idx_pat) -> (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
+                | (_, PatAny _) ->
+                    let (idxp_, idxp_e) = plist2exp [idxp] "i" (get_pat_loc idxp) in
+                    (p_e :: idxp_e :: glob_el, (p, e) :: for_cl_, idxp)
+                | _ -> raise_syntax_err_loc (get_pat_loc idxp)
+                "@ is used more than once, which does not make sence and is not supported")
+            (glob_el, [], PatAny loc) for_cl
             in
-        let glob_match_e =
-            match glob_el with
-            | e :: [] -> e
-            | _ ->
-                let loc = get_exp_loc (List.hd glob_el) in
-                let lloc = get_exp_loc (Utils.last_elem glob_el) in
-                let loc = loclist2loc [loc; lloc] loc in
-                ExpMkTuple(glob_el, (make_new_typ(), loc))
-            in
-        let match_e = ExpMatch(glob_match_e, (List.rev pmatch_clauses), (make_new_typ(), clauses_loc)) in
-        (nested_for_cl, match_e)
+        (glob_el, (for_cl_, idx_pat) :: nested_for_cl)) ([], []) nested_for
+        in
+    let for_iter_e = explist2exp glob_el in
+    let body =
+        match body with
+        | ForBody body -> body
+        | ForMatchBody (pmatch_clauses, clauses_loc) ->
+            ExpMatch(for_iter_e, (List.rev pmatch_clauses),
+                    (make_new_typ(), clauses_loc))
+        in
+    (for_iter_e, nested_for_cl, body)
 
 let make_for nested_for body flags =
     let (_, for_e) = List.fold_right (fun (for_cl, idx_pat) (idx, for_e) ->
@@ -196,24 +201,20 @@ let make_for nested_for body flags =
         let loc = get_pat_loc p in
         (idx-1, ExpFor(for_cl, idx_pat, for_e, curr_flags, loc)))
         nested_for ((List.length nested_for) - 1, body)
-        in
-    for_e
+    in for_e
 
-let forever_for(n) =
-    let loc = curr_loc_n n in
-    ((PatAny loc), (PatAny loc), ExpRange(Some(ExpLit(LitInt 0L, (TypInt, loc))), None, None, (make_new_typ(), loc))) :: []
-
-let transform_fold_exp fold_pat fold_pat_n fold_init_exp_opt nested_fold fold_body =
+let transform_fold_exp special fold_pat fold_pat_n fold_init_exp nested_fold fold_body =
     let acc_loc = get_pat_loc fold_pat in
     let fr_id = get_fold_result() in
-    let fr_exp = ExpIdent(fr_id, (make_new_typ(), acc_loc)) in
-    let (nested_fold_cl, fold_body) = process_nested_for nested_fold fold_body in
+    let fr_exp = make_ident fr_id acc_loc in
+    let (for_iter_e, nested_fold_cl, fold_body) = process_nested_for nested_fold fold_body in
     let body_loc = get_exp_loc fold_body in
+    let body_end_loc = get_end_loc body_loc in
     let void_ctx = (TypVoid, body_loc) in
     let bool_ctx = (TypBool, body_loc) in
-    let (fr_decl, new_body) =
-        match (fold_pat, fold_init_exp_opt) with
-        | (_, Some(fold_init_exp)) ->
+    let (fr_decl, new_body, fr_exp) =
+        match special with
+        | "" ->
             (* `fold p=e0 for ... e1`
                     is transformed to
                 `{
@@ -227,24 +228,43 @@ let transform_fold_exp fold_pat fold_pat_n fold_init_exp_opt nested_fold fold_bo
             let acc_decl = DefVal(fold_pat, fr_exp, default_val_flags(), acc_loc) in
             let update_fr = ExpAssign(fr_exp, fold_body, body_loc) in
             let new_body = ExpSeq([acc_decl; update_fr], void_ctx) in
-            (fr_decl, new_body)
-        | (PatLit(LitString "all", _), None)
-        | (PatLit(LitString "any", _), None) ->
-            let is_any = match fold_pat with PatLit(LitString "any", _) -> true | _ -> false in
+            (fr_decl, new_body, fr_exp)
+        | "all" | "any" ->
+            let is_any = special = "any" in
             let fr_decl = DefVal(PatIdent(fr_id, acc_loc),
                 ExpLit(LitBool(not is_any), (TypBool, acc_loc)),
                 default_var_flags(), acc_loc) in
-            let break_exp = ExpAssign(fr_exp, ExpLit(LitBool(is_any), bool_ctx), body_loc) in
-            let break_exp = ExpSeq([break_exp; ExpBreak(true, body_loc)], void_ctx) in
+            let break_exp = ExpSeq([ExpAssign(fr_exp, ExpLit(LitBool(is_any), bool_ctx), body_loc);
+                                    ExpBreak(true, body_loc)], void_ctx) in
             let predicate_exp = if is_any then fold_body else
                 ExpUnary(OpLogicNot, fold_body, bool_ctx) in
             let new_body = ExpIf(predicate_exp, break_exp, ExpNop(body_loc), void_ctx) in
-            (fr_decl, new_body)
-        | (PatLit(LitString f, _), None) ->
+            (fr_decl, new_body, fr_exp)
+        | "find" | "find_opt" ->
+            let none = get_id "None" in
+            let some = get_id "Some" in
+            let fr_decl = DefVal(PatIdent(fr_id, acc_loc), (make_ident none acc_loc),
+                default_var_flags(), acc_loc) in
+            let mksome_exp = ExpCall((make_ident some body_loc),
+                [for_iter_e], (make_new_typ(), body_loc)) in
+            let break_exp = ExpSeq([ExpAssign(fr_exp, mksome_exp, body_loc);
+                                    ExpBreak(true, body_loc)], void_ctx) in
+            let new_body = ExpIf(fold_body, break_exp, ExpNop(body_loc), void_ctx) in
+            let new_fr_exp = match special with
+                | "find" ->
+                    let x = get_id "x" in
+                    let some_pattern_clause =
+                        ([PatVariant(some, [PatIdent(x, body_end_loc)], body_end_loc)],
+                        (make_ident x body_end_loc)) in
+                    let else_pattern_clause = ([PatAny body_end_loc], ExpThrow((make_typed_ident
+                        (get_id "NotFoundError") TypExn body_end_loc), body_end_loc)) in
+                    ExpMatch(fr_exp, [some_pattern_clause; else_pattern_clause],
+                        (make_new_typ(), body_end_loc))
+                | _ -> fr_exp
+                in
+            (fr_decl, new_body, new_fr_exp)
+        | f ->
             raise_syntax_err_loc acc_loc (sprintf "unknown fold variation '%s'" f)
-        | _ ->
-            raise_syntax_err_loc acc_loc
-                (sprintf "internal error: unexpected input of transform_fold_exp()")
         in
     let for_exp = make_for nested_fold_cl new_body {(default_for_flags()) with for_flag_fold=true} in
     ExpSeq([fr_decl; for_exp; fr_exp], (make_new_typ(), curr_loc()))
@@ -273,8 +293,9 @@ let make_chained_cmp chain = match chain with
                     | _ ->
                         let e_loc = get_exp_loc e in
                         let tmp_id = gen_temp_id "t" in
-                        let tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e, (default_tempval_flags()), e_loc) in
-                        (ExpIdent(tmp_id, (make_new_typ(), e_loc)), (tmp_decl :: code))
+                        let tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e,
+                            (default_tempval_flags()), e_loc) in
+                        ((make_ident tmp_id e_loc), (tmp_decl :: code))
             in (((cmpop, new_e) :: chain), code)) ([], []) (List.rev chain) in
         let rec process_chain result a chain =
             let (cmpop, b, rest) = match chain with
@@ -333,11 +354,11 @@ let make_finally e final_e loc =
     let ll = loclist2loc [eloc; fe_loc] eloc in
     let tmp = gen_temp_id "v" in
     let def_tmp = DefVal(PatIdent(tmp, eloc), e, (default_tempval_flags()), loc) in
-    let try_block = (def_tmp :: (exp2expseq final_e)) @ [ExpIdent(tmp, (make_new_typ(), loc))] in
+    let try_block = (def_tmp :: (exp2expseq final_e)) @ [make_ident tmp loc] in
     let try_block = expseq2exp_loc try_block loc in
     let some_exn = gen_temp_id "e" in
     let some_exn_pat = PatIdent(some_exn, fe_loc) in
-    let rethrow_exn = ExpThrow(ExpIdent(some_exn, (TypExn, fe_loc)), fe_loc) in
+    let rethrow_exn = ExpThrow((make_typed_ident some_exn TypExn fe_loc), fe_loc) in
     let catch_block = (exp2expseq (dup_exp final_e)) @ [rethrow_exn] in
     let catch_block = expseq2exp_loc catch_block fe_loc in
     ExpTryCatch(try_block, [([some_exn_pat], catch_block)], (make_new_typ(), ll))
@@ -371,16 +392,16 @@ let make_finally e final_e loc =
 
 /* operations */
 %token B_MINUS MINUS B_PLUS PLUS
-%token B_STAR STAR SLASH MOD
+%token B_STAR STAR SLASH PERCENT
 %token B_POWER POWER SHIFT_RIGHT SHIFT_LEFT
-%token B_DOT_MINUS DOT_STAR DOT_SLASH DOT_MOD DOT_POWER
+%token B_DOT_MINUS DOT_STAR DOT_SLASH DOT_PERCENT DOT_POWER
 %token BITWISE_AND BITWISE_OR BITWISE_XOR TILDE
 %token APOS CONS CAST EXPAND
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT
-%token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL
+%token EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL PERCENT_EQUAL
 %token AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL
-%token DOT_STAR_EQUAL DOT_SLASH_EQUAL DOT_MOD_EQUAL
-%token CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT SPACESHIP
+%token DOT_STAR_EQUAL DOT_SLASH_EQUAL DOT_PERCENT_EQUAL
+%token CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT SPACESHIP SAME
 %token DOT_CMP_EQ DOT_CMP_NE DOT_CMP_LE DOT_CMP_GE DOT_CMP_LT DOT_CMP_GT DOT_SPACESHIP
 
 %right SEMICOLON
@@ -388,7 +409,7 @@ let make_finally e final_e loc =
 %right DOUBLE_ARROW
 %left BAR
 %right THROW
-%right EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL DOT_STAR_EQUAL DOT_SLASH_EQUAL DOT_MOD_EQUAL
+%right EQUAL PLUS_EQUAL MINUS_EQUAL STAR_EQUAL SLASH_EQUAL DOT_EQUAL MOD_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SHIFT_LEFT_EQUAL SHIFT_RIGHT_EQUAL DOT_STAR_EQUAL DOT_SLASH_EQUAL DOT_PERCENT_EQUAL
 %left WHEN
 %right CONS
 %left LOGICAL_OR
@@ -398,12 +419,12 @@ let make_finally e final_e loc =
 %left BITWISE_XOR
 %left BITWISE_AND
 %left AS
-%left CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT
+%left CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT SAME
 %left SPACESHIP
 %left DOT_CMP_EQ DOT_CMP_NE DOT_CMP_LE DOT_CMP_GE DOT_CMP_LT DOT_CMP_GT DOT_SPACESHIP
 %left SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS
-%left STAR SLASH MOD DOT_STAR DOT_SLASH DOT_MOD
+%left STAR SLASH PERCENT DOT_STAR DOT_SLASH DOT_PERCENT
 %right POWER DOT_POWER
 %left BACKSLASH
 %right B_MINUS B_DOT_MINUS B_PLUS TILDE LOGICAL_NOT REF EXPAND
@@ -557,13 +578,6 @@ exception_decl:
 
 stmt:
 | BREAK { ExpBreak (false, curr_loc()) }
-| BREAK WITH exp
-    {
-        let (tp, loc) = make_new_ctx() in
-        let fr = ExpIdent(get_fold_result(), (tp, loc)) in
-        let set_fr = ExpAssign(fr, $3, loc) in
-        ExpSeq ([set_fr; ExpBreak(true, loc)], (TypVoid, loc))
-    }
 | CONTINUE { ExpContinue(curr_loc()) }
 | THROW exp { ExpThrow($2, curr_loc()) }
 | deref_exp EQUAL complex_exp { ExpAssign($1, $3, curr_loc()) }
@@ -581,7 +595,7 @@ stmt:
 | DO block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
 | for_flags B_FOR nested_for_ for_block
     {
-        let (nested_for_cl, body) = process_nested_for $3 $4 in
+        let (_, nested_for_cl, body) = process_nested_for $3 $4 in
         make_for nested_for_cl body $1
     }
 | complex_exp { $1 }
@@ -594,15 +608,15 @@ stmt_or_ccode:
 | ccode_exp { ExpCCode($1, make_new_ctx()) }
 
 simple_exp:
-| B_IDENT { ExpIdent((get_id $1), make_new_ctx()) }
-| B_LPAREN op_name RPAREN { ExpIdent($2, make_new_ctx()) }
+| B_IDENT { make_ident (get_id $1) (curr_loc()) }
+| B_LPAREN op_name RPAREN { make_ident $2 (curr_loc()) }
 | literal
     {
         let lit = $1 in
         let typ = get_lit_typ lit in
         ExpLit(lit, (typ, curr_loc()))
     }
-| simple_exp DOT B_IDENT { ExpMem($1, ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
+| simple_exp DOT B_IDENT { ExpMem($1, (make_ident (get_id $3) (curr_loc_n 3)), make_new_ctx()) }
 | simple_exp DOT INT { ExpMem($1, (make_int_lit $3 3), make_new_ctx()) }
 | simple_exp DOT FLOAT_LIKE %prec DOT
     {
@@ -615,7 +629,7 @@ simple_exp:
 | simple_exp DOT LBRACE id_exp_list_ RBRACE { ExpUpdateRecord($1, (List.rev $4), make_new_ctx()) }
 | simple_exp ARROW B_IDENT %prec DOT {
     ExpMem(ExpUnary(OpDeref, $1, (make_new_typ(), curr_loc_n 1)),
-        ExpIdent((get_id $3), (make_new_typ(), curr_loc_n 3)), make_new_ctx()) }
+        (make_ident (get_id $3) (curr_loc_n 3)), make_new_ctx()) }
 | simple_exp ARROW INT %prec DOT
     {
         let deref_exp = ExpUnary(OpDeref, $1, (make_new_typ(), curr_loc_n 1)) in
@@ -639,17 +653,17 @@ simple_exp:
 | B_LPAREN typed_exp RPAREN { $2 }
 | B_LPAREN B_FOR nested_for_ block RPAREN
     {
-        let (map_clauses, body) = process_nested_for $3 (ForBody $4) in
+        let (_, map_clauses, body) = process_nested_for $3 (ForBody $4) in
         ExpMap(map_clauses, body, {(default_for_flags()) with for_flag_make=ForMakeTuple}, make_new_ctx())
     }
 | B_LSQUARE for_flags B_FOR nested_for_ for_block RSQUARE
     {
-        let (map_clauses, body) = process_nested_for $4 $5 in
+        let (_, map_clauses, body) = process_nested_for $4 $5 in
         ExpMap(map_clauses, body, {$2 with for_flag_make=ForMakeArray}, make_new_ctx())
     }
 | LLIST for_flags B_FOR nested_for_ for_block RLIST
     {
-        let (map_clauses, body) = process_nested_for $4 $5 in
+        let (_, map_clauses, body) = process_nested_for $4 $5 in
         ExpMap(map_clauses, body, {$2 with for_flag_make=ForMakeList}, make_new_ctx())
     }
 | B_LSQUARE array_elems_ RSQUARE
@@ -674,7 +688,7 @@ simple_exp:
     {
         match $1 with
         | ExpIdent(i, _) ->
-            transform_fold_exp (PatLit(LitString (pp_id2str i), curr_loc_n 1)) 1 None $4 $5
+            transform_fold_exp (pp_id2str i) (PatAny(curr_loc_n 1)) 1 (ExpNop (curr_loc())) $4 $5
         | _ -> raise_syntax_err
             ("unsupported for-comprehension processing expression " ^
             "(no regular function can be applied to a for-loop)")
@@ -733,24 +747,22 @@ complex_exp:
     }
 | FOLD fold_clause for_block
     {
-        let ((fold_pat, fold_init_exp_opt), fold_cl) = $2 in
-        transform_fold_exp fold_pat 2 fold_init_exp_opt fold_cl $3
+        let ((fold_pat, fold_init_exp), fold_cl) = $2 in
+        transform_fold_exp "" fold_pat 2 fold_init_exp fold_cl $3
     }
 | FUN fun_args block
     {
-        let ctx = make_new_ctx() in
         let (args, rt) = $2 in
         let body = expseq2exp (exp2expseq $3) 3 in
         let fname = gen_temp_id "lambda" in
         let df = make_deffun fname args rt body (default_fun_flags()) (curr_loc()) in
-        ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
+        ExpSeq(df @ [make_ident fname (curr_loc_n 1)], make_new_ctx())
     }
 | FUN fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
     {
-        let ctx = make_new_ctx() in
         let fname = gen_temp_id "lambda" in
         let df = make_pmatch_deffun (default_fun_flags(), fname) $2 $5 2 5 in
-        ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
+        ExpSeq(df @ [make_ident fname (curr_loc_n 1)], make_new_ctx())
     }
 | simple_exp LBRACE id_exp_list_ RBRACE
     %prec fcall_prec
@@ -777,7 +789,7 @@ binary_exp:
 | binary_exp MINUS binary_exp { make_bin_op(OpSub, $1, $3) }
 | binary_exp STAR binary_exp { make_bin_op(OpMul, $1, $3) }
 | binary_exp SLASH binary_exp { make_bin_op(OpDiv, $1, $3) }
-| binary_exp MOD binary_exp { make_bin_op(OpMod, $1, $3) }
+| binary_exp PERCENT binary_exp { make_bin_op(OpMod, $1, $3) }
 | binary_exp POWER binary_exp { make_bin_op(OpPow, $1, $3) }
 | binary_exp SHIFT_LEFT binary_exp { make_bin_op(OpShiftLeft, $1, $3) }
 | binary_exp SHIFT_RIGHT binary_exp { make_bin_op(OpShiftRight, $1, $3) }
@@ -787,9 +799,12 @@ binary_exp:
 | binary_exp CONS binary_exp { make_bin_op(OpCons, $1, $3) }
 | binary_exp DOT_STAR binary_exp { make_bin_op(OpDotMul, $1, $3) }
 | binary_exp DOT_SLASH binary_exp { make_bin_op(OpDotDiv, $1, $3) }
-| binary_exp DOT_MOD binary_exp { make_bin_op(OpDotMod, $1, $3) }
+| binary_exp DOT_PERCENT binary_exp { make_bin_op(OpDotMod, $1, $3) }
 | binary_exp DOT_POWER binary_exp { make_bin_op(OpDotPow, $1, $3) }
 | binary_exp SPACESHIP binary_exp { make_bin_op(OpSpaceship, $1, $3) }
+| binary_exp SAME binary_exp {
+    ExpCall((make_ident (get_id "__same__") (curr_loc_n 2)),
+            [$1; $3], make_new_ctx()) }
 | binary_exp DOT_SPACESHIP binary_exp { make_bin_op(OpDotSpaceship, $1, $3) }
 | binary_exp DOT_CMP_EQ binary_exp { make_bin_op(OpDotCmp(CmpEQ), $1, $3) }
 | binary_exp DOT_CMP_NE binary_exp { make_bin_op(OpDotCmp(CmpNE), $1, $3) }
@@ -878,11 +893,11 @@ op_name:
 | MINUS  { fname_op_sub() }
 | STAR  { fname_op_mul() }
 | SLASH  { fname_op_div() }
-| MOD  { fname_op_mod() }
+| PERCENT  { fname_op_mod() }
 | POWER  { fname_op_pow() }
 | DOT_STAR  { fname_op_dot_mul() }
 | DOT_SLASH  { fname_op_dot_div() }
-| DOT_MOD  { fname_op_dot_mod() }
+| DOT_PERCENT  { fname_op_dot_mod() }
 | DOT_POWER  { fname_op_dot_pow() }
 | SHIFT_LEFT  { fname_op_shl() }
 | SHIFT_RIGHT  { fname_op_shr() }
@@ -891,6 +906,7 @@ op_name:
 | BITWISE_XOR  { fname_op_bit_xor() }
 | TILDE  { fname_op_bit_not() }
 | SPACESHIP  { fname_op_cmp() }
+| SAME    { fname_op_same() }
 | CMP_EQ  { fname_op_eq() }
 | CMP_NE  { fname_op_ne() }
 | CMP_LE  { fname_op_le() }
@@ -913,7 +929,7 @@ aug_op:
 | MOD_EQUAL { OpMod }
 | DOT_STAR_EQUAL { OpDotMul }
 | DOT_SLASH_EQUAL { OpDotDiv }
-| DOT_MOD_EQUAL { OpDotMod }
+| DOT_PERCENT_EQUAL { OpDotMod }
 | AND_EQUAL { OpBitwiseAnd }
 | OR_EQUAL { OpBitwiseOr }
 | XOR_EQUAL { OpBitwiseXor }
@@ -942,7 +958,7 @@ for_in_list_:
 | simple_pat AT simple_pat BACK_ARROW loop_range_exp { ($1, $3, $5) :: [] }
 
 fold_clause:
-| simple_pat EQUAL complex_exp any_for nested_for_ { (($1, Some $3), $5) }
+| simple_pat EQUAL complex_exp any_for nested_for_ { (($1, $3), $5) }
 
 loop_range_exp:
 | exp { $1 }
@@ -1102,8 +1118,8 @@ val_decl:
 | simple_pat EQUAL ccode_exp { ($1, (ExpCCode($3, make_new_ctx())), curr_loc()) }
 | FOLD fold_clause for_block
     {
-        let ((fold_pat, fold_init_exp_opt), fold_cl) = $2 in
-        let e = transform_fold_exp fold_pat 2 fold_init_exp_opt fold_cl $3 in
+        let ((fold_pat, fold_init_exp), fold_cl) = $2 in
+        let e = transform_fold_exp "" fold_pat 2 fold_init_exp fold_cl $3 in
         (fold_pat, e, curr_loc())
     }
 

@@ -101,13 +101,13 @@ let token2str t = match t with
     | B_STAR -> "B_STAR"
     | STAR -> "STAR"
     | SLASH -> "SLASH"
-    | MOD -> "MOD"
+    | PERCENT -> "PERCENT"
     | B_POWER -> "B_POWER"
     | POWER -> "POWER"
     | DOT_STAR -> "DOT_STAR"
     | B_DOT_MINUS -> "B_DOT_MINUS"
     | DOT_SLASH -> "DOT_SLASH"
-    | DOT_MOD -> "DOT_MOD"
+    | DOT_PERCENT -> "DOT_PERCENT"
     | DOT_POWER -> "DOT_POWER"
     | SHIFT_RIGHT -> "SHIFT_RIGHT"
     | SHIFT_LEFT -> "SHIFT_LEFT"
@@ -124,7 +124,7 @@ let token2str t = match t with
     | STAR_EQUAL -> "STAR_EQUAL"
     | SLASH_EQUAL -> "SLASH_EQUAL"
     | DOT_EQUAL -> "DOT_EQUAL"
-    | MOD_EQUAL -> "MOD_EQUAL"
+    | PERCENT_EQUAL -> "PERCENT_EQUAL"
     | AND_EQUAL -> "AND_EQUAL"
     | OR_EQUAL -> "OR_EQUAL"
     | XOR_EQUAL -> "XOR_EQUAL"
@@ -132,7 +132,8 @@ let token2str t = match t with
     | SHIFT_RIGHT_EQUAL -> "SHIFT_RIGHT_EQUAL"
     | DOT_STAR_EQUAL -> "DOT_STAR_EQUAL"
     | DOT_SLASH_EQUAL -> "DOT_SLASH_EQUAL"
-    | DOT_MOD_EQUAL -> "DOT_MOD_EQUAL"
+    | DOT_PERCENT_EQUAL -> "DOT_PERCENT_EQUAL"
+    | SAME -> "SAME"
     | SPACESHIP -> "SPACESHIP"
     | CMP_EQ -> "CMP_EQ"
     | CMP_NE -> "CMP_NE"
@@ -512,7 +513,7 @@ rule tokens = parse
         }
     | '*'   { let t = if !new_exp then [B_STAR] else [STAR] in (new_exp := true; t) }
     | '/'   { new_exp := true; [SLASH] }
-    | "%"   { new_exp := true; [MOD] }
+    | "%"   { new_exp := true; [PERCENT] }
     | "**"  { let t = if !new_exp then [B_POWER] else [POWER] in (new_exp := true; t) }
     | ">>"  { new_exp := true; [SHIFT_RIGHT] }
     | "<<"  { new_exp := true; [SHIFT_LEFT] }
@@ -540,7 +541,7 @@ rule tokens = parse
     | "*="  { new_exp := true; [STAR_EQUAL] }
     | "/="  { new_exp := true; [SLASH_EQUAL] }
     | ".="  { new_exp := true; [DOT_EQUAL] }
-    | "%="  { new_exp := true; [MOD_EQUAL] }
+    | "%="  { new_exp := true; [PERCENT_EQUAL] }
     | "&="  { new_exp := true; [AND_EQUAL] }
     | "|="  { new_exp := true; [OR_EQUAL] }
     | "^="  { new_exp := true; [XOR_EQUAL] }
@@ -548,6 +549,7 @@ rule tokens = parse
     | ">>=" { new_exp := true; [SHIFT_RIGHT_EQUAL] }
 
     | "<=>" { new_exp := true; [SPACESHIP] }
+    | "===" { new_exp := true; [SAME] }
     | "=="  { new_exp := true; [CMP_EQ] }
     | "!="  { new_exp := true; [CMP_NE] }
     | "<="  { new_exp := true; [CMP_LE] }
@@ -558,7 +560,7 @@ rule tokens = parse
     | ".-"  { check_ne(lexbuf); [B_DOT_MINUS] }
     | ".*"  { new_exp := true; [DOT_STAR] }
     | "./"  { new_exp := true; [DOT_SLASH] }
-    | ".%"  { new_exp := true; [DOT_MOD] }
+    | ".%"  { new_exp := true; [DOT_PERCENT] }
     | ".**" { new_exp := true; [DOT_POWER] }
 
     | ".<=>" { new_exp := true; [DOT_SPACESHIP] }
@@ -571,7 +573,7 @@ rule tokens = parse
 
     | ".*="  { new_exp := true; [DOT_STAR_EQUAL] }
     | "./="  { new_exp := true; [DOT_SLASH_EQUAL] }
-    | ".%="  { new_exp := true; [DOT_MOD_EQUAL] }
+    | ".%="  { new_exp := true; [DOT_PERCENT_EQUAL] }
 
     | ','   { new_exp := true; [COMMA] }
     | '.'   { new_exp := true; [DOT] }

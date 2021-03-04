@@ -164,7 +164,7 @@ fun make_stream(fname: string)
    Such a function helps to eliminate multiple tedious checks
    and/or try-catch expressions when parsing a stream
 */
-pure nothrow fun peekch(s: string, pos: int): char = ccode
+@pure @nothrow fun peekch(s: string, pos: int): char = @ccode
 {
     return (size_t)pos < (size_t)s->length ? s->data[pos] : (char_)0;
 }
@@ -244,7 +244,7 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
    right after DOT token, it's correctly re-interpreted
    as the nested tuple access.
 */
-pure fun getnumber_(s: string, pos: int, just_int: bool): (int, int64, double, int, char) = ccode
+@pure fun getnumber_(s: string, pos: int, just_int: bool): (int, int64, double, int, char) = @ccode
 {
     const int MAX_ATOF = 128;
     char buf[128 + 16];
@@ -430,7 +430,7 @@ fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, token_t) 
             throw LexerError(loc, f"exception {e} occured when parsing numeric literal")
     }
 
-ccode
+@ccode
 {
     static int decodeoct(char_ c)
     {
@@ -458,7 +458,7 @@ ccode
     Unicode characters (\uxxxx and \Uxxxxxxxx) are also decoded.
 */
 fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
-    (int, string, bool) = ccode
+    (int, string, bool) = @ccode
 {
     int_ sz = 256, n = 0;
     char_ buf0[256 + 32];
@@ -673,31 +673,32 @@ fun make_lexer(strm: stream_t)
     {
         val buf = strm.buf
         val len = buf.length()
-        var lbraces = 1
+        var lbraces = 0, q = p
         // This implementation assumes that the whole buffer is available.
         // We just find the position q of terminating '}' of the inline C code
         // and then capture the whole thing between '{' (at p), i.e. buf[p:q].
         // If we ever switch to per-line buffer, the code needs to be updated
         // to accumuate C code into some text string
-        val fold q = p for k <- p:len {
-            var c = peekch(buf, k)
-            var c1 = peekch(buf, k+1)
+        while q < len {
+            var c = peekch(buf, q)
+            var c1 = peekch(buf, q+1)
             if (c == '/' && (c1 == '/' || c1 == '*')) || c == '\n' || c == '\r' {
-                val (_, q_, _, inside_comment) = skip_spaces(strm, k, false)
+                val (_, q_, _, inside_comment) = skip_spaces(strm, q, false)
                 if inside_comment {
                     throw LexerError(getloc(p), "unterminated comment")
                 }
-                q_
+                q = q_
             } else if c == '"' || c == '\'' { // "
-                val (q_, _, _) = getstring(buf, p+1, getloc(p+1), c, true, false)
-                q_
+                q = getstring(buf, p+1, getloc(p+1), c, true, false).0
             } else {
+                q += 1
                 match c {
                 | '{' => lbraces += 1
-                | '}' => lbraces -= 1; if lbraces == 0 {break with k+1}
+                | '}' =>
+                    lbraces -= 1
+                    if lbraces == 0 {break}
                 | _ => {}
                 }
-                k+1
             }
         }
         if lbraces > 0 {throw LexerError(getloc(p), "unterminated ccode block (check braces)")}
@@ -742,13 +743,14 @@ fun make_lexer(strm: stream_t)
         val loc = getloc(pos)
 
         if c.isalpha() || c == '_' {
-            val fold p1 = pos for p <- pos:len {
+            var p = pos
+            while p < len {
                 val cp = buf[p]
-                if !cp.isalnum() && cp != '_' {break with p}
-                p+1
+                if !cp.isalnum() && cp != '_' {break}
+                p += 1
             }
-            val ident = buf[pos:p1].copy()
-            pos = p1
+            val ident = buf[pos:p].copy()
+            pos = p
             val t =
             match ficus_keywords.find_opt(ident) {
             | Some((t, n)) =>
@@ -780,8 +782,8 @@ fun make_lexer(strm: stream_t)
         } else if '0' <= c <= '9' {
             val (p, t) = getnumber(buf, pos, getloc(pos), prev_dot)
             new_exp = false
-            pos = p
             prev_dot = false
+            pos = p
             (t, loc) :: []
         }
         /*
@@ -798,15 +800,17 @@ fun make_lexer(strm: stream_t)
             prev_dot = false
             (APOS, loc) :: []
         } else if c == '\'' && c1.isalpha() && peekch(buf, pos+2) != '\'' {
-            val fold p1 = pos for p <- pos+1:len {
+            var p = pos+1
+            while p < len {
                 val cp = buf[p]
-                if !cp.isalnum() && cp != '_' {break with p}
-                p+1
+                if !cp.isalnum() && cp != '_' {break}
+                p += 1
             }
-            pos = p1
+            val tyvar = buf[pos:p].copy()
+            pos = p
             new_exp = false
             prev_dot = false
-            (TYVAR(buf[pos:p1].copy()), loc) :: []
+            (TYVAR(tyvar, loc) :: []
         }
         else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
             val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
@@ -879,7 +883,7 @@ fun make_lexer(strm: stream_t)
                 | (LBRACE, _) :: (CCODE, _) :: rest =>
                     new_exp = false
                     paren_stack = rest
-                    val (p, s) = get_ccode(pos)
+                    val (p, s) = get_ccode(pos-1)
                     pos = p
                     (LITERAL(Ast.LitString(s)), loc) :: []
                 | _ =>

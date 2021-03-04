@@ -1123,15 +1123,10 @@ var parser_ctx = parser_ctx_t { module_id=noid, module_idx=-1, file=noid, deps=[
 fun locate_module_file(mname: string, inc_dirs: string list): string
 {
     val mfname = mname.replace(".", Filename.dir_sep()) + ".fx"
-    val fold mfname_found = "" for d <- inc_dirs {
-        val fname = Filename.concat(d, mfname)
-        if Sys.file_exists(fname) {
-            break with fname
-        }
-        mfname_found
-    }
-    if mfname_found == "" { mfname_found }
-    else { Filename.normalize(Sys.getcwd(), mfname_found) }
+    try {
+        val dir = find(for d <- inc_dirs {Sys.file_exists(Filename.concat(d, mfname))})
+        Filename.normalize(Sys.getcwd(), Filename.concat(dir, mfname))
+    } catch { | NotFoundError => "" }
 }
 
 fun add_to_imported_modules(mname_id: id_t, loc: loc_t): id_t {

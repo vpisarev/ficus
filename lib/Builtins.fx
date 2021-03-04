@@ -17,6 +17,7 @@ val __ficus_version_str__ = f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patch
 
 exception ASCIIError
 exception AssertError
+exception BadArgError
 exception Break
 exception DimError
 exception DivByZeroError
@@ -31,15 +32,14 @@ exception NullPtrError
 exception OptionError
 exception OutOfMemError
 exception OutOfRangeError
+exception OverflowError
+exception ParallelForError
 exception RangeError
 exception SizeError
 exception SizeMismatchError
+exception StackOverflowError
 exception TypeMismatchError
 exception ZeroStepError
-exception StackOverflowError
-exception ParallelForError
-exception BadArgError
-exception OverflowError
 
 fun assert(f: bool) = if !f {throw AssertError}
 
@@ -50,7 +50,7 @@ fun ignore(_: 't) {}
 
 type byte = uint8
 
-fun some_or(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
+fun getsome(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
 fun getsome(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
 fun isnone(x: 't?) { | Some _ => false | _ => true }
 fun issome(x: 't?) { | Some _ => true | _ => false }
@@ -237,27 +237,23 @@ operator * (n: int, s: string) = s * n
 
 operator == (a: 't list, b: 't list): bool
 {
-    fun eq(la: 't list, lb: 't list) =
-        __identical__(la, lb) ||
-        (match (la, lb) {
-        | (a :: la, b :: lb) => a == b && eq(la, lb)
-        | ([], []) => true
-        | _ => false
-        })
-    eq(a, b)
+    a === b ||
+    (match (a, b) {
+    | (ai :: a, bi :: b) => ai == bi && a == b
+    | ([], []) => true
+    | _ => false
+    })
 }
 
-operator <=> (a: 't list, b: 't list): int =
-    try {
-        fold r=0 for xa <- a, xb <- b {
-            val d = xa <=> xb
-            if d != 0 {break with d}
-            r
-        }
-    }
-    catch {
-    | SizeMismatchError => length(a) <=> length(b)
-    }
+operator <=> (a: 't list, b: 't list): int
+{
+    | (ai :: a, bi :: b) =>
+        val d = ai <=> bi
+        if d != 0 {d} else {a <=> b}
+    | ([], _ :: _) => -1
+    | (_ :: _, []) => 1
+    | _ => 0
+}
 
 operator == (a: 't [+], b: 't [+]): bool =
     size(a) == size(b) &&
@@ -267,13 +263,12 @@ operator <=> (a: 't [], b: 't []): int
 {
     val na = size(a), nb = size(b)
     val n = min(na, nb)
-    val fold r=0 for i <- 0:n {
-        val xa = a[i], xb = b[i]
-        val d = xa <=> xb
-        if d != 0 {break with d}
-        r
+    var d = 0
+    for i <- 0:n {
+        d = xa <=> xb
+        if d != 0 {break}
     }
-    if na == nb {r} else if na < nb {-1} else {1}
+    if d != 0 {d} else {na <=> nb}
 }
 
 operator == (a: (...), b: (...)) =
@@ -469,7 +464,22 @@ operator .>= (a: 't [+], b: 't [+]): bool [+] =
 
 // this is pseudo-function that is treated specially by the compiler
 @pure @nothrow fun __eq_variants__(a: 't, b: 't): bool = a.__tag__ == b.__tag__
-@pure @nothrow fun __identical__(a: 't, b: 't): bool = @ccode {return a == b}
+
+// operator === checks whether a and b represent not just equal, but the same object.
+// For many of the types it's should be enough to check "a == b" at C level.
+// But for some other types it may be not enough.
+@pure @nothrow operator === (a: 't, b: 't): bool = @ccode {return a == b}
+@pure @nothrow operator === (a: string, b: string): bool = @ccode {return a->data == b->data}
+@pure @nothrow operator === (a: 't [+], b: 't [+]): bool = @ccode {return a->data == b->data}
+operator === (a: (...), b: (...)): bool =
+    fold f=true for aj<-a, bj<-b {f & (aj === bj)}
+operator === (a: {...}, b: {...}): bool =
+    fold f=true for (_, aj)<-a, (_, bj)<-b {f & (aj === bj)}
+operator === (a: 't?, b: 't?) {
+    | (Some(a), Some(b)) => a === b
+    | (None, None) => true
+    | _ => false
+}
 
 fun int(x: 't) = (x :> int)
 fun uint8(x: 't) = (x :> uint8)
@@ -732,9 +742,9 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
                 }
             val a = arr[i0]
             arr[hi] = a; arr[i0] = p
-            val fold i1 = hi for j <- i0:hi {
-                if lt(p, arr[j+1]) {break with j}
-                i1
+            var i1 = hi
+            for j <- i0:hi {
+                if lt(p, arr[j+1]) {i1=j; break}
             }
             // do the longest half sorting via tail recursion to save stack space
             if i0 - lo < hi - i1 {

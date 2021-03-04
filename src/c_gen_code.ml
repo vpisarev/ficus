@@ -651,6 +651,26 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
         | _ -> ccode
     in
 
+    let add_size_post_check check_list ccode lbl loc =
+        match check_list with
+        | e0 :: rest ->
+            let n = List.length check_list in
+            let sum_checks = List.fold_left (fun e check_i ->
+                CExpBinary(COpAdd, e, check_i, (CTypCInt, loc))) e0 rest in
+            let sum_id = gen_temp_idc "s" in
+            let (sum_exp, ccode) = create_cdefval sum_id CTypCInt
+                (default_val_flags()) "" (Some sum_checks) ccode loc in
+            let bool_ctx = (CTypBool, loc) in
+            let check_exp = CExpBinary(COpLogicOr,
+                CExpBinary(COpCompareEQ, sum_exp, (make_int_exp 0 loc), bool_ctx),
+                CExpBinary(COpCompareEQ, sum_exp, (make_int_exp n loc), bool_ctx),
+                bool_ctx)
+                in
+            let check_call = make_call !std_FX_CHECK_EQ_SIZE [check_exp; lbl] CTypVoid loc in
+            (CExp check_call) :: ccode
+        | _ -> ccode
+    in
+
     let for_err_msg for_idx nfors i msg =
         let for_msg_prefix = if nfors = 1 then "" else if for_idx = 0 then "outer "
         else if for_idx = nfors-1 then "inner " else
@@ -986,7 +1006,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 (CExpBinary(COpCompareEQ, (List.hd i_exps), (List.hd n_exps), (CTypBool, end_for_loc))) :: post_checks
             else if (List.length post_checks) > 1 then post_checks else []
             in
-        let post_ccode = add_size_eq_check post_checks [] lbl end_for_loc in
+        let post_ccode = add_size_post_check post_checks [] lbl end_for_loc in
 
         (* form for-loop headers *)
         let (k_final, for_headers) = List.fold_left2 (fun (k, for_headers) i_exp n_exp ->
@@ -1998,7 +2018,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     "cgen: invalid combination of comprehension type (%s) and the output collection type"
                     (if need_make_array then "MAKE_ARRAY" else if need_make_list then "MAKE_LIST" else "???"))
                 in
-            (* for the nested for statement *)
+            (* form the nested for statement *)
             let rec form_map pre_map_ccode for_idx e_idoml_l prev_i_exps prev_n_exps =
                 let (init_kexp, idoml, at_ids, nested_e_idoml) =
                     match e_idoml_l with
