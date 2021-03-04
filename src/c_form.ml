@@ -832,6 +832,7 @@ let std_fx_substr = ref noid
 
 let std_fx_exn_info_t = ref CTypVoid
 let std_FX_REG_SIMPLE_EXN = ref noid
+let std_FX_REG_SIMPLE_STD_EXN = ref noid
 let std_FX_REG_EXN = ref noid
 let std_FX_MAKE_EXN_IMPL_START = ref noid
 

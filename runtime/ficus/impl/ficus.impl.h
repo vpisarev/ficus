@@ -18,35 +18,35 @@ static char** _fx_argv = 0;
 int_ fx_argc(void) { return _fx_argc; }
 char* fx_argv(int_ idx) { return _fx_argv[idx]; }
 
-static fx_exn_info_t fx_std_exn_info[-FX_EXN_StdMax];
+static fx_exn_info_t fx_std_exn_info[-FX_EXN_StdMin];
 
 int FX_EXN_ASCIIError = -1;
 int FX_EXN_AssertError = -2;
-int FX_EXN_Break = -3;
-int FX_EXN_DimError = -4;
-int FX_EXN_DivByZeroError = -5;
-int FX_EXN_FileOpenError = -6;
-int FX_EXN_IOError = -7;
-int FX_EXN_NotFoundError = -8;
-int FX_EXN_NoMatchError = -9;
-int FX_EXN_NullFileError = -10;
-int FX_EXN_NullListError = -11;
-int FX_EXN_NullPtrError = -12;
-int FX_EXN_OptionError = -13;
-int FX_EXN_OutOfMemError = -14;
-int FX_EXN_OutOfRangeError = -15;
-int FX_EXN_RangeError = -16;
-int FX_EXN_SizeError = -17;
-int FX_EXN_SizeMismatchError = -18;
-int FX_EXN_SysBreak = -19;
-int FX_EXN_SysContinue = -20;
-int FX_EXN_TypeMismatchError = -21;
-int FX_EXN_UnknownExnError = -22;
-int FX_EXN_ZeroStepError = -23;
-int FX_EXN_StackOverflowError = -24;
-int FX_EXN_ParallelForError = -25;
-int FX_EXN_BadArgError = -26;
-int FX_EXN_OverflowError = -27;
+int FX_EXN_BadArgError = -3;
+int FX_EXN_Break = -4;
+int FX_EXN_DimError = -5;
+int FX_EXN_DivByZeroError = -6;
+int FX_EXN_FileOpenError = -7;
+int FX_EXN_IOError = -8;
+int FX_EXN_NotFoundError = -9;
+int FX_EXN_NoMatchError = -10;
+int FX_EXN_NullFileError = -11;
+int FX_EXN_NullListError = -12;
+int FX_EXN_NullPtrError = -13;
+int FX_EXN_OptionError = -14;
+int FX_EXN_OutOfMemError = -15;
+int FX_EXN_OutOfRangeError = -16;
+int FX_EXN_OverflowError = -17;
+int FX_EXN_ParallelForError = -18;
+int FX_EXN_RangeError = -19;
+int FX_EXN_SizeError = -20;
+int FX_EXN_SizeMismatchError = -21;
+int FX_EXN_StackOverflowError = -22;
+int FX_EXN_SysBreak = -23;
+int FX_EXN_SysContinue = -24;
+int FX_EXN_TypeMismatchError = -25;
+int FX_EXN_UnknownExnError = -26;
+int FX_EXN_ZeroStepError = -27;
 
 int fx_init(int argc, char** argv)
 {
@@ -360,7 +360,7 @@ const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn)
 {
     if(exn->info) return exn->info;
     int tag = exn->tag;
-    if(tag > 0 || tag < FX_EXN_StdMax) return 0;
+    if(tag > 0 || tag <= FX_EXN_StdMin) return 0;
     const fx_exn_info_t* info = &fx_std_exn_info[-tag];
     return info;
 }
@@ -475,6 +475,16 @@ void fx_register_simple_exn(const char_* name, int* tag, fx_exn_info_t* info, fx
     exn->tag = *tag;
     exn->info = info;
     exn->data = 0;
+}
+
+void fx_register_simple_std_exn(int tag, fx_exn_t* exn)
+{
+    exn->tag = tag;
+    if(FX_EXN_StdMin < tag && tag <= 0) {
+        exn->info = &fx_std_exn_info[-tag];
+    } else {
+        assert(0);
+    }
 }
 
 //////////////// function pointers ////////////////

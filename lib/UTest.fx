@@ -160,7 +160,6 @@ fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
     try {
         val (ai, idx, bi) = find(
             for ai@idx <- a, bi <- b {!(bi - eps <= ai <= bi + eps)})
-        println("got here")
         test_failed_expect_near(ai, bi, Some(idx), eps)
     }
     catch {
@@ -177,7 +176,7 @@ fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
     | NotFoundError => {}
     }
 
-fun EXPECT_THROWS(f: void->void, msg: string) =
+fun EXPECT_THROWS(f: void->void, msg: string, ref_exn: exn) =
     try {
         f()
         println(f"EXPECT_THROWS failed on '{msg}'")
@@ -185,7 +184,11 @@ fun EXPECT_THROWS(f: void->void, msg: string) =
         println("Expected: Throws an exception")
         g_test_state.currstatus = false
     } catch {
-        | e => {}
+        | e when e.__tag__ == ref_exn.__tag__ => {}
+        | e => println(f"EXPECT_THROWS failed on '{msg}'")
+            println(f"Actual: Throws a different exception {e}")
+            println(f"Expected: Throws an exception {ref_exn}")
+            g_test_state.currstatus = false
     }
 
 fun EXPECT_NO_THROWS(f: void->void, msg: string) =

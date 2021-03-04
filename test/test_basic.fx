@@ -539,6 +539,20 @@ TEST("basic.types.variant", fun()
     EXPECT_EQ(t2str(Var(ref None)), "<unknown>")
 })
 
+TEST("basic.list", fun()
+{
+    val l = 1 :: 2 :: 3 :: []
+    val l2 = [: 1, 2, 3 :]
+    EXPECT_EQ(l.length(), 3)
+    EXPECT_THROWS(fun () {println(l.tl().tl().tl().tl())}, "[].tl() failed", NullListError)
+    EXPECT_EQ(l, l2)
+    EXPECT_EQ(l.hd(), 1)
+    EXPECT_EQ(l.tl(), 2 :: 3 :: [])
+    EXPECT_EQ(l.hd() :: l.tl(), l)
+    EXPECT_NE(l, 1 :: -1 :: 3 :: [])
+    EXPECT_EQ(l <=> [: 1, 2, 3, 4 :], -1)
+})
+
 TEST("basic.list.reverse", fun()
 {
     fun list_reverse(l: 't list): 't list
@@ -573,8 +587,6 @@ TEST("basic.list.map", fun()
 
     val cosines = list_map((1. :: 2. :: 3. :: []), (Math.cos: double->double))
     val expected = [: 0.5403023058681398, -0.4161468365471424, -0.9899924966004454 :]
-    println(cosines)
-    println(expected)
     EXPECT_NEAR(cosines, expected, DBL_EPSILON*10)
 })
 
@@ -708,7 +720,7 @@ TEST("basic.assert", fun()
 {
     val k = -1
     EXPECT_NO_THROWS(fun () { assert (0 == k-k) }, "assert(0=0)")
-    EXPECT_THROWS(fun () { assert (1 == k-k) }, "assert(1=0)")
+    EXPECT_THROWS(fun () { assert (1 == k-k) }, "assert(1=0)", AssertError)
 })
 
 TEST("basic.string", fun()

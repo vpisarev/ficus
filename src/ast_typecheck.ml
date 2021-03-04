@@ -682,7 +682,7 @@ and check_exp e env sc =
         match (is_range, etyp, relems) with
         | (false, (TypTuple tl), _) ->
             let tup_pat = PatIdent((gen_temp_id "tup"), eloc) in
-            let (tup_pat, env, idset, _) = check_pat tup_pat etyp env idset IdSet.empty sc false true false in
+            let (tup_pat, env, idset, _, _) = check_pat tup_pat etyp env idset IdSet.empty sc false true false in
             let def_e = DefVal(tup_pat, e, default_tempval_flags(), eloc) in
             let tup_e = match tup_pat with
                 | PatIdent(i, _) -> ExpIdent(i, (etyp, eloc))
@@ -692,7 +692,7 @@ and check_exp e env sc =
             ((List.length tl), (p, tup_e), [def_e], 1, env, idset)
         | (false, _, relems) when relems != [] ->
             let rec_pat = PatIdent((gen_temp_id "rec"), eloc) in
-            let (rec_pat, env, idset, _) = check_pat rec_pat etyp env idset IdSet.empty sc false true false in
+            let (rec_pat, env, idset, _, _) = check_pat rec_pat etyp env idset IdSet.empty sc false true false in
             let def_e = DefVal(rec_pat, e, default_tempval_flags(), eloc) in
             let rec_e = match rec_pat with
                 | PatIdent(i, _) -> ExpIdent(i, (etyp, eloc))
@@ -708,7 +708,7 @@ and check_exp e env sc =
                 | (_, TypString) -> (TypChar, 1)
                 | _ -> raise_compile_err eloc "unsupported iteration domain; it should be a range, array, list, string, tuple or a record")
                 in
-            let (p, env, idset, _) = check_pat p ptyp env idset IdSet.empty sc false true false in
+            let (p, env, idset, _, _) = check_pat p ptyp env idset IdSet.empty sc false true false in
             (0, (p, e), [], dims, env, idset)
     in
     let check_for_clauses for_clauses idx_pat env idset for_sc =
@@ -733,7 +733,7 @@ and check_exp e env sc =
             (match idx_pat with
             | PatAny _ -> (idx_pat, env, idset)
             | _ ->
-                let (idx_pat, env, idset, _) = check_pat idx_pat idx_typ env idset
+                let (idx_pat, env, idset, _, _) = check_pat idx_pat idx_typ env idset
                     IdSet.empty for_sc false true false in
                 (PatTyped(idx_pat, idx_typ, (get_pat_loc idx_pat)), env, idset))
             in
@@ -748,7 +748,7 @@ and check_exp e env sc =
                 let tj = List.nth tl idx in
                 let ej = ExpMem(trj, ExpLit(LitInt (Int64.of_int idx), (TypInt, locj)), (tj, locj)) in
                 let pj = dup_pat pj in
-                let (pj, env, idset, _) = check_pat pj tj env idset IdSet.empty sc false true false in
+                let (pj, env, idset, _, _) = check_pat pj tj env idset IdSet.empty sc false true false in
                 let def_pj = DefVal(pj, ej, default_tempval_flags(), locj) in
                 (j+1, (def_pj :: code), env, idset)
             | _ ->
@@ -762,8 +762,8 @@ and check_exp e env sc =
                         when (match as_id with Id.Temp _ -> true | _ -> false) -> (pnj, pvj)
                     | _ -> raise_compile_err eloc "when iterating through record, a 2-element tuple should be used as pattern"
                     in
-                let (pnj, env, idset, _) = check_pat pnj TypString env idset IdSet.empty sc false true false in
-                let (pvj, env, idset, _) = check_pat pvj tj env idset IdSet.empty sc false true false in
+                let (pnj, env, idset, _, _) = check_pat pnj TypString env idset IdSet.empty sc false true false in
+                let (pvj, env, idset, _, _) = check_pat pvj tj env idset IdSet.empty sc false true false in
                 let def_pvj = DefVal(pvj, ej, default_tempval_flags(), locj) in
                 let def_pnj = DefVal(pnj, ExpLit(LitString (pp_id2str nj),
                     (TypString, locj)), default_tempval_flags(), locj) in
@@ -773,7 +773,7 @@ and check_exp e env sc =
             | PatAny _ -> (code, env, idset)
             | _ ->
                 let idx_pat = dup_pat idx_pat in
-                let (idx_pat, env, idset, _) = check_pat idx_pat TypInt env idset
+                let (idx_pat, env, idset, _, _) = check_pat idx_pat TypInt env idset
                     IdSet.empty sc false true false in
                 let idx_loc = get_pat_loc idx_pat in
                 let def_idx = DefVal(idx_pat, ExpLit(LitInt (Int64.of_int idx),
@@ -880,7 +880,10 @@ and check_exp e env sc =
                 unify etyp TypInt eloc "variant tag is integer, but the other type is expected";
                 ExpMem(new_e1, e2, ctx)
             | _ ->
-                raise_compile_err eloc "__tag__ can only be requestd for variants")
+                raise_compile_err eloc "__tag__ can only be requestd for variants and exceptions")
+        | (TypExn, _, ExpIdent(n2, (etyp2, eloc2))) when (pp_id2str n2) = "__tag__" ->
+            unify etyp TypInt eloc "variant tag is integer, but the other type is expected";
+            ExpMem(new_e1, e2, ctx)
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) ->
             let (_, relems) = get_record_elems None etyp1 eloc1 in
             (try
@@ -1088,7 +1091,8 @@ and check_exp e env sc =
         let f_expected_typ = TypFun(arg_typs, etyp) in
         let (f_real_typ, floc) = get_exp_ctx f in
         let _ = unify f_real_typ f_expected_typ floc "the real and expected function type do not match" in
-        let new_args = List.map (fun a -> check_exp a env sc) args in
+        let new_args = List.map (fun a ->
+            check_exp a env sc) args in
         (try
             let new_f = check_exp f env sc in
             let new_args = match deref_typ (get_exp_typ new_f) with
@@ -1512,7 +1516,7 @@ and check_eseq eseq env sc create_sc =
                     with
                     | CompileError(_, _) as err ->
                         push_compile_err err; e) in
-                let (p1, env1, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true is_mutable in
+                let (p1, env1, _, _, _) = check_pat p t env IdSet.empty IdSet.empty sc false true is_mutable in
                 (DefVal(p1, e1, flags, loc) :: eseq, env1)
             | DefFun (df) ->
                 let df = if !df.df_templ_args = [] then
@@ -1722,22 +1726,33 @@ and check_types eseq env sc =
 and reg_deffun df env sc =
     let { df_name; df_args; df_typ; df_body; df_flags; df_loc } = !df in
     let df_name1 = dup_id df_name in
-    let rt = (match df_typ with TypFun(_, rt) -> rt | _ -> raise_compile_err df_loc "incorrect function type") in
+    let rt = (match df_typ with
+              | TypFun(_, rt) -> rt
+              | _ -> raise_compile_err df_loc "incorrect function type") in
     let df_sc = (ScFun df_name1) :: sc in
     let (args1, argtyps1, env1, idset1, templ_args1) = List.fold_left
             (fun (args1, argtyps1, env1, idset1, templ_args1) arg ->
             let t = make_new_typ() in
-            let (arg1, env1, idset1, templ_args1) =
+            let (arg1, env1, idset1, templ_args1, typed) =
                 check_pat arg t env1 idset1 templ_args1 df_sc true true false in
+            let (arg1, templ_args1) = if typed then (arg1, templ_args1) else
+                let targ = gen_temp_id "'targ" in
+                let arg1 = PatTyped(arg1, TypApp([], targ), get_pat_loc arg1) in
+                let templ_args1 = IdSet.add targ templ_args1 in
+                (arg1, templ_args1)
+                in
             ((arg1 :: args1), (t :: argtyps1), env1, idset1, templ_args1))
             ([], [], env, IdSet.empty, IdSet.empty) df_args in
     let dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc) in
-    let (dummy_rt_pat1, env1, idset1, templ_args1) =
-            check_pat dummy_rt_pat (make_new_typ()) env1 idset1 templ_args1 df_sc true true false in
-    let rt = match dummy_rt_pat1 with PatTyped(_, rt, _) -> rt
-            | _ -> raise_compile_err df_loc "invalid return pattern after check" in
+    let (dummy_rt_pat1, env1, idset1, templ_args1, _) =
+            check_pat dummy_rt_pat (make_new_typ()) env1
+            idset1 templ_args1 df_sc true true false in
+    let rt = match dummy_rt_pat1 with
+             | PatTyped(_, rt, _) -> rt
+             | _ -> raise_compile_err df_loc "invalid return pattern after check" in
     let df_typ1 = TypFun((List.rev argtyps1), rt) in
-    let env1 = add_id_to_env_check df_name df_name1 env1 (check_for_duplicate_fun df_typ1 env1 sc df_loc) in
+    let env1 = add_id_to_env_check df_name df_name1 env1
+            (check_for_duplicate_fun df_typ1 env1 sc df_loc) in
     df := { df_name=df_name1; df_templ_args=(IdSet.elements templ_args1);
             df_args=(List.rev args1); df_typ=df_typ1;
             df_body; df_flags; df_scope=sc; df_loc; df_templ_inst=[]; df_env=env1 };
@@ -1912,7 +1927,7 @@ and instantiate_fun_ templ_df inst_ftyp inst_env0 inst_sc inst_loc instantiate =
     let fun_sc = (ScFun inst_name) :: inst_sc in
     let (df_inst_args, inst_env, _) = List.fold_left2
         (fun (df_inst_args, inst_env, idset) df_arg arg_typ ->
-            let (df_inst_arg, inst_env, idset, _) =
+            let (df_inst_arg, inst_env, idset, _, _) =
                 check_pat (dup_pat df_arg) arg_typ inst_env idset IdSet.empty fun_sc false true false in
             ((df_inst_arg :: df_inst_args), inst_env, idset)) ([], inst_env, IdSet.empty) df_args arg_typs in
     let df_inst_args = List.rev df_inst_args in
@@ -2112,19 +2127,22 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
             set_id_entry j (IdVal dv);
             r_env := add_id_to_env i0 j !r_env;
             j))
-    and check_pat_ p t = (match p with
-        | PatAny _ -> p
+    and check_pat_ p t = match p with
+        | PatAny _ -> (p, false)
         | PatLit(l, loc) ->
             if simple_pat_mode then raise_compile_err loc "literals are not allowed here" else ();
             unify t (get_lit_typ l) loc "the literal of unexpected type";
-            p
+            (p, (match l with LitNil -> false | _ -> true))
         | PatIdent(i, loc) ->
             if (pp_id2str i) = "_" then raise_compile_err loc "'_' occured in PatIdent()" else ();
-            PatIdent((process_id i t loc), loc)
+            (PatIdent((process_id i t loc), loc), false)
         | PatTuple(pl, loc) ->
             let tl = List.map (fun p -> make_new_typ ()) pl in
-            unify t (TypTuple tl) loc "improper type of the tuple pattern";
-            PatTuple(List.rev (List.fold_left2 (fun pl_new p t -> (check_pat_ p t) :: pl_new) [] pl tl), loc)
+            let _ = unify t (TypTuple tl) loc "improper type of the tuple pattern" in
+            let (pl_new, typed) = List.fold_left2 (fun (pl_new, typed) p t ->
+                let (pj, typed_j) = check_pat_ p t in
+                (pj:: pl_new, typed && typed_j)) ([], true) pl tl in
+            (PatTuple(List.rev pl_new, loc), typed)
         | PatVariant(v, pl, loc) ->
             if not proto_mode then
                 (* [TODO] in the ideal case this branch should work fine in the prototype mode as well,
@@ -2135,7 +2153,10 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                 (*let _ = print_env "env @ report_not_found: " env loc in*)
                 let (v_new, _) = lookup_id v ctyp !r_env sc loc in
                 (*let _ = printf "checking '%s'~'%s' with %d params at %s\n" (id2str v) (id2str v_new) (List.length pl) (loc2str loc) in*)
-                PatVariant(v_new, (List.map2 (fun p t -> check_pat_ p t) pl tl), loc)
+
+                (* in principle, non-template variant with a single case can be considered
+                   as explicitly typed, but we set it typed=false for now for simplicity *)
+                (PatVariant(v_new, (List.map2 (fun p t -> let (p, _) = check_pat_ p t in p) pl tl), loc), false)
             else
             (match (deref_typ t) with
             | TypApp(ty_args, n) ->
@@ -2158,7 +2179,7 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                             (sprintf "the number of variant pattern arguments does not match to the description of variant case '%s'"
                                 (pp_id2str vi))
                             else ();
-                        PatVariant(v, pl, loc)
+                        (PatVariant(v, pl, loc), false)
                     with Not_found ->
                         raise_compile_err loc
                         (sprintf "the variant constructor '%s' is not found" (pp_id2str v)))
@@ -2174,48 +2195,53 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                     let n_orig = get_orig_id n in
                     match (List.find_opt (fun (nj, tj, _) -> (get_orig_id nj) = n_orig) relems_found) with
                     | Some((nj, tj, _)) ->
-                        let p = check_pat_ p tj in (n, p) :: new_relems
+                        let (p, _) = check_pat_ p tj in (n, p) :: new_relems
                     | _ -> raise_compile_err loc
                         (sprintf "element '%s' is not found in the record '%s'" (pp_id2str n) (pp_id2str (Utils.opt_get rn_opt noid))))
                     [] relems
                     in
-                PatRecord((if ctor <> noid then Some ctor else None), (List.rev new_relems), loc)
+                (PatRecord((if ctor <> noid then Some ctor else None), (List.rev new_relems), loc), false)
             else
                 raise_compile_err loc "record patterns are not supported in function prototypes yet"
         | PatCons(p1, p2, loc) ->
             let t1 = make_new_typ() in
             let t2 = TypList t1 in
-            if simple_pat_mode then raise_compile_err loc "'::' pattern is not allowed here" else ();
-            unify t t2 loc "'::' pattern is used with non-list type";
-            PatCons((check_pat_ p1 t1), (check_pat_ p2 t2), loc)
+            let _ = if simple_pat_mode then raise_compile_err loc "'::' pattern is not allowed here" else () in
+            let _ = unify t t2 loc "'::' pattern is used with non-list type" in
+            let (p1, _) = check_pat_ p1 t1 in
+            let (p2, _) = check_pat_ p2 t2 in
+            (PatCons(p1, p2, loc), false)
         | PatAs(p1, i, loc) ->
-            let p1_new = check_pat_ p1 t in
+            let (p1_new, typed) = check_pat_ p1 t in
             let i_new = process_id i t loc in
-            PatAs(p1_new, i_new, loc)
+            (PatAs(p1_new, i_new, loc), typed)
         | PatTyped(p1, t1, loc) ->
             let (t1_new, env1) = check_typ_and_collect_typ_vars t1 !r_env
                 (if proto_mode then Some(r_typ_vars) else None) sc loc in
-            r_env := env1;
-            unify t1_new t loc "inconsistent explicit type specification";
-            PatTyped((check_pat_ p1 t), t1_new, loc)
+            let _ = r_env := env1 in
+            let _ = unify t1_new t loc "inconsistent explicit type specification" in
+            let (p1, _) = check_pat_ p1 t in
+            (PatTyped(p1, t1_new, loc), true)
         | PatRef(p1, loc) ->
             let t1 = make_new_typ() in
-            unify t (TypRef t1) loc "'ref' pattern is used with non-reference type";
-            PatRef((check_pat_ p1 t1), loc)
+            let _ = unify t (TypRef t1) loc "'ref' pattern is used with non-reference type" in
+            let (p_new, typed) = check_pat_ p1 t1 in
+            (PatRef(p_new, loc), typed)
         | PatWhen(p1, e1, loc) ->
-            let p1 = check_pat_ p1 t in
+            let (p1, _) = check_pat_ p1 t in
             let (etyp, eloc) = get_exp_ctx e1 in
             let _ = unify etyp TypBool loc "'when' clause should have boolean type" in
             let e1 = check_exp e1 !r_env sc in
-            PatWhen(p1, e1, loc)) in
-    let pat_new = check_pat_ pat typ in
-    (pat_new, !r_env, !r_idset, !r_typ_vars)
+            if simple_pat_mode then raise_compile_err loc "'when' pattern is not allowed here" else ();
+            (PatWhen(p1, e1, loc), false)
+    in let (pat_new, typed) = check_pat_ pat typ in
+    (pat_new, !r_env, !r_idset, !r_typ_vars, typed)
 
 and check_cases cases inptyp outtyp env sc loc =
     List.map (fun (plist, e) ->
         let case_sc = new_block_scope() :: sc in
         let (plist1, env1, capt1) = List.fold_left (fun (plist1, env1, capt1) p ->
-            let (p2, env2, capt2, _) = check_pat p inptyp env1 capt1 IdSet.empty case_sc false false false in
+            let (p2, env2, capt2, _, _) = check_pat p inptyp env1 capt1 IdSet.empty case_sc false false false in
             (p2 :: plist1, env2, capt2)) ([], env, IdSet.empty) plist in
         let (plist1, env1, capt1) = if (List.length plist1) = 1 then (plist1, env1, capt1) else
             let _ = if (IdSet.is_empty capt1) then () else

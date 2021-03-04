@@ -68,6 +68,7 @@ let init_std_names () =
 
     std_fx_exn_info_t := CTypName(get_id "fx_exn_info_t");
     std_FX_REG_SIMPLE_EXN := gen_std_macro "FX_REG_SIMPLE_EXN" 4;
+    std_FX_REG_SIMPLE_STD_EXN := gen_std_macro "FX_REG_SIMPLE_STD_EXN" 2;
     std_FX_REG_EXN := gen_std_macro "FX_REG_EXN" 4;
     std_FX_MAKE_EXN_IMPL_START := gen_std_macro "FX_MAKE_EXN_IMPL_START" 3;
 

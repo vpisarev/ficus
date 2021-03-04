@@ -86,6 +86,7 @@ typedef char32_t char_;
 //////////////////////// Error Codes //////////////////////
 extern int FX_EXN_ASCIIError;
 extern int FX_EXN_AssertError;
+extern int FX_EXN_BadArgError;
 extern int FX_EXN_Break;
 extern int FX_EXN_DimError;
 extern int FX_EXN_DivByZeroError;
@@ -100,20 +101,20 @@ extern int FX_EXN_OptionError;
 extern int FX_EXN_OutOfMemError;
 extern int FX_EXN_OutOfRangeError;
 extern int FX_EXN_OverflowError;
+extern int FX_EXN_ParallelForError;
 extern int FX_EXN_SizeError;
 extern int FX_EXN_SizeMismatchError;
+extern int FX_EXN_StackOverflowError;
 extern int FX_EXN_SysBreak;
 extern int FX_EXN_SysContinue;
+extern int FX_EXN_RangeError;
 extern int FX_EXN_TypeMismatchError;
 extern int FX_EXN_UnknownExnError;
 extern int FX_EXN_ZeroStepError;
-extern int FX_EXN_StackOverflowError;
-extern int FX_EXN_ParallelForError;
-extern int FX_EXN_BadArgError;
 
 enum {
     FX_OK = 0,
-    FX_EXN_StdMax = -48,
+    FX_EXN_StdMin = -48,
     FX_EXN_User = -1024
 };
 
@@ -447,12 +448,15 @@ void fx_print_bt(void);
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);
 
+#define FX_REG_SIMPLE_STD_EXN(tag, exn) \
+    fx_register_simple_std_exn(tag, &exn)
 #define FX_REG_SIMPLE_EXN(name, tag, info, exn) \
     fx_register_simple_exn(U##name, &tag, &info, &exn)
 #define FX_REG_EXN(name, tag, info, free_f) \
     fx_register_exn(U##name, &tag, &info, (fx_free_t)free_f, 0, 0)
 
 void fx_register_simple_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_exn_t* exn);
+void fx_register_simple_std_exn(int tag, fx_exn_t* exn);
 void fx_register_exn(const char_* name, int* tag, fx_exn_info_t* info, fx_free_t free_f,
                     fx_to_string_t to_string_f, fx_print_t print_repr_f);
 

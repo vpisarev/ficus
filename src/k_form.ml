@@ -304,7 +304,7 @@ let get_kinfo_typ info i loc =
     | KNone -> KTypVoid
     | KVal {kv_typ} -> kv_typ
     | KFun {contents = {kf_args; kf_rt}} -> get_kf_typ kf_args kf_rt
-    | KExn {contents = {ke_typ}} -> ke_typ
+    | KExn _ -> KTypExn
     | KVariant {contents = {kvar_name}} -> KTypName(kvar_name)
     | KClosureVars {contents = {kcv_name; kcv_freevars}} -> KTypRecord(kcv_name, kcv_freevars)
     | KTyp {contents={kt_typ=KTypRecord(_, _) as kt_typ}} -> kt_typ

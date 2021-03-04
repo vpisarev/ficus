@@ -113,11 +113,19 @@ let convert_all_fdecls top_code =
             let _ = set_idc_entry kcv_name (CTyp ct) in
             let decl_fcvt = [CDefTyp ct] in
             top_fcv_decls := decl_free_f @ decl_fcvt @ !top_fcv_decls
-        | KDefExn {contents={ke_std=true; ke_tag; ke_typ=KTypVoid; ke_scope; ke_loc}} ->
+        | KDefExn {contents={ke_name; ke_std=true; ke_tag; ke_typ=KTypVoid; ke_cname; ke_scope; ke_loc}} ->
             let {kv_cname} = get_kval ke_tag ke_loc in
             let cv_flags = {(default_val_flags()) with
                 val_flag_global=ke_scope; val_flag_mutable=true} in
-            ignore(create_cdefval ke_tag CTypCInt cv_flags kv_cname None [] ke_loc)
+            let _ = create_cdefval ke_tag CTypCInt cv_flags kv_cname None [] ke_loc in
+            let cv_flags = {(default_val_flags()) with
+                val_flag_global=ke_scope; val_flag_mutable=true} in
+            let (exn_exp, decls) = create_cdefval ke_name CTypExn cv_flags ke_cname
+                (Some (make_dummy_exp ke_loc)) [] ke_loc in
+            let call_reg_exn = CExp (make_call !std_FX_REG_SIMPLE_STD_EXN
+                [(make_id_t_exp (get_id kv_cname) CTypCInt ke_loc); exn_exp] CTypVoid ke_loc) in
+            top_fcv_decls := decls @ !top_fcv_decls;
+            mod_init_calls := call_reg_exn :: !mod_init_calls
         | KDefExn ke ->
             let {ke_name; ke_typ; ke_std; ke_tag; ke_cname; ke_base_cname; ke_make; ke_scope; ke_loc} = !ke in
             let exn_strname = get_qualified_name (pp_id2str ke_name) ke_scope in

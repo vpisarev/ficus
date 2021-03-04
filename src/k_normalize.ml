@@ -417,8 +417,12 @@ let rec exp2kexp e code tref sc =
                 (KExpMem(a_id, i, kctx), code)
             else raise_compile_err nloc
                 (sprintf "there is no record field '%s' in the record '%s'" (id2str n) (id2str rn))
-        | (KTypName(vn), ExpIdent(n2, (etyp2, eloc2))) when (pp_id2str n2) = "__tag__" ->
+        | (ktyp, ExpIdent(n2, (etyp2, eloc2))) when
+            (match ktyp with KTypName _ | KTypExn -> true | _ -> false) &&
+            (pp_id2str n2) = "__tag__" ->
             (KExpIntrin(IntrinVariantTag, (AtomId a_id) :: [], (KTypCInt, eloc)), code)
+        | (_, ExpIdent(n2, (etyp2, eloc2))) ->
+            raise_compile_err e1loc (sprintf "unsupported '(some_struct : %s).%s' access operation" (typ2str (get_exp_typ e1)) (pp_id2str n2))
         | (_, _) ->
             raise_compile_err e1loc "unsupported access operation")
     | ExpAssign(e1, e2, _) ->
