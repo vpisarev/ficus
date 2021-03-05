@@ -1351,12 +1351,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpFor(for_clauses, idx_pat, body, flags, _) =>
         val is_fold = flags.for_flag_fold
         val is_nested = flags.for_flag_nested
-        val for_sc = (if is_fold {
-                         new_fold_scope()
-                         } else {
-                             new_loop_scope(is_nested)
-                         }) :: sc
-        val (trsz, pre_code, for_clauses, idx_pat, dims, env, _) = check_for_clauses(for_clauses, idx_pat, env, make_empty_idset(), for_sc)
+        val for_sc = (if is_fold {new_fold_scope()} else {new_loop_scope(is_nested)}) :: sc
+        val (trsz, pre_code, for_clauses, idx_pat, dims, env, _) =
+            check_for_clauses(for_clauses, idx_pat, env, make_empty_idset(), for_sc)
         if trsz > 0 {
             /* iteration over tuple(s) is replaced with unrolled code.
                * this is possible, since we know the tuple size at compile time
@@ -1507,7 +1504,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         | _ =>
             val (r_etyp, r_eloc) = get_exp_ctx(r_e)
             val r_expected_typ = TypFun(rtyp :: [], etyp)
-            unify(r_etyp, r_expected_typ, r_eloc, "there is no proper record constructor/function with record argument")
+            unify(r_etyp, r_expected_typ, r_eloc,
+                "there is no proper record constructor/function with record argument")
             val new_r_e = check_exp(r_e, env, sc)
             ExpMkRecord(new_r_e, r_new_initializers.rev(), ctx)
         }
@@ -1522,10 +1520,13 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val (ei_typ, ei_loc) = get_exp_ctx(ei)
             match relems.find_opt(fun ((nj, _, _): rec_elem_t) {ni == nj}) {
             | Some ((_, ti, _)) =>
-                unify(ti, ei_typ, ei_loc, f"invalid type of the initializer of record field '{pp_id2str(ni)}'")
+                unify(ti, ei_typ, ei_loc,
+                    f"invalid type of the initializer of record field '{pp_id2str(ni)}'")
                 val new_ei = check_exp(ei, env, sc)
                 (ni, new_ei)
-            | _ => throw compile_err(ei_loc, f"there is no record field '{pp_id2str(ni)}' in the updated record")
+            | _ =>
+                throw compile_err(ei_loc,
+                    f"there is no record field '{pp_id2str(ni)}' in the updated record")
             }
         } :]
         ExpUpdateRecord(new_r_e, new_r_initializers, ctx)
@@ -1562,7 +1563,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val str = str.strip()
             val str = if str.endswith("}") || str.endswith(";") { str } else { str + ";" }
             ExpCCode(str, ctx)
-        | _ => throw compile_err(eloc, "ccode may be used only at the top (module level) or as a single expression in function definition")
+        | _ =>
+            throw compile_err(eloc,
+                "ccode may be used only at the top (module level) or as a single expression in function definition")
         }
     /* all the declarations are checked in check_eseq */
     | DefVal(_, _, _, _) | DefFun(_) | DefVariant(_) | DefClass(_) | DefInterface(_)
@@ -1638,7 +1641,8 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                 val p = match p {
                 | PatTyped(p1, t1, loc) =>
                     val t1 = check_typ(t1, env, sc, loc)
-                    unify(t, t1, loc, "explicit type specification of the defined value does not match the assigned expression type")
+                    unify(t, t1, loc,
+                        "explicit type specification of the defined value does not match the assigned expression type")
                     p1
                 | _ => p
                 }
@@ -2208,7 +2212,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                             ExpIdent(bi, (make_new_typ(), body_loc)),
                             (TypBool, body_loc))
                         val cmp_code = if idx == 1 { cmp_ab }
-                                    else { ExpBinary(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc)) }
+                                else { ExpBinary(OpBitwiseAnd, cmp_code, cmp_ab, (TypBool, body_loc)) }
                         (idx + 1, PatIdent(ai, body_loc) :: al, PatIdent(bi, body_loc) :: bl, cmp_code)
                     }
                     val a_case_pat = PatVariant(n, al.rev(), body_loc)
@@ -2486,7 +2490,6 @@ fun check_mod(m: id_t) {
     try {
         val modsc = ScModule(m) :: []
         val (seq, env) = check_eseq(minfo->dm_defs, make_empty_env(), modsc, false)
-
         minfo->dm_defs = seq
         minfo->dm_env = env
     } catch { | CompileError(_, _) as err => push_compile_err(err) | PropagateCompileError => {} }

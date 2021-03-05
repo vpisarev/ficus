@@ -1105,7 +1105,7 @@ fun lit2str(c: lit_t) {
 
 fun print_idset(setname: string, s: idset_t) {
     print(f"{setname}:[")
-    s.app(fun (i: id_t) { println(f" {id2str(i)}") })
+    s.app(fun (i) { println(f" {id2str(i)}") })
     print(" ]\n")
 }
 

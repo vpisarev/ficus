@@ -221,18 +221,17 @@ TEST("basic.types.templates", fun()
     EXPECT_EQ(my_func2(3), 9)
 
     // Check tuple_signature_t
-    val my_func3: (double) template_fun2_t = fun (x:double) {x*-3.}
+    val my_func3: double template_fun2_t = fun (x:double) {x*-3.}
     val strange_tuple: (int, double) tuple_signature_t = (
             3,
             3.25,
-            (fun (f: (int) template_fun2_t) {my_func3} )
+            (fun (f: int template_fun2_t) {my_func3} )
         )
     EXPECT_EQ(strange_tuple.0, 3)
     EXPECT_EQ(strange_tuple.1, 3.25)
     EXPECT_EQ(-9., strange_tuple.2(my_func2)(3.0))
 
-    val cosf = (Math.cos: float->float)
-    val ct_inst = C((A(cosf) : (float, float) ct))
+    val ct_inst = C((A(Math.cos) : (float, float) ct))
     EXPECT_EQ(match ct_inst {
         | C(A(f)) => f(0.f)
         | _ => -1.f
@@ -585,7 +584,7 @@ TEST("basic.list.map", fun()
     val strings = list_map((1 :: 2 :: 3 :: []), (string: int->string))
     EXPECT_EQ(strings, [: "1", "2", "3" :])
 
-    val cosines = list_map((1. :: 2. :: 3. :: []), (Math.cos: double->double))
+    val cosines : double list = list_map((1. :: 2. :: 3. :: []), Math.cos)
     val expected = [: 0.5403023058681398, -0.4161468365471424, -0.9899924966004454 :]
     EXPECT_NEAR(cosines, expected, DBL_EPSILON*10)
 })
@@ -631,7 +630,7 @@ TEST("basic.list.unzip", fun()
 TEST("basic.list.sort", fun()
 {
     EXPECT_EQ([: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
-        -460, 451, -11034, 8848 :].sort(fun (a: int, b: int) {a < b}),
+        -460, 451, -11034, 8848 :].sort(fun (a, b) {a < b}),
         [: -11034, -460, -1, 0, 1, 2, 10, 26, 113, 355, 451, 1949, 8848, 299792458 :])
 })
 
@@ -734,7 +733,7 @@ TEST("basic.string", fun()
     EXPECT_EQ(", ".join([: "a", "b", "c" :]), "a, b, c")
 
     val str = "This is a sentence made of words separated by spaces."
-    EXPECT_EQ(str.tokens(fun (c: char) {c == ' '}),
+    EXPECT_EQ(str.tokens(fun (c) {c == ' '}),
         [:"This", "is", "a", "sentence", "made", "of", "words", "separated", "by", "spaces." :])
 
     EXPECT_EQ("Привет! 你好吗?".length(), 12)

@@ -57,6 +57,9 @@ fun exists(l: 't list, f: 't -> bool): bool =
 fun mem(l: 't list, a: 't): bool =
     any(for b <- l {a == b})
 
+fun find(l: 't list, f: 't -> bool): 't =
+    find(for a <- l {f(a)})
+
 fun find_opt(l: 't list, f: 't -> bool): 't? =
     find_opt(for a <- l {f(a)})
 

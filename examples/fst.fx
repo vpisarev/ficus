@@ -16,7 +16,7 @@ println(f"\nfactorial(20)={testmod.fact(20)}\n")
 
 fun fib(n: int) = if n <= 2 {1} else {fib(n-1) + fib(n-2)}
 fun fib2(n: int) {
-    fun fib2_(a: int, b: int, n: int) = if n <= 2 {a} else {fib2_(a+b, a, n-1)}
+    fun fib2_(a, b, n) = if n <= 2 {a} else {fib2_(a+b, a, n-1)}
     fib2_(1, 1, n)
 }
 
@@ -104,7 +104,7 @@ fun find_idx(a: 't [], f: 't -> bool): int
     | BreakWith(i) => i
     }
 }
-val i3 = find_idx(a, fun (i: int): bool {i < 0})
+val i3 = find_idx(a, fun (i) {i < 0})
 println(f"excepion-based search: negative number in {a}: {gen_msg(i3, a)}")
 
 type complex_t = {re: float; im: float}
@@ -166,7 +166,7 @@ println(f"primes <100: {[: for i <- 0:100 {if !is_prime(i) {continue}; i} :]}")
 val sorted = List.sort(
     [: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
     -460, 451, -11034, 8848 :],
-    fun (a: int, b: int) {a < b})
+    fun (a, b) {a < b})
 print("sorted: ")
 println(sorted)
 
@@ -186,4 +186,4 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
 }
 
 val a = float(-0.5*Math.pi), b = float(-a*5)
-plot(a, b, (Math.sin: float->float), 80, 10)
+plot(a, b, Math.sin, 80, 10)

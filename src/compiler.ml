@@ -175,13 +175,13 @@ let prf str = pr_verbose (sprintf "\t%s" str)
 
 let k_optimize_all kmods =
     let _ = (compile_errs := []) in
-    let niters = 3 in
+    let niters = options.optim_iters in
     let temp_kmods = ref kmods in
     prf "initial dead code elim";
     temp_kmods := K_deadcode_elim.elim_unused !temp_kmods;
-    for i = 0 to niters-1 do
+    for i = 1 to niters do
         pr_verbose (sprintf "Optimization pass #%d:" i);
-        if i <= 1 then
+        if i <= 2 then
             (prf "simple lifting"; temp_kmods := K_simple_ll.lift !temp_kmods;
             prf "annotate types"; temp_kmods := K_annotate_types.annotate_types !temp_kmods)
         else ();

@@ -13,6 +13,8 @@ type options_t =
     mutable runtime_path: string;
     mutable optimize_level: int;
     mutable inline_thresh: int;
+    mutable optim_iters: int;
+    mutable relax: bool;
     mutable output_name: string;
     mutable print_tokens: bool;
     mutable print_ast0: bool;
@@ -43,6 +45,8 @@ let options =
     runtime_path = "";
     optimize_level = 1;
     inline_thresh = 30;
+    optim_iters = 3;
+    relax = false;
     output_name = "";
     print_tokens = false;
     print_ast0 = false;
@@ -85,7 +89,9 @@ let parse_options () =
         ("-O0", (Arg.Unit (fun () -> options.optimize_level <- 0)), "   Optimization level 0: disable optimizations except for the most essential ones");
         ("-O1", (Arg.Unit (fun () -> options.optimize_level <- 1)), "   Optimization level 1: enable most of optimizations");
         ("-O3", (Arg.Unit (fun () -> options.optimize_level <- 3)), "   Optimization level 3: enable all optimizations");
-        ("-inline-threshold", (Arg.Int (fun i -> options.inline_thresh <- i)), "<n>   Inline threshold (100 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion");
+        ("-inline-threshold", (Arg.Int (fun i -> options.inline_thresh <- i)), "<n>   Inline threshold (30 by default); the higher it is, the bigger functions are inlined; --inline-thresh=0 disables inline expansion");
+        ("-optim-iters", (Arg.Int (fun i -> options.optim_iters <- i)), "<n>   Optimization iterations (3 by default)");
+        ("-relax", (Arg.Unit (fun () -> options.relax <- true)), "   Loosen some compiler requirements, e.g. explicit typing of global functions");
         ("-o", (Arg.String (fun s -> options.output_name <- s)), "<output_filename>    Output file name");
         ("-I", (Arg.String (fun ipath -> options.include_path <- options.include_path @ [ipath])), "<path>    Add directory to the module search path");
         ("-B", (Arg.String (fun s -> options.build_rootdir <- s)), "<build_parent_dir> The parent directory where __build__/appname subdirectory will be created");

@@ -1083,16 +1083,57 @@ and check_exp e env sc =
         let _ = unify etyp (TypTuple tl) eloc "improper type of tuple elements or the number of elements" in
         ExpMkTuple((List.map (fun e -> check_exp e env sc) el), ctx)
     | ExpCall(f0, args0, _) ->
-        (* [TODO] implement more sophisticated algorithm; try to look for possible overloaded functions first;
-           if there is just one obvious match, take it first and use to figure out the argument types *)
         let f = dup_exp f0 in
         let args = List.map dup_exp args0 in
         let arg_typs = List.map (fun a -> get_exp_typ a) args in
         let f_expected_typ = TypFun(arg_typs, etyp) in
         let (f_real_typ, floc) = get_exp_ctx f in
         let _ = unify f_real_typ f_expected_typ floc "the real and expected function type do not match" in
-        let new_args = List.map (fun a ->
-            check_exp a env sc) args in
+        (* we type-check some of the arguments immediately
+           and postpone checking some other arguments till after the proper function is found:
+           1. if argument is lambda function, which type is not completely specified, we postpone checking it.
+           2. if the argument is identifier (possibly specified using 'dot' notation, e.g. Math.sin) and
+              if it's a function and if there are template functions or other overloaded functions defined
+              within the same scope, we also postpone checking it
+           *)
+        let new_args = List.fold_left (fun new_args a ->
+            let need_to_check =
+            match a with
+            | ExpSeq([(DefFun {contents={df_name}}) as exp_df; ExpIdent(f, _)], _) when
+                (match f with Id.Temp _ -> true | _ -> false) &&
+                Utils.starts_with (pp_id2str f) "lambda" &&
+                f = df_name ->
+                let df = match (dup_exp exp_df) with DefFun df -> df
+                    | _ -> raise_compile_err (get_exp_loc a) "internal error: deffun expected"
+                    in
+                let _ = reg_deffun df env sc in
+                (match !df with
+                | {df_templ_args=_::_} -> false
+                | _ -> true)
+            | ExpIdent _ | ExpMem(_, (ExpIdent _), _) ->
+                (match (check_exp (dup_exp a) env sc) with
+                | ExpIdent(f, (t, loc)) when
+                    (match (deref_typ t) with TypFun _ -> true | _ -> false) ->
+                    (match (id_info f) with
+                    | IdFun {contents={df_env}} ->
+                        let all_entries = find_all (get_orig_id f) df_env in
+                        let possible_matches = List.fold_left (fun possible_matches entry ->
+                            possible_matches + (match entry with
+                            | EnvId i ->
+                                (match (id_info i) with
+                                | IdFun {contents={df_templ_args}} ->
+                                    if df_templ_args != [] then 100 else 1
+                                | _ -> 0)
+                            | _ -> 0)) 0 all_entries
+                            in
+                        possible_matches <= 1
+                    | _ -> true)
+                | _ -> true)
+            | _ -> true
+            in if need_to_check then
+                ((check_exp a env sc), true) :: new_args
+            else (a, false) :: new_args) [] args in
+        let new_args = List.rev new_args in
         (try
             let new_f = check_exp f env sc in
             let new_args = match deref_typ (get_exp_typ new_f) with
@@ -1101,9 +1142,13 @@ and check_exp e env sc =
                     else
                         let last_typ = Utils.last_elem argtyps in
                         let mkrec = ExpMkRecord((ExpNop eloc), [], (last_typ, eloc)) in
-                        new_args @ [mkrec]
+                        new_args @ [(mkrec, true)]
                 | _ -> new_args
                 in
+            let new_args = List.map (fun (e, checked) ->
+                match (e, checked) with
+                | (_, true) -> e
+                | _ -> check_exp e env sc) new_args in
             ExpCall(new_f, new_args, ctx)
         with (CompileError _) as ex ->
             (* fallback for so called "object types": if we have expression like
@@ -1133,8 +1178,7 @@ and check_exp e env sc =
                     in
                 let new_exp = ExpCall(new_f, r0 :: args0, ctx) in
                 check_exp new_exp env sc
-            | _ -> raise ex)
-        )
+            | _ -> raise ex))
     | ExpAt(arr, border, interp, idxs, _) ->
         let new_arr = check_exp arr env sc in
         let (new_atyp, new_aloc) = get_exp_ctx new_arr in
@@ -1730,8 +1774,8 @@ and reg_deffun df env sc =
               | TypFun(_, rt) -> rt
               | _ -> raise_compile_err df_loc "incorrect function type") in
     let df_sc = (ScFun df_name1) :: sc in
-    let (args1, argtyps1, env1, idset1, templ_args1) = List.fold_left
-            (fun (args1, argtyps1, env1, idset1, templ_args1) arg ->
+    let (args1, argtyps1, env1, idset1, templ_args1, all_typed) = List.fold_left
+            (fun (args1, argtyps1, env1, idset1, templ_args1, all_typed) arg ->
             let t = make_new_typ() in
             let (arg1, env1, idset1, templ_args1, typed) =
                 check_pat arg t env1 idset1 templ_args1 df_sc true true false in
@@ -1741,8 +1785,12 @@ and reg_deffun df env sc =
                 let templ_args1 = IdSet.add targ templ_args1 in
                 (arg1, templ_args1)
                 in
-            ((arg1 :: args1), (t :: argtyps1), env1, idset1, templ_args1))
-            ([], [], env, IdSet.empty, IdSet.empty) df_args in
+            ((arg1 :: args1), (t :: argtyps1), env1, idset1, templ_args1, all_typed && typed))
+            ([], [], env, IdSet.empty, IdSet.empty, true) df_args in
+    let _ = match (options.relax, all_typed, df_name1, sc) with
+        | (false, false, Id.Val(_, _), ScModule _ :: _) ->
+            raise_compile_err df_loc "types of all the parameters of global functions must be explicitly specified"
+        | _ -> () in
     let dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc) in
     let (dummy_rt_pat1, env1, idset1, templ_args1, _) =
             check_pat dummy_rt_pat (make_new_typ()) env1
