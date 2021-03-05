@@ -64,13 +64,13 @@ let typ2ktyp t loc =
             | IdVariant {contents={dvar_cases=(_, TypRecord {contents=(relems, true)}) :: []; dvar_flags}}
                 when dvar_flags.var_flag_record ->
                 if (List.mem n !id_stack) then
-                        raise_compile_err loc
-                            (sprintf "the record '%s' directly or indirectly references itself" (id2str n))
-                    else ();
-                id_stack := n :: !id_stack;
-                let new_t = KTypRecord(n, List.map (fun (ni, ti, _) -> (ni, (typ2ktyp_ ti))) relems) in
-                id_stack := List.tl !id_stack;
-                new_t
+                    raise_compile_err loc
+                        (sprintf "the record '%s' directly or indirectly references itself" (id2str n))
+                else
+                    (id_stack := n :: !id_stack;
+                    let new_t = KTypRecord(n, List.map (fun (ni, ti, _) -> (ni, (typ2ktyp_ ti))) relems) in
+                    id_stack := List.tl !id_stack;
+                    new_t)
             | _ -> KTypName(n))
         | _ ->
             raise_compile_err loc

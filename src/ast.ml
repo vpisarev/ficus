@@ -822,6 +822,7 @@ let fname_to_double() = get_id "double"
 let fname_to_bool() = get_id "bool"
 let fname_string() = get_id "string"
 let fname_repr() = get_id "repr"
+let fname_print() = get_id "print"
 
 let binop_try_remove_dot bop =
     match bop with
@@ -895,7 +896,7 @@ let fname_always_import () =
 
     fname_to_int(); fname_to_uint8(); fname_to_int8(); fname_to_uint16(); fname_to_int16();
     fname_to_uint32(); fname_to_int32(); fname_to_uint64(); fname_to_int64();
-    fname_to_float(); fname_to_double(); fname_to_bool(); fname_string(); fname_repr()
+    fname_to_float(); fname_to_double(); fname_to_bool(); fname_string(); fname_repr(); fname_print();
 ]
 
 let init_all_ids () =

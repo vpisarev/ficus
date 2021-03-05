@@ -14,10 +14,13 @@ open K_form
 
 type mangle_map_t = (string, id_t) Hashtbl.t
 
+let mangle_mname m = Str.global_replace Utils.dot_regexp "__" m
+
 let rec mangle_scope sc result loc =
     match sc with
     | ScModule(m) :: rest ->
         let mstr = pp_id2str m in
+        let mstr = mangle_mname mstr in
         let result = if mstr = "Builtins" then result else
                      if result = "" then mstr else mstr ^ "__" ^ result in
         mangle_scope rest result loc

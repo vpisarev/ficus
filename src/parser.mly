@@ -859,10 +859,10 @@ literal:
 | B_LSQUARE RSQUARE { LitNil }
 
 module_name_list_:
-| module_name_list_ COMMA B_IDENT { let i=get_id $3 in (i, i) :: $1 }
-| module_name_list_ COMMA B_IDENT AS B_IDENT { let i = get_id $3 in let j = get_id $5 in (i, j) :: $1 }
-| B_IDENT { let i=get_id $1 in (i, i) :: [] }
-| B_IDENT AS B_IDENT { let i=get_id $1 in let j = get_id $3 in (i, j) :: [] }
+| module_name_list_ COMMA dot_ident { let i=get_id $3 in (i, i) :: $1 }
+| module_name_list_ COMMA dot_ident AS B_IDENT { let i = get_id $3 in let j = get_id $5 in (i, j) :: $1 }
+| dot_ident { let i=get_id $1 in (i, i) :: [] }
+| dot_ident AS B_IDENT { let i=get_id $1 in let j = get_id $3 in (i, j) :: [] }
 
 ident_list_:
 | ident_list_ COMMA B_IDENT { (get_id $3) :: $1 }

@@ -2753,6 +2753,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
     let ccode = filter_out_nops ccode in
     let (ccode, deinit_ccode) = ((bctx_cleanup @ ccode), !module_cleanup) in
     let ccode = CStmtReturn ((Some status_exp), end_loc) :: ccode in
+    let km_cname = K_mangle.mangle_mname km_cname in
     let init_cname = "fx_init_" ^ km_cname in
     let init_name = (gen_temp_idc init_cname) in
     let init_f = ref {cf_name=init_name; cf_args=[]; cf_rt=CTypCInt;
@@ -2793,7 +2794,7 @@ let gen_ccode_all kmods =
             (all_ctypes_decl @ exn_data_decls) all_ctypes_fun_decl ccode in
         (*let _ = printf "'%s' pragmas: c++=%B; libs=[%s]\n" (pp_id2str km_name) km_pragmas.pragma_cpp
             (String.concat ";" (List.map (fun (s, _) -> s) km_pragmas.pragma_clibs)) in*)
-        { cmod_name=km_name; cmod_cname=km_cname; cmod_ccode=prologue @ ctypes @ ccode;
+        { cmod_name=km_name; cmod_cname=(K_mangle.mangle_mname km_cname); cmod_ccode=prologue @ ctypes @ ccode;
           cmod_main=km_main; cmod_recompile=true; cmod_pragmas=km_pragmas } :: cmods)
         [] (List.rev kmods_plus)
     in

@@ -450,7 +450,8 @@ let get_record_elems vn_opt t loc =
                 (noid, relems)
             | IdVariant {contents={dvar_name; dvar_cases; dvar_ctors}} ->
                 let dvar_cases_ctors = Utils.zip dvar_cases dvar_ctors in
-                (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id input_vn)) dvar_cases_ctors) with
+                let orig_input_vn = get_id (Utils.last_elem (String.split_on_char '.' (pp_id2str input_vn))) in
+                (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = orig_input_vn) dvar_cases_ctors) with
                 | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
                 | _ -> raise_compile_err loc
                     (if input_vn = noid then
