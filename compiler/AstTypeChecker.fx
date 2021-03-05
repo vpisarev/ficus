@@ -319,7 +319,7 @@ fun unify(t1: typ_t, t2: typ_t, loc: loc_t, msg: string): void =
     if maybe_unify(t1, t2, true) {}
     else { throw compile_err(loc, msg) }
 
-fun coerce_types(t1, t2, allow_tuples, allow_fp, is_shift, loc: loc_t) {
+fun coerce_types(t1: typ_t, t2: typ_t, allow_tuples: bool, allow_fp: bool, is_shift: bool, loc: loc_t) {
     val safe_max_ubits = if Options.opt.arch64 { 32 } else { 16 }
     fun coerce_types_(t1, t2) =
         match (t1, t2) {
@@ -543,7 +543,7 @@ fun get_record_elems(vn_opt: id_t?, t: typ_t, loc: loc_t) {
 
 fun is_real_typ(t: typ_t) {
     var have_typ_vars = false
-    fun is_real_typ_(t, callb) =
+    fun is_real_typ_(t: typ_t, callb: ast_callb_t) =
         match t {
         | TypApp([], IdName(_)) => have_typ_vars = true; t
         | TypApp([], _) => t
@@ -558,7 +558,7 @@ fun is_real_typ(t: typ_t) {
 
 fun report_not_found(n: id_t, loc: loc_t) = compile_err(loc, f"the appropriate match for '{pp_id2str(n)}' is not found")
 
-fun report_not_found_typed(n, t, loc: loc_t) =
+fun report_not_found_typed(n: id_t, t: typ_t, loc: loc_t) =
     compile_err(loc, f"the appropriate match for '{pp_id2str(n)}' of type '{typ2str(t)}' is not found")
 
 fun find_first(n: id_t, env: env_t, loc: loc_t, pred: env_entry_t -> 't?): 't? {

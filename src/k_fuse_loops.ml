@@ -48,7 +48,8 @@ let rec fuse_loops code =
         fold_kexp e process_callb;
         match e with
         | KDefVal(i, KExpMap ((_, idl, []) :: [], body, flags, ((KTypArray _), _)), loc) ->
-            if (K_deadcode_elim.pure_kexp body) then
+            (* [TODO] it's possible to fuse @unzip'ped comprehensions too, but is not trivial at all *)
+            if (K_deadcode_elim.pure_kexp body) && not flags.for_flag_unzip then
                 (counters := Env.add i {arr_nused = 0; arr_nused_for = 0;
                     arr_idl=idl; arr_body=body; arr_map_flags=flags} !counters;
                 process_idl false idl)

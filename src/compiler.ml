@@ -27,7 +27,7 @@ open Utils
 exception CumulativeParseError
 
 let make_lexer fname =
-    let _ = Lexer.fname := fname in
+    let _ = Lexer.init fname in
     let bare_name = Utils.remove_extension (Filename.basename fname) in
     let prev_lnum = ref 0 in
     (* the standard preamble *)

@@ -314,6 +314,7 @@ let cfold_dealias kmods =
         | KDefVal(n, rhs_e, loc) ->
             (*printf "defval: "; K_pp.pprint_kexp_x e; printf "\n";*)
             let rhs_e = cfd_kexp_ rhs_e callb in
+            let {kv_flags} = get_kval n loc in
             let n = match cfd_atom_ (AtomId n) loc callb with
                         | AtomId n2 -> n2
                         | _ -> n in
@@ -330,11 +331,8 @@ let cfold_dealias kmods =
                             match (n, n2) with
                             | ((Id.Val _), (Id.Temp _)) ->
                                 (* if a temporary value is assigned to the user-defined value,
-                                    we'd better keep the user-specified name so that the output code is cleaner.
-                                    We will do the inverse substitution n2<-n rather than n<-n2 *)
-                                add_to_map n2 (AtomId n);
-                                set_idk_entry n (kinfo_ n2 loc);
-                                KExpNop(loc)
+                                    we'd better keep the user-specified name so that the output code is cleaner. *)
+                                e
                             | _ ->
                                 add_to_map n (AtomId n2);
                                 KExpNop(loc)
@@ -345,7 +343,7 @@ let cfold_dealias kmods =
                         add_to_map n a;
                         KExpNop(loc))
                 | KExpIntrin(IntrinStrConcat, al, (_, loc)) when
-                    List.for_all (fun a -> not (is_mutable_atom a loc)) al ->
+                    kv_flags.val_flag_temp && List.for_all (fun a -> not (is_mutable_atom a loc)) al ->
                     add_to_concat_map n al; e
                 | _ -> e)
             else e

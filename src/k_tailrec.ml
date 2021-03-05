@@ -48,7 +48,7 @@ let tailrec2loop kf =
                     | _ -> AtomLit (KLitNil rt)
                     in
                 let res_val0 = KExpAtom(a0, (rt, kf_loc)) in
-                let f_init_code = create_kdefval res_n rt (default_var_flags())
+                let f_init_code = create_kdefval res_n rt (default_tempvar_flags())
                     (Some res_val0) [] kf_loc in
                 (res_n, f_init_code)
             in
@@ -108,9 +108,9 @@ let tailrec2loop kf =
                 let _ = set_idk_entry a1i (KVal dv1) in
                 let a1i_as_exp = KExpAtom((AtomId a1i), (ti, kf_loc)) in
                 let a2i_as_exp = KExpAtom((AtomId a2i), (ti, kf_loc)) in
-                let f_init_code = create_kdefval a2i ti (default_var_flags())
+                let f_init_code = create_kdefval a2i ti (default_tempvar_flags())
                     (Some a1i_as_exp) f_init_code kf_loc in
-                let loop_init_code = create_kdefval ai ti (default_val_flags())
+                let loop_init_code = create_kdefval ai ti (default_tempval_flags())
                     (Some a2i_as_exp) loop_init_code kf_loc in
                 ((a1i, ti) :: new_kf_args, (a2i, ti) :: trec_args, f_init_code, loop_init_code))
             ([], [], f_init_code, []) kf_args in

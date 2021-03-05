@@ -1279,6 +1279,8 @@ and check_exp e env sc =
     | ExpFor(for_clauses, idx_pat, body, flags, _) ->
         let is_fold = flags.for_flag_fold in
         let is_nested = flags.for_flag_nested in
+        let _ = if not flags.for_flag_unzip then () else
+            raise_compile_err eloc "@unzip for does not make sense outside of comprehensions" in
         let for_sc = (if is_fold then new_fold_scope() else new_loop_scope(is_nested)) :: sc in
         let (trsz, pre_code, for_clauses, idx_pat, dims, env, _) = check_for_clauses for_clauses idx_pat env IdSet.empty for_sc in
         if trsz > 0 then
@@ -1300,6 +1302,7 @@ and check_exp e env sc =
     | ExpMap (map_clauses, body, flags, ctx) ->
         let make_list = flags.for_flag_make = ForMakeList in
         let make_tuple = flags.for_flag_make = ForMakeTuple in
+        let unzip_mode = flags.for_flag_unzip in
         let for_sc = (if make_tuple then new_block_scope() else if make_list then new_map_scope() else new_arr_map_scope()) :: sc in
         let (trsz, pre_code, map_clauses, total_dims, env, _) = List.fold_left
             (fun (trsz, pre_code, map_clauses, total_dims, env, idset) (for_clauses, idx_pat) ->
@@ -1310,7 +1313,21 @@ and check_exp e env sc =
             raise_compile_err eloc "tuple comprehension with iteration over non-tuples and non-records is not supported"
             in
         let coll_name = if make_list then "list" else if make_tuple then "tuple" else "array" in
+        let check_map_typ elem_typ coll_typ idx : unit =
+            let idx_str = if idx < 0 then "of comprehension" else (sprintf "#%d (0-based) of @unzip comprehension" idx) in
+            if make_list then
+                (if total_dims = 1 then () else raise_compile_err eloc "the list comprehension should use 1-dimensional loop";
+                unify coll_typ (TypList elem_typ) eloc
+                (sprintf "the result %s should have type '%s', but it has type '%s'"
+                idx_str (typ2str (TypList elem_typ)) (typ2str coll_typ)))
+            else
+                unify coll_typ (TypArray(total_dims, elem_typ)) eloc
+                (sprintf "the result %s should have type '%s', but it has type '%s'"
+                idx_str (typ2str (TypArray (total_dims, elem_typ))) (typ2str coll_typ))
+            in
         if trsz > 0 then
+            let _ = if not flags.for_flag_unzip then () else
+                raise_compile_err eloc "@unzip flag is not supported in tuple/record comprehensions" in
             let (for_clauses, idx_pat) = match map_clauses with
                 | (for_clauses, idx_pat) :: [] -> (for_clauses, idx_pat)
                 | _ -> raise_compile_err eloc "tuple comprehension with nested for is not supported yet"
@@ -1337,17 +1354,38 @@ and check_exp e env sc =
             ExpSeq((pre_code @ [mk_struct_exp]), (coll_typ, eloc))
         else
             let (btyp, bloc) = get_exp_ctx body in
-            let _ = if make_list then
-                    (if total_dims = 1 then () else raise_compile_err eloc "the list comprehension should be 1-dimensional";
-                    unify etyp (TypList btyp) bloc "the map should return a list with elements of the same type as the map body")
-                else
-                    unify etyp (TypArray(total_dims, btyp)) bloc
-                    (sprintf "the map should return %d-dimensional array with elements of the same type as the map body" total_dims) in
+            let _ = if unzip_mode then ()
+                else check_map_typ btyp etyp (-1) in
             let new_body = check_exp body env for_sc in
-            let _ = if deref_typ (get_exp_typ new_body) = TypVoid then
-                raise_compile_err eloc "array/list comprehension body cannot have 'void' type"
-            else () in
-            ExpMap((List.rev map_clauses), new_body, flags, ctx)
+            let new_unzip_mode =
+                if unzip_mode then
+                    (match (deref_typ btyp, deref_typ etyp) with
+                    | (TypTuple(b_elems), TypVar {contents=None}) ->
+                        let nb_elems = List.length b_elems in
+                        let colls = List.init nb_elems (fun _ -> make_new_typ()) in
+                        let _ = List.fold_left2 (fun idx bt ct -> check_map_typ bt ct idx; idx+1) 0 b_elems colls in
+                        unify etyp (TypTuple(colls)) eloc "incorrect type of @unzip'ped comprehension";
+                        true
+                    | (TypTuple(b_elems), TypTuple(colls)) ->
+                        let nb_elems = List.length b_elems in
+                        let ncolls = List.length colls in
+                        if nb_elems = ncolls then ()
+                        else
+                            raise_compile_err eloc (sprintf
+                            "the number of elements in a tuple produced by the @unzip'pped comprehension (=%d) and in the output tuple (=%d) do not match"
+                            nb_elems ncolls);
+                        ignore(List.fold_left2 (fun idx bt ct ->
+                            check_map_typ bt ct idx; idx+1) 0 b_elems colls);
+                        true
+                    | (TypTuple _, _) | (_, TypTuple _) ->
+                        raise_compile_err eloc (sprintf
+                        "in the case of @unzip comprehension either both the body type ('%s') and the result type ('%s') should be tuples or none of them"
+                        (typ2str btyp) (typ2str etyp))
+                    | _ -> check_map_typ btyp etyp (-1); false)
+                else if deref_typ (get_exp_typ new_body) = TypVoid then
+                    raise_compile_err eloc "array/list comprehension body cannot have 'void' type"
+                else false in
+            ExpMap((List.rev map_clauses), new_body, {flags with for_flag_unzip=new_unzip_mode}, ctx)
     | ExpBreak (f, _) -> check_inside_for f true; e
     | ExpContinue _ -> check_inside_for false false; e
     | ExpMkArray (arows, _) ->

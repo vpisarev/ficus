@@ -879,7 +879,7 @@ let kexp2atom prefix e tref code =
             | _ -> false
             in
         let code = create_kdefval tmp_id ktyp
-            {(default_val_flags()) with val_flag_tempref=tref}
+            {(default_val_flags()) with val_flag_tempref=tref; val_flag_temp=not tref}
             (Some e) code kloc in
         ((AtomId tmp_id), code)
 

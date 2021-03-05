@@ -181,7 +181,7 @@ fun default_arg_flags() = default_val_flags().{val_flag_arg=true}
 fun default_var_flags() = default_val_flags().{val_flag_mutable=true}
 fun default_tempval_flags() = default_val_flags().{val_flag_temp=true}
 fun default_tempref_flags() = default_val_flags().{val_flag_tempref=true}
-fun default_tempvaR_flags() = default_tempval_flags().{val_flag_mutable=true}
+fun default_tempvar_flags() = default_tempval_flags().{val_flag_mutable=true}
 
 type fun_constr_t =
     | CtorNone
@@ -551,7 +551,7 @@ fun id2prefix(i: id_t) {
     dynvec_get(all_strings, prefix)
 }
 
-fun id2idx_(i, loc) =
+fun id2idx_(i: id_t, loc: loc_t) =
     match i {
     | IdVal(_, i_real) => i_real
     | IdTemp(_, i_real) => i_real
@@ -1020,7 +1020,7 @@ fun get_binary_fname(bop: binary_t, loc: loc_t) =
             f"for binary operation \"{bop}\" there is no corresponding function")
     }
 
-fun get_unary_fname(uop, loc) =
+fun get_unary_fname(uop: unary_t, loc: loc_t) =
     match uop {
     | OpApos => fname_op_apos()
     | OpPlus => fname_op_plus()
@@ -1242,7 +1242,7 @@ fun check_n_walk_pat(p: pat_t, callb: ast_callb_t) =
 fun check_n_walk_plist(plist: pat_t list, callb: ast_callb_t) =
     [: for p <- plist { check_n_walk_pat(p, callb) } :]
 
-fun walk_typ(t, callb: ast_callb_t) {
+fun walk_typ(t: typ_t, callb: ast_callb_t) {
     fun walk_typ_(t) = check_n_walk_typ(t, callb)
     fun walk_tl_(tl) = check_n_walk_tlist(tl, callb)
 
@@ -1278,7 +1278,7 @@ fun walk_typ(t, callb: ast_callb_t) {
     }
 }
 
-fun walk_exp(e, callb) {
+fun walk_exp(e: exp_t, callb: ast_callb_t) {
     fun walk_typ_(t: typ_t) = check_n_walk_typ(t, callb)
     fun walk_exp_(e: exp_t) = check_n_walk_exp(e, callb)
     fun walk_elist_(el: exp_t list) = check_n_walk_elist(el, callb)

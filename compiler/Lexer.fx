@@ -810,9 +810,8 @@ fun make_lexer(strm: stream_t)
             pos = p
             new_exp = false
             prev_dot = false
-            (TYVAR(tyvar, loc) :: []
-        }
-        else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
+            (TYVAR(tyvar), loc) :: []
+        } else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
             val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
             val term = peekch(buf, termpos)
             val (p, res, inline_exp) = getstring(buf, termpos+1, getloc(termpos+1),

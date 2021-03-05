@@ -123,7 +123,7 @@ let make_deffun fname args rt body flags loc =
         let kwargs = List.rev kwargs in
         let rectyp = TypRecord (ref (kwargs, true)) in
         let recpat = PatRecord(None, List.map (fun (i, _, _) -> (i, PatIdent(i, loc))) kwargs, loc) in
-        let unpack_rec = DefVal(recpat, (make_ident recarg loc), default_val_flags(), loc) in
+        let unpack_rec = DefVal(recpat, (make_ident recarg loc), default_tempval_flags(), loc) in
         let body_ctx = get_exp_ctx body in
         let body_seq = exp2expseq body in
         let body = ExpSeq(unpack_rec :: body_seq, body_ctx) in
@@ -225,7 +225,7 @@ let transform_fold_exp special fold_pat fold_pat_n fold_init_exp nested_fold fol
             *)
             let fr_decl = DefVal(PatIdent(fr_id, acc_loc),
                 fold_init_exp, default_var_flags(), acc_loc) in
-            let acc_decl = DefVal(fold_pat, fr_exp, default_val_flags(), acc_loc) in
+            let acc_decl = DefVal(fold_pat, fr_exp, default_tempval_flags(), acc_loc) in
             let update_fr = ExpAssign(fr_exp, fold_body, body_loc) in
             let new_body = ExpSeq([acc_decl; update_fr], void_ctx) in
             (fr_decl, new_body, fr_exp)
@@ -476,7 +476,7 @@ top_level_exp:
         [DirImportFrom (a1, (List.rev $4), curr_loc())]
     }
 | error
-    { raise_syntax_err "syntax error: unrecognized/unsupported expression" }
+    { raise_syntax_err "syntax error: unrecognized/unsupported expression, check punctuation and parentheses" }
 
 exp_seq_:
 | exp_seq_ stmt { $2 :: $1 }

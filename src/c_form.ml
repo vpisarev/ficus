@@ -718,6 +718,8 @@ let rec ctyp2str t loc =
     | CTypAny ->
         raise_compile_err loc "ctyp2str: CTypAny is not supported"
 
+let ctyp2str_ t loc = let (cname, n) = ctyp2str t loc in cname
+
 let make_ptr t = match t with
     | CTypAny -> CTypRawPtr([], CTypVoid)
     | _ -> CTypRawPtr([], t)

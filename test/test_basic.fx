@@ -13,6 +13,11 @@ import myops
 val FLT_EPSILON = Math.FLT_EPSILON
 val DBL_EPSILON = Math.DBL_EPSILON
 
+TEST("basic.version", fun()
+{
+    EXPECT_EQ(f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}", f"{__ficus_version_str__}")
+})
+
 TEST("basic.myops.mad_ccode", fun()
 {
     EXPECT_EQ(5, myops.mad(1, 2, 3))
@@ -622,9 +627,13 @@ TEST("basic.list.unzip", fun()
         unzip_(lab, [], [])
     }
 
-    val unzipped = list_unzip(("a", 1) :: ("b", 2) :: ("c", 3) :: [])
+    val ll = ("a", 1) :: ("b", 2) :: ("c", 3) :: []
+    val unzipped = list_unzip(ll)
     EXPECT_EQ(unzipped.0, [: "a", "b", "c" :])
     EXPECT_EQ(unzipped.1, [: 1, 2, 3 :])
+    val unzipped2 = [: @unzip for si <- ll {si} :]
+    EXPECT_EQ(unzipped2.0, [: "a", "b", "c" :])
+    EXPECT_EQ(unzipped2.1, [: 1, 2, 3 :])
 })
 
 TEST("basic.list.sort", fun()

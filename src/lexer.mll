@@ -246,6 +246,14 @@ let check_ne lexbuf =
     else
         raise (lexErr "Missing separator" lexbuf)
 
+let check_empty_stack lexbuf =
+    match !paren_stack with
+    | (tk, pos) :: _ ->
+        raise (lexErr
+            (sprintf "Missing closing paren '%s' for the opening paren at '%s'"
+            (token2str tk) (pos2str pos true)) lexbuf)
+    | _ -> ()
+
 let decode_special_char lexbuf c = match c with
     | "\\\"" -> "\""
     | "\\\'" -> "'"
@@ -263,6 +271,27 @@ let decode_hex_char hexcode =
 
 let decode_oct_char octcode =
     String.make 1 (Char.chr (int_of_string ("0o" ^ (String.sub octcode 1 ((String.length octcode)-1)))))
+
+let init fname_ =
+    (fname := fname_;
+    string_literal_typvar := false;
+    string_literal := "";
+    string_start := dummy_pos;
+    string_interp_elem := 0;
+    string_tokens := [];
+    string_literal_typ := StrLitPlain;
+
+    comment_start := dummy_pos;
+    comments_level := 0;
+
+    ccode_mode := false;
+    ccode_literal := "";
+    ccode_start := dummy_pos;
+    ccode_string_quote := ' ';
+    ccode_string_start := dummy_pos;
+
+    new_exp := true;
+    paren_stack := [])
 
 }
 
@@ -297,7 +326,7 @@ rule tokens = parse
             comments lexbuf;
             tokens lexbuf
         }
-    | "//"  { if (eol_comments lexbuf) = EOF then [EOF] else tokens lexbuf }
+    | "//"  { if (eol_comments lexbuf) = EOF then (check_empty_stack lexbuf; [EOF]) else tokens lexbuf }
 
     | ("\"" | "f\"" | "r\"") as s
         {
@@ -589,7 +618,7 @@ rule tokens = parse
     | "@"   { new_exp := true; [AT] }
     | "..."   { new_exp := true; [ELLIPSIS] }
 
-    | eof   { [EOF] }
+    | eof   { check_empty_stack lexbuf; [EOF] }
     | _ as s { raise (lexErr (sprintf "Illegal character '%s'" (Char.escaped s)) lexbuf) }
 
 and strings = parse
@@ -723,7 +752,7 @@ and comments = parse
 
 and eol_comments = parse
     | newline { incr_lineno lexbuf; new_exp := true; DOT }
-    | eof  { EOF }
+    | eof  { check_empty_stack lexbuf; EOF }
     | _  { eol_comments lexbuf }
 
 and ccode = parse

@@ -199,7 +199,7 @@ let default_arg_flags() = {(default_val_flags()) with val_flag_arg=true}
 let default_var_flags() = {(default_val_flags()) with val_flag_mutable=true}
 let default_tempval_flags() = {(default_val_flags()) with val_flag_temp=true}
 let default_tempref_flags() = {(default_val_flags()) with val_flag_tempref=true}
-let default_tempvaR_flags() = {(default_tempval_flags()) with val_flag_mutable=true}
+let default_tempvar_flags() = {(default_tempval_flags()) with val_flag_mutable=true}
 
 type fun_constr_t = CtorNone | CtorStruct | CtorVariant of id_t | CtorFP of id_t | CtorExn of id_t
 type fun_flags_t =

@@ -112,8 +112,7 @@ let rec pprint_ctyp__ prefix0 t id_opt fwd_mode loc =
     (match t with
     | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _ | CTypFloat _
     | CTypString | CTypUniChar | CTypBool | CTypExn | CTypCSmartPtr | CTypArray(_, _) ->
-        let (cname, _) = ctyp2str t loc in
-        pstr cname; pr_id_opt ()
+        pstr (ctyp2str_ t loc); pr_id_opt ()
     | CTypVoid -> pstr "void";
         (match id_opt with
         | Some i -> raise_compile_err loc (sprintf "c_pp.ml: void cannot be used with id '%s'" (id2str i))

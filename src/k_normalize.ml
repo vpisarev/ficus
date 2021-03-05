@@ -120,7 +120,7 @@ let rec exp2kexp e code tref sc =
                         | KTypString -> KTypChar
                         | _ -> raise_compile_err eloc "unsupported typ of the domain expression in for loop" in
                 let (i, body_code) = pat_simple_unpack pi ptyp None body_code "i"
-                        (default_val_flags()) body_sc
+                        (default_tempval_flags()) body_sc
                 in ((i, di) :: idom_list, code, body_code))
             ([], code, []) pe_l in
         let loc = get_pat_loc idx_pat in
@@ -128,7 +128,7 @@ let rec exp2kexp e code tref sc =
             | PatAny _ -> ([], body_code)
             | PatTyped(p, TypInt, loc) ->
                 let (i, body_code) = pat_simple_unpack p KTypInt None body_code "i"
-                    (default_val_flags()) body_sc in
+                    (default_tempval_flags()) body_sc in
                 ([i], body_code)
             | PatTyped(p, TypTuple(tl), _) ->
                 let p = pat_skip_typed p in
@@ -141,7 +141,7 @@ let rec exp2kexp e code tref sc =
                             if ti = TypInt then () else
                                 raise_compile_err loc "some of '@' indices is not an integer";
                             let (i, body_code) = pat_simple_unpack pi KTypInt None body_code "i"
-                                (default_val_flags()) body_sc in
+                                (default_tempval_flags()) body_sc in
                             (i :: at_ids, body_code)) ([], body_code) pl tl
                         in
                     ((List.rev at_ids), body_code)
@@ -151,12 +151,12 @@ let rec exp2kexp e code tref sc =
                         if ti = TypInt then () else
                             raise_compile_err loc "some of '@' indices is not an integer";
                         let i = gen_idk (sprintf "%s%d" prefix k) in
-                        let _ = create_kdefval i KTypInt (default_val_flags()) None [] loc in
+                        let _ = create_kdefval i KTypInt (default_tempval_flags()) None [] loc in
                         (k+1, (i :: at_ids), KTypInt :: ktl)) (0, [], []) tl
                         in
                     let ktyp = KTypTuple ktl in
                     let at_ids = (List.rev at_ids) in
-                    let body_code = create_kdefval idx ktyp (default_val_flags())
+                    let body_code = create_kdefval idx ktyp (default_tempval_flags())
                         (Some (KExpMkTuple ((List.map (fun i -> AtomId i) at_ids), (ktyp, loc)))) body_code loc in
                     (at_ids, body_code)
                 | _ -> raise_compile_err loc
@@ -890,7 +890,7 @@ and transform_pat_matching a cases code sc loc catch_mode =
                 if var_tag0 != noid then (var_tag0, code) else
                 (let tag_n = gen_temp_idk "tag" in
                 let extract_tag_exp = get_extract_tag_exp (AtomId n) pinfo_typ loc in
-                let code = create_kdefval tag_n KTypCInt (default_val_flags())
+                let code = create_kdefval tag_n KTypCInt (default_tempval_flags())
                     (Some extract_tag_exp) code loc in
                 (tag_n, code))
                 in

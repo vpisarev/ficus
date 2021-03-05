@@ -123,7 +123,8 @@ let get_constructor ctyp required loc =
     let {ctp_make} = get_ctprops ctyp loc in
     match ctp_make with
     | i :: [] -> i
-    | _ -> if required then raise_compile_err loc "cgen: missing type constructor" else noid
+    | _ -> if not required then noid else
+        raise_compile_err loc (sprintf "cgen: missing type constructor for '%s'" (ctyp2str_ ctyp loc))
 
 let get_free_f ctyp let_none let_macro loc =
     let {ctp_ptr; ctp_free=(free_m, free_f)} = get_ctprops ctyp loc in
