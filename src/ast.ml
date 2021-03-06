@@ -52,6 +52,9 @@ end
 type id_t = Id.t
 let noid = Id.Name(0)
 let dummyid = Id.Name(1)
+let __fold_result_id__ = Id.Name(2)
+let __tag_id__ = Id.Name(3)
+let __builtin_ids__ = [""; "_"; "__fold_result__"; "__tag__"]
 
 (*
   Environment (Env.t) is the mapping from id_t to env_entry_t list. It's the key data structure used
@@ -346,7 +349,8 @@ and definterface_t = { di_name: id_t; di_base: id_t; di_members: exp_t list;
 
 type defmodule_t = { dm_name: id_t; dm_filename: string; mutable dm_defs: exp_t list;
                     mutable dm_idx: int; mutable dm_deps: id_t list;
-                    mutable dm_env: env_t; mutable dm_parsed: bool }
+                    mutable dm_env: env_t; mutable dm_parsed: bool;
+                    mutable dm_real: bool }
 
 type pragmas_t = { pragma_cpp: bool; pragma_clibs: (string*loc_t) list }
 
@@ -578,7 +582,7 @@ let find_module mname_id mfname =
     Not_found ->
         let m_fresh_id = dup_id mname_id in
         let newmodule = ref { dm_name=m_fresh_id; dm_filename=mfname; dm_idx= -1; dm_defs=[];
-                              dm_deps=[]; dm_env=Env.empty; dm_parsed=false } in
+                              dm_deps=[]; dm_env=Env.empty; dm_parsed=false; dm_real=true } in
         set_id_entry m_fresh_id (IdModule newmodule);
         Hashtbl.add all_modules mfname m_fresh_id;
         newmodule
@@ -903,8 +907,7 @@ let init_all_ids () =
     freeze_ids false;
     dynvec_clear all_ids;
     (Hashtbl.reset all_strhash);
-    let _ = get_id_prefix "" in
-    let _ = get_id_prefix "_" in
+    List.iter (fun i -> ignore (get_id i)) __builtin_ids__;
     fname_always_import()
 
 let reserved_keywords = Hashtbl.create 1001

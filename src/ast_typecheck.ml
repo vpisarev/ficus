@@ -431,7 +431,9 @@ let find_typ_instance t loc =
 let get_record_elems vn_opt t loc =
     let t = deref_typ t in
     let input_vn = match vn_opt with
-        | Some(vn) -> get_orig_id vn
+        | Some(vn) ->
+            let orig_input_vn = get_orig_id vn in
+            get_id (Utils.last_elem (String.split_on_char '.' (pp_id2str orig_input_vn)))
         | _ -> noid
         in
     match t with
@@ -450,8 +452,10 @@ let get_record_elems vn_opt t loc =
                 (noid, relems)
             | IdVariant {contents={dvar_name; dvar_cases; dvar_ctors}} ->
                 let dvar_cases_ctors = Utils.zip dvar_cases dvar_ctors in
-                let orig_input_vn = get_id (Utils.last_elem (String.split_on_char '.' (pp_id2str input_vn))) in
-                (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = orig_input_vn) dvar_cases_ctors) with
+                let single_case = (List.length dvar_cases) = 1 in
+                (match (List.find_opt (fun ((vn, t), c_id) ->
+                    (get_orig_id vn) = input_vn ||
+                    (single_case && input_vn=noid)) dvar_cases_ctors) with
                 | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
                 | _ -> raise_compile_err loc
                     (if input_vn = noid then
@@ -875,14 +879,14 @@ and check_exp e env sc =
                 raise_compile_err eloc2 "the tuple index is out of range") in
             unify etyp et eloc "incorrect type of the tuple element";
             ExpMem(new_e1, e2, ctx)
-        | (TypApp(_, vn), _, ExpIdent(n2, (etyp2, eloc2))) when (pp_id2str n2) = "__tag__" ->
+        | (TypApp(_, vn), _, ExpIdent(n2, (etyp2, eloc2))) when n2 = __tag_id__ ->
             (match (id_info vn) with
             | IdVariant _ ->
                 unify etyp TypInt eloc "variant tag is integer, but the other type is expected";
                 ExpMem(new_e1, e2, ctx)
             | _ ->
                 raise_compile_err eloc "__tag__ can only be requestd for variants and exceptions")
-        | (TypExn, _, ExpIdent(n2, (etyp2, eloc2))) when (pp_id2str n2) = "__tag__" ->
+        | (TypExn, _, ExpIdent(n2, (etyp2, eloc2))) when n2 = __tag_id__ ->
             unify etyp TypInt eloc "variant tag is integer, but the other type is expected";
             ExpMem(new_e1, e2, ctx)
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) ->
@@ -2125,7 +2129,7 @@ and instantiate_fun_body inst_name inst_ftyp inst_args inst_body inst_env fun_sc
                 in
             let a = ExpIdent((get_id astr), (argtyp, body_loc)) in
             let b = ExpIdent((get_id bstr), (argtyp, body_loc)) in
-            let tag = ExpIdent((get_id "__tag__"), (TypString, body_loc)) in
+            let tag = ExpIdent(__tag_id__, (TypString, body_loc)) in
             let a_tag = ExpMem(a, tag, (TypInt, body_loc)) in
             let b_tag = ExpMem(b, tag, (TypInt, body_loc)) in
             let cmp_tags = ExpBinary(OpCmp(CmpEQ), a_tag, b_tag, (TypBool, body_loc)) in

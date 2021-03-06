@@ -403,6 +403,13 @@ let rec exp2kexp e code tref sc =
         let e1loc = get_exp_loc e1 in
         let (a_id, code) = exp2id e1 code true sc "the literal does not have members to access" in
         let ktyp = get_idk_ktyp a_id e1loc in
+        let find_relem rn relems elem_id loc =
+            let (i, j) = List.fold_left (fun (i, j) (ni, _) ->
+                if elem_id = ni then (j, j+1) else (i, j+1)) (-1, 0) relems in
+            if i >= 0 then i
+            else raise_compile_err loc
+                (sprintf "there is no record field '%s' in the record '%s'" (id2str elem_id) (pp_id2str rn))
+            in
         (match (ktyp, elem) with
         | (KTypTuple(tl), ExpLit((LitInt i_), (ityp, iloc))) ->
             let i = Int64.to_int i_ in
@@ -411,18 +418,28 @@ let rec exp2kexp e code tref sc =
                 raise_compile_err iloc (sprintf "the tuple index is outside of the range [0, %d)" n);
             (KExpMem(a_id, i, kctx), code)
         | (KTypRecord(rn, relems), ExpIdent(n, (_, nloc))) ->
-            let (i, j) = List.fold_left (fun (i, j) (ni, _) ->
-                if n = ni then (j, j+1) else (i, j+1)) (-1, 0) relems in
-            if i >= 0 then
-                (KExpMem(a_id, i, kctx), code)
-            else raise_compile_err nloc
-                (sprintf "there is no record field '%s' in the record '%s'" (id2str n) (id2str rn))
-        | (ktyp, ExpIdent(n2, (etyp2, eloc2))) when
-            (match ktyp with KTypName _ | KTypExn -> true | _ -> false) &&
-            (pp_id2str n2) = "__tag__" ->
+            let i = find_relem rn relems n eloc in
+            (KExpMem(a_id, i, kctx), code)
+        | (KTypName (tn), ExpIdent(n, (_, nloc))) ->
+            if n = __tag_id__ then
+                (KExpIntrin(IntrinVariantTag, (AtomId a_id) :: [], (KTypCInt, eloc)), code)
+            else
+                let ((ctor, vt, _), relems) = get_record_elems_k None ktyp eloc in
+                let get_vcase = KExpIntrin(IntrinVariantCase, [(AtomId a_id); (AtomId ctor)], (vt, eloc)) in
+                let i = find_relem ctor relems n eloc in
+                let (get_elem, code) =
+                    if (List.length relems) = 1 then
+                        (get_vcase, code)
+                    else
+                        let (v_id, code) = kexp2id "vcase" get_vcase true code
+                            "variant case extraction should produce id, not literal" in
+                        (KExpMem(v_id, i, kctx), code)
+                    in
+                (get_elem, code)
+        | (KTypExn, ExpIdent(n, (etyp2, eloc2))) when n = __tag_id__ ->
             (KExpIntrin(IntrinVariantTag, (AtomId a_id) :: [], (KTypCInt, eloc)), code)
-        | (_, ExpIdent(n2, (etyp2, eloc2))) ->
-            raise_compile_err e1loc (sprintf "unsupported '(some_struct : %s).%s' access operation" (typ2str (get_exp_typ e1)) (pp_id2str n2))
+        | (_, ExpIdent(n, (etyp2, eloc2))) ->
+            raise_compile_err e1loc (sprintf "unsupported '(some_struct : %s).%s' access operation" (typ2str (get_exp_typ e1)) (pp_id2str n))
         | (_, _) ->
             raise_compile_err e1loc "unsupported access operation")
     | ExpAssign(e1, e2, _) ->
@@ -508,11 +525,6 @@ and exp2atom e code tref sc =
     let (e, code) = exp2kexp e code tref sc in
     kexp2atom "v" e tref code
 
-and atom2id a loc msg =
-    match a with
-    | AtomId i -> i
-    | AtomLit _ -> raise_compile_err loc msg
-
 and exp2id e code tref sc msg =
     let (a, code) = exp2atom e code tref sc in
     ((atom2id a (get_exp_loc e) msg), code)
@@ -566,7 +578,9 @@ and pat_have_vars p = match p with
 and get_record_elems_k vn_opt t loc =
     let t = deref_ktyp t loc in
     let input_vn = match vn_opt with
-        | Some(vn) -> get_orig_id vn
+        | Some(vn) ->
+            let orig_input_vn = get_orig_id vn in
+            get_id (Utils.last_elem (String.split_on_char '.' (pp_id2str orig_input_vn)))
         | _ -> noid
         in
     match t with
@@ -575,13 +589,15 @@ and get_record_elems_k vn_opt t loc =
         (match (kinfo_ tn loc) with
         | KVariant {contents={kvar_flags; kvar_cases=(vn0, (KTypRecord (_, relems) as rectyp))::[]}}
             when kvar_flags.var_flag_record ->
-                if input_vn = noid || input_vn = (get_orig_id vn0) then ()
-                else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
-                    (pp_id2str input_vn) (pp_id2str vn0));
-                ((noid, rectyp, false), relems)
+            if input_vn = noid || input_vn = (get_orig_id vn0) then ()
+            else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
+                (pp_id2str input_vn) (pp_id2str vn0));
+            ((noid, rectyp, false), relems)
         | KVariant {contents={kvar_cases; kvar_ctors}} ->
             let kvar_cases_ctors = Utils.zip kvar_cases kvar_ctors in
-            (match (List.find_opt (fun ((vn, t), c_id) -> (get_orig_id vn) = (get_orig_id input_vn)) kvar_cases_ctors) with
+            let single_case = (List.length kvar_cases_ctors) = 1 in
+            (match (List.find_opt (fun ((vn, t), c_id) ->
+                (get_orig_id vn) = input_vn || (single_case && input_vn=noid)) kvar_cases_ctors) with
             | Some(((_, (KTypRecord (_, relems) (*as rectyp*))), ctor)) ->
                 let rectyp = match relems with
                     | (_, t) :: [] -> t
@@ -590,7 +606,7 @@ and get_record_elems_k vn_opt t loc =
                 ((ctor, rectyp, (List.length kvar_cases) > 1), relems)
             | _ -> raise_compile_err loc (sprintf "tag '%s' is not found or is not a record" (pp_id2str input_vn)))
         | _ -> raise_compile_err loc (sprintf "type '%s' is expected to be variant" (id2str tn)))
-    | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record"
+    | _ -> raise_compile_err loc "k-norm: attempt to treat non-record and non-variant as a record"
 
 and match_record_pat pat ptyp =
     match pat with

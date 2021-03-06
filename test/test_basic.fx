@@ -383,34 +383,26 @@ TEST("basic.ratio", fun()
     // unfortunately, for now using record patterns directly
     // in function parameters is not yet supported
     operator + (a: ratio2_t, b: ratio2_t) {
-        val Ratio2 {num=n1, denom=d1} = a
-        val Ratio2 {num=n2, denom=d2} = b
-        val n = n1*d2 + n2*d1
-        val d = d1*d2
+        val n = a.num*b.denom + b.num*a.denom
+        val d = a.denom*b.denom
         val r = gcd(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }
     operator - (a: ratio2_t, b: ratio2_t) {
-        val Ratio2 {num=n1, denom=d1} = a
-        val Ratio2 {num=n2, denom=d2} = b
-        val n = n1*d2 - n2*d1
-        val d = d1*d2
+        val n = a.num*b.denom - b.num*a.denom
+        val d = a.denom*b.denom
         val r = gcd(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }
     operator * (a: ratio2_t, b: ratio2_t) {
-        val Ratio2 {num=n1, denom=d1} = a
-        val Ratio2 {num=n2, denom=d2} = b
-        val n = n1*n2
-        val d = d1*d2
+        val n = a.num*b.num
+        val d = a.denom*b.denom
         val r = gcd(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }
     operator / (a: ratio2_t, b: ratio2_t) {
-        val Ratio2 {num=n1, denom=d1} = a
-        val Ratio2 {num=n2, denom=d2} = b
-        val n = n1*d2
-        val d = d1*n2
+        val n = a.num*b.denom
+        val d = a.denom*b.num
         val r = gcd(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }

@@ -115,7 +115,6 @@ let elim_unused kmods =
         let uv_i = used_by km_top in
         IdSet.union uv_i uv) IdSet.empty kmods in
     let used i = IdSet.mem i uv in
-    let fold_result = get_id "__fold_result__" in
     let fold_values = ref (IdSet.empty) in
     let is_main = ref false in
 
@@ -126,7 +125,7 @@ let elim_unused kmods =
             let e = elim_unused_kexp_ e callb in
             let is_ccode = match e with KExpCCode _ -> true | _ -> false in
             (match e with
-            | KExpAtom((AtomId fr), _) when (get_orig_id fr) = fold_result ->
+            | KExpAtom((AtomId fr), _) when (get_orig_id fr) = __fold_result_id__ ->
                 fold_values := IdSet.add i !fold_values
             | _ -> ());
             let is_really_used = (used i) || is_ccode (*|| ((not !is_main) &&
@@ -186,7 +185,7 @@ let elim_unused kmods =
             | KExpNop _ ->
                 if rest = [] then e :: result else result
             | KExpAssign(fr, (AtomId r), loc)
-                when (get_orig_id fr) = fold_result && (IdSet.mem r !fold_values) ->
+                when (get_orig_id fr) = __fold_result_id__ && (IdSet.mem r !fold_values) ->
                 result
             | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _ | KDefTyp _ | KDefClosureVars _ ->
                 e :: result

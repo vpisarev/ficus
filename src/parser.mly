@@ -7,8 +7,6 @@
 (* ficus parser *)
 open Ast
 
-let get_fold_result() = get_id "__fold_result__"
-
 let make_loc(pos0, pos1) =
     let { Lexing.pos_lnum=l0; Lexing.pos_bol=b0; Lexing.pos_cnum=c0 } = pos0 in
     let { Lexing.pos_lnum=l1; Lexing.pos_bol=b1; Lexing.pos_cnum=c1 } = pos1 in
@@ -205,7 +203,7 @@ let make_for nested_for body flags =
 
 let transform_fold_exp special fold_pat fold_pat_n fold_init_exp nested_fold fold_body =
     let acc_loc = get_pat_loc fold_pat in
-    let fr_id = get_fold_result() in
+    let fr_id = __fold_result_id__ in
     let fr_exp = make_ident fr_id acc_loc in
     let (for_iter_e, nested_fold_cl, fold_body) = process_nested_for nested_fold fold_body in
     let body_loc = get_exp_loc fold_body in
@@ -1321,6 +1319,7 @@ nobreak_dot_ident:
 
 id_typ_list_:
 | id_typ_list_ SEMICOLON id_typ_elem { $3 :: $1 }
+| id_typ_list_ id_typ_elem { $2 :: $1 }
 | id_typ_elem { $1 :: [] }
 
 id_typ_elem:

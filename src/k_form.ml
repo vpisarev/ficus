@@ -883,6 +883,16 @@ let kexp2atom prefix e tref code =
             (Some e) code kloc in
         ((AtomId tmp_id), code)
 
+let atom2id a loc msg =
+    match a with
+    | AtomId i -> i
+    | AtomLit _ -> raise_compile_err loc msg
+
+let kexp2id prefix e tref code msg =
+    let (a, code) = kexp2atom prefix e tref code in
+    let i = atom2id a (get_kexp_loc e) msg in
+    (i, code)
+
 let create_kdeffun n args rt flags body_opt code sc loc =
     let body = match body_opt with
         | Some body -> body
