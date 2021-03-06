@@ -493,24 +493,29 @@ let rec find_first n env loc pred =
             | Some x -> Some x
             | _ -> find_next_ rest)
         | _ -> None in
-    let rec search_path n_path env = (match n_path with
-        | [] -> []
-        | last_component :: [] -> find_all (get_id last_component) env
-        | prefix :: rest ->
-            match find_all (get_id prefix) env with
+    let rec search_path n_path dot_pos env =
+        try
+            let dot_pos = String.rindex_from n_path dot_pos '.' in
+            let prefix = String.sub n_path 0 dot_pos in
+            let len = String.length n_path in
+            (match find_all (get_id prefix) env with
             | EnvId m :: _ ->
                 (match (id_info m) with
-                | IdModule {contents={dm_env}} -> search_path rest dm_env
-                | _ -> [])
-            | _ -> []) in
+                | IdModule {contents={dm_env}} ->
+                    let suffix = String.sub n_path (dot_pos+1) (len-dot_pos-1) in
+                    find_first (get_id suffix) dm_env loc pred
+                | _ -> None)
+            | _ ->
+                search_path n_path (dot_pos-1) env)
+        with Not_found -> None
+        in
     let e_all = find_all n env in
     let e_all = if e_all = [] && (is_unique_id n) then
         (EnvId n) :: [] else e_all in
-    let e_all = if e_all != [] then e_all else
-            (let n_path = String.split_on_char '.' (pp_id2str n) in
-            if (List.length n_path) <= 1 then []
-            else search_path n_path env)
-    in find_next_ e_all
+    if e_all != [] then find_next_ e_all
+    else
+        let n_path = pp_id2str n in
+        search_path n_path ((String.length n_path) - 1) env
 
 let rec lookup_id n t env sc loc =
     match (find_first n env loc (fun e ->
@@ -866,9 +871,15 @@ and check_exp e env sc =
         let etyp1 = deref_typ etyp1 in
         (match (etyp1, new_e1, e2) with
         | (TypModule, ExpIdent(n1, _), ExpIdent(n2, (etyp2, eloc2))) ->
-            let n1_env = get_module_env n1 in
+            let {dm_env; dm_real} = !(get_module n1) in
             (*let _ = printf "looking for %s in module %s ...\n" (id2str n2) (id2str n1) in*)
-            let (new_n2, t) = lookup_id n2 etyp n1_env sc eloc in
+            let (new_n2, t) =
+                if dm_real then
+                    lookup_id n2 etyp dm_env sc eloc
+                else
+                    let n1n2 = (pp_id2str n1) ^ "." ^ (id2str n2) in
+                    lookup_id (get_id n1n2) etyp env sc eloc
+                in
             ExpIdent(new_n2, (t, eloc))
         | ((TypTuple tl), _, ExpLit((LitInt idx), (etyp2, eloc2))) ->
             unify etyp2 TypInt eloc2 "index must be int!";
@@ -1690,6 +1701,23 @@ and check_directives eseq env sc =
             (* add the imported module id to the env *)
             let env = add_id_to_env alias m env in
             let menv = !(get_module m).dm_env in
+            let alias_path = pp_id2str alias in
+            let rec add_parents alias_path env =
+                (try
+                    let idx = String.rindex alias_path '.' in
+                    let prefix = String.sub alias_path 0 idx in
+                    let prefix_alias = get_id prefix in
+                    let prefix_id = dup_id prefix_alias in
+                    let dm = ref {
+                        dm_name=prefix_id; dm_filename=""; dm_idx= -1; dm_defs=[];
+                        dm_deps=[]; dm_env=Env.empty; dm_parsed=false; dm_real=false } in
+                    let _ = set_id_entry prefix_id (IdModule dm) in
+                    (*let _ = printf "adding parent module '%s' to env\n" (id2str prefix_alias) in*)
+                    let env = add_id_to_env prefix_alias prefix_id env in
+                    add_parents prefix env
+                with Not_found -> env)
+                in
+            let env = add_parents alias_path env in
             (*printf "Importing %s into %s\n" (id2str m) (id2str current_mod);*)
             (* and also import all the overloaded operators from the module
                to make them usable in the corresponding arithmetic expressions *)
