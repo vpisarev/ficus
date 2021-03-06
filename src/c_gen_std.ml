@@ -59,6 +59,8 @@ let init_std_names () =
     std_FX_STR_LENGTH := gen_std_macro "FX_STR_LENGTH" 1;
     std_FX_STR_CHKIDX := gen_std_macro "FX_STR_CHKIDX" 3;
     std_FX_STR_ELEM := gen_std_macro "FX_STR_ELEM" 2;
+    std_FX_STR_ELEM_CLIP := gen_std_macro "FX_STR_ELEM_CLIP" 2;
+    std_FX_STR_ELEM_ZERO := gen_std_macro "FX_STR_ELEM_ZERO" 2;
     std_FX_MAKE_STR := gen_std_macro "FX_MAKE_STR" 1;
     std_FX_FREE_STR := gen_std_macro "FX_FREE_STR" 1;
     std_FX_COPY_STR := gen_std_macro "FX_COPY_STR" 2;
@@ -94,8 +96,12 @@ let init_std_names () =
     std_FX_CHKIDX := gen_std_macro "FX_CHKIDX" 2;
 
     std_FX_PTR_xD := [];
+    std_FX_PTR_xD_CLIP := [];
+    std_FX_PTR_xD_ZERO := [];
     for i = std_FX_MAX_DIMS downto 1 do
         std_FX_PTR_xD := (gen_std_macro (sprintf "FX_PTR_%dD" i) (2+i)) :: !std_FX_PTR_xD;
+        std_FX_PTR_xD_CLIP := (gen_std_macro (sprintf "FX_PTR_%dD_CLIP" i) (2+i)) :: !std_FX_PTR_xD_CLIP;
+        std_FX_PTR_xD_ZERO := (gen_std_macro (sprintf "FX_PTR_%dD_ZERO" i) (2+i)) :: !std_FX_PTR_xD_ZERO;
     done;
 
     std_fx_make_arr := gen_std_fun "fx_make_arr" [CTypCInt; (make_const_ptr CTypInt); CTypSize_t;

@@ -254,6 +254,7 @@ let default_for_flags() =
 
 type border_t = BorderNone | BorderClip | BorderZero
 type interpolate_t = InterpNone | InterpLinear
+let max_zerobuf_size = 256
 
 type var_flags_t = { var_flag_object: id_t; var_flag_record: bool; var_flag_recursive: bool; var_flag_have_tag: bool; var_flag_opt: bool }
 let default_variant_flags() = {var_flag_object=noid; var_flag_record=false; var_flag_recursive=false; var_flag_have_tag=true; var_flag_opt=false}
@@ -713,9 +714,24 @@ let is_typ_scalar t =
 let rec is_typ_numeric t allow_vec_tuples =
     match (deref_typ t) with
     | TypInt | TypSInt _ | TypUInt _ | TypFloat _ -> true
-    | TypTuple(t0 :: trest) -> allow_vec_tuples && (is_typ_numeric t0 true) &&
-        List.for_all (fun t -> (deref_typ t) = (deref_typ t0)) trest
+    | TypTuple(tl) -> allow_vec_tuples &&
+        List.for_all (fun t -> is_typ_numeric t allow_vec_tuples) tl
     | _ -> false
+
+let rec get_numeric_typ_size t allow_vec_tuples =
+    match (deref_typ t) with
+    | TypInt -> 8 (* assume 64 bits for simplicity *)
+    | TypSInt b -> b/8
+    | TypUInt b -> b/8
+    | TypFloat b -> b/8
+    | TypBool -> 1
+    | TypChar -> 4
+    | TypTuple(tl) ->
+        if not allow_vec_tuples then -1 else
+        List.fold_left (fun sz t ->
+            let szj = get_numeric_typ_size t allow_vec_tuples in
+            if szj < 0 || sz < 0 then -1 else sz + szj) 0 tl
+    | _ -> -1
 
 let cmp2str c = match c with
     | CmpEQ -> "=="

@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+const char fx_zerobuf[FX_ZEROBUF_MAX_SIZE] = {'\0'};
+
 int fx_arr_startiter(int narrays, fx_arr_t** arrs, char** ptrs, fx_arriter_t* it, bool reverse)
 {
     if(narrays <= 0) FX_FAST_THROW_RET(FX_EXN_SizeError);

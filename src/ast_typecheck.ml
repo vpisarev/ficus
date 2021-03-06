@@ -1196,6 +1196,34 @@ and check_exp e env sc =
                 check_exp new_exp env sc
             | _ -> raise ex))
     | ExpAt(arr, border, interp, idxs, _) ->
+        let rec check_attr arr border interp =
+            match arr with
+            | ExpMem(arr_, ExpIdent(i, _), _) ->
+                let istr = id2str i in
+                let new_border = match istr with
+                    | "clip" -> BorderClip
+                    | "zero" -> BorderZero
+                    | _ -> BorderNone
+                    in
+                let border =
+                    if new_border = BorderNone then border
+                    else if border = BorderNone then new_border
+                    else raise_compile_err eloc "border was specified more than once" in
+                let new_interp = match istr with
+                    | "linear" -> InterpLinear
+                    | _ -> InterpNone
+                    in
+                let interp =
+                    if new_interp = InterpNone then interp else
+                    if interp = InterpNone then new_interp
+                    else raise_compile_err eloc "interpolation was specified more than once" in
+                if new_border != BorderNone || new_interp != InterpNone then
+                    check_attr arr_ border interp
+                else
+                    (arr, border, interp)
+            | _ -> (arr, border, interp)
+            in
+        let (arr, border, interp) = check_attr arr border interp in
         let new_arr = check_exp arr env sc in
         let (new_atyp, new_aloc) = get_exp_ctx new_arr in
         (match idxs with
@@ -1253,12 +1281,18 @@ and check_exp e env sc =
                 unify etyp TypString new_aloc "indexing string with a range should give a string"
             | _ ->
                 let et = make_new_typ() in
-                unify new_atyp (TypArray(ndims, et)) new_aloc "the array dimensionality does not match the number of indices";
-                (if nranges = 0 then
+                let _ = unify new_atyp (TypArray(ndims, et)) new_aloc "the array dimensionality does not match the number of indices" in
+                let _ = if border = BorderNone then () else
+                    (let elem_sz = get_numeric_typ_size et true in
+                    if 0 < elem_sz && elem_sz <= max_zerobuf_size then () else
+                    raise_compile_err eloc
+                    (sprintf "border extrapolation is used with an array, which elements are too large or have unsupported type '%s'"
+                    (typ2str et))) in
+                if nranges = 0 then
                     unify etyp et eloc "the type of array access expression does not match the array element type"
                 else
                     unify etyp (TypArray(ndims - nfirst_scalars, et)) eloc
-                    "the number of ranges does not match dimensionality of the result, or the element type is incorrect"));
+                    "the number of ranges does not match dimensionality of the result, or the element type is incorrect");
             if interp <> InterpLinear then () else
             if (is_typ_numeric etyp true) then () else
                 raise_compile_err eloc "in the case of interpolation the array type should be numeric";

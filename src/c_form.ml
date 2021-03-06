@@ -825,6 +825,8 @@ let std_fx_copy_ptr = ref noid
 let std_FX_STR_LENGTH = ref noid
 let std_FX_STR_CHKIDX = ref noid
 let std_FX_STR_ELEM = ref noid
+let std_FX_STR_ELEM_CLIP = ref noid
+let std_FX_STR_ELEM_ZERO = ref noid
 let std_FX_MAKE_STR = ref noid
 let std_FX_FREE_STR = ref noid
 let std_fx_free_str = ref noid
@@ -858,6 +860,8 @@ let std_FX_MOVE_LIST = ref noid
 let std_FX_CHKIDX1 = ref noid
 let std_FX_CHKIDX = ref noid
 let std_FX_PTR_xD = ref ([] : id_t list)
+let std_FX_PTR_xD_CLIP = ref ([] : id_t list)
+let std_FX_PTR_xD_ZERO = ref ([] : id_t list)
 
 let std_FX_ARR_SIZE = ref noid
 let std_FX_FREE_ARR = ref noid

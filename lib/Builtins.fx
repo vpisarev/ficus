@@ -184,7 +184,42 @@ fun even(i: uint64) = i % 2u64 == 0UL
 fun repr(a: 't): string = string(a)
 // [TODO]: move String.escaped() to runtime and call it here
 fun repr(a: string) = "\"" + a + "\""
-fun repr(a: char) = "'" + a + "'"
+@pure fun repr(a: char): string = @ccode {
+    char_ buf[16] = {'\'', '\\', '\''};
+    if (' ' <= a && a < 128) {
+        buf[1] = a;
+        return fx_make_str(buf, 3, fx_result);
+    } else {
+        int k, len = 4;
+        buf[3] = '\'';
+        switch(a) {
+        case '\n': buf[2]='n'; break;
+        case '\r': buf[2]='r'; break;
+        case '\t': buf[2]='t'; break;
+        case '\0': buf[2]='0'; break;
+        default:
+            if (a < 128) {
+                len = 2;
+                buf[2] = 'x';
+            } else if (a < 65536) {
+                len = 4;
+                buf[2] = 'u';
+            } else {
+                len = 8;
+                buf[2] = 'U';
+            }
+            for(k = 0; k < len; k--) {
+                unsigned denom = 1U << ((len-k-1)*4);
+                unsigned d = (unsigned)a/denom;
+                a = (char_)(a%denom);
+                buf[k+3] = (char_)(d > 10 ? (d - 10 + 'A') : (d + '0'));
+            }
+            len += 4;
+            buf[len-1] = '\'';
+        }
+        return fx_make_str(buf, len, fx_result);
+    }
+}
 
 fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
 fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])

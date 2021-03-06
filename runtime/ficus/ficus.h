@@ -112,6 +112,9 @@ extern int FX_EXN_TypeMismatchError;
 extern int FX_EXN_UnknownExnError;
 extern int FX_EXN_ZeroStepError;
 
+#define FX_ZEROBUF_MAX_SIZE 256
+extern const char fx_zerobuf[];
+
 enum {
     FX_OK = 0,
     FX_EXN_StdMin = -48,
@@ -344,6 +347,19 @@ int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str);
 #define FX_STR_CHKIDX(str, idx, catch_label) \
     if((size_t)(idx) < (size_t)(str).length) ; else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
 #define FX_STR_ELEM(str, idx) (str).data[idx]
+#define FX_STR_ELEM_CLIP(str, idx) \
+    ({ \
+        fx_str_t* __str__ = &(str); \
+        int_ __idx__ = (idx), __len__ = __str__->length; \
+        (size_t)__idx__ < (size_t)__len__ ? __str__->data[__idx__] : \
+        __len__ == 0 ? (char_)'\0' : __str__->data[__idx__ < 0 ? 0 : __len__-1]; \
+    })
+#define FX_STR_ELEM_ZERO(str, idx) \
+    ({ \
+        fx_str_t* __str__ = &(str); \
+        int_ __idx__ = (idx); \
+        ((size_t)__idx__ < (size_t)(__str__)->length) ? __str__->data[__idx__] : (char_)'\0'; \
+    })
 
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
 size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
@@ -579,6 +595,136 @@ FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ sc
     ((typ*)((arr).data + (arr).dim[0].step*(idx0) + \
     (arr).dim[1].step*(idx1) + (arr).dim[2].step*(idx2) + \
     (arr).dim[3].step*(idx3)) + (idx4))
+
+#define FX_CLIP_IDX(idx, sz) ((size_t)idx < (size_t)sz ? idx : idx < 0 ? 0 : sz-1)
+#define FX_PTR_1D_CLIP(typ, arr, idx) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx__ = (idx), __sz0__ = __arr__->dim[0].size; \
+        ((size_t)__idx__ < (size_t)__sz0__) ? FX_PTR_1D(typ, *__arr__, __idx0__) : \
+        __sz0__ == 0 ? (typ*)fx_zerobuf : FX_PTR_1D(typ, *__arr__, (__idx__ < 0 ? 0 : __sz0__ - 1)); \
+    ))
+#define FX_PTR_2D_CLIP(typ, arr, idx0, idx1) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0)) ? (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, FX_CLIP_IDX(__idx0__, __sz0__), \
+            FX_CLIP_IDX(__idx1__, __sz1__)); \
+    })
+#define FX_PTR_3D_CLIP(typ, arr, idx0, idx1, idx2) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0) | (__sz2__ == 0)) ? (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, FX_CLIP_IDX(__idx0__, __sz0__), \
+            FX_CLIP_IDX(__idx1__, __sz1__), FX_CLIP_IDX(__idx2__, __sz2__)); \
+    })
+#define FX_PTR_4D_CLIP(typ, arr, idx0, idx1, idx2, idx3) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2), __idx3__ = (idx3); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size, __sz3__ = __arr__->dim[3].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__) & \
+        ((size_t)__idx3__ < (size_t)__sz3__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__, __idx3__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0) | (__sz2__ == 0) | (__sz3__ == 0)) ? (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, \
+            FX_CLIP_IDX(__idx0__, __sz0__), \
+            FX_CLIP_IDX(__idx1__, __sz1__), \
+            FX_CLIP_IDX(__idx2__, __sz2__)  \
+            FX_CLIP_IDX(__idx3__, __sz3__)); \
+    })
+#define FX_PTR_5D_CLIP(typ, arr, idx0, idx1, idx2, idx3, idx4) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2), \
+            __idx3__ = (idx3), __idx4__ = (idx4); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size, __sz3__ = __arr__->dim[3].size; \
+        int __sz4__ = __arr__->dim[4].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__) & \
+        ((size_t)__idx3__ < (size_t)__sz3__) & \
+        ((size_t)__idx4__ < (size_t)__sz4__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__, __idx3__, __idx4__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0) | (__sz2__ == 0) | (__sz3__ == 0) | (__sz4__ == 0)) ? \
+            (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, \
+            FX_CLIP_IDX(__idx0__, __sz0__), \
+            FX_CLIP_IDX(__idx1__, __sz1__), \
+            FX_CLIP_IDX(__idx2__, __sz2__)  \
+            FX_CLIP_IDX(__idx3__, __sz3__), \
+            FX_CLIP_IDX(__idx4__, __sz4__)); \
+    })
+
+#define FX_PTR_1D_ZERO(typ, arr, idx) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx__ = (idx), __sz0__ = __arr__->dim[0].size; \
+        (size_t)__idx__ < (size_t)__sz0__ ? ((typ*)__arr__->data + __idx__) : (typ*)fx_zerobuf; \
+    ))
+#define FX_PTR_2D_ZERO(typ, arr, idx0, idx1) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__) : (typ*)fx_zerobuf; \
+    })
+#define FX_PTR_3D_ZERO(typ, arr, idx0, idx1, idx2) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__) : (typ*)fx_zerobuf; \
+    })
+#define FX_PTR_4D_ZERO(typ, arr, idx0, idx1, idx2, idx3) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2), __idx3__ = (idx3); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size, __sz3__ = __arr__->dim[3].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__) & \
+        ((size_t)__idx3__ < (size_t)__sz3__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__, __idx3__) : (typ*)fx_zerobuf; \
+    })
+#define FX_PTR_5D_ZERO(typ, arr, idx0, idx1, idx2, idx3, idx4) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2), \
+            __idx3__ = (idx3), __idx4__ = (idx4); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size, __sz3__ = __arr__->dim[3].size; \
+        int __sz4__ = __arr__->dim[4].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__) & \
+        ((size_t)__idx3__ < (size_t)__sz3__) & \
+        ((size_t)__idx4__ < (size_t)__sz4__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__, __idx3__, __idx4__) : (typ*)fx_zerobuf; \
+    })
 
 void fx_free_arr(fx_arr_t* arr);
 #define FX_FREE_ARR(arr) if(!(arr)->rc) ; else fx_free_arr(arr)

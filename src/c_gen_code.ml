@@ -1665,8 +1665,6 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     if all the indices are fast indices, the whole check is excluded, of course.
                     then we return `(true, FX_PTR_{ndims}D(elem_ctyp, arr, idx0, ..., idx{ndims-1}), ccode)`
             *)
-            let _ = if border = BorderNone then () else
-                raise_compile_err kloc "cgen: border extrapolation is not supported yet" in
             let _ = if interp = InterpNone then () else
                 raise_compile_err kloc "cgen: inter-element interpolation is not supported yet" in
             let (arr_exp, ccode) = atom2cexp_ arr false ccode kloc in
@@ -1681,10 +1679,20 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     (true, get_elem_exp, ccode)
                 | DomainElem i :: [] ->
                     let (i_exp, ccode) = atom2cexp_ i true ccode kloc in
-                    let chk_exp = make_call !std_FX_STR_CHKIDX [arr_exp; i_exp; lbl] CTypBool kloc in
-                    let get_elem_exp = make_call !std_FX_STR_ELEM [arr_exp; i_exp] CTypUniChar kloc in
-                    (true, get_elem_exp, (CExp chk_exp) :: ccode)
+                    let (get_elem_exp, ccode) = match border with
+                        | BorderNone ->
+                            let chk_exp = make_call !std_FX_STR_CHKIDX [arr_exp; i_exp; lbl] CTypBool kloc in
+                            ((make_call !std_FX_STR_ELEM [arr_exp; i_exp] CTypUniChar kloc),
+                            (CExp chk_exp) :: ccode)
+                        | BorderClip ->
+                            ((make_call !std_FX_STR_ELEM_CLIP [arr_exp; i_exp] CTypUniChar kloc), ccode)
+                        | BorderZero ->
+                            ((make_call !std_FX_STR_ELEM_ZERO [arr_exp; i_exp] CTypUniChar kloc), ccode)
+                        in
+                    (true, get_elem_exp, ccode)
                 | DomainRange(a, b, delta) :: [] ->
+                    let _ = if border = BorderNone then () else
+                        raise_compile_err kloc "cgen: border extrapolation with ranges is not supported yet" in
                     let (mask, (a_exp, ccode)) = match a with
                         | AtomLit (KLitNil _) -> (1, ((make_int_exp 0 kloc), ccode))
                         | _ -> (0, (atom2cexp a ccode kloc))
@@ -1714,6 +1722,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         [(cexp_get_addr arr_exp); (cexp_get_addr subarr_exp)] CTypCInt kloc in
                     (false, subarr_exp, (add_fx_call call_flatten ccode kloc))
                 else if need_subarr then
+                    let _ = if border = BorderNone then () else
+                        raise_compile_err kloc "cgen: border extrapolation with ranges is not supported yet" in
                     let (range_data, ccode) = List.fold_left (fun (range_data, ccode) d ->
                         match d with
                         | DomainElem i | DomainFast i ->
@@ -1746,7 +1756,10 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     (false, subarr_exp, ccode)
                 else
                     let elem_ctyp = ctyp in
-                    let (_, chk_exp_opt, i_exps, ccode) = List.fold_left (fun (dim, chk_exp_opt, i_exps, ccode) d ->
+                    let (_, chk_exp_opt, i_exps, ccode) =
+                        List.fold_left (fun (dim, chk_exp_opt, i_exps, ccode) d ->
+                        let d = if border = BorderNone then d
+                            else match d with DomainElem(i) -> DomainFast(i) | _ -> d in
                         match d with
                         | DomainFast i ->
                             let (i_exp, ccode) = atom2cexp i ccode kloc in
@@ -1771,7 +1784,13 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         | _ -> ccode
                         in
                     let ndims = List.length idxs in
-                    let get_elem_exp = make_call (List.nth (!std_FX_PTR_xD) (ndims-1))
+                    let access_op =
+                        match border with
+                        | BorderNone -> !std_FX_PTR_xD
+                        | BorderClip -> !std_FX_PTR_xD_CLIP
+                        | BorderZero -> !std_FX_PTR_xD_ZERO
+                        in
+                    let get_elem_exp = make_call (List.nth access_op (ndims-1))
                         (CExpTyp (elem_ctyp,kloc) :: arr_exp :: (List.rev i_exps)) (make_ptr elem_ctyp) kloc in
                     (true, (cexp_deref get_elem_exp), ccode)
             | _ -> raise_compile_err kloc "unknown/unsupported type of the container, should be CTypArray _ or CTypString")
