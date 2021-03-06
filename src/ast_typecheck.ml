@@ -1543,7 +1543,7 @@ and check_exp e env sc =
             | (ExpIdent(_, _), _, _) | (ExpLit(_, _), _, _) -> (e1, [])
             | (_, _, TypTuple _) | (_, TypTuple _, _) ->
                 let temp_id = gen_temp_id "v" in
-                let flags = default_val_flags() in
+                let flags = default_tempval_flags() in
                 let dv = { dv_name=temp_id; dv_typ=t1; dv_flags=flags; dv_scope=sc; dv_loc=eloc } in
                 let _ = set_id_entry temp_id (IdVal dv) in
                 (ExpIdent(temp_id, (t1, eloc)), [DefVal (PatIdent(temp_id, eloc), e1, flags, eloc)])

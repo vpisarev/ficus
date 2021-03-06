@@ -284,8 +284,10 @@ let print_subst_map m loc =
 let cfold_dealias kmods =
     let id_map = ref (Env.empty : atom_t Env.t) in
     let concat_map = ref (Env.empty : atom_t list Env.t) in
+    let mktup_map = ref (Env.empty : atom_t list Env.t) in
     let add_to_map n a = id_map := Env.add n a !id_map in
     let add_to_concat_map n al = concat_map := Env.add n al !concat_map in
+    let add_to_tup_map n al = mktup_map := Env.add n al !mktup_map in
     let rec cfd_atom_ a loc callb =
         match a with
         | AtomId n ->
@@ -345,6 +347,9 @@ let cfold_dealias kmods =
                 | KExpIntrin(IntrinStrConcat, al, (_, loc)) when
                     kv_flags.val_flag_temp && List.for_all (fun a -> not (is_mutable_atom a loc)) al ->
                     add_to_concat_map n al; e
+                | KExpMkTuple(al, (_, loc)) when
+                    kv_flags.val_flag_temp && List.for_all (fun a -> not (is_mutable_atom a loc)) al ->
+                    add_to_tup_map n al; e
                 | _ -> e)
             else e
         | KExpIntrin(IntrinStrConcat, al, (res_t, loc)) ->
@@ -382,6 +387,14 @@ let cfold_dealias kmods =
         | KExpCast(a, t, loc) ->
             (match (cfold_cast a t loc) with
             | Some(new_e) -> new_e
+            | _ -> e)
+        | KExpMem(t_id, idx, (res_t, loc)) ->
+            (match (Env.find_opt t_id !mktup_map) with
+            | Some(al) ->
+                let n = List.length al in
+                let _ = if 0 <= idx && idx < n then () else raise_compile_err loc
+                    (sprintf "index (%d) is out of range [0, %d] during tuple access optimization" idx (n-1)) in
+                KExpAtom((List.nth al idx), (res_t, loc))
             | _ -> e)
         | KExpIf(c, then_e, else_e, kctx) ->
             (* eliminate dead branches *)
