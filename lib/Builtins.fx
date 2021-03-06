@@ -185,18 +185,22 @@ fun repr(a: 't): string = string(a)
 // [TODO]: move String.escaped() to runtime and call it here
 fun repr(a: string) = "\"" + a + "\""
 @pure fun repr(a: char): string = @ccode {
-    char_ buf[16] = {'\'', '\\', '\''};
-    if (' ' <= a && a < 128) {
+    char_ buf[16] = {39, 92, 39};
+    printf("entered here, a=%d\n", (int)a);
+    if (32 <= a && a != 39 && a != 34 && a != 92) {
         buf[1] = a;
         return fx_make_str(buf, 3, fx_result);
     } else {
         int k, len = 4;
-        buf[3] = '\'';
+        buf[3] = 39;
         switch(a) {
-        case '\n': buf[2]='n'; break;
-        case '\r': buf[2]='r'; break;
-        case '\t': buf[2]='t'; break;
-        case '\0': buf[2]='0'; break;
+        case 10: buf[2]='n'; break;
+        case 13: buf[2]='r'; break;
+        case 9: buf[2]='t'; break;
+        case 0: buf[2]='0'; break;
+        case 39: buf[2]=39; break;
+        case 34: buf[2]=34; break;
+        case 92: buf[2]=92; break;
         default:
             if (a < 128) {
                 len = 2;
@@ -208,7 +212,7 @@ fun repr(a: string) = "\"" + a + "\""
                 len = 8;
                 buf[2] = 'U';
             }
-            for(k = 0; k < len; k--) {
+            for(k = 0; k < len; k++) {
                 unsigned denom = 1U << ((len-k-1)*4);
                 unsigned d = (unsigned)a/denom;
                 a = (char_)(a%denom);
@@ -216,6 +220,10 @@ fun repr(a: string) = "\"" + a + "\""
             }
             len += 4;
             buf[len-1] = '\'';
+            printf("len=%d: \n", len);
+            for (int i = 0; i < len; i++)
+                printf("%c", buf[i]);
+            printf("\n");
         }
         return fx_make_str(buf, len, fx_result);
     }
@@ -612,6 +620,7 @@ fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
 // do not use lrint(x), since it's slow. and (int)round(x) is even slower
 @pure @nothrow fun round(x: float): int = @ccode { return fx_roundf2I(x) }
 @pure @nothrow fun round(x: double): int = @ccode { return fx_round2I(x) }
+fun round(x: ('t...)) = (for xj <- x {round(xj)})
 
 fun min(a: 't, b: 't) = if a <= b {a} else {b}
 fun max(a: 't, b: 't) = if a >= b {a} else {b}

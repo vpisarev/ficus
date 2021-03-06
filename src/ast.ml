@@ -1065,6 +1065,24 @@ and tl2str tl =
     | x :: [] -> s
     | _ -> "(" ^ s ^ ")"
 
+let get_cast_fname t loc =
+    match (deref_typ t) with
+    | TypInt -> fname_to_int()
+    | TypSInt(8) -> fname_to_int8()
+    | TypSInt(16) -> fname_to_int16()
+    | TypSInt(32) -> fname_to_int32()
+    | TypSInt(64) -> fname_to_int64()
+    | TypUInt(8) -> fname_to_uint8()
+    | TypUInt(16) -> fname_to_uint16()
+    | TypUInt(32) -> fname_to_uint32()
+    | TypUInt(64) -> fname_to_uint64()
+    | TypFloat(32) -> fname_to_float()
+    | TypFloat(64) -> fname_to_double()
+    | TypBool -> fname_to_bool()
+    | TypString -> fname_string()
+    | _ -> raise_compile_err loc
+    (sprintf "for type '%s' there is no corresponding cast function" (typ2str t))
+
 let parse_pragmas prl =
     let clib_regexp = Str.regexp "clib *: *\\([_A-Za-z0-9\\-\\.]+\\) *" in
     let rec parse prl result =

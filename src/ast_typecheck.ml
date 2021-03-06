@@ -1535,12 +1535,73 @@ and check_exp e env sc =
         let new_e1typ = get_exp_typ new_e1 in
         let new_cases = check_cases cases new_e1typ etyp env sc eloc in
         ExpMatch(new_e1, new_cases, ctx)
-    | ExpCast(e1, t1, _) ->
-        (* [TODO] check that e1 can be cast to t1 *)
-        let new_t1 = check_typ t1 env sc eloc in
-        let _ = unify etyp new_t1 eloc "unexpected type of cast operation" in
-        let new_e1 = check_exp e1 env sc in
-        ExpCast(new_e1, new_t1, ctx)
+    | ExpCast(e1, t2, _) ->
+        let t2 = check_typ t2 env sc eloc in
+        let e1 = check_exp e1 env sc in
+        let t1 = get_exp_typ e1 in
+        let (e1, code) = match (e1, (deref_typ t1), (deref_typ t2)) with
+            | (ExpIdent(_, _), _, _) | (ExpLit(_, _), _, _) -> (e1, [])
+            | (_, _, TypTuple _) | (_, TypTuple _, _) ->
+                let temp_id = gen_temp_id "v" in
+                let flags = default_val_flags() in
+                let dv = { dv_name=temp_id; dv_typ=t1; dv_flags=flags; dv_scope=sc; dv_loc=eloc } in
+                let _ = set_id_entry temp_id (IdVal dv) in
+                (ExpIdent(temp_id, (t1, eloc)), [DefVal (PatIdent(temp_id, eloc), e1, flags, eloc)])
+            | _ -> (e1, [])
+            in
+        let _ = if is_typ_scalar t1 || is_typ_scalar t2 ||
+            (match ((deref_typ t1), (deref_typ t2)) with
+            | ((TypTuple _), (TypTuple _)) -> true | _ -> false) then ()
+        else
+            raise_compile_err eloc (sprintf "invalid cast operation: %s to '%s'" (typ2str t1) (typ2str t2)) in
+        let rec make_cast e1 t1 t2 =
+            match ((coerce_types t1 t2 false true false eloc), e1, (deref_typ t1), (deref_typ t2)) with
+            | (Some _, _, _, _) | (_, _, TypChar, TypInt) | (_, _, TypInt, TypChar) ->
+                ExpCast(e1, t2, (t2, eloc))
+            | (_, ExpLit(LitInt 0L, _), _, TypList _) ->
+                ExpLit(LitNil, (t2, eloc))
+            | (_, ExpLit(LitInt 0L, _), _, TypString) ->
+                ExpLit(LitString "", (t2, eloc))
+            | (_, _, TypTuple tl1, TypTuple tl2) ->
+                (* n to n *)
+                let n1 = List.length tl1 in
+                let n2 = List.length tl2 in
+                let _ = if n1 = n2 then () else
+                    raise_compile_err eloc (sprintf
+                    "the number of elements in the source tuple type (%d) and the destination tuple type (%d) do not match"
+                    n1 n2) in
+                let (_, el) = List.fold_left2 (fun (i, el) t1 t2 ->
+                    let ei = ExpMem(e1, ExpLit(LitInt (Int64.of_int i), (TypInt, eloc)), (t1, eloc)) in
+                    let ei = make_cast ei t1 t2 in
+                    (i+1, (ei :: el))) (0, []) tl1 tl2
+                    in
+                ExpMkTuple((List.rev el), (t2, eloc))
+            | (_, _, TypTuple tl1, _) ->
+                (* n to 1 *)
+                let (_, el, tl2) = List.fold_left (fun (i, el, tl2) t1 ->
+                    let ei = ExpMem(e1, ExpLit(LitInt (Int64.of_int i), (TypInt, eloc)), (t1, eloc)) in
+                    let ei = make_cast ei t1 t2 in
+                    (i+1, (ei :: el), (t2 :: tl2))) (0, [], []) tl1
+                    in
+                ExpMkTuple((List.rev el), (TypTuple(List.rev tl2), eloc))
+            | (_, _, _, TypTuple tl2) ->
+                (* 1 to n *)
+                ExpMkTuple(List.map (fun t2 -> make_cast e1 t1 t2) tl2, (t2, eloc))
+            | _ -> raise_compile_err eloc (sprintf "invalid cast operation: %s to '%s'" (typ2str t1) (typ2str t2))
+            in
+        (try
+            let e2 = make_cast e1 t1 t2 in
+            let t2 = get_exp_typ e2 in
+            let _ = unify etyp t2 eloc "unexpected type of cast operation" in
+            (match code with
+            | _ :: _ -> ExpSeq(code @ [e2], (t2, eloc))
+            | _ -> e2)
+        with CompileError(_, _) ->
+            (try
+                let fname = get_cast_fname t2 eloc in
+                check_and_make_call fname [e1]
+            with CompileError(_, _) ->
+                raise_compile_err eloc (sprintf "invalid cast operation: %s to '%s'" (typ2str t1) (typ2str t2))))
     | ExpTyped(e1, t1, _) ->
         let new_t1 = check_typ t1 env sc eloc in
         let (e1typ, e1loc) = get_exp_ctx e1 in
