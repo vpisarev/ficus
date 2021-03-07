@@ -48,22 +48,22 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
 
 @pure @nothrow fun rfind(s: string, part: string): int = @ccode
 {
-    int_ sz1 = s->length, sz2 = part->length, pos = sz1 - sz2;
+    int_ sz1 = s->length, sz2 = part->length, i = sz1 - sz2;
     if (sz2 == 0)
         return sz1 - 1;
-    for ( ; pos >= 0; pos--) {
-        if( memcmp(s->data + pos, part->data, sz2*sizeof(part->data[0])) == 0)
+    for ( ; i >= 0; i--) {
+        if( memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0)
             break;
     }
     return pos;
 }
 
-@pure @nothrow fun has(s: string, c: char): bool = @ccode
+@pure @nothrow fun contains(s: string, c: char): bool = @ccode
 {
     int_ i, sz = s->length;
     char_* data = s->data;
 
-    for ( i = 0; i < sz; pos--) {
+    for ( i = 0; i < sz; i++ ) {
         if (data[i] == c) return true;
     }
     return false;

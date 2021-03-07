@@ -3,7 +3,7 @@
     See ficus/LICENSE for the licensing terms
 */
 
-// Ficus lexer/tokenizer
+// Ficus recursive descent parser
 
 import File, Map, Sys
 from Ast import *
@@ -12,9 +12,20 @@ from Lexer import *
 exception ParseError: (loc_t, string)
 var last_loc = noloc
 
-fun make_unary(uop: unop_t, e: exp_t, l: loc_t) = ExpUnary
+type kw_mode_t = KwNone | KwMay | KwMust
+type tklist_t = (token_t, loc_t) list
+type elist_t = exp_t list
+type id_exp_t = (id_t, exp_t)
+type id_elist_t = id_exp_t list
 
-fun parse_err(ts: token_t list, msg: string)
+fun make_unary(uop: unary_t, e: exp_t, loc: loc_t) = ExpUnary(uop, e, make_new_ctx(loc))
+fun make_binary(bop: binary_t, e1: exp_t, e2: exp_t, loc: loc_t) = ExpBinary(bop, e1, e2, make_new_ctx(loc))
+fun make_literal(lit: lit_t, loc: loc_t) = ExpLit(lit, (get_lit_typ(lit), loc))
+fun make_ident(i: id_t, loc: loc_t) = ExpIdent(i, make_new_ctx(loc))
+fun make_ident(s: string, loc: loc_t) = ExpIdent(get_id(s), make_new_ctx(loc))
+fun make_tuple(el: exp_t list, loc: loc_t) = ExpMkTuple(el, make_new_ctx(loc))
+
+fun parse_err(ts: tklist_t, msg: string): exn
 {
     val loc = match ts {
     | (_, l) :: _ => l
@@ -23,361 +34,248 @@ fun parse_err(ts: token_t list, msg: string)
     ParseError(loc, msg)
 }
 
-fun match_paren((e: exp_t, ts: token_t list), ct: token_t, ol: loc_t)
+fun match_paren((ts: tklist_t, e: exp_t), ct: token_t, ol: loc_t): (tklist_t, exp_t)
 {
     match ts {
-    | (ct_, l) :: rest when ct_ = ct => (e, rest)
-    | _ => parse_err(ts, f"'{tok2str(ct)}' is expected; the opening paren is here {ol}")
+    | (ct_, l) :: rest when ct_ == ct => (rest, e)
+    | _ => throw parse_err(ts, f"'{tok2str(ct).1}' is expected; the opening paren is here {ol}")
     }
 }
 
-fun is_for_start((f: token_t, l: loc_t), nested: bool) {
-    | FOR => nested
-    | B_FOR => true
+fun is_for_start((t: token_t, l: loc_t), nested: bool) =
+match t {
+    | FOR(ne) => (ne | nested)
     | PARALLEL => !nested
     | UNZIP => !nested
     | _ => false
 }
 
-fun check_ne(ne: bool) = if !ne {
+fun check_ne(ne: bool, ts: tklist_t) = if !ne {
     throw parse_err(ts, "new line or ';' is expected before new expression")
 }
 
-type kw_mode_t = KwNone | KwMay | KwMust
-
-fun parse_exp_list(ts: token_t list, parse_exp_f: token_t list->(exp_t, token_t list),
-        kw: kw_mode_t, ct: token_t, ~allow_empty: bool, ~stop_at_semicolon: bool=false) =
-    fold (el, kw_el, ts) = ([]: exp_t list, ts) for i <- 0: {
+fun parse_exp_list(ts0: tklist_t, parse_exp_f: tklist_t->(tklist_t, exp_t),
+                   ct: token_t, ~kw_mode: kw_mode_t, ~allow_empty: bool,
+                   ~stop_at_semicolon: bool=false)
+    : (tklist_t, elist_t, id_elist_t)
+{
+    fun parse_exp_list_(idx: int, ts: tklist_t, el: elist_t, kw_el: id_elist_t) =
         match ts {
-        | t :: rest when t == ct =>
-            if i == 0 && !allow_empty {throw parse_err(ts, "empty expression list is not allowed here")}
-            break with (el.rev(), kw_el.rev(), rest)
-        | (COMMA, _) :: _ => if i == 0 {throw parse_err(ts, "unxpected ','")}
+        | (t, _) :: rest when t == ct =>
+            if idx == 0 && !allow_empty {throw parse_err(ts, "empty expression list is not allowed here")}
+            (rest, el.rev(), kw_el.rev())
         | (SEMICOLON, _) :: rest =>
-            if i == 0 || !stop_at_semicolon {throw parse_err(ts, "unxpected ';'")}
-            break with (el.rev(), kw_el.rev(), rest)
-        | _ => if i > 0 {throw parse_err(ts, f"',' or '{tok2str(ct).1}' is expected")}
-        }
-        val ts = if i == 0 {ts} else {
-            ts.tl() // skip ','
-        }
-        match ts {
-        | (IDENT(_, i), il) :: (EQUAL, _) :: rest =>
-            if kw == KwNone { throw parse_err(ts, f"unexpected keyword element '{i}=...'") }
-            val (e, ts) = parse_complex_exp(rest)
-            (el, (get_id(i), e) :: kw_el, ts)
-        | _ =>
-            if kw == KwMust {
-                if kw == KwNone { throw parse_err(ts, f"expect a keyword element here '<ident> = ...'") }
+            if idx == 0 || !stop_at_semicolon {throw parse_err(ts, "unxpected ';'")}
+            (rest, el.rev(), kw_el.rev())
+        | (t, _) :: rest =>
+            // 'eat' comma in the middle of list
+            val ts = match t {
+                | COMMA =>
+                    if idx == 0 {throw parse_err(ts, "unxpected ',' in the beginning of the list")}
+                    rest
+                | _ =>
+                    if idx > 0 {throw parse_err(ts, f"',' or '{tok2str(ct).1}' is expected")}
+                    ts
+                }
+            // capture the next expression or the next pair ident=exp and then parse the remaining items
+            // using tail recursion, should be pretty efficient.
+            match ts {
+            | (IDENT(_, i), _) :: (EQUAL, _) :: rest =>
+                if kw_mode == KwNone { throw parse_err(ts, f"unexpected keyword element '{i}=...'") }
+                val (ts, e) = parse_complex_exp(rest)
+                parse_exp_list_(idx+1, ts, el, (get_id(i), e) :: kw_el)
+            | _ =>
+                if kw_mode == KwMust { throw parse_err(ts, f"expect a keyword element here '<ident> = ...'") }
+                val (ts, e) = parse_exp_f(ts)
+                parse_exp_list_(idx+1, ts, e :: el, kw_el)
             }
-            val (e, ts) = parse_exp_f(ts)
-            (e :: el, kw_el, ts)
-        }
+        | _ => throw parse_err(ts0, "the expression list is not complete by the end of file, check parentheses")
     }
+    parse_exp_list_(0, ts0, [], [])
+}
 
-fun parse_typed_exp(ts: token_t list) {
-    val (e, ts) = parse_complex_exp(ts)
+fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
+    val (ts, e) = parse_complex_exp(ts)
     match ts {
     | (COLON, _) :: rest =>
-        val (t, ts) = parse_typespec(rest)
-        ExpTyped(e, t, (t, get_exp_loc(e)))
+        val (ts, t) = parse_typespec(rest)
+        (ts, ExpTyped(e, t, (t, get_exp_loc(e))))
     | (CAST, _) :: rest =>
-        val (t, ts) = parse_typespec(rest)
-        ExpCast(e, t, (make_new_typ(), get_exp_loc(e)))
-    | _ => (e, ts)
+        val (ts, t) = parse_typespec(rest)
+        (ts, ExpCast(e, t, (make_new_typ(), get_exp_loc(e))))
+    | _ => (ts, e)
     }
 }
 
-fun parse_array(ts: token_t list): (exp_t, token_t list) = throw "not implemented"
+fun parse_array_literal(ts: tklist_t, start: loc_t): (tklist_t, exp_t) = throw parse_err(ts, "array literals are not supported")
+fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t) = throw parse_err(ts, "complex expressions are not supported")
+fun parse_typespec(ts: tklist_t): (tklist_t, typ_t) = throw parse_err(ts, "type specifications are not supported")
+fun parse_block(ts: tklist_t): (tklist_t, exp_t) = throw parse_err(ts, "blocks are not supported")
+fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t) = throw parse_err(ts, "blocks are not supported")
+fun parse_array_idx(ts: tklist_t): (tklist_t, exp_t) = parse_binary_exp(ts) // [TODO]: add range support
 
-fun parse_atomic_exp(ts: token_t list)
+fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
 {
     match ts {
-    | (IDENT(ne, i), l) :: rest =>
+    | (IDENT(ne, i), l1) :: rest =>
         check_ne(ne, ts)
-        (ExpIdent(get_id(i), make_new_ctx(l)), rest)
-    | (LITERAL(lit), l) :: rest => (ExpLit(l, (get_lit_typ(lit), l)), rest)
+        (rest, make_ident(i, l1))
+    | (LITERAL(lit), l1) :: rest => (rest, make_literal(lit, l1))
     | (LPAREN(ne), l1) :: (LBRACE, _) :: _ =>
         check_ne(ne, ts)
         match_paren(parse_block(ts.tl()), RPAREN, l1)
-    | (LPAREN(ne), l1) :: (B_FOR, _) :: _ =>
+    | (LPAREN(ne), l1) :: (FOR(_), _) :: _ =>
         check_ne(ne, ts)
         match_paren(parse_for(ts.tl(), ForMakeTuple), RPAREN, l1)
     | (LPAREN(ne), l1) :: rest =>
         check_ne(ne, ts)
-        val (el, _, ts) = parse_exp_list(rest, parse_typed_exp, KwNone, RPAREN, allow_empty=false)
-        (match el {
+        val (ts, el, _) = parse_exp_list(rest, parse_typed_exp, RPAREN, kw_mode=KwNone, allow_empty=false)
+        (ts, match el {
         | e :: [] => e
-        | _ => ExpTuple(el, make_new_ctx(l1))
-        }, ts)
+        | _ => make_tuple(el, l1)
+        })
     | (LSQUARE(ne), l1) :: f :: rest when is_for_start(f, false) =>
         check_ne(ne, ts)
         match_paren(parse_for(ts.tl(), ForMakeArray), RSQUARE, l1)
     | (LSQUARE(ne), l1) :: rest =>
         check_ne(ne, ts)
-        parse_array(rest, l1)
+        parse_array_literal(rest, l1)
     | (LLIST, l1) :: f :: _ when is_for_start(f, false) =>
         match_paren(parse_for(ts.tl(), ForMakeList), RLIST, l1)
     | (LLIST, l1) :: rest =>
-        val (el, _, ts) = parse_exp_list(rest, parse_typed_exp, KwNone, RLIST, false, allow_empty=true,)
-        (fold mklist_e = ExpLit(LitNil, make_new_ctx(ol)) for e <- el.rev() {
+        val (ts, el, _) = parse_exp_list(rest, parse_typed_exp, RLIST, kw_mode=KwNone, allow_empty=true)
+        (ts, fold mklist_e = make_literal(LitNil, l1) for e <- el.rev() {
             ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
-        }, ts)
-    | t :: _ -> throw parse_err(ts, f"unxpected token '{tok2str(t).1}. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here")
-    | _ -> throw parse_err(ts, f"premature end of the stream; check the parens")
+        })
+    | (t, _) :: _ =>
+        throw parse_err(ts, f"unxpected token '{tok2str(t).1}'. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here")
+    | _ =>
+        throw parse_err(ts, f"premature end of the stream; check the parens")
     }
 }
 
-fun parse_simple_exp(ts: token_t list)
+fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
 {
-    fold (e, ts) = parse_atomic_exp(ts) for ... {
+    fun extend_simple_exp_(ts: tklist_t, e: exp_t) {
         val eloc = get_exp_loc(e)
         // 1. element access (.|->) (int|ident)
         // 2. array access [...]
         // 3. function call (...)
-        val (proceed, e, ts) = match ts {
+        match ts {
         | (LPAREN(false), _) :: rest =>
             // function call ([TODO] support keyword args)
-            val (args, kw_args, ts) = parse_exp_list(rest, parse_typed_exp, KwMust, RPAREN, allow_empty=true)
-            (true, ExpCall(e, args, make_new_ctx(eloc)), ts)
+            val (ts, args, kw_args) = parse_exp_list(rest, parse_typed_exp, RPAREN, kw_mode=KwNone, allow_empty=true)
+            extend_simple_exp_(ts, ExpCall(e, args, make_new_ctx(eloc)))
         | (LSQUARE(false), _) :: rest =>
-            // array access
-            val (idxs, _, ts) = parse_exp_list(rest, parse_array_idx, KwNone, RPAREN, allow_empty=false)
-            (true, ExpAt(e, BorderNone, InterpNone, idxs, make_new_ctx(eloc)), ts)
+            // array access ([TODO] support ranges)
+            val (ts, idxs, _) = parse_exp_list(rest, parse_array_idx, RPAREN, kw_mode=KwNone, allow_empty=false)
+            extend_simple_exp_(ts, ExpAt(e, BorderNone, InterpNone, idxs, make_new_ctx(eloc)))
         | (t1, _) :: (t2, l2) :: rest when
             // [TODO] add support for alternating patterns right into the pattern matching syntax
             (match t1 {| DOT | ARROW => true | _ => false}) &&
             (match t2 {| IDENT(false, _) | LITERAL(LitInt _) => true | _ => false}) =>
-            val e = match t1 { | ARROW => ExpUnary(OpDeref, e, make_new_ctx(eloc)) | _ => e }
+            val e = match t1 { | ARROW => make_unary(OpDeref, e, eloc) | _ => e }
             val i = match t2 {
-                | IDENT(false, i) => ExpIdent(get_id(i), make_new_ctx(l2))
-                | LITERAL(LitInt(i)) => ExpLit(LitInt(i), (TypInt, l2))
+                | IDENT(true, i) => make_ident(i, l2)
+                | LITERAL(LitInt(i)) => make_literal(LitInt(i), l2)
                 | _ => ExpNop(l2)
                 }
-            (true, ExpMem(e, i, make_new_ctx(eloc)), rest)
+            extend_simple_exp_(rest, ExpMem(e, i, make_new_ctx(eloc)))
         | (t1, _) :: (LBRACE, l2) :: rest when (match t1 {| DOT | ARROW => true | _ => false}) =>
-            val e = match t1 { | ARROW => ExpUnary(OpDeref, e, make_new_ctx(eloc)) | _ => e }
-            val (_, rec_init_elems, ts) = parse_exp_list(rest, parse_typed_exp, KwMust, RBRACE, allow_empty=true)
-            (true, ExpUpdateRecord(e, rec_init_elems, make_new_ctx(eloc)), rest)
-        | _ => (false, e, ts)
+            val e = match t1 { | ARROW => make_unary(OpDeref, e, eloc) | _ => e }
+            val (ts, _, rec_init_elems) = parse_exp_list(rest, parse_typed_exp, RBRACE, kw_mode=KwMust, allow_empty=true)
+            extend_simple_exp_(ts, ExpUpdateRecord(e, rec_init_elems, make_new_ctx(eloc)))
+        | _ => (ts, e)
         }
-        if !proceed { break with (e, ts) }
-        (e, ts)
     }
+
+    val (ts, e) = parse_atomic_exp(ts)
+    extend_simple_exp_(ts, e)
 }
 
-fun parse_deref_exp(ts: token_t list)
+fun parse_deref_exp(ts: tklist_t): (tklist_t, exp_t)
 {
     | (STAR(true), l1) :: rest =>
-        val (e, ts) = parse_deref_exp(rest)
-        (ExpUnary(OpDeref, e, make_new_ctx(l1)), ts)
+        val (ts, e) = parse_deref_exp(rest)
+        (ts, make_unary(OpDeref, e, l1))
     | (POWER(true), l1) :: rest =>
-        val (e, ts) = parse_deref_exp(rest)
-        (ExnUnOp(OpDerf, ExpUnary(OpDeref, e, make_new_ctx(l1)), make_new_ctx(l1)), ts)
+        val (ts, e) = parse_deref_exp(rest)
+        (ts, make_unary(OpDeref, make_unary(OpDeref, e, l1), l1))
     | _ =>
         parse_simple_exp(ts)
 }
 
-fun parse_apos_exp(ts: token_t list)
+fun parse_apos_exp(ts: tklist_t): (tklist_t, exp_t)
 {
-    val (e, ts) = parse_deref_exp(ts)
+    val (ts, e) = parse_deref_exp(ts)
     match ts {
-    | (APOS, l1) :: rest => (ExpUnary(OpApos, e, make_new_ctx(l1)), rest)
-    | _ => (e, ts)
+    | (APOS, l1) :: rest => (rest, ExpUnary(OpApos, e, make_new_ctx(l1)))
+    | _ => (ts, e)
     }
 }
 
-fun parse_unary_exp(ts: token_t list)
+fun parse_unary_exp(ts: tklist_t): (tklist_t, exp_t)
 {
     | (REF(true), l1) :: rest =>
-        val (e, ts) = parse_unary_exp(rest)
-        (ExpUnary(OpMkRef, e, make_new_ctx ))
-unary_exp:
-| apos_exp { $1 }
-| REF unary_exp { make_un_op(OpMkRef, $2) }
-| B_MINUS unary_exp { make_un_op(OpNegate, $2) }
-| B_PLUS unary_exp { make_un_op(OpPlus, $2) }
-| TILDE unary_exp { make_un_op(OpBitwiseNot, $2) }
-| EXPAND unary_exp { make_un_op(OpExpand, $2) }
+        val (ts, e) = parse_unary_exp(rest)
+        (ts, make_unary(OpMkRef, e, l1))
+    | (MINUS(true), l1) :: rest =>
+        val (ts, e) = parse_unary_exp(rest)
+        (ts, make_unary(OpNegate, e, l1))
+    | (PLUS(true), l1) :: rest =>
+        val (ts, e) = parse_unary_exp(rest)
+        (ts, make_unary(OpPlus, e, l1))
+    | (TILDE, l1) :: rest =>
+        val (ts, e) = parse_unary_exp(rest)
+        (ts, make_unary(OpBitwiseNot, e, l1))
+    | (BACKSLASH, l1) :: rest =>
+        val (ts, e) = parse_unary_exp(rest)
+        (ts, make_unary(OpExpand, e, l1))
+    | _ =>
+        parse_unary_exp(ts)
+}
 
-
-fun parse_complex_exp(ts: token_t list)
+fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
 {
+    fun parse_binary_exp_(ts: tklist_t, result: exp_t, min_prec: int) =
     match ts {
-    | IF
+    | (t, l) :: rest =>
+        // roughly sort binary ops by how often they are met in the code,
+        // so that we have less checks in general
+        val (bop, prec, assoc) = match t {
+            | PLUS(false) => (OpAdd, 210, AssocLeft)
+            | MINUS(false) => (OpSub, 210, AssocLeft)
+            | STAR(false) => (OpMul, 220, AssocLeft)
+            | SLASH => (OpDiv, 220, AssocLeft)
+            | PERCENT => (OpMod, 220, AssocLeft)
+            | CONS => (OpCons, 100, AssocRight)
+            | POWER(false) => (OpPow, 230, AssocRight)
+            | SHIFT_LEFT => (OpShiftLeft, 200, AssocLeft)
+            | SHIFT_RIGHT => (OpShiftRight, 200, AssocLeft)
+            | BITWISE_OR => (OpBitwiseOr, 130, AssocLeft)
+            | BITWISE_AND => (OpBitwiseAnd, 150, AssocLeft)
+            | BITWISE_XOR => (OpBitwiseXor, 140, AssocLeft)
+            | SPACESHIP => (OpSpaceship, 170, AssocLeft)
+            | DOT_MINUS(false) => (OpSub, 210, AssocLeft)
+            | DOT_STAR => (OpDotMul, 220, AssocLeft)
+            | DOT_SLASH => (OpDotDiv, 220, AssocLeft)
+            | DOT_PERCENT => (OpDotMod, 220, AssocLeft)
+            | DOT_STAR => (OpDotMul, 220, AssocLeft)
+            | DOT_CMP(cmpop) => (OpDotCmp(cmpop), 180, AssocLeft)
+            | DOT_SPACESHIP => (OpDotSpaceship, 190, AssocLeft)
+            | _ => (OpAdd, -1, AssocLeft)
+        }
+        if prec < min_prec { (ts, result) }
+        else {
+            val next_min_prec = match assoc { | AssocLeft => prec+1 | _ => prec }
+            val (ts, e) = parse_unary_exp(rest)
+            // non-tail call, parse rhs
+            val (ts, rhs) = parse_binary_exp_(ts, e, next_min_prec)
+            val result = make_binary(bop, result, rhs, l)
+            parse_binary_exp_(ts, result, min_prec)
+        }
+    | _ => (ts, result)
     }
-}
-complex_exp:
-| IF elif_seq {
-    let rec make_if elif_seq else_exp = match elif_seq with
-        | (c, a) :: rest ->
-            let if_loc = loclist2loc [get_exp_loc c] (get_exp_loc else_exp) in
-            let new_else = ExpIf(c, a, else_exp, (make_new_typ(), if_loc)) in
-            make_if rest new_else
-        | _ -> else_exp
-    in
-    let (elif_seq, else_exp) = $2 in make_if elif_seq else_exp }
-| TRY block CATCH LBRACE pattern_matching_clauses_with_opt_bar RBRACE
-{
-    ExpTryCatch ($2, $5, make_new_ctx())
-}
-| TRY block CATCH LBRACE pattern_matching_clauses_with_opt_bar RBRACE FINALLY block
-{
-    let loc = curr_loc() in
-    make_finally (ExpTryCatch ($2, $5, make_new_ctx())) $8 loc
-}
-| TRY block FINALLY block
-{
-    make_finally $2 $4 (curr_loc())
-}
-| MATCH exp_or_block LBRACE pattern_matching_clauses_with_opt_bar RBRACE
-    {
-        ExpMatch ($2, $4, make_new_ctx())
-    }
-| FOLD fold_clause block
-    {
-        let ((fold_pat, fold_init_exp), fold_cl) = $2 in
-        transform_fold_exp fold_pat 2 fold_init_exp fold_cl $3
-    }
-| FUN fun_args block
-    {
-        let ctx = make_new_ctx() in
-        let (args, rt) = $2 in
-        let body = expseq2exp (exp2expseq $3) 3 in
-        let fname = gen_temp_id "lambda" in
-        let df = make_deffun fname args rt body (default_fun_flags()) (curr_loc()) in
-        ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
-    }
-| FUN fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
-    {
-        let ctx = make_new_ctx() in
-        let fname = gen_temp_id "lambda" in
-        let df = make_pmatch_deffun (default_fun_flags(), fname) $2 $5 2 5 in
-        ExpSeq(df @ [ExpIdent (fname, ctx)], ctx)
-    }
-| simple_exp LBRACE id_exp_list_ RBRACE
-    %prec fcall_prec
-    { ExpMkRecord($1, (List.rev $3), make_new_ctx()) }
-| simple_exp LBRACE RBRACE
-    %prec fcall_prec
-    { ExpMkRecord($1, [], make_new_ctx()) }
-| exp { $1 }
-
-typed_exp:
-| complex_exp COLON typespec { ExpTyped($1, $3, make_new_ctx()) }
-| complex_exp CAST typespec { ExpCast($1, $3, make_new_ctx()) }
-
-type op_assoc_t = AssocLeft | AssocRight
-
-
-%right CONS
-%left LOGICAL_OR
-%left LOGICAL_AND
-%left COLON CAST
-%left BITWISE_OR
-%left BITWISE_XOR
-%left BITWISE_AND
-%left AS
-%left CMP_EQ CMP_NE CMP_LE CMP_GE CMP_LT CMP_GT SAME
-%left SPACESHIP
-%left DOT_CMP_EQ DOT_CMP_NE DOT_CMP_LE DOT_CMP_GE DOT_CMP_LT DOT_CMP_GT DOT_SPACESHIP
-%left SHIFT_LEFT SHIFT_RIGHT
-%left PLUS MINUS
-%left STAR SLASH MOD DOT_STAR DOT_SLASH DOT_MOD
-%right POWER DOT_POWER
-
-val min_binary_pr = 10
-
-fun parse_binary_(ts: token_t list, min_priority: int) {
-    val (result, ts) = parse_unary(ts)
-    val op_info = match ts {
-    | (CONS, _) :: _ => Some((OpCons, 1, AssocRight))
-    | (BITWISE_OR, _) :: _ => Some((OpLogicOr, 2, AssocLeft))
-    | (BITWISE_XOR, _) :: _ => Some((OpLogicOr, 3, AssocLeft))
-    | (BITWISE_AND, _) :: _ => Some((OpLogicOr, 4, AssocLeft))
-    | (SPACESHIP, _) :: _ => Some((OpSpaceship, 5, AssocLeft))
-    | (DOT_CMP(cmpop), _) :: _ => Some((OpCmp(cmpop), 6, AssocLeft))
-    | (SHIFT_LEFT, _) :: _ => Some((OpShiftLeft, 7, AssocLeft))
-    | (SHIFT_RIGHT, _) :: _ => Some((OpShiftLeft, 7, AssocLeft))
-    | (PLUS, _) :: _ => Some((OpAdd, 8, AssocLeft))
-    | (MINUS, _) :: _ => Some((OpSub, 8, AssocLeft))
-    | (STAR, _) :: _ => Some((OpMul, 9, AssocLeft))
-    | (SLASH, _) :: _ => Some((OpDiv, 9, AssocLeft))
-    | (PERCENT, _) :: _ => Some((OpMod, 9, AssocLeft))
-    | (DOT_STAR, _) :: _ => Some((OpDotMul, 9, AssocLeft))
-    | (DOT_SLASH, _) :: _ => Some((OpDotDiv, 9, AssocLeft))
-    | (DOT_PERCENT, _) :: _ => Some((OpDotMod, 9, AssocLeft))
-    | (POWER, _) :: _ => Some((OpPow, 9, AssocLeft))
-    | (DOT_POWER, _) :: _ => Some((OpDotPow, 9, AssocLeft))
-    | _ => None
-    }
-
-}
-
-compute_expr(min_prec):
-  result = compute_atom()
-
-  while cur token is a binary operator with precedence >= min_prec:
-    prec, assoc = precedence and associativity of current token
-    if assoc is left:
-      next_min_prec = prec + 1
-    else:
-      next_min_prec = prec
-    rhs = compute_expr(next_min_prec)
-    result = compute operator(result, rhs)
-
-  return result
-
-binary_exp:
-| binary_exp PLUS binary_exp { make_bin_op(OpAdd, $1, $3) }
-| binary_exp MINUS binary_exp { make_bin_op(OpSub, $1, $3) }
-| binary_exp STAR binary_exp { make_bin_op(OpMul, $1, $3) }
-| binary_exp SLASH binary_exp { make_bin_op(OpDiv, $1, $3) }
-| binary_exp MOD binary_exp { make_bin_op(OpMod, $1, $3) }
-| binary_exp POWER binary_exp { make_bin_op(OpPow, $1, $3) }
-| binary_exp SHIFT_LEFT binary_exp { make_bin_op(OpShiftLeft, $1, $3) }
-| binary_exp SHIFT_RIGHT binary_exp { make_bin_op(OpShiftRight, $1, $3) }
-| binary_exp BITWISE_AND binary_exp { make_bin_op(OpBitwiseAnd, $1, $3) }
-| binary_exp BITWISE_OR binary_exp { make_bin_op(OpBitwiseOr, $1, $3) }
-| binary_exp BITWISE_XOR binary_exp { make_bin_op(OpBitwiseXor, $1, $3) }
-| binary_exp CONS binary_exp { make_bin_op(OpCons, $1, $3) }
-| binary_exp DOT_STAR binary_exp { make_bin_op(OpDotMul, $1, $3) }
-| binary_exp DOT_SLASH binary_exp { make_bin_op(OpDotDiv, $1, $3) }
-| binary_exp DOT_MOD binary_exp { make_bin_op(OpDotMod, $1, $3) }
-| binary_exp DOT_POWER binary_exp { make_bin_op(OpDotPow, $1, $3) }
-| binary_exp SPACESHIP binary_exp { make_bin_op(OpSpaceship, $1, $3) }
-| binary_exp DOT_SPACESHIP binary_exp { make_bin_op(OpDotSpaceship, $1, $3) }
-| binary_exp DOT_CMP_EQ binary_exp { make_bin_op(OpDotCompareEQ, $1, $3) }
-| binary_exp DOT_CMP_NE binary_exp { make_bin_op(OpDotCompareNE, $1, $3) }
-| binary_exp DOT_CMP_LE binary_exp { make_bin_op(OpDotCompareLE, $1, $3) }
-| binary_exp DOT_CMP_GE binary_exp { make_bin_op(OpDotCompareGE, $1, $3) }
-| binary_exp DOT_CMP_LT binary_exp { make_bin_op(OpDotCompareLT, $1, $3) }
-| binary_exp DOT_CMP_GT binary_exp { make_bin_op(OpDotCompareGT, $1, $3) }
-| unary_exp { $1 }
-
-chained_cmp_exp:
-| chained_cmp_exp CMP_EQ binary_exp { (OpCompareEQ, $3) :: $1 }
-| chained_cmp_exp CMP_NE binary_exp { (OpCompareNE, $3) :: $1 }
-| chained_cmp_exp CMP_LE binary_exp { (OpCompareLE, $3) :: $1 }
-| chained_cmp_exp CMP_GE binary_exp { (OpCompareGE, $3) :: $1 }
-| chained_cmp_exp CMP_LT binary_exp { (OpCompareLT, $3) :: $1 }
-| chained_cmp_exp CMP_GT binary_exp { (OpCompareGT, $3) :: $1 }
-| binary_exp
-    {
-        (* the actual operation is not used here; just put some weird one *)
-        (OpCons, $1) :: []
-    }
-
-exp:
-| LOGICAL_NOT exp { make_un_op(OpLogicNot, $2) }
-| exp LOGICAL_OR exp { make_bin_op(OpLogicOr, $1, $3) }
-| exp LOGICAL_AND exp { make_bin_op(OpLogicAnd, $1, $3) }
-| chained_cmp_exp { make_chained_cmp($1) }
-
-
-
-fun parse(t: token_t list)
-{
-
-
+    val (ts, e) = parse_unary_exp(ts)
+    parse_binary_exp_(ts, e, 0)
 }

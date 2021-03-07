@@ -155,6 +155,7 @@ type typ_t =
 fun make_new_typ() = TypVar(ref None)
 fun make_new_ctx(l: loc_t) = (make_new_typ(), l)
 
+type op_assoc_t = AssocLeft | AssocRight
 type cmp_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
 type binary_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
     | OpShiftLeft | OpShiftRight | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
@@ -908,19 +909,18 @@ fun string(uop: unary_t) {
 
 fun border2str(border: border_t, f: bool) {
     val pt = if f {"."} else {""}
-    match (border, f) {
-    | (BorderNone, _) => ""
-    | (BorderClip, _) => pt + ".clip"
-    | (BorderZero, _) => pt + ".zero"
+    match border {
+    | BorderNone => ""
+    | BorderClip => pt + ".clip"
+    | BorderZero => pt + ".zero"
     }
 }
 
 fun interp2str(interp: interpolate_t, f: bool) {
     val pt = if f {"."} else {""}
-    match (interp, f) {
-    | (InterpNone, true) => ""
-    | (InterpNone, _) => "NONE"
-    | (InterpLinear, _) => pt + "LINEAR"
+    match interp {
+    | InterpNone => ""
+    | InterpLinear => pt + "linear"
     }
 }
 
@@ -1083,7 +1083,7 @@ fun ctor2str(f: fun_constr_t) {
 
 fun lit2str(c: lit_t) {
     fun add_dot(s: string, suffix: string) =
-        if s.has('.') || s.has('e') { s+suffix }
+        if s.contains('.') || s.contains('e') { s+suffix }
         else { s + "." + suffix }
 
     match c {
