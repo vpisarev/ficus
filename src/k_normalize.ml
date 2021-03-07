@@ -1111,8 +1111,14 @@ and transform_fun df code sc =
                 let i = match i with Id.Name _ -> dup_idk i | _ -> i in
                 let _ = create_kdefval i ti (default_arg_flags()) None [] inst_loc in
                 (idx+1, ((i, ti) :: args), body_code)) (0, [], []) inst_args argtyps in
-            let inst_flags = {inst_flags with fun_flag_ccode =
-                (match inst_body with ExpCCode _ -> true | _ -> false);
+            let is_cfunc = match inst_body with ExpCCode _ -> true | _ -> false in
+            let inst_flags = {inst_flags with fun_flag_ccode = is_cfunc;
+                (* If the function is c-function then it's user responsibility
+                   to provide @nothrow attribute if necessary.
+                   Otherwise we discard @nothrow flag (if any) in order to
+                   guarantee correctly working code. Later on we can automatically
+                   classify some functions as "no-throw". *)
+                fun_flag_nothrow = inst_flags.fun_flag_nothrow && is_cfunc;
                 fun_flag_private=is_private_fun} in
             (* create initial function definition to handle recursive functions *)
             let _ = create_kdeffun inst_name (List.rev args) rt inst_flags None code sc inst_loc in

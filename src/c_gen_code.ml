@@ -1481,7 +1481,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | CExn {contents={cexn_make}} -> (cexn_make, (cinfo_ cexn_make kloc))
                 | ci -> (f, ci)
                 in
-            let (f_exp, have_out_arg, fv_args, is_nothrow, ccode) = match ci with
+            let (f_exp, have_out_arg, fv_args, is_nothrow, is_really_nothrow, ccode) = match ci with
                 | CFun cf ->
                     let {cf_args; cf_rt; cf_flags; cf_cname; cf_loc} = !cf in
                     let _ = ensure_sym_is_defined_or_declared f kloc in
@@ -1501,7 +1501,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                 cf_cname "call correctly. Functions that access free variables must be called via closure"
                                 "(except for the case when function calls itself)")
                         in
-                    (f_exp, ret_id <> noid, fv_args, is_nothrow, ccode)
+                    (f_exp, ret_id <> noid, fv_args, is_nothrow, cf_flags.fun_flag_really_nothrow, ccode)
                 | CVal {cv_typ; cv_flags; cv_loc} ->
                     let _ = if (is_val_global cv_flags) || (get_val_ctor cv_flags) <> noid then
                         ensure_sym_is_defined_or_declared f kloc else () in
@@ -1510,7 +1510,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                     let cftyp = C_gen_types.ktyp2ctyp ftyp kloc in
                     let f_exp = cexp_mem fclo_exp (get_id "fp") cftyp in
                     let fv_args = [cexp_mem fclo_exp (get_id "fcv") std_CTypVoidPtr] in
-                    (f_exp, true, fv_args, false, ccode)
+                    (f_exp, true, fv_args, false, false, ccode)
                 | _ -> raise_compile_err kloc (sprintf "cgen: the called '%s' is not a function nor value" (id2str f))
                 in
             if not have_out_arg && ctyp <> CTypVoid then
@@ -1525,7 +1525,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let args = List.rev (fv_args @ args) in
                 let fcall_rt = if is_nothrow then CTypVoid else CTypCInt in
                 let fcall_exp = CExpCall(f_exp, args, (fcall_rt, kloc)) in
-                if is_nothrow then
+                if is_nothrow || is_really_nothrow then
                     (false, dst_exp, (CExp fcall_exp) :: ccode)
                 else
                     let ccode = add_fx_call fcall_exp ccode kloc in
@@ -2519,6 +2519,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 | _ -> raise_compile_err kf_loc (sprintf "cgen: the function '%s' declaration was not properly converted" (idk2str kf_name kf_loc))
                 in
             let (real_args, retid, _, _) = unpack_fun_args args rt is_nothrow in
+            let really_nothrow = ref false in
             let nreal_args = List.length real_args in
             (* in the list of parameters the return value (if any) can be the last one
                (in the case of no-throw functions) or pre-last one
@@ -2564,8 +2565,17 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         | _ -> ccode
                         in
                     let {bctx_label; bctx_prologue; bctx_cleanup; bctx_label_used} = bctx in
-                    let ccode = if bctx_label_used > 0 then
-                        CStmtLabel(bctx_label, end_loc) :: ccode else ccode in
+                    let ccode =
+                        if bctx_label_used > 0 then
+                            CStmtLabel(bctx_label, end_loc) :: ccode
+                        else
+                            (* the use of the final "cleanup" label in the end of function is a good indicator
+                               of whether the function may throw exceptions (or propagate exceptions from the called functions)
+                               or not. In some cases the label might be used but the function does not throw exceptions.
+                               But not vice versa. So we play safe here. *)
+                            (really_nothrow := true;
+                            ccode)
+                        in
                     let (ret_e, ccode) =
                         if bctx_cleanup = [] then
                             (ret_e, ccode)
@@ -2700,7 +2710,8 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         kf_cname (ctor2str ctor)))
                 in
             pop_block_ctx kloc;
-            cf := {!cf with cf_body = (filter_out_nops new_body)};
+            let new_cf_flags = {(!cf).cf_flags with fun_flag_really_nothrow=(!really_nothrow)} in
+            cf := {!cf with cf_body = (filter_out_nops new_body); cf_flags=new_cf_flags};
             (false, dummy_exp, ccode)
         | KDefExn ke -> (* handled in c_gen_fdecls *)
             (false, dummy_exp, ccode)
