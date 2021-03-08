@@ -55,7 +55,7 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
         if( memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0)
             break;
     }
-    return pos;
+    return i;
 }
 
 @pure @nothrow fun contains(s: string, c: char): bool = @ccode

@@ -566,7 +566,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
 int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
                     const int8_t* tags, const void** data, fx_arr_t* arr )
 {
-    int_ nrows = 0, ncols = 0, nrows_i = 0, ncols_i = 0;
+    int_ nrows = 0, ncols = -1, nrows_i = -1, ncols_i = 0;
     //printf("ndims=%d, copy_elem=%p, free_elem=%p\n", ndims, copy_elem, free_elem);
 
     if (ndims <= 0 || ndims > 2)
@@ -579,13 +579,14 @@ int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t c
     {
         int tag = tags[k];
         if (tag == 127 || tag < 0) {
-            if (ncols_i == 0 || (ncols != 0 && ncols_i != ncols)) {
+            if (ncols >= 0 && ncols_i != ncols) {
                 printf("throwing FX_EXN_SizeMismatchError\n");
                 FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
             }
             nrows += nrows_i;
             ncols = ncols_i;
-            nrows_i = ncols_i = 0;
+            nrows_i = -1;
+            ncols_i = 0;
             if (tag < 0)
                 break;
             continue;
@@ -613,7 +614,7 @@ int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t c
             FX_FAST_THROW_RET(FX_EXN_NoMatchError);
         }
 
-        if (nrows_i != 0 && nrows_i != nrows_k)
+        if (nrows_i >= 0 && nrows_i != nrows_k)
             FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
         nrows_i = nrows_k;
         ncols_i += ncols_k;

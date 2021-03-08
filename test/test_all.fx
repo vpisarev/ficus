@@ -10,6 +10,7 @@ import test_mandelbrot
 import test_closure
 import test_re2
 import test_ds
+import test_deque
 import test_filename
 
 fun print_hdr()

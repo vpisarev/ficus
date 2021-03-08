@@ -184,10 +184,14 @@ static int_ fx_cstr2str_len(const char* src, int_ srclen)
 
 int fx_cstr2str(const char* src, int_ srclen, fx_str_t* str)
 {
+    int_ dstlen;
+    size_t total;
+    if(!src)
+        return fx_make_str(0, 0, str);
     if(srclen < 0)
         srclen = (int_)strlen(src);
-    int_ dstlen = fx_cstr2str_len(src, srclen);
-    size_t total = sizeof(*str->rc) + dstlen*sizeof(str->data[0]);
+    dstlen = fx_cstr2str_len(src, srclen);
+    total = sizeof(*str->rc) + dstlen*sizeof(str->data[0]);
     str->rc = (int_*)fx_malloc(total);
     if( !str->rc )
         FX_FAST_THROW_RET(FX_EXN_OutOfMemError);

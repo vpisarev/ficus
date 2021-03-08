@@ -650,7 +650,7 @@ fun print_repr(a: char) { print("'"); print(a); print("'") }
 fun print(a: 't [])
 {
     print("[")
-    for i <- 0:, x <- a {
+    for x@i <- a {
         if i > 0 {print(", ")}
         print_repr(x)
     }

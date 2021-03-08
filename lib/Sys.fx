@@ -8,6 +8,7 @@ import File
 
 @ccode {
     #include <limits.h>
+    #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
     #include <unistd.h>
@@ -131,6 +132,17 @@ fun command(cmd: string): int = @ccode {
     if (fx_status >= 0) {
         *fx_result = system(cmd_.data);
         fx_free_cstr(&cmd_);
+    }
+    return fx_status;
+}
+
+fun getenv(name: string): string = @ccode {
+    fx_cstr_t name_;
+    int fx_status = fx_str2cstr(name, &name_, 0, 0);
+    if (fx_status >= 0) {
+        char* result = getenv(name_.data);
+        fx_free_cstr(&name_);
+        return fx_cstr2str(result, -1, fx_result);
     }
     return fx_status;
 }
