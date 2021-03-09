@@ -175,7 +175,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | (TypVar (ref Some(TypVarTuple(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1)
         | (TypVar (ref Some(TypVarTuple(_))), TypTuple(_)) => maybe_unify_(t2, t1)
         | (TypTuple(tl1), TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
-            if any(for t <- tl1 {occurs(r2, t)}) { false }
+            if exists(for t <- tl1 {occurs(r2, t)}) { false }
             else {
                 val ok = match t2_opt {
                     | Some(t2_) => tl1.all(fun (t: typ_t) {maybe_unify_(t2_, t)})

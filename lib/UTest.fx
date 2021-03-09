@@ -176,7 +176,7 @@ fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
     | NotFoundError => {}
     }
 
-fun EXPECT_THROWS(f: void->void, msg: string, ref_exn: exn) =
+fun EXPECT_THROWS(f: void->void, ref_exn: exn, ~msg: string="") =
     try {
         f()
         println(f"EXPECT_THROWS failed on '{msg}'")

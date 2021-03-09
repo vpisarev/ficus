@@ -43,7 +43,7 @@ val result: uint8 [,] = [
     }
 ]
 
-val f: File.file_t = File.open("result.pgm", "wb")
+val f: File.t = File.open("result.pgm", "wb")
 try {
     f.print(f"P4\n{w} {h}\n")
     f.write(result)

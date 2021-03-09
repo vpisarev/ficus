@@ -540,7 +540,7 @@ TEST("basic.list", fun()
     val l = 1 :: 2 :: 3 :: []
     val l2 = [: 1, 2, 3 :]
     EXPECT_EQ(l.length(), 3)
-    EXPECT_THROWS(fun () {println(l.tl().tl().tl().tl())}, "[].tl() failed", NullListError)
+    EXPECT_THROWS(fun () {println(l.tl().tl().tl().tl())}, NullListError)
     EXPECT_EQ(l, l2)
     EXPECT_EQ(l.hd(), 1)
     EXPECT_EQ(l.tl(), 2 :: 3 :: [])
@@ -720,7 +720,7 @@ TEST("basic.assert", fun()
 {
     val k = -1
     EXPECT_NO_THROWS(fun () { assert (0 == k-k) }, "assert(0=0)")
-    EXPECT_THROWS(fun () { assert (1 == k-k) }, "assert(1=0)", AssertError)
+    EXPECT_THROWS(fun () { assert (1 == k-k) }, AssertError)
 })
 
 TEST("basic.string", fun()

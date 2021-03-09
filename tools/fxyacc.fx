@@ -89,9 +89,9 @@ type yacc_state_t =
     inp: string;
     inpos: int;
 
-    fout: File.file_t;
-    fgrm: File.file_t;
-    fhdr: File.file_t;
+    fout: File.t;
+    fgrm: File.t;
+    fhdr: File.t;
 
     grammar_strm: byte []
     grammar_pos: int;
@@ -201,7 +201,7 @@ fun ginit()
         changed = false
         for r <- g_yacc.rs {
             val Sym(lhs) = r.lhs
-            val have_nonul = any(for s <- r.rhs {
+            val have_nonul = exists(for s <- r.rhs {
                 val Sym(s_idx) = s
                 //if s_idx == 0 { break with false }
                 !g_yacc.is[s_idx].nul
@@ -599,7 +599,7 @@ fun string_wz(i: int, ~width=0: int, ~zeropad: bool=false)
     string_wz(i, width, zeropad)
 }
 
-fun aout(fout: File.file_t, name: string, tbl: int [])
+fun aout(fout: File.t, name: string, tbl: int [])
 {
     fout.print(f"short {name}[] = \{")
     for x@i <- tbl {
@@ -611,7 +611,7 @@ fun aout(fout: File.file_t, name: string, tbl: int [])
     fout.print("\n};\n")
 }
 
-fun tblout(fout: File.file_t, fhdr: File.file_t)
+fun tblout(fout: File.t, fhdr: File.t)
 {
     fout.print("short yyini = {g_yacc.ini.idx-1};\n");
     fout.print("short yyntoks = {g_yacc.ntk};\n");
@@ -667,7 +667,7 @@ extern YYSTYPE yylval;
     }
 }
 
-fun stdump(fgrm: File.file_t)
+fun stdump(fgrm: File.t)
 {
     if !fgrm.is_open() {
         throw NullFileError
@@ -1186,7 +1186,7 @@ actout(Rule *r)
     fputs("\n", fout);
 }
 
-fun codeout(fout: File.file_t, code0: string, code1: string)
+fun codeout(fout: File.t, code0: string, code1: string)
 {
     extern char *code0[], *code1[];
     char **p;

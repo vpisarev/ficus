@@ -41,4 +41,8 @@ TEST("deque.simple", fun() {
     EXPECT_EQ(f"{d.map(fun (i) {i*-3})}", "[9, 6, 3, -9, -12, -300, -600, -900]")
     EXPECT_EQ(d.foldl(fun (i, s) {s*i}, 1), -432000000)
     EXPECT_EQ(d.foldr(fun (i, s) {s+"."+string(i)}, "0"), "0.300.200.100.4.3.-1.-2.-3")
+    EXPECT_EQ(d.all(fun (i) {-3 <= i <= 300}), true)
+    EXPECT_EQ(d.exists(fun (i) {i == 0}), false)
+    EXPECT_THROWS(fun() {ignore(d.find(fun (i) {i == 0}))}, NotFoundError)
+    EXPECT_EQ(d.find(fun (i) {i > 0}), 3)
 })

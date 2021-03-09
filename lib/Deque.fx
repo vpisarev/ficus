@@ -8,7 +8,7 @@
 exception NullQueueError
 
 // the name is very short, but it's convenient to reference this type as Deque.t
-@object type 't t = {head: 't list; tail: 't list}
+object type 't t = {head: 't list; tail: 't list}
 
 fun empty(_: 't t): bool
 {
@@ -16,6 +16,7 @@ fun empty(_: 't t): bool
     | _ => false
 }
 
+fun empty(): 't Deque.t = t {head=[], tail=[]}
 fun length(d: 't t) = d.head.length() + d.tail.length()
 fun rev(d: 't t) = t {head=d.tail, tail=d.head}
 
@@ -87,6 +88,33 @@ fun foldr(d: 't t, f: ('t, 'acc) -> 'acc, res0: 'acc): 'acc
     val fold res=res0 for x <- d.tail {f(x, res)}
     fold res=res for x <- d.head.rev() {f(x, res)}
 }
+
+fun all(d: 't t, f: 't -> bool) = d.head.all(f) && d.tail.all(f)
+fun exists(d: 't t, f: 't -> bool) = d.head.exists(f) || d.tail.exists(f)
+fun find(d: 't t, f: 't -> bool): 't =
+    try {
+        d.head.find(f)
+    } catch {
+        | NotFoundError => d.tail.rev().find(f)
+    }
+fun rfind(d: 't t, f: 't -> bool): 't =
+    try {
+        d.tail.find(f)
+    } catch {
+        | NotFoundError => d.head.rev().find(f)
+    }
+fun find_opt(d: 't t, f: 't -> bool): 't =
+    try {
+        Some(d.head.find(f))
+    } catch {
+        | NotFoundError => d.tail.rev().find_opt(f)
+    }
+fun rfind_opt(d: 't t, f: 't -> bool): 't =
+    try {
+        Some(d.tail.find(f))
+    } catch {
+        | NotFoundError => d.head.rev().find_opt(f)
+    }
 
 fun string(d: 't t)
 {

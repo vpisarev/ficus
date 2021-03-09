@@ -46,7 +46,7 @@ fun assert(f: bool) = if !f {throw AssertError}
 fun ignore(_: 't) {}
 
 // 't?, int? etc. can be used instead of 't option, int option ...
-@object type 't option = None | Some: 't
+object type 't option = None | Some: 't
 
 type byte = uint8
 
@@ -468,7 +468,7 @@ operator <=> (a: 't?, b: 't?) {
 }
 
 fun all(a: (bool...)) = fold f=true for x <- a {f & x}
-fun any(a: (bool...)) = fold f=false for x <- a {f | x}
+fun exists(a: (bool...)) = fold f=false for x <- a {f | x}
 
 operator .<=> (a: 't [+], b: 't [+]): int [+] =
     [for x <- a, y <- b {x <=> y}]

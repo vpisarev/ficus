@@ -227,8 +227,8 @@ let transform_fold_exp special fold_pat fold_pat_n fold_init_exp nested_fold fol
             let update_fr = ExpAssign(fr_exp, fold_body, body_loc) in
             let new_body = ExpSeq([acc_decl; update_fr], void_ctx) in
             (fr_decl, new_body, fr_exp)
-        | "all" | "any" ->
-            let is_any = special = "any" in
+        | "all" | "exists" ->
+            let is_any = special = "exists" in
             let fr_decl = DefVal(PatIdent(fr_id, acc_loc),
                 ExpLit(LitBool(not is_any), (TypBool, acc_loc)),
                 default_var_flags(), acc_loc) in

@@ -171,13 +171,14 @@ let _ = List.iter (fun(kwd, tok, kwtyp) -> Hashtbl.add keywords kwd (tok, kwtyp)
         ("else", ELSE, 1); ("exception", EXCEPTION, 2); ("extends", EXTENDS, 1);
         ("false", FALSE, 0); ("finally", FINALLY, 1); ("fold", FOLD, 2);
         ("for", FOR, 2); ("from", FROM, 2); ("fun", FUN, 2); ("if", IF, 2);
-        ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3); (* ("inline", INLINE, 2); *)
-        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("operator", OPERATOR, 0);
-        ("pragma", PRAGMA, 2); ("ref", REF, 3); ("throw", THROW, 2); ("true", TRUE, 0);
-        ("try", TRY, 2); ("type", TYPE, 2); ("val", VAL, 2); ("var", VAR, 2);
-        ("when", WHEN, 1); ("while", WHILE, 2); ("with", WITH, 1); ("__fold_result__", FOLD_RESULT, -1);
-        ("@ccode", CCODE, 2); ("@data", DATA, 2); ("@nothrow", NOTHROW, 2); ("@parallel", PARALLEL, 2);
-        ("@private", PRIVATE, 2); ("@pure", PURE, 2); ("@object", OBJECT, 2); ("@unzip", UNZIP, 2);
+        ("implements", IMPLEMENTS, 1); ("import", IMPORT, 3);
+        ("interface", INTERFACE, 2); ("match", MATCH, 2); ("object", OBJECT, 2);
+        ("operator", OPERATOR, 0); ("pragma", PRAGMA, 2); ("ref", REF, 3);
+        ("throw", THROW, 2); ("true", TRUE, 0); ("try", TRY, 2); ("type", TYPE, 2);
+        ("val", VAL, 2); ("var", VAR, 2); ("when", WHEN, 1); ("while", WHILE, 2);
+        ("with", WITH, 1); ("__fold_result__", FOLD_RESULT, -1); ("@ccode", CCODE, 2);
+        ("@data", DATA, 2); ("@nothrow", NOTHROW, 2); ("@parallel", PARALLEL, 2);
+        ("@private", PRIVATE, 2); ("@pure", PURE, 2); ("@unzip", UNZIP, 2);
     ]
 
 let incr_lineno lexbuf =

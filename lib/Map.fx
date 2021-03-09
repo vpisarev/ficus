@@ -44,7 +44,7 @@
 type 'k cmp_t = ('k, 'k) -> int
 type color_t = Red | Black
 type ('k,'d) tree_t = Empty | Node: (color_t, ('k,'d) tree_t, 'k, 'd, ('k,'d) tree_t)
-@object type ('k, 'd) t = { root: ('k,'d) tree_t; cmp: 'k cmp_t }
+object type ('k, 'd) t = { root: ('k,'d) tree_t; cmp: 'k cmp_t }
 
 exception RBMapError
 

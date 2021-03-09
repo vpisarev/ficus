@@ -52,10 +52,10 @@ fun all2(la: 'a list, lb: 'b list, f: ('a, 'b) -> bool): bool =
     all(for a <- la, b <- lb {f(a, b)})
 
 fun exists(l: 't list, f: 't -> bool): bool =
-    any(for a <- l {f(a)})
+    exists(for a <- l {f(a)})
 
 fun mem(l: 't list, a: 't): bool =
-    any(for b <- l {a == b})
+    exists(for b <- l {a == b})
 
 fun find(l: 't list, f: 't -> bool): 't =
     find(for a <- l {f(a)})
