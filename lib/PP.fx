@@ -50,6 +50,7 @@ type state_t =
 object type t =
 {
     margin: int
+    default_indent: int
     print_f: string -> void
     get_f: void -> string
     _state: state_t ref
@@ -57,11 +58,13 @@ object type t =
 
 fun no_get(): string = ""
 
-fun make_pprinter(margin: int, print_f: string->void, get_f: void->string): t
+fun make_pprinter(margin: int, print_f: string->void,
+                  get_f: void->string, ~default_indent: int=4): t
 {
     val n=max(margin, 16)*3
     val pp = t {
         margin = margin,
+        default_indent = default_indent,
         print_f = print_f,
         get_f = get_f,
         _state = ref (state_t {
@@ -74,7 +77,7 @@ fun make_pprinter(margin: int, print_f: string->void, get_f: void->string): t
     pp
 }
 
-fun pprint_to_string(margin: int): t
+fun pprint_to_string(margin: int, ~default_indent: int=4): t
 {
     var strbuf : string list = []
     var curr = ""
@@ -92,17 +95,17 @@ fun pprint_to_string(margin: int): t
         if curr != "" {strbuf = curr :: strbuf}
         join("\n", strbuf.rev())
     }
-    make_pprinter(margin, print_f, get_f)
+    make_pprinter(margin, print_f, get_f, default_indent=default_indent)
 }
 
-fun pprint_to_file(margin: int, f: File.t): t
+fun pprint_to_file(margin: int, f: File.t, ~default_indent: int=4): t
 {
     fun print_f(s: string) { f.print(s) }
-    make_pprinter(margin, print_f, no_get)
+    make_pprinter(margin, print_f, no_get, default_indent=default_indent)
 }
 
-fun pprint_to_stdout(margin: int): t =
-    pprint_to_file(margin, File.stdout)
+fun pprint_to_stdout(margin: int, ~default_indent: int=4): t =
+    pprint_to_file(margin, File.stdout, default_indent=default_indent)
 
 fun reset(pp: PP.t): void
 {
@@ -123,7 +126,9 @@ fun flush(pp: PP.t): void
     }
 }
 
+fun begin(pp: PP.t) = begin(pp, pp.default_indent, Auto)
 fun begin(pp: PP.t, indent: int) = begin(pp, indent, Auto)
+fun beginv(pp: PP.t) = begin(pp, pp.default_indent, Consistent)
 fun beginv(pp: PP.t, indent: int) = begin(pp, indent, Consistent)
 
 fun begin(pp: PP.t, indent: int, style: ppstyle_t): void
@@ -153,7 +158,7 @@ fun end(pp: PP.t): void
     }
 }
 
-fun br(pp: PP.t, spaces: int, offset: int, sep: char): void
+fun br(pp: PP.t, spaces: int, offset: int, ~sep: char='\0'): void
 {
     val right = if pp._state->emptystack {
         pp._state->lefttotal = 1
@@ -171,9 +176,12 @@ fun br(pp: PP.t, spaces: int, offset: int, sep: char): void
     pp._state->righttotal += spaces
 }
 
-fun cut(pp: PP.t) = br(pp, 0, 0, '\0')
-fun space(pp: PP.t) = br(pp, 1, 0, '\0')
-fun sep_space(pp: PP.t, c: char) = br(pp, 2, 0, c)
+fun cut(pp: PP.t) = br(pp, 0, 0)
+fun space(pp: PP.t) = br(pp, 1, 0)
+fun sep_space(pp: PP.t, c: char) = br(pp, 2, 0, sep=c)
+fun opt_semi(pp: PP.t) = br(pp, 2, 0, sep=';')
+fun breaki(pp: PP.t) = br(pp, 1, pp.default_indent)
+fun breaku(pp: PP.t) = br(pp, 1, -pp.default_indent)
 
 fun str(pp: PP.t, s: string): void
 {
@@ -299,11 +307,12 @@ fun str(pp: PP.t, s: string): void
     //println(f"pprinting {(x,len)}; space={pp._state->space}")
     match x {
     | PPBegin(offset, style) =>
-        val x = if len > pp._state->space {
-                (pp._state->space - offset,
-                match style { | Consistent => Consistent | _ => Auto })
+        val x =
+            if len > pp._state->space {
+                val sp = max(min(pp._state->space - offset, pp.margin), 10)
+                (sp, match style { | Consistent => Consistent | _ => Auto })
             } else {
-                (0, Fits)
+                (pp.margin, Fits)
             }
         pp._state->pp_stack[top] = x
         pp._state->pp_top = top + 1
@@ -320,8 +329,9 @@ fun str(pp: PP.t, s: string): void
             pp._state->space -= spaces
             pp_indent(pp, spaces, c)
         | Consistent =>
-            pp._state->space = block_offset - offset
+            pp._state->space = min(block_offset - offset, pp.margin)
             pp_newline(pp, pp.margin - pp._state->space)
+            pp._state->space = max(pp._state->space, 10)
         | _ =>
             if len > pp._state->space {
                 pp._state->space = block_offset - offset
