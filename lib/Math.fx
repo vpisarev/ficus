@@ -50,3 +50,24 @@ fun round(x: double) = Builtins.round(x)
 @pure @nothrow fun sinh(x: double): double = @ccode { return sinh(x) }
 @pure @nothrow fun tanh(x: float): float = @ccode { return tanhf(x) }
 @pure @nothrow fun tanh(x: double): double = @ccode { return tanh(x) }
+
+fun hypot(a: 't, b: 't) {
+    val aa = abs(a)
+    val ab = abs(b)
+    if aa > ab {
+        val r = ab/aa
+        aa*sqrt(1 + r*r)
+    } else if ab > (0 :> 't) {
+        val r = aa/ab
+        ab*sqrt(1 + r*r)
+    } else {
+        ab
+    }
+}
+
+fun gcd(n: int, d: int)
+{
+    fun gcd_(n: int, d: int) =
+        if d == 0 {n} else {gcd_(d, n % d)}
+    gcd_(abs(n), abs(d))
+}

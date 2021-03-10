@@ -259,7 +259,7 @@ let rec exp2kexp e code tref sc =
     | ExpMkRecord (rn, rinitelems, _) ->
         let (rn_id, ctor, relems) = match (rn, (deref_typ etyp)) with
             | (ExpIdent(rn_id, _), _) ->
-                let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn_id) etyp eloc in
+                let (ctor, relems) = Ast_typecheck.get_record_elems (Some rn_id) etyp false eloc in
                 (rn_id, ctor, relems)
             | ((ExpNop _), TypRecord {contents=(relems, true)}) ->
                 (noid, noid, relems)
@@ -284,7 +284,7 @@ let rec exp2kexp e code tref sc =
             (KExpCall(ctor, (List.rev ratoms), kctx), code)
     | ExpUpdateRecord(e, rupdelems, _) ->
         let (rec_n, code) = exp2id e code true sc "the updated record cannot be a literal" in
-        let (_, relems) = Ast_typecheck.get_record_elems None etyp eloc in
+        let (_, relems) = Ast_typecheck.get_record_elems None etyp false eloc in
         let (_, ratoms, code) = List.fold_left (fun (idx, ratoms, code) (ni, ti, _) ->
             let (a, code) = try
                 let (_, ej) = List.find (fun (nj, ej) -> ni = nj) rupdelems in

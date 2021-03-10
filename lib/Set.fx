@@ -48,16 +48,16 @@ object type 't t = { root: 't tree_t; size: int; cmp: 't cmp_t }
 
 exception RBSetError
 
-fun empty(cmp: 't cmp_t): 't t =
+fun empty(cmp: 't cmp_t): 't Set.t =
     t { root=(Empty : 't tree_t), size=0, cmp=cmp }
 
-fun empty(s: 't t): bool
+fun empty(s: 't Set.t): bool
 {
     | { root=(Empty : 't tree_t) } => true
     | _ => false
 }
 
-fun mem_(t: 't tree_t, x: 't, cmp: 't cmp_t) =
+@private fun mem_(t: 't tree_t, x: 't, cmp: 't cmp_t) =
 match t
 {
     | Node(_, l, y, r) =>
@@ -68,9 +68,9 @@ match t
     | _ => false
 }
 
-fun mem(s: 't t, x: 't): bool = mem_(s.root, x, s.cmp)
+fun mem(s: 't Set.t, x: 't): bool = mem_(s.root, x, s.cmp)
 
-fun find_opt_(t: 't tree_t, x: 't, cmp: 't cmp_t): 't? =
+@private fun find_opt_(t: 't tree_t, x: 't, cmp: 't cmp_t): 't? =
 match t
 {
     | Node(_, l, y, r) =>
@@ -81,9 +81,9 @@ match t
     | _ => None
 }
 
-fun find_opt(s: 't t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
+fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
 
-fun balance_left(l: 't tree_t, x: 't, r: 't tree_t)
+@private fun balance_left(l: 't tree_t, x: 't, r: 't tree_t)
 {
     | (Node(Red, Node(Red, a, x, b), y, c), z, d) =>
         Node(Red, Node(Black, a, x, b), y, Node(Black, c, z, d))
@@ -93,7 +93,7 @@ fun balance_left(l: 't tree_t, x: 't, r: 't tree_t)
         Node(Black, l, x, r)
 }
 
-fun balance_right(l: 't tree_t, x: 't, r: 't tree_t)
+@private fun balance_right(l: 't tree_t, x: 't, r: 't tree_t)
 {
     | (a, x, Node(Red, Node(Red, b, y, c), z, d)) =>
         Node(Red, Node(Black, a, x, b), y, Node(Black, c, z, d))
@@ -103,13 +103,13 @@ fun balance_right(l: 't tree_t, x: 't, r: 't tree_t)
         Node(Black, l, x, r)
 }
 
-fun blackify(t: 't tree_t)
+@private fun blackify(t: 't tree_t)
 {
     | Node(Red, l, x, r) => (Node(Black, l, x, r), false)
     | _ => (t, true)
 }
 
-fun add_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, int) =
+@private fun add_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, int) =
 match t
 {
     | Node(Red, l, y, r) =>
@@ -137,17 +137,17 @@ match t
     | _ => (Node(Red, (Empty: 't tree_t), x, (Empty: 't tree_t)), 1)
 }
 
-fun add(s: 't t, x: 't): 't t
+fun add(s: 't Set.t, x: 't): 't Set.t
 {
     val (new_root, dsz) = add_(s.root, x, s.cmp)
     val new_root = blackify(new_root).0
     t { root=new_root, size=s.size+dsz, cmp=s.cmp }
 }
 
-fun singleton(x: 't, cmp: 't cmp_t): 't t =
+fun singleton(x: 't, cmp: 't cmp_t): 't Set.t =
     t { root=Node(Black, Empty, x, Empty), size=1, cmp=cmp }
 
-fun unbalanced_left(t: 't tree_t, dsz: int): ('t tree_t, bool, int) =
+@private fun unbalanced_left(t: 't tree_t, dsz: int): ('t tree_t, bool, int) =
 match t
 {
     | Node(Red, Node(Black, a, x, b), y, c) =>
@@ -159,7 +159,7 @@ match t
     | _ => throw RBSetError
 }
 
-fun unbalanced_right(t: 't tree_t, dsz: int): ('t tree_t, bool, int) =
+@private fun unbalanced_right(t: 't tree_t, dsz: int): ('t tree_t, bool, int) =
 match t
 {
     | Node(Red, a, x, Node(Black, b, y, c)) =>
@@ -171,7 +171,7 @@ match t
     | _ => throw RBSetError
 }
 
-fun remove_min(t: 't tree_t): ('t tree_t, 't, bool)
+@private fun remove_min(t: 't tree_t): ('t tree_t, 't, bool)
 {
     | Node(Black, Empty, x, Empty) => (Empty, x, true)
     | Node(Black, Empty, x, Node(Red, l, y, r)) =>
@@ -199,7 +199,7 @@ fun remove_min(t: 't tree_t): ('t tree_t, 't, bool)
     | _ => throw RBSetError
 }
 
-fun remove_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, bool, int) =
+@private fun remove_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, bool, int) =
 match t
 {
     | Node(Black, l, y, r) =>
@@ -246,13 +246,13 @@ match t
         (Empty, false, 0)
 }
 
-fun remove(s: 't t, x: 't)
+fun remove(s: 't Set.t, x: 't)
 {
     val (new_root, _, dsz) = remove_(s.root, x, s.cmp)
     t { root=new_root, size=s.size+dsz, cmp=s.cmp }
 }
 
-fun foldl(s: 't t, f: ('t, 'r) -> 'r, res0: 'r)
+fun foldl(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -262,7 +262,7 @@ fun foldl(s: 't t, f: ('t, 'r) -> 'r, res0: 'r)
     update_(s.root, f, res0)
 }
 
-fun foldr(s: 't t, f: ('t, 'r) -> 'r, res0: 'r)
+fun foldr(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r)
 {
     fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -272,7 +272,7 @@ fun foldr(s: 't t, f: ('t, 'r) -> 'r, res0: 'r)
     update_(s.root, f, res0)
 }
 
-fun app(s: 't t, f: 't -> void)
+fun app(s: 't Set.t, f: 't -> void)
 {
     fun app_(t: 't tree_t, f: 't -> void): void =
     match t {
@@ -283,7 +283,7 @@ fun app(s: 't t, f: 't -> void)
 }
 
 // similar to foldr, but does a specific task - constructs the list of results
-fun map(s: 't t, f: 't -> 'r): 'res list {
+fun map(s: 't Set.t, f: 't -> 'r): 'res list {
     fun update_list_(t: 't tree_t, f: 't -> 'r, res: 'r list): 'r list =
     match t {
         | Node(_, l, x, r) =>
@@ -293,7 +293,7 @@ fun map(s: 't t, f: 't -> 'r): 'res list {
     update_list_(s.root, f, [])
 }
 
-fun add_list(s: 't t, l: 't list)
+fun add_list(s: 't Set.t, l: 't list)
 {
     val cmp = s.cmp
     val fold (new_root, size)=(s.root, s.size) for x <- l {
@@ -303,9 +303,9 @@ fun add_list(s: 't t, l: 't list)
     t {root=new_root, size=size, cmp=cmp}
 }
 
-fun from_list(cmp: 't cmp_t, l: 't list): 't t = add_list(empty(cmp), l)
+fun from_list(cmp: 't cmp_t, l: 't list): 't Set.t = add_list(empty(cmp), l)
 
-fun list(s: 't t): 't list
+fun list(s: 't Set.t): 't list
 {
     fun update_list_(t: 't tree_t, res: 't list): 't list =
     match t {
@@ -316,7 +316,7 @@ fun list(s: 't t): 't list
     update_list_(s.root, [])
 }
 
-fun diff(xs: 't t, ys: 't t)
+fun diff(xs: 't Set.t, ys: 't Set.t)
 {
     fun update_(t: 't tree_t, cmp: 't cmp_t, res: 't tree_t, size: int): ('t tree_t, int) =
     match t
@@ -338,7 +338,7 @@ fun diff(xs: 't t, ys: 't t)
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun intersect(xs: 't t, ys: 't t)
+fun intersect(xs: 't Set.t, ys: 't Set.t)
 {
     fun update_(t: 't tree_t, cmp: 't cmp_t, xs: 't tree_t, res: 't tree_t, size: int): ('t tree_t, int) =
     match t
@@ -362,7 +362,7 @@ fun intersect(xs: 't t, ys: 't t)
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun union(xs: 't t, ys: 't t)
+fun union(xs: 't Set.t, ys: 't Set.t)
 {
     fun update_(t: 't tree_t, cmp: 't cmp_t, res: 't tree_t, size: int): ('t tree_t, int) =
     match t
@@ -385,7 +385,7 @@ fun union(xs: 't t, ys: 't t)
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun minelem(s: 't t): 't
+fun minelem(s: 't Set.t): 't
 {
     fun min_(t: 't tree_t) {
         | Node(_, Empty, x, _) => x
@@ -395,7 +395,7 @@ fun minelem(s: 't t): 't
     min_(s.root)
 }
 
-fun maxelem(s: 't t): 't
+fun maxelem(s: 't Set.t): 't
 {
     fun max_(t: 't tree_t) {
         | Node(_, _, x, Empty) => x

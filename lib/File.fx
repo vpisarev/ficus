@@ -58,7 +58,7 @@ fun open(fname: string, mode: string) =
 fun popen(cmdname: string, mode: string) =
     t { handle=open_(cmdname, mode, true) }
 
-@nothrow fun close(f: t): void = @ccode
+@nothrow fun close(f: File.t): void = @ccode
 {
     if(f->handle && f->handle->ptr) {
         f->handle->free_f(f->handle->ptr);
@@ -66,10 +66,10 @@ fun popen(cmdname: string, mode: string) =
     }
 }
 
-@nothrow fun is_open(f: t): bool = @ccode
+@nothrow fun is_open(f: File.t): bool = @ccode
 { return f->handle && f->handle->ptr; }
 
-fun eof(f: t): bool = @ccode
+fun eof(f: File.t): bool = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -77,7 +77,7 @@ fun eof(f: t): bool = @ccode
     return FX_OK;
 }
 
-fun seek(f: t, pos: int64, origin: int): void = @ccode
+fun seek(f: File.t, pos: int64, origin: int): void = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -85,7 +85,7 @@ fun seek(f: t, pos: int64, origin: int): void = @ccode
     return code == 0 ? FX_OK : FX_EXN_IOError;
 }
 
-fun tell(f: t): int64 = @ccode
+fun tell(f: File.t): int64 = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -95,7 +95,7 @@ fun tell(f: t): int64 = @ccode
     return FX_OK;
 }
 
-fun flush(f: t): void = @ccode
+fun flush(f: File.t): void = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -103,16 +103,16 @@ fun flush(f: t): void = @ccode
     return FX_OK;
 }
 
-fun print(f: t, x: 't) = print(f, string(x))
+fun print(f: File.t, x: 't) = print(f, string(x))
 
-fun print(f: t, x: string): void = @ccode
+fun print(f: File.t, x: string): void = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     return fx_fputs((FILE*)(f->handle->ptr), x);
 }
 
-fun print(f: t, x: int): void = @ccode
+fun print(f: File.t, x: int): void = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -120,7 +120,7 @@ fun print(f: t, x: int): void = @ccode
     return FX_OK;
 }
 
-fun print(f: t, x: float): void = @ccode
+fun print(f: File.t, x: float): void = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -128,7 +128,7 @@ fun print(f: t, x: float): void = @ccode
     return FX_OK;
 }
 
-fun print(f: t, x: double): void = @ccode
+fun print(f: File.t, x: double): void = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -136,18 +136,18 @@ fun print(f: t, x: double): void = @ccode
     return FX_OK;
 }
 
-fun println(f: t, x: 't): void
+fun println(f: File.t, x: 't): void
 {
     print(f, x)
     print(f, "\n")
 }
 
-fun println(f: t): void
+fun println(f: File.t): void
 {
     print(f, "\n")
 }
 
-fun write(f: t, a: 't []): void = @ccode
+fun write(f: File.t, a: 't []): void = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -156,7 +156,7 @@ fun write(f: t, a: 't []): void = @ccode
     return count == count0 ? FX_OK : FX_EXN_IOError;
 }
 
-fun write(f: t, a: 't [,]): void = @ccode
+fun write(f: File.t, a: 't [,]): void = @ccode
 {
     size_t step = a->dim[0].step, elem_size = a->dim[1].step;
     size_t count0 = (size_t)a->dim[1].size;
@@ -171,7 +171,7 @@ fun write(f: t, a: 't [,]): void = @ccode
     return FX_OK;
 }
 
-fun read(f: t, buf: 't []): int = @ccode
+fun read(f: File.t, buf: 't []): int = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -182,7 +182,7 @@ fun read(f: t, buf: 't []): int = @ccode
     return count == count0 || feof(fh) ? FX_OK : FX_EXN_IOError;
 }
 
-fun readln(f: t): string = @ccode
+fun readln(f: File.t): string = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);

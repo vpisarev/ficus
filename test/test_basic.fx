@@ -336,16 +336,11 @@ TEST("basic.variant_with_record", fun()
 
 TEST("basic.ratio", fun()
 {
-    // two implementations of rational numbers using single-case variants
+    val gcd = Math.gcd
 
+    // two implementations of rational numbers using single-case variants
     // 1. tuple
     type ratio_t = Ratio: (int, int)
-
-    fun gcd(n: int, d: int) {
-        fun gcd_(n: int, d: int) =
-            if d == 0 {n} else {gcd_(d, n % d)}
-        gcd_(abs(n), abs(d))
-    }
 
     operator + (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
         val n = n1*d2 + n2*d1
@@ -407,10 +402,7 @@ TEST("basic.ratio", fun()
         Ratio2 {num=n/r, denom=d/r}
     }
 
-    fun string(r: ratio2_t) {
-        val Ratio2 {num, denom} = r
-        f"{num}/{denom}"
-    }
+    fun string({num, denom}: ratio2_t) = f"{num}/{denom}"
 
     val a = Ratio2 {num=33, denom=100}, b = Ratio2 {num=85, denom=1000}
     EXPECT_EQ(string(a/b), "66/17")
@@ -631,7 +623,7 @@ TEST("basic.list.unzip", fun()
 TEST("basic.list.sort", fun()
 {
     EXPECT_EQ([: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
-        -460, 451, -11034, 8848 :].sort(fun (a, b) {a < b}),
+        -460, 451, -11034, 8848 :].sort((<)),
         [: -11034, -460, -1, 0, 1, 2, 10, 26, 113, 355, 451, 1949, 8848, 299792458 :])
 })
 
@@ -653,18 +645,17 @@ TEST("basic.array.compose", fun()
                   0., 1. ]
 
     val m1 = [\(eye22 + eye22), \(eye22 - eye22);
-                 \(eye22 * 4.), \(eye22 * 5.)]
-    val expected1 = [ 2., 0., 0., 0.;
+              \(eye22 * 4.),    \(eye22 * 5.)]
+    val expected1 = [2., 0., 0., 0.;
                      0., 2., 0., 0.;
                      4., 0., 5., 0.;
                      0., 4., 0., 5.]
     EXPECT_EQ(m1, expected1)
 
     val m2 = [eye22 + eye22, eye22 - eye22;
-                 eye22 * 4., eye22 * 5.]
+              eye22 * 4.,    eye22 * 5.]
     val expected2 = [ [ 2., 0.; 0., 2.], [ 0., 0.; 0., 0.];
-                     [ 4., 0.; 0., 4.], [ 5., 0.; 0., 5.]]
-
+                      [ 4., 0.; 0., 4.], [ 5., 0.; 0., 5.]]
     EXPECT_EQ(m2, expected2)
 })
 

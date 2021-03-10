@@ -428,44 +428,6 @@ let find_typ_instance t loc =
             with Not_found -> None)
     | _ -> Some t
 
-let get_record_elems vn_opt t loc =
-    let t = deref_typ t in
-    let input_vn = match vn_opt with
-        | Some(vn) ->
-            let orig_input_vn = get_orig_id vn in
-            get_id (Utils.last_elem (String.split_on_char '.' (pp_id2str orig_input_vn)))
-        | _ -> noid
-        in
-    match t with
-    | TypRecord {contents=(relems, true)} -> (noid, relems)
-    | TypRecord _ -> raise_compile_err loc "the records, which elements we request, is not finalized"
-    | TypApp _ ->
-        (match (find_typ_instance t loc) with
-        | Some (TypApp([], n)) ->
-            (match (id_info n) with
-            | IdVariant {contents={dvar_flags;
-                dvar_cases=(vn0, TypRecord {contents=(relems, true)}) :: []}}
-                when dvar_flags.var_flag_record ->
-                if input_vn = noid || input_vn = (get_orig_id vn0) then ()
-                else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
-                    (pp_id2str input_vn) (pp_id2str vn0));
-                (noid, relems)
-            | IdVariant {contents={dvar_name; dvar_cases; dvar_ctors}} ->
-                let dvar_cases_ctors = Utils.zip dvar_cases dvar_ctors in
-                let single_case = (List.length dvar_cases) = 1 in
-                (match (List.find_opt (fun ((vn, t), c_id) ->
-                    (get_orig_id vn) = input_vn ||
-                    (single_case && input_vn=noid)) dvar_cases_ctors) with
-                | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
-                | _ -> raise_compile_err loc
-                    (if input_vn = noid then
-                    (sprintf "variant '%s' is not a record" (pp_id2str dvar_name))
-                    else
-                    (sprintf "tag '%s' is not found or '%s' is not a record" (pp_id2str input_vn) (pp_id2str dvar_name))))
-            | _ -> raise_compile_err loc (sprintf "cannot find a proper record constructor in type '%s'" (id2str n)))
-        | _ -> raise_compile_err loc "proper instance of the template [record?] type is not found")
-    | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record"
-
 let is_real_typ t =
     let have_typ_vars = ref false in
     let rec is_real_typ_ t callb =
@@ -485,7 +447,7 @@ let report_not_found n loc =
 let report_not_found_typed n t loc =
     raise_compile_err loc (sprintf "the appropriate match for '%s' of type '%s' is not found" (pp_id2str n) (typ2str t))
 
-let rec find_first n env loc pred =
+let rec find_first n env env0 sc loc pred =
     let rec find_next_ elist =
         match elist with
         | e :: rest ->
@@ -501,9 +463,10 @@ let rec find_first n env loc pred =
             (match find_all (get_id prefix) env with
             | EnvId m :: _ ->
                 (match (id_info m) with
-                | IdModule {contents={dm_env}} ->
+                | IdModule {contents={dm_name; dm_env}} ->
                     let suffix = String.sub n_path (dot_pos+1) (len-dot_pos-1) in
-                    find_first (get_id suffix) dm_env loc pred
+                    let env = if (curr_module sc) = dm_name then env0 else dm_env in
+                    find_first (get_id suffix) env env0 sc loc pred
                 | _ -> None)
             | _ ->
                 search_path n_path (dot_pos-1) env)
@@ -518,7 +481,7 @@ let rec find_first n env loc pred =
         search_path n_path ((String.length n_path) - 1) env
 
 let rec lookup_id n t env sc loc =
-    match (find_first n env loc (fun e ->
+    match (find_first n env env sc loc (fun e ->
         match e with
         | EnvId(Id.Name _) -> None
         | EnvId i ->
@@ -600,6 +563,49 @@ let rec lookup_id n t env sc loc =
         | Some(n1) -> n1
         | _ -> report_not_found_typed n t loc)
 
+and get_record_elems vn_opt t proto_mode loc =
+    let t = deref_typ t in
+    let input_vn = match vn_opt with
+        | Some(vn) ->
+            let orig_input_vn = get_orig_id vn in
+            get_id (Utils.last_elem (String.split_on_char '.' (pp_id2str orig_input_vn)))
+        | _ -> noid
+        in
+    match t with
+    | TypRecord {contents=(relems, true)} -> (noid, relems)
+    | TypRecord _ -> raise_compile_err loc "the records, which elements we request, is not finalized"
+    | TypApp(tyargs, n) ->
+        let (new_tyargs, n) = if proto_mode then (tyargs, n) else
+            match (find_typ_instance t loc) with
+            | Some (TypApp([], n)) -> ([], n)
+            | _ ->
+                raise_compile_err loc "proper instance of the template record or variant type is not found"
+            in
+        (match (id_info n) with
+        | IdVariant {contents={dvar_templ_args; dvar_flags;
+            dvar_cases=(vn0, TypRecord {contents=(relems, true)}) :: []; dvar_loc}}
+            when dvar_flags.var_flag_record ->
+            ignore(check_and_norm_tyargs new_tyargs dvar_templ_args dvar_loc loc);
+            if input_vn = noid || input_vn = (get_orig_id vn0) then ()
+            else raise_compile_err loc (sprintf "mismatch in the record name: given '%s', expected '%s'"
+                (pp_id2str input_vn) (pp_id2str vn0));
+            (noid, relems)
+        | IdVariant {contents={dvar_name; dvar_templ_args; dvar_cases; dvar_ctors; dvar_loc}} ->
+            let _ = check_and_norm_tyargs new_tyargs dvar_templ_args dvar_loc loc in
+            let dvar_cases_ctors = Utils.zip dvar_cases dvar_ctors in
+            let single_case = (List.length dvar_cases) = 1 in
+            (match (List.find_opt (fun ((vn, t), c_id) ->
+                (get_orig_id vn) = input_vn ||
+                (single_case && input_vn=noid)) dvar_cases_ctors) with
+            | Some(((_, TypRecord {contents=(relems, true)}), ctor)) -> (ctor, relems)
+            | _ -> raise_compile_err loc
+                (if input_vn = noid then
+                (sprintf "variant '%s' is not a record" (pp_id2str dvar_name))
+                else
+                (sprintf "tag '%s' is not found or '%s' is not a record" (pp_id2str input_vn) (pp_id2str dvar_name))))
+        | _ -> raise_compile_err loc (sprintf "cannot find a proper record constructor in type '%s'" (id2str n)))
+    | _ -> raise_compile_err loc "attempt to treat non-record and non-variant as a record"
+
 and try_autogen_symbols n t env sc loc =
     let nstr = id2str n in
     (*printf "try_autogen_symbol: nstr = %s; t = %s\n" nstr (typ2str (deref_typ t));*)
@@ -639,16 +645,19 @@ and check_for_duplicate_fun ftyp env sc loc =
         else ()
     | _ -> ())
 
-and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
+and check_and_norm_tyargs actual_ty_args templ_args def_loc inst_loc =
     let n_aty_args = List.length actual_ty_args in
     let n_templ_args = List.length templ_args in
-    let norm_ty_args = (match (actual_ty_args, n_aty_args, n_templ_args) with
-        | (_, m, n) when m = n -> actual_ty_args
-        | ((TypTuple tl):: [], 1, n) when (List.length tl) = n -> tl
-        | (_, _, 1) -> TypTuple(actual_ty_args) :: []
-        | _ -> raise_compile_err inst_loc
-        (sprintf "the number of actual type parameters and formal type parameters, as declared at\n\t%s,\n\tdo not match"
-        (loc2str def_loc))) in
+    (match (actual_ty_args, n_aty_args, n_templ_args) with
+    | (_, m, n) when m = n -> actual_ty_args
+    | ((TypTuple tl):: [], 1, n) when (List.length tl) = n -> tl
+    | (_, _, 1) -> TypTuple(actual_ty_args) :: []
+    | _ -> raise_compile_err inst_loc
+    (sprintf "the number of actual type arguments (%d) does not match the number of formal type parameters (%d), as declared at\n\t%s"
+    n_aty_args n_templ_args (loc2str def_loc)))
+
+and match_ty_templ_args actual_ty_args templ_args env def_loc inst_loc =
+    let norm_ty_args = check_and_norm_tyargs actual_ty_args templ_args def_loc inst_loc in
     List.fold_left2 (fun env n t -> add_typ_to_env n t env) env templ_args norm_ty_args
 
 (*
@@ -685,7 +694,7 @@ and check_exp e env sc =
         let (_, relems) = match etyp with
             | TypApp _ ->
                 (try
-                    get_record_elems None etyp eloc
+                    get_record_elems None etyp false eloc
                 with CompileError _ -> (noid, []))
             | _ -> (noid, [])
             in
@@ -762,7 +771,7 @@ and check_exp e env sc =
                 let def_pj = DefVal(pj, ej, default_tempval_flags(), locj) in
                 (j+1, (def_pj :: code), env, idset)
             | _ ->
-                let (_, relems) = get_record_elems None ttrj locj in
+                let (_, relems) = get_record_elems None ttrj false locj in
                 let (nj, tj, _) = List.nth relems idx in
                 let ej = ExpMem(trj, ExpIdent(nj, (TypString, locj)), (tj, locj)) in
                 let pj = dup_pat pj in
@@ -872,10 +881,14 @@ and check_exp e env sc =
         (match (etyp1, new_e1, e2) with
         | (TypModule, ExpIdent(n1, _), ExpIdent(n2, (etyp2, eloc2))) ->
             let {dm_env; dm_real} = !(get_module n1) in
+            (* if we try to access the currently parsed module,
+               we use the current environment instead of dm_env,
+               since it was not updated yet *)
+            let env = if (curr_module sc) = n1 then env else dm_env in
             (*let _ = printf "looking for %s in module %s ...\n" (id2str n2) (id2str n1) in*)
             let (new_n2, t) =
                 if dm_real then
-                    lookup_id n2 etyp dm_env sc eloc
+                    lookup_id n2 etyp env sc eloc
                 else
                     let n1n2 = (pp_id2str n1) ^ "." ^ (id2str n2) in
                     lookup_id (get_id n1n2) etyp env sc eloc
@@ -901,7 +914,7 @@ and check_exp e env sc =
             unify etyp TypInt eloc "variant tag is integer, but the other type is expected";
             ExpMem(new_e1, e2, ctx)
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) ->
-            let (_, relems) = get_record_elems None etyp1 eloc1 in
+            let (_, relems) = get_record_elems None etyp1 false eloc1 in
             (try
                 let (_, t1, _) = List.find (fun (n1, t1, _) -> n1 = n2) relems in
                 unify etyp t1 eloc "incorrect type of the record element";
@@ -1511,7 +1524,7 @@ and check_exp e env sc =
         let (rtyp, rloc) = get_exp_ctx r_e in
         let _ = unify rtyp etyp eloc "the types of the update-record argument and the result do not match" in
         let new_r_e = check_exp r_e env sc in
-        let (_, relems) = get_record_elems None rtyp rloc in
+        let (_, relems) = get_record_elems None rtyp false rloc in
         let new_r_initializers = List.map (fun (ni, ei) ->
             let (ei_typ, ei_loc) = get_exp_ctx ei in
             try
@@ -2023,7 +2036,7 @@ and check_typ_and_collect_typ_vars t env r_opt_typ_vars sc loc =
         | TypApp(ty_args, n) ->
             let ty_args  = List.map (fun t -> check_typ_ t callb) ty_args in
             let ty_args_are_real = List.for_all is_real_typ ty_args in
-            let found_typ_opt = find_first n !r_env loc (fun entry ->
+            let found_typ_opt = find_first n !r_env !r_env sc loc (fun entry ->
                 match entry with
                 | EnvTyp(t) ->
                     if ty_args = [] then Some(t) else
@@ -2400,23 +2413,18 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
                 | _ -> raise_compile_err loc "variant pattern is used with non-variant type")
             | _ -> raise_compile_err loc "variant pattern is used with non-variant type")
         | PatRecord(rn_opt, relems, loc) ->
-            if not proto_mode then
-                (* [TODO] in the ideal case this branch should work fine in the prototype mode as well,
-                   just need to make lookup_id smart enough (maybe add some extra parameters to
-                   avoid preliminary type instantiation) *)
-                let (ctor, relems_found) = get_record_elems rn_opt t loc in
-                let new_relems = List.fold_left (fun new_relems (n, p) ->
-                    let n_orig = get_orig_id n in
-                    match (List.find_opt (fun (nj, tj, _) -> (get_orig_id nj) = n_orig) relems_found) with
-                    | Some((nj, tj, _)) ->
-                        let (p, _) = check_pat_ p tj in (n, p) :: new_relems
-                    | _ -> raise_compile_err loc
-                        (sprintf "element '%s' is not found in the record '%s'" (pp_id2str n) (pp_id2str (Utils.opt_get rn_opt noid))))
-                    [] relems
-                    in
-                (PatRecord((if ctor <> noid then Some ctor else None), (List.rev new_relems), loc), false)
-            else
-                raise_compile_err loc "record patterns are not supported in function prototypes yet"
+            let (ctor, relems_found) = get_record_elems rn_opt t proto_mode loc in
+            let new_relems = List.fold_left (fun new_relems (n, p) ->
+                let n_orig = get_orig_id n in
+                match (List.find_opt (fun (nj, tj, _) -> (get_orig_id nj) = n_orig) relems_found) with
+                | Some((nj, tj, _)) ->
+                    let (p, _) = if proto_mode then (p, false) else check_pat_ p tj in
+                    (n, p) :: new_relems
+                | _ -> raise_compile_err loc
+                    (sprintf "element '%s' is not found in the record '%s'" (pp_id2str n) (pp_id2str (Utils.opt_get rn_opt noid))))
+                [] relems
+                in
+            (PatRecord((if ctor <> noid then Some ctor else None), (List.rev new_relems), loc), false)
         | PatCons(p1, p2, loc) ->
             let t1 = make_new_typ() in
             let t2 = TypList t1 in
@@ -2487,7 +2495,12 @@ and check_mod m =
     let minfo = !(get_module m) in
     try
         let modsc = (ScModule m) :: [] in
-        let (seq, env) = check_eseq minfo.dm_defs Env.empty modsc false in
+        (* when typechecking a module, we import the module to itself,
+           which let us to use object oriented notation or make
+           prototypes of exposed functions look better,
+           e.g. use 'Set.t' instead of 't' *)
+        let env = add_id_to_env (get_orig_id m) m Env.empty in
+        let (seq, env) = check_eseq minfo.dm_defs env modsc false in
         minfo.dm_defs <- seq;
         minfo.dm_env <- env
     with

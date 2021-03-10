@@ -628,6 +628,11 @@ let rec get_module_scope sc =
     | ScModule _ :: _ -> sc | ScGlobal :: _ | [] -> sc
     | sc_top :: r -> get_module_scope r
 
+let curr_module sc =
+    match (get_module_scope sc) with
+    | ScModule m :: _-> m
+    | _ -> noid
+
 let rec get_qualified_name name sc =
     match sc with
     | ScModule m :: _ when (pp_id2str m) = "Builtins" -> name

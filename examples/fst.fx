@@ -164,9 +164,9 @@ println(f"triangular numbers: {a}")
 println(f"primes <100: {[: for i <- 0:100 {if !is_prime(i) {continue}; i} :]}")
 
 val sorted = List.sort(
-    [: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
-    -460, 451, -11034, 8848 :],
-    fun (a, b) {a < b})
+    [: 10, 355, 113, -1, 2, 26, 1, 1949, 0,
+    299792458, -460, 451, -11034, 8848 :],
+    (<))
 print("sorted: ")
 println(sorted)
 
@@ -185,5 +185,5 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     for y <- 0:h { println(screen[y,:]) }
 }
 
-val a = float(-0.5*Math.pi), b = float(-a*5)
+val a = float(-0.5*Math.pi), b = -a*5
 plot(a, b, Math.sin, 80, 10)

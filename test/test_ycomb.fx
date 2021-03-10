@@ -11,9 +11,7 @@ TEST("ycomb.fac_fib", fun() {
 // from https://rosettacode.org/wiki/Y_combinator; adoped from OCaml implementation.
 // trick from Lambda calculus to convert non-recursive functions into recursive ones
 type 'a mu = Roll: ('a mu -> 'a)
-fun unroll(x: 'a mu) {
-    | Roll (x) => x
-}
+fun unroll(Roll(x): 'a mu) = x
 
 fun ycomb (f: ('a -> 'b) -> ('a -> 'b)): 'a -> 'b {
     fun l(x: ('a -> 'b) mu): 'a -> 'b = fun (a: 'a) { f(unroll(x)(x))(a) }

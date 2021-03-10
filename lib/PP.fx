@@ -15,7 +15,7 @@ exception PPQueueOverflow
 type ppstyle_t = Auto | Fits | Consistent
 type pptok_t =
     | PPString: string
-    | PPBreak: (int, int)
+    | PPBreak: (int, int, char)
     | PPBegin: (int, ppstyle_t)
     | PPEnd
     | PPEof
@@ -24,7 +24,7 @@ type ppelem_t = (pptok_t, int)
 fun string(s: ppstyle_t) { | Auto => "Auto" | Fits => "Fits" | _ => "Consistent" }
 fun string(t: pptok_t) {
     | PPString (s) => f"String({s})"
-    | PPBreak(s, o) => f"Break({s}, {o})"
+    | PPBreak(s, o, c) => f"Break({s}, {o}, '{c}')"
     | PPBegin(o, s) => f"Begin({o}, {s})"
     | PPEnd => "End"
     | PPEof => "Eof"
@@ -104,7 +104,7 @@ fun pprint_to_file(margin: int, f: File.t): t
 fun pprint_to_stdout(margin: int): t =
     pprint_to_file(margin, File.stdout)
 
-fun reset(pp: t): void
+fun reset(pp: PP.t): void
 {
     pp._state->space = pp.margin
     pp._state->left = 0
@@ -115,7 +115,7 @@ fun reset(pp: t): void
     pp._state->pp_top = 0
 }
 
-fun finish(pp: t): void
+fun flush(pp: PP.t): void
 {
     if !pp._state->emptystack {
         check_stack(pp, 0)
@@ -123,10 +123,10 @@ fun finish(pp: t): void
     }
 }
 
-fun begin(pp: t, indent: int) = begin(pp, indent, Auto)
-fun beginv(pp: t, indent: int) = begin(pp, indent, Consistent)
+fun begin(pp: PP.t, indent: int) = begin(pp, indent, Auto)
+fun beginv(pp: PP.t, indent: int) = begin(pp, indent, Consistent)
 
-fun begin(pp: t, indent: int, style: ppstyle_t): void
+fun begin(pp: PP.t, indent: int, style: ppstyle_t): void
 {
     val right = if pp._state->emptystack {
         pp._state->lefttotal = 1
@@ -142,7 +142,7 @@ fun begin(pp: t, indent: int, style: ppstyle_t): void
     scan_push(pp, right)
 }
 
-fun end(pp: t): void
+fun end(pp: PP.t): void
 {
     if pp._state->emptystack {
         pprint(pp, PPEnd, 0)
@@ -153,7 +153,7 @@ fun end(pp: t): void
     }
 }
 
-fun br(pp: t, spaces: int, offset: int): void
+fun br(pp: PP.t, spaces: int, offset: int, sep: char): void
 {
     val right = if pp._state->emptystack {
         pp._state->lefttotal = 1
@@ -166,15 +166,16 @@ fun br(pp: t, spaces: int, offset: int): void
     }
     check_stack(pp, 0)
     scan_push(pp, right)
-    val tk = PPBreak(spaces, offset)
+    val tk = PPBreak(spaces, offset, sep)
     pp._state->q[right] = (tk, -pp._state->righttotal)
     pp._state->righttotal += spaces
 }
 
-fun cut(pp: t) = br(pp, 0, 0)
-fun space(pp: t) = br(pp, 1, 0)
+fun cut(pp: PP.t) = br(pp, 0, 0, '\0')
+fun space(pp: PP.t) = br(pp, 1, 0, '\0')
+fun sep_space(pp: PP.t, c: char) = br(pp, 2, 0, c)
 
-fun str(pp: t, s: string): void
+fun str(pp: PP.t, s: string): void
 {
     val tk = PPString(s), l = s.length()
     if pp._state->emptystack {
@@ -186,7 +187,7 @@ fun str(pp: t, s: string): void
     }
 }
 
-@private fun check_stream(pp: t): void
+@private fun check_stream(pp: PP.t): void
 {
     if pp._state->righttotal - pp._state->lefttotal > pp._state->space {
         if !pp._state->emptystack &&
@@ -198,7 +199,7 @@ fun str(pp: t, s: string): void
     }
 }
 
-@private fun scan_push(pp: t, i: int): void
+@private fun scan_push(pp: PP.t, i: int): void
 {
     if !pp._state->emptystack {
         val top = (pp._state->top + 1) % size(pp._state->stack)
@@ -209,7 +210,7 @@ fun str(pp: t, s: string): void
     pp._state->emptystack = false
 }
 
-@private fun scan_pop(pp: t): int
+@private fun scan_pop(pp: PP.t): int
 {
     if pp._state->emptystack {throw PPEmptyStack}
     val top = pp._state->top
@@ -223,7 +224,7 @@ fun str(pp: t, s: string): void
     x
 }
 
-@private fun scan_pop_bottom(pp: t): int
+@private fun scan_pop_bottom(pp: PP.t): int
 {
     if pp._state->emptystack {throw PPEmptyStack}
     val bottom = pp._state->bottom
@@ -236,7 +237,7 @@ fun str(pp: t, s: string): void
     x
 }
 
-@private fun advance_right(pp: t): int
+@private fun advance_right(pp: PP.t): int
 {
     val right = (pp._state->right + 1) % size(pp._state->q)
     pp._state->right = right
@@ -244,14 +245,14 @@ fun str(pp: t, s: string): void
     right
 }
 
-@private fun advance_left(pp: t): int
+@private fun advance_left(pp: PP.t): int
 {
     val left = pp._state->left
     val (tk, len) = pp._state->q[left]
     if len >= 0 {
         pprint(pp, tk, len)
         val spaces = match tk {
-            | PPBreak(spaces, _) => spaces
+            | PPBreak(spaces, _, _) => spaces
             | PPString(s) => s.length()
             | _ => 0
         }
@@ -263,7 +264,7 @@ fun str(pp: t, s: string): void
     } else { left }
 }
 
-@private fun check_stack(pp: t, k: int): void =
+@private fun check_stack(pp: PP.t, k: int): void =
     if !pp._state->emptystack {
         val x = pp._state->stack[pp._state->top]
         val (tk, len) = pp._state->q[x]
@@ -285,10 +286,15 @@ fun str(pp: t, s: string): void
         }
     }
 
-@private fun pp_newline(pp: t, n: int) = pp.print_f("\n" + (' '*n))
-@private fun pp_indent(pp: t, n: int) = pp.print_f(' '*n)
+@private fun pp_newline(pp: PP.t, n: int) = pp.print_f("\n" + (' '*n))
+@private fun pp_indent(pp: PP.t, n: int, c: char) =
+    if c == '\0' {
+        pp.print_f(' '*n)
+    } else {
+        pp.print_f(c + ' '*(n-1))
+    }
 
-@private fun pprint(pp: t, x: pptok_t, len: int) {
+@private fun pprint(pp: PP.t, x: pptok_t, len: int) {
     val top = pp._state->pp_top
     //println(f"pprinting {(x,len)}; space={pp._state->space}")
     match x {
@@ -305,14 +311,14 @@ fun str(pp: t, s: string): void
         if top > 0 {
             pp._state->pp_top = top - 1
         }
-    | PPBreak(spaces, offset) =>
+    | PPBreak(spaces, offset, c) =>
         val (block_offset, style) =
             if top > 0 { pp._state->pp_stack[top-1] }
             else { (0, Auto) }
         match style {
         | Fits =>
             pp._state->space -= spaces
-            pp_indent(pp, spaces)
+            pp_indent(pp, spaces, c)
         | Consistent =>
             pp._state->space = block_offset - offset
             pp_newline(pp, pp.margin - pp._state->space)
@@ -322,7 +328,7 @@ fun str(pp: t, s: string): void
                 pp_newline(pp, pp.margin - pp._state->space)
             } else {
                 pp._state->space -= spaces
-                pp_indent(pp, spaces)
+                pp_indent(pp, spaces, c)
             }
         }
     | PPString(s) =>
