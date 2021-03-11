@@ -28,14 +28,14 @@ type token_t =
     | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
-    | DOT_EQUAL | AUG_BINOP: Ast.binary_t | SPACESHIP | CMP: Ast.cmp_t
-    | DOT_SPACESHIP | DOT_CMP: Ast.cmp_t | FOLD_RESULT
+    | DOT_EQUAL | AUG_BINOP: Ast.binary_t | SPACESHIP | CMP: Ast.cmpop_t
+    | DOT_SPACESHIP | DOT_CMP: Ast.cmpop_t | FOLD_RESULT
 
 fun ne2u(ne: bool, s: string) = if ne {s} else {s.decapitalize()}
 
 fun tok2str(t: token_t)
 {
-    | LITERAL(l) => (f"LITERAL({Ast.lit2str(l)}", Ast.lit2str(l))
+    | LITERAL(l) => (f"LITERAL({Ast.lit2str(l)})", Ast.lit2str(l))
     | IDENT(ne, s) => (ne2u(ne, f"IDENT({s})"), s)
     | TYVAR(s) => (f"TYVAR({s})", s)
     | APOS => ("APOS", "'")
@@ -147,6 +147,11 @@ type stream_t =
 fun make_stream(fname: string)
 {
     val buf = File.read_utf8(fname)
+    stream_t { fname=fname, lineno=ref(1), bol=ref(0), buf=buf }
+}
+
+fun make_stream_from_string(fname: string, buf: string)
+{
     stream_t { fname=fname, lineno=ref(1), bol=ref(0), buf=buf }
 }
 
@@ -627,7 +632,7 @@ var ficus_keywords = Map.from_list(String.cmp,
         { STRING("") RPAREN } RPAREN
     where {} denotes groups that are returned together by nexttokens().
 */
-fun make_lexer(strm: stream_t)
+fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
 {
     var new_exp = true  // Ficus is the language with optional ';' separators between
                         // expressions in a block, tha's why we need to distinguish
@@ -742,44 +747,7 @@ fun make_lexer(strm: stream_t)
 
         val loc = getloc(pos)
 
-        if c.isalpha() || c == '_' {
-            var p = pos
-            while p < len {
-                val cp = buf[p]
-                if !cp.isalnum() && cp != '_' {break}
-                p += 1
-            }
-            val ident = buf[pos:p].copy()
-            pos = p
-            val t =
-            match ficus_keywords.find_opt(ident) {
-            | Some((t, n)) =>
-                match (t, n) {
-                | (CCODE, _) =>
-                    check_ne(new_exp, loc, "ccode")
-                    paren_stack = (CCODE, loc) :: paren_stack
-                    new_exp = true; CCODE
-                | (FOR _, _) =>
-                    val t = FOR(new_exp); new_exp = true; t
-                | (IMPORT _, _) =>
-                    val t = IMPORT(new_exp); new_exp = true; t
-                | (WHILE _, _) =>
-                    val t = WHILE(new_exp); new_exp = true; t
-                | (REF _, _) =>
-                    val t = REF(new_exp); /* retain new_exp as-is */ t
-                | (t, -1) =>
-                    throw LexerError(loc, f"Identifier '{ident}' is reserved and cannot be used")
-                | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t
-                | (t, 1) => new_exp = true; t
-                | (t, 2) => check_ne(new_exp, loc, ident); new_exp = true; t
-                | _ => throw LexerError(loc, f"Unexpected keyword '{ident}'")
-                }
-            | _ =>
-                val t = IDENT(new_exp, ident); new_exp = false; t
-            }
-            prev_dot = false
-            (t, loc) :: []
-        } else if '0' <= c <= '9' {
+        if '0' <= c <= '9' {
             val (p, t) = getnumber(buf, pos, getloc(pos), prev_dot)
             new_exp = false
             prev_dot = false
@@ -828,12 +796,50 @@ fun make_lexer(strm: stream_t)
                 (LITERAL(Ast.LitChar(res[0])), loc) :: []
             } else if inline_exp {
                 paren_stack = (STR_INTERP_LPAREN, getloc(prev_pos)) :: paren_stack
+                new_exp = true
                 addloc(loc, (if res.empty() {LPAREN(true) :: []}
                         else {LPAREN(true) :: LITERAL(Ast.LitString(res)) :: PLUS(false) :: []}) +
                         (IDENT(true, "string") :: LPAREN(false) :: []))
             } else {
                 (LITERAL(Ast.LitString(res)), loc) :: []
             }
+        } else if c.isalpha() || c == '_' {
+            var p = pos
+            while p < len {
+                val cp = buf[p]
+                if !cp.isalnum() && cp != '_' {break}
+                p += 1
+            }
+            val ident = buf[pos:p].copy()
+            pos = p
+            val t =
+            match ficus_keywords.find_opt(ident) {
+            | Some((t, n)) =>
+                match (t, n) {
+                | (CCODE, _) =>
+                    check_ne(new_exp, loc, "ccode")
+                    paren_stack = (CCODE, loc) :: paren_stack
+                    new_exp = true; CCODE
+                | (FOR _, _) =>
+                    val t = FOR(new_exp); new_exp = true; t
+                | (IMPORT _, _) =>
+                    val t = IMPORT(new_exp); new_exp = true; t
+                | (WHILE _, _) =>
+                    val t = WHILE(new_exp); new_exp = true; t
+                | (REF _, _) =>
+                    val t = REF(new_exp); /* retain new_exp as-is */ t
+                | (t, -1) =>
+                    throw LexerError(loc, f"Identifier '{ident}' is reserved and cannot be used")
+                | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t
+                | (t, 1) => new_exp = true; t
+                | (t, 2) => check_ne(new_exp, loc, ident); new_exp = true; t
+                | _ => throw LexerError(loc, f"Unexpected keyword '{ident}'")
+                }
+            | _ =>
+                val t = IDENT(new_exp, ident); new_exp = false; t
+            }
+            prev_dot = false
+            (t, loc) :: []
         } else {
             val prev_ne = new_exp
             val prev_prev_dot = prev_dot
@@ -924,7 +930,8 @@ fun make_lexer(strm: stream_t)
                     throw LexerError(loc, "Unexpected '}', check parens")
                 }
             | '|' =>
-                if c1 == '=' {(AUG_BINOP(Ast.OpBitwiseOr), loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseOr), loc) :: []}
+                else if c1 == '|' {pos += 1; (LOGICAL_OR, loc) :: []}
                 else {
                     match paren_stack {
                     | (BAR, _) :: (LBRACE, _) :: _ => (BAR, loc) :: []
@@ -967,8 +974,8 @@ fun make_lexer(strm: stream_t)
                 else if c1 == '&' {pos += 1; (LOGICAL_AND, loc) :: []}
                 else {(BITWISE_AND, loc) :: []}
             | '~' => check_ne(prev_ne, getloc(pos-1), "~"); (TILDE, loc) :: []
-            | '\\' => check_ne(prev_ne, getloc(pos-1), "\\"); (BACKSLASH, loc) :: []
             | '@' => (AT, loc) :: []
+            | '\\' => check_ne(prev_ne, getloc(pos-1), "\\"); (BACKSLASH, loc) :: []
             | '.' =>
                 if c1 == '=' {
                     if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpEQ), loc) :: []}
@@ -1050,7 +1057,6 @@ fun make_lexer(strm: stream_t)
                 } else {
                     (CMP(Ast.CmpGT), loc) :: []
                 }
-            | '@' => (AT, loc) :: []
             | '\0' =>
                 match paren_stack {
                 | (_, l) :: _ => throw LexerError(loc, f"some braces (around {lloc2str(l)}) are not closed")

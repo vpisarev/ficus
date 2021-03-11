@@ -59,6 +59,7 @@ operator <=> (a: id_t, b: id_t) = cmp_id(a, b)
 
 val noid = IdName(0)
 val dummyid = IdName(1)
+val __fold_result_id__ = IdName(2)
 
 type scope_t =
     | ScBlock: int
@@ -77,18 +78,18 @@ type loc_t =
 {
     fname: id_t;
     line0: int;
-    pos0: int;
+    col0: int;
     line1: int;
-    pos1: int
+    col1: int
 }
 
-val noloc = loc_t {fname=noid, line0=0, pos0=0, line1=0, pos1=0}
+val noloc = loc_t {fname=noid, line0=0, col0=0, line1=0, col1=0}
 fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
     fold loc = default_loc for loci <- llist {
-        val {fname, line0, pos0, line1, pos1} = loc
+        val {fname, line0, col0, line1, col1} = loc
         val {fname=loci_fname,
-            line0=loci_line0, pos0=loci_pos0,
-            line1=loci_line1, pos1=loci_pos1} = loci
+            line0=loci_line0, col0=loci_col0,
+            line1=loci_line1, col1=loci_col1} = loci
         if fname != loci_fname {
             if fname == noid { loci } else { loc }
         } else {
@@ -96,24 +97,24 @@ fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
             {
                 fname=fname,
                 line0=min(line0, loci_line0),
-                pos0=min(pos0, loci_pos0),
+                col0=min(col0, loci_col0),
                 line1=max(line1, loci_line1),
-                pos1=max(pos1, loci_pos1)
+                col1=max(col1, loci_col1)
             }
         }
     }
 
 fun get_start_loc(loc: loc_t) {
-    val {fname, line0, pos0, line1, pos1} = loc
-    loc_t {fname=fname, line0=line0, pos0=pos0, line1=line0, pos1=pos0}
+    val {fname, line0, col0, line1, col1} = loc
+    loc_t {fname=fname, line0=line0, col0=col0, line1=line0, col1=col0}
 }
 
 fun get_end_loc(loc: loc_t) {
-    val {fname, line0, pos0, line1, pos1} = loc
-    loc_t {fname=fname, line0=line1, pos0=pos1, line1=line1, pos1=pos1}
+    val {fname, line0, col0, line1, col1} = loc
+    loc_t {fname=fname, line0=line1, col0=col1, line1=line1, col1=col1}
 }
 
-fun string(loc: loc_t) = f"{pp_id2str(loc.fname)}: {loc.line0}"
+fun string(loc: loc_t) = f"{pp_id2str(loc.fname)}:{loc.line0}:{loc.col0}"
 
 type lit_t =
     | LitInt: int64
@@ -155,11 +156,11 @@ fun make_new_typ() = TypVar(ref None)
 fun make_new_ctx(l: loc_t) = (make_new_typ(), l)
 
 type op_assoc_t = AssocLeft | AssocRight
-type cmp_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
+type cmpop_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
 type binary_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
     | OpShiftLeft | OpShiftRight | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
-    | OpCmp: cmp_t | OpDotCmp: cmp_t | OpSpaceship | OpDotSpaceship | OpCons
+    | OpCmp: cmpop_t | OpDotCmp: cmpop_t | OpSpaceship | OpDotSpaceship | OpCons
 
 type unary_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
     | OpMkRef | OpDeref | OpExpand | OpApos
@@ -861,7 +862,7 @@ fun is_typ_numeric(t: typ_t, allow_vec_tuples: bool) =
     | _ => false
     }
 
-fun string(c: cmp_t) {
+fun string(c: cmpop_t) {
     | CmpEQ => "=="
     | CmpNE => "!="
     | CmpLT => "<"

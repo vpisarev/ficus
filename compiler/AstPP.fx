@@ -166,13 +166,6 @@ fun pprint_for_flags(pp: PP.t, flags: for_flags_t)
 fun pprint_exp(pp: PP.t, e: exp_t): void
 {
     val (t, eloc) = get_exp_ctx(e)
-    var obox_cnt = 0
-    fun obox_() {
-        pp.begin(); pp.str("<"); pprint_typ(pp, t, eloc);
-        pp.str(">"); pp.cut(); obox_cnt += 1
-    }
-    fun cbox_() = if obox_cnt > 0 { pp.end(); obox_cnt -= 1 }
-
     fun ppcases(pe_l: (pat_t list, exp_t) list) {
         pp.str("{"); pp.cut(); pp.begin()
         for (pl, e) <- pe_l {
@@ -188,7 +181,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     | DefVal(p, e0, vflags, _) =>
         pp.begin(); pprint_val_flags(pp, vflags)
         val ctor_id = vflags.val_flag_ctor
-        pp.str(if vflags.val_flag_mutable {"var"} else {"var"})
+        pp.str(if vflags.val_flag_mutable {"var"} else {"val"})
         pp.space(); pprint_pat(pp, p); pp.str(" ="); pp.space()
         if ctor_id != noid { pp.str(f"@constructor({id2str(ctor_id)})") }
         else { ppexp(e0) }
@@ -292,7 +285,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         pp.end()
     | ExpSeq(eseq, _) => pprint_expseq(pp, eseq, true)
     | _ =>
-        obox_()
+        pp.begin()
         match e {
         | ExpNop(_) => pp.str("{}")
         | ExpBreak(f, _) =>
@@ -315,7 +308,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             }
             pp.str(")")
         | ExpLit(x, (_, loc)) => pplit(pp, x)
-        | ExpIdent(n, _) => ppid(pp, n)
+        | ExpIdent(n, (t, loc)) => pp.str("<"); pprint_typ(pp, t, loc); pp.str(">"); ppid(pp, n)
         | ExpBinary(o, e1, e2, _) =>
             pp.str("("); ppexp(e1)
             pp.space(); pp.str(f"{o}");
@@ -468,7 +461,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | DefVariant(_) | DefClass(_) | DefInterface(_)
         | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
         }
-        cbox_()
+        pp.end()
     }
     ppexp(e)
 }
@@ -544,7 +537,8 @@ fun pprint_pat(pp: PP.t, p: pat_t)
     pppat(p)
 }
 
-fun pprint_mod(dm: defmodule_t) {
+fun pprint_mod(dm: defmodule_t)
+{
     val {dm_name, dm_filename, dm_defs, dm_deps} = dm
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.beginv()

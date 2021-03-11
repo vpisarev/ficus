@@ -370,6 +370,15 @@ let kexp2code e =
     | KExpSeq(elist, _) -> elist
     | _ -> e :: []
 
+let get_kval i loc =
+    let info = kinfo_ i loc in
+    check_kinfo info i loc;
+    match info with
+    | KVal kv -> kv
+    | _ ->
+        let loc = if loc!=noloc then loc else get_kinfo_loc info in
+        raise_compile_err loc (sprintf "symbol '%s' is expected to be KVal ..." (id2str i))
+
 (* walk through a K-normalized syntax tree and produce another tree *)
 
 type k_callb_t =
@@ -710,8 +719,11 @@ let rec used_by_atom_ a loc callb =
 and used_by_ktyp_ t loc callb = fold_ktyp t loc callb
 and used_by_kexp_ e callb =
     match e with
-    | KDefVal(i, e, _) ->
+    | KDefVal(i, e, loc) ->
         let (uv, dv) = used_decl_by_kexp e in
+        let {kv_typ} = get_kval i loc in
+        let uv_typ = used_by_ktyp kv_typ loc in
+        add_to_used uv_typ callb;
         add_to_used uv callb;
         add_to_decl dv callb;
         add_to_decl1 i callb
@@ -826,15 +838,6 @@ let get_closure_freevars f loc =
 
 let make_empty_kf_closure () =
     {kci_arg=noid; kci_fcv_t=noid; kci_fp_typ=noid; kci_make_fp=noid; kci_wrap_f=noid}
-
-let get_kval i loc =
-    let info = kinfo_ i loc in
-    check_kinfo info i loc;
-    match info with
-    | KVal kv -> kv
-    | _ ->
-        let loc = if loc!=noloc then loc else get_kinfo_loc info in
-        raise_compile_err loc (sprintf "symbol '%s' is expected to be KVal ..." (id2str i))
 
 let rec deref_ktyp kt loc =
     match kt with

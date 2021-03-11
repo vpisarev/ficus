@@ -590,7 +590,7 @@ stmt:
         ExpAssign($1, ExpUpdateRecord($1, (List.rev $4), (tp, loc)), loc)
     }
 | B_WHILE exp_or_block block { ExpWhile($2, $3, curr_loc()) }
-| DO block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
+| DO exp_or_block any_while exp_or_block { ExpDoWhile($2, $4, curr_loc()) }
 | for_flags B_FOR nested_for_ for_block
     {
         let (_, nested_for_cl, body) = process_nested_for $3 $4 in
