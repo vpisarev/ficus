@@ -17,6 +17,7 @@ open Ast
 open C_form
 
 let base_indent = ref 3
+let ccode_margin = ref 128
 
 let pstr = Format.print_string
 let pspace = Format.print_space
@@ -452,9 +453,12 @@ let pprint_cstmt_x s = Format.print_flush (); Format.open_box 0; pprint_cstmt s;
 let pprint_top code = Format.print_flush (); Format.open_vbox 0; List.iter (fun s -> pprint_cstmt s; pbreak()) code; Format.close_box(); pbreak(); Format.print_flush ()
 let pprint_top_to_file filename code =
     (let outch = open_out filename in
+    let prev_margin = Format.get_margin() in
     Format.set_formatter_out_channel outch;
+    Format.set_margin !ccode_margin;
     pprint_top code;
     Format.print_flush();
+    Format.set_margin prev_margin;
     Format.set_formatter_out_channel stdout;
     close_out outch;
     true)
@@ -463,9 +467,12 @@ let pprint_top_to_string code =
     let all_lines = ref ([]: string list) in
     let str_print s p n = all_lines := (String.sub s p n) :: !all_lines in
     let str_flush () = () in
+    let prev_margin = Format.get_margin() in
     Format.set_formatter_output_functions str_print str_flush;
+    Format.set_margin !ccode_margin;
     pprint_top code;
     Format.print_flush();
+    Format.set_margin prev_margin;
     Format.set_formatter_output_functions std_print std_flush;
     let rec remove_trailing_empty_lines all_lines =
         match all_lines with

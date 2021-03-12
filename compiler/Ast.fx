@@ -126,6 +126,8 @@ type lit_t =
     | LitBool: bool
     | LitNil
 
+type defparam_t = lit_t
+
 type typ_t =
     | TypVar: typ_t? ref
     | TypVarTuple: typ_t?
@@ -144,7 +146,7 @@ type typ_t =
     | TypTuple: typ_t list
     | TypRef: typ_t
     | TypArray: (int, typ_t)
-    | TypRecord: ((id_t, typ_t, lit_t?) list, bool) ref
+    | TypRecord: ((id_t, typ_t, defparam_t?) list, bool) ref
     | TypExn
     | TypErr
     | TypCPointer
@@ -283,7 +285,6 @@ type exp_t =
     | DefExn: defexn_t ref
     | DefTyp: deftyp_t ref
     | DefVariant: defvariant_t ref
-    | DefClass: defclass_t ref
     | DefInterface: definterface_t ref
     | DirImport: ((id_t, id_t) list, loc_t)
     | DirImportFrom: (id_t, id_t list, loc_t)
@@ -384,15 +385,6 @@ type defvariant_t =
     dvar_scope: scope_t list; dvar_loc: loc_t
 }
 
-type defclass_t =
-{
-    dcl_name: id_t; dcl_templ_args: id_t list;
-    dcl_typ: typ_t; dcl_ifaces: id_t list;
-    dcl_args: pat_t list; dcl_members: exp_t list;
-    dcl_templ_inst: id_t list ref;
-    dcl_scope: scope_t list; dcl_loc: loc_t
-}
-
 type definterface_t =
 {
     di_name: id_t; di_base: id_t; di_members: exp_t list;
@@ -420,7 +412,6 @@ type id_info_t =
     | IdExn: defexn_t ref
     | IdTyp: deftyp_t ref
     | IdVariant: defvariant_t ref
-    | IdClass: defclass_t ref
     | IdInterface: definterface_t ref
     | IdModule: defmodule_t ref
 
@@ -643,7 +634,6 @@ fun get_exp_ctx(e: exp_t) {
     | DefExn (ref {dexn_loc}) => (TypDecl, dexn_loc)
     | DefTyp (ref {dt_loc}) => (TypDecl, dt_loc)
     | DefVariant (ref {dvar_loc}) => (TypDecl, dvar_loc)
-    | DefClass (ref {dcl_loc}) => (TypDecl, dcl_loc)
     | DefInterface (ref {di_loc}) => (TypDecl, di_loc)
     | DirImport(_, l) => (TypDecl, l)
     | DirImportFrom(_, _, l) => (TypDecl, l)
@@ -772,7 +762,6 @@ fun get_scope(id_info: id_info_t) =
     | IdExn (ref {dexn_scope}) => dexn_scope
     | IdTyp (ref {dt_scope}) => dt_scope
     | IdVariant (ref {dvar_scope}) => dvar_scope
-    | IdClass (ref {dcl_scope}) => dcl_scope
     | IdInterface (ref {di_scope}) => di_scope
     | IdModule(_) => ScGlobal :: []
     }
@@ -785,7 +774,6 @@ fun get_idinfo_loc(id_info: id_info_t) =
     | IdExn (ref {dexn_loc}) => dexn_loc
     | IdTyp (ref {dt_loc}) => dt_loc
     | IdVariant (ref {dvar_loc}) => dvar_loc
-    | IdClass (ref {dcl_loc}) => dcl_loc
     | IdInterface (ref {di_loc}) => di_loc
     }
 
@@ -797,7 +785,6 @@ fun get_idinfo_typ(id_info: id_info_t, loc: loc_t): typ_t =
     | IdExn (ref {dexn_typ}) => dexn_typ
     | IdTyp (ref {dt_typ}) => dt_typ
     | IdVariant (ref {dvar_alias}) => dvar_alias
-    | IdClass (ref {dcl_typ}) => dcl_typ
     | IdInterface (ref {di_name}) => TypApp([], di_name)
     | IdNone => throw compile_err(loc, "ast: attempt to request type of non-existing symbol")
     }
@@ -1352,7 +1339,6 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
             dvar_cases=[: for (n, t) <- dvar_cases {(n, walk_typ_(t))}:]
         }
         e
-    | DefClass(dc) => e
     | DefInterface(di) => e
     | DirImport(_, _) => e
     | DirImportFrom(_, _, _) => e
@@ -1398,7 +1384,6 @@ fun dup_exp_(e: exp_t, callb: ast_callb_t): exp_t =
     | DefExn(r) => walk_exp(DefExn(ref *r), callb)
     | DefTyp(r) => walk_exp(DefTyp(ref *r), callb)
     | DefVariant(r) => walk_exp(DefVariant(ref *r), callb)
-    | DefClass(r) => walk_exp(DefClass(ref *r), callb)
     | DefInterface(r) => walk_exp(DefInterface(ref *r), callb)
     | _ => walk_exp(e, callb)
     }

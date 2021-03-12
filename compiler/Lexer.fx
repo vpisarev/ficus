@@ -18,13 +18,13 @@ type token_t =
     | ELLIPSIS | ELSE | EXCEPTION | EXTENDS | FINALLY | FOLD
     | FOR: bool | FROM | FUN | IF | IMPLEMENTS | IMPORT: bool
     | INLINE | INTERFACE | MATCH | NOTHROW | OBJECT | OPERATOR
-    | PARALLEL | PRAGMA | PURE | REF: bool | STATIC | THROW
+    | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
     | LPAREN: bool | STR_INTERP_LPAREN | RPAREN | LSQUARE: bool
     | RSQUARE | LBRACE | RBRACE | LLIST | RLIST | COMMA | DOT
     | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH | BACK_ARROW
     | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool | PLUS: bool
-    | STAR: bool | SLASH | PERCENT | POWER: bool | DOT_STAR
+    | STAR: bool | SLASH | PERCENT | POWER | DOT_STAR
     | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
@@ -69,7 +69,7 @@ fun tok2str(t: token_t)
     | PRAGMA => ("PRAGMA", "pragma")
     | PURE => ("PURE", "pure")
     | REF(ne) => (ne2u(ne, "REF"), "ref")
-    | STATIC => ("STATIC", "static")
+    | PRIVATE => ("PRIVATE", "private")
     | THROW => ("THROW", "throw")
     | TRY => ("TRY", "try")
     | TYPE => ("TYPE", "type")
@@ -106,7 +106,7 @@ fun tok2str(t: token_t)
     | STAR(ne) => (ne2u(ne, "STAR"), "*")
     | SLASH => ("SLASH", "/")
     | PERCENT => ("PERCENT", "%")
-    | POWER(ne) => (ne2u(ne, "POWER"), "**")
+    | POWER => ("POWER", "**")
     | DOT_MINUS(ne) => (ne2u(ne, "DOT_MINUS"), ".-")
     | DOT_STAR => ("DOT_STAR", ".*")
     | DOT_SLASH => ("DOT_SLASH", "./")
@@ -610,7 +610,7 @@ var ficus_keywords = Map.from_list(String.cmp,
     ("implements", (IMPLEMENTS, 1)), ("import", (IMPORT(true), 3)), ("inline", (INLINE, 2)),
     ("interface", (INTERFACE, 2)), ("match", (MATCH, 2)), ("nothrow", (NOTHROW, 2)),
     ("object", (OBJECT, 2)), ("operator", (OPERATOR, 0)), ("parallel", (PARALLEL, 2)),
-    ("pragma", (PRAGMA, 2)), ("pure", (PURE, 2)), ("ref", (REF(true), 3)), ("static", (STATIC, 2)),
+    ("pragma", (PRAGMA, 2)), ("private", (PRIVATE, 2)), ("pure", (PURE, 2)), ("ref", (REF(true), 3)),
     ("throw", (THROW, 2)), ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)), ("type", (TYPE, 2)),
     ("val", (VAL, 2)), ("var", (VAR, 2)), ("when", (WHEN, 1)), ("while", (WHILE(true), 2)),
     ("with", (WITH, 1)), ("unzip", (UNZIP, 2)), ("__fold_result__", (FOLD_RESULT, -1)) :])
@@ -954,7 +954,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 }
             | '*' =>
                 if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpMul), loc) :: []}
-                else if c1 == '*' {pos += 1; (POWER(prev_ne), loc) :: []}
+                else if c1 == '*' && !prev_ne {pos += 1; (POWER, loc) :: []}
                 else {(STAR(prev_ne), loc) :: []}
             | '/' =>
                 if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpDiv), loc) :: []}

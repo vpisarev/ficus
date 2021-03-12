@@ -322,7 +322,7 @@ int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filen
     return exn->tag;
 }
 
-// ligher version of above:
+// lighter version of above:
 //   1. rethrowing exception always means moving it
 //   2. do not reset backtrace stack
 int fx_rethrow_exn(fx_exn_t* exn)

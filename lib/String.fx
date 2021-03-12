@@ -23,6 +23,9 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
 
+@pure @nothrow fun startswith(s: string, prefix: char): bool = @ccode
+{ return s->length > 0 && s->data[0] == prefix; }
+
 @pure @nothrow fun endswith(s: string, suffix: string): bool = @ccode
 {
     int_ sz1 = s->length;
@@ -30,6 +33,9 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
     return sz2 == 0 ? true : sz2 <= sz1 && memcmp(s->data + (sz1 - sz2), suffix->data,
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
+
+@pure @nothrow fun endswith(s: string, suffix: char): bool = @ccode
+{ return s->length > 0 && s->data[s->length-1] == prefix; }
 
 @pure @nothrow fun find(s: string, part: string): int = @ccode
 {
@@ -46,6 +52,14 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
     return -1;
 }
 
+@pure @nothrow fun find(s: string, c: char): int = @ccode
+{
+    int_ i, sz1 = s->length;
+    for( i = 0; i < sz1; i++ )
+        if( s->data[i] == c ) return i;
+    return -1;
+}
+
 @pure @nothrow fun rfind(s: string, part: string): int = @ccode
 {
     int_ sz1 = s->length, sz2 = part->length, i = sz1 - sz2;
@@ -56,6 +70,14 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
             break;
     }
     return i;
+}
+
+@pure @nothrow fun rfind(s: string, c: char): int = @ccode
+{
+    int_ i, sz1 = s->length;
+    for( i = sz1-1; i >= 0; i-- )
+        if( s->data[i] == c ) return i;
+    return -1;
 }
 
 @pure @nothrow fun contains(s: string, c: char): bool = @ccode

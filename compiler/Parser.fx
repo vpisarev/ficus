@@ -18,6 +18,11 @@ type elist_t = exp_t list
 type id_exp_t = (id_t, exp_t)
 type id_elist_t = id_exp_t list
 
+fun good_variant_name(s: string) {
+    val c = s[0]
+    ('A' <= c <= 'Z') || s.contains('.')
+}
+
 fun tok2str(ts: (token_t, loc_t) list) =
     " ".join([: for (t, _) <- ts {tok2str(t).0} :])
 
@@ -27,6 +32,74 @@ fun make_literal(lit: lit_t, loc: loc_t) = ExpLit(lit, (get_lit_typ(lit), loc))
 fun make_ident(i: id_t, loc: loc_t) = ExpIdent(i, make_new_ctx(loc))
 fun make_ident(s: string, loc: loc_t) = ExpIdent(get_id(s), make_new_ctx(loc))
 fun make_tuple(el: exp_t list, loc: loc_t) = ExpMkTuple(el, make_new_ctx(loc))
+
+fun get_string(lit: lit_t, loc: loc_t): string =
+    match lit {
+    | LitString(s) => s
+    | _ => throw ParseError(loc, "string literal is expected")
+    }
+
+fun plist2exp(pl: pat_t list, prefix: string, loc: loc_t): (pat_t list, exp_t)
+{
+    fun pat2exp_(p: pat_t): (pat_t, exp_t)
+    {
+        | PatAny(loc) =>
+            val param_id = gen_temp_id(prefix)
+            (PatIdent(param_id, loc), make_ident(param_id, loc))
+        | PatIdent(i, loc) => (p, make_ident(i, loc))
+        | PatAs(p, i, loc) => (p, make_ident(i, loc))
+        | PatTyped(p, t, loc) =>
+            val (p, e) = pat2exp_(p)
+            (PatTyped(p, t, loc), e)
+        | _ =>
+            val loc = get_pat_loc(p)
+            val param_id = gen_temp_id(prefix)
+            (PatAs(p, param_id, loc), make_ident(param_id, loc))
+    }
+    val fold (plist, elist) = ([], []) for p <- pl {
+        val (p_, e_) = pat2exp_(p)
+        (p_ :: plist, e_ :: elist)
+    }
+    (plist.rev(), match elist { | e :: [] => e | _ => ExpMkTuple(elist.rev(), make_new_ctx(loc)) })
+}
+
+/*fun process_nested_for(nested_for, body) {
+    val fold (glob_el, nested_for_cl) = ([], []) for (loc, for_cl) <- nested_for {
+        val fold (glob_el, for_cl_, idx_pat) = (glob_el, [], PatAny(loc)) for (p, idxp, e) <- for_cl {
+            val (p_, p_e) = plist2exp([: p :], "x", get_pat_loc(p))
+            val p = List.hd(p_)
+            match (idxp, idx_pat) {
+            | (PatAny(_), idx_pat) => (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
+            | (_, PatAny(_)) =>
+                val (idxp_, idxp_e) = plist2exp([: idxp :], "i", get_pat_loc(idxp))
+                (p_e :: idxp_e :: glob_el, (p, e) :: for_cl_, idxp)
+            | _ => raise_syntax_err_loc(get_pat_loc(idxp), "@ is used more than once, which does not make sence and is not supported")
+            }
+        }
+        (glob_el, (for_cl_, idx_pat) :: nested_for_cl)
+    }
+    val for_iter_e = explist2exp(glob_el)
+    val body =
+    match body {
+    | ForBody(body) => body
+    | ForMatchBody(pmatch_clauses, clauses_loc) => ExpMatch(for_iter_e, pmatch_clauses.rev(), (make_new_typ(), clauses_loc))
+    }
+    (for_iter_e, nested_for_cl, body)
+}
+
+fun make_for(nested_for, body, flags) {
+    val (_, for_e) =
+    List.fold_right(
+        fun ((for_cl, idx_pat), (idx, for_e)) {
+            val curr_flags = flags.{for_flag_nested=idx > 0}
+            val (p, _) = List.hd(for_cl)
+            val loc = get_pat_loc(p)
+            (idx - 1, ExpFor(for_cl, idx_pat, for_e, curr_flags, loc))
+        },
+        nested_for,
+        (nested_for.length() - 1, body))
+    for_e
+}
 
 fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
                        nested_fold: ((pat_t, exp_t) list, pat_t) list, fold_body: exp_t)
@@ -72,10 +145,11 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
         match special {
         | "find" =>
             val x = get_id("x")
-            val some_pattern_clause = ([: PatVariant(some, [: PatIdent(x, body_end_loc) :], body_end_loc) :], make_ident(x, body_end_loc))
-            val else_pattern_clause =
-            ([: PatAny(body_end_loc) :], ExpThrow(make_typed_ident(get_id("NotFoundError"), TypExn, body_end_loc), body_end_loc))
-            ExpMatch(fr_exp, [: some_pattern_clause, else_pattern_clause :], (make_new_typ(), body_end_loc))
+            val some_case = ([: PatVariant(some, [: PatIdent(x, body_end_loc) :],
+                                body_end_loc) :], make_ident(x, body_end_loc))
+            val none_case = ([: PatAny(body_end_loc) :], ExpThrow(make_typed_ident(
+                                get_id("NotFoundError"), TypExn, body_end_loc), body_end_loc))
+            ExpMatch(fr_exp, [: some_case, none_case :], (make_new_typ(), body_end_loc))
         | _ => fr_exp
         }
         (fr_decl, new_body, new_fr_exp)
@@ -83,7 +157,7 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
     }
     val for_exp = make_for(nested_fold_cl, new_body, default_for_flags().{for_flag_fold=true})
     ExpSeq([: fr_decl, for_exp, fr_exp :], (make_new_typ(), curr_loc()))
-}
+}*/
 
 fun parse_err(ts: tklist_t, msg: string): exn
 {
@@ -92,6 +166,13 @@ fun parse_err(ts: tklist_t, msg: string): exn
     | _ => last_loc
     }
     ParseError(loc, msg)
+}
+
+fun exp2expseq(e: exp_t): exp_t list
+{
+    | ExpNop(_) => []
+    | ExpSeq(eseq, _) => eseq
+    | _ => e :: []
 }
 
 fun expseq2exp(eseq: exp_t list, loc: loc_t) =
@@ -124,8 +205,7 @@ fun check_ne(ne: bool, ts: tklist_t) = if !ne {
     throw parse_err(ts, "new line or ';' is expected before new expression")
 }
 
-fun parse_exp_list(ts0: tklist_t, parse_exp_f: tklist_t->(tklist_t, exp_t),
-                   ct: token_t, ~kw_mode: kw_mode_t, ~allow_empty: bool,
+fun parse_exp_list(ts0: tklist_t, ct: token_t, ~kw_mode: kw_mode_t, ~allow_empty: bool,
                    ~stop_at_semicolon: bool=false)
     : (tklist_t, elist_t, id_elist_t)
 {
@@ -156,7 +236,7 @@ fun parse_exp_list(ts0: tklist_t, parse_exp_f: tklist_t->(tklist_t, exp_t),
                 parse_exp_list_(idx+1, ts, el, (get_id(i), e) :: kw_el)
             | _ =>
                 if kw_mode == KwMust { throw parse_err(ts, f"expect a keyword element here '<ident> = ...'") }
-                val (ts, e) = parse_exp_f(ts)
+                val (ts, e) = parse_typed_exp(ts)
                 parse_exp_list_(idx+1, ts, e :: el, kw_el)
             }
         | _ => throw parse_err(ts0, "the expression list is not complete by the end of file, check parentheses")
@@ -164,23 +244,30 @@ fun parse_exp_list(ts0: tklist_t, parse_exp_f: tklist_t->(tklist_t, exp_t),
     parse_exp_list_(0, ts0, [], [])
 }
 
-fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
-    val (ts, e) = parse_complex_exp(ts)
-    match ts {
-    | (COLON, _) :: rest =>
-        val (ts, t) = parse_typespec(rest)
-        (ts, ExpTyped(e, t, (t, get_exp_loc(e))))
-    | (CAST, _) :: rest =>
-        val (ts, t) = parse_typespec(rest)
-        (ts, ExpCast(e, t, (make_new_typ(), get_exp_loc(e))))
-    | _ => (ts, e)
+fun parse_dot_ident(ts: tklist_t, expect_dot: bool, result: string): (tklist_t, string) =
+    match (ts, expect_dot) {
+    | ((DOT, _) :: rest, _) =>
+        if expect_dot { parse_dot_ident(rest, false, result) }
+        else { throw parse_err(ts, "extra '.'?") }
+    | (_, true) => (ts, result)
+    | ((IDENT(_, i), _) :: rest, _) =>
+        parse_dot_ident(rest, true, if result == "" {i} else {result + "." + i})
+    | _ =>
+        throw parse_err(ts, "identifier is expected")
     }
-}
 
-fun parse_array_literal(ts: tklist_t, start: loc_t): (tklist_t, exp_t) = throw parse_err(ts, "array literals are not supported")
-fun parse_typespec(ts: tklist_t): (tklist_t, typ_t) = throw parse_err(ts, "type specifications are not supported")
-fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t) = throw parse_err(ts, "blocks are not supported")
-fun parse_array_idx(ts: tklist_t): (tklist_t, exp_t) = parse_complex_exp(ts) // [TODO]: add range support
+fun parse_ident_list(ts: tklist_t, expect_comma: bool, result: id_t list): (tklist_t, id_t list) =
+    match ts {
+    | (COMMA, _) :: _ =>
+        if expect_comma {parse_ident_list(ts, false, result)}
+        else {throw parse_err(ts, "extra ','?")}
+    | (IDENT(_, i), _) :: rest =>
+        if expect_comma { (ts, result.rev()) }
+        else { parse_ident_list(rest, true, get_id(i) :: result) }
+    | _ =>
+        if result.empty() { throw parse_err(ts, "empty id list") }
+        (ts, result.rev())
+    }
 
 fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
 {
@@ -198,7 +285,7 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
         match_paren(parse_for(ts.tl(), ForMakeTuple), RPAREN, l1)
     | (LPAREN(ne), l1) :: rest =>
         check_ne(ne, ts)
-        val (ts, el, _) = parse_exp_list(rest, parse_typed_exp, RPAREN, kw_mode=KwNone, allow_empty=false)
+        val (ts, el, _) = parse_exp_list(rest, RPAREN, kw_mode=KwNone, allow_empty=false)
         (ts, match el {
         | e :: [] => e
         | _ => make_tuple(el, l1)
@@ -212,7 +299,7 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
     | (LLIST, l1) :: f :: _ when is_for_start(f, false) =>
         match_paren(parse_for(ts.tl(), ForMakeList), RLIST, l1)
     | (LLIST, l1) :: rest =>
-        val (ts, el, _) = parse_exp_list(rest, parse_typed_exp, RLIST, kw_mode=KwNone, allow_empty=true)
+        val (ts, el, _) = parse_exp_list(rest, RLIST, kw_mode=KwNone, allow_empty=true)
         (ts, fold mklist_e = make_literal(LitNil, l1) for e <- el.rev() {
             ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
         })
@@ -235,12 +322,12 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
         match ts {
         | (LPAREN(false), _) :: rest =>
             // function call ([TODO] support keyword args)
-            val (ts, args, kw_args) = parse_exp_list(rest, parse_typed_exp, RPAREN,
+            val (ts, args, kw_args) = parse_exp_list(rest, RPAREN,
                                             kw_mode=KwNone, allow_empty=true)
             extend_simple_exp_(ts, ExpCall(e, args, make_new_ctx(eloc)))
         | (LSQUARE(false), _) :: rest =>
             // array access ([TODO] support ranges)
-            val (ts, idxs, _) = parse_exp_list(rest, parse_array_idx, RPAREN,
+            val (ts, idxs, _) = parse_exp_list(rest, RPAREN,
                                             kw_mode=KwNone, allow_empty=false)
             extend_simple_exp_(ts, ExpAt(e, BorderNone, InterpNone, idxs, make_new_ctx(eloc)))
         | (t1, _) :: (t2, l2) :: rest when
@@ -256,7 +343,7 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
             extend_simple_exp_(rest, ExpMem(e, i, make_new_ctx(eloc)))
         | (t1, _) :: (LBRACE, l2) :: rest when (match t1 {| DOT | ARROW => true | _ => false}) =>
             val e = match t1 { | ARROW => make_unary(OpDeref, e, eloc) | _ => e }
-            val (ts, _, rec_init_elems) = parse_exp_list(rest, parse_typed_exp, RBRACE,
+            val (ts, _, rec_init_elems) = parse_exp_list(rest, RBRACE,
                                                 kw_mode=KwMust, allow_empty=true)
             extend_simple_exp_(ts, ExpUpdateRecord(e, rec_init_elems, make_new_ctx(eloc)))
         | _ => (ts, e)
@@ -272,9 +359,6 @@ fun parse_deref_exp(ts: tklist_t): (tklist_t, exp_t)
     | (STAR(true), l1) :: rest =>
         val (ts, e) = parse_deref_exp(rest)
         (ts, make_unary(OpDeref, e, l1))
-    | (POWER(true), l1) :: rest =>
-        val (ts, e) = parse_deref_exp(rest)
-        (ts, make_unary(OpDeref, make_unary(OpDeref, e, l1), l1))
     | _ =>
         parse_simple_exp(ts)
 }
@@ -330,7 +414,7 @@ fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
             | SLASH => (OpDiv, 220, AssocLeft)
             | PERCENT => (OpMod, 220, AssocLeft)
             | CONS => (OpCons, 100, AssocRight)
-            | POWER(false) => (OpPow, 230, AssocRight)
+            | POWER => (OpPow, 230, AssocRight)
             | SHIFT_LEFT => (OpShiftLeft, 200, AssocLeft)
             | SHIFT_RIGHT => (OpShiftRight, 200, AssocLeft)
             | BITWISE_OR => (OpBitwiseOr, 130, AssocLeft)
@@ -411,8 +495,6 @@ fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
     fun parse_logic_exp_(ts: tklist_t, result: exp_t, min_prec: int) =
     match ts {
     | (t, l) :: rest =>
-        // roughly sort binary ops by how often they are met in the code,
-        // so that we have less checks in general
         val (bop, prec, assoc) = match t {
             | LOGICAL_OR => (OpLogicOr, 10, AssocLeft)
             | LOGICAL_AND => (OpLogicAnd, 20, AssocLeft)
@@ -427,6 +509,7 @@ fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
             val result = ExpBinary(bop, result, rhs, (TypBool, l))
             parse_logic_exp_(ts, result, min_prec)
         }
+    | _ => (ts, result)
     }
     val (ts, e) = parse_chained_cmp_(ts)
     parse_logic_exp_(ts, e, 0)
@@ -447,98 +530,234 @@ fun parse_complex_exp_or_block(ts: tklist_t): (tklist_t, exp_t)
 fun parse_block(ts: tklist_t): (tklist_t, exp_t)
 {
     | (LBRACE, l1) :: rest =>
-        val (ts, eseq) = parse_exp_seq(rest, false)
+        val (ts, eseq) = parse_expseq(rest, false)
         val e = expseq2exp(eseq, l1)
         match_paren((ts, e), RBRACE, l1)
     | _ =>
-        throw parse_err(ts, f"'{' is expected")
+        throw parse_err(ts, "'{' is expected")
+}
+
+fun parse_ccode_exp(ts: tklist_t): (tklist_t, exp_t)
+{
+    | (CCODE, l1) :: (LITERAL(lit), l2) :: rest =>
+        val s = get_string(lit, l2)
+        (rest, ExpCCode(s, make_new_ctx(l1)))
+    | _ => throw parse_err(ts, "'ccode {...}' is expected")
 }
 
 fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
 {
-    fun extend_expseq_(ts: tklist_t, result: exp_t list): (tklist_t, exp_t)
+    fun extend_expseq_(ts: tklist_t, result: exp_t list): (tklist_t, exp_t list)
     {
-        // if there are more attributes, shared between val, type and fun in the future,
-        // then we can have a loop here and extract them all.
-        // have_attr will then will be their bitwise union (with '|').
-        val (is_private, ts) = match ts {
-            | (PRIVATE, _) :: rest => (true, rest)
-            | _ => (false, ts)
+        val ts = match ts {
+        | (SEMICOLON, _) :: rest =>
+            if result.empty() {
+                throw parse_err(ts, "unexpected ';' in the beginning of expression sequence")
+            }
+            rest
+        | _ => ts
         }
-
-        fun check_no_attr(ts: tklist_t, f: bool) =
-            if f {throw parse_err(ts,
-            "unexpected token after declaration-related attribute")}
-
-        val have_attr = is_private
 
         match ts {
-        | (SEMICOLON, _) :: rest =>
-            check_no_attr(have_attr); extend_exp_seq_(rest, result)
         | (RBRACE, _) :: _ | (BAR, _) :: _ | (EOF, _) :: _ =>
-            check_no_attr(have_attr); (ts, result.rev())
-        | (VAL, _) :: _ | (VAR, _) :: _ =>
-            val (ts, defvals) = parse_defval(ts, is_private)
-            extend_exp_seq_(ts, valdecls + result)
+            (ts, result.rev())
+        | (VAL, _) :: _ | (PRIVATE, _) :: (VAL, _) :: _
+        | (VAR, _) :: _ | (PRIVATE, _) :: (VAR, _) :: _ =>
+            val (ts, defvals) = parse_defvals(ts)
+            extend_expseq_(ts, defvals + result)
         | (OBJECT, _) :: (TYPE, _) :: _ | (TYPE, _) :: _ =>
             val (ts, deftyp) = parse_deftype(ts)
-            extend_exp_seq_(ts, deftyp :: result)
+            extend_expseq_(ts, deftyp :: result)
         | (FUN, _) :: (LPAREN(_), _) :: _ =>
-            if is_private { throw parse_err("lambda functions cannot be private") }
             val (ts, e) = parse_lambda(ts)
-            extend_exp_seq_(ts, e :: result)
+            extend_expseq_(ts, e :: result)
         | (PRIVATE, _) :: _ | (PURE, _) :: _ | (NOTHROW, _) :: _
         | (INLINE, _) :: _ | (FUN, _) :: _ =>
-            val (ts, defun) = parse_defun(ts, is_private)
-            extend_exp_seq_(ts, defun :: result)
-        | (EXCEPTION, _) :: _ =>
-            if is_private { throw parse_err("exceptions cannot be private") }
-            if !toplevel { throw parse_err("exceptions can only be defined at module level") }
-            val (ts, defexn) = parse_defexn(ts, is_private)
-            extend_exp_seq(ts, defexn :: result)
-        | (IMPORT, _) :: _ | (FROM, _) :: _ =>
-            if is_private { throw parse_err("import directives cannot be private") }
-            if !toplevel {throw parse_err("import directives can only be used at the module level")}
-            val (ts, import_dirs) = parse_import_dirs(ts, is)
-            extend_exp_seq(ts, import_dirs + result)
+            val (ts, defun) = parse_defun(ts)
+            extend_expseq_(ts, defun :: result)
+        | (EXCEPTION, l1) :: rest =>
+            if !toplevel { throw parse_err(ts, "exceptions can only be defined at module level") }
+            val (ts, i) = match rest {
+                | (IDENT(_, i), _) :: rest =>
+                    if !good_variant_name(i) {
+                        throw parse_err(ts, "exception name should start with a capital letter (A..Z)")
+                    }
+                    (rest, get_id(i))
+                | _ =>
+                    throw parse_err(rest, "identifier is expected")
+                }
+            val (ts, t) = match ts {
+                | (COLON, _) :: rest => parse_typespec(rest)
+                | _ => (ts, TypVoid)
+                }
+            val de = ref (defexn_t { dexn_name=i, dexn_typ=t, dexn_scope=ScGlobal :: [], dexn_loc=l1 })
+            extend_expseq_(ts, DefExn(de) :: result)
+        | (IMPORT(f), l1) :: rest =>
+            if !toplevel {throw parse_err(ts, "import directives can only be used at the module level")}
+            if !f { throw parse_err(ts, "';' or newline is expected before the import directive") }
+            fun parse_imported_(ts: tklist_t, expect_comma: bool, result: (id_t, id_t) list):
+                (tklist_t, (id_t, id_t) list) =
+                match ts {
+                | (COMMA, _) :: _ =>
+                    if expect_comma {parse_imported_(ts, false, result)}
+                    else {throw parse_err(ts, "extra ','?")}
+                | (IDENT(_, _), loc_i) :: _ =>
+                    if expect_comma { (ts, result.rev()) }
+                    else {
+                        val (ts, i) = parse_dot_ident(ts, false, "")
+                        val i = get_id(i)
+                        val (ts, j) = match ts {
+                            | (AS, _) :: (IDENT(_, j), _) :: rest => (rest, get_id(j))
+                            | _ => (ts, i)
+                            }
+                        val i_ = add_to_imported_modules(i, loc_i)
+                        parse_imported_(ts, true, (i_, j) :: result)
+                    }
+                | _ =>
+                    if result.empty() { throw parse_err(ts, "empty module list") }
+                    (ts, result.rev())
+                }
+            val (ts, imported) = parse_imported_(ts, false, [])
+            extend_expseq_(ts, DirImport(imported, l1) :: result)
+        | (FROM, l1) :: rest =>
+            if !toplevel {throw parse_err(ts, "import directives can only be used at the module level")}
+            val (ts, m_) = parse_dot_ident(rest, false, "")
+            val m = get_id(m_)
+            val m_ = add_to_imported_modules(m, l1)
+            match ts {
+            | (IMPORT(_), _) :: rest =>
+                val (ts, il) = parse_ident_list(ts, false, [])
+                extend_expseq_(ts, DirImportFrom(m_, il, l1) :: result)
+            | _ =>
+                throw parse_err(ts, "'import' is expected")
+            }
+        | (PRAGMA, l1) :: (LITERAL(lit), l2) :: rest =>
+            if !toplevel {throw parse_err(ts, "pragma directives can only be used at the module level")}
+            val pr = get_string(lit, l2)
+            fun more_pragmas_(ts: tklist_t, prl: string list) =
+                match ts {
+                | (COMMA, _) :: (LITERAL(lit), l2) :: rest =>
+                    val pr = get_string(lit, l2)
+                    more_pragmas_(rest, pr :: prl)
+                | _ => (ts, prl.rev())
+                }
+            val (ts, prl) = more_pragmas_(rest, pr :: [])
+            extend_expseq_(ts, DirPragma(prl, l2) :: result)
+        | (CCODE, _) :: _ =>
+            if !toplevel {throw parse_err(ts, "C code is only allowed at the top level or as rhs of function or value definition")}
+            val (ts, e) = parse_ccode_exp(ts)
+            extend_expseq_(ts, e :: result)
         | _ =>
-            check_no_attr(have_attr)
-            val (ts, exps) = parse_stmt(ts)
-            extend_exp_seq(ts, exps + result)
+            val (ts, e) = parse_stmt(ts)
+            extend_expseq_(ts, e :: result)
         }
     }
-    extend_exp_seq_(ts, [])
+    extend_expseq_(ts, [])
 }
 
 fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
 {
-    // parse value declaration; [TODO] add support for @private attribute
-    val loc = ts.hd().1
-    val (is_private, rest) = match ts { | (PRIVATE, _) :: rest => (true, rest) | _ => (false, ts) }
-    val is_mutable = match rest { | (VAR, _) :: _ => true | _ => false }
+    val (ts, is_private) = match ts {
+        | (PRIVATE, _) :: rest => (rest, true)
+        | _ => (ts, false)
+    }
+    val (ts, is_mutable) = match ts {
+        | (VAL, _) :: rest => (rest, false)
+        | (VAR, _) :: rest => (rest, true)
+        | _ => throw parse_err(ts, "'val' or 'var' is expected")
+    }
 
-    val (ts, valdecls) = parse_val_decl(rest.tl(), is_private, is_mutable, loc)
+    fun extend_defvals_(ts: tklist_t, expect_comma: bool, result: exp_t list): (tklist_t, exp_t list) =
+        match ts {
+        | (COMMA, _) :: rest =>
+            if expect_comma { extend_defvals_(rest, false, result) }
+            else { throw parse_err(ts, "extra ','?") }
+        | (IDENT(true, _), _) :: _ | (LPAREN(true), _) :: _
+        | (LBRACE, _) :: _ | (REF(true), _) :: _ =>
+            // do not reverse the result
+            if expect_comma { (ts, result) }
+            else {
+                val (ts, p) = parse_pat(ts, true)
+                match ts {
+                | (EQUAL, l1) :: rest =>
+                    val (ts, e) = parse_complex_exp_or_block(ts)
+                    val dv = DefVal(p, e, default_val_flags().
+                        {val_flag_mutable=is_mutable,
+                        val_flag_private=is_private}, l1)
+                    extend_defvals_(ts, true, dv :: result)
+                | _ => throw parse_err(ts, "'=' is expected")
+                }
+            }
+        | _ =>
+            // do not reverse the result
+            (ts, result)
+        }
+
+    extend_defvals_(ts, false, [])
+}
+
+fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
+{
+    var is_private = false, is_pure = false, is_nothrow = false, is_inline = false
+    var tsv = ts, fname = noid, loc = noloc
+
+    while true {
+        match tsv {
+        | (PRIVATE, _) :: rest =>
+            if is_private {throw parse_err(ts, "duplicate @private attribute")}
+            is_private = true; tsv = rest
+        | (PURE, _) :: rest =>
+            if is_pure {throw parse_err(ts, "duplicate @pure attribute")}
+            is_pure = true; tsv = rest
+        | (NOTHROW, _) :: rest =>
+            if is_nothrow {throw parse_err(ts, "duplicate @nothrow attribute")}
+            is_nothrow = true; tsv = rest
+        | (INLINE, _) :: rest =>
+            if is_inline {throw parse_err(ts, "duplicate @inline attribute")}
+            is_inline = true; tsv = rest
+        | (FUN, l1) :: (IDENT(_, i), _) :: (LPAREN(_), _) :: rest =>
+            tsv = rest; fname = get_id(i); loc = l1; break
+        | _ =>
+            throw parse_err(tsv, "'fun <funcname> (' is expected (after optional attributes)")
+        }
+    }
+
+    val (ts, params, rt, prologue, have_keywords) = parse_fun_params(tsv)
+    val fname_exp = make_ident(fname, loc)
+    parse_body_and_make_fun(ts, fname, params, rt, prologue,
+        default_fun_flags().{
+            fun_flag_private=is_private,
+            fun_flag_nothrow=is_nothrow,
+            fun_flag_pure=if is_pure {1} else {-1},
+            fun_flag_inline=is_inline,
+            fun_flag_has_keywords=have_keywords}, loc)
 }
 
 fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
 {
     match ts {
     | (IF, l1) :: rest =>
-        /*let rec make_if elif_seq else_exp = match elif_seq with
-            | (c, a) :: rest ->
-                let if_loc = loclist2loc [get_exp_loc c] (get_exp_loc else_exp) in
-                let new_else = ExpIf(c, a, else_exp, (make_new_typ(), if_loc)) in
-                make_if rest new_else
-            | _ -> else_exp
-        in
-        let (elif_seq, else_exp) = $2 in make_if elif_seq else_exp }*/
-        parse_if_(ts: )
+        fun parse_if_(ts: tklist_t, loc: loc_t): (tklist_t, exp_t)
+        {
+            val (ts, c) = parse_exp_or_block(rest)
+            val (ts, then_e) = parse_block(ts)
+            val (ts, else_e) = match ts {
+                | (ELSE, _) :: (IF, l2) :: rest =>
+                    // non-tail recursive call: continue else-if chain
+                    parse_if_(rest, l2)
+                | (ELSE, _) :: rest =>
+                    parse_block(rest)
+                | _ => (ts, ExpNop(l1))
+            }
+            (ts, ExpIf(c, then_e, else_e, make_new_ctx(l1)))
+        }
+        parse_if_(rest, l1)
     | (TRY, l1) :: rest =>
         val (ts, e) = parse_exp_or_block(rest)
         val (ts, e) = match ts {
             | (CATCH, _) :: rest =>
-                val (ts, clauses) = parse_matching_clauses(rest)
-                ExpTryCatch(e, clauses, make_new_ctx(l1))
+                val (ts, cases) = parse_match_cases(rest)
+                (ts, ExpTryCatch(e, cases, make_new_ctx(l1)))
             | _ => (ts, e)
             }
         match ts {
@@ -552,7 +771,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
             val try_block = expseq2exp(try_block, l1)
             val some_exn = gen_temp_id("e")
             val some_exn_pat = PatIdent(some_exn, fe_loc)
-            val rethrow_exn = ExpThrow(make_typed_ident(some_exn, TypExn, fe_loc), fe_loc)
+            val rethrow_exn = ExpThrow(ExpIdent(some_exn, (TypExn, fe_loc)), fe_loc)
             val catch_block = exp2expseq(dup_exp(final_e)) + (rethrow_exn :: [])
             val catch_block = expseq2exp(catch_block, fe_loc)
             val try_finally =
@@ -562,19 +781,19 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
         }
     | (MATCH, l1) :: rest =>
         val (ts, e) = parse_exp_or_block(rest)
-        val (ts, clauses) = parse_matching_clauses(ts)
-        (ts, ExpMatch(e, clauses, make_new_ctx(l1)))
+        val (ts, cases) = parse_match_cases(ts)
+        (ts, ExpMatch(e, cases, make_new_ctx(l1)))
     | (FOLD, l1) :: rest =>
-        val (ts, (p, e), for_clauses, body) = parse_fold(rest)
+        throw parse_err(ts, "fold is not supported yet")
+        /* [TODO] val (ts, (p, e), for_clauses, body) = parse_fold(rest)
         val fold_exp = transform_fold_exp("", p, e, for_clauses, body, l1)
-        (ts, fold_exp)
-    | (FUN, l1) :: rest =>
-        parse_lambda(ts, l1)
+        (ts, fold_exp)*/
+    | (FUN, _) :: _ => parse_lambda(ts)
     | _ =>
         val (ts, e) = parse_exp(ts)
         match ts {
         | (LBRACE, _) :: rest =>
-            val (ts, _, rec_init_elems) = parse_exp_list(ts, parse_exp, RBRACE,
+            val (ts, _, rec_init_elems) = parse_exp_list(ts, RBRACE,
                 kw_mode=KwMust, allow_empty=true, stop_at_semicolon=false)
             (ts, ExpMkRecord(e, rec_init_elems, make_new_ctx(get_exp_loc(e))))
         | _ => (ts, e)
@@ -582,24 +801,615 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
     }
 }
 
-fun parse_lambda(ts: tklist_t)
+fun parse_lambda(ts: tklist_t): (tklist_t, exp_t)
 {
-
+    val (ts, loc) = match ts {
+        | (FUN, l1) :: (LPAREN(_), _) :: rest => (rest, l1)
+        | _ => throw parse_err(ts, "lambda function (starting with 'fun (') is expected")
+    }
+    val (ts, params, rt, prologue, have_keywords) = parse_fun_params(ts)
+    val fname = gen_temp_id("lambda")
+    val fname_exp = make_ident(fname, loc)
+    val (ts, df) = parse_body_and_make_fun(ts, fname, params, rt, prologue,
+        default_fun_flags().{fun_flag_private=true, fun_flag_has_keywords=have_keywords}, loc)
+    (ts, ExpSeq(df :: fname_exp :: [], make_new_ctx(loc)))
 }
 
-| FUN fun_args block
-    {
-        let (args, rt) = $2 in
-        let body = expseq2exp (exp2expseq $3) 3 in
-        let fname = gen_temp_id "lambda" in
-        let df = make_deffun fname args rt body (default_fun_flags()) (curr_loc()) in
-        ExpSeq(df @ [make_ident fname (curr_loc_n 1)], make_new_ctx())
+fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
+    val (ts, e) = parse_complex_exp(ts)
+    match ts {
+    | (COLON, _) :: rest =>
+        val (ts, t) = parse_typespec(rest)
+        (ts, ExpTyped(e, t, (t, get_exp_loc(e))))
+    | (CAST, _) :: rest =>
+        val (ts, t) = parse_typespec(rest)
+        (ts, ExpCast(e, t, (make_new_typ(), get_exp_loc(e))))
+    | _ => (ts, e)
     }
-| FUN fun_args LBRACE BAR pattern_matching_clauses_ RBRACE
+}
+
+fun parse_array_literal(ts: tklist_t, start: loc_t): (tklist_t, exp_t) = throw parse_err(ts, "array literals are not supported")
+fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t) = throw parse_err(ts, "blocks are not supported")
+fun parse_array_idx(ts: tklist_t): (tklist_t, exp_t) = parse_complex_exp(ts) // [TODO]: add range support
+
+type kw_param_t = (id_t, typ_t, defparam_t?, loc_t)
+
+fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bool)
+{
+    fun add_fun_param(ts: tklist_t, params: pat_t list,
+        kw_params: kw_param_t list): (tklist_t, pat_t list, kw_param_t list)
     {
-        let fname = gen_temp_id "lambda" in
-        let df = make_pmatch_deffun (default_fun_flags(), fname) $2 $5 2 5 in
-        ExpSeq(df @ [make_ident fname (curr_loc_n 1)], make_new_ctx())
+        val all_empty = params.empty() && kw_params.empty()
+        val ts = match ts {
+            | (COMMA, _) :: rest =>
+                if all_empty { throw parse_err(ts, "',' is unexpected here") }
+                rest
+            | (RPAREN, _) :: _ => ts
+            | _ =>
+                if !all_empty { throw parse_err(ts, "',' is expected") }
+                ts
+            }
+        match ts {
+        | (RPAREN, _) :: rest => (rest, params.rev(), kw_params.rev())
+        | (TILDE, ploc) :: (IDENT(_, i), _) :: (COLON, _) :: rest =>
+            val (ts, t) = parse_typespec(rest)
+            val (ts, defparam) = match ts {
+                | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(lit))
+                | _ => (ts, None)
+                }
+            add_fun_param(ts, params, (get_id(i), t, defparam, ploc) :: kw_params)
+        | _ =>
+            if !kw_params.empty() {
+                throw parse_err(ts, "positional parameters cannot occur after or between named parameters")
+            }
+            val (ts, p) = parse_pat(ts, true)
+            add_fun_param(ts, p :: params, kw_params)
+        }
     }
+    val (ts, params, kw_params) = add_fun_param(ts, [], [])
+    val (ts, rt) = match ts {
+        | (COLON, _) :: rest => parse_typespec(rest)
+        | _ => (ts, make_new_typ())
+        }
+    if kw_params.empty() {
+        (ts, params, rt, [], false)
+    } else {
+        val recarg = gen_temp_id("__kwargs__")
+        val relems = [: for (i, t, v0, _) <- kw_params { (i, t, v0) } :]
+        val rectyp = TypRecord(ref (relems, true))
+        val (_, _, _, loc) = kw_params.hd()
+        val recpat = PatRecord(None, [: for (i, _, _, loci) <- kw_params {(i, PatIdent(i, loci))} :], loc)
+        val unpack_rec = DefVal(recpat, make_ident(recarg, loc), default_tempval_flags(), loc)
+        val recparam = PatTyped(PatIdent(recarg, loc), rectyp, loc)
+        (ts, params + (recparam :: []), rt, unpack_rec :: [], true)
+    }
+}
+
+fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: typ_t,
+                            prologue: exp_t list, fflags: fun_flags_t, loc: loc_t): (tklist_t, exp_t)
+{
+    val (ts, params, body) = match ts {
+        | (EQUAL, _) :: (CCODE, _) :: rest =>
+            val (ts, body) = parse_ccode_exp(ts.tl())
+            (ts, params, body)
+        | (EQUAL, _) :: rest =>
+            val (ts, body) = parse_stmt(ts.tl())
+            (ts, params, body)
+        | (LBRACE, l1) :: (BAR, _) :: _ =>
+            val (ts, cases) = parse_match_cases(ts)
+            val (params, match_arg) = plist2exp(params, "param", l1)
+            val match_e = ExpMatch(match_arg, cases, make_new_ctx(l1))
+            (ts, params, match_e)
+        | (LBRACE, _) :: _ =>
+            val (ts, body) = parse_block(ts)
+            (ts, params, body)
+        | _ =>
+            throw parse_err(ts, "'=' or '{' is expected")
+        }
+
+    val body =
+        if prologue.empty() { body }
+        else {
+            val loc = get_exp_loc(body)
+            expseq2exp(prologue + exp2expseq(body), loc)
+        }
+    val paramtyps = [: for p <- params {
+            match p {
+            | PatTyped(_, t, _) => t
+            | _ => make_new_typ()
+            }
+        } :]
+    val df = ref (deffun_t { df_name=fname, df_templ_args=[],
+        df_args=params, df_typ=TypFun(paramtyps, rt), df_body=body,
+        df_flags=fflags, df_scope=ScGlobal :: [], df_loc=loc,
+        df_templ_inst=ref [], df_env=make_empty_env()})
+
+    (ts, DefFun(df))
+}
+
+fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
+{
+    | (BREAK, l1) :: rest => (rest, ExpBreak(false, l1))
+    | (CONTINUE, l1) :: rest => (rest, ExpContinue(l1))
+    | (THROW, l1) :: rest => val (ts, e) = parse_exp(ts); (ts, ExpThrow(e, l1))
+    | (WHILE(true), l1) :: rest =>
+        val (ts, c) = parse_exp_or_block(ts)
+        val (ts, body) = parse_block(ts)
+        (ts, ExpWhile(c, body, l1))
+    | (DO, l1) :: rest =>
+        val (ts, body) = parse_exp_or_block(ts)
+        val (ts, c) = match ts {
+            | (WHILE(_), _) :: rest => parse_exp_or_block(ts)
+            | _ => throw parse_err(ts, "'while' is expected in do-while loop")
+            }
+        (ts, ExpDoWhile(body, c, l1))
+    | (PARALLEL, _) :: _ | (FOR(_), _) :: _ => parse_for(ts, ForMakeNone)
+    | (t, l1) :: _  =>
+        val (ts, e1) = parse_complex_exp(ts)
+        val lvalue_e1 = // very light check; more detailed one is done by the type checker
+            match e1 {
+            | ExpUnary(OpDeref, _, _) | ExpIdent(_, _) | ExpAt(_, _, _, _, _) | ExpMem(_, _, _) => true
+            | _ => false }
+        match ts {
+        | (EQUAL, l2) :: rest =>
+            if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
+            val (ts, e2) = parse_complex_exp(rest)
+            (ts, ExpAssign(e1, e2, l2))
+        | (AUG_BINOP(binop), l2) :: rest =>
+            if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
+            val (ts, e2) = parse_complex_exp(rest)
+            val e2 = make_binary(binop, e1, e2, l2)
+            (ts, ExpAssign(e1, e2, l1))
+        | (DOT_EQUAL, l2) :: (LBRACE, _) :: rest =>
+            if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
+            val (ts, _, rec_init_elems) = parse_exp_list(ts, RBRACE,
+                kw_mode=KwMust, allow_empty=true, stop_at_semicolon=false)
+            (ts, ExpUpdateRecord(e1, rec_init_elems, make_new_ctx(l2)))
+        | _ => (ts, e1)
+        }
+}
+
+fun parse_pat_list(ts: tklist_t, expect_comma: bool,
+                   result: pat_t list, simple: bool): (tklist_t, pat_t list) =
+    match (ts, expect_comma) {
+    | ((COLON, _) :: rest, _) =>
+        if expect_comma { parse_pat_list(rest, false, result, simple) }
+        else { throw parse_err(ts, "extra ','?")}
+    | ((RPAREN, _) :: rest, _) =>
+        if result.empty() { throw parse_err(ts, "empty tuple pattern are not allowed") }
+        (rest, result.rev())
+    | (_, true) =>
+        throw parse_err(ts, "',' is expected")
+    | _ =>
+        val (ts, p) = parse_pat(ts, simple)
+        parse_pat_list(ts, true, p :: result, simple)
+    }
+
+fun parse_idpat_list(ts: tklist_t, expect_comma: bool,
+        result: (id_t, pat_t) list, simple: bool): (tklist_t, (id_t, pat_t) list) =
+    match (ts, expect_comma) {
+    | ((COLON, _) :: rest, _) =>
+        if expect_comma { parse_idpat_list(rest, false, result, simple) }
+        else { throw parse_err(ts, "extra ','?") }
+    | ((RBRACE, _) :: rest, _) =>
+        (rest, result.rev())
+    | (_, true) =>
+        throw parse_err(ts, "',' is expected")
+    | ((IDENT(_, i_), l1) :: rest, _) =>
+        val i = get_id(i_)
+        val (ts, p) = match rest {
+            | (EQUAL, _) :: rest => parse_pat(rest, simple)
+            | _ => (rest, PatIdent(i, l1))
+            }
+        parse_idpat_list(ts, true, (i, p) :: result, simple)
+    | _ => throw parse_err(ts, "identifier is expected")
+    }
+
+fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
+{
+    fun parse_base_pat_(ts: tklist_t, simple: bool) =
+        match ts {
+        | (LITERAL(lit), l1) :: rest =>
+            if simple {throw parse_err(ts, "literals cannot be used in this pattern")}
+            (rest, PatLit(lit, l1))
+        | (IDENT(_, _), l1) :: _ =>
+            val (ts, i1_) = parse_dot_ident(ts, false, "")
+            val i1 = get_id(i1_)
+            match ts {
+            | (IDENT(_, i2), l2) :: rest =>
+                (rest, PatVariant(i1, PatIdent(get_id(i2), l2) :: [], l1))
+            | (LITERAL(lit), l2) :: rest =>
+                if simple {throw parse_err(ts, "literals cannot be used in this pattern")}
+                (rest, PatVariant(i1, PatLit(lit, l2) :: [], l1))
+            | (LPAREN(false), l2) :: rest =>
+                val (ts, pl) = parse_pat_list(rest, false, [], simple)
+                (ts, PatVariant(i1, pl, l1))
+            | (LBRACE, l2) :: rest =>
+                val (ts, ipl) = parse_idpat_list(rest, false, [], simple)
+                (ts, PatRecord(Some(i1), ipl, l1))
+            | _ =>
+                if good_variant_name(i1_) { (ts, PatVariant(i1, [], l1)) }
+                else { (ts, PatIdent(i1, l1)) }
+            }
+        | (LPAREN(_), l1) :: rest =>
+            val (ts, pl) = parse_pat_list(rest, false, [], simple)
+            (ts, match pl { | p :: [] => p | _ => PatTuple(pl, l1) })
+        | (LBRACE, l1) :: rest =>
+            val (ts, ipl) = parse_idpat_list(rest, false, [], simple)
+            (ts, PatRecord(None, ipl, l1))
+        | (REF(true), l1) :: rest =>
+            val (ts, p) = parse_base_pat_(rest, simple)
+            (ts, PatRef(p, l1))
+        | _ =>
+            throw parse_err(ts, "pattern is expected")
+        }
+
+    fun extend_pat_(ts: tklist_t, result: pat_t, min_prec: int, simple: bool) =
+        match ts {
+        | (t, l) :: rest =>
+            // roughly sort binary ops by how often they are met in the code,
+            // so that we have less checks in general
+            val (prec, assoc) = match t {
+                | WHEN => (40, AssocLeft)
+                | CONS => (50, AssocRight)
+                | AS => (60, AssocLeft)
+                | COLON => (70, AssocLeft)
+                | _ => (-1, AssocLeft)
+            }
+            if prec < min_prec { (ts, result) }
+            else {
+                val next_min_prec = match assoc { | AssocLeft => prec+1 | _ => prec }
+                match t {
+                | WHEN =>
+                    if simple {throw parse_err(ts, "when-patterns are not allowed here")}
+                    val (ts, e) = parse_exp(rest)
+                    (ts, PatWhen(result, e, l))
+                | AS =>
+                    match rest {
+                    | (IDENT(_, i), _) :: rest =>
+                        extend_pat_(rest, PatAs(result, get_id(i), l), min_prec, simple)
+                    | _ => throw parse_err(ts, "identifier is expected")
+                    }
+                | COLON =>
+                    val (ts, t) = parse_typespec(ts)
+                    extend_pat_(ts, PatTyped(result, t, l), min_prec, simple)
+                | CONS =>
+                    if simple {throw parse_err(ts, "'::'-patterns are not allowed here")}
+                    val (ts, p2) = parse_base_pat_(ts, simple)
+                    val (ts, p2) = extend_pat_(ts, p2, next_min_prec, simple)
+                    extend_pat_(ts, PatCons(result, p2, l), min_prec, simple)
+                | _ => throw parse_err(ts, "unxpected token")
+                }
+            }
+        | _ => (ts, result)
+        }
+    val (ts, p) = parse_base_pat_(ts, simple)
+    extend_pat_(ts, p, 0, simple)
+}
+
+type mcase_t = (pat_t list, exp_t)
+
+fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
+{
+    val ts = match ts {
+    | (LBRACE, _) :: (BAR, _) :: rest => rest
+    | (LBRACE, _) :: rest => rest
+    | _ => throw parse_err(ts, "'{' is expected")
+    }
+
+    fun parse_alt_pats_(ts: tklist_t, expect_bar: bool, result: pat_t list): (tklist_t, pat_t list) =
+        match (ts, expect_bar) {
+        | ((BAR, _) :: rest, _) =>
+            if expect_bar { parse_alt_pats_(rest, false, result) }
+            else { throw parse_err(ts, "extra '|'?") }
+        | ((ARROW, _) :: _, _) => throw parse_err(ts, "unexpected '->', did you mean '=>'?")
+        | ((DOUBLE_ARROW, _) :: rest, true) => (rest, result.rev())
+        | ((BAR, _) :: _, false) | ((DOUBLE_ARROW, _) :: _, false) =>
+            throw parse_err(ts, "pattern is expected")
+        | _ =>
+            val (ts, p) = parse_pat(ts, false)
+            parse_alt_pats_(ts, true, p :: result)
+        }
+
+    fun extend_match_cases_(ts: tklist_t, result: mcase_t list): (tklist_t, mcase_t list) =
+        match ts {
+        | (RBRACE, _) :: rest =>
+            if result.empty() {
+                throw parse_err(ts, "at least one pattern-matching case is expected")
+            }
+            (rest, result.rev())
+        | _ =>
+            val (ts, pl) = parse_alt_pats_(ts, false, [])
+            val (ts, e) = match ts {
+                | (LBRACE, l1) :: (RBRACE, _) :: rest =>
+                    (rest, ExpNop(l1))
+                | (t, l1) :: _ =>
+                    val (ts, el) = parse_expseq(ts, false)
+                    match el {
+                    | _ :: _ => (ts, expseq2exp(el, noloc))
+                    | _ => throw parse_err(ts,
+                        "some expressions are expected; use '{}' if there is no action for the particular match case")
+                    }
+                }
+            val ts = match ts {
+                | (BAR, _) :: rest => rest
+                | _ => ts
+                }
+            extend_match_cases_(ts, (pl, e) :: result)
+        }
+    extend_match_cases_(ts, [])
+}
+
+fun typ2typlist(t: typ_t): typ_t list
+{
+    | TypTuple(tl) => tl
+    | TypVoid => []
+    | _ => t :: []
+}
+
+fun parse_typespec(ts: tklist_t): (tklist_t, typ_t)
+{
+    fun parse_atomic_typ_(ts: tklist_t): (tklist_t, typ_t)
+    {
+    | (IDENT(_, i), _) :: _ =>
+        val (ts, i) = parse_dot_ident(ts, false, "")
+        val t = match i {
+            | "int" => TypInt
+            | "float" => TypFloat(32)
+            | "double" => TypFloat(64)
+            | "string" => TypString
+            | "char" => TypChar
+            | "bool" => TypBool
+            | "int8" => TypSInt(8)
+            | "uint8" => TypUInt(8)
+            | "int16" => TypSInt(16)
+            | "uint16" => TypUInt(16)
+            | "int32" => TypSInt(32)
+            | "uint32" => TypUInt(32)
+            | "int64" => TypSInt(64)
+            | "uint64" => TypUInt(64)
+            | "half" => TypFloat(16)
+            | "void" => TypVoid
+            | "exn" => TypExn
+            | "cptr" => TypCPointer
+            | _ => TypApp([], get_id(i))
+        }
+        (ts, t)
+    | (TYVAR(i), _) :: rest =>
+        (rest, TypApp([], get_id(i)))
+    | (LPAREN(_), l1) :: rest =>
+        fun parse_tuple_(ts: tklist_t, expect_comma: bool,
+            result: typ_t list, loc: loc_t): (tklist_t, typ_t) =
+            match ts {
+            | (ELLIPSIS, _) :: (RPAREN, _) :: rest =>
+                val t = match result {
+                    | [] => TypVar (ref (Some (TypVarTuple(None))))
+                    | t :: [] =>
+                        if !expect_comma { throw parse_err(ts, "extra ',' before '...'?") }
+                        TypVar (ref (Some (TypVarTuple(Some(t)))))
+                    | _ => throw parse_err(ts, "'...' can only be used with '{...}', '(...)' or '(t1 ...)' type specifications")
+                    }
+                (rest, t)
+            | (COMMA, _) :: rest =>
+                if expect_comma { parse_tuple_(rest, false, result, loc) }
+                else { throw parse_err(ts, "extra ','?") }
+            | (LITERAL(LitInt(n)), _) :: (STAR(_), _) :: rest =>
+                if expect_comma { throw parse_err(ts, "',' is expected") }
+                if n <= 0L { throw parse_err(ts, "tuple multiplicator should be positive") }
+                val (ts, t) = parse_typespec_nf(rest)
+                val tt = [: for i <- 0:(n :> int) {t} :]
+                parse_tuple_(ts, true, tt + result, loc)
+            | (RPAREN, _) :: rest =>
+                val t = match result {
+                    | t :: [] => t
+                    | [] => throw parse_err(ts, "empty tuple")
+                    | _ => TypTuple(result.rev())
+                }
+                (rest, t)
+            | _ =>
+                if expect_comma { throw parse_err(ts, "',' is expected") }
+                val (ts, t) = parse_typespec_nf(rest)
+                match ts {
+                | (STAR(_), _) :: (LITERAL(LitInt(n)), _) :: rest =>
+                    val tt = [: for i <- 0:(n :> int) {t} :]
+                    parse_tuple_(rest, true, tt + result, loc)
+                | (ARROW, _) :: rest =>
+                    val (ts, rt) = parse_typespec(rest)
+                    parse_tuple_(ts, true, TypFun(typ2typlist(t), rt) :: result, loc)
+                | _ =>
+                    val (ts, t) = extend_typespec_nf_(ts, t)
+                    parse_tuple_(ts, true, t :: result, loc)
+                }
+            }
+        parse_tuple_(rest, false, [], l1)
+    | (LBRACE, _) :: (ELLIPSIS, _) :: (RBRACE, _) :: rest =>
+        (rest, TypVar (ref (Some (TypVarRecord))))
+    }
+
+    fun extend_typespec_nf_(ts: tklist_t, result: typ_t): (tklist_t, typ_t) =
+        match ts {
+        | (IDENT(false, _), _) :: _ =>
+            val (ts, i) = parse_dot_ident(ts, false, "")
+            val t = match i {
+                | "list" => TypList(result)
+                | _ => TypApp(typ2typlist(result), get_id(i))
+                }
+            extend_typespec_nf_(ts, t)
+        | (QUESTION, _) :: rest =>
+            extend_typespec_nf_(ts, TypApp(result :: [], get_id("option")))
+        | (REF(false), _) :: rest =>
+            extend_typespec_nf_(ts, TypRef(result))
+        | (LSQUARE(false), _) :: (PLUS(_), _) :: (RSQUARE, _) :: rest =>
+            extend_typespec_nf_(rest, TypVar(ref (Some(TypVarArray(result)))))
+        | (LSQUARE(false), _) :: rest =>
+            var vts = rest, ndims = 1
+            while true {
+                match vts {
+                | (COMMA, _) :: rest => vts = rest; ndims += 1
+                | (RSQUARE, _) :: rest => vts = rest; break
+                | _ => throw parse_err(ts, "unfinished array shape specification (missing ']'?)")
+                }
+            }
+            extend_typespec_nf_(vts, TypArray(ndims, result))
+        | _ => (ts, result)
+        }
+
+    fun parse_typespec_nf(ts: tklist_t): (tklist_t, typ_t)
+    {
+        val (ts, t) = parse_atomic_typ_(ts)
+        extend_typespec_nf_(ts, t)
+    }
+
+    val (ts, t) = parse_typespec_nf(ts)
+    match ts {
+    | (ARROW, _) :: rest =>
+        val (ts, rt) = parse_typespec(rest)
+        (ts, TypFun(typ2typlist(t), rt))
+    | _ => (ts, t)
+    }
+}
+
+type relem_t = (id_t, typ_t, defparam_t?)
+
+fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
+{
+    | (LBRACE, _) :: (ELLIPSIS, _) :: (RBRACE, _) :: _ =>
+        throw parse_err(ts, "'{...}' cannot be used inside type definitions, only for function parameters")
+    | (LBRACE, _) :: rest =>
+        fun parse_relems_(ts: tklist_t, expect_semicolon: bool, result: relem_t list): (tklist_t, relem_t list) =
+            match ts {
+            | (SEMICOLON, _) :: rest =>
+                if expect_semicolon { parse_relems_(rest, false, result) }
+                else { throw parse_err(ts, "extra ';'?") }
+            | (RBRACE, _) :: rest =>
+                if result.empty() { throw parse_err(ts, "empty list of record elements") }
+                (ts, result.rev())
+            | (IDENT(f, i), l1) :: (COLON, _) :: rest =>
+                if expect_semicolon && !f {
+                    throw parse_err(ts, "';' or newline should be inserted between record elements")
+                }
+                val (ts, t) = parse_typespec(rest)
+                val (ts, default_) = match ts {
+                    | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(lit))
+                    | _ => (ts, None)
+                }
+                parse_relems_(ts, true, (get_id(i), t, default_) :: result)
+            | _ =>
+                throw parse_err(ts, (if expect_semicolon {"';' or newline is expected"} else
+                    {"identifier followed by ':' is expected"}))
+            }
+        val (ts, relems) = parse_relems_(rest, false, [])
+        (ts, TypRecord(ref (relems, true)))
+    | _ => parse_typespec(ts)
+}
+
+fun parse_deftype(ts: tklist_t)
+{
+    val (ts, object_type_module) = match ts {
+        | (OBJECT, _) :: rest => (rest, parser_ctx.module_id)
+        | _ => (ts, noid)
+        }
+
+    val ts = match ts {
+        | (TYPE, _) :: rest => rest
+        | _ => throw parse_err(ts, "'type' is expected")
+        }
+
+    fun parse_tyvars_(ts: tklist_t, expect_comma: bool, tyvars: id_t list, loc: loc_t): (tklist_t, id_t list) =
+        match ts {
+        | (COMMA, _) :: rest =>
+            if expect_comma { parse_tyvars_(rest, false, tyvars, loc) }
+            else { throw parse_err(ts, "extra ','?") }
+        | (TYVAR(i), _) :: rest =>
+            if expect_comma { throw parse_err(ts, "',' is expected") }
+            parse_tyvars_(rest, true, get_id(i) :: tyvars, loc)
+        | (RPAREN, _) :: rest => (rest, tyvars.rev())
+        | _ => throw parse_err(ts, f"incomplete type var list started at {loc}, ')' is missing?")
+        }
+
+    val (ts, type_params) = match ts {
+        | (TYVAR(i), _) :: rest => (rest, get_id(i) :: [])
+        | (LPAREN(_), l1) :: rest =>
+            val (ts, type_params) = parse_tyvars_(rest, false, [], l1)
+            if type_params.empty() { throw parse_err(ts,
+                "empty list of type parameters inside (); if you don't want type parameters, just remove ()")
+            }
+            (ts, type_params)
+        | _ => (ts, [])
+        }
+
+    val (ts, tname, loc) = match ts {
+        | (IDENT(_, i), loc) :: (EQUAL, _) :: rest => (rest, get_id(i), loc)
+        | _ => throw parse_err(ts, f"the type name, followed by '=' is expected")
+        }
+
+    match ts {
+    | (LBRACE, _) :: _ =>
+        val (ts, t) = parse_typespec_or_record(ts)
+        val dvar = ref (defvariant_t {
+            dvar_name = tname, dvar_templ_args=type_params,
+            dvar_alias = make_new_typ(),
+            dvar_flags = default_variant_flags().{
+                var_flag_record=true,
+                var_flag_object=object_type_module },
+            dvar_cases = (noid, t) :: [],
+            dvar_ctors = [],
+            dvar_templ_inst = ref [],
+            dvar_scope = ScGlobal :: [],
+            dvar_loc = loc
+        })
+        (ts, DefVariant(dvar))
+    | (BITWISE_OR, _) :: (IDENT(_, _), _) :: _
+    | (IDENT(_, _), _) :: (BITWISE_OR, _) :: _
+    | (IDENT(_, _), _) :: (COLON, _) :: _ =>
+        val ts = match ts { | (BITWISE_OR, _) :: rest => rest | _ => ts }
+        fun parse_cases_(ts: tklist_t, expect_bar: bool,
+            result: (id_t, typ_t) list): (tklist_t, (id_t, typ_t) list) =
+            match ts {
+            | (BITWISE_OR, _) :: rest =>
+                if expect_bar { parse_cases_(rest, false, result) }
+                else { throw parse_err(ts, "extra '|'?") }
+            | (IDENT(_, i), _) :: (COLON, _) :: rest =>
+                if expect_bar { (ts, result.rev()) }
+                else {
+                    if !good_variant_name(i) {
+                        throw parse_err(ts, "variant label should start with a capital letter A..Z")
+                    }
+                    val (ts, t) = parse_typespec_or_record(rest)
+                    parse_cases_(rest, true, (get_id(i), t) :: result)
+                }
+            | (IDENT(_, i), _) :: rest =>
+                if expect_bar { (ts, result.rev()) }
+                else {
+                    if !good_variant_name(i) {
+                        throw parse_err(ts, "variant label should start with a capital letter A..Z")
+                    }
+                    parse_cases_(rest, true, (get_id(i), TypVoid) :: result)
+                }
+            | _ => (ts, result.rev())
+            }
+        val (ts, cases) = parse_cases_(ts, false, [])
+        val dvar = ref (defvariant_t {
+            dvar_name = tname, dvar_templ_args=type_params,
+            dvar_alias = make_new_typ(),
+            dvar_flags = default_variant_flags().{
+                var_flag_record=false,
+                var_flag_object=object_type_module},
+            dvar_cases = cases,
+            dvar_ctors = [],
+            dvar_templ_inst = ref [],
+            dvar_scope = ScGlobal :: [],
+            dvar_loc = loc
+        })
+        (ts, DefVariant(dvar))
+    | _ =>
+        if object_type_module != noid { throw parse_err(ts, "type aliase (i.e. not a record nor variant) cannot be 'object type'") }
+        val (ts, t) = parse_typespec(ts)
+        val dt = ref (deftyp_t {
+            dt_name=tname, dt_templ_args=type_params, dt_typ=t, dt_finalized=false,
+            dt_scope=ScGlobal :: [], dt_loc=loc })
+        (ts, DefTyp(dt))
+    }
+}
 
 fun parse(ts: tklist_t): (tklist_t, exp_t list) = parse_expseq(ts, true)
