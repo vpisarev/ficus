@@ -915,6 +915,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     (if s.empty() {(RPAREN, loc) :: []}
                     else {(RPAREN, loc) :: (PLUS(false), loc) :: (LITERAL(Ast.LitString(s)), loc) :: []}) +
                     (if inline_exp {
+                        new_exp = true
                         paren_stack = (STR_INTERP_LPAREN, getloc(pos)) :: paren_stack
                         (PLUS(false), loc) :: (IDENT(true, "string"), loc) :: (LPAREN(false), loc) :: []
                     } else {

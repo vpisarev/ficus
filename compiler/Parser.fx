@@ -202,6 +202,7 @@ match t {
 }
 
 fun check_ne(ne: bool, ts: tklist_t) = if !ne {
+    println(f"check_ne failed({tok2str(ts)})\n")
     throw parse_err(ts, "new line or ';' is expected before new expression")
 }
 
@@ -269,9 +270,7 @@ fun parse_ident_list(ts: tklist_t, expect_comma: bool, result: id_t list): (tkli
         (ts, result.rev())
     }
 
-fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
-{
-    println(f"atomic_exp({tok2str(ts)})\n")
+fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t) =
     match ts {
     | (IDENT(ne, i), l1) :: rest =>
         check_ne(ne, ts)
@@ -308,13 +307,12 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
     | _ =>
         throw parse_err(ts, f"premature end of the stream; check the parens")
     }
-}
 
 fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
 {
-    println(f"simple_exp({tok2str(ts)})\n")
+    //println(f"simple_exp({tok2str(ts)})\n")
     fun extend_simple_exp_(ts: tklist_t, e: exp_t) {
-        println(f"extend_simple_exp({tok2str(ts)})\n")
+        //println(f"extend_simple_exp({tok2str(ts)})\n")
         val eloc = get_exp_loc(e)
         // 1. element access (.|->) (int|ident)
         // 2. array access [...]
@@ -333,7 +331,7 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
         | (t1, _) :: (t2, l2) :: rest when
             // [TODO] add support for alternating patterns right into the pattern matching syntax
             (match t1 {| DOT | ARROW => true | _ => false}) &&
-            (match t2 {| IDENT(false, _) | LITERAL(LitInt _) => true | _ => false}) =>
+            (match t2 {| IDENT(true, _) | LITERAL(LitInt _) => true | _ => false}) =>
             val e = match t1 { | ARROW => make_unary(OpDeref, e, eloc) | _ => e }
             val i = match t2 {
                 | IDENT(true, i) => make_ident(i, l2)
@@ -343,8 +341,7 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
             extend_simple_exp_(rest, ExpMem(e, i, make_new_ctx(eloc)))
         | (t1, _) :: (LBRACE, l2) :: rest when (match t1 {| DOT | ARROW => true | _ => false}) =>
             val e = match t1 { | ARROW => make_unary(OpDeref, e, eloc) | _ => e }
-            val (ts, _, rec_init_elems) = parse_exp_list(rest, RBRACE,
-                                                kw_mode=KwMust, allow_empty=true)
+            val (ts, _, rec_init_elems) = parse_exp_list(rest, RBRACE, kw_mode=KwMust, allow_empty=true)
             extend_simple_exp_(ts, ExpUpdateRecord(e, rec_init_elems, make_new_ctx(eloc)))
         | _ => (ts, e)
         }
@@ -374,7 +371,7 @@ fun parse_apos_exp(ts: tklist_t): (tklist_t, exp_t)
 
 fun parse_unary_exp(ts: tklist_t): (tklist_t, exp_t)
 {
-    println(f"unary_exp({tok2str(ts)})\n")
+    //println(f"unary_exp({tok2str(ts)})\n")
     match ts {
     | (REF(true), l1) :: rest =>
         val (ts, e) = parse_unary_exp(rest)
@@ -401,7 +398,7 @@ fun parse_unary_exp(ts: tklist_t): (tklist_t, exp_t)
 
 fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
 {
-    println(f"binary_exp({tok2str(ts)})\n")
+    //println(f"binary_exp({tok2str(ts)})\n")
     fun parse_binary_exp_(ts: tklist_t, result: exp_t, min_prec: int) =
     match ts {
     | (t, l) :: rest =>
@@ -450,7 +447,7 @@ fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
     fun extend_chained_cmp_(ts: tklist_t,
         chain: ((cmpop_t, loc_t), exp_t) list): (tklist_t, exp_t)
     {
-    println(f"binary_exp({tok2str(ts)})\n")
+    //println(f"binary_exp({tok2str(ts)})\n")
     match ts {
     | (CMP(cmpop), l1) :: rest =>
         val (ts, e) = parse_binary_exp(rest)
@@ -560,6 +557,9 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
 
         match ts {
         | (RBRACE, _) :: _ | (BAR, _) :: _ | (EOF, _) :: _ =>
+            if toplevel && (match ts {| (EOF, _) :: _ => false | _ => true}) {
+                throw parse_err(ts, "unexpected '}'")
+            }
             (ts, result.rev())
         | (VAL, _) :: _ | (PRIVATE, _) :: (VAL, _) :: _
         | (VAR, _) :: _ | (PRIVATE, _) :: (VAR, _) :: _ =>
@@ -572,7 +572,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
             val (ts, e) = parse_lambda(ts)
             extend_expseq_(ts, e :: result)
         | (PRIVATE, _) :: _ | (PURE, _) :: _ | (NOTHROW, _) :: _
-        | (INLINE, _) :: _ | (FUN, _) :: _ =>
+        | (INLINE, _) :: _ | (FUN, _) :: _ | (OPERATOR, _) :: _ =>
             val (ts, defun) = parse_defun(ts)
             extend_expseq_(ts, defun :: result)
         | (EXCEPTION, l1) :: rest =>
@@ -617,7 +617,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
                     if result.empty() { throw parse_err(ts, "empty module list") }
                     (ts, result.rev())
                 }
-            val (ts, imported) = parse_imported_(ts, false, [])
+            val (ts, imported) = parse_imported_(rest, false, [])
             extend_expseq_(ts, DirImport(imported, l1) :: result)
         | (FROM, l1) :: rest =>
             if !toplevel {throw parse_err(ts, "import directives can only be used at the module level")}
@@ -680,7 +680,7 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
                 val (ts, p) = parse_pat(ts, true)
                 match ts {
                 | (EQUAL, l1) :: rest =>
-                    val (ts, e) = parse_complex_exp_or_block(ts)
+                    val (ts, e) = parse_complex_exp_or_block(rest)
                     val dv = DefVal(p, e, default_val_flags().
                         {val_flag_mutable=is_mutable,
                         val_flag_private=is_private}, l1)
@@ -694,6 +694,43 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
         }
 
     extend_defvals_(ts, false, [])
+}
+
+fun parse_opname(t: token_t, loc: loc_t): id_t =
+match t {
+| APOS => fname_op_apos()
+| PLUS(_) => fname_op_add()
+| MINUS(_)  => fname_op_sub()
+| STAR(_)  => fname_op_mul()
+| SLASH  => fname_op_div()
+| PERCENT  => fname_op_mod()
+| POWER  => fname_op_pow()
+| DOT_STAR  => fname_op_dot_mul()
+| DOT_SLASH  => fname_op_dot_div()
+| DOT_PERCENT  => fname_op_dot_mod()
+| DOT_POWER  => fname_op_dot_pow()
+| SHIFT_LEFT  => fname_op_shl()
+| SHIFT_RIGHT  => fname_op_shr()
+| BITWISE_AND  => fname_op_bit_and()
+| BITWISE_OR   => fname_op_bit_or()
+| BITWISE_XOR  => fname_op_bit_xor()
+| TILDE  => fname_op_bit_not()
+| SPACESHIP  => fname_op_cmp()
+//| SAME    => fname_op_same()
+| CMP(CmpEQ)  => fname_op_eq()
+| CMP(CmpNE)  => fname_op_ne()
+| CMP(CmpLE)  => fname_op_le()
+| CMP(CmpGE)  => fname_op_ge()
+| CMP(CmpLT)  => fname_op_lt()
+| CMP(CmpGT)  => fname_op_gt()
+| DOT_SPACESHIP  => fname_op_dot_cmp()
+| DOT_CMP(CmpEQ)  => fname_op_dot_eq()
+| DOT_CMP(CmpNE)  => fname_op_dot_ne()
+| DOT_CMP(CmpLE)  => fname_op_dot_le()
+| DOT_CMP(CmpGE)  => fname_op_dot_ge()
+| DOT_CMP(CmpLT)  => fname_op_dot_lt()
+| DOT_CMP(CmpGT)  => fname_op_dot_gt()
+| _ => throw ParseError(loc, f"unexpected operator '{Lexer.tok2str(t).1}'")
 }
 
 fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
@@ -717,6 +754,8 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
             is_inline = true; tsv = rest
         | (FUN, l1) :: (IDENT(_, i), _) :: (LPAREN(_), _) :: rest =>
             tsv = rest; fname = get_id(i); loc = l1; break
+        | (OPERATOR, l1) :: (t, l2) :: (LPAREN(_), _) :: rest =>
+            tsv = rest; fname = parse_opname(t, l2); loc = l1; break
         | _ =>
             throw parse_err(tsv, "'fun <funcname> (' is expected (after optional attributes)")
         }
@@ -793,7 +832,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
         val (ts, e) = parse_exp(ts)
         match ts {
         | (LBRACE, _) :: rest =>
-            val (ts, _, rec_init_elems) = parse_exp_list(ts, RBRACE,
+            val (ts, _, rec_init_elems) = parse_exp_list(rest, RBRACE,
                 kw_mode=KwMust, allow_empty=true, stop_at_semicolon=false)
             (ts, ExpMkRecord(e, rec_init_elems, make_new_ctx(get_exp_loc(e))))
         | _ => (ts, e)
@@ -836,37 +875,31 @@ type kw_param_t = (id_t, typ_t, defparam_t?, loc_t)
 
 fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bool)
 {
-    fun add_fun_param(ts: tklist_t, params: pat_t list,
-        kw_params: kw_param_t list): (tklist_t, pat_t list, kw_param_t list)
-    {
-        val all_empty = params.empty() && kw_params.empty()
-        val ts = match ts {
-            | (COMMA, _) :: rest =>
-                if all_empty { throw parse_err(ts, "',' is unexpected here") }
-                rest
-            | (RPAREN, _) :: _ => ts
-            | _ =>
-                if !all_empty { throw parse_err(ts, "',' is expected") }
-                ts
-            }
+    fun add_fun_param(ts: tklist_t, expect_comma: bool, params: pat_t list,
+        kw_params: kw_param_t list): (tklist_t, pat_t list, kw_param_t list) =
         match ts {
-        | (RPAREN, _) :: rest => (rest, params.rev(), kw_params.rev())
+        | (COMMA, _) :: rest =>
+            if expect_comma { add_fun_param(rest, false, params, kw_params) }
+            else { throw parse_err(ts, "extra ','?") }
+        | (RPAREN, _) :: rest =>
+            (rest, params.rev(), kw_params.rev())
         | (TILDE, ploc) :: (IDENT(_, i), _) :: (COLON, _) :: rest =>
+            if expect_comma { throw parse_err(ts, "',' is expected") }
             val (ts, t) = parse_typespec(rest)
             val (ts, defparam) = match ts {
                 | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(lit))
                 | _ => (ts, None)
                 }
-            add_fun_param(ts, params, (get_id(i), t, defparam, ploc) :: kw_params)
+            add_fun_param(ts, true, params, (get_id(i), t, defparam, ploc) :: kw_params)
         | _ =>
+            if expect_comma { throw parse_err(ts, "',' is expected") }
             if !kw_params.empty() {
                 throw parse_err(ts, "positional parameters cannot occur after or between named parameters")
             }
             val (ts, p) = parse_pat(ts, true)
-            add_fun_param(ts, p :: params, kw_params)
+            add_fun_param(ts, true, p :: params, kw_params)
         }
-    }
-    val (ts, params, kw_params) = add_fun_param(ts, [], [])
+    val (ts, params, kw_params) = add_fun_param(ts, false, [], [])
     val (ts, rt) = match ts {
         | (COLON, _) :: rest => parse_typespec(rest)
         | _ => (ts, make_new_typ())
@@ -1071,11 +1104,11 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
                     | _ => throw parse_err(ts, "identifier is expected")
                     }
                 | COLON =>
-                    val (ts, t) = parse_typespec(ts)
+                    val (ts, t) = parse_typespec(rest)
                     extend_pat_(ts, PatTyped(result, t, l), min_prec, simple)
                 | CONS =>
                     if simple {throw parse_err(ts, "'::'-patterns are not allowed here")}
-                    val (ts, p2) = parse_base_pat_(ts, simple)
+                    val (ts, p2) = parse_base_pat_(rest, simple)
                     val (ts, p2) = extend_pat_(ts, p2, next_min_prec, simple)
                     extend_pat_(ts, PatCons(result, p2, l), min_prec, simple)
                 | _ => throw parse_err(ts, "unxpected token")
@@ -1224,6 +1257,8 @@ fun parse_typespec(ts: tklist_t): (tklist_t, typ_t)
         parse_tuple_(rest, false, [], l1)
     | (LBRACE, _) :: (ELLIPSIS, _) :: (RBRACE, _) :: rest =>
         (rest, TypVar (ref (Some (TypVarRecord))))
+    | _ =>
+        throw parse_err(ts, "type is expected here (starting from indent, type var, '(' or '{'")
     }
 
     fun extend_typespec_nf_(ts: tklist_t, result: typ_t): (tklist_t, typ_t) =
@@ -1283,7 +1318,7 @@ fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
                 else { throw parse_err(ts, "extra ';'?") }
             | (RBRACE, _) :: rest =>
                 if result.empty() { throw parse_err(ts, "empty list of record elements") }
-                (ts, result.rev())
+                (rest, result.rev())
             | (IDENT(f, i), l1) :: (COLON, _) :: rest =>
                 if expect_semicolon && !f {
                     throw parse_err(ts, "';' or newline should be inserted between record elements")
@@ -1343,6 +1378,7 @@ fun parse_deftype(ts: tklist_t)
         | _ => throw parse_err(ts, f"the type name, followed by '=' is expected")
         }
 
+    //println(f"type definition body({tok2str(ts)})\n")
     match ts {
     | (LBRACE, _) :: _ =>
         val (ts, t) = parse_typespec_or_record(ts)
@@ -1376,7 +1412,7 @@ fun parse_deftype(ts: tklist_t)
                         throw parse_err(ts, "variant label should start with a capital letter A..Z")
                     }
                     val (ts, t) = parse_typespec_or_record(rest)
-                    parse_cases_(rest, true, (get_id(i), t) :: result)
+                    parse_cases_(ts, true, (get_id(i), t) :: result)
                 }
             | (IDENT(_, i), _) :: rest =>
                 if expect_bar { (ts, result.rev()) }

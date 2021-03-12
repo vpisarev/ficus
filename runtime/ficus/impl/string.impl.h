@@ -419,7 +419,7 @@ bool fx_atof(const fx_str_t* str, double* result)
     if (ok) {
         for(; i < len; i++) {
             char_ c = ptr[i];
-            if(!('0' <= c && c <= '9' || c == '+' || c == '-' || c == 'e' || c == 'E' || c == '.'))
+            if(!(('0' <= c && c <= '9') || c == '+' || c == '-' || c == 'e' || c == 'E' || c == '.'))
                 break;
             buf[i] = (char)c;
         }

@@ -1117,7 +1117,7 @@ fun locate_module_file(mname: string, inc_dirs: string list): string
 }
 
 fun add_to_imported_modules(mname_id: id_t, loc: loc_t): id_t {
-    val mname = pp_id2str(mname_id)
+    /*val mname = pp_id2str(mname_id)
     val mfname = locate_module_file(mname, parser_ctx.inc_dirs)
     if mfname == "" {
         throw SyntaxError(loc, f"module {mname} is not found")
@@ -1125,7 +1125,8 @@ fun add_to_imported_modules(mname_id: id_t, loc: loc_t): id_t {
     val dep_minfo = find_module(mname_id, mfname)
     val mname_unique_id = dep_minfo->dm_name
     parser_ctx.deps = mname_unique_id :: parser_ctx.deps
-    mname_unique_id
+    mname_unique_id*/
+    mname_id
 }
 
 fun typ2str(t: typ_t): string {

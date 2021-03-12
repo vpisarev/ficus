@@ -196,7 +196,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.begin(); pp.str("template<"); pprint_templ_args(pp, df_templ_args)
             pp.str(">"); pp.end(); pp.space()
         }
-        pp.str("fun "); ppid(pp, df_name); pp.str("("); pp.cut(); pp.begin()
+        pp.str("fun "); ppid(pp, df_name); pp.str("("); pp.cut();
+        pp.begin()
         for p@i <- df_args {
             if i > 0 { pp.str(","); pp.space() }
             pprint_pat(pp, p)
@@ -243,7 +244,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         }
         pp.space(); ppid(pp, dvar_name);
         pp.str(" ="); pp.space()
-        for (_, t)@i <- dvar_cases, c <- dvar_ctors {
+        val ctors = if !dvar_ctors.empty() { dvar_ctors } else { [: for (n, t) <- dvar_cases {n} :] }
+        for (_, t)@i <- dvar_cases, c <- ctors {
             pp.begin(); pp.str("| ");
             ppid(pp, c); pp.str(": "); pp.space();
             pprint_typ(pp, t, dvar_loc); pp.end()
@@ -383,7 +385,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             }
             pp.end(); pp.str("]")
         | ExpIf(if_seq, if_then, if_else, _) =>
-            pp.begin(); pp.str("if "); ppexp(if_seq); pp.end();
+            pp.begin(); pp.begin(); pp.str("if "); ppexp(if_seq); pp.end();
             ppexp(if_then); pp.space(); pp.str("else")
             pp.space(); ppexp(if_else); pp.end()
         | ExpWhile(c, body, _) =>
@@ -458,7 +460,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | ExpCCode(s, _) =>
             pp.str("@ccode {"); pp.space(); pp.str("\""); pp.str(s); pp.str("\"")
         | DefVal(_, _, _, _) | DefFun(_) | DefExn(_) | DefTyp(_)
-        | DefVariant(_) | DefClass(_) | DefInterface(_)
+        | DefVariant(_) | DefInterface(_)
         | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
         }
         pp.end()
@@ -569,17 +571,30 @@ fun pprint_mod(dm: defmodule_t)
     pp.flush()
 }
 
+fun pprint_top_x(top: exp_t list)
+{
+    val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
+    pp.beginv()
+    for e <- top {
+        pprint_exp(pp, e)
+        pp.opt_semi()
+    }
+    pp.end()
+    pp.flush()
+}
+
+
 fun pprint_typ_x(t: typ_t, loc: loc_t) {
-    val pp = PP.pprint_to_stdout(120, default_indent=default_indent)
+    val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.begin(); pprint_typ(pp, t, loc); pp.end(); pp.flush()
 }
 
 fun pprint_exp_x(e: exp_t) {
-    val pp = PP.pprint_to_stdout(120, default_indent=default_indent)
+    val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.begin(); pprint_exp(pp, e); pp.end(); pp.flush()
 }
 
 fun pprint_pat_x(p: pat_t) {
-    val pp = PP.pprint_to_stdout(120, default_indent=default_indent)
+    val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.begin(); pprint_pat(pp, p); pp.end(); pp.flush()
 }

@@ -4,7 +4,7 @@ val SolarMass = 4.0 * Math.pi * Math.pi
 val Year = 365.24
 
 type Vec = {x: double; y: double; z: double}
-fun (+) (a: Vec, b: Vec) = Vec {x=a.x+b.x, y=a.y+b.y, z=a.z+b.z}
+operator + (a: Vec, b: Vec) = Vec {x=a.x+b.x, y=a.y+b.y, z=a.z+b.z}
 operator - (a: Vec, b: Vec) = Vec {x=a.x-b.x, y=a.y-b.y, z=a.z-b.z}
 operator * (a: Vec, s: double) = Vec {x=a.x*s, y=a.y*s, z=a.z*s}
 fun dot(a: Vec, b: Vec) = a.x*b.x + a.y*b.y + a.z*b.z
