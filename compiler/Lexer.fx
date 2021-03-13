@@ -260,7 +260,7 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
     uint64_t r = 0, r1;
     int base = 10;
     bool flt = false, have_dot = false, have_e = false;
-    char c = '\0';
+    char_ c = '\0';
 
     if(len <= 0)
         return FX_SET_EXN_FAST(FX_EXN_BadArgError);
@@ -464,8 +464,9 @@ fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, token_t) 
     Unicode characters (\uxxxx and \Uxxxxxxxx) are also decoded.
 */
 fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
-    (int, string, bool) = @ccode
+    (int, string, int, bool) = @ccode
 {
+    int delta_lines = 0;
     int_ sz = 256, n = 0;
     char_ buf0[256 + 32];
     char_* buf = buf0;
@@ -555,8 +556,10 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
             inline_exp = true;
             i++;
             break;
-        } else
+        } else {
+            delta_lines += c == 10 || (c == 13 && i+1 < len && ptr[i+1] != 10);
             buf[n++] = c;
+        }
         if( n >= sz ) {
             sz = sz*3/2;
             char_* buf1 = (char_*)fx_malloc(sz*sizeof(buf[0]));
@@ -572,7 +575,8 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
     int fx_status = fx_make_str(buf, n, &fx_result->t1);
     if(buf != buf0) fx_free(buf);
     fx_result->t0 = (ptr - s->data) + i;
-    fx_result->t2 = inline_exp;
+    fx_result->t2 = delta_lines;
+    fx_result->t3 = inline_exp;
     return fx_status;
 }
 
@@ -699,7 +703,9 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 }
                 q = q_
             } else if c == '"' || c == '\'' { // "
-                q = getstring(buf, p+1, getloc(p+1), c, true, false).0
+                val (q_, _, dl, _) = getstring(buf, q+1, getloc(q+1), c, true, false)
+                *strm.lineno += dl
+                q = q_
             } else {
                 q += 1
                 match c {
@@ -787,9 +793,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
         } else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
             val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
             val term = peekch(buf, termpos)
-            val (p, res, inline_exp) = getstring(buf, termpos+1, getloc(termpos+1),
-                                                term, c == 'r', c == 'f')
+            val (p, res, dl, inline_exp) = getstring(buf, termpos+1, getloc(termpos+1),
+                                                    term, c == 'r', c == 'f')
             val prev_pos = pos
+            *strm.lineno += dl
             pos = p
             new_exp = false
             prev_dot = false
@@ -918,7 +925,8 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 // handle string interpolation e.g. f"f({x})={f(x)}"
                 | (STR_INTERP_LPAREN, _) :: rest =>
                     paren_stack = rest
-                    val (p, s, inline_exp) = getstring(buf, pos, getloc(pos), chr(34), false, true)
+                    val (p, s, dl, inline_exp) = getstring(buf, pos, getloc(pos), chr(34), false, true)
+                    *strm.lineno += dl
                     pos = p
                     (if s.empty() {(RPAREN, loc) :: []}
                     else {(RPAREN, loc) :: (PLUS(false), loc) :: (LITERAL(Ast.LitString(s)), loc) :: []}) +

@@ -1568,8 +1568,8 @@ and check_exp e env sc =
         else
             raise_compile_err eloc (sprintf "invalid cast operation: %s to '%s'" (typ2str t1) (typ2str t2)) in
         let rec make_cast e1 t1 t2 =
-            match ((coerce_types t1 t2 false true false eloc), e1, (deref_typ t1), (deref_typ t2)) with
-            | (Some _, _, _, _) | (_, _, TypChar, TypInt) | (_, _, TypInt, TypChar) ->
+            match (((is_typ_scalar t1) && (is_typ_scalar t2)), e1, (deref_typ t1), (deref_typ t2)) with
+            | (true, _, _, _) ->
                 ExpCast(e1, t2, (t2, eloc))
             | (_, ExpLit(LitInt 0L, _), _, TypList _) ->
                 ExpLit(LitNil, (t2, eloc))

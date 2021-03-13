@@ -1046,6 +1046,7 @@ fun init_all_ids(): void {
     all_strhash = Map.empty(String.cmp)
     ignore(get_id_prefix(""))
     ignore(get_id_prefix("_"))
+    ignore(get_id_prefix("__fold_result__"))
     ignore(fname_always_import())
 }
 

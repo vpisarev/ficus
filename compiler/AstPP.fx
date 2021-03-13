@@ -206,7 +206,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         pprint_typ(pp, df_typ, df_loc); pp.space(); pp.str("="); pp.space()
         if ctor_id != CtorNone { pp.str(ctor2str(ctor_id)) }
         else { pprint_exp_as_block(pp, df_body) }
-        pp.end()
+        pp.end(); pp.space()
     | DefExn (ref {dexn_name, dexn_typ, dexn_loc}) =>
         pp.begin(); pp.str("exception "); ppid(pp, dexn_name)
         match dexn_typ {
@@ -366,7 +366,6 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                 pp.end()
             }
             pp.str("]")
-            pp.end()
         | ExpCall(f, args, _) =>
             ppexp(f); pp.str("(")
             for e@i <- args {
@@ -398,7 +397,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.str("while (")
             pp.cut(); ppexp(c); pp.cut(); pp.str(")"); pp.end()
         | ExpFor(for_cl, idx_pat, for_body, flags, _) =>
-            pp.begin(); pp.begin(); pprint_for_flags(pp, flags); pp.str("for"); pp.space()
+            pp.begin(); pprint_for_flags(pp, flags); pp.str("for"); pp.space()
             for (p, e)@i <- for_cl {
                 if i > 0 { pp.str(","); pp.space() }
                 pp.begin()
@@ -414,7 +413,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                 ppexp(e)
                 pp.end()
             }
-            pp.end(); pp.space(); pprint_exp_as_block(pp, for_body); pp.end()
+            pp.end(); pp.space(); pprint_exp_as_block(pp, for_body)
         | ExpMap(map_cl, map_body, flags, _) =>
             var (oparen, cparen) = match flags.for_flag_make {
             | ForMakeList => ("[:", ":]")
@@ -443,14 +442,14 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                 pp.end()
             }
             pp.end(); pprint_exp_as_block(pp, map_body)
-            pp.str(cparen); pp.end()
+            pp.str(cparen);
         | ExpMatch(e, pe_l, _) =>
             pp.begin(); pp.str("match"); pp.space()
             ppexp(e); pp.space();
             ppcases(pe_l); pp.end()
         | ExpTryCatch(e, pe_l, _) =>
             pp.str("try"); pp.space(); ppexp(e); pp.space()
-            pp.str("catch"); ppcases(pe_l); pp.end()
+            pp.str("catch"); ppcases(pe_l);
         | ExpCast(e, t, (_, loc)) =>
             pp.str("("); ppexp(e); pp.str(":>");
             pp.space(); pprint_typ(pp, t, loc); pp.str(")")
@@ -577,12 +576,12 @@ fun pprint_top_x(top: exp_t list)
     pp.beginv()
     for e <- top {
         pprint_exp(pp, e)
-        pp.opt_semi()
+        pp.newline()
     }
     pp.end()
     pp.flush()
+    println()
 }
-
 
 fun pprint_typ_x(t: typ_t, loc: loc_t) {
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)

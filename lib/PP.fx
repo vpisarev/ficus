@@ -182,6 +182,7 @@ fun sep_space(pp: PP.t, c: char) = br(pp, 2, 0, sep=c)
 fun opt_semi(pp: PP.t) = br(pp, 2, 0, sep=';')
 fun breaki(pp: PP.t) = br(pp, 1, pp.default_indent)
 fun breaku(pp: PP.t) = br(pp, 1, -pp.default_indent)
+fun newline(pp: PP.t) = br(pp, pp.margin, 0)
 
 fun str(pp: PP.t, s: string): void
 {
