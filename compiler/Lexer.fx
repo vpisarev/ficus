@@ -524,7 +524,7 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
                         return FX_SET_EXN_FAST(FX_EXN_BadArgError);
                     c = x0*16+x1;
                     i++;
-                } else if(c == '0') {
+                } else if('0' <= c && c <= '7') {
                     c = 0;
                     for(j = 0; j < 4 && i < len; j++, i++) {
                         int d = decodeoct(ptr[i]);
@@ -777,6 +777,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
         */
         else if c == '\'' && !new_exp {
             prev_dot = false
+            pos += 1
             (APOS, loc) :: []
         } else if c == '\'' && c1.isalpha() && peekch(buf, pos+2) != '\'' {
             var p = pos+1

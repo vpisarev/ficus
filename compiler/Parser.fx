@@ -395,6 +395,9 @@ fun parse_unary_exp(ts: tklist_t): (tklist_t, exp_t)
     | (MINUS(true), l1) :: rest =>
         val (ts, e) = parse_unary_exp(rest)
         (ts, make_unary(OpNegate, e, l1))
+    | (DOT_MINUS(true), l1) :: rest =>
+        val (ts, e) = parse_unary_exp(rest)
+        (ts, make_unary(OpDotMinus, e, l1))
     | (PLUS(true), l1) :: rest =>
         val (ts, e) = parse_unary_exp(rest)
         (ts, make_unary(OpPlus, e, l1))
@@ -439,6 +442,7 @@ fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
             | DOT_SLASH => (OpDotDiv, 220, AssocLeft)
             | DOT_PERCENT => (OpDotMod, 220, AssocLeft)
             | DOT_STAR => (OpDotMul, 220, AssocLeft)
+            | DOT_POWER => (OpDotPow, 230, AssocRight)
             | DOT_CMP(cmpop) => (OpDotCmp(cmpop), 180, AssocLeft)
             | DOT_SPACESHIP => (OpDotSpaceship, 190, AssocLeft)
             | SAME => (OpSame, 190, AssocLeft)
@@ -856,6 +860,12 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
             else {
                 val (ts, p) = parse_pat(ts, true)
                 match ts {
+                | (EQUAL, l1) :: (CCODE, l2) :: (LITERAL(LitString(ccode)), _) :: rest =>
+                    val dv = DefVal(p, ExpCCode(ccode, make_new_ctx(l2)),
+                        default_val_flags().
+                        {val_flag_mutable=is_mutable,
+                        val_flag_private=is_private}, l1)
+                    extend_defvals_(rest, true, dv :: result)
                 | (EQUAL, l1) :: rest =>
                     val (ts, e) = parse_complex_exp_or_block(rest)
                     val dv = DefVal(p, e, default_val_flags().

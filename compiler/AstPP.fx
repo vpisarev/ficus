@@ -189,7 +189,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     | DefFun df =>
         val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_templ_inst, df_loc} = *df
         val ctor_id = df_flags.fun_flag_ctor
-        pp.begin(); pprint_fun_flags(pp, df_flags)
+        pp.begin(0); pp.begin(); pprint_fun_flags(pp, df_flags)
         match df_templ_args {
         | [] => {}
         | _ =>
@@ -197,16 +197,16 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.str(">"); pp.end(); pp.space()
         }
         pp.str("fun "); ppid(pp, df_name); pp.str("("); pp.cut();
-        pp.begin()
         for p@i <- df_args {
             if i > 0 { pp.str(","); pp.space() }
             pprint_pat(pp, p)
         }
-        pp.end(); pp.cut(); pp.str(")"); pp.space(); pp.str(":"); pp.space()
-        pprint_typ(pp, df_typ, df_loc); pp.space(); pp.str("="); pp.space()
+        pp.cut(); pp.str(")"); pp.str(":"); pp.space()
+        pprint_typ(pp, df_typ, df_loc); pp.space(); pp.str("=");
+        pp.end(); pp.space()
         if ctor_id != CtorNone { pp.str(ctor2str(ctor_id)) }
         else { pprint_exp_as_block(pp, df_body) }
-        pp.end(); pp.space()
+        pp.end(); pp.newline()
     | DefExn (ref {dexn_name, dexn_typ, dexn_loc}) =>
         pp.begin(); pp.str("exception "); ppid(pp, dexn_name)
         match dexn_typ {
@@ -248,13 +248,13 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         for (_, t)@i <- dvar_cases, c <- ctors {
             pp.begin(); pp.str("| ");
             ppid(pp, c); pp.str(": "); pp.space();
-            pprint_typ(pp, t, dvar_loc); pp.end()
+            pprint_typ(pp, t, dvar_loc); pp.end(); pp.space()
         }
-        pp.end()
+        pp.end(); pp.space()
         match *dvar_templ_inst {
         | [] => {}
         | _ =>
-            pp.opt_semi(); pp.str(f"(* {id2str(dvar_name)} instances *)")
+            pp.newline(); pp.str(f"(* {id2str(dvar_name)} instances *)"); pp.space();
             for inst_id@i <- *dvar_templ_inst {
                 pp.opt_semi()
                 match id_info(inst_id) {
@@ -312,9 +312,22 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | ExpLit(x, (_, loc)) => pplit(pp, x)
         | ExpIdent(n, (t, loc)) => pp.str("<"); pprint_typ(pp, t, loc); pp.str(">"); ppid(pp, n)
         | ExpBinary(o, e1, e2, _) =>
-            pp.str("("); ppexp(e1)
-            pp.space(); pp.str(f"{o}");
-            pp.space(); ppexp(e2); pp.str(")")
+            pp.str("("); ppexp(e1);
+            pp.str(f" {o}");
+            val e2 = match o {
+            | OpCons =>
+                fun print_list_(e: exp_t): exp_t {
+                    | ExpBinary(OpCons, e2, rest, _) =>
+                        pp.space(); ppexp(e2); pp.str(" ::")
+                        print_list_(rest)
+                    | _ => e
+                }
+                print_list_(e2)
+            | _ =>
+                e2
+            }
+            pp.space(); ppexp(e2)
+            pp.str(")")
         | ExpAssign(e1, e2, _) =>
             ppexp(e1); pp.space()
             pp.str("="); pp.space(); ppexp(e2);
@@ -441,7 +454,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                 }
                 pp.end()
             }
-            pp.end(); pprint_exp_as_block(pp, map_body)
+            pp.end(); pp.space(); pprint_exp_as_block(pp, map_body)
             pp.str(cparen);
         | ExpMatch(e, pe_l, _) =>
             pp.begin(); pp.str("match"); pp.space()
@@ -482,7 +495,7 @@ match e {
 fun pprint_expseq(pp: PP.t, eseq: exp_t list, braces: bool): void
 {
     pp.beginv()
-    if braces { pp.str("{"); pp.breaki() }
+    if braces { pp.str("{"); pp.space() }
     for e@i <- eseq {
         if i > 0 { pp.opt_semi() }
         pprint_exp(pp, e)
@@ -515,7 +528,6 @@ fun pprint_pat(pp: PP.t, p: pat_t)
     | PatVariant(n, elems, loc) =>
         pp.begin(); ppid(pp, n); pppat(PatTuple(elems, loc)); pp.end();
     | PatRecord(n_opt, elems, loc) =>
-        pp.begin();
         pp.begin(); match n_opt {
         | Some(n) => ppid(pp, n); pp.str(" ")
         | _ => {}
