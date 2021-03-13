@@ -162,7 +162,7 @@ type cmpop_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
 type binary_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
     | OpShiftLeft | OpShiftRight | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
-    | OpCmp: cmpop_t | OpDotCmp: cmpop_t | OpSpaceship | OpDotSpaceship | OpCons
+    | OpCmp: cmpop_t | OpDotCmp: cmpop_t | OpSpaceship | OpDotSpaceship | OpSame | OpCons
 
 type unary_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
     | OpMkRef | OpDeref | OpExpand | OpApos
@@ -877,6 +877,7 @@ fun string(bop: binary_t) {
     | OpLogicOr => "||"
     | OpBitwiseXor => "^"
     | OpSpaceship => "<=>"
+    | OpSame => "==="
     | OpCmp(c) => string(c)
     | OpDotCmp(c) => "."+string(c)
     | OpCons => "::"
@@ -941,6 +942,7 @@ fun fname_op_dot_lt() = get_id("__dot_lt__")
 fun fname_op_dot_gt() = get_id("__dot_gt__")
 fun fname_op_dot_le() = get_id("__dot_le__")
 fun fname_op_dot_ge() = get_id("__dot_ge__")
+fun fname_op_same() = get_id("__same__")
 fun fname_op_plus() = get_id("__plus__")
 fun fname_op_negate() = get_id("__negate__")
 fun fname_op_dot_minus() = get_id("__dot_minus__")
@@ -958,6 +960,7 @@ fun fname_to_float() = get_id("float")
 fun fname_to_double() = get_id("double")
 fun fname_to_bool() = get_id("bool")
 fun fname_string() = get_id("string")
+fun fname_print() = get_id("print")
 fun fname_repr() = get_id("repr")
 
 fun binary_try_remove_dot(bop: binary_t) =
@@ -989,6 +992,7 @@ fun get_binary_fname(bop: binary_t, loc: loc_t) =
     | OpBitwiseOr => fname_op_bit_or()
     | OpBitwiseXor => fname_op_bit_xor()
     | OpSpaceship => fname_op_cmp()
+    | OpSame => fname_op_same()
     | OpCmp(CmpEQ) => fname_op_eq()
     | OpCmp(CmpNE) => fname_op_ne()
     | OpCmp(CmpLT) => fname_op_lt()
@@ -1024,7 +1028,7 @@ fun fname_always_import() = [:
     fname_op_mod(), fname_op_pow(), fname_op_dot_mul(), fname_op_dot_div(),
     fname_op_dot_mod(), fname_op_dot_pow(), fname_op_shl(), fname_op_shr(),
     fname_op_bit_and(), fname_op_bit_or(), fname_op_bit_xor(), fname_op_cmp(),
-    fname_op_dot_cmp(), fname_op_eq(), fname_op_ne(), fname_op_le(),
+    fname_op_dot_cmp(), fname_op_same(), fname_op_eq(), fname_op_ne(), fname_op_le(),
     fname_op_ge(), fname_op_lt(), fname_op_gt(),
     fname_op_dot_eq(), fname_op_dot_ne(), fname_op_dot_le(),
     fname_op_dot_ge(), fname_op_dot_lt(), fname_op_dot_gt(),
@@ -1033,7 +1037,7 @@ fun fname_always_import() = [:
     fname_to_int(), fname_to_uint8(), fname_to_int8(), fname_to_uint16(),
     fname_to_int16(), fname_to_uint32(), fname_to_int32(), fname_to_uint64(),
     fname_to_int64(), fname_to_float(), fname_to_double(), fname_to_bool(),
-    fname_string(), fname_repr()
+    fname_string(), fname_print(), fname_repr()
 :]
 
 fun init_all_ids(): void {

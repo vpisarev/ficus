@@ -1525,7 +1525,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let args = List.rev (fv_args @ args) in
                 let fcall_rt = if is_nothrow then CTypVoid else CTypCInt in
                 let fcall_exp = CExpCall(f_exp, args, (fcall_rt, kloc)) in
-                if is_nothrow (*|| is_really_nothrow*) then
+                if is_nothrow || is_really_nothrow then
                     (false, dst_exp, (CExp fcall_exp) :: ccode)
                 else
                     let ccode = add_fx_call fcall_exp ccode kloc in
@@ -2573,7 +2573,9 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                                of whether the function may throw exceptions (or propagate exceptions from the called functions)
                                or not. In some cases the label might be used but the function does not throw exceptions.
                                But not vice versa. So we play safe here. *)
-                            (really_nothrow := true;
+                            ((match ccode with
+                            | CStmtLabel _ :: _ -> ()
+                            | _ -> really_nothrow := true);
                             ccode)
                         in
                     let (ret_e, ccode) =

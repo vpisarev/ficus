@@ -205,7 +205,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         pp.end(); pp.cut(); pp.str(")"); pp.space(); pp.str(":"); pp.space()
         pprint_typ(pp, df_typ, df_loc); pp.space(); pp.str("="); pp.space()
         if ctor_id != CtorNone { pp.str(ctor2str(ctor_id)) }
-        else { ppexp(df_body) }
+        else { pprint_exp_as_block(pp, df_body) }
         pp.end()
     | DefExn (ref {dexn_name, dexn_typ, dexn_loc}) =>
         pp.begin(); pp.str("exception "); ppid(pp, dexn_name)
@@ -385,9 +385,9 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             }
             pp.end(); pp.str("]")
         | ExpIf(if_seq, if_then, if_else, _) =>
-            pp.begin(); pp.begin(); pp.str("if "); ppexp(if_seq); pp.end();
-            ppexp(if_then); pp.space(); pp.str("else")
-            pp.space(); ppexp(if_else); pp.end()
+            pp.begin(); pp.begin(); pp.str("if "); ppexp(if_seq); pp.end(); pp.space();
+            pprint_exp_as_block(pp, if_then); pp.space(); pp.str("else")
+            pp.space(); pprint_exp_as_block(pp, if_else); pp.end()
         | ExpWhile(c, body, _) =>
             pp.begin(); pp.str("while ")
             ppexp(c); pp.space()

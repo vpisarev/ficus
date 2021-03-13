@@ -140,8 +140,8 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | TypCPointer | TypDecl | TypModule | TypVarRecord =>
             false
         }
-    fun occurs(r1: typ_t? ref, tl: typ_t list): bool = tl.exists(fun (t: typ_t) {occurs(r1, t)})
-    fun occurs(r1: typ_t? ref, relems: rec_elem_t list): bool = relems.exists(fun (r: rec_elem_t) {occurs(r1, r.1)})
+    fun occurs(r1: typ_t? ref, tl: typ_t list): bool = exists(for t <- tl {occurs(r1, t)})
+    fun occurs(r1: typ_t? ref, relems: rec_elem_t list): bool = exists(for (_,t,_) <- relems {occurs(r1, t)})
 
     fun maybe_unify_(tl1: typ_t list, tl2: typ_t list) =
         tl1.length() == tl2.length() &&
@@ -175,7 +175,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | (TypVar (ref Some(TypVarTuple(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1)
         | (TypVar (ref Some(TypVarTuple(_))), TypTuple(_)) => maybe_unify_(t2, t1)
         | (TypTuple(tl1), TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
-            if exists(for t <- tl1 {occurs(r2, t)}) { false }
+            if occurs(r2, tl1) { false }
             else {
                 val ok = match t2_opt {
                     | Some(t2_) => tl1.all(fun (t: typ_t) {maybe_unify_(t2_, t)})
@@ -219,17 +219,16 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | (TypRecord(r1), TypRecord(r2)) =>
             val ok = match (*r1, *r2) {
                 | ((relems1, true), (relems2, true)) =>
-                    relems1.length() == relems2.length()
-                        &&
-                    List.all2(relems1, relems2,
-                        fun ((n1, t1, _): rec_elem_t, (n2, t2, _): rec_elem_t) {
+                    relems1.length() == relems2.length() &&
+                    all(for (n1, t1, _) <- relems1, (n2, t2, _) <- relems2 {
                             n1 == n2 && maybe_unify_(t1, t2) })
                 | ((relems1, _), (relems2, _)) =>
-                    val have_all_matches = relems1.all(
-                        fun ((n1, t1, v1opt): rec_elem_t) {
-                            relems2.exists(fun ((n2, t2, _): rec_elem_t) {
-                                n1 == n2 && maybe_unify_(t1, t2)}) || v1opt.issome()}
-                        )
+                    val have_all_matches =
+                        all(for (n1, t1, v1opt) <- relems1 {
+                            v1opt.issome() ||
+                            exists(for (n2, t2, _) <- relems2 {
+                                n1 == n2 && maybe_unify_(t1, t2)})
+                            })
                     /*
                         if both the record types are unknown then all the v1opt's in relems1
                         are None's. Since we do not have duplicates, which is checked by the parser,
@@ -452,7 +451,7 @@ fun inst_merge_env(env_from: env_t, env_to: env_t): env_t =
 
 fun check_for_duplicate_typ(key: id_t, sc: scope_t list, loc: loc_t) =
     fun (i: id_info_t) {
-        | IdTyp(_) | IdVariant(_) | IdClass(_) | IdInterface(_) =>
+        | IdTyp(_) | IdVariant(_) | IdInterface(_) =>
             if get_scope(i).hd() == sc.hd() {
                 throw compile_err( loc,
                     f"the type {pp_id2str(key)} is re-declared in the same scope; the previous declaration is here {get_idinfo_loc(i)}")
@@ -655,7 +654,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): id_t
                 val ctyp = typ2constr(dexn_typ, TypExn, dexn_loc)
                 unify(ctyp, t, loc, "uncorrect type of exception constructor and/or its arguments")
                 Some(i)
-            | IdNone | IdTyp(_) | IdVariant(_) | IdClass(_) | IdInterface(_) => None
+            | IdNone | IdTyp(_) | IdVariant(_) | IdInterface(_) => None
             }
         | EnvTyp(_) => None
         })
@@ -1568,7 +1567,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 "ccode may be used only at the top (module level) or as a single expression in function definition")
         }
     /* all the declarations are checked in check_eseq */
-    | DefVal(_, _, _, _) | DefFun(_) | DefVariant(_) | DefClass(_) | DefInterface(_)
+    | DefVal(_, _, _, _) | DefFun(_) | DefVariant(_) | DefInterface(_)
     | DefExn(_) | DefTyp(_) | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) =>
         throw compile_err(eloc, "internal err: should not get here; all the declarations and directives must be handled in check_eseq")
     }
@@ -1633,7 +1632,8 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
         val (eseq1, env1) =
         try {
             match e {
-            | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | DefTyp(_) | DefVariant(_) | DefClass(_) | DefInterface(_) | DefExn(_) =>
+            | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _)
+            | DefTyp(_) | DefVariant(_) | DefInterface(_) | DefExn(_) =>
                 (e :: eseq, env)
             | DefVal(p, e, flags, loc) =>
                 val is_mutable = flags.val_flag_mutable
@@ -1812,7 +1812,6 @@ fun reg_types(eseq: exp_t list, env: env_t, sc: scope_t list) {
                 }
             set_id_entry(dvar_name1, IdVariant(dvar))
             add_id_to_env_check(dvar_name, dvar_name1, env, check_for_duplicate_typ(dvar_name, sc, dvar_loc))
-        | DefClass (ref {dcl_loc=loc}) => throw compile_err(loc, "classes are not supported yet")
         | DefInterface (ref {di_loc=loc}) => throw compile_err(loc, "interfaces are not supported yet")
         | _ => env
         }
@@ -1981,7 +1980,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                     | EnvId(i) =>
                         match id_info(i) {
                         | IdNone | IdDVal(_) | IdFun(_) | IdExn(_) | IdModule(_) => None
-                        | IdClass(_) | IdInterface(_) => throw compile_err(loc, "classes & interfaces are not supported yet")
+                        | IdInterface(_) => throw compile_err(loc, "classes & interfaces are not supported yet")
                         | IdTyp(dt) =>
                             val {dt_name, dt_templ_args, dt_typ, dt_scope, dt_finalized, dt_loc} = *dt
                             if dt_finalized {}

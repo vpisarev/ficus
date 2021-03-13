@@ -362,7 +362,7 @@ let lift_all kmods =
         fold_kexp e callb; (* process all the sub-expressions in any case *)
         match e with
         | KDefFun kf ->
-            let {kf_name; kf_args; kf_rt; kf_closure; kf_scope; kf_loc} = !kf in
+            let {kf_name; kf_args; kf_rt; kf_closure; kf_flags; kf_scope; kf_loc} = !kf in
             (match Env.find_opt kf_name !ll_env with
             | Some ll_info ->
                 let fvars = ll_info.ll_fvars in
@@ -391,7 +391,7 @@ let lift_all kmods =
                 let _ = create_kdefval cl_arg (KTypName fcv_tn) (default_val_flags()) None [] kf_loc in
                 let new_kf_closure = {kf_closure with kci_arg=cl_arg; kci_fcv_t=fcv_tn; kci_make_fp=make_fp} in
                 set_idk_entry fcv_tn (KClosureVars fcv_t);
-                kf := { !kf with kf_closure=new_kf_closure })
+                kf := { !kf with kf_closure=new_kf_closure; kf_flags={kf_flags with fun_flag_uses_fv=true} })
             | _ -> ())
         | _ -> ()
     in let defcl_callb =
@@ -424,12 +424,20 @@ let lift_all kmods =
             | Some ((nv, nr, _)) ->
                 if get_mkclosure_arg then (AtomId nr) else (AtomId nv)
             | _ ->
-                (match (kinfo_ n loc) with
-                | KFun {contents={kf_flags}} ->
-                    if is_fun_ctor kf_flags then ()
-                    else raise_compile_err loc
-                        (sprintf "for the function '%s' there is no corresponding closure" (id2str n))
-                | _ -> ());
+                let a = (match (kinfo_ n loc) with
+                    | KFun {contents={kf_flags; kf_args; kf_rt; kf_closure={kci_arg}}} ->
+                        if is_fun_ctor kf_flags then a
+                        else if kci_arg = noid then
+                            let temp_cl = dup_idk n in
+                            let f_typ = get_kf_typ kf_args kf_rt in
+                            let make_cl = KExpMkClosure(noid, n, [], (f_typ, loc)) in
+                            let _ = curr_lift_extra_decls := create_kdefval temp_cl f_typ
+                                (default_val_flags()) (Some make_cl) !curr_lift_extra_decls loc in
+                            AtomId temp_cl
+                        else
+                            raise_compile_err loc
+                            (sprintf "for the function '%s' there is no corresponding closure" (id2str n))
+                    | _ -> a) in
                 if not get_mkclosure_arg then a
                 else
                     (match (Env.find_opt n !orig_subst_env) with

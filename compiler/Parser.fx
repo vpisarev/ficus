@@ -63,44 +63,7 @@ fun plist2exp(pl: pat_t list, prefix: string, loc: loc_t): (pat_t list, exp_t)
     (plist.rev(), match elist { | e :: [] => e | _ => ExpMkTuple(elist.rev(), make_new_ctx(loc)) })
 }
 
-/*fun process_nested_for(nested_for, body) {
-    val fold (glob_el, nested_for_cl) = ([], []) for (loc, for_cl) <- nested_for {
-        val fold (glob_el, for_cl_, idx_pat) = (glob_el, [], PatAny(loc)) for (p, idxp, e) <- for_cl {
-            val (p_, p_e) = plist2exp([: p :], "x", get_pat_loc(p))
-            val p = List.hd(p_)
-            match (idxp, idx_pat) {
-            | (PatAny(_), idx_pat) => (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
-            | (_, PatAny(_)) =>
-                val (idxp_, idxp_e) = plist2exp([: idxp :], "i", get_pat_loc(idxp))
-                (p_e :: idxp_e :: glob_el, (p, e) :: for_cl_, idxp)
-            | _ => raise_syntax_err_loc(get_pat_loc(idxp), "@ is used more than once, which does not make sence and is not supported")
-            }
-        }
-        (glob_el, (for_cl_, idx_pat) :: nested_for_cl)
-    }
-    val for_iter_e = explist2exp(glob_el)
-    val body =
-    match body {
-    | ForBody(body) => body
-    | ForMatchBody(pmatch_clauses, clauses_loc) => ExpMatch(for_iter_e, pmatch_clauses.rev(), (make_new_typ(), clauses_loc))
-    }
-    (for_iter_e, nested_for_cl, body)
-}
-
-fun make_for(nested_for, body, flags) {
-    val (_, for_e) =
-    List.fold_right(
-        fun ((for_cl, idx_pat), (idx, for_e)) {
-            val curr_flags = flags.{for_flag_nested=idx > 0}
-            val (p, _) = List.hd(for_cl)
-            val loc = get_pat_loc(p)
-            (idx - 1, ExpFor(for_cl, idx_pat, for_e, curr_flags, loc))
-        },
-        nested_for,
-        (nested_for.length() - 1, body))
-    for_e
-}
-
+/*
 fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
                        nested_fold: ((pat_t, exp_t) list, pat_t) list, fold_body: exp_t)
 {
@@ -206,43 +169,50 @@ fun check_ne(ne: bool, ts: tklist_t) = if !ne {
     throw parse_err(ts, "new line or ';' is expected before new expression")
 }
 
-fun parse_exp_list(ts0: tklist_t, ct: token_t, ~kw_mode: kw_mode_t, ~allow_empty: bool,
-                   ~stop_at_semicolon: bool=false)
-    : (tklist_t, elist_t, id_elist_t)
+fun parse_exp_list_f(ts0: tklist_t, parse_exp_f: tklist_t -> (tklist_t, exp_t),
+                    ct: token_t, ~kw_mode: kw_mode_t, ~allow_empty: bool,
+                  ~stop_at_semicolon: bool=false): (tklist_t, bool, elist_t, id_elist_t)
 {
-    fun parse_exp_list_(idx: int, ts: tklist_t, el: elist_t, kw_el: id_elist_t) =
+    fun parse_exp_list_(ts: tklist_t, expect_comma: bool, el: elist_t,
+                        kw_el: id_elist_t): (tklist_t, bool, elist_t, id_elist_t) =
+    match ts {
+    | (COMMA, _) :: rest =>
+        if expect_comma { parse_exp_list_(rest, false, el, kw_el) }
+        else { throw parse_err(ts, "extra ','?") }
+    | (t, _) :: rest when t == ct =>
+        (rest, true, el.rev(), kw_el.rev())
+    | (SEMICOLON, _) :: rest =>
+        if !stop_at_semicolon {throw parse_err(ts, "unxpected ';'")}
+        (rest, false, el.rev(), kw_el.rev())
+    | (t, _) :: rest =>
+        if expect_comma {
+            val semi_msg = if stop_at_semicolon {"';' or "} else {""}
+            throw parse_err(ts, f"',' or {semi_msg}'{tok2str(ct).1}' is expected")
+        }
         match ts {
-        | (t, _) :: rest when t == ct =>
-            if idx == 0 && !allow_empty {throw parse_err(ts, "empty expression list is not allowed here")}
-            (rest, el.rev(), kw_el.rev())
-        | (SEMICOLON, _) :: rest =>
-            if idx == 0 || !stop_at_semicolon {throw parse_err(ts, "unxpected ';'")}
-            (rest, el.rev(), kw_el.rev())
-        | (t, _) :: rest =>
-            // 'eat' comma in the middle of list
-            val ts = match t {
-                | COMMA =>
-                    if idx == 0 {throw parse_err(ts, "unxpected ',' in the beginning of the list")}
-                    rest
-                | _ =>
-                    if idx > 0 {throw parse_err(ts, f"',' or '{tok2str(ct).1}' is expected")}
-                    ts
-                }
-            // capture the next expression or the next pair ident=exp and then parse the remaining items
-            // using tail recursion, should be pretty efficient.
-            match ts {
-            | (IDENT(_, i), _) :: (EQUAL, _) :: rest =>
-                if kw_mode == KwNone { throw parse_err(ts, f"unexpected keyword element '{i}=...'") }
-                val (ts, e) = parse_complex_exp(rest)
-                parse_exp_list_(idx+1, ts, el, (get_id(i), e) :: kw_el)
-            | _ =>
-                if kw_mode == KwMust { throw parse_err(ts, f"expect a keyword element here '<ident> = ...'") }
-                val (ts, e) = parse_typed_exp(ts)
-                parse_exp_list_(idx+1, ts, e :: el, kw_el)
-            }
-        | _ => throw parse_err(ts0, "the expression list is not complete by the end of file, check parentheses")
+        | (IDENT(_, i), _) :: (EQUAL, _) :: rest =>
+            if kw_mode == KwNone { throw parse_err(ts, f"unexpected keyword element '{i}=...'") }
+            val (ts, e) = parse_complex_exp(rest)
+            parse_exp_list_(ts, true, el, (get_id(i), e) :: kw_el)
+        | _ =>
+            if kw_mode == KwMust { throw parse_err(ts, f"expect a keyword element here '<ident> = ...'") }
+            val (ts, e) = parse_exp_f(ts)
+            parse_exp_list_(ts, true, e :: el, kw_el)
+        }
+    | _ => throw parse_err(ts0, "the expression list is not complete by the end of file, check parentheses")
     }
-    parse_exp_list_(0, ts0, [], [])
+    val (ts, f, el, kw_el) = parse_exp_list_(ts0, false, [], [])
+    if !allow_empty && el.empty() && kw_el.empty() {
+        throw parse_err(ts, "empty expression list is not allowed here")
+    }
+    (ts, f, el, kw_el)
+}
+
+fun parse_exp_list(ts0: tklist_t, ct: token_t, ~kw_mode: kw_mode_t, ~allow_empty: bool,
+                  ~stop_at_semicolon: bool=false): (tklist_t, bool, elist_t, id_elist_t)
+{
+    parse_exp_list_f(ts0, parse_typed_exp, ct, kw_mode=kw_mode, allow_empty=allow_empty,
+                     stop_at_semicolon=stop_at_semicolon)
 }
 
 fun parse_dot_ident(ts: tklist_t, expect_dot: bool, result: string): (tklist_t, string) =
@@ -259,8 +229,8 @@ fun parse_dot_ident(ts: tklist_t, expect_dot: bool, result: string): (tklist_t, 
 
 fun parse_ident_list(ts: tklist_t, expect_comma: bool, result: id_t list): (tklist_t, id_t list) =
     match ts {
-    | (COMMA, _) :: _ =>
-        if expect_comma {parse_ident_list(ts, false, result)}
+    | (COMMA, _) :: rest =>
+        if expect_comma {parse_ident_list(rest, false, result)}
         else {throw parse_err(ts, "extra ','?")}
     | (IDENT(_, i), _) :: rest =>
         if expect_comma { (ts, result.rev()) }
@@ -284,7 +254,7 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t) =
         match_paren(parse_for(ts.tl(), ForMakeTuple), RPAREN, l1)
     | (LPAREN(ne), l1) :: rest =>
         check_ne(ne, ts)
-        val (ts, el, _) = parse_exp_list(rest, RPAREN, kw_mode=KwNone, allow_empty=false)
+        val (ts, _, el, _) = parse_exp_list(rest, RPAREN, kw_mode=KwNone, allow_empty=false)
         (ts, match el {
         | e :: [] => e
         | _ => make_tuple(el, l1)
@@ -294,11 +264,19 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t) =
         match_paren(parse_for(ts.tl(), ForMakeArray), RSQUARE, l1)
     | (LSQUARE(ne), l1) :: rest =>
         check_ne(ne, ts)
-        parse_array_literal(rest, l1)
+        var vts = rest, result = []
+        while true {
+            val (ts, done, el, _) = parse_exp_list(vts, RSQUARE, kw_mode=KwNone,
+                                        allow_empty=false, stop_at_semicolon=true)
+            vts = ts
+            result = el :: result
+            if done { break }
+        }
+        (vts, ExpMkArray(result.rev(), make_new_ctx(l1)))
     | (LLIST, l1) :: f :: _ when is_for_start(f, false) =>
         match_paren(parse_for(ts.tl(), ForMakeList), RLIST, l1)
     | (LLIST, l1) :: rest =>
-        val (ts, el, _) = parse_exp_list(rest, RLIST, kw_mode=KwNone, allow_empty=true)
+        val (ts, _, el, _) = parse_exp_list(rest, RLIST, kw_mode=KwNone, allow_empty=true)
         (ts, fold mklist_e = make_literal(LitNil, l1) for e <- el.rev() {
             ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
         })
@@ -320,13 +298,16 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
         match ts {
         | (LPAREN(false), _) :: rest =>
             // function call ([TODO] support keyword args)
-            val (ts, args, kw_args) = parse_exp_list(rest, RPAREN,
+            val (ts_, _, args, kw_args) = parse_exp_list(rest, RPAREN,
                                             kw_mode=KwNone, allow_empty=true)
-            extend_simple_exp_(ts, ExpCall(e, args, make_new_ctx(eloc)))
+            if !kw_args.empty() {
+                throw parse_err(ts, "keyword arguments are not supported yet")
+            }
+            extend_simple_exp_(ts_, ExpCall(e, args, make_new_ctx(eloc)))
         | (LSQUARE(false), _) :: rest =>
             // array access ([TODO] support ranges)
-            val (ts, idxs, _) = parse_exp_list(rest, RPAREN,
-                                            kw_mode=KwNone, allow_empty=false)
+            val (ts, _, idxs, _) = parse_exp_list_f(rest, parse_range_exp,
+                            RSQUARE, kw_mode=KwNone, allow_empty=false)
             extend_simple_exp_(ts, ExpAt(e, BorderNone, InterpNone, idxs, make_new_ctx(eloc)))
         | (t1, _) :: (t2, l2) :: rest when
             // [TODO] add support for alternating patterns right into the pattern matching syntax
@@ -341,7 +322,7 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
             extend_simple_exp_(rest, ExpMem(e, i, make_new_ctx(eloc)))
         | (t1, _) :: (LBRACE, l2) :: rest when (match t1 {| DOT | ARROW => true | _ => false}) =>
             val e = match t1 { | ARROW => make_unary(OpDeref, e, eloc) | _ => e }
-            val (ts, _, rec_init_elems) = parse_exp_list(rest, RBRACE, kw_mode=KwMust, allow_empty=true)
+            val (ts, _, _, rec_init_elems) = parse_exp_list(rest, RBRACE, kw_mode=KwMust, allow_empty=true)
             extend_simple_exp_(ts, ExpUpdateRecord(e, rec_init_elems, make_new_ctx(eloc)))
         | _ => (ts, e)
         }
@@ -425,6 +406,7 @@ fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
             | DOT_STAR => (OpDotMul, 220, AssocLeft)
             | DOT_CMP(cmpop) => (OpDotCmp(cmpop), 180, AssocLeft)
             | DOT_SPACESHIP => (OpDotSpaceship, 190, AssocLeft)
+            | SAME => (OpSame, 190, AssocLeft)
             | _ => (OpAdd, -1, AssocLeft)
         }
         if prec < min_prec { (ts, result) }
@@ -542,6 +524,50 @@ fun parse_ccode_exp(ts: tklist_t): (tklist_t, exp_t)
     | _ => throw parse_err(ts, "'ccode {...}' is expected")
 }
 
+fun parse_range_exp(ts0: tklist_t): (tklist_t, exp_t)
+{
+    val loc = match ts0 { | _ :: _ => ts0.hd().1 | _ => noloc }
+    fun parse_range_(ts: tklist_t, expect_sep: bool, result: exp_t? list): (tklist_t, exp_t? list) =
+        match result {
+        | _ :: _ :: _ :: l =>
+            if !l.empty() { throw parse_err(ts, "two many ':' in the range expression") }
+            if !expect_sep {
+                throw parse_err(ts, "range expression may not end with ':', unless it's ':' or '<start>:' ")
+            }
+            (ts, result.rev())
+        | _ =>
+            match ts {
+            | (CONS, _) :: rest =>
+                parse_range_(rest, false, None :: None :: result)
+            | (COLON, _) :: rest =>
+                parse_range_(rest, false, None :: result)
+            | (LBRACE, _) :: _ | (FOR(_), _) :: _ | (RSQUARE, _) :: _ | (COMMA, _) :: _ =>
+                if !expect_sep && result.length() != 1 {
+                    throw parse_err(ts, "range expression may not end with ':', unless it's ':' or '<start>:' ")
+                }
+                (ts, result.rev())
+            | _ =>
+                val (ts, e) = parse_exp(ts)
+                parse_range_(ts, true, Some(e) :: result)
+            }
+        }
+    val (ts, elist) = parse_range_(ts0, false, [])
+    val ctx = make_new_ctx(loc)
+
+    val e = match elist {
+    | Some(e) :: [] => e // scalar index
+    | None :: [] => ExpRange(None, None, None, ctx) // :
+    | [] => throw parse_err(ts0, "empty range expression")
+    | None :: None :: [] | None :: None :: None :: [] => throw parse_err(ts0, "invalid range expression '::'") // ::
+    | e1 :: [] => ExpRange(e1, None, None, ctx) // a:
+    | e1 :: e2 :: [] => ExpRange(e1, e2, None, ctx) // a:b or :b
+    | e1 :: e2 :: e3 :: [] => ExpRange(e1, e2, e3, ctx) // a:b:c or a::c or :b:c or ::c
+    | _ => throw parse_err(ts0, "invalid range expression")
+    }
+
+    (ts, e)
+}
+
 fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
 {
     fun extend_expseq_(ts: tklist_t, result: exp_t list): (tklist_t, exp_t list)
@@ -598,8 +624,8 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
             fun parse_imported_(ts: tklist_t, expect_comma: bool, result: (id_t, id_t) list):
                 (tklist_t, (id_t, id_t) list) =
                 match ts {
-                | (COMMA, _) :: _ =>
-                    if expect_comma {parse_imported_(ts, false, result)}
+                | (COMMA, _) :: rest =>
+                    if expect_comma {parse_imported_(rest, false, result)}
                     else {throw parse_err(ts, "extra ','?")}
                 | (IDENT(_, _), loc_i) :: _ =>
                     if expect_comma { (ts, result.rev()) }
@@ -655,6 +681,128 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
     extend_expseq_(ts, [])
 }
 
+fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t)
+{
+    var is_parallel = false, need_unzip = false
+    var vts = ts, nested_for_cl = ([] : ((pat_t, pat_t, exp_t) list, loc_t) list)
+
+    while true {
+        match vts {
+        | (PARALLEL, _) :: rest =>
+            if is_parallel {throw parse_err(ts, "duplicate @parallel attribute")}
+            is_parallel = true; vts = rest
+        | (UNZIP, _) :: rest =>
+            if need_unzip {throw parse_err(ts, "duplicate @unzip attribute")}
+            match for_make {
+            | ForMakeNone | ForMakeTuple =>
+                throw parse_err(ts, "@unzip can only be used with array and list comprehensions")
+            | _ => {}}
+            need_unzip = true; vts = rest
+        | (FOR(f), _) :: rest =>
+            if !f { throw parse_err(vts, "';' or newline is missing before 'for'") }
+            break
+        | _ =>
+            throw parse_err(vts, "'for' is expected (after optional attributes)")
+        }
+    }
+
+    fun parse_for_clause_(ts: tklist_t, expect_comma: bool,
+        result: (pat_t, pat_t, exp_t) list, loc: loc_t): (tklist_t, (pat_t, pat_t, exp_t) list) =
+        match ts {
+        | (COMMA, _) :: rest =>
+            if expect_comma { parse_for_clause_(rest, false, result, loc) }
+            else { throw parse_err(ts, "extra ','?") }
+        | (FOR(_), _) :: _ | (LBRACE, _) :: _ =>
+            if result.empty() {
+                throw ParseError(loc, "empty for? (need at least one <iter_pat> <- <iter_range or collection>)")
+            }
+            (ts, result.rev())
+        | _ =>
+            if expect_comma { throw parse_err(ts, "',' is expected") }
+            val (ts, p) = parse_pat(ts, true)
+            val (ts, idx_pat) = match ts {
+                | (AT, _) :: rest =>
+                    parse_pat(rest, true)
+                | _ => (ts, PatAny(loc))
+                }
+            val ts = match ts {
+                | (BACK_ARROW, _) :: rest => rest
+                | _ => throw parse_err(ts, "'<-' is expected")
+                }
+            val (ts, e) = parse_range_exp(ts)
+            parse_for_clause_(ts, true, (p, idx_pat, e) :: result, loc)
+        }
+
+    while true {
+        var loc_i = noloc
+        match vts {
+        | (FOR(f), loc) :: rest =>
+            if nested_for_cl.empty() && !f { throw parse_err(vts, "';' or newline is expected before 'for'") }
+            vts = rest
+            loc_i = noloc
+        | _ =>
+            nested_for_cl = nested_for_cl.rev()
+            break
+        }
+        val (ts, for_cl)  = parse_for_clause_(vts, false, [], loc_i)
+        nested_for_cl = (for_cl, loc_i) :: nested_for_cl
+        vts = ts
+    }
+
+    println(f"nfors: {nested_for_cl.length()}")
+    val glob_loc = nested_for_cl.hd().1
+
+    // process the nested for.
+    val fold (glob_el, nested_for_cl) = ([], []) for (ppe_list, loc) <- nested_for_cl {
+        val fold (glob_el, for_cl_, idx_pat) = (glob_el, [], PatAny(loc)) for (p, idxp, e) <- ppe_list {
+            val (p_, p_e) = plist2exp(p :: [], "x", get_pat_loc(p))
+            val p = List.hd(p_)
+            match (idxp, idx_pat) {
+            | (PatAny(_), idx_pat) => (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
+            | (_, PatAny(_)) =>
+                val (idxp_, idxp_e) = plist2exp(idxp :: [], "i", get_pat_loc(idxp))
+                (idxp_e :: p_e :: glob_el, (p, e) :: for_cl_, idxp)
+            | _ => throw ParseError(get_pat_loc(idxp), "@ is used more than once, which does not make sence and is not supported")
+            }
+        }
+        (glob_el, (for_cl_.rev(), idx_pat, loc) :: nested_for_cl)
+    }
+
+    val for_iter_e = match glob_el.rev() { | e :: [] => e | el => make_tuple(el, glob_loc) }
+    val (ts, body) = match vts {
+        | (LBRACE, l1) :: (BAR, _) :: _ =>
+            val (ts, cases) = parse_match_cases(vts)
+            val match_e = ExpMatch(for_iter_e, cases, make_new_ctx(l1))
+            (ts, match_e)
+        | (LBRACE, l1) :: _ =>
+            parse_block(vts)
+        | _ => throw parse_err(ts, "'{' is expected (beginning of for-loop body)")
+    }
+
+    match for_make
+    {
+    | ForMakeArray | ForMakeList | ForMakeTuple =>
+        val fold (pel_i_l, loc) = ([], noloc) for (pe_l, idxp, loc) <- nested_for_cl {
+            ((pe_l, idxp) :: pel_i_l, loc)
+            }
+        (ts, ExpMap(pel_i_l, body, default_for_flags().{
+            for_flag_make=for_make,
+            for_flag_parallel=is_parallel,
+            for_flag_unzip=need_unzip},
+        make_new_ctx(loc)))
+    | _ =>
+        val nfors = nested_for_cl.length()
+        val fold e = body for (pe_l, idxp, loc)@i <- nested_for_cl {
+            val nested = i < nfors-1
+            val flags = default_for_flags()
+            val flags = if nested {flags.{for_flag_nested=true}}
+                else {flags.{for_flag_parallel=is_parallel}}
+            ExpFor(pe_l, idxp, e, flags, loc)
+            }
+        (ts, e)
+    }
+}
+
 fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
 {
     val (ts, is_private) = match ts {
@@ -697,71 +845,71 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
 }
 
 fun parse_opname(t: token_t, loc: loc_t): id_t =
-match t {
-| APOS => fname_op_apos()
-| PLUS(_) => fname_op_add()
-| MINUS(_)  => fname_op_sub()
-| STAR(_)  => fname_op_mul()
-| SLASH  => fname_op_div()
-| PERCENT  => fname_op_mod()
-| POWER  => fname_op_pow()
-| DOT_STAR  => fname_op_dot_mul()
-| DOT_SLASH  => fname_op_dot_div()
-| DOT_PERCENT  => fname_op_dot_mod()
-| DOT_POWER  => fname_op_dot_pow()
-| SHIFT_LEFT  => fname_op_shl()
-| SHIFT_RIGHT  => fname_op_shr()
-| BITWISE_AND  => fname_op_bit_and()
-| BITWISE_OR   => fname_op_bit_or()
-| BITWISE_XOR  => fname_op_bit_xor()
-| TILDE  => fname_op_bit_not()
-| SPACESHIP  => fname_op_cmp()
-//| SAME    => fname_op_same()
-| CMP(CmpEQ)  => fname_op_eq()
-| CMP(CmpNE)  => fname_op_ne()
-| CMP(CmpLE)  => fname_op_le()
-| CMP(CmpGE)  => fname_op_ge()
-| CMP(CmpLT)  => fname_op_lt()
-| CMP(CmpGT)  => fname_op_gt()
-| DOT_SPACESHIP  => fname_op_dot_cmp()
-| DOT_CMP(CmpEQ)  => fname_op_dot_eq()
-| DOT_CMP(CmpNE)  => fname_op_dot_ne()
-| DOT_CMP(CmpLE)  => fname_op_dot_le()
-| DOT_CMP(CmpGE)  => fname_op_dot_ge()
-| DOT_CMP(CmpLT)  => fname_op_dot_lt()
-| DOT_CMP(CmpGT)  => fname_op_dot_gt()
-| _ => throw ParseError(loc, f"unexpected operator '{Lexer.tok2str(t).1}'")
-}
+    match t {
+    | APOS => fname_op_apos()
+    | PLUS(_) => fname_op_add()
+    | MINUS(_)  => fname_op_sub()
+    | STAR(_)  => fname_op_mul()
+    | SLASH  => fname_op_div()
+    | PERCENT  => fname_op_mod()
+    | POWER  => fname_op_pow()
+    | DOT_STAR  => fname_op_dot_mul()
+    | DOT_SLASH  => fname_op_dot_div()
+    | DOT_PERCENT  => fname_op_dot_mod()
+    | DOT_POWER  => fname_op_dot_pow()
+    | SHIFT_LEFT  => fname_op_shl()
+    | SHIFT_RIGHT  => fname_op_shr()
+    | BITWISE_AND  => fname_op_bit_and()
+    | BITWISE_OR   => fname_op_bit_or()
+    | BITWISE_XOR  => fname_op_bit_xor()
+    | TILDE  => fname_op_bit_not()
+    | SPACESHIP  => fname_op_cmp()
+    | SAME    => fname_op_same()
+    | CMP(CmpEQ)  => fname_op_eq()
+    | CMP(CmpNE)  => fname_op_ne()
+    | CMP(CmpLE)  => fname_op_le()
+    | CMP(CmpGE)  => fname_op_ge()
+    | CMP(CmpLT)  => fname_op_lt()
+    | CMP(CmpGT)  => fname_op_gt()
+    | DOT_SPACESHIP  => fname_op_dot_cmp()
+    | DOT_CMP(CmpEQ)  => fname_op_dot_eq()
+    | DOT_CMP(CmpNE)  => fname_op_dot_ne()
+    | DOT_CMP(CmpLE)  => fname_op_dot_le()
+    | DOT_CMP(CmpGE)  => fname_op_dot_ge()
+    | DOT_CMP(CmpLT)  => fname_op_dot_lt()
+    | DOT_CMP(CmpGT)  => fname_op_dot_gt()
+    | _ => throw ParseError(loc, f"unexpected operator '{Lexer.tok2str(t).1}'")
+    }
 
 fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
 {
     var is_private = false, is_pure = false, is_nothrow = false, is_inline = false
-    var tsv = ts, fname = noid, loc = noloc
+    var vts = ts, fname = noid, loc = noloc
 
     while true {
-        match tsv {
+        match vts {
         | (PRIVATE, _) :: rest =>
             if is_private {throw parse_err(ts, "duplicate @private attribute")}
-            is_private = true; tsv = rest
+            is_private = true; vts = rest
         | (PURE, _) :: rest =>
             if is_pure {throw parse_err(ts, "duplicate @pure attribute")}
-            is_pure = true; tsv = rest
+            is_pure = true; vts = rest
         | (NOTHROW, _) :: rest =>
             if is_nothrow {throw parse_err(ts, "duplicate @nothrow attribute")}
-            is_nothrow = true; tsv = rest
+            is_nothrow = true; vts = rest
         | (INLINE, _) :: rest =>
             if is_inline {throw parse_err(ts, "duplicate @inline attribute")}
-            is_inline = true; tsv = rest
+            is_inline = true; vts = rest
         | (FUN, l1) :: (IDENT(_, i), _) :: (LPAREN(_), _) :: rest =>
-            tsv = rest; fname = get_id(i); loc = l1; break
+            vts = rest; fname = get_id(i); loc = l1; break
         | (OPERATOR, l1) :: (t, l2) :: (LPAREN(_), _) :: rest =>
-            tsv = rest; fname = parse_opname(t, l2); loc = l1; break
+            vts = rest; fname = parse_opname(t, l2); loc = l1; break
         | _ =>
-            throw parse_err(tsv, "'fun <funcname> (' is expected (after optional attributes)")
+            throw parse_err(vts, "'fun <funcname> (' is expected (after optional attributes)")
         }
     }
 
-    val (ts, params, rt, prologue, have_keywords) = parse_fun_params(tsv)
+    val (ts, params, rt, prologue, have_keywords) = parse_fun_params(vts)
     val fname_exp = make_ident(fname, loc)
     parse_body_and_make_fun(ts, fname, params, rt, prologue,
         default_fun_flags().{
@@ -832,7 +980,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
         val (ts, e) = parse_exp(ts)
         match ts {
         | (LBRACE, _) :: rest =>
-            val (ts, _, rec_init_elems) = parse_exp_list(rest, RBRACE,
+            val (ts, _, _, rec_init_elems) = parse_exp_list(rest, RBRACE,
                 kw_mode=KwMust, allow_empty=true, stop_at_semicolon=false)
             (ts, ExpMkRecord(e, rec_init_elems, make_new_ctx(get_exp_loc(e))))
         | _ => (ts, e)
@@ -866,10 +1014,6 @@ fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
     | _ => (ts, e)
     }
 }
-
-fun parse_array_literal(ts: tklist_t, start: loc_t): (tklist_t, exp_t) = throw parse_err(ts, "array literals are not supported")
-fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t) = throw parse_err(ts, "blocks are not supported")
-fun parse_array_idx(ts: tklist_t): (tklist_t, exp_t) = parse_complex_exp(ts) // [TODO]: add range support
 
 type kw_param_t = (id_t, typ_t, defparam_t?, loc_t)
 
@@ -995,7 +1139,7 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
             (ts, ExpAssign(e1, e2, l1))
         | (DOT_EQUAL, l2) :: (LBRACE, _) :: rest =>
             if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
-            val (ts, _, rec_init_elems) = parse_exp_list(ts, RBRACE,
+            val (ts, _, _, rec_init_elems) = parse_exp_list(ts, RBRACE,
                 kw_mode=KwMust, allow_empty=true, stop_at_semicolon=false)
             (ts, ExpUpdateRecord(e1, rec_init_elems, make_new_ctx(l2)))
         | _ => (ts, e1)
@@ -1005,7 +1149,7 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
 fun parse_pat_list(ts: tklist_t, expect_comma: bool,
                    result: pat_t list, simple: bool): (tklist_t, pat_t list) =
     match (ts, expect_comma) {
-    | ((COLON, _) :: rest, _) =>
+    | ((COMMA, _) :: rest, _) =>
         if expect_comma { parse_pat_list(rest, false, result, simple) }
         else { throw parse_err(ts, "extra ','?")}
     | ((RPAREN, _) :: rest, _) =>
@@ -1021,7 +1165,7 @@ fun parse_pat_list(ts: tklist_t, expect_comma: bool,
 fun parse_idpat_list(ts: tklist_t, expect_comma: bool,
         result: (id_t, pat_t) list, simple: bool): (tklist_t, (id_t, pat_t) list) =
     match (ts, expect_comma) {
-    | ((COLON, _) :: rest, _) =>
+    | ((COMMA, _) :: rest, _) =>
         if expect_comma { parse_idpat_list(rest, false, result, simple) }
         else { throw parse_err(ts, "extra ','?") }
     | ((RBRACE, _) :: rest, _) =>
