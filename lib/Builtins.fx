@@ -280,7 +280,7 @@ operator * (n: int, s: string) = s * n
 
 operator == (a: 't list, b: 't list): bool
 {
-    a === b ||
+    //a === b ||
     (match (a, b) {
     | (ai :: a, bi :: b) => ai == bi && a == b
     | ([], []) => true
@@ -511,7 +511,7 @@ operator .>= (a: 't [+], b: 't [+]): bool [+] =
 // operator === checks whether a and b represent not just equal, but the same object.
 // For many of the types it's should be enough to check "a == b" at C level.
 // But for some other types it may be not enough.
-@pure @nothrow operator === (a: 't, b: 't): bool = @ccode {return a == b}
+/*@pure @nothrow operator === (a: 't, b: 't): bool = @ccode {return a == b}
 @pure @nothrow operator === (a: string, b: string): bool = @ccode {return a->data == b->data}
 @pure @nothrow operator === (a: 't [+], b: 't [+]): bool = @ccode {return a->data == b->data}
 operator === (a: (...), b: (...)): bool =
@@ -522,7 +522,7 @@ operator === (a: 't?, b: 't?) {
     | (Some(a), Some(b)) => a === b
     | (None, None) => true
     | _ => false
-}
+}*/
 
 fun int(x: 't) = (x :> int)
 fun uint8(x: 't) = (x :> uint8)
@@ -695,7 +695,7 @@ fun print(t: (...))
     print(")")
 }
 
-fun print(r: {...})
+/*fun print(r: {...})
 {
     print("{")
     for (n, x)@i <- r {
@@ -704,7 +704,7 @@ fun print(r: {...})
         print_repr(x)
     }
     print("}")
-}
+}*/
 
 fun print(a: 't ref) {
     print("ref("); print_repr(*a); print(")")

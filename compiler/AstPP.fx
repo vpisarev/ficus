@@ -257,7 +257,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.newline(); pp.str(f"(* {id2str(dvar_name)} instances *)"); pp.space();
             for inst_id@i <- *dvar_templ_inst {
                 pp.opt_semi()
-                match id_info(inst_id) {
+                match id_info(inst_id, dvar_loc) {
                 | IdVariant(inst_kvar) => ppexp(DefVariant(inst_kvar))
                 | _ => {}
                 }
@@ -550,9 +550,9 @@ fun pprint_pat(pp: PP.t, p: pat_t)
     pppat(p)
 }
 
-fun pprint_mod(dm: defmodule_t)
+fun pprint_mod(dm: defmodule_t ref)
 {
-    val {dm_name, dm_filename, dm_defs, dm_deps} = dm
+    val {dm_name, dm_filename, dm_defs, dm_deps} = *dm
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.beginv()
     pp.cut()

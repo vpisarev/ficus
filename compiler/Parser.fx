@@ -10,7 +10,33 @@ from Ast import *
 from Lexer import *
 
 exception ParseError: (loc_t, string)
-var last_loc = noloc
+
+type parser_ctx_t =
+{
+    module_id: id_t;
+    filename: string;
+    deps: id_t list;
+    inc_dirs: string list;
+    default_loc: loc_t;
+}
+
+var parser_ctx = parser_ctx_t { module_id=noid, filename="", deps=[], inc_dirs=[], default_loc=noloc }
+
+fun add_to_imported_modules(mname_id: id_t, loc: loc_t): id_t {
+    val mname = pp_id2str(mname_id)
+    val mfname = mname.replace(".", Filename.dir_sep()) + ".fx"
+    val mfname =
+        try Sys.locate_file(mfname, parser_ctx.inc_dirs)
+        catch {
+        | NotFoundError => throw ParseError(loc, f"module {mname} is not found")
+        }
+    val dep_minfo = find_module(mname_id, mfname)
+    val mname_unique_id = dep_minfo->dm_name
+    if !parser_ctx.deps.mem(mname_unique_id) {
+        parser_ctx.deps = mname_unique_id :: parser_ctx.deps
+    }
+    mname_unique_id
+}
 
 type kw_mode_t = KwNone | KwMaybe | KwMust
 type tklist_t = (token_t, loc_t) list
@@ -138,7 +164,7 @@ fun parse_err(ts: tklist_t, msg: string): exn
 {
     val loc = match ts {
     | (_, l) :: _ => l
-    | _ => last_loc
+    | _ => parser_ctx.default_loc
     }
     ParseError(loc, msg)
 }
@@ -1162,6 +1188,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
     (ts, DefFun(df))
 }
 
+
 fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
 {
     | (BREAK, l1) :: rest => (rest, ExpBreak(false, l1))
@@ -1661,4 +1688,41 @@ fun parse_deftype(ts: tklist_t)
     }
 }
 
-fun parse(ts: tklist_t): (tklist_t, exp_t list) = parse_expseq(ts, true)
+fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list): bool
+{
+    val fname_id = get_id(dm->dm_filename)
+    parser_ctx = parser_ctx_t {
+        module_id = dm->dm_name,
+        filename = dm->dm_filename,
+        deps = [],
+        inc_dirs = inc_dirs,
+        default_loc = loc_t { fname=fname_id, line0=1, col0=1, line1=1, col1=1 }
+    }
+    val strm = try Lexer.make_stream(dm->dm_filename)
+        catch {
+        | FileOpenError => throw ParseError(parser_ctx.default_loc, "cannot open file")
+        | IOError => throw ParseError(parser_ctx.default_loc, "cannot read file")
+        }
+    val lexer = Lexer.make_lexer(strm)
+
+    // [TODO] perhaps, need to avoid fetching all the tokens at once
+    var all_tokens: (Lexer.token_t, Ast.loc_t) list = []
+    while true {
+        val more_tokens = lexer()
+        for (t, (lineno, col)) <- more_tokens {
+            val loc = Ast.loc_t {fname=fname_id, line0=lineno, col0=col, line1=lineno, col1=col}
+            //print_tokens((t, loc) :: [], endl=false)
+            all_tokens = (t, loc) :: all_tokens
+        }
+        match all_tokens {
+        | (Lexer.EOF, _) :: _ => break
+        | _ => {}
+        }
+    }
+    all_tokens = all_tokens.rev()
+    for t <- preamble.rev() { all_tokens = (t, parser_ctx.default_loc) :: all_tokens }
+    dm->dm_parsed = true
+    dm->dm_defs = parse_expseq(all_tokens, true).1
+    dm->dm_deps = parser_ctx.deps.rev()
+    true
+}

@@ -3,9 +3,16 @@
     See ficus/LICENSE for the licensing terms
 */
 
-import Sys
-
-fun dir_sep() = if Sys.win32 {"\\"} else {"/"}
+@pure fun dir_sep(): string = @ccode {
+    const char sep[] =
+#if defined _WIN32 || defined WINCE
+        {92, 0} // back slash
+#else
+        {47, 0} // slash
+#endif
+    ;
+    return fx_cstr2str(sep, -1, fx_result);
+}
 
 fun is_absolute(path: string) =
     path.startswith(dir_sep()) ||

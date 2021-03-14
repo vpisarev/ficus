@@ -42,6 +42,9 @@ fun assoc_opt(l: ('a, 'b) list, x: 'a): 'b? =
     | _ => None
     }
 
+fun app(l: 't list, f: 't -> void): void =
+    for x <- l {f(x)}
+
 fun map(l: 't list, f: 't -> 'rt): 'rt list =
     [: for x <- l {f(x)} :]
 

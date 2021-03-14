@@ -4,7 +4,7 @@
 */
 
 // Various system services
-import File
+import File, Filename
 
 @ccode {
     #include <limits.h>
@@ -44,7 +44,7 @@ val unix : bool = @ccode {
 #endif
 }
 
-fun osname_() {
+fun osname_(): bool -> string {
     var osname = ""
     var osinfo = ""
     fun(get_version: bool) {
@@ -79,6 +79,12 @@ fun arguments() = List.tl(argv)
 
 @pure @nothrow fun getTickCount(): int64 = @ccode { return fx_tickcount() }
 @pure @nothrow fun getTickFrequency(): double = @ccode { return fx_tickfreq() }
+
+fun getcwd(): string = @ccode {
+    char buf[PATH_MAX+16];
+    char* p = getcwd(buf, PATH_MAX);
+    return fx_cstr2str(p, p ? -1 : 0, fx_result);
+}
 
 fun remove(name: string): void = @ccode
 {
@@ -120,10 +126,27 @@ fun file_exists(name: string): bool = @ccode
     return fx_status;
 }
 
-fun getcwd(): string = @ccode {
-    char buf[PATH_MAX+16];
-    char* p = getcwd(buf, PATH_MAX);
-    return fx_cstr2str(p, p ? -1 : 0, fx_result);
+// throws NotFoundError if there is no such files in specified directories
+fun locate_file(name: string, dirs: string list): string
+{
+    val dir = find(for d <- dirs {file_exists(Filename.concat(d, name))})
+    Filename.normalize(getcwd(), Filename.concat(dir, name))
+}
+
+// [TODO] update to create all the parent directories if needed
+fun mkdir(name: string, permissions: int): bool = @ccode
+{
+    fx_cstr_t name_;
+    int fx_status = fx_str2cstr(name, &name_, 0, 0);
+    struct stat s;
+    *fx_result = false;
+    if (fx_status >= 0) {
+        if(stat(name_.data, &s) == -1) {
+            *fx_result = mkdir(name_.data, (int)permissions) == 0;
+        }
+        fx_free_cstr(&name_);
+    }
+    return fx_status;
 }
 
 fun command(cmd: string): int = @ccode {

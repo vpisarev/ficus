@@ -6,7 +6,7 @@
 ///////////////////////// The type checker //////////////////////
 
 from Ast import *
-import Options
+import AstPP, Options
 
 /*
 The type checker component performs semantical analysis and various
@@ -112,7 +112,7 @@ fun print_env(msg, env, loc) {
 type rec_elem_t = (id_t, typ_t, lit_t?)
 type rec_data_t = (rec_elem_t list, bool)
 
-fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
+fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
     var undo_stack: (typ_t? ref, typ_t?) list = []
     var rec_undo_stack: (rec_data_t ref, rec_data_t) list = []
     /* checks if a reference to undefined type (an argument of TypVar (ref None))
@@ -143,11 +143,11 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
     fun occurs(r1: typ_t? ref, tl: typ_t list): bool = exists(for t <- tl {occurs(r1, t)})
     fun occurs(r1: typ_t? ref, relems: rec_elem_t list): bool = exists(for (_,t,_) <- relems {occurs(r1, t)})
 
-    fun maybe_unify_(tl1: typ_t list, tl2: typ_t list) =
+    fun maybe_unify_(tl1: typ_t list, tl2: typ_t list, loc: loc_t) =
         tl1.length() == tl2.length() &&
-        all(for t1 <- tl1, t2 <- tl2 {maybe_unify_(t1, t2)})
+        all(for t1 <- tl1, t2 <- tl2 {maybe_unify_(t1, t2, loc)})
 
-    fun maybe_unify_(t1: typ_t, t2: typ_t): bool =
+    fun maybe_unify_(t1: typ_t, t2: typ_t, loc: loc_t): bool =
         match (t1, t2) {
         | (TypInt, TypInt) | (TypString, TypString) | (TypChar, TypChar) | (TypBool, TypBool) | (TypVoid, TypVoid)
         | (TypExn, TypExn) | (TypCPointer, TypCPointer) | (TypDecl, TypDecl) | (TypModule, TypModule) => true
@@ -155,15 +155,15 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | (TypUInt(bits1), TypUInt(bits2)) => bits1 == bits2
         | (TypFloat(bits1), TypFloat(bits2)) => bits1 == bits2
         | (TypFun(args1, rt1), TypFun(args2, rt2)) =>
-            maybe_unify_(args1, args2) && maybe_unify_(rt1, rt2)
-        | (TypList(et1), TypList(et2)) => maybe_unify_(et1, et2)
-        | (TypTuple(tl1), TypTuple(tl2)) => maybe_unify_(tl1, tl2)
+            maybe_unify_(args1, args2, loc) && maybe_unify_(rt1, rt2, loc)
+        | (TypList(et1), TypList(et2)) => maybe_unify_(et1, et2, loc)
+        | (TypTuple(tl1), TypTuple(tl2)) => maybe_unify_(tl1, tl2, loc)
         | (TypVar((ref Some(TypVarTuple(t1_opt))) as r1), TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
             if r1 == r2 { true }
             else if occurs(r2, t1) || occurs(r1, t2) { false }
             else {
                 val ok = match (t1_opt, t2_opt) {
-                    | (Some(t1_), Some(t2_)) => maybe_unify_(t1_, t2_)
+                    | (Some(t1_), Some(t2_)) => maybe_unify_(t1_, t2_, loc)
                     | _ => true
                     }
                 if ok {
@@ -172,13 +172,13 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
                 }
                 ok
             }
-        | (TypVar (ref Some(TypVarTuple(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1)
-        | (TypVar (ref Some(TypVarTuple(_))), TypTuple(_)) => maybe_unify_(t2, t1)
+        | (TypVar (ref Some(TypVarTuple(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1, loc)
+        | (TypVar (ref Some(TypVarTuple(_))), TypTuple(_)) => maybe_unify_(t2, t1, loc)
         | (TypTuple(tl1), TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
             if occurs(r2, tl1) { false }
             else {
                 val ok = match t2_opt {
-                    | Some(t2_) => tl1.all(fun (t: typ_t) {maybe_unify_(t2_, t)})
+                    | Some(t2_) => tl1.all(fun (t: typ_t) {maybe_unify_(t2_, t, loc)})
                     | _ => true
                 }
                 if ok {
@@ -203,7 +203,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
                 *r1 = Some(t2)
                 true
             | TypApp(t_args, tn) =>
-                match id_info(tn) {
+                match id_info(tn, loc) {
                 | IdVariant (ref (defvariant_t {dvar_cases=(_, TypRecord(_)) :: []})) =>
                     undo_stack = (r1, *r1) :: undo_stack
                     *r1 = Some(t2)
@@ -212,22 +212,22 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
                 }
             | _ => false
             }
-        | (_, TypVar (ref Some(TypVarRecord))) => maybe_unify_(t2, t1)
-        | (TypRef(drt1), TypRef(drt2)) => maybe_unify_(drt1, drt2)
+        | (_, TypVar (ref Some(TypVarRecord))) => maybe_unify_(t2, t1, loc)
+        | (TypRef(drt1), TypRef(drt2)) => maybe_unify_(drt1, drt2, loc)
         | (TypRecord(r1), TypRecord(r2)) when r1 == r2 => true
-        | (TypRecord (ref (_, false)), TypRecord (ref (_, true))) => maybe_unify_(t2, t1)
+        | (TypRecord (ref (_, false)), TypRecord (ref (_, true))) => maybe_unify_(t2, t1, loc)
         | (TypRecord(r1), TypRecord(r2)) =>
             val ok = match (*r1, *r2) {
                 | ((relems1, true), (relems2, true)) =>
                     relems1.length() == relems2.length() &&
                     all(for (n1, t1, _) <- relems1, (n2, t2, _) <- relems2 {
-                            n1 == n2 && maybe_unify_(t1, t2) })
+                            n1 == n2 && maybe_unify_(t1, t2, loc) })
                 | ((relems1, _), (relems2, _)) =>
                     val have_all_matches =
                         all(for (n1, t1, v1opt) <- relems1 {
                             v1opt.issome() ||
                             exists(for (n2, t2, _) <- relems2 {
-                                n1 == n2 && maybe_unify_(t1, t2)})
+                                n1 == n2 && maybe_unify_(t1, t2, loc)})
                             })
                     /*
                         if both the record types are unknown then all the v1opt's in relems1
@@ -244,29 +244,29 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
                 *r2 = *r1
             }
             ok
-        | (TypArray(d1, et1), TypArray(d2, et2)) => d1 == d2 && maybe_unify_(et1, et2)
+        | (TypArray(d1, et1), TypArray(d2, et2)) => d1 == d2 && maybe_unify_(et1, et2, loc)
         | (TypVar((ref Some(TypVarArray(t1_))) as r1), TypVar((ref Some(TypVarArray(t2_))) as r2)) =>
             if r1 == r2 { true }
             else if occurs(r2, t1) || occurs(r1, t2) { false }
-            else if maybe_unify_(t1_, t2_) { undo_stack = (r2, *r2) :: undo_stack; *r2 = Some(t1); true }
+            else if maybe_unify_(t1_, t2_, loc) { undo_stack = (r2, *r2) :: undo_stack; *r2 = Some(t1); true }
             else { false }
-        | (TypVar (ref Some(TypVarArray(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1)
-        | (TypVar (ref Some(TypVarArray(_))), TypArray(_, _)) => maybe_unify_(t2, t1)
+        | (TypVar (ref Some(TypVarArray(_))), TypVar (ref Some(t2_))) => maybe_unify_(t2_, t1, loc)
+        | (TypVar (ref Some(TypVarArray(_))), TypArray(_, _)) => maybe_unify_(t2, t1, loc)
         | (TypArray(d1, et1), TypVar((ref Some(TypVarArray(et2))) as r2)) =>
             if occurs(r2, et1) { false }
-            else if maybe_unify_(et1, et2) { undo_stack = (r2, *r2) :: undo_stack; *r2 = Some(t1); true }
+            else if maybe_unify_(et1, et2, loc) { undo_stack = (r2, *r2) :: undo_stack; *r2 = Some(t1); true }
             else { false }
         | (TypApp(args1, id1), TypApp(args2, id2)) =>
             if id1 != id2 { false }
             else {
                 val t1 = match args1 { | [] => TypVoid | t :: [] => t | _ => TypTuple(args1) }
                 val t2 = match args2 { | [] => TypVoid | t :: [] => t | _ => TypTuple(args2) }
-                maybe_unify_(t1, t2)
+                maybe_unify_(t1, t2, loc)
             }
         /* unify TypVar(_) with another TypVar(_): consider several cases */
         | (TypVar(r1), TypVar(r2)) when r1 == r2 => true
-        | (TypVar (ref Some(t1_)), _) => maybe_unify_(t1_, t2)
-        | (_, TypVar (ref Some(t2_))) => maybe_unify_(t1, t2_)
+        | (TypVar (ref Some(t1_)), _) => maybe_unify_(t1_, t2, loc)
+        | (_, TypVar (ref Some(t2_))) => maybe_unify_(t1, t2_, loc)
         | (TypVar((ref None) as r1), _) =>
             if occurs(r1, t2) { false }
             /* This is the destructive unification step:
@@ -301,9 +301,8 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
         | (_, _) => false
         }
 
-    val ok = maybe_unify_(t1, t2)
-    if ok && update_refs {}
-    else {
+    val ok = maybe_unify_(t1, t2, loc)
+    if !ok || !update_refs {
         /* restore the original types in the case of type unification failure
            or when update_refs=false */
         for (r, prev) <- rec_undo_stack { *r = prev }
@@ -315,7 +314,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, update_refs: bool) {
 /* this is another flavor of type unification function;
    it throws an exception in the case of failure */
 fun unify(t1: typ_t, t2: typ_t, loc: loc_t, msg: string): void =
-    if maybe_unify(t1, t2, true) {}
+    if maybe_unify(t1, t2, loc, true) {}
     else { throw compile_err(loc, msg) }
 
 fun coerce_types(t1: typ_t, t2: typ_t, allow_tuples: bool, allow_fp: bool, is_shift: bool, loc: loc_t) {
@@ -410,7 +409,7 @@ fun add_id_to_env_check(key: id_t, i: id_t, env: env_t, check: id_info_t->void) 
         match e {
         | EnvId(j) =>
             if i == j { continue }
-            check(id_info(j))
+            check(id_info(j, noloc))
         | _ => {}
         }
         e } :]
@@ -424,7 +423,7 @@ fun inst_merge_env(env_from: env_t, env_to: env_t): env_t =
             | Some(prev_entries) =>
                 val fold extra_entries = [] for e <- entries {
                     | EnvId(i) =>
-                        val add = match id_info(i) { | IdFun(_) => true | _ => false }
+                        val add = match id_info(i, noloc) { | IdFun(_) => true | _ => false }
                         if add && !prev_entries.mem(e) { e :: extra_entries }
                         else { extra_entries }
                     | _ => extra_entries
@@ -485,14 +484,14 @@ fun find_typ_instance(t: typ_t, loc: loc_t): typ_t? {
         if targs.empty() {
             Some(t)
         } else {
-            val inst_list = match id_info(n) {
-                | IdVariant (ref {dvar_templ_inst}) => *dvar_templ_inst
-                | _ => []
+            val (inst_list, dvar_loc) = match id_info(n, loc) {
+                | IdVariant (ref {dvar_templ_inst, dvar_loc}) => (*dvar_templ_inst, dvar_loc)
+                | _ => ([], loc)
                 }
             match find_opt(for inst <- inst_list {
-                match id_info(inst) {
+                match id_info(inst, loc) {
                 | IdVariant (ref {dvar_alias=inst_alias}) =>
-                    maybe_unify(t, inst_alias, false)
+                    maybe_unify(t, inst_alias, loc, false)
                 | _ => false
                 }}) {
             | Some inst => Some(TypApp([], inst))
@@ -522,7 +521,7 @@ fun get_record_elems(vn_opt: id_t?, t: typ_t, proto_mode: bool, loc: loc_t): (id
                 | _ => throw compile_err(loc, "proper instance of the template record or variant type is not found")
                 }
             }
-        match id_info(n) {
+        match id_info(n, loc) {
         | IdVariant (ref {dvar_templ_args, dvar_flags, dvar_cases=(vn0, TypRecord (ref (relems, true))) :: [], dvar_loc})
             when dvar_flags.var_flag_record =>
             check_and_norm_tyargs(new_tyargs, dvar_templ_args, dvar_loc, loc)
@@ -600,21 +599,21 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list, loc: loc_t, p
         (dependencies first and then dependent modules next), dm_env should contain
         all the necessary information.
     */
-    fun search_path(n_path: string, dot_pos: int, env: env_t): 't?
+    fun search_path(n_path: string, dot_pos: int, env: env_t, loc: loc_t): 't?
     {
         val dot_pos = n_path.rfind(dot_pos, '.')
         if dot_pos < 0 {None}
         else {
             match find_all(get_id(n_path[:dot_pos]), env) {
             | EnvId m :: _ =>
-                match id_info(m) {
+                match id_info(m, loc) {
                 | IdModule (ref {dm_name, dm_env}) =>
                     val env = if curr_module(sc) == dm_name {env0} else {dm_env}
                     find_first(get_id(n_path[dot_pos+1:]), env, env0, sc, loc, pred)
                 | _ => None
                 }
             | _ =>
-                search_path(n_path, dot_pos-1, env)
+                search_path(n_path, dot_pos-1, env, loc)
             }
         }
     }
@@ -624,7 +623,7 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list, loc: loc_t, p
     if !e_all.empty() { find_next_(e_all) }
     else {
         val n_path = pp_id2str(n)
-        search_path(n_path, n_path.length()-1, env)
+        search_path(n_path, n_path.length()-1, env, loc)
     }
 }
 
@@ -633,7 +632,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
     val nt_opt = find_first(n, env, env, sc, loc, fun (e: env_entry_t): (id_t, typ_t)? {
         | EnvId(IdName(_)) => None
         | EnvId(i) =>
-            match id_info(i) {
+            match id_info(i, loc) {
             | IdDVal ({dv_typ}) =>
                 unify(dv_typ, t, loc,
                     f"incorrect type of value '{pp_id2str(n)}': expected='{typ2str(t)}', actual='{typ2str(dv_typ)}'")
@@ -655,11 +654,11 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
                     | _ => t
                     }
                 if df_templ_args.empty() {
-                    if maybe_unify(df_typ, t, true) { Some((i, t)) } else { None }
+                    if maybe_unify(df_typ, t, loc, true) { Some((i, t)) } else { None }
                 } else {
                     val (ftyp, env1) = preprocess_templ_typ(df_templ_args, df_typ, df_env, sc, loc)
                     // first try to unify the type with the generic template type
-                    if !maybe_unify(ftyp, t, true) { None }
+                    if !maybe_unify(ftyp, t, loc, true) { None }
                     else {
                         /* a necessary extra step to do before function instantiation;
                             if it's a constructor, we first need to check the return type.
@@ -680,9 +679,9 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
                         if return_orig { Some((df_name, t)) }
                         else {
                             val inst_name_opt = find_opt(for inst <- *df_templ_inst {
-                                match id_info(inst) {
+                                match id_info(inst, loc) {
                                 | IdFun (ref {df_typ=inst_typ}) =>
-                                    maybe_unify(inst_typ, t, true)
+                                    maybe_unify(inst_typ, t, loc, true)
                                 | _ => throw compile_err(loc,
                                     f"invalid (non-function) instance {id2str(inst)} of template function {pp_id2str(df_name)}")
                                 }})
@@ -729,7 +728,7 @@ fun try_autogen_symbols(n: id_t, t: typ_t, env: env_t, sc:
     val nstr = id2str(n)
     match (nstr, deref_typ_rec(t)) {
     | ("__eq__", TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool))
-        when n1 == n2 && (match id_info(n1) { | IdVariant(_) => true | _ => false}) =>
+        when n1 == n2 && (match id_info(n1, loc) { | IdVariant(_) => true | _ => false}) =>
         Some(lookup_id(get_id("__eq_variants__"), t, env, sc, loc))
     | _ => None
     }
@@ -750,7 +749,7 @@ fun check_for_duplicate_fun(ftyp: typ_t, env: env_t, sc: scope_t list, loc: loc_
         | IdFun (ref {df_name, df_templ_args, df_typ, df_scope, df_loc}) =>
             if df_scope.hd() == sc.hd() {
                 val (t, _) = preprocess_templ_typ(df_templ_args, df_typ, env, sc, loc)
-                if maybe_unify(t, ftyp, false) && df_templ_args.empty() {
+                if maybe_unify(t, ftyp, loc, false) && df_templ_args.empty() {
                     throw compile_err( loc,
                         f"the symbol {pp_id2str(df_name)} is re-declared in the same scope; the previous declaration is here: {df_loc}")
                 }
@@ -758,7 +757,7 @@ fun check_for_duplicate_fun(ftyp: typ_t, env: env_t, sc: scope_t list, loc: loc_
         | IdExn (ref {dexn_name, dexn_typ, dexn_scope, dexn_loc}) =>
             if dexn_scope.hd() == sc.hd() {
                 val t = typ2constr(dexn_typ, TypExn, dexn_loc)
-                if maybe_unify(t, ftyp, false) {
+                if maybe_unify(t, ftyp, loc, false) {
                     throw compile_err(loc,
                         f"the symbol '{pp_id2str(dexn_name)}' is re-declared in the same scope; the previous declaration is here {dexn_loc}")
                 }
@@ -812,6 +811,7 @@ fun match_ty_templ_args(actual_ty_args: typ_t list, templ_args: id_t list, env: 
 
 fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     val (etyp, eloc) as ctx = get_exp_ctx(e)
+    println(f"\n------------------------\nchecking expression at {eloc}: "); AstPP.pprint_exp_x(e); println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
     fun check_for_clause(p: pat_t, e: exp_t, env: env_t, idset: idset_t, sc: scope_t list) {
         val e = check_exp(e, env, sc)
@@ -1048,7 +1048,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp, et, eloc, "incorrect type of the tuple element")
             ExpMem(new_e1, e2, ctx)
         | (TypApp(_, vn), _, ExpIdent(n2, (etyp2, eloc2))) when n2 == __tag_id__ =>
-            match id_info(vn) {
+            match id_info(vn, eloc) {
             | IdVariant(_) =>
                 unify(etyp, TypInt, eloc, "variant tag is integer, but the other type is expected")
                 ExpMem(new_e1, e2, ctx)
@@ -1082,7 +1082,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | ExpAt(arr, BorderNone, InterpNone, _, _) => is_lvalue(false, arr)
             | ExpUnary(OpDeref, r, _) => is_lvalue(false, r)
             | ExpIdent(n1, _) => !need_mutable_id ||
-                (match id_info(n1) {
+                (match id_info(n1, eloc) {
                 | IdDVal ({dv_flags}) => dv_flags.val_flag_mutable
                 | _ => false
                 })
@@ -1100,7 +1100,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val new_e2 = check_exp(e2, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
         val (etyp2, eloc2) = get_exp_ctx(new_e2)
-        if maybe_unify(etyp, TypList(make_new_typ()), false) || maybe_unify(etyp2, TypList(make_new_typ()), false) {
+        if maybe_unify(etyp, TypList(make_new_typ()), eloc, false) || maybe_unify(etyp2, TypList(make_new_typ()), eloc, false) {
             unify(etyp, TypList(etyp1), eloc1, "'::' operation should produce a list")
             unify(etyp2, TypList(etyp1), eloc2, "incorrect type of the second argument of '::' operation")
             ExpBinary(OpCons, new_e1, new_e2, ctx)
@@ -1171,6 +1171,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             } else {
                 (bop, None)
             }
+        | OpSame =>
+            unify(etyp1, etyp2, eloc, "only equal types can be compared for identity")
+            unify(etyp, TypBool, eloc, "the result of identity comparison should be 'bool'")
+            (bop, None)
         | OpCons => throw compile_err(eloc, f"unsupported binary operation {bop}")
         }
         match (typ_opt, bop, deref_typ(etyp1), deref_typ(etyp2), e1, e2) {
@@ -1281,13 +1285,13 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     match check_exp(dup_exp(a), env, sc) {
                     | ExpIdent(f, (t, loc)) when
                         match deref_typ(t) { | TypFun(_, _) => true | _ => false } =>
-                        match id_info(f) {
+                        match id_info(f, eloc) {
                         | IdFun (ref {df_env}) =>
                             val all_entries = find_all(get_orig_id(f), df_env)
                             val fold possible_matches = 0 for entry <- all_entries {
                                 val new_matches = match entry {
                                     | EnvId(i) =>
-                                        match id_info(i) {
+                                        match id_info(i, eloc) {
                                         | IdFun (ref {df_templ_args}) =>
                                             if df_templ_args != [] {100} else {1}
                                         | _ => 0 // do not found values & exceptions,
@@ -1351,7 +1355,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                             | TypString => "String"
                             | TypChar => "Char"
                             | TypApp(_, tn) =>
-                                match id_info(tn) {
+                                match id_info(tn, eloc) {
                                 | IdVariant (ref {dvar_flags={var_flag_object=m}}) when m != noid => pp_id2str(m)
                                 | _ => ""
                                 }
@@ -1435,14 +1439,16 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 | _ =>
                     val (new_ityp, new_iloc) = get_exp_ctx(new_idx)
                     val new_idx =
-                    if maybe_unify(new_ityp, TypInt, true) {
+                    if maybe_unify(new_ityp, TypInt, eloc, true) {
                         new_idx
                     } else {
                         val possible_idx_typs =
                         [: TypBool, TypUInt(8), TypSInt(8), TypUInt(16), TypSInt(16), TypUInt(32), TypSInt(32), TypUInt(64), TypSInt(64) :]
-                        if possible_idx_typs.exists(fun (t: typ_t) {maybe_unify(new_ityp, t, true)}) {
+                        if possible_idx_typs.exists(fun (t: typ_t) {maybe_unify(new_ityp, t, eloc, true)}) {
                             ExpCast(new_idx, TypInt, (TypInt, new_iloc))
-                        } else if interp == InterpLinear && (maybe_unify(new_ityp, TypFloat(32), true) || maybe_unify(new_ityp, TypFloat(64), true)) {
+                        } else if interp == InterpLinear &&
+                            (maybe_unify(new_ityp, TypFloat(32), eloc, true) ||
+                            maybe_unify(new_ityp, TypFloat(64), eloc, true)) {
                             new_idx
                         } else {
                             throw compile_err(
@@ -1842,6 +1848,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | DefExn(_) | DefTyp(_) | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) =>
         throw compile_err(eloc, "internal err: should not get here; all the declarations and directives must be handled in check_eseq")
     }
+    println(f"\nresult of type '{typ2str(get_exp_typ(new_e))}': "); AstPP.pprint_exp_x(new_e); println("\n---------------------------\n")
     new_e
 }
 
@@ -1992,7 +1999,7 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
         fold env = env for i <- entries.rev() {
             match i {
             | EnvId(i) =>
-                val info = id_info(i)
+                val info = id_info(i, loc)
                 val sc = get_scope(info)
                 match (info, sc) {
                 | (_, (ScModule(m) :: _)) when parent_mod == noid || parent_mod == m => add_id_to_env(key, i, env)
@@ -2156,7 +2163,7 @@ fun check_types(eseq: exp_t list, env: env_t, sc: scope_t list) =
             val {dvar_name, dvar_templ_args, dvar_cases, dvar_ctors, dvar_scope, dvar_loc} = *dvar
             fold env=env for (n, t) <- dvar_cases, ctor_name <- dvar_ctors {
                 val {df_name, df_templ_args, df_typ} =
-                    match id_info(ctor_name) {
+                    match id_info(ctor_name, dvar_loc) {
                     | IdFun(df) => *df
                     | _ => throw compile_err(dvar_loc, f"internal error: constructor {id2str(ctor_name)} is not a function")
                     }
@@ -2289,7 +2296,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                         else { throw compile_err(loc, f"a concrete type '{pp_id2str(n)}' cannot be further instantiated") }
                     | EnvId(IdName(_)) => None
                     | EnvId(i) =>
-                        match id_info(i) {
+                        match id_info(i, loc) {
                         | IdNone | IdDVal(_) | IdFun(_) | IdExn(_) | IdModule(_) => None
                         | IdInterface(_) => throw compile_err(loc, "classes & interfaces are not supported yet")
                         | IdTyp(dt) =>
@@ -2305,7 +2312,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                                 Some(check_typ(dup_typ(dt_typ), env1, sc, loc))
                             }
                         | IdVariant(dvar) =>
-                            val {dvar_name, dvar_templ_args, dvar_alias, dvar_templ_inst} = *dvar
+                            val {dvar_name, dvar_templ_args, dvar_alias, dvar_templ_inst, dvar_loc} = *dvar
                             Some(
                                 if dvar_templ_args.empty() {
                                     dvar_alias
@@ -2313,10 +2320,10 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                                     val t1 = TypApp(ty_args, dvar_name)
                                     match dvar_templ_inst->find_opt(
                                         fun (inst) {
-                                            match id_info(inst) {
+                                            match id_info(inst, dvar_loc) {
                                             | IdVariant(dvar_inst) =>
                                                 val {dvar_alias=dvar_inst_alias} = *dvar_inst
-                                                maybe_unify(t1, dvar_inst_alias, true)
+                                                maybe_unify(t1, dvar_inst_alias, dvar_loc, true)
                                             | _ =>
                                                 throw compile_err(loc, f"invalid type of variant instance {id2str(i)} (must be also a variant)")
                                             }
@@ -2373,12 +2380,12 @@ fun check_typ(t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): typ_t =
 fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                     inst_sc: scope_t list, inst_loc: loc_t, instantiate: bool): deffun_t ref {
     val {df_name} = *templ_df
-    if instantiate { compile_err_ctx = f"when instantiating '{pp_id2str(df_name)}' at {inst_loc}" :: compile_err_ctx }
+    if instantiate { all_compile_err_ctx = f"when instantiating '{pp_id2str(df_name)}' at {inst_loc}" :: all_compile_err_ctx }
     try {
         val inst_df = instantiate_fun_(templ_df, inst_ftyp, inst_env0, inst_sc, inst_loc, instantiate)
         inst_df
     } finally {
-        if instantiate { compile_err_ctx = compile_err_ctx.tl() }
+        if instantiate { all_compile_err_ctx = all_compile_err_ctx.tl() }
     }
 }
 
@@ -2462,7 +2469,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
     | "__eq_variants__" =>
         match (ftyp, inst_args) {
         | (TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool), PatTyped(PatIdent(a, _), _, _) :: PatTyped(PatIdent(b, _), _, _) :: [])
-              when n1 == n2 && (match id_info(n1) {
+              when n1 == n2 && (match id_info(n1, inst_loc) {
                                | IdVariant(_) => true
                                | _ => false
                                }) =>
@@ -2480,9 +2487,9 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
             val astr = pp_id2str(a)
             val bstr = pp_id2str(b)
             val (var_ctors, proto_cases) =
-            match id_info(n1) {
-            | IdVariant (ref {dvar_ctors, dvar_alias=TypApp(_, proto_n)}) =>
-                match id_info(proto_n) {
+            match id_info(n1, inst_loc) {
+            | IdVariant (ref {dvar_ctors, dvar_alias=TypApp(_, proto_n), dvar_loc}) =>
+                match id_info(proto_n, dvar_loc) {
                 | IdVariant (ref {dvar_cases=proto_cases}) => (dvar_ctors, proto_cases)
                 | _ => throw compile_err(inst_loc, "the prototype of variant instance should be a variant")
                 }
@@ -2618,7 +2625,7 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref, env: env_t,
         val (inst_cname, _) =
         register_typ_constructor(ctor_name, CtorVariant(n), inst_dvar->dvar_templ_args, argtyps, inst_app_typ, env, dvar_scope, dvar_loc)
         if instantiate {
-            match id_info(ctor_name) {
+            match id_info(ctor_name, loc) {
             | IdFun(c_def) => *c_def->df_templ_inst = inst_cname :: *c_def->df_templ_inst
             | _ => throw compile_err(loc, f"invalid constructor {id2str(ctor_name)} of variant {id2str(dvar_name)}")
             }
@@ -2688,7 +2695,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
             } else {
                 match deref_typ(t) {
                 | TypApp(ty_args, n) =>
-                    match id_info(n) {
+                    match id_info(n, loc) {
                     | IdVariant(dv) =>
                         val {dvar_cases} = *dv
                         if dvar_cases.length() != 1 {

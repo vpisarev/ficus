@@ -17,12 +17,15 @@ type options_t =
     filename: string = "";
     gen_c: bool = true;
     include_path: string list = [];
+    debug: bool = false;
     inline_thresh: int = 100;
     relax: bool = false;
     make_app: bool = true;
     optimize_level: int = 1;
     output_name: string = "";
+    print_ast0: bool = false;
     print_ast: bool = false;
+    print_k0: bool = false;
     print_k: bool = false;
     print_tokens: bool = false;
     run_app: bool = false;
@@ -52,7 +55,9 @@ Usage: {fxname} [options ...] <input_file.fx> [-- <app_args ...>]
 
 where options can be some of:
     -pr-tokens      Print all the tokens in parsed files
+    -pr-ast0        Print AST right after parsing
     -pr-ast         Print typechecked AST of the parsed files
+    -pr-k0          Print just generated K-form
     -pr-k           Print optimized K-form of the parsed files
                     (only a part of the generated K-form is retained
                     because of the deadcode elimination step)
@@ -61,8 +66,10 @@ where options can be some of:
     -run            Build application and run it
     -O0             Optimization level 0: disable all optimizations
                                          except for the most essential ones
-    -O1             Optimization level 1: enable most of optimizations
+    -O1             Optimization level 1 (default): enable most of optimizations
     -O3             Optimization level 3: enable all optimizations
+    -debug          Turn on debug information, disable optimizations
+                    (but can be overwritten with further -On)
     -inline-threshold  Inline threshold (100 by default); the higher it is,
                     the bigger functions are inlined;
                     --inline-thresh=0 disables inline expansion
@@ -110,6 +117,8 @@ fun parse_options(): bool {
         args = match args {
             | "-pr-tokens" :: next =>
                 opt.print_tokens = true; next
+            | "-pr-ast0" :: next =>
+                opt.print_ast0 = true; next
             | "-pr-ast" :: next =>
                 opt.print_ast = true; next
             | "-pr-k" :: next =>
@@ -126,6 +135,8 @@ fun parse_options(): bool {
                 opt.optimize_level = 1; next
             | "-O3" :: next =>
                 opt.optimize_level = 3; next
+            | "-debug" :: next =>
+                opt.debug = true; next
             | "-inline-threshold" :: i :: next =>
                 match i.to_int() {
                     | Some(i) when i >= 0 => opt.inline_thresh = i; next

@@ -86,6 +86,7 @@ type loc_t =
 }
 
 val noloc = loc_t {fname=noid, line0=0, col0=0, line1=0, col1=0}
+
 fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
     fold loc = default_loc for loci <- llist {
         val {fname, line0, col0, line1, col1} = loc
@@ -117,6 +118,9 @@ fun get_end_loc(loc: loc_t) {
 }
 
 fun string(loc: loc_t) = f"{pp_id2str(loc.fname)}:{loc.line0}:{loc.col0}"
+
+exception CompileError: (loc_t, string)
+exception PropagateCompileError
 
 type lit_t =
     | LitInt: int64
@@ -461,12 +465,16 @@ fun dynvec_push(v: 't dynvec_t ref) {
 fun dynvec_get(v: 't dynvec_t ref, i: int) = v->data[i]
 fun dynvec_set(v: 't dynvec_t ref, i: int, newv: 't) = v->data[i] = newv
 
+var freeze_ids = false
 var all_ids = dynvec_create(IdNone)
 var all_strhash: (string, int) Map.t = Map.empty(String.cmp)
 var all_strings = dynvec_create("")
 var all_modules: (string, id_t) Map.t = Map.empty(String.cmp)
-var sorted_modules: id_t list = []
-var freeze_ids = false
+var all_modules_sorted: id_t list = []
+var builtin_exceptions = (Map.empty(cmp_id): (id_t, id_t) Map.t)
+var all_compile_errs: exn list = []
+var all_compile_err_ctx: string list = []
+var block_scope_idx = -1
 
 fun new_id_idx() {
     if !freeze_ids {}
@@ -500,26 +508,19 @@ fun id2str_(i: id_t, pp: bool): string = id2str__(i, pp, "@", "@@")
 fun id2str(i: id_t): string = id2str_(i, false)
 fun pp_id2str(i: id_t): string = id2str_(i, true)
 
-exception SyntaxError: (loc_t, string)
-exception CompileError: (loc_t, string)
-exception PropagateCompileError
-
-var compile_errs: exn list = []
-var compile_err_ctx: string list = []
-
 fun compile_err(loc: loc_t, msg: string) {
     val whole_msg = f"{loc}: error: {msg}"
-    val whole_msg = match compile_err_ctx {
+    val whole_msg = match all_compile_err_ctx {
         | [] => whole_msg
         | ctx => "\n\t".join(whole_msg :: ctx)
         }
     CompileError(loc, whole_msg)
 }
 
-fun push_compile_err(err: exn) { compile_errs = err :: compile_errs }
+fun push_compile_err(err: exn) { all_compile_errs = err :: all_compile_errs }
 
 fun check_compile_errs() =
-    match compile_errs {
+    match all_compile_errs {
         | err :: _ => throw PropagateCompileError
         | _ => {}
     }
@@ -530,7 +531,7 @@ fun print_compile_err(err: exn) {
     | _ => println("\n\nException {err} occured")
 }
 
-fun pr_verbose(str: string) =
+fun pr_verbose(str: string): void =
     if Options.opt.verbose {
         val eol = if str.endswith("\n") {""} else {"\n"}
         print(f"{str}{eol}")
@@ -556,7 +557,7 @@ fun id2idx_(i: id_t, loc: loc_t) =
     }
 
 fun id2idx(i: id_t) = id2idx_(i, noloc)
-fun id_info(i: id_t) = dynvec_get(all_ids, id2idx(i))
+fun id_info(i: id_t, loc: loc_t) = dynvec_get(all_ids, id2idx_(i, loc))
 
 fun is_unique_id(i: id_t) {
     | IdName(_) => false
@@ -573,12 +574,12 @@ fun get_id_prefix(s: string): int =
         idx
     }
 
-fun get_id(s: string) {
+fun get_id(s: string): id_t {
     val i = get_id_prefix(s)
     IdName(i)
 }
 
-fun gen_temp_id(s: string) {
+fun gen_temp_id(s: string): id_t {
     val i_name = get_id_prefix(s)
     val i_real = new_id_idx()
     IdTemp(i_name, i_real)
@@ -667,7 +668,7 @@ fun pat_skip_typed(p: pat_t) {
 }
 
 fun get_module(m: id_t) =
-    match id_info(m) {
+    match id_info(m, noloc) {
     | IdModule(minfo) => minfo
     | _ => throw Fail(f"internal error in process_all: {pp_id2str(m)} is not a module")
     }
@@ -689,7 +690,6 @@ fun find_module(mname_id: id_t, mfname: string) =
         newmodule
     }
 
-var block_scope_idx = -1
 fun new_block_scope() {
     block_scope_idx += 1
     ScBlock(block_scope_idx)
@@ -802,7 +802,7 @@ fun get_idinfo_typ(id_info: id_info_t, loc: loc_t): typ_t =
 fun get_id_typ(i: id_t, loc: loc_t) =
     match i {
     | IdName(_) => make_new_typ()
-    | _ => get_idinfo_typ(id_info(i), loc)
+    | _ => get_idinfo_typ(id_info(i, loc), loc)
     }
 
 fun get_lit_typ(l: lit_t) {
@@ -848,15 +848,7 @@ fun is_typ_scalar(t: typ_t) {
     | _ => false
 }
 
-fun is_typ_numeric(t: typ_t, allow_vec_tuples: bool) =
-    match deref_typ(t) {
-    | TypInt | TypSInt _ | TypUInt _ | TypFloat _ => true
-    | TypTuple(tl) =>
-        allow_vec_tuples && all(for t <- tl {is_typ_numeric(t, true)})
-    | _ => false
-    }
-
-fun get_numeric_typ_size(t: typ_t, allow_vec_tuples: bool) =
+fun get_numeric_typ_size(t: typ_t, allow_tuples: bool) =
     match deref_typ(t) {
     | TypInt => 8 // assume 64 bits for simplicity
     | TypSInt b => b/8
@@ -865,7 +857,7 @@ fun get_numeric_typ_size(t: typ_t, allow_vec_tuples: bool) =
     | TypBool => 1
     | TypChar => 4
     | TypTuple(tl) =>
-        if !allow_vec_tuples {-1}
+        if !allow_tuples {-1}
         else {
             fold sz=0 for t<-tl {
                 val szj = get_numeric_typ_size(t, true)
@@ -1049,7 +1041,7 @@ fun get_unary_fname(uop: unary_t, loc: loc_t) =
             f"for unary operation \"{uop}\" there is no corresponding function")
     }
 
-fun fname_always_import() = [:
+fun fname_always_import(): id_t list = [:
     fname_op_add(), fname_op_sub(), fname_op_mul(), fname_op_div(),
     fname_op_mod(), fname_op_pow(), fname_op_dot_mul(), fname_op_dot_div(),
     fname_op_dot_mod(), fname_op_dot_pow(), fname_op_shl(), fname_op_shr(),
@@ -1084,17 +1076,8 @@ fun get_cast_fname(t: typ_t, loc: loc_t) =
     | _ => throw CompileError(loc, f"for type '{typ2str(t)}' there is no corresponding cast function")
     }
 
-fun init_all_ids(): void {
-    freeze_ids = false
-    dynvec_clear(all_ids)
-    all_strhash = Map.empty(String.cmp)
-    for i <- __builtin_ids__ { ignore(get_id(i)) }
-    ignore(fname_always_import())
-}
+val reserved_keywords = Set.from_list(String.cmp, [: "fx_result", "fx_status", "fx_fv" :])
 
-var reserved_keywords = Set.from_list(String.cmp, [: "fx_result", "fx_status", "fx_fv" :])
-
-var builtin_exceptions = (Map.empty(cmp_id): (id_t, id_t) Map.t)
 fun get_builtin_exception(n0: id_t, loc: loc_t) =
     match builtin_exceptions.find_opt(n0) {
     | Some(n) => n
@@ -1141,39 +1124,6 @@ fun print_idset(setname: string, s: idset_t) {
     print(f"{setname}:[")
     s.app(fun (i) { println(f" {id2str(i)}") })
     print(" ]\n")
-}
-
-type parser_ctx_t =
-{
-    module_id: id_t;
-    module_idx: int;
-    file: id_t;
-    deps: id_t list;
-    inc_dirs: string list;
-}
-
-var parser_ctx = parser_ctx_t { module_id=noid, module_idx=-1, file=noid, deps=[], inc_dirs=[]}
-
-fun locate_module_file(mname: string, inc_dirs: string list): string
-{
-    val mfname = mname.replace(".", Filename.dir_sep()) + ".fx"
-    try {
-        val dir = find(for d <- inc_dirs {Sys.file_exists(Filename.concat(d, mfname))})
-        Filename.normalize(Sys.getcwd(), Filename.concat(dir, mfname))
-    } catch { | NotFoundError => "" }
-}
-
-fun add_to_imported_modules(mname_id: id_t, loc: loc_t): id_t {
-    /*val mname = pp_id2str(mname_id)
-    val mfname = locate_module_file(mname, parser_ctx.inc_dirs)
-    if mfname == "" {
-        throw SyntaxError(loc, f"module {mname} is not found")
-    }
-    val dep_minfo = find_module(mname_id, mfname)
-    val mname_unique_id = dep_minfo->dm_name
-    parser_ctx.deps = mname_unique_id :: parser_ctx.deps
-    mname_unique_id*/
-    mname_id
 }
 
 fun typ2str(t: typ_t): string {
@@ -1280,6 +1230,7 @@ fun check_n_walk_plist(plist: pat_t list, callb: ast_callb_t) =
 fun walk_typ(t: typ_t, callb: ast_callb_t) {
     fun walk_typ_(t) = check_n_walk_typ(t, callb)
     fun walk_tl_(tl) = check_n_walk_tlist(tl, callb)
+    println(f"walk_typ: {typ2str(t)}")
 
     match t {
     | TypVar(r) => match *r { | Some(t) => *r = Some(walk_typ_(t)) | _ => {} }; t
@@ -1362,7 +1313,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpCCode(str, ctx) => ExpCCode(str, walk_ctx_(ctx))
     | DefVal(p, v, flags, loc) => DefVal(walk_pat_(p), walk_exp_(v), flags, loc)
     | DefFun(df) =>
-        if df->df_templ_args != [] {
+        if !df->df_templ_args.empty() {
             e
         } else {
             val {df_args, df_typ, df_body} = *df
@@ -1468,4 +1419,19 @@ fun is_fixed_typ (t: typ_t): bool
         val _ = is_fixed_typ_(t, callb);
         true
     } catch { | Break => false }
+}
+
+fun init_all(): void
+{
+    freeze_ids = false
+    dynvec_clear(all_ids)
+    all_strhash = Map.empty(String.cmp)
+    for i <- __builtin_ids__ { ignore(get_id(i)) }
+    ignore(fname_always_import())
+    all_modules = Map.empty(String.cmp)
+    all_modules_sorted = []
+    builtin_exceptions = Map.empty(cmp_id)
+    all_compile_errs = []
+    all_compile_err_ctx = []
+    block_scope_idx = -1
 }
