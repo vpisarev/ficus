@@ -16,7 +16,7 @@ type oclit_t =
 | LInt of int
 | LInt64 of int
 | LFloat of float
-| LString of string
+| LString of (string * string)
 | LChar of char
 | LNil
 
@@ -125,7 +125,7 @@ let lit2str lit =
     | LInt(n) -> sprintf "%d" n
     | LInt64(n) -> sprintf "%dL" n
     | LFloat(f) -> sprintf "%.16g" f
-    | LString(s) -> "\"" ^ s ^ "\""
+    | LString(prefix, s) -> prefix ^ "\"" ^ s ^ "\""
     | LChar(c) -> "'" ^ (String.make 1 c) ^ "'"
     | LBool(b) -> if b then "true" else "false"
     | LNil -> "[]"

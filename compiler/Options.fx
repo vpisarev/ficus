@@ -18,6 +18,7 @@ type options_t =
     gen_c: bool = true;
     include_path: string list = [];
     inline_thresh: int = 100;
+    relax: bool = false;
     make_app: bool = true;
     optimize_level: int = 1;
     output_name: string = "";
@@ -65,6 +66,7 @@ where options can be some of:
     -inline-threshold  Inline threshold (100 by default); the higher it is,
                     the bigger functions are inlined;
                     --inline-thresh=0 disables inline expansion
+    -relax          Do not require explicit typing of all global functions' parameters
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
     -I <dir>        Add specified directory to the module search path
@@ -131,6 +133,8 @@ fun parse_options(): bool {
                         println(f"{error} invalid -inline-threshold arument {i}: must be a non-negative integer")
                         ok = false; []
                 }
+            | "-relax" :: next =>
+                opt.relax = true; next
             | "-verbose" :: next =>
                 opt.verbose = true; next
             | "-o" :: oname :: next =>

@@ -60,6 +60,8 @@ operator <=> (a: id_t, b: id_t) = cmp_id(a, b)
 val noid = IdName(0)
 val dummyid = IdName(1)
 val __fold_result_id__ = IdName(2)
+val __tag_id__ = IdName(3)
+val __builtin_ids__ = ["", "_", "__fold_result__", "__tag__"]
 
 type scope_t =
     | ScBlock: int
@@ -238,6 +240,8 @@ type interpolate_t =
     | InterpNone
     | InterpLinear
 
+val max_zerobuf_size = 256
+
 type var_flags_t =
 {
     var_flag_object: id_t;
@@ -329,8 +333,8 @@ type env_entry_t =
 */
 type env_t = (id_t, env_entry_t list) Map.t
 type idset_t = id_t Set.t
-fun make_empty_env(): env_t = Map.empty(cmp_id)
-fun make_empty_idset(): idset_t = Set.empty(cmp_id)
+val empty_env: env_t = Map.empty(cmp_id)
+val empty_idset: idset_t = Set.empty(cmp_id)
 
 type defval_t =
 {
@@ -396,7 +400,7 @@ type defmodule_t =
     dm_name: id_t; dm_filename: string;
     dm_defs: exp_t list; dm_idx: int;
     dm_deps: id_t list; dm_env: env_t;
-    dm_parsed: bool
+    dm_parsed: bool; dm_real: bool
 }
 
 type pragmas_t =
@@ -678,7 +682,7 @@ fun find_module(mname_id: id_t, mfname: string) =
         val newmodule = ref (defmodule_t {
             dm_name=m_fresh_id, dm_filename=mfname,
             dm_idx=-1, dm_defs=[], dm_deps=[],
-            dm_env=make_empty_env(), dm_parsed=false
+            dm_env=empty_env, dm_parsed=false, dm_real=true
         })
         set_id_entry(m_fresh_id, IdModule(newmodule))
         all_modules = all_modules.add(mfname, m_fresh_id)
@@ -744,7 +748,13 @@ fun get_module_scope(sc: scope_t list) {
     | ScModule(_) :: _ => sc
     | ScGlobal :: _ | [] => sc
     | sc_top :: r => get_module_scope(r)
-}
+    }
+
+fun curr_module(sc: scope_t list): id_t =
+    match get_module_scope(sc) {
+    | ScModule(m) :: _ => m
+    | _ => noid
+    }
 
 fun get_qualified_name(name: string, sc: scope_t list) =
     match sc {
@@ -841,12 +851,28 @@ fun is_typ_scalar(t: typ_t) {
 fun is_typ_numeric(t: typ_t, allow_vec_tuples: bool) =
     match deref_typ(t) {
     | TypInt | TypSInt _ | TypUInt _ | TypFloat _ => true
-    | TypTuple(t0 :: trest) =>
-        if allow_vec_tuples && is_typ_numeric(t0, true) {
-            val t0 = deref_typ(t0)
-            all(for t <- trest {deref_typ(t) == t0})
-        } else { false }
+    | TypTuple(tl) =>
+        allow_vec_tuples && all(for t <- tl {is_typ_numeric(t, true)})
     | _ => false
+    }
+
+fun get_numeric_typ_size(t: typ_t, allow_vec_tuples: bool) =
+    match deref_typ(t) {
+    | TypInt => 8 // assume 64 bits for simplicity
+    | TypSInt b => b/8
+    | TypUInt b => b/8
+    | TypFloat b => b/8
+    | TypBool => 1
+    | TypChar => 4
+    | TypTuple(tl) =>
+        if !allow_vec_tuples {-1}
+        else {
+            fold sz=0 for t<-tl {
+                val szj = get_numeric_typ_size(t, true)
+                if szj < 0 || sz < 0 {-1} else {sz + szj}
+            }
+        }
+    | _ => -1
     }
 
 fun string(c: cmpop_t) {
@@ -1040,13 +1066,29 @@ fun fname_always_import() = [:
     fname_string(), fname_print(), fname_repr()
 :]
 
+fun get_cast_fname(t: typ_t, loc: loc_t) =
+    match deref_typ(t) {
+    | TypInt => fname_to_int()
+    | TypSInt(8) => fname_to_int8()
+    | TypSInt(16) => fname_to_int16()
+    | TypSInt(32) => fname_to_int32()
+    | TypSInt(64) => fname_to_int64()
+    | TypUInt(8) => fname_to_uint8()
+    | TypUInt(16) => fname_to_uint16()
+    | TypUInt(32) => fname_to_uint32()
+    | TypUInt(64) => fname_to_uint64()
+    | TypFloat(32) => fname_to_float()
+    | TypFloat(64) => fname_to_double()
+    | TypBool => fname_to_bool()
+    | TypString => fname_string()
+    | _ => throw CompileError(loc, f"for type '{typ2str(t)}' there is no corresponding cast function")
+    }
+
 fun init_all_ids(): void {
     freeze_ids = false
     dynvec_clear(all_ids)
     all_strhash = Map.empty(String.cmp)
-    ignore(get_id_prefix(""))
-    ignore(get_id_prefix("_"))
-    ignore(get_id_prefix("__fold_result__"))
+    for i <- __builtin_ids__ { ignore(get_id(i)) }
     ignore(fname_always_import())
 }
 
@@ -1399,11 +1441,31 @@ fun dup_typ(t: typ_t) = dup_typ_(t, dup_callb)
 fun dup_exp(e: exp_t) = dup_exp_(e, dup_callb)
 fun dup_pat(p: pat_t) = walk_pat(p, dup_callb)
 
-fun deref_typ_rec(t: typ_t) {
+fun deref_typ_rec(t: typ_t)
+{
     fun deref_typ_rec_(t: typ_t, callb: ast_callb_t): typ_t {
         val t = deref_typ(t)
         walk_typ(t, callb)
     }
     val deref_callb = ast_callb_t {ast_cb_typ=Some(deref_typ_rec_), ast_cb_exp=None, ast_cb_pat=None}
     deref_typ_rec_(t, deref_callb)
+}
+
+fun is_fixed_typ (t: typ_t): bool
+{
+    fun is_fixed_typ_(t: typ_t,  callb: ast_callb_t) =
+        match deref_typ(t) {
+        | TypVar (ref None) => throw Break
+        | t => walk_typ(t, callb)
+        }
+    val callb = ast_callb_t
+    {
+        ast_cb_typ = Some(is_fixed_typ_),
+        ast_cb_exp = None,
+        ast_cb_pat = None
+    }
+    try {
+        val _ = is_fixed_typ_(t, callb);
+        true
+    } catch { | Break => false }
 }

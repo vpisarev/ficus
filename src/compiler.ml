@@ -353,10 +353,10 @@ let process_all fname0 =
             (List.iter (fun m -> let minfo = get_module m in Ast_pp.pprint_mod !minfo) !sorted_modules) else () in
         let (kmods, ok) = if ok then k_normalize_all !sorted_modules else ([], false) in
         let _ = pr_verbose "K-normalization complete" in
-        let _ = pr_verbose "K-form optimization started" in
         let _ = if ok && options.print_k0 then (K_pp.pprint_kmods kmods) else () in
+        let _ = pr_verbose "K-form optimization started" in
         let (kmods, ok) = if ok then k_optimize_all kmods else ([], false) in
-        let _ = pr_verbose "K-form optimization complete" in
+        let _ = if ok then pr_verbose "K-form optimization complete" else () in
         let _ = if ok && options.print_k then (K_pp.pprint_kmods kmods) else () in
         if not options.gen_c then ok else
             let (cmods, ok) = if ok then k2c_all kmods else ([], false) in

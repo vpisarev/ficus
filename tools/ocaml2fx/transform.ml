@@ -83,6 +83,16 @@ let transform_let_comp code =
                 ECall(EBinary(OpMem, lst, EIdent("nth")), [idx])
             | (EIdent("String.concat"), s :: lst :: []) ->
                 ECall(EBinary(OpMem, s, EIdent("join")), lst :: [])
+            | (EIdent("sprintf"), ELit(LString(_, fmt)) :: args) ->
+                let fmt_list = String.split_on_char '%' fmt in
+                let result = List.fold_left2(fun result arg fmt_part ->
+                    let argstr = String.trim (Print_ficus.pprint_exp_to_string arg) in
+                    let fmt_part = "{" ^ argstr ^ "}" ^ (Utils.trim_left fmt_part 1) in
+                    result ^ fmt_part) (List.hd fmt_list) args (List.tl fmt_list)
+                    in
+                ELit(LString("f", result))
+            | (EIdent("raise_compile_err"), args) ->
+                ERaise(ECall(EIdent("compile_err"), args))
             | (f, EMkTuple(args) :: []) -> ECall(f, args)
             | _ -> ECall(f, args))
         | EMkTuple(args) -> EMkTuple(trexp_list_ args)

@@ -106,7 +106,7 @@ literal:
 | INT { LInt($1) }
 | INT64 { LInt64($1) }
 | FLOAT { LFloat($1) }
-| STRING { LString($1) }
+| STRING { LString("", $1) }
 | CHAR { LChar($1) }
 | LSQUARE RSQUARE { LNil }
 

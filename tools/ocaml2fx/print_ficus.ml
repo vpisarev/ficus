@@ -419,3 +419,23 @@ let pprint_top_to_file filename code =
     Format.print_flush();
     Format.set_formatter_out_channel stdout;
     close_out outch
+
+let pprint_exp_to_string e =
+    (let (std_print, std_flush) = Format.get_formatter_output_functions () in
+    let all_lines = ref ([]: string list) in
+    let str_print s p n = all_lines := (String.sub s p n) :: !all_lines in
+    let str_flush () = () in
+    let prev_margin = Format.get_margin() in
+    Format.set_formatter_output_functions str_print str_flush;
+    Format.set_margin margin;
+    pprint_ocexp_ e 0;
+    Format.print_flush();
+    Format.set_margin prev_margin;
+    Format.set_formatter_output_functions std_print std_flush;
+    let rec remove_trailing_empty_lines all_lines =
+        match all_lines with
+        | "" :: rest | "\n" :: rest -> remove_trailing_empty_lines rest
+        | l::rest -> (if (Utils.ends_with l "\n") then l else l ^ "\n") :: rest
+        | _ -> all_lines
+        in
+    String.concat "" (List.rev (remove_trailing_empty_lines !all_lines)))

@@ -60,6 +60,14 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
     return -1;
 }
 
+@pure @nothrow fun find(s: string, from_pos: int, c: char): int = @ccode
+{
+    int_ i, sz1 = s->length;
+    for( i = (from_pos >= 0 ? from_pos : 0); i < sz1; i++ )
+        if( s->data[i] == c ) return i;
+    return -1;
+}
+
 @pure @nothrow fun rfind(s: string, part: string): int = @ccode
 {
     int_ sz1 = s->length, sz2 = part->length, i = sz1 - sz2;
@@ -76,6 +84,14 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
 {
     int_ i, sz1 = s->length;
     for( i = sz1-1; i >= 0; i-- )
+        if( s->data[i] == c ) return i;
+    return -1;
+}
+
+@pure @nothrow fun rfind(s: string, from_pos: int, c: char): int = @ccode
+{
+    int_ i, sz1 = s->length;
+    for( i = (from_pos < sz1 ? from_pos : sz1-1); i >= 0; i-- )
         if( s->data[i] == c ) return i;
     return -1;
 }

@@ -847,6 +847,10 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
         | (VAR, _) :: rest => (rest, true)
         | _ => throw parse_err(ts, "'val' or 'var' is expected")
     }
+    val flags = default_val_flags().{
+        val_flag_private=is_private,
+        val_flag_mutable=is_mutable
+        }
 
     fun extend_defvals_(ts: tklist_t, expect_comma: bool, result: exp_t list): (tklist_t, exp_t list) =
         match ts {
@@ -868,9 +872,7 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
                     extend_defvals_(rest, true, dv :: result)
                 | (EQUAL, l1) :: rest =>
                     val (ts, e) = parse_complex_exp_or_block(rest)
-                    val dv = DefVal(p, e, default_val_flags().
-                        {val_flag_mutable=is_mutable,
-                        val_flag_private=is_private}, l1)
+                    val dv = DefVal(p, e, flags, l1)
                     extend_defvals_(ts, true, dv :: result)
                 | _ => throw parse_err(ts, "'=' is expected")
                 }
@@ -880,7 +882,18 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
             (ts, result)
         }
 
-    extend_defvals_(ts, false, [])
+    match ts {
+    | (FOLD, l1) :: rest =>
+        val (ts, p) = parse_pat(rest, true)
+        val (ts, e) = match ts {
+            | (EQUAL, _) :: rest => parse_complex_exp(rest)
+            | _ => throw parse_err(ts, "'=' is expected")
+            }
+        val (ts, for_exp, for_iter_exp) = parse_for(ts, ForMakeNone)
+        val fold_exp = transform_fold_exp("", p, e, for_exp, for_iter_exp, l1)
+        (ts, DefVal(p, fold_exp, flags, get_pat_loc(p)) :: [])
+    | _ => extend_defvals_(ts, false, [])
+    }
 }
 
 fun get_opname(t: token_t): id_t =
@@ -1144,7 +1157,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
     val df = ref (deffun_t { df_name=fname, df_templ_args=[],
         df_args=params, df_typ=TypFun(paramtyps, rt), df_body=body,
         df_flags=fflags, df_scope=ScGlobal :: [], df_loc=loc,
-        df_templ_inst=ref [], df_env=make_empty_env()})
+        df_templ_inst=ref [], df_env=empty_env})
 
     (ts, DefFun(df))
 }
@@ -1220,6 +1233,7 @@ fun parse_idpat_list(ts: tklist_t, expect_comma: bool,
     | (_, true) =>
         throw parse_err(ts, "',' is expected")
     | ((IDENT(_, i_), l1) :: rest, _) =>
+        if i_ == "_" {throw ParseError(l1, "'_' cannot be used as a record elem name")}
         val i = get_id(i_)
         val (ts, p) = match rest {
             | (EQUAL, _) :: rest => parse_pat(rest, simple)
@@ -1239,20 +1253,27 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
         | (IDENT(_, _), l1) :: _ =>
             val (ts, i1_) = parse_dot_ident(ts, false, "")
             val i1 = get_id(i1_)
+            val is_any = i1_ == "_"
             match ts {
-            | (IDENT(_, i2), l2) :: rest =>
-                (rest, PatVariant(i1, PatIdent(get_id(i2), l2) :: [], l1))
+            | (IDENT(_, i2_), l2) :: rest =>
+                if is_any { throw ParseError(l1, "'_' cannot be used as a variant label") }
+                val p2 = if i2_ == "_" {PatAny(l2)} else {PatIdent(get_id(i2_), l2)}
+                (rest, PatVariant(i1, p2 :: [], l1))
             | (LITERAL(lit), l2) :: rest =>
+                if is_any { throw ParseError(l1, "'_' cannot be used as a variant label") }
                 if simple {throw parse_err(ts, "literals cannot be used in this pattern")}
                 (rest, PatVariant(i1, PatLit(lit, l2) :: [], l1))
             | (LPAREN(false), l2) :: rest =>
+                if is_any { throw ParseError(l1, "'_' cannot be used as a variant label") }
                 val (ts, pl) = parse_pat_list(rest, false, [], simple)
                 (ts, PatVariant(i1, pl, l1))
             | (LBRACE, l2) :: rest =>
+                if is_any { throw ParseError(l1, "'_' cannot be used as a variant label") }
                 val (ts, ipl) = parse_idpat_list(rest, false, [], simple)
                 (ts, PatRecord(Some(i1), ipl, l1))
             | _ =>
-                if good_variant_name(i1_) { (ts, PatVariant(i1, [], l1)) }
+                if is_any { (ts, PatAny(l1)) }
+                else if good_variant_name(i1_) { (ts, PatVariant(i1, [], l1)) }
                 else { (ts, PatIdent(i1, l1)) }
             }
         | (LPAREN(_), l1) :: rest =>
@@ -1286,7 +1307,7 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
                 match t {
                 | WHEN =>
                     if simple {throw parse_err(ts, "when-patterns are not allowed here")}
-                    val (ts, e) = parse_exp(rest)
+                    val (ts, e) = parse_complex_exp(rest)
                     (ts, PatWhen(result, e, l))
                 | AS =>
                     match rest {

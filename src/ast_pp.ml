@@ -364,8 +364,9 @@ let pprint_mod { dm_name; dm_filename; dm_defs; dm_deps } =
     (List.iter (fun e -> pprint_exp e; pstr ";"; pcut()) dm_defs);
     Format.close_box();
     Format.print_flush ();
-    Format.set_margin prev_margin
+    Format.set_margin prev_margin;
+    flush stdout
 
-let pprint_typ_x t loc = Format.print_flush (); Format.open_box 0; pprint_typ t loc; Format.close_box(); Format.print_flush ()
-let pprint_exp_x e = Format.print_flush (); Format.open_box 0; pprint_exp e; Format.close_box(); Format.print_flush ()
-let pprint_pat_x p = Format.print_flush (); Format.open_box 0; pprint_pat p; Format.close_box(); Format.print_flush ()
+let pprint_typ_x t loc = Format.print_flush (); Format.open_box 0; pprint_typ t loc; Format.close_box(); Format.print_flush (); flush stdout
+let pprint_exp_x e = Format.print_flush (); Format.open_box 0; pprint_exp e; Format.close_box(); Format.print_flush (); flush stdout
+let pprint_pat_x p = Format.print_flush (); Format.open_box 0; pprint_pat p; Format.close_box(); Format.print_flush (); flush stdout

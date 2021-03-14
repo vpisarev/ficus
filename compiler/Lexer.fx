@@ -515,8 +515,6 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
                     c = (char_)34;
                 else if(c == 92) // backslash
                     c = (char_)92;
-                else if(fmt && c == 123) // open brace
-                    c = (char_)123;
                 else if(c == 'x') {
                     int x0=0, x1=0;
                     if( i+2 >= len || (x0 = decodehex(ptr[i+1])) < 0 ||
@@ -552,10 +550,15 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
                     return FX_SET_EXN_FAST(FX_EXN_BadArgError);
                 buf[n++] = c;
             }
-        } else if(fmt && c == 123 && i+1 < len && ptr[i+1] != 34) {
-            inline_exp = true;
-            i++;
-            break;
+        } else if(fmt && c == 123 && i+1 < len && ptr[i+1] != 34) { // { or {{
+            if (ptr[i+1] == 123) { i++; buf[n++] = 123; }
+            else {
+                inline_exp = true;
+                i++;
+                break;
+            }
+        } else if(fmt && c == 125 && i+1 < len && ptr[i+1] == 125) { // }}
+            i++; buf[n++] = 125;
         } else {
             delta_lines += c == 10 || (c == 13 && i+1 < len && ptr[i+1] != 10);
             buf[n++] = c;

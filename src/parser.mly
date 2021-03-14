@@ -1101,7 +1101,7 @@ id_pat:
 
 pat_when:
 | pat { $1 }
-| pat WHEN exp { PatWhen($1, $3, curr_loc()) }
+| pat WHEN complex_exp { PatWhen($1, $3, curr_loc()) }
 
 val_spec_list_:
 | VAL { default_val_flags() }
