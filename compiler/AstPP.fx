@@ -6,7 +6,7 @@
 //////// ficus abstract syntax definition + helper structures and functions ////////
 
 from Ast import *
-import PP
+import PP, File
 
 val margin = 120
 val default_indent = 3
@@ -76,7 +76,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t)
         }
 
         match t {
-        | TypVar (ref None) => pp.str("auto")
+        | TypVar ((ref None) as r) => pp.str("<auto>")
         | TypVar (ref Some(t1)) => pptype_(t1, p1)
         | TypInt => pp.str("int")
         | TypSInt(b) => pp.str(f"int{b}")
@@ -101,7 +101,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t)
         | TypList(t1) => pptypsuf(t1, "list")
         | TypRef(t1) => pptypsuf(t1, "ref")
         | TypArray(d, t1) =>
-            val shape = if d == 0 {"+"} else {' '*(d-1)}
+            val shape = if d == 0 {"+"} else {','*(d-1)}
             pptypsuf(t1, f"[{shape}]")
         | TypVarArray(t1) => pptypsuf(t1, "[+]")
         | TypVarRecord => pp.str("{...}")
@@ -178,11 +178,16 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     }
 
     fun ppexp(e: exp_t): void {
-    | DefVal(p, e0, vflags, _) =>
+    | DefVal(p, e0, vflags, loc) =>
         pp.begin(); pprint_val_flags(pp, vflags)
         val ctor_id = vflags.val_flag_ctor
         pp.str(if vflags.val_flag_mutable {"var"} else {"val"})
-        pp.space(); pprint_pat(pp, p); pp.str(" ="); pp.space()
+        pp.space(); pprint_pat(pp, p);
+        match p {
+        | PatTyped(_, _, _) => {}
+        | _ => pp.str(":"); pp.space(); pprint_typ(pp, get_exp_typ(e0), loc)
+        }
+        pp.str(" ="); pp.space()
         if ctor_id != noid { pp.str(f"@constructor({id2str(ctor_id)})") }
         else { ppexp(e0) }
         pp.end()
@@ -254,7 +259,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         match *dvar_templ_inst {
         | [] => {}
         | _ =>
-            pp.newline(); pp.str(f"(* {id2str(dvar_name)} instances *)"); pp.space();
+            pp.newline(); pp.str(f"/* {id2str(dvar_name)} instances */"); pp.space();
             for inst_id@i <- *dvar_templ_inst {
                 pp.opt_semi()
                 match id_info(inst_id, dvar_loc) {
@@ -470,7 +475,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.str("("); ppexp(e); pp.str(":");
             pp.space(); pprint_typ(pp, t, loc); pp.str(")")
         | ExpCCode(s, _) =>
-            pp.str("@ccode {"); pp.space(); pp.str("\""); pp.str(s); pp.str("\"")
+            pp.str("@ccode "); pp.space(); pp.str("\""); pp.str(s); pp.str("\"")
         | DefVal(_, _, _, _) | DefFun(_) | DefExn(_) | DefTyp(_)
         | DefVariant(_) | DefInterface(_)
         | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
@@ -552,6 +557,7 @@ fun pprint_pat(pp: PP.t, p: pat_t)
 
 fun pprint_mod(dm: defmodule_t ref)
 {
+    File.stdout.flush()
     val {dm_name, dm_filename, dm_defs, dm_deps} = *dm
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.beginv()
@@ -580,10 +586,12 @@ fun pprint_mod(dm: defmodule_t ref)
     }
     pp.end()
     pp.flush()
+    File.stdout.flush()
 }
 
 fun pprint_top_x(top: exp_t list)
 {
+    File.stdout.flush()
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.beginv()
     for e <- top {
@@ -593,19 +601,26 @@ fun pprint_top_x(top: exp_t list)
     pp.end()
     pp.flush()
     println()
+    File.stdout.flush()
 }
 
-fun pprint_typ_x(t: typ_t, loc: loc_t) {
+fun pprint_typ_x(t: typ_t, loc: loc_t): void {
+    File.stdout.flush()
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.begin(); pprint_typ(pp, t, loc); pp.end(); pp.flush()
+    File.stdout.flush()
 }
 
-fun pprint_exp_x(e: exp_t) {
+fun pprint_exp_x(e: exp_t): void {
+    File.stdout.flush()
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.begin(); pprint_exp(pp, e); pp.end(); pp.flush()
+    File.stdout.flush()
 }
 
-fun pprint_pat_x(p: pat_t) {
+fun pprint_pat_x(p: pat_t): void {
+    File.stdout.flush()
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.begin(); pprint_pat(pp, p); pp.end(); pp.flush()
+    File.stdout.flush()
 }

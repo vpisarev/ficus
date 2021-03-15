@@ -1525,7 +1525,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                 let args = List.rev (fv_args @ args) in
                 let fcall_rt = if is_nothrow then CTypVoid else CTypCInt in
                 let fcall_exp = CExpCall(f_exp, args, (fcall_rt, kloc)) in
-                if is_nothrow (*|| is_really_nothrow*) then
+                if is_nothrow || is_really_nothrow then
                     (false, dst_exp, (CExp fcall_exp) :: ccode)
                 else
                     let ccode = add_fx_call fcall_exp ccode kloc in

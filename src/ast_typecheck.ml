@@ -1919,13 +1919,7 @@ and check_types eseq env sc =
             let dt_typ = deref_typ (check_typ dt_typ env1 dt_scope dt_loc) in
             let dt_typ = finalize_record_typ dt_typ dt_loc in
             dt := {dt_name; dt_templ_args; dt_typ=dt_typ; dt_finalized=true; dt_scope; dt_loc};
-            (* in the case of record we add the record constructor function
-               to support the constructions 'record_name { f1=e1, f2=e2, ..., fn=en }' gracefully *)
-            (match dt_typ with
-            | TypRecord _ ->
-                let (cname, ctyp) = register_typ_constructor dt_name CtorStruct dt_templ_args (dt_typ::[]) dt_typ env1 dt_scope dt_loc in
-                add_id_to_env_check (get_orig_id dt_name) cname env (check_for_duplicate_fun ctyp env dt_scope dt_loc)
-            | _ -> env)
+            env
         | DefVariant dvar ->
             let _ = instantiate_variant [] dvar env sc (!dvar.dvar_loc) in
             let { dvar_name; dvar_templ_args; dvar_cases; dvar_ctors; dvar_scope; dvar_loc } = !dvar in
@@ -1953,33 +1947,33 @@ and reg_deffun df env sc =
               | TypFun(_, rt) -> rt
               | _ -> raise_compile_err df_loc "incorrect function type") in
     let df_sc = (ScFun df_name1) :: sc in
-    let (args1, argtyps1, env1, idset1, templ_args1, all_typed) = List.fold_left
-            (fun (args1, argtyps1, env1, idset1, templ_args1, all_typed) arg ->
+    let (args1, argtyps1, temp_env, idset1, templ_args1, all_typed) = List.fold_left
+            (fun (args1, argtyps1, temp_env, idset1, templ_args1, all_typed) arg ->
             let t = make_new_typ() in
-            let (arg1, env1, idset1, templ_args1, typed) =
-                check_pat arg t env1 idset1 templ_args1 df_sc true true false in
+            let (arg1, temp_env, idset1, templ_args1, typed) =
+                check_pat arg t temp_env idset1 templ_args1 df_sc true true false in
             let (arg1, templ_args1) = if typed then (arg1, templ_args1) else
                 let targ = gen_temp_id "'targ" in
                 let arg1 = PatTyped(arg1, TypApp([], targ), get_pat_loc arg1) in
                 let templ_args1 = IdSet.add targ templ_args1 in
                 (arg1, templ_args1)
                 in
-            ((arg1 :: args1), (t :: argtyps1), env1, idset1, templ_args1, all_typed && typed))
+            ((arg1 :: args1), (t :: argtyps1), temp_env, idset1, templ_args1, all_typed && typed))
             ([], [], env, IdSet.empty, IdSet.empty, true) df_args in
     let _ = match (options.relax, all_typed, df_name1, sc) with
         | (false, false, Id.Val(_, _), ScModule _ :: _) ->
             raise_compile_err df_loc "types of all the parameters of global functions must be explicitly specified"
         | _ -> () in
     let dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc) in
-    let (dummy_rt_pat1, env1, idset1, templ_args1, _) =
-            check_pat dummy_rt_pat (make_new_typ()) env1
+    let (dummy_rt_pat1, temp_env, idset1, templ_args1, _) =
+            check_pat dummy_rt_pat (make_new_typ()) temp_env
             idset1 templ_args1 df_sc true true false in
     let rt = match dummy_rt_pat1 with
              | PatTyped(_, rt, _) -> rt
              | _ -> raise_compile_err df_loc "invalid return pattern after check" in
     let df_typ1 = TypFun((List.rev argtyps1), rt) in
-    let env1 = add_id_to_env_check df_name df_name1 env1
-            (check_for_duplicate_fun df_typ1 env1 sc df_loc) in
+    let env1 = add_id_to_env_check df_name df_name1 env
+            (check_for_duplicate_fun df_typ1 env sc df_loc) in
     df := { df_name=df_name1; df_templ_args=(IdSet.elements templ_args1);
             df_args=(List.rev args1); df_typ=df_typ1;
             df_body; df_flags; df_scope=sc; df_loc; df_templ_inst=[]; df_env=env1 };

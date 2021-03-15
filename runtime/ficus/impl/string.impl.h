@@ -433,16 +433,16 @@ bool fx_atof(const fx_str_t* str, double* result)
     return ok;
 }
 
-int fx_itoa(int_ n, fx_str_t* str)
+int fx_itoa(int64_t n, bool nosign, fx_str_t* str)
 {
     static const char* tab =
         "0001020304050607080910111213141516171819202122232425262728293031323334353637383940414243444546474849"
         "5051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899";
     int_ len = 1;
-    int_ neg = -(n < 0);
+    int_ neg = nosign ? 0 : -(n < 0);
 
     n = (n ^ neg) - neg;
-    size_t a = (size_t)n;
+    uint64_t a = (uint64_t)n;
     if(a >= 100000000) {
         if(a >= 10000000000000000ULL) {
             a = (size_t)(a/10000000000000000ULL);
@@ -472,10 +472,10 @@ int fx_itoa(int_ n, fx_str_t* str)
     buf -= neg;
     char_* ptr = buf + len;
 
-    a = (size_t)n;
+    a = (uint64_t)n;
     while((ptr -= 2) >= buf) {
-        size_t q = a / 100;
-        size_t r = a - q*100;
+        uint64_t q = a / 100;
+        uint64_t r = a - q*100;
         ptr[0] = (char_)tab[r*2];
         ptr[1] = (char_)tab[r*2+1];
         a = q;

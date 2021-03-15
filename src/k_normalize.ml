@@ -705,6 +705,10 @@ and pat_propose_id p ptyp temp_prefix is_simple mutable_leaves sc =
             raise_compile_err ploc "'as' pattern cannot be used with var's, only with values"
         else ();
         ((pat_skip_typed p), n, false)
+    | PatRef(_, _) ->
+        if (pat_have_vars p) || (not is_simple && (pat_need_checks p ptyp))
+        then (p, (gen_temp_idk temp_prefix), false)
+        else (p, noid, false)
     | _ ->
         if (pat_have_vars p) || (not is_simple && (pat_need_checks p ptyp))
         then (p, (gen_temp_idk temp_prefix), true)
@@ -941,8 +945,11 @@ and transform_pat_matching a cases code sc loc catch_mode =
             let (n, code) = match (ke, tref) with
                 | (KExpAtom((AtomId n0), _), true) -> (n0, code)
                 | _ ->
-                    let flags = if (is_ktyp_scalar ptyp) then (default_tempval_flags())
-                        else (default_tempref_flags()) in
+                    let flags =
+                        if (is_ktyp_scalar ptyp) || (match ke with KExpUnary(OpDeref, _, _) -> true | _ -> false)
+                        then (default_tempval_flags())
+                        else (default_tempref_flags())
+                        in
                     let code = create_kdefval n ptyp flags (Some ke) code loc in
                     (n, code) in
             let (plists, checks, code) =

@@ -142,15 +142,15 @@ operator + (l1: 't list, l2: 't list)
     return fx_ascii2str(buf, -1, fx_result);
 }
 fun string(a: bool) = if a {"true"} else {"false"}
-@pure fun string(a: int): string = @ccode  { return fx_itoa(a, fx_result) }
-@pure fun string(a: uint8): string = @ccode { return fx_itoa(a, fx_result) }
-@pure fun string(a: int8): string = @ccode { return fx_itoa(a, fx_result) }
-@pure fun string(a: uint16): string = @ccode { return fx_itoa(a, fx_result) }
-@pure fun string(a: int16): string = @ccode { return fx_itoa(a, fx_result) }
-@pure fun string(a: uint32): string = @ccode { return fx_itoa(a, fx_result) }
-@pure fun string(a: int32): string = @ccode { return fx_itoa(a, fx_result) }
-@pure fun string(a: uint64): string = @ccode { return fx_itoa(a, fx_result) }
-@pure fun string(a: int64): string = @ccode { return fx_itoa(a, fx_result) }
+@pure fun string(a: int): string = @ccode  { return fx_itoa(a, false, fx_result) }
+@pure fun string(a: uint8): string = @ccode { return fx_itoa(a, true, fx_result) }
+@pure fun string(a: int8): string = @ccode { return fx_itoa(a, false, fx_result) }
+@pure fun string(a: uint16): string = @ccode { return fx_itoa(a, true, fx_result) }
+@pure fun string(a: int16): string = @ccode { return fx_itoa(a, false, fx_result) }
+@pure fun string(a: uint32): string = @ccode { return fx_itoa(a, true, fx_result) }
+@pure fun string(a: int32): string = @ccode { return fx_itoa(a, false, fx_result) }
+@pure fun string(a: uint64): string = @ccode { return fx_itoa((int64_t)a, true, fx_result) }
+@pure fun string(a: int64): string = @ccode { return fx_itoa(a, false, fx_result) }
 @pure fun string(c: char): string = @ccode { return fx_make_str(&c, 1, fx_result) }
 @pure fun string(a: float): string = @ccode
 {

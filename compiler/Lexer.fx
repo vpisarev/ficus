@@ -24,7 +24,7 @@ type token_t =
     | RSQUARE | LBRACE | RBRACE | LLIST | RLIST | COMMA | DOT
     | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH | BACK_ARROW
     | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool | PLUS: bool
-    | SAME | STAR: bool | SLASH | PERCENT | POWER | DOT_STAR
+    | STAR: bool | SLASH | PERCENT | POWER | DOT_STAR
     | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
@@ -128,7 +128,7 @@ fun tok2str(t: token_t)
     | CMP(c) => (f"CMP({c})", string(c))
     | DOT_SPACESHIP => ("DOT_SPACESHIP", ".<=>")
     | DOT_CMP(c) => (f"DOT_CMP({c})", f".{c}")
-    | SAME => ("SAME", "===")
+    //| SAME => ("SAME", "===")
     | FOLD_RESULT => ("FOLD_RESULT", "__fold_result__")
 }
 
@@ -690,7 +690,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
     {
         val buf = strm.buf
         val len = buf.length()
-        var lbraces = 0, q = p
+        var lbraces = 1, q = p
         // This implementation assumes that the whole buffer is available.
         // We just find the position q of terminating '}' of the inline C code
         // and then capture the whole thing between '{' (at p), i.e. buf[p:q].
@@ -721,7 +721,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             }
         }
         if lbraces > 0 {throw LexerError(getloc(p), "unterminated ccode block (check braces)")}
-        (q, buf[p:q].copy())
+        (q, buf[p:q-1].copy())
     }
 
     fun nexttokens(): (token_t, lloc_t) list
@@ -907,9 +907,9 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 | (LBRACE, _) :: (CCODE, _) :: rest =>
                     new_exp = false
                     paren_stack = rest
-                    val (p, s) = get_ccode(pos-1)
+                    val (p, s) = get_ccode(pos)
                     pos = p
-                    (LITERAL(Ast.LitString(s)), loc) :: []
+                    (LITERAL(Ast.LitString(s.strip())), loc) :: []
                 | _ =>
                     /*
                        call nexttokens recursively; if the next token is '|',
@@ -986,8 +986,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             | '=' =>
                 if c1 == '=' {
                     pos += 1
-                    if c2 == '=' {pos += 1; (SAME, loc) :: []}
-                    else {(CMP(Ast.CmpEQ), loc) :: []}
+                    //if c2 == '=' {pos += 1; (SAME, loc) :: []}
+                    //else {
+                        (CMP(Ast.CmpEQ), loc) :: []
+                    //}
                 }
                 else if c1 == '>' {pos += 1; (DOUBLE_ARROW, loc) :: []}
                 else {(EQUAL, loc) :: []}
@@ -1089,7 +1091,6 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 }
                 (EOF, loc) :: []
             | _ =>
-                println(f"unrecognized character '{c}' at lineno={*strm.lineno}")
                 throw LexerError(loc, f"unrecognized character '{c}'")
             }
         }

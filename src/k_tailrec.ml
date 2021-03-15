@@ -28,9 +28,9 @@ let tailrec2loop kf =
         | KExpCall(f, _, _) -> f = kf_name
         | KExpMatch (cases, _) ->
             List.exists (fun (_, e) -> have_tailrec_calls_ e) cases
-        | KExpTryCatch(try_e, catch_e, _) ->
+        (*| KExpTryCatch(try_e, catch_e, _) ->
             (have_tailrec_calls_ try_e) ||
-            (have_tailrec_calls_ catch_e)
+            (have_tailrec_calls_ catch_e)*)
         | _ -> false
     in if not (have_tailrec_calls_ kf_body) then ()
     else
@@ -159,10 +159,10 @@ let tailrec2loop kf =
                     let e_i = transform_tcalls e_i in
                     (checks_i, e_i)) cases in
                 KExpMatch(cases, new_ctx)
-            | KExpTryCatch(try_e, catch_e, _) ->
+            (*| KExpTryCatch(try_e, catch_e, _) ->
                 let try_e = transform_tcalls try_e in
                 let catch_e = transform_tcalls catch_e in
-                KExpTryCatch(try_e, catch_e, new_ctx)
+                KExpTryCatch(try_e, catch_e, new_ctx)*)
             | _ ->
                 process_func_ending e
         in

@@ -95,7 +95,7 @@ int fx_init(int argc, char** argv)
 
 static FX_THREAD_LOCAL bool fx_is_main_thread = false;
 static FX_THREAD_LOCAL char* fx_stack_top = 0;
-static int_ FX_MAX_STACK_SIZE = 1000000;
+static int_ FX_MAX_STACK_SIZE = 4 << 20;
 
 int fx_init_thread(int t_idx)
 {
@@ -128,7 +128,11 @@ int fx_deinit(int status)
 int fx_cc_version(struct fx_str_t* ver)
 {
 #ifdef __VERSION__
+#if (defined __clang__) || !(defined __GNUC__)
     char cver[] = __VERSION__;
+#else
+    char cver[] = "GCC " __VERSION__;
+#endif
 #elif defined _MSC_VER
     char cver[128];
     int revision =

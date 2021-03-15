@@ -264,7 +264,7 @@ fun foldl(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
     update_(m.root, f, res0)
 }
 
-fun foldr(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
+fun foldr(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r): 'r
 {
     fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -274,9 +274,9 @@ fun foldr(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
     update_(m.root, f, res0)
 }
 
-fun app(m: ('k, 'd) Map.t, f: ('k, 'd) -> void)
+fun app(m: ('k, 'd) Map.t, f: ('k, 'd) -> void): void
 {
-    fun app_(t: 't rbtree, f: ('k, 'd) -> void): void =
+    fun app_(t: ('k, 'd) tree_t, f: ('k, 'd) -> void): void =
     match t {
         | Node(_, l, xk, xd, r) => app_(l, f); f(xk, xd); app_(r, f)
         | _ => {}

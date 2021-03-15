@@ -471,7 +471,7 @@ fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
             | DOT_POWER => (OpDotPow, 230, AssocRight)
             | DOT_CMP(cmpop) => (OpDotCmp(cmpop), 180, AssocLeft)
             | DOT_SPACESHIP => (OpDotSpaceship, 190, AssocLeft)
-            | SAME => (OpSame, 190, AssocLeft)
+            //| SAME => (OpSame, 190, AssocLeft)
             | _ => (OpAdd, -1, AssocLeft)
         }
         if prec < min_prec { (ts, result) }
@@ -773,9 +773,9 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
         | (COMMA, _) :: rest =>
             if expect_comma { parse_for_clause_(rest, false, result, loc) }
             else { throw parse_err(ts, "extra ','?") }
-        | (FOR(_), _) :: _ | (LBRACE, _) :: _ =>
+        | (FOR(_), _) :: _ | (LBRACE, _) :: _ when expect_comma =>
             if result.empty() {
-                throw ParseError(loc, "empty for? (need at least one <iter_pat> <- <iter_range or collection>)")
+                throw parse_err(ts, "empty for? (need at least one <iter_pat> <- <iter_range or collection>)")
             }
             (ts, result.rev())
         | _ =>
@@ -797,9 +797,9 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
     while true {
         var loc_i = noloc
         match vts {
-        | (FOR(_), loc) :: rest =>
+        | (FOR(_), l1) :: rest =>
             vts = rest
-            loc_i = noloc
+            loc_i = l1
         | _ =>
             nested_fors = nested_fors.rev()
             break
@@ -942,7 +942,7 @@ fun get_opname(t: token_t): id_t =
     | BITWISE_XOR  => fname_op_bit_xor()
     | TILDE  => fname_op_bit_not()
     | SPACESHIP  => fname_op_cmp()
-    | SAME    => fname_op_same()
+    //| SAME    => fname_op_same()
     | CMP(CmpEQ)  => fname_op_eq()
     | CMP(CmpNE)  => fname_op_ne()
     | CMP(CmpLE)  => fname_op_le()
@@ -1091,7 +1091,7 @@ fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
     match ts {
     | (COLON, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
-        (ts, ExpTyped(e, t, (t, get_exp_loc(e))))
+        (ts, ExpTyped(e, t, make_new_ctx(get_exp_loc(e))))
     | (CAST, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
         (ts, ExpCast(e, t, (make_new_typ(), get_exp_loc(e))))
@@ -1149,21 +1149,21 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
 fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: typ_t,
                             prologue: exp_t list, fflags: fun_flags_t, loc: loc_t): (tklist_t, exp_t)
 {
-    val (ts, params, body) = match ts {
+    val (ts, params, body, fflags) = match ts {
         | (EQUAL, _) :: (CCODE, _) :: rest =>
             val (ts, body) = parse_ccode_exp(ts.tl())
-            (ts, params, body)
+            (ts, params, body, fflags.{fun_flag_ccode = true})
         | (EQUAL, _) :: rest =>
             val (ts, body) = parse_stmt(ts.tl())
-            (ts, params, body)
+            (ts, params, body, fflags)
         | (LBRACE, l1) :: (BAR, _) :: _ =>
             val (ts, cases) = parse_match_cases(ts)
             val (params, match_arg) = plist2exp(params, "param", l1)
             val match_e = ExpMatch(match_arg, cases, make_new_ctx(l1))
-            (ts, params, match_e)
+            (ts, params, match_e, fflags)
         | (LBRACE, _) :: _ =>
             val (ts, body) = parse_block(ts)
-            (ts, params, body)
+            (ts, params, body, fflags)
         | _ =>
             throw parse_err(ts, "'=' or '{' is expected")
         }
@@ -1299,9 +1299,15 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
                 val (ts, ipl) = parse_idpat_list(rest, false, [], simple)
                 (ts, PatRecord(Some(i1), ipl, l1))
             | _ =>
-                if is_any { (ts, PatAny(l1)) }
-                else if good_variant_name(i1_) { (ts, PatVariant(i1, [], l1)) }
-                else { (ts, PatIdent(i1, l1)) }
+                if is_any {
+                    (ts, PatAny(l1))
+                }
+                else if good_variant_name(i1_) && (!simple || i1_.contains('.')) {
+                    (ts, PatVariant(i1, [], l1))
+                }
+                else {
+                    (ts, PatIdent(i1, l1))
+                }
             }
         | (LPAREN(_), l1) :: rest =>
             val (ts, pl) = parse_pat_list(rest, false, [], simple)
@@ -1628,7 +1634,7 @@ fun parse_deftype(ts: tklist_t)
             dvar_flags = default_variant_flags().{
                 var_flag_record=true,
                 var_flag_object=object_type_module },
-            dvar_cases = (noid, t) :: [],
+            dvar_cases = (tname, t) :: [],
             dvar_ctors = [],
             dvar_templ_inst = ref [],
             dvar_scope = ScGlobal :: [],

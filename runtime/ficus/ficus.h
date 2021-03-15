@@ -382,7 +382,7 @@ int fx_todigit(char_ ch);
 int fx_bidirectional(char_ ch);
 bool fx_atoi(const fx_str_t* str, int_* result, int base);
 bool fx_atof(const fx_str_t* str, double* result);
-int fx_itoa(int_ n, fx_str_t* str);
+int fx_itoa(int64_t n, bool nosign, fx_str_t* str);
 
 ////////////////////////// Exceptions //////////////////////
 

@@ -45,52 +45,41 @@ These are the tasks performed by type checker:
     ** etc.
 */
 
-/*val pprint_typ_x = Ast_pp.pprint_typ_x
-val pprint_exp_x = Ast_pp.pprint_exp_x
-val pprint_pat_x = Ast_pp.pprint_pat_x
-fun print_env(msg, env, loc) {
-    printf("%s. env at %s [\n", msg, loc2str(loc))
-    Env.iter(
-        fun (k, entries) {
-            printf("\t%s:", id2str(k))
-            for e <- entries {
-                match e {
-                | EnvId(n) =>
-                    printf(" %s", id2str(n))
-                    val templ_inst =
-                    match id_info(n) {
-                    | IdFun (ref {df_templ_inst}) => n :: df_templ_inst
-                    | IdVariant (ref {dvar_templ_inst}) => n :: dvar_templ_inst
-                    | _ => []
-                    }
-                    if templ_inst == [] {}
-                    else {
-                        for ni@ni <- templ_inst {
-                            val t =
-                            match id_info(ni) {
-                            | IdFun (ref {df_typ}) => df_typ
-                            | IdVariant (ref {dvar_alias}) => dvar_alias
-                            | IdTyp (ref {dt_typ}) => dt_typ
-                            | _ => TypVar(ref None)
-                            }
-                            printf("%s%s<", if i == 0 {
-                                                " => ["
-                                } else {
-                                    ", "
-                                }, id2str(ni))
-                            pprint_typ_x(t, loc)
-                            printf(">")
-                        }
-                        printf("]")
-                    }
-                | EnvTyp(t) => printf("<some type>")
+val pprint_typ_x = AstPP.pprint_typ_x
+val pprint_exp_x = AstPP.pprint_exp_x
+val pprint_pat_x = AstPP.pprint_pat_x
+
+fun print_env(msg: string, env: env_t, loc: loc_t) {
+    println(f"{msg}. env at {loc} [")
+    env.app(fun (k: id_t, entries: env_entry_t list)
+    {
+        println(f"   {id2str(k)}:")
+        for e <- entries {
+            | EnvId(n) =>
+                val templ_inst =
+                match id_info(n, loc) {
+                | IdFun (ref {df_templ_inst}) => n :: *df_templ_inst
+                | IdVariant (ref {dvar_templ_inst}) => n :: *dvar_templ_inst
+                | _ => n :: []
                 }
-            }
-            printf(";\n")
-        },
-        env)
-    printf("]\n")
-}*/
+                for ni@i <- templ_inst {
+                    val t =
+                    match id_info(ni, loc) {
+                    | IdFun (ref {df_typ}) => df_typ
+                    | IdVariant (ref {dvar_alias}) => dvar_alias
+                    | IdTyp (ref {dt_typ}) => dt_typ
+                    | _ => TypVar(ref None)
+                    }
+                    val sep = if i == 0 { "      id: " } else if i == 1 { " => "} else { ", " }
+                    print(f"{sep}{id2str(ni)}: ")
+                    pprint_typ_x(t, loc)
+                }
+                println()
+            | EnvTyp(t) => print("      type: "); pprint_typ_x(t, loc)
+        }
+    })
+    println("]\n")
+}
 
 /*
   Try to match (i.e. unify) two types,
@@ -113,6 +102,8 @@ type rec_elem_t = (id_t, typ_t, lit_t?)
 type rec_data_t = (rec_elem_t list, bool)
 
 fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
+    //val whole_ctx = "ctx:" + "\n\t".join(all_compile_err_ctx)
+    //print(f"\n<<<trying to unify types at {loc}; {whole_ctx}: "); AstPP.pprint_typ_x(t1, loc); print(" and "); AstPP.pprint_typ_x(t2, loc); println(); File.stdout.flush()
     var undo_stack: (typ_t? ref, typ_t?) list = []
     var rec_undo_stack: (rec_data_t ref, rec_data_t) list = []
     /* checks if a reference to undefined type (an argument of TypVar (ref None))
@@ -131,9 +122,14 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         | TypArray(_, et2) => occurs(r1, et2)
         | TypVarArray(et2) => occurs(r1, et2)
         | TypRecord (ref (relems2, _)) => occurs(r1, relems2)
-        | TypVar(r2) when r1 == r2 => true
-        | TypVar((ref None)) => false
-        | TypVar((ref Some(t2_))) => occurs(r1, t2_)
+        | TypVar(r2) =>
+            if r1 == r2 {true}
+            else {
+                match *r2 {
+                | Some(t2_) => occurs(r1, t2_)
+                | _ => false
+                }
+            }
         | TypApp(tl2, _) => occurs(r1, tl2)
         | TypInt | TypSInt(_) | TypUInt(_) | TypFloat(_) | TypString
         | TypChar | TypBool | TypVoid | TypExn | TypErr
@@ -191,8 +187,10 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
             val t2 = deref_typ(t2)
             match t2 {
             | TypVar((ref Some(TypVarRecord)) as r2) =>
-                if r1 == r2 {}
-                else { undo_stack = (r2, *r2) :: undo_stack; *r2 = Some(t1) }
+                if r1 != r2 {
+                    undo_stack = (r2, *r2) :: undo_stack;
+                    *r2 = Some(t1)
+                }
                 true
             | TypVar((ref None) as r2) =>
                 undo_stack = (r2, *r2) :: undo_stack
@@ -811,7 +809,8 @@ fun match_ty_templ_args(actual_ty_args: typ_t list, templ_args: id_t list, env: 
 
 fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     val (etyp, eloc) as ctx = get_exp_ctx(e)
-    println(f"\n------------------------\nchecking expression at {eloc}: "); AstPP.pprint_exp_x(e); println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+    //print_env("", env, eloc)
+    //println(f"\n------------------------\nchecking expression at {eloc}: "); AstPP.pprint_exp_x(e); println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
     fun check_for_clause(p: pat_t, e: exp_t, env: env_t, idset: idset_t, sc: scope_t list) {
         val e = check_exp(e, env, sc)
@@ -1142,14 +1141,14 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 | (TypBool, TypBool) => TypBool
                 | _ => throw BadArgError
                 }
-
-            val typ_opt = try { Some(check_bitwise(etyp1, etyp2)) } catch { | BadArgError => None }
+            val typ_opt = try Some(check_bitwise(etyp1, etyp2)) catch { | BadArgError => None }
             (bop, typ_opt)
         | OpLogicAnd | OpLogicOr =>
             unify(etyp1, TypBool, eloc1, "arguments of logical operation must be boolean")
             unify(etyp2, TypBool, eloc2, "arguments of logical operation must be boolean")
             (bop, Some(TypBool))
-        /* [TODO] comparison operations are now implemented for anything but variants (except for OpCompareEQ & OpCompareNE, which are implemented) */
+        /* [TODO] comparison operations are now implemented for anything but variants
+           (except for OpCompareEQ & OpCompareNE, which are implemented) */
         | OpCmp _ | OpDotCmp _ =>
             match bop {
             | OpDotCmp _ => {}
@@ -1178,11 +1177,15 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         | OpCons => throw compile_err(eloc, f"unsupported binary operation {bop}")
         }
         match (typ_opt, bop, deref_typ(etyp1), deref_typ(etyp2), e1, e2) {
-        | (Some(typ), _, _, _, _, _) => unify(typ, etyp, eloc, "improper type of the arithmetic operation result")
-                                        ExpBinary(bop, new_e1, new_e2, ctx)
-        | (_, OpAdd, TypString, TypString, _, _) | (_, OpAdd, TypString, TypChar, _, _) | (_, OpAdd, TypChar, TypString, _, _) | (_, OpAdd,
-                                                                    TypChar, TypChar, _, _) =>
-            unify(TypString, etyp, eloc, "improper type of the string concatenation operation (string is expected)")
+        | (Some(typ), _, _, _, _, _) =>
+            unify(typ, etyp, eloc, "improper type of the arithmetic operation result")
+            ExpBinary(bop, new_e1, new_e2, ctx)
+        | (_, OpAdd, TypString, TypString, _, _)
+        | (_, OpAdd, TypString, TypChar, _, _)
+        | (_, OpAdd, TypChar, TypString, _, _)
+        | (_, OpAdd, TypChar, TypChar, _, _) =>
+            unify(TypString, etyp, eloc,
+                "improper type of the string concatenation operation (string is expected)")
             ExpBinary(bop, new_e1, new_e2, ctx)
         | (_, OpAdd, TypList(_), TypList(_), ExpBinary(OpAdd, sub_e1, sub_e2, _), _) =>
             /* make list concatenation right-associative instead of left-associative */
@@ -1276,8 +1279,12 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val need_to_check =
                 match a {
                 // lambda function case
-                | ExpSeq(DefFun(ref {df_name} as df) :: ExpIdent(IdTemp(_, _) as f, _) :: [], _)
+                | ExpSeq(DefFun(ref {df_name, df_loc}) as exp_df :: ExpIdent(IdTemp(_, _) as f, _) :: [], _)
                     when pp_id2str(f).startswith("lambda") && f == df_name =>
+                    val df = match dup_exp(exp_df) {
+                        | DefFun df => df
+                        | _ => throw compile_err(df_loc, "after duplication function is not a function anymore!")
+                        }
                     reg_deffun(df, env, sc) // parse labmda parameters, see if they all are typed
                     df->df_templ_args.empty()
                 // ident or qualified ident (module.nested_module.name ...) case
@@ -1848,7 +1855,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | DefExn(_) | DefTyp(_) | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) =>
         throw compile_err(eloc, "internal err: should not get here; all the declarations and directives must be handled in check_eseq")
     }
-    println(f"\nresult of type '{typ2str(get_exp_typ(new_e))}': "); AstPP.pprint_exp_x(new_e); println("\n---------------------------\n")
+    //println(f"\nresult of type '{typ2str(get_exp_typ(new_e))}': "); AstPP.pprint_exp_x(new_e); println("\n---------------------------\n")
     new_e
 }
 
@@ -1924,7 +1931,8 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                     p1
                 | _ => p
                 }
-                val e1 = try { check_exp(e, env, sc) } catch { | CompileError(_, _) as err => push_compile_err(err); e }
+                //val e1 = try { check_exp(e, env, sc) } catch { | CompileError(_, _) as err => push_compile_err(err); e }
+                val e1 = check_exp(e, env, sc)
                 val (p1, env1, _, _, _) = check_pat(p, t, env, empty_idset, empty_idset,
                                                     sc, false, true, is_mutable)
                 (DefVal(p1, e1, flags, loc) :: eseq, env1)
@@ -1964,10 +1972,11 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                 (e :: eseq, env)
             }
         } catch {
-            | CompileError(_, _) as err =>
+            /*| CompileError(_, _) as err =>
                 push_compile_err(err)
                 (e :: eseq, env)
-            | PropagateCompileError => (e :: eseq, env)
+            | PropagateCompileError => (e :: eseq, env)*/
+            | e => throw e
         }
         (eseq1, env1, idx + 1)
     }
@@ -2148,16 +2157,8 @@ fun check_types(eseq: exp_t list, env: env_t, sc: scope_t list) =
                 add_typ_to_env(t_arg, TypApp([], t_arg), env1)
             }
             val dt_typ = deref_typ(check_typ(dt_typ, env1, dt_scope, dt_loc))
-            val dt_typ = finalize_record_typ(dt_typ, dt_loc)
             *dt = deftyp_t {dt_name=dt_name, dt_templ_args=dt_templ_args, dt_typ=dt_typ, dt_finalized=true, dt_scope=dt_scope, dt_loc=dt_loc}
-            // in the case of record we add the record constructor function
-            // to support the constructions 'record_name { f1=e1, f2=e2, ..., fn=en }' gracefully
-            match dt_typ {
-            | TypRecord(_) =>
-                val (cname, ctyp) = register_typ_constructor(dt_name, CtorStruct, dt_templ_args, dt_typ :: [], dt_typ, env1, dt_scope, dt_loc)
-                add_id_to_env_check(get_orig_id(dt_name), cname, env, check_for_duplicate_fun(ctyp, env, dt_scope, dt_loc))
-            | _ => env
-            }
+            env
         | DefVariant(dvar) =>
             instantiate_variant(([]: typ_t list), dvar, env, sc, dvar->dvar_loc)
             val {dvar_name, dvar_templ_args, dvar_cases, dvar_ctors, dvar_scope, dvar_loc} = *dvar
@@ -2190,11 +2191,11 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list) {
             | _ => throw compile_err(df_loc, "incorrect function type")
             }
     val df_sc = ScFun(df_name1) :: sc
-    val fold (args1, argtyps1, env1, idset1, templ_args1, all_typed) =
+    val fold (args1, argtyps1, temp_env, idset1, templ_args1, all_typed) =
         ([], [], env, empty_idset, empty_idset, true) for arg <- df_args {
             val t = make_new_typ()
-            val (arg1, env1, idset1, templ_args1, typed) =
-                check_pat(arg, t, env1, idset1, templ_args1, df_sc, true, true, false)
+            val (arg1, temp_env, idset1, templ_args1, typed) =
+                check_pat(arg, t, temp_env, idset1, templ_args1, df_sc, true, true, false)
             val (arg1, templ_args1) =
                 if typed { (arg1, templ_args1) }
                 else {
@@ -2203,7 +2204,7 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list) {
                     val templ_args1 = templ_args1.add(targ)
                     (arg1, templ_args1)
                 }
-            (arg1 :: args1, t :: argtyps1, env1, idset1, templ_args1, all_typed & typed)
+            (arg1 :: args1, t :: argtyps1, temp_env, idset1, templ_args1, all_typed & typed)
         }
     match (Options.opt.relax, all_typed, df_name1, sc) {
         | (false, false, IdVal(_, _), ScModule _ :: _) =>
@@ -2211,18 +2212,20 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list) {
         | _ => {}
     }
     val dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc)
-    val (dummy_rt_pat1, env1, idset1, templ_args1, _) =
-            check_pat(dummy_rt_pat, make_new_typ(), env1, idset1,
+    val (dummy_rt_pat1, temp_env, idset1, templ_args1, _) =
+            check_pat(dummy_rt_pat, make_new_typ(), temp_env, idset1,
                       templ_args1, df_sc, true, true, false)
     val rt = match dummy_rt_pat1 {
             | PatTyped(_, rt, _) => rt
             | _ => throw compile_err(df_loc, "invalid return pattern after check")
             }
     val df_typ1 = TypFun(argtyps1.rev(), rt)
-    val env1 = add_id_to_env_check(df_name, df_name1, env1, check_for_duplicate_fun(df_typ1, env1, sc, df_loc))
+    val env1 = add_id_to_env_check(df_name, df_name1, env,
+                check_for_duplicate_fun(df_typ1, env, sc, df_loc))
+    val df_templ_args = templ_args1.list()
     *df = deffun_t {
         df_name=df_name1,
-        df_templ_args=templ_args1.list(),
+        df_templ_args=df_templ_args,
         df_args=args1.rev(),
         df_typ=df_typ1,
         df_body=df_body,
@@ -2233,6 +2236,9 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list) {
         df_env=env1
         }
     set_id_entry(df_name1, IdFun(df))
+    if df_flags.fun_flag_ccode && !is_fixed_typ(rt) {
+        throw compile_err(df_loc, "return type of @ccode function must be explicitly specified and should not use type vars ('t etc.)")
+    }
     env1
 }
 
@@ -2420,6 +2426,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                 }
             }
     val inst_name = if instantiate { dup_id(df_name) } else { df_name }
+    //println(f"instantiation of function {id2str(inst_name)} with type '{typ2str(inst_ftyp)}'")
     val fun_sc = ScFun(inst_name) :: inst_sc
     val fold (df_inst_args, inst_env, tmp_idset) = ([], inst_env, empty_idset) for df_arg <- df_args, arg_typ <- arg_typs {
         val (df_inst_arg, inst_env, tmp_idset, _, _) =

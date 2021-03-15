@@ -508,6 +508,8 @@ fun id2str_(i: id_t, pp: bool): string = id2str__(i, pp, "@", "@@")
 fun id2str(i: id_t): string = id2str_(i, false)
 fun pp_id2str(i: id_t): string = id2str_(i, true)
 
+fun string(i: id_t) = id2str(i)
+
 fun compile_err(loc: loc_t, msg: string) {
     val whole_msg = f"{loc}: error: {msg}"
     val whole_msg = match all_compile_err_ctx {
@@ -833,22 +835,23 @@ fun deref_typ(t: typ_t): typ_t {
             | _ => t
         }
 
-        val root = find_root(t)
-        fun update_refs(t: typ_t) {
+        fun update_refs(t: typ_t, root: typ_t): typ_t =
+            match t {
             | TypVar((ref Some(TypVar(ref Some(_)) as t1)) as r) =>
-                *r = Some(root); update_refs(t1)
+                *r = Some(root); update_refs(t1, root)
             | _ => root
-        }
-        update_refs(t)
+            }
+        update_refs(t, find_root(t))
     | _ => t
 }
 
-fun is_typ_scalar(t: typ_t) {
+fun is_typ_scalar(t: typ_t): bool {
     | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypBool | TypChar => true
+    | TypVar (ref Some(t)) => is_typ_scalar(t)
     | _ => false
 }
 
-fun get_numeric_typ_size(t: typ_t, allow_tuples: bool) =
+fun get_numeric_typ_size(t: typ_t, allow_tuples: bool): int =
     match deref_typ(t) {
     | TypInt => 8 // assume 64 bits for simplicity
     | TypSInt b => b/8
@@ -856,6 +859,7 @@ fun get_numeric_typ_size(t: typ_t, allow_tuples: bool) =
     | TypFloat b => b/8
     | TypBool => 1
     | TypChar => 4
+    | TypVar (ref Some(t)) => get_numeric_typ_size(t, allow_tuples)
     | TypTuple(tl) =>
         if !allow_tuples {-1}
         else {
@@ -1126,13 +1130,20 @@ fun print_idset(setname: string, s: idset_t) {
     print(" ]\n")
 }
 
+fun ref2str(r: 't ref): string = @ccode
+{
+    char buf[32];
+    sprintf(buf, "%p", r);
+    return fx_cstr2str(buf, -1, fx_result);
+}
+
 fun typ2str(t: typ_t): string {
     | TypVarTuple(Some(t)) => f"({typ2str(t)} ...)"
     | TypVarTuple(_) => "(...)"
     | TypVarArray(t) => f"{typ2str(t)} [+]"
     | TypVarRecord => "{...}"
-    | TypVar (ref Some(t)) => typ2str(t)
-    | TypVar(_) => "<unknown>"
+    | TypVar ((ref Some(t)) as r) => f"Some({typ2str(t)})"
+    | TypVar (r) => "<unknown>"
     | TypApp([], i) => id2str(i)
     | TypApp(tl, i) => f"{tl2str(tl)} {id2str(i)}"
     | TypInt => "int"
@@ -1227,13 +1238,9 @@ fun check_n_walk_pat(p: pat_t, callb: ast_callb_t) =
 fun check_n_walk_plist(plist: pat_t list, callb: ast_callb_t) =
     [: for p <- plist { check_n_walk_pat(p, callb) } :]
 
-fun walk_typ(t: typ_t, callb: ast_callb_t) {
-    fun walk_typ_(t) = check_n_walk_typ(t, callb)
-    fun walk_tl_(tl) = check_n_walk_tlist(tl, callb)
-    println(f"walk_typ: {typ2str(t)}")
-
+fun walk_typ(t: typ_t, callb: ast_callb_t) =
     match t {
-    | TypVar(r) => match *r { | Some(t) => *r = Some(walk_typ_(t)) | _ => {} }; t
+    | TypVar(r) => match *r { | Some(t) => *r = Some(check_n_walk_typ(t, callb)) | _ => {} }; t
     | TypInt => t
     | TypSInt(_) => t
     | TypUInt(_) => t
@@ -1242,27 +1249,26 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) {
     | TypChar => t
     | TypBool => t
     | TypVoid => t
-    | TypFun(args, rt) => TypFun(walk_tl_(args), walk_typ_(rt))
-    | TypList(t) => TypList(walk_typ_(t))
-    | TypTuple(tl) => TypTuple(walk_tl_(tl))
+    | TypFun(args, rt) => TypFun(check_n_walk_tlist(args, callb), check_n_walk_typ(rt, callb))
+    | TypList(t) => TypList(check_n_walk_typ(t, callb))
+    | TypTuple(tl) => TypTuple(check_n_walk_tlist(tl, callb))
     | TypVarTuple(t_opt) =>
-        TypVarTuple(match t_opt { | Some(t) => Some(walk_typ_(t)) | _ => None})
-    | TypRef(t) => TypRef(walk_typ_(t))
-    | TypArray(d, et) => TypArray(d, walk_typ_(et))
-    | TypVarArray(et) => TypVarArray(walk_typ_(et))
+        TypVarTuple(match t_opt { | Some(t) => Some(check_n_walk_typ(t, callb)) | _ => None})
+    | TypRef(t) => TypRef(check_n_walk_typ(t, callb))
+    | TypArray(d, et) => TypArray(d, check_n_walk_typ(et, callb))
+    | TypVarArray(et) => TypVarArray(check_n_walk_typ(et, callb))
     | TypVarRecord => t
     | TypRecord((ref (relems, ordered)) as r) =>
-        val new_relems = [: for (n, t, v) <- relems {(n, walk_typ_(t), v)} :]
+        val new_relems = [: for (n, t, v) <- relems {(n, check_n_walk_typ(t, callb), v)} :]
         *r = (new_relems, ordered)
         t
     | TypExn => t
     | TypErr => t
     | TypCPointer => t
-    | TypApp(ty_args, n) => TypApp(walk_tl_(ty_args), n)
+    | TypApp(ty_args, n) => TypApp(check_n_walk_tlist(ty_args, callb), n)
     | TypDecl => t
     | TypModule => t
     }
-}
 
 fun walk_exp(e: exp_t, callb: ast_callb_t) {
     fun walk_typ_(t: typ_t) = check_n_walk_typ(t, callb)
