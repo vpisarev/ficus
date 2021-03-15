@@ -88,8 +88,9 @@ let rec pprint_octyp_ t fparen =
         obox();
         let argt = match args with t :: [] -> t | _ -> TTuple(args) in
         pprint_octyp_ argt true;
-        pspace();
-        pstr n;
+        (match n with
+        | "option" -> pstr "?";
+        | _ -> pspace(); pstr n);
         cbox())
 
 and pprint_octyp t = pprint_octyp_ t false

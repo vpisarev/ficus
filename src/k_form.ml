@@ -106,7 +106,7 @@ and kexp_t =
     | KExpCall of id_t * atom_t list * kctx_t
     | KExpMkTuple of atom_t list * kctx_t
     | KExpMkRecord of atom_t list * kctx_t
-    | KExpMkClosure of id_t * id_t * atom_t list * kctx_t (* (function id, list of actual free vars) *)
+    | KExpMkClosure of id_t * id_t * atom_t list * kctx_t
     | KExpMkArray of (bool * atom_t) list list * kctx_t
     | KExpAt of atom_t * border_t * interpolate_t * dom_t list * kctx_t
     | KExpMem of id_t * int * kctx_t
@@ -552,11 +552,11 @@ and walk_kexp e callb =
    do not construct/return anything (though, it's expected that
    the callbacks collect some information about the tree) *)
 
-type 'x k_fold_callb_t =
+type k_fold_callb_t =
 {
-    kcb_fold_ktyp: (ktyp_t -> loc_t -> 'x k_fold_callb_t -> unit) option;
-    kcb_fold_kexp: (kexp_t -> 'x k_fold_callb_t -> unit) option;
-    kcb_fold_atom: (atom_t -> loc_t -> 'x k_fold_callb_t -> unit) option;
+    kcb_fold_ktyp: (ktyp_t -> loc_t -> k_fold_callb_t -> unit) option;
+    kcb_fold_kexp: (kexp_t -> k_fold_callb_t -> unit) option;
+    kcb_fold_atom: (atom_t -> loc_t -> k_fold_callb_t -> unit) option;
 }
 
 let rec check_n_fold_ktyp t loc callb =
@@ -753,7 +753,7 @@ let used_decl_by_kexp e =
             fold_kexp e callb;
             List.iter (fun (_, id_l, at_ids) ->
                 List.iter (fun i -> add_id i all_decl) at_ids;
-                List.iter (fun (i, _) -> add_id i all_decl) id_l) clauses;
+                List.iter (fun (i, _) -> add_id i all_decl) id_l) clauses
         | KExpFor (id_l, at_ids, body, _, _) ->
             fold_kexp e callb;
             List.iter (fun i -> add_id i all_decl) at_ids;

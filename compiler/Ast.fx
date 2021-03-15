@@ -466,9 +466,9 @@ fun dynvec_get(v: 't dynvec_t ref, i: int) = v->data[i]
 fun dynvec_set(v: 't dynvec_t ref, i: int, newv: 't) = v->data[i] = newv
 
 var freeze_ids = false
-var all_ids = dynvec_create(IdNone)
+val all_ids = dynvec_create(IdNone)
 var all_strhash: (string, int) Map.t = Map.empty(String.cmp)
-var all_strings = dynvec_create("")
+val all_strings = dynvec_create("")
 var all_modules: (string, id_t) Map.t = Map.empty(String.cmp)
 var all_modules_sorted: id_t list = []
 var builtin_exceptions = (Map.empty(cmp_id): (id_t, id_t) Map.t)
