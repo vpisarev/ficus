@@ -646,7 +646,6 @@ let convert_all_typs kmods =
             kcb_fold_ktyp = Some(fold_n_cvt_ktyp);
             kcb_fold_kexp = Some(fold_n_cvt_kexp);
             kcb_fold_atom = None;
-            kcb_fold_result = 0
         }
         in
 

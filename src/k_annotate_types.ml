@@ -59,7 +59,6 @@ let find_recursive top_code =
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(fold_deps0_ktyp_);
         kcb_fold_kexp = Some(fold_deps0_kexp_);
-        kcb_fold_result = 0
     } in
     (* for each type find the initial set of its dependencies *)
     let _ = List.iter (fun e -> fold_deps0_kexp_ e deps0_callb) top_code in

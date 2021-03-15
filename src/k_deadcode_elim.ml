@@ -71,7 +71,6 @@ let rec pure_kexp e =
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(pure_ktyp_);
         kcb_fold_kexp = Some(pure_kexp_);
-        kcb_fold_result = 0
     } in
     pure_kexp_ e pure_callb;
     !ispure
@@ -105,7 +104,6 @@ let reset_purity_flags code =
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(reset_purity_flags_ktyp_);
         kcb_fold_kexp = Some(reset_purity_flags_kexp_);
-        kcb_fold_result = 0
     }
     in List.iter (fun e -> reset_purity_flags_kexp_ e callb) code
 

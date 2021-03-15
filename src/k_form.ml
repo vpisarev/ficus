@@ -557,7 +557,6 @@ type 'x k_fold_callb_t =
     kcb_fold_ktyp: (ktyp_t -> loc_t -> 'x k_fold_callb_t -> unit) option;
     kcb_fold_kexp: (kexp_t -> 'x k_fold_callb_t -> unit) option;
     kcb_fold_atom: (atom_t -> loc_t -> 'x k_fold_callb_t -> unit) option;
-    mutable kcb_fold_result: 'x;
 }
 
 let rec check_n_fold_ktyp t loc callb =
@@ -619,7 +618,7 @@ and fold_kexp e callb =
     let fold_ktyp_ t = check_n_fold_ktyp t loc callb in
     let fold_id_ k = check_n_fold_id k loc callb in
     let fold_kexp_ e = check_n_fold_kexp e callb in
-    let fold_kctx_ (t, _) = fold_ktyp_ t in
+    let fold_kctx_ (t, loc) = check_n_fold_ktyp t loc callb in
     let fold_dom_ d = check_n_fold_dom d loc callb in
     let fold_idoml_ idoml = List.iter (fun (k, d) -> fold_id_ k; fold_dom_ d) idoml in
     fold_kctx_ (match e with
@@ -690,118 +689,88 @@ and fold_kexp e callb =
         List.iter fold_id_ kcv_orig_freevars;
         (KTypVoid, kcv_loc))
 
-let add_to_used1 i callb =
-    if i = noid then ()
-    else
-        let (used_set, decl_set) = callb.kcb_fold_result in
-        callb.kcb_fold_result <- ((IdSet.add i used_set), decl_set)
-
-let add_to_used uv_set callb =
-    let (used_set, decl_set) = callb.kcb_fold_result in
-    callb.kcb_fold_result <- ((IdSet.union uv_set used_set), decl_set)
-
-let add_to_decl1 i callb =
-    if i = noid then ()
-    else
-        let (used_set, decl_set) = callb.kcb_fold_result in
-        callb.kcb_fold_result <- (used_set, (IdSet.add i decl_set))
-
-let add_to_decl dv_set callb =
-    let (used_set, decl_set) = callb.kcb_fold_result in
-    callb.kcb_fold_result <- (used_set, (IdSet.union dv_set decl_set))
-
-let rec used_by_atom_ a loc callb =
-    match a with
-    | AtomId (Id.Name i) -> ()
-    | AtomId i -> add_to_used1 i callb
-    | AtomLit(KLitNil t) -> used_by_ktyp_ t loc callb
-    | _ -> ()
-and used_by_ktyp_ t loc callb = fold_ktyp t loc callb
-and used_by_kexp_ e callb =
-    match e with
-    | KDefVal(i, e, loc) ->
-        let (uv, dv) = used_decl_by_kexp e in
-        let {kv_typ} = get_kval i loc in
-        let uv_typ = used_by_ktyp kv_typ loc in
-        add_to_used uv_typ callb;
-        add_to_used uv callb;
-        add_to_decl dv callb;
-        add_to_decl1 i callb
-    | KDefFun {contents={kf_name; kf_args; kf_rt; kf_closure; kf_body; kf_loc}} ->
-        (* the function arguments are not included into the "used variables" set by default,
-            they should be referenced by the function body to be included *)
-        let {kci_arg; kci_fcv_t; kci_fp_typ; kci_make_fp; kci_wrap_f} = kf_closure in
-        let kf_typ = get_kf_typ kf_args kf_rt in
-        let uv_typ = used_by_ktyp kf_typ kf_loc in
-        let (uv_body, dv_body) = used_decl_by_kexp kf_body in
-        let uv = IdSet.union uv_typ (IdSet.remove kf_name uv_body) in
-        add_to_decl1 kci_arg callb;
-        add_to_used1 kci_arg callb;
-        add_to_used1 kci_fcv_t callb;
-        add_to_used uv callb;
-        add_to_decl dv_body callb;
-        add_to_decl1 kf_name callb;
-        List.iter (fun (a, _) -> add_to_decl1 a callb) kf_args
-    (* closure vars structure contains names of free variables and their types, as well as
-       "weak" backward reference to the function. we do not need to add any of those into the "used" set *)
-    | KDefClosureVars {contents={kcv_name}} ->
-        add_to_decl1 kcv_name callb
-    | KDefExn {contents={ke_name; ke_typ; ke_tag; ke_make; ke_loc}} ->
-        let uv = used_by_ktyp ke_typ ke_loc in
-        add_to_used uv callb;
-        add_to_used1 ke_tag callb;
-        add_to_used1 ke_make callb;
-        add_to_decl1 ke_name callb
-    | KDefVariant {contents={kvar_name; kvar_cases; kvar_loc}} ->
-        let uv = List.fold_left (fun uv (ni, ti) ->
-            let uv = IdSet.add ni uv in
-            let uv_ti = IdSet.remove kvar_name (used_by_ktyp ti kvar_loc) in
-            IdSet.union uv_ti uv) IdSet.empty kvar_cases in
-        add_to_used uv callb;
-        add_to_decl1 kvar_name callb
-    | KDefTyp {contents={kt_name; kt_typ; kt_loc}} ->
-        let uv = used_by_ktyp kt_typ kt_loc in
-        let uv = IdSet.remove kt_name uv in
-        add_to_used uv callb;
-        add_to_decl1 kt_name callb
-    | KExpMap (clauses, body, _, (t, _)) ->
-        fold_kexp e callb;
-        List.iter (fun (_, id_l, at_ids) ->
-            List.iter (fun i -> add_to_decl1 i callb) at_ids;
-            List.iter (fun (i, _) -> add_to_decl1 i callb) id_l) clauses
-    | KExpFor (id_l, at_ids, body, _, _) ->
-        fold_kexp e callb;
-        List.iter (fun i -> add_to_decl1 i callb) at_ids;
-        List.iter (fun (i, _) -> add_to_decl1 i callb) id_l
-    | _ -> fold_kexp e callb
-
-and new_used_vars_callb () =
+let used_decl_by_kexp e =
+    let all_used = ref IdSet.empty in
+    let all_decl = ref IdSet.empty in
+    let remove_unless had_before i s =
+        if had_before then () else s := IdSet.remove i !s
+        in
+    let add_id i s =
+        if i = noid then ()
+        else s := IdSet.add i !s
+        in
+    let rec used_by_atom_ a loc callb =
+        match a with
+        | AtomId (Id.Name i) -> ()
+        | AtomId i -> add_id i all_used
+        | AtomLit(KLitNil t) -> used_by_ktyp_ t loc callb
+        | _ -> ()
+    and used_by_ktyp_ t loc callb = fold_ktyp t loc callb
+    and used_by_kexp_ e callb =
+        match e with
+        | KDefVal(i, e, loc) ->
+            let {kv_typ} = get_kval i loc in
+            let have_i = IdSet.mem i !all_used in
+            used_by_ktyp_ kv_typ loc callb;
+            add_id i all_decl;
+            used_by_kexp_ e callb;
+            remove_unless have_i i all_used
+        | KDefFun {contents={kf_name; kf_args; kf_rt; kf_closure; kf_body; kf_loc}} ->
+            (* the function arguments are not included into the "used variables" set by default,
+                they should be referenced by the function body to be included *)
+            let {kci_arg; kci_fcv_t; kci_fp_typ; kci_make_fp; kci_wrap_f} = kf_closure in
+            let kf_typ = get_kf_typ kf_args kf_rt in
+            let _ = used_by_ktyp_ kf_typ kf_loc callb in
+            let have_kf_name = IdSet.mem kf_name !all_used in
+            let _ = used_by_kexp_ kf_body callb in
+            remove_unless have_kf_name kf_name all_used;
+            add_id kci_arg all_decl;
+            add_id kci_arg all_used;
+            add_id kci_fcv_t all_used;
+            add_id kf_name all_decl;
+            List.iter (fun (a, _) -> add_id a all_decl) kf_args
+        (* closure vars structure contains names of free variables and their types, as well as
+        "weak" backward reference to the function. we do not need to add any of those into the "used" set *)
+        | KDefClosureVars {contents={kcv_name}} ->
+            add_id kcv_name all_decl
+        | KDefExn {contents={ke_name; ke_typ; ke_tag; ke_make; ke_loc}} ->
+            used_by_ktyp_ ke_typ ke_loc callb;
+            add_id ke_tag all_used;
+            add_id ke_make all_used;
+            add_id ke_name all_decl
+        | KDefVariant {contents={kvar_name; kvar_cases; kvar_loc}} ->
+            let have_kvar_name = IdSet.mem kvar_name !all_used in
+            List.iter (fun (ni, ti) -> add_id ni all_decl;
+                used_by_ktyp_ ti kvar_loc callb) kvar_cases;
+            remove_unless have_kvar_name kvar_name all_used;
+            add_id kvar_name all_decl
+        | KDefTyp {contents={kt_name; kt_typ; kt_loc}} ->
+            let have_kt_name = IdSet.mem kt_name !all_used in
+            used_by_ktyp_ kt_typ kt_loc callb;
+            remove_unless have_kt_name kt_name all_used;
+            add_id kt_name all_decl
+        | KExpMap (clauses, body, _, (t, _)) ->
+            fold_kexp e callb;
+            List.iter (fun (_, id_l, at_ids) ->
+                List.iter (fun i -> add_id i all_decl) at_ids;
+                List.iter (fun (i, _) -> add_id i all_decl) id_l) clauses;
+        | KExpFor (id_l, at_ids, body, _, _) ->
+            fold_kexp e callb;
+            List.iter (fun i -> add_id i all_decl) at_ids;
+            List.iter (fun (i, _) -> add_id i all_decl) id_l
+        | _ -> fold_kexp e callb
+        in
+    let used_decl_callb =
     {
         kcb_fold_atom = Some(used_by_atom_);
         kcb_fold_ktyp = Some(used_by_ktyp_);
         kcb_fold_kexp = Some(used_by_kexp_);
-        kcb_fold_result = (IdSet.empty, IdSet.empty)
-    }
-and used_by_ktyp t loc =
-    let callb = new_used_vars_callb() in
-    let _ = used_by_ktyp_ t loc callb in
-    let (used_set, _) = callb.kcb_fold_result in
-    used_set
-and used_decl_by_kexp e =
-    let callb = new_used_vars_callb() in
-    let _ = used_by_kexp_ e callb in
-    callb.kcb_fold_result
-and used_by_kexp e =
-    let (used_set, _) = used_decl_by_kexp e in
-    used_set
+    } in
+    used_by_kexp_ e used_decl_callb;
+    (!all_used, !all_decl)
 
-let used_by code =
-    let e = code2kexp code noloc in
-    used_by_kexp e
-
-let free_vars_kexp e =
-    let (uv, dv) = used_decl_by_kexp e in
-    IdSet.diff uv dv
+let used_by_kexp e = let (used_set, _) = used_decl_by_kexp e in used_set
+let used_by code = let e = code2kexp code noloc in used_by_kexp e
 
 let is_mutable i loc =
     let info = kinfo_ i loc in

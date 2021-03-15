@@ -191,7 +191,6 @@ let tailrec2loops_all kmods =
         kcb_fold_atom=None;
         kcb_fold_ktyp=Some(tailrec2loop_ktyp_);
         kcb_fold_kexp=Some(tailrec2loop_kexp_);
-        kcb_fold_result=0
     } in
     List.iter (fun {km_top} -> List.iter (fun e -> tailrec2loop_kexp_ e trec2loop_callb) km_top) kmods;
     kmods

@@ -31,7 +31,6 @@ let rec fuse_loops code =
         kcb_fold_atom = Some(process_atom);
         kcb_fold_ktyp = Some(process_ktyp_);
         kcb_fold_kexp = None;
-        kcb_fold_result = 0
     } in
     let process_idl inside_for idl = List.iter (fun (_, dom) ->
         match dom with

@@ -138,7 +138,6 @@ let optimize_idx_checks topcode =
             kcb_fold_kexp = Some(collect_affine_defs_kexp);
             kcb_fold_ktyp = Some(collect_affine_defs_ktyp);
             kcb_fold_atom = None;
-            kcb_fold_result = 0
         } in
         let _ = collect_affine_defs_kexp whole_e collect_callb in
 

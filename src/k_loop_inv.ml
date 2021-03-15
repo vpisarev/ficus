@@ -31,7 +31,6 @@ let rec move_loop_invs code =
             kcb_fold_atom = Some(isinv_atom_);
             kcb_fold_ktyp = Some(isinv_ktyp_);
             kcb_fold_kexp = Some(isinv_kexp_);
-            kcb_fold_result = 0
         } in
         is_ktyp_scalar (get_kexp_typ e) &&
         (K_deadcode_elim.pure_kexp e) &&

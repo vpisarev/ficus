@@ -151,7 +151,6 @@ let find_single_use_vals topcode =
         kcb_fold_ktyp=Some(count_ktyp);
         kcb_fold_kexp=Some(count_kexp);
         kcb_fold_atom=Some(count_atom);
-        kcb_fold_result=0
     } in
     List.iter (fun e -> count_kexp e count_callb) topcode;
     IdSet.filter (fun i -> match (Env.find_opt i !count_map) with Some 1 -> true | _ -> false) !decl_const_vals)
@@ -170,7 +169,6 @@ let occurs_id_kexp i0 e =
         kcb_fold_ktyp=Some(occurs_ktyp);
         kcb_fold_kexp=Some(occurs_kexp);
         kcb_fold_atom=Some(occurs_atom);
-        kcb_fold_result=0
     } in
     let loc = get_kexp_loc e in
     (* occurs_id_kexp main use is to find some loop or other complex expression invariants.

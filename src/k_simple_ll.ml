@@ -39,6 +39,8 @@ let find_globals top_code set0 = List.fold_left (fun globals e ->
     | _ -> [] in
     List.fold_left (fun globals n -> IdSet.add n globals) globals n_list) set0 top_code
 
+let free_vars_kexp e = let (uv, dv) = used_decl_by_kexp e in IdSet.diff uv dv
+
 let lift kmods =
     let new_top_code = ref ([]: kexp_t list) in
     (* first, let's see which definitions are already at the top level *)

@@ -297,7 +297,6 @@ let lift_all kmods =
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(fold_fv0_ktyp_);
         kcb_fold_kexp = Some(fold_fv0_kexp_);
-        kcb_fold_result = 0
     } in
     (* for each function, top-level or not, find the initial set of free variables,
        as well as the set of called functions *)
@@ -399,7 +398,6 @@ let lift_all kmods =
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(fold_defcl_ktyp_);
         kcb_fold_kexp = Some(fold_defcl_kexp_);
-        kcb_fold_result = 0
     } in
 
     let defined_so_far = ref IdSet.empty in

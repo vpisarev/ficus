@@ -59,7 +59,6 @@ let find_recursive_funcs top_code =
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(fold_recfun_ktyp_);
         kcb_fold_kexp = Some(fold_recfun_kexp_);
-        kcb_fold_result = 0
     } in
     (* for each function find the set of functions it calls directly *)
     let _ = List.iter (fun e -> fold_recfun_kexp_ e recfun_callb) top_code in
@@ -152,7 +151,6 @@ let calc_exp_size e =
         kcb_fold_atom = None;
         kcb_fold_ktyp = Some(fold_size_ktyp_);
         kcb_fold_kexp = Some(fold_size_kexp_);
-        kcb_fold_result = 0
     } in
     fold_size_kexp_ e size_callb;
     !sz
@@ -264,7 +262,6 @@ let inline_some kmods =
         kcb_fold_atom = Some(fold_finfo_atom_);
         kcb_fold_ktyp = Some(fold_finfo_ktyp_);
         kcb_fold_kexp = Some(fold_finfo_kexp_);
-        kcb_fold_result = 0
     } in
 
     (* step 2. try to actually expand some calls *)
