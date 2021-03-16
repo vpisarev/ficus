@@ -615,11 +615,7 @@ fun pat_have_vars(p: pat_t): bool
 fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t)
 {
     val t = deref_ktyp(t, loc)
-    val input_vn =
-        match vn_opt {
-        | Some(vn) => get_id(pp_id2str(get_orig_id(vn)).split('.').last())
-        | _ => noid
-        }
+    val input_vn = match vn_opt { | Some(vn) => get_bare_name(vn) | _ => noid }
     match t {
     | KTypRecord(_, relems) => ((noid, t, false), relems)
     | KTypName(tn) =>

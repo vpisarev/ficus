@@ -766,6 +766,13 @@ fun get_qualified_name(name: string, sc: scope_t list) =
     | sc_top :: r => get_qualified_name(name, r)
     }
 
+// out of 'A.B.C.D' we leave just 'D'. just 'D' stays 'D'
+fun get_bare_name(n: id_t): id_t {
+    val n_str = pp_id2str(n)
+    val dot_pos = n_str.rfind('.')
+    get_id(if dot_pos < 0 {n_str} else {n_str[dot_pos+1:]})
+}
+
 fun get_scope(id_info: id_info_t) =
     match id_info {
     | IdNone => ScGlobal :: []

@@ -2330,6 +2330,14 @@ and instantiate_variant ty_args dvar env sc loc =
     (*printf "variant after instantiation: {{{ "; pprint_exp_x (DefVariant inst_dvar); printf " }}}\n";*)
     (inst_name, inst_app_typ)
 
+and get_variant_cases t loc =
+    match (deref_typ t) with
+    | TypApp(_, n) ->
+        (match (id_info n) with
+        | IdVariant {contents={dvar_cases; dvar_ctors}} -> (dvar_cases, dvar_ctors)
+        | _ -> ([], []))
+    | _ -> ([], [])
+
 and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutable =
     let r_idset = ref idset in
     let r_env = ref env in
@@ -2366,46 +2374,49 @@ and check_pat pat typ env idset typ_vars sc proto_mode simple_pat_mode is_mutabl
             (PatTuple(List.rev pl_new, loc), typed)
         | PatVariant(v, pl, loc) ->
             if not proto_mode then
-                (* [TODO] in the ideal case this branch should work fine in the prototype mode as well,
-                   just need to make lookup_id smart enough (maybe add some extra parameters to
-                   avoid preliminary type instantiation) *)
+                let pl = match pl with
+                    | PatAny(any_loc) :: [] ->
+                        let (dvar_cases, _) = get_variant_cases t loc in
+                        (match (List.find_opt (fun (n, t) ->
+                            (get_orig_id n) = (get_orig_id v)) dvar_cases) with
+                        | Some((n, t)) -> (match t with
+                            | TypTuple(tl) ->
+                                List.init (List.length tl) (fun _ -> PatAny(any_loc))
+                            | _ -> pl)
+                        | _ -> pl)
+                    | _ -> pl
+                    in
                 let tl = List.map (fun p -> make_new_typ()) pl in
                 let ctyp = match tl with [] -> t | _ -> TypFun(tl, t) in
-                (*let _ = print_env "env @ report_not_found: " env loc in*)
                 let (v_new, _) = lookup_id v ctyp !r_env sc loc in
-                (*let _ = printf "checking '%s'~'%s' with %d params at %s\n" (id2str v) (id2str v_new) (List.length pl) (loc2str loc) in*)
 
                 (* in principle, non-template variant with a single case can be considered
                    as explicitly typed, but we set it typed=false for now for simplicity *)
                 (PatVariant(v_new, (List.map2 (fun p t -> let (p, _) = check_pat_ p t in p) pl tl), loc), false)
             else
-            (match (deref_typ t) with
-            | TypApp(ty_args, n) ->
-                (match (id_info n) with
-                | IdVariant dv ->
-                    let { dvar_cases } = !dv in
-                    if (List.length dvar_cases) != 1 then
-                        raise_compile_err loc "a label of multi-case variant may not be used in a formal function parameter"
-                    else
-                    (try
-                        let (vi, ti) = List.find (fun (vi, ti) -> vi = v) dvar_cases in
-                        let ni = (match ti with
-                        | TypTuple(tl) -> List.length tl
-                        | TypVoid -> raise_compile_err loc
-                            (sprintf "a variant label '%s' with no arguments may not be used in a formal function parameter"
-                                (pp_id2str vi))
-                        | _ -> 1) in
-                        if ni != (List.length pl) then
-                            raise_compile_err loc
-                            (sprintf "the number of variant pattern arguments does not match to the description of variant case '%s'"
-                                (pp_id2str vi))
-                            else ();
-                        (PatVariant(v, pl, loc), false)
-                    with Not_found ->
+            (match (get_variant_cases t loc) with
+            | ([], _) -> raise_compile_err loc "variant pattern is used with non-variant type"
+            | (dvar_cases, _) ->
+                if (List.length dvar_cases) != 1 then
+                    raise_compile_err loc "a label of multi-case variant may not be used in a formal function parameter"
+                else
+                (try
+                    let (vi, ti) = List.find (fun (vi, ti) -> vi = v) dvar_cases in
+                    let ni = (match ti with
+                    | TypTuple(tl) -> List.length tl
+                    | TypVoid -> raise_compile_err loc
+                        (sprintf "a variant label '%s' with no arguments may not be used in a formal function parameter"
+                            (pp_id2str vi))
+                    | _ -> 1) in
+                    if ni != (List.length pl) then
                         raise_compile_err loc
-                        (sprintf "the variant constructor '%s' is not found" (pp_id2str v)))
-                | _ -> raise_compile_err loc "variant pattern is used with non-variant type")
-            | _ -> raise_compile_err loc "variant pattern is used with non-variant type")
+                        (sprintf "the number of variant pattern arguments does not match to the description of variant case '%s'"
+                            (pp_id2str vi))
+                        else ();
+                    (PatVariant(v, pl, loc), false)
+                with Not_found ->
+                    raise_compile_err loc
+                    (sprintf "the variant constructor '%s' is not found" (pp_id2str v))))
         | PatRecord(rn_opt, relems, loc) ->
             let (ctor, relems_found) = get_record_elems rn_opt t proto_mode loc in
             let new_relems = List.fold_left (fun new_relems (n, p) ->
