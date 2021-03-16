@@ -14,7 +14,7 @@
 */
 from Ast import *
 from KForm import *
-import AstTypeChecker
+import AstTypeChecker, AstPP
 
 fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
 {
@@ -88,6 +88,7 @@ var idx_access_stack: (atom_t, int) list = []
 
 fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
 {
+    //println("------------------------------------\ntranslating "); AstPP.pprint_exp_x(e); println("\n==========================================\n")
     val (etyp, eloc) = get_exp_ctx(e)
     val ktyp = typ2ktyp(etyp, eloc)
     val kctx = (ktyp, eloc)

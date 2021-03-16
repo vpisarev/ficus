@@ -581,13 +581,13 @@ fun parse_block(ts: tklist_t): (tklist_t, exp_t)
         throw parse_err(ts, "'{' is expected")
 }
 
-fun parse_ccode_exp(ts: tklist_t): (tklist_t, exp_t)
-{
+fun parse_ccode_exp(ts: tklist_t, t: typ_t): (tklist_t, exp_t) =
+    match ts {
     | (CCODE, l1) :: (LITERAL(lit), l2) :: rest =>
         val s = get_string(lit, l2)
-        (rest, ExpCCode(s, make_new_ctx(l1)))
+        (rest, ExpCCode(s, (t, l1)))
     | _ => throw parse_err(ts, "'ccode {...}' is expected")
-}
+    }
 
 fun parse_range_exp(ts0: tklist_t): (tklist_t, exp_t)
 {
@@ -733,7 +733,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
             extend_expseq_(ts, DirPragma(prl, l2) :: result)
         | (CCODE, _) :: _ =>
             if !toplevel {throw parse_err(ts, "C code is only allowed at the top level or as rhs of function or value definition")}
-            val (ts, e) = parse_ccode_exp(ts)
+            val (ts, e) = parse_ccode_exp(ts, TypVoid)
             extend_expseq_(ts, e :: result)
         | _ =>
             val (ts, e) = parse_stmt(ts)
@@ -890,12 +890,10 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
             else {
                 val (ts, p) = parse_pat(ts, true)
                 match ts {
-                | (EQUAL, l1) :: (CCODE, l2) :: (LITERAL(LitString(ccode)), _) :: rest =>
-                    val dv = DefVal(p, ExpCCode(ccode, make_new_ctx(l2)),
-                        default_val_flags().
-                        {val_flag_mutable=is_mutable,
-                        val_flag_private=is_private}, l1)
-                    extend_defvals_(rest, true, dv :: result)
+                | (EQUAL, l1) :: (CCODE, l2) :: _ =>
+                    val (ts, e) = parse_ccode_exp(ts.tl(), make_new_typ())
+                    val dv = DefVal(p, e, flags, l1)
+                    extend_defvals_(ts, true, dv :: result)
                 | (EQUAL, l1) :: rest =>
                     val (ts, e) = parse_complex_exp_or_block(rest)
                     val dv = DefVal(p, e, flags, l1)
@@ -1150,8 +1148,8 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
                             prologue: exp_t list, fflags: fun_flags_t, loc: loc_t): (tklist_t, exp_t)
 {
     val (ts, params, body, fflags) = match ts {
-        | (EQUAL, _) :: (CCODE, _) :: rest =>
-            val (ts, body) = parse_ccode_exp(ts.tl())
+        | (EQUAL, _) :: (CCODE, _) :: _ =>
+            val (ts, body) = parse_ccode_exp(ts.tl(), make_new_typ())
             (ts, params, body, fflags.{fun_flag_ccode = true})
         | (EQUAL, _) :: rest =>
             val (ts, body) = parse_stmt(ts.tl())

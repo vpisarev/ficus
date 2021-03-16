@@ -121,7 +121,7 @@ fun typecheck_all(modules: id_t list): bool
 fun k_normalize_all(modules: id_t list): (KForm.kmodule_t list, bool)
 {
     Ast.all_compile_errs = []
-    KForm.init_all()
+    KForm.init_all_idks()
     val kmods = KNormalize.normalize_all_modules(modules)
     (kmods, Ast.all_compile_errs.empty())
 }
