@@ -85,10 +85,10 @@ type ktyp_t =
 type klit_t =
     | KLitInt: int64
     | KLitSInt: (int, int64)
-    | KLitUInt: (int, int64)
+    | KLitUInt: (int, uint64)
     | KLitFloat: (int, double)
     | KLitString: string
-    | KLitChar: string
+    | KLitChar: char
     | KLitBool: bool
     | KLitNil: ktyp_t
 

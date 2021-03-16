@@ -7,7 +7,7 @@
 // (calls all other parts of the compiler in the proper order)
 
 import Filename, Sys, Map
-import Ast, AstTypeChecker, AstPP, Lexer, Parser, Options
+import Ast, AstTypeChecker, AstPP, KForm, KNormalize, Lexer, Parser, Options
 
 exception CumulativeParseError
 
@@ -118,15 +118,15 @@ fun typecheck_all(modules: id_t list): bool
     Ast.all_compile_errs.empty()
 }
 
-/*
-fun k_normalize_all(modules: id_t list): (kdefmodule_t list, bool)
+fun k_normalize_all(modules: id_t list): (KForm.kmodule_t list, bool)
 {
     Ast.all_compile_errs = []
-    K_form.init_all()
-    val kmods = K_normalize.normalize_all_modules(modules)
+    KForm.init_all()
+    val kmods = KNormalize.normalize_all_modules(modules)
     (kmods, Ast.all_compile_errs.empty())
 }
 
+/*
 fun prf(str: string) = pr_verbose(f"\t{str}")
 fun k_optimize_all(kmods) {
     *compile_errs = []
@@ -335,8 +335,8 @@ fun process_all(fname0: string): bool {
                 AstPP.pprint_mod(minfo)
             }
         }
-        /*val (kmods, ok) = if ok { k_normalize_all(all_modules_sorted) } else { ([], false) }
-        pr_verbose("K-normalization complete")
+        val (kmods, ok) = if ok { k_normalize_all(Ast.all_modules_sorted) } else { ([], false) }
+        /*pr_verbose("K-normalization complete")
         if ok && options.print_k0 { K_pp.pprint_kmods(kmods) }
         pr_verbose("K-form optimization started")
         val (kmods, ok) = if ok { k_optimize_all(kmods) } else { ([], false) }
