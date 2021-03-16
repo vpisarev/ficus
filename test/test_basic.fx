@@ -754,7 +754,7 @@ TEST("basic.keyword_args", fun()
         if n == 2 {Math.sqrt(a)}
         else {
             if n % 2 == 0 || use_abs {
-                Math.pow(Math.abs(a), (1./n :> 't))
+                Math.pow(abs(a), (1./n :> 't))
             } else {
                 val (a, s) = if a < (0.:>'t) {(-a, -1)} else {(a, 1)}
                 s*Math.pow(a, (1./n :> 't))

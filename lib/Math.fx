@@ -14,8 +14,11 @@ val pi = 3.1415926535897932384626433832795
 val FLT_EPSILON: float = @ccode {FLT_EPSILON}
 val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 
-fun round(x: float) = Builtins.round(x)
-fun round(x: double) = Builtins.round(x)
+fun round(x: float): int = Builtins.round(x)
+fun round(x: double): int = Builtins.round(x)
+fun round(x: float, n: int): float = Builtins.round(x, n)
+fun round(x: double, n: int): double = Builtins.round(x, n)
+
 @pure @nothrow fun floor(x: float): int = @ccode { int i = (int)x; return i - (i > x) }
 @pure @nothrow fun floor(x: double): int = @ccode { int i = (int)x; return i - (i > x) }
 @pure @nothrow fun ceil(x: float): int = @ccode { int i = (int)x; return i + (i < x) }

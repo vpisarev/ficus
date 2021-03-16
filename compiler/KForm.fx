@@ -38,6 +38,7 @@
     * ...
 */
 from Ast import *
+import Set
 
 type intrin_t =
     | IntrinPopExn
@@ -1050,8 +1051,10 @@ fun kexp2atom(prefix: string, e: kexp_t, tref: bool, code: kcode_t): (atom_t, kc
     | _ =>
         val tmp_id = gen_temp_idk(prefix)
         val (ktyp, kloc) = get_kexp_ctx(e)
-        if ktyp != KTypVoid {}
-        else { throw compile_err(kloc, "'void' expression or declaration cannot be converted to an atom") }
+        match ktyp {
+        | KTypVoid =>
+            throw compile_err(kloc, "'void' expression or declaration cannot be converted to an atom")
+        | _ => {}}
         val tref =
             match e {
             | KExpMem(_, _, _) | KExpAt(_, BorderNone, InterpNone, _, _) | KExpUnary(OpDeref, _, _) => tref

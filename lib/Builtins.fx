@@ -620,6 +620,23 @@ fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
 // do not use lrint(x), since it's slow. and (int)round(x) is even slower
 @pure @nothrow fun round(x: float): int = @ccode { return fx_roundf2I(x) }
 @pure @nothrow fun round(x: double): int = @ccode { return fx_round2I(x) }
+@pure @nothrow fun round(x: float, n: int): float = @ccode
+{
+    double scale =
+        n ==  0 ? 1   : n == 1 ? 1e1 : n == 2 ? 1e2 : n == 3 ? 1e3 :
+        n ==  4 ? 1e4 : n == 5 ? 1e5 : n == 6 ? 1e6 : n == 7 ? 1e7 : 1e8;
+    return (float)(fx_round2I(x*scale)/scale);
+}
+@pure @nothrow fun round(x: double, n: int): double = @ccode
+{
+    double scale =
+        n ==  0 ? 1    : n ==  1 ? 1e1  : n ==  2 ? 1e2  : n ==  3 ? 1e3  :
+        n ==  4 ? 1e4  : n ==  5 ? 1e5  : n ==  6 ? 1e6  : n ==  7 ? 1e7  :
+        n ==  8 ? 1e8  : n ==  9 ? 1e9  : n == 10 ? 1e10 : n == 11 ? 1e11 :
+        n == 12 ? 1e12 : n == 13 ? 1e13 : n == 14 ? 1e14 : n == 15 ? 1e15 : 1e16;
+    return fx_round2I(x*scale)/scale;
+}
+
 fun round(x: ('t...)) = (for xj <- x {round(xj)})
 
 fun min(a: 't, b: 't) = if a <= b {a} else {b}

@@ -477,8 +477,7 @@ var all_compile_err_ctx: string list = []
 var block_scope_idx = -1
 
 fun new_id_idx() {
-    if !freeze_ids {}
-    else {
+    if freeze_ids {
         throw Fail("internal error: attempt to add new AST id during K-phase or C code generation phase")
     }
     dynvec_push(all_ids)
@@ -768,13 +767,13 @@ fun get_qualified_name(name: string, sc: scope_t list) =
 
 // out of 'A.B.C.D' we leave just 'D'. just 'D' stays 'D'
 fun get_bare_name(n: id_t): id_t {
+
     val n_str = pp_id2str(n)
     val dot_pos = n_str.rfind('.')
     get_id(if dot_pos < 0 {n_str} else {n_str[dot_pos+1:]})
 }
 
-fun get_scope(id_info: id_info_t) =
-    match id_info {
+fun get_scope(id_info: id_info_t) {
     | IdNone => ScGlobal :: []
     | IdDVal ({dv_scope}) => dv_scope
     | IdFun (ref {df_scope}) => df_scope
@@ -785,8 +784,7 @@ fun get_scope(id_info: id_info_t) =
     | IdModule(_) => ScGlobal :: []
     }
 
-fun get_idinfo_loc(id_info: id_info_t) =
-    match id_info {
+fun get_idinfo_loc(id_info: id_info_t) {
     | IdNone | IdModule(_) => noloc
     | IdDVal ({dv_loc}) => dv_loc
     | IdFun (ref {df_loc}) => df_loc
@@ -806,6 +804,20 @@ fun get_idinfo_typ(id_info: id_info_t, loc: loc_t): typ_t =
     | IdVariant (ref {dvar_alias}) => dvar_alias
     | IdInterface (ref {di_name}) => TypApp([], di_name)
     | IdNone => throw compile_err(loc, "ast: attempt to request type of non-existing symbol")
+    }
+
+fun get_idinfo_private_flag(id_info: id_info_t) {
+    | IdNone => true
+    | IdDVal ({dv_flags}) =>
+        dv_flags.val_flag_private ||
+        dv_flags.val_flag_temp ||
+        dv_flags.val_flag_tempref
+    | IdFun (ref {df_flags}) => df_flags.fun_flag_private
+    | IdExn _ => false
+    | IdTyp _ => false
+    | IdVariant _ => false
+    | IdInterface _ => false
+    | IdModule(_) => true
     }
 
 fun get_id_typ(i: id_t, loc: loc_t) =
@@ -1149,7 +1161,7 @@ fun typ2str(t: typ_t): string {
     | TypVarTuple(_) => "(...)"
     | TypVarArray(t) => f"{typ2str(t)} [+]"
     | TypVarRecord => "{...}"
-    | TypVar ((ref Some(t)) as r) => f"Some({typ2str(t)})"
+    | TypVar ((ref Some(t)) as r) => f"{typ2str(t)}"
     | TypVar (r) => "<unknown>"
     | TypApp([], i) => id2str(i)
     | TypApp(tl, i) => f"{tl2str(tl)} {id2str(i)}"

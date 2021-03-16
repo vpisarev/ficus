@@ -4,7 +4,7 @@
 */
 
 // Various system services
-import File, Filename
+import File, Filename, Math
 
 @ccode {
     #include <limits.h>
@@ -79,6 +79,19 @@ fun arguments() = List.tl(argv)
 
 @pure @nothrow fun getTickCount(): int64 = @ccode { return fx_tickcount() }
 @pure @nothrow fun getTickFrequency(): double = @ccode { return fx_tickfreq() }
+
+fun timeit(f: void -> void, ~iters: int=1, ~batch: int=1): double
+{
+    val fold gmean = 0. for i <- 0:iters {
+        val t = getTickCount()
+        for j <- 0:batch {f()}
+        val t = getTickCount() - t
+        val t = t/getTickFrequency()
+        val t = if iters > 1 { Math.log(max(t, 1e-16)) } else {t}
+        gmean + t
+    }
+    if iters > 1 { Math.exp(gmean/iters)/batch } else {gmean/batch}
+}
 
 fun getcwd(): string = @ccode {
     char buf[PATH_MAX+16];
