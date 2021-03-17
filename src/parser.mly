@@ -956,7 +956,23 @@ for_in_list_:
 | simple_pat AT simple_pat BACK_ARROW loop_range_exp { ($1, $3, $5) :: [] }
 
 fold_clause:
-| simple_pat EQUAL complex_exp any_for nested_for_ { (($1, $3), $5) }
+| fold_init_list_ any_for nested_for_
+{
+    let (p, e) = match $1 with
+        | (p :: [], e :: []) -> (p, e)
+        | (pl, el) ->
+            let pl = List.rev pl in
+            let el = List.rev el in
+            (PatTuple(pl, get_pat_loc(List.hd pl)),
+             ExpMkTuple(el, (make_new_typ(), get_exp_loc(List.hd el))))
+        in
+    ((p, e), $3)
+}
+
+fold_init_list_:
+| fold_init_list_ COMMA simple_pat EQUAL complex_exp
+    { let (pl, el) = $1 in ($3 :: pl, $5 :: el) }
+| simple_pat EQUAL complex_exp { ($1 :: [], $3 :: []) }
 
 loop_range_exp:
 | exp { $1 }

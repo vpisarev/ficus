@@ -394,7 +394,7 @@ fun get_idk_cname(n: id_t, loc: loc_t): string
 
 fun idk2str(n: id_t, loc: loc_t) =
     match n {
-    | IdName(_) => id2str(n)
+    | IdName _ => id2str(n)
     | _ =>
         val cname = get_idk_cname(n, loc)
         if cname == "" { id2str(n) } else { cname }
@@ -410,7 +410,7 @@ fun get_kinfo_typ(info: kinfo_t, n: id_t, loc: loc_t): ktyp_t
     | KNone => KTypVoid
     | KVal ({kv_typ}) => kv_typ
     | KFun (ref {kf_args, kf_rt}) => get_kf_typ(kf_args, kf_rt)
-    | KExn(_) => KTypExn
+    | KExn _ => KTypExn
     | KVariant (ref {kvar_name}) => KTypName(kvar_name)
     | KClosureVars (ref {kcv_name, kcv_freevars}) => KTypRecord(kcv_name, kcv_freevars)
     | KTyp (ref {kt_typ=KTypRecord(_, _) as kt_typ}) => kt_typ
@@ -422,13 +422,13 @@ fun get_idk_ktyp(n: id_t, loc: loc_t): ktyp_t = get_kinfo_typ(kinfo_(n, loc), n,
 
 fun get_lit_ktyp(l: klit_t): ktyp_t
 {
-    | KLitInt(_) => KTypInt
+    | KLitInt _ => KTypInt
     | KLitSInt(b, _) => KTypSInt(b)
     | KLitUInt(b, _) => KTypUInt(b)
     | KLitFloat(b, _) => KTypFloat(b)
-    | KLitString(_) => KTypString
-    | KLitChar(_) => KTypChar
-    | KLitBool(_) => KTypBool
+    | KLitString _ => KTypString
+    | KLitChar _ => KTypChar
+    | KLitBool _ => KTypBool
     | KLitNil(t) => t
 }
 
@@ -455,7 +455,7 @@ fun get_code_loc(code: kcode_t, default_loc: loc_t) =
     loclist2loc(code.map(get_kexp_loc), default_loc)
 
 fun filter_out_nops(code: kcode_t): kexp_t list =
-    code.filter(fun (e) { | KExpNop(_) => false | _ => true })
+    code.filter(fun (e) { | KExpNop _ => false | _ => true })
 
 fun code2kexp(code: kcode_t, loc: loc_t) =
     match filter_out_nops(code) {
@@ -479,7 +479,7 @@ fun rcode2kexp(code: kcode_t, loc: loc_t): kexp_t =
 
 fun kexp2code(e: kexp_t): kexp_t list
 {
-    | KExpNop(_) => []
+    | KExpNop _ => []
     | KExpSeq(elist, _) => elist
     | _ => e :: []
 }
@@ -557,8 +557,8 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
     fun walk_id_(n: id_t) = check_n_walk_id(n, loc, callb)
 
     match t {
-    | KTypInt | KTypCInt | KTypSInt(_) | KTypUInt(_)
-    | KTypFloat(_) | KTypVoid | KTypBool | KTypChar
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _
+    | KTypFloat _ | KTypVoid | KTypBool | KTypChar
     | KTypString | KTypCPointer | KTypExn | KTypErr | KTypModule =>
         t
     | KTypFun(args, rt) => KTypFun(walk_ktl_(args), walk_ktyp_(rt))
@@ -587,9 +587,9 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         [: for (n, d) <- idoml { (walk_id_(n), walk_dom_(d)) } :]
 
     match e {
-    | KExpNop(_) => e
-    | KExpBreak(_) => e
-    | KExpContinue(_) => e
+    | KExpNop _ => e
+    | KExpBreak _ => e
+    | KExpContinue _ => e
     | KExpAtom(a, ctx) => KExpAtom(walk_atom_(a), walk_kctx_(ctx))
     | KExpBinary(bop, a1, a2, ctx) => KExpBinary(bop, walk_atom_(a1), walk_atom_(a2), walk_kctx_(ctx))
     | KExpUnary(uop, a, ctx) => KExpUnary(uop, walk_atom_(a), walk_kctx_(ctx))
@@ -602,7 +602,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
                 val new_e = walk_kexp_(e)
                 val new_result =
                     match new_e {
-                    | KExpNop(_) => if !rest.empty() {result} else {new_e :: result}
+                    | KExpNop _ => if !rest.empty() {result} else {new_e :: result}
                     | KExpSeq(el, _) => el.rev() + result
                     | _ => new_e :: result
                     }
@@ -755,7 +755,7 @@ fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
     fun fold_ktl_(tl: ktyp_t list) = tl.app(fold_ktyp_)
     fun fold_id_(n: id_t) = check_n_fold_id(n, loc, callb)
     match t {
-    | KTypInt | KTypCInt | KTypSInt(_) | KTypUInt(_) | KTypFloat(_) | KTypVoid
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypVoid
     | KTypBool | KTypChar | KTypString | KTypCPointer | KTypExn | KTypErr | KTypModule =>
         {}
     | KTypFun(args, rt) => fold_ktl_(args); fold_ktyp_(rt)
@@ -781,9 +781,9 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     fun fold_idoml_(idoml: (id_t, dom_t) list) =
         for (k, d) <- idoml { fold_id_(k); fold_dom_(d) }
     match e {
-    | KExpNop(_) => {}
-    | KExpBreak(_) => {}
-    | KExpContinue(_) => {}
+    | KExpNop _ => {}
+    | KExpBreak _ => {}
+    | KExpContinue _ => {}
     | KExpAtom(a, (t, _)) => fold_atom_(a); fold_ktyp_(t)
     | KExpBinary(_, a1, a2, (t, _)) =>
         fold_atom_(a1); fold_atom_(a2); fold_ktyp_(t)
@@ -879,7 +879,7 @@ fun used_decl_by_kexp(e: kexp_t): (idset_t, idset_t)
     fun add_id(n: id_t, s: idset_t ref) = if n != noid { *s = s->add(n) }
     fun used_by_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t): void =
         match a {
-        | AtomId(IdName(_)) => {}
+        | AtomId(IdName _) => {}
         | AtomId(n) => add_id(n, all_used)
         | AtomLit(KLitNil(t)) => used_by_ktyp_(t, loc, callb)
         | _ => {}
@@ -962,9 +962,9 @@ fun is_mutable(n: id_t, loc: loc_t): bool
     match info {
     | KNone => false
     | KVal ({kv_flags}) => kv_flags.val_flag_mutable
-    | KFun(_) => false
-    | KExn(_) => false
-    | KClosureVars(_) | KVariant(_) | KTyp(_) => false
+    | KFun _ => false
+    | KExn _ => false
+    | KClosureVars _ | KVariant _ | KTyp _ => false
     }
 }
 
@@ -1007,11 +1007,11 @@ fun make_empty_kf_closure(): kdefclosureinfo_t =
 
 fun deref_ktyp(kt: ktyp_t, loc: loc_t): ktyp_t =
     match kt {
-    | KTypName(IdName(_)) => kt
+    | KTypName(IdName _) => kt
     | KTypName(n) =>
         match kinfo_(n, loc) {
         | KTyp (ref {kt_typ, kt_loc}) => deref_ktyp(kt_typ, kt_loc)
-        | KVariant(_) => kt
+        | KVariant _ => kt
         | _ => throw compile_err(loc, f"named 'type' '{id2str(n)}' does not represent a type")
         }
     | _ => kt
@@ -1019,13 +1019,13 @@ fun deref_ktyp(kt: ktyp_t, loc: loc_t): ktyp_t =
 
 fun is_ktyp_scalar(ktyp: ktyp_t): bool
 {
-    | KTypInt | KTypCInt | KTypSInt(_) | KTypUInt(_) | KTypFloat(_) | KTypBool | KTypChar => true
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypBool | KTypChar => true
     | _ => false
 }
 
 fun is_ktyp_integer(t: ktyp_t, allow_bool: bool) =
     match t {
-    | KTypCInt | KTypInt | KTypSInt(_) | KTypUInt(_) => true
+    | KTypCInt | KTypInt | KTypSInt _ | KTypUInt _ => true
     | KTypBool => allow_bool
     | _ => false
     }
@@ -1068,7 +1068,7 @@ fun kexp2atom(prefix: string, e: kexp_t, tref: bool, code: kcode_t): (atom_t, kc
 fun atom2id(a: atom_t, loc: loc_t, msg: string) =
     match a {
     | AtomId(n) => n
-    | AtomLit(_) => throw compile_err(loc, msg)
+    | AtomLit _ => throw compile_err(loc, msg)
     }
 
 fun kexp2id(prefix: string, e: kexp_t, tref: bool, code: kcode_t, msg: string): (id_t, kcode_t)
@@ -1149,7 +1149,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     | KLitChar(c) => repr(c)
     | KLitBool(true) => "true"
     | KLitBool(false) => "false"
-    | KLitNil(_) => "nullptr"
+    | KLitNil _ => "nullptr"
     }
 }
 
@@ -1164,9 +1164,9 @@ fun kexp2str(e: kexp_t): string
 {
     val l = get_kexp_loc(e)
     match e {
-    | KExpNop(_) => "KExpNop"
-    | KExpBreak(_) => "KExpBreak"
-    | KExpContinue(_) => "KExpContinue"
+    | KExpNop _ => "KExpNop"
+    | KExpBreak _ => "KExpBreak"
+    | KExpContinue _ => "KExpContinue"
     | KExpAtom(a, _) => "KExpAtom(" + atom2str(a) + ")"
     | KExpBinary(bop, a, b, _) => f"KExpBinary({bop}, {atom2str(a)}, {atom2str(b)})"
     | KExpUnary(uop, a, _) => f"KExpUnary({uop}, {atom2str(a)})"

@@ -35,7 +35,7 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
 }
 
 @pure @nothrow fun endswith(s: string, suffix: char): bool = @ccode
-{ return s->length > 0 && s->data[s->length-1] == prefix; }
+{ return s->length > 0 && s->data[s->length-1] == suffix; }
 
 @pure @nothrow fun find(s: string, part: string): int = @ccode
 {

@@ -553,7 +553,7 @@ fun id2idx_(i: id_t, loc: loc_t) =
     match i {
     | IdVal(_, i_real) => i_real
     | IdTemp(_, i_real) => i_real
-    | IdName(_) => throw compile_err(loc,
+    | IdName _ => throw compile_err(loc,
         f"attempt to query information about unresolved '{id2str(i)}'")
     }
 
@@ -561,7 +561,7 @@ fun id2idx(i: id_t) = id2idx_(i, noloc)
 fun id_info(i: id_t, loc: loc_t) = dynvec_get(all_ids, id2idx_(i, loc))
 
 fun is_unique_id(i: id_t) {
-    | IdName(_) => false
+    | IdName _ => false
     | _ => true
     }
 
@@ -596,7 +596,7 @@ fun dup_id(old_id: id_t) {
 }
 
 fun get_orig_id(i: id_t) {
-    | IdName(_) => i
+    | IdName _ => i
     | IdVal(i, _) => IdName(i)
     | IdTemp(_, _) => i
 }
@@ -746,7 +746,7 @@ fun scope2str(sc: scope_t list) {
 }
 
 fun get_module_scope(sc: scope_t list) {
-    | ScModule(_) :: _ => sc
+    | ScModule _ :: _ => sc
     | ScGlobal :: _ | [] => sc
     | sc_top :: r => get_module_scope(r)
     }
@@ -781,11 +781,11 @@ fun get_scope(id_info: id_info_t) {
     | IdTyp (ref {dt_scope}) => dt_scope
     | IdVariant (ref {dvar_scope}) => dvar_scope
     | IdInterface (ref {di_scope}) => di_scope
-    | IdModule(_) => ScGlobal :: []
+    | IdModule _ => ScGlobal :: []
     }
 
 fun get_idinfo_loc(id_info: id_info_t) {
-    | IdNone | IdModule(_) => noloc
+    | IdNone | IdModule _ => noloc
     | IdDVal ({dv_loc}) => dv_loc
     | IdFun (ref {df_loc}) => df_loc
     | IdExn (ref {dexn_loc}) => dexn_loc
@@ -796,7 +796,7 @@ fun get_idinfo_loc(id_info: id_info_t) {
 
 fun get_idinfo_typ(id_info: id_info_t, loc: loc_t): typ_t =
     match id_info {
-    | IdModule(_) => TypModule
+    | IdModule _ => TypModule
     | IdDVal ({dv_typ}) => dv_typ
     | IdFun (ref {df_typ}) => df_typ
     | IdExn (ref {dexn_typ}) => dexn_typ
@@ -817,23 +817,23 @@ fun get_idinfo_private_flag(id_info: id_info_t) {
     | IdTyp _ => false
     | IdVariant _ => false
     | IdInterface _ => false
-    | IdModule(_) => true
+    | IdModule _ => true
     }
 
 fun get_id_typ(i: id_t, loc: loc_t) =
     match i {
-    | IdName(_) => make_new_typ()
+    | IdName _ => make_new_typ()
     | _ => get_idinfo_typ(id_info(i, loc), loc)
     }
 
 fun get_lit_typ(l: lit_t) {
-    | LitInt(_) => TypInt
+    | LitInt _ => TypInt
     | LitSInt(b, _) => TypSInt(b)
     | LitUInt(b, _) => TypUInt(b)
     | LitFloat(b, _) => TypFloat(b)
-    | LitString(_) => TypString
-    | LitChar(_) => TypChar
-    | LitBool(_) => TypBool
+    | LitString _ => TypString
+    | LitChar _ => TypChar
+    | LitBool _ => TypBool
     | LitNil => TypList(make_new_typ())
 }
 
@@ -845,10 +845,10 @@ fun get_lit_typ(l: lit_t) {
    t -> root, t2 -> root, t3 -> root, ...
    Returns the root. */
 fun deref_typ(t: typ_t): typ_t {
-    | TypVar(_) =>
+    | TypVar _ =>
         fun find_root(t: typ_t) {
-            | TypVar (ref Some(TypVarArray(_))) => t
-            | TypVar (ref Some(TypVarTuple(_))) => t
+            | TypVar (ref Some(TypVarArray _)) => t
+            | TypVar (ref Some(TypVarTuple _)) => t
             | TypVar (ref Some(TypVarRecord)) => t
             | TypVar (ref Some(t2)) => find_root(t2)
             | _ => t
@@ -856,7 +856,7 @@ fun deref_typ(t: typ_t): typ_t {
 
         fun update_refs(t: typ_t, root: typ_t): typ_t =
             match t {
-            | TypVar((ref Some(TypVar(ref Some(_)) as t1)) as r) =>
+            | TypVar((ref Some(TypVar(ref Some _) as t1)) as r) =>
                 *r = Some(root); update_refs(t1, root)
             | _ => root
             }
@@ -1158,7 +1158,7 @@ fun ref2str(r: 't ref): string = @ccode
 
 fun typ2str(t: typ_t): string {
     | TypVarTuple(Some(t)) => f"({typ2str(t)} ...)"
-    | TypVarTuple(_) => "(...)"
+    | TypVarTuple _ => "(...)"
     | TypVarArray(t) => f"{typ2str(t)} [+]"
     | TypVarRecord => "{...}"
     | TypVar ((ref Some(t)) as r) => f"{typ2str(t)}"
@@ -1261,9 +1261,9 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     match t {
     | TypVar(r) => match *r { | Some(t) => *r = Some(check_n_walk_typ(t, callb)) | _ => {} }; t
     | TypInt => t
-    | TypSInt(_) => t
-    | TypUInt(_) => t
-    | TypFloat(_) => t
+    | TypSInt _ => t
+    | TypUInt _ => t
+    | TypFloat _ => t
     | TypString => t
     | TypChar => t
     | TypBool => t
@@ -1305,9 +1305,9 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     fun walk_ctx_((t, loc): ctx_t) = (walk_typ_(t), loc)
 
     match e {
-    | ExpNop(_) => e
+    | ExpNop _ => e
     | ExpBreak(_, _) => e
-    | ExpContinue(_) => e
+    | ExpContinue _ => e
     | ExpRange(e1_opt, e2_opt, e3_opt, ctx) => ExpRange(walk_exp_opt_(e1_opt), walk_exp_opt_(e2_opt), walk_exp_opt_(e3_opt), walk_ctx_(ctx))
     | ExpLit(l, ctx) => ExpLit(l, walk_ctx_(ctx))
     | ExpIdent(n, ctx) => ExpIdent(n, walk_ctx_(ctx))
@@ -1376,7 +1376,7 @@ fun walk_pat(p: pat_t, callb: ast_callb_t) {
     fun walk_pl_(pl: pat_t list) = check_n_walk_plist(pl, callb)
 
     match p {
-    | PatAny(_) => p
+    | PatAny _ => p
     | PatLit(_, _) => p
     | PatIdent(_, _) => p
     | PatTuple(pl, loc) => PatTuple(walk_pl_(pl), loc)
@@ -1394,7 +1394,7 @@ fun walk_pat(p: pat_t, callb: ast_callb_t) {
 fun dup_typ_(t: typ_t, callb: ast_callb_t): typ_t =
     match t {
     | TypVar (ref Some(t1)) => TypVar(ref Some(dup_typ_(t1, callb)))
-    | TypVar (_) => TypVar(ref None)
+    | TypVar  _ => TypVar(ref None)
     | TypRecord(r) =>
         val (relems, ordered) = *r
         val new_relems = [: for (n, t, v) <- relems {(n, dup_typ_(t, callb), v)} :]

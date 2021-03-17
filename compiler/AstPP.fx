@@ -50,13 +50,13 @@ fun get_typ_pr(t: typ_t): typ_pr_t
 {
     | TypVar (ref None) => TypPrBase
     | TypVar (ref Some(t1)) => get_typ_pr(t1)
-    | TypInt | TypSInt(_) | TypUInt(_) | TypFloat(_) | TypString | TypChar
+    | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypString | TypChar
     | TypBool | TypVoid | TypExn | TypErr | TypCPointer | TypDecl | TypModule =>
         TypPrBase
     | TypApp([], _) => TypPrBase
-    | TypTuple(_) | TypVarTuple(_) => TypPrBase
-    | TypRecord(_) | TypVarRecord => TypPrBase
-    | TypList(_) | TypRef(_) | TypArray(_, _) | TypVarArray(_) | TypApp(_, _) => TypPrComplex
+    | TypTuple _ | TypVarTuple _ => TypPrBase
+    | TypRecord _ | TypVarRecord => TypPrBase
+    | TypList _ | TypRef _ | TypArray(_, _) | TypVarArray _ | TypApp(_, _) => TypPrComplex
     | TypFun(_, _) => TypPrFun
 }
 
@@ -294,10 +294,10 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     | _ =>
         pp.begin()
         match e {
-        | ExpNop(_) => pp.str("{}")
+        | ExpNop _ => pp.str("{}")
         | ExpBreak(f, _) =>
             pp.str(if f {"@fold break"} else {"break"})
-        | ExpContinue(_) => pp.str("continue")
+        | ExpContinue _ => pp.str("continue")
         | ExpRange(e1_opt, e2_opt, e3_opt, _) =>
             pp.str("(")
             match e1_opt {
@@ -422,7 +422,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                 pprint_pat(pp, p)
                 if i == 0 {
                     match idx_pat {
-                    | PatAny(_) => {}
+                    | PatAny _ => {}
                     | _ => pp.str("@")
                         pprint_pat(pp, idx_pat)
                     }
@@ -448,7 +448,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                     pprint_pat(pp, p)
                     if i == 0 {
                         match idx_pat {
-                        | PatAny(_) => {}
+                        | PatAny _ => {}
                         | _ => pp.str("@")
                             pprint_pat(pp, idx_pat)
                         }
@@ -476,8 +476,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.space(); pprint_typ(pp, t, loc); pp.str(")")
         | ExpCCode(s, _) =>
             pp.str("@ccode "); pp.space(); pp.str("\""); pp.str(s); pp.str("\"")
-        | DefVal(_, _, _, _) | DefFun(_) | DefExn(_) | DefTyp(_)
-        | DefVariant(_) | DefInterface(_)
+        | DefVal(_, _, _, _) | DefFun _ | DefExn _ | DefTyp _
+        | DefVariant _ | DefInterface _
         | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
         }
         pp.end()
@@ -513,7 +513,7 @@ fun pprint_expseq(pp: PP.t, eseq: exp_t list, braces: bool): void
 fun pprint_pat(pp: PP.t, p: pat_t)
 {
     fun pppat(p: pat_t) {
-    | PatAny(_) => pp.str("_")
+    | PatAny _ => pp.str("_")
     | PatAs(p, n, _) =>
         pp.begin(); pp.str("("); pppat(p);
         pp.str(" as"); pp.space(); ppid(pp, n); pp.str(")"); pp.end();
