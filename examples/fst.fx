@@ -74,7 +74,7 @@ for i <- 1:31 {
 }
 println()
 
-val a=[0, 1, 2, -10, 7, -3]
+val a=[|0, 1, 2, -10, 7, -3|]
 var i1 = 0, n = size(a)
 do
 {
@@ -141,7 +141,7 @@ val r2 = List.assoc_opt(pairs, key2)
 
 fun assoc_result(r: 'x?)
 {
-    | Some(x) => repr(x)
+    | Some x => repr(x)
     | _ => "not found"
 }
 
@@ -149,7 +149,7 @@ println(f"assoc '{key1}' @ {pairs}: {assoc_result(r1)}")
 println(f"assoc '{key2}' @ {pairs}: {assoc_result(r2)}")
 
 val n = 30
-val a = [for i <- 0:n {i+1}]
+val a = [|for i <- 0:n {i+1}|]
 for i <- 1:n {a[i] += a[i-1]}
 println(f"triangular numbers: {a}")
 
@@ -172,7 +172,7 @@ println(sorted)
 
 fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     val step = (b - a)/w
-    val tab = [for x <- 0:w {f(a + step*x)}]
+    val tab = [|for x <- 0:w {f(a + step*x)}|]
     val v0 = tab[0]
     val fold (minv, maxv)=(v0, v0) for y <- tab { (min(minv, y), max(maxv, y)) }
     val scale = (h-1)/(maxv - minv)

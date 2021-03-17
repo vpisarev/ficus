@@ -13,8 +13,8 @@ TEST("mandelbrot.regression", fun()
     val w = N, h = N, MAX_ITER = 50
     val inv = 2.0 / w
 
-    val x_ = [@parallel for x <- 0:w {double(x) * inv - 1.5}]
-    val result: uint8 [,] = [
+    val x_ = [| @parallel for x <- 0:w {double(x) * inv - 1.5} |]
+    val result: uint8 [,] = [|
         @parallel
             for y <- 0:h
                 for x8 <- 0:(w/8)
@@ -45,11 +45,11 @@ TEST("mandelbrot.regression", fun()
 
             uint8(mask ^ 255)
         }
-    ]
+    |]
 
     val roi = result[1000-20:1000+12,8:16]
     EXPECT_EQ(roi,
-        [0u8, 0u8, 0u8, 0u8, 2u8, 192u8, 8u8, 96u8;
+      [|0u8, 0u8, 0u8, 0u8, 2u8, 192u8, 8u8, 96u8;
         0u8, 0u8, 0u8, 0u8, 0u8, 64u8, 60u8, 48u8;
         0u8, 0u8, 0u8, 0u8, 0u8, 66u8, 24u8, 32u8;
         0u8, 0u8, 0u8, 0u8, 49u8, 234u8, 30u8, 48u8;
@@ -80,5 +80,5 @@ TEST("mandelbrot.regression", fun()
         0u8, 0u8, 0u8, 0u8, 0u8, 127u8, 255u8, 255u8;
         0u8, 0u8, 0u8, 0u8, 144u8, 255u8, 255u8, 255u8;
         0u8, 0u8, 0u8, 1u8, 1u8, 63u8, 255u8, 255u8;
-        0u8, 0u8, 0u8, 2u8, 2u8, 31u8, 255u8, 255u8])
+        0u8, 0u8, 0u8, 2u8, 2u8, 31u8, 255u8, 255u8 |])
 })

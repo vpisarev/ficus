@@ -79,6 +79,8 @@ let token2str t = match t with
     | RSQUARE -> "RSQUARE"
     | LBRACE -> "LBRACE"
     | RBRACE -> "RBRACE"
+    | LARRAY -> "LARRAY"
+    | RARRAY -> "RARRAY"
     | LLIST -> "LLIST"
     | RLIST -> "RLIST"
     | COMMA -> "COMMA"
@@ -410,6 +412,21 @@ rule tokens = parse
                 in
             new_exp := false;
             tl
+        }
+    | "[|"
+        {
+            check_ne(lexbuf);
+            let t = LARRAY in
+            push_paren_stack t lexbuf;
+            new_exp := true; [t]
+        }
+    | "|]"
+        {
+            (match (!paren_stack) with
+            | (LARRAY, _) :: rest -> paren_stack := rest
+            | _ -> raise (lexErr "Unexpected '|]', check parens" lexbuf));
+            new_exp := false;
+            [RARRAY]
         }
     | '{'
         {

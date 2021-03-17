@@ -17,27 +17,27 @@ TEST("Re2.submatch_extraction", fun()
     val bards = "Mockles! Fent on silpen tree,\n Blockards three a-feening,\n Mockles, what silps came to thee\n In thy pantry dreaming?"
 
     val se_reg = Re2.compile(r"(\b[E-Te-t]+\b)", Re2.options_t {posix_syntax = true, word_boundary = true})
-    EXPECT_EQ(Re2.partial_match_n(bards, r"[.,!? ]([^g-p^\s]+)[.,!? ]"), (true, [(24, 28)]))
-    EXPECT_EQ(Re2.partial_match_n_str(bards, se_reg), (true, ["Fent"]))
+    EXPECT_EQ(Re2.partial_match_n(bards, r"[.,!? ]([^g-p^\s]+)[.,!? ]"), (true, [| (24, 28) |]))
+    EXPECT_EQ(Re2.partial_match_n_str(bards, se_reg), (true, [| "Fent" |]))
 })
 
 TEST("Re2.consume", fun()
 {
-    EXPECT_EQ(Re2.consume_n("Eagle, don't bait! I and Cheburashka, who haven't friends, both want to serve in the artillery.", 0, r"([[:alpha:]]+)"), (true, 5, [(0, 5)]))
-    EXPECT_EQ(Re2.consume_n_str("Eagle, don't bait! I and Cheburashka, who haven't friends, both want to serve in the artillery.", 0, r"([[:alpha:]]+)"), (true, 5, ["Eagle"]))
-    EXPECT_EQ(Re2.find_and_consume_n_str("The moon is 384467 kilometers distant.", 0, r"(\d+)"), (true, 18, ["384467"]))
+    EXPECT_EQ(Re2.consume_n("Eagle, don't bait! I and Cheburashka, who haven't friends, both want to serve in the artillery.", 0, r"([[:alpha:]]+)"), (true, 5, [| (0, 5) |]))
+    EXPECT_EQ(Re2.consume_n_str("Eagle, don't bait! I and Cheburashka, who haven't friends, both want to serve in the artillery.", 0, r"([[:alpha:]]+)"), (true, 5, [| "Eagle" |]))
+    EXPECT_EQ(Re2.find_and_consume_n_str("The moon is 384467 kilometers distant.", 0, r"(\d+)"), (true, 18, [| "384467" |]))
 })
 
 TEST("Re2.findall", fun()
 {
     val fullstring_re = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false})
-    EXPECT_EQ(Re2.findall_str("The hooves clattered.\nAs if singing:\n— Crib.\nGrab.\nGrub.\nGruff.\n",fullstring_re), (true, ["The hooves clattered.";"As if singing:";"— Crib.";"Grab.";"Grub.";"Gruff."]))
+    EXPECT_EQ(Re2.findall_str("The hooves clattered.\nAs if singing:\n— Crib.\nGrab.\nGrub.\nGruff.\n",fullstring_re), (true, [| "The hooves clattered.";"As if singing:";"— Crib.";"Grab.";"Grub.";"Gruff." |]))
 })
 
 TEST("Re2.general_match", fun()
 {
     val fullstring_re = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false})
-    EXPECT_EQ(Re2.general_match_str("Hello I'm Cornelius", r"(I.m)", 6, 9, Re2.anchor_t {anchor_both=true}), (true, ["I'm"]))
+    EXPECT_EQ(Re2.general_match_str("Hello I'm Cornelius", r"(I.m)", 6, 9, Re2.anchor_t {anchor_both=true}), (true, [| "I'm" |]))
 })
 
 TEST("Re2.replace", fun()

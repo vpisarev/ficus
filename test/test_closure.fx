@@ -179,14 +179,14 @@ TEST("closure.kfor_0_no_kfor_fv", fun()
 {
     fun outer_direct(a: int)
     {
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             fun kfor_inner()
             {
                 fun h(ii: int): int = ii + a
                 h
             }
             kfor_inner()
-        }]
+        } |]
         [: for f <- hs {f(100)} :]
     }
 
@@ -198,14 +198,14 @@ TEST("closure.kfor_1_fv", fun()
     fun outer_direct_2(a: int)
     {
         fun fn_fv(j: int) = a + j
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             fun kfor_inner()
             {
                 fun h(ii: int) = ii + i + a + fn_fv(ii)
                 h
             }
             kfor_inner()
-        }]
+        } |]
 
         [: for f <- hs {f(100)} :]
     }
@@ -217,14 +217,14 @@ TEST("closure.kfor_1", fun()
 {
     fun outer_direct(a: int)
     {
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             fun kfor_inner()
             {
                 fun h(ii: int) = ii + i + a
                 h
             }
             kfor_inner()
-        }]
+        } |]
 
         [: for f <- hs {f(100)} :]
     }
@@ -238,14 +238,14 @@ TEST("closure.kfor_2", fun()
     {
         fun fn_fv(j: int) = a + j
 
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             fun kfor_inner(k: int)
             {
                 fun h(ii: int) = ii + i + a + k + fn_fv(ii)
                 h
             }
             kfor_inner(i + 1)
-        }]
+        } |]
 
         [: for f <- hs {f(100)} :]
     }
@@ -257,11 +257,11 @@ TEST("closure.kfor_3", fun()
 {
     fun outer_inner_val(a: int)
     {
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             val i_value = i
             fun h(ii: int) = ii + i_value + a
             h
-        }]
+        } |]
 
         [: for f <- hs {f(100)} :]
     }
@@ -273,11 +273,11 @@ TEST("closure.kfor_4", fun()
 {
     fun outer_inner_var(a: int)
     {
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             var i_value = i
             fun h(ii: int) = ii + i_value + a
             h
-        }]
+        } |]
 
         [: for f <- hs {f(100)} :]
     }
@@ -290,11 +290,11 @@ TEST("closure.kfor_5", fun()
     fun outer_outer_var(a: int)
     {
         var i_value = 0;
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             i_value = i
             fun h(ii: int) = ii + i_value + a
             h
-        }]
+        } |]
         (i_value, [: for f <- hs {f(100)} :])
     }
 
@@ -307,11 +307,11 @@ TEST("closure.object", fun()
     fun closure_object(a: int)
     {
         var res: int list = []
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             val i_value = i
             fun h(ii: int) { res = (i_value + ii) :: res }
             h
-        }]
+        } |]
 
         for f <- hs {f(100)}
         var s = ""
@@ -329,11 +329,11 @@ TEST("closure.object_in_tuple", fun()
     fun closure_object(a: int)
     {
         var res: (int list, float list) = ([], [])
-        val hs = [@parallel for i <- 0:10 {
+        val hs = [| @parallel for i <- 0:10 {
             val i_value = i;
             fun h(ii: int) {res = ((i_value + ii) :: res.0, (i :> float) :: res.1) }
             h
-        }]
+        } |]
 
         for f <- hs {f(100)}
 

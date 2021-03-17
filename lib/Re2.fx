@@ -115,7 +115,7 @@ exception BadRegexp : string
 
 fun incise(str: string, starts_ends: (int, int)[]): string []
 {
-    [for (start, end) <- starts_ends {str[start:end]}]
+    [| for (start, end) <- starts_ends {str[start:end]} |]
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -954,12 +954,12 @@ fun findall_str(string_to_match: string, re: regex_t): (bool   , string     [,])
 {
     val (success, starts_ends) = findall(string_to_match, re)
     val (len_i, len_j) = size(starts_ends)
-    (success, [ for i <- 0:len_i for j <- 0:len_j
+    (success, [| for i <- 0:len_i for j <- 0:len_j
                 {
                     val(start,end) = starts_ends[i,j]
                     string_to_match[start:end]
                 }
-              ])
+              |])
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

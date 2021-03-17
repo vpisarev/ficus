@@ -377,19 +377,6 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             the next "pre_code". Finally, the body_code from the last iteration, i.e.
             from the most inner for loop will actually become the prefix of the actual
             body code that is transformed after this List.fold_left.
-
-            In addition, we handle clauses in certain way that is not 100% correct from
-            the type consistence point of view, but it's fine and all the subsequent
-            optimizations and the C code generator should handle it properly. That is,
-            after unpacking the patterns inside loop for each "when <...>" clause we
-            insert "if (<...>) {} else continue;" expression, e.g.:
-
-            val upper_triangle_nz_elements = [for (i <- 0:m) for (j <- i:m when A[i,j] != 0) (i,j)]
-
-            will be translated to
-
-            vall odd_elements = [for (i <- 0:m) for (j <-i:m)
-                { val temp=A[i,j]; if(temp != 0) {} else continue; (i, j)} ]
         */
         val body_sc = new_block_scope() :: sc
         val (pre_idom_ll, body_code) =

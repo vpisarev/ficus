@@ -95,10 +95,10 @@ operator <= (a: 't, b: 't): bool = a <=> b <= 0
 
 fun join_embrace(begin: string, end: string,
                  sep: string, strs: string list) =
-    join_embrace(begin, end, sep, [for s <- strs {s}])
+    join_embrace(begin, end, sep, array(strs))
 
 fun join(sep: string, strs: string list) =
-    join(sep, [for s <- strs {s}])
+    join(sep, [| for s <- strs {s} |])
 
 operator + (a: string, b: string): string = @ccode
 {
@@ -229,26 +229,26 @@ fun repr(a: string) = "\"" + a + "\""
     }
 }
 
-fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
-fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
+fun string(t: (...)) = join_embrace("(", ")", ", ", [| for x <- t {repr(x)} |])
+fun string(r: {...}) = join_embrace("{", "}", ", ", [| for (n, x) <- r {n+"="+repr(x)} |])
 fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
 {
-    join_embrace("[", "]", ", ", [for x <- a {repr(x)}])
+    join_embrace("[", "]", ", ", [| for x <- a {repr(x)} |])
 }
 
 fun string(a: 't [,])
 {
     val (m, n) = size(a)
-    val rows = [for i <- 0:m {
-        val elems = [for j <- 0:n {repr(a[i, j])}]
+    val rows = [| for i <- 0:m {
+        val elems = [| for j <- 0:n {repr(a[i, j])} |]
         join(", ", elems)
-    }]
+    } |]
     join_embrace("[", "]", ";\n", rows)
 }
 
-fun string(l: 't list) = join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
+fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |])
 
 @pure fun string(a: char []): string = @ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
@@ -324,34 +324,34 @@ operator <=> (a: {...}, b: {...}) =
     fold d=0 for (_, aj) <- a, (_, bj) <- b {if d != 0 {d} else {aj <=> bj}}
 
 operator + (a: 'ta [+], b: 'tb [+]) =
-    [for x <- a, y <- b {x + y}]
+    [| for x <- a, y <- b {x + y} |]
 operator - (a: 'ta [+], b: 'tb [+]) =
-    [for x <- a, y <- b {x - y}]
+    [| for x <- a, y <- b {x - y} |]
 operator .* (a: 'ta [+], b: 'tb [+]) =
-    [for x <- a, y <- b {x .* y}]
+    [| for x <- a, y <- b {x .* y} |]
 operator ./ (a: 'ta [+], b: 'tb [+]) =
-    [for x <- a, y <- b {x ./ y}]
+    [| for x <- a, y <- b {x ./ y} |]
 operator .% (a: 'ta [+], b: 'tb [+]) =
-    [for x <- a, y <- b {x .% y}]
+    [| for x <- a, y <- b {x .% y} |]
 operator .** (a: 'ta [+], b: 'tb [+]) =
-    [for x <- a, y <- b {x .** y}]
+    [| for x <- a, y <- b {x .** y} |]
 operator & (a: 't [+], b: 't [+]) =
-    [for x <- a, y <- b {x & y}]
+    [| for x <- a, y <- b {x & y} |]
 operator | (a: 't [+], b: 't [+]) =
-    [for x <- a, y <- b {x | y}]
+    [| for x <- a, y <- b {x | y} |]
 operator ^ (a: 't [+], b: 't [+]) =
-    [for x <- a, y <- b {x ^ y}]
+    [| for x <- a, y <- b {x ^ y} |]
 
 operator ' (a: 't [,])
 {
     val (m, n) = size(a)
-    [for j <- 0:n for i <- 0:m {a[i, j]}]
+    [| for j <- 0:n for i <- 0:m {a[i, j]} |]
 }
 
 operator ' (a: 't [])
 {
     val n = size(a)
-    [for j <- 0:n for i <- 0:1 {a[j]}]
+    [| for j <- 0:n for i <- 0:1 {a[j]} |]
 }
 
 // matrix product: not very efficient and is put here for now just as a placeholder
@@ -385,14 +385,14 @@ operator * (a: 't [,], b: 't [,])
 fun row2matrix(a: 't [])
 {
     val n = size(a)
-    [for i <- 0:1 for j <- 0:n {a[j]}]
+    [| for i <- 0:1 for j <- 0:n {a[j]} |]
 }
 
 operator * (a: 't [], b: 't [,]) = row2matrix(a)*b
 operator * (a: 't [,], b: 't []) = a*row2matrix(b)
 
-operator * (a: 't [+], alpha: 't) = [for x <- a {x*alpha}]
-operator * (alpha: 't, a: 't [+]) = [for x <- a {x*alpha}]
+operator * (a: 't [+], alpha: 't) = [| for x <- a {x*alpha} |]
+operator * (alpha: 't, a: 't [+]) = [| for x <- a {x*alpha} |]
 
 fun diag(d: 't[])
 {
@@ -471,19 +471,19 @@ fun all(a: (bool...)) = fold f=true for x <- a {f & x}
 fun exists(a: (bool...)) = fold f=false for x <- a {f | x}
 
 operator .<=> (a: 't [+], b: 't [+]): int [+] =
-    [for x <- a, y <- b {x <=> y}]
+    [| for x <- a, y <- b {x <=> y} |]
 operator .== (a: 't [+], b: 't [+]): bool [+] =
-    [for x <- a, y <- b {x == y}]
+    [| for x <- a, y <- b {x == y} |]
 operator .!= (a: 't [+], b: 't [+]): bool [+] =
-    [for x <- a, y <- b {!(x == y)}]
+    [| for x <- a, y <- b {!(x == y)} |]
 operator .< (a: 't [+], b: 't [+]) =
-    [for x <- a, y <- b {x < y}]
+    [| for x <- a, y <- b {x < y} |]
 operator .<= (a: 't [+], b: 't [+]): bool [+] =
-    [for x <- a, y <- b {!(y < x)}]
+    [| for x <- a, y <- b {!(y < x)} |]
 operator .> (a: 't [+], b: 't [+]): bool [+] =
-    [for x <- a, y <- b {y < x}]
+    [| for x <- a, y <- b {y < x} |]
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
-    [for x <- a, y <- b {!(x < y)}]
+    [| for x <- a, y <- b {!(x < y)} |]
 
 @pure @nothrow operator == (a: string, b: string): bool = @ccode { return fx_streq(a, b); }
 
@@ -730,11 +730,16 @@ fun print(a: 't ref) {
 fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
-fun array(): 't [] = [for i<-0:0 {(None : 't?).getsome()}]
-fun array(n: int, x: 't) = [for i <- 0:n {x}]
-fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
-fun array((m: int, n: int, l: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
-fun copy(a: 't [+]) = [for x <- a {x}]
+fun list(a: 't []): 't list = [: for x <- a {x} :]
+fun list(s: string) = [: for c <- s {c} :]
+
+fun array(): 't [] = [| for i<-0:0 {(None : 't?).getsome()} |]
+fun array(n: int, x: 't) = [| for i <- 0:n {x} |]
+fun array((m: int, n: int), x: 't) = [| for i <- 0:m for j <- 0:n {x} |]
+fun array((m: int, n: int, l: int), x: 't) = [| for i <- 0:m for j <- 0:n for k <- 0:l {x} |]
+fun array(l: 't list): 't [] = [| for x <- l {x} |]
+
+fun copy(a: 't [+]) = [| for x <- a {x} |]
 
 @pure @nothrow fun size(a: 't []): int = @ccode { return a->dim[0].size }
 @pure @nothrow fun size(a: 't [,]): (int, int) = @ccode

@@ -121,7 +121,7 @@ TEST("basic.find", fun()
         | BreakWith(i) => i
         }
     }
-    val a=[0, 1, 2, -10, 7, -3]
+    val a=[| 0, 1, 2, -10, 7, -3 |]
     fun is_negative(x: int) {x < 0}
     fun is_five(x: int) {x == 5}
 
@@ -414,10 +414,10 @@ TEST("basic.self_assignment", fun()
 
     var a = 5
     var b = ", ".join([: for i<-0:10 {string(i)} :])
-    var c = [[[1], [0], [0]], [[0], [1], [0]], [[0], [0], [1]]]
-    var c2 = [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]]
-    var d = ref [1, 2, 3, 4, 5]
-    var e = (1, "abc", [1, 2, 3])
+    var c = [|[|[|1|], [|0|], [|0|]|], [|[|0|], [|1|], [|0|]|], [|[|0|], [|0|], [|1|]|]|]
+    var c2 = [|[|[|1|], [|2|], [|3|]|], [|[|4|], [|5|], [|6|]|], [|[|7|], [|8|], [|9|]|]|]
+    var d = ref [|1, 2, 3, 4, 5|]
+    var e = (1, "abc", [|1, 2, 3|])
     var t = Node(5,
         Node(1,
             Node(-1, Empty, Empty),
@@ -442,16 +442,16 @@ TEST("basic.self_assignment", fun()
     b = b
     EXPECT_EQ(b, "0, 1, 2, 3, 4, 5, 6, 7, 8, 9")
     c = c
-    EXPECT_EQ(c, [[[1], [0], [0]], [[0], [1], [0]], [[0], [0], [1]]])
+    EXPECT_EQ(c, [|[|[|1|], [|0|], [|0|]|], [|[|0|], [|1|], [|0|]|], [|[|0|], [|0|], [|1|]|]|])
     for i<-0:3 for j<-0:3 {c2[i][j] = c2[i][j]}
-    EXPECT_EQ(c2, [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]])
+    EXPECT_EQ(c2, [|[|[|1|], [|2|], [|3|]|], [|[|4|], [|5|], [|6|]|], [|[|7|], [|8|], [|9|]|]|])
     d = d
     for i<-0:5 {(*d)[i] *= (*d)[i]}
-    EXPECT_EQ(*d, [1, 4, 9, 16, 25])
+    EXPECT_EQ(*d, [|1, 4, 9, 16, 25|])
     e.0 = e.0
     e.1 = e.1
     e.2 = e.2
-    EXPECT_EQ(e, (1, "abc", [1, 2, 3]))
+    EXPECT_EQ(e, (1, "abc", [|1, 2, 3|]))
     t = t
     EXPECT_EQ(t, Node(5,
         Node(1,
@@ -629,33 +629,33 @@ TEST("basic.list.sort", fun()
 
 TEST("basic.myops", fun()
 {
-    val x = myops.add_scaled([1.f, 2.f, 3.f], [4.f, 5.f, 6.f], 0.1f)[0]
+    val x = myops.add_scaled([|1.f, 2.f, 3.f|], [|4.f, 5.f, 6.f|], 0.1f)[0]
     EXPECT_NEAR(x, 1.4f, FLT_EPSILON*10)
-    EXPECT_EQ(myops.sum_arr([for i <- 0:100 {i*i}]), 328350)
+    EXPECT_EQ(myops.sum_arr([| for i <- 0:100 {i*i} |]), 328350)
 })
 
 TEST("basic.array.compose", fun()
 {
-    val m0 = [1, 2, 3]
-    val m1 = [\m0, 4; 0, \m0]
+    val m0 = [|1, 2, 3|]
+    val m1 = [|\m0, 4; 0, \m0|]
 
-    EXPECT_EQ(m1, [1, 2, 3, 4; 0, 1, 2, 3])
+    EXPECT_EQ(m1, [| 1, 2, 3, 4; 0, 1, 2, 3 |])
 
-    val eye22 = [ 1., 0.;
-                  0., 1. ]
+    val eye22 = [| 1., 0.;
+                   0., 1. |]
 
-    val m1 = [\(eye22 + eye22), \(eye22 - eye22);
-              \(eye22 * 4.),    \(eye22 * 5.)]
-    val expected1 = [2., 0., 0., 0.;
-                     0., 2., 0., 0.;
-                     4., 0., 5., 0.;
-                     0., 4., 0., 5.]
+    val m1 = [| \(eye22 + eye22), \(eye22 - eye22);
+                \(eye22 * 4.),    \(eye22 * 5.) |]
+    val expected1 = [| 2., 0., 0., 0.;
+                       0., 2., 0., 0.;
+                       4., 0., 5., 0.;
+                       0., 4., 0., 5. |]
     EXPECT_EQ(m1, expected1)
 
-    val m2 = [eye22 + eye22, eye22 - eye22;
-              eye22 * 4.,    eye22 * 5.]
-    val expected2 = [ [ 2., 0.; 0., 2.], [ 0., 0.; 0., 0.];
-                      [ 4., 0.; 0., 4.], [ 5., 0.; 0., 5.]]
+    val m2 = [| eye22 + eye22, eye22 - eye22;
+                eye22 * 4.,    eye22 * 5. |]
+    val expected2 = [| [| 2., 0.; 0., 2.|], [| 0., 0.; 0., 0.|];
+                       [| 4., 0.; 0., 4.|], [| 5., 0.; 0., 5.|] |]
     EXPECT_EQ(m2, expected2)
 })
 
@@ -702,9 +702,9 @@ TEST("basic.array.init_u", fun()
     for i <- 0:m for j <- 0:n {
         if j >= i {a[i,j] = 1.}
     }
-    EXPECT_EQ(a, [1., 1., 1., 1.;
-                  0., 1., 1., 1.;
-                  0., 0., 1., 1.])
+    EXPECT_EQ(a, [| 1., 1., 1., 1.;
+                    0., 1., 1., 1.;
+                    0., 0., 1., 1. |])
 })
 
 TEST("basic.assert", fun()

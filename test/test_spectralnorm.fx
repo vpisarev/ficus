@@ -20,22 +20,22 @@ fun Au(u: double[])
 {
     val N = size(u)
 
-    [for i <- 0:N {
+    [| for i <- 0:N {
         fold t = 0. for j <- 0:N {
             t + A(i, j) * u[j]
         }
-    }]
+    } |]
 }
 
 fun Atu(u: double[])
 {
     val N = size(u)
 
-    [for i <- 0:N {
+    [| for i <- 0:N {
         fold t = 0. for j <- 0:N {
             t + A(j, i) * u[j]
         }
-    }]
+    } |]
 }
 
 fun AtAu(u: double[]) = Atu(Au(u))

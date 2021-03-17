@@ -71,7 +71,7 @@ val neptune = Object {
         z=-9.51592254519715870e-05 * Year},
     mass=5.15138902046611451e-05 * SolarMass
 }
-val bodies = [sun, jupiter, saturn, uranus, neptune]
+val bodies = [| sun, jupiter, saturn, uranus, neptune |]
 
 fun offsetMomentum()
 {

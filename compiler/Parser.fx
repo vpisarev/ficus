@@ -321,15 +321,13 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
         | e :: [] => e
         | _ => make_tuple(el, l1)
         })
-    | (LSQUARE(ne), l1) :: f :: rest when is_for_start(f, false) =>
-        check_ne(ne, ts)
+    | (LARRAY, l1) :: f :: rest when is_for_start(f, false) =>
         val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeArray)
-        match_paren((ts, for_exp), RSQUARE, l1)
-    | (LSQUARE(ne), l1) :: rest =>
-        check_ne(ne, ts)
+        match_paren((ts, for_exp), RARRAY, l1)
+    | (LARRAY, l1) :: rest =>
         var vts = rest, result = []
         while true {
-            val (ts, done, el, _) = parse_exp_list(vts, RSQUARE, kw_mode=KwNone,
+            val (ts, done, el, _) = parse_exp_list(vts, RARRAY, kw_mode=KwNone,
                                         allow_empty=false, stop_at_semicolon=true)
             vts = ts
             result = el :: result

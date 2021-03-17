@@ -21,10 +21,10 @@ type token_t =
     | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
     | LPAREN: bool | STR_INTERP_LPAREN | RPAREN | LSQUARE: bool
-    | RSQUARE | LBRACE | RBRACE | LLIST | RLIST | COMMA | DOT
-    | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH | BACK_ARROW
-    | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool | PLUS: bool
-    | STAR: bool | SLASH | PERCENT | POWER | DOT_STAR
+    | RSQUARE | LBRACE | RBRACE | LARRAY | RARRAY | LLIST | RLIST
+    | COMMA | DOT | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH
+    | BACK_ARROW | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool
+    | PLUS: bool | STAR: bool | SLASH | PERCENT | POWER | DOT_STAR
     | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
@@ -86,6 +86,8 @@ fun tok2str(t: token_t)
     | RSQUARE => ("RSQUARE", "]")
     | LBRACE => ("LBRACE", "{")
     | RBRACE => ("RBRACE", "}")
+    | LARRAY => ("LARRAY", "[|")
+    | RARRAY => ("RARRAY", "|]")
     | LLIST => ("LLIST", "[:")
     | RLIST => ("RLIST", ":]")
     | COMMA => ("COMMA", ",")
@@ -884,6 +886,12 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                         else {(LSQUARE(false), loc) :: (COLON, loc) :: []}
                     paren_stack = tokens.hd() :: paren_stack
                     tokens
+                } else if c1 == '|' {
+                    pos += 1
+                    check_ne(prev_ne, getloc(pos-1), "[|")
+                    val t = (LARRAY, loc)
+                    paren_stack = t :: paren_stack
+                    t :: []
                 } else if prev_ne && c1 == ']' {
                     pos += 1
                     (LITERAL(Ast.LitNil), loc) :: []
@@ -953,7 +961,14 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             | '|' =>
                 if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseOr), loc) :: []}
                 else if c1 == '|' {pos += 1; (LOGICAL_OR, loc) :: []}
-                else {
+                else if c1 == ']' {
+                    pos += 1
+                    new_exp = false
+                    match paren_stack {
+                        | (LARRAY, _) :: rest => paren_stack = rest; (RARRAY, loc) :: []
+                        | _ => throw LexerError(loc, "Unexpected '|]', check parens")
+                    }
+                } else {
                     match paren_stack {
                     | (BAR, _) :: (LBRACE, _) :: _ => (BAR, loc) :: []
                     | _ => (BITWISE_OR, loc) :: []

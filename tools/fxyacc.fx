@@ -164,7 +164,7 @@ fun find_rules(Sym(lhs): sym_t)
 fun tset_size() = (g_yacc.ntk + 31)/32
 fun get_rule(r: int) = g_yacc.rs[r]
 
-fun ts_zero() = tset_t { bitmap=[for i<-0:tset_size() {0u32}] }
+fun ts_zero() = tset_t { bitmap=[| for i<-0:tset_size() {0u32} |] }
 fun ts_union(a: tset_t, b: tset_t) =
     fold changed=false for i <- 0:tset_size() {
         val tmp = a[i] | b[i]
@@ -225,7 +225,7 @@ fun tcmp_lt(a: term_t, b: term_t) = tcmp(a, b) < 0
 fun iclose(i0: item_t)
 {
     var i = i0
-    val smap = [for i<-0:MaxNt {0}]
+    val smap = [| for i<-0:MaxNt {0} |]
     val StartNT = g_yacc.ntk
 
     for t@n <- i.ts {
@@ -474,23 +474,23 @@ fun tblgen()
     }
 
     // fill action table
-    g_yacc.atbl = [for i@n <- all_states {
+    g_yacc.atbl = [| for i@n <- all_states {
         val tab = array(g_yacc.ntk, 0)
         for t <- i.ts {
             tblset(tab, i, t, renum_tab)
         }
         val r = setdef(tab, -1)
         r.{defval = Red(r.defval)} // Red(-1) == -1
-    }]
+    } |]
 
     // fill goto table
-    g_yacc.gtbl = [for n <- g_yacc.ntk:g_yacc.nsy {
-        val tab = [for i <- all_states {
+    g_yacc.gtbl = [| for n <- g_yacc.ntk:g_yacc.nsy {
+        val tab = [| for i <- all_states {
             val idx = i.gtbl[n]
             if idx != 0 {renum_tab[idx]} else {0}
-        }]
+        } |]
         setdef(tab, nst+1)
-    }]
+    } |]
 }
 
 fun prcmp(a: row_t, b: row_t) = a.ndef - b.ndef
@@ -507,7 +507,7 @@ fun actgen()
     val adsp = array(nst, 0)
 
     // fill in actions
-    val aidx = [for idx <- 0:nst {idx}]
+    val aidx = [| for idx <- 0:nst {idx} |]
     sort(aidx, fun(j: int, k: int) {g_yacc.atbl[j].ndef - g_yacc.atbl[k].ndef})
     for idx <- aidx {
         val r_tab = g_yacc.atbl[idx].tab
@@ -547,7 +547,7 @@ fun actgen()
     // fill in gotos
     val nnt = nsy - ntk
     val gdsp = array(nnt, 0)
-    val gidx = [for idx <- 0:nnt {idx}]
+    val gidx = [| for idx <- 0:nnt {idx} |]
     sort(gidx, fun(j: int, k: int) {g_yacc.gtbl[j].ndef - g_yacc.gtbl[k].ndef})
 
     for idx <- gidx {
@@ -616,19 +616,19 @@ fun tblout(fout: File.t, fhdr: File.t)
     fout.print("short yyini = {g_yacc.ini.idx-1};\n");
     fout.print("short yyntoks = {g_yacc.ntk};\n");
 
-    val o = [for r <- g_yacc.rs {r.rhs.length()}]
+    val o = [| for r <- g_yacc.rs {r.rhs.length()} |]
     aout(fout, "yyr1", o)
 
-    val o = [for {lhs=Sym(lhs)} <- g_yacc.rs {lhs - g_yacc.ntk}]
+    val o = [| for {lhs=Sym(lhs)} <- g_yacc.rs {lhs - g_yacc.ntk} |]
     aout(fout, "yyr2", o)
 
-    val o = [for a <- g_yacc.atbl {a.defval}]
+    val o = [| for a <- g_yacc.atbl {a.defval} |]
     aout(fout, "yyadef", o)
 
-    val o = [for a <- g_yacc.gtbl {
+    val o = [| for a <- g_yacc.gtbl {
         val defval = a.defval
         if defval > 0 {defval-1} else {defval}
-    }]
+    } |]
     aout(fout, "yygdef", o)
 
     val (act, chk, adsp, gdsp) = actgen()
@@ -636,16 +636,16 @@ fun tblout(fout: File.t, fhdr: File.t)
     aout(fout, "yyadsp", adsp)
     aout(fout, "yygdsp", gdsp)
 
-    val act = [for a <- act {if a >= 0 {a-1} else {a}}]
+    val act = [| for a <- act {if a >= 0 {a-1} else {a}} |]
     aout(fout, "yyact", act)
     aout(fout, "yychk", chk)
 
-    val o1 = [for n <- 0:128 {
+    val o1 = [| for n <- 0:128 {
         if n < 32 {0} else {
         fold c=0 for m <- 0:g_yacc.ntk {
             if symname(Sym(m)).startswith(f"'{chr(n)}") {break with m}
         }}
-    }]
+    } |]
 
     var m = 128
     val o2 = [: for n <- 1:g_yacc.ntk {

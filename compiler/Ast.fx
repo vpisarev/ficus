@@ -61,7 +61,7 @@ val noid = IdName(0)
 val dummyid = IdName(1)
 val __fold_result_id__ = IdName(2)
 val __tag_id__ = IdName(3)
-val __builtin_ids__ = ["", "_", "__fold_result__", "__tag__"]
+val __builtin_ids__ = [: "", "_", "__fold_result__", "__tag__" :]
 
 type scope_t =
     | ScBlock: int
@@ -454,7 +454,7 @@ fun dynvec_push(v: 't dynvec_t ref) {
     if sz <= n0 {
         val n1 = max(n0, 128)*3/2
         val old_data = v->data
-        val new_data = [for i <- 0:n1 { if i < n0 {old_data[i]} else {v->val0} }]
+        val new_data = [| for i <- 0:n1 { if i < n0 {old_data[i]} else {v->val0} } |]
         v->data = new_data
     }
     val i = n0
@@ -1189,7 +1189,7 @@ fun typ2str(t: typ_t): string {
         }
     | TypRecord (ref (relems, _)) =>
         join_embrace("{", "}", "; ",
-            [for (i, t, _) <- relems { f"{id2str(i)}: {typ2str(t)}" }])
+            [| for (i, t, _) <- relems { f"{id2str(i)}: {typ2str(t)}" } |])
     | TypArray(d, t) => f"{typ2str(t)} [{','*(d-1)}]"
     | TypList(t) => f"{typ2str(t)} list"
     | TypRef(t) => f"{typ2str(t)} ref"
@@ -1204,7 +1204,7 @@ fun tl2str(tl: typ_t list): string {
     | x :: [] => ("", "")
     | _ => ("(", ")")
     }
-    join_embrace(begin, end, ", ", [for t <- tl { typ2str(t) }])
+    join_embrace(begin, end, ", ", [| for t <- tl { typ2str(t) } |])
 }
 
 fun parse_pragmas(prl: (string, loc_t) list): pragmas_t {

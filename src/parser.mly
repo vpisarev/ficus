@@ -385,7 +385,7 @@ let make_finally e final_e loc =
 %token FOLD_RESULT
 
 /* parens/delimiters */
-%token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE LLIST RLIST
+%token B_LPAREN LPAREN STR_INTERP_LPAREN RPAREN B_LSQUARE LSQUARE RSQUARE LBRACE RBRACE LARRAY RARRAY LLIST RLIST
 %token COMMA DOT SEMICOLON COLON BAR BACKSLASH QUESTION ARROW DOUBLE_ARROW BACK_ARROW EOF AT ELLIPSIS
 
 /* operations */
@@ -654,17 +654,17 @@ simple_exp:
         let (_, map_clauses, body) = process_nested_for $3 (ForBody $4) in
         ExpMap(map_clauses, body, {(default_for_flags()) with for_flag_make=ForMakeTuple}, make_new_ctx())
     }
-| B_LSQUARE for_flags B_FOR nested_for_ for_block RSQUARE
-    {
-        let (_, map_clauses, body) = process_nested_for $4 $5 in
-        ExpMap(map_clauses, body, {$2 with for_flag_make=ForMakeArray}, make_new_ctx())
-    }
 | LLIST for_flags B_FOR nested_for_ for_block RLIST
     {
         let (_, map_clauses, body) = process_nested_for $4 $5 in
         ExpMap(map_clauses, body, {$2 with for_flag_make=ForMakeList}, make_new_ctx())
     }
-| B_LSQUARE array_elems_ RSQUARE
+| LARRAY for_flags B_FOR nested_for_ for_block RARRAY
+    {
+        let (_, map_clauses, body) = process_nested_for $4 $5 in
+        ExpMap(map_clauses, body, {$2 with for_flag_make=ForMakeArray}, make_new_ctx())
+    }
+| LARRAY array_elems_ RARRAY
     {
         let ae = List.rev $2 in
         ExpMkArray(ae, make_new_ctx())

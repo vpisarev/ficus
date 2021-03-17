@@ -31,8 +31,6 @@ fun skip_nothrow(l: 't list, n: int): 't list =
 fun rev(l: 't list): 't list =
     fold r=[] for a <- l {a :: r}
 
-fun array(l: 't list): 't [] = [for x <- l {x}]
-
 fun assoc(l: ('a, 'b) list, x: 'a): 'b =
     find(for (a, b) <- l {a == x}).1
 
@@ -85,7 +83,7 @@ fun sort(l: 't list, lt: ('t, 't)->bool) =
         | a :: [] => l
         | a :: b :: [] => if lt(b, a) {b::a::[]} else {l}
         | _ =>
-            val arr = [for x <- l {x}]
+            val arr = array(l)
             sort(arr, lt)
-            [: for x <- arr {x} :]
+            list(arr)
     }
