@@ -77,20 +77,20 @@ val osname = osname_()
 fun appname() = List.hd(argv)
 fun arguments() = List.tl(argv)
 
-@pure @nothrow fun getTickCount(): int64 = @ccode { return fx_tickcount() }
-@pure @nothrow fun getTickFrequency(): double = @ccode { return fx_tickfreq() }
+@pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
+@pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_freq() }
 
-fun timeit(f: void -> void, ~iters: int=1, ~batch: int=1): double
+fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): double
 {
-    val fold gmean = 0. for i <- 0:iters {
-        val t = getTickCount()
+    val fold gmean = 0. for i <- 0:iterations {
+        val t = tick_count()
         for j <- 0:batch {f()}
-        val t = getTickCount() - t
-        val t = t/getTickFrequency()
-        val t = if iters > 1 { Math.log(max(t, 1e-16)) } else {t}
+        val t = tick_count() - t
+        val t = t/tick_frequency()
+        val t = if iterations > 1 { Math.log(max(t, 1e-16)) } else {t}
         gmean + t
     }
-    if iters > 1 { Math.exp(gmean/iters)/batch } else {gmean/batch}
+    if iterations > 1 { Math.exp(gmean/iterations)/batch } else {gmean/batch}
 }
 
 fun getcwd(): string = @ccode {

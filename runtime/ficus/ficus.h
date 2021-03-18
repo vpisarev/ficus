@@ -825,8 +825,8 @@ fx_cptr_t fx_get_stdstream(int);
 
 ////////////////////// Various useful system API ///////////////////
 
-int64_t fx_tickcount(void);
-double fx_tickfreq(void);
+int64_t fx_tick_count(void);
+double fx_tick_frequency(void);
 
 ////////////////////////// Regular expressions /////////////////////
 

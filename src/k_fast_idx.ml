@@ -51,19 +51,21 @@
   that is, we notice that inside the loop we have unconditional accesses
   (i.e. not inside if/match etc.) to some arrays, and the indices are
   affine transformations of loop index, i.e. they have form 'alpha*i + beta',
-  where 'alpha' and 'beta' are loop invariants and 'i' is the loop index. In this case
-  we remove checks inside the loop.
-  Instead, before the loop we check that the start and end value of the loop index
-  (1 and (n-1)-1, respectively, in the example above)
+  where 'alpha' and 'beta' are loop invariants and 'i' is the loop index.
+  In this case we remove checks inside the loop.
+
+  Instead, before the loop we check that the start and end value of
+  the loop index (1 and (n-1)-1, respectively, in the example above)
   are valid index values. If not, we throw exception right away.
 
-  Strictly speaking, this transformation does not preserve the semantics in all cases,
-  because some weird code may intentionally throw out-of-range exception inside the loop.
-  And then instead of throwing exception somewhere in the middle we now throw it before running the loop.
-  But the benefits of this optimization outweight some minor side effect of this optimization.
+  Strictly speaking, this transformation does not preserve the semantics
+  in all cases, because some weird code may intentionally throw out-of-range
+  exception inside the loop. And then instead of throwing exception somewhere
+  in the middle we now throw it before running the loop. But the benefits
+  of this optimization outweight such minor side effects.
 
-  If such behaviour is absolutely necessary, user can replace for-loop with while-loop,
-  where such optimization is not applied.
+  If the original behaviour is absolutely necessary, user can replace
+  for-loop with while-loop, where such optimization is not applied.
 *)
 
 open Ast

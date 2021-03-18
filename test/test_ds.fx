@@ -204,8 +204,7 @@ TEST("ds.map", fun()
 
     EXPECT_EQ(total_words, total_words_ref)
 
-    val fold (wcounter_odd, ll_odd) = (wcounter, ([]: (string, int) list))
-        for (w, c) <- ll {
+    val fold wcounter_odd=wcounter, ll_odd=[] for (w, c) <- ll {
             if c % 2 == 0 {(wcounter_odd.remove(w), ll_odd)}
             else {(wcounter_odd, (w, c) :: ll_odd)}
         }

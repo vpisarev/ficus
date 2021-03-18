@@ -32,9 +32,9 @@ fun AtAu(u: double[]) = Atu(Au(u))
 
 fun spectralnorm(n: int)
 {
-    val fold (u, v) = (array(n, 1.), array(0, 0.))
+    val fold u = array(n, 1.), v = array(0, 0.)
         for i <- 0:10 { val v = AtAu(u); (AtAu(v), v) }
-    val fold (vBv, vv) = (0., 0.)
+    val fold vBv=0., vv = 0.
         for ui <- u, vi <- v { (vBv + ui*vi, vv + vi*vi) }
     Math.sqrt(vBv/vv)
 }

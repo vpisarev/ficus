@@ -4,7 +4,7 @@
 *)
 
 (*
-    try to move loop invariants outside of the loops
+    try to move loop invariants outside of the loops.
 *)
 open Ast
 open K_form

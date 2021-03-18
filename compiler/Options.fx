@@ -121,6 +121,8 @@ fun parse_options(): bool {
                 opt.print_ast0 = true; next
             | "-pr-ast" :: next =>
                 opt.print_ast = true; next
+            | "-pr-k0" :: next =>
+                opt.print_k0 = true; next
             | "-pr-k" :: next =>
                 opt.print_k = true; next
             | "-no-c" :: next =>

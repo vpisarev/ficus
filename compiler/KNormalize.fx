@@ -4,7 +4,7 @@
 */
 
 /*
-    Converts the Abstract Syntax Tree (ast.ml) into K-form (K_form.ml).
+    Converts the Abstract Syntax Tree (Ast.fx) into K-form (KForm.fx).
 
     For now only the global compilation mode is supported, i.e.
     the code from all the modules, used in the program,
@@ -544,7 +544,7 @@ fun exp2id(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list, msg: string): 
 
 fun exp2dom(e: exp_t, code: kcode_t, sc: scope_t list): (dom_t, kcode_t) =
     match e {
-    | ExpRange(_, _, _, _) =>
+    | ExpRange _ =>
         val (ek, code) = exp2kexp(e, code, false, sc)
         match ek {
         | KExpMkTuple(a :: b :: c :: [], _) => (DomainRange(a, b, c), code)
@@ -642,7 +642,7 @@ fun match_record_pat(pat: pat_t, ptyp: ktyp_t): ((id_t, ktyp_t, bool, bool), (id
                 else { (found_idx, found_t) }
             }
             if found_idx < 0 {
-                throw compile_err(loc, f"element '{pp_id2str(ni)}' is not found in the record '{pp_id2str(rn_opt.getsome(noid))}'")
+                throw compile_err(loc, f"element '{pp_id2str(ni)}' is not found in the record '{pp_id2str(rn_opt.value_or(noid))}'")
             }
             (ni, pi, found_t, found_idx) :: typed_rec_pl
         }
@@ -1381,8 +1381,9 @@ fun normalize_all_modules(modules: id_t list): kmodule_t list
         val kcode_typedefs = transform_all_types_and_cons(minfo.dm_defs, [], modsc)
         (m, minfo, kcode_typedefs) :: modules_plus
     }
-    fold kmods = [] for (m, minfo, kcode_typedefs)@i <- modules_plus.rev() {
-        val km = normalize_mod(m, minfo, kcode_typedefs, i + 1 == n)
-        km :: kmods
-    }
+    [:
+        for (m, minfo, kcode_typedefs)@i <- modules_plus.rev() {
+            normalize_mod(m, minfo, kcode_typedefs, i + 1 == n)
+        }
+    :]
 }

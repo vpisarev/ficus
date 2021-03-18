@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-int64_t fx_tickcount(void)
+int64_t fx_tick_count(void)
 {
 #if defined _WIN32 || defined WINCE
     LARGE_INTEGER counter;
@@ -42,7 +42,7 @@ int64_t fx_tickcount(void)
 #endif
 }
 
-double fx_tickfreq(void)
+double fx_tick_frequency(void)
 {
 #if defined _WIN32 || defined WINCE
     LARGE_INTEGER freq;

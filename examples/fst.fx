@@ -5,7 +5,7 @@ val str = f"
 привет! 你好吗?
 BTW,
     2*2 = {2*2},
-    π (the area of circle with radius 1) = {Math.pi},
+    π (the area of circle with radius 1) = {Math.Pi},
     e = {Math.exp(1.)},
     φ (golden ratio) = {(1+5.**0.5)/2}
 "
@@ -75,18 +75,15 @@ for i <- 1:31 {
 println()
 
 val a=[|0, 1, 2, -10, 7, -3|]
-var i1 = 0, n = size(a)
-do
-{
-    if a[i1] < 0 {break}
-    i1 += 1
+var i1 = -1
+for x@i <- a {
+    if x < 0 {i1 = i; break}
 }
-while i1 < n
 
 fun gen_msg(i: int, a: 't []) = if i < 0 || i >= size(a) {"not found"} else {f"a[{i}]={a[i]}"}
 println(f"imperative search: negative number in {a}: {gen_msg(i1, a)}")
 
-val i2 = try find(for i<-0:n {a[i] < 0}) catch {|NotFoundError => -1}
+val i2 = find_opt(for i<-0:size(a) {a[i] < 0}).value_or(-1)
 println(f"fold-based search: negative number in {a}: {gen_msg(i2, a)}")
 
 exception BreakWith: int
@@ -163,10 +160,8 @@ println(f"triangular numbers: {a}")
 
 println(f"primes <100: {[: for i <- 0:100 {if !is_prime(i) {continue}; i} :]}")
 
-val sorted = List.sort(
-    [: 10, 355, 113, -1, 2, 26, 1, 1949, 0,
-    299792458, -460, 451, -11034, 8848 :],
-    (<))
+val sorted = [: 10, 355, 113, -1, 2, 26, 1, 1949, 0,
+                299792458, -460, 451, -11034, 8848 :].sort((<))
 print("sorted: ")
 println(sorted)
 
@@ -185,5 +180,5 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     for y <- 0:h { println(screen[y,:]) }
 }
 
-val a = float(-0.5*Math.pi), b = -a*5
+val a = float(-0.5*Math.Pi), b = -a*5
 plot(a, b, Math.sin, 80, 10)

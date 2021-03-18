@@ -5,10 +5,10 @@
 
 /*
     K-normal form (or K-form in short) definition.
-    This is a greatly extended variant of K-normal form in min-caml:
+    This is a greatly extended variation of K-normal form in min-caml:
     https://github.com/esumii/min-caml.
 
-    Similarly to ficus AST, which is defined in ast.ml,
+    Similarly to ficus AST, which is defined in Ast.fx,
     K-form is an hierarchical (tree-like) representation of
     the compiled code. However, it's much simpler and more
     suitable for intermediate optimizations and then for
@@ -17,21 +17,23 @@
     In particular:
 
     * all the symbols in K-form are resolved and unique, e.g:
-        fun foo(i: int) { val i = i+1; val i = i*2; for(i<-0:i) println(i) }
+        type i = int
+        fun foo(i: i) { val i = i+1; val i = i*2; for i<-0:i {println(i)} }
       is transformed to something like
-        fun foo@999(i@1000: int): int {
+        fun foo@999(i@1000: int): void {
           val i@1001: int = i@1000+1; val i@1002: int = i@1001*2
-          for ((i@1003:int) <- 0:i@1002) println@56<int->void>(i@1003)
+          for (i@1003:int) <- 0:i@1002 {println@56<int->void>(i@1003)}
         }
     * all the symbols have known type. If it cannot be figured out,
-      type checker or the k-form generator (see k_norm.ml) report compile error.
+      type checker or the k-form generator (see KNormalize.fx) report compile error.
     * at once, all the types (typ_t) are converted to k-types (ktyp_t), i.e.
       all indirections are eliminated, instances of generic types
       (TypApp(<args...>, <some_generic_type_id>)) are replaced with concrete instances
-      (KTypName(<instance_type_id>)) or even actual types where applicable.
+      (KTypName(<instance_type_id>)) or even actual types where applicable
+      (like the type alias 'i' above was replaced with it's actual meaning, i.e. 'int').
     * all complex expressions are broken down into sequences of basic operations
       with intermediate results stored in temporary values.
-    * pattern matching is converted into a sequences of nested if-expressions
+    * pattern matching is converted into sequences of nested if-expressions
     * import directives are removed; we've already resolved all the symbols
     * generic types and functions are removed. Their instances, generated
       by type checker, are retained though.
@@ -438,17 +440,17 @@ fun get_atom_ktyp(a: atom_t, loc: loc_t): ktyp_t =
     | AtomLit(l) => get_lit_ktyp(l)
     }
 
-fun intrin2str(iop: intrin_t): string
+fun string(iop: intrin_t): string
 {
-    | IntrinPopExn => "INTRIN_POP_EXN"
-    | IntrinVariantTag => "INTRIN_VARIANT_TAG"
-    | IntrinVariantCase => "INTRIN_VARIANT_CASE"
-    | IntrinListHead => "INTRIN_LIST_HD"
-    | IntrinListTail => "INTRIN_LIST_TL"
-    | IntrinStrConcat => "INTRIN_STR_CONCAT"
-    | IntrinGetSize => "INTRIN_GET_SIZE"
-    | IntrinCheckIdx => "INTRIN_CHECK_IDX"
-    | IntrinCheckIdxRange => "INTRIN_CHECK_IDX_RANGE"
+    | IntrinPopExn => "__pop_exn__"
+    | IntrinVariantTag => "__variant_tag__"
+    | IntrinVariantCase => "__variant_case__"
+    | IntrinListHead => "__hd__"
+    | IntrinListTail => "__tl__"
+    | IntrinStrConcat => "__intrin_str_concat__"
+    | IntrinGetSize => "__intrin_size__"
+    | IntrinCheckIdx => "__check_idx__"
+    | IntrinCheckIdxRange => "__check_range__"
 }
 
 fun get_code_loc(code: kcode_t, default_loc: loc_t) =
@@ -1132,7 +1134,7 @@ fun ktyp2str(t: ktyp_t): string
 fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
 {
     match lit {
-    | KLitInt(v) => f"{v}i"
+    | KLitInt(v) => f"{v}"
     | KLitSInt(64, v) =>
         if cmode { f"{v}iLL" } else { f"{v}ii{64}" }
     | KLitUInt(64, v) =>
@@ -1170,7 +1172,7 @@ fun kexp2str(e: kexp_t): string
     | KExpAtom(a, _) => "KExpAtom(" + atom2str(a) + ")"
     | KExpBinary(bop, a, b, _) => f"KExpBinary({bop}, {atom2str(a)}, {atom2str(b)})"
     | KExpUnary(uop, a, _) => f"KExpUnary({uop}, {atom2str(a)})"
-    | KExpIntrin(i, _, _) => f"KExpIntrin({intrin2str(i)}, ...)"
+    | KExpIntrin(i, _, _) => f"KExpIntrin({i}), ...)"
     | KExpSeq(_, _) => "KExpSeq(...)"
     | KExpIf(_, _, _, _) => "KExpIf(...)"
     | KExpCall(f, args, _) => f"KExpCall({idk2str(f, l)}, ...)"

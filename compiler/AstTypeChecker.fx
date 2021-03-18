@@ -2668,8 +2668,9 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref, env: env_t,
                 | (TypTuple(telems), _) when nrealargs == nargs => telems
                 | _ =>
                     throw compile_err( loc,
-                        f"cannot instantiate case '{id2str(ctor_name)}' of variant '{id2str(dvar_name)}' defined at '{dvar_loc}':"
-                        + f"wrong number of actual parameters {nrealargs} (vs {nargs} expected)" )
+                        f"cannot instantiate case '{id2str(ctor_name)}' of variant " +
+                        f"'{id2str(dvar_name)}' defined at '{dvar_loc}': " +
+                        f"wrong number of actual parameters {nrealargs} (vs {nargs} expected)" )
                 }
             val (inst_cname, _) = register_typ_constructor(ctor_name, CtorVariant(n),
                                                 inst_dvar->dvar_templ_args, argtyps,
@@ -2800,7 +2801,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                     (n, p)
                 | _ =>
                     throw compile_err( loc,
-                        f"element '{pp_id2str(n)}' is not found in the record '{pp_id2str(rn_opt.getsome(noid))}'")
+                        f"element '{pp_id2str(n)}' is not found in the record '{pp_id2str(rn_opt.value_or(noid))}'")
                 } } :]
             (PatRecord(if ctor != noid {Some(ctor)} else {None}, new_relems, loc), false)
         | PatCons(p1, p2, loc) =>

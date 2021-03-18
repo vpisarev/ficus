@@ -7,11 +7,14 @@
 // (calls all other parts of the compiler in the proper order)
 
 import Filename, Sys, Map
-import Ast, AstTypeChecker, AstPP, KForm, KNormalize, Lexer, Parser, Options
+import Ast, AstPP, Lexer, Parser, Options
+import AstTypeChecker
+import KForm, KPP, KNormalize
 
 exception CumulativeParseError
 
 type id_t = Ast.id_t
+val pr_verbose = Ast.pr_verbose
 
 fun get_preamble(mfname: string): Lexer.token_t list {
     val bare_name = Filename.remove_extension(Filename.basename(mfname))
@@ -326,9 +329,9 @@ fun process_all(fname0: string): bool {
             }
         }
         val modules_used = ", ".join(Ast.all_modules_sorted.map(Ast.pp_id2str))
-        Ast.pr_verbose(f"Parsing complete. Modules used: {modules_used}")
+        pr_verbose(f"Parsing complete. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)
-        Ast.pr_verbose("Type checking complete")
+        pr_verbose("Type checking complete")
         if ok && Options.opt.print_ast {
             for m <- Ast.all_modules_sorted {
                 val minfo = Ast.get_module(m)
@@ -336,9 +339,9 @@ fun process_all(fname0: string): bool {
             }
         }
         val (kmods, ok) = if ok { k_normalize_all(Ast.all_modules_sorted) } else { ([], false) }
-        /*pr_verbose("K-normalization complete")
-        if ok && options.print_k0 { K_pp.pprint_kmods(kmods) }
-        pr_verbose("K-form optimization started")
+        pr_verbose("K-normalization complete")
+        if ok && Options.opt.print_k0 { KPP.pp_kmods(kmods) }
+        /*pr_verbose("K-form optimization started")
         val (kmods, ok) = if ok { k_optimize_all(kmods) } else { ([], false) }
         if ok { pr_verbose("K-form optimization complete") }
         if ok && options.print_k { K_pp.pprint_kmods(kmods) }

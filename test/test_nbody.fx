@@ -9,7 +9,7 @@ from UTest import *
 import Math
 
 TEST("nbody.iters=1M", fun() {
-val SolarMass = 4.0 * Math.pi * Math.pi
+val SolarMass = 4.0 * Math.Pi * Math.Pi
 val Year = 365.24
 
 type Vec = {x: double; y: double; z: double}

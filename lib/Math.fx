@@ -10,7 +10,7 @@
 #include <float.h>
 }
 
-val pi = 3.1415926535897932384626433832795
+val Pi = 3.1415926535897932384626433832795
 val FLT_EPSILON: float = @ccode {FLT_EPSILON}
 val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 
@@ -68,9 +68,9 @@ fun hypot(a: 't, b: 't) {
     }
 }
 
-fun gcd(n: int, d: int)
+fun GCD(n: int, d: int)
 {
-    fun gcd_(n: int, d: int) =
-        if d == 0 {n} else {gcd_(d, n % d)}
-    gcd_(abs(n), abs(d))
+    fun GCD_(n: int, d: int) =
+        if d == 0 {n} else {GCD_(d, n % d)}
+    GCD_(abs(n), abs(d))
 }

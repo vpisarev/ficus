@@ -50,8 +50,8 @@ object type 't option = None | Some: 't
 
 type byte = uint8
 
-fun getsome(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
-fun getsome(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
+fun value_or(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
+fun value(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
 fun isnone(x: 't?) { | Some _ => false | _ => true }
 fun issome(x: 't?) { | Some _ => true | _ => false }
 
@@ -186,7 +186,6 @@ fun repr(a: 't): string = string(a)
 fun repr(a: string) = "\"" + a + "\""
 @pure fun repr(a: char): string = @ccode {
     char_ buf[16] = {39, 92, 39};
-    printf("entered here, a=%d\n", (int)a);
     if (32 <= a && a != 39 && a != 34 && a != 92) {
         buf[1] = a;
         return fx_make_str(buf, 3, fx_result);
@@ -733,7 +732,7 @@ fun println(a: 't) { print(a); print("\n") }
 fun list(a: 't []): 't list = [: for x <- a {x} :]
 fun list(s: string) = [: for c <- s {c} :]
 
-fun array(): 't [] = [| for i<-0:0 {(None : 't?).getsome()} |]
+fun array(): 't [] = [| for i<-0:0 {(None : 't?).value()} |]
 fun array(n: int, x: 't) = [| for i <- 0:n {x} |]
 fun array((m: int, n: int), x: 't) = [| for i <- 0:m for j <- 0:n {x} |]
 fun array((m: int, n: int, l: int), x: 't) = [| for i <- 0:m for j <- 0:n for k <- 0:l {x} |]

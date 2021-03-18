@@ -106,7 +106,7 @@ TEST("basic.find", fun()
     }
 
     fun find_fold(a: 't [], f: 't->bool) =
-        find_opt(for i<-0:size(a) {f(a[i])}).getsome(-1)
+        find_opt(for i<-0:size(a) {f(a[i])}).value_or(-1)
 
     fun find_exn(a: 't [], f: 't -> bool): int
     {
@@ -151,9 +151,9 @@ TEST("basic.math", fun()
     }
 
     EXPECT_NEAR(c, 13.3333333333, FLT_EPSILON*1.0)
-    EXPECT_NEAR(Math.atan(1.)*4, Math.pi, DBL_EPSILON*10)
+    EXPECT_NEAR(Math.atan(1.)*4, Math.Pi, DBL_EPSILON*10)
     EXPECT_NEAR(Math.exp(-1.), 0.36787944117144233, DBL_EPSILON*10)
-    val alpha = (Math.pi/3 :> float)
+    val alpha = (Math.Pi/3 :> float)
     EXPECT_NEAR(Math.sin(alpha), 0.8660254037844386f, FLT_EPSILON*10)
     EXPECT_NEAR(Math.cos(alpha), 0.5f, FLT_EPSILON*10)
     EXPECT_EQ(myops.sqr(5), 25)
@@ -336,7 +336,7 @@ TEST("basic.variant_with_record", fun()
 
 TEST("basic.ratio", fun()
 {
-    val gcd = Math.gcd
+    val gcd = Math.GCD
 
     // two implementations of rational numbers using single-case variants
     // 1. tuple
@@ -468,7 +468,7 @@ TEST("basic.ref", fun()
     val u : string? ref = ref None
 
     *u = y
-    EXPECT_EQ(u->getsome("0"), y.getsome("1"))
+    EXPECT_EQ(u->value_or("0"), y.value_or("1"))
 
     val nested_ref: int ref ref ref = ref (ref (ref 5))
     EXPECT_EQ(***nested_ref, 5)
@@ -489,9 +489,9 @@ TEST("basic.option", fun()
     EXPECT(x.isnone())
     EXPECT(z.isnone())
     EXPECT(y.issome())
-    EXPECT_EQ(x.getsome(-1), -1)
-    EXPECT_EQ(y.getsome(""), "abc")
-    EXPECT_EQ(Some((1, 2, 3)).getsome((0, 0, 0)), (1, 2, 3))
+    EXPECT_EQ(x.value_or(-1), -1)
+    EXPECT_EQ(y.value_or(""), "abc")
+    EXPECT_EQ(Some((1, 2, 3)).value_or((0, 0, 0)), (1, 2, 3))
 })
 
 TEST("basic.types.variant", fun()
@@ -691,7 +691,7 @@ TEST("basic.types.conversions", fun()
 {
     EXPECT_EQ(3.f, float(1) + 2)
 
-    val my_pi = "3.14".to_double().getsome(0.0)
+    val my_pi = "3.14".to_double().value_or(0.0)
     EXPECT_NEAR(my_pi * 2, 6.28, 1e-10)
 })
 

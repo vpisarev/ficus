@@ -56,7 +56,20 @@ let transform_let_comp code =
         | EUnary(uop, e1) -> EUnary(uop, (trexp_ e1))
         | EBinary(OpMem, EUnary(OpDeref, e1), e2) -> EBinary(OpArrow, e1, e2)
         | EBinary(bop, e1, e2) -> EBinary(bop, (trexp_ e1), (trexp_ e2))
-        | EIf(e1, e2, e3) -> EIf((trexp_ e1), (trexp_ e2), (trexp_ e3))
+        | EIf(e1, e2, e3) ->
+            let e1 = trexp_ e1 in let e2 = trexp_ e2 in let e3 = trexp_ e3 in
+            (match e2 with
+            | ELit(LUnit) ->
+                (match e1 with
+                | EBinary(OpEQ, a, b) -> EIf(EBinary(OpNE, a, b), e3, e2)
+                | EBinary(OpNE, a, b) -> EIf(EBinary(OpEQ, a, b), e3, e2)
+                | EBinary(OpLT, a, b) -> EIf(EBinary(OpGE, a, b), e3, e2)
+                | EBinary(OpLE, a, b) -> EIf(EBinary(OpGT, a, b), e3, e2)
+                | EBinary(OpGT, a, b) -> EIf(EBinary(OpLE, a, b), e3, e2)
+                | EBinary(OpGE, a, b) -> EIf(EBinary(OpLT, a, b), e3, e2)
+                | EUnary(OpNot, a) -> EIf(a, e3, e2)
+                | _ -> EIf(EUnary(OpNot, e1), e3, e2))
+            | _ -> EIf(e1, e2, e3))
         | ELambda(pl, e) -> ELambda(pl, (trexp_ e))
         | ELambdaCases(cases) -> ELambdaCases(trexp_cases_ cases)
         | ECall(f, args) ->

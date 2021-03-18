@@ -890,6 +890,15 @@ fun get_numeric_typ_size(t: typ_t, allow_tuples: bool): int =
     | _ => -1
     }
 
+fun string(fm: for_make_t)
+{
+    | ForMakeNone => "ForMakeNone"
+    | ForMakeArray => "ForMakeArray"
+    | ForMakeList => "ForMakeList"
+    | ForMakeTuple => "ForMakeTuple"
+    | _ => "ForMake???"
+}
+
 fun string(c: cmpop_t) {
     | CmpEQ => "=="
     | CmpNE => "!="

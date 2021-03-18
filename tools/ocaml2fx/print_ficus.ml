@@ -113,11 +113,11 @@ and pprint_pat_ p parens =
         obox(); pstr vn; pcut();
         let (p, need_parens) =
             match pl with
-            | PLit _ :: [] | PIdent _ :: [] | PAny :: [] -> ((List.hd pl), true)
+            | PLit _ :: [] | PIdent _ :: [] | PAny :: [] -> ((List.hd pl), false)
             | p :: [] -> (p, true)
             | _ -> (PTuple(pl), false)
             in
-        if need_parens then (pstr "("; pcut()) else ();
+        if need_parens then (pstr "("; pcut()) else pstr " ";
         if pl = [] then () else pprint_pat_ p false;
         if need_parens then (pcut(); pstr ")") else ();
         cbox()
@@ -319,8 +319,16 @@ and pprint_ocexp_ e pr : unit =
     | EFold(defv, (acc, acc0), (p, lst), body) ->
         ovbox_indent(); ohbox();
         if defv then pstr "val fold" else pstr "fold";
-        pspace(); pprint_pat_ acc false;
-        pstr " ="; pspace(); pprint_ocexp_ acc0 0;
+        pspace();
+        let (pl, el) = match (acc, acc0) with
+            | (PTuple(pl), EMkTuple(el)) -> (pl, el)
+            | _ -> (acc :: [], acc0 :: [])
+            in
+        let _ = List.fold_left2 (fun idx p e ->
+            if idx > 0 then (pstr ","; pspace()) else ();
+            pprint_pat_ p false;
+            pstr " ="; pspace(); pprint_ocexp_ e 0;
+            idx+1) 0 pl el in
         pspace(); pstr "for"; pspace(); pprint_pat_ p false;
         pspace(); pstr "<-";
         pspace(); pprint_ocexp_ lst 0;
