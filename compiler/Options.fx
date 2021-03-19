@@ -18,6 +18,7 @@ type options_t =
     gen_c: bool = true;
     include_path: string list = [];
     debug: bool = false;
+    optim_iters: int = 3;
     inline_thresh: int = 100;
     relax: bool = false;
     make_app: bool = true;
@@ -30,7 +31,8 @@ type options_t =
     print_tokens: bool = false;
     run_app: bool = false;
     runtime_path: string = "";
-    verbose: bool = false
+    verbose: bool = false;
+    W_unused: bool = true
 }
 
 fun default_options() = options_t {}
@@ -70,10 +72,12 @@ where options can be some of:
     -O3             Optimization level 3: enable all optimizations
     -debug          Turn on debug information, disable optimizations
                     (but can be overwritten with further -On)
+    -optim-iters    The number of optimization iterations to perform (3 by default)
     -inline-threshold  Inline threshold (100 by default); the higher it is,
                     the bigger functions are inlined;
                     --inline-thresh=0 disables inline expansion
     -relax          Do not require explicit typing of all global functions' parameters
+    -Wno-unused     Do not report warnings about unused values/functions
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
     -I <dir>        Add specified directory to the module search path
@@ -139,6 +143,13 @@ fun parse_options(): bool {
                 opt.optimize_level = 3; next
             | "-debug" :: next =>
                 opt.debug = true; next
+            | "-optim-iters" :: i :: next =>
+                match i.to_int() {
+                    | Some(i) when i >= 0 => opt.optim_iters = i; next
+                    | _ =>
+                        println(f"{error} invalid -optim-iters arument {i}: must be a non-negative integer")
+                        ok = false; []
+                }
             | "-inline-threshold" :: i :: next =>
                 match i.to_int() {
                     | Some(i) when i >= 0 => opt.inline_thresh = i; next
@@ -148,6 +159,8 @@ fun parse_options(): bool {
                 }
             | "-relax" :: next =>
                 opt.relax = true; next
+            | "-Wno-unused" :: next =>
+                opt.W_unused = false; next
             | "-verbose" :: next =>
                 opt.verbose = true; next
             | "-o" :: oname :: next =>

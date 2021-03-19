@@ -23,7 +23,7 @@ type parser_ctx_t =
 var parser_ctx = parser_ctx_t { module_id=noid, filename="", deps=[], inc_dirs=[], default_loc=noloc }
 
 fun add_to_imported_modules(mname_id: id_t, loc: loc_t): id_t {
-    val mname = pp_id2str(mname_id)
+    val mname = pp(mname_id)
     val mfname = mname.replace(".", Filename.dir_sep()) + ".fx"
     val mfname =
         try Sys.locate_file(mfname, parser_ctx.inc_dirs)
@@ -362,7 +362,7 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
         | (LPAREN(false), l1) :: (FOR _, l2) :: rest =>
             val eloc = get_exp_loc(e)
             val istr = match e {
-                | ExpIdent(i, _) => pp_id2str(i)
+                | ExpIdent(i, _) => pp(i)
                 | _ => throw ParseError(l2, "incorrect use of for (';' or newline or maybe 'fold' is missing?)")
             }
             val (ts, for_exp, for_iter_exp) = parse_for(ts.tl(), ForMakeNone)
@@ -690,7 +690,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
                 | (COLON, _) :: rest => parse_typespec(rest)
                 | _ => (ts, TypVoid)
                 }
-            val de = ref (defexn_t { dexn_name=i, dexn_typ=t, dexn_scope=ScGlobal :: [], dexn_loc=l1 })
+            val de = ref (defexn_t { dexn_name=i, dexn_typ=t, dexn_scope=[], dexn_loc=l1 })
             extend_expseq_(ts, DefExn(de) :: result)
         | (IMPORT(f), l1) :: rest =>
             if !toplevel {throw parse_err(ts, "import directives can only be used at the module level")}
@@ -1210,7 +1210,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
         } :]
     val df = ref (deffun_t { df_name=fname, df_templ_args=[],
         df_args=params, df_typ=TypFun(paramtyps, rt), df_body=body,
-        df_flags=fflags, df_scope=ScGlobal :: [], df_loc=loc,
+        df_flags=fflags, df_scope=[], df_loc=loc,
         df_templ_inst=ref [], df_env=empty_env})
 
     (ts, DefFun(df))
@@ -1665,7 +1665,7 @@ fun parse_deftype(ts: tklist_t)
             dvar_cases = (tname, t) :: [],
             dvar_ctors = [],
             dvar_templ_inst = ref [],
-            dvar_scope = ScGlobal :: [],
+            dvar_scope = [],
             dvar_loc = loc
         })
         (ts, DefVariant(dvar))
@@ -1708,7 +1708,7 @@ fun parse_deftype(ts: tklist_t)
             dvar_cases = cases,
             dvar_ctors = [],
             dvar_templ_inst = ref [],
-            dvar_scope = ScGlobal :: [],
+            dvar_scope = [],
             dvar_loc = loc
         })
         (ts, DefVariant(dvar))
@@ -1717,7 +1717,7 @@ fun parse_deftype(ts: tklist_t)
         val (ts, t) = parse_typespec(ts)
         val dt = ref (deftyp_t {
             dt_name=tname, dt_templ_args=type_params, dt_typ=t, dt_finalized=false,
-            dt_scope=ScGlobal :: [], dt_loc=loc })
+            dt_scope=[], dt_loc=loc })
         (ts, DefTyp(dt))
     }
 }

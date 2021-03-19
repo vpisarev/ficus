@@ -74,7 +74,6 @@ type scope_t =
     | ScClass: id_t
     | ScInterface: id_t
     | ScModule: id_t
-    | ScGlobal
 
 type loc_t =
 {
@@ -108,16 +107,16 @@ fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
     }
 
 fun get_start_loc(loc: loc_t) {
-    val {fname, line0, col0, line1, col1} = loc
+    val {fname, line0, col0} = loc
     loc_t {fname=fname, line0=line0, col0=col0, line1=line0, col1=col0}
 }
 
 fun get_end_loc(loc: loc_t) {
-    val {fname, line0, col0, line1, col1} = loc
+    val {fname, line1, col1} = loc
     loc_t {fname=fname, line0=line1, col0=col1, line1=line1, col1=col1}
 }
 
-fun string(loc: loc_t) = f"{pp_id2str(loc.fname)}:{loc.line0}:{loc.col0}"
+fun string(loc: loc_t) = f"{pp(loc.fname)}:{loc.line0}:{loc.col0}"
 
 exception CompileError: (loc_t, string)
 exception PropagateCompileError
@@ -489,25 +488,22 @@ fun dump_id(i: id_t) {
     | IdTemp(i, j) => f"IdTemp({i}, {j})"
 }
 
-fun id2str__(i: id_t, pp: bool, val_decor: string, temp_decor: string): string =
+fun id2str_(i: id_t, pp: bool): string =
     if i == noid { "<noid>" }
     else {
         val (infix, prefix, suffix) =
         match i {
         | IdName(i) => ("", i, -1)
-        | IdVal(i, j) => (val_decor, i, j)
-        | IdTemp(i, j) => (temp_decor, i, j)
+        | IdVal(i, j) => ("@", i, j)
+        | IdTemp(i, j) => ("@@", i, j)
         }
         val prefix = dynvec_get(all_strings, prefix)
         if pp || suffix < 0 { prefix }
         else { f"{prefix}{infix}{suffix}" }
     }
 
-fun id2str_(i: id_t, pp: bool): string = id2str__(i, pp, "@", "@@")
-fun id2str(i: id_t): string = id2str_(i, false)
-fun pp_id2str(i: id_t): string = id2str_(i, true)
-
-fun string(i: id_t) = id2str(i)
+fun string(i: id_t): string = id2str_(i, false)
+fun pp(i: id_t): string = id2str_(i, true)
 
 fun compile_err(loc: loc_t, msg: string) {
     val whole_msg = f"{loc}: error: {msg}"
@@ -516,6 +512,11 @@ fun compile_err(loc: loc_t, msg: string) {
         | ctx => "\n\t".join(whole_msg :: ctx)
         }
     CompileError(loc, whole_msg)
+}
+
+fun compile_warning(loc: loc_t, msg: string) {
+    val whole_msg = f"{loc}: warning: {msg}"
+    println(whole_msg)
 }
 
 fun push_compile_err(err: exn) { all_compile_errs = err :: all_compile_errs }
@@ -554,7 +555,7 @@ fun id2idx_(i: id_t, loc: loc_t) =
     | IdVal(_, i_real) => i_real
     | IdTemp(_, i_real) => i_real
     | IdName _ => throw compile_err(loc,
-        f"attempt to query information about unresolved '{id2str(i)}'")
+        f"attempt to query information about unresolved '{i}'")
     }
 
 fun id2idx(i: id_t) = id2idx_(i, noloc)
@@ -671,7 +672,7 @@ fun pat_skip_typed(p: pat_t) {
 fun get_module(m: id_t) =
     match id_info(m, noloc) {
     | IdModule(minfo) => minfo
-    | _ => throw Fail(f"internal error in process_all: {pp_id2str(m)} is not a module")
+    | _ => throw Fail(f"internal error in process_all: {pp(m)} is not a module")
     }
 
 fun get_module_env(m: id_t) = get_module(m)->dm_env
@@ -732,11 +733,10 @@ fun scope2str(sc: scope_t list) {
             | ScMap(b) => f"map_block({b})"
             | ScFold(b) => f"fold_block({b})"
             | ScTry(b) => f"try_block({b})"
-            | ScFun(f) => f"fun({id2str(f)})"
-            | ScClass(c) => f"class({id2str(c)})"
-            | ScInterface(i) => f"interface({id2str(i)})"
-            | ScModule(m) => f"mod({id2str(m)})"
-            | ScGlobal => "global"
+            | ScFun(f) => f"fun({f})"
+            | ScClass(c) => f"class({c})"
+            | ScInterface(i) => f"interface({i})"
+            | ScModule(m) => f"mod({m})"
         }
         match rest {
         | _ :: _ => prefix + "." + scope2str(rest)
@@ -745,43 +745,52 @@ fun scope2str(sc: scope_t list) {
     | _ => ""
 }
 
-fun get_module_scope(sc: scope_t list) {
+fun get_module_scope(sc: scope_t list, loc: loc_t) =
+    match sc {
     | ScModule _ :: _ => sc
-    | ScGlobal :: _ | [] => sc
-    | sc_top :: r => get_module_scope(r)
+    | _ :: rest => get_module_scope(rest, loc)
+    | _ => []
     }
 
-fun curr_module(sc: scope_t list): id_t =
-    match get_module_scope(sc) {
+fun curr_module(sc: scope_t list, loc: loc_t): id_t =
+    match get_module_scope(sc, loc) {
     | ScModule(m) :: _ => m
+    | _ :: rest => curr_module(rest, loc)
     | _ => noid
     }
 
+fun is_global_scope(sc: scope_t list)
+{
+    | ScModule _ :: _ => true
+    | [] => true
+    | _ => false
+}
+
 fun get_qualified_name(name: string, sc: scope_t list) =
     match sc {
-    | (ScModule(m) :: _) when pp_id2str(m) == "Builtins" => name
-    | ScModule(m) :: r => get_qualified_name(pp_id2str(m) + "." + name, r)
-    | ScGlobal :: _ | [] => name
+    | (ScModule(m) :: _) when pp(m) == "Builtins" => name
+    | ScModule(m) :: r => get_qualified_name(pp(m) + "." + name, r)
+    | [] => name
     | sc_top :: r => get_qualified_name(name, r)
     }
 
 // out of 'A.B.C.D' we leave just 'D'. just 'D' stays 'D'
 fun get_bare_name(n: id_t): id_t {
 
-    val n_str = pp_id2str(n)
+    val n_str = pp(n)
     val dot_pos = n_str.rfind('.')
     get_id(if dot_pos < 0 {n_str} else {n_str[dot_pos+1:]})
 }
 
 fun get_scope(id_info: id_info_t) {
-    | IdNone => ScGlobal :: []
+    | IdNone => []
     | IdDVal ({dv_scope}) => dv_scope
     | IdFun (ref {df_scope}) => df_scope
     | IdExn (ref {dexn_scope}) => dexn_scope
     | IdTyp (ref {dt_scope}) => dt_scope
     | IdVariant (ref {dvar_scope}) => dvar_scope
     | IdInterface (ref {di_scope}) => di_scope
-    | IdModule _ => ScGlobal :: []
+    | IdModule _ => []
     }
 
 fun get_idinfo_loc(id_info: id_info_t) {
@@ -1113,10 +1122,10 @@ val reserved_keywords = Set.from_list(String.cmp, [: "fx_result", "fx_status", "
 fun get_builtin_exception(n0: id_t, loc: loc_t) =
     match builtin_exceptions.find_opt(n0) {
     | Some(n) => n
-    | _ => throw compile_err(loc, f"cannot find built-in exception '{id2str(n0)}'")
+    | _ => throw compile_err(loc, f"cannot find built-in exception '{n0}'")
     }
 
-fun is_fun_ctor(flags: fun_flags_t) =
+fun is_constructor(flags: fun_flags_t) =
     match flags.fun_flag_ctor {
     | CtorNone => false
     | _ => true
@@ -1125,9 +1134,9 @@ fun is_fun_ctor(flags: fun_flags_t) =
 fun ctor2str(f: fun_constr_t) {
     | CtorNone => "not_a_constructor"
     | CtorStruct => "Constructor(record_or_tuple)"
-    | CtorVariant(i) => f"Constructor(variant({id2str(i)}))"
-    | CtorFP(i) => f"Constructor(fp({id2str(i)}))"
-    | CtorExn(i) => f"Constructor(exn({id2str(i)}))"
+    | CtorVariant(i) => f"Constructor(variant({i}))"
+    | CtorFP(i) => f"Constructor(fp({i}))"
+    | CtorExn(i) => f"Constructor(exn({i}))"
 }
 
 fun lit2str(c: lit_t) {
@@ -1154,7 +1163,7 @@ fun lit2str(c: lit_t) {
 
 fun print_idset(setname: string, s: idset_t) {
     print(f"{setname}:[")
-    s.app(fun (i) { println(f" {id2str(i)}") })
+    s.app(fun (i) { println(f" {i}") })
     print(" ]\n")
 }
 
@@ -1172,8 +1181,8 @@ fun typ2str(t: typ_t): string {
     | TypVarRecord => "{...}"
     | TypVar ((ref Some(t)) as r) => f"{typ2str(t)}"
     | TypVar (r) => "<unknown>"
-    | TypApp([], i) => id2str(i)
-    | TypApp(tl, i) => f"{tl2str(tl)} {id2str(i)}"
+    | TypApp([], i) => string(i)
+    | TypApp(tl, i) => f"{tl2str(tl)} {i}"
     | TypInt => "int"
     | TypSInt(n) => f"int{n}"
     | TypUInt(n) => f"uint{n}"
@@ -1198,7 +1207,7 @@ fun typ2str(t: typ_t): string {
         }
     | TypRecord (ref (relems, _)) =>
         join_embrace("{", "}", "; ",
-            [| for (i, t, _) <- relems { f"{id2str(i)}: {typ2str(t)}" } |])
+            [| for (i, t, _) <- relems { f"{i}: {typ2str(t)}" } |])
     | TypArray(d, t) => f"{typ2str(t)} [{','*(d-1)}]"
     | TypList(t) => f"{typ2str(t)} list"
     | TypRef(t) => f"{typ2str(t)} ref"

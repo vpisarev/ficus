@@ -678,7 +678,6 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
 
     fun getloc(pos: int) = (*strm.lineno, max(pos - *strm.bol, 0) + 1)
     fun addloc(loc: lloc_t, tokens: token_t list) = [: for t <- tokens {(t, loc)} :]
-    fun removeloc(tokens_l: (token_t, lloc_t) list) = [: for (t, _) <- tokens_l {t} :]
     fun check_ne(ne: bool, loc: lloc_t, name: string): void =
         if !ne {
             throw LexerError(loc, f"unexpected '{name}'. Insert ';' or newline")
@@ -860,7 +859,6 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             (t, loc) :: []
         } else {
             val prev_ne = new_exp
-            val prev_prev_dot = prev_dot
             prev_dot = false
             new_exp = true
             pos = min(pos+1, len)
@@ -910,7 +908,6 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 }
             | '{' =>
                 paren_stack = (LBRACE, getloc(pos-1)) :: paren_stack
-                val p = getloc(pos-1)
                 match paren_stack {
                 | (LBRACE, _) :: (CCODE, _) :: rest =>
                     new_exp = false

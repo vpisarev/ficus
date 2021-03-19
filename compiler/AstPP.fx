@@ -15,7 +15,7 @@ fun pplit(pp: PP.t, x: lit_t) = pp.str(lit2str(x))
 fun ppid(pp: PP.t, x: id_t) = pp.str(
     match x {
     | IdName(0) => "<noid>"
-    | _ => id2str(x)
+    | _ => string(x)
     })
 
 fun pprint_val_flags(pp: PP.t, flags: val_flags_t): void
@@ -106,8 +106,8 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t)
         | TypVarArray(t1) => pptypsuf(t1, "[+]")
         | TypVarRecord => pp.str("{...}")
         | TypApp([], n) => ppid(pp, n)
-        | TypApp(t1 :: [], n) => pptypsuf(t1, id2str(n))
-        | TypApp(tl, n) => pptypsuf(TypTuple(tl), id2str(n))
+        | TypApp(t1 :: [], n) => pptypsuf(t1, string(n))
+        | TypApp(tl, n) => pptypsuf(TypTuple(tl), string(n))
         | TypTuple(tl) =>
             pp.str("("); pp.cut(); pp.begin()
             for t@i <- tl {
@@ -165,7 +165,6 @@ fun pprint_for_flags(pp: PP.t, flags: for_flags_t)
 
 fun pprint_exp(pp: PP.t, e: exp_t): void
 {
-    val (t, eloc) = get_exp_ctx(e)
     fun ppcases(pe_l: (pat_t list, exp_t) list) {
         pp.str("{"); pp.cut(); pp.begin()
         for (pl, e) <- pe_l {
@@ -188,11 +187,11 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | _ => pp.str(":"); pp.space(); pprint_typ(pp, get_exp_typ(e0), loc)
         }
         pp.str(" ="); pp.space()
-        if ctor_id != noid { pp.str(f"@constructor({id2str(ctor_id)})") }
+        if ctor_id != noid { pp.str(f"@constructor({ctor_id})") }
         else { ppexp(e0) }
         pp.end()
     | DefFun df =>
-        val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_templ_inst, df_loc} = *df
+        val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_loc} = *df
         val ctor_id = df_flags.fun_flag_ctor
         pp.begin(0); pp.begin(); pprint_fun_flags(pp, df_flags)
         match df_templ_args {
@@ -259,7 +258,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         match *dvar_templ_inst {
         | [] => {}
         | _ =>
-            pp.newline(); pp.str(f"/* {id2str(dvar_name)} instances */"); pp.space();
+            pp.newline(); pp.str(f"/* {dvar_name} instances */"); pp.space();
             for inst_id@i <- *dvar_templ_inst {
                 pp.opt_semi()
                 match id_info(inst_id, dvar_loc) {
@@ -558,7 +557,7 @@ fun pprint_pat(pp: PP.t, p: pat_t)
 fun pprint_mod(dm: defmodule_t ref)
 {
     File.stdout.flush()
-    val {dm_name, dm_filename, dm_defs, dm_deps} = *dm
+    val {dm_filename, dm_defs, dm_deps} = *dm
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.beginv()
     pp.cut()

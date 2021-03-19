@@ -13,7 +13,7 @@ fun empty(l: 't list): bool = null(l)
 fun last(_: 't list)
 {
     | a :: [] => a
-    | a :: rest => last(rest)
+    | _ :: rest => last(rest)
     | _ => throw NullListError
 }
 
@@ -35,7 +35,7 @@ fun assoc(l: ('a, 'b) list, x: 'a): 'b =
     find(for (a, b) <- l {a == x}).1
 
 fun assoc_opt(l: ('a, 'b) list, x: 'a): 'b? =
-    match find_opt(for (a, b) <- l {a == x}) {
+    match find_opt(for (a, _) <- l {a == x}) {
     | Some((_, b)) => Some(b)
     | _ => None
     }
@@ -80,7 +80,7 @@ fun sort(l: 't list, lt: ('t, 't)->bool) =
     match l
     {
         | [] => l
-        | a :: [] => l
+        | _ :: [] => l
         | a :: b :: [] => if lt(b, a) {b::a::[]} else {l}
         | _ =>
             val arr = array(l)

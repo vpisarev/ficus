@@ -1,3 +1,14 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
+/*
+    K-form pretty printer.
+    Can be used to debug the K-normalization step,
+    as well as all the further K-form transformations
+*/
+
 from Ast import *
 from KForm import *
 import PP, AstPP, File
@@ -281,7 +292,7 @@ val default_indent = 3
         match get_idk_ktyp(n, loc) {
         | KTypRecord (rn, relems) =>
             val (ni, _) = relems.nth(i)
-            pp.str(pp_id2str(ni))
+            pp.str(Ast.pp(ni))
         | _ => pp.str(string(i))
         }; pp.end()
     | KExpUnary(OpDeref, AtomId n, (_, loc)) => pp.begin(); pp.str("*"); pp_id_(n); pp.end()
@@ -408,7 +419,7 @@ val default_indent = 3
         for (checks_i, e_i)@i <- cases {
             pp.begin()
             pp.str(if i == 0 { "if " }
-                    else if checks_i == [] { "else" }
+                    else if checks_i.empty() { "else" }
                     else { "else if "})
             for cj@j <- checks_i {
                 if j > 0 { pp.str(" &&"); pp.space() }

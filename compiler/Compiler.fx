@@ -9,11 +9,12 @@
 import Filename, Sys, Map
 import Ast, AstPP, Lexer, Parser, Options
 import AstTypeChecker
-import KForm, KPP, KNormalize
+import KForm, KPP, KNormalize, KRemoveUnused
 
 exception CumulativeParseError
 
 type id_t = Ast.id_t
+type kmodule_t = KForm.kmodule_t
 val pr_verbose = Ast.pr_verbose
 
 fun get_preamble(mfname: string): Lexer.token_t list {
@@ -101,7 +102,7 @@ fun toposort(graph: dep_graph_t): id_t list
                     find_next((i, m, deps) :: analyzed, rest)
                 }
             | _ =>
-                val cycle = ", ".join([: for (_, m, _) <- analyzed.rev() {Ast.pp_id2str(m)} :])
+                val cycle = ", ".join([: for (_, m, _) <- analyzed.rev() {Ast.pp(m)} :])
                 throw Fail(f"error: cylic module dependency between {cycle}")
             }
         match remaining {
@@ -121,7 +122,7 @@ fun typecheck_all(modules: id_t list): bool
     Ast.all_compile_errs.empty()
 }
 
-fun k_normalize_all(modules: id_t list): (KForm.kmodule_t list, bool)
+fun k_normalize_all(modules: id_t list): (kmodule_t list, bool)
 {
     Ast.all_compile_errs = []
     KForm.init_all_idks()
@@ -129,15 +130,15 @@ fun k_normalize_all(modules: id_t list): (KForm.kmodule_t list, bool)
     (kmods, Ast.all_compile_errs.empty())
 }
 
-/*
 fun prf(str: string) = pr_verbose(f"\t{str}")
-fun k_optimize_all(kmods) {
-    *compile_errs = []
-    val niters = options.optim_iters
-    val temp_kmods = ref kmods
+
+fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
+    var compile_errs = []
+    val niters = Options.opt.optim_iters
+    var temp_kmods = kmods
     prf("initial dead code elim")
-    *temp_kmods = K_deadcode_elim.elim_unused(*temp_kmods)
-    for i <- 1: niters+1 {
+    temp_kmods = KRemoveUnused.remove_unused(temp_kmods, true)
+    /*for i <- 1: niters+1 {
         pr_verbose(f"Optimization pass #{i}:")
         if i <= 2 {
             prf("simple lifting")
@@ -178,9 +179,11 @@ fun k_optimize_all(kmods) {
     prf("mark recursive")
     *temp_kmods = K_inline.find_recursive_funcs_all(*temp_kmods)
     prf("annotate types")
-    *temp_kmods = K_annotate_types.annotate_types(*temp_kmods)
-    (*temp_kmods, *compile_errs == [])
+    *temp_kmods = K_annotate_types.annotate_types(*temp_kmods)*/
+    (temp_kmods, compile_errs.empty())
 }
+
+/*
 fun k2c_all(kmods) {
     pr_verbose("Generating C code:")
     *compile_errs = []
@@ -328,7 +331,7 @@ fun process_all(fname0: string): bool {
                 AstPP.pprint_mod(minfo)
             }
         }
-        val modules_used = ", ".join(Ast.all_modules_sorted.map(Ast.pp_id2str))
+        val modules_used = ", ".join(Ast.all_modules_sorted.map(Ast.pp))
         pr_verbose(f"Parsing complete. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)
         pr_verbose("Type checking complete")
@@ -341,11 +344,11 @@ fun process_all(fname0: string): bool {
         val (kmods, ok) = if ok { k_normalize_all(Ast.all_modules_sorted) } else { ([], false) }
         pr_verbose("K-normalization complete")
         if ok && Options.opt.print_k0 { KPP.pp_kmods(kmods) }
-        /*pr_verbose("K-form optimization started")
+        pr_verbose("K-form optimization started")
         val (kmods, ok) = if ok { k_optimize_all(kmods) } else { ([], false) }
         if ok { pr_verbose("K-form optimization complete") }
-        if ok && options.print_k { K_pp.pprint_kmods(kmods) }
-        if !options.gen_c { ok } else {
+        if ok && Options.opt.print_k { KPP.pp_kmods(kmods) }
+        /*if !options.gen_c { ok } else {
             val (cmods, ok) = if ok { k2c_all(kmods) } else { ([], false) }
             val (cmods, builddir, ok) = if ok { emit_c_files(fname0, cmods) } else { (cmods, ".", ok) }
             val ok = if ok && (options.make_app || options.run_app) { run_compiler(cmods, builddir) } else { ok }

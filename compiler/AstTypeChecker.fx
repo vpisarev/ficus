@@ -55,7 +55,7 @@ fun print_env(msg: string, env: env_t, loc: loc_t) {
     println(f"{msg}. env at {loc} [")
     env.app(fun (k: id_t, entries: env_entry_t list)
     {
-        println(f"   {id2str(k)}:")
+        println(f"   {k}:")
         for e <- entries {
             | EnvId(n) =>
                 val templ_inst =
@@ -73,7 +73,7 @@ fun print_env(msg: string, env: env_t, loc: loc_t) {
                     | _ => TypVar(ref None)
                     }
                     val sep = if i == 0 { "      id: " } else if i == 1 { " => "} else { ", " }
-                    print(f"{sep}{id2str(ni)}: ")
+                    print(f"{sep}{ni}: ")
                     pprint_typ_x(t, loc)
                 }
                 println()
@@ -448,7 +448,7 @@ fun check_for_duplicate_typ(key: id_t, sc: scope_t list, loc: loc_t) =
         | IdTyp _ | IdVariant _ | IdInterface _ =>
             if get_scope(i).hd() == sc.hd() {
                 throw compile_err( loc,
-                    f"the type {pp_id2str(key)} is re-declared in the same scope; the previous declaration is here {get_idinfo_loc(i)}")
+                    f"the type {pp(key)} is re-declared in the same scope; the previous declaration is here {get_idinfo_loc(i)}")
             }
         | _ => {}
     }
@@ -457,7 +457,7 @@ fun check_for_rec_field_duplicates(rfnames: id_t list, loc: loc_t): void =
     for ni@i <- rfnames {
         for nj@j <- rfnames {
             if i > j && ni == nj {
-                throw compile_err(loc, f"duplicate record field '{id2str(ni)}'")
+                throw compile_err(loc, f"duplicate record field '{ni}'")
             }
         }
     }
@@ -468,7 +468,7 @@ fun finalize_record_typ(t: typ_t, loc: loc_t): typ_t {
     | TypRecord((ref (relems, _)) as r) =>
         for (n, t, v_opt) <- relems {
             match v_opt {
-            | Some(v) => unify(t, get_lit_typ(v), loc, f"type of the field '{pp_id2str(n)}' and its initializer do not match")
+            | Some(v) => unify(t, get_lit_typ(v), loc, f"type of the field '{pp(n)}' and its initializer do not match")
             | _ => {}
             }
         }
@@ -523,7 +523,7 @@ fun get_record_elems(vn_opt: id_t?, t: typ_t, proto_mode: bool, loc: loc_t): (id
             when dvar_flags.var_flag_record =>
             check_and_norm_tyargs(new_tyargs, dvar_templ_args, dvar_loc, loc)
             if input_vn != noid && input_vn != get_orig_id(vn0) {
-                throw compile_err(loc, f"mismatch in the record name: given '{pp_id2str(input_vn)}', expected '{pp_id2str(vn0)}'")
+                throw compile_err(loc, f"mismatch in the record name: given '{pp(input_vn)}', expected '{pp(vn0)}'")
             }
             (noid, relems)
         | IdVariant (ref {dvar_name, dvar_templ_args, dvar_cases, dvar_ctors, dvar_loc}) =>
@@ -536,13 +536,13 @@ fun get_record_elems(vn_opt: id_t?, t: typ_t, proto_mode: bool, loc: loc_t): (id
             | Some(((_, TypRecord(ref (relems, true))), ctor)) => (ctor, relems)
             | _ =>
                 val msg = if input_vn == noid {
-                        f"variant '{pp_id2str(dvar_name)}' is not a record"
+                        f"variant '{pp(dvar_name)}' is not a record"
                     } else {
-                        f"'{pp_id2str(input_vn)}' is not found in '{pp_id2str(dvar_name)}'"
+                        f"'{pp(input_vn)}' is not found in '{pp(dvar_name)}'"
                     }
                 throw compile_err(loc, msg)
             }
-        | _ => throw compile_err(loc, f"cannot find a proper record constructor in type '{id2str(n)}'")
+        | _ => throw compile_err(loc, f"cannot find a proper record constructor in type '{n}'")
         }
     | _ => throw compile_err(loc, "attempt to treat non-record and non-variant as a record")
     }
@@ -563,10 +563,10 @@ fun is_real_typ(t: typ_t) {
     !have_typ_vars
 }
 
-fun report_not_found(n: id_t, loc: loc_t) = compile_err(loc, f"the appropriate match for '{pp_id2str(n)}' is not found")
+fun report_not_found(n: id_t, loc: loc_t) = compile_err(loc, f"the appropriate match for '{pp(n)}' is not found")
 
 fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list, loc: loc_t) {
-    val nstr = pp_id2str(n)
+    val nstr = pp(n)
     val strs = [: for e <- possible_matches {
             val n = match e {
                 | EnvId(n) => n
@@ -619,7 +619,7 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list, loc: loc_t, p
             | EnvId m :: _ =>
                 match id_info(m, loc) {
                 | IdModule (ref {dm_name, dm_env}) =>
-                    val env = if curr_module(sc) == dm_name {env0} else {dm_env}
+                    val env = if curr_module(sc, loc) == dm_name {env0} else {dm_env}
                     find_first(get_id(n_path[dot_pos+1:]), env, env0, sc, loc, pred)
                 | _ => None
                 }
@@ -633,7 +633,7 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list, loc: loc_t, p
     val e_all = if e_all.empty() && is_unique_id(n) { EnvId(n) :: [] } else { e_all }
     if !e_all.empty() { find_next_(e_all) }
     else {
-        val n_path = pp_id2str(n)
+        val n_path = pp(n)
         search_path(n_path, n_path.length()-1, env, loc)
     }
 }
@@ -648,7 +648,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
             match id_info(i, loc) {
             | IdDVal ({dv_typ}) =>
                 unify(dv_typ, t, loc,
-                    f"incorrect type of value '{pp_id2str(n)}': expected='{typ2str(t)}', actual='{typ2str(dv_typ)}'")
+                    f"incorrect type of value '{pp(n)}': expected='{typ2str(t)}', actual='{typ2str(dv_typ)}'")
                 Some((i, t))
             | IdFun(df) =>
                 val {df_name, df_templ_args, df_typ, df_flags, df_templ_inst, df_env, df_scope} = *df
@@ -681,7 +681,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
                             'instantiate_fun' for constructors, because they all will be
                             instantiated from check_typ => instantiate_variant => register_typ_constructor. */
                         val return_orig =
-                            if !is_fun_ctor(df_flags) {false}
+                            if !is_constructor(df_flags) {false}
                             else {
                                 match ftyp {
                                 | TypFun(_, rt) =>
@@ -696,7 +696,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
                                 | IdFun (ref {df_typ=inst_typ}) =>
                                     maybe_unify(inst_typ, t, loc, true)
                                 | _ => throw compile_err(loc,
-                                    f"invalid (non-function) instance {id2str(inst)} of template function {pp_id2str(df_name)}")
+                                    f"invalid (non-function) instance {inst} of template function {pp(df_name)}")
                                 }})
                             match inst_name_opt {
                             | Some(inst_name) => Some((inst_name, t))
@@ -738,7 +738,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
 fun try_autogen_symbols(n: id_t, t: typ_t, env: env_t, sc:
                         scope_t list, loc: loc_t): (id_t, typ_t)?
 {
-    val nstr = id2str(n)
+    val nstr = string(n)
     match (nstr, deref_typ_rec(t)) {
     | ("__eq__", TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool))
         when n1 == n2 && (match id_info(n1, loc) { | IdVariant _ => true | _ => false}) =>
@@ -764,7 +764,7 @@ fun check_for_duplicate_fun(ftyp: typ_t, env: env_t, sc: scope_t list, loc: loc_
                 val (t, _) = preprocess_templ_typ(df_templ_args, df_typ, env, sc, loc)
                 if maybe_unify(t, ftyp, loc, false) && df_templ_args.empty() {
                     throw compile_err( loc,
-                        f"the symbol {pp_id2str(df_name)} is re-declared in the same scope; the previous declaration is here: {df_loc}")
+                        f"the symbol {pp(df_name)} is re-declared in the same scope; the previous declaration is here: {df_loc}")
                 }
             }
         | IdExn (ref {dexn_name, dexn_typ, dexn_scope, dexn_loc}) =>
@@ -772,7 +772,7 @@ fun check_for_duplicate_fun(ftyp: typ_t, env: env_t, sc: scope_t list, loc: loc_
                 val t = typ2constr(dexn_typ, TypExn, dexn_loc)
                 if maybe_unify(t, ftyp, loc, false) {
                     throw compile_err(loc,
-                        f"the symbol '{pp_id2str(dexn_name)}' is re-declared in the same scope; the previous declaration is here {dexn_loc}")
+                        f"the symbol '{pp(dexn_name)}' is re-declared in the same scope; the previous declaration is here {dexn_loc}")
                 }
             }
         | _ => {}
@@ -851,7 +851,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | _ => throw compile_err(eloc, "for over tuple: invalid result of check_pat result (id is expected)")
             }
             (tl.length(), (p, tup_e), [: def_e :], 1, env, idset)
-        | (false, _, relems) when relems != [] =>
+        | (false, _, relems) when !relems.empty() =>
             val rec_pat = PatIdent(gen_temp_id("rec"), eloc)
             val (rec_pat, env, idset, _, _) = check_pat(rec_pat, etyp, env, idset,
                                                         empty_idset, sc, false, true, false)
@@ -944,7 +944,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val (pvj, env, idset, _, _) = check_pat(pvj, tj, env, idset, empty_idset,
                                                         sc, false, true, false)
                 val def_pvj = DefVal(pvj, ej, default_tempval_flags(), locj)
-                val def_pnj = DefVal(pnj, ExpLit(LitString(pp_id2str(nj)), (TypString, locj)), default_tempval_flags(), locj)
+                val def_pnj = DefVal(pnj, ExpLit(LitString(pp(nj)), (TypString, locj)), default_tempval_flags(), locj)
                 (def_pvj :: def_pnj :: code, env, idset)
             }
         }
@@ -968,7 +968,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val kw = if !isbr { "continue" } else if expect_fold_loop { "fold's break" } else { "break" }
         fun check_inside_(sc: scope_t list) {
             | ScTry _ :: _ => throw compile_err(eloc, f"cannot use '{kw}' inside 'try-catch' block")
-            | ScFun _ :: _ | ScModule _ :: _ | ScGlobal :: _ | ScClass _ :: _ | ScInterface _ :: _ | [] =>
+            | ScFun _ :: _ | ScModule _ :: _ | ScClass _ :: _ | ScInterface _ :: _ | [] =>
                 throw compile_err(eloc, f"cannot use '{kw}' outside of loop")
             | ScLoop(nested, _) :: _ =>
                 if expect_fold_loop {
@@ -1050,10 +1050,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     /* if we try to access the currently parsed module,
                        we use the current environment instead of dm_env,
                        since it was not updated yet */
-                    val env = if curr_module(sc) == n1 {env} else {dm->dm_env}
+                    val env = if curr_module(sc, eloc) == n1 {env} else {dm->dm_env}
                     lookup_id(n2, etyp, env, sc, eloc)
                 } else {
-                    val n1n2 = pp_id2str(n1) + "." + id2str(n2)
+                    val n1n2 = pp(n1) + "." + string(n2)
                     lookup_id(get_id(n1n2), etyp, env, sc, eloc)
                 }
             ExpIdent(new_n2, (t, eloc))
@@ -1081,7 +1081,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | Some((_, t, _)) =>
                 unify(etyp, t, eloc, "incorrect type of the record element")
                 ExpMem(new_e1, e2, ctx)
-            | _ => throw compile_err(eloc, f"the record element {pp_id2str(n2)} is not found")
+            | _ => throw compile_err(eloc, f"the record element {pp(n2)} is not found")
             }
         | _ => throw compile_err(eloc, "unsupported element access operation")
         }
@@ -1299,7 +1299,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 match a {
                 // lambda function case
                 | ExpSeq(DefFun(ref {df_name, df_loc}) as exp_df :: ExpIdent(IdTemp(_, _) as f, _) :: [], _)
-                    when pp_id2str(f).startswith("lambda") && f == df_name =>
+                    when pp(f).startswith("lambda") && f == df_name =>
                     val df = match dup_exp(exp_df) {
                         | DefFun df => df
                         | _ => throw compile_err(df_loc, "after duplication function is not a function anymore!")
@@ -1319,7 +1319,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                                     | EnvId(i) =>
                                         match id_info(i, eloc) {
                                         | IdFun (ref {df_templ_args}) =>
-                                            if df_templ_args != [] {100} else {1}
+                                            if !df_templ_args.empty() {100} else {1}
                                         | _ => 0 // do not found values & exceptions,
                                                 // neither of them can be overloaded
                                         }
@@ -1378,7 +1378,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                             | TypChar => "Char"
                             | TypApp(_, tn) =>
                                 match id_info(tn, eloc) {
-                                | IdVariant (ref {dvar_flags={var_flag_object=m}}) when m != noid => pp_id2str(m)
+                                | IdVariant (ref {dvar_flags={var_flag_object=m}}) when m != noid => pp(m)
                                 | _ => ""
                                 }
                             | _ => ""
@@ -1399,7 +1399,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             (exp_t, border_t, interpolate_t) =
             match arr {
             | ExpMem(arr_, ExpIdent(i, _), _) =>
-                val istr = id2str(i)
+                val istr = string(i)
                 val new_border = match istr {
                     | "clip" => BorderClip
                     | "zero" => BorderZero
@@ -1758,12 +1758,12 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 match relems.find_opt(fun ((nj, _, _): rec_elem_t) {ni == nj}) {
                 | Some ((_, ti, _)) =>
                     unify(ti, ei_typ, ei_loc,
-                        f"invalid type of the initializer of record field '{pp_id2str(ni)}'")
+                        f"invalid type of the initializer of record field '{pp(ni)}'")
                     val new_ei = check_exp(ei, env, sc)
                     (ni, new_ei)
                 | _ =>
                     throw compile_err(ei_loc,
-                        f"there is no record field '{pp_id2str(ni)}' in the updated record")
+                        f"there is no record field '{pp(ni)}' in the updated record")
                 }
             } :]
         ExpUpdateRecord(new_r_e, new_r_initializers, ctx)
@@ -1906,7 +1906,7 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
 
     // create the nested block scope if requested
     val sc = if create_sc { new_block_scope() :: sc } else { sc }
-    val is_global_scope = match sc { | ScModule _ :: _ | ScGlobal :: _ => true | _ => false }
+    val is_glob_scope = is_global_scope(sc)
     // process directives (currently they are just import directives)
     val env = check_directives(eseq, env, sc)
     // process type declarations: use 2-pass procedure
@@ -1932,12 +1932,12 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
             match e {
             | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _)
             | DefTyp _ | DefVariant _ | DefInterface _ | DefExn _ =>
-                if idx == nexps - 1 && !is_global_scope {
+                if idx == nexps - 1 && !is_glob_scope {
                     throw compile_err( get_exp_loc(e),
                     "definition or directive occurs in the end of block; put some expression after it" ) }
                 (e :: eseq, env)
             | DefVal(p, e, flags, loc) =>
-                if idx == nexps - 1 && !is_global_scope {
+                if idx == nexps - 1 && !is_glob_scope {
                     throw compile_err( loc,
                     "value definition occurs in the end of block; put some expression after it" ) }
                 val is_mutable = flags.val_flag_mutable
@@ -1970,7 +1970,7 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                     }
                 }
             | DefFun(df) =>
-                if idx == nexps - 1 && !is_global_scope {
+                if idx == nexps - 1 && !is_glob_scope {
                     throw compile_err( df->df_loc,
                     "function definition occurs in the end of block; put some expression after it" ) }
                 val df =
@@ -2028,13 +2028,13 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
                     val minfo = get_module(m)
                     val mname = minfo->dm_name
                     if mname == n {
-                        val astr = pp_id2str(alias)
-                        val mstr = pp_id2str(mname)
+                        val astr = pp(alias)
+                        val mstr = pp(mname)
                         if allow_duplicate_import { true }
                         else if astr == mstr { throw compile_err(loc, f"duplicate import of {mstr}") }
                         else { throw compile_err(loc, f"duplicate import of {mstr} as {astr}") }
                     } else {
-                        throw compile_err(loc, f"another module {pp_id2str(mname)} has been already imported as {pp_id2str(alias)}")
+                        throw compile_err(loc, f"another module {pp(mname)} has been already imported as {pp(alias)}")
                     }
                 } catch { | Fail _ => false }
             | EnvTyp _ => false
@@ -2062,7 +2062,7 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
             // add the imported module id to the env
             val env = add_id_to_env(alias, m, env)
             val menv = get_module(m)->dm_env
-            val alias_path = pp_id2str(alias)
+            val alias_path = pp(alias)
             // in addition to the imported 'prefix1.prefix2....prefixn.module' we
             // also add "fake" 'prefix1', 'prefix1.prefix2' etc. modules to the environment
             fun add_parents(alias_path: string, env: env_t): env_t {
@@ -2102,13 +2102,13 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
             val env =
             try {
                 val menv = get_module(m)->dm_env
-                val keys = if implist != [] { implist }
+                val keys = if !implist.empty() { implist }
                     else { menv.foldl(fun (k: id_t, _: env_entry_t list, l: id_t list) { k :: l }, ([]: id_t list)) }
                 val fold env = env for k <- keys {
                     try {
                         val entries = find_all(k, menv)
                         if entries.empty() {
-                            throw compile_err(eloc, f"no symbol {pp_id2str(k)} found in {pp_id2str(m)}")
+                            throw compile_err(eloc, f"no symbol {pp(k)} found in {pp(m)}")
                         }
                         import_entries(env, m, k, entries, eloc)
                     } catch { | CompileError(_, _) as err => push_compile_err(err); env }
@@ -2203,7 +2203,7 @@ fun check_types(eseq: exp_t list, env: env_t, sc: scope_t list) =
                 val {df_name, df_templ_args, df_typ} =
                     match id_info(ctor_name, dvar_loc) {
                     | IdFun(df) => *df
-                    | _ => throw compile_err(dvar_loc, f"internal error: constructor {id2str(ctor_name)} is not a function")
+                    | _ => throw compile_err(dvar_loc, f"internal error: constructor {ctor_name} is not a function")
                     }
                 val (t, _) = preprocess_templ_typ(df_templ_args, df_typ, env, sc, dvar_loc)
                 add_id_to_env_check(n, ctor_name, env, check_for_duplicate_fun(t, env, sc, dvar_loc))
@@ -2291,7 +2291,7 @@ fun check_defexn(de: defexn_t ref, env: env_t, sc: scope_t list) {
     *de = defexn_t {dexn_name=n, dexn_typ=t, dexn_scope=sc, dexn_loc=loc}
     set_id_entry(n, IdExn(de))
     match sc {
-    | (ScModule(m) :: _) when pp_id2str(m) == "Builtins" =>
+    | (ScModule(m) :: _) when pp(m) == "Builtins" =>
         // add both forward and inverse mapping
         builtin_exceptions = builtin_exceptions.add(n0, n)
         builtin_exceptions = builtin_exceptions.add(n, n0)
@@ -2337,7 +2337,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                                            fun (entry: env_entry_t): typ_t? {
                 | EnvTyp(t) =>
                     if ty_args.empty() { Some(t) }
-                    else { throw compile_err(loc, f"a concrete type '{pp_id2str(n)}' cannot be further instantiated") }
+                    else { throw compile_err(loc, f"a concrete type '{pp(n)}' cannot be further instantiated") }
                 | EnvId(IdName _) => None
                 | EnvId(i) =>
                     match id_info(i, loc) {
@@ -2347,7 +2347,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                         val {dt_name, dt_templ_args, dt_typ, dt_scope, dt_finalized, dt_loc} = *dt
                         if !dt_finalized {
                             throw compile_err( loc,
-                                f"later declared non-variant type '{pp_id2str(dt_name)}' is referenced; try to reorder the type declarations")
+                                f"later declared non-variant type '{pp(dt_name)}' is referenced; try to reorder the type declarations")
                         }
                         if dt_name == n && ty_args.empty() { Some(t) }
                         else {
@@ -2368,7 +2368,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                                             val {dvar_alias=dvar_inst_alias} = *dvar_inst
                                             maybe_unify(t1, dvar_inst_alias, dvar_loc, true)
                                         | _ =>
-                                            throw compile_err(loc, f"invalid type of variant instance {id2str(i)} (must be also a variant)")
+                                            throw compile_err(loc, f"invalid type of variant instance {i} (must be also a variant)")
                                         }
                                     }) {
                                 | Some _ => t1
@@ -2383,7 +2383,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                 })
             match (r_opt_typ_vars, ty_args, found_typ_opt) {
             | (_, _, Some(new_t)) => new_t
-            | (Some(r_typ_vars), [], _) when id2str(n).startswith("'") =>
+            | (Some(r_typ_vars), [], _) when string(n).startswith("'") =>
                 *r_typ_vars = r_typ_vars->add(n)
                 r_env = add_typ_to_env(n, t, r_env)
                 t
@@ -2423,7 +2423,7 @@ fun check_typ(t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): typ_t =
 fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                     inst_sc: scope_t list, inst_loc: loc_t, instantiate: bool): deffun_t ref {
     val {df_name} = *templ_df
-    if instantiate { all_compile_err_ctx = f"when instantiating '{pp_id2str(df_name)}' at {inst_loc}" :: all_compile_err_ctx }
+    if instantiate { all_compile_err_ctx = f"when instantiating '{pp(df_name)}' at {inst_loc}" :: all_compile_err_ctx }
     try {
         val inst_df = instantiate_fun_(templ_df, inst_ftyp, inst_env0, inst_sc, inst_loc, instantiate)
         inst_df
@@ -2435,10 +2435,10 @@ fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
 fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                      inst_sc: scope_t list, inst_loc: loc_t, instantiate: bool): deffun_t ref {
     val {df_name, df_templ_args, df_args, df_body, df_flags, df_scope, df_loc, df_templ_inst} = *templ_df
-    val is_constr = is_fun_ctor(df_flags)
+    val is_constr = is_constructor(df_flags)
     if is_constr {
         throw compile_err( inst_loc,
-            f"internal error: attempt to instantiate constructor '{id2str(df_name)}'. it should be instantiated in a different way. try to use explicit type specification somewhere")
+            f"internal error: attempt to instantiate constructor '{df_name}'. it should be instantiated in a different way. try to use explicit type specification somewhere")
     }
     val nargs = df_args.length()
     val inst_env = inst_env0
@@ -2462,7 +2462,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                 }
             }
     val inst_name = if instantiate { dup_id(df_name) } else { df_name }
-    //println(f"instantiation of function {id2str(inst_name)} with type '{typ2str(inst_ftyp)}'")
+    //println(f"instantiation of function {inst_name} with type '{typ2str(inst_ftyp)}'")
     val fun_sc = ScFun(inst_name) :: inst_sc
     val fold (df_inst_args, inst_env, tmp_idset) =
         ([], inst_env, empty_idset) for df_arg <- df_args, arg_typ <- arg_typs {
@@ -2509,7 +2509,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                         inst_env: env_t, fun_sc: scope_t list, inst_loc: loc_t) {
     val ftyp = deref_typ_rec(inst_ftyp)
     val body_loc = get_exp_loc(inst_body)
-    match pp_id2str(inst_name) {
+    match pp(inst_name) {
     | "__eq_variants__" =>
         match (ftyp, inst_args) {
         | (TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool),
@@ -2529,8 +2529,8 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                Some() for i2_opt will still have 1 parameter.
             */
             val argtyp = TypApp([], n1)
-            val astr = pp_id2str(a)
-            val bstr = pp_id2str(b)
+            val astr = pp(a)
+            val bstr = pp(b)
             val (var_ctors, proto_cases) =
             match id_info(n1, inst_loc) {
             | IdVariant (ref {dvar_ctors, dvar_alias=TypApp(_, proto_n), dvar_loc}) =>
@@ -2668,8 +2668,8 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref, env: env_t,
                 | (TypTuple(telems), _) when nrealargs == nargs => telems
                 | _ =>
                     throw compile_err( loc,
-                        f"cannot instantiate case '{id2str(ctor_name)}' of variant " +
-                        f"'{id2str(dvar_name)}' defined at '{dvar_loc}': " +
+                        f"cannot instantiate case '{ctor_name}' of variant " +
+                        f"'{dvar_name}' defined at '{dvar_loc}': " +
                         f"wrong number of actual parameters {nrealargs} (vs {nargs} expected)" )
                 }
             val (inst_cname, _) = register_typ_constructor(ctor_name, CtorVariant(n),
@@ -2678,7 +2678,7 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref, env: env_t,
             if instantiate {
                 match id_info(ctor_name, loc) {
                 | IdFun(c_def) => *c_def->df_templ_inst = inst_cname :: *c_def->df_templ_inst
-                | _ => throw compile_err(loc, f"invalid constructor {id2str(ctor_name)} of variant {id2str(dvar_name)}")
+                | _ => throw compile_err(loc, f"invalid constructor {ctor_name} of variant {dvar_name}")
                 }
             }
             ((n, t), inst_cname)
@@ -2709,7 +2709,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
     fun process_id(i, t, loc: loc_t) {
         val i0 = get_orig_id(i)
         if r_idset.mem(i0) {
-            throw compile_err(loc, f"duplicate identifier '{id2str(i0)}' in the pattern")
+            throw compile_err(loc, f"duplicate identifier '{i0}' in the pattern")
         } else {
             r_idset = r_idset.add(i0)
         }
@@ -2734,7 +2734,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
             unify(t, get_lit_typ(l), loc, "the literal of unexpected type")
             (p, match l { | LitNil => false | _ => true })
         | PatIdent(i, loc) =>
-            if pp_id2str(i) == "_" { throw compile_err(loc, "'_' occured in PatIdent()") }
+            if pp(i) == "_" { throw compile_err(loc, "'_' occured in PatIdent()") }
             (PatIdent(process_id(i, t, loc), loc), false)
         | PatTuple(pl, loc) =>
             val tl = [: for p <- pl { make_new_typ() } :]
@@ -2779,13 +2779,13 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                         val ni = match dvar_cases.assoc_opt(bare_v) {
                             | Some(TypTuple(tl)) => tl.length()
                             | Some(TypVoid) => throw compile_err(loc,
-                                f"a variant label '{pp_id2str(v)}' with no arguments may not be used in a formal function parameter")
+                                f"a variant label '{pp(v)}' with no arguments may not be used in a formal function parameter")
                             | Some _ => 1
-                            | _ => throw compile_err(loc, f"the variant constructor '{pp_id2str(v)}' is not found")
+                            | _ => throw compile_err(loc, f"the variant constructor '{pp(v)}' is not found")
                             }
                         if ni != pl.length() {
                             throw compile_err( loc,
-                                f"the number of variant pattern arguments does not match to the description of variant case '{pp_id2str(v)}'")
+                                f"the number of variant pattern arguments does not match to the description of variant case '{pp(v)}'")
                         }
                         (PatVariant(v, pl, loc), false)
                     }
@@ -2801,7 +2801,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                     (n, p)
                 | _ =>
                     throw compile_err( loc,
-                        f"element '{pp_id2str(n)}' is not found in the record '{pp_id2str(rn_opt.value_or(noid))}'")
+                        f"element '{pp(n)}' is not found in the record '{pp(rn_opt.value_or(noid))}'")
                 } } :]
             (PatRecord(if ctor != noid {Some(ctor)} else {None}, new_relems, loc), false)
         | PatCons(p1, p2, loc) =>
@@ -2898,7 +2898,7 @@ fun check_mod(m: id_t) {
             val new_entries = entries.filter(fun (e){
                 | EnvId(n) =>
                     val info = id_info(n, last_loc)
-                    val host_m = curr_module(get_scope(info))
+                    val host_m = curr_module(get_scope(info), get_idinfo_loc(info))
                     val is_private = get_idinfo_private_flag(info)
                     host_m == m && !is_private
                 | EnvTyp _ => false })

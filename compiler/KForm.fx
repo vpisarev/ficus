@@ -348,7 +348,7 @@ fun get_val_scope(flags: val_flags_t): scope_t list =
 
 fun get_kscope(info: kinfo_t): scope_t list
 {
-    | KNone => ScGlobal :: []
+    | KNone => []
     | KVal ({kv_flags}) => get_val_scope(kv_flags)
     | KFun (ref {kf_scope}) => kf_scope
     | KExn (ref {ke_scope}) => ke_scope
@@ -372,7 +372,7 @@ fun get_idk_loc(n: id_t, loc: loc_t): loc_t = get_kinfo_loc(kinfo_(n, loc))
 
 fun check_kinfo(info: kinfo_t, n: id_t, loc: loc_t) =
     match info {
-    | KNone => throw compile_err(loc, f"attempt to request information about uninitialized symbol '{id2str(n)}'")
+    | KNone => throw compile_err(loc, f"attempt to request information about uninitialized symbol '{n}'")
     | _ => {}
     }
 
@@ -396,10 +396,10 @@ fun get_idk_cname(n: id_t, loc: loc_t): string
 
 fun idk2str(n: id_t, loc: loc_t) =
     match n {
-    | IdName _ => id2str(n)
+    | IdName _ => string(n)
     | _ =>
         val cname = get_idk_cname(n, loc)
-        if cname == "" { id2str(n) } else { cname }
+        if cname == "" { string(n) } else { cname }
     }
 
 fun get_kf_typ(kf_args: (id_t, ktyp_t) list, kf_rt: ktyp_t): ktyp_t =
@@ -494,7 +494,7 @@ fun get_kval(n: id_t, loc: loc_t): kdefval_t
     | KVal(kv) => kv
     | _ =>
         val loc = if loc != noloc { loc } else { get_kinfo_loc(info) }
-        throw compile_err(loc, f"symbol '{id2str(n)}' is expected to be KVal ...")
+        throw compile_err(loc, f"symbol '{n}' is expected to be KVal ...")
     }
 }
 
@@ -994,10 +994,10 @@ fun get_closure_freevars(f: id_t, loc: loc_t): ((id_t, ktyp_t) list, id_t list) 
         } else {
             match kinfo_(kci_fcv_t, loc) {
             | KClosureVars (ref {kcv_freevars, kcv_orig_freevars}) => (kcv_freevars, kcv_orig_freevars)
-            | _ => throw compile_err(loc, f"invalid description of a closure data '{id2str(kci_fcv_t)}' (should KClosureVars ...)")
+            | _ => throw compile_err(loc, f"invalid description of a closure data '{kci_fcv_t}' (should KClosureVars ...)")
             }
         }
-    | _ => throw compile_err(loc, f"get_closure_freevars argument '{id2str(f)}' is not a function")
+    | _ => throw compile_err(loc, f"get_closure_freevars argument '{f}' is not a function")
     }
 
 fun make_empty_kf_closure(): kdefclosureinfo_t =
@@ -1014,7 +1014,7 @@ fun deref_ktyp(kt: ktyp_t, loc: loc_t): ktyp_t =
         match kinfo_(n, loc) {
         | KTyp (ref {kt_typ, kt_loc}) => deref_ktyp(kt_typ, kt_loc)
         | KVariant _ => kt
-        | _ => throw compile_err(loc, f"named 'type' '{id2str(n)}' does not represent a type")
+        | _ => throw compile_err(loc, f"named 'type' '{n}' does not represent a type")
         }
     | _ => kt
     }
