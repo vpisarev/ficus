@@ -117,7 +117,7 @@ and pprint_pat_ p parens =
             | p :: [] -> (p, true)
             | _ -> (PTuple(pl), false)
             in
-        if need_parens then (pstr "("; pcut()) else pstr " ";
+        if need_parens then (pstr "("; pcut()) else if pl = [] then pspace() else ();
         if pl = [] then () else pprint_pat_ p false;
         if need_parens then (pcut(); pstr ")") else ();
         cbox()
@@ -241,11 +241,10 @@ and pprint_ocexp_ e pr : unit =
             if is_block then ovbox_indent() else ohvbox_indent();
             ohbox(); pstr ("fun " ^ ocf_name); pcut();
             pprint_pat_ (PTuple ocf_args) false;
-            pspace();
-            if is_block then
-                pprint_block ocf_body
+            if is_block || (match ocf_body with ELit(LUnit) -> true | _ -> false) then
+                (pspace(); pprint_block ocf_body)
             else
-                (pstr "="; cbox(); pspace(); pprint_ocexp_ ocf_body 0; cbox());
+                (pstr " ="; cbox(); pspace(); pprint_ocexp_ ocf_body 0; cbox());
             pbreak()) fdefs
     | ELambda(args, body) ->
         ovbox_indent(); ohbox(); pstr "fun "; pprint_pat_ (PTuple args) false;

@@ -77,6 +77,20 @@ match find_opt(m, xk)
     | _ => def_xd
 }
 
+fun mem(m: ('k, 'd) Map.t, x: 'k): bool
+{
+    fun mem_(t: ('k, 'd) tree_t, xk: 'k, cmp: 'k cmp_t) =
+    match t {
+        | Node(_, l, yk, yd, r) =>
+            val c = cmp(xk, yk)
+            if c < 0 { mem_(l, xk, cmp) }
+            else if c > 0 { mem_(r, xk, cmp) }
+            else { true }
+        | _ => false
+    }
+    mem_(m.root, x, m.cmp)
+}
+
 @private fun balance_left(l: ('k, 'd) tree_t, xk: 'k, xd: 'd, r: ('k, 'd) tree_t)
 {
     | (Node(Red, Node(Red, a, xk, xd, b), yk, yd, c), zk, zd, d) =>

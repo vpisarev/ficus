@@ -159,9 +159,6 @@ fun reset_purity_flags(code: kexp_t list): void {
 
 fun remove_unused(kmods: kmodule_t list, initial: bool)
 {
-    type idmap_t = (id_t, id_t) Map.t
-    val empty_idmap : idmap_t = Map.empty(cmp_id)
-
     for {km_top} <- kmods {
         reset_purity_flags(km_top)
     }

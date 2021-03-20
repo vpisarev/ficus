@@ -37,20 +37,20 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
 @pure @nothrow fun endswith(s: string, suffix: char): bool = @ccode
 { return s->length > 0 && s->data[s->length-1] == suffix; }
 
-@pure @nothrow fun find(s: string, part: string): int = @ccode
+@pure @nothrow fun find(s: string, part: string, from_pos: int): int = @ccode
 {
     int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
     if (sz2 == 0)
         return 0;
-    if (l <= 0)
-        return -1;
-    for( i = 0; i < l; i++ ) {
+    for( i = (from_pos >= 0 ? from_pos : 0); i < l; i++ ) {
         if( s->data[i] == part->data[0] &&
             memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0 )
             return i;
     }
     return -1;
 }
+
+fun find(s: string, part: string): int = find(s, part, 0)
 
 @pure @nothrow fun find(s: string, c: char): int = @ccode
 {
@@ -60,7 +60,7 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
     return -1;
 }
 
-@pure @nothrow fun find(s: string, from_pos: int, c: char): int = @ccode
+@pure @nothrow fun find(s: string, c: char, from_pos: int): int = @ccode
 {
     int_ i, sz1 = s->length;
     for( i = (from_pos >= 0 ? from_pos : 0); i < sz1; i++ )
@@ -68,17 +68,20 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
     return -1;
 }
 
-@pure @nothrow fun rfind(s: string, part: string): int = @ccode
+@pure @nothrow fun rfind(s: string, part: string, from_pos: int): int = @ccode
 {
-    int_ sz1 = s->length, sz2 = part->length, i = sz1 - sz2;
+    int_ sz1 = s->length, sz2 = part->length;
+    int_ i = (from_pos < sz1 ? from_pos+1 : sz1) - sz2;
     if (sz2 == 0)
-        return sz1 - 1;
+        return i - 1;
     for ( ; i >= 0; i--) {
         if( memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0)
             break;
     }
     return i;
 }
+
+fun rfind(s: string, part: string): int = rfind(s, part, s.length()-1)
 
 @pure @nothrow fun rfind(s: string, c: char): int = @ccode
 {
@@ -88,7 +91,7 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
     return -1;
 }
 
-@pure @nothrow fun rfind(s: string, from_pos: int, c: char): int = @ccode
+@pure @nothrow fun rfind(s: string, c: char, from_pos: int): int = @ccode
 {
     int_ i, sz1 = s->length;
     for( i = (from_pos < sz1 ? from_pos : sz1-1); i >= 0; i-- )

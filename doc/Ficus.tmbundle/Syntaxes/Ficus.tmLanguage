@@ -5,7 +5,7 @@
 	<key>fileTypes</key>
 	<array>
 		<string>fx</string>
-		<string>fxl</string>
+		<string>fxi</string>
 	</array>
 	<key>keyEquivalent</key>
 	<string>^~S</string>
@@ -19,9 +19,27 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(as|ccode|class|from|implements|import|inline|extends|interface|nothrow|private|pure|ref|static|val|var|type|exception|when|int|int8|uint8|int16|uint16|int32|uint32|int64|uint64|half|float|double|bool|list|string|char)\b</string>
+			<string>\b(as|object|from|implements|import|extends|interface|ref|val|var|type|exception|when|int|int8|uint8|int16|uint16|int32|uint32|int64|uint64|half|float|double|bool|list|string|char)\b</string>
 			<key>name</key>
 			<string>keyword.other.fx</string>
+		</dict>
+		<dict>
+			<key>match</key>
+			<string>\b(break|catch|continue|if|do|else|fold|for|match|throw|try|with|while)\b</string>
+			<key>name</key>
+			<string>keyword.control.fx</string>
+		</dict>
+		<dict>
+			<key>match</key>
+			<string>\b(break|catch|continue|if|do|else|fold|for|match|throw|try|with|while)\b</string>
+			<key>name</key>
+			<string>keyword.control.fx</string>
+		</dict>
+		<dict>
+			<key>match</key>
+			<string>(@ccode|@data|@text|@inline|@nothrow|@parallel|@private|@pure|@unzip)\b</string>
+			<key>name</key>
+			<string>keyword.operator.fx</string>
 		</dict>
 		<dict>
 			<key>begin</key>
@@ -50,12 +68,6 @@
 					<string>$self</string>
 				</dict>
 			</array>
-		</dict>
-		<dict>
-			<key>match</key>
-			<string>\b(break|catch|continue|if|do|else|fold|for|match|parallel|throw|try|with|while)\b</string>
-			<key>name</key>
-			<string>keyword.control.fx</string>
 		</dict>
 		<dict>
 			<key>match</key>

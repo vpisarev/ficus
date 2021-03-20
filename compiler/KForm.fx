@@ -357,6 +357,8 @@ fun get_kscope(info: kinfo_t): scope_t list
     | KTyp (ref {kt_scope}) => kt_scope
 }
 
+fun get_idk_scope(n: id_t, loc: loc_t): scope_t list = get_kscope(kinfo_(n, loc))
+
 fun get_kinfo_loc(info: kinfo_t): loc_t
 {
     | KNone => noloc
@@ -399,7 +401,10 @@ fun idk2str(n: id_t, loc: loc_t) =
     | IdName _ => string(n)
     | _ =>
         val cname = get_idk_cname(n, loc)
-        if cname == "" { string(n) } else { cname }
+        if cname == "" {
+            val sc = get_idk_scope(n, loc)
+            get_qualified_name(string(n), sc)
+        } else { cname }
     }
 
 fun get_kf_typ(kf_args: (id_t, ktyp_t) list, kf_rt: ktyp_t): ktyp_t =

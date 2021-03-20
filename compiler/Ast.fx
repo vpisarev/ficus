@@ -335,9 +335,11 @@ type env_entry_t =
   (however, the type checker is very inexpensive compiler stage, even in "-O0" compile mode)
 */
 type env_t = (id_t, env_entry_t list) Map.t
+type idmap_t = (id_t, id_t) Map.t
 type idset_t = id_t Set.t
 val empty_env: env_t = Map.empty(cmp_id)
 val empty_idset: idset_t = Set.empty(cmp_id)
+val empty_idmap: idmap_t = Map.empty(cmp_id)
 
 type defval_t =
 {
@@ -470,7 +472,7 @@ var all_strhash: (string, int) Map.t = Map.empty(String.cmp)
 val all_strings = dynvec_create("")
 var all_modules: (string, id_t) Map.t = Map.empty(String.cmp)
 var all_modules_sorted: id_t list = []
-var builtin_exceptions = (Map.empty(cmp_id): (id_t, id_t) Map.t)
+var builtin_exceptions = empty_idmap
 var all_compile_errs: exn list = []
 var all_compile_err_ctx: string list = []
 var block_scope_idx = -1

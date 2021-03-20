@@ -464,7 +464,7 @@ rule tokens = parse
     | (((('0' ['x' 'X'] hexdigit+) | ('0' ['b' 'B'] ['0'-'1']+) | (['1'-'9'] digit*)) as num_) | ((['0'] octdigit*) as octnum_))
       (((['i' 'u' 'U' 'I'] digit+) | "L" | "UL") as suffix_)?
         {
-            check_ne(lexbuf); new_exp := false;
+            new_exp := false;
             let suffix = match suffix_ with Some(x) -> x | _ -> "" in
             let v =
                 try

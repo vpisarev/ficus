@@ -19,9 +19,9 @@ val default_indent = 3
 @private fun pp_id_(pp: PP.t, n: id_t, loc: loc_t) = pp.str(idk2str(n, loc))
 
 @private fun get_ktyp_pr(t: ktyp_t): int {
-    | KTypInt  | KTypCInt  | KTypSInt _ | KTypUInt _ | KTypFloat _
-    | KTypString  | KTypChar  | KTypBool  | KTypVoid  | KTypExn
-    | KTypErr  | KTypCPointer | KTypModule  | KTypName _
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+    | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
+    | KTypErr | KTypCPointer | KTypModule | KTypName _
     | KTypTuple _ | KTypRecord _ => 3
     | KTypList _ | KTypRef _ | KTypArray _ => 2
     | KTypFun _ => 1

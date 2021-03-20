@@ -339,7 +339,7 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
             pieces_list = RPString(rewrite[pos:]) :: pieces_list
             fold filtered = [] for piece <- pieces_list
             {
-                val ok = match piece { | RPString simple_piece => String.length(simple_piece)!=0  | RPInt sub_num => true}
+                val ok = match piece { | RPString simple_piece => simple_piece.length()!=0 | RPInt sub_num => true}
                 if (ok) {piece::filtered} else {filtered}
             }
         }
@@ -911,7 +911,7 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
             val (_,newend) = matches[0]
             val npos = if(newend == lastend) {newpos+1} else {newpos}
             val newlst = if (newend == lastend) { reslst } else { matches :: reslst }
-            if(npos < String.length(string_to_match))
+            if(npos < string_to_match.length())
             {
                 result_as_list(npos, newend, newlst)
             }

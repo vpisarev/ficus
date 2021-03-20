@@ -155,8 +155,6 @@ let rec mangle_ktyp t mangle_map loc =
                 else
                     List.fold_left (fun result t -> mangle_ktyp_ t result) (nstr :: "T" :: result) elems
             | _ -> raise_compile_err loc "the tuple has 0 elements")
-        (* treat the closure type just like normal function type, because after the lambda
-            lifting all the 'function pointers' are 'closures' *)
         | KTypRecord(rn, _) -> mangle_typname_ rn result
         | KTypName(n) -> mangle_typname_ n result
         | KTypArray(dims, t) ->
@@ -307,7 +305,7 @@ let mangle_all kmods =
             kt := { !kt with kt_typ=ktyp };
             e
         | KDefTyp _ ->
-            (* since KDefGenTyp's are formed during this step, we should not get here.
+            (* since KDefTyp's are formed during this step, we should not get here.
                If we are here, retain the definition as-is *)
             e
         | KDefClosureVars kcv ->

@@ -217,9 +217,9 @@ fun test_run_all(opts: test_options_t)
     if filter.find("*") >= 0 {
         throw TestFailure("test filter with '*' inside is currently unsupported")
     }
-    val ts_scale = 1000./Sys.getTickFrequency()
+    val ts_scale = 1000./Sys.tick_frequency()
     var nexecuted = 0
-    val ts0_start = Sys.getTickCount()
+    val ts0_start = Sys.tick_count()
     val fold failed = ([]: string list) for t <- g_test_all_registered.rev() {
         val name = t.name
         val matches =
@@ -233,7 +233,7 @@ fun test_run_all(opts: test_options_t)
             nexecuted += 1
             println(f"\33[32;1m[ RUN      ]\33[0m {name}")
             g_test_state = test_init_state_before_test()
-            val ts_start = Sys.getTickCount()
+            val ts_start = Sys.tick_count()
             try {
                 t.f()
             } catch {
@@ -243,7 +243,7 @@ fun test_run_all(opts: test_options_t)
                 println(f"Exception {e} occured.")
                 g_test_state.currstatus = false
             }
-            val ts_end = Sys.getTickCount()
+            val ts_end = Sys.tick_count()
             val ok = g_test_state.currstatus
             val ok_fail = if ok {"\33[32;1m[       OK ]\33[0m"}
                           else {"\33[31;1m[     FAIL ]\33[0m"}
@@ -252,7 +252,7 @@ fun test_run_all(opts: test_options_t)
             if ok {failed} else {name :: failed}
         }
     }
-    val ts0_end = Sys.getTickCount()
+    val ts0_end = Sys.tick_count()
     val ts0_diff_str = test_duration2str((ts0_end - ts0_start)*ts_scale)
     val nfailed = failed.length()
     val npassed = nexecuted - nfailed

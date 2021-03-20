@@ -78,7 +78,7 @@ fun appname() = List.hd(argv)
 fun arguments() = List.tl(argv)
 
 @pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
-@pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_freq() }
+@pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }
 
 fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): double
 {

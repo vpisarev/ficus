@@ -246,13 +246,13 @@ match t
         (Empty, false, 0)
 }
 
-fun remove(s: 't Set.t, x: 't)
+fun remove(s: 't Set.t, x: 't): 't Set.t
 {
     val (new_root, _, dsz) = remove_(s.root, x, s.cmp)
     t { root=new_root, size=s.size+dsz, cmp=s.cmp }
 }
 
-fun foldl(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r)
+fun foldl(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r): 'r
 {
     fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -262,7 +262,7 @@ fun foldl(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r)
     update_(s.root, f, res0)
 }
 
-fun foldr(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r)
+fun foldr(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r): 'r
 {
     fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -272,7 +272,27 @@ fun foldr(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r)
     update_(s.root, f, res0)
 }
 
-fun app(s: 't Set.t, f: 't -> void)
+fun all(s: 't Set.t, f: 't -> bool): bool
+{
+    fun all_(t: 't tree_t, f: 't -> bool): bool =
+    match t {
+        | Node(_, l, x, r) => f(x) && all_(l, f) && all_(r, f)
+        | _ => true
+    }
+    all_(s.root, f)
+}
+
+fun exists(s: 't Set.t, f: 't -> bool): bool
+{
+    fun exists_(t: 't tree_t, f: 't -> bool): bool =
+    match t {
+        | Node(_, l, x, r) => f(x) || exists_(l, f) || exists_(r, f)
+        | _ => false
+    }
+    exists_(s.root, f)
+}
+
+fun app(s: 't Set.t, f: 't -> void): void
 {
     fun app_(t: 't tree_t, f: 't -> void): void =
     match t {
@@ -293,10 +313,10 @@ fun map(s: 't Set.t, f: 't -> 'r): 'res list {
     update_list_(s.root, f, [])
 }
 
-fun add_list(s: 't Set.t, l: 't list)
+fun add_list(s: 't Set.t, l: 't list): 't Set.t
 {
     val cmp = s.cmp
-    val fold (new_root, size)=(s.root, s.size) for x <- l {
+    val fold new_root = s.root, size = s.size for x <- l {
         val (new_root, dsz) = add_(new_root, x, cmp)
         (new_root, size+dsz)
     }
