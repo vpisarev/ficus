@@ -10,7 +10,7 @@ import Filename, Sys, Map
 import Ast, AstPP, Lexer, Parser, Options
 import AstTypeChecker
 import KForm, KPP, KNormalize, KAnnotate, KMangle
-import KRemoveUnused, KLiftSimple, KFlatten, KTailRec
+import KRemoveUnused, KLiftSimple, KFlatten, KTailRec, KLift
 
 exception CumulativeParseError
 
@@ -162,13 +162,13 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
         //prf("fast idx")
         //temp_kmods = KFastIdx.optimize_idx_checks_all(temp_kmods)
         //prf("const folding")
-        //temp_kmods = KConstFoldDealias.cfold_dealias(temp_kmods)
+        //temp_kmods = KConstFold.cfold_dealias(temp_kmods)
         prf("dead code elim")
         temp_kmods = KRemoveUnused.remove_unused(temp_kmods, false)
     }
     pr_verbose("Finalizing K-form:")
-    //prf("lambda lifting")
-    //temp_kmods = KLift.lift_all(temp_kmods)
+    prf("lambda lifting")
+    temp_kmods = KLift.lift_all(temp_kmods)
     prf("flatten")
     temp_kmods = KFlatten.flatten_all(temp_kmods)
     prf("dead code elim")

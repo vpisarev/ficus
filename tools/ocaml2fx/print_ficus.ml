@@ -111,15 +111,16 @@ and pprint_pat_ p parens =
         cbox()
     | PVariant(vn, pl) ->
         obox(); pstr vn; pcut();
-        let (p, need_parens) =
-            match pl with
-            | PLit _ :: [] | PIdent _ :: [] | PAny :: [] -> ((List.hd pl), false)
-            | p :: [] -> (p, true)
-            | _ -> (PTuple(pl), false)
-            in
-        if need_parens then (pstr "("; pcut()) else if pl = [] then pspace() else ();
-        if pl = [] then () else pprint_pat_ p false;
-        if need_parens then (pcut(); pstr ")") else ();
+        if pl = [] then () else
+            (let (p, need_parens) =
+                match pl with
+                | PLit _ :: [] | PIdent _ :: [] | PAny :: [] -> ((List.hd pl), false)
+                | p :: [] -> (p, true)
+                | _ -> (PTuple(pl), false)
+                in
+            if need_parens then
+                (pstr "("; pprint_pat_ p false; pcut(); pstr ")")
+            else (pspace(); pprint_pat_ p false));
         cbox()
     | PRecord (vn, relems) ->
         let is_ref = match relems with

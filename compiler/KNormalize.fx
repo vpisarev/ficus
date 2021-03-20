@@ -498,7 +498,10 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val catch_sc = new_block_scope() :: sc
         val catch_code = create_kdefval(exn_n, KTypExn, default_val_flags(), Some(pop_e), [], exn_loc)
         val (k_cases, catch_code) = transform_pat_matching(AtomId(exn_n), cases, catch_code, catch_sc, exn_loc, true)
-        val handle_exn = KExpMatch(k_cases, (ktyp, exn_loc))
+        val handle_exn = match k_cases {
+            | ([], e) :: [] => e
+            | _ => KExpMatch(k_cases, (ktyp, exn_loc))
+            }
         val handle_exn = rcode2kexp(handle_exn :: catch_code, exn_loc)
         (KExpTryCatch(try_body, handle_exn, kctx), code)
     | DefVal(p, e2, flags, _) =>
