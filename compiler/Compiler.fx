@@ -9,7 +9,8 @@
 import Filename, Sys, Map
 import Ast, AstPP, Lexer, Parser, Options
 import AstTypeChecker
-import KForm, KPP, KNormalize, KRemoveUnused
+import KForm, KPP, KNormalize, KAnnotate, KMangle
+import KRemoveUnused, KLiftSimple, KFlatten, KTailRec
 
 exception CumulativeParseError
 
@@ -138,48 +139,48 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     var temp_kmods = kmods
     prf("initial dead code elim")
     temp_kmods = KRemoveUnused.remove_unused(temp_kmods, true)
-    /*for i <- 1: niters+1 {
+    for i <- 1: niters+1 {
         pr_verbose(f"Optimization pass #{i}:")
         if i <= 2 {
             prf("simple lifting")
-            *temp_kmods = K_simple_ll.lift(*temp_kmods)
+            temp_kmods = KLiftSimple.lift(temp_kmods)
             prf("annotate types")
-            *temp_kmods = K_annotate_types.annotate_types(*temp_kmods)
+            temp_kmods = KAnnotate.annotate_types(temp_kmods)
         }
         prf("tailrec")
-        *temp_kmods = K_tailrec.tailrec2loops_all(*temp_kmods)
-        prf("loop inv")
-        *temp_kmods = K_loop_inv.move_loop_invs_all(*temp_kmods)
-        prf("inline")
-        if options.inline_thresh > 0 {
-            *temp_kmods = K_inline.inline_some(*temp_kmods)
-        }
+        temp_kmods = KTailRec.tailrec2loops_all(temp_kmods)
+        //prf("loop inv")
+        //temp_kmods = KLoopInv.move_loop_invs_all(temp_kmods)
+        //prf("inline")
+        //if Options.opt.inline_thresh > 0 {
+        //    temp_kmods = K_inline.inline_some(temp_kmods)
+        //}
         prf("flatten")
-        *temp_kmods = K_flatten.flatten_all(*temp_kmods)
-        prf("fuse loops")
-        *temp_kmods = K_fuse_loops.fuse_loops_all(*temp_kmods)
-        prf("fast idx")
-        *temp_kmods = K_fast_idx.optimize_idx_checks_all(*temp_kmods)
-        prf("const folding")
-        *temp_kmods = K_cfold_dealias.cfold_dealias(*temp_kmods)
+        temp_kmods = KFlatten.flatten_all(temp_kmods)
+        //prf("fuse loops")
+        //temp_kmods = KFuseLoops.fuse_loops_all(temp_kmods)
+        //prf("fast idx")
+        //temp_kmods = KFastIdx.optimize_idx_checks_all(temp_kmods)
+        //prf("const folding")
+        //temp_kmods = KConstFoldDealias.cfold_dealias(temp_kmods)
         prf("dead code elim")
-        *temp_kmods = K_deadcode_elim.elim_unused(*temp_kmods)
+        temp_kmods = KRemoveUnused.remove_unused(temp_kmods, false)
     }
     pr_verbose("Finalizing K-form:")
-    prf("lambda lifting")
-    *temp_kmods = K_lift.lift_all(*temp_kmods)
+    //prf("lambda lifting")
+    //temp_kmods = KLift.lift_all(temp_kmods)
     prf("flatten")
-    *temp_kmods = K_flatten.flatten_all(*temp_kmods)
+    temp_kmods = KFlatten.flatten_all(temp_kmods)
     prf("dead code elim")
-    *temp_kmods = K_deadcode_elim.elim_unused(*temp_kmods)
+    temp_kmods = KRemoveUnused.remove_unused(temp_kmods, false)
     prf("mangle")
-    *temp_kmods = K_mangle.mangle_all(*temp_kmods)
+    temp_kmods = KMangle.mangle_all(temp_kmods)
     prf("dead code elim")
-    *temp_kmods = K_deadcode_elim.elim_unused(*temp_kmods)
-    prf("mark recursive")
-    *temp_kmods = K_inline.find_recursive_funcs_all(*temp_kmods)
+    temp_kmods = KRemoveUnused.remove_unused(temp_kmods, false)
+    //prf("mark recursive")
+    //temp_kmods = KInline.find_recursive_funcs_all(temp_kmods)
     prf("annotate types")
-    *temp_kmods = K_annotate_types.annotate_types(*temp_kmods)*/
+    temp_kmods = KAnnotate.annotate_types(temp_kmods)
     (temp_kmods, compile_errs.empty())
 }
 

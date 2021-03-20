@@ -612,7 +612,7 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list, loc: loc_t, p
     */
     fun search_path(n_path: string, dot_pos: int, env: env_t, loc: loc_t): 't?
     {
-        val dot_pos = n_path.rfind(dot_pos, '.')
+        val dot_pos = n_path.rfind('.', dot_pos)
         if dot_pos < 0 {None}
         else {
             match find_all(get_id(n_path[:dot_pos]), env) {
