@@ -496,7 +496,7 @@ let cfold_dealias kmods =
                     else_action
                 | _ -> KExpMatch(cases, kctx))
             | _ -> e)
-        | _ -> walk_kexp e callb in
+        | _ -> e in
     let cfd_callb =
     {
         kcb_atom=Some(cfd_atom_);
