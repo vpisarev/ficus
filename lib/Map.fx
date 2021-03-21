@@ -117,25 +117,29 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
     | _ => (t, true)
 }
 
-@private fun add_(t: ('k, 'd) tree_t, xk: 'k, xd: 'd, cmp: 'k cmp_t): ('k, 'd) tree_t =
-match t
+@private fun add_(t: ('k, 'd) tree_t, xk: 'k, xd: 'd, cmp: 'k cmp_t): ('k, 'd) tree_t
 {
-    | Node(Red, l, yk, yd, r) =>
-        val c = cmp(xk, yk)
-        if c < 0 { Node(Red, add_(l, xk, xd, cmp), yk, yd, r) }
-        else if c > 0 { Node(Red, l, yk, yd, add_(r, xk, xd, cmp)) }
-        else { Node(Red, l, xk, xd, r) }
-    | Node(Black, l, yk, yd, r) =>
-        val c = cmp(xk, yk)
-        if c < 0 { balance_left(add_(l, xk, xd, cmp), yk, yd, r) }
-        else if c > 0 { balance_right(l, yk, yd, add_(r, xk, xd, cmp)) }
-        else { Node(Black, l, xk, xd, r) }
-    | _ => Node(Red, (Empty: ('k, 'd) tree_t), xk, xd, (Empty: ('k, 'd) tree_t))
+    fun add_to_tree_(t: ('k, 'd) tree_t, xk: 'k, xd: 'd, cmp: 'k cmp_t): ('k, 'd) tree_t =
+    match t
+    {
+        | Node(Red, l, yk, yd, r) =>
+            val c = cmp(xk, yk)
+            if c < 0 { Node(Red, add_to_tree_(l, xk, xd, cmp), yk, yd, r) }
+            else if c > 0 { Node(Red, l, yk, yd, add_to_tree_(r, xk, xd, cmp)) }
+            else { Node(Red, l, xk, xd, r) }
+        | Node(Black, l, yk, yd, r) =>
+            val c = cmp(xk, yk)
+            if c < 0 { balance_left(add_to_tree_(l, xk, xd, cmp), yk, yd, r) }
+            else if c > 0 { balance_right(l, yk, yd, add_to_tree_(r, xk, xd, cmp)) }
+            else { Node(Black, l, xk, xd, r) }
+        | _ => Node(Red, (Empty: ('k, 'd) tree_t), xk, xd, (Empty: ('k, 'd) tree_t))
+    }
+    blackify(add_to_tree_(t, xk, xd, cmp)).0
 }
 
 fun add(m: ('k, 'd) Map.t, xk: 'k, xd: 'd): ('k, 'd) Map.t
 {
-    val new_root = blackify(add_(m.root, xk, xd, m.cmp)).0
+    val new_root = add_(m.root, xk, xd, m.cmp)
     t { root=new_root, cmp=m.cmp }
 }
 

@@ -103,44 +103,49 @@ fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
         Node(Black, l, x, r)
 }
 
-@private fun blackify(t: 't tree_t)
+@private fun blackify(t: 't tree_t): ('t tree_t, bool)
 {
     | Node(Red, l, x, r) => (Node(Black, l, x, r), false)
     | _ => (t, true)
 }
 
-@private fun add_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, int) =
-match t
+@private fun add_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, int)
 {
+    fun add_to_tree_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, int) =
+    match t {
     | Node(Red, l, y, r) =>
         val c = cmp(x, y)
         if c < 0 {
-            val (l, dsz) = add_(l, x, cmp)
+            val (l, dsz) = add_to_tree_(l, x, cmp)
             (Node(Red, l, y, r), dsz)
         }
         else if c > 0 {
-            val (r, dsz) = add_(r, x, cmp)
+            val (r, dsz) = add_to_tree_(r, x, cmp)
             (Node(Red, l, y, r), dsz)
         }
         else { (t, 0) }
     | Node(Black, l, y, r) =>
         val c = cmp(x, y)
         if c < 0 {
-            val (l, dsz) = add_(l, x, cmp)
+            val (l, dsz) = add_to_tree_(l, x, cmp)
             (if dsz > 0 {balance_left(l, y, r)} else {Node(Black, l, y, r)}, dsz)
         }
         else if c > 0 {
-            val (r, dsz) = add_(r, x, cmp)
+            val (r, dsz) = add_to_tree_(r, x, cmp)
             (if dsz > 0 {balance_right(l, y, r)} else {Node(Black, l, y, r)}, dsz)
         }
         else { (t, 0) }
     | _ => (Node(Red, (Empty: 't tree_t), x, (Empty: 't tree_t)), 1)
+    }
+
+    val (t, dsz) = add_to_tree_(t, x, cmp)
+    val (t, _) = blackify(t)
+    (t, dsz)
 }
 
 fun add(s: 't Set.t, x: 't): 't Set.t
 {
     val (new_root, dsz) = add_(s.root, x, s.cmp)
-    val new_root = blackify(new_root).0
     t { root=new_root, size=s.size+dsz, cmp=s.cmp }
 }
 
@@ -215,8 +220,8 @@ match t
         } else {
             match r {
             | Empty =>
-                val (l1, d) = blackify(l)
-                (l1, d, -1)
+                val (l, d) = blackify(l)
+                (l, d, -1)
             | _ =>
                 val (r, y, d) = remove_min(r)
                 val s = Node(Black, l, y, r)

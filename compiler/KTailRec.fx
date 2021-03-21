@@ -19,7 +19,7 @@ from KForm import *
 
 fun tailrec2loop(kf: kdeffun_t ref): void
 {
-    val {kf_name, kf_args, kf_rt=rt, kf_body, kf_flags, kf_loc} = *kf
+    val {kf_name, kf_args, kf_rt=rt, kf_body, kf_loc} = *kf
     fun have_tailrec_calls_(e: kexp_t): bool =
         match e {
         | KExpSeq (elist, _) =>

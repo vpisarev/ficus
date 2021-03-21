@@ -20,7 +20,9 @@ val pr_verbose = Ast.pr_verbose
 
 fun get_preamble(mfname: string): Lexer.token_t list {
     val bare_name = Filename.remove_extension(Filename.basename(mfname))
-    val fold (preamble, found) = ([], false) for (mname, from_import) <- [: ("Builtins", true), ("List", false), ("Char", false), ("String", false) :] {
+    val (preamble, _) = fold (preamble, found) = ([], false)
+        for (mname, from_import) <- [: ("Builtins", true), ("List", false),
+                                        ("Char", false), ("String", false) :] {
         if found {
             (preamble, found)
         } else if bare_name == mname {

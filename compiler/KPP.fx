@@ -128,7 +128,6 @@ val default_indent = 3
 
 @private fun pp_exp_(pp: PP.t, e: kexp_t): void
 {
-    val t = get_kexp_typ(e)
     val eloc = get_kexp_loc(e)
     fun ppktp(ktp: ktprops_t?) {
     | Some({ktp_complex}) =>

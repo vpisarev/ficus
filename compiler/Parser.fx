@@ -210,17 +210,16 @@ fun match_paren((ts: tklist_t, e: exp_t), ct: token_t, ol: loc_t): (tklist_t, ex
     }
 }
 
-fun is_for_start((t: token_t, l: loc_t), nested: bool) =
-match t {
-    | FOR(ne) => (ne | nested)
-    | PARALLEL => !nested
-    | UNZIP => !nested
+fun is_for_start(t: token_t)
+{
+    | FOR(_) | PARALLEL | UNZIP => true
     | _ => false
 }
 
-fun check_ne(ne: bool, ts: tklist_t) = if !ne {
-    throw parse_err(ts, "new line or ';' is expected before new expression")
-}
+fun check_ne(ne: bool, ts: tklist_t) =
+    if !ne {
+        throw parse_err(ts, "new line or ';' is expected before new expression")
+    }
 
 fun parse_exp_list_f(ts0: tklist_t, parse_exp_f: tklist_t -> (tklist_t, exp_t),
                     ct: token_t, ~kw_mode: kw_mode_t, ~allow_empty: bool,
@@ -321,7 +320,7 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
         | e :: [] => e
         | _ => make_tuple(el, l1)
         })
-    | (LARRAY, l1) :: f :: rest when is_for_start(f, false) =>
+    | (LARRAY, l1) :: (f, _) :: rest when is_for_start(f) =>
         val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeArray)
         match_paren((ts, for_exp), RARRAY, l1)
     | (LARRAY, l1) :: rest =>
@@ -334,7 +333,7 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
             if done { break }
         }
         (vts, ExpMkArray(result.rev(), make_new_ctx(l1)))
-    | (LLIST, l1) :: f :: _ when is_for_start(f, false) =>
+    | (LLIST, l1) :: (f, _) :: _ when is_for_start(f) =>
         val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeList)
         match_paren((ts, for_exp), RLIST, l1)
     | (LLIST, l1) :: rest =>
@@ -521,7 +520,8 @@ fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
         | _ =>
             val chain = chain.rev()
             val nexp = chain.length()
-            val fold (result, prev_e, code) = (ExpNop(noloc), chain.hd().1, [])
+            val (result, _, code) =
+                fold (result, prev_e, code) = (ExpNop(noloc), chain.hd().1, [])
                 for ((cmpop, loc), e)@i <- chain.tl() {
                     val (next_e, code) = if i == nexp-2 {(e, code)} else {
                         match e {
@@ -833,8 +833,8 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             match (idxp, idx_pat) {
             | (PatAny _, idx_pat) => (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
             | (_, PatAny _) =>
-                val (idxp_, idxp_e) = plist2exp(idxp :: [], "i", get_pat_loc(idxp))
-                (idxp_e :: p_e :: glob_el, (p, e) :: for_cl_, idxp)
+                val (idxp, idxp_e) = plist2exp(idxp :: [], "i", get_pat_loc(idxp))
+                (idxp_e :: p_e :: glob_el, (p, e) :: for_cl_, idxp.hd())
             | _ => throw ParseError(get_pat_loc(idxp), "@ is used more than once, which does not make sence and is not supported")
             }
         }
@@ -1022,7 +1022,6 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
     }
 
     val (ts, params, rt, prologue, have_keywords) = parse_fun_params(vts)
-    val fname_exp = make_ident(fname, loc)
     parse_body_and_make_fun(ts, fname, params, rt, prologue,
         default_fun_flags().{
             fun_flag_private=is_private,
@@ -1240,7 +1239,7 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
         val (ts, e1) = parse_complex_exp(ts)
         val lvalue_e1 = // very light check; more detailed one is done by the type checker
             match e1 {
-            | ExpUnary(OpDeref, _, _) | ExpIdent(_, _) | ExpAt(_, _, _, _, _) | ExpMem(_, _, _) => true
+            | ExpUnary(OpDeref, _, _) | ExpIdent _ | ExpAt _ | ExpMem _ => true
             | _ => false }
         match ts {
         | (EQUAL, l2) :: rest =>

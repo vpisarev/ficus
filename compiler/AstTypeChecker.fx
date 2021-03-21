@@ -484,9 +484,9 @@ fun find_typ_instance(t: typ_t, loc: loc_t): typ_t? {
         if targs.empty() {
             Some(t)
         } else {
-            val (inst_list, dvar_loc) = match id_info(n, loc) {
-                | IdVariant (ref {dvar_templ_inst, dvar_loc}) => (*dvar_templ_inst, dvar_loc)
-                | _ => ([], loc)
+            val inst_list = match id_info(n, loc) {
+                | IdVariant (ref {dvar_templ_inst}) => *dvar_templ_inst
+                | _ => []
                 }
             match find_opt(for inst <- inst_list {
                 match id_info(inst, loc) {
@@ -651,7 +651,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
                     f"incorrect type of value '{pp(n)}': expected='{typ2str(t)}', actual='{typ2str(dv_typ)}'")
                 Some((i, t))
             | IdFun(df) =>
-                val {df_name, df_templ_args, df_typ, df_flags, df_templ_inst, df_env, df_scope} = *df
+                val {df_name, df_templ_args, df_typ, df_flags, df_templ_inst, df_env} = *df
                 // if the function has keyword parameters, we implicitly add a dummy record argument
                 // to the end of arguments' type list of t
                 val t = match (df_flags.fun_flag_has_keywords, deref_typ(t)) {
@@ -948,16 +948,17 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 (def_pvj :: def_pnj :: code, env, idset)
             }
         }
-        val (code, env, idset) =
+        val (code, env) =
         match idx_pat {
-        | PatAny _ => (code, env, idset)
+        | PatAny _ => (code, env)
         | _ =>
             val idx_pat = dup_pat(idx_pat)
-            val (idx_pat, env, idset, _, _) = check_pat(idx_pat, TypInt, env, idset, empty_idset,
-                                                        sc, false, true, false)
+            val (idx_pat, env, _, _, _) = check_pat(idx_pat, TypInt, env, idset, empty_idset,
+                                                    sc, false, true, false)
             val idx_loc = get_pat_loc(idx_pat)
-            val def_idx = DefVal(idx_pat, ExpLit(LitInt(int64(idx)), (TypInt, idx_loc)), default_tempval_flags(), idx_loc)
-            (def_idx :: code, env, idset)
+            val def_idx = DefVal(idx_pat, ExpLit(LitInt(int64(idx)),
+                    (TypInt, idx_loc)), default_tempval_flags(), idx_loc)
+            (def_idx :: code, env)
         }
         val body = check_exp(dup_exp(body), env, sc)
         val (body_typ, body_loc) = get_exp_ctx(body)
@@ -965,7 +966,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     }
 
     fun check_inside_for(expect_fold_loop: bool, isbr: bool, sc: scope_t list) {
-        val kw = if !isbr { "continue" } else if expect_fold_loop { "fold's break" } else { "break" }
+        val kw = if !isbr { "continue" }
+                 else if expect_fold_loop { "fold's break" }
+                 else { "break" }
         fun check_inside_(sc: scope_t list) {
             | ScTry _ :: _ => throw compile_err(eloc, f"cannot use '{kw}' inside 'try-catch' block")
             | ScFun _ :: _ | ScModule _ :: _ | ScClass _ :: _ | ScInterface _ :: _ | [] =>
@@ -1087,7 +1090,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         }
     | ExpAssign(e1, e2, _) =>
         val (etyp1, eloc1) = get_exp_ctx(e1)
-        val (etyp2, eloc2) = get_exp_ctx(e2)
+        val (etyp2, _) = get_exp_ctx(e2)
         unify(etyp1, etyp2, eloc, "the left and the right sides of the assignment must have the same type")
         val new_e1 = check_exp(e1, env, sc)
         val new_e2 = check_exp(e2, env, sc)
@@ -1109,7 +1112,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             }
 
         if !is_lvalue(true, new_e1) {
-            throw compile_err(eloc, "the left side of assignment is not an l-value")
+            throw compile_err(eloc1, "the left side of assignment is not an l-value")
         }
         ExpAssign(new_e1, new_e2, eloc)
     | ExpBinary(OpCons, e1, e2, _) =>
@@ -1222,16 +1225,16 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         }
     | ExpThrow(e1, _) =>
         val (etyp1, eloc1) = get_exp_ctx(e1)
-        unify(TypExn, etyp1, eloc, "the argument of 'throw' operator must be an exception")
+        unify(TypExn, etyp1, eloc1, "the argument of 'throw' operator must be an exception")
         val new_e1 = check_exp(e1, env, sc)
         ExpThrow(new_e1, eloc)
     | ExpUnary(OpMkRef, e1, _) =>
-        val (etyp1, eloc1) = get_exp_ctx(e1)
+        val (etyp1, _) = get_exp_ctx(e1)
         unify(etyp, TypRef(etyp1), eloc, "the types of ref() operation argument and result are inconsistent")
         val new_e1 = check_exp(e1, env, sc)
         ExpUnary(OpMkRef, new_e1, ctx)
     | ExpUnary(OpDeref, e1, _) =>
-        val (etyp1, eloc1) = get_exp_ctx(e1)
+        val (etyp1, _) = get_exp_ctx(e1)
         unify(TypRef(etyp), etyp1, eloc, "the types of unary '*' operation argument and result are inconsistent")
         val new_e1 = check_exp(e1, env, sc)
         ExpUnary(OpDeref, new_e1, ctx)
@@ -1386,7 +1389,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val new_f = if mstr == "Builtins" { mem_f_exp }
                             else {
                                 val m_id = if mstr != "" { get_id(mstr) } else { throw ex }
-                                val (ftyp, floc) = mem_ctx
+                                val (_, floc) = mem_ctx
                                 ExpMem(ExpIdent(m_id, (make_new_typ(), floc)), mem_f_exp, mem_ctx)
                             }
                 val new_exp = ExpCall(new_f, r0 :: args0, ctx)
@@ -1547,7 +1550,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             throw compile_err(eloc, "@unzip for does not make sense outside of comprehensions")
         }
         val for_sc = (if is_fold {new_fold_scope()} else {new_loop_scope(is_nested)}) :: sc
-        val (trsz, pre_code, for_clauses, idx_pat, dims, env, _) =
+        val (trsz, pre_code, for_clauses, idx_pat, _, env, _) =
             check_for_clauses(for_clauses, idx_pat, env, empty_idset, for_sc)
         if trsz > 0 {
             /* iteration over tuple(s) is replaced with unrolled code.
@@ -1571,8 +1574,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val make_list = flags.for_flag_make == ForMakeList
         val make_tuple = flags.for_flag_make == ForMakeTuple
         val unzip_mode = flags.for_flag_unzip
-        val for_sc = (if make_tuple { new_block_scope() } else if make_list { new_map_scope() } else { new_arr_map_scope() }) :: sc
-        val fold (trsz, pre_code, map_clauses, total_dims, env, idset) =
+        val for_sc = (if make_tuple { new_block_scope() }
+                      else if make_list { new_map_scope() }
+                      else { new_arr_map_scope() }) :: sc
+        val (trsz, pre_code, map_clauses, total_dims, env, _) =
+            fold (trsz, pre_code, map_clauses, total_dims, env, idset) =
             (0, [], [], 0, env, empty_idset) for (for_clauses, idx_pat) <- map_clauses {
             val (trsz_k, pre_code_k, for_clauses, idx_pat, dims, env, idset) = check_for_clauses(for_clauses, idx_pat, env, idset, for_sc)
             (trsz + trsz_k, pre_code_k + pre_code, (for_clauses, idx_pat) :: map_clauses, total_dims + dims, env, idset)
@@ -1628,7 +1634,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp, coll_typ, eloc, f"inconsistent type of the constructed {coll_name}")
             ExpSeq(pre_code + [: mk_struct_exp :], (coll_typ, eloc))
         } else {
-            val (btyp, bloc) = get_exp_ctx(body)
+            val (btyp, _) = get_exp_ctx(body)
             if !unzip_mode { check_map_typ(btyp, etyp, -1) }
             val new_body = check_exp(body, env, for_sc)
             val new_unzip_mode =
@@ -1670,8 +1676,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpContinue _ => check_inside_for(false, false, sc); e
     | ExpMkArray(arows, _) =>
         val elemtyp = make_new_typ()
-        val fold (k, ncols, arows, have_expanded, dims) =
-            (0, 0, ([]: exp_t list list), false, -1) for arow <- arows {
+        val (_, arows, _, dims) =
+            fold (ncols, arows, have_expanded, dims) =
+            (0, ([]: exp_t list list), false, -1) for arow@k <- arows {
             val fold (have_expanded_i, row_dims, arow) = (false, -1, []) for elem <- arow {
                 val (is_expanded, elem_dims, elem1, elem_loc) =
                 match elem {
@@ -1721,7 +1728,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     f"the {k + 1}-{String.num_suffix(k+1)} matrix row contains a different number of elements")
             }
             val dims = if dims < 0 { row_dims } else { 2 }
-            (k + 1, if have_expanded_i { ncols_i } else { ncols }, arow.rev() :: arows, have_expanded, dims)
+            (if have_expanded_i { ncols_i } else { ncols }, arow.rev() :: arows, have_expanded, dims)
         }
         val atyp = TypArray(dims, elemtyp)
         unify(atyp, etyp, eloc, "the array literal should produce an array")
@@ -2090,7 +2097,7 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
             }
         }
 
-    val fold (env, mlist) = (env, []) for e <- eseq {
+    val (env, _) = fold (env, mlist) = (env, []) for e <- eseq {
         match e {
         | DirImport(impdirs, eloc) =>
             (fold env = env for (m, alias) <- impdirs {
@@ -2198,12 +2205,12 @@ fun check_types(eseq: exp_t list, env: env_t, sc: scope_t list) =
             env
         | DefVariant(dvar) =>
             instantiate_variant(([]: typ_t list), dvar, env, sc, dvar->dvar_loc)
-            val {dvar_name, dvar_templ_args, dvar_cases, dvar_ctors, dvar_scope, dvar_loc} = *dvar
+            val {dvar_name, dvar_cases, dvar_ctors, dvar_loc} = *dvar
             fold env=env for (n, t) <- dvar_cases, ctor_name <- dvar_ctors {
-                val {df_name, df_templ_args, df_typ} =
+                val {df_templ_args, df_typ} =
                     match id_info(ctor_name, dvar_loc) {
                     | IdFun(df) => *df
-                    | _ => throw compile_err(dvar_loc, f"internal error: constructor {ctor_name} is not a function")
+                    | _ => throw compile_err(dvar_loc, f"internal error: constructor {pp(dvar_name)}.{pp(ctor_name)} is not a function")
                     }
                 val (t, _) = preprocess_templ_typ(df_templ_args, df_typ, env, sc, dvar_loc)
                 add_id_to_env_check(n, ctor_name, env, check_for_duplicate_fun(t, env, sc, dvar_loc))
@@ -2249,7 +2256,7 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list) {
         | _ => {}
     }
     val dummy_rt_pat = PatTyped(PatAny(df_loc), rt, df_loc)
-    val (dummy_rt_pat1, temp_env, idset1, templ_args1, _) =
+    val (dummy_rt_pat1, _, _, templ_args1, _) =
             check_pat(dummy_rt_pat, make_new_typ(), temp_env, idset1,
                       templ_args1, df_sc, true, true, false)
     val rt = match dummy_rt_pat1 {
@@ -2344,7 +2351,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                     | IdNone | IdDVal _ | IdFun _ | IdExn _ | IdModule _ => None
                     | IdInterface _ => throw compile_err(loc, "classes & interfaces are not supported yet")
                     | IdTyp(dt) =>
-                        val {dt_name, dt_templ_args, dt_typ, dt_scope, dt_finalized, dt_loc} = *dt
+                        val {dt_name, dt_templ_args, dt_typ, dt_finalized, dt_loc} = *dt
                         if !dt_finalized {
                             throw compile_err( loc,
                                 f"later declared non-variant type '{pp(dt_name)}' is referenced; try to reorder the type declarations")
@@ -2434,7 +2441,7 @@ fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
 
 fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                      inst_sc: scope_t list, inst_loc: loc_t, instantiate: bool): deffun_t ref {
-    val {df_name, df_templ_args, df_args, df_body, df_flags, df_scope, df_loc, df_templ_inst} = *templ_df
+    val {df_name, df_args, df_body, df_flags, df_scope, df_loc} = *templ_df
     val is_constr = is_constructor(df_flags)
     if is_constr {
         throw compile_err( inst_loc,
@@ -2464,7 +2471,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
     val inst_name = if instantiate { dup_id(df_name) } else { df_name }
     //println(f"instantiation of function {inst_name} with type '{typ2str(inst_ftyp)}'")
     val fun_sc = ScFun(inst_name) :: inst_sc
-    val fold (df_inst_args, inst_env, tmp_idset) =
+    val (df_inst_args, inst_env, _) = fold (df_inst_args, inst_env, tmp_idset) =
         ([], inst_env, empty_idset) for df_arg <- df_args, arg_typ <- arg_typs {
         val (df_inst_arg, inst_env, tmp_idset, _, _) =
             check_pat(dup_pat(df_arg), arg_typ, inst_env, tmp_idset,
@@ -2830,7 +2837,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
             (PatRef(p1, loc), typed)
         | PatWhen(p1, e1, loc) =>
             val (p1, _) = check_pat_(p1, t)
-            val (etyp, eloc) = get_exp_ctx(e1)
+            val (etyp, _) = get_exp_ctx(e1)
             unify(etyp, TypBool, loc, "'when' clause should have boolean type")
             val e1 = check_exp(e1, r_env, sc)
             (PatWhen(p1, e1, loc), false)
@@ -2847,9 +2854,10 @@ fun check_cases(cases: (pat_t list, exp_t) list, inptyp: typ_t, outtyp: typ_t, e
                                                     case_sc, false, false, false)
             (p2 :: plist1, env2, capt2)
         }
-        val (plist1, env1, capt1) =
+
+        val (plist1, env1) =
         if plist1.length() == 1 {
-            (plist1, env1, capt1)
+            (plist1, env1)
         } else {
             if !capt1.empty() {
                 throw compile_err(loc, "captured variables may not be used in the case of multiple alternatives ('|' pattern)")
@@ -2857,7 +2865,7 @@ fun check_cases(cases: (pat_t list, exp_t) list, inptyp: typ_t, outtyp: typ_t, e
             val temp_id = gen_temp_id("p")
             val temp_dv = defval_t {dv_name=temp_id, dv_typ=inptyp, dv_flags=default_tempval_flags(), dv_scope=sc, dv_loc=loc}
             set_id_entry(temp_id, IdDVal(temp_dv))
-            val capt1 = capt1.add(temp_id)
+            //val capt1 = capt1.add(temp_id)
             val env1 = add_id_to_env(temp_id, temp_id, env1)
             val temp_pat = PatIdent(temp_id, loc)
             val temp_id_exp = ExpIdent(temp_id, (inptyp, loc))
@@ -2872,7 +2880,7 @@ fun check_cases(cases: (pat_t list, exp_t) list, inptyp: typ_t, outtyp: typ_t, e
                 } :]
             val when_cases = when_cases + [: (PatAny(loc) :: [], ExpLit(LitBool(false), bool_ctx)) :]
             val when_pat = PatWhen(temp_pat, ExpMatch(temp_id_exp, when_cases, bool_ctx), loc)
-            (when_pat :: [], env1, capt1)
+            (when_pat :: [], env1)
         }
         val (e1_typ, e1_loc) = get_exp_ctx(e)
         unify(e1_typ, outtyp, e1_loc, "the case expression type does not match the whole expression type (or the type of previous case(s))")

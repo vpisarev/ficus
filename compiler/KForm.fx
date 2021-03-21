@@ -681,7 +681,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
             }
         e
     | KDefExn(ke) =>
-        val {ke_name, ke_cname, ke_tag, ke_make, ke_typ} = *ke
+        val {ke_name, ke_tag, ke_make, ke_typ} = *ke
         *ke = ke->{ke_name=walk_id_(ke_name), ke_typ=walk_ktyp_(ke_typ),
                    ke_tag=walk_id_(ke_tag), ke_make=walk_id_(ke_make)}
         e
@@ -843,7 +843,7 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     | KDefVal(k, e, loc) =>
         fold_id_(k); fold_kexp_(e)
     | KDefFun(df) =>
-        val {kf_name, kf_args, kf_rt, kf_body, kf_closure, kf_loc} = *df
+        val {kf_name, kf_args, kf_rt, kf_body, kf_closure} = *df
         val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
         fold_id_(kf_name)
         for (a, t) <- kf_args { fold_id_(a);  fold_ktyp_(t) }
@@ -855,22 +855,22 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
         fold_id_(kci_wrap_f)
         fold_kexp_(kf_body)
     | KDefExn(ke) =>
-        val {ke_name, ke_typ, ke_tag, ke_make, ke_loc} = *ke
+        val {ke_name, ke_typ, ke_tag, ke_make} = *ke
         fold_id_(ke_name)
         fold_ktyp_(ke_typ)
         fold_id_(ke_tag)
         fold_id_(ke_make)
     | KDefVariant(kvar) =>
-        val {kvar_name, kvar_cases, kvar_ctors, kvar_loc} = *kvar
+        val {kvar_name, kvar_cases, kvar_ctors} = *kvar
         fold_id_(kvar_name)
         for (n, t) <- kvar_cases { fold_id_(n); fold_ktyp_(t) }
         kvar_ctors.app(fold_id_)
     | KDefTyp(kt) =>
-        val {kt_name, kt_typ, kt_loc} = *kt
+        val {kt_name, kt_typ} = *kt
         fold_id_(kt_name)
         fold_ktyp_(kt_typ)
     | KDefClosureVars(kcv) =>
-        val {kcv_name, kcv_freevars, kcv_orig_freevars, kcv_loc} = *kcv
+        val {kcv_name, kcv_freevars, kcv_orig_freevars} = *kcv
         fold_id_(kcv_name)
         for (n, t) <- kcv_freevars { fold_id_(n); fold_ktyp_(t) }
         kcv_orig_freevars.app(fold_id_)
@@ -902,7 +902,7 @@ fun used_decl_by_kexp(e: kexp_t): (idset_t, idset_t)
             used_by_kexp_(e, callb)
             remove_unless(have_n, n, all_used)
         | KDefFun (ref {kf_name, kf_args, kf_rt, kf_closure, kf_body, kf_loc}) =>
-            val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
+            val {kci_arg, kci_fcv_t} = kf_closure
             val kf_typ = get_kf_typ(kf_args, kf_rt)
             used_by_ktyp_(kf_typ, kf_loc, callb)
             val have_kf_name = all_used->mem(kf_name)

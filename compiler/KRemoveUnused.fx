@@ -199,7 +199,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                 }
             }
         | KDefFun kf =>
-            val {kf_name, kf_body, kf_flags, kf_scope, kf_loc} = *kf
+            val {kf_name, kf_body, kf_scope, kf_loc} = *kf
             if used(kf_name) {
                 val new_body = remove_unused_kexp_(kf_body, callb)
                 *kf = kf->{kf_body=new_body}
@@ -211,7 +211,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                 KExpNop(kf_loc)
             }
         | KDefExn ke =>
-            val {ke_name, ke_std, ke_loc} = *ke
+            val {ke_name, ke_loc} = *ke
             if used(ke_name) || !is_main { e }
             else { KExpNop(ke_loc) }
         | KDefVariant kvar =>

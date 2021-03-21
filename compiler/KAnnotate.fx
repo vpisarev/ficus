@@ -192,7 +192,7 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
         | KTypName n =>
             match kinfo_(n, loc) {
             | KVariant kvar =>
-                val {kvar_name, kvar_cname, kvar_cases, kvar_props, kvar_flags, kvar_loc} = *kvar
+                val {kvar_name, kvar_cases, kvar_props, kvar_flags, kvar_loc} = *kvar
                 match kvar_props {
                 | Some kvp => kvp
                 | _ =>
@@ -219,7 +219,7 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
                     kvp
                 }
             | KTyp kt =>
-                val { kt_name, kt_cname, kt_typ, kt_props, kt_loc } = *kt
+                val { kt_name, kt_typ, kt_props, kt_loc } = *kt
                 match kt_props {
                 | Some ktp => ktp
                 | _ =>

@@ -275,16 +275,15 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                     "k-normalization: in the record construction identifier is expected after type check")
             }
         val fold (ratoms, code) = ([], code) for (ni, ti, opt_vi) <- relems {
-            val (a, code) = try {
-                val (_, ej) = rinitelems.find(fun ((nj, ej)) { ni == nj })
-                exp2atom(ej, code, false, sc)
-            } catch {
-            | NotFoundError =>
+            val (a, code) =
+            match find_opt(for (nj, _) <- rinitelems { ni == nj }) {
+            | Some((_, ej)) => exp2atom(ej, code, false, sc)
+            | _ =>
                 match opt_vi {
                 | Some(vi) => (AtomLit(lit2klit(vi, typ2ktyp(ti, eloc))), code)
                 | _ =>
                     throw compile_err(eloc,
-                        f"there is no explicit inializer for the field '{ni}' nor there is default initializer for it")
+                        f"there is no explicit inializer for the field '{pp(rn_id)}.{pp(ni)}' nor there is default initializer for it")
                 }
             }
             (a :: ratoms, code)
@@ -405,7 +404,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (a_id, code) = exp2id(e1, code, true, sc, "the literal does not have members to access")
         val ktyp = get_idk_ktyp(a_id, e1loc)
         fun find_relem(rn, relems, elem_id, loc) {
-            val fold (i, j) = (-1, 0) for (ni, _) <- relems {
+            val (i, _) = fold (i, j) = (-1, 0) for (ni, _) <- relems {
                 if elem_id == ni { (j, j + 1) } else { (i, j + 1) }
             }
             if i >= 0 { i } else {
@@ -708,7 +707,7 @@ fun pat_need_checks(p: pat_t, ptyp: ktyp_t)
         exists(for pi <- pl, ti <- tl {pat_need_checks(pi, ti)})
     | PatVariant(vn, pl, loc) =>
         try {
-            val {kvar_cases, kvar_ctors} = *get_kvariant(ptyp, loc)
+            val {kvar_cases} = *get_kvariant(ptyp, loc)
             kvar_cases.length() > 1 ||
             ({
                 val (_, typed_var_pl) = match_variant_pat(p, ptyp)
@@ -1134,7 +1133,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
     } else {
         val tag_n = gen_temp_idk("tag")
         val extract_tag_exp = get_extract_tag_exp(a, atyp, loc)
-        val code = create_kdefval(tag_n, KTypCInt, default_val_flags(), Some(extract_tag_exp), code, loc)
+        val code = create_kdefval(tag_n, KTypCInt, default_tempval_flags(), Some(extract_tag_exp), code, loc)
         (tag_n, code)
     }
     var have_else = false
@@ -1176,7 +1175,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
 }
 
 fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t {
-    val {df_name, df_templ_args, df_templ_inst, df_body, df_loc} = *df
+    val {df_name, df_templ_args, df_templ_inst, df_loc} = *df
     val is_private_fun =
         match sc {
         | [] | ScModule _ :: _ => false

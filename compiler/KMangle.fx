@@ -56,7 +56,6 @@ fun compress_name(nstr: string, sc: scope_t list, loc: loc_t)
         val len = nstr.length()
         val prefix_ = prefix + "__"
         val prefix_len = prefix_.length()
-        val limit = len - prefix_len - 1
         var i = 0, start = 0
         var result = ""
 
@@ -346,7 +345,7 @@ fun mangle_all(kmods: kmodule_t list) {
                         kf_closure=kf_closure.{kci_fp_typ=mangled_ktyp_id} }
             e
         | KDefExn ke =>
-            val {ke_name, ke_typ, ke_scope, ke_std, ke_tag, ke_make, ke_loc} = *ke
+            val {ke_name, ke_typ, ke_scope, ke_std, ke_tag, ke_loc} = *ke
             val t = mangle_ktyp_retain_record(ke_typ, ke_loc, callb)
             val suffix = mangle_ktyp(t, mangle_map, ke_loc)
             val bare_name = mangle_name(ke_name, Some(ke_scope), ke_loc)
