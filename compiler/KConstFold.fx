@@ -68,6 +68,17 @@ fun retain_atom(ac: aclass_t, a: atom_t, at: ktyp_t) =
     | _ => (Some(ac), None)
     }
 
+/* cfold_bop, cfold_uop, cfold_cast produce a pair of options:
+   (const_option, atom_n_type_option) and pass it to finalize_cfold_result
+   that returns a single option:
+        * Some(const_fold_result_exp) - successfully folded.
+          The caller function replaces the original expression with the
+          provided result.
+        * None - no folding has been done; retain the original expression as-is
+   if const_option is Some(...:aclass_t) then it takes the preference,
+   then we output (if possible) the computed atom of the specified type (res_t).
+   otherwise if the second option is Some((atom, atom_type)) then
+   we output either the original atom, or the casting expression to res_t. */
 fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: ktyp_t, loc: loc_t)
 {
     fun mk_some_lit_atom(l: klit_t) = Some(KExpAtom(AtomLit(l), (res_t, loc)))
@@ -139,12 +150,16 @@ fun cfold_bop(bop: binary_t, a: atom_t, b: atom_t, res_t: ktyp_t, loc: loc_t)
     fun retain_a() = retain_atom(ac, a, at)
     fun retain_b() = retain_atom(bc, b, bt)
 
+    /* the type checker has checked that the combination of 'a' and 'b' types is valid
+        and it also computed the output type (passed here as 'res_t'), so
+        we just rely on the type checker and avoid extra checks here */
     val (c_opt, a_opt) =
     match (bop, ac, bc) {
     | (_, NonConst, NonConst) =>
         if a == b {
             match bop {
             | OpSub | OpBitwiseXor => (Some(ConstZero), None)
+            /* OpDiv and OpMod are skipped because there can be a=b=0 */
             | OpBitwiseAnd | OpBitwiseOr => retain_a()
             | OpCmp(CmpEQ) | OpCmp(CmpLE) | OpCmp(CmpGE) => (Some(ConstBool(true)), None)
             | OpCmp(CmpNE) | OpCmp(CmpLT) | OpCmp(CmpGT) => (Some(ConstBool(false)), None)
@@ -303,6 +318,8 @@ fun cfold_dealias(kmods: kmodule_t list)
     fun cfd_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
     fun cfd_kexp_(e: kexp_t, callb: k_callb_t)
     {
+        /* first, process all the sub-expressions; the only exception is KDefVal,
+           which we handle separately */
         val e = match e { | KDefVal _ => e | _ => walk_kexp(e, callb) }
         match e {
         | KDefVal (n, rhs_e, loc) =>
@@ -318,8 +335,16 @@ fun cfold_dealias(kmods: kmodule_t list)
                 | KExpAtom (a, (_, loc2)) =>
                     match a {
                     | AtomId n2 =>
+                        /* in order to do a safe substitution, both values
+                            must be immutable, otherwise the change may affect the semantics
+                        */
                         if !is_mutable(n2, loc2) {
                             match (n, n2) {
+                            /* if a temporary value is assigned to the user-defined value,
+                               we'd better keep the user-specified name so
+                               that the output code is cleaner (and sometimes enabling such subsitution may
+                               cause problems with separate compilation of .c sources, when
+                               the temporary value suddenly needs to be accessed from another module. */
                             | (IdVal _, IdTemp _) => e
                             | _ => ida_map = ida_map.add(n, AtomId(n2)); KExpNop(loc)
                             }
@@ -343,6 +368,7 @@ fun cfold_dealias(kmods: kmodule_t list)
             // concatentated together.
             fun try_cfold_str_concat(a: atom_t, res_al: atom_t list): atom_t list =
                 match (a, res_al) {
+                // the order s2 + s1 is correct here, since we operate on reversed lists
                 | (AtomLit(KLitChar c1), AtomLit(KLitChar c2) :: rest) => AtomLit(KLitString(string(c2) + c1)) :: rest
                 | (AtomLit(KLitString s1), AtomLit(KLitChar c2) :: rest) => AtomLit(KLitString(c2 + s1)) :: rest
                 | (AtomLit(KLitChar c1), AtomLit(KLitString s2) :: rest) => AtomLit(KLitString(s2 + c1)) :: rest
@@ -384,6 +410,7 @@ fun cfold_dealias(kmods: kmodule_t list)
             | _ => e
             }
         | KExpIf (c, then_e, else_e, kctx) =>
+            // eliminate dead branches
             match c {
             | KExpAtom (AtomLit(KLitBool(true)), _) => then_e
             | KExpAtom (AtomLit(KLitBool(false)), _) => else_e
@@ -394,12 +421,45 @@ fun cfold_dealias(kmods: kmodule_t list)
             | KExpAtom (AtomLit(KLitBool(false)), _) => KExpNop(loc)
             | _ => e
             }
-        | KExpDoWhile (body, c, loc) =>
+        /* we do not convert KExpDoWhile(body, false, loc)
+           into a nested KExpSeq(), because then we will have to
+           correctly transform the nested break and continue operators, if any.
+           For now, leave it as-is */
+        /*| KExpDoWhile (body, c, loc) =>
             match c {
             | KExpAtom (AtomLit(KLitBool(false)), _) => body
             | _ => e
-            }
+            }*/
         | KExpMatch _ =>
+            /* in general, the KExpMatch() operator has the following form
+                if( {expressions11 ... actual_check11} &&
+                    {expressions12 ... actual_check12} && ... )
+                    action1
+                else if( {expressions21 ... actual_check21} && ... )
+                    action2
+                ...
+                else
+                    // k-normalization step makes sure that there is always the 'else' branch.
+                    actionN.
+
+                If some of the actual_check(i,j) are constant "true" or "false",
+                we can optimize the conditions a bit:
+
+                * if some actual_check(i,j) === false,
+                    then the remaining checks {expressions(i,k) ... actual_check(i,k)} for k > j can be removed;
+                    the corresponding action(i) can probably be converted into a 'nop' (or 'nil').
+                * if some actual_check(i,j) === true then
+                    expressions(i,j) ... should be added to the next expressions(i,j+1).
+                    if it was the last check in case, then the expressions should be added
+                    to the action(i).
+                    if there was just one check, i.e. we have
+                    "...
+                    else if( {expressions(i,1) ... true }) action(i)
+                    ...", then we replace it with
+                    "... else { expressions(i,1) ... action(i) }". The remaining cases are removed.
+                    if i=1 then the whole KExpMatch is replaced with KExpSeq({expressions(1,1) ... action(1)}).
+                Sounds rather complex, but the code is not much longer than this description.
+            */
             match e {
             | KExpMatch (cases, (match_ktyp, match_loc) as kctx) =>
                 fun process_case_checks(checks: kexp_t list, next_check_code: kcode_t,
@@ -446,8 +506,13 @@ fun cfold_dealias(kmods: kmodule_t list)
                                 }
                             }
                         match (keep_action, checks) {
-                        | (false, KExpAtom (AtomLit(KLitBool(false)), _) :: []) => process_cases(other_cases, result)
-                        | (true, []) => (([], new_action) :: result).rev()
+                        | (false, KExpAtom (AtomLit(KLitBool(false)), _) :: []) =>
+                            // drop the case completely, because the check is trivial (==FALSE)
+                            process_cases(other_cases, result)
+                        | (true, []) =>
+                            // no checks; it means that we have 'else' or the new 'else' case;
+                            // we can skip the rest
+                            (([], new_action) :: result).rev()
                         | _ => process_cases(other_cases, (checks, new_action) :: result)
                         }
                     | _ => result.rev()
@@ -472,7 +537,6 @@ fun cfold_dealias(kmods: kmodule_t list)
     }
     [: for km <- kmods {
         val {km_top=top_code} = km
-        // do 2 iterations for stronger effect
         val top_code = [: for e <- top_code { cfd_kexp_(e, cfd_callb) } :]
         val top_code = [: for e <- top_code { cfd_kexp_(e, cfd_callb) } :]
         km.{km_top=top_code}

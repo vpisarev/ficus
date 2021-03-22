@@ -47,7 +47,7 @@ fun pure_kexp(e: kexp_t): bool
         | KExpContinue _ => ispure = false
         | KExpIntrin (intr, _, _) =>
             match intr {
-            | IntrinPopExn | IntrinCheckIdx | IntrinCheckIdxRange => ispure = true
+            | IntrinPopExn | IntrinCheckIdx | IntrinCheckIdxRange => ispure = false
             | _ => {}
             }
         | KExpCall (f, _, (_, loc)) =>
