@@ -115,7 +115,7 @@ type ctprops_t =
 }
 
 type ctyp_t =
-    | CTypInt (* this is a direct mapping from TypInt and CTypInt.
+    | CTypInt (* this is a direct mapping from TypInt and KTypInt.
                 It's ~ ptrdiff_t - a signed version of size_t, i.e.
                 32-bit on 32-bit platforms, 64-bit on 64-bit platforms. *)
     | CTypCInt (* this is 'int' in C. It's almost always 32-bit *)
@@ -151,6 +151,7 @@ and cexp_t =
     | CExpCall of cexp_t * cexp_t list * cctx_t
     | CExpInit of cexp_t list * cctx_t (* {a, b, c, ...} *)
     | CExpTyp of ctyp_t * loc_t
+    (* we don't parse and don't process the inline C code; just retain it as-is *)
     | CExpCCode of string * loc_t
 and cstmt_t =
     | CStmtNop of loc_t
@@ -167,7 +168,6 @@ and cstmt_t =
     | CStmtWhile of cexp_t * cstmt_t * loc_t
     | CStmtDoWhile of cstmt_t * cexp_t * loc_t
     | CStmtSwitch of cexp_t * (cexp_t list * cstmt_t list) list * loc_t
-    (* we don't parse and don't process the inline C code; just retain it as-is *)
     | CDefVal of ctyp_t * id_t * cexp_t option * loc_t
     | CDefFun of cdeffun_t ref
     | CDefTyp of cdeftyp_t ref

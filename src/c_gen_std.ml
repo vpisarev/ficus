@@ -1,3 +1,11 @@
+(*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*)
+
+(*
+    Defines some standard ficus runtime functions and macros
+*)
 open Ast
 open C_form
 

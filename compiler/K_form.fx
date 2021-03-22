@@ -1112,7 +1112,7 @@ fun create_kdefconstr(n: id_t, argtyps: ktyp_t list, rt: ktyp_t, ctor: fun_const
     create_kdeffun(n, args.rev(), rt, default_fun_flags().{fun_flag_ctor=ctor}, None, code, sc, loc)
 }
 
-fun ktyp2str(t: ktyp_t): string
+fun string(t: ktyp_t): string
 {
     | KTypInt => "KTypInt"
     | KTypCInt => "KTypCInt"
@@ -1124,13 +1124,13 @@ fun ktyp2str(t: ktyp_t): string
     | KTypChar => "KTypChar"
     | KTypString => "KTypString"
     | KTypCPointer => "KTypCPtr"
-    | KTypFun(argtyps, rt) => "KTypFun(<" + ktl2str(argtyps) + ">, " + ktyp2str(rt) + ")"
+    | KTypFun(argtyps, rt) => "KTypFun(<" + ktl2str(argtyps) + f">, {rt})"
     | KTypTuple(tl) => "KTypTuple(" + ktl2str(tl) + ")"
     | KTypRecord(n, _) => "KTypRecord(" + idk2str(n, noloc) + ")"
     | KTypName(n) => "KTypName(" + idk2str(n, noloc) + ")"
-    | KTypArray(d, t) => f"KTypArray({d}, {ktyp2str(t)})"
-    | KTypList(t) => "KTypList(" + ktyp2str(t) + ")"
-    | KTypRef(t) => "KTypRef(" + ktyp2str(t) + ")"
+    | KTypArray(d, t) => f"KTypArray({d}, {t})"
+    | KTypList(t) => f"KTypList({t}))"
+    | KTypRef(t) => f"KTypRef({t})"
     | KTypExn => "KTypExn"
     | KTypErr => "KTypErr"
     | KTypModule => "KTypModule"
@@ -1160,7 +1160,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     }
 }
 
-fun ktl2str(tl: ktyp_t list): string = ", ".join([: for t <- tl { ktyp2str(t) } :])
+fun ktl2str(tl: ktyp_t list): string = ", ".join([: for t <- tl { string(t) } :])
 fun atom2str(a: atom_t): string
 {
     | AtomId(n) => idk2str(n, noloc)

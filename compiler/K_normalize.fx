@@ -917,7 +917,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
                 }
             | _ => throw compile_err(loc, f"k-normalize: enxpected type '{tn}'; record, variant of exception is expected here")
             }
-        | t => throw compile_err(loc, f"k-normalize: enxpected type '{ktyp2str(t)}'; record, variant of exception is expected here")
+        | t => throw compile_err(loc, f"k-normalize: enxpected type '{t}'; record, variant of exception is expected here")
         }
 
     fun process_next_subpat(plists: (pat_info_t list, pat_info_t list, pat_info_t list),

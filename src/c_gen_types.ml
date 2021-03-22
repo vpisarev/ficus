@@ -623,7 +623,7 @@ let convert_all_typs kmods =
                 let relems = if have_tag then (tag_id, CTypCInt) :: relems else relems in
                 if recursive_variant then
                     let relems = ((get_id "rc"), CTypInt) :: relems in
-                    struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)))};
+                    struct_decl := {!struct_decl with ct_typ=(make_ptr (CTypStruct(struct_id_opt, relems)))}
                 else
                     struct_decl := {!struct_decl with ct_typ=CTypStruct(struct_id_opt, relems)};
                 struct_decl := {!struct_decl with ct_enum=ce_id};
