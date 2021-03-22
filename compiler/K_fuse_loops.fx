@@ -29,6 +29,21 @@ type arr_fuse_map_t = (id_t, id_t) Map.t
 
 fun fuse_loops(code: kcode_t)
 {
+    val fold nmaps = 0, nfors = 0 for e <- code {
+        | KDefVal(_, KExpMap _, _) => (nmaps + 1, nfors)
+        | KExpMap _ => (nmaps + 1, nfors)
+        | KExpFor _ => (nmaps, nfors + 1)
+        | _ => (nmaps, nfors)
+    }
+    if nmaps >= 1 && nmaps + nfors >= 2 {
+        fuse_loops_(code)
+    } else {
+        code
+    }
+}
+
+fun fuse_loops_(code: kcode_t)
+{
     var counters: ainfo_map_t = Map.empty(cmp_id)
     fun process_atom(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
         match a {
