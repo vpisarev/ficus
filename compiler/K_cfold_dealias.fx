@@ -24,8 +24,8 @@
 */
 
 from Ast import *
-from KForm import *
-import KPP
+from K_form import *
+import K_pp
 import Math, Map
 
 type aclass_t =
@@ -294,7 +294,7 @@ fun print_subst_map(m: idamap_t, loc: loc_t) {
     println("subsitution map {")
     m.app(fun (n, a) {
         println(f"\t{idk2str(n, loc)}: ")
-        KPP.pp_atom(a, loc)
+        K_pp.pp_atom(a, loc)
         println(";")
     })
     println("}")

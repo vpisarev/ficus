@@ -30,7 +30,7 @@
 */
 
 from Ast import *
-from KForm import *
+from K_form import *
 import Options
 import Map, Set
 

@@ -14,7 +14,7 @@
 */
 
 from Ast import *
-from KForm import *
+from K_form import *
 import Map, Set
 
 // For each type finds the set of its direct dependencies,

@@ -6,7 +6,7 @@
 ///////////////////////// The type checker //////////////////////
 
 from Ast import *
-import AstPP, Options
+import Ast_pp, Options
 
 import Map, Set
 
@@ -47,9 +47,9 @@ These are the tasks performed by type checker:
     ** etc.
 */
 
-val pprint_typ_x = AstPP.pprint_typ_x
-val pprint_exp_x = AstPP.pprint_exp_x
-val pprint_pat_x = AstPP.pprint_pat_x
+val pprint_typ_x = Ast_pp.pprint_typ_x
+val pprint_exp_x = Ast_pp.pprint_exp_x
+val pprint_pat_x = Ast_pp.pprint_pat_x
 
 fun print_env(msg: string, env: env_t, loc: loc_t) {
     println(f"{msg}. env at {loc} [")
@@ -105,7 +105,7 @@ type rec_data_t = (rec_elem_t list, bool)
 
 fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
     //val whole_ctx = "ctx:" + "\n\t".join(all_compile_err_ctx)
-    //print(f"\n<<<trying to unify types at {loc}; {whole_ctx}: "); AstPP.pprint_typ_x(t1, loc); print(" and "); AstPP.pprint_typ_x(t2, loc); println(); File.stdout.flush()
+    //print(f"\n<<<trying to unify types at {loc}; {whole_ctx}: "); Ast_pp.pprint_typ_x(t1, loc); print(" and "); Ast_pp.pprint_typ_x(t2, loc); println(); File.stdout.flush()
     var undo_stack: (typ_t? ref, typ_t?) list = []
     var rec_undo_stack: (rec_data_t ref, rec_data_t) list = []
     /* checks if a reference to undefined type (an argument of TypVar (ref None))
@@ -825,7 +825,7 @@ fun match_ty_templ_args(actual_ty_args: typ_t list, templ_args: id_t list, env: 
 fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     val (etyp, eloc) as ctx = get_exp_ctx(e)
     //print_env("", env, eloc)
-    //println(f"\n------------------------\nchecking expression at {eloc}: "); AstPP.pprint_exp_x(e); println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+    //println(f"\n------------------------\nchecking expression at {eloc}: "); Ast_pp.pprint_exp_x(e); println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
     fun check_for_clause(p: pat_t, e: exp_t, env: env_t, idset: idset_t, sc: scope_t list) {
         val e = check_exp(e, env, sc)
@@ -1875,7 +1875,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | DefExn _ | DefTyp _ | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) =>
         throw compile_err(eloc, "internal err: should not get here; all the declarations and directives must be handled in check_eseq")
     }
-    //println(f"\nresult of type '{typ2str(get_exp_typ(new_e))}': "); AstPP.pprint_exp_x(new_e); println("\n---------------------------\n")
+    //println(f"\nresult of type '{typ2str(get_exp_typ(new_e))}': "); Ast_pp.pprint_exp_x(new_e); println("\n---------------------------\n")
     new_e
 }
 

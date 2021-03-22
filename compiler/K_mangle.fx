@@ -10,7 +10,7 @@
 */
 
 from Ast import *
-from KForm import *
+from K_form import *
 import Map
 
 type mangle_map_t = (string, id_t) Map.t

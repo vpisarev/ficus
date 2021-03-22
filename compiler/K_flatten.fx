@@ -16,7 +16,7 @@
     (hence the name `flatten`).
 */
 from Ast import *
-from KForm import *
+from K_form import *
 
 @private fun flatten_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
 @private fun flatten_kexp_(e: kexp_t, callb: k_callb_t) =

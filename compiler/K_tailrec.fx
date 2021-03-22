@@ -15,7 +15,7 @@
 */
 
 from Ast import *
-from KForm import *
+from K_form import *
 
 fun tailrec2loop(kf: kdeffun_t ref): void
 {

@@ -207,8 +207,8 @@
 */
 
 from Ast import *
-from KForm import *
-import KLiftSimple
+from K_form import *
+import K_lift_simple
 import Map, Set
 
 type ll_func_info_t =
@@ -274,7 +274,7 @@ fun make_wrappers_for_nothrow(top_code: kcode_t)
 fun lift_all(kmods: kmodule_t list)
 {
     var fold globals = empty_idset for {km_top} <- kmods {
-            KLiftSimple.find_globals(km_top, globals)
+            K_lift_simple.find_globals(km_top, globals)
         }
 
     var ll_env : ll_env_t = Map.empty(cmp_id)

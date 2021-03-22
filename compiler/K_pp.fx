@@ -10,8 +10,8 @@
 */
 
 from Ast import *
-from KForm import *
-import PP, AstPP, File
+from K_form import *
+import PP, Ast_pp, File
 
 val margin = 120
 val default_indent = 3
@@ -202,7 +202,7 @@ val default_indent = 3
         pp.beginv()
         pp.begin()
         val {kv_typ, kv_flags} = get_kval(n, loc)
-        AstPP.pprint_val_flags(pp, kv_flags)
+        Ast_pp.pprint_val_flags(pp, kv_flags)
         pp.str("val "); pp_idtyp_(n, kv_typ)
         pp.str(" ="); pp.end(); pp.space(); pp_exp_(e0)
         pp.end()
@@ -212,7 +212,7 @@ val default_indent = 3
         val ctor_id = kf_flags.fun_flag_ctor
         pp.beginv(0)
         pp.begin()
-        AstPP.pprint_fun_flags(pp, kf_flags)
+        Ast_pp.pprint_fun_flags(pp, kf_flags)
         pp.str("fun "); pp_id_(kf_name); pp.str("(")
         pp.cut(); pp.begin()
         for (n, t)@i <- kf_args {
@@ -392,13 +392,13 @@ val default_indent = 3
         pp.end()
     | KExpFor (for_cl, at_ids, for_body, flags, loc) =>
         pp.beginv(0);
-        pp.begin(); AstPP.pprint_for_flags(pp, flags);
+        pp.begin(); Ast_pp.pprint_for_flags(pp, flags);
         pp_for_hdr_(KExpNop(loc), for_cl, at_ids);
         pp_exp_as_block_(for_body, flow=true)
         pp.end()
     | KExpMap (map_cl, map_body, flags, (_, loc)) =>
         pp.beginv(0);
-        AstPP.pprint_for_flags(pp, flags)
+        Ast_pp.pprint_for_flags(pp, flags)
         val (begin, end) =
             match flags.for_flag_make {
             | ForMakeList => ("[:", ":]")

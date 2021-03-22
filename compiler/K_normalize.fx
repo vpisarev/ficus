@@ -13,8 +13,8 @@
     is correct.
 */
 from Ast import *
-from KForm import *
-import AstTypeChecker, AstPP
+from K_form import *
+import Ast_typecheck, Ast_pp
 
 fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
 {
@@ -49,7 +49,7 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
             KTypRecord(noid, [: for (ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } :])
         | TypRecord _ => throw compile_err(loc, "the record type cannot be inferenced; use explicit type annotation")
         | TypApp(args, n) =>
-            val t_opt = AstTypeChecker.find_typ_instance(t, loc)
+            val t_opt = Ast_typecheck.find_typ_instance(t, loc)
             match t_opt {
             | Some(TypApp([], n)) =>
                 match id_info(n, loc) {
@@ -88,7 +88,7 @@ var idx_access_stack: (atom_t, int) list = []
 
 fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
 {
-    //println("------------------------------------\ntranslating "); AstPP.pprint_exp_x(e); println("\n==========================================\n")
+    //println("------------------------------------\ntranslating "); Ast_pp.pprint_exp_x(e); println("\n==========================================\n")
     val (etyp, eloc) = get_exp_ctx(e)
     val ktyp = typ2ktyp(etyp, eloc)
     val kctx = (ktyp, eloc)
@@ -268,7 +268,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (rn_id, ctor, relems) =
             match (rn, deref_typ(etyp)) {
             | (ExpIdent(rn_id, _), _) =>
-                val (ctor, relems) = AstTypeChecker.get_record_elems(Some(rn_id), etyp, false, eloc)
+                val (ctor, relems) = Ast_typecheck.get_record_elems(Some(rn_id), etyp, false, eloc)
                 (rn_id, ctor, relems)
             | (ExpNop _, TypRecord (ref (relems, true))) => (noid, noid, relems)
             | _ => throw compile_err(get_exp_loc(rn),
@@ -292,7 +292,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         else { (KExpCall(ctor, ratoms.rev(), kctx), code) }
     | ExpUpdateRecord(e, new_elems, _) =>
         val (rec_n, code) = exp2id(e, code, true, sc, "the updated record cannot be a literal")
-        val (_, relems) = AstTypeChecker.get_record_elems(None, etyp, false, eloc)
+        val (_, relems) = Ast_typecheck.get_record_elems(None, etyp, false, eloc)
         val fold (ratoms, code) = ([], code) for (ni, ti, _)@idx <- relems {
             val (a, code) =
                 try {
@@ -601,7 +601,7 @@ fun pat_have_vars(p: pat_t): bool
     | PatWhen(p, _, _) => pat_have_vars(p)
 }
 
-/* version of AstTypeChecker.get_record_elems, but for already transformed types */
+/* version of Ast_typecheck.get_record_elems, but for already transformed types */
 fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t)
 {
     val t = deref_ktyp(t, loc)

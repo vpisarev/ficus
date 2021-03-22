@@ -303,7 +303,8 @@ fun app(m: ('k, 'd) Map.t, f: ('k, 'd) -> void): void
 }
 
 // similar to foldr, but does a specific task - constructs the list of results
-fun map(m: ('k, 'd) Map.t, f: ('k, 'd) -> 'r): 'res list {
+fun map(m: ('k, 'd) Map.t, f: ('k, 'd) -> 'r): 'res list
+{
     fun update_list_(t: ('k, 'd) tree_t, f: ('k, 'd) -> 'r, res: 'r list): 'r list =
     match t {
         | Node(_, l, xk, xd, r) =>
@@ -311,6 +312,21 @@ fun map(m: ('k, 'd) Map.t, f: ('k, 'd) -> 'r): 'res list {
         | _ => res
     }
     update_list_(m.root, f, [])
+}
+
+fun filter(m: ('k, 'd) Map.t, f: ('k, 'd) -> bool): ('k, 'd) Map.t
+{
+    fun filter_(t: ('k, 'd) tree_t, f: ('k, 'd) -> bool,
+                cmp: 'k cmp_t, res: ('k, 'd) tree_t): ('k, 'd) tree_t =
+    match t {
+        | Node(_, l, xk, xd, r) =>
+            val res = filter_(l, f, cmp, res)
+            val res = if f(xk, xd) { add_(res, xk, xd, cmp) } else { res }
+            filter_(r, f, cmp, res)
+        | _ => res
+    }
+    val new_root = filter_(m.root, f, m.cmp, Empty)
+    t {root=new_root, cmp=m.cmp}
 }
 
 fun add_list(m: ('k, 'd) Map.t, l: ('k, 'd) list)

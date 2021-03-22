@@ -25,7 +25,7 @@
 */
 
 from Ast import *
-from KForm import *
+from K_form import *
 import Set
 
 fun find_globals(top_code: kcode_t, set0: idset_t): idset_t =

@@ -7,16 +7,16 @@
 // (calls all other parts of the compiler in the proper order)
 
 import Filename, Sys, Map
-import Ast, AstPP, Lexer, Parser, Options
-import AstTypeChecker
-import KForm, KPP, KNormalize, KAnnotate, KMangle
-import KRemoveUnused, KLiftSimple, KFlatten, KTailRec,
-       KConstFold, KLift, KFastIdx, KInline
+import Ast, Ast_pp, Lexer, Parser, Options
+import Ast_typecheck
+import K_form, K_pp, K_normalize, K_annotate, K_mangle
+import K_remove_unused, K_lift_simple, K_flatten, K_tailrec,
+       K_cfold_dealias, K_lift, K_fast_idx, K_inline, K_loop_inv, K_fuse_loops
 
 exception CumulativeParseError
 
 type id_t = Ast.id_t
-type kmodule_t = KForm.kmodule_t
+type kmodule_t = K_form.kmodule_t
 val pr_verbose = Ast.pr_verbose
 
 fun get_preamble(mfname: string): Lexer.token_t list {
@@ -122,15 +122,15 @@ fun toposort(graph: dep_graph_t): id_t list
 fun typecheck_all(modules: id_t list): bool
 {
     Ast.all_compile_errs = []
-    for m <- modules {AstTypeChecker.check_mod(m)}
+    for m <- modules {Ast_typecheck.check_mod(m)}
     Ast.all_compile_errs.empty()
 }
 
 fun k_normalize_all(modules: id_t list): (kmodule_t list, bool)
 {
     Ast.all_compile_errs = []
-    KForm.init_all_idks()
-    val kmods = KNormalize.normalize_all_modules(modules)
+    K_form.init_all_idks()
+    val kmods = K_normalize.normalize_all_modules(modules)
     (kmods, Ast.all_compile_errs.empty())
 }
 
@@ -141,49 +141,49 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     val niters = Options.opt.optim_iters
     var temp_kmods = kmods
     prf("initial dead code elim")
-    temp_kmods = KRemoveUnused.remove_unused(temp_kmods, true)
+    temp_kmods = K_remove_unused.remove_unused(temp_kmods, true)
     for i <- 1: niters+1 {
         pr_verbose(f"Optimization pass #{i}:")
         if i <= 2 {
             prf("simple lifting")
-            temp_kmods = KLiftSimple.lift(temp_kmods)
+            temp_kmods = K_lift_simple.lift(temp_kmods)
             prf("annotate types")
-            temp_kmods = KAnnotate.annotate_types(temp_kmods)
+            temp_kmods = K_annotate.annotate_types(temp_kmods)
         }
         prf("tailrec")
-        temp_kmods = KTailRec.tailrec2loops_all(temp_kmods)
-        //prf("loop inv")
-        //temp_kmods = KLoopInv.move_loop_invs_all(temp_kmods)
-        //prf("inline")
+        temp_kmods = K_tailrec.tailrec2loops_all(temp_kmods)
+        prf("loop inv")
+        temp_kmods = K_loop_inv.move_loop_invs_all(temp_kmods)
+        prf("inline")
         if Options.opt.inline_thresh > 0 {
-            temp_kmods = KInline.inline_some(temp_kmods)
+            temp_kmods = K_inline.inline_some(temp_kmods)
         }
         prf("flatten")
-        temp_kmods = KFlatten.flatten_all(temp_kmods)
-        //prf("fuse loops")
-        //temp_kmods = KFuseLoops.fuse_loops_all(temp_kmods)
+        temp_kmods = K_flatten.flatten_all(temp_kmods)
+        prf("fuse loops")
+        temp_kmods = K_fuse_loops.fuse_loops_all(temp_kmods)
         prf("fast idx")
-        temp_kmods = KFastIdx.optimize_idx_checks_all(temp_kmods)
+        temp_kmods = K_fast_idx.optimize_idx_checks_all(temp_kmods)
         prf("const folding")
-        temp_kmods = KConstFold.cfold_dealias(temp_kmods)
+        temp_kmods = K_cfold_dealias.cfold_dealias(temp_kmods)
         prf("dead code elim")
-        temp_kmods = KRemoveUnused.remove_unused(temp_kmods, false)
+        temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     }
     pr_verbose("Finalizing K-form:")
     prf("lambda lifting")
-    temp_kmods = KLift.lift_all(temp_kmods)
+    temp_kmods = K_lift.lift_all(temp_kmods)
     prf("flatten")
-    temp_kmods = KFlatten.flatten_all(temp_kmods)
+    temp_kmods = K_flatten.flatten_all(temp_kmods)
     prf("dead code elim")
-    temp_kmods = KRemoveUnused.remove_unused(temp_kmods, false)
+    temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     prf("mangle")
-    temp_kmods = KMangle.mangle_all(temp_kmods)
+    temp_kmods = K_mangle.mangle_all(temp_kmods)
     prf("dead code elim")
-    temp_kmods = KRemoveUnused.remove_unused(temp_kmods, false)
-    //prf("mark recursive")
-    //temp_kmods = KInline.find_recursive_funcs_all(temp_kmods)
+    temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
+    prf("mark recursive")
+    temp_kmods = K_inline.find_recursive_funcs_all(temp_kmods)
     prf("annotate types")
-    temp_kmods = KAnnotate.annotate_types(temp_kmods)
+    temp_kmods = K_annotate.annotate_types(temp_kmods)
     (temp_kmods, compile_errs.empty())
 }
 
@@ -332,7 +332,7 @@ fun process_all(fname0: string): bool {
         if Options.opt.print_ast0 {
             for m <- Ast.all_modules_sorted {
                 val minfo = Ast.get_module(m)
-                AstPP.pprint_mod(minfo)
+                Ast_pp.pprint_mod(minfo)
             }
         }
         val modules_used = ", ".join(Ast.all_modules_sorted.map(Ast.pp))
@@ -342,16 +342,16 @@ fun process_all(fname0: string): bool {
         if ok && Options.opt.print_ast {
             for m <- Ast.all_modules_sorted {
                 val minfo = Ast.get_module(m)
-                AstPP.pprint_mod(minfo)
+                Ast_pp.pprint_mod(minfo)
             }
         }
         val (kmods, ok) = if ok { k_normalize_all(Ast.all_modules_sorted) } else { ([], false) }
         pr_verbose("K-normalization complete")
-        if ok && Options.opt.print_k0 { KPP.pp_kmods(kmods) }
+        if ok && Options.opt.print_k0 { K_pp.pp_kmods(kmods) }
         pr_verbose("K-form optimization started")
         val (kmods, ok) = if ok { k_optimize_all(kmods) } else { ([], false) }
         if ok { pr_verbose("K-form optimization complete") }
-        if ok && Options.opt.print_k { KPP.pp_kmods(kmods) }
+        if ok && Options.opt.print_k { K_pp.pp_kmods(kmods) }
         /*if !options.gen_c { ok } else {
             val (cmods, ok) = if ok { k2c_all(kmods) } else { ([], false) }
             val (cmods, builddir, ok) = if ok { emit_c_files(fname0, cmods) } else { (cmods, ".", ok) }
