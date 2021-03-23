@@ -208,7 +208,7 @@ fun k2c_all(kmods) {
         }
     } :]
     pr_verbose("\tConversion to C-form complete")
-    (cmods, *compile_errs == [])
+    (cmods, compile_errs.empty())
 }
 fun emit_c_files(fname0, cmods) {
     val build_root_dir = options.build_rootdir
@@ -294,7 +294,7 @@ fun run_cc(cmods, output_dir) {
         val linked_libs = Sys.getenv("FICUS_LINK_LIBRARIES")
         val linked_libs = if options.clibs == "" { linked_libs }
                           else { linked_libs + " " + options.clibs }
-        val linked_libs = if all_clibs == [] { linked_libs }
+        val linked_libs = if all_clibs.empty() { linked_libs }
                           else { linked_libs + " " + " ".join([: for l <- all_clibs.rev() {"-l" + l} :]) }
         val cmd = cmd + linked_libs
         val cmd = cmd + " -lm" + (if any_cpp { " -lstdc++" } else { "" })

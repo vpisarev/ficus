@@ -52,14 +52,14 @@ object type t =
     margin: int
     default_indent: int
     print_f: string -> void
-    get_f: void -> string
+    get_f: void -> string list
     _state: state_t ref
 }
 
-fun no_get(): string = ""
+fun no_get(): string list = []
 
 fun make_pprinter(margin: int, print_f: string->void,
-                  get_f: void->string, ~default_indent: int=4): t
+                  get_f: void->string list, ~default_indent: int=4): t
 {
     val n=max(margin, 16)*3
     val pp = t {
@@ -77,7 +77,7 @@ fun make_pprinter(margin: int, print_f: string->void,
     pp
 }
 
-fun pprint_to_string(margin: int, ~default_indent: int=4): t
+fun pprint_to_string_list(margin: int, ~default_indent: int=4): t
 {
     var strbuf : string list = []
     var curr = ""
@@ -93,7 +93,7 @@ fun pprint_to_string(margin: int, ~default_indent: int=4): t
     fun get_f()
     {
         if curr != "" {strbuf = curr :: strbuf}
-        join("\n", strbuf.rev())
+        strbuf.rev()
     }
     make_pprinter(margin, print_f, get_f, default_indent=default_indent)
 }
@@ -180,6 +180,7 @@ fun cut(pp: PP.t) = br(pp, 0, 0)
 fun space(pp: PP.t) = br(pp, 1, 0)
 fun sep_space(pp: PP.t, c: char) = br(pp, 2, 0, sep=c)
 fun opt_semi(pp: PP.t) = br(pp, 2, 0, sep=';')
+fun break0(pp: PP.t) = br(pp, 1, 0)
 fun breaki(pp: PP.t) = br(pp, 1, pp.default_indent)
 fun breaku(pp: PP.t) = br(pp, 1, -pp.default_indent)
 fun newline(pp: PP.t) = br(pp, pp.margin, 0)

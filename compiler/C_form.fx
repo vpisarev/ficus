@@ -73,14 +73,14 @@
 from Ast import *
 from K_form import *
 
-type cbinop_t =
+type cbinary_t =
     | COpAdd | COpSub | COpMul | COpDiv | COpMod | COpShiftLeft | COpShiftRight
     | COpBitwiseAnd | COpBitwiseOr | COpBitwiseXor | COpLogicAnd | COpLogicOr
     | COpCmp: cmpop_t | COpArrayElem | COpAssign
     | COpAugAdd | COpAugSub | COpAugMul | COpAugDiv | COpAugMod | COpAugSHL | COpAugSHR
     | COpAugBitwiseAnd | COpAugBitwiseOr | COpAugBitwiseXor
 
-type cunop_t =
+type cunary_t =
     | COpPlus | COpNegate | COpBitwiseNot | COpLogicNot
     | COpDeref | COpGetAddr | COpPrefixInc | COpPrefixDec
     | COpSuffixInc | COpSuffixDec
@@ -133,8 +133,8 @@ type cctx_t = (ctyp_t, loc_t)
 type cexp_t =
     | CExpIdent: (id_t, cctx_t)
     | CExpLit: (clit_t, cctx_t)
-    | CExpBinary: (cbinop_t, cexp_t, cexp_t, cctx_t)
-    | CExpUnary: (cunop_t, cexp_t, cctx_t)
+    | CExpBinary: (cbinary_t, cexp_t, cexp_t, cctx_t)
+    | CExpUnary: (cunary_t, cexp_t, cctx_t)
     | CExpMem: (cexp_t, id_t, cctx_t)
     | CExpArrow: (cexp_t, id_t, cctx_t)
     | CExpCast: (cexp_t, ctyp_t, loc_t)

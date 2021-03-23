@@ -23,7 +23,7 @@ fun tailrec2loop(kf: kdeffun_t ref): void
     fun have_tailrec_calls_(e: kexp_t): bool =
         match e {
         | KExpSeq (elist, _) =>
-            elist != [] && have_tailrec_calls_(elist.last())
+            !elist.empty() && have_tailrec_calls_(elist.last())
         | KExpIf (_, then_e, else_e, _) =>
             have_tailrec_calls_(then_e) || have_tailrec_calls_(else_e)
         | KExpCall (f, _, _) =>

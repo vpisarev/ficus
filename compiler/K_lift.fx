@@ -583,7 +583,7 @@ fun lift_all(kmods: kmodule_t list)
                 val {kf_name, kf_args, kf_rt, kf_closure={kci_make_fp=make_fp}, kf_flags, kf_loc} = *kf
                 val kf_typ = get_kf_typ(kf_args, kf_rt)
                 val (_, orig_freevars) = get_closure_freevars(kf_name, kf_loc)
-                if orig_freevars == [] {
+                if orig_freevars.empty() {
                     if !is_constructor(kf_flags) {
                         curr_subst_env = curr_subst_env.add(kf_name, (noid, noid, Some(kf_typ)))
                     }
