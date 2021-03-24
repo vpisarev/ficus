@@ -799,12 +799,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                             | AtomLit(KLitInt 0L) ->
                                 raise_compile_err for_loc (for_err_msg for_idx nfors k "the iteration step is zero")
                             | AtomLit (KLitInt i) ->
-                                let (aug_add_delta, add_delta, i) = if i > 0L then
-                                        (COpAugAdd, COpAdd, i)
-                                    else
-                                        (COpAugSub, COpSub, (Int64.neg i))
-                                    in
-                                (aug_add_delta, add_delta, (make_int__exp i for_loc), init_ccode)
+                                (COpAugAdd, COpAdd, (make_int__exp i for_loc), init_ccode)
                             | _ ->
                                 let (d_exp, init_ccode) = atom2cexp_ delta true init_ccode for_loc in
                                 let init_ccode = (CExp (make_call !std_FX_CHECK_ZERO_STEP [d_exp; lbl] CTypVoid for_loc)) :: init_ccode in

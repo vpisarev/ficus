@@ -1152,7 +1152,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     | KLitFloat(32, v) => f"{v}f"
     | KLitFloat(64, v) => f"{v}"
     | KLitFloat(b, v) => throw compile_err(loc, f"invalid literal LitFloat({b}, {v})")
-    | KLitString(s) => repr(s)
+    | KLitString(s) => s.escaped(quotes=true)
     | KLitChar(c) => repr(c)
     | KLitBool(true) => "true"
     | KLitBool(false) => "false"

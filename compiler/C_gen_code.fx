@@ -875,10 +875,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | AtomLit(KLitInt 0L) =>
                         throw compile_err(for_loc, for_err_msg(for_idx, nfors, k, "the iteration step is zero"))
                     | AtomLit(KLitInt i) =>
-                        val (aug_add_delta, add_delta, i) =
-                            if i > 0L { (COpAugAdd, COpAdd, i) }
-                            else { (COpAugSub, COpSub, -i) }
-                        (aug_add_delta, add_delta, make_int__exp(i, for_loc), init_ccode)
+                        (COpAugAdd, COpAdd, make_int__exp(i, for_loc), init_ccode)
                     | _ =>
                         val (d_exp, init_ccode) = atom2cexp_(delta, true, init_ccode, for_loc)
                         val init_ccode = CExp(make_call(std_FX_CHECK_ZERO_STEP, [: d_exp, lbl :], CTypVoid, for_loc)) :: init_ccode
@@ -3021,7 +3018,7 @@ fun gen_ccode_all(kmods: kmodule_t list)
             ((km, c_fdecls, mod_init_calls, all_exn_data_decls.rev()) :: kmods_plus,
             mod_exn_data_decls.rev() + all_exn_data_decls)
         }
-    pr_verbose("\tfunction declarations and exceptinos have been translated to C")
+    pr_verbose("\tfunction declarations and exceptions have been translated to C")
 
     /* 3. convert each module to C */
     val fold cmods = [] for (km, c_fdecls, mod_init_calls, exn_data_decls) <- kmods_plus.rev() {

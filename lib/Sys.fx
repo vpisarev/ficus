@@ -154,9 +154,11 @@ fun mkdir(name: string, permissions: int): bool = @ccode
     struct stat s;
     *fx_result = false;
     if (fx_status >= 0) {
-        if(stat(name_.data, &s) == -1) {
+        int fstat_err = stat(name_.data, &s);
+        if( fstat_err == -1) {
             *fx_result = mkdir(name_.data, (int)permissions) == 0;
-        }
+        } else
+            *fx_result = fstat_err == 0;
         fx_free_cstr(&name_);
     }
     return fx_status;
