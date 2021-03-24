@@ -261,7 +261,7 @@ fun tokens(s: string, f: char->bool)
             (sl, if sep {i} else {start}, false)
         }
     }
-    List.rev(if sep {sl} else {s[start:] :: sl})
+    (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
 fun split(s: string, c: char)
@@ -273,7 +273,7 @@ fun split(s: string, c: char)
             (sl, if sep {i} else {start}, false)
         }
     }
-    List.rev(if sep {sl} else {s[start:] :: sl})
+    (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
 @nothrow fun to_int(a: string): int? = @ccode
@@ -334,5 +334,5 @@ fun escaped(s: string, ~quotes: bool=true)
             else { (ll, verb) }
         }
     }
-    join("", List.rev(q :: s[verb:] :: ll))
+    join("", (q :: s[verb:] :: ll).rev())
 }

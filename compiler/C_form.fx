@@ -834,10 +834,22 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
     | CTypAny => throw compile_err(loc, "ctyp2str: CTypAny is not supported")
     }
 
-fun ctyp2str_(t: ctyp_t, loc: loc_t): string {
-    val (cname, n) = ctyp2str(t, loc)
-    cname
+fun idc2str(n: id_t, loc: loc_t) {
+    val cname = get_idc_cname(n, loc)
+    if cname != "" { cname }
+    else {
+        val (infix, prefix, suffix) =
+        match n {
+        | IdName(i) => ("", i, 1234567890)
+        | IdVal(i, j) => ("_", i, j)
+        | IdTemp(i, j) => ("_", i, j)
+        }
+        val prefix = dynvec_get(all_strings, prefix)
+        f"{prefix}{infix}{suffix}"
+    }
 }
+
+fun ctyp2str_(t: ctyp_t, loc: loc_t): string = ctyp2str(t, loc).0
 
 fun make_ptr(t: ctyp_t) =
     match t {
@@ -860,8 +872,8 @@ fun make_lit_exp(l: clit_t, loc: loc_t) {
     CExpLit(l, (t, loc))
 }
 
-fun make_int__exp(i: int64, loc: loc_t) = CExpLit(KLitInt(i), (CTypInt, loc))
-fun make_int_exp(i: int, loc: loc_t) = CExpLit(KLitInt(int64(i)), (CTypInt, loc))
+fun make_int__exp(i: int64, loc: loc_t): cexp_t = CExpLit(KLitInt(i), (CTypInt, loc))
+fun make_int_exp(i: int, loc: loc_t): cexp_t = CExpLit(KLitInt(int64(i)), (CTypInt, loc))
 fun make_bool_exp(b: bool, loc: loc_t) = CExpLit(KLitBool(b), (CTypBool, loc))
 fun make_nullptr(loc: loc_t) = CExpLit(KLitNil(KTypVoid), (std_CTypVoidPtr, loc))
 

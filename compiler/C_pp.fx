@@ -71,21 +71,6 @@ type assoc_t = AssocLeft | AssocRight
     | COpSuffixDec => ("--", 1400, AssocLeft)
 }
 
-@private fun idc2str(n: id_t, loc: loc_t) {
-    val cname = get_idc_cname(n, loc)
-    if cname != "" { cname }
-    else {
-        val (infix, prefix, suffix) =
-        match n {
-        | IdName(i) => ("", i, 1234567890)
-        | IdVal(i, j) => ("_", i, j)
-        | IdTemp(i, j) => ("_", i, j)
-        }
-        val prefix = dynvec_get(all_strings, prefix)
-        f"{prefix}{infix}{suffix}"
-    }
-}
-
 @private fun pp_id(pp: PP.t, n: id_t, loc: loc_t) = pp.str(idc2str(n, loc))
 
 @private fun pp_ctyp__(pp: PP.t, prefix0: string, suffix0: string, t: ctyp_t, id_opt: id_t?, fwd_mode: bool, loc: loc_t)

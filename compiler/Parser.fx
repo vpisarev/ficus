@@ -829,7 +829,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
     val fold (glob_el, nested_fors) = ([], []) for (ppe_list, loc) <- nested_fors {
         val fold (glob_el, for_cl_, idx_pat) = (glob_el, [], PatAny(loc)) for (p, idxp, e) <- ppe_list {
             val (p_, p_e) = plist2exp(p :: [], "x", get_pat_loc(p))
-            val p = List.hd(p_)
+            val p = p_.hd()
             match (idxp, idx_pat) {
             | (PatAny _, idx_pat) => (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
             | (_, PatAny _) =>

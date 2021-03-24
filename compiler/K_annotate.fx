@@ -247,7 +247,7 @@ fun clear_typ_annotations(top_code: kcode_t) =
 
 fun annotate_types(kmods: kmodule_t list)
 {
-    val top_code = List.concat([: for {km_top} <- kmods {km_top} :])
+    val top_code = [: for {km_top} <- kmods {km_top} :].concat()
     clear_typ_annotations(top_code)
     find_recursive(top_code)
     for e <- top_code {

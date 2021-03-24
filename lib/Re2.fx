@@ -926,8 +926,8 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
         }
     }
     val larrist = result_as_list(0, -1, [])
-    val len_i = List.length(larrist)
-    val len_j = if len_i!=0 { size(List.hd(larrist))} else { 0 }
+    val len_i = larrist.length()
+    val len_j = if len_i!=0 { size(larrist.hd())} else { 0 }
     val matrix_res: (int,int) [,] = array((len_i, len_j), (0,0))
     var i = 0
     for l <- larrist
@@ -1043,7 +1043,7 @@ fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,
                 pos = subend
             }
             str_list = str[pos:] :: str_list
-            String.join("", List.rev(str_list))
+            "".join("", str_list.rev())
         }
         else
         {str})

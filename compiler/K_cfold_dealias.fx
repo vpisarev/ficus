@@ -477,7 +477,7 @@ fun cfold_dealias(kmods: kmodule_t list)
                                 val new_c = code2kexp(code, loc)
                                 (false, [], (new_c :: result_checks).rev())
                             | KExpAtom (AtomLit(KLitBool(true)), _) =>
-                                val code_wo_check = List.tl(code.rev()).rev()
+                                val code_wo_check = code.rev().tl().rev()
                                 process_case_checks(other_checks, code_wo_check, result_checks)
                             | _ =>
                                 val loc = get_kexp_loc(actual_check)

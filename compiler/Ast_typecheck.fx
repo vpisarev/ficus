@@ -920,7 +920,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val (ttrj, locj) = get_exp_ctx(trj)
             match ttrj {
             | TypTuple(tl) =>
-                val tj = List.nth(tl, idx)
+                val tj = tl.nth(idx)
                 val ej = ExpMem(trj, ExpLit(LitInt(int64(idx)), (TypInt, locj)), (tj, locj))
                 val pj = dup_pat(pj)
                 val (pj, env, idset, _, _) = check_pat(pj, tj, env, idset, empty_idset,
@@ -929,7 +929,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 (def_pj :: code, env, idset)
             | _ =>
                 val (_, relems) = get_record_elems(None, ttrj, false, locj)
-                val (nj, tj, _) = List.nth(relems, idx)
+                val (nj, tj, _) = relems.nth(idx)
                 val ej = ExpMem(trj, ExpIdent(nj, (TypString, locj)), (tj, locj))
                 val pj = dup_pat(pj)
                 val (pnj, pvj) =

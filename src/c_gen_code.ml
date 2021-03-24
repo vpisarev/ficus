@@ -507,7 +507,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
             else
                 let parent_label_exp = parent_block_label end_loc in
                 let epilogue = epilogue @ [CStmtLabel(bctx_label, end_loc)] in
-                let _ = if enable_break_continue || bctx_continue_used + bctx_break_used = 0 then [] else
+                let _ = if enable_break_continue || bctx_continue_used + bctx_break_used = 0 then () else
                     raise_compile_err loc "cgen: cannot use break/continue inside comprehensions" in
                 let continue_code = if bctx_continue_used = 0 then []
                     else if not is_parallel then

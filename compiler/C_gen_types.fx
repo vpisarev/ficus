@@ -305,7 +305,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 }
             })
         val ctyp = CTypName(tn)
-        val (src_typ0, dst_typ) = (ctyp, make_ptr(ctyp))
+        val src_typ0 = ctyp, dst_typ = make_ptr(ctyp)
         val (src_typ, src_flags) =
             if ktp_pass_by_ref {
                 (make_const_ptr(src_typ0), [: CArgPassByPtr :])
@@ -351,7 +351,7 @@ fun convert_all_typs(kmods: kmodule_t list)
 
     fun get_var_enum(kvar: kdefvariant_t ref)
     {
-        val {kvar_name, kvar_base_name, kvar_cases, kvar_flags, kvar_loc} = *kvar
+        val {kvar_base_name, kvar_cases, kvar_flags, kvar_loc} = *kvar
         match all_var_enums.find_opt(kvar_base_name) {
         | Some e_id =>
             match cinfo_(e_id, kvar_loc) {
@@ -694,7 +694,7 @@ fun convert_all_typs(kmods: kmodule_t list)
             | _ => {}
             }
         | KVariant kvar =>
-            val {kvar_name, kvar_base_name, kvar_cname, kvar_cases, kvar_flags, kvar_loc} = *kvar
+            val {kvar_cname, kvar_cases, kvar_flags, kvar_loc} = *kvar
             val have_tag = kvar_flags.var_flag_have_tag
             val int_ctx = (CTypCInt, kvar_loc)
             val void_ctx = (CTypVoid, kvar_loc)

@@ -74,8 +74,8 @@ val osname = osname_()
 
 @pure fun cc_version(): string = @ccode { return fx_cc_version(fx_result) }
 
-fun appname() = List.hd(argv)
-fun arguments() = List.tl(argv)
+fun appname() = argv.hd()
+fun arguments() = argv.tl()
 
 @pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
 @pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }

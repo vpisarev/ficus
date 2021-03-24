@@ -373,10 +373,10 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             computed inside the loop (i.e. the pattern unpacking) in the beginning
             before all other expressions. In the case of nested loop in exp-map this
             body_code will actually become the outer code for the nested loop.
-            So, it's passed to the next iteration of List.fold_left and will prepend
+            So, it's passed to the next iteration of 'fold' and will prepend
             the next "pre_code". Finally, the body_code from the last iteration, i.e.
             from the most inner for loop will actually become the prefix of the actual
-            body code that is transformed after this List.fold_left.
+            body code that is transformed after this 'fold'.
         */
         val body_sc = new_block_scope() :: sc
         val (pre_idom_ll, body_code) =
@@ -1140,7 +1140,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
     val k_cases =
     [: for (pl, e) <- cases {
         val ncases = pl.length()
-        val p0 = List.hd(pl)
+        val p0 = pl.hd()
         val ploc = get_pat_loc(p0)
         if ncases != 1 {
             throw compile_err(ploc, "multiple alternative patterns are not supported yet")

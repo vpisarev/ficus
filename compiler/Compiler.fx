@@ -59,8 +59,8 @@ fun parse_all(fname0: string): bool
     var ok = true
     var module_idx = 0
     while !queue.empty() {
-        val mname = List.hd(queue)
-        queue = List.tl(queue)
+        val mname = queue.hd()
+        queue = queue.tl()
         val minfo = Ast.get_module(mname)
         val mfname = minfo->dm_filename
         if !minfo->dm_parsed {

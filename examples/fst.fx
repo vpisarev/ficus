@@ -133,8 +133,8 @@ println(if 0.1 <= Math.sin(1.) < 0.7 {
 
 val key1 = "xyz", key2 = "b"
 val pairs = ("a", 0) :: ("b", 33) :: ("rest", 2) :: []
-val r1 = List.assoc_opt(pairs, key1)
-val r2 = List.assoc_opt(pairs, key2)
+val r1 = pairs.assoc_opt(key1)
+val r2 = pairs.assoc_opt(key2)
 
 fun assoc_result(r: 'x?)
 {
