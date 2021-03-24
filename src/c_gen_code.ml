@@ -1650,7 +1650,7 @@ let gen_ccode cmods kmod c_fdecls mod_init_calls =
                         (if a was missing, it's set to 0, if delta was missing, it's set to 1)
                     (2, a, delta) open ranges [a::delta]
                         (if delta was missing, it's set to 1)
-                1.1. special case if a single [:] range, which means flattening operation.
+                1.1. one special case is a single [:] range, which means flattening operation.
                     just call fx_flatten_arr().
 
                 2. In the second case need first to process each index idx_k (k=0..ndims-1):

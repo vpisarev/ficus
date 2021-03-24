@@ -217,7 +217,7 @@ type cdefexn_t =
     cexn_make: id_t; cexn_scope: scope_t list; cexn_loc: loc_t
 }
 
-type cdefmodule_t =
+type cmodule_t =
 {
     cmod_name: id_t; cmod_cname: string; cmod_ccode: cstmt_t list;
     cmod_main: bool; cmod_recompile: bool; cmod_pragmas: pragmas_t
