@@ -197,7 +197,7 @@ type assoc_t = AssocLeft | AssocRight
     | CExpLit(l, (_, loc)) =>
         val s = match l {
                 | KLitNil _ => "0"
-                | KLitChar c => "FX_CHAR({repr(c)})"
+                | KLitChar c => f"(char_){ord(c)}"
                 | _ => K_form.klit2str(l, true, loc)
                 }
         pp.str(s)
@@ -268,7 +268,7 @@ type assoc_t = AssocLeft | AssocRight
     | CExpTyp (t, loc) =>
         pp.begin(); pp_ctyp_(pp, t, None, loc); pp.end()
     | CExpCCode (ccode, l) =>
-        pp.begin(); pp.str(ccode); pp.end()
+        pp.begin(); pp.str("\n"+ccode.strip()+"\n"); pp.end()
     }
 
 @private fun pp_elist(pp: PP.t, el: cexp_t list)
@@ -542,7 +542,7 @@ type assoc_t = AssocLeft | AssocRight
         pp.str("#pragma "); pp.str(s); pp.end()
     }
 
-fun pprint_ctyp(t: ctyp_t, loc: loc_t)
+fun pp_ctyp(t: ctyp_t, loc: loc_t)
 {
     File.stdout.flush()
     val pp = PP.pprint_to_stdout(ccode_margin, default_indent=default_indent)
@@ -551,7 +551,7 @@ fun pprint_ctyp(t: ctyp_t, loc: loc_t)
     File.stdout.flush()
 }
 
-fun pprint_cexp(e: cexp_t)
+fun pp_cexp(e: cexp_t)
 {
     File.stdout.flush()
     val pp = PP.pprint_to_stdout(ccode_margin, default_indent=default_indent)
@@ -560,7 +560,7 @@ fun pprint_cexp(e: cexp_t)
     File.stdout.flush()
 }
 
-fun pprint_cstmt(s: cstmt_t)
+fun pp_cstmt(s: cstmt_t)
 {
     File.stdout.flush()
     val pp = PP.pprint_to_stdout(ccode_margin, default_indent=default_indent)
@@ -573,7 +573,7 @@ fun pprint_top(code: ccode_t)
 {
     File.stdout.flush()
     val pp = PP.pprint_to_stdout(ccode_margin, default_indent=default_indent)
-    pp.beginv()
+    pp.beginv(0)
     for s@i <- code {
         if i != 0 { pp.break0() }
         pp_cstmt_(pp, s)

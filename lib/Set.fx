@@ -324,7 +324,9 @@ fun filter(s: 't Set.t, f: 't -> bool): 't Set.t
     fun filter_(t: 't tree_t, f: 't -> bool, res: 't Set.t): 't Set.t =
     match t {
         | Node(_, l, x, r) =>
-            if f(x) { add(res, x) } else { res }
+            val res = filter_(l, f, res)
+            val res = if f(x) { add(res, x) } else { res }
+            filter_(r, f, res)
         | _ => res
     }
     filter_(s.root, f, t {root=Empty, size=0, cmp=s.cmp})

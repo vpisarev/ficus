@@ -1141,14 +1141,14 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     match lit {
     | KLitInt(v) => f"{v}"
     | KLitSInt(64, v) =>
-        if cmode { f"{v}iLL" } else { f"{v}ii{64}" }
+        if cmode { f"{v}LL" } else { f"{v}i{64}" }
     | KLitUInt(64, v) =>
-        if cmode { f"{v}iULL" } else { f"{v}ii{64}" }
+        if cmode { f"{v}ULL" } else { f"{v}i{64}" }
     | KLitSInt(b, v) =>
-        if cmode { f"{v}i" } else { f"{v}ii{b}" }
+        if cmode { f"{v}" } else { f"{v}i{b}" }
     | KLitUInt(b, v) =>
-        if cmode { f"{v}uU" } else { f"{v}uu{b}" }
-    | KLitFloat(16, v) => f"{v}h"
+        if cmode { f"{v}U" } else { f"{v}u{b}" }
+    | KLitFloat(16, v) => f"{v}f"
     | KLitFloat(32, v) => f"{v}f"
     | KLitFloat(64, v) => f"{v}"
     | KLitFloat(b, v) => throw compile_err(loc, f"invalid literal LitFloat({b}, {v})")

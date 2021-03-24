@@ -834,9 +834,9 @@ fun new_uniform_rng(seed: uint64) {
     var state = if seed != 0UL {seed} else {0xffffffffUL}
     fun (a: int, b: int) {
         state = (state :> uint32) * 4197999714UL + (state >> 32)
-        val (a, b) = (min(a, b), max(a, b))
-        val diff = b - a
-        val x = (state :> uint32) % diff + a
+        val a1 = min(a, b), b1 = max(a, b)
+        val diff = b1 - a1
+        val x = (state :> uint32) % diff + a1
         (x :> int)
     }
 }

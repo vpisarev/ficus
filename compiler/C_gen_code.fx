@@ -86,7 +86,7 @@ from Ast import *
 from K_form import *
 from C_form import *
 import K_remove_unused, K_annotate, K_mangle
-import C_gen_types, C_gen_fdecls
+import C_gen_types, C_gen_fdecls, C_pp
 
 import Map, Set
 
@@ -1088,17 +1088,17 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val ifor_loc = get_cexp_loc(n_exp)
             val init_exps = [: make_assign(i_exp, make_int_exp(0, ifor_loc)) :]
             val check_exp = CExpBinary(COpCmp(CmpLT), i_exp, n_exp, (CTypBool, ifor_loc))
-            val incr_exps = [: CExpUnary(COpSuffixInc, i_exp, (CTypInt, ifor_loc)) :]
-            val (check_exp, incr_exps) =
+            val incr_exps_i = [: CExpUnary(COpSuffixInc, i_exp, (CTypInt, ifor_loc)) :]
+            val (check_exp, incr_exps_i) =
             if k_final > 0 {
-                (check_exp, incr_exps)
+                (check_exp, incr_exps_i)
             } else {
                 val fold check_exp = check_exp for e <- for_checks.rev() {
                     CExpBinary(COpLogicAnd, check_exp, e, (CTypBool, ifor_loc))
                 }
-                (check_exp, incr_exps + incr_exps.rev())
+                (check_exp, incr_exps_i + incr_exps.rev())
             }
-            (k_final + 1, (Some(CTypInt), init_exps, Some(check_exp), incr_exps) :: for_headers)
+            (k_final + 1, (Some(CTypInt), init_exps, Some(check_exp), incr_exps_i) :: for_headers)
         }
         /* if we have open loop or loop over lists (i.e. i_exps and n_exps are empty lists),
            we still need to form the for-loop statement */
@@ -1464,7 +1464,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         match (a, get_cexp_typ(c_exp)) {
                         | (AtomLit(KLitChar c), CTypUniChar) =>
                             make_call(get_id("FX_MAKE_STR1"),
-                                [: make_lit_exp(KLitChar(c), kloc) :], CTypString, kloc)
+                                [: make_lit_exp(KLitString(string(c)), kloc) :], CTypString, kloc)
                         | (AtomId n, CTypUniChar) =>
                             make_call(get_id("FX_MAKE_VAR_STR1"), [: c_exp :], CTypString, kloc)
                         | _ => c_exp
