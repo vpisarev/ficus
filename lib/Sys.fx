@@ -184,3 +184,9 @@ fun getenv(name: string): string = @ccode {
     }
     return fx_status;
 }
+
+fun getpath(name: string): string list
+{
+    val pathsep = if win32 {';'} else {':'}
+    getenv(name).split(pathsep)
+}

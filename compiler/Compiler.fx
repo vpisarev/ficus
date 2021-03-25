@@ -54,6 +54,7 @@ fun parse_all(fname0: string): bool
     val dir0 = Filename.dirname(fname0)
     val inc_dirs0 = if dir0 == cwd { cwd :: [] } else { dir0 :: cwd :: [] }
     val inc_dirs0 = inc_dirs0 + Options.opt.include_path
+    val inc_dirs0 = inc_dirs0 + Sys.getpath("FICUS_PATH")
     val inc_dirs0 = [: for d <- inc_dirs0 { Filename.normalize(cwd, d) } :]
     val name0_id = Ast.get_id(Filename.remove_extension(Filename.basename(fname0)))
     val minfo = Ast.find_module(name0_id, fname0)
