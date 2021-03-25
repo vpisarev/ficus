@@ -82,9 +82,7 @@ fun compress_name(nstr: string, sc: scope_t list, loc: loc_t)
         }
 
         result += nstr[start:i]
-        result = "M" + string(prefix.length()) + prefix + result
-        if result.length() <= nstr.length() { result }
-        else { nstr }
+        "M" + string(prefix.length()) + prefix + result
     }
 }
 

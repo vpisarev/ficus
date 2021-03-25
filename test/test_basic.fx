@@ -348,7 +348,7 @@ TEST("basic.ratio", fun()
         val r = gcd(n, d)
         Ratio(n/r, d/r)
     }
-    operator - (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
+    /*operator - (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
         val n = n1*d2 - n2*d1
         val d = d1*d2
         val r = gcd(n, d)
@@ -365,7 +365,7 @@ TEST("basic.ratio", fun()
         val d = d1*n2
         val r = gcd(n, d)
         Ratio(n/r, d/r)
-    }
+    }*/
 
     fun string(Ratio(n, d): ratio_t) = f"{n}/{d}"
 
@@ -377,7 +377,7 @@ TEST("basic.ratio", fun()
 
     // unfortunately, for now using record patterns directly
     // in function parameters is not yet supported
-    operator + (a: ratio2_t, b: ratio2_t) {
+    /*operator + (a: ratio2_t, b: ratio2_t) {
         val n = a.num*b.denom + b.num*a.denom
         val d = a.denom*b.denom
         val r = gcd(n, d)
@@ -394,7 +394,7 @@ TEST("basic.ratio", fun()
         val d = a.denom*b.denom
         val r = gcd(n, d)
         Ratio2 {num=n/r, denom=d/r}
-    }
+    }*/
     operator / (a: ratio2_t, b: ratio2_t) {
         val n = a.num*b.denom
         val d = a.denom*b.num
@@ -521,8 +521,8 @@ TEST("basic.types.variant", fun()
     }
 
     EXPECT_EQ(
-        f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Fun([: Int, Int :], Int) :: [])})",
-        "(void, int [], bool, ((int, int) -> int))"
+        f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Tuple(Int::Float::[]) :: Fun([: Int, Int :], Int) :: [])})",
+        "(void, int [], bool, (int, double), ((int, int) -> int))"
     )
     EXPECT_EQ(t2str(Var(ref None)), "<unknown>")
 })

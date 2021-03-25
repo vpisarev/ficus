@@ -734,24 +734,24 @@ fun pat_propose_id(p: pat_t, ptyp: ktyp_t, temp_prefix: string,
 {
     val p = pat_skip_typed(p)
     match p {
-    | PatAny _ => (p, noid, false)
-    | PatIdent(n, _) => (p, n, false)
+    | PatAny _ => (p, noid, false, true)
+    | PatIdent(n, _) => (p, n, false, false)
     | PatAs(p, n, ploc) =>
         if mutable_leaves {
             throw compile_err(ploc, "'as' pattern cannot be used with var's, only with values")
         }
-        (pat_skip_typed(p), n, false)
+        (pat_skip_typed(p), n, false, false)
     | PatRef(_, _) =>
         if pat_have_vars(p) || !is_simple && pat_need_checks(p, ptyp) {
-            (p, gen_temp_idk(temp_prefix), false)
+            (p, gen_temp_idk(temp_prefix), false, true)
         } else {
-            (p, noid, false)
+            (p, noid, false, true)
         }
     | _ =>
         if pat_have_vars(p) || !is_simple && pat_need_checks(p, ptyp) {
-            (p, gen_temp_idk(temp_prefix), true)
+            (p, gen_temp_idk(temp_prefix), true, true)
         } else {
-            (p, noid, false)
+            (p, noid, false, true)
         }
     }
 }
@@ -771,7 +771,7 @@ fun pat_simple_unpack(p: pat_t, ptyp: ktyp_t, e_opt: kexp_t?, code: kcode_t,
         }
     val mutable_leaves = flags.val_flag_mutable
     val n_flags = flags.{val_flag_mutable=false, val_flag_tempref=false}
-    val (p, n, tref) = pat_propose_id(p, ptyp, temp_prefix, true, mutable_leaves, sc)
+    val (p, n, tref, tmp) = pat_propose_id(p, ptyp, temp_prefix, true, mutable_leaves, sc)
     val tref = tref && need_tref
     if n == noid {
         (n, code)
@@ -780,6 +780,7 @@ fun pat_simple_unpack(p: pat_t, ptyp: ktyp_t, e_opt: kexp_t?, code: kcode_t,
         val n_flags =
             if mutable_leaves && !tref { n_flags.{val_flag_mutable=true} }
             else if tref { n_flags.{val_flag_tempref=true} }
+            else if tmp { n_flags.{val_flag_temp=true} }
             else { n_flags }
         val n_flags = match sc {
                       | ScModule _ :: _ => n_flags.{val_flag_global=sc}
@@ -1016,7 +1017,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
         match p_opt {
         | Some(pinfo) =>
             val {pinfo_p=p, pinfo_typ=ptyp, pinfo_e=ke, pinfo_tag=var_tag0} = pinfo
-            val (p, n, tref) = pat_propose_id(p, ptyp, temp_prefix, false, false, case_sc)
+            val (p, n, tref, _) = pat_propose_id(p, ptyp, temp_prefix, false, false, case_sc)
             if n == noid {
                 process_next_subpat(plists, (checks, code), case_sc)
             } else {

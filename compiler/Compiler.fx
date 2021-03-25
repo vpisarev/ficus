@@ -10,9 +10,10 @@ import Filename, File, Sys, Map
 import Ast, Ast_pp, Lexer, Parser, Options
 import Ast_typecheck
 import K_form, K_pp, K_normalize, K_annotate, K_mangle
-import K_remove_unused, K_lift_simple, K_flatten, K_tailrec,
-       K_cfold_dealias, K_lift, K_fast_idx, K_inline, K_loop_inv, K_fuse_loops
+import K_remove_unused, K_lift_simple, K_flatten, K_tailrec
+import K_cfold_dealias, K_lift, K_fast_idx, K_inline, K_loop_inv, K_fuse_loops
 import C_form, C_gen_std, C_gen_code, C_pp
+import C_post_rename_locals, C_post_adjust_decls
 
 exception CumulativeParseError
 
@@ -197,17 +198,13 @@ fun k2c_all(kmods: kmodule_t list)
     pr_verbose("\tstd calls initialized")
     val cmods = C_gen_code.gen_ccode_all(kmods)
     pr_verbose("C code generated")
-    /*val cmods = C_post_rename_locals.rename_locals(cmods)
+    val cmods = C_post_rename_locals.rename_locals(cmods)
     pr_verbose("\tlocal variables renamed")
-    val cmods =
-        [: for cmod <- cmods {
-            val is_cpp = Options.opt.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp
-            if is_cpp {
-                C_post_adjust_decls.adjust_decls_(cmod)
-            } else {
-                cmod
-            }
-        } :]*/
+    val cmods = [: for cmod <- cmods {
+        val is_cpp = Options.opt.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp
+        if is_cpp { C_post_adjust_decls.adjust_decls(cmod) }
+        else { cmod }
+        } :]
     pr_verbose("\tConversion to C-form complete")
     (cmods, Ast.all_compile_errs.empty())
 }
@@ -238,8 +235,10 @@ fun emit_c_files(fname0: string, cmods: C_form.cmodule_t list)
                 if str_new == str_old {
                     (false, ok)
                 } else {
-                    val well_written = try {
-                            File.write_utf8(output_fname, str_new); true
+                    val well_written =
+                        try {
+                            File.write_utf8(output_fname, str_new)
+                            true
                         }
                         catch {
                         | IOError | FileOpenError => false
@@ -376,16 +375,14 @@ fun process_all(fname0: string): bool {
         if !ok { print_all_compile_errs() }
         ok
     } catch {
-    | Fail _
-    | Ast.CompileError(_, _)
-    | CumulativeParseError =>
+    | e =>
         print_all_compile_errs()
-        /*match e {
+        match e {
         | Fail(msg) => println(f"Failure: {msg}")
         | Ast.CompileError(loc, msg) as e => Ast.print_compile_err(e)
         | CumulativeParseError => {}
         | _ => println(f"\n\nException {e} occured")
-        }*/
+        }
         false
     }
 }

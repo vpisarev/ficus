@@ -312,19 +312,20 @@ fun num_suffix(n: int) =
 fun escaped(s: string, ~quotes: bool=true)
 {
     val sn = "\\n", sr = "\\r", st = "\\t",
-        ssq = "\\\'", sdq = "\\\"", ss = "\\", sz = "\\0"
+        ssq = "\\\'", sdq = "\\\"", ss = "\\\\", sz = "\\0"
     val q = if quotes {"\""} else {""}
     val fold (ll, verb) = (q :: [], 0) for c@i <- s {
-        if ord(c) >= 40 { (ll, verb) }
+        val code = ord(c)
+        if code >= 40 && code != 92 { (ll, verb) }
         else {
-            val (esc_s, esc) = match c {
-            | '\n' => (sn, true)
-            | '\r' => (sr, true)
-            | '\t' => (st, true)
-            | '\'' => (ssq, true)
-            | '"' /*"*/ => (sdq, true)
-            | '\\' => (ss, true)
-            | '\0' => (sz, true)
+            val (esc_s, esc) = match code {
+            | 10 => (sn, true)
+            | 13 => (sr, true)
+            | 9 => (st, true)
+            | 39 => (ssq, true)
+            | 34 => (sdq, true)
+            | 92 => (ss, true)
+            | 0 => (sz, true)
             | _ => (sz, false)
             }
             if esc {

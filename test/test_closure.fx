@@ -356,6 +356,7 @@ TEST("closure.middle_empty_closure", fun()
             fun baz() = bar() * 2
             baz()
         }
+        val _ = b
         foo()
     }
 

@@ -473,6 +473,26 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         CExp(make_call(std_FX_CONTINUE, [: curr_block_label(loc) :], CTypVoid, loc))
     }
 
+    fun make_if(cc: cexp_t, then_s: cstmt_t, else_s: cstmt_t, loc: loc_t) =
+        match then_s {
+        | CStmtNop _ | CStmtBlock([], _) =>
+            val then_loc = get_cstmt_loc(then_s)
+            val inv_cc = match cc {
+                | CExpBinary(COpCmp(cmp), a, b, ctx) =>
+                    val inv_cmp = match cmp {
+                        | CmpEQ => CmpNE | CmpNE => CmpEQ
+                        | CmpLT => CmpGE | CmpLE => CmpGT
+                        | CmpGT => CmpLE | CmpGE => CmpLT }
+                    CExpBinary(COpCmp(inv_cmp), a, b, ctx)
+                | CExpUnary(COpLogicNot, a, ctx) => a
+                | _ =>
+                    val cc_ctx = get_cexp_ctx(cc)
+                    CExpUnary(COpLogicNot, cc, cc_ctx)
+            }
+            CStmtIf(inv_cc, else_s, CStmtNop(then_loc), loc)
+        | _ => CStmtIf(cc, then_s, else_s, loc)
+        }
+
     fun id2cexp(i: id_t, save: bool, ccode: ccode_t, loc: loc_t) =
         match i2e.find_opt(i) {
         | Some e =>
@@ -1195,7 +1215,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         for check_ij <- cchecks_i, pre_check_ij <- pre_cchecks_i {
                             val case_stmt = rccode2stmt(case_ccode, ai_end_loc)
                             val checkij_loc = get_cexp_loc(check_ij)
-                            val if_stmt = CStmtIf(check_ij, case_stmt,
+                            val if_stmt = make_if(check_ij, case_stmt,
                                                   CStmtNop(ai_end_loc), checkij_loc)
                             if_stmt :: pre_check_ij
                         }
@@ -1219,13 +1239,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         | (false, else_s :: ifs) =>
             val fold complex_if = rccode2stmt(else_s, end_loc) for s_i <- ifs {
                 match s_i {
-                | CStmtIf (c_i, then_i, CStmtNop _, loc_i) :: [] =>
+                | CStmtIf(c_i, then_i, CStmtNop _, loc_i) :: [] =>
                     val then_i =
                     match stmt2ccode(then_i).rev() {
                     | (CStmtGoto (i, _) :: rest) when i == endmatch => rccode2stmt(rest, loc_i)
                     | _ => then_i
                     }
-                    CStmtIf(c_i, then_i, complex_if, loc_i)
+                    make_if(c_i, then_i, complex_if, loc_i)
                 | _ => throw compile_err(end_loc, "cgen: unexpected statement in the chained match statement")
                 }
             }
@@ -1543,7 +1563,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val (_, ccode2) = kexp2cexp(e2, dstexp_r, [])
             val c_e1 = rccode2stmt(ccode1, get_kexp_loc(e1))
             val c_e2 = rccode2stmt(ccode2, get_kexp_loc(e2))
-            (false, dst_exp, CStmtIf(cc, c_e1, c_e2, kloc) :: ccode)
+            (false, dst_exp, make_if(cc, c_e1, c_e2, kloc) :: ccode)
         | KExpCall (f, args, _) =>
             val fold args = [], ccode = ccode for arg <- args {
                 val (carg, ccode) = atom2cexp(arg, ccode, kloc)
@@ -1985,7 +2005,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val (_, catch_ccode) = kexp2cexp(catch_e, dstexp_r, catch_ccode)
             val check_neg_status = CExpBinary(COpCmp(CmpLT), make_fx_status(try_end_loc), make_int_exp(0, try_end_loc), (CTypBool, try_end_loc))
             val catch_loc = get_kexp_loc(catch_e)
-            val catch_clause = CStmtIf(check_neg_status, rccode2stmt(catch_ccode, catch_loc), CStmtNop(try_end_loc), catch_loc)
+            val catch_clause = make_if(check_neg_status, rccode2stmt(catch_ccode, catch_loc), CStmtNop(try_end_loc), catch_loc)
             (false, dst_exp, catch_clause :: ccode)
         | KExpThrow (i, rethrow, _) =>
             val lbl = curr_block_label(kloc)
@@ -2230,7 +2250,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             val cc_exp = cexp_mem(dst_exp0, get_id("data"), std_CTypVoidPtr)
                             val cc_exp = CExpUnary(COpLogicNot, cc_exp, (CTypBool, nested_loc))
                             val else_ccode = add_size_eq_check(cmp_size_list, [], lbl, nested_loc)
-                            val check_or_create = CStmtIf(cc_exp, rccode2stmt(then_ccode, nested_loc), rccode2stmt(else_ccode, nested_loc), nested_loc)
+                            val check_or_create = make_if(cc_exp, rccode2stmt(then_ccode, nested_loc), rccode2stmt(else_ccode, nested_loc), nested_loc)
                             check_or_create :: []
                         }
                     }
@@ -2448,7 +2468,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val cc_loc = get_cexp_loc(cc)
                 val not_cc = CExpUnary(COpLogicNot, cc, (CTypBool, cc_loc))
                 val break_stmt = make_break_stmt(cc_loc)
-                val check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc)
+                val check_cc = make_if(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc)
                 (true, check_cc :: cc_code)
             }
             val (_, body_ccode) = kexp2cexp(body, ref None, [])
@@ -2472,7 +2492,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val cc_loc = get_cexp_loc(cc)
                 val not_cc = CExpUnary(COpLogicNot, cc, (CTypBool, cc_loc))
                 val break_stmt = make_break_stmt(cc_loc)
-                val check_cc = CStmtIf(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc)
+                val check_cc = make_if(not_cc, break_stmt, CStmtNop(cc_loc), cc_loc)
                 (true, check_cc :: cc_code)
             }
             val body_ccode = check_code + body_ccode
@@ -3022,7 +3042,7 @@ fun gen_ccode_all(kmods: kmodule_t list)
 
     /* 3. convert each module to C */
     val fold cmods = [] for (km, c_fdecls, mod_init_calls, exn_data_decls) <- kmods_plus.rev() {
-        val {km_name, km_cname, km_top, km_main, km_pragmas} = km
+        val {km_name, km_cname, km_main, km_pragmas} = km
         val (prologue, ccode) = gen_ccode(cmods, km, c_fdecls, mod_init_calls)
         val ctypes = C_gen_types.elim_unused_ctypes(km.km_name, all_ctypes_fwd_decl,
                             all_ctypes_decl + exn_data_decls, all_ctypes_fun_decl, ccode)

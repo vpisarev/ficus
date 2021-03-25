@@ -16,7 +16,7 @@
 from Ast import *
 from K_form import *
 from C_form import *
-import PP
+import File, PP, Sys
 
 val default_indent = 3
 val ccode_margin = 128
@@ -255,16 +255,17 @@ type assoc_t = AssocLeft | AssocRight
         pp_cexp_(pp, f, 1400); pp.str("("); pp.cut()
         pp_elist(pp, args); pp.str(")"); pp.end()
     | CExpInit (eseq, _) =>
-        pp.begin()
-        pp.str("{"); pp.cut()
+        pp.str("{");
+        pp.space();
         if !eseq.empty() {
+            pp.begin(0)
             for e@i <- eseq {
                 if i > 0 { pp.str(","); pp.space() }
                 pp_cexp_(pp, e, 0)
             }
+            pp.end()
         }
-        pp.cut(); pp.str("}")
-        pp.end()
+        pp.space(); pp.str("}")
     | CExpTyp (t, loc) =>
         pp.begin(); pp_ctyp_(pp, t, None, loc); pp.end()
     | CExpCCode (ccode, l) =>
@@ -283,7 +284,7 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pprint_fun_hdr(pp: PP.t, fname: id_t, semicolon: bool, loc: loc_t, fwd_mode: bool)
 {
-    val {cf_args, cf_rt, cf_cname, cf_body, cf_flags, cf_loc} =
+    val {cf_args, cf_rt, cf_cname, cf_flags, cf_loc} =
     match cinfo_(fname, loc) {
     | CFun cf => *cf
     | _ => throw compile_err(loc, f"the forward declaration of {idc2str(fname, loc)} does not reference a function")
@@ -311,23 +312,17 @@ type assoc_t = AssocLeft | AssocRight
     pp.break0()
 }
 
-@private fun pprint_cstmt_or_block_cbox(pp: PP.t, s: cstmt_t) =
-    match s {
-    | CStmtBlock (sl, _) =>
-        pp.str("{")
-        pp.break0()
-        pp.beginv()
-        for s@i <- sl {
-            if i != 0 { pp.break0() }
-            pp_cstmt_(pp, s)
-        }
-        pp.end()
-        pp.end()
-        pp.break0()
-        pp.str("}")
-    | _ =>
-        pp_cstmt_(pp, s); pp.end()
+@private fun pprint_cstmt_or_block_cbox(pp: PP.t, s: cstmt_t)
+{
+    val sl = match s { | CStmtBlock (sl, _) => sl | CStmtNop _ => [] | _ => s :: [] }
+
+    pp.str("{"); pp.break0(); pp.beginv(0)
+    for s@i <- sl {
+        if i > 0 { pp.break0() }
+        pp_cstmt_(pp, s)
     }
+    pp.end(); pp.end(); pp.break0(); pp.str("}")
+}
 
 @private fun pp_cstmt_(pp: PP.t, s: cstmt_t) =
     match s {
@@ -350,7 +345,7 @@ type assoc_t = AssocLeft | AssocRight
         | [] => pp.str("{}")
         | s :: [] => pp_cstmt_(pp, s)
         | _ =>
-            pp.str("{"); pp.break0(); pp.begin()
+            pp.str("{"); pp.break0(); pp.beginv(0)
             for s@i <- sl {
                 if i != 0 { pp.break0() }
                 pp_cstmt_(pp, s)
@@ -452,7 +447,7 @@ type assoc_t = AssocLeft | AssocRight
         if is_private { pp.str("static"); pp.space() }
         pp_ctyp_(pp, t, Some(n), loc)
         match e_opt {
-        | Some e => pp.space(); pp.str("="); pp.space(); pp_cexp_(pp, e, 0)
+        | Some e => pp.str(" ="); pp.space(); pp_cexp_(pp, e, 0)
         | _ => {}
         }
         pp.str(";"); pp.end()
@@ -461,7 +456,7 @@ type assoc_t = AssocLeft | AssocRight
         pprint_fun_hdr(pp, cf_name, false, cf_loc, false)
         pp.beginv()
         pp.str("{")
-        for s <- cf_body { pp.break0(); pp_cstmt_(pp, s) }
+        for s@i <- cf_body { pp.break0(); pp_cstmt_(pp, s) }
         pp.end()
         pp.break0()
         pp.str("}")
@@ -578,6 +573,7 @@ fun pprint_top(code: ccode_t)
         if i != 0 { pp.break0() }
         pp_cstmt_(pp, s)
     }
+    pp.newline();
     pp.end(); pp.flush()
     File.stdout.flush()
 }
@@ -585,19 +581,12 @@ fun pprint_top(code: ccode_t)
 fun pprint_top_to_string(code: ccode_t): string
 {
     val pp = PP.pprint_to_string_list(ccode_margin, default_indent=default_indent)
-    pp.beginv()
+    pp.beginv(0)
     for s@i <- code {
         if i != 0 { pp.break0() }
         pp_cstmt_(pp, s)
     }
     pp.newline(); pp.end(); pp.flush()
     val all_lines = pp.get_f()
-    fun remove_trailing_empty_lines(all_lines: string list) =
-        match all_lines {
-        | "" :: rest => remove_trailing_empty_lines(rest)
-        | "\n" :: rest => remove_trailing_empty_lines(rest)
-        | l :: rest => (if l.endswith("\n") {l} else {l + "\n"}) :: rest
-        | _ => all_lines
-        }
-    "".join(remove_trailing_empty_lines(all_lines))
+    join_embrace("", "\n", "\n", all_lines)
 }

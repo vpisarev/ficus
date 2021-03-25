@@ -79,21 +79,27 @@ fun make_pprinter(margin: int, print_f: string->void,
 
 fun pprint_to_string_list(margin: int, ~default_indent: int=4): t
 {
-    var strbuf : string list = []
-    var curr = ""
+    var lines : string list = []
+    var capacity = 100, bufsize = 0
+    var curr = array(capacity, ' ')
     fun print_f(s: string)
     {
-        if s =="\n" {
-            if curr != "" {strbuf = curr :: strbuf}
-            curr = ""
-        } else {
-            curr += s
+        val strsize = s.length(), bufsz = bufsize
+        while bufsz + strsize > capacity {
+            capacity *= 2
+            curr = [| \curr, \curr |]
+        }
+        for c@i <- s { curr[bufsz+i] = c }
+        bufsize = bufsz + strsize
+        if s.endswith('\n') {
+            lines = string(curr[:bufsize]).rstrip() :: lines
+            bufsize = 0
         }
     }
     fun get_f()
     {
-        if curr != "" {strbuf = curr :: strbuf}
-        strbuf.rev()
+        if bufsize > 0 {lines = string(curr[:bufsize]).strip() :: lines}
+        lines.rev()
     }
     make_pprinter(margin, print_f, get_f, default_indent=default_indent)
 }
@@ -296,7 +302,11 @@ fun str(pp: PP.t, s: string): void
         }
     }
 
-@private fun pp_newline(pp: PP.t, n: int) = pp.print_f("\n" + (' '*n))
+@private fun pp_newline(pp: PP.t, n: int)
+{
+    pp.print_f("\n"); pp.print_f(' '*n)
+}
+
 @private fun pp_indent(pp: PP.t, n: int, c: char) =
     if c == '\0' {
         pp.print_f(' '*n)

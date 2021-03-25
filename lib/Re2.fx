@@ -1043,7 +1043,7 @@ fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,
                 pos = subend
             }
             str_list = str[pos:] :: str_list
-            "".join("", str_list.rev())
+            "".join(str_list.rev())
         }
         else
         {str})
