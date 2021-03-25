@@ -11,6 +11,8 @@
 *.cmxs
 *.cmxa
 *.fxp
+ficus
+ficus0
 config.ml
 lexer.ml
 parser.ml
