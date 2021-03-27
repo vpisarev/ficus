@@ -97,7 +97,7 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
     fun unpack_for_(e: exp_t, result: for_data_t list): (for_data_t list, exp_t) =
         match e {
         | ExpFor(pe_l, idxp, body, flags, loc)
-            when result.empty() || flags.for_flag_nested =>
+            when result == [] || flags.for_flag_nested =>
             unpack_for_(body, (pe_l, idxp, flags, loc) :: result)
         | _ => (result, e)
         }
@@ -254,7 +254,7 @@ fun parse_exp_list_f(ts0: tklist_t, parse_exp_f: tklist_t -> (tklist_t, exp_t),
     | _ => throw parse_err(ts0, "the expression list is not complete by the end of file, check parentheses")
     }
     val (ts, f, el, kw_el) = parse_exp_list_(ts0, false, [], [])
-    if !allow_empty && el.empty() && kw_el.empty() {
+    if !allow_empty && el == [] && kw_el == [] {
         throw parse_err(ts, "empty expression list is not allowed here")
     }
     (ts, f, el, kw_el)
@@ -290,7 +290,7 @@ fun parse_ident_list(ts: tklist_t, expect_comma: bool, result: id_t list): (tkli
         if expect_comma { (ts, result.rev()) }
         else { parse_ident_list(rest, true, get_id(i) :: result) }
     | _ =>
-        if result.empty() { throw parse_err(ts, "empty id list") }
+        if result == [] { throw parse_err(ts, "empty id list") }
         (ts, result.rev())
     }
 
@@ -373,13 +373,35 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
             val (ts_, _, args, kw_args) = parse_exp_list(rest, RPAREN,
                                             kw_mode=KwMaybe, allow_empty=true)
             val args =
-                if kw_args.empty() {args}
+                if kw_args == [] {args}
                 else {
                     args + (ExpMkRecord(ExpNop(l1), kw_args, make_new_ctx(l1)) :: [])
                 }
-            extend_simple_exp_(ts_, ExpCall(e, args, make_new_ctx(eloc)))
+            val call_exp = match e {
+                | ExpIdent(i, _) when pp(i).startswith("__intrin_") =>
+                    val istr = pp(i)
+                    val iop = match istr {
+                              | "__intrin_sqrt__" => IntrinMath(get_id("sqrt"))
+                              | "__intrin_pow__" => IntrinMath(get_id("pow"))
+                              | "__intrin_sin__" => IntrinMath(get_id("sin"))
+                              | "__intrin_cos__" => IntrinMath(get_id("cos"))
+                              | "__intrin_tan__" => IntrinMath(get_id("tan"))
+                              | "__intrin_atan__" => IntrinMath(get_id("atan"))
+                              | "__intrin_atan2__" => IntrinMath(get_id("atan2"))
+                              | "__intrin_log__" => IntrinMath(get_id("log"))
+                              | "__intrin_exp__" => IntrinMath(get_id("exp"))
+                              | "__intrin_atanh__" => IntrinMath(get_id("atanh"))
+                              | "__intrin_sinh__" => IntrinMath(get_id("sinh"))
+                              | "__intrin_cosh__" => IntrinMath(get_id("cosh"))
+                              | "__intrin_tanh__" => IntrinMath(get_id("tanh"))
+                              | _ => throw compile_err(l1, f"unknown/unsupported intrinsic {istr}")
+                              }
+                    ExpIntrin(iop, args, make_new_ctx(eloc))
+                | _ =>
+                    ExpCall(e, args, make_new_ctx(eloc))
+                }
+            extend_simple_exp_(ts_, call_exp)
         | (LSQUARE(false), _) :: rest =>
-            // array access ([TODO] support ranges)
             val (ts, _, idxs, _) = parse_exp_list_f(rest, parse_range_exp,
                             RSQUARE, kw_mode=KwNone, allow_empty=false)
             extend_simple_exp_(ts, ExpAt(e, BorderNone, InterpNone, idxs, make_new_ctx(eloc)))
@@ -648,7 +670,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
     {
         val ts = match ts {
         | (SEMICOLON, _) :: rest =>
-            if result.empty() {
+            if result == [] {
                 throw parse_err(ts, "unexpected ';' in the beginning of expression sequence")
             }
             rest
@@ -714,7 +736,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
                         parse_imported_(ts, true, (i_, j) :: result)
                     }
                 | _ =>
-                    if result.empty() { throw parse_err(ts, "empty module list") }
+                    if result == [] { throw parse_err(ts, "empty module list") }
                     (ts, result.rev())
                 }
             val (ts, imported) = parse_imported_(rest, false, [])
@@ -788,7 +810,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             if expect_comma { parse_for_clause_(rest, false, result, loc) }
             else { throw parse_err(ts, "extra ','?") }
         | (FOR _, _) :: _ | (LBRACE, _) :: _ when expect_comma =>
-            if result.empty() {
+            if result == [] {
                 throw parse_err(ts, "empty for? (need at least one <iter_pat> <- <iter_range or collection>)")
             }
             (ts, result.rev())
@@ -1148,7 +1170,7 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
             add_fun_param(ts, true, params, (get_id(i), t, defparam, ploc) :: kw_params)
         | _ =>
             if expect_comma { throw parse_err(ts, "',' is expected") }
-            if !kw_params.empty() {
+            if kw_params != [] {
                 throw parse_err(ts, "positional parameters cannot occur after or between named parameters")
             }
             val (ts, p) = parse_pat(ts, true)
@@ -1159,7 +1181,7 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
         | (COLON, _) :: rest => parse_typespec(rest)
         | _ => (ts, make_new_typ())
         }
-    if kw_params.empty() {
+    if kw_params == [] {
         (ts, params, rt, [], false)
     } else {
         val recarg = gen_temp_id("__kwargs__")
@@ -1196,7 +1218,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
         }
 
     val body =
-        if prologue.empty() { body }
+        if prologue == [] { body }
         else {
             val loc = get_exp_loc(body)
             expseq2exp(prologue + exp2expseq(body), loc)
@@ -1267,7 +1289,7 @@ fun parse_pat_list(ts: tklist_t, expect_comma: bool,
         if expect_comma { parse_pat_list(rest, false, result, simple) }
         else { throw parse_err(ts, "extra ','?")}
     | ((RPAREN, _) :: rest, _) =>
-        if result.empty() { throw parse_err(ts, "empty tuple pattern are not allowed") }
+        if result == [] { throw parse_err(ts, "empty tuple pattern are not allowed") }
         (rest, result.rev())
     | (_, true) =>
         throw parse_err(ts, "',' is expected")
@@ -1419,7 +1441,7 @@ fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
     fun extend_match_cases_(ts: tklist_t, result: mcase_t list): (tklist_t, mcase_t list) =
         match ts {
         | (RBRACE, _) :: rest =>
-            if result.empty() {
+            if result == [] {
                 throw parse_err(ts, "at least one pattern-matching case is expected")
             }
             (rest, result.rev())
@@ -1590,7 +1612,7 @@ fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
                 if expect_semicolon { parse_relems_(rest, false, result) }
                 else { throw parse_err(ts, "extra ';'?") }
             | (RBRACE, _) :: rest =>
-                if result.empty() { throw parse_err(ts, "empty list of record elements") }
+                if result == [] { throw parse_err(ts, "empty list of record elements") }
                 (rest, result.rev())
             | (IDENT(f, i), l1) :: (COLON, _) :: rest =>
                 if expect_semicolon && !f {
@@ -1639,7 +1661,7 @@ fun parse_deftype(ts: tklist_t)
         | (TYVAR(i), _) :: rest => (rest, get_id(i) :: [])
         | (LPAREN _, l1) :: rest =>
             val (ts, type_params) = parse_tyvars_(rest, false, [], l1)
-            if type_params.empty() { throw parse_err(ts,
+            if type_params == [] { throw parse_err(ts,
                 "empty list of type parameters inside (); if you don't want type parameters, just remove ()")
             }
             (ts, type_params)

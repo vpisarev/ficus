@@ -18,7 +18,7 @@ type options_t =
     gen_c: bool = true;
     include_path: string list = [];
     debug: bool = false;
-    optim_iters: int = 3;
+    optim_iters: int = 0;
     inline_thresh: int = 100;
     relax: bool = false;
     make_app: bool = true;
@@ -72,7 +72,7 @@ where options can be some of:
     -O3             Optimization level 3: enable all optimizations
     -debug          Turn on debug information, disable optimizations
                     (but can be overwritten with further -On)
-    -optim-iters    The number of optimization iterations to perform (3 by default)
+    -optim-iters    The number of optimization iterations to perform (2 or 3 by default, depending on -O<n>)
     -inline-threshold  Inline threshold (100 by default); the higher it is,
                     the bigger functions are inlined;
                     --inline-thresh=0 disables inline expansion
@@ -117,7 +117,7 @@ fun parse_options(): bool {
     var prhelp = 0
     var prver = false
     var ok = true
-    while !args.empty() {
+    while args != [] {
         args = match args {
             | "-pr-tokens" :: next =>
                 opt.print_tokens = true; next
@@ -199,6 +199,12 @@ fun parse_options(): bool {
                 }
         }
     }
+
+    if opt.optim_iters <= 0 {
+        opt.optim_iters = if opt.optimize_level == 3 {3} else {2}
+    }
+    opt.optim_iters = max(opt.optim_iters, 2)
+
     if !prver && prhelp == 0 && ok {
         if inputfile == "" {
             if !Sys.argv.tl().empty() {

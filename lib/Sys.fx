@@ -56,12 +56,12 @@ fun osname_(): bool -> string {
                                    if win32 {"rt"} else {"r"})
                 while true {
                     str = p.readln()
-                    if str.empty() { break }
+                    if str == "" { break }
                     str = str.strip()
-                    if !str.empty() { break }
+                    if str != "" { break }
                 }
                 p.close()
-                osinfo = if !str.empty() { str } else if win32 { "Windows" } else { "Unix" }
+                osinfo = if str != "" { str } else if win32 { "Windows" } else { "Unix" }
                 val sp = osinfo.find(" ")
                 osname = if sp >= 0 {osinfo[:sp]} else {osinfo}
             }

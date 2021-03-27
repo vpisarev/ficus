@@ -834,11 +834,11 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     {
         val for_loc = get_start_loc(loc)
         val end_for_loc = get_end_loc(loc)
-        if idoml.empty() {
+        if idoml == [] {
             throw compile_err(loc, for_err_msg(for_idx, nfors, -1, "empty list of for iteration values"))
         }
         val (idoml, at_ids) =
-            if at_ids.empty() {
+            if at_ids == [] {
                 (idoml, at_ids)
             } else {
                 val have_good_idx =
@@ -1048,7 +1048,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         }
                     */
                     val (i_exps, n_exps, init_checks, init_ccode) =
-                    if n_exps.empty() {
+                    if n_exps == [] {
                         val fold i_exps = [], n_exps = [], init_ccode = init_ccode for k <- 0:ndims {
                             val calc_n_exp = make_call(std_FX_ARR_SIZE, [: col_exp, make_int_exp(k, for_loc) :], CTypInt, for_loc)
                             val iter_letter = for_letters.nth(k + dims_ofs)
@@ -1098,7 +1098,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         /* add "post" checks, if needed */
         val post_checks = post_checks.rev()
         val post_checks =
-            if !post_checks.empty() && !i_exps.empty()
+            if post_checks != [] && i_exps != []
                 { CExpBinary(COpCmp(CmpEQ), i_exps.hd(), n_exps.hd(), (CTypBool, end_for_loc)) :: post_checks }
             else if post_checks.length() > 1 { post_checks }
             else { [] }
@@ -1544,7 +1544,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val chk = make_call(get_id("FX_CHKIDX_RANGE"), [: arrsz_exp, a_exp, b_exp, delta_exp,
                                     scale_exp, shift_exp, lbl :], CTypVoid, kloc)
                 (false, dummy_exp, CExp(chk) :: ccode)
-            | _ => throw compile_err(kloc, f"cgen: unsupported KExpIntrin({intr}, ...)")
+            | (IntrinMath(s), args) =>
+                val fold cargs = [], ccode = ccode for a <- args {
+                    val (c_exp, ccode) = atom2cexp(a, ccode, kloc)
+                    (c_exp :: cargs, ccode)
+                }
+                val fname = pp(s) + (match ctyp {
+                            | CTypFloat(32) => "f"
+                            | _ => ""})
+                val call_f = make_call(get_id(fname), cargs.rev(), ctyp, kloc)
+                (true, call_f, ccode)
+            | _ => throw compile_err(kloc,
+                f"cgen: unsupported KExpIntrin({intr}, ...) or the wrong number of arguments ({args.length()})")
             }
         | KExpSeq (el, _) =>
             fun process_seq(el: kcode_t, ccode: ccode_t) =
@@ -1651,7 +1662,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
         | KExpMkClosure (make_fp, f, args, _) =>
             val fp_prefix = pp(f) + "_fp"
-            if args.empty() && make_fp == noid {
+            if args == [] && make_fp == noid {
                 val fp_id = gen_temp_idc(fp_prefix)
                 ensure_sym_is_defined_or_declared(f, kloc)
                 val f_exp = make_id_exp(f, kloc)
@@ -2379,7 +2390,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                             rccode2stmt(for_body_ccode, kloc), kloc) :: for_ccode
                     val for_ccode = if !insert_pragma { for_ccode }
                                     else { for_ccode + [: CMacroPragma("omp parallel for", kloc) :] }
-                    val for_ccode = if k > 0 || pre_body_ccode.empty() { for_ccode }
+                    val for_ccode = if k > 0 || pre_body_ccode == [] { for_ccode }
                                     else { for_ccode + pre_body_ccode }
                     for_ccode
                 }
@@ -2440,7 +2451,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             /* form (possibly nested) for statement */
             val fold for_stmt = body_stmt for (t_opt, for_inits, for_check_opt, for_incrs)@k <- for_headers.rev() {
                 val for_stmt = CStmtFor(t_opt, for_inits, for_check_opt, for_incrs, for_stmt, kloc)
-                if k > 0 || pre_body_ccode.empty() {
+                if k > 0 || pre_body_ccode == [] {
                     for_stmt
                 } else {
                     rccode2stmt(for_stmt :: pre_body_ccode, for_loc)
@@ -2781,7 +2792,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         ccode
                     }
                 val (ret_e, ccode) =
-                    if bctx_cleanup.empty() {
+                    if bctx_cleanup == [] {
                         (ret_e, ccode)
                     } else {
                         val (ret_e, ccode) =
@@ -2960,14 +2971,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         all the global code should be put into fx_init_...() function.
         Let's form its body, starting with the standard `int fx_status = 0;`
     */
-    val start_loc = if top_code.empty() { noloc }
+    val start_loc = if top_code == [] { noloc }
                     else { get_kexp_loc(top_code.hd()) }
     new_block_ctx(BlockKind_Global, start_loc)
     val (status_exp, ccode) =
     create_cdefval(gen_temp_idc("fx_status"), CTypCInt, default_tempvar_flags(), "fx_status", Some(make_int_exp(0, start_loc)), [], start_loc)
     /* convert all the code to C. It will automatically update functions bodies */
     val (e, ccode) = kexp2cexp(code2kexp(top_code, start_loc), ref None, ccode)
-    pr_verbose(f"\ttop-level code for '{pp(km_name)}' has been translated. Finalizing the produced code ...")
+    pr_verbose(f"\t'{pp(km_name)}' has been translated to C. Finalizing the produced code ...")
     val end_loc = get_cexp_loc(e)
     /* bctx_prologue will contain all the global definitions.
        bctx_cleanup will contain destructor calls for all the global definitions.

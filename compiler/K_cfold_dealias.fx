@@ -491,7 +491,7 @@ fun cfold_dealias(kmods: kmodule_t list)
                                   result: (kexp_t list, kexp_t) list) =
                     match cases {
                     | (checks, e) :: other_cases =>
-                        if other_cases.empty() && !checks.empty() {
+                        if other_cases == [] && checks != [] {
                             throw compile_err(match_loc, "the match does not have the else branch")
                         }
                         val (keep_action, action_extra_code, checks) = process_case_checks(checks, [], [])

@@ -95,7 +95,7 @@ fun convert_all_fdecls(top_code: kcode_t)
                 ((c_id, ctyp) :: relems, free_ccode)
             }
             val (free_f, decl_free_f) =
-            if free_ccode.empty() {
+            if free_ccode == [] {
                 (std_fx_free, [])
             } else {
                 val call_free = make_call(std_fx_free, [: dst_exp :], CTypVoid, kcv_loc)
@@ -241,7 +241,7 @@ fun convert_all_fdecls(top_code: kcode_t)
                 val free_ccode = C_gen_types.gen_free_code(dst_data_exp, ke_ctyp, true, false, [], ke_loc)
                 val relems = [: (get_id("rc"), CTypInt), (get_id("data"), ke_ctyp) :]
                 val (free_f, free_f_decl) =
-                if free_ccode.empty() {
+                if free_ccode == [] {
                     (std_fx_free, [])
                 } else {
                     val call_free = make_call(std_fx_free, [: dst_exp :], CTypVoid, ke_loc)

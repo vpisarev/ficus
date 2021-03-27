@@ -248,7 +248,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             val result =
             match e {
             | KExpNop _ =>
-                if rest.empty() { e :: result } else { result }
+                if rest == [] { e :: result } else { result }
 
             // special optimizaion of fold pass-through fold:
             // fold res = ... { if ... { foo(res) } else { res }}
@@ -266,7 +266,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             | KDefTyp _ | KDefClosureVars _ =>
                 e :: result
             | _ =>
-                if pure_kexp(e) && !rest.empty() { result }
+                if pure_kexp(e) && rest != [] { result }
                 else { e :: result }
             }
             remove_unused_(rest, result, callb)

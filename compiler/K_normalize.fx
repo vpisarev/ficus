@@ -234,6 +234,12 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
     | ExpUnary(uop, e1, _) =>
         val (a1, code) = exp2atom(e1, code, false, sc)
         (KExpUnary(uop, a1, kctx), code)
+    | ExpIntrin(iop, args, _) =>
+        val fold (args, code) = ([], code) for ei <- args {
+            val (ai, code) = exp2atom(ei, code, false, sc)
+            (ai :: args, code)
+        }
+        (KExpIntrin(iop, args.rev(), kctx), code)
     | ExpSeq(eseq, _) =>
         val sc = new_block_scope() :: sc
         val code = transform_all_types_and_cons(eseq, code, sc)
@@ -249,7 +255,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         }
         (KExpMkTuple(args.rev(), kctx), code)
     | ExpMkArray(arows, _) =>
-        if arows.empty() {
+        if arows == [] {
             throw compile_err(eloc, "empty arrays are not supported")
         }
         val fold (krows, code) = ([], code) for arow <- arows {
@@ -801,7 +807,7 @@ fun pat_simple_unpack(p: pat_t, ptyp: ktyp_t, e_opt: kexp_t?, code: kcode_t,
                 }
                 fold code=code for pi@idx <- pl, ti <- tl {
                     val loci = get_pat_loc(pi)
-                    val ei = if !tup_elems.empty() { KExpAtom(tup_elems.nth(idx), (ti, loc)) }
+                    val ei = if tup_elems != [] { KExpAtom(tup_elems.nth(idx), (ti, loc)) }
                              else { KExpMem(n, idx, (ti, loci)) }
                     pat_simple_unpack(pi, ti, Some(ei), code, temp_prefix, flags, sc).1
                 }
@@ -1156,7 +1162,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
         val (ke, case_code) = exp2kexp(e, case_code, false, case_sc)
         val eloc = get_exp_loc(e)
         val ke = rcode2kexp(ke :: case_code, eloc)
-        if checks.empty() { have_else = true }
+        if checks == [] { have_else = true }
         (checks.rev(), ke)
     } :]
     val k_cases =
@@ -1182,7 +1188,7 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t {
         | [] | ScModule _ :: _ => false
         | _ => true
         }
-    val inst_list = if df_templ_args.empty() { df_name :: [] } else { *df_templ_inst }
+    val inst_list = if df_templ_args == [] { df_name :: [] } else { *df_templ_inst }
     fold code = code for inst <- inst_list {
         match id_info(inst, df_loc) {
         | IdFun(inst_df) =>
@@ -1254,7 +1260,7 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t {
 fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t list): kcode_t =
     fold code = code for e <- elist {
         | DefVariant (ref {dvar_name, dvar_templ_args, dvar_cases, dvar_templ_inst, dvar_scope, dvar_loc}) =>
-            val inst_list = if dvar_templ_args.empty() { dvar_name :: [] } else { *dvar_templ_inst }
+            val inst_list = if dvar_templ_args == [] { dvar_name :: [] } else { *dvar_templ_inst }
             val tags =
                 [: for (n, _) <- dvar_cases {
                     if n == noid { noid } else {

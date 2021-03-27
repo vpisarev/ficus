@@ -12,21 +12,23 @@ The code is distributed under Apache 2 license, see the [LICENSE](LICENSE)
 
 ## How to build
 
-The compiler has been written in Ficus itself and needs C/C++ compiler and make utility.
+The compiler is written in Ficus itself and needs C/C++ compiler and make utility.
 
 ```
 cd <ficus_root>
 make
 FICUS_PATH=./lib FICUS_CFLAGS=-I./runtime ./ficus -run -O3 examples/fst.fx
+# or
+# ./ficus -I ./lib -cflags "-I./runtime" -run -O3 examples/fst.fx
 ```
 
 `FICUS_PATH` and `FICUS_CFLAGS` are the two variables to setup to make ficus usable from any directory.
 
-* The first one, `FICUS_PATH`, should be set to the path to the standard library (`<ficus_root>/lib`), but also can contain
-other paths separated by `:` on Unix and `;` on Windows. Note that if a compiled module imports other modules
+* The first one, `FICUS_PATH`, should point to the standard library (`<ficus_root>/lib`), but can also contain
+other directories separated by `:` on Unix and `;` on Windows. Note that if a compiled module imports other modules
 from the directory where it resides, that directory does not need to be included.
 
-* The second one, `FICUS_CFLAGS`, is passed to C/C++ compiler to build the produced .c/.cpp files.
+* The second one, `FICUS_CFLAGS`, is used by C/C++ compiler to build the produced .c/.cpp files.
 The generated files include ficus runtime headers, and the path to the runtime directory needs
 to be specified via command line option `-cflags` or the environment variable.
 

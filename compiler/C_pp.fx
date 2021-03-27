@@ -257,7 +257,7 @@ type assoc_t = AssocLeft | AssocRight
     | CExpInit (eseq, _) =>
         pp.str("{");
         pp.space();
-        if !eseq.empty() {
+        if eseq != [] {
             pp.begin(0)
             for e@i <- eseq {
                 if i > 0 { pp.str(","); pp.space() }
@@ -432,7 +432,7 @@ type assoc_t = AssocLeft | AssocRight
                 pp_cstmt_(pp, s)
                 if i < codelen - 1 { pp.break0() }
             }
-            if isdefault { if code.empty() { pp.str((' '*default_indent)+";") } }
+            if isdefault { if code == [] { pp.str((' '*default_indent)+";") } }
             else { pp.str("break;") }
             pp.end()
             pp.break0()

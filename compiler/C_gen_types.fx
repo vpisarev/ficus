@@ -738,7 +738,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 match (have_tag, free_cases) {
                 | (_, []) => []
                 | (false, (_, free_code) :: rest) =>
-                    if !rest.empty() {
+                    if rest != [] {
                         throw compile_err(kvar_loc,
                             f"cgen: variant '{kvar_cname}' with no tag somehow has multiple cases in the destructor")
                     }
@@ -752,7 +752,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 } else if have_tag {
                     val clear_tag = CExpBinary(COpAssign, dst_tag_exp,
                             make_int_exp(0, kvar_loc), void_ctx)
-                    if free_code.empty() { [] }
+                    if free_code == [] { [] }
                     else { CExp(clear_tag) :: free_code }
                 } else {
                     free_code
@@ -775,7 +775,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                     | _ => default_copy_code
                     }
                 }
-            val relems= if uelems.empty() { [] }
+            val relems= if uelems == [] { [] }
                         else { (u_id, CTypUnion(None, uelems.rev())) :: [] }
             val relems= if have_tag { (tag_id, CTypCInt) :: relems }
                         else { relems }

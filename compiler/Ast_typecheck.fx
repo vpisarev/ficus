@@ -432,7 +432,7 @@ fun inst_merge_env(env_from: env_t, env_to: env_t): env_t =
                    the goal is not to implement dynamic scope; the goal is to make
                    function instantiation work correctly in the presense of
                    locally overloaded functions */
-                if extra_entries.empty() {
+                if extra_entries == [] {
                     new_env
                 } else {
                     val new_entries = extra_entries.rev() + prev_entries
@@ -481,7 +481,7 @@ fun find_typ_instance(t: typ_t, loc: loc_t): typ_t? {
     val t = deref_typ(t)
     match t {
     | TypApp(targs, n) =>
-        if targs.empty() {
+        if targs == [] {
             Some(t)
         } else {
             val inst_list = match id_info(n, loc) {
@@ -578,7 +578,7 @@ fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list
             val locj = get_idinfo_loc(info)
             f"'{nstr}: {typ2str(tj)}' defined at {locj}"
         } :]
-    val candidates_msg = if strs.empty() { "" } else { join_embrace("\nCandidates:\n\t", "\n", ",\n\t", strs) }
+    val candidates_msg = if strs == [] { "" } else { join_embrace("\nCandidates:\n\t", "\n", ",\n\t", strs) }
     compile_err(loc, f"the appropriate match for '{nstr}' of type '{typ2str(t)}' is not found.{candidates_msg}")
 }
 
@@ -630,8 +630,8 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list, loc: loc_t, p
     }
 
     val e_all = find_all(n, env)
-    val e_all = if e_all.empty() && is_unique_id(n) { EnvId(n) :: [] } else { e_all }
-    if !e_all.empty() { find_next_(e_all) }
+    val e_all = if e_all == [] && is_unique_id(n) { EnvId(n) :: [] } else { e_all }
+    if e_all != [] { find_next_(e_all) }
     else {
         val n_path = pp(n)
         search_path(n_path, n_path.length()-1, env, loc)
@@ -666,7 +666,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
                         TypFun(argtyps, rt)
                     | _ => t
                     }
-                if df_templ_args.empty() {
+                if df_templ_args == [] {
                     if maybe_unify(df_typ, t, loc, true) { Some((i, t)) } else { None }
                 } else {
                     val (ftyp, env1) = preprocess_templ_typ(df_templ_args, df_typ, df_env, sc, loc)
@@ -762,7 +762,7 @@ fun check_for_duplicate_fun(ftyp: typ_t, env: env_t, sc: scope_t list, loc: loc_
         | IdFun (ref {df_name, df_templ_args, df_typ, df_scope, df_loc}) =>
             if df_scope.hd() == sc.hd() {
                 val (t, _) = preprocess_templ_typ(df_templ_args, df_typ, env, sc, loc)
-                if maybe_unify(t, ftyp, loc, false) && df_templ_args.empty() {
+                if maybe_unify(t, ftyp, loc, false) && df_templ_args == [] {
                     throw compile_err( loc,
                         f"the symbol {pp(df_name)} is re-declared in the same scope; the previous declaration is here: {df_loc}")
                 }
@@ -851,7 +851,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | _ => throw compile_err(eloc, "for over tuple: invalid result of check_pat result (id is expected)")
             }
             (tl.length(), (p, tup_e), [: def_e :], 1, env, idset)
-        | (false, _, relems) when !relems.empty() =>
+        | (false, _, relems) when relems != [] =>
             val rec_pat = PatIdent(gen_temp_id("rec"), eloc)
             val (rec_pat, env, idset, _, _) = check_pat(rec_pat, etyp, env, idset,
                                                         empty_idset, sc, false, true, false)
@@ -1131,6 +1131,65 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp, TypTuple([: TypInt, TypInt, TypInt :]), eloc, "the range type should have (int, int, int) type")
             ExpRange(Some(new_e1), None, Some(new_e2), ctx)
         }
+    | ExpBinary(OpCmp(cmpop) as bop, e1, e2, _) =>
+        val new_e1 = check_exp(e1, env, sc)
+        val new_e2 = check_exp(e2, env, sc)
+        val (etyp1, eloc1) = get_exp_ctx(new_e1)
+        val (etyp2, eloc2) = get_exp_ctx(new_e2)
+        unify(etyp1, etyp2, eloc, "the compared elements must have the same type")
+        unify(etyp, TypBool, eloc, f"result of comparison operation '{bop}' must be bool")
+        if is_typ_scalar(etyp1) && is_typ_scalar(etyp2) {
+            ExpBinary(bop, new_e1, new_e2, ctx)
+        } else {
+            val result_exp_opt =
+            match cmpop {
+            | CmpEQ | CmpNE =>
+                match deref_typ(etyp1) {
+                | TypList _ =>
+                    match (new_e1, new_e2) {
+                    | (_, ExpLit (LitNil, _)) | (ExpLit (LitNil, _), _) =>
+                        Some(ExpBinary(bop, new_e1, new_e2, ctx))
+                    | _ => None
+                    }
+                | TypString =>
+                    match (new_e1, new_e2) {
+                    | (_, ExpLit(LitString "", _)) =>
+                        val e1_size = ExpIntrin(IntrinGetSize, new_e1 :: [], (TypInt, eloc1))
+                        Some(ExpBinary(bop, e1_size, ExpLit(LitInt(0L), (TypInt, eloc2)), ctx))
+                    | (ExpLit (LitString "", _), _) =>
+                        val e2_size = ExpIntrin(IntrinGetSize, new_e2 :: [], (TypInt, eloc2))
+                        Some(ExpBinary(bop, e2_size, ExpLit(LitInt(0L), (TypInt, eloc1)), ctx))
+                    | _ => None
+                    }
+                | TypApp([], _) =>
+                    fun is_simple_ctor(e: exp_t) {
+                        val eloc = get_exp_loc(e)
+                        match e {
+                        | ExpIdent(n, _) =>
+                            match id_info(n, eloc) {
+                            | IdFun (ref {df_typ, df_flags={fun_flag_ctor}}) =>
+                                (match df_typ {|TypFun _ => false | _ => true}) && fun_flag_ctor != CtorNone
+                            | _ => false
+                            }
+                        | _ => false
+                        }
+                    }
+                    if is_simple_ctor(new_e1) || is_simple_ctor(new_e2) {
+                        val tag1 = ExpIntrin(IntrinVariantTag, new_e1 :: [], (TypInt, eloc1))
+                        val tag2 = ExpIntrin(IntrinVariantTag, new_e2 :: [], (TypInt, eloc2))
+                        Some(ExpBinary(bop, tag1, tag2, ctx))
+                    } else { None}
+                | _ => None
+                }
+            | _ => None
+            }
+            match result_exp_opt {
+            | Some (result_exp) => result_exp
+            | _ =>
+                val f_id = get_binary_fname(bop, eloc)
+                check_and_make_call(f_id, [: new_e1, new_e2 :])
+            }
+        }
     | ExpBinary(bop, e1, e2, _) =>
         val new_e1 = check_exp(e1, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
@@ -1155,15 +1214,13 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | _ => (bop, typ_opt)
             }
         | OpBitwiseAnd | OpBitwiseOr | OpBitwiseXor =>
-            fun check_bitwise(t1: typ_t, t2: typ_t): typ_t =
-                match (deref_typ(t1), deref_typ(t2)) {
-                | (TypInt, TypInt) => TypInt
-                | (TypSInt(b1), TypSInt(b2)) when b1 == b2 => TypSInt(b1)
-                | (TypUInt(b1), TypUInt(b2)) when b1 == b2 => TypUInt(b1)
-                | (TypBool, TypBool) => TypBool
-                | _ => throw BadArgError
+            val typ_opt = match (deref_typ(etyp1), deref_typ(etyp2)) {
+                | (TypInt, TypInt) => Some(TypInt)
+                | (TypSInt(b1), TypSInt(b2)) when b1 == b2 => Some(TypSInt(b1))
+                | (TypUInt(b1), TypUInt(b2)) when b1 == b2 => Some(TypUInt(b1))
+                | (TypBool, TypBool) => Some(TypBool)
+                | _ => None
                 }
-            val typ_opt = try Some(check_bitwise(etyp1, etyp2)) catch { | BadArgError => None }
             (bop, typ_opt)
         | OpLogicAnd | OpLogicOr =>
             unify(etyp1, TypBool, eloc1, "arguments of logical operation must be boolean")
@@ -1171,15 +1228,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             (bop, Some(TypBool))
         /* [TODO] comparison operations are now implemented for anything but variants
            (except for OpCompareEQ & OpCompareNE, which are implemented) */
-        | OpCmp _ | OpDotCmp _ =>
-            match bop {
-            | OpDotCmp _ => {}
-            | _ =>
-                unify(etyp1, etyp2, eloc, "the compared elements must have the same type")
-                unify(etyp, TypBool, eloc, f"result of comparison operation '{bop}' must be bool")
-            }
+        | OpDotCmp _ =>
             if is_typ_scalar(etyp1) && is_typ_scalar(etyp2) {
-                unify(etyp1, etyp2, eloc, "only equal types can be compared")
                 (bop_wo_dot, Some(TypBool))
             } else if etyp1 == TypString {
                 (bop_wo_dot, None)
@@ -1187,17 +1237,21 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 (bop, None)
             }
         | OpSpaceship | OpDotSpaceship =>
-            if is_typ_scalar(etyp1) && is_typ_scalar(etyp2) || deref_typ(etyp1) == TypString && deref_typ(etyp2) == TypString {
+            if is_typ_scalar(etyp1) && is_typ_scalar(etyp2) {
                 (bop_wo_dot, None)
             } else {
-                (bop, None)
+                match (deref_typ(etyp1), deref_typ(etyp2)) {
+                | (TypString, TypString) => (bop_wo_dot, None)
+                | _ => (bop, None)
+                }
             }
         | OpSame =>
             unify(etyp1, etyp2, eloc, "only equal types can be compared for identity")
             unify(etyp, TypBool, eloc, "the result of identity comparison should be 'bool'")
             (bop, None)
-        | OpCons => throw compile_err(eloc, f"unsupported binary operation {bop}")
+        | OpCons | OpCmp _ => throw compile_err(eloc, f"unsupported binary operation {bop}")
         }
+
         match (typ_opt, bop, deref_typ(etyp1), deref_typ(etyp2), e1, e2) {
         | (Some(typ), _, _, _, _, _) =>
             unify(typ, etyp, eloc, "improper type of the arithmetic operation result")
@@ -1279,6 +1333,49 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             check_and_make_call(f_id, [: new_e1 :])
         | _ => throw compile_err(eloc, f"unsupported unary operation '{uop}'")
         }
+    | ExpIntrin(IntrinMath(f), args, _) =>
+        val argtyps = [: for a <- args {get_exp_typ(a)} :]
+        val fstr = pp(f)
+        val t = match (fstr, args, argtyps) {
+        | ("__intrin_atan2__", y :: x :: [], yt :: xt :: []) =>
+            unify(yt, xt, eloc, "arguments of atan2() must have the same type")
+            yt
+        | (_, x :: [], xt :: []) => xt
+        | _ =>
+            val nargs_expected = if fstr == "__intrin_atan2__" {2} else {1}
+            throw compile_err(eloc, f"incorrect number of arguments in {fstr}, expect {nargs_expected}")
+        }
+        unify(etyp, t, eloc, f"the input and output of {fstr} should have the same types")
+        val args = [: for a <- args {check_exp(a, env, sc)} :]
+        match deref_typ(t) {
+        | TypFloat(_) => {}
+        | _ => throw compile_err(eloc, "the argument and the result of intrinsic math function must be 'float' or 'double'")
+        }
+        ExpIntrin(IntrinMath(f), args, ctx)
+    | ExpIntrin(iop, args, _) =>
+        match iop {
+        | IntrinGetSize =>
+            val (a, idx) =
+                match args {
+                | a :: [] => (a, 0)
+                | a :: ExpLit(LitInt(i),_) :: [] => (a, int(i))
+                | _ => throw compile_err(eloc,
+                    "there should be exactly one or two argument of __intrin_size__ intrinsic. " +
+                    "In the latter case the second parameter must be literal integer")
+                }
+            val a = check_exp(a, env, sc)
+            val t = get_exp_typ(a)
+            unify(etyp, TypInt, eloc, "the result of __intrin_size__ must be integer")
+            match (deref_typ(t), idx) {
+            | (TypString, 0) => {}
+            | (TypArray(ndims, _), _) =>
+                if idx < 0 || idx >= ndims { throw compile_err(eloc,
+                    "the argument of __intrin_size__ is outside of array dimensionality") }
+            | _ => throw compile_err(eloc, "the argument of __intrin_size__ must be a string or an array")
+            }
+            ExpIntrin(iop, a::(if idx > 0 {args.tl()} else {[]}), ctx)
+        | _ => throw compile_err(eloc, f"the intrinsic '{iop}' is not supported by the type checker")
+        }
     | ExpSeq(eseq, _) =>
         val eseq_typ = get_eseq_typ(eseq)
         unify(etyp, eseq_typ, eloc, "the expected type of block expression does not match its actual type")
@@ -1308,7 +1405,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                         | _ => throw compile_err(df_loc, "after duplication function is not a function anymore!")
                         }
                     reg_deffun(df, env, sc) // parse labmda parameters, see if they all are typed
-                    df->df_templ_args.empty()
+                    df->df_templ_args == []
                 // ident or qualified ident (module.nested_module.name ...) case
                 | ExpIdent(_, _) | ExpMem(_, ExpIdent(_, _), _) =>
                     match check_exp(dup_exp(a), env, sc) {
@@ -1322,7 +1419,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                                     | EnvId(i) =>
                                         match id_info(i, eloc) {
                                         | IdFun (ref {df_templ_args}) =>
-                                            if !df_templ_args.empty() {100} else {1}
+                                            if df_templ_args != [] {100} else {1}
                                         | _ => 0 // do not found values & exceptions,
                                                 // neither of them can be overloaded
                                         }
@@ -1981,7 +2078,7 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                     throw compile_err( df->df_loc,
                     "function definition occurs in the end of block; put some expression after it" ) }
                 val df =
-                    if df->df_templ_args.empty() { check_deffun(df, env) }
+                    if df->df_templ_args == [] { check_deffun(df, env) }
                     else {
                         // update environment of the template function
                         // to give it access to the above defined
@@ -2109,12 +2206,12 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
             val env =
             try {
                 val menv = get_module(m)->dm_env
-                val keys = if !implist.empty() { implist }
+                val keys = if implist != [] { implist }
                     else { menv.foldl(fun (k: id_t, _: env_entry_t list, l: id_t list) { k :: l }, ([]: id_t list)) }
                 val fold env = env for k <- keys {
                     try {
                         val entries = find_all(k, menv)
-                        if entries.empty() {
+                        if entries == [] {
                             throw compile_err(eloc, f"no symbol {pp(k)} found in {pp(m)}")
                         }
                         import_entries(env, m, k, entries, eloc)
@@ -2343,7 +2440,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
             val found_typ_opt = find_first(n, r_env, r_env, sc, loc,
                                            fun (entry: env_entry_t): typ_t? {
                 | EnvTyp(t) =>
-                    if ty_args.empty() { Some(t) }
+                    if ty_args == [] { Some(t) }
                     else { throw compile_err(loc, f"a concrete type '{pp(n)}' cannot be further instantiated") }
                 | EnvId(IdName _) => None
                 | EnvId(i) =>
@@ -2356,7 +2453,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                             throw compile_err( loc,
                                 f"later declared non-variant type '{pp(dt_name)}' is referenced; try to reorder the type declarations")
                         }
-                        if dt_name == n && ty_args.empty() { Some(t) }
+                        if dt_name == n && ty_args == [] { Some(t) }
                         else {
                             val env1 = match_ty_templ_args(ty_args, dt_templ_args, r_env, dt_loc, loc)
                             Some(check_typ(dup_typ(dt_typ), env1, sc, loc))
@@ -2364,7 +2461,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
                     | IdVariant(dvar) =>
                         val {dvar_name, dvar_templ_args, dvar_alias, dvar_templ_inst, dvar_loc} = *dvar
                         Some(
-                            if dvar_templ_args.empty() {
+                            if dvar_templ_args == [] {
                                 dvar_alias
                             } else if ty_args_are_real {
                                 val t1 = TypApp(ty_args, dvar_name)
@@ -2799,18 +2896,23 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                 }
             }
         | PatRecord(rn_opt, relems, loc) =>
-            val (ctor, relems_found) = get_record_elems(rn_opt, t, proto_mode, loc)
-            val new_relems = [: for (n, p) <- relems {
-                val n_orig = get_orig_id(n)
-                match find_opt(for (nj, tj, _) <- relems_found { get_orig_id(nj) == n_orig }) {
-                | Some((nj, tj, _)) =>
-                    val (p, _) = if proto_mode {(p, false)} else {check_pat_(p, tj)}
-                    (n, p)
-                | _ =>
-                    throw compile_err( loc,
-                        f"element '{pp(n)}' is not found in the record '{pp(rn_opt.value_or(noid))}'")
-                } } :]
-            (PatRecord(if ctor != noid {Some(ctor)} else {None}, new_relems, loc), false)
+            try {
+                val (ctor, relems_found) = get_record_elems(rn_opt, t, proto_mode, loc)
+                val new_relems = [: for (n, p) <- relems {
+                    val n_orig = get_orig_id(n)
+                    match find_opt(for (nj, tj, _) <- relems_found { get_orig_id(nj) == n_orig }) {
+                    | Some((nj, tj, _)) =>
+                        val (p, _) = if proto_mode {(p, false)} else {check_pat_(p, tj)}
+                        (n, p)
+                    | _ =>
+                        throw compile_err( loc,
+                            f"element '{pp(n)}' is not found in the record '{pp(rn_opt.value_or(noid))}'")
+                    } } :]
+                (PatRecord(if ctor != noid {Some(ctor)} else {None}, new_relems, loc), false)
+            } catch {
+            | CompileError(_, _) as err when rn_opt.issome() =>
+                check_pat_(PatVariant(rn_opt.value_or(noid), PatRecord(None, relems, loc) :: [], loc), t)
+            }
         | PatCons(p1, p2, loc) =>
             val t1 = make_new_typ()
             val t2 = TypList(t1)
@@ -2910,7 +3012,7 @@ fun check_mod(m: id_t) {
                     val is_private = get_idinfo_private_flag(info)
                     host_m == m && !is_private
                 | EnvTyp _ => false })
-            if !new_entries.empty() { new_env.add(n, new_entries) }
+            if new_entries != [] { new_env.add(n, new_entries) }
             else { new_env }}, empty_env)
         minfo->dm_defs = seq
         minfo->dm_env = env

@@ -168,7 +168,7 @@ fun optimize_idx_checks(topcode: kcode_t)
                 }
             }
             val loop_idx =
-            if arr_id == noid || idxl.empty() {
+            if arr_id == noid || idxl == [] {
                 loop_idx
             } else {
                 fold loop_idx = loop_idx for idx@i <- idxl {
@@ -397,7 +397,7 @@ fun optimize_idx_checks(topcode: kcode_t)
             }
 
         val pre_for_code =
-        if all_accesses.empty() {
+        if all_accesses == [] {
             pre_for_code
         } else {
             val (_, pre_for_code) =

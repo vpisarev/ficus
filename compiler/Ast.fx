@@ -172,6 +172,18 @@ type binary_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
 type unary_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
     | OpMkRef | OpDeref | OpExpand | OpApos
 
+type intrin_t =
+    | IntrinPopExn
+    | IntrinVariantTag
+    | IntrinVariantCase
+    | IntrinListHead
+    | IntrinListTail
+    | IntrinStrConcat
+    | IntrinGetSize
+    | IntrinCheckIdx
+    | IntrinCheckIdxRange
+    | IntrinMath: id_t
+
 type val_flags_t =
 {
     val_flag_arg: bool = false;
@@ -267,6 +279,7 @@ type exp_t =
     | ExpIdent: (id_t, ctx_t)
     | ExpBinary: (binary_t, exp_t, exp_t, ctx_t)
     | ExpUnary: (unary_t, exp_t, ctx_t)
+    | ExpIntrin: (intrin_t, exp_t list, ctx_t)
     | ExpSeq: (exp_t list, ctx_t)
     | ExpMkTuple: (exp_t list, ctx_t)
     | ExpMkArray: (exp_t list list, ctx_t)
@@ -618,6 +631,7 @@ fun get_exp_ctx(e: exp_t) {
     | ExpIdent(_, c) => c
     | ExpBinary(_, _, _, c) => c
     | ExpUnary(_, _, c) => c
+    | ExpIntrin(_, _, c) => c
     | ExpSeq(_, c) => c
     | ExpMkTuple(_, c) => c
     | ExpMkRecord(_, _, c) => c
@@ -954,6 +968,20 @@ fun string(uop: unary_t) {
     | OpMkRef => "REF"
     | OpDeref => "*"
     | OpApos => "'"
+}
+
+fun string(iop: intrin_t): string
+{
+    | IntrinPopExn => "__intrin_pop_exn__"
+    | IntrinVariantTag => "__intrin_variant_tag__"
+    | IntrinVariantCase => "__intrin_variant_case__"
+    | IntrinListHead => "__intrin_hd__"
+    | IntrinListTail => "__intrin_tl__"
+    | IntrinStrConcat => "__intrin_str_concat__"
+    | IntrinGetSize => "__intrin_size__"
+    | IntrinCheckIdx => "__intrin_check_idx__"
+    | IntrinCheckIdxRange => "__intrin_check_range__"
+    | IntrinMath(f) => f"__intrin_{pp(f)}__"
 }
 
 fun border2str(border: border_t, f: bool) {
@@ -1333,6 +1361,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpIdent(n, ctx) => ExpIdent(n, walk_ctx_(ctx))
     | ExpBinary(bop, e1, e2, ctx) => ExpBinary(bop, walk_exp_(e1), walk_exp_(e2), walk_ctx_(ctx))
     | ExpUnary(uop, e, ctx) => ExpUnary(uop, walk_exp_(e), walk_ctx_(ctx))
+    | ExpIntrin(iop, args, ctx) => ExpIntrin(iop, walk_elist_(args), walk_ctx_(ctx))
     | ExpSeq(elist, ctx) => ExpSeq(walk_elist_(elist), walk_ctx_(ctx))
     | ExpMkTuple(elist, ctx) => ExpMkTuple(walk_elist_(elist), walk_ctx_(ctx))
     | ExpMkArray(ell, ctx) => ExpMkArray([: for el <- ell {walk_elist_(el)} :], walk_ctx_(ctx))
@@ -1358,7 +1387,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpCCode(str, ctx) => ExpCCode(str, walk_ctx_(ctx))
     | DefVal(p, v, flags, loc) => DefVal(walk_pat_(p), walk_exp_(v), flags, loc)
     | DefFun(df) =>
-        if !df->df_templ_args.empty() {
+        if df->df_templ_args != [] {
             e
         } else {
             val {df_args, df_typ, df_body} = *df

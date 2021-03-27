@@ -42,17 +42,6 @@
 from Ast import *
 import Set
 
-type intrin_t =
-    | IntrinPopExn
-    | IntrinVariantTag
-    | IntrinVariantCase
-    | IntrinListHead
-    | IntrinListTail
-    | IntrinStrConcat
-    | IntrinGetSize
-    | IntrinCheckIdx
-    | IntrinCheckIdxRange
-
 type ktprops_t =
 {
     ktp_complex: bool;
@@ -338,7 +327,7 @@ fun get_kexp_loc(e: kexp_t): loc_t = get_kexp_ctx(e).1
 fun get_kexp_start(e: kexp_t): loc_t = get_start_loc(get_kexp_loc(e))
 fun get_kexp_end(e: kexp_t): loc_t = get_end_loc(get_kexp_loc(e))
 
-fun is_val_global(flags: val_flags_t): bool = !flags.val_flag_global.empty()
+fun is_val_global(flags: val_flags_t): bool = flags.val_flag_global != []
 
 fun get_val_scope(flags: val_flags_t): scope_t list =
     match flags.val_flag_global {
@@ -444,19 +433,6 @@ fun get_atom_ktyp(a: atom_t, loc: loc_t): ktyp_t =
     | AtomId(n) => get_idk_ktyp(n, loc)
     | AtomLit(l) => get_lit_ktyp(l)
     }
-
-fun string(iop: intrin_t): string
-{
-    | IntrinPopExn => "__pop_exn__"
-    | IntrinVariantTag => "__variant_tag__"
-    | IntrinVariantCase => "__variant_case__"
-    | IntrinListHead => "__hd__"
-    | IntrinListTail => "__tl__"
-    | IntrinStrConcat => "__intrin_str_concat__"
-    | IntrinGetSize => "__intrin_size__"
-    | IntrinCheckIdx => "__check_idx__"
-    | IntrinCheckIdxRange => "__check_range__"
-}
 
 fun get_code_loc(code: kcode_t, default_loc: loc_t) =
     loclist2loc(code.map(get_kexp_loc), default_loc)
@@ -609,7 +585,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
                 val new_e = walk_kexp_(e)
                 val new_result =
                     match new_e {
-                    | KExpNop _ => if !rest.empty() {result} else {new_e :: result}
+                    | KExpNop _ => if rest != [] {result} else {new_e :: result}
                     | KExpSeq(el, _) => el.rev() + result
                     | _ => new_e :: result
                     }

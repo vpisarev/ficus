@@ -131,7 +131,7 @@ fun print(d: 't Deque.t)
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    val nonempty = (!d.head.empty() :> int)
+    val nonempty = int(d.head != [])
     for x@i <- d.tail.rev() {
         if i+nonempty > 0 {print(", ")}
         print_repr(x)

@@ -418,7 +418,7 @@ val default_indent = 3
         for (checks_i, e_i)@i <- cases {
             pp.begin()
             pp.str(if i == 0 { "if " }
-                    else if checks_i.empty() { "else" }
+                    else if checks_i == [] { "else" }
                     else { "else if "})
             for cj@j <- checks_i {
                 if j > 0 { pp.str(" &&"); pp.space() }

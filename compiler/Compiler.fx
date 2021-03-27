@@ -61,7 +61,7 @@ fun parse_all(fname0: string): bool
     var queue = minfo->dm_name :: []
     var ok = true
     var module_idx = 0
-    while !queue.empty() {
+    while queue != [] {
         val mname = queue.hd()
         queue = queue.tl()
         val minfo = Ast.get_module(mname)
@@ -140,7 +140,7 @@ fun k_normalize_all(modules: id_t list): (kmodule_t list, bool)
 fun prf(str: string) = pr_verbose(f"\t{str}")
 
 fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
-    var compile_errs = []
+    Ast.all_compile_errs = []
     val niters = Options.opt.optim_iters
     var temp_kmods = kmods
     prf("initial dead code elim")
@@ -187,7 +187,7 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     temp_kmods = K_inline.find_recursive_funcs_all(temp_kmods)
     prf("annotate types")
     temp_kmods = K_annotate.annotate_types(temp_kmods)
-    (temp_kmods, compile_errs.empty())
+    (temp_kmods, Ast.all_compile_errs.empty())
 }
 
 fun k2c_all(kmods: kmodule_t list)
@@ -305,7 +305,7 @@ fun run_cc(cmods: C_form.cmodule_t list, output_dir: string) {
         val linked_libs = Sys.getenv("FICUS_LINK_LIBRARIES")
         val linked_libs = if Options.opt.clibs == "" { linked_libs }
                           else { linked_libs + " " + Options.opt.clibs }
-        val linked_libs = if all_clibs.empty() { linked_libs }
+        val linked_libs = if all_clibs == [] { linked_libs }
                           else { linked_libs + " " + " ".join([: for l <- all_clibs.rev() {"-l" + l} :]) }
         val cmd = cmd + " " + linked_libs
         val cmd = cmd + " -lm" + (if any_cpp { " -lstdc++" } else { "" })

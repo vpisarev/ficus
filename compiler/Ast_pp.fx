@@ -24,7 +24,7 @@ fun pprint_val_flags(pp: PP.t, flags: val_flags_t): void
     if flags.val_flag_temp { pp.str("@temp"); pp.space() }
     if flags.val_flag_private { pp.str("@private"); pp.space() }
     if flags.val_flag_subarray { pp.str("@subarray"); pp.space() }
-    if !flags.val_flag_global.empty() { pp.str("@global"); pp.space() }
+    if flags.val_flag_global != [] { pp.str("@global"); pp.space() }
     if flags.val_flag_arg { pp.str("@arg"); pp.space() }
 }
 
@@ -248,7 +248,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         }
         pp.space(); ppid(pp, dvar_name);
         pp.str(" ="); pp.space()
-        val ctors = if !dvar_ctors.empty() { dvar_ctors } else { [: for (n, t) <- dvar_cases {n} :] }
+        val ctors = if dvar_ctors != [] { dvar_ctors } else { [: for (n, t) <- dvar_cases {n} :] }
         for (_, t)@i <- dvar_cases, c <- ctors {
             pp.begin(); pp.str("| ");
             ppid(pp, c); pp.str(": "); pp.space();
@@ -340,6 +340,13 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | ExpUnary(o, e1, _) =>
             pp.str("("); pp.str(f"{o}");
             pp.space(); ppexp(e1); pp.str(")")
+        | ExpIntrin(i, args, _) =>
+            pp.str(string(i)); pp.str("(")
+            for e@i <- args {
+                if i > 0 { pp.str(","); pp.space() }
+                ppexp(e)
+            }
+            pp.str(")")
         | ExpThrow(e1, _) =>
             pp.str("throw"); pp.space(); ppexp(e1)
         | ExpMkTuple(el, _) =>
