@@ -226,12 +226,13 @@ fun emit_c_files(fname0: string, cmods: C_form.cmodule_t list)
         val (new_cmod, ok) =
         if ok {
             val str_new = C_pp.pprint_top_to_string(cmod_ccode)
-            val str_old =
+            val str_old = if Options.opt.force_rebuild {""} else {
                 try
                     File.read_utf8(output_fname)
                 catch {
                 | IOError | FileOpenError => ""
                 }
+            }
             val (recompile, ok) =
                 if str_new == str_old {
                     (false, ok)

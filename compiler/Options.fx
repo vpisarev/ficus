@@ -9,6 +9,7 @@ type options_t =
     app_args: string list = [];
     app_filename: string = "";
     arch64: bool = true;
+    force_rebuild: bool = false;
     build_dir: string = "";
     build_rootdir: string = "";
     cflags: string = "";
@@ -56,6 +57,7 @@ Run '{fxname} -h' to get more detailed help")
 Usage: {fxname} [options ...] <input_file.fx> [-- <app_args ...>]
 
 where options can be some of:
+    -rebuild        Ignore cached files; rebuild everything from scratch
     -pr-tokens      Print all the tokens in parsed files
     -pr-ast0        Print AST right after parsing
     -pr-ast         Print typechecked AST of the parsed files
@@ -119,6 +121,8 @@ fun parse_options(): bool {
     var ok = true
     while args != [] {
         args = match args {
+            | "-rebuild" :: next =>
+                opt.force_rebuild = true; next
             | "-pr-tokens" :: next =>
                 opt.print_tokens = true; next
             | "-pr-ast0" :: next =>

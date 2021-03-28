@@ -840,3 +840,54 @@ fun new_uniform_rng(seed: uint64) {
         (x :> int)
     }
 }
+
+@ccode {
+
+typedef uint64_t hash_t;
+#define FNV_1A_PRIME 1099511628211ULL
+#define FNV_1A_OFFSET 14695981039346656037ULL
+
+}
+
+type hash_t = uint64
+val FNV_1A_PRIME: hash_t = 1099511628211UL
+val FNV_1A_OFFSET: hash_t = 14695981039346656037UL
+
+fun hash(x: 't): hash_t = uint64(x)
+fun hash(x: int) = uint64(x) ^ FNV_1A_OFFSET
+fun hash(x: int32) = uint64(x) ^ FNV_1A_OFFSET
+fun hash(x: uint32) = uint64(x) ^ FNV_1A_OFFSET
+fun hash(x: int8) = uint64(x) ^ FNV_1A_OFFSET
+fun hash(x: uint8) = uint64(x) ^ FNV_1A_OFFSET
+fun hash(x: int16) = uint64(x) ^ FNV_1A_OFFSET
+fun hash(x: uint16) = uint64(x) ^ FNV_1A_OFFSET
+fun hash(x: bool) = uint64(x) ^ FNV_1A_OFFSET
+@pure @nothrow fun hash(x: float): hash_t = @ccode {
+    fx_bits32_t u; u.f = x; return u.u ^ 14695981039346656037ULL;
+}
+@pure @nothrow fun hash(x: double): hash_t = @ccode {
+    fx_bits64_t u; u.f = x;
+    return u.u ^ 14695981039346656037ULL;
+}
+@pure @nothrow fun hash(x: string): hash_t = @ccode {
+    uint64_t hash = FNV_1A_OFFSET;
+    int_ i, len = x->length;
+    char_* data = x->data;
+    for(i = 0; i < len; i++) {
+        hash ^= data[i];
+        hash *= FNV_1A_PRIME;
+    }
+    return hash;
+}
+
+fun hash(x: (...)): hash_t =
+    fold h = FNV_1A_OFFSET for xj <- x {
+        val h = h ^ hash(xj)
+        h * FNV_1A_PRIME
+    }
+
+fun hash(x: {...}): hash_t =
+    fold h = FNV_1A_OFFSET for (_, xj) <- x {
+        val h = h ^ hash(xj)
+        h * FNV_1A_PRIME
+    }

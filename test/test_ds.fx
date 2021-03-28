@@ -1,6 +1,5 @@
 from UTest import *
-import Set
-import Map
+import Set, Map, Hashmap
 
 TEST("ds.set", fun()
 {
@@ -44,127 +43,127 @@ TEST("ds.set", fun()
     EXPECT_EQ(s1.list(), [: "a", "an", "binary", "for", "implementation", "is", "of", "set", "simple", "test", "this", "very" :])
 })
 
+val poem =
+"The first day of Christmas,
+My true love sent to me
+A partridge in a pear tree.
+
+The second day of Christmas,
+My true love sent to me
+Two turtle doves, and
+A partridge in a pear tree.
+
+The third day of Christmas,
+My true love sent to me
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The fourth day of Christmas,
+My true love sent to me
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The fifth day of Christmas,
+My true love sent to me
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The sixth day of Christmas,
+My true love sent to me
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The seventh day of Christmas,
+My true love sent to me
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The eighth day of Christmas,
+My true love sent to me
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The ninth day of Christmas,
+My true love sent to me
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The tenth day of Christmas,
+My true love sent to me
+Ten pipers piping,
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The eleventh day of Christmas
+My true love sent to me
+Eleven ladies dancing,
+Ten pipers piping,
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The twelfth day of Christmas
+My true love sent to me
+Twelve fiddlers fiddling,
+Eleven ladies dancing,
+Ten pipers piping,
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree."
+
 TEST("ds.map", fun()
 {
     fun cmp(a: 't, b: 't) = a <=> b
     val scmp = (cmp: (string, string)->int)
 
     type si_map = (string, int) Map.t
-
-    val poem =
-    "The first day of Christmas,
-    My true love sent to me
-    A partridge in a pear tree.
-
-    The second day of Christmas,
-    My true love sent to me
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The third day of Christmas,
-    My true love sent to me
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The fourth day of Christmas,
-    My true love sent to me
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The fifth day of Christmas,
-    My true love sent to me
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The sixth day of Christmas,
-    My true love sent to me
-    Six geese a-laying,
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The seventh day of Christmas,
-    My true love sent to me
-    Seven swans a-swimming,
-    Six geese a-laying,
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The eighth day of Christmas,
-    My true love sent to me
-    Eight maids a-milking,
-    Seven swans a-swimming,
-    Six geese a-laying,
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The ninth day of Christmas,
-    My true love sent to me
-    Nine drummers drumming,
-    Eight maids a-milking,
-    Seven swans a-swimming,
-    Six geese a-laying,
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The tenth day of Christmas,
-    My true love sent to me
-    Ten pipers piping,
-    Nine drummers drumming,
-    Eight maids a-milking,
-    Seven swans a-swimming,
-    Six geese a-laying,
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The eleventh day of Christmas
-    My true love sent to me
-    Eleven ladies dancing,
-    Ten pipers piping,
-    Nine drummers drumming,
-    Eight maids a-milking,
-    Seven swans a-swimming,
-    Six geese a-laying,
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree.
-
-    The twelfth day of Christmas
-    My true love sent to me
-    Twelve fiddlers fiddling,
-    Eleven ladies dancing,
-    Ten pipers piping,
-    Nine drummers drumming,
-    Eight maids a-milking,
-    Seven swans a-swimming,
-    Six geese a-laying,
-    Five gold rings,
-    Four colly birds,
-    Three French hens,
-    Two turtle doves, and
-    A partridge in a pear tree."
 
     val words = poem.tokens(fun (c) {c.isspace() || c == '.' || c == ','})
     val fold wcounter = (Map.empty(scmp) : si_map) for w <- words {
@@ -210,4 +209,30 @@ TEST("ds.map", fun()
         }
 
     EXPECT_EQ(wcounter_odd.list(), ll_odd.rev())
+})
+
+TEST("ds.hashmap", fun() {
+    type si_hash = (string, int) Hashmap.t
+    val words = poem.tokens(fun (c) {c.isspace() || c == '.' || c == ','})
+    val wcounter = Hashmap.empty(16, "", 0, Some(hash : string->hash_t))
+    for w <- words {
+        val idx = wcounter.find_idx_or_insert(w)
+        wcounter._state->table[idx].2 += 1
+    }
+
+    val ll = [: ("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),
+        ("Five", 8), ("Four", 9), ("French", 10), ("My", 12), ("Nine", 4),
+        ("Seven", 6), ("Six", 7), ("Ten", 3), ("The", 12), ("Three", 10),
+        ("Twelve", 1), ("Two", 11), ("a", 12), ("a-laying", 7), ("a-milking", 5),
+        ("a-swimming", 6), ("and", 11), ("birds", 9), ("colly", 9), ("dancing", 2),
+        ("day", 12), ("doves", 11), ("drummers", 4), ("drumming", 4), ("eighth", 1),
+        ("eleventh", 1), ("fiddlers", 1), ("fiddling", 1), ("fifth", 1), ("first", 1),
+        ("fourth", 1), ("geese", 7), ("gold", 8), ("hens", 10), ("in", 12), ("ladies", 2),
+        ("love", 12), ("maids", 5), ("me", 12), ("ninth", 1), ("of", 12), ("partridge", 12),
+        ("pear", 12), ("pipers", 3), ("piping", 3), ("rings", 8), ("second", 1), ("sent", 12),
+        ("seventh", 1), ("sixth", 1), ("swans", 6), ("tenth", 1), ("third", 1), ("to", 12),
+        ("tree", 12), ("true", 12), ("turtle", 11), ("twelfth", 1) :]
+
+    val ll_fh = wcounter.list().sort((<))
+    EXPECT_EQ(ll_fh, ll)
 })
