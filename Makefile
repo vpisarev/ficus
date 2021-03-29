@@ -1,7 +1,7 @@
 MKDIR   := mkdir -p
 RMDIR   := rm -rf
 RM      := rm -rf
-CC      := cc -Wno-unknown-warning-option -Wno-dangling-else -O1
+CC      := cc -Wno-unknown-warning-option -Wno-dangling-else -O3
 INCLUDE := ./runtime
 RUNTIME_DIR := ./runtime/ficus
 RUNTIME_DEPS := $(wildcard $(RUNTIME_DIR)/*.h)
@@ -20,7 +20,7 @@ FICUS_SRCS := $(wildcard $(FICUS_SRC)/*.fx)
 FICUS_STDLIB := ./lib
 FICUS_STDLIB_SRCS := $(wildcard $(FICUS_STDLIB)/*.fx)
 FICUS := ./ficus
-FICUS_FLAGS := -verbose -I $(FICUS_STDLIB) -cflags $(CFLAGS)
+FICUS_FLAGS := -verbose -I $(FICUS_STDLIB) -O3 -cflags $(CFLAGS)
 
 .PHONY: all clean make_dirs pre_ficus final_note
 
@@ -38,6 +38,7 @@ $(BOOTSTRAP_BUILD_DIR)/%.o: $(BOOTSTRAP_SRC)/%.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 $(FICUS): $(FICUS_SRCS) $(FICUS_STDLIB_SRCS)
+	@$(RM) __build__/ficus/ficus
 	@$(FICUS0) $(FICUS_FLAGS) -o $(FICUS) $(FICUS_SRC)/ficus.fx
 
 make_dirs:

@@ -143,7 +143,7 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     Ast.all_compile_errs = []
     val niters = Options.opt.optim_iters
     var temp_kmods = kmods
-    prf("initial dead code elim")
+    prf("initial unusused code removal")
     temp_kmods = K_remove_unused.remove_unused(temp_kmods, true)
     for i <- 1: niters+1 {
         pr_verbose(f"Optimization pass #{i}:")
@@ -169,7 +169,7 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
         temp_kmods = K_fast_idx.optimize_idx_checks_all(temp_kmods)
         prf("const folding")
         temp_kmods = K_cfold_dealias.cfold_dealias(temp_kmods)
-        prf("dead code elim")
+        prf("remove unused")
         temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     }
     pr_verbose("Finalizing K-form:")
@@ -177,11 +177,11 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     temp_kmods = K_lift.lift_all(temp_kmods)
     prf("flatten")
     temp_kmods = K_flatten.flatten_all(temp_kmods)
-    prf("dead code elim")
+    prf("remove unused")
     temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     prf("mangle")
     temp_kmods = K_mangle.mangle_all(temp_kmods)
-    prf("dead code elim")
+    prf("remove unused")
     temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     prf("mark recursive")
     temp_kmods = K_inline.find_recursive_funcs_all(temp_kmods)

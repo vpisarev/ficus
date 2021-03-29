@@ -6,6 +6,23 @@
 #ifndef __FICUS_IMPL_H__
 #define __FICUS_IMPL_H__
 
+#if defined _WIN32 || defined WINCE
+    #define FX_WINDOWS 1
+    #ifndef _WIN32_WINNT           // This is needed for the declaration of TryEnterCriticalSection in winbase.h with Visual Studio 2005 (and older?)
+    #define _WIN32_WINNT 0x0400  // http://msdn.microsoft.com/en-us/library/ms686857(VS.85).aspx
+    #endif
+    #include <windows.h>
+#else
+    #define FX_UNIX 1
+    #include <unistd.h>
+    #include <time.h>
+    #include <execinfo.h>
+    #if defined __MACH__ && defined __APPLE__
+    #include <mach/mach.h>
+    #include <mach/mach_time.h>
+    #endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -268,7 +285,8 @@ void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst)
 
 enum
 {
-    FX_BT_HALF_SIZE = 16
+    FX_BT_HALF_SIZE = 16,
+    FX_BT_SIZE = FX_BT_HALF_SIZE*2
 };
 
 typedef struct fx_bt_entry_t
@@ -281,11 +299,9 @@ typedef struct fx_bt_entry_t
 typedef struct fx_bt_t
 {
     fx_exn_t curr_exn;
-    int istack_top;
-    int ostack_top;
-    int ostack_bottom;
-    fx_bt_entry_t istack[FX_BT_HALF_SIZE];
-    fx_bt_entry_t ostack[FX_BT_HALF_SIZE];
+    fx_bt_entry_t thrown_at;
+    int bt_entries;
+    void* bt_stack[FX_BT_SIZE];
 } fx_bt_t;
 
 static FX_THREAD_LOCAL fx_bt_t fx_bt;
@@ -298,12 +314,15 @@ int fx_exn_set_fast(int code, const char* funcname, const char* filename, int li
     curr_exn->tag = code;
     curr_exn->info = 0;
     curr_exn->data = 0; // well, it must be NULL already
-    fx_bt_entry_t* curr_loc = &curr_bt->istack[0];
+    fx_bt_entry_t* curr_loc = &curr_bt->thrown_at;
     curr_loc->funcname = funcname;
     curr_loc->filename = filename;
     curr_loc->lineno = lineno;
-    curr_bt->istack_top = 1;
-    curr_bt->ostack_top = curr_bt->ostack_bottom = 0;
+#ifdef FX_UNIX
+    curr_bt->bt_entries = backtrace(curr_bt->bt_stack, FX_BT_SIZE);
+#else
+    curr_bt->bt_entries = CaptureStackBackTrace(0, FX_BT_SIZE, curr_bt->bt_stack, 0);
+#endif
     return code;
 }
 
@@ -317,12 +336,15 @@ int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filen
         exn->data = 0;
     else if(exn->data)
         FX_INCREF(exn->data->rc);
-    fx_bt_entry_t* curr_loc = &curr_bt->istack[0];
+    fx_bt_entry_t* curr_loc = &curr_bt->thrown_at;
     curr_loc->funcname = funcname;
     curr_loc->filename = filename;
     curr_loc->lineno = lineno;
-    curr_bt->istack_top = 1;
-    curr_bt->ostack_top = curr_bt->ostack_bottom = 0;
+#ifdef FX_UNIX
+    curr_bt->bt_entries = backtrace(curr_bt->bt_stack, FX_BT_SIZE);
+#else
+    curr_bt->bt_entries = CaptureStackBackTrace(0, FX_BT_SIZE, curr_bt->bt_stack, 0);
+#endif
     return exn->tag;
 }
 
@@ -407,37 +429,6 @@ int fx_print_repr_exn(const fx_exn_t* exn, bool quiet)
     return FX_OK;
 }
 
-void fx_print_bt_entry(const fx_bt_entry_t* entry, const char* prefix)
-{
-    const char* filename = entry->filename;
-    const char* barename1 = strrchr(filename, '/');
-    const char* barename2 = strrchr(filename, '\\');
-    const char* barename = barename1 > barename2 ? barename1 : barename2;
-    barename = barename ? barename + 1 : filename;
-    printf("%s%s at %s:%d\n", prefix, entry->funcname, barename, entry->lineno);
-}
-
-void fx_update_bt(const char* funcname, const char* filename, int lineno)
-{
-    fx_bt_t* curr_bt = &fx_bt;
-    fx_bt_entry_t* currloc;
-    int itop = curr_bt->istack_top;
-    if(itop < FX_BT_HALF_SIZE) {
-        currloc = curr_bt->istack + itop;
-        curr_bt->istack_top = itop+1;
-    } else {
-        int otop = curr_bt->ostack_top;
-        currloc = curr_bt->ostack + otop;
-        otop = (otop + 1) % FX_BT_HALF_SIZE;
-        if(curr_bt->ostack_bottom == otop)
-            curr_bt->ostack_bottom = (otop + 1) % FX_BT_HALF_SIZE;
-        curr_bt->ostack_top = otop;
-    }
-    currloc->funcname = funcname;
-    currloc->filename = filename;
-    currloc->lineno = lineno;
-}
-
 void fx_print_bt(void)
 {
     fx_bt_t* curr_bt = &fx_bt;
@@ -446,17 +437,22 @@ void fx_print_bt(void)
     printf("\33[31;1mException ");
     fx_print_repr_exn(curr_exn, true);
     printf("\33[0m occured in ");
-    for (int i = 0; i < curr_bt->istack_top; i++) {
-        fx_print_bt_entry(curr_bt->istack+i,
-            i == 0 ? "" : "\tcalled from ");
-    }
+    const char* filename = curr_bt->thrown_at.filename;
+    const char* barename1 = strrchr(filename, '/');
+    const char* barename2 = strrchr(filename, '\\');
+    const char* barename = barename1 > barename2 ? barename1 : barename2;
+    barename = barename ? barename + 1 : filename;
+    printf("%s at %s:%d\n", curr_bt->thrown_at.funcname, barename, curr_bt->thrown_at.lineno);
 
-    if(curr_bt->ostack_top != curr_bt->ostack_bottom) {
-        printf("\t...\n");
-        for(int i = curr_bt->ostack_bottom; i != curr_bt->ostack_top; i = (i + 1) % FX_BT_HALF_SIZE) {
-            fx_print_bt_entry(curr_bt->ostack+i, "\tcalled from");
+#ifdef FX_UNIX
+    if (curr_bt->bt_entries > 2) {
+        char** symbols = backtrace_symbols(curr_bt->bt_stack+2, curr_bt->bt_entries-2);
+        printf("called from:\n");
+        for (int i = 0; i < curr_bt->bt_entries-2; i++) {
+            printf("\t%s\n", symbols[i]);
         }
     }
+#endif
 }
 
 static int fx_global_exn_id = FX_EXN_User;

@@ -6,19 +6,6 @@
 #ifndef __FICUS_SYSTEM_IMPL_H__
 #define __FICUS_SYSTEM_IMPL_H__
 
-#if defined _WIN32 || defined WINCE
-#ifndef _WIN32_WINNT           // This is needed for the declaration of TryEnterCriticalSection in winbase.h with Visual Studio 2005 (and older?)
-  #define _WIN32_WINNT 0x0400  // http://msdn.microsoft.com/en-us/library/ms686857(VS.85).aspx
-#endif
-#include <windows.h>
-#elif defined __MACH__ && defined __APPLE__
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-#else
-#include <unistd.h>
-#include <time.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif

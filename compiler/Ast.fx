@@ -5,7 +5,7 @@
 
 //////// ficus abstract syntax definition + helper structures and functions ////////
 
-import Map, Set
+import Map, Set, Hashset
 import File, Filename, Options, Sys
 
 /*
@@ -353,6 +353,17 @@ type idset_t = id_t Set.t
 val empty_env: env_t = Map.empty(cmp_id)
 val empty_idset: idset_t = Set.empty(cmp_id)
 val empty_idmap: idmap_t = Map.empty(cmp_id)
+
+type id_hashset_t = id_t Hashset.t
+fun hash((x, y, z): (int, int, int)) =
+    (((FNV_1A_OFFSET ^ uint64(x))*FNV_1A_PRIME ^ uint64(y))*
+        FNV_1A_PRIME ^ uint64(z))*FNV_1A_PRIME
+fun hash(n: id_t): hash_t
+{
+    | IdName(i) => hash(i)
+    | IdVal(i, j) => hash((1, i, j))
+    | IdTemp(i, j) => hash((2, i, j))
+}
 
 type defval_t =
 {

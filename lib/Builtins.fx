@@ -853,7 +853,6 @@ type hash_t = uint64
 val FNV_1A_PRIME: hash_t = 1099511628211UL
 val FNV_1A_OFFSET: hash_t = 14695981039346656037UL
 
-fun hash(x: 't): hash_t = uint64(x)
 fun hash(x: int) = uint64(x) ^ FNV_1A_OFFSET
 fun hash(x: int32) = uint64(x) ^ FNV_1A_OFFSET
 fun hash(x: uint32) = uint64(x) ^ FNV_1A_OFFSET
@@ -880,7 +879,7 @@ fun hash(x: bool) = uint64(x) ^ FNV_1A_OFFSET
     return hash;
 }
 
-fun hash(x: (...)): hash_t =
+/*fun hash(x: (...)): hash_t =
     fold h = FNV_1A_OFFSET for xj <- x {
         val h = h ^ hash(xj)
         h * FNV_1A_PRIME
@@ -891,3 +890,4 @@ fun hash(x: {...}): hash_t =
         val h = h ^ hash(xj)
         h * FNV_1A_PRIME
     }
+*/

@@ -434,7 +434,7 @@ typedef struct fx_exn_t
 #define FX_RETHROW(exn, catch_label) \
     { fx_status = fx_rethrow_exn(exn); goto catch_label; }
 
-#define FX_UPDATE_BT() fx_update_bt(__func__, __FILE__, __LINE__)
+#define FX_UPDATE_BT() /*fx_update_bt(__func__, __FILE__, __LINE__)*/
 
 #define FX_MAKE_EXN_IMPL_START(exn_tag, exn_data_t, exn_info) \
     FX_DECL_AND_MALLOC(exn_data_t*, exn_data); \

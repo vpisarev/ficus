@@ -214,7 +214,7 @@ TEST("ds.map", fun()
 TEST("ds.hashmap", fun() {
     type si_hash = (string, int) Hashmap.t
     val words = poem.tokens(fun (c) {c.isspace() || c == '.' || c == ','})
-    val wcounter = Hashmap.empty(16, "", 0, Some(hash : string->hash_t))
+    val wcounter = Hashmap.empty(16, "", 0, hash)
     for w <- words {
         val idx = wcounter.find_idx_or_insert(w)
         wcounter._state->table[idx].2 += 1
