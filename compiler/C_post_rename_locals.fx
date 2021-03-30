@@ -13,15 +13,16 @@ from Ast import *
 from K_form import *
 from C_form import *
 
-import Map
+import Hashmap
 
 fun cmp_int(a: int, b: int): int = a <=> b
-type int_map_t = (int, int) Map.t
+type int_map_t = (int, int) Hashmap.t
+fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1, hash)
 
 fun rename_locals(cmods: cmodule_t list)
 {
-    var global_prefix_hash: int_map_t = Map.empty(cmp_int)
-    var prefix_hash = global_prefix_hash
+    var global_prefix_hash: int_map_t = empty_int_map(256)
+    var prefix_hash = empty_int_map(256)
 
     fun gen_cname(n: id_t) {
         val prefix= match n {
@@ -29,11 +30,9 @@ fun rename_locals(cmods: cmodule_t list)
                     | IdVal (i, j) => i
                     | IdTemp (i, j) => i
                     }
-        val j1= match prefix_hash.find_opt(prefix) {
-                | Some j => j + 1
-                | _ => 0
-                }
-        prefix_hash = prefix_hash.add(prefix, j1)
+        val idx = prefix_hash.find_idx_or_insert(prefix)
+        val j1 = prefix_hash._state->table[idx].2 + 1
+        prefix_hash._state->table[idx].2 = j1
         val prefix = dynvec_get(all_strings, prefix)
         f"{prefix}_{j1}"
     }
@@ -84,7 +83,7 @@ fun rename_locals(cmods: cmodule_t list)
         | CDefFun cf =>
             val {cf_args, cf_loc} = *cf
             val saved_hash = prefix_hash
-            prefix_hash = global_prefix_hash
+            prefix_hash = global_prefix_hash.copy()
             for (argname, _, _) <- cf_args {
                 gen_cval_cname(argname, cf_loc)
             }
@@ -118,7 +117,7 @@ fun rename_locals(cmods: cmodule_t list)
     // this way we make sure that local value do not interfere with global values
     for cmod <- cmods {
         val {cmod_ccode} = cmod
-        prefix_hash = global_prefix_hash
+        prefix_hash = global_prefix_hash.copy()
         for s <- cmod_ccode {
             rename_cstmt(s, rename_callb)
         }

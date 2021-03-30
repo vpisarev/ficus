@@ -222,9 +222,6 @@ typedef struct _fx_Vt6option1T2V9Ast__id_trR24K_fuse_loops__arr_info_t
 typedef struct _fx_Vt6option1rR24K_fuse_loops__arr_info_t
    { int tag; union  { struct _fx_rR24K_fuse_loops__arr_info_t_data_t* Some; } u; } _fx_Vt6option1rR24K_fuse_loops__arr_info_t;
 
-typedef struct _fx_FPi2V9Ast__id_tV9Ast__id_t  { int (*fp)(_fx_V9Ast__id_t*, _fx_V9Ast__id_t*, int_*, void*); fx_fcv_t* fcv;
-   } _fx_FPi2V9Ast__id_tV9Ast__id_t;
-
 typedef struct _fx_LV14K_form__atom_t_data_t  { int_ rc; struct _fx_LV14K_form__atom_t_data_t* tl; _fx_V14K_form__atom_t hd;
    } _fx_LV14K_form__atom_t_data_t, *_fx_LV14K_form__atom_t;
 
@@ -428,6 +425,9 @@ typedef struct _fx_FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__
 typedef struct _fx_Vt6option1FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t_data_t
    { int_ rc; union  { _fx_FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t Some; } u;
    } _fx_Vt6option1FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t_data_t, *_fx_Vt6option1FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t;
+
+typedef struct _fx_FPi2V9Ast__id_tV9Ast__id_t  { int (*fp)(_fx_V9Ast__id_t*, _fx_V9Ast__id_t*, int_*, void*); fx_fcv_t* fcv;
+   } _fx_FPi2V9Ast__id_tV9Ast__id_t;
 
 typedef enum {
    _FX_V12Ast__cmpop_t_CmpEQ=1,
@@ -2769,7 +2769,7 @@ static int
       _fx_T2LT2V9Ast__id_tV13K_form__dom_tV14K_form__kexp_t* fx_result,
       void* fx_fv);
 
-FX_EXTERN_C_VAL(struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* _fx_g13Map__Empty16_)
+FX_EXTERN_C_VAL(struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* _fx_g12Map__Empty6_)
 FX_EXTERN_C int
    _fx_M3MapFM12add_to_tree_VtM6tree_t2V9Ast__id_tV9Ast__id_t4VtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tFPi2V9Ast__id_tV9Ast__id_t(
    struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* t_0,
@@ -2790,8 +2790,7 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t** fx_result);
 
 FX_EXTERN_C_VAL(_fx_Vt6option1T2V9Ast__id_trR24K_fuse_loops__arr_info_t _fx_g7None13_)
-FX_EXTERN_C int _fx_F15__eq_variants__B2V9Ast__id_tV9Ast__id_t(
-   _fx_V9Ast__id_t* a_0, _fx_V9Ast__id_t* b_0, bool* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6__eq__B2VM4id_tVM4id_t(_fx_V9Ast__id_t* a_0, _fx_V9Ast__id_t* b_0, bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C void _fx_F4SomeVt6option1T2V9Ast__id_trR24K_fuse_loops__arr_info_t1T2V9Ast__id_trR24K_fuse_loops__arr_info_t(
    _fx_T2V9Ast__id_trR24K_fuse_loops__arr_info_t* arg0, _fx_Vt6option1T2V9Ast__id_trR24K_fuse_loops__arr_info_t* fx_result);
@@ -3333,7 +3332,7 @@ static int
          fx_fv;
    _fx_FPi2V9Ast__id_tV9Ast__id_t cmp_id_fp_0 = { _fx_M3AstFM6cmp_idi2VM4id_tVM4id_t, 0 };
    FX_COPY_FP(&cmp_id_fp_0, &cmp_id_0);
-   _fx_make_Rt6Map__t2V9Ast__id_tV9Ast__id_t(_fx_g13Map__Empty16_, &cmp_id_0, &v_0);
+   _fx_make_Rt6Map__t2V9Ast__id_tV9Ast__id_t(_fx_g12Map__Empty6_, &cmp_id_0, &v_0);
    _fx_make_T2Rt6Map__t2V9Ast__id_tV9Ast__id_tLT2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_0, 0, &__fold_result___0);
    _fx_LT2V9Ast__id_tV13K_form__dom_t lst_0 = idl_0;
    for (; lst_0; lst_0 = lst_0->tl) {
@@ -3477,7 +3476,7 @@ static int
                _fx_T2V9Ast__id_trR24K_fuse_loops__arr_info_t* x_2 = &lst_2->hd;
                _fx_V9Ast__id_t arr2_0 = x_2->t0;
                bool res_0;
-               FX_CALL(_fx_F15__eq_variants__B2V9Ast__id_tV9Ast__id_t(arr_1, &arr2_0, &res_0, 0), _fx_catch_4);
+               FX_CALL(_fx_M3AstFM6__eq__B2VM4id_tVM4id_t(arr_1, &arr2_0, &res_0, 0), _fx_catch_4);
                if (res_0) {
                   _fx_F4SomeVt6option1T2V9Ast__id_trR24K_fuse_loops__arr_info_t1T2V9Ast__id_trR24K_fuse_loops__arr_info_t(
                      x_2, &v_19);

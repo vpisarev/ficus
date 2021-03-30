@@ -470,9 +470,6 @@ typedef struct _fx_LT2V9Ast__id_tV13K_form__dom_t_data_t
    { int_ rc; struct _fx_LT2V9Ast__id_tV13K_form__dom_t_data_t* tl; _fx_T2V9Ast__id_tV13K_form__dom_t hd;
    } _fx_LT2V9Ast__id_tV13K_form__dom_t_data_t, *_fx_LT2V9Ast__id_tV13K_form__dom_t;
 
-typedef struct _fx_FPi2V9Ast__id_tV9Ast__id_t  { int (*fp)(_fx_V9Ast__id_t*, _fx_V9Ast__id_t*, int_*, void*); fx_fcv_t* fcv;
-   } _fx_FPi2V9Ast__id_tV9Ast__id_t;
-
 typedef struct _fx_LV14K_form__atom_t_data_t  { int_ rc; struct _fx_LV14K_form__atom_t_data_t* tl; _fx_V14K_form__atom_t hd;
    } _fx_LV14K_form__atom_t_data_t, *_fx_LV14K_form__atom_t;
 
@@ -653,6 +650,9 @@ typedef struct _fx_V16Ast__env_entry_t  { int tag; union  { _fx_V9Ast__id_t EnvI
 typedef struct _fx_LV16Ast__env_entry_t_data_t
    { int_ rc; struct _fx_LV16Ast__env_entry_t_data_t* tl; _fx_V16Ast__env_entry_t hd;
    } _fx_LV16Ast__env_entry_t_data_t, *_fx_LV16Ast__env_entry_t;
+
+typedef struct _fx_FPi2V9Ast__id_tV9Ast__id_t  { int (*fp)(_fx_V9Ast__id_t*, _fx_V9Ast__id_t*, int_*, void*); fx_fcv_t* fcv;
+   } _fx_FPi2V9Ast__id_tV9Ast__id_t;
 
 typedef enum {
    _FX_V12Ast__cmpop_t_CmpEQ=1,
@@ -6658,7 +6658,7 @@ FX_EXTERN_C int _fx_M6C_formFM7make_fpFPVM6ctyp_t1VM6ctyp_t1RM9c_callb_t(
 
 FX_EXTERN_C void _fx_F4SomeVt6option1V9Ast__id_t1V9Ast__id_t(_fx_V9Ast__id_t* arg0, _fx_Vt6option1V9Ast__id_t* fx_result);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1V9Ast__id_t _fx_g7None49_)
+FX_EXTERN_C_VAL(_fx_Vt6option1V9Ast__id_t _fx_g7None50_)
 static int _fx_M6C_formFM10walk_ctyp_VM6ctyp_t1VM6ctyp_t(
    struct _fx_V14C_form__ctyp_t_data_t* t_0, struct _fx_V14C_form__ctyp_t_data_t** fx_result, void* fx_fv);
 
@@ -9147,7 +9147,7 @@ FX_EXTERN_C int _fx_M6C_formFM9walk_ctypVM6ctyp_t2VM6ctyp_tRM9c_callb_t(
          if (v_2) { _fx_free_Vt6option1FPV9Ast__id_t2V9Ast__id_tR17C_form__c_callb_t(&v_2);
          }
       }
-      else { v_1 = _fx_g7None49_;
+      else { v_1 = _fx_g7None50_;
       }
       FX_CHECK_EXN(_fx_catch_4);
       _fx_LT2V9Ast__id_tV14C_form__ctyp_t lstend_0 = 0;
@@ -9224,7 +9224,7 @@ FX_EXTERN_C int _fx_M6C_formFM9walk_ctypVM6ctyp_t2VM6ctyp_tRM9c_callb_t(
          if (v_9) { _fx_free_Vt6option1FPV9Ast__id_t2V9Ast__id_tR17C_form__c_callb_t(&v_9);
          }
       }
-      else { v_8 = _fx_g7None49_;
+      else { v_8 = _fx_g7None50_;
       }
       FX_CHECK_EXN(_fx_catch_9);
       _fx_LT2V9Ast__id_tV14C_form__ctyp_t lstend_1 = 0;

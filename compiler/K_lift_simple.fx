@@ -26,10 +26,10 @@
 
 from Ast import *
 from K_form import *
-import Set
+import Hashset
 
-fun find_globals(top_code: kcode_t, set0: idset_t): idset_t =
-    fold globals = set0 for e <- top_code {
+fun update_globals(top_code: kcode_t, globals: id_hashset_t) =
+    for e <- top_code {
         val n_list =
         match e {
         | KDefVal (n, e, _) => n :: []
@@ -43,20 +43,17 @@ fun find_globals(top_code: kcode_t, set0: idset_t): idset_t =
         globals.add_list(n_list)
     }
 
-fun free_vars_kexp(e: kexp_t): idset_t {
-    val (uv, dv) = used_decl_by_kexp(e)
-    uv.diff(dv)
-}
-
 fun lift(kmods: kmodule_t list) {
     // first, let's see which definitions are already at the top level
     var new_top_code: kcode_t = []
-    var globals = fold curr_globals = empty_idset
-        for {km_top} <- kmods { find_globals(km_top, curr_globals) }
+    val globals = empty_id_hashset(256)
+    for {km_top} <- kmods {
+        update_globals(km_top, globals)
+    }
 
     fun add_to_globals_and_lift(i: id_t, e: kexp_t, loc: loc_t)
     {
-        globals = globals.add(i)
+        globals.add(i)
         new_top_code = e :: new_top_code
         KExpNop(loc)
     }
@@ -68,9 +65,11 @@ fun lift(kmods: kmodule_t list) {
     fun can_lift_fun(kf: kdeffun_t ref): bool
     {
         val {kf_name, kf_loc} = *kf
-        val fv = free_vars_kexp(KDefFun(kf))
-        fv.all(fun (n: id_t) {
-            globals.mem(n) ||
+        val code = KDefFun(kf) :: []
+        val uv = used_by(code, 256)
+        val dv = declared(code, 256)
+        uv.all(fun (n: id_t) {
+            dv.mem(n) || globals.mem(n) ||
             (match kinfo_(n, kf_loc) {
             | KExn _ => true
             | KVariant _ => true

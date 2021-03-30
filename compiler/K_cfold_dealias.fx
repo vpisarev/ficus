@@ -26,7 +26,7 @@
 from Ast import *
 from K_form import *
 import K_pp
-import Math, Map
+import Math, Hashmap
 
 type aclass_t =
     | ConstZero
@@ -287,8 +287,8 @@ fun cfold_cast(a: atom_t, res_t: ktyp_t, loc: loc_t)
     finalize_cfold_result(c_opt, a_opt, res_t, loc)
 }
 
-type idamap_t = (id_t, atom_t) Map.t
-type idalmap_t = (id_t, atom_t list) Map.t
+type idamap_t = (id_t, atom_t) Hashmap.t
+type idalmap_t = (id_t, atom_t list) Hashmap.t
 
 fun print_subst_map(m: idamap_t, loc: loc_t) {
     println("subsitution map {")
@@ -302,9 +302,9 @@ fun print_subst_map(m: idamap_t, loc: loc_t) {
 
 fun cfold_dealias(kmods: kmodule_t list)
 {
-    var ida_map: idamap_t = Map.empty(cmp_id)
-    var concat_map: idalmap_t = Map.empty(cmp_id)
-    var mktup_map: idalmap_t = Map.empty(cmp_id)
+    var ida_map: idamap_t = Hashmap.empty(1024, noid, AtomId(noid), hash)
+    var concat_map: idalmap_t = Hashmap.empty(1024, noid, [], hash)
+    var mktup_map: idalmap_t = Hashmap.empty(1024, noid, [], hash)
 
     fun cfd_atom_(a: atom_t, loc: loc_t, callb: k_callb_t) =
         match a {
@@ -346,17 +346,17 @@ fun cfold_dealias(kmods: kmodule_t list)
                                cause problems with separate compilation of .c sources, when
                                the temporary value suddenly needs to be accessed from another module. */
                             | (IdVal _, IdTemp _) => e
-                            | _ => ida_map = ida_map.add(n, AtomId(n2)); KExpNop(loc)
+                            | _ => ida_map.add(n, AtomId(n2)); KExpNop(loc)
                             }
                         } else { e }
-                    | AtomLit c => ida_map = ida_map.add(n, a); KExpNop(loc)
+                    | AtomLit c => ida_map.add(n, a); KExpNop(loc)
                     }
                 | KExpIntrin (IntrinStrConcat, al, (_, loc)) when
                         kv_flags.val_flag_temp && all(for a <- al {!is_mutable_atom(a, loc)}) =>
-                    concat_map = concat_map.add(n, al); e
+                    concat_map.add(n, al); e
                 | KExpMkTuple (al, (_, loc)) when
                         kv_flags.val_flag_temp && all(for a <- al {!is_mutable_atom(a, loc)}) =>
-                    mktup_map = mktup_map.add(n, al); e
+                    mktup_map.add(n, al); e
                 | _ => e
                 }
             } else { e }

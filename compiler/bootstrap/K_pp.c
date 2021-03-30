@@ -4894,15 +4894,15 @@ FX_EXTERN_C int _fx_M4K_ppFM7make_fpFPv3V14K_form__kexp_tLT2V9Ast__id_tV13K_form
 
 static int _fx_M4K_ppFM11pp_if_chainv2V14K_form__kexp_tB(struct _fx_V14K_form__kexp_t_data_t* e_0, bool start_0, void* fx_fv)
 {
-   _fx_FPv1V14K_form__kexp_t pp_exp__0 = {  };
    _fx_FPv3V14K_form__kexp_tBB pp_exp_as_block__0 = {  };
+   _fx_FPv1V14K_form__kexp_t pp_exp__0 = {  };
    _fx_V14K_form__kexp_t e_1 = 0;
    int fx_status = 0;
    _fx_M4K_ppFM11pp_if_chainv2V14K_form__kexp_tB_cldata_t* cv_0 =
       (_fx_M4K_ppFM11pp_if_chainv2V14K_form__kexp_tB_cldata_t*)fx_fv;
    _fx_R5PP__t* pp_0 = &cv_0->t0;
-   _fx_M4K_ppFM7make_fpFPv1V14K_form__kexp_t1R5PP__t(pp_0, &pp_exp__0);
    _fx_M4K_ppFM7make_fpFPv3V14K_form__kexp_tBB1R5PP__t(pp_0, &pp_exp_as_block__0);
+   _fx_M4K_ppFM7make_fpFPv1V14K_form__kexp_t1R5PP__t(pp_0, &pp_exp__0);
    FX_COPY_PTR(e_0, &e_1);
    bool start_1 = start_0;
    for (;;) {
@@ -4957,8 +4957,8 @@ static int _fx_M4K_ppFM11pp_if_chainv2V14K_form__kexp_tB(struct _fx_V14K_form__k
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&pp_exp__0);
    FX_FREE_FP(&pp_exp_as_block__0);
+   FX_FREE_FP(&pp_exp__0);
    if (e_1) { _fx_free_V14K_form__kexp_t(&e_1);
    }
    return fx_status;

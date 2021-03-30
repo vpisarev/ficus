@@ -5,7 +5,7 @@
 
 //////// ficus abstract syntax definition + helper structures and functions ////////
 
-import Map, Set, Hashset
+import Map, Set, Hashmap, Hashset
 import File, Filename, Options, Sys
 
 /*
@@ -56,6 +56,14 @@ fun cmp_id(a: id_t, b: id_t) {
 }
 
 operator <=> (a: id_t, b: id_t) = cmp_id(a, b)
+
+operator == (a: id_t, b: id_t) = a.__tag__ == b.__tag__ &&
+    (match (a, b) {
+    | (IdName(a), IdName(b)) => a == b
+    | (IdVal(a, ia), IdVal(b, ib)) => a == b && ia == ib
+    | (IdTemp(a, ia), IdTemp(b, ib)) => a == b && ia == ib
+    | _ => false
+    })
 
 val noid = IdName(0)
 val dummyid = IdName(1)
@@ -363,6 +371,12 @@ fun hash(n: id_t): hash_t
     | IdName(i) => hash(i)
     | IdVal(i, j) => hash((1, i, j))
     | IdTemp(i, j) => hash((2, i, j))
+}
+fun empty_id_hashset(size0: int): id_t Hashset.t = Hashset.empty(size0, noid, hash)
+fun id_hashset(s: idset_t) {
+    val hs = empty_id_hashset(s.size*2)
+    s.app(fun (x) {hs.add(x)})
+    hs
 }
 
 type defval_t =
@@ -828,6 +842,7 @@ fun get_idinfo_loc(id_info: id_info_t) {
     | IdTyp (ref {dt_loc}) => dt_loc
     | IdVariant (ref {dvar_loc}) => dvar_loc
     | IdInterface (ref {di_loc}) => di_loc
+    | _ => noloc
     }
 
 fun get_idinfo_typ(id_info: id_info_t, loc: loc_t): typ_t =
@@ -963,6 +978,7 @@ fun string(bop: binary_t) {
     | OpLogicOr => "||"
     | OpBitwiseXor => "^"
     | OpSpaceship => "<=>"
+    | OpDotSpaceship => ".<=>"
     | OpSame => "==="
     | OpCmp(c) => string(c)
     | OpDotCmp(c) => "."+string(c)
@@ -1504,6 +1520,54 @@ fun is_fixed_typ (t: typ_t): bool
         val _ = is_fixed_typ_(t, callb);
         true
     } catch { | Break => false }
+}
+
+type idset_hashmap_t = (id_t, id_hashset_t) Hashmap.t
+
+// And then compute closure of the calculated sets, i.e.
+// for each id we find a set of id's which it references directly on indirectly
+fun calc_sets_closure(iters: int, all_ids: id_t list, all_sets: idset_hashmap_t): int
+{
+    var done_i = -1
+    var all_ids = all_ids
+    val visited_ids = empty_id_hashset(256)
+    val empty_idset = empty_id_hashset(1)
+
+    for iter <- 0:iters {
+        var changed = false
+
+        fun update_sets(n: id_t): id_hashset_t =
+            match all_sets.find_opt(n) {
+            | Some set_n =>
+                if visited_ids.mem(n) {
+                    set_n
+                } else {
+                    visited_ids.add(n)
+                    val size0 = set_n.size()
+                    set_n.app(
+                        fun (m) {
+                            if m != n {
+                                val set_m = update_sets(m)
+                                set_n.union(set_m)
+                            }
+                        })
+                    val size1 = set_n.size()
+                    if size1 != size0 { changed = true }
+                    set_n
+                }
+            | _ => empty_idset
+            }
+
+        for n <- all_ids { ignore(update_sets(n)) }
+        if !changed { done_i = iter+1; break }
+        all_ids = all_ids.rev()
+        visited_ids.clear()
+    }
+    if done_i <= 0 {
+        throw compile_err(noloc,
+        "calculation of sets' closures takes too much iterations")
+    }
+    done_i
 }
 
 fun init_all(): void

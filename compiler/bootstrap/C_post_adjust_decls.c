@@ -378,9 +378,9 @@ typedef struct _fx_LT2SR10Ast__loc_t_data_t  { int_ rc; struct _fx_LT2SR10Ast__l
 typedef struct _fx_R14Ast__pragmas_t  { bool pragma_cpp; struct _fx_LT2SR10Ast__loc_t_data_t* pragma_clibs;
    } _fx_R14Ast__pragmas_t;
 
-typedef struct _fx_T2Ta2iS  { _fx_Ta2i t0; fx_str_t t1; } _fx_T2Ta2iS;
-
 typedef struct _fx_rB_data_t  { int_ rc; bool data; } _fx_rB_data_t, *_fx_rB;
+
+typedef struct _fx_T2Ta2iS  { _fx_Ta2i t0; fx_str_t t1; } _fx_T2Ta2iS;
 
 typedef enum {
    _FX_V14K_form__ktyp_t_KTypInt=1,
@@ -1455,6 +1455,10 @@ static void _fx_make_R14Ast__pragmas_t(
 { fx_result->pragma_cpp = r_pragma_cpp; FX_COPY_PTR(r_pragma_clibs, &fx_result->pragma_clibs);
 }
 
+static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
+{ FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
+}
+
 static void _fx_free_T2Ta2iS(_fx_T2Ta2iS* dst)
 { fx_free_str(&dst->t1);
 }
@@ -1465,10 +1469,6 @@ static void _fx_copy_T2Ta2iS(_fx_T2Ta2iS* src, _fx_T2Ta2iS* dst)
 
 static void _fx_make_T2Ta2iS(_fx_Ta2i* t0, fx_str_t* t1, _fx_T2Ta2iS* fx_result)
 { fx_result->t0 = *t0; fx_copy_str(t1, &fx_result->t1);
-}
-
-static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
-{ FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
 static void _fx_free_V14K_form__ktyp_t(struct _fx_V14K_form__ktyp_t_data_t** dst)

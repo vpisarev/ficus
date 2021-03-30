@@ -40,7 +40,7 @@
     * ...
 */
 from Ast import *
-import Set
+import Set, Hashset
 
 type ktprops_t =
 {
@@ -853,71 +853,45 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     }
 }
 
-fun used_decl_by_kexp(e: kexp_t): (idset_t, idset_t)
+fun used_by(code: kcode_t, size0: int): id_hashset_t
 {
-    val all_used = ref empty_idset
-    val all_decl = ref empty_idset
-    fun remove_unless(had_before: bool, n: id_t, s: idset_t ref) =
-        if !had_before { *s = s->remove(n) }
-    fun add_id(n: id_t, s: idset_t ref) = if n != noid { *s = s->add(n) }
+    val all_used: id_hashset_t = Hashset.empty(size0, noid, hash)
+    fun remove_unless(had_before: bool, n: id_t) =
+        if !had_before { all_used.remove(n) }
+    fun add_id(n: id_t) = if n != noid {all_used.add(n)}
     fun used_by_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t): void =
         match a {
         | AtomId(IdName _) => {}
-        | AtomId(n) => add_id(n, all_used)
+        | AtomId(n) => add_id(n)
         | AtomLit(KLitNil(t)) => used_by_ktyp_(t, loc, callb)
         | _ => {}
         }
     fun used_by_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void = fold_ktyp(t, loc, callb)
     fun used_by_kexp_(e: kexp_t, callb: k_fold_callb_t): void =
         match e {
-        | KDefVal(n, e, loc) =>
-            val {kv_typ} = get_kval(n, loc)
-            val have_n = all_used->mem(n)
-            used_by_ktyp_(kv_typ, loc, callb)
-            add_id(n, all_decl)
-            used_by_kexp_(e, callb)
-            remove_unless(have_n, n, all_used)
         | KDefFun (ref {kf_name, kf_args, kf_rt, kf_closure, kf_body, kf_loc}) =>
             val {kci_arg, kci_fcv_t} = kf_closure
             val kf_typ = get_kf_typ(kf_args, kf_rt)
             used_by_ktyp_(kf_typ, kf_loc, callb)
-            val have_kf_name = all_used->mem(kf_name)
+            val have_kf_name = all_used.mem(kf_name)
             used_by_kexp_(kf_body, callb)
-            remove_unless(have_kf_name, kf_name, all_used)
-            add_id(kci_arg, all_decl)
-            add_id(kci_arg, all_used)
-            add_id(kci_fcv_t, all_used)
-            add_id(kf_name, all_decl)
-            for (a, _) <- kf_args { add_id(a, all_decl) }
-        | KDefClosureVars (ref {kcv_name}) => add_id(kcv_name, all_decl)
+            remove_unless(have_kf_name, kf_name)
+            add_id(kci_arg)
+            add_id(kci_fcv_t)
         | KDefExn (ref {ke_name, ke_typ, ke_tag, ke_make, ke_loc}) =>
             used_by_ktyp_(ke_typ, ke_loc, callb)
-            add_id(ke_tag, all_used)
-            add_id(ke_make, all_used)
-            add_id(ke_name, all_decl)
+            add_id(ke_tag)
+            add_id(ke_make)
         | KDefVariant (ref {kvar_name, kvar_cases, kvar_loc}) =>
-            val have_kvar_name = all_used->mem(kvar_name)
+            val have_kvar_name = all_used.mem(kvar_name)
             for (ni, ti) <- kvar_cases {
-                add_id(ni, all_decl)
                 used_by_ktyp_(ti, kvar_loc, callb)
             }
-            remove_unless(have_kvar_name, kvar_name, all_used)
-            add_id(kvar_name, all_decl)
+            remove_unless(have_kvar_name, kvar_name)
         | KDefTyp (ref {kt_name, kt_typ, kt_loc}) =>
-            val have_kt_name = all_used->mem(kt_name)
+            val have_kt_name = all_used.mem(kt_name)
             used_by_ktyp_(kt_typ, kt_loc, callb)
-            remove_unless(have_kt_name, kt_name, all_used)
-            add_id(kt_name, all_decl)
-        | KExpMap(clauses, body, _, (t, _)) =>
-            fold_kexp(e, callb)
-            for (_, id_l, at_ids) <- clauses {
-                for i <- at_ids { add_id(i, all_decl) }
-                for (i, _) <- id_l { add_id(i, all_decl) }
-            }
-        | KExpFor(id_l, at_ids, body, _, _) =>
-            fold_kexp(e, callb)
-            for i <- at_ids { add_id(i, all_decl) }
-            for (i, _) <- id_l { add_id(i, all_decl) }
+            remove_unless(have_kt_name, kt_name)
         | _ => fold_kexp(e, callb)
         }
     val used_decl_callb = k_fold_callb_t
@@ -926,16 +900,59 @@ fun used_decl_by_kexp(e: kexp_t): (idset_t, idset_t)
         kcb_fold_ktyp=Some(used_by_ktyp_),
         kcb_fold_kexp=Some(used_by_kexp_)
     }
-    used_by_kexp_(e, used_decl_callb)
-    (*all_used, *all_decl)
+    for e <- code {
+        used_by_kexp_(e, used_decl_callb)
+    }
+    all_used
 }
 
-fun used_by_kexp(e: kexp_t): idset_t = used_decl_by_kexp(e).0
-
-fun used_by(code: kcode_t): idset_t
+fun declared(code: kcode_t, size0: int): id_hashset_t
 {
-    val e = code2kexp(code, noloc)
-    used_by_kexp(e)
+    val all_decl: id_hashset_t = Hashset.empty(size0, noid, hash)
+    fun decl_by_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void {}
+    fun decl_by_kexp_(e: kexp_t, callb: k_fold_callb_t): void =
+        match e {
+        | KDefVal(n, e, _) =>
+            all_decl.add(n)
+            decl_by_kexp_(e, callb)
+        | KDefFun (ref {kf_name, kf_args, kf_closure, kf_body}) =>
+            val {kci_arg} = kf_closure
+            decl_by_kexp_(kf_body, callb)
+            all_decl.add(kci_arg)
+            all_decl.add(kf_name)
+            for (a, _) <- kf_args { all_decl.add(a) }
+        | KDefClosureVars (ref {kcv_name}) => all_decl.add(kcv_name)
+        | KDefExn (ref {ke_name}) =>
+            all_decl.add(ke_name)
+        | KDefVariant (ref {kvar_name, kvar_cases}) =>
+            for (ni, _) <- kvar_cases {
+                all_decl.add(ni)
+            }
+            all_decl.add(kvar_name)
+        | KDefTyp (ref {kt_name}) =>
+            all_decl.add(kt_name)
+        | KExpMap(clauses, body, _, (t, _)) =>
+            fold_kexp(e, callb)
+            for (_, id_l, at_ids) <- clauses {
+                for i <- at_ids { all_decl.add(i) }
+                for (i, _) <- id_l { all_decl.add(i) }
+            }
+        | KExpFor(id_l, at_ids, body, _, _) =>
+            fold_kexp(e, callb)
+            for i <- at_ids { all_decl.add(i) }
+            for (i, _) <- id_l { all_decl.add(i) }
+        | _ => fold_kexp(e, callb)
+        }
+    val decl_callb = k_fold_callb_t
+    {
+        kcb_fold_atom=None,
+        kcb_fold_ktyp=Some(decl_by_ktyp_),
+        kcb_fold_kexp=Some(decl_by_kexp_)
+    }
+    for e <- code {
+        decl_by_kexp_(e, decl_callb)
+    }
+    all_decl
 }
 
 fun is_mutable(n: id_t, loc: loc_t): bool

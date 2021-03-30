@@ -209,17 +209,18 @@
 from Ast import *
 from K_form import *
 import K_lift_simple
-import Map, Set
+import Hashmap, Hashset
 
 type ll_func_info_t =
 {
-    ll_fvars: idset_t ref;
-    ll_declared_inside: idset_t;
-    ll_called_funcs: idset_t
+    ll_fvars: id_hashset_t;
+    ll_declared_inside: id_hashset_t;
+    ll_called_funcs: id_hashset_t
 }
 
-type ll_env_t = (id_t, ll_func_info_t) Map.t
-type ll_subst_env_t = (id_t, (id_t, id_t, ktyp_t?)) Map.t
+type ll_env_t = (id_t, ll_func_info_t) Hashmap.t
+type ll_subst_env_t = (id_t, (id_t, id_t, ktyp_t?)) Hashmap.t
+fun empty_subst_env(size0: int): ll_subst_env_t = Hashmap.empty(size0, noid, (noid, noid, None), hash)
 
 fun make_wrappers_for_nothrow(top_code: kcode_t)
 {
@@ -273,42 +274,49 @@ fun make_wrappers_for_nothrow(top_code: kcode_t)
 
 fun lift_all(kmods: kmodule_t list)
 {
-    var fold globals = empty_idset for {km_top} <- kmods {
-            K_lift_simple.find_globals(km_top, globals)
-        }
+    val globals = empty_id_hashset(256)
+    for {km_top} <- kmods {
+        K_lift_simple.update_globals(km_top, globals)
+    }
 
-    var ll_env : ll_env_t = Map.empty(cmp_id)
-    var orig_subst_env : ll_subst_env_t = Map.empty(cmp_id)
+    val ll_info0 = ll_func_info_t {
+        ll_fvars = empty_id_hashset(1),
+        ll_declared_inside = empty_id_hashset(1),
+        ll_called_funcs = empty_id_hashset(1) }
+    var ll_env : ll_env_t = Hashmap.empty(1024, noid, ll_info0, hash)
+    var orig_subst_env = empty_subst_env(1024)
 
     fun fold_fv0_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
     fun fold_fv0_kexp_(e: kexp_t, callb: k_fold_callb_t) {
         fold_kexp(e, callb)
         match e {
         | KDefFun (ref {kf_name, kf_loc}) =>
-            val (uv, dv) = used_decl_by_kexp(e)
-            // from the set of free variables we exclude global functions, values and types
-            // because they do not have to be put into a closure anyway
-            val fv0 = uv.diff(dv).diff(globals)
-            val called_funcs =
-                uv.foldl(
-                    fun (n, called_funcs) {
-                        match kinfo_(n, kf_loc) {
-                        | KFun _ =>
-                            if globals.mem(n) { called_funcs }
-                            else { called_funcs.add(n) }
-                        | _ => called_funcs
+            if !globals.mem(kf_name) {
+                val uv = used_by(e::[], 256)
+                val dv = declared(e::[], 256)
+                // from the set of free variables we exclude global functions, values and types
+                // because they are not included into a closure anyway
+                val called_funcs = empty_id_hashset(16)
+                uv.app(fun (n) {
+                    match kinfo_(n, kf_loc) {
+                    | KFun _ => if !globals.mem(n) { called_funcs.add(n) }
+                    | _ => {}
+                    }})
+                val fv0 = empty_id_hashset(uv.size())
+                uv.app(fun (fv) {
+                    match kinfo_(fv, kf_loc) {
+                    | KVal _ =>
+                        if !dv.mem(fv) && !globals.mem(fv) {
+                            fv0.add(fv)
                         }
-                    }, empty_idset)
-            val fv0 = fv0.filter(fun (fv) {
-                match kinfo_(fv, kf_loc) {
-                | KVal _ => true
-                | _ => false
-                }})
-            ll_env = ll_env.add(kf_name,
-                ll_func_info_t {
-                    ll_fvars=ref fv0, ll_declared_inside=dv,
-                    ll_called_funcs=called_funcs
-                })
+                    | _ => {}
+                    }})
+                ll_env.add(kf_name,
+                    ll_func_info_t {
+                        ll_fvars=fv0, ll_declared_inside=dv,
+                        ll_called_funcs=called_funcs
+                    })
+            }
         | _ => {}
         }
     }
@@ -326,36 +334,34 @@ fun lift_all(kmods: kmodule_t list)
     }
     fun finalize_sets(iters: int, ll_all: id_t list)
     {
-        var visited_funcs = empty_idset
+        var visited_funcs = empty_id_hashset(1024)
+        val idset0 = empty_id_hashset(1)
         var changed = false
         if iters <= 0 {
             throw compile_err(noloc, "finalization of the free var sets takes too much iterations")
         }
-        fun update_fvars(f: id_t): idset_t =
+        fun update_fvars(f: id_t): id_hashset_t =
             match ll_env.find_opt(f) {
             | Some ll_info =>
                 val {ll_fvars, ll_declared_inside, ll_called_funcs} = ll_info
                 if visited_funcs.mem(f) {
-                    *ll_fvars
+                    ll_fvars
                 } else {
-                    visited_funcs = visited_funcs.add(f)
-                    val size0 = ll_fvars->size
-                    val fvars =
-                        ll_called_funcs.foldl(
-                            fun (called_f: id_t, fvars: idset_t) {
-                                val called_fvars = update_fvars(called_f)
-                                fvars.union(called_fvars)
-                            },
-                            *ll_fvars)
-                    val fvars = fvars.diff(ll_declared_inside)
-                    val size1 = fvars.size
-                    if size1 != size0 {
-                        *ll_info.ll_fvars = fvars
-                        changed = true
-                    }
-                    fvars
+                    visited_funcs.add(f)
+                    val size0 = ll_fvars.size()
+                    ll_called_funcs.app(
+                        fun (called_f: id_t) {
+                            val called_fvars = update_fvars(called_f)
+                            called_fvars.app(fun (fv) {
+                                if !ll_declared_inside.mem(fv) {
+                                    ll_fvars.add(fv)
+                                }})
+                        })
+                    val size1 = ll_fvars.size()
+                    if size1 != size0 { changed = true }
+                    ll_fvars
                 }
-            | _ => empty_idset
+            | _ => idset0
             }
 
         for f <- ll_all { ignore(update_fvars(f)) }
@@ -371,13 +377,16 @@ fun lift_all(kmods: kmodule_t list)
     val iters0 = 10
     val ll_all = ll_env.foldl(fun (f, _, ll_all) { f :: ll_all }, []).rev()
     val _ = finalize_sets(iters0, ll_all)
-    val all_fvars = ll_env.foldl(
-            fun (_, ll_info, all_fvars) {
-                all_fvars.union(*ll_info.ll_fvars)
-            }, empty_idset)
+    val all_fvars = empty_id_hashset(ll_env.size()*10)
+    ll_env.app(fun (_, ll_info) {
+            all_fvars.union(ll_info.ll_fvars)
+        })
     // find which of the free variables are mutable
-    val all_mut_fvars = all_fvars.filter(
-        fun (i) {is_mutable(i, get_idk_loc(i, noloc)) })
+    val all_mut_fvars = empty_id_hashset(all_fvars.size())
+    all_fvars.app(fun (fv) {
+        if is_mutable(fv, get_idk_loc(fv, noloc)) {
+            all_mut_fvars.add(fv)
+        }})
     // each mutable variable, which is a free variable of at least one function
     // needs to be converted into a reference. The reference (as a reference)
     // should be stored in the corresponding function closure,
@@ -396,7 +405,7 @@ fun lift_all(kmods: kmodule_t list)
             val new_old_kv = kv.{kv_flags=kv_flags.{val_flag_tempref=true}}
             set_idk_entry(new_kv_name, KVal(new_kv))
             set_idk_entry(kv_name, KVal(new_old_kv))
-            orig_subst_env = orig_subst_env.add(kv_name, (kv_name, new_kv_name, None))
+            orig_subst_env.add(kv_name, (kv_name, new_kv_name, None))
         })
 
     fun fold_defcl_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
@@ -411,8 +420,8 @@ fun lift_all(kmods: kmodule_t list)
             match ll_env.find_opt(kf_name) {
             | Some ll_info =>
                 val fvars = ll_info.ll_fvars
-                if !fvars->empty() {
-                    val fvar_pairs_to_sort = fvars->foldl(
+                if !fvars.empty() {
+                    val fvar_pairs_to_sort = fvars.foldl(
                         fun (fv, fvars_to_sort) {
                             (string(fv), fv) :: fvars_to_sort
                         }, [])
@@ -481,13 +490,11 @@ fun lift_all(kmods: kmodule_t list)
     // we keep track of all defined values. It helps us to detect situations
     // when KForm is broken after some optimizations and a value is used
     // before it's declared.
-    var defined_so_far = empty_idset
+    var defined_so_far = empty_id_hashset(256)
     var curr_clo = (noid, noid, noid)
     var curr_top_code : kcode_t = []
-    var curr_subst_env : ll_subst_env_t = Map.empty(cmp_id)
+    var curr_subst_env : ll_subst_env_t = empty_subst_env(256)
     var curr_lift_extra_decls : kcode_t = []
-    fun add_to_defined_so_far(i: id_t) =
-        defined_so_far = defined_so_far.add(i)
 
     // During lambda lifting we we need not only to transform the lifted functions'
     // bodies and function calls expressions, we potentially need to transform various atoms
@@ -585,13 +592,13 @@ fun lift_all(kmods: kmodule_t list)
                 val (_, orig_freevars) = get_closure_freevars(kf_name, kf_loc)
                 if orig_freevars == [] {
                     if !is_constructor(kf_flags) {
-                        curr_subst_env = curr_subst_env.add(kf_name, (noid, noid, Some(kf_typ)))
+                        curr_subst_env.add(kf_name, (noid, noid, Some(kf_typ)))
                     }
                     KExpNop(loc) :: code
                 } else {
                     val cl_name = dup_idk(kf_name)
-                    curr_subst_env = curr_subst_env.add(kf_name, (cl_name, cl_name, None))
-                    add_to_defined_so_far(cl_name)
+                    curr_subst_env.add(kf_name, (cl_name, cl_name, None))
+                    defined_so_far.add(cl_name)
                     val cl_args =
                     [: for fv <- orig_freevars {
                         if !defined_so_far.mem(fv) {
@@ -641,14 +648,14 @@ fun lift_all(kmods: kmodule_t list)
                     extra_code.hd()
                 }
             // form the prologue where we extract all free variables from the closure data
-            val saved_dsf = defined_so_far
+            val saved_dsf = defined_so_far.copy()
             val saved_clo = curr_clo
-            val saved_subst_env = curr_subst_env
+            val saved_subst_env = curr_subst_env.copy()
             // we set the current closure to handle recursive functions. If a function
             // (with free variables or not) calls itself recursively, we don't need another closure
             // we just pass the closure data parameter directly to it.
             curr_clo = (kf_name, kci_arg, kci_fcv_t)
-            for (arg, _) <- kf_args { add_to_defined_so_far(arg) }
+            for (arg, _) <- kf_args { defined_so_far.add(arg) }
             val prologue =
                 if kci_fcv_t == noid {
                     []
@@ -666,7 +673,7 @@ fun lift_all(kmods: kmodule_t list)
                                 f"free variable '{idk2str(fv_orig, kf_loc)}' of function '{idk2str(kf_name, kf_loc)}' is not defined before the function body")
                         }
                         val fv_proxy = dup_idk(fv)
-                        add_to_defined_so_far(fv_proxy)
+                        defined_so_far.add(fv_proxy)
                         val (t, kv_flags) =
                             match kinfo_(fv_orig, kf_loc) {
                             | KVal ({kv_typ, kv_flags}) => (kv_typ, kv_flags)
@@ -685,16 +692,17 @@ fun lift_all(kmods: kmodule_t list)
                             val prologue = create_kdefval(fv_ref, ref_typ, ref_flags, Some(get_fv), prologue, kf_loc)
                             (KExpUnary(OpDeref, AtomId(fv_ref), (t, kf_loc)), prologue, fv_ref)
                         }
-                        curr_subst_env = curr_subst_env.add(fv_orig, (fv_proxy, fv_proxy_mkclo_arg, None))
+                        curr_subst_env.add(fv_orig, (fv_proxy, fv_proxy_mkclo_arg, None))
                         val new_kv_flags = kv_flags.{val_flag_tempref=true}
                         create_kdefval(fv_proxy, t, new_kv_flags, Some(e), prologue, kf_loc)
                     }
 
                     match ll_env.find_opt(kf_name) {
                     | Some({ll_declared_inside, ll_called_funcs}) =>
-                        val called_fs = ll_called_funcs.diff(ll_declared_inside)
-                        called_fs.foldl(
+                        ll_called_funcs.foldl(
                             fun (called_f, prologue) {
+                                if ll_declared_inside.mem(called_f) { prologue }
+                                else {
                                 match kinfo_(called_f, kf_loc) {
                                 | KFun called_kf =>
                                     val {kf_closure={kci_fcv_t=called_fcv_t}} = *called_kf
@@ -704,7 +712,7 @@ fun lift_all(kmods: kmodule_t list)
                                         create_defclosure(called_kf, prologue, kf_loc)
                                     }
                                 | _ => prologue
-                                }
+                                }}
                             }, prologue)
                     | _ => throw compile_err(kf_loc, f"missing 'lambda lifting' information about function '{idk2str(kf_name, kf_loc)}'")
                     }
@@ -720,12 +728,12 @@ fun lift_all(kmods: kmodule_t list)
             *kf = kf->{kf_body=body}
             out_e
         | KDefExn (ref {ke_tag}) =>
-            add_to_defined_so_far(ke_tag)
+            defined_so_far.add(ke_tag)
             walk_kexp(e, callb)
         | KDefVal(n, rhs, loc) =>
             val rhs = walk_kexp_n_lift_all(rhs, callb)
             val is_mutable_fvar = all_mut_fvars.mem(n)
-            add_to_defined_so_far(n)
+            defined_so_far.add(n)
             if !is_mutable_fvar {
                 KDefVal(n, rhs, loc)
             } else {
@@ -744,10 +752,10 @@ fun lift_all(kmods: kmodule_t list)
         | KExpFor(idom_l, at_ids, body, flags, loc) =>
             val idom_l = [: for (i, dom_i) <- idom_l {
                              val dom_i = check_n_walk_dom(dom_i, loc, callb)
-                             add_to_defined_so_far(i)
+                             defined_so_far.add(i)
                              (i, dom_i)
                             } :]
-            for i <- at_ids { add_to_defined_so_far(i) }
+            for i <- at_ids { defined_so_far.add(i) }
             val body = walk_kexp_n_lift_all(body, callb)
             KExpFor(idom_l, at_ids, body, flags, loc)
         | KExpMap(e_idom_ll, body, flags, (etyp, eloc) as kctx) =>
@@ -756,10 +764,10 @@ fun lift_all(kmods: kmodule_t list)
                 val e = walk_kexp_n_lift_all(e, callb)
                 val fold idom_l = [] for (i, dom_i) <- idom_l {
                     val dom_i = check_n_walk_dom(dom_i, eloc, callb)
-                    add_to_defined_so_far(i)
+                    defined_so_far.add(i)
                     (i, dom_i) :: idom_l
                 }
-                for i <- at_ids { add_to_defined_so_far(i) }
+                for i <- at_ids { defined_so_far.add(i) }
                 (e, idom_l.rev(), at_ids)
             } :]
             val body = walk_kexp_n_lift_all(body, callb)

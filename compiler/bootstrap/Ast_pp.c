@@ -133,9 +133,6 @@ typedef struct _fx_T2iq  { int_ t0; uint64_t t1; } _fx_T2iq;
 
 typedef struct _fx_T2id  { int_ t0; double t1; } _fx_T2id;
 
-typedef struct _fx_FPi2V9Ast__id_tV9Ast__id_t  { int (*fp)(_fx_V9Ast__id_t*, _fx_V9Ast__id_t*, int_*, void*); fx_fcv_t* fcv;
-   } _fx_FPi2V9Ast__id_tV9Ast__id_t;
-
 typedef struct _fx_T2V9Ast__id_tV10Ast__exp_t  { _fx_V9Ast__id_t t0; struct _fx_V10Ast__exp_t_data_t* t1;
    } _fx_T2V9Ast__id_tV10Ast__exp_t;
 
@@ -186,6 +183,9 @@ typedef struct _fx_V16Ast__env_entry_t  { int tag; union  { _fx_V9Ast__id_t EnvI
 typedef struct _fx_LV16Ast__env_entry_t_data_t
    { int_ rc; struct _fx_LV16Ast__env_entry_t_data_t* tl; _fx_V16Ast__env_entry_t hd;
    } _fx_LV16Ast__env_entry_t_data_t, *_fx_LV16Ast__env_entry_t;
+
+typedef struct _fx_FPi2V9Ast__id_tV9Ast__id_t  { int (*fp)(_fx_V9Ast__id_t*, _fx_V9Ast__id_t*, int_*, void*); fx_fcv_t* fcv;
+   } _fx_FPi2V9Ast__id_tV9Ast__id_t;
 
 typedef enum {
    _FX_V12Ast__cmpop_t_CmpEQ=1,

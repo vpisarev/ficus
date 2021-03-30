@@ -39,7 +39,7 @@ $(BOOTSTRAP_BUILD_DIR)/%.o: $(BOOTSTRAP_SRC)/%.c
 
 $(FICUS): $(FICUS_SRCS) $(FICUS_STDLIB_SRCS)
 	@$(RM) __build__/ficus/ficus
-	@$(FICUS0) $(FICUS_FLAGS) -o $(FICUS) $(FICUS_SRC)/ficus.fx
+	@$(FICUS0) $(FICUS_FLAGS) -o $(FICUS) $(FICUS_SRC)/fx.fx
 
 make_dirs:
 	@echo "\033[34;1mBuilding reference compiler from the pre-generated .c sources\033[0m"

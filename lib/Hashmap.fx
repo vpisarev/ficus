@@ -30,7 +30,7 @@ type ('k, 'd) hash_state_t =
 
 fun empty(size0: int, k0: 'k, d0: 'd, f: 'k->hash_t): ('k, 'd) Hashmap.t
 {
-    var size = 16
+    var size = 8
     while size < size0 { size *= 2 }
     val state = hash_state_t {
         nelems=0, nremoved=0, table=array(size, (HASH_EMPTY, k0, d0)) }
@@ -39,6 +39,21 @@ fun empty(size0: int, k0: 'k, d0: 'd, f: 'k->hash_t): ('k, 'd) Hashmap.t
 
 fun empty(ht: ('k, 'd) Hashmap.t): bool = ht._state->nkeys == 0
 fun size(ht: ('k, 'd) Hashmap.t) = ht._state->nelems
+
+fun clear(ht: 'k Hashmap.t) {
+    val k0 = ht.k0, d0 = ht.d0
+    val table = ht._state->table
+    for i <- 0:size(table) {
+        table[i] = (HASH_EMPTY, k0, d0)
+    }
+    ht._state->nelems = 0
+    ht._state->nremoved = 0
+}
+
+fun copy(ht: ('k, 'd) Hashmap.t): ('k, 'd) Hashmap.t =
+    t {hash_f=ht.hash_f, k0=ht.k0, d0=ht.d0, _state=ref (hash_state_t {
+        nelems=ht._state->nelems, nremoved=ht._state->nremoved,
+        table=copy(ht._state->table)})}
 
 @private fun add_(ht: ('k, 'd) Hashmap.t, ht_table: (hash_t, 'k, 'd) [], (hv: hash_t, k: 'k, d: 'd)): (int, int) {
     val tabsz = size(ht_table)
@@ -170,7 +185,8 @@ fun find_idx_or_insert(ht: ('k, 'd) Hashmap.t, k: 'k): int
     }
 }
 
-fun add(ht: ('k, 'd) Hashmap.t, k: 'k, d: 'd) {
+fun add(ht: ('k, 'd) Hashmap.t, k: 'k, d: 'd): void
+{
     val idx = find_idx_or_insert(ht, k)
     ht._state->table[idx].2 = d
 }

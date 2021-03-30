@@ -14,7 +14,7 @@
 */
 from Ast import *
 from K_form import *
-import Ast_typecheck, Ast_pp
+import Ast_typecheck, Ast_pp, Set
 
 fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
 {
@@ -895,6 +895,8 @@ type pat_info_t = {pinfo_p: pat_t; pinfo_typ: ktyp_t; pinfo_e: kexp_t; pinfo_tag
 fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
                            code: kcode_t, sc: scope_t list, loc: loc_t, catch_mode: bool)
 {
+    var match_var_cases = empty_idset
+
     fun dispatch_pat(pinfo: pat_info_t, (pl_c: pat_info_t list, pl_cu: pat_info_t list, pl_u: pat_info_t list))
     {
         val {pinfo_p=p, pinfo_typ=ptyp} = pinfo
@@ -1080,11 +1082,14 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
                         val fold pti_l = [] for pi@idx <- pl, ti <- tl { (pi, ti, idx) :: pti_l }
                         process_pat_list(case_n, pti_l, plists, alt_e_opt)
                     }
+                    match_var_cases = match_var_cases.remove(get_orig_id(vn))
                     (plists, checks, code)
                 | PatRecord(rn_opt, _, loc) =>
                     val (case_n, _, checks, code, alt_e_opt) =
                     match rn_opt {
-                    | Some(rn) => get_var_tag_cmp_and_extract(n, pinfo, (checks, code), rn, case_sc, loc)
+                    | Some(rn) =>
+                        match_var_cases = match_var_cases.remove(get_orig_id(rn))
+                        get_var_tag_cmp_and_extract(n, pinfo, (checks, code), rn, case_sc, loc)
                     | _ => (n, [], checks, code, None)
                     }
                     val plists =
@@ -1128,10 +1133,15 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
     val is_variant =
     match atyp {
     | KTypExn => true
-    | KTypName(tname) => match kinfo_(tname, loc) {
-                         | KVariant _ => true
-                         | _ => false
-                         }
+    | KTypName(tname) =>
+        match kinfo_(tname, loc) {
+        | KVariant (ref {kvar_cases}) =>
+            match_var_cases = fold match_var_cases=empty_idset for (n, _) <- kvar_cases {
+                match_var_cases.add(get_orig_id(n))
+            }
+            true
+        | _ => false
+        }
     | _ => false
     }
     val (var_tag0, code) =
@@ -1165,6 +1175,10 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
         if checks == [] { have_else = true }
         (checks.rev(), ke)
     } :]
+    /*if is_variant && !have_else && !match_var_cases.empty() {
+        val idlist = ", ".join(match_var_cases.map(fun (n) {f"'{n}'"}))
+        throw compile_err(loc, f"the case(s) {idlist} are not covered; add '| _ => ...' clause to suppress this error")
+    }*/
     val k_cases =
         if have_else {
             k_cases

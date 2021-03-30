@@ -37,7 +37,7 @@ import Map, Set, Hashset
 fun pure_kexp(e: kexp_t): bool
 {
     var ispure = true
-    var local_vars = empty_idset
+    var local_vars = empty_id_hashset(8)
 
     // skip type processing, it does not affect purity flag
     fun pure_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
@@ -88,17 +88,19 @@ fun pure_kexp(e: kexp_t): bool
                 is safe, whereas the opposite thing is not.
             */
             val saved_local_vars = local_vars
-            val (_, dv) = used_decl_by_kexp(e)
-            dv.app(fun (i) {
-                match kinfo_(i, loc) {
-                | KVal ({kv_flags}) =>
-                    if kv_flags.val_flag_mutable &&
-                        !kv_flags.val_flag_tempref {
-                            local_vars = local_vars.add(i)
+            local_vars = empty_id_hashset(elist.length())
+            for e <- elist {
+                | KDefVal(i, _, loc) =>
+                    match kinfo_(i, loc) {
+                    | KVal ({kv_flags}) =>
+                        if kv_flags.val_flag_mutable &&
+                            !kv_flags.val_flag_tempref {
+                                local_vars.add(i)
+                        }
+                    | _ => {}
                     }
                 | _ => {}
                 }
-            })
             for e <- elist { pure_kexp_(e, callb); if !ispure {break} }
             local_vars = saved_local_vars
         | _ =>
@@ -157,67 +159,13 @@ fun reset_purity_flags(code: kexp_t list): void {
     }
 }
 
-fun used_by(code: kcode_t): id_hashset_t
-{
-    val all_used: id_hashset_t = Hashset.empty(1024, noid, hash)
-    fun remove_unless(had_before: bool, n: id_t) =
-        if !had_before { all_used.remove(n) }
-    fun add_id(n: id_t) = if n != noid {all_used.add(n)}
-    fun used_by_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t): void =
-        match a {
-        | AtomId(IdName _) => {}
-        | AtomId(n) => add_id(n)
-        | AtomLit(KLitNil(t)) => used_by_ktyp_(t, loc, callb)
-        | _ => {}
-        }
-    fun used_by_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void = fold_ktyp(t, loc, callb)
-    fun used_by_kexp_(e: kexp_t, callb: k_fold_callb_t): void =
-        match e {
-        | KDefFun (ref {kf_name, kf_args, kf_rt, kf_closure, kf_body, kf_loc}) =>
-            val {kci_arg, kci_fcv_t} = kf_closure
-            val kf_typ = get_kf_typ(kf_args, kf_rt)
-            used_by_ktyp_(kf_typ, kf_loc, callb)
-            val have_kf_name = all_used.mem(kf_name)
-            used_by_kexp_(kf_body, callb)
-            remove_unless(have_kf_name, kf_name)
-            add_id(kci_arg)
-            add_id(kci_fcv_t)
-        | KDefExn (ref {ke_name, ke_typ, ke_tag, ke_make, ke_loc}) =>
-            used_by_ktyp_(ke_typ, ke_loc, callb)
-            add_id(ke_tag)
-            add_id(ke_make)
-        | KDefVariant (ref {kvar_name, kvar_cases, kvar_loc}) =>
-            val have_kvar_name = all_used.mem(kvar_name)
-            for (ni, ti) <- kvar_cases {
-                used_by_ktyp_(ti, kvar_loc, callb)
-            }
-            remove_unless(have_kvar_name, kvar_name)
-        | KDefTyp (ref {kt_name, kt_typ, kt_loc}) =>
-            val have_kt_name = all_used.mem(kt_name)
-            used_by_ktyp_(kt_typ, kt_loc, callb)
-            remove_unless(have_kt_name, kt_name)
-        | _ => fold_kexp(e, callb)
-        }
-    val used_decl_callb = k_fold_callb_t
-    {
-        kcb_fold_atom=Some(used_by_atom_),
-        kcb_fold_ktyp=Some(used_by_ktyp_),
-        kcb_fold_kexp=Some(used_by_kexp_)
-    }
-    for e <- code {
-        used_by_kexp_(e, used_decl_callb)
-    }
-    all_used
-}
-
 fun remove_unused(kmods: kmodule_t list, initial: bool)
 {
     for {km_top} <- kmods {
         reset_purity_flags(km_top)
     }
     val all_top = [: for {km_top} <- kmods {km_top} :].concat()
-    val used_somewhere = used_by(all_top)
-    fun used(i: id_t) = used_somewhere.mem(i)
+    val used_somewhere = used_by(all_top, 1024)
 
     var fold_pairs = empty_idmap
     var is_main = false
@@ -235,7 +183,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                     fold_pairs = fold_pairs.add(i, fr)
             | _ => {}
             }
-            val is_really_used = used(i) || is_ccode
+            val is_really_used = used_somewhere.mem(i) || is_ccode
             if is_really_used {
                 KDefVal(i, e, loc)
             } else {
@@ -252,7 +200,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             }
         | KDefFun kf =>
             val {kf_name, kf_body, kf_scope, kf_loc} = *kf
-            if used(kf_name) {
+            if used_somewhere.mem(kf_name) {
                 val new_body = remove_unused_kexp_(kf_body, callb)
                 *kf = kf->{kf_body=new_body}
                 e
@@ -264,7 +212,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             }
         | KDefExn ke =>
             val {ke_name, ke_loc} = *ke
-            if used(ke_name) || !is_main { e }
+            if used_somewhere.mem(ke_name) || !is_main { e }
             else { KExpNop(ke_loc) }
         | KDefVariant kvar =>
             /* if at least one of the variant constructors is used then
@@ -273,14 +221,14 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                we will never eliminate variant definition and yet retain
                some of its used constructors. */
             val {kvar_name, kvar_loc} = *kvar
-            if used(kvar_name) {e} else {KExpNop(kvar_loc)}
+            if used_somewhere.mem(kvar_name) {e} else {KExpNop(kvar_loc)}
         | KDefTyp kt =>
             val {kt_name, kt_loc} = *kt
-            if used(kt_name) { e }
+            if used_somewhere.mem(kt_name) { e }
             else { KExpNop(kt_loc) }
         | KDefClosureVars kcv =>
             val {kcv_name, kcv_loc} = *kcv
-            if used(kcv_name) { e }
+            if used_somewhere.mem(kcv_name) { e }
             else { KExpNop(kcv_loc) }
         | KExpSeq (code, (ktyp, loc)) =>
             val code = remove_unused_(code, [], callb)
@@ -318,7 +266,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             | KDefTyp _ | KDefClosureVars _ =>
                 e :: result
             | _ =>
-                if pure_kexp(e) && rest != [] { result }
+                if rest != [] && pure_kexp(e) { result }
                 else { e :: result }
             }
             remove_unused_(rest, result, callb)

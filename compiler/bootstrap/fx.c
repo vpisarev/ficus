@@ -33,6 +33,7 @@ typedef struct _fx_R18Options__options_t
        int_ optim_iters;
        int_ inline_thresh;
        bool relax;
+       bool use_preamble;
        bool make_app;
        int_ optimize_level;
        fx_str_t output_name;
@@ -98,6 +99,7 @@ static void _fx_copy_R18Options__options_t(_fx_R18Options__options_t* src, _fx_R
    dst->optim_iters = src->optim_iters;
    dst->inline_thresh = src->inline_thresh;
    dst->relax = src->relax;
+   dst->use_preamble = src->use_preamble;
    dst->make_app = src->make_app;
    dst->optimize_level = src->optimize_level;
    fx_copy_str(&src->output_name, &dst->output_name);
@@ -129,6 +131,7 @@ static void _fx_make_R18Options__options_t(
       int_ r_optim_iters,
       int_ r_inline_thresh,
       bool r_relax,
+      bool r_use_preamble,
       bool r_make_app,
       int_ r_optimize_level,
       fx_str_t* r_output_name,
@@ -159,6 +162,7 @@ static void _fx_make_R18Options__options_t(
    fx_result->optim_iters = r_optim_iters;
    fx_result->inline_thresh = r_inline_thresh;
    fx_result->relax = r_relax;
+   fx_result->use_preamble = r_use_preamble;
    fx_result->make_app = r_make_app;
    fx_result->optimize_level = r_optimize_level;
    fx_copy_str(r_output_name, &fx_result->output_name);
@@ -197,18 +201,18 @@ static void _fx_make_T2Ta2iS(_fx_Ta2i* t0, fx_str_t* t1, _fx_T2Ta2iS* fx_result)
 { fx_result->t0 = *t0; fx_copy_str(t1, &fx_result->t1);
 }
 
-bool _fx_g9ficus__ok;
+bool _fx_g6fx__ok;
 FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(_fx_R18Options__options_t _fx_g12Options__opt)
 FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_result, void* fx_fv);
 
-FX_EXTERN_C int fx_init_ficus(void)
+FX_EXTERN_C int fx_init_fx(void)
 {
    fx_str_t v_0 = {  };
    int fx_status = 0;
-   FX_CALL(_fx_M7OptionsFM13parse_optionsB0(&_fx_g9ficus__ok, 0), _fx_cleanup);
-   if (_fx_g9ficus__ok) {
+   FX_CALL(_fx_M7OptionsFM13parse_optionsB0(&_fx_g6fx__ok, 0), _fx_cleanup);
+   if (_fx_g6fx__ok) {
       fx_copy_str(&_fx_g12Options__opt.filename, &v_0);
       bool v_1;
       FX_CALL(_fx_M8CompilerFM11process_allB1S(&v_0, &v_1, 0), _fx_cleanup);
@@ -219,7 +223,7 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C void fx_deinit_ficus(void)
+FX_EXTERN_C void fx_deinit_fx(void)
 {
 }
 
@@ -246,6 +250,8 @@ FX_EXTERN_C int fx_init_Map();
 FX_EXTERN_C void fx_deinit_Map();
 FX_EXTERN_C int fx_init_Set();
 FX_EXTERN_C void fx_deinit_Set();
+FX_EXTERN_C int fx_init_Hashmap();
+FX_EXTERN_C void fx_deinit_Hashmap();
 FX_EXTERN_C int fx_init_Hashset();
 FX_EXTERN_C void fx_deinit_Hashset();
 FX_EXTERN_C int fx_init_Ast();
@@ -324,6 +330,7 @@ int main(int argc, char** argv)
    if (fx_status >= 0) fx_status = fx_init_Options();
    if (fx_status >= 0) fx_status = fx_init_Map();
    if (fx_status >= 0) fx_status = fx_init_Set();
+   if (fx_status >= 0) fx_status = fx_init_Hashmap();
    if (fx_status >= 0) fx_status = fx_init_Hashset();
    if (fx_status >= 0) fx_status = fx_init_Ast();
    if (fx_status >= 0) fx_status = fx_init_PP();
@@ -355,8 +362,8 @@ int main(int argc, char** argv)
    if (fx_status >= 0) fx_status = fx_init_C_post_rename_locals();
    if (fx_status >= 0) fx_status = fx_init_C_post_adjust_decls();
    if (fx_status >= 0) fx_status = fx_init_Compiler();
-   if (fx_status >= 0) fx_status = fx_init_ficus();
-   fx_deinit_ficus();
+   if (fx_status >= 0) fx_status = fx_init_fx();
+   fx_deinit_fx();
    fx_deinit_Compiler();
    fx_deinit_C_post_adjust_decls();
    fx_deinit_C_post_rename_locals();
@@ -388,6 +395,7 @@ int main(int argc, char** argv)
    fx_deinit_PP();
    fx_deinit_Ast();
    fx_deinit_Hashset();
+   fx_deinit_Hashmap();
    fx_deinit_Set();
    fx_deinit_Map();
    fx_deinit_Options();

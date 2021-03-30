@@ -5,7 +5,7 @@
 
 // Ficus recursive descent parser
 
-import File, Filename, Map, Sys
+import File, Filename, Sys
 from Ast import *
 from Lexer import *
 

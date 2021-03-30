@@ -3757,8 +3757,7 @@ FX_EXTERN_C int
       void* fx_fv);
 
 FX_EXTERN_C_VAL(_fx_V9Ast__id_t _fx_g9Ast__noid)
-FX_EXTERN_C int _fx_F15__eq_variants__B2V9Ast__id_tV9Ast__id_t(
-   _fx_V9Ast__id_t* a_0, _fx_V9Ast__id_t* b_0, bool* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6__eq__B2VM4id_tVM4id_t(_fx_V9Ast__id_t* a_0, _fx_V9Ast__id_t* b_0, bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C void _fx_M6C_formFM4CFunVM7cinfo_t1rRM9cdeffun_t(
    struct _fx_rR17C_form__cdeffun_t_data_t* arg0, _fx_V15C_form__cinfo_t* fx_result);
@@ -3827,7 +3826,7 @@ FX_EXTERN_C int _fx_M4ListFM3revLT2V9Ast__id_tV14C_form__ctyp_t1LT2V9Ast__id_tV1
       struct _fx_LT2V9Ast__id_tV14C_form__ctyp_t_data_t** fx_result,
       void* fx_fv);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1V9Ast__id_t _fx_g7None49_)
+FX_EXTERN_C_VAL(_fx_Vt6option1V9Ast__id_t _fx_g7None50_)
 FX_EXTERN_C int _fx_M6C_formFM10CTypStructVM6ctyp_t2Vt6option1V9Ast__id_tLT2V9Ast__id_tVM6ctyp_t(
    _fx_Vt6option1V9Ast__id_t* arg0,
       struct _fx_LT2V9Ast__id_tV14C_form__ctyp_t_data_t* arg1,
@@ -4115,7 +4114,7 @@ FX_EXTERN_C int _fx_M12C_gen_fdeclsFM18convert_all_fdeclsTa3LV15C_form__cstmt_t1
                _fx_M4ListFM3revLT3V9Ast__id_tV14C_form__ctyp_tLV19C_form__carg_attr_t1LT3V9Ast__id_tV14C_form__ctyp_tLV19C_form__carg_attr_t(
                   args_2, &v_13, 0), _fx_catch_4);
          bool res_0;
-         FX_CALL(_fx_F15__eq_variants__B2V9Ast__id_tV9Ast__id_t(&kci_arg_0, &_fx_g9Ast__noid, &res_0, 0), _fx_catch_4);
+         FX_CALL(_fx_M3AstFM6__eq__B2VM4id_tVM4id_t(&kci_arg_0, &_fx_g9Ast__noid, &res_0, 0), _fx_catch_4);
          _fx_R16Ast__fun_flags_t v_29;
          if (res_0) { v_29 = kf_flags_0;
          }
@@ -4357,7 +4356,7 @@ FX_EXTERN_C int _fx_M12C_gen_fdeclsFM18convert_all_fdeclsTa3LV15C_form__cstmt_t1
          FX_CALL(
             _fx_M4ListFM3revLT2V9Ast__id_tV14C_form__ctyp_t1LT2V9Ast__id_tV14C_form__ctyp_t(relems_1, &v_48, 0), _fx_catch_6);
          FX_CALL(
-            _fx_M6C_formFM10CTypStructVM6ctyp_t2Vt6option1V9Ast__id_tLT2V9Ast__id_tVM6ctyp_t(&_fx_g7None49_, v_48, &v_49),
+            _fx_M6C_formFM10CTypStructVM6ctyp_t2Vt6option1V9Ast__id_tLT2V9Ast__id_tVM6ctyp_t(&_fx_g7None50_, v_48, &v_49),
                _fx_catch_6);
          _fx_Ta2V9Ast__id_t v_67 = { _fx_g9Ast__noid, free_f_1 };
          _fx_Ta2V9Ast__id_t v_68 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
@@ -4817,7 +4816,7 @@ FX_EXTERN_C int _fx_M12C_gen_fdeclsFM18convert_all_fdeclsTa3LV15C_form__cstmt_t1
             FX_CALL(
 
                   _fx_M6C_formFM10CTypStructVM6ctyp_t2Vt6option1V9Ast__id_tLT2V9Ast__id_tVM6ctyp_t(
-                     &_fx_g7None49_, relems_3, &v_121), _fx_catch_9);
+                     &_fx_g7None50_, relems_3, &v_121), _fx_catch_9);
             _fx_Ta2V9Ast__id_t v_141 = { _fx_g9Ast__noid, free_f_3 };
             _fx_Ta2V9Ast__id_t v_142 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
             _fx_make_R17C_form__ctprops_t(false, true, false, true, 0, &v_141, &v_142, &v_122);

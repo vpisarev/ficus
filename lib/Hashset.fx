@@ -29,15 +29,31 @@ type 'k hashset_state_t =
 
 fun empty(size0: int, k0: 'k, f: 'k->hash_t ): 'k Hashset.t
 {
-    var size = 16
+    var size = 8
     while size < size0 { size *= 2 }
     val state = hashset_state_t {
         nelems=0, nremoved=0, table=array(size, (HASH_EMPTY, k0)) }
     Hashset.t { hash_f=f, k0=k0, _state=ref state }
 }
 
-fun empty(ht: 'k Hashset.t): bool = ht._state->nkeys == 0
+fun empty(ht: 'k Hashset.t): bool = ht._state->nelems == 0
+
 fun size(ht: 'k Hashset.t) = ht._state->nelems
+
+fun clear(ht: 'k Hashset.t) {
+    val k0 = ht.k0
+    val table = ht._state->table
+    for i <- 0:size(table) {
+        table[i] = (HASH_EMPTY, k0)
+    }
+    ht._state->nelems = 0
+    ht._state->nremoved = 0
+}
+
+fun copy(ht: 'k Hashset.t): 'k Hashset.t =
+    t {hash_f=ht.hash_f, k0=ht.k0, _state=ref (hashset_state_t {
+        nelems=ht._state->nelems, nremoved=ht._state->nremoved,
+        table=copy(ht._state->table)})}
 
 @private fun add_(ht: 'k Hashset.t, ht_table: (hash_t, 'k) [], (hv: hash_t, k: 'k)): (int, int) {
     val tabsz = size(ht_table)
@@ -189,7 +205,8 @@ fun from_list(k0: 'k, hash_f: 'k->hash_t, data: 'k list): 'k Hashset.t
     ht
 }
 
-fun app(ht: 'k Hashset.t, f: 'k->void) {
+fun app(ht: 'k Hashset.t, f: 'k->void)
+{
     val table = ht._state->table
     for j <- 0:size(table) {
         if table[j].0 > HASH_DELETED {
@@ -198,7 +215,8 @@ fun app(ht: 'k Hashset.t, f: 'k->void) {
     }
 }
 
-fun foldl(ht: 'k Hashset.t, f: ('k, 'r)->'r, res0: 'r): 'r {
+fun foldl(ht: 'k Hashset.t, f: ('k, 'r)->'r, res0: 'r): 'r
+{
     val table = ht._state->table
     var res = res0
     for j <- 0:size(table) {
@@ -207,4 +225,39 @@ fun foldl(ht: 'k Hashset.t, f: ('k, 'r)->'r, res0: 'r): 'r {
         }
     }
     res
+}
+
+fun union(a: 'k Hashset.t, b: 'k Hashset.t): void
+{
+    val table = b._state->table
+    for j <- 0:size(table) {
+        if table[j].0 > HASH_DELETED {
+            // [TODO] can reuse already computed hash value
+            a.add(table[j].1)
+        }
+    }
+}
+
+fun all(ht: 'k Hashset.t, f: 'k->bool): bool
+{
+    val table = ht._state->table
+    var ok = true
+    for j <- 0:size(table) {
+        if table[j].0 > HASH_DELETED && !f(table[j].1) {
+            ok = false; break
+        }
+    }
+    ok
+}
+
+fun exists(ht: 'k Hashset.t, f: 'k->bool): bool
+{
+    val table = ht._state->table
+    var ok = false
+    for j <- 0:size(table) {
+        if table[j].0 > HASH_DELETED && f(table[j].1) {
+            ok = true; break
+        }
+    }
+    ok
 }

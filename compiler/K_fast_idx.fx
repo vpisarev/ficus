@@ -70,7 +70,7 @@
 from Ast import *
 from K_form import *
 
-import Map, Set
+import Map, Set, Hashset
 
 type idx_class_t =
     | IdxUnknown
@@ -119,7 +119,7 @@ fun optimize_idx_checks(topcode: kcode_t)
         var all_accesses: arr_access_t list = []
         var pre_for_code: kcode_t = []
         var update_affine_defs = false
-        val (_, inloop_vals) = used_decl_by_kexp(whole_e)
+        val inloop_vals = declared(whole_e :: [], 256)
         var affine_defs: affine_map_t = Map.empty(cmp_id)
 
         fun collect_affine_defs_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}

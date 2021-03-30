@@ -22,29 +22,31 @@ type kmodule_t = K_form.kmodule_t
 val pr_verbose = Ast.pr_verbose
 
 fun get_preamble(mfname: string): Lexer.token_t list {
-    val bare_name = Filename.remove_extension(Filename.basename(mfname))
-    val (preamble, _) = fold (preamble, found) = ([], false)
-        for (mname, from_import) <- [: ("Builtins", true), ("List", false),
-                                        ("Char", false), ("String", false) :] {
-        if found {
-            (preamble, found)
-        } else if bare_name == mname {
-            (preamble, true)
-        } else if from_import {
-            (preamble + [: Lexer.FROM, Lexer.IDENT(true, mname), Lexer.IMPORT(false), Lexer.STAR(true), Lexer.SEMICOLON :], false)
-        } else {
-            (preamble + [: Lexer.IMPORT(true), Lexer.IDENT(true, mname), Lexer.SEMICOLON :], false)
+    if Options.opt.use_preamble {
+        val bare_name = Filename.remove_extension(Filename.basename(mfname))
+        val (preamble, _) = fold (preamble, found) = ([], false)
+            for (mname, from_import) <- [: ("Builtins", true), ("List", false),
+                                            ("Char", false), ("String", false) :] {
+            if found {
+                (preamble, found)
+            } else if bare_name == mname {
+                (preamble, true)
+            } else if from_import {
+                (preamble + [: Lexer.FROM, Lexer.IDENT(true, mname), Lexer.IMPORT(false), Lexer.STAR(true), Lexer.SEMICOLON :], false)
+            } else {
+                (preamble + [: Lexer.IMPORT(true), Lexer.IDENT(true, mname), Lexer.SEMICOLON :], false)
+            }
         }
-    }
-    val preamble =
-        if bare_name != "Builtins" { preamble }
-        else {
-            // [TODO] insert proper git hash
-            [: //Lexer.IMPORT(true), Lexer.IDENT(true, "Config"), Lexer.SEMICOLON,
-            Lexer.VAL, Lexer.IDENT(true, "__ficus_git_commit__"), Lexer.EQUAL,
-            Lexer.LITERAL(Ast.LitString("123456789")), Lexer.SEMICOLON :] + preamble
-        }
-    preamble
+        val preamble =
+            if bare_name != "Builtins" { preamble }
+            else {
+                // [TODO] insert proper git hash
+                [: //Lexer.IMPORT(true), Lexer.IDENT(true, "Config"), Lexer.SEMICOLON,
+                Lexer.VAL, Lexer.IDENT(true, "__ficus_git_commit__"), Lexer.EQUAL,
+                Lexer.LITERAL(Ast.LitString("123456789")), Lexer.SEMICOLON :] + preamble
+            }
+        preamble
+    } else { [] }
 }
 
 fun parse_all(fname0: string): bool
@@ -143,7 +145,7 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     Ast.all_compile_errs = []
     val niters = Options.opt.optim_iters
     var temp_kmods = kmods
-    prf("initial unusused code removal")
+    prf("initial unused code removal")
     temp_kmods = K_remove_unused.remove_unused(temp_kmods, true)
     for i <- 1: niters+1 {
         pr_verbose(f"Optimization pass #{i}:")

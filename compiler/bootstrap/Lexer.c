@@ -14,9 +14,6 @@ static int decodeoct(char_ c)
                 ('A' <= c && c <= 'F') ? c - 'A' + 10 : -1;
     }
 
-struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t;
-static void _fx_free_Vt11Map__tree_t2ST2V14Lexer__token_ti(struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t** dst);
-
 typedef enum {
    _FX_V9Ast__id_t_IdName=1, _FX_V9Ast__id_t_IdVal=2, _FX_V9Ast__id_t_IdTemp=3
 } _fx_V9Ast__id_t_tag_t;
@@ -229,6 +226,12 @@ typedef struct _fx_T2V14Lexer__token_ti  { _fx_V14Lexer__token_t t0; int_ t1; } 
 typedef struct _fx_Vt6option1T2V14Lexer__token_ti  { int tag; union  { _fx_T2V14Lexer__token_ti Some; } u;
    } _fx_Vt6option1T2V14Lexer__token_ti;
 
+typedef struct _fx_T2ST2V14Lexer__token_ti  { fx_str_t t0; _fx_T2V14Lexer__token_ti t1; } _fx_T2ST2V14Lexer__token_ti;
+
+typedef struct _fx_LT2ST2V14Lexer__token_ti_data_t
+   { int_ rc; struct _fx_LT2ST2V14Lexer__token_ti_data_t* tl; _fx_T2ST2V14Lexer__token_ti hd;
+   } _fx_LT2ST2V14Lexer__token_ti_data_t, *_fx_LT2ST2V14Lexer__token_ti;
+
 typedef struct _fx_T2V14Lexer__token_tTa2i  { _fx_V14Lexer__token_t t0; _fx_Ta2i t1; } _fx_T2V14Lexer__token_tTa2i;
 
 typedef struct _fx_LT2V14Lexer__token_tTa2i_data_t
@@ -238,47 +241,30 @@ typedef struct _fx_LT2V14Lexer__token_tTa2i_data_t
 typedef struct _fx_LV14Lexer__token_t_data_t  { int_ rc; struct _fx_LV14Lexer__token_t_data_t* tl; _fx_V14Lexer__token_t hd;
    } _fx_LV14Lexer__token_t_data_t, *_fx_LV14Lexer__token_t;
 
-typedef struct _fx_FPi2SS  { int (*fp)(fx_str_t*, fx_str_t*, int_*, void*); fx_fcv_t* fcv; } _fx_FPi2SS;
+typedef struct _fx_T3qST2V14Lexer__token_ti  { uint64_t t0; fx_str_t t1; _fx_T2V14Lexer__token_ti t2;
+   } _fx_T3qST2V14Lexer__token_ti;
+
+typedef struct _fx_FPq1S  { int (*fp)(fx_str_t*, uint64_t*, void*); fx_fcv_t* fcv; } _fx_FPq1S;
 
 typedef struct _fx_Ta2S  { fx_str_t t0; fx_str_t t1; } _fx_Ta2S;
 
-typedef enum {
-   _FX_V12Map__color_t_Red=0, _FX_V12Map__color_t_Black=1
-} _fx_V12Map__color_t_tag_t;
+typedef struct _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti  { int_ nelems; int_ nremoved; fx_arr_t table;
+   } _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti;
 
-typedef struct _fx_V12Map__color_t  { int tag; } _fx_V12Map__color_t;
+typedef struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t
+   { int_ rc; _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti data;
+   } _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t, *_fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti;
 
-typedef enum {
-   _FX_Vt11Map__tree_t_Empty=0, _FX_Vt11Map__tree_t_Node=1
-} _fx_Vt11Map__tree_t_tag_t;
-
-typedef struct _fx_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti
+typedef struct _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti
    {
-       _fx_V12Map__color_t t0;
-       struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t* t1;
-       fx_str_t t2;
-       _fx_T2V14Lexer__token_ti t3;
-       struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t* t4;
-   } _fx_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti;
-
-typedef struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t
-   {
-       int_ rc;
-       union
-          {
-              _fx_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti
-                 Node; } u; } _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t, *_fx_Vt11Map__tree_t2ST2V14Lexer__token_ti;
-
-typedef struct _fx_Rt6Map__t2ST2V14Lexer__token_ti
-   { struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t* root; _fx_FPi2SS cmp; } _fx_Rt6Map__t2ST2V14Lexer__token_ti;
-
-typedef struct _fx_T2ST2V14Lexer__token_ti  { fx_str_t t0; _fx_T2V14Lexer__token_ti t1; } _fx_T2ST2V14Lexer__token_ti;
-
-typedef struct _fx_LT2ST2V14Lexer__token_ti_data_t
-   { int_ rc; struct _fx_LT2ST2V14Lexer__token_ti_data_t* tl; _fx_T2ST2V14Lexer__token_ti hd;
-   } _fx_LT2ST2V14Lexer__token_ti_data_t, *_fx_LT2ST2V14Lexer__token_ti;
+       _fx_FPq1S hash_f;
+       fx_str_t k0;
+       _fx_T2V14Lexer__token_ti d0;
+       struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t* _state; } _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti;
 
 typedef struct _fx_T2R10Ast__loc_tS  { _fx_R10Ast__loc_t t0; fx_str_t t1; } _fx_T2R10Ast__loc_tS;
+
+typedef struct _fx_rB_data_t  { int_ rc; bool data; } _fx_rB_data_t, *_fx_rB;
 
 typedef struct _fx_ri_data_t  { int_ rc; int_ data; } _fx_ri_data_t, *_fx_ri;
 
@@ -299,8 +285,6 @@ typedef struct _fx_T4iSiB  { int_ t0; fx_str_t t1; int_ t2; bool t3; } _fx_T4iSi
 
 typedef struct _fx_FPLT2V14Lexer__token_tTa2i0  { int (*fp)(struct _fx_LT2V14Lexer__token_tTa2i_data_t**, void*); fx_fcv_t* fcv;
    } _fx_FPLT2V14Lexer__token_tTa2i0;
-
-typedef struct _fx_rB_data_t  { int_ rc; bool data; } _fx_rB_data_t, *_fx_rB;
 
 typedef struct _fx_rLT2V14Lexer__token_tTa2i_data_t  { int_ rc; struct _fx_LT2V14Lexer__token_tTa2i_data_t* data;
    } _fx_rLT2V14Lexer__token_tTa2i_data_t, *_fx_rLT2V14Lexer__token_tTa2i;
@@ -409,6 +393,30 @@ static void _fx_copy_Vt6option1T2V14Lexer__token_ti(
    }
 }
 
+static void _fx_free_T2ST2V14Lexer__token_ti(_fx_T2ST2V14Lexer__token_ti* dst)
+{ fx_free_str(&dst->t0); _fx_free_T2V14Lexer__token_ti(&dst->t1);
+}
+
+static void _fx_copy_T2ST2V14Lexer__token_ti(_fx_T2ST2V14Lexer__token_ti* src, _fx_T2ST2V14Lexer__token_ti* dst)
+{ fx_copy_str(&src->t0, &dst->t0); _fx_copy_T2V14Lexer__token_ti(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2ST2V14Lexer__token_ti(fx_str_t* t0, _fx_T2V14Lexer__token_ti* t1, _fx_T2ST2V14Lexer__token_ti* fx_result)
+{ fx_copy_str(t0, &fx_result->t0); _fx_copy_T2V14Lexer__token_ti(t1, &fx_result->t1);
+}
+
+static void _fx_free_LT2ST2V14Lexer__token_ti(struct _fx_LT2ST2V14Lexer__token_ti_data_t** dst)
+{ FX_FREE_LIST_IMPL(_fx_LT2ST2V14Lexer__token_ti, _fx_free_T2ST2V14Lexer__token_ti);
+}
+
+static int _fx_cons_LT2ST2V14Lexer__token_ti(
+   _fx_T2ST2V14Lexer__token_ti* hd,
+      struct _fx_LT2ST2V14Lexer__token_ti_data_t* tl,
+      bool addref_tl,
+      struct _fx_LT2ST2V14Lexer__token_ti_data_t** fx_result)
+{ FX_MAKE_LIST_IMPL(_fx_LT2ST2V14Lexer__token_ti, _fx_copy_T2ST2V14Lexer__token_ti);
+}
+
 static void _fx_free_T2V14Lexer__token_tTa2i(_fx_T2V14Lexer__token_tTa2i* dst)
 { _fx_free_V14Lexer__token_t(&dst->t0);
 }
@@ -445,6 +453,19 @@ static int _fx_cons_LV14Lexer__token_t(
 { FX_MAKE_LIST_IMPL(_fx_LV14Lexer__token_t, _fx_copy_V14Lexer__token_t);
 }
 
+static void _fx_free_T3qST2V14Lexer__token_ti(_fx_T3qST2V14Lexer__token_ti* dst)
+{ fx_free_str(&dst->t1); _fx_free_T2V14Lexer__token_ti(&dst->t2);
+}
+
+static void _fx_copy_T3qST2V14Lexer__token_ti(_fx_T3qST2V14Lexer__token_ti* src, _fx_T3qST2V14Lexer__token_ti* dst)
+{ dst->t0 = src->t0; fx_copy_str(&src->t1, &dst->t1); _fx_copy_T2V14Lexer__token_ti(&src->t2, &dst->t2);
+}
+
+static void _fx_make_T3qST2V14Lexer__token_ti(
+   uint64_t t0, fx_str_t* t1, _fx_T2V14Lexer__token_ti* t2, _fx_T3qST2V14Lexer__token_ti* fx_result)
+{ fx_result->t0 = t0; fx_copy_str(t1, &fx_result->t1); _fx_copy_T2V14Lexer__token_ti(t2, &fx_result->t2);
+}
+
 static void _fx_free_Ta2S(_fx_Ta2S* dst)
 { fx_free_str(&dst->t0); fx_free_str(&dst->t1);
 }
@@ -457,93 +478,63 @@ static void _fx_make_Ta2S(fx_str_t* t0, fx_str_t* t1, _fx_Ta2S* fx_result)
 { fx_copy_str(t0, &fx_result->t0); fx_copy_str(t1, &fx_result->t1);
 }
 
-static void
-   _fx_free_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti(
-   _fx_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti* dst)
+static void _fx_free_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(_fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* dst)
+{ fx_free_arr(&dst->table);
+}
+
+static void _fx_copy_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
+   _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* src, _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* dst)
+{ dst->nelems = src->nelems; dst->nremoved = src->nremoved; fx_copy_arr(&src->table, &dst->table);
+}
+
+static void _fx_make_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
+   int_ r_nelems, int_ r_nremoved, fx_arr_t* r_table, _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* fx_result)
+{ fx_result->nelems = r_nelems; fx_result->nremoved = r_nremoved; fx_copy_arr(r_table, &fx_result->table);
+}
+
+static void _fx_free_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
+   struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t** dst)
 {
-   _fx_free_Vt11Map__tree_t2ST2V14Lexer__token_ti(&dst->t1);
-   fx_free_str(&dst->t2);
-   _fx_free_T2V14Lexer__token_ti(&dst->t3);
-   _fx_free_Vt11Map__tree_t2ST2V14Lexer__token_ti(&dst->t4);
+   FX_FREE_REF_IMPL(
+      _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti, _fx_free_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti);
 }
 
-static void
-   _fx_copy_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti(
-   _fx_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti* src,
-      _fx_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti* dst)
+static int _fx_make_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
+   _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* arg,
+      struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t** fx_result)
 {
-   dst->t0 = src->t0;
-   FX_COPY_PTR(src->t1, &dst->t1);
-   fx_copy_str(&src->t2, &dst->t2);
-   _fx_copy_T2V14Lexer__token_ti(&src->t3, &dst->t3);
-   FX_COPY_PTR(src->t4, &dst->t4);
+   FX_MAKE_REF_IMPL(
+      _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti, _fx_copy_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti);
 }
 
-static void
-   _fx_make_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti(
-   _fx_V12Map__color_t* t0,
-      struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t* t1,
-      fx_str_t* t2,
-      _fx_T2V14Lexer__token_ti* t3,
-      struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t* t4,
-      _fx_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti*
-         fx_result)
+static void _fx_free_Rt10Hashmap__t2ST2V14Lexer__token_ti(_fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* dst)
 {
-   fx_result->t0 = *t0;
-   FX_COPY_PTR(t1, &fx_result->t1);
-   fx_copy_str(t2, &fx_result->t2);
-   _fx_copy_T2V14Lexer__token_ti(t3, &fx_result->t3);
-   FX_COPY_PTR(t4, &fx_result->t4);
+   fx_free_fp(&dst->hash_f);
+   fx_free_str(&dst->k0);
+   _fx_free_T2V14Lexer__token_ti(&dst->d0);
+   _fx_free_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(&dst->_state);
 }
 
-static void _fx_free_Vt11Map__tree_t2ST2V14Lexer__token_ti(struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t** dst)
+static void _fx_copy_Rt10Hashmap__t2ST2V14Lexer__token_ti(
+   _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* src, _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* dst)
 {
-   if (*dst && FX_DECREF((*dst)->rc) == 1) {
-      _fx_free_T5V12Map__color_tVt11Map__tree_t2ST2V14Lexer__token_tiST2V14Lexer__token_tiVt11Map__tree_t2ST2V14Lexer__token_ti(
-         &(*dst)->u.Node);
-      fx_free(*dst);
-   }
-   *dst = 0;
+   FX_COPY_FP(&src->hash_f, &dst->hash_f);
+   fx_copy_str(&src->k0, &dst->k0);
+   _fx_copy_T2V14Lexer__token_ti(&src->d0, &dst->d0);
+   FX_COPY_PTR(src->_state, &dst->_state);
 }
 
-static void _fx_free_Rt6Map__t2ST2V14Lexer__token_ti(_fx_Rt6Map__t2ST2V14Lexer__token_ti* dst)
-{ _fx_free_Vt11Map__tree_t2ST2V14Lexer__token_ti(&dst->root); fx_free_fp(&dst->cmp);
-}
-
-static void _fx_copy_Rt6Map__t2ST2V14Lexer__token_ti(
-   _fx_Rt6Map__t2ST2V14Lexer__token_ti* src, _fx_Rt6Map__t2ST2V14Lexer__token_ti* dst)
-{ FX_COPY_PTR(src->root, &dst->root); FX_COPY_FP(&src->cmp, &dst->cmp);
-}
-
-static void _fx_make_Rt6Map__t2ST2V14Lexer__token_ti(
-   struct _fx_Vt11Map__tree_t2ST2V14Lexer__token_ti_data_t* r_root,
-      _fx_FPi2SS* r_cmp,
-      _fx_Rt6Map__t2ST2V14Lexer__token_ti* fx_result)
-{ FX_COPY_PTR(r_root, &fx_result->root); FX_COPY_FP(r_cmp, &fx_result->cmp);
-}
-
-static void _fx_free_T2ST2V14Lexer__token_ti(_fx_T2ST2V14Lexer__token_ti* dst)
-{ fx_free_str(&dst->t0); _fx_free_T2V14Lexer__token_ti(&dst->t1);
-}
-
-static void _fx_copy_T2ST2V14Lexer__token_ti(_fx_T2ST2V14Lexer__token_ti* src, _fx_T2ST2V14Lexer__token_ti* dst)
-{ fx_copy_str(&src->t0, &dst->t0); _fx_copy_T2V14Lexer__token_ti(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2ST2V14Lexer__token_ti(fx_str_t* t0, _fx_T2V14Lexer__token_ti* t1, _fx_T2ST2V14Lexer__token_ti* fx_result)
-{ fx_copy_str(t0, &fx_result->t0); _fx_copy_T2V14Lexer__token_ti(t1, &fx_result->t1);
-}
-
-static void _fx_free_LT2ST2V14Lexer__token_ti(struct _fx_LT2ST2V14Lexer__token_ti_data_t** dst)
-{ FX_FREE_LIST_IMPL(_fx_LT2ST2V14Lexer__token_ti, _fx_free_T2ST2V14Lexer__token_ti);
-}
-
-static int _fx_cons_LT2ST2V14Lexer__token_ti(
-   _fx_T2ST2V14Lexer__token_ti* hd,
-      struct _fx_LT2ST2V14Lexer__token_ti_data_t* tl,
-      bool addref_tl,
-      struct _fx_LT2ST2V14Lexer__token_ti_data_t** fx_result)
-{ FX_MAKE_LIST_IMPL(_fx_LT2ST2V14Lexer__token_ti, _fx_copy_T2ST2V14Lexer__token_ti);
+static void _fx_make_Rt10Hashmap__t2ST2V14Lexer__token_ti(
+   _fx_FPq1S* r_hash_f,
+      fx_str_t* r_k0,
+      _fx_T2V14Lexer__token_ti* r_d0,
+      struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t* r__state,
+      _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* fx_result)
+{
+   FX_COPY_FP(r_hash_f, &fx_result->hash_f);
+   fx_copy_str(r_k0, &fx_result->k0);
+   _fx_copy_T2V14Lexer__token_ti(r_d0, &fx_result->d0);
+   FX_COPY_PTR(r__state, &fx_result->_state);
 }
 
 static void _fx_free_T2R10Ast__loc_tS(_fx_T2R10Ast__loc_tS* dst)
@@ -556,6 +547,10 @@ static void _fx_copy_T2R10Ast__loc_tS(_fx_T2R10Ast__loc_tS* src, _fx_T2R10Ast__l
 
 static void _fx_make_T2R10Ast__loc_tS(_fx_R10Ast__loc_t* t0, fx_str_t* t1, _fx_T2R10Ast__loc_tS* fx_result)
 { fx_result->t0 = *t0; fx_copy_str(t1, &fx_result->t1);
+}
+
+static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
+{ FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
 static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
@@ -621,10 +616,6 @@ static void _fx_copy_T4iSiB(_fx_T4iSiB* src, _fx_T4iSiB* dst)
 
 static void _fx_make_T4iSiB(int_ t0, fx_str_t* t1, int_ t2, bool t3, _fx_T4iSiB* fx_result)
 { fx_result->t0 = t0; fx_copy_str(t1, &fx_result->t1); fx_result->t2 = t2; fx_result->t3 = t3;
-}
-
-static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
-{ FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
 static void _fx_free_rLT2V14Lexer__token_tTa2i(struct _fx_rLT2V14Lexer__token_tTa2i_data_t** dst)
@@ -729,8 +720,8 @@ _fx_V14Lexer__token_t _fx_g16Lexer__DOT_EQUAL = { _FX_V14Lexer__token_t_DOT_EQUA
 _fx_V14Lexer__token_t _fx_g16Lexer__SPACESHIP = { _FX_V14Lexer__token_t_SPACESHIP };
 _fx_V14Lexer__token_t _fx_g20Lexer__DOT_SPACESHIP = { _FX_V14Lexer__token_t_DOT_SPACESHIP };
 _fx_V14Lexer__token_t _fx_g18Lexer__FOLD_RESULT = { _FX_V14Lexer__token_t_FOLD_RESULT };
-_fx_FPi2SS _fx_g10Lexer__cmp = {  };
-_fx_Rt6Map__t2ST2V14Lexer__token_ti _fx_g21Lexer__ficus_keywords = {  };
+_fx_FPq1S _fx_g13Lexer__hash_w = {  };
+_fx_Rt10Hashmap__t2ST2V14Lexer__token_ti _fx_g21Lexer__ficus_keywords = {  };
 FX_EXTERN_C int _fx_M3AstFM7lit2strS1VM5lit_t(_fx_V10Ast__lit_t* c_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6StringFM12decapitalizeS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv);
@@ -756,12 +747,14 @@ FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C void _fx_M3AstFM7LitBoolVM5lit_t1B(bool arg0, _fx_V10Ast__lit_t* fx_result);
 
-FX_EXTERN_C int _fx_M6StringFM3cmpi2SS(fx_str_t* s1_0, fx_str_t* s2_0, int_* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6hash_wq1S(fx_str_t* x_0, uint64_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M3MapFM9from_listRtM1t2ST2V14Lexer__token_ti2FPi2SSLT2ST2V14Lexer__token_ti(
-   _fx_FPi2SS* cmp_0,
-      struct _fx_LT2ST2V14Lexer__token_ti_data_t* l_0,
-      _fx_Rt6Map__t2ST2V14Lexer__token_ti* fx_result,
+FX_EXTERN_C int _fx_M7HashmapFM9from_listRtM1t2ST2V14Lexer__token_ti4ST2V14Lexer__token_tiFPq1SLT2ST2V14Lexer__token_ti(
+   fx_str_t* k0_0,
+      _fx_T2V14Lexer__token_ti* d0_0,
+      _fx_FPq1S* hash_f_0,
+      struct _fx_LT2ST2V14Lexer__token_ti_data_t* data_0,
+      _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* fx_result,
       void* fx_fv);
 
 FX_EXTERN_C int _fx_M5LexerFM7make_fpFPTa2i1i1RM8stream_t(_fx_R15Lexer__stream_t* arg0, _fx_FPTa2i1i* fx_result);
@@ -808,8 +801,8 @@ FX_EXTERN_C int _fx_F7__add__LV14Lexer__token_t2LV14Lexer__token_tLV14Lexer__tok
       struct _fx_LV14Lexer__token_t_data_t** fx_result,
       void* fx_fv);
 
-FX_EXTERN_C int _fx_M3MapFM8find_optVt6option1T2V14Lexer__token_ti2RtM1t2ST2V14Lexer__token_tiS(
-   _fx_Rt6Map__t2ST2V14Lexer__token_ti* m_0, fx_str_t* x_0, _fx_Vt6option1T2V14Lexer__token_ti* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM8find_optVt6option1T2V14Lexer__token_ti2RtM1t2ST2V14Lexer__token_tiS(
+   _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* ht_0, fx_str_t* k_0, _fx_Vt6option1T2V14Lexer__token_ti* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
 
@@ -2643,9 +2636,9 @@ FX_EXTERN_C int _fx_M5LexerFM7make_fpFPT2iS1i1RM8stream_t(_fx_R15Lexer__stream_t
 
 static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__token_tTa2i_data_t** fx_result, void* fx_fv)
 {
-   _fx_FPTa2i1i getloc_0 = {  };
-   _fx_FPS1Ta2i lloc2str_0 = {  };
    _fx_FPT2iS1i get_ccode_0 = {  };
+   _fx_FPS1Ta2i lloc2str_0 = {  };
+   _fx_FPTa2i1i getloc_0 = {  };
    fx_str_t buf_0 = {  };
    _fx_LT2V14Lexer__token_tTa2i paren_stack_0 = 0;
    fx_exn_t v_0 = {  };
@@ -2694,9 +2687,9 @@ static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__t
    int_* pos_0 = &cv_0->t2->data;
    bool* prev_dot_0 = &cv_0->t3->data;
    _fx_R15Lexer__stream_t* strm_0 = &cv_0->t4;
-   _fx_M5LexerFM7make_fpFPTa2i1i1RM8stream_t(strm_0, &getloc_0);
-   _fx_M5LexerFM7make_fpFPS1Ta2i1RM8stream_t(strm_0, &lloc2str_0);
    _fx_M5LexerFM7make_fpFPT2iS1i1RM8stream_t(strm_0, &get_ccode_0);
+   _fx_M5LexerFM7make_fpFPS1Ta2i1RM8stream_t(strm_0, &lloc2str_0);
+   _fx_M5LexerFM7make_fpFPTa2i1i1RM8stream_t(strm_0, &getloc_0);
    fx_copy_str(&strm_0->buf, &buf_0);
    int_ len_0;
    FX_CALL(_fx_M6StringFM6lengthi1S(&buf_0, &len_0, 0), _fx_cleanup);
@@ -2959,7 +2952,7 @@ static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__t
                   *pos_0 = p_4;
                   FX_CALL(
 
-                        _fx_M3MapFM8find_optVt6option1T2V14Lexer__token_ti2RtM1t2ST2V14Lexer__token_tiS(
+                        _fx_M7HashmapFM8find_optVt6option1T2V14Lexer__token_ti2RtM1t2ST2V14Lexer__token_tiS(
                            &_fx_g21Lexer__ficus_keywords, &ident_0, &v_31, 0), _fx_cleanup);
                   if (v_31.tag == _FX_Vt6option_Some) {
                      _fx_T2V14Lexer__token_ti v_47 = {  };
@@ -4463,9 +4456,9 @@ static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__t
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&getloc_0);
-   FX_FREE_FP(&lloc2str_0);
    FX_FREE_FP(&get_ccode_0);
+   FX_FREE_FP(&lloc2str_0);
+   FX_FREE_FP(&getloc_0);
    FX_FREE_STR(&buf_0);
    if (paren_stack_0) { _fx_free_LT2V14Lexer__token_tTa2i(&paren_stack_0);
    }
@@ -4537,374 +4530,378 @@ FX_EXTERN_C int _fx_M5LexerFM7make_fpFPLT2VM7token_tTa2i05rBrLT2VM7token_tTa2iri
 FX_EXTERN_C int fx_init_Lexer(void)
 {
    _fx_T2V14Lexer__token_ti v_0 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_1 = {  };
-   _fx_T2V14Lexer__token_ti v_2 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_3 = {  };
-   _fx_T2V14Lexer__token_ti v_4 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_5 = {  };
-   _fx_T2V14Lexer__token_ti v_6 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_7 = {  };
-   _fx_T2V14Lexer__token_ti v_8 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_9 = {  };
-   _fx_T2V14Lexer__token_ti v_10 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_11 = {  };
-   _fx_T2V14Lexer__token_ti v_12 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_13 = {  };
-   _fx_T2V14Lexer__token_ti v_14 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_15 = {  };
-   _fx_T2V14Lexer__token_ti v_16 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_17 = {  };
-   _fx_V10Ast__lit_t v_18 = {  };
-   _fx_V14Lexer__token_t v_19 = {  };
-   _fx_T2V14Lexer__token_ti v_20 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_21 = {  };
-   _fx_T2V14Lexer__token_ti v_22 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_23 = {  };
-   _fx_T2V14Lexer__token_ti v_24 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_25 = {  };
-   _fx_V14Lexer__token_t v_26 = {  };
-   _fx_T2V14Lexer__token_ti v_27 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_28 = {  };
-   _fx_T2V14Lexer__token_ti v_29 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_30 = {  };
-   _fx_T2V14Lexer__token_ti v_31 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_32 = {  };
-   _fx_T2V14Lexer__token_ti v_33 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_34 = {  };
-   _fx_T2V14Lexer__token_ti v_35 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_36 = {  };
-   _fx_V14Lexer__token_t v_37 = {  };
-   _fx_T2V14Lexer__token_ti v_38 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_39 = {  };
-   _fx_T2V14Lexer__token_ti v_40 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_41 = {  };
-   _fx_T2V14Lexer__token_ti v_42 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_43 = {  };
-   _fx_T2V14Lexer__token_ti v_44 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_45 = {  };
-   _fx_T2V14Lexer__token_ti v_46 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_47 = {  };
-   _fx_T2V14Lexer__token_ti v_48 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_49 = {  };
-   _fx_V14Lexer__token_t v_50 = {  };
-   _fx_T2V14Lexer__token_ti v_51 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_52 = {  };
-   _fx_T2V14Lexer__token_ti v_53 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_54 = {  };
-   _fx_V10Ast__lit_t v_55 = {  };
-   _fx_V14Lexer__token_t v_56 = {  };
-   _fx_T2V14Lexer__token_ti v_57 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_58 = {  };
-   _fx_T2V14Lexer__token_ti v_59 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_60 = {  };
-   _fx_T2V14Lexer__token_ti v_61 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_62 = {  };
-   _fx_T2V14Lexer__token_ti v_63 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_64 = {  };
-   _fx_T2V14Lexer__token_ti v_65 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_66 = {  };
-   _fx_T2V14Lexer__token_ti v_67 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_68 = {  };
-   _fx_V14Lexer__token_t v_69 = {  };
-   _fx_T2V14Lexer__token_ti v_70 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_71 = {  };
-   _fx_T2V14Lexer__token_ti v_72 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_73 = {  };
-   _fx_T2V14Lexer__token_ti v_74 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_75 = {  };
-   _fx_T2V14Lexer__token_ti v_76 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_77 = {  };
-   _fx_T2V14Lexer__token_ti v_78 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_79 = {  };
-   _fx_T2V14Lexer__token_ti v_80 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_81 = {  };
-   _fx_T2V14Lexer__token_ti v_82 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_83 = {  };
-   _fx_T2V14Lexer__token_ti v_84 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_85 = {  };
-   _fx_T2V14Lexer__token_ti v_86 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_87 = {  };
-   _fx_T2V14Lexer__token_ti v_88 = {  };
-   _fx_T2ST2V14Lexer__token_ti v_89 = {  };
-   _fx_LT2ST2V14Lexer__token_ti v_90 = 0;
+   _fx_T2V14Lexer__token_ti v_1 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_2 = {  };
+   _fx_T2V14Lexer__token_ti v_3 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_4 = {  };
+   _fx_T2V14Lexer__token_ti v_5 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_6 = {  };
+   _fx_T2V14Lexer__token_ti v_7 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_8 = {  };
+   _fx_T2V14Lexer__token_ti v_9 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_10 = {  };
+   _fx_T2V14Lexer__token_ti v_11 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_12 = {  };
+   _fx_T2V14Lexer__token_ti v_13 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_14 = {  };
+   _fx_T2V14Lexer__token_ti v_15 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_16 = {  };
+   _fx_T2V14Lexer__token_ti v_17 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_18 = {  };
+   _fx_V10Ast__lit_t v_19 = {  };
+   _fx_V14Lexer__token_t v_20 = {  };
+   _fx_T2V14Lexer__token_ti v_21 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_22 = {  };
+   _fx_T2V14Lexer__token_ti v_23 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_24 = {  };
+   _fx_T2V14Lexer__token_ti v_25 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_26 = {  };
+   _fx_V14Lexer__token_t v_27 = {  };
+   _fx_T2V14Lexer__token_ti v_28 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_29 = {  };
+   _fx_T2V14Lexer__token_ti v_30 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_31 = {  };
+   _fx_T2V14Lexer__token_ti v_32 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_33 = {  };
+   _fx_T2V14Lexer__token_ti v_34 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_35 = {  };
+   _fx_T2V14Lexer__token_ti v_36 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_37 = {  };
+   _fx_V14Lexer__token_t v_38 = {  };
+   _fx_T2V14Lexer__token_ti v_39 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_40 = {  };
+   _fx_T2V14Lexer__token_ti v_41 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_42 = {  };
+   _fx_T2V14Lexer__token_ti v_43 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_44 = {  };
+   _fx_T2V14Lexer__token_ti v_45 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_46 = {  };
+   _fx_T2V14Lexer__token_ti v_47 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_48 = {  };
+   _fx_T2V14Lexer__token_ti v_49 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_50 = {  };
+   _fx_V14Lexer__token_t v_51 = {  };
+   _fx_T2V14Lexer__token_ti v_52 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_53 = {  };
+   _fx_T2V14Lexer__token_ti v_54 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_55 = {  };
+   _fx_V10Ast__lit_t v_56 = {  };
+   _fx_V14Lexer__token_t v_57 = {  };
+   _fx_T2V14Lexer__token_ti v_58 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_59 = {  };
+   _fx_T2V14Lexer__token_ti v_60 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_61 = {  };
+   _fx_T2V14Lexer__token_ti v_62 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_63 = {  };
+   _fx_T2V14Lexer__token_ti v_64 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_65 = {  };
+   _fx_T2V14Lexer__token_ti v_66 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_67 = {  };
+   _fx_T2V14Lexer__token_ti v_68 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_69 = {  };
+   _fx_V14Lexer__token_t v_70 = {  };
+   _fx_T2V14Lexer__token_ti v_71 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_72 = {  };
+   _fx_T2V14Lexer__token_ti v_73 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_74 = {  };
+   _fx_T2V14Lexer__token_ti v_75 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_76 = {  };
+   _fx_T2V14Lexer__token_ti v_77 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_78 = {  };
+   _fx_T2V14Lexer__token_ti v_79 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_80 = {  };
+   _fx_T2V14Lexer__token_ti v_81 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_82 = {  };
+   _fx_T2V14Lexer__token_ti v_83 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_84 = {  };
+   _fx_T2V14Lexer__token_ti v_85 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_86 = {  };
+   _fx_T2V14Lexer__token_ti v_87 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_88 = {  };
+   _fx_T2V14Lexer__token_ti v_89 = {  };
+   _fx_T2ST2V14Lexer__token_ti v_90 = {  };
+   _fx_LT2ST2V14Lexer__token_ti v_91 = 0;
    FX_REG_EXN("Lexer.LexerError", _FX_EXN_E17Lexer__LexerError, _fx_E17Lexer__LexerError_info, _fx_free_E17Lexer__LexerError);
    int fx_status = 0;
-   _fx_make_T2V14Lexer__token_ti(&_fx_g9Lexer__AS, 1, &v_0);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__FUN, 0, &v_0);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g9Lexer__AS, 1, &v_1);
    fx_str_t slit_0 = FX_MAKE_STR("as");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_0, &v_0, &v_1);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__BREAK, 0, &v_2);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_0, &v_1, &v_2);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__BREAK, 0, &v_3);
    fx_str_t slit_1 = FX_MAKE_STR("break");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_1, &v_2, &v_3);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__CATCH, 1, &v_4);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_1, &v_3, &v_4);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__CATCH, 1, &v_5);
    fx_str_t slit_2 = FX_MAKE_STR("catch");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_2, &v_4, &v_5);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__CLASS, 2, &v_6);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_2, &v_5, &v_6);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__CLASS, 2, &v_7);
    fx_str_t slit_3 = FX_MAKE_STR("class");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_3, &v_6, &v_7);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g15Lexer__CONTINUE, 0, &v_8);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_3, &v_7, &v_8);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g15Lexer__CONTINUE, 0, &v_9);
    fx_str_t slit_4 = FX_MAKE_STR("continue");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_4, &v_8, &v_9);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g9Lexer__DO, 2, &v_10);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_4, &v_9, &v_10);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g9Lexer__DO, 2, &v_11);
    fx_str_t slit_5 = FX_MAKE_STR("do");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_5, &v_10, &v_11);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__ELSE, 1, &v_12);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_5, &v_11, &v_12);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__ELSE, 1, &v_13);
    fx_str_t slit_6 = FX_MAKE_STR("else");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_6, &v_12, &v_13);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g16Lexer__EXCEPTION, 2, &v_14);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_6, &v_13, &v_14);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g16Lexer__EXCEPTION, 2, &v_15);
    fx_str_t slit_7 = FX_MAKE_STR("exception");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_7, &v_14, &v_15);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__EXTENDS, 1, &v_16);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_7, &v_15, &v_16);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__EXTENDS, 1, &v_17);
    fx_str_t slit_8 = FX_MAKE_STR("extends");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_8, &v_16, &v_17);
-   _fx_M3AstFM7LitBoolVM5lit_t1B(false, &v_18);
-   _fx_M5LexerFM7LITERALVM7token_t1V10Ast__lit_t(&v_18, &v_19);
-   _fx_make_T2V14Lexer__token_ti(&v_19, 0, &v_20);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_8, &v_17, &v_18);
+   _fx_M3AstFM7LitBoolVM5lit_t1B(false, &v_19);
+   _fx_M5LexerFM7LITERALVM7token_t1V10Ast__lit_t(&v_19, &v_20);
+   _fx_make_T2V14Lexer__token_ti(&v_20, 0, &v_21);
    fx_str_t slit_9 = FX_MAKE_STR("false");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_9, &v_20, &v_21);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__FINALLY, 1, &v_22);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_9, &v_21, &v_22);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__FINALLY, 1, &v_23);
    fx_str_t slit_10 = FX_MAKE_STR("finally");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_10, &v_22, &v_23);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__FOLD, 2, &v_24);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_10, &v_23, &v_24);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__FOLD, 2, &v_25);
    fx_str_t slit_11 = FX_MAKE_STR("fold");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_11, &v_24, &v_25);
-   _fx_M5LexerFM3FORVM7token_t1B(true, &v_26);
-   _fx_make_T2V14Lexer__token_ti(&v_26, 2, &v_27);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_11, &v_25, &v_26);
+   _fx_M5LexerFM3FORVM7token_t1B(true, &v_27);
+   _fx_make_T2V14Lexer__token_ti(&v_27, 2, &v_28);
    fx_str_t slit_12 = FX_MAKE_STR("for");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_12, &v_27, &v_28);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__FROM, 2, &v_29);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_12, &v_28, &v_29);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__FROM, 2, &v_30);
    fx_str_t slit_13 = FX_MAKE_STR("from");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_13, &v_29, &v_30);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__FUN, 2, &v_31);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_13, &v_30, &v_31);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__FUN, 2, &v_32);
    fx_str_t slit_14 = FX_MAKE_STR("fun");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_14, &v_31, &v_32);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g9Lexer__IF, 2, &v_33);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_14, &v_32, &v_33);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g9Lexer__IF, 2, &v_34);
    fx_str_t slit_15 = FX_MAKE_STR("if");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_15, &v_33, &v_34);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g17Lexer__IMPLEMENTS, 1, &v_35);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_15, &v_34, &v_35);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g17Lexer__IMPLEMENTS, 1, &v_36);
    fx_str_t slit_16 = FX_MAKE_STR("implements");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_16, &v_35, &v_36);
-   _fx_M5LexerFM6IMPORTVM7token_t1B(true, &v_37);
-   _fx_make_T2V14Lexer__token_ti(&v_37, 3, &v_38);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_16, &v_36, &v_37);
+   _fx_M5LexerFM6IMPORTVM7token_t1B(true, &v_38);
+   _fx_make_T2V14Lexer__token_ti(&v_38, 3, &v_39);
    fx_str_t slit_17 = FX_MAKE_STR("import");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_17, &v_38, &v_39);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g16Lexer__INTERFACE, 2, &v_40);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_17, &v_39, &v_40);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g16Lexer__INTERFACE, 2, &v_41);
    fx_str_t slit_18 = FX_MAKE_STR("interface");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_18, &v_40, &v_41);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__MATCH, 2, &v_42);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_18, &v_41, &v_42);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__MATCH, 2, &v_43);
    fx_str_t slit_19 = FX_MAKE_STR("match");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_19, &v_42, &v_43);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g13Lexer__OBJECT, 2, &v_44);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_19, &v_43, &v_44);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g13Lexer__OBJECT, 2, &v_45);
    fx_str_t slit_20 = FX_MAKE_STR("object");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_20, &v_44, &v_45);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g15Lexer__OPERATOR, 0, &v_46);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_20, &v_45, &v_46);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g15Lexer__OPERATOR, 0, &v_47);
    fx_str_t slit_21 = FX_MAKE_STR("operator");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_21, &v_46, &v_47);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g13Lexer__PRAGMA, 2, &v_48);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_21, &v_47, &v_48);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g13Lexer__PRAGMA, 2, &v_49);
    fx_str_t slit_22 = FX_MAKE_STR("pragma");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_22, &v_48, &v_49);
-   _fx_M5LexerFM3REFVM7token_t1B(true, &v_50);
-   _fx_make_T2V14Lexer__token_ti(&v_50, 3, &v_51);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_22, &v_49, &v_50);
+   _fx_M5LexerFM3REFVM7token_t1B(true, &v_51);
+   _fx_make_T2V14Lexer__token_ti(&v_51, 3, &v_52);
    fx_str_t slit_23 = FX_MAKE_STR("ref");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_23, &v_51, &v_52);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__THROW, 2, &v_53);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_23, &v_52, &v_53);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__THROW, 2, &v_54);
    fx_str_t slit_24 = FX_MAKE_STR("throw");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_24, &v_53, &v_54);
-   _fx_M3AstFM7LitBoolVM5lit_t1B(true, &v_55);
-   _fx_M5LexerFM7LITERALVM7token_t1V10Ast__lit_t(&v_55, &v_56);
-   _fx_make_T2V14Lexer__token_ti(&v_56, 0, &v_57);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_24, &v_54, &v_55);
+   _fx_M3AstFM7LitBoolVM5lit_t1B(true, &v_56);
+   _fx_M5LexerFM7LITERALVM7token_t1V10Ast__lit_t(&v_56, &v_57);
+   _fx_make_T2V14Lexer__token_ti(&v_57, 0, &v_58);
    fx_str_t slit_25 = FX_MAKE_STR("true");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_25, &v_57, &v_58);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__TRY, 2, &v_59);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_25, &v_58, &v_59);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__TRY, 2, &v_60);
    fx_str_t slit_26 = FX_MAKE_STR("try");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_26, &v_59, &v_60);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__TYPE, 2, &v_61);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_26, &v_60, &v_61);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__TYPE, 2, &v_62);
    fx_str_t slit_27 = FX_MAKE_STR("type");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_27, &v_61, &v_62);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__VAL, 2, &v_63);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_27, &v_62, &v_63);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__VAL, 2, &v_64);
    fx_str_t slit_28 = FX_MAKE_STR("val");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_28, &v_63, &v_64);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__VAR, 2, &v_65);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_28, &v_64, &v_65);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g10Lexer__VAR, 2, &v_66);
    fx_str_t slit_29 = FX_MAKE_STR("var");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_29, &v_65, &v_66);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__WHEN, 1, &v_67);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_29, &v_66, &v_67);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__WHEN, 1, &v_68);
    fx_str_t slit_30 = FX_MAKE_STR("when");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_30, &v_67, &v_68);
-   _fx_M5LexerFM5WHILEVM7token_t1B(true, &v_69);
-   _fx_make_T2V14Lexer__token_ti(&v_69, 2, &v_70);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_30, &v_68, &v_69);
+   _fx_M5LexerFM5WHILEVM7token_t1B(true, &v_70);
+   _fx_make_T2V14Lexer__token_ti(&v_70, 2, &v_71);
    fx_str_t slit_31 = FX_MAKE_STR("while");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_31, &v_70, &v_71);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__WITH, 1, &v_72);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_31, &v_71, &v_72);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__WITH, 1, &v_73);
    fx_str_t slit_32 = FX_MAKE_STR("with");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_32, &v_72, &v_73);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g18Lexer__FOLD_RESULT, -1, &v_74);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_32, &v_73, &v_74);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g18Lexer__FOLD_RESULT, -1, &v_75);
    fx_str_t slit_33 = FX_MAKE_STR("__fold_result__");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_33, &v_74, &v_75);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__CCODE, 2, &v_76);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_33, &v_75, &v_76);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__CCODE, 2, &v_77);
    fx_str_t slit_34 = FX_MAKE_STR("@ccode");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_34, &v_76, &v_77);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g13Lexer__INLINE, 2, &v_78);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_34, &v_77, &v_78);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g13Lexer__INLINE, 2, &v_79);
    fx_str_t slit_35 = FX_MAKE_STR("@inline");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_35, &v_78, &v_79);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__NOTHROW, 2, &v_80);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_35, &v_79, &v_80);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__NOTHROW, 2, &v_81);
    fx_str_t slit_36 = FX_MAKE_STR("@nothrow");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_36, &v_80, &v_81);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g15Lexer__PARALLEL, 2, &v_82);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_36, &v_81, &v_82);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g15Lexer__PARALLEL, 2, &v_83);
    fx_str_t slit_37 = FX_MAKE_STR("@parallel");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_37, &v_82, &v_83);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__PRIVATE, 2, &v_84);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_37, &v_83, &v_84);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g14Lexer__PRIVATE, 2, &v_85);
    fx_str_t slit_38 = FX_MAKE_STR("@private");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_38, &v_84, &v_85);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__PURE, 2, &v_86);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_38, &v_85, &v_86);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g11Lexer__PURE, 2, &v_87);
    fx_str_t slit_39 = FX_MAKE_STR("@pure");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_39, &v_86, &v_87);
-   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__UNZIP, 2, &v_88);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_39, &v_87, &v_88);
+   _fx_make_T2V14Lexer__token_ti(&_fx_g12Lexer__UNZIP, 2, &v_89);
    fx_str_t slit_40 = FX_MAKE_STR("@unzip");
-   _fx_make_T2ST2V14Lexer__token_ti(&slit_40, &v_88, &v_89);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_89, 0, true, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_87, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_85, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_83, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_81, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_79, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_77, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_75, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_73, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_71, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_68, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_66, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_64, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_62, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_60, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_58, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_54, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_52, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_49, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_47, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_45, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_43, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_41, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_39, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_36, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_34, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_32, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_30, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_28, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_25, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_23, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_21, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_17, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_15, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_13, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_11, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_9, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_7, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_5, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_3, v_90, false, &v_90), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_1, v_90, false, &v_90), _fx_cleanup);
-   _fx_FPi2SS cmp_fp_0 = { _fx_M6StringFM3cmpi2SS, 0 };
-   FX_COPY_FP(&cmp_fp_0, &_fx_g10Lexer__cmp);
+   _fx_make_T2ST2V14Lexer__token_ti(&slit_40, &v_89, &v_90);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_90, 0, true, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_88, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_86, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_84, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_82, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_80, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_78, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_76, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_74, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_72, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_69, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_67, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_65, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_63, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_61, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_59, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_55, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_53, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_50, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_48, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_46, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_44, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_42, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_40, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_37, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_35, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_33, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_31, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_29, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_26, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_24, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_22, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_18, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_16, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_14, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_12, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_10, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_8, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_6, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_4, v_91, false, &v_91), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2V14Lexer__token_ti(&v_2, v_91, false, &v_91), _fx_cleanup);
+   _fx_FPq1S hash_w_fp_0 = { _fx_F6hash_wq1S, 0 };
+   FX_COPY_FP(&hash_w_fp_0, &_fx_g13Lexer__hash_w);
+   fx_str_t slit_41 = FX_MAKE_STR("");
    FX_CALL(
 
-         _fx_M3MapFM9from_listRtM1t2ST2V14Lexer__token_ti2FPi2SSLT2ST2V14Lexer__token_ti(
-            &_fx_g10Lexer__cmp, v_90, &_fx_g21Lexer__ficus_keywords, 0), _fx_cleanup);
+         _fx_M7HashmapFM9from_listRtM1t2ST2V14Lexer__token_ti4ST2V14Lexer__token_tiFPq1SLT2ST2V14Lexer__token_ti(
+            &slit_41, &v_0, &_fx_g13Lexer__hash_w, v_91, &_fx_g21Lexer__ficus_keywords, 0), _fx_cleanup);
 
 _fx_cleanup: ;
    _fx_free_T2V14Lexer__token_ti(&v_0);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_1);
-   _fx_free_T2V14Lexer__token_ti(&v_2);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_3);
-   _fx_free_T2V14Lexer__token_ti(&v_4);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_5);
-   _fx_free_T2V14Lexer__token_ti(&v_6);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_7);
-   _fx_free_T2V14Lexer__token_ti(&v_8);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_9);
-   _fx_free_T2V14Lexer__token_ti(&v_10);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_11);
-   _fx_free_T2V14Lexer__token_ti(&v_12);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_13);
-   _fx_free_T2V14Lexer__token_ti(&v_14);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_15);
-   _fx_free_T2V14Lexer__token_ti(&v_16);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_17);
-   _fx_free_V10Ast__lit_t(&v_18);
-   _fx_free_V14Lexer__token_t(&v_19);
-   _fx_free_T2V14Lexer__token_ti(&v_20);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_21);
-   _fx_free_T2V14Lexer__token_ti(&v_22);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_23);
-   _fx_free_T2V14Lexer__token_ti(&v_24);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_25);
-   _fx_free_V14Lexer__token_t(&v_26);
-   _fx_free_T2V14Lexer__token_ti(&v_27);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_28);
-   _fx_free_T2V14Lexer__token_ti(&v_29);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_30);
-   _fx_free_T2V14Lexer__token_ti(&v_31);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_32);
-   _fx_free_T2V14Lexer__token_ti(&v_33);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_34);
-   _fx_free_T2V14Lexer__token_ti(&v_35);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_36);
-   _fx_free_V14Lexer__token_t(&v_37);
-   _fx_free_T2V14Lexer__token_ti(&v_38);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_39);
-   _fx_free_T2V14Lexer__token_ti(&v_40);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_41);
-   _fx_free_T2V14Lexer__token_ti(&v_42);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_43);
-   _fx_free_T2V14Lexer__token_ti(&v_44);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_45);
-   _fx_free_T2V14Lexer__token_ti(&v_46);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_47);
-   _fx_free_T2V14Lexer__token_ti(&v_48);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_49);
-   _fx_free_V14Lexer__token_t(&v_50);
-   _fx_free_T2V14Lexer__token_ti(&v_51);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_52);
-   _fx_free_T2V14Lexer__token_ti(&v_53);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_54);
-   _fx_free_V10Ast__lit_t(&v_55);
-   _fx_free_V14Lexer__token_t(&v_56);
-   _fx_free_T2V14Lexer__token_ti(&v_57);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_58);
-   _fx_free_T2V14Lexer__token_ti(&v_59);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_60);
-   _fx_free_T2V14Lexer__token_ti(&v_61);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_62);
-   _fx_free_T2V14Lexer__token_ti(&v_63);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_64);
-   _fx_free_T2V14Lexer__token_ti(&v_65);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_66);
-   _fx_free_T2V14Lexer__token_ti(&v_67);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_68);
-   _fx_free_V14Lexer__token_t(&v_69);
-   _fx_free_T2V14Lexer__token_ti(&v_70);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_71);
-   _fx_free_T2V14Lexer__token_ti(&v_72);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_73);
-   _fx_free_T2V14Lexer__token_ti(&v_74);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_75);
-   _fx_free_T2V14Lexer__token_ti(&v_76);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_77);
-   _fx_free_T2V14Lexer__token_ti(&v_78);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_79);
-   _fx_free_T2V14Lexer__token_ti(&v_80);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_81);
-   _fx_free_T2V14Lexer__token_ti(&v_82);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_83);
-   _fx_free_T2V14Lexer__token_ti(&v_84);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_85);
-   _fx_free_T2V14Lexer__token_ti(&v_86);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_87);
-   _fx_free_T2V14Lexer__token_ti(&v_88);
-   _fx_free_T2ST2V14Lexer__token_ti(&v_89);
-   if (v_90) { _fx_free_LT2ST2V14Lexer__token_ti(&v_90);
+   _fx_free_T2V14Lexer__token_ti(&v_1);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_2);
+   _fx_free_T2V14Lexer__token_ti(&v_3);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_4);
+   _fx_free_T2V14Lexer__token_ti(&v_5);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_6);
+   _fx_free_T2V14Lexer__token_ti(&v_7);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_8);
+   _fx_free_T2V14Lexer__token_ti(&v_9);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_10);
+   _fx_free_T2V14Lexer__token_ti(&v_11);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_12);
+   _fx_free_T2V14Lexer__token_ti(&v_13);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_14);
+   _fx_free_T2V14Lexer__token_ti(&v_15);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_16);
+   _fx_free_T2V14Lexer__token_ti(&v_17);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_18);
+   _fx_free_V10Ast__lit_t(&v_19);
+   _fx_free_V14Lexer__token_t(&v_20);
+   _fx_free_T2V14Lexer__token_ti(&v_21);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_22);
+   _fx_free_T2V14Lexer__token_ti(&v_23);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_24);
+   _fx_free_T2V14Lexer__token_ti(&v_25);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_26);
+   _fx_free_V14Lexer__token_t(&v_27);
+   _fx_free_T2V14Lexer__token_ti(&v_28);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_29);
+   _fx_free_T2V14Lexer__token_ti(&v_30);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_31);
+   _fx_free_T2V14Lexer__token_ti(&v_32);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_33);
+   _fx_free_T2V14Lexer__token_ti(&v_34);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_35);
+   _fx_free_T2V14Lexer__token_ti(&v_36);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_37);
+   _fx_free_V14Lexer__token_t(&v_38);
+   _fx_free_T2V14Lexer__token_ti(&v_39);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_40);
+   _fx_free_T2V14Lexer__token_ti(&v_41);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_42);
+   _fx_free_T2V14Lexer__token_ti(&v_43);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_44);
+   _fx_free_T2V14Lexer__token_ti(&v_45);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_46);
+   _fx_free_T2V14Lexer__token_ti(&v_47);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_48);
+   _fx_free_T2V14Lexer__token_ti(&v_49);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_50);
+   _fx_free_V14Lexer__token_t(&v_51);
+   _fx_free_T2V14Lexer__token_ti(&v_52);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_53);
+   _fx_free_T2V14Lexer__token_ti(&v_54);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_55);
+   _fx_free_V10Ast__lit_t(&v_56);
+   _fx_free_V14Lexer__token_t(&v_57);
+   _fx_free_T2V14Lexer__token_ti(&v_58);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_59);
+   _fx_free_T2V14Lexer__token_ti(&v_60);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_61);
+   _fx_free_T2V14Lexer__token_ti(&v_62);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_63);
+   _fx_free_T2V14Lexer__token_ti(&v_64);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_65);
+   _fx_free_T2V14Lexer__token_ti(&v_66);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_67);
+   _fx_free_T2V14Lexer__token_ti(&v_68);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_69);
+   _fx_free_V14Lexer__token_t(&v_70);
+   _fx_free_T2V14Lexer__token_ti(&v_71);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_72);
+   _fx_free_T2V14Lexer__token_ti(&v_73);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_74);
+   _fx_free_T2V14Lexer__token_ti(&v_75);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_76);
+   _fx_free_T2V14Lexer__token_ti(&v_77);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_78);
+   _fx_free_T2V14Lexer__token_ti(&v_79);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_80);
+   _fx_free_T2V14Lexer__token_ti(&v_81);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_82);
+   _fx_free_T2V14Lexer__token_ti(&v_83);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_84);
+   _fx_free_T2V14Lexer__token_ti(&v_85);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_86);
+   _fx_free_T2V14Lexer__token_ti(&v_87);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_88);
+   _fx_free_T2V14Lexer__token_ti(&v_89);
+   _fx_free_T2ST2V14Lexer__token_ti(&v_90);
+   if (v_91) { _fx_free_LT2ST2V14Lexer__token_ti(&v_91);
    }
    return fx_status;
 }
 
 FX_EXTERN_C void fx_deinit_Lexer(void)
-{ FX_FREE_FP(&_fx_g10Lexer__cmp); _fx_free_Rt6Map__t2ST2V14Lexer__token_ti(&_fx_g21Lexer__ficus_keywords);
+{ FX_FREE_FP(&_fx_g13Lexer__hash_w); _fx_free_Rt10Hashmap__t2ST2V14Lexer__token_ti(&_fx_g21Lexer__ficus_keywords);
 }
 

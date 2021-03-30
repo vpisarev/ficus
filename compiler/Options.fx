@@ -22,6 +22,7 @@ type options_t =
     optim_iters: int = 0;
     inline_thresh: int = 100;
     relax: bool = false;
+    use_preamble: bool = true;
     make_app: bool = true;
     optimize_level: int = 1;
     output_name: string = "";
@@ -79,6 +80,8 @@ where options can be some of:
                     the bigger functions are inlined;
                     --inline-thresh=0 disables inline expansion
     -relax          Do not require explicit typing of all global functions' parameters
+    -no-preamble    Do not auto-import 'Builtins', 'List', 'String' and
+                    a few other standard modules into each compiled module.
     -Wno-unused     Do not report warnings about unused values/functions
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
@@ -121,6 +124,8 @@ fun parse_options(): bool {
     var ok = true
     while args != [] {
         args = match args {
+            | "-no-preamble" :: next =>
+                opt.use_preamble = false; next
             | "-rebuild" :: next =>
                 opt.force_rebuild = true; next
             | "-pr-tokens" :: next =>
@@ -236,17 +241,13 @@ fun parse_options(): bool {
             opt.inline_thresh = 1
         }
         opt.filename = Filename.normalize(curr_dir, inputfile)
-        val output_name = Filename.basename(opt.filename)
-        val output_name = Filename.remove_extension(output_name)
+        val default_output_name = Filename.basename(opt.filename)
+        val default_output_name = Filename.remove_extension(default_output_name)
         opt.build_rootdir = Filename.normalize(curr_dir, opt.build_rootdir)
         opt.build_rootdir = Filename.normalize(opt.build_rootdir, "__build__")
-        opt.build_dir = Filename.normalize(opt.build_rootdir, output_name)
-        opt.app_filename =
-            if opt.output_name != "" {
-                Filename.normalize(curr_dir, opt.output_name)
-            } else {
-                Filename.normalize(opt.build_dir, output_name)
-            }
+        opt.app_filename = if opt.output_name != "" { opt.output_name } else { default_output_name }
+        opt.build_dir = Filename.normalize(opt.build_rootdir, Filename.basename(opt.app_filename))
+        if opt.output_name == "" { opt.app_filename = Filename.normalize(opt.build_dir, opt.app_filename) }
         opt.app_args = opt.app_args.rev()
         true
     } else { false }

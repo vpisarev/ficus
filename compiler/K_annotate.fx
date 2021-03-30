@@ -15,7 +15,7 @@
 
 from Ast import *
 from K_form import *
-import Map, Set
+import Map, Set, Hashmap, Hashset
 
 // For each type finds the set of its direct dependencies,
 // i.e. the names of other types that are mentioned in its definition, e.g.
@@ -48,12 +48,10 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
     }
 }
 
-type idref_map_t = (id_t, idset_t ref) Map.t
-val empty_idref_map : idref_map_t = Map.empty(cmp_id)
-
 fun find_recursive(top_code: kcode_t)
 {
-    var dep_env = empty_idref_map
+    val idset0 = empty_id_hashset(1)
+    var all_typ_deps = Hashmap.empty(1024, noid, idset0, hash)
 
     // form the initial sets of depndencies and collect them in a map for each type id
     fun fold_deps0_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
@@ -61,10 +59,12 @@ fun find_recursive(top_code: kcode_t)
         match e {
         | KDefVariant (ref {kvar_name, kvar_loc}) =>
             val deps = get_typ_deps(kvar_name, kvar_loc)
-            dep_env = dep_env.add(kvar_name, ref deps)
+            val deps = id_hashset(deps)
+            all_typ_deps.add(kvar_name, deps)
         | KDefTyp (ref {kt_name, kt_loc}) =>
             val deps = get_typ_deps(kt_name, kt_loc)
-            dep_env = dep_env.add(kt_name, ref deps)
+            val deps = id_hashset(deps)
+            all_typ_deps.add(kt_name, deps)
         | _ => fold_kexp(e, callb)
         }
 
@@ -88,65 +88,25 @@ fun find_recursive(top_code: kcode_t)
     // retain the key and just augment its value.
     // Instead we use references for the values (idset_t ref), so
     // we just modify the values in-place.
-    fun finalize_deps(iters: int, all_typs: id_t list): int
-    {
-        var visited_typs = empty_idset
-        var changed = false
-        if iters <= 0 {
-            throw compile_err(noloc, "finalization of the defined types' dependency sets takes too much iterations")
-        }
-        fun update_deps(n: id_t): idset_t =
-            match dep_env.find_opt(n) {
-            // rdeps can be spelled as ref (dependencies) or as
-            // recursive dependencies, but actually it's both.
-            | Some rdeps =>
-                if visited_typs.mem(n) {
-                    *rdeps
-                } else {
-                    visited_typs = visited_typs.add(n)
-                    val size0 = rdeps->size
-                    val upd_deps = rdeps->foldl(
-                        fun (d: id_t, deps: idset_t) {
-                            if d == n {deps}
-                            else {
-                                val ddeps = update_deps(d)
-                                deps.union(ddeps)
-                            }
-                        }, *rdeps)
-                    val size1 = upd_deps.size
-                    if size1 != size0 {
-                        *rdeps = upd_deps
-                        changed = true
-                    }
-                    upd_deps
-                }
-            | _ => empty_idset
-            }
-
-        for n <- all_typs { ignore(update_deps(n)) }
-        if !changed { iters - 1 }
-        else { finalize_deps(iters - 1, all_typs.rev()) }
-    }
-
     val iters0 = 10
-    val all_typs = dep_env.foldl(
+    val all_typs = all_typ_deps.foldl(
         fun (n: id_t, _, all_typs: id_t list) {n :: all_typs}, []).rev()
-    val _ = finalize_deps(iters0, all_typs)
+    val _ = calc_sets_closure(iters0, all_typs, all_typ_deps)
 
     fun is_recursive(n: id_t): bool =
-        match dep_env.find_opt(n) {
-        | Some rdeps => rdeps->mem(n)
+        match all_typ_deps.find_opt(n) {
+        | Some deps => deps.mem(n)
         | _ => false
         }
 
     for n <- all_typs {
-        if is_recursive(n) {
-            match kinfo_(n, noloc) {
-            | KVariant kvar =>
+        match kinfo_(n, noloc) {
+        | KVariant kvar =>
+            if is_recursive(n) {
                 val {kvar_flags} = *kvar
                 *kvar = kvar->{kvar_flags=kvar_flags.{var_flag_recursive=true}}
-            | _ => {}
             }
+        | _ => {}
         }
     }
 }

@@ -5,7 +5,7 @@
 
 // Ficus lexer/tokenizer
 
-import File, Map, Sys
+import File, Hashmap, Sys
 import Ast
 
 type lloc_t = (int, int)
@@ -611,7 +611,7 @@ fun getstring(s: string, pos: int, loc: lloc_t, term: char, raw: bool, fmt: bool
         or an expression beginning (type 2), depending on context
    -1 - reserved/internal-use keyword.
 */
-var ficus_keywords = Map.from_list(String.cmp,
+var ficus_keywords = Hashmap.from_list("", (FUN, 0), hash,
     [: ("as", (AS, 1)), ("break", (BREAK, 0)), ("catch", (CATCH, 1)),
     ("class", (CLASS, 2)), ("continue", (CONTINUE, 0)), ("do", (DO, 2)),
     ("else", (ELSE, 1)), ("exception", (EXCEPTION, 2)), ("extends", (EXTENDS, 1)),

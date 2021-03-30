@@ -11,10 +11,9 @@
 
 from Ast import *
 from K_form import *
-import Map
+import Hashmap
 
-type mangle_map_t = (string, id_t) Map.t
-val empty_mangle_map : mangle_map_t = Map.empty(String.cmp)
+type mangle_map_t = (string, id_t) Hashmap.t
 
 fun mangle_mname(m: string): string = m.replace(".", "__")
 
@@ -96,7 +95,7 @@ fun compress_name(nstr: string, sc: scope_t list, loc: loc_t)
    Note, that the name is preceded with its length
    (that includes the possible "1_" etc. in the end) */
 fun mangle_make_unique( n_id: id_t, prefix: string, name: string,
-    suffix: string, mangle_map: mangle_map_t ref): (string, string)
+    suffix: string, mangle_map: mangle_map_t): (string, string)
 {
     fun make_unique_(idx: int) {
         val idxstr = if idx == 0 { "" } else { string(idx) + "_" }
@@ -104,10 +103,10 @@ fun mangle_make_unique( n_id: id_t, prefix: string, name: string,
         val nlen = name1.length()
         val candidate_base_name = prefix + string(nlen) + name1
         val candidate = candidate_base_name + suffix
-        if mangle_map->mem(candidate) {
+        if mangle_map.mem(candidate) {
             make_unique_(idx + 1)
         } else {
-            *mangle_map = mangle_map->add(candidate, n_id)
+            mangle_map.add(candidate, n_id)
             (candidate_base_name, candidate)
         }
     }
@@ -124,7 +123,7 @@ fun remove_fx(str: string) =
    mangling KTypName _ and KTypRecord _.
    Update the mangled names (cname), if needed,
    for those KTypName _ and KTypRecord _. */
-fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t ref, loc: loc_t): string
+fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
 {
     fun mangle_inst_(n_id: id_t, prefix: string, targs: ktyp_t list,
         name: id_t, sc: scope_t list): (string, string)
@@ -229,13 +228,13 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t ref, loc: loc_t): string
 }
 
 fun mangle_all(kmods: kmodule_t list) {
-    val mangle_map = ref empty_mangle_map
+    val mangle_map: mangle_map_t = Hashmap.empty(1024, "", noid, hash)
     var curr_top_code: kcode_t = []
 
     fun create_gen_typ(t: ktyp_t, name_prefix: string, loc: loc_t)
     {
         val cname = mangle_ktyp(t, mangle_map, loc)
-        match mangle_map->find_opt(cname) {
+        match mangle_map.find_opt(cname) {
         | Some(i) => KTypName(i)
         | _ =>
             val i = gen_temp_idk(name_prefix)
@@ -243,7 +242,7 @@ fun mangle_all(kmods: kmodule_t list) {
                 kt_name=i, kt_cname=add_fx(cname),
                 kt_targs=[], kt_typ=t, kt_props=None,
                 kt_scope=[], kt_loc=loc})
-            *mangle_map = mangle_map->add(cname, i)
+            mangle_map.add(cname, i)
             set_idk_entry(i, KTyp(kt))
             curr_top_code = KDefTyp(kt) :: curr_top_code
             KTypName(i)

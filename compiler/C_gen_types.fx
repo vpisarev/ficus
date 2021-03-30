@@ -22,7 +22,7 @@ from K_form import *
 from C_form import *
 
 import K_annotate, K_mangle
-import Map, Set
+import Map, Set, Hashset
 
 /* converts function arguments and the return type to ctyp_t.
    where needed, adds pointers. The return value is added to the argument list.
@@ -844,7 +844,7 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
         | _ => noid
         }
 
-    fun is_used_decl(s: cstmt_t, used_ids: idset_t): bool =
+    fun is_used_decl(s: cstmt_t, used_ids: id_hashset_t): bool =
         match s {
         | CDefTyp (ref {ct_name, ct_typ}) =>
             used_ids.mem(ct_name) || used_ids.mem(get_ctyp_id(ct_typ))
@@ -857,16 +857,16 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
         | _ => false
         }
 
-    fun used_ids_by_ccode(ccode: ccode_t): idset_t
+    fun used_ids_by_ccode(ccode: ccode_t, size0: int): id_hashset_t
     {
-        var used_ids = empty_idset
+        var used_ids = empty_id_hashset(size0)
         fun add_used_id(n: id_t, callb: c_fold_callb_t)
         {
             val ok= match n {
                     | IdName _ => !pp(n).startswith("fx_")
                     | _ => true
                     }
-            if ok { used_ids = used_ids.add(n) }
+            if ok { used_ids.add(n) }
         }
 
         fun used_ctyp(t: ctyp_t, callb: c_fold_callb_t)
@@ -908,29 +908,29 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
         used_ids
     }
 
-    val used_ids = used_ids_by_ccode(ccode)
-    fun update_used_ids(used_ids: idset_t): idset_t
+    val used_ids = used_ids_by_ccode(ccode, 1024)
+    fun update_used_ids(used_ids: id_hashset_t)
     {
         val decls_plus =
             [: for s <- all_ctypes_decl {
-                val uv = used_ids_by_ccode(s :: [])
+                val uv = used_ids_by_ccode(s :: [], 8)
                 (s, uv) } :]
-        fun update_used_ids_(iters: int, prev_set: idset_t) =
-            if iters == 0 {
-                throw compile_err(noloc, f"{pp(mname)}: too many iterations in update_used_ctypes_")
-            } else {
-                val fold new_set = prev_set for (s, uv) <- decls_plus {
-                    val add = is_used_decl(s, new_set)
-                    if add { new_set.union(uv) }
-                    else { new_set }
+        var done = false
+        for i <- 0:100 {
+            val size0 = used_ids.size()
+            for (s, uv) <- decls_plus {
+                if  is_used_decl(s, used_ids) {
+                    used_ids.union(uv)
                 }
-                if new_set.size == prev_set.size { new_set }
-                else { update_used_ids_(iters-1, new_set) }
             }
-        update_used_ids_(100, used_ids)
+            if used_ids.size() == size0 {
+                done = true; break
+            }
+        }
+        if !done {throw compile_err(noloc, f"{pp(mname)}: too many iterations in update_used_ctypes_")}
     }
 
-    val used_ids = update_used_ids(used_ids)
+    update_used_ids(used_ids)
     val fold ctypes_ccode = []
         for s <- all_ctypes_fwd_decl + (all_ctypes_decl + all_ctypes_fun_decl) {
         if is_used_decl(s, used_ids) { s :: ctypes_ccode }

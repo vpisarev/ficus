@@ -88,9 +88,9 @@ from C_form import *
 import K_remove_unused, K_annotate, K_mangle
 import C_gen_types, C_gen_fdecls, C_pp
 
-import Map, Set
+import Map, Set, Hashmap, Hashset
 
-type count_map_t = (id_t, int) Map.t
+type count_map_t = (id_t, int) Hashmap.t
 
 /* Finds a set of immutable values that can potentially be replaced
    with the expressions that they are initalized with, e.g.
@@ -109,18 +109,15 @@ type count_map_t = (id_t, int) Map.t
 */
 fun find_single_use_vals(topcode: kcode_t)
 {
-    var count_map: count_map_t = Map.empty(cmp_id)
-    var decl_const_vals = empty_idset
+    var count_map: count_map_t = Hashmap.empty(1024, noid, 0, hash)
+    var decl_const_vals = empty_id_hashset(1024)
 
     fun count_atom(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
         match a {
         | AtomId i =>
             if decl_const_vals.mem(i) {
-                val n = match count_map.find_opt(i) {
-                        | Some n => n
-                        | _ => 0
-                        }
-                count_map = count_map.add(i, n + 1)
+                val idx = count_map.find_idx_or_insert(i)
+                count_map._state->table[idx].2 += 1
             }
         | _ => {}
         }
@@ -133,7 +130,7 @@ fun find_single_use_vals(topcode: kcode_t)
                 and computed using pure expressions */
             val good_temp = kv_flags.val_flag_tempref || kv_flags.val_flag_temp
             if good_temp && K_remove_unused.pure_kexp(e1) {
-                decl_const_vals = decl_const_vals.add(k)
+                decl_const_vals.add(k)
             }
             count_kexp(e1, callb)
         | KExpCall (f, _, (_, loc)) =>
@@ -152,11 +149,14 @@ fun find_single_use_vals(topcode: kcode_t)
         kcb_fold_atom=Some(count_atom)
     }
     for e <- topcode { count_kexp(e, count_callb) }
-    decl_const_vals.filter(fun (i) {
+
+    val u1_vals = empty_id_hashset(decl_const_vals.size())
+    decl_const_vals.app(fun (i) {
         match count_map.find_opt(i) {
-        | Some 1 => true
-        | _ => false
+        | Some 1 => u1_vals.add(i)
+        | _ => {}
         }})
+    u1_vals
 }
 
 /* utility function that helps to find some loop or other complex expression invariants.
@@ -245,7 +245,7 @@ int main(int argc, char** argv)
             loc)) :: []
     }
 
-type cexp_map_t = (id_t, cexp_t) Map.t
+type cexp_map_t = (id_t, cexp_t) Hashmap.t
 
 fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_init_calls: ccode_t)
 {
@@ -255,19 +255,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     var top_inline_ccode: ccode_t = []
     var fwd_fdecls: ccode_t = []
     var module_cleanup: ccode_t = []
-    var defined_syms = empty_idset
-    var i2e: cexp_map_t = Map.empty(cmp_id)
+    var defined_syms = empty_id_hashset(1024)
+    var i2e: cexp_map_t = Hashmap.empty(1024, noid, CExpTyp(CTypInt, noloc), hash)
     val u1vals = find_single_use_vals(top_code)
     var block_stack: block_ctx_t ref list = []
     val for_letters = [: "i", "j", "k", "l", "m" :]
     val fx_status_ = get_id("fx_status")
 
     fun make_fx_status(loc: loc_t) = make_id_t_exp(fx_status_, CTypCInt, loc)
-    fun add_to_defined(f: id_t) = defined_syms = defined_syms.add(f)
 
     fun ensure_sym_is_defined_or_declared(f: id_t, loc: loc_t) =
         if !defined_syms.mem(f) {
-            add_to_defined(f)
+            defined_syms.add(f)
             fwd_fdecls = CDefForwardSym(f, loc) :: fwd_fdecls
         }
 
@@ -401,7 +400,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             } else {
                 val ctyp_ptr = make_ptr(ctyp)
                 val deref_i_exp = CExpUnary(COpDeref, make_id_t_exp(i, ctyp_ptr, loc), (ctyp, loc))
-                i2e = i2e.add(i, deref_i_exp)
+                i2e.add(i, deref_i_exp)
                 (cexp_get_addr(e0), ctyp_ptr)
             }
         create_cdefval(i, ctyp, flags, "", Some(e), ccode, loc)
@@ -504,7 +503,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val i2 = dup_idc(i)
                 val (add_deref, e, ctyp) = handle_temp_ref(kv_flags, e, ctyp)
                 val (i2_exp, ccode) = add_local(i2, ctyp, kv_flags, Some(e), ccode, loc)
-                i2e = i2e.add(i, i2_exp)
+                i2e.add(i, i2_exp)
                 (if add_deref { cexp_deref(i2_exp) } else { i2_exp }, ccode)
             }
         | _ =>
@@ -2090,48 +2089,37 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val unzip_mode = flags.for_flag_unzip
             val nfors = e_idoml_l.length()
             /* collect all the variables/values declared inside for (include iterations variables) */
-            val (pre_alloc_array, _) =
+            val pre_alloc_array =
             if !need_make_array {
-                (false, empty_idset)
+                false
             } else {
-                fold pre_alloc_array = true, decl_inside_for = empty_idset for (e, idoml, idxl) <- e_idoml_l {
-                    if !pre_alloc_array {
-                        (pre_alloc_array, decl_inside_for)
-                    } else {
-                        val fold decl_inside_for = decl_inside_for for i <- idxl {
+                val decl_inside_for = empty_id_hashset(256)
+                all(for (e, idoml, idxl) <- e_idoml_l {
+                        decl_inside_for.union(declared(e::[], 256))
+                        for i <- idxl {
                             decl_inside_for.add(i)
                         }
-                        val (_, decl_inside_e) = used_decl_by_kexp(e)
-                        val decl_inside_for = decl_inside_for.union(decl_inside_e)
-                        fold pre_alloc_array = true, decl_inside_for = decl_inside_for for (i, dom) <- idoml {
-                            val decl_inside_for = decl_inside_for.add(i)
-                            val pre_alloc_array =
+                        all(for (i, dom) <- idoml {
+                            decl_inside_for.add(i)
                             match dom {
                             | DomainElem(AtomId col) =>
                                 val {kv_typ, kv_flags} = get_kval(col, kloc)
-                                if !kv_flags.val_flag_mutable &&
-                                    (match kv_typ { | KTypArray _ | KTypString => true | _ => false }) &&
-                                    !decl_inside_for.mem(col) {
-                                    pre_alloc_array
-                                } else {
-                                    false
-                                }
-                            | DomainElem(AtomLit(KLitString _)) => pre_alloc_array
+                                !kv_flags.val_flag_mutable &&
+                                (match kv_typ { | KTypArray _ | KTypString => true | _ => false }) &&
+                                !decl_inside_for.mem(col)
+                            | DomainElem(AtomLit(KLitString _)) => true
                             | DomainRange (a, b, delta) =>
                                 fun check_range_elem(abd: atom_t) =
                                     match abd {
                                     | AtomId k =>
-                                        if is_mutable(k, kloc) || decl_inside_for.mem(k) { false }
-                                        else { pre_alloc_array }
-                                    | _ => pre_alloc_array
+                                        !is_mutable(k, kloc) && !decl_inside_for.mem(k)
+                                    | _ => true
                                     }
                                 check_range_elem(a) && check_range_elem(b) && check_range_elem(delta)
                             | _ => false
                             }
-                            (pre_alloc_array, decl_inside_for)
-                        }
-                    }
-                }
+                        })
+                    })
             }
             /* compute the total array dimensionality */
             val fold ndims = 0 for (e, idoml, _)@for_idx <- e_idoml_l {
@@ -2523,7 +2511,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         | KDefVal (i, e2, _) =>
             val {kv_typ, kv_cname, kv_flags} = get_kval(i, kloc)
             if is_val_global(kv_flags) || kv_flags.val_flag_ctor != noid {
-                add_to_defined(i)
+                defined_syms.add(i)
             }
             val {ktp_ptr, ktp_complex, ktp_scalar} = K_annotate.get_ktprops(kv_typ, kloc)
             val ctyp = C_gen_types.ktyp2ctyp(kv_typ, kloc)
@@ -2598,7 +2586,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (ce2, ccode) = kexp2cexp(e2, ref None, ccode)
                     /* we still need to declare i to be able to access its type */
                     val _ = create_cdefval(i, ctyp, kv_flags, "", None, [], kloc)
-                    i2e = i2e.add(i, ce2)
+                    i2e.add(i, ce2)
                     ccode
                 } else if is_temp_ref {
                     val (ce2, ccode) = kexp2cexp(e2, ref None, ccode)
@@ -2710,7 +2698,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             if kci_arg != noid {
                 ensure_sym_is_defined_or_declared(kf_name, kf_loc)
             }
-            add_to_defined(kf_name)
+            defined_syms.add(kf_name)
             new_block_ctx(BlockKind_Fun(kf_name), kloc)
             val (args, rt, is_nothrow, cf) =
             match cinfo_(kf_name, kf_loc) {
@@ -2749,7 +2737,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     }
                     for (a, t, flags) <- real_args {
                         if flags.mem(CArgPassByPtr) {
-                            i2e = i2e.add(a, cexp_deref(make_id_exp(a, kf_loc)))
+                            i2e.add(a, cexp_deref(make_id_exp(a, kf_loc)))
                         }
                     }
                 val ccode =

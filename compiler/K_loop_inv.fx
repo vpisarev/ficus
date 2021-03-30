@@ -11,11 +11,11 @@ from Ast import *
 from K_form import *
 import K_remove_unused
 
-import Set
+import Hashset
 
 fun move_loop_invs(code: kcode_t)
 {
-    var curr_inloop = empty_idset
+    var curr_inloop = empty_id_hashset(256)
     var curr_moved: kcode_t = []
 
     fun is_loop_invariant(e: kexp_t)
@@ -56,27 +56,26 @@ fun move_loop_invs(code: kcode_t)
     fun mli_process_loop(e_idl_l: (kexp_t, (id_t, dom_t) list, id_t list) list,
                          body: kexp_t, loc: loc_t, callb: k_callb_t)
     {
-        val (_, inloop) = used_decl_by_kexp(body)
-        val saved_inloop = curr_inloop
+        val saved_inloop = curr_inloop.copy()
         val saved_moved = curr_moved
-        val (outer_moved, new_e_idl_l, new_body, _) =
-            fold nested_elist = kexp2code(body), e_idl_l = [], body = KExpNop(loc), inloop = inloop
+        curr_inloop = declared(body::[], 256)
+        val (outer_moved, new_e_idl_l, new_body) =
+            fold nested_elist = kexp2code(body), e_idl_l = [], body = KExpNop(loc)
             for (pre_e, idl, idxl) <- e_idl_l.rev() {
-                val (_, in_pre) = used_decl_by_kexp(pre_e)
-                val fold inloop = inloop for (i, _) <- idl { inloop.add(i) }
-                val fold inloop = inloop for i <- idxl { inloop.add(i) }
-                curr_inloop = inloop
+                val in_pre = declared(pre_e :: [], 256)
+                for (i, _) <- idl { curr_inloop.add(i) }
+                for i <- idxl { curr_inloop.add(i) }
                 curr_moved = []
                 val nested_e = mli_kexp(code2kexp(nested_elist, loc), callb)
                 val new_elist = kexp2code(pre_e) + curr_moved.rev()
-                val new_inloop = inloop.union(in_pre)
+                curr_inloop.union(in_pre)
                 val (e_idl_l, new_body) =
                     match e_idl_l {
                     | (_, prev_idl, prev_idxl) :: rest => ((nested_e, prev_idl, prev_idxl) :: rest, body)
                     | _ => ([], nested_e)
                     }
                 val new_e_idl_l = (KExpNop(loc), idl, idxl) :: e_idl_l
-                (new_elist, new_e_idl_l, new_body, new_inloop)
+                (new_elist, new_e_idl_l, new_body)
         }
         curr_inloop = saved_inloop
         curr_moved = saved_moved
