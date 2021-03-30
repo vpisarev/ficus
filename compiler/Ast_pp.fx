@@ -165,12 +165,10 @@ fun pprint_for_flags(pp: PP.t, flags: for_flags_t)
 
 fun pprint_exp(pp: PP.t, e: exp_t): void
 {
-    fun ppcases(pe_l: (pat_t list, exp_t) list) {
+    fun ppcases(pe_l: (pat_t, exp_t) list) {
         pp.str("{"); pp.cut(); pp.begin()
-        for (pl, e) <- pe_l {
-            for p <- pl {
-                pp.space(); pp.str("|"); pp.space(); pprint_pat(pp, p)
-            }
+        for (p, e) <- pe_l {
+            pp.space(); pp.str("| "); pprint_pat(pp, p);
             pp.space(); pp.str("=>"); pp.space(); pprint_exp_as_seq(pp, e)
         }
         pp.cut(); pp.end(); pp.str("}")
@@ -552,11 +550,22 @@ fun pprint_pat(pp: PP.t, p: pat_t)
         pp.end()
     | PatTyped(p, t, loc) =>
         pp.begin(); pppat(p); pp.str(":"); pp.space(); pprint_typ(pp, t, loc); pp.end()
-    | PatRef(p, loc) =>
+    | PatRef(p, _) =>
         pp.begin(); pp.str("ref ("); pp.cut(); pppat(p); pp.cut(); pp.str(")"); pp.end()
-    | PatWhen(p, e, loc) =>
+    | PatWhen(p, e, _) =>
         pp.begin(); pppat(p); pp.space(); pp.str("when")
         pp.space(); pprint_exp(pp, e); pp.end()
+    | PatAlt(pl, _) =>
+        match pl {
+        | p :: [] => pppat(p)
+        | _ =>
+            pp.beginv(0); pp.str("(");
+            for p@i <- pl {
+                if i > 0 {pp.space()}
+                pp.str("| "); pppat(p)
+            }
+            pp.str(")"); pp.end()
+        }
     }
     pppat(p)
 }

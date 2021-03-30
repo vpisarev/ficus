@@ -49,8 +49,15 @@ fun good_variant_name(s: string) {
     ('A' <= c <= 'Z') || s.contains('.')
 }
 
-fun tok2str(ts: (token_t, loc_t) list) =
-    " ".join([: for (t, _) <- ts {tok2str(t).0} :])
+fun tok2str(ts: (token_t, loc_t) list)
+{
+    var ts_part = []
+    for (t, _)@i <- ts {
+        ts_part = t :: ts_part
+        if i >= 9 {break}
+    }
+    " ".join([: for t <- ts_part.rev() {tok2str(t).0} :])
+}
 
 fun make_unary(uop: unary_t, e: exp_t, loc: loc_t) = ExpUnary(uop, e, make_new_ctx(loc))
 fun make_binary(bop: binary_t, e1: exp_t, e2: exp_t, loc: loc_t) = ExpBinary(bop, e1, e2, make_new_ctx(loc))
@@ -144,10 +151,10 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
         match special {
         | "find" =>
             val x = get_id("x")
-            val some_case = ([: PatVariant(some, [: PatIdent(x, body_end_loc) :],
-                                body_end_loc) :], make_ident(x, body_end_loc))
-            val none_case = ([: PatAny(body_end_loc) :], ExpThrow(ExpIdent(
-                                get_id("NotFoundError"), (TypExn, body_end_loc)), body_end_loc))
+            val some_case = (PatVariant(some, [: PatIdent(x, body_end_loc) :],
+                             body_end_loc), make_ident(x, body_end_loc))
+            val none_case = (PatAny(body_end_loc), ExpThrow(ExpIdent(
+                            get_id("NotFoundError"), (TypExn, body_end_loc)), body_end_loc))
             ExpMatch(fr_exp, [: some_case, none_case :], (make_new_typ(), body_end_loc))
         | _ => fr_exp
         }
@@ -1095,7 +1102,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
             val catch_block = exp2expseq(dup_exp(final_e)) + (rethrow_exn :: [])
             val catch_block = expseq2exp(catch_block, fe_loc)
             val try_finally =
-                ExpTryCatch(try_block, ((some_exn_pat::[]), catch_block) :: [], make_new_ctx(ll))
+                ExpTryCatch(try_block, (some_exn_pat, catch_block) :: [], make_new_ctx(ll))
             (ts, try_finally)
         | _ => (ts, e)
         }
@@ -1283,7 +1290,9 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
 }
 
 fun parse_pat_list(ts: tklist_t, expect_comma: bool,
-                   result: pat_t list, simple: bool): (tklist_t, pat_t list) =
+                   result: pat_t list, simple: bool): (tklist_t, pat_t list)
+{
+    //println(f"parse_pat_list (expect_comma={expect_comma}): {tok2str(ts)}\n")
     match (ts, expect_comma) {
     | ((COMMA, _) :: rest, _) =>
         if expect_comma { parse_pat_list(rest, false, result, simple) }
@@ -1297,6 +1306,7 @@ fun parse_pat_list(ts: tklist_t, expect_comma: bool,
         val (ts, p) = parse_pat(ts, simple)
         parse_pat_list(ts, true, p :: result, simple)
     }
+}
 
 fun parse_idpat_list(ts: tklist_t, expect_comma: bool,
         result: (id_t, pat_t) list, simple: bool): (tklist_t, (id_t, pat_t) list) =
@@ -1321,7 +1331,9 @@ fun parse_idpat_list(ts: tklist_t, expect_comma: bool,
 
 fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
 {
-    fun parse_base_pat_(ts: tklist_t, simple: bool) =
+    fun parse_base_pat_(ts: tklist_t, simple: bool)
+    {
+        //println(f"parse_base_pat_: {tok2str(ts)}\n")
         match ts {
         | (LITERAL(lit), l1) :: rest =>
             if simple {throw parse_err(ts, "literals cannot be used in this pattern")}
@@ -1370,8 +1382,11 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
         | _ =>
             throw parse_err(ts, "pattern is expected")
         }
+    }
 
-    fun extend_pat_(ts: tklist_t, result: pat_t, min_prec: int, simple: bool) =
+    fun extend_pat_(ts: tklist_t, result: pat_t, min_prec: int, simple: bool)
+    {
+        //println(f"extend_pat_: {tok2str(ts)}\n")
         match ts {
         | (t, l) :: rest =>
             // roughly sort binary ops by how often they are met in the code,
@@ -1410,11 +1425,36 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
             }
         | _ => (ts, result)
         }
-    val (ts, p) = parse_base_pat_(ts, simple)
-    extend_pat_(ts, p, 0, simple)
+    }
+
+    fun parse_alt_(ts: tklist_t, expect_bar: bool, simple: bool, result: pat_t list): (tklist_t, pat_t)
+    {
+        //println(f"parse_alt_(expect_bar={expect_bar}): {tok2str(ts)}\n")
+        match (ts, expect_bar) {
+        | ((BAR, _) :: _, _) | ((BITWISE_OR, _) :: _, _) =>
+            if expect_bar { parse_alt_(ts.tl(), false, simple, result) }
+            else { throw parse_err(ts, "extra '|'?") }
+        | ((ARROW, _) :: _, _) => throw parse_err(ts, "unexpected '->', did you mean '=>'?")
+        | ((DOUBLE_ARROW, _) :: _, true) | ((COMMA, _) :: _, true) | ((RPAREN, _) :: _, true) | ((RBRACE, _) :: _, true) =>
+            val p = match result {
+                | p :: [] => p
+                | _ =>
+                    val result = result.rev()
+                    PatAlt(result, get_pat_loc(result.hd()))
+                }
+            (ts, p)
+        | ((DOUBLE_ARROW, _) :: _, false) =>
+            throw parse_err(ts, "pattern is expected")
+        | _ =>
+            val (ts, p) = parse_base_pat_(ts, simple)
+            val (ts, p) = extend_pat_(ts, p, 0, simple)
+            if simple { (ts, p) } else { parse_alt_(ts, true, simple, p :: result) }
+        }
+    }
+    parse_alt_(ts, false, simple, [])
 }
 
-type mcase_t = (pat_t list, exp_t)
+type mcase_t = (pat_t, exp_t)
 
 fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
 {
@@ -1424,20 +1464,6 @@ fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
     | _ => throw parse_err(ts, "'{' is expected")
     }
 
-    fun parse_alt_pats_(ts: tklist_t, expect_bar: bool, result: pat_t list): (tklist_t, pat_t list) =
-        match (ts, expect_bar) {
-        | ((BAR, _) :: rest, _) =>
-            if expect_bar { parse_alt_pats_(rest, false, result) }
-            else { throw parse_err(ts, "extra '|'?") }
-        | ((ARROW, _) :: _, _) => throw parse_err(ts, "unexpected '->', did you mean '=>'?")
-        | ((DOUBLE_ARROW, _) :: rest, true) => (rest, result.rev())
-        | ((BAR, _) :: _, false) | ((DOUBLE_ARROW, _) :: _, false) =>
-            throw parse_err(ts, "pattern is expected")
-        | _ =>
-            val (ts, p) = parse_pat(ts, false)
-            parse_alt_pats_(ts, true, p :: result)
-        }
-
     fun extend_match_cases_(ts: tklist_t, result: mcase_t list): (tklist_t, mcase_t list) =
         match ts {
         | (RBRACE, _) :: rest =>
@@ -1446,7 +1472,11 @@ fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
             }
             (rest, result.rev())
         | _ =>
-            val (ts, pl) = parse_alt_pats_(ts, false, [])
+            val (ts, p) = parse_pat(ts, false)
+            val ts = match ts {
+                | (DOUBLE_ARROW, _) :: rest => rest
+                | _ => throw parse_err(ts, "'=>' is expected")
+                }
             val (ts, e) = match ts {
                 | (LBRACE, l1) :: (RBRACE, _) :: rest =>
                     (rest, ExpNop(l1))
@@ -1462,7 +1492,7 @@ fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
                 | (BAR, _) :: rest => rest
                 | _ => ts
                 }
-            extend_match_cases_(ts, (pl, e) :: result)
+            extend_match_cases_(ts, (p, e) :: result)
         }
     extend_match_cases_(ts, [])
 }

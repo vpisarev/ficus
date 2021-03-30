@@ -26,7 +26,8 @@ fun get_preamble(mfname: string): Lexer.token_t list {
         val bare_name = Filename.remove_extension(Filename.basename(mfname))
         val (preamble, _) = fold (preamble, found) = ([], false)
             for (mname, from_import) <- [: ("Builtins", true), ("List", false),
-                                            ("Char", false), ("String", false) :] {
+                                            ("Char", false), ("String", false),
+                                            ("Math", true) :] {
             if found {
                 (preamble, found)
             } else if bare_name == mname {
@@ -37,14 +38,6 @@ fun get_preamble(mfname: string): Lexer.token_t list {
                 (preamble + [: Lexer.IMPORT(true), Lexer.IDENT(true, mname), Lexer.SEMICOLON :], false)
             }
         }
-        val preamble =
-            if bare_name != "Builtins" { preamble }
-            else {
-                // [TODO] insert proper git hash
-                [: //Lexer.IMPORT(true), Lexer.IDENT(true, "Config"), Lexer.SEMICOLON,
-                Lexer.VAL, Lexer.IDENT(true, "__ficus_git_commit__"), Lexer.EQUAL,
-                Lexer.LITERAL(Ast.LitString("123456789")), Lexer.SEMICOLON :] + preamble
-            }
         preamble
     } else { [] }
 }

@@ -241,26 +241,27 @@ typedef struct _fx_LT2V14Lexer__token_tTa2i_data_t
 typedef struct _fx_LV14Lexer__token_t_data_t  { int_ rc; struct _fx_LV14Lexer__token_t_data_t* tl; _fx_V14Lexer__token_t hd;
    } _fx_LV14Lexer__token_t_data_t, *_fx_LV14Lexer__token_t;
 
-typedef struct _fx_T3qST2V14Lexer__token_ti  { uint64_t t0; fx_str_t t1; _fx_T2V14Lexer__token_ti t2;
-   } _fx_T3qST2V14Lexer__token_ti;
-
 typedef struct _fx_FPq1S  { int (*fp)(fx_str_t*, uint64_t*, void*); fx_fcv_t* fcv; } _fx_FPq1S;
 
 typedef struct _fx_Ta2S  { fx_str_t t0; fx_str_t t1; } _fx_Ta2S;
 
-typedef struct _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti  { int_ nelems; int_ nremoved; fx_arr_t table;
-   } _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti;
+typedef struct _fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti  { uint64_t hv; fx_str_t key; _fx_T2V14Lexer__token_ti data;
+   } _fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti;
 
-typedef struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t
-   { int_ rc; _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti data;
-   } _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t, *_fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti;
-
-typedef struct _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti
+typedef struct _fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti
    {
        _fx_FPq1S hash_f;
-       fx_str_t k0;
-       _fx_T2V14Lexer__token_ti d0;
-       struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t* _state; } _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti;
+       _fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti default_entry;
+       int_ nelems;
+       int_ nremoved;
+       fx_arr_t table; } _fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti;
+
+typedef struct _fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti_data_t
+   { int_ rc; _fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti data;
+   } _fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti_data_t, *_fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti;
+
+typedef struct _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti  { struct _fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti_data_t* r;
+   } _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti;
 
 typedef struct _fx_T2R10Ast__loc_tS  { _fx_R10Ast__loc_t t0; fx_str_t t1; } _fx_T2R10Ast__loc_tS;
 
@@ -453,19 +454,6 @@ static int _fx_cons_LV14Lexer__token_t(
 { FX_MAKE_LIST_IMPL(_fx_LV14Lexer__token_t, _fx_copy_V14Lexer__token_t);
 }
 
-static void _fx_free_T3qST2V14Lexer__token_ti(_fx_T3qST2V14Lexer__token_ti* dst)
-{ fx_free_str(&dst->t1); _fx_free_T2V14Lexer__token_ti(&dst->t2);
-}
-
-static void _fx_copy_T3qST2V14Lexer__token_ti(_fx_T3qST2V14Lexer__token_ti* src, _fx_T3qST2V14Lexer__token_ti* dst)
-{ dst->t0 = src->t0; fx_copy_str(&src->t1, &dst->t1); _fx_copy_T2V14Lexer__token_ti(&src->t2, &dst->t2);
-}
-
-static void _fx_make_T3qST2V14Lexer__token_ti(
-   uint64_t t0, fx_str_t* t1, _fx_T2V14Lexer__token_ti* t2, _fx_T3qST2V14Lexer__token_ti* fx_result)
-{ fx_result->t0 = t0; fx_copy_str(t1, &fx_result->t1); _fx_copy_T2V14Lexer__token_ti(t2, &fx_result->t2);
-}
-
 static void _fx_free_Ta2S(_fx_Ta2S* dst)
 { fx_free_str(&dst->t0); fx_free_str(&dst->t1);
 }
@@ -478,63 +466,78 @@ static void _fx_make_Ta2S(fx_str_t* t0, fx_str_t* t1, _fx_Ta2S* fx_result)
 { fx_copy_str(t0, &fx_result->t0); fx_copy_str(t1, &fx_result->t1);
 }
 
-static void _fx_free_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(_fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* dst)
-{ fx_free_arr(&dst->table);
+static void _fx_free_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti(_fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti* dst)
+{ fx_free_str(&dst->key); _fx_free_T2V14Lexer__token_ti(&dst->data);
 }
 
-static void _fx_copy_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
-   _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* src, _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* dst)
-{ dst->nelems = src->nelems; dst->nremoved = src->nremoved; fx_copy_arr(&src->table, &dst->table);
+static void _fx_copy_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti(
+   _fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti* src, _fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti* dst)
+{ dst->hv = src->hv; fx_copy_str(&src->key, &dst->key); _fx_copy_T2V14Lexer__token_ti(&src->data, &dst->data);
 }
 
-static void _fx_make_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
-   int_ r_nelems, int_ r_nremoved, fx_arr_t* r_table, _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* fx_result)
-{ fx_result->nelems = r_nelems; fx_result->nremoved = r_nremoved; fx_copy_arr(r_table, &fx_result->table);
+static void _fx_make_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti(
+   uint64_t r_hv,
+      fx_str_t* r_key,
+      _fx_T2V14Lexer__token_ti* r_data,
+      _fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti* fx_result)
+{ fx_result->hv = r_hv; fx_copy_str(r_key, &fx_result->key); _fx_copy_T2V14Lexer__token_ti(r_data, &fx_result->data);
 }
 
-static void _fx_free_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
-   struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t** dst)
+static void _fx_free_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti(_fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti* dst)
 {
-   FX_FREE_REF_IMPL(
-      _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti, _fx_free_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti);
+   fx_free_fp(&dst->hash_f);
+   _fx_free_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti(&dst->default_entry);
+   fx_free_arr(&dst->table);
 }
 
-static int _fx_make_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(
-   _fx_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti* arg,
-      struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t** fx_result)
+static void _fx_copy_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti(
+   _fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti* src, _fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti* dst)
 {
-   FX_MAKE_REF_IMPL(
-      _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti, _fx_copy_Rt21Hashmap__hash_state_t2ST2V14Lexer__token_ti);
+   FX_COPY_FP(&src->hash_f, &dst->hash_f);
+   _fx_copy_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti(&src->default_entry, &dst->default_entry);
+   dst->nelems = src->nelems;
+   dst->nremoved = src->nremoved;
+   fx_copy_arr(&src->table, &dst->table);
+}
+
+static void _fx_make_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti(
+   _fx_FPq1S* r_hash_f,
+      _fx_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti* r_default_entry,
+      int_ r_nelems,
+      int_ r_nremoved,
+      fx_arr_t* r_table,
+      _fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti* fx_result)
+{
+   FX_COPY_FP(r_hash_f, &fx_result->hash_f);
+   _fx_copy_Rt20Hashmap__hashentry_t2ST2V14Lexer__token_ti(r_default_entry, &fx_result->default_entry);
+   fx_result->nelems = r_nelems;
+   fx_result->nremoved = r_nremoved;
+   fx_copy_arr(r_table, &fx_result->table);
+}
+
+static void _fx_free_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti(
+   struct _fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti_data_t** dst)
+{ FX_FREE_REF_IMPL(_fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti, _fx_free_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti);
+}
+
+static int _fx_make_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti(
+   _fx_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti* arg,
+      struct _fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti_data_t** fx_result)
+{ FX_MAKE_REF_IMPL(_fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti, _fx_copy_Rt18Hashmap__hashmap_t2ST2V14Lexer__token_ti);
 }
 
 static void _fx_free_Rt10Hashmap__t2ST2V14Lexer__token_ti(_fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* dst)
-{
-   fx_free_fp(&dst->hash_f);
-   fx_free_str(&dst->k0);
-   _fx_free_T2V14Lexer__token_ti(&dst->d0);
-   _fx_free_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti(&dst->_state);
+{ _fx_free_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti(&dst->r);
 }
 
 static void _fx_copy_Rt10Hashmap__t2ST2V14Lexer__token_ti(
    _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* src, _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* dst)
-{
-   FX_COPY_FP(&src->hash_f, &dst->hash_f);
-   fx_copy_str(&src->k0, &dst->k0);
-   _fx_copy_T2V14Lexer__token_ti(&src->d0, &dst->d0);
-   FX_COPY_PTR(src->_state, &dst->_state);
+{ FX_COPY_PTR(src->r, &dst->r);
 }
 
 static void _fx_make_Rt10Hashmap__t2ST2V14Lexer__token_ti(
-   _fx_FPq1S* r_hash_f,
-      fx_str_t* r_k0,
-      _fx_T2V14Lexer__token_ti* r_d0,
-      struct _fx_rRt21Hashmap__hash_state_t2ST2V14Lexer__token_ti_data_t* r__state,
-      _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* fx_result)
-{
-   FX_COPY_FP(r_hash_f, &fx_result->hash_f);
-   fx_copy_str(r_k0, &fx_result->k0);
-   _fx_copy_T2V14Lexer__token_ti(r_d0, &fx_result->d0);
-   FX_COPY_PTR(r__state, &fx_result->_state);
+   struct _fx_rRt18Hashmap__hashmap_t2ST2V14Lexer__token_ti_data_t* r_r, _fx_Rt10Hashmap__t2ST2V14Lexer__token_ti* fx_result)
+{ FX_COPY_PTR(r_r, &fx_result->r);
 }
 
 static void _fx_free_T2R10Ast__loc_tS(_fx_T2R10Ast__loc_tS* dst)
@@ -2637,8 +2640,8 @@ FX_EXTERN_C int _fx_M5LexerFM7make_fpFPT2iS1i1RM8stream_t(_fx_R15Lexer__stream_t
 static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__token_tTa2i_data_t** fx_result, void* fx_fv)
 {
    _fx_FPT2iS1i get_ccode_0 = {  };
-   _fx_FPS1Ta2i lloc2str_0 = {  };
    _fx_FPTa2i1i getloc_0 = {  };
+   _fx_FPS1Ta2i lloc2str_0 = {  };
    fx_str_t buf_0 = {  };
    _fx_LT2V14Lexer__token_tTa2i paren_stack_0 = 0;
    fx_exn_t v_0 = {  };
@@ -2688,8 +2691,8 @@ static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__t
    bool* prev_dot_0 = &cv_0->t3->data;
    _fx_R15Lexer__stream_t* strm_0 = &cv_0->t4;
    _fx_M5LexerFM7make_fpFPT2iS1i1RM8stream_t(strm_0, &get_ccode_0);
-   _fx_M5LexerFM7make_fpFPS1Ta2i1RM8stream_t(strm_0, &lloc2str_0);
    _fx_M5LexerFM7make_fpFPTa2i1i1RM8stream_t(strm_0, &getloc_0);
+   _fx_M5LexerFM7make_fpFPS1Ta2i1RM8stream_t(strm_0, &lloc2str_0);
    fx_copy_str(&strm_0->buf, &buf_0);
    int_ len_0;
    FX_CALL(_fx_M6StringFM6lengthi1S(&buf_0, &len_0, 0), _fx_cleanup);
@@ -2714,10 +2717,10 @@ static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__t
          FX_COPY_PTR(*paren_stack_1, &paren_stack_0);
          bool res_1;
          if (paren_stack_0 != 0) {
-            if (paren_stack_0->hd.t0.tag == _FX_V14Lexer__token_t_LSQUARE) { res_1 = true; goto _fx_endmatch_0; }
+            if (paren_stack_0->hd.t0.tag == _FX_V14Lexer__token_t_LPAREN) { res_1 = true; goto _fx_endmatch_0; }
          }
          if (paren_stack_0 != 0) {
-            if (paren_stack_0->hd.t0.tag == _FX_V14Lexer__token_t_LPAREN) { res_1 = true; goto _fx_endmatch_0; }
+            if (paren_stack_0->hd.t0.tag == _FX_V14Lexer__token_t_LSQUARE) { res_1 = true; goto _fx_endmatch_0; }
          }
          res_1 = false;
 
@@ -4457,8 +4460,8 @@ static int _fx_M5LexerFM10nexttokensLT2VM7token_tTa2i0(struct _fx_LT2V14Lexer__t
 
 _fx_cleanup: ;
    FX_FREE_FP(&get_ccode_0);
-   FX_FREE_FP(&lloc2str_0);
    FX_FREE_FP(&getloc_0);
+   FX_FREE_FP(&lloc2str_0);
    FX_FREE_STR(&buf_0);
    if (paren_stack_0) { _fx_free_LT2V14Lexer__token_tTa2i(&paren_stack_0);
    }

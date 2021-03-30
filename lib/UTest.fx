@@ -3,7 +3,7 @@
     See ficus/LICENSE for the licensing terms
 */
 
-// Unit test system for Ficus
+// Unit test engine for Ficus
 
 import Sys
 
@@ -186,8 +186,8 @@ fun EXPECT_THROWS(f: void->void, ref_exn: exn, ~msg: string="") =
     } catch {
         | e when e.__tag__ == ref_exn.__tag__ => {}
         | e => println(f"EXPECT_THROWS failed on '{msg}'")
-            println(f"Actual: Throws a different exception {e}")
-            println(f"Expected: Throws an exception {ref_exn}")
+            println(f"Actual: Throws a different exception: '{e}'")
+            println(f"Expected: Throws exception '{ref_exn}'")
             g_test_state.currstatus = false
     }
 

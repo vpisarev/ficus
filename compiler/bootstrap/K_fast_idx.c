@@ -238,19 +238,23 @@ typedef struct _fx_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t
    { int tag; union  { _fx_T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t Some; } u;
    } _fx_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t;
 
+typedef struct _fx_Rt24Hashset__hashset_entry_t1V9Ast__id_t  { uint64_t hv; _fx_V9Ast__id_t key;
+   } _fx_Rt24Hashset__hashset_entry_t1V9Ast__id_t;
+
 typedef struct _fx_FPq1V9Ast__id_t  { int (*fp)(_fx_V9Ast__id_t*, uint64_t*, void*); fx_fcv_t* fcv; } _fx_FPq1V9Ast__id_t;
 
-typedef struct _fx_T2qV9Ast__id_t  { uint64_t t0; _fx_V9Ast__id_t t1; } _fx_T2qV9Ast__id_t;
+typedef struct _fx_Rt18Hashset__hashset_t1V9Ast__id_t
+   {
+       _fx_FPq1V9Ast__id_t hash_f;
+       _fx_Rt24Hashset__hashset_entry_t1V9Ast__id_t default_entry;
+       int_ nelems;
+       int_ nremoved;
+       fx_arr_t table; } _fx_Rt18Hashset__hashset_t1V9Ast__id_t;
 
-typedef struct _fx_Rt24Hashset__hashset_state_t1V9Ast__id_t  { int_ nelems; int_ nremoved; fx_arr_t table;
-   } _fx_Rt24Hashset__hashset_state_t1V9Ast__id_t;
+typedef struct _fx_rRt18Hashset__hashset_t1V9Ast__id_t_data_t  { int_ rc; _fx_Rt18Hashset__hashset_t1V9Ast__id_t data;
+   } _fx_rRt18Hashset__hashset_t1V9Ast__id_t_data_t, *_fx_rRt18Hashset__hashset_t1V9Ast__id_t;
 
-typedef struct _fx_rRt24Hashset__hashset_state_t1V9Ast__id_t_data_t
-   { int_ rc; _fx_Rt24Hashset__hashset_state_t1V9Ast__id_t data;
-   } _fx_rRt24Hashset__hashset_state_t1V9Ast__id_t_data_t, *_fx_rRt24Hashset__hashset_state_t1V9Ast__id_t;
-
-typedef struct _fx_Rt10Hashset__t1V9Ast__id_t
-   { _fx_FPq1V9Ast__id_t hash_f; _fx_V9Ast__id_t k0; struct _fx_rRt24Hashset__hashset_state_t1V9Ast__id_t_data_t* _state;
+typedef struct _fx_Rt10Hashset__t1V9Ast__id_t  { struct _fx_rRt18Hashset__hashset_t1V9Ast__id_t_data_t* r;
    } _fx_Rt10Hashset__t1V9Ast__id_t;
 
 typedef struct _fx_LV14K_form__atom_t_data_t  { int_ rc; struct _fx_LV14K_form__atom_t_data_t* tl; _fx_V14K_form__atom_t hd;
@@ -1303,44 +1307,55 @@ static void _fx_copy_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
    }
 }
 
-static void _fx_free_Rt24Hashset__hashset_state_t1V9Ast__id_t(_fx_Rt24Hashset__hashset_state_t1V9Ast__id_t* dst)
-{ fx_free_arr(&dst->table);
+static void _fx_free_Rt18Hashset__hashset_t1V9Ast__id_t(_fx_Rt18Hashset__hashset_t1V9Ast__id_t* dst)
+{ fx_free_fp(&dst->hash_f); fx_free_arr(&dst->table);
 }
 
-static void _fx_copy_Rt24Hashset__hashset_state_t1V9Ast__id_t(
-   _fx_Rt24Hashset__hashset_state_t1V9Ast__id_t* src, _fx_Rt24Hashset__hashset_state_t1V9Ast__id_t* dst)
-{ dst->nelems = src->nelems; dst->nremoved = src->nremoved; fx_copy_arr(&src->table, &dst->table);
+static void _fx_copy_Rt18Hashset__hashset_t1V9Ast__id_t(
+   _fx_Rt18Hashset__hashset_t1V9Ast__id_t* src, _fx_Rt18Hashset__hashset_t1V9Ast__id_t* dst)
+{
+   FX_COPY_FP(&src->hash_f, &dst->hash_f);
+   dst->default_entry = src->default_entry;
+   dst->nelems = src->nelems;
+   dst->nremoved = src->nremoved;
+   fx_copy_arr(&src->table, &dst->table);
 }
 
-static void _fx_make_Rt24Hashset__hashset_state_t1V9Ast__id_t(
-   int_ r_nelems, int_ r_nremoved, fx_arr_t* r_table, _fx_Rt24Hashset__hashset_state_t1V9Ast__id_t* fx_result)
-{ fx_result->nelems = r_nelems; fx_result->nremoved = r_nremoved; fx_copy_arr(r_table, &fx_result->table);
+static void _fx_make_Rt18Hashset__hashset_t1V9Ast__id_t(
+   _fx_FPq1V9Ast__id_t* r_hash_f,
+      _fx_Rt24Hashset__hashset_entry_t1V9Ast__id_t* r_default_entry,
+      int_ r_nelems,
+      int_ r_nremoved,
+      fx_arr_t* r_table,
+      _fx_Rt18Hashset__hashset_t1V9Ast__id_t* fx_result)
+{
+   FX_COPY_FP(r_hash_f, &fx_result->hash_f);
+   fx_result->default_entry = *r_default_entry;
+   fx_result->nelems = r_nelems;
+   fx_result->nremoved = r_nremoved;
+   fx_copy_arr(r_table, &fx_result->table);
 }
 
-static void _fx_free_rRt24Hashset__hashset_state_t1V9Ast__id_t(
-   struct _fx_rRt24Hashset__hashset_state_t1V9Ast__id_t_data_t** dst)
-{ FX_FREE_REF_IMPL(_fx_rRt24Hashset__hashset_state_t1V9Ast__id_t, _fx_free_Rt24Hashset__hashset_state_t1V9Ast__id_t);
+static void _fx_free_rRt18Hashset__hashset_t1V9Ast__id_t(struct _fx_rRt18Hashset__hashset_t1V9Ast__id_t_data_t** dst)
+{ FX_FREE_REF_IMPL(_fx_rRt18Hashset__hashset_t1V9Ast__id_t, _fx_free_Rt18Hashset__hashset_t1V9Ast__id_t);
 }
 
-static int _fx_make_rRt24Hashset__hashset_state_t1V9Ast__id_t(
-   _fx_Rt24Hashset__hashset_state_t1V9Ast__id_t* arg, struct _fx_rRt24Hashset__hashset_state_t1V9Ast__id_t_data_t** fx_result)
-{ FX_MAKE_REF_IMPL(_fx_rRt24Hashset__hashset_state_t1V9Ast__id_t, _fx_copy_Rt24Hashset__hashset_state_t1V9Ast__id_t);
+static int _fx_make_rRt18Hashset__hashset_t1V9Ast__id_t(
+   _fx_Rt18Hashset__hashset_t1V9Ast__id_t* arg, struct _fx_rRt18Hashset__hashset_t1V9Ast__id_t_data_t** fx_result)
+{ FX_MAKE_REF_IMPL(_fx_rRt18Hashset__hashset_t1V9Ast__id_t, _fx_copy_Rt18Hashset__hashset_t1V9Ast__id_t);
 }
 
 static void _fx_free_Rt10Hashset__t1V9Ast__id_t(_fx_Rt10Hashset__t1V9Ast__id_t* dst)
-{ fx_free_fp(&dst->hash_f); _fx_free_rRt24Hashset__hashset_state_t1V9Ast__id_t(&dst->_state);
+{ _fx_free_rRt18Hashset__hashset_t1V9Ast__id_t(&dst->r);
 }
 
 static void _fx_copy_Rt10Hashset__t1V9Ast__id_t(_fx_Rt10Hashset__t1V9Ast__id_t* src, _fx_Rt10Hashset__t1V9Ast__id_t* dst)
-{ FX_COPY_FP(&src->hash_f, &dst->hash_f); dst->k0 = src->k0; FX_COPY_PTR(src->_state, &dst->_state);
+{ FX_COPY_PTR(src->r, &dst->r);
 }
 
 static void _fx_make_Rt10Hashset__t1V9Ast__id_t(
-   _fx_FPq1V9Ast__id_t* r_hash_f,
-      _fx_V9Ast__id_t* r_k0,
-      struct _fx_rRt24Hashset__hashset_state_t1V9Ast__id_t_data_t* r__state,
-      _fx_Rt10Hashset__t1V9Ast__id_t* fx_result)
-{ FX_COPY_FP(r_hash_f, &fx_result->hash_f); fx_result->k0 = *r_k0; FX_COPY_PTR(r__state, &fx_result->_state);
+   struct _fx_rRt18Hashset__hashset_t1V9Ast__id_t_data_t* r_r, _fx_Rt10Hashset__t1V9Ast__id_t* fx_result)
+{ FX_COPY_PTR(r_r, &fx_result->r);
 }
 
 static void _fx_free_LV14K_form__atom_t(struct _fx_LV14K_form__atom_t_data_t** dst)
@@ -3154,7 +3169,7 @@ static void _fx_make_T3V9Ast__id_tVt6option1V14K_form__kexp_tVt6option1V14K_form
 _fx_V23K_fast_idx__idx_class_t _fx_g22K_fast_idx__IdxUnknown = { _FX_V23K_fast_idx__idx_class_t_IdxUnknown };
 _fx_V23K_fast_idx__idx_class_t _fx_g22K_fast_idx__IdxComplex = { _FX_V23K_fast_idx__idx_class_t_IdxComplex };
 FX_EXTERN_C int _fx_M7HashsetFM8find_idxi2RtM1t1V9Ast__id_tV9Ast__id_t(
-   _fx_Rt10Hashset__t1V9Ast__id_t* ht_0, _fx_V9Ast__id_t* k_0, int_* fx_result, void* fx_fv);
+   _fx_Rt10Hashset__t1V9Ast__id_t* hs_0, _fx_V9Ast__id_t* k_0, int_* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6K_formFM10is_mutableB2V9Ast__id_tR10Ast__loc_t(
    _fx_V9Ast__id_t* n_0, _fx_R10Ast__loc_t* loc_0, bool* fx_result, void* fx_fv);
@@ -5342,29 +5357,24 @@ static int _fx_M10K_fast_idxFM17optimize_idx_kexpV14K_form__kexp_t2V14K_form__ke
          }
       }
    }
-   int tag_2 = FX_REC_VARIANT_TAG(e_0);
    bool res_3;
-   if (tag_2 == _FX_V14K_form__kexp_t_KDefClosureVars) { res_3 = true;
+   if (tag_0 == _FX_V14K_form__kexp_t_KExpMatch) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KDefTyp) { res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KExpTryCatch) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KDefVariant) { res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KExpWhile) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KDefExn) { res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KExpDoWhile) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KDefFun) { res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KDefFun) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KExpDoWhile) {
-      _fx_T3V14K_form__kexp_tV14K_form__kexp_tR10Ast__loc_t* vcase_4 = &e_0->u.KExpDoWhile; res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KDefExn) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KExpWhile) {
-      _fx_T3V14K_form__kexp_tV14K_form__kexp_tR10Ast__loc_t* vcase_5 = &e_0->u.KExpWhile; res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KDefVariant) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KExpTryCatch) {
-      _fx_T3V14K_form__kexp_tV14K_form__kexp_tT2V14K_form__ktyp_tR10Ast__loc_t* vcase_6 = &e_0->u.KExpTryCatch; res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KDefTyp) { res_3 = true;
    }
-   else if (tag_2 == _FX_V14K_form__kexp_t_KExpMatch) {
-      _fx_T2LT2LV14K_form__kexp_tV14K_form__kexp_tT2V14K_form__ktyp_tR10Ast__loc_t* vcase_7 = &e_0->u.KExpMatch; res_3 = true;
+   else if (tag_0 == _FX_V14K_form__kexp_t_KDefClosureVars) { res_3 = true;
    }
    else { res_3 = false;
    }

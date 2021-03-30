@@ -1337,13 +1337,16 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val argtyps = [: for a <- args {get_exp_typ(a)} :]
         val fstr = pp(f)
         val t = match (fstr, args, argtyps) {
-        | ("__intrin_atan2__", y :: x :: [], yt :: xt :: []) =>
-            unify(yt, xt, eloc, "arguments of atan2() must have the same type")
-            yt
+        | ("atan2", y :: x :: [], yt :: xt :: []) =>
+            unify(xt, yt, eloc, "arguments of atan2() must have the same type")
+            xt
+        | ("pow", x :: y :: [], xt :: yt :: []) =>
+            unify(xt, yt, eloc, "arguments of pow() must have the same type")
+            xt
         | (_, x :: [], xt :: []) => xt
         | _ =>
-            val nargs_expected = if fstr == "__intrin_atan2__" {2} else {1}
-            throw compile_err(eloc, f"incorrect number of arguments in {fstr}, expect {nargs_expected}")
+            val nargs_expected = if fstr == "atan2" || fstr == "pow" {2} else {1}
+            throw compile_err(eloc, f"incorrect number of arguments in __intrin_{fstr}__, {nargs_expected} expected")
         }
         unify(etyp, t, eloc, f"the input and output of {fstr} should have the same types")
         val args = [: for a <- args {check_exp(a, env, sc)} :]
@@ -2644,7 +2647,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                 }
             | _ => throw compile_err(inst_loc, "variant is expected here")
             }
-            val fold complex_cases = ([]: (pat_t list, exp_t) list)
+            val fold complex_cases = ([]: (pat_t, exp_t) list)
                 for n <- var_ctors, (n_orig, t_orig) <- proto_cases {
                 val t = deref_typ_rec(t_orig)
                 match t {
@@ -2668,7 +2671,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                     val a_case_pat = PatRecord(Some(n), al.rev(), body_loc)
                     val b_case_pat = PatRecord(Some(n), bl.rev(), body_loc)
                     val ab_case_pat = PatTuple([: a_case_pat, b_case_pat :], body_loc)
-                    (ab_case_pat :: [], cmp_code) :: complex_cases
+                    (ab_case_pat, cmp_code) :: complex_cases
                 | _ =>
                     val args = match t { | TypTuple(tl) => tl | _ => t :: [] }
                     val fold (al, bl, cmp_code) = ([], [], ExpNop(body_loc))
@@ -2687,7 +2690,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                     val a_case_pat = PatVariant(n, al.rev(), body_loc)
                     val b_case_pat = PatVariant(n, bl.rev(), body_loc)
                     val ab_case_pat = PatTuple([: a_case_pat, b_case_pat :], body_loc)
-                    (ab_case_pat :: [], cmp_code) :: complex_cases
+                    (ab_case_pat, cmp_code) :: complex_cases
                 }
             }
             val a = ExpIdent(get_id(astr), (argtyp, body_loc))
@@ -2700,7 +2703,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
             match complex_cases {
             | [] => cmp_tags
             | _ =>
-                val default_case = (PatAny(body_loc) :: [], cmp_tags)
+                val default_case = (PatAny(body_loc), cmp_tags)
                 val ab = ExpMkTuple([: a, b :], (TypTuple([: argtyp, argtyp :]), body_loc))
                 ExpMatch(ab, (default_case :: complex_cases).rev(), (TypBool, body_loc))
             }
@@ -2943,50 +2946,23 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
             unify(etyp, TypBool, loc, "'when' clause should have boolean type")
             val e1 = check_exp(e1, r_env, sc)
             (PatWhen(p1, e1, loc), false)
+        | PatAlt(pl, loc) =>
+            if simple_pat_mode { throw compile_err(loc, "'|' pattern is not allowed here") }
+            val pl1 = [: for p <- pl { check_pat_(p, t).0 } :]
+            (PatAlt(pl1, loc), false)
         }
     val (pat_new, typed) = check_pat_(pat, typ)
     (pat_new, r_env, r_idset, *r_typ_vars, typed)
 }
 
-fun check_cases(cases: (pat_t list, exp_t) list, inptyp: typ_t, outtyp: typ_t, env: env_t, sc: scope_t list, loc: loc_t) =
-    [: for (plist, e) <- cases {
+fun check_cases(cases: (pat_t, exp_t) list, inptyp: typ_t, outtyp: typ_t, env: env_t, sc: scope_t list, loc: loc_t) =
+    [: for (p, e) <- cases {
         val case_sc = new_block_scope() :: sc
-        val fold (plist1, env1, capt1) = ([], env, empty_idset) for p <- plist {
-            val (p2, env2, capt2, _, _) = check_pat(p, inptyp, env1, capt1, empty_idset,
-                                                    case_sc, false, false, false)
-            (p2 :: plist1, env2, capt2)
-        }
-
-        val (plist1, env1) =
-        if plist1.length() == 1 {
-            (plist1, env1)
-        } else {
-            if !capt1.empty() {
-                throw compile_err(loc, "captured variables may not be used in the case of multiple alternatives ('|' pattern)")
-            }
-            val temp_id = gen_temp_id("p")
-            val temp_dv = defval_t {dv_name=temp_id, dv_typ=inptyp, dv_flags=default_tempval_flags(), dv_scope=sc, dv_loc=loc}
-            set_id_entry(temp_id, IdDVal(temp_dv))
-            //val capt1 = capt1.add(temp_id)
-            val env1 = add_id_to_env(temp_id, temp_id, env1)
-            val temp_pat = PatIdent(temp_id, loc)
-            val temp_id_exp = ExpIdent(temp_id, (inptyp, loc))
-            val bool_ctx = (TypBool, loc)
-            val when_cases =
-                [: for p <- plist1 {
-                    match p {
-                    | PatAny _ | PatIdent(_, _) =>
-                        throw compile_err(loc, "in the case of multiple alternatives ('|' pattern) '_' or indent cannot be used")
-                    | _ => (p :: [], ExpLit(LitBool(true), bool_ctx))
-                    }
-                } :]
-            val when_cases = when_cases + [: (PatAny(loc) :: [], ExpLit(LitBool(false), bool_ctx)) :]
-            val when_pat = PatWhen(temp_pat, ExpMatch(temp_id_exp, when_cases, bool_ctx), loc)
-            (when_pat :: [], env1)
-        }
+        val (p1, env1, _, _, _) = check_pat(p, inptyp, env, empty_idset, empty_idset,
+                                                case_sc, false, false, false)
         val (e1_typ, e1_loc) = get_exp_ctx(e)
         unify(e1_typ, outtyp, e1_loc, "the case expression type does not match the whole expression type (or the type of previous case(s))")
-        (plist1.rev(), check_exp(e, env1, case_sc))
+        (p1, check_exp(e, env1, case_sc))
     } :]
 
 fun check_mod(m: id_t) {

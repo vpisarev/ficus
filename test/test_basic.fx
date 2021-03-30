@@ -10,9 +10,6 @@ import Math
 
 import myops
 
-val FLT_EPSILON = Math.FLT_EPSILON
-val DBL_EPSILON = Math.DBL_EPSILON
-
 TEST("basic.version", fun()
 {
     EXPECT_EQ(f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}", f"{__ficus_version_str__}")
@@ -147,15 +144,15 @@ TEST("basic.math", fun()
     val c = {
        var a = 3.0
        var b = 4.0
-       Math.sqrt(a*a + b*b) + myops.div3(a*a + b*b)
+       sqrt(a*a + b*b) + myops.div3(a*a + b*b)
     }
 
     EXPECT_NEAR(c, 13.3333333333, FLT_EPSILON*1.0)
-    EXPECT_NEAR(Math.atan(1.)*4, Math.Pi, DBL_EPSILON*10)
-    EXPECT_NEAR(Math.exp(-1.), 0.36787944117144233, DBL_EPSILON*10)
-    val alpha = (Math.Pi/3 :> float)
-    EXPECT_NEAR(Math.sin(alpha), 0.8660254037844386f, FLT_EPSILON*10)
-    EXPECT_NEAR(Math.cos(alpha), 0.5f, FLT_EPSILON*10)
+    EXPECT_NEAR(atan(1.)*4, M_PI, DBL_EPSILON*10)
+    EXPECT_NEAR(exp(-1.), 0.36787944117144233, DBL_EPSILON*10)
+    val alpha = (M_PI/3 :> float)
+    EXPECT_NEAR(sin(alpha), 0.8660254037844386f, FLT_EPSILON*10)
+    EXPECT_NEAR(cos(alpha), 0.5f, FLT_EPSILON*10)
     EXPECT_EQ(myops.sqr(5), 25)
     EXPECT_NEAR(myops.sqr(0.1), 0.01, double(FLT_EPSILON))
 })
@@ -236,7 +233,7 @@ TEST("basic.types.templates", fun()
     EXPECT_EQ(strange_tuple.1, 3.25)
     EXPECT_EQ(-9., strange_tuple.2(my_func2)(3.0))
 
-    val ct_inst = C((A(Math.cos) : (float, float) ct))
+    val ct_inst = C((A(cos) : (float, float) ct))
     EXPECT_EQ(match ct_inst {
         | C(A(f)) => f(0.f)
         | _ => -1.f
@@ -336,8 +333,6 @@ TEST("basic.variant_with_record", fun()
 
 TEST("basic.ratio", fun()
 {
-    val gcd = Math.GCD
-
     // two implementations of rational numbers using single-case variants
     // 1. tuple
     type ratio_t = Ratio: (int, int)
@@ -345,25 +340,25 @@ TEST("basic.ratio", fun()
     operator + (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
         val n = n1*d2 + n2*d1
         val d = d1*d2
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio(n/r, d/r)
     }
     /*operator - (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
         val n = n1*d2 - n2*d1
         val d = d1*d2
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio(n/r, d/r)
     }
     operator * (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
         val n = n1*n2
         val d = d1*d2
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio(n/r, d/r)
     }
     operator / (Ratio(n1, d1): ratio_t, Ratio(n2, d2): ratio_t) {
         val n = n1*d2
         val d = d1*n2
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio(n/r, d/r)
     }*/
 
@@ -380,25 +375,25 @@ TEST("basic.ratio", fun()
     /*operator + (a: ratio2_t, b: ratio2_t) {
         val n = a.num*b.denom + b.num*a.denom
         val d = a.denom*b.denom
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }
     operator - (a: ratio2_t, b: ratio2_t) {
         val n = a.num*b.denom - b.num*a.denom
         val d = a.denom*b.denom
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }
     operator * (a: ratio2_t, b: ratio2_t) {
         val n = a.num*b.num
         val d = a.denom*b.denom
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }*/
     operator / (a: ratio2_t, b: ratio2_t) {
         val n = a.num*b.denom
         val d = a.denom*b.num
-        val r = gcd(n, d)
+        val r = GCD(n, d)
         Ratio2 {num=n/r, denom=d/r}
     }
 
@@ -573,7 +568,7 @@ TEST("basic.list.map", fun()
     val strings = list_map((1 :: 2 :: 3 :: []), (string: int->string))
     EXPECT_EQ(strings, [: "1", "2", "3" :])
 
-    val cosines : double list = list_map((1. :: 2. :: 3. :: []), Math.cos)
+    val cosines : double list = list_map((1. :: 2. :: 3. :: []), cos)
     val expected = [: 0.5403023058681398, -0.4161468365471424, -0.9899924966004454 :]
     EXPECT_NEAR(cosines, expected, DBL_EPSILON*10)
 })
@@ -714,6 +709,13 @@ TEST("basic.assert", fun()
     EXPECT_THROWS(fun () { assert (1 == k-k) }, AssertError)
 })
 
+TEST("basic.stack_overflow", fun()
+{
+    val rng = new_uniform_rng(0xffffffffUL)
+    fun foo(n:int) { if rng(0, 10) > 100 {n} else {2*foo(n-1)} }
+    EXPECT_THROWS(fun () {ignore(foo(1000))}, StackOverflowError)
+})
+
 TEST("basic.string", fun()
 {
     EXPECT_EQ("yellow", "y" + "hello"[1:5] + "w")
@@ -754,10 +756,10 @@ TEST("basic.keyword_args", fun()
         if n == 2 {Math.sqrt(a)}
         else {
             if n % 2 == 0 || use_abs {
-                Math.pow(abs(a), (1./n :> 't))
+                pow(abs(a), (1./n :> 't))
             } else {
                 val (a, s) = if a < (0.:>'t) {(-a, -1)} else {(a, 1)}
-                s*Math.pow(a, (1./n :> 't))
+                s*pow(a, (1./n :> 't))
             }
         }
     }

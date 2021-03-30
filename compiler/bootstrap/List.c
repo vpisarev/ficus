@@ -836,13 +836,6 @@ typedef struct _fx_LT2LV14K_form__kexp_tV14K_form__kexp_t_data_t
 typedef struct _fx_Ta2LV14K_form__kexp_t  { struct _fx_LV14K_form__kexp_t_data_t* t0; struct _fx_LV14K_form__kexp_t_data_t* t1;
    } _fx_Ta2LV14K_form__kexp_t;
 
-typedef struct _fx_T2LV10Ast__pat_tV10Ast__exp_t  { struct _fx_LV10Ast__pat_t_data_t* t0; struct _fx_V10Ast__exp_t_data_t* t1;
-   } _fx_T2LV10Ast__pat_tV10Ast__exp_t;
-
-typedef struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t
-   { int_ rc; struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t* tl; _fx_T2LV10Ast__pat_tV10Ast__exp_t hd;
-   } _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t, *_fx_LT2LV10Ast__pat_tV10Ast__exp_t;
-
 typedef struct _fx_T2V14Lexer__token_tTa2i  { _fx_V14Lexer__token_t t0; _fx_Ta2i t1; } _fx_T2V14Lexer__token_tTa2i;
 
 typedef struct _fx_LT2V14Lexer__token_tTa2i_data_t
@@ -1251,11 +1244,11 @@ typedef struct _fx_T4LT2LT2V10Ast__pat_tV10Ast__exp_tV10Ast__pat_tV10Ast__exp_tR
        _fx_T2V10Ast__typ_tR10Ast__loc_t t3;
    } _fx_T4LT2LT2V10Ast__pat_tV10Ast__exp_tV10Ast__pat_tV10Ast__exp_tR16Ast__for_flags_tT2V10Ast__typ_tR10Ast__loc_t;
 
-typedef struct _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t
+typedef struct _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t
    {
        struct _fx_V10Ast__exp_t_data_t* t0;
-       struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t* t1;
-       _fx_T2V10Ast__typ_tR10Ast__loc_t t2; } _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t;
+       struct _fx_LT2V10Ast__pat_tV10Ast__exp_t_data_t* t1;
+       _fx_T2V10Ast__typ_tR10Ast__loc_t t2; } _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t;
 
 typedef struct _fx_T3V10Ast__exp_tV10Ast__typ_tT2V10Ast__typ_tR10Ast__loc_t
    { struct _fx_V10Ast__exp_t_data_t* t0; struct _fx_V10Ast__typ_t_data_t* t1; _fx_T2V10Ast__typ_tR10Ast__loc_t t2;
@@ -1351,8 +1344,8 @@ typedef struct _fx_V10Ast__exp_t_data_t
               _fx_T5LT2V10Ast__pat_tV10Ast__exp_tV10Ast__pat_tV10Ast__exp_tR16Ast__for_flags_tR10Ast__loc_t ExpFor;
               _fx_T4LT2LT2V10Ast__pat_tV10Ast__exp_tV10Ast__pat_tV10Ast__exp_tR16Ast__for_flags_tT2V10Ast__typ_tR10Ast__loc_t
                  ExpMap;
-              _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t ExpTryCatch;
-              _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t ExpMatch;
+              _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t ExpTryCatch;
+              _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t ExpMatch;
               _fx_T3V10Ast__exp_tV10Ast__typ_tT2V10Ast__typ_tR10Ast__loc_t ExpCast;
               _fx_T3V10Ast__exp_tV10Ast__typ_tT2V10Ast__typ_tR10Ast__loc_t ExpTyped;
               _fx_T2ST2V10Ast__typ_tR10Ast__loc_t ExpCCode;
@@ -1412,7 +1405,8 @@ typedef enum {
    _FX_V10Ast__pat_t_PatAs=8,
    _FX_V10Ast__pat_t_PatTyped=9,
    _FX_V10Ast__pat_t_PatWhen=10,
-   _FX_V10Ast__pat_t_PatRef=11
+   _FX_V10Ast__pat_t_PatAlt=11,
+   _FX_V10Ast__pat_t_PatRef=12
 } _fx_V10Ast__pat_t_tag_t;
 
 typedef struct _fx_V10Ast__pat_t_data_t
@@ -1431,6 +1425,7 @@ typedef struct _fx_V10Ast__pat_t_data_t
               _fx_T3V10Ast__pat_tV9Ast__id_tR10Ast__loc_t PatAs;
               _fx_T3V10Ast__pat_tV10Ast__typ_tR10Ast__loc_t PatTyped;
               _fx_T3V10Ast__pat_tV10Ast__exp_tR10Ast__loc_t PatWhen;
+              _fx_T2LV10Ast__pat_tR10Ast__loc_t PatAlt;
               _fx_T2V10Ast__pat_tR10Ast__loc_t PatRef; } u; } _fx_V10Ast__pat_t_data_t, *_fx_V10Ast__pat_t;
 
 typedef struct _fx_T2SR10Ast__loc_t  { fx_str_t t0; _fx_R10Ast__loc_t t1; } _fx_T2SR10Ast__loc_t;
@@ -3652,32 +3647,6 @@ static void _fx_make_Ta2LV14K_form__kexp_t(
 { FX_COPY_PTR(t0, &fx_result->t0); FX_COPY_PTR(t1, &fx_result->t1);
 }
 
-static void _fx_free_T2LV10Ast__pat_tV10Ast__exp_t(_fx_T2LV10Ast__pat_tV10Ast__exp_t* dst)
-{ _fx_free_LV10Ast__pat_t(&dst->t0); _fx_free_V10Ast__exp_t(&dst->t1);
-}
-
-static void _fx_copy_T2LV10Ast__pat_tV10Ast__exp_t(
-   _fx_T2LV10Ast__pat_tV10Ast__exp_t* src, _fx_T2LV10Ast__pat_tV10Ast__exp_t* dst)
-{ FX_COPY_PTR(src->t0, &dst->t0); FX_COPY_PTR(src->t1, &dst->t1);
-}
-
-static void _fx_make_T2LV10Ast__pat_tV10Ast__exp_t(
-   struct _fx_LV10Ast__pat_t_data_t* t0, struct _fx_V10Ast__exp_t_data_t* t1, _fx_T2LV10Ast__pat_tV10Ast__exp_t* fx_result)
-{ FX_COPY_PTR(t0, &fx_result->t0); FX_COPY_PTR(t1, &fx_result->t1);
-}
-
-static void _fx_free_LT2LV10Ast__pat_tV10Ast__exp_t(struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t** dst)
-{ FX_FREE_LIST_IMPL(_fx_LT2LV10Ast__pat_tV10Ast__exp_t, _fx_free_T2LV10Ast__pat_tV10Ast__exp_t);
-}
-
-static int _fx_cons_LT2LV10Ast__pat_tV10Ast__exp_t(
-   _fx_T2LV10Ast__pat_tV10Ast__exp_t* hd,
-      struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t* tl,
-      bool addref_tl,
-      struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t** fx_result)
-{ FX_MAKE_LIST_IMPL(_fx_LT2LV10Ast__pat_tV10Ast__exp_t, _fx_copy_T2LV10Ast__pat_tV10Ast__exp_t);
-}
-
 static void _fx_free_T2V14Lexer__token_tTa2i(_fx_T2V14Lexer__token_tTa2i* dst)
 { _fx_free_V14Lexer__token_t(&dst->t0);
 }
@@ -4696,25 +4665,25 @@ static void
    _fx_copy_T2V10Ast__typ_tR10Ast__loc_t(t3, &fx_result->t3);
 }
 
-static void _fx_free_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(
-   _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* dst)
+static void _fx_free_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(
+   _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* dst)
 {
    _fx_free_V10Ast__exp_t(&dst->t0);
-   _fx_free_LT2LV10Ast__pat_tV10Ast__exp_t(&dst->t1);
+   _fx_free_LT2V10Ast__pat_tV10Ast__exp_t(&dst->t1);
    _fx_free_T2V10Ast__typ_tR10Ast__loc_t(&dst->t2);
 }
 
-static void _fx_copy_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(
-   _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* src,
-      _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* dst)
+static void _fx_copy_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(
+   _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* src,
+      _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* dst)
 { FX_COPY_PTR(src->t0, &dst->t0); FX_COPY_PTR(src->t1, &dst->t1); _fx_copy_T2V10Ast__typ_tR10Ast__loc_t(&src->t2, &dst->t2);
 }
 
-static void _fx_make_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(
+static void _fx_make_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(
    struct _fx_V10Ast__exp_t_data_t* t0,
-      struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t* t1,
+      struct _fx_LT2V10Ast__pat_tV10Ast__exp_t_data_t* t1,
       _fx_T2V10Ast__typ_tR10Ast__loc_t* t2,
-      _fx_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* fx_result)
+      _fx_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t* fx_result)
 { FX_COPY_PTR(t0, &fx_result->t0); FX_COPY_PTR(t1, &fx_result->t1); _fx_copy_T2V10Ast__typ_tR10Ast__loc_t(t2, &fx_result->t2);
 }
 
@@ -4881,9 +4850,9 @@ static void _fx_free_V10Ast__exp_t(struct _fx_V10Ast__exp_t_data_t** dst)
             &(*dst)->u.ExpMap);
          break;
       case _FX_V10Ast__exp_t_ExpTryCatch:
-         _fx_free_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(&(*dst)->u.ExpTryCatch); break;
+         _fx_free_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(&(*dst)->u.ExpTryCatch); break;
       case _FX_V10Ast__exp_t_ExpMatch:
-         _fx_free_T3V10Ast__exp_tLT2LV10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(&(*dst)->u.ExpMatch); break;
+         _fx_free_T3V10Ast__exp_tLT2V10Ast__pat_tV10Ast__exp_tT2V10Ast__typ_tR10Ast__loc_t(&(*dst)->u.ExpMatch); break;
       case _FX_V10Ast__exp_t_ExpCast:
          _fx_free_T3V10Ast__exp_tV10Ast__typ_tT2V10Ast__typ_tR10Ast__loc_t(&(*dst)->u.ExpCast); break;
       case _FX_V10Ast__exp_t_ExpTyped:
@@ -5080,6 +5049,8 @@ static void _fx_free_V10Ast__pat_t(struct _fx_V10Ast__pat_t_data_t** dst)
          _fx_free_T3V10Ast__pat_tV10Ast__typ_tR10Ast__loc_t(&(*dst)->u.PatTyped); break;
       case _FX_V10Ast__pat_t_PatWhen:
          _fx_free_T3V10Ast__pat_tV10Ast__exp_tR10Ast__loc_t(&(*dst)->u.PatWhen); break;
+      case _FX_V10Ast__pat_t_PatAlt:
+         _fx_free_T2LV10Ast__pat_tR10Ast__loc_t(&(*dst)->u.PatAlt); break;
       case _FX_V10Ast__pat_t_PatRef:
          _fx_free_T2V10Ast__pat_tR10Ast__loc_t(&(*dst)->u.PatRef); break;
       default:
@@ -7515,35 +7486,6 @@ FX_EXTERN_C int _fx_M4ListFM3revLT2LT2V10Ast__pat_tV10Ast__exp_tV10Ast__pat_t1LT
 
 _fx_cleanup: ;
    if (__fold_result___0) { _fx_free_LT2LT2V10Ast__pat_tV10Ast__exp_tV10Ast__pat_t(&__fold_result___0);
-   }
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M4ListFM3revLT2LV10Ast__pat_tV10Ast__exp_t1LT2LV10Ast__pat_tV10Ast__exp_t(
-   struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t* l_0,
-      struct _fx_LT2LV10Ast__pat_tV10Ast__exp_t_data_t** fx_result,
-      void* fx_fv)
-{
-   _fx_LT2LV10Ast__pat_tV10Ast__exp_t __fold_result___0 = 0;
-   int fx_status = 0;
-   _fx_LT2LV10Ast__pat_tV10Ast__exp_t lst_0 = l_0;
-   for (; lst_0; lst_0 = lst_0->tl) {
-      _fx_LT2LV10Ast__pat_tV10Ast__exp_t r_0 = 0;
-      _fx_T2LV10Ast__pat_tV10Ast__exp_t* a_0 = &lst_0->hd;
-      FX_COPY_PTR(__fold_result___0, &r_0);
-      FX_CALL(_fx_cons_LT2LV10Ast__pat_tV10Ast__exp_t(a_0, r_0, false, &r_0), _fx_catch_0);
-      _fx_free_LT2LV10Ast__pat_tV10Ast__exp_t(&__fold_result___0);
-      FX_COPY_PTR(r_0, &__fold_result___0);
-
-   _fx_catch_0: ;
-      if (r_0) { _fx_free_LT2LV10Ast__pat_tV10Ast__exp_t(&r_0);
-      }
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   FX_COPY_PTR(__fold_result___0, fx_result);
-
-_fx_cleanup: ;
-   if (__fold_result___0) { _fx_free_LT2LV10Ast__pat_tV10Ast__exp_t(&__fold_result___0);
    }
    return fx_status;
 }

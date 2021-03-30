@@ -13,4 +13,7 @@
 #define FX_MAKE_VERSION(a, b, c) (FX_VER2STR(a) "." FX_VER2STR(b) "." FX_VER2STR(c))
 #define FX_VERSION FX_MAKE_VERSION(FX_VERSION_MAJOR, FX_VERSION_MINOR, FX_VERSION_PATCH)
 
+// temporary solution
+#define FX_GIT_COMMIT "<no_info>"
+
 #endif

@@ -9,7 +9,7 @@ from UTest import *
 import Math
 
 TEST("nbody.iters=1M", fun() {
-val SolarMass = 4.0 * Math.Pi * Math.Pi
+val SolarMass = 4.0 * M_PI * M_PI
 val Year = 365.24
 
 type Vec = {x: double; y: double; z: double}
@@ -91,7 +91,7 @@ fun energy()
         {
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
-            val distance = Math.sqrt(distance2(diff))
+            val distance = sqrt(distance2(diff))
             e1 + (bi.mass * bj.mass) / distance
         })
     }
@@ -108,7 +108,7 @@ fun advance(dt: double)
             val bj = bodies[j]
             val diff = bi.pos - bj.pos
             val dist2 = distance2(diff)
-            val mag = dt / (dist2 * Math.sqrt(dist2))
+            val mag = dt / (dist2 * sqrt(dist2))
             bi.vel -= diff * (bj.mass * mag)
             bodies[j].vel = bj.vel + diff * (bi.mass * mag)
         }

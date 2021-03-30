@@ -46,7 +46,7 @@ fun spectralnorm(n: int)
         for i <- 0:10 { val v = AtAu(u); (AtAu(v), v) }
     val fold (vBv, vv) = (0., 0.)
         for ui <- u, vi <- v { (vBv + ui*vi, vv + vi*vi) }
-    Math.sqrt(vBv/vv)
+    sqrt(vBv/vv)
 }
 
 var N = 100

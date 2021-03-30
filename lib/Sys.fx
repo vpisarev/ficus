@@ -4,7 +4,7 @@
 */
 
 // Various system services
-import File, Filename, Math
+import File, Filename
 
 @ccode {
     #include <limits.h>
@@ -87,10 +87,10 @@ fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): double
         for j <- 0:batch {f()}
         val t = tick_count() - t
         val t = t/tick_frequency()
-        val t = if iterations > 1 { Math.log(max(t, 1e-16)) } else {t}
+        val t = if iterations > 1 { log(max(t, 1e-16)) } else {t}
         gmean + t
     }
-    if iterations > 1 { Math.exp(gmean/iterations)/batch } else {gmean/batch}
+    if iterations > 1 { exp(gmean/iterations)/batch } else {gmean/batch}
 }
 
 fun getcwd(): string = @ccode {
@@ -139,7 +139,7 @@ fun file_exists(name: string): bool = @ccode
     return fx_status;
 }
 
-// throws NotFoundError if there is no such files in specified directories
+// throws NotFoundError if there is no such file in specified directories
 fun locate_file(name: string, dirs: string list): string
 {
     val dir = find(for d <- dirs {file_exists(Filename.concat(d, name))})

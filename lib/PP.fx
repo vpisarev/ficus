@@ -53,7 +53,7 @@ object type t =
     default_indent: int
     print_f: string -> void
     get_f: void -> string list
-    _state: state_t ref
+    r: state_t ref
 }
 
 fun no_get(): string list = []
@@ -67,7 +67,7 @@ fun make_pprinter(margin: int, print_f: string->void,
         default_indent = default_indent,
         print_f = print_f,
         get_f = get_f,
-        _state = ref (state_t {
+        r = ref (state_t {
             q = array(n, (PPEof, 0)),
             stack = array(n, 0),
             pp_stack = array(n, (0, Auto))
@@ -115,18 +115,18 @@ fun pprint_to_stdout(margin: int, ~default_indent: int=4): t =
 
 fun reset(pp: PP.t): void
 {
-    pp._state->space = pp.margin
-    pp._state->left = 0
-    pp._state->right = 0
-    pp._state->top = 0
-    pp._state->bottom = 0
-    pp._state->emptystack = true
-    pp._state->pp_top = 0
+    pp.r->space = pp.margin
+    pp.r->left = 0
+    pp.r->right = 0
+    pp.r->top = 0
+    pp.r->bottom = 0
+    pp.r->emptystack = true
+    pp.r->pp_top = 0
 }
 
 fun flush(pp: PP.t): void
 {
-    if !pp._state->emptystack {
+    if !pp.r->emptystack {
         check_stack(pp, 0)
         ignore(advance_left(pp))
     }
@@ -139,38 +139,38 @@ fun beginv(pp: PP.t, indent: int) = begin(pp, indent, Consistent)
 
 fun begin(pp: PP.t, indent: int, style: ppstyle_t): void
 {
-    val right = if pp._state->emptystack {
-        pp._state->lefttotal = 1
-        pp._state->righttotal = 1
-        pp._state->left = 0
-        pp._state->right = 0
+    val right = if pp.r->emptystack {
+        pp.r->lefttotal = 1
+        pp.r->righttotal = 1
+        pp.r->left = 0
+        pp.r->right = 0
         0
     } else {
         advance_right(pp)
     }
     val tk = PPBegin(indent, style)
-    pp._state->q[right] = (tk, -pp._state->righttotal)
+    pp.r->q[right] = (tk, -pp.r->righttotal)
     scan_push(pp, right)
 }
 
 fun end(pp: PP.t): void
 {
-    if pp._state->emptystack {
+    if pp.r->emptystack {
         pprint(pp, PPEnd, 0)
     } else {
         val right = advance_right(pp)
-        pp._state->q[right] = (PPEnd, -1)
+        pp.r->q[right] = (PPEnd, -1)
         scan_push(pp, right)
     }
 }
 
 fun br(pp: PP.t, spaces: int, offset: int, ~sep: char='\0'): void
 {
-    val right = if pp._state->emptystack {
-        pp._state->lefttotal = 1
-        pp._state->righttotal = 1
-        pp._state->left = 0
-        pp._state->right = 0
+    val right = if pp.r->emptystack {
+        pp.r->lefttotal = 1
+        pp.r->righttotal = 1
+        pp.r->left = 0
+        pp.r->right = 0
         0
     } else {
         advance_right(pp)
@@ -178,8 +178,8 @@ fun br(pp: PP.t, spaces: int, offset: int, ~sep: char='\0'): void
     check_stack(pp, 0)
     scan_push(pp, right)
     val tk = PPBreak(spaces, offset, sep)
-    pp._state->q[right] = (tk, -pp._state->righttotal)
-    pp._state->righttotal += spaces
+    pp.r->q[right] = (tk, -pp.r->righttotal)
+    pp.r->righttotal += spaces
 }
 
 fun cut(pp: PP.t) = br(pp, 0, 0)
@@ -194,77 +194,77 @@ fun newline(pp: PP.t) = br(pp, pp.margin, 0)
 fun str(pp: PP.t, s: string): void
 {
     val tk = PPString(s), l = s.length()
-    if pp._state->emptystack {
+    if pp.r->emptystack {
         pprint(pp, tk, l)
     } else {
-        pp._state->q[advance_right(pp)] = (tk, l)
-        pp._state->righttotal += l
+        pp.r->q[advance_right(pp)] = (tk, l)
+        pp.r->righttotal += l
         check_stream(pp)
     }
 }
 
 @private fun check_stream(pp: PP.t): void
 {
-    if pp._state->righttotal - pp._state->lefttotal > pp._state->space {
-        if !pp._state->emptystack &&
-            pp._state->left == pp._state->stack[pp._state->bottom] {
-                pp._state->q[scan_pop_bottom(pp)].1 = 1000000
+    if pp.r->righttotal - pp.r->lefttotal > pp.r->space {
+        if !pp.r->emptystack &&
+            pp.r->left == pp.r->stack[pp.r->bottom] {
+                pp.r->q[scan_pop_bottom(pp)].1 = 1000000
             }
         val left = advance_left(pp)
-        if left != pp._state->right { check_stream(pp) }
+        if left != pp.r->right { check_stream(pp) }
     }
 }
 
 @private fun scan_push(pp: PP.t, i: int): void
 {
-    if !pp._state->emptystack {
-        val top = (pp._state->top + 1) % size(pp._state->stack)
-        pp._state->top = top
-        if top == pp._state->bottom {throw PPStackOverflow}
+    if !pp.r->emptystack {
+        val top = (pp.r->top + 1) % size(pp.r->stack)
+        pp.r->top = top
+        if top == pp.r->bottom {throw PPStackOverflow}
     }
-    pp._state->stack[pp._state->top] = i
-    pp._state->emptystack = false
+    pp.r->stack[pp.r->top] = i
+    pp.r->emptystack = false
 }
 
 @private fun scan_pop(pp: PP.t): int
 {
-    if pp._state->emptystack {throw PPEmptyStack}
-    val top = pp._state->top
-    val x = pp._state->stack[top]
-    if top == pp._state->bottom {
-        pp._state->emptystack = true
+    if pp.r->emptystack {throw PPEmptyStack}
+    val top = pp.r->top
+    val x = pp.r->stack[top]
+    if top == pp.r->bottom {
+        pp.r->emptystack = true
     } else {
-        val stacksize = size(pp._state->stack)
-        pp._state->top = (top + stacksize - 1) % stacksize
+        val stacksize = size(pp.r->stack)
+        pp.r->top = (top + stacksize - 1) % stacksize
     }
     x
 }
 
 @private fun scan_pop_bottom(pp: PP.t): int
 {
-    if pp._state->emptystack {throw PPEmptyStack}
-    val bottom = pp._state->bottom
-    val x = pp._state->stack[bottom]
-    if bottom == pp._state->top {
-        pp._state->emptystack = true
+    if pp.r->emptystack {throw PPEmptyStack}
+    val bottom = pp.r->bottom
+    val x = pp.r->stack[bottom]
+    if bottom == pp.r->top {
+        pp.r->emptystack = true
     } else {
-        pp._state->bottom = (bottom + 1) % size(pp._state->stack)
+        pp.r->bottom = (bottom + 1) % size(pp.r->stack)
     }
     x
 }
 
 @private fun advance_right(pp: PP.t): int
 {
-    val right = (pp._state->right + 1) % size(pp._state->q)
-    pp._state->right = right
-    if right == pp._state->left {throw PPQueueOverflow}
+    val right = (pp.r->right + 1) % size(pp.r->q)
+    pp.r->right = right
+    if right == pp.r->left {throw PPQueueOverflow}
     right
 }
 
 @private fun advance_left(pp: PP.t): int
 {
-    val left = pp._state->left
-    val (tk, len) = pp._state->q[left]
+    val left = pp.r->left
+    val (tk, len) = pp.r->q[left]
     if len >= 0 {
         pprint(pp, tk, len)
         val spaces = match tk {
@@ -272,32 +272,32 @@ fun str(pp: PP.t, s: string): void
             | PPString(s) => s.length()
             | _ => 0
         }
-        pp._state->lefttotal += spaces
-        if left != pp._state->right {
-            pp._state->left = (left + 1) % size(pp._state->q)
+        pp.r->lefttotal += spaces
+        if left != pp.r->right {
+            pp.r->left = (left + 1) % size(pp.r->q)
             advance_left(pp)
         } else { left }
     } else { left }
 }
 
 @private fun check_stack(pp: PP.t, k: int): void =
-    if !pp._state->emptystack {
-        val x = pp._state->stack[pp._state->top]
-        val (tk, len) = pp._state->q[x]
+    if !pp.r->emptystack {
+        val x = pp.r->stack[pp.r->top]
+        val (tk, len) = pp.r->q[x]
         match tk {
         | PPBegin(_, _) =>
             if k > 0 {
                 val _ = scan_pop(pp)
-                pp._state->q[x].1 = len + pp._state->righttotal
+                pp.r->q[x].1 = len + pp.r->righttotal
                 check_stack(pp, k - 1)
             }
         | PPEnd =>
             val _ = scan_pop(pp)
-            pp._state->q[x].1 = 1
+            pp.r->q[x].1 = 1
             check_stack(pp, k + 1)
         | _ =>
             val _ = scan_pop(pp)
-            pp._state->q[x].1 = len + pp._state->righttotal
+            pp.r->q[x].1 = len + pp.r->righttotal
             if k > 0 {check_stack(pp, k)}
         }
     }
@@ -315,46 +315,48 @@ fun str(pp: PP.t, s: string): void
     }
 
 @private fun pprint(pp: PP.t, x: pptok_t, len: int) {
-    val top = pp._state->pp_top
-    //println(f"pprinting {(x,len)}; space={pp._state->space}")
+    val top = pp.r->pp_top
+    //println(f"pprinting {(x,len)}; space={pp.r->space}")
     match x {
     | PPBegin(offset, style) =>
         val x =
-            if len > pp._state->space {
-                val sp = max(min(pp._state->space - offset, pp.margin), 10)
+            if len > pp.r->space {
+                val sp = max(min(pp.r->space - offset, pp.margin), 10)
                 (sp, match style { | Consistent => Consistent | _ => Auto })
             } else {
                 (pp.margin, Fits)
             }
-        pp._state->pp_stack[top] = x
-        pp._state->pp_top = top + 1
+        pp.r->pp_stack[top] = x
+        pp.r->pp_top = top + 1
     | PPEnd =>
         if top > 0 {
-            pp._state->pp_top = top - 1
+            pp.r->pp_top = top - 1
         }
     | PPBreak(spaces, offset, c) =>
         val (block_offset, style) =
-            if top > 0 { pp._state->pp_stack[top-1] }
+            if top > 0 { pp.r->pp_stack[top-1] }
             else { (0, Auto) }
         match style {
         | Fits =>
-            pp._state->space -= spaces
+            pp.r->space -= spaces
             pp_indent(pp, spaces, c)
         | Consistent =>
-            pp._state->space = min(block_offset - offset, pp.margin)
-            pp_newline(pp, pp.margin - pp._state->space)
-            pp._state->space = max(pp._state->space, 10)
+            pp.r->space = min(block_offset - offset, pp.margin)
+            pp_newline(pp, pp.margin - pp.r->space)
+            pp.r->space = max(pp.r->space, 10)
         | _ =>
-            if len > pp._state->space {
-                pp._state->space = block_offset - offset
-                pp_newline(pp, pp.margin - pp._state->space)
+            if len > pp.r->space {
+                pp.r->space = block_offset - offset
+                pp_newline(pp, pp.margin - pp.r->space)
             } else {
-                pp._state->space -= spaces
+                pp.r->space -= spaces
                 pp_indent(pp, spaces, c)
             }
         }
     | PPString(s) =>
-        pp._state->space = max(pp._state->space - len, 0)
+        pp.r->space = max(pp.r->space - len, 0)
         pp.print_f(s)
+    | PPEof =>
+        flush(pp)
     }
 }

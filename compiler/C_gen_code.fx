@@ -117,7 +117,7 @@ fun find_single_use_vals(topcode: kcode_t)
         | AtomId i =>
             if decl_const_vals.mem(i) {
                 val idx = count_map.find_idx_or_insert(i)
-                count_map._state->table[idx].2 += 1
+                count_map.r->table[idx].data += 1
             }
         | _ => {}
         }
@@ -1378,7 +1378,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | OpBitwiseXor => COpBitwiseXor
                     | OpCmp(cmpop) => COpCmp(cmpop)
                     | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship | OpDotSpaceship
-                    | OpDotMul | OpDotDiv | OpDotMod | OpDotPow | OpDotCmp _ =>
+                    | OpDotMul | OpDotDiv | OpDotMod | OpDotPow | OpDotCmp _ | OpSame =>
                         throw compile_err(kloc, f"cgen: unsupported op '{bop}' at this stage")
                     }
                 match (c_bop, get_cexp_typ(ce1)) {

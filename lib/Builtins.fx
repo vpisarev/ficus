@@ -9,6 +9,7 @@
 val __ficus_major__ : int = @ccode { FX_VERSION_MAJOR }
 val __ficus_minor__ : int = @ccode { FX_VERSION_MINOR }
 val __ficus_patchlevel__ : int = @ccode { FX_VERSION_PATCH }
+val __ficus_git_commit__ : string = @ccode { FX_MAKE_STR(FX_GIT_COMMIT) }
 
 // __ficus_version__, as a tuple, can be easily compared with a specific version, e.g.
 // if __ficus_version__ >= (1, 0, 0) {...}

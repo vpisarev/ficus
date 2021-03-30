@@ -495,7 +495,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (e1, body_code) = exp2kexp(e1, [], false, try_sc)
         val try_body = rcode2kexp(e1 :: body_code, e1loc)
         val exn_loc = match cases {
-                      | (p :: _, _) :: _ => get_pat_loc(p)
+                      | (p, _) :: _ => get_pat_loc(p)
                       | _ => eloc
                       }
         val exn_n = gen_temp_idk("exn")
@@ -605,6 +605,7 @@ fun pat_have_vars(p: pat_t): bool
     | PatRecord(_, ip_l, _) => ip_l.exists(fun ((_, pi)) {pat_have_vars(pi)})
     | PatRef(p, _) => pat_have_vars(p)
     | PatWhen(p, _, _) => pat_have_vars(p)
+    | PatAlt(pl, _) => pl.exists(pat_have_vars)
 }
 
 /* version of Ast_typecheck.get_record_elems, but for already transformed types */
@@ -732,6 +733,8 @@ fun pat_need_checks(p: pat_t, ptyp: ktyp_t)
                 }
         pat_need_checks(p, t)
     | PatWhen(_, _, _) => true
+    | PatAlt(pl, _) =>
+        exists(for pi <- pl {pat_need_checks(pi, ptyp)})
     }
 }
 
@@ -874,7 +877,7 @@ type pat_info_t = {pinfo_p: pat_t; pinfo_typ: ktyp_t; pinfo_e: kexp_t; pinfo_tag
 
     We dynamically maintain 3 lists of the sub-patterns to consider next.
     Each new sub-pattern occuring during recursive processing of the top-level pattern
-    is classified and is then either discarded or added to one of the 3 lists:
+    is classified and then is either discarded or added into one of the 3 lists:
     * pl_c - the patterns that needs some checks to verify, but have no captured variables
     * pl_uc - need checks and have variables to capture
     * pl_u - need no checks, but have variables to capture.
@@ -890,9 +893,9 @@ type pat_info_t = {pinfo_p: pat_t; pinfo_typ: ktyp_t; pinfo_e: kexp_t; pinfo_tag
     We do such dispatching in order to minimize the number of read operations from a complex structure.
     That is, why capture a variable until all the checks are complete and we know we have a match.
     The algorithm does not always produce the most optimal sequence of operations
-    (e.g. some checks are easier to do than the others etc., but it's probably good enough approximation)
+    (e.g. some checks are easier to do than the others etc.), but probably it's a good-enough approximation
 */
-fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
+fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                            code: kcode_t, sc: scope_t list, loc: loc_t, catch_mode: bool)
 {
     var match_var_cases = empty_idset
@@ -1121,6 +1124,18 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
                     val (ke, code) = exp2kexp(e, code, true, sc)
                     val c_exp = rcode2kexp(ke :: code, loc)
                     (([], [], []), c_exp :: checks, [])
+                | PatAlt(pl, _) =>
+                    if pat_have_vars(p) { throw compile_err(loc, "alt-pattern cannot contain captured values") }
+                    // build alt_checks, a list of expression lists, which are supposed to be combined by || operator.
+                    val fold alt_cases = ([], KExpAtom(AtomLit(KLitBool(false)), (KTypBool, loc)))::[] for p <- pl.rev() {
+                        val pinfo = pat_info_t {pinfo_p=p, pinfo_typ=ptyp, pinfo_e=KExpAtom(AtomId(n), (ptyp, loc)), pinfo_tag=var_tag0}
+                        val plists_ = dispatch_pat(pinfo, ([], [], []))
+                        val (checks_, code_) = process_next_subpat(plists_, ([], []), case_sc)
+                        val e = rcode2kexp(KExpAtom(AtomLit(KLitBool(true)), (KTypBool, loc)) :: code, loc)
+                        (checks_.rev(), e) :: alt_cases
+                    }
+                    val alt_check = rcode2kexp(KExpMatch(alt_cases, (KTypBool, loc)) :: code, loc)
+                    (plists, alt_check :: checks, [])
                 | _ => throw compile_err(loc, "this type of pattern is not supported yet")
                 }
                 process_next_subpat(plists, (checks, code), case_sc)
@@ -1155,14 +1170,9 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
     }
     var have_else = false
     val k_cases =
-    [: for (pl, e) <- cases {
-        val ncases = pl.length()
-        val p0 = pl.hd()
-        val ploc = get_pat_loc(p0)
-        if ncases != 1 {
-            throw compile_err(ploc, "multiple alternative patterns are not supported yet")
-        }
-        val pinfo = pat_info_t {pinfo_p=p0, pinfo_typ=atyp, pinfo_e=KExpAtom(a, (atyp, loc)), pinfo_tag=var_tag0}
+    [: for (p, e) <- cases {
+        val ploc = get_pat_loc(p)
+        val pinfo = pat_info_t {pinfo_p=p, pinfo_typ=atyp, pinfo_e=KExpAtom(a, (atyp, loc)), pinfo_tag=var_tag0}
         if have_else {
             throw compile_err(ploc, "unreacheable pattern matching case")
         }
@@ -1175,10 +1185,10 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t list, exp_t) list,
         if checks == [] { have_else = true }
         (checks.rev(), ke)
     } :]
-    /*if is_variant && !have_else && !match_var_cases.empty() {
+    if is_variant && !have_else && !match_var_cases.empty() {
         val idlist = ", ".join(match_var_cases.map(fun (n) {f"'{n}'"}))
         throw compile_err(loc, f"the case(s) {idlist} are not covered; add '| _ => ...' clause to suppress this error")
-    }*/
+    }
     val k_cases =
         if have_else {
             k_cases

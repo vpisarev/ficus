@@ -2415,44 +2415,29 @@ static int _fx_M19C_post_adjust_declsFM12adjust_cstmtV15C_form__cstmt_t2V15C_for
          }
       }
    }
-   int tag_1 = FX_REC_VARIANT_TAG(s_0);
    bool res_0;
-   if (tag_1 == _FX_V15C_form__cstmt_t_CExp) {
-      _fx_V14C_form__cexp_t v_7 = s_0->u.CExp;
-      if (FX_REC_VARIANT_TAG(v_7) == _FX_V14C_form__cexp_t_CExpCCode) {
-         _fx_T2SR10Ast__loc_t* vcase_2 = &v_7->u.CExpCCode; res_0 = true; goto _fx_endmatch_0;
-      }
+   if (tag_0 == _FX_V15C_form__cstmt_t_CDefVal) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CMacroPragma) {
-      _fx_T2SR10Ast__loc_t* vcase_3 = &s_0->u.CMacroPragma; res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CDefForwardSym) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CMacroInclude) {
-      _fx_T2SR10Ast__loc_t* vcase_4 = &s_0->u.CMacroInclude; res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CDefForwardTyp) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CMacroIf) {
-      _fx_T3LT2V14C_form__cexp_tLV15C_form__cstmt_tLV15C_form__cstmt_tR10Ast__loc_t* vcase_5 = &s_0->u.CMacroIf;
-      res_0 = true;
-      goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CDefTyp) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CMacroUndef) {
-      _fx_T2V9Ast__id_tR10Ast__loc_t* vcase_6 = &s_0->u.CMacroUndef; res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CDefEnum) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CMacroDef) { res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CMacroDef) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CDefEnum) { res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CMacroUndef) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CDefTyp) { res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CMacroIf) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CDefForwardTyp) {
-      _fx_T2V9Ast__id_tR10Ast__loc_t* vcase_7 = &s_0->u.CDefForwardTyp; res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CMacroInclude) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CDefForwardSym) {
-      _fx_T2V9Ast__id_tR10Ast__loc_t* vcase_8 = &s_0->u.CDefForwardSym; res_0 = true; goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CMacroPragma) { res_0 = true; goto _fx_endmatch_0;
    }
-   if (tag_1 == _FX_V15C_form__cstmt_t_CDefVal) {
-      _fx_T4V14C_form__ctyp_tV9Ast__id_tVt6option1V14C_form__cexp_tR10Ast__loc_t* vcase_9 = &s_0->u.CDefVal;
-      res_0 = true;
-      goto _fx_endmatch_0;
+   if (tag_0 == _FX_V15C_form__cstmt_t_CExp) {
+      if (FX_REC_VARIANT_TAG(s_0->u.CExp) == _FX_V14C_form__cexp_t_CExpCCode) { res_0 = true; goto _fx_endmatch_0; }
    }
    res_0 = false;
 
@@ -2463,22 +2448,22 @@ _fx_endmatch_0: ;
    if (tag_0 == _FX_V15C_form__cstmt_t_CDefFun) {
       _fx_LV15C_form__cstmt_t cf_body_0 = 0;
       _fx_LV15C_form__cstmt_t new_cf_body_0 = 0;
-      _fx_R17C_form__cdeffun_t v_8 = {  };
+      _fx_R17C_form__cdeffun_t v_7 = {  };
       _fx_rR17C_form__cdeffun_t cf_0 = s_0->u.CDefFun;
       FX_COPY_PTR(cf_0->data.cf_body, &cf_body_0);
       FX_CALL(adjust_sseq_0.fp(cf_body_0, callb_0, &new_cf_body_0, adjust_sseq_0.fcv), _fx_catch_1);
-      _fx_R17C_form__cdeffun_t* v_9 = &cf_0->data;
+      _fx_R17C_form__cdeffun_t* v_8 = &cf_0->data;
       _fx_make_R17C_form__cdeffun_t(
-         &v_9->cf_name, &v_9->cf_cname, v_9->cf_args, v_9->cf_rt, new_cf_body_0, &v_9->cf_flags, v_9->cf_scope, &v_9->cf_loc,
-            &v_8);
-      _fx_R17C_form__cdeffun_t* v_10 = &cf_0->data;
-      _fx_free_R17C_form__cdeffun_t(v_10);
-      _fx_copy_R17C_form__cdeffun_t(&v_8, v_10);
+         &v_8->cf_name, &v_8->cf_cname, v_8->cf_args, v_8->cf_rt, new_cf_body_0, &v_8->cf_flags, v_8->cf_scope, &v_8->cf_loc,
+            &v_7);
+      _fx_R17C_form__cdeffun_t* v_9 = &cf_0->data;
+      _fx_free_R17C_form__cdeffun_t(v_9);
+      _fx_copy_R17C_form__cdeffun_t(&v_7, v_9);
       *local_have_ops_0 = false;
       FX_COPY_PTR(s_0, fx_result);
 
    _fx_catch_1: ;
-      _fx_free_R17C_form__cdeffun_t(&v_8);
+      _fx_free_R17C_form__cdeffun_t(&v_7);
       if (new_cf_body_0) { _fx_free_LV15C_form__cstmt_t(&new_cf_body_0);
       }
       if (cf_body_0) { _fx_free_LV15C_form__cstmt_t(&cf_body_0);
@@ -2488,9 +2473,9 @@ _fx_endmatch_0: ;
    *local_have_ops_0 = true;
    if (FX_REC_VARIANT_TAG(s_0) == _FX_V15C_form__cstmt_t_CStmtBlock) {
       _fx_LV15C_form__cstmt_t sseq_0 = 0;
-      _fx_T2LV15C_form__cstmt_tR10Ast__loc_t* vcase_10 = &s_0->u.CStmtBlock;
-      FX_CALL(adjust_sseq_0.fp(vcase_10->t0, callb_0, &sseq_0, adjust_sseq_0.fcv), _fx_catch_2);
-      FX_CALL(_fx_M6C_formFM10CStmtBlockVM7cstmt_t2LVM7cstmt_tR10Ast__loc_t(sseq_0, &vcase_10->t1, fx_result), _fx_catch_2);
+      _fx_T2LV15C_form__cstmt_tR10Ast__loc_t* vcase_2 = &s_0->u.CStmtBlock;
+      FX_CALL(adjust_sseq_0.fp(vcase_2->t0, callb_0, &sseq_0, adjust_sseq_0.fcv), _fx_catch_2);
+      FX_CALL(_fx_M6C_formFM10CStmtBlockVM7cstmt_t2LVM7cstmt_tR10Ast__loc_t(sseq_0, &vcase_2->t1, fx_result), _fx_catch_2);
 
    _fx_catch_2: ;
       if (sseq_0) { _fx_free_LV15C_form__cstmt_t(&sseq_0);

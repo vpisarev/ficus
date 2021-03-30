@@ -303,8 +303,8 @@ type exp_t =
     | ExpDoWhile: (exp_t, exp_t, loc_t)
     | ExpFor: ((pat_t, exp_t) list, pat_t, exp_t, for_flags_t, loc_t)
     | ExpMap: (((pat_t, exp_t) list, pat_t) list, exp_t, for_flags_t, ctx_t)
-    | ExpTryCatch: (exp_t, (pat_t list, exp_t) list, ctx_t)
-    | ExpMatch: (exp_t, (pat_t list, exp_t) list, ctx_t)
+    | ExpTryCatch: (exp_t, (pat_t, exp_t) list, ctx_t)
+    | ExpMatch: (exp_t, (pat_t, exp_t) list, ctx_t)
     | ExpCast: (exp_t, typ_t, ctx_t)
     | ExpTyped: (exp_t, typ_t, ctx_t)
     | ExpCCode: (string, ctx_t)
@@ -329,6 +329,7 @@ type pat_t =
     | PatAs: (pat_t, id_t, loc_t)
     | PatTyped: (pat_t, typ_t, loc_t)
     | PatWhen: (pat_t, exp_t, loc_t)
+    | PatAlt: (pat_t list, loc_t)
     | PatRef: (pat_t, loc_t)
 
 type env_entry_t =
@@ -703,6 +704,7 @@ fun get_pat_loc(p: pat_t) {
     | PatTyped(_, _, l) => l
     | PatRef(_, l) => l
     | PatWhen(_, _, l) => l
+    | PatAlt(_, l) => l
 }
 
 fun pat_skip_typed(p: pat_t) {
@@ -1372,7 +1374,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     fun walk_plist_(pl: pat_t list) = check_n_walk_plist(pl, callb)
     fun walk_pe_l_(pe_l: (pat_t, exp_t) list) = [: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) } :]
     fun walk_ne_l_(ne_l: (id_t, exp_t) list) = [: for (n, e) <- ne_l { (n, walk_exp_(e)) } :]
-    fun walk_cases_(ple_l: (pat_t list, exp_t) list) = [: for (pl, e) <- ple_l { (walk_plist_(pl), walk_exp_(e)) } :]
+    fun walk_cases_(pe_l: (pat_t, exp_t) list) = [: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) } :]
     fun walk_exp_opt_(e_opt: exp_t?) {
         | Some(e) => Some(walk_exp_(e))
         | _ => None
@@ -1463,6 +1465,7 @@ fun walk_pat(p: pat_t, callb: ast_callb_t) {
     | PatAs(p, n, loc) => PatAs(walk_pat_(p), n, loc)
     | PatTyped(p, t, loc) => PatTyped(walk_pat_(p), walk_typ_(t), loc)
     | PatWhen(p, e, loc) => PatWhen(walk_pat_(p), check_n_walk_exp(e, callb), loc)
+    | PatAlt(pl, loc) => PatAlt(walk_pl_(pl), loc)
     | PatRef(p, loc) => PatRef(walk_pat_(p), loc)
     }
 }

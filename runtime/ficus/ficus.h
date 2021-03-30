@@ -83,6 +83,8 @@ typedef char32_t char_;
 #define FX_THREAD_LOCAL __thread
 #endif
 
+#define FX_CONCAT(a, b) a ## b
+
 //////////////////////// Error Codes //////////////////////
 extern int FX_EXN_ASCIIError;
 extern int FX_EXN_AssertError;
@@ -338,8 +340,8 @@ int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str);
 #define FX_COPY_STR(src, dst) if((src)->rc) { FX_INCREF(*(src)->rc); *(dst) = *(src); } else *(dst) = *(src);
 #define FX_FREE_STR(str) if(!(str)->rc) ; else fx_free_str(str)
 #define FX_FREE_CSTR(cstr) if(!(cstr)->rc) ; else fx_free_cstr(cstr)
-#define FX_MAKE_STR(strlit) { 0, (char_*)U##strlit, (int_)(sizeof(U##strlit)/sizeof(char_)-1) }
-#define FX_MAKE_STR1(clit) { 0, (char_*)U##clit, 1 }
+#define FX_MAKE_STR(strlit) { 0, (char_*)FX_CONCAT(U, strlit), (int_)(sizeof(FX_CONCAT(U, strlit))/sizeof(char_)-1) }
+#define FX_MAKE_STR1(clit) { 0, (char_*)FX_CONCAT(U, clit), 1 }
 #define FX_MAKE_VAR_STR1(c) { 0, &c, 1 }
 #define FX_CHAR(c) U##c
 

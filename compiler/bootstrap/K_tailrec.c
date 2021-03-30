@@ -2880,22 +2880,21 @@ static int _fx_M9K_tailrecFM19process_func_endingV14K_form__kexp_t1V14K_form__ke
       }
       else {
          int tag_0 = FX_REC_VARIANT_TAG(ktyp_0);
-         int tag_1 = FX_REC_VARIANT_TAG(ktyp_0);
          bool res_1;
          bool res_2;
-         if (tag_1 == _FX_V14K_form__ktyp_t_KTypChar) { res_2 = true;
+         if (tag_0 == _FX_V14K_form__ktyp_t_KTypInt) { res_2 = true;
          }
-         else if (tag_1 == _FX_V14K_form__ktyp_t_KTypBool) { res_2 = true;
+         else if (tag_0 == _FX_V14K_form__ktyp_t_KTypCInt) { res_2 = true;
          }
-         else if (tag_1 == _FX_V14K_form__ktyp_t_KTypFloat) { res_2 = true;
+         else if (tag_0 == _FX_V14K_form__ktyp_t_KTypSInt) { res_2 = true;
          }
-         else if (tag_1 == _FX_V14K_form__ktyp_t_KTypUInt) { res_2 = true;
+         else if (tag_0 == _FX_V14K_form__ktyp_t_KTypUInt) { res_2 = true;
          }
-         else if (tag_1 == _FX_V14K_form__ktyp_t_KTypSInt) { res_2 = true;
+         else if (tag_0 == _FX_V14K_form__ktyp_t_KTypFloat) { res_2 = true;
          }
-         else if (tag_1 == _FX_V14K_form__ktyp_t_KTypCInt) { res_2 = true;
+         else if (tag_0 == _FX_V14K_form__ktyp_t_KTypBool) { res_2 = true;
          }
-         else if (tag_1 == _FX_V14K_form__ktyp_t_KTypInt) { res_2 = true;
+         else if (tag_0 == _FX_V14K_form__ktyp_t_KTypChar) { res_2 = true;
          }
          else { res_2 = false;
          }

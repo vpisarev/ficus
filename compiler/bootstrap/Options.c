@@ -186,6 +186,7 @@ FX_EXTERN_C_VAL(struct _fx_LS_data_t* _fx_g9Sys__argv)
 FX_EXTERN_C int _fx_M8FilenameFM5splitTa2S1S(fx_str_t* path_0, _fx_Ta2S* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(fx_str_t _fx_g21__ficus_version_str__)
+FX_EXTERN_C_VAL(fx_str_t _fx_g20__ficus_git_commit__)
 FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3SysFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
@@ -278,72 +279,73 @@ FX_EXTERN_C int _fx_M7OptionsFM10print_helpv1B(bool detailed_0, void* fx_fv)
    FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_3), _fx_cleanup);
    }
    fx_str_t slit_3 = FX_MAKE_STR("Ficus compiler v");
-   fx_str_t slit_4 = FX_MAKE_STR(" (git 123456789");
+   fx_str_t slit_4 = FX_MAKE_STR(" (git ");
    {
-   const fx_str_t strs_2[] = { slit_3, _fx_g21__ficus_version_str__, slit_4 };
-   FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_4), _fx_cleanup);
+   const fx_str_t strs_2[] = { slit_3, _fx_g21__ficus_version_str__, slit_4, _fx_g20__ficus_git_commit__ };
+   FX_CALL(fx_strjoin(0, 0, 0, strs_2, 4, &v_4), _fx_cleanup);
    }
    fx_str_t slit_5 = FX_MAKE_STR("Ficus compiler v");
-   fx_str_t slit_6 = FX_MAKE_STR(" (git 123456789)");
+   fx_str_t slit_6 = FX_MAKE_STR(" (git ");
+   fx_str_t slit_7 = FX_MAKE_STR(")");
    {
-   const fx_str_t strs_3[] = { slit_5, _fx_g21__ficus_version_str__, slit_6 };
-   FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_5), _fx_cleanup);
+   const fx_str_t strs_3[] = { slit_5, _fx_g21__ficus_version_str__, slit_6, _fx_g20__ficus_git_commit__, slit_7 };
+   FX_CALL(fx_strjoin(0, 0, 0, strs_3, 5, &v_5), _fx_cleanup);
    }
    _fx_F12print_stringv1S(&v_5, 0);
-   fx_str_t slit_7 = FX_MAKE_STR("\n");
-   _fx_F12print_stringv1S(&slit_7, 0);
+   fx_str_t slit_8 = FX_MAKE_STR("\n");
+   _fx_F12print_stringv1S(&slit_8, 0);
    if (!detailed_0) {
-      fx_str_t slit_8 = FX_MAKE_STR("\nUsage: ");
-      {
-      const fx_str_t strs_4[] = { slit_8, fxname_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_4, 2, &v_6), _fx_cleanup);
-      }
       fx_str_t slit_9 = FX_MAKE_STR("\nUsage: ");
-      fx_str_t slit_10 =
-         FX_MAKE_STR(
-
-               " [-pr-tokens | -pr-ast | -pr-k | -no-c\n    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n>\n    | -o <output_name> | -I <incdir> | -B <build_root>\n    | -c++ | -cflags <cflags> | -clibs <clibs\n    | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]\n\nRun \'");
       {
-      const fx_str_t strs_5[] = { slit_9, fxname_0, slit_10 }; FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_7), _fx_cleanup);
+      const fx_str_t strs_4[] = { slit_9, fxname_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_4, 2, &v_6), _fx_cleanup);
       }
-      fx_str_t slit_11 = FX_MAKE_STR("\nUsage: ");
-      fx_str_t slit_12 =
+      fx_str_t slit_10 = FX_MAKE_STR("\nUsage: ");
+      fx_str_t slit_11 =
          FX_MAKE_STR(
 
                " [-pr-tokens | -pr-ast | -pr-k | -no-c\n    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n>\n    | -o <output_name> | -I <incdir> | -B <build_root>\n    | -c++ | -cflags <cflags> | -clibs <clibs\n    | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]\n\nRun \'");
       {
-      const fx_str_t strs_6[] = { slit_11, fxname_0, slit_12, fxname_0 };
+      const fx_str_t strs_5[] = { slit_10, fxname_0, slit_11 }; FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_7), _fx_cleanup);
+      }
+      fx_str_t slit_12 = FX_MAKE_STR("\nUsage: ");
+      fx_str_t slit_13 =
+         FX_MAKE_STR(
+
+               " [-pr-tokens | -pr-ast | -pr-k | -no-c\n    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n>\n    | -o <output_name> | -I <incdir> | -B <build_root>\n    | -c++ | -cflags <cflags> | -clibs <clibs\n    | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]\n\nRun \'");
+      {
+      const fx_str_t strs_6[] = { slit_12, fxname_0, slit_13, fxname_0 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_6, 4, &v_8), _fx_cleanup);
       }
-      fx_str_t slit_13 = FX_MAKE_STR("\nUsage: ");
-      fx_str_t slit_14 =
+      fx_str_t slit_14 = FX_MAKE_STR("\nUsage: ");
+      fx_str_t slit_15 =
          FX_MAKE_STR(
 
                " [-pr-tokens | -pr-ast | -pr-k | -no-c\n    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n>\n    | -o <output_name> | -I <incdir> | -B <build_root>\n    | -c++ | -cflags <cflags> | -clibs <clibs\n    | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]\n\nRun \'");
-      fx_str_t slit_15 = FX_MAKE_STR(" -h\' to get more detailed help");
+      fx_str_t slit_16 = FX_MAKE_STR(" -h\' to get more detailed help");
       {
-      const fx_str_t strs_7[] = { slit_13, fxname_0, slit_14, fxname_0, slit_15 };
+      const fx_str_t strs_7[] = { slit_14, fxname_0, slit_15, fxname_0, slit_16 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_7, 5, &v_9), _fx_cleanup);
       }
       _fx_F12print_stringv1S(&v_9, 0);
-      fx_str_t slit_16 = FX_MAKE_STR("\n");
-      _fx_F12print_stringv1S(&slit_16, 0);
+      fx_str_t slit_17 = FX_MAKE_STR("\n");
+      _fx_F12print_stringv1S(&slit_17, 0);
    }
    else {
-      fx_str_t slit_17 = FX_MAKE_STR("\nUsage: ");
-      {
-      const fx_str_t strs_8[] = { slit_17, fxname_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_8, 2, &v_10), _fx_cleanup);
-      }
       fx_str_t slit_18 = FX_MAKE_STR("\nUsage: ");
-      fx_str_t slit_19 =
+      {
+      const fx_str_t strs_8[] = { slit_18, fxname_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_8, 2, &v_10), _fx_cleanup);
+      }
+      fx_str_t slit_19 = FX_MAKE_STR("\nUsage: ");
+      fx_str_t slit_20 =
          FX_MAKE_STR(
 
                " [options ...] <input_file.fx> [-- <app_args ...>]\n\nwhere options can be some of:\n    -rebuild        Ignore cached files; rebuild everything from scratch\n    -pr-tokens      Print all the tokens in parsed files\n    -pr-ast0        Print AST right after parsing\n    -pr-ast         Print typechecked AST of the parsed files\n    -pr-k0          Print just generated K-form\n    -pr-k           Print optimized K-form of the parsed files\n                    (only a part of the generated K-form is retained\n                    because of the deadcode elimination step)\n    -no-c           Do not generate C code\n    -app            Build application (default mode)\n    -run            Build application and run it\n    -O0             Optimization level 0: disable all optimizations\n                                         except for the most essential ones\n    -O1             Optimization level 1 (default): enable most of optimizations\n    -O3             Optimization level 3: enable all optimizations\n    -debug          Turn on debug information, disable optimizations\n                    (but can be overwritten with further -On)\n    -optim-iters    The number of optimization iterations to perform (2 or 3 by default, depending on -O<n>)\n    -inline-threshold  Inline threshold (100 by default); the higher it is,\n                    the bigger functions are inlined;\n                    --inline-thresh=0 disables inline expansion\n    -relax          Do not require explicit typing of all global functions\' parameters\n    -no-preamble    Do not auto-import \'Builtins\', \'List\', \'String\' and\n                    a few other standard modules into each compiled module.\n    -Wno-unused     Do not report warnings about unused values/functions\n    -o <output_name> Output file name (by default it matches the\n                    input filename without .fx extension)\n    -I <dir>        Add specified directory to the module search path\n    -B <build_root> Specifies the parent directory <build_dir> where subdirectory\n                    <build_root>/__build__/<input_file> with the generated files will be created.\n                    By default, <build_root> is the current working directory.\n    -c++            Use C++ compiler instead of C to compile the generated sources.\n                    \'pragma \"c++\"\' in .fx file also instructs ficus compiler to use C++.\n    -cflags <cflags> Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler.\n                    If environment variable FICUS_CFLAGS is set,\n                    its value is inserted before <cflags>\n    -clibs <clibs>  Pass the specified libs/linker flags to C/C++ compiler.\n                    If environment variable FICUS_LINK_LIBRARIES is set,\n                    its value is inserted after <clibs>\n    -verbose        Display various info during the build\n    -h or -help or --help  Display this information\n    -v or -version  Display information about compiler and the platform, then exit.\n    --              Specify the application parameters when \'-run\' flag is used,\n                    e.g. \'./ficus -run myprog.fx -- arg1 arg2\'\n");
       {
-      const fx_str_t strs_9[] = { slit_18, fxname_0, slit_19 }; FX_CALL(fx_strjoin(0, 0, 0, strs_9, 3, &v_11), _fx_cleanup);
+      const fx_str_t strs_9[] = { slit_19, fxname_0, slit_20 }; FX_CALL(fx_strjoin(0, 0, 0, strs_9, 3, &v_11), _fx_cleanup);
       }
       _fx_F12print_stringv1S(&v_11, 0);
-      fx_str_t slit_20 = FX_MAKE_STR("\n");
-      _fx_F12print_stringv1S(&slit_20, 0);
+      fx_str_t slit_21 = FX_MAKE_STR("\n");
+      _fx_F12print_stringv1S(&slit_21, 0);
    }
 
 _fx_cleanup: ;
@@ -791,13 +793,13 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
       }
       bool res_0;
       if (args_1 != 0) {
-         fx_str_t slit_42 = FX_MAKE_STR("--help"); if (fx_streq(&args_1->hd, &slit_42)) { res_0 = true; goto _fx_endmatch_2; }
+         fx_str_t slit_42 = FX_MAKE_STR("-h"); if (fx_streq(&args_1->hd, &slit_42)) { res_0 = true; goto _fx_endmatch_2; }
       }
       if (args_1 != 0) {
          fx_str_t slit_43 = FX_MAKE_STR("-help"); if (fx_streq(&args_1->hd, &slit_43)) { res_0 = true; goto _fx_endmatch_2; }
       }
       if (args_1 != 0) {
-         fx_str_t slit_44 = FX_MAKE_STR("-h"); if (fx_streq(&args_1->hd, &slit_44)) { res_0 = true; goto _fx_endmatch_2; }
+         fx_str_t slit_44 = FX_MAKE_STR("--help"); if (fx_streq(&args_1->hd, &slit_44)) { res_0 = true; goto _fx_endmatch_2; }
       }
       res_0 = false;
 
@@ -807,15 +809,15 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
       }
       bool res_1;
       if (args_1 != 0) {
-         fx_str_t slit_45 = FX_MAKE_STR("--version");
-         if (fx_streq(&args_1->hd, &slit_45)) { res_1 = true; goto _fx_endmatch_3;
-         }
+         fx_str_t slit_45 = FX_MAKE_STR("-v"); if (fx_streq(&args_1->hd, &slit_45)) { res_1 = true; goto _fx_endmatch_3; }
       }
       if (args_1 != 0) {
          fx_str_t slit_46 = FX_MAKE_STR("-version"); if (fx_streq(&args_1->hd, &slit_46)) { res_1 = true; goto _fx_endmatch_3; }
       }
       if (args_1 != 0) {
-         fx_str_t slit_47 = FX_MAKE_STR("-v"); if (fx_streq(&args_1->hd, &slit_47)) { res_1 = true; goto _fx_endmatch_3; }
+         fx_str_t slit_47 = FX_MAKE_STR("--version");
+         if (fx_streq(&args_1->hd, &slit_47)) { res_1 = true; goto _fx_endmatch_3;
+         }
       }
       res_1 = false;
 
@@ -1028,33 +1030,32 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
       {
       const fx_str_t strs_20[] = { slit_71, v_9, slit_72 }; FX_CALL(fx_strjoin(0, 0, 0, strs_20, 3, &v_11), _fx_cleanup);
       }
-      fx_str_t slit_73 = FX_MAKE_STR("123456789");
-      FX_CALL(_fx_F6stringS1S(&slit_73, &v_12, 0), _fx_cleanup);
-      fx_str_t slit_74 = FX_MAKE_STR("Ficus version: ");
-      fx_str_t slit_75 = FX_MAKE_STR(" (git commit: ");
+      FX_CALL(_fx_F6stringS1S(&_fx_g20__ficus_git_commit__, &v_12, 0), _fx_cleanup);
+      fx_str_t slit_73 = FX_MAKE_STR("Ficus version: ");
+      fx_str_t slit_74 = FX_MAKE_STR(" (git commit: ");
       {
-      const fx_str_t strs_21[] = { slit_74, v_9, slit_75, v_12 }; FX_CALL(fx_strjoin(0, 0, 0, strs_21, 4, &v_13), _fx_cleanup);
+      const fx_str_t strs_21[] = { slit_73, v_9, slit_74, v_12 }; FX_CALL(fx_strjoin(0, 0, 0, strs_21, 4, &v_13), _fx_cleanup);
       }
-      fx_str_t slit_76 = FX_MAKE_STR("Ficus version: ");
-      fx_str_t slit_77 = FX_MAKE_STR(" (git commit: ");
-      fx_str_t slit_78 = FX_MAKE_STR(")");
+      fx_str_t slit_75 = FX_MAKE_STR("Ficus version: ");
+      fx_str_t slit_76 = FX_MAKE_STR(" (git commit: ");
+      fx_str_t slit_77 = FX_MAKE_STR(")");
       {
-      const fx_str_t strs_22[] = { slit_76, v_9, slit_77, v_12, slit_78 };
+      const fx_str_t strs_22[] = { slit_75, v_9, slit_76, v_12, slit_77 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_22, 5, &v_14), _fx_cleanup);
       }
       FX_CALL(_fx_F7printlnv1S(&v_14, 0), _fx_cleanup);
       FX_CALL(_fx_g11Sys__osname.fp(true, &v_15, _fx_g11Sys__osname.fcv), _fx_cleanup);
       FX_CALL(_fx_F6stringS1S(&v_15, &v_16, 0), _fx_cleanup);
-      fx_str_t slit_79 = FX_MAKE_STR("Plaform: ");
+      fx_str_t slit_78 = FX_MAKE_STR("Plaform: ");
       {
-      const fx_str_t strs_23[] = { slit_79, v_16 }; FX_CALL(fx_strjoin(0, 0, 0, strs_23, 2, &v_17), _fx_cleanup);
+      const fx_str_t strs_23[] = { slit_78, v_16 }; FX_CALL(fx_strjoin(0, 0, 0, strs_23, 2, &v_17), _fx_cleanup);
       }
       FX_CALL(_fx_F7printlnv1S(&v_17, 0), _fx_cleanup);
       FX_CALL(_fx_M3SysFM10cc_versionS0(&v_18, 0), _fx_cleanup);
       FX_CALL(_fx_F6stringS1S(&v_18, &v_19, 0), _fx_cleanup);
-      fx_str_t slit_80 = FX_MAKE_STR("C/C++ Compiler: ");
+      fx_str_t slit_79 = FX_MAKE_STR("C/C++ Compiler: ");
       {
-      const fx_str_t strs_24[] = { slit_80, v_19 }; FX_CALL(fx_strjoin(0, 0, 0, strs_24, 2, &v_20), _fx_cleanup);
+      const fx_str_t strs_24[] = { slit_79, v_19 }; FX_CALL(fx_strjoin(0, 0, 0, strs_24, 2, &v_20), _fx_cleanup);
       }
       FX_CALL(_fx_F7printlnv1S(&v_20, 0), _fx_cleanup);
       *fx_result = false;
@@ -1077,8 +1078,8 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
       FX_FREE_STR(v_96);
       fx_copy_str(&v_24, v_96);
       fx_copy_str(&_fx_g12Options__opt.build_rootdir, &v_25);
-      fx_str_t slit_81 = FX_MAKE_STR("__build__");
-      FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&v_25, &slit_81, &v_26, 0), _fx_cleanup);
+      fx_str_t slit_80 = FX_MAKE_STR("__build__");
+      FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&v_25, &slit_80, &v_26, 0), _fx_cleanup);
       fx_str_t* v_97 = &_fx_g12Options__opt.build_rootdir;
       FX_FREE_STR(v_97);
       fx_copy_str(&v_26, v_97);

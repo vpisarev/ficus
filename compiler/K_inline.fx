@@ -247,10 +247,10 @@ fun inline_some(kmods: kmodule_t list)
                 match kinfo_(f, loc) {
                 | KFun _ =>
                     val idx = all_funcs_info.find_idx_or_insert(f)
-                    var r_fi = all_funcs_info._state->table[idx].2
+                    var r_fi = all_funcs_info.r->table[idx].data
                     if r_fi->fi_nrefs == -1 {
                         r_fi = gen_default_func_info(0)
-                        all_funcs_info._state->table[idx].2 = r_fi
+                        all_funcs_info.r->table[idx].data = r_fi
                     }
                     r_fi->fi_nrefs += 1
                 | _ => {}
@@ -267,10 +267,10 @@ fun inline_some(kmods: kmodule_t list)
             val idx = all_funcs_info.find_idx_or_insert(kf_name)
             val can_inline = !kf_flags.fun_flag_recursive && !kf_flags.fun_flag_ccode && kf_flags.fun_flag_ctor == CtorNone
             val fsize = calc_exp_size(kf_body)
-            var r_fi = all_funcs_info._state->table[idx].2
+            var r_fi = all_funcs_info.r->table[idx].data
             if r_fi->fi_nrefs == -1 {
                 r_fi = gen_default_func_info(0)
-                all_funcs_info._state->table[idx].2 = r_fi
+                all_funcs_info.r->table[idx].data = r_fi
             }
             *r_fi = r_fi->{fi_name=kf_name, fi_can_inline=can_inline, fi_size=fsize, fi_flags=kf_flags}
             curr_fi = r_fi

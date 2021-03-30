@@ -1,12 +1,12 @@
 // the first test script
-import testmod, Math
+import testmod
 
 val str = f"
 привет! 你好吗?
 BTW,
     2*2 = {2*2},
-    π (the area of circle with radius 1) = {Math.Pi},
-    e = {Math.exp(1.)},
+    π (the area of circle with radius 1) = {M_PI},
+    e = {exp(1.)},
     φ (golden ratio) = {(1+5.**0.5)/2}
 "
 val c = '😄'
@@ -107,7 +107,7 @@ println(f"excepion-based search: negative number in {a}: {gen_msg(i3, a)}")
 type complex_t = {re: float; im: float}
 val c = ref (complex_t {re=1.f, im=1.f})
 val d = c->{re=c->re*2, im=c->im*2}
-fun abs(c:complex_t) = Math.sqrt(c.re**2 + c.im**2)
+fun abs(c:complex_t) = sqrt(c.re**2 + c.im**2)
 println(f"abs((1+1i)*2)={abs(d)}")
 
 val fixed_choice = "five"
@@ -123,9 +123,9 @@ val result = match fixed_choice
 println(f"{fixed_choice} => {result}")
 assert(result == "found 5")
 
-println(if 0.1 <= Math.sin(1.) < 0.7 {
+println(if 0.1 <= sin(1.) < 0.7 {
         "sin(1) is between 0.1 and 0.7"
-    } else if Math.sin(1.) < 0.1 {
+    } else if sin(1.) < 0.1 {
         "sin(1) is smaller than 0.1"
     } else {
         "sin(1) is no smaller than 0.7"
@@ -154,7 +154,7 @@ println(f"triangular numbers: {a}")
 {
     if n <= 1 {false} else if n % 2 == 0 {n == 2}
     else {
-        all(for p<-3:Math.floor(Math.sqrt(double(n)))+1:2 {n % p != 0})
+        all(for p<-3:floor(sqrt(double(n)))+1:2 {n % p != 0})
     }
 }
 
@@ -174,11 +174,11 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
 
     val screen: char [,] = array((h, w), ' ')
     for x <- 0:w, y <- tab {
-        val iy = Math.round((y-minv)*scale)
+        val iy = round((y-minv)*scale)
         screen[h-1-clip(iy, 0, h-1), x] = '*'
     }
     for y <- 0:h { println(screen[y,:]) }
 }
 
-val a = float(-0.5*Math.Pi), b = -a*5
-plot(a, b, Math.sin, 80, 10)
+val a = float(-0.5*M_PI), b = -a*5
+plot(a, b, sin, 80, 10)
