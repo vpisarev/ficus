@@ -1620,7 +1620,14 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val (typ2, loc2) = get_exp_ctx(e2)
         unify(ctyp, TypBool, cloc, "if() condition should have 'bool' type")
         unify(typ1, etyp, loc1, "if() expression should have the same type as its branches")
-        unify(typ2, etyp, loc2, "if() expression should have the same type as its branches")
+        if !maybe_unify(typ2, etyp, loc2, true) {
+            match e2 {
+            | ExpNop _ =>
+                throw compile_err(loc2, "if() expression of non-void type has no 'else' branch")
+            | _ =>
+                unify(typ2, etyp, loc2, "if() expression should have the same type as its branches")
+            }
+        }
         val new_c = check_exp(c, env, sc)
         val new_e1 = check_exp(e1, env, sc)
         val new_e2 = check_exp(e2, env, sc)

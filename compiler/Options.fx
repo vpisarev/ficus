@@ -21,6 +21,7 @@ type options_t =
     debug: bool = false;
     optim_iters: int = 0;
     inline_thresh: int = 100;
+    enable_openmp: bool = true;
     relax: bool = false;
     use_preamble: bool = true;
     make_app: bool = true;
@@ -32,7 +33,6 @@ type options_t =
     print_k: bool = false;
     print_tokens: bool = false;
     run_app: bool = false;
-    runtime_path: string = "";
     verbose: bool = false;
     W_unused: bool = true
 }
@@ -46,10 +46,10 @@ fun print_help(detailed: bool) {
 
     if !detailed {
         println(f"
-Usage: {fxname} [-pr-tokens | -pr-ast | -pr-k | -no-c
-    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n>
+Usage: {fxname} [-pr-tokens | -pr-ast0 | -pr-ast | -pr-k0 | -pr-k | -no-c
+    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n> | -no-openmp
     | -o <output_name> | -I <incdir> | -B <build_root>
-    | -c++ | -cflags <cflags> | -clibs <clibs
+    | -c++ | -cflags <cflags> | -clibs <clibs>
     | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]
 
 Run '{fxname} -h' to get more detailed help")
@@ -73,6 +73,7 @@ where options can be some of:
                                          except for the most essential ones
     -O1             Optimization level 1 (default): enable most of optimizations
     -O3             Optimization level 3: enable all optimizations
+    -no-openmp      Disable OpenMP (OpenMP is enabled by default)
     -debug          Turn on debug information, disable optimizations
                     (but can be overwritten with further -On)
     -optim-iters    The number of optimization iterations to perform (2 or 3 by default, depending on -O<n>)
@@ -82,12 +83,12 @@ where options can be some of:
     -relax          Do not require explicit typing of all global functions' parameters
     -no-preamble    Do not auto-import 'Builtins', 'List', 'String' and
                     a few other standard modules into each compiled module.
-    -Wno-unused     Do not report warnings about unused values/functions
+    -Wno-unused     Do not report errors about unused values/functions
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
     -I <dir>        Add specified directory to the module search path
-    -B <build_root> Specifies the parent directory <build_dir> where subdirectory
-                    <build_root>/__build__/<input_file> with the generated files will be created.
+    -B <build_root> Specifies the parent directory <build_root> where subdirectory
+                    <build_root>/__fxbuild__/<app_build_dir> with the generated files will be created.
                     By default, <build_root> is the current working directory.
     -c++            Use C++ compiler instead of C to compile the generated sources.
                     'pragma \"c++\"' in .fx file also instructs ficus compiler to use C++.
@@ -112,11 +113,6 @@ fun parse_options(): bool {
     opt = default_options()
     opt.arch64 = is_arch64
     val curr_dir = Sys.getcwd()
-    val abs_ficus_path = Filename.normalize(curr_dir, Sys.argv.hd())
-    val abs_ficus_dir = Filename.dirname(abs_ficus_path)
-    val stdlib_dir = Filename.normalize(abs_ficus_dir, "../lib")
-    opt.include_path = stdlib_dir :: []
-    opt.runtime_path = Filename.normalize(abs_ficus_dir, "../runtime")
     var args = Sys.argv.tl()
     var inputfile = ""
     var prhelp = 0
@@ -150,6 +146,8 @@ fun parse_options(): bool {
                 opt.optimize_level = 1; next
             | "-O3" :: next =>
                 opt.optimize_level = 3; next
+            | "-no-openmp" :: next =>
+                opt.enable_openmp = false; next
             | "-debug" :: next =>
                 opt.debug = true; next
             | "-optim-iters" :: i :: next =>
@@ -216,7 +214,7 @@ fun parse_options(): bool {
 
     if !prver && prhelp == 0 && ok {
         if inputfile == "" {
-            if !Sys.argv.tl().empty() {
+            if Sys.argv.tl() != [] {
                 println(f"{error} input file name is missing")
                 ok = false
             } else {
@@ -244,7 +242,7 @@ fun parse_options(): bool {
         val default_output_name = Filename.basename(opt.filename)
         val default_output_name = Filename.remove_extension(default_output_name)
         opt.build_rootdir = Filename.normalize(curr_dir, opt.build_rootdir)
-        opt.build_rootdir = Filename.normalize(opt.build_rootdir, "__build__")
+        opt.build_rootdir = Filename.normalize(opt.build_rootdir, "__fxbuild__")
         opt.app_filename = if opt.output_name != "" { opt.output_name } else { default_output_name }
         opt.build_dir = Filename.normalize(opt.build_rootdir, Filename.basename(opt.app_filename))
         if opt.output_name == "" { opt.app_filename = Filename.normalize(opt.build_dir, opt.app_filename) }

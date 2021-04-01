@@ -72,6 +72,8 @@ typedef struct _fx_ri_data_t  { int_ rc; int_ data; } _fx_ri_data_t, *_fx_ri;
 
 typedef struct _fx_rA1C_data_t  { int_ rc; fx_arr_t data; } _fx_rA1C_data_t, *_fx_rA1C;
 
+typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
+
 typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
 
 typedef struct  { int_ rc; _fx_T2R10Ast__loc_tS data; } _fx_E17Ast__CompileError_data_t;
@@ -465,11 +467,9 @@ FX_EXTERN_C int _fx_M2PPFM21pprint_to_string_listRM1t2ii(
    _fx_FPLS0 get_f_0 = {  };
    int fx_status = 0;
    FX_CALL(_fx_make_rLS(0, &lines_ref_0), _fx_cleanup);
-   _fx_LS* lines_0 = &lines_ref_0->data;
    FX_CALL(_fx_make_ri(100, &capacity_ref_0), _fx_cleanup);
    int_* capacity_0 = &capacity_ref_0->data;
    FX_CALL(_fx_make_ri(0, &bufsize_ref_0), _fx_cleanup);
-   int_* bufsize_0 = &bufsize_ref_0->data;
    char_* dstptr_0 = 0;
    int_ n_0 = *capacity_0;
    {
@@ -479,7 +479,6 @@ FX_EXTERN_C int _fx_M2PPFM21pprint_to_string_listRM1t2ii(
    for (int_ i_0 = 0; i_0 < n_0; i_0++, dstptr_0++) { *dstptr_0 = (char_)32;
    }
    FX_CALL(_fx_make_rA1C(&curr_arg_0, &curr_ref_0), _fx_cleanup);
-   fx_arr_t* curr_0 = &curr_ref_0->data;
    _fx_M2PPFM7make_fpFPv1S4ririrA1CrLS(bufsize_ref_0, capacity_ref_0, curr_ref_0, lines_ref_0, &print_f_0);
    _fx_M2PPFM7make_fpFPLS03rirA1CrLS(bufsize_ref_0, curr_ref_0, lines_ref_0, &get_f_0);
    FX_CALL(
@@ -680,8 +679,8 @@ FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(_fx_R5PP__t* pp_0, void* fx_fv)
    FX_COPY_PTR(pp_0->r, &v_0);
    if (!v_0->data.emptystack) {
       FX_CALL(_fx_M2PPFM11check_stackv2RM1ti(pp_0, 0, 0), _fx_cleanup);
-      int_ v_1;
-      FX_CALL(_fx_M2PPFM12advance_lefti1RM1t(pp_0, &v_1, 0), _fx_cleanup);
+      int_ res_0;
+      FX_CALL(_fx_M2PPFM12advance_lefti1RM1t(pp_0, &res_0, 0), _fx_cleanup);
    }
 
 _fx_cleanup: ;
@@ -1418,7 +1417,6 @@ FX_EXTERN_C int _fx_M2PPFM11check_stackv2RM1ti(_fx_R5PP__t* pp_0, int_ k_0, void
          if (tag_0 == _FX_V11PP__pptok_t_PPBegin) {
             _fx_rR11PP__state_t v_6 = 0;
             _fx_rR11PP__state_t v_7 = 0;
-            _fx_T2iV13PP__ppstyle_t* vcase_0 = &tk_0.u.PPBegin;
             if (k_2 > 0) {
                int_ res_0;
                FX_CALL(_fx_M2PPFM8scan_popi1RM1t(&pp_2, &res_0, 0), _fx_catch_0);

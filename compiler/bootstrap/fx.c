@@ -32,6 +32,7 @@ typedef struct _fx_R18Options__options_t
        bool debug;
        int_ optim_iters;
        int_ inline_thresh;
+       bool enable_openmp;
        bool relax;
        bool use_preamble;
        bool make_app;
@@ -43,13 +44,14 @@ typedef struct _fx_R18Options__options_t
        bool print_k;
        bool print_tokens;
        bool run_app;
-       fx_str_t runtime_path;
        bool verbose;
        bool W_unused; } _fx_R18Options__options_t;
 
 typedef struct _fx_T2R10Ast__loc_tS  { _fx_R10Ast__loc_t t0; fx_str_t t1; } _fx_T2R10Ast__loc_tS;
 
 typedef struct _fx_T2Ta2iS  { _fx_Ta2i t0; fx_str_t t1; } _fx_T2Ta2iS;
+
+typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
 
 typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
 
@@ -78,7 +80,6 @@ static void _fx_free_R18Options__options_t(_fx_R18Options__options_t* dst)
    fx_free_str(&dst->filename);
    _fx_free_LS(&dst->include_path);
    fx_free_str(&dst->output_name);
-   fx_free_str(&dst->runtime_path);
 }
 
 static void _fx_copy_R18Options__options_t(_fx_R18Options__options_t* src, _fx_R18Options__options_t* dst)
@@ -98,6 +99,7 @@ static void _fx_copy_R18Options__options_t(_fx_R18Options__options_t* src, _fx_R
    dst->debug = src->debug;
    dst->optim_iters = src->optim_iters;
    dst->inline_thresh = src->inline_thresh;
+   dst->enable_openmp = src->enable_openmp;
    dst->relax = src->relax;
    dst->use_preamble = src->use_preamble;
    dst->make_app = src->make_app;
@@ -109,7 +111,6 @@ static void _fx_copy_R18Options__options_t(_fx_R18Options__options_t* src, _fx_R
    dst->print_k = src->print_k;
    dst->print_tokens = src->print_tokens;
    dst->run_app = src->run_app;
-   fx_copy_str(&src->runtime_path, &dst->runtime_path);
    dst->verbose = src->verbose;
    dst->W_unused = src->W_unused;
 }
@@ -130,6 +131,7 @@ static void _fx_make_R18Options__options_t(
       bool r_debug,
       int_ r_optim_iters,
       int_ r_inline_thresh,
+      bool r_enable_openmp,
       bool r_relax,
       bool r_use_preamble,
       bool r_make_app,
@@ -141,7 +143,6 @@ static void _fx_make_R18Options__options_t(
       bool r_print_k,
       bool r_print_tokens,
       bool r_run_app,
-      fx_str_t* r_runtime_path,
       bool r_verbose,
       bool r_W_unused,
       _fx_R18Options__options_t* fx_result)
@@ -161,6 +162,7 @@ static void _fx_make_R18Options__options_t(
    fx_result->debug = r_debug;
    fx_result->optim_iters = r_optim_iters;
    fx_result->inline_thresh = r_inline_thresh;
+   fx_result->enable_openmp = r_enable_openmp;
    fx_result->relax = r_relax;
    fx_result->use_preamble = r_use_preamble;
    fx_result->make_app = r_make_app;
@@ -172,7 +174,6 @@ static void _fx_make_R18Options__options_t(
    fx_result->print_k = r_print_k;
    fx_result->print_tokens = r_print_tokens;
    fx_result->run_app = r_run_app;
-   fx_copy_str(r_runtime_path, &fx_result->runtime_path);
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
 }
@@ -202,24 +203,32 @@ static void _fx_make_T2Ta2iS(_fx_Ta2i* t0, fx_str_t* t1, _fx_T2Ta2iS* fx_result)
 }
 
 bool _fx_g6fx__ok;
+bool _fx_g8fx__ok1_;
 FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(_fx_R18Options__options_t _fx_g12Options__opt)
 FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_result, void* fx_fv);
 
+FX_EXTERN_C int _fx_F9make_ExitE1i(int_ arg0, fx_exn_t* fx_result);
+
 FX_EXTERN_C int fx_init_fx(void)
 {
    fx_str_t v_0 = {  };
+   fx_exn_t v_1 = {  };
    int fx_status = 0;
    FX_CALL(_fx_M7OptionsFM13parse_optionsB0(&_fx_g6fx__ok, 0), _fx_cleanup);
    if (_fx_g6fx__ok) {
       fx_copy_str(&_fx_g12Options__opt.filename, &v_0);
-      bool v_1;
-      FX_CALL(_fx_M8CompilerFM11process_allB1S(&v_0, &v_1, 0), _fx_cleanup);
+      FX_CALL(_fx_M8CompilerFM11process_allB1S(&v_0, &_fx_g8fx__ok1_, 0), _fx_cleanup);
+   }
+   else { _fx_g8fx__ok1_ = false;
+   }
+   if (!_fx_g8fx__ok1_) { FX_CALL(_fx_F9make_ExitE1i(1, &v_1), _fx_cleanup); FX_THROW(&v_1, true, _fx_cleanup);
    }
 
 _fx_cleanup: ;
    FX_FREE_STR(&v_0);
+   fx_free_exn(&v_1);
    return fx_status;
 }
 
@@ -246,12 +255,12 @@ FX_EXTERN_C int fx_init_Sys();
 FX_EXTERN_C void fx_deinit_Sys();
 FX_EXTERN_C int fx_init_Options();
 FX_EXTERN_C void fx_deinit_Options();
+FX_EXTERN_C int fx_init_Hashmap();
+FX_EXTERN_C void fx_deinit_Hashmap();
 FX_EXTERN_C int fx_init_Map();
 FX_EXTERN_C void fx_deinit_Map();
 FX_EXTERN_C int fx_init_Set();
 FX_EXTERN_C void fx_deinit_Set();
-FX_EXTERN_C int fx_init_Hashmap();
-FX_EXTERN_C void fx_deinit_Hashmap();
 FX_EXTERN_C int fx_init_Hashset();
 FX_EXTERN_C void fx_deinit_Hashset();
 FX_EXTERN_C int fx_init_Ast();
@@ -317,96 +326,97 @@ FX_EXTERN_C void fx_deinit_Compiler();
 
 int main(int argc, char** argv)
 {
-    fx_init(argc, argv);
-    int fx_status = FX_OK;
-   if (fx_status >= 0) fx_status = fx_init_Builtins();
-   if (fx_status >= 0) fx_status = fx_init_List();
-   if (fx_status >= 0) fx_status = fx_init_Char();
-   if (fx_status >= 0) fx_status = fx_init_String();
-   if (fx_status >= 0) fx_status = fx_init_Math();
-   if (fx_status >= 0) fx_status = fx_init_Filename();
-   if (fx_status >= 0) fx_status = fx_init_File();
-   if (fx_status >= 0) fx_status = fx_init_Sys();
-   if (fx_status >= 0) fx_status = fx_init_Options();
-   if (fx_status >= 0) fx_status = fx_init_Map();
-   if (fx_status >= 0) fx_status = fx_init_Set();
-   if (fx_status >= 0) fx_status = fx_init_Hashmap();
-   if (fx_status >= 0) fx_status = fx_init_Hashset();
-   if (fx_status >= 0) fx_status = fx_init_Ast();
-   if (fx_status >= 0) fx_status = fx_init_PP();
-   if (fx_status >= 0) fx_status = fx_init_Ast_pp();
-   if (fx_status >= 0) fx_status = fx_init_Lexer();
-   if (fx_status >= 0) fx_status = fx_init_Parser();
-   if (fx_status >= 0) fx_status = fx_init_Ast_typecheck();
-   if (fx_status >= 0) fx_status = fx_init_K_form();
-   if (fx_status >= 0) fx_status = fx_init_K_pp();
-   if (fx_status >= 0) fx_status = fx_init_K_normalize();
-   if (fx_status >= 0) fx_status = fx_init_K_annotate();
-   if (fx_status >= 0) fx_status = fx_init_K_mangle();
-   if (fx_status >= 0) fx_status = fx_init_K_remove_unused();
-   if (fx_status >= 0) fx_status = fx_init_K_lift_simple();
-   if (fx_status >= 0) fx_status = fx_init_K_flatten();
-   if (fx_status >= 0) fx_status = fx_init_K_tailrec();
-   if (fx_status >= 0) fx_status = fx_init_K_cfold_dealias();
-   if (fx_status >= 0) fx_status = fx_init_K_lift();
-   if (fx_status >= 0) fx_status = fx_init_K_fast_idx();
-   if (fx_status >= 0) fx_status = fx_init_K_inline();
-   if (fx_status >= 0) fx_status = fx_init_K_loop_inv();
-   if (fx_status >= 0) fx_status = fx_init_K_fuse_loops();
-   if (fx_status >= 0) fx_status = fx_init_C_form();
-   if (fx_status >= 0) fx_status = fx_init_C_gen_std();
-   if (fx_status >= 0) fx_status = fx_init_C_gen_types();
-   if (fx_status >= 0) fx_status = fx_init_C_gen_fdecls();
-   if (fx_status >= 0) fx_status = fx_init_C_pp();
-   if (fx_status >= 0) fx_status = fx_init_C_gen_code();
-   if (fx_status >= 0) fx_status = fx_init_C_post_rename_locals();
-   if (fx_status >= 0) fx_status = fx_init_C_post_adjust_decls();
-   if (fx_status >= 0) fx_status = fx_init_Compiler();
-   if (fx_status >= 0) fx_status = fx_init_fx();
-   fx_deinit_fx();
-   fx_deinit_Compiler();
-   fx_deinit_C_post_adjust_decls();
-   fx_deinit_C_post_rename_locals();
-   fx_deinit_C_gen_code();
-   fx_deinit_C_pp();
-   fx_deinit_C_gen_fdecls();
-   fx_deinit_C_gen_types();
-   fx_deinit_C_gen_std();
-   fx_deinit_C_form();
-   fx_deinit_K_fuse_loops();
-   fx_deinit_K_loop_inv();
-   fx_deinit_K_inline();
-   fx_deinit_K_fast_idx();
-   fx_deinit_K_lift();
-   fx_deinit_K_cfold_dealias();
-   fx_deinit_K_tailrec();
-   fx_deinit_K_flatten();
-   fx_deinit_K_lift_simple();
-   fx_deinit_K_remove_unused();
-   fx_deinit_K_mangle();
-   fx_deinit_K_annotate();
-   fx_deinit_K_normalize();
-   fx_deinit_K_pp();
-   fx_deinit_K_form();
-   fx_deinit_Ast_typecheck();
-   fx_deinit_Parser();
-   fx_deinit_Lexer();
-   fx_deinit_Ast_pp();
-   fx_deinit_PP();
-   fx_deinit_Ast();
-   fx_deinit_Hashset();
-   fx_deinit_Hashmap();
-   fx_deinit_Set();
-   fx_deinit_Map();
-   fx_deinit_Options();
-   fx_deinit_Sys();
-   fx_deinit_File();
-   fx_deinit_Filename();
-   fx_deinit_Math();
-   fx_deinit_String();
-   fx_deinit_Char();
-   fx_deinit_List();
-   fx_deinit_Builtins();
-   return fx_deinit(fx_status);
+   fx_init(argc, argv);
+   int fx_status = FX_OK;
+  if (fx_status >= 0) fx_status = fx_init_Builtins();
+  if (fx_status >= 0) fx_status = fx_init_List();
+  if (fx_status >= 0) fx_status = fx_init_Char();
+  if (fx_status >= 0) fx_status = fx_init_String();
+  if (fx_status >= 0) fx_status = fx_init_Math();
+  if (fx_status >= 0) fx_status = fx_init_Filename();
+  if (fx_status >= 0) fx_status = fx_init_File();
+  if (fx_status >= 0) fx_status = fx_init_Sys();
+  if (fx_status >= 0) fx_status = fx_init_Options();
+  if (fx_status >= 0) fx_status = fx_init_Hashmap();
+  if (fx_status >= 0) fx_status = fx_init_Map();
+  if (fx_status >= 0) fx_status = fx_init_Set();
+  if (fx_status >= 0) fx_status = fx_init_Hashset();
+  if (fx_status >= 0) fx_status = fx_init_Ast();
+  if (fx_status >= 0) fx_status = fx_init_PP();
+  if (fx_status >= 0) fx_status = fx_init_Ast_pp();
+  if (fx_status >= 0) fx_status = fx_init_Lexer();
+  if (fx_status >= 0) fx_status = fx_init_Parser();
+  if (fx_status >= 0) fx_status = fx_init_Ast_typecheck();
+  if (fx_status >= 0) fx_status = fx_init_K_form();
+  if (fx_status >= 0) fx_status = fx_init_K_pp();
+  if (fx_status >= 0) fx_status = fx_init_K_normalize();
+  if (fx_status >= 0) fx_status = fx_init_K_annotate();
+  if (fx_status >= 0) fx_status = fx_init_K_mangle();
+  if (fx_status >= 0) fx_status = fx_init_K_remove_unused();
+  if (fx_status >= 0) fx_status = fx_init_K_lift_simple();
+  if (fx_status >= 0) fx_status = fx_init_K_flatten();
+  if (fx_status >= 0) fx_status = fx_init_K_tailrec();
+  if (fx_status >= 0) fx_status = fx_init_K_cfold_dealias();
+  if (fx_status >= 0) fx_status = fx_init_K_lift();
+  if (fx_status >= 0) fx_status = fx_init_K_fast_idx();
+  if (fx_status >= 0) fx_status = fx_init_K_inline();
+  if (fx_status >= 0) fx_status = fx_init_K_loop_inv();
+  if (fx_status >= 0) fx_status = fx_init_K_fuse_loops();
+  if (fx_status >= 0) fx_status = fx_init_C_form();
+  if (fx_status >= 0) fx_status = fx_init_C_gen_std();
+  if (fx_status >= 0) fx_status = fx_init_C_gen_types();
+  if (fx_status >= 0) fx_status = fx_init_C_gen_fdecls();
+  if (fx_status >= 0) fx_status = fx_init_C_pp();
+  if (fx_status >= 0) fx_status = fx_init_C_gen_code();
+  if (fx_status >= 0) fx_status = fx_init_C_post_rename_locals();
+  if (fx_status >= 0) fx_status = fx_init_C_post_adjust_decls();
+  if (fx_status >= 0) fx_status = fx_init_Compiler();
+  if (fx_status >= 0) fx_status = fx_init_fx();
+  if (fx_status < 0) fx_status = fx_print_bt();
+  fx_deinit_fx();
+  fx_deinit_Compiler();
+  fx_deinit_C_post_adjust_decls();
+  fx_deinit_C_post_rename_locals();
+  fx_deinit_C_gen_code();
+  fx_deinit_C_pp();
+  fx_deinit_C_gen_fdecls();
+  fx_deinit_C_gen_types();
+  fx_deinit_C_gen_std();
+  fx_deinit_C_form();
+  fx_deinit_K_fuse_loops();
+  fx_deinit_K_loop_inv();
+  fx_deinit_K_inline();
+  fx_deinit_K_fast_idx();
+  fx_deinit_K_lift();
+  fx_deinit_K_cfold_dealias();
+  fx_deinit_K_tailrec();
+  fx_deinit_K_flatten();
+  fx_deinit_K_lift_simple();
+  fx_deinit_K_remove_unused();
+  fx_deinit_K_mangle();
+  fx_deinit_K_annotate();
+  fx_deinit_K_normalize();
+  fx_deinit_K_pp();
+  fx_deinit_K_form();
+  fx_deinit_Ast_typecheck();
+  fx_deinit_Parser();
+  fx_deinit_Lexer();
+  fx_deinit_Ast_pp();
+  fx_deinit_PP();
+  fx_deinit_Ast();
+  fx_deinit_Hashset();
+  fx_deinit_Set();
+  fx_deinit_Map();
+  fx_deinit_Hashmap();
+  fx_deinit_Options();
+  fx_deinit_Sys();
+  fx_deinit_File();
+  fx_deinit_Filename();
+  fx_deinit_Math();
+  fx_deinit_String();
+  fx_deinit_Char();
+  fx_deinit_List();
+  fx_deinit_Builtins();
+  return fx_deinit(fx_status);
 }
 

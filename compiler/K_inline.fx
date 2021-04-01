@@ -345,7 +345,7 @@ fun inline_some(kmods: kmodule_t list)
     }
     [: for km <- kmods {
         val {km_top, km_main} = km
-        val global_size = calc_exp_size(code2kexp(km_top, noloc))
+        //val global_size = calc_exp_size(code2kexp(km_top, noloc))
         curr_fi = gen_default_func_info(0)
         curr_km_main = km_main
         val new_top = [: for e <- km_top { inline_kexp_(e, inline_callb) } :]

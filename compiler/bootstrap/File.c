@@ -7,6 +7,8 @@
 
 typedef struct _fx_R7File__t  { fx_cptr_t handle; } _fx_R7File__t;
 
+typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
+
 typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
 
 static void _fx_free_R7File__t(_fx_R7File__t* dst)
@@ -30,9 +32,7 @@ int_ _fx_g15File__SEEK_CURR =
 int_ _fx_g14File__SEEK_END = 
 (int)SEEK_END
 ;
-_fx_R7File__t _fx_g11File__stdin = {  };
 _fx_R7File__t _fx_g12File__stdout = {  };
-_fx_R7File__t _fx_g12File__stderr = {  };
 FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, _fx_R7File__t* fx_result, void* fx_fv)
 {
    
@@ -172,16 +172,20 @@ fx_cstr_t fname_;
 
 FX_EXTERN_C int fx_init_File(void)
 {
+   _fx_R7File__t res_0 = {  };
+   _fx_R7File__t res_1 = {  };
    int fx_status = 0;
-   FX_CALL(_fx_M4FileFM13get_stdstreamRM1t1i(0, &_fx_g11File__stdin, 0), _fx_cleanup);
+   FX_CALL(_fx_M4FileFM13get_stdstreamRM1t1i(0, &res_0, 0), _fx_cleanup);
    FX_CALL(_fx_M4FileFM13get_stdstreamRM1t1i(1, &_fx_g12File__stdout, 0), _fx_cleanup);
-   FX_CALL(_fx_M4FileFM13get_stdstreamRM1t1i(2, &_fx_g12File__stderr, 0), _fx_cleanup);
+   FX_CALL(_fx_M4FileFM13get_stdstreamRM1t1i(2, &res_1, 0), _fx_cleanup);
 
 _fx_cleanup: ;
+   _fx_free_R7File__t(&res_0);
+   _fx_free_R7File__t(&res_1);
    return fx_status;
 }
 
 FX_EXTERN_C void fx_deinit_File(void)
-{ _fx_free_R7File__t(&_fx_g11File__stdin); _fx_free_R7File__t(&_fx_g12File__stdout); _fx_free_R7File__t(&_fx_g12File__stderr);
+{ _fx_free_R7File__t(&_fx_g12File__stdout);
 }
 

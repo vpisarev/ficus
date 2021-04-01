@@ -16,33 +16,30 @@ The compiler is written in Ficus itself and needs C/C++ compiler and make utilit
 
 ```
 cd <ficus_root>
-make
-FICUS_PATH=./lib FICUS_CFLAGS=-I./runtime ./ficus -run -O3 examples/fst.fx
-# or
-# ./ficus -I ./lib -cflags "-I./runtime" -run -O3 examples/fst.fx
+make -j8
+bin/ficus -run -O3 examples/fst.fx
 ```
 
-`FICUS_PATH` and `FICUS_CFLAGS` are the two variables to setup to make ficus usable from any directory.
+You can add `<ficus_root>/bin` to the `PATH`. You can also customize ficus compiler behaviour by setting the following environment variables:
 
-* The first one, `FICUS_PATH`, should point to the standard library (`<ficus_root>/lib`), but can also contain
-other directories separated by `:` on Unix and `;` on Windows. Note that if a compiled module imports other modules
-from the directory where it resides, that directory does not need to be included.
+* `FICUS_PATH` can point to the standard library (`<ficus_root>/lib`), though ficus attempts to find the standard library even without `FICUS_PATH`. It can also contain other directories separated by `:` on Unix and `;` on Windows. The directories with imported modules can also be provided via one or more command-line options `-I <import_path>`. Note that if a compiled module imports other modules from the directory where it resides, that directory does not need to be explicitly specified.
 
-* The second one, `FICUS_CFLAGS`, is used by C/C++ compiler to build the produced .c/.cpp files.
-The generated files include ficus runtime headers, and the path to the runtime directory needs
-to be specified via command line option `-cflags` or the environment variable.
+* `FICUS_CFLAGS` is used by C/C++ compiler to build the produced .c/.cpp files. Alternative way to pass extra flags to C/C++ compiler is via `-cflags "<cflags>"` command-line option, e.g. `-cflags "-ffast-math -mavx2"`.
+
+* `FICUS_LINK_LIBRARIES` contains the linker flags and the extra linked libraries. Alternative way to pass the extra linker flags to C/C++ compiler is via `-clibs "<clibs>"` command-line option.
 
 ## How to use
 
-run `./ficus --help` to get more complete up-to-date information about command line parameters
+run `ficus --help` to get more complete up-to-date information about command line parameters
 
 here is brief summary:
 ```
-./ficus [-app|-run|...] [-O0|-O1|-O3] [-I<extra_module_path>]* <scriptname.fx> [-- <script arg1> <script arg2> ...]
+ficus [-app|-run|...] [-O0|-O1|-O3] [-verbose] [-I <extra_module_path>]* [-o <appname>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
 ```
 
-* `-app` (the flag is set by default) generates C code for the specified script as well as for the imported modules (one .c file per one .fx file), then run the compiler for each of the generated .c files and then link the produced object files into the final app. Use `FICUS_CFLAGS` and `FICUS_LINK_LIBRARIES` environment variables to pass extra options to C compiler, e.g. `-ffast-math -mavx2` `-lmimalloc` etc. The compiled app, as well as the intermediate `.c` and `.o` files, is stored in `__build__/<scriptname>/<scriptname>`. Override the output name with `-o` option.
-* `-run` builds the app (see flags `-app`) and then runs it.
+* `-app` (the flag is set by default) generates C code for the specified script as well as for the imported modules (one .c file per one .fx file), then runs the compiler for each of the generated .c files and then links the produced object files into the final app. The compiled app, as well as the intermediate `.c` and `.o` files, is stored in `__fxbuild__/<appname>/<appname>`. By default `<appname>==<scriptname>`. Override the app name (and the output path) with `-o` option.
+* `-run` builds the app (see flags `-app`) and then runs it. You can pass command-line parameters to the script after `--` separator.
+* `-verbose` makes the compiler to report build progress and various information, which can be especially useful when building big apps
 
 ## Ficus 1.0
 

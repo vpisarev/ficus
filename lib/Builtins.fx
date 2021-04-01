@@ -22,6 +22,7 @@ exception BadArgError
 exception Break
 exception DimError
 exception DivByZeroError
+exception Exit: int
 exception Fail: string
 exception FileOpenError
 exception IOError

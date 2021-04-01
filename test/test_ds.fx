@@ -38,7 +38,7 @@ TEST("ds.set", fun()
     EXPECT_EQ(sum1, sum0)
     EXPECT_EQ(sum2, sum0)
     EXPECT_EQ(u12.map(fun (i) {i*i}), [: 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 :])
-    val phrase = "This is a very simple test for the standard and not so simple implementation of binary set".split(' ')
+    val phrase = "This is a very simple test for the standard and not so simple implementation of binary set".split(' ', allow_empty=true)
     val refres = [: "This", "a", "and", "binary", "for", "implementation", "is", "not",
                     "of", "set", "simple", "so", "standard",
                     "test", "the", "very" :]

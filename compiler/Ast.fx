@@ -507,9 +507,9 @@ fun dynvec_set(v: 't dynvec_t ref, i: int, newv: 't) = v->data[i] = newv
 
 var freeze_ids = false
 val all_ids = dynvec_create(IdNone)
-var all_strhash: (string, int) Map.t = Map.empty(String.cmp)
+var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1, hash)
 val all_strings = dynvec_create("")
-var all_modules: (string, id_t) Map.t = Map.empty(String.cmp)
+var all_modules: (string, id_t) Hashmap.t = Hashmap.empty(1024, "", noid, hash)
 var all_modules_sorted: id_t list = []
 var builtin_exceptions = empty_idmap
 var all_compile_errs: exn list = []
@@ -607,15 +607,18 @@ fun is_unique_id(i: id_t) {
     | _ => true
     }
 
-fun get_id_prefix(s: string): int =
-    match all_strhash.find_opt(s) {
-    | Some idx => idx
-    | _ =>
+fun get_id_prefix(s: string): int
+{
+    val h_idx = all_strhash.find_idx_or_insert(s)
+    val idx = all_strhash.r->table[h_idx].data
+    if idx >= 0 { idx }
+    else {
         val idx = dynvec_push(all_strings)
-        all_strhash = all_strhash.add(s, idx)
+        all_strhash.r->table[h_idx].data = idx
         dynvec_set(all_strings, idx, s)
         idx
     }
+}
 
 fun get_id(s: string): id_t {
     val i = get_id_prefix(s)
@@ -731,7 +734,7 @@ fun find_module(mname_id: id_t, mfname: string) =
             dm_env=empty_env, dm_parsed=false, dm_real=true
         })
         set_id_entry(m_fresh_id, IdModule(newmodule))
-        all_modules = all_modules.add(mfname, m_fresh_id)
+        all_modules.add(mfname, m_fresh_id)
         newmodule
     }
 
@@ -1577,10 +1580,10 @@ fun init_all(): void
 {
     freeze_ids = false
     dynvec_clear(all_ids)
-    all_strhash = Map.empty(String.cmp)
+    all_strhash.clear()
     for i <- __builtin_ids__ { ignore(get_id(i)) }
     ignore(fname_always_import())
-    all_modules = Map.empty(String.cmp)
+    all_modules.clear()
     all_modules_sorted = []
     builtin_exceptions = Map.empty(cmp_id)
     all_compile_errs = []

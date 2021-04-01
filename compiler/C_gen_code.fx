@@ -228,19 +228,21 @@ fun gen_main(ismain: bool, mod_names: string list, loc: loc_t) =
         fold fwd_decls = [], init_calls = [], deinit_calls = [] for m@idx <- mod_names {
             (if idx == 0 { fwd_decls }
             else { f"FX_EXTERN_C int fx_init_{m}();\nFX_EXTERN_C void fx_deinit_{m}();\n" :: fwd_decls },
-            f"   if (fx_status >= 0) fx_status = fx_init_{m}();\n" :: init_calls,
-            f"   fx_deinit_{m}();\n" :: deinit_calls)
+            f"  if (fx_status >= 0) fx_status = fx_init_{m}();\n" :: init_calls,
+            f"  fx_deinit_{m}();\n" :: deinit_calls)
         }
         CExp(CExpCCode(
             "".join(fwd_decls) + "
 int main(int argc, char** argv)
 {
-    fx_init(argc, argv);
-    int fx_status = FX_OK;
+   fx_init(argc, argv);
+   int fx_status = FX_OK;
 " +
             "".join(init_calls) +
+"  if (fx_status < 0) fx_status = fx_print_bt();
+" +
             "".join(deinit_calls.rev()) +
-"   return fx_deinit(fx_status);
+"  return fx_deinit(fx_status);
 }",
             loc)) :: []
     }

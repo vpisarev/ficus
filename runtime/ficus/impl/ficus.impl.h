@@ -23,6 +23,8 @@
     #endif
 #endif
 
+#include "ficus/impl/rpmalloc.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -69,6 +71,8 @@ int fx_init(int argc, char** argv)
 {
     _fx_argc = argc;
     _fx_argv = argv;
+
+    rpmalloc_initialize();
 
     #undef FX_DECL_STD_EXN
     #define FX_DECL_STD_EXN(exn) \
@@ -137,8 +141,7 @@ int fx_check_stack(void)
 
 int fx_deinit(int status)
 {
-    if(status < 0)
-        fx_print_bt();
+    rpmalloc_finalize();
     return status;
 }
 
@@ -183,23 +186,34 @@ int fx_cc_version(struct fx_str_t* ver)
 
 ////////////////////////// memory allocation ////////////////////
 
-/* We just use the default malloc and assume that ficus programs
-   are linked with some efficient malloc implementation such as
-   e.g. mimalloc (https://github.com/microsoft/mimalloc) or
-   jemalloc or tcmalloc */
+static FX_THREAD_LOCAL bool fx_rpmalloc_thread_initialized = false;
+
 void* fx_malloc(size_t sz)
 {
-    return malloc(sz);
+    if (!fx_rpmalloc_thread_initialized) {
+        rpmalloc_thread_initialize();
+        fx_rpmalloc_thread_initialized = true;
+    }
+    return rpmalloc(sz);
 }
 
 void* fx_realloc(void* ptr, size_t sz)
 {
-    return realloc(ptr, sz);
+    if (!fx_rpmalloc_thread_initialized) {
+        rpmalloc_thread_initialize();
+        fx_rpmalloc_thread_initialized = true;
+    }
+    return rprealloc(ptr, sz);
 }
 
 void fx_free(void* ptr)
 {
-    free(ptr);
+    if (!fx_rpmalloc_thread_initialized) {
+        rpmalloc_thread_initialize();
+        fx_rpmalloc_thread_initialized = true;
+    }
+    rpfree(ptr);
+    //free(ptr);
 }
 
 ///////////////////////////// lists /////////////////////////////
@@ -429,11 +443,24 @@ int fx_print_repr_exn(const fx_exn_t* exn, bool quiet)
     return FX_OK;
 }
 
-void fx_print_bt(void)
+typedef struct fx_exn_exit_data_t
 {
+    int_ rc;
+    int_ data;
+} fx_exn_exit_data_t;
+
+int fx_print_bt(void)
+{
+    fx_str_t curr_exn_name;
     fx_bt_t* curr_bt = &fx_bt;
     fx_exn_t* curr_exn = &curr_bt->curr_exn;
-    if(curr_exn->tag == 0) return;
+    if(curr_exn->tag == 0) return 0;
+    fx_exn_name(curr_exn, &curr_exn_name);
+    if (curr_exn_name.length == 4 &&
+        memcmp(curr_exn_name.data, U"Exit", 4*sizeof(char_)) == 0) {
+        int status = (int)((fx_exn_exit_data_t*)(curr_exn->data))->data;
+        return status;
+    }
     printf("\33[31;1mException ");
     fx_print_repr_exn(curr_exn, true);
     printf("\33[0m occured in ");
@@ -453,6 +480,7 @@ void fx_print_bt(void)
         }
     }
 #endif
+    return curr_exn->tag;
 }
 
 static int fx_global_exn_id = FX_EXN_User;
@@ -554,5 +582,6 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 #include "ficus/impl/string.impl.h"
 #include "ficus/impl/regex.impl.h"
 #include "ficus/impl/system.impl.h"
+#include "ficus/impl/rpmalloc.c"
 
 #endif

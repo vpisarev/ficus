@@ -461,7 +461,7 @@ int fx_exn_to_string(const fx_exn_t* exn, fx_str_t* str);
 int fx_print_repr_exn(const fx_exn_t* exn, bool quiet);
 
 void fx_update_bt(const char* funcname, const char* filename, int lineno);
-void fx_print_bt(void);
+int fx_print_bt(void);
 
 void fx_free_exn(fx_exn_t* exn);
 void fx_copy_exn(const fx_exn_t* src, fx_exn_t* dst);

@@ -6,7 +6,7 @@
 // Ficus compiler, the driving part
 // (calls all other parts of the compiler in the proper order)
 
-import Filename, File, Sys, Map
+import Filename, File, Sys, Hashmap
 import Ast, Ast_pp, Lexer, Parser, Options
 import Ast_typecheck
 import K_form, K_pp, K_normalize, K_annotate, K_mangle
@@ -20,6 +20,19 @@ exception CumulativeParseError
 type id_t = Ast.id_t
 type kmodule_t = K_form.kmodule_t
 val pr_verbose = Ast.pr_verbose
+
+type msgcolor_t = MsgRed | MsgGreen | MsgBlue
+fun clrmsg(clr: msgcolor_t, msg: string)
+{
+    val esc = match clr {
+        | MsgRed => "\33[31;1m"
+        | MsgGreen => "\33[32;1m"
+        | MsgBlue => "\033[34;1m"
+        | _ => ""
+    }
+    f"{esc}{msg}\33[0m"
+}
+val error = clrmsg(MsgRed, "error")
 
 fun get_preamble(mfname: string): Lexer.token_t list {
     if Options.opt.use_preamble {
@@ -42,14 +55,46 @@ fun get_preamble(mfname: string): Lexer.token_t list {
     } else { [] }
 }
 
-fun parse_all(fname0: string): bool
+fun find_ficus_dirs(): (string, string list)
+{
+    var ficus_path = Sys.getpath("FICUS_PATH")
+    // if 'ficus' is '<ficus_root>/bin/ficus'
+    val ficus_app_path = Filename.dirname(Filename.normalize(Sys.getcwd(), Sys.argv.hd()))
+    // if 'ficus' is '<ficus_root>/__fxbuild__/fx/fx'
+    val ficus_pp_path = Filename.dirname(Filename.dirname(ficus_app_path))
+    // if 'ficus' is '{/usr|/usr/local|/opt}/bin/ficus'
+    val ficus_inst_path = Filename.normalize(Filename.dirname(ficus_app_path),
+                            f"lib/ficus-{__ficus_major__}.{__ficus_minor__}")
+    val std_ficus_path = [: Filename.normalize(ficus_app_path, "lib"),
+                            Filename.normalize(ficus_pp_path, "lib"),
+                            Filename.normalize(ficus_inst_path, "lib") :]
+    val std_ficus_path_len = std_ficus_path.length()
+    val search_path = std_ficus_path + ficus_path
+    var found = ""
+    for d@i <- search_path {
+        val builtins_fx = Filename.normalize(d, "Builtins.fx")
+        val ficus_h = Filename.normalize(d, "../runtime/ficus/ficus.h")
+        if Sys.file_exists(builtins_fx) && Sys.file_exists(ficus_h) {
+            found = Filename.dirname(d)
+            if i < std_ficus_path_len {
+                // unless Builtins.fx is already found in FICUS_PATH,
+                // we add it to the end of FICUS_PATH
+                ficus_path = ficus_path + (d::[])
+            }
+            break
+        }
+    }
+    (found, ficus_path)
+}
+
+fun parse_all(fname0: string, ficus_path: string list): bool
 {
     val cwd = Sys.getcwd()
     val fname0 = Filename.normalize(cwd, fname0)
     val dir0 = Filename.dirname(fname0)
     val inc_dirs0 = if dir0 == cwd { cwd :: [] } else { dir0 :: cwd :: [] }
     val inc_dirs0 = inc_dirs0 + Options.opt.include_path
-    val inc_dirs0 = inc_dirs0 + Sys.getpath("FICUS_PATH")
+    val inc_dirs0 = inc_dirs0 + ficus_path
     val inc_dirs0 = [: for d <- inc_dirs0 { Filename.normalize(cwd, d) } :]
     val name0_id = Ast.get_id(Filename.remove_extension(Filename.basename(fname0)))
     val minfo = Ast.find_module(name0_id, fname0)
@@ -121,7 +166,7 @@ fun typecheck_all(modules: id_t list): bool
 {
     Ast.all_compile_errs = []
     for m <- modules {Ast_typecheck.check_mod(m)}
-    Ast.all_compile_errs.empty()
+    Ast.all_compile_errs == []
 }
 
 fun k_normalize_all(modules: id_t list): (kmodule_t list, bool)
@@ -129,7 +174,7 @@ fun k_normalize_all(modules: id_t list): (kmodule_t list, bool)
     Ast.all_compile_errs = []
     K_form.init_all_idks()
     val kmods = K_normalize.normalize_all_modules(modules)
-    (kmods, Ast.all_compile_errs.empty())
+    (kmods, Ast.all_compile_errs == [])
 }
 
 fun prf(str: string) = pr_verbose(f"\t{str}")
@@ -182,130 +227,164 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     temp_kmods = K_inline.find_recursive_funcs_all(temp_kmods)
     prf("annotate types")
     temp_kmods = K_annotate.annotate_types(temp_kmods)
-    (temp_kmods, Ast.all_compile_errs.empty())
+    (temp_kmods, Ast.all_compile_errs == [])
 }
 
 fun k2c_all(kmods: kmodule_t list)
 {
-    pr_verbose("Generating C code:")
+    pr_verbose(clrmsg(MsgBlue, "Generating C code"))
     Ast.all_compile_errs = []
     C_form.init_all_idcs()
     C_gen_std.init_std_names()
-    pr_verbose("\tstd calls initialized")
     val cmods = C_gen_code.gen_ccode_all(kmods)
-    pr_verbose("C code generated")
+    pr_verbose(clrmsg(MsgBlue, "C code generated"))
     val cmods = C_post_rename_locals.rename_locals(cmods)
-    pr_verbose("\tlocal variables renamed")
     val cmods = [: for cmod <- cmods {
         val is_cpp = Options.opt.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp
         if is_cpp { C_post_adjust_decls.adjust_decls(cmod) }
         else { cmod }
         } :]
     pr_verbose("\tConversion to C-form complete")
-    (cmods, Ast.all_compile_errs.empty())
+    (cmods, Ast.all_compile_errs == [])
 }
 
-fun emit_c_files(fname0: string, cmods: C_form.cmodule_t list)
-{
+// [TODO] add proper support for Windows
+fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
+    val osinfo = Sys.osname(true)
+    val opt_level = Options.opt.optimize_level
+    val enable_openmp = Options.opt.enable_openmp
+    val runtime_include_path = Filename.normalize(ficus_root, "runtime")
+    val runtime_lib_path = Filename.normalize(ficus_root, "runtime/lib")
     val build_root_dir = Options.opt.build_rootdir
     val ok = Sys.mkdir(build_root_dir, 0755)
     val build_dir = Options.opt.build_dir
     val ok = ok && Sys.mkdir(build_dir, 0755)
-    val fold (new_cmods, ok) = ([], ok) for cmod <- cmods {
-        val {cmod_cname, cmod_ccode, cmod_pragmas={pragma_cpp}} = cmod
+
+    val (_, c_comp, cpp_comp, obj_ext, obj_opt, appname_opt, link_lib_opt, cflags, clibs) =
+        if Sys.win32 {
+            val omp_flag = if enable_openmp {" /openmp"} else {""}
+            val opt_flags =
+                if opt_level == 0 {
+                    " /Od /MTd /GF"
+                } else {
+                    " /MT" + (if opt_level == 1 {"/O1"} else {"/O2"})
+                }
+            val cflags = f"/nologo{opt_flags}{omp_flag} /I {runtime_include_path}"
+            ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "")
+        } else {
+            // unix or hopefully something more or less compatible with it
+            val (os, libpath, cflags, clibs) =
+            if osinfo.contains("Darwin") {
+                val (omp_cflags, omp_lib) =
+                    if enable_openmp { ("-Xclang -fopenmp", " -lomp") }
+                    else { ("", "") }
+                val (libpath, cflags, clibs) =
+                if osinfo.contains("x86_64") {
+                    ("macos_x64", omp_cflags,
+                        //f" -lmimalloc{omp_lib}"
+                        " " + omp_cflags + omp_lib
+                    )
+                } else if osinfo.contains ("arm64") {
+                    ("", "", "")
+                } else {
+                    ("", "", "")
+                }
+                ("macos", libpath, cflags, clibs)
+            } else if osinfo.contains("Linux") {
+                val omp_flags = if enable_openmp {"-fopenmp"} else {""}
+                ("linux", "", omp_flags, omp_flags)
+            } else if Sys.unix {
+                ("unix", "", "", "")
+            } else {
+                ("", "", "", "")
+            }
+            val c_comp = "cc"
+            val cpp_comp = "c++ -std=c++11"
+            val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline"
+            val ggdb_opt = if opt_level == 0 { " -ggdb" } else { "" }
+            val cflags = f"-O{opt_level}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
+            val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm{clibs}"
+            (os, c_comp, cpp_comp, ".o", "-c -o", "-o", "-l", cflags, clibs)
+        }
+
+    val custom_cflags = Sys.getenv("FICUS_CFLAGS")
+    val custom_cflags = if Options.opt.cflags == "" { custom_cflags }
+                        else { Options.opt.cflags + " " + custom_cflags }
+    val cflags = cflags + " " + custom_cflags
+    pr_verbose(clrmsg(MsgBlue, f"Compiling .c/.cpp files with cflags={cflags}"))
+    val results = [| @parallel for
+        {cmod_cname, cmod_ccode, cmod_pragmas={pragma_cpp, pragma_clibs}} <- array(cmods) {
         val output_fname = Filename.basename(cmod_cname)
         val is_cpp = Options.opt.compile_by_cpp || pragma_cpp
         val ext = if is_cpp { ".cpp" } else { ".c" }
         val output_fname = output_fname + ext
         val output_fname = Filename.normalize(build_dir, output_fname)
-        val (new_cmod, ok) =
-        if ok {
-            val str_new = C_pp.pprint_top_to_string(cmod_ccode)
-            val str_old = if Options.opt.force_rebuild {""} else {
-                try
-                    File.read_utf8(output_fname)
-                catch {
-                | IOError | FileOpenError => ""
-                }
+        val str_new = C_pp.pprint_top_to_string(cmod_ccode)
+        val str_old = if Options.opt.force_rebuild {""} else {
+            try
+                File.read_utf8(output_fname)
+            catch {
+            | IOError | FileOpenError => ""
             }
-            val (recompile, ok) =
-                if str_new == str_old {
-                    (false, ok)
-                } else {
-                    val well_written =
-                        try {
-                            File.write_utf8(output_fname, str_new)
-                            true
-                        }
-                        catch {
-                        | IOError | FileOpenError => false
-                        }
-                    (true, well_written)
-                }
-            (cmod.{cmod_recompile=recompile}, ok)
-        } else {
-            (cmod, ok)
         }
-        (new_cmod :: new_cmods, ok)
-    }
-    pr_verbose("C files are written")
-    (new_cmods.rev(), build_dir, ok)
-}
-
-fun run_cc(cmods: C_form.cmodule_t list, output_dir: string) {
-    val opt_level = Options.opt.optimize_level
-    val c_comp = "cc"
-    val cpp_comp = "c++ -std=c++11"
-    val cmd = " -Wno-unknown-warning-option"
-    val cmd = cmd + " -Wno-dangling-else"
-    val ggdb_opt = if opt_level == 0 { " -ggdb" } else { "" }
-    val cmd = cmd + f" -O{opt_level}{ggdb_opt}"
-    val cmd = cmd + " -I" + Options.opt.runtime_path
-    val custom_cflags = " " + Sys.getenv("FICUS_CFLAGS")
-    val custom_cflags = if Options.opt.cflags == "" { custom_cflags }
-                        else { " " + Options.opt.cflags + custom_cflags }
-    val cmd = cmd + custom_cflags
-    val fold (any_cpp, any_recompiled, all_clibs, ok, objs) = (false, false, [], true, []) for
-        {cmod_cname, cmod_recompile, cmod_pragmas={pragma_cpp, pragma_clibs}} <- cmods {
-        val cname = Filename.normalize(output_dir, cmod_cname)
+        val (ok_j, recompile, skipped_status) =
+            if str_new == str_old {
+                (ok, false, "skipped")
+            } else {
+                val well_written =
+                    try {
+                        File.write_utf8(output_fname, str_new)
+                        true
+                    }
+                    catch {
+                    | IOError | FileOpenError => false
+                    }
+                (well_written, well_written,
+                if well_written {""} else {clrmsg(MsgRed, "failed to write .c")})
+            }
+        val cname = Filename.normalize(build_dir, cmod_cname)
         val is_cpp = Options.opt.compile_by_cpp || pragma_cpp
         val (comp, ext) = if is_cpp { (cpp_comp, ".cpp") } else { (c_comp, ".c") }
         val c_filename = cname + ext
-        val obj_filename = cname + ".o"
-        pr_verbose(f"CC {c_filename}:\n")
-        val cmd = comp + cmd + " -o " + obj_filename
-        val cmd = cmd + " -c " + c_filename
-        val (ok_j, recompiled) =
-        if cmod_recompile || !Sys.file_exists(obj_filename) {
-            pr_verbose(f"\t{cmd}\n")
-            (Sys.command(cmd) == 0, true)
-        } else {
-            pr_verbose(f"\t{obj_filename} is up-to-date\n")
-            (true, false)
-        }
+        val obj_filename = cname + obj_ext
+        val (ok_j, recompiled, status_j) =
+            if ok_j && (recompile || !Sys.file_exists(obj_filename)) {
+                val cmd = f"{comp} {cflags} {obj_opt} {obj_filename} {c_filename}"
+                val result = Sys.command(cmd) == 0
+                val status = if result {clrmsg(MsgGreen, "ok")} else {clrmsg(MsgRed, "fail")}
+                (result, true, status)
+            } else {
+                (ok_j, false, skipped_status)
+            }
+        pr_verbose(f"CC {c_filename}: {status_j}")
         val clibs = [: for (l, _) <- pragma_clibs { l } :].rev()
-        (any_cpp || is_cpp,
-        any_recompiled || recompiled,
-        clibs + all_clibs,
-        ok && ok_j,
-        obj_filename :: objs)
-    }
+        (is_cpp, recompiled, clibs, ok_j, obj_filename)
+    } |]
+
+    val fold (any_cpp, any_recompiled, all_clibs, ok, objs) = (false, false, [], ok, [])
+        for (is_cpp, is_recompiled, clibs_j, ok_j, obj) <- results {
+            (any_cpp | is_cpp, any_recompiled | is_recompiled, clibs_j + all_clibs, ok & ok_j, obj :: objs)
+        }
     if ok && !any_recompiled && Sys.file_exists(Options.opt.app_filename) {
         pr_verbose(f"{Options.opt.app_filename} is up-to-date\n")
         ok
     } else if !ok {
         ok
     } else {
-        val cmd = c_comp + " -o " + Options.opt.app_filename
-        val cmd = cmd + " " + " ".join(objs)
-        val linked_libs = Sys.getenv("FICUS_LINK_LIBRARIES")
-        val linked_libs = if Options.opt.clibs == "" { linked_libs }
-                          else { linked_libs + " " + Options.opt.clibs }
-        val linked_libs = if all_clibs == [] { linked_libs }
-                          else { linked_libs + " " + " ".join([: for l <- all_clibs.rev() {"-l" + l} :]) }
-        val cmd = cmd + " " + linked_libs
-        val cmd = cmd + " -lm" + (if any_cpp { " -lstdc++" } else { "" })
-        pr_verbose(f"{cmd}\n")
+        val custom_clibs = Sys.getenv("FICUS_LINK_LIBRARIES")
+        val custom_clibs = if Options.opt.clibs == "" { custom_clibs }
+                      else { custom_clibs + " " + Options.opt.clibs }
+        val custom_clibs =
+            if all_clibs == [] { custom_clibs }
+            else {
+                custom_clibs + " " +
+                " ".join([: for l <- all_clibs.rev() {link_lib_opt + l} :])
+            }
+        val clibs = clibs + " " + custom_clibs
+        pr_verbose(f"Linking the app with flags={clibs}")
+        val cmd = (if any_cpp {cpp_comp} else {c_comp}) + " " + appname_opt + " " + Options.opt.app_filename
+        val cmd = cmd + " " + " ".join(objs) + " " + clibs
+        //pr_verbose(f"{cmd}\n")
         val ok = Sys.command(cmd) == 0
         ok
     }
@@ -313,7 +392,9 @@ fun run_cc(cmods: C_form.cmodule_t list, output_dir: string) {
 
 fun run_app(): bool
 {
-    val cmd = " ".join(Options.opt.app_filename :: Options.opt.app_args)
+    val appname = Options.opt.app_filename
+    val appname = Filename.normalize(Sys.getcwd(), appname)
+    val cmd = " ".join(appname :: Options.opt.app_args)
     Sys.command(cmd) == 0
 }
 
@@ -329,11 +410,20 @@ fun print_all_compile_errs()
 fun process_all(fname0: string): bool {
     Ast.init_all()
     try {
-        val ok = parse_all(fname0)
+        val (ficus_root, ficus_path) = find_ficus_dirs()
+        if ficus_root == "" { throw Fail(
+f"Ficus root directory is not found.
+Please, add the directory 'lib' containing Builtins.fx to
+'FICUS_PATH' environment variable or make sure that either
+1. 'ficus' executable is put in a directory <ficus_root>/bin
+and there are <ficus_root>/runtime and <ficus_root>/lib.
+2. or 'ficus' executable is in (/usr|/usr/local|/opt|...)/bin and
+   there are (/usr|...)/lib/ficus-{__ficus_major__}.{__ficus_minor__}/{{runtime, lib}}") }
+        val ok = parse_all(fname0, ficus_path)
         if !ok { throw CumulativeParseError }
         val graph = [: for (mfname, m) <- Ast.all_modules.list() {
-                            val minfo = Ast.get_module(m)
-                            (minfo->dm_idx, m, minfo->dm_deps)
+                        val minfo = Ast.get_module(m)
+                        (minfo->dm_idx, m, minfo->dm_deps)
                     } :]
         Ast.all_modules_sorted = toposort(graph)
         if Options.opt.print_ast0 {
@@ -343,9 +433,10 @@ fun process_all(fname0: string): bool {
             }
         }
         val modules_used = ", ".join(Ast.all_modules_sorted.map(Ast.pp))
-        pr_verbose(f"Parsing complete. Modules used: {modules_used}")
+        val parsing_complete = clrmsg(MsgBlue, "Parsing complete")
+        pr_verbose(f"{parsing_complete}. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)
-        pr_verbose("Type checking complete")
+        pr_verbose(clrmsg(MsgBlue, "Type checking complete"))
         if ok && Options.opt.print_ast {
             for m <- Ast.all_modules_sorted {
                 val minfo = Ast.get_module(m)
@@ -353,18 +444,17 @@ fun process_all(fname0: string): bool {
             }
         }
         val (kmods, ok) = if ok { k_normalize_all(Ast.all_modules_sorted) } else { ([], false) }
-        pr_verbose("K-normalization complete")
+        pr_verbose(clrmsg(MsgBlue, "K-normalization complete"))
         if ok && Options.opt.print_k0 { K_pp.pp_kmods(kmods) }
-        pr_verbose("K-form optimization started")
+        pr_verbose(clrmsg(MsgBlue, "K-form optimization started"))
         val (kmods, ok) = if ok { k_optimize_all(kmods) } else { ([], false) }
-        if ok { pr_verbose("K-form optimization complete") }
+        if ok { pr_verbose(clrmsg(MsgBlue, "K-form optimization complete")) }
         if ok && Options.opt.print_k { K_pp.pp_kmods(kmods) }
         val ok = if !Options.opt.gen_c { ok } else {
             val (cmods, ok) = if ok { k2c_all(kmods) } else { ([], false) }
-            val (cmods, builddir, ok) = if ok { emit_c_files(fname0, cmods) } else { (cmods, ".", ok) }
             val ok =
                 if ok && (Options.opt.make_app || Options.opt.run_app) {
-                    run_cc(cmods, builddir)
+                    run_cc(cmods, ficus_root)
                 } else { ok }
             val ok = if ok && Options.opt.run_app { run_app() } else { ok }
             ok
@@ -375,10 +465,10 @@ fun process_all(fname0: string): bool {
     | e =>
         print_all_compile_errs()
         match e {
-        | Fail(msg) => println(f"Failure: {msg}")
+        | Fail(msg) => println(f"{error}: {msg}")
         | Ast.CompileError(loc, msg) as e => Ast.print_compile_err(e)
         | CumulativeParseError => {}
-        | _ => println(f"\n\nException {e} occured")
+        | _ => println(f"\n\n{error}: Exception {e} occured")
         }
         false
     }

@@ -869,6 +869,10 @@ fun used_by(code: kcode_t, size0: int): id_hashset_t
     fun used_by_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void = fold_ktyp(t, loc, callb)
     fun used_by_kexp_(e: kexp_t, callb: k_fold_callb_t): void =
         match e {
+        | KDefVal(n, e, loc) =>
+            val {kv_typ} = get_kval(n, loc)
+            used_by_ktyp_(kv_typ, loc, callb)
+            used_by_kexp_(e, callb)
         | KDefFun (ref {kf_name, kf_args, kf_rt, kf_closure, kf_body, kf_loc}) =>
             val {kci_arg, kci_fcv_t} = kf_closure
             val kf_typ = get_kf_typ(kf_args, kf_rt)
@@ -888,6 +892,8 @@ fun used_by(code: kcode_t, size0: int): id_hashset_t
                 used_by_ktyp_(ti, kvar_loc, callb)
             }
             remove_unless(have_kvar_name, kvar_name)
+        | KDefClosureVars _ =>
+            {}
         | KDefTyp (ref {kt_name, kt_typ, kt_loc}) =>
             val have_kt_name = all_used.mem(kt_name)
             used_by_ktyp_(kt_typ, kt_loc, callb)

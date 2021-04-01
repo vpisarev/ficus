@@ -27,6 +27,8 @@ typedef struct _fx_R7File__t  { fx_cptr_t handle; } _fx_R7File__t;
 
 typedef struct _fx_rS_data_t  { int_ rc; fx_str_t data; } _fx_rS_data_t, *_fx_rS;
 
+typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
+
 typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
 
 static void _fx_free_Vt6option1S(_fx_Vt6option1S* dst)
@@ -105,7 +107,7 @@ FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(_fx_R7File__t* f, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1S _fx_g7None54_)
+FX_EXTERN_C_VAL(_fx_Vt6option1S _fx_g7None47_)
 FX_EXTERN_C int _fx_M8FilenameFM7dir_sepS0(fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t* s, fx_str_t* suffix, void* fx_fv);
@@ -287,45 +289,36 @@ FX_EXTERN_C int _fx_M3SysFM11locate_fileS2SLS(fx_str_t* name_0, struct _fx_LS_da
    fx_str_t v_0 = {  };
    fx_str_t sep_0 = {  };
    fx_str_t v_1 = {  };
-   fx_str_t v_2 = {  };
    int fx_status = 0;
-   _fx_copy_Vt6option1S(&_fx_g7None54_, &__fold_result___0);
+   _fx_copy_Vt6option1S(&_fx_g7None47_, &__fold_result___0);
    _fx_LS lst_0 = dirs_0;
    for (; lst_0; lst_0 = lst_0->tl) {
       fx_str_t sep_1 = {  };
-      fx_str_t v_3 = {  };
-      fx_str_t v_4 = {  };
-      _fx_Vt6option1S v_5 = {  };
+      fx_str_t v_2 = {  };
+      _fx_Vt6option1S v_3 = {  };
       fx_str_t* d_0 = &lst_0->hd;
       FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_1, 0), _fx_catch_0);
-      bool v_6;
-      if (_fx_M6StringFM8endswithB2SS(d_0, &sep_1, 0)) { v_6 = true;
+      bool v_4;
+      if (_fx_M6StringFM8endswithB2SS(d_0, &sep_1, 0)) { v_4 = true;
       }
-      else { fx_str_t slit_0 = FX_MAKE_STR("/"); v_6 = _fx_M6StringFM8endswithB2SS(d_0, &slit_0, 0);
+      else { fx_str_t slit_0 = FX_MAKE_STR("/"); v_4 = _fx_M6StringFM8endswithB2SS(d_0, &slit_0, 0);
       }
-      if (v_6) { const fx_str_t strs_0[] = { *d_0, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_3), _fx_catch_0);
+      if (v_4) { const fx_str_t strs_0[] = { *d_0, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_2), _fx_catch_0);
       }
-      else {
-         {
-         const fx_str_t strs_1[] = { *d_0, sep_1 }; FX_CALL(fx_strjoin(0, 0, 0, strs_1, 2, &v_4), _fx_catch_0);
-         }
-         {
-         const fx_str_t strs_2[] = { *d_0, sep_1, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_3), _fx_catch_0);
-         }
+      else { const fx_str_t strs_1[] = { *d_0, sep_1, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_2), _fx_catch_0);
       }
-      bool v_7;
-      FX_CALL(_fx_M3SysFM11file_existsB1S(&v_3, &v_7, 0), _fx_catch_0);
-      if (v_7) {
-         _fx_F4SomeVt6option1S1S(d_0, &v_5);
+      bool v_5;
+      FX_CALL(_fx_M3SysFM11file_existsB1S(&v_2, &v_5, 0), _fx_catch_0);
+      if (v_5) {
+         _fx_F4SomeVt6option1S1S(d_0, &v_3);
          _fx_free_Vt6option1S(&__fold_result___0);
-         _fx_copy_Vt6option1S(&v_5, &__fold_result___0);
+         _fx_copy_Vt6option1S(&v_3, &__fold_result___0);
          FX_BREAK(_fx_catch_0);
       }
 
    _fx_catch_0: ;
-      _fx_free_Vt6option1S(&v_5);
-      FX_FREE_STR(&v_4);
-      FX_FREE_STR(&v_3);
+      _fx_free_Vt6option1S(&v_3);
+      FX_FREE_STR(&v_2);
       FX_FREE_STR(&sep_1);
       FX_CHECK_BREAK();
       FX_CHECK_EXN(_fx_cleanup);
@@ -338,20 +331,14 @@ FX_EXTERN_C int _fx_M3SysFM11locate_fileS2SLS(fx_str_t* name_0, struct _fx_LS_da
    FX_CHECK_EXN(_fx_cleanup);
    FX_CALL(_fx_M3SysFM6getcwdS0(&v_0, 0), _fx_cleanup);
    FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_0, 0), _fx_cleanup);
-   bool v_8;
-   if (_fx_M6StringFM8endswithB2SS(&dir_0, &sep_0, 0)) { v_8 = true;
+   bool v_6;
+   if (_fx_M6StringFM8endswithB2SS(&dir_0, &sep_0, 0)) { v_6 = true;
    }
-   else { fx_str_t slit_1 = FX_MAKE_STR("/"); v_8 = _fx_M6StringFM8endswithB2SS(&dir_0, &slit_1, 0);
+   else { fx_str_t slit_1 = FX_MAKE_STR("/"); v_6 = _fx_M6StringFM8endswithB2SS(&dir_0, &slit_1, 0);
    }
-   if (v_8) { const fx_str_t strs_3[] = { dir_0, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_3, 2, &v_1), _fx_cleanup);
+   if (v_6) { const fx_str_t strs_2[] = { dir_0, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_2, 2, &v_1), _fx_cleanup);
    }
-   else {
-      {
-      const fx_str_t strs_4[] = { dir_0, sep_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_4, 2, &v_2), _fx_cleanup);
-      }
-      {
-      const fx_str_t strs_5[] = { dir_0, sep_0, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_1), _fx_cleanup);
-      }
+   else { const fx_str_t strs_3[] = { dir_0, sep_0, *name_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_1), _fx_cleanup);
    }
    FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&v_0, &v_1, fx_result, 0), _fx_cleanup);
 
@@ -362,7 +349,6 @@ _fx_cleanup: ;
    FX_FREE_STR(&v_0);
    FX_FREE_STR(&sep_0);
    FX_FREE_STR(&v_1);
-   FX_FREE_STR(&v_2);
    return fx_status;
 }
 

@@ -1783,6 +1783,10 @@ fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list
         inc_dirs = inc_dirs,
         default_loc = loc_t { fname=fname_id, line0=1, col0=1, line1=1, col1=1 }
     }
+
+    // protect the module from repeated processing in the case of Lexer/Parser error
+    dm->dm_parsed = true
+
     val strm = try Lexer.make_stream(dm->dm_filename)
         catch {
         | FileOpenError => throw ParseError(parser_ctx.default_loc, "cannot open file")
@@ -1806,7 +1810,6 @@ fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list
     }
     all_tokens = all_tokens.rev()
     for t <- preamble.rev() { all_tokens = (t, parser_ctx.default_loc) :: all_tokens }
-    dm->dm_parsed = true
     dm->dm_defs = parse_expseq(all_tokens, true).1
     dm->dm_deps = parser_ctx.deps.rev()
     true

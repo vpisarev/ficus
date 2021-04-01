@@ -559,7 +559,7 @@ fun partial_match_n_str(text: string, re: regex_t) : (bool,         string [])
 //                                                  (success, newpos)
 fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 {
-    val (success, newpos, arr) = consume_n(input, pos, re)
+    val (success, newpos, _) = consume_n(input, pos, re)
     (success, newpos)
 }
 
@@ -633,7 +633,7 @@ fun consume_n_str(input: string, pos: int, re: regex_t) : (bool   ,    int,     
 //                                                           (success, newpos)
 fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 {
-    val (success, newpos, arr) = find_and_consume_n(input, pos, re)
+    val (success, newpos, _) = find_and_consume_n(input, pos, re)
     (success, newpos)
 }
 
@@ -1033,7 +1033,7 @@ fun global_replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,
     (is_found,
         if(is_found)
         {
-            val (len_i, len_j) = size(ranges)
+            val (len_i, _) = size(ranges)
             var str_list = []
             var pos = 0
             for i <- 0: len_i

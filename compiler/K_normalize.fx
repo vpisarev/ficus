@@ -1131,7 +1131,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                         val pinfo = pat_info_t {pinfo_p=p, pinfo_typ=ptyp, pinfo_e=KExpAtom(AtomId(n), (ptyp, loc)), pinfo_tag=var_tag0}
                         val plists_ = dispatch_pat(pinfo, ([], [], []))
                         val (checks_, code_) = process_next_subpat(plists_, ([], []), case_sc)
-                        val e = rcode2kexp(KExpAtom(AtomLit(KLitBool(true)), (KTypBool, loc)) :: code, loc)
+                        val e = rcode2kexp(KExpAtom(AtomLit(KLitBool(true)), (KTypBool, loc)) :: code_, loc)
                         (checks_.rev(), e) :: alt_cases
                     }
                     val alt_check = rcode2kexp(KExpMatch(alt_cases, (KTypBool, loc)) :: code, loc)

@@ -11,8 +11,7 @@
 *.cmxs
 *.cmxa
 *.fxp
-ficus
-ficus0
+ficus0.0
 config.ml
 lexer.ml
 parser.ml
@@ -20,13 +19,15 @@ parser.mli
 parser.output
 src/ficus
 src/result.pgm
+bin/
 tools/ocaml2fx/ocaml2fx
+tools/ocaml2fx/*.fx
 
 # ocamlbuild working directory
 _build/
 
 # ficus build directory
-__build__/
+__fxbuild__/
 
 # vscode config files etc.
 .vscode/

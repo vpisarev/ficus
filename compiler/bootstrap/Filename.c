@@ -4,6 +4,8 @@
 
 typedef struct _fx_Ta2S  { fx_str_t t0; fx_str_t t1; } _fx_Ta2S;
 
+typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
+
 typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
 
 static void _fx_free_Ta2S(_fx_Ta2S* dst)
@@ -172,18 +174,6 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M8FilenameFM7dirnameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv)
-{
-   _fx_Ta2S v_0 = {  };
-   int fx_status = 0;
-   FX_CALL(_fx_M8FilenameFM5splitTa2S1S(path_0, &v_0, 0), _fx_cleanup);
-   fx_copy_str(&v_0.t0, fx_result);
-
-_fx_cleanup: ;
-   _fx_free_Ta2S(&v_0);
-   return fx_status;
-}
-
 FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv)
 {
    _fx_Ta2S v_0 = {  };
@@ -217,48 +207,44 @@ FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_
       fx_str_t v_6 = {  };
       fx_str_t sep_1 = {  };
       fx_str_t result_0 = {  };
-      fx_str_t v_7 = {  };
       fx_copy_str(&dir_1, &dir_2);
       fx_copy_str(&fname_1, &fname_2);
       FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_0, 0), _fx_catch_0);
-      int_ v_8 = _fx_F6lengthi1S(&sep_0, 0);
-      if (!(v_8 == 1)) { FX_FAST_THROW(FX_EXN_AssertError, _fx_catch_0);
+      int_ v_7 = _fx_F6lengthi1S(&sep_0, 0);
+      if (!(v_7 == 1)) { FX_FAST_THROW(FX_EXN_AssertError, _fx_catch_0);
       }
       FX_CALL(_fx_M8FilenameFM7dir_sepS0(&v_0, 0), _fx_catch_0);
-      bool v_9;
+      bool v_8;
       bool t_0;
       if (_fx_M6StringFM10startswithB2SS(&fname_2, &v_0, 0)) { t_0 = true;
       }
       else { fx_str_t slit_0 = FX_MAKE_STR("/"); t_0 = _fx_M6StringFM10startswithB2SS(&fname_2, &slit_0, 0);
       }
-      if (t_0) { v_9 = true;
+      if (t_0) { v_8 = true;
       }
       else {
-         int_ v_10;
-         fx_str_t slit_1 = FX_MAKE_STR(":");
-         v_10 = _fx_M6StringFM4findi3SSi(&fname_2, &slit_1, 0, 0);
-         v_9 = v_10 >= 0;
+         int_ v_9; fx_str_t slit_1 = FX_MAKE_STR(":"); v_9 = _fx_M6StringFM4findi3SSi(&fname_2, &slit_1, 0, 0); v_8 = v_9 >= 0;
       }
-      if (v_9) { FX_FREE_STR(&res_0); fx_copy_str(&fname_2, &res_0); FX_BREAK(_fx_catch_0);
+      if (v_8) { FX_FREE_STR(&res_0); fx_copy_str(&fname_2, &res_0); FX_BREAK(_fx_catch_0);
       }
       else {
          fx_str_t slit_2 = FX_MAKE_STR(".");
          {
          const fx_str_t strs_0[] = { slit_2, sep_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_1), _fx_catch_0);
          }
-         bool v_11;
-         if (_fx_M6StringFM10startswithB2SS(&fname_2, &v_1, 0)) { v_11 = true;
+         bool v_10;
+         if (_fx_M6StringFM10startswithB2SS(&fname_2, &v_1, 0)) { v_10 = true;
          }
          else {
-            bool v_12;
+            bool v_11;
             fx_str_t slit_3 = FX_MAKE_STR("/");
-            v_12 = _fx_F6__eq__B2SS(&sep_0, &slit_3, 0);
-            if (!v_12) { fx_str_t slit_4 = FX_MAKE_STR("./"); v_11 = _fx_M6StringFM10startswithB2SS(&fname_2, &slit_4, 0);
+            v_11 = _fx_F6__eq__B2SS(&sep_0, &slit_3, 0);
+            if (!v_11) { fx_str_t slit_4 = FX_MAKE_STR("./"); v_10 = _fx_M6StringFM10startswithB2SS(&fname_2, &slit_4, 0);
             }
-            else { v_11 = false;
+            else { v_10 = false;
             }
          }
-         if (v_11) {
+         if (v_10) {
             FX_CALL(fx_substr(&fname_2, 2, 0, 1, 2, &v_2), _fx_catch_0);
             FX_FREE_STR(&dir_1);
             fx_copy_str(&dir_2, &dir_1);
@@ -270,19 +256,19 @@ FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_
             {
             const fx_str_t strs_1[] = { slit_5, sep_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_1, 2, &v_3), _fx_catch_0);
             }
-            bool v_13;
-            if (_fx_M6StringFM10startswithB2SS(&fname_2, &v_3, 0)) { v_13 = true;
+            bool v_12;
+            if (_fx_M6StringFM10startswithB2SS(&fname_2, &v_3, 0)) { v_12 = true;
             }
             else {
-               bool v_14;
+               bool v_13;
                fx_str_t slit_6 = FX_MAKE_STR("/");
-               v_14 = _fx_F6__eq__B2SS(&sep_0, &slit_6, 0);
-               if (!v_14) { fx_str_t slit_7 = FX_MAKE_STR("../"); v_13 = _fx_M6StringFM10startswithB2SS(&fname_2, &slit_7, 0);
+               v_13 = _fx_F6__eq__B2SS(&sep_0, &slit_6, 0);
+               if (!v_13) { fx_str_t slit_7 = FX_MAKE_STR("../"); v_12 = _fx_M6StringFM10startswithB2SS(&fname_2, &slit_7, 0);
                }
-               else { v_13 = false;
+               else { v_12 = false;
                }
             }
-            if (v_13) {
+            if (v_12) {
                FX_CALL(_fx_M8FilenameFM5splitTa2S1S(&dir_2, &v_4, 0), _fx_catch_0);
                fx_copy_str(&v_4.t0, &v_5);
                FX_CALL(fx_substr(&fname_2, 3, 0, 1, 2, &v_6), _fx_catch_0);
@@ -293,22 +279,17 @@ FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_
             }
             else {
                FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_1, 0), _fx_catch_0);
-               bool v_15;
-               if (_fx_M6StringFM8endswithB2SS(&dir_2, &sep_1, 0)) { v_15 = true;
+               bool v_14;
+               if (_fx_M6StringFM8endswithB2SS(&dir_2, &sep_1, 0)) { v_14 = true;
                }
-               else { fx_str_t slit_8 = FX_MAKE_STR("/"); v_15 = _fx_M6StringFM8endswithB2SS(&dir_2, &slit_8, 0);
+               else { fx_str_t slit_8 = FX_MAKE_STR("/"); v_14 = _fx_M6StringFM8endswithB2SS(&dir_2, &slit_8, 0);
                }
-               if (v_15) {
+               if (v_14) {
                   const fx_str_t strs_2[] = { dir_2, fname_2 }; FX_CALL(fx_strjoin(0, 0, 0, strs_2, 2, &result_0), _fx_catch_0);
                }
                else {
-                  {
-                  const fx_str_t strs_3[] = { dir_2, sep_1 }; FX_CALL(fx_strjoin(0, 0, 0, strs_3, 2, &v_7), _fx_catch_0);
-                  }
-                  {
-                  const fx_str_t strs_4[] = { dir_2, sep_1, fname_2 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, &result_0), _fx_catch_0);
-                  }
+                  const fx_str_t strs_3[] = { dir_2, sep_1, fname_2 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &result_0), _fx_catch_0);
                }
                FX_FREE_STR(&res_0);
                fx_copy_str(&result_0, &res_0);
@@ -318,7 +299,6 @@ FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_
       }
 
    _fx_catch_0: ;
-      FX_FREE_STR(&v_7);
       FX_FREE_STR(&result_0);
       FX_FREE_STR(&sep_1);
       FX_FREE_STR(&v_6);

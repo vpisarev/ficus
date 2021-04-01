@@ -36,7 +36,7 @@ TEST("Re2.findall", fun()
 
 TEST("Re2.general_match", fun()
 {
-    val fullstring_re = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false})
+    val _ = Re2.compile(r"^.*$",Re2.options_t {posix_syntax = true, one_line = false})
     EXPECT_EQ(Re2.general_match_str("Hello I'm Cornelius", r"(I.m)", 6, 9, Re2.anchor_t {anchor_both=true}), (true, [| "I'm" |]))
 })
 

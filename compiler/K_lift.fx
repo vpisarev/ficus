@@ -506,8 +506,8 @@ fun lift_all(kmods: kmodule_t list)
             match curr_subst_env.find_opt(n) {
             | Some((_, _, Some f_typ)) =>
                 /*
-                    The atom is id, corresponding to a function that does not have/need a closure
-                    still, since we are here, it means that the function is not called directly,
+                    The atom is id, corresponding to a function that does not have/need a closure.
+                    But, since we are here, it means that the function is not called directly,
                     but is rather used as a value, i.e. it's passed to another function,
                     returned from a function or is stored somewhere.
 

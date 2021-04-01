@@ -44,10 +44,12 @@ val unix : bool = @ccode {
 #endif
 }
 
-fun osname_(): bool -> string {
+fun osname_(): bool -> string
+{
     var osname = ""
     var osinfo = ""
-    fun(get_version: bool) {
+    fun(get_version: bool)
+    {
         if !get_version && win32 { "Windows" }
         else {
             if osinfo == "" {
@@ -188,5 +190,5 @@ fun getenv(name: string): string = @ccode {
 fun getpath(name: string): string list
 {
     val pathsep = if win32 {';'} else {':'}
-    getenv(name).split(pathsep)
+    getenv(name).split(pathsep, allow_empty=false)
 }

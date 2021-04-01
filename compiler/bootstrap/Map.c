@@ -21,12 +21,6 @@ struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_cla
 static void _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
    struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t** dst);
 
-struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t;
-static void _fx_free_Vt11Map__tree_t2SV9Ast__id_t(struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t** dst);
-
-struct _fx_Vt11Map__tree_t2Si_data_t;
-static void _fx_free_Vt11Map__tree_t2Si(struct _fx_Vt11Map__tree_t2Si_data_t** dst);
-
 struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t;
 static void _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t** dst);
 
@@ -564,8 +558,6 @@ typedef struct _fx_Vt6option1V9Ast__id_t  { int tag; union  { _fx_V9Ast__id_t So
 typedef struct _fx_Vt6option1V10Ast__typ_t_data_t  { int_ rc; union  { struct _fx_V10Ast__typ_t_data_t* Some; } u;
    } _fx_Vt6option1V10Ast__typ_t_data_t, *_fx_Vt6option1V10Ast__typ_t;
 
-typedef struct _fx_Vt6option1i  { int tag; union  { int_ Some; } u; } _fx_Vt6option1i;
-
 typedef struct _fx_rVt6option1V10Ast__typ_t_data_t  { int_ rc; struct _fx_Vt6option1V10Ast__typ_t_data_t* data;
    } _fx_rVt6option1V10Ast__typ_t_data_t, *_fx_rVt6option1V10Ast__typ_t;
 
@@ -632,8 +624,6 @@ typedef struct _fx_LT2LV14K_form__kexp_tV14K_form__kexp_t_data_t
    { int_ rc; struct _fx_LT2LV14K_form__kexp_tV14K_form__kexp_t_data_t* tl; _fx_T2LV14K_form__kexp_tV14K_form__kexp_t hd;
    } _fx_LT2LV14K_form__kexp_tV14K_form__kexp_t_data_t, *_fx_LT2LV14K_form__kexp_tV14K_form__kexp_t;
 
-typedef struct _fx_FPi2SS  { int (*fp)(fx_str_t*, fx_str_t*, int_*, void*); fx_fcv_t* fcv; } _fx_FPi2SS;
-
 typedef struct _fx_T2LT3V9Ast__id_tV10Ast__typ_tVt6option1V10Ast__lit_tB
    { struct _fx_LT3V9Ast__id_tV10Ast__typ_tVt6option1V10Ast__lit_t_data_t* t0; bool t1;
    } _fx_T2LT3V9Ast__id_tV10Ast__typ_tVt6option1V10Ast__lit_tB;
@@ -684,7 +674,7 @@ typedef struct _fx_T2iV10Ast__typ_t  { int_ t0; struct _fx_V10Ast__typ_t_data_t*
 typedef struct _fx_T2LV10Ast__typ_tV9Ast__id_t  { struct _fx_LV10Ast__typ_t_data_t* t0; _fx_V9Ast__id_t t1;
    } _fx_T2LV10Ast__typ_tV9Ast__id_t;
 
-typedef struct _fx_T2SV9Ast__id_t  { fx_str_t t0; _fx_V9Ast__id_t t1; } _fx_T2SV9Ast__id_t;
+typedef struct _fx_T2SR10Ast__loc_t  { fx_str_t t0; _fx_R10Ast__loc_t t1; } _fx_T2SR10Ast__loc_t;
 
 typedef struct _fx_T2LV14C_form__cexp_tLV15C_form__cstmt_t
    { struct _fx_LV14C_form__cexp_t_data_t* t0; struct _fx_LV15C_form__cstmt_t_data_t* t1;
@@ -776,31 +766,6 @@ typedef struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx_
                  Node; } u;
    } _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t, *_fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t;
 
-typedef struct _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t
-   {
-       _fx_V12Map__color_t t0;
-       struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t1;
-       fx_str_t t2;
-       _fx_V9Ast__id_t t3;
-       struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t4;
-   } _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t;
-
-typedef struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t
-   { int_ rc; union  { _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t Node; } u;
-   } _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t, *_fx_Vt11Map__tree_t2SV9Ast__id_t;
-
-typedef struct _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si
-   {
-       _fx_V12Map__color_t t0;
-       struct _fx_Vt11Map__tree_t2Si_data_t* t1;
-       fx_str_t t2;
-       int_ t3;
-       struct _fx_Vt11Map__tree_t2Si_data_t* t4; } _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si;
-
-typedef struct _fx_Vt11Map__tree_t2Si_data_t
-   { int_ rc; union  { _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si Node; } u;
-   } _fx_Vt11Map__tree_t2Si_data_t, *_fx_Vt11Map__tree_t2Si;
-
 typedef struct _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t
    {
        _fx_V12Map__color_t t0;
@@ -853,74 +818,9 @@ typedef struct _fx_Rt6Map__t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_c
        struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t* root;
        _fx_FPi2V9Ast__id_tV9Ast__id_t cmp; } _fx_Rt6Map__t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t;
 
-typedef struct _fx_Rt6Map__t2SV9Ast__id_t  { struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* root; _fx_FPi2SS cmp;
-   } _fx_Rt6Map__t2SV9Ast__id_t;
-
-typedef struct _fx_Rt6Map__t2Si  { struct _fx_Vt11Map__tree_t2Si_data_t* root; _fx_FPi2SS cmp; } _fx_Rt6Map__t2Si;
-
 typedef struct _fx_Rt6Map__t2V9Ast__id_tV9Ast__id_t
    { struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* root; _fx_FPi2V9Ast__id_tV9Ast__id_t cmp;
    } _fx_Rt6Map__t2V9Ast__id_tV9Ast__id_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t
-   {
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t* t0;
-       _fx_V9Ast__id_t t1;
-       _fx_R29C_gen_types__ctyp_temp_info_t t2;
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t
-   {
-       struct _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t_data_t* t0;
-       _fx_V9Ast__id_t t1;
-       struct _fx_rR24K_fuse_loops__arr_info_t_data_t* t2;
-       struct _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t
-   {
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t_data_t* t0;
-       _fx_V9Ast__id_t t1;
-       _fx_V22K_fast_idx__loop_idx_t t2;
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t
-   {
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t* t0;
-       _fx_V9Ast__id_t t1;
-       _fx_T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t t2;
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t
-   {
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* t0;
-       _fx_V9Ast__id_t t1;
-       _fx_V9Ast__id_t t2;
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t
-   {
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t_data_t* t0;
-       _fx_V9Ast__id_t t1;
-       struct _fx_LV16Ast__env_entry_t_data_t* t2;
-       struct _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t
-   {
-       struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t0;
-       fx_str_t t1;
-       _fx_V9Ast__id_t t2;
-       struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t;
-
-typedef struct _fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si
-   { struct _fx_Vt11Map__tree_t2Si_data_t* t0; fx_str_t t1; int_ t2; struct _fx_Vt11Map__tree_t2Si_data_t* t3;
-   } _fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si;
 
 typedef struct _fx_T2Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tB
    { struct _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t* t0; bool t1;
@@ -941,8 +841,6 @@ typedef struct _fx_T2Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_id
 typedef struct _fx_T2Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tB
    { struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* t0; bool t1; } _fx_T2Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tB;
 
-typedef struct _fx_T2Vt11Map__tree_t2SiB  { struct _fx_Vt11Map__tree_t2Si_data_t* t0; bool t1; } _fx_T2Vt11Map__tree_t2SiB;
-
 typedef struct _fx_FPLV9Ast__id_t3V9Ast__id_tLV16Ast__env_entry_tLV9Ast__id_t
    {
        int (*fp)(
@@ -961,9 +859,6 @@ typedef struct _fx_FPRt6Map__t2V9Ast__id_tLV16Ast__env_entry_t3V9Ast__id_tLV16As
 typedef struct _fx_FPB2V9Ast__id_trR24K_fuse_loops__arr_info_t
    { int (*fp)(_fx_V9Ast__id_t*, struct _fx_rR24K_fuse_loops__arr_info_t_data_t*, bool*, void*); fx_fcv_t* fcv;
    } _fx_FPB2V9Ast__id_trR24K_fuse_loops__arr_info_t;
-
-typedef struct _fx_LT2SV9Ast__id_t_data_t  { int_ rc; struct _fx_LT2SV9Ast__id_t_data_t* tl; _fx_T2SV9Ast__id_t hd;
-   } _fx_LT2SV9Ast__id_t_data_t, *_fx_LT2SV9Ast__id_t;
 
 typedef enum {
    _FX_V10Ast__typ_t_TypVar=1,
@@ -1054,8 +949,6 @@ typedef enum {
 typedef struct _fx_V18Ast__interpolate_t  { int tag; } _fx_V18Ast__interpolate_t;
 
 typedef struct _fx_T2V9Ast__id_tR10Ast__loc_t  { _fx_V9Ast__id_t t0; _fx_R10Ast__loc_t t1; } _fx_T2V9Ast__id_tR10Ast__loc_t;
-
-typedef struct _fx_T2SR10Ast__loc_t  { fx_str_t t0; _fx_R10Ast__loc_t t1; } _fx_T2SR10Ast__loc_t;
 
 typedef enum {
    _FX_V14K_form__ktyp_t_KTypInt=1,
@@ -1560,6 +1453,8 @@ typedef struct _fx_V15C_form__cstmt_t_data_t
               _fx_T3LT2V14C_form__cexp_tLV15C_form__cstmt_tLV15C_form__cstmt_tR10Ast__loc_t CMacroIf;
               _fx_T2SR10Ast__loc_t CMacroInclude;
               _fx_T2SR10Ast__loc_t CMacroPragma; } u; } _fx_V15C_form__cstmt_t_data_t, *_fx_V15C_form__cstmt_t;
+
+typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
 
 typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
 
@@ -3120,15 +3015,15 @@ static void _fx_make_T2LV10Ast__typ_tV9Ast__id_t(
 { FX_COPY_PTR(t0, &fx_result->t0); fx_result->t1 = *t1;
 }
 
-static void _fx_free_T2SV9Ast__id_t(_fx_T2SV9Ast__id_t* dst)
+static void _fx_free_T2SR10Ast__loc_t(_fx_T2SR10Ast__loc_t* dst)
 { fx_free_str(&dst->t0);
 }
 
-static void _fx_copy_T2SV9Ast__id_t(_fx_T2SV9Ast__id_t* src, _fx_T2SV9Ast__id_t* dst)
+static void _fx_copy_T2SR10Ast__loc_t(_fx_T2SR10Ast__loc_t* src, _fx_T2SR10Ast__loc_t* dst)
 { fx_copy_str(&src->t0, &dst->t0); dst->t1 = src->t1;
 }
 
-static void _fx_make_T2SV9Ast__id_t(fx_str_t* t0, _fx_V9Ast__id_t* t1, _fx_T2SV9Ast__id_t* fx_result)
+static void _fx_make_T2SR10Ast__loc_t(fx_str_t* t0, _fx_R10Ast__loc_t* t1, _fx_T2SR10Ast__loc_t* fx_result)
 { fx_copy_str(t0, &fx_result->t0); fx_result->t1 = *t1;
 }
 
@@ -3368,85 +3263,6 @@ static void _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_id
    *dst = 0;
 }
 
-static void _fx_free_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(
-   _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* dst)
-{ _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&dst->t1); fx_free_str(&dst->t2); _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&dst->t4);
-}
-
-static void _fx_copy_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(
-   _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* src,
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* dst)
-{
-   dst->t0 = src->t0;
-   FX_COPY_PTR(src->t1, &dst->t1);
-   fx_copy_str(&src->t2, &dst->t2);
-   dst->t3 = src->t3;
-   FX_COPY_PTR(src->t4, &dst->t4);
-}
-
-static void _fx_make_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(
-   _fx_V12Map__color_t* t0,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t1,
-      fx_str_t* t2,
-      _fx_V9Ast__id_t* t3,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t4,
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* fx_result)
-{
-   fx_result->t0 = *t0;
-   FX_COPY_PTR(t1, &fx_result->t1);
-   fx_copy_str(t2, &fx_result->t2);
-   fx_result->t3 = *t3;
-   FX_COPY_PTR(t4, &fx_result->t4);
-}
-
-static void _fx_free_Vt11Map__tree_t2SV9Ast__id_t(struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t** dst)
-{
-   if (*dst && FX_DECREF((*dst)->rc) == 1) {
-      _fx_free_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(&(*dst)->u.Node);
-      fx_free(*dst);
-   }
-   *dst = 0;
-}
-
-static void _fx_free_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si(
-   _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* dst)
-{ _fx_free_Vt11Map__tree_t2Si(&dst->t1); fx_free_str(&dst->t2); _fx_free_Vt11Map__tree_t2Si(&dst->t4);
-}
-
-static void _fx_copy_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si(
-   _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* src,
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* dst)
-{
-   dst->t0 = src->t0;
-   FX_COPY_PTR(src->t1, &dst->t1);
-   fx_copy_str(&src->t2, &dst->t2);
-   dst->t3 = src->t3;
-   FX_COPY_PTR(src->t4, &dst->t4);
-}
-
-static void _fx_make_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si(
-   _fx_V12Map__color_t* t0,
-      struct _fx_Vt11Map__tree_t2Si_data_t* t1,
-      fx_str_t* t2,
-      int_ t3,
-      struct _fx_Vt11Map__tree_t2Si_data_t* t4,
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* fx_result)
-{
-   fx_result->t0 = *t0;
-   FX_COPY_PTR(t1, &fx_result->t1);
-   fx_copy_str(t2, &fx_result->t2);
-   fx_result->t3 = t3;
-   FX_COPY_PTR(t4, &fx_result->t4);
-}
-
-static void _fx_free_Vt11Map__tree_t2Si(struct _fx_Vt11Map__tree_t2Si_data_t** dst)
-{
-   if (*dst && FX_DECREF((*dst)->rc) == 1) {
-      _fx_free_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si(&(*dst)->u.Node); fx_free(*dst);
-   }
-   *dst = 0;
-}
-
 static void
    _fx_free_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(
    _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t* dst)
@@ -3609,31 +3425,6 @@ static void _fx_make_Rt6Map__t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx
 { FX_COPY_PTR(r_root, &fx_result->root); FX_COPY_FP(r_cmp, &fx_result->cmp);
 }
 
-static void _fx_free_Rt6Map__t2SV9Ast__id_t(_fx_Rt6Map__t2SV9Ast__id_t* dst)
-{ _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&dst->root); fx_free_fp(&dst->cmp);
-}
-
-static void _fx_copy_Rt6Map__t2SV9Ast__id_t(_fx_Rt6Map__t2SV9Ast__id_t* src, _fx_Rt6Map__t2SV9Ast__id_t* dst)
-{ FX_COPY_PTR(src->root, &dst->root); FX_COPY_FP(&src->cmp, &dst->cmp);
-}
-
-static void _fx_make_Rt6Map__t2SV9Ast__id_t(
-   struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* r_root, _fx_FPi2SS* r_cmp, _fx_Rt6Map__t2SV9Ast__id_t* fx_result)
-{ FX_COPY_PTR(r_root, &fx_result->root); FX_COPY_FP(r_cmp, &fx_result->cmp);
-}
-
-static void _fx_free_Rt6Map__t2Si(_fx_Rt6Map__t2Si* dst)
-{ _fx_free_Vt11Map__tree_t2Si(&dst->root); fx_free_fp(&dst->cmp);
-}
-
-static void _fx_copy_Rt6Map__t2Si(_fx_Rt6Map__t2Si* src, _fx_Rt6Map__t2Si* dst)
-{ FX_COPY_PTR(src->root, &dst->root); FX_COPY_FP(&src->cmp, &dst->cmp);
-}
-
-static void _fx_make_Rt6Map__t2Si(struct _fx_Vt11Map__tree_t2Si_data_t* r_root, _fx_FPi2SS* r_cmp, _fx_Rt6Map__t2Si* fx_result)
-{ FX_COPY_PTR(r_root, &fx_result->root); FX_COPY_FP(r_cmp, &fx_result->cmp);
-}
-
 static void _fx_free_Rt6Map__t2V9Ast__id_tV9Ast__id_t(_fx_Rt6Map__t2V9Ast__id_tV9Ast__id_t* dst)
 { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&dst->root); fx_free_fp(&dst->cmp);
 }
@@ -3648,238 +3439,6 @@ static void _fx_make_Rt6Map__t2V9Ast__id_tV9Ast__id_t(
       _fx_FPi2V9Ast__id_tV9Ast__id_t* r_cmp,
       _fx_Rt6Map__t2V9Ast__id_tV9Ast__id_t* fx_result)
 { FX_COPY_PTR(r_root, &fx_result->root); FX_COPY_FP(r_cmp, &fx_result->cmp);
-}
-
-static void
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-      dst)
-{
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&dst->t0);
-   _fx_free_R29C_gen_types__ctyp_temp_info_t(&dst->t2);
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&dst->t3);
-}
-
-static void
-   _fx_copy_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-      src,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-         dst)
-{
-   FX_COPY_PTR(src->t0, &dst->t0);
-   dst->t1 = src->t1;
-   _fx_copy_R29C_gen_types__ctyp_temp_info_t(&src->t2, &dst->t2);
-   FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-   struct _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t* t0,
-      _fx_V9Ast__id_t* t1,
-      _fx_R29C_gen_types__ctyp_temp_info_t* t2,
-      struct _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t* t3,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-         fx_result)
-{
-   FX_COPY_PTR(t0, &fx_result->t0);
-   fx_result->t1 = *t1;
-   _fx_copy_R29C_gen_types__ctyp_temp_info_t(t2, &fx_result->t2);
-   FX_COPY_PTR(t3, &fx_result->t3);
-}
-
-static void
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-      dst)
-{
-   _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&dst->t0);
-   _fx_free_rR24K_fuse_loops__arr_info_t(&dst->t2);
-   _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&dst->t3);
-}
-
-static void
-   _fx_copy_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-      src,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-         dst)
-{ FX_COPY_PTR(src->t0, &dst->t0); dst->t1 = src->t1; FX_COPY_PTR(src->t2, &dst->t2); FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-   struct _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t_data_t* t0,
-      _fx_V9Ast__id_t* t1,
-      struct _fx_rR24K_fuse_loops__arr_info_t_data_t* t2,
-      struct _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t_data_t* t3,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-         fx_result)
-{ FX_COPY_PTR(t0, &fx_result->t0); fx_result->t1 = *t1; FX_COPY_PTR(t2, &fx_result->t2); FX_COPY_PTR(t3, &fx_result->t3);
-}
-
-static void
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-      dst)
-{
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&dst->t0);
-   _fx_free_V22K_fast_idx__loop_idx_t(&dst->t2);
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&dst->t3);
-}
-
-static void
-   _fx_copy_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-      src,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-         dst)
-{
-   FX_COPY_PTR(src->t0, &dst->t0);
-   dst->t1 = src->t1;
-   _fx_copy_V22K_fast_idx__loop_idx_t(&src->t2, &dst->t2);
-   FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-   struct _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t_data_t* t0,
-      _fx_V9Ast__id_t* t1,
-      _fx_V22K_fast_idx__loop_idx_t* t2,
-      struct _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t_data_t* t3,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-         fx_result)
-{
-   FX_COPY_PTR(t0, &fx_result->t0);
-   fx_result->t1 = *t1;
-   _fx_copy_V22K_fast_idx__loop_idx_t(t2, &fx_result->t2);
-   FX_COPY_PTR(t3, &fx_result->t3);
-}
-
-static void
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-      dst)
-{
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&dst->t0);
-   _fx_free_T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&dst->t2);
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&dst->t3);
-}
-
-static void
-   _fx_copy_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-      src,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-         dst)
-{
-   FX_COPY_PTR(src->t0, &dst->t0);
-   dst->t1 = src->t1;
-   _fx_copy_T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&src->t2, &dst->t2);
-   FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-   struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t* t0,
-      _fx_V9Ast__id_t* t1,
-      _fx_T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t* t2,
-      struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t* t3,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-         fx_result)
-{
-   FX_COPY_PTR(t0, &fx_result->t0);
-   fx_result->t1 = *t1;
-   _fx_copy_T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(t2, &fx_result->t2);
-   FX_COPY_PTR(t3, &fx_result->t3);
-}
-
-static void _fx_free_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t* dst)
-{ _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&dst->t0); _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&dst->t3);
-}
-
-static void _fx_copy_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t* src,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t* dst)
-{ FX_COPY_PTR(src->t0, &dst->t0); dst->t1 = src->t1; dst->t2 = src->t2; FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void _fx_make_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(
-   struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* t0,
-      _fx_V9Ast__id_t* t1,
-      _fx_V9Ast__id_t* t2,
-      struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t* t3,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t* fx_result)
-{ FX_COPY_PTR(t0, &fx_result->t0); fx_result->t1 = *t1; fx_result->t2 = *t2; FX_COPY_PTR(t3, &fx_result->t3);
-}
-
-static void
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-      dst)
-{
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&dst->t0);
-   _fx_free_LV16Ast__env_entry_t(&dst->t2);
-   _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&dst->t3);
-}
-
-static void
-   _fx_copy_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-      src,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-         dst)
-{ FX_COPY_PTR(src->t0, &dst->t0); dst->t1 = src->t1; FX_COPY_PTR(src->t2, &dst->t2); FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-   struct _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t_data_t* t0,
-      _fx_V9Ast__id_t* t1,
-      struct _fx_LV16Ast__env_entry_t_data_t* t2,
-      struct _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t_data_t* t3,
-      _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-         fx_result)
-{ FX_COPY_PTR(t0, &fx_result->t0); fx_result->t1 = *t1; FX_COPY_PTR(t2, &fx_result->t2); FX_COPY_PTR(t3, &fx_result->t3);
-}
-
-static void _fx_free_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(
-   _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* dst)
-{ _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&dst->t0); fx_free_str(&dst->t1); _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&dst->t3);
-}
-
-static void _fx_copy_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(
-   _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* src,
-      _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* dst)
-{ FX_COPY_PTR(src->t0, &dst->t0); fx_copy_str(&src->t1, &dst->t1); dst->t2 = src->t2; FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void _fx_make_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(
-   struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t0,
-      fx_str_t* t1,
-      _fx_V9Ast__id_t* t2,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t3,
-      _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* fx_result)
-{ FX_COPY_PTR(t0, &fx_result->t0); fx_copy_str(t1, &fx_result->t1); fx_result->t2 = *t2; FX_COPY_PTR(t3, &fx_result->t3);
-}
-
-static void _fx_free_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si(_fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si* dst)
-{ _fx_free_Vt11Map__tree_t2Si(&dst->t0); fx_free_str(&dst->t1); _fx_free_Vt11Map__tree_t2Si(&dst->t3);
-}
-
-static void _fx_copy_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si(
-   _fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si* src, _fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si* dst)
-{ FX_COPY_PTR(src->t0, &dst->t0); fx_copy_str(&src->t1, &dst->t1); dst->t2 = src->t2; FX_COPY_PTR(src->t3, &dst->t3);
-}
-
-static void _fx_make_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si(
-   struct _fx_Vt11Map__tree_t2Si_data_t* t0,
-      fx_str_t* t1,
-      int_ t2,
-      struct _fx_Vt11Map__tree_t2Si_data_t* t3,
-      _fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si* fx_result)
-{ FX_COPY_PTR(t0, &fx_result->t0); fx_copy_str(t1, &fx_result->t1); fx_result->t2 = t2; FX_COPY_PTR(t3, &fx_result->t3);
 }
 
 static void _fx_free_T2Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tB(
@@ -3970,28 +3529,6 @@ static void _fx_make_T2Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tB(
 { FX_COPY_PTR(t0, &fx_result->t0); fx_result->t1 = t1;
 }
 
-static void _fx_free_T2Vt11Map__tree_t2SiB(_fx_T2Vt11Map__tree_t2SiB* dst)
-{ _fx_free_Vt11Map__tree_t2Si(&dst->t0);
-}
-
-static void _fx_copy_T2Vt11Map__tree_t2SiB(_fx_T2Vt11Map__tree_t2SiB* src, _fx_T2Vt11Map__tree_t2SiB* dst)
-{ FX_COPY_PTR(src->t0, &dst->t0); dst->t1 = src->t1;
-}
-
-static void _fx_make_T2Vt11Map__tree_t2SiB(
-   struct _fx_Vt11Map__tree_t2Si_data_t* t0, bool t1, _fx_T2Vt11Map__tree_t2SiB* fx_result)
-{ FX_COPY_PTR(t0, &fx_result->t0); fx_result->t1 = t1;
-}
-
-static void _fx_free_LT2SV9Ast__id_t(struct _fx_LT2SV9Ast__id_t_data_t** dst)
-{ FX_FREE_LIST_IMPL(_fx_LT2SV9Ast__id_t, _fx_free_T2SV9Ast__id_t);
-}
-
-static int _fx_cons_LT2SV9Ast__id_t(
-   _fx_T2SV9Ast__id_t* hd, struct _fx_LT2SV9Ast__id_t_data_t* tl, bool addref_tl, struct _fx_LT2SV9Ast__id_t_data_t** fx_result)
-{ FX_MAKE_LIST_IMPL(_fx_LT2SV9Ast__id_t, _fx_copy_T2SV9Ast__id_t);
-}
-
 static void _fx_free_V10Ast__typ_t(struct _fx_V10Ast__typ_t_data_t** dst)
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
@@ -4022,18 +3559,6 @@ static void _fx_free_V10Ast__typ_t(struct _fx_V10Ast__typ_t_data_t** dst)
       fx_free(*dst);
    }
    *dst = 0;
-}
-
-static void _fx_free_T2SR10Ast__loc_t(_fx_T2SR10Ast__loc_t* dst)
-{ fx_free_str(&dst->t0);
-}
-
-static void _fx_copy_T2SR10Ast__loc_t(_fx_T2SR10Ast__loc_t* src, _fx_T2SR10Ast__loc_t* dst)
-{ fx_copy_str(&src->t0, &dst->t0); dst->t1 = src->t1;
-}
-
-static void _fx_make_T2SR10Ast__loc_t(fx_str_t* t0, _fx_R10Ast__loc_t* t1, _fx_T2SR10Ast__loc_t* fx_result)
-{ fx_copy_str(t0, &fx_result->t0); fx_result->t1 = *t1;
 }
 
 static void _fx_free_V14K_form__ktyp_t(struct _fx_V14K_form__ktyp_t_data_t** dst)
@@ -5167,10 +4692,8 @@ _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t _fx_g10Map__Empt
 _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t _fx_g12Map__Empty1_ = 0;
 _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t _fx_g12Map__Empty2_ = 0;
 _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t _fx_g12Map__Empty3_ = 0;
-_fx_Vt11Map__tree_t2SV9Ast__id_t _fx_g12Map__Empty4_ = 0;
-_fx_Vt11Map__tree_t2Si _fx_g12Map__Empty5_ = 0;
-_fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t _fx_g12Map__Empty6_ = 0;
-_fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t _fx_g12Map__Empty7_ = 0;
+_fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t _fx_g12Map__Empty4_ = 0;
+_fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t _fx_g12Map__Empty5_ = 0;
 int _FX_EXN_E15Map__RBMapError = 0;
 FX_EXTERN_C void _fx_F4SomeVt6option1R29C_gen_types__ctyp_temp_info_t1R29C_gen_types__ctyp_temp_info_t(
    _fx_R29C_gen_types__ctyp_temp_info_t* arg0, _fx_Vt6option1R29C_gen_types__ctyp_temp_info_t* fx_result);
@@ -5179,27 +4702,24 @@ FX_EXTERN_C_VAL(_fx_Vt6option1R29C_gen_types__ctyp_temp_info_t _fx_g6None1_)
 FX_EXTERN_C void _fx_F4SomeVt6option1rR24K_fuse_loops__arr_info_t1rR24K_fuse_loops__arr_info_t(
    struct _fx_rR24K_fuse_loops__arr_info_t_data_t* arg0, _fx_Vt6option1rR24K_fuse_loops__arr_info_t* fx_result);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1rR24K_fuse_loops__arr_info_t _fx_g7None14_)
+FX_EXTERN_C_VAL(_fx_Vt6option1rR24K_fuse_loops__arr_info_t _fx_g7None12_)
 FX_EXTERN_C void _fx_F4SomeVt6option1V22K_fast_idx__loop_idx_t1V22K_fast_idx__loop_idx_t(
    _fx_V22K_fast_idx__loop_idx_t* arg0, _fx_Vt6option1V22K_fast_idx__loop_idx_t* fx_result);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1V22K_fast_idx__loop_idx_t _fx_g7None16_)
+FX_EXTERN_C_VAL(_fx_Vt6option1V22K_fast_idx__loop_idx_t _fx_g7None14_)
 FX_EXTERN_C void
    _fx_F4SomeVt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
    _fx_T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t* arg0,
       _fx_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t* fx_result);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t _fx_g7None18_)
+FX_EXTERN_C_VAL(_fx_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t _fx_g7None16_)
 FX_EXTERN_C void _fx_F4SomeVt6option1LV16Ast__env_entry_t1LV16Ast__env_entry_t(
    struct _fx_LV16Ast__env_entry_t_data_t* arg0, _fx_Vt6option1LV16Ast__env_entry_t* fx_result);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1LV16Ast__env_entry_t _fx_g7None41_)
+FX_EXTERN_C_VAL(_fx_Vt6option1LV16Ast__env_entry_t _fx_g7None35_)
 FX_EXTERN_C void _fx_F4SomeVt6option1V9Ast__id_t1V9Ast__id_t(_fx_V9Ast__id_t* arg0, _fx_Vt6option1V9Ast__id_t* fx_result);
 
-FX_EXTERN_C_VAL(_fx_Vt6option1V9Ast__id_t _fx_g7None50_)
-FX_EXTERN_C void _fx_F4SomeVt6option1i1i(int_ arg0, _fx_Vt6option1i* fx_result);
-
-FX_EXTERN_C_VAL(_fx_Vt6option1i _fx_g7None56_)
+FX_EXTERN_C_VAL(_fx_Vt6option1V9Ast__id_t _fx_g7None43_)
 fx_exn_info_t _fx_E15Map__RBMapError_info = {  };
 fx_exn_t _fx_E15Map__RBMapErrorv = {  };
 FX_EXTERN_C int
@@ -5274,40 +4794,6 @@ FX_EXTERN_C int
    return 0;
 }
 
-FX_EXTERN_C int _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-   _fx_V12Map__color_t* arg0,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* arg1,
-      fx_str_t* arg2,
-      _fx_V9Ast__id_t* arg3,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* arg4,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t** fx_result)
-{
-   FX_MAKE_RECURSIVE_VARIANT_IMPL_START(_fx_Vt11Map__tree_t2SV9Ast__id_t);
-   v->u.Node.t0 = *arg0;
-   FX_COPY_PTR(arg1, &v->u.Node.t1);
-   fx_copy_str(arg2, &v->u.Node.t2);
-   v->u.Node.t3 = *arg3;
-   FX_COPY_PTR(arg4, &v->u.Node.t4);
-   return 0;
-}
-
-FX_EXTERN_C int _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-   _fx_V12Map__color_t* arg0,
-      struct _fx_Vt11Map__tree_t2Si_data_t* arg1,
-      fx_str_t* arg2,
-      int_ arg3,
-      struct _fx_Vt11Map__tree_t2Si_data_t* arg4,
-      struct _fx_Vt11Map__tree_t2Si_data_t** fx_result)
-{
-   FX_MAKE_RECURSIVE_VARIANT_IMPL_START(_fx_Vt11Map__tree_t2Si);
-   v->u.Node.t0 = *arg0;
-   FX_COPY_PTR(arg1, &v->u.Node.t1);
-   fx_copy_str(arg2, &v->u.Node.t2);
-   v->u.Node.t3 = arg3;
-   FX_COPY_PTR(arg4, &v->u.Node.t4);
-   return 0;
-}
-
 FX_EXTERN_C int
    _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
    _fx_V12Map__color_t* arg0,
@@ -5378,25 +4864,16 @@ FX_EXTERN_C int _fx_M3MapFM5emptyRtM1t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M3MapFM5emptyRtM1t2SV9Ast__id_t1FPi2SS(
-   _fx_FPi2SS* cmp_0, _fx_Rt6Map__t2SV9Ast__id_t* fx_result, void* fx_fv)
-{ int fx_status = 0; _fx_make_Rt6Map__t2SV9Ast__id_t(_fx_g12Map__Empty4_, cmp_0, fx_result); return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM5emptyRtM1t2Si1FPi2SS(_fx_FPi2SS* cmp_0, _fx_Rt6Map__t2Si* fx_result, void* fx_fv)
-{ int fx_status = 0; _fx_make_Rt6Map__t2Si(_fx_g12Map__Empty5_, cmp_0, fx_result); return fx_status;
-}
-
 FX_EXTERN_C int _fx_M3MapFM5emptyRtM1t2V9Ast__id_tV9Ast__id_t1FPi2V9Ast__id_tV9Ast__id_t(
    _fx_FPi2V9Ast__id_tV9Ast__id_t* cmp_0, _fx_Rt6Map__t2V9Ast__id_tV9Ast__id_t* fx_result, void* fx_fv)
-{ int fx_status = 0; _fx_make_Rt6Map__t2V9Ast__id_tV9Ast__id_t(_fx_g12Map__Empty6_, cmp_0, fx_result); return fx_status;
+{ int fx_status = 0; _fx_make_Rt6Map__t2V9Ast__id_tV9Ast__id_t(_fx_g12Map__Empty4_, cmp_0, fx_result); return fx_status;
 }
 
 FX_EXTERN_C int _fx_M3MapFM5emptyRtM1t2V9Ast__id_tLV16Ast__env_entry_t1FPi2V9Ast__id_tV9Ast__id_t(
    _fx_FPi2V9Ast__id_tV9Ast__id_t* cmp_0, _fx_Rt6Map__t2V9Ast__id_tLV16Ast__env_entry_t* fx_result, void* fx_fv)
 {
    int fx_status = 0;
-   _fx_make_Rt6Map__t2V9Ast__id_tLV16Ast__env_entry_t(_fx_g12Map__Empty7_, cmp_0, fx_result);
+   _fx_make_Rt6Map__t2V9Ast__id_tLV16Ast__env_entry_t(_fx_g12Map__Empty5_, cmp_0, fx_result);
    return fx_status;
 }
 
@@ -5543,7 +5020,7 @@ FX_EXTERN_C int
       }
       else {
          _fx_free_Vt6option1rR24K_fuse_loops__arr_info_t(&res_0);
-         _fx_copy_Vt6option1rR24K_fuse_loops__arr_info_t(&_fx_g7None14_, &res_0);
+         _fx_copy_Vt6option1rR24K_fuse_loops__arr_info_t(&_fx_g7None12_, &res_0);
          FX_BREAK(_fx_catch_1);
 
       _fx_catch_1: ;
@@ -5627,7 +5104,7 @@ FX_EXTERN_C int _fx_M3MapFM8find_optVt6option1V22K_fast_idx__loop_idx_t2RtM1t2V9
       }
       else {
          _fx_free_Vt6option1V22K_fast_idx__loop_idx_t(&res_0);
-         _fx_copy_Vt6option1V22K_fast_idx__loop_idx_t(&_fx_g7None16_, &res_0);
+         _fx_copy_Vt6option1V22K_fast_idx__loop_idx_t(&_fx_g7None14_, &res_0);
          FX_BREAK(_fx_catch_1);
 
       _fx_catch_1: ;
@@ -5713,7 +5190,7 @@ FX_EXTERN_C int
       }
       else {
          _fx_free_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&res_0);
-         _fx_copy_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&_fx_g7None18_, &res_0);
+         _fx_copy_Vt6option1T3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&_fx_g7None16_, &res_0);
          FX_BREAK(_fx_catch_1);
 
       _fx_catch_1: ;
@@ -5797,7 +5274,7 @@ FX_EXTERN_C int _fx_M3MapFM8find_optVt6option1LV16Ast__env_entry_t2RtM1t2V9Ast__
       }
       else {
          _fx_free_Vt6option1LV16Ast__env_entry_t(&res_0);
-         _fx_copy_Vt6option1LV16Ast__env_entry_t(&_fx_g7None41_, &res_0);
+         _fx_copy_Vt6option1LV16Ast__env_entry_t(&_fx_g7None35_, &res_0);
          FX_BREAK(_fx_catch_1);
 
       _fx_catch_1: ;
@@ -5874,7 +5351,7 @@ FX_EXTERN_C int _fx_M3MapFM8find_optVt6option1V9Ast__id_t2RtM1t2V9Ast__id_tV9Ast
 
       _fx_catch_0: ;
       }
-      else { res_0 = _fx_g7None50_; FX_BREAK(_fx_catch_1);  _fx_catch_1: ;
+      else { res_0 = _fx_g7None43_; FX_BREAK(_fx_catch_1);  _fx_catch_1: ;
       }
       FX_CHECK_EXN(_fx_catch_2);
 
@@ -5893,159 +5370,6 @@ _fx_cleanup: ;
    FX_FREE_FP(&v_1);
    if (t_0) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&t_0);
    }
-   FX_FREE_FP(&cmp_0);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM8find_optVt6option1V9Ast__id_t2RtM1t2SV9Ast__id_tS(
-   _fx_Rt6Map__t2SV9Ast__id_t* m_0, fx_str_t* x_0, _fx_Vt6option1V9Ast__id_t* fx_result, void* fx_fv)
-{
-   _fx_Vt11Map__tree_t2SV9Ast__id_t v_0 = 0;
-   _fx_FPi2SS v_1 = {  };
-   _fx_Vt11Map__tree_t2SV9Ast__id_t t_0 = 0;
-   fx_str_t xk_0 = {  };
-   _fx_FPi2SS cmp_0 = {  };
-   int fx_status = 0;
-   FX_COPY_PTR(m_0->root, &v_0);
-   FX_COPY_FP(&m_0->cmp, &v_1);
-   _fx_Vt6option1V9Ast__id_t res_0 = {  };
-   FX_COPY_PTR(v_0, &t_0);
-   fx_copy_str(x_0, &xk_0);
-   FX_COPY_FP(&v_1, &cmp_0);
-   for (;;) {
-      _fx_Vt11Map__tree_t2SV9Ast__id_t t_1 = 0;
-      fx_str_t xk_1 = {  };
-      _fx_FPi2SS cmp_1 = {  };
-      FX_COPY_PTR(t_0, &t_1);
-      fx_copy_str(&xk_0, &xk_1);
-      FX_COPY_FP(&cmp_0, &cmp_1);
-      if (t_1 != 0 == _FX_Vt11Map__tree_t_Node) {
-         _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_0 = &t_1->u.Node;
-         int_ c_0;
-         FX_CALL(cmp_1.fp(&xk_1, &vcase_0->t2, &c_0, cmp_1.fcv), _fx_catch_0);
-         if (c_0 < 0) {
-            _fx_Vt11Map__tree_t2SV9Ast__id_t* l_0 = &vcase_0->t1;
-            _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&t_0);
-            FX_COPY_PTR(*l_0, &t_0);
-            FX_FREE_STR(&xk_0);
-            fx_copy_str(&xk_1, &xk_0);
-            FX_FREE_FP(&cmp_0);
-            FX_COPY_FP(&cmp_1, &cmp_0);
-         }
-         else if (c_0 > 0) {
-            _fx_Vt11Map__tree_t2SV9Ast__id_t* r_0 = &vcase_0->t4;
-            _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&t_0);
-            FX_COPY_PTR(*r_0, &t_0);
-            FX_FREE_STR(&xk_0);
-            fx_copy_str(&xk_1, &xk_0);
-            FX_FREE_FP(&cmp_0);
-            FX_COPY_FP(&cmp_1, &cmp_0);
-         }
-         else {
-            _fx_Vt6option1V9Ast__id_t result_0;
-            _fx_F4SomeVt6option1V9Ast__id_t1V9Ast__id_t(&vcase_0->t3, &result_0);
-            res_0 = result_0;
-            FX_BREAK(_fx_catch_0);
-         }
-
-      _fx_catch_0: ;
-      }
-      else { res_0 = _fx_g7None50_; FX_BREAK(_fx_catch_1);  _fx_catch_1: ;
-      }
-      FX_CHECK_EXN(_fx_catch_2);
-
-   _fx_catch_2: ;
-      FX_FREE_FP(&cmp_1);
-      FX_FREE_STR(&xk_1);
-      if (t_1) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&t_1);
-      }
-      FX_CHECK_BREAK();
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   *fx_result = res_0;
-
-_fx_cleanup: ;
-   if (v_0) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_0);
-   }
-   FX_FREE_FP(&v_1);
-   if (t_0) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&t_0);
-   }
-   FX_FREE_STR(&xk_0);
-   FX_FREE_FP(&cmp_0);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM8find_optVt6option1i2RtM1t2SiS(
-   _fx_Rt6Map__t2Si* m_0, fx_str_t* x_0, _fx_Vt6option1i* fx_result, void* fx_fv)
-{
-   _fx_Vt11Map__tree_t2Si v_0 = 0;
-   _fx_FPi2SS v_1 = {  };
-   _fx_Vt11Map__tree_t2Si t_0 = 0;
-   fx_str_t xk_0 = {  };
-   _fx_FPi2SS cmp_0 = {  };
-   int fx_status = 0;
-   FX_COPY_PTR(m_0->root, &v_0);
-   FX_COPY_FP(&m_0->cmp, &v_1);
-   _fx_Vt6option1i res_0 = {  };
-   FX_COPY_PTR(v_0, &t_0);
-   fx_copy_str(x_0, &xk_0);
-   FX_COPY_FP(&v_1, &cmp_0);
-   for (;;) {
-      _fx_Vt11Map__tree_t2Si t_1 = 0;
-      fx_str_t xk_1 = {  };
-      _fx_FPi2SS cmp_1 = {  };
-      FX_COPY_PTR(t_0, &t_1);
-      fx_copy_str(&xk_0, &xk_1);
-      FX_COPY_FP(&cmp_0, &cmp_1);
-      if (t_1 != 0 == _FX_Vt11Map__tree_t_Node) {
-         _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_0 = &t_1->u.Node;
-         int_ c_0;
-         FX_CALL(cmp_1.fp(&xk_1, &vcase_0->t2, &c_0, cmp_1.fcv), _fx_catch_0);
-         if (c_0 < 0) {
-            _fx_Vt11Map__tree_t2Si* l_0 = &vcase_0->t1;
-            _fx_free_Vt11Map__tree_t2Si(&t_0);
-            FX_COPY_PTR(*l_0, &t_0);
-            FX_FREE_STR(&xk_0);
-            fx_copy_str(&xk_1, &xk_0);
-            FX_FREE_FP(&cmp_0);
-            FX_COPY_FP(&cmp_1, &cmp_0);
-         }
-         else if (c_0 > 0) {
-            _fx_Vt11Map__tree_t2Si* r_0 = &vcase_0->t4;
-            _fx_free_Vt11Map__tree_t2Si(&t_0);
-            FX_COPY_PTR(*r_0, &t_0);
-            FX_FREE_STR(&xk_0);
-            fx_copy_str(&xk_1, &xk_0);
-            FX_FREE_FP(&cmp_0);
-            FX_COPY_FP(&cmp_1, &cmp_0);
-         }
-         else {
-            _fx_Vt6option1i result_0; _fx_F4SomeVt6option1i1i(vcase_0->t3, &result_0); res_0 = result_0; FX_BREAK(_fx_catch_0);
-         }
-
-      _fx_catch_0: ;
-      }
-      else { res_0 = _fx_g7None56_; FX_BREAK(_fx_catch_1);  _fx_catch_1: ;
-      }
-      FX_CHECK_EXN(_fx_catch_2);
-
-   _fx_catch_2: ;
-      FX_FREE_FP(&cmp_1);
-      FX_FREE_STR(&xk_1);
-      if (t_1) { _fx_free_Vt11Map__tree_t2Si(&t_1);
-      }
-      FX_CHECK_BREAK();
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   *fx_result = res_0;
-
-_fx_cleanup: ;
-   if (v_0) { _fx_free_Vt11Map__tree_t2Si(&v_0);
-   }
-   FX_FREE_FP(&v_1);
-   if (t_0) { _fx_free_Vt11Map__tree_t2Si(&t_0);
-   }
-   FX_FREE_STR(&xk_0);
    FX_FREE_FP(&cmp_0);
    return fx_status;
 }
@@ -6073,7 +5397,6 @@ FX_EXTERN_C int _fx_M3MapFM3memB2RtM1t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast
       if (t_1 != 0 == _FX_Vt11Map__tree_t_Node) {
          _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
             vcase_0 = &t_1->u.Node;
-         _fx_V22K_fast_idx__loop_idx_t* yd_0 = &vcase_0->t3;
          int_ c_0;
          FX_CALL(cmp_1.fp(&xk_1, &vcase_0->t2, &c_0, cmp_1.fcv), _fx_catch_0);
          if (c_0 < 0) {
@@ -6129,39 +5452,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
          vcase_0 = &l_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, &vcase_0->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_0->t2, &vcase_0->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -6172,30 +5491,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
          vcase_2 = &l_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, &vcase_3->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_3->t2, &vcase_3->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -6210,8 +5529,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-      &v_0);
    return fx_status;
 }
 
@@ -6224,39 +5541,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
          vcase_0 = &l_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, vcase_1->t3, vcase_1->t4, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, vcase_0->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_0->t2, vcase_0->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -6267,30 +5580,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
          vcase_2 = &l_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, vcase_2->t3, vcase_3->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, vcase_3->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_3->t2, vcase_3->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -6305,8 +5618,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-      &v_0);
    return fx_status;
 }
 
@@ -6319,39 +5630,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
          vcase_0 = &l_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, &vcase_0->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_0->t2, &vcase_0->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -6362,30 +5669,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
          vcase_2 = &l_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, &vcase_3->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_3->t2, &vcase_3->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -6400,8 +5707,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-      &v_0);
    return fx_status;
 }
 
@@ -6414,39 +5719,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
          vcase_0 = &l_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, &vcase_0->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_0->t2, &vcase_0->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -6457,30 +5758,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
          vcase_2 = &l_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, &vcase_3->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_3->t2, &vcase_3->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -6495,8 +5796,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-      &v_0);
    return fx_status;
 }
 
@@ -6509,38 +5808,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
          vcase_0 = &l_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, &vcase_0->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_0->t2, &vcase_0->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -6551,30 +5847,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
          vcase_2 = &l_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, &vcase_3->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_3->t2, &vcase_3->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -6589,7 +5885,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_0);
    return fx_status;
 }
 
@@ -6602,39 +5897,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
          vcase_0 = &l_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, vcase_1->t3, vcase_1->t4, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, vcase_0->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_0->t2, vcase_0->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -6645,30 +5936,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
          vcase_2 = &l_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, vcase_2->t3, vcase_3->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, vcase_3->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_3->t2, vcase_3->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -6683,181 +5974,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-      &v_0);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM12balance_leftVtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-   struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* l_0,
-      fx_str_t* xk_0,
-      _fx_V9Ast__id_t* xd_0,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* r_0,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t** fx_result,
-      void* fx_fv)
-{
-   _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t v_0 = {  };
-   int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(l_0, xk_0, xd_0, r_0, &v_0);
-   if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_0 = &l_0->u.Node;
-      if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_1 = &v_1->u.Node;
-            if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_2 = 0;
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_3 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, &vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, &vcase_0->t3, v_3, fx_result), _fx_catch_0);
-
-            _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_3);
-               }
-               if (v_2) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_2);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_2 = &l_0->u.Node;
-      if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_3 = &v_4->u.Node;
-            if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_5 = 0;
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_6 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, &vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, &vcase_3->t3, v_6, fx_result), _fx_catch_1);
-
-            _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_6);
-               }
-               if (v_5) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_5);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   FX_CALL(
-
-         _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-            &_fx_g10Map__Black, l_0, xk_0, xd_0, r_0, fx_result), _fx_catch_2);
-
-_fx_catch_2: ;
-
-_fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(&v_0);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM12balance_leftVtM6tree_t2Si4VtM6tree_t2SiSiVtM6tree_t2Si(
-   struct _fx_Vt11Map__tree_t2Si_data_t* l_0,
-      fx_str_t* xk_0,
-      int_ xd_0,
-      struct _fx_Vt11Map__tree_t2Si_data_t* r_0,
-      struct _fx_Vt11Map__tree_t2Si_data_t** fx_result,
-      void* fx_fv)
-{
-   _fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si v_0 = {  };
-   int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si(l_0, xk_0, xd_0, r_0, &v_0);
-   if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_0 = &l_0->u.Node;
-      if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2Si v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_1 = &v_1->u.Node;
-            if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2Si v_2 = 0;
-               _fx_Vt11Map__tree_t2Si v_3 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, vcase_1->t1, &vcase_1->t2, vcase_1->t3, vcase_1->t4, &v_2), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, vcase_0->t4, xk_0, xd_0, r_0, &v_3), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g8Map__Red, v_2, &vcase_0->t2, vcase_0->t3, v_3, fx_result), _fx_catch_0);
-
-            _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2Si(&v_3);
-               }
-               if (v_2) { _fx_free_Vt11Map__tree_t2Si(&v_2);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   if (l_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_2 = &l_0->u.Node;
-      if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2Si v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_3 = &v_4->u.Node;
-            if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2Si v_5 = 0;
-               _fx_Vt11Map__tree_t2Si v_6 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, vcase_2->t1, &vcase_2->t2, vcase_2->t3, vcase_3->t1, &v_5), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, vcase_3->t4, xk_0, xd_0, r_0, &v_6), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g8Map__Red, v_5, &vcase_3->t2, vcase_3->t3, v_6, fx_result), _fx_catch_1);
-
-            _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2Si(&v_6);
-               }
-               if (v_5) { _fx_free_Vt11Map__tree_t2Si(&v_5);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   FX_CALL(
-      _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(&_fx_g10Map__Black, l_0, xk_0, xd_0, r_0, fx_result),
-         _fx_catch_2);
-
-_fx_catch_2: ;
-
-_fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si(&v_0);
    return fx_status;
 }
 
@@ -6870,39 +5986,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
          vcase_0 = &r_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, &vcase_1->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_1->t2, &vcase_1->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -6913,30 +6025,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
          vcase_2 = &r_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t5VM7color_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVtM6tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, &vcase_2->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_2->t2, &vcase_2->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -6951,8 +6063,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_tV9Ast__id_tR29C_gen_types__ctyp_temp_info_tVt11Map__tree_t2V9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
-      &v_0);
    return fx_status;
 }
 
@@ -6965,39 +6075,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
          vcase_0 = &r_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, vcase_0->t3, vcase_0->t4, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, vcase_1->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_1->t2, vcase_1->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -7008,30 +6114,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
          vcase_2 = &r_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, vcase_3->t3, vcase_3->t4, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t5VM7color_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVtM6tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, vcase_2->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_2->t2, vcase_2->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -7046,8 +6152,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_tV9Ast__id_trR24K_fuse_loops__arr_info_tVt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(
-      &v_0);
    return fx_status;
 }
 
@@ -7060,39 +6164,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
          vcase_0 = &r_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, &vcase_1->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_1->t2, &vcase_1->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -7103,30 +6203,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
          vcase_2 = &r_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t5VM7color_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVtM6tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, &vcase_2->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_2->t2, &vcase_2->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -7141,8 +6241,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_tV9Ast__id_tV22K_fast_idx__loop_idx_tVt11Map__tree_t2V9Ast__id_tV22K_fast_idx__loop_idx_t(
-      &v_0);
    return fx_status;
 }
 
@@ -7155,39 +6253,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
          vcase_0 = &r_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, &vcase_1->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_1->t2, &vcase_1->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -7198,30 +6292,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
          vcase_2 = &r_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t5VM7color_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVtM6tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, &vcase_2->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_2->t2, &vcase_2->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -7236,8 +6330,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tV9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_tVt11Map__tree_t2V9Ast__id_tT3V14K_form__kexp_tBV23K_fast_idx__idx_class_t(
-      &v_0);
    return fx_status;
 }
 
@@ -7250,38 +6342,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
          vcase_0 = &r_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, &vcase_1->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_1->t2, &vcase_1->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -7292,30 +6381,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
          vcase_2 = &r_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, &vcase_2->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_2->t2, &vcase_2->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -7330,7 +6419,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&v_0);
    return fx_status;
 }
 
@@ -7343,39 +6431,35 @@ FX_EXTERN_C int
       struct _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t
-      v_0 = {  };
    int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-      l_0, xk_0, xd_0, r_0, &v_0);
    if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
          vcase_0 = &r_0->u.Node;
       if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_0 = vcase_0->t1;
+         if (v_0 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-               vcase_1 = &v_1->u.Node;
+               vcase_1 = &v_0->u.Node;
             if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_1 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_2 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_3 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_1), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
+                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, vcase_0->t3, vcase_0->t4, &v_2), _fx_catch_0);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, vcase_1->t3, v_3, fx_result), _fx_catch_0);
+                        &_fx_g8Map__Red, v_1, &vcase_1->t2, vcase_1->t3, v_2, fx_result), _fx_catch_0);
 
             _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_3);
-               }
                if (v_2) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_2);
+               }
+               if (v_1) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_1);
                }
                goto _fx_endmatch_0;
             }
@@ -7386,30 +6470,30 @@ FX_EXTERN_C int
       _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
          vcase_2 = &r_0->u.Node;
       if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
+         _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_3 = vcase_2->t4;
+         if (v_3 != 0 == _FX_Vt11Map__tree_t_Node) {
             _fx_T5V12Map__color_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t*
-               vcase_3 = &v_4->u.Node;
+               vcase_3 = &v_3->u.Node;
             if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
+               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_4 = 0;
                _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_5 = 0;
-               _fx_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t v_6 = 0;
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
+                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_4), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
+                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, vcase_3->t3, vcase_3->t4, &v_5), _fx_catch_1);
                FX_CALL(
 
                      _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, vcase_2->t3, v_6, fx_result), _fx_catch_1);
+                        &_fx_g8Map__Red, v_4, &vcase_2->t2, vcase_2->t3, v_5, fx_result), _fx_catch_1);
 
             _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_6);
-               }
                if (v_5) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_5);
+               }
+               if (v_4) { _fx_free_Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(&v_4);
                }
                goto _fx_endmatch_0;
             }
@@ -7424,181 +6508,6 @@ FX_EXTERN_C int
 _fx_catch_2: ;
 
 _fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVt11Map__tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-      &v_0);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM13balance_rightVtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-   struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* l_0,
-      fx_str_t* xk_0,
-      _fx_V9Ast__id_t* xd_0,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* r_0,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t** fx_result,
-      void* fx_fv)
-{
-   _fx_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t v_0 = {  };
-   int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(l_0, xk_0, xd_0, r_0, &v_0);
-   if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_0 = &r_0->u.Node;
-      if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_1 = &v_1->u.Node;
-            if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_2 = 0;
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_3 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, &vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, &vcase_1->t3, v_3, fx_result), _fx_catch_0);
-
-            _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_3);
-               }
-               if (v_2) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_2);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_2 = &r_0->u.Node;
-      if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_3 = &v_4->u.Node;
-            if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_5 = 0;
-               _fx_Vt11Map__tree_t2SV9Ast__id_t v_6 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, &vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, &vcase_2->t3, v_6, fx_result), _fx_catch_1);
-
-            _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_6);
-               }
-               if (v_5) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_5);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   FX_CALL(
-
-         _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-            &_fx_g10Map__Black, l_0, xk_0, xd_0, r_0, fx_result), _fx_catch_2);
-
-_fx_catch_2: ;
-
-_fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t(&v_0);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM13balance_rightVtM6tree_t2Si4VtM6tree_t2SiSiVtM6tree_t2Si(
-   struct _fx_Vt11Map__tree_t2Si_data_t* l_0,
-      fx_str_t* xk_0,
-      int_ xd_0,
-      struct _fx_Vt11Map__tree_t2Si_data_t* r_0,
-      struct _fx_Vt11Map__tree_t2Si_data_t** fx_result,
-      void* fx_fv)
-{
-   _fx_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si v_0 = {  };
-   int fx_status = 0;
-   _fx_make_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si(l_0, xk_0, xd_0, r_0, &v_0);
-   if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_0 = &r_0->u.Node;
-      if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2Si v_1 = vcase_0->t1;
-         if (v_1 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_1 = &v_1->u.Node;
-            if (vcase_1->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2Si v_2 = 0;
-               _fx_Vt11Map__tree_t2Si v_3 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_1->t1, &v_2), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, vcase_1->t4, &vcase_0->t2, vcase_0->t3, vcase_0->t4, &v_3), _fx_catch_0);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g8Map__Red, v_2, &vcase_1->t2, vcase_1->t3, v_3, fx_result), _fx_catch_0);
-
-            _fx_catch_0: ;
-               if (v_3) { _fx_free_Vt11Map__tree_t2Si(&v_3);
-               }
-               if (v_2) { _fx_free_Vt11Map__tree_t2Si(&v_2);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   if (r_0 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_2 = &r_0->u.Node;
-      if (vcase_2->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2Si v_4 = vcase_2->t4;
-         if (v_4 != 0 == _FX_Vt11Map__tree_t_Node) {
-            _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_3 = &v_4->u.Node;
-            if (vcase_3->t0.tag == _FX_V12Map__color_t_Red) {
-               _fx_Vt11Map__tree_t2Si v_5 = 0;
-               _fx_Vt11Map__tree_t2Si v_6 = 0;
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, l_0, xk_0, xd_0, vcase_2->t1, &v_5), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g10Map__Black, vcase_3->t1, &vcase_3->t2, vcase_3->t3, vcase_3->t4, &v_6), _fx_catch_1);
-               FX_CALL(
-
-                     _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                        &_fx_g8Map__Red, v_5, &vcase_2->t2, vcase_2->t3, v_6, fx_result), _fx_catch_1);
-
-            _fx_catch_1: ;
-               if (v_6) { _fx_free_Vt11Map__tree_t2Si(&v_6);
-               }
-               if (v_5) { _fx_free_Vt11Map__tree_t2Si(&v_5);
-               }
-               goto _fx_endmatch_0;
-            }
-         }
-      }
-   }
-   FX_CALL(
-      _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(&_fx_g10Map__Black, l_0, xk_0, xd_0, r_0, fx_result),
-         _fx_catch_2);
-
-_fx_catch_2: ;
-
-_fx_endmatch_0: ;
-   _fx_free_T4Vt11Map__tree_t2SiSiVt11Map__tree_t2Si(&v_0);
    return fx_status;
 }
 
@@ -8187,7 +7096,7 @@ FX_EXTERN_C int
    FX_CALL(
 
          _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tV9Ast__id_t5VM7color_tVtM6tree_t2V9Ast__id_tV9Ast__id_tV9Ast__id_tV9Ast__id_tVtM6tree_t2V9Ast__id_tV9Ast__id_t(
-            &_fx_g8Map__Red, _fx_g12Map__Empty6_, xk_0, xd_0, _fx_g12Map__Empty6_, fx_result), _fx_catch_2);
+            &_fx_g8Map__Red, _fx_g12Map__Empty4_, xk_0, xd_0, _fx_g12Map__Empty4_, fx_result), _fx_catch_2);
 
 _fx_catch_2: ;
 
@@ -8306,224 +7215,6 @@ FX_EXTERN_C int
    FX_CALL(
 
          _fx_M3MapFM4NodeVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t5VM7color_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_tV9Ast__id_tLV16Ast__env_entry_tVtM6tree_t2V9Ast__id_tLV16Ast__env_entry_t(
-            &_fx_g8Map__Red, _fx_g12Map__Empty7_, xk_0, xd_0, _fx_g12Map__Empty7_, fx_result), _fx_catch_2);
-
-_fx_catch_2: ;
-
-_fx_endmatch_0: ;
-
-_fx_cleanup: ;
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM12add_to_tree_VtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tFPi2SS(
-   struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t_0,
-      fx_str_t* xk_0,
-      _fx_V9Ast__id_t* xd_0,
-      _fx_FPi2SS* cmp_0,
-      struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t** fx_result,
-      void* fx_fv)
-{
-   int fx_status = 0;
-   FX_CALL(fx_check_stack(), _fx_cleanup);
-   int tag_0 = t_0 != 0;
-   if (tag_0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_0 = &t_0->u.Node;
-      if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_0 = 0;
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_1 = 0;
-         _fx_Vt11Map__tree_t2SV9Ast__id_t r_0 = vcase_0->t4;
-         _fx_V9Ast__id_t* yd_0 = &vcase_0->t3;
-         fx_str_t* yk_0 = &vcase_0->t2;
-         _fx_Vt11Map__tree_t2SV9Ast__id_t l_0 = vcase_0->t1;
-         int_ c_0;
-         FX_CALL(cmp_0->fp(xk_0, yk_0, &c_0, cmp_0->fcv), _fx_catch_0);
-         if (c_0 < 0) {
-            FX_CALL(
-
-                  _fx_M3MapFM12add_to_tree_VtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tFPi2SS(
-                     l_0, xk_0, xd_0, cmp_0, &v_0, 0), _fx_catch_0);
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                     &_fx_g8Map__Red, v_0, yk_0, yd_0, r_0, fx_result), _fx_catch_0);
-         }
-         else if (c_0 > 0) {
-            FX_CALL(
-
-                  _fx_M3MapFM12add_to_tree_VtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tFPi2SS(
-                     r_0, xk_0, xd_0, cmp_0, &v_1, 0), _fx_catch_0);
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                     &_fx_g8Map__Red, l_0, yk_0, yd_0, v_1, fx_result), _fx_catch_0);
-         }
-         else {
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                     &_fx_g8Map__Red, l_0, xk_0, xd_0, r_0, fx_result), _fx_catch_0);
-         }
-
-      _fx_catch_0: ;
-         if (v_1) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_1);
-         }
-         if (v_0) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_0);
-         }
-         goto _fx_endmatch_0;
-      }
-   }
-   if (tag_0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_1 = &t_0->u.Node;
-      if (vcase_1->t0.tag == _FX_V12Map__color_t_Black) {
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_2 = 0;
-         _fx_Vt11Map__tree_t2SV9Ast__id_t v_3 = 0;
-         _fx_Vt11Map__tree_t2SV9Ast__id_t r_1 = vcase_1->t4;
-         _fx_V9Ast__id_t* yd_1 = &vcase_1->t3;
-         fx_str_t* yk_1 = &vcase_1->t2;
-         _fx_Vt11Map__tree_t2SV9Ast__id_t l_1 = vcase_1->t1;
-         int_ c_1;
-         FX_CALL(cmp_0->fp(xk_0, yk_1, &c_1, cmp_0->fcv), _fx_catch_1);
-         if (c_1 < 0) {
-            FX_CALL(
-
-                  _fx_M3MapFM12add_to_tree_VtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tFPi2SS(
-                     l_1, xk_0, xd_0, cmp_0, &v_2, 0), _fx_catch_1);
-            FX_CALL(
-
-                  _fx_M3MapFM12balance_leftVtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                     v_2, yk_1, yd_1, r_1, fx_result, 0), _fx_catch_1);
-         }
-         else if (c_1 > 0) {
-            FX_CALL(
-
-                  _fx_M3MapFM12add_to_tree_VtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tFPi2SS(
-                     r_1, xk_0, xd_0, cmp_0, &v_3, 0), _fx_catch_1);
-            FX_CALL(
-
-                  _fx_M3MapFM13balance_rightVtM6tree_t2SV9Ast__id_t4VtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                     l_1, yk_1, yd_1, v_3, fx_result, 0), _fx_catch_1);
-         }
-         else {
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-                     &_fx_g10Map__Black, l_1, xk_0, xd_0, r_1, fx_result), _fx_catch_1);
-         }
-
-      _fx_catch_1: ;
-         if (v_3) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_3);
-         }
-         if (v_2) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&v_2);
-         }
-         goto _fx_endmatch_0;
-      }
-   }
-   FX_CALL(
-
-         _fx_M3MapFM4NodeVtM6tree_t2SV9Ast__id_t5VM7color_tVtM6tree_t2SV9Ast__id_tSV9Ast__id_tVtM6tree_t2SV9Ast__id_t(
-            &_fx_g8Map__Red, _fx_g12Map__Empty4_, xk_0, xd_0, _fx_g12Map__Empty4_, fx_result), _fx_catch_2);
-
-_fx_catch_2: ;
-
-_fx_endmatch_0: ;
-
-_fx_cleanup: ;
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM12add_to_tree_VtM6tree_t2Si4VtM6tree_t2SiSiFPi2SS(
-   struct _fx_Vt11Map__tree_t2Si_data_t* t_0,
-      fx_str_t* xk_0,
-      int_ xd_0,
-      _fx_FPi2SS* cmp_0,
-      struct _fx_Vt11Map__tree_t2Si_data_t** fx_result,
-      void* fx_fv)
-{
-   int fx_status = 0;
-   FX_CALL(fx_check_stack(), _fx_cleanup);
-   int tag_0 = t_0 != 0;
-   if (tag_0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_0 = &t_0->u.Node;
-      if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2Si v_0 = 0;
-         _fx_Vt11Map__tree_t2Si v_1 = 0;
-         _fx_Vt11Map__tree_t2Si r_0 = vcase_0->t4;
-         int_ yd_0 = vcase_0->t3;
-         fx_str_t* yk_0 = &vcase_0->t2;
-         _fx_Vt11Map__tree_t2Si l_0 = vcase_0->t1;
-         int_ c_0;
-         FX_CALL(cmp_0->fp(xk_0, yk_0, &c_0, cmp_0->fcv), _fx_catch_0);
-         if (c_0 < 0) {
-            FX_CALL(_fx_M3MapFM12add_to_tree_VtM6tree_t2Si4VtM6tree_t2SiSiFPi2SS(l_0, xk_0, xd_0, cmp_0, &v_0, 0), _fx_catch_0);
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                     &_fx_g8Map__Red, v_0, yk_0, yd_0, r_0, fx_result), _fx_catch_0);
-         }
-         else if (c_0 > 0) {
-            FX_CALL(_fx_M3MapFM12add_to_tree_VtM6tree_t2Si4VtM6tree_t2SiSiFPi2SS(r_0, xk_0, xd_0, cmp_0, &v_1, 0), _fx_catch_0);
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                     &_fx_g8Map__Red, l_0, yk_0, yd_0, v_1, fx_result), _fx_catch_0);
-         }
-         else {
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                     &_fx_g8Map__Red, l_0, xk_0, xd_0, r_0, fx_result), _fx_catch_0);
-         }
-
-      _fx_catch_0: ;
-         if (v_1) { _fx_free_Vt11Map__tree_t2Si(&v_1);
-         }
-         if (v_0) { _fx_free_Vt11Map__tree_t2Si(&v_0);
-         }
-         goto _fx_endmatch_0;
-      }
-   }
-   if (tag_0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_1 = &t_0->u.Node;
-      if (vcase_1->t0.tag == _FX_V12Map__color_t_Black) {
-         _fx_Vt11Map__tree_t2Si v_2 = 0;
-         _fx_Vt11Map__tree_t2Si v_3 = 0;
-         _fx_Vt11Map__tree_t2Si r_1 = vcase_1->t4;
-         int_ yd_1 = vcase_1->t3;
-         fx_str_t* yk_1 = &vcase_1->t2;
-         _fx_Vt11Map__tree_t2Si l_1 = vcase_1->t1;
-         int_ c_1;
-         FX_CALL(cmp_0->fp(xk_0, yk_1, &c_1, cmp_0->fcv), _fx_catch_1);
-         if (c_1 < 0) {
-            FX_CALL(_fx_M3MapFM12add_to_tree_VtM6tree_t2Si4VtM6tree_t2SiSiFPi2SS(l_1, xk_0, xd_0, cmp_0, &v_2, 0), _fx_catch_1);
-            FX_CALL(
-               _fx_M3MapFM12balance_leftVtM6tree_t2Si4VtM6tree_t2SiSiVtM6tree_t2Si(v_2, yk_1, yd_1, r_1, fx_result, 0),
-                  _fx_catch_1);
-         }
-         else if (c_1 > 0) {
-            FX_CALL(_fx_M3MapFM12add_to_tree_VtM6tree_t2Si4VtM6tree_t2SiSiFPi2SS(r_1, xk_0, xd_0, cmp_0, &v_3, 0), _fx_catch_1);
-            FX_CALL(
-               _fx_M3MapFM13balance_rightVtM6tree_t2Si4VtM6tree_t2SiSiVtM6tree_t2Si(l_1, yk_1, yd_1, v_3, fx_result, 0),
-                  _fx_catch_1);
-         }
-         else {
-            FX_CALL(
-
-                  _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                     &_fx_g10Map__Black, l_1, xk_0, xd_0, r_1, fx_result), _fx_catch_1);
-         }
-
-      _fx_catch_1: ;
-         if (v_3) { _fx_free_Vt11Map__tree_t2Si(&v_3);
-         }
-         if (v_2) { _fx_free_Vt11Map__tree_t2Si(&v_2);
-         }
-         goto _fx_endmatch_0;
-      }
-   }
-   FX_CALL(
-
-         _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
             &_fx_g8Map__Red, _fx_g12Map__Empty5_, xk_0, xd_0, _fx_g12Map__Empty5_, fx_result), _fx_catch_2);
 
 _fx_catch_2: ;
@@ -8823,56 +7514,6 @@ _fx_cleanup: ;
    }
    _fx_free_T2Vt11Map__tree_t2V9Ast__id_tV9Ast__id_tB(&v_3);
    if (new_root_0) { _fx_free_Vt11Map__tree_t2V9Ast__id_tV9Ast__id_t(&new_root_0);
-   }
-   FX_FREE_FP(&v_4);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM3addRtM1t2Si3RtM1t2SiSi(
-   _fx_Rt6Map__t2Si* m_0, fx_str_t* xk_0, int_ xd_0, _fx_Rt6Map__t2Si* fx_result, void* fx_fv)
-{
-   _fx_Vt11Map__tree_t2Si v_0 = 0;
-   _fx_FPi2SS v_1 = {  };
-   _fx_Vt11Map__tree_t2Si v_2 = 0;
-   _fx_T2Vt11Map__tree_t2SiB v_3 = {  };
-   _fx_Vt11Map__tree_t2Si new_root_0 = 0;
-   _fx_FPi2SS v_4 = {  };
-   int fx_status = 0;
-   FX_COPY_PTR(m_0->root, &v_0);
-   FX_COPY_FP(&m_0->cmp, &v_1);
-   FX_CALL(_fx_M3MapFM12add_to_tree_VtM6tree_t2Si4VtM6tree_t2SiSiFPi2SS(v_0, xk_0, xd_0, &v_1, &v_2, 0), _fx_cleanup);
-   if (v_2 != 0 == _FX_Vt11Map__tree_t_Node) {
-      _fx_T5V12Map__color_tVt11Map__tree_t2SiSiVt11Map__tree_t2Si* vcase_0 = &v_2->u.Node;
-      if (vcase_0->t0.tag == _FX_V12Map__color_t_Red) {
-         _fx_Vt11Map__tree_t2Si v_5 = 0;
-         FX_CALL(
-
-               _fx_M3MapFM4NodeVtM6tree_t2Si5VM7color_tVtM6tree_t2SiSiVtM6tree_t2Si(
-                  &_fx_g10Map__Black, vcase_0->t1, &vcase_0->t2, vcase_0->t3, vcase_0->t4, &v_5), _fx_catch_0);
-         _fx_make_T2Vt11Map__tree_t2SiB(v_5, false, &v_3);
-
-      _fx_catch_0: ;
-         if (v_5) { _fx_free_Vt11Map__tree_t2Si(&v_5);
-         }
-         goto _fx_endmatch_0;
-      }
-   }
-   _fx_make_T2Vt11Map__tree_t2SiB(v_2, true, &v_3);
-
-_fx_endmatch_0: ;
-   FX_CHECK_EXN(_fx_cleanup);
-   FX_COPY_PTR(v_3.t0, &new_root_0);
-   FX_COPY_FP(&m_0->cmp, &v_4);
-   _fx_make_Rt6Map__t2Si(new_root_0, &v_4, fx_result);
-
-_fx_cleanup: ;
-   if (v_0) { _fx_free_Vt11Map__tree_t2Si(&v_0);
-   }
-   FX_FREE_FP(&v_1);
-   if (v_2) { _fx_free_Vt11Map__tree_t2Si(&v_2);
-   }
-   _fx_free_T2Vt11Map__tree_t2SiB(&v_3);
-   if (new_root_0) { _fx_free_Vt11Map__tree_t2Si(&new_root_0);
    }
    FX_FREE_FP(&v_4);
    return fx_status;
@@ -9178,71 +7819,6 @@ _fx_cleanup: ;
    if (new_root_0) { _fx_free_Vt11Map__tree_t2V9Ast__id_trR24K_fuse_loops__arr_info_t(&new_root_0);
    }
    FX_FREE_FP(&v_2);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M3MapFM12update_list_LT2SV9Ast__id_t2VtM6tree_t2SV9Ast__id_tLT2SV9Ast__id_t(
-   struct _fx_Vt11Map__tree_t2SV9Ast__id_t_data_t* t_0,
-      struct _fx_LT2SV9Ast__id_t_data_t* res_0,
-      struct _fx_LT2SV9Ast__id_t_data_t** fx_result,
-      void* fx_fv)
-{
-   _fx_LT2SV9Ast__id_t res_1 = 0;
-   _fx_Vt11Map__tree_t2SV9Ast__id_t t_1 = 0;
-   _fx_LT2SV9Ast__id_t res_2 = 0;
-   int fx_status = 0;
-   FX_CALL(fx_check_stack(), _fx_cleanup);
-   FX_COPY_PTR(t_0, &t_1);
-   FX_COPY_PTR(res_0, &res_2);
-   for (;;) {
-      _fx_Vt11Map__tree_t2SV9Ast__id_t t_2 = 0;
-      _fx_LT2SV9Ast__id_t res_3 = 0;
-      FX_COPY_PTR(t_1, &t_2);
-      FX_COPY_PTR(res_2, &res_3);
-      if (t_2 != 0 == _FX_Vt11Map__tree_t_Node) {
-         _fx_T2SV9Ast__id_t v_0 = {  };
-         _fx_LT2SV9Ast__id_t v_1 = 0;
-         _fx_LT2SV9Ast__id_t v_2 = 0;
-         _fx_T5V12Map__color_tVt11Map__tree_t2SV9Ast__id_tSV9Ast__id_tVt11Map__tree_t2SV9Ast__id_t* vcase_0 = &t_2->u.Node;
-         _fx_make_T2SV9Ast__id_t(&vcase_0->t2, &vcase_0->t3, &v_0);
-         FX_CALL(
-            _fx_M3MapFM12update_list_LT2SV9Ast__id_t2VtM6tree_t2SV9Ast__id_tLT2SV9Ast__id_t(vcase_0->t4, res_3, &v_1, 0),
-               _fx_catch_0);
-         FX_CALL(_fx_cons_LT2SV9Ast__id_t(&v_0, v_1, true, &v_2), _fx_catch_0);
-         _fx_Vt11Map__tree_t2SV9Ast__id_t* l_0 = &vcase_0->t1;
-         _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&t_1);
-         FX_COPY_PTR(*l_0, &t_1);
-         _fx_free_LT2SV9Ast__id_t(&res_2);
-         FX_COPY_PTR(v_2, &res_2);
-
-      _fx_catch_0: ;
-         if (v_2) { _fx_free_LT2SV9Ast__id_t(&v_2);
-         }
-         if (v_1) { _fx_free_LT2SV9Ast__id_t(&v_1);
-         }
-         _fx_free_T2SV9Ast__id_t(&v_0);
-      }
-      else { _fx_free_LT2SV9Ast__id_t(&res_1); FX_COPY_PTR(res_3, &res_1); FX_BREAK(_fx_catch_1);  _fx_catch_1: ;
-      }
-      FX_CHECK_EXN(_fx_catch_2);
-
-   _fx_catch_2: ;
-      if (res_3) { _fx_free_LT2SV9Ast__id_t(&res_3);
-      }
-      if (t_2) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&t_2);
-      }
-      FX_CHECK_BREAK();
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   FX_COPY_PTR(res_1, fx_result);
-
-_fx_cleanup: ;
-   if (res_1) { _fx_free_LT2SV9Ast__id_t(&res_1);
-   }
-   if (t_1) { _fx_free_Vt11Map__tree_t2SV9Ast__id_t(&t_1);
-   }
-   if (res_2) { _fx_free_LT2SV9Ast__id_t(&res_2);
-   }
    return fx_status;
 }
 

@@ -110,6 +110,8 @@ fun rfind(s: string, part: string): int = rfind(s, part, s.length()-1)
     return false;
 }
 
+fun contains(s: string, substr: string): bool = find(s, substr) >= 0
+
 @pure fun replace(s: string, substr: string, new_substr: string): string = @ccode
 {
     int_ i, j = 0, sz = s->length, sz1 = substr->length, sz2 = new_substr->length;
@@ -264,11 +266,11 @@ fun tokens(s: string, f: char->bool)
     (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
-fun split(s: string, c: char)
+fun split(s: string, c: char, ~allow_empty:bool)
 {
     val fold (sl, start, sep) = ([], 0, true) for ci@i <- s {
         if ci == c {
-            (if sep {sl} else {s[start:i] :: sl}, start, true)
+            (if sep && !allow_empty {sl} else {s[start:i] :: sl}, i+1, true)
         } else {
             (sl, if sep {i} else {start}, false)
         }
