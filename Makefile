@@ -27,18 +27,22 @@ ifeq ($(OS),Windows_NT)
     CFLAGS += -D WIN32
 else
     UNAME_S := $(shell uname -s)
-    UNAME_P := $(shell uname -m)
+    UNAME_M := $(shell uname -m)
 	ifeq ($(UNAME_S),Darwin)
-		ifeq ($(UNAME_P),x86_64)
+		ifeq ($(UNAME_M),x86_64)
 			CFLAGS += -Xclang -fopenmp
 			LDFLAGS += -Xclang -fopenmp
         	LDLIBS += -L./runtime/lib/macos_x64/ -lomp
 		endif
-		#ifeq ($(UNAME_P),arm64)
+		#ifeq ($(UNAME_M),arm64)
 		#	CFLAGS += -Xclang -fopenmp
         #	LDLIBS += -L./runtime/lib/macos/x64/ -lmimalloc -lomp
 		#endif
-    endif
+	endif
+	ifeq ($(UNAME_S),Linux)
+		CFLAGS += -fopenmp
+		LDFLAGS += -fopenmp
+	endif
 endif
 
 FICUS_FLAGS := -verbose -O3

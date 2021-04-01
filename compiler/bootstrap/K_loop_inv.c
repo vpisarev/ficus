@@ -3256,9 +3256,9 @@ static int _fx_M10K_loop_invFM8mli_kexpV14K_form__kexp_t2V14K_form__kexp_tR17K_f
       struct _fx_V14K_form__kexp_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_FPB1V14K_form__kexp_t is_loop_invariant_0 = {  };
    _fx_FPT3LV14K_form__kexp_tLT3V14K_form__kexp_tLT2V9Ast__id_tV13K_form__dom_tLV9Ast__id_tV14K_form__kexp_t4LT3V14K_form__kexp_tLT2V9Ast__id_tV13K_form__dom_tLV9Ast__id_tV14K_form__kexp_tR10Ast__loc_tR17K_form__k_callb_t
       mli_process_loop_0 = {  };
+   _fx_FPB1V14K_form__kexp_t is_loop_invariant_0 = {  };
    _fx_V14K_form__kexp_t e_1 = 0;
    int fx_status = 0;
    _fx_M10K_loop_invFM8mli_kexpV14K_form__kexp_t2V14K_form__kexp_tR17K_form__k_callb_t_cldata_t* cv_0 =
@@ -3266,9 +3266,9 @@ static int _fx_M10K_loop_invFM8mli_kexpV14K_form__kexp_t2V14K_form__kexp_tR17K_f
    _fx_rRt10Hashset__t1V9Ast__id_t curr_inloop_ref_0 = cv_0->t0;
    _fx_rLV14K_form__kexp_t curr_moved_ref_0 = cv_0->t1;
    _fx_LV14K_form__kexp_t* curr_moved_0 = &curr_moved_ref_0->data;
-   _fx_M10K_loop_invFM7make_fpFPB1V14K_form__kexp_t1rRt10Hashset__t1V9Ast__id_t(curr_inloop_ref_0, &is_loop_invariant_0);
    _fx_M10K_loop_invFM7make_fpFPT3LV14K_form__kexp_tLT3V14K_form__kexp_tLT2V9Ast__id_tV13K_form__dom_tLV9Ast__id_tV14K_form__kexp_t4LT3V14K_form__kexp_tLT2V9Ast__id_tV13K_form__dom_tLV9Ast__id_tV14K_form__kexp_tR10Ast__loc_tR17K_form__k_callb_t2rRt10Hashset__t1V9Ast__id_trLV14K_form__kexp_t(
       curr_inloop_ref_0, curr_moved_ref_0, &mli_process_loop_0);
+   _fx_M10K_loop_invFM7make_fpFPB1V14K_form__kexp_t1rRt10Hashset__t1V9Ast__id_t(curr_inloop_ref_0, &is_loop_invariant_0);
    FX_CALL(_fx_M6K_formFM9walk_kexpVM6kexp_t2VM6kexp_tRM9k_callb_t(e_0, callb_0, &e_1, 0), _fx_cleanup);
    int tag_0 = FX_REC_VARIANT_TAG(e_1);
    if (tag_0 == _FX_V14K_form__kexp_t_KExpFor) {
@@ -3667,8 +3667,8 @@ static int _fx_M10K_loop_invFM8mli_kexpV14K_form__kexp_t2V14K_form__kexp_tR17K_f
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&is_loop_invariant_0);
    FX_FREE_FP(&mli_process_loop_0);
+   FX_FREE_FP(&is_loop_invariant_0);
    if (e_1) { _fx_free_V14K_form__kexp_t(&e_1);
    }
    return fx_status;

@@ -7469,12 +7469,14 @@ FX_EXTERN_C int _fx_M8CompilerFM15find_ficus_dirsT2SLS0(_fx_T2SLS* fx_result, vo
    fx_str_t v_11 = {  };
    fx_str_t v_12 = {  };
    fx_str_t ficus_inst_path_0 = {  };
-   fx_str_t v_13 = {  };
+   _fx_Ta2S v_13 = {  };
    fx_str_t v_14 = {  };
    fx_str_t v_15 = {  };
-   _fx_LS v_16 = 0;
+   fx_str_t v_16 = {  };
+   fx_str_t v_17 = {  };
+   _fx_LS v_18 = 0;
    _fx_LS std_ficus_path_0 = 0;
-   _fx_Ta2LS v_17 = {  };
+   _fx_Ta2LS v_19 = {  };
    _fx_LS search_path_0 = 0;
    fx_str_t found_0 = {  };
    int fx_status = 0;
@@ -7509,38 +7511,40 @@ FX_EXTERN_C int _fx_M8CompilerFM15find_ficus_dirsT2SLS0(_fx_T2SLS* fx_result, vo
    const fx_str_t strs_0[] = { slit_1, v_10, slit_2, v_11 }; FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &v_12), _fx_cleanup);
    }
    FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&v_9, &v_12, &ficus_inst_path_0, 0), _fx_cleanup);
+   FX_CALL(_fx_M8FilenameFM5splitTa2S1S(&ficus_app_path_0, &v_13, 0), _fx_cleanup);
+   fx_copy_str(&v_13.t0, &v_14);
    fx_str_t slit_3 = FX_MAKE_STR("lib");
-   FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&ficus_app_path_0, &slit_3, &v_13, 0), _fx_cleanup);
+   FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&v_14, &slit_3, &v_15, 0), _fx_cleanup);
    fx_str_t slit_4 = FX_MAKE_STR("lib");
-   FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&ficus_pp_path_0, &slit_4, &v_14, 0), _fx_cleanup);
+   FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&ficus_pp_path_0, &slit_4, &v_16, 0), _fx_cleanup);
    fx_str_t slit_5 = FX_MAKE_STR("lib");
-   FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&ficus_inst_path_0, &slit_5, &v_15, 0), _fx_cleanup);
-   FX_CALL(_fx_cons_LS(&v_15, 0, true, &v_16), _fx_cleanup);
-   FX_CALL(_fx_cons_LS(&v_14, v_16, false, &v_16), _fx_cleanup);
-   FX_CALL(_fx_cons_LS(&v_13, v_16, true, &std_ficus_path_0), _fx_cleanup);
+   FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&ficus_inst_path_0, &slit_5, &v_17, 0), _fx_cleanup);
+   FX_CALL(_fx_cons_LS(&v_17, 0, true, &v_18), _fx_cleanup);
+   FX_CALL(_fx_cons_LS(&v_16, v_18, false, &v_18), _fx_cleanup);
+   FX_CALL(_fx_cons_LS(&v_15, v_18, true, &std_ficus_path_0), _fx_cleanup);
    int_ std_ficus_path_len_0 = _fx_F6lengthi1LS(std_ficus_path_0, 0);
-   _fx_make_Ta2LS(std_ficus_path_0, ficus_path_0, &v_17);
-   if (v_17.t0 == 0) { FX_COPY_PTR(ficus_path_0, &search_path_0);
+   _fx_make_Ta2LS(std_ficus_path_0, ficus_path_0, &v_19);
+   if (v_19.t0 == 0) { FX_COPY_PTR(ficus_path_0, &search_path_0);
    }
-   else if (v_17.t1 == 0) { FX_COPY_PTR(std_ficus_path_0, &search_path_0);
+   else if (v_19.t1 == 0) { FX_COPY_PTR(std_ficus_path_0, &search_path_0);
    }
    else {
-      _fx_LS v_18 = 0;
+      _fx_LS v_20 = 0;
       _fx_LS lstend_0 = 0;
       _fx_LS lst_0 = std_ficus_path_0;
       for (; lst_0; lst_0 = lst_0->tl) {
          fx_str_t* x_0 = &lst_0->hd;
          _fx_LS node_0 = 0;
          FX_CALL(_fx_cons_LS(x_0, 0, false, &node_0), _fx_catch_0);
-         FX_LIST_APPEND(v_18, lstend_0, node_0);
+         FX_LIST_APPEND(v_20, lstend_0, node_0);
 
       _fx_catch_0: ;
          FX_CHECK_EXN(_fx_catch_1);
       }
-      _fx_F5link2LS2LSLS(v_18, ficus_path_0, &search_path_0, 0);
+      _fx_F5link2LS2LSLS(v_20, ficus_path_0, &search_path_0, 0);
 
    _fx_catch_1: ;
-      if (v_18) { _fx_free_LS(&v_18);
+      if (v_20) { _fx_free_LS(&v_20);
       }
    }
    FX_CHECK_EXN(_fx_cleanup);
@@ -7551,69 +7555,69 @@ FX_EXTERN_C int _fx_M8CompilerFM15find_ficus_dirsT2SLS0(_fx_T2SLS* fx_result, vo
    for (; lst_1; lst_1 = lst_1->tl, i_0 += 1) {
       fx_str_t builtins_fx_0 = {  };
       fx_str_t ficus_h_0 = {  };
-      _fx_Ta2S v_19 = {  };
-      fx_str_t v_20 = {  };
-      _fx_LS v_21 = 0;
-      _fx_Ta2LS v_22 = {  };
+      _fx_Ta2S v_21 = {  };
+      fx_str_t v_22 = {  };
       _fx_LS v_23 = 0;
+      _fx_Ta2LS v_24 = {  };
+      _fx_LS v_25 = 0;
       fx_str_t* d_0 = &lst_1->hd;
       fx_str_t slit_7 = FX_MAKE_STR("Builtins.fx");
       FX_CALL(_fx_M8FilenameFM9normalizeS2SS(d_0, &slit_7, &builtins_fx_0, 0), _fx_catch_4);
       fx_str_t slit_8 = FX_MAKE_STR("../runtime/ficus/ficus.h");
       FX_CALL(_fx_M8FilenameFM9normalizeS2SS(d_0, &slit_8, &ficus_h_0, 0), _fx_catch_4);
-      bool v_24;
+      bool v_26;
       bool res_0;
       FX_CALL(_fx_M3SysFM11file_existsB1S(&builtins_fx_0, &res_0, 0), _fx_catch_4);
-      if (res_0) { FX_CALL(_fx_M3SysFM11file_existsB1S(&ficus_h_0, &v_24, 0), _fx_catch_4);
+      if (res_0) { FX_CALL(_fx_M3SysFM11file_existsB1S(&ficus_h_0, &v_26, 0), _fx_catch_4);
       }
-      else { v_24 = false;
+      else { v_26 = false;
       }
-      if (v_24) {
-         FX_CALL(_fx_M8FilenameFM5splitTa2S1S(d_0, &v_19, 0), _fx_catch_4);
-         fx_copy_str(&v_19.t0, &v_20);
+      if (v_26) {
+         FX_CALL(_fx_M8FilenameFM5splitTa2S1S(d_0, &v_21, 0), _fx_catch_4);
+         fx_copy_str(&v_21.t0, &v_22);
          FX_FREE_STR(&found_0);
-         fx_copy_str(&v_20, &found_0);
+         fx_copy_str(&v_22, &found_0);
          if (i_0 < std_ficus_path_len_0) {
-            FX_CALL(_fx_cons_LS(d_0, 0, true, &v_21), _fx_catch_4);
-            _fx_make_Ta2LS(ficus_path_0, v_21, &v_22);
-            if (v_22.t0 == 0) { FX_COPY_PTR(v_21, &v_23);
+            FX_CALL(_fx_cons_LS(d_0, 0, true, &v_23), _fx_catch_4);
+            _fx_make_Ta2LS(ficus_path_0, v_23, &v_24);
+            if (v_24.t0 == 0) { FX_COPY_PTR(v_23, &v_25);
             }
-            else if (v_22.t1 == 0) { FX_COPY_PTR(ficus_path_0, &v_23);
+            else if (v_24.t1 == 0) { FX_COPY_PTR(ficus_path_0, &v_25);
             }
             else {
-               _fx_LS v_25 = 0;
+               _fx_LS v_27 = 0;
                _fx_LS lstend_1 = 0;
                _fx_LS lst_2 = ficus_path_0;
                for (; lst_2; lst_2 = lst_2->tl) {
                   fx_str_t* x_1 = &lst_2->hd;
                   _fx_LS node_1 = 0;
                   FX_CALL(_fx_cons_LS(x_1, 0, false, &node_1), _fx_catch_2);
-                  FX_LIST_APPEND(v_25, lstend_1, node_1);
+                  FX_LIST_APPEND(v_27, lstend_1, node_1);
 
                _fx_catch_2: ;
                   FX_CHECK_EXN(_fx_catch_3);
                }
-               _fx_F5link2LS2LSLS(v_25, v_21, &v_23, 0);
+               _fx_F5link2LS2LSLS(v_27, v_23, &v_25, 0);
 
             _fx_catch_3: ;
-               if (v_25) { _fx_free_LS(&v_25);
+               if (v_27) { _fx_free_LS(&v_27);
                }
             }
             FX_CHECK_EXN(_fx_catch_4);
             _fx_free_LS(&ficus_path_0);
-            FX_COPY_PTR(v_23, &ficus_path_0);
+            FX_COPY_PTR(v_25, &ficus_path_0);
          }
          FX_BREAK(_fx_catch_4);
       }
 
    _fx_catch_4: ;
+      if (v_25) { _fx_free_LS(&v_25);
+      }
+      _fx_free_Ta2LS(&v_24);
       if (v_23) { _fx_free_LS(&v_23);
       }
-      _fx_free_Ta2LS(&v_22);
-      if (v_21) { _fx_free_LS(&v_21);
-      }
-      FX_FREE_STR(&v_20);
-      _fx_free_Ta2S(&v_19);
+      FX_FREE_STR(&v_22);
+      _fx_free_Ta2S(&v_21);
       FX_FREE_STR(&ficus_h_0);
       FX_FREE_STR(&builtins_fx_0);
       FX_CHECK_BREAK();
@@ -7640,14 +7644,16 @@ _fx_cleanup: ;
    FX_FREE_STR(&v_11);
    FX_FREE_STR(&v_12);
    FX_FREE_STR(&ficus_inst_path_0);
-   FX_FREE_STR(&v_13);
+   _fx_free_Ta2S(&v_13);
    FX_FREE_STR(&v_14);
    FX_FREE_STR(&v_15);
-   if (v_16) { _fx_free_LS(&v_16);
+   FX_FREE_STR(&v_16);
+   FX_FREE_STR(&v_17);
+   if (v_18) { _fx_free_LS(&v_18);
    }
    if (std_ficus_path_0) { _fx_free_LS(&std_ficus_path_0);
    }
-   _fx_free_Ta2LS(&v_17);
+   _fx_free_Ta2LS(&v_19);
    if (search_path_0) { _fx_free_LS(&search_path_0);
    }
    FX_FREE_STR(&found_0);
@@ -9306,7 +9312,7 @@ FX_EXTERN_C int _fx_M8CompilerFM6run_ccB2LR17C_form__cmodule_tS(
          fx_str_t slit_34 = FX_MAKE_STR("Linux");
          FX_CALL(_fx_M6StringFM8containsB2SS(&osinfo_0, &slit_34, &v_42, 0), _fx_cleanup);
          if (v_42) {
-            if (enable_openmp_0) { fx_str_t slit_35 = FX_MAKE_STR("-fopenmp"); fx_copy_str(&slit_35, &omp_flags_0);
+            if (enable_openmp_0) { fx_str_t slit_35 = FX_MAKE_STR(" -fopenmp"); fx_copy_str(&slit_35, &omp_flags_0);
             }
             else { fx_str_t slit_36 = FX_MAKE_STR(""); fx_copy_str(&slit_36, &omp_flags_0);
             }
@@ -9365,7 +9371,7 @@ FX_EXTERN_C int _fx_M8CompilerFM6run_ccB2LR17C_form__cmodule_tS(
       else { fx_str_t slit_57 = FX_MAKE_STR(""); fx_copy_str(&slit_57, &v_14);
       }
       FX_CALL(_fx_F6stringS1S(&clibs_1, &v_17, 0), _fx_cleanup);
-      fx_str_t slit_58 = FX_MAKE_STR("-lm");
+      fx_str_t slit_58 = FX_MAKE_STR("-lm ");
       {
       const fx_str_t strs_5[] = { v_14, slit_58, v_17 }; FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &clibs_2), _fx_cleanup);
       }

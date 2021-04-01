@@ -65,7 +65,7 @@ fun find_ficus_dirs(): (string, string list)
     // if 'ficus' is '{/usr|/usr/local|/opt}/bin/ficus'
     val ficus_inst_path = Filename.normalize(Filename.dirname(ficus_app_path),
                             f"lib/ficus-{__ficus_major__}.{__ficus_minor__}")
-    val std_ficus_path = [: Filename.normalize(ficus_app_path, "lib"),
+    val std_ficus_path = [: Filename.normalize(Filename.dirname(ficus_app_path), "lib"),
                             Filename.normalize(ficus_pp_path, "lib"),
                             Filename.normalize(ficus_inst_path, "lib") :]
     val std_ficus_path_len = std_ficus_path.length()
@@ -281,7 +281,6 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 val (libpath, cflags, clibs) =
                 if osinfo.contains("x86_64") {
                     ("macos_x64", omp_cflags,
-                        //f" -lmimalloc{omp_lib}"
                         " " + omp_cflags + omp_lib
                     )
                 } else if osinfo.contains ("arm64") {
@@ -291,7 +290,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 }
                 ("macos", libpath, cflags, clibs)
             } else if osinfo.contains("Linux") {
-                val omp_flags = if enable_openmp {"-fopenmp"} else {""}
+                val omp_flags = if enable_openmp {" -fopenmp"} else {""}
                 ("linux", "", omp_flags, omp_flags)
             } else if Sys.unix {
                 ("unix", "", "", "")
@@ -303,7 +302,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline"
             val ggdb_opt = if opt_level == 0 { " -ggdb" } else { "" }
             val cflags = f"-O{opt_level}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
-            val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm{clibs}"
+            val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"
             (os, c_comp, cpp_comp, ".o", "-c -o", "-o", "-l", cflags, clibs)
         }
 
