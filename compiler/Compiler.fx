@@ -284,7 +284,9 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                         " " + omp_cflags + omp_lib
                     )
                 } else if osinfo.contains ("arm64") {
-                    ("", "", "")
+                    ("macos_arm64", omp_cflags,
+                        " " + omp_cflags + omp_lib
+                    )
                 } else {
                     ("", "", "")
                 }

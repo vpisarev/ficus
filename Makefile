@@ -34,10 +34,10 @@ else
 			LDFLAGS += -Xclang -fopenmp
         	LDLIBS += -L./runtime/lib/macos_x64/ -lomp
 		endif
-		#ifeq ($(UNAME_M),arm64)
-		#	CFLAGS += -Xclang -fopenmp
-        #	LDLIBS += -L./runtime/lib/macos/x64/ -lmimalloc -lomp
-		#endif
+		ifeq ($(UNAME_M),arm64)
+			CFLAGS += -Xclang -fopenmp
+        	LDLIBS += -L./runtime/lib/macos_arm64/ -lomp
+		endif
 	endif
 	ifeq ($(UNAME_S),Linux)
 		CFLAGS += -fopenmp
