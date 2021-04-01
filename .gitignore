@@ -3,7 +3,6 @@
 *.cmo
 *.cma
 *.cmi
-*.a
 *.o
 *.out
 *.out.*
