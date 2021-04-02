@@ -10,6 +10,7 @@
 *.cmxs
 *.cmxa
 *.fxp
+*.git_commit
 ficus0.0
 config.ml
 lexer.ml

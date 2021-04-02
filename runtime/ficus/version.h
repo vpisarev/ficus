@@ -13,6 +13,10 @@
 #define FX_MAKE_VERSION(a, b, c) (FX_VER2STR(a) "." FX_VER2STR(b) "." FX_VER2STR(c))
 #define FX_VERSION FX_MAKE_VERSION(FX_VERSION_MAJOR, FX_VERSION_MINOR, FX_VERSION_PATCH)
 
+#if __has_include("ficus/version.git_commit")
 #include "ficus/version.git_commit"
+#else
+#define FX_GIT_COMMIT "<noinfo>"
+#endif
 
 #endif
