@@ -8697,9 +8697,9 @@ FX_EXTERN_C int
 static int _fx_M11C_gen_typesFM9cvt2ctyp_v2V9Ast__id_tR10Ast__loc_t(
    _fx_V9Ast__id_t* tn_0, _fx_R10Ast__loc_t* loc_0, void* fx_fv)
 {
-   _fx_FPR29C_gen_types__ctyp_temp_info_t3V9Ast__id_tBR10Ast__loc_t create_ctyp_decl_0 = {  };
    _fx_FPv2V9Ast__id_tV15C_form__cstmt_t add_decl_0 = {  };
    _fx_FPT2V9Ast__id_tLT2V9Ast__id_tVt6option1V14C_form__cexp_t1rR21K_form__kdefvariant_t get_var_enum_0 = {  };
+   _fx_FPR29C_gen_types__ctyp_temp_info_t3V9Ast__id_tBR10Ast__loc_t create_ctyp_decl_0 = {  };
    _fx_Rt6Set__t1V9Ast__id_t deps_0 = {  };
    _fx_V15K_form__kinfo_t kt_info_0 = {  };
    _fx_T5V9Ast__id_tLT2V9Ast__id_tVt6option1V14C_form__cexp_tBBRt6Set__t1V9Ast__id_t v_0 = {  };
@@ -8739,12 +8739,12 @@ static int _fx_M11C_gen_typesFM9cvt2ctyp_v2V9Ast__id_tR10Ast__loc_t(
    _fx_rLV15C_form__cstmt_t top_fwd_decl_ref_0 = cv_0->t5;
    _fx_rLV15C_form__cstmt_t top_typ_decl_ref_0 = cv_0->t6;
    _fx_rLV15C_form__cstmt_t top_typfun_decl_ref_0 = cv_0->t7;
-   _fx_M11C_gen_typesFM7make_fpFPRM16ctyp_temp_info_t3V9Ast__id_tBR10Ast__loc_t2rRt6Set__t1V9Ast__id_trLV15C_form__cstmt_t(
-      all_fwd_decls_ref_0, top_fwd_decl_ref_0, &create_ctyp_decl_0);
    _fx_M11C_gen_typesFM7make_fpFPv2V9Ast__id_tV15C_form__cstmt_t3rRt6Set__t1V9Ast__id_trLV15C_form__cstmt_trLV15C_form__cstmt_t(
       all_decls_ref_0, top_typ_decl_ref_0, top_typfun_decl_ref_0, &add_decl_0);
    _fx_M11C_gen_typesFM7make_fpFPT2V9Ast__id_tLT2V9Ast__id_tVt6option1V14C_form__cexp_t1rR21K_form__kdefvariant_t4rRt6Set__t1V9Ast__id_trRt6Map__t2V9Ast__id_tV9Ast__id_trLV15C_form__cstmt_trLV15C_form__cstmt_t(
       all_decls_ref_0, all_var_enums_ref_0, top_typ_decl_ref_0, top_typfun_decl_ref_0, &get_var_enum_0);
+   _fx_M11C_gen_typesFM7make_fpFPRM16ctyp_temp_info_t3V9Ast__id_tBR10Ast__loc_t2rRt6Set__t1V9Ast__id_trLV15C_form__cstmt_t(
+      all_fwd_decls_ref_0, top_fwd_decl_ref_0, &create_ctyp_decl_0);
    bool visited_0;
    FX_CALL(_fx_M3SetFM3memB2RtM1t1V9Ast__id_tV9Ast__id_t(all_visited_0, tn_0, &visited_0, 0), _fx_cleanup);
    FX_CALL(
@@ -10830,9 +10830,9 @@ _fx_endmatch_1: ;
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&create_ctyp_decl_0);
    FX_FREE_FP(&add_decl_0);
    FX_FREE_FP(&get_var_enum_0);
+   FX_FREE_FP(&create_ctyp_decl_0);
    _fx_free_Rt6Set__t1V9Ast__id_t(&deps_0);
    _fx_free_V15K_form__kinfo_t(&kt_info_0);
    _fx_free_T5V9Ast__id_tLT2V9Ast__id_tVt6option1V14C_form__cexp_tBBRt6Set__t1V9Ast__id_t(&v_0);

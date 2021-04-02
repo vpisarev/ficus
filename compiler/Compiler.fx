@@ -21,16 +21,22 @@ type id_t = Ast.id_t
 type kmodule_t = K_form.kmodule_t
 val pr_verbose = Ast.pr_verbose
 
+val iscolorterm = Sys.colorterm()
+
 type msgcolor_t = MsgRed | MsgGreen | MsgBlue
 fun clrmsg(clr: msgcolor_t, msg: string)
 {
-    val esc = match clr {
-        | MsgRed => "\33[31;1m"
-        | MsgGreen => "\33[32;1m"
-        | MsgBlue => "\033[34;1m"
-        | _ => ""
+    if iscolorterm {
+        val esc = match clr {
+            | MsgRed => "\33[31;1m"
+            | MsgGreen => "\33[32;1m"
+            | MsgBlue => "\033[34;1m"
+            | _ => ""
+        }
+        f"{esc}{msg}\33[0m"
+    } else {
+        msg
     }
-    f"{esc}{msg}\33[0m"
 }
 val error = clrmsg(MsgRed, "error")
 

@@ -398,6 +398,22 @@ fx_cstr_t name_;
 
 }
 
+FX_EXTERN_C int _fx_M3SysFM9colortermB0(bool* fx_result, void* fx_fv)
+{
+   fx_str_t v_0 = {  };
+   int fx_status = 0;
+   fx_str_t slit_0 = FX_MAKE_STR("TERM");
+   FX_CALL(_fx_M3SysFM6getenvS1S(&slit_0, &v_0, 0), _fx_cleanup);
+   int_ v_1;
+   fx_str_t slit_1 = FX_MAKE_STR("xterm");
+   v_1 = _fx_M6StringFM4findi3SSi(&v_0, &slit_1, 0, 0);
+   *fx_result = v_1 >= 0;
+
+_fx_cleanup: ;
+   FX_FREE_STR(&v_0);
+   return fx_status;
+}
+
 FX_EXTERN_C int fx_init_Sys(void)
 {
    int fx_status = 0;

@@ -2896,16 +2896,16 @@ FX_EXTERN_C int _fx_M20C_post_rename_localsFM7make_fpFPv2V9Ast__id_tR10Ast__loc_
 static int _fx_M20C_post_rename_localsFM12rename_cstmtv2V15C_form__cstmt_tR22C_form__c_fold_callb_t(
    struct _fx_V15C_form__cstmt_t_data_t* s_0, _fx_R22C_form__c_fold_callb_t* callb_0, void* fx_fv)
 {
-   _fx_FPS1V9Ast__id_t gen_cname_0 = {  };
    _fx_FPv2V9Ast__id_tR10Ast__loc_t gen_cval_cname_0 = {  };
+   _fx_FPS1V9Ast__id_t gen_cname_0 = {  };
    int fx_status = 0;
    _fx_M20C_post_rename_localsFM12rename_cstmtv2V15C_form__cstmt_tR22C_form__c_fold_callb_t_cldata_t* cv_0 =
       (_fx_M20C_post_rename_localsFM12rename_cstmtv2V15C_form__cstmt_tR22C_form__c_fold_callb_t_cldata_t*)fx_fv;
    _fx_Rt10Hashmap__t2ii* global_prefix_hash_0 = &cv_0->t0->data;
    _fx_rRt10Hashmap__t2ii prefix_hash_ref_0 = cv_0->t1;
    _fx_Rt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
-   _fx_M20C_post_rename_localsFM7make_fpFPS1V9Ast__id_t1rRt10Hashmap__t2ii(prefix_hash_ref_0, &gen_cname_0);
    _fx_M20C_post_rename_localsFM7make_fpFPv2V9Ast__id_tR10Ast__loc_t1rRt10Hashmap__t2ii(prefix_hash_ref_0, &gen_cval_cname_0);
+   _fx_M20C_post_rename_localsFM7make_fpFPS1V9Ast__id_t1rRt10Hashmap__t2ii(prefix_hash_ref_0, &gen_cname_0);
    int tag_0 = FX_REC_VARIANT_TAG(s_0);
    if (tag_0 == _FX_V15C_form__cstmt_t_CDefVal) {
       _fx_T4V14C_form__ctyp_tV9Ast__id_tVt6option1V14C_form__cexp_tR10Ast__loc_t* vcase_0 = &s_0->u.CDefVal;
@@ -3167,8 +3167,8 @@ _fx_catch_12: ;
 _fx_endmatch_1: ;
 
 _fx_cleanup: ;
-   FX_FREE_FP(&gen_cname_0);
    FX_FREE_FP(&gen_cval_cname_0);
+   FX_FREE_FP(&gen_cname_0);
    return fx_status;
 }
 

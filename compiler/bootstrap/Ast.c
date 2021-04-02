@@ -14138,14 +14138,14 @@ static int _fx_M3AstFM10walk_pe_l_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t(
       struct _fx_LT2V10Ast__pat_tV10Ast__exp_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_FPV10Ast__pat_t1V10Ast__pat_t walk_pat__0 = {  };
    _fx_FPV10Ast__exp_t1V10Ast__exp_t walk_exp__0 = {  };
+   _fx_FPV10Ast__pat_t1V10Ast__pat_t walk_pat__0 = {  };
    int fx_status = 0;
    _fx_M3AstFM10walk_pe_l_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t_cldata_t* cv_0 =
       (_fx_M3AstFM10walk_pe_l_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t_cldata_t*)fx_fv;
    _fx_R16Ast__ast_callb_t* callb_0 = &cv_0->t0;
-   _fx_M3AstFM7make_fpFPVM5pat_t1VM5pat_t1RM11ast_callb_t(callb_0, &walk_pat__0);
    _fx_M3AstFM7make_fpFPVM5exp_t1VM5exp_t1RM11ast_callb_t(callb_0, &walk_exp__0);
+   _fx_M3AstFM7make_fpFPVM5pat_t1VM5pat_t1RM11ast_callb_t(callb_0, &walk_pat__0);
    _fx_LT2V10Ast__pat_tV10Ast__exp_t lstend_0 = 0;
    _fx_LT2V10Ast__pat_tV10Ast__exp_t lst_0 = pe_l_0;
    for (; lst_0; lst_0 = lst_0->tl) {
@@ -14178,8 +14178,8 @@ static int _fx_M3AstFM10walk_pe_l_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t(
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&walk_pat__0);
    FX_FREE_FP(&walk_exp__0);
+   FX_FREE_FP(&walk_pat__0);
    return fx_status;
 }
 
@@ -14249,14 +14249,14 @@ static int _fx_M3AstFM11walk_cases_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t(
       struct _fx_LT2V10Ast__pat_tV10Ast__exp_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_FPV10Ast__pat_t1V10Ast__pat_t walk_pat__0 = {  };
    _fx_FPV10Ast__exp_t1V10Ast__exp_t walk_exp__0 = {  };
+   _fx_FPV10Ast__pat_t1V10Ast__pat_t walk_pat__0 = {  };
    int fx_status = 0;
    _fx_M3AstFM11walk_cases_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t_cldata_t* cv_0 =
       (_fx_M3AstFM11walk_cases_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t_cldata_t*)fx_fv;
    _fx_R16Ast__ast_callb_t* callb_0 = &cv_0->t0;
-   _fx_M3AstFM7make_fpFPVM5pat_t1VM5pat_t1RM11ast_callb_t(callb_0, &walk_pat__0);
    _fx_M3AstFM7make_fpFPVM5exp_t1VM5exp_t1RM11ast_callb_t(callb_0, &walk_exp__0);
+   _fx_M3AstFM7make_fpFPVM5pat_t1VM5pat_t1RM11ast_callb_t(callb_0, &walk_pat__0);
    _fx_LT2V10Ast__pat_tV10Ast__exp_t lstend_0 = 0;
    _fx_LT2V10Ast__pat_tV10Ast__exp_t lst_0 = pe_l_0;
    for (; lst_0; lst_0 = lst_0->tl) {
@@ -14289,8 +14289,8 @@ static int _fx_M3AstFM11walk_cases_LT2VM5pat_tVM5exp_t1LT2VM5pat_tVM5exp_t(
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&walk_pat__0);
    FX_FREE_FP(&walk_exp__0);
+   FX_FREE_FP(&walk_pat__0);
    return fx_status;
 }
 

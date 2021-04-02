@@ -5186,10 +5186,10 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleV14K_form__kexp_t2V14K_form__kexp
       struct _fx_V14K_form__kexp_t_data_t** fx_result,
       void* fx_fv)
 {
-   _fx_FPv3V9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t mangle_id_typ_0 = {  };
-   _fx_FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t walk_ktyp_n_mangle_0 = {  };
    _fx_FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t mangle_ktyp_retain_record_0 = {  };
    _fx_FPv4LT2V9Ast__id_tV13K_form__dom_tLV9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t mangle_idoml_0 = {  };
+   _fx_FPv3V9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t mangle_id_typ_0 = {  };
+   _fx_FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t walk_ktyp_n_mangle_0 = {  };
    _fx_R17K_form__kdeftyp_t v_0 = {  };
    int fx_status = 0;
    FX_CALL(fx_check_stack(), _fx_cleanup);
@@ -5197,14 +5197,14 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleV14K_form__kexp_t2V14K_form__kexp
       (_fx_M8K_mangleFM18walk_kexp_n_mangleV14K_form__kexp_t2V14K_form__kexp_tR17K_form__k_callb_t_cldata_t*)fx_fv;
    _fx_rLV14K_form__kexp_t curr_top_code_ref_0 = cv_0->t0;
    _fx_Rt10Hashmap__t2SV9Ast__id_t* mangle_map_0 = &cv_0->t1;
-   _fx_M8K_mangleFM7make_fpFPv3V9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t2rLV14K_form__kexp_tRt10Hashmap__t2SV9Ast__id_t(
-      curr_top_code_ref_0, mangle_map_0, &mangle_id_typ_0);
-   _fx_M8K_mangleFM7make_fpFPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t2rLV14K_form__kexp_tRt10Hashmap__t2SV9Ast__id_t(
-      curr_top_code_ref_0, mangle_map_0, &walk_ktyp_n_mangle_0);
    _fx_M8K_mangleFM9make_fp1_FPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t2rLV14K_form__kexp_tRt10Hashmap__t2SV9Ast__id_t(
       curr_top_code_ref_0, mangle_map_0, &mangle_ktyp_retain_record_0);
    _fx_M8K_mangleFM7make_fpFPv4LT2V9Ast__id_tV13K_form__dom_tLV9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t2rLV14K_form__kexp_tRt10Hashmap__t2SV9Ast__id_t(
       curr_top_code_ref_0, mangle_map_0, &mangle_idoml_0);
+   _fx_M8K_mangleFM7make_fpFPv3V9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t2rLV14K_form__kexp_tRt10Hashmap__t2SV9Ast__id_t(
+      curr_top_code_ref_0, mangle_map_0, &mangle_id_typ_0);
+   _fx_M8K_mangleFM7make_fpFPV14K_form__ktyp_t3V14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t2rLV14K_form__kexp_tRt10Hashmap__t2SV9Ast__id_t(
+      curr_top_code_ref_0, mangle_map_0, &walk_ktyp_n_mangle_0);
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
    if (tag_0 == _FX_V14K_form__kexp_t_KDefVal) {
       _fx_V14K_form__kexp_t e_1 = 0;
@@ -5762,10 +5762,10 @@ _fx_catch_18: ;
 _fx_endmatch_1: ;
 
 _fx_cleanup: ;
-   FX_FREE_FP(&mangle_id_typ_0);
-   FX_FREE_FP(&walk_ktyp_n_mangle_0);
    FX_FREE_FP(&mangle_ktyp_retain_record_0);
    FX_FREE_FP(&mangle_idoml_0);
+   FX_FREE_FP(&mangle_id_typ_0);
+   FX_FREE_FP(&walk_ktyp_n_mangle_0);
    _fx_free_R17K_form__kdeftyp_t(&v_0);
    return fx_status;
 }

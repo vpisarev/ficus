@@ -192,3 +192,5 @@ fun getpath(name: string): string list
     val pathsep = if win32 {';'} else {':'}
     getenv(name).split(pathsep, allow_empty=false)
 }
+
+fun colorterm(): bool = getenv("TERM").contains("xterm")

@@ -15,6 +15,7 @@ FICUS0  := $(BOOTSTRAP_BUILD_DIR)/ficus0
 CFLAGS  := -I$(INCLUDE)
 LDLIBS  := -lm
 LDFLAGS :=
+GIT_COMMIT := "$(shell git describe)"
 
 FICUS_SRC := ./compiler
 FICUS_SRCS := $(wildcard $(FICUS_SRC)/*.fx)
@@ -64,6 +65,7 @@ $(BOOTSTRAP_BUILD_DIR)/%.o: $(BOOTSTRAP_SRC)/%.c | $(BOOTSTRAP_BUILD_DIR)
 
 $(FICUS): $(FICUS0) $(FICUS_SRCS) $(FICUS_STDLIB_SRCS)
 	@echo "\033[34;1mBuilding fresh compiler from the actual ficus sources\033[0m"
+	@echo '#define FX_GIT_COMMIT $(GIT_COMMIT)' > $(RUNTIME_DIR)/version.git_commit
 	@$(MKDIR) $(FICUS_BIN)
 	@$(FICUS0) $(FICUS_FLAGS) -o $(FICUS) $(FICUS_SRC)/fx.fx
 
