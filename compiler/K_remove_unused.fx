@@ -52,6 +52,7 @@ fun pure_kexp(e: kexp_t): bool
             }
         | KExpCall (f, _, (_, loc)) =>
             if !pure_fun(f, loc) { ispure = false }
+        | KExpICall _ => ispure = false
         | KExpAssign (i, AtomId j, _) when i == j => {}
         | KExpAssign (i, _, _) =>
             if !local_vars.mem(i) { ispure = false }

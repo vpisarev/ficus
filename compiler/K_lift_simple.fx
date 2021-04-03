@@ -38,6 +38,8 @@ fun update_globals(top_code: kcode_t, globals: id_hashset_t) =
         | KDefVariant (ref {kvar_name, kvar_cases}) =>
             kvar_name :: [: for (n, _) <- kvar_cases {n} :]
         | KDefTyp (ref {kt_name}) => kt_name :: []
+        | KDefInterface (ref {ki_name, ki_all_methods}) =>
+            ki_name :: [: for (f, _) <- ki_all_methods {f} :]
         | _ => []
         }
         globals.add_list(n_list)
@@ -73,6 +75,7 @@ fun lift(kmods: kmodule_t list) {
             (match kinfo_(n, kf_loc) {
             | KExn _ => true
             | KVariant _ => true
+            | KInterface _ => true
             | KTyp _ => true
             | KVal _ => false
             | KFun (ref {kf_flags}) => kf_flags.fun_flag_ccode || is_constructor(kf_flags)

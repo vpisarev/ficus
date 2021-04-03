@@ -139,6 +139,11 @@ fun find_single_use_vals(topcode: kcode_t)
                `f.fp(args, f.fcv)`, i.e. f is used twice here, so we need to save it anyway */
             count_atom(AtomId(f), loc, callb)
             fold_kexp(e, callb)
+        | KExpICall(obj, _, _, (_, loc)) =>
+            /* count obj twice, since the virtual call is 'obj->vtbl[meth_idx](obj, ...)',
+               i.e. obj is referenced twice */
+            count_atom(AtomId(obj), loc, callb)
+            fold_kexp(e, callb)
         | _ => fold_kexp(e, callb)
         }
 
@@ -1639,6 +1644,27 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     (false, dst_exp, ccode)
                 }
             }
+        | KExpICall (obj, meth, args, _) =>
+            throw compile_err(kloc, f"cgen: interface calls are not implemented yet")
+            /*val fold args = [], ccode = ccode for arg <- args {
+                val (carg, ccode) = atom2cexp(arg, ccode, kloc)
+                val carg = make_fun_arg(carg, kloc)
+                (carg :: args, ccode)
+            }
+            val (obj_exp, ccode) = id2cexp(i, true, ccode, kloc)
+
+            val (f, ci) = match cinfo_(f, kloc) {
+                          | CExn (ref {cexn_make}) => (cexn_make, cinfo_(cexn_make, kloc))
+                          | ci => (f, ci)
+                          }
+            val (f_exp, have_out_arg, fv_args, is_nothrow, ccode) =
+            match ci {
+            | CFun cf =>
+                val {cf_args, cf_rt, cf_flags, cf_cname, cf_loc} = *cf
+                ensure_sym_is_defined_or_declared(f, kloc)
+                val is_nothrow = cf_flags.fun_flag_nothrow
+                val (_, ret_id, _, have_fv_arg) = unpack_fun_args(cf_args, cf_rt, is_nothrow)
+                val f_exp = make_id_exp(f, cf_loc)*/
         | KExpMkTuple _ | KExpMkRecord _ =>
             val (args, prefix) = match kexp {
                 | KExpMkTuple(args, _) => (args, "tup")
@@ -2933,6 +2959,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         | KDefExn ke => (false, dummy_exp, ccode)
         | KDefVariant kvar => (false, dummy_exp, ccode) /* handled in c_gen_types */
         | KDefTyp kt => (false, dummy_exp, ccode) /* handled in c_gen_types */
+        | KDefInterface ki => (false, dummy_exp, ccode) /* handled in c_gen_types */
         | KDefClosureVars kcv => (false, dummy_exp, ccode) /* handled in c_gen_types */
         }
 

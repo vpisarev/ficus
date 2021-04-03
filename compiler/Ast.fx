@@ -184,6 +184,8 @@ type intrin_t =
     | IntrinPopExn
     | IntrinVariantTag
     | IntrinVariantCase
+    | IntrinQueryIface
+    | IntrinGetObject
     | IntrinListHead
     | IntrinListTail
     | IntrinStrConcat
@@ -200,11 +202,12 @@ type val_flags_t =
     val_flag_tempref: bool = false;
     val_flag_private: bool = false;
     val_flag_subarray: bool = false;
+    val_flag_method: (id_t, int);
     val_flag_ctor: id_t;
     val_flag_global: scope_t list = []
 }
 
-fun default_val_flags() = val_flags_t {val_flag_ctor=noid}
+fun default_val_flags() = val_flags_t {val_flag_ctor=noid, val_flag_method=(noid, -1)}
 fun default_arg_flags() = default_val_flags().{val_flag_arg=true}
 fun default_var_flags() = default_val_flags().{val_flag_mutable=true}
 fun default_tempval_flags() = default_val_flags().{val_flag_temp=true}
@@ -222,17 +225,18 @@ type fun_flags_t =
 {
     fun_flag_pure: int=-1;
     fun_flag_ccode: bool=false;
-    fun_flag_has_keywords: bool=false;
+    fun_flag_have_keywords: bool=false;
     fun_flag_inline: bool=false;
     fun_flag_nothrow: bool=false;
     fun_flag_really_nothrow: bool=false;
     fun_flag_private: bool=false;
     fun_flag_ctor: fun_constr_t;
+    fun_flag_method_of: id_t;
     fun_flag_uses_fv: bool=false;
     fun_flag_recursive: bool=false
 }
 
-fun default_fun_flags() = fun_flags_t {fun_flag_ctor=CtorNone}
+fun default_fun_flags() = fun_flags_t {fun_flag_ctor=CtorNone, fun_flag_method_of=noid}
 
 type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeTuple
 
@@ -382,7 +386,8 @@ fun id_hashset(s: idset_t) {
 
 type defval_t =
 {
-    dv_name: id_t; dv_typ: typ_t;
+    dv_name: id_t;
+    dv_typ: typ_t;
     dv_flags: val_flags_t;
     dv_scope: scope_t list;
     dv_loc: loc_t
@@ -430,12 +435,15 @@ type defvariant_t =
     dvar_alias: typ_t; dvar_flags: var_flags_t;
     dvar_cases: (id_t, typ_t) list;
     dvar_ctors: id_t list; dvar_templ_inst: id_t list ref;
+    dvar_ifaces: (id_t, (id_t, id_t) list) list;
     dvar_scope: scope_t list; dvar_loc: loc_t
 }
 
 type definterface_t =
 {
-    di_name: id_t; di_base: id_t; di_members: exp_t list;
+    di_name: id_t; di_base: id_t;
+    di_new_methods: (id_t, typ_t, fun_flags_t) list;
+    di_all_methods: (id_t, typ_t, fun_flags_t) list;
     di_scope: scope_t list; di_loc: loc_t
 }
 
@@ -1007,6 +1015,8 @@ fun string(iop: intrin_t): string
     | IntrinPopExn => "__intrin_pop_exn__"
     | IntrinVariantTag => "__intrin_variant_tag__"
     | IntrinVariantCase => "__intrin_variant_case__"
+    | IntrinQueryIface => "__intrin_query_iface__"
+    | IntrinGetObject => "__intrin_get_object__"
     | IntrinListHead => "__intrin_hd__"
     | IntrinListTail => "__intrin_tl__"
     | IntrinStrConcat => "__intrin_str_concat__"
@@ -1575,6 +1585,19 @@ fun calc_sets_closure(iters: int, all_ids: id_t list, all_sets: idset_hashmap_t)
     }
     done_i
 }
+
+fun get_iface(iface: id_t, loc: loc_t) =
+    match id_info(iface, loc) {
+    | IdInterface di => di
+    | _ => throw compile_err(loc, f"'{pp(iface)}' is not an interface")
+    }
+
+fun same_or_parent(iface: id_t, maybe_parent: id_t, loc: loc_t) =
+    if iface == maybe_parent {true} else {
+        val di_base = get_iface(iface, loc)->di_base
+        if di_base == noid { false }
+        else {same_or_parent(di_base, maybe_parent, loc)}
+    }
 
 fun init_all(): void
 {

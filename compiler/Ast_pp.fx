@@ -10,6 +10,7 @@ import PP, File
 
 val margin = 120
 val default_indent = 3
+val pp_ = Ast.pp
 
 fun pplit(pp: PP.t, x: lit_t) = pp.str(lit2str(x))
 fun ppid(pp: PP.t, x: id_t) = pp.str(
@@ -40,7 +41,7 @@ fun pprint_fun_flags(pp: PP.t, flags: fun_flags_t): void
     if flags.fun_flag_private { pp.str("@private"); pp.space() }
     if flags.fun_flag_uses_fv { pp.str("@uses_fv"); pp.space() }
     if flags.fun_flag_recursive { pp.str("@recursive"); pp.space() }
-    if flags.fun_flag_has_keywords { pp.str("@with_keywords"); pp.space() }
+    if flags.fun_flag_have_keywords { pp.str("@with_keywords"); pp.space() }
     if flags.fun_flag_ccode { pp.str("@cfunc"); pp.space() }
 }
 
@@ -63,7 +64,7 @@ fun get_typ_pr(t: typ_t): typ_pr_t
 fun opt_parens(p: typ_pr_t, p1: typ_pr_t) =
     if p1.__tag__ > p.__tag__ { ("(", ")") } else { ("", "") }
 
-fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t)
+fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
 {
     fun pptype_(t: typ_t, p1: typ_pr_t)
     {
@@ -123,16 +124,19 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t)
             }
             pp.str("...)")
         | TypRecord (ref (rec_elems, ordered)) =>
-            pp.begin(); pp.str(if ordered {"{"} else {"@ordered {"}); pp.breaki();
-            for (n, t, v0_opt)@i <- rec_elems {
-                if i > 0 { pp.str(";"); pp.space() }
-                ppid(pp, n); pp.str(":"); pp.space(); pptype_(t, TypPr0)
-                match v0_opt {
-                | Some(v0) => pp.str("="); pplit(pp, v0)
-                | _ => {}
+            if brief { pp.str("{...}") }
+            else {
+                pp.begin(); pp.str(if ordered {"{"} else {"@ordered {"}); pp.breaki();
+                for (n, t, v0_opt)@i <- rec_elems {
+                    if i > 0 { pp.str(";"); pp.space() }
+                    ppid(pp, n); pp.str(":"); pp.space(); pptype_(t, TypPr0)
+                    match v0_opt {
+                    | Some(v0) => pp.str("="); pplit(pp, v0)
+                    | _ => {}
+                    }
                 }
+                pp.breaku(); pp.str("}"); pp.end()
             }
-            pp.breaku(); pp.str("}"); pp.end()
         | TypExn => pp.str("exn")
         | TypErr => pp.str("err")
         | TypCPointer => pp.str("cptr")
@@ -140,7 +144,9 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t)
         | TypModule => pp.str("<module>")
         }
     }
+    pp.begin()
     pptype_(t, TypPr0)
+    pp.end()
 }
 
 
@@ -191,6 +197,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     | DefFun df =>
         val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_loc} = *df
         val ctor_id = df_flags.fun_flag_ctor
+        val iface = df_flags.fun_flag_method_of
         pp.begin(0); pp.begin(); pprint_fun_flags(pp, df_flags)
         match df_templ_args {
         | [] => {}
@@ -198,7 +205,12 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.begin(); pp.str("template<"); pprint_templ_args(pp, df_templ_args)
             pp.str(">"); pp.end(); pp.space()
         }
-        pp.str("fun "); ppid(pp, df_name); pp.str("("); pp.cut();
+        if iface == noid {
+            pp.str("fun "); ppid(pp, df_name)
+        } else {
+            pp.str("method "); ppid(pp, iface); pp.str("."); ppid(pp, df_name)
+        }
+        pp.str("("); pp.cut();
         for p@i <- df_args {
             if i > 0 { pp.str(","); pp.space() }
             pprint_pat(pp, p)
@@ -228,8 +240,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         pp.space(); pprint_typ(pp, dt_typ, dt_loc); pp.end()
     | DefVariant (ref
         { dvar_name, dvar_templ_args, dvar_alias, dvar_cases,
-          dvar_ctors, dvar_flags, dvar_templ_inst, dvar_loc }) =>
-        pp.begin();
+          dvar_ctors, dvar_flags, dvar_templ_inst, dvar_ifaces, dvar_loc }) =>
+        pp.beginv();
         pp.begin(); pp.str("/*")
         pprint_typ(pp, dvar_alias, dvar_loc)
         pp.str("*/"); pp.end()
@@ -245,6 +257,20 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.str("type")
         }
         pp.space(); ppid(pp, dvar_name);
+        if dvar_ifaces != [] {
+            pp.space(); pp.str("implements"); pp.space()
+            pp.beginv(0)
+            for (iface, impl)@i <- dvar_ifaces {
+                if i > 0 { pp.str(","); pp.space() }
+                pp.begin(); ppid(pp, iface); pp.str(":{ ");
+                for (a, b)@j <- impl {
+                    if j > 0 { pp.str(","); pp.space() }
+                    ppid(pp, a); pp.str(" ~ "); ppid(pp, b)
+                }
+                pp.str(" }"); pp.end()
+            }
+            pp.end()
+        }
         pp.str(" ="); pp.space()
         val ctors = if dvar_ctors != [] { dvar_ctors } else { [: for (n, t) <- dvar_cases {n} :] }
         for (_, t)@i <- dvar_cases, c <- ctors {
@@ -265,6 +291,18 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                 }
             }
         }
+    | DefInterface (ref { di_name, di_base, di_all_methods, di_loc }) =>
+        pp.beginv()
+        pp.str("interface "); ppid(pp, di_name)
+        if di_base != noid { pp.str(": "); ppid(pp, di_base) }
+        val nmembers = di_all_methods.length()
+        pp.str(" {"); pp.newline();
+        for (f, t, _)@i <- di_all_methods {
+            ppid(pp, f); pp.str(": ")
+            pprint_typ(pp, t, di_loc)
+            pp.str(";"); if i < nmembers - 1 {pp.space()}
+        }
+        pp.end(); pp.space(); pp.str("}")
     | DirImport(ml, _) =>
         pp.begin(); pp.str("import"); pp.space()
         for (n1, n2)@i <- ml {
@@ -312,7 +350,12 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             }
             pp.str(")")
         | ExpLit(x, (_, loc)) => pplit(pp, x)
-        | ExpIdent(n, (t, loc)) => pp.str("<"); pprint_typ(pp, t, loc); pp.str(">"); ppid(pp, n)
+        | ExpIdent(n, (t, loc)) =>
+            match deref_typ(t) {
+            | TypApp([], tn) when tn == n => {}
+            | _ => pp.str("<"); pprint_typ(pp, t, loc, brief=true); pp.str(">")
+            }
+            ppid(pp, n)
         | ExpBinary(o, e1, e2, _) =>
             pp.str("("); ppexp(e1);
             pp.str(f" {o}");
@@ -334,12 +377,23 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             ppexp(e1); pp.space()
             pp.str("="); pp.space(); ppexp(e2);
         | ExpMem(e1, e2, _) =>
-            ppexp(e1); pp.str("."); pp.cut(); ppexp(e2)
+            ppexp(e1); pp.str(".")
+            match e2 {
+            | ExpIdent(n, _) => pp.str(pp_(n))
+            | _ => pp.cut(); ppexp(e2)
+            }
         | ExpUnary(o, e1, _) =>
             pp.str("("); pp.str(f"{o}");
             pp.space(); ppexp(e1); pp.str(")")
-        | ExpIntrin(i, args, _) =>
+        | ExpIntrin(i, args, (t, loc)) =>
             pp.str(string(i)); pp.str("(")
+            val args = match (i, deref_typ(t)) {
+            | (IntrinQueryIface, TypApp([], tn)) =>
+                ExpIdent(tn, (TypApp([], tn), loc)) :: args
+            | (IntrinGetObject, TypApp([], tn)) =>
+                ExpIdent(tn, (TypApp([], tn), loc)) :: args
+            | _ => args
+            }
             for e@i <- args {
                 if i > 0 { pp.str(","); pp.space() }
                 ppexp(e)
@@ -359,7 +413,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             }
             pp.str(")")
         | ExpMkRecord(rn, relems, _) =>
-            ppexp(rn)
+            ppexp(rn); pp.space()
             pp.str("{")
             pp.begin()
             for (n, v)@i <- relems {
@@ -369,7 +423,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.end()
             pp.str("}")
         | ExpUpdateRecord(e, relems, _) =>
-            ppexp(e); pp.str(".{")
+            ppexp(e); pp.str("."); pp.cut(); pp.str("{")
             pp.begin()
             for (n, v)@i <- relems {
                 if i > 0 { pp.str(","); pp.space() }
@@ -480,9 +534,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.space(); pprint_typ(pp, t, loc); pp.str(")")
         | ExpCCode(s, _) =>
             pp.str("@ccode "); pp.space(); pp.str("\""); pp.str(s); pp.str("\"")
-        | DefVal(_, _, _, _) | DefFun _ | DefExn _ | DefTyp _
-        | DefVariant _ | DefInterface _
-        | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
+        | DefVal(_, _, _, _) | DefFun _ | DefExn _ | DefTyp _ | DefInterface _
+        | DefVariant _ | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
         }
         pp.end()
     }

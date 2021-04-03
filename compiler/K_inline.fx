@@ -117,7 +117,7 @@ fun calc_exp_size(e: kexp_t)
         val dsz =
         match e {
         | KExpNop _ | KExpAtom _ | KDefFun _ | KDefExn _
-        | KDefVariant _ | KDefTyp _ | KDefClosureVars _ => 0
+        | KDefVariant _ | KDefTyp _ | KDefInterface _ | KDefClosureVars _ => 0
         | KExpIntrin(IntrinStrConcat, args, _) => args.length()
         | KExpBinary _ | KExpUnary _ | KExpCast _ | KExpIntrin _
         | KExpBreak _ | KExpContinue _ | KExpMem _ | KExpAssign _ | KDefVal _ => 1
@@ -129,7 +129,8 @@ fun calc_exp_size(e: kexp_t)
                 fold s = s for (f, a) <- al { s + (if f { 10 } else { 1 }) }
             }
         | KExpMkClosure (_, _, args, _) => args.length()
-        | KExpCall (_, args, _) => 10 + args.length()
+        | KExpCall (_, args, _) => 5 + args.length()
+        | KExpICall (_, _, args, _) => 6 + args.length()
         | KExpAt (_, _, _, idxs, _) => idxs.length()
         | KExpCCode _ => 100
         | KExpThrow _ => 10

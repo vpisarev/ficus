@@ -15,6 +15,7 @@ import PP, Ast_pp, File
 
 val margin = 120
 val default_indent = 3
+val pp_ = Ast.pp
 
 @private fun pp_id_(pp: PP.t, n: id_t, loc: loc_t) = pp.str(idk2str(n, loc))
 
@@ -30,10 +31,10 @@ val default_indent = 3
 @private fun opt_parens(p: int, p1: int): (string, string) =
     if p < p1 { ("(", ")") } else { ("", "") }
 
-@private fun pp_ktyp_(pp: PP.t, t: ktyp_t, p1: int, loc: loc_t, ~brief: bool=true)
+@private fun pp_ktyp_(pp: PP.t, t: ktyp_t, p1: int, loc: loc_t, ~detailed: bool=false)
 {
     val prec = get_ktyp_pr(t)
-    fun ppktyp_(t: ktyp_t, prec: int) = pp_ktyp_(pp, t, prec, loc, brief=brief)
+    fun ppktyp_(t: ktyp_t, prec: int) = pp_ktyp_(pp, t, prec, loc, detailed=false)
     fun ppktypsuf(t1: ktyp_t, suf: string) {
         val (lp, rp) = opt_parens(prec, p1)
         pp.begin(); pp.str(lp); ppktyp_(t1, prec)
@@ -81,7 +82,7 @@ val default_indent = 3
     | KTypRecord (rn, relems) =>
         pp.begin()
         pp_id_(pp, rn, loc)
-        if !brief {
+        if detailed {
             pp.str(" {")
             for (ni, ti)@i <- relems {
                 if i != 0 { pp.str(","); pp.space() }
@@ -137,14 +138,14 @@ val default_indent = 3
 
     fun pp_atom_(a: atom_t) = pp_atom_(pp, a, eloc)
     fun pp_ktyp_(t: ktyp_t) = pp_ktyp_(pp, t, 0, eloc)
-    fun pp_ktyp_detailed_(t: ktyp_t) = pp_ktyp_(pp, t, 0, eloc, brief=true)
+    fun pp_ktyp_detailed_(t: ktyp_t) = pp_ktyp_(pp, t, 0, eloc, detailed=true)
     fun pp_dom_(r: dom_t) = pp_dom_(pp, r, eloc)
     fun pp_id_(i: id_t) = pp_id_(pp, i, eloc)
-    fun pp_idtyp_(i: id_t, t: ktyp_t) {
+    fun pp_idtyp_(i: id_t, t: ktyp_t, ~detailed:bool) {
         pp_id_(pp, i, eloc)
         match t {
         | KTypVoid => {}
-        | _ => pp.str(": "); pp_ktyp_detailed_(t)
+        | _ => pp.str(": "); pp_ktyp_(pp, t, 0, eloc, detailed=detailed)
         }
     }
     fun pp_exp_(e: kexp_t) = pp_exp_(pp, e)
@@ -203,7 +204,7 @@ val default_indent = 3
         pp.begin()
         val {kv_typ, kv_flags} = get_kval(n, loc)
         Ast_pp.pprint_val_flags(pp, kv_flags)
-        pp.str("val "); pp_idtyp_(n, kv_typ)
+        pp.str("val "); pp_idtyp_(n, kv_typ, detailed=false)
         pp.str(" ="); pp.end(); pp.space(); pp_exp_(e0)
         pp.end()
     | KDefFun (ref {kf_name, kf_args, kf_rt, kf_body, kf_closure, kf_flags, kf_loc}) =>
@@ -216,11 +217,11 @@ val default_indent = 3
         pp.str("fun "); pp_id_(kf_name); pp.str("(")
         pp.cut(); pp.begin()
         for (n, t)@i <- kf_args {
-            if i > 0 { pp.str(","); pp.space() }; pp_idtyp_(n, t)
+            if i > 0 { pp.str(","); pp.space() }; pp_idtyp_(n, t, detailed=false)
         }
         if kci_arg != noid {
             if nargs > 0 { pp.str(";"); pp.space() }
-            pp_idtyp_(kci_arg, KTypName(kci_fcv_t))
+            pp_idtyp_(kci_arg, KTypName(kci_fcv_t), detailed=false)
         }
         pp.end(); pp.cut(); pp.str("):")
         pp.space(); pp_ktyp_(kf_rt)
@@ -230,12 +231,12 @@ val default_indent = 3
         }
         pp.end(); pp.newline()
     | KDefExn (ref {ke_name, ke_typ, ke_loc}) =>
-        pp.str("exception "); pp_idtyp_(ke_name, ke_typ)
+        pp.str("exception "); pp_idtyp_(ke_name, ke_typ, detailed=true)
     | KDefTyp (ref {kt_name, kt_typ, kt_props, kt_loc}) =>
         pp.begin(); ppktp(kt_props); pp.str("type ")
         pp_id_(kt_name); pp.str(" ="); pp.space(); pp_ktyp_detailed_(kt_typ)
         pp.end(); pp.newline()
-    | KDefVariant (ref {kvar_name, kvar_cases, kvar_props, kvar_ctors, kvar_flags, kvar_loc}) =>
+    | KDefVariant (ref {kvar_name, kvar_cases, kvar_props, kvar_ctors, kvar_ifaces, kvar_flags, kvar_loc}) =>
         val is_opt0 = kvar_flags.var_flag_opt
         val is_recursive = kvar_flags.var_flag_recursive
         pp.begin(); ppktp(kvar_props)
@@ -243,10 +244,25 @@ val default_indent = 3
         if is_opt0 { pp.str("@@option_like ") }
         if !kvar_flags.var_flag_have_tag { pp.str("@@no_tag ") }
         pp.str("type"); pp.space()
-        pp_id_(kvar_name); pp.str(" ="); pp.space()
+        pp_id_(kvar_name);
+        if kvar_ifaces != [] {
+            pp.space(); pp.str("implements"); pp.space()
+            pp.beginv(0)
+            for (iface, impl)@i <- kvar_ifaces {
+                if i > 0 { pp.str(","); pp.space() }
+                pp.begin(); pp_id_(iface); pp.str(":{ ");
+                for f@j <- impl {
+                    if j > 0 { pp.str(","); pp.space() }
+                    pp_id_(f)
+                }
+                pp.str(" }"); pp.end()
+            }
+            pp.end()
+        }
+        pp.str(" ="); pp.space()
         val ncases = kvar_cases.length()
         for (v, t)@i <- kvar_cases {
-            pp.str("| "); pp_idtyp_(v, t)
+            pp.str("| "); pp_idtyp_(v, t, detailed=true)
             if i+1 < ncases { pp.space() }
         }
         pp.end(); pp.newline()
@@ -257,17 +273,29 @@ val default_indent = 3
             for c@i <- kvar_ctors {
                 if i > 0 { pp.str(","); pp.space() }
                 pp.str("<"); pp_id_(c); pp.str(": ");
-                pp_idtyp_(c, get_idk_ktyp(c, kvar_loc))
+                pp_idtyp_(c, get_idk_ktyp(c, kvar_loc), detailed=false)
                 pp.str(">: ")
             }
             pp.end(); pp.newline()
         }
+    | KDefInterface (ref {ki_name, ki_base, ki_all_methods, ki_scope, ki_loc}) =>
+        pp.beginv()
+        pp.str("interface "); pp_id_(ki_name)
+        if ki_base != noid { pp.str(": "); pp_id_(ki_base) }
+        val nmembers = ki_all_methods.length()
+        pp.str(" {"); pp.newline();
+        for (f, t)@i <- ki_all_methods {
+            pp_idtyp_(f, t, detailed=false); pp.str(";");
+            if i < nmembers - 1 {pp.space()}
+        }
+        pp.end(); pp.space(); pp.str("}")
+        pp.newline()
     | KDefClosureVars (ref {kcv_name, kcv_freevars, kcv_loc}) =>
         pp.beginv(); pp.begin(); pp.str("closure_data "); pp_id_(kcv_name)
-        pp.str(" = {"); pp.end(); pp.space();
+        pp.str(" = {"); pp.end(); pp.newline();
         val nfv = kcv_freevars.length()
         for (n, t)@i <- kcv_freevars {
-            pp_idtyp_(n, t); pp.str(";");
+            pp_idtyp_(n, t, detailed=false); pp.str(";");
             if i+1 < nfv { pp.space() }
         }
         pp.space(); pp.str("}")
@@ -316,18 +344,18 @@ val default_indent = 3
             | KTypName n =>
                 match kinfo_(n, loc) {
                 | KTyp (ref {kt_name, kt_typ=KTypRecord (_, rec_elems)}) => (kt_name, rec_elems)
-                | _ => throw compile_err(loc, "KPP: invalid record type in KExpMkRecord(...)")
+                | KVariant (ref {kvar_cases=(rn, KTypRecord(_, rec_elems)) :: []}) => (rn, rec_elems)
+                | _ => throw compile_err(loc, f"KPP: invalid record type '{KTypName(n)}' in KExpMkRecord(...)")
                 }
-            | _ => throw compile_err(loc, "KPP: invalid record type in KExpMkRecord(...)")
+            | _ => throw compile_err(loc, f"KPP: invalid record type '{t}' in KExpMkRecord(...)")
             }
         pp.str("__record__ "); if rn != noid { pp_id_(rn); pp.str(" ") }
-        pp.str("{"); pp.breaki();
+        pp.str("{"); pp.newline()
         for a@i <- al, (n, t) <- relems {
             if i > 0 { pp.str(","); pp.space() }
             pp_id_(n); pp.str(" = "); pp_atom_(a)
         }
-        pp.breaku()
-        pp.str("}"); pp.end()
+        pp.breaku(); pp.str("}"); pp.end()
     | KExpMkClosure(make_fp, f, args, (_, loc)) =>
         pp.begin();
         pp.str("__make_closure__ "); pp_id_(make_fp);
@@ -357,6 +385,9 @@ val default_indent = 3
         pp.end(); pp.space(); pp.str("|]")
     | KExpCall (f, args, (_, loc)) =>
         pp.begin(); pp_id_(f); pp.str("("); pp.cut();
+        ppatoms_(args); pp.cut(); pp.str(")"); pp.end()
+    | KExpICall (obj, meth, args, (_, loc)) =>
+        pp.begin(); pp_id_(obj); pp.str("."); pp.str(pp_(meth)); pp.str("("); pp.cut();
         ppatoms_(args); pp.cut(); pp.str(")"); pp.end()
     | KExpAt (a, border, interp, args, _) =>
         pp.begin();

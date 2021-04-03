@@ -44,6 +44,8 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
     | KVariant (ref {kvar_cases}) =>
         fold deps = empty_idset for (_, ti) <- kvar_cases { get_ktyp_deps_(ti, deps) }
     | KTyp (ref {kt_typ}) => get_ktyp_deps_(kt_typ, empty_idset)
+    | KInterface (ref {ki_all_methods}) =>
+        fold deps = empty_idset for (_, ti) <- ki_all_methods { get_ktyp_deps_(ti, deps) }
     | _ => throw compile_err(loc, f"the symbol '{idk2str(n, loc)}' is not a type")
     }
 }
@@ -191,6 +193,10 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
                     *kt = kt->{kt_props=Some(ktp)}
                     ktp
                 }
+            | KInterface ki =>
+                ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=false,
+                    ktp_pass_by_ref=true, ktp_custom_free=false,
+                    ktp_custom_copy=false }
             | _ => throw compile_err(loc, f"unsupported named type '{idk2str(n, loc)}'")
             }
         }

@@ -288,14 +288,17 @@ fun parse_dot_ident(ts: tklist_t, expect_dot: bool, result: string): (tklist_t, 
     }
 }
 
-fun parse_ident_list(ts: tklist_t, expect_comma: bool, result: id_t list): (tklist_t, id_t list) =
+fun parse_ident_list(ts: tklist_t, expect_comma: bool, dot_idents: bool, result: id_t list): (tklist_t, id_t list) =
     match ts {
     | (COMMA, _) :: rest =>
-        if expect_comma {parse_ident_list(rest, false, result)}
+        if expect_comma {parse_ident_list(rest, false, dot_idents, result)}
         else {throw parse_err(ts, "extra ','?")}
     | (IDENT(_, i), _) :: rest =>
         if expect_comma { (ts, result.rev()) }
-        else { parse_ident_list(rest, true, get_id(i) :: result) }
+        else {
+            val (ts, i) = if dot_idents { parse_dot_ident(ts, false, "") } else { (rest, i) }
+            parse_ident_list(ts, true, dot_idents, get_id(i) :: result)
+        }
     | _ =>
         if result == [] { throw parse_err(ts, "empty id list") }
         (ts, result.rev())
@@ -697,6 +700,9 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
         | (OBJECT, _) :: (TYPE, _) :: _ | (TYPE, _) :: _ =>
             val (ts, deftyp) = parse_deftype(ts)
             extend_expseq_(ts, deftyp :: result)
+        | (INTERFACE, l1) :: rest =>
+            val (ts, defiface) = parse_iface(rest, l1)
+            extend_expseq_(ts, defiface :: result)
         | (FUN, _) :: (LPAREN _, _) :: _ =>
             val (ts, e) = parse_lambda(ts)
             extend_expseq_(ts, e :: result)
@@ -757,7 +763,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
             | (IMPORT _, _) :: (STAR _, _) :: rest =>
                 extend_expseq_(rest, DirImportFrom(m_, [], l1) :: result)
             | (IMPORT _, _) :: rest =>
-                val (ts, il) = parse_ident_list(rest, false, [])
+                val (ts, il) = parse_ident_list(rest, false, false, [])
                 extend_expseq_(ts, DirImportFrom(m_, il, l1) :: result)
             | _ =>
                 throw parse_err(ts, "'import' is expected")
@@ -1023,7 +1029,7 @@ fun get_opname(t: token_t): id_t =
 fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
 {
     var is_private = false, is_pure = false, is_nothrow = false, is_inline = false
-    var vts = ts, fname = noid, loc = noloc
+    var vts = ts, iface = noid, fname = noid, loc = noloc
 
     while true {
         match vts {
@@ -1039,8 +1045,17 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
         | (INLINE, _) :: rest =>
             if is_inline {throw parse_err(ts, "duplicate @inline attribute")}
             is_inline = true; vts = rest
-        | (FUN, l1) :: (IDENT(_, i), _) :: (LPAREN _, _) :: rest =>
-            vts = rest; fname = get_id(i); loc = l1; break
+        | (FUN, l1) :: (IDENT(_, i), _) :: _ =>
+            val (ts, f) = parse_dot_ident(vts.tl(), false, "")
+            val dot_pos = f.rfind('.')
+            val (iface_, fname_) =
+                if dot_pos >= 0 {(get_id(f[:dot_pos]), get_id(f[dot_pos+1:]))}
+                else {(noid, get_id(f))}
+            vts = match ts {
+                | (LPAREN(_), _) :: rest => rest
+                | _ => throw parse_err(ts, "'(' is expected after function name")
+                }
+            iface = iface_; fname = fname_; loc = l1; break
         | (OPERATOR, l1) :: (t, l2) :: (LPAREN _, _) :: rest =>
             vts = rest; fname = get_opname(t); loc = l1
             if fname == noid { throw ParseError(l2, "invalid operator name") }
@@ -1057,7 +1072,8 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
             fun_flag_nothrow=is_nothrow,
             fun_flag_pure=if is_pure {1} else {-1},
             fun_flag_inline=is_inline,
-            fun_flag_has_keywords=have_keywords}, loc)
+            fun_flag_method_of=iface,
+            fun_flag_have_keywords=have_keywords}, loc)
 }
 
 fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
@@ -1138,7 +1154,7 @@ fun parse_lambda(ts: tklist_t): (tklist_t, exp_t)
     val fname = gen_temp_id("lambda")
     val fname_exp = make_ident(fname, loc)
     val (ts, df) = parse_body_and_make_fun(ts, fname, params, rt, prologue,
-        default_fun_flags().{fun_flag_private=true, fun_flag_has_keywords=have_keywords}, loc)
+        default_fun_flags().{fun_flag_private=true, fun_flag_have_keywords=have_keywords}, loc)
     (ts, ExpSeq(df :: fname_exp :: [], make_new_ctx(loc)))
 }
 
@@ -1699,8 +1715,19 @@ fun parse_deftype(ts: tklist_t)
         }
 
     val (ts, tname, loc) = match ts {
-        | (IDENT(_, i), loc) :: (EQUAL, _) :: rest => (rest, get_id(i), loc)
-        | _ => throw parse_err(ts, f"the type name, followed by '=' is expected")
+        | (IDENT(_, n), loc) :: rest => (rest, get_id(n), loc)
+        | _ => throw parse_err(ts, "the type name is expected")
+        }
+
+    val (ts, ifaces) = match ts {
+        | (COLON, _) :: rest =>
+            val (ts, ifaces) = parse_ident_list(rest, false, true, [])
+            (ts, [: for i <- ifaces { (i, ([] : (id_t, id_t) list)) } :])
+        | _ => (ts, [])
+        }
+    val ts = match ts {
+        | (EQUAL, _) :: rest => rest
+        | _ => throw parse_err(ts, "'=' is expected")
         }
 
     //println(f"type definition body({tok2str(ts)})\n")
@@ -1711,10 +1738,11 @@ fun parse_deftype(ts: tklist_t)
             dvar_name = tname, dvar_templ_args=type_params,
             dvar_alias = make_new_typ(),
             dvar_flags = default_variant_flags().{
-                var_flag_record=true,
+                var_flag_record=ifaces == [],
                 var_flag_object=object_type_module },
             dvar_cases = (tname, t) :: [],
             dvar_ctors = [],
+            dvar_ifaces = ifaces,
             dvar_templ_inst = ref [],
             dvar_scope = [],
             dvar_loc = loc
@@ -1758,19 +1786,61 @@ fun parse_deftype(ts: tklist_t)
                 var_flag_object=object_type_module},
             dvar_cases = cases,
             dvar_ctors = [],
+            dvar_ifaces = ifaces,
             dvar_templ_inst = ref [],
             dvar_scope = [],
             dvar_loc = loc
         })
         (ts, DefVariant(dvar))
     | _ =>
-        if object_type_module != noid { throw parse_err(ts, "type aliase (i.e. not a record nor variant) cannot be 'object type'") }
+        if object_type_module != noid { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot be 'object type'") }
+        if ifaces != [] { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot implement any interfaces") }
         val (ts, t) = parse_typespec(ts)
         val dt = ref (deftyp_t {
             dt_name=tname, dt_templ_args=type_params, dt_typ=t, dt_finalized=false,
             dt_scope=[], dt_loc=loc })
         (ts, DefTyp(dt))
     }
+}
+
+type iface_method_t = (id_t, typ_t, fun_flags_t)
+
+fun parse_iface(ts: tklist_t, loc: loc_t)
+{
+    val (ts, iname) = match ts {
+        | (IDENT(_, n), _) :: rest => (rest, get_id(n))
+        | _ => throw parse_err(ts, "interface name (identifier) is expected")
+        }
+    val (ts, base_iface) = match ts {
+        | (COLON, _) :: rest =>
+            val (ts, base_iface) = parse_dot_ident(rest, false, "")
+            (ts, get_id(base_iface))
+        | _ => (ts, noid)
+        }
+    val ts = match ts {
+        | (LBRACE, _) :: rest => rest
+        | _ => throw parse_err(ts, "'{' is expected")
+        }
+    fun parse_iface_members_(ts: tklist_t, members: iface_method_t list): (tklist_t, iface_method_t list) =
+        match ts {
+        | (FUN, _) :: (IDENT(_, f), _) :: (LPAREN _, _) :: rest =>
+            val (ts, params, rt, _, have_keywords) = parse_fun_params(rest)
+            val paramtyps = [: for p <- params {
+                match p {
+                | PatTyped(_, t, loc) => t
+                | _ => throw parse_err(rest,
+                    "all parameters of interface methods should be identifiers with types ('param: type'); more complex patterns are not allowed")
+                }
+            } :]
+            val fflags = default_fun_flags().{fun_flag_have_keywords = have_keywords}
+            parse_iface_members_(ts, (get_id(f), TypFun(paramtyps, rt), fflags) :: members)
+        | (RBRACE, _) :: rest => (rest, members.rev())
+        | _ => throw parse_err(ts, "expected 'fun <ident> (...' or '}'")
+        }
+    val (ts, members) = parse_iface_members_(ts, [])
+    val iface = ref (definterface_t {di_name=iname, di_base=base_iface, di_new_methods=members,
+                                     di_all_methods=[], di_scope=[], di_loc=loc})
+    (ts, DefInterface(iface))
 }
 
 fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list): bool

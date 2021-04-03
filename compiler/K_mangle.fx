@@ -167,6 +167,16 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             } else {
                 remove_fx(kt_cname) :: result
             }
+        | KInterface ki =>
+            val {ki_name, ki_cname, ki_scope} = *ki
+            if ki_cname == "" {
+                val (_, cname) =
+                    mangle_inst_(ki_name, "I", [], ki_name, ki_scope)
+                *ki = ki->{ki_cname=add_fx(cname)}
+                cname :: result
+            } else {
+                remove_fx(ki_cname) :: result
+            }
         | _ => throw compile_err(loc, f"unsupported type '{idk2str(n, loc)}' (should be variant or record)")
         }
     fun mangle_ktyp_(t: ktyp_t, result: string list): string list =

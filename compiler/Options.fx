@@ -65,17 +65,17 @@ where options can be some of:
     -pr-k0          Print just generated K-form
     -pr-k           Print optimized K-form of the parsed files
                     (only a part of the generated K-form is retained
-                    because of the deadcode elimination step)
+                    because of the dead code elimination step)
     -no-c           Do not generate C code
     -app            Build application (default mode)
     -run            Build application and run it
     -O0             Optimization level 0: disable all optimizations
                                          except for the most essential ones
-    -O1             Optimization level 1 (default): enable most of optimizations
+    -O1             Optimization level 1 (default): enable most of the optimizations
     -O3             Optimization level 3: enable all optimizations
     -no-openmp      Disable OpenMP (OpenMP is enabled by default)
     -debug          Turn on debug information, disable optimizations
-                    (but can be overwritten with further -On)
+                    (but it can be overwritten with further -On)
     -optim-iters    The number of optimization iterations to perform (2 or 3 by default, depending on -O<n>)
     -inline-threshold  Inline threshold (100 by default); the higher it is,
                     the bigger functions are inlined;

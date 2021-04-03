@@ -106,6 +106,7 @@ type kexp_t =
     | KExpSeq: (kexp_t list, kctx_t)
     | KExpIf: (kexp_t, kexp_t, kexp_t, kctx_t)
     | KExpCall: (id_t, atom_t list, kctx_t)
+    | KExpICall: (id_t, id_t, atom_t list, kctx_t)
     | KExpMkTuple: (atom_t list, kctx_t)
     | KExpMkRecord: (atom_t list, kctx_t)
     | KExpMkClosure: (id_t, id_t, atom_t list, kctx_t)
@@ -126,6 +127,7 @@ type kexp_t =
     | KDefFun: kdeffun_t ref
     | KDefExn: kdefexn_t ref
     | KDefVariant: kdefvariant_t ref
+    | KDefInterface: kdefinterface_t ref
     | KDefTyp: kdeftyp_t ref
     | KDefClosureVars: kdefclosurevars_t ref
 
@@ -185,8 +187,19 @@ type kdefvariant_t =
     kvar_cases: (id_t, ktyp_t) list;
     kvar_ctors: id_t list;
     kvar_flags: var_flags_t;
+    kvar_ifaces: (id_t, id_t list) list;
     kvar_scope: scope_t list;
     kvar_loc: loc_t
+}
+
+type kdefinterface_t =
+{
+    ki_name: id_t;
+    ki_base: id_t;
+    ki_cname: string;
+    ki_all_methods: (id_t, ktyp_t) list;
+    ki_scope: scope_t list;
+    ki_loc: loc_t
 }
 
 type kdeftyp_t =
@@ -226,6 +239,7 @@ type kinfo_t =
     | KExn: kdefexn_t ref
     | KVariant: kdefvariant_t ref
     | KClosureVars: kdefclosurevars_t ref
+    | KInterface: kdefinterface_t ref
     | KTyp: kdeftyp_t ref
 
 val _KLitVoid = KLitNil(KTypVoid)
@@ -297,6 +311,7 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KExpSeq(_, c) => c
     | KExpIf(_, _, _, c) => c
     | KExpCall(_, _, c) => c
+    | KExpICall(_, _, _, c) => c
     | KExpMkTuple(_, c) => c
     | KExpMkRecord(_, c) => c
     | KExpMkClosure(_, _, _, c) => c
@@ -318,6 +333,7 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KDefExn (ref {ke_loc}) => (KTypVoid, ke_loc)
     | KDefVariant (ref {kvar_loc}) => (KTypVoid, kvar_loc)
     | KDefTyp (ref {kt_loc}) => (KTypVoid, kt_loc)
+    | KDefInterface (ref {ki_loc}) => (KTypVoid, ki_loc)
     | KDefClosureVars (ref {kcv_loc}) => (KTypVoid, kcv_loc)
 }
 
@@ -342,6 +358,7 @@ fun get_kscope(info: kinfo_t): scope_t list
     | KFun (ref {kf_scope}) => kf_scope
     | KExn (ref {ke_scope}) => ke_scope
     | KVariant (ref {kvar_scope}) => kvar_scope
+    | KInterface (ref {ki_scope}) => ki_scope
     | KClosureVars (ref {kcv_scope}) => kcv_scope
     | KTyp (ref {kt_scope}) => kt_scope
 }
@@ -356,6 +373,7 @@ fun get_kinfo_loc(info: kinfo_t): loc_t
     | KExn (ref {ke_loc}) => ke_loc
     | KVariant (ref {kvar_loc}) => kvar_loc
     | KTyp (ref {kt_loc}) => kt_loc
+    | KInterface (ref {ki_loc}) => ki_loc
     | KClosureVars (ref {kcv_loc}) => kcv_loc
 }
 
@@ -374,6 +392,7 @@ fun get_kinfo_cname(info: kinfo_t, loc: loc_t): string =
     | KFun (ref {kf_cname}) => kf_cname
     | KExn (ref {ke_cname}) => ke_cname
     | KVariant (ref {kvar_cname}) => kvar_cname
+    | KInterface (ref {ki_cname}) => ki_cname
     | KClosureVars (ref {kcv_cname}) => kcv_cname
     | KTyp (ref {kt_cname}) => kt_cname
     }
@@ -408,6 +427,7 @@ fun get_kinfo_typ(info: kinfo_t, n: id_t, loc: loc_t): ktyp_t
     | KFun (ref {kf_args, kf_rt}) => get_kf_typ(kf_args, kf_rt)
     | KExn _ => KTypExn
     | KVariant (ref {kvar_name}) => KTypName(kvar_name)
+    | KInterface (ref {ki_name}) => KTypName(ki_name)
     | KClosureVars (ref {kcv_name, kcv_freevars}) => KTypRecord(kcv_name, kcv_freevars)
     | KTyp (ref {kt_typ=KTypRecord(_, _) as kt_typ}) => kt_typ
     | KTyp (ref {kt_name}) => KTypName(kt_name)
@@ -476,6 +496,32 @@ fun get_kval(n: id_t, loc: loc_t): kdefval_t
     | _ =>
         val loc = if loc != noloc { loc } else { get_kinfo_loc(info) }
         throw compile_err(loc, f"symbol '{n}' is expected to be KVal ...")
+    }
+}
+
+fun get_kvariant(t: ktyp_t, loc: loc_t): kdefvariant_t ref
+{
+    val t = deref_ktyp(t, loc)
+    match t {
+    | KTypName(tn) =>
+        match kinfo_(tn, loc) {
+        | KVariant(kvar) => kvar
+        | _ => throw compile_err(loc, f"type '{tn}' is expected to be a variant")
+        }
+    | _ => throw compile_err(loc, "variant (or sometimes an exception) is expected here")
+    }
+}
+
+fun get_kinterface_opt(t: ktyp_t, loc: loc_t): kdefinterface_t ref?
+{
+    val t = deref_ktyp(t, loc)
+    match t {
+    | KTypName(tn) =>
+        match kinfo_(tn, loc) {
+        | KInterface(ki) => Some(ki)
+        | _ => None
+        }
+    | _ => None
     }
 }
 
@@ -610,6 +656,8 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
             new_row.rev() } :],
         walk_kctx_(ctx))
     | KExpCall(f, args, ctx) => KExpCall(walk_id_(f), walk_al_(args), walk_kctx_(ctx))
+    | KExpICall(obj, meth, args, ctx) =>
+        KExpICall(walk_id_(obj), walk_id_(meth), walk_al_(args), walk_kctx_(ctx))
     | KExpAt(a, border, interp, idx, ctx) =>
         KExpAt(walk_atom_(a), border, interp, idx.map(walk_dom_), walk_kctx_(ctx))
     | KExpAssign(lv, rv, loc) => KExpAssign(walk_id_(lv), walk_atom_(rv), loc)
@@ -636,7 +684,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
     | KExpCast(a, t, loc) => KExpCast(walk_atom_(a), walk_ktyp_(t), loc)
     | KExpCCode(str, ctx) => KExpCCode(str, walk_kctx_(ctx))
     | KDefVal(k, e, loc) => KDefVal(walk_id_(k), walk_kexp_(e), loc)
-    | KDefFun(kf) =>
+    | KDefFun kf =>
         val {kf_name, kf_args, kf_rt, kf_body, kf_closure} = *kf
         val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
         *kf = kf->{
@@ -656,24 +704,33 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
                 }
             }
         e
-    | KDefExn(ke) =>
+    | KDefExn ke =>
         val {ke_name, ke_tag, ke_make, ke_typ} = *ke
         *ke = ke->{ke_name=walk_id_(ke_name), ke_typ=walk_ktyp_(ke_typ),
                    ke_tag=walk_id_(ke_tag), ke_make=walk_id_(ke_make)}
         e
-    | KDefVariant(kvar) =>
-        val {kvar_name, kvar_cases, kvar_ctors} = *kvar
+    | KDefVariant kvar =>
+        val {kvar_name, kvar_cases, kvar_ifaces, kvar_ctors} = *kvar
         *kvar = kvar->{
             kvar_name=walk_id_(kvar_name),
             kvar_cases=[: for (n, t) <- kvar_cases { (walk_id_(n), walk_ktyp_(t)) } :],
+            kvar_ifaces=[: for (iname, meths) <- kvar_ifaces {(walk_id_(iname), meths.map(walk_id_))} :],
             kvar_ctors=kvar_ctors.map(walk_id_)
             }
         e
-    | KDefTyp(kt) =>
+    | KDefTyp kt =>
         val {kt_name, kt_typ} = *kt
         *kt = kt->{kt_name=walk_id_(kt_name), kt_typ=walk_ktyp_(kt_typ)}
         e
-    | KDefClosureVars(kcv) =>
+    | KDefInterface ki =>
+        val {ki_name, ki_base, ki_all_methods} = *ki
+        *ki = ki->{
+            ki_name=walk_id_(ki_name),
+            ki_base=walk_id_(ki_base),
+            ki_all_methods=[: for (f, t) <- ki_all_methods {(walk_id_(f), walk_ktyp_(t))} :]
+            }
+        e
+    | KDefClosureVars kcv =>
         val {kcv_name, kcv_freevars, kcv_orig_freevars} = *kcv
         *kcv = kcv->{
             kcv_name=walk_id_(kcv_name),
@@ -785,6 +842,8 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
         fold_ktyp_(t)
     | KExpCall(f, args, (t, _)) =>
         fold_id_(f); fold_al_(args); fold_ktyp_(t)
+    | KExpICall(obj, meth, args, (t, _)) =>
+        fold_id_(obj); fold_id_(meth); fold_al_(args); fold_ktyp_(t)
     | KExpAt(a, border, interp, idx, (t, _)) =>
         fold_atom_(a); idx.app(fold_dom_); fold_ktyp_(t)
     | KExpAssign(lv, rv, loc) =>
@@ -818,7 +877,7 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     | KExpCCode(_, (t, _)) => fold_ktyp_(t)
     | KDefVal(k, e, loc) =>
         fold_id_(k); fold_kexp_(e)
-    | KDefFun(df) =>
+    | KDefFun df =>
         val {kf_name, kf_args, kf_rt, kf_body, kf_closure} = *df
         val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
         fold_id_(kf_name)
@@ -830,22 +889,26 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
         fold_id_(kci_make_fp)
         fold_id_(kci_wrap_f)
         fold_kexp_(kf_body)
-    | KDefExn(ke) =>
+    | KDefExn ke =>
         val {ke_name, ke_typ, ke_tag, ke_make} = *ke
         fold_id_(ke_name)
         fold_ktyp_(ke_typ)
         fold_id_(ke_tag)
         fold_id_(ke_make)
-    | KDefVariant(kvar) =>
+    | KDefVariant kvar =>
         val {kvar_name, kvar_cases, kvar_ctors} = *kvar
         fold_id_(kvar_name)
         for (n, t) <- kvar_cases { fold_id_(n); fold_ktyp_(t) }
         kvar_ctors.app(fold_id_)
-    | KDefTyp(kt) =>
+    | KDefTyp kt =>
         val {kt_name, kt_typ} = *kt
         fold_id_(kt_name)
         fold_ktyp_(kt_typ)
-    | KDefClosureVars(kcv) =>
+    | KDefInterface ki =>
+        val {ki_name, ki_base, ki_all_methods} = *ki
+        fold_id_(ki_name); fold_id_(ki_base)
+        for (f, t) <- ki_all_methods { fold_id_(f); fold_ktyp_(t) }
+    | KDefClosureVars kcv =>
         val {kcv_name, kcv_freevars, kcv_orig_freevars} = *kcv
         fold_id_(kcv_name)
         for (n, t) <- kcv_freevars { fold_id_(n); fold_ktyp_(t) }
@@ -892,8 +955,8 @@ fun used_by(code: kcode_t, size0: int): id_hashset_t
                 used_by_ktyp_(ti, kvar_loc, callb)
             }
             remove_unless(have_kvar_name, kvar_name)
-        | KDefClosureVars _ =>
-            {}
+        | KDefClosureVars _ => {}
+        | KDefInterface ki => add_id(ki->ki_base)
         | KDefTyp (ref {kt_name, kt_typ, kt_loc}) =>
             val have_kt_name = all_used.mem(kt_name)
             used_by_ktyp_(kt_typ, kt_loc, callb)
@@ -928,6 +991,7 @@ fun declared(code: kcode_t, size0: int): id_hashset_t
             all_decl.add(kf_name)
             for (a, _) <- kf_args { all_decl.add(a) }
         | KDefClosureVars (ref {kcv_name}) => all_decl.add(kcv_name)
+        | KDefInterface (ref {ki_name}) => all_decl.add(ki_name)
         | KDefExn (ref {ke_name}) =>
             all_decl.add(ke_name)
         | KDefVariant (ref {kvar_name, kvar_cases}) =>
@@ -970,7 +1034,7 @@ fun is_mutable(n: id_t, loc: loc_t): bool
     | KVal ({kv_flags}) => kv_flags.val_flag_mutable
     | KFun _ => false
     | KExn _ => false
-    | KClosureVars _ | KVariant _ | KTyp _ => false
+    | KClosureVars _ | KVariant _ | KInterface _ | KTyp _ => false
     }
 }
 
@@ -1018,6 +1082,7 @@ fun deref_ktyp(kt: ktyp_t, loc: loc_t): ktyp_t =
         match kinfo_(n, loc) {
         | KTyp (ref {kt_typ, kt_loc}) => deref_ktyp(kt_typ, kt_loc)
         | KVariant _ => kt
+        | KInterface _ => kt
         | _ => throw compile_err(loc, f"named 'type' '{n}' does not represent a type")
         }
     | _ => kt
@@ -1063,7 +1128,8 @@ fun kexp2atom(prefix: string, e: kexp_t, tref: bool, code: kcode_t): (atom_t, kc
         | _ => {}}
         val tref =
             match e {
-            | KExpMem(_, _, _) | KExpAt(_, BorderNone, InterpNone, _, _) | KExpUnary(OpDeref, _, _) => tref
+            | KExpMem(_, _, _) | KExpAt(_, BorderNone, InterpNone, _, _)
+            | KExpUnary(OpDeref, _, _) | KExpIntrin(IntrinVariantCase, _, _) => tref
             | _ => false
             }
         val code = create_kdefval(tmp_id, ktyp, default_val_flags().{
@@ -1164,43 +1230,4 @@ fun atom2str(a: atom_t): string
 {
     | AtomId(n) => idk2str(n, noloc)
     | AtomLit(l) => klit2str(l, false, noloc)
-}
-
-fun kexp2str(e: kexp_t): string
-{
-    val l = get_kexp_loc(e)
-    match e {
-    | KExpNop _ => "KExpNop"
-    | KExpBreak _ => "KExpBreak"
-    | KExpContinue _ => "KExpContinue"
-    | KExpAtom(a, _) => "KExpAtom(" + atom2str(a) + ")"
-    | KExpBinary(bop, a, b, _) => f"KExpBinary({bop}, {atom2str(a)}, {atom2str(b)})"
-    | KExpUnary(uop, a, _) => f"KExpUnary({uop}, {atom2str(a)})"
-    | KExpIntrin(i, _, _) => f"KExpIntrin({i}), ...)"
-    | KExpSeq(_, _) => "KExpSeq(...)"
-    | KExpIf(_, _, _, _) => "KExpIf(...)"
-    | KExpCall(f, args, _) => f"KExpCall({idk2str(f, l)}, ...)"
-    | KExpMkTuple(_, _) => "KExpMkTuple(...)"
-    | KExpMkRecord(_, _) => "KExpMkRecord(...)"
-    | KExpMkClosure(_, f, _, _) => f"KExpMkClosure(...{idk2str(f, l)}...)"
-    | KExpMkArray(_, _) => "KExpMkArray(...)"
-    | KExpAt(_, _, _, _, _) => "KExpAt(...)"
-    | KExpMem(i, _, _) => f"KExpMem({idk2str(i, l)}.*)"
-    | KExpAssign(i, _, _) => f"KExpAssign({idk2str(i, l)}=...)"
-    | KExpMatch(_, _) => "KExpMatch(...)"
-    | KExpTryCatch(_, _, _) => "KExpTryCatch(...)"
-    | KExpThrow(n, f, _) => if f { f"KExp(ReThrow({idk2str(n, l)}))" } else { "KExp(Throw({idk2str(n)}))"}
-    | KExpCast(_, _, _) => "KExpCast(...)"
-    | KExpMap(_, _, _, _) => "KExpMap(...)"
-    | KExpFor(_, _, _, _, _) => "KExpFor(...)"
-    | KExpWhile(_, _, _) => "KExpWhile(...)"
-    | KExpDoWhile(_, _, _) => "KExpDoWhile(...)"
-    | KExpCCode(_, _) => "KExpCCode(...)"
-    | KDefVal(i, _, _) => f"KDefVal({idk2str(i, l)}=...)"
-    | KDefFun (ref {kf_name}) => f"KDefFun({idk2str(kf_name, l)}=...)"
-    | KDefExn (ref {ke_name}) => f"KDefExn({idk2str(ke_name, l)}=...)"
-    | KDefVariant (ref {kvar_name}) => f"KDefVar({idk2str(kvar_name, l)}=...)"
-    | KDefTyp (ref {kt_name}) => f"KDefTyp({idk2str(kt_name, l)}=...)"
-    | KDefClosureVars (ref {kcv_name}) => f"KDefClosureVars({idk2str(kcv_name, l)}=...)"
-    }
 }

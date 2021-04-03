@@ -316,7 +316,6 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         }
         (KExpMkRecord(ratoms.rev(), kctx), code)
     | ExpCall(f, args, _) =>
-        val (f_id, code) = exp2id(f, code, false, sc, "a function name cannot be a literal")
         val (args, kwarg_opt) =
             match args.rev() {
             | (ExpMkRecord(ExpNop _, _, _) as mkrec) :: rest => (rest.rev(), Some(mkrec))
@@ -336,7 +335,22 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                 }
             | _ => (args.rev(), code)
             }
-        (KExpCall(f_id, args, kctx), code)
+        val (f_exp, code) = exp2kexp(f, code, false, sc)
+        match f_exp {
+        | KExpMem(obj, idx, (_, f_loc)) =>
+            val t = get_idk_ktyp(obj, f_loc)
+            match get_kinterface_opt(t, f_loc) {
+            | Some(iface) =>
+                val mname = iface->ki_all_methods.nth(idx).0
+                (KExpICall(obj, mname, args, kctx), code)
+            | _ =>
+                val (f_id, code) = kexp2id("f", f_exp, true, code, "cannot reduce obj.idx to an id (?!)")
+                (KExpCall(f_id, args, kctx), code)
+            }
+        | _ =>
+            val (f_id, code) = kexp2id("f", f_exp, true, code, "cannot reduce function expression to an id")
+            (KExpCall(f_id, args, kctx), code)
+        }
     | ExpThrow(e, _) =>
         val (a_id, code) = exp2id(e, code, false, sc, "a literal cannot be thrown as exception")
         (KExpThrow(a_id, false, eloc), code)
@@ -429,6 +443,19 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         | (KTypRecord(rn, relems), ExpIdent(n, (_, nloc))) =>
             val i = find_relem(rn, relems, n, eloc)
             (KExpMem(a_id, i, kctx), code)
+        | (KTypName(tn), ExpIdent(n, (_, nloc)))
+            when (match kinfo_(tn, eloc) { | KInterface _ => true | _ => false }) =>
+            println("got here!")
+            val iface = get_iface(tn, eloc)
+            var idx = -1
+            for (f, _, _)@i <- iface->di_all_methods {
+                if f == n { idx = i; break }
+            }
+            if idx < 0 {
+                throw compile_err(eloc,
+                f"k-norm: method '{pp(n)}' is not found in interface '{idk2str(tn, eloc)}'")
+            }
+            (KExpMem(a_id, idx, kctx), code)
         | (KTypName(tn), ExpIdent(n, (_, nloc))) =>
             if n == __tag_id__ {
                 (KExpIntrin(IntrinVariantTag, AtomId(a_id) :: [], (KTypCInt, eloc)), code)
@@ -532,7 +559,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
     | DefTyp _ => (KExpNop(eloc), code)
     | DefVariant _ => (KExpNop(eloc), code) // variant declarations are handled in batch in transform_all_types_and_cons
     | DefExn _ => (KExpNop(eloc), code) // exception declarations are handled in batch in transform_all_types_and_cons
-    | DefInterface _ => throw compile_err(eloc, "interfaces are not supported yet")
+    | DefInterface _ => (KExpNop(eloc), code) // interface declarations are handled in batch in transform_all_types_and_cons
     | DirImport(_, _) => (KExpNop(eloc), code)
     | DirImportFrom(_, _, _) => (KExpNop(eloc), code)
     | DirPragma(_, _) => (KExpNop(eloc), code)
@@ -635,7 +662,7 @@ fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t)
                 ((ctor, rectyp, kvar_cases.length() > 1), relems)
             | _ => throw compile_err(loc, f"tag '{pp(input_vn)}' is not found or is not a record")
             }
-        | _ => throw compile_err(loc, f"type '{tn}' is expected to be variant")
+        | _ => throw compile_err(loc, f"type '{tn}' is expected to be a variant")
         }
     | _ => throw compile_err(loc, "k-norm: attempt to treat non-record and non-variant as a record")
     }
@@ -659,19 +686,6 @@ fun match_record_pat(pat: pat_t, ptyp: ktyp_t): ((id_t, ktyp_t, bool, bool), (id
         ((ctor, t, multiple_cases, relems_found.length() > 1), typed_rec_pl)
     | _ => throw compile_err(get_pat_loc(pat), "record (or sometimes an exception) is expected")
     }
-
-fun get_kvariant(t: ktyp_t, loc: loc_t): kdefvariant_t ref
-{
-    val t = deref_ktyp(t, loc)
-    match t {
-    | KTypName(tn) =>
-        match kinfo_(tn, loc) {
-        | KVariant(kvar) => kvar
-        | _ => throw compile_err(loc, f"type '{tn}' is expected to be variant")
-        }
-    | _ => throw compile_err(loc, "variant (or sometimes an exception) is expected here")
-    }
-}
 
 fun match_variant_pat(pat: pat_t, ptyp: ktyp_t): ((id_t, ktyp_t), (pat_t, ktyp_t) list) =
     match pat {
@@ -1225,7 +1239,7 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t {
                 | _ => throw compile_err(inst_loc, f"the type of non-constructor function '{inst_name}' should be TypFun(_,_)")
                 }
             val (inst_args, argtyps, inst_body) =
-            if !inst_flags.fun_flag_has_keywords {
+            if !inst_flags.fun_flag_have_keywords {
                 (inst_args, argtyps, inst_body)
             } else {
                 match (inst_args.rev(), argtyps.rev(), inst_body) {
@@ -1297,14 +1311,14 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
             fold code = code for inst <- inst_list {
                 match id_info(inst, dvar_loc) {
                 | IdVariant (ref {dvar_name=inst_name, dvar_alias=inst_alias, dvar_cases,
-                                  dvar_ctors, dvar_flags, dvar_scope, dvar_loc=inst_loc}) =>
+                                  dvar_ctors, dvar_ifaces, dvar_flags, dvar_scope, dvar_loc=inst_loc}) =>
                     val targs =
                     match deref_typ(inst_alias) {
                     | TypApp(targs, _) => [: for t <- targs { typ2ktyp(t, inst_loc) } :]
                     | _ => throw compile_err(inst_loc, f"invalid variant type alias '{inst_name}'; should be TypApp(_, _)")
                     }
-                    match (dvar_cases, dvar_flags.var_flag_record) {
-                    | ((rn, TypRecord (ref (relems, _))) :: [], true) =>
+                    match (dvar_cases, dvar_flags.var_flag_record, dvar_ifaces) {
+                    | ((rn, TypRecord (ref (relems, _))) :: [], true, []) =>
                         val rec_elems = [: for (i, t, _) <- relems { (i, typ2ktyp(t, inst_loc)) } :]
                         val kt = ref (kdeftyp_t { kt_name=inst_name, kt_cname="",
                                 kt_targs=targs, kt_props=None,
@@ -1314,11 +1328,23 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                         KDefTyp(kt) :: code
                     | _ =>
                         val kvar_cases = [: for (_, t) <- dvar_cases, tag <- tags { (tag, typ2ktyp(t, inst_loc)) } :]
+                        val kvar_ifaces = [: for (iname, meths) <- dvar_ifaces {
+                                (iname, [: for (a, b) <- meths {
+                                    if b == noid {
+                                        throw compile_err(inst_loc,
+                                        f"type '{pp(dvar_name)} claims to implement interface '{pp(iname)}', " +
+                                        f"but the method '{pp(iname)}.{pp(a)}' is not implemented")
+                                    }
+                                    b
+                                } :])
+                            } :]
                         val kvar = ref (kdefvariant_t {
                                 kvar_name=inst_name, kvar_cname="",
                                 kvar_base_name=noid, kvar_targs=targs,
                                 kvar_props=None, kvar_cases=kvar_cases,
-                                kvar_ctors=dvar_ctors, kvar_flags=dvar_flags,
+                                kvar_ctors=dvar_ctors,
+                                kvar_ifaces=kvar_ifaces,
+                                kvar_flags=dvar_flags,
                                 kvar_scope=sc, kvar_loc=inst_loc
                                 })
                         set_idk_entry(inst_name, KVariant(kvar))
@@ -1396,6 +1422,28 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                 })
             set_idk_entry(dexn_name, KExn(ke))
             delta_code + (KDefExn(ke) :: code)
+        | DefInterface (ref {di_name, di_base, di_all_methods, di_scope, di_loc}) =>
+            val ki_all_methods = [:
+                for (f, t, _) <- di_all_methods {
+                    val ktyp = typ2ktyp(t, di_loc)
+                    val dv = match id_info(f, di_loc) {
+                        | IdDVal(dv) => dv
+                        | _ => throw compile_err(di_loc,
+                            f"description of method '{pp(di_name)}.{pp(f)}' is not found")
+                        }
+                    val _ = create_kdefval(f, ktyp, dv.dv_flags, None, [], di_loc)
+                    (f, ktyp)
+                } :]
+            val ki = ref (kdefinterface_t {
+                ki_name = di_name,
+                ki_base = di_base,
+                ki_cname = "",
+                ki_all_methods = ki_all_methods,
+                ki_scope = di_scope,
+                ki_loc = di_loc
+                })
+            set_idk_entry(di_name, KInterface(ki))
+            KDefInterface(ki) :: code
         | _ => code
         }
 

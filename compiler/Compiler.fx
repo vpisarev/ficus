@@ -443,20 +443,28 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
         val parsing_complete = clrmsg(MsgBlue, "Parsing complete")
         pr_verbose(f"{parsing_complete}. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)
-        pr_verbose(clrmsg(MsgBlue, "Type checking complete"))
-        if ok && Options.opt.print_ast {
-            for m <- Ast.all_modules_sorted {
-                val minfo = Ast.get_module(m)
-                Ast_pp.pprint_mod(minfo)
+        if ok {
+            pr_verbose(clrmsg(MsgBlue, "Type checking complete"))
+            if Options.opt.print_ast {
+                for m <- Ast.all_modules_sorted {
+                    val minfo = Ast.get_module(m)
+                    Ast_pp.pprint_mod(minfo)
+                }
             }
         }
         val (kmods, ok) = if ok { k_normalize_all(Ast.all_modules_sorted) } else { ([], false) }
-        pr_verbose(clrmsg(MsgBlue, "K-normalization complete"))
-        if ok && Options.opt.print_k0 { K_pp.pp_kmods(kmods) }
-        pr_verbose(clrmsg(MsgBlue, "K-form optimization started"))
-        val (kmods, ok) = if ok { k_optimize_all(kmods) } else { ([], false) }
-        if ok { pr_verbose(clrmsg(MsgBlue, "K-form optimization complete")) }
-        if ok && Options.opt.print_k { K_pp.pp_kmods(kmods) }
+        if ok {
+            pr_verbose(clrmsg(MsgBlue, "K-normalization complete"))
+            if Options.opt.print_k0 { K_pp.pp_kmods(kmods) }
+        }
+        val (kmods, ok) = if ok {
+            pr_verbose(clrmsg(MsgBlue, "K-form optimization started"))
+            k_optimize_all(kmods)
+        } else { ([], false) }
+        if ok {
+            pr_verbose(clrmsg(MsgBlue, "K-form optimization complete"))
+            if Options.opt.print_k { K_pp.pp_kmods(kmods) }
+        }
         val ok = if !Options.opt.gen_c { ok } else {
             val (cmods, ok) = if ok { k2c_all(kmods) } else { ([], false) }
             val ok =
