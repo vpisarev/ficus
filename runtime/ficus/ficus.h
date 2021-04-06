@@ -834,7 +834,7 @@ int fx_make_iface(const void* obj, int idx, void* iface);
    we should iterate through all ifaces and try to find one.
    NotImplementedError is returned in the case of failure.
 */
-int fx_query_iface(const fx_ifaces_t* ifaces, int iface_id, void* vtbl);
+int fx_query_iface(const void* iface, int iface_id, void* another_iface);
 int fx_get_object(const void* iface, int idx, void* obj);
 
 #define FX_COPY_IFACE(src, dst) ({ *(dst) = *(src); if ((dst)->obj) FX_INCREF((dst)->obj->rc); })

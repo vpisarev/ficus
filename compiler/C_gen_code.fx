@@ -1493,7 +1493,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         match cinfo_(tn, kloc) {
                         | CInterface _ =>
                             make_call(std_fx_query_iface,
-                                [: src_exp, make_id_exp(dst_iface->ci_id, kloc), cexp_get_addr(dst_exp) :],
+                                [: cexp_get_addr(src_exp), make_id_exp(dst_iface->ci_id, kloc), cexp_get_addr(dst_exp) :],
                                 CTypCInt, kloc)
                         | CTyp (ref {ct_ifaces}) =>
                             var idx = -1
@@ -1543,7 +1543,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                     f"the interface '{src_iface->ci_cname}' is not implemented by '{ctyp2str(ctyp, kloc).0}'")
                             }
                             make_call(std_fx_get_object,
-                                [: src_exp, make_int_exp(idx, kloc), cexp_get_addr(dst_exp) :],
+                                [: cexp_get_addr(src_exp), make_int_exp(idx, kloc), cexp_get_addr(dst_exp) :],
                                 CTypCInt, kloc)
                         | _ =>
                             throw compile_err(kloc,

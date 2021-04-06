@@ -134,7 +134,7 @@ fun init_std_names(): void {
     std_FX_FREE_IFACE = gen_std_macro("FX_FREE_IFACE", 1)
     std_fx_copy_iface = gen_std_fun("fx_copy_iface", std_CTypConstVoidPtr :: std_CTypVoidPtr :: [], CTypVoid)
     std_fx_free_iface = gen_std_fun("fx_free_iface", std_CTypVoidPtr :: [], CTypVoid)
-    std_fx_query_iface = gen_std_fun("fx_query_iface", std_fx_ifaces_t_cptr :: CTypCInt :: std_CTypVoidPtr :: [], CTypCInt)
+    std_fx_query_iface = gen_std_fun("fx_query_iface", std_CTypConstVoidPtr :: CTypCInt :: std_CTypVoidPtr :: [], CTypCInt)
     std_fx_get_object = gen_std_fun("fx_get_object", std_CTypConstVoidPtr :: CTypInt :: std_CTypVoidPtr :: [], CTypCInt)
     std_fx_make_iface = gen_std_fun("fx_make_iface", std_CTypConstVoidPtr :: CTypInt :: std_CTypVoidPtr :: [], CTypCInt)
 }

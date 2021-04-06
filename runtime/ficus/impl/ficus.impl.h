@@ -577,14 +577,18 @@ int fx_make_iface(const void* obj, int idx, void* iface)
     return FX_OK;
 }
 
-int fx_query_iface(const fx_ifaces_t* ifaces, int iface_id, void* vtbl)
+int fx_query_iface(const void* iface, int iface_id, void* another_iface)
 {
-    *(void**)vtbl = 0;
-    if (!ifaces || !vtbl)
+    fx_iface_t* iface_ = (fx_iface_t*)iface;
+    fx_object_t* iobj = iface_ ? iface_->obj : 0;
+    fx_iface_t* another_iface_ = (fx_iface_t*)another_iface;
+    if (!iface_ || !iobj)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
-    for(int i = 0; i < ifaces->nifaces; i++ ) {
-        if (ifaces->ifaces[i].iface_id == iface_id) {
-            *(void**)vtbl = ifaces->ifaces[i].vtbl;
+    for(int i = 0; i < iobj->ifaces->nifaces; i++ ) {
+        if (iobj->ifaces->ifaces[i].iface_id == iface_id) {
+            another_iface_->vtbl = iobj->ifaces->ifaces[i].vtbl;
+            another_iface_->obj = iobj;
+            FX_INCREF(iobj->rc);
             return FX_OK;
         }
     }
@@ -594,13 +598,14 @@ int fx_query_iface(const fx_ifaces_t* ifaces, int iface_id, void* vtbl)
 int fx_get_object(const void* iface, int idx, void* obj)
 {
     fx_iface_t* iface_ = (fx_iface_t*)iface;
-    if (!iface_ || !iface_->obj)
+    fx_object_t* iobj = iface_ ? iface_->obj : 0;
+    if (!iface_ || !iobj)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
-    if (idx < 0 || idx >= iface_->obj->ifaces->nifaces ||
-        iface_->obj->ifaces->ifaces[idx].vtbl != (void*)iface_->vtbl)
+    if (idx < 0 || idx >= iobj->ifaces->nifaces ||
+        iobj->ifaces->ifaces[idx].vtbl != (void*)iface_->vtbl)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
-    FX_INCREF(iface_->obj->rc);
-    *(void**)obj = iface_->obj;
+    FX_INCREF(iobj->rc);
+    *(void**)obj = iobj;
     return FX_OK;
 }
 
