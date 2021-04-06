@@ -3,8 +3,8 @@
 **WIP**
 
 This is a new functional language with the first-class array support
-and _planned_ object-oriented features. `ficus` compiler generates
-a portable C/C++ code out of .fx files.
+that also supports imperative and object-oriented programming paradigms.
+`ficus` compiler generates a portable C/C++ code out of .fx files.
 
 ## License
 
