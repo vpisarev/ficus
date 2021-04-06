@@ -341,8 +341,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             val t = get_idk_ktyp(obj, f_loc)
             match get_kinterface_opt(t, f_loc) {
             | Some(iface) =>
-                val mname = iface->ki_all_methods.nth(idx).0
-                (KExpICall(obj, mname, args, kctx), code)
+                (KExpICall(obj, idx, args, kctx), code)
             | _ =>
                 val (f_id, code) = kexp2id("f", f_exp, true, code, "cannot reduce obj.idx to an id (?!)")
                 (KExpCall(f_id, args, kctx), code)
@@ -445,7 +444,6 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             (KExpMem(a_id, i, kctx), code)
         | (KTypName(tn), ExpIdent(n, (_, nloc)))
             when (match kinfo_(tn, eloc) { | KInterface _ => true | _ => false }) =>
-            println("got here!")
             val iface = get_iface(tn, eloc)
             var idx = -1
             for (f, _, _)@i <- iface->di_all_methods {
@@ -1434,9 +1432,14 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                     val _ = create_kdefval(f, ktyp, dv.dv_flags, None, [], di_loc)
                     (f, ktyp)
                 } :]
+            val ki_id = gen_idk(pp(di_name) + "_id")
+            val code = create_kdefval(ki_id, KTypCInt,
+                default_var_flags().{val_flag_global=di_scope},
+                Some(KExpAtom(AtomLit(KLitInt(-1L)), (KTypCInt, di_loc))), code, di_loc)
             val ki = ref (kdefinterface_t {
                 ki_name = di_name,
                 ki_base = di_base,
+                ki_id = ki_id,
                 ki_cname = "",
                 ki_all_methods = ki_all_methods,
                 ki_scope = di_scope,

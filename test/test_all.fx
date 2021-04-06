@@ -12,6 +12,7 @@ import test_closure
 import test_ds
 import test_deque
 import test_filename
+import test_oop
 
 fun print_hdr()
 {

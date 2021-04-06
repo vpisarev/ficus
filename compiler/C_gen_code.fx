@@ -1479,6 +1479,82 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             | (IntrinListTail, l :: []) =>
                 val (cl, ccode) = atom2cexp(l, ccode, kloc)
                 (true, cexp_arrow(cl, get_id("tl"), ctyp), ccode)
+            | (IntrinQueryIface, src :: []) =>
+                val dst_iface = match get_cinterface_opt(ctyp, kloc) {
+                    | Some(iface) => iface
+                    | _ => throw compile_err(kloc,
+                        "the destination type '{ctyp2str(ctyp, kloc).0}' of 'IntrinQueryIface' intrinsic is not an inteface")
+                    }
+                val (src_exp, ccode) = atom2cexp(src, ccode, kloc)
+                val (dst_exp, ccode) = get_dstexp(dstexp_r, "iface", ctyp, ccode, kloc)
+                val src_typ = get_cexp_typ(src_exp)
+                val get_iface_exp = match src_typ {
+                    | CTypName(tn) =>
+                        match cinfo_(tn, kloc) {
+                        | CInterface _ =>
+                            make_call(std_fx_query_iface,
+                                [: src_exp, make_id_exp(dst_iface->ci_id, kloc), cexp_get_addr(dst_exp) :],
+                                CTypCInt, kloc)
+                        | CTyp (ref {ct_ifaces}) =>
+                            var idx = -1
+                            for iface@i <- ct_ifaces {
+                                if same_or_parent(iface, dst_iface->ci_name, kloc) {
+                                    idx = i; break
+                                }
+                            }
+                            if idx < 0 {
+                                throw compile_err(kloc,
+                                    f"the interface '{dst_iface->ci_cname}' is not implemented by '{ctyp2str(src_typ, kloc).0}'")
+                            }
+                            make_call(std_fx_make_iface,
+                                [: src_exp, make_int_exp(idx, kloc), cexp_get_addr(dst_exp) :],
+                                CTypCInt, kloc)
+                        | _ =>
+                            throw compile_err(kloc,
+                                f"invalid type '{ctyp2str(src_typ, kloc).0}' of the first argument of 'IntrinQueryInterface'")
+                        }
+                    | _ =>
+                        throw compile_err(kloc,
+                            f"invalid type '{ctyp2str(src_typ, kloc).0}' of the first argument of 'IntrinQueryInterface'")
+                    }
+                val ccode = add_fx_call(get_iface_exp, ccode, kloc)
+                (false, dst_exp, ccode)
+            | (IntrinGetObject, src :: []) =>
+                val (src_exp, ccode) = atom2cexp(src, ccode, kloc)
+                val src_typ = get_cexp_typ(src_exp)
+                val src_iface = match get_cinterface_opt(src_typ, kloc) {
+                    | Some(iface) => iface
+                    | _ => throw compile_err(kloc,
+                        "the argument of 'IntrinGetObject' of type '{ctyp2str(src_typ, kloc).0}' is not an inteface")
+                    }
+                val (dst_exp, ccode) = get_dstexp(dstexp_r, "iface", ctyp, ccode, kloc)
+                val get_obj_exp = match ctyp {
+                    | CTypName(tn) =>
+                        match cinfo_(tn, kloc) {
+                        | CTyp (ref {ct_ifaces}) =>
+                            var idx = -1
+                            for iface@i <- ct_ifaces {
+                                if same_or_parent(iface, src_iface->ci_name, kloc) {
+                                    idx = i; break
+                                }
+                            }
+                            if idx < 0 {
+                                throw compile_err(kloc,
+                                    f"the interface '{src_iface->ci_cname}' is not implemented by '{ctyp2str(ctyp, kloc).0}'")
+                            }
+                            make_call(std_fx_get_object,
+                                [: src_exp, make_int_exp(idx, kloc), cexp_get_addr(dst_exp) :],
+                                CTypCInt, kloc)
+                        | _ =>
+                            throw compile_err(kloc,
+                                f"invalid destination type '{ctyp2str(ctyp, kloc).0}'. It must be an object that implements some interfaces")
+                        }
+                    | _ =>
+                        throw compile_err(kloc,
+                            f"invalid destination type '{ctyp2str(ctyp, kloc).0}'. It must be an object that implements some interfaces")
+                    }
+                val ccode = add_fx_call(get_obj_exp, ccode, kloc)
+                (false, dst_exp, ccode)
             | (IntrinPopExn, []) =>
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "curr_exn", CTypExn, ccode, kloc)
                 val e = make_call(get_id("fx_exn_get_and_reset"), [: cexp_get_addr(dst_exp) :], CTypVoid, kloc)
@@ -1644,27 +1720,37 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     (false, dst_exp, ccode)
                 }
             }
-        | KExpICall (obj, meth, args, _) =>
-            throw compile_err(kloc, f"cgen: interface calls are not implemented yet")
-            /*val fold args = [], ccode = ccode for arg <- args {
+        | KExpICall (io_pair, idx, args, _) =>
+            val (io_cexp, ccode) = id2cexp(io_pair, true, ccode, kloc)
+            // convert all the arguments to C expressions,
+            // add the object pointer to the beginning of the list
+            val obj_cexp = cexp_mem(io_cexp, get_id("obj"), std_CTypVoidPtr)
+            val fold args = [:make_fun_arg(obj_cexp, kloc):], ccode = ccode for arg <- args {
                 val (carg, ccode) = atom2cexp(arg, ccode, kloc)
                 val carg = make_fun_arg(carg, kloc)
                 (carg :: args, ccode)
             }
-            val (obj_exp, ccode) = id2cexp(i, true, ccode, kloc)
-
-            val (f, ci) = match cinfo_(f, kloc) {
-                          | CExn (ref {cexn_make}) => (cexn_make, cinfo_(cexn_make, kloc))
-                          | ci => (f, ci)
-                          }
-            val (f_exp, have_out_arg, fv_args, is_nothrow, ccode) =
-            match ci {
-            | CFun cf =>
-                val {cf_args, cf_rt, cf_flags, cf_cname, cf_loc} = *cf
-                ensure_sym_is_defined_or_declared(f, kloc)
-                val is_nothrow = cf_flags.fun_flag_nothrow
-                val (_, ret_id, _, have_fv_arg) = unpack_fun_args(cf_args, cf_rt, is_nothrow)
-                val f_exp = make_id_exp(f, cf_loc)*/
+            val t = get_cexp_typ(io_cexp)
+            val obj_iface = match get_cinterface_opt(t, kloc) {
+                | Some(iface) => iface
+                | _ => throw compile_err(kloc, f"the first parameter (of type '{ctyp2str(t, kloc).0}') of KExpICall is not an interface")
+                }
+            val (mname, mt) = obj_iface->ci_all_methods.nth(idx)
+            val vtbl = cexp_mem(io_cexp, get_id("vtbl"), std_CTypVoidPtr)
+            val mexp = cexp_arrow(vtbl, mname, mt)
+            // add return value
+            val (args, dst_exp, ccode) =
+                if ctyp == CTypVoid {
+                    (args, dummy_exp, ccode)
+                } else {
+                    val (dst_exp, ccode) = get_dstexp(dstexp_r, "res", ctyp, ccode, kloc)
+                    (cexp_get_addr(dst_exp) :: args, dst_exp, ccode)
+                }
+            // use nullptr as the pointer to closure data (because methods do not use closures)
+            val args = make_nullptr(kloc) :: args
+            val mcall_exp = CExpCall(mexp, args.rev(), (CTypCInt, kloc))
+            val ccode = add_fx_call(mcall_exp, ccode, kloc)
+            (false, dst_exp, ccode)
         | KExpMkTuple _ | KExpMkRecord _ =>
             val (args, prefix) = match kexp {
                 | KExpMkTuple(args, _) => (args, "tup")
@@ -2834,14 +2920,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 bctx_prologue.rev() + ccode.rev()
             /* recursive or non-recursive variant constructor */
             | (_, CtorVariant tag_value) =>
-                val (have_tag, is_recursive_variant) =
+                val (have_tag, is_recursive_variant, ifaces_id) =
                     match kf_rt {
                     | KTypName vn =>
                         match kinfo_(vn, kf_loc) {
                         | KVariant (ref {kvar_flags}) =>
                             val have_tag = kvar_flags.var_flag_have_tag
                             val is_recursive = kvar_flags.var_flag_recursive
-                            (have_tag, is_recursive)
+                            val ifaces_id = match cinfo_(vn, kf_loc) {
+                                            | CTyp (ref {ct_ifaces_id}) => ct_ifaces_id
+                                            | _ => noid
+                                            }
+                            (have_tag, is_recursive, ifaces_id)
                         | _ =>
                             throw compile_err(kf_loc,
                                 f"cgen: the return type of variant constructor {idk2str(kf_name, kf_loc)} is not variant")
@@ -2856,8 +2946,17 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 if is_recursive_variant {
                     val alloc_var = make_call(std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START, [: CExpTyp(result_ctyp, kf_loc) :], CTypVoid, kf_loc)
                     val (var_exp, _) = create_cdefval(gen_temp_idc("v"), result_ctyp, default_tempvar_flags(), "v", None, [], kf_loc)
+                    val ccode = CExp(alloc_var) :: []
+                    val ccode =
+                        if ifaces_id == noid {ccode}
+                        else {
+                            val ifaces_ctyp = CTypName(get_id("fx_ifaces_t"))
+                            val ifaces_ptr_ctyp = make_ptr(ifaces_ctyp)
+                            CExp(make_assign(cexp_arrow(var_exp, get_id("ifaces"), ifaces_ptr_ctyp),
+                                cexp_get_addr(make_id_t_exp(ifaces_id, ifaces_ctyp, kloc)))) :: ccode
+                        }
                     val ret_ccode = [: CStmtReturn(Some(make_int_exp(0, kf_loc)), kf_loc) :]
-                    (var_exp, [: CExp(alloc_var) :], ret_ccode)
+                    (var_exp, ccode, ret_ccode)
                 } else {
                     (var_exp, [], [])
                 }

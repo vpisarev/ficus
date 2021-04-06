@@ -95,6 +95,7 @@ extern int FX_EXN_DivByZeroError;
 extern int FX_EXN_FileOpenError;
 extern int FX_EXN_IOError;
 extern int FX_EXN_NotFoundError;
+extern int FX_EXN_NotImplementedError;
 extern int FX_EXN_NoMatchError;
 extern int FX_EXN_NullFileError;
 extern int FX_EXN_NullListError;
@@ -801,6 +802,55 @@ typedef struct fx_fcv_t
 
 void fx_free_fp(void* fp);
 void fx_copy_fp(const void* src, void* pdst);
+
+///////////////////////////// Interfaces ///////////////////////////
+
+typedef struct fx_iface_entry_t
+{
+    int iface_id;
+    void* vtbl;
+} fx_iface_entry_t;
+
+typedef struct fx_ifaces_t
+{
+    int nifaces;
+    fx_free_t free_f;
+    fx_iface_entry_t* ifaces;
+} fx_ifaces_t;
+
+typedef struct fx_object_t
+{
+    int_ rc;
+    const fx_ifaces_t* ifaces;
+} fx_object_t;
+
+/* if an object is casted to an interface:
+   1. compiler can figure out at compile time whether it's possible or not
+   2. if possible, the index of the interface in the table of supported interface can be computed
+      at compile time, then we just extract vtbl make make pair (obj->ifaces[idx].vtbl, obj)
+*/
+int fx_make_iface(const void* obj, int idx, void* iface);
+/* if an interface is casted to another interface,
+   we should iterate through all ifaces and try to find one.
+   NotImplementedError is returned in the case of failure.
+*/
+int fx_query_iface(const fx_ifaces_t* ifaces, int iface_id, void* vtbl);
+int fx_get_object(const void* iface, int idx, void* obj);
+
+#define FX_COPY_IFACE(src, dst) ({ *(dst) = *(src); if ((dst)->obj) FX_INCREF((dst)->obj->rc); })
+#define FX_FREE_IFACE(iface) \
+    if((iface)->obj) { \
+        if((iface)->obj->rc && FX_DECREF((iface)->obj->rc) == 1) \
+            (iface)->obj->ifaces->free_f(&(iface)->obj); \
+        (iface)->vtbl = 0; \
+        (iface)->obj = 0; \
+    }
+void fx_free_iface(void* iface);
+void fx_copy_iface(const void* src, void* pdst);
+
+void fx_register_iface(int* iface_id);
+void fx_init_ifaces(void* free_f, int nifaces, const int* iface_ids,
+                    const fx_iface_entry_t* entries, fx_ifaces_t* ifaces);
 
 ///////////////////////////// C pointers ///////////////////////////
 

@@ -168,11 +168,13 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
                 remove_fx(kt_cname) :: result
             }
         | KInterface ki =>
-            val {ki_name, ki_cname, ki_scope} = *ki
+            val {ki_name, ki_cname, ki_id, ki_scope, ki_loc} = *ki
             if ki_cname == "" {
                 val (_, cname) =
                     mangle_inst_(ki_name, "I", [], ki_name, ki_scope)
                 *ki = ki->{ki_cname=add_fx(cname)}
+                val kv = get_kval(ki_id, ki_loc)
+                set_idk_entry(ki_id, KVal (kv.{kv_cname = "_FX_" + cname + "_id"}))
                 cname :: result
             } else {
                 remove_fx(ki_cname) :: result
@@ -280,17 +282,19 @@ fun mangle_all(kmods: kmodule_t list) {
         if i != noid {
             match kinfo_(i, loc) {
             | KVal kv =>
-                val {kv_typ, kv_flags} = kv
+                val {kv_typ, kv_cname, kv_flags} = kv
                 val t = walk_ktyp_n_mangle(kv_typ, loc, callb)
-                val cname =
-                match get_val_scope(kv_flags) {
-                | ScBlock _ :: _ => ""
-                | sc =>
-                    val bare_name = mangle_name(i, Some(sc), loc)
-                    val (_, cname) = mangle_make_unique(i, "_fx_g", bare_name, "", mangle_map)
-                    cname
+                if kv_cname == "" {
+                    val cname =
+                        match get_val_scope(kv_flags) {
+                        | ScBlock _ :: _ => ""
+                        | sc =>
+                            val bare_name = mangle_name(i, Some(sc), loc)
+                            val (_, cname) = mangle_make_unique(i, "_fx_g", bare_name, "", mangle_map)
+                            cname
+                        }
+                    set_idk_entry(i, KVal(kv.{kv_typ=t, kv_cname=cname}))
                 }
-                set_idk_entry(i, KVal(kv.{kv_typ=t, kv_cname=cname}))
             | _ => {}
             }
         }
@@ -310,9 +314,10 @@ fun mangle_all(kmods: kmodule_t list) {
     }
     fun walk_kexp_n_mangle(e: kexp_t, callb: k_callb_t) =
         match e {
-        | KDefVal (n, e, loc) => val e = walk_kexp_n_mangle(e, callb)
-                                 mangle_id_typ(n, loc, callb)
-                                 KDefVal(n, e, loc)
+        | KDefVal (n, e, loc) =>
+            val e = walk_kexp_n_mangle(e, callb)
+            mangle_id_typ(n, loc, callb)
+            KDefVal(n, e, loc)
         | KDefFun kf =>
             val {kf_name, kf_args, kf_rt, kf_body, kf_closure, kf_scope, kf_loc} = *kf
             val {kci_fcv_t} = kf_closure
@@ -390,6 +395,24 @@ fun mangle_all(kmods: kmodule_t list) {
                 (ni, mangle_ktyp_retain_record(ti, kvar_loc, callb))
             } :]
             *kvar = kvar->{kvar_cases=var_cases}
+            e
+        | KDefInterface ki =>
+            val {ki_name, ki_all_methods, ki_loc} = *ki
+            val _ = mangle_ktyp(KTypName(ki_name), mangle_map, ki_loc)
+            val all_methods =
+            [: for (fi, ti) <- ki_all_methods {
+                val (args, rt) = match deref_ktyp(ti, ki_loc) {
+                    | KTypFun(args, rt) => (args, rt)
+                    | _ => throw compile_err(ki_loc,
+                        f"method '{idk2str(ki_name, ki_loc)}.{pp(fi)}' has non-function type")
+                    }
+                val args = [: for a <- args {
+                        walk_ktyp_n_mangle(a, ki_loc, callb)
+                    }:]
+                val rt = walk_ktyp_n_mangle(rt, ki_loc, callb)
+                (fi, KTypFun(args, rt))
+            } :]
+            *ki = ki->{ki_all_methods=all_methods}
             e
         | KDefTyp((ref {kt_typ=KTypRecord (_, _)}) as kt) =>
             val {kt_name, kt_typ, kt_loc} = *kt

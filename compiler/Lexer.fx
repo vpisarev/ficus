@@ -15,8 +15,8 @@ exception LexerError : (lloc_t, string)
 type token_t =
     | LITERAL: Ast.lit_t | IDENT: (bool, string) | TYVAR: string
     | APOS | AS | AT | BREAK | CATCH | CCODE | CLASS | CONTINUE | DO
-    | ELLIPSIS | ELSE | EXCEPTION | EXTENDS | FINALLY | FOLD
-    | FOR: bool | FROM | FUN | IF | IMPLEMENTS | IMPORT: bool
+    | ELLIPSIS | ELSE | EXCEPTION | FINALLY | FOLD
+    | FOR: bool | FROM | FUN | IF | IMPORT: bool
     | INLINE | INTERFACE | MATCH | NOTHROW | OBJECT | OPERATOR
     | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
@@ -24,7 +24,7 @@ type token_t =
     | RSQUARE | LBRACE | RBRACE | LARRAY | RARRAY | LLIST | RLIST
     | COMMA | DOT | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH
     | BACK_ARROW | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool
-    | PLUS: bool | STAR: bool | SLASH | PERCENT | POWER | DOT_STAR
+    | PLUS: bool | STAR: bool | SLASH | SYNC | PERCENT | POWER | DOT_STAR
     | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
@@ -50,14 +50,12 @@ fun tok2str(t: token_t)
     | ELLIPSIS => ("ELLIPSIS", "...")
     | ELSE => ("ELSE", "else")
     | EXCEPTION => ("EXCEPTION", "exception")
-    | EXTENDS => ("EXTENDS", "extends")
     | FINALLY => ("FINALLY", "finally")
     | FOLD => ("FOLD", "fold")
     | FOR(ne) => (ne2u(ne, "FOR"), "for")
     | FROM => ("FROM", "from")
     | FUN => ("FUN", "fun")
     | IF => ("IF", "if")
-    | IMPLEMENTS => ("IMPLEMENTS", "implements")
     | IMPORT(ne) => (ne2u(ne, "IMPORT"), "import")
     | INLINE => ("INLINE", "@inline")
     | INTERFACE => ("INTERFACE", "interface")
@@ -70,6 +68,7 @@ fun tok2str(t: token_t)
     | PRIVATE => ("PRIVATE", "@private")
     | PURE => ("PURE", "@pure")
     | REF(ne) => (ne2u(ne, "REF"), "ref")
+    | SYNC => ("SYNC", "@sync")
     | THROW => ("THROW", "throw")
     | TRY => ("TRY", "try")
     | TYPE => ("TYPE", "type")
@@ -614,18 +613,18 @@ fun getstring(s: string, pos: int, loc: lloc_t, term: char, raw: bool, fmt: bool
 var ficus_keywords = Hashmap.from_list("", (FUN, 0), hash,
     [: ("as", (AS, 1)), ("break", (BREAK, 0)), ("catch", (CATCH, 1)),
     ("class", (CLASS, 2)), ("continue", (CONTINUE, 0)), ("do", (DO, 2)),
-    ("else", (ELSE, 1)), ("exception", (EXCEPTION, 2)), ("extends", (EXTENDS, 1)),
+    ("else", (ELSE, 1)), ("exception", (EXCEPTION, 2)),
     ("false", (LITERAL(Ast.LitBool(false)), 0)), ("finally", (FINALLY, 1)),
     ("fold", (FOLD, 2)), ("for", (FOR(true), 2)), ("from", (FROM, 2)),
-    ("fun", (FUN, 2)), ("if", (IF, 2)), ("implements", (IMPLEMENTS, 1)),
-    ("import", (IMPORT(true), 3)), ("interface", (INTERFACE, 2)),
-    ("match", (MATCH, 2)), ("object", (OBJECT, 2)), ("operator", (OPERATOR, 0)),
+    ("fun", (FUN, 2)), ("if", (IF, 2)), ("import", (IMPORT(true), 3)),
+    ("interface", (INTERFACE, 2)), ("match", (MATCH, 2)),
+    ("object", (OBJECT, 2)), ("operator", (OPERATOR, 0)),
     ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)), ("throw", (THROW, 2)),
     ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)),
     ("type", (TYPE, 2)), ("val", (VAL, 2)), ("var", (VAR, 2)), ("when", (WHEN, 1)),
     ("while", (WHILE(true), 2)), ("with", (WITH, 1)), ("__fold_result__", (FOLD_RESULT, -1)),
     ("@ccode", (CCODE, 2)),  ("@inline", (INLINE, 2)), ("@nothrow", (NOTHROW, 2)),
-    ("@parallel", (PARALLEL, 2)),  ("@private", (PRIVATE, 2)),
+    ("@parallel", (PARALLEL, 2)),  ("@private", (PRIVATE, 2)), ("@sync", (SYNC, 2)),
     ("@pure", (PURE, 2)),  ("@unzip", (UNZIP, 2)),
      :])
 

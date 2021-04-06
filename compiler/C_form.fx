@@ -85,7 +85,7 @@ type cunary_t =
     | COpDeref | COpGetAddr | COpPrefixInc | COpPrefixDec
     | COpSuffixInc | COpSuffixDec
 
-type ctyp_attr_t = | CTypConst | CTypVolatile
+type ctyp_attr_t = | CTypConst | CTypVolatile | CTypStatic
 
 type carg_attr_t = | CArgPassByPtr | CArgRetVal | CArgFV
 
@@ -166,6 +166,7 @@ type cstmt_t =
     | CDefForwardSym: (id_t, loc_t)
     | CDefForwardTyp: (id_t, loc_t)
     | CDefEnum: cdefenum_t ref
+    | CDefInterface: cdefinterface_t ref
     | CMacroDef: cdefmacro_t ref
     | CMacroUndef: (id_t, loc_t)
     | CMacroIf: ((cexp_t, cstmt_t list) list, cstmt_t list, loc_t)
@@ -190,7 +191,8 @@ type cdeffun_t =
 type cdeftyp_t =
 {
     ct_name: id_t; ct_typ: ctyp_t; ct_cname: string; ct_props: ctprops_t;
-    ct_data_start: int; ct_enum: id_t; ct_scope: scope_t list; ct_loc: loc_t
+    ct_data_start: int; ct_enum: id_t; ct_ifaces: id_t list; ct_ifaces_id: id_t;
+    ct_scope: scope_t list; ct_loc: loc_t
 }
 
 type cdefenum_t =
@@ -217,6 +219,61 @@ type cdefexn_t =
     cexn_make: id_t; cexn_scope: scope_t list; cexn_loc: loc_t
 }
 
+/*
+   For each interface there are 3 entities created in the C code:
+
+    1. The table of functions, C structure containing fields matching the interface methods names.
+       In the case of overloading the names are mangled a bit with suffices (_1, _2, etc.)
+       Note that if object implements interface, it means that it automatically implements
+       all the parent interfaces (a.k.a. base interfaces).
+       There is just one table for all of them, and the methods from base interfaces are placed first.
+
+       typedef _fx_I8my_iface_vtbl_t
+       {
+           ...
+       } _fx_I8my_iface_vtbl_t;
+
+    2. id of the interface. Similar to exceptions, we cannot use any particualar unique constant for each interface in advance,
+       (unless it's some Microsoft's-like GUID, which takes some space and some time to compare for identity)
+       because new modules can be added to the program, modules can get new dependencies,
+       new interfaces can be added to the user-created modules as well as the standard lib.
+       So we would have to renumerate interfaces all the time.
+       Instead, we always reference interfaces by dedicated integer variable,
+       defined in the module where interface is defined (which is very similar to cexn_tag for exceptions).
+
+       ...
+       int _FX_I8my_iface_id = -1;
+
+       In the module initialization function we call fx_reg_interface(&my_iface_id, ...),
+       where some global counter is incremented and assgined to my_iface_id.
+    3. The structure representing a concrete instance of an object casted to the interface.
+        typedef struct _fx_I8my_iface_t
+        {
+           const _fx_I8my_iface_vtbl_t* vtbl;
+           fx_object_t* obj; // pointer to the dummy structure that contains
+                             // reference counter and pointer to the collection
+                             // of interface id's with associated vtbl's
+        } _fx_I8my_iface_t;
+        it's copied with FX_COPY_IFACE(src, dst) and dereferenced with FX_FREE_IFACE(iface)
+        (which calls destructor once the reference counter reaches 0)
+
+    If a value has type 'the interface my_iface' then, of course,
+    in C code it means the third entity. Correspondingly, ci_name and ci_cname refer to the 3rd entity.
+    ci_id refers to the second entity (separately described using CDefVal and CVal)
+    and ci_vtbl refers to the table of methods.
+*/
+type cdefinterface_t =
+{
+    ci_name: id_t;
+    ci_cname: string;
+    ci_id: id_t;
+    ci_vtbl: id_t;
+    ci_base: id_t;
+    ci_all_methods: (id_t, ctyp_t) list;
+    ci_scope: scope_t list;
+    ci_loc: loc_t;
+}
+
 type cmodule_t =
 {
     cmod_name: id_t; cmod_cname: string; cmod_ccode: cstmt_t list;
@@ -229,6 +286,7 @@ type cinfo_t =
     | CFun: cdeffun_t ref
     | CTyp: cdeftyp_t ref
     | CExn: cdefexn_t ref
+    | CInterface: cdefinterface_t ref
     | CEnum: cdefenum_t ref
     | CLabel: cdeflabel_t
     | CMacro: cdefmacro_t ref
@@ -331,6 +389,7 @@ fun get_cstmt_loc(s: cstmt_t)
     | CDefForwardSym (_, cff_loc) => cff_loc
     | CDefForwardTyp (_, cft_loc) => cft_loc
     | CDefEnum (ref {cenum_loc}) => cenum_loc
+    | CDefInterface (ref {ci_loc}) => ci_loc
     | CMacroDef (ref {cm_loc}) => cm_loc
     | CMacroUndef (_, l) => l
     | CMacroIf (_, _, l) => l
@@ -346,6 +405,7 @@ fun get_cinfo_loc(info: cinfo_t): loc_t
     | CTyp (ref {ct_loc}) => ct_loc
     | CExn (ref {cexn_loc}) => cexn_loc
     | CEnum (ref {cenum_loc}) => cenum_loc
+    | CInterface (ref {ci_loc}) => ci_loc
     | CLabel ({cl_loc}) => cl_loc
     | CMacro (ref {cm_loc}) => cm_loc
 }
@@ -369,6 +429,7 @@ fun get_cinfo_typ(info: cinfo_t, i: id_t, loc: loc_t)
         CTypFunRawPtr([: for (_, t, _) <- cf_args {t} :], cf_rt)
     | CTyp (ref {ct_typ}) => ct_typ
     | CExn _ => CTypExn
+    | CInterface (ref {ci_name}) => CTypName(ci_name)
     | CMacro (ref {cm_args}) =>
         match cm_args {
         | [] => CTypAny
@@ -397,6 +458,7 @@ fun get_idc_cname(i: id_t, loc: loc_t) =
         | CLabel ({cl_cname}) => cl_cname
         | CEnum (ref {cenum_cname}) => cenum_cname
         | CExn (ref {cexn_cname}) => cexn_cname
+        | CInterface (ref {ci_cname}) => ci_cname
         | CMacro (ref {cm_cname}) => cm_cname
         }
     }
@@ -471,6 +533,18 @@ fun cexp2stmt(e: cexp_t) =
     | CExpInit ([], (CTypVoid, loc)) => CStmtNop(loc)
     | _ => CExp(e)
     }
+
+fun get_cinterface_opt(t: ctyp_t, loc: loc_t): cdefinterface_t ref?
+{
+    match t {
+    | CTypName(tn) =>
+        match cinfo_(tn, loc) {
+        | CInterface(ci) => Some(ci)
+        | _ => None
+        }
+    | _ => None
+    }
+}
 
 type c_callb_t =
 {
@@ -617,6 +691,16 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
             cenum_name=walk_id_(cenum_name),
             cenum_members=[: for (n, e_opt) <- cenum_members {
                                 (walk_id_(n), walk_cexp_opt_(e_opt))
+                            } :]
+        }
+        s
+    | CDefInterface ci =>
+        val {ci_name, ci_base, ci_id, ci_vtbl, ci_all_methods} = *ci
+        *ci = ci->{
+            ci_name=walk_id_(ci_name), ci_base=walk_id_(ci_base),
+            ci_id=walk_id_(ci_id), ci_vtbl=walk_id_(ci_vtbl),
+            ci_all_methods=[: for (f, ctyp) <- ci_all_methods {
+                                (walk_id_(f), walk_ctyp_(ctyp))
                             } :]
         }
         s
@@ -781,6 +865,10 @@ fun fold_cstmt(s: cstmt_t, callb: c_fold_callb_t)
         val {cenum_name, cenum_members} = *ce
         fold_id_(cenum_name)
         for (n, e_opt) <- cenum_members { fold_id_(n); fold_cexp_opt_(e_opt) }
+    | CDefInterface ci =>
+        val {ci_name, ci_base, ci_id, ci_vtbl, ci_all_methods} = *ci
+        fold_id_(ci_name); fold_id_(ci_base); fold_id_(ci_id); fold_id_(ci_vtbl)
+        for (f, ctyp) <- ci_all_methods { fold_id_(f); fold_ctyp_(ctyp) }
     | CMacroDef cm =>
         val {cm_name, cm_args, cm_body} = *cm
         fold_id_(cm_name)
@@ -820,11 +908,13 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
         throw compile_err(loc, "ctyp2str: CTypUnion(...) is not supported; use CTypName(...) instead")
     | CTypRawPtr (attrs, t) =>
         val (s, _) = ctyp2str(t, loc)
+        val s = if attrs.mem(CTypStatic) { "static " + s } else { s }
         val s = if attrs.mem(CTypConst) { "const " + s } else { s }
         val s = if attrs.mem(CTypVolatile) { "volatile " + s } else { s }
         (s + "*", noid)
     | CTypRawArray (attrs, t) =>
         val (s, _) = ctyp2str(t, loc)
+        val s = if attrs.mem(CTypStatic) { "static " + s } else { s }
         val s = if attrs.mem(CTypConst) { "const " + s } else { s }
         val s = if attrs.mem(CTypVolatile) { "volatile " + s } else { s }
         (s + " []", noid)
@@ -1034,3 +1124,11 @@ var std_fx_free_fp = noid
 var std_fx_copy_fp = noid
 var std_fx_free_cptr = noid
 var std_fx_copy_cptr = noid
+var std_fx_ifaces_t_cptr = CTypVoid
+var std_FX_COPY_IFACE = noid
+var std_FX_FREE_IFACE = noid
+var std_fx_copy_iface = noid
+var std_fx_free_iface = noid
+var std_fx_query_iface = noid
+var std_fx_get_object = noid
+var std_fx_make_iface = noid

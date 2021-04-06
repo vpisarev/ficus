@@ -28,6 +28,7 @@ exception FileOpenError
 exception IOError
 exception NoMatchError
 exception NotFoundError
+exception NotImplementedError
 exception NullFileError
 exception NullListError
 exception NullPtrError

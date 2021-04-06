@@ -204,7 +204,8 @@ val pp_ = Ast.pp
         pp.begin()
         val {kv_typ, kv_flags} = get_kval(n, loc)
         Ast_pp.pprint_val_flags(pp, kv_flags)
-        pp.str("val "); pp_idtyp_(n, kv_typ, detailed=false)
+        if kv_flags.val_flag_mutable {pp.str("var ")} else {pp.str("val ")}
+        pp_idtyp_(n, kv_typ, detailed=false)
         pp.str(" ="); pp.end(); pp.space(); pp_exp_(e0)
         pp.end()
     | KDefFun (ref {kf_name, kf_args, kf_rt, kf_body, kf_closure, kf_flags, kf_loc}) =>
@@ -386,8 +387,14 @@ val pp_ = Ast.pp
     | KExpCall (f, args, (_, loc)) =>
         pp.begin(); pp_id_(f); pp.str("("); pp.cut();
         ppatoms_(args); pp.cut(); pp.str(")"); pp.end()
-    | KExpICall (obj, meth, args, (_, loc)) =>
-        pp.begin(); pp_id_(obj); pp.str("."); pp.str(pp_(meth)); pp.str("("); pp.cut();
+    | KExpICall (obj, idx, args, (_, loc)) =>
+        pp.begin(); pp_id_(obj); pp.str(".");
+        val obj_typ = get_idk_ktyp(obj, loc)
+        val mname = match get_kinterface_opt(obj_typ, loc) {
+            | Some(iface) => iface->ki_all_methods.nth(idx).0
+            | _ => throw compile_err(loc, "object used in method call is not a valid interface")
+            }
+        pp.str(pp_(mname)); pp.str("("); pp.cut();
         ppatoms_(args); pp.cut(); pp.str(")"); pp.end()
     | KExpAt (a, border, interp, args, _) =>
         pp.begin();

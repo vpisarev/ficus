@@ -227,6 +227,12 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             val {kt_name, kt_loc} = *kt
             if used_somewhere.mem(kt_name) { e }
             else { KExpNop(kt_loc) }
+        | KDefInterface ki =>
+            val {ki_name, ki_loc} = *ki
+            if used_somewhere.mem(ki_name) { e }
+            else {
+                KExpNop(ki_loc)
+            }
         | KDefClosureVars kcv =>
             val {kcv_name, kcv_loc} = *kcv
             if used_somewhere.mem(kcv_name) { e }
@@ -264,7 +270,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                 result
 
             | KDefVal _ | KDefFun _ | KDefExn _ | KDefVariant _
-            | KDefTyp _ | KDefClosureVars _ =>
+            | KDefTyp _ | KDefClosureVars _ | KDefInterface _ =>
                 e :: result
             | _ =>
                 if rest != [] && pure_kexp(e) { result }

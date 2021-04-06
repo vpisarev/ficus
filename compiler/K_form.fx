@@ -106,7 +106,7 @@ type kexp_t =
     | KExpSeq: (kexp_t list, kctx_t)
     | KExpIf: (kexp_t, kexp_t, kexp_t, kctx_t)
     | KExpCall: (id_t, atom_t list, kctx_t)
-    | KExpICall: (id_t, id_t, atom_t list, kctx_t)
+    | KExpICall: (id_t, int, atom_t list, kctx_t)
     | KExpMkTuple: (atom_t list, kctx_t)
     | KExpMkRecord: (atom_t list, kctx_t)
     | KExpMkClosure: (id_t, id_t, atom_t list, kctx_t)
@@ -197,6 +197,7 @@ type kdefinterface_t =
     ki_name: id_t;
     ki_base: id_t;
     ki_cname: string;
+    ki_id: id_t;
     ki_all_methods: (id_t, ktyp_t) list;
     ki_scope: scope_t list;
     ki_loc: loc_t
@@ -657,7 +658,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         walk_kctx_(ctx))
     | KExpCall(f, args, ctx) => KExpCall(walk_id_(f), walk_al_(args), walk_kctx_(ctx))
     | KExpICall(obj, meth, args, ctx) =>
-        KExpICall(walk_id_(obj), walk_id_(meth), walk_al_(args), walk_kctx_(ctx))
+        KExpICall(walk_id_(obj), meth, walk_al_(args), walk_kctx_(ctx))
     | KExpAt(a, border, interp, idx, ctx) =>
         KExpAt(walk_atom_(a), border, interp, idx.map(walk_dom_), walk_kctx_(ctx))
     | KExpAssign(lv, rv, loc) => KExpAssign(walk_id_(lv), walk_atom_(rv), loc)
@@ -723,10 +724,11 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         *kt = kt->{kt_name=walk_id_(kt_name), kt_typ=walk_ktyp_(kt_typ)}
         e
     | KDefInterface ki =>
-        val {ki_name, ki_base, ki_all_methods} = *ki
+        val {ki_name, ki_base, ki_id, ki_all_methods} = *ki
         *ki = ki->{
             ki_name=walk_id_(ki_name),
             ki_base=walk_id_(ki_base),
+            ki_id=walk_id_(ki_id),
             ki_all_methods=[: for (f, t) <- ki_all_methods {(walk_id_(f), walk_ktyp_(t))} :]
             }
         e
@@ -842,8 +844,8 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
         fold_ktyp_(t)
     | KExpCall(f, args, (t, _)) =>
         fold_id_(f); fold_al_(args); fold_ktyp_(t)
-    | KExpICall(obj, meth, args, (t, _)) =>
-        fold_id_(obj); fold_id_(meth); fold_al_(args); fold_ktyp_(t)
+    | KExpICall(obj, _, args, (t, _)) =>
+        fold_id_(obj); fold_al_(args); fold_ktyp_(t)
     | KExpAt(a, border, interp, idx, (t, _)) =>
         fold_atom_(a); idx.app(fold_dom_); fold_ktyp_(t)
     | KExpAssign(lv, rv, loc) =>
@@ -905,8 +907,8 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
         fold_id_(kt_name)
         fold_ktyp_(kt_typ)
     | KDefInterface ki =>
-        val {ki_name, ki_base, ki_all_methods} = *ki
-        fold_id_(ki_name); fold_id_(ki_base)
+        val {ki_name, ki_base, ki_id, ki_all_methods} = *ki
+        fold_id_(ki_name); fold_id_(ki_base); fold_id_(ki_id);
         for (f, t) <- ki_all_methods { fold_id_(f); fold_ktyp_(t) }
     | KDefClosureVars kcv =>
         val {kcv_name, kcv_freevars, kcv_orig_freevars} = *kcv
@@ -921,7 +923,10 @@ fun used_by(code: kcode_t, size0: int): id_hashset_t
     val all_used: id_hashset_t = Hashset.empty(size0, noid, hash)
     fun remove_unless(had_before: bool, n: id_t) =
         if !had_before { all_used.remove(n) }
-    fun add_id(n: id_t) = if n != noid {all_used.add(n)}
+    fun add_id(n: id_t) {
+        | IdName _ => {}
+        | _ => all_used.add(n)
+        }
     fun used_by_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t): void =
         match a {
         | AtomId(IdName _) => {}
@@ -949,14 +954,22 @@ fun used_by(code: kcode_t, size0: int): id_hashset_t
             used_by_ktyp_(ke_typ, ke_loc, callb)
             add_id(ke_tag)
             add_id(ke_make)
-        | KDefVariant (ref {kvar_name, kvar_cases, kvar_loc}) =>
+        | KDefVariant (ref {kvar_name, kvar_cases, kvar_ifaces, kvar_loc}) =>
             val have_kvar_name = all_used.mem(kvar_name)
             for (ni, ti) <- kvar_cases {
                 used_by_ktyp_(ti, kvar_loc, callb)
             }
+            for (iname, methods) <- kvar_ifaces {
+                add_id(iname)
+                for m <- methods { add_id(m) }
+            }
             remove_unless(have_kvar_name, kvar_name)
         | KDefClosureVars _ => {}
-        | KDefInterface ki => add_id(ki->ki_base)
+        | KDefInterface (ref {ki_name, ki_base, ki_id, ki_all_methods, ki_loc}) =>
+            add_id(ki_base); add_id(ki_id)
+            for (f, t) <- ki_all_methods {
+                add_id(f); used_by_ktyp_(t, ki_loc, callb)
+            }
         | KDefTyp (ref {kt_name, kt_typ, kt_loc}) =>
             val have_kt_name = all_used.mem(kt_name)
             used_by_ktyp_(kt_typ, kt_loc, callb)

@@ -87,15 +87,14 @@ type assoc_t = AssocLeft | AssocRight
     fun pr_struct(prefix: string, n_opt: id_t?,
                  elems: (id_t, ctyp_t) list, suffix: string)
     {
-        pp.begin(); pp.str(prefix + " ")
+        pp.str(prefix + " ")
         match n_opt {
         | Some n => pp_id(pp, n, loc); pp.str(" ")
         | _ => {}
         }
-        pp.end()
-        pp.space(); pp.str("{"); pp.beginv()
+        pp.str("{")
         for (ni, ti) <- elems {
-            pp.break0()
+            pp.newline()
             val need_nested_box =
                 match ti {
                 | CTypStruct _ | CTypUnion _ | CTypRawPtr (_, CTypStruct _) => false
@@ -104,10 +103,8 @@ type assoc_t = AssocLeft | AssocRight
             pp_ctyp__(pp, "", ";", ti, Some(ni), true, loc)
             if need_nested_box { pp.end() }
         }
-        pp.end()
-        pp.break0(); pp.begin()
+        pp.newlineu()
         pp.str("} " + suffix); pr_id_opt_(false)
-        pp.end()
     }
 
     pp.begin()
@@ -130,7 +127,8 @@ type assoc_t = AssocLeft | AssocRight
         pp.begin()
         match args {
         | [] => pp.str("void")
-        | t :: [] => pp_ctyp_(pp, t, None, loc)
+        | t :: [] =>
+            pp_ctyp__(pp, "", "", t, None, true, loc)
         | _ =>
             val nargs = args.length()
             for ti@i <- args {
@@ -152,15 +150,15 @@ type assoc_t = AssocLeft | AssocRight
     | CTypUnion (n_opt, uelems) => pr_struct(prefix0 + "union", n_opt, uelems, "")
     | CTypRawPtr (attrs, t) =>
         pp.begin()
-        if attrs.mem(CTypVolatile) {
-            pp.str("volatile ")
-        }
+        if attrs.mem(CTypStatic) { pp.str("static ") }
+        if attrs.mem(CTypVolatile) { pp.str("volatile ") }
         pp_ctyp__(pp, "", "", t, None, fwd_mode, loc)
         pp.str("*")
         pr_id_opt()
         pp.end()
     | CTypRawArray (attrs, et) =>
         pp.begin()
+        if attrs.mem(CTypStatic) { pp.str("static ") }
         if attrs.mem(CTypVolatile) { pp.str("volatile ") }
         if attrs.mem(CTypConst) { pp.str("const ") }
         pp_ctyp__(pp, "", "", et, None, fwd_mode, loc)
@@ -176,6 +174,10 @@ type assoc_t = AssocLeft | AssocRight
             match cinfo_(n, loc) {
             | CTyp (ref {ct_typ=CTypRawPtr (_, CTypStruct (Some struct_id, _))}) =>
                 pp.str("struct "); pp_id(pp, struct_id, loc); pp.str("*")
+            | CTyp (ref {ct_typ=CTypStruct (Some struct_id, _)}) =>
+                pp.str("struct "); pp_id(pp, struct_id, loc)
+            | CInterface (ref {ci_cname}) =>
+                pp.str(f"struct {ci_cname}")
             | _ =>
                 if prefix0 != "" { pp.str(prefix0); pp.space() }
                 pp_id(pp, n, loc)
@@ -255,17 +257,15 @@ type assoc_t = AssocLeft | AssocRight
         pp_cexp_(pp, f, 1400); pp.str("("); pp.cut()
         pp_elist(pp, args); pp.str(")"); pp.end()
     | CExpInit (eseq, _) =>
-        pp.str("{");
+        pp.begin(); pp.str("{");
         pp.space();
         if eseq != [] {
-            pp.begin(0)
             for e@i <- eseq {
                 if i > 0 { pp.str(","); pp.space() }
                 pp_cexp_(pp, e, 0)
             }
-            pp.end()
         }
-        pp.space(); pp.str("}")
+        pp.end(); pp.space(); pp.str("}")
     | CExpTyp (t, loc) =>
         pp.begin(); pp_ctyp_(pp, t, None, loc); pp.end()
     | CExpCCode (ccode, l) =>
@@ -274,12 +274,10 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pp_elist(pp: PP.t, el: cexp_t list)
 {
-    pp.begin()
     for e@i <- el {
-        if i == 0 { pp.cut() } else { pp.str(","); pp.space() }
+        if i > 0 { pp.str(","); pp.space() }
         pp_cexp_(pp, e, 0)
     }
-    pp.end()
 }
 
 @private fun pprint_fun_hdr(pp: PP.t, fname: id_t, semicolon: bool, loc: loc_t, fwd_mode: bool)
@@ -289,23 +287,22 @@ type assoc_t = AssocLeft | AssocRight
     | CFun cf => *cf
     | _ => throw compile_err(loc, f"the forward declaration of {idc2str(fname, loc)} does not reference a function")
     }
+    pp.beginv()
     pp.begin()
     if cf_flags.fun_flag_private { pp.str("static ") }
     else { pp.str("FX_EXTERN_C ") }
     pp_ctyp_(pp, cf_rt, None, cf_loc)
-    pp.space(); pp.str(cf_cname); pp.str("("); pp.cut()
+    pp.space(); pp.str(cf_cname); pp.str("("); pp.end(); pp.cut()
     match cf_args {
     | [] => pp.str("void")
             pp.cut()
     | _ =>
-        pp.beginv()
         val nargs = cf_args.length()
         for (n, t, _)@i <- cf_args {
             val last = i == nargs - 1
             pp_ctyp__(pp, "", if last {""} else {","}, t, Some(n), true, cf_loc)
-            if !last  { pp.space() }
+            if !last { pp.space() }
         }
-        pp.end()
     }
     pp.str(")" + (if semicolon { ";" } else { "" }))
     pp.end()
@@ -316,7 +313,7 @@ type assoc_t = AssocLeft | AssocRight
 {
     val sl = match s { | CStmtBlock (sl, _) => sl | CStmtNop _ => [] | _ => s :: [] }
 
-    pp.str("{"); pp.break0(); pp.beginv(0)
+    pp.str("{"); pp.newline(); pp.beginv(0)
     for s@i <- sl {
         if i > 0 { pp.break0() }
         pp_cstmt_(pp, s)
@@ -345,10 +342,9 @@ type assoc_t = AssocLeft | AssocRight
         | [] => pp.str("{}")
         | s :: [] => pp_cstmt_(pp, s)
         | _ =>
-            pp.str("{"); pp.break0(); pp.beginv(0)
+            pp.beginv(); pp.str("{");
             for s@i <- sl {
-                if i != 0 { pp.break0() }
-                pp_cstmt_(pp, s)
+                pp.newline(); pp_cstmt_(pp, s)
             }
             pp.end(); pp.break0(); pp.str("}")
         }
@@ -384,7 +380,7 @@ type assoc_t = AssocLeft | AssocRight
                 | Some t => pp_ctyp_(pp, t, None, loc); pp.space()
                 | _ => {}
                 }
-                pp_elist(pp, e1)
+                pp.begin(); pp_elist(pp, e1); pp.end()
         }
         pp.str(";")
         match e2_opt {
@@ -394,7 +390,7 @@ type assoc_t = AssocLeft | AssocRight
         pp.str(";")
         match e3 {
         | [] => {}
-        | _ => pp.space(); pp_elist(pp, e3)
+        | _ => pp.space(); pp.begin(); pp_elist(pp, e3); pp.end()
         }
         pp.cut(); pp.str(")"); pp.space()
         pprint_cstmt_or_block_cbox(pp, body)
@@ -455,12 +451,12 @@ type assoc_t = AssocLeft | AssocRight
         val {cf_name, cf_body, cf_loc} = *cf
         pprint_fun_hdr(pp, cf_name, false, cf_loc, false)
         pp.beginv()
-        pp.str("{")
-        for s@i <- cf_body { pp.break0(); pp_cstmt_(pp, s) }
+        pp.str("{"); pp.newline()
+        for s@i <- cf_body { if i > 0 {pp.break0()}; pp_cstmt_(pp, s) }
         pp.end()
         pp.break0()
         pp.str("}")
-        pp.break0()
+        pp.newline()
     | CDefForwardSym (cf_name, cf_loc) =>
         match cinfo_(cf_name, cf_loc) {
         | CFun _ => pprint_fun_hdr(pp, cf_name, true, cf_loc, true)
@@ -475,9 +471,10 @@ type assoc_t = AssocLeft | AssocRight
     | CDefTyp ct =>
         val {ct_name, ct_typ, ct_loc} = *ct
         pp_ctyp__(pp, "typedef ", ";", ct_typ, Some(ct_name), true, ct_loc)
-        pp.break0()
+        pp.newline()
     | CDefForwardTyp (n, loc) =>
         pp.begin(); pp.str("struct "); pp_id(pp, n, loc); pp.str(";"); pp.end()
+        pp.newline()
     | CDefEnum ce =>
         val {cenum_cname, cenum_members, cenum_loc} = *ce
         pp.str("typedef enum {")
@@ -492,7 +489,17 @@ type assoc_t = AssocLeft | AssocRight
         }
         pp.end(); pp.break0(); pp.str("} ")
         pp.str(cenum_cname); pp.str(";")
-        pp.break0()
+        pp.newline()
+    | CDefInterface ci =>
+        val {ci_cname, ci_vtbl, ci_loc} = *ci
+        pp.beginv();
+        pp.str(f"typedef struct {ci_cname} {"); pp.newline();
+        val vtbl_cname = get_idc_cname(ci_vtbl, ci_loc)
+        pp.str(vtbl_cname); pp.str("* vtbl;"); pp.newline();
+        pp.str("fx_object_t* obj;");
+        pp.end(); pp.newline()
+        pp.str(f"}} {ci_cname};")
+        pp.newline()
     | CMacroDef cm =>
         val {cm_cname, cm_args, cm_body, cm_loc} = *cm
         pp.str("#define "); pp.str(cm_cname)

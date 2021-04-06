@@ -125,6 +125,11 @@ fun get_ctprops(ctyp: ctyp_t, loc: loc_t): ctprops_t
     | CTypName i =>
         match cinfo_(i, loc) {
         | CTyp (ref {ct_props}) => ct_props
+        | CInterface _ =>
+            ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
+            ctp_free=(std_FX_FREE_IFACE, std_fx_free_iface),
+            ctp_copy=(std_FX_COPY_IFACE, std_fx_copy_iface),
+            ctp_pass_by_ref=true, ctp_ptr=false }
         | _ => throw compile_err(loc, f"properties of non-type '{idk2str(i, loc)}' cannot be requested")
         }
     | CTypLabel => throw compile_err(loc, "properties of label cannot be requested")
@@ -296,6 +301,7 @@ fun convert_all_typs(kmods: kmodule_t list)
         val struct_decl = ref (cdeftyp_t {
             ct_name=tn, ct_typ=struct_or_ptr_typ,
             ct_cname=cname, ct_data_start=0,
+            ct_ifaces=[], ct_ifaces_id=noid,
             ct_enum=noid, ct_scope=[], ct_loc=loc,
             ct_props=ctprops_t { ctp_scalar=false,
                 ctp_complex=ktp_custom_free || ktp_custom_copy,
@@ -461,12 +467,17 @@ fun convert_all_typs(kmods: kmodule_t list)
                     cvt2ctyp(dep, dep_loc)
                 }
             })
-        add_decl(tn, CDefTyp(struct_decl))
-        if ktp.ktp_custom_free {
-            add_decl(free_f, CDefFun(freef_decl))
-        }
-        if ktp.ktp_custom_copy {
-            add_decl(copy_f, CDefFun(copyf_decl))
+        match kt_info {
+        | KInterface (ref {ki_name}) =>
+            all_decls = all_decls.add(ki_name)
+        | _ =>
+            add_decl(tn, CDefTyp(struct_decl))
+            if ktp.ktp_custom_free {
+                add_decl(free_f, CDefFun(freef_decl))
+            }
+            if ktp.ktp_custom_copy {
+                add_decl(copy_f, CDefFun(copyf_decl))
+            }
         }
         match kt_info {
         | KTyp kt =>
@@ -694,7 +705,7 @@ fun convert_all_typs(kmods: kmodule_t list)
             | _ => {}
             }
         | KVariant kvar =>
-            val {kvar_cname, kvar_cases, kvar_flags, kvar_loc} = *kvar
+            val {kvar_cname, kvar_cases, kvar_ifaces, kvar_flags, kvar_loc} = *kvar
             val have_tag = kvar_flags.var_flag_have_tag
             val int_ctx = (CTypCInt, kvar_loc)
             val void_ctx = (CTypVoid, kvar_loc)
@@ -780,14 +791,63 @@ fun convert_all_typs(kmods: kmodule_t list)
             val relems= if have_tag { (tag_id, CTypCInt) :: relems }
                         else { relems }
             if recursive_variant {
+                val relems =
+                    if kvar_ifaces == [] { relems }
+                    else { (get_id("ifaces"), std_fx_ifaces_t_cptr) :: relems }
                 val relems = (get_id("rc"), CTypInt) :: relems
                 *struct_decl = struct_decl->{ct_typ=make_ptr(CTypStruct(struct_id_opt, relems))}
             } else {
                 *struct_decl = struct_decl->{ct_typ=CTypStruct(struct_id_opt, relems)}
             }
-            *struct_decl = struct_decl->{ct_enum=ce_id}
+            val ct_ifaces = [: for (iname, _) <- kvar_ifaces { iname } :]
+            *struct_decl = struct_decl->{ct_enum=ce_id, ct_ifaces=ct_ifaces}
             *freef_decl = freef_decl->{cf_body=free_code.rev()}
             *copyf_decl = copyf_decl->{cf_body=copy_code.rev()}
+        | KInterface ki =>
+            val {ki_name, ki_cname, ki_base, ki_id, ki_all_methods, ki_scope, ki_loc} = *ki
+            val vtbl_id = gen_idc(pp(ki_name)+"_vtbl_t")
+            val vtbl_cname = K_mangle.remove_fx(ki_cname) + "_vtbl_t"
+            val iface_decl = ref (cdefinterface_t {
+                ci_name=ki_name, ci_cname=ki_cname,
+                ci_base=ki_base,
+                ci_id=ki_id, ci_vtbl=vtbl_id,
+                ci_all_methods=[],
+                ci_scope=ki_scope, ci_loc=ki_loc
+                })
+            set_idc_entry(ki_name, CInterface(iface_decl))
+            val vtbl_elems = [: for (f, t) <- ki_all_methods {
+                    val f = get_orig_id(f)
+                    val (args, rt) = match t {
+                        | KTypFun(args, rt) => (args, rt)
+                        | _ => throw compile_err(ki_loc,
+                            f"cgen: method {pp(ki_name)}.{pp(f)} has non-function type {t}")
+                        }
+                    val cargs = std_CTypVoidPtr :: ktyp2ctyp_fargs(args, rt, loc)
+                    val ctyp = CTypFunRawPtr(cargs, CTypCInt)
+                    (f, ctyp) } :]
+            val ctp = ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
+                                  ctp_free=(std_FX_FREE_IFACE, std_fx_free_iface),
+                                  ctp_copy=(std_FX_COPY_IFACE, std_fx_copy_iface),
+                                  ctp_pass_by_ref=true, ctp_ptr=false }
+            val relems = (get_id("vtbl"), make_const_ptr(CTypName(vtbl_id))) :: (get_id("obj"), std_CTypVoidPtr) :: []
+            add_fwd_decl(tn, true, CDefForwardTyp(ki_name, loc))
+            val vtbl_decl = ref (cdeftyp_t {
+                ct_name=vtbl_id, ct_typ=CTypStruct(Some(vtbl_id), vtbl_elems),
+                ct_cname=vtbl_cname, ct_data_start=0,
+                ct_ifaces=[], ct_ifaces_id=noid,
+                ct_enum=noid, ct_scope=ki_scope, ct_loc=ki_loc,
+                ct_props=ctprops_t { ctp_scalar=false,
+                        ctp_complex=false,
+                        ctp_ptr=true, ctp_pass_by_ref=true,
+                        ctp_make=[], ctp_free=(noid, noid),
+                        ctp_copy=(noid, noid)
+                    }
+                })
+            set_idc_entry(vtbl_id, CTyp(vtbl_decl))
+            add_decl(vtbl_id, CDefTyp(vtbl_decl))
+            top_typ_decl = CDefInterface(iface_decl) :: top_typ_decl
+            *struct_decl = struct_decl->{ct_typ=CTypStruct(Some(ki_name), relems), ct_props=ctp}
+            *iface_decl = iface_decl->{ci_all_methods=vtbl_elems}
         | _ => throw compile_err(loc, f"type '{idk2str(tn, loc)}' cannot be converted to C")
         }
     }
@@ -854,6 +914,8 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
         | CDefEnum (ref {cenum_name, cenum_members}) =>
             used_ids.mem(cenum_name) ||
             cenum_members.exists(fun ((m, _)) { used_ids.mem(m) })
+        | CDefInterface (ref {ci_name}) =>
+            used_ids.mem(ci_name)
         | _ => false
         }
 
@@ -884,12 +946,16 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
         {
             fold_cstmt(s, callb)
             match s {
-            | CDefTyp (ref {ct_typ, ct_enum,
+            | CDefTyp (ref {ct_typ, ct_enum, ct_ifaces, ct_ifaces_id,
                 ct_props={ctp_make, ctp_free=(_, free_f),
-                          ctp_copy=(_, copy_f)}}) =>
+                          ctp_copy=(_, copy_f)}, ct_loc}) =>
                 for i <- ct_enum :: free_f :: copy_f :: ctp_make {
                     add_used_id(i, callb)
                 }
+                for i <- ct_ifaces { add_used_id(i, callb) }
+                add_used_id(ct_ifaces_id, callb)
+            | CDefInterface (ref {ci_base, ci_vtbl}) =>
+                add_used_id(ci_base, callb); add_used_id(ci_vtbl, callb)
             | CDefForwardTyp(n, _) => add_used_id(n, callb)
             | CDefEnum(ref {cenum_members}) => {}
             | _ => {}
@@ -933,8 +999,8 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
     update_used_ids(used_ids)
     val fold ctypes_ccode = []
         for s <- all_ctypes_fwd_decl + (all_ctypes_decl + all_ctypes_fun_decl) {
-        if is_used_decl(s, used_ids) { s :: ctypes_ccode }
-        else { ctypes_ccode }
-    }
+            if is_used_decl(s, used_ids) { s :: ctypes_ccode }
+            else { ctypes_ccode }
+        }
     ctypes_ccode.rev()
 }

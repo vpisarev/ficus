@@ -11,8 +11,8 @@ from Ast import *
 from K_form import *
 from C_form import *
 
-import K_annotate, K_mangle
-import C_gen_types
+import K_annotate, K_mangle, C_gen_types
+import Set
 
 fun convert_all_fdecls(top_code: kcode_t)
 {
@@ -115,8 +115,8 @@ fun convert_all_fdecls(top_code: kcode_t)
             val ct = ref (cdeftyp_t {
                 ct_name=kcv_name, ct_typ=CTypStruct(None, relems.rev()),
                 ct_cname=kcv_cname, ct_data_start=2,
-                ct_enum=noid, ct_scope=[],
-                ct_loc=kcv_loc,
+                ct_ifaces=[], ct_ifaces_id=noid,
+                ct_enum=noid, ct_scope=[], ct_loc=kcv_loc,
                 ct_props = ctprops_t {
                     ctp_scalar=false, ctp_complex=true, ctp_ptr=false,
                     ctp_pass_by_ref=true, ctp_make=[],
@@ -261,7 +261,7 @@ fun convert_all_fdecls(top_code: kcode_t)
                 val exn_data_ct = ref (cdeftyp_t {
                     ct_name=exn_data_id, ct_typ=CTypStruct(None, relems),
                     ct_cname=exn_data_cname, ct_data_start=1, ct_enum=noid,
-                    ct_scope=[], ct_loc=ke_loc,
+                    ct_ifaces=[], ct_ifaces_id=noid, ct_scope=[], ct_loc=ke_loc,
                     ct_props = ctprops_t {
                         ctp_scalar=false, ctp_complex=true, ctp_ptr=false,
                         ctp_pass_by_ref=true, ctp_make=[],
@@ -287,6 +287,83 @@ fun convert_all_fdecls(top_code: kcode_t)
             top_fcv_decls = decls + top_fcv_decls
             mod_init_calls = reg_calls + mod_init_calls
             mod_exn_data_decls = exn_data_decls + mod_exn_data_decls
+        | KDefInterface ki =>
+            val {ki_id, ki_loc} = *ki
+            val id_exp = make_id_t_exp(ki_id, CTypInt, ki_loc)
+            val reg_iface_call = make_call(get_id("fx_register_iface"),
+                    [: cexp_get_addr(id_exp) :], CTypVoid, ki_loc)
+            mod_init_calls = CExp(reg_iface_call) :: mod_init_calls
+        | KDefVariant (ref {kvar_name, kvar_cname, kvar_ifaces, kvar_scope, kvar_loc})
+            when kvar_ifaces != [] =>
+            val ct = match cinfo_(kvar_name, kvar_loc) {
+                | CTyp ct => ct
+                | _ => throw compile_err(kvar_loc,
+                    "variant type '{idk2str(kvar_name, kvar_loc)}' was not converted to C yet")
+                }
+            val {ct_props={ctp_free=(_, free_f)}} = *ct
+            val entry_ctyp = CTypName(get_id("fx_iface_entry_t"))
+            val entries_ctyp = CTypRawArray([:CTypStatic:], entry_ctyp)
+            var fold init_ccode = [], ids = [], pairs = [], all_ids = empty_idset
+                for (iname, methods) <- kvar_ifaces {
+                val mptrs = [: for m <- methods
+                    { make_id_t_exp(m, std_CTypVoidPtr, kvar_loc) } :]
+                val vtbl_ctyp = CTypRawArray([:CTypStatic, CTypConst:], std_CTypVoidPtr)
+                val vtbl_init_exp = CExpInit(mptrs, (vtbl_ctyp, kvar_loc))
+                val vtbl = gen_temp_idc("vtbl")
+                val (_, init_ccode) = create_cdefval(vtbl, vtbl_ctyp, default_tempval_flags(),
+                                             "", Some(vtbl_init_exp), init_ccode, kvar_loc)
+                val iface = match get_kinterface_opt(KTypName(iname), kvar_loc) {
+                    | Some(iface) => iface
+                    | _ => throw compile_err(kvar_loc,
+                        "cgen: cannot find information about interface '{idk2str(iname, kvar_loc)}'")
+                    }
+                val pair = CExpInit([: make_int_exp(0, kvar_loc),
+                            make_id_exp(vtbl, kvar_loc) :], (entry_ctyp, kvar_loc))
+                (init_ccode, iface->ki_id :: ids, pair :: pairs, all_ids.add(iface->ki_id))
+            }
+            // extend the set of pairs (interface_id, vtbl) to the parent interfaces
+            for (iname, _) <- kvar_ifaces, pair <- pairs.rev() {
+                var iname = iname
+                while iname != noid {
+                    val (iface_id, parent) = match get_kinterface_opt(KTypName(iname), kvar_loc) {
+                        | Some(iface) => (iface->ki_id, iface->ki_base)
+                        | _ => (noid, noid)
+                        }
+                    if !all_ids.mem(iface_id) {
+                        ids = iface_id :: ids
+                        pairs = pair :: pairs
+                        all_ids = all_ids.add(iface_id)
+                    }
+                    iname = parent
+                }
+            }
+            val ifaces_ctyp = CTypName(get_id("fx_ifaces_t"))
+            val ifaces_id = gen_idc(pp(kvar_name) + "_ifaces")
+            val ifaces_cname = kvar_cname + "_ifaces"
+            val cv_flags = default_val_flags().{val_flag_global=kvar_scope, val_flag_mutable=true}
+            val (ifaces_id_exp, decl_ifaces_id) = create_cdefval(ifaces_id, ifaces_ctyp,
+                                cv_flags, ifaces_cname, None, [], kvar_loc)
+            val entries_init_exp = CExpInit(pairs.rev(), (entries_ctyp, kvar_loc))
+            val iface_entries = gen_temp_idc("ifaces_entries")
+            val (iface_entries_exp, init_ccode) =
+                create_cdefval(iface_entries, entries_ctyp, default_tempval_flags(),
+                               "", Some(entries_init_exp), init_ccode, kvar_loc)
+            val ids_ctyp = CTypRawArray([:CTypConst:], CTypCInt)
+            val ids_init_exp = CExpInit([: for i <- ids.rev() {
+                    make_id_t_exp(i, CTypCInt, kvar_loc)
+                } :], (ids_ctyp, kvar_loc))
+            val ifaces_ids = gen_temp_idc("ifaces_ids")
+            val (ids_exp, init_ccode) = create_cdefval(ifaces_ids, ids_ctyp,
+                default_tempval_flags(), "", Some(ids_init_exp), init_ccode, kvar_loc)
+            val init_ifaces_args =
+                make_id_t_exp(free_f, std_fx_free_t, kvar_loc) ::
+                make_int_exp(ids.length(), kvar_loc) :: ids_exp :: iface_entries_exp ::
+                cexp_get_addr(ifaces_id_exp) :: []
+            val call_init_ifaces = make_call(get_id("fx_init_ifaces"), init_ifaces_args, CTypVoid, kvar_loc)
+            val init_ccode = CExp(call_init_ifaces) :: init_ccode
+            *ct = ct->{ct_ifaces_id = ifaces_id}
+            top_fcv_decls = decl_ifaces_id + top_fcv_decls
+            mod_init_calls = CStmtBlock(init_ccode.rev(), kvar_loc) :: mod_init_calls
         | _ => {}
         }
     }

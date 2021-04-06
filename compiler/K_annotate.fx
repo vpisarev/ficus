@@ -41,11 +41,13 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
         }
 
     match kinfo_(n, loc) {
-    | KVariant (ref {kvar_cases}) =>
-        fold deps = empty_idset for (_, ti) <- kvar_cases { get_ktyp_deps_(ti, deps) }
+    | KVariant (ref {kvar_cases, kvar_ifaces}) =>
+        val fold deps = empty_idset for (_, ti) <- kvar_cases { get_ktyp_deps_(ti, deps) }
+        fold deps = deps for (iname, _) <- kvar_ifaces { deps.add(iname) }
     | KTyp (ref {kt_typ}) => get_ktyp_deps_(kt_typ, empty_idset)
-    | KInterface (ref {ki_all_methods}) =>
-        fold deps = empty_idset for (_, ti) <- ki_all_methods { get_ktyp_deps_(ti, deps) }
+    | KInterface (ref {ki_base, ki_all_methods}) =>
+        val fold deps = empty_idset for (_, ti) <- ki_all_methods { get_ktyp_deps_(ti, deps) }
+        if ki_base == noid {deps} else {deps.add(ki_base)}
     | _ => throw compile_err(loc, f"the symbol '{idk2str(n, loc)}' is not a type")
     }
 }
@@ -104,7 +106,7 @@ fun find_recursive(top_code: kcode_t)
     for n <- all_typs {
         match kinfo_(n, noloc) {
         | KVariant kvar =>
-            if is_recursive(n) {
+            if is_recursive(n) || kvar->kvar_ifaces != [] {
                 val {kvar_flags} = *kvar
                 *kvar = kvar->{kvar_flags=kvar_flags.{var_flag_recursive=true}}
             }

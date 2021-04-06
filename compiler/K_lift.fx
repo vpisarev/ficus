@@ -749,6 +749,11 @@ fun lift_all(kmods: kmodule_t list)
                 val code = KDefVal(n, KExpUnary(OpDeref, AtomId(nr), (t, loc)), loc) :: code
                 KExpSeq(code.rev(), (KTypVoid, loc))
             }
+        | KDefVariant kvar =>
+            val {kvar_ifaces=kvar_ifaces0} = *kvar
+            val e = walk_kexp(e, callb)
+            *kvar = kvar->{kvar_ifaces=kvar_ifaces0}
+            e
         | KExpFor(idom_l, at_ids, body, flags, loc) =>
             val idom_l = [: for (i, dom_i) <- idom_l {
                              val dom_i = check_n_walk_dom(dom_i, loc, callb)

@@ -48,24 +48,25 @@ int FX_EXN_DivByZeroError = -6;
 int FX_EXN_FileOpenError = -7;
 int FX_EXN_IOError = -8;
 int FX_EXN_NotFoundError = -9;
-int FX_EXN_NoMatchError = -10;
-int FX_EXN_NullFileError = -11;
-int FX_EXN_NullListError = -12;
-int FX_EXN_NullPtrError = -13;
-int FX_EXN_OptionError = -14;
-int FX_EXN_OutOfMemError = -15;
-int FX_EXN_OutOfRangeError = -16;
-int FX_EXN_OverflowError = -17;
-int FX_EXN_ParallelForError = -18;
-int FX_EXN_RangeError = -19;
-int FX_EXN_SizeError = -20;
-int FX_EXN_SizeMismatchError = -21;
-int FX_EXN_StackOverflowError = -22;
-int FX_EXN_SysBreak = -23;
-int FX_EXN_SysContinue = -24;
-int FX_EXN_TypeMismatchError = -25;
-int FX_EXN_UnknownExnError = -26;
-int FX_EXN_ZeroStepError = -27;
+int FX_EXN_NotImplementedError = -10;
+int FX_EXN_NoMatchError = -11;
+int FX_EXN_NullFileError = -12;
+int FX_EXN_NullListError = -13;
+int FX_EXN_NullPtrError = -14;
+int FX_EXN_OptionError = -15;
+int FX_EXN_OutOfMemError = -16;
+int FX_EXN_OutOfRangeError = -17;
+int FX_EXN_OverflowError = -18;
+int FX_EXN_ParallelForError = -19;
+int FX_EXN_RangeError = -20;
+int FX_EXN_SizeError = -21;
+int FX_EXN_SizeMismatchError = -22;
+int FX_EXN_StackOverflowError = -23;
+int FX_EXN_SysBreak = -24;
+int FX_EXN_SysContinue = -25;
+int FX_EXN_TypeMismatchError = -26;
+int FX_EXN_UnknownExnError = -27;
+int FX_EXN_ZeroStepError = -28;
 
 int fx_init(int argc, char** argv)
 {
@@ -89,6 +90,7 @@ int fx_init(int argc, char** argv)
     FX_DECL_STD_EXN(FileOpenError);
     FX_DECL_STD_EXN(IOError);
     FX_DECL_STD_EXN(NotFoundError);
+    FX_DECL_STD_EXN(NotImplementedError);
     FX_DECL_STD_EXN(NoMatchError);
     FX_DECL_STD_EXN(NullFileError);
     FX_DECL_STD_EXN(NullListError);
@@ -533,6 +535,90 @@ void fx_copy_fp(const void* src, void* pdst)
 {
     fx_fp_t *src_ = (fx_fp_t*)src, **pdst_ = (fx_fp_t**)pdst;
     FX_COPY_FP(src_, *pdst_);
+}
+
+//////////////////// interfaces ///////////////////
+
+typedef struct fx_iface_vtbl_t
+{
+    fx_free_t __free__;
+} fx_iface_vtbl_t;
+
+typedef struct fx_iface_t
+{
+    const fx_iface_vtbl_t* vtbl;
+    fx_object_t* obj;
+} fx_iface_t;
+
+void fx_free_iface(void* iface)
+{
+    fx_iface_t* iface_ = (fx_iface_t*)iface;
+    FX_FREE_IFACE(iface_);
+}
+
+void fx_copy_iface(const void* src, void* dst)
+{
+    const fx_iface_t *src_ = (const fx_iface_t*)src;
+    fx_iface_t *dst_ = (fx_iface_t*)dst;
+    FX_COPY_IFACE(src_, dst_);
+}
+
+int fx_make_iface(const void* obj, int idx, void* iface)
+{
+    fx_object_t* obj_ = (fx_object_t*)obj;
+    fx_iface_t* iface_ = (fx_iface_t*)iface;
+    if (!obj_ || !iface_)
+        return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
+    if (idx < 0 || idx >= obj_->ifaces->nifaces)
+        return FX_SET_EXN_FAST(FX_EXN_OutOfRangeError);
+    iface_->vtbl = obj_->ifaces->ifaces[idx].vtbl;
+    FX_INCREF(obj_->rc);
+    iface_->obj = obj_;
+    return FX_OK;
+}
+
+int fx_query_iface(const fx_ifaces_t* ifaces, int iface_id, void* vtbl)
+{
+    *(void**)vtbl = 0;
+    if (!ifaces || !vtbl)
+        return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
+    for(int i = 0; i < ifaces->nifaces; i++ ) {
+        if (ifaces->ifaces[i].iface_id == iface_id) {
+            *(void**)vtbl = ifaces->ifaces[i].vtbl;
+            return FX_OK;
+        }
+    }
+    return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+}
+
+int fx_get_object(const void* iface, int idx, void* obj)
+{
+    fx_iface_t* iface_ = (fx_iface_t*)iface;
+    if (!iface_ || !iface_->obj)
+        return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
+    if (idx < 0 || idx >= iface_->obj->ifaces->nifaces ||
+        iface_->obj->ifaces->ifaces[idx].vtbl != (void*)iface_->vtbl)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    FX_INCREF(iface_->obj->rc);
+    *(void**)obj = iface_->obj;
+    return FX_OK;
+}
+
+static int fx_global_iface_id = -1;
+void fx_register_iface(int* iface_id)
+{
+    *iface_id = ++fx_global_iface_id;
+}
+
+void fx_init_ifaces(void* free_f, int nifaces, const int* iface_ids,
+                    const fx_iface_entry_t* entries, fx_ifaces_t* ifaces)
+{
+    ifaces->free_f = (fx_free_t)free_f;
+    ifaces->nifaces = nifaces;
+    ifaces->ifaces = (fx_iface_entry_t*)entries;
+    for(int i = 0; i < nifaces; i++) {
+        ifaces->ifaces[i].iface_id = iface_ids[i];
+    }
 }
 
 //////////////////// cpointers ////////////////////

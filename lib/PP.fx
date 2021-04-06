@@ -190,6 +190,8 @@ fun break0(pp: PP.t) = br(pp, 1, 0)
 fun breaki(pp: PP.t) = br(pp, 1, pp.default_indent)
 fun breaku(pp: PP.t) = br(pp, 1, -pp.default_indent)
 fun newline(pp: PP.t) = br(pp, pp.margin, 0)
+fun newlinei(pp: PP.t) = br(pp, pp.margin, pp.default_indent)
+fun newlineu(pp: PP.t) = br(pp, pp.margin, -pp.default_indent)
 
 fun str(pp: PP.t, s: string): void
 {

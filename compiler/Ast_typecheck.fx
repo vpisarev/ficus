@@ -2712,73 +2712,6 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                     | _ => TypFun(arg_typs, rt)
                     }
     val iname = df_flags.fun_flag_method_of
-    val iname =
-        if iname == noid {iname}
-        else {
-            if instantiate { throw compile_err(inst_loc, "generic functions may not be interface methods") }
-            match df_scope {
-            | ScModule _ :: _ => {}
-            | _ => throw compile_err(inst_loc, "interface method may not be a local function")
-            }
-            val t = check_typ(TypApp([], iname), inst_env, df_scope, inst_loc)
-            val iface = match t {
-                | TypApp([], tn) => get_iface(tn, inst_loc)
-                | _ => throw compile_err(inst_loc, f"type '{pp(iname)}' is not an interface")
-                }
-            val iname = iface->di_name
-            val arg_typs = [: for t <- arg_typs {deref_typ(t)} :]
-            match arg_typs {
-            | TypApp([], tn) :: method_arg_typs =>
-                match id_info(tn, inst_loc) {
-                | IdVariant dvar =>
-                    val {dvar_name, dvar_ifaces} = *dvar
-                    val mtyp = TypFun(method_arg_typs, rt)
-                    val mname = get_orig_id(inst_name)
-                    var found = false, found_iface = false
-                    val dvar_ifaces = [: for (iname_i, imethods_i) <- dvar_ifaces {
-                        if iname_i != iname { (iname_i, imethods_i) }
-                        else {
-                            found_iface = true
-                            val imethods_i =
-                                [: for (m_j, impl_j) <- imethods_i,
-                                       (m1_j, tj, _) <- iface->di_all_methods {
-                                    if m_j != m1_j {
-                                        throw compile_err(inst_loc,
-                                        f"internal err: method {pp(m_j)} does not match method {pp(m1_j)}")
-                                    }
-                                    if mname == get_orig_id(m_j) && maybe_unify(mtyp, tj, inst_loc, false) {
-                                        if impl_j != noid {
-                                            throw compile_err(inst_loc,
-                                                f"method '{pp(iname)}.{mname}' is already defined " +
-                                                f"at {get_idinfo_loc(id_info(impl_j, inst_loc))}")
-                                        }
-                                        found = true
-                                        (m_j, inst_name)
-                                    } else {
-                                        (m_j, impl_j)
-                                    }
-                                } :]
-                            if !found {
-                                throw compile_err(inst_loc,
-                                    f"method '{pp(inst_name)}' is not found in interface '{pp(iname)}'")
-                            }
-                            (iname_i, imethods_i)
-                        } }:]
-                    if !found_iface {
-                        throw compile_err(inst_loc,
-                        f"interface '{pp(iname)} is not implemented in '{pp(dvar_name)}")
-                    }
-                    *dvar = dvar->{dvar_ifaces=dvar_ifaces}
-                | _ =>
-                    throw compile_err(inst_loc, f"the first argument's type '{tn}' is not a record/variant")
-                }
-            | _ =>
-                val t = match arg_typs { | t :: [] => t | _ => TypVoid }
-                throw compile_err(inst_loc,
-                    f"the first argument's type '{typ2str(t)}' of method must be a record/variant")
-            }
-            iname
-        }
     val inst_df = ref (deffun_t {
         df_name=inst_name,
         df_templ_args=[],
@@ -2796,10 +2729,78 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
     val inst_body = instantiate_fun_body(inst_name, inst_ftyp, df_inst_args, inst_body, inst_env, fun_sc, inst_loc)
     // update the function return type
     unify(get_exp_typ(inst_body), rt, inst_loc, "the function body has inconsistent type")
+    /*if iname != noid {
+        unify(inst_ftyp, mtyp, inst_loc,
+            f"the function body {typ2str(inst_ftyp)} and the declared method type {typ2str(mtyp)} do not match")
+    }*/
     val inst_ftyp = match (arg_typs, is_constr) {
                     | ([], true) => rt
                     | _ => TypFun(arg_typs, rt)
                     }
+    if iname != noid {
+        if instantiate { throw compile_err(inst_loc, "generic functions may not be interface methods") }
+        match df_scope {
+        | ScModule _ :: _ => {}
+        | _ => throw compile_err(inst_loc, "interface method may not be a local function")
+        }
+        val t = check_typ(TypApp([], iname), inst_env, df_scope, inst_loc)
+        val iface = match t {
+            | TypApp([], tn) => get_iface(tn, inst_loc)
+            | _ => throw compile_err(inst_loc, f"type '{pp(iname)}' is not an interface")
+            }
+        var iname = iface->di_name, mtyp = TypVoid
+        val arg_typs = [: for t <- arg_typs {deref_typ(t)} :]
+        match arg_typs {
+        | TypApp([], tn) :: method_arg_typs =>
+            match id_info(tn, inst_loc) {
+            | IdVariant dvar =>
+                val {dvar_name, dvar_ifaces} = *dvar
+                mtyp = TypFun(method_arg_typs, rt)
+                val mname = get_orig_id(inst_name)
+                var found = false, found_iface = false
+                val dvar_ifaces = [: for (iname_i, imethods_i) <- dvar_ifaces {
+                    if iname_i != iname { (iname_i, imethods_i) }
+                    else {
+                        found_iface = true
+                        val imethods_i =
+                            [: for (m_j, impl_j) <- imethods_i,
+                                    (m1_j, tj, _) <- iface->di_all_methods {
+                                if m_j != m1_j {
+                                    throw compile_err(inst_loc,
+                                    f"internal err: method {pp(m_j)} does not match method {pp(m1_j)}")
+                                }
+                                if mname == get_orig_id(m_j) && maybe_unify(mtyp, tj, inst_loc, false) {
+                                    if impl_j != noid {
+                                        throw compile_err(inst_loc,
+                                            f"method '{pp(iname)}.{mname}' is already defined " +
+                                            f"at {get_idinfo_loc(id_info(impl_j, inst_loc))}")
+                                    }
+                                    found = true
+                                    (m_j, inst_name)
+                                } else {
+                                    (m_j, impl_j)
+                                }
+                            } :]
+                        if !found {
+                            throw compile_err(inst_loc,
+                                f"method '{pp(inst_name)}: {typ2str(TypFun(method_arg_typs, rt))}' is not found in interface '{pp(iname)}'")
+                        }
+                        (iname_i, imethods_i)
+                    } }:]
+                if !found_iface {
+                    throw compile_err(inst_loc,
+                    f"interface '{pp(iname)} is not implemented in '{pp(dvar_name)}")
+                }
+                *dvar = dvar->{dvar_ifaces=dvar_ifaces}
+            | _ =>
+                throw compile_err(inst_loc, f"the first argument's type '{tn}' is not a record/variant")
+            }
+        | _ =>
+            val t = match arg_typs { | t :: [] => t | _ => TypVoid }
+            throw compile_err(inst_loc,
+                f"the first argument's type '{typ2str(t)}' of method must be a record/variant")
+        }
+    }
     *inst_df = inst_df->{df_body=inst_body, df_typ=inst_ftyp}
     inst_df
 }
