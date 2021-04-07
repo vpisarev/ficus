@@ -69,7 +69,8 @@ val noid = IdName(0)
 val dummyid = IdName(1)
 val __fold_result_id__ = IdName(2)
 val __tag_id__ = IdName(3)
-val __builtin_ids__ = [: "", "_", "__fold_result__", "__tag__" :]
+val __self__ = IdName(4)
+val __builtin_ids__ = [: "", "_", "__fold_result__", "__tag__", "self" :]
 
 type scope_t =
     | ScBlock: int

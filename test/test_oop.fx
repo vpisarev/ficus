@@ -83,24 +83,25 @@ fun make_ellipse(cx: float, cy: float, fx: float, fy: float,
     Ellipse {r=ref (ellipse_data_t {cx=cx, cy=cy, fx=fx, fy=fy, angle=angle, sc=sc})}
 }
 
-fun IShape.name(_: Rect) = "rectangle"
-fun IShape.name(_: Ellipse) = "ellipse"
-fun IClone.clone(r: Rect)
+fun Rect.name() = "rectangle"
+fun Rect.area() = self.r->fx*self.r->fy
+fun Rect.get_scale() = (self.r->fx, self.r->fy)
+fun Rect.set_scale(fx: float, fy: float) { self.r->fx = fx; self.r->fy = fy }
+fun Rect.clone()
 {
-    val {cx, cy, fx, fy, angle, corner_r, sc} = *r.r
+    val {cx, cy, fx, fy, angle, corner_r, sc} = *self.r
     (make_rect(cx, cy, fx, fy, sc, angle=angle, corner_r=corner_r) :> IClone)
 }
-fun IClone.clone(e: Ellipse)
+
+fun Ellipse.name() = "ellipse"
+fun Ellipse.area() = float(M_PI*self.r->fx*self.r->fy)
+fun Ellipse.get_scale() = (self.r->fx, self.r->fy)
+fun Ellipse.set_scale(fx: float, fy: float) { self.r->fx = fx; self.r->fy = fy }
+fun Ellipse.clone()
 {
-    val {cx, cy, fx, fy, angle, sc} = *e.r
+    val {cx, cy, fx, fy, angle, sc} = *self.r
     (make_ellipse(cx, cy, fx, fy, sc, angle=angle) :> IClone)
 }
-fun IShape.area(r: Rect) = r.r->fx*r.r->fy
-fun IShape.area(e: Ellipse) = float(M_PI*e.r->fx*e.r->fy)
-fun IShape.get_scale(r: Rect) = (r.r->fx, r.r->fy)
-fun IShape.set_scale(r: Rect, fx: float, fy: float) { r.r->fx = fx; r.r->fy = fy }
-fun IShape.get_scale(e: Ellipse) = (e.r->fx, e.r->fy)
-fun IShape.set_scale(e: Ellipse, fx: float, fy: float) { e.r->fx = fx; e.r->fy = fy }
 
 TEST("oop.interfaces", fun()
 {

@@ -197,7 +197,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     | DefFun df =>
         val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_loc} = *df
         val ctor_id = df_flags.fun_flag_ctor
-        val iface = df_flags.fun_flag_method_of
+        val objtyp = df_flags.fun_flag_method_of
         pp.begin(0); pp.begin(); pprint_fun_flags(pp, df_flags)
         match df_templ_args {
         | [] => {}
@@ -205,10 +205,10 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.begin(); pp.str("template<"); pprint_templ_args(pp, df_templ_args)
             pp.str(">"); pp.end(); pp.space()
         }
-        if iface == noid {
+        if objtyp == noid {
             pp.str("fun "); ppid(pp, df_name)
         } else {
-            pp.str("method "); ppid(pp, iface); pp.str("."); ppid(pp, df_name)
+            pp.str("method "); ppid(pp, objtyp); pp.str("."); ppid(pp, df_name)
         }
         pp.str("("); pp.cut();
         for p@i <- df_args {
