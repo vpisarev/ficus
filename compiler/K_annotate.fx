@@ -37,6 +37,7 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
         | KTypName i => deps.add(i)
         | KTypArray (_, et) => get_ktyp_deps_(et, deps)
         | KTypList et => get_ktyp_deps_(et, deps)
+        | KTypVector et => get_ktyp_deps_(et, deps)
         | KTypRef et => get_ktyp_deps_(et, deps)
         }
 
@@ -106,7 +107,8 @@ fun find_recursive(top_code: kcode_t)
     for n <- all_typs {
         match kinfo_(n, noloc) {
         | KVariant kvar =>
-            if is_recursive(n) || kvar->kvar_ifaces != [] {
+            if is_recursive(n) || kvar->kvar_ifaces != [] ||
+               kvar->kvar_flags.var_flag_have_mutable {
                 val {kvar_flags} = *kvar
                 *kvar = kvar->{kvar_flags=kvar_flags.{var_flag_recursive=true}}
             }
@@ -147,6 +149,11 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
             val have_complex = get_ktprops_(et, loc).ktp_complex
             ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=true,
                         ktp_pass_by_ref=false, ktp_custom_free=have_complex,
+                        ktp_custom_copy=false }
+        | KTypVector et =>
+            val have_complex = get_ktprops_(et, loc).ktp_complex
+            ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=false,
+                        ktp_pass_by_ref=true, ktp_custom_free=have_complex,
                         ktp_custom_copy=false }
         | KTypRef et =>
             val have_complex = get_ktprops_(et, loc).ktp_complex
@@ -208,7 +215,14 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
 
 fun clear_typ_annotations(top_code: kcode_t) =
     for e <- top_code {
-        | KDefVariant kvar => *kvar = kvar->{kvar_props=None, kvar_flags=default_variant_flags()}
+        | KDefVariant kvar =>
+            val prev_flags = kvar->kvar_flags
+            *kvar = kvar->{
+                kvar_props=None,
+                kvar_flags=prev_flags.{
+                    var_flag_recursive=false,
+                    var_flag_have_tag=false,
+                    var_flag_opt=false}}
         | KDefTyp kt => *kt = kt->{kt_props=None}
         | _ => {}
     }

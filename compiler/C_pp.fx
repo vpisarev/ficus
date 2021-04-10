@@ -16,7 +16,10 @@
 from Ast import *
 from K_form import *
 from C_form import *
+import Options
 import File, PP, Sys
+
+val pp_ = Ast.pp
 
 val default_indent = 3
 val ccode_margin = 128
@@ -110,7 +113,8 @@ type assoc_t = AssocLeft | AssocRight
     pp.begin()
     match t {
     | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _ | CTypFloat _
-    | CTypString | CTypUniChar | CTypBool | CTypExn | CTypCSmartPtr | CTypArray _ =>
+    | CTypString | CTypUniChar | CTypBool | CTypExn | CTypCSmartPtr
+    | CTypArray _ | CTypVector _ =>
         pp.str(ctyp2str_(t, loc))
         pr_id_opt()
     | CTypVoid =>
@@ -193,6 +197,35 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pp_ctyp_(pp: PP.t, t: ctyp_t, id_opt: id_t?, loc: loc_t) = pp_ctyp__(pp, "", "", t, id_opt, false, loc)
 
+@private fun embed_text(pp: PP.t, fname: string, loc: loc_t)
+{
+    try {
+        val text = File.read_utf8(fname)
+        val lines = text.split('\n', allow_empty=true)
+        pp.beginv(0)
+        pp.str("FX_MAKE_STR("); pp.space()
+        val nlines = lines.length()
+        for l@j <- lines {
+            pp.str((if j > 0 {"U"} else {""}) +
+                    (if j < nlines-1 {l+'\n'} else {l}).escaped(quotes=true))
+            pp.newline()
+        }
+        pp.str(")"); pp.end()
+    } catch {
+    | _ => throw compile_err(loc, f"@text: {fname} cannot be read")
+    }
+}
+
+@private fun embed_data(pp: PP.t, kind: string, fname: string, elemtyp: ctyp_t, loc: loc_t)
+{
+    pp.str("{"); pp.begin(0);
+    for v@i <- [| 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 |] {
+        if i > 0 { pp.str(","); pp.space() }
+        pp.str(f"{v}")
+    }
+    pp.end(); pp.space(); pp.str("}")
+}
+
 @private fun pp_cexp_(pp: PP.t, e: cexp_t, pr: int) =
     match e {
     | CExpIdent(i, (_, loc)) => pp_id(pp, i, loc)
@@ -266,10 +299,26 @@ type assoc_t = AssocLeft | AssocRight
             }
         }
         pp.end(); pp.space(); pp.str("}")
+    | CExpData (kind, fname, (t, loc)) =>
+        match kind {
+        | "text" => embed_text(pp, fname, loc)
+        | "binary" | "binary_le" | "binary_be" =>
+            val elemtyp = match t {
+            | CTypArray(1, elemtyp) => elemtyp
+            | _ => throw compile_err(get_cexp_loc(e),
+                f"c_pp: invalid type '{ctyp2str(t, loc).0}' of embedded data array")
+            }
+            embed_data(pp, kind, fname, elemtyp, loc)
+        | _ =>
+            throw compile_err(get_cexp_loc(e),
+                f"c_pp: unsupported kind {kind} of embedded data; must be 'text' or 'binary*'")
+        }
     | CExpTyp (t, loc) =>
         pp.begin(); pp_ctyp_(pp, t, None, loc); pp.end()
     | CExpCCode (ccode, l) =>
         pp.begin(); pp.str("\n"+ccode.strip()+"\n"); pp.end()
+    | CExpData (kind, fname, l) =>
+        pp.begin();
     }
 
 @private fun pp_elist(pp: PP.t, el: cexp_t list)
@@ -321,6 +370,20 @@ type assoc_t = AssocLeft | AssocRight
     pp.end(); pp.end(); pp.break0(); pp.str("}")
 }
 
+@private fun pprint_cstmt_as_block(pp: PP.t, s: cstmt_t)
+{
+    val sl = match s { | CStmtBlock(sl, _) => sl | CStmtNop _ => [] | _ => s :: [] }
+    match sl {
+    | [] => pp.str("{}")
+    | _ =>
+        pp.beginv(); pp.str("{");
+        for s@i <- sl {
+            pp.newline(); pp_cstmt_(pp, s)
+        }
+        pp.end(); pp.break0(); pp.str("}")
+    }
+}
+
 @private fun pp_cstmt_(pp: PP.t, s: cstmt_t) =
     match s {
     | CStmtNop _ => pp.str("{}")
@@ -337,17 +400,16 @@ type assoc_t = AssocLeft | AssocRight
         | _ => {}
         }
         pp.str(";"); pp.end()
-    | CStmtBlock (sl, _) =>
-        match sl {
-        | [] => pp.str("{}")
-        | s :: [] => pp_cstmt_(pp, s)
-        | _ =>
-            pp.beginv(); pp.str("{");
-            for s@i <- sl {
-                pp.newline(); pp_cstmt_(pp, s)
-            }
-            pp.end(); pp.break0(); pp.str("}")
+    | CStmtBlock _ =>
+        pprint_cstmt_as_block(pp, s)
+    | CStmtSync (n, s) =>
+        if Options.opt.enable_openmp {
+            pp.newline()
+            pp.str("#pragma omp critical")
+            if n != noid { pp.str(f" ({pp_(n)})") }
+            pp.newline()
         }
+        pprint_cstmt_as_block(pp, s)
     | CStmtIf (e, s1, s2, _) =>
         fun print_cascade_if(prefix: string, e: cexp_t, s1: cstmt_t, s2: cstmt_t)
         {

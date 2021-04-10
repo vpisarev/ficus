@@ -79,7 +79,7 @@ operator > (a: 't, b: 't): bool = a <=> b > 0
 operator >= (a: 't, b: 't): bool = a <=> b >= 0
 operator <= (a: 't, b: 't): bool = a <=> b <= 0
 
-@pure @nothrow fun length(s: string): int = @ccode { return s->length }
+fun length(s: string) = __intrin_size__(s)
 @pure @nothrow fun length(l: 't list): int = @ccode { return fx_list_length(l) }
 
 @pure fun join(sep: string, strs:string []): string = @ccode
@@ -743,19 +743,11 @@ fun array(l: 't list): 't [] = [| for x <- l {x} |]
 
 fun copy(a: 't [+]) = [| for x <- a {x} |]
 
-@pure @nothrow fun size(a: 't []): int = @ccode { return a->dim[0].size }
-@pure @nothrow fun size(a: 't [,]): (int, int) = @ccode
-{
-    fx_result->t0=a->dim[0].size;
-    fx_result->t1=a->dim[1].size
-}
-
-@pure @nothrow fun size(a: 't [,,]): (int, int, int) = @ccode
-{
-    fx_result->t0=a->dim[0].size;
-    fx_result->t1=a->dim[1].size;
-    fx_result->t2=a->dim[2].size
-}
+fun size(a: 't []) = __intrin_size__(a)
+fun size(a: 't [,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
+fun size(a: 't [,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
+fun size(a: 't [,,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
+                         __intrin_size__(a, 2), __intrin_size__(a, 3))
 
 fun sort(arr: 't [], lt: ('t, 't) -> bool)
 {

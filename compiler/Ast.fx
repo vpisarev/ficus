@@ -140,7 +140,7 @@ type lit_t =
     | LitBool: bool
     | LitNil
 
-type defparam_t = lit_t
+type initializer_t = InitId: id_t | InitLit: lit_t
 
 type typ_t =
     | TypVar: typ_t? ref
@@ -157,10 +157,11 @@ type typ_t =
     | TypVoid
     | TypFun: (typ_t list, typ_t)
     | TypList: typ_t
+    | TypVector: typ_t
     | TypTuple: typ_t list
     | TypRef: typ_t
     | TypArray: (int, typ_t)
-    | TypRecord: ((id_t, typ_t, defparam_t?) list, bool) ref
+    | TypRecord: ((val_flags_t, id_t, typ_t, initializer_t?) list, bool) ref
     | TypExn
     | TypErr
     | TypCPointer
@@ -239,7 +240,7 @@ type fun_flags_t =
 
 fun default_fun_flags() = fun_flags_t {fun_flag_ctor=CtorNone, fun_flag_method_of=noid}
 
-type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeTuple
+type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeVector | ForMakeTuple
 
 type for_flags_t =
 {
@@ -272,14 +273,15 @@ val max_zerobuf_size = 256
 
 type var_flags_t =
 {
-    var_flag_object: id_t;
+    var_flag_object_from: id_t;
     var_flag_record: bool = false;
     var_flag_recursive: bool = false;
     var_flag_have_tag: bool = false;
+    var_flag_have_mutable: bool = false;
     var_flag_opt: bool = false
 }
 
-fun default_variant_flags() = var_flags_t {var_flag_object=noid}
+fun default_variant_flags() = var_flags_t {var_flag_object_from=noid}
 
 type ctx_t = (typ_t, loc_t)
 
@@ -293,9 +295,11 @@ type exp_t =
     | ExpBinary: (binary_t, exp_t, exp_t, ctx_t)
     | ExpUnary: (unary_t, exp_t, ctx_t)
     | ExpIntrin: (intrin_t, exp_t list, ctx_t)
+    | ExpSync: (id_t, exp_t)
     | ExpSeq: (exp_t list, ctx_t)
     | ExpMkTuple: (exp_t list, ctx_t)
     | ExpMkArray: (exp_t list list, ctx_t)
+    | ExpMkVector: (exp_t list, ctx_t)
     | ExpMkRecord: (exp_t, (id_t, exp_t) list, ctx_t)
     | ExpUpdateRecord: (exp_t, (id_t, exp_t) list, ctx_t)
     | ExpCall: (exp_t, exp_t list, ctx_t)
@@ -313,6 +317,7 @@ type exp_t =
     | ExpCast: (exp_t, typ_t, ctx_t)
     | ExpTyped: (exp_t, typ_t, ctx_t)
     | ExpCCode: (string, ctx_t)
+    | ExpData: (string, string, ctx_t)
     | DefVal: (pat_t, exp_t, val_flags_t, loc_t)
     | DefFun: deffun_t ref
     | DefExn: defexn_t ref
@@ -670,10 +675,12 @@ fun get_exp_ctx(e: exp_t) {
     | ExpBinary(_, _, _, c) => c
     | ExpUnary(_, _, c) => c
     | ExpIntrin(_, _, c) => c
+    | ExpSync(_, e) => get_exp_ctx(e)
     | ExpSeq(_, c) => c
     | ExpMkTuple(_, c) => c
     | ExpMkRecord(_, _, c) => c
     | ExpMkArray(_, c) => c
+    | ExpMkVector(_, c) => c
     | ExpUpdateRecord(_, _, c) => c
     | ExpCall(_, _, c) => c
     | ExpAt(_, _, _, _, c) => c
@@ -690,6 +697,7 @@ fun get_exp_ctx(e: exp_t) {
     | ExpCast(_, _, c) => c
     | ExpTyped(_, _, c) => c
     | ExpCCode(_, c) => c
+    | ExpData(_, _, c) => c
     | DefVal(_, _, _, dv_loc) => (TypDecl, dv_loc)
     | DefFun (ref {df_loc}) => (TypDecl, df_loc)
     | DefExn (ref {dexn_loc}) => (TypDecl, dexn_loc)
@@ -1280,9 +1288,13 @@ fun typ2str(t: typ_t): string {
         }
     | TypRecord (ref (relems, _)) =>
         join_embrace("{", "}", "; ",
-            [| for (i, t, _) <- relems { f"{i}: {typ2str(t)}" } |])
+            [| for (flags, i, t, _) <- relems {
+                val prefix = if flags.val_flag_mutable { "var " } else {""}
+                f"{prefix}{i}: {typ2str(t)}"
+            } |])
     | TypArray(d, t) => f"{typ2str(t)} [{','*(d-1)}]"
     | TypList(t) => f"{typ2str(t)} list"
+    | TypVector(t) => f"{typ2str(t)} vector"
     | TypRef(t) => f"{typ2str(t)} ref"
     | TypExn => "exn"
     | TypErr => "<err>"
@@ -1361,6 +1373,7 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypVoid => t
     | TypFun(args, rt) => TypFun(check_n_walk_tlist(args, callb), check_n_walk_typ(rt, callb))
     | TypList(t) => TypList(check_n_walk_typ(t, callb))
+    | TypVector(t) => TypVector(check_n_walk_typ(t, callb))
     | TypTuple(tl) => TypTuple(check_n_walk_tlist(tl, callb))
     | TypVarTuple(t_opt) =>
         TypVarTuple(match t_opt { | Some(t) => Some(check_n_walk_typ(t, callb)) | _ => None})
@@ -1369,7 +1382,8 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypVarArray(et) => TypVarArray(check_n_walk_typ(et, callb))
     | TypVarRecord => t
     | TypRecord((ref (relems, ordered)) as r) =>
-        val new_relems = [: for (n, t, v) <- relems {(n, check_n_walk_typ(t, callb), v)} :]
+        val new_relems = [: for (flags, n, t, v) <- relems {
+            (flags, n, check_n_walk_typ(t, callb), v)} :]
         *r = (new_relems, ordered)
         t
     | TypExn => t
@@ -1406,8 +1420,10 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpUnary(uop, e, ctx) => ExpUnary(uop, walk_exp_(e), walk_ctx_(ctx))
     | ExpIntrin(iop, args, ctx) => ExpIntrin(iop, walk_elist_(args), walk_ctx_(ctx))
     | ExpSeq(elist, ctx) => ExpSeq(walk_elist_(elist), walk_ctx_(ctx))
+    | ExpSync(n, e) => ExpSync(n, walk_exp_(e))
     | ExpMkTuple(elist, ctx) => ExpMkTuple(walk_elist_(elist), walk_ctx_(ctx))
     | ExpMkArray(ell, ctx) => ExpMkArray([: for el <- ell {walk_elist_(el)} :], walk_ctx_(ctx))
+    | ExpMkVector(elist, ctx) => ExpMkVector(walk_elist_(elist), walk_ctx_(ctx))
     | ExpMkRecord(e, ne_l, ctx) => ExpMkRecord(walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx))
     | ExpUpdateRecord(e, ne_l, ctx) => ExpUpdateRecord(walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx))
     | ExpCall(f, args, ctx) => ExpCall(walk_exp_(f), walk_elist_(args), walk_ctx_(ctx))
@@ -1428,6 +1444,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpCast(e, t, ctx) => ExpCast(walk_exp_(e), walk_typ_(t), walk_ctx_(ctx))
     | ExpTyped(e, t, ctx) => ExpTyped(walk_exp_(e), walk_typ_(t), walk_ctx_(ctx))
     | ExpCCode(str, ctx) => ExpCCode(str, walk_ctx_(ctx))
+    | ExpData(kind, fname, ctx) => ExpData(kind, fname, walk_ctx_(ctx))
     | DefVal(p, v, flags, loc) => DefVal(walk_pat_(p), walk_exp_(v), flags, loc)
     | DefFun(df) =>
         if df->df_templ_args != [] {
@@ -1490,7 +1507,7 @@ fun dup_typ_(t: typ_t, callb: ast_callb_t): typ_t =
     | TypVar  _ => TypVar(ref None)
     | TypRecord(r) =>
         val (relems, ordered) = *r
-        val new_relems = [: for (n, t, v) <- relems {(n, dup_typ_(t, callb), v)} :]
+        val new_relems = [: for (flags, n, t, v) <- relems {(flags, n, dup_typ_(t, callb), v)} :]
         TypRecord(ref (new_relems, ordered))
     | _ => walk_typ(t, callb)
     }

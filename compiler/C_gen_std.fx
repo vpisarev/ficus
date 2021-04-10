@@ -128,7 +128,11 @@ fun init_std_names(): void {
     std_fx_copy_fp = gen_std_fun("fx_copy_fp", std_CTypConstVoidPtr :: std_CTypVoidPtr :: [], CTypVoid)
     std_fx_free_cptr = gen_std_fun("fx_free_cptr", make_ptr(CTypCSmartPtr) :: [], CTypVoid)
     std_fx_copy_cptr = gen_std_fun("fx_copy_cptr", make_const_ptr(CTypCSmartPtr) :: make_ptr(CTypCSmartPtr) :: [], CTypVoid)
-
+    std_FX_FREE_VEC = gen_std_macro("FX_FREE_VEC", 1)
+    std_fx_free_vec = gen_std_fun("fx_free_vec", make_ptr(std_CTypAnyVector) :: [], CTypVoid)
+    std_fx_copy_vec = gen_std_fun("fx_copy_vec", make_const_ptr(std_CTypAnyVector) :: make_ptr(std_CTypAnyVector) :: [], CTypVoid)
+    std_fx_make_vec = gen_std_fun("fx_make_vec", [: CTypInt, CTypSize_t, std_CTypVoidPtr,
+                std_CTypVoidPtr, std_CTypConstVoidPtr, make_ptr(std_CTypAnyArray) :], CTypCInt)
     std_fx_ifaces_t_cptr = CTypRawPtr(CTypConst :: [], CTypName(get_id("fx_ifaces_t")))
     std_FX_COPY_IFACE = gen_std_macro("FX_COPY_IFACE", 2)
     std_FX_FREE_IFACE = gen_std_macro("FX_FREE_IFACE", 1)

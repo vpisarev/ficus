@@ -455,6 +455,8 @@ int fx_check_stack(void);
 
 #define FX_CHECK_EXN_PARALLEL(status, par_status) \
     if((status) >= 0) ; else (status) = fx_exn_check_parallel((status), &(par_status))
+#define FX_UPDATE_EXN_PARALLEL(par_status, label) \
+    if ((par_status) >= 0) ; else { fx_status = FX_SET_EXN_FAST(par_status); goto label; }
 
 const fx_exn_info_t* fx_exn_info(const fx_exn_t* exn);
 int fx_exn_name(const fx_exn_t* exn, fx_str_t* exn_name);

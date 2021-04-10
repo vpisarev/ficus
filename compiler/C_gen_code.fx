@@ -199,7 +199,7 @@ fun occurs_id_kexp(i0: id_t, e: kexp_t): bool
 type block_kind_t =
     | BlockKind_Global
     | BlockKind_Fun: id_t
-    | BlockKind_Branch
+    | BlockKind_Block
     | BlockKind_Try
     | BlockKind_Loop
     | BlockKind_LoopND
@@ -671,11 +671,40 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         rccode2stmt(ccode, loc) :: ccode0
     }
 
-    fun decl_arr(arr_ctyp: ctyp_t, shape: cexp_t list, data: cexp_t list,
-                dstexp_r: cexp_t? ref, ccode: ccode_t, loc: loc_t)
+    fun make_make_vec_call(vec_exp: cexp_t, data: cexp_t list,
+                            ccode0: ccode_t, lbl: cexp_t, loc: loc_t)
     {
-        val (arr_exp, ccode) = get_dstexp(dstexp_r, "arr", arr_ctyp, ccode, loc)
-        (arr_exp, make_make_arr_call(arr_exp, shape, data, ccode, curr_block_label(loc), loc))
+        val vec_ctyp = get_cexp_typ(vec_exp)
+        val elem_ctyp =
+            match vec_ctyp {
+            | CTypVector elem_ctyp =>
+                elem_ctyp
+            | _ => throw compile_err(loc, "cgen: invalid output type of vector construction expression")
+            }
+        val ccode = []
+        val (data_exp, ccode) =
+            if data != [] {
+                decl_plain_arr(gen_temp_idc("data"), elem_ctyp, data, ccode, loc)
+            } else {
+                (make_nullptr(loc), ccode)
+            }
+        val nelems_exp = make_int_exp(data.length(), loc)
+        val sizeof_elem_exp = make_call(std_sizeof, [: CExpTyp(elem_ctyp, loc) :], CTypSize_t, loc)
+        val free_f_exp =
+            match C_gen_types.get_free_f(elem_ctyp, true, false, loc) {
+            | (_, Some free_f) => CExpCast(free_f, std_fx_free_t, loc)
+            | _ => make_nullptr(loc)
+            }
+        val copy_f_exp =
+            match C_gen_types.get_copy_f(elem_ctyp, true, false, loc) {
+            | (_, Some copy_f) => CExpCast(copy_f, std_fx_copy_t, loc)
+            | _ => make_nullptr(loc)
+            }
+        val call_mkvec = make_call( std_fx_make_vec, [: nelems_exp, sizeof_elem_exp,
+                                    free_f_exp, copy_f_exp, data_exp,
+                                    cexp_get_addr(vec_exp) :], CTypCInt, loc)
+        val ccode = add_fx_call_(call_mkvec, ccode, lbl, loc)
+        rccode2stmt(ccode, loc) :: ccode0
     }
 
     fun make_fun_arg(e: cexp_t, loc: loc_t)
@@ -1649,6 +1678,20 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 }
             val (e, ccode) = process_seq(el, ccode)
             (false, e, ccode)
+        | KExpSync(n, e) =>
+            val parent_lbl = curr_block_label(kloc)
+            val (dst_exp, ccode) = get_dstexp(dstexp_r, "t", ctyp, ccode, kloc)
+            new_block_ctx(BlockKind_Block, kloc)
+            val (_, sync_ccode) = kexp2cexp(e, dstexp_r, [])
+            val bctx_sync = curr_block_ctx(kloc)
+            val {bctx_prologue, bctx_cleanup, bctx_label, bctx_label_used} = *bctx_sync
+            val epilogue = if bctx_label_used == 0 { bctx_cleanup }
+                           else { bctx_cleanup + (CStmtLabel(bctx_label, kloc) :: []) }
+            val sync_ccode = epilogue + sync_ccode + bctx_prologue
+            val c_e = rccode2stmt(sync_ccode, get_kexp_loc(e))
+            pop_block_ctx(kloc)
+            val check_exn = make_call(std_FX_CHECK_EXN, parent_lbl :: [], CTypVoid, kloc)
+            (false, dst_exp, CExp(check_exn) :: CStmtSync(n, c_e) :: ccode)
         | KExpIf (c, e1, e2, _) =>
             val (cc, ccode) = kexp2cexp(c, ref None, ccode)
             val (dst_exp, ccode) = get_dstexp(dstexp_r, "t", ctyp, ccode, kloc)
@@ -1816,7 +1859,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             match deref_ktyp(elem_ktyp, kloc) {
                             | KTypArray (d, _) => (d, cexp_get_addr(e))
                             | KTypList _ => (100, e)
-                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array nor list")
+                            | KTypVector _ => (110, cexp_get_addr(e))
+                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, vector or list")
                             }
                             (nscalars, scalars_data, make_int_exp(tag, kloc) :: tags_data, elem_ptr :: arr_data, ccode)
                         } else {
@@ -1850,7 +1894,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val call_mkarr =
                 make_call(
                     get_id("fx_compose_arr"),
-                    [: make_int_exp(dims, kloc), sizeof_elem_exp, free_f_exp, copy_f_exp, tags_exp, arr_data_exp, cexp_get_addr(arr_exp) :],
+                    [: make_int_exp(dims, kloc), sizeof_elem_exp, free_f_exp,
+                       copy_f_exp, tags_exp, arr_data_exp, cexp_get_addr(arr_exp) :],
                     CTypCInt,
                     kloc)
                 val sub_ccode = add_fx_call(call_mkarr, sub_ccode, kloc)
@@ -1867,8 +1912,79 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         (e :: data, ccode)
                     }
                 }
-                val (arr_exp, ccode) = decl_arr(ctyp, shape, data.rev(), dstexp_r, ccode, kloc)
+                val (arr_exp, ccode) = get_dstexp(dstexp_r, "arr", ctyp, ccode, kloc)
+                val ccode = make_make_arr_call(arr_exp, shape, data.rev(), ccode, curr_block_label(kloc), kloc)
                 (false, arr_exp, ccode)
+            }
+        | KExpMkVector (elems, _) =>
+            val have_expanded = exists(for (f, _) <- elems {f})
+            if have_expanded {
+                val (vec_exp, ccode) = get_dstexp(dstexp_r, "vec", ctyp, ccode, kloc)
+                val elem_ctyp =
+                    match ctyp {
+                    | CTypVector elem_ctyp => elem_ctyp
+                    | _ => throw compile_err(kloc, "cgen: invalid output type of vector construction expression")
+                    }
+                val scalars_id = gen_temp_idc("scalars")
+                val scalars_exp = make_id_t_exp(scalars_id, make_ptr(elem_ctyp), kloc)
+                val (_, scalars_data, tags_data, vec_data, ccode) =
+                    fold nscalars = 0, scalars_data = [], tags_data = [],
+                        vec_data = [], ccode = ccode for (f, a) <- elems {
+                        val (e, ccode) = atom2cexp(a, ccode, kloc)
+                        if f {
+                            val elem_ktyp = get_atom_ktyp(a, kloc)
+                            val (tag, elem_ptr) =
+                            match deref_ktyp(elem_ktyp, kloc) {
+                            | KTypArray (d, _) => (d, cexp_get_addr(e))
+                            | KTypList _ => (100, e)
+                            | KTypVector _ => (110, cexp_get_addr(e))
+                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, vector or list")
+                            }
+                            (nscalars, scalars_data, make_int_exp(tag, kloc) :: tags_data, elem_ptr :: vec_data, ccode)
+                        } else {
+                            val (nscalars, scalars_data, vec_data_elem) =
+                            match e {
+                            | CExpIdent _ => (nscalars, scalars_data, cexp_get_addr(e))
+                            | _ =>
+                                (nscalars + 1, e :: scalars_data,
+                                CExpBinary(COpAdd, scalars_exp, make_int_exp(nscalars, kloc), (std_CTypVoidPtr, kloc)))
+                            }
+                            (nscalars, scalars_data, make_int_exp(0, kloc) :: tags_data, vec_data_elem :: vec_data, ccode)
+                        }
+                    }
+                val (_, sub_ccode) = decl_plain_arr(scalars_id, elem_ctyp, scalars_data.rev(), [], kloc)
+                val tags_data = (make_int_exp(-1, kloc) :: tags_data.tl()).rev()
+                val (tags_exp, sub_ccode) = decl_plain_arr(gen_temp_idc("tags"), CTypSInt(8), tags_data, sub_ccode, kloc)
+                val (vec_data_exp, sub_ccode) = decl_plain_arr(gen_temp_idc("parts"), std_CTypVoidPtr, vec_data.rev(), sub_ccode, kloc)
+                val sizeof_elem_exp = make_call(std_sizeof, [: CExpTyp(elem_ctyp, kloc) :], CTypSize_t, kloc)
+                val free_f_exp =
+                    match C_gen_types.get_free_f(elem_ctyp, true, false, kloc) {
+                    | (_, Some free_f) => CExpCast(free_f, std_fx_free_t, kloc)
+                    | _ => make_nullptr(kloc)
+                    }
+                val copy_f_exp =
+                match C_gen_types.get_copy_f(elem_ctyp, true, false, kloc) {
+                | (_, Some copy_f) => CExpCast(copy_f, std_fx_copy_t, kloc)
+                | _ => make_nullptr(kloc)
+                }
+                val call_mkvec =
+                make_call(
+                    get_id("fx_compose_vec"),
+                    [: sizeof_elem_exp, free_f_exp, copy_f_exp, tags_exp,
+                       vec_data_exp, cexp_get_addr(vec_exp) :],
+                    CTypCInt,
+                    kloc)
+                val sub_ccode = add_fx_call(call_mkvec, sub_ccode, kloc)
+                val ccode = rccode2stmt(sub_ccode, kloc) :: ccode
+                (false, vec_exp, ccode)
+            } else {
+                val fold data = [], ccode = ccode for (_, a) <- elems {
+                    val (e, ccode) = atom2cexp(a, ccode, kloc)
+                    (e :: data, ccode)
+                }
+                val (vec_exp, ccode) = get_dstexp(dstexp_r, "vec", ctyp, ccode, kloc)
+                val ccode = make_make_vec_call(vec_exp, data.rev(), ccode, curr_block_label(kloc), kloc)
+                (false, vec_exp, ccode)
             }
         | KExpAt (arr, border, interp, idxs, _) =>
             /*
@@ -2503,8 +2619,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
 
             val (pre_map_ccode, map_ccode) = form_map([], 0, e_idoml_l + [: (body, [], []) :], [], [])
-            val map_ccode = if !is_parallel_map { map_ccode }
-                            else { add_fx_call(par_status, map_ccode, kloc) }
+            val map_ccode =
+                if !is_parallel_map { map_ccode }
+                else {
+                    val update_exn_parallel = make_call(get_id("FX_UPDATE_EXN_PARALLEL"),
+                                                        [: par_status, map_lbl :], CTypVoid, kloc)
+                    CExp(update_exn_parallel) :: map_ccode
+                }
             val map_ccode =
                 if !unzip_mode {
                     map_ccode
@@ -2566,7 +2687,10 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 if !is_parallel_for {
                     ([], post_ccode)
                 } else {
-                    ([: CMacroPragma("omp parallel for", kloc) :], add_fx_call(par_status, post_ccode, kloc))
+                    val update_exn_parallel = make_call(get_id("FX_UPDATE_EXN_PARALLEL"),
+                                                        [: par_status, lbl :], CTypVoid, kloc)
+                    ([: CMacroPragma("omp parallel for", kloc) :],
+                    CExp(update_exn_parallel) :: post_ccode)
                 }
             /* add it all to ccode; nothing to return/assign, since "for-loop" is "void" expression */
             (false, dummy_exp, post_ccode + ([: for_stmt :] + (omp_pragma + ccode)))
@@ -2622,6 +2746,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
             top_inline_ccode = CExp(CExpCCode(ccode_str, kloc)) :: top_inline_ccode
             (false, dummy_exp, ccode)
+        | KExpData (_, _, _) =>
+            throw compile_err(kloc, "cgen: unexpected data expression")
         | KDefVal (i, e2, _) =>
             val {kv_typ, kv_cname, kv_flags} = get_kval(i, kloc)
             if is_val_global(kv_flags) || kv_flags.val_flag_ctor != noid {
@@ -2630,10 +2756,11 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val {ktp_ptr, ktp_complex, ktp_scalar} = K_annotate.get_ktprops(kv_typ, kloc)
             val ctyp = C_gen_types.ktyp2ctyp(kv_typ, kloc)
             val bctx = curr_block_ctx(kloc)
-            val (is_ccode, ccode_lit, ccode_loc) =
+            val (ccode_data_kind, ccode_data_lit, ccode_loc) =
                 match e2 {
-                | KExpCCode (c, (_, l)) => (true, c, l)
-                | _ => (false, "", kloc)
+                | KExpCCode (c, (_, l)) => ("ccode", c, l)
+                | KExpData (kind, fname, (_, l)) => (kind, fname, l)
+                | _ => ("", "", kloc)
                 }
             val ctor_id = kv_flags.val_flag_ctor
             val is_temp = kv_flags.val_flag_temp
@@ -2655,12 +2782,21 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 3. i is defined and initialized at once: "ctyp i=ce2;"
             */
             val ccode =
-                if is_ccode {
-                    val (_, delta_ccode) =
-                        create_cdefval(i, ctyp, kv_flags, "",
-                            Some(CExpCCode(ccode_lit, ccode_loc)), [], kloc)
-                    bctx->bctx_prologue = delta_ccode + bctx->bctx_prologue
-                    ccode
+                if ccode_data_kind != "" {
+                    if ccode_data_kind == "ccode" {
+                        val (_, delta_ccode) =
+                            create_cdefval(i, ctyp, kv_flags, "",
+                                Some(CExpCCode(ccode_data_lit, ccode_loc)), [], kloc)
+                        bctx->bctx_prologue = delta_ccode + bctx->bctx_prologue
+                        ccode
+                    } else {
+                        val t = C_gen_types.ktyp2ctyp(get_kexp_typ(e2), kloc)
+                        val (_, delta_ccode) =
+                            create_cdefval(i, ctyp, kv_flags, "",
+                                Some(CExpData(ccode_data_kind, ccode_data_lit, (t, ccode_loc))), [], kloc)
+                        bctx->bctx_prologue = delta_ccode + bctx->bctx_prologue
+                        ccode
+                    }
                 } else if ctor_id != noid {
                     val tag_exp = make_id_t_exp(ctor_id, CTypCInt, kloc)
                     val is_null =

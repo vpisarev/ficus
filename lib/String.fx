@@ -7,7 +7,7 @@
 
 @ccode { #include <string.h> }
 
-fun length(s: string) = Builtins.length(s)
+fun length(s: string) = __intrin_size__(s)
 fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
 fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
 fun cmp(s1: string, s2: string) = s1 <=> s2

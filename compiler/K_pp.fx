@@ -24,7 +24,7 @@ val pp_ = Ast.pp
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
     | KTypErr | KTypCPointer | KTypModule | KTypName _
     | KTypTuple _ | KTypRecord _ => 3
-    | KTypList _ | KTypRef _ | KTypArray _ => 2
+    | KTypList _ | KTypRef _ | KTypArray _ | KTypVector _ => 2
     | KTypFun _ => 1
     }
 
@@ -75,6 +75,7 @@ val pp_ = Ast.pp
         pp.space(); pp.str("->"); pp.space(); ppktyp_(t2, prec)
         pp.str(")"); pp.end()
     | KTypList t1 => ppktypsuf(t1, "list")
+    | KTypVector t1 => ppktypsuf(t1, "vector")
     | KTypRef t1 => ppktypsuf(t1, "ref")
     | KTypArray (d, t1) => ppktypsuf(t1, "[" + ','*(d-1) + "]")
     | KTypName n => pp.str(idk2str(n, loc))
@@ -303,8 +304,11 @@ val pp_ = Ast.pp
         pp.end(); pp.newline()
     | KExpCCode (s, _) =>
         pp.begin(); pp.str("ccode"); pp.str(s); pp.end(); pp.newline()
+    | KExpData (kind, fname, _) =>
+        pp.begin(); pp.str(f"@data({kind}) '{fname}'"); pp.end()
     | KExpSeq(_, _) =>
         pp.beginv(0); pp_exp_as_block_(e); pp.end()
+    | KExpSync(n, e) => pp.begin(); pp.str("@sync "); pp_exp_(pp, e); pp.end()
     | KExpNop _ => pp.str("{}")
     | KExpBreak _ => pp.str("break")
     | KExpContinue _ => pp.str("continue")
@@ -384,6 +388,14 @@ val pp_ = Ast.pp
             if i+1 < nrows { pp.str(";"); pp.space() }
         }
         pp.end(); pp.space(); pp.str("|]")
+    | KExpMkVector (elems, (_, l)) =>
+        pp.begin();
+        pp.str("["); pp.space();
+        for (f, a)@j <- elems {
+            if j > 0 { pp.str(","); pp.space() }
+            if f { pp.str("\\") }; pp_atom_(a)
+        }
+        pp.end(); pp.space(); pp.str("]")
     | KExpCall (f, args, (_, loc)) =>
         pp.begin(); pp_id_(f); pp.str("("); pp.cut();
         ppatoms_(args); pp.cut(); pp.str(")"); pp.end()

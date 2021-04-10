@@ -13,6 +13,7 @@ import test_ds
 import test_deque
 import test_filename
 import test_oop
+import test_parallel
 
 fun print_hdr()
 {

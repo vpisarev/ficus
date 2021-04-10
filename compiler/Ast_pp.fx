@@ -57,7 +57,7 @@ fun get_typ_pr(t: typ_t): typ_pr_t
     | TypApp([], _) => TypPrBase
     | TypTuple _ | TypVarTuple _ => TypPrBase
     | TypRecord _ | TypVarRecord => TypPrBase
-    | TypList _ | TypRef _ | TypArray(_, _) | TypVarArray _ | TypApp(_, _) => TypPrComplex
+    | TypList _ | TypVector _ | TypRef _ | TypArray(_, _) | TypVarArray _ | TypApp(_, _) => TypPrComplex
     | TypFun(_, _) => TypPrFun
 }
 
@@ -100,6 +100,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
             pp.space(); pp.str("->"); pp.space(); pptype_(t2, prec); pp.str(")")
             pp.end()
         | TypList(t1) => pptypsuf(t1, "list")
+        | TypVector(t1) => pptypsuf(t1, "vector")
         | TypRef(t1) => pptypsuf(t1, "ref")
         | TypArray(d, t1) =>
             val shape = if d == 0 {"+"} else {','*(d-1)}
@@ -127,11 +128,13 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
             if brief { pp.str("{...}") }
             else {
                 pp.begin(); pp.str(if ordered {"{"} else {"@ordered {"}); pp.breaki();
-                for (n, t, v0_opt)@i <- rec_elems {
+                for (flags, n, t, v0_opt)@i <- rec_elems {
                     if i > 0 { pp.str(";"); pp.space() }
+                    if flags.val_flag_mutable {pp.str("var ")}
                     ppid(pp, n); pp.str(":"); pp.space(); pptype_(t, TypPr0)
                     match v0_opt {
-                    | Some(v0) => pp.str("="); pplit(pp, v0)
+                    | Some(InitLit(v0)) => pp.str("="); pplit(pp, v0)
+                    | Some(InitId(v0)) => pp.str("="); ppid(pp, v0)
                     | _ => {}
                     }
                 }
@@ -329,6 +332,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     | _ =>
         pp.begin()
         match e {
+        | ExpSync(n, e) =>
+            pp.str("@sync "); ppexp(e)
         | ExpNop _ => pp.str("{}")
         | ExpBreak(f, _) =>
             pp.str(if f {"@fold break"} else {"break"})
@@ -431,17 +436,24 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             }
             pp.end(); pp.str("}")
         | ExpMkArray(arows, _) =>
-            pp.str("[")
+            pp.begin(); pp.str("[|")
             for acols@i <- arows {
                 if i > 0 { pp.str(";"); pp.space() }
                 pp.begin()
-                for a@i <- acols {
-                    if i > 0 { pp.str(","); pp.space() }
+                for a@j <- acols {
+                    if j > 0 { pp.str(","); pp.space() }
                     ppexp(a)
                 }
                 pp.end()
             }
-            pp.str("]")
+            pp.str("|]"); pp.end()
+        | ExpMkVector(elems, _) =>
+            pp.begin(); pp.str("[")
+            for e@i <- elems {
+                if i > 0 { pp.str(","); pp.space() }
+                ppexp(e)
+            }
+            pp.str("]"); pp.end()
         | ExpCall(f, args, _) =>
             ppexp(f); pp.str("(")
             for e@i <- args {
@@ -493,8 +505,9 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | ExpMap(map_cl, map_body, flags, _) =>
             var (oparen, cparen) = match flags.for_flag_make {
             | ForMakeList => ("[:", ":]")
+            | ForMakeVector => ("[", "]")
             | ForMakeTuple => ("(", ")")
-            | _ => ("[", "]")
+            | _ => ("[|", "|]")
             }
             pp.begin(); pp.str(oparen); pp.str(" ");
             for (pe_l, idx_pat)@j <- map_cl {
@@ -534,6 +547,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.space(); pprint_typ(pp, t, loc); pp.str(")")
         | ExpCCode(s, _) =>
             pp.str("@ccode "); pp.space(); pp.str("\""); pp.str(s); pp.str("\"")
+        | ExpData(kind, fname, _) =>
+            pp.str(f"@data({kind}) '{fname}'")
         | DefVal(_, _, _, _) | DefFun _ | DefExn _ | DefTyp _ | DefInterface _
         | DefVariant _ | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
         }

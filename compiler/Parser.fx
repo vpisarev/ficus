@@ -319,6 +319,11 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
     | (LPAREN(ne), l1) :: (LBRACE, _) :: _ =>
         check_ne(ne, ts)
         match_paren(parse_block(ts.tl()), RPAREN, l1)
+    | (LPAREN(ne), l1) :: (SYNC, _) :: _ =>
+        check_ne(ne, ts)
+        match_paren(parse_sync(ts.tl().tl()), RPAREN, l1)
+    | (SYNC, _) :: _ =>
+        parse_sync(ts.tl())
     | (LPAREN(ne), l1) :: (FOR _, _) :: _ =>
         check_ne(ne, ts)
         val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeTuple)
@@ -351,6 +356,12 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
         (ts, fold mklist_e = make_literal(LitNil, l1) for e <- el.rev() {
             ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
         })
+    | (LSQUARE(true), l1) :: (f, _) :: rest when is_for_start(f) =>
+        val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeVector)
+        match_paren((ts, for_exp), RSQUARE, l1)
+    | (LSQUARE(true), l1) :: rest =>
+        val (ts, _, el, _) = parse_exp_list(rest, RSQUARE, kw_mode=KwNone, allow_empty=false)
+        (ts, ExpMkVector(el, make_new_ctx(l1)))
     | (t, _) :: _ =>
         throw parse_err(ts, f"unxpected token '{tok2str(t).1}'. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here")
     | _ =>
@@ -404,7 +415,8 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
                               | "__intrin_sinh__" => IntrinMath(get_id("sinh"))
                               | "__intrin_cosh__" => IntrinMath(get_id("cosh"))
                               | "__intrin_tanh__" => IntrinMath(get_id("tanh"))
-                              | _ => throw compile_err(l1, f"unknown/unsupported intrinsic {istr}")
+                              | "__intrin_size__" => IntrinGetSize
+                              | _ => throw parse_err(ts, f"unknown/unsupported intrinsic {istr}")
                               }
                     ExpIntrin(iop, args, make_new_ctx(eloc))
                 | _ =>
@@ -619,12 +631,31 @@ fun parse_complex_exp_or_block(ts: tklist_t): (tklist_t, exp_t)
 
 fun parse_block(ts: tklist_t): (tklist_t, exp_t)
 {
+    | (SYNC, l1) :: rest =>
+        parse_sync(rest)
     | (LBRACE, l1) :: rest =>
         val (ts, eseq) = parse_expseq(rest, false)
         val e = expseq2exp(eseq, l1)
         match_paren((ts, e), RBRACE, l1)
     | _ =>
         throw parse_err(ts, "'{' is expected")
+}
+
+fun parse_sync(ts: tklist_t): (tklist_t, exp_t)
+{
+    val (ts, n) = match ts {
+        | (IDENT(_, _), _) :: _ =>
+            val (ts, n) = parse_dot_ident(ts, false, "")
+            (ts, get_id(n))
+        | _ => (ts, noid)
+        }
+    match ts {
+    | (LBRACE, l1) :: rest =>
+        val (ts, eseq) = parse_expseq(rest, false)
+        val e = ExpSync(n, expseq2exp(eseq, l1))
+        match_paren((ts, e), RBRACE, l1)
+    | _ => throw parse_err(ts, "'{' is expected")
+    }
 }
 
 fun parse_ccode_exp(ts: tklist_t, t: typ_t): (tklist_t, exp_t) =
@@ -670,7 +701,6 @@ fun parse_range_exp(ts0: tklist_t): (tklist_t, exp_t)
     | e1 :: e2 :: e3 :: [] => ExpRange(e1, e2, e3, ctx) // a:b:c or a::c or :b:c or ::c
     | _ => throw parse_err(ts0, f"invalid range expression of {elist.length()} components")
     }
-
     (ts, e)
 }
 
@@ -967,6 +997,15 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
                     val (ts, e) = parse_ccode_exp(ts.tl(), make_new_typ())
                     val dv = DefVal(p, e, flags, l1)
                     extend_defvals_(ts, true, dv :: result)
+                | (EQUAL, l1) :: (DATA(kind), l2) :: (LITERAL(LitString fname), _) :: rest =>
+                    val fname =
+                        try Sys.locate_file(fname, parser_ctx.inc_dirs)
+                        catch {
+                        | NotFoundError => throw ParseError(l2, f"file {fname} is not found")
+                        }
+                    val e = ExpData(kind, fname, make_new_ctx(l1))
+                    val dv = DefVal(p, e, flags, l1)
+                    extend_defvals_(rest, true, dv :: result)
                 | (EQUAL, l1) :: rest =>
                     val (ts, e) = parse_complex_exp_or_block(rest)
                     val dv = DefVal(p, e, flags, l1)
@@ -1171,7 +1210,7 @@ fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
     }
 }
 
-type kw_param_t = (id_t, typ_t, defparam_t?, loc_t)
+type kw_param_t = (id_t, typ_t, initializer_t?, loc_t)
 
 fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bool)
 {
@@ -1187,7 +1226,10 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
             if expect_comma { throw parse_err(ts, "',' is expected") }
             val (ts, t) = parse_typespec(rest)
             val (ts, defparam) = match ts {
-                | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(lit))
+                | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(InitLit(lit)))
+                | (EQUAL, _) :: (IDENT(_, i), _) :: _ =>
+                    val (ts, i) = parse_dot_ident(ts, false, "")
+                    (ts, Some(InitId(get_id(i))))
                 | _ => (ts, None)
                 }
             add_fun_param(ts, true, params, (get_id(i), t, defparam, ploc) :: kw_params)
@@ -1208,7 +1250,7 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
         (ts, params, rt, [], false)
     } else {
         val recarg = gen_temp_id("__kwargs__")
-        val relems = [: for (i, t, v0, _) <- kw_params { (i, t, v0) } :]
+        val relems = [: for (i, t, v0, _) <- kw_params { (default_arg_flags(), i, t, v0) } :]
         val rectyp = TypRecord(ref (relems, true))
         val (_, _, _, loc) = kw_params.hd()
         val recpat = PatRecord(None, [: for (i, _, _, loci) <- kw_params {(i, PatIdent(i, loci))} :], loc)
@@ -1562,6 +1604,7 @@ fun extend_typespec_nf_(ts: tklist_t, result: typ_t): (tklist_t, typ_t) =
         val (ts, i) = parse_dot_ident(ts, false, "")
         val t = match i {
             | "list" => TypList(result)
+            | "vector" => TypVector(result)
             | _ => TypApp(typ2typlist(result), get_id(i))
             }
         extend_typespec_nf_(ts, t)
@@ -1645,7 +1688,7 @@ fun parse_typespec(ts: tklist_t): (tklist_t, typ_t)
     }
 }
 
-type relem_t = (id_t, typ_t, defparam_t?)
+type relem_t = (val_flags_t, id_t, typ_t, initializer_t?)
 
 fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
 {
@@ -1660,16 +1703,30 @@ fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
             | (RBRACE, _) :: rest =>
                 if result == [] { throw parse_err(ts, "empty list of record elements") }
                 (rest, result.rev())
-            | (IDENT(f, i), l1) :: (COLON, _) :: rest =>
+            | (IDENT(_, _), _) :: (COLON, _) :: _
+            | (VAR, _) :: (IDENT(_, _), _) :: (COLON, _) :: _
+            | (VAL, _) :: (IDENT(_, _), _) :: (COLON, _) :: _ =>
+                val (ts, f, i, flags) = match ts {
+                    | (IDENT(f, i), _) :: (COLON, _) :: rest =>
+                        (rest, f, i, default_val_flags())
+                    | (VAR, _) :: (IDENT(f, i), _) :: (COLON, _) :: rest =>
+                        (rest, f, i, default_var_flags())
+                    | (VAL, _) :: (IDENT(f, i), _) :: (COLON, _) :: rest =>
+                        (rest, f, i, default_val_flags())
+                    | _ => throw parse_err(ts, "unexpected token")
+                    }
                 if expect_semicolon && !f {
                     throw parse_err(ts, "';' or newline should be inserted between record elements")
                 }
-                val (ts, t) = parse_typespec(rest)
+                val (ts, t) = parse_typespec(ts)
                 val (ts, default_) = match ts {
-                    | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(lit))
+                    | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(InitLit(lit)))
+                    | (EQUAL, _) :: (IDENT(_, _), _) :: _ =>
+                        val (ts, n) = parse_dot_ident(ts.tl(), false, "")
+                        (ts, Some(InitId(get_id(n))))
                     | _ => (ts, None)
                 }
-                parse_relems_(ts, true, (get_id(i), t, default_) :: result)
+                parse_relems_(ts, true, (flags, get_id(i), t, default_) :: result)
             | _ =>
                 throw parse_err(ts, (if expect_semicolon {"';' or newline is expected"} else
                     {"identifier followed by ':' is expected"}))
@@ -1678,6 +1735,13 @@ fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
         (ts, TypRecord(ref (relems, true)))
     | _ => parse_typespec(ts)
 }
+
+fun have_mutable(cases: (id_t, typ_t) list) =
+    exists(for (_, t) <- cases {
+        | (_, TypRecord(ref (relems, _))) =>
+            exists(for (flags, _, _, _) <- relems {flags.val_flag_mutable})
+        | _ => false
+        })
 
 fun parse_deftype(ts: tklist_t)
 {
@@ -1734,13 +1798,17 @@ fun parse_deftype(ts: tklist_t)
     match ts {
     | (LBRACE, _) :: _ =>
         val (ts, t) = parse_typespec_or_record(ts)
+        val cases = (tname, t) :: []
+        var hm = have_mutable(cases)
         val dvar = ref (defvariant_t {
             dvar_name = tname, dvar_templ_args=type_params,
             dvar_alias = make_new_typ(),
             dvar_flags = default_variant_flags().{
-                var_flag_record=ifaces == [],
-                var_flag_object=object_type_module },
-            dvar_cases = (tname, t) :: [],
+                var_flag_record=ifaces == [] && !hm,
+                var_flag_object_from=object_type_module,
+                var_flag_have_mutable=hm
+                },
+            dvar_cases = cases,
             dvar_ctors = [],
             dvar_ifaces = ifaces,
             dvar_templ_inst = ref [],
@@ -1783,7 +1851,9 @@ fun parse_deftype(ts: tklist_t)
             dvar_alias = make_new_typ(),
             dvar_flags = default_variant_flags().{
                 var_flag_record=false,
-                var_flag_object=object_type_module},
+                var_flag_object_from=object_type_module,
+                var_flag_have_mutable=have_mutable(cases)
+                },
             dvar_cases = cases,
             dvar_ctors = [],
             dvar_ifaces = ifaces,

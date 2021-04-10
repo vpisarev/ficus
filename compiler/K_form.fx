@@ -68,6 +68,7 @@ type ktyp_t =
     | KTypRecord: (id_t, (id_t, ktyp_t) list)
     | KTypName: id_t
     | KTypArray: (int, ktyp_t)
+    | KTypVector: ktyp_t
     | KTypList: ktyp_t
     | KTypRef: ktyp_t
     | KTypExn
@@ -103,6 +104,7 @@ type kexp_t =
     | KExpBinary: (binary_t, atom_t, atom_t, kctx_t)
     | KExpUnary: (unary_t, atom_t, kctx_t)
     | KExpIntrin: (intrin_t, atom_t list, kctx_t)
+    | KExpSync: (id_t, kexp_t)
     | KExpSeq: (kexp_t list, kctx_t)
     | KExpIf: (kexp_t, kexp_t, kexp_t, kctx_t)
     | KExpCall: (id_t, atom_t list, kctx_t)
@@ -111,6 +113,7 @@ type kexp_t =
     | KExpMkRecord: (atom_t list, kctx_t)
     | KExpMkClosure: (id_t, id_t, atom_t list, kctx_t)
     | KExpMkArray: ((bool, atom_t) list list, kctx_t)
+    | KExpMkVector: ((bool, atom_t) list, kctx_t)
     | KExpAt: (atom_t, border_t, interpolate_t, dom_t list, kctx_t)
     | KExpMem: (id_t, int, kctx_t)
     | KExpAssign: (id_t, atom_t, loc_t)
@@ -123,6 +126,7 @@ type kexp_t =
     | KExpWhile: (kexp_t, kexp_t, loc_t)
     | KExpDoWhile: (kexp_t, kexp_t, loc_t)
     | KExpCCode: (string, kctx_t)
+    | KExpData: (string, string, kctx_t)
     | KDefVal: (id_t, kexp_t, loc_t)
     | KDefFun: kdeffun_t ref
     | KDefExn: kdefexn_t ref
@@ -310,6 +314,7 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KExpUnary(_, _, c) => c
     | KExpIntrin(_, _, c) => c
     | KExpSeq(_, c) => c
+    | KExpSync(_, e) => get_kexp_ctx(e)
     | KExpIf(_, _, _, c) => c
     | KExpCall(_, _, c) => c
     | KExpICall(_, _, _, c) => c
@@ -317,6 +322,7 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KExpMkRecord(_, c) => c
     | KExpMkClosure(_, _, _, c) => c
     | KExpMkArray(_, c) => c
+    | KExpMkVector(_, c) => c
     | KExpAt(_, _, _, _, c) => c
     | KExpMem(_, _, c) => c
     | KExpAssign(_, _, l) => (KTypVoid, l)
@@ -329,6 +335,7 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KExpWhile(_, _, l) => (KTypVoid, l)
     | KExpDoWhile(_, _, l) => (KTypVoid, l)
     | KExpCCode(_, c) => c
+    | KExpData(_, _, c) => c
     | KDefVal(_, _, l) => (KTypVoid, l)
     | KDefFun (ref {kf_loc}) => (KTypVoid, kf_loc)
     | KDefExn (ref {ke_loc}) => (KTypVoid, ke_loc)
@@ -598,6 +605,7 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
             [: for (ni, ti) <- relems { (walk_id_(ni), walk_ktyp_(ti)) } :])
     | KTypName(k) => KTypName(walk_id_(k))
     | KTypArray(d, t) => KTypArray(d, walk_ktyp_(t))
+    | KTypVector(t) => KTypVector(walk_ktyp_(t))
     | KTypList(t) => KTypList(walk_ktyp_(t))
     | KTypRef(t) => KTypRef(walk_ktyp_(t))
     }
@@ -646,6 +654,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         | e :: [] => e
         | _ => KExpSeq(new_elist, (new_ktyp, loc))
         }
+    | KExpSync(n, e) => KExpSync(n, walk_kexp_(e))
     | KExpMkTuple(alist, ctx) => KExpMkTuple(walk_al_(alist), walk_kctx_(ctx))
     | KExpMkRecord(alist, ctx) => KExpMkRecord(walk_al_(alist), walk_kctx_(ctx))
     | KExpMkClosure(make_fp, f, args, ctx) =>
@@ -656,6 +665,10 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
             val fold new_row = [] for (f, a) <- row { (f, walk_atom_(a)) :: new_row }
             new_row.rev() } :],
         walk_kctx_(ctx))
+    | KExpMkVector(elems, ctx) =>
+        KExpMkVector(
+            [: for (f, a) <- elems { (f, walk_atom_(a)) } :],
+            walk_kctx_(ctx))
     | KExpCall(f, args, ctx) => KExpCall(walk_id_(f), walk_al_(args), walk_kctx_(ctx))
     | KExpICall(obj, meth, args, ctx) =>
         KExpICall(walk_id_(obj), meth, walk_al_(args), walk_kctx_(ctx))
@@ -684,6 +697,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
     | KExpTryCatch(e1, e2, ctx) => KExpTryCatch(walk_kexp_(e1), walk_kexp_(e2), walk_kctx_(ctx))
     | KExpCast(a, t, loc) => KExpCast(walk_atom_(a), walk_ktyp_(t), loc)
     | KExpCCode(str, ctx) => KExpCCode(str, walk_kctx_(ctx))
+    | KExpData(kind, fname, ctx) => KExpData(kind, fname, walk_kctx_(ctx))
     | KDefVal(k, e, loc) => KDefVal(walk_id_(k), walk_kexp_(e), loc)
     | KDefFun kf =>
         val {kf_name, kf_args, kf_rt, kf_body, kf_closure} = *kf
@@ -807,6 +821,7 @@ fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
     | KTypName(n) => fold_id_(n)
     | KTypArray(d, t) => fold_ktyp_(t)
     | KTypList(t) => fold_ktyp_(t)
+    | KTypVector(t) => fold_ktyp_(t)
     | KTypRef(t) => fold_ktyp_(t)
     }
 }
@@ -835,12 +850,16 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
         fold_kexp_(c); fold_kexp_(then_e)
         fold_kexp_(else_e); fold_ktyp_(t)
     | KExpSeq(elist, (t, _)) => elist.app(fold_kexp_); fold_ktyp_(t)
+    | KExpSync(n, e) => fold_kexp_(e)
     | KExpMkTuple(alist, (t, _)) => fold_al_(alist); fold_ktyp_(t)
     | KExpMkRecord(alist, (t, _)) => fold_al_(alist); fold_ktyp_(t)
     | KExpMkClosure(make_fp, f, args, (t, _)) =>
         fold_id_(make_fp); fold_id_(f); fold_al_(args); fold_ktyp_(t)
     | KExpMkArray(elems, (t, _)) =>
         for row <- elems { for (_, a) <- row { fold_atom_(a) } }
+        fold_ktyp_(t)
+    | KExpMkVector(elems, (t, _)) =>
+        for (_, a) <- elems { fold_atom_(a) }
         fold_ktyp_(t)
     | KExpCall(f, args, (t, _)) =>
         fold_id_(f); fold_al_(args); fold_ktyp_(t)
@@ -877,6 +896,7 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     | KExpCast(a, t, loc) =>
         fold_atom_(a); fold_ktyp_(t)
     | KExpCCode(_, (t, _)) => fold_ktyp_(t)
+    | KExpData(_, _, (t, _)) => fold_ktyp_(t)
     | KDefVal(k, e, loc) =>
         fold_id_(k); fold_kexp_(e)
     | KDefFun df =>
@@ -1207,6 +1227,7 @@ fun string(t: ktyp_t): string
     | KTypRecord(n, _) => "KTypRecord(" + idk2str(n, noloc) + ")"
     | KTypName(n) => "KTypName(" + idk2str(n, noloc) + ")"
     | KTypArray(d, t) => f"KTypArray({d}, {t})"
+    | KTypVector(t) => f"KTypVector({t})"
     | KTypList(t) => f"KTypList({t}))"
     | KTypRef(t) => f"KTypRef({t})"
     | KTypExn => "KTypExn"

@@ -101,12 +101,16 @@ fun lift(kmods: kmodule_t list) {
         | KDefExn (ref {ke_name, ke_loc}) =>
             if globals.mem(ke_name) { e }
             else { add_to_globals_and_lift(ke_name, e, ke_loc) }
-        | KDefVal (i, _, loc) =>
+        | KDefVal (i, rhs, loc) =>
             val {kv_flags} = get_kval(i, loc)
-            if globals.mem(i) { e }
-            else if kv_flags.val_flag_ctor != noid {
+            if globals.mem(i) {
+                e
+            } else if kv_flags.val_flag_ctor != noid ||
+                      (match rhs { | KExpData _ => true | _ => false }) {
                 add_to_globals_and_lift(i, e, loc)
-            } else { e }
+            } else {
+                e
+            }
         | KDefFun kf =>
             val {kf_name, kf_body, kf_flags, kf_loc} = *kf
             val new_body = walk_kexp_n_lift(kf_body, callb)

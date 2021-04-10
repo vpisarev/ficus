@@ -100,7 +100,7 @@ fun print_env(msg: string, env: env_t, loc: loc_t) {
   (or rather "overloaded function not found" error)
   in the very end, when we are out of candidates.
 */
-type rec_elem_t = (id_t, typ_t, lit_t?)
+type rec_elem_t = (val_flags_t, id_t, typ_t, initializer_t?)
 type rec_data_t = (rec_elem_t list, bool)
 
 fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
@@ -117,6 +117,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         match t2 {
         | TypFun(args2, rt2) => occurs(r1, args2) || occurs(r1, rt2)
         | TypList(t2_) => occurs(r1, t2_)
+        | TypVector(t2_) => occurs(r1, t2_)
         | TypTuple(tl2) => occurs(r1, tl2)
         | TypVarTuple(Some(t2_)) => occurs(r1, t2_)
         | TypVarTuple _ => false
@@ -139,7 +140,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
             false
         }
     fun occurs(r1: typ_t? ref, tl: typ_t list): bool = exists(for t <- tl {occurs(r1, t)})
-    fun occurs(r1: typ_t? ref, relems: rec_elem_t list): bool = exists(for (_,t,_) <- relems {occurs(r1, t)})
+    fun occurs(r1: typ_t? ref, relems: rec_elem_t list): bool = exists(for (_, _,t,_) <- relems {occurs(r1, t)})
 
     fun maybe_unify_(tl1: typ_t list, tl2: typ_t list, loc: loc_t) =
         tl1.length() == tl2.length() &&
@@ -155,6 +156,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         | (TypFun(args1, rt1), TypFun(args2, rt2)) =>
             maybe_unify_(args1, args2, loc) && maybe_unify_(rt1, rt2, loc)
         | (TypList(et1), TypList(et2)) => maybe_unify_(et1, et2, loc)
+        | (TypVector(et1), TypVector(et2)) => maybe_unify_(et1, et2, loc)
         | (TypTuple(tl1), TypTuple(tl2)) => maybe_unify_(tl1, tl2, loc)
         | (TypVar((ref Some(TypVarTuple(t1_opt))) as r1), TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
             if r1 == r2 { true }
@@ -220,13 +222,13 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
             val ok = match (*r1, *r2) {
                 | ((relems1, true), (relems2, true)) =>
                     relems1.length() == relems2.length() &&
-                    all(for (n1, t1, _) <- relems1, (n2, t2, _) <- relems2 {
-                            n1 == n2 && maybe_unify_(t1, t2, loc) })
+                    all(for (f1, n1, t1, _) <- relems1, (f2, n2, t2, _) <- relems2 {
+                            n1 == n2 && maybe_unify_(t1, t2, loc) && f1.val_flag_mutable == f2.val_flag_mutable })
                 | ((relems1, _), (relems2, _)) =>
                     val have_all_matches =
-                        all(for (n1, t1, v1opt) <- relems1 {
+                        all(for (_, n1, t1, v1opt) <- relems1 {
                             v1opt.issome() ||
-                            exists(for (n2, t2, _) <- relems2 {
+                            exists(for (_, n2, t2, _) <- relems2 {
                                 n1 == n2 && maybe_unify_(t1, t2, loc)})
                             })
                     /*
@@ -462,17 +464,75 @@ fun check_for_rec_field_duplicates(rfnames: id_t list, loc: loc_t): void =
         }
     }
 
+fun typ_bounds_int(t: typ_t): (int64, int64)
+{
+    | TypSInt(8) => (-128L, 127L)
+    | TypSInt(16) => (-32768L, 32767L)
+    | TypSInt(32) => (-2147483648L, 2147483647L)
+    | TypSInt(64) => (-9223372036854775807L, 9223372036854775807L)
+    | TypUInt(8) => (0L, 255L)
+    | TypUInt(16) => (0L, 65535L)
+    | TypUInt(32) => (0L, 4294967295L)
+    | TypUInt(64) => (0L, 9223372036854775807L)
+    | TypFloat(16) => (-4096L, 4096L)
+    | TypFloat(32) => (-16777216L, 16777216L)
+    | TypFloat(64) => (-9007199254740992L, 9007199254740992L)
+    | _ => (0L, -1L)
+}
+
+fun typ_bounds_flt(t: typ_t): double
+{
+    | TypFloat(16) => 65504.
+    | TypFloat(32) => 3.402823e+38
+    | _ => 0.
+}
+
 fun finalize_record_typ(t: typ_t, loc: loc_t): typ_t {
     val t = deref_typ(dup_typ(t))
     match t {
-    | TypRecord((ref (relems, _)) as r) =>
-        for (n, t, v_opt) <- relems {
-            match v_opt {
-            | Some(v) => unify(t, get_lit_typ(v), loc, f"type of the field '{pp(n)}' and its initializer do not match")
-            | _ => {}
-            }
-        }
-        TypRecord(r)
+    | TypRecord((ref (relems, f)) as r) =>
+        val relems =
+            [: for (flags, n, t, v_opt) <- relems {
+                val v_opt = match v_opt {
+                | Some(InitLit(v)) =>
+                    val t0 = get_lit_typ(v)
+                    if maybe_unify(t, t0, loc, true) { v_opt }
+                    else {
+                        val v_opt = match v {
+                        | LitInt(iv) =>
+                            val (a, b) = typ_bounds_int(t)
+                            if a <= iv <= b {
+                                match t {
+                                | TypSInt(b) => Some(LitSInt(b, iv))
+                                | TypUInt(b) => Some(LitUInt(b, uint64(iv)))
+                                | TypFloat(b) => Some(LitFloat(b, double(iv)))
+                                | _ => None
+                                }
+                            } else { None }
+                        | LitFloat(64, fv) =>
+                            match t {
+                            | TypFloat(b) =>
+                                val a = typ_bounds_flt(t)
+                                if a > 0. && -a <= fv <= a {
+                                    Some(LitFloat(b, fv))
+                                } else { None }
+                            | _ => None
+                            }
+                        | _ => None
+                        }
+                        match v_opt {
+                        | Some v => Some(InitLit(v))
+                        | _ =>
+                            throw compile_err(loc,
+                                f"the literal {lit2str(v)} cannot be casted implicitly to the type '{typ2str(t)}' of the record member '{pp(n)}'")
+                        }
+                    }
+                | _ => v_opt
+                }
+                (flags, n, t, v_opt)
+            } :]
+        *r = (relems, f)
+        t
     | _ => t
     }
 }
@@ -502,7 +562,7 @@ fun find_typ_instance(t: typ_t, loc: loc_t): typ_t? {
     }
 }
 
-fun get_record_elems(vn_opt: id_t?, t: typ_t, proto_mode: bool, loc: loc_t): (id_t, (id_t, typ_t, lit_t?) list)
+fun get_record_elems(vn_opt: id_t?, t: typ_t, proto_mode: bool, loc: loc_t): (id_t, rec_elem_t list)
 {
     val t = deref_typ(t)
     val input_vn = match vn_opt { | Some(vn) => get_bare_name(vn) | _ => noid }
@@ -880,6 +940,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | (ExpRange(_, _, _, _), _) => (TypInt, 1)
             | (_, TypArray(d, et)) => (et, d)
             | (_, TypList(et)) => (et, 1)
+            | (_, TypVector(et)) => (et, 1)
             | (_, TypString) => (TypChar, 1)
             | _ => throw compile_err(eloc, "unsupported iteration domain; it should be a range, array, list, string, tuple or a record")
             }
@@ -940,7 +1001,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 (def_pj :: code, env, idset)
             | _ =>
                 val (_, relems) = get_record_elems(None, ttrj, false, locj)
-                val (nj, tj, _) = relems.nth(idx)
+                val (_, nj, tj, _) = relems.nth(idx)
                 val ej = ExpMem(trj, ExpIdent(nj, (TypString, locj)), (tj, locj))
                 val pj = dup_pat(pj)
                 val (pnj, pvj) =
@@ -976,32 +1037,40 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         ExpSeq((body :: code).rev(), (body_typ, body_loc))
     }
 
-    fun check_inside_for(expect_fold_loop: bool, isbr: bool, sc: scope_t list) {
+    fun check_inside_for(expect_fold_loop: bool, isbr: bool, any_for: bool, sc: scope_t list) {
         val kw = if !isbr { "continue" }
                  else if expect_fold_loop { "fold's break" }
                  else { "break" }
         fun check_inside_(sc: scope_t list) {
-            | ScTry _ :: _ => throw compile_err(eloc, f"cannot use '{kw}' inside 'try-catch' block")
+            | ScTry _ :: outer_sc =>
+                if !any_for {
+                    throw compile_err(eloc, f"cannot use '{kw}' inside 'try-catch' block")
+                }
+                check_inside_(outer_sc)
             | ScFun _ :: _ | ScModule _ :: _ | ScClass _ :: _ | ScInterface _ :: _ | [] =>
                 throw compile_err(eloc, f"cannot use '{kw}' outside of loop")
             | ScLoop(nested, _) :: _ =>
-                if expect_fold_loop {
-                    throw compile_err(eloc, f"'{kw}' can only be used inside 'fold' loop")
-                } else if isbr && nested {
-                    throw compile_err(
-                        eloc,
-                        "break cannot be used inside nested for-loop because of ambiguity.\n" +
-                        "\tUse explicit curly braces, e.g. 'for ... { for ... { for ... { break }}} to'\n" +
-                        "\texit a single for-loop, or use exceptions, e.g. standard Break exception to exit nested loops.")
+                if !any_for {
+                    if expect_fold_loop {
+                        throw compile_err(eloc, f"'{kw}' can only be used inside 'fold' loop")
+                    } else if isbr && nested {
+                        throw compile_err(
+                            eloc,
+                            "break cannot be used inside nested for-loop because of ambiguity.\n" +
+                            "\tUse explicit curly braces, e.g. 'for ... { for ... { for ... { break }}} to'\n" +
+                            "\texit a single for-loop, or use exceptions, e.g. standard Break exception to exit nested loops.")
+                    }
                 }
             | ScFold _ :: _ =>
-                if !expect_fold_loop {
+                if !any_for && !expect_fold_loop {
                     throw compile_err(eloc, f"cannot use '{kw}' inside 'fold' loop")
                 }
             | ScArrMap _ :: _ =>
-                throw compile_err(eloc, f"cannot use '{kw}' inside array comprehension")
+                if !any_for {
+                    throw compile_err(eloc, f"cannot use '{kw}' inside array comprehension")
+                }
             | ScMap _ :: _ =>
-                if expect_fold_loop {
+                if !any_for && expect_fold_loop {
                     throw compile_err(eloc, f"'{kw}' can only be used inside 'fold' loop")
                 }
             | ScBlock _ :: outer_sc => check_inside_(outer_sc)
@@ -1107,8 +1176,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             ExpMem(new_e1, e2, ctx)
         | (_, _, ExpIdent(n2, (etyp2, eloc2))) =>
             val (_, relems) = get_record_elems(None, etyp1, false, eloc1)
-            match relems.find_opt(fun ((n1, _, _): rec_elem_t) {n1 == n2}) {
-            | Some((_, t, _)) =>
+            match relems.find_opt(fun ((_, n1, _, _): rec_elem_t) {n1 == n2}) {
+            | Some((_, _, t, _)) =>
                 unify(etyp, t, eloc, "incorrect type of the record element")
                 ExpMem(new_e1, e2, ctx)
             | _ => throw compile_err(eloc, f"the record element {pp(n2)} is not found")
@@ -1133,7 +1202,17 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 | IdDVal ({dv_flags}) => dv_flags.val_flag_mutable
                 | _ => false
                 })
-            | ExpMem(rcrd, ExpIdent(_, _), _) => is_lvalue(need_mutable_id, rcrd)
+            | ExpMem(rec, ExpIdent(n, _), _) =>
+                is_lvalue(need_mutable_id, rec) ||
+                ({
+                    val rtyp = get_exp_typ(rec)
+                    val (_, relems) = get_record_elems(None, rtyp, false, eloc1)
+                    match find_opt(for (_, nj, _, _) <- relems {get_orig_id(nj) == get_orig_id(n)}) {
+                    | Some((flags, _, _, _)) => flags.val_flag_mutable
+                    | _ => throw compile_err(eloc,
+                        f"member '{pp(n)}' is not found the record of type '{typ2str(etyp1)}'")
+                    }
+                })
             | ExpMem(tup, ExpLit(_, _), _) => is_lvalue(need_mutable_id, tup)
             | _ => false
             }
@@ -1398,10 +1477,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp, TypInt, eloc, "the result of __intrin_size__ must be integer")
             match (deref_typ(t), idx) {
             | (TypString, 0) => {}
+            | (TypVector _, 0) => {}
             | (TypArray(ndims, _), _) =>
                 if idx < 0 || idx >= ndims { throw compile_err(eloc,
                     "the argument of __intrin_size__ is outside of array dimensionality") }
-            | _ => throw compile_err(eloc, "the argument of __intrin_size__ must be a string or an array")
+            | _ => throw compile_err(eloc, "the argument of __intrin_size__ must be a string, a vector or an array")
             }
             ExpIntrin(iop, a::(if idx > 0 {args.tl()} else {[]}), ctx)
         | _ => throw compile_err(eloc, f"the intrinsic '{iop}' is not supported by the type checker")
@@ -1411,6 +1491,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         unify(etyp, eseq_typ, eloc, "the expected type of block expression does not match its actual type")
         val (eseq, _) = check_eseq(eseq, env, sc, true)
         ExpSeq(eseq, ctx)
+    | ExpSync(n, e) =>
+        check_inside_for(false, false, true, sc)
+        val e = check_exp(e, env, sc)
+        ExpSync(n, e)
     | ExpMkTuple(el, _) =>
         val tl = [: for e <- el { get_exp_typ(e) } :]
         unify(etyp, TypTuple(tl), eloc, "improper type of tuple elements or the number of elements")
@@ -1504,11 +1588,13 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val r_t = get_exp_typ(r)
                 val mstr =  match deref_typ(r_t) {
                             | TypList _ => "List"
+                            | TypVector _ => "Vector"
                             | TypString => "String"
                             | TypChar => "Char"
+                            | TypArray _ => "Array"
                             | TypApp(_, tn) =>
                                 match id_info(tn, eloc) {
-                                | IdVariant (ref {dvar_flags={var_flag_object=m}}) when m != noid => pp(m)
+                                | IdVariant (ref {dvar_flags={var_flag_object_from=m}}) when m != noid => pp(m)
                                 | _ => ""
                                 }
                             | _ => ""
@@ -1573,6 +1659,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 unify(etyp, TypArray(1, et), eloc,
                     "the result of flatten operation ([:]) applied to N-D array must be 1D array with elements of the same type as input array")
                 ExpAt(new_arr, BorderNone, InterpNone, new_idx :: [], ctx)
+            | TypVector(et) =>
+                unify(etyp, TypVector(et), eloc,
+                    "the result of flatten operation ([:]) applied to vector must be a vector of the same type")
+                ExpAt(new_arr, BorderNone, InterpNone, new_idx :: [], ctx)
             | TypString =>
                 unify(etyp, TypString, eloc, "the result of flatten operation ([:]) applied to string must be string")
                 new_arr
@@ -1616,6 +1706,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             match (ndims, nranges, deref_typ(new_atyp)) {
             | (1, 0, TypString) => unify(etyp, TypChar, new_aloc, "indexing string should give a char")
             | (1, 1, TypString) => unify(etyp, TypString, new_aloc, "indexing string with a range should give a string")
+            | (1, 0, TypVector et) => unify(etyp, et, new_aloc,
+                "incorrect type of the vector element access operation; it gives '{typ2str(et)}', but '{typ2str(etyp)}' is expected")
+            | (1, 1, TypVector et) => unify(etyp, TypVector(et), new_aloc,
+                "incorrect type of the vector range access operation; it gives '{typ2str(TypVector(et))}', but '{typ2str(etyp)}' is expected")
             | _ =>
                 val et = make_new_typ()
                 unify(new_atyp, TypArray(ndims, et), new_aloc, "the array dimensionality does not match the number of indices")
@@ -1707,6 +1801,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpMap(map_clauses, body, flags, ctx) =>
         val make_list = flags.for_flag_make == ForMakeList
         val make_tuple = flags.for_flag_make == ForMakeTuple
+        val make_vector = flags.for_flag_make == ForMakeVector
         val unzip_mode = flags.for_flag_unzip
         val for_sc = (if make_tuple { new_block_scope() }
                       else if make_list { new_map_scope() }
@@ -1725,11 +1820,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         {
             val idx_str = if idx < 0 {"of comprehension"} else {f"#{idx} (0-based) of @unzip comprehension"}
             if make_list {
-                //if total_dims != 1 {
-                //    throw compile_err(eloc, "the list comprehension should use 1-dimensional loop")
-                //}
                 unify (coll_typ, TypList(elem_typ), eloc,
                     f"the result {idx_str} should have type '{typ2str(TypList(elem_typ))}', but it has type '{typ2str(coll_typ)}'")
+            } else if make_vector {
+                unify (coll_typ, TypVector(elem_typ), eloc,
+                    f"the result {idx_str} should have type '{typ2str(TypVector(elem_typ))}', but it has type '{typ2str(coll_typ)}'")
             } else {
                 unify (coll_typ, TypArray(total_dims, elem_typ), eloc,
                     f"the result {idx_str} should have type '{typ2str(TypArray(total_dims, elem_typ))}', but it has type '{typ2str(coll_typ)}'")
@@ -1761,6 +1856,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 fold l_exp = ExpLit(LitNil, (ltyp, eloc)) for ej <- elems.rev() {
                     ExpBinary(OpCons, ej, l_exp, (ltyp, eloc))
                 }
+            } else if make_vector {
+                ExpMkVector(elems, (TypVector(elem_typ), eloc))
             } else {
                 ExpMkArray(elems :: [], (TypArray(1, elem_typ), eloc))
             }
@@ -1806,8 +1903,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 }
             ExpMap(map_clauses.rev(), new_body, flags.{for_flag_unzip=new_unzip_mode}, ctx)
         }
-    | ExpBreak(f, _) => check_inside_for(f, true, sc); e
-    | ExpContinue _ => check_inside_for(false, false, sc); e
+    | ExpBreak(f, _) => check_inside_for(f, true, false, sc); e
+    | ExpContinue _ => check_inside_for(false, false, false, sc); e
     | ExpMkArray(arows, _) =>
         val elemtyp = make_new_typ()
         val (_, arows, _, dims) =
@@ -1820,7 +1917,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     val e1 = check_exp(e1, env, sc)
                     val (arrtyp1, eloc1) = get_exp_ctx(e1)
                     unify(t, arrtyp1, loc, "incorrect type of expanded collection")
-                    val (colname, d, elemtyp1) = match deref_typ(arrtyp1) {
+                    val (collname, d, elemtyp1) = match deref_typ(arrtyp1) {
                         | TypArray(d, elemtyp1) => ("array", d, elemtyp1)
                         | TypList(elemtyp1) => ("list", 1, elemtyp1)
                         | TypString => ("string", 1, TypChar)
@@ -1829,11 +1926,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     if d > 2 {
                         throw compile_err(loc, "currently expansion of more than 2-dimensional arrays is not supported")
                     }
-                    unify(elemtyp, elemtyp1, eloc1, f"the expanded {colname} elem type does not match the previous elements")
+                    unify(elemtyp, elemtyp1, eloc1, f"the expanded {collname} elem type does not match the previous elements")
                     (true, d, ExpUnary(OpExpand, e1, (arrtyp1, loc)), loc)
                 | _ =>
                     val (elemtyp1, eloc1) = get_exp_ctx(elem)
-                    unify(elemtyp, elemtyp1, eloc1, "all the array literal elements should have the same type")
+                    unify(elemtyp, elemtyp1, eloc1, "all the scalar elements of the array should have the same type")
                     (false, 1, check_exp(elem, env, sc), eloc1)
                 }
                 val row_dims = if row_dims >= 0 { row_dims } else { elem_dims }
@@ -1867,12 +1964,40 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val atyp = TypArray(dims, elemtyp)
         unify(atyp, etyp, eloc, "the array literal should produce an array")
         ExpMkArray(arows.rev(), ctx)
+    | ExpMkVector(elems, _) =>
+        val elemtyp = make_new_typ()
+        val fold elems = [] for elem <- elems {
+            match elem {
+            | ExpUnary(OpExpand, e1, (t, loc)) =>
+                val e1 = check_exp(e1, env, sc)
+                val (etyp1, eloc1) = get_exp_ctx(e1)
+                unify(t, etyp1, eloc1, "incorrect type of expanded collection")
+                val (collname, elemtyp1) = match deref_typ(etyp1) {
+                    | TypArray(1, elemtyp1) => ("array", elemtyp1)
+                    | TypVector(elemtyp1) => ("vector", elemtyp1)
+                    | TypList(elemtyp1) => ("list", elemtyp1)
+                    | TypString => ("string", TypChar)
+                    | _ => throw compile_err(eloc1,
+                        "incorrect type '{typ2str(etyp1)} of the expanded collection (it should be an 1D array, list or string)")
+                    }
+                unify(elemtyp, elemtyp1, eloc1, f"the expanded '{collname}' elem type does not match the previous elements")
+                ExpUnary(OpExpand, e1, (t, loc)) :: elems
+            | _ =>
+                val (elemtyp1, eloc1) = get_exp_ctx(elem)
+                unify(elemtyp, elemtyp1, eloc1, "all the scalar elements of the vector should have the same type")
+                check_exp(elem, env, sc) :: elems
+            }
+        }
+        val vectyp = TypVector(elemtyp)
+        unify(vectyp, etyp, eloc,
+            "the constructed vector has type '{typ2str(vectype)}', but is expected to have type '{typ2str(etyp)}'")
+        ExpMkVector(elems.rev(), ctx)
     | ExpMkRecord(r_e, r_initializers, _) =>
         check_for_rec_field_duplicates([: for (n, _) <- r_initializers {n} :], eloc)
         val (r_new_initializers, relems) = [: @unzip for (n, e) <- r_initializers {
                 val e = check_exp(e, env, sc)
                 val etyp = get_exp_typ(e)
-                ((n, e), (n, etyp, None))
+                ((n, e), (default_val_flags(), n, etyp, None))
             } :]
         val rtyp = TypRecord(ref (relems, false))
         match r_e {
@@ -1896,8 +2021,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val new_r_initializers =
             [: for (ni, ei) <- r_initializers {
                 val (ei_typ, ei_loc) = get_exp_ctx(ei)
-                match relems.find_opt(fun ((nj, _, _): rec_elem_t) {ni == nj}) {
-                | Some ((_, ti, _)) =>
+                match relems.find_opt(fun ((_, nj, _, _): rec_elem_t) {ni == nj}) {
+                | Some ((_, _, ti, _)) =>
                     unify(ti, ei_typ, ei_loc,
                         f"invalid type of the initializer of record field '{pp(ni)}'")
                     val new_ei = check_exp(ei, env, sc)
@@ -2046,6 +2171,21 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             throw compile_err(eloc,
                 "ccode may be used only at the top (module level) or as a single expression in function definition")
         }
+    | ExpData(kind, fname, _) =>
+        val t =
+            if kind == "text" {
+                TypString
+            } else {
+                match deref_typ(etyp) {
+                | TypVar(ref None) =>
+                    TypArray(1, TypUInt(8))
+                | _ =>
+                    TypArray(1, make_new_typ())
+                }
+            }
+        unify(etyp, t, eloc,
+            "the output type of @data/@text '{typ2str(t)}' does not match the expected one '{typ2str(etyp)}'")
+        ExpData(kind, fname, ctx)
     /* all the declarations are checked in check_eseq */
     | DefVal(_, _, _, _) | DefFun _ | DefVariant _ | DefInterface _
     | DefExn _ | DefTyp _ | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) =>
@@ -2468,7 +2608,7 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list) {
                     val info = id_info(n, df_loc)
                     match info {
                     | IdVariant (ref {dvar_name, dvar_templ_args, dvar_flags, dvar_loc})
-                        when dvar_flags.var_flag_object != noid =>
+                        when dvar_flags.var_flag_object_from != noid =>
                         val templ_args = [: for i <- dvar_templ_args {TypApp([], get_orig_id(i))} :]
                         Some(TypApp(templ_args, get_orig_id(dvar_name)))
                     | IdVariant _ | IdInterface _ | IdTyp _ =>
@@ -2672,7 +2812,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
             }
             walk_typ(t, callb)
         | TypRecord (ref (relems, _)) =>
-            check_for_rec_field_duplicates([: for (n, _, _) <- relems {n} :], loc)
+            check_for_rec_field_duplicates([: for (_, n, _, _) <- relems {n} :], loc)
             walk_typ(t, callb)
         | _ => walk_typ(t, callb)
         }
@@ -2775,7 +2915,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
         val (dvar, mtyp) = match arg_typs {
             | TypApp([], tn) :: method_arg_typs =>
                 match id_info(tn, df_loc) {
-                | IdVariant dvar when dvar->dvar_flags.var_flag_object != noid =>
+                | IdVariant dvar when dvar->dvar_flags.var_flag_object_from != noid =>
                     (dvar, TypFun(method_arg_typs, rt))
                 | _ => throw compile_err(df_loc, f"type '{pp(tn)}' is not an object type")
                 }
@@ -2864,7 +3004,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                 | TypVoid => complex_cases
                 | TypRecord (ref (relems, _)) =>
                     val fold (al, bl, cmp_code) = ([], [], ExpNop(body_loc))
-                        for (rn, _, _)@idx <- relems {
+                        for (_, rn, _, _)@idx <- relems {
                         val ai = get_id(f"{astr}{idx}")
                         val bi = get_id(f"{bstr}{idx}")
                         val cmp_ab =
@@ -3140,8 +3280,8 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                 val (ctor, relems_found) = get_record_elems(rn_opt, t, proto_mode, loc)
                 val new_relems = [: for (n, p) <- relems {
                     val n_orig = get_orig_id(n)
-                    match find_opt(for (nj, tj, _) <- relems_found { get_orig_id(nj) == n_orig }) {
-                    | Some((nj, tj, _)) =>
+                    match find_opt(for (_, nj, tj, _) <- relems_found { get_orig_id(nj) == n_orig }) {
+                    | Some((_, nj, tj, _)) =>
                         val (p, _) = if proto_mode {(p, false)} else {check_pat_(p, tj)}
                         (n, p)
                     | _ =>

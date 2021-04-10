@@ -179,7 +179,8 @@ fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
 fun EXPECT_THROWS(f: void->void, ref_exn: exn, ~msg: string="") =
     try {
         f()
-        println(f"EXPECT_THROWS failed on '{msg}'")
+        val msg = if msg != "" {f": '{msg}'"} else {""}
+        println(f"EXPECT_THROWS failed{msg}")
         println("Actual: Does not throw an exception")
         println("Expected: Throws an exception")
         g_test_state.currstatus = false
@@ -191,12 +192,14 @@ fun EXPECT_THROWS(f: void->void, ref_exn: exn, ~msg: string="") =
             g_test_state.currstatus = false
     }
 
-fun EXPECT_NO_THROWS(f: void->void, msg: string) =
+fun EXPECT_NO_THROWS(f: void->void, ~msg: string="") =
     try {
         f()
     } catch {
         | e =>
-            println(f"EXPECT_NO_THROWS failed on '{msg}'")
+            val msg = if msg != "" {f": '{msg}'"} else {""}
+            println(f"EXPECT_THROWS failed{msg}")
+            println(f"EXPECT_NO_THROWS failed: '{msg}'")
             println(f"Actual: Throws the exception '{e}'")
             println("Expected: Does not throw an exception")
             g_test_state.currstatus = false
@@ -248,7 +251,7 @@ fun test_run_all(opts: test_options_t)
             val ts_end = Sys.tick_count()
             val ok = g_test_state.currstatus
             val ok_fail = if ok {f"{Green}[       OK ]{Normal}"}
-                          else {"{Red}[     FAIL ]{Normal}"}
+                          else {f"{Red}[     FAIL ]{Normal}"}
             val ts_diff_str = test_duration2str((ts_end - ts_start)*ts_scale)
             println(f"{ok_fail} {name} ({ts_diff_str})\n")
             if ok {failed} else {name :: failed}

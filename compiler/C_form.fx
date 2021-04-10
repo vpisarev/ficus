@@ -124,6 +124,7 @@ type ctyp_t =
     | CTypRawPtr: (ctyp_attr_t list, ctyp_t)
     | CTypRawArray: (ctyp_attr_t list, ctyp_t)
     | CTypArray: (int, ctyp_t)
+    | CTypVector: ctyp_t
     | CTypName: id_t
     | CTypLabel
     | CTypAny
@@ -141,6 +142,7 @@ type cexp_t =
     | CExpTernary: (cexp_t, cexp_t, cexp_t, cctx_t)
     | CExpCall: (cexp_t, cexp_t list, cctx_t)
     | CExpInit: (cexp_t list, cctx_t)
+    | CExpData: (string, string, cctx_t)
     | CExpTyp: (ctyp_t, loc_t)
     /* we don't parse and don't process the inline C code; just retain it as-is */
     | CExpCCode: (string, loc_t)
@@ -153,6 +155,7 @@ type cstmt_t =
     | CStmtContinue: loc_t
     | CStmtReturn: (cexp_t?, loc_t)
     | CStmtBlock: (cstmt_t list, loc_t)
+    | CStmtSync: (id_t, cstmt_t)
     | CStmtIf: (cexp_t, cstmt_t, cstmt_t, loc_t)
     | CStmtGoto: (id_t, loc_t)
     | CStmtLabel: (id_t, loc_t)
@@ -360,6 +363,7 @@ fun get_cexp_ctx(e: cexp_t): cctx_t
     | CExpTernary (_, _, _, c) => c
     | CExpCall (_, _, c) => c
     | CExpInit (_, c) => c
+    | CExpData (_, _, c) => c
     | CExpTyp (t, l) => (t, l)
     | CExpCCode (_, l) => (CTypAny, l)
 }
@@ -376,6 +380,7 @@ fun get_cstmt_loc(s: cstmt_t)
     | CStmtContinue l => l
     | CStmtReturn (_, l) => l
     | CStmtBlock (_, l) => l
+    | CStmtSync (_, s) => get_cstmt_loc(s)
     | CStmtIf (_, _, _, l) => l
     | CStmtGoto (_, l) => l
     | CStmtLabel (_, l) => l
@@ -600,6 +605,7 @@ fun walk_ctyp(t: ctyp_t, callb: c_callb_t)
             [: for (n, t) <- uelems { (walk_id_(n), walk_ctyp_(t)) } :])
     | CTypFunRawPtr (args, rt) => CTypFunRawPtr(args.map(walk_ctyp_), walk_ctyp_(rt))
     | CTypArray (d, et) => CTypArray(d, walk_ctyp_(et))
+    | CTypVector (et) => CTypVector(walk_ctyp_(et))
     | CTypRawPtr (attrs, t) => CTypRawPtr(attrs, walk_ctyp_(t))
     | CTypRawArray (attrs, et) => CTypRawArray(attrs, walk_ctyp_(et))
     | CTypName n => CTypName(walk_id_(n))
@@ -627,6 +633,7 @@ fun walk_cexp(e: cexp_t, callb: c_callb_t)
     | CExpTyp(t, loc) => CExpTyp(walk_ctyp_(t), loc)
     | CExpCall(f, args, ctx) => CExpCall(walk_cexp_(f), args.map(walk_cexp_), walk_ctx_(ctx))
     | CExpInit(eseq, ctx) => CExpInit(eseq.map(walk_cexp_), walk_ctx_(ctx))
+    | CExpData(kind, fname, ctx) => CExpData(kind, fname, walk_ctx_(ctx))
     | CExpCCode(s, loc) => e
     }
 }
@@ -658,6 +665,7 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
     | CStmtContinue _ => s
     | CStmtReturn (e_opt, l) => CStmtReturn(walk_cexp_opt_(e_opt), l)
     | CStmtBlock (sl, l) => CStmtBlock(walk_csl_(sl), l)
+    | CStmtSync (n, s) => CStmtSync(n, walk_cstmt_(s))
     | CStmtIf (e, s1, s2, l) => CStmtIf(walk_cexp_(e), walk_cstmt_(s1), walk_cstmt_(s2), l)
     | CStmtGoto (n, l) => CStmtGoto(walk_id_(n), l)
     | CStmtLabel (n, l) => CStmtLabel(walk_id_(n), l)
@@ -710,9 +718,10 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
                 cm_body=cm_body.map(walk_cstmt_)}
         s
     | CMacroUndef (n, l) => CMacroUndef(walk_id_(n), l)
-    | CMacroIf (cs_l, else_l, l) => CMacroIf([: for (c, sl) <- cs_l {
-                                                 (walk_cexp_(c), walk_csl_(sl))
-                                            } :], walk_csl_(else_l), l)
+    | CMacroIf (cs_l, else_l, l) =>
+        CMacroIf([: for (c, sl) <- cs_l {
+                (walk_cexp_(c), walk_csl_(sl))
+            } :], walk_csl_(else_l), l)
     | CMacroInclude _ => s
     | CMacroPragma _ => s
     }
@@ -777,6 +786,7 @@ fun fold_ctyp(t: ctyp_t, callb: c_fold_callb_t)
     | CTypRawPtr (_, t) => fold_ctyp_(t)
     | CTypRawArray (_, et) => fold_ctyp_(et)
     | CTypArray (_, t) => fold_ctyp_(t)
+    | CTypVector (t) => fold_ctyp_(t)
     | CTypName n => fold_id_(n)
     | CTypLabel => {}
     }
@@ -805,6 +815,7 @@ fun fold_cexp(e: cexp_t, callb: c_fold_callb_t)
         | CExpCall (f, args, ctx) =>
             fold_cexp_(f); args.app(fold_cexp_); ctx
         | CExpInit (eseq, ctx) => eseq.app(fold_cexp_); ctx
+        | CExpData (_, _, ctx) => ctx
         | CExpTyp (t, loc) => (t, loc)
         | CExpCCode (s, loc) => (CTypAny, loc)
         })
@@ -829,6 +840,7 @@ fun fold_cstmt(s: cstmt_t, callb: c_fold_callb_t)
     | CStmtContinue _ => {}
     | CStmtReturn (e_opt, _) => fold_cexp_opt_(e_opt)
     | CStmtBlock (sl, _) => fold_csl_(sl)
+    | CStmtSync (_, s) => fold_cstmt_(s)
     | CStmtIf (e, s1, s2, _) => fold_cexp_(e); fold_cstmt_(s1); fold_cstmt_(s2)
     | CStmtGoto (n, _) => fold_id_(n)
     | CStmtLabel (n, _) => fold_id_(n)
@@ -919,6 +931,7 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
         val s = if attrs.mem(CTypVolatile) { "volatile " + s } else { s }
         (s + " []", noid)
     | CTypArray _ => ("fx_arr_t", noid)
+    | CTypVector _ => ("fx_vec_t", noid)
     | CTypName n => val cname = get_idc_cname(n, loc); (cname, n)
     | CTypLabel => throw compile_err(loc, "ctyp2str: CTypLabel is not supported")
     | CTypAny => throw compile_err(loc, "ctyp2str: CTypAny is not supported")
@@ -956,6 +969,7 @@ fun make_const_ptr(t: ctyp_t) =
 val std_CTypVoidPtr = make_ptr(CTypVoid)
 val std_CTypConstVoidPtr = make_const_ptr(CTypVoid)
 val std_CTypAnyArray = CTypArray(0, CTypAny)
+val std_CTypAnyVector = CTypVector(CTypAny)
 
 fun make_lit_exp(l: clit_t, loc: loc_t) {
     val t = get_lit_ctyp(l)
@@ -1114,6 +1128,10 @@ var std_fx_copy_arr = noid
 var std_fx_copy_arr_data = noid
 var std_fx_make_arr = noid
 var std_fx_subarr = noid
+var std_FX_FREE_VEC = noid
+var std_fx_free_vec = noid
+var std_fx_copy_vec = noid
+var std_fx_make_vec = noid
 var std_FX_FREE_REF_SIMPLE = noid
 var std_fx_free_ref_simple = noid
 var std_FX_FREE_REF_IMPL = noid

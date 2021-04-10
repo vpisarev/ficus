@@ -388,12 +388,12 @@ void fx_exn_get_and_reset(fx_exn_t* exn)
 
 int fx_exn_check_parallel(int status, int* glob_status)
 {
-    // [TODO] try to return the original exception when it's possible
     if(status < 0)
     {
         fx_bt_t* curr_bt = &fx_bt;
         fx_free_exn(&curr_bt->curr_exn);
-        *glob_status = FX_EXN_ParallelForError;
+        *glob_status = FX_EXN_ZeroStepError <= status && status <= FX_EXN_ASCIIError ?
+                status : FX_EXN_ParallelForError;
     }
     return 0;
 }

@@ -146,7 +146,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             val {kvar_name, kvar_cname, kvar_targs, kvar_scope} = *kvar
             if kvar_cname == "" {
                 val (base_name, cname) =
-                    mangle_inst_(kvar_name, "V", kvar_targs, kvar_name, kvar_scope)
+                    mangle_inst_(kvar_name, "N", kvar_targs, kvar_name, kvar_scope)
                 *kvar = kvar->{kvar_cname=add_fx(cname), kvar_base_name=get_id(base_name)}
                 cname :: result
             } else {
@@ -231,6 +231,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             val result = string(dims) :: "A" :: result
             mangle_ktyp_(t, result)
         | KTypList t => mangle_ktyp_(t, "L" :: result)
+        | KTypVector t => mangle_ktyp_(t, "V" :: result)
         | KTypRef t => mangle_ktyp_(t, "r" :: result)
         | KTypExn  => "E" :: result
         | KTypErr  => throw compile_err(loc, "KTypErr cannot be mangled")
@@ -274,6 +275,7 @@ fun mangle_all(kmods: kmodule_t list) {
         | KTypFun _ => create_gen_typ(t, "fun", loc)
         | KTypTuple _ => create_gen_typ(t, "tup", loc)
         | KTypArray _ => t
+        | KTypVector _ => t
         | KTypList _ => create_gen_typ(t, "lst", loc)
         | KTypRef _ => create_gen_typ(t, "ref", loc)
         }

@@ -44,69 +44,51 @@ interface IShape : IBase
     fun getcolors(): shape_colors_t*/
 }
 
-type rect_data_t =
-{
-    cx: float; cy: float
-    fx: float; fy: float
-    angle: float=0.f
-    corner_r: float=0.f
-    sc: shape_colors_t
-}
-
-type ellipse_data_t =
-{
-    cx: float; cy: float
-    fx: float; fy: float
-    angle: float=0.f
-    sc: shape_colors_t
-}
-
 object type Rect : IShape, IClone =
 {
-    r: rect_data_t ref
+    var cx: float
+    var cy: float
+    var fx: float
+    var fy: float
+    var angle: float=0.f
+    var corner_r: float=0.f
+    var sc: shape_colors_t
 }
 
 object type Ellipse : IClone, IShape =
 {
-    r: ellipse_data_t ref
-}
-
-fun make_rect(cx: float, cy: float, fx: float, fy: float,
-              sc: shape_colors_t, ~angle:float=0.f, ~corner_r: float=0.f)
-{
-    Rect {r=ref (rect_data_t {cx=cx, cy=cy, fx=fx, fy=fy, angle=angle, sc=sc, corner_r=corner_r})}
-}
-
-fun make_ellipse(cx: float, cy: float, fx: float, fy: float,
-                 sc: shape_colors_t, ~angle:float=0.f, ~corner_r: float=0.f)
-{
-    Ellipse {r=ref (ellipse_data_t {cx=cx, cy=cy, fx=fx, fy=fy, angle=angle, sc=sc})}
+    var cx: float
+    var cy: float
+    var fx: float
+    var fy: float
+    var angle: float=0.f
+    var sc: shape_colors_t
 }
 
 fun Rect.name() = "rectangle"
-fun Rect.area() = self.r->fx*self.r->fy
-fun Rect.get_scale() = (self.r->fx, self.r->fy)
-fun Rect.set_scale(fx: float, fy: float) { self.r->fx = fx; self.r->fy = fy }
+fun Rect.area() = self.fx*self.fy
+fun Rect.get_scale() = (self.fx, self.fy)
+fun Rect.set_scale(fx: float, fy: float) { self.fx = fx; self.fy = fy }
 fun Rect.clone()
 {
-    val {cx, cy, fx, fy, angle, corner_r, sc} = *self.r
-    (make_rect(cx, cy, fx, fy, sc, angle=angle, corner_r=corner_r) :> IClone)
+    val {cx, cy, fx, fy, angle, corner_r, sc} = self
+    (Rect {cx=cx, cy=cy, fx=fx, fy=fy, angle=angle, corner_r=corner_r, sc=sc} :> IClone)
 }
 
 fun Ellipse.name() = "ellipse"
-fun Ellipse.area() = float(M_PI*self.r->fx*self.r->fy)
-fun Ellipse.get_scale() = (self.r->fx, self.r->fy)
-fun Ellipse.set_scale(fx: float, fy: float) { self.r->fx = fx; self.r->fy = fy }
+fun Ellipse.area() = float(M_PI*self.fx*self.fy)
+fun Ellipse.get_scale() = (self.fx, self.fy)
+fun Ellipse.set_scale(fx: float, fy: float) { self.fx = fx; self.fy = fy }
 fun Ellipse.clone()
 {
-    val {cx, cy, fx, fy, angle, sc} = *self.r
-    (make_ellipse(cx, cy, fx, fy, sc, angle=angle) :> IClone)
+    val {cx, cy, fx, fy, angle, sc} = self
+    (Ellipse {cx=cx, cy=cy, fx=fx, fy=fy, angle=angle, sc=sc} :> IClone)
 }
 
 TEST("oop.interfaces", fun()
 {
-    val r0 = make_rect(100.f, 100.f, 16.f, 10.f, make_solid(color_red))
-    val e0 = make_ellipse(150.f, 100.f, 20.f, 20.f, make_solid(color_blue))
+    val r0 = Rect {cx=100.f, cy=100.f, fx=16.f, fy=10.f, sc=make_solid(color_red)}
+    val e0 = Ellipse {cx=150.f, cy=100.f, fx=20.f, fy=20.f, sc=make_solid(color_blue)}
 
     val shapes = [: (r0 :> IShape), (e0 :> IShape) :]
     val ref_data = [: ("rectangle", 160.f), ("ellipse", 1256.6371f) :]
@@ -121,13 +103,13 @@ TEST("oop.interfaces", fun()
         fun test_ellipse()
         {
             val e = (sh2 :> Ellipse)
-            EXPECT_EQ(e.r->cx, e0.r->cx)
-            EXPECT_EQ(e.r->cy, e0.r->cy)
+            EXPECT_EQ(e.cx, e0.cx)
+            EXPECT_EQ(e.cy, e0.cy)
         }
         if i == 0 {
             EXPECT_THROWS(test_ellipse, TypeMismatchError, msg="cast (Rect:>IShape):>Ellipse should fail")
         } else {
-            EXPECT_NO_THROWS(test_ellipse, "cast (Ellipse:>IShape):>Ellipse should succeed")
+            EXPECT_NO_THROWS(test_ellipse, msg="cast (Ellipse:>IShape):>Ellipse should succeed")
         }
     }
 })

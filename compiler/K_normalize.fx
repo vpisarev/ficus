@@ -42,11 +42,12 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
         | TypVarTuple _ => throw compile_err(loc, "variable tuple type cannot be inferenced; please, use explicit type annotation")
         | TypRef(t) => KTypRef(typ2ktyp_(t))
         | TypArray(d, t) => KTypArray(d, typ2ktyp_(t))
+        | TypVector(t) => KTypVector(typ2ktyp_(t))
         | TypVarArray _ => throw compile_err(loc, "variable array type cannot be inferenced; please, use explicit type annotation")
         | TypVarRecord => throw compile_err(loc, "variable record type cannot be inferenced; please, use explicit type annotation")
         | TypFun(args, rt) => KTypFun([: for t <- args {typ2ktyp_(t)} :], typ2ktyp_(rt))
         | TypRecord (ref (relems, true)) =>
-            KTypRecord(noid, [: for (ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } :])
+            KTypRecord(noid, [: for (_, ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } :])
         | TypRecord _ => throw compile_err(loc, "the record type cannot be inferenced; use explicit type annotation")
         | TypApp(args, n) =>
             val t_opt = Ast_typecheck.find_typ_instance(t, loc)
@@ -59,7 +60,7 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
                         throw compile_err(loc, f"the record '{n}' directly or indirectly references itself")
                     } else {
                         id_stack = n :: id_stack
-                        val new_t = KTypRecord(n, [: for (ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } :])
+                        val new_t = KTypRecord(n, [: for (_, ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } :])
                         id_stack = id_stack.tl()
                         new_t
                     }
@@ -248,6 +249,9 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         | c :: code => (c, code)
         | _ => (KExpNop(eloc), code)
         }
+    | ExpSync(n, e0) =>
+        val (e, code1) = exp2kexp(e0, [], false, sc)
+        (KExpSync(n, rcode2kexp(e :: code1, get_exp_loc(e0))), code)
     | ExpMkTuple(args, _) =>
         val fold (args, code) = ([], code) for ei <- args {
             val (ai, code) = exp2atom(ei, code, false, sc)
@@ -270,6 +274,19 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             (krow.rev() :: krows, code)
         }
         (KExpMkArray(krows.rev(), kctx), code)
+    | ExpMkVector(elems, _) =>
+        if elems == [] {
+            throw compile_err(eloc, "empty vector literals are not supported")
+        }
+        val fold elems=[], code=code for e <- elems {
+            val (f, e) = match e {
+                | ExpUnary(OpExpand, e, _) => (true, e)
+                | _ => (false, e)
+                }
+            val (a, code) = exp2atom(e, code, false, sc)
+            ((f, a) :: elems, code)
+        }
+        (KExpMkVector(elems.rev(), kctx), code)
     | ExpMkRecord(rn, rinitelems, _) =>
         val (rn_id, ctor, relems) =
             match (rn, deref_typ(etyp)) {
@@ -280,13 +297,14 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             | _ => throw compile_err(get_exp_loc(rn),
                     "k-normalization: in the record construction identifier is expected after type check")
             }
-        val fold (ratoms, code) = ([], code) for (ni, ti, opt_vi) <- relems {
+        val fold (ratoms, code) = ([], code) for (_, ni, ti, opt_vi) <- relems {
             val (a, code) =
             match find_opt(for (nj, _) <- rinitelems { ni == nj }) {
             | Some((_, ej)) => exp2atom(ej, code, false, sc)
             | _ =>
                 match opt_vi {
-                | Some(vi) => (AtomLit(lit2klit(vi, typ2ktyp(ti, eloc))), code)
+                | Some(InitLit(v0_l)) => (AtomLit(lit2klit(v0_l, typ2ktyp(ti, eloc))), code)
+                | Some(InitId(v0_n)) => (AtomId(v0_n), code)
                 | _ =>
                     throw compile_err(eloc,
                         f"there is no explicit inializer for the field '{pp(rn_id)}.{pp(ni)}' nor there is default initializer for it")
@@ -299,7 +317,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
     | ExpUpdateRecord(e, new_elems, _) =>
         val (rec_n, code) = exp2id(e, code, true, sc, "the updated record cannot be a literal")
         val (_, relems) = Ast_typecheck.get_record_elems(None, etyp, false, eloc)
-        val fold (ratoms, code) = ([], code) for (ni, ti, _)@idx <- relems {
+        val fold (ratoms, code) = ([], code) for (_, ni, ti, _)@idx <- relems {
             val (a, code) =
                 try {
                     val (_, ej) = find(for (nj, ej) <- new_elems { ni == nj })
@@ -496,6 +514,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val t = typ2ktyp(t, eloc)
         (KExpAtom(a, (t, eloc)), code)
     | ExpCCode(s, _) => (KExpCCode(s, kctx), code)
+    | ExpData(kind, fname, _) => (KExpData(kind, fname, kctx), code)
     | ExpMatch(e1, cases, _) =>
         val loc1 = get_exp_loc(e1)
         val (a, code) = exp2atom(e1, code, false, sc)
@@ -1317,7 +1336,7 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                     }
                     match (dvar_cases, dvar_flags.var_flag_record, dvar_ifaces) {
                     | ((rn, TypRecord (ref (relems, _))) :: [], true, []) =>
-                        val rec_elems = [: for (i, t, _) <- relems { (i, typ2ktyp(t, inst_loc)) } :]
+                        val rec_elems = [: for (_, i, t, _) <- relems { (i, typ2ktyp(t, inst_loc)) } :]
                         val kt = ref (kdeftyp_t { kt_name=inst_name, kt_cname="",
                                 kt_targs=targs, kt_props=None,
                                 kt_typ=KTypRecord(inst_name, rec_elems),
@@ -1325,7 +1344,8 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                         set_idk_entry(inst_name, KTyp(kt))
                         KDefTyp(kt) :: code
                     | _ =>
-                        val kvar_cases = [: for (_, t) <- dvar_cases, tag <- tags { (tag, typ2ktyp(t, inst_loc)) } :]
+                        val kvar_cases = [: for (_, t) <- dvar_cases, tag <- tags {
+                                            (tag, typ2ktyp(t, inst_loc)) } :]
                         val kvar_ifaces = [: for (iname, meths) <- dvar_ifaces {
                                 (iname, [: for (a, b) <- meths {
                                     if b == noid {
@@ -1352,7 +1372,8 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                                 match id_info(ctor, dvar_loc) {
                                 | IdFun (ref {df_name, df_typ}) =>
                                     val argtyps = match df_typ {
-                                        | TypFun(TypRecord (ref (relems, true)) :: [], _) => [: for (n, t, _) <- relems {t} :]
+                                        | TypFun(TypRecord (ref (relems, true)) :: [], _) =>
+                                            [: for (_, n, t, _) <- relems {t} :]
                                         | TypFun(argtyps, _) => argtyps
                                         | _ => []
                                         }
@@ -1395,7 +1416,7 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
             val code = if is_std { code } else { decl_tag + code }
             val dexn_typ =
                 match deref_typ(dexn_typ) {
-                | TypRecord (ref (relems, true)) => TypTuple([: for (_, t, _) <- relems {t} :])
+                | TypRecord (ref (relems, true)) => TypTuple([: for (_, _, t, _) <- relems {t} :])
                 | _ => dexn_typ
                 }
             val ke_typ = typ2ktyp(dexn_typ, dexn_loc)

@@ -14,9 +14,9 @@ exception LexerError : (lloc_t, string)
 // Ficus tokens
 type token_t =
     | LITERAL: Ast.lit_t | IDENT: (bool, string) | TYVAR: string
-    | APOS | AS | AT | BREAK | CATCH | CCODE | CLASS | CONTINUE | DO
-    | ELLIPSIS | ELSE | EXCEPTION | FINALLY | FOLD
-    | FOR: bool | FROM | FUN | IF | IMPORT: bool
+    | APOS | AS | AT | BREAK | CATCH | CCODE | CLASS | CONTINUE
+    | DO | DATA: string | ELLIPSIS | ELSE | EXCEPTION | FINALLY
+    | FOLD | FOR: bool | FROM | FUN | IF | IMPORT: bool
     | INLINE | INTERFACE | MATCH | NOTHROW | OBJECT | OPERATOR
     | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
@@ -46,6 +46,7 @@ fun tok2str(t: token_t)
     | CCODE => ("CCODE", "@ccode")
     | CLASS => ("CLASS", "class")
     | CONTINUE => ("CONTINUE", "continue")
+    | DATA kind => (f"DATA(kind)", "@data(kind)")
     | DO => ("DO", "do")
     | ELLIPSIS => ("ELLIPSIS", "...")
     | ELSE => ("ELSE", "else")
@@ -486,6 +487,15 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
             break;
         }
         if (c == 92) { // backslash
+            if ((i+1 < len && ptr[i+1] == 10) || (i+2 < len && ptr[i+1] == 13 && ptr[i+2] == 10)) {
+                for (++i; i < len; i++) {
+                    c = ptr[i];
+                    if (c != 32 && c != 9 && c != 10 && c != 13)
+                        break;
+                }
+                i--;
+                continue;
+            }
             if(raw) {
                 if (i+1 < len && (ptr[i+1] == 34 || ptr[i+1] == 39)) { // quote
                     buf[n++] = 92;
@@ -623,8 +633,11 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0), hash,
     ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)),
     ("type", (TYPE, 2)), ("val", (VAL, 2)), ("var", (VAR, 2)), ("when", (WHEN, 1)),
     ("while", (WHILE(true), 2)), ("with", (WITH, 1)), ("__fold_result__", (FOLD_RESULT, -1)),
-    ("@ccode", (CCODE, 2)),  ("@inline", (INLINE, 2)), ("@nothrow", (NOTHROW, 2)),
-    ("@parallel", (PARALLEL, 2)),  ("@private", (PRIVATE, 2)), ("@sync", (SYNC, 2)),
+    ("@ccode", (CCODE, 2)),  ("@data", (DATA("binary"), 2)),
+    ("@data_le", (DATA("binary_le"), 2)), ("@data_be", (DATA("binary_be"), 2)),
+    ("@inline", (INLINE, 2)), ("@nothrow", (NOTHROW, 2)),
+    ("@parallel", (PARALLEL, 2)),  ("@private", (PRIVATE, 2)),
+    ("@sync", (SYNC, 1)), ("@text", (DATA("text"), 2)),
     ("@pure", (PURE, 2)),  ("@unzip", (UNZIP, 2)),
      :])
 
@@ -819,7 +832,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             } else {
                 (LITERAL(Ast.LitString(res)), loc) :: []
             }
-        } else if c.isalpha() || c == '_' || (new_exp && c == '@' && c1.isalpha()) {
+        } else if c.isalpha() || c == '_' || (c == '@' && c1.isalpha() &&
+            (new_exp ||
+            (c1 == 's' && peekch(buf, pos+2) == 'y' &&
+            peekch(buf, pos+3) == 'n' && peekch(buf, pos+4) == 'c'))) {
             var p = pos+1
             while p < len {
                 val cp = buf[p]

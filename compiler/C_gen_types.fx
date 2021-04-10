@@ -52,7 +52,9 @@ fun ktyp2ctyp_fargs(args: ktyp_t list, rt: ktyp_t, loc: loc_t)
 
 fun ktyp2ctyp(t: ktyp_t, loc: loc_t) {
     fun type_err(tname: string) =
-        compile_err(loc, f"ktyp2ctyp: {tname} is not supported here. Should be converted to KTypName()")
+        compile_err(loc,
+            f"ktyp2ctyp: {tname} is not supported here. " +
+            f"It should have been converted to KTypName() at K_mangle stage")
 
     fun ktyp2ctyp_(t: ktyp_t) =
         match t {
@@ -66,12 +68,14 @@ fun ktyp2ctyp(t: ktyp_t, loc: loc_t) {
         | KTypChar => CTypUniChar
         | KTypString => CTypString
         | KTypCPointer => CTypCSmartPtr
-        | KTypFun (args, rt) => val args_ = ktyp2ctyp_fargs(args, rt, loc)
-                                CTypFunRawPtr(args_, CTypCInt)
+        | KTypFun (args, rt) =>
+            val args_ = ktyp2ctyp_fargs(args, rt, loc)
+            CTypFunRawPtr(args_, CTypCInt)
         | KTypTuple _ => throw type_err("KTypTuple")
         | KTypRecord _ => throw type_err("KTypRecord")
         | KTypName i => CTypName(i)
         | KTypArray (d, et) => CTypArray(d, ktyp2ctyp_(et))
+        | KTypVector et => CTypVector(ktyp2ctyp_(et))
         | KTypList _ => throw type_err("KTypList")
         | KTypRef _ => throw type_err("KTypRef")
         | KTypExn => CTypExn
@@ -121,6 +125,11 @@ fun get_ctprops(ctyp: ctyp_t, loc: loc_t): ctprops_t
         ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
             ctp_free=(std_FX_FREE_ARR, std_fx_free_arr),
             ctp_copy=(noid, std_fx_copy_arr),
+            ctp_pass_by_ref=true, ctp_ptr=false }
+    | CTypVector (_) =>
+        ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
+            ctp_free=(std_FX_FREE_VEC, std_fx_free_vec),
+            ctp_copy=(noid, std_fx_copy_vec),
             ctp_pass_by_ref=true, ctp_ptr=false }
     | CTypName i =>
         match cinfo_(i, loc) {

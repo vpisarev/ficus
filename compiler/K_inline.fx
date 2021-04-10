@@ -122,17 +122,21 @@ fun calc_exp_size(e: kexp_t)
         | KExpBinary _ | KExpUnary _ | KExpCast _ | KExpIntrin _
         | KExpBreak _ | KExpContinue _ | KExpMem _ | KExpAssign _ | KDefVal _ => 1
         | KExpSeq (elist, _) => elist.length()
+        | KExpSync (_, e) => 10
         | KExpMkRecord (args, _) => args.length()
         | KExpMkTuple (args, _) => args.length()
         | KExpMkArray (args, _) =>
             fold s = 0 for al <- args {
                 fold s = s for (f, a) <- al { s + (if f { 10 } else { 1 }) }
             }
+        | KExpMkVector (args, _) =>
+            fold s = 0 for (f, a) <- args { s + (if f { 10 } else { 1 }) }
         | KExpMkClosure (_, _, args, _) => args.length()
         | KExpCall (_, args, _) => 5 + args.length()
         | KExpICall (_, _, args, _) => 6 + args.length()
         | KExpAt (_, _, _, idxs, _) => idxs.length()
         | KExpCCode _ => 100
+        | KExpData _ => 10
         | KExpThrow _ => 10
         | KExpWhile _ | KExpDoWhile _ | KExpIf _ => 2
         | KExpMatch (cases, _) =>
