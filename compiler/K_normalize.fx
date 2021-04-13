@@ -118,8 +118,9 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                 match get_atom_ktyp(i, eloc) {
                 | KTypArray(_, et) => et
                 | KTypList(et) => et
+                | KTypVector(et) => et
                 | KTypString => KTypChar
-                | _ => throw compile_err(eloc, "unsupported typ of the domain expression in for loop")
+                | _ => throw compile_err(eloc, "unsupported type of the domain expression in for loop")
                 }
             }
             val (i, body_code) = pat_simple_unpack(pi, ptyp, None, body_code, "i", default_tempval_flags(), body_sc)

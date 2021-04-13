@@ -1212,27 +1212,44 @@ fun create_kdefconstr(n: id_t, argtyps: ktyp_t list, rt: ktyp_t, ctor: fun_const
 
 fun string(t: ktyp_t): string
 {
-    | KTypInt => "KTypInt"
-    | KTypCInt => "KTypCInt"
-    | KTypSInt(n) => f"KTypSInt({n})"
-    | KTypUInt(n) => f"KTypUInt({n})"
-    | KTypFloat(n) => f"KTypFloat({n})"
-    | KTypVoid => "KTypVoid"
-    | KTypBool => "KTypBool"
-    | KTypChar => "KTypChar"
-    | KTypString => "KTypString"
-    | KTypCPointer => "KTypCPtr"
-    | KTypFun(argtyps, rt) => "KTypFun(<" + ktl2str(argtyps) + f">, {rt})"
-    | KTypTuple(tl) => "KTypTuple(" + ktl2str(tl) + ")"
-    | KTypRecord(n, _) => "KTypRecord(" + idk2str(n, noloc) + ")"
-    | KTypName(n) => "KTypName(" + idk2str(n, noloc) + ")"
-    | KTypArray(d, t) => f"KTypArray({d}, {t})"
-    | KTypVector(t) => f"KTypVector({t})"
-    | KTypList(t) => f"KTypList({t}))"
-    | KTypRef(t) => f"KTypRef({t})"
-    | KTypExn => "KTypExn"
-    | KTypErr => "KTypErr"
-    | KTypModule => "KTypModule"
+    fun ktyp2str_(t: ktyp_t, nf: bool) =
+        match t {
+        | KTypInt => "int"
+        | KTypCInt => "int32_t"
+        | KTypSInt(n) => f"int{n}_t"
+        | KTypUInt(n) => f"uint{n}_t"
+        | KTypFloat(16) => "half"
+        | KTypFloat(32) => "float"
+        | KTypFloat(64) => "double"
+        | KTypFloat(n) => throw compile_err(noloc, f"unsupported {n}-bit floating-point type")
+        | KTypVoid => "void"
+        | KTypBool => "bool"
+        | KTypChar => "char"
+        | KTypString => "string"
+        | KTypCPointer => "cptr"
+        | KTypFun(argtyps, rt) =>
+            val argtyps_str =
+                match argtyps {
+                | [] => "void"
+                | t :: [] => ktyp2str_(t, true)
+                | _ => ktl2str(argtyps)
+                }
+            val rt_str = ktyp2str_(rt, true)
+            if nf { f"({argtyps_str} -> {rt_str})" }
+            else { f"{argtyps_str} -> {rt_str}" }
+        | KTypTuple(tl) => ktl2str(tl)
+        | KTypRecord(n, _) => f"{idk2str(n, noloc)} {{...}}"
+        | KTypName(n) => idk2str(n, noloc)
+        | KTypArray(d, t) =>
+            val commas = ','*(d-1); f"{ktyp2str_(t, true)} [{commas}]"
+        | KTypVector(t) => f"{ktyp2str_(t, true)} vector"
+        | KTypList(t) => f"{ktyp2str_(t, true)} list"
+        | KTypRef(t) => f"{ktyp2str_(t, true)} ref"
+        | KTypExn => "exn"
+        | KTypErr => "<err>"
+        | KTypModule => "<module>"
+        }
+    ktyp2str_(t, false)
 }
 
 fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
@@ -1259,7 +1276,8 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     }
 }
 
-fun ktl2str(tl: ktyp_t list): string = ", ".join([: for t <- tl { string(t) } :])
+fun ktl2str(tl: ktyp_t list): string =
+    join_embrace("(", ")", ", ", [| for t <- tl { string(t) } |])
 fun atom2str(a: atom_t): string
 {
     | AtomId(n) => idk2str(n, noloc)

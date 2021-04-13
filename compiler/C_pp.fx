@@ -406,7 +406,10 @@ type assoc_t = AssocLeft | AssocRight
         if Options.opt.enable_openmp {
             pp.newline()
             pp.str("#pragma omp critical")
-            if n != noid { pp.str(f" ({pp_(n)})") }
+            if n != noid {
+                val nstr = pp_(n).replace(".", "__")
+                pp.str(f" ({nstr})")
+            }
             pp.newline()
         }
         pprint_cstmt_as_block(pp, s)

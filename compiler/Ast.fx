@@ -1102,6 +1102,7 @@ fun fname_to_bool() = get_id("bool")
 fun fname_string() = get_id("string")
 fun fname_print() = get_id("print")
 fun fname_repr() = get_id("repr")
+fun fname_hash() = get_id("hash")
 
 fun binary_try_remove_dot(bop: binary_t) =
     match bop {
@@ -1177,7 +1178,7 @@ fun fname_always_import(): id_t list = [:
     fname_to_int(), fname_to_uint8(), fname_to_int8(), fname_to_uint16(),
     fname_to_int16(), fname_to_uint32(), fname_to_int32(), fname_to_uint64(),
     fname_to_int64(), fname_to_float(), fname_to_double(), fname_to_bool(),
-    fname_string(), fname_print(), fname_repr()
+    fname_string(), fname_print(), fname_repr(), fname_hash()
 :]
 
 fun get_cast_fname(t: typ_t, loc: loc_t) =

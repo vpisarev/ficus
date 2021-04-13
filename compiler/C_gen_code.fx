@@ -1116,7 +1116,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     (iter_val_i, get_arr_elem, default_tempvar_flags()) :: body_elems, post_checks)
                 | _ =>
                     throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
-                        f"cannot iterate over '{atom2str(a)}'; it needs to be array, list or string"))
+                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list or string"))
                 }
             | _ => throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
                         "unsupported type of the for loop iteration domain"))

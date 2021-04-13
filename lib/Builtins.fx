@@ -256,6 +256,8 @@ fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |]
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
 
+fun string(v: 't vector) = join_embrace("[", "]", ", ", [| for x <- v {repr(x)} |])
+
 @pure operator * (c: char, n: int): string = @ccode
 {
     int fx_status = fx_make_str(0, n, fx_result);
@@ -300,6 +302,24 @@ operator <=> (a: 't list, b: 't list): int
     | _ => 0
 }
 
+operator == (a: 't vector, b: 't vector): bool
+{
+    size(a) == size(b) &&
+    all(for xa <- a, xb <- b {xa == xb})
+}
+
+operator <=> (a: 't vector, b: 't vector): int
+{
+    val na = size(a), nb = size(b)
+    val n = min(na, nb)
+    var d = 0
+    for i <- 0:n {
+        d = a[i] <=> b[i]
+        if d != 0 {break}
+    }
+    if d != 0 {d} else {na <=> nb}
+}
+
 operator == (a: 't [+], b: 't [+]): bool =
     size(a) == size(b) &&
     all(for xa <- a, xb <- b {xa == xb})
@@ -310,7 +330,7 @@ operator <=> (a: 't [], b: 't []): int
     val n = min(na, nb)
     var d = 0
     for i <- 0:n {
-        d = xa <=> xb
+        d = a[i] <=> b[i]
         if d != 0 {break}
     }
     if d != 0 {d} else {na <=> nb}
@@ -698,6 +718,16 @@ fun print(l: 't list)
 {
     print("[")
     for x@i <- l {
+        if i > 0 {print(", ")}
+        print_repr(x)
+    }
+    print("]")
+}
+
+fun print(v: 't vector)
+{
+    print("[")
+    for x@i <- v {
         if i > 0 {print(", ")}
         print_repr(x)
     }
