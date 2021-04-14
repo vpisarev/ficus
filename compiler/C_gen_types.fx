@@ -128,7 +128,7 @@ fun get_ctprops(ctyp: ctyp_t, loc: loc_t): ctprops_t
             ctp_pass_by_ref=true, ctp_ptr=false }
     | CTypVector (_) =>
         ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
-            ctp_free=(std_FX_FREE_VEC, std_fx_free_vec),
+            ctp_free=(noid, std_fx_free_vec),
             ctp_copy=(noid, std_fx_copy_vec),
             ctp_pass_by_ref=true, ctp_ptr=false }
     | CTypName i =>

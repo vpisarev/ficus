@@ -192,30 +192,32 @@ static FX_THREAD_LOCAL bool fx_rpmalloc_thread_initialized = false;
 
 void* fx_malloc(size_t sz)
 {
-    if (!fx_rpmalloc_thread_initialized) {
+    /*if (!fx_rpmalloc_thread_initialized) {
         rpmalloc_thread_initialize();
         fx_rpmalloc_thread_initialized = true;
     }
-    return rpmalloc(sz);
+    return rpmalloc(sz);*/
+    return malloc(sz);
 }
 
 void* fx_realloc(void* ptr, size_t sz)
 {
-    if (!fx_rpmalloc_thread_initialized) {
+    /*if (!fx_rpmalloc_thread_initialized) {
         rpmalloc_thread_initialize();
         fx_rpmalloc_thread_initialized = true;
     }
-    return rprealloc(ptr, sz);
+    return rprealloc(ptr, sz);*/
+    return realloc(ptr, sz);
 }
 
 void fx_free(void* ptr)
 {
-    if (!fx_rpmalloc_thread_initialized) {
+    /*if (!fx_rpmalloc_thread_initialized) {
         rpmalloc_thread_initialize();
         fx_rpmalloc_thread_initialized = true;
     }
-    rpfree(ptr);
-    //free(ptr);
+    rpfree(ptr);*/
+    free(ptr);
 }
 
 ///////////////////////////// lists /////////////////////////////
@@ -673,6 +675,7 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 #include "ficus/impl/string.impl.h"
 #include "ficus/impl/regex.impl.h"
 #include "ficus/impl/system.impl.h"
+#include "ficus/impl/rrbvec.impl.h"
 #include "ficus/impl/rpmalloc.c"
 
 #endif

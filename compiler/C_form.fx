@@ -931,7 +931,7 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
         val s = if attrs.mem(CTypVolatile) { "volatile " + s } else { s }
         (s + " []", noid)
     | CTypArray _ => ("fx_arr_t", noid)
-    | CTypVector _ => ("fx_vec_t", noid)
+    | CTypVector _ => ("fx_rrbvec_t", noid)
     | CTypName n => val cname = get_idc_cname(n, loc); (cname, n)
     | CTypLabel => throw compile_err(loc, "ctyp2str: CTypLabel is not supported")
     | CTypAny => throw compile_err(loc, "ctyp2str: CTypAny is not supported")
@@ -1128,7 +1128,6 @@ var std_fx_copy_arr = noid
 var std_fx_copy_arr_data = noid
 var std_fx_make_arr = noid
 var std_fx_subarr = noid
-var std_FX_FREE_VEC = noid
 var std_fx_free_vec = noid
 var std_fx_copy_vec = noid
 var std_fx_make_vec = noid

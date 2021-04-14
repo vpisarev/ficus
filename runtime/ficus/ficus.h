@@ -745,6 +745,67 @@ int fx_compose_arr( int dims, size_t elemsize, fx_free_t free_elem, fx_copy_t co
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);
 int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* farr);
 
+////////////////////////// Vectors /////////////////////////////
+
+typedef struct fx_rrbnode_t fx_rrbnode_t;
+
+typedef struct fx_rrbinfo_t
+{
+    int elemsize, nleafelems_log;
+    fx_copy_t copy_f;
+    fx_free_t free_f;
+} fx_rrbinfo_t;
+
+typedef struct fx_rrbvec_t
+{
+    int_ size;
+    fx_rrbinfo_t info;
+    struct fx_rrbnode_t* root;
+    struct fx_rrbnode_t* tail;
+} fx_rrbvec_t;
+
+enum {
+    FX_RRB_MAX_DEPTH = 14
+};
+
+typedef struct fx_rrbiter_t {
+    int depth, dir;
+    char* blockstart;
+    char* blockend;
+    fx_rrbvec_t* vec;
+    int istack[FX_RRB_MAX_DEPTH];
+    struct fx_rrbnode_t* nstack[FX_RRB_MAX_DEPTH];
+} fx_rrbiter_t;
+
+#define FX_RRB_SIZE(vec) ((vec).size)
+#define FX_RRB_NEXT(typ, iter, ptr) \
+    (++(ptr) < (typ*)(iter).blockend ? (ptr) : (typ*)fx_rrb_next(&(iter)))
+#define FX_RRB_CHKIDX(vec, idx, catch_label) \
+    if((size_t)(idx) < (size_t)(vec).size) ; \
+    else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
+#define FX_RRB_ELEM(typ, vec, idx) *(typ*)fx_rrb_find(&(vec), (idx))
+#define FX_RRB_START_READ(typ, vec, iter) (typ*)fx_rrb_start_read(&(vec), &(iter), 0, 1)
+
+void fx_rrb_free(fx_rrbvec_t* arr);
+void fx_rrb_copy(const fx_rrbvec_t* src, fx_rrbvec_t* dst);
+char* fx_rrb_find(const fx_rrbvec_t* vec, int_ idx);
+
+int fx_rrb_make(int_ size, size_t elemsize, fx_free_t free_elem,
+                fx_copy_t copy_elem, const void* data, fx_rrbvec_t* vec);
+char* fx_rrb_next(fx_rrbiter_t* iter);
+
+char* fx_rrb_push_back(fx_rrbiter_t* iter, char* ptr, const char* elems, int_ nelems);
+char* fx_rrb_start_read(const fx_rrbvec_t* vec, fx_rrbiter_t* iter,
+                        int_ startidx, int dir);
+char* fx_rrb_start_write(size_t elemsize, fx_free_t free_elem,
+                       fx_copy_t copy_elem, fx_rrbvec_t* vec,
+                       fx_rrbiter_t* iter);
+void fx_rrb_end_write(fx_rrbiter_t* iter, char* ptr);
+
+int fx_rrb_append(const fx_rrbvec_t* vec, const char* elems, int_ nelems, fx_rrbvec_t* result);
+int fx_rrb_concat(const fx_rrbvec_t* leftvec, const fx_rrbvec_t* rightvec, fx_rrbvec_t* vec);
+int fx_rrb_slice(const fx_rrbvec_t* vec, int_ start, int_ end, int delta, int mask, fx_rrbvec_t* subvec);
+
 ////////////////////////// References //////////////////////////
 
 #define FX_FREE_REF_IMPL(typ, arg_free_f) \

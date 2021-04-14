@@ -1076,10 +1076,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         FX_CHECK_NE_SIZE(FX_ARR_SIZE(arr, 0) != ni || FX_ARR_SIZE(arr, 1) != nj ..., catch_label);
                         for(int i = 0; i < ni; i++) {
                             // before the inner-most loop
-                            arr_elem_t* ptr
+                            arr_elem_t* ptr = ...;
                             for(int j = 0; j < nj; j++) {
-                            char_ x = str->data[i];
-                            ...
+                                ...
+                                ptr[j]
+                                ...
+                            }
                         }
                     */
                     val (i_exps, n_exps, init_checks, init_ccode) =
@@ -1114,9 +1116,64 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val get_arr_elem = CExpBinary(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc))
                     ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode, pre_body_ccode,
                     (iter_val_i, get_arr_elem, default_tempvar_flags()) :: body_elems, post_checks)
+                | KTypVector (et) =>
+                    /*
+                        // either save the size or check it
+                        int_ n = FX_RRB_SIZE(vec);
+                        ...
+                        // or check them
+                        FX_CHECK_NE_SIZE(FX_RRB_SIZE(vec) != n, catch_label);
+
+                        // then initialize the iterator
+                        fx_rrbiter_t iter;
+                        typ* ptr = (typ*)fx_rrb_start_read(vec, &iter, 0, 1);
+                        for(int i = 0; i < n; i++) {
+                            ...
+                            *ptr
+                            ...
+                            FX_RRB_NEXT(iter, ptr)
+                        }
+                    */
+                    val calc_n_exp = make_call(get_id("FX_RRB_SIZE"), [: col_exp :], CTypInt, for_loc)
+                    val (i_exps, n_exps, init_checks, init_ccode) =
+                    if n_exps == [] {
+                        val (n_exp, init_ccode) = add_local(gen_temp_idc("n"),
+                            CTypInt, default_tempval_flags(), Some(calc_n_exp), init_ccode, for_loc)
+                        val i_id = get_iter_id(0, at_ids, for_letters.nth(dims_ofs))
+                        val (i_exp, _) = add_local(i_id, CTypInt,
+                            default_tempvar_flags(), None, [], for_loc)
+                        (i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
+                    } else {
+                        val prev_n = n_exps.hd()
+                        val init_check = CExpBinary(COpCmp(CmpEQ), prev_n, calc_n_exp, (CTypBool, for_loc))
+                        (i_exps, n_exps, init_check :: init_checks, init_ccode)
+                    }
+                    val c_et = C_gen_types.ktyp2ctyp(et, for_loc)
+                    val c_et_ptr = make_ptr(c_et)
+                    val colname = pp(col_)
+                    val iter_id = gen_temp_idc("iter_" + colname)
+                    val c_et_exp = CExpTyp(c_et, for_loc)
+                    val (iter_exp, init_ccode) = create_cdefval(iter_id, CTypName(get_id("fx_rrbiter_t")),
+                        default_tempval_flags(), "", None, init_ccode, for_loc)
+                    val start_read_exp = make_call(get_id("FX_RRB_START_READ"),
+                        [: c_et_exp, col_exp, iter_exp :],
+                        std_CTypVoidPtr, for_loc)
+                    val ptr_id = gen_temp_idc("ptr_" + colname)
+                    val (ptr_exp, init_ccode) = create_cdefval(ptr_id, c_et_ptr,
+                        default_tempval_flags(), "", Some(start_read_exp), init_ccode, for_loc)
+                    val get_vec_elem = CExpUnary(COpDeref, ptr_exp, (c_et, for_loc))
+                    val incr_call_exp = make_call(get_id("FX_RRB_NEXT"),
+                        [: c_et_exp, iter_exp, ptr_exp :], std_CTypVoidPtr, for_loc)
+                    val incr_exp = CExpBinary(COpAssign, ptr_exp, incr_call_exp, (CTypVoid, for_loc))
+                    val elem_flags =
+                        if is_ktyp_scalar(et) { default_tempvar_flags() }
+                        else { default_tempref_flags() }
+                    ([], i_exps, n_exps, for_checks, incr_exp :: incr_exps,
+                    init_checks, init_ccode, pre_body_ccode,
+                    (iter_val_i, get_vec_elem, elem_flags) :: body_elems, post_checks)
                 | _ =>
                     throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
-                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list or string"))
+                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list, vector or string"))
                 }
             | _ => throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
                         "unsupported type of the for loop iteration domain"))
@@ -1124,6 +1181,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             (lists_i + list_exps, i_exps, n_exps, for_checks, incr_exps,
             init_checks, init_ccode, pre_body_ccode, body_elems, post_checks)
         }
+        /*val default_exp = "<complex_exp>"
+        println(f"i_exps: {[:for i_exp <- i_exps {| CExpIdent(i, _) => string(i) | _ => default_exp} :]}")
+        println(f"n_exps: {[:for n_exp <- n_exps {| CExpIdent(i, _) => string(i) | _ => default_exp} :]}")*/
         /* add initial size checks */
         val init_ccode = add_size_eq_check(init_checks.rev(), init_ccode, lbl, for_loc)
         /* in the case of 1D arrays put pre_body_ccode immediately after initialization code */
@@ -2031,7 +2091,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (get_elem_exp, ccode) =
                     match border {
                     | BorderNone =>
-                        val chk_exp = make_call(std_FX_STR_CHKIDX, [: arr_exp, i_exp, lbl :], CTypBool, kloc)
+                        val chk_exp = make_call(std_FX_STR_CHKIDX, [: arr_exp, i_exp, lbl :], CTypVoid, kloc)
                         (make_call(std_FX_STR_ELEM, [: arr_exp, i_exp :], CTypUniChar, kloc), CExp(chk_exp) :: ccode)
                     | BorderClip => (make_call(std_FX_STR_ELEM_CLIP, [: arr_exp, i_exp :], CTypUniChar, kloc), ccode)
                     | BorderZero => (make_call(std_FX_STR_ELEM_ZERO, [: arr_exp, i_exp :], CTypUniChar, kloc), ccode)
@@ -2053,14 +2113,61 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         }
                     val (delta_exp, ccode) = atom2cexp(delta, ccode, kloc)
                     val (substr_exp, ccode) = get_dstexp(dstexp_r, "substr", ctyp, ccode, kloc)
-                    val call_substr =
-                    make_call(
-                        std_fx_substr,
+                    val call_substr = make_call(std_fx_substr,
                         [: cexp_get_addr(arr_exp), a_exp, b_exp, delta_exp, make_int_exp(mask, kloc), cexp_get_addr(substr_exp) :],
-                        CTypCInt,
-                        kloc)
+                        CTypString, kloc)
                     (false, substr_exp, add_fx_call(call_substr, ccode, kloc))
                 | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing string (should be a single scalar index or range)")
+                }
+            | CTypVector _ =>
+                match idxs {
+                | DomainFast i :: [] =>
+                    val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
+                    val get_elem_exp = make_call(get_id("FX_RRB_ELEM"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                    (true, get_elem_exp, ccode)
+                | DomainElem i :: [] =>
+                    val (i_exp, ccode) = atom2cexp_(i, true, ccode, kloc)
+                    val (get_elem_exp, ccode) =
+                    match border {
+                    | BorderNone =>
+                        val chk_exp = make_call(get_id("FX_RRB_CHKIDX"), [: arr_exp, i_exp, lbl :], CTypVoid, kloc)
+                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                        (get_elem_exp, CExp(chk_exp) :: ccode)
+                    | BorderClip =>
+                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_CLIP"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                        (get_elem_exp, ccode)
+                    | BorderZero =>
+                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_ZERO"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                        (get_elem_exp, ccode)
+                    }
+                    (true, get_elem_exp, ccode)
+                | DomainRange (a, b, delta) :: [] =>
+                    if border != BorderNone {
+                        throw compile_err(kloc, "cgen: border extrapolation with ranges is not supported yet")
+                    }
+                    val (mask, (a_exp, ccode)) =
+                        match a {
+                        | AtomLit(KLitNil _) => (1, (make_int_exp(0, kloc), ccode))
+                        | _ => (0, atom2cexp(a, ccode, kloc))
+                        }
+                    val (mask, (b_exp, ccode)) =
+                        match b {
+                        | AtomLit(KLitNil _) => (2 + mask, (make_int_exp(0, kloc), ccode))
+                        | _ => (mask, atom2cexp(b, ccode, kloc))
+                        }
+                    val delta = match delta {
+                    | AtomLit(KLitNil _) | AtomLit(KLitInt 1L) => 1
+                    | AtomLit(KLitInt(-1L)) => -1
+                    | _ =>
+                        throw compile_err(kloc, "cgen: vector slicing only supports stride == ±1")
+                    }
+                    val (slice_exp, ccode) = get_dstexp(dstexp_r, "slice", ctyp, ccode, kloc)
+                    val call_slice = make_call(get_id("fx_rrb_slice"),
+                        [: cexp_get_addr(arr_exp), a_exp, b_exp, make_int_exp(delta, kloc),
+                           make_int_exp(mask, kloc), cexp_get_addr(slice_exp) :],
+                        ctyp, kloc)
+                    (false, slice_exp, add_fx_call(call_slice, ccode, kloc))
+                | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing vector (should be a single scalar index or range)")
                 }
             | CTypArray _ =>
                 val need_subarr = exists(for d <- idxs { | DomainRange _ => true | _ => false })
@@ -2157,7 +2264,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 }
             | _ =>
                 throw compile_err(kloc,
-                    "unknown/unsupported type of the container, should be CTypArray _ or CTypString")
+                    "cgen: unknown/unsupported type of the container, it should be CTypArray _ or CTypVector _ or CTypString")
             }
         | KExpMem (a1, n, _) =>
             val (ce1, ccode) = id2cexp(a1, false, ccode, kloc)
