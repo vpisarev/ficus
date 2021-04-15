@@ -5,22 +5,33 @@
 
 #include <stdio.h>
 
-typedef struct _fx_R7File__t  { fx_cptr_t handle; } _fx_R7File__t;
+typedef struct _fx_R7File__t {
+   fx_cptr_t handle;
+} _fx_R7File__t;
 
-typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
+typedef struct {
+   int_ rc;
+   int_ data;
+} _fx_E4Exit_data_t;
 
-typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
+typedef struct {
+   int_ rc;
+   fx_str_t data;
+} _fx_E4Fail_data_t;
 
-static void _fx_free_R7File__t(_fx_R7File__t* dst)
-{ fx_free_cptr(&dst->handle);
+static void _fx_free_R7File__t(struct _fx_R7File__t* dst)
+{
+   fx_free_cptr(&dst->handle);
 }
 
-static void _fx_copy_R7File__t(_fx_R7File__t* src, _fx_R7File__t* dst)
-{ fx_copy_cptr(src->handle, &dst->handle);
+static void _fx_copy_R7File__t(struct _fx_R7File__t* src, struct _fx_R7File__t* dst)
+{
+   fx_copy_cptr(src->handle, &dst->handle);
 }
 
-static void _fx_make_R7File__t(fx_cptr_t r_handle, _fx_R7File__t* fx_result)
-{ fx_copy_cptr(r_handle, &fx_result->handle);
+static void _fx_make_R7File__t(fx_cptr_t r_handle, struct _fx_R7File__t* fx_result)
+{
+   fx_copy_cptr(r_handle, &fx_result->handle);
 }
 
 int_ _fx_g14File__SEEK_SET = 
@@ -33,7 +44,7 @@ int_ _fx_g14File__SEEK_END =
 (int)SEEK_END
 ;
 _fx_R7File__t _fx_g12File__stdout = {  };
-FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, _fx_R7File__t* fx_result, void* fx_fv)
+FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, struct _fx_R7File__t* fx_result, void* fx_fv)
 {
    
 if(i != 0 && i != 1 && i != 2)
@@ -73,8 +84,9 @@ fx_cstr_t fname_, mode_;
 
 }
 
-FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(_fx_R7File__t* f, void* fx_fv)
-{ 
+FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t* f, void* fx_fv)
+{
+   
 if(f->handle && f->handle->ptr) {
         f->handle->free_f(f->handle->ptr);
         f->handle->ptr = 0;
@@ -82,7 +94,7 @@ if(f->handle && f->handle->ptr) {
 
 }
 
-FX_EXTERN_C int _fx_M4FileFM5flushv1RM1t(_fx_R7File__t* f, void* fx_fv)
+FX_EXTERN_C int _fx_M4FileFM5flushv1RM1t(struct _fx_R7File__t* f, void* fx_fv)
 {
    
 if(!f->handle || !f->handle->ptr)
@@ -92,7 +104,7 @@ if(!f->handle || !f->handle->ptr)
 
 }
 
-FX_EXTERN_C int _fx_M4FileFM5printv2RM1tS(_fx_R7File__t* f, fx_str_t* x, void* fx_fv)
+FX_EXTERN_C int _fx_M4FileFM5printv2RM1tS(struct _fx_R7File__t* f, fx_str_t* x, void* fx_fv)
 {
    
 if(!f->handle || !f->handle->ptr)
@@ -101,7 +113,7 @@ if(!f->handle || !f->handle->ptr)
 
 }
 
-FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(_fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv)
+FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv)
 {
    
 if(!f->handle || !f->handle->ptr)
@@ -186,6 +198,7 @@ _fx_cleanup: ;
 }
 
 FX_EXTERN_C void fx_deinit_File(void)
-{ _fx_free_R7File__t(&_fx_g12File__stdout);
+{
+   _fx_free_R7File__t(&_fx_g12File__stdout);
 }
 

@@ -115,7 +115,7 @@ TEST("ds.hashmap", fun() {
     val wcounter = Hashmap.empty(16, "", 0, hash)
     for w <- words {
         val idx = wcounter.find_idx_or_insert(w)
-        wcounter.r->table[idx].data += 1
+        wcounter.table[idx].data += 1
     }
 
     val ll = [: ("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),

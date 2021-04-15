@@ -31,8 +31,8 @@ fun rename_locals(cmods: cmodule_t list)
                     | IdTemp (i, j) => i
                     }
         val idx = prefix_hash.find_idx_or_insert(prefix)
-        val j1 = prefix_hash.r->table[idx].data + 1
-        prefix_hash.r->table[idx].data = j1
+        val j1 = prefix_hash.table[idx].data + 1
+        prefix_hash.table[idx].data = j1
         val prefix = dynvec_get(all_strings, prefix)
         f"{prefix}_{j1}"
     }

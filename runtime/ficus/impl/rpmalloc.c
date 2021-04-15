@@ -2619,8 +2619,7 @@ _rpmalloc_adjust_size_class(size_t iclass) {
 }
 
 //! Initialize the allocator and setup global data
-extern inline int
-rpmalloc_initialize(void) {
+int rpmalloc_initialize(void) {
 	if (_rpmalloc_initialized) {
 		rpmalloc_thread_initialize();
 		return 0;
@@ -2874,8 +2873,7 @@ rpmalloc_finalize(void) {
 }
 
 //! Initialize thread, assign heap
-extern inline void
-rpmalloc_thread_initialize(void) {
+void rpmalloc_thread_initialize(void) {
 	if (!get_thread_heap_raw()) {
 		heap_t* heap = _rpmalloc_heap_allocate(0);
 		if (heap) {
@@ -2912,7 +2910,7 @@ rpmalloc_config(void) {
 
 // Extern interface
 
-extern inline RPMALLOC_ALLOCATOR void*
+RPMALLOC_ALLOCATOR void*
 rpmalloc(size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
@@ -2924,12 +2922,11 @@ rpmalloc(size_t size) {
 	return _rpmalloc_allocate(heap, size);
 }
 
-extern inline void
-rpfree(void* ptr) {
+void rpfree(void* ptr) {
 	_rpmalloc_deallocate(ptr);
 }
 
-extern inline RPMALLOC_ALLOCATOR void*
+RPMALLOC_ALLOCATOR void*
 rpcalloc(size_t num, size_t size) {
 	size_t total;
 #if ENABLE_VALIDATE_ARGS
@@ -2956,7 +2953,7 @@ rpcalloc(size_t num, size_t size) {
 	return block;
 }
 
-extern inline RPMALLOC_ALLOCATOR void*
+RPMALLOC_ALLOCATOR void*
 rprealloc(void* ptr, size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
@@ -3027,8 +3024,7 @@ rpposix_memalign(void **memptr, size_t alignment, size_t size) {
 	return *memptr ? 0 : ENOMEM;
 }
 
-extern inline size_t
-rpmalloc_usable_size(void* ptr) {
+size_t rpmalloc_usable_size(void* ptr) {
 	return (ptr ? _rpmalloc_usable_size(ptr) : 0);
 }
 

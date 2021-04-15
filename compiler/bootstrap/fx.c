@@ -4,72 +4,115 @@
 #include "ficus/impl/ficus.impl.h"
 
 typedef enum {
-   _FX_V9Ast__id_t_IdName=1, _FX_V9Ast__id_t_IdVal=2, _FX_V9Ast__id_t_IdTemp=3
-} _fx_V9Ast__id_t_tag_t;
+   _FX_N9Ast__id_t_IdName=1, _FX_N9Ast__id_t_IdVal=2, _FX_N9Ast__id_t_IdTemp=3
+} _fx_N9Ast__id_t_tag_t;
 
-typedef struct _fx_Ta2i  { int_ t0; int_ t1; } _fx_Ta2i;
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
 
-typedef struct _fx_V9Ast__id_t  { int tag; union  { int_ IdName; _fx_Ta2i IdVal; _fx_Ta2i IdTemp; } u; } _fx_V9Ast__id_t;
+typedef struct _fx_N9Ast__id_t {
+   int tag;
+   union {
+      int_ IdName;
+      struct _fx_Ta2i IdVal;
+      struct _fx_Ta2i IdTemp;
+   } u;
+} _fx_N9Ast__id_t;
 
-typedef struct _fx_R10Ast__loc_t  { _fx_V9Ast__id_t fname; int_ line0; int_ col0; int_ line1; int_ col1; } _fx_R10Ast__loc_t;
+typedef struct _fx_R10Ast__loc_t {
+   struct _fx_N9Ast__id_t fname;
+   int_ line0;
+   int_ col0;
+   int_ line1;
+   int_ col1;
+} _fx_R10Ast__loc_t;
 
-typedef struct _fx_LS_data_t  { int_ rc; struct _fx_LS_data_t* tl; fx_str_t hd; } _fx_LS_data_t, *_fx_LS;
+typedef struct _fx_LS_data_t {
+   int_ rc;
+   struct _fx_LS_data_t* tl;
+   fx_str_t hd;
+} _fx_LS_data_t, *_fx_LS;
 
-typedef struct _fx_R18Options__options_t
-   {
-       struct _fx_LS_data_t* app_args;
-       fx_str_t app_filename;
-       bool arch64;
-       bool force_rebuild;
-       fx_str_t build_dir;
-       fx_str_t build_rootdir;
-       fx_str_t cflags;
-       fx_str_t clibs;
-       bool compile_by_cpp;
-       fx_str_t filename;
-       bool gen_c;
-       struct _fx_LS_data_t* include_path;
-       bool debug;
-       int_ optim_iters;
-       int_ inline_thresh;
-       bool enable_openmp;
-       bool relax;
-       bool use_preamble;
-       bool make_app;
-       int_ optimize_level;
-       fx_str_t output_name;
-       bool print_ast0;
-       bool print_ast;
-       bool print_k0;
-       bool print_k;
-       bool print_tokens;
-       bool run_app;
-       bool verbose;
-       bool W_unused; } _fx_R18Options__options_t;
+typedef struct _fx_R18Options__options_t {
+   struct _fx_LS_data_t* app_args;
+   fx_str_t app_filename;
+   bool arch64;
+   bool force_rebuild;
+   fx_str_t build_dir;
+   fx_str_t build_rootdir;
+   fx_str_t cflags;
+   fx_str_t clibs;
+   bool compile_by_cpp;
+   fx_str_t filename;
+   bool gen_c;
+   struct _fx_LS_data_t* include_path;
+   bool debug;
+   int_ optim_iters;
+   int_ inline_thresh;
+   bool enable_openmp;
+   bool relax;
+   bool use_preamble;
+   bool make_app;
+   int_ optimize_level;
+   fx_str_t output_name;
+   bool print_ast0;
+   bool print_ast;
+   bool print_k0;
+   bool print_k;
+   bool print_tokens;
+   bool run_app;
+   bool verbose;
+   bool W_unused;
+} _fx_R18Options__options_t;
 
-typedef struct _fx_T2R10Ast__loc_tS  { _fx_R10Ast__loc_t t0; fx_str_t t1; } _fx_T2R10Ast__loc_tS;
+typedef struct _fx_T2R10Ast__loc_tS {
+   struct _fx_R10Ast__loc_t t0;
+   fx_str_t t1;
+} _fx_T2R10Ast__loc_tS;
 
-typedef struct _fx_T2Ta2iS  { _fx_Ta2i t0; fx_str_t t1; } _fx_T2Ta2iS;
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
 
-typedef struct  { int_ rc; int_ data; } _fx_E4Exit_data_t;
+typedef struct {
+   int_ rc;
+   int_ data;
+} _fx_E4Exit_data_t;
 
-typedef struct  { int_ rc; fx_str_t data; } _fx_E4Fail_data_t;
+typedef struct {
+   int_ rc;
+   fx_str_t data;
+} _fx_E4Fail_data_t;
 
-typedef struct  { int_ rc; _fx_T2R10Ast__loc_tS data; } _fx_E17Ast__CompileError_data_t;
+typedef struct {
+   int_ rc;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
-typedef struct  { int_ rc; _fx_T2Ta2iS data; } _fx_E17Lexer__LexerError_data_t;
+typedef struct {
+   int_ rc;
+   struct _fx_T2Ta2iS data;
+} _fx_E17Lexer__LexerError_data_t;
 
-typedef struct  { int_ rc; _fx_T2R10Ast__loc_tS data; } _fx_E18Parser__ParseError_data_t;
+typedef struct {
+   int_ rc;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E18Parser__ParseError_data_t;
 
 static void _fx_free_LS(struct _fx_LS_data_t** dst)
-{ FX_FREE_LIST_IMPL(_fx_LS, fx_free_str);
+{
+   FX_FREE_LIST_IMPL(_fx_LS, fx_free_str);
 }
 
 static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, struct _fx_LS_data_t** fx_result)
-{ FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
+{
+   FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
 }
 
-static void _fx_free_R18Options__options_t(_fx_R18Options__options_t* dst)
+static void _fx_free_R18Options__options_t(struct _fx_R18Options__options_t* dst)
 {
    _fx_free_LS(&dst->app_args);
    fx_free_str(&dst->app_filename);
@@ -82,7 +125,7 @@ static void _fx_free_R18Options__options_t(_fx_R18Options__options_t* dst)
    fx_free_str(&dst->output_name);
 }
 
-static void _fx_copy_R18Options__options_t(_fx_R18Options__options_t* src, _fx_R18Options__options_t* dst)
+static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src, struct _fx_R18Options__options_t* dst)
 {
    FX_COPY_PTR(src->app_args, &dst->app_args);
    fx_copy_str(&src->app_filename, &dst->app_filename);
@@ -117,35 +160,35 @@ static void _fx_copy_R18Options__options_t(_fx_R18Options__options_t* src, _fx_R
 
 static void _fx_make_R18Options__options_t(
    struct _fx_LS_data_t* r_app_args,
-      fx_str_t* r_app_filename,
-      bool r_arch64,
-      bool r_force_rebuild,
-      fx_str_t* r_build_dir,
-      fx_str_t* r_build_rootdir,
-      fx_str_t* r_cflags,
-      fx_str_t* r_clibs,
-      bool r_compile_by_cpp,
-      fx_str_t* r_filename,
-      bool r_gen_c,
-      struct _fx_LS_data_t* r_include_path,
-      bool r_debug,
-      int_ r_optim_iters,
-      int_ r_inline_thresh,
-      bool r_enable_openmp,
-      bool r_relax,
-      bool r_use_preamble,
-      bool r_make_app,
-      int_ r_optimize_level,
-      fx_str_t* r_output_name,
-      bool r_print_ast0,
-      bool r_print_ast,
-      bool r_print_k0,
-      bool r_print_k,
-      bool r_print_tokens,
-      bool r_run_app,
-      bool r_verbose,
-      bool r_W_unused,
-      _fx_R18Options__options_t* fx_result)
+   fx_str_t* r_app_filename,
+   bool r_arch64,
+   bool r_force_rebuild,
+   fx_str_t* r_build_dir,
+   fx_str_t* r_build_rootdir,
+   fx_str_t* r_cflags,
+   fx_str_t* r_clibs,
+   bool r_compile_by_cpp,
+   fx_str_t* r_filename,
+   bool r_gen_c,
+   struct _fx_LS_data_t* r_include_path,
+   bool r_debug,
+   int_ r_optim_iters,
+   int_ r_inline_thresh,
+   bool r_enable_openmp,
+   bool r_relax,
+   bool r_use_preamble,
+   bool r_make_app,
+   int_ r_optimize_level,
+   fx_str_t* r_output_name,
+   bool r_print_ast0,
+   bool r_print_ast,
+   bool r_print_k0,
+   bool r_print_k,
+   bool r_print_tokens,
+   bool r_run_app,
+   bool r_verbose,
+   bool r_W_unused,
+   struct _fx_R18Options__options_t* fx_result)
 {
    FX_COPY_PTR(r_app_args, &fx_result->app_args);
    fx_copy_str(r_app_filename, &fx_result->app_filename);
@@ -178,35 +221,45 @@ static void _fx_make_R18Options__options_t(
    fx_result->W_unused = r_W_unused;
 }
 
-static void _fx_free_T2R10Ast__loc_tS(_fx_T2R10Ast__loc_tS* dst)
-{ fx_free_str(&dst->t1);
+static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+{
+   fx_free_str(&dst->t1);
 }
 
-static void _fx_copy_T2R10Ast__loc_tS(_fx_T2R10Ast__loc_tS* src, _fx_T2R10Ast__loc_tS* dst)
-{ dst->t0 = src->t0; fx_copy_str(&src->t1, &dst->t1);
+static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
 }
 
-static void _fx_make_T2R10Ast__loc_tS(_fx_R10Ast__loc_t* t0, fx_str_t* t1, _fx_T2R10Ast__loc_tS* fx_result)
-{ fx_result->t0 = *t0; fx_copy_str(t1, &fx_result->t1);
+static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
-static void _fx_free_T2Ta2iS(_fx_T2Ta2iS* dst)
-{ fx_free_str(&dst->t1);
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
 }
 
-static void _fx_copy_T2Ta2iS(_fx_T2Ta2iS* src, _fx_T2Ta2iS* dst)
-{ dst->t0 = src->t0; fx_copy_str(&src->t1, &dst->t1);
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
 }
 
-static void _fx_make_T2Ta2iS(_fx_Ta2i* t0, fx_str_t* t1, _fx_T2Ta2iS* fx_result)
-{ fx_result->t0 = *t0; fx_copy_str(t1, &fx_result->t1);
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 bool _fx_g6fx__ok;
 bool _fx_g8fx__ok1_;
 FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv);
 
-FX_EXTERN_C_VAL(_fx_R18Options__options_t _fx_g12Options__opt)
+FX_EXTERN_C_VAL(struct _fx_R18Options__options_t _fx_g12Options__opt)
 FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F9make_ExitE1i(int_ arg0, fx_exn_t* fx_result);
@@ -221,9 +274,11 @@ FX_EXTERN_C int fx_init_fx(void)
       fx_copy_str(&_fx_g12Options__opt.filename, &v_0);
       FX_CALL(_fx_M8CompilerFM11process_allB1S(&v_0, &_fx_g8fx__ok1_, 0), _fx_cleanup);
    }
-   else { _fx_g8fx__ok1_ = false;
+   else {
+      _fx_g8fx__ok1_ = false;
    }
-   if (!_fx_g8fx__ok1_) { FX_CALL(_fx_F9make_ExitE1i(1, &v_1), _fx_cleanup); FX_THROW(&v_1, true, _fx_cleanup);
+   if (!_fx_g8fx__ok1_) {
+      FX_CALL(_fx_F9make_ExitE1i(1, &v_1), _fx_cleanup); FX_THROW(&v_1, true, _fx_cleanup);
    }
 
 _fx_cleanup: ;
@@ -234,6 +289,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C void fx_deinit_fx(void)
 {
+
 }
 
 

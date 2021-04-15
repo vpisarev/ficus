@@ -1369,6 +1369,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(TypString, etyp, eloc,
                 "improper type of the string concatenation operation (string is expected)")
             ExpBinary(bop, new_e1, new_e2, ctx)
+        | (_, OpAdd, TypVector _, TypVector _, _, _) =>
+            unify(etyp1, etyp2, eloc, f"the two concatenated vectors have different types '{typ2str(etyp1)}' and '{typ2str(etyp2)}'")
+            unify(etyp1, etyp, eloc, f"the type of vector concatenation result '{typ2str(etyp)}' is different from operands' type '{typ2str(etyp1)}'")
+            ExpBinary(bop, new_e1, new_e2, ctx)
         | (_, OpAdd, TypList _, TypList _, ExpBinary(OpAdd, sub_e1, sub_e2, _), _) =>
             /* make list concatenation right-associative instead of left-associative */
             val sub_e2_loc = get_exp_loc(sub_e2)
@@ -1618,13 +1622,15 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val istr = string(i)
                 val new_border = match istr {
                     | "clip" => BorderClip
+                    | "wrap" => BorderWrap
                     | "zero" => BorderZero
                     | _ => BorderNone
                     }
                 val border = match (new_border, border) {
                     | (BorderNone, _) => border
                     | (_, BorderNone) => new_border
-                    | _ => throw compile_err(eloc, "border was specified more than once")
+                    | _ => throw compile_err(eloc,
+                        f"border was specified more than once: '{border2str(border, false)}' and '{border2str(new_border, false)}'")
                     }
                 val new_interp = match istr {
                     | "linear" => InterpLinear
@@ -1637,16 +1643,13 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     }
                 match (new_border, new_interp) {
                 | (BorderNone, InterpNone) => (arr, border, interp)
-                | _ => check_attr(arr, border, interp)
+                | _ => check_attr(arr_, border, interp)
                 }
             | _ => (arr, border, interp)
             }
         val (arr, border, interp) = check_attr(arr, border, interp)
         val new_arr = check_exp(arr, env, sc)
         val (new_atyp, new_aloc) = get_exp_ctx(new_arr)
-        if border != BorderNone {
-            throw compile_err(eloc, "border extrapolation is not supported yet")
-        }
         if interp != InterpNone {
             throw compile_err(eloc, "inter-element interpolation is not supported yet")
         }
@@ -1712,7 +1715,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 "incorrect type of the vector range access operation; it gives '{typ2str(TypVector(et))}', but '{typ2str(etyp)}' is expected")
             | _ =>
                 val et = make_new_typ()
-                unify(new_atyp, TypArray(ndims, et), new_aloc, "the array dimensionality does not match the number of indices")
+                unify(new_atyp, TypArray(ndims, et), new_aloc,
+                    f"the array type/dimensionality '{typ2str(new_atyp)}' does not match the expected type/dimensionality '{typ2str(TypArray(ndims, et))}'")
                 match border {
                 | BorderNone => {}
                 | _ =>
@@ -1804,7 +1808,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val make_vector = flags.for_flag_make == ForMakeVector
         val unzip_mode = flags.for_flag_unzip
         val for_sc = (if make_tuple { new_block_scope() }
-                      else if make_list { new_map_scope() }
+                      else if make_list || make_vector { new_map_scope() }
                       else { new_arr_map_scope() }) :: sc
         val (trsz, pre_code, map_clauses, total_dims, env, _) =
             fold (trsz, pre_code, map_clauses, total_dims, env, idset) =
@@ -1815,7 +1819,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         if make_tuple && trsz == 0 {
             throw compile_err(eloc, "tuple comprehension with iteration over non-tuples and non-records is not supported")
         }
-        val coll_name = if make_list { "list" } else if make_tuple { "tuple" } else { "array" }
+        val coll_name = if make_list {"list"} else if make_tuple {"tuple"} else if make_vector {"vector"} else {"array"}
         fun check_map_typ (elem_typ: typ_t, coll_typ: typ_t, idx: int)
         {
             val idx_str = if idx < 0 {"of comprehension"} else {f"#{idx} (0-based) of @unzip comprehension"}

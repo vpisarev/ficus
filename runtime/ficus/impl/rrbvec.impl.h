@@ -111,6 +111,7 @@ char* fx_rrb_find(const fx_rrbvec_t* vec, int_ index)
                 flags = node->flags;
             }
         } else {
+            FX_STATIC_ASSERT(FX_RRB_RADIX == 32);
             const int_* sizes = FX_RRB_SIZES(node);
             nidx = idx >= sizes[FX_RRB_RADIX/2-1] ? FX_RRB_RADIX/2 : 0;
             nidx += idx >= sizes[nidx + FX_RRB_RADIX/4-1] ? FX_RRB_RADIX/4 : 0;
@@ -121,6 +122,19 @@ char* fx_rrb_find(const fx_rrbvec_t* vec, int_ index)
             node = node->child[nidx];
         }
     }
+}
+
+char* fx_rrb_find_border(const fx_rrbvec_t* vec, int_ idx, int border)
+{
+    int_ size = vec->size;
+    if ((size_t)idx >= (size_t)size) {
+        if (border == 'z' || size == 0) return (char*)fx_zerobuf;
+        if (border == 'w')
+            idx = (idx % size) + (idx < 0 ? size : 0);
+        else
+            idx = idx < 0 ? 0 : size-1;
+    }
+    return fx_rrb_find(vec, idx);
 }
 
 static int fx_rrb_findpath(const fx_rrbnode_t* root, int_* idx0, fx_rrbnode_t** path, int* path_idx) {
@@ -242,16 +256,16 @@ char* fx_rrb_next(fx_rrbiter_t* iter)
     }
 }
 
-static fx_rrbnode_t* fx_rrb_newleaf(const fx_rrbinfo_t* info, int_ maxelems)
+static fx_rrbnode_t* fx_rrb_newleaf(const fx_rrbinfo_t* info, int_ nelems)
 {
-    size_t datasize = maxelems*info->elemsize;
-    fx_rrbnode_t* leaf = (fx_rrbnode_t*)malloc(FX_RRB_LEAF_HDR_SIZE + datasize);
+    size_t datasize = nelems*info->elemsize;
+    fx_rrbnode_t* leaf = (fx_rrbnode_t*)fx_malloc(FX_RRB_LEAF_HDR_SIZE + datasize);
     if (leaf) {
         leaf->rc = 1;
         leaf->flags = FX_RRB_FLAG_LEAF;
-        leaf->nelems = 0;
+        leaf->nelems = (int)nelems;
         if (info->free_f)
-            memset(FX_RRB_DATA(leaf), 0, info->elemsize*maxelems);
+            memset(FX_RRB_DATA(leaf), 0, info->elemsize*nelems);
     }
     return leaf;
 }
@@ -260,7 +274,7 @@ static fx_rrbnode_t* fx_rrb_newnode(const fx_rrbinfo_t* info, int flags, bool in
 {
     bool have_sizes = FX_RRB_HAVE_SIZES(flags);
     size_t datasize = have_sizes ? sizeof(int_)*FX_RRB_RADIX : 0;
-    fx_rrbnode_t* node = (fx_rrbnode_t*)malloc(sizeof(fx_rrbnode_t) + datasize);
+    fx_rrbnode_t* node = (fx_rrbnode_t*)fx_malloc(sizeof(fx_rrbnode_t) + datasize);
     if (node) {
         node->rc = 1;
         node->flags = flags;
@@ -285,9 +299,14 @@ static void fx_rrb_copy_elems(const char* src, char* dst, int_ sz, const fx_rrbi
     fx_copy_t copy_f = info->copy_f;
     if(!copy_f) {
         if (sz > 0) memcpy(dst, src, sz);
+    } else if(copy_f == fx_copy_ptr) {
+        fx_ref_simple_t *src_ = (fx_ref_simple_t*)src, *dst_ = (fx_ref_simple_t*)dst;
+        int_ sz_ = sz/sizeof(src_[0]);
+        for(int_ i = 0; i < sz_; i++)
+            FX_COPY_PTR(src_[i], dst_+i);
     } else {
         int elemsize = info->elemsize;
-        for(int i = 0; i < sz; i += elemsize) {
+        for(int_ i = 0; i < sz; i += elemsize) {
             copy_f(src + i, dst + i);
         }
     }
@@ -297,8 +316,9 @@ static void fx_rrb_copy_elems(const char* src, char* dst, int_ sz, const fx_rrbi
 // That is, the function treats vector as a mutable structure.
 // The function is intended to be used in vector comprehension
 // or vector literal construction operations.
-char* fx_rrb_push_back(fx_rrbiter_t* iter, char* ptr, const char* elems, int_ nelems)
+int fx_rrb_write(fx_rrbiter_t* iter, void* pptr, const char* elems, int_ nelems)
 {
+    char* ptr = *(char**)pptr;
     const fx_rrbinfo_t* info = &iter->vec->info;
     char* blockend = iter->blockend;
     int elemsize = info->elemsize;
@@ -328,9 +348,14 @@ char* fx_rrb_push_back(fx_rrbiter_t* iter, char* ptr, const char* elems, int_ ne
                     assert(!FX_RRB_HAVE_SIZES(node->flags));
                     if (node->nelems < FX_RRB_RADIX) {
                         node->child[node->nelems++] = child;
+                        int_ child_total = FX_RRB_TOTAL(child);
+                        for(int j = i; j >= 0; j--) {
+                            iter->nstack[j]->total += child_total;
+                        }
                         break;
                     }
                     node = fx_rrb_newnode(info, (depth << FX_RRB_DEPTH_SHIFT) + shift, true);
+                    if(!node) FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
                     node->child[0] = child;
                     node->nelems = 1;
                     node->total = FX_RRB_TOTAL(child);
@@ -342,6 +367,7 @@ char* fx_rrb_push_back(fx_rrbiter_t* iter, char* ptr, const char* elems, int_ ne
                     fx_rrbnode_t* root = fx_rrb_newnode(info, (depth << FX_RRB_DEPTH_SHIFT) + shift, true);
                     int nelems = 0;
                     int_ total = FX_RRB_TOTAL(child);
+                    if(!root) FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
                     if (vec->root) {
                         root->child[nelems++] = vec->root;
                         total += FX_RRB_TOTAL(vec->root);
@@ -355,13 +381,18 @@ char* fx_rrb_push_back(fx_rrbiter_t* iter, char* ptr, const char* elems, int_ ne
                     }
                     iter->nstack[0] = root;
                 }
+                assert(vec->root->total == vec->size);
             }
-            vec->tail = fx_rrb_newleaf(info, 1 << info->nleafelems_log);
+            vec->tail = fx_rrb_newleaf(info, nleafelems);
+            if(!vec->tail)
+                FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
             ptr = FX_RRB_DATA(vec->tail);
+            iter->blockstart = ptr;
             iter->blockend = blockend = ptr + nleafelems*elemsize;
         }
     }
-    return ptr;
+    *(char**)pptr = ptr;
+    return FX_OK;
 }
 
 void fx_rrb_make_empty(size_t elemsize, fx_free_t free_f, fx_copy_t copy_f, fx_rrbvec_t* vec)
@@ -413,11 +444,11 @@ static void fx_rrb_freenode_(const fx_rrbinfo_t* info, fx_rrbnode_t* node)
         }
     } else {
         if (info->free_f) {
-            int i, nleafelems = 1 << info->nleafelems_log;
+            int i, nelems = node->nelems;
             int elemsize = info->elemsize;
             fx_free_t free_f = info->free_f;
             char* ptr = FX_RRB_DATA(node);
-            for(i = 0; i < nleafelems; i++) {
+            for(i = 0; i < nelems; i++) {
                 free_f(ptr + i*elemsize);
             }
         }
@@ -460,7 +491,7 @@ char* fx_rrb_start_write(size_t elemsize, fx_free_t free_elem,
 void fx_rrb_end_write(fx_rrbiter_t* iter, char* ptr)
 {
     if(iter->vec->tail) {
-        char* ptr0 = FX_RRB_DATA(iter->vec->tail);
+        char* ptr0 = iter->blockstart;
         int_ nelems = (ptr - ptr0)/iter->vec->info.elemsize;
         iter->vec->tail->nelems = nelems;
         iter->vec->size += nelems;
@@ -644,7 +675,6 @@ int fx_rrb_append(const fx_rrbvec_t* vec, const char* elems, int_ nelems, fx_rrb
         }
         {
         fx_rrbnode_t* new_tail = fx_rrb_newleaf(info, newtail_elems);
-        new_tail->nelems = (int)newtail_elems;
         char* new_data = FX_RRB_DATA(new_tail);
         fx_rrb_copy_elems(tail ? FX_RRB_DATA(tail) : 0, new_data, ntail_elems*elemsize, info);
         fx_rrb_copy_elems(elems, new_data + elemsize*ntail_elems, delta*elemsize, info);
@@ -734,7 +764,6 @@ static bool fx_rrb_execute_concat_plan(const fx_rrbinfo_t* info, fx_rrbnode_t** 
             }
             else {
                 fx_rrbnode_t* new_node = fx_rrb_newleaf(info, new_size);
-                new_node->nelems = new_size;
                 char* new_data = FX_RRB_DATA(new_node);
                 int curr_size = 0;
                 if(!new_node) return false;
@@ -819,7 +848,6 @@ static fx_rrbnode_t* fx_rrb_rebalance(const fx_rrbinfo_t* info, const fx_rrbnode
     }
     int flags = all[0]->flags;
     int center_flags = center->flags;
-    int radix = FX_RRB_IS_LEAF(flags) ? 1 << info->nleafelems_log : FX_RRB_RADIX;
     int new_len = fx_rrb_create_concat_plan(info, all, nall, node_count);
     //memset(new_all, 0, sizeof(new_all));
     bool ok = fx_rrb_execute_concat_plan(info, all, nall, node_count, new_all, new_len, flags);
@@ -882,16 +910,20 @@ static fx_rrbnode_t* fx_rrb_concat_trees(const fx_rrbinfo_t* info, fx_rrbnode_t*
     int ldepth = FX_RRB_DEPTH(lflags), rdepth = FX_RRB_DEPTH(rflags);
     if (ldepth > rdepth) {
         fx_rrbnode_t* center = fx_rrb_concat_trees(info, left->child[left->nelems-1], right, false);
-        return fx_rrb_rebalance(info, left, center, 0, is_top);
+        fx_rrbnode_t* result = fx_rrb_rebalance(info, left, center, 0, is_top);
+        assert(result->total == left->total + right->total);
+        return result;
     } else if(ldepth < rdepth) {
         fx_rrbnode_t* center = fx_rrb_concat_trees(info, left, right->child[0], false);
-        return fx_rrb_rebalance(info, 0, center, right, is_top);
+        fx_rrbnode_t* result = fx_rrb_rebalance(info, 0, center, right, is_top);
+        assert(result->total == left->total + right->total);
+        return result;
     } else if (FX_RRB_IS_LEAF(lflags)) {
         int_ nleafelems = 1 << info->nleafelems_log;
         fx_rrbnode_t* node = fx_rrb_newnode(info, (1 << FX_RRB_DEPTH_SHIFT) + info->nleafelems_log, true);
         int_ total = left->nelems + right->nelems;
-        if (is_top && total < nleafelems) {
-            fx_rrbnode_t* merged = fx_rrb_newleaf(info, nleafelems);
+        if (is_top && total <= nleafelems) {
+            fx_rrbnode_t* merged = fx_rrb_newleaf(info, total);
             char* mdata = FX_RRB_DATA(merged);
             int_ leftsize = left->nelems*info->elemsize, rightsize = right->nelems*info->elemsize;
             fx_rrb_copy_elems(FX_RRB_DATA(left), mdata, leftsize, info);
@@ -910,7 +942,9 @@ static fx_rrbnode_t* fx_rrb_concat_trees(const fx_rrbinfo_t* info, fx_rrbnode_t*
         return node;
     } else {
         fx_rrbnode_t* center = fx_rrb_concat_trees(info, left->child[left->nelems-1], right->child[0], false);
-        return fx_rrb_rebalance(info, left, center, right, is_top);
+        fx_rrbnode_t* result = fx_rrb_rebalance(info, left, center, right, is_top);
+        assert(result->total == left->total + right->total);
+        return result;
     }
 }
 
@@ -935,8 +969,6 @@ int fx_rrb_concat(const fx_rrbvec_t* leftvec, const fx_rrbvec_t* rightvec, fx_rr
     {
         const fx_rrbinfo_t* info = &leftvec->info;
         int nleafelems_log = info->nleafelems_log;
-        int nleafelems = 1 << nleafelems_log;
-
         fx_rrbnode_t* left_root;
         if (leftvec->tail) {
             left_root = fx_rrb_push_tail((fx_rrbvec_t*)leftvec, false);
@@ -965,6 +997,7 @@ enum {
 
 static int fx_rrb_inverse(const fx_rrbvec_t* src, int_ start, int_ end, fx_rrbvec_t* dst)
 {
+    int fx_status = FX_OK;
     const fx_rrbinfo_t* info = &src->info;
     fx_rrbiter_t srciter, dstiter;
     int_ size = start - end;
@@ -973,7 +1006,6 @@ static int fx_rrb_inverse(const fx_rrbvec_t* src, int_ start, int_ end, fx_rrbve
     char* dstptr = fx_rrb_start_write(src->info.elemsize, src->info.free_f,
                                       src->info.copy_f, dst, &dstiter);
     int elemsize = info->elemsize;
-    fx_copy_t copy_f = info->copy_f;
     char localbuf[FX_RRB_LOCAL_BUFSIZE], *buf = localbuf;
     int_ max_bufelems = FX_RRB_LOCAL_BUFSIZE/elemsize;
     max_bufelems = RRB_MIN(RRB_MAX(max_bufelems, 1), size);
@@ -991,13 +1023,13 @@ static int fx_rrb_inverse(const fx_rrbvec_t* src, int_ start, int_ end, fx_rrbve
             if(srcptr < srciter.blockstart)
                 srcptr = fx_rrb_next(&srciter);
         }
-        // TODO: check for error
-        dstptr = fx_rrb_push_back(&dstiter, dstptr, buf, blocksize);
+        if((fx_status = fx_rrb_write(&dstiter, &dstptr, buf, blocksize)) < 0)
+            break;
     }
     fx_rrb_end_write(&dstiter, dstptr);
     if(buf != localbuf)
         fx_free(buf);
-    return FX_OK;
+    return fx_status;
 }
 
 int fx_rrb_slice(const fx_rrbvec_t* vec0, int_ left, int_ right, int delta, int mask, fx_rrbvec_t* vec)
@@ -1062,8 +1094,7 @@ int fx_rrb_slice(const fx_rrbvec_t* vec0, int_ left, int_ right, int delta, int 
             if (lidx == 0) {
                 FX_INCREF(leaf->rc);
             } else {
-                fx_rrbnode_t* newleaf = fx_rrb_newleaf(info, nleaf_elems);
-                newleaf->nelems = leaf->nelems - lidx;
+                fx_rrbnode_t* newleaf = fx_rrb_newleaf(info, leaf->nelems - lidx);
                 fx_rrb_copy_elems(FX_RRB_DATA(leaf) + lidx*elemsize,
                                   FX_RRB_DATA(newleaf), newleaf->nelems*elemsize, info);
                 left_path[depth] = newleaf;
@@ -1073,8 +1104,7 @@ int fx_rrb_slice(const fx_rrbvec_t* vec0, int_ left, int_ right, int delta, int 
             if (ridx == leaf->nelems-1) {
                 FX_INCREF(leaf->rc);
             } else {
-                fx_rrbnode_t* newleaf = fx_rrb_newleaf(info, nleaf_elems);
-                newleaf->nelems = ridx + 1;
+                fx_rrbnode_t* newleaf = fx_rrb_newleaf(info, ridx+1);
                 fx_rrb_copy_elems(FX_RRB_DATA(leaf), FX_RRB_DATA(newleaf),
                                   newleaf->nelems*elemsize, info);
                 right_path[depth] = newleaf;
@@ -1213,9 +1243,9 @@ int fx_rrb_make(int_ size, size_t elemsize, fx_free_t free_elem,
 {
     fx_rrbiter_t iter;
     char* ptr = fx_rrb_start_write(elemsize, free_elem, copy_elem, vec, &iter);
-    ptr = fx_rrb_push_back(&iter, ptr, (const char*)data, size);
-    if (ptr) fx_rrb_end_write(&iter, ptr);
-    return ptr != 0;
+    int fx_status = fx_rrb_write(&iter, &ptr, (const char*)data, size);
+    fx_rrb_end_write(&iter, ptr);
+    return fx_status;
 }
 
 #ifdef __cplusplus

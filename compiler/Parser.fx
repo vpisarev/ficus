@@ -8,6 +8,7 @@
 import File, Filename, Sys
 from Ast import *
 from Lexer import *
+import Options
 
 exception ParseError: (loc_t, string)
 
@@ -919,7 +920,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
 
     val for_exp = match for_make
     {
-    | ForMakeArray | ForMakeList | ForMakeTuple =>
+    | ForMakeArray | ForMakeList | ForMakeTuple | ForMakeVector =>
         val fold (pel_i_l, loc) = ([], noloc) for (pe_l, idxp, loc) <- nested_fors {
             ((pe_l, idxp) :: pel_i_l, loc)
             }
@@ -1936,11 +1937,18 @@ fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list
 
     // [TODO] perhaps, need to avoid fetching all the tokens at once
     var all_tokens: (Lexer.token_t, Ast.loc_t) list = []
+    var prev_lineno = -1
     while true {
         val more_tokens = lexer()
         for (t, (lineno, col)) <- more_tokens {
             val loc = Ast.loc_t {fname=fname_id, line0=lineno, col0=col, line1=lineno, col1=col}
-            //print_tokens((t, loc) :: [], endl=false)
+            if Options.opt.print_tokens {
+                if lineno != prev_lineno {
+                    print(f"\n{pp(fname_id)}:{lineno}: ")
+                    prev_lineno = lineno
+                }
+                print(f"{Lexer.tok2str(t).0} ")
+            }
             all_tokens = (t, loc) :: all_tokens
         }
         match all_tokens {

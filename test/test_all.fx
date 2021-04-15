@@ -14,6 +14,7 @@ import test_deque
 import test_filename
 import test_oop
 import test_parallel
+import test_vec
 
 fun print_hdr()
 {

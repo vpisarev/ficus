@@ -41,6 +41,12 @@ extern "C" {
 #define FX_EXTERN_C_VAL(decl) extern decl;
 #endif
 
+#ifdef __GNUC__
+#define FX_STATIC_ASSERT(expr) _Static_assert(expr, "")
+#elif defined _MSC_VER
+#define FX_STATIC_ASSERT(expr) static_assert(expr)
+#endif
+
 typedef intptr_t int_; // int size in ficus is equal to the pointer size
 #ifdef __cplusplus
 typedef char32_t char_;
@@ -147,7 +153,7 @@ void fx_free(void* ptr);
 #define FX_RESULT_MALLOC(ptrtyp, ptr) \
     if (((ptr)=(ptrtyp)fx_malloc(sizeof(*(ptr)))) != 0) ; else FX_FAST_THROW_RET(FX_EXN_OutOfMemError)
 
-#define FX_CALL(f, label) if((fx_status=(f)) < 0) { FX_UPDATE_BT(); goto label; } else fx_status=fx_status
+#define FX_CALL(f, label) if((fx_status=(f)) >= 0) ; else { FX_UPDATE_BT(); goto label; }
 // break/continue are execution flow control operators, not real exceptions,
 // and they are guaranteed to be "caught" (one cannot place them outside of loops),
 // so we don't use FX_SET_EXN_EXN_FAST() etc.
@@ -363,7 +369,13 @@ int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str);
         int_ __idx__ = (idx); \
         ((size_t)__idx__ < (size_t)(__str__)->length) ? __str__->data[__idx__] : (char_)'\0'; \
     })
-
+#define FX_STR_ELEM_WRAP(str, idx) \
+    ({ \
+        fx_str_t* __str__ = &(str); \
+        int_ __idx__ = (idx), __len__ = __str__->length; \
+        (size_t)__idx__ < (size_t)__len__ ? __str__->data[__idx__] : \
+        __len__ == 0 ? (char_)'\0' : __str__->data[(__idx__ % __len__) + (__idx__ < 0 ? __len__ : 0)]; \
+    })
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
 size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
 
@@ -602,6 +614,7 @@ FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ sc
     (arr).dim[3].step*(idx3)) + (idx4))
 
 #define FX_CLIP_IDX(idx, sz) ((size_t)idx < (size_t)sz ? idx : idx < 0 ? 0 : sz-1)
+#define FX_WRAP_IDX(idx, sz) ((size_t)idx < (size_t)sz ? idx : (idx % sz) + (idx < 0 ? sz : 0))
 #define FX_PTR_1D_CLIP(typ, arr, idx) \
     ({ \
         fx_arr_t* __arr__ = &(arr); \
@@ -731,6 +744,81 @@ FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ sc
         FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__, __idx3__, __idx4__) : (typ*)fx_zerobuf; \
     })
 
+#define FX_PTR_1D_WRAP(typ, arr, idx) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx__ = (idx), __sz0__ = __arr__->dim[0].size; \
+        ((size_t)__idx__ < (size_t)__sz0__) ? FX_PTR_1D(typ, *__arr__, __idx0__) : \
+        __sz0__ == 0 ? (typ*)fx_zerobuf : FX_PTR_1D(typ, *__arr__, (__idx__ % __sz0__) + (__idx__ < 0 ? __sz0__ : 0)); \
+    ))
+#define FX_PTR_2D_WRAP(typ, arr, idx0, idx1) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0)) ? (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, FX_WRAP_IDX(__idx0__, __sz0__), \
+            FX_WRAP_IDX(__idx1__, __sz1__)); \
+    })
+#define FX_PTR_3D_WRAP(typ, arr, idx0, idx1, idx2) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0) | (__sz2__ == 0)) ? (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, FX_WRAP_IDX(__idx0__, __sz0__), \
+            FX_WRAP_IDX(__idx1__, __sz1__), FX_WRAP_IDX(__idx2__, __sz2__)); \
+    })
+#define FX_PTR_4D_WRAP(typ, arr, idx0, idx1, idx2, idx3) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2), __idx3__ = (idx3); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size, __sz3__ = __arr__->dim[3].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__) & \
+        ((size_t)__idx3__ < (size_t)__sz3__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__, __idx3__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0) | (__sz2__ == 0) | (__sz3__ == 0)) ? (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, \
+            FX_WRAP_IDX(__idx0__, __sz0__), \
+            FX_WRAP_IDX(__idx1__, __sz1__), \
+            FX_WRAP_IDX(__idx2__, __sz2__)  \
+            FX_WRAP_IDX(__idx3__, __sz3__)); \
+    })
+#define FX_PTR_5D_WRAP(typ, arr, idx0, idx1, idx2, idx3, idx4) \
+    ({ \
+        fx_arr_t* __arr__ = &(arr); \
+        int __idx0__ = (idx0), __idx1__ = (idx1), __idx2__ = (idx2), \
+            __idx3__ = (idx3), __idx4__ = (idx4); \
+        int __sz0__ = __arr__->dim[0].size, __sz1__ = __arr__->dim[1].size; \
+        int __sz2__ = __arr__->dim[2].size, __sz3__ = __arr__->dim[3].size; \
+        int __sz4__ = __arr__->dim[4].size; \
+        (((size_t)__idx0__ < (size_t)__sz0__) & \
+        ((size_t)__idx1__ < (size_t)__sz1__) & \
+        ((size_t)__idx2__ < (size_t)__sz2__) & \
+        ((size_t)__idx3__ < (size_t)__sz3__) & \
+        ((size_t)__idx4__ < (size_t)__sz4__)) ? \
+        FX_PTR_2D(typ, *__arr__, __idx0__, __idx1__, __idx2__, __idx3__, __idx4__) : \
+        ((__sz0__ == 0) | (__sz1__ == 0) | (__sz2__ == 0) | (__sz3__ == 0) | (__sz4__ == 0)) ? \
+            (typ*)fx_zerobuf : \
+        FX_PTR_2D(typ, *__arr__, \
+            FX_WRAP_IDX(__idx0__, __sz0__), \
+            FX_WRAP_IDX(__idx1__, __sz1__), \
+            FX_WRAP_IDX(__idx2__, __sz2__)  \
+            FX_WRAP_IDX(__idx3__, __sz3__), \
+            FX_WRAP_IDX(__idx4__, __sz4__)); \
+    })
+
 void fx_free_arr(fx_arr_t* arr);
 #define FX_FREE_ARR(arr) if(!(arr)->rc) ; else fx_free_arr(arr)
 #define FX_MOVE_ARR(src, dst) \
@@ -784,22 +872,42 @@ typedef struct fx_rrbiter_t {
     if((size_t)(idx) < (size_t)(vec).size) ; \
     else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
 #define FX_RRB_ELEM(typ, vec, idx) *(typ*)fx_rrb_find(&(vec), (idx))
+#define FX_RRB_ELEM_CLIP(typ, vec, idx) *(typ*)fx_rrb_find_border(&(vec), (idx), 'c')
+#define FX_RRB_ELEM_WRAP(typ, vec, idx) *(typ*)fx_rrb_find_border(&(vec), (idx), 'w')
+#define FX_RRB_ELEM_ZERO(typ, vec, idx) *(typ*)fx_rrb_find_border(&(vec), (idx), 'z')
 #define FX_RRB_START_READ(typ, vec, iter) (typ*)fx_rrb_start_read(&(vec), &(iter), 0, 1)
+#define FX_RRB_START_WRITE(typ, elemsize, free_f, copy_f, vec, iter) \
+    (typ*)fx_rrb_start_write((elemsize), (free_f), (copy_f), &(vec), &(iter))
+#define FX_RRB_WRITE_FAST(typ, iter, dstptr, elem, label) \
+    ({ \
+        typ __elem__ = (elem); \
+        if ((char*)(dstptr) < (iter).blockend) *(dstptr)++ = __elem__; \
+        else { \
+            FX_CALL(fx_rrb_write(&(iter), &(dstptr), (const char*)&__elem__, 1), label) \
+        } \
+    })
+#define FX_RRB_WRITE(typ, iter, dstptr, elem, lbl) \
+    ({ \
+        typ __elem__ = (elem); \
+        FX_CALL(fx_rrb_write(&(iter), &(dstptr), (const char*)&__elem__, 1), lbl) \
+    })
+#define FX_RRB_END_WRITE(iter, dstptr) fx_rrb_end_write(&(iter), (char*)(dstptr))
 
 void fx_rrb_free(fx_rrbvec_t* arr);
 void fx_rrb_copy(const fx_rrbvec_t* src, fx_rrbvec_t* dst);
 char* fx_rrb_find(const fx_rrbvec_t* vec, int_ idx);
+char* fx_rrb_find_border(const fx_rrbvec_t* vec, int_ idx, int border);
 
 int fx_rrb_make(int_ size, size_t elemsize, fx_free_t free_elem,
                 fx_copy_t copy_elem, const void* data, fx_rrbvec_t* vec);
 char* fx_rrb_next(fx_rrbiter_t* iter);
 
-char* fx_rrb_push_back(fx_rrbiter_t* iter, char* ptr, const char* elems, int_ nelems);
 char* fx_rrb_start_read(const fx_rrbvec_t* vec, fx_rrbiter_t* iter,
                         int_ startidx, int dir);
 char* fx_rrb_start_write(size_t elemsize, fx_free_t free_elem,
                        fx_copy_t copy_elem, fx_rrbvec_t* vec,
                        fx_rrbiter_t* iter);
+int fx_rrb_write(fx_rrbiter_t* iter, void* pptr, const char* elems, int_ nelems);
 void fx_rrb_end_write(fx_rrbiter_t* iter, char* ptr);
 
 int fx_rrb_append(const fx_rrbvec_t* vec, const char* elems, int_ nelems, fx_rrbvec_t* result);

@@ -263,6 +263,7 @@ fun default_for_flags() = for_flags_t
 type border_t =
     | BorderNone
     | BorderClip
+    | BorderWrap
     | BorderZero
 
 type interpolate_t =
@@ -624,11 +625,11 @@ fun is_unique_id(i: id_t) {
 fun get_id_prefix(s: string): int
 {
     val h_idx = all_strhash.find_idx_or_insert(s)
-    val idx = all_strhash.r->table[h_idx].data
+    val idx = all_strhash.table[h_idx].data
     if idx >= 0 { idx }
     else {
         val idx = dynvec_push(all_strings)
-        all_strhash.r->table[h_idx].data = idx
+        all_strhash.table[h_idx].data = idx
         dynvec_set(all_strings, idx, s)
         idx
     }
@@ -1040,6 +1041,7 @@ fun border2str(border: border_t, f: bool) {
     match border {
     | BorderNone => ""
     | BorderClip => pt + ".clip"
+    | BorderWrap => pt + ".wrap"
     | BorderZero => pt + ".zero"
     }
 }

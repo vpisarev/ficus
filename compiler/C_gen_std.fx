@@ -103,6 +103,7 @@ fun init_std_names(): void {
     for i <- std_FX_MAX_DIMS:0:-1 {
         std_FX_PTR_xD = gen_std_macro(f"FX_PTR_{i}D", 2 + i) :: std_FX_PTR_xD
         std_FX_PTR_xD_CLIP = gen_std_macro(f"FX_PTR_{i}D_CLIP", 2 + i) :: std_FX_PTR_xD_CLIP
+        std_FX_PTR_xD_WRAP = gen_std_macro(f"FX_PTR_{i}D_WRAP", 2 + i) :: std_FX_PTR_xD_WRAP
         std_FX_PTR_xD_ZERO = gen_std_macro(f"FX_PTR_{i}D_ZERO", 2 + i) :: std_FX_PTR_xD_ZERO
     }
     std_fx_make_arr = gen_std_fun("fx_make_arr",

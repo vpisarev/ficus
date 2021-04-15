@@ -188,36 +188,33 @@ int fx_cc_version(struct fx_str_t* ver)
 
 ////////////////////////// memory allocation ////////////////////
 
-static FX_THREAD_LOCAL bool fx_rpmalloc_thread_initialized = false;
+static FX_THREAD_LOCAL volatile bool fx_rpmalloc_thread_initialized = false;
 
 void* fx_malloc(size_t sz)
 {
-    /*if (!fx_rpmalloc_thread_initialized) {
+    if (!fx_rpmalloc_thread_initialized) {
         rpmalloc_thread_initialize();
         fx_rpmalloc_thread_initialized = true;
     }
-    return rpmalloc(sz);*/
-    return malloc(sz);
+    return rpmalloc(sz);
 }
 
 void* fx_realloc(void* ptr, size_t sz)
 {
-    /*if (!fx_rpmalloc_thread_initialized) {
+    if (!fx_rpmalloc_thread_initialized) {
         rpmalloc_thread_initialize();
         fx_rpmalloc_thread_initialized = true;
     }
-    return rprealloc(ptr, sz);*/
-    return realloc(ptr, sz);
+    return rprealloc(ptr, sz);
 }
 
 void fx_free(void* ptr)
 {
-    /*if (!fx_rpmalloc_thread_initialized) {
+    if (!fx_rpmalloc_thread_initialized) {
         rpmalloc_thread_initialize();
         fx_rpmalloc_thread_initialized = true;
     }
-    rpfree(ptr);*/
-    free(ptr);
+    rpfree(ptr);
 }
 
 ///////////////////////////// lists /////////////////////////////
