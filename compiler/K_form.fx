@@ -1272,7 +1272,8 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     | KLitChar(c) => repr(c)
     | KLitBool(true) => "true"
     | KLitBool(false) => "false"
-    | KLitNil _ => "nullptr"
+    | KLitNil KTypCPointer => "null"
+    | KLitNil _ => "[]"
     }
 }
 

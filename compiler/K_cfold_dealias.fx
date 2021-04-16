@@ -349,6 +349,8 @@ fun cfold_dealias(kmods: kmodule_t list)
                             | _ => ida_map.add(n, AtomId(n2)); KExpNop(loc)
                             }
                         } else { e }
+                    | AtomLit (KLitNil (KTypList _)) => ida_map.add(n, a); KExpNop(loc)
+                    | AtomLit (KLitNil _) => e
                     | AtomLit c => ida_map.add(n, a); KExpNop(loc)
                     }
                 | KExpIntrin (IntrinStrConcat, al, (_, loc)) when

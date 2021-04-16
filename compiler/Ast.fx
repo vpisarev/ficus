@@ -138,7 +138,8 @@ type lit_t =
     | LitString: string
     | LitChar: char
     | LitBool: bool
-    | LitNil
+    | LitEmpty
+    | LitNull
 
 type initializer_t = InitId: id_t | InitLit: lit_t
 
@@ -174,8 +175,10 @@ fun make_new_ctx(l: loc_t) = (make_new_typ(), l)
 
 type op_assoc_t = AssocLeft | AssocRight
 type cmpop_t = CmpEQ | CmpNE | CmpLT | CmpLE | CmpGE | CmpGT
-type binary_t = OpAdd | OpSub | OpMul | OpDiv | OpMod | OpPow
-    | OpShiftLeft | OpShiftRight | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
+type binary_t =
+    | OpAdd | OpSub | OpMul | OpDiv | OpRDiv | OpMod | OpPow
+    | OpShiftLeft | OpShiftRight | OpDotAdd | OpDotSub
+    | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCmp: cmpop_t | OpDotCmp: cmpop_t | OpSpaceship | OpDotSpaceship | OpSame | OpCons
 
@@ -485,15 +488,17 @@ type 't dynvec_t =
     val0: 't
 }
 
-fun dynvec_create(v0: 't): 't dynvec_t ref = ref (dynvec_t {
+fun dynvec_create(v0: 't): 't dynvec_t ref =
+    ref (dynvec_t {
     count=0,
-    data=(array(): 't []),
+    data=[],
     val0=v0
     })
 
-fun dynvec_clear(v: 't dynvec_t ref) {
+fun dynvec_clear(v: 't dynvec_t ref)
+{
     v->count = 0
-    v->data = (array() : 't [])
+    v->data = []
 }
 
 fun dynvec_isempty(v: 't dynvec_t ref) = v->count == 0
@@ -908,7 +913,8 @@ fun get_lit_typ(l: lit_t) {
     | LitString _ => TypString
     | LitChar _ => TypChar
     | LitBool _ => TypBool
-    | LitNil => TypList(make_new_typ())
+    | LitEmpty => make_new_typ()
+    | LitNull => TypCPointer
 }
 
 /* shorten type specification by redirecting the references in TypVar
@@ -987,8 +993,11 @@ fun string(bop: binary_t) {
     | OpSub => "-"
     | OpMul => "*"
     | OpDiv => "/"
+    | OpRDiv => "\\"
     | OpMod => "%"
     | OpPow => "**"
+    | OpDotAdd => ".+"
+    | OpDotSub => ".-"
     | OpDotMul => ".*"
     | OpDotDiv => "./"
     | OpDotMod => ".%"
@@ -1059,8 +1068,11 @@ fun fname_op_add() = get_id("__add__")
 fun fname_op_sub() = get_id("__sub__")
 fun fname_op_mul() = get_id("__mul__")
 fun fname_op_div() = get_id("__div__")
+fun fname_op_rdiv() = get_id("__rdiv__")
 fun fname_op_mod() = get_id("__mod__")
 fun fname_op_pow() = get_id("__pow__")
+fun fname_op_dot_add() = get_id("__dot_add__")
+fun fname_op_dot_sub() = get_id("__dot_sub__")
 fun fname_op_dot_mul() = get_id("__dot_mul__")
 fun fname_op_dot_div() = get_id("__dot_div__")
 fun fname_op_dot_mod() = get_id("__dot_mod__")
@@ -1123,8 +1135,11 @@ fun get_binary_fname(bop: binary_t, loc: loc_t) =
     | OpSub => fname_op_sub()
     | OpMul => fname_op_mul()
     | OpDiv => fname_op_div()
+    | OpRDiv => fname_op_rdiv()
     | OpMod => fname_op_mod()
     | OpPow => fname_op_pow()
+    | OpDotAdd => fname_op_dot_add()
+    | OpDotSub => fname_op_dot_sub()
     | OpDotMul => fname_op_dot_mul()
     | OpDotDiv => fname_op_dot_div()
     | OpDotMod => fname_op_dot_mod()
@@ -1167,12 +1182,12 @@ fun get_unary_fname(uop: unary_t, loc: loc_t) =
     }
 
 fun fname_always_import(): id_t list = [:
-    fname_op_add(), fname_op_sub(), fname_op_mul(), fname_op_div(),
-    fname_op_mod(), fname_op_pow(), fname_op_dot_mul(), fname_op_dot_div(),
-    fname_op_dot_mod(), fname_op_dot_pow(), fname_op_shl(), fname_op_shr(),
-    fname_op_bit_and(), fname_op_bit_or(), fname_op_bit_xor(), fname_op_cmp(),
-    fname_op_dot_cmp(), fname_op_same(), fname_op_eq(), fname_op_ne(), fname_op_le(),
-    fname_op_ge(), fname_op_lt(), fname_op_gt(),
+    fname_op_add(), fname_op_sub(), fname_op_mul(), fname_op_div(), fname_op_rdiv(),
+    fname_op_mod(), fname_op_pow(), fname_op_dot_add(), fname_op_dot_sub(),
+    fname_op_dot_mul(), fname_op_dot_div(), fname_op_dot_mod(), fname_op_dot_pow(),
+    fname_op_shl(), fname_op_shr(), fname_op_bit_and(), fname_op_bit_or(), fname_op_bit_xor(),
+    fname_op_cmp(), fname_op_dot_cmp(), fname_op_same(), fname_op_eq(), fname_op_ne(),
+    fname_op_le(), fname_op_ge(), fname_op_lt(), fname_op_gt(),
     fname_op_dot_eq(), fname_op_dot_ne(), fname_op_dot_le(),
     fname_op_dot_ge(), fname_op_dot_lt(), fname_op_dot_gt(),
     fname_op_plus(), fname_op_negate(), fname_op_dot_minus(),
@@ -1241,7 +1256,8 @@ fun lit2str(c: lit_t) {
     | LitChar(c) => "'" + string(c).escaped(quotes=false) + "'"
     | LitBool(true) => "true"
     | LitBool(false) => "false"
-    | LitNil => "[]"
+    | LitEmpty => "[]"
+    | LitNull => "null"
     }
 }
 

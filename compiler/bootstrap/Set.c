@@ -2436,6 +2436,23 @@ _fx_cleanup: ;
    return fx_status;
 }
 
+FX_EXTERN_C int _fx_M3SetFM4listLN9Ast__id_t1RtM1t1N9Ast__id_t(
+   struct _fx_Rt6Set__t1N9Ast__id_t* s_0,
+   struct _fx_LN9Ast__id_t_data_t** fx_result,
+   void* fx_fv)
+{
+   _fx_Nt11Set__tree_t1N9Ast__id_t v_0 = 0;
+   int fx_status = 0;
+   FX_COPY_PTR(s_0->root, &v_0);
+   FX_CALL(_fx_M3SetFM12update_list_LN9Ast__id_t2Nt11Set__tree_t1N9Ast__id_tLN9Ast__id_t(v_0, 0, fx_result, 0), _fx_cleanup);
+
+_fx_cleanup: ;
+   if (v_0) {
+      _fx_free_Nt11Set__tree_t1N9Ast__id_t(&v_0);
+   }
+   return fx_status;
+}
+
 FX_EXTERN_C int fx_init_Set(void)
 {
    FX_REG_SIMPLE_EXN("Set.RBSetError", _FX_EXN_E15Set__RBSetError, _fx_E15Set__RBSetError_info, _fx_E15Set__RBSetErrorv);

@@ -900,6 +900,8 @@ char* fx_rrb_find_border(const fx_rrbvec_t* vec, int_ idx, int border);
 
 int fx_rrb_make(int_ size, size_t elemsize, fx_free_t free_elem,
                 fx_copy_t copy_elem, const void* data, fx_rrbvec_t* vec);
+void fx_rrb_make_empty(size_t elemsize, fx_free_t free_f,
+                       fx_copy_t copy_f, fx_rrbvec_t* vec);
 char* fx_rrb_next(fx_rrbiter_t* iter);
 
 char* fx_rrb_start_read(const fx_rrbvec_t* vec, fx_rrbiter_t* iter,

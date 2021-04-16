@@ -798,11 +798,13 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
 fun try_autogen_symbols(n: id_t, t: typ_t, env: env_t, sc:
                         scope_t list, loc: loc_t): (id_t, typ_t)?
 {
-    val nstr = string(n)
+    val nstr = pp(n)
     match (nstr, deref_typ_rec(t)) {
     | ("__eq__", TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool))
         when n1 == n2 && (match id_info(n1, loc) { | IdVariant _ => true | _ => false}) =>
         Some(lookup_id(get_id("__eq_variants__"), t, env, sc, loc))
+    | ("string", TypFun(TypFun(_, _) :: [], _)) =>
+        Some(lookup_id(get_id("__fun_string__"), t, env, sc, loc))
     | _ => None
     }
 }
@@ -1253,7 +1255,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 match deref_typ(etyp1) {
                 | TypList _ =>
                     match (new_e1, new_e2) {
-                    | (_, ExpLit (LitNil, _)) | (ExpLit (LitNil, _), _) =>
+                    | (_, ExpLit (LitEmpty, _)) | (ExpLit (LitEmpty, _), _) =>
                         Some(ExpBinary(bop, new_e1, new_e2, ctx))
                     | _ => None
                     }
@@ -1313,7 +1315,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val allow_fp = !is_shift
             val typ_opt = coerce_types(etyp1, etyp2, false, allow_fp, is_shift, eloc)
             (bop, typ_opt)
-        | OpDotMul | OpDotDiv | OpDotMod | OpDotPow =>
+        | OpDotAdd | OpDotSub | OpDotMul | OpDotDiv | OpDotMod | OpDotPow =>
             val typ_opt = coerce_types(etyp1, etyp2, false, true, false, eloc)
             match typ_opt {
             | Some _ => (bop_wo_dot, typ_opt)
@@ -1356,6 +1358,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp, TypBool, eloc, "the result of identity comparison should be 'bool'")
             (bop, None)
         | OpCons | OpCmp _ => throw compile_err(eloc, f"unsupported binary operation {bop}")
+        | OpRDiv => (bop, None)
         }
 
         match (typ_opt, bop, deref_typ(etyp1), deref_typ(etyp2), e1, e2) {
@@ -1369,7 +1372,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(TypString, etyp, eloc,
                 "improper type of the string concatenation operation (string is expected)")
             ExpBinary(bop, new_e1, new_e2, ctx)
-        | (_, OpAdd, TypVector _, TypVector _, _, _) =>
+        | (_, OpAdd, TypVector _, _, _, _)
+        | (_, OpAdd, _, TypVector _, _, _) =>
             unify(etyp1, etyp2, eloc, f"the two concatenated vectors have different types '{typ2str(etyp1)}' and '{typ2str(etyp2)}'")
             unify(etyp1, etyp, eloc, f"the type of vector concatenation result '{typ2str(etyp)}' is different from operands' type '{typ2str(etyp1)}'")
             ExpBinary(bop, new_e1, new_e2, ctx)
@@ -1857,7 +1861,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 ExpMkTuple(elems, (TypTuple(tl), eloc))
             } else if make_list {
                 val ltyp = TypList(elem_typ)
-                fold l_exp = ExpLit(LitNil, (ltyp, eloc)) for ej <- elems.rev() {
+                fold l_exp = ExpLit(LitEmpty, (ltyp, eloc)) for ej <- elems.rev() {
                     ExpBinary(OpCons, ej, l_exp, (ltyp, eloc))
                 }
             } else if make_vector {
@@ -2114,7 +2118,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             fun make_cast(e1: exp_t, t1: typ_t, t2: typ_t): exp_t =
                 match (is_typ_scalar(t1) && is_typ_scalar(t2), e1, deref_typ(t1), deref_typ(t2)) {
                 | (true, _, _, _) => ExpCast(e1, t2, (t2, eloc))
-                | (_, ExpLit(LitInt(0L), _), _, TypList _) => ExpLit(LitNil, (t2, eloc))
+                | (_, ExpLit(LitInt(0L), _), _, TypList _) => ExpLit(LitEmpty, (t2, eloc))
                 | (_, ExpLit(LitInt(0L), _), _, TypString) => ExpLit(LitString(""), (t2, eloc))
                 | (_, _, TypTuple(tl1), TypTuple(tl2)) =>
                     val n1 = tl1.length()
@@ -3220,7 +3224,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                 throw compile_err(loc, "literals are not allowed here")
             }
             unify(t, get_lit_typ(l), loc, "the literal of unexpected type")
-            (p, match l { | LitNil => false | _ => true })
+            (p, match l { | LitEmpty => false | _ => true })
         | PatIdent(i, loc) =>
             if pp(i) == "_" { throw compile_err(loc, "'_' occured in PatIdent()") }
             (PatIdent(process_id(i, t, loc), loc), false)

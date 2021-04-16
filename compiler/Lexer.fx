@@ -22,14 +22,14 @@ type token_t =
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
     | LPAREN: bool | STR_INTERP_LPAREN | RPAREN | LSQUARE: bool
     | RSQUARE | LBRACE | RBRACE | LARRAY | RARRAY | LLIST | RLIST
-    | COMMA | DOT | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH
+    | COMMA | DOT | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH: bool
     | BACK_ARROW | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool
     | PLUS: bool | STAR: bool | SLASH | SYNC | PERCENT | POWER | DOT_STAR
-    | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
+    | DOT_PLUS: bool | DOT_MINUS: bool | DOT_SLASH | DOT_PERCENT | DOT_POWER
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
     | DOT_EQUAL | AUG_BINOP: Ast.binary_t | SPACESHIP | CMP: Ast.cmpop_t
-    | DOT_SPACESHIP | DOT_CMP: Ast.cmpop_t | FOLD_RESULT
+    | DOT_SPACESHIP | DOT_CMP: Ast.cmpop_t | SAME | FOLD_RESULT
 
 fun ne2u(ne: bool, s: string) = if ne {s} else {s.decapitalize()}
 
@@ -97,7 +97,7 @@ fun tok2str(t: token_t)
     | BAR => ("BAR", "|")
     | CONS => ("CONS", "::")
     | CAST => ("CAST", ":>")
-    | BACKSLASH => ("BACKSLASH", "\\")
+    | BACKSLASH(ne) => (ne2u(ne, "BACKSLASH"), "\\")
     | ARROW => ("ARROW", "->")
     | BACK_ARROW => ("BACK_ARROW", "<-")
     | DOUBLE_ARROW => ("DOUBLE_ARROW", "=>")
@@ -109,6 +109,7 @@ fun tok2str(t: token_t)
     | SLASH => ("SLASH", "/")
     | PERCENT => ("PERCENT", "%")
     | POWER => ("POWER", "**")
+    | DOT_PLUS(ne) => (ne2u(ne, "DOT_PLUS"), ".+")
     | DOT_MINUS(ne) => (ne2u(ne, "DOT_MINUS"), ".-")
     | DOT_STAR => ("DOT_STAR", ".*")
     | DOT_SLASH => ("DOT_SLASH", "./")
@@ -130,7 +131,7 @@ fun tok2str(t: token_t)
     | CMP(c) => (f"CMP({c})", string(c))
     | DOT_SPACESHIP => ("DOT_SPACESHIP", ".<=>")
     | DOT_CMP(c) => (f"DOT_CMP({c})", f".{c}")
-    //| SAME => ("SAME", "===")
+    | SAME => ("SAME", "===")
     | FOLD_RESULT => ("FOLD_RESULT", "__fold_result__")
 }
 
@@ -627,7 +628,7 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0), hash,
     ("false", (LITERAL(Ast.LitBool(false)), 0)), ("finally", (FINALLY, 1)),
     ("fold", (FOLD, 2)), ("for", (FOR(true), 2)), ("from", (FROM, 2)),
     ("fun", (FUN, 2)), ("if", (IF, 2)), ("import", (IMPORT(true), 3)),
-    ("interface", (INTERFACE, 2)), ("match", (MATCH, 2)),
+    ("interface", (INTERFACE, 2)), ("match", (MATCH, 2)), ("null", (LITERAL(Ast.LitNull), 0)),
     ("object", (OBJECT, 2)), ("operator", (OPERATOR, 0)),
     ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)), ("throw", (THROW, 2)),
     ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)),
@@ -907,7 +908,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     t :: []
                 } else if prev_ne && c1 == ']' {
                     pos += 1
-                    (LITERAL(Ast.LitNil), loc) :: []
+                    (LITERAL(Ast.LitEmpty), loc) :: []
                 } else {
                     paren_stack = (LSQUARE(prev_ne), getloc(pos-1)) :: paren_stack
                     (LSQUARE(prev_ne), loc) :: []
@@ -1013,10 +1014,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             | '=' =>
                 if c1 == '=' {
                     pos += 1
-                    //if c2 == '=' {pos += 1; (SAME, loc) :: []}
-                    //else {
+                    if c2 == '=' {pos += 1; (SAME, loc) :: []}
+                    else {
                         (CMP(Ast.CmpEQ), loc) :: []
-                    //}
+                    }
                 }
                 else if c1 == '>' {pos += 1; (DOUBLE_ARROW, loc) :: []}
                 else {(EQUAL, loc) :: []}
@@ -1029,7 +1030,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 else {(BITWISE_AND, loc) :: []}
             | '~' => check_ne(prev_ne, getloc(pos-1), "~"); (TILDE, loc) :: []
             | '@' => (AT, loc) :: []
-            | '\\' => check_ne(prev_ne, getloc(pos-1), "\\"); (BACKSLASH, loc) :: []
+            | '\\' => (BACKSLASH(prev_ne), loc) :: []
             | '.' =>
                 if c1 == '=' {
                     if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpEQ), loc) :: []}
@@ -1043,10 +1044,12 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 } else if c1 == '>' {
                     if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpGE), loc) :: []}
                     else {pos += 1; (DOT_CMP(Ast.CmpGT), loc) :: []}
-                } else if c1 == '-' {
-                    check_ne(prev_ne, getloc(pos-1), ".-");
+                } else if c1 == '+' {
                     pos += 1
-                    (DOT_MINUS(true), loc) :: []
+                    (DOT_PLUS(prev_ne), loc) :: []
+                }  else if c1 == '-' {
+                    pos += 1
+                    (DOT_MINUS(prev_ne), loc) :: []
                 } else if c1 == '*' {
                     if c2 == '*' {pos += 2; (DOT_POWER, loc) :: []}
                     else if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotMul), loc) :: []}

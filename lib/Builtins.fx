@@ -141,7 +141,10 @@ operator + (l1: 't list, l2: 't list)
 @pure fun string(a: cptr): string = @ccode
 {
     char buf[64];
-    sprintf(buf, "cptr<%p: %p>", a, a->ptr);
+    if (a && a->ptr)
+        sprintf(buf, "cptr<%p: %p>", a, a->ptr);
+    else
+        strcpy(buf, "cptr<null>");
     return fx_ascii2str(buf, -1, fx_result);
 }
 fun string(a: bool) = if a {"true"} else {"false"}
@@ -284,7 +287,7 @@ operator * (n: int, s: string) = s * n
 
 operator == (a: 't list, b: 't list): bool
 {
-    //a === b ||
+    a === b ||
     (match (a, b) {
     | (ai :: a, bi :: b) => ai == bi && a == b
     | ([], []) => true
@@ -348,6 +351,10 @@ operator <=> (a: {...}, b: {...}) =
 operator + (a: 'ta [+], b: 'tb [+]) =
     [| for x <- a, y <- b {x + y} |]
 operator - (a: 'ta [+], b: 'tb [+]) =
+    [| for x <- a, y <- b {x - y} |]
+operator .+ (a: 'ta [+], b: 'tb [+]) =
+    [| for x <- a, y <- b {x + y} |]
+operator .- (a: 'ta [+], b: 'tb [+]) =
     [| for x <- a, y <- b {x - y} |]
 operator .* (a: 'ta [+], b: 'tb [+]) =
     [| for x <- a, y <- b {x .* y} |]
@@ -433,6 +440,30 @@ fun diag(n: int, d: 't)
     a
 }
 
+operator .+ (a: 't1 vector, b: 't2 vector) = [for ai <- a, bi <- b {ai + bi}]
+operator .+ (a: 't vector, b: 't) = [for ai <- a {ai + b}]
+operator .+ (a: 't, b: 't vector) = [for bi <- b {a + bi}]
+operator .- (a: 't1 vector, b: 't2 vector) = [for ai <- a, bi <- b {ai - bi}]
+operator .- (a: 't vector, b: 't) = [for ai <- a {ai - b}]
+operator .- (a: 't, b: 't vector) = [for bi <- b {a - bi}]
+operator .* (a: 't1 vector, b: 't2 vector) = [for ai <- a, bi <- b {ai * bi}]
+operator .* (a: 't vector, b: 't) = [for ai <- a {ai * b}]
+operator .* (a: 't, b: 't vector) = [for bi <- b {a * bi}]
+operator ./ (a: 't1 vector, b: 't2 vector) = [for ai <- a, bi <- b {ai / bi}]
+operator ./ (a: 't vector, b: 't) = [for ai <- a {ai / b}]
+operator ./ (a: 't, b: 't vector) = [for bi <- b {a / bi}]
+operator .% (a: 'ta vector, b: 'tb vector) =
+    [for x <- a, y <- b {x .% y}]
+operator .** (a: 'ta vector, b: 'tb vector) =
+    [for x <- a, y <- b {x .** y}]
+operator & (a: 't vector, b: 't vector) =
+    [for x <- a, y <- b {x & y}]
+operator | (a: 't vector, b: 't vector) =
+    [for x <- a, y <- b {x | y}]
+operator ^ (a: 't vector, b: 't vector) =
+    [for x <- a, y <- b {x ^ y}]
+
+
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
 operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
 operator <=> (a: uint8, b: uint8): int = (a > b) - (a < b)
@@ -507,6 +538,21 @@ operator .> (a: 't [+], b: 't [+]): bool [+] =
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
     [| for x <- a, y <- b {!(x < y)} |]
 
+operator .<=> (a: 't vector, b: 't vector): int vector =
+    [for x <- a, y <- b {x <=> y}]
+operator .== (a: 't vector, b: 't vector): bool vector =
+    [for x <- a, y <- b {x == y}]
+operator .!= (a: 't vector, b: 't vector): bool vector =
+    [for x <- a, y <- b {!(x == y)}]
+operator .< (a: 't vector, b: 't vector) =
+    [for x <- a, y <- b {x < y}]
+operator .<= (a: 't vector, b: 't vector): bool vector =
+    [for x <- a, y <- b {!(y < x)}]
+operator .> (a: 't vector, b: 't vector): bool vector =
+    [for x <- a, y <- b {y < x}]
+operator .>= (a: 't vector, b: 't vector): bool vector =
+    [for x <- a, y <- b {!(x < y)}]
+
 @pure @nothrow operator == (a: string, b: string): bool = @ccode { return fx_streq(a, b); }
 
 // [TODO] implement more clever string comparison operation
@@ -527,13 +573,19 @@ operator .>= (a: 't [+], b: 't [+]): bool [+] =
 @pure @nothrow operator == (a: 't ref, b: 't ref): bool = @ccode { return a == b }
 @pure @nothrow operator == (a: cptr, b: cptr): bool = @ccode { return a == b }
 
-// this is pseudo-function that is treated specially by the compiler
+// these are pseudo-functions that are treated specially by the compiler
 @pure @nothrow fun __eq_variants__(a: 't, b: 't): bool = a.__tag__ == b.__tag__
+fun __fun_string__(a: 't): string = @ccode
+{
+    char buf[32];
+    sprintf(buf, "func<%p: %p>", a->fp, a->fcv);
+    return fx_ascii2str(buf, -1, fx_result);
+}
 
 // operator === checks whether a and b represent not just equal, but the same object.
 // For many of the types it's should be enough to check "a == b" at C level.
 // But for some other types it may be not enough.
-/*@pure @nothrow operator === (a: 't, b: 't): bool = @ccode {return a == b}
+@pure @nothrow operator === (a: 't, b: 't): bool = @ccode {return a == b}
 @pure @nothrow operator === (a: string, b: string): bool = @ccode {return a->data == b->data}
 @pure @nothrow operator === (a: 't [+], b: 't [+]): bool = @ccode {return a->data == b->data}
 operator === (a: (...), b: (...)): bool =
@@ -544,7 +596,7 @@ operator === (a: 't?, b: 't?) {
     | (Some(a), Some(b)) => a === b
     | (None, None) => true
     | _ => false
-}*/
+}
 
 fun int(x: 't) = (x :> int)
 fun uint8(x: 't) = (x :> uint8)
@@ -681,19 +733,25 @@ fun print(a: 't) = print_string(string(a))
 @nothrow fun print(a: int64): void = @ccode { printf("%lld", a) }
 @nothrow fun print(a: float): void = @ccode { printf((a == (int)a ? "%.1f" : "%.8g"), a) }
 @nothrow fun print(a: double): void = @ccode { printf((a == (int)a ? "%.1f" : "%.16g"), a) }
-@nothrow fun print(a: cptr): void = @ccode { printf("cptr<%p: %p>", a, a->ptr) }
+@nothrow fun print(a: cptr): void = @ccode
+{
+    if (a && a->ptr)
+        printf("cptr<%p: %p>", a, a->ptr);
+    else
+        printf("cptr<null>");
+}
 fun print(a: string) = print_string(a)
 fun print_repr(a: 't) = print(a)
 fun print_repr(a: string) { print("\""); print(a); print("\"") }
 fun print_repr(a: char) { print("'"); print(a); print("'") }
 fun print(a: 't [])
 {
-    print("[")
+    print("[|")
     for x@i <- a {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print("]")
+    print("|]")
 }
 
 @nothrow fun print(a: char []): void = @ccode {
@@ -703,25 +761,26 @@ fun print(a: 't [])
 
 fun print(a: 't [,])
 {
-    print("[")
+    print("[|")
     val (m, n) = size(a)
     for i <- 0:m {
         for j <- 0:n {
             if j > 0 {print(", ")}
             print_repr(a[i,j])
         }
-        if i < m-1 {print(";\n ")} else {print("]")}
+        if i < m-1 {print(";\n ")}
     }
+    print("|]")
 }
 
 fun print(l: 't list)
 {
-    print("[")
+    print("[:")
     for x@i <- l {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print("]")
+    print(":]")
 }
 
 fun print(v: 't vector)
@@ -744,7 +803,7 @@ fun print(t: (...))
     print(")")
 }
 
-/*fun print(r: {...})
+fun print(r: {...})
 {
     print("{")
     for (n, x)@i <- r {
@@ -753,7 +812,7 @@ fun print(t: (...))
         print_repr(x)
     }
     print("}")
-}*/
+}
 
 fun print(a: 't ref) {
     print("ref("); print_repr(*a); print(")")
@@ -766,7 +825,7 @@ fun list(a: 't []): 't list = [: for x <- a {x} :]
 fun list(s: string): char list = [: for x <- s {x} :]
 fun list(v: 't vector): 't list = [: for x <- v {x} :]
 
-fun array(): 't [] = [| for i<-0:0 {(None : 't?).value()} |]
+fun array(): 't [] = []
 fun array(n: int, x: 't) = [| for i <- 0:n {x} |]
 fun array((m: int, n: int), x: 't) = [| for i <- 0:m for j <- 0:n {x} |]
 fun array((m: int, n: int, l: int), x: 't) = [| for i <- 0:m for j <- 0:n for k <- 0:l {x} |]
@@ -774,7 +833,7 @@ fun array(l: 't list): 't [] = [| for x <- l {x} |]
 fun array(v: 't vector): 't [] = [| for x <- v {x} |]
 fun array(s: string): char [] = [| for x <- s {x} |]
 
-fun vector(): 't vector = [for i<-0:0 {(None : 't?).value()}]
+fun vector(): 't vector = []
 fun vector(l: 't list): 't vector = [for x <- l {x}]
 fun vector(a: 't [+]): 't vector = [for x <- a {x}]
 fun vector(s: string): char vector = [for x <- s {x}]

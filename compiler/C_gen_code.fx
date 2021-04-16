@@ -605,8 +605,36 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 without allocating string in memory heap, there is no need to call destructor for it */
                 val e0 = make_call(std_FX_MAKE_STR, make_lit_exp(l, loc) :: [], CTypString, loc)
                 create_cdefval(gen_temp_idc("slit"), CTypString, default_tempval_flags(), "", Some(e0), ccode, loc)
-            | _ => val e = make_lit_exp(l, loc)
-                   (e, ccode)
+            | KLitNil ktyp =>
+                match deref_ktyp(ktyp, loc) {
+                | KTypList _ | KTypCPointer =>
+                    (make_nullptr(loc), ccode)
+                | KTypVector et =>
+                    val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
+                    val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
+                    val (vec_exp, ccode) = create_cdefval(gen_temp_idc("zvec"), CTypVector(elem_ctyp),
+                        default_tempval_flags(), "", None, ccode, loc)
+                    val call_make_empty = make_call(get_id("fx_rrb_make_empty"),
+                        [: elemsize_exp, free_f_exp, copy_f_exp, cexp_get_addr(vec_exp) :],
+                        CTypVoid, loc)
+                    (vec_exp, CExp(call_make_empty) :: ccode)
+                | KTypArray(ndims, et) =>
+                    val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
+                    val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
+                    val (arr_exp, ccode) = create_cdefval(gen_temp_idc("zarr"), CTypArray(ndims, elem_ctyp),
+                        default_tempval_flags(), "", None, ccode, loc)
+                    val call_make_empty = make_call(get_id("fx_make_arr"),
+                        [: make_int_exp(ndims, loc), make_nullptr(loc),
+                        elemsize_exp, free_f_exp, copy_f_exp,
+                        make_nullptr(loc), cexp_get_addr(arr_exp) :],
+                        CTypVoid, loc)
+                    (arr_exp, CExp(call_make_empty) :: ccode)
+                | _ =>
+                    throw compile_err(loc, f"cgen: unsupported type '{ktyp}' of '[]' literal")
+                }
+            | _ =>
+                val e = make_lit_exp(l, loc)
+                (e, ccode)
             }
         | AtomId i => id2cexp(i, save, ccode, loc)
         }
@@ -1473,7 +1501,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | OpBitwiseXor => COpBitwiseXor
                     | OpCmp(cmpop) => COpCmp(cmpop)
                     | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship | OpDotSpaceship
-                    | OpDotMul | OpDotDiv | OpDotMod | OpDotPow | OpDotCmp _ | OpSame =>
+                    | OpDotAdd | OpDotSub | OpDotMul | OpDotDiv | OpDotMod | OpDotPow | OpDotCmp _ | OpSame | OpRDiv =>
                         throw compile_err(kloc, f"cgen: unsupported op '{bop}' at this stage")
                     }
                 match (c_bop, get_cexp_typ(ce1)) {

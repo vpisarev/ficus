@@ -147,7 +147,7 @@ FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t* f, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
 
-FX_EXTERN_C_VAL(struct _fx_Nt6option1S _fx_g7None51_)
+FX_EXTERN_C_VAL(struct _fx_Nt6option1S _fx_g7None48_)
 FX_EXTERN_C int _fx_M8FilenameFM7dir_sepS0(fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t* s, fx_str_t* suffix, void* fx_fv);
@@ -363,7 +363,7 @@ FX_EXTERN_C int _fx_M3SysFM11locate_fileS2SLS(fx_str_t* name_0, struct _fx_LS_da
    fx_str_t sep_0 = {  };
    fx_str_t v_1 = {  };
    int fx_status = 0;
-   _fx_copy_Nt6option1S(&_fx_g7None51_, &__fold_result___0);
+   _fx_copy_Nt6option1S(&_fx_g7None48_, &__fold_result___0);
    _fx_LS lst_0 = dirs_0;
    for (; lst_0; lst_0 = lst_0->tl) {
       fx_str_t sep_1 = {  };

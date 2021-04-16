@@ -73,7 +73,7 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
     typ2ktyp_(t)
 }
 
-fun lit2klit(l: lit_t, ktyp: ktyp_t) =
+fun lit2klit(l: lit_t, ktyp: ktyp_t, loc: loc_t) =
     match l {
     | LitInt(v) => KLitInt(v)
     | LitSInt(b, v) => KLitSInt(b, v)
@@ -82,7 +82,13 @@ fun lit2klit(l: lit_t, ktyp: ktyp_t) =
     | LitString(s) => KLitString(s)
     | LitChar(c) => KLitChar(c)
     | LitBool(f) => KLitBool(f)
-    | LitNil => KLitNil(ktyp)
+    | LitEmpty =>
+        match ktyp {
+        | KTypList _ | KTypVector _ | KTypArray _ => KLitNil(ktyp)
+        | _ => throw compile_err(loc,
+            "[] is misused. It can only denote an empty collection (list, vector or array)")
+        }
+    | LitNull => KLitNil(KTypCPointer)
     }
 
 var idx_access_stack: (atom_t, int) list = []
@@ -185,7 +191,12 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (a2, code) = process_rpart(e2_opt, code, _ALitVoid)
         val (a3, code) = process_rpart(e3_opt, code, AtomLit(KLitInt(1L)))
         (KExpMkTuple(a1 :: a2 :: a3 :: [], kctx), code)
-    | ExpLit(lit, _) => (KExpAtom(AtomLit(lit2klit(lit, ktyp)), kctx), code)
+    | ExpLit(LitEmpty, _) =>
+        val z = gen_temp_idk("z")
+        val code = create_kdefval(z, ktyp, default_tempval_flags(),
+            Some(KExpAtom(AtomLit(KLitNil(ktyp)), kctx)), code, eloc)
+        (KExpAtom(AtomId(z), kctx), code)
+    | ExpLit(lit, _) => (KExpAtom(AtomLit(lit2klit(lit, ktyp, eloc)), kctx), code)
     | ExpIdent(n, _) =>
         val new_n = match ktyp {
             | KTypVoid => noid
@@ -304,7 +315,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             | Some((_, ej)) => exp2atom(ej, code, false, sc)
             | _ =>
                 match opt_vi {
-                | Some(InitLit(v0_l)) => (AtomLit(lit2klit(v0_l, typ2ktyp(ti, eloc))), code)
+                | Some(InitLit(v0_l)) => (AtomLit(lit2klit(v0_l, typ2ktyp(ti, eloc), eloc)), code)
                 | Some(InitId(v0_n)) => (AtomId(v0_n), code)
                 | _ =>
                     throw compile_err(eloc,
@@ -1082,7 +1093,9 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                 val (plists, checks, code) =
                 match p {
                 | PatLit(l, _) =>
-                    val code = KExpBinary(OpCmp(CmpEQ), AtomId(n), AtomLit(lit2klit(l, ptyp)), (KTypBool, loc)) :: code
+                    val code = KExpBinary(OpCmp(CmpEQ), AtomId(n),
+                                    AtomLit(lit2klit(l, ptyp, loc)),
+                                    (KTypBool, loc)) :: code
                     val c_exp = rcode2kexp(code, loc)
                     (plists, c_exp :: checks, [])
                 | PatIdent(_, _) => (plists, checks, code)

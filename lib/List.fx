@@ -8,8 +8,7 @@
 fun length(l: 't list) = Builtins.length(l)
 fun hd(_: 't list) { | a :: _ => a | _ => throw NullListError }
 fun tl(_: 't list) { | _ :: ll => ll | _ => throw NullListError }
-fun null(_: 't list) { | [] => true | _ => false }
-fun empty(l: 't list): bool = null(l)
+fun empty(_: 't list) { | [] => true | _ => false }
 fun last(_: 't list)
 {
     | a :: [] => a

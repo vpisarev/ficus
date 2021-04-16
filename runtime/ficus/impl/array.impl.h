@@ -315,7 +315,7 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     size_t netw = elemsize;
     for(int i = ndims-1; i >= 0; i--)
     {
-        int_ szi = size[i];
+        int_ szi = size ? size[i] : 0;
         if(szi < 0) FX_FAST_THROW_RET(FX_EXN_SizeError);
         arr->dim[i].size = szi;
         arr->dim[i].step = netw;

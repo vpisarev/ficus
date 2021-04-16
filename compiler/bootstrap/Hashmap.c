@@ -273,12 +273,6 @@ typedef struct _fx_LT2N9Ast__id_tN14K_form__ktyp_t_data_t {
    struct _fx_T2N9Ast__id_tN14K_form__ktyp_t hd;
 } _fx_LT2N9Ast__id_tN14K_form__ktyp_t_data_t, *_fx_LT2N9Ast__id_tN14K_form__ktyp_t;
 
-typedef struct _fx_LN14K_form__ktyp_t_data_t {
-   int_ rc;
-   struct _fx_LN14K_form__ktyp_t_data_t* tl;
-   struct _fx_N14K_form__ktyp_t_data_t* hd;
-} _fx_LN14K_form__ktyp_t_data_t, *_fx_LN14K_form__ktyp_t;
-
 typedef enum {
    _FX_N10Ast__lit_t_LitInt=1,
    _FX_N10Ast__lit_t_LitSInt=2,
@@ -287,7 +281,8 @@ typedef enum {
    _FX_N10Ast__lit_t_LitString=5,
    _FX_N10Ast__lit_t_LitChar=6,
    _FX_N10Ast__lit_t_LitBool=7,
-   _FX_N10Ast__lit_t_LitNil=8
+   _FX_N10Ast__lit_t_LitEmpty=8,
+   _FX_N10Ast__lit_t_LitNull=9
 } _fx_N10Ast__lit_t_tag_t;
 
 typedef struct _fx_N10Ast__lit_t {
@@ -379,27 +374,29 @@ typedef enum {
    _FX_N14Lexer__token_t_PERCENT=73,
    _FX_N14Lexer__token_t_POWER=74,
    _FX_N14Lexer__token_t_DOT_STAR=75,
-   _FX_N14Lexer__token_t_DOT_MINUS=76,
-   _FX_N14Lexer__token_t_DOT_SLASH=77,
-   _FX_N14Lexer__token_t_DOT_PERCENT=78,
-   _FX_N14Lexer__token_t_DOT_POWER=79,
-   _FX_N14Lexer__token_t_SHIFT_RIGHT=80,
-   _FX_N14Lexer__token_t_SHIFT_LEFT=81,
-   _FX_N14Lexer__token_t_BITWISE_AND=82,
-   _FX_N14Lexer__token_t_BITWISE_XOR=83,
-   _FX_N14Lexer__token_t_BITWISE_OR=84,
-   _FX_N14Lexer__token_t_TILDE=85,
-   _FX_N14Lexer__token_t_LOGICAL_AND=86,
-   _FX_N14Lexer__token_t_LOGICAL_OR=87,
-   _FX_N14Lexer__token_t_LOGICAL_NOT=88,
-   _FX_N14Lexer__token_t_EQUAL=89,
-   _FX_N14Lexer__token_t_DOT_EQUAL=90,
-   _FX_N14Lexer__token_t_AUG_BINOP=91,
-   _FX_N14Lexer__token_t_SPACESHIP=92,
-   _FX_N14Lexer__token_t_CMP=93,
-   _FX_N14Lexer__token_t_DOT_SPACESHIP=94,
-   _FX_N14Lexer__token_t_DOT_CMP=95,
-   _FX_N14Lexer__token_t_FOLD_RESULT=96
+   _FX_N14Lexer__token_t_DOT_PLUS=76,
+   _FX_N14Lexer__token_t_DOT_MINUS=77,
+   _FX_N14Lexer__token_t_DOT_SLASH=78,
+   _FX_N14Lexer__token_t_DOT_PERCENT=79,
+   _FX_N14Lexer__token_t_DOT_POWER=80,
+   _FX_N14Lexer__token_t_SHIFT_RIGHT=81,
+   _FX_N14Lexer__token_t_SHIFT_LEFT=82,
+   _FX_N14Lexer__token_t_BITWISE_AND=83,
+   _FX_N14Lexer__token_t_BITWISE_XOR=84,
+   _FX_N14Lexer__token_t_BITWISE_OR=85,
+   _FX_N14Lexer__token_t_TILDE=86,
+   _FX_N14Lexer__token_t_LOGICAL_AND=87,
+   _FX_N14Lexer__token_t_LOGICAL_OR=88,
+   _FX_N14Lexer__token_t_LOGICAL_NOT=89,
+   _FX_N14Lexer__token_t_EQUAL=90,
+   _FX_N14Lexer__token_t_DOT_EQUAL=91,
+   _FX_N14Lexer__token_t_AUG_BINOP=92,
+   _FX_N14Lexer__token_t_SPACESHIP=93,
+   _FX_N14Lexer__token_t_CMP=94,
+   _FX_N14Lexer__token_t_DOT_SPACESHIP=95,
+   _FX_N14Lexer__token_t_DOT_CMP=96,
+   _FX_N14Lexer__token_t_SAME=97,
+   _FX_N14Lexer__token_t_FOLD_RESULT=98
 } _fx_N14Lexer__token_t_tag_t;
 
 typedef enum {
@@ -420,25 +417,28 @@ typedef enum {
    _FX_N13Ast__binary_t_OpSub=2,
    _FX_N13Ast__binary_t_OpMul=3,
    _FX_N13Ast__binary_t_OpDiv=4,
-   _FX_N13Ast__binary_t_OpMod=5,
-   _FX_N13Ast__binary_t_OpPow=6,
-   _FX_N13Ast__binary_t_OpShiftLeft=7,
-   _FX_N13Ast__binary_t_OpShiftRight=8,
-   _FX_N13Ast__binary_t_OpDotMul=9,
-   _FX_N13Ast__binary_t_OpDotDiv=10,
-   _FX_N13Ast__binary_t_OpDotMod=11,
-   _FX_N13Ast__binary_t_OpDotPow=12,
-   _FX_N13Ast__binary_t_OpBitwiseAnd=13,
-   _FX_N13Ast__binary_t_OpLogicAnd=14,
-   _FX_N13Ast__binary_t_OpBitwiseOr=15,
-   _FX_N13Ast__binary_t_OpLogicOr=16,
-   _FX_N13Ast__binary_t_OpBitwiseXor=17,
-   _FX_N13Ast__binary_t_OpCmp=18,
-   _FX_N13Ast__binary_t_OpDotCmp=19,
-   _FX_N13Ast__binary_t_OpSpaceship=20,
-   _FX_N13Ast__binary_t_OpDotSpaceship=21,
-   _FX_N13Ast__binary_t_OpSame=22,
-   _FX_N13Ast__binary_t_OpCons=23
+   _FX_N13Ast__binary_t_OpRDiv=5,
+   _FX_N13Ast__binary_t_OpMod=6,
+   _FX_N13Ast__binary_t_OpPow=7,
+   _FX_N13Ast__binary_t_OpShiftLeft=8,
+   _FX_N13Ast__binary_t_OpShiftRight=9,
+   _FX_N13Ast__binary_t_OpDotAdd=10,
+   _FX_N13Ast__binary_t_OpDotSub=11,
+   _FX_N13Ast__binary_t_OpDotMul=12,
+   _FX_N13Ast__binary_t_OpDotDiv=13,
+   _FX_N13Ast__binary_t_OpDotMod=14,
+   _FX_N13Ast__binary_t_OpDotPow=15,
+   _FX_N13Ast__binary_t_OpBitwiseAnd=16,
+   _FX_N13Ast__binary_t_OpLogicAnd=17,
+   _FX_N13Ast__binary_t_OpBitwiseOr=18,
+   _FX_N13Ast__binary_t_OpLogicOr=19,
+   _FX_N13Ast__binary_t_OpBitwiseXor=20,
+   _FX_N13Ast__binary_t_OpCmp=21,
+   _FX_N13Ast__binary_t_OpDotCmp=22,
+   _FX_N13Ast__binary_t_OpSpaceship=23,
+   _FX_N13Ast__binary_t_OpDotSpaceship=24,
+   _FX_N13Ast__binary_t_OpSame=25,
+   _FX_N13Ast__binary_t_OpCons=26
 } _fx_N13Ast__binary_t_tag_t;
 
 typedef struct _fx_N13Ast__binary_t {
@@ -467,9 +467,11 @@ typedef struct _fx_N14Lexer__token_t {
       bool WHILE;
       bool LPAREN;
       bool LSQUARE;
+      bool BACKSLASH;
       bool MINUS;
       bool PLUS;
       bool STAR;
+      bool DOT_PLUS;
       bool DOT_MINUS;
       struct _fx_N13Ast__binary_t AUG_BINOP;
       struct _fx_N12Ast__cmpop_t CMP;
@@ -507,6 +509,12 @@ typedef struct _fx_LN14C_form__ctyp_t_data_t {
    struct _fx_LN14C_form__ctyp_t_data_t* tl;
    struct _fx_N14C_form__ctyp_t_data_t* hd;
 } _fx_LN14C_form__ctyp_t_data_t, *_fx_LN14C_form__ctyp_t;
+
+typedef struct _fx_LN14K_form__ktyp_t_data_t {
+   int_ rc;
+   struct _fx_LN14K_form__ktyp_t_data_t* tl;
+   struct _fx_N14K_form__ktyp_t_data_t* hd;
+} _fx_LN14K_form__ktyp_t_data_t, *_fx_LN14K_form__ktyp_t;
 
 typedef struct _fx_T2ST2N14Lexer__token_ti {
    fx_str_t t0;
@@ -1434,20 +1442,6 @@ static int _fx_cons_LT2N9Ast__id_tN14K_form__ktyp_t(
    FX_MAKE_LIST_IMPL(_fx_LT2N9Ast__id_tN14K_form__ktyp_t, _fx_copy_T2N9Ast__id_tN14K_form__ktyp_t);
 }
 
-static void _fx_free_LN14K_form__ktyp_t(struct _fx_LN14K_form__ktyp_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LN14K_form__ktyp_t, _fx_free_N14K_form__ktyp_t);
-}
-
-static int _fx_cons_LN14K_form__ktyp_t(
-   struct _fx_N14K_form__ktyp_t_data_t* hd,
-   struct _fx_LN14K_form__ktyp_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LN14K_form__ktyp_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LN14K_form__ktyp_t, FX_COPY_PTR);
-}
-
 static void _fx_free_N10Ast__lit_t(struct _fx_N10Ast__lit_t* dst)
 {
    switch (dst->tag) {
@@ -1588,6 +1582,20 @@ static int _fx_cons_LN14C_form__ctyp_t(
    struct _fx_LN14C_form__ctyp_t_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_LN14C_form__ctyp_t, FX_COPY_PTR);
+}
+
+static void _fx_free_LN14K_form__ktyp_t(struct _fx_LN14K_form__ktyp_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LN14K_form__ktyp_t, _fx_free_N14K_form__ktyp_t);
+}
+
+static int _fx_cons_LN14K_form__ktyp_t(
+   struct _fx_N14K_form__ktyp_t_data_t* hd,
+   struct _fx_LN14K_form__ktyp_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LN14K_form__ktyp_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LN14K_form__ktyp_t, FX_COPY_PTR);
 }
 
 static void _fx_free_T2ST2N14Lexer__token_ti(struct _fx_T2ST2N14Lexer__token_ti* dst)
@@ -3084,22 +3092,22 @@ FX_EXTERN_C void
    struct _fx_T3N9Ast__id_tN9Ast__id_tNt6option1N14K_form__ktyp_t* arg0,
    struct _fx_Nt6option1T3N9Ast__id_tN9Ast__id_tNt6option1N14K_form__ktyp_t* fx_result);
 
-FX_EXTERN_C_VAL(struct _fx_Nt6option1T3N9Ast__id_tN9Ast__id_tNt6option1N14K_form__ktyp_t _fx_g7None18_)
+FX_EXTERN_C_VAL(struct _fx_Nt6option1T3N9Ast__id_tN9Ast__id_tNt6option1N14K_form__ktyp_t _fx_g7None17_)
 FX_EXTERN_C void _fx_F4SomeNt6option1R22K_lift__ll_func_info_t1R22K_lift__ll_func_info_t(
    struct _fx_R22K_lift__ll_func_info_t* arg0,
    struct _fx_Nt6option1R22K_lift__ll_func_info_t* fx_result);
 
-FX_EXTERN_C_VAL(struct _fx_Nt6option1R22K_lift__ll_func_info_t _fx_g7None19_)
+FX_EXTERN_C_VAL(struct _fx_Nt6option1R22K_lift__ll_func_info_t _fx_g7None18_)
 FX_EXTERN_C void _fx_F4SomeNt6option1LN14K_form__atom_t1LN14K_form__atom_t(
    struct _fx_LN14K_form__atom_t_data_t* arg0,
    struct _fx_Nt6option1LN14K_form__atom_t* fx_result);
 
-FX_EXTERN_C_VAL(struct _fx_Nt6option1LN14K_form__atom_t _fx_g7None21_)
+FX_EXTERN_C_VAL(struct _fx_Nt6option1LN14K_form__atom_t _fx_g7None20_)
 FX_EXTERN_C void _fx_F4SomeNt6option1T2N14Lexer__token_ti1T2N14Lexer__token_ti(
    struct _fx_T2N14Lexer__token_ti* arg0,
    struct _fx_Nt6option1T2N14Lexer__token_ti* fx_result);
 
-FX_EXTERN_C_VAL(struct _fx_Nt6option1T2N14Lexer__token_ti _fx_g7None42_)
+FX_EXTERN_C_VAL(struct _fx_Nt6option1T2N14Lexer__token_ti _fx_g7None40_)
 FX_EXTERN_C int_ _fx_F6lengthi1LT2ST2N14Lexer__token_ti(struct _fx_LT2ST2N14Lexer__token_ti_data_t* l, void* fx_fv);
 
 FX_EXTERN_C int _fx_M7HashmapFM1tNt10Hashmap__t2ii5FPq1iRtM11hashentry_t2iiiiA1RtM11hashentry_t2ii(
@@ -5512,7 +5520,7 @@ FX_EXTERN_C int
          &v_0, fx_result);
    }
    else {
-      _fx_copy_Nt6option1T3N9Ast__id_tN9Ast__id_tNt6option1N14K_form__ktyp_t(&_fx_g7None18_, fx_result);
+      _fx_copy_Nt6option1T3N9Ast__id_tN9Ast__id_tNt6option1N14K_form__ktyp_t(&_fx_g7None17_, fx_result);
    }
 
 _fx_cleanup: ;
@@ -5539,7 +5547,7 @@ FX_EXTERN_C int
       _fx_F4SomeNt6option1R22K_lift__ll_func_info_t1R22K_lift__ll_func_info_t(&v_0, fx_result);
    }
    else {
-      _fx_copy_Nt6option1R22K_lift__ll_func_info_t(&_fx_g7None19_, fx_result);
+      _fx_copy_Nt6option1R22K_lift__ll_func_info_t(&_fx_g7None18_, fx_result);
    }
 
 _fx_cleanup: ;
@@ -5563,7 +5571,7 @@ FX_EXTERN_C int _fx_M7HashmapFM8find_optNt6option1LN14K_form__atom_t2Nt10Hashmap
       _fx_F4SomeNt6option1LN14K_form__atom_t1LN14K_form__atom_t(v_0, fx_result);
    }
    else {
-      _fx_copy_Nt6option1LN14K_form__atom_t(&_fx_g7None21_, fx_result);
+      _fx_copy_Nt6option1LN14K_form__atom_t(&_fx_g7None20_, fx_result);
    }
 
 _fx_cleanup: ;
@@ -5590,7 +5598,7 @@ FX_EXTERN_C int _fx_M7HashmapFM8find_optNt6option1T2N14Lexer__token_ti2Nt10Hashm
       _fx_F4SomeNt6option1T2N14Lexer__token_ti1T2N14Lexer__token_ti(&v_0, fx_result);
    }
    else {
-      _fx_copy_Nt6option1T2N14Lexer__token_ti(&_fx_g7None42_, fx_result);
+      _fx_copy_Nt6option1T2N14Lexer__token_ti(&_fx_g7None40_, fx_result);
    }
 
 _fx_cleanup: ;
