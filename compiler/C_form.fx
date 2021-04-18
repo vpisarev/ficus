@@ -70,6 +70,7 @@
       * list comprehensions are replaced with a for-loop that constructs the output list on-fly.
 */
 
+import Dynvec
 from Ast import *
 from K_form import *
 
@@ -294,16 +295,16 @@ type cinfo_t =
     | CLabel: cdeflabel_t
     | CMacro: cdefmacro_t ref
 
-val all_idcs = dynvec_create(CNone)
+var all_idcs: cinfo_t Dynvec.t [] = []
 var freeze_idcs = true
 
-fun new_idc_idx(): int {
+fun new_idc_idx(m_idx: int): int {
     if freeze_idcs {
         throw Fail("internal error: attempt to add new idc when they are frozen")
     }
-    val new_idx = dynvec_push(all_ids)
-    val new_kidx = dynvec_push(K_form.all_idks)
-    val new_cidx = dynvec_push(all_idcs)
+    val new_idx = all_modules[m_idx].dm_table.push()
+    val new_kidx = all_idks[m_idx].push()
+    val new_cidx = all_idcs[m_idx].push()
     if new_idx == new_kidx && new_idx == new_cidx {
         new_idx
     } else {
@@ -311,36 +312,26 @@ fun new_idc_idx(): int {
     }
 }
 
-fun cinfo_(i: id_t, loc: loc_t) = dynvec_get(all_idcs, id2idx_(i, loc))
-
-fun gen_temp_idc(s: string): id_t
+fun cinfo_(i: id_t, loc: loc_t)
 {
-    val i_name = get_id_prefix(s)
-    val i_real = new_idc_idx()
-    IdTemp(i_name, i_real)
+    val (m, j) = id2idx_(i, loc)
+    all_idcs[m].data[j]
 }
 
-fun gen_idc(s: string): id_t
+fun gen_idc(m_idx: int, s: string): id_t
 {
-    val i_name = get_id_prefix(s)
-    val i_real = new_idc_idx()
-    IdVal(i_name, i_real)
+    val i = get_id_prefix(s)
+    val j = new_idc_idx(m_idx)
+    id_t {m=m_idx, i=i, j=j}
 }
 
-fun dup_idc(old_id: id_t): id_t
-{
-    val k = new_idc_idx()
-    match old_id {
-    | IdName i => IdVal(i, k)
-    | IdVal (i, j) => IdVal(i, k)
-    | IdTemp (i, j) => IdTemp(i, k)
-    }
-}
+fun dup_idc(m_idx: int, old_id: id_t) =
+    id_t {m=m_idx, i=old_id.i, j=new_idc_idx(m_idx)}
 
 fun set_idc_entry(i: id_t, entry: cinfo_t)
 {
-    val idx = id2idx(i)
-    dynvec_set(all_idcs, idx, entry)
+    val (m, j) = id2idx(i)
+    all_idcs[m].data[j] = entry
 }
 
 fun init_all_idcs()
@@ -348,7 +339,7 @@ fun init_all_idcs()
     freeze_ids = true
     freeze_idks = true
     freeze_idcs = false
-    dynvec_init(all_idcs, K_form.all_idks->count)
+    all_idcs = [| for k <- all_idks {Dynvec.create(k.count, CNone)} |]
 }
 
 fun get_cexp_ctx(e: cexp_t): cctx_t
@@ -446,15 +437,12 @@ fun get_cinfo_typ(info: cinfo_t, i: id_t, loc: loc_t)
 }
 
 fun get_idc_typ(i: id_t, loc: loc_t) =
-    match i {
-    | IdName _ => CTypAny
-    | _ => get_cinfo_typ(cinfo_(i, loc), i, loc)
-    }
+    if i.m == 0 {CTypAny}
+    else {get_cinfo_typ(cinfo_(i, loc), i, loc)}
 
 fun get_idc_cname(i: id_t, loc: loc_t) =
-    match i {
-    | IdName _ => pp(i)
-    | _ =>
+    if i.m == 0 {pp(i)}
+    else {
         match cinfo_(i, loc) {
         | CNone => ""
         | CVal ({cv_cname}) => cv_cname
@@ -940,16 +928,8 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
 fun idc2str(n: id_t, loc: loc_t) {
     val cname = get_idc_cname(n, loc)
     if cname != "" { cname }
-    else {
-        val (infix, prefix, suffix) =
-        match n {
-        | IdName(i) => ("", i, 1234567890)
-        | IdVal(i, j) => ("_", i, j)
-        | IdTemp(i, j) => ("_", i, j)
-        }
-        val prefix = dynvec_get(all_strings, prefix)
-        f"{prefix}{infix}{suffix}"
-    }
+    else if n.m == 0 { all_names.data[n.i] }
+    else { f"{all_names.data[n.i]}_{n.j}" }
 }
 
 fun ctyp2str_(t: ctyp_t, loc: loc_t): string = ctyp2str(t, loc).0
@@ -987,18 +967,6 @@ fun make_id_exp(i: id_t, loc: loc_t) {
 }
 
 fun make_id_t_exp(i: id_t, t: ctyp_t, loc: loc_t) = CExpIdent(i, (t, loc))
-
-fun make_label(basename: string, loc: loc_t)
-{
-    val basename =
-        if basename.startswith("_fx_") { basename }
-        else { "_fx_" + basename }
-    val li = gen_temp_idc(basename)
-    val cname = if basename == "_fx_cleanup" { basename }
-                else { "" }
-    set_idc_entry(li, CLabel (cdeflabel_t {cl_name=li, cl_cname=cname, cl_loc=loc}) )
-    li
-}
 
 fun make_call(f: id_t, args: cexp_t list, rt: ctyp_t, loc: loc_t) {
     val f_exp = make_id_exp(f, loc)

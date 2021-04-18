@@ -40,7 +40,7 @@
     * ...
 */
 from Ast import *
-import Set, Hashset
+import Dynvec, Set, Hashset
 
 type ktprops_t =
 {
@@ -231,6 +231,7 @@ type kdefclosurevars_t =
 type kmodule_t =
 {
     km_name: id_t;
+    km_idx: int;
     km_cname: string;
     km_top: kexp_t list;
     km_main: bool;
@@ -249,59 +250,58 @@ type kinfo_t =
 
 val _KLitVoid = KLitNil(KTypVoid)
 val _ALitVoid = AtomLit(_KLitVoid)
-val all_idks = dynvec_create(KNone)
+var all_idks: kinfo_t Dynvec.t [] = []
 var builtin_exn_NoMatchError = noid
 var builtin_exn_OutOfRangeError = noid
 var freeze_idks = false
 
-fun new_idk_idx(): int {
+fun new_idk_idx(m_idx: int): int {
     if freeze_idks {
         throw Fail("internal error: new idk is requested when they are frozen")
     }
-    val new_idx = dynvec_push(all_ids)
-    val new_kidx = dynvec_push(all_idks)
+    val new_idx = all_modules[m_idx].dm_table.push()
+    val new_kidx = all_idks[m_idx].push()
     if new_idx != new_kidx {
         throw Fail("internal error: unsynchronized outputs from new_id_idx() and new_idk_idx()")
     }
     new_kidx
 }
 
-fun kinfo_(n: id_t, loc: loc_t) = dynvec_get(all_idks, id2idx_(n, loc))
-
-fun gen_temp_idk(s: string): id_t
-{
-    val i_name = get_id_prefix(s)
-    val i_real = new_idk_idx()
-    IdTemp(i_name, i_real)
-}
-
-fun dup_idk(old_id: id_t): id_t
-{
-    val k = new_idk_idx()
-    match old_id {
-    | IdName(i) => IdVal(i, k)
-    | IdVal(i, j) => IdVal(i, k)
-    | IdTemp(i, j) => IdTemp(i, k)
+fun kinfo_(n: id_t, loc: loc_t) =
+    if n.m == 0 {KNone}
+    else {
+        val (m, j) = id2idx_(n, loc)
+        all_idks[m].data[j]
     }
+
+fun dup_idk(m_idx: int, old_id: id_t): id_t
+{
+    val j = new_idk_idx(m_idx)
+    id_t {m=m_idx, i=old_id.i, j=j}
 }
 
-fun gen_idk(s: string): id_t
+fun gen_idk(m_idx: int, s: string): id_t
 {
-    val n_name = get_id_prefix(s)
-    val n_real = new_idk_idx()
-    IdVal(n_name, n_real)
+    val i = get_id_prefix(s)
+    val j = new_idk_idx(m_idx)
+    id_t {m=m_idx, i=i, j=j}
 }
 
 fun set_idk_entry(n: id_t, info: kinfo_t): void
 {
-    val idx = id2idx(n)
-    dynvec_set(all_idks, idx, info)
+    //val loc = get_kinfo_loc(info)
+    val (m, j) = id2idx_(n, noloc)
+    all_idks[m].data[j] = info
 }
 
-fun init_all_idks(): void {
+fun init_all_idks(): void
+{
     freeze_ids = true
     freeze_idks = false
-    dynvec_init(all_idks, all_ids->count)
+    all_idks = [| for dm <- all_modules {
+        val sz = dm.dm_table.size()
+        Dynvec.create(sz, KNone)
+    } |]
 }
 
 fun get_kexp_ctx(e: kexp_t): kctx_t
@@ -345,6 +345,18 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KDefClosureVars (ref {kcv_loc}) => (KTypVoid, kcv_loc)
 }
 
+fun get_kinfo_loc(info: kinfo_t): loc_t
+{
+    | KNone => noloc
+    | KVal ({kv_loc}) => kv_loc
+    | KFun (ref {kf_loc}) => kf_loc
+    | KExn (ref {ke_loc}) => ke_loc
+    | KVariant (ref {kvar_loc}) => kvar_loc
+    | KTyp (ref {kt_loc}) => kt_loc
+    | KInterface (ref {ki_loc}) => ki_loc
+    | KClosureVars (ref {kcv_loc}) => kcv_loc
+}
+
 fun get_kexp_typ(e: kexp_t): ktyp_t = get_kexp_ctx(e).0
 fun get_kexp_loc(e: kexp_t): loc_t = get_kexp_ctx(e).1
 
@@ -372,18 +384,6 @@ fun get_kscope(info: kinfo_t): scope_t list
 }
 
 fun get_idk_scope(n: id_t, loc: loc_t): scope_t list = get_kscope(kinfo_(n, loc))
-
-fun get_kinfo_loc(info: kinfo_t): loc_t
-{
-    | KNone => noloc
-    | KVal ({kv_loc}) => kv_loc
-    | KFun (ref {kf_loc}) => kf_loc
-    | KExn (ref {ke_loc}) => ke_loc
-    | KVariant (ref {kvar_loc}) => kvar_loc
-    | KTyp (ref {kt_loc}) => kt_loc
-    | KInterface (ref {ki_loc}) => ki_loc
-    | KClosureVars (ref {kcv_loc}) => kcv_loc
-}
 
 fun get_idk_loc(n: id_t, loc: loc_t): loc_t = get_kinfo_loc(kinfo_(n, loc))
 
@@ -413,9 +413,8 @@ fun get_idk_cname(n: id_t, loc: loc_t): string
 }
 
 fun idk2str(n: id_t, loc: loc_t) =
-    match n {
-    | IdName _ => string(n)
-    | _ =>
+    if n.m == 0 { string(n) }
+    else {
         val cname = get_idk_cname(n, loc)
         if cname == "" {
             val sc = get_idk_scope(n, loc)
@@ -943,13 +942,9 @@ fun used_by(code: kcode_t, size0: int): id_hashset_t
     val all_used: id_hashset_t = Hashset.empty(size0, noid, hash)
     fun remove_unless(had_before: bool, n: id_t) =
         if !had_before { all_used.remove(n) }
-    fun add_id(n: id_t) {
-        | IdName _ => {}
-        | _ => all_used.add(n)
-        }
+    fun add_id(n: id_t) = if n.m > 0 { all_used.add(n) }
     fun used_by_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t): void =
         match a {
-        | AtomId(IdName _) => {}
         | AtomId(n) => add_id(n)
         | AtomLit(KLitNil(t)) => used_by_ktyp_(t, loc, callb)
         | _ => {}
@@ -1110,7 +1105,6 @@ fun make_empty_kf_closure(): kdefclosureinfo_t =
 
 fun deref_ktyp(kt: ktyp_t, loc: loc_t): ktyp_t =
     match kt {
-    | KTypName(IdName _) => kt
     | KTypName(n) =>
         match kinfo_(n, loc) {
         | KTyp (ref {kt_typ, kt_loc}) => deref_ktyp(kt_typ, kt_loc)
@@ -1149,11 +1143,12 @@ fun create_kdefval(n: id_t, ktyp: ktyp_t, flags: val_flags_t,
     }
 }
 
-fun kexp2atom(prefix: string, e: kexp_t, tref: bool, code: kcode_t): (atom_t, kcode_t) =
+fun kexp2atom(m_idx: int, prefix: string, e: kexp_t, tref: bool,
+              code: kcode_t): (atom_t, kcode_t) =
     match e {
     | KExpAtom(a, _) => (a, code)
     | _ =>
-        val tmp_id = gen_temp_idk(prefix)
+        val tmp_id = gen_idk(m_idx, prefix)
         val (ktyp, kloc) = get_kexp_ctx(e)
         match ktyp {
         | KTypVoid =>
@@ -1176,9 +1171,10 @@ fun atom2id(a: atom_t, loc: loc_t, msg: string) =
     | AtomLit _ => throw compile_err(loc, msg)
     }
 
-fun kexp2id(prefix: string, e: kexp_t, tref: bool, code: kcode_t, msg: string): (id_t, kcode_t)
+fun kexp2id(m_idx: int, prefix: string, e: kexp_t, tref: bool,
+            code: kcode_t, msg: string): (id_t, kcode_t)
 {
-    val (a, code) = kexp2atom(prefix, e, tref, code)
+    val (a, code) = kexp2atom(m_idx, prefix, e, tref, code)
     val i = atom2id(a, get_kexp_loc(e), msg)
     (i, code)
 }
@@ -1186,10 +1182,7 @@ fun kexp2id(prefix: string, e: kexp_t, tref: bool, code: kcode_t, msg: string): 
 fun create_kdeffun(n: id_t, args: (id_t, ktyp_t) list, rt: ktyp_t, flags: fun_flags_t,
                    body_opt: kexp_t?, code: kcode_t, sc: scope_t list, loc: loc_t): kcode_t
 {
-    val body = match body_opt {
-               | Some(body) => body
-               | _ => KExpNop(loc)
-               }
+    val body = match body_opt { | Some(body) => body | _ => KExpNop(loc) }
     val kf = ref (kdeffun_t {
         kf_name=n, kf_cname="", kf_args=args, kf_rt=rt, kf_body=body, kf_flags=flags,
         kf_closure=make_empty_kf_closure(), kf_scope=sc, kf_loc=loc
@@ -1201,12 +1194,13 @@ fun create_kdeffun(n: id_t, args: (id_t, ktyp_t) list, rt: ktyp_t, flags: fun_fl
 fun create_kdefconstr(n: id_t, argtyps: ktyp_t list, rt: ktyp_t, ctor: fun_constr_t,
                       code: kcode_t, sc: scope_t list, loc: loc_t): kexp_t list
 {
+    val km_idx = curr_module(sc)
     val (_, args) =
-    fold (idx, args) = (0, []) for t <- argtyps {
-        val arg = gen_idk(f"arg{idx}")
-        val _ = create_kdefval(arg, t, default_val_flags().{val_flag_arg=true}, None, [], loc)
-        (idx + 1, (arg, t) :: args)
-    }
+        fold (idx, args) = (0, []) for t <- argtyps {
+            val arg = gen_idk(km_idx, f"arg{idx}")
+            val _ = create_kdefval(arg, t, default_val_flags().{val_flag_arg=true}, None, [], loc)
+            (idx + 1, (arg, t) :: args)
+        }
     create_kdeffun(n, args.rev(), rt, default_fun_flags().{fun_flag_ctor=ctor}, None, code, sc, loc)
 }
 

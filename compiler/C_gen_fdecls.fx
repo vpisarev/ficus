@@ -14,12 +14,13 @@ from C_form import *
 import K_annotate, K_mangle, C_gen_types
 import Set
 
-fun convert_all_fdecls(top_code: kcode_t)
+fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
 {
     var top_fcv_decls: ccode_t = []
     var top_func_decls: ccode_t = []
     var mod_init_calls: ccode_t = []
     var mod_exn_data_decls: ccode_t = []
+
     for e <- top_code {
         match e {
         | KDefFun kf =>
@@ -29,7 +30,7 @@ fun convert_all_fdecls(top_code: kcode_t)
             val is_ccode_func = match kf_body { | KExpCCode _ => true | _ => false }
             val ctor = kf_flags.fun_flag_ctor
             val fold args = [] for (arg, t)@idx <- kf_args {
-                val arg = match arg { | IdName _ => dup_idc(arg) | _ => arg }
+                val arg = if arg.m == 0 {dup_idc(cm_idx, arg)} else {arg}
                 val cname = if is_ccode_func { pp(arg) }
                             else if ctor != CtorNone { f"arg{idx}" }
                             else { "" }
@@ -56,7 +57,7 @@ fun convert_all_fdecls(top_code: kcode_t)
             } else if crt == CTypVoid {
                 (CTypCInt, args)
             } else {
-                val v = gen_temp_idc("fx_result")
+                val v = gen_idc(cm_idx, "fx_result")
                 val crt = make_ptr(crt)
                 add_cf_arg(v, crt, "fx_result", kf_loc)
                 (if is_nothrow { CTypVoid } else { CTypCInt },
@@ -67,7 +68,7 @@ fun convert_all_fdecls(top_code: kcode_t)
                     args
                 } else {
                     val fv_cname = "fx_fv"
-                    val fv_arg = gen_temp_idc(fv_cname)
+                    val fv_arg = gen_idc(cm_idx, fv_cname)
                     add_cf_arg(fv_arg, std_CTypVoidPtr, fv_cname, kf_loc)
                     (fv_arg, std_CTypVoidPtr, [: CArgFV :]) :: args
                 }
@@ -100,7 +101,7 @@ fun convert_all_fdecls(top_code: kcode_t)
             } else {
                 val call_free = make_call(std_fx_free, [: dst_exp :], CTypVoid, kcv_loc)
                 val freecode = CExp(call_free) :: free_ccode
-                val free_f = gen_temp_idc("free_cv")
+                val free_f = gen_idc(cm_idx, "free_cv")
                 val free_f_cname = "_fx_free_" + K_mangle.remove_fx(kcv_cname[0:.-"_cldata_t".length()])
                 val cf = ref (cdeffun_t {
                     cf_name=free_f, cf_rt=CTypVoid,
@@ -139,7 +140,7 @@ fun convert_all_fdecls(top_code: kcode_t)
             val {ke_name, ke_typ, ke_std, ke_tag, ke_cname, ke_base_cname, ke_make, ke_scope, ke_loc} = *ke
             val exn_strname = get_qualified_name(pp(ke_name), ke_scope)
             val exn_strname = CExpLit(KLitString(exn_strname), (CTypString, ke_loc))
-            val exn_info = gen_idc(pp(ke_name) + "_info")
+            val exn_info = gen_idc(cm_idx, pp(ke_name) + "_info")
             val info_cname = K_mangle.add_fx(ke_base_cname + "_info")
             val cv_flags = default_val_flags().{val_flag_global=ke_scope, val_flag_mutable=true}
             val (info_exp, decls) = create_cdefval(exn_info, std_fx_exn_info_t, cv_flags,
@@ -231,7 +232,7 @@ fun convert_all_fdecls(top_code: kcode_t)
                 functions for arbitrary types)
             */
             | _ =>
-                val exn_data_id = gen_idc(pp(ke_name) + "_data_t")
+                val exn_data_id = gen_idc(cm_idx, pp(ke_name) + "_data_t")
                 val exn_data_cname = K_mangle.add_fx(ke_base_cname + "_data_t")
                 val exn_data_ptr_t = make_ptr(CTypName(exn_data_id))
                 val dst_id = get_id("dst")
@@ -246,7 +247,7 @@ fun convert_all_fdecls(top_code: kcode_t)
                 } else {
                     val call_free = make_call(std_fx_free, [: dst_exp :], CTypVoid, ke_loc)
                     val freecode = CExp(call_free) :: free_ccode
-                    val free_f = gen_temp_idc("free_exn")
+                    val free_f = gen_idc(cm_idx, "free_exn")
                     val free_f_cname = "_fx_free_" + ke_base_cname
                     val cf = ref (cdeffun_t {
                         cf_name=free_f, cf_rt=CTypVoid,
@@ -309,7 +310,7 @@ fun convert_all_fdecls(top_code: kcode_t)
                     { make_id_t_exp(m, std_CTypVoidPtr, kvar_loc) } :]
                 val vtbl_ctyp = CTypRawArray([:CTypStatic, CTypConst:], std_CTypVoidPtr)
                 val vtbl_init_exp = CExpInit(mptrs, (vtbl_ctyp, kvar_loc))
-                val vtbl = gen_temp_idc("vtbl")
+                val vtbl = gen_idc(cm_idx, "vtbl")
                 val (_, init_ccode) = create_cdefval(vtbl, vtbl_ctyp, default_tempval_flags(),
                                              "", Some(vtbl_init_exp), init_ccode, kvar_loc)
                 val iface = match get_kinterface_opt(KTypName(iname), kvar_loc) {
@@ -338,13 +339,13 @@ fun convert_all_fdecls(top_code: kcode_t)
                 }
             }
             val ifaces_ctyp = CTypName(get_id("fx_ifaces_t"))
-            val ifaces_id = gen_idc(pp(kvar_name) + "_ifaces")
+            val ifaces_id = gen_idc(cm_idx, pp(kvar_name) + "_ifaces")
             val ifaces_cname = kvar_cname + "_ifaces"
             val cv_flags = default_val_flags().{val_flag_global=kvar_scope, val_flag_mutable=true}
             val (ifaces_id_exp, decl_ifaces_id) = create_cdefval(ifaces_id, ifaces_ctyp,
                                 cv_flags, ifaces_cname, None, [], kvar_loc)
             val entries_init_exp = CExpInit(pairs.rev(), (entries_ctyp, kvar_loc))
-            val iface_entries = gen_temp_idc("ifaces_entries")
+            val iface_entries = gen_idc(cm_idx, "ifaces_entries")
             val (iface_entries_exp, init_ccode) =
                 create_cdefval(iface_entries, entries_ctyp, default_tempval_flags(),
                                "", Some(entries_init_exp), init_ccode, kvar_loc)
@@ -352,7 +353,7 @@ fun convert_all_fdecls(top_code: kcode_t)
             val ids_init_exp = CExpInit([: for i <- ids.rev() {
                     make_id_t_exp(i, CTypCInt, kvar_loc)
                 } :], (ids_ctyp, kvar_loc))
-            val ifaces_ids = gen_temp_idc("ifaces_ids")
+            val ifaces_ids = gen_idc(cm_idx, "ifaces_ids")
             val (ids_exp, init_ccode) = create_cdefval(ifaces_ids, ids_ctyp,
                 default_tempval_flags(), "", Some(ids_init_exp), init_ccode, kvar_loc)
             val init_ifaces_args =

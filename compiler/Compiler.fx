@@ -103,27 +103,26 @@ fun parse_all(fname0: string, ficus_path: string list): bool
     val inc_dirs0 = inc_dirs0 + ficus_path
     val inc_dirs0 = [: for d <- inc_dirs0 { Filename.normalize(cwd, d) } :]
     val name0_id = Ast.get_id(Filename.remove_extension(Filename.basename(fname0)))
-    val minfo = Ast.find_module(name0_id, fname0)
-    var queue = minfo->dm_name :: []
+    val m_idx = Ast.find_module(name0_id, fname0)
+    var queue = m_idx :: []
     var ok = true
-    var module_idx = 0
     while queue != [] {
-        val mname = queue.hd()
+        val m_idx = queue.hd()
         queue = queue.tl()
-        val minfo = Ast.get_module(mname)
-        val mfname = minfo->dm_filename
-        if !minfo->dm_parsed {
+        val minfo = Ast.all_modules[m_idx]
+        val mfname = minfo.dm_filename
+        if !minfo.dm_parsed {
             try {
-                minfo->dm_idx = module_idx
-                module_idx += 1
+                // prevent from repeated parsing
+                Ast.all_modules[m_idx].dm_parsed = true
                 val dir1 = Filename.dirname(mfname)
                 val inc_dirs = (if dir1 == dir0 {[]} else {dir1 :: []}) + inc_dirs0
                 val preamble = get_preamble(mfname)
-                ok &= Parser.parse(minfo, preamble, inc_dirs)
-                for dep <- minfo->dm_deps.rev() {
+                ok &= Parser.parse(m_idx, preamble, inc_dirs)
+                for dep <- Ast.all_modules[m_idx].dm_deps.rev() {
                     val dep_minfo = Ast.get_module(dep)
-                    if !dep_minfo->dm_parsed {
-                        queue = dep_minfo->dm_name :: queue
+                    if !dep_minfo.dm_parsed {
+                        queue = dep :: queue
                     }
                 }
             }
@@ -139,23 +138,22 @@ fun parse_all(fname0: string, ficus_path: string list): bool
     ok
 }
 
-type dep_graph_t = (int, id_t, id_t list) list
+type dep_graph_t = (int, int list) list
 
-fun toposort(graph: dep_graph_t): id_t list
+fun toposort(graph: dep_graph_t): int list
 {
-    val graph = graph.sort(fun ((i, _, _), (j, _, _)) { i < j })
-    fun loop(remaining: dep_graph_t, result: id_t list): id_t list
+    fun loop(remaining: dep_graph_t, result: int list): int list
     {
-        fun find_next(analyzed: dep_graph_t, rest: dep_graph_t): (id_t, dep_graph_t) =
+        fun find_next(analyzed: dep_graph_t, rest: dep_graph_t): (int, dep_graph_t) =
             match rest {
-            | (i, m, deps) :: rest =>
+            | (m, deps) :: rest =>
                 if all(for d <- deps {result.mem(d)}) {
                     (m, analyzed.rev() + rest)
                 } else {
-                    find_next((i, m, deps) :: analyzed, rest)
+                    find_next((m, deps) :: analyzed, rest)
                 }
             | _ =>
-                val cycle = ", ".join([: for (_, m, _) <- analyzed.rev() {Ast.pp(m)} :])
+                val cycle = ", ".join([: for (m, _) <- analyzed.rev() {Ast.pp(Ast.get_module_name(m))} :])
                 throw Fail(f"error: cylic module dependency between {cycle}")
             }
         match remaining {
@@ -168,14 +166,14 @@ fun toposort(graph: dep_graph_t): id_t list
     loop(graph, [])
 }
 
-fun typecheck_all(modules: id_t list): bool
+fun typecheck_all(modules: int list): bool
 {
     Ast.all_compile_errs = []
     for m <- modules {Ast_typecheck.check_mod(m)}
     Ast.all_compile_errs == []
 }
 
-fun k_normalize_all(modules: id_t list): (kmodule_t list, bool)
+fun k_normalize_all(modules: int list): (kmodule_t list, bool)
 {
     Ast.all_compile_errs = []
     K_form.init_all_idks()
@@ -428,9 +426,8 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
    there are (/usr|...)/lib/ficus-{__ficus_major__}.{__ficus_minor__}/{{runtime, lib}}") }
         val ok = parse_all(fname0, ficus_path)
         if !ok { throw CumulativeParseError }
-        val graph = [: for (mfname, m) <- Ast.all_modules.list() {
-                        val minfo = Ast.get_module(m)
-                        (minfo->dm_idx, m, minfo->dm_deps)
+        val graph = [: for minfo <- Ast.all_modules[2:] {
+                        (minfo.dm_idx, minfo.dm_deps)
                     } :]
         Ast.all_modules_sorted = toposort(graph)
         if Options.opt.print_ast0 {
@@ -439,7 +436,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
                 Ast_pp.pprint_mod(minfo)
             }
         }
-        val modules_used = ", ".join(Ast.all_modules_sorted.map(Ast.pp))
+        val modules_used = ", ".join([: for m_idx <- Ast.all_modules_sorted {Ast.pp(Ast.get_module_name(m_idx))} :])
         val parsing_complete = clrmsg(MsgBlue, "Parsing complete")
         pr_verbose(f"{parsing_complete}. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)

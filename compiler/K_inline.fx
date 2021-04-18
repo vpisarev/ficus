@@ -41,7 +41,7 @@ type func_info_t =
 type subst_map_t = (id_t, atom_t) Hashmap.t
 type fir_map_t = (id_t, func_info_t ref) Hashmap.t
 
-fun find_recursive_funcs(km_name: id_t, top_code: kcode_t): kcode_t
+fun find_recursive_funcs(km_idx: int, top_code: kcode_t): kcode_t
 {
     val idset0 = empty_id_hashset(1)
     var all_called: idset_hashmap_t = Hashmap.empty(256, noid, idset0, hash)
@@ -55,8 +55,10 @@ fun find_recursive_funcs(km_name: id_t, top_code: kcode_t): kcode_t
         match e {
         | KDefFun (ref {kf_name, kf_body, kf_scope, kf_loc}) =>
             val saved_called = curr_called
-            val m = curr_module(kf_scope, kf_loc)
-            if m != km_name { throw compile_err(kf_loc, f"function from module {pp(m)} resides in module {pp(km_name)}")}
+            val m = curr_module(kf_scope)
+            if m != km_idx { throw compile_err(kf_loc,
+                f"function from module {pp(get_module_name(m))} \
+                resides in module {pp(get_module_name(km_idx))}")}
             curr_called = empty_id_hashset(8)
             fold_recfun_kexp_(kf_body, callb)
             all_called.add(kf_name, curr_called)
@@ -64,9 +66,7 @@ fun find_recursive_funcs(km_name: id_t, top_code: kcode_t): kcode_t
         | KExpCall (f, _, (_, loc)) =>
             match kinfo_(f, loc) {
             | KFun (ref {kf_scope, kf_loc}) =>
-                if curr_module(kf_scope, kf_loc) == km_name {
-                    curr_called.add(f)
-                }
+                if curr_module(kf_scope) == km_idx { curr_called.add(f) }
             | _ => {}
             }
         | _ => fold_kexp(e, callb)
@@ -101,8 +101,8 @@ fun find_recursive_funcs(km_name: id_t, top_code: kcode_t): kcode_t
 
 fun find_recursive_funcs_all(kmods: kmodule_t list) =
     [: for km <- kmods {
-        val {km_name, km_top} = km
-        val new_top = find_recursive_funcs(km_name, km_top)
+        val {km_idx, km_top} = km
+        val new_top = find_recursive_funcs(km_idx, km_top)
         km.{km_top=new_top}
     } :]
 
@@ -164,7 +164,7 @@ fun calc_exp_size(e: kexp_t)
 
 // Generates new names for all locally defined names in an expression.
 // This is what we need to do when we do inline expansion of a function call
-fun subst_names(e: kexp_t, subst_map0: subst_map_t, rename_locals: bool): kexp_t
+fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename_locals: bool): kexp_t
 {
     val subst_map =
     if !rename_locals {
@@ -176,8 +176,8 @@ fun subst_names(e: kexp_t, subst_map0: subst_map_t, rename_locals: bool): kexp_t
         decl_set.app(fun (i) {
             match kinfo_(i, loc) {
             | KVal kv =>
-                val {kv_name, kv_typ, kv_flags, kv_loc} = kv
-                val new_name = dup_idk(kv_name)
+                val { kv_name, kv_typ, kv_flags, kv_loc } = kv
+                val new_name = dup_idk(km_idx, kv_name)
                 val _ =  create_kdefval(new_name, kv_typ, kv_flags, None, [], kv_loc)
                 subst_map.add(kv_name, AtomId(new_name))
             | _ => {}
@@ -207,7 +207,7 @@ fun subst_names(e: kexp_t, subst_map0: subst_map_t, rename_locals: bool): kexp_t
 }
 
 // The core of inline expansion
-fun expand_call(e: kexp_t) =
+fun expand_call(km_idx: int, e: kexp_t) =
     match e {
     | KExpCall (f, real_args, (_, loc)) =>
         match kinfo_(f, loc) {
@@ -224,7 +224,7 @@ fun expand_call(e: kexp_t) =
             if have_bad_defs {
                 (e, false)
             } else {
-                (subst_names(kf_body, subst_map, true), true)
+                (subst_names(km_idx, kf_body, subst_map, true), true)
             }
         | _ => (e, false)
         }
@@ -245,6 +245,8 @@ fun inline_some(kmods: kmodule_t list)
 
     var curr_fi = gen_default_func_info(0)
     var curr_km_main = false
+    var curr_km_idx = -1
+
     fun fold_finfo_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
         match a {
         | AtomId f =>
@@ -270,7 +272,9 @@ fun inline_some(kmods: kmodule_t list)
         | KDefFun (ref {kf_name, kf_body, kf_flags, kf_loc}) =>
             val saved_fi = curr_fi
             val idx = all_funcs_info.find_idx_or_insert(kf_name)
-            val can_inline = !kf_flags.fun_flag_recursive && !kf_flags.fun_flag_ccode && kf_flags.fun_flag_ctor == CtorNone
+            val can_inline = !kf_flags.fun_flag_recursive &&
+                             !kf_flags.fun_flag_ccode &&
+                             kf_flags.fun_flag_ctor == CtorNone
             val fsize = calc_exp_size(kf_body)
             var r_fi = all_funcs_info.table[idx].data
             if r_fi->fi_nrefs == -1 {
@@ -302,7 +306,8 @@ fun inline_some(kmods: kmodule_t list)
             val r_fi =
             match all_funcs_info.find_opt(kf_name) {
             | Some r_fi => r_fi
-            | _ => throw compile_err(kf_loc, "inline: function is not found the collected function database")
+            | _ => throw compile_err(kf_loc,
+                "inline: function is not found the collected function database")
             }
             curr_fi = r_fi
             val new_body = inline_kexp_(kf_body, callb)
@@ -315,7 +320,9 @@ fun inline_some(kmods: kmodule_t list)
             when curr_km_main || curr_fi->fi_name != noid =>
             match all_funcs_info.find_opt(f) {
             | Some r_fi =>
-                val {fi_can_inline=caller_can_inline, fi_size=caller_size, fi_flags=caller_flags} = *curr_fi
+                val { fi_can_inline=caller_can_inline,
+                      fi_size=caller_size,
+                      fi_flags=caller_flags } = *curr_fi
                 val caller_is_inline = caller_can_inline && caller_flags.fun_flag_inline
                 val inline_thresh = Options.opt.inline_thresh
                 val max_caller_size =
@@ -328,7 +335,7 @@ fun inline_some(kmods: kmodule_t list)
                 val new_size = caller_size + fi_size - real_args.length() - 1
                 val new_size = max(new_size, 0)
                 if fi_can_inline && (fi_size <= f_max_size && new_size <= max_caller_size) {
-                    val (new_e, inlined) = expand_call(e)
+                    val (new_e, inlined) = expand_call(curr_km_idx, e)
                     if inlined { *curr_fi = curr_fi->{fi_size=new_size} }
                     new_e
                 } else { e }
@@ -349,10 +356,11 @@ fun inline_some(kmods: kmodule_t list)
         }
     }
     [: for km <- kmods {
-        val {km_top, km_main} = km
+        val {km_top, km_idx, km_main} = km
         //val global_size = calc_exp_size(code2kexp(km_top, noloc))
         curr_fi = gen_default_func_info(0)
         curr_km_main = km_main
+        curr_km_idx = km_idx
         val new_top = [: for e <- km_top { inline_kexp_(e, inline_callb) } :]
         km.{km_top=new_top}
     } :]

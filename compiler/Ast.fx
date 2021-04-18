@@ -5,72 +5,61 @@
 
 //////// ficus abstract syntax definition + helper structures and functions ////////
 
-import Map, Set, Hashmap, Hashset
+import Dynvec, Map, Set, Hashmap, Hashset
 import File, Filename, Options, Sys
 
 /*
-   we represent all the symbols in the code using Id.t variant, essentially, by a pair of integers <a, b>.
-   Initially, b=0 (i.e. id ~ Id.Name(a)) and it represents the textual name as it occurs in the code, e.g. "i".
-   "a" is the index in the array of strings that contains identifiers occured in the program.
-   Later on, the type checker resolves the names and replaces b with
-   some unique integer representing the particular object ("i") referenced in the particular
-   context. For example:
+   All the symbols (except for modules) in the code are represented using id_t, a tuple of integers <m, i, j>.
+   Initially, m=j=0, which means that the symbol is simply a textual name which is not resolved yet.
+   After type checker the id=<0,i,0> is transformed to some <m, i, j> which means symbol #j from module #m.
+   The index 'i' of the original symbolic name is preserved for displaying, debugging and some other operations.
+   Module m=0 is reserved for textual names, i.e. it's a dummy module, which contains nothing but the symbol table.
+   Module m=1 is reserved for ficus runtime.
+   Module m=2 is used for the main parsed module supplied by the user, the main program.
+   A few next values of m: 3, 4, 5, ... are usually used for 'Builtins' and other standard modules
+   that are imported by default (unless user specified -no-preamble option) and the subsequent values
+   are used for other, explicitly imported modules, stardard or not. Note that the modules are not
+   topologically sorted by a.
 
-   val i = 5
-   val i = i + 1
-
-   =>
-
-   val i@100 : int = 5
-   val i@101 : int = i@100 : int + 1
-
-   (here i@100 means Id.Val(i, 100) and foo@101 means Id.Val(foo, 357), where i & foo are indices in the global
-    table of symbolic names that corresponds to the abstract names "i", "foo", whereas 100 and 357
-    are indices in the same table corresponding to the actually defined values.
-    Internally the compiler uses unique names i@100 etc. to distinguish between values
-    with the same name, but it uses the original names in error messages; it also uses the original name (i)
-    to search for the symbol, i.e. Id.Name(f) can be matched with Id.Val(f, 12345) or Id.Val(f, 9876) or
-    some other Id.Val(f, ...), depending on the current environment).
-
-   There is a big global table of all symbols, so for each symbol we can retrieve its properties:
-   the original name, inferred type, when and how it's defined.
-
-   Sometimes we need a temporary value or a temporary function, i.e. when we do not have a user-specified
-   name. In this case we use some common prefix, e.g. "t" for intermediate results in complex expressions,
-   "lambda" for anonymous functions etc. but we represent the id as Id.Temp(prefix, N). Such id is
-   always displayed as prefix@@N, e.g. "t@@1000" or "lambda@@777", and it can only be matched with
-   itself (prefix@@N). That is, it's really unique.
+   Each module has its own symbol table so that some compiler stages can process different modules
+   independently, in parallel. Besides, a separate symbol table for each module helps to make the produced
+   K-form and the subsequent C code more or less independent from the other modules (of course, compiler
+   can inline some calls of functions from other modules, so there may be some dependency, not it's still
+   much weaker than in the case of a single global symbol table).
 */
 
-type id_t = IdName: int | IdVal: (int, int) | IdTemp: (int, int)
+type id_t = {m: int; i: int; j: int}
 
-fun cmp_id(a: id_t, b: id_t) {
-    | (IdName(a1), IdName(b1)) => a1 <=> b1
-    | (IdVal(a1, a2), IdVal(b1, b2)) =>
-        val d1 = a1 <=> b1
-        if d1 != 0 {d1} else {a2 <=> b2}
-    | (IdTemp(a1, a2), IdTemp(b1, b2)) =>
-        val d1 = a1 <=> b1
-        if d1 != 0 {d1} else {a2 <=> b2}
-    | _ => a.__tag__ <=> b.__tag__
+fun cmp_id(a: id_t, b: id_t)
+{
+    val dm = a.m <=> b.m
+    if dm != 0 {dm} else {
+        val di = a.i <=> b.i
+        if di != 0 {di} else {a.j <=> b.j}
+    }
 }
 
 operator <=> (a: id_t, b: id_t) = cmp_id(a, b)
+operator == (a: id_t, b: id_t) = (a.m == b.m) & (a.i == b.i) && ((a.m == 0) | (a.j == b.j))
 
-operator == (a: id_t, b: id_t) = a.__tag__ == b.__tag__ &&
-    (match (a, b) {
-    | (IdName(a), IdName(b)) => a == b
-    | (IdVal(a, ia), IdVal(b, ib)) => a == b && ia == ib
-    | (IdTemp(a, ia), IdTemp(b, ib)) => a == b && ia == ib
-    | _ => false
-    })
-
-val noid = IdName(0)
-val dummyid = IdName(1)
-val __fold_result_id__ = IdName(2)
-val __tag_id__ = IdName(3)
-val __self__ = IdName(4)
-val __builtin_ids__ = [: "", "_", "__fold_result__", "__tag__", "self" :]
+fun std_id(name: string, bn: (string list, int)): (id_t, (string list, int)) =
+    (id_t {m=0, i=bn.1, j=0}, (name :: bn.0, bn.1+1))
+val builtin_ids = ([], 0)
+val (noid, builtin_ids) = std_id("<noid>", builtin_ids)
+val (dummyid, builtin_ids) = std_id("_", builtin_ids)
+val (std__fold_result__, builtin_ids) = std_id("__fold_result__", builtin_ids)
+val (std__tag__, builtin_ids) = std_id("__tag__", builtin_ids)
+val (std__self__, builtin_ids) = std_id("__self__", builtin_ids)
+val (std__lambda__, builtin_ids) = std_id("__lambda__", builtin_ids)
+val (std__pat__, builtin_ids) = std_id("__pat__", builtin_ids)
+val (std__Names__, builtin_ids) = std_id("__Names__", builtin_ids)
+val (std__Runtime__, builtin_ids) = std_id("__Runtime__", builtin_ids)
+val (std__Builtins__, builtin_ids) = std_id("Builtins", builtin_ids)
+val (std__List__, builtin_ids) = std_id("List", builtin_ids)
+val (std__String__, builtin_ids) = std_id("String", builtin_ids)
+val (std__Char__, builtin_ids) = std_id("Char", builtin_ids)
+val (std__Array__, builtin_ids) = std_id("Array", builtin_ids)
+val (std__Vector__, builtin_ids) = std_id("Vector", builtin_ids)
 
 type scope_t =
     | ScBlock: int
@@ -82,31 +71,31 @@ type scope_t =
     | ScFun: id_t
     | ScClass: id_t
     | ScInterface: id_t
-    | ScModule: id_t
+    | ScModule: int
 
 type loc_t =
 {
-    fname: id_t;
+    m_idx: int;
     line0: int;
     col0: int;
     line1: int;
     col1: int
 }
 
-val noloc = loc_t {fname=noid, line0=0, col0=0, line1=0, col1=0}
+val noloc = loc_t {m_idx=-1, line0=0, col0=0, line1=0, col1=0}
 
 fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
     fold loc = default_loc for loci <- llist {
-        val {fname, line0, col0, line1, col1} = loc
-        val {fname=loci_fname,
+        val {m_idx, line0, col0, line1, col1} = loc
+        val {m_idx=loci_m_idx,
             line0=loci_line0, col0=loci_col0,
             line1=loci_line1, col1=loci_col1} = loci
-        if fname != loci_fname {
-            if fname == noid { loci } else { loc }
+        if m_idx != loci_m_idx {
+            if m_idx <= 0 { loci } else { loc }
         } else {
             loc_t
             {
-                fname=fname,
+                m_idx=m_idx,
                 line0=min(line0, loci_line0),
                 col0=min(col0, loci_col0),
                 line1=max(line1, loci_line1),
@@ -116,16 +105,14 @@ fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
     }
 
 fun get_start_loc(loc: loc_t) {
-    val {fname, line0, col0} = loc
-    loc_t {fname=fname, line0=line0, col0=col0, line1=line0, col1=col0}
+    val {m_idx, line0, col0} = loc
+    loc_t {m_idx=m_idx, line0=line0, col0=col0, line1=line0, col1=col0}
 }
 
 fun get_end_loc(loc: loc_t) {
-    val {fname, line1, col1} = loc
-    loc_t {fname=fname, line0=line1, col0=col1, line1=line1, col1=col1}
+    val {m_idx, line1, col1} = loc
+    loc_t {m_idx=m_idx, line0=line1, col0=col1, line1=line1, col1=col1}
 }
-
-fun string(loc: loc_t) = f"{pp(loc.fname)}:{loc.line0}:{loc.col0}"
 
 exception CompileError: (loc_t, string)
 exception PropagateCompileError
@@ -277,7 +264,7 @@ val max_zerobuf_size = 256
 
 type var_flags_t =
 {
-    var_flag_object_from: id_t;
+    var_flag_class_from: int=0;
     var_flag_record: bool = false;
     var_flag_recursive: bool = false;
     var_flag_have_tag: bool = false;
@@ -285,7 +272,7 @@ type var_flags_t =
     var_flag_opt: bool = false
 }
 
-fun default_variant_flags() = var_flags_t {var_flag_object_from=noid}
+fun default_variant_flags() = var_flags_t {}
 
 type ctx_t = (typ_t, loc_t)
 
@@ -328,8 +315,8 @@ type exp_t =
     | DefTyp: deftyp_t ref
     | DefVariant: defvariant_t ref
     | DefInterface: definterface_t ref
-    | DirImport: ((id_t, id_t) list, loc_t)
-    | DirImportFrom: (id_t, id_t list, loc_t)
+    | DirImport: ((int, id_t) list, loc_t)
+    | DirImportFrom: (int, id_t list, loc_t)
     | DirPragma: (string list, loc_t)
 
 type pat_t =
@@ -378,15 +365,9 @@ val empty_idset: idset_t = Set.empty(cmp_id)
 val empty_idmap: idmap_t = Map.empty(cmp_id)
 
 type id_hashset_t = id_t Hashset.t
-fun hash((x, y, z): (int, int, int)) =
-    (((FNV_1A_OFFSET ^ uint64(x))*FNV_1A_PRIME ^ uint64(y))*
-        FNV_1A_PRIME ^ uint64(z))*FNV_1A_PRIME
-fun hash(n: id_t): hash_t
-{
-    | IdName(i) => hash(i)
-    | IdVal(i, j) => hash((1, i, j))
-    | IdTemp(i, j) => hash((2, i, j))
-}
+fun hash(i: id_t): hash_t =
+    (((FNV_1A_OFFSET ^ uint64(i.m))*FNV_1A_PRIME ^ uint64(i.i))*FNV_1A_PRIME ^ uint64(i.j))
+
 fun empty_id_hashset(size0: int): id_t Hashset.t = Hashset.empty(size0, noid, hash)
 fun id_hashset(s: idset_t) {
     val hs = empty_id_hashset(s.size*2)
@@ -457,14 +438,6 @@ type definterface_t =
     di_scope: scope_t list; di_loc: loc_t
 }
 
-type defmodule_t =
-{
-    dm_name: id_t; dm_filename: string;
-    dm_defs: exp_t list; dm_idx: int;
-    dm_deps: id_t list; dm_env: env_t;
-    dm_parsed: bool; dm_real: bool
-}
-
 type pragmas_t =
 {
     pragma_cpp: bool;
@@ -479,88 +452,65 @@ type id_info_t =
     | IdTyp: deftyp_t ref
     | IdVariant: defvariant_t ref
     | IdInterface: definterface_t ref
-    | IdModule: defmodule_t ref
+    | IdModule: int
 
-type 't dynvec_t =
+type defmodule_t =
 {
-    count: int;
-    data: 't [];
-    val0: 't
+    dm_name: id_t
+    dm_filename: string
+    dm_idx: int
+    dm_real: bool
+    var dm_defs: exp_t list
+    var dm_deps: int list
+    var dm_env: env_t
+    var dm_parsed: bool
+    var dm_block_idx: int
+    dm_table: id_info_t Dynvec.t
 }
-
-fun dynvec_create(v0: 't): 't dynvec_t ref =
-    ref (dynvec_t {
-    count=0,
-    data=[],
-    val0=v0
-    })
-
-fun dynvec_clear(v: 't dynvec_t ref)
-{
-    v->count = 0
-    v->data = []
-}
-
-fun dynvec_isempty(v: 't dynvec_t ref) = v->count == 0
-
-fun dynvec_init(v: 't dynvec_t ref, n: int) {
-    v->count = n
-    v->data = array(n, v->val0)
-}
-
-fun dynvec_push(v: 't dynvec_t ref) {
-    val sz = size(v->data)
-    val n0 = v->count
-    if sz <= n0 {
-        val n1 = max(n0, 128)*3/2
-        val old_data = v->data
-        val new_data = [| for i <- 0:n1 { if i < n0 {old_data[i]} else {v->val0} } |]
-        v->data = new_data
+fun default_module() =
+    defmodule_t {
+        dm_name=noid, dm_filename="",
+        dm_defs=[], dm_idx=-1,
+        dm_deps=[], dm_env=empty_env,
+        dm_parsed=false, dm_real=false,
+        dm_table=Dynvec.create(0, IdNone),
+        dm_block_idx=-1
     }
-    val i = n0
-    v->count = n0 + 1
-    i
-}
-
-fun dynvec_get(v: 't dynvec_t ref, i: int) = v->data[i]
-fun dynvec_set(v: 't dynvec_t ref, i: int, newv: 't) = v->data[i] = newv
 
 var freeze_ids = false
-val all_ids = dynvec_create(IdNone)
+var all_names = Dynvec.create(0, "")
 var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1, hash)
-val all_strings = dynvec_create("")
-var all_modules: (string, id_t) Hashmap.t = Hashmap.empty(1024, "", noid, hash)
-var all_modules_sorted: id_t list = []
+var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1, hash)
+var all_modules: defmodule_t [] = []
+var all_modules_sorted: int list = []
 var builtin_exceptions = empty_idmap
 var all_compile_errs: exn list = []
 var all_compile_err_ctx: string list = []
-var block_scope_idx = -1
 
-fun new_id_idx() {
+fun string(loc: loc_t)
+{
+    val fname = if loc.m_idx >= 0 {all_modules[loc.m_idx].dm_filename} else {"unknown"}
+    f"{fname}:{loc.line0}:{loc.col0}"
+}
+
+fun new_id_idx(midx: int) {
     if freeze_ids {
         throw Fail("internal error: attempt to add new AST id during K-phase or C code generation phase")
     }
-    dynvec_push(all_ids)
+    all_modules[midx].dm_table.push()
 }
 
 fun dump_id(i: id_t) {
-    | IdName(i) => f"IdName({i})"
-    | IdVal(i, j) => f"IdVal({i}, {j})"
-    | IdTemp(i, j) => f"IdTemp({i}, {j})"
+    | {m=0, i} => f"name({i})"
+    | {m, i, j} => f"id({m}, {i}, {j})"
 }
 
 fun id2str_(i: id_t, pp: bool): string =
     if i == noid { "<noid>" }
     else {
-        val (infix, prefix, suffix) =
-        match i {
-        | IdName(i) => ("", i, -1)
-        | IdVal(i, j) => ("@", i, j)
-        | IdTemp(i, j) => ("@@", i, j)
-        }
-        val prefix = dynvec_get(all_strings, prefix)
-        if pp || suffix < 0 { prefix }
-        else { f"{prefix}{infix}{suffix}" }
+        val prefix = all_names.data[i.i]
+        if pp || i.m == 0 { prefix }
+        else { f"{prefix}@{i.j}" }
     }
 
 fun string(i: id_t): string = id2str_(i, false)
@@ -601,31 +551,22 @@ fun pr_verbose(str: string): void =
         File.stdout.flush()
     }
 
-fun id2prefix(i: id_t) {
-    val prefix =
-        match i {
-        | IdName(i) => i
-        | IdVal(i, _) => i
-        | IdTemp(i, _) => i
-        }
-    dynvec_get(all_strings, prefix)
-}
-
-fun id2idx_(i: id_t, loc: loc_t) =
-    match i {
-    | IdVal(_, i_real) => i_real
-    | IdTemp(_, i_real) => i_real
-    | IdName _ => throw compile_err(loc,
-        f"attempt to query information about unresolved '{i}'")
+fun id2idx_(id: id_t, loc: loc_t) =
+    match id {
+    | {m=0, i} => throw compile_err(loc,
+        f"attempt to query information about unresolved '{pp(id)}'")
+    | {m, j} => (m, j)
     }
 
 fun id2idx(i: id_t) = id2idx_(i, noloc)
-fun id_info(i: id_t, loc: loc_t) = dynvec_get(all_ids, id2idx_(i, loc))
-
-fun is_unique_id(i: id_t) {
-    | IdName _ => false
-    | _ => true
+fun id_info(i: id_t, loc: loc_t) =
+    if i.m == 0 {IdNone}
+    else {
+        val (m, j) = id2idx_(i, loc)
+        all_modules[m].dm_table.data[j]
     }
+
+fun is_unique_id(i: id_t) = i.m > 0
 
 fun get_id_prefix(s: string): int
 {
@@ -633,45 +574,34 @@ fun get_id_prefix(s: string): int
     val idx = all_strhash.table[h_idx].data
     if idx >= 0 { idx }
     else {
-        val idx = dynvec_push(all_strings)
+        val idx = all_names.push(s)
         all_strhash.table[h_idx].data = idx
-        dynvec_set(all_strings, idx, s)
         idx
     }
 }
 
-fun get_id(s: string): id_t {
-    val i = get_id_prefix(s)
-    IdName(i)
+fun get_id(s: string): id_t =
+    id_t {m=0, i=get_id_prefix(s), j=0}
+fun gen_id(m_idx: int, s: string) =
+    id_t {m=m_idx, i=get_id_prefix(s), j=new_id_idx(m_idx)}
+
+fun dup_id(m_idx: int, old_id: id_t)
+{
+    val j = new_id_idx(m_idx)
+    id_t {m=m_idx, i=old_id.i, j=j}
 }
 
-fun gen_temp_id(s: string): id_t {
-    val i_name = get_id_prefix(s)
-    val i_real = new_id_idx()
-    IdTemp(i_name, i_real)
+fun get_orig_id(i: id_t) = id_t {m=0, i=i.i, j=0}
+
+fun set_id_entry(i: id_t, n: id_info_t)
+{
+    val loc = get_idinfo_loc(n)
+    val (m_idx, idx) = id2idx_(i, loc)
+    all_modules[m_idx].dm_table.data[idx] = n
 }
 
-fun dup_id(old_id: id_t) {
-    val k = new_id_idx()
-    match old_id {
-    | IdName(i) => IdVal(i, k)
-    | IdVal(i, _) => IdVal(i, k)
-    | IdTemp(i, _) => IdTemp(i, k)
-    }
-}
-
-fun get_orig_id(i: id_t) {
-    | IdName _ => i
-    | IdVal(i, _) => IdName(i)
-    | IdTemp(_, _) => i
-}
-
-fun set_id_entry(i: id_t, n: id_info_t) {
-    val idx = id2idx(i)
-    dynvec_set(all_ids, idx, n)
-}
-
-fun get_exp_ctx(e: exp_t) {
+fun get_exp_ctx(e: exp_t)
+{
     | ExpNop(l) => (TypVoid, l)
     | ExpBreak(_, l) => (TypVoid, l)
     | ExpContinue(l) => (TypVoid, l)
@@ -738,58 +668,49 @@ fun pat_skip_typed(p: pat_t) {
     | _ => p
 }
 
-fun get_module(m: id_t) =
-    match id_info(m, noloc) {
-    | IdModule(minfo) => minfo
-    | _ => throw Fail(f"internal error in process_all: {pp(m)} is not a module")
+fun get_module(m: int): defmodule_t = all_modules[m]
+fun get_module(m_id: id_t, loc: loc_t): defmodule_t =
+    match id_info(m_id, loc) {
+    | IdModule m_idx => get_module(m_idx)
+    | _ => throw compile_err(loc, f"identifier '{pp(m_id)}' is not a module")
     }
+fun get_module_name(m: int): id_t = all_modules[m].dm_name
+fun get_module_env(m: int): env_t = all_modules[m].dm_env
 
-fun get_module_env(m: id_t) = get_module(m)->dm_env
-
-fun find_module(mname_id: id_t, mfname: string) =
-    match all_modules.find_opt(mfname) {
-    | Some(m_id) => get_module(m_id)
+fun find_module(mname: id_t, mfname: string) =
+    match all_modules_hash.find_opt(mfname) {
+    | Some(m_idx) => m_idx
     | _ =>
-        val m_fresh_id = dup_id(mname_id)
-        val newmodule = ref (defmodule_t {
-            dm_name=m_fresh_id, dm_filename=mfname,
-            dm_idx=-1, dm_defs=[], dm_deps=[],
-            dm_env=empty_env, dm_parsed=false, dm_real=true
-        })
-        set_id_entry(m_fresh_id, IdModule(newmodule))
-        all_modules.add(mfname, m_fresh_id)
-        newmodule
+        val m_idx = size(all_modules)
+        val newmodule = defmodule_t {
+            dm_name=mname, dm_filename=mfname,
+            dm_idx=m_idx, dm_defs=[], dm_deps=[],
+            dm_env=empty_env, dm_parsed=false, dm_real=true,
+            dm_table=Dynvec.create(0, IdNone),
+            dm_block_idx=-1
+        }
+        val saved_modules = all_modules
+        all_modules =
+            [| for i <- 0:m_idx+1 {
+                if i < m_idx { saved_modules[i] } else { newmodule }
+            } |]
+        all_modules_hash.add(mfname, m_idx)
+        m_idx
     }
 
-fun new_block_scope() {
-    block_scope_idx += 1
-    ScBlock(block_scope_idx)
+fun new_block_idx(m_idx: int)
+{
+    val new_block_idx = all_modules[m_idx].dm_block_idx + 1
+    all_modules[m_idx].dm_block_idx = new_block_idx
+    new_block_idx
 }
 
-fun new_loop_scope(nested: bool) {
-    block_scope_idx += 1
-    ScLoop(nested, block_scope_idx)
-}
-
-fun new_map_scope() {
-    block_scope_idx += 1
-    ScMap(block_scope_idx)
-}
-
-fun new_arr_map_scope() {
-    block_scope_idx += 1
-    ScArrMap(block_scope_idx)
-}
-
-fun new_fold_scope() {
-    block_scope_idx += 1
-    ScFold(block_scope_idx)
-}
-
-fun new_try_scope() {
-    block_scope_idx += 1
-    ScTry(block_scope_idx)
-}
+fun new_block_scope(m_idx: int) = ScBlock(new_block_idx(m_idx))
+fun new_loop_scope(m_idx: int, nested: bool) = ScLoop(nested, new_block_idx(m_idx))
+fun new_map_scope(m_idx: int) = ScMap(new_block_idx(m_idx))
+fun new_arr_map_scope(m_idx: int) = ScArrMap(new_block_idx(m_idx))
+fun new_fold_scope(m_idx: int) = ScFold(new_block_idx(m_idx))
+fun new_try_scope(m_idx: int) = ScTry(new_block_idx(m_idx))
 
 fun scope2str(sc: scope_t list) {
     | scj :: rest =>
@@ -814,19 +735,19 @@ fun scope2str(sc: scope_t list) {
     | _ => ""
 }
 
-fun get_module_scope(sc: scope_t list, loc: loc_t) =
-    match sc {
+fun get_module_scope(sc: scope_t list)
+{
     | ScModule _ :: _ => sc
-    | _ :: rest => get_module_scope(rest, loc)
+    | _ :: rest => get_module_scope(rest)
     | _ => []
-    }
+}
 
-fun curr_module(sc: scope_t list, loc: loc_t): id_t =
-    match get_module_scope(sc, loc) {
+fun curr_module(sc: scope_t list)
+{
     | ScModule(m) :: _ => m
-    | _ :: rest => curr_module(rest, loc)
-    | _ => noid
-    }
+    | _ :: rest => curr_module(rest)
+    | _ => -1
+}
 
 fun is_global_scope(sc: scope_t list)
 {
@@ -837,15 +758,15 @@ fun is_global_scope(sc: scope_t list)
 
 fun get_qualified_name(name: string, sc: scope_t list) =
     match sc {
-    | (ScModule(m) :: _) when pp(m) == "Builtins" => name
-    | ScModule(m) :: r => get_qualified_name(pp(m) + "." + name, r)
+    | (ScModule(m) :: _) when pp(get_module_name(m)) == "Builtins" => name
+    | ScModule(m) :: r => get_qualified_name(pp(get_module_name(m)) + "." + name, r)
     | [] => name
     | sc_top :: r => get_qualified_name(name, r)
     }
 
 // out of 'A.B.C.D' we leave just 'D'. just 'D' stays 'D'
-fun get_bare_name(n: id_t): id_t {
-
+fun get_bare_name(n: id_t): id_t
+{
     val n_str = pp(n)
     val dot_pos = n_str.rfind('.')
     get_id(if dot_pos < 0 {n_str} else {n_str[dot_pos+1:]})
@@ -900,10 +821,8 @@ fun get_idinfo_private_flag(id_info: id_info_t) {
     }
 
 fun get_id_typ(i: id_t, loc: loc_t) =
-    match i {
-    | IdName _ => make_new_typ()
-    | _ => get_idinfo_typ(id_info(i, loc), loc)
-    }
+    if i.m == 0 {make_new_typ()}
+    else {get_idinfo_typ(id_info(i, loc), loc)}
 
 fun get_lit_typ(l: lit_t) {
     | LitInt _ => TypInt
@@ -1639,14 +1558,18 @@ fun same_or_parent(iface: id_t, maybe_parent: id_t, loc: loc_t) =
 fun init_all(): void
 {
     freeze_ids = false
-    dynvec_clear(all_ids)
+    all_names.clear()
     all_strhash.clear()
-    for i <- __builtin_ids__ { ignore(get_id(i)) }
+    for i <- builtin_ids.0.rev() { ignore(get_id(i)) }
     ignore(fname_always_import())
-    all_modules.clear()
+    all_modules_hash.clear()
+    all_modules = []
+    ignore(find_module(std__Names__, "<Names>"))
+    ignore(find_module(std__Runtime__, "<Runtime>"))
+    all_modules[0].dm_real = false
+    all_modules[1].dm_real = false
     all_modules_sorted = []
     builtin_exceptions = Map.empty(cmp_id)
     all_compile_errs = []
     all_compile_err_ctx = []
-    block_scope_idx = -1
 }

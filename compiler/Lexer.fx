@@ -29,7 +29,7 @@ type token_t =
     | SHIFT_RIGHT | SHIFT_LEFT | BITWISE_AND | BITWISE_XOR | BITWISE_OR
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
     | DOT_EQUAL | AUG_BINOP: Ast.binary_t | SPACESHIP | CMP: Ast.cmpop_t
-    | DOT_SPACESHIP | DOT_CMP: Ast.cmpop_t | SAME | FOLD_RESULT
+    | DOT_SPACESHIP | DOT_CMP: Ast.cmpop_t | SAME | RESERVED: string
 
 fun ne2u(ne: bool, s: string) = if ne {s} else {s.decapitalize()}
 
@@ -132,7 +132,7 @@ fun tok2str(t: token_t)
     | DOT_SPACESHIP => ("DOT_SPACESHIP", ".<=>")
     | DOT_CMP(c) => (f"DOT_CMP({c})", f".{c}")
     | SAME => ("SAME", "===")
-    | FOLD_RESULT => ("FOLD_RESULT", "__fold_result__")
+    | RESERVED(s) => val r = f"<reserved({s})>"; (r, r)
 }
 
 type stream_t =
@@ -489,8 +489,10 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
         }
         if (c == 92) { // backslash
             if ((i+1 < len && ptr[i+1] == 10) || (i+2 < len && ptr[i+1] == 13 && ptr[i+2] == 10)) {
+                delta_lines++;
                 for (++i; i < len; i++) {
                     c = ptr[i];
+                    if (c == 10) delta_lines++;
                     if (c != 32 && c != 9 && c != 10 && c != 13)
                         break;
                 }
@@ -633,7 +635,10 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0), hash,
     ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)), ("throw", (THROW, 2)),
     ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)),
     ("type", (TYPE, 2)), ("val", (VAL, 2)), ("var", (VAR, 2)), ("when", (WHEN, 1)),
-    ("while", (WHILE(true), 2)), ("with", (WITH, 1)), ("__fold_result__", (FOLD_RESULT, -1)),
+    ("while", (WHILE(true), 2)), ("with", (WITH, 1)),
+    ("__fold_result__", (RESERVED("__fold_result__"), -1)),
+    ("__lambda__", (RESERVED("__lambda__"), -1)),
+    ("__pat__", (RESERVED("__pat__"), -1)),
     ("@ccode", (CCODE, 2)),  ("@data", (DATA("binary"), 2)),
     ("@data_le", (DATA("binary_le"), 2)), ("@data_be", (DATA("binary_be"), 2)),
     ("@inline", (INLINE, 2)), ("@nothrow", (NOTHROW, 2)),

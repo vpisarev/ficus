@@ -180,7 +180,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             val is_ccode = match e { | KExpCCode _ => true | _ => false }
             match e {
             | KExpAtom (AtomId fr, _)
-                when get_orig_id(fr) == __fold_result_id__ =>
+                when get_orig_id(fr) == std__fold_result__ =>
                     fold_pairs = fold_pairs.add(i, fr)
             | _ => {}
             }
@@ -265,7 +265,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             // and __fold_result__ = res might be in the second branch
             // this effect-less assignment will be eliminated
             | KExpAssign (fr, AtomId r, loc)
-                when get_orig_id(fr) == __fold_result_id__ &&
+                when get_orig_id(fr) == std__fold_result__ &&
                 fold_pairs.find_opt(r).value_or(noid) == fr =>
                 result
 

@@ -17,7 +17,7 @@
 from Ast import *
 from K_form import *
 
-fun tailrec2loop(kf: kdeffun_t ref): void
+fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
 {
     val {kf_name, kf_args, kf_rt=rt, kf_body, kf_loc} = *kf
     fun have_tailrec_calls_(e: kexp_t): bool =
@@ -43,7 +43,7 @@ fun tailrec2loop(kf: kdeffun_t ref): void
         | KTypVoid  =>
             (noid, [])
         | _ =>
-            val res_n = gen_temp_idk("res")
+            val res_n = gen_idk(km_idx, "res")
             val a0 = match is_ktyp_scalar(rt) {
                      | true => AtomLit(KLitInt(0L))
                      | _ => AtomLit(KLitNil(rt))
@@ -104,8 +104,8 @@ fun tailrec2loop(kf: kdeffun_t ref): void
         val fold new_kf_args = [], trec_args = [], f_init_code = f_init_code,
             loop_init_code = [] for (ai, ti) <- kf_args {
             val dv0 = get_kval(ai, kf_loc)
-            val a1i = dup_idk(ai)
-            val a2i = dup_idk(ai)
+            val a1i = dup_idk(km_idx, ai)
+            val a2i = dup_idk(km_idx, ai)
             val dv1 = dv0.{kv_name=a1i}
             set_idk_entry(a1i, KVal(dv1))
             val a1i_as_exp = KExpAtom(AtomId(a1i), (ti, kf_loc))
@@ -130,7 +130,7 @@ fun tailrec2loop(kf: kdeffun_t ref): void
                 if res_n == noid {
                     (final_e, [])
                 } else {
-                    val (final_atom, code) = kexp2atom("result", final_e, !is_ktyp_scalar(ktyp), [])
+                    val (final_atom, code) = kexp2atom(km_idx, "result", final_e, !is_ktyp_scalar(ktyp), [])
                     (KExpAssign(res_n, final_atom, kloc), code)
                 }
                 val code = KExpBreak(kloc) :: final_e :: code
@@ -188,12 +188,13 @@ fun tailrec2loop(kf: kdeffun_t ref): void
 
 fun tailrec2loops_all(kmods: kmodule_t list): kmodule_t list
 {
+    var curr_km_idx = -1
     fun tailrec2loop_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
     fun tailrec2loop_kexp_(e: kexp_t, callb: k_fold_callb_t)
     {
         fold_kexp(e, callb)
         match e {
-        | KDefFun kf => tailrec2loop(kf)
+        | KDefFun kf => tailrec2loop(curr_km_idx, kf)
         | _ => {}
         }
     }
@@ -205,7 +206,8 @@ fun tailrec2loops_all(kmods: kmodule_t list): kmodule_t list
         kcb_fold_kexp=Some(tailrec2loop_kexp_)
     }
 
-    for {km_top} <- kmods {
+    for {km_idx, km_top} <- kmods {
+        curr_km_idx = km_idx
         for e <- km_top {
             tailrec2loop_kexp_(e, trec2loop_callb)
         }

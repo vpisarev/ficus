@@ -20,7 +20,7 @@ fun mangle_mname(m: string): string = m.replace(".", "__")
 fun mangle_scope(sc: scope_t list, result: string, loc: loc_t) =
     match sc {
     | ScModule m :: rest =>
-        val mstr = mangle_mname(pp(m))
+        val mstr = mangle_mname(pp(get_module_name(m)))
         val result = if mstr == "Builtins" { result }
                      else if result == "" { mstr }
                      else { mstr + "__" + result }
@@ -243,6 +243,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
 fun mangle_all(kmods: kmodule_t list) {
     val mangle_map: mangle_map_t = Hashmap.empty(1024, "", noid, hash)
     var curr_top_code: kcode_t = []
+    var curr_km_idx = -1
 
     fun create_gen_typ(t: ktyp_t, name_prefix: string, loc: loc_t)
     {
@@ -250,7 +251,7 @@ fun mangle_all(kmods: kmodule_t list) {
         match mangle_map.find_opt(cname) {
         | Some(i) => KTypName(i)
         | _ =>
-            val i = gen_temp_idk(name_prefix)
+            val i = gen_idk(curr_km_idx, name_prefix)
             val kt = ref (kdeftyp_t {
                 kt_name=i, kt_cname=add_fx(cname),
                 kt_targs=[], kt_typ=t, kt_props=None,
@@ -449,8 +450,9 @@ fun mangle_all(kmods: kmodule_t list) {
     }
 
     [: for km <- kmods {
-        val {km_name, km_top} = km
+        val {km_idx, km_top} = km
         curr_top_code = []
+        curr_km_idx = km_idx
         for e <- km_top {
             val e = walk_kexp_n_mangle(e, walk_n_mangle_callb)
             match e {
@@ -461,7 +463,7 @@ fun mangle_all(kmods: kmodule_t list) {
                     if !(kv_flags.val_flag_temp || kv_flags.val_flag_tempref) {
                         set_idk_entry(n, KVal(kv.{
                             kv_flags=kv_flags.{
-                                val_flag_global=ScModule(km_name) :: []}}))
+                                val_flag_global=ScModule(km_idx) :: []}}))
                         mangle_id_typ(n, loc, walk_n_mangle_callb)
                     }
                 }

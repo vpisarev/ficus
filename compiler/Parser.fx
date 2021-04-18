@@ -14,29 +14,28 @@ exception ParseError: (loc_t, string)
 
 type parser_ctx_t =
 {
-    module_id: id_t;
+    m_idx: int;
     filename: string;
-    deps: id_t list;
+    deps: int list;
     inc_dirs: string list;
     default_loc: loc_t;
 }
 
-var parser_ctx = parser_ctx_t { module_id=noid, filename="", deps=[], inc_dirs=[], default_loc=noloc }
+var parser_ctx = parser_ctx_t { m_idx=-1, filename="", deps=[], inc_dirs=[], default_loc=noloc }
 
-fun add_to_imported_modules(mname_id: id_t, loc: loc_t): id_t {
-    val mname = pp(mname_id)
-    val mfname = mname.replace(".", Filename.dir_sep()) + ".fx"
+fun add_to_imported_modules(mname: id_t, loc: loc_t): int
+{
+    val mfname = pp(mname).replace(".", Filename.dir_sep()) + ".fx"
     val mfname =
         try Sys.locate_file(mfname, parser_ctx.inc_dirs)
         catch {
         | NotFoundError => throw ParseError(loc, f"module {mname} is not found")
         }
-    val dep_minfo = find_module(mname_id, mfname)
-    val mname_unique_id = dep_minfo->dm_name
-    if !parser_ctx.deps.mem(mname_unique_id) {
-        parser_ctx.deps = mname_unique_id :: parser_ctx.deps
+    val m_idx = find_module(mname, mfname)
+    if !parser_ctx.deps.mem(m_idx) {
+        parser_ctx.deps = m_idx :: parser_ctx.deps
     }
-    mname_unique_id
+    m_idx
 }
 
 type kw_mode_t = KwNone | KwMaybe | KwMust
@@ -73,12 +72,13 @@ fun get_string(lit: lit_t, loc: loc_t): string =
     | _ => throw ParseError(loc, "string literal is expected")
     }
 
-fun plist2exp(pl: pat_t list, prefix: string, loc: loc_t): (pat_t list, exp_t)
+fun plist2exp(pl: pat_t list, loc: loc_t): (pat_t list, exp_t)
 {
+    val prefix = "__pat__"
     fun pat2exp_(p: pat_t): (pat_t, exp_t)
     {
         | PatAny(loc) =>
-            val param_id = gen_temp_id(prefix)
+            val param_id = gen_id(parser_ctx.m_idx, prefix)
             (PatIdent(param_id, loc), make_ident(param_id, loc))
         | PatIdent(i, loc) => (p, make_ident(i, loc))
         | PatAs(p, i, loc) => (p, make_ident(i, loc))
@@ -87,7 +87,7 @@ fun plist2exp(pl: pat_t list, prefix: string, loc: loc_t): (pat_t list, exp_t)
             (PatTyped(p, t, loc), e)
         | _ =>
             val loc = get_pat_loc(p)
-            val param_id = gen_temp_id(prefix)
+            val param_id = gen_id(parser_ctx.m_idx, prefix)
             (PatAs(p, param_id, loc), make_ident(param_id, loc))
     }
     val fold (plist, elist) = ([], []) for p <- pl {
@@ -111,7 +111,7 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
         }
 
     val acc_loc = get_pat_loc(fold_pat)
-    val fr_id = __fold_result_id__
+    val fr_id = std__fold_result__
     val fr_exp = make_ident(fr_id, acc_loc)
     val (nested_fors, fold_body) = unpack_for_(for_exp, [])
     val global_flags = nested_fors.last().2
@@ -575,7 +575,7 @@ fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
                         | ExpLit(_, _) | ExpIdent(_, _) => (e, code)
                         | _ =>
                             val e_loc = get_exp_loc(e)
-                            val tmp_id = gen_temp_id("t")
+                            val tmp_id = gen_id(parser_ctx.m_idx, "t")
                             val tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e,
                                                   default_tempval_flags(), e_loc)
                             (make_ident(tmp_id, e_loc), tmp_decl :: code)
@@ -730,7 +730,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
         | (VAR, _) :: _ | (PRIVATE, _) :: (VAR, _) :: _ =>
             val (ts, defvals) = parse_defvals(ts)
             extend_expseq_(ts, defvals + result)
-        | (OBJECT, _) :: (TYPE, _) :: _ | (TYPE, _) :: _ =>
+        | (OBJECT, _) :: (TYPE, _) :: _ | (TYPE, _) :: _ | (CLASS, _) :: _ =>
             val (ts, deftyp) = parse_deftype(ts)
             extend_expseq_(ts, deftyp :: result)
         | (INTERFACE, l1) :: rest =>
@@ -763,8 +763,8 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
         | (IMPORT(f), l1) :: rest =>
             if !toplevel {throw parse_err(ts, "import directives can only be used at the module level")}
             if !f { throw parse_err(ts, "';' or newline is expected before the import directive") }
-            fun parse_imported_(ts: tklist_t, expect_comma: bool, result: (id_t, id_t) list):
-                (tklist_t, (id_t, id_t) list) =
+            fun parse_imported_(ts: tklist_t, expect_comma: bool, result: (int, id_t) list):
+                (tklist_t, (int, id_t) list) =
                 match ts {
                 | (COMMA, _) :: rest =>
                     if expect_comma {parse_imported_(rest, false, result)}
@@ -896,12 +896,12 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
     // process the nested for.
     val fold (glob_el, nested_fors) = ([], []) for (ppe_list, loc) <- nested_fors {
         val fold (glob_el, for_cl_, idx_pat) = (glob_el, [], PatAny(loc)) for (p, idxp, e) <- ppe_list {
-            val (p_, p_e) = plist2exp(p :: [], "x", get_pat_loc(p))
+            val (p_, p_e) = plist2exp(p :: [], get_pat_loc(p))
             val p = p_.hd()
             match (idxp, idx_pat) {
             | (PatAny _, idx_pat) => (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
             | (_, PatAny _) =>
-                val (idxp, idxp_e) = plist2exp(idxp :: [], "i", get_pat_loc(idxp))
+                val (idxp, idxp_e) = plist2exp(idxp :: [], get_pat_loc(idxp))
                 (idxp_e :: p_e :: glob_el, (p, e) :: for_cl_, idxp.hd())
             | _ => throw ParseError(get_pat_loc(idxp), "@ is used more than once, which does not make sence and is not supported")
             }
@@ -1074,7 +1074,7 @@ fun get_opname(t: token_t): id_t =
 fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
 {
     var is_private = false, is_pure = false, is_nothrow = false, is_inline = false
-    var vts = ts, iface = noid, fname = noid, loc = noloc
+    var vts = ts, class_id = noid, fname = noid, loc = noloc
 
     while true {
         match vts {
@@ -1093,14 +1093,14 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
         | (FUN, l1) :: (IDENT(_, i), _) :: _ =>
             val (ts, f) = parse_dot_ident(vts.tl(), false, "")
             val dot_pos = f.rfind('.')
-            val (iface_, fname_) =
+            val (class_id_, fname_) =
                 if dot_pos >= 0 {(get_id(f[:dot_pos]), get_id(f[dot_pos+1:]))}
                 else {(noid, get_id(f))}
             vts = match ts {
                 | (LPAREN(_), _) :: rest => rest
                 | _ => throw parse_err(ts, "'(' is expected after function name")
                 }
-            iface = iface_; fname = fname_; loc = l1; break
+            class_id = class_id_; fname = fname_; loc = l1; break
         | (OPERATOR, l1) :: (t, l2) :: (LPAREN _, _) :: rest =>
             vts = rest; fname = get_opname(t); loc = l1
             if fname == noid { throw ParseError(l2, "invalid operator name") }
@@ -1117,7 +1117,7 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
             fun_flag_nothrow=is_nothrow,
             fun_flag_pure=if is_pure {1} else {-1},
             fun_flag_inline=is_inline,
-            fun_flag_method_of=iface,
+            fun_flag_method_of=class_id,
             fun_flag_have_keywords=have_keywords}, loc)
 }
 
@@ -1153,11 +1153,11 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
             val (ts, final_e) = parse_block(rest)
             val eloc = l1
             val ll = loclist2loc([: eloc, fe_loc :], eloc)
-            val tmp = gen_temp_id("v")
+            val tmp = gen_id(parser_ctx.m_idx, "v")
             val def_tmp = DefVal(PatIdent(tmp, eloc), e, default_tempval_flags(), l1)
             val try_block = (def_tmp :: exp2expseq(final_e)) + (make_ident(tmp, l1) :: [])
             val try_block = expseq2exp(try_block, l1)
-            val some_exn = gen_temp_id("e")
+            val some_exn = gen_id(parser_ctx.m_idx, "e")
             val some_exn_pat = PatIdent(some_exn, fe_loc)
             val rethrow_exn = ExpThrow(ExpIdent(some_exn, (TypExn, fe_loc)), fe_loc)
             val catch_block = exp2expseq(dup_exp(final_e)) + (rethrow_exn :: [])
@@ -1196,7 +1196,7 @@ fun parse_lambda(ts: tklist_t): (tklist_t, exp_t)
         | _ => throw parse_err(ts, "lambda function (starting with 'fun (') is expected")
     }
     val (ts, params, rt, prologue, have_keywords) = parse_fun_params(ts)
-    val fname = gen_temp_id("lambda")
+    val fname = dup_id(parser_ctx.m_idx, std__lambda__)
     val fname_exp = make_ident(fname, loc)
     val (ts, df) = parse_body_and_make_fun(ts, fname, params, rt, prologue,
         default_fun_flags().{fun_flag_private=true, fun_flag_have_keywords=have_keywords}, loc)
@@ -1255,7 +1255,7 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
     if kw_params == [] {
         (ts, params, rt, [], false)
     } else {
-        val recarg = gen_temp_id("__kwargs__")
+        val recarg = gen_id(parser_ctx.m_idx, "__kwargs__")
         val relems = [: for (i, t, v0, _) <- kw_params { (default_arg_flags(), i, t, v0) } :]
         val rectyp = TypRecord(ref (relems, true))
         val (_, _, _, loc) = kw_params.hd()
@@ -1278,7 +1278,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
             (ts, params, body, fflags)
         | (LBRACE, l1) :: (BAR, _) :: _ =>
             val (ts, cases) = parse_match_cases(ts)
-            val (params, match_arg) = plist2exp(params, "param", l1)
+            val (params, match_arg) = plist2exp(params, l1)
             val match_e = ExpMatch(match_arg, cases, make_new_ctx(l1))
             (ts, params, match_e, fflags)
         | (LBRACE, _) :: _ =>
@@ -1751,14 +1751,11 @@ fun have_mutable(cases: (id_t, typ_t) list) =
 
 fun parse_deftype(ts: tklist_t)
 {
-    val (ts, object_type_module) = match ts {
-        | (OBJECT, _) :: rest => (rest, parser_ctx.module_id)
-        | _ => (ts, noid)
-        }
-
-    val ts = match ts {
-        | (TYPE, _) :: rest => rest
-        | _ => throw parse_err(ts, "'type' is expected")
+    val (ts, class_module) = match ts {
+        | (OBJECT, _) :: (TYPE, _) :: rest => (rest, parser_ctx.m_idx)
+        | (CLASS, _) :: rest => (rest, parser_ctx.m_idx)
+        | (TYPE, _) :: rest => (rest, 0)
+        | _ => throw parse_err(ts, "'type' or 'object type' or 'class' is expected")
         }
 
     fun parse_tyvars_(ts: tklist_t, expect_comma: bool, tyvars: id_t list, loc: loc_t): (tklist_t, id_t list) =
@@ -1797,7 +1794,8 @@ fun parse_deftype(ts: tklist_t)
         }
     val ts = match ts {
         | (EQUAL, _) :: rest => rest
-        | _ => throw parse_err(ts, "'=' is expected")
+        | (LBRACE, _) :: _ => ts
+        | _ => throw parse_err(ts, "'=' or '{' is expected")
         }
 
     //println(f"type definition body({tok2str(ts)})\n")
@@ -1811,7 +1809,7 @@ fun parse_deftype(ts: tklist_t)
             dvar_alias = make_new_typ(),
             dvar_flags = default_variant_flags().{
                 var_flag_record=ifaces == [] && !hm,
-                var_flag_object_from=object_type_module,
+                var_flag_class_from=class_module,
                 var_flag_have_mutable=hm
                 },
             dvar_cases = cases,
@@ -1857,7 +1855,7 @@ fun parse_deftype(ts: tklist_t)
             dvar_alias = make_new_typ(),
             dvar_flags = default_variant_flags().{
                 var_flag_record=false,
-                var_flag_object_from=object_type_module,
+                var_flag_class_from=class_module,
                 var_flag_have_mutable=have_mutable(cases)
                 },
             dvar_cases = cases,
@@ -1869,7 +1867,7 @@ fun parse_deftype(ts: tklist_t)
         })
         (ts, DefVariant(dvar))
     | _ =>
-        if object_type_module != noid { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot be 'object type'") }
+        if class_module > 0 { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot be 'object type'") }
         if ifaces != [] { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot implement any interfaces") }
         val (ts, t) = parse_typespec(ts)
         val dt = ref (deftyp_t {
@@ -1919,21 +1917,23 @@ fun parse_iface(ts: tklist_t, loc: loc_t)
     (ts, DefInterface(iface))
 }
 
-fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list): bool
+fun parse(m_idx: int, preamble: token_t list, inc_dirs: string list): bool
 {
-    val fname_id = get_id(dm->dm_filename)
+    var dm = all_modules[m_idx]
+    val fname_id = get_id(dm.dm_filename)
     parser_ctx = parser_ctx_t {
-        module_id = dm->dm_name,
-        filename = dm->dm_filename,
+        m_idx = dm.dm_idx,
+        filename = dm.dm_filename,
         deps = [],
         inc_dirs = inc_dirs,
-        default_loc = loc_t { fname=fname_id, line0=1, col0=1, line1=1, col1=1 }
+        default_loc = loc_t { m_idx=dm.dm_idx, line0=1, col0=1, line1=1, col1=1 }
     }
 
     // protect the module from repeated processing in the case of Lexer/Parser error
-    dm->dm_parsed = true
+    dm.dm_parsed = true
+    all_modules[m_idx].dm_parsed = true
 
-    val strm = try Lexer.make_stream(dm->dm_filename)
+    val strm = try Lexer.make_stream(dm.dm_filename)
         catch {
         | FileOpenError => throw ParseError(parser_ctx.default_loc, "cannot open file")
         | IOError => throw ParseError(parser_ctx.default_loc, "cannot read file")
@@ -1946,7 +1946,7 @@ fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list
     while true {
         val more_tokens = lexer()
         for (t, (lineno, col)) <- more_tokens {
-            val loc = Ast.loc_t {fname=fname_id, line0=lineno, col0=col, line1=lineno, col1=col}
+            val loc = Ast.loc_t {m_idx=dm.dm_idx, line0=lineno, col0=col, line1=lineno, col1=col}
             if Options.opt.print_tokens {
                 if lineno != prev_lineno {
                     print(f"\n{pp(fname_id)}:{lineno}: ")
@@ -1963,7 +1963,8 @@ fun parse(dm: Ast.defmodule_t ref, preamble: token_t list, inc_dirs: string list
     }
     all_tokens = all_tokens.rev()
     for t <- preamble.rev() { all_tokens = (t, parser_ctx.default_loc) :: all_tokens }
-    dm->dm_defs = parse_expseq(all_tokens, true).1
-    dm->dm_deps = parser_ctx.deps.rev()
+    dm.dm_defs = parse_expseq(all_tokens, true).1
+    dm.dm_deps = parser_ctx.deps.rev()
+    all_modules[m_idx] = dm
     true
 }

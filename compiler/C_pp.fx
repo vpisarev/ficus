@@ -173,7 +173,7 @@ type assoc_t = AssocLeft | AssocRight
     | CTypName n =>
         match (fwd_mode, n) {
         | (false, _) => pp_id(pp, n, loc)
-        | (true, IdName _) => pp_id(pp, n, loc)
+        | (true, {m=0}) => pp_id(pp, n, loc)
         | _ =>
             match cinfo_(n, loc) {
             | CTyp (ref {ct_typ=CTypRawPtr (_, CTypStruct (Some struct_id, _))}) =>

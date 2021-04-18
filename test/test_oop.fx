@@ -44,7 +44,7 @@ interface IShape : IBase
     fun getcolors(): shape_colors_t*/
 }
 
-object type Rect : IShape, IClone =
+class Rect : IShape, IClone
 {
     var cx: float
     var cy: float
@@ -55,7 +55,7 @@ object type Rect : IShape, IClone =
     var sc: shape_colors_t
 }
 
-object type Ellipse : IClone, IShape =
+class Ellipse : IClone, IShape
 {
     var cx: float
     var cy: float

@@ -11,7 +11,7 @@ from C_form import *
 
 fun gen_std_fun(cname: string, argtyps: ctyp_t list, rt: ctyp_t)
 {
-    val n = gen_temp_idc(cname)
+    val n = gen_idc(1, cname)
     val cf = ref (cdeffun_t {
         cf_name=n,
         cf_rt=rt,
@@ -30,7 +30,7 @@ fun gen_std_fun(cname: string, argtyps: ctyp_t list, rt: ctyp_t)
 
 fun gen_std_macro(cname: string, nargs: int)
 {
-    val n = gen_temp_idc(cname)
+    val n = gen_idc(1, cname)
     val cm = ref (cdefmacro_t {cm_name=n, cm_cname=cname,
                 cm_args=[: for i <- 0:nargs {noid} :],
                 cm_body=[], cm_scope=[], cm_loc=noloc})

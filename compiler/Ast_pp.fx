@@ -3,7 +3,7 @@
     See ficus/LICENSE for the licensing terms
 */
 
-//////// ficus abstract syntax definition + helper structures and functions ////////
+//////// ficus AST pretty-printer ////////
 
 from Ast import *
 import PP, File
@@ -13,11 +13,7 @@ val default_indent = 3
 val pp_ = Ast.pp
 
 fun pplit(pp: PP.t, x: lit_t) = pp.str(lit2str(x))
-fun ppid(pp: PP.t, x: id_t) = pp.str(
-    match x {
-    | IdName(0) => "<noid>"
-    | _ => string(x)
-    })
+fun ppid(pp: PP.t, x: id_t) = pp.str(string(x))
 
 fun pprint_val_flags(pp: PP.t, flags: val_flags_t): void
 {
@@ -200,7 +196,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
     | DefFun df =>
         val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_loc} = *df
         val ctor_id = df_flags.fun_flag_ctor
-        val objtyp = df_flags.fun_flag_method_of
+        val class_id = df_flags.fun_flag_method_of
         pp.begin(0); pp.begin(); pprint_fun_flags(pp, df_flags)
         match df_templ_args {
         | [] => {}
@@ -208,10 +204,10 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.begin(); pp.str("template<"); pprint_templ_args(pp, df_templ_args)
             pp.str(">"); pp.end(); pp.space()
         }
-        if objtyp == noid {
+        if class_id == noid {
             pp.str("fun "); ppid(pp, df_name)
         } else {
-            pp.str("method "); ppid(pp, objtyp); pp.str("."); ppid(pp, df_name)
+            pp.str("method "); ppid(pp, class_id); pp.str("."); ppid(pp, df_name)
         }
         pp.str("("); pp.cut();
         for p@i <- df_args {
@@ -310,11 +306,13 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         pp.begin(); pp.str("import"); pp.space()
         for (n1, n2)@i <- ml {
             if i > 0 { pp.str(","); pp.space() }
+            val n1 = all_modules[n1].dm_name
             ppid(pp, n1)
             if n1 != n2 { pp.str(" as "); ppid(pp, n2) }
         }
         pp.end()
     | DirImportFrom(m, nl, _) =>
+        val m = all_modules[m].dm_name
         pp.begin(); pp.str("from "); ppid(pp, m); pp.space(); pp.str("import"); pp.space()
         match nl {
         | [] => pp.str("*")
@@ -638,10 +636,10 @@ fun pprint_pat(pp: PP.t, p: pat_t)
     pppat(p)
 }
 
-fun pprint_mod(dm: defmodule_t ref)
+fun pprint_mod(dm: defmodule_t)
 {
     File.stdout.flush()
-    val {dm_filename, dm_defs, dm_deps} = *dm
+    val {dm_filename, dm_defs, dm_deps} = dm
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.beginv()
     pp.cut()
@@ -655,7 +653,7 @@ fun pprint_mod(dm: defmodule_t ref)
         | _ =>
             for n@i <- dm_deps {
                 if i > 0 { pp.str(","); pp.space() }
-                ppid(pp, n)
+                ppid(pp, all_modules[n].dm_name)
             }
         }
     }

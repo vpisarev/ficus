@@ -339,13 +339,17 @@ fun cfold_dealias(kmods: kmodule_t list)
                             must be immutable, otherwise the change may affect the semantics
                         */
                         if !is_mutable(n2, loc2) {
-                            match (n, n2) {
+                            val {kv_flags=flags} = get_kval(n, loc)
+                            val {kv_flags=flags2} = get_kval(n2, loc2)
+
+                            match (flags.val_flag_temp | flags.val_flag_tempref,
+                                   flags2.val_flag_temp | flags2.val_flag_tempref) {
                             /* if a temporary value is assigned to the user-defined value,
                                we'd better keep the user-specified name so
                                that the output code is cleaner (and sometimes enabling such subsitution may
                                cause problems with separate compilation of .c sources, when
                                the temporary value suddenly needs to be accessed from another module. */
-                            | (IdVal _, IdTemp _) => e
+                            | (false, true) => e
                             | _ => ida_map.add(n, AtomId(n2)); KExpNop(loc)
                             }
                         } else { e }
@@ -371,10 +375,14 @@ fun cfold_dealias(kmods: kmodule_t list)
             fun try_cfold_str_concat(a: atom_t, res_al: atom_t list): atom_t list =
                 match (a, res_al) {
                 // the order s2 + s1 is correct here, since we operate on reversed lists
-                | (AtomLit(KLitChar c1), AtomLit(KLitChar c2) :: rest) => AtomLit(KLitString(string(c2) + c1)) :: rest
-                | (AtomLit(KLitString s1), AtomLit(KLitChar c2) :: rest) => AtomLit(KLitString(c2 + s1)) :: rest
-                | (AtomLit(KLitChar c1), AtomLit(KLitString s2) :: rest) => AtomLit(KLitString(s2 + c1)) :: rest
-                | (AtomLit(KLitString s1), AtomLit(KLitString s2) :: rest) => AtomLit(KLitString(s2 + s1)) :: rest
+                | (AtomLit(KLitChar c1), AtomLit(KLitChar c2) :: rest) =>
+                    AtomLit(KLitString(string(c2) + c1)) :: rest
+                | (AtomLit(KLitString s1), AtomLit(KLitChar c2) :: rest) =>
+                    AtomLit(KLitString(c2 + s1)) :: rest
+                | (AtomLit(KLitChar c1), AtomLit(KLitString s2) :: rest) =>
+                    AtomLit(KLitString(s2 + c1)) :: rest
+                | (AtomLit(KLitString s1), AtomLit(KLitString s2) :: rest) =>
+                    AtomLit(KLitString(s2 + s1)) :: rest
                 | (AtomLit(KLitString("")), res_al) => res_al
                 | (a, AtomLit(KLitString("")) :: rest) => a :: rest
                 | _ => a :: res_al
@@ -406,7 +414,8 @@ fun cfold_dealias(kmods: kmodule_t list)
             | Some al =>
                 val n = al.length()
                 if !(0 <= idx && idx < n) {
-                    throw compile_err(loc, f"index ({idx}) is out of range [0, {n - 1}] during tuple access optimization")
+                    throw compile_err(loc,
+                        f"index ({idx}) is out of range [0, {n - 1}] during tuple access optimization")
                 }
                 KExpAtom(al.nth(idx), (res_t, loc))
             | _ => e

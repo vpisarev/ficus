@@ -87,7 +87,7 @@ type affine_def_t = (kexp_t, bool, idx_class_t)
 type affine_map_t = (id_t, affine_def_t) Map.t
 type loop_idx_map_t = (id_t, loop_idx_t) Map.t
 
-fun optimize_idx_checks(topcode: kcode_t)
+fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
 {
     fun is_loop_invariant(a, inloop_vals, loc): bool =
         match a {
@@ -132,7 +132,9 @@ fun optimize_idx_checks(topcode: kcode_t)
                (unless i is defined outside of the loop, but we
                catch such cases separately) */
             | KDefVal (i, KExpBinary (bop, a, b, (t, _)) as rhs, loc)
-                  when t == KTypInt && (bop == OpAdd || bop == OpSub || bop == OpMul) && !is_mutable(i, loc) =>
+                when t == KTypInt &&
+                    (bop == OpAdd || bop == OpSub || bop == OpMul) &&
+                    !is_mutable(i, loc) =>
                 affine_defs = affine_defs.add(i, (rhs, false, IdxUnknown))
             | _ => fold_kexp(e, callb)
             }
@@ -223,11 +225,11 @@ fun optimize_idx_checks(topcode: kcode_t)
                     IdxSimple(noid, AtomLit(KLitInt(0L)), a)
                 } else {
                     /*
-                       We analyze array index expression (including nested sub-expressions) and try to bring it to
-                       the form 'array_idx = alpha*loop_idx + beta', where alpha and beta are loop invariants
-                       and loop_idx is a loop index. The partial case is alpha == 0, i.e. when
-                       array_idx is loop invariant. When we do it, we may need to introduce some temporary values
-                       and redefine array_idx
+                       We analyze array index expression (including nested sub-expressions) and
+                       try to bring it to the form 'array_idx = alpha*loop_idx + beta',
+                       where alpha and beta are loop invariants and loop_idx is a loop index.
+                       The partial case is alpha == 0, i.e. when array_idx is loop invariant.
+                       When we do it, we may need to introduce some temporary values and redefine array_idx.
                     */
                     match affine_defs.find_opt(i) {
                     | Some((KExpBinary (bop, a_, b_, (t, loc)) as idx_exp0, _, IdxUnknown)) =>
@@ -258,8 +260,8 @@ fun optimize_idx_checks(topcode: kcode_t)
                         val (idx_exp, update_exp, idx_class) =
                         match (c_idx, c_scale_exp, c_shift_exp) {
                         | (c_idx, Some c_scale_exp, Some c_shift_exp) =>
-                            val (c_scale, code) = kexp2atom("t", c_scale_exp, false, pre_for_code)
-                            val (c_shift, code) = kexp2atom("t", c_shift_exp, false, code)
+                            val (c_scale, code) = kexp2atom(km_idx, "t", c_scale_exp, false, pre_for_code)
+                            val (c_shift, code) = kexp2atom(km_idx, "t", c_shift_exp, false, code)
                             pre_for_code = code
                             val (idx_scaled_exp, idx_code) =
                             if c_idx == noid {
@@ -269,7 +271,8 @@ fun optimize_idx_checks(topcode: kcode_t)
                                 match c_shift {
                                 | AtomLit(KLitInt 0L) => (idx_scaled_exp, [])
                                 | _ =>
-                                    val (idx_scaled, idx_code) = kexp2atom("t", idx_scaled_exp, false, [])
+                                    val (idx_scaled, idx_code) = kexp2atom(km_idx, "t",
+                                                                    idx_scaled_exp, false, [])
                                     val idx_scaled_exp = optimized_add(idx_scaled, c_shift, loc)
                                     (idx_scaled_exp, idx_code)
                                 }
@@ -299,8 +302,10 @@ fun optimize_idx_checks(topcode: kcode_t)
         fun optimize_idx_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
         fun optimize_idx_kexp(e: kexp_t, callb: k_callb_t) =
             match e {
-            | KExpIf (c, then_e, else_e, ctx) => KExpIf(optimize_idx_kexp(c, callb), then_e, else_e, ctx)
-            | KExpAt (AtomId arr, BorderNone, InterpNone, idxs, (t, loc)) when is_loop_invariant(AtomId(arr), inloop_vals, loc) =>
+            | KExpIf (c, then_e, else_e, ctx) =>
+                KExpIf(optimize_idx_kexp(c, callb), then_e, else_e, ctx)
+            | KExpAt (AtomId arr, BorderNone, InterpNone, idxs, (t, loc))
+                when is_loop_invariant(AtomId(arr), inloop_vals, loc) =>
                 val fold have_ranges = false, have_slow = false for idx <- idxs {
                     match idx {
                     | DomainRange _ => (true, have_slow)
@@ -388,7 +393,7 @@ fun optimize_idx_checks(topcode: kcode_t)
             match arrsz_env.assoc_opt((arr, i)) {
             | Some arrsz => (arrsz, arrsz_env, pre_for_code)
             | _ =>
-                val arrsz = gen_temp_idk("sz")
+                val arrsz = gen_idk(km_idx, "sz")
                 val arrsz_exp = KExpIntrin(IntrinGetSize,
                     [: AtomId(arr), AtomLit(KLitInt(int64(i))) :], (KTypInt, for_loc))
                 val pre_for_code = create_kdefval(arrsz, KTypInt, default_tempval_flags(),
@@ -405,9 +410,11 @@ fun optimize_idx_checks(topcode: kcode_t)
                 for {aa_arr, aa_dim, aa_class} <- all_accesses {
                 match aa_class {
                 | IdxSimple (i, scale, shift) =>
-                    val (arrsz, arrsz_env, pre_for_code) = get_arrsz(aa_arr, aa_dim, arrsz_env, pre_for_code)
+                    val (arrsz, arrsz_env, pre_for_code) =
+                        get_arrsz(aa_arr, aa_dim, arrsz_env, pre_for_code)
                     if i == noid {
-                        val check_idx_exp = KExpIntrin(IntrinCheckIdx, [: AtomId(arrsz), shift :], (KTypVoid, for_loc))
+                        val check_idx_exp = KExpIntrin(IntrinCheckIdx,
+                            [: AtomId(arrsz), shift :], (KTypVoid, for_loc))
                         (arrsz_env, check_idx_exp :: pre_for_code)
                     } else {
                         val (a, b, delta, arrsz_env, pre_for_code) =
@@ -419,10 +426,13 @@ fun optimize_idx_checks(topcode: kcode_t)
                             val b = AtomId(arrsz2)
                             val delta = AtomLit(KLitInt(1L))
                             (a, b, delta, arrsz_env, pre_for_code)
-                        | _ => throw compile_err(for_loc, f"fast_idx: index '{idk2str(i, for_loc)}' is not found in the loop_idx, but it should be there")
+                        | _ => throw compile_err(for_loc, f"fast_idx: index '{idk2str(i, for_loc)}' \
+                                                is not found in the loop_idx, but it should be there")
                         }
                         val check_idx_range_exp =
-                        KExpIntrin(IntrinCheckIdxRange, [: AtomId(arrsz), a, b, delta, scale, shift :], (KTypVoid, for_loc))
+                        KExpIntrin( IntrinCheckIdxRange,
+                                    [: AtomId(arrsz), a, b, delta, scale, shift :],
+                                    (KTypVoid, for_loc) )
                         (arrsz_env, check_idx_range_exp :: pre_for_code)
                     }
                 | _ => (arrsz_env, pre_for_code)
@@ -445,11 +455,12 @@ fun optimize_idx_checks(topcode: kcode_t)
                 for i <- 0:N {
                     for j <- 0:i {
                         for k <- 0:j {
-                            foo(a[i, k]*b[k, j])// we want to
-                                                // put the check for the whole "i" range (0:N) outside of the outermost i-loop,
-                                                // instead of checking the k-loop-invariant "i" right before k-loop;
-                                                // and put the check for "j" range (0:i) outside of the j-loop
-                                                // instead of checking the k-loop-invariant "j" right before k-loop.
+                            // we want to
+                            // put the check for the whole "i" range (0:N) outside of the outermost i-loop,
+                            // instead of checking the k-loop-invariant "i" right before k-loop;
+                            // and put the check for "j" range (0:i) outside of the j-loop
+                            // instead of checking the k-loop-invariant "j" right before k-loop.
+                            foo(a[i, k]*b[k, j])
                         }
                     }
                 }
@@ -458,7 +469,8 @@ fun optimize_idx_checks(topcode: kcode_t)
             val e =
             match for_clauses {
             | (KExpNop _, idl, idxl) :: [] => KExpFor(idl, idxl, body, flags, loc)
-            | _ => throw compile_err(loc, "fast_idx: unexpected output of optimize_for; should output single for_clause")
+            | _ => throw compile_err(loc,
+                "fast_idx: unexpected output of optimize_for; should output single for_clause")
             }
             rcode2kexp(e :: pre_for_code, loc)
             //print("after: "); KPP.pp_kexp(...); println()
@@ -482,7 +494,7 @@ fun optimize_idx_checks(topcode: kcode_t)
 
 fun optimize_idx_checks_all(kmods: kmodule_t list) =
     [: for km <- kmods {
-        val {km_top} = km
-        val new_top = optimize_idx_checks(km_top)
+        val {km_idx, km_top} = km
+        val new_top = optimize_idx_checks(km_idx, km_top)
         km.{km_top=new_top}
     } :]

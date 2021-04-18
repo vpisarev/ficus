@@ -25,22 +25,15 @@ fun rename_locals(cmods: cmodule_t list)
     var prefix_hash = empty_int_map(256)
 
     fun gen_cname(n: id_t) {
-        val prefix= match n {
-                    | IdName i => i
-                    | IdVal (i, j) => i
-                    | IdTemp (i, j) => i
-                    }
+        val prefix = n.i
         val idx = prefix_hash.find_idx_or_insert(prefix)
         val j1 = prefix_hash.table[idx].data + 1
         prefix_hash.table[idx].data = j1
-        val prefix = dynvec_get(all_strings, prefix)
-        f"{prefix}_{j1}"
+        f"{all_names.data[prefix]}_{j1}"
     }
 
     fun gen_cval_cname(n: id_t, loc: loc_t) =
-        match n {
-        | IdName _ => {}
-        | _ =>
+        if n.m > 0 {
             match cinfo_(n, loc) {
             | CVal cv =>
                 val {cv_cname} = cv
@@ -54,15 +47,13 @@ fun rename_locals(cmods: cmodule_t list)
 
     fun rename_cstmt(s: cstmt_t, callb: c_fold_callb_t) =
         match s {
-        | CDefVal(t, n, e_opt, loc) when
-            (match n { | IdName _ => false | _ => true}) =>
+        | CDefVal(t, n, e_opt, loc) when n.m > 0 =>
             match e_opt {
             | Some e => fold_cexp(e, callb)
             | _ => {}
             }
             gen_cval_cname(n, loc)
-        | CStmtLabel (n, loc) when
-            (match n { | IdName _ => false | _ => true}) =>
+        | CStmtLabel (n, loc) when n.m > 0 =>
             match cinfo_(n, loc) {
             | CLabel cl =>
                 val {cl_cname} = cl
@@ -104,9 +95,7 @@ fun rename_locals(cmods: cmodule_t list)
     for cmod <- cmods {
         val {cmod_ccode} = cmod
         for s <- cmod_ccode {
-            | CDefVal(_, n, _, loc) when
-                (match n { | IdName _ => false | _ => true}) =>
-                gen_cval_cname(n, loc)
+            | CDefVal(_, n, _, loc) when n.m > 0 => gen_cval_cname(n, loc)
             | _ => {}
         }
     }

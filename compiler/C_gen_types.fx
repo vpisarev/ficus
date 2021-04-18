@@ -263,6 +263,7 @@ fun convert_all_typs(kmods: kmodule_t list)
     var all_visited = empty_idset
     var all_var_enums: enum_map_t = Map.empty(cmp_id)
     var all_saved_rec_vars: ctyp_map_t = Map.empty(cmp_id)
+    var curr_cm_idx = -1
 
     fun add_fwd_decl(i: id_t, fwd_decl: bool, decl: cstmt_t) =
         if i != noid {
@@ -291,11 +292,11 @@ fun convert_all_typs(kmods: kmodule_t list)
         val ktp = K_annotate.get_ktprops(KTypName(tn), loc)
         val {ktp_ptr, ktp_pass_by_ref, ktp_custom_free, ktp_custom_copy} = ktp
         val (free_m, free_f) =
-            if ktp_custom_free { (noid, gen_temp_idc("free")) }
+            if ktp_custom_free { (noid, gen_idc(curr_cm_idx, "free")) }
             else { (noid, noid) }
         val (copy_m, copy_f) =
         if ktp_custom_copy {
-            (noid, gen_temp_idc("copy"))
+            (noid, gen_idc(curr_cm_idx, "copy"))
         } else if ktp_ptr {
             (std_FX_COPY_PTR, std_fx_copy_ptr)
         } else {
@@ -377,7 +378,7 @@ fun convert_all_typs(kmods: kmodule_t list)
         | _ =>
             val e_base_cname = pp(kvar_base_name) + "_"
             val e_cname = e_base_cname + "tag_t"
-            val e_id = gen_temp_idc(e_cname)
+            val e_id = gen_idc(curr_cm_idx, e_cname)
             val start_idx = if kvar_flags.var_flag_opt { 0 }
                             else { 1 }
             val ctx = (CTypCInt, kvar_loc)
@@ -519,7 +520,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 if ktp.ktp_complex {
                     val make_args = (fx_result_id, make_ptr(fx_result_ct),
                                     [: CArgPassByPtr, CArgRetVal :]) :: make_args
-                    val mktup_id = gen_temp_idc("mktup")
+                    val mktup_id = gen_idc(curr_cm_idx, "mktup")
                     val mktup_decl = ref (cdeffun_t {
                         cf_name=mktup_id, cf_args=make_args.rev(),
                         cf_rt=CTypVoid, cf_cname="_fx_make_" + tp_cname_wo_prefix,
@@ -568,7 +569,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 val mkrecl = if ktp.ktp_complex {
                     val make_args = (fx_result_id, make_ptr(fx_result_ct),
                                     [: CArgPassByPtr, CArgRetVal :]) :: make_args
-                    val mkrec_id = gen_temp_idc("mktup")
+                    val mkrec_id = gen_idc(curr_cm_idx, "mktup")
                     val mkrec_decl = ref (cdeffun_t {
                         cf_name=mkrec_id,
                         cf_args=make_args.rev(),
@@ -614,7 +615,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                         *freef_decl = freef_decl->{cf_body=free_code}
                         (noid, free_f)
                     }
-                val cons_id = gen_temp_idc("cons")
+                val cons_id = gen_idc(curr_cm_idx, "cons")
                 val make_list_m = make_id_exp(std_FX_MAKE_LIST_IMPL, kt_loc)
                 val (pass_by_ref, copy_hd_f) =
                     match get_copy_f(ct_hd, false, true, loc) {
@@ -669,7 +670,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                     *freef_decl = freef_decl->{cf_body=free_code}
                     (noid, free_f)
                 }
-                val mkref_id = gen_temp_idc("mkref")
+                val mkref_id = gen_idc(curr_cm_idx, "mkref")
                 val mkref_m = make_id_exp(std_FX_MAKE_REF_IMPL, kt_loc)
                 val (pass_by_ref, copy_data_f) =
                 match get_copy_f(ctyp, false, true, loc) {
@@ -814,7 +815,7 @@ fun convert_all_typs(kmods: kmodule_t list)
             *copyf_decl = copyf_decl->{cf_body=copy_code.rev()}
         | KInterface ki =>
             val {ki_name, ki_cname, ki_base, ki_id, ki_all_methods, ki_scope, ki_loc} = *ki
-            val vtbl_id = gen_idc(pp(ki_name)+"_vtbl_t")
+            val vtbl_id = gen_idc(curr_cm_idx, pp(ki_name)+"_vtbl_t")
             val vtbl_cname = K_mangle.remove_fx(ki_cname) + "_vtbl_t"
             val iface_decl = ref (cdefinterface_t {
                 ci_name=ki_name, ci_cname=ki_cname,
@@ -888,7 +889,8 @@ fun convert_all_typs(kmods: kmodule_t list)
             }
         }
     }
-    for {km_top} <- kmods {
+    for {km_idx, km_top} <- kmods {
+        curr_cm_idx = km_idx
         for e <- km_top {
             fold_n_cvt_kexp(e, fold_n_cvt_callb)
         }
@@ -931,14 +933,8 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
     fun used_ids_by_ccode(ccode: ccode_t, size0: int): id_hashset_t
     {
         var used_ids = empty_id_hashset(size0)
-        fun add_used_id(n: id_t, callb: c_fold_callb_t)
-        {
-            val ok= match n {
-                    | IdName _ => !pp(n).startswith("fx_")
-                    | _ => true
-                    }
-            if ok { used_ids.add(n) }
-        }
+        fun add_used_id(n: id_t, callb: c_fold_callb_t) =
+            if n.m > 0 || !pp(n).startswith("fx_") { used_ids.add(n) }
 
         fun used_ctyp(t: ctyp_t, callb: c_fold_callb_t)
         {

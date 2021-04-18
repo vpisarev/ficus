@@ -5,7 +5,7 @@
 
 /*
     This is implementation of Relaxed Radix Balanced Trees (RRB Trees)
-    and the immutable vector based on it.
+    and immutable vectors based on it.
 
     The implementation is derived from https://github.com/hypirion/c-rrb.
     Below is the original copyright.
