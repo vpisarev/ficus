@@ -339,17 +339,18 @@ fun cfold_dealias(kmods: kmodule_t list)
                             must be immutable, otherwise the change may affect the semantics
                         */
                         if !is_mutable(n2, loc2) {
-                            val {kv_flags=flags} = get_kval(n, loc)
-                            val {kv_flags=flags2} = get_kval(n2, loc2)
-
-                            match (flags.val_flag_temp | flags.val_flag_tempref,
-                                   flags2.val_flag_temp | flags2.val_flag_tempref) {
+                            val is_global_n = kv_flags.val_flag_global != []
+                            val is_global_n2 = match get_idk_scope(n2, loc2) {
+                                    | ScModule _ :: _ => true
+                                    | _ => false
+                                    }
+                            match (is_global_n, is_global_n2) {
                             /* if a temporary value is assigned to the user-defined value,
                                we'd better keep the user-specified name so
                                that the output code is cleaner (and sometimes enabling such subsitution may
                                cause problems with separate compilation of .c sources, when
                                the temporary value suddenly needs to be accessed from another module. */
-                            | (false, true) => e
+                            | (true, false) => e
                             | _ => ida_map.add(n, AtomId(n2)); KExpNop(loc)
                             }
                         } else { e }

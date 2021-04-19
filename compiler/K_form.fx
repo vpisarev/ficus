@@ -277,7 +277,7 @@ fun kinfo_(n: id_t, loc: loc_t) =
 fun dup_idk(m_idx: int, old_id: id_t): id_t
 {
     val j = new_idk_idx(m_idx)
-    id_t {m=m_idx, i=old_id.i, j=j}
+    id_t {m=m_idx, i=if old_id.i != 0 {old_id.i} else {1}, j=j}
 }
 
 fun gen_idk(m_idx: int, s: string): id_t

@@ -659,6 +659,7 @@ fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list
                 }
             if n == noid { continue }
             val info = id_info(n, loc)
+            if (match info {|IdNone _ => true | _ => false}) { continue }
             val tj = get_idinfo_typ(info, loc)
             val locj = get_idinfo_loc(info)
             f"'{nstr}: {typ2str(tj)}' defined at {locj}"
@@ -797,7 +798,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
                                     let's create a new one */
                                 val inst_env = inst_merge_env(env, env1)
                                 val { df_name=inst_name, df_typ=inst_typ } =
-                                    *instantiate_fun(df, ftyp, inst_env, sc, loc, true)
+                                    *instantiate_fun(df, ftyp, inst_env, loc, true)
                                 unify(inst_typ, t, loc, "inconsistent type of the instantiated function")
                                 Some((inst_name, t))
                             }
@@ -2859,8 +2860,8 @@ fun check_defexn(de: defexn_t ref, env: env_t, sc: scope_t list)
 }
 
 fun check_deffun(df: deffun_t ref, env: env_t) {
-    val {df_typ, df_scope, df_loc} = *df
-    instantiate_fun(df, df_typ, env, df_scope, df_loc, false)
+    val {df_typ, df_loc} = *df
+    instantiate_fun(df, df_typ, env, df_loc, false)
 }
 
 /*
@@ -2992,14 +2993,15 @@ fun check_typ(t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): typ_t =
     check_typ_and_collect_typ_vars(t, env, None, sc, loc).0
 
 fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
-                    inst_sc: scope_t list, inst_loc: loc_t, instantiate: bool): deffun_t ref {
+                    inst_loc: loc_t, instantiate: bool): deffun_t ref
+{
     val {df_name} = *templ_df
     if instantiate {
         all_compile_err_ctx = f"when instantiating '{pp(df_name)}' at {inst_loc}" :: all_compile_err_ctx
     }
     try {
         val inst_df = instantiate_fun_(templ_df, inst_ftyp, inst_env0,
-                                       inst_sc, inst_loc, instantiate)
+                                       inst_loc, instantiate)
         inst_df
     } finally {
         if instantiate { all_compile_err_ctx = all_compile_err_ctx.tl() }
@@ -3007,7 +3009,7 @@ fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
 }
 
 fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
-                     inst_sc: scope_t list, inst_loc: loc_t, instantiate: bool): deffun_t ref
+                     inst_loc: loc_t, instantiate: bool): deffun_t ref
 {
     val {df_name, df_args, df_body, df_flags, df_scope, df_loc} = *templ_df
     val is_constr = is_constructor(df_flags)
@@ -3041,7 +3043,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
             }
     val inst_name = if instantiate { dup_id(curr_module(df_scope), df_name) } else { df_name }
     //println(f"instantiation of function {inst_name} with type '{typ2str(inst_ftyp)}'")
-    val fun_sc = ScFun(inst_name) :: inst_sc
+    val fun_sc = ScFun(inst_name) :: df_scope
     val (df_inst_args, inst_env, _) = fold (df_inst_args, inst_env, tmp_idset) =
         ([], inst_env, empty_idset) for df_arg <- df_args, arg_typ <- arg_typs {
         val (df_inst_arg, inst_env, tmp_idset, _, _) =
@@ -3068,7 +3070,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
         df_typ=inst_ftyp,
         df_body=inst_body,
         df_flags=df_flags.{fun_flag_method_of=class_id},
-        df_scope=inst_sc,
+        df_scope=df_scope,
         df_loc=inst_loc,
         df_templ_inst=ref [],
         df_env=inst_env0
@@ -3376,8 +3378,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
     val r_typ_vars = ref typ_vars
     val captured_val_flags = default_val_flags().{val_flag_mutable=is_mutable}
 
-    fun process_id(i, t, loc: loc_t) {
-        val i0 = get_orig_id(i)
+    fun process_id(i0: id_t, t: typ_t, loc: loc_t) {
         if r_idset.mem(i0) {
             throw compile_err(loc, f"duplicate identifier '{i0}' in the pattern")
         } else {

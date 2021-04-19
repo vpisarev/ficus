@@ -142,28 +142,33 @@ type dep_graph_t = (int, int list) list
 
 fun toposort(graph: dep_graph_t): int list
 {
-    fun loop(remaining: dep_graph_t, result: int list): int list
-    {
-        fun find_next(analyzed: dep_graph_t, rest: dep_graph_t): (int, dep_graph_t) =
-            match rest {
-            | (m, deps) :: rest =>
-                if all(for d <- deps {result.mem(d)}) {
-                    (m, analyzed.rev() + rest)
-                } else {
-                    find_next((m, deps) :: analyzed, rest)
-                }
-            | _ =>
-                val cycle = ", ".join([: for (m, _) <- analyzed.rev() {Ast.pp(Ast.get_module_name(m))} :])
-                throw Fail(f"error: cylic module dependency between {cycle}")
-            }
-        match remaining {
-        | [] => result.rev()
-        | _ =>
-            val (next_m, remaining) = find_next([], remaining)
-            loop(remaining, next_m :: result)
+    //print("before toposort: ")
+    //println([: for (i, _) <- graph {(Ast.pp(Ast.get_module_name(i)), i)} :])
+    val graph = [for (_, deps) <- graph {deps}], nvtx = size(graph)
+    val processed = array(nvtx, false)
+    var result: int list = []
+
+    fun dfs(i: int, visited: int list) {
+        val deps = graph[i]
+        if visited.mem(i) {
+            val vlist = ", ".join([: for j <- visited { Ast.pp(Ast.get_module_name(j)) } :])
+            throw Fail(f"error: cyclib dependency between the modules: {vlist}")
         }
+        val visited = i :: visited
+        for j <- deps {
+            if processed[j] {continue}
+            dfs(j, visited)
+        }
+        result = i :: result
+        processed[i] = true
     }
-    loop(graph, [])
+
+    for i <- 0:nvtx {
+        if processed[i] { continue }
+        dfs(i, [])
+    }
+
+    result.rev()
 }
 
 fun typecheck_all(modules: int list): bool
@@ -426,17 +431,17 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
    there are (/usr|...)/lib/ficus-{__ficus_major__}.{__ficus_minor__}/{{runtime, lib}}") }
         val ok = parse_all(fname0, ficus_path)
         if !ok { throw CumulativeParseError }
-        val graph = [: for minfo <- Ast.all_modules[2:] {
+        val graph = [: for minfo <- Ast.all_modules {
                         (minfo.dm_idx, minfo.dm_deps)
                     } :]
-        Ast.all_modules_sorted = toposort(graph)
+        Ast.all_modules_sorted = toposort(graph).tl().tl()
         if Options.opt.print_ast0 {
             for m <- Ast.all_modules_sorted {
                 val minfo = Ast.get_module(m)
                 Ast_pp.pprint_mod(minfo)
             }
         }
-        val modules_used = ", ".join([: for m_idx <- Ast.all_modules_sorted {Ast.pp(Ast.get_module_name(m_idx))} :])
+        val modules_used = ", ".join([: for m_idx <- Ast.all_modules_sorted {f"({Ast.pp(Ast.get_module_name(m_idx))}, {m_idx})"} :])
         val parsing_complete = clrmsg(MsgBlue, "Parsing complete")
         pr_verbose(f"{parsing_complete}. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)

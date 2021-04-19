@@ -1255,7 +1255,7 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
     if kw_params == [] {
         (ts, params, rt, [], false)
     } else {
-        val recarg = gen_id(parser_ctx.m_idx, "__kwargs__")
+        val recarg = std__kwargs__
         val relems = [: for (i, t, v0, _) <- kw_params { (default_arg_flags(), i, t, v0) } :]
         val rectyp = TypRecord(ref (relems, true))
         val (_, _, _, loc) = kw_params.hd()

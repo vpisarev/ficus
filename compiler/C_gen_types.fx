@@ -877,7 +877,8 @@ fun convert_all_typs(kmods: kmodule_t list)
         kcb_fold_kexp=Some(fold_n_cvt_kexp),
         kcb_fold_atom=None
         }
-    for {km_top} <- kmods {
+    for {km_idx, km_top} <- kmods {
+        curr_cm_idx = km_idx
         for e <- km_top {
             match e {
             | KDefVariant (ref {kvar_name, kvar_flags, kvar_loc}) =>

@@ -266,7 +266,7 @@ fun tokens(s: string, f: char->bool)
     (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
-/*fun split(s: string, c: char, ~allow_empty:bool)
+fun split(s: string, c: char, ~allow_empty:bool)
 {
     val fold (sl, start, sep) = ([], 0, true) for ci@i <- s {
         if ci == c {
@@ -276,7 +276,7 @@ fun tokens(s: string, f: char->bool)
         }
     }
     (if sep {sl} else {s[start:] :: sl}).rev()
-}*/
+}
 
 @nothrow fun to_int(a: string): int? = @ccode
 {
@@ -311,7 +311,7 @@ fun num_suffix(n: int) =
     | _ => "th"
     }
 
-/*fun escaped(s: string, ~quotes: bool=true)
+fun escaped(s: string, ~quotes: bool=true)
 {
     val sn = "\\n", sr = "\\r", st = "\\t",
         ssq = "\\\'", sdq = "\\\"", ss = "\\\\", sz = "\\0"
@@ -338,4 +338,4 @@ fun num_suffix(n: int) =
         }
     }
     join("", (q :: s[verb:] :: ll).rev())
-}*/
+}

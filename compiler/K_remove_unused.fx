@@ -170,12 +170,27 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
 
     var fold_pairs = empty_idmap
     var is_main = false
+    var curr_m_idx = -1
+    fun check_m_idx(i: id_t, loc: loc_t) =
+        if i.m != curr_m_idx {
+            throw compile_err(loc,
+                if i.m > 0 {
+                    f"the symbol '{pp(i)}' defined in module \
+                    '{pp(get_module_name(curr_m_idx))}' is said to belong to module \
+                    '{pp(get_module_name(i.m))}'"
+                } else {
+                    f"the symbol '{pp(i)}' defined in module \
+                    '{pp(get_module_name(curr_m_idx))}' does not have a module assigned"
+                })
+        }
+
     // nothing to remove in a type
     fun remove_unused_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
 
     fun remove_unused_kexp_(e: kexp_t, callb: k_callb_t): kexp_t =
         match e {
         | KDefVal (i, e, loc) =>
+            check_m_idx(i, loc)
             val e = remove_unused_kexp_(e, callb)
             val is_ccode = match e { | KExpCCode _ => true | _ => false }
             match e {
@@ -201,6 +216,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             }
         | KDefFun kf =>
             val {kf_name, kf_body, kf_scope, kf_loc} = *kf
+            check_m_idx(kf_name, kf_loc)
             if used_somewhere.mem(kf_name) {
                 val new_body = remove_unused_kexp_(kf_body, callb)
                 *kf = kf->{kf_body=new_body}
@@ -213,6 +229,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             }
         | KDefExn ke =>
             val {ke_name, ke_loc} = *ke
+            check_m_idx(ke_name, ke_loc)
             if used_somewhere.mem(ke_name) || !is_main { e }
             else { KExpNop(ke_loc) }
         | KDefVariant kvar =>
@@ -222,19 +239,23 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                we will never eliminate variant definition and yet retain
                some of its used constructors. */
             val {kvar_name, kvar_loc} = *kvar
+            check_m_idx(kvar_name, kvar_loc)
             if used_somewhere.mem(kvar_name) {e} else {KExpNop(kvar_loc)}
         | KDefTyp kt =>
             val {kt_name, kt_loc} = *kt
+            check_m_idx(kt_name, kt_loc)
             if used_somewhere.mem(kt_name) { e }
             else { KExpNop(kt_loc) }
         | KDefInterface ki =>
             val {ki_name, ki_loc} = *ki
+            check_m_idx(ki_name, ki_loc)
             if used_somewhere.mem(ki_name) { e }
             else {
                 KExpNop(ki_loc)
             }
         | KDefClosureVars kcv =>
             val {kcv_name, kcv_loc} = *kcv
+            check_m_idx(kcv_name, kcv_loc)
             if used_somewhere.mem(kcv_name) { e }
             else { KExpNop(kcv_loc) }
         | KExpSeq (code, (ktyp, loc)) =>
@@ -286,8 +307,9 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
         kcb_atom=None
     }
     [: for km <- kmods {
-        val {km_top, km_main} = km
+        val {km_top, km_idx, km_main} = km
         is_main = km_main
+        curr_m_idx = km_idx
         val new_top = remove_unused_(km_top, [], remove_callb)
         km.{km_top=new_top}
     } :]

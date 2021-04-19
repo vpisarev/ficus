@@ -13,7 +13,20 @@ val default_indent = 3
 val pp_ = Ast.pp
 
 fun pplit(pp: PP.t, x: lit_t) = pp.str(lit2str(x))
-fun ppid(pp: PP.t, x: id_t) = pp.str(string(x))
+fun ppid(pp: PP.t, x: id_t)
+{
+    val xstr =
+        if x == noid { "<noid>" }
+        else {
+            val prefix = all_names.data[x.i]
+            if x.m == 0 { prefix }
+            else {
+                val m_prefix = pp_(get_module_name(x.m)) + "."
+                f"{m_prefix}{prefix}@{x.j}"
+            }
+        }
+    pp.str(xstr)
+}
 
 fun pprint_val_flags(pp: PP.t, flags: val_flags_t): void
 {
@@ -641,7 +654,7 @@ fun pprint_mod(dm: defmodule_t)
     File.stdout.flush()
     val {dm_filename, dm_defs, dm_deps} = dm
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
-    pp.beginv()
+    pp.beginv(0)
     pp.cut()
     pp.begin(); pp.str(dm_filename)
     match dm_defs {

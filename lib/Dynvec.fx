@@ -13,7 +13,7 @@ object type 't t =
     val val0: 't
 }
 
-fun create(n0: int, v0: 't): 't Dynvec.t = t { count = 0, data = array(n0, v0), val0 = v0 }
+fun create(n0: int, v0: 't): 't Dynvec.t = t { count = n0, data = array(n0, v0), val0 = v0 }
 fun clear(v: 't Dynvec.t) { v.count = 0; v.data = [] }
 fun empty(v: 't Dynvec.t): bool = v.count == 0
 fun size(v: 't Dynvec.t): int = v.count
