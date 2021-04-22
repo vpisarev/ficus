@@ -213,7 +213,7 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
     get_ktprops_(t, loc)
 }
 
-fun clear_typ_annotations(top_code: kcode_t) =
+/*fun clear_typ_annotations(top_code: kcode_t) =
     for e <- top_code {
         | KDefVariant kvar =>
             val prev_flags = kvar->kvar_flags
@@ -221,16 +221,17 @@ fun clear_typ_annotations(top_code: kcode_t) =
                 kvar_props=None,
                 kvar_flags=prev_flags.{
                     var_flag_recursive=false,
-                    var_flag_have_tag=false,
+                    var_flag_have_tag=true,
                     var_flag_opt=false}}
         | KDefTyp kt => *kt = kt->{kt_props=None}
         | _ => {}
     }
+*/
 
 fun annotate_types(kmods: kmodule_t list)
 {
     val top_code = [: for {km_top} <- kmods {km_top} :].concat()
-    clear_typ_annotations(top_code)
+    //clear_typ_annotations(top_code)
     find_recursive(top_code)
     for e <- top_code {
         | KDefVariant kvar =>

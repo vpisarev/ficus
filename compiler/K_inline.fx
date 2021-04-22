@@ -35,7 +35,8 @@ type func_info_t =
     fi_can_inline: bool;
     fi_size: int;
     fi_nrefs: int;
-    fi_flags: fun_flags_t
+    fi_flags: fun_flags_t;
+    fi_km_idx: int;
 }
 
 type subst_map_t = (id_t, atom_t) Hashmap.t
@@ -164,26 +165,9 @@ fun calc_exp_size(e: kexp_t)
 
 // Generates new names for all locally defined names in an expression.
 // This is what we need to do when we do inline expansion of a function call
-fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename_locals: bool): kexp_t
+fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): (kexp_t, subst_map_t)
 {
-    val subst_map =
-    if !rename_locals {
-        subst_map0
-    } else {
-        val decl_set = declared(e::[], 256)
-        val loc = get_kexp_loc(e)
-        val subst_map = subst_map0.copy()
-        decl_set.app(fun (i) {
-            match kinfo_(i, loc) {
-            | KVal kv =>
-                val { kv_name, kv_typ, kv_flags, kv_loc } = kv
-                val new_name = dup_idk(km_idx, kv_name)
-                val _ =  create_kdefval(new_name, kv_typ, kv_flags, None, [], kv_loc)
-                subst_map.add(kv_name, AtomId(new_name))
-            | _ => {}
-            }})
-        subst_map
-    }
+    var subst_map = subst_map0
     fun subst_atom_(a: atom_t, loc: loc_t, callb: k_callb_t) =
         match a {
         | AtomId i =>
@@ -196,14 +180,164 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename_locals: 
             }
         | _ => a
         }
-    fun subst_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
-    fun subst_kexp_(e: kexp_t, callb: k_callb_t) = walk_kexp(e, callb)
+    fun subst_id_(i: id_t, loc: loc_t) =
+        match subst_map.find_opt(i) {
+        | Some (AtomId(new_i)) => new_i
+        | Some _ => throw compile_err(loc, f"id is expected to be produced after renaming '{idk2str(i, loc)}', not literal")
+        | _ => i
+        }
+    fun subst_scope(sc: scope_t list, loc: loc_t): scope_t list =
+        match sc {
+        | ScFun(f) :: rest =>
+            val f = subst_id_(f, loc)
+            ScFun(f) :: subst_scope(rest, loc)
+        | ScModule(m) :: rest =>
+            ScModule(km_idx) :: subst_scope(rest, loc)
+        | ScBlock(_) :: rest =>
+            new_block_scope(km_idx) :: subst_scope(rest, loc)
+        | ScLoop(nested, _) :: rest =>
+            new_loop_scope(km_idx, nested) :: subst_scope(rest, loc)
+        | ScMap(_) :: rest =>
+            new_map_scope(km_idx) :: subst_scope(rest, loc)
+        | ScArrMap(_) :: rest =>
+            new_arr_map_scope(km_idx) :: subst_scope(rest, loc)
+        | ScFold(_) :: rest =>
+            new_fold_scope(km_idx) :: subst_scope(rest, loc)
+        | ScTry(_) :: rest =>
+            new_try_scope(km_idx) :: subst_scope(rest, loc)
+        | sc :: rest => sc :: subst_scope(rest, loc)
+        | _ => []
+        }
+    fun subst_kval_(i: id_t, loc: loc_t, callb: k_callb_t)
+    {
+        val kv = get_kval(i, loc)
+        val {kv_typ, kv_flags} = kv
+        val new_i = subst_id_(i, loc)
+        val new_kv_typ = walk_ktyp(kv_typ, loc, callb)
+        val new_kv_flags = kv_flags.{
+                val_flag_global=subst_scope(kv_flags.val_flag_global, loc)
+            }
+        val new_kv = kv.{kv_name=new_i, kv_typ=new_kv_typ, kv_flags=new_kv_flags}
+        set_idk_entry(new_i, KVal(new_kv))
+        new_i
+    }
+    fun subst_kf_(kf: kdeffun_t ref, callb: k_callb_t)
+    {
+        val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_scope, kf_loc} = *kf
+        val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
+        ref (kf->{
+            kf_name=subst_id_(kf_name, kf_loc),
+            kf_params=[: for a <- kf_params { subst_kval_(a, kf_loc, callb) } :],
+            kf_rt = walk_ktyp(kf_rt, kf_loc, callb),
+            kf_body = walk_kexp(kf_body, callb),
+            kf_closure = kdefclosureinfo_t {
+                kci_arg = subst_id_(kci_arg, kf_loc),
+                kci_fcv_t = subst_id_(kci_fcv_t, kf_loc),
+                kci_fp_typ = subst_id_(kci_fp_typ, kf_loc),
+                kci_make_fp = subst_id_(kci_make_fp, kf_loc),
+                kci_wrap_f = subst_id_(kci_wrap_f, kf_loc)
+                },
+            kf_scope = subst_scope(kf_scope, kf_loc)
+            })
+    }
+    fun subst_kexp_(e: kexp_t, callb: k_callb_t)
+    {
+        fun subst_idlist_(nlist: id_t list, loc: loc_t) =
+            [: for n <- nlist {subst_id_(n, loc)} :]
+        match e {
+        /*| KDefVal (n, e, loc) =>
+            val new_n = subst_id_(n, loc)
+            val e = subst_kexp_(e, callb)
+            KDefVal(new_n, e, loc)*/
+        | KDefFun kf =>
+            val new_kf = subst_kf_(kf, callb)
+            set_idk_entry(new_kf->kf_name, KFun(new_kf))
+            KDefFun(new_kf)
+        | KDefVariant kvar =>
+            val {kvar_name, kvar_cases, kvar_ifaces, kvar_ctors, kvar_scope, kvar_loc} = *kvar
+            val new_kvar = ref(kvar->{
+                kvar_name = subst_id_(kvar_name, kvar_loc),
+                kvar_cases = [: for (n, t) <- kvar_cases { (n, walk_ktyp(t, kvar_loc, callb)) } :],
+                kvar_ifaces = [: for (iname, meths) <- kvar_ifaces {
+                    (subst_id_(iname, kvar_loc), subst_idlist_(meths, kvar_loc))} :],
+                kvar_ctors = subst_idlist_(kvar_ctors, kvar_loc),
+                kvar_scope = subst_scope(kvar_scope, kvar_loc)
+                })
+            if kvar_name.m != km_idx && new_kvar->kvar_proto == noid {
+                new_kvar->kvar_proto = kvar_name
+            }
+            set_idk_entry(new_kvar->kvar_name, KVariant(new_kvar))
+            KDefVariant(new_kvar)
+        | KDefTyp kt =>
+            val {kt_name, kt_typ, kt_scope, kt_loc} = *kt
+            val new_kt = ref(kt->{
+                kt_name = subst_id_(kt_name, kt_loc),
+                kt_typ = walk_ktyp(kt_typ, kt_loc, callb),
+                kt_scope = subst_scope(kt_scope, kt_loc)
+                })
+            if kt_name.m != km_idx && new_kt->kt_proto == noid {
+                new_kt->kt_proto = kt_name
+            }
+            set_idk_entry(new_kt->kt_name, KTyp(new_kt))
+            KDefTyp(new_kt)
+        | KDefInterface ki =>
+            val {ki_name, ki_base, ki_id, ki_all_methods, ki_scope, ki_loc} = *ki
+            val new_ki = ref(ki->{
+                ki_name=subst_id_(ki_name, ki_loc),
+                ki_base=subst_id_(ki_base, ki_loc),
+                ki_id=subst_id_(ki_id, ki_loc),
+                ki_all_methods=[: for (f, t) <- ki_all_methods {(subst_id_(f, ki_loc), walk_ktyp(t, ki_loc, callb))} :],
+                ki_scope = subst_scope(ki_scope, ki_loc)
+                })
+            set_idk_entry(new_ki->ki_name, KInterface(new_ki))
+            KDefInterface(new_ki)
+        | KDefClosureVars kcv =>
+            val {kcv_name, kcv_freevars, kcv_orig_freevars, kcv_scope, kcv_loc} = *kcv
+            val new_kcv = ref(kcv->{
+                kcv_name = subst_id_(kcv_name, kcv_loc),
+                kcv_freevars = [: for (n, t) <- kcv_freevars {
+                                (subst_id_(n, kcv_loc), walk_ktyp(t, kcv_loc, callb)) } :],
+                kcv_orig_freevars = subst_idlist_(kcv_orig_freevars, kcv_loc),
+                kcv_scope = subst_scope(kcv_scope, kcv_loc)
+                })
+            set_idk_entry(new_kcv->kcv_name, KClosureVars(new_kcv))
+            KDefClosureVars(new_kcv)
+        | _ => walk_kexp(e, callb)
+        }
+    }
     val subst_callb = k_callb_t {
         kcb_atom=Some(subst_atom_),
-        kcb_ktyp=Some(subst_ktyp_),
+        kcb_ktyp=None,
         kcb_kexp=Some(subst_kexp_)
     }
-    subst_kexp_(e, subst_callb)
+    if rename {
+        val decl_set = declared(e::[], 256)
+        //print_id_hashset("declared (to be renamed)", decl_set)
+        val loc = get_kexp_loc(e)
+        subst_map = subst_map0.copy()
+        decl_set.app(fun (i) {
+            if i.m > 0 {
+                val new_name = dup_idk(km_idx, i)
+                subst_map.add(i, AtomId(new_name))
+            }})
+        decl_set.app(fun (i) {
+            match kinfo_(i, loc) {
+            | KVal kv =>
+                val { kv_name, kv_typ, kv_flags, kv_loc } = kv
+                val new_kv = kdefval_t {
+                    kv_name = subst_id_(kv_name, kv_loc),
+                    kv_cname = "",
+                    kv_typ = walk_ktyp(kv_typ, kv_loc, subst_callb),
+                    kv_flags = kv_flags.{
+                        val_flag_global=subst_scope(kv_flags.val_flag_global, kv_loc)
+                        },
+                    kv_loc = kv_loc
+                    }
+                set_idk_entry(new_kv.kv_name, KVal(new_kv))
+            | _ => {}
+            }})
+    }
+    (subst_kexp_(e, subst_callb), subst_map)
 }
 
 // The core of inline expansion
@@ -213,9 +347,9 @@ fun expand_call(km_idx: int, e: kexp_t) =
         match kinfo_(f, loc) {
         // expand only direct function calls, not via-pointer ones
         | KFun kf =>
-            val {kf_args, kf_body} = *kf
+            val {kf_params, kf_body} = *kf
             val subst_map = Hashmap.empty(256, noid, AtomId(noid), hash)
-            for (formal_arg, _) <- kf_args, real_arg <- real_args {
+            for formal_arg <- kf_params, real_arg <- real_args {
                 subst_map.add(formal_arg, real_arg)
             }
             val decl_set = declared(kf_body::[], 256)
@@ -224,7 +358,8 @@ fun expand_call(km_idx: int, e: kexp_t) =
             if have_bad_defs {
                 (e, false)
             } else {
-                (subst_names(km_idx, kf_body, subst_map, true), true)
+                val (e, _) = subst_names(km_idx, kf_body, subst_map, true)
+                (e, true)
             }
         | _ => (e, false)
         }
@@ -233,19 +368,20 @@ fun expand_call(km_idx: int, e: kexp_t) =
 
 fun inline_some(kmods: kmodule_t list)
 {
+    var curr_km_idx = -1
     fun gen_default_func_info(nrefs: int) =
         ref (func_info_t {
             fi_name=noid,
             fi_can_inline=false,
             fi_size=0,
             fi_nrefs=nrefs,
-            fi_flags=default_fun_flags()
+            fi_flags=default_fun_flags(),
+            fi_km_idx=curr_km_idx
         })
     var all_funcs_info: fir_map_t = Hashmap.empty(1024, noid, gen_default_func_info(-1), hash)
 
     var curr_fi = gen_default_func_info(0)
     var curr_km_main = false
-    var curr_km_idx = -1
 
     fun fold_finfo_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
         match a {
@@ -319,7 +455,7 @@ fun inline_some(kmods: kmodule_t list)
         | KExpCall (f, real_args, _)
             when curr_km_main || curr_fi->fi_name != noid =>
             match all_funcs_info.find_opt(f) {
-            | Some r_fi =>
+            | Some r_fi when r_fi->fi_km_idx == curr_km_idx =>
                 val { fi_can_inline=caller_can_inline,
                       fi_size=caller_size,
                       fi_flags=caller_flags } = *curr_fi
@@ -350,7 +486,8 @@ fun inline_some(kmods: kmodule_t list)
         kcb_kexp=Some(inline_kexp_)
     }
     val _ = find_recursive_funcs_all(kmods)
-    for {km_top} <- kmods {
+    for {km_top, km_idx} <- kmods {
+        curr_km_idx = km_idx
         for e <- km_top {
             fold_finfo_kexp_(e, finfo_callb)
         }

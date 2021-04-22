@@ -24,12 +24,13 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
     for e <- top_code {
         match e {
         | KDefFun kf =>
-            val {kf_name, kf_cname, kf_args, kf_rt=rt, kf_closure,
+            val {kf_name, kf_cname, kf_params, kf_rt=rt, kf_closure,
                 kf_flags, kf_body, kf_scope, kf_loc} = *kf
             val {kci_arg} = kf_closure
             val is_ccode_func = match kf_body { | KExpCCode _ => true | _ => false }
             val ctor = kf_flags.fun_flag_ctor
-            val fold args = [] for (arg, t)@idx <- kf_args {
+            val fold args = [] for arg@idx <- kf_params {
+                val {kv_typ=t} = get_kval(arg, kf_loc)
                 val arg = if arg.m == 0 {dup_idc(cm_idx, arg)} else {arg}
                 val cname = if is_ccode_func { pp(arg) }
                             else if ctor != CtorNone { f"arg{idx}" }

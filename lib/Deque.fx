@@ -7,7 +7,7 @@
 
 exception NullQueueError
 
-object type 't t = {head: 't list; tail: 't list}
+class 't t {head: 't list; tail: 't list}
 
 fun empty(_: 't Deque.t): bool
 {

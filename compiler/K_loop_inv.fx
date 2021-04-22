@@ -23,6 +23,7 @@ fun move_loop_invs(code: kcode_t)
         var isinv = true
         fun isinv_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
             match a {
+            | AtomId ({m=0}) => {}
             | AtomId i =>
                 if  is_mutable(i, loc) ||
                     !is_ktyp_scalar(get_idk_ktyp(i, loc)) ||

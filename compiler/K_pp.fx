@@ -17,7 +17,7 @@ val margin = 120
 val default_indent = 3
 val pp_ = Ast.pp
 
-@private fun pp_id_(pp: PP.t, n: id_t, loc: loc_t) = pp.str(idk2str(n, loc))
+@private fun pp_id_(pp: PP.t, n: id_t, loc: loc_t) = pp.str(f"<{idk2str(n, loc)}:{id2str_m(n)}>")
 
 @private fun get_ktyp_pr(t: ktyp_t): int {
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
@@ -78,7 +78,7 @@ val pp_ = Ast.pp
     | KTypVector t1 => ppktypsuf(t1, "vector")
     | KTypRef t1 => ppktypsuf(t1, "ref")
     | KTypArray (d, t1) => ppktypsuf(t1, "[" + ','*(d-1) + "]")
-    | KTypName n => pp.str(idk2str(n, loc))
+    | KTypName n => pp_id_(pp, n, loc)
     | KTypTuple tl => ppktyplist_("(", tl)
     | KTypRecord (rn, relems) =>
         pp.begin()
@@ -209,17 +209,19 @@ val pp_ = Ast.pp
         pp_idtyp_(n, kv_typ, detailed=false)
         pp.str(" ="); pp.end(); pp.space(); pp_exp_(e0)
         pp.end()
-    | KDefFun (ref {kf_name, kf_args, kf_rt, kf_body, kf_closure, kf_flags, kf_loc}) =>
+    | KDefFun (ref {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_flags, kf_loc}) =>
         val {kci_arg, kci_fcv_t} = kf_closure
-        val nargs = kf_args.length()
+        val nargs = kf_params.length()
         val ctor_id = kf_flags.fun_flag_ctor
         pp.beginv(0)
         pp.begin()
         Ast_pp.pprint_fun_flags(pp, kf_flags)
         pp.str("fun "); pp_id_(kf_name); pp.str("(")
         pp.cut(); pp.begin()
-        for (n, t)@i <- kf_args {
-            if i > 0 { pp.str(","); pp.space() }; pp_idtyp_(n, t, detailed=false)
+        for n@i <- kf_params {
+            if i > 0 { pp.str(","); pp.space() }
+            val {kv_typ=t} = get_kval(n, kf_loc)
+            pp_idtyp_(n, t, detailed=false)
         }
         if kci_arg != noid {
             if nargs > 0 { pp.str(";"); pp.space() }
@@ -245,6 +247,7 @@ val pp_ = Ast.pp
         if is_recursive { pp.str("@@recursive ") }
         if is_opt0 { pp.str("@@option_like ") }
         if !kvar_flags.var_flag_have_tag { pp.str("@@no_tag ") }
+        if kvar_flags.var_flag_instance { pp.str("@@instance ") }
         pp.str("type"); pp.space()
         pp_id_(kvar_name);
         if kvar_ifaces != [] {
@@ -302,8 +305,10 @@ val pp_ = Ast.pp
         }
         pp.space(); pp.str("}")
         pp.end(); pp.newline()
-    | KExpCCode (s, _) =>
-        pp.begin(); pp.str("ccode"); pp.str(s); pp.end(); pp.newline()
+    | KExpCCode (s, (_, loc)) =>
+        pp.begin(); pp.str("@ccode ")
+        pp_exp_(KExpAtom(AtomLit(KLitString(s)), (KTypString, loc)))
+        pp.end(); pp.newline()
     | KExpData (kind, fname, _) =>
         pp.begin(); pp.str(f"@data({kind}) '{fname}'"); pp.end()
     | KExpSeq(_, _) =>

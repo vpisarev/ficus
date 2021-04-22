@@ -143,19 +143,36 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
     fun mangle_typname_(n: id_t, result: string list): string list =
         match kinfo_(n, loc) {
         | KVariant kvar =>
-            val {kvar_name, kvar_cname, kvar_targs, kvar_scope} = *kvar
+            val {kvar_name, kvar_cname, kvar_proto, kvar_targs, kvar_scope, kvar_loc} = *kvar
             if kvar_cname == "" {
-                val (base_name, cname) =
-                    mangle_inst_(kvar_name, "N", kvar_targs, kvar_name, kvar_scope)
-                *kvar = kvar->{kvar_cname=add_fx(cname), kvar_base_name=get_id(base_name)}
+                val cname =
+                    if kvar_proto != noid {
+                        val _ = mangle_typname_(kvar_proto, [])
+                        match kinfo_(kvar_proto, kvar_loc) {
+                        | KVariant (ref {kvar_cname}) => remove_fx(kvar_cname)
+                        | _ => throw compile_err(kvar_loc, "kvar_proto must be a variant")
+                        }
+                    } else {
+                        mangle_inst_(kvar_name, "N", kvar_targs, kvar_name, kvar_scope).1
+                    }
+                *kvar = kvar->{kvar_cname=add_fx(cname)}
                 cname :: result
             } else {
                 remove_fx(kvar_cname) :: result
             }
         | KTyp((ref {kt_typ=KTypRecord (_, _)}) as kt) =>
-            val {kt_name, kt_cname, kt_targs, kt_scope} = *kt
+            val {kt_name, kt_cname, kt_proto, kt_targs, kt_scope, kt_loc} = *kt
             if kt_cname == "" {
-                val (_, cname) = mangle_inst_(kt_name, "R", kt_targs, kt_name, kt_scope)
+                val cname =
+                    if kt_proto != noid {
+                        val _ = mangle_typname_(kt_proto, [])
+                        match kinfo_(kt_proto, kt_loc) {
+                        | KTyp (ref {kt_typ=KTypRecord(_, _), kt_cname}) => remove_fx(kt_cname)
+                        | _ => throw compile_err(kt_loc, "kt_proto must be a type (record) definition")
+                        }
+                    } else {
+                        mangle_inst_(kt_name, "R", kt_targs, kt_name, kt_scope).1
+                    }
                 *kt = kt->{kt_cname=add_fx(cname)}
                 cname :: result
             } else {
@@ -254,8 +271,8 @@ fun mangle_all(kmods: kmodule_t list) {
             val i = gen_idk(curr_km_idx, name_prefix)
             val kt = ref (kdeftyp_t {
                 kt_name=i, kt_cname=add_fx(cname),
-                kt_targs=[], kt_typ=t, kt_props=None,
-                kt_scope=[], kt_loc=loc})
+                kt_targs=[], kt_typ=t, kt_proto=noid,
+                kt_props=None, kt_scope=[], kt_loc=loc})
             mangle_map.add(cname, i)
             set_idk_entry(i, KTyp(kt))
             curr_top_code = KDefTyp(kt) :: curr_top_code
@@ -298,9 +315,11 @@ fun mangle_all(kmods: kmodule_t list) {
                         }
                     set_idk_entry(i, KVal(kv.{kv_typ=t, kv_cname=cname}))
                 }
-            | _ => {}
+                t
+            | _ =>
+                walk_ktyp_n_mangle(get_idk_ktyp(i, loc), loc, callb)
             }
-        }
+        } else { KTypVoid }
     fun mangle_ktyp_retain_record(t: ktyp_t, loc: loc_t, callb: k_callb_t) =
         match t {
         | KTypRecord (rn, relems) =>
@@ -312,24 +331,23 @@ fun mangle_all(kmods: kmodule_t list) {
     fun mangle_idoml(idoml: (id_t, dom_t) list, at_ids: id_t list,
                              loc: loc_t, callb: k_callb_t)
     {
-        for i <- at_ids { mangle_id_typ(i, loc, callb) }
-        for (k, _) <- idoml { mangle_id_typ(k, loc, callb) }
+        for i <- at_ids { ignore(mangle_id_typ(i, loc, callb)) }
+        for (k, _) <- idoml { ignore(mangle_id_typ(k, loc, callb)) }
     }
     fun walk_kexp_n_mangle(e: kexp_t, callb: k_callb_t) =
         match e {
         | KDefVal (n, e, loc) =>
             val e = walk_kexp_n_mangle(e, callb)
-            mangle_id_typ(n, loc, callb)
+            ignore(mangle_id_typ(n, loc, callb))
             KDefVal(n, e, loc)
         | KDefFun kf =>
-            val {kf_name, kf_args, kf_rt, kf_body, kf_closure, kf_scope, kf_loc} = *kf
+            val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_scope, kf_loc} = *kf
             val {kci_fcv_t} = kf_closure
-            val args = [: for (a, t) <- kf_args {
-                           mangle_id_typ(a, kf_loc, callb)
-                           (a, get_idk_ktyp(a, kf_loc))
-                        } :]
+            for a <- kf_params {
+                ignore(mangle_id_typ(a, kf_loc, callb))
+            }
             val rt = walk_ktyp_n_mangle(kf_rt, kf_loc, callb)
-            val ktyp = get_kf_typ(args, rt)
+            val ktyp = get_kf_typ(kf_params, rt, kf_loc)
             val suffix = mangle_ktyp(ktyp, mangle_map, kf_loc)
             val suffix = suffix[2:]
             val new_body = walk_kexp_n_mangle(kf_body, callb)
@@ -356,7 +374,7 @@ fun mangle_all(kmods: kmodule_t list) {
                         "mangle: invalid closure datatype (should be KClosureVars)")
                 }
             }
-            *kf = kf->{ kf_cname=cname, kf_args=args, kf_rt=rt, kf_body=new_body,
+            *kf = kf->{ kf_cname=cname, kf_rt=rt, kf_body=new_body,
                         kf_closure=kf_closure.{kci_fp_typ=mangled_ktyp_id} }
             e
         | KDefExn ke =>
@@ -376,12 +394,12 @@ fun mangle_all(kmods: kmodule_t list) {
         | KDefVariant kvar =>
             val {kvar_name, kvar_cases, kvar_loc} = *kvar
             val _ = mangle_ktyp(KTypName(kvar_name), mangle_map, kvar_loc)
-            val tag_base_name = "_FX_" + pp(kvar->kvar_base_name) + "_"
+            //val tag_base_name = "_FX_" + pp(kvar->kvar_basename) + "_"
             val var_cases =
             [: for (ni, ti) <- kvar_cases {
-                val tag_name = tag_base_name + pp(ni)
-                val kv = get_kval(ni, kvar_loc)
-                set_idk_entry(ni, KVal(kv.{kv_cname=tag_name}))
+                //val tag_name = tag_base_name + pp(ni)
+                //val kv = get_kval(ni, kvar_loc)
+                //set_idk_entry(ni, KVal(kv.{kv_cname=tag_name}))
                 val ti =
                 match deref_ktyp(ti, kvar_loc) {
                 | KTypRecord (r_id, relems) =>
@@ -451,6 +469,7 @@ fun mangle_all(kmods: kmodule_t list) {
 
     [: for km <- kmods {
         val {km_idx, km_top} = km
+        mangle_map.clear()
         curr_top_code = []
         curr_km_idx = km_idx
         for e <- km_top {
@@ -464,7 +483,7 @@ fun mangle_all(kmods: kmodule_t list) {
                         set_idk_entry(n, KVal(kv.{
                             kv_flags=kv_flags.{
                                 val_flag_global=ScModule(km_idx) :: []}}))
-                        mangle_id_typ(n, loc, walk_n_mangle_callb)
+                        ignore(mangle_id_typ(n, loc, walk_n_mangle_callb))
                     }
                 }
             | _ => {}

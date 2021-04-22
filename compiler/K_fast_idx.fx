@@ -393,7 +393,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             match arrsz_env.assoc_opt((arr, i)) {
             | Some arrsz => (arrsz, arrsz_env, pre_for_code)
             | _ =>
-                val arrsz = gen_idk(km_idx, "sz")
+                val arrsz = dup_idk(km_idx, std__size__)
                 val arrsz_exp = KExpIntrin(IntrinGetSize,
                     [: AtomId(arr), AtomLit(KLitInt(int64(i))) :], (KTypInt, for_loc))
                 val pre_for_code = create_kdefval(arrsz, KTypInt, default_tempval_flags(),

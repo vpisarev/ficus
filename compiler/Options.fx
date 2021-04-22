@@ -151,18 +151,20 @@ fun parse_options(): bool {
             | "-debug" :: next =>
                 opt.debug = true; next
             | "-optim-iters" :: i :: next =>
-                match i.to_int() {
-                    | Some(i) when i >= 0 => opt.optim_iters = i; next
-                    | _ =>
-                        println(f"{error} invalid -optim-iters arument {i}: must be a non-negative integer")
-                        ok = false; []
+                val i = i.to_int_or(-1)
+                if i >= 0 {
+                    opt.optim_iters = i; next
+                } else {
+                    println(f"{error} invalid -optim-iters argument; must be a non-negative integer")
+                    ok = false; []
                 }
             | "-inline-threshold" :: i :: next =>
-                match i.to_int() {
-                    | Some(i) when i >= 0 => opt.inline_thresh = i; next
-                    | _ =>
-                        println(f"{error} invalid -inline-threshold arument {i}: must be a non-negative integer")
-                        ok = false; []
+                val i = i.to_int_or(-1)
+                if i >= 0 {
+                    opt.optim_iters = i; next
+                } else {
+                    println(f"{error} invalid -inline-threshold argument; must be a non-negative integer")
+                    ok = false; []
                 }
             | "-relax" :: next =>
                 opt.relax = true; next

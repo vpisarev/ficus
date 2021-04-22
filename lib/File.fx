@@ -10,7 +10,7 @@ val SEEK_SET: int = @ccode { (int)SEEK_SET }
 val SEEK_CURR: int = @ccode { (int)SEEK_CUR }
 val SEEK_END: int = @ccode { (int)SEEK_END }
 
-object type t = { handle: cptr }
+class t { handle: cptr }
 
 fun get_stdstream(i: int): t = @ccode
 {

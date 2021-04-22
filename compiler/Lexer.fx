@@ -17,7 +17,7 @@ type token_t =
     | APOS | AS | AT | BREAK | CATCH | CCODE | CLASS | CONTINUE
     | DO | DATA: string | ELLIPSIS | ELSE | EXCEPTION | FINALLY
     | FOLD | FOR: bool | FROM | FUN | IF | IMPORT: bool
-    | INLINE | INTERFACE | MATCH | NOTHROW | OBJECT | OPERATOR
+    | INLINE | INTERFACE | MATCH | NOTHROW | OPERATOR
     | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
     | LPAREN: bool | STR_INTERP_LPAREN | RPAREN | LSQUARE: bool
@@ -62,7 +62,6 @@ fun tok2str(t: token_t)
     | INTERFACE => ("INTERFACE", "interface")
     | MATCH => ("MATCH", "match")
     | NOTHROW => ("NOTHROW", "@nothrow")
-    | OBJECT => ("OBJECT", "object")
     | OPERATOR => ("OPERATOR", "operator")
     | PARALLEL => ("PARALLEL", "@parallel")
     | PRAGMA => ("PRAGMA", "pragma")
@@ -631,9 +630,8 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0), hash,
     ("fold", (FOLD, 2)), ("for", (FOR(true), 2)), ("from", (FROM, 2)),
     ("fun", (FUN, 2)), ("if", (IF, 2)), ("import", (IMPORT(true), 3)),
     ("interface", (INTERFACE, 2)), ("match", (MATCH, 2)), ("null", (LITERAL(Ast.LitNull), 0)),
-    ("object", (OBJECT, 2)), ("operator", (OPERATOR, 0)),
-    ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)), ("throw", (THROW, 2)),
-    ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)),
+    ("operator", (OPERATOR, 0)), ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)),
+    ("throw", (THROW, 2)), ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)),
     ("type", (TYPE, 2)), ("val", (VAL, 2)), ("var", (VAR, 2)), ("when", (WHEN, 1)),
     ("while", (WHILE(true), 2)), ("with", (WITH, 1)),
     ("__fold_result__", (RESERVED("__fold_result__"), -1)),

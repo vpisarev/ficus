@@ -51,6 +51,7 @@ fun pprint_fun_flags(pp: PP.t, flags: fun_flags_t): void
     if flags.fun_flag_uses_fv { pp.str("@uses_fv"); pp.space() }
     if flags.fun_flag_recursive { pp.str("@recursive"); pp.space() }
     if flags.fun_flag_have_keywords { pp.str("@with_keywords"); pp.space() }
+    if flags.fun_flag_instance { pp.str("@instance"); pp.space() }
     if flags.fun_flag_ccode { pp.str("@cfunc"); pp.space() }
 }
 
@@ -203,7 +204,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | _ => pp.str(":"); pp.space(); pprint_typ(pp, get_exp_typ(e0), loc)
         }
         pp.str(" ="); pp.space()
-        if ctor_id != noid { pp.str(f"@constructor({ctor_id})") }
+        if ctor_id > 0 { pp.str(f"@constructor({ctor_id})") }
         else { ppexp(e0) }
         pp.end()
     | DefFun df =>

@@ -6,7 +6,7 @@
 // very simple STL-like mutable vector (do not confuse it with embedded RRB tree-based immutable 'vector'),
 // a simple wrapper on top of arrays. The functionality is just enough to implement symbol tables for the compiler
 
-object type 't t =
+class 't t
 {
     var count: int;
     var data: 't [];

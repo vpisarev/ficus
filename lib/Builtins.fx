@@ -49,7 +49,7 @@ fun assert(f: bool) = if !f {throw AssertError}
 fun ignore(_: 't) {}
 
 // 't?, int? etc. can be used instead of 't option, int option ...
-object type 't option = None | Some: 't
+class 't option = None | Some: 't
 
 type byte = uint8
 
@@ -740,7 +740,7 @@ fun print(a: 't) = print_string(string(a))
     else
         printf("cptr<null>");
 }
-fun print(a: string) = print_string(a)
+@inline fun print(a: string) = print_string(a)
 fun print_repr(a: 't) = print(a)
 fun print_repr(a: string) { print("\""); print(a); print("\"") }
 fun print_repr(a: char) { print("'"); print(a); print("'") }
@@ -818,7 +818,7 @@ fun print(a: 't ref) {
     print("ref("); print_repr(*a); print(")")
 }
 
-fun println() = print("\n")
+@inline fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
 fun list(a: 't []): 't list = [: for x <- a {x} :]
@@ -946,14 +946,14 @@ type hash_t = uint64
 val FNV_1A_PRIME: hash_t = 1099511628211UL
 val FNV_1A_OFFSET: hash_t = 14695981039346656037UL
 
-fun hash(x: int) = uint64(x) ^ FNV_1A_OFFSET
-fun hash(x: int32) = uint64(x) ^ FNV_1A_OFFSET
-fun hash(x: uint32) = uint64(x) ^ FNV_1A_OFFSET
-fun hash(x: int8) = uint64(x) ^ FNV_1A_OFFSET
-fun hash(x: uint8) = uint64(x) ^ FNV_1A_OFFSET
-fun hash(x: int16) = uint64(x) ^ FNV_1A_OFFSET
-fun hash(x: uint16) = uint64(x) ^ FNV_1A_OFFSET
-fun hash(x: bool) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int32) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: uint32) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int8) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: uint8) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int16) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: uint16) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: bool) = uint64(x) ^ FNV_1A_OFFSET
 @pure @nothrow fun hash(x: float): hash_t = @ccode {
     fx_bits32_t u; u.f = x; return u.u ^ 14695981039346656037ULL;
 }

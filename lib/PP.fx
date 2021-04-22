@@ -47,7 +47,7 @@ type state_t =
     emptystack: bool=true
 }
 
-object type t =
+class t
 {
     margin: int
     default_indent: int

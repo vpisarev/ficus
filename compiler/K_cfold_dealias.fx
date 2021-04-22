@@ -89,6 +89,7 @@ fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: kt
         | ConstZero =>
             match res_t {
             | KTypInt => mk_some_lit_atom(KLitInt(0L))
+            | KTypCInt => mk_some_lit_atom(KLitSInt(32, 0L))
             | KTypSInt b => mk_some_lit_atom(KLitSInt(b, 0L))
             | KTypUInt b => mk_some_lit_atom(KLitUInt(b, 0UL))
             | KTypFloat b => mk_some_lit_atom(KLitFloat(b, 0.))
@@ -99,6 +100,7 @@ fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: kt
         | ConstInt x =>
             match res_t {
             | KTypInt => mk_some_lit_atom(KLitInt(x))
+            | KTypCInt => mk_some_lit_atom(KLitSInt(32, x))
             | KTypSInt b => mk_some_lit_atom(KLitSInt(b, x))
             | KTypUInt b => mk_some_lit_atom(KLitUInt(b, uint64(x)))
             | KTypFloat b => mk_some_lit_atom(KLitFloat(b, double(x)))
@@ -119,6 +121,7 @@ fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: kt
         | ConstBool x =>
             match res_t {
             | KTypInt => mk_some_lit_atom(KLitInt(int64(x)))
+            | KTypCInt => mk_some_lit_atom(KLitSInt(32, int64(x)))
             | KTypSInt b => mk_some_lit_atom(KLitSInt(b, int64(x)))
             | KTypUInt b => mk_some_lit_atom(KLitUInt(b, uint64(x)))
             | KTypFloat b => mk_some_lit_atom(KLitFloat(b, double(x)))
@@ -356,7 +359,8 @@ fun cfold_dealias(kmods: kmodule_t list)
                         } else { e }
                     | AtomLit (KLitNil (KTypList _)) => ida_map.add(n, a); KExpNop(loc)
                     | AtomLit (KLitNil _) => e
-                    | AtomLit c => ida_map.add(n, a); KExpNop(loc)
+                    | AtomLit c =>
+                        ida_map.add(n, a); KExpNop(loc)
                     }
                 | KExpIntrin (IntrinStrConcat, al, (_, loc)) when
                         kv_flags.val_flag_temp && all(for a <- al {!is_mutable_atom(a, loc)}) =>
@@ -402,6 +406,12 @@ fun cfold_dealias(kmods: kmodule_t list)
             | (a :: []) when (match get_atom_ktyp(a, loc) { | KTypString => true | _ => false }) =>
                 KExpAtom(a, (res_t, loc))
             | _ => KExpIntrin(IntrinStrConcat, res_al.rev(), (res_t, loc))
+            }
+        | KExpIntrin (IntrinVariantTag, AtomId(n) :: [], (t, loc)) =>
+            match kinfo_(n, loc) {
+            | KVal {kv_flags={val_flag_ctor=ctor_id}} when ctor_id > 0 =>
+                KExpAtom(AtomLit(KLitInt(int64(ctor_id))), (t, loc))
+            | _ => e
             }
         | KExpBinary (bop, a, b, (res_t, loc)) =>
             match cfold_bop(bop, a, b, res_t, loc) { | Some new_e => new_e | _ => e }

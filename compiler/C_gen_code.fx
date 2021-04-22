@@ -530,7 +530,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val e =
                 match cinfo_(i, loc) {
                 | CVal ({cv_typ, cv_flags}) =>
-                    if is_val_global(cv_flags) || cv_flags.val_flag_ctor != noid {
+                    if is_val_global(cv_flags) || cv_flags.val_flag_ctor > 0 {
                         ensure_sym_is_defined_or_declared(i, loc)
                     }
                     match cv_typ {
@@ -1572,9 +1572,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             if have_tag { extract_ctag }
                             else if ncases == 1 && !is_recursive { make_int_exp(1, kloc) }
                             else if ncases <= 2 && is_recursive {
-                                CExpBinary(COpCmp(CmpNE), cv, make_nullptr(kloc), (CTypBool, kloc))
+                                CExpBinary(COpAdd,
+                                    CExpBinary(COpCmp(CmpNE), cv, make_nullptr(kloc), (CTypCInt, kloc)),
+                                    CExpLit(KLitInt(1L), (CTypCInt, kloc)),
+                                    (CTypCInt, kloc))
                             } else {
-                                throw compile_err(kloc, "cgen: variants with no tag may have either 1 or 2 cases")
+                                throw compile_err(kloc, f"cgen: variant '{pp(tn)}' with no tag has {ncases} cases, is_recursive={is_recursive}")
                             }
                         | _ => throw compile_err(kloc, f"cgen: unexpected type '{idk2str(tn, kloc)}'; should be variant of exception")
                         }
@@ -1596,11 +1599,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         throw compile_err(kloc,
                             f"cgen: information about exception '{idk2str(vn, kloc)}' is not found")
                     }
-                | (_, AtomId vn) =>
-                    val vn_val = get_orig_id(vn)
+                | (_, AtomLit(KLitInt(idx))) =>
+                    val case_id = match deref_ktyp(vktyp, kloc) {
+                        | KTypName(n) =>
+                            match kinfo_(n, kloc) {
+                            | KVariant (ref {kvar_cases}) => get_orig_id(kvar_cases.nth(int(idx)-1).0)
+                            | _ => throw compile_err(kloc, f"cgen: invalid type '{pp(n)}'; variant is expected")
+                            }
+                        | _ => throw compile_err(kloc, f"cgen: invalid type '{vktyp}'; variant is expected")
+                        }
                     val cvu = if ktp_ptr { cexp_arrow(cv, get_id("u"), CTypAny) }
                               else { cexp_mem(cv, get_id("u"), CTypAny) }
-                    val celem = cexp_mem(cvu, vn_val, ctyp)
+                    val celem = cexp_mem(cvu, case_id, ctyp)
                     (true, celem, ccode)
                 | _ => throw compile_err(kloc, "cgen: invalid IntrinVariantCase 2nd parameter")
                 }
@@ -1833,7 +1843,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     }
                 (f_exp, ret_id != noid, fv_args, is_nothrow, ccode)
             | CVal ({cv_typ, cv_flags, cv_loc}) =>
-                if is_val_global(cv_flags) || cv_flags.val_flag_ctor != noid {
+                if is_val_global(cv_flags) || cv_flags.val_flag_ctor > 0 {
                     ensure_sym_is_defined_or_declared(f, kloc)
                 }
                 val (fclo_exp, ccode) = id2cexp(f, false, ccode, kloc)
@@ -2942,7 +2952,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             throw compile_err(kloc, "cgen: unexpected data expression")
         | KDefVal (i, e2, _) =>
             val {kv_typ, kv_cname, kv_flags} = get_kval(i, kloc)
-            if is_val_global(kv_flags) || kv_flags.val_flag_ctor != noid {
+            if is_val_global(kv_flags) || kv_flags.val_flag_ctor > 0 {
                 defined_syms.add(i)
             }
             val {ktp_ptr, ktp_complex, ktp_scalar} = K_annotate.get_ktprops(kv_typ, kloc)
@@ -2989,13 +2999,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         bctx->bctx_prologue = delta_ccode + bctx->bctx_prologue
                         ccode
                     }
-                } else if ctor_id != noid {
-                    val tag_exp = make_id_t_exp(ctor_id, CTypCInt, kloc)
+                } else if ctor_id > 0 {
+                    val tag_exp = make_int_exp(ctor_id, kloc)
                     val is_null =
                         match kv_typ {
                         | KTypName tn =>
                             match kinfo_(tn, kloc) {
-                            | KVariant (ref {kvar_flags}) => kvar_flags.var_flag_recursive && kvar_flags.var_flag_opt
+                            | KVariant (ref {kvar_flags}) =>
+                                kvar_flags.var_flag_recursive && kvar_flags.var_flag_opt
                             | _ => false
                             }
                         | _ => false
@@ -3288,7 +3299,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 } else {
                     (var_exp, [], [])
                 }
-                val init_tag = make_assign(cexp_arrow(var_exp, get_id("tag"), CTypInt), make_id_t_exp(tag_value, CTypCInt, kloc))
+                val init_tag = make_assign(cexp_arrow(var_exp, get_id("tag"), CTypInt), make_int_exp(tag_value, kloc))
                 val ccode = if have_tag { CExp(init_tag) :: ccode } else { ccode }
                 val dst_base = cexp_arrow(var_exp, get_id("u"), CTypAny)
                 val dst_base = cexp_mem(dst_base, get_orig_id(kf_name), CTypAny)

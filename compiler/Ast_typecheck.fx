@@ -832,7 +832,7 @@ fun try_autogen_symbols(n: id_t, t: typ_t, env: env_t, sc:
 {
     val nstr = pp(n)
     match (nstr, deref_typ_rec(t)) {
-    | ("__eq__", TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool))
+    | ("__eq__", TypFun(TypApp(_, n1) :: TypApp(_, n2) :: [], _))
         when n1 == n2 && (match id_info(n1, loc) { | IdVariant _ => true | _ => false}) =>
         Some(lookup_id(get_id("__eq_variants__"), t, env, sc, loc))
     | ("string", TypFun(TypFun(_, _) :: [], _)) =>
@@ -1321,7 +1321,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                         Some(ExpBinary(bop, e2_size, ExpLit(LitInt(0L), (TypInt, eloc1)), ctx))
                     | _ => None
                     }
-                | TypApp([], _) =>
+                | TypApp(_, _) =>
                     fun is_simple_ctor(e: exp_t) {
                         val eloc = get_exp_loc(e)
                         match e {
@@ -1649,9 +1649,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         } catch {
         | CompileError(_, _) as ex =>
             /* fallback for so called "object types": if we have expression like
-                some_exp.foo(args) where some_exp's type is "object type"
+                some_exp.foo(args) where some_exp's type is a class,
                 (i.e. "list", "string" or some user type declared in some <Module>
-                as "object type = ...") then the call is transformed to
+                as "class ... {...}") then the call is transformed to
                 <Module>.foo(some_exp, args)
             */
             match f0 {
@@ -2169,15 +2169,15 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         match (deref_typ(t1), deref_typ(t2)) {
         | (TypApp([], tn1), TypApp([], tn2)) =>
             /*
-                Thre are 3 valid cases of cast of object type and/or interface to
-                another object type and/or interface:
+                Thre are 3 valid cases of cast of a class and/or interface to
+                another class and/or interface:
 
                 1. an interface can be dynamically casted to any other interface.
-                   We do internal table lookup and see whether the actual object type
+                   We do internal table lookup and see whether the actual class
                    instance supports 't2'.
-                2. an object type 't1' that implements interface 'I' can be casted
+                2. a class 't1' that implements interface 'I' can be casted
                    to this interface 'I' or an parent of 'I' (direct or indirect)
-                3. vice versa, interface t1=I can be casted to the object type t2
+                3. vice versa, interface t1=I can be casted to the class t2
                    if 't2' implements 'I' and the runtime check confirms that the actual
                    object instance represented by interface pointer e1 is indeed
                    an instance of t2.
@@ -2647,6 +2647,7 @@ fun register_typ_constructor(n: id_t, ctor: fun_constr_t, templ_args: id_t list,
     val curr_m_idx = curr_module(sc)
     val ctor_typ = match argtyps { | [] => rt | _ => TypFun(argtyps, rt) }
     val args = [: for _@i <- argtyps { PatIdent(get_id(f"arg{i}"), decl_loc) } :]
+    val is_instance = match deref_typ(rt) { | TypApp(_ :: _, _) => true | _ => false }
     val ctor_name = dup_id(curr_m_idx, n)
     val df = ref (deffun_t {
         df_name=ctor_name,
@@ -2654,7 +2655,10 @@ fun register_typ_constructor(n: id_t, ctor: fun_constr_t, templ_args: id_t list,
         df_args=args,
         df_typ=ctor_typ,
         df_body=ExpNop(decl_loc),
-        df_flags=default_fun_flags().{fun_flag_ctor=ctor},
+        df_flags=default_fun_flags().{
+            fun_flag_ctor=ctor,
+            fun_flag_instance=is_instance
+            },
         df_templ_inst=ref [],
         df_scope=sc,
         df_env=env,
@@ -2768,19 +2772,19 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list)
                     | IdVariant _ | IdInterface _ | IdTyp _ =>
                         val loc = get_idinfo_loc(info)
                         throw compile_err(df_loc, f"the type name specified before \
-                            the method name should reference an object type; \
+                            the method name should reference a class; \
                             instead, it references the type defined at {loc}")
                     | _ => None
                     }
                 | EnvTyp t =>
                     throw compile_err(df_loc, f"the type name specified before \
-                        the method name should reference an object type; \
+                        the method name should reference a class; \
                         instead, it references the temporary type '{typ2str(t)}'")
                 })
             match classtyp_opt {
             | Some(t) => PatTyped(PatIdent(std__self__, df_loc), t, df_loc) :: df_args
             | _ => throw compile_err(df_loc,
-                    f"no proper object type '{pp(class_id)}' was found for the method")
+                    f"no proper class '{pp(class_id)}' was found for the method")
             }
         }
 
@@ -3069,7 +3073,10 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
         df_args=df_inst_args,
         df_typ=inst_ftyp,
         df_body=inst_body,
-        df_flags=df_flags.{fun_flag_method_of=class_id},
+        df_flags=df_flags.{
+            fun_flag_method_of=class_id,
+            fun_flag_instance=instantiate
+            },
         df_scope=df_scope,
         df_loc=inst_loc,
         df_templ_inst=ref [],
@@ -3096,7 +3103,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                 match id_info(tn, df_loc) {
                 | IdVariant dvar when dvar->dvar_flags.var_flag_class_from > 0 =>
                     (dvar, TypFun(method_arg_typs, rt))
-                | _ => throw compile_err(df_loc, f"type '{pp(tn)}' is not an object type")
+                | _ => throw compile_err(df_loc, f"type '{pp(tn)}' is not a class")
                 }
             | t :: _ => throw compile_err(df_loc, f"type '{typ2str(t)}' is not an object")
             | _ => throw compile_err(df_loc, f"internal error: non-empty arg list is expected, \
@@ -3150,7 +3157,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
     match pp(inst_name) {
     | "__eq_variants__" =>
         match (ftyp, inst_args) {
-        | (TypFun(TypApp([], n1) :: TypApp([], n2) :: [], TypBool),
+        | (TypFun((TypApp(_, n1) as t1) :: (TypApp(_, n2) as t2):: [], rt),
             PatTyped(PatIdent(a, _), _, _) :: PatTyped(PatIdent(b, _), _, _) :: [])
               when n1 == n2 && (match id_info(n1, inst_loc) {
                                | IdVariant _ => true
@@ -3166,7 +3173,9 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                type_t i2_opt = (int, int) option
                Some() for i2_opt will still have 1 parameter.
             */
-            val argtyp = TypApp([], n1)
+            unify(t1, t2, inst_loc, "arguments of variant comparison operation should have the same type")
+            unify(rt, TypBool, inst_loc, "variant comparison operation should produce 'bool'")
+            val argtyp = t1
             val astr = pp(a)
             val bstr = pp(b)
             val (var_ctors, proto_cases) =
@@ -3240,7 +3249,9 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
             }
             val body = check_exp(inst_body, inst_env, fun_sc)
             body
-        | _ => throw compile_err(inst_loc, "__eq_variants__ can only be applied to 2 variants of the same type")
+        | _ =>
+            print("patterns: \n\t"); Ast_pp.pprint_pat_x(PatTuple(inst_args, inst_loc))
+            throw compile_err(inst_loc, f"__eq_variants__ has improper type {typ2str(ftyp)}; should be (variant_type, variant_type)->bool")
         }
     | _ => check_exp(inst_body, inst_env, fun_sc)
     }
@@ -3275,7 +3286,7 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref,
                     dvar_name=inst_name,
                     dvar_templ_args=[],
                     dvar_alias=inst_app_typ,
-                    dvar_flags=dvar_flags,
+                    dvar_flags=dvar_flags.{var_flag_instance=true},
                     dvar_cases=dvar_cases,
                     dvar_ctors=dvar_ctors,
                     dvar_ifaces=dvar_ifaces,
@@ -3343,7 +3354,7 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref,
                         f"'{dvar_name}' defined at '{dvar_loc}': " +
                         f"wrong number of actual parameters {nrealargs} (vs {nargs} expected)" )
                 }
-            val (inst_cname, _) = register_typ_constructor(ctor_name, CtorVariant(n),
+            val (inst_cname, _) = register_typ_constructor(ctor_name, CtorVariant(idx+1),
                                                 inst_dvar->dvar_templ_args, argtyps,
                                                 inst_app_typ, env, dvar_scope, dvar_loc)
             if instantiate {

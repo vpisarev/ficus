@@ -74,7 +74,9 @@ type assoc_t = AssocLeft | AssocRight
     | COpSuffixDec => ("--", 1400, AssocLeft)
 }
 
-@private fun pp_id(pp: PP.t, n: id_t, loc: loc_t) = pp.str(idc2str(n, loc))
+@private fun pp_id(pp: PP.t, n: id_t, loc: loc_t) =
+    pp.str(idc2str(n, loc))
+    //pp.str(f"{idc2str(n, loc)} /*{id2str_m(n)}*/")
 
 @private fun pp_ctyp__(pp: PP.t, prefix0: string, suffix0: string, t: ctyp_t, id_opt: id_t?, fwd_mode: bool, loc: loc_t)
 {

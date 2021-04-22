@@ -730,7 +730,7 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
         | (VAR, _) :: _ | (PRIVATE, _) :: (VAR, _) :: _ =>
             val (ts, defvals) = parse_defvals(ts)
             extend_expseq_(ts, defvals + result)
-        | (OBJECT, _) :: (TYPE, _) :: _ | (TYPE, _) :: _ | (CLASS, _) :: _ =>
+        | (TYPE, _) :: _ | (CLASS, _) :: _ =>
             val (ts, deftyp) = parse_deftype(ts)
             extend_expseq_(ts, deftyp :: result)
         | (INTERFACE, l1) :: rest =>
@@ -1752,10 +1752,9 @@ fun have_mutable(cases: (id_t, typ_t) list) =
 fun parse_deftype(ts: tklist_t)
 {
     val (ts, class_module) = match ts {
-        | (OBJECT, _) :: (TYPE, _) :: rest => (rest, parser_ctx.m_idx)
         | (CLASS, _) :: rest => (rest, parser_ctx.m_idx)
         | (TYPE, _) :: rest => (rest, 0)
-        | _ => throw parse_err(ts, "'type' or 'object type' or 'class' is expected")
+        | _ => throw parse_err(ts, "'type' or 'class' is expected")
         }
 
     fun parse_tyvars_(ts: tklist_t, expect_comma: bool, tyvars: id_t list, loc: loc_t): (tklist_t, id_t list) =
@@ -1867,7 +1866,7 @@ fun parse_deftype(ts: tklist_t)
         })
         (ts, DefVariant(dvar))
     | _ =>
-        if class_module > 0 { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot be 'object type'") }
+        if class_module > 0 { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot be class") }
         if ifaces != [] { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot implement any interfaces") }
         val (ts, t) = parse_typespec(ts)
         val dt = ref (deftyp_t {

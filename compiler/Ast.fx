@@ -39,28 +39,13 @@ fun cmp_id(a: id_t, b: id_t)
     }
 }
 
-operator <=> (a: id_t, b: id_t) = cmp_id(a, b)
-operator == (a: id_t, b: id_t) = (a.m == b.m) & (a.i == b.i) && ((a.m == 0) | (a.j == b.j))
-
 fun std_id(name: string, bn: (string list, int)): (id_t, (string list, int)) =
     (id_t {m=0, i=bn.1, j=0}, (name :: bn.0, bn.1+1))
 val builtin_ids = ([], 0)
 val (noid, builtin_ids) = std_id("<noid>", builtin_ids)
-val (dummyid, builtin_ids) = std_id("_", builtin_ids)
-val (std__fold_result__, builtin_ids) = std_id("__fold_result__", builtin_ids)
-val (std__tag__, builtin_ids) = std_id("__tag__", builtin_ids)
-val (std__self__, builtin_ids) = std_id("self", builtin_ids)
-val (std__lambda__, builtin_ids) = std_id("__lambda__", builtin_ids)
-val (std__kwargs__, builtin_ids) = std_id("__kwargs__", builtin_ids)
-val (std__pat__, builtin_ids) = std_id("__pat__", builtin_ids)
-val (std__Names__, builtin_ids) = std_id("__Names__", builtin_ids)
-val (std__Runtime__, builtin_ids) = std_id("__Runtime__", builtin_ids)
-val (std__Builtins__, builtin_ids) = std_id("Builtins", builtin_ids)
-val (std__List__, builtin_ids) = std_id("List", builtin_ids)
-val (std__String__, builtin_ids) = std_id("String", builtin_ids)
-val (std__Char__, builtin_ids) = std_id("Char", builtin_ids)
-val (std__Array__, builtin_ids) = std_id("Array", builtin_ids)
-val (std__Vector__, builtin_ids) = std_id("Vector", builtin_ids)
+
+operator <=> (a: id_t, b: id_t) = cmp_id(a, b)
+operator == (a: id_t, b: id_t) = (a.m == b.m) & (a.i == b.i) && ((a.m == 0) | (a.j == b.j))
 
 type scope_t =
     | ScBlock: int
@@ -195,12 +180,13 @@ type val_flags_t =
     val_flag_tempref: bool = false;
     val_flag_private: bool = false;
     val_flag_subarray: bool = false;
+    val_flag_instance: bool = false;
     val_flag_method: (id_t, int);
-    val_flag_ctor: id_t;
+    val_flag_ctor: int = 0;
     val_flag_global: scope_t list = []
 }
 
-fun default_val_flags() = val_flags_t {val_flag_ctor=noid, val_flag_method=(noid, -1)}
+fun default_val_flags() = val_flags_t {val_flag_method=(noid, -1)}
 fun default_arg_flags() = default_val_flags().{val_flag_arg=true}
 fun default_var_flags() = default_val_flags().{val_flag_mutable=true}
 fun default_tempval_flags() = default_val_flags().{val_flag_temp=true}
@@ -210,7 +196,7 @@ fun default_tempvar_flags() = default_tempval_flags().{val_flag_mutable=true}
 type fun_constr_t =
     | CtorNone
     | CtorStruct
-    | CtorVariant: id_t
+    | CtorVariant: int
     | CtorFP: id_t
     | CtorExn: id_t
 
@@ -226,7 +212,8 @@ type fun_flags_t =
     fun_flag_ctor: fun_constr_t;
     fun_flag_method_of: id_t;
     fun_flag_uses_fv: bool=false;
-    fun_flag_recursive: bool=false
+    fun_flag_recursive: bool=false;
+    fun_flag_instance: bool=false;
 }
 
 fun default_fun_flags() = fun_flags_t {fun_flag_ctor=CtorNone, fun_flag_method_of=noid}
@@ -268,9 +255,10 @@ type var_flags_t =
     var_flag_class_from: int=0;
     var_flag_record: bool = false;
     var_flag_recursive: bool = false;
-    var_flag_have_tag: bool = false;
+    var_flag_have_tag: bool = true;
     var_flag_have_mutable: bool = false;
-    var_flag_opt: bool = false
+    var_flag_opt: bool = false;
+    var_flag_instance: bool = false;
 }
 
 fun default_variant_flags() = var_flags_t {}
@@ -366,10 +354,12 @@ val empty_idset: idset_t = Set.empty(cmp_id)
 val empty_idmap: idmap_t = Map.empty(cmp_id)
 
 type id_hashset_t = id_t Hashset.t
+type str_hashset_t = string Hashset.t
 fun hash(i: id_t): hash_t =
     (((FNV_1A_OFFSET ^ uint64(i.m))*FNV_1A_PRIME ^ uint64(i.i))*FNV_1A_PRIME ^ uint64(i.j))
 
 fun empty_id_hashset(size0: int): id_t Hashset.t = Hashset.empty(size0, noid, hash)
+fun empty_str_hashset(size0: int): string Hashset.t = Hashset.empty(size0, "", hash)
 fun id_hashset(s: idset_t) {
     val hs = empty_id_hashset(s.size*2)
     s.app(fun (x) {hs.add(x)})
@@ -479,6 +469,7 @@ fun default_module() =
     }
 
 var freeze_ids = false
+var lock_all_names = 0
 var all_names = Dynvec.create(0, "")
 var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1, hash)
 var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1, hash)
@@ -512,6 +503,19 @@ fun id2str_(i: id_t, pp: bool): string =
         val prefix = all_names.data[i.i]
         if pp || i.m == 0 { prefix }
         else { f"{prefix}@{i.j}" }
+    }
+
+fun id2str_m(i: id_t): string =
+    if i == noid { "<noid>" }
+    else {
+        val prefix = all_names.data[i.i]
+        if i.m == 0 { prefix }
+        else {
+            val mprefix = pp(get_module_name(i.m))
+            val mprefix = if mprefix == "Builtins" {""} else {mprefix + "."}
+            val prefix = all_names.data[i.i]
+            f"{mprefix}{prefix}@{i.j}"
+        }
     }
 
 fun string(i: id_t): string = id2str_(i, false)
@@ -574,10 +578,12 @@ fun get_id_prefix(s: string): int
     val h_idx = all_strhash.find_idx_or_insert(s)
     val idx = all_strhash.table[h_idx].data
     if idx >= 0 { idx }
-    else {
+    else if lock_all_names == 0 {
         val idx = all_names.push(s)
         all_strhash.table[h_idx].data = idx
         idx
+    } else {
+        throw compile_err(noloc, "'all_names' are locked. Attempt to call get_id()")
     }
 }
 
@@ -1181,12 +1187,6 @@ fun lit2str(c: lit_t) {
     }
 }
 
-fun print_idset(setname: string, s: idset_t) {
-    print(f"{setname}:[")
-    s.app(fun (i) { println(f" {i}") })
-    print(" ]\n")
-}
-
 fun ref2str(r: 't ref): string = @ccode
 {
     char buf[32];
@@ -1497,7 +1497,7 @@ fun is_fixed_typ (t: typ_t): bool
 
 type idset_hashmap_t = (id_t, id_hashset_t) Hashmap.t
 
-// And then compute closure of the calculated sets, i.e.
+// Compute closure of the sets, i.e.
 // for each id we find a set of id's which it references directly on indirectly
 fun calc_sets_closure(iters: int, all_ids: id_t list, all_sets: idset_hashmap_t): int
 {
@@ -1555,6 +1555,25 @@ fun same_or_parent(iface: id_t, maybe_parent: id_t, loc: loc_t) =
         if di_base == noid { false }
         else {same_or_parent(di_base, maybe_parent, loc)}
     }
+
+val (dummyid, builtin_ids) = std_id("_", builtin_ids)
+val (std__fold_result__, builtin_ids) = std_id("__fold_result__", builtin_ids)
+val (std__tag__, builtin_ids) = std_id("__tag__", builtin_ids)
+val (std__self__, builtin_ids) = std_id("self", builtin_ids)
+val (std__lambda__, builtin_ids) = std_id("__lambda__", builtin_ids)
+val (std__kwargs__, builtin_ids) = std_id("__kwargs__", builtin_ids)
+val (std__pat__, builtin_ids) = std_id("__pat__", builtin_ids)
+val (std__result__, builtin_ids) = std_id("result", builtin_ids)
+val (std__size__, builtin_ids) = std_id("size", builtin_ids)
+val (std__tmp__, builtin_ids) = std_id("t", builtin_ids)
+val (std__Names__, builtin_ids) = std_id("__Names__", builtin_ids)
+val (std__Runtime__, builtin_ids) = std_id("__Runtime__", builtin_ids)
+val (std__Builtins__, builtin_ids) = std_id("Builtins", builtin_ids)
+val (std__List__, builtin_ids) = std_id("List", builtin_ids)
+val (std__String__, builtin_ids) = std_id("String", builtin_ids)
+val (std__Char__, builtin_ids) = std_id("Char", builtin_ids)
+val (std__Array__, builtin_ids) = std_id("Array", builtin_ids)
+val (std__Vector__, builtin_ids) = std_id("Vector", builtin_ids)
 
 fun init_all(): void
 {

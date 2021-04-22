@@ -7,13 +7,13 @@
 
 @ccode { #include <string.h> }
 
-fun length(s: string) = __intrin_size__(s)
-fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
-fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
-fun cmp(s1: string, s2: string) = s1 <=> s2
+@inline fun length(s: string) = __intrin_size__(s)
+@inline fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
+@inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
+@inline fun cmp(s1: string, s2: string) = s1 <=> s2
 @pure fun copy(s: string): string = @ccode { return fx_make_str(s->data, s->length, fx_result) }
 
-@nothrow @pure fun empty(s: string): bool = @ccode { return s->length == 0 }
+@inline fun empty(s: string): bool = __intrin_size__(s) == 0
 
 @pure @nothrow fun startswith(s: string, prefix: string): bool = @ccode
 {
@@ -50,7 +50,7 @@ fun cmp(s1: string, s2: string) = s1 <=> s2
     return -1;
 }
 
-fun find(s: string, part: string): int = find(s, part, 0)
+@inline fun find(s: string, part: string): int = find(s, part, 0)
 
 @pure @nothrow fun find(s: string, c: char): int = @ccode
 {
@@ -81,7 +81,7 @@ fun find(s: string, part: string): int = find(s, part, 0)
     return i;
 }
 
-fun rfind(s: string, part: string): int = rfind(s, part, s.length()-1)
+@inline fun rfind(s: string, part: string): int = rfind(s, part, s.length()-1)
 
 @pure @nothrow fun rfind(s: string, c: char): int = @ccode
 {
@@ -110,7 +110,7 @@ fun rfind(s: string, part: string): int = rfind(s, part, s.length()-1)
     return false;
 }
 
-fun contains(s: string, substr: string): bool = find(s, substr) >= 0
+@inline fun contains(s: string, substr: string): bool = find(s, substr) >= 0
 
 @pure fun replace(s: string, substr: string, new_substr: string): string = @ccode
 {
@@ -281,12 +281,12 @@ fun split(s: string, c: char, ~allow_empty:bool)
 @nothrow fun to_int(a: string): int? = @ccode
 {
     bool ok = fx_atoi(a, &fx_result->u.Some, 10);
-    fx_result->tag = (int)ok
+    fx_result->tag = (int)(ok+1)
 }
 @nothrow fun to_double(a: string): double? = @ccode
 {
     bool ok = fx_atof(a, &fx_result->u.Some);
-    fx_result->tag = (int)ok
+    fx_result->tag = (int)(ok+1)
 }
 
 @nothrow fun to_int_or(a: string, defval: int): int = @ccode

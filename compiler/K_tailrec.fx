@@ -19,7 +19,7 @@ from K_form import *
 
 fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
 {
-    val {kf_name, kf_args, kf_rt=rt, kf_body, kf_loc} = *kf
+    val {kf_name, kf_params, kf_rt=rt, kf_body, kf_loc} = *kf
     fun have_tailrec_calls_(e: kexp_t): bool =
         match e {
         | KExpSeq (elist, _) =>
@@ -43,7 +43,7 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
         | KTypVoid  =>
             (noid, [])
         | _ =>
-            val res_n = gen_idk(km_idx, "res")
+            val res_n = dup_idk(km_idx, std__result__)
             val a0 = match is_ktyp_scalar(rt) {
                      | true => AtomLit(KLitInt(0L))
                      | _ => AtomLit(KLitNil(rt))
@@ -101,9 +101,10 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
             (where each function argument is an immutable value) and also want to
             enable all the optimizations that compiler can do with immutable values.
         */
-        val fold new_kf_args = [], trec_args = [], f_init_code = f_init_code,
-            loop_init_code = [] for (ai, ti) <- kf_args {
+        val fold new_kf_params = [], trec_args = [], f_init_code = f_init_code,
+            loop_init_code = [] for ai <- kf_params {
             val dv0 = get_kval(ai, kf_loc)
+            val ti = dv0.kv_typ
             val a1i = dup_idk(km_idx, ai)
             val a2i = dup_idk(km_idx, ai)
             val dv1 = dv0.{kv_name=a1i}
@@ -114,9 +115,9 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
                                              Some(a1i_as_exp), f_init_code, kf_loc)
             val loop_init_code = create_kdefval(ai, ti, default_tempval_flags(),
                                                 Some(a2i_as_exp), loop_init_code, kf_loc)
-            ((a1i, ti) :: new_kf_args, (a2i, ti) :: trec_args, f_init_code, loop_init_code)
+            (a1i :: new_kf_params, (a2i, ti) :: trec_args, f_init_code, loop_init_code)
         }
-        val new_kf_args = new_kf_args.rev()
+        val new_kf_params = new_kf_params.rev()
         val trec_args = trec_args.rev()
 
         /* the function prologue is ready; the loop prologue is ready;
@@ -182,7 +183,7 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
             else { KExpAtom(AtomId(res_n), (rt, kf_loc)) :: [] }
         val f_code = f_code + (loop_exp :: f_init_code)
         val new_kf_body = rcode2kexp(f_code, kf_loc)
-        *kf = kf->{kf_args=new_kf_args, kf_body=new_kf_body}
+        *kf = kf->{kf_params=new_kf_params, kf_body=new_kf_body}
     }
 }
 

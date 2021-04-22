@@ -35,11 +35,10 @@ fun update_globals(top_code: kcode_t, globals: id_hashset_t) =
         | KDefVal (n, e, _) => n :: []
         | KDefFun (ref {kf_name}) => kf_name :: []
         | KDefExn (ref {ke_name, ke_tag}) => ke_name :: ke_tag :: []
-        | KDefVariant (ref {kvar_name, kvar_cases}) =>
-            kvar_name :: [: for (n, _) <- kvar_cases {n} :]
+        | KDefVariant (ref {kvar_name}) => kvar_name :: []
         | KDefTyp (ref {kt_name}) => kt_name :: []
-        | KDefInterface (ref {ki_name, ki_all_methods}) =>
-            ki_name :: [: for (f, _) <- ki_all_methods {f} :]
+        | KDefClosureVars (ref {kcv_name}) => kcv_name :: []
+        | KDefInterface (ref {ki_name, ki_all_methods}) => ki_name :: []
         | _ => []
         }
         globals.add_list(n_list)
@@ -105,7 +104,7 @@ fun lift(kmods: kmodule_t list) {
             val {kv_flags} = get_kval(i, loc)
             if globals.mem(i) {
                 e
-            } else if kv_flags.val_flag_ctor != noid ||
+            } else if kv_flags.val_flag_ctor > 0 ||
                       (match rhs { | KExpData _ => true | _ => false }) {
                 add_to_globals_and_lift(i, e, loc)
             } else {

@@ -261,7 +261,7 @@ fun convert_all_typs(kmods: kmodule_t list)
     var all_decls = empty_idset
     var all_fwd_decls = empty_idset
     var all_visited = empty_idset
-    var all_var_enums: enum_map_t = Map.empty(cmp_id)
+    //var all_var_enums: enum_map_t = Map.empty(cmp_id)
     var all_saved_rec_vars: ctyp_map_t = Map.empty(cmp_id)
     var curr_cm_idx = -1
 
@@ -365,42 +365,6 @@ fun convert_all_typs(kmods: kmodule_t list)
         }
     }
 
-    fun get_var_enum(kvar: kdefvariant_t ref)
-    {
-        val {kvar_base_name, kvar_cases, kvar_flags, kvar_loc} = *kvar
-        match all_var_enums.find_opt(kvar_base_name) {
-        | Some e_id =>
-            match cinfo_(e_id, kvar_loc) {
-            | CEnum (ref {cenum_members}) => (e_id, cenum_members)
-            | _ => throw compile_err(kvar_loc,
-                f"invalid variant enumeration '{idk2str(e_id, kvar_loc)}'")
-            }
-        | _ =>
-            val e_base_cname = pp(kvar_base_name) + "_"
-            val e_cname = e_base_cname + "tag_t"
-            val e_id = gen_idc(curr_cm_idx, e_cname)
-            val start_idx = if kvar_flags.var_flag_opt { 0 }
-                            else { 1 }
-            val ctx = (CTypCInt, kvar_loc)
-            val fold members = [] for (ni, ti)@idx <- kvar_cases {
-                val {kv_cname=cname_i} = get_kval(ni, kvar_loc)
-                val dv = cdefval_t { cv_name=ni, cv_typ=CTypCInt, cv_cname=cname_i,
-                                     cv_flags=default_val_flags(), cv_loc=kvar_loc }
-                set_idc_entry(ni, CVal(dv))
-                val vali = Some(CExpLit(KLitInt(int64(idx + start_idx)), ctx))
-                (ni, vali) :: members
-            }
-            val members = members.rev()
-            val ce = ref (cdefenum_t {cenum_name=e_id, cenum_members=members,
-                                    cenum_cname=K_mangle.add_fx(e_cname),
-                                    cenum_scope=[], cenum_loc=kvar_loc})
-            set_idc_entry(e_id, CEnum(ce))
-            all_var_enums = all_var_enums.add(kvar_base_name, e_id)
-            add_decl(e_id, CDefEnum(ce))
-            (e_id, members)
-        }
-    }
-
     fun cvt2ctyp(tn: id_t, loc: loc_t) =
         if !all_decls.mem(tn) { cvt2ctyp_(tn, loc) }
 
@@ -409,19 +373,19 @@ fun convert_all_typs(kmods: kmodule_t list)
         val visited = all_visited.mem(tn)
         val deps = K_annotate.get_typ_deps(tn, loc)
         val kt_info = kinfo_(tn, loc)
-        val (ce_id, ce_members, recursive_variant, fwd_decl, deps) =
+        val (recursive_variant, fwd_decl, deps) =
         match kt_info {
         | KVariant kvar =>
-            val (ce_id, ce_members) = get_var_enum(kvar)
+            //val (ce_id, ce_members) = get_var_enum(kvar)
             val {kvar_flags} = *kvar
             if kvar_flags.var_flag_recursive {
                 val fwd_decl = !all_fwd_decls.mem(tn)
-                (ce_id, ce_members, true, fwd_decl,
+                (true, fwd_decl,
                 deps.filter(fun (d) {d != tn}))
             } else {
-                (ce_id, ce_members, false, false, deps)
+                (false, false, deps)
             }
-        | _ => (noid, [], false, false, deps)
+        | _ => (false, false, deps)
         }
         match (recursive_variant, visited) {
         | (false, true) =>
@@ -732,7 +696,8 @@ fun convert_all_typs(kmods: kmodule_t list)
             val src_u_exp = CExpArrow(src_exp, u_id, (CTypAny, kvar_loc))
             val dst_u_exp = CExpArrow(dst_exp, u_id, (CTypAny, kvar_loc))
             val fold free_cases=[], copy_cases=[], uelems=[]
-                for (ni, kt) <- kvar_cases, (label_i, _) <- ce_members {
+                for (ni, kt)@i <- kvar_cases {
+                    val label_i = i+1
                     match kt {
                     | KTypVoid => (free_cases, copy_cases, uelems)
                     | _ =>
@@ -740,7 +705,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                         val ni_clean = get_orig_id(ni)
                         val selem_i = CExpMem(src_u_exp, ni_clean, (ti, kvar_loc))
                         val delem_i = CExpMem(dst_u_exp, ni_clean, (ti, kvar_loc))
-                        val switch_label_i_exps = [: make_id_t_exp(label_i, CTypCInt, kvar_loc) :]
+                        val switch_label_i_exps = [: make_int_exp(label_i, kvar_loc) :]
                         val free_code_i = gen_free_code(delem_i, ti, false, false, [], kvar_loc)
                         val free_cases= match free_code_i {
                                         | [] => free_cases
@@ -810,7 +775,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 *struct_decl = struct_decl->{ct_typ=CTypStruct(struct_id_opt, relems)}
             }
             val ct_ifaces = [: for (iname, _) <- kvar_ifaces { iname } :]
-            *struct_decl = struct_decl->{ct_enum=ce_id, ct_ifaces=ct_ifaces}
+            *struct_decl = struct_decl->{ct_enum=noid, ct_ifaces=ct_ifaces}
             *freef_decl = freef_decl->{cf_body=free_code.rev()}
             *copyf_decl = copyf_decl->{cf_body=copy_code.rev()}
         | KInterface ki =>
@@ -907,6 +872,22 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
                        all_ctypes_fun_decl: cstmt_t list,
                        ccode: ccode_t)
 {
+    val used_names = empty_str_hashset(1024)
+    val used_fwd_names = empty_str_hashset(1024)
+
+    fun check_name_duplicates(cname: string)
+    {
+        val found = used_names.mem(cname)
+        if !found && cname != "" { used_names.add(cname) }
+        !found
+    }
+    fun check_fwd_name_duplicates(cname: string)
+    {
+        val found = used_fwd_names.mem(cname)
+        if !found && cname != "" { used_fwd_names.add(cname) }
+        !found
+    }
+
     fun get_ctyp_id(t: ctyp_t) =
         match t {
         | CTypName tn => tn
@@ -916,18 +897,27 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
         | _ => noid
         }
 
-    fun is_used_decl(s: cstmt_t, used_ids: id_hashset_t): bool =
+    fun is_used_decl(s: cstmt_t, used_ids: id_hashset_t, final: bool): bool =
         match s {
-        | CDefTyp (ref {ct_name, ct_typ}) =>
-            used_ids.mem(ct_name) || used_ids.mem(get_ctyp_id(ct_typ))
-        | CDefForwardTyp (tn, loc) => used_ids.mem(tn)
-        | CDefForwardSym (f, loc) => used_ids.mem(f)
-        | CDefFun (ref {cf_name}) => used_ids.mem(cf_name)
-        | CDefEnum (ref {cenum_name, cenum_members}) =>
-            used_ids.mem(cenum_name) ||
-            cenum_members.exists(fun ((m, _)) { used_ids.mem(m) })
-        | CDefInterface (ref {ci_name}) =>
-            used_ids.mem(ci_name)
+        | CDefTyp (ref {ct_name, ct_cname, ct_typ}) =>
+            (used_ids.mem(ct_name) || used_ids.mem(get_ctyp_id(ct_typ))) &&
+            (!final || check_name_duplicates(ct_cname))
+        | CDefForwardTyp (tn, loc) =>
+            used_ids.mem(tn) &&
+            (!final || check_fwd_name_duplicates(get_idc_cname(tn, loc)))
+        | CDefForwardSym (f, loc) =>
+            used_ids.mem(f) &&
+            (!final || check_fwd_name_duplicates(get_idc_cname(f, loc)))
+        | CDefFun (ref {cf_name, cf_cname}) =>
+            used_ids.mem(cf_name) &&
+            (!final || check_name_duplicates(cf_cname))
+        | CDefEnum (ref {cenum_name, cenum_cname, cenum_members}) =>
+            (used_ids.mem(cenum_name) ||
+            cenum_members.exists(fun ((m, _)) { used_ids.mem(m) })) &&
+            (!final || check_name_duplicates(cenum_cname))
+        | CDefInterface (ref {ci_name, ci_cname}) =>
+            used_ids.mem(ci_name) &&
+            (!final || check_name_duplicates(ci_cname))
         | _ => false
         }
 
@@ -991,7 +981,7 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
         for i <- 0:100 {
             val size0 = used_ids.size()
             for (s, uv) <- decls_plus {
-                if  is_used_decl(s, used_ids) {
+                if is_used_decl(s, used_ids, false) {
                     used_ids.union(uv)
                 }
             }
@@ -1005,7 +995,7 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
     update_used_ids(used_ids)
     val fold ctypes_ccode = []
         for s <- all_ctypes_fwd_decl + (all_ctypes_decl + all_ctypes_fun_decl) {
-            if is_used_decl(s, used_ids) { s :: ctypes_ccode }
+            if is_used_decl(s, used_ids, true) { s :: ctypes_ccode }
             else { ctypes_ccode }
         }
     ctypes_ccode.rev()

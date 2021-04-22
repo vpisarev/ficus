@@ -75,7 +75,7 @@ fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
 fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
     [: @unzip for x <- lab {x} :]
 
-fun sort(l: 't list, lt: ('t, 't)->bool) =
+fun sort(l: 't list, lt: ('t, 't)->bool): 't list =
     match l
     {
         | [] => l

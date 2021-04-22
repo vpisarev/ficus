@@ -10,7 +10,7 @@ import Filename, File, Sys, Hashmap
 import Ast, Ast_pp, Lexer, Parser, Options
 import Ast_typecheck
 import K_form, K_pp, K_normalize, K_annotate, K_mangle
-import K_remove_unused, K_lift_simple, K_flatten, K_tailrec
+import K_remove_unused, K_lift_simple, K_flatten, K_tailrec, K_copy_n_skip
 import K_cfold_dealias, K_lift, K_fast_idx, K_inline, K_loop_inv, K_fuse_loops
 import C_form, C_gen_std, C_gen_code, C_pp
 import C_post_rename_locals, C_post_adjust_decls
@@ -192,15 +192,19 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     Ast.all_compile_errs = []
     val niters = Options.opt.optim_iters
     var temp_kmods = kmods
-    prf("initial unused code removal")
+    prf("remove unused")
     temp_kmods = K_remove_unused.remove_unused(temp_kmods, true)
+    prf("annotate types")
+    temp_kmods = K_annotate.annotate_types(temp_kmods)
+    prf("copy generic/inline functions")
+    temp_kmods = K_copy_n_skip.copy_some(temp_kmods)
+    prf("remove unused by main")
+    temp_kmods = K_remove_unused.remove_unused_by_main(temp_kmods)
     for i <- 1: niters+1 {
         pr_verbose(f"Optimization pass #{i}:")
         if i <= 2 {
-            prf("simple lifting")
+            prf("simple lambda lifting")
             temp_kmods = K_lift_simple.lift(temp_kmods)
-            prf("annotate types")
-            temp_kmods = K_annotate.annotate_types(temp_kmods)
         }
         prf("tailrec")
         temp_kmods = K_tailrec.tailrec2loops_all(temp_kmods)
@@ -247,7 +251,7 @@ fun k2c_all(kmods: kmodule_t list)
     C_gen_std.init_std_names()
     val cmods = C_gen_code.gen_ccode_all(kmods)
     pr_verbose(clrmsg(MsgBlue, "C code generated"))
-    val cmods = C_post_rename_locals.rename_locals(cmods)
+    //val cmods = C_post_rename_locals.rename_locals(cmods)
     val cmods = [: for cmod <- cmods {
         val is_cpp = Options.opt.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp
         if is_cpp { C_post_adjust_decls.adjust_decls(cmod) }
@@ -441,7 +445,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
                 Ast_pp.pprint_mod(minfo)
             }
         }
-        val modules_used = ", ".join([: for m_idx <- Ast.all_modules_sorted {f"({Ast.pp(Ast.get_module_name(m_idx))}, {m_idx})"} :])
+        val modules_used = ", ".join([: for m_idx <- Ast.all_modules_sorted { Ast.pp(Ast.get_module_name(m_idx)) } :])
         val parsing_complete = clrmsg(MsgBlue, "Parsing complete")
         pr_verbose(f"{parsing_complete}. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)

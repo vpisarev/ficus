@@ -32,7 +32,7 @@
 from Ast import *
 from K_form import *
 import Options
-import Map, Set, Hashset
+import Map, Set, Hashmap, Hashset
 
 fun pure_kexp(e: kexp_t): bool
 {
@@ -312,5 +312,114 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
         curr_m_idx = km_idx
         val new_top = remove_unused_(km_top, [], remove_callb)
         km.{km_top=new_top}
+    } :]
+}
+
+fun remove_unused_by_main(kmods: kmodule_t list)
+{
+    val all_main_ids = empty_id_hashset(1024)
+    val all_top_ids = empty_id_hashset(1024)
+    var all_top: (id_t, kexp_t) list = []
+    var all_actions: kexp_t list = []
+
+    // Find all top-level declarations;
+    // Also copy all top-level declarations from
+    // the main module into a separate set
+    for km <- kmods {
+        val {km_top, km_main} = km
+        for e <- km_top {
+            | KDefVal (n, _, _) =>
+                all_top_ids.add(n)
+                all_top = (n, e) :: all_top
+                if km_main { all_main_ids.add(n) }
+            | KDefFun (ref {kf_name}) =>
+                all_top_ids.add(kf_name)
+                all_top = (kf_name, e) :: all_top
+                if km_main { all_main_ids.add(kf_name) }
+            | KDefTyp (ref {kt_name}) =>
+                all_top_ids.add(kt_name)
+                all_top = (kt_name, e) :: all_top
+                if km_main { all_main_ids.add(kt_name) }
+            | KDefVariant (ref {kvar_name}) =>
+                all_top_ids.add(kvar_name)
+                all_top = (kvar_name, e) :: all_top
+                if km_main { all_main_ids.add(kvar_name) }
+            | KDefInterface (ref {ki_name}) =>
+                all_top_ids.add(ki_name)
+                all_top = (ki_name, e) :: all_top
+                if km_main { all_main_ids.add(ki_name) }
+            | KDefClosureVars (ref {kcv_name}) =>
+                all_top_ids.add(kcv_name)
+                all_top = (kcv_name, e) :: all_top
+                if km_main { all_main_ids.add(kcv_name) }
+            | KDefExn (ref {ke_name, ke_tag}) =>
+                all_top_ids.add(ke_name)
+                all_top_ids.add(ke_tag)
+                all_top = (ke_name, e) :: all_top
+                all_main_ids.add(ke_name)
+                all_main_ids.add(ke_tag)
+            | _ =>
+                // we assume that after the very first round of dead code elimination
+                // all remaining top-level expressions which are not declarations
+                // are some actions (print etc. statements), we need to retain them
+                all_actions = e :: all_actions
+        }
+    }
+
+    // For each symbol find its direct top-level dependencies
+    val idset0 = empty_id_hashset(1)
+    var all_deps = Hashmap.empty(1024, noid, idset0, hash)
+    for (n, e) <- all_top {
+        val deps = used_by(e :: [], 16)
+        deps.intersect(all_top_ids)
+        all_deps.add(n, deps.compress())
+    }
+
+    // calculate and add to the hash table all the direct dependencies
+    // of top-level non-declarations (i.e. actions)
+    val all_main_deps = all_main_ids.copy()
+    val used_by_actions = used_by(all_actions, 1024)
+    used_by_actions.intersect(all_top_ids)
+    all_main_deps.union(used_by_actions)
+
+    val main_id = get_id("__main__")
+    all_deps.add(main_id, all_main_deps)
+
+    // And then indirect top-level dependencies by calculating transitive closure
+    val iters0 = 10
+    val _ = calc_sets_closure(iters0, main_id :: [: for (n, _) <- all_top {n} :], all_deps)
+
+    // Extract all dependencies for the main module
+    val all_main_deps = match all_deps.find_opt(main_id) {
+        | Some(deps) => deps
+        | _ => all_main_deps // should not get here; probably need to report an error
+        }
+
+    // Finally, exclude everything that is not needed by the main module
+    [: for km <- kmods {
+        val {km_top, km_main} = km
+        if km_main {
+            km // retain everything in the main module
+        } else {
+            val fold new_top = [] for e <- km_top {
+                | KDefVal (n, _, _) =>
+                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                | KDefFun (ref {kf_name=n}) =>
+                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                | KDefTyp (ref {kt_name=n}) =>
+                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                | KDefVariant (ref {kvar_name=n}) =>
+                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                | KDefInterface (ref {ki_name=n}) =>
+                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                | KDefClosureVars (ref {kcv_name=n}) =>
+                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                | KDefExn (ref {ke_name=n}) =>
+                    // always include all the exceptions
+                    e :: new_top
+                | _ => e :: new_top
+            }
+            km.{km_top = new_top.rev()}
+        }
     } :]
 }
