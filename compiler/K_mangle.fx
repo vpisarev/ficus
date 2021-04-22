@@ -257,7 +257,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
     "".join(mangle_ktyp_(t, []).rev())
 }
 
-fun mangle_all(kmods: kmodule_t list) {
+fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
     val mangle_map: mangle_map_t = Hashmap.empty(1024, "", noid, hash)
     var curr_top_code: kcode_t = []
     var curr_km_idx = -1
@@ -290,12 +290,12 @@ fun mangle_all(kmods: kmodule_t list) {
         | KTypName n => ignore(mangle_ktyp(t, mangle_map, loc)); t
         | KTypRecord (rn, _) => ignore(mangle_ktyp(t, mangle_map, loc))
                                 KTypName(rn)
-        | KTypFun _ => create_gen_typ(t, "fun", loc)
-        | KTypTuple _ => create_gen_typ(t, "tup", loc)
+        | KTypFun _ => if final_mode {create_gen_typ(t, "fun", loc)} else {t}
+        | KTypTuple _ => if final_mode {create_gen_typ(t, "tup", loc)} else {t}
         | KTypArray _ => t
         | KTypVector _ => t
-        | KTypList _ => create_gen_typ(t, "lst", loc)
-        | KTypRef _ => create_gen_typ(t, "ref", loc)
+        | KTypList _ => if final_mode {create_gen_typ(t, "lst", loc)} else {t}
+        | KTypRef _ => if final_mode {create_gen_typ(t, "ref", loc)} else {t}
         }
     }
     fun mangle_id_typ(i: id_t, loc: loc_t, callb: k_callb_t) =
@@ -313,7 +313,7 @@ fun mangle_all(kmods: kmodule_t list) {
                             val (_, cname) = mangle_make_unique(i, "_fx_g", bare_name, "", mangle_map)
                             cname
                         }
-                    set_idk_entry(i, KVal(kv.{kv_typ=t, kv_cname=cname}))
+                    set_idk_entry(i, KVal(kv.{kv_typ=if final_mode {t} else {kv_typ}, kv_cname=cname}))
                 }
                 t
             | _ =>
@@ -358,8 +358,10 @@ fun mangle_all(kmods: kmodule_t list) {
             val mangled_ktyp_id =
             match mangled_ktyp {
             | KTypName tn => tn
-            | _ => throw compile_err(kf_loc,
-                    f"mangle: cannot mangle '{cname}' type down to alias")
+            | _ =>
+                if !final_mode {noid} else {
+                    throw compile_err(kf_loc, f"mangle: cannot mangle '{cname}' type down to alias")
+                }
             }
             if kci_fcv_t != noid {
                 match kinfo_(kci_fcv_t, kf_loc) {
@@ -369,13 +371,14 @@ fun mangle_all(kmods: kmodule_t list) {
                     val freevars = [: for (n, t) <- kcv_freevars {
                                        (n, walk_ktyp_n_mangle(t, kcv_loc, callb))
                                     } :]
-                    *kcv = kcv->{kcv_cname=cv_cname, kcv_freevars=freevars}
+                    *kcv = kcv->{kcv_cname=cv_cname,
+                        kcv_freevars=if final_mode {freevars} else {kcv_freevars}}
                 | _ => throw compile_err(kf_loc,
                         "mangle: invalid closure datatype (should be KClosureVars)")
                 }
             }
-            *kf = kf->{ kf_cname=cname, kf_rt=rt, kf_body=new_body,
-                        kf_closure=kf_closure.{kci_fp_typ=mangled_ktyp_id} }
+            *kf = kf->{ kf_cname=cname, kf_rt=if final_mode {rt} else {kf_rt}, kf_body=new_body,
+                        kf_closure=if final_mode {kf_closure.{kci_fp_typ=mangled_ktyp_id}} else {kf_closure} }
             e
         | KDefExn ke =>
             val {ke_name, ke_typ, ke_scope, ke_std, ke_tag, ke_loc} = *ke
@@ -384,7 +387,7 @@ fun mangle_all(kmods: kmodule_t list) {
             val bare_name = mangle_name(ke_name, Some(ke_scope), ke_loc)
             val (base_cname, cname) = mangle_make_unique(ke_name, "E", bare_name, suffix, mangle_map)
             val exn_cname = add_fx(cname)
-            *ke = ke->{ke_cname=exn_cname, ke_typ=t, ke_base_cname=base_cname}
+            *ke = ke->{ke_cname=exn_cname, ke_typ=if final_mode {t} else {ke_typ}, ke_base_cname=base_cname}
             val tag_kv = get_kval(ke_tag, ke_loc)
             val tag_cname = if ke_std { "FX_EXN_" + pp(ke_name) }
                             else { "_FX_EXN_" + base_cname }
@@ -415,7 +418,9 @@ fun mangle_all(kmods: kmodule_t list) {
                 }
                 (ni, mangle_ktyp_retain_record(ti, kvar_loc, callb))
             } :]
-            *kvar = kvar->{kvar_cases=var_cases}
+            if final_mode {
+                *kvar = kvar->{kvar_cases=var_cases}
+            }
             e
         | KDefInterface ki =>
             val {ki_name, ki_all_methods, ki_loc} = *ki
@@ -433,7 +438,9 @@ fun mangle_all(kmods: kmodule_t list) {
                 val rt = walk_ktyp_n_mangle(rt, ki_loc, callb)
                 (fi, KTypFun(args, rt))
             } :]
-            *ki = ki->{ki_all_methods=all_methods}
+            if final_mode {
+                *ki = ki->{ki_all_methods=all_methods}
+            }
             e
         | KDefTyp((ref {kt_typ=KTypRecord (_, _)}) as kt) =>
             val {kt_name, kt_typ, kt_loc} = *kt
@@ -444,7 +451,9 @@ fun mangle_all(kmods: kmodule_t list) {
                 | KTypRecord (_, _) as ktyp => ktyp
                 | _ => throw compile_err(kt_loc, "after mangling record is not a record anymore")
                 }
-            *kt = kt->{kt_typ=ktyp}
+            if final_mode {
+                *kt = kt->{kt_typ=ktyp}
+            }
             e
         /* Normally, KMangle does not take KDefTyp with non-record rhs on input,
            it produces such types on output, but just in case leave such definitions
@@ -474,22 +483,170 @@ fun mangle_all(kmods: kmodule_t list) {
         curr_km_idx = km_idx
         for e <- km_top {
             val e = walk_kexp_n_mangle(e, walk_n_mangle_callb)
-            match e {
-            | KDefVal (n, e, loc) =>
-                val kv = get_kval(n, loc)
-                val {kv_cname, kv_flags} = kv
-                if kv_cname == "" {
-                    if !(kv_flags.val_flag_temp || kv_flags.val_flag_tempref) {
-                        set_idk_entry(n, KVal(kv.{
-                            kv_flags=kv_flags.{
-                                val_flag_global=ScModule(km_idx) :: []}}))
-                        ignore(mangle_id_typ(n, loc, walk_n_mangle_callb))
+            if final_mode {
+                match e {
+                | KDefVal (n, e, loc) =>
+                    val kv = get_kval(n, loc)
+                    val {kv_cname, kv_flags} = kv
+                    if kv_cname == "" {
+                        if !(kv_flags.val_flag_temp || kv_flags.val_flag_tempref) {
+                            set_idk_entry(n, KVal(kv.{
+                                kv_flags=kv_flags.{
+                                    val_flag_global=ScModule(km_idx) :: []}}))
+                            ignore(mangle_id_typ(n, loc, walk_n_mangle_callb))
+                        }
                     }
+                | _ => {}
                 }
-            | _ => {}
             }
             curr_top_code = e :: curr_top_code
         }
         km.{km_top=curr_top_code.rev()}
     } :]
+}
+
+fun demangle_all(kmods: kmodule_t list)
+{
+    fun reset_kval_cname(i: id_t, loc: loc_t) {
+        val kv = get_kval(i, loc)
+        set_idk_entry(i, KVal(kv.{kv_cname=""}))
+    }
+    fun fold_ktyp_n_demangle(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
+    fun fold_kexp_n_demangle(e: kexp_t, callb: k_fold_callb_t) =
+        match e {
+        | KDefVal (n, e, loc) =>
+            reset_kval_cname(n, loc)
+            fold_kexp_n_demangle(e, callb)
+        | KDefFun kf =>
+            val {kf_params, kf_body, kf_loc} = *kf
+            for x <- kf_params { reset_kval_cname(x, kf_loc) }
+            fold_kexp_n_demangle(kf_body, callb)
+            *kf = kf->{kf_cname=""}
+        | KDefExn ke =>
+            val {ke_loc, ke_tag} = *ke
+            *ke = ke->{ke_cname="", ke_base_cname=""}
+            val tag_kv = get_kval(ke_tag, ke_loc)
+            set_idk_entry(ke_tag, KVal(tag_kv.{kv_cname=""}))
+        | KDefVariant kvar =>
+            val {kvar_proto, kvar_loc} = *kvar
+            match (if kvar_proto != noid {kinfo_(kvar_proto, kvar_loc)} else {KNone}) {
+            | KVariant kvar2 => *kvar2 = kvar2->{kvar_cname=""}
+            | _ => {}
+            }
+            *kvar = kvar->{kvar_cname=""}
+        | KDefInterface ki =>
+            *ki = ki->{ki_cname=""}
+        | KDefTyp kt =>
+            val {kt_proto, kt_loc} = *kt
+            match (if kt_proto != noid {kinfo_(kt_proto, kt_loc)} else {KNone}) {
+            | KTyp kt2 => *kt2 = kt2->{kt_cname=""}
+            | _ => {}
+            }
+            *kt = kt->{kt_cname=""}
+        | KExpMap(clauses, _, _, (_, loc)) =>
+            fold_kexp(e, callb)
+            for (_, id_l, at_ids) <- clauses {
+                for i <- at_ids { reset_kval_cname(i, loc) }
+                for (i, _) <- id_l { reset_kval_cname(i, loc) }
+            }
+        | KExpFor(id_l, at_ids, _, _, loc) =>
+            fold_kexp(e, callb)
+            for i <- at_ids { reset_kval_cname(i, loc) }
+            for (i, _) <- id_l { reset_kval_cname(i, loc) }
+        | _ => fold_kexp(e, callb)
+        }
+
+    val fold_n_demangle_callb = k_fold_callb_t
+    {
+        kcb_fold_ktyp=Some(fold_ktyp_n_demangle),
+        kcb_fold_kexp=Some(fold_kexp_n_demangle),
+        kcb_fold_atom=None
+    }
+
+    for km <- kmods {
+        val {km_top} = km
+        for e <- km_top {
+            fold_kexp_n_demangle(e, fold_n_demangle_callb)
+        }
+    }
+    kmods
+}
+
+fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1, hash)
+
+fun mangle_locals(kmods: kmodule_t list)
+{
+    var global_prefix_hash = empty_int_map(256)
+    var prefix_hash = empty_int_map(256)
+
+    fun gen_cname(n: id_t, global: bool) {
+        val prefix = if global {get_id("g_" + all_names.data[n.i]).i} else {n.i}
+        val idx = prefix_hash.find_idx_or_insert(prefix)
+        val j1 = prefix_hash.table[idx].data + 1
+        prefix_hash.table[idx].data = j1
+        f"{all_names.data[prefix]}_{j1}"
+    }
+
+    fun gen_kval_cname(n: id_t, loc: loc_t, global: bool) =
+        if n.m > 0 {
+            val {kv_cname} as kv = get_kval(n, loc)
+            if kv_cname == "" {
+                val new_cname = gen_cname(n, global)
+                set_idk_entry(n, KVal(kv.{kv_cname=new_cname}))
+            }
+        }
+
+    fun mangle_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void {}
+    fun mangle_kexp_(e: kexp_t, callb: k_fold_callb_t) =
+        match e {
+        | KDefVal(n, e, loc) =>
+            mangle_kexp_(e, callb)
+            gen_kval_cname(n, loc, false)
+        | KDefFun kf =>
+            val {kf_params, kf_body, kf_loc} = *kf
+            val saved_hash = prefix_hash
+            prefix_hash = global_prefix_hash.copy()
+            for x <- kf_params { gen_kval_cname(x, kf_loc, false) }
+            mangle_kexp_(kf_body, callb)
+            prefix_hash = saved_hash
+        | KExpMap(clauses, _, _, (_, loc)) =>
+            fold_kexp(e, callb)
+            for (_, id_l, at_ids) <- clauses {
+                for i <- at_ids { gen_kval_cname(i, loc, false) }
+                for (i, _) <- id_l { gen_kval_cname(i, loc, false) }
+            }
+        | KExpFor(id_l, at_ids, _, _, loc) =>
+            fold_kexp(e, callb)
+            for i <- at_ids { gen_kval_cname(i, loc, false) }
+            for (i, _) <- id_l { gen_kval_cname(i, loc, false) }
+        | _ => fold_kexp(e, callb)
+        }
+
+    val mangle_callb = k_fold_callb_t {
+        kcb_fold_atom=None,
+        kcb_fold_ktyp=Some(mangle_ktyp_),
+        kcb_fold_kexp=Some(mangle_kexp_)
+    }
+
+    // pass 1. set cname for global values first
+    for km <- kmods {
+        val {km_top} = km
+        for e <- km_top {
+            | KDefVal(n, _, loc) when n.m > 0 => gen_kval_cname(n, loc, true)
+            | _ => {}
+        }
+    }
+    global_prefix_hash = prefix_hash
+
+    // pass 2. mangle local variables in each function in each module.
+    // Use the global prefix hash as a starting point for each function.
+    // This way we make sure that local values do not interfere with global values
+    for km <- kmods {
+        val {km_top} = km
+        prefix_hash = global_prefix_hash.copy()
+        for e <- km_top {
+            mangle_kexp_(e, mangle_callb)
+        }
+    }
+    kmods
 }

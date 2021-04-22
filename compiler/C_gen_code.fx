@@ -3508,7 +3508,7 @@ fun gen_ccode_all(kmods: kmodule_t list): cmodule_t list
 
     /* 3. convert each module to C */
     val fold cmods = [] for (km, c_fdecls, mod_init_calls, exn_data_decls) <- kmods_plus.rev() {
-        val {km_name, km_cname, km_main, km_pragmas} = km
+        val {km_name, km_cname, km_main, km_skip, km_pragmas} = km
         val (prologue, ccode) = gen_ccode(cmods, km, c_fdecls, mod_init_calls)
         val ctypes = C_gen_types.elim_unused_ctypes(km.km_name, all_ctypes_fwd_decl,
                             all_ctypes_decl + exn_data_decls, all_ctypes_fun_decl, ccode)
@@ -3518,6 +3518,7 @@ fun gen_ccode_all(kmods: kmodule_t list): cmodule_t list
             cmod_ccode=prologue + (ctypes + ccode),
             cmod_main=km_main,
             cmod_recompile=true,
+            cmod_skip=km_skip,
             cmod_pragmas=km_pragmas
         }) :: cmods
     }

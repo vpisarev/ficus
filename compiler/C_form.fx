@@ -281,7 +281,7 @@ type cdefinterface_t =
 type cmodule_t =
 {
     cmod_name: id_t; cmod_cname: string; cmod_ccode: cstmt_t list;
-    cmod_main: bool; cmod_recompile: bool; cmod_pragmas: pragmas_t
+    cmod_main: bool; cmod_recompile: bool; cmod_skip: bool; cmod_pragmas: pragmas_t
 }
 
 type cinfo_t =

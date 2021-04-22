@@ -1572,8 +1572,8 @@ fun normalize_mod(minfo: defmodule_t, kcode_typedefs: kcode_t, toposort_idx: int
     val modsc = ScModule(minfo.dm_idx) :: []
     val (kcode, pragmas) = eseq2code(minfo.dm_defs, kcode_typedefs, modsc)
     kmodule_t { km_name=minfo.dm_name, km_idx=minfo.dm_idx, km_cname=pp(minfo.dm_name),
-                km_top=kcode.rev(), km_toposort_idx=toposort_idx, km_main=is_main,
-                km_pragmas=parse_pragmas(pragmas) }
+                km_top=kcode.rev(), km_deps=minfo.dm_deps, km_toposort_idx=toposort_idx, km_main=is_main,
+                km_skip=false, km_pragmas=parse_pragmas(pragmas) }
 }
 
 fun normalize_all_modules(modules: int list): kmodule_t list

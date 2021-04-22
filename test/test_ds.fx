@@ -54,7 +54,121 @@ TEST("ds.set", fun()
     EXPECT_EQ(s2.mem("this") || s2.mem("complex") || s2.mem("simple"), false)
 })
 
-val poem = @text "poem.txt"
+val poem =
+"The first day of Christmas,
+My true love sent to me
+A partridge in a pear tree.
+
+The second day of Christmas,
+My true love sent to me
+Two turtle doves, and
+A partridge in a pear tree.
+
+The third day of Christmas,
+My true love sent to me
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The fourth day of Christmas,
+My true love sent to me
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The fifth day of Christmas,
+My true love sent to me
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The sixth day of Christmas,
+My true love sent to me
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The seventh day of Christmas,
+My true love sent to me
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The eighth day of Christmas,
+My true love sent to me
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The ninth day of Christmas,
+My true love sent to me
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The tenth day of Christmas,
+My true love sent to me
+Ten pipers piping,
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The eleventh day of Christmas
+My true love sent to me
+Eleven ladies dancing,
+Ten pipers piping,
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+
+The twelfth day of Christmas
+My true love sent to me
+Twelve fiddlers fiddling,
+Eleven ladies dancing,
+Ten pipers piping,
+Nine drummers drumming,
+Eight maids a-milking,
+Seven swans a-swimming,
+Six geese a-laying,
+Five gold rings,
+Four colly birds,
+Three French hens,
+Two turtle doves, and
+A partridge in a pear tree.
+"
 
 TEST("ds.map", fun()
 {

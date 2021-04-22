@@ -38,6 +38,7 @@ fun clrmsg(clr: msgcolor_t, msg: string)
         msg
     }
 }
+
 val error = clrmsg(MsgRed, "error")
 
 fun get_preamble(mfname: string): Lexer.token_t list {
@@ -186,6 +187,88 @@ fun k_normalize_all(modules: int list): (kmodule_t list, bool)
     (kmods, Ast.all_compile_errs == [])
 }
 
+fun k_skip_some(kmods: kmodule_t list)
+{
+    val skip_flags = array(size(Ast.all_modules), false)
+    val build_root_dir = Options.opt.build_rootdir
+    val ok = Sys.mkdir(build_root_dir, 0755)
+    val build_dir = Options.opt.build_dir
+    var ok = ok && Sys.mkdir(build_dir, 0755)
+    val obj_ext = if Sys.win32 {".obj"} else {".o"}
+
+    val kmods = [: for km <- kmods {
+        val {km_idx, km_cname, km_top, km_deps, km_pragmas} = km
+        val is_cpp = Options.opt.compile_by_cpp || km_pragmas.pragma_cpp
+        val ext = if is_cpp { ".cpp" } else { ".c" }
+        val mname = K_mangle.mangle_mname(km_cname)
+        val cname = Filename.normalize(build_dir, mname)
+        val k_filename = cname + ".k"
+        val c_filename = cname + ext
+        val o_filename = cname + obj_ext
+
+        val new_kform = K_pp.pp_top_to_string(km_top)
+        val have_k = Sys.file_exists(k_filename)
+        val have_c = Sys.file_exists(c_filename)
+        val have_o = Sys.file_exists(o_filename)
+        val have_all = have_k & have_c & have_o
+
+        val old_kform =
+            if Options.opt.force_rebuild || !have_all {""}
+            else {
+                try
+                    File.read_utf8(k_filename)
+                catch {
+                | IOError | FileOpenError => ""
+                }
+            }
+        val (ok_j, same_kform, status_j) =
+            if new_kform == old_kform {
+                (true, true, "")
+            } else {
+                val well_written =
+                    try {
+                        File.write_utf8(k_filename, new_kform)
+                        true
+                    }
+                    catch {
+                    | IOError | FileOpenError => false
+                    }
+                (well_written, false,
+                if well_written {""} else {clrmsg(MsgRed, "failed to write .k")})
+            }
+        ok = ok & ok_j
+        if !same_kform {
+            if have_c { Sys.remove(c_filename) }
+            if have_o { Sys.remove(o_filename) }
+        }
+        // [TODO] with properly constructed K-form dump format it should be
+        // not necessary to check the dependencies. Types of the dependencies from
+        // other modules (basically, their API) could be included into the dump.
+        val skip_module = same_kform && all(for d <- km_deps {skip_flags[d]})
+        val status_j = if status_j != "" {status_j} else if skip_module {"skip"} else {clrmsg(MsgBlue, "process")}
+        pr_verbose(f"K {km_cname}: {status_j}")
+        if skip_module {
+            for e <- km_top {
+                | K_form.KDefFun kf when kf->kf_flags.fun_flag_ctor == Ast.CtorNone =>
+                    val {kf_flags, kf_rt, kf_loc} = *kf
+                    *kf = kf->{
+                        kf_flags=kf_flags.{
+                            fun_flag_ccode=true,
+                            fun_flag_inline=false,
+                            },
+                        kf_body=K_form.KExpCCode("", (kf_rt, kf_loc)),
+                        }
+                | _ => {}
+            }
+        }
+        skip_flags[km_idx] = skip_module
+        km.{km_skip=skip_module}
+    } :]
+
+    if !ok {throw Fail("failed to write some k-forms")}
+    kmods
+}
+
 fun prf(str: string) = pr_verbose(f"\t{str}")
 
 fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
@@ -200,6 +283,12 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     temp_kmods = K_copy_n_skip.copy_some(temp_kmods)
     prf("remove unused by main")
     temp_kmods = K_remove_unused.remove_unused_by_main(temp_kmods)
+    prf("mangle & dump intermediate K-forms")
+    temp_kmods = K_mangle.mangle_all(temp_kmods, false)
+    temp_kmods = K_mangle.mangle_locals(temp_kmods)
+    temp_kmods = k_skip_some(temp_kmods)
+    prf("demangle")
+    temp_kmods = K_mangle.demangle_all(temp_kmods)
     for i <- 1: niters+1 {
         pr_verbose(f"Optimization pass #{i}:")
         if i <= 2 {
@@ -233,7 +322,7 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     prf("remove unused")
     temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     prf("mangle")
-    temp_kmods = K_mangle.mangle_all(temp_kmods)
+    temp_kmods = K_mangle.mangle_all(temp_kmods, true)
     prf("remove unused")
     temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     prf("mark recursive")
@@ -251,7 +340,7 @@ fun k2c_all(kmods: kmodule_t list)
     C_gen_std.init_std_names()
     val cmods = C_gen_code.gen_ccode_all(kmods)
     pr_verbose(clrmsg(MsgBlue, "C code generated"))
-    //val cmods = C_post_rename_locals.rename_locals(cmods)
+    val cmods = C_post_rename_locals.rename_locals(cmods)
     val cmods = [: for cmod <- cmods {
         val is_cpp = Options.opt.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp
         if is_cpp { C_post_adjust_decls.adjust_decls(cmod) }
@@ -327,48 +416,49 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
     val cflags = cflags + " " + custom_cflags
     pr_verbose(clrmsg(MsgBlue, f"Compiling .c/.cpp files with cflags={cflags}"))
     val results = [| @parallel for
-        {cmod_cname, cmod_ccode, cmod_pragmas={pragma_cpp, pragma_clibs}} <- array(cmods) {
+        {cmod_cname, cmod_ccode, cmod_skip, cmod_pragmas={pragma_cpp, pragma_clibs}} <- array(cmods) {
         val output_fname = Filename.basename(cmod_cname)
         val is_cpp = Options.opt.compile_by_cpp || pragma_cpp
-        val ext = if is_cpp { ".cpp" } else { ".c" }
+        val (comp, ext) = if is_cpp { (cpp_comp, ".cpp") } else { (c_comp, ".c") }
         val output_fname = output_fname + ext
         val output_fname = Filename.normalize(build_dir, output_fname)
-        val str_new = C_pp.pprint_top_to_string(cmod_ccode)
-        val str_old = if Options.opt.force_rebuild {""} else {
-            try
-                File.read_utf8(output_fname)
-            catch {
-            | IOError | FileOpenError => ""
-            }
-        }
-        val (ok_j, recompile, skipped_status) =
-            if str_new == str_old {
-                (ok, false, "skipped")
-            } else {
-                val well_written =
-                    try {
-                        File.write_utf8(output_fname, str_new)
-                        true
-                    }
+        val (ok_j, reprocess, status_j) =
+            if cmod_skip { (true, false, "skipped") }
+            else {
+                val str_new = C_pp.pprint_top_to_string(cmod_ccode)
+                val str_old = if Options.opt.force_rebuild {""} else {
+                    try
+                        File.read_utf8(output_fname)
                     catch {
-                    | IOError | FileOpenError => false
+                    | IOError | FileOpenError => ""
                     }
-                (well_written, well_written,
-                if well_written {""} else {clrmsg(MsgRed, "failed to write .c")})
+                }
+                if str_new == str_old {
+                    (ok, false, "skipped")
+                } else {
+                    val well_written =
+                        try {
+                            File.write_utf8(output_fname, str_new)
+                            true
+                        }
+                        catch {
+                        | IOError | FileOpenError => false
+                        }
+                    (well_written, well_written,
+                    if well_written {""} else {clrmsg(MsgRed, "failed to write .c")})
+                }
             }
         val cname = Filename.normalize(build_dir, cmod_cname)
-        val is_cpp = Options.opt.compile_by_cpp || pragma_cpp
-        val (comp, ext) = if is_cpp { (cpp_comp, ".cpp") } else { (c_comp, ".c") }
         val c_filename = cname + ext
         val obj_filename = cname + obj_ext
         val (ok_j, recompiled, status_j) =
-            if ok_j && (recompile || !Sys.file_exists(obj_filename)) {
+            if ok_j && (reprocess || !Sys.file_exists(obj_filename)) {
                 val cmd = f"{comp} {cflags} {obj_opt} {obj_filename} {c_filename}"
                 val result = Sys.command(cmd) == 0
                 val status = if result {clrmsg(MsgGreen, "ok")} else {clrmsg(MsgRed, "fail")}
                 (result, true, status)
             } else {
-                (ok_j, false, skipped_status)
+                (ok_j, false, status_j)
             }
         pr_verbose(f"CC {c_filename}: {status_j}")
         val clibs = [: for (l, _) <- pragma_clibs { l } :].rev()
@@ -386,8 +476,9 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         ok
     } else {
         val custom_clibs = Sys.getenv("FICUS_LINK_LIBRARIES")
-        val custom_clibs = if Options.opt.clibs == "" { custom_clibs }
-                      else { custom_clibs + " " + Options.opt.clibs }
+        val custom_clibs =
+            if Options.opt.clibs == "" { custom_clibs }
+            else { custom_clibs + " " + Options.opt.clibs }
         val custom_clibs =
             if all_clibs == [] { custom_clibs }
             else {

@@ -17,7 +17,7 @@ val margin = 120
 val default_indent = 3
 val pp_ = Ast.pp
 
-@private fun pp_id_(pp: PP.t, n: id_t, loc: loc_t) = pp.str(f"<{idk2str(n, loc)}:{id2str_m(n)}>")
+@private fun pp_id_(pp: PP.t, n: id_t, loc: loc_t) = pp.str(idk2str(n, loc))
 
 @private fun get_ktyp_pr(t: ktyp_t): int {
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
@@ -271,7 +271,7 @@ val pp_ = Ast.pp
             if i+1 < ncases { pp.space() }
         }
         pp.end(); pp.newline()
-        match kvar_ctors {
+        /*match kvar_ctors {
         | [] => {}
         | _ =>
             pp.begin(); pp.str("Constructors: ")
@@ -282,7 +282,7 @@ val pp_ = Ast.pp
                 pp.str(">: ")
             }
             pp.end(); pp.newline()
-        }
+        }*/
     | KDefInterface (ref {ki_name, ki_base, ki_all_methods, ki_scope, ki_loc}) =>
         pp.beginv()
         pp.str("interface "); pp_id_(ki_name)
@@ -551,3 +551,15 @@ fun pp_kmods(kmods: kmodule_t list) =
     for {km_cname, km_top}@i <- kmods {
         pp_top(f"\n///////// module {km_cname}: {km_top.length()} expressions //////////", km_top)
     }
+
+fun pp_top_to_string(code: kexp_t list) {
+    val pp = PP.pprint_to_string_list(margin, default_indent=default_indent)
+    pp.beginv(0)
+    for e@i <- code {
+        if i != 0 { pp.break0() }
+        pp_exp_(pp, e)
+    }
+    pp.newline(); pp.end(); pp.flush()
+    val all_lines = pp.get_f()
+    join_embrace("", "\n", "\n", all_lines)
+}

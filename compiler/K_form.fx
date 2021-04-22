@@ -236,6 +236,8 @@ type kmodule_t =
     km_toposort_idx: int;
     km_cname: string;
     km_top: kexp_t list;
+    km_deps: int list;
+    km_skip: bool;
     km_main: bool;
     km_pragmas: pragmas_t
 }
