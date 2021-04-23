@@ -32,7 +32,7 @@ You can add `<ficus_root>/bin` to the `PATH`. You can also customize ficus compi
 
 run `ficus --help` to get more complete up-to-date information about command line parameters
 
-here is brief summary:
+here is a brief usage information:
 ```
 ficus [-app|-run|...] [-O0|-O1|-O3] [-verbose] [-I <extra_module_path>]* [-o <appname>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
 ```
