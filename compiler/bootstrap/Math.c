@@ -6,19 +6,6 @@
 #include <math.h>
 #include <float.h>
 
-float _fx_g17Math__FLT_EPSILON = 
-FLT_EPSILON
-;
-double _fx_g17Math__DBL_EPSILON = 
-DBL_EPSILON
-;
-FX_EXTERN_C int _fx_M4MathFM3powd2dd(double x_0, double y_0, double* fx_result, void* fx_fv)
-{
-   int fx_status = 0;
-   *fx_result = pow(x_0, y_0);
-   return fx_status;
-}
-
 FX_EXTERN_C int fx_init_Math(void)
 {
    int fx_status = 0;

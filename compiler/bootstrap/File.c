@@ -34,15 +34,6 @@ static void _fx_make_R7File__t(fx_cptr_t r_handle, struct _fx_R7File__t* fx_resu
    fx_copy_cptr(r_handle, &fx_result->handle);
 }
 
-int_ _fx_g14File__SEEK_SET = 
-(int)SEEK_SET
-;
-int_ _fx_g15File__SEEK_CURR = 
-(int)SEEK_CUR
-;
-int_ _fx_g14File__SEEK_END = 
-(int)SEEK_END
-;
 _fx_R7File__t _fx_g12File__stdout = {  };
 FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, struct _fx_R7File__t* fx_result, void* fx_fv)
 {
@@ -82,6 +73,20 @@ fx_cstr_t fname_, mode_;
     }
     return fx_status;
 
+}
+
+FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname_0, fx_str_t* mode_0, struct _fx_R7File__t* fx_result, void* fx_fv)
+{
+   fx_cptr_t v_0 = 0;
+   int fx_status = 0;
+   FX_CALL(_fx_M4FileFM5open_p3SSB(cmdname_0, mode_0, true, &v_0, 0), _fx_cleanup);
+   _fx_make_R7File__t(v_0, fx_result);
+
+_fx_cleanup: ;
+   if (v_0) {
+      fx_free_cptr(&v_0);
+   }
+   return fx_status;
 }
 
 FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t* f, void* fx_fv)

@@ -3,32 +3,6 @@
 #include "ficus/ficus.h"
 #include "ficus/impl/ficus.impl.h"
 
-typedef enum {
-   _FX_N9Ast__id_t_IdName=1, _FX_N9Ast__id_t_IdVal=2, _FX_N9Ast__id_t_IdTemp=3
-} _fx_N9Ast__id_t_tag_t;
-
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
-typedef struct _fx_N9Ast__id_t {
-   int tag;
-   union {
-      int_ IdName;
-      struct _fx_Ta2i IdVal;
-      struct _fx_Ta2i IdTemp;
-   } u;
-} _fx_N9Ast__id_t;
-
-typedef struct _fx_R10Ast__loc_t {
-   struct _fx_N9Ast__id_t fname;
-   int_ line0;
-   int_ col0;
-   int_ line1;
-   int_ col1;
-} _fx_R10Ast__loc_t;
-
 typedef struct _fx_LS_data_t {
    int_ rc;
    struct _fx_LS_data_t* tl;
@@ -67,10 +41,23 @@ typedef struct _fx_R18Options__options_t {
    bool W_unused;
 } _fx_R18Options__options_t;
 
+typedef struct _fx_R10Ast__loc_t {
+   int_ m_idx;
+   int_ line0;
+   int_ col0;
+   int_ line1;
+   int_ col1;
+} _fx_R10Ast__loc_t;
+
 typedef struct _fx_T2R10Ast__loc_tS {
    struct _fx_R10Ast__loc_t t0;
    fx_str_t t1;
 } _fx_T2R10Ast__loc_tS;
+
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
 
 typedef struct _fx_T2Ta2iS {
    struct _fx_Ta2i t0;
@@ -313,6 +300,8 @@ FX_EXTERN_C int fx_init_Options();
 FX_EXTERN_C void fx_deinit_Options();
 FX_EXTERN_C int fx_init_Hashmap();
 FX_EXTERN_C void fx_deinit_Hashmap();
+FX_EXTERN_C int fx_init_Dynvec();
+FX_EXTERN_C void fx_deinit_Dynvec();
 FX_EXTERN_C int fx_init_Map();
 FX_EXTERN_C void fx_deinit_Map();
 FX_EXTERN_C int fx_init_Set();
@@ -349,14 +338,16 @@ FX_EXTERN_C int fx_init_K_flatten();
 FX_EXTERN_C void fx_deinit_K_flatten();
 FX_EXTERN_C int fx_init_K_tailrec();
 FX_EXTERN_C void fx_deinit_K_tailrec();
+FX_EXTERN_C int fx_init_K_inline();
+FX_EXTERN_C void fx_deinit_K_inline();
+FX_EXTERN_C int fx_init_K_copy_n_skip();
+FX_EXTERN_C void fx_deinit_K_copy_n_skip();
 FX_EXTERN_C int fx_init_K_cfold_dealias();
 FX_EXTERN_C void fx_deinit_K_cfold_dealias();
 FX_EXTERN_C int fx_init_K_lift();
 FX_EXTERN_C void fx_deinit_K_lift();
 FX_EXTERN_C int fx_init_K_fast_idx();
 FX_EXTERN_C void fx_deinit_K_fast_idx();
-FX_EXTERN_C int fx_init_K_inline();
-FX_EXTERN_C void fx_deinit_K_inline();
 FX_EXTERN_C int fx_init_K_loop_inv();
 FX_EXTERN_C void fx_deinit_K_loop_inv();
 FX_EXTERN_C int fx_init_K_fuse_loops();
@@ -394,6 +385,7 @@ int main(int argc, char** argv)
   if (fx_status >= 0) fx_status = fx_init_Sys();
   if (fx_status >= 0) fx_status = fx_init_Options();
   if (fx_status >= 0) fx_status = fx_init_Hashmap();
+  if (fx_status >= 0) fx_status = fx_init_Dynvec();
   if (fx_status >= 0) fx_status = fx_init_Map();
   if (fx_status >= 0) fx_status = fx_init_Set();
   if (fx_status >= 0) fx_status = fx_init_Hashset();
@@ -412,10 +404,11 @@ int main(int argc, char** argv)
   if (fx_status >= 0) fx_status = fx_init_K_lift_simple();
   if (fx_status >= 0) fx_status = fx_init_K_flatten();
   if (fx_status >= 0) fx_status = fx_init_K_tailrec();
+  if (fx_status >= 0) fx_status = fx_init_K_inline();
+  if (fx_status >= 0) fx_status = fx_init_K_copy_n_skip();
   if (fx_status >= 0) fx_status = fx_init_K_cfold_dealias();
   if (fx_status >= 0) fx_status = fx_init_K_lift();
   if (fx_status >= 0) fx_status = fx_init_K_fast_idx();
-  if (fx_status >= 0) fx_status = fx_init_K_inline();
   if (fx_status >= 0) fx_status = fx_init_K_loop_inv();
   if (fx_status >= 0) fx_status = fx_init_K_fuse_loops();
   if (fx_status >= 0) fx_status = fx_init_C_form();
@@ -441,10 +434,11 @@ int main(int argc, char** argv)
   fx_deinit_C_form();
   fx_deinit_K_fuse_loops();
   fx_deinit_K_loop_inv();
-  fx_deinit_K_inline();
   fx_deinit_K_fast_idx();
   fx_deinit_K_lift();
   fx_deinit_K_cfold_dealias();
+  fx_deinit_K_copy_n_skip();
+  fx_deinit_K_inline();
   fx_deinit_K_tailrec();
   fx_deinit_K_flatten();
   fx_deinit_K_lift_simple();
@@ -463,6 +457,7 @@ int main(int argc, char** argv)
   fx_deinit_Hashset();
   fx_deinit_Set();
   fx_deinit_Map();
+  fx_deinit_Dynvec();
   fx_deinit_Hashmap();
   fx_deinit_Options();
   fx_deinit_Sys();
