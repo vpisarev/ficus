@@ -30,15 +30,15 @@ You can add `<ficus_root>/bin` to the `PATH`. You can also customize ficus compi
 
 ## How to use
 
-run `ficus --help` to get more complete up-to-date information about command line parameters
+(run `ficus --help` to get more complete up-to-date information about command line parameters)
 
-here is a brief usage information:
+Here is a brief description with some most common options:
 ```
 ficus [-app|-run|...] [-O0|-O1|-O3] [-verbose] [-I <extra_module_path>]* [-o <appname>] <scriptname.fx> [-- <script arg1> <script arg2> ...]
 ```
 
 * `-app` (the flag is set by default) generates C code for the specified script as well as for the imported modules (one .c file per one .fx file), then runs the compiler for each of the generated .c files and then links the produced object files into the final app. The compiled app, as well as the intermediate `.c` and `.o` files, is stored in `__fxbuild__/<appname>/<appname>`. By default `<appname>==<scriptname>`. Override the app name (and the output path) with `-o` option.
-* `-run` builds the app (see flags `-app`) and then runs it. You can pass command-line parameters to the script after `--` separator.
+* `-run` builds the app (see the flag `-app`) and then runs it. You can pass command-line parameters to the script after `--` separator.
 * `-verbose` makes the compiler to report build progress and various information, which can be especially useful when building big apps
 
 ## Ficus 1.0
