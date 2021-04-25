@@ -250,7 +250,7 @@ int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst, bool free_dst)
 
     fx_arr_t* arrs[] = {(fx_arr_t*)src, dst};
     char* ptrs[] = {0, 0};
-    fx_arriter_t it = {};
+    fx_arriter_t it = {0};
     bool reverse = srcdata < dstdata && srcdata + src_range > dstdata;
     int fx_status = fx_arr_startiter(2, arrs, ptrs, &it, reverse);
     size_t raw_blocksize = it.blocksize*elemsize;

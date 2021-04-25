@@ -336,7 +336,7 @@ int fx_exn_set_fast(int code, const char* funcname, const char* filename, int li
 #ifdef FX_UNIX
     curr_bt->bt_entries = backtrace(curr_bt->bt_stack, FX_BT_SIZE);
 #else
-    curr_bt->bt_entries = CaptureStackBackTrace(0, FX_BT_SIZE, curr_bt->bt_stack, 0);
+    //curr_bt->bt_entries = CaptureStackBackTrace(0, FX_BT_SIZE, curr_bt->bt_stack, 0);
 #endif
     return code;
 }
@@ -358,7 +358,7 @@ int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filen
 #ifdef FX_UNIX
     curr_bt->bt_entries = backtrace(curr_bt->bt_stack, FX_BT_SIZE);
 #else
-    curr_bt->bt_entries = CaptureStackBackTrace(0, FX_BT_SIZE, curr_bt->bt_stack, 0);
+    //curr_bt->bt_entries = CaptureStackBackTrace(0, FX_BT_SIZE, curr_bt->bt_stack, 0);
 #endif
     return exn->tag;
 }

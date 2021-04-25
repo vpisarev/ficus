@@ -60,8 +60,8 @@
 
 enum
 {
-    CHAR = 258,
-    EOL = 259
+    YY_CHAR = 258,
+    YY_EOL = 259
 };
 
 /* Copy the first part of user declarations.  */
@@ -1644,12 +1644,12 @@ yylex(void)
 	int c;
 
 	if(input == NULL || *input == 0)
-		return EOL;
+		return YY_EOL;
 	c = *input++;
 	if(strchr("|*+?():.", c))
 		return c;
 	yylval.c = c;
-	return CHAR;
+	return YY_CHAR;
 }
 
 static void

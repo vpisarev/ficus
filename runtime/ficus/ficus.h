@@ -44,7 +44,7 @@ extern "C" {
 #ifdef __GNUC__
 #define FX_STATIC_ASSERT(expr) _Static_assert(expr, "")
 #elif defined _MSC_VER
-#define FX_STATIC_ASSERT(expr) static_assert(expr)
+#define FX_STATIC_ASSERT(expr) static_assert(expr, "")
 #endif
 
 typedef intptr_t int_; // int size in ficus is equal to the pointer size
@@ -61,7 +61,7 @@ typedef char32_t char_;
 
 #ifndef FX_XADD
 #if 0
-    #define FX_XADD(addr, delta) ({ int_ prev = *(addr); *(addr) += (delta); prev; })
+    #define FX_XADD(addr, delta) { int_ prev = *(addr); *(addr) += (delta); prev; }
 #else
     #ifdef _MSC_VER
         #include <intrin.h>
@@ -157,8 +157,8 @@ void fx_free(void* ptr);
 // break/continue are execution flow control operators, not real exceptions,
 // and they are guaranteed to be "caught" (one cannot place them outside of loops),
 // so we don't use FX_SET_EXN_EXN_FAST() etc.
-#define FX_BREAK(label) ({ fx_status = FX_EXN_SysBreak; goto label; })
-#define FX_CONTINUE(label) ({ fx_status = FX_EXN_SysContinue; goto label; })
+#define FX_BREAK(label) { fx_status = FX_EXN_SysBreak; goto label; }
+#define FX_CONTINUE(label) { fx_status = FX_EXN_SysContinue; goto label; }
 #define FX_CHECK_CONTINUE() \
     if (fx_status != FX_EXN_SysContinue) ; else fx_status = FX_OK
 #define FX_CHECK_BREAK() \
@@ -215,7 +215,7 @@ FX_INLINE int_ fx_round2I(double x) {
 #else
 // on 32-bit machines we need just lower 32 bits of the result.
 FX_INLINE int_ fx_roundf2I(float x) {
-    fx_round64_t u;
+    fx_bits64_t u;
     u.f = x + 6755399441055744.0;
     return (int_)(int)u.i;
 }
@@ -879,18 +879,18 @@ typedef struct fx_rrbiter_t {
 #define FX_RRB_START_WRITE(typ, elemsize, free_f, copy_f, vec, iter) \
     (typ*)fx_rrb_start_write((elemsize), (free_f), (copy_f), &(vec), &(iter))
 #define FX_RRB_WRITE_FAST(typ, iter, dstptr, elem, label) \
-    ({ \
+    { \
         typ __elem__ = (elem); \
         if ((char*)(dstptr) < (iter).blockend) *(dstptr)++ = __elem__; \
         else { \
             FX_CALL(fx_rrb_write(&(iter), &(dstptr), (const char*)&__elem__, 1), label) \
         } \
-    })
+    }
 #define FX_RRB_WRITE(typ, iter, dstptr, elem, lbl) \
-    ({ \
+    { \
         typ __elem__ = (elem); \
         FX_CALL(fx_rrb_write(&(iter), &(dstptr), (const char*)&__elem__, 1), lbl) \
-    })
+    }
 #define FX_RRB_END_WRITE(iter, dstptr) fx_rrb_end_write(&(iter), (char*)(dstptr))
 
 void fx_rrb_free(fx_rrbvec_t* arr);
@@ -1010,7 +1010,7 @@ int fx_make_iface(const void* obj, int idx, void* iface);
 int fx_query_iface(const void* iface, int iface_id, void* another_iface);
 int fx_get_object(const void* iface, int idx, void* obj);
 
-#define FX_COPY_IFACE(src, dst) ({ *(dst) = *(src); if ((dst)->obj) FX_INCREF((dst)->obj->rc); })
+#define FX_COPY_IFACE(src, dst) { *(dst) = *(src); if ((dst)->obj) FX_INCREF((dst)->obj->rc); }
 #define FX_FREE_IFACE(iface) \
     if((iface)->obj) { \
         if((iface)->obj->rc && FX_DECREF((iface)->obj->rc) == 1) \
