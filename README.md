@@ -14,11 +14,25 @@ The code is distributed under Apache 2 license, see the [LICENSE](LICENSE)
 
 The compiler is written in Ficus itself and needs C/C++ compiler and make utility.
 
+### **Unix (Linux, macOS, BSD, ...)**
+
 ```
 cd <ficus_root>
 make -j8
-bin/ficus -run -O3 examples/fst.fx
+bin/ficus -run -O3 examples/fst.fx # to test ficus
 ```
+
+### **Windows**
+
+Install Visual Studio, for example Visual Studio 2019 Community Edition, open "Developer PowerShell for VS2019" from the Windows menu and type:
+
+```
+cd <ficus_root>
+nmake
+bin/ficus -run -O3 examples/fst.fx # to test ficus
+```
+
+### **Set environment variables**
 
 You can add `<ficus_root>/bin` to the `PATH`. You can also customize ficus compiler behaviour by setting the following environment variables:
 
