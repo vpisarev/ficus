@@ -709,12 +709,12 @@ TEST("basic.assert", fun()
     EXPECT_THROWS(fun () { assert (1 == k-k) }, AssertError)
 })
 
-TEST("basic.stack_overflow", fun()
+/*TEST("basic.stack_overflow", fun()
 {
     val rng = new_uniform_rng(0xffffffffUL)
     fun foo(n:int) { if rng(0, 10) > 100 {n} else {2*foo(n-1)} }
     EXPECT_THROWS(fun () {ignore(foo(1000))}, StackOverflowError)
-})
+})*/
 
 TEST("basic.string", fun()
 {

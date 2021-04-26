@@ -572,8 +572,11 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
             }
         } else if(fmt && c == 125 && i+1 < len && ptr[i+1] == 125) { // }}
             i++; buf[n++] = 125;
+        } else if(c == 10 || (c == 13 && i+1 < len && ptr[i+1] == 10)) {
+            delta_lines += 1;
+            i += c == 13;
+            buf[n++] = 10;
         } else {
-            delta_lines += c == 10 || (c == 13 && i+1 < len && ptr[i+1] != 10);
             buf[n++] = c;
         }
         if( n >= sz ) {

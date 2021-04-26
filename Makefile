@@ -19,9 +19,12 @@ ifeq ($(OS),Windows_NT)
 	COLOR_OK :=
 	COLOR_INFO :=
 	COLOR_NORMAL :=
+	IF_EXIST_FILE := if exist
+	IF_EXIST := if exist
 	IF_NOT_EXIST := if not exist
 	MKDIR := (mkdir
-	RMDIR := rmdir /s /q
+	RMDIR := (rmdir /s /q
+	RM := (del /s /q
 	OBJ := obj
 	CC := cl /nologo /MT /Ob2
     CFLAGS += /D WIN32 /D _WIN32 /I$(EXTRA_INCLUDE) /c /Fo
@@ -32,9 +35,11 @@ else
 	COLOR_OK := \033[32;1m
 	COLOR_INFO := \033[34;1m
 	COLOR_NORMAL := \033[0m
+	IF_EXIST_FILE := test -f
+	IF_EXIST := test -d
     IF_NOT_EXIST := test -d
 	MKDIR := || (mkdir -p
-	RMDIR := rm -rf
+	RMDIR := && (rm -rf
 	OBJ := o
 	CC := cc -Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -O3
 	CFLAGS := -I$(EXTRA_INCLUDE) -c -o
@@ -100,6 +105,6 @@ final_note: | $(FICUS)
 	@echo "as well as the produced application".
 
 clean:
-	@$(RMDIR) "$(BOOTSTRAP_BUILD_DIR)"
-	@$(RMDIR) "$(BUILD_DIR)/ficus"
-	@$(RM) "$(FICUS)"
+	@$(IF_EXIST) "$(BOOTSTRAP_BUILD_DIR)/" $(RMDIR) "$(BOOTSTRAP_BUILD_DIR)")
+	@$(IF_EXIST) "$(BUILD_DIR)/ficus/" $(RMDIR) "$(BUILD_DIR)/ficus")
+	@$(IF_EXIST_FILE) "$(FICUS)" $(RM) "$(FICUS)")

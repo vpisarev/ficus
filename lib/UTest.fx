@@ -32,7 +32,7 @@ fun test_rng_int(rng: test_rng_t, a: int, b: int)
     val s = (s :> uint32) * 4197999714u64 + (s >> 32)
     val (a, b) = (min(a, b), max(a, b))
     val diff = b - a
-    val x = (s :> uint32) % diff + a
+    val x = ((s :> uint32) % (diff :> uint32) :> int) + a
     *rng.state = s
     (x :> int)
 }

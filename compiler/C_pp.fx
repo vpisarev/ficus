@@ -232,12 +232,23 @@ type assoc_t = AssocLeft | AssocRight
     match e {
     | CExpIdent(i, (_, loc)) => pp_id(pp, i, loc)
     | CExpLit(l, (_, loc)) =>
-        val s = match l {
-                | KLitNil _ => "0"
-                | KLitChar c => f"(char_){ord(c)}"
-                | _ => K_form.klit2str(l, true, loc)
+        match l {
+        | KLitNil _ => pp.str("0")
+        | KLitChar c => pp.str(f"(char_){ord(c)}")
+        | KLitString s0 =>
+            val sl = s0.split('\n', allow_empty=true)
+            if sl == [] {pp.str(s0.escaped(quotes=true))}
+            else {
+                val n = sl.length()
+                for s@i <- sl {
+                    val s = if i < n-1 || s0.endswith('\n') {s+"\n"} else {s}
+                    val s = s.escaped(quotes=true)
+                    if i == 0 {pp.str(s)}
+                    else {pp.newline(); pp.str("U"+s)}
                 }
-        pp.str(s)
+            }
+        | _ => pp.str(K_form.klit2str(l, true, loc))
+        }
     | CExpBinary(COpArrayElem as bop, a, b, _) =>
         val (_, pr0, _) = binop2str_(bop)
         pp.begin()

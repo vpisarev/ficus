@@ -11,7 +11,9 @@ import File, Filename
     #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
+#if !defined WIN32 && !defined _WIN32
     #include <unistd.h>
+#endif
 
     #ifndef PATH_MAX
     #define PATH_MAX 8192
