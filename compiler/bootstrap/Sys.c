@@ -7,7 +7,9 @@
     #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
+#if !defined WIN32 && !defined _WIN32
     #include <unistd.h>
+#endif
 
     #ifndef PATH_MAX
     #define PATH_MAX 8192
@@ -109,7 +111,7 @@ static int _fx_make_rS(fx_str_t* arg, struct _fx_rS_data_t** fx_result)
 
 _fx_Nt6option1S _fx_g9Sys__None = { 1 };
 _fx_LS _fx_g9Sys__argv = 0;
-bool _fx_g10Sys__win32 = 
+bool _fx_g10Sys__win32 =
 #if defined _WIN32 || defined WINCE
     true
 #else
@@ -117,7 +119,7 @@ bool _fx_g10Sys__win32 =
 #endif
 ;
 bool _fx_g9Sys__unix =
-   
+
 #if defined __linux__ || defined __unix__ || defined __MACH__ || \
     defined __APPLE__ || defined BSD || defined __hpux || \
     defined _AIX || defined __sun
@@ -177,14 +179,14 @@ FX_EXTERN_C void _fx_M3SysFM4SomeNt6option1S1S(fx_str_t* arg0, struct _fx_Nt6opt
 
 static int_ _fx_M3SysFM4argci0(void* fx_fv)
 {
-   
+
 return fx_argc();
 
 }
 
 static int _fx_M3SysFM4argvS1i(int_ i, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_cstr2str(fx_argv(i), -1, fx_result);
 
 }
@@ -326,14 +328,14 @@ FX_EXTERN_C int _fx_M3SysFM7make_fpFPS1B2rSrS(
 
 FX_EXTERN_C int _fx_M3SysFM10cc_versionS0(fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_cc_version(fx_result);
 
 }
 
 FX_EXTERN_C int _fx_M3SysFM6getcwdS0(fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 char buf[PATH_MAX+16];
     char* p = getcwd(buf, PATH_MAX);
     return fx_cstr2str(p, p ? -1 : 0, fx_result);
@@ -342,7 +344,7 @@ char buf[PATH_MAX+16];
 
 FX_EXTERN_C int _fx_M3SysFM6removev1S(fx_str_t* name, void* fx_fv)
 {
-   
+
 fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
@@ -356,7 +358,7 @@ fx_cstr_t name_;
 
 FX_EXTERN_C int _fx_M3SysFM11file_existsB1S(fx_str_t* name, bool* fx_result, void* fx_fv)
 {
-   
+
 fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
@@ -421,7 +423,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M3SysFM5mkdirB2Si(fx_str_t* name, int_ permissions, bool* fx_result, void* fx_fv)
 {
-   
+
 fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     struct stat s;
@@ -440,7 +442,7 @@ fx_cstr_t name_;
 
 FX_EXTERN_C int _fx_M3SysFM7commandi1S(fx_str_t* cmd, int_* fx_result, void* fx_fv)
 {
-   
+
 fx_cstr_t cmd_;
     int fx_status = fx_str2cstr(cmd, &cmd_, 0, 0);
     if (fx_status >= 0) {
@@ -453,7 +455,7 @@ fx_cstr_t cmd_;
 
 FX_EXTERN_C int _fx_M3SysFM6getenvS1S(fx_str_t* name, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
@@ -529,4 +531,3 @@ FX_EXTERN_C void fx_deinit_Sys(void)
    }
    FX_FREE_FP(&_fx_g11Sys__osname);
 }
-
