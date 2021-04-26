@@ -126,7 +126,7 @@ bool _fx_g9Sys__unix =
     false
 #endif
 ;
-_fx_FPS1B _fx_g11Sys__osname = {  };
+_fx_FPS1B _fx_g11Sys__osname = {0};
 FX_EXTERN_C int _fx_M3SysFM7make_fpFPS1B2rSrS(
    struct _fx_rS_data_t* arg0,
    struct _fx_rS_data_t* arg1,
@@ -212,12 +212,12 @@ _fx_cleanup: ;
 
 static int _fx_M3SysFM10__lambda__S1B(bool get_version_0, fx_str_t* fx_result, void* fx_fv)
 {
-   fx_str_t str_0 = {  };
-   fx_str_t v_0 = {  };
-   fx_str_t v_1 = {  };
-   _fx_R7File__t p_0 = {  };
-   fx_str_t v_2 = {  };
-   fx_str_t v_3 = {  };
+   fx_str_t str_0 = {0};
+   fx_str_t v_0 = {0};
+   fx_str_t v_1 = {0};
+   _fx_R7File__t p_0 = {0};
+   fx_str_t v_2 = {0};
+   fx_str_t v_3 = {0};
    int fx_status = 0;
    _fx_M3SysFM10__lambda__S1B_cldata_t* cv_0 = (_fx_M3SysFM10__lambda__S1B_cldata_t*)fx_fv;
    fx_str_t* osinfo_0 = &cv_0->t0->data;
@@ -250,8 +250,8 @@ static int _fx_M3SysFM10__lambda__S1B(bool get_version_0, fx_str_t* fx_result, v
          }
          FX_CALL(_fx_M4FileFM5popenRM1t2SS(&v_0, &v_1, &p_0, 0), _fx_cleanup);
          for (;;) {
-            fx_str_t v_4 = {  };
-            fx_str_t v_5 = {  };
+            fx_str_t v_4 = {0};
+            fx_str_t v_5 = {0};
             FX_CALL(_fx_M4FileFM6readlnS1RM1t(&p_0, &v_4, 0), _fx_catch_0);
             FX_FREE_STR(&str_0);
             fx_copy_str(&v_4, &str_0);
@@ -370,17 +370,17 @@ fx_cstr_t name_;
 
 FX_EXTERN_C int _fx_M3SysFM11locate_fileS2SLS(fx_str_t* name_0, struct _fx_LS_data_t* dirs_0, fx_str_t* fx_result, void* fx_fv)
 {
-   _fx_Nt6option1S __fold_result___0 = {  };
-   _fx_Nt6option1S __fold_result___1 = {  };
-   fx_str_t dir_0 = {  };
-   fx_str_t v_0 = {  };
-   fx_str_t v_1 = {  };
+   _fx_Nt6option1S __fold_result___0 = {0};
+   _fx_Nt6option1S __fold_result___1 = {0};
+   fx_str_t dir_0 = {0};
+   fx_str_t v_0 = {0};
+   fx_str_t v_1 = {0};
    int fx_status = 0;
    _fx_copy_Nt6option1S(&_fx_g9Sys__None, &__fold_result___0);
    _fx_LS lst_0 = dirs_0;
    for (; lst_0; lst_0 = lst_0->tl) {
-      fx_str_t v_2 = {  };
-      _fx_Nt6option1S v_3 = {  };
+      fx_str_t v_2 = {0};
+      _fx_Nt6option1S v_3 = {0};
       fx_str_t* d_0 = &lst_0->hd;
       FX_CALL(_fx_M8FilenameFM6concatS2SS(d_0, name_0, &v_2, 0), _fx_catch_0);
       bool v_4;
@@ -467,7 +467,7 @@ fx_cstr_t name_;
 
 FX_EXTERN_C int _fx_M3SysFM7getpathLS1S(fx_str_t* name_0, struct _fx_LS_data_t** fx_result, void* fx_fv)
 {
-   fx_str_t v_0 = {  };
+   fx_str_t v_0 = {0};
    int fx_status = 0;
    char_ pathsep_0;
    if (_fx_g10Sys__win32) {
@@ -486,7 +486,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M3SysFM9colortermB0(bool* fx_result, void* fx_fv)
 {
-   fx_str_t v_0 = {  };
+   fx_str_t v_0 = {0};
    int fx_status = 0;
    fx_str_t slit_0 = FX_MAKE_STR("TERM");
    FX_CALL(_fx_M3SysFM6getenvS1S(&slit_0, &v_0, 0), _fx_cleanup);
@@ -506,7 +506,7 @@ FX_EXTERN_C int fx_init_Sys(void)
    int_ v_0 = _fx_M3SysFM4argci0(0);
    _fx_LS lstend_0 = 0;
    for (int_ i_0 = 0; i_0 < v_0; i_0++) {
-      fx_str_t res_0 = {  };
+      fx_str_t res_0 = {0};
       FX_CALL(_fx_M3SysFM4argvS1i(i_0, &res_0, 0), _fx_catch_0);
       _fx_LS node_0 = 0;
       FX_CALL(_fx_cons_LS(&res_0, 0, false, &node_0), _fx_catch_0);

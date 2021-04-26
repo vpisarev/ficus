@@ -292,15 +292,15 @@ type assoc_t = AssocLeft | AssocRight
         pp_cexp_(pp, f, 1400); pp.str("("); pp.cut()
         pp_elist(pp, args); pp.str(")"); pp.end()
     | CExpInit (eseq, _) =>
-        pp.begin(); pp.str("{");
-        pp.space();
         if eseq != [] {
+            pp.begin(); pp.str("{");
+            pp.space();
             for e@i <- eseq {
                 if i > 0 { pp.str(","); pp.space() }
                 pp_cexp_(pp, e, 0)
             }
-        }
-        pp.end(); pp.space(); pp.str("}")
+            pp.end(); pp.space(); pp.str("}")
+        } else {pp.str("{0}")}
     | CExpData (kind, fname, (t, loc)) =>
         match kind {
         | "text" => embed_text(pp, fname, loc)

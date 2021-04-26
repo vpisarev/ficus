@@ -3320,34 +3320,34 @@ FX_EXTERN_C int _fx_M9K_tailrecFM12tailrec2loopv2irR17K_form__kdeffun_t(
    _fx_N14K_form__kexp_t kf_body_0 = 0;
    _fx_N14K_form__ktyp_t rt_0 = 0;
    _fx_LR9Ast__id_t kf_params_0 = 0;
-   _fx_FPB1N14K_form__kexp_t have_tailrec_calls__0 = {  };
-   _fx_T2R9Ast__id_tLN14K_form__kexp_t v_0 = {  };
+   _fx_FPB1N14K_form__kexp_t have_tailrec_calls__0 = {0};
+   _fx_T2R9Ast__id_tLN14K_form__kexp_t v_0 = {0};
    _fx_LN14K_form__kexp_t f_init_code_0 = 0;
-   _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t __fold_result___0 = {  };
-   _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t v_1 = {  };
+   _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t __fold_result___0 = {0};
+   _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t v_1 = {0};
    _fx_LR9Ast__id_t new_kf_params_0 = 0;
    _fx_LT2R9Ast__id_tN14K_form__ktyp_t trec_args_0 = 0;
    _fx_LN14K_form__kexp_t f_init_code_1 = 0;
    _fx_LN14K_form__kexp_t loop_init_code_0 = 0;
    _fx_LR9Ast__id_t new_kf_params_1 = 0;
    _fx_LT2R9Ast__id_tN14K_form__ktyp_t trec_args_1 = 0;
-   _fx_FPN14K_form__kexp_t1N14K_form__kexp_t transform_tcalls_0 = {  };
+   _fx_FPN14K_form__kexp_t1N14K_form__kexp_t transform_tcalls_0 = {0};
    _fx_N14K_form__kexp_t body__0 = 0;
    _fx_LN14K_form__kexp_t v_2 = 0;
    _fx_N14K_form__kexp_t loop_body_0 = 0;
-   _fx_N14K_form__klit_t v_3 = {  };
-   _fx_N14K_form__atom_t v_4 = {  };
-   _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_5 = {  };
+   _fx_N14K_form__klit_t v_3 = {0};
+   _fx_N14K_form__atom_t v_4 = {0};
+   _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_5 = {0};
    _fx_N14K_form__kexp_t v_6 = 0;
    _fx_N14K_form__kexp_t loop_exp_0 = 0;
    _fx_LN14K_form__kexp_t f_code_0 = 0;
-   _fx_N14K_form__atom_t v_7 = {  };
-   _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_8 = {  };
+   _fx_N14K_form__atom_t v_7 = {0};
+   _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_8 = {0};
    _fx_N14K_form__kexp_t v_9 = 0;
    _fx_LN14K_form__kexp_t v_10 = 0;
    _fx_LN14K_form__kexp_t f_code_1 = 0;
    _fx_N14K_form__kexp_t new_kf_body_0 = 0;
-   _fx_R17K_form__kdeffun_t v_11 = {  };
+   _fx_R17K_form__kdeffun_t v_11 = {0};
    int fx_status = 0;
    _fx_R17K_form__kdeffun_t* v_12 = &kf_0->data;
    _fx_R10Ast__loc_t kf_loc_0 = v_12->kf_loc;
@@ -3363,11 +3363,11 @@ FX_EXTERN_C int _fx_M9K_tailrecFM12tailrec2loopv2irR17K_form__kdeffun_t(
          _fx_make_T2R9Ast__id_tLN14K_form__kexp_t(&_fx_g9Ast__noid, 0, &v_0);
       }
       else {
-         _fx_N14K_form__atom_t a0_0 = {  };
-         _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_14 = {  };
+         _fx_N14K_form__atom_t a0_0 = {0};
+         _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_14 = {0};
          _fx_N14K_form__kexp_t res_val0_0 = 0;
-         _fx_R16Ast__val_flags_t v_15 = {  };
-         _fx_Nt6option1N14K_form__kexp_t v_16 = {  };
+         _fx_R16Ast__val_flags_t v_15 = {0};
+         _fx_Nt6option1N14K_form__kexp_t v_16 = {0};
          _fx_LN14K_form__kexp_t f_init_code_2 = 0;
          _fx_R9Ast__id_t res_n_0;
          FX_CALL(_fx_M6K_formFM7dup_idkR9Ast__id_t2iR9Ast__id_t(km_idx_0, &_fx_g18Ast__std__result__, &res_n_0, 0),
@@ -3375,13 +3375,13 @@ FX_EXTERN_C int _fx_M9K_tailrecFM12tailrec2loopv2irR17K_form__kdeffun_t(
          bool res_0;
          FX_CALL(_fx_M6K_formFM14is_ktyp_scalarB1N14K_form__ktyp_t(rt_0, &res_0, 0), _fx_catch_0);
          if (res_0 == true) {
-            _fx_N14K_form__klit_t v_17 = {  };
+            _fx_N14K_form__klit_t v_17 = {0};
             _fx_M6K_formFM7KLitIntN14K_form__klit_t1l(0LL, &v_17);
             _fx_M6K_formFM7AtomLitN14K_form__atom_t1N14K_form__klit_t(&v_17, &a0_0);
             _fx_free_N14K_form__klit_t(&v_17);
          }
          else {
-            _fx_N14K_form__klit_t v_18 = {  };
+            _fx_N14K_form__klit_t v_18 = {0};
             _fx_M6K_formFM7KLitNilN14K_form__klit_t1N14K_form__ktyp_t(rt_0, &v_18);
             _fx_M6K_formFM7AtomLitN14K_form__atom_t1N14K_form__klit_t(&v_18, &a0_0);
             _fx_free_N14K_form__klit_t(&v_18);
@@ -3417,29 +3417,29 @@ FX_EXTERN_C int _fx_M9K_tailrecFM12tailrec2loopv2irR17K_form__kdeffun_t(
          &__fold_result___0);
       _fx_LR9Ast__id_t lst_0 = kf_params_0;
       for (; lst_0; lst_0 = lst_0->tl) {
-         _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t v_19 = {  };
+         _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t v_19 = {0};
          _fx_LR9Ast__id_t new_kf_params_2 = 0;
          _fx_LT2R9Ast__id_tN14K_form__ktyp_t trec_args_2 = 0;
          _fx_LN14K_form__kexp_t f_init_code_3 = 0;
          _fx_LN14K_form__kexp_t loop_init_code_1 = 0;
-         _fx_R17K_form__kdefval_t dv0_0 = {  };
+         _fx_R17K_form__kdefval_t dv0_0 = {0};
          _fx_N14K_form__ktyp_t ti_0 = 0;
-         _fx_R17K_form__kdefval_t dv1_0 = {  };
-         _fx_N15K_form__kinfo_t v_20 = {  };
-         _fx_N14K_form__atom_t v_21 = {  };
-         _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_22 = {  };
+         _fx_R17K_form__kdefval_t dv1_0 = {0};
+         _fx_N15K_form__kinfo_t v_20 = {0};
+         _fx_N14K_form__atom_t v_21 = {0};
+         _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_22 = {0};
          _fx_N14K_form__kexp_t a1i_as_exp_0 = 0;
-         _fx_N14K_form__atom_t v_23 = {  };
-         _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_24 = {  };
+         _fx_N14K_form__atom_t v_23 = {0};
+         _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_24 = {0};
          _fx_N14K_form__kexp_t a2i_as_exp_0 = 0;
-         _fx_R16Ast__val_flags_t v_25 = {  };
-         _fx_Nt6option1N14K_form__kexp_t v_26 = {  };
+         _fx_R16Ast__val_flags_t v_25 = {0};
+         _fx_Nt6option1N14K_form__kexp_t v_26 = {0};
          _fx_LN14K_form__kexp_t f_init_code_4 = 0;
-         _fx_R16Ast__val_flags_t v_27 = {  };
-         _fx_Nt6option1N14K_form__kexp_t v_28 = {  };
+         _fx_R16Ast__val_flags_t v_27 = {0};
+         _fx_Nt6option1N14K_form__kexp_t v_28 = {0};
          _fx_LN14K_form__kexp_t loop_init_code_2 = 0;
-         _fx_T2R9Ast__id_tN14K_form__ktyp_t v_29 = {  };
-         _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t v_30 = {  };
+         _fx_T2R9Ast__id_tN14K_form__ktyp_t v_29 = {0};
+         _fx_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t v_30 = {0};
          _fx_R9Ast__id_t* ai_0 = &lst_0->hd;
          _fx_copy_T4LR9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_tLN14K_form__kexp_tLN14K_form__kexp_t(&__fold_result___0, &v_19);
          FX_COPY_PTR(v_19.t0, &new_kf_params_2);
@@ -3743,7 +3743,7 @@ static int _fx_M9K_tailrecFM19have_tailrec_calls_B1N14K_form__kexp_t(
       _fx_catch_4: ;
       }
       else if (tag_0 == 21) {
-         _fx_FPB1T2LN14K_form__kexp_tN14K_form__kexp_t __lambda___0 = {  };
+         _fx_FPB1T2LN14K_form__kexp_tN14K_form__kexp_t __lambda___0 = {0};
          _fx_LT2LN14K_form__kexp_tN14K_form__kexp_t cases_0 = 0;
          _fx_M9K_tailrecFM7make_fpFPB1T2LN14K_form__kexp_tN14K_form__kexp_t1R9Ast__id_t(kf_name_0, &__lambda___0);
          bool __fold_result___0 = false;
@@ -3806,7 +3806,7 @@ static int _fx_M9K_tailrecFM10__lambda__B1T2LN14K_form__kexp_tN14K_form__kexp_t(
    bool* fx_result,
    void* fx_fv)
 {
-   _fx_FPB1N14K_form__kexp_t have_tailrec_calls__0 = {  };
+   _fx_FPB1N14K_form__kexp_t have_tailrec_calls__0 = {0};
    _fx_N14K_form__kexp_t e_0 = 0;
    int fx_status = 0;
    _fx_M9K_tailrecFM10__lambda__B1T2LN14K_form__kexp_tN14K_form__kexp_t_cldata_t* cv_0 =
@@ -3846,11 +3846,11 @@ static int _fx_M9K_tailrecFM19process_func_endingN14K_form__kexp_t1N14K_form__ke
       FX_COPY_PTR(final_e_0, fx_result);
    }
    else {
-      _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_0 = {  };
+      _fx_T2N14K_form__ktyp_tR10Ast__loc_t v_0 = {0};
       _fx_N14K_form__ktyp_t ktyp_0 = 0;
-      _fx_T2N14K_form__kexp_tLN14K_form__kexp_t v_1 = {  };
-      _fx_T2N14K_form__atom_tLN14K_form__kexp_t v_2 = {  };
-      _fx_N14K_form__atom_t final_atom_0 = {  };
+      _fx_T2N14K_form__kexp_tLN14K_form__kexp_t v_1 = {0};
+      _fx_T2N14K_form__atom_tLN14K_form__kexp_t v_2 = {0};
+      _fx_N14K_form__atom_t final_atom_0 = {0};
       _fx_LN14K_form__kexp_t code_0 = 0;
       _fx_N14K_form__kexp_t v_3 = 0;
       _fx_N14K_form__kexp_t final_e_1 = 0;
@@ -3938,8 +3938,8 @@ static int _fx_M9K_tailrecFM16transform_tcallsN14K_form__kexp_t1N14K_form__kexp_
    struct _fx_N14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   _fx_FPN14K_form__kexp_t1N14K_form__kexp_t process_func_ending_0 = {  };
-   _fx_T2N14K_form__ktyp_tR10Ast__loc_t new_ctx_0 = {  };
+   _fx_FPN14K_form__kexp_t1N14K_form__kexp_t process_func_ending_0 = {0};
+   _fx_T2N14K_form__ktyp_tR10Ast__loc_t new_ctx_0 = {0};
    int fx_status = 0;
    FX_CALL(fx_check_stack(), _fx_cleanup);
    _fx_M9K_tailrecFM16transform_tcallsN14K_form__kexp_t1N14K_form__kexp_t_cldata_t* cv_0 =
@@ -4106,7 +4106,7 @@ static int _fx_M9K_tailrecFM16transform_tcallsN14K_form__kexp_t1N14K_form__kexp_
          _fx_LN14K_form__kexp_t checks_i_0 = 0;
          _fx_N14K_form__kexp_t e_i_0 = 0;
          _fx_N14K_form__kexp_t e_i_1 = 0;
-         _fx_T2LN14K_form__kexp_tN14K_form__kexp_t tup_0 = {  };
+         _fx_T2LN14K_form__kexp_tN14K_form__kexp_t tup_0 = {0};
          _fx_T2LN14K_form__kexp_tN14K_form__kexp_t* __pat___1 = &lst_3->hd;
          FX_COPY_PTR(__pat___1->t0, &checks_i_0);
          FX_COPY_PTR(__pat___1->t1, &e_i_0);
@@ -4185,11 +4185,11 @@ FX_EXTERN_C int _fx_M9K_tailrecFM17tailrec2loops_allLR17K_form__kmodule_t1LR17K_
    void* fx_fv)
 {
    _fx_ri curr_km_idx_ref_0 = 0;
-   _fx_FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t tailrec2loop_kexp__0 = {  };
-   _fx_FPv3N14K_form__ktyp_tR10Ast__loc_tR22K_form__k_fold_callb_t tailrec2loop_ktyp__0 = {  };
+   _fx_FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t tailrec2loop_kexp__0 = {0};
+   _fx_FPv3N14K_form__ktyp_tR10Ast__loc_tR22K_form__k_fold_callb_t tailrec2loop_ktyp__0 = {0};
    _fx_Nt6option1FPv3N14K_form__ktyp_tR10Ast__loc_tR22K_form__k_fold_callb_t v_0 = 0;
    _fx_Nt6option1FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t v_1 = 0;
-   _fx_R22K_form__k_fold_callb_t trec2loop_callb_0 = {  };
+   _fx_R22K_form__k_fold_callb_t trec2loop_callb_0 = {0};
    int fx_status = 0;
    FX_CALL(_fx_make_ri(-1, &curr_km_idx_ref_0), _fx_cleanup);
    int_* curr_km_idx_0 = &curr_km_idx_ref_0->data;

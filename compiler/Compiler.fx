@@ -364,15 +364,15 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
 
     val (_, c_comp, cpp_comp, obj_ext, obj_opt, appname_opt, link_lib_opt, cflags, clibs) =
         if Sys.win32 {
-            val omp_flag = if enable_openmp {" /openmp"} else {""}
+            val omp_flag = ""//if enable_openmp {" /openmp"} else {""}
             val opt_flags =
                 if opt_level == 0 {
-                    " /Od /MTd /GF"
+                    " /MTd /Od /GF"
                 } else {
-                    " /MT" + (if opt_level == 1 {"/O1"} else {"/O2"})
+                    " /MT " + (if opt_level == 1 {"/O1"} else {"/O2"})
                 }
-            val cflags = f"/nologo{opt_flags}{omp_flag} /I {runtime_include_path}"
-            ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "")
+            val cflags = f"/nologo{opt_flags}{omp_flag} /I{runtime_include_path}"
+            ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "kernel32.lib advapi32.lib")
         } else {
             // unix or hopefully something more or less compatible with it
             val (os, libpath, cflags, clibs) =
@@ -407,7 +407,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             val ggdb_opt = if opt_level == 0 { " -ggdb" } else { "" }
             val cflags = f"-O{opt_level}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
             val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"
-            (os, c_comp, cpp_comp, ".o", "-c -o", "-o", "-l", cflags, clibs)
+            (os, c_comp, cpp_comp, ".o", "-c -o ", "-o ", "-l", cflags, clibs)
         }
 
     val custom_cflags = Sys.getenv("FICUS_CFLAGS")
@@ -453,7 +453,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         val obj_filename = cname + obj_ext
         val (ok_j, recompiled, status_j) =
             if ok_j && (reprocess || !Sys.file_exists(obj_filename)) {
-                val cmd = f"{comp} {cflags} {obj_opt} {obj_filename} {c_filename}"
+                val cmd = f"{comp} {cflags} {obj_opt}{obj_filename} {c_filename}"
                 val result = Sys.command(cmd) == 0
                 val status = if result {clrmsg(MsgGreen, "ok")} else {clrmsg(MsgRed, "fail")}
                 (result, true, status)
@@ -487,7 +487,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             }
         val clibs = clibs + " " + custom_clibs
         pr_verbose(f"Linking the app with flags={clibs}")
-        val cmd = (if any_cpp {cpp_comp} else {c_comp}) + " " + appname_opt + " " + Options.opt.app_filename
+        val cmd = (if any_cpp {cpp_comp} else {c_comp}) + " " + appname_opt + Options.opt.app_filename
         val cmd = cmd + " " + " ".join(objs) + " " + clibs
         //pr_verbose(f"{cmd}\n")
         val ok = Sys.command(cmd) == 0

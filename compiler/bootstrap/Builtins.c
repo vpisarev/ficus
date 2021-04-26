@@ -37,22 +37,22 @@ FX_VERSION_PATCH
 fx_str_t _fx_g20__ficus_git_commit__ = 
 FX_MAKE_STR(FX_GIT_COMMIT)
 ;
-fx_str_t _fx_g21__ficus_version_str__ = {  };
+fx_str_t _fx_g21__ficus_version_str__ = {0};
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
 
-fx_exn_t _fx_E10ASCIIErrorv = {  };
-fx_exn_t _fx_E11AssertErrorv = {  };
-fx_exn_t _fx_E11BadArgErrorv = {  };
-fx_exn_t _fx_E5Breakv = {  };
-fx_exn_t _fx_E8DimErrorv = {  };
-fx_exn_t _fx_E14DivByZeroErrorv = {  };
-fx_exn_info_t _fx_E4Exit_info = {  };
+fx_exn_t _fx_E10ASCIIErrorv = {0};
+fx_exn_t _fx_E11AssertErrorv = {0};
+fx_exn_t _fx_E11BadArgErrorv = {0};
+fx_exn_t _fx_E5Breakv = {0};
+fx_exn_t _fx_E8DimErrorv = {0};
+fx_exn_t _fx_E14DivByZeroErrorv = {0};
+fx_exn_info_t _fx_E4Exit_info = {0};
 typedef struct {
    int_ rc;
    int_ data;
 } _fx_E4Exit_data_t;
 
-fx_exn_info_t _fx_E4Fail_info = {  };
+fx_exn_info_t _fx_E4Fail_info = {0};
 typedef struct {
    int_ rc;
    fx_str_t data;
@@ -64,25 +64,25 @@ FX_EXTERN_C void _fx_free_E4Fail(_fx_E4Fail_data_t* dst)
    fx_free(dst);
 }
 
-fx_exn_t _fx_E13FileOpenErrorv = {  };
-fx_exn_t _fx_E7IOErrorv = {  };
-fx_exn_t _fx_E12NoMatchErrorv = {  };
-fx_exn_t _fx_E13NotFoundErrorv = {  };
-fx_exn_t _fx_E19NotImplementedErrorv = {  };
-fx_exn_t _fx_E13NullFileErrorv = {  };
-fx_exn_t _fx_E13NullListErrorv = {  };
-fx_exn_t _fx_E12NullPtrErrorv = {  };
-fx_exn_t _fx_E11OptionErrorv = {  };
-fx_exn_t _fx_E13OutOfMemErrorv = {  };
-fx_exn_t _fx_E15OutOfRangeErrorv = {  };
-fx_exn_t _fx_E13OverflowErrorv = {  };
-fx_exn_t _fx_E16ParallelForErrorv = {  };
-fx_exn_t _fx_E10RangeErrorv = {  };
-fx_exn_t _fx_E9SizeErrorv = {  };
-fx_exn_t _fx_E17SizeMismatchErrorv = {  };
-fx_exn_t _fx_E18StackOverflowErrorv = {  };
-fx_exn_t _fx_E17TypeMismatchErrorv = {  };
-fx_exn_t _fx_E13ZeroStepErrorv = {  };
+fx_exn_t _fx_E13FileOpenErrorv = {0};
+fx_exn_t _fx_E7IOErrorv = {0};
+fx_exn_t _fx_E12NoMatchErrorv = {0};
+fx_exn_t _fx_E13NotFoundErrorv = {0};
+fx_exn_t _fx_E19NotImplementedErrorv = {0};
+fx_exn_t _fx_E13NullFileErrorv = {0};
+fx_exn_t _fx_E13NullListErrorv = {0};
+fx_exn_t _fx_E12NullPtrErrorv = {0};
+fx_exn_t _fx_E11OptionErrorv = {0};
+fx_exn_t _fx_E13OutOfMemErrorv = {0};
+fx_exn_t _fx_E15OutOfRangeErrorv = {0};
+fx_exn_t _fx_E13OverflowErrorv = {0};
+fx_exn_t _fx_E16ParallelForErrorv = {0};
+fx_exn_t _fx_E10RangeErrorv = {0};
+fx_exn_t _fx_E9SizeErrorv = {0};
+fx_exn_t _fx_E17SizeMismatchErrorv = {0};
+fx_exn_t _fx_E18StackOverflowErrorv = {0};
+fx_exn_t _fx_E17TypeMismatchErrorv = {0};
+fx_exn_t _fx_E13ZeroStepErrorv = {0};
 FX_EXTERN_C int _fx_F9make_ExitE1i(int_ arg0, fx_exn_t* fx_result)
 {
    FX_MAKE_EXN_IMPL_START(_FX_EXN_E4Exit, _fx_E4Exit_data_t, _fx_E4Exit_info);
@@ -139,7 +139,7 @@ FX_EXTERN_C int _fx_F12join_embraceS4SSSLS(
    fx_str_t* fx_result,
    void* fx_fv)
 {
-   fx_arr_t v_0 = {  };
+   fx_arr_t v_0 = {0};
    int fx_status = 0;
    fx_str_t* dstptr_0 = 0;
    _fx_LS lst_0 = strs_0;
@@ -161,7 +161,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv)
 {
-   fx_arr_t v_0 = {  };
+   fx_arr_t v_0 = {0};
    int fx_status = 0;
    fx_str_t* dstptr_0 = 0;
    _fx_LS lst_0 = strs_0;
@@ -413,9 +413,9 @@ FX_EXTERN_C int _fx_F6hash_wq1S(fx_str_t* x_0, uint64_t* fx_result, void* fx_fv)
 
 FX_EXTERN_C int fx_init_Builtins(void)
 {
-   fx_str_t v_0 = {  };
-   fx_str_t v_1 = {  };
-   fx_str_t v_2 = {  };
+   fx_str_t v_0 = {0};
+   fx_str_t v_1 = {0};
+   fx_str_t v_2 = {0};
    FX_REG_SIMPLE_STD_EXN(FX_EXN_ASCIIError, _fx_E10ASCIIErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_AssertError, _fx_E11AssertErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_BadArgError, _fx_E11BadArgErrorv);

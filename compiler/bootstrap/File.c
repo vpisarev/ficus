@@ -34,7 +34,7 @@ static void _fx_make_R7File__t(fx_cptr_t r_handle, struct _fx_R7File__t* fx_resu
    fx_copy_cptr(r_handle, &fx_result->handle);
 }
 
-_fx_R7File__t _fx_g12File__stdout = {  };
+_fx_R7File__t _fx_g12File__stdout = {0};
 FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, struct _fx_R7File__t* fx_result, void* fx_fv)
 {
    
@@ -189,8 +189,8 @@ fx_cstr_t fname_;
 
 FX_EXTERN_C int fx_init_File(void)
 {
-   _fx_R7File__t res_0 = {  };
-   _fx_R7File__t res_1 = {  };
+   _fx_R7File__t res_0 = {0};
+   _fx_R7File__t res_1 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M4FileFM13get_stdstreamRM1t1i(0, &res_0, 0), _fx_cleanup);
    FX_CALL(_fx_M4FileFM13get_stdstreamRM1t1i(1, &_fx_g12File__stdout, 0), _fx_cleanup);

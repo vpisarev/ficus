@@ -3,8 +3,8 @@
 #include "ficus/ficus.h"
 
 int _FX_EXN_E15Map__RBMapError = 0;
-fx_exn_info_t _fx_E15Map__RBMapError_info = {  };
-fx_exn_t _fx_E15Map__RBMapErrorv = {  };
+fx_exn_info_t _fx_E15Map__RBMapError_info = {0};
+fx_exn_t _fx_E15Map__RBMapErrorv = {0};
 FX_EXTERN_C int fx_init_Map(void)
 {
    FX_REG_SIMPLE_EXN("Map.RBMapError", _FX_EXN_E15Map__RBMapError, _fx_E15Map__RBMapError_info, _fx_E15Map__RBMapErrorv);

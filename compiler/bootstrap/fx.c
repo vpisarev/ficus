@@ -253,8 +253,8 @@ FX_EXTERN_C int _fx_F9make_ExitE1i(int_ arg0, fx_exn_t* fx_result);
 
 FX_EXTERN_C int fx_init_fx(void)
 {
-   fx_str_t v_0 = {  };
-   fx_exn_t v_1 = {  };
+   fx_str_t v_0 = {0};
+   fx_exn_t v_1 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M7OptionsFM13parse_optionsB0(&_fx_g6fx__ok, 0), _fx_cleanup);
    if (_fx_g6fx__ok) {

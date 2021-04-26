@@ -63,22 +63,22 @@ const char sep[] =
 
 FX_EXTERN_C int _fx_M8FilenameFM5splitTa2S1S(fx_str_t* path_0, struct _fx_Ta2S* fx_result, void* fx_fv)
 {
-   _fx_Ta2S result_0 = {  };
-   fx_str_t path_1 = {  };
+   _fx_Ta2S result_0 = {0};
+   fx_str_t path_1 = {0};
    int fx_status = 0;
    fx_copy_str(path_0, &path_1);
    for (;;) {
-      fx_str_t path_2 = {  };
-      fx_str_t sep_0 = {  };
-      _fx_Ta2S result_1 = {  };
-      fx_str_t v_0 = {  };
-      _fx_Ta2S result_2 = {  };
-      fx_str_t v_1 = {  };
-      fx_str_t v_2 = {  };
-      _fx_Ta2S result_3 = {  };
-      fx_str_t v_3 = {  };
-      fx_str_t v_4 = {  };
-      _fx_Ta2S result_4 = {  };
+      fx_str_t path_2 = {0};
+      fx_str_t sep_0 = {0};
+      _fx_Ta2S result_1 = {0};
+      fx_str_t v_0 = {0};
+      _fx_Ta2S result_2 = {0};
+      fx_str_t v_1 = {0};
+      fx_str_t v_2 = {0};
+      _fx_Ta2S result_3 = {0};
+      fx_str_t v_3 = {0};
+      fx_str_t v_4 = {0};
+      _fx_Ta2S result_4 = {0};
       fx_copy_str(&path_1, &path_2);
       FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_0, 0), _fx_catch_0);
       FX_CALL(_fx_F6assertv1B(FX_STR_LENGTH(sep_0) == 1, 0), _fx_catch_0);
@@ -195,7 +195,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M8FilenameFM7dirnameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv)
 {
-   _fx_Ta2S v_0 = {  };
+   _fx_Ta2S v_0 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M8FilenameFM5splitTa2S1S(path_0, &v_0, 0), _fx_cleanup);
    fx_copy_str(&v_0.t0, fx_result);
@@ -207,7 +207,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv)
 {
-   _fx_Ta2S v_0 = {  };
+   _fx_Ta2S v_0 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M8FilenameFM5splitTa2S1S(path_0, &v_0, 0), _fx_cleanup);
    fx_copy_str(&v_0.t1, fx_result);
@@ -219,7 +219,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M8FilenameFM6concatS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv)
 {
-   fx_str_t sep_0 = {  };
+   fx_str_t sep_0 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_0, 0), _fx_cleanup);
    bool v_0;
@@ -243,25 +243,25 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv)
 {
-   fx_str_t result_0 = {  };
-   fx_str_t dir_1 = {  };
-   fx_str_t fname_1 = {  };
+   fx_str_t result_0 = {0};
+   fx_str_t dir_1 = {0};
+   fx_str_t fname_1 = {0};
    int fx_status = 0;
    fx_copy_str(dir_0, &dir_1);
    fx_copy_str(fname_0, &fname_1);
    for (;;) {
-      fx_str_t dir_2 = {  };
-      fx_str_t fname_2 = {  };
-      fx_str_t sep_0 = {  };
-      fx_str_t v_0 = {  };
-      fx_str_t v_1 = {  };
-      fx_str_t v_2 = {  };
-      fx_str_t v_3 = {  };
-      _fx_Ta2S v_4 = {  };
-      fx_str_t v_5 = {  };
-      fx_str_t v_6 = {  };
-      fx_str_t sep_1 = {  };
-      fx_str_t result_1 = {  };
+      fx_str_t dir_2 = {0};
+      fx_str_t fname_2 = {0};
+      fx_str_t sep_0 = {0};
+      fx_str_t v_0 = {0};
+      fx_str_t v_1 = {0};
+      fx_str_t v_2 = {0};
+      fx_str_t v_3 = {0};
+      _fx_Ta2S v_4 = {0};
+      fx_str_t v_5 = {0};
+      fx_str_t v_6 = {0};
+      fx_str_t sep_1 = {0};
+      fx_str_t result_1 = {0};
       fx_copy_str(&dir_1, &dir_2);
       fx_copy_str(&fname_1, &fname_2);
       FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_0, 0), _fx_catch_0);
@@ -392,7 +392,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M8FilenameFM16remove_extensionS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv)
 {
-   fx_str_t sep_0 = {  };
+   fx_str_t sep_0 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_0, 0), _fx_cleanup);
    int_ dotpos_0;

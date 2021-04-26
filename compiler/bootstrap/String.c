@@ -294,23 +294,23 @@ FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(
    struct _fx_LS_data_t** fx_result,
    void* fx_fv)
 {
-   _fx_T3LSiB __fold_result___0 = {  };
-   fx_str_t s_1 = {  };
-   _fx_T3LSiB v_0 = {  };
+   _fx_T3LSiB __fold_result___0 = {0};
+   fx_str_t s_1 = {0};
+   _fx_T3LSiB v_0 = {0};
    _fx_LS sl_0 = 0;
    _fx_LS v_1 = 0;
-   fx_str_t v_2 = {  };
+   fx_str_t v_2 = {0};
    _fx_LS __fold_result___1 = 0;
    int fx_status = 0;
    _fx_make_T3LSiB(0, 0, true, &__fold_result___0);
    fx_copy_str(s_0, &s_1);
    int_ len_0 = FX_STR_LENGTH(s_1);
    for (int_ i_0 = 0; i_0 < len_0; i_0++) {
-      _fx_T3LSiB v_3 = {  };
+      _fx_T3LSiB v_3 = {0};
       _fx_LS sl_1 = 0;
-      _fx_T3LSiB v_4 = {  };
+      _fx_T3LSiB v_4 = {0};
       _fx_LS v_5 = 0;
-      fx_str_t v_6 = {  };
+      fx_str_t v_6 = {0};
       char_ ci_0 = s_1.data[i_0];
       _fx_copy_T3LSiB(&__fold_result___0, &v_3);
       FX_COPY_PTR(v_3.t0, &sl_1);
@@ -432,13 +432,13 @@ FX_EXTERN_C int _fx_M6StringFM10num_suffixS1i(int_ n_0, fx_str_t* fx_result, voi
 
 FX_EXTERN_C int _fx_M6StringFM7escapedS2SB(fx_str_t* s_0, bool quotes_0, fx_str_t* fx_result, void* fx_fv)
 {
-   fx_str_t q_0 = {  };
+   fx_str_t q_0 = {0};
    _fx_LS v_0 = 0;
-   _fx_T2LSi __fold_result___0 = {  };
-   fx_str_t s_1 = {  };
-   _fx_T2LSi v_1 = {  };
+   _fx_T2LSi __fold_result___0 = {0};
+   fx_str_t s_1 = {0};
+   _fx_T2LSi v_1 = {0};
    _fx_LS ll_0 = 0;
-   fx_str_t v_2 = {  };
+   fx_str_t v_2 = {0};
    _fx_LS v_3 = 0;
    _fx_LS __fold_result___1 = 0;
    _fx_LS v_4 = 0;
@@ -454,13 +454,13 @@ FX_EXTERN_C int _fx_M6StringFM7escapedS2SB(fx_str_t* s_0, bool quotes_0, fx_str_
    fx_copy_str(s_0, &s_1);
    int_ len_0 = FX_STR_LENGTH(s_1);
    for (int_ i_0 = 0; i_0 < len_0; i_0++) {
-      _fx_T2LSi v_5 = {  };
+      _fx_T2LSi v_5 = {0};
       _fx_LS ll_1 = 0;
-      _fx_T2LSi v_6 = {  };
-      _fx_T2SB v_7 = {  };
-      fx_str_t esc_s_0 = {  };
+      _fx_T2LSi v_6 = {0};
+      _fx_T2SB v_7 = {0};
+      fx_str_t esc_s_0 = {0};
       _fx_LS v_8 = 0;
-      fx_str_t v_9 = {  };
+      fx_str_t v_9 = {0};
       _fx_LS ll_2 = 0;
       char_ c_0 = s_1.data[i_0];
       _fx_copy_T2LSi(&__fold_result___0, &v_5);

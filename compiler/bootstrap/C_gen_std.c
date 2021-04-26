@@ -2711,16 +2711,16 @@ FX_EXTERN_C int _fx_M9C_gen_stdFM11gen_std_funR9Ast__id_t3SLN14C_form__ctyp_tN14
    void* fx_fv)
 {
    _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t v_0 = 0;
-   _fx_R17C_form__cdeffun_t v_1 = {  };
+   _fx_R17C_form__cdeffun_t v_1 = {0};
    _fx_rR17C_form__cdeffun_t cf_0 = 0;
-   _fx_N15C_form__cinfo_t v_2 = {  };
+   _fx_N15C_form__cinfo_t v_2 = {0};
    int fx_status = 0;
    _fx_R9Ast__id_t n_0;
    FX_CALL(_fx_M6C_formFM7gen_idcR9Ast__id_t2iS(1, cname_0, &n_0, 0), _fx_cleanup);
    _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t lstend_0 = 0;
    _fx_LN14C_form__ctyp_t lst_0 = argtyps_0;
    for (; lst_0; lst_0 = lst_0->tl) {
-      _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t tup_0 = {  };
+      _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t tup_0 = {0};
       _fx_N14C_form__ctyp_t t_0 = lst_0->hd;
       _fx_make_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(&_fx_g9Ast__noid, t_0, 0, &tup_0);
       _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t node_0 = 0;
@@ -2762,9 +2762,9 @@ FX_EXTERN_C int _fx_M9C_gen_stdFM13gen_std_macroR9Ast__id_t2Si(
    void* fx_fv)
 {
    _fx_LR9Ast__id_t v_0 = 0;
-   _fx_R19C_form__cdefmacro_t v_1 = {  };
+   _fx_R19C_form__cdefmacro_t v_1 = {0};
    _fx_rR19C_form__cdefmacro_t cm_0 = 0;
-   _fx_N15C_form__cinfo_t v_2 = {  };
+   _fx_N15C_form__cinfo_t v_2 = {0};
    int fx_status = 0;
    _fx_R9Ast__id_t n_0;
    FX_CALL(_fx_M6C_formFM7gen_idcR9Ast__id_t2iS(1, cname_0, &n_0, 0), _fx_cleanup);
@@ -3153,17 +3153,17 @@ FX_EXTERN_C int _fx_M9C_gen_stdFM14init_std_namesv0(void* fx_fv)
    _fx_g26C_form__std_FX_PTR_xD_ZERO = 0;
    int_ n_0 = FX_LOOP_COUNT(5, 0, -1);
    for (int_ i_0 = 0; i_0 < n_0; i_0++) {
-      fx_str_t v_118 = {  };
-      fx_str_t v_119 = {  };
+      fx_str_t v_118 = {0};
+      fx_str_t v_119 = {0};
       _fx_LR9Ast__id_t v_120 = 0;
-      fx_str_t v_121 = {  };
-      fx_str_t v_122 = {  };
+      fx_str_t v_121 = {0};
+      fx_str_t v_122 = {0};
       _fx_LR9Ast__id_t v_123 = 0;
-      fx_str_t v_124 = {  };
-      fx_str_t v_125 = {  };
+      fx_str_t v_124 = {0};
+      fx_str_t v_125 = {0};
       _fx_LR9Ast__id_t v_126 = 0;
-      fx_str_t v_127 = {  };
-      fx_str_t v_128 = {  };
+      fx_str_t v_127 = {0};
+      fx_str_t v_128 = {0};
       _fx_LR9Ast__id_t v_129 = 0;
       int_ i_1 = 5 + i_0 * -1;
       FX_CALL(_fx_F6stringS1i(i_1, &v_118, 0), _fx_catch_0);
