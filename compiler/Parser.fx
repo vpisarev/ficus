@@ -370,9 +370,9 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
     }
 }
 
-fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
+fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
 {
-    //println(f"simple_exp({tok2str(ts)})\n")
+    //println(f"simple_exp({tok2str(ts)}), allow_mkrecord={allow_mkrecord}")
     fun extend_simple_exp_(ts: tklist_t, e: exp_t) {
         //println(f"extend_simple_exp({tok2str(ts)})\n")
         val eloc = get_exp_loc(e)
@@ -425,9 +425,17 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
                 }
             extend_simple_exp_(ts_, call_exp)
         | (LSQUARE(false), _) :: rest =>
-            val (ts, _, idxs, _) = parse_exp_list_f(rest, parse_range_exp,
-                            RSQUARE, kw_mode=KwNone, allow_empty=false)
-            extend_simple_exp_(ts, ExpAt(e, BorderNone, InterpNone, idxs, make_new_ctx(eloc)))
+            val (ts, _, idxs, _) =
+                parse_exp_list_f(rest,
+                    fun(ts) {parse_range_exp(ts, allow_mkrecord=false)},
+                    RSQUARE, kw_mode=KwNone, allow_empty=false)
+            val at_exp = ExpAt(e, BorderNone, InterpNone, idxs, make_new_ctx(eloc))
+            extend_simple_exp_(ts, at_exp)
+        | (LBRACE, _) :: rest when allow_mkrecord =>
+            val (ts, _, _, rec_init_elems) = parse_exp_list(rest, RBRACE,
+                kw_mode=KwMust, allow_empty=true, stop_at_semicolon=false)
+            val mkrecord_exp = ExpMkRecord(e, rec_init_elems, make_new_ctx(get_exp_loc(e)))
+            extend_simple_exp_(ts, mkrecord_exp)
         | (t1, _) :: (t2, l2) :: rest when
             // [TODO] add support for alternating patterns right into the pattern matching syntax
             (match t1 {| DOT | ARROW => true | _ => false}) &&
@@ -451,55 +459,55 @@ fun parse_simple_exp(ts: tklist_t): (tklist_t, exp_t)
     extend_simple_exp_(ts, e)
 }
 
-fun parse_deref_exp(ts: tklist_t): (tklist_t, exp_t)
-{
+fun parse_deref_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t) =
+    match ts {
     | (STAR(true), l1) :: rest =>
-        val (ts, e) = parse_deref_exp(rest)
+        val (ts, e) = parse_deref_exp(rest, allow_mkrecord)
         (ts, make_unary(OpDeref, e, l1))
     | _ =>
-        parse_simple_exp(ts)
-}
+        parse_simple_exp(ts, allow_mkrecord)
+    }
 
-fun parse_apos_exp(ts: tklist_t): (tklist_t, exp_t)
+fun parse_apos_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
 {
-    val (ts, e) = parse_deref_exp(ts)
+    val (ts, e) = parse_deref_exp(ts, allow_mkrecord)
     match ts {
     | (APOS, l1) :: rest => (rest, ExpUnary(OpApos, e, make_new_ctx(l1)))
     | _ => (ts, e)
     }
 }
 
-fun parse_unary_exp(ts: tklist_t): (tklist_t, exp_t)
+fun parse_unary_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
 {
     //println(f"unary_exp({tok2str(ts)})\n")
     match ts {
     | (REF(true), l1) :: rest =>
-        val (ts, e) = parse_unary_exp(rest)
+        val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
         (ts, make_unary(OpMkRef, e, l1))
     | (MINUS(true), l1) :: rest =>
-        val (ts, e) = parse_unary_exp(rest)
+        val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
         (ts, make_unary(OpNegate, e, l1))
     | (DOT_MINUS(true), l1) :: rest =>
-        val (ts, e) = parse_unary_exp(rest)
+        val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
         (ts, make_unary(OpDotMinus, e, l1))
     | (PLUS(true), l1) :: rest =>
-        val (ts, e) = parse_unary_exp(rest)
+        val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
         (ts, make_unary(OpPlus, e, l1))
     | (TILDE, l1) :: rest =>
-        val (ts, e) = parse_unary_exp(rest)
+        val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
         (ts, make_unary(OpBitwiseNot, e, l1))
     | (LOGICAL_NOT, l1) :: rest =>
-        val (ts, e) = parse_unary_exp(rest)
+        val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
         (ts, make_unary(OpLogicNot, e, l1))
     | (BACKSLASH(true), l1) :: rest =>
-        val (ts, e) = parse_unary_exp(rest)
+        val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
         (ts, make_unary(OpExpand, e, l1))
     | _ =>
-        parse_apos_exp(ts)
+        parse_apos_exp(ts, allow_mkrecord)
     }
 }
 
-fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
+fun parse_binary_exp(ts: tklist_t, allow_mkrecord:bool) : (tklist_t, exp_t)
 {
     //println(f"binary_exp({tok2str(ts)})\n")
     fun parse_binary_exp_(ts: tklist_t, result: exp_t, min_prec: int) =
@@ -537,7 +545,7 @@ fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
         if prec < min_prec { (ts, result) }
         else {
             val next_min_prec = match assoc { | AssocLeft => prec+1 | _ => prec }
-            val (ts, e) = parse_unary_exp(rest)
+            val (ts, e) = parse_unary_exp(rest, allow_mkrecord)
             // non-tail call, parse rhs
             val (ts, rhs) = parse_binary_exp_(ts, e, next_min_prec)
             val result = make_binary(bop, result, rhs, l)
@@ -545,19 +553,20 @@ fun parse_binary_exp(ts: tklist_t) : (tklist_t, exp_t)
         }
     | _ => (ts, result)
     }
-    val (ts, e) = parse_unary_exp(ts)
+    val (ts, e) = parse_unary_exp(ts, allow_mkrecord)
     parse_binary_exp_(ts, e, 0)
 }
 
-fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
+fun parse_exp(ts: tklist_t, ~allow_mkrecord: bool): (tklist_t, exp_t)
 {
+    //println(f"parse_exp({tok2str(ts)}), allow_mkrecord={allow_mkrecord}\n")
     fun extend_chained_cmp_(ts: tklist_t,
         chain: ((cmpop_t, loc_t), exp_t) list): (tklist_t, exp_t)
     {
     //println(f"binary_exp({tok2str(ts)})\n")
     match ts {
     | (CMP(cmpop), l1) :: rest =>
-        val (ts, e) = parse_binary_exp(rest)
+        val (ts, e) = parse_binary_exp(rest, allow_mkrecord)
         extend_chained_cmp_(ts, ((cmpop, l1), e) :: chain)
     | _ =>
         val result = match chain {
@@ -593,7 +602,7 @@ fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
 
     fun parse_chained_cmp_(ts: tklist_t): (tklist_t, exp_t)
     {
-        val (ts, e) = parse_binary_exp(ts)
+        val (ts, e) = parse_binary_exp(ts, allow_mkrecord)
         extend_chained_cmp_(ts, ((CmpEQ, noloc), e) :: [])
     }
 
@@ -623,7 +632,7 @@ fun parse_exp(ts: tklist_t): (tklist_t, exp_t)
 fun parse_exp_or_block(ts: tklist_t): (tklist_t, exp_t)
 {
     | (LBRACE, _) :: _ => parse_block(ts)
-    | _ => parse_exp(ts)
+    | _ => parse_exp(ts, allow_mkrecord=true)
 }
 
 fun parse_complex_exp_or_block(ts: tklist_t): (tklist_t, exp_t)
@@ -669,7 +678,7 @@ fun parse_ccode_exp(ts: tklist_t, t: typ_t): (tklist_t, exp_t) =
     | _ => throw parse_err(ts, "'ccode {...}' is expected")
     }
 
-fun parse_range_exp(ts0: tklist_t): (tklist_t, exp_t)
+fun parse_range_exp(ts0: tklist_t, ~allow_mkrecord: bool): (tklist_t, exp_t)
 {
     val loc = match ts0 { | _ :: _ => ts0.hd().1 | _ => noloc }
     fun parse_range_(ts: tklist_t, expect_sep: bool, result: exp_t? list): (tklist_t, exp_t? list) =
@@ -682,13 +691,14 @@ fun parse_range_exp(ts0: tklist_t): (tklist_t, exp_t)
             parse_range_(rest, false, result)
         | (LBRACE, _) :: _ | (FOR _, _) :: _ | (RSQUARE, _) :: _ | (COMMA, _) :: _ =>
             if !expect_sep && result.length() != 1 {
-                throw parse_err(ts, "range expression may not end with ':', unless it's ':' or '<start>:' ")
+                throw parse_err(ts,
+                    "range expression may not end with ':', unless it's ':' or '<start>:' ")
             }
             val result = if expect_sep {result} else {None :: result}
             (ts, result.rev())
         | _ =>
             if expect_sep { throw parse_err(ts, "':' is expected") }
-            val (ts, e) = parse_exp(ts)
+            val (ts, e) = parse_exp(ts, allow_mkrecord=allow_mkrecord)
             parse_range_(ts, true, Some(e) :: result)
         }
     val (ts, elist) = parse_range_(ts0, false, [])
@@ -698,11 +708,13 @@ fun parse_range_exp(ts0: tklist_t): (tklist_t, exp_t)
     | Some(e) :: [] => e // scalar index
     | None :: None :: [] => ExpRange(None, None, None, ctx) // :
     | [] => throw parse_err(ts0, "empty range expression")
-    | None :: [] | None :: None :: None :: [] => throw parse_err(ts0, "invalid range expression")
+    | None :: [] | None :: None :: None :: [] =>
+        throw parse_err(ts0, "invalid range expression")
     | e1 :: [] => ExpRange(e1, None, None, ctx) // a:
     | e1 :: e2 :: [] => ExpRange(e1, e2, None, ctx) // a:b or :b
     | e1 :: e2 :: e3 :: [] => ExpRange(e1, e2, e3, ctx) // a:b:c or a::c or :b:c or ::c
-    | _ => throw parse_err(ts0, f"invalid range expression of {elist.length()} components")
+    | _ =>
+        throw parse_err(ts0, f"invalid range expression of {elist.length()} components")
     }
     (ts, e)
 }
@@ -872,7 +884,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
                 | (BACK_ARROW, _) :: rest => rest
                 | _ => throw parse_err(ts, "'<-' is expected")
                 }
-            val (ts, e) = parse_range_exp(ts)
+            val (ts, e) = parse_range_exp(ts, allow_mkrecord=false)
             parse_for_clause_(ts, true, (p, idx_pat, e) :: result, loc)
         }
 
@@ -1127,7 +1139,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
     | (IF, l1) :: rest =>
         fun parse_if_(ts: tklist_t, loc: loc_t): (tklist_t, exp_t)
         {
-            val (ts, c) = parse_exp_or_block(ts)
+            val (ts, c) = parse_exp(ts, allow_mkrecord=false)
             val (ts, then_e) = parse_block(ts)
             val (ts, else_e) = match ts {
                 | (ELSE, _) :: (IF, l2) :: rest =>
@@ -1168,7 +1180,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
         | _ => (ts, e)
         }
     | (MATCH, l1) :: rest =>
-        val (ts, e) = parse_exp_or_block(rest)
+        val (ts, e) = parse_exp(rest, allow_mkrecord=false)
         val (ts, cases) = parse_match_cases(ts)
         (ts, ExpMatch(e, cases, make_new_ctx(l1)))
     | (FOLD, l1) :: rest =>
@@ -1178,14 +1190,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
         (ts, fold_exp)
     | (FUN, _) :: _ => parse_lambda(ts)
     | _ =>
-        val (ts, e) = parse_exp(ts)
-        match ts {
-        | (LBRACE, _) :: rest =>
-            val (ts, _, _, rec_init_elems) = parse_exp_list(rest, RBRACE,
-                kw_mode=KwMust, allow_empty=true, stop_at_semicolon=false)
-            (ts, ExpMkRecord(e, rec_init_elems, make_new_ctx(get_exp_loc(e))))
-        | _ => (ts, e)
-        }
+        parse_exp(ts, allow_mkrecord=true)
     }
 }
 
@@ -1313,15 +1318,17 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
 {
     | (BREAK, l1) :: rest => (rest, ExpBreak(false, l1))
     | (CONTINUE, l1) :: rest => (rest, ExpContinue(l1))
-    | (THROW, l1) :: rest => val (ts, e) = parse_exp(rest); (ts, ExpThrow(e, l1))
+    | (THROW, l1) :: rest =>
+        val (ts, e) = parse_exp(rest, allow_mkrecord=true)
+        (ts, ExpThrow(e, l1))
     | (WHILE(true), l1) :: rest =>
-        val (ts, c) = parse_exp_or_block(rest)
+        val (ts, c) = parse_exp(rest, allow_mkrecord=false)
         val (ts, body) = parse_block(ts)
         (ts, ExpWhile(c, body, l1))
     | (DO, l1) :: rest =>
         val (ts, body) = parse_exp_or_block(rest)
         val (ts, c) = match ts {
-            | (WHILE _, _) :: rest => parse_exp_or_block(rest)
+            | (WHILE _, _) :: rest => parse_exp(rest, allow_mkrecord=false)
             | _ => throw parse_err(ts, "'while' is expected in do-while loop")
             }
         (ts, ExpDoWhile(body, c, l1))
@@ -1524,8 +1531,7 @@ fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
 {
     val ts = match ts {
     | (LBRACE, _) :: (BAR, _) :: rest => rest
-    | (LBRACE, _) :: rest => rest
-    | _ => throw parse_err(ts, "'{' is expected")
+    | _ => throw parse_err(ts, "'{', followed by '|', is expected")
     }
 
     fun extend_match_cases_(ts: tklist_t, result: mcase_t list): (tklist_t, mcase_t list) =

@@ -83,6 +83,6 @@ fun sort(l: 't list, lt: ('t, 't)->bool): 't list =
         | a :: b :: [] => if lt(b, a) {b::a::[]} else {l}
         | _ =>
             val arr = array(l)
-            sort(arr, lt)
+            arr.sort(lt)
             list(arr)
     }

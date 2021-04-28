@@ -143,7 +143,6 @@ type cexp_t =
     | CExpTernary: (cexp_t, cexp_t, cexp_t, cctx_t)
     | CExpCall: (cexp_t, cexp_t list, cctx_t)
     | CExpInit: (cexp_t list, cctx_t)
-    | CExpData: (string, string, cctx_t)
     | CExpTyp: (ctyp_t, loc_t)
     /* we don't parse and don't process the inline C code; just retain it as-is */
     | CExpCCode: (string, loc_t)
@@ -354,7 +353,6 @@ fun get_cexp_ctx(e: cexp_t): cctx_t
     | CExpTernary (_, _, _, c) => c
     | CExpCall (_, _, c) => c
     | CExpInit (_, c) => c
-    | CExpData (_, _, c) => c
     | CExpTyp (t, l) => (t, l)
     | CExpCCode (_, l) => (CTypAny, l)
 }
@@ -404,6 +402,17 @@ fun get_cinfo_loc(info: cinfo_t): loc_t
     | CInterface (ref {ci_loc}) => ci_loc
     | CLabel ({cl_loc}) => cl_loc
     | CMacro (ref {cm_loc}) => cm_loc
+}
+
+fun get_cval(n: id_t, loc: loc_t): cdefval_t
+{
+    val info = cinfo_(n, loc)
+    match info {
+    | CVal(cv) => cv
+    | _ =>
+        val loc = if loc != noloc { loc } else { get_cinfo_loc(info) }
+        throw compile_err(loc, f"symbol '{n}' is expected to be CVal ...")
+    }
 }
 
 fun get_idc_loc(i: id_t, loc: loc_t) = get_cinfo_loc(cinfo_(i, loc))
@@ -621,7 +630,6 @@ fun walk_cexp(e: cexp_t, callb: c_callb_t)
     | CExpTyp(t, loc) => CExpTyp(walk_ctyp_(t), loc)
     | CExpCall(f, args, ctx) => CExpCall(walk_cexp_(f), args.map(walk_cexp_), walk_ctx_(ctx))
     | CExpInit(eseq, ctx) => CExpInit(eseq.map(walk_cexp_), walk_ctx_(ctx))
-    | CExpData(kind, fname, ctx) => CExpData(kind, fname, walk_ctx_(ctx))
     | CExpCCode(s, loc) => e
     }
 }
@@ -803,7 +811,6 @@ fun fold_cexp(e: cexp_t, callb: c_fold_callb_t)
         | CExpCall (f, args, ctx) =>
             fold_cexp_(f); args.app(fold_cexp_); ctx
         | CExpInit (eseq, ctx) => eseq.app(fold_cexp_); ctx
-        | CExpData (_, _, ctx) => ctx
         | CExpTyp (t, loc) => (t, loc)
         | CExpCCode (s, loc) => (CTypAny, loc)
         })

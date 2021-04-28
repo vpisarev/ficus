@@ -309,8 +309,6 @@ val pp_ = Ast.pp
         pp.begin(); pp.str("@ccode ")
         pp_exp_(KExpAtom(AtomLit(KLitString(s)), (KTypString, loc)))
         pp.end(); pp.newline()
-    | KExpData (kind, fname, _) =>
-        pp.begin(); pp.str(f"@data({kind}) '{fname}'"); pp.end()
     | KExpSeq(_, _) =>
         pp.beginv(0); pp_exp_as_block_(e); pp.end()
     | KExpSync(n, e) => pp.begin(); pp.str("@sync "); pp_exp_(pp, e); pp.end()
@@ -379,7 +377,7 @@ val pp_ = Ast.pp
             }
         }
         pp.breaku(); pp.str("}"); pp.end()
-    | KExpMkArray (elems, (_, l)) =>
+    | KExpMkArray (_, elems, (_, l)) =>
         pp.beginv();
         pp.str("[|"); pp.space();
         val nrows = elems.length()

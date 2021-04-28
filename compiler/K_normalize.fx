@@ -14,7 +14,8 @@
 */
 from Ast import *
 from K_form import *
-import Ast_typecheck, Ast_pp, Set
+import Ast_typecheck, Ast_pp
+import File, Set
 
 fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
 {
@@ -289,18 +290,20 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         if arows == [] {
             throw compile_err(eloc, "empty arrays are not supported")
         }
-        val fold (krows, code) = ([], code) for arow <- arows {
-            val fold (krow, code) = ([], code) for e <- arow {
-                val (f, e) = match e {
-                             | ExpUnary(OpExpand, e, _) => (true, e)
-                             | _ => (false, e)
+        val fold krows=[], code=code, all_literals=true for arow <- arows {
+            val fold krow=[], code=code, all_literals=all_literals for e <- arow {
+                val (f, e, islit) = match e {
+                             | ExpUnary(OpExpand, e, _) => (true, e, false)
+                             | ExpLit((LitString _ | LitNull | LitEmpty), _) => (false, e, false)
+                             | ExpLit(_, _) => (false, e, true)
+                             | _ => (false, e, false)
                              }
                 val (a, code) = exp2atom(e, code, false, sc)
-                ((f, a) :: krow, code)
+                ((f, a) :: krow, code, all_literals & islit)
             }
-            (krow.rev() :: krows, code)
+            (krow.rev() :: krows, code, all_literals)
         }
-        (KExpMkArray(krows.rev(), kctx), code)
+        (KExpMkArray(all_literals, krows.rev(), kctx), code)
     | ExpMkVector(elems, _) =>
         if elems == [] {
             throw compile_err(eloc, "empty vector literals are not supported")
@@ -547,7 +550,8 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val t = typ2ktyp(t, eloc)
         (KExpAtom(a, (t, eloc)), code)
     | ExpCCode(s, _) => (KExpCCode(s, kctx), code)
-    | ExpData(kind, fname, _) => (KExpData(kind, fname, kctx), code)
+    | ExpData(kind, fname, _) =>
+        (embed_data(kind, fname, kctx), code)
     | ExpMatch(e1, cases, _) =>
         val loc1 = get_exp_loc(e1)
         val (a, code) = exp2atom(e1, code, false, sc)
@@ -1564,6 +1568,24 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
             KDefInterface(ki) :: code
         | _ => code
         }
+}
+
+fun embed_data(kind: string, fname: string, (_: ktyp_t, loc: loc_t))
+{
+    if kind == "text" {
+        try {
+            val text = File.read_utf8(fname)
+            KExpAtom(AtomLit(KLitString(text)), (KTypString, loc))
+        } catch {
+            | _ => throw compile_err(loc, f"@text: {fname} cannot be read")
+        }
+    } else if kind == "binary" {
+        val data = File.read_binary_u8(fname)
+        val data = [: for i <- data {(false, AtomLit(KLitUInt(8, uint64(i))))} :]
+        KExpMkArray(true, data :: [], (KTypArray(1, KTypUInt(8)), loc))
+    } else {
+        throw compile_err(loc, f"'{kind}' data is not supported")
+    }
 }
 
 fun normalize_mod(minfo: defmodule_t, kcode_typedefs: kcode_t, toposort_idx: int, is_main: bool): kmodule_t

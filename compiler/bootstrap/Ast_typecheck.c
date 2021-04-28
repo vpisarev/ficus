@@ -15156,9 +15156,14 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM22report_not_found_typedE4R9Ast__id_tN10As
       fx_str_t slit_3 = FX_MAKE_STR(""); fx_copy_str(&slit_3, &candidates_msg_0);
    }
    else {
-      fx_str_t slit_4 = FX_MAKE_STR("\nCandidates:\n\t");
+      fx_str_t slit_4 =
+         FX_MAKE_STR("\n"
+            U"Candidates:\n"
+            U"\t");
       fx_str_t slit_5 = FX_MAKE_STR("\n");
-      fx_str_t slit_6 = FX_MAKE_STR(",\n\t");
+      fx_str_t slit_6 =
+         FX_MAKE_STR(",\n"
+            U"\t");
       FX_CALL(_fx_F12join_embraceS4SSSLS(&slit_4, &slit_5, &slit_6, strs_0, &candidates_msg_0, 0), _fx_cleanup);
    }
    FX_CALL(_fx_F6stringS1S(&nstr_0, &v_0, 0), _fx_cleanup);
@@ -16932,7 +16937,9 @@ FX_EXTERN_C int
    FX_CALL(_fx_M3AstFM6stringS1RM5loc_t(def_loc_0, &v_5, 0), _fx_catch_1);
    fx_str_t slit_0 = FX_MAKE_STR("the number of actual type arguments (");
    fx_str_t slit_1 = FX_MAKE_STR(") does not match the number of formal type parameters (");
-   fx_str_t slit_2 = FX_MAKE_STR("), as declared at\n\t");
+   fx_str_t slit_2 =
+      FX_MAKE_STR("), as declared at\n"
+         U"\t");
    {
       const fx_str_t strs_0[] = { slit_0, v_3, slit_1, v_4, slit_2, v_5 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_0, 6, &v_6), _fx_catch_1);
@@ -23926,8 +23933,8 @@ static int
          }
          fx_exn_t v_10 = {0};
          fx_str_t slit_1 =
-            FX_MAKE_STR(
-               "for over tuple: invalid result of\n                                     check_pat result (id is expected)");
+            FX_MAKE_STR("for over tuple: invalid result of\n"
+               U"                                     check_pat result (id is expected)");
          FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_1, &v_10, 0), _fx_catch_4);
          FX_THROW(&v_10, false, _fx_catch_4);
 
@@ -32250,7 +32257,9 @@ FX_EXTERN_C int
       fx_str_t v_93 = {0};
       fx_str_t v_94 = {0};
       fx_exn_t v_95 = {0};
-      fx_str_t slit_5 = FX_MAKE_STR("patterns: \n\t");
+      fx_str_t slit_5 =
+         FX_MAKE_STR("patterns: \n"
+            U"\t");
       FX_CALL(_fx_M13Ast_typecheckFM5printv1S(&slit_5, 0), _fx_catch_11);
       FX_CALL(_fx_M3AstFM8PatTupleN10Ast__pat_t2LN10Ast__pat_tRM5loc_t(inst_args_0, inst_loc_0, &v_91), _fx_catch_11);
       FX_CALL(_fx_M6Ast_ppFM12pprint_pat_xv1N10Ast__pat_t(v_91, 0), _fx_catch_11);

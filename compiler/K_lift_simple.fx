@@ -104,8 +104,7 @@ fun lift(kmods: kmodule_t list) {
             val {kv_flags} = get_kval(i, loc)
             if globals.mem(i) {
                 e
-            } else if kv_flags.val_flag_ctor > 0 ||
-                      (match rhs { | KExpData _ => true | _ => false }) {
+            } else if kv_flags.val_flag_ctor > 0 {
                 add_to_globals_and_lift(i, e, loc)
             } else {
                 e

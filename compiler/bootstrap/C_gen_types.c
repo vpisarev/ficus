@@ -931,10 +931,11 @@ typedef struct _fx_LLT2BN14K_form__atom_t_data_t {
    struct _fx_LT2BN14K_form__atom_t_data_t* hd;
 } _fx_LLT2BN14K_form__atom_t_data_t, *_fx_LLT2BN14K_form__atom_t;
 
-typedef struct _fx_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t {
-   struct _fx_LLT2BN14K_form__atom_t_data_t* t0;
-   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t1;
-} _fx_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t;
+typedef struct _fx_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t {
+   bool t0;
+   struct _fx_LLT2BN14K_form__atom_t_data_t* t1;
+   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t2;
+} _fx_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t;
 
 typedef struct _fx_T2LT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t {
    struct _fx_LT2BN14K_form__atom_t_data_t* t0;
@@ -1050,12 +1051,6 @@ typedef struct _fx_T2ST2N14K_form__ktyp_tR10Ast__loc_t {
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t1;
 } _fx_T2ST2N14K_form__ktyp_tR10Ast__loc_t;
 
-typedef struct _fx_T3SST2N14K_form__ktyp_tR10Ast__loc_t {
-   fx_str_t t0;
-   fx_str_t t1;
-   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t2;
-} _fx_T3SST2N14K_form__ktyp_tR10Ast__loc_t;
-
 typedef struct _fx_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t {
    struct _fx_R9Ast__id_t t0;
    struct _fx_N14K_form__kexp_t_data_t* t1;
@@ -1081,7 +1076,7 @@ typedef struct _fx_N14K_form__kexp_t_data_t {
       struct _fx_T2LN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t KExpMkTuple;
       struct _fx_T2LN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t KExpMkRecord;
       struct _fx_T4R9Ast__id_tR9Ast__id_tLN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t KExpMkClosure;
-      struct _fx_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t KExpMkArray;
+      struct _fx_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t KExpMkArray;
       struct _fx_T2LT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t KExpMkVector;
       struct _fx_T5N14K_form__atom_tN13Ast__border_tN18Ast__interpolate_tLN13K_form__dom_tT2N14K_form__ktyp_tR10Ast__loc_t
          KExpAt;
@@ -1097,7 +1092,6 @@ typedef struct _fx_N14K_form__kexp_t_data_t {
       struct _fx_T3N14K_form__kexp_tN14K_form__kexp_tR10Ast__loc_t KExpWhile;
       struct _fx_T3N14K_form__kexp_tN14K_form__kexp_tR10Ast__loc_t KExpDoWhile;
       struct _fx_T2ST2N14K_form__ktyp_tR10Ast__loc_t KExpCCode;
-      struct _fx_T3SST2N14K_form__ktyp_tR10Ast__loc_t KExpData;
       struct _fx_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t KDefVal;
       struct _fx_rR17K_form__kdeffun_t_data_t* KDefFun;
       struct _fx_rR17K_form__kdefexn_t_data_t* KDefExn;
@@ -1339,12 +1333,6 @@ typedef struct _fx_T2LN14C_form__cexp_tT2N14C_form__ctyp_tR10Ast__loc_t {
    struct _fx_T2N14C_form__ctyp_tR10Ast__loc_t t1;
 } _fx_T2LN14C_form__cexp_tT2N14C_form__ctyp_tR10Ast__loc_t;
 
-typedef struct _fx_T3SST2N14C_form__ctyp_tR10Ast__loc_t {
-   fx_str_t t0;
-   fx_str_t t1;
-   struct _fx_T2N14C_form__ctyp_tR10Ast__loc_t t2;
-} _fx_T3SST2N14C_form__ctyp_tR10Ast__loc_t;
-
 typedef struct _fx_N14C_form__cexp_t_data_t {
    int_ rc;
    int tag;
@@ -1359,7 +1347,6 @@ typedef struct _fx_N14C_form__cexp_t_data_t {
       struct _fx_T4N14C_form__cexp_tN14C_form__cexp_tN14C_form__cexp_tT2N14C_form__ctyp_tR10Ast__loc_t CExpTernary;
       struct _fx_T3N14C_form__cexp_tLN14C_form__cexp_tT2N14C_form__ctyp_tR10Ast__loc_t CExpCall;
       struct _fx_T2LN14C_form__cexp_tT2N14C_form__ctyp_tR10Ast__loc_t CExpInit;
-      struct _fx_T3SST2N14C_form__ctyp_tR10Ast__loc_t CExpData;
       struct _fx_T2N14C_form__ctyp_tR10Ast__loc_t CExpTyp;
       struct _fx_T2SR10Ast__loc_t CExpCCode;
    } u;
@@ -3766,28 +3753,31 @@ static int _fx_cons_LLT2BN14K_form__atom_t(
    FX_MAKE_LIST_IMPL(_fx_LLT2BN14K_form__atom_t, FX_COPY_PTR);
 }
 
-static void _fx_free_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
+static void _fx_free_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
+   struct _fx_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
 {
-   _fx_free_LLT2BN14K_form__atom_t(&dst->t0);
-   _fx_free_T2N14K_form__ktyp_tR10Ast__loc_t(&dst->t1);
+   _fx_free_LLT2BN14K_form__atom_t(&dst->t1);
+   _fx_free_T2N14K_form__ktyp_tR10Ast__loc_t(&dst->t2);
 }
 
-static void _fx_copy_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* src,
-   struct _fx_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
+static void _fx_copy_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
+   struct _fx_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* src,
+   struct _fx_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
 {
-   FX_COPY_PTR(src->t0, &dst->t0);
-   _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(&src->t1, &dst->t1);
+   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t1, &dst->t1);
+   _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(&src->t2, &dst->t2);
 }
 
-static void _fx_make_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_LLT2BN14K_form__atom_t_data_t* t0,
-   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* t1,
-   struct _fx_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* fx_result)
+static void _fx_make_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
+   bool t0,
+   struct _fx_LLT2BN14K_form__atom_t_data_t* t1,
+   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* t2,
+   struct _fx_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* fx_result)
 {
-   FX_COPY_PTR(t0, &fx_result->t0);
-   _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(t1, &fx_result->t1);
+   fx_result->t0 = t0;
+   FX_COPY_PTR(t1, &fx_result->t1);
+   _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(t2, &fx_result->t2);
 }
 
 static void _fx_free_T2LT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
@@ -4233,33 +4223,6 @@ static void _fx_make_T2ST2N14K_form__ktyp_tR10Ast__loc_t(
    _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(t1, &fx_result->t1);
 }
 
-static void _fx_free_T3SST2N14K_form__ktyp_tR10Ast__loc_t(struct _fx_T3SST2N14K_form__ktyp_tR10Ast__loc_t* dst)
-{
-   fx_free_str(&dst->t0);
-   fx_free_str(&dst->t1);
-   _fx_free_T2N14K_form__ktyp_tR10Ast__loc_t(&dst->t2);
-}
-
-static void _fx_copy_T3SST2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_T3SST2N14K_form__ktyp_tR10Ast__loc_t* src,
-   struct _fx_T3SST2N14K_form__ktyp_tR10Ast__loc_t* dst)
-{
-   fx_copy_str(&src->t0, &dst->t0);
-   fx_copy_str(&src->t1, &dst->t1);
-   _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(&src->t2, &dst->t2);
-}
-
-static void _fx_make_T3SST2N14K_form__ktyp_tR10Ast__loc_t(
-   fx_str_t* t0,
-   fx_str_t* t1,
-   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* t2,
-   struct _fx_T3SST2N14K_form__ktyp_tR10Ast__loc_t* fx_result)
-{
-   fx_copy_str(t0, &fx_result->t0);
-   fx_copy_str(t1, &fx_result->t1);
-   _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(t2, &fx_result->t2);
-}
-
 static void _fx_free_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t(struct _fx_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t* dst)
 {
    _fx_free_N14K_form__kexp_t(&dst->t1);
@@ -4316,7 +4279,7 @@ static void _fx_free_N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t** dst
       case 15:
          _fx_free_T4R9Ast__id_tR9Ast__id_tLN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(&(*dst)->u.KExpMkClosure); break;
       case 16:
-         _fx_free_T2LLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(&(*dst)->u.KExpMkArray); break;
+         _fx_free_T3BLLT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(&(*dst)->u.KExpMkArray); break;
       case 17:
          _fx_free_T2LT2BN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(&(*dst)->u.KExpMkVector); break;
       case 18:
@@ -4348,20 +4311,18 @@ static void _fx_free_N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t** dst
       case 29:
          _fx_free_T2ST2N14K_form__ktyp_tR10Ast__loc_t(&(*dst)->u.KExpCCode); break;
       case 30:
-         _fx_free_T3SST2N14K_form__ktyp_tR10Ast__loc_t(&(*dst)->u.KExpData); break;
-      case 31:
          _fx_free_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t(&(*dst)->u.KDefVal); break;
-      case 32:
+      case 31:
          _fx_free_rR17K_form__kdeffun_t(&(*dst)->u.KDefFun); break;
-      case 33:
+      case 32:
          _fx_free_rR17K_form__kdefexn_t(&(*dst)->u.KDefExn); break;
-      case 34:
+      case 33:
          _fx_free_rR21K_form__kdefvariant_t(&(*dst)->u.KDefVariant); break;
-      case 35:
+      case 34:
          _fx_free_rR23K_form__kdefinterface_t(&(*dst)->u.KDefInterface); break;
-      case 36:
+      case 35:
          _fx_free_rR17K_form__kdeftyp_t(&(*dst)->u.KDefTyp); break;
-      case 37:
+      case 36:
          _fx_free_rR25K_form__kdefclosurevars_t(&(*dst)->u.KDefClosureVars); break;
       default:
          ;
@@ -4969,33 +4930,6 @@ static void _fx_make_T2LN14C_form__cexp_tT2N14C_form__ctyp_tR10Ast__loc_t(
    _fx_copy_T2N14C_form__ctyp_tR10Ast__loc_t(t1, &fx_result->t1);
 }
 
-static void _fx_free_T3SST2N14C_form__ctyp_tR10Ast__loc_t(struct _fx_T3SST2N14C_form__ctyp_tR10Ast__loc_t* dst)
-{
-   fx_free_str(&dst->t0);
-   fx_free_str(&dst->t1);
-   _fx_free_T2N14C_form__ctyp_tR10Ast__loc_t(&dst->t2);
-}
-
-static void _fx_copy_T3SST2N14C_form__ctyp_tR10Ast__loc_t(
-   struct _fx_T3SST2N14C_form__ctyp_tR10Ast__loc_t* src,
-   struct _fx_T3SST2N14C_form__ctyp_tR10Ast__loc_t* dst)
-{
-   fx_copy_str(&src->t0, &dst->t0);
-   fx_copy_str(&src->t1, &dst->t1);
-   _fx_copy_T2N14C_form__ctyp_tR10Ast__loc_t(&src->t2, &dst->t2);
-}
-
-static void _fx_make_T3SST2N14C_form__ctyp_tR10Ast__loc_t(
-   fx_str_t* t0,
-   fx_str_t* t1,
-   struct _fx_T2N14C_form__ctyp_tR10Ast__loc_t* t2,
-   struct _fx_T3SST2N14C_form__ctyp_tR10Ast__loc_t* fx_result)
-{
-   fx_copy_str(t0, &fx_result->t0);
-   fx_copy_str(t1, &fx_result->t1);
-   _fx_copy_T2N14C_form__ctyp_tR10Ast__loc_t(t2, &fx_result->t2);
-}
-
 static void _fx_free_N14C_form__cexp_t(struct _fx_N14C_form__cexp_t_data_t** dst)
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
@@ -5024,10 +4958,8 @@ static void _fx_free_N14C_form__cexp_t(struct _fx_N14C_form__cexp_t_data_t** dst
       case 10:
          _fx_free_T2LN14C_form__cexp_tT2N14C_form__ctyp_tR10Ast__loc_t(&(*dst)->u.CExpInit); break;
       case 11:
-         _fx_free_T3SST2N14C_form__ctyp_tR10Ast__loc_t(&(*dst)->u.CExpData); break;
-      case 12:
          _fx_free_T2N14C_form__ctyp_tR10Ast__loc_t(&(*dst)->u.CExpTyp); break;
-      case 13:
+      case 12:
          _fx_free_T2SR10Ast__loc_t(&(*dst)->u.CExpCCode); break;
       default:
          ;
@@ -9977,7 +9909,7 @@ FX_EXTERN_C int _fx_M11C_gen_typesFM16convert_all_typsTa3LN15C_form__cstmt_t1LR1
       _fx_LN14K_form__kexp_t lst_1 = km_top_0;
       for (; lst_1; lst_1 = lst_1->tl) {
          _fx_N14K_form__kexp_t e_0 = lst_1->hd;
-         if (FX_REC_VARIANT_TAG(e_0) == 34) {
+         if (FX_REC_VARIANT_TAG(e_0) == 33) {
             _fx_R21K_form__kdefvariant_t v_5 = {0};
             _fx_R29C_gen_types__ctyp_temp_info_t i_0 = {0};
             _fx_Rt6Map__t2R9Ast__id_tR29C_gen_types__ctyp_temp_info_t v_6 = {0};
@@ -10661,9 +10593,9 @@ static int _fx_M11C_gen_typesFM9cvt2ctyp_v2R9Ast__id_tR10Ast__loc_t(
    struct _fx_R10Ast__loc_t* loc_0,
    void* fx_fv)
 {
+   _fx_FPR29C_gen_types__ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t create_ctyp_decl_0 = {0};
    _fx_FPv2R9Ast__id_tN15C_form__cstmt_t add_decl_0 = {0};
    _fx_FPv3R9Ast__id_tBN15C_form__cstmt_t add_fwd_decl_0 = {0};
-   _fx_FPR29C_gen_types__ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t create_ctyp_decl_0 = {0};
    _fx_Rt6Set__t1R9Ast__id_t deps_0 = {0};
    _fx_N15K_form__kinfo_t kt_info_0 = {0};
    _fx_T3BBRt6Set__t1R9Ast__id_t v_0 = {0};
@@ -10701,12 +10633,12 @@ static int _fx_M11C_gen_typesFM9cvt2ctyp_v2R9Ast__id_tR10Ast__loc_t(
    _fx_rLN15C_form__cstmt_t top_typ_decl_ref_0 = cv_0->t6;
    _fx_LN15C_form__cstmt_t* top_typ_decl_0 = &top_typ_decl_ref_0->data;
    _fx_rLN15C_form__cstmt_t top_typfun_decl_ref_0 = cv_0->t7;
+   _fx_M11C_gen_typesFM7make_fpFPRM16ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t3rRt6Set__t1R9Ast__id_trirLN15C_form__cstmt_t(
+      all_fwd_decls_ref_0, curr_cm_idx_ref_0, top_fwd_decl_ref_0, &create_ctyp_decl_0);
    _fx_M11C_gen_typesFM7make_fpFPv2R9Ast__id_tN15C_form__cstmt_t3rRt6Set__t1R9Ast__id_trLN15C_form__cstmt_trLN15C_form__cstmt_t(
       all_decls_ref_0, top_typ_decl_ref_0, top_typfun_decl_ref_0, &add_decl_0);
    _fx_M11C_gen_typesFM7make_fpFPv3R9Ast__id_tBN15C_form__cstmt_t2rRt6Set__t1R9Ast__id_trLN15C_form__cstmt_t(
       all_fwd_decls_ref_0, top_fwd_decl_ref_0, &add_fwd_decl_0);
-   _fx_M11C_gen_typesFM7make_fpFPRM16ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t3rRt6Set__t1R9Ast__id_trirLN15C_form__cstmt_t(
-      all_fwd_decls_ref_0, curr_cm_idx_ref_0, top_fwd_decl_ref_0, &create_ctyp_decl_0);
    bool visited_0;
    FX_CALL(_fx_M11C_gen_typesFM3memB2Rt6Set__t1R9Ast__id_tR9Ast__id_t(all_visited_0, tn_0, &visited_0, 0), _fx_cleanup);
    FX_CALL(_fx_M10K_annotateFM12get_typ_depsRt6Set__t1R9Ast__id_t2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &deps_0, 0),
@@ -13245,9 +13177,9 @@ _fx_endmatch_1: ;
    }
 
 _fx_cleanup: ;
+   FX_FREE_FP(&create_ctyp_decl_0);
    FX_FREE_FP(&add_decl_0);
    FX_FREE_FP(&add_fwd_decl_0);
-   FX_FREE_FP(&create_ctyp_decl_0);
    _fx_free_Rt6Set__t1R9Ast__id_t(&deps_0);
    _fx_free_N15K_form__kinfo_t(&kt_info_0);
    _fx_free_T3BBRt6Set__t1R9Ast__id_t(&v_0);
@@ -13532,7 +13464,7 @@ static int _fx_M11C_gen_typesFM15fold_n_cvt_kexpv2N14K_form__kexp_tR22K_form__k_
    _fx_M11C_gen_typesFM7make_fpFPv2R9Ast__id_tR10Ast__loc_t8rRt6Set__t1R9Ast__id_trRt6Set__t1R9Ast__id_trRt6Map__t2R9Ast__id_tRM16ctyp_temp_info_trRt6Set__t1R9Ast__id_trirLN15C_form__cstmt_trLN15C_form__cstmt_trLN15C_form__cstmt_t(
       all_decls_ref_0, cv_0->t1, cv_0->t2, cv_0->t3, cv_0->t4, cv_0->t5, cv_0->t6, cv_0->t7, &cvt2ctyp__0);
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
-   if (tag_0 == 36) {
+   if (tag_0 == 35) {
       _fx_R17K_form__kdeftyp_t v_0 = {0};
       _fx_Nt11Set__tree_t1R9Ast__id_t v_1 = 0;
       _fx_FPi2R9Ast__id_tR9Ast__id_t v_2 = {0};
@@ -13606,7 +13538,7 @@ static int _fx_M11C_gen_typesFM15fold_n_cvt_kexpv2N14K_form__kexp_tR22K_form__k_
       }
       _fx_free_R17K_form__kdeftyp_t(&v_0);
    }
-   else if (tag_0 == 34) {
+   else if (tag_0 == 33) {
       _fx_R21K_form__kdefvariant_t v_3 = {0};
       _fx_Nt11Set__tree_t1R9Ast__id_t v_4 = 0;
       _fx_FPi2R9Ast__id_tR9Ast__id_t v_5 = {0};
@@ -13680,8 +13612,8 @@ static int _fx_M11C_gen_typesFM15fold_n_cvt_kexpv2N14K_form__kexp_tR22K_form__k_
       }
       _fx_free_R21K_form__kdefvariant_t(&v_3);
    }
-   else if (tag_0 != 37) {
-      if (tag_0 != 33) {
+   else if (tag_0 != 36) {
+      if (tag_0 != 32) {
          FX_CALL(_fx_M6K_formFM9fold_kexpv2N14K_form__kexp_tRM14k_fold_callb_t(e_0, callb_0, 0), _fx_catch_8);  _fx_catch_8: ;
       }
    }

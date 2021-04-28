@@ -8312,7 +8312,9 @@ FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
    else {
       _fx_LS v_5 = 0;
       FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_5), _fx_catch_0);
-      fx_str_t slit_4 = FX_MAKE_STR("\n\t");
+      fx_str_t slit_4 =
+         FX_MAKE_STR("\n"
+            U"\t");
       FX_CALL(_fx_F4joinS2SLS(&slit_4, v_5, &whole_msg_1, 0), _fx_catch_0);
 
    _fx_catch_0: ;
@@ -8437,7 +8439,10 @@ FX_EXTERN_C int _fx_M3AstFM17print_compile_errv1E(fx_exn_t* err_0, void* fx_fv)
       FX_FREE_STR(&v_0);
    }
    else {
-      fx_str_t slit_3 = FX_MAKE_STR("\n\nException {err} occured");
+      fx_str_t slit_3 =
+         FX_MAKE_STR("\n"
+            U"\n"
+            U"Exception {err} occured");
       _fx_F12print_stringv1S(&slit_3, 0);
       fx_str_t slit_4 = FX_MAKE_STR("\n");
       _fx_F12print_stringv1S(&slit_4, 0);
@@ -8548,7 +8553,9 @@ FX_EXTERN_C int _fx_M3AstFM7id2idx_Ta2i2RM4id_tRM5loc_t(
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_0);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_0);
 
       _fx_catch_0: ;
@@ -8646,7 +8653,9 @@ FX_EXTERN_C int _fx_M3AstFM6id2idxTa2i1RM4id_t(struct _fx_R9Ast__id_t* i_0, stru
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_0);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_0);
 
       _fx_catch_0: ;
@@ -8753,7 +8762,9 @@ FX_EXTERN_C int _fx_M3AstFM7id_infoN14Ast__id_info_t2RM4id_tRM5loc_t(
          else {
             _fx_LS v_11 = 0;
             FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_11), _fx_catch_0);
-            fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+            fx_str_t slit_7 =
+               FX_MAKE_STR("\n"
+                  U"\t");
             FX_CALL(_fx_F4joinS2SLS(&slit_7, v_11, &whole_msg_1, 0), _fx_catch_0);
 
          _fx_catch_0: ;
@@ -8907,7 +8918,9 @@ FX_EXTERN_C int _fx_M3AstFM13get_id_prefixi1S(fx_str_t* s_0, int_* fx_result, vo
       else {
          _fx_LS v_9 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_9), _fx_catch_1);
-         fx_str_t slit_5 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_5 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_5, v_9, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -9040,7 +9053,9 @@ FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s_0, struct _fx_R9Ast__id_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_5 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_5 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_5, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -9175,7 +9190,9 @@ FX_EXTERN_C int _fx_M3AstFM6gen_idRM4id_t2iS(int_ m_idx_0, fx_str_t* s_0, struct
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_5 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_5 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_5, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -9364,7 +9381,9 @@ _fx_endmatch_0: ;
       else {
          _fx_LS v_16 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_16), _fx_catch_0);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_16, &whole_msg_1, 0), _fx_catch_0);
 
       _fx_catch_0: ;
@@ -10026,7 +10045,9 @@ FX_EXTERN_C int _fx_M3AstFM10get_moduleN16Ast__defmodule_t2RM4id_tRM5loc_t(
          else {
             _fx_LS v_12 = 0;
             FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_12), _fx_catch_0);
-            fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+            fx_str_t slit_7 =
+               FX_MAKE_STR("\n"
+                  U"\t");
             FX_CALL(_fx_F4joinS2SLS(&slit_7, v_12, &whole_msg_1, 0), _fx_catch_0);
 
          _fx_catch_0: ;
@@ -10136,7 +10157,9 @@ FX_EXTERN_C int _fx_M3AstFM10get_moduleN16Ast__defmodule_t2RM4id_tRM5loc_t(
       else {
          _fx_LS v_23 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_2, all_compile_err_ctx_1, true, &v_23), _fx_catch_3);
-         fx_str_t slit_15 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_15 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_15, v_23, &whole_msg_3, 0), _fx_catch_3);
 
       _fx_catch_3: ;
@@ -10734,7 +10757,9 @@ FX_EXTERN_C int _fx_M3AstFM13get_bare_nameRM4id_t1RM4id_t(
       else {
          _fx_LS v_12 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_12), _fx_catch_1);
-         fx_str_t slit_6 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_6 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_6, v_12, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -10970,7 +10995,9 @@ FX_EXTERN_C int _fx_M3AstFM14get_idinfo_typN10Ast__typ_t2N14Ast__id_info_tRM5loc
       else {
          _fx_LS v_11 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_11), _fx_catch_1);
-         fx_str_t slit_5 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_5 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_5, v_11, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -12086,7 +12113,9 @@ FX_EXTERN_C int _fx_M3AstFM13fname_op_aposRM4id_t0(struct _fx_R9Ast__id_t* fx_re
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -12223,7 +12252,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_addRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -12360,7 +12391,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_subRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -12497,7 +12530,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_mulRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -12634,7 +12669,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_divRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -12771,7 +12808,9 @@ FX_EXTERN_C int _fx_M3AstFM13fname_op_rdivRM4id_t0(struct _fx_R9Ast__id_t* fx_re
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -12908,7 +12947,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_modRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -13045,7 +13086,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_powRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -13182,7 +13225,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_dot_addRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -13319,7 +13364,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_dot_subRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -13456,7 +13503,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_dot_mulRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -13593,7 +13642,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_dot_divRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -13730,7 +13781,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_dot_modRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -13867,7 +13920,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_dot_powRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14004,7 +14059,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_shlRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14141,7 +14198,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_shrRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14278,7 +14337,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_bit_andRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14415,7 +14476,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_bit_orRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14552,7 +14615,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_bit_xorRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14689,7 +14754,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_op_cmpRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14826,7 +14893,9 @@ FX_EXTERN_C int _fx_M3AstFM11fname_op_eqRM4id_t0(struct _fx_R9Ast__id_t* fx_resu
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -14963,7 +15032,9 @@ FX_EXTERN_C int _fx_M3AstFM11fname_op_neRM4id_t0(struct _fx_R9Ast__id_t* fx_resu
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15100,7 +15171,9 @@ FX_EXTERN_C int _fx_M3AstFM11fname_op_ltRM4id_t0(struct _fx_R9Ast__id_t* fx_resu
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15237,7 +15310,9 @@ FX_EXTERN_C int _fx_M3AstFM11fname_op_gtRM4id_t0(struct _fx_R9Ast__id_t* fx_resu
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15374,7 +15449,9 @@ FX_EXTERN_C int _fx_M3AstFM11fname_op_leRM4id_t0(struct _fx_R9Ast__id_t* fx_resu
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15511,7 +15588,9 @@ FX_EXTERN_C int _fx_M3AstFM11fname_op_geRM4id_t0(struct _fx_R9Ast__id_t* fx_resu
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15648,7 +15727,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_dot_cmpRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15785,7 +15866,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_dot_eqRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15922,7 +16005,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_dot_neRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -16059,7 +16144,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_dot_ltRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -16196,7 +16283,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_dot_gtRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -16333,7 +16422,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_dot_leRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -16470,7 +16561,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_dot_geRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -16607,7 +16700,9 @@ FX_EXTERN_C int _fx_M3AstFM13fname_op_sameRM4id_t0(struct _fx_R9Ast__id_t* fx_re
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -16744,7 +16839,9 @@ FX_EXTERN_C int _fx_M3AstFM13fname_op_plusRM4id_t0(struct _fx_R9Ast__id_t* fx_re
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -16881,7 +16978,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_op_negateRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17018,7 +17117,9 @@ FX_EXTERN_C int _fx_M3AstFM18fname_op_dot_minusRM4id_t0(struct _fx_R9Ast__id_t* 
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17155,7 +17256,9 @@ FX_EXTERN_C int _fx_M3AstFM16fname_op_bit_notRM4id_t0(struct _fx_R9Ast__id_t* fx
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17292,7 +17395,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_to_intRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17429,7 +17534,9 @@ FX_EXTERN_C int _fx_M3AstFM14fname_to_uint8RM4id_t0(struct _fx_R9Ast__id_t* fx_r
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17566,7 +17673,9 @@ FX_EXTERN_C int _fx_M3AstFM13fname_to_int8RM4id_t0(struct _fx_R9Ast__id_t* fx_re
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17703,7 +17812,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_to_uint16RM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17840,7 +17951,9 @@ FX_EXTERN_C int _fx_M3AstFM14fname_to_int16RM4id_t0(struct _fx_R9Ast__id_t* fx_r
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -17977,7 +18090,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_to_uint32RM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -18114,7 +18229,9 @@ FX_EXTERN_C int _fx_M3AstFM14fname_to_int32RM4id_t0(struct _fx_R9Ast__id_t* fx_r
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -18251,7 +18368,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_to_uint64RM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -18388,7 +18507,9 @@ FX_EXTERN_C int _fx_M3AstFM14fname_to_int64RM4id_t0(struct _fx_R9Ast__id_t* fx_r
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -18525,7 +18646,9 @@ FX_EXTERN_C int _fx_M3AstFM14fname_to_floatRM4id_t0(struct _fx_R9Ast__id_t* fx_r
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -18662,7 +18785,9 @@ FX_EXTERN_C int _fx_M3AstFM15fname_to_doubleRM4id_t0(struct _fx_R9Ast__id_t* fx_
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -18799,7 +18924,9 @@ FX_EXTERN_C int _fx_M3AstFM13fname_to_boolRM4id_t0(struct _fx_R9Ast__id_t* fx_re
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -18936,7 +19063,9 @@ FX_EXTERN_C int _fx_M3AstFM12fname_stringRM4id_t0(struct _fx_R9Ast__id_t* fx_res
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -19073,7 +19202,9 @@ FX_EXTERN_C int _fx_M3AstFM11fname_printRM4id_t0(struct _fx_R9Ast__id_t* fx_resu
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -19210,7 +19341,9 @@ FX_EXTERN_C int _fx_M3AstFM10fname_reprRM4id_t0(struct _fx_R9Ast__id_t* fx_resul
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -19347,7 +19480,9 @@ FX_EXTERN_C int _fx_M3AstFM10fname_hashRM4id_t0(struct _fx_R9Ast__id_t* fx_resul
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-         fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_7 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
       _fx_catch_1: ;
@@ -19916,7 +20051,9 @@ FX_EXTERN_C int _fx_M3AstFM15get_unary_fnameRM4id_t2N12Ast__unary_tRM5loc_t(
          else {
             _fx_LS v_10 = 0;
             FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_1);
-            fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+            fx_str_t slit_7 =
+               FX_MAKE_STR("\n"
+                  U"\t");
             FX_CALL(_fx_F4joinS2SLS(&slit_7, v_10, &whole_msg_1, 0), _fx_catch_1);
 
          _fx_catch_1: ;
@@ -20052,7 +20189,9 @@ FX_EXTERN_C int _fx_M3AstFM15get_unary_fnameRM4id_t2N12Ast__unary_tRM5loc_t(
          else {
             _fx_LS v_21 = 0;
             FX_CALL(_fx_cons_LS(&whole_msg_2, all_compile_err_ctx_1, true, &v_21), _fx_catch_4);
-            fx_str_t slit_15 = FX_MAKE_STR("\n\t");
+            fx_str_t slit_15 =
+               FX_MAKE_STR("\n"
+                  U"\t");
             FX_CALL(_fx_F4joinS2SLS(&slit_15, v_21, &whole_msg_3, 0), _fx_catch_4);
 
          _fx_catch_4: ;
@@ -21626,7 +21765,9 @@ FX_EXTERN_C int _fx_M3AstFM7typ2strS1N10Ast__typ_t(struct _fx_N10Ast__typ_t_data
          else {
             _fx_LS v_26 = 0;
             FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_26), _fx_catch_7);
-            fx_str_t slit_23 = FX_MAKE_STR("\n\t");
+            fx_str_t slit_23 =
+               FX_MAKE_STR("\n"
+                  U"\t");
             FX_CALL(_fx_F4joinS2SLS(&slit_23, v_26, &whole_msg_1, 0), _fx_catch_7);
 
          _fx_catch_7: ;
@@ -22087,7 +22228,9 @@ FX_EXTERN_C int _fx_M3AstFM5parseRM9pragmas_t2LT2SRM5loc_tRM9pragmas_t(
                   else {
                      _fx_LS v_23 = 0;
                      FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_23), _fx_catch_0);
-                     fx_str_t slit_10 = FX_MAKE_STR("\n\t");
+                     fx_str_t slit_10 =
+                        FX_MAKE_STR("\n"
+                           U"\t");
                      FX_CALL(_fx_F4joinS2SLS(&slit_10, v_23, &whole_msg_1, 0), _fx_catch_0);
 
                   _fx_catch_0: ;
@@ -22143,7 +22286,9 @@ FX_EXTERN_C int _fx_M3AstFM5parseRM9pragmas_t2LT2SRM5loc_tRM9pragmas_t(
                else {
                   _fx_LS v_25 = 0;
                   FX_CALL(_fx_cons_LS(&whole_msg_2, all_compile_err_ctx_1, true, &v_25), _fx_catch_1);
-                  fx_str_t slit_17 = FX_MAKE_STR("\n\t");
+                  fx_str_t slit_17 =
+                     FX_MAKE_STR("\n"
+                        U"\t");
                   FX_CALL(_fx_F4joinS2SLS(&slit_17, v_25, &whole_msg_3, 0), _fx_catch_1);
 
                _fx_catch_1: ;
@@ -23608,14 +23753,14 @@ static int _fx_M3AstFM10walk_pe_l_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_t
    struct _fx_LT2N10Ast__pat_tN10Ast__exp_t_data_t** fx_result,
    void* fx_fv)
 {
-   _fx_FPN10Ast__exp_t1N10Ast__exp_t walk_exp__0 = {0};
    _fx_FPN10Ast__pat_t1N10Ast__pat_t walk_pat__0 = {0};
+   _fx_FPN10Ast__exp_t1N10Ast__exp_t walk_exp__0 = {0};
    int fx_status = 0;
    _fx_M3AstFM10walk_pe_l_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_tN10Ast__exp_t_cldata_t* cv_0 =
       (_fx_M3AstFM10walk_pe_l_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_tN10Ast__exp_t_cldata_t*)fx_fv;
    _fx_R16Ast__ast_callb_t* callb_0 = &cv_0->t0;
-   _fx_M3AstFM7make_fpFPN10Ast__exp_t1N10Ast__exp_t1RM11ast_callb_t(callb_0, &walk_exp__0);
    _fx_M3AstFM7make_fpFPN10Ast__pat_t1N10Ast__pat_t1RM11ast_callb_t(callb_0, &walk_pat__0);
+   _fx_M3AstFM7make_fpFPN10Ast__exp_t1N10Ast__exp_t1RM11ast_callb_t(callb_0, &walk_exp__0);
    _fx_LT2N10Ast__pat_tN10Ast__exp_t lstend_0 = 0;
    _fx_LT2N10Ast__pat_tN10Ast__exp_t lst_0 = pe_l_0;
    for (; lst_0; lst_0 = lst_0->tl) {
@@ -23652,8 +23797,8 @@ static int _fx_M3AstFM10walk_pe_l_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_t
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&walk_exp__0);
    FX_FREE_FP(&walk_pat__0);
+   FX_FREE_FP(&walk_exp__0);
    return fx_status;
 }
 
@@ -23725,14 +23870,14 @@ static int _fx_M3AstFM11walk_cases_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_
    struct _fx_LT2N10Ast__pat_tN10Ast__exp_t_data_t** fx_result,
    void* fx_fv)
 {
-   _fx_FPN10Ast__exp_t1N10Ast__exp_t walk_exp__0 = {0};
    _fx_FPN10Ast__pat_t1N10Ast__pat_t walk_pat__0 = {0};
+   _fx_FPN10Ast__exp_t1N10Ast__exp_t walk_exp__0 = {0};
    int fx_status = 0;
    _fx_M3AstFM11walk_cases_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_tN10Ast__exp_t_cldata_t* cv_0 =
       (_fx_M3AstFM11walk_cases_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_tN10Ast__exp_t_cldata_t*)fx_fv;
    _fx_R16Ast__ast_callb_t* callb_0 = &cv_0->t0;
-   _fx_M3AstFM7make_fpFPN10Ast__exp_t1N10Ast__exp_t1RM11ast_callb_t(callb_0, &walk_exp__0);
    _fx_M3AstFM7make_fpFPN10Ast__pat_t1N10Ast__pat_t1RM11ast_callb_t(callb_0, &walk_pat__0);
+   _fx_M3AstFM7make_fpFPN10Ast__exp_t1N10Ast__exp_t1RM11ast_callb_t(callb_0, &walk_exp__0);
    _fx_LT2N10Ast__pat_tN10Ast__exp_t lstend_0 = 0;
    _fx_LT2N10Ast__pat_tN10Ast__exp_t lst_0 = pe_l_0;
    for (; lst_0; lst_0 = lst_0->tl) {
@@ -23769,8 +23914,8 @@ static int _fx_M3AstFM11walk_cases_LT2N10Ast__pat_tN10Ast__exp_t1LT2N10Ast__pat_
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&walk_exp__0);
    FX_FREE_FP(&walk_pat__0);
+   FX_FREE_FP(&walk_exp__0);
    return fx_status;
 }
 
@@ -24895,7 +25040,9 @@ FX_EXTERN_C int _fx_M3AstFM17calc_sets_closurei3iLRM4id_tNt10Hashmap__t2RM4id_tN
       else {
          _fx_LS v_10 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_10), _fx_catch_4);
-         fx_str_t slit_5 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_5 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_5, v_10, &whole_msg_1, 0), _fx_catch_4);
 
       _fx_catch_4: ;
@@ -25174,7 +25321,9 @@ FX_EXTERN_C int _fx_M3AstFM9get_ifacerRM14definterface_t2RM4id_tRM5loc_t(
          else {
             _fx_LS v_12 = 0;
             FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_12), _fx_catch_0);
-            fx_str_t slit_7 = FX_MAKE_STR("\n\t");
+            fx_str_t slit_7 =
+               FX_MAKE_STR("\n"
+                  U"\t");
             FX_CALL(_fx_F4joinS2SLS(&slit_7, v_12, &whole_msg_1, 0), _fx_catch_0);
 
          _fx_catch_0: ;
@@ -25280,7 +25429,9 @@ FX_EXTERN_C int _fx_M3AstFM9get_ifacerRM14definterface_t2RM4id_tRM5loc_t(
       else {
          _fx_LS v_23 = 0;
          FX_CALL(_fx_cons_LS(&whole_msg_2, all_compile_err_ctx_1, true, &v_23), _fx_catch_2);
-         fx_str_t slit_15 = FX_MAKE_STR("\n\t");
+         fx_str_t slit_15 =
+            FX_MAKE_STR("\n"
+               U"\t");
          FX_CALL(_fx_F4joinS2SLS(&slit_15, v_23, &whole_msg_3, 0), _fx_catch_2);
 
       _fx_catch_2: ;
@@ -25526,7 +25677,9 @@ FX_EXTERN_C int _fx_M3AstFM8init_allv0(void* fx_fv)
          else {
             _fx_LS v_15 = 0;
             FX_CALL(_fx_cons_LS(&whole_msg_0, all_compile_err_ctx_0, true, &v_15), _fx_catch_3);
-            fx_str_t slit_5 = FX_MAKE_STR("\n\t");
+            fx_str_t slit_5 =
+               FX_MAKE_STR("\n"
+                  U"\t");
             FX_CALL(_fx_F4joinS2SLS(&slit_5, v_15, &whole_msg_1, 0), _fx_catch_3);
 
          _fx_catch_3: ;

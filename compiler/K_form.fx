@@ -112,7 +112,7 @@ type kexp_t =
     | KExpMkTuple: (atom_t list, kctx_t)
     | KExpMkRecord: (atom_t list, kctx_t)
     | KExpMkClosure: (id_t, id_t, atom_t list, kctx_t)
-    | KExpMkArray: ((bool, atom_t) list list, kctx_t)
+    | KExpMkArray: (bool, (bool, atom_t) list list, kctx_t)
     | KExpMkVector: ((bool, atom_t) list, kctx_t)
     | KExpAt: (atom_t, border_t, interpolate_t, dom_t list, kctx_t)
     | KExpMem: (id_t, int, kctx_t)
@@ -126,7 +126,6 @@ type kexp_t =
     | KExpWhile: (kexp_t, kexp_t, loc_t)
     | KExpDoWhile: (kexp_t, kexp_t, loc_t)
     | KExpCCode: (string, kctx_t)
-    | KExpData: (string, string, kctx_t)
     | KDefVal: (id_t, kexp_t, loc_t)
     | KDefFun: kdeffun_t ref
     | KDefExn: kdefexn_t ref
@@ -325,7 +324,7 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KExpMkTuple(_, c) => c
     | KExpMkRecord(_, c) => c
     | KExpMkClosure(_, _, _, c) => c
-    | KExpMkArray(_, c) => c
+    | KExpMkArray(_, _, c) => c
     | KExpMkVector(_, c) => c
     | KExpAt(_, _, _, _, c) => c
     | KExpMem(_, _, c) => c
@@ -339,7 +338,6 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KExpWhile(_, _, l) => (KTypVoid, l)
     | KExpDoWhile(_, _, l) => (KTypVoid, l)
     | KExpCCode(_, c) => c
-    | KExpData(_, _, c) => c
     | KDefVal(_, _, l) => (KTypVoid, l)
     | KDefFun (ref {kf_loc}) => (KTypVoid, kf_loc)
     | KDefExn (ref {ke_loc}) => (KTypVoid, ke_loc)
@@ -685,14 +683,18 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
     | KExpMkClosure(make_fp, f, args, (_, loc) as ctx) =>
         KExpMkClosure(walk_id_(make_fp, loc), walk_id_(f, loc),
                       walk_al_(args, loc), walk_kctx_(ctx))
-    | KExpMkArray(elems, (_, loc) as ctx) =>
-        KExpMkArray(
-        [: for row <- elems {
-            val fold new_row = [] for (f, a) <- row {
-                    (f, walk_atom_(a, loc)) :: new_row
-                }
-            new_row.rev() } :],
-        walk_kctx_(ctx))
+    | KExpMkArray(all_literals, elems, (_, loc) as ctx) =>
+        if all_literals {
+            KExpMkArray(all_literals, elems, walk_kctx_(ctx))
+        } else {
+            KExpMkArray(false,
+                [: for row <- elems {
+                    val fold new_row = [] for (f, a) <- row {
+                        (f, walk_atom_(a, loc)) :: new_row
+                    }
+                    new_row.rev() }
+                :], walk_kctx_(ctx))
+        }
     | KExpMkVector(elems, (_, loc) as ctx) =>
         KExpMkVector(
             [: for (f, a) <- elems { (f, walk_atom_(a, loc)) } :],
@@ -732,7 +734,6 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         KExpTryCatch(walk_kexp_(e1), walk_kexp_(e2), walk_kctx_(ctx))
     | KExpCast(a, t, loc) => KExpCast(walk_atom_(a, loc), walk_ktyp_(t, loc), loc)
     | KExpCCode(str, ctx) => KExpCCode(str, walk_kctx_(ctx))
-    | KExpData(kind, fname, ctx) => KExpData(kind, fname, walk_kctx_(ctx))
     | KDefVal(k, e, loc) =>
         val new_kv_name = update_kval_(k, loc)
         KDefVal(new_kv_name, walk_kexp_(e), loc)
@@ -967,8 +968,10 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     | KExpMkClosure(make_fp, f, args, (t, loc)) =>
         fold_id_(make_fp, loc); fold_id_(f, loc)
         fold_al_(args, loc); fold_ktyp_(t, loc)
-    | KExpMkArray(elems, (t, loc)) =>
-        for row <- elems { for (_, a) <- row { fold_atom_(a, loc) } }
+    | KExpMkArray(all_literals, elems, (t, loc)) =>
+        if !all_literals {
+            for row <- elems { for (_, a) <- row { fold_atom_(a, loc) } }
+        }
         fold_ktyp_(t, loc)
     | KExpMkVector(elems, (t, loc)) =>
         for (_, a) <- elems { fold_atom_(a, loc) }
@@ -1010,7 +1013,6 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     | KExpCast(a, t, loc) =>
         fold_atom_(a, loc); fold_ktyp_(t, loc)
     | KExpCCode(_, (t, loc)) => fold_ktyp_(t, loc)
-    | KExpData(_, _, (t, loc)) => fold_ktyp_(t, loc)
     | KDefVal(k, e, loc) =>
         fold_kval_(k, loc); fold_kexp_(e)
     | KDefFun df =>
@@ -1402,7 +1404,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     | KLitSInt(b, v) =>
         if cmode { f"{v}" } else { f"{v}i{b}" }
     | KLitUInt(b, v) =>
-        if cmode { f"{v}U" } else { f"{v}u{b}" }
+        if cmode { f"{v}u" } else { f"{v}u{b}" }
     | KLitFloat(16, v) => f"{v}f"
     | KLitFloat(32, v) => f"{v}f"
     | KLitFloat(64, v) => f"{v}"

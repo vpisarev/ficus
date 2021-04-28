@@ -199,35 +199,6 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pp_ctyp_(pp: PP.t, t: ctyp_t, id_opt: id_t?, loc: loc_t) = pp_ctyp__(pp, "", "", t, id_opt, false, loc)
 
-@private fun embed_text(pp: PP.t, fname: string, loc: loc_t)
-{
-    try {
-        val text = File.read_utf8(fname)
-        val lines = text.split('\n', allow_empty=true)
-        pp.beginv(0)
-        pp.str("FX_MAKE_STR("); pp.space()
-        val nlines = lines.length()
-        for l@j <- lines {
-            pp.str((if j > 0 {"U"} else {""}) +
-                    (if j < nlines-1 {l+'\n'} else {l}).escaped(quotes=true))
-            pp.newline()
-        }
-        pp.str(")"); pp.end()
-    } catch {
-    | _ => throw compile_err(loc, f"@text: {fname} cannot be read")
-    }
-}
-
-@private fun embed_data(pp: PP.t, kind: string, fname: string, elemtyp: ctyp_t, loc: loc_t)
-{
-    pp.str("{"); pp.begin(0);
-    for v@i <- [| 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 |] {
-        if i > 0 { pp.str(","); pp.space() }
-        pp.str(f"{v}")
-    }
-    pp.end(); pp.space(); pp.str("}")
-}
-
 @private fun pp_cexp_(pp: PP.t, e: cexp_t, pr: int) =
     match e {
     | CExpIdent(i, (_, loc)) => pp_id(pp, i, loc)
@@ -312,26 +283,10 @@ type assoc_t = AssocLeft | AssocRight
             }
             pp.end(); pp.space(); pp.str("}")
         } else {pp.str("{0}")}
-    | CExpData (kind, fname, (t, loc)) =>
-        match kind {
-        | "text" => embed_text(pp, fname, loc)
-        | "binary" | "binary_le" | "binary_be" =>
-            val elemtyp = match t {
-            | CTypArray(1, elemtyp) => elemtyp
-            | _ => throw compile_err(get_cexp_loc(e),
-                f"c_pp: invalid type '{ctyp2str(t, loc).0}' of embedded data array")
-            }
-            embed_data(pp, kind, fname, elemtyp, loc)
-        | _ =>
-            throw compile_err(get_cexp_loc(e),
-                f"c_pp: unsupported kind {kind} of embedded data; must be 'text' or 'binary*'")
-        }
     | CExpTyp (t, loc) =>
         pp.begin(); pp_ctyp_(pp, t, None, loc); pp.end()
     | CExpCCode (ccode, l) =>
         pp.begin(); pp.str("\n"+ccode.strip()+"\n"); pp.end()
-    | CExpData (kind, fname, l) =>
-        pp.begin();
     }
 
 @private fun pp_elist(pp: PP.t, el: cexp_t list)

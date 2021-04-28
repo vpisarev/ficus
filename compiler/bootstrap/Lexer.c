@@ -2968,7 +2968,6 @@ int delta_lines = 0;
         }
         if (c == 92) { // backslash
             if ((i+1 < len && ptr[i+1] == 10) || (i+2 < len && ptr[i+1] == 13 && ptr[i+2] == 10)) {
-                delta_lines++;
                 for (++i; i < len; i++) {
                     c = ptr[i];
                     if (c == 10) delta_lines++;
@@ -3052,8 +3051,11 @@ int delta_lines = 0;
             }
         } else if(fmt && c == 125 && i+1 < len && ptr[i+1] == 125) { // }}
             i++; buf[n++] = 125;
+        } else if(c == 10 || (c == 13 && i+1 < len && ptr[i+1] == 10)) {
+            delta_lines += 1;
+            i += c == 13;
+            buf[n++] = 10;
         } else {
-            delta_lines += c == 10 || (c == 13 && i+1 < len && ptr[i+1] != 10);
             buf[n++] = c;
         }
         if( n >= sz ) {
@@ -3478,9 +3480,9 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
    struct _fx_LT2N14Lexer__token_tTa2i_data_t** fx_result,
    void* fx_fv)
 {
+   _fx_FPTa2i1i getloc_0 = {0};
    _fx_FPT2iS1i get_ccode_0 = {0};
    _fx_FPS1Ta2i lloc2str_0 = {0};
-   _fx_FPTa2i1i getloc_0 = {0};
    fx_str_t buf_0 = {0};
    _fx_LT2N14Lexer__token_tTa2i paren_stack_0 = 0;
    fx_exn_t v_0 = {0};
@@ -3530,9 +3532,9 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
    int_* pos_0 = &cv_0->t2->data;
    bool* prev_dot_0 = &cv_0->t3->data;
    _fx_R15Lexer__stream_t* strm_0 = &cv_0->t4;
+   _fx_M5LexerFM7make_fpFPTa2i1i1RM8stream_t(strm_0, &getloc_0);
    _fx_M5LexerFM7make_fpFPT2iS1i1RM8stream_t(strm_0, &get_ccode_0);
    _fx_M5LexerFM7make_fpFPS1Ta2i1RM8stream_t(strm_0, &lloc2str_0);
-   _fx_M5LexerFM7make_fpFPTa2i1i1RM8stream_t(strm_0, &getloc_0);
    fx_copy_str(&strm_0->buf, &buf_0);
    int_ len_0;
    FX_CALL(_fx_M5LexerFM6lengthi1S(&buf_0, &len_0, 0), _fx_cleanup);
@@ -5387,9 +5389,9 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
    }
 
 _fx_cleanup: ;
+   FX_FREE_FP(&getloc_0);
    FX_FREE_FP(&get_ccode_0);
    FX_FREE_FP(&lloc2str_0);
-   FX_FREE_FP(&getloc_0);
    FX_FREE_STR(&buf_0);
    if (paren_stack_0) {
       _fx_free_LT2N14Lexer__token_tTa2i(&paren_stack_0);

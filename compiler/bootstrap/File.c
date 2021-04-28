@@ -34,7 +34,15 @@ static void _fx_make_R7File__t(fx_cptr_t r_handle, struct _fx_R7File__t* fx_resu
    fx_copy_cptr(r_handle, &fx_result->handle);
 }
 
+int_ _fx_g14File__SEEK_SET = 
+(int)SEEK_SET
+;
+int_ _fx_g14File__SEEK_END = 
+(int)SEEK_END
+;
 _fx_R7File__t _fx_g12File__stdout = {0};
+FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+
 FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, struct _fx_R7File__t* fx_result, void* fx_fv)
 {
    
@@ -99,6 +107,28 @@ if(f->handle && f->handle->ptr) {
 
 }
 
+FX_EXTERN_C int _fx_M4FileFM4seekv3RM1tli(struct _fx_R7File__t* f, int64_t pos, int_ origin, void* fx_fv)
+{
+   
+if(!f->handle || !f->handle->ptr)
+        FX_FAST_THROW_RET(FX_EXN_NullFileError);
+    int code = fseek((FILE*)(f->handle->ptr), (long)pos, origin);
+    return code == 0 ? FX_OK : FX_EXN_IOError;
+
+}
+
+FX_EXTERN_C int _fx_M4FileFM4telll1RM1t(struct _fx_R7File__t* f, int64_t* fx_result, void* fx_fv)
+{
+   
+if(!f->handle || !f->handle->ptr)
+        FX_FAST_THROW_RET(FX_EXN_NullFileError);
+    long code = ftell((FILE*)(f->handle->ptr));
+    if(code == -1) FX_FAST_THROW_RET(FX_EXN_IOError);
+    *fx_result = (int64_t)code;
+    return FX_OK;
+
+}
+
 FX_EXTERN_C int _fx_M4FileFM5flushv1RM1t(struct _fx_R7File__t* f, void* fx_fv)
 {
    
@@ -118,6 +148,19 @@ if(!f->handle || !f->handle->ptr)
 
 }
 
+FX_EXTERN_C int _fx_M4FileFM4readi2RM1tA1b(struct _fx_R7File__t* f, fx_arr_t* a, int_* fx_result, void* fx_fv)
+{
+   
+if(!f->handle || !f->handle->ptr)
+        FX_FAST_THROW_RET(FX_EXN_NullFileError);
+    FILE* fh = (FILE*)f->handle->ptr;
+    size_t elem_size = a->dim[0].step, count0 = (size_t)a->dim[0].size;
+    size_t count = fread(a->data, elem_size, count0, fh);
+    *fx_result = (int_)count;
+    return count == count0 || feof(fh) ? FX_OK : FX_EXN_IOError;
+
+}
+
 FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv)
 {
    
@@ -125,6 +168,44 @@ if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     return fx_fgets((FILE*)(f->handle->ptr), fx_result);
 
+}
+
+FX_EXTERN_C int _fx_M4FileFM14read_binary_u8A1b1S(fx_str_t* fname_0, fx_arr_t* fx_result, void* fx_fv)
+{
+   fx_cptr_t v_0 = 0;
+   _fx_R7File__t f_0 = {0};
+   fx_arr_t arr_0 = {0};
+   int fx_status = 0;
+   fx_str_t slit_0 = FX_MAKE_STR("rb");
+   FX_CALL(_fx_M4FileFM5open_p3SSB(fname_0, &slit_0, false, &v_0, 0), _fx_cleanup);
+   _fx_make_R7File__t(v_0, &f_0);
+   FX_CALL(_fx_M4FileFM4seekv3RM1tli(&f_0, 0LL, _fx_g14File__SEEK_END, 0), _fx_cleanup);
+   int64_t sz_0;
+   FX_CALL(_fx_M4FileFM4telll1RM1t(&f_0, &sz_0, 0), _fx_cleanup);
+   FX_CALL(_fx_M4FileFM4seekv3RM1tli(&f_0, 0LL, _fx_g14File__SEEK_SET, 0), _fx_cleanup);
+   uint8_t* dstptr_0 = 0;
+   int_ v_1 = (int_)sz_0;
+   {
+      const int_ shape_0[] = { v_1 };
+      FX_CALL(fx_make_arr(1, shape_0, sizeof(uint8_t), 0, 0, 0, &arr_0), _fx_cleanup);
+   }
+   dstptr_0 = (uint8_t*)arr_0.data;
+   for (int_ i_0 = 0; i_0 < v_1; i_0++, dstptr_0++) {
+      *dstptr_0 = 0u;
+   }
+   int_ v_2;
+   FX_CALL(_fx_M4FileFM4readi2RM1tA1b(&f_0, &arr_0, &v_2, 0), _fx_cleanup);
+   FX_CALL(_fx_F6assertv1B(v_2 == (int_)sz_0, 0), _fx_cleanup);
+   _fx_M4FileFM5closev1RM1t(&f_0, 0);
+   fx_copy_arr(&arr_0, fx_result);
+
+_fx_cleanup: ;
+   if (v_0) {
+      fx_free_cptr(&v_0);
+   }
+   _fx_free_R7File__t(&f_0);
+   FX_FREE_ARR(&arr_0);
+   return fx_status;
 }
 
 FX_EXTERN_C int _fx_M4FileFM9read_utf8S1S(fx_str_t* fname, fx_str_t* fx_result, void* fx_fv)

@@ -647,7 +647,7 @@ TEST("basic.array.compose", fun()
                        0., 4., 0., 5. |]
     EXPECT_EQ(m1, expected1)
 
-    val m2 = [| eye22 + eye22, eye22 - eye22;
+    val m2 = [| eye22 .+ eye22, eye22 .- eye22;
                 eye22 * 4.,    eye22 * 5. |]
     val expected2 = [| [| 2., 0.; 0., 2.|], [| 0., 0.; 0., 0.|];
                        [| 4., 0.; 0., 4.|], [| 5., 0.; 0., 5.|] |]

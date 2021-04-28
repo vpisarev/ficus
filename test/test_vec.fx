@@ -62,7 +62,7 @@ TEST("vector.concat_slice", fun()
     val cuts = [| for i <- 0:ncuts+1 {
         if i == 0 {0} else if i == ncuts {N} else {rng(0, N)}
     }|]
-    sort(cuts, (<))
+    cuts.sort((<))
     val parts = [for i <- 0:ncuts {vec[cuts[i]:cuts[i+1]]}]
     var vec2: float vector = vector()
     // test the reverse at once

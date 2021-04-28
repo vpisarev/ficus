@@ -488,7 +488,6 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
         }
         if (c == 92) { // backslash
             if ((i+1 < len && ptr[i+1] == 10) || (i+2 < len && ptr[i+1] == 13 && ptr[i+2] == 10)) {
-                delta_lines++;
                 for (++i; i < len; i++) {
                     c = ptr[i];
                     if (c == 10) delta_lines++;

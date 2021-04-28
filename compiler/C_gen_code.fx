@@ -262,6 +262,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     var top_code = km_top
     var top_inline_ccode: ccode_t = []
     var fwd_fdecls: ccode_t = []
+    var glob_data_ccode: ccode_t = []
     var module_cleanup: ccode_t = []
     var defined_syms = empty_id_hashset(1024)
     var i2e: cexp_map_t = Hashmap.empty(1024, noid, CExpTyp(CTypInt, noloc), hash)
@@ -1949,15 +1950,15 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val call_mkclo = make_call(make_fp, cargs.rev() + [: cexp_get_addr(fp_exp) :], CTypVoid, kloc)
                 (false, fp_exp, CExp(call_mkclo) :: ccode)
             }
-        | KExpMkArray (arows, _) =>
-            val have_expanded = exists(for arow <- arows { exists(for (f, _) <- arow {f}) })
+        | KExpMkArray (all_literals, arows, _) =>
+            val have_expanded = !all_literals && exists(for arow <- arows { exists(for (f, _) <- arow {f}) })
+            val (dims, elem_ctyp) =
+                match ctyp {
+                | CTypArray (dims, elem_ctyp) => (dims, elem_ctyp)
+                | _ => throw compile_err(kloc, "cgen: invalid output type of array construction expression")
+                }
             if have_expanded {
                 val (arr_exp, ccode) = get_dstexp(dstexp_r, "arr", ctyp, ccode, kloc)
-                val (dims, elem_ctyp) =
-                    match ctyp {
-                    | CTypArray (dims, elem_ctyp) => (dims, elem_ctyp)
-                    | _ => throw compile_err(kloc, "cgen: invalid output type of array construction expression")
-                    }
                 val scalars_id = gen_idc(cm_idx, "scalars")
                 val scalars_exp = make_id_t_exp(scalars_id, make_ptr(elem_ctyp), kloc)
                 val (_, scalars_data, tags_data, arr_data, ccode) =
@@ -2015,6 +2016,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val ccode = rccode2stmt(sub_ccode, kloc) :: ccode
                 (false, arr_exp, ccode)
             } else {
+                val (arr_exp, ccode) = get_dstexp(dstexp_r, "arr", ctyp, ccode, kloc)
                 val nrows = arows.length()
                 val ncols = arows.hd().length()
                 val shape = if nrows > 1 { [: nrows, ncols :] } else { [: ncols :] }
@@ -2025,9 +2027,30 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         (e :: data, ccode)
                     }
                 }
-                val (arr_exp, ccode) = get_dstexp(dstexp_r, "arr", ctyp, ccode, kloc)
-                val ccode = make_make_arr_call(arr_exp, shape, data.rev(), ccode, curr_block_label(kloc), kloc)
-                (false, arr_exp, ccode)
+                if all_literals {
+                    val dims = shape.length()
+                    val shape_ctyp = CTypRawArray([: CTypConst :], CTypInt)
+                    val shape_arr = CExpInit(shape, (shape_ctyp, kloc))
+                    val (shape_exp, ccode_) = create_cdefval(gen_idc(cm_idx, "shape"), shape_ctyp,
+                                                default_tempval_flags(), "", Some(shape_arr), [], kloc)
+                    val data_id = gen_idc(cm_idx, "data")
+                    val (data_exp, glob_data_ccode_) = decl_plain_arr(data_id, elem_ctyp,
+                                                                    data.rev(), glob_data_ccode, kloc)
+                    val data_cv = get_cval(data_id, kloc)
+                    val data_flags = data_cv.cv_flags
+                    set_idc_entry(data_id, CVal(data_cv.{cv_flags=data_flags.{val_flag_private=true}}))
+                    glob_data_ccode = glob_data_ccode_
+                    val (sizeof_elem_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, kloc)
+                    val call_mkarr = make_call( std_fx_make_arr, [: make_int_exp(dims, kloc), shape_exp,
+                                        sizeof_elem_exp, free_f_exp, copy_f_exp, data_exp,
+                                        cexp_get_addr(arr_exp) :], CTypCInt, kloc)
+
+                    val ccode_ = add_fx_call(call_mkarr, ccode_, kloc)
+                    (false, arr_exp, rccode2stmt(ccode_, kloc) :: ccode)
+                } else {
+                    val ccode = make_make_arr_call(arr_exp, shape, data.rev(), ccode, curr_block_label(kloc), kloc)
+                    (false, arr_exp, ccode)
+                }
             }
         | KExpMkVector (elems, _) =>
             val have_expanded = exists(for (f, _) <- elems {f})
@@ -2948,8 +2971,6 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
             top_inline_ccode = CExp(CExpCCode(ccode_str, kloc)) :: top_inline_ccode
             (false, dummy_exp, ccode)
-        | KExpData (_, _, _) =>
-            throw compile_err(kloc, "cgen: unexpected data expression")
         | KDefVal (i, e2, _) =>
             val {kv_typ, kv_cname, kv_flags} = get_kval(i, kloc)
             if is_val_global(kv_flags) || kv_flags.val_flag_ctor > 0 {
@@ -2961,7 +2982,6 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val (ccode_data_kind, ccode_data_lit, ccode_loc) =
                 match e2 {
                 | KExpCCode (c, (_, l)) => ("ccode", c, l)
-                | KExpData (kind, fname, (_, l)) => (kind, fname, l)
                 | _ => ("", "", kloc)
                 }
             val ctor_id = kv_flags.val_flag_ctor
@@ -2984,21 +3004,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 3. i is defined and initialized at once: "ctyp i=ce2;"
             */
             val ccode =
-                if ccode_data_kind != "" {
-                    if ccode_data_kind == "ccode" {
-                        val (_, delta_ccode) =
-                            create_cdefval(i, ctyp, kv_flags, "",
-                                Some(CExpCCode(ccode_data_lit, ccode_loc)), [], kloc)
-                        bctx->bctx_prologue = delta_ccode + bctx->bctx_prologue
-                        ccode
-                    } else {
-                        val t = C_gen_types.ktyp2ctyp(get_kexp_typ(e2), kloc)
-                        val (_, delta_ccode) =
-                            create_cdefval(i, ctyp, kv_flags, "",
-                                Some(CExpData(ccode_data_kind, ccode_data_lit, (t, ccode_loc))), [], kloc)
-                        bctx->bctx_prologue = delta_ccode + bctx->bctx_prologue
-                        ccode
-                    }
+                if ccode_data_kind == "ccode" {
+                    val (_, delta_ccode) =
+                        create_cdefval(i, ctyp, kv_flags, "",
+                            Some(CExpCCode(ccode_data_lit, ccode_loc)), [], kloc)
+                    bctx->bctx_prologue = delta_ccode + bctx->bctx_prologue
+                    ccode
                 } else if ctor_id > 0 {
                     val tag_exp = make_int_exp(ctor_id, kloc)
                     val is_null =
@@ -3485,7 +3496,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     val mod_names = if km_main { km_cname :: [: for {cmod_cname} <- cmods { cmod_cname } :] }
                     else { [] }
     val all_ccode_prologue = gen_ccode_prologue(km_main, start_loc) + top_inline_ccode.rev()
-    val all_ccode = global_vars + fwd_fdecls.rev() +
+    val all_ccode = global_vars + fwd_fdecls.rev() + glob_data_ccode.rev() +
                     c_fdecls + [: CDefFun(init_f), CDefFun(deinit_f) :] +
                     gen_main(km_main, mod_names, end_loc)
     (all_ccode_prologue, all_ccode)

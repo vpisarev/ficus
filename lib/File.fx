@@ -171,7 +171,7 @@ fun write(f: File.t, a: 't [,]): void = @ccode
     return FX_OK;
 }
 
-fun read(f: File.t, buf: 't []): int = @ccode
+fun read(f: File.t, a: 't []): int = @ccode
 {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -187,6 +187,18 @@ fun readln(f: File.t): string = @ccode
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     return fx_fgets((FILE*)(f->handle->ptr), fx_result);
+}
+
+fun read_binary_u8(fname: string): uint8 []
+{
+    val f = open(fname, "rb")
+    f.seek(0L, SEEK_END)
+    val sz = f.tell()
+    f.seek(0L, SEEK_SET)
+    val arr = array(int(sz), 0u8)
+    assert(f.read(arr) == int(sz))
+    f.close()
+    arr
 }
 
 fun read_utf8(fname: string): string = @ccode

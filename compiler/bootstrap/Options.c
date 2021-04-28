@@ -427,10 +427,17 @@ FX_EXTERN_C int _fx_M7OptionsFM10print_helpv1B(bool detailed_0, void* fx_fv)
    if (!detailed_0) {
       FX_CALL(_fx_F6stringS1S(&fxname_0, &v_4, 0), _fx_cleanup);
       FX_CALL(_fx_F6stringS1S(&fxname_0, &v_5, 0), _fx_cleanup);
-      fx_str_t slit_4 = FX_MAKE_STR("\nUsage: ");
+      fx_str_t slit_4 =
+         FX_MAKE_STR("\n"
+            U"Usage: ");
       fx_str_t slit_5 =
-         FX_MAKE_STR(
-            " [-pr-tokens | -pr-ast0 | -pr-ast | -pr-k0 | -pr-k | -no-c\n    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n> | -no-openmp\n    | -o <output_name> | -I <incdir> | -B <build_root>\n    | -c++ | -cflags <cflags> | -clibs <clibs>\n    | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]\n\nRun \'");
+         FX_MAKE_STR(" [-pr-tokens | -pr-ast0 | -pr-ast | -pr-k0 | -pr-k | -no-c\n"
+            U"    | -app | -run | -O0 | -O1 | -O3 | -inline-threshold <n> | -no-openmp\n"
+            U"    | -o <output_name> | -I <incdir> | -B <build_root>\n"
+            U"    | -c++ | -cflags <cflags> | -clibs <clibs>\n"
+            U"    | -verbose | -h | -v ] <input_file>.fx [-- <app_args ...>]\n"
+            U"\n"
+            U"Run \'");
       fx_str_t slit_6 = FX_MAKE_STR(" -h\' to get more detailed help");
       {
          const fx_str_t strs_1[] = { slit_4, v_4, slit_5, v_5, slit_6 };
@@ -442,10 +449,58 @@ FX_EXTERN_C int _fx_M7OptionsFM10print_helpv1B(bool detailed_0, void* fx_fv)
    }
    else {
       FX_CALL(_fx_F6stringS1S(&fxname_0, &v_7, 0), _fx_cleanup);
-      fx_str_t slit_8 = FX_MAKE_STR("\nUsage: ");
+      fx_str_t slit_8 =
+         FX_MAKE_STR("\n"
+            U"Usage: ");
       fx_str_t slit_9 =
-         FX_MAKE_STR(
-            " [options ...] <input_file.fx> [-- <app_args ...>]\n\nwhere options can be some of:\n    -rebuild        Ignore cached files; rebuild everything from scratch\n    -pr-tokens      Print all the tokens in parsed files\n    -pr-ast0        Print AST right after parsing\n    -pr-ast         Print typechecked AST of the parsed files\n    -pr-k0          Print just generated K-form\n    -pr-k           Print optimized K-form of the parsed files\n                    (only a part of the generated K-form is retained\n                    because of the dead code elimination step)\n    -no-c           Do not generate C code\n    -app            Build application (default mode)\n    -run            Build application and run it\n    -O0             Optimization level 0: disable all optimizations\n                                         except for the most essential ones\n    -O1             Optimization level 1 (default): enable most of the optimizations\n    -O3             Optimization level 3: enable all optimizations\n    -no-openmp      Disable OpenMP (OpenMP is enabled by default)\n    -debug          Turn on debug information, disable optimizations\n                    (but it can be overwritten with further -On)\n    -optim-iters    The number of optimization iterations to perform (2 or 3 by default, depending on -O<n>)\n    -inline-threshold  Inline threshold (100 by default); the higher it is,\n                    the bigger functions are inlined;\n                    --inline-thresh=0 disables inline expansion\n    -relax          Do not require explicit typing of all global functions\' parameters\n    -no-preamble    Do not auto-import \'Builtins\', \'List\', \'String\' and\n                    a few other standard modules into each compiled module.\n    -Wno-unused     Do not report errors about unused values/functions\n    -o <output_name> Output file name (by default it matches the\n                    input filename without .fx extension)\n    -I <dir>        Add specified directory to the module search path\n    -B <build_root> Specifies the parent directory <build_root> where subdirectory\n                    <build_root>/__fxbuild__/<app_build_dir> with the generated files will be created.\n                    By default, <build_root> is the current working directory.\n    -c++            Use C++ compiler instead of C to compile the generated sources.\n                    \'pragma \"c++\"\' in .fx file also instructs ficus compiler to use C++.\n    -cflags <cflags> Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler.\n                    If environment variable FICUS_CFLAGS is set,\n                    its value is inserted before <cflags>\n    -clibs <clibs>  Pass the specified libs/linker flags to C/C++ compiler.\n                    If environment variable FICUS_LINK_LIBRARIES is set,\n                    its value is inserted after <clibs>\n    -verbose        Display various info during the build\n    -h or -help or --help  Display this information\n    -v or -version  Display information about compiler and the platform, then exit.\n    --              Specify the application parameters when \'-run\' flag is used,\n                    e.g. \'./ficus -run myprog.fx -- arg1 arg2\'\n");
+         FX_MAKE_STR(" [options ...] <input_file.fx> [-- <app_args ...>]\n"
+            U"\n"
+            U"where options can be some of:\n"
+            U"    -rebuild        Ignore cached files; rebuild everything from scratch\n"
+            U"    -pr-tokens      Print all the tokens in parsed files\n"
+            U"    -pr-ast0        Print AST right after parsing\n"
+            U"    -pr-ast         Print typechecked AST of the parsed files\n"
+            U"    -pr-k0          Print just generated K-form\n"
+            U"    -pr-k           Print optimized K-form of the parsed files\n"
+            U"                    (only a part of the generated K-form is retained\n"
+            U"                    because of the dead code elimination step)\n"
+            U"    -no-c           Do not generate C code\n"
+            U"    -app            Build application (default mode)\n"
+            U"    -run            Build application and run it\n"
+            U"    -O0             Optimization level 0: disable all optimizations\n"
+            U"                                         except for the most essential ones\n"
+            U"    -O1             Optimization level 1 (default): enable most of the optimizations\n"
+            U"    -O3             Optimization level 3: enable all optimizations\n"
+            U"    -no-openmp      Disable OpenMP (OpenMP is enabled by default)\n"
+            U"    -debug          Turn on debug information, disable optimizations\n"
+            U"                    (but it can be overwritten with further -On)\n"
+            U"    -optim-iters    The number of optimization iterations to perform (2 or 3 by default, depending on -O<n>)\n"
+            U"    -inline-threshold  Inline threshold (100 by default); the higher it is,\n"
+            U"                    the bigger functions are inlined;\n"
+            U"                    --inline-thresh=0 disables inline expansion\n"
+            U"    -relax          Do not require explicit typing of all global functions\' parameters\n"
+            U"    -no-preamble    Do not auto-import \'Builtins\', \'List\', \'String\' and\n"
+            U"                    a few other standard modules into each compiled module.\n"
+            U"    -Wno-unused     Do not report errors about unused values/functions\n"
+            U"    -o <output_name> Output file name (by default it matches the\n"
+            U"                    input filename without .fx extension)\n"
+            U"    -I <dir>        Add specified directory to the module search path\n"
+            U"    -B <build_root> Specifies the parent directory <build_root> where subdirectory\n"
+            U"                    <build_root>/__fxbuild__/<app_build_dir> with the generated files will be created.\n"
+            U"                    By default, <build_root> is the current working directory.\n"
+            U"    -c++            Use C++ compiler instead of C to compile the generated sources.\n"
+            U"                    \'pragma \"c++\"\' in .fx file also instructs ficus compiler to use C++.\n"
+            U"    -cflags <cflags> Pass the specified flags, e.g. \"-mavx2\", to C/C++ compiler.\n"
+            U"                    If environment variable FICUS_CFLAGS is set,\n"
+            U"                    its value is inserted before <cflags>\n"
+            U"    -clibs <clibs>  Pass the specified libs/linker flags to C/C++ compiler.\n"
+            U"                    If environment variable FICUS_LINK_LIBRARIES is set,\n"
+            U"                    its value is inserted after <clibs>\n"
+            U"    -verbose        Display various info during the build\n"
+            U"    -h or -help or --help  Display this information\n"
+            U"    -v or -version  Display information about compiler and the platform, then exit.\n"
+            U"    --              Specify the application parameters when \'-run\' flag is used,\n"
+            U"                    e.g. \'./ficus -run myprog.fx -- arg1 arg2\'\n");
       {
          const fx_str_t strs_2[] = { slit_8, v_7, slit_9 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_8), _fx_cleanup);
