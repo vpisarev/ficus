@@ -6,7 +6,7 @@
 // Ficus compiler, the driving part
 // (calls all other parts of the compiler in the proper order)
 
-import Filename, File, Sys, Hashmap
+import Filename, File, Sys, Hashmap, LexerUtils as Lxu
 import Ast, Ast_pp, Lexer, Parser, Options
 import Ast_typecheck
 import K_form, K_pp, K_normalize, K_annotate, K_mangle
@@ -67,7 +67,7 @@ fun find_ficus_dirs(): (string, string list)
 {
     var ficus_path = Sys.getpath("FICUS_PATH")
     // if 'ficus' is '<ficus_root>/bin/ficus'
-    val ficus_app_path = Filename.dirname(Filename.normalize(Sys.getcwd(), Sys.argv.hd()))
+    val ficus_app_path = Filename.dirname(Filename.normalize(Filename.getcwd(), Sys.argv.hd()))
     // if 'ficus' is '<ficus_root>/__fxbuild__/fx/fx'
     val ficus_pp_path = Filename.dirname(Filename.dirname(ficus_app_path))
     // if 'ficus' is '{/usr|/usr/local|/opt}/bin/ficus'
@@ -82,7 +82,7 @@ fun find_ficus_dirs(): (string, string list)
     for d@i <- search_path {
         val builtins_fx = Filename.normalize(d, "Builtins.fx")
         val ficus_h = Filename.normalize(d, "../runtime/ficus/ficus.h")
-        if Sys.file_exists(builtins_fx) && Sys.file_exists(ficus_h) {
+        if Filename.exists(builtins_fx) && Filename.exists(ficus_h) {
             found = Filename.dirname(d)
             if i < std_ficus_path_len {
                 // unless Builtins.fx is already found in FICUS_PATH,
@@ -97,7 +97,7 @@ fun find_ficus_dirs(): (string, string list)
 
 fun parse_all(fname0: string, ficus_path: string list): bool
 {
-    val cwd = Sys.getcwd()
+    val cwd = Filename.getcwd()
     val fname0 = Filename.normalize(cwd, fname0)
     val dir0 = Filename.dirname(fname0)
     val inc_dirs0 = if dir0 == cwd { cwd :: [] } else { dir0 :: cwd :: [] }
@@ -129,7 +129,7 @@ fun parse_all(fname0: string, ficus_path: string list): bool
                 }
             }
             catch {
-            | Lexer.LexerError((l, c), msg) =>
+            | Lxu.LexerError((l, c), msg) =>
                 println(f"{mfname}:{l}:{c}: error: {msg}\n"); ok = false
             | Parser.ParseError(loc, msg) =>
                 println(f"{loc}: error: {msg}\n"); ok = false
@@ -208,9 +208,9 @@ fun k_skip_some(kmods: kmodule_t list)
         val o_filename = cname + obj_ext
 
         val new_kform = K_pp.pp_top_to_string(km_top)
-        val have_k = Sys.file_exists(k_filename)
-        val have_c = Sys.file_exists(c_filename)
-        val have_o = Sys.file_exists(o_filename)
+        val have_k = Filename.exists(k_filename)
+        val have_c = Filename.exists(c_filename)
+        val have_o = Filename.exists(o_filename)
         val have_all = have_k & have_c & have_o
 
         val old_kform =
@@ -453,7 +453,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         val c_filename = cname + ext
         val obj_filename = cname + obj_ext
         val (ok_j, recompiled, status_j) =
-            if ok_j && (reprocess || !Sys.file_exists(obj_filename)) {
+            if ok_j && (reprocess || !Filename.exists(obj_filename)) {
                 val cmd = f"{comp} {cflags} {obj_opt}{obj_filename} {c_filename}"
                 val result = Sys.command(cmd) == 0
                 val status = if result {clrmsg(MsgGreen, "ok")} else {clrmsg(MsgRed, "fail")}
@@ -470,7 +470,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         for (is_cpp, is_recompiled, clibs_j, ok_j, obj) <- results {
             (any_cpp | is_cpp, any_recompiled | is_recompiled, clibs_j + all_clibs, ok & ok_j, obj :: objs)
         }
-    if ok && !any_recompiled && Sys.file_exists(Options.opt.app_filename) {
+    if ok && !any_recompiled && Filename.exists(Options.opt.app_filename) {
         pr_verbose(f"{Options.opt.app_filename} is up-to-date\n")
         ok
     } else if !ok {
@@ -499,7 +499,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
 fun run_app(): bool
 {
     val appname = Options.opt.app_filename
-    val appname = Filename.normalize(Sys.getcwd(), appname)
+    val appname = Filename.normalize(Filename.getcwd(), appname)
     val cmd = " ".join(appname :: Options.opt.app_args)
     Sys.command(cmd) == 0
 }

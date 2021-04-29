@@ -60,6 +60,16 @@ typedef struct _fx_LS_data_t {
    fx_str_t hd;
 } _fx_LS_data_t, *_fx_LS;
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -1134,16 +1144,6 @@ typedef struct _fx_N16Ast__defmodule_t_data_t {
    } u;
 } _fx_N16Ast__defmodule_t_data_t, *_fx_N16Ast__defmodule_t;
 
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
-
 typedef struct _fx_rRt6Set__t1R9Ast__id_t_data_t {
    int_ rc;
    struct _fx_Rt6Set__t1R9Ast__id_t data;
@@ -1929,13 +1929,13 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
-} _fx_E17Ast__CompileError_data_t;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
@@ -1958,6 +1958,23 @@ static void _fx_free_LS(struct _fx_LS_data_t** dst)
 static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, struct _fx_LS_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
+}
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -4848,23 +4865,6 @@ static void _fx_free_N16Ast__defmodule_t(struct _fx_N16Ast__defmodule_t_data_t**
    *dst = 0;
 }
 
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
-}
-
 static void _fx_free_rRt6Set__t1R9Ast__id_t(struct _fx_rRt6Set__t1R9Ast__id_t_data_t** dst)
 {
    FX_FREE_REF_IMPL(_fx_rRt6Set__t1R9Ast__id_t, _fx_free_Rt6Set__t1R9Ast__id_t);
@@ -7627,7 +7627,7 @@ FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(
    bool* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep, struct _fx_LS_data_t* strs, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(fx_exn_t _fx_E15Set__RBSetErrorv)
 FX_EXTERN_C int _fx_M11K_normalizeFM7make_fpFPN14K_form__ktyp_t1N10Ast__typ_t2rLR9Ast__id_tR10Ast__loc_t(
@@ -7709,7 +7709,7 @@ FX_EXTERN_C int _fx_M6K_formFM8KTypNameN14K_form__ktyp_t1R9Ast__id_t(
 
 FX_EXTERN_C int _fx_M3AstFM7typ2strS1N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t* t_0, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C void _fx_M6K_formFM7KLitIntN14K_form__klit_t1l(int64_t arg0, struct _fx_N14K_form__klit_t* fx_result);
 
@@ -8383,7 +8383,7 @@ FX_EXTERN_C int _fx_M6K_formFM13KDefInterfaceN14K_form__kexp_t1rRM15kdefinterfac
 
 FX_EXTERN_C int _fx_M4FileFM9read_utf8S1S(fx_str_t* fname, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M4FileFM14read_binary_u8A1b1S(fx_str_t* fname_0, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM14read_binary_u8A1b1S(fx_str_t* fname, fx_arr_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C void _fx_M3AstFM8ScModuleN12Ast__scope_t1i(int_ arg0, struct _fx_N12Ast__scope_t* fx_result);
 

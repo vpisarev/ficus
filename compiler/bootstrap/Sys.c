@@ -25,13 +25,6 @@ typedef struct _fx_R7File__t {
    fx_cptr_t handle;
 } _fx_R7File__t;
 
-typedef struct _fx_Nt6option1S {
-   int tag;
-   union {
-      fx_str_t Some;
-   } u;
-} _fx_Nt6option1S;
-
 typedef struct _fx_FPS1B {
    int (*fp)(bool, fx_str_t*, void*);
    fx_fcv_t* fcv;
@@ -77,28 +70,6 @@ static void _fx_make_R7File__t(fx_cptr_t r_handle, struct _fx_R7File__t* fx_resu
    fx_copy_cptr(r_handle, &fx_result->handle);
 }
 
-static void _fx_free_Nt6option1S(struct _fx_Nt6option1S* dst)
-{
-   switch (dst->tag) {
-   case 2:
-      fx_free_str(&dst->u.Some); break;
-   default:
-      ;
-   }
-   dst->tag = 0;
-}
-
-static void _fx_copy_Nt6option1S(struct _fx_Nt6option1S* src, struct _fx_Nt6option1S* dst)
-{
-   dst->tag = src->tag;
-   switch (src->tag) {
-   case 2:
-      fx_copy_str(&src->u.Some, &dst->u.Some); break;
-   default:
-      dst->u = src->u;
-   }
-}
-
 static void _fx_free_rS(struct _fx_rS_data_t** dst)
 {
    FX_FREE_REF_IMPL(_fx_rS, fx_free_str);
@@ -109,7 +80,6 @@ static int _fx_make_rS(fx_str_t* arg, struct _fx_rS_data_t** fx_result)
    FX_MAKE_REF_IMPL(_fx_rS, fx_copy_str);
 }
 
-_fx_Nt6option1S _fx_g9Sys__None = { 1 };
 _fx_LS _fx_g9Sys__argv = 0;
 bool _fx_g10Sys__win32 = 
 #if defined _WIN32 || defined WINCE
@@ -136,7 +106,7 @@ FX_EXTERN_C int _fx_M3SysFM7make_fpFPS1B2rSrS(
 
 static int _fx_M3SysFM10__lambda__S1B(bool get_version_0, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname_0, fx_str_t* mode_0, struct _fx_R7File__t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname, fx_str_t* mode, struct _fx_R7File__t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv);
 
@@ -146,14 +116,10 @@ FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t* f, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
 
-FX_EXTERN_C int _fx_M8FilenameFM6concatS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv);
-
-FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(
-   fx_str_t* s_0,
-   char_ c_0,
-   bool allow_empty_0,
+   fx_str_t* s,
+   char_ c,
+   bool allow_empty,
    struct _fx_LS_data_t** fx_result,
    void* fx_fv);
 
@@ -169,12 +135,6 @@ FX_EXTERN_C void _fx_free_M3SysFM10__lambda__S1B(_fx_M3SysFM10__lambda__S1B_clda
    _fx_free_rS(&dst->t0);
    _fx_free_rS(&dst->t1);
    fx_free(dst);
-}
-
-FX_EXTERN_C void _fx_M3SysFM4SomeNt6option1S1S(fx_str_t* arg0, struct _fx_Nt6option1S* fx_result)
-{
-   fx_result->tag = 2;
-   fx_copy_str(arg0, &fx_result->u.Some);
 }
 
 static int_ _fx_M3SysFM4argci0(void* fx_fv)
@@ -333,15 +293,6 @@ return fx_cc_version(fx_result);
 
 }
 
-FX_EXTERN_C int _fx_M3SysFM6getcwdS0(fx_str_t* fx_result, void* fx_fv)
-{
-   
-char buf[PATH_MAX+16];
-    char* p = getcwd(buf, PATH_MAX);
-    return fx_cstr2str(p, p ? -1 : 0, fx_result);
-
-}
-
 FX_EXTERN_C int _fx_M3SysFM6removev1S(fx_str_t* name, void* fx_fv)
 {
    
@@ -354,71 +305,6 @@ fx_cstr_t name_;
     }
     return fx_status;
 
-}
-
-FX_EXTERN_C int _fx_M3SysFM11file_existsB1S(fx_str_t* name, bool* fx_result, void* fx_fv)
-{
-   
-fx_cstr_t name_;
-    int fx_status = fx_str2cstr(name, &name_, 0, 0);
-    if (fx_status >= 0) {
-        struct stat s;
-        *fx_result = stat(name_.data, &s) == 0;
-        fx_free_cstr(&name_);
-    }
-    return fx_status;
-
-}
-
-FX_EXTERN_C int _fx_M3SysFM11locate_fileS2SLS(fx_str_t* name_0, struct _fx_LS_data_t* dirs_0, fx_str_t* fx_result, void* fx_fv)
-{
-   _fx_Nt6option1S __fold_result___0 = {0};
-   _fx_Nt6option1S __fold_result___1 = {0};
-   fx_str_t dir_0 = {0};
-   fx_str_t v_0 = {0};
-   fx_str_t v_1 = {0};
-   int fx_status = 0;
-   _fx_copy_Nt6option1S(&_fx_g9Sys__None, &__fold_result___0);
-   _fx_LS lst_0 = dirs_0;
-   for (; lst_0; lst_0 = lst_0->tl) {
-      fx_str_t v_2 = {0};
-      _fx_Nt6option1S v_3 = {0};
-      fx_str_t* d_0 = &lst_0->hd;
-      FX_CALL(_fx_M8FilenameFM6concatS2SS(d_0, name_0, &v_2, 0), _fx_catch_0);
-      bool v_4;
-      FX_CALL(_fx_M3SysFM11file_existsB1S(&v_2, &v_4, 0), _fx_catch_0);
-      if (v_4) {
-         _fx_M3SysFM4SomeNt6option1S1S(d_0, &v_3);
-         _fx_free_Nt6option1S(&__fold_result___0);
-         _fx_copy_Nt6option1S(&v_3, &__fold_result___0);
-         FX_BREAK(_fx_catch_0);
-      }
-
-   _fx_catch_0: ;
-      _fx_free_Nt6option1S(&v_3);
-      FX_FREE_STR(&v_2);
-      FX_CHECK_BREAK();
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   _fx_copy_Nt6option1S(&__fold_result___0, &__fold_result___1);
-   if (__fold_result___1.tag == 2) {
-      fx_copy_str(&__fold_result___1.u.Some, &dir_0);
-   }
-   else {
-      FX_FAST_THROW(FX_EXN_NotFoundError, _fx_cleanup);
-   }
-   FX_CHECK_EXN(_fx_cleanup);
-   FX_CALL(_fx_M3SysFM6getcwdS0(&v_0, 0), _fx_cleanup);
-   FX_CALL(_fx_M8FilenameFM6concatS2SS(&dir_0, name_0, &v_1, 0), _fx_cleanup);
-   FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&v_0, &v_1, fx_result, 0), _fx_cleanup);
-
-_fx_cleanup: ;
-   _fx_free_Nt6option1S(&__fold_result___0);
-   _fx_free_Nt6option1S(&__fold_result___1);
-   FX_FREE_STR(&dir_0);
-   FX_FREE_STR(&v_0);
-   FX_FREE_STR(&v_1);
-   return fx_status;
 }
 
 FX_EXTERN_C int _fx_M3SysFM5mkdirB2Si(fx_str_t* name, int_ permissions, bool* fx_result, void* fx_fv)

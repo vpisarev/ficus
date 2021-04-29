@@ -105,6 +105,16 @@ typedef struct _fx_R18Options__options_t {
    bool W_unused;
 } _fx_R18Options__options_t;
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -1310,21 +1320,11 @@ typedef struct _fx_N14Lexer__token_t {
    } u;
 } _fx_N14Lexer__token_t;
 
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
 typedef struct _fx_LN14Lexer__token_t_data_t {
    int_ rc;
    struct _fx_LN14Lexer__token_t_data_t* tl;
    struct _fx_N14Lexer__token_t hd;
 } _fx_LN14Lexer__token_t_data_t, *_fx_LN14Lexer__token_t;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
 
 typedef struct _fx_N14K_form__klit_t {
    int tag;
@@ -2105,13 +2105,13 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
-} _fx_E17Ast__CompileError_data_t;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
@@ -2243,6 +2243,23 @@ static void _fx_make_R18Options__options_t(
    fx_result->run_app = r_run_app;
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
+}
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -5509,23 +5526,6 @@ static int _fx_cons_LN14Lexer__token_t(
    FX_MAKE_LIST_IMPL(_fx_LN14Lexer__token_t, _fx_copy_N14Lexer__token_t);
 }
 
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
-}
-
 static void _fx_free_N14K_form__klit_t(struct _fx_N14K_form__klit_t* dst)
 {
    switch (dst->tag) {
@@ -8069,13 +8069,13 @@ _fx_N20Compiler__msgcolor_t _fx_g18Compiler__MsgGreen = { 2 };
 _fx_N20Compiler__msgcolor_t _fx_g17Compiler__MsgBlue = { 3 };
 bool _fx_g21Compiler__iscolorterm;
 fx_str_t _fx_g15Compiler__error = {0};
-FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep, struct _fx_LS_data_t* strs, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3SysFM9colortermB0(bool* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_R18Options__options_t _fx_g12Options__opt)
 FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
@@ -8092,7 +8092,7 @@ FX_EXTERN_C void _fx_M5LexerFM4STARN14Lexer__token_t1B(bool arg0, struct _fx_N14
 
 FX_EXTERN_C int _fx_M3SysFM7getpathLS1S(fx_str_t* name_0, struct _fx_LS_data_t** fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M3SysFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_LS_data_t* _fx_g9Sys__argv)
 FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv);
@@ -8103,7 +8103,7 @@ FX_EXTERN_C_VAL(int_ _fx_g15__ficus_major__)
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(int_ _fx_g15__ficus_minor__)
-FX_EXTERN_C int _fx_M3SysFM11file_existsB1S(fx_str_t* name, bool* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM6existsB1S(fx_str_t* name, bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s_0, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
 
@@ -8126,7 +8126,7 @@ FX_EXTERN_C int _fx_M3AstFM10get_moduleN16Ast__defmodule_t1i(
    struct _fx_N16Ast__defmodule_t_data_t** fx_result,
    void* fx_fv);
 
-FX_EXTERN_C_VAL(int _FX_EXN_E17Lexer__LexerError)
+FX_EXTERN_C_VAL(int _FX_EXN_E22LexerUtils__LexerError)
 FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv);
 
 FX_EXTERN_C_VAL(int _FX_EXN_E18Parser__ParseError)
@@ -8737,7 +8737,7 @@ FX_EXTERN_C int _fx_M8CompilerFM15find_ficus_dirsT2SLS0(struct _fx_T2SLS* fx_res
    int fx_status = 0;
    fx_str_t slit_0 = FX_MAKE_STR("FICUS_PATH");
    FX_CALL(_fx_M3SysFM7getpathLS1S(&slit_0, &ficus_path_0, 0), _fx_cleanup);
-   FX_CALL(_fx_M3SysFM6getcwdS0(&v_0, 0), _fx_cleanup);
+   FX_CALL(_fx_M8FilenameFM6getcwdS0(&v_0, 0), _fx_cleanup);
    if (_fx_g9Sys__argv != 0) {
       fx_copy_str(&_fx_g9Sys__argv->hd, &v_1);
    }
@@ -8816,9 +8816,9 @@ FX_EXTERN_C int _fx_M8CompilerFM15find_ficus_dirsT2SLS0(struct _fx_T2SLS* fx_res
       FX_CALL(_fx_M8FilenameFM9normalizeS2SS(d_0, &slit_8, &ficus_h_0, 0), _fx_catch_4);
       bool v_19;
       bool res_0;
-      FX_CALL(_fx_M3SysFM11file_existsB1S(&builtins_fx_0, &res_0, 0), _fx_catch_4);
+      FX_CALL(_fx_M8FilenameFM6existsB1S(&builtins_fx_0, &res_0, 0), _fx_catch_4);
       if (res_0) {
-         FX_CALL(_fx_M3SysFM11file_existsB1S(&ficus_h_0, &v_19, 0), _fx_catch_4);
+         FX_CALL(_fx_M8FilenameFM6existsB1S(&ficus_h_0, &v_19, 0), _fx_catch_4);
       }
       else {
          v_19 = false;
@@ -8931,7 +8931,7 @@ FX_EXTERN_C int _fx_M8CompilerFM9parse_allB2SLS(
    fx_str_t v_3 = {0};
    _fx_Li queue_0 = 0;
    int fx_status = 0;
-   FX_CALL(_fx_M3SysFM6getcwdS0(&cwd_0, 0), _fx_cleanup);
+   FX_CALL(_fx_M8FilenameFM6getcwdS0(&cwd_0, 0), _fx_cleanup);
    FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&cwd_0, fname0_0, &fname0_1, 0), _fx_cleanup);
    FX_CALL(_fx_M8FilenameFM7dirnameS1S(&fname0_1, &dir0_0, 0), _fx_cleanup);
    bool v_4 = _fx_F6__eq__B2SS(&dir0_0, &cwd_0, 0);
@@ -9144,13 +9144,13 @@ FX_EXTERN_C int _fx_M8CompilerFM9parse_allB2SLS(
             fx_status = 0;
             fx_exn_get_and_reset(&exn_0);
             int tag_0 = exn_0.tag;
-            if (tag_0 == _FX_EXN_E17Lexer__LexerError) {
+            if (tag_0 == _FX_EXN_E22LexerUtils__LexerError) {
                fx_str_t v_15 = {0};
                fx_str_t v_16 = {0};
                fx_str_t v_17 = {0};
                fx_str_t v_18 = {0};
                fx_str_t v_19 = {0};
-               _fx_T2Ta2iS* vcase_0 = &FX_EXN_DATA(_fx_E17Lexer__LexerError_data_t, exn_0.data);
+               _fx_T2Ta2iS* vcase_0 = &FX_EXN_DATA(_fx_E22LexerUtils__LexerError_data_t, exn_0.data);
                _fx_Ta2i* v_20 = &vcase_0->t0;
                FX_CALL(_fx_F6stringS1S(&mfname_0, &v_15, 0), _fx_catch_10);
                FX_CALL(_fx_F6stringS1i(v_20->t0, &v_16, 0), _fx_catch_10);
@@ -9548,11 +9548,11 @@ FX_EXTERN_C int _fx_M8CompilerFM11k_skip_someLR17K_form__kmodule_t1LR17K_form__k
       }
       FX_CALL(_fx_M4K_ppFM16pp_top_to_stringS1LN14K_form__kexp_t(km_top_0, &new_kform_0, 0), _fx_catch_5);
       bool have_k_0;
-      FX_CALL(_fx_M3SysFM11file_existsB1S(&k_filename_0, &have_k_0, 0), _fx_catch_5);
+      FX_CALL(_fx_M8FilenameFM6existsB1S(&k_filename_0, &have_k_0, 0), _fx_catch_5);
       bool have_c_0;
-      FX_CALL(_fx_M3SysFM11file_existsB1S(&c_filename_0, &have_c_0, 0), _fx_catch_5);
+      FX_CALL(_fx_M8FilenameFM6existsB1S(&c_filename_0, &have_c_0, 0), _fx_catch_5);
       bool have_o_0;
-      FX_CALL(_fx_M3SysFM11file_existsB1S(&o_filename_0, &have_o_0, 0), _fx_catch_5);
+      FX_CALL(_fx_M8FilenameFM6existsB1S(&o_filename_0, &have_o_0, 0), _fx_catch_5);
       bool have_all_0 = have_k_0 && have_c_0 && have_o_0;
       bool t_0;
       if (_fx_g12Options__opt.force_rebuild) {
@@ -10897,7 +10897,7 @@ FX_EXTERN_C int _fx_M8CompilerFM6run_ccB2LR17C_form__cmodule_tS(
             v_58 = true;
          }
          else {
-            bool v_59; FX_CALL(_fx_M3SysFM11file_existsB1S(&obj_filename_0, &v_59, 0), _fx_catch_3); v_58 = !v_59;
+            bool v_59; FX_CALL(_fx_M8FilenameFM6existsB1S(&obj_filename_0, &v_59, 0), _fx_catch_3); v_58 = !v_59;
          }
       }
       else {
@@ -11066,7 +11066,7 @@ FX_EXTERN_C int _fx_M8CompilerFM6run_ccB2LR17C_form__cmodule_tS(
       t_0 = false;
    }
    if (t_0) {
-      fx_copy_str(&_fx_g12Options__opt.app_filename, &v_26); FX_CALL(_fx_M3SysFM11file_existsB1S(&v_26, &v_64, 0), _fx_cleanup);
+      fx_copy_str(&_fx_g12Options__opt.app_filename, &v_26); FX_CALL(_fx_M8FilenameFM6existsB1S(&v_26, &v_64, 0), _fx_cleanup);
    }
    else {
       v_64 = false;
@@ -11598,7 +11598,7 @@ FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_re
       }
       if (t_1) {
          fx_copy_str(&_fx_g12Options__opt.app_filename, &appname_0);
-         FX_CALL(_fx_M3SysFM6getcwdS0(&v_32, 0), _fx_catch_7);
+         FX_CALL(_fx_M8FilenameFM6getcwdS0(&v_32, 0), _fx_catch_7);
          FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&v_32, &appname_0, &appname_1, 0), _fx_catch_7);
          FX_COPY_PTR(_fx_g12Options__opt.app_args, &v_33);
          FX_CALL(_fx_cons_LS(&appname_1, v_33, false, &v_33), _fx_catch_7);

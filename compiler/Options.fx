@@ -112,7 +112,7 @@ fun parse_options(): bool {
     val error = "\33[31;1merror:\33[0m"
     opt = default_options()
     opt.arch64 = is_arch64
-    val curr_dir = Sys.getcwd()
+    val curr_dir = Filename.getcwd()
     var args = Sys.argv.tl()
     var inputfile = ""
     var prhelp = 0

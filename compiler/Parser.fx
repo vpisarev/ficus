@@ -7,6 +7,7 @@
 
 import File, Filename, Sys
 from Ast import *
+import LexerUtils as Lxu
 from Lexer import *
 import Options
 
@@ -27,7 +28,7 @@ fun add_to_imported_modules(mname: id_t, loc: loc_t): int
 {
     val mfname = pp(mname).replace(".", Filename.dir_sep()) + ".fx"
     val mfname =
-        try Sys.locate_file(mfname, parser_ctx.inc_dirs)
+        try Filename.locate(mfname, parser_ctx.inc_dirs)
         catch {
         | NotFoundError => throw ParseError(loc, f"module {mname} is not found")
         }
@@ -1014,7 +1015,7 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
                     extend_defvals_(ts, true, dv :: result)
                 | (EQUAL, l1) :: (DATA(kind), l2) :: (LITERAL(LitString fname), _) :: rest =>
                     val fname =
-                        try Sys.locate_file(fname, parser_ctx.inc_dirs)
+                        try Filename.locate(fname, parser_ctx.inc_dirs)
                         catch {
                         | NotFoundError => throw ParseError(l2, f"file {fname} is not found")
                         }
@@ -1938,12 +1939,12 @@ fun parse(m_idx: int, preamble: token_t list, inc_dirs: string list): bool
     dm.dm_parsed = true
     all_modules[m_idx].dm_parsed = true
 
-    val strm = try Lexer.make_stream(dm.dm_filename)
+    val strm = try Lxu.make_stream(dm.dm_filename)
         catch {
         | FileOpenError => throw ParseError(parser_ctx.default_loc, "cannot open file")
         | IOError => throw ParseError(parser_ctx.default_loc, "cannot read file")
         }
-    val lexer = Lexer.make_lexer(strm)
+    val lexer = make_lexer(strm)
 
     // [TODO] perhaps, need to avoid fetching all the tokens at once
     var all_tokens: (Lexer.token_t, Ast.loc_t) list = []

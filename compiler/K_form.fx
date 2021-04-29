@@ -1393,6 +1393,16 @@ fun string(t: ktyp_t): string
     ktyp2str_(t, false)
 }
 
+fun flt2str(v: double, suffix: string)
+{
+    val vstr = string(v)
+    if vstr[0].isdigit() {vstr + suffix}
+    else if vstr == "inf" {"INFINITY"}
+    else if vstr == "-inf" {"-INFINITY"}
+    else if vstr == "nan" {"NAN"}
+    else {vstr + suffix}
+}
+
 fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
 {
     match lit {
@@ -1405,9 +1415,9 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
         if cmode { f"{v}" } else { f"{v}i{b}" }
     | KLitUInt(b, v) =>
         if cmode { f"{v}u" } else { f"{v}u{b}" }
-    | KLitFloat(16, v) => f"{v}f"
-    | KLitFloat(32, v) => f"{v}f"
-    | KLitFloat(64, v) => f"{v}"
+    | KLitFloat(16, v) => if !cmode {f"{v}f"} else {flt2str(v, "f")}
+    | KLitFloat(32, v) => if !cmode {f"{v}f"} else {flt2str(v, "f")}
+    | KLitFloat(64, v) => if !cmode {f"{v}"} else {flt2str(v, "")}
     | KLitFloat(b, v) => throw compile_err(loc, f"invalid literal LitFloat({b}, {v})")
     | KLitString(s) => s.escaped(quotes=true)
     | KLitChar(c) => repr(c)

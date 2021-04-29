@@ -106,7 +106,7 @@ val s_list_list = [: for i <- 0:10 {
     } :]
 
 val sample_js = JsonCommented(
-    "small Json pretty-printing example",
+    "a small Json pretty-printing example",
     JsonMap([:
     ("ain't it cool?", JsonScalar(JsonScBool(true))),
     ("pi", JsonCommented("the famous constant", JsonScalar(JsonScReal(3.1415926)))),

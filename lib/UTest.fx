@@ -244,6 +244,9 @@ fun test_run_all(opts: test_options_t)
             } catch {
             | TestAssertError =>
                 g_test_state.currstatus = false
+            | TestFailure(msg) =>
+                println(msg)
+                g_test_state.currstatus = false
             | e =>
                 println(f"Exception {e} occured.")
                 g_test_state.currstatus = false

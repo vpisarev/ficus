@@ -18,6 +18,16 @@ struct _fx_N15C_form__cstmt_t_data_t;
 
 static void _fx_free_N15C_form__cstmt_t(struct _fx_N15C_form__cstmt_t_data_t** dst);
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -324,16 +334,6 @@ typedef struct _fx_T2R10Ast__loc_tS {
    struct _fx_R10Ast__loc_t t0;
    fx_str_t t1;
 } _fx_T2R10Ast__loc_tS;
-
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
 
 typedef struct _fx_T2LN14K_form__ktyp_tN14K_form__ktyp_t {
    struct _fx_LN14K_form__ktyp_t_data_t* t0;
@@ -704,18 +704,35 @@ typedef struct {
 
 typedef struct {
    int_ rc;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
+
+typedef struct {
+   int_ rc;
    struct _fx_T2R10Ast__loc_tS data;
 } _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
-
-typedef struct {
-   int_ rc;
    struct _fx_T2R10Ast__loc_tS data;
 } _fx_E18Parser__ParseError_data_t;
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
+}
 
 static int _fx_cons_LN12Ast__scope_t(
    struct _fx_N12Ast__scope_t* hd,
@@ -1464,23 +1481,6 @@ static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _
 }
 
 static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
-}
-
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
 {
    fx_result->t0 = *t0;
    fx_copy_str(t1, &fx_result->t1);

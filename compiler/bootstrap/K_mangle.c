@@ -58,6 +58,16 @@ typedef struct _fx_LS_data_t {
    fx_str_t hd;
 } _fx_LS_data_t, *_fx_LS;
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -367,16 +377,6 @@ typedef struct _fx_ri_data_t {
    int_ rc;
    int_ data;
 } _fx_ri_data_t, *_fx_ri;
-
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
 
 typedef struct _fx_T2il {
    int_ t0;
@@ -1029,13 +1029,13 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
-} _fx_E17Ast__CompileError_data_t;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
@@ -1050,6 +1050,23 @@ static void _fx_free_LS(struct _fx_LS_data_t** dst)
 static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, struct _fx_LS_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
+}
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -1693,23 +1710,6 @@ static int _fx_cons_Li(int_ hd, struct _fx_Li_data_t* tl, bool addref_tl, struct
 static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
 {
    FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
-}
-
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
 }
 
 static void _fx_free_N14K_form__klit_t(struct _fx_N14K_form__klit_t* dst)
@@ -3272,7 +3272,7 @@ FX_EXTERN_C int _fx_M8K_mangleFM15__eq_variants__B2N14K_form__ktyp_tN14K_form__k
    bool* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep, struct _fx_LS_data_t* strs, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
@@ -3366,7 +3366,7 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 static int _fx_M8K_mangleFM12mangle_ktyp_LS2N14K_form__ktyp_tLS(
    struct _fx_N14K_form__ktyp_t_data_t* t_0,
@@ -7457,10 +7457,10 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleN14K_form__kexp_t2N14K_form__kexp
    struct _fx_N14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   _fx_FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t walk_ktyp_n_mangle_0 = {0};
    _fx_FPN14K_form__ktyp_t3R9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t mangle_id_typ_0 = {0};
-   _fx_FPv4LT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t mangle_idoml_0 = {0};
+   _fx_FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t walk_ktyp_n_mangle_0 = {0};
    _fx_FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t mangle_ktyp_retain_record_0 = {0};
+   _fx_FPv4LT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t mangle_idoml_0 = {0};
    _fx_R17K_form__kdeftyp_t v_0 = {0};
    int fx_status = 0;
    FX_CALL(fx_check_stack(), _fx_cleanup);
@@ -7470,14 +7470,14 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleN14K_form__kexp_t2N14K_form__kexp
    _fx_rLN14K_form__kexp_t curr_top_code_ref_0 = cv_0->t1;
    bool* final_mode_0 = &cv_0->t2;
    _fx_Nt10Hashmap__t2SR9Ast__id_t mangle_map_0 = cv_0->t3;
-   _fx_M8K_mangleFM7make_fpFPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-      curr_km_idx_ref_0, curr_top_code_ref_0, *final_mode_0, mangle_map_0, &walk_ktyp_n_mangle_0);
    _fx_M8K_mangleFM7make_fpFPN14K_form__ktyp_t3R9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
       curr_km_idx_ref_0, curr_top_code_ref_0, *final_mode_0, mangle_map_0, &mangle_id_typ_0);
-   _fx_M8K_mangleFM7make_fpFPv4LT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-      curr_km_idx_ref_0, curr_top_code_ref_0, *final_mode_0, mangle_map_0, &mangle_idoml_0);
+   _fx_M8K_mangleFM7make_fpFPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
+      curr_km_idx_ref_0, curr_top_code_ref_0, *final_mode_0, mangle_map_0, &walk_ktyp_n_mangle_0);
    _fx_M8K_mangleFM9make_fp1_FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
       curr_km_idx_ref_0, curr_top_code_ref_0, *final_mode_0, mangle_map_0, &mangle_ktyp_retain_record_0);
+   _fx_M8K_mangleFM7make_fpFPv4LT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tR10Ast__loc_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
+      curr_km_idx_ref_0, curr_top_code_ref_0, *final_mode_0, mangle_map_0, &mangle_idoml_0);
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
    if (tag_0 == 30) {
       _fx_N14K_form__kexp_t e_1 = 0;
@@ -8221,10 +8221,10 @@ _fx_catch_22: ;
 _fx_endmatch_1: ;
 
 _fx_cleanup: ;
-   FX_FREE_FP(&walk_ktyp_n_mangle_0);
    FX_FREE_FP(&mangle_id_typ_0);
-   FX_FREE_FP(&mangle_idoml_0);
+   FX_FREE_FP(&walk_ktyp_n_mangle_0);
    FX_FREE_FP(&mangle_ktyp_retain_record_0);
+   FX_FREE_FP(&mangle_idoml_0);
    _fx_free_R17K_form__kdeftyp_t(&v_0);
    return fx_status;
 }

@@ -97,12 +97,6 @@ fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): double
     if iterations > 1 { exp(gmean/iterations)/batch } else {gmean/batch}
 }
 
-fun getcwd(): string = @ccode {
-    char buf[PATH_MAX+16];
-    char* p = getcwd(buf, PATH_MAX);
-    return fx_cstr2str(p, p ? -1 : 0, fx_result);
-}
-
 fun remove(name: string): void = @ccode
 {
     fx_cstr_t name_;
@@ -129,25 +123,6 @@ fun rename(name: string, new_name: string): bool = @ccode
         fx_free_cstr(&name_);
     }
     return fx_status;
-}
-
-fun file_exists(name: string): bool = @ccode
-{
-    fx_cstr_t name_;
-    int fx_status = fx_str2cstr(name, &name_, 0, 0);
-    if (fx_status >= 0) {
-        struct stat s;
-        *fx_result = stat(name_.data, &s) == 0;
-        fx_free_cstr(&name_);
-    }
-    return fx_status;
-}
-
-// throws NotFoundError if there is no such file in specified directories
-fun locate_file(name: string, dirs: string list): string
-{
-    val dir = find(for d <- dirs {file_exists(Filename.concat(d, name))})
-    Filename.normalize(getcwd(), Filename.concat(dir, name))
 }
 
 // [TODO] update to create all the parent directories if needed

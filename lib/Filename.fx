@@ -3,6 +3,19 @@
     See ficus/LICENSE for the licensing terms
 */
 
+@ccode {
+    #include <limits.h>
+    #include <stdlib.h>
+    #include <stdio.h>
+    #include <sys/stat.h>
+#if !defined WIN32 && !defined _WIN32
+    #include <unistd.h>
+#endif
+    #ifndef PATH_MAX
+    #define PATH_MAX 8192
+    #endif
+}
+
 @pure fun dir_sep(): string = @ccode {
     const char sep[] =
 #if defined _WIN32 || defined WINCE
@@ -84,4 +97,29 @@ fun remove_extension(path: string) {
         if dotpos <= pos+1 { path }
         else { path[:dotpos]}
     }
+}
+
+fun getcwd(): string = @ccode {
+    char buf[PATH_MAX+16];
+    char* p = getcwd(buf, PATH_MAX);
+    return fx_cstr2str(p, p ? -1 : 0, fx_result);
+}
+
+fun exists(name: string): bool = @ccode
+{
+    fx_cstr_t name_;
+    int fx_status = fx_str2cstr(name, &name_, 0, 0);
+    if (fx_status >= 0) {
+        struct stat s;
+        *fx_result = stat(name_.data, &s) == 0;
+        fx_free_cstr(&name_);
+    }
+    return fx_status;
+}
+
+// throws NotFoundError if there is no such file in specified directories
+fun locate(name: string, dirs: string list): string
+{
+    val dir = find(for d <- dirs {exists(concat(d, name))})
+    normalize(getcwd(), concat(dir, name))
 }

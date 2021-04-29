@@ -94,6 +94,16 @@ typedef struct _fx_LS_data_t {
    fx_str_t hd;
 } _fx_LS_data_t, *_fx_LS;
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -443,11 +453,6 @@ typedef struct _fx_FPq1R9Ast__id_t {
    int (*fp)(struct _fx_R9Ast__id_t*, uint64_t*, void*);
    fx_fcv_t* fcv;
 } _fx_FPq1R9Ast__id_t;
-
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
 
 typedef struct _fx_R13Ast__defval_t {
    struct _fx_R9Ast__id_t dv_name;
@@ -1177,11 +1182,6 @@ typedef struct _fx_LR10Ast__loc_t_data_t {
    struct _fx_R10Ast__loc_t hd;
 } _fx_LR10Ast__loc_t_data_t, *_fx_LR10Ast__loc_t;
 
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
-
 typedef struct _fx_Nt6option1N14K_form__kexp_t {
    int tag;
    union {
@@ -1762,13 +1762,13 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
-} _fx_E17Ast__CompileError_data_t;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
@@ -1791,6 +1791,23 @@ static void _fx_free_LS(struct _fx_LS_data_t** dst)
 static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, struct _fx_LS_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
+}
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -4653,23 +4670,6 @@ static int _fx_cons_LR10Ast__loc_t(
    FX_MAKE_LIST_IMPL(_fx_LR10Ast__loc_t, FX_COPY_SIMPLE_BY_PTR);
 }
 
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
-}
-
 static void _fx_free_Nt6option1N14K_form__kexp_t(struct _fx_Nt6option1N14K_form__kexp_t* dst)
 {
    switch (dst->tag) {
@@ -6412,7 +6412,7 @@ FX_EXTERN_C int _fx_M6K_formFM7ktl2strS1LN14K_form__ktyp_t(
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F7__mul__S2Ci(char_ c, int_ n, fx_str_t* fx_result, void* fx_fv);
 
@@ -6422,7 +6422,11 @@ FX_EXTERN_C int _fx_F6stringS1q(uint64_t a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1d(double a, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M6StringFM7escapedS2SB(fx_str_t* s_0, bool quotes_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_ c, void* fx_fv);
+
+FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv);
+
+FX_EXTERN_C int _fx_M6StringFM7escapedS2SB(fx_str_t* s, bool quotes, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F4reprS1C(char_ a, fx_str_t* fx_result, void* fx_fv);
 
@@ -16938,14 +16942,62 @@ FX_EXTERN_C int _fx_M6K_formFM8klit2strS3N14K_form__klit_tBR10Ast__loc_t(
       _fx_T2id* vcase_4 = &lit_0->u.KLitFloat;
       if (vcase_4->t0 == 16) {
          fx_str_t v_15 = {0};
-         FX_CALL(_fx_F6stringS1d(vcase_4->t1, &v_15, 0), _fx_catch_5);
-         fx_str_t slit_7 = FX_MAKE_STR("f");
-         {
-            const fx_str_t strs_7[] = { v_15, slit_7 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_7, 2, fx_result), _fx_catch_5);
+         fx_str_t vstr_0 = {0};
+         double v_16 = vcase_4->t1;
+         if (!cmode_0) {
+            FX_CALL(_fx_F6stringS1d(v_16, &v_15, 0), _fx_catch_5);
+            fx_str_t slit_7 = FX_MAKE_STR("f");
+            {
+               const fx_str_t strs_7[] = { v_15, slit_7 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_7, 2, fx_result), _fx_catch_5);
+            }
+         }
+         else {
+            FX_CALL(_fx_F6stringS1d(v_16, &vstr_0, 0), _fx_catch_5);
+            FX_STR_CHKIDX(vstr_0, 0, _fx_catch_5);
+            bool v_17 = _fx_M4CharFM7isdigitB1C(FX_STR_ELEM(vstr_0, 0), 0);
+            if (v_17) {
+               fx_str_t slit_8 = FX_MAKE_STR("f");
+               {
+                  const fx_str_t strs_8[] = { vstr_0, slit_8 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_8, 2, fx_result), _fx_catch_5);
+               }
+            }
+            else {
+               bool v_18;
+               fx_str_t slit_9 = FX_MAKE_STR("inf");
+               v_18 = _fx_F6__eq__B2SS(&vstr_0, &slit_9, 0);
+               if (v_18) {
+                  fx_str_t slit_10 = FX_MAKE_STR("INFINITY"); fx_copy_str(&slit_10, fx_result);
+               }
+               else {
+                  bool v_19;
+                  fx_str_t slit_11 = FX_MAKE_STR("-inf");
+                  v_19 = _fx_F6__eq__B2SS(&vstr_0, &slit_11, 0);
+                  if (v_19) {
+                     fx_str_t slit_12 = FX_MAKE_STR("-INFINITY"); fx_copy_str(&slit_12, fx_result);
+                  }
+                  else {
+                     bool v_20;
+                     fx_str_t slit_13 = FX_MAKE_STR("nan");
+                     v_20 = _fx_F6__eq__B2SS(&vstr_0, &slit_13, 0);
+                     if (v_20) {
+                        fx_str_t slit_14 = FX_MAKE_STR("NAN"); fx_copy_str(&slit_14, fx_result);
+                     }
+                     else {
+                        fx_str_t slit_15 = FX_MAKE_STR("f");
+                        {
+                           const fx_str_t strs_9[] = { vstr_0, slit_15 };
+                           FX_CALL(fx_strjoin(0, 0, 0, strs_9, 2, fx_result), _fx_catch_5);
+                        }
+                     }
+                  }
+               }
+            }
          }
 
       _fx_catch_5: ;
+         FX_FREE_STR(&vstr_0);
          FX_FREE_STR(&v_15);
          goto _fx_endmatch_0;
       }
@@ -16953,48 +17005,139 @@ FX_EXTERN_C int _fx_M6K_formFM8klit2strS3N14K_form__klit_tBR10Ast__loc_t(
    if (tag_0 == 4) {
       _fx_T2id* vcase_5 = &lit_0->u.KLitFloat;
       if (vcase_5->t0 == 32) {
-         fx_str_t v_16 = {0};
-         FX_CALL(_fx_F6stringS1d(vcase_5->t1, &v_16, 0), _fx_catch_6);
-         fx_str_t slit_8 = FX_MAKE_STR("f");
-         {
-            const fx_str_t strs_8[] = { v_16, slit_8 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_8, 2, fx_result), _fx_catch_6);
+         fx_str_t v_21 = {0};
+         fx_str_t vstr_1 = {0};
+         double v_22 = vcase_5->t1;
+         if (!cmode_0) {
+            FX_CALL(_fx_F6stringS1d(v_22, &v_21, 0), _fx_catch_6);
+            fx_str_t slit_16 = FX_MAKE_STR("f");
+            {
+               const fx_str_t strs_10[] = { v_21, slit_16 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_10, 2, fx_result), _fx_catch_6);
+            }
+         }
+         else {
+            FX_CALL(_fx_F6stringS1d(v_22, &vstr_1, 0), _fx_catch_6);
+            FX_STR_CHKIDX(vstr_1, 0, _fx_catch_6);
+            bool v_23 = _fx_M4CharFM7isdigitB1C(FX_STR_ELEM(vstr_1, 0), 0);
+            if (v_23) {
+               fx_str_t slit_17 = FX_MAKE_STR("f");
+               {
+                  const fx_str_t strs_11[] = { vstr_1, slit_17 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_11, 2, fx_result), _fx_catch_6);
+               }
+            }
+            else {
+               bool v_24;
+               fx_str_t slit_18 = FX_MAKE_STR("inf");
+               v_24 = _fx_F6__eq__B2SS(&vstr_1, &slit_18, 0);
+               if (v_24) {
+                  fx_str_t slit_19 = FX_MAKE_STR("INFINITY"); fx_copy_str(&slit_19, fx_result);
+               }
+               else {
+                  bool v_25;
+                  fx_str_t slit_20 = FX_MAKE_STR("-inf");
+                  v_25 = _fx_F6__eq__B2SS(&vstr_1, &slit_20, 0);
+                  if (v_25) {
+                     fx_str_t slit_21 = FX_MAKE_STR("-INFINITY"); fx_copy_str(&slit_21, fx_result);
+                  }
+                  else {
+                     bool v_26;
+                     fx_str_t slit_22 = FX_MAKE_STR("nan");
+                     v_26 = _fx_F6__eq__B2SS(&vstr_1, &slit_22, 0);
+                     if (v_26) {
+                        fx_str_t slit_23 = FX_MAKE_STR("NAN"); fx_copy_str(&slit_23, fx_result);
+                     }
+                     else {
+                        fx_str_t slit_24 = FX_MAKE_STR("f");
+                        {
+                           const fx_str_t strs_12[] = { vstr_1, slit_24 };
+                           FX_CALL(fx_strjoin(0, 0, 0, strs_12, 2, fx_result), _fx_catch_6);
+                        }
+                     }
+                  }
+               }
+            }
          }
 
       _fx_catch_6: ;
-         FX_FREE_STR(&v_16);
+         FX_FREE_STR(&vstr_1);
+         FX_FREE_STR(&v_21);
          goto _fx_endmatch_0;
       }
    }
    if (tag_0 == 4) {
       _fx_T2id* vcase_6 = &lit_0->u.KLitFloat;
       if (vcase_6->t0 == 64) {
-         FX_CALL(_fx_F6stringS1d(vcase_6->t1, fx_result, 0), _fx_catch_7);  _fx_catch_7: ; goto _fx_endmatch_0;
+         fx_str_t vstr_2 = {0};
+         double v_27 = vcase_6->t1;
+         if (!cmode_0) {
+            FX_CALL(_fx_F6stringS1d(v_27, fx_result, 0), _fx_catch_7);
+         }
+         else {
+            FX_CALL(_fx_F6stringS1d(v_27, &vstr_2, 0), _fx_catch_7);
+            FX_STR_CHKIDX(vstr_2, 0, _fx_catch_7);
+            bool v_28 = _fx_M4CharFM7isdigitB1C(FX_STR_ELEM(vstr_2, 0), 0);
+            if (v_28) {
+               fx_copy_str(&vstr_2, fx_result);
+            }
+            else {
+               bool v_29;
+               fx_str_t slit_25 = FX_MAKE_STR("inf");
+               v_29 = _fx_F6__eq__B2SS(&vstr_2, &slit_25, 0);
+               if (v_29) {
+                  fx_str_t slit_26 = FX_MAKE_STR("INFINITY"); fx_copy_str(&slit_26, fx_result);
+               }
+               else {
+                  bool v_30;
+                  fx_str_t slit_27 = FX_MAKE_STR("-inf");
+                  v_30 = _fx_F6__eq__B2SS(&vstr_2, &slit_27, 0);
+                  if (v_30) {
+                     fx_str_t slit_28 = FX_MAKE_STR("-INFINITY"); fx_copy_str(&slit_28, fx_result);
+                  }
+                  else {
+                     bool v_31;
+                     fx_str_t slit_29 = FX_MAKE_STR("nan");
+                     v_31 = _fx_F6__eq__B2SS(&vstr_2, &slit_29, 0);
+                     if (v_31) {
+                        fx_str_t slit_30 = FX_MAKE_STR("NAN"); fx_copy_str(&slit_30, fx_result);
+                     }
+                     else {
+                        fx_copy_str(&vstr_2, fx_result);
+                     }
+                  }
+               }
+            }
+         }
+
+      _fx_catch_7: ;
+         FX_FREE_STR(&vstr_2);
+         goto _fx_endmatch_0;
       }
    }
    if (tag_0 == 4) {
-      fx_str_t v_17 = {0};
-      fx_str_t v_18 = {0};
-      fx_str_t v_19 = {0};
-      fx_exn_t v_20 = {0};
+      fx_str_t v_32 = {0};
+      fx_str_t v_33 = {0};
+      fx_str_t v_34 = {0};
+      fx_exn_t v_35 = {0};
       _fx_T2id* vcase_7 = &lit_0->u.KLitFloat;
-      FX_CALL(_fx_F6stringS1i(vcase_7->t0, &v_17, 0), _fx_catch_8);
-      FX_CALL(_fx_F6stringS1d(vcase_7->t1, &v_18, 0), _fx_catch_8);
-      fx_str_t slit_9 = FX_MAKE_STR("invalid literal LitFloat(");
-      fx_str_t slit_10 = FX_MAKE_STR(", ");
-      fx_str_t slit_11 = FX_MAKE_STR(")");
+      FX_CALL(_fx_F6stringS1i(vcase_7->t0, &v_32, 0), _fx_catch_8);
+      FX_CALL(_fx_F6stringS1d(vcase_7->t1, &v_33, 0), _fx_catch_8);
+      fx_str_t slit_31 = FX_MAKE_STR("invalid literal LitFloat(");
+      fx_str_t slit_32 = FX_MAKE_STR(", ");
+      fx_str_t slit_33 = FX_MAKE_STR(")");
       {
-         const fx_str_t strs_9[] = { slit_9, v_17, slit_10, v_18, slit_11 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_9, 5, &v_19), _fx_catch_8);
+         const fx_str_t strs_13[] = { slit_31, v_32, slit_32, v_33, slit_33 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_13, 5, &v_34), _fx_catch_8);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_19, &v_20, 0), _fx_catch_8);
-      FX_THROW(&v_20, false, _fx_catch_8);
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_34, &v_35, 0), _fx_catch_8);
+      FX_THROW(&v_35, false, _fx_catch_8);
 
    _fx_catch_8: ;
-      fx_free_exn(&v_20);
-      FX_FREE_STR(&v_19);
-      FX_FREE_STR(&v_18);
-      FX_FREE_STR(&v_17);
+      fx_free_exn(&v_35);
+      FX_FREE_STR(&v_34);
+      FX_FREE_STR(&v_33);
+      FX_FREE_STR(&v_32);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 5) {
@@ -17008,19 +17151,19 @@ FX_EXTERN_C int _fx_M6K_formFM8klit2strS3N14K_form__klit_tBR10Ast__loc_t(
    }
    if (tag_0 == 7) {
       if (lit_0->u.KLitBool == true) {
-         fx_str_t slit_12 = FX_MAKE_STR("true"); fx_copy_str(&slit_12, fx_result); goto _fx_endmatch_0;
+         fx_str_t slit_34 = FX_MAKE_STR("true"); fx_copy_str(&slit_34, fx_result); goto _fx_endmatch_0;
       }
    }
    if (tag_0 == 7) {
       if (lit_0->u.KLitBool == false) {
-         fx_str_t slit_13 = FX_MAKE_STR("false"); fx_copy_str(&slit_13, fx_result); goto _fx_endmatch_0;
+         fx_str_t slit_35 = FX_MAKE_STR("false"); fx_copy_str(&slit_35, fx_result); goto _fx_endmatch_0;
       }
    }
    if (tag_0 == 8) {
-      fx_str_t slit_14 = FX_MAKE_STR("null"); fx_copy_str(&slit_14, fx_result); goto _fx_endmatch_0;
+      fx_str_t slit_36 = FX_MAKE_STR("null"); fx_copy_str(&slit_36, fx_result); goto _fx_endmatch_0;
    }
    if (tag_0 == 8) {
-      fx_str_t slit_15 = FX_MAKE_STR("[]"); fx_copy_str(&slit_15, fx_result); goto _fx_endmatch_0;
+      fx_str_t slit_37 = FX_MAKE_STR("[]"); fx_copy_str(&slit_37, fx_result); goto _fx_endmatch_0;
    }
    FX_FAST_THROW(FX_EXN_NoMatchError, _fx_cleanup);
 

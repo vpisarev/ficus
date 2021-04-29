@@ -41,6 +41,16 @@ typedef struct _fx_R18Options__options_t {
    bool W_unused;
 } _fx_R18Options__options_t;
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R10Ast__loc_t {
    int_ m_idx;
    int_ line0;
@@ -54,16 +64,6 @@ typedef struct _fx_T2R10Ast__loc_tS {
    fx_str_t t1;
 } _fx_T2R10Ast__loc_tS;
 
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
-
 typedef struct {
    int_ rc;
    int_ data;
@@ -76,13 +76,13 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
-} _fx_E17Ast__CompileError_data_t;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
@@ -208,23 +208,6 @@ static void _fx_make_R18Options__options_t(
    fx_result->W_unused = r_W_unused;
 }
 
-static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
-}
-
 static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
 {
    fx_free_str(&dst->t1);
@@ -237,6 +220,23 @@ static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
 }
 
 static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
+}
+
+static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
 {
    fx_result->t0 = *t0;
    fx_copy_str(t1, &fx_result->t1);
@@ -304,6 +304,8 @@ FX_EXTERN_C int fx_init_Options();
 FX_EXTERN_C void fx_deinit_Options();
 FX_EXTERN_C int fx_init_Hashmap();
 FX_EXTERN_C void fx_deinit_Hashmap();
+FX_EXTERN_C int fx_init_LexerUtils();
+FX_EXTERN_C void fx_deinit_LexerUtils();
 FX_EXTERN_C int fx_init_Dynvec();
 FX_EXTERN_C void fx_deinit_Dynvec();
 FX_EXTERN_C int fx_init_Map();
@@ -391,6 +393,7 @@ int main(int argc, char** argv)
   if (fx_status >= 0) fx_status = fx_init_Sys();
   if (fx_status >= 0) fx_status = fx_init_Options();
   if (fx_status >= 0) fx_status = fx_init_Hashmap();
+  if (fx_status >= 0) fx_status = fx_init_LexerUtils();
   if (fx_status >= 0) fx_status = fx_init_Dynvec();
   if (fx_status >= 0) fx_status = fx_init_Map();
   if (fx_status >= 0) fx_status = fx_init_Set();
@@ -464,6 +467,7 @@ int main(int argc, char** argv)
   fx_deinit_Set();
   fx_deinit_Map();
   fx_deinit_Dynvec();
+  fx_deinit_LexerUtils();
   fx_deinit_Hashmap();
   fx_deinit_Options();
   fx_deinit_Sys();

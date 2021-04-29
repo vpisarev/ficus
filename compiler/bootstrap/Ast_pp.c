@@ -56,6 +56,16 @@ typedef struct _fx_R7File__t {
    fx_cptr_t handle;
 } _fx_R7File__t;
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -1050,6 +1060,11 @@ typedef struct {
 
 typedef struct {
    int_ rc;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
+
+typedef struct {
+   int_ rc;
    struct _fx_T2R10Ast__loc_tS data;
 } _fx_E17Ast__CompileError_data_t;
 
@@ -1084,6 +1099,23 @@ static void _fx_copy_R7File__t(struct _fx_R7File__t* src, struct _fx_R7File__t* 
 static void _fx_make_R7File__t(fx_cptr_t r_handle, struct _fx_R7File__t* fx_result)
 {
    fx_copy_cptr(r_handle, &fx_result->handle);
+}
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -3555,7 +3587,7 @@ FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(
 
 FX_EXTERN_C int _fx_M3AstFM7lit2strS1N10Ast__lit_t(struct _fx_N10Ast__lit_t* c_0, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM3strv2RM1tS(struct _fx_R5PP__t* pp_0, fx_str_t* s_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM3strv2RM1tS(struct _fx_R5PP__t* pp, fx_str_t* s, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
 FX_EXTERN_C_VAL(struct _fx_Nt9Dynvec__t1S_data_t* _fx_g14Ast__all_names)
@@ -3563,11 +3595,11 @@ FX_EXTERN_C int _fx_M3AstFM15get_module_nameRM4id_t1i(int_ m_0, struct _fx_R9Ast
 
 FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM5spacev1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5spacev1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6Ast_ppFM7make_fpFPv2N10Ast__typ_tN16Ast_pp__typ_pr_t3BR10Ast__loc_tR5PP__t(
    bool arg0,
@@ -3575,9 +3607,9 @@ FX_EXTERN_C int _fx_M6Ast_ppFM7make_fpFPv2N10Ast__typ_tN16Ast_pp__typ_pr_t3BR10A
    struct _fx_R5PP__t* arg2,
    struct _fx_FPv2N10Ast__typ_tN16Ast_pp__typ_pr_t* fx_result);
 
-FX_EXTERN_C int _fx_M2PPFM5beginv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5beginv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM3endv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM3endv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
 static int _fx_M6Ast_ppFM7pptype_v2N10Ast__typ_tN16Ast_pp__typ_pr_t(
    struct _fx_N10Ast__typ_t_data_t* t_0,
@@ -3606,11 +3638,11 @@ FX_EXTERN_C int _fx_F7__mul__S2Ci(char_ c, int_ n, fx_str_t* fx_result, void* fx
 
 FX_EXTERN_C int _fx_M3AstFM6stringS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM3cutv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM3cutv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM6breakiv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6breakiv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM6breakuv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6breakuv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
 static int _fx_M6Ast_ppFM8pptypsufv2N10Ast__typ_tS(struct _fx_N10Ast__typ_t_data_t* t1_0, fx_str_t* suf_0, void* fx_fv);
 
@@ -3639,7 +3671,7 @@ FX_EXTERN_C int _fx_M3AstFM11get_exp_typN10Ast__typ_t1N10Ast__exp_t(
    struct _fx_N10Ast__typ_t_data_t** fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM5beginv2RM1ti(struct _fx_R5PP__t* pp_0, int_ indent_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5beginv2RM1ti(struct _fx_R5PP__t* pp, int_ indent, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM8ctor2strS1N17Ast__fun_constr_t(
    struct _fx_N17Ast__fun_constr_t* f_0,
@@ -3651,13 +3683,13 @@ FX_EXTERN_C int _fx_M6Ast_ppFM19pprint_exp_as_blockv2R5PP__tN10Ast__exp_t(
    struct _fx_N10Ast__exp_t_data_t* e_0,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM7newlinev1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM7newlinev1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM6beginvv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6beginvv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM6beginvv2RM1ti(struct _fx_R5PP__t* pp_0, int_ indent_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6beginvv2RM1ti(struct _fx_R5PP__t* pp, int_ indent, void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM8opt_semiv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM8opt_semiv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM7id_infoN14Ast__id_info_t2RM4id_tRM5loc_t(
    struct _fx_R9Ast__id_t* i_0,
@@ -3735,12 +3767,12 @@ FX_EXTERN_C_VAL(struct _fx_R7File__t _fx_g12File__stdout)
 FX_EXTERN_C int _fx_M4FileFM5flushv1RM1t(struct _fx_R7File__t* f, void* fx_fv);
 
 FX_EXTERN_C int _fx_M2PPFM16pprint_to_stdoutRM1t2ii(
-   int_ margin_0,
-   int_ default_indent_0,
+   int_ margin,
+   int_ default_indent,
    struct _fx_R5PP__t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(struct _fx_R5PP__t* pp, void* fx_fv);
 
 typedef struct {
    int_ rc;

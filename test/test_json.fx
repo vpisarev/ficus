@@ -6,137 +6,80 @@
 // jsonpp.fx example converted into a test
 
 from UTest import *
+import Json
+
+TEST("json.parse", fun() {
+    val js_data = "
+    // sample json from https://ru.wikipedia.org/wiki/JSON
+    {
+        \"firstName\": \"Иван\",
+        \"lastName\": \"Иванов\",
+        \"address\": {
+            \"streetAddress\": \"Московское ш., 101, кв.101\",
+            \"city\": \"Ленинград\",
+            \"postalCode\": 101101
+        },
+        \"phoneNumbers\": [
+            \"812 123-1234\",
+            \"916 123-4567\",
+        ]
+    }"
+    val js = Json.parse_string("", js_data)
+    match js {
+    | Json.Map(m) =>
+        match m.assoc_opt("address") {
+        | Some(Json.Map(m)) =>
+            EXPECT_EQ(m.assoc("city"), Json.Str("Ленинград"))
+            EXPECT_EQ(m.assoc("postalCode"), Json.Int(101101L))
+        | _ => throw TestFailure("'address' is not found or is not a map")
+        }
+        match m.assoc_opt("phoneNumbers") {
+        | Some(Json.Seq(s)) => EXPECT_EQ(s.nth(1), Json.Str("916 123-4567"))
+        | _ => throw TestFailure("'phoneNumbers' is not found or is not a sequence")
+        }
+    | _ => throw TestFailure("top-level json value is not a map")
+    }
+    EXPECT_EQ(string(js),
+"{
+   \"firstName\": \"Иван\",
+   \"lastName\": \"Иванов\",
+   \"address\": {
+      \"streetAddress\": \"Московское ш., 101, кв.101\",
+      \"city\": \"Ленинград\",
+      \"postalCode\": 101101
+   },
+   \"phoneNumbers\": [ \"812 123-1234\", \"916 123-4567\" ]
+}")
+})
 
 TEST("json.pprint", fun() {
-
-type json_scalar_t =
-    | JsonScInt: int
-    | JsonScReal: double
-    | JsonScBool: bool
-    | JsonScString: string
-
-type json_t =
-    | JsonScalar: json_scalar_t
-    | JsonMap: (string, json_t) list
-    | JsonSeq: json_t list
-    | JsonCommented: (string, json_t)
-
-fun string(jsc: json_scalar_t)
-{
-    | JsonScInt i => string(i)
-    | JsonScReal f => string(f)
-    | JsonScBool b => string(b)
-    | JsonScString s => repr(s)
-}
-
-fun print_js(js: json_t, ofs: int, indent: string, buf: string list ref)
-{
-    fun myprint(s: string) { *buf = s :: *buf }
-    fun myprintln(s: string) { *buf = "\n" :: s :: *buf }
-    val W0 = 80, W1 = 100
-    fun all_scalars(l: json_t list) =
-        all(for x <- l {
-            | JsonScalar _ => true
-            | _ => false
-            })
-    fun process_comments(j: json_t, indent: string) =
-        match j {
-        | JsonCommented(comm, nested_j) =>
-            myprint(f"// {comm}\n{indent}")
-            process_comments(nested_j, indent)
-        | _ => j
-        }
-    val l_oldind = length(indent)
-    val newind = indent + (if l_oldind > 40 {" "} else if l_oldind > 20 {"  "} else {"   "})
-    val l_newind = length(newind)
-    val js = process_comments(js, indent)
-    match js {
-    | JsonScalar(sc) =>
-        val str = string(sc)
-        myprint(str)
-        ofs + length(str)
-    | JsonCommented(comm, nested_js) =>
-        throw Fail("comments are not expected here")
-    | JsonMap(m) =>
-        myprintln("{")
-        val n = length(m)
-        for (k, v)@i <- m {
-            myprint(newind)
-            val v = process_comments(v, newind)
-            val prefix = f"{repr(k)} : "
-            myprint(prefix)
-            ignore(print_js(v, l_newind + length(prefix), newind, buf))
-            if i < n-1 {myprint(",\n")}
-        }
-        myprint(f"\n{indent}}")
-        l_oldind+1
-    | JsonSeq(l) =>
-        if all_scalars(l) {
-            val n = length(l)
-            myprint("[ ")
-            val fold ofs = ofs + 2 for x@i <- l {
-                match x {
-                | JsonScalar(sc) =>
-                    val str = string(sc)
-                    val lstr = length(str)
-                    val ofs = if ofs > l_newind && ofs + lstr > W1 {
-                        myprint(f"\n{newind}"); l_newind
-                    } else { ofs }
-                    myprint(str)
-                    val ofs = ofs + lstr
-                    if i < n-1 {
-                        myprint(",")
-                        if ofs+1 > W0 {
-                            myprint(f"\n{newind}"); l_newind
-                        } else { myprint(" "); ofs + 2 }
-                    } else { myprint(" "); ofs }
-                | _ => throw Fail("scalar is expected here")
-                }
-            }
-            myprint("]"); ofs + 1
-        } else {
-            myprintln("[")
-            val n = length(l)
-            for v <- l, i <- 0: {
-                myprint(newind)
-                val v = process_comments(v, newind)
-                ignore(print_js(v, l_newind, newind, buf))
-                if i < n-1 {myprint(",\n")}
-            }
-            myprint(f"\n{indent}]")
-            l_oldind+1
-        }
-    }
-}
 
 val rng = new_uniform_rng(123u64)
 val s_list_list = [: for i <- 0:10 {
     val n = rng(0, 100)
-    JsonCommented(f"#{i}", JsonSeq([: for j <- 0:n {
-        JsonScalar(JsonScInt(rng(0, 100000)))} :]))
+    Json.Commented(f"#{i}", Json.Seq([: for j <- 0:n {
+        Json.Int(int64(rng(0, 100000)))} :]))
     } :]
 
-val sample_js = JsonCommented(
+val sample_js = Json.Commented(
     "small Json pretty-printing example",
-    JsonMap([:
-    ("ain't it cool?", JsonScalar(JsonScBool(true))),
-    ("pi", JsonCommented("the famous constant", JsonScalar(JsonScReal(3.1415926)))),
-    ("a little array of arrays", JsonCommented("demonstrates compact representation of scalar arrays",
-        JsonSeq(s_list_list))),
-    ("greeting", JsonCommented("'hello' in Chinese", JsonScalar(JsonScString("你好")))),
+    Json.Map([:
+    ("ain't it cool?", Json.Bool(true)),
+    ("pi", Json.Commented("the famous constant", Json.Real(3.1415926))),
+    ("a little array of arrays", Json.Commented("demonstrates compact representation of scalar arrays",
+        Json.Seq(s_list_list))),
+    ("greeting", Json.Commented("'hello' in Chinese", Json.Str("你好"))),
      :]))
 
-val buf = ref([]: string list)
-ignore(print_js(sample_js, 0, "", buf))
-val pprinted = "".join((*buf).rev())
+val pprinted = string(sample_js)
 EXPECT_EQ(pprinted,
 "// small Json pretty-printing example
 {
-   \"ain't it cool?\" : true,
+   \"ain't it cool?\": true,
    // the famous constant
-   \"pi\" : 3.1415926,
+   \"pi\": 3.1415926,
    // demonstrates compact representation of scalar arrays
-   \"a little array of arrays\" : [
+   \"a little array of arrays\": [
       // #0
       [ 71492, 69451 ],
       // #1
@@ -198,6 +141,6 @@ EXPECT_EQ(pprinted,
          17480, 57445, 55841, 72994, 49626, 57797, 71914 ]
    ],
    // 'hello' in Chinese
-   \"greeting\" : \"你好\"
+   \"greeting\": \"你好\"
 }")
 })

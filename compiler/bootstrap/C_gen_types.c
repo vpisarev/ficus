@@ -74,6 +74,16 @@ struct _fx_Nt11Map__tree_t2R9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t;
 static void _fx_free_Nt11Map__tree_t2R9Ast__id_tR29C_gen_types__ctyp_temp_info_t(
    struct _fx_Nt11Map__tree_t2R9Ast__id_tR29C_gen_types__ctyp_temp_info_t_data_t** dst);
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -645,16 +655,6 @@ typedef struct _fx_ri_data_t {
    int_ rc;
    int_ data;
 } _fx_ri_data_t, *_fx_ri;
-
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
 
 typedef struct _fx_rRt6Set__t1R9Ast__id_t_data_t {
    int_ rc;
@@ -1662,18 +1662,35 @@ typedef struct {
 
 typedef struct {
    int_ rc;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
+
+typedef struct {
+   int_ rc;
    struct _fx_T2R10Ast__loc_tS data;
 } _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
-
-typedef struct {
-   int_ rc;
    struct _fx_T2R10Ast__loc_tS data;
 } _fx_E18Parser__ParseError_data_t;
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
+}
 
 static int _fx_cons_LN12Ast__scope_t(
    struct _fx_N12Ast__scope_t* hd,
@@ -3081,23 +3098,6 @@ static int _fx_cons_Li(int_ hd, struct _fx_Li_data_t* tl, bool addref_tl, struct
 static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
 {
    FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
-}
-
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
 }
 
 static void _fx_free_rRt6Set__t1R9Ast__id_t(struct _fx_rRt6Set__t1R9Ast__id_t_data_t** dst)
@@ -5978,7 +5978,7 @@ FX_EXTERN_C int _fx_M6C_formFM13CTypFunRawPtrN14C_form__ctyp_t2LN14C_form__ctyp_
    struct _fx_N14C_form__ctyp_t_data_t* arg1,
    struct _fx_N14C_form__ctyp_t_data_t** fx_result);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
    struct _fx_R10Ast__loc_t* loc_0,
@@ -10593,8 +10593,8 @@ static int _fx_M11C_gen_typesFM9cvt2ctyp_v2R9Ast__id_tR10Ast__loc_t(
    struct _fx_R10Ast__loc_t* loc_0,
    void* fx_fv)
 {
-   _fx_FPR29C_gen_types__ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t create_ctyp_decl_0 = {0};
    _fx_FPv2R9Ast__id_tN15C_form__cstmt_t add_decl_0 = {0};
+   _fx_FPR29C_gen_types__ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t create_ctyp_decl_0 = {0};
    _fx_FPv3R9Ast__id_tBN15C_form__cstmt_t add_fwd_decl_0 = {0};
    _fx_Rt6Set__t1R9Ast__id_t deps_0 = {0};
    _fx_N15K_form__kinfo_t kt_info_0 = {0};
@@ -10633,10 +10633,10 @@ static int _fx_M11C_gen_typesFM9cvt2ctyp_v2R9Ast__id_tR10Ast__loc_t(
    _fx_rLN15C_form__cstmt_t top_typ_decl_ref_0 = cv_0->t6;
    _fx_LN15C_form__cstmt_t* top_typ_decl_0 = &top_typ_decl_ref_0->data;
    _fx_rLN15C_form__cstmt_t top_typfun_decl_ref_0 = cv_0->t7;
-   _fx_M11C_gen_typesFM7make_fpFPRM16ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t3rRt6Set__t1R9Ast__id_trirLN15C_form__cstmt_t(
-      all_fwd_decls_ref_0, curr_cm_idx_ref_0, top_fwd_decl_ref_0, &create_ctyp_decl_0);
    _fx_M11C_gen_typesFM7make_fpFPv2R9Ast__id_tN15C_form__cstmt_t3rRt6Set__t1R9Ast__id_trLN15C_form__cstmt_trLN15C_form__cstmt_t(
       all_decls_ref_0, top_typ_decl_ref_0, top_typfun_decl_ref_0, &add_decl_0);
+   _fx_M11C_gen_typesFM7make_fpFPRM16ctyp_temp_info_t3R9Ast__id_tBR10Ast__loc_t3rRt6Set__t1R9Ast__id_trirLN15C_form__cstmt_t(
+      all_fwd_decls_ref_0, curr_cm_idx_ref_0, top_fwd_decl_ref_0, &create_ctyp_decl_0);
    _fx_M11C_gen_typesFM7make_fpFPv3R9Ast__id_tBN15C_form__cstmt_t2rRt6Set__t1R9Ast__id_trLN15C_form__cstmt_t(
       all_fwd_decls_ref_0, top_fwd_decl_ref_0, &add_fwd_decl_0);
    bool visited_0;
@@ -13177,8 +13177,8 @@ _fx_endmatch_1: ;
    }
 
 _fx_cleanup: ;
-   FX_FREE_FP(&create_ctyp_decl_0);
    FX_FREE_FP(&add_decl_0);
+   FX_FREE_FP(&create_ctyp_decl_0);
    FX_FREE_FP(&add_fwd_decl_0);
    _fx_free_Rt6Set__t1R9Ast__id_t(&deps_0);
    _fx_free_N15K_form__kinfo_t(&kt_info_0);

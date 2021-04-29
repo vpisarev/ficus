@@ -107,6 +107,16 @@ typedef struct _fx_R18Options__options_t {
    bool W_unused;
 } _fx_R18Options__options_t;
 
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
 typedef struct _fx_R9Ast__id_t {
    int_ m;
    int_ i;
@@ -1093,16 +1103,6 @@ typedef struct _fx_rB_data_t {
    bool data;
 } _fx_rB_data_t, *_fx_rB;
 
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
-
 typedef struct _fx_Nt6option1T4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tNt6option1N18Ast__initializer_t {
    int tag;
    union {
@@ -1686,13 +1686,13 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
-} _fx_E17Ast__CompileError_data_t;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
    int_ rc;
@@ -1824,6 +1824,23 @@ static void _fx_make_R18Options__options_t(
    fx_result->run_app = r_run_app;
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
+}
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -4350,23 +4367,6 @@ static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
    FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
-}
-
 static void _fx_free_Nt6option1T4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tNt6option1N18Ast__initializer_t(
    struct _fx_Nt6option1T4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tNt6option1N18Ast__initializer_t* dst)
 {
@@ -6122,7 +6122,7 @@ FX_EXTERN_C int _fx_M3AstFM9get_scopeLN12Ast__scope_t1N14Ast__id_info_t(
 
 FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM14get_idinfo_locRM5loc_t1N14Ast__id_info_t(
    struct _fx_N14Ast__id_info_t* id_info_0,
@@ -6205,10 +6205,10 @@ FX_EXTERN_C int _fx_M3AstFM14get_idinfo_typN10Ast__typ_t2N14Ast__id_info_tRM5loc
    void* fx_fv);
 
 FX_EXTERN_C int _fx_F12join_embraceS4SSSLS(
-   fx_str_t* begin_0,
-   fx_str_t* end_0,
-   fx_str_t* sep_0,
-   struct _fx_LS_data_t* strs_0,
+   fx_str_t* begin,
+   fx_str_t* end,
+   fx_str_t* sep,
+   struct _fx_LS_data_t* strs,
    fx_str_t* fx_result,
    void* fx_fv);
 
@@ -6560,7 +6560,7 @@ FX_EXTERN_C int
    struct _fx_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM6ExpNopN10Ast__exp_t1RM5loc_t(
    struct _fx_R10Ast__loc_t* arg0,
@@ -6686,7 +6686,7 @@ FX_EXTERN_C int
    struct _fx_T2N10Ast__typ_tR10Ast__loc_t* arg3,
    struct _fx_N10Ast__exp_t_data_t** fx_result);
 
-FX_EXTERN_C int _fx_M6StringFM10num_suffixS1i(int_ n_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM10num_suffixS1i(int_ n, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM17default_val_flagsRM11val_flags_t0(struct _fx_R16Ast__val_flags_t* fx_result, void* fx_fv);
 

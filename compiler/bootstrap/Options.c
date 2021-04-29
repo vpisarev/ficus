@@ -178,7 +178,7 @@ _fx_R18Options__options_t _fx_g12Options__opt = {0};
 bool _fx_g18Options__is_arch64 = 
 (bool)(sizeof(void*) > 4)
 ;
-FX_EXTERN_C int _fx_F4reprS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4reprS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F12join_embraceS4SSSA1S(
    fx_str_t* begin,
@@ -196,10 +196,10 @@ FX_EXTERN_C_VAL(struct _fx_LS_data_t* _fx_g9Sys__argv)
 FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(fx_str_t _fx_g21__ficus_version_str__)
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(fx_str_t _fx_g20__ficus_git_commit__)
-FX_EXTERN_C int _fx_M3SysFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM9to_int_ori2Si(fx_str_t* a, int_ defval, void* fx_fv);
 
@@ -569,7 +569,7 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
    _fx_free_R18Options__options_t(&_fx_g12Options__opt);
    _fx_copy_R18Options__options_t(&v_0, &_fx_g12Options__opt);
    _fx_g12Options__opt.arch64 = _fx_g18Options__is_arch64;
-   FX_CALL(_fx_M3SysFM6getcwdS0(&curr_dir_0, 0), _fx_cleanup);
+   FX_CALL(_fx_M8FilenameFM6getcwdS0(&curr_dir_0, 0), _fx_cleanup);
    FX_CALL(_fx_M7OptionsFM2tlLS1LS(_fx_g9Sys__argv, &args_0, 0), _fx_cleanup);
    fx_str_t slit_0 = FX_MAKE_STR("");
    fx_copy_str(&slit_0, &inputfile_0);

@@ -6,6 +6,10 @@ struct _fx_Nt6option1N10Ast__typ_t_data_t;
 
 static void _fx_free_Nt6option1N10Ast__typ_t(struct _fx_Nt6option1N10Ast__typ_t_data_t** dst);
 
+struct _fx_N20LexerUtils__stream_t_data_t;
+
+static void _fx_free_N20LexerUtils__stream_t(struct _fx_N20LexerUtils__stream_t_data_t** dst);
+
 struct _fx_Nt6option1N10Ast__exp_t_data_t;
 
 static void _fx_free_Nt6option1N10Ast__exp_t(struct _fx_Nt6option1N10Ast__exp_t_data_t** dst);
@@ -79,6 +83,30 @@ typedef struct _fx_R18Options__options_t {
    bool verbose;
    bool W_unused;
 } _fx_R18Options__options_t;
+
+typedef struct _fx_Ta2i {
+   int_ t0;
+   int_ t1;
+} _fx_Ta2i;
+
+typedef struct _fx_T2Ta2iS {
+   struct _fx_Ta2i t0;
+   fx_str_t t1;
+} _fx_T2Ta2iS;
+
+typedef struct _fx_T4SiiS {
+   fx_str_t t0;
+   int_ t1;
+   int_ t2;
+   fx_str_t t3;
+} _fx_T4SiiS;
+
+typedef struct _fx_N20LexerUtils__stream_t_data_t {
+   int_ rc;
+   union {
+      struct _fx_T4SiiS stream_t;
+   } u;
+} _fx_N20LexerUtils__stream_t_data_t, *_fx_N20LexerUtils__stream_t;
 
 typedef struct _fx_R9Ast__id_t {
    int_ m;
@@ -949,11 +977,6 @@ typedef struct _fx_LR10Ast__loc_t_data_t {
    struct _fx_R10Ast__loc_t hd;
 } _fx_LR10Ast__loc_t_data_t, *_fx_LR10Ast__loc_t;
 
-typedef struct _fx_ri_data_t {
-   int_ rc;
-   int_ data;
-} _fx_ri_data_t, *_fx_ri;
-
 typedef struct _fx_T2BS {
    bool t0;
    fx_str_t t1;
@@ -985,11 +1008,6 @@ typedef struct _fx_N14Lexer__token_t {
    } u;
 } _fx_N14Lexer__token_t;
 
-typedef struct _fx_Ta2i {
-   int_ t0;
-   int_ t1;
-} _fx_Ta2i;
-
 typedef struct _fx_T2N14Lexer__token_tTa2i {
    struct _fx_N14Lexer__token_t t0;
    struct _fx_Ta2i t1;
@@ -1006,18 +1024,6 @@ typedef struct _fx_LN14Lexer__token_t_data_t {
    struct _fx_LN14Lexer__token_t_data_t* tl;
    struct _fx_N14Lexer__token_t hd;
 } _fx_LN14Lexer__token_t_data_t, *_fx_LN14Lexer__token_t;
-
-typedef struct _fx_T2Ta2iS {
-   struct _fx_Ta2i t0;
-   fx_str_t t1;
-} _fx_T2Ta2iS;
-
-typedef struct _fx_R15Lexer__stream_t {
-   fx_str_t fname;
-   struct _fx_ri_data_t* lineno;
-   struct _fx_ri_data_t* bol;
-   fx_str_t buf;
-} _fx_R15Lexer__stream_t;
 
 typedef struct _fx_Ta2S {
    fx_str_t t0;
@@ -1438,13 +1444,13 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
-} _fx_E17Ast__CompileError_data_t;
+   struct _fx_T2Ta2iS data;
+} _fx_E22LexerUtils__LexerError_data_t;
 
 typedef struct {
    int_ rc;
-   struct _fx_T2Ta2iS data;
-} _fx_E17Lexer__LexerError_data_t;
+   struct _fx_T2R10Ast__loc_tS data;
+} _fx_E17Ast__CompileError_data_t;
 
 static void _fx_free_Nt6option1N10Ast__typ_t(struct _fx_Nt6option1N10Ast__typ_t_data_t** dst)
 {
@@ -1571,6 +1577,53 @@ static void _fx_make_R18Options__options_t(
    fx_result->run_app = r_run_app;
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
+}
+
+static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
+}
+
+static void _fx_free_T4SiiS(struct _fx_T4SiiS* dst)
+{
+   fx_free_str(&dst->t0);
+   fx_free_str(&dst->t3);
+}
+
+static void _fx_copy_T4SiiS(struct _fx_T4SiiS* src, struct _fx_T4SiiS* dst)
+{
+   fx_copy_str(&src->t0, &dst->t0);
+   dst->t1 = src->t1;
+   dst->t2 = src->t2;
+   fx_copy_str(&src->t3, &dst->t3);
+}
+
+static void _fx_make_T4SiiS(fx_str_t* t0, int_ t1, int_ t2, fx_str_t* t3, struct _fx_T4SiiS* fx_result)
+{
+   fx_copy_str(t0, &fx_result->t0);
+   fx_result->t1 = t1;
+   fx_result->t2 = t2;
+   fx_copy_str(t3, &fx_result->t3);
+}
+
+static void _fx_free_N20LexerUtils__stream_t(struct _fx_N20LexerUtils__stream_t_data_t** dst)
+{
+   if (*dst && FX_DECREF((*dst)->rc) == 1) {
+      _fx_free_T4SiiS(&(*dst)->u.stream_t); fx_free(*dst);
+   }
+   *dst = 0;
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -3861,11 +3914,6 @@ static int _fx_cons_LR10Ast__loc_t(
    FX_MAKE_LIST_IMPL(_fx_LR10Ast__loc_t, FX_COPY_SIMPLE_BY_PTR);
 }
 
-static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
-}
-
 static void _fx_free_T2BS(struct _fx_T2BS* dst)
 {
    fx_free_str(&dst->t1);
@@ -3967,52 +4015,6 @@ static int _fx_cons_LN14Lexer__token_t(
    struct _fx_LN14Lexer__token_t_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_LN14Lexer__token_t, _fx_copy_N14Lexer__token_t);
-}
-
-static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2Ta2iS(struct _fx_T2Ta2iS* src, struct _fx_T2Ta2iS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2iS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
-}
-
-static void _fx_free_R15Lexer__stream_t(struct _fx_R15Lexer__stream_t* dst)
-{
-   fx_free_str(&dst->fname);
-   fx_free_ref_simple(&dst->lineno);
-   fx_free_ref_simple(&dst->bol);
-   fx_free_str(&dst->buf);
-}
-
-static void _fx_copy_R15Lexer__stream_t(struct _fx_R15Lexer__stream_t* src, struct _fx_R15Lexer__stream_t* dst)
-{
-   fx_copy_str(&src->fname, &dst->fname);
-   FX_COPY_PTR(src->lineno, &dst->lineno);
-   FX_COPY_PTR(src->bol, &dst->bol);
-   fx_copy_str(&src->buf, &dst->buf);
-}
-
-static void _fx_make_R15Lexer__stream_t(
-   fx_str_t* r_fname,
-   struct _fx_ri_data_t* r_lineno,
-   struct _fx_ri_data_t* r_bol,
-   fx_str_t* r_buf,
-   struct _fx_R15Lexer__stream_t* fx_result)
-{
-   fx_copy_str(r_fname, &fx_result->fname);
-   FX_COPY_PTR(r_lineno, &fx_result->lineno);
-   FX_COPY_PTR(r_bol, &fx_result->bol);
-   fx_copy_str(r_buf, &fx_result->buf);
 }
 
 static void _fx_free_Ta2S(struct _fx_Ta2S* dst)
@@ -5467,7 +5469,7 @@ FX_EXTERN_C int _fx_M6StringFM7replaceS3SSS(
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M3SysFM11locate_fileS2SLS(fx_str_t* name_0, struct _fx_LS_data_t* dirs_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM6locateS2SLS(fx_str_t* name_0, struct _fx_LS_data_t* dirs_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(int FX_EXN_NotFoundError)
 FX_EXTERN_C int _fx_M3AstFM6stringS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
@@ -5621,7 +5623,7 @@ FX_EXTERN_C int _fx_M3AstFM11ExpContinueN10Ast__exp_t1RM5loc_t(
    struct _fx_R10Ast__loc_t* arg0,
    struct _fx_N10Ast__exp_t_data_t** fx_result);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM6ExpForN10Ast__exp_t5LT2N10Ast__pat_tN10Ast__exp_tN10Ast__pat_tN10Ast__exp_tRM11for_flags_tRM5loc_t(
    struct _fx_LT2N10Ast__pat_tN10Ast__exp_t_data_t* arg0,
@@ -6257,15 +6259,15 @@ FX_EXTERN_C int _fx_M3AstFM12DefInterfaceN10Ast__exp_t1rRM14definterface_t(
    struct _fx_N10Ast__exp_t_data_t** fx_result);
 
 FX_EXTERN_C_VAL(fx_arr_t _fx_g16Ast__all_modules)
-FX_EXTERN_C int _fx_M5LexerFM11make_streamRM8stream_t1S(
+FX_EXTERN_C int _fx_M10LexerUtilsFM11make_streamN20LexerUtils__stream_t1S(
    fx_str_t* fname_0,
-   struct _fx_R15Lexer__stream_t* fx_result,
+   struct _fx_N20LexerUtils__stream_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C_VAL(int FX_EXN_FileOpenError)
 FX_EXTERN_C_VAL(int FX_EXN_IOError)
-FX_EXTERN_C int _fx_M5LexerFM10make_lexerFPLT2N14Lexer__token_tTa2i01RM8stream_t(
-   struct _fx_R15Lexer__stream_t* strm_0,
+FX_EXTERN_C int _fx_M5LexerFM10make_lexerFPLT2N14Lexer__token_tTa2i01N20LexerUtils__stream_t(
+   struct _fx_N20LexerUtils__stream_t_data_t* strm_0,
    struct _fx_FPLT2N14Lexer__token_tTa2i0* fx_result,
    void* fx_fv);
 
@@ -6823,7 +6825,7 @@ FX_EXTERN_C int _fx_M6ParserFM23add_to_imported_modulesi2R9Ast__id_tR10Ast__loc_
    }
    _fx_LS v_5 = 0;
    FX_COPY_PTR(_fx_g18Parser__parser_ctx.inc_dirs, &v_5);
-   FX_CALL(_fx_M3SysFM11locate_fileS2SLS(&mfname_0, v_5, &mfname_1, 0), _fx_catch_0);
+   FX_CALL(_fx_M8FilenameFM6locateS2SLS(&mfname_0, v_5, &mfname_1, 0), _fx_catch_0);
 
 _fx_catch_0: ;
    if (v_5) {
@@ -15441,7 +15443,7 @@ static int
                                  fx_str_t* fname_1 = &v_14->u.LitString;
                                  _fx_LS v_20 = 0;
                                  FX_COPY_PTR(_fx_g18Parser__parser_ctx.inc_dirs, &v_20);
-                                 FX_CALL(_fx_M3SysFM11locate_fileS2SLS(fname_1, v_20, &fname_0, 0), _fx_catch_2);
+                                 FX_CALL(_fx_M8FilenameFM6locateS2SLS(fname_1, v_20, &fname_0, 0), _fx_catch_2);
 
                               _fx_catch_2: ;
                                  if (v_20) {
@@ -23202,7 +23204,7 @@ FX_EXTERN_C int _fx_M6ParserFM5parseB3iLN14Lexer__token_tLS(
    fx_str_t v_0 = {0};
    fx_str_t v_1 = {0};
    _fx_R20Parser__parser_ctx_t v_2 = {0};
-   _fx_R15Lexer__stream_t strm_0 = {0};
+   _fx_N20LexerUtils__stream_t strm_0 = 0;
    fx_exn_t exn_0 = {0};
    _fx_FPLT2N14Lexer__token_tTa2i0 lexer_0 = {0};
    _fx_LT2N14Lexer__token_tR10Ast__loc_t all_tokens_0 = 0;
@@ -23231,13 +23233,15 @@ FX_EXTERN_C int _fx_M6ParserFM5parseB3iLN14Lexer__token_tLS(
    (*FX_PTR_1D(_fx_N16Ast__defmodule_t, _fx_g16Ast__all_modules, m_idx_0))->u.defmodule_t.t7 = true;
    fx_str_t v_10 = {0};
    fx_copy_str(&dm_0->u.defmodule_t.t1, &v_10);
-   FX_CALL(_fx_M5LexerFM11make_streamRM8stream_t1S(&v_10, &strm_0, 0), _fx_catch_0);
+   FX_CALL(_fx_M10LexerUtilsFM11make_streamN20LexerUtils__stream_t1S(&v_10, &strm_0, 0), _fx_catch_0);
 
 _fx_catch_0: ;
    FX_FREE_STR(&v_10);
    if (fx_status < 0) {
       fx_status = 0;
-      _fx_free_R15Lexer__stream_t(&strm_0);
+      if (strm_0) {
+         _fx_free_N20LexerUtils__stream_t(&strm_0);
+      }
       fx_exn_get_and_reset(&exn_0);
       int tag_0 = exn_0.tag;
       if (tag_0 == FX_EXN_FileOpenError) {
@@ -23265,7 +23269,7 @@ _fx_catch_0: ;
       }
       FX_CHECK_EXN(_fx_cleanup);
    }
-   FX_CALL(_fx_M5LexerFM10make_lexerFPLT2N14Lexer__token_tTa2i01RM8stream_t(&strm_0, &lexer_0, 0), _fx_cleanup);
+   FX_CALL(_fx_M5LexerFM10make_lexerFPLT2N14Lexer__token_tTa2i01N20LexerUtils__stream_t(strm_0, &lexer_0, 0), _fx_cleanup);
    int_ prev_lineno_0 = -1;
    for (;;) {
       _fx_LT2N14Lexer__token_tTa2i more_tokens_0 = 0;
@@ -23446,7 +23450,9 @@ _fx_cleanup: ;
    FX_FREE_STR(&v_0);
    FX_FREE_STR(&v_1);
    _fx_free_R20Parser__parser_ctx_t(&v_2);
-   _fx_free_R15Lexer__stream_t(&strm_0);
+   if (strm_0) {
+      _fx_free_N20LexerUtils__stream_t(&strm_0);
+   }
    fx_free_exn(&exn_0);
    FX_FREE_FP(&lexer_0);
    if (all_tokens_0) {
