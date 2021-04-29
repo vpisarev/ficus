@@ -13,18 +13,20 @@ FICUS = $(FICUS_BIN)\ficus.exe
 CL = cl /nologo /MT /Ob2 /D WIN32 /D _WIN32 /I$(EXTRA_INCLUDE)
 LDLIBS = kernel32.lib advapi32.lib
 
-OBJS = $(O)/Ast.obj $(O)/Ast_pp.obj $(O)/Ast_typecheck.obj $(O)/Builtins.obj \
-	$(O)/Char.obj $(O)/Compiler.obj $(O)/C_form.obj $(O)/C_gen_code.obj \
-	$(O)/C_gen_fdecls.obj $(O)/C_gen_std.obj $(O)/C_gen_types.obj \
-	$(O)/C_post_adjust_decls.obj $(O)/C_post_rename_locals.obj \
-	$(O)/C_pp.obj $(O)/Dynvec.obj $(O)/File.obj $(O)/Filename.obj \
-	$(O)/fx.obj $(O)/Hashmap.obj $(O)/Hashset.obj $(O)/K_annotate.obj \
-	$(O)/K_cfold_dealias.obj $(O)/K_copy_n_skip.obj $(O)/K_fast_idx.obj \
-	$(O)/K_flatten.obj $(O)/K_form.obj $(O)/K_fuse_loops.obj $(O)/K_inline.obj \
+OBJS = $(O)/Array.obj $(O)/Ast.obj $(O)/Ast_pp.obj $(O)/Ast_typecheck.obj \
+	$(O)/Builtins.obj $(O)/Char.obj $(O)/Compiler.obj $(O)/C_form.obj \
+	$(O)/C_gen_code.obj $(O)/C_gen_fdecls.obj $(O)/C_gen_std.obj \
+	$(O)/C_gen_types.obj $(O)/C_post_adjust_decls.obj \
+	$(O)/C_post_rename_locals.obj $(O)/C_pp.obj $(O)/Dynvec.obj \
+	$(O)/File.obj $(O)/Filename.obj $(O)/fx.obj $(O)/Hashmap.obj \
+	$(O)/Hashset.obj $(O)/K_annotate.obj $(O)/K_cfold_dealias.obj \
+	$(O)/K_copy_n_skip.obj $(O)/K_fast_idx.obj $(O)/K_flatten.obj \
+	$(O)/K_form.obj $(O)/K_fuse_loops.obj $(O)/K_inline.obj \
 	$(O)/K_lift.obj $(O)/K_lift_simple.obj $(O)/K_loop_inv.obj $(O)/K_mangle.obj \
 	$(O)/K_normalize.obj $(O)/K_pp.obj $(O)/K_remove_unused.obj $(O)/K_tailrec.obj \
-	$(O)/Lexer.obj $(O)/List.obj $(O)/Map.obj $(O)/Math.obj $(O)/Options.obj \
-	$(O)/Parser.obj $(O)/PP.obj $(O)/Set.obj $(O)/String.obj $(O)/Sys.obj
+	$(O)/Lexer.obj $(O)/LexerUtils.obj $(O)/List.obj $(O)/Map.obj $(O)/Math.obj \
+	$(O)/Options.obj $(O)/Parser.obj $(O)/PP.obj $(O)/Set.obj $(O)/String.obj \
+	$(O)/Sys.obj $(O)/Vector.obj
 
 RUNTIME_API = $(R)/ficus.h $(R)/version.h
 RUNTIME_IMPL = $(R)/impl/ficus.impl.h $(R)/impl/array.impl.h \
@@ -32,31 +34,20 @@ RUNTIME_IMPL = $(R)/impl/ficus.impl.h $(R)/impl/array.impl.h \
 		$(R)/impl/rpmalloc.c $(R)/impl/rpmalloc.h $(R)/impl/rrbvec.impl.h \
 		$(R)/impl/string.impl.h $(R)/impl/system.impl.h $(R)/impl/_fx_unicode_data.gen.h
 
-SRC0 = $(BS)/Ast.c $(BS)/Ast_pp.c $(BS)/Ast_typecheck.c $(BS)/Builtins.c \
-	$(BS)/Char.c $(BS)/Compiler.c $(BS)/C_form.c $(BS)/C_gen_code.c \
-	$(BS)/C_gen_fdecls.c $(BS)/C_gen_std.c $(BS)/C_gen_types.c \
-	$(BS)/C_post_adjust_decls.c $(BS)/C_post_rename_locals.c \
-	$(BS)/C_pp.c $(BS)/Dynvec.c $(BS)/File.c $(BS)/Filename.c \
-	$(BS)/fx.c $(BS)/Hashmap.c $(BS)/Hashset.c $(BS)/K_annotate.c \
-	$(BS)/K_cfold_dealias.c $(BS)/K_copy_n_skip.c $(BS)/K_fast_idx.c \
-	$(BS)/K_flatten.c $(BS)/K_form.c $(BS)/K_fuse_loops.c $(BS)/K_inline.c \
-	$(BS)/K_lift.c $(BS)/K_lift_simple.c $(BS)/K_loop_inv.c $(BS)/K_mangle.c \
-	$(BS)/K_normalize.c $(BS)/K_pp.c $(BS)/K_remove_unused.c $(BS)/K_tailrec.c \
-	$(BS)/Lexer.c $(BS)/List.c $(BS)/Map.c $(BS)/Math.c $(BS)/Options.c \
-	$(BS)/Parser.c $(BS)/PP.c $(BS)/Set.c $(BS)/String.c $(BS)/Sys.c
-
-SRC1 = $(S)/Ast.c $(S)/Ast_pp.c $(S)/Ast_typecheck.c $(L)/Builtins.c \
-	$(L)/Char.c $(S)/Compiler.c $(S)/C_form.c $(S)/C_gen_code.c \
-	$(S)/C_gen_fdecls.c $(S)/C_gen_std.c $(S)/C_gen_types.c \
-	$(S)/C_post_adjust_decls.c $(S)/C_post_rename_locals.c \
-	$(S)/C_pp.c $(L)/Dynvec.c $(L)/File.c $(L)/Filename.c \
-	$(S)/fx.c $(L)/Hashmap.c $(L)/Hashset.c $(S)/K_annotate.c \
-	$(S)/K_cfold_dealias.c $(S)/K_copy_n_skip.c $(S)/K_fast_idx.c \
-	$(S)/K_flatten.c $(S)/K_form.c $(S)/K_fuse_loops.c $(S)/K_inline.c \
-	$(S)/K_lift.c $(S)/K_lift_simple.c $(S)/K_loop_inv.c $(S)/K_mangle.c \
-	$(S)/K_normalize.c $(S)/K_pp.c $(S)/K_remove_unused.c $(S)/K_tailrec.c \
-	$(S)/Lexer.c $(L)/List.c $(L)/Map.c $(L)/Math.c $(S)/Options.c \
-	$(S)/Parser.c $(L)/PP.c $(L)/Set.c $(L)/String.c $(L)/Sys.c
+SRC1 = $(L)/Array.fx $(S)/Ast.fx $(S)/Ast_pp.fx $(S)/Ast_typecheck.fx \
+    $(L)/Builtins.fx $(L)/Char.fx $(S)/Compiler.fx $(S)/C_form.fx \
+	$(S)/C_gen_code.fx $(S)/C_gen_fdecls.fx $(S)/C_gen_std.fx \
+	$(S)/C_gen_types.fx $(S)/C_post_adjust_decls.fx \
+	$(S)/C_post_rename_locals.fx $(S)/C_pp.fx $(L)/Dynvec.fx \
+	$(L)/File.fx $(L)/Filename.fx $(S)/fx.fx $(L)/Hashmap.fx \
+	$(L)/Hashset.fx $(S)/K_annotate.fx $(S)/K_cfold_dealias.fx \
+	$(S)/K_copy_n_skip.fx $(S)/K_fast_idx.fx $(S)/K_flatten.fx \
+	$(S)/K_form.fx $(S)/K_fuse_loops.fx $(S)/K_inline.fx $(S)/K_lift.fx \
+	$(S)/K_lift_simple.fx $(S)/K_loop_inv.fx $(S)/K_mangle.fx \
+	$(S)/K_normalize.fx $(S)/K_pp.fx $(S)/K_remove_unused.fx $(S)/K_tailrec.fx \
+	$(L)/LexerUtils.fx $(S)/Lexer.fx $(L)/List.fx $(L)/Map.fx $(L)/Math.fx \
+	$(S)/Options.fx $(S)/Parser.fx $(L)/PP.fx $(L)/Set.fx $(L)/String.fx \
+	$(L)/Sys.fx $(L)/Vector.fx
 
 FICUS_FLAGS = -verbose -O3
 
@@ -78,7 +69,7 @@ $(FICUS0): $(OBJS)
 {$(BS)}.c{$(O)}.obj:
 	@$(CL) $(CFLAGS) /c /Fo$@ $<
 
-$(FICUS): $(FICUS0) $(SRCS1)
+$(FICUS): $(FICUS0) $(SRC1)
 	@$(FICUS0) $(FICUS_FLAGS) -o $(FICUS_BIN)/ficus $(S)/fx.fx
 
 final_note:

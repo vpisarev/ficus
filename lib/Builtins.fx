@@ -161,13 +161,23 @@ fun string(a: bool) = if a {"true"} else {"false"}
 @pure fun string(a: float): string = @ccode
 {
     char buf[32];
-    sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
+    fx_bits32_t u;
+    u.f = a;
+    if ((u.i & 0x7f800000) == 0x7f800000)
+        strcpy(buf, (u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+    else
+        sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
     return fx_ascii2str(buf, -1, fx_result);
 }
 @pure fun string(a: double): string = @ccode
 {
     char buf[32];
-    sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
+    fx_bits64_t u;
+    u.f = a;
+    if ((u.i & 0x7FF0000000000000LL) == 0x7FF0000000000000LL)
+        strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+    else
+        sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
     return fx_ascii2str(buf, -1, fx_result);
 }
 fun string(a: string) = a
@@ -585,8 +595,24 @@ fun print(a: 't) = print_string(string(a))
 @nothrow fun print(a: int32): void = @ccode { printf("%d", a) }
 @nothrow fun print(a: uint64): void = @ccode { printf("%llu", a) }
 @nothrow fun print(a: int64): void = @ccode { printf("%lld", a) }
-@nothrow fun print(a: float): void = @ccode { printf((a == (int)a ? "%.1f" : "%.8g"), a) }
-@nothrow fun print(a: double): void = @ccode { printf((a == (int)a ? "%.1f" : "%.16g"), a) }
+@nothrow fun print(a: float): void = @ccode
+{
+    fx_bits32_t u;
+    u.f = a;
+    if ((u.i & 0x7f800000) == 0x7f800000)
+        printf((u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+    else
+        printf((a == (int)a ? "%.1f" : "%.8g"), a);
+}
+@nothrow fun print(a: double): void = @ccode
+{
+    fx_bits64_t u;
+    u.f = a;
+    if ((u.i & 0x7ff0000000000000LL) == 0x7ff0000000000000LL)
+        printf((u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+    else
+        printf((a == (int)a ? "%.1f" : "%.16g"), a);
+}
 @nothrow fun print(a: cptr): void = @ccode
 {
     if (a && a->ptr)

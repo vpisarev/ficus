@@ -216,7 +216,11 @@ fun read_utf8(fname: string): string = @ccode
             if (fx_status >= 0) {
                 int_ count = (int_)fread(buf.data, 1, (size_t)size, f);
                 if (count == size) {
-                    fx_status = fx_cstr2str(buf.data, size, fx_result);
+                    char* ptr = buf.data;
+                    if (count >= 3 && ptr[0] == (char)0xEF && ptr[1] == (char)0xBB && ptr[2] == (char)0xBF) {
+                        ptr += 3; count -= 3;
+                    }
+                    fx_status = fx_cstr2str(ptr, count, fx_result);
                 } else {
                     fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
                 }

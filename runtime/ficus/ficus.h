@@ -356,26 +356,29 @@ int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str);
 #define FX_STR_CHKIDX(str, idx, catch_label) \
     if((size_t)(idx) < (size_t)(str).length) ; else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
 #define FX_STR_ELEM(str, idx) (str).data[idx]
+FX_INLINE char_ fx_str_elem_clip(const fx_str_t* str, int_ idx)
+{
+    int_ len = str->length;
+    return (size_t)idx < (size_t)len ? str->data[idx] :
+           len == 0 ? (char_)0 : str->data[idx < 0 ? 0 : len-1];
+}
+FX_INLINE char_ fx_str_elem_zero(const fx_str_t* str, int_ idx)
+{
+    int_ len = str->length;
+    return (size_t)idx < (size_t)len ? str->data[idx] : (char_)0;
+}
+FX_INLINE char_ fx_str_elem_wrap(const fx_str_t* str, int_ idx)
+{
+    int_ len = str->length;
+    return (size_t)idx < (size_t)len ? str->data[idx] :
+           len == 0 ? (char_)0 : str->data[(idx % len) + (idx < 0 ? len : 0)];
+}
 #define FX_STR_ELEM_CLIP(str, idx) \
-    ({ \
-        fx_str_t* __str__ = &(str); \
-        int_ __idx__ = (idx), __len__ = __str__->length; \
-        (size_t)__idx__ < (size_t)__len__ ? __str__->data[__idx__] : \
-        __len__ == 0 ? (char_)'\0' : __str__->data[__idx__ < 0 ? 0 : __len__-1]; \
-    })
+    fx_str_elem_clip(&(str), (idx))
 #define FX_STR_ELEM_ZERO(str, idx) \
-    ({ \
-        fx_str_t* __str__ = &(str); \
-        int_ __idx__ = (idx); \
-        ((size_t)__idx__ < (size_t)(__str__)->length) ? __str__->data[__idx__] : (char_)'\0'; \
-    })
+    fx_str_elem_zero(&(str), (idx))
 #define FX_STR_ELEM_WRAP(str, idx) \
-    ({ \
-        fx_str_t* __str__ = &(str); \
-        int_ __idx__ = (idx), __len__ = __str__->length; \
-        (size_t)__idx__ < (size_t)__len__ ? __str__->data[__idx__] : \
-        __len__ == 0 ? (char_)'\0' : __str__->data[(__idx__ % __len__) + (__idx__ < 0 ? __len__ : 0)]; \
-    })
+    fx_str_elem_wrap(&(str), (idx))
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
 size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
 
