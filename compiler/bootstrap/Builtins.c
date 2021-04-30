@@ -25,16 +25,16 @@ static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, s
 
 int _FX_EXN_E4Exit = 0;
 int _FX_EXN_E4Fail = 0;
-int_ _fx_g15__ficus_major__ = 
+int_ _fx_g15__ficus_major__ =
 FX_VERSION_MAJOR
 ;
-int_ _fx_g15__ficus_minor__ = 
+int_ _fx_g15__ficus_minor__ =
 FX_VERSION_MINOR
 ;
-int_ _fx_g20__ficus_patchlevel__ = 
+int_ _fx_g20__ficus_patchlevel__ =
 FX_VERSION_PATCH
 ;
-fx_str_t _fx_g20__ficus_git_commit__ = 
+fx_str_t _fx_g20__ficus_git_commit__ =
 FX_MAKE_STR(FX_GIT_COMMIT)
 ;
 fx_str_t _fx_g21__ficus_version_str__ = {0};
@@ -110,7 +110,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_F4joinS2SA1S(fx_str_t* sep, fx_arr_t* strs, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_strjoin(0, 0, sep, (fx_str_t*)strs->data,
                     strs->dim[0].size, fx_result);
 
@@ -124,7 +124,7 @@ FX_EXTERN_C int _fx_F12join_embraceS4SSSA1S(
    fx_str_t* fx_result,
    void* fx_fv)
 {
-   
+
 return fx_strjoin(begin, end, sep,
         (fx_str_t*)strs->data,
         strs->dim[0].size, fx_result);
@@ -183,7 +183,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t* a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_exn_to_string(a, fx_result);
 
 }
@@ -202,36 +202,42 @@ FX_EXTERN_C int _fx_F6stringS1B(bool a_0, fx_str_t* fx_result, void* fx_fv)
 
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_itoa(a, false, fx_result);
 
 }
 
 FX_EXTERN_C int _fx_F6stringS1q(uint64_t a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_itoa((int64_t)a, true, fx_result);
 
 }
 
 FX_EXTERN_C int _fx_F6stringS1l(int64_t a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_itoa(a, false, fx_result);
 
 }
 
 FX_EXTERN_C int _fx_F6stringS1C(char_ c, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_make_str(&c, 1, fx_result);
 
 }
 
 FX_EXTERN_C int _fx_F6stringS1f(float a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 char buf[32];
+    fx_bits32_t u;
+    u.f = a;
+    if ((u.i & 0x7f800000) == 0x7f800000)
+        strcpy(buf, (u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+    else
+        sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
     sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
     return fx_ascii2str(buf, -1, fx_result);
 
@@ -239,9 +245,14 @@ char buf[32];
 
 FX_EXTERN_C int _fx_F6stringS1d(double a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 char buf[32];
-    sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
+    fx_bits64_t u;
+    u.f = a;
+    if ((u.i & 0x7FF0000000000000LL) == 0x7FF0000000000000LL)
+        strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+    else
+        sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
     return fx_ascii2str(buf, -1, fx_result);
 
 }
@@ -283,7 +294,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_F4reprS1C(char_ a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 char_ buf[16] = {39, 92, 39};
     if (32 <= a && a != 39 && a != 34 && a != 92) {
         buf[1] = a;
@@ -330,14 +341,14 @@ char_ buf[16] = {39, 92, 39};
 
 FX_EXTERN_C int _fx_F6stringS1A1C(fx_arr_t* a, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 
 }
 
 FX_EXTERN_C int _fx_F7__mul__S2Ci(char_ c, int_ n, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 int fx_status = fx_make_str(0, n, fx_result);
     if (fx_status >= 0) {
         for( int_ i = 0; i < n; i++ )
@@ -356,14 +367,14 @@ FX_EXTERN_C int _fx_F7__cmp__i2ii(int_ a_0, int_ b_0, int_* fx_result, void* fx_
 
 FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv)
 {
-   
+
 return fx_streq(a, b);
 
 }
 
 FX_EXTERN_C int_ _fx_F7__cmp__i2SS(fx_str_t* a, fx_str_t* b, void* fx_fv)
 {
-   
+
 int_ alen = a->length, blen = b->length;
     int_ minlen = alen < blen ? alen : blen;
     const char_ *adata = a->data, *bdata = b->data;
@@ -378,21 +389,21 @@ int_ alen = a->length, blen = b->length;
 
 FX_EXTERN_C int_ _fx_F5roundi1d(double x, void* fx_fv)
 {
-   
+
 return fx_round2I(x);
 
 }
 
 FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv)
 {
-   
+
 fx_fputs(stdout, a);
 
 }
 
 FX_EXTERN_C uint64_t _fx_F4hashq1S(fx_str_t* x, void* fx_fv)
 {
-   
+
 uint64_t hash = FNV_1A_OFFSET;
     int_ i, len = x->length;
     char_* data = x->data;
@@ -465,4 +476,3 @@ FX_EXTERN_C void fx_deinit_Builtins(void)
 {
    FX_FREE_STR(&_fx_g21__ficus_version_str__);
 }
-
