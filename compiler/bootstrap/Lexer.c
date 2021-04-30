@@ -971,7 +971,7 @@ FX_EXTERN_C void _fx_M5LexerFM4SomeNt6option1T2N14Lexer__token_ti1T2N14Lexer__to
 
 FX_EXTERN_C int_ _fx_M5LexerFM6lengthi1LT2ST2N14Lexer__token_ti(struct _fx_LT2ST2N14Lexer__token_ti_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -982,7 +982,7 @@ FX_EXTERN_C void _fx_M5LexerFM5link2LT2N14Lexer__token_tTa2i2LT2N14Lexer__token_
    struct _fx_LT2N14Lexer__token_tTa2i_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -1029,7 +1029,7 @@ FX_EXTERN_C void _fx_M5LexerFM5link2LN14Lexer__token_t2LN14Lexer__token_tLN14Lex
    struct _fx_LN14Lexer__token_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -5036,12 +5036,12 @@ FX_EXTERN_C int fx_init_Lexer(void)
    _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__FUN, 2, &v_30);
    fx_str_t slit_13 = FX_MAKE_STR("fun");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_13, &v_30, &v_31);
-   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(64, 1.0 / 0.0, &v_32);
+   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(64, INFINITY, &v_32);
    _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_32, &v_33);
    _fx_make_T2N14Lexer__token_ti(&v_33, 0, &v_34);
    fx_str_t slit_14 = FX_MAKE_STR("inf");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_14, &v_34, &v_35);
-   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(32, 1.0 / 0.0, &v_36);
+   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(32, INFINITY, &v_36);
    _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_36, &v_37);
    _fx_make_T2N14Lexer__token_ti(&v_37, 0, &v_38);
    fx_str_t slit_15 = FX_MAKE_STR("inff");
@@ -5059,12 +5059,12 @@ FX_EXTERN_C int fx_init_Lexer(void)
    _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__MATCH, 2, &v_47);
    fx_str_t slit_19 = FX_MAKE_STR("match");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_19, &v_47, &v_48);
-   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(64, 0.0 / 0.0, &v_49);
+   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(64, NAN, &v_49);
    _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_49, &v_50);
    _fx_make_T2N14Lexer__token_ti(&v_50, 0, &v_51);
    fx_str_t slit_20 = FX_MAKE_STR("nan");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_20, &v_51, &v_52);
-   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(32, 0.0 / 0.0, &v_53);
+   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(32, NAN, &v_53);
    _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_53, &v_54);
    _fx_make_T2N14Lexer__token_ti(&v_54, 0, &v_55);
    fx_str_t slit_21 = FX_MAKE_STR("nanf");
@@ -5377,4 +5377,3 @@ FX_EXTERN_C void fx_deinit_Lexer(void)
       _fx_free_Nt10Hashmap__t2ST2N14Lexer__token_ti(&_fx_g21Lexer__ficus_keywords);
    }
 }
-

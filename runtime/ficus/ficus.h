@@ -984,7 +984,7 @@ void fx_copy_fp(const void* src, void* pdst);
 typedef struct fx_iface_entry_t
 {
     int iface_id;
-    void* vtbl;
+    const void* vtbl;
 } fx_iface_entry_t;
 
 typedef struct fx_ifaces_t
