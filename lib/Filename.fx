@@ -8,7 +8,9 @@
     #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
-#if !defined WIN32 && !defined _WIN32
+#if defined WIN32 || defined _WIN32
+    #include <direct.h>
+#else
     #include <unistd.h>
 #endif
     #ifndef PATH_MAX
@@ -101,8 +103,12 @@ fun remove_extension(path: string) {
 
 fun getcwd(): string = @ccode {
     char buf[PATH_MAX+16];
+#if defined WIN32 || defined _WIN32
+    char* p = _getcwd(buf, PATH_MAX);
+#else
     char* p = getcwd(buf, PATH_MAX);
-    return fx_cstr2str(p, p ? -1 : 0, fx_result);
+#endif
+    return fx_cstr2str(p, (p ? -1 : 0), fx_result);
 }
 
 fun exists(name: string): bool = @ccode

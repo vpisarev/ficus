@@ -332,7 +332,7 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
                 else if(c == 'r')
                     c = '\r';
                 else if(c == 'e')
-                    c = '\e';
+                    c = 27;
                 else if(c == 't')
                     c = '\t';
                 else if(c == 'b') // backspace
