@@ -1058,10 +1058,11 @@ double fx_tick_frequency(void);
 
 ////////////////////////// Regular expressions /////////////////////
 
-typedef fx_cptr_t fx_regex_t;
-int fx_re_compile(const fx_str_t* str, fx_regex_t* fx_result);
-int fx_re_match(const fx_regex_t fx_regexp, const fx_str_t* str, bool* fx_result/*, fx_arr_t* fx_result_subs*/);
-//int fx_re_find(const fx_regex_t fx_regexp, const fx_str_t* str, fx_arr_t* fx_result_subs);
+int fx_re_compile(const fx_str_t* str, fx_cptr_t* fx_result);
+int fx_re_match(const fx_cptr_t regex, const fx_str_t* str, bool* fx_result, fx_arr_t* fx_result_subs);
+int fx_re_findfirst(const fx_cptr_t regex, const fx_str_t* str, int_ from, fx_arr_t* fx_result_subs);
+int fx_re_findall(const fx_cptr_t regex, const fx_str_t* str, fx_arr_t* fx_result_subs);
+int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str, const fx_str_t* newsubstr);
 
 #ifdef __cplusplus
 }

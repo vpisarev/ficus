@@ -6,7 +6,7 @@
 // This regexp engine is the modified version of re1 by Russ Cox:
 // https://code.google.com/archive/p/re1/
 //
-// Copyright 2007-2009 Russ Cox.  All Rights Reserved.
+// Copyright 2007-2009 Russ Cox. All Rights Reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the regex_LICENSE.txt file.
 
@@ -22,22 +22,24 @@ extern "C" {
 #include <stdarg.h>
 #include <assert.h>
 
-#define fx_re_nelem_(x) (sizeof(x)/sizeof((x)[0]))
-
-typedef struct fx_Regexp fx_Regexp;
-typedef struct fx_Prog fx_Prog;
-typedef struct fx_Inst fx_Inst;
-
-struct fx_Regexp
+typedef struct fx_re_astnode_t
 {
 	int type;
 	int n;
-	int ch;
-	fx_Regexp *left;
-	fx_Regexp *right;
-};
+	int c;
+	int left;
+	int right;
+} fx_re_astnode_t;
 
-enum	/* fx_Regexp.type */
+typedef struct fx_re_ast_t
+{
+    fx_re_astnode_t* buf;
+    int root;
+    int size, capacity;
+    bool allocated;
+} fx_re_ast_t;
+
+enum	/* fx_re_ast_t.type */
 {
 	FX_RE_ALT = 1,
 	FX_RE_CAT,
@@ -46,42 +48,67 @@ enum	/* fx_Regexp.type */
 	FX_RE_PAREN,
 	FX_RE_QUEST,
 	FX_RE_STAR,
-	FX_RE_PLUS
+	FX_RE_PLUS,
+    FX_RE_RANGE,
+    FX_RE_SUBRANGE,
+    FX_RE_CLASS,
+    FX_RE_ANCHOR_START,
+    FX_RE_ANCHOR_END,
+    FX_RE_ANCHOR_WBOUND,
 };
 
-static fx_Regexp *fx_re_parse(char*);
-static fx_Regexp *reg(int type, fx_Regexp *left, fx_Regexp *right);
-static void fx_re_printre_(fx_Regexp*);
-static void fx_re_fatal_(const char*, ...);
+enum
+{
+    FX_RE_CLASS_LIT = 0,
+    FX_RE_CLASS_SPACE = 1,
+    FX_RE_CLASS_NON_SPACE,
+    FX_RE_CLASS_ALPHA,
+    FX_RE_CLASS_IDENT,
+    FX_RE_CLASS_DIGIT,
+    FX_RE_ERROR = -100
+};
 
-static void fx_re_free_regexp_(fx_Regexp* regexp)
+static fx_re_ast_t *fx_re_parse(fx_str_t*);
+static void fx_re_printre_(fx_re_ast_t*);
+static void fx_re_fatal_(const char* msg)
+{
+    printf("error: [regexp] %s\n", msg);
+    exit(1);
+}
+
+static void fx_re_free_regexp_(fx_re_ast_t* regexp)
 {
     if(regexp == 0)
         return;
-    fx_re_free_regexp_(regexp->left);
-    fx_re_free_regexp_(regexp->right);
     fx_free(regexp);
 }
 
-struct fx_Prog
-{
-	fx_Inst *start;
-	int len;
-};
-
-struct fx_Inst
+typedef struct fx_re_inst_t
 {
 	int opcode;
 	int c;
 	int n;
-	fx_Inst *x;
-	fx_Inst *y;
+    int x;
+    int y;
 	int gen;	// global state, oooh!
-};
+} fx_re_inst_t;
 
-enum	/* fx_Inst.opcode */
+typedef struct fx_regex_t
+{
+    fx_re_inst_t* prog;
+    int len, nsub;
+} fx_regex_t;
+
+enum	/* fx_re_inst_t.opcode */
 {
 	FX_RE_OP_CHAR = 1,
+    FX_RE_OP_RANGE,
+    FX_RE_OP_CLASS_SPACE,
+    FX_RE_OP_CLASS_NON_SPACE,
+    FX_RE_OP_CLASS_ALPHA,
+    FX_RE_OP_CLASS_IDENT,
+    FX_RE_OP_CLASS_DIGIT,
+    FX_RE_OP_WBOUND,
 	FX_RE_OP_MATCH,
 	FX_RE_OP_JMP,
 	FX_RE_OP_SPLIT,
@@ -90,429 +117,860 @@ enum	/* fx_Inst.opcode */
 };
 
 enum {
-	MAXSUB = 20
+	FX_RE_MAXSUB = 30
 };
 
-typedef struct fx_re_Sub fx_re_Sub;
-
-struct fx_re_Sub
+typedef struct fx_re_sub_t
 {
-	int ref;
-	int nsub;
-	char *sub[MAXSUB];
-};
+    union {
+        struct fx_re_sub_t* next;
+        int_ ref;
+    } u;
+	int_ sub[FX_RE_MAXSUB];
+} fx_re_sub_t;
 
-static fx_re_Sub *fx_re_newsub_(int n);
-static fx_re_Sub *fx_re_incref_(fx_re_Sub*);
-static fx_re_Sub *copy(fx_re_Sub*);
-static fx_re_Sub *fx_re_update_(fx_re_Sub*, int, char*);
-static void fx_re_decref_(fx_re_Sub*);
-
-static fx_re_Sub *freesub = 0;
-
-static fx_re_Sub*
-fx_re_newsub_(int n)
+typedef struct fx_re_matcher_t
 {
-	fx_re_Sub *s;
+    fx_re_inst_t* prog;
+    int* pcgen;
+    fx_re_sub_t* freesub;
+    int len, nsub;
+    int gen;
+} fx_re_matcher_t;
 
-	s = freesub;
+static fx_re_sub_t *fx_re_newsub_(fx_re_matcher_t* matcher);
+static fx_re_sub_t *fx_re_incref_(fx_re_sub_t*);
+static fx_re_sub_t *fx_re_copysub_(fx_re_sub_t*);
+static fx_re_sub_t *fx_re_update_(fx_re_matcher_t* matcher, fx_re_sub_t*, int, int_);
+static void fx_re_decref_(fx_re_matcher_t* matcher, fx_re_sub_t*);
+
+static fx_re_sub_t*
+fx_re_newsub_(fx_re_matcher_t* matcher)
+{
+	fx_re_sub_t *s = matcher->freesub;
 	if(s != 0)
-		freesub = (fx_re_Sub*)s->sub[0];
+        matcher->freesub = s->u.next;
 	else
     {
-		s = (fx_re_Sub*)fx_malloc(sizeof *s);
-        memset(s, 0, sizeof *s);
+        int nsub = matcher->nsub;
+        size_t subsize = sizeof(void*) + nsub*sizeof(int_);
+		s = (fx_re_sub_t*)fx_malloc(subsize);
+        memset(s, 0, subsize);
     }
-	s->nsub = n;
-	s->ref = 1;
+    s->u.ref = 1;
 	return s;
 }
 
-static fx_re_Sub*
-fx_re_incref_(fx_re_Sub *s)
+static fx_re_sub_t*
+fx_re_incref_(fx_re_sub_t *s)
 {
-	s->ref++;
+	s->u.ref++;
 	return s;
 }
 
-static fx_re_Sub*
-fx_re_update_(fx_re_Sub *s, int i, char *p)
+static fx_re_sub_t*
+fx_re_update_(fx_re_matcher_t* matcher, fx_re_sub_t *s, int i, int_ p)
 {
-	fx_re_Sub *s1;
-	int j;
+	fx_re_sub_t *s1 = s;
 
-	if(s->ref > 1) {
-		s1 = fx_re_newsub_(s->nsub);
-		for(j=0; j<s->nsub; j++)
+	if(s->u.ref > 1) {
+        int nsub = matcher->nsub;
+		s1 = fx_re_newsub_(matcher);
+		for(int j = 0; j < nsub; j++)
 			s1->sub[j] = s->sub[j];
-		s->ref--;
-		s = s1;
-	}
-	s->sub[i] = p;
-	return s;
+		s->u.ref--;
+	};
+	s1->sub[i] = p;
+	return s1;
 }
 
 static void
-fx_re_decref_(fx_re_Sub *s)
+fx_re_decref_(fx_re_matcher_t* matcher, fx_re_sub_t *s)
 {
-	if(--s->ref == 0) {
-		s->sub[0] = (char*)freesub;
-		freesub = s;
+	if(--s->u.ref == 0) {
+		s->u.next = matcher->freesub;
+        matcher->freesub = s;
 	}
 }
 
-static fx_Inst *pc = 0;
-static int fx_re_count_(fx_Regexp*);
-static void fx_re_emit_(fx_Regexp*);
-
-////////////////////////////// autogenerate files //////////////////////////////
-
-#include "regex_parse.c"
+static int fx_re_count_(fx_re_ast_t*, int, int*);
+static int fx_re_emit_(fx_re_inst_t* re, int, int*, fx_re_ast_t*, int);
 
 ////////////////////// compile & interpret regexps /////////////////////////////
 
-static fx_Prog*
-fx_re_compile_(fx_Regexp *r)
+static fx_regex_t* fx_re_compile_(fx_re_ast_t *ast)
 {
-	int n;
-	fx_Prog *p;
+    int nsub = 0;
+	int len = fx_re_count_(ast, ast->root, &nsub) + 1, pc = 0;
+    size_t progsize = len*sizeof(fx_re_inst_t);
+    fx_regex_t *re = (fx_regex_t*)fx_malloc(sizeof(*re) + progsize);
+    if(!re) return 0;
+    re->prog = (fx_re_inst_t*)(re + 1);
+    re->len = len;
+    re->nsub = nsub;
+    memset(re->prog, 0, progsize);
+	int status = fx_re_emit_(re->prog, len, &pc, ast, ast->root);
+    if (status >= 0) {
+        if (++pc != len) {
+            fx_free(re);
+            return 0;
+        }
+        re->prog[pc-1].opcode = FX_RE_OP_MATCH;
+    }
+    if (status < 0 && re) {
+        fx_free(re);
+        re = 0;
+    }
+	return re;
+}
 
-	n = fx_re_count_(r) + 1;
-	p = (fx_Prog*)fx_malloc(sizeof *p + n*sizeof p->start[0]);
-	p->start = (fx_Inst*)(p+1);
-	pc = p->start;
-	fx_re_emit_(r);
-	pc->opcode = FX_RE_OP_MATCH;
-	pc++;
-	p->len = pc - p->start;
-	return p;
+static int fx_re_init_matcher(fx_re_matcher_t* matcher, const fx_cptr_t regex_)
+{
+    memset(matcher, 0, sizeof(*matcher));
+    
+    fx_regex_t* regex;
+    size_t pcgen_size;
+    if (!regex_ || !regex_->ptr)
+        return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
+    regex = (fx_regex_t*)(regex_->ptr);
+    matcher->prog = regex->prog;
+    matcher->len = regex->len;
+    matcher->nsub = regex->nsub;
+    pcgen_size = regex->len*sizeof(matcher->pcgen[0]);
+    matcher->pcgen = (int*)fx_malloc(pcgen_size);
+    if(!matcher->pcgen)
+        return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
+    memset(matcher->pcgen, 0, pcgen_size);
+    matcher->freesub = 0;
+    return FX_OK;
+}
+
+static void fx_re_free_matcher(fx_re_matcher_t* matcher)
+{
+    fx_free(matcher->pcgen);
+    fx_re_sub_t* freesub = matcher->freesub;
+    while(freesub != 0) {
+        fx_re_sub_t* next = freesub->u.next;
+        fx_free(freesub);
+        freesub = next;
+    }
+    matcher->pcgen = 0;
+    matcher->freesub = 0;
 }
 
 // how many instructions does r need?
-static int
-fx_re_count_(fx_Regexp *r)
+static int fx_re_count_(fx_re_ast_t *ast, int ofs, int* nsub)
 {
+    fx_re_astnode_t* r = ast->buf + ofs;
 	switch(r->type) {
-	default:
-		fx_re_fatal_("bad fx_re_count_");
 	case FX_RE_ALT:
-		return 2 + fx_re_count_(r->left) + fx_re_count_(r->right);
+		return 2 + fx_re_count_(ast, r->left, nsub) + fx_re_count_(ast, r->right, nsub);
 	case FX_RE_CAT:
-		return fx_re_count_(r->left) + fx_re_count_(r->right);
+		return fx_re_count_(ast, r->left, nsub) + fx_re_count_(ast, r->right, nsub);
 	case FX_RE_LIT:
 	case FX_RE_DOT:
+    case FX_RE_CLASS:
 		return 1;
+    case FX_RE_RANGE:
+        return r->n + 1;
+    case FX_RE_SUBRANGE:
+        return 1;
 	case FX_RE_PAREN:
-		return 2 + fx_re_count_(r->left);
+        *nsub += 2;
+		return 2 + fx_re_count_(ast, r->left, nsub);
 	case FX_RE_QUEST:
-		return 1 + fx_re_count_(r->left);
+		return 1 + fx_re_count_(ast, r->left, nsub);
 	case FX_RE_STAR:
-		return 2 + fx_re_count_(r->left);
+		return 2 + fx_re_count_(ast, r->left, nsub);
 	case FX_RE_PLUS:
-		return 1 +  fx_re_count_(r->left);
+		return 1 + fx_re_count_(ast, r->left, nsub);
+    default:
+        fx_re_fatal_("invalid opcode");
+        return 0;
 	}
 }
 
-static void
-fx_re_emit_(fx_Regexp *r)
+static int fx_re_emit_(fx_re_inst_t* prog, int len, int* pc, fx_re_ast_t *ast, int ofs)
 {
-	fx_Inst *p1, *p2, *t;
+	fx_re_inst_t *p1, *p2;
+    fx_re_astnode_t* r = ast->buf + ofs;
+    int status = 0;
+    if (*pc >= len)
+        return FX_SET_EXN_FAST(FX_EXN_OutOfRangeError);
 
 	switch(r->type) {
-	default:
-		fx_re_fatal_("bad fx_re_emit_");
-
 	case FX_RE_ALT:
-		pc->opcode = FX_RE_OP_SPLIT;
-		p1 = pc++;
-		p1->x = pc;
-		fx_re_emit_(r->left);
-		pc->opcode = FX_RE_OP_JMP;
-		p2 = pc++;
-		p1->y = pc;
-		fx_re_emit_(r->right);
-		p2->x = pc;
+		p1 = prog + (*pc)++;
+        p1->opcode = FX_RE_OP_SPLIT;
+		p1->x = *pc;
+		status = fx_re_emit_(prog, len, pc, ast, r->left);
+        if(status < 0) return status;
+        p2 = prog + (*pc)++;
+        p2->opcode = FX_RE_OP_JMP;
+		p1->y = *pc;
+		status = fx_re_emit_(prog, len, pc, ast, r->right);
+        if(status < 0) return status;
+		p2->x = *pc;
 		break;
 
 	case FX_RE_CAT:
-		fx_re_emit_(r->left);
-		fx_re_emit_(r->right);
-		break;
+		status = fx_re_emit_(prog, len, pc, ast, r->left);
+        return status < 0 ? status :
+            fx_re_emit_(prog, len, pc, ast, r->right);
 
 	case FX_RE_LIT:
-		pc->opcode = FX_RE_OP_CHAR;
-		pc->c = r->ch;
-		pc++;
+        p1 = prog + (*pc)++;
+		p1->opcode = FX_RE_OP_CHAR;
+		p1->c = r->c;
 		break;
 
 	case FX_RE_DOT:
-		pc++->opcode = FX_RE_OP_ANY;
+        p1 = prog + (*pc)++;
+        p1->opcode = FX_RE_OP_ANY;
 		break;
+        
+    case FX_RE_CLASS:
+        {
+        p1 = prog + (*pc)++;
+        int c = r->c;
+        p1->opcode =
+            c == FX_RE_CLASS_ALPHA ? FX_RE_OP_CLASS_ALPHA :
+            c == FX_RE_CLASS_IDENT ? FX_RE_OP_CLASS_IDENT :
+            c == FX_RE_CLASS_DIGIT ? FX_RE_OP_CLASS_DIGIT :
+            c == FX_RE_CLASS_SPACE ? FX_RE_OP_CLASS_SPACE :
+            c == FX_RE_CLASS_NON_SPACE ? FX_RE_OP_CLASS_NON_SPACE : -1;
+        if (p1->opcode < 0)
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        }
+        break;
+        
+    case FX_RE_RANGE:
+        {
+        int i, nranges = r->n;
+        for(i = 0; i <= nranges; i++) {
+            fx_re_inst_t* prog_i = prog + (*pc + i);
+            int type = r[i].type;
+            int c = r[i].c;
+            prog_i->opcode = type == FX_RE_RANGE || FX_RE_SUBRANGE ? FX_RE_OP_RANGE :
+                             type == FX_RE_LIT ? FX_RE_OP_CHAR :
+                             type == FX_RE_CLASS ?
+                                (c == FX_RE_CLASS_ALPHA ? FX_RE_OP_CLASS_ALPHA :
+                                 c == FX_RE_CLASS_IDENT ? FX_RE_OP_CLASS_IDENT :
+                                 c == FX_RE_CLASS_DIGIT ? FX_RE_OP_CLASS_DIGIT :
+                                 c == FX_RE_CLASS_SPACE ? FX_RE_OP_CLASS_SPACE :
+                                 c == FX_RE_CLASS_NON_SPACE ? FX_RE_OP_CLASS_NON_SPACE : -1) :
+                             -1;
+            if (prog_i->opcode < 0)
+                return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+            prog_i->n = r[i].n;
+            prog_i->c = r[i].c;
+            prog_i->x = r[i].left;
+            prog_i->y = r[i].right;
+        }
+        *pc += nranges;
+        }
+        break;
 
 	case FX_RE_PAREN:
-		pc->opcode = FX_RE_OP_SAVE;
-		pc->n = 2*r->n;
-		pc++;
-		fx_re_emit_(r->left);
-		pc->opcode = FX_RE_OP_SAVE;
-		pc->n = 2*r->n + 1;
-		pc++;
+        p1 = prog + (*pc)++;
+		p1->opcode = FX_RE_OP_SAVE;
+		p1->n = 2*r->n;
+		status = fx_re_emit_(prog, len, pc, ast, r->left);
+        if(status < 0) return status;
+        p2 = prog + (*pc)++;
+        p2->opcode = FX_RE_OP_SAVE;
+		p2->n = 2*r->n + 1;
 		break;
 
 	case FX_RE_QUEST:
-		pc->opcode = FX_RE_OP_SPLIT;
-		p1 = pc++;
-		p1->x = pc;
-		fx_re_emit_(r->left);
-		p1->y = pc;
+        p1 = prog + (*pc)++;
+		p1->opcode = FX_RE_OP_SPLIT;
+		p1->x = *pc;
+		status = fx_re_emit_(prog, len, pc, ast, r->left);
+        if(status < 0) return status;
+		p1->y = *pc;
 		if(r->n) {	// non-greedy
-			t = p1->x;
+			int t = p1->x;
 			p1->x = p1->y;
 			p1->y = t;
 		}
 		break;
 
 	case FX_RE_STAR:
-		pc->opcode = FX_RE_OP_SPLIT;
-		p1 = pc++;
-		p1->x = pc;
-		fx_re_emit_(r->left);
-		pc->opcode = FX_RE_OP_JMP;
-		pc->x = p1;
-		pc++;
-		p1->y = pc;
+        p1 = prog + (*pc)++;
+		p1->opcode = FX_RE_OP_SPLIT;
+		p1->x = *pc;
+		status = fx_re_emit_(prog, len, pc, ast, r->left);
+        if(status < 0) return status;
+        p2 = prog + (*pc)++;
+		p2->opcode = FX_RE_OP_JMP;
+		p2->x = (int)(p1 - prog);
+		p1->y = *pc;
 		if(r->n) {	// non-greedy
-			t = p1->x;
+			int t = p1->x;
 			p1->x = p1->y;
 			p1->y = t;
 		}
 		break;
 
 	case FX_RE_PLUS:
-		p1 = pc;
-		fx_re_emit_(r->left);
-		pc->opcode = FX_RE_OP_SPLIT;
-		pc->x = p1;
-		p2 = pc;
-		pc++;
-		p2->y = pc;
+        p1 = prog + (*pc);
+		status = fx_re_emit_(prog, len, pc, ast, r->left);
+        if(status < 0) return status;
+        p2 = prog + (*pc)++;
+		p2->opcode = FX_RE_OP_SPLIT;
+		p2->x = (int)(p1 - prog);
+		p2->y = *pc;
 		if(r->n) {	// non-greedy
-			t = p2->x;
+			int t = p2->x;
 			p2->x = p2->y;
 			p2->y = t;
 		}
 		break;
+    
+    default:
+        fx_re_fatal_("bad fx_re_emit_");
 	}
+    return status;
 }
 
-static void
-fx_re_printprog_(fx_Prog *p)
+typedef struct fx_re_thread_t
 {
-	fx_Inst *pc, *e;
+	int pc;
+	fx_re_sub_t *sub;
+} fx_re_thread_t;
 
-	pc = p->start;
-	e = p->start + p->len;
-
-	for(; pc < e; pc++) {
-		switch(pc->opcode) {
-		default:
-			fx_re_fatal_("printprog");
-		case FX_RE_OP_SPLIT:
-			printf("%2d. split %d, %d\n", (int)(pc-p->start), (int)(pc->x-p->start), (int)(pc->y-p->start));
-			break;
-		case FX_RE_OP_JMP:
-			printf("%2d. jmp %d\n", (int)(pc-p->start), (int)(pc->x-p->start));
-			break;
-		case FX_RE_OP_CHAR:
-			printf("%2d. char %c\n", (int)(pc-p->start), pc->c);
-			break;
-		case FX_RE_OP_ANY:
-			printf("%2d. any\n", (int)(pc-p->start));
-			break;
-		case FX_RE_OP_MATCH:
-			printf("%2d. match\n", (int)(pc-p->start));
-			break;
-		case FX_RE_OP_SAVE:
-			printf("%2d. save %d\n", (int)(pc-p->start), pc->n);
-		}
-	}
-}
-
-typedef struct fx_re_Thread fx_re_Thread;
-struct fx_re_Thread
-{
-	fx_Inst *pc;
-	fx_re_Sub *sub;
-};
-
-typedef struct fx_re_ThreadList fx_re_ThreadList;
-struct fx_re_ThreadList
+typedef struct fx_re_threads_t
 {
 	int n;
-	fx_re_Thread t[1];
-};
+	fx_re_thread_t* t;
+} fx_re_threads_t;
 
-static fx_re_Thread
-fx_re_thread_(fx_Inst *pc, fx_re_Sub *sub)
+static fx_re_thread_t fx_re_thread_(int pc, fx_re_sub_t *sub)
 {
-	fx_re_Thread t = {pc, sub};
+	fx_re_thread_t t = {pc, sub};
 	return t;
 }
 
-static fx_re_ThreadList*
-threadlist(int n)
+static fx_re_threads_t fx_re_threadlist(int n)
 {
-    size_t size = sizeof(fx_re_ThreadList)+n*sizeof(fx_re_Thread);
-	fx_re_ThreadList* tl = (fx_re_ThreadList*)fx_malloc(size);
-    if(tl)
-        memset(tl, 0, size);
+    fx_re_threads_t tl;
+    size_t size = n*sizeof(tl.t[0]);
+    tl.t = (fx_re_thread_t*)fx_malloc(size);
+    tl.n = 0;
+    if(tl.t)
+        memset(tl.t, 0, size);
     return tl;
 }
 
 static void
-fx_re_addthread_(fx_re_ThreadList *l, fx_re_Thread t, char *sp)
+fx_re_addthread_(fx_re_matcher_t* matcher, fx_re_threads_t *tl, fx_re_thread_t t, int_ charpos)
 {
-	if(t.pc->gen == gen) {
-		fx_re_decref_(t.sub);
-		return;	// already on list
-	}
-	t.pc->gen = gen;
+    int gen = matcher->gen;
+	if(matcher->pcgen[t.pc] == gen) {
+		fx_re_decref_(matcher, t.sub);
+    } else {
+        fx_re_inst_t* r = matcher->prog + t.pc;
+        matcher->pcgen[t.pc] = gen;
+        switch(r->opcode) {
+        case FX_RE_OP_JMP:
+            fx_re_addthread_(matcher, tl, fx_re_thread_(r->x, t.sub), charpos);
+            break;
+        case FX_RE_OP_SPLIT:
+            fx_re_addthread_(matcher, tl, fx_re_thread_(r->x, fx_re_incref_(t.sub)), charpos);
+            fx_re_addthread_(matcher, tl, fx_re_thread_(r->y, t.sub), charpos);
+            break;
+        case FX_RE_OP_SAVE:
+            //printf("save at charpos=%d, r->n=%d\n", (int)charpos, r->n);
+            fx_re_addthread_(matcher, tl, fx_re_thread_(t.pc+1, fx_re_update_(matcher, t.sub, r->n, charpos)), charpos);
+            break;
+        default:
+            assert(tl->n < matcher->len);
+            tl->t[tl->n] = t;
+            tl->n++;
+            
+            break;
+        }
+    }
+}
 
-	switch(t.pc->opcode) {
-	default:
-		l->t[l->n] = t;
-		l->n++;
-		break;
-	case FX_RE_OP_JMP:
-		fx_re_addthread_(l, fx_re_thread_(t.pc->x, t.sub), sp);
-		break;
-	case FX_RE_OP_SPLIT:
-		fx_re_addthread_(l, fx_re_thread_(t.pc->x, fx_re_incref_(t.sub)), sp);
-		fx_re_addthread_(l, fx_re_thread_(t.pc->y, t.sub), sp);
-		break;
-	case FX_RE_OP_SAVE:
-		fx_re_addthread_(l, fx_re_thread_(t.pc+1, fx_re_update_(t.sub, t.pc->n, sp)), sp);
-		break;
-	}
+static const char* fx_re_op2str(int opcode)
+{
+    return
+    opcode == FX_RE_OP_ANY ? "any" :
+    opcode == FX_RE_OP_CHAR ? "char" :
+    opcode == FX_RE_OP_RANGE ? "range" :
+    opcode == FX_RE_OP_CLASS_SPACE ? "isspace" :
+    opcode == FX_RE_OP_CLASS_NON_SPACE ? "isnonspace" :
+    opcode == FX_RE_OP_CLASS_ALPHA ? "isalpha" :
+    opcode == FX_RE_OP_CLASS_IDENT ? "isident" :
+    opcode == FX_RE_OP_CLASS_DIGIT ? "isdigit" :
+    opcode == FX_RE_OP_WBOUND ? "word_boundary" :
+    opcode == FX_RE_OP_MATCH ? "match!" :
+    opcode == FX_RE_OP_JMP ? "jmp" :
+    opcode == FX_RE_OP_SPLIT ? "split" :
+    opcode == FX_RE_OP_SAVE ? "save" : "???";
+}
+
+static void
+fx_re_printprog(const fx_cptr_t regex_)
+{
+    fx_regex_t* re = (fx_regex_t*)(regex_->ptr);
+    if(re) {
+        int i, len = re->len;
+        for(i = 0; i < len; i++) {
+            fx_re_inst_t* r = &re->prog[i];
+            const char* opstr = fx_re_op2str(r->opcode);
+            printf("%2d. %s n=%d, c=%d, x=%d, y=%d\n", i, opstr, r->n, r->c, r->x, r->y);
+        }
+    }
 }
 
 static int
-fx_re_pikevm_(fx_Prog *prog, char *input, char **subp, int nsubp)
+fx_re_pikevm_(const fx_cptr_t regex_, const fx_str_t* input, int_ start, int_* outsub, int* outnsub)
 {
-	int i, len;
-	fx_re_ThreadList *clist, *nlist, *tmp;
-	fx_Inst *pc;
-	char *sp;
-	fx_re_Sub *sub, *matched;
+    fx_re_matcher_t matcher;
+    int i, len, nsub;
+    fx_re_threads_t clist, nlist;
+    char_* str = input->data;
+    int_ j, strlen = input->length;
+    fx_re_sub_t *sub, *matched = 0;
+    fx_re_inst_t* prog;
+    
+    int status = fx_re_init_matcher(&matcher, regex_);
+    if(status < 0) return status;
 
-	matched = 0;
-	for(i=0; i<nsubp; i++)
-		subp[i] = 0;
-	sub = fx_re_newsub_(nsubp);
-	for(i=0; i<nsubp; i++)
-		sub->sub[i] = 0;
+    nsub = matcher.nsub;
+    *outnsub = nsub;
+	for(i = 0; i < nsub; i++)
+		outsub[i] = 0;
+	sub = fx_re_newsub_(&matcher);
 
-	len = prog->len;
-	clist = threadlist(len);
-	nlist = threadlist(len);
+	len = matcher.len;
+	clist = fx_re_threadlist(len);
+	nlist = fx_re_threadlist(len);
 
-	gen++;
-	fx_re_addthread_(clist, fx_re_thread_(prog->start, sub), input);
-	matched = 0;
-	for(sp=input;; sp++) {
-		if(clist->n == 0)
+    prog = matcher.prog;
+	matcher.gen++;
+	fx_re_addthread_(&matcher, &clist, fx_re_thread_(0, sub), 0);
+	for(j = start; j <= strlen; j++)
+    {
+        char_ c = j < strlen ? str[j] : 0;
+		if(clist.n == 0)
 			break;
+        //printf("j=%d. char=%c\n", (int)j, c);
 		// printf("%d(%02x).", (int)(sp - input), *sp & 0xFF);
-		gen++;
-		for(i=0; i<clist->n; i++) {
-			pc = clist->t[i].pc;
-			sub = clist->t[i].sub;
-			// printf(" %d", (int)(pc - prog->start));
-			switch(pc->opcode) {
+		matcher.gen++;
+		for(i = 0; i < clist.n; i++) {
+			int pc = clist.t[i].pc;
+			sub = clist.t[i].sub;
+            fx_re_inst_t* r = prog + pc;
+			//printf("thread %d. op #%d (%s)\n", i, pc, fx_re_op2str(r->opcode));
+			switch(r->opcode) {
 			case FX_RE_OP_CHAR:
-				if(*sp != pc->c) {
-					fx_re_decref_(sub);
-					break;
-				}
+				if(c != r->c)
+					fx_re_decref_(&matcher, sub);
+                else
+					fx_re_addthread_(&matcher, &nlist, fx_re_thread_(pc+1, sub), j+1);
+                break;
+            case FX_RE_OP_RANGE:
+                {
+                bool inv = r->c != 0;
+                int k, n = r->n;
+                int next_pc = pc + 1 + n;
+                for(k = 0; k < n; k++) {
+                    fx_re_inst_t* rk = prog + pc + 1 + k;
+                    if(rk->opcode == FX_RE_OP_CHAR) {
+                        if(c == rk->c) break;
+                    } else if(rk->opcode == FX_RE_OP_RANGE) {
+                        if(rk->x <= c && c <= rk->y) break;
+                    } else if(rk->opcode == FX_RE_OP_CLASS_ALPHA) {
+                        if(fx_isalpha(c)) break;
+                    } else if(rk->opcode == FX_RE_OP_CLASS_IDENT) {
+                        if(fx_isalnum(c) || c == '_') break;
+                    } else if(rk->opcode == FX_RE_OP_CLASS_DIGIT) {
+                        if(fx_isdigit(c)) break;
+                    } else if(rk->opcode == FX_RE_OP_CLASS_SPACE) {
+                        if(fx_isspace(c)) break;
+                    } else if(rk->opcode == FX_RE_OP_CLASS_NON_SPACE) {
+                        if(!fx_isspace(c)) break;
+                    } else {
+                        printf("error: unexpected opcode '%d' inside the regexp range processing\n", rk->opcode);
+                        return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+                    }
+                }
+                {
+                bool ok = inv ^ (k < n);
+                if(!ok)
+                    fx_re_decref_(&matcher, sub);
+                else
+                    fx_re_addthread_(&matcher, &nlist, fx_re_thread_(next_pc, sub), j+1);
+                }
+                }
+                break;
+            case FX_RE_OP_CLASS_ALPHA:
+                if(!fx_isalpha(c))
+                    fx_re_decref_(&matcher, sub);
+                else
+                    fx_re_addthread_(&matcher, &nlist, fx_re_thread_(pc+1, sub), j+1);
+                break;
+            case FX_RE_OP_CLASS_IDENT:
+                if(!fx_isalnum(c) && c != '_')
+                    fx_re_decref_(&matcher, sub);
+                else
+                    fx_re_addthread_(&matcher, &nlist, fx_re_thread_(pc+1, sub), j+1);
+                break;
+            case FX_RE_OP_CLASS_DIGIT:
+                if(!fx_isdigit(c))
+                    fx_re_decref_(&matcher, sub);
+                else
+                    fx_re_addthread_(&matcher, &nlist, fx_re_thread_(pc+1, sub), j+1);
+                break;
+            case FX_RE_OP_CLASS_SPACE:
+                if(!fx_isspace(c))
+                    fx_re_decref_(&matcher, sub);
+                else
+                    fx_re_addthread_(&matcher, &nlist, fx_re_thread_(pc+1, sub), j+1);
+                break;
+            case FX_RE_OP_CLASS_NON_SPACE:
+                if(fx_isspace(c))
+                    fx_re_decref_(&matcher, sub);
+                else
+                    fx_re_addthread_(&matcher, &nlist, fx_re_thread_(pc+1, sub), j+1);
+                break;
 			case FX_RE_OP_ANY:
-				if(*sp == 0) {
-					fx_re_decref_(sub);
-					break;
-				}
-				fx_re_addthread_(nlist, fx_re_thread_(pc+1, sub), sp+1);
+				fx_re_addthread_(&matcher, &nlist, fx_re_thread_(pc+1, sub), j+1);
 				break;
 			case FX_RE_OP_MATCH:
 				if(matched)
-					fx_re_decref_(matched);
+					fx_re_decref_(&matcher, matched);
 				matched = sub;
-				for(i++; i < clist->n; i++)
-					fx_re_decref_(clist->t[i].sub);
-				goto BreakFor;
+                //printf("updated matched: (%d, %d)\n", (int)sub->sub[0], (int)sub->sub[1]);
+				for(++i; i < clist.n; i++)
+					fx_re_decref_(&matcher, clist.t[i].sub);
+				break;
+            default:
+                printf("unexpected instruction %d at pc=%d, j=%d\n", r->opcode, pc, (int)j);
+                return FX_SET_EXN_FAST(FX_EXN_BadArgError);
 			// FX_RE_OP_JMP, FX_RE_OP_SPLIT, FX_RE_OP_SAVE handled in fx_re_addthread_, so that
 			// machine execution matches what a backtracker would do.
 			// This is discussed (but not shown as code) in
 			// Regular Expression Matching: the Virtual Machine Approach.
 			}
 		}
-	BreakFor:
 		// printf("\n");
-		tmp = clist;
+        {
+		fx_re_threads_t tmp = clist;
 		clist = nlist;
 		nlist = tmp;
-		nlist->n = 0;
-		if(*sp == '\0')
+        }
+		nlist.n = 0;
+		if(j >= strlen)
 			break;
 	}
-	fx_free(clist);
-	fx_free(nlist);
+	fx_free(clist.t);
+	fx_free(nlist.t);
 
+    status = 0;
 	if(matched) {
-		for(i=0; i<nsubp; i++)
-			subp[i] = matched->sub[i];
-		fx_re_decref_(matched);
-		return 1;
+		for(i = 0; i < nsub; i++)
+			outsub[i] = matched->sub[i];
+		fx_re_decref_(&matcher, matched);
+		status = 1;
 	}
-	return 0;
+    fx_re_free_matcher(&matcher);
+	return status;
 }
 
-int fx_re_compile(const fx_str_t* str, fx_regex_t* fx_result)
+enum {
+    FX_RE_AST_BUFSIZE = 256
+};
+
+// alt -> seq -> repeat -> single.
+static int fx_re_astnode(fx_re_ast_t* ast, int type, int n, int c, int left, int right)
 {
-    fx_cstr_t cstr;
-    int fx_status = fx_str2cstr(str, &cstr, 0, 0);
-    if(fx_status>=0)
+    if (ast->size >= ast->capacity)
     {
-        fx_Regexp* regexp = fx_re_parse(cstr.data);
-        fx_free_cstr(&cstr);
-        if(regexp!=0)
-        {
-            fx_Prog* prog = fx_re_compile_(regexp);
-            fx_re_free_regexp_(regexp);
-            if(prog!=0)
-                fx_status = fx_make_cptr(prog, fx_free, fx_result);
-            else
-                fx_status = FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        int new_capacity = ast->capacity*2;
+        fx_re_astnode_t* new_buf = (fx_re_astnode_t*)fx_malloc(new_capacity*sizeof(new_buf[0]));
+        if(!new_buf) return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
+        memcpy(new_buf, ast->buf, ast->capacity*sizeof(new_buf[0]));
+        if(ast->allocated) fx_free(ast->buf);
+        ast->buf = new_buf;
+        ast->capacity = new_capacity;
+        ast->allocated = true;
+    }
+    {
+    int idx = ast->size++;
+    fx_re_astnode_t* node = ast->buf + idx;
+    node->type = type;
+    node->n = n;
+    node->c = c;
+    node->left = left;
+    node->right = right;
+    return idx;
+    }
+}
+
+static int fx_re_parse_special_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast, int* c_special_)
+{
+    char_ c;
+    int c_special;
+    if (*pos >= str->length)
+        return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    c = str->data[*pos];
+    c_special = c == 'n' ? '\n' : c == 'r' ? '\r' : c == 't' ? '\t' :
+                c == '(' ? '(' : c == ')' ? ')' : c == '[' ? '[' : c == ']' ? ']' :
+                c == '{' ? '{' : c == '}' ? '}' :
+                c == '|' ? '|' : c == '.' ? '.' : c == '\\' ? '\\' :
+                c == '*' ? '*' : c == '+' ? '+' : c == '-' ? '-' :
+                c == '^' ? '^' : c == '$' ? '$' :
+                c == 'a' ? -FX_RE_CLASS_ALPHA :
+                c == 'w' ? -FX_RE_CLASS_IDENT :
+                c == 'd' ? -FX_RE_CLASS_DIGIT :
+                c == 's' ? -FX_RE_CLASS_SPACE :
+                c == 'S' ? -FX_RE_CLASS_NON_SPACE :
+                c == 'b' ? -FX_RE_ANCHOR_WBOUND :
+                c == 'U' || c == 'u' || c == 'x' || c == '0' ? FX_RE_CLASS_LIT : FX_RE_ERROR;
+    if (c_special == FX_RE_ERROR)
+        return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    ++*pos;
+    if(c_special == FX_RE_CLASS_LIT) {
+        int code = 0;
+        int i, ndigits = str->length - *pos;
+        if(c == '0') {
+            ndigits = ndigits < 3 ? ndigits : 3;
+            for(i = 0; i < ndigits; i++) {
+                int d = str->data[*pos + i] - '0';
+                if (d < 0 || d >= 8) break;
+                code = code*8 + d;
+            }
+            *pos += i;
+        } else {
+            int max_ndigits = c == 'x' ? 2 : c == 'u' ? 4 : 8;
+            ndigits = ndigits < max_ndigits ? ndigits : max_ndigits;
+            for(i = 0; i < ndigits; i++) {
+                int d = str->data[*pos + i];
+                d = d > 'a' ? d - 'a' + 10 : d > 'A' ? d - 'A' + 10 : d <= '9' ? d - '0' : -1;
+                if(d < 0 || d >= 16) break;
+                code = code*16 + d;
+            }
+            *pos += i;
+            if(i == 0)
+                return FX_SET_EXN_FAST(FX_EXN_BadArgError);
         }
-        else
-            fx_status = FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        c_special = code;
+    };
+    
+    {
+    int type = c_special >= 0 ? FX_RE_LIT : c_special == -FX_RE_ANCHOR_WBOUND ? FX_RE_ANCHOR_WBOUND : FX_RE_CLASS;
+    *c_special_ = c_special >= 0 ? c_special : -c_special;
+    return type;
     }
-    return fx_status;
 }
 
-int fx_re_match(const fx_regex_t fx_regexp, const fx_str_t* str, bool* fx_result/*, fx_arr_t* fx_result_subs*/)
+static int fx_re_parse_alt_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast);
+
+static int fx_re_parse_range_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast)
 {
-    fx_cstr_t cstr;
-    int fx_status = fx_str2cstr(str, &cstr, 0, 0);
-    if(fx_status>=0)
-    {
-        char *sub[MAXSUB]; //TODO: Change maximum amount;
-        memset(sub, 0, sizeof sub);
-        fx_Prog* prog = (fx_Prog*)(fx_regexp->ptr);
-		*fx_result = fx_re_pikevm_(prog, cstr.data, sub, fx_re_nelem_(sub));
-        if (sub[0] != cstr.data || sub[1] != cstr.data + cstr.length)
-            *fx_result = false;
-        fx_free_cstr(&cstr);
+    bool inv = false;
+    char_ c;
+    int range_idx = fx_re_astnode(ast, FX_RE_RANGE, 0, 0, 0, 0);
+    int type, c_special = 0, nranges = 0;
+    if (*pos < str->length && str->data[*pos] == '^') {
+        inv = true;
+        ++*pos;
     }
-    return fx_status;
+    for(;; nranges++) {
+        int left = 0;
+        if (*pos >= str->length)
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        c = str->data[*pos++];
+        if(c == ']')
+            break;
+        if(c == '\\') {
+            type = fx_re_parse_special_(str, pos, ast, &c_special);
+            if(type < 0)
+                return type;
+            if(type != FX_RE_LIT) {
+                if(type != FX_RE_CLASS)
+                    return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+                fx_re_astnode(ast, type, 1, c_special, 0, 0);
+                continue;
+            }
+            left = c_special;
+        } else {
+            left = c;
+        }
+        if (*pos >= str->length)
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        c = str->data[*pos++];
+        if(c != '-') {
+            fx_re_astnode(ast, FX_RE_LIT, 1, left, 0, 0);
+        } else {
+            int right;
+            if (*pos >= str->length)
+                return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+            c = str->data[*pos++];
+            if(c == '\\') {
+                type = fx_re_parse_special_(str, pos, ast, &c_special);
+                if(type < 0)
+                    return type;
+                if(type != FX_RE_LIT)
+                    // a character class cannot be used as a limiter of range
+                    return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+                right = c_special;
+            } else {
+                right = c;
+            }
+            fx_re_astnode(ast, FX_RE_SUBRANGE, 0, 0, left, right);
+        }
+    }
+    
+    if (nranges == 0)
+        return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    {
+    fx_re_astnode_t* r = ast->buf + range_idx;
+    r->c = (int)inv;
+    r->n = nranges;
+    }
+    return range_idx;
+}
+
+static int fx_re_parse_single_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast)
+{
+    char_ c;
+    if(*pos >= str->length)
+        return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    c = str->data[*pos];
+    if (c == '.') {
+        ++*pos;
+        return fx_re_astnode(ast, FX_RE_DOT, 0, 0, 0, 0);
+    }
+    if (c == '\\') {
+        ++*pos;
+        int c_special = 0;
+        int type = fx_re_parse_special_(str, pos, ast, &c_special);
+        return type < 0 ? type : fx_re_astnode(ast, type, 1, c_special, 0, 0);
+    }
+    if (c == '[') {++*pos; return fx_re_parse_range_(str, pos, ast);}
+    if (c == '(') {
+        ++*pos;
+        bool unnamed_group = *pos+2 < str->length && str->data[*pos] == '?' && str->data[*pos+1] == ':';
+        if(unnamed_group) {
+            *pos += 2;
+        }
+        int grp = fx_re_parse_alt_(str, pos, ast);
+        if(!unnamed_group)
+            grp = fx_re_astnode(ast, FX_RE_PAREN, 0, 0, grp, 0);
+        if(*pos >= str->length || str->data[*pos] != ')')
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        ++*pos;
+    }
+    ++*pos;
+    return fx_re_astnode(ast, FX_RE_LIT, 1, c, 0, 0);
+}
+
+static int fx_re_parse_repeat_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast)
+{
+    int fst = fx_re_parse_single_(str, pos, ast);
+    char_ c;
+    if(fst < 0 || *pos >= str->length || str->data[*pos] == ')') return fst;
+    c = str->data[*pos];
+    if(c == '*' || c == '+' || c == '?') {
+        int n = 0;
+        if (++*pos < str->length && str->data[*pos] == '?') {
+            n = 1;
+            ++*pos;
+        }
+        fst = fx_re_astnode(ast, (c == '*' ? FX_RE_STAR : c == '+' ? FX_RE_PLUS : FX_RE_QUEST), n, 0, fst, 0);
+    }
+    return fst;
+}
+
+static int fx_re_parse_concat_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast)
+{
+    int fst = -1;
+    for(;;) {
+        int next = fx_re_parse_repeat_(str, pos, ast);
+        if(next < 0) return next;
+        if (fst < 0) fst = next;
+        else {
+            fst = fx_re_astnode(ast, FX_RE_CAT, 0, 0, fst, next);
+            if(fst < 0)
+                return fst;
+        }
+        if (*pos >= str->length || str->data[*pos] == ')') break;
+    }
+    return fst;
+}
+
+static int fx_re_parse_alt_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast)
+{
+    int fst = -1;
+    for(;;) {
+        int next = fx_re_parse_concat_(str, pos, ast);
+        if(next < 0) return next;
+        if (fst < 0) fst = next;
+        else {
+            fst = fx_re_astnode(ast, FX_RE_ALT, 0, 0, fst, next);
+            if(fst < 0)
+                return fst;
+        }
+        if (*pos >= str->length || str->data[*pos] != '|') break;
+        *pos += 1;
+    }
+    return fst;
+}
+
+static int fx_re_parse_(const fx_str_t* str, fx_re_ast_t* ast)
+{
+    int root_idx = fx_re_astnode(ast, FX_RE_CAT, 0, 0, 0, 0);
+    int parsed_root, prefix;
+    assert(root_idx == 0);
+    int_ pos = 0;
+    if (str->length == 0)
+        return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    parsed_root = fx_re_parse_alt_(str, &pos, ast);
+    if (parsed_root < 0) return parsed_root;
+    if (pos != str->length) FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    parsed_root = fx_re_astnode(ast, FX_RE_PAREN, 0, 0, parsed_root, 0);
+    prefix = fx_re_astnode(ast, FX_RE_DOT, 0, 0, 0, 0);
+    prefix = fx_re_astnode(ast, FX_RE_STAR, 1, 0, prefix, 0);
+    {
+    fx_re_astnode_t* root = ast->buf + root_idx;
+    root->left = prefix;
+    root->right = parsed_root;
+    }
+    ast->root = root_idx;
+    return FX_OK;
+}
+
+int fx_re_compile(const fx_str_t* str, fx_cptr_t* fx_result)
+{
+    fx_re_astnode_t buf[FX_RE_AST_BUFSIZE];
+    fx_re_ast_t ast = {buf, 0, 0, FX_RE_AST_BUFSIZE, false};
+    int status = fx_re_parse_(str, &ast);
+    if(status >= 0)
+    {
+        fx_regex_t* re = fx_re_compile_(&ast);
+        if(re != 0)
+            status = fx_make_cptr(re, fx_free, fx_result);
+        else
+            status = FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    }
+    //fx_re_printprog(*fx_result);
+    if(ast.allocated) {fx_free(ast.buf);}
+    return status;
+}
+
+int fx_re_match(const fx_cptr_t regex, const fx_str_t* str, bool* fx_result, fx_arr_t* fx_result_subs)
+{
+    int_ sub[FX_RE_MAXSUB];
+    int nsub = FX_RE_MAXSUB;
+    int status = fx_re_pikevm_(regex, str, 0, sub, &nsub);
+    *fx_result = (bool)(status > 0 && sub[0] == 0 && sub[1] == str->length);
+    return status;
 }
 
 #ifdef __cplusplus
