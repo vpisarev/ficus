@@ -1058,11 +1058,23 @@ double fx_tick_frequency(void);
 
 ////////////////////////// Regular expressions /////////////////////
 
+enum
+{
+    FX_RE_IGNORECASE = 1,
+    FX_RE_MULTILINE = 2,
+    FX_RE_ASCII = 4,
+    // internal-use flags
+    FX_RE_MATCH_MODE_ = 0<<16,
+    FX_RE_FIND_MODE_ = 1<<16,
+    FX_RE_FINDALL_MODE_ = 2<<16,
+    FX_RE_MODE_MASK_ = 7<<16,
+};
+
 int fx_re_compile(const fx_str_t* str, fx_cptr_t* fx_result);
-int fx_re_match(const fx_cptr_t regex, const fx_str_t* str, bool* fx_result, fx_arr_t* fx_result_subs);
-int fx_re_findfirst(const fx_cptr_t regex, const fx_str_t* str, int_ from, fx_arr_t* fx_result_subs);
-int fx_re_findall(const fx_cptr_t regex, const fx_str_t* str, fx_arr_t* fx_result_subs);
-int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str, const fx_str_t* newsubstr);
+int fx_re_fullmatch(const fx_cptr_t regex, const fx_str_t* str, int flags);
+int fx_re_match(const fx_cptr_t regex, const fx_str_t* str, int flags, fx_arr_t* fx_result);
+int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str,
+                  const fx_str_t* subst, int flags, fx_str_t* result);
 
 #ifdef __cplusplus
 }

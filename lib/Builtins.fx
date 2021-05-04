@@ -250,7 +250,7 @@ fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
 {
-    join_embrace("[", "]", ", ", [| for x <- a {repr(x)} |])
+    join_embrace("[|", "|]", ", ", [| for x <- a {repr(x)} |])
 }
 
 fun string(a: 't [,])
@@ -260,10 +260,10 @@ fun string(a: 't [,])
         val elems = [| for j <- 0:n {repr(a[i, j])} |]
         join(", ", elems)
     } |]
-    join_embrace("[", "]", ";\n", rows)
+    join_embrace("[|", "|]", ";\n", rows)
 }
 
-fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |])
+fun string(l: 't list) = join_embrace("[:", ":]", ", ", [| for x <- l {repr(x)} |])
 
 @pure fun string(a: char []): string = @ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);

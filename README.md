@@ -19,7 +19,9 @@ The compiler is written in Ficus itself and needs C/C++ compiler and make utilit
 ```
 cd <ficus_root>
 make -j8
-bin/ficus -run -O3 examples/fst.fx # to test ficus
+bin/ficus -run test/test_all.fx # run unit tests
+bin/ficus -run -O3 examples/fst.fx # run some examples, e.g. fst.fx,
+                                   # optionally specify optimization level
 ```
 
 ### **Windows**

@@ -8,6 +8,7 @@ import test_json
 import test_spectralnorm
 import test_mandelbrot
 import test_closure
+import test_re
 //import test_re2
 import test_ds
 import test_deque
