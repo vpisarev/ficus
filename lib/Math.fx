@@ -52,6 +52,34 @@ val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 @inline fun tanh(x: float): float = __intrin_tanh__(x)
 @inline fun tanh(x: double): double = __intrin_tanh__(x)
 
+@pure @nothrow fun isnan(x: float): bool = @ccode
+{
+    fx_bits32_t u;
+    u.f = x;
+    return (u.i & 0x7fffffff) > 0x7f800000;
+}
+
+@pure @nothrow fun isinf(x: float): bool = @ccode
+{
+    fx_bits32_t u;
+    u.f = x;
+    return (u.i & 0x7fffffff) == 0x7f800000;
+}
+
+@pure @nothrow fun isnan(x: double): bool = @ccode
+{
+    fx_bits64_t u;
+    u.f = x;
+    return (u.i & 0x7fffffffffffffffLL) > 0x7ff0000000000000LL;
+}
+
+@pure @nothrow fun isinf(x: double): bool = @ccode
+{
+    fx_bits64_t u;
+    u.f = x;
+    return (u.i & 0x7fffffffffffffffLL) == 0x7ff0000000000000LL;
+}
+
 fun hypot(a: 't, b: 't) {
     val aa = abs(a)
     val ab = abs(b)

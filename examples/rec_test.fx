@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 type 't point_ = {x: 't; y: 't}
 type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
 

@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 val SolarMass = 4.0 * M_PI * M_PI
 val Year = 365.24
 

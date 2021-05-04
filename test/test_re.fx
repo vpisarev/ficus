@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 from UTest import *
 import Re
 
@@ -15,10 +20,10 @@ TEST("Re.simple", fun()
 
 TEST("Re.submatch_extraction", fun()
 {
-    val bards = "Mockles! Fent on silpen tree,\n Blockards three a-feening,\n Mockles, what silps came to thee\n In thy pantry dreaming?"
+    val bards = "Mockles! Fent on silpen tree,\nBlockards three a-feening,\nMockles, what silps came to thee\nIn thy pantry dreaming?"
     val se_reg = Re.compile(r"(\b[E-Te-t]+\b)")
     val r = Re.compile(r"[.,!? ]([^g-p\s]+)[.,!? ]")
-    EXPECT_EQ(r.find(bards, ), Some([| (23, 29), (24, 28) |]))
+    EXPECT_EQ(r.find(bards), Some([| (23, 29), (24, 28) |]))
     EXPECT_EQ(se_reg.find(bards), Some([| (9, 13), (9, 13) |]))
 })
 
@@ -43,7 +48,7 @@ TEST("Re.findall", fun()
 TEST("Re.general_match", fun()
 {
     val me = Re.compile(r"\b(?:I'm|I am)\b")
-    EXPECT_EQ(me.find_str("Hello I'm Cornelius"), Some([| "I'm" |]))
+    EXPECT_EQ(me.find_str("Hello, I'm Cornelius"), Some([| "I'm" |]))
 })
 
 TEST("Re.replace", fun()

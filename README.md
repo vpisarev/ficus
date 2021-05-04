@@ -31,7 +31,7 @@ Install Visual Studio, for example Visual Studio 2019 Community Edition, open "D
 ```
 cd <ficus_root>
 nmake
-bin/ficus -run -O3 examples/fst.fx # to test ficus
+bin/ficus -run -O3 examples/fst.fx # the usage is the same as on Unix
 ```
 
 ### **Set environment variables**

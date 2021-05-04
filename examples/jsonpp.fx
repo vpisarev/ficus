@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 // Json pretty printing example
 
 type json_scalar_t =

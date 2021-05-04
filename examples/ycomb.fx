@@ -1,5 +1,10 @@
-// from https://rosettacode.org/wiki/Y_combinator; adoped from OCaml implementation.
-// trick from Lambda calculus to convert non-recursive functions into recursive ones
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
+// From https://rosettacode.org/wiki/Y_combinator; adoped from OCaml implementation.
+// The trick from Lambda calculus to convert non-recursive functions into recursive ones
 type 'a mu = Roll: ('a mu -> 'a)
 fun unroll(Roll(x): 'a mu) = x
 

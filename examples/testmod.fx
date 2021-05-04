@@ -1,3 +1,8 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 fun fact(n: int)
 {
     fun fact_(n: int, p: int) = if n<=1 {p} else {fact_(n-1, p*n)}

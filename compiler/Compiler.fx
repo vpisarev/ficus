@@ -45,10 +45,11 @@ fun get_preamble(mfname: string): Lexer.token_t list {
     if Options.opt.use_preamble {
         val bare_name = Filename.remove_extension(Filename.basename(mfname))
         val (preamble, _) = fold (preamble, found) = ([], false)
-            for (mname, from_import) <- [: ("Builtins", true), ("Array", false),
-                                            ("List", false), ("Vector", false),
-                                            ("Char", false), ("String", false),
-                                            ("Math", true) :] {
+            for (mname, from_import) <- [: ("Builtins", true), ("Math", true),
+                                            ("Array", true), ("List", false),
+                                            ("Vector", false), ("Char", false),
+                                            ("String", false),
+                                             :] {
             if found {
                 (preamble, found)
             } else if bare_name == mname {
