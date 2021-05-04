@@ -28,3 +28,21 @@ TEST("array.solve", fun() {
     EXPECT_NEAR(A*x, b, 1e-10)
     EXPECT_NEAR(A*Ainv, I, 1e-10)
 })
+
+TEST("array.determinant", fun() {
+    val A =
+     [| 2., 1., 0., 4.;
+        0., 1., 1., 3.;
+        1., 0., 1., 2.;
+        2., 2., 0., 1. |]
+    val eps = 1e-10
+    val I = diag(4, 1.)
+    val As =
+     [| \A[0,:];
+        \A[1,:];
+        \(A[0,:] + A[1,:]);
+        \A[3, :] |]
+    EXPECT_NEAR(det(A), -15., eps)
+    EXPECT_NEAR(det(I), 1., eps)
+    EXPECT_NEAR(det(As), 0., eps)
+})

@@ -230,15 +230,16 @@ enum {
 #define FX_MATX_QR_EPS 1e-12
 
 static int fx_decomp_qr(const double* A_, int_ astep, int_ m, int_ n, int_ k,
-                        const double* b, int_ bstep,
-                        double* x, int_ xstep,
-                        double* hFactors,
-                        double scale, double eps)
+                        const double* b, int_ bstep, double* x, int_ xstep,
+                        double* hFactors, double scale, double eps,
+                        double* det_)
 {
     int status = 1;
     double localbuf[FX_MATX_BUF], *buf = localbuf;
     double *A, *vl;
-    int_ bufsize = m*n + m + n;
+    int_ bufsize = m*n + m + n, nm = m < n ? m : n;
+
+    if (det_) *det_ = 0.;
     if (bufsize > FX_MATX_BUF) {
         buf = (double*)fx_malloc(bufsize);
         if (!buf) return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
@@ -252,37 +253,37 @@ static int fx_decomp_qr(const double* A_, int_ astep, int_ m, int_ n, int_ k,
     if (!hFactors)
         hFactors = vl + m;
 
-    for (int l = 0; l < n; l++) {
+    for (int_ l = 0; l < n; l++) {
         //generate vl
-        int vlSize = m - l;
+        int_ vlSize = m - l;
         double vlNorm = 0.;
-        for (int i = 0; i < vlSize; i++) {
+        for (int_ i = 0; i < vlSize; i++) {
             vl[i] = A[(l + i)*astep + l];
             vlNorm += vl[i] * vl[i];
         }
         double tmpV = vl[0];
         vl[0] = vl[0] + (vl[0] < 0. ? -1 : vl[0] > 0.)*sqrt(vlNorm);
         vlNorm = sqrt(vlNorm + vl[0] * vl[0] - tmpV*tmpV);
-        for (int i = 0; i < vlSize; i++)
+        for (int_ i = 0; i < vlSize; i++)
             vl[i] /= vlNorm;
         //multiply A_l*vl
-        for (int j = l; j < n; j++) {
+        for (int_ j = l; j < n; j++) {
             double v_lA = 0.;
-            for (int i = l; i < m; i++)
+            for (int_ i = l; i < m; i++)
                 v_lA += vl[i - l] * A[i*astep + j];
 
-            for (int i = l; i < m; i++)
+            for (int_ i = l; i < m; i++)
                 A[i*astep + j] -= 2 * vl[i - l] * v_lA;
         }
 
         //save vl and factors
         hFactors[l] = vl[0] * vl[0];
-        for (int i = 1; i < vlSize; i++)
+        for (int_ i = 1; i < vlSize; i++)
             A[(l + i)*astep + l] = vl[i] / vl[0];
     }
 
     if (x) {
-        for(int i = 0; i < m; i++) {
+        for(int_ i = 0; i < m; i++) {
             if(b)
                 memcpy(x + i*xstep, b + i*bstep, k*sizeof(x[0]));
             else {
@@ -291,27 +292,27 @@ static int fx_decomp_qr(const double* A_, int_ astep, int_ m, int_ n, int_ k,
             }
         }
         //generate new rhs
-        for (int l = 0; l < n; l++) {
+        for (int_ l = 0; l < n; l++) {
             //unpack vl
             vl[0] = (double)1;
-            for (int j = 1; j < m - l; j++)
+            for (int_ j = 1; j < m - l; j++)
                 vl[j] = A[(j + l)*astep + l];
 
             //h_l*x
-            for (int j = 0; j < k; j++) {
+            for (int_ j = 0; j < k; j++) {
                 double v_lB = (double)0;
-                for (int i = l; i < m; i++)
+                for (int_ i = l; i < m; i++)
                   v_lB += vl[i - l] * x[i*xstep + j];
 
-                for (int i = l; i < m; i++)
+                for (int_ i = l; i < m; i++)
                     x[i*xstep + j] -= 2 * vl[i - l] * v_lB * hFactors[l];
             }
         }
         //do back substitution
-        for (int i = n - 1; i >= 0; i--) {
-            for (int j = n - 1; j > i; j--) {
+        for (int_ i = n - 1; i >= 0; i--) {
+            for (int_ j = n - 1; j > i; j--) {
                 double f = A[i*astep + j];
-                for (int p = 0; p < k; p++)
+                for (int_ p = 0; p < k; p++)
                     x[i*xstep + p] -= x[j*xstep + p] * f;
             }
             if (fabs(A[i*astep + i]) < eps) {
@@ -319,11 +320,19 @@ static int fx_decomp_qr(const double* A_, int_ astep, int_ m, int_ n, int_ k,
                 break;
             } else {
                 double f = A[i*astep + i];
-                for (int p = 0; p < k; p++)
+                for (int_ p = 0; p < k; p++)
                     x[i*xstep + p] /= f;
             }
         }
     }
+
+    if(det_) {
+        double p = nm & 1 ? -1 : 1;
+        for(int_ i = 0; i < nm; i++)
+            p *= A[astep*i + i];
+        *det_ = p;
+    }
+
     if(buf != localbuf)
         fx_free(buf);
 
@@ -346,7 +355,7 @@ operator \ (a: double [,], b: double [,]): double [,] =
             (double*)a->data, a->dim[0].step/elemsz, m, n, k,
             (double*)b->data, b->dim[0].step/elemsz,
             (double*)fx_result->data, fx_result->dim[0].step/elemsz,
-            0, 1, FX_MATX_QR_EPS);
+            0, 1, FX_MATX_QR_EPS, 0);
     if(status < 0)
         return status;
     if(status == 0)
@@ -368,7 +377,7 @@ operator \ (a: double [,], b: double []): double [] =
             (double*)a->data, a->dim[0].step/elemsz, m, n, k,
             (double*)b->data, 1,
             (double*)fx_result->data, 1,
-            0, 1, FX_MATX_QR_EPS);
+            0, 1, FX_MATX_QR_EPS, 0);
     if(status < 0)
         return status;
     if(status == 0)
@@ -389,7 +398,7 @@ operator \ (a: double [,], scale: double): double [,] =
         status = fx_decomp_qr(
             (double*)a->data, a->dim[0].step/elemsz, m, n, k, 0, 0,
             (double*)fx_result->data, fx_result->dim[0].step/elemsz,
-            0, scale, FX_MATX_QR_EPS);
+            0, scale, FX_MATX_QR_EPS, 0);
     if(status < 0)
         return status;
     if(status == 0)
@@ -398,3 +407,15 @@ operator \ (a: double [,], scale: double): double [,] =
 }
 
 operator \ (a: double [,], scale: int): double [,] = a\double(scale)
+
+fun det(a: double [,]): double = @ccode
+{
+    int_ m = a->dim[0].size, n = a->dim[1].size;
+    int status, elemsz = (int)sizeof(double);
+    if (m != n || m == 0)
+        return FX_SET_EXN_FAST(FX_EXN_SizeError);
+    status = fx_decomp_qr(
+        (double*)a->data, a->dim[0].step/elemsz, m, n, 1, 0, 0,
+        0, 0, 0, 1, FX_MATX_QR_EPS, fx_result);
+    return status < 0 ? status : FX_OK;
+}
