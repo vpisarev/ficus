@@ -481,7 +481,7 @@ static int fx_re_emit_(fx_re_inst_t* prog, int len, int* pc, fx_re_ast_t *ast, i
 			p2->y = t;
 		}
 		break;
-        
+
     case FX_RE_ANCHOR_WBOUND:
         p1 = prog + (*pc)++;
         p1->opcode = FX_RE_OP_WBOUND;
@@ -611,7 +611,7 @@ fx_re_pikevm_(const fx_cptr_t regex_, const fx_str_t* input, int flags,
     // (i.e. need to skip 3 instructions and jump right to "x")
     pc0 = mode == FX_RE_MATCH_MODE_ ? 3 : 0;
     *outnsub = nsub;
-    
+
     while(j < strlen) {
         //printf("start/resume from j=%d\n", (int)j);
         if(j > 0) {
@@ -630,11 +630,11 @@ fx_re_pikevm_(const fx_cptr_t regex_, const fx_str_t* input, int flags,
         outsub = outsub_buf + nmatches*nsub;
         memset(outsub, 0, nsub*sizeof(outsub[0]));
         sub = fx_re_newsub_(&matcher);
-        
+
         clist.t = matcher.pool;
         nlist.t = clist.t + len;
         clist.n = nlist.n = 0;
-        
+
         matcher.gen++;
         fx_re_addthread_(&matcher, &clist, fx_re_thread_(pc0, sub), j);
         for(; j <= strlen; j++)
@@ -1069,7 +1069,7 @@ int fx_re_match(const fx_cptr_t regex, const fx_str_t* str,
     int_ subbuf[FX_RE_SUB_BUFSIZE], *sub = subbuf;
     int nsub = 0, status;
     status = fx_re_pikevm_(regex, str, flags, &sub, FX_RE_SUB_BUFSIZE, &nsub);
-    
+
     if(status > 0) {
         int ndims = (flags & FX_RE_MODE_MASK_) == FX_RE_FINDALL_MODE_ ? 2 : 1;
         int_ sz[2] = {(ndims > 1 ? status : (nsub/2)), (nsub/2)};
@@ -1103,7 +1103,7 @@ int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str,
         fx_copy_str(str, result);
         return FX_OK;
     }
-    
+
     /*
         Preprocess 'subst'; convert it to
            [a0, b0), \group_j0, [a1, b2), \group_j1 \group_j2 etc.
@@ -1111,11 +1111,11 @@ int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str,
         \0, \1 etc. and represent the substring as a sequence of
         clusters, where the literal fragments are interleaved with
         subgroup indices. Subgroups are represented by (-1, subgroup_idx) pairs..
-        
+
         There are at maximum 10 subgroups (the whole match + up to 9 its submatches),
         but in the subst the same submatch can be referenced many times,
         and some submatches may be not referenced at all, e.g.
-     
+
         re.compile(r"\bfor\s+(\w+)\s*<-\s*(\w+)\s*:\s*(\w+)").replace(
                 "for i <- 0:100",
                 r"for(int \1 = \2; \1 < \3; \1++)")
@@ -1132,7 +1132,7 @@ int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str,
         int_ matchsegm[FX_RE_NS_BUFSIZE], start = 0;
         int_ total = 0, k = 0, prev;
         char_* outdata;
-        
+
         for(i = 0; i < len1; i++) {
             if (data1[i] == '\\' && i+1 < len1 && '0' <= data1[i+1] && data1[i+1] <= '9') {
                 int idx = data1[i+1] - '0';
@@ -1185,7 +1185,7 @@ int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str,
             return status;
         }
         outdata = result->data;
-        
+
         // pass 2. actually form the output string
         for(i = 0; i < nmatches; i++) {
             prev = i > 0 ? sub[(i-1)*nsub+1] : 0;

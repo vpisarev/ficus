@@ -46,7 +46,7 @@ You can add `<ficus_root>/bin` to the `PATH`. You can also customize ficus compi
 
 ## How to use
 
-(run `ficus --help` to get more complete up-to-date information about command line parameters)
+(run `ficus --help` to get more detailed up-to-date information about command line parameters)
 
 Here is a brief description with some most common options:
 ```

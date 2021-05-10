@@ -234,6 +234,8 @@ int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst, bool free_dst)
     {
         int_ nrows = ndims == 1 ? 1 : src->dim[0].size, ncols = src->dim[ndims-1].size;
         size_t srcstep = src->dim[0].step, dststep = dst->dim[0].step;
+        //printf("srcstep = %d, dststep = %d, continuous = %d, nrows = %d\n", (int)srcstep, (int)dststep,
+        //    (int)FX_IS_ARR_CONTINUOUS(src->flags & dst->flags), (int)nrows);
 
         if ((ndims > 1 && nrows != dst->dim[0].size) || ncols != dst->dim[ndims-1].size)
             FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
@@ -491,8 +493,8 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
         int_ subsize_i = b - a;
         if (state == 0 && subsize_i == 1)
             ; // all 1's/I's so far
-        else if (subsize_i < size_i)
-            state = state == 0 ? 1 : 2;
+        else if (subsize_i < size_i || delta != 1)
+            state = state == 0 && delta == 1 ? 1 : 2;
         else if (state == 0)
             state = 1;
 
@@ -511,7 +513,8 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
     }
 
     subarr->ndims = k;
-    subarr->flags = arr->flags & (need_copy || state > 1 ? ~FX_ARR_CONTINUOUS : -1);
+    //printf("need copy=%d, state=%d, subarr->dim[0].step=%d\n", (int)need_copy, state, (int)subarr->dim[0].step);
+    subarr->flags = arr->flags & (!need_copy && state > 1 ? ~FX_ARR_CONTINUOUS : -1);
     subarr->free_elem = arr->free_elem;
     subarr->copy_elem = arr->copy_elem;
 

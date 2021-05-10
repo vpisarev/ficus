@@ -8,6 +8,34 @@
 fun total(a: 't [+]) = fold p = 1 for szj <- size(a) {p*szj}
 fun total(a: 't []) = size(a)
 
+fun __negate__(a: 't [+]) = [| for x <- a {-x} |]
+
+operator .+ (a: 'ta [+], b: 'tb) =
+    [| for x <- a {x .+ b} |]
+operator .- (a: 'ta [+], b: 'tb) =
+    [| for x <- a {x .- b} |]
+operator .* (a: 'ta [+], b: 'tb) =
+    [| for x <- a {x .* b} |]
+operator ./ (a: 'ta [+], b: 'tb) =
+    [| for x <- a {x ./ b} |]
+operator .% (a: 'ta [+], b: 'tb) =
+    [| for x <- a {x .% b} |]
+operator .** (a: 'ta [+], b: 'tb) =
+    [| for x <- a {x .** b} |]
+
+operator .+ (a: 'ta, b: 'tb [+]) =
+    [| for y <- b {a .+ y} |]
+operator .- (a: 'ta, b: 'tb [+]) =
+    [| for y <- b {a .- y} |]
+operator .* (a: 'ta, b: 'tb [+]) =
+    [| for y <- b {a .* y} |]
+operator ./ (a: 'ta, b: 'tb [+]) =
+    [| for y <- b {a ./ y} |]
+operator .% (a: 'ta, b: 'tb [+]) =
+    [| for y <- b {a .% y} |]
+operator .** (a: 'ta, b: 'tb [+]) =
+    [| for y <- b {a .** y} |]
+
 operator + (a: 'ta [+], b: 'tb [+]) =
     [| for x <- a, y <- b {x + y} |]
 operator - (a: 'ta [+], b: 'tb [+]) =
@@ -24,6 +52,20 @@ operator .% (a: 'ta [+], b: 'tb [+]) =
     [| for x <- a, y <- b {x .% y} |]
 operator .** (a: 'ta [+], b: 'tb [+]) =
     [| for x <- a, y <- b {x .** y} |]
+
+operator & (a: 't, b: 't [+]) =
+    [| for y <- b {a & y} |]
+operator | (a: 't, b: 't [+]) =
+    [| for y <- b {a | y} |]
+operator ^ (a: 't, b: 't [+]) =
+    [| for y <- b {a ^ y} |]
+operator & (a: 't [+], b: 't) =
+    [| for x <- a {x & b} |]
+operator | (a: 't [+], b: 't) =
+    [| for x <- a {x | b} |]
+operator ^ (a: 't [+], b: 't) =
+    [| for x <- a {x ^ b} |]
+
 operator & (a: 't [+], b: 't [+]) =
     [| for x <- a, y <- b {x & y} |]
 operator | (a: 't [+], b: 't [+]) =
@@ -408,7 +450,8 @@ operator \ (a: double [,], scale: double): double [,] =
 
 operator \ (a: double [,], scale: int): double [,] = a\double(scale)
 
-fun det(a: double [,]): double = @ccode
+fun det(a: double [,]): double =
+@ccode
 {
     int_ m = a->dim[0].size, n = a->dim[1].size;
     int status, elemsz = (int)sizeof(double);
@@ -418,4 +461,10 @@ fun det(a: double [,]): double = @ccode
         (double*)a->data, a->dim[0].step/elemsz, m, n, 1, 0, 0,
         0, 0, 0, 1, FX_MATX_QR_EPS, fx_result);
     return status < 0 ? status : FX_OK;
+}
+
+fun trace(a: 't [,]): double
+{
+    val (m, n) = size(a)
+    fold s = 0. for i <- 0:min(m, n) {s + a[i, i]}
 }

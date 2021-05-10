@@ -3,7 +3,9 @@
     See ficus/LICENSE for the licensing terms
 */
 
-// C-style operations on files
+// A simple regular expression engine.
+// See ficus/runtime/impl/regex.impl.h for more information
+
 class t { handle: cptr }
 
 fun compile(rstr: string): t = @ccode

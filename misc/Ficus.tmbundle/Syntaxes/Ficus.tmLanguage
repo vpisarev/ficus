@@ -19,19 +19,13 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(as|object|from|implements|import|extends|interface|ref|val|var|type|exception|when|int|int8|uint8|int16|uint16|int32|uint32|int64|uint64|half|float|double|bool|list|string|char)\b</string>
+			<string>\b(as|class|from|import|interface|ref|val|var|fun|operator|type|exception|int|int8|uint8|int16|uint16|int32|uint32|int64|uint64|half|float|double|bool|list|string|char|vector)\b</string>
 			<key>name</key>
 			<string>keyword.other.fx</string>
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(break|catch|continue|if|do|else|fold|for|match|throw|try|with|while)\b</string>
-			<key>name</key>
-			<string>keyword.control.fx</string>
-		</dict>
-		<dict>
-			<key>match</key>
-			<string>\b(break|catch|continue|if|do|else|fold|for|match|throw|try|with|while)\b</string>
+			<string>\b(break|catch|continue|if|do|else|fold|for|match|throw|try|when|while)\b</string>
 			<key>name</key>
 			<string>keyword.control.fx</string>
 		</dict>
@@ -144,7 +138,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(true|false|None|Some)\b</string>
+			<string>\b(true|false|inf|nan|null|None|Some)\b</string>
 			<key>name</key>
 			<string>constant.language.fx</string>
 		</dict>

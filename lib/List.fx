@@ -30,6 +30,9 @@ fun skip_nothrow(l: 't list, n: int): 't list =
 fun rev(l: 't list): 't list =
     fold r=[] for a <- l {a :: r}
 
+fun foldl(l: 't list, f: ('t, 'r) -> 'r, res0: 'r): 'r =
+    fold res=res0 for a <- l {f(a, res)}
+
 fun assoc(l: ('a, 'b) list, x: 'a): 'b =
     find(for (a, b) <- l {a == x}).1
 

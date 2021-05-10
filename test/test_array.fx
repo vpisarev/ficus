@@ -41,7 +41,7 @@ TEST("array.determinant", fun() {
      [| \A[0,:];
         \A[1,:];
         \(A[0,:] + A[1,:]);
-        \A[3, :] |]
+        \A[3,:] |]
     EXPECT_NEAR(det(A), -15., eps)
     EXPECT_NEAR(det(I), 1., eps)
     EXPECT_NEAR(det(As), 0., eps)

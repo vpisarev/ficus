@@ -280,7 +280,7 @@ fun split(s: string, c: char, ~allow_empty:bool)
 
 @nothrow fun to_int(a: string): int? = @ccode
 {
-    bool ok = fx_atoi(a, &fx_result->u.Some, 10);
+    bool ok = fx_atoi(a, &fx_result->u.Some, 0);
     fx_result->tag = (int)(ok+1)
 }
 @nothrow fun to_double(a: string): double? = @ccode
@@ -292,7 +292,7 @@ fun split(s: string, c: char, ~allow_empty:bool)
 @nothrow fun to_int_or(a: string, defval: int): int = @ccode
 {
     int_ result;
-    bool ok = fx_atoi(a, &result, 10);
+    bool ok = fx_atoi(a, &result, 0);
     return ok ? result : defval;
 }
 

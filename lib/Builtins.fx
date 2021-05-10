@@ -250,7 +250,7 @@ fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
 {
-    join_embrace("[|", "|]", ", ", [| for x <- a {repr(x)} |])
+    join_embrace("[| ", " |]", ", ", [| for x <- a {repr(x)} |])
 }
 
 fun string(a: 't [,])
@@ -260,16 +260,16 @@ fun string(a: 't [,])
         val elems = [| for j <- 0:n {repr(a[i, j])} |]
         join(", ", elems)
     } |]
-    join_embrace("[|", "|]", ";\n", rows)
+    join_embrace("[| ", " |]", ";\n", rows)
 }
 
-fun string(l: 't list) = join_embrace("[:", ":]", ", ", [| for x <- l {repr(x)} |])
+fun string(l: 't list) = join_embrace("[: ", " :]", ", ", [| for x <- l {repr(x)} |])
 
 @pure fun string(a: char []): string = @ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
 
-fun string(v: 't vector) = join_embrace("[", "]", ", ", [| for x <- v {repr(x)} |])
+fun string(v: 't vector) = join_embrace("[ ", " ]", ", ", [| for x <- v {repr(x)} |])
 
 @pure operator * (c: char, n: int): string = @ccode
 {
@@ -372,13 +372,49 @@ operator <=> (a: double, b: double): int = (a > b) - (a < b)
 operator <=> (a: char, b: char): int = (a > b) - (a < b)
 operator <=> (a: bool, b: bool): int = (a > b) - (a < b)
 
+operator .* (a: ('t...), b: 'ts) = (for aj <- a {aj * b})
+operator ./ (a: ('t...), b: 'ts) = (for aj <- a {aj / b})
+operator .* (a: 'ts, b: ('t...)) = (for bj <- b {a * bj})
+operator ./ (a: 'ts, b: ('t...)) = (for bj <- b {a / bj})
 operator + (a: (...), b: (...)) = (for aj <- a, bj <- b {aj + bj})
 operator - (a: (...), b: (...)) = (for aj <- a, bj <- b {aj - bj})
-operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj .* bj})
-operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj ./ bj})
+operator .+ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj + bj})
+operator .- (a: (...), b: (...)) = (for aj <- a, bj <- b {aj - bj})
+operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj * bj})
+operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj / bj})
 operator | (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj | bj})
 operator & (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj & bj})
 operator ^ (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj ^ bj})
+
+// complex multiplication
+operator * (a: ('t*2), b: ('t*2)) =
+    (a.0*b.0 - a.1*b.1, a.0*b.1 + a.1*b.0)
+// and division
+operator / (a: ('t*2), b: ('t*2))
+{
+    val q = b.0*b.0 + b.1*b.1
+    ((a.0*b.0 + a.1*b.1)/q, (a.1*b.0 - a.0*b.1)/q)
+}
+
+// quaternion product
+operator * (a: ('t*4), b: ('t*4)) =
+    (a.0*b.0 - a.1*b.1 - a.2*b.2 - a.3*b.3,
+    a.0*b.1 + a.1*b.0 + a.2*b.3 - a.3*b.2,
+    a.0*b.2 - a.1*b.3 + a.2*b.0 + a.3*b.1,
+    a.0*b.3 + a.1*b.2 - a.2*b.1 + a.3*b.0)
+
+// dot product
+fun dot(a: ('t...), b: ('t...)) =
+    fold s = a.0-a.0 for aj <- a, bj <- b {s + aj*bj}
+
+// cross product
+fun cross(a: ('t*2), b: ('t*2)) = a.0*b.1 - a.1*b.0
+fun cross(a: ('t*3), b: ('t*3)) =
+    (a.1*b.2 - a.2*b.1, a.2*b.0 - a.0*b.2, a.0*b.1 - a.1*b.0)
+
+// absolute value
+fun norm(a: ('t...)) =
+    __intrin_sqrt__(fold s = a.0*0.f for aj <- a {s + aj*aj})
 
 operator .== (a: ('t...), b: 't): (bool...) = (for aj <- a {aj == b})
 operator .!= (a: ('t...), b: 't): (bool...) = (for aj <- a {aj != b})
@@ -487,68 +523,73 @@ fun float(x: ('t...)) = (for xj <- x {float(xj)})
 fun double(x: ('t...)) = (for xj <- x {double(xj)})
 
 @pure @nothrow fun sat_uint8(i: int): uint8 = @ccode
-{ return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255); }
+{ return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255); }
 
 @pure @nothrow fun sat_uint8(f: float): uint8 = @ccode
 {
     int i = fx_roundf2i(f);
-    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);
+    return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255);
 }
 
 @pure @nothrow fun sat_uint8(d: double): uint8 = @ccode
 {
     int_ i = fx_round2I(d);
-    return (unsigned char)((i & ~255) != 0 ? i : i < 0 ? 0 : 255);
+    return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255);
 }
 
 @pure @nothrow fun sat_int8(i: int): int8 = @ccode
-{ return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127); }
+{ return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127); }
 
 @pure @nothrow fun sat_int8(f: float): int8 = @ccode
 {
     int i = fx_roundf2i(f);
-    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);
+    return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127);
 }
 
 @pure @nothrow fun sat_int8(d: double): int8 = @ccode
 {
     int_ i = fx_round2I(d);
-    return (signed char)(((i + 128) & ~255) != 0 ? i : i < 0 ? -128 : 127);
+    return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127);
 }
 
 @pure @nothrow fun sat_uint16(i: int): uint16 = @ccode
 {
-    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);
+    return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
 }
 
 @pure @nothrow fun sat_uint16(f: float): uint16 = @ccode
 {
     int i = fx_roundf2i(f);
-    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);
+    return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
 }
 
 @pure @nothrow fun sat_uint16(d: double): uint16 = @ccode
 {
     int_ i = fx_round2I(d);
-    return (unsigned short)((i & ~65535) != 0 ? i : i < 0 ? 0 : 65535);
+    return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
 }
 
 @pure @nothrow fun sat_int16(i: int): int16 = @ccode
 {
-    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);
+    return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
 }
 
 @pure @nothrow fun sat_int16(f: float): int16 = @ccode
 {
     int i = fx_roundf2i(f);
-    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);
+    return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
 }
 
 @pure @nothrow fun sat_int16(d: double): int16 = @ccode
 {
     int_ i = fx_round2I(d);
-    return (short)(((i+32768) & ~65535) != 0 ? i : i < 0 ? -32768 : 32767);
+    return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
 }
+
+fun sat_uint8(x: ('t...)) = (for xj <- x {sat_uint8(xj)})
+fun sat_int8(x: ('t...)) = (for xj <- x {sat_int8(xj)})
+fun sat_uint16(x: ('t...)) = (for xj <- x {sat_uint16(xj)})
+fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
 
 fun sat_uint8(x: ('t...)) = (for xj <- x {sat_uint8(xj)})
 fun sat_int8(x: ('t...)) = (for xj <- x {sat_int8(xj)})
@@ -626,12 +667,12 @@ fun print_repr(a: string) { print("\""); print(a); print("\"") }
 fun print_repr(a: char) { print("'"); print(a); print("'") }
 fun print(a: 't [])
 {
-    print("[|")
+    print("[| ")
     for x@i <- a {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print("|]")
+    print(" |]")
 }
 
 @nothrow fun print(a: char []): void = @ccode {
@@ -641,7 +682,7 @@ fun print(a: 't [])
 
 fun print(a: 't [,])
 {
-    print("[|")
+    print("[| ")
     val (m, n) = size(a)
     for i <- 0:m {
         for j <- 0:n {
@@ -650,17 +691,17 @@ fun print(a: 't [,])
         }
         if i < m-1 {print(";\n ")}
     }
-    print("|]")
+    print(" |]")
 }
 
 fun print(l: 't list)
 {
-    print("[:")
+    print("[: ")
     for x@i <- l {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print(":]")
+    print(" :]")
 }
 
 fun print(v: 't vector)
