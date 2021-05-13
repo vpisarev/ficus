@@ -17,7 +17,7 @@ import Hashmap
 
 fun cmp_int(a: int, b: int): int = a <=> b
 type int_map_t = (int, int) Hashmap.t
-fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1, hash)
+fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1)
 
 fun rename_locals(cmods: cmodule_t list)
 {

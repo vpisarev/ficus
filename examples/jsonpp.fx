@@ -103,11 +103,11 @@ fun print_js(js: json_t, ofs: int, indent: string)
     }
 }
 
-val rng = new_uniform_rng(123u64)
+val rng = RNG(123u64)
 val s_list_list = [: for i <- 0:10 {
-    val n = rng(0, 100)
+    val n = rng.uniform(0, 99)
     JsonCommented(f"#{i}", JsonSeq([: for j <- 0:n {
-        JsonScalar(JsonScInt(rng(0, 100000)))} :]))
+        JsonScalar(JsonScInt(rng.uniform(0, 99999)))} :]))
     } :]
 
 val sample_js = JsonCommented(

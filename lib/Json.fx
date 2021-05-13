@@ -230,6 +230,12 @@ fun scalar2string(js: t): (string, bool)
     }
 }
 
+fun print_to_file(js: t, filename: string)
+{
+    val f = File.open(filename, "wt")
+    ignore(print_(js, 0, "", fun(s: string) {f.print(s)}))
+    f.close()
+}
 fun print(js: t) = ignore(print_(js, 0, "", fun(s: string) {print(s)}))
 fun string(js: t) {
     var sl: string list = []

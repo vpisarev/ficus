@@ -41,12 +41,12 @@ TEST("vector.compehensions", fun()
 
 TEST("vector.concat_slice", fun()
 {
-    val rng = new_uniform_rng(0xffffffffUL)
+    val rng = RNG(0xffffffffUL)
     val N = 1000003
     var i = 0
     var vec: float vector = vector()
     while i < N {
-        val j = rng(i, N+1)
+        val j = rng.uniform(i, N+1)
         val added_vec = [for k <- i:j {float(k)}]
         vec += added_vec
         i = j
@@ -60,7 +60,7 @@ TEST("vector.concat_slice", fun()
 
     val ncuts = 1000
     val cuts = [| for i <- 0:ncuts+1 {
-        if i == 0 {0} else if i == ncuts {N} else {rng(0, N)}
+        if i == 0 {0} else if i == ncuts {N} else {rng.uniform(0, N)}
     }|]
     cuts.sort((<))
     val parts = [for i <- 0:ncuts {vec[cuts[i]:cuts[i+1]]}]
@@ -77,13 +77,13 @@ TEST("vector.concat_slice", fun()
 
 TEST("vector.find", fun()
 {
-    val rng = new_uniform_rng(0xffffffffUL)
+    val rng = RNG(0xffffffffUL)
     val N = 1000003
     val (simple_vec, complex_vec) = [@unzip for i <- 0:N {(i, [i])}]
 
     for i <- 0:10000 {
-        val idx = rng(0, N)
-        val big_idx = rng(-N, N*2)
+        val idx = rng.uniform(0, N)
+        val big_idx = rng.uniform(-N, N*2)
         val clip_idx = max(min(big_idx, N-1), 0)
         val wrap_idx = (big_idx % N) + (if big_idx < 0 {N} else {0})
         val x = simple_vec[idx]

@@ -109,7 +109,7 @@ type count_map_t = (id_t, int) Hashmap.t
 */
 fun find_single_use_vals(topcode: kcode_t)
 {
-    var count_map: count_map_t = Hashmap.empty(1024, noid, 0, hash)
+    var count_map: count_map_t = Hashmap.empty(1024, noid, 0)
     var decl_const_vals = empty_id_hashset(1024)
 
     fun count_atom(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
@@ -265,7 +265,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     var glob_data_ccode: ccode_t = []
     var module_cleanup: ccode_t = []
     var defined_syms = empty_id_hashset(1024)
-    var i2e: cexp_map_t = Hashmap.empty(1024, noid, CExpTyp(CTypInt, noloc), hash)
+    var i2e: cexp_map_t = Hashmap.empty(1024, noid, CExpTyp(CTypInt, noloc))
     val u1vals = find_single_use_vals(top_code)
     var block_stack: block_ctx_t ref list = []
     val for_letters = [: "i", "j", "k", "l", "m" :]

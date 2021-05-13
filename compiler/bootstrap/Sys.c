@@ -106,7 +106,7 @@ FX_EXTERN_C int _fx_M3SysFM7make_fpFPS1B2rSrS(
 
 static int _fx_M3SysFM10__lambda__S1B(bool get_version_0, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname, fx_str_t* mode, struct _fx_R7File__t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname_0, fx_str_t* mode_0, struct _fx_R7File__t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv);
 
@@ -117,9 +117,9 @@ FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t* f, void* fx_fv);
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(
-   fx_str_t* s,
-   char_ c,
-   bool allow_empty,
+   fx_str_t* s_0,
+   char_ c_0,
+   bool allow_empty_0,
    struct _fx_LS_data_t** fx_result,
    void* fx_fv);
 

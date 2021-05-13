@@ -539,8 +539,8 @@ val (name, gender, height, weight, (year, _, _)) = person_info
 Ficus includes the standard set of arithmetic expressions. Also, since it's a functional language, many of the complex control-flow operators that are usually statements in imperative languages are also expressions, and so they can be nested into other expressions:
 
 ```
-val rng = new_uniform_rng(0x123u64)
-println(if rng(0, 2) == 0 {"heads"} else {"tails"})
+val rng = RNG(0x123u64)
+println(if bool(rng) {"heads"} else {"tails"})
 ```
 
 note that this `if` expression is not a ternary operation like in C/C++, it's a full-scale conditional operator and you can put as much stuff into `then` and `else` branches as you want, including value and function definitions etc.
@@ -629,7 +629,7 @@ type DComplex = {re: double; im: double}
 type contour_t = point vector
 ```
 
-In the case of generic types (see [Generic Programming](#generics) section for details) the syntax is a bit more complex:
+In the case of generic types (see [Generic Programming](#generic-programming) section for details) the syntax is a bit more complex:
 
 ```
 // single-parameter case
@@ -907,8 +907,8 @@ Ficus includes the following built-in, automatically defined and user-defined ty
   // random vector access is ~O(1) operation,
   // so the following loop is reasonably fast
   var sum = 0.
-  val rng = new_uniform_rng(0x123u64)
-  for i <- 0:100000 { sum += big_vector[rng(0, N)] }
+  val rng = RNG(0x123u64)
+  for i <- 0:100000 { sum += big_vector[rng.uniform(0, N-1)] }
 
   // make a new vector that includes the first 100K
   // and the last 200K of elements of big_vector.
@@ -1168,13 +1168,13 @@ for id1 <- start_val1:end_val1[:step1]
 }
 ```
 
-In the first form of **for loop** you specify an integer value `id1` that will receive subsequent values:
+In the first form of **for loop** you introduce an identifier `id1` of type `int` that will receive the subsequent values:
 
 ```
 start_val1, start_val1 + step1, start_val1 + step1*2, ...
 ```
 
-until the current value will reach or cross the `end_val1` boundary. For each fixed value of `id1` we do iteration in the similar way over the nested specified range, if any, etc. In other words, we may have nested loops. Here is the example:
+until the current value will reach or cross the `end_val1` boundary. If `stepj` is not specified, it's set to 1. Negative steps are possible, in which case the loop will run 1 or more times if `start_valj` is greater than `end_valj`. For each fixed value of `id1` we do iteration in the similar way over the nested specified range, if any, etc. In other words, we may have nested loops. Here is the example:
 
 ```
 // prepare lookup table to compute Hamming distance efficiently
@@ -1202,7 +1202,7 @@ Note that the nested loops may use iteration values from the outer loops to spec
 The other form of the *for loop* is iteration over a collection:
 
 ```
-// iteration over a range
+// iteration over collections
 for elem1 <- collection11
    [for elem2 <- collection2 ...] {
    exprs
@@ -1216,11 +1216,11 @@ Currently it supports lists, strings, arrays and vectors:
 val histogram = array(256, 0)
 val w = 640, h = 480
 val image = array((h, w), 0u8)
-val rng = new_uniform_rng(0x12345u64)
+val rng = RNG(0x12345u64)
 // fill image with random values
 for y <- 0:h
    for x <- 0:w {
-      image[y, x] = uint8(rng(0, 256))
+      image[y, x] = rng.uniform(0u8, 255u8))
    }
 
 // iterate over 2D image elements.
@@ -1500,6 +1500,38 @@ val S = [| for i<-0:n+1 {
 } |]
 ```
 
+### Filtering data
+
+Another common pattern in data processing is to iterate through a collection and retain only those elements that satisfy certain criteria. In functional languages there is often a high-order function `List.filter` for that, and it's available in Ficus too. However, Ficus also provides 2 complementary methods to do it using comprehensions:
+
+1. There is optional `when` clause in `for` header:
+    ```
+    for id1 <- domain1, id2 <- domain2, ... [when expr] {...}
+    ```
+    and besides normal `for` or `fold` it can also be used in list and vector comprehensions (but not in array comprehensions!)
+2. You can use `continue` operator inside `for` and also list and vector comprehensions.
+
+Here are two equivalent variants of a comprehension that gives you prime numbers less than 100:
+
+```
+fun is_prime(n: int) =
+    if n <= 1 {false} else if n % 2 == 0 {n == 2}
+    else {
+        all(for d<-3:floor(sqrt(double(n)))+1:2 {n % d != 0})
+    }
+
+// use when clause
+val primes = [for i <- 2:100 when is_prime(i) {i}]
+
+// use continue
+val primes = [for i <- 2:100 {
+                if !is_prime(i) {continue}
+                i
+            }]
+```
+
+The first variant with `when` clause is usually shorter and more readable, however, sometimes the predicate is complex, then it makes sense to use the second variant. Both variants are equally efficient.
+
 ## Zip & @unzip
 
 Some of the common applications of comprehensions are 'zipping' and 'unzipping' operations. Zipping takes several collections and produces one collection, which elements are tuples of the corresponding elements. Unzipping does the opposite thing.
@@ -1670,10 +1702,10 @@ When a function is declared inside another function, it can access values from t
 import Sys
 fun make_coin()
 {
-    val rng = new_uniform_rng(uint64(Sys.tick_count()))
-    // 'warp up' rng a bit
-    val _ = fold s = 0 for i <- 0:1000 {s + rng(0, 2)}
-    fun () { if rng(0, 2) == 0 {"heads"} else {"tails"} }
+    val rng = RNG(uint64(Sys.tick_count()))
+    // 'warm up' rng a bit
+    val _ = fold s = 0UL for i <- 0:1000 {s ^ rng.next()}
+    fun () { if bool(rng) {"heads"} else {"tails"} }
 }
 val coin1 = make_coin()
 val coin2 = make_coin()
@@ -2551,6 +2583,56 @@ dilate3x3_32f(random((30, 30), 0.f, 1.f))
 ```
 
 Defining and using complex generic types is easy too, as we will see in [Sum Types or Variants](#variants).
+
+## Special parameters in generic functions
+
+### 't [+]
+
+You may have noticed that compehensions or for-loops, processing 1D, 2D etc. arrays often looks the same, e.g. the implementation of pairwise addition of two arrays looks like
+
+```
+val result = [| for x <- A, y <- B {x + y} |]
+```
+
+regardless of the element type and dimensionality of `A` and `B` (as long as it's the same in `A` and `B`).
+Ficus provide a convenient notation to implement a single generic function that supports arrays of any dimensionality:
+
+```
+operator .+ (A: 't [+], B: 't [+]) = [| for x <- A, y <- B {x+y} |]
+```
+
+That is, instead of defining several equivalent functions with parameters of different dimensionality `'t []`, `'t [,]`, `'t [,,]` etc. we simply write `'t [+]`. For each specific dimensionality (1D, 2D etc.) and for each particular element type the compiler will create a dedicated function that will handle such arrays.
+
+### (...)
+
+Ficus standard library also provides a compehensive set of operations on tuples, where some operations support tuples with any number of elements. The implementation is still quite compact thanks to for-loops over tuples, tuple comprehensions and `(...)` notation.
+
+```
+operator .> (a: (...), b: (...)) = (for x <- a, y <- b {x > y})
+```
+
+`(...)` is meta-type that denotes a tuple with any number of elements of any type. `for` inside `()` means tuple comprehension, and it generates tuple which elements are produced by the comprehension loop body. Tuples may have different type, and so the code inside for loop may vary from iteration from iteration. To make it work, the compiler does not produce a real loop. Instead, the loop is completely unrolled and each iteration is compiled separately, then the final tuple is constructed out of the results.
+
+If you want to limit tuples to uniform ones, which elements all have the same type, the notation `(T...)` can be used, where `T` can be a type variable (`'elemtype` or something like that) or concrete type, e.g. `float` (that is, `(float ...)` will denote a tuple that consists of float's):
+
+```
+fun dot(a: ('t ...), b: ('t ...)) =
+    // accumulator is double for double inputs,
+    // float for everything else.
+    fold s = (0:>'t)*0.f for x<-a, y<-b {s + x*y}
+```
+
+Also note that for-loop over a tuple can be put into `[: :]` to convert the results of tuple transformation into a list.
+
+### {...}
+
+There are much less built-in operations on records, but still it's possible to program a generic function that operates on any record. A for loop over record is also possible. There is no record comprehension, but the record processing results can be converted into a tuple or a list:
+
+```
+// a part of Builtins.fx
+// for loop of record gives you names of the record members, as well as their values
+fun string(r: {...}) = join_embrace("{", "}", ", ", [| for (n, x) <- r {n+"="+repr(x)} |])
+```
 
 # Lists
 
@@ -3657,7 +3739,7 @@ import Sys
 import File
 
 // instantiate Hashmap.t class: key=string, data=int
-val wordmap = Hashmap.empty(1024, "", 0, hash)
+val wordmap = Hashmap.empty(1024, "", 0)
 val separators = " \t,.:;?!()[]{}=><+-/*\\'\"|\n"
 
 val (f, isstdin) = match Sys.arguments() {
@@ -3887,7 +3969,7 @@ In Ficus it's done using `@sync`-blocks. Here is the example:
 fun is_prime(n: int) {
     if n <= 1 {false} else if n % 2 == 0 {n == 2}
     else {
-        all(for p<-3:floor(sqrt(double(n)))+1:2 {n % p != 0})
+        all(for d<-3:floor(sqrt(double(n)))+1:2 {n % d != 0})
     }
 }
 
@@ -3989,23 +4071,75 @@ println(sse2.add_sat_u8(a, b))
 
 In fact, quite a few functions in the Ficus standard library are implemented in C, e.g. the most of `File` content, or some of the matrix processing functions in `Array`, so please take a look at it to learn this topic more deeply.
 
-# Input/Output
+# The Standard Library Overview
+
+## Math
+
+`Math` module is automatically imported. It includes various math functions:
+
+* `M_PI`, `M_E`, `M_LOG2` — (π=3.14159..), the base of natural logarithm (e=2.71828...), log(2)=0.693147...
+* `FLT_EPSILON`, `DBL_EPSILON` — minimum single-precision and double-precision numbers (ε) such that 1+ε > 1
+* `pow(x, y)`, `sqrt(x)`, `atan(x)`, `atan2(y, x)`, `cos(x)`, `sin(x)`, `tan(x)`, `log(x)`, `exp(x)`, `atanh(x)`, `cosh(x)`, `sinh(x)`, `tanh(x)` — standard math functions with `float` or `double` arguments.
+* `ceil(x)`, `floor(x)`, `round(x)`, `trunc(x)` — round single- or double-precision floating point number of int. The rounding is done towards +infinity, -infinity, the nearest even or zero, respectively.
+* `isnan(x)`, `isinf(x)` — return true iff the input is Not-a-Number or Infinity, respectively.
+* `GCD(x: int, y: int): int` — finds the greatest common denominator of 2 integers
+* `RNG` — the random number generator class.
+
+## File
 
 `File` module in the standard library replicates all the functionality of the standard C's `stdio.h`. Without explaining it deeply, here is the list of useful functions and methods:
 
-* `File.open(filename, mode)` — opens the file in requested mode, replication of `fopen` function from `C`. Throws `IOError` exception if the file is not found or cannot be opened. Otherwise, the function returns an instance of class `File.t`, which methods are listed below (assuming that the class instance is called `file`):
-* `file.eof()` — `true` if we reached the end of file
-* `file.close()` — closes the file. It's safe to close file twice, the second call will be ignored. BTW, the file is closed automatically in the destructor.
-* `file.seek(pos, origin)` — changes the position of the file to the specified one. `whence` is one of `SEEK_SET`, `SEEK_CURR` or `SEEK_END`.
-* `file.tell()` — returns the current position
-* `file.print(x)` — prints value to the text file, there are multiple overloaded functions for different basic types
-* `file.println(x)` — same as the previous, but adds `\n`
-* `file.write(arr)` — writes 1D or 2D array to binary file
-* `file.read(arr)` — reads data to 1D array of type uint8. The data is read until it fills the whole provided array or until EOF occurs, whatever happens earlier. It returns the number of bytes read.
-* `file.readln()` — reads a single line from text file. The file is assumed to have UTF-8 encoding and the read string is converted to Unicode.
-* `File.read_utf8(filename)` — reads entire file, assuming it's text file in UTF-8 encoding, into a text string
-* `File.write_utf8(filename, str)` — writes string (possibly containing '\n', '\r') to a file using UTF-8 encoding.
-* `File.read_binary_u8(filname)` — reads the entire file (as binary file) into an array of bytes (`byte []`).
+* `File.open(filename, mode): File.t` — opens the file in requested mode, replication of `fopen` function from `C`. Throws `IOError` exception if the file is not found or cannot be opened. Otherwise, the function returns an instance of class `File.t`, which methods are listed below (assuming that the class instance is called `file`):
+* `file.eof(): bool` — `true` if we reached the end of file
+* `file.close(): void` — closes the file. It's safe to close file twice, the second call will be ignored. BTW, the file is closed automatically in the destructor.
+* `file.seek(pos, origin): void` — changes the position of the file to the specified one. `whence` is one of `SEEK_SET`, `SEEK_CURR` or `SEEK_END`.
+* `file.tell(): int64` — returns the current position
+* `file.print(x): void` — prints value to the text file, there are multiple overloaded functions for different basic types
+* `file.println(x): void` — same as the previous, but adds `\n`
+* `file.write(arr): void` — writes 1D or 2D array to binary file
+* `file.read(arr): int` — reads data to 1D array of type uint8. The data is read until it fills the whole provided array or until EOF occurs, whatever happens earlier. It returns the number of bytes read.
+* `file.readln(): string` — reads a single line from text file. The file is assumed to have UTF-8 encoding and the read string is converted to Unicode.
+* `File.read_utf8(filename): string` — reads entire file, assuming it's text file in UTF-8 encoding, into a text string
+* `File.write_utf8(filename, str): void` — writes string (possibly containing '\n', '\r') to a file using UTF-8 encoding.
+* `File.read_binary_u8(filname): uint8 []` — reads the entire file (as binary file) into an array of bytes.
+
+## Sys
+
+* `Sys.argv: string list` — a list of command-line arguments
+* `Sys.win32: bool` — true if the app is running on Windows
+* `Sys.unix: bool` — true if the app is running on Unix-like OS (Linux, macOS, BSD, ...)
+* `Sys.osname(get_version: bool): string` — gives textual description of OS the app is running on. Run Ficus unit tests (or Ficus with `-v` parameter) to see the output of the function on your platform.
+* `Sys.cc_version(): string` — gives compiler, together with its version, that was used to build the app.
+* `Sys.tick_count(): int64` — returns the number of realtime clock ticks since the system startup.
+* `Sys.tick_frequency(): double` — returns the tick frequency (ticks per second)
+* `Sys.timeit(f: void->void, ~iterations=1, ~batch=1): double` — performs the certain number of time estimation iterations, on each iteration the function is executed `batch` times. The function returns geometric mean of the function execution time.
+* `Sys.remove(filename)` — removes file.
+* `Sys.rename(filename, newname)` - renames file.
+* `Sys.mkdir(dirname, permissions)` — creates a directory.
+* `Sys.command(cmd): int` — runs the specified command, returns its exit value.
+* `Sys.getenv(varname): string` — returns value of environment variable
+* `Sys.getpath(varname): string list` — assuming that the environment variable contains `:`-separated (on Unix) or `;`-separated (on Windows) list of directories, it returns the list of directories.
+* `Sys.colorterm(): bool` — returns true if the app is running inside xterm or compatible console with ANSI escape codes supported.
+
+## Hashmap, Hashset
+
+**TBD** (see the word counting example above)
+Efficient imperative data structures for hashtables and sets
+
+## Map, Set
+
+**TBD** (see `test_ds.fx` unit test)
+Purely functional, RedBlack-tree based associative data structures
+
+## Json
+
+Json parser + pretty-printer, see `test_json.fx` unit test as the usage example.
+
+* `Json.parse_file(filname): Json.t` — parses file, returns the hierarchical JSON representation
+* `Json.parse_string(filname): Json.t` — parses string, returns the hierarchical JSON representation
+* `Json.print_to_file(json, filename)` — prints JSON representation to file
+* `Json.print(json)` — prints JSON representation to the standard output
+* `Json.string(json)` — converts JSON representation to a string
 
 # Appendix A. Using ficus
 

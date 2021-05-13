@@ -305,9 +305,9 @@ fun print_subst_map(m: idamap_t, loc: loc_t) {
 
 fun cfold_dealias(kmods: kmodule_t list)
 {
-    var ida_map: idamap_t = Hashmap.empty(1024, noid, AtomId(noid), hash)
-    var concat_map: idalmap_t = Hashmap.empty(1024, noid, [], hash)
-    var mktup_map: idalmap_t = Hashmap.empty(1024, noid, [], hash)
+    var ida_map: idamap_t = Hashmap.empty(1024, noid, AtomId(noid))
+    var concat_map: idalmap_t = Hashmap.empty(1024, noid, [])
+    var mktup_map: idalmap_t = Hashmap.empty(1024, noid, [])
 
     fun cfd_atom_(a: atom_t, loc: loc_t, callb: k_callb_t) =
         match a {

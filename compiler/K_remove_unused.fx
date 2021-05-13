@@ -368,7 +368,7 @@ fun remove_unused_by_main(kmods: kmodule_t list)
 
     // For each symbol find its direct top-level dependencies
     val idset0 = empty_id_hashset(1)
-    var all_deps = Hashmap.empty(1024, noid, idset0, hash)
+    var all_deps = Hashmap.empty(1024, noid, idset0)
     for (n, e) <- all_top {
         val deps = used_by(e :: [], 16)
         deps.intersect(all_top_ids)

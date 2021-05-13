@@ -406,7 +406,7 @@ FX_EXTERN_C int_ _fx_M6StringFM9to_int_ori2Si(fx_str_t* a, int_ defval, void* fx
 {
    
 int_ result;
-    bool ok = fx_atoi(a, &result, 10);
+    bool ok = fx_atoi(a, &result, 0);
     return ok ? result : defval;
 
 }

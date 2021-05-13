@@ -187,7 +187,7 @@ fun copy_some(kmods: kmodule_t list)
             | _ => {}
         }
     }
-    val all_copied_hash = Hashmap.from_list(noid, (0, KExpNop(noloc)), hash, all_copied)
+    val all_copied_hash = Hashmap.from_list(noid, (0, KExpNop(noloc)), all_copied)
     //println(f"# of copied definitions: {all_copied.length()}")
 
     // step 2. For each symbol from the constructed list compute the set of its
@@ -195,7 +195,7 @@ fun copy_some(kmods: kmodule_t list)
     val all_copied_set = empty_id_hashset(1)
     for (n, _) <- all_copied { all_copied_set.add(n) }
     val idset0 = empty_id_hashset(1)
-    var all_deps = Hashmap.empty(1024, noid, idset0, hash)
+    var all_deps = Hashmap.empty(1024, noid, idset0)
     for (n, (_, e)) <- all_copied {
         val deps = used_by(e :: [], 16)
         deps.intersect(all_copied_set)
@@ -257,7 +257,7 @@ fun copy_some(kmods: kmodule_t list)
         // the currently processed module has been formed.
         // Now we need to create a copy of the code and at once rename
         // all the external and locally defined names in the code.
-        val empty_subst0 = Hashmap.empty(1, noid, AtomId(noid), hash)
+        val empty_subst0 = Hashmap.empty(1, noid, AtomId(noid))
         val (copied_code, subst_map) = K_inline.subst_names(km_idx,
                     code2kexp(copied_code, noloc), empty_subst0, true)
         val copied_code = kexp2code(copied_code)

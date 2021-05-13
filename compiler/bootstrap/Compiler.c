@@ -8069,13 +8069,13 @@ _fx_N20Compiler__msgcolor_t _fx_g18Compiler__MsgGreen = { 2 };
 _fx_N20Compiler__msgcolor_t _fx_g17Compiler__MsgBlue = { 3 };
 bool _fx_g21Compiler__iscolorterm;
 fx_str_t _fx_g15Compiler__error = {0};
-FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep, struct _fx_LS_data_t* strs, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3SysFM9colortermB0(bool* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_R18Options__options_t _fx_g12Options__opt)
 FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
@@ -8539,18 +8539,18 @@ FX_EXTERN_C int _fx_M8CompilerFM12get_preambleLN14Lexer__token_t1S(
       _fx_make_T2LN14Lexer__token_tB(0, false, &__fold_result___0);
       fx_str_t slit_0 = FX_MAKE_STR("Builtins");
       _fx_make_T2SB(&slit_0, true, &v_1);
-      fx_str_t slit_1 = FX_MAKE_STR("Array");
-      _fx_make_T2SB(&slit_1, false, &v_2);
-      fx_str_t slit_2 = FX_MAKE_STR("List");
-      _fx_make_T2SB(&slit_2, false, &v_3);
-      fx_str_t slit_3 = FX_MAKE_STR("Vector");
+      fx_str_t slit_1 = FX_MAKE_STR("Math");
+      _fx_make_T2SB(&slit_1, true, &v_2);
+      fx_str_t slit_2 = FX_MAKE_STR("Array");
+      _fx_make_T2SB(&slit_2, true, &v_3);
+      fx_str_t slit_3 = FX_MAKE_STR("List");
       _fx_make_T2SB(&slit_3, false, &v_4);
-      fx_str_t slit_4 = FX_MAKE_STR("Char");
+      fx_str_t slit_4 = FX_MAKE_STR("Vector");
       _fx_make_T2SB(&slit_4, false, &v_5);
-      fx_str_t slit_5 = FX_MAKE_STR("String");
+      fx_str_t slit_5 = FX_MAKE_STR("Char");
       _fx_make_T2SB(&slit_5, false, &v_6);
-      fx_str_t slit_6 = FX_MAKE_STR("Math");
-      _fx_make_T2SB(&slit_6, true, &v_7);
+      fx_str_t slit_6 = FX_MAKE_STR("String");
+      _fx_make_T2SB(&slit_6, false, &v_7);
       FX_CALL(_fx_cons_LT2SB(&v_7, 0, true, &v_8), _fx_cleanup);
       FX_CALL(_fx_cons_LT2SB(&v_6, v_8, false, &v_8), _fx_cleanup);
       FX_CALL(_fx_cons_LT2SB(&v_5, v_8, false, &v_8), _fx_cleanup);

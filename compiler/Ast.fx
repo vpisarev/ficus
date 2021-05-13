@@ -358,8 +358,8 @@ type str_hashset_t = string Hashset.t
 fun hash(i: id_t): hash_t =
     (((FNV_1A_OFFSET ^ uint64(i.m))*FNV_1A_PRIME ^ uint64(i.i))*FNV_1A_PRIME ^ uint64(i.j))
 
-fun empty_id_hashset(size0: int): id_t Hashset.t = Hashset.empty(size0, noid, hash)
-fun empty_str_hashset(size0: int): string Hashset.t = Hashset.empty(size0, "", hash)
+fun empty_id_hashset(size0: int): id_t Hashset.t = Hashset.empty(size0, noid)
+fun empty_str_hashset(size0: int): string Hashset.t = Hashset.empty(size0, "")
 fun id_hashset(s: idset_t) {
     val hs = empty_id_hashset(s.size*2)
     s.app(fun (x) {hs.add(x)})
@@ -471,8 +471,8 @@ fun default_module() =
 var freeze_ids = false
 var lock_all_names = 0
 var all_names = Dynvec.create(0, "")
-var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1, hash)
-var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1, hash)
+var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
+var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
 var all_modules: defmodule_t [] = []
 var all_modules_sorted: int list = []
 var builtin_exceptions = empty_idmap

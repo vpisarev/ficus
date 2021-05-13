@@ -9,234 +9,293 @@
    See https://github.com/python/cpython/blob/master/Objects/dictobject.c
 */
 
-val HASH_EMPTY: hash_t = 0UL
-val HASH_DELETED: hash_t = 1UL
+val HASH_EMPTY = 0
+val HASH_DELETED = 1
+val HASH_ALIVE = 2
+val HASH_SIGN_MASK: hash_t = 9223372036854775808UL
 val PERTURB_SHIFT = 5
 
 type 'k hashset_entry_t = {hv: hash_t; key: 'k}
+class index_t = IndexByte: uint8 [] | IndexWord: uint16 [] | IndexLarge: int []
 
 class 'k t
 {
-    hash_f: 'k -> hash_t
     default_entry: 'k hashset_entry_t
-    var nelems: int
-    var nremoved: int
+    var nactive: int
+    var tabsz: int
+    var free: int
+    var index: index_t
     var table: 'k hashset_entry_t []
 }
 
-fun empty(size0: int, k0: 'k, f: 'k->hash_t ): 'k Hashset.t
+fun makeindex(size: int) =
+    if size <= 256 {IndexByte(array(size, 0u8))}
+    else if size <= 65536 {IndexWord(array(size, 0u16))}
+    else {IndexLarge(array(size, 0))}
+
+fun size(idx: index_t): int
+{
+    | IndexByte(tab) => size(tab)
+    | IndexWord(tab) => size(tab)
+    | IndexLarge(tab) => size(tab)
+}
+
+fun get(idx: index_t, i: int) =
+    match idx {
+    | IndexByte(tab) => int(tab[i])
+    | IndexWord(tab) => int(tab[i])
+    | IndexLarge(tab) => tab[i]
+    }
+
+fun set(idx: index_t, i: int, newval: int) =
+    match idx {
+    | IndexByte(tab) => tab[i] = uint8(newval)
+    | IndexWord(tab) => tab[i] = uint16(newval)
+    | IndexLarge(tab) => tab[i] = newval
+    }
+
+fun copy(idx: index_t)
+{
+    | IndexByte(tab) => IndexByte(copy(tab))
+    | IndexWord(tab) => IndexWord(copy(tab))
+    | IndexLarge(tab) => IndexLarge(copy(tab))
+}
+
+fun empty(size0: int, k0: 'k): 'k Hashset.t
 {
     var size = 8
     while size < size0 { size *= 2 }
-    val entry0 = hashset_entry_t {hv=HASH_EMPTY, key=k0}
+    val idxsize = size*2
+    val entry0 = hashset_entry_t {hv=0u64, key=k0}
     Hashset.t {
-        hash_f=f, default_entry=entry0,
-        nelems=0, nremoved=0,
+        default_entry=entry0,
+        nactive=0, tabsz=0, free=0,
+        index = makeindex(idxsize),
         table=array(size, entry0) }
 }
 
-fun t.empty(): bool = self.nelems == 0
-fun t.size() = self.nelems
+fun t.empty(): bool = self.nactive == 0
+fun t.size() = self.nactive
 
 fun t.clear() {
-    val table = self.table
     val entry0 = self.default_entry
+    val table = self.table
     for i <- 0:size(table) {
         table[i] = entry0
     }
-    self.nelems = 0
-    self.nremoved = 0
+    self.nactive = 0
+    self.tabsz = 0
+    self.free = 0
+    self.index = makeindex(size(table)*2)
 }
 
 fun t.copy(): 'k Hashset.t =
-    Hashset.t { hash_f=self.hash_f, default_entry=self.default_entry,
-        nelems=self.nelems, nremoved=self.nremoved,
+    Hashset.t {
+        default_entry=self.default_entry, nactive=self.nactive,
+        tabsz=self.tabsz, free = self.free, index=copy(self.index),
         table=copy(self.table) }
 
 fun t.compress(): 'k Hashset.t
 {
-    val nelems = self.nelems
-    val result = empty(nelems*2, self.default_entry.key, self.hash_f)
+    val nactive = self.nactive
+    val result = empty(nactive, self.default_entry.key)
     val table = self.table
-    for i <- 0:size(table) {
-        if table[i].hv > HASH_DELETED {
+    for i <- 0:self.tabsz {
+        if table[i].hv < HASH_SIGN_MASK {
             result.add_(table[i].key, table[i].hv)
         }
     }
     result
 }
 
-@private fun t.add_(hs_table: 'k hashset_entry_t [], entry: 'k hashset_entry_t): (int, int)
+@private fun add_fast_(tabsz: int, ht_index: index_t,
+                    ht_table: 'k hashset_entry_t [],
+                    entry: 'k hashset_entry_t)
 {
-    val tabsz = size(hs_table)
+    val idxsz = size(ht_index)
     val hv = entry.hv
-    var perturb = hv, delta_nelems = -1, delta_nremoved = 0
-    var j = int(hv) & (tabsz - 1), insert_pos = -1
+    var perturb = hv, j = int(hv) & (idxsz - 1)
+    var found_free_slot = false
 
-    for i <- 0:tabsz+14 {
-        val {hv=hvj, key=kj} = hs_table[j]
-        if hvj == hv {
-            if kj == entry.key {
-                if insert_pos >= 0 {
-                    hs_table[insert_pos] = entry
-                    hs_table[j] = self.default_entry
-                }
-                delta_nelems = 0
-                break
-            }
-        } else if hvj == HASH_EMPTY {
-            hs_table[(if insert_pos >= 0 {insert_pos} else {j})] = entry
-            delta_nelems = 1
+    for i <- 0:idxsz+14 {
+        val tidx = ht_index.get(j)
+        if tidx == HASH_EMPTY {
+            ht_index.set(j, tabsz+HASH_ALIVE)
+            ht_table[tabsz] = entry
+            found_free_slot = true
             break
-        } else if hvj == HASH_DELETED && insert_pos < 0 {
-            insert_pos = j
-            delta_nremoved = -1
         }
         perturb >>= PERTURB_SHIFT
-        j = int(uint64(j*5 + 1) + perturb) & (tabsz - 1)
+        j = int(uint64(j*5 + 1) + perturb) & (idxsz - 1)
     }
-    if delta_nelems < 0 {
-        if insert_pos >= 0 {
-            hs_table[insert_pos] = entry
-            delta_nelems = 1
-        } else {
-            throw Fail("can-not insert element into half-empty Hashtable (?!)")
-        }
+    if !found_free_slot {
+        throw Fail("cannot insert element (full Hashtable?!)")
     }
-    (delta_nelems, delta_nremoved)
+    tabsz + 1
 }
 
 @private fun t.grow(new_size: int): void
 {
-    val hs_table = self.table
-    val curr_size = size(hs_table)
+    //println(f"started growing to {new_size}")
+    val ht_table = self.table
     val new_ht_table = array(new_size, self.default_entry)
-    for j <- 0:curr_size {
-        if hs_table[j].hv > HASH_DELETED {
-            ignore(self.add_(new_ht_table, hs_table[j]))
+    val new_ht_index = makeindex(new_size*2)
+    var tabsz = 0
+
+    for j <- 0:self.tabsz {
+        if ht_table[j].hv < HASH_SIGN_MASK {
+            tabsz = add_fast_(tabsz, new_ht_index, new_ht_table, ht_table[j])
         }
     }
+    self.index = new_ht_index
     self.table = new_ht_table
-    self.nremoved = 0
+    self.tabsz = tabsz
+    self.free = 0
+    //println(f"finished growing to {new_size}")
 }
 
-fun t.find_idx_(k: 'k, hv_: hash_t): int
+@private fun t.find_idx_(k: 'k, hv: hash_t): (int, int)
 {
-    var hv = hv_
-    if hv <= HASH_DELETED { hv ^= FNV_1A_OFFSET }
-    val tabsz = size(self.table)
+    val idxsz = size(self.index)
     var perturb = hv, found = -1
-    var j = int(hv) & (tabsz - 1)
-    for i <- 0:tabsz+14 {
-        val {hv=hvj, key=kj} = self.table[j]
-        if hvj == hv {
-            if kj == k {
-                found = j
+    var j = int(hv) & (idxsz - 1)
+    for i <- 0:idxsz+14 {
+        val tidx = self.index.get(j)
+        if tidx >= HASH_ALIVE {
+            val entry = self.table[tidx - HASH_ALIVE]
+            if entry.hv == hv && entry.key == k {
+                found = tidx - HASH_ALIVE
                 break
             }
-        } else if hvj == HASH_EMPTY { break }
+        } else if tidx == HASH_EMPTY { break }
         perturb >>= PERTURB_SHIFT
-        j = int(uint64(j*5 + 1) + perturb) & (tabsz - 1)
+        j = int(uint64(j*5 + 1) + perturb) & (idxsz - 1)
     }
-    found
+    (j, found)
 }
 
-fun t.find_idx(k: 'k): int = self.find_idx_(k, self.hash_f(k))
-fun t.mem(k: 'k): bool = self.find_idx(k) >= 0
-
-fun t.add_(k: 'k, hv_: hash_t)
+fun t.find_idx(k: 'k) = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK).1
+fun t.mem(k: 'k): bool = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK).1 >= 0
+fun t.find_opt(k: 'k): 'd?
 {
-    var hv = hv_
-    if hv <= HASH_DELETED { hv ^= FNV_1A_OFFSET }
-    var tabsz = size(self.table)
+    val j = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK).1
+    if j >= 0 { Some(self.table[j].data) } else { None }
+}
 
-    if self.nelems + self.nremoved >= (tabsz >> 1) {
-        while tabsz <= (self.nelems + self.nremoved)*2 { tabsz *= 2 }
-        self.grow(tabsz)
+fun t.check_free()
+{
+    var free = self.free
+    var count = 0
+    print("free list: [")
+    while free > 0 {
+        count += 1
+        val tidx = free - 1
+        print(f" {tidx}")
+        assert(0 <= tidx < self.tabsz)
+        free = int(self.table[tidx].hv & ~HASH_SIGN_MASK)
+    }
+    println(f"]\nfree list is ok, {count} elements")
+}
+
+@private fun t.add_(k: 'k, hv: hash_t)
+{
+    var idxsz = size(self.index)
+
+    if self.nactive + 1 > (idxsz >> 1) {
+        while idxsz < (self.nactive + 1)*2 { idxsz *= 2 }
+        self.grow(max(idxsz/2, self.nactive + 1))
     }
 
-    var perturb = hv, found = -1, insert_pos = -1
-    var j = int(hv) & (tabsz - 1)
-    for i <- 0:tabsz+14 {
-        val {hv=hvj, key=kj} = self.table[j]
-        if hvj == hv {
-            if kj == k {
-                found = j
+    //self.check_free()
+    var perturb = hv, found = -1, insert_idx = -1
+    var j = int(hv) & (idxsz - 1)
+    for i <- 0:idxsz+14 {
+        val tidx = self.index.get(j)
+        if tidx >= HASH_ALIVE {
+            val entry = self.table[tidx - HASH_ALIVE]
+            if entry.hv == hv && entry.key == k {
+                found = tidx - HASH_ALIVE
                 break
             }
-        } else if hvj == HASH_EMPTY {
-            if insert_pos < 0 { insert_pos = j }
+        } else if tidx == HASH_EMPTY {
+            if insert_idx < 0 {insert_idx = j}
             break
-        } else if hvj == HASH_DELETED && insert_pos < 0 {
-            insert_pos = j
-            self.nremoved -= 1
+        } else if tidx == HASH_DELETED && insert_idx < 0 {
+            insert_idx = j
         }
         perturb >>= PERTURB_SHIFT
-        j = int(uint64(j*5 + 1) + perturb) & (tabsz - 1)
+        j = int(uint64(j*5 + 1) + perturb) & (idxsz - 1)
     }
     if found >= 0 {
-        if insert_pos >= 0 {
-            self.table[insert_pos] = self.table[found]
-            self.table[found] = self.default_entry
+        if insert_idx >= 0 && insert_idx != j {
+            self.index.set(insert_idx, found + HASH_ALIVE)
+            self.index.set(j, HASH_DELETED)
         }
-    }
-    else if insert_pos >= 0 {
-        self.table[insert_pos] = hashset_entry_t {hv=hv, key=k}
-        self.nelems += 1
+    } else if insert_idx >= 0 {
+        found = self.free-1
+        if found >= 0 {
+            self.free = int(self.table[found].hv & ~HASH_SIGN_MASK)
+        } else {
+            found = self.tabsz
+            self.tabsz += 1
+            assert(found < size(self.table))
+        }
+        self.table[found] = hashset_entry_t {hv=hv, key=k}
+        self.index.set(insert_idx, found + HASH_ALIVE)
+        self.nactive += 1
     } else {
-        throw Fail("can-not insert element into half-empty Hashtable (?!)")
+        throw Fail("cannot insert element (full Hashtable?!)")
     }
 }
 
-fun t.add(k: 'k) = self.add_(k, self.hash_f(k))
+fun t.add(k: 'k) = self.add_(k, hash(k) & ~HASH_SIGN_MASK)
 
 fun t.remove(k: 'k) {
-    val idx = self.find_idx(k)
-    if idx >= 0 {
-        self.table[idx] = self.default_entry.{hv=HASH_DELETED}
-        self.nelems -= 1
-        self.nremoved += 1
+    val (j, tidx) = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK)
+    if tidx >= 0 {
+        self.index.set(j, HASH_DELETED)
+        self.table[tidx].hv = uint64(self.free) | HASH_SIGN_MASK
+        self.free = tidx+1
+        self.nactive -= 1
     }
 }
 
 fun t.list(): 'k list =
-    [: for j <- 0:size(self.table) {
-        if self.table[j].hv <= HASH_DELETED { continue }
+    [: for j <- 0:self.tabsz {
+        if self.table[j].hv >= HASH_SIGN_MASK { continue }
         self.table[j].key
     } :]
 
 fun t.add_list(data: 'k list)
 {
-    var datasz = self.nelems + self.nremoved + data.length()
+    var datasz = self.nactive + data.length()
     var curr_size = size(self.table), new_size = curr_size
-    while new_size <= datasz*2 { new_size *= 2 }
+    while new_size < datasz { new_size *= 2 }
     if new_size > curr_size { self.grow(new_size) }
     for k <- data { self.add(k) }
 }
 
-fun from_list(k0: 'k, hash_f: 'k->hash_t, data: 'k list): 'k Hashset.t
+fun from_list(k0: 'k, data: 'k list): 'k Hashset.t
 {
-    val hs = empty(data.length()*2, k0, hash_f)
-    hs.add_list(data)
-    hs
+    val ht = empty(data.length(), k0)
+    ht.add_list(data)
+    ht
 }
 
-fun t.app(f: 'k->void)
-{
+fun t.app(f: 'k->void) {
     val table = self.table
-    for j <- 0:size(table) {
-        if table[j].hv > HASH_DELETED {
+    for j <- 0:self.tabsz {
+        if table[j].hv < HASH_SIGN_MASK {
             f(table[j].key)
         }
     }
 }
 
-fun t.foldl(f: ('k, 'r)->'r, res0: 'r): 'r
-{
+fun t.foldl(f: ('k, 'r)->'r, res0: 'r): 'r {
     val table = self.table
     var res = res0
-    for j <- 0:size(table) {
-        if table[j].hv > HASH_DELETED {
+    for j <- 0:self.tabsz {
+        if table[j].hv < HASH_SIGN_MASK {
             res = f(table[j].key, res)
         }
     }
@@ -246,8 +305,8 @@ fun t.foldl(f: ('k, 'r)->'r, res0: 'r): 'r
 fun t.union(b: 'k Hashset.t): void
 {
     val table = b.table
-    for j <- 0:size(table) {
-        if table[j].hv > HASH_DELETED {
+    for j <- 0:b.tabsz {
+        if table[j].hv < HASH_SIGN_MASK {
             self.add_(table[j].key, table[j].hv)
         }
     }
@@ -256,11 +315,15 @@ fun t.union(b: 'k Hashset.t): void
 fun t.intersect(b: 'k Hashset.t): void
 {
     val table = self.table
-    self.table = array(min(size(self.table), size(b.table)), self.default_entry)
-    self.nelems = 0
-    self.nremoved = 0
-    for j <- 0:size(table) {
-        if table[j].hv > HASH_DELETED && b.find_idx_(table[j].key, table[j].hv) >= 0 {
+    val tabsz = self.tabsz
+    val tmp = empty(min(size(self.table), size(b.table)), self.default_entry.key)
+    self.table = tmp.table
+    self.index = tmp.index
+    self.nactive = 0
+    self.tabsz = 0
+    self.free = 0
+    for j <- 0:tabsz {
+        if table[j].hv < HASH_SIGN_MASK && b.find_idx_(table[j].key, table[j].hv).1 >= 0 {
             self.add_(table[j].key, table[j].hv)
         }
     }
@@ -270,8 +333,8 @@ fun t.all(f: 'k->bool): bool
 {
     val table = self.table
     var ok = true
-    for j <- 0:size(table) {
-        if table[j].hv > HASH_DELETED && !f(table[j].key) {
+    for j <- 0:self.tabsz {
+        if table[j].hv < HASH_SIGN_MASK && !f(table[j].key) {
             ok = false; break
         }
     }
@@ -282,8 +345,8 @@ fun t.exists(f: 'k->bool): bool
 {
     val table = self.table
     var ok = false
-    for j <- 0:size(table) {
-        if table[j].hv > HASH_DELETED && f(table[j].key) {
+    for j <- 0:self.tabsz {
+        if table[j].hv < HASH_SIGN_MASK && f(table[j].key) {
             ok = true; break
         }
     }
@@ -292,13 +355,17 @@ fun t.exists(f: 'k->bool): bool
 
 fun t.filter(f: 'k->bool): void
 {
+    val idxsz = size(self.index)
     val table = self.table
-    val deleted_entry = self.default_entry.{hv=HASH_DELETED}
-    for j <- 0:size(table) {
-        if table[j].hv > HASH_DELETED && !f(table[j].key) {
-            table[j] = deleted_entry
-            self.nelems -= 1
-            self.nremoved += 1
+    val key0 = self.default_entry.key
+    for j <- 0:idxsz {
+        val tidx = self.index.get(j)
+        if tidx >= HASH_ALIVE && !f(table[tidx - HASH_ALIVE].key) {
+            self.index.set(j, HASH_DELETED)
+            table[tidx - HASH_ALIVE] = hashset_entry_t {
+                hv = uint64(self.free) | HASH_SIGN_MASK, key=key0}
+            self.free = tidx + 1
+            self.nactive -= 1
         }
     }
 }

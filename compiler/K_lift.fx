@@ -220,7 +220,7 @@ type ll_func_info_t =
 
 type ll_env_t = (id_t, ll_func_info_t) Hashmap.t
 type ll_subst_env_t = (id_t, (id_t, id_t, ktyp_t?)) Hashmap.t
-fun empty_subst_env(size0: int): ll_subst_env_t = Hashmap.empty(size0, noid, (noid, noid, None), hash)
+fun empty_subst_env(size0: int): ll_subst_env_t = Hashmap.empty(size0, noid, (noid, noid, None))
 
 fun make_wrappers_for_nothrow(km_idx: int, top_code: kcode_t)
 {
@@ -288,7 +288,7 @@ fun lift_all(kmods: kmodule_t list)
         ll_fvars = empty_id_hashset(1),
         ll_declared_inside = empty_id_hashset(1),
         ll_called_funcs = empty_id_hashset(1) }
-    var ll_env : ll_env_t = Hashmap.empty(1024, noid, ll_info0, hash)
+    var ll_env : ll_env_t = Hashmap.empty(1024, noid, ll_info0)
     var orig_subst_env = empty_subst_env(1024)
 
     fun fold_fv0_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}

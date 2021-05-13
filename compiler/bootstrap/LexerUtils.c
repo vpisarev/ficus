@@ -573,7 +573,7 @@ int delta_lines = 0;
                 else if(c == 'r')
                     c = '\r';
                 else if(c == 'e')
-                    c = '\e';
+                    c = 27;
                 else if(c == 't')
                     c = '\t';
                 else if(c == 'b') // backspace

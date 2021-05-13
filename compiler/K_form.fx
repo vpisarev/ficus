@@ -1076,7 +1076,7 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
 
 fun used_by(code: kcode_t, size0: int): id_hashset_t
 {
-    val all_used: id_hashset_t = Hashset.empty(size0, noid, hash)
+    val all_used: id_hashset_t = Hashset.empty(size0, noid)
     fun remove_unless(had_before: bool, n: id_t) =
         if !had_before { all_used.remove(n) }
     fun add_id(n: id_t) = if n.m > 0 { all_used.add(n) }
@@ -1150,7 +1150,7 @@ fun used_by(code: kcode_t, size0: int): id_hashset_t
 
 fun declared(code: kcode_t, size0: int): id_hashset_t
 {
-    val all_decl: id_hashset_t = Hashset.empty(size0, noid, hash)
+    val all_decl: id_hashset_t = Hashset.empty(size0, noid)
     fun add_id(n: id_t) = if n.m > 0 { all_decl.add(n) }
     fun decl_by_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void {}
     fun decl_by_kexp_(e: kexp_t, callb: k_fold_callb_t): void =

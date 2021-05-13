@@ -172,7 +172,7 @@ fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, token_t) 
         or an expression beginning (type 2), depending on context
    -1 - reserved/internal-use keyword.
 */
-var ficus_keywords = Hashmap.from_list("", (FUN, 0), hash,
+var ficus_keywords = Hashmap.from_list("", (FUN, 0),
     [: ("as", (AS, 1)), ("break", (BREAK, 0)), ("catch", (CATCH, 1)),
     ("class", (CLASS, 2)), ("continue", (CONTINUE, 0)), ("do", (DO, 2)),
     ("else", (ELSE, 1)), ("exception", (EXCEPTION, 2)),

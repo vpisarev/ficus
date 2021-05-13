@@ -45,7 +45,7 @@ type fir_map_t = (id_t, func_info_t ref) Hashmap.t
 fun find_recursive_funcs(km_idx: int, top_code: kcode_t): kcode_t
 {
     val idset0 = empty_id_hashset(1)
-    var all_called: idset_hashmap_t = Hashmap.empty(256, noid, idset0, hash)
+    var all_called: idset_hashmap_t = Hashmap.empty(256, noid, idset0)
     var curr_called = empty_id_hashset(256)
 
     // For each function find the set of functions _from the same module_ it calls directly
@@ -351,7 +351,7 @@ fun expand_call(km_idx: int, e: kexp_t) =
         // expand only direct function calls, not via-pointer ones
         | KFun kf =>
             val {kf_params, kf_body} = *kf
-            val subst_map = Hashmap.empty(256, noid, AtomId(noid), hash)
+            val subst_map = Hashmap.empty(256, noid, AtomId(noid))
             for formal_arg <- kf_params, real_arg <- real_args {
                 subst_map.add(formal_arg, real_arg)
             }
@@ -381,7 +381,7 @@ fun inline_some(kmods: kmodule_t list)
             fi_flags=default_fun_flags(),
             fi_km_idx=curr_km_idx
         })
-    var all_funcs_info: fir_map_t = Hashmap.empty(1024, noid, gen_default_func_info(-1), hash)
+    var all_funcs_info: fir_map_t = Hashmap.empty(1024, noid, gen_default_func_info(-1))
 
     var curr_fi = gen_default_func_info(0)
     var curr_km_main = false

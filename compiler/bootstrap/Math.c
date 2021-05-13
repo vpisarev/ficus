@@ -6,6 +6,21 @@
 #include <math.h>
 #include <float.h>
 
+
+FX_INLINE uint64_t _fx_rng_rotl(uint64_t x, int k)
+    {
+        return (x << k) | (x >> (64 - k));
+    }
+    static uint64_t _fx_rng_next(uint64_t* s)
+    {
+        const uint64_t result = _fx_rng_rotl(s[0] + s[3], 23) + s[0];
+        const uint64_t t = s[1] << 17;
+        s[2] ^= s[0]; s[3] ^= s[1];
+        s[1] ^= s[2]; s[0] ^= s[3];
+        s[2] ^= t; s[3] = _fx_rng_rotl(s[3], 45);
+        return result;
+    }
+
 FX_EXTERN_C int fx_init_Math(void)
 {
    int fx_status = 0;

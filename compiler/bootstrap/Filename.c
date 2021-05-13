@@ -7,7 +7,9 @@
     #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
-#if !defined WIN32 && !defined _WIN32
+#if defined WIN32 || defined _WIN32
+    #include <direct.h>
+#else
     #include <unistd.h>
 #endif
     #ifndef PATH_MAX
@@ -93,7 +95,7 @@ static void _fx_make_Ta2S(fx_str_t* t0, fx_str_t* t1, struct _fx_Ta2S* fx_result
 }
 
 _fx_Nt6option1S _fx_g14Filename__None = { 1 };
-FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
 
 FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t* s, fx_str_t* suffix, void* fx_fv);
 
@@ -483,8 +485,12 @@ FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t* fx_result, void* fx_fv)
 {
    
 char buf[PATH_MAX+16];
+#if defined WIN32 || defined _WIN32
+    char* p = _getcwd(buf, PATH_MAX);
+#else
     char* p = getcwd(buf, PATH_MAX);
-    return fx_cstr2str(p, p ? -1 : 0, fx_result);
+#endif
+    return fx_cstr2str(p, (p ? -1 : 0), fx_result);
 
 }
 

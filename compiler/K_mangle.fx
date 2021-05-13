@@ -258,7 +258,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
 }
 
 fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
-    val mangle_map: mangle_map_t = Hashmap.empty(1024, "", noid, hash)
+    val mangle_map: mangle_map_t = Hashmap.empty(1024, "", noid)
     var curr_top_code: kcode_t = []
     var curr_km_idx = -1
 
@@ -572,7 +572,7 @@ fun demangle_all(kmods: kmodule_t list)
     kmods
 }
 
-fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1, hash)
+fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1)
 
 fun mangle_locals(kmods: kmodule_t list)
 {

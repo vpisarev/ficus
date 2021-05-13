@@ -56,7 +56,7 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
 fun find_recursive(top_code: kcode_t)
 {
     val idset0 = empty_id_hashset(1)
-    var all_typ_deps = Hashmap.empty(1024, noid, idset0, hash)
+    var all_typ_deps = Hashmap.empty(1024, noid, idset0)
 
     // form the initial sets of depndencies and collect them in a map for each type id
     fun fold_deps0_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}

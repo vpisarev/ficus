@@ -179,6 +179,19 @@ fun diag(n: int, d: 't)
     a
 }
 
+fun random(rng: RNG, size: int, a: 't, b: 't) =
+    [| for i <- 0:size {rng.uniform(a, b)} |]
+
+fun random(rng: RNG, size: (int, int), a: 't, b: 't) =
+    [| for i <- 0:size.0 for j <- 0:size.1 {rng.uniform(a, b)} |]
+
+fun random(rng: RNG, size: (int, int, int), a: 't, b: 't) =
+    [| for i <- 0:size.0 for j <- 0:size.1 for k <- 0:size.2 {rng.uniform(a, b)} |]
+
+fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't) =
+    [| for i <- 0:size.0 for j <- 0:size.1
+       for k <- 0:size.2 for l <- 0:size.3 {rng.uniform(a, b)} |]
+
 fun sort(arr: 't [], lt: ('t, 't) -> bool)
 {
     @nothrow fun swap(arr: 't [], i: int, j: int): void = @ccode

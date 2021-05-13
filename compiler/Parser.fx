@@ -690,7 +690,8 @@ fun parse_range_exp(ts0: tklist_t, ~allow_mkrecord: bool): (tklist_t, exp_t)
         | (COLON, _) :: rest =>
             val result = if expect_sep {result} else {None :: result}
             parse_range_(rest, false, result)
-        | (LBRACE, _) :: _ | (FOR _, _) :: _ | (RSQUARE, _) :: _ | (COMMA, _) :: _ =>
+        | (LBRACE, _) :: _ | (FOR _, _) :: _ | (WHEN, _) :: _
+        | (RSQUARE, _) :: _ | (COMMA, _) :: _ =>
             if !expect_sep && result.length() != 1 {
                 throw parse_err(ts,
                     "range expression may not end with ':', unless it's ':' or '<start>:' ")
@@ -841,7 +842,8 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
 fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
 {
     var is_parallel = false, need_unzip = false
-    var vts = ts, nested_fors = ([] : ((pat_t, pat_t, exp_t) list, loc_t) list)
+    var nested_fors: ((pat_t, pat_t, exp_t) list, exp_t?, loc_t) list = []
+    var vts = ts
 
     while true {
         match vts {
@@ -863,14 +865,16 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
     }
 
     fun parse_for_clause_(ts: tklist_t, expect_comma: bool,
-        result: (pat_t, pat_t, exp_t) list, loc: loc_t): (tklist_t, (pat_t, pat_t, exp_t) list) =
+        result: (pat_t, pat_t, exp_t) list, loc: loc_t):
+        (tklist_t, (pat_t, pat_t, exp_t) list) =
         match ts {
         | (COMMA, _) :: rest =>
             if expect_comma { parse_for_clause_(rest, false, result, loc) }
             else { throw parse_err(ts, "extra ','?") }
-        | (FOR _, _) :: _ | (LBRACE, _) :: _ when expect_comma =>
+        | (FOR _, _) :: _  | (WHEN, _) :: _ | (LBRACE, _) :: _ when expect_comma =>
             if result == [] {
-                throw parse_err(ts, "empty for? (need at least one <iter_pat> <- <iter_range or collection>)")
+                throw parse_err(ts,
+                    "empty for? (need at least one <iter_pat> <- <iter_range or collection>)")
             }
             (ts, result.rev())
         | _ =>
@@ -900,14 +904,20 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             break
         }
         val (ts, for_cl)  = parse_for_clause_(vts, false, [], loc_i)
-        nested_fors = (for_cl, loc_i) :: nested_fors
+        val (ts, when_e) = match ts {
+            | (WHEN, _) :: rest =>
+                val (ts, e) = parse_exp(rest, allow_mkrecord=false)
+                (ts, Some(e))
+            | _ => (ts, None)
+            }
+        nested_fors = (for_cl, when_e, loc_i) :: nested_fors
         vts = ts
     }
 
-    val glob_loc = match nested_fors {| (_, loc) :: _ => loc | _ => noloc}
+    val glob_loc = match nested_fors {| (_, _, loc) :: _ => loc | _ => noloc}
 
     // process the nested for.
-    val fold (glob_el, nested_fors) = ([], []) for (ppe_list, loc) <- nested_fors {
+    val fold (glob_el, nested_fors) = ([], []) for (ppe_list, when_e, loc) <- nested_fors {
         val fold (glob_el, for_cl_, idx_pat) = (glob_el, [], PatAny(loc)) for (p, idxp, e) <- ppe_list {
             val (p_, p_e) = plist2exp(p :: [], get_pat_loc(p))
             val p = p_.hd()
@@ -919,7 +929,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             | _ => throw ParseError(get_pat_loc(idxp), "@ is used more than once, which does not make sence and is not supported")
             }
         }
-        (glob_el, (for_cl_.rev(), idx_pat, loc) :: nested_fors)
+        (glob_el, (for_cl_.rev(), idx_pat, when_e, loc) :: nested_fors)
     }
 
     val for_iter_exp = match glob_el.rev() { | e :: [] => e | el => make_tuple(el, glob_loc) }
@@ -936,8 +946,29 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
     val for_exp = match for_make
     {
     | ForMakeArray | ForMakeList | ForMakeTuple | ForMakeVector =>
-        val fold (pel_i_l, loc) = ([], noloc) for (pe_l, idxp, loc) <- nested_fors {
-            ((pe_l, idxp) :: pel_i_l, loc)
+        val fold pel_i_l=[], glob_when_e=ExpNop(noloc), loc = noloc
+            for (pe_l, idxp, when_e, loc) <- nested_fors {
+                val glob_when_e =
+                    match (glob_when_e, when_e) {
+                    | (_, None) => glob_when_e
+                    | (ExpNop(_), Some(e)) => e
+                    | (_, Some(e)) =>
+                        ExpBinary(OpLogicAnd, glob_when_e, e,
+                            (TypBool, get_exp_loc(glob_when_e)))
+                    }
+                ((pe_l, idxp) :: pel_i_l, glob_when_e, loc)
+            }
+        val body = match glob_when_e {
+            | ExpNop _ => body
+            | _ =>
+                match for_make {
+                | ForMakeArray | ForMakeTuple =>
+                    throw parse_err(ts, "'when' cannot be used inside array or tuple comprehensions")
+                | _ => {}
+                }
+                val loc = get_exp_loc(glob_when_e)
+                val check_e = ExpIf(glob_when_e, ExpNop(loc), ExpContinue(loc), (TypVoid, loc))
+                expseq2exp([: check_e, body :], loc)
             }
         ExpMap(pel_i_l, body, default_for_flags().{
             for_flag_make=for_make,
@@ -946,13 +977,20 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             make_new_ctx(loc))
     | _ =>
         val nfors = nested_fors.length()
-        fold e = body for (pe_l, idxp, loc)@i <- nested_fors {
+        fold e = body for (pe_l, idxp, when_e, loc)@i <- nested_fors {
             val nested = i < nfors-1
             val flags = default_for_flags()
             val flags = if nested {flags.{for_flag_nested=true}}
                 else {flags.{for_flag_parallel=is_parallel}}
-            ExpFor(pe_l, idxp, e, flags, loc)
-            }
+            val body = match when_e {
+                | Some(when_e) =>
+                    val loc = get_exp_loc(when_e)
+                    val check_e = ExpIf(when_e, ExpNop(loc), ExpContinue(loc), (TypVoid, loc))
+                    expseq2exp([: check_e, e :], loc)
+                | _ => e
+                }
+            ExpFor(pe_l, idxp, body, flags, loc)
+        }
     }
     (ts, for_exp, for_iter_exp)
 }

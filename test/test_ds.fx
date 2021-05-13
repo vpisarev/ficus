@@ -6,6 +6,8 @@
 from UTest import *
 import Set, Map, Hashmap, Hashset
 
+val poem = @text "poem.txt"
+
 TEST("ds.set", fun()
 {
     fun cmp(a: 't, b: 't) = a <=> b
@@ -43,23 +45,39 @@ TEST("ds.set", fun()
     EXPECT_EQ(sum1, sum0)
     EXPECT_EQ(sum2, sum0)
     EXPECT_EQ(u12.map(fun (i) {i*i}), [: 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 :])
-    val phrase = "This is a very simple test for the standard and not so simple implementation of binary set".split(' ', allow_empty=true)
+    val phrase = "This is a very simple test for the standard and not \
+        so simple implementation of binary set".split(' ', allow_empty=true)
     val refres = [: "This", "a", "and", "binary", "for", "implementation", "is", "not",
                     "of", "set", "simple", "so", "standard",
                     "test", "the", "very" :]
 
     val s1 = Set.from_list(scmp, phrase)
     EXPECT_EQ(s1.list(), refres)
+})
 
-    val s2 = Hashset.empty(8, "", hash)
+TEST("dst.hashset", fun()
+{
+    val phrase = "This is a very simple test for the standard and not \
+        so simple implementation of binary set".split(' ', allow_empty=true)
+    val refres = [: "This", "a", "and", "binary", "for", "implementation", "is", "not",
+                    "of", "set", "simple", "so", "standard",
+                    "test", "the", "very" :]
+    val s2 = Hashset.empty(8, "")
     for w <- phrase {s2.add(w)}
     EXPECT_EQ(s2.list().sort((<)), refres)
     EXPECT_EQ(s2.mem("simple") && s2.mem("very"), true)
     s2.remove("simple")
     EXPECT_EQ(s2.mem("this") || s2.mem("complex") || s2.mem("simple"), false)
-})
 
-val poem = @text "poem.txt"
+    val s1 = Hashset.from_list(0, [: 1, 2, 3, 100, 20, 30 :])
+    val s2 = Hashset.from_list(5, [: 1, 7, 3, 110, 20, 30 :])
+    val s_inter = s1.copy()
+    s_inter.intersect(s2)
+    val s_union = s1.copy()
+    s_union.union(s2)
+    EXPECT_EQ(s_inter.list().sort((<)), [: 1, 3, 20, 30 :])
+    EXPECT_EQ(s_union.list().sort((<)), [: 1, 2, 3, 7, 20, 30, 100, 110 :])
+})
 
 TEST("ds.map", fun()
 {
@@ -117,12 +135,28 @@ TEST("ds.map", fun()
 TEST("ds.hashmap", fun() {
     type si_hash = (string, int) Hashmap.t
     val words = poem.tokens(fun (c) {c.isspace() || c == '.' || c == ','})
-    val wcounter = Hashmap.empty(16, "", 0, hash)
-    for w <- words {
+    val wcounter = Hashmap.empty(8, "", 0)
+    val odd_wcounter = Hashmap.empty(8, "", 0)
+    for w@i <- words {
         val idx = wcounter.find_idx_or_insert(w)
         wcounter.table[idx].data += 1
+        val odd_idx = odd_wcounter.find_idx_or_insert(w)
+        odd_wcounter.table[odd_idx].data += 1
+        if odd_wcounter.table[odd_idx].data >= 2 {
+            // remove words in the middle of the word collecting process
+            // rather than in the end to test how well hashmap stands intensive
+            // flow of additions and removals
+            odd_wcounter.remove(w)
+        }
     }
 
+    val odd_ll = [: ("Eight", 1), ("Four", 1), ("Six", 1), ("Ten", 1), ("Twelve", 1),
+                     ("Two", 1), ("a-laying", 1), ("a-milking", 1), ("and", 1), ("birds", 1),
+                     ("colly", 1), ("doves", 1), ("eighth", 1), ("eleventh", 1), ("fiddlers", 1),
+                     ("fiddling", 1), ("fifth", 1), ("first", 1), ("fourth", 1), ("geese", 1),
+                     ("maids", 1), ("ninth", 1), ("pipers", 1), ("piping", 1), ("second", 1),
+                     ("seventh", 1), ("sixth", 1), ("tenth", 1), ("third", 1), ("turtle", 1),
+                     ("twelfth", 1) :]
     val ll = [: ("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),
         ("Five", 8), ("Four", 9), ("French", 10), ("My", 12), ("Nine", 4),
         ("Seven", 6), ("Six", 7), ("Ten", 3), ("The", 12), ("Three", 10),
@@ -137,7 +171,9 @@ TEST("ds.hashmap", fun() {
         ("tree", 12), ("true", 12), ("turtle", 11), ("twelfth", 1) :]
 
     val ll_fh = wcounter.list().sort((<))
+    val odd_ll_fh = odd_wcounter.list().sort((<))
     EXPECT_EQ(ll_fh, ll)
+    EXPECT_EQ(odd_ll_fh, odd_ll)
     EXPECT_EQ(wcounter.find_opt("doves").value_or(-1), 11)
     EXPECT_EQ(wcounter.find_opt("silver").value_or(-1), -1)
 })

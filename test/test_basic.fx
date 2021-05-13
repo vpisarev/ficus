@@ -711,8 +711,8 @@ TEST("basic.assert", fun()
 
 /*TEST("basic.stack_overflow", fun()
 {
-    val rng = new_uniform_rng(0xffffffffUL)
-    fun foo(n:int) { if rng(0, 10) > 100 {n} else {2*foo(n-1)} }
+    val rng = RNG(0xffffffffUL)
+    fun foo(n:int) { if rng.uniform(0, 10) > 100 {n} else {2*foo(n-1)} }
     EXPECT_THROWS(fun () {ignore(foo(1000))}, StackOverflowError)
 })*/
 

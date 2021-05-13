@@ -768,17 +768,6 @@ fun size(a: 't [,,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
                          __intrin_size__(a, 2), __intrin_size__(a, 3))
 fun size(a: 't vector) = __intrin_size__(a)
 
-fun new_uniform_rng(seed: uint64) {
-    var state = if seed != 0UL {seed} else {0xffffffffUL}
-    fun (a: int, b: int) {
-        state = (state :> uint32) * 4197999714UL + (state >> 32)
-        val (a, b) = (min(a, b), max(a, b))
-        val diff = b - a
-        val x = ((state :> uint32) % (diff :> uint32) :> int) + a
-        (x :> int)
-    }
-}
-
 @ccode {
 
 typedef uint64_t hash_t;
@@ -790,6 +779,18 @@ typedef uint64_t hash_t;
 type hash_t = uint64
 val FNV_1A_PRIME: hash_t = 1099511628211UL
 val FNV_1A_OFFSET: hash_t = 14695981039346656037UL
+
+fun hash(x: (...)): hash_t =
+    fold h = FNV_1A_OFFSET for xj <- x {
+        val h = h ^ hash(xj)
+        h * FNV_1A_PRIME
+    }
+
+fun hash(x: {...}): hash_t =
+    fold h = FNV_1A_OFFSET for (_, xj) <- x {
+        val h = h ^ hash(xj)
+        h * FNV_1A_PRIME
+    }
 
 @inline fun hash(x: int) = uint64(x) ^ FNV_1A_OFFSET
 @inline fun hash(x: int32) = uint64(x) ^ FNV_1A_OFFSET
@@ -816,16 +817,3 @@ val FNV_1A_OFFSET: hash_t = 14695981039346656037UL
     }
     return hash;
 }
-
-/*fun hash(x: (...)): hash_t =
-    fold h = FNV_1A_OFFSET for xj <- x {
-        val h = h ^ hash(xj)
-        h * FNV_1A_PRIME
-    }
-
-fun hash(x: {...}): hash_t =
-    fold h = FNV_1A_OFFSET for (_, xj) <- x {
-        val h = h ^ hash(xj)
-        h * FNV_1A_PRIME
-    }
-*/
