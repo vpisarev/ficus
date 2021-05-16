@@ -21,26 +21,26 @@ To run this bootstrap procedure, it's enough to have C/C++ compiler and make uti
 
 1. Clone the repository:
 
-	```
-	$ cd ~/myprojects # enter some directory with various user's projects
-	$ git clone https://github.com/vpisarev/ficus.git
-	```
+  ```
+  $ cd ~/myprojects # enter some directory with various user's projects
+  $ git clone https://github.com/vpisarev/ficus.git
+  ```
 
 2. Go to the Ficus directory and make the Ficus compiler called ficus:
 
-	```
-	$ cd ficus
-	$ make -j8 # build ficus0, then ficus
-	$ bin/ficus -run test/test_all.fx # run unit tests to make sure
-	                    # the produced compiler functions properly
-	```
+  ```
+  $ cd ficus
+  $ make -j8 # build ficus0, then ficus
+  $ bin/ficus -run test/test_all.fx # run unit tests to make sure
+                      # the produced compiler functions properly
+  ```
 
 3. you can configure environment variables to let the shell know where to find Ficus (so that ficus can be run without explicit path specification)
 
-	```
-	$ export PATH=~/myprojects/ficus/bin:$PATH
-	$ export FICUSPATH=~/myprojects/ficus/lib # to help ficus find the standard library
-	```
+  ```
+  $ export PATH=~/myprojects/ficus/bin:$PATH
+  $ export FICUSPATH=~/myprojects/ficus/lib # to help ficus find the standard library
+  ```
 
 Note: Ficus compiler is able to find the standard library automatically, but only when `ficus` binary and the library reside in some standard locations. As soon as `FICUS_PATH` is set, for example in `.bash_profile` or a similar shell configuration file, `ficus` binary can be copied to any directory and be called from there.
 
@@ -97,9 +97,11 @@ Ficus program consists of one or more source files that all have `.fx` extension
 
 At the lower level each expression is a sequence of tokens. Tokens include operators, identifiers, keywords, literals etc. Indentation and extra spaces mostly do not matter to the compiler, use the spaces at your taste. For example, here is the example of possibly poorly formatted but still valid code:
 
-	if a>b {
-	   a
-	} else {println("b is the winner"); b}
+  ```
+  if a>b {
+     a
+  } else {println("b is the winner"); b}
+  ```
 
 here, no space is needed between `a` and `>`, `>` and `b`, even though you can put some. But a space (or a few) is needed to separate `if` from `a`. Also, `;` is needed to separate `println(...)` from `b`, since they are two subsequent expressions in the same code block on the same line.
 
@@ -109,53 +111,53 @@ The comments are of two types:
 
 1. Block comments, delimited by `/*` and `*/`. Such comments can be put anywhere between tokens, can take a single line or several lines and can be nested:
 
-	```
-	/* comment the whole thing off for now
-	/*
-	  find the maximum of
-	   a and b
-	*/
-	if a > b /* let's compare a and b */ {a} else {b /*b>=a*/}
-	*/
-	```
+  ```
+  /* comment the whole thing off for now
+  /*
+    find the maximum of
+     a and b
+  */
+  if a > b /* let's compare a and b */ {a} else {b /*b>=a*/}
+  */
+  ```
 
 2. Single-line comments that start with `//` and take the rest of the line
 
-	```
-	if a > b {
-	   a // a is the winner
-	} else {
-	   // b is the winner,
-	   // and we report it
-	   println("b is the winner")
-	   b // here println() and b are separated by a newline
-	}
-	```
+  ```
+  if a > b {
+     a // a is the winner
+  } else {
+     // b is the winner,
+     // and we report it
+     println("b is the winner")
+     b // here println() and b are separated by a newline
+  }
+  ```
 
 As noticed above, sometimes a newline maybe treated as the end of one expression and beginning of another when we assume the opposite. The typical cases are:
 
 1. breaking the line before a binary operator that can also be treated as an unary operator, i.e. `+`, `-` or `*`:
 
-	```
-	val diff = a
-		     - b
-	```
+    ```
+    val diff = a
+           - b
+    ```
 
-	this is interpreted as `val diff = a; -b`, which is probably not what you want. In most cases such a mistake will produce a compile error message about non-void expressions in the middle of code blocks. The correct way of breaking such expressions into multiple lines is:
+   this is interpreted as `val diff = a; -b`, which is probably not what you want. In most cases such a mistake will produce a compile error message about non-void expressions in the middle of code blocks. The correct way of breaking such expressions into multiple lines is:
 
     ```
     val diff = a -
               b
     ```
 
-    or
+   or
 
     ```
     val diff = (a   // indicate that we have a single expression by enclosing it into parentheses
                -b)
     ```
 
-    You can also grep your source code with `^\s+[+-*]` regexp to check all the suspicious places.
+   You can also grep your source code with `^\s+[+-*]` regexp to check all the suspicious places.
 
 2. breaking the line before the opening curly paren `(` when calling a function:
 
@@ -214,200 +216,201 @@ There are the following types of tokens in Ficus:
 
 * **literals**, representing various scalar values:
 
-	* 8-, 16-, 32- or 64-bit, signed or unsigned integers (the literals of type `int8, uint8, int16, uint16, int32, uint32, int, uint64, int64`, respectively), 16-, 32- or 64-bit floating-point numbers (of type `half`, `float` and `double`, respectively):
+  * 8-, 16-, 32- or 64-bit, signed or unsigned integers (the literals of type `int8, uint8, int16, uint16, int32, uint32, int, uint64, int64`, respectively), 16-, 32- or 64-bit floating-point numbers (of type `half`, `float` and `double`, respectively):
 
-		```
-		42 // decimal integer
-		0xffu8 // 8-bit unsigned integer in hexadecimal notation
-		12345678987654321i64 // 64-bit integer
-		0777 // octadecimal integer
-		0b11110000 // integer in binary notation
-		3.14 // double-precision floating-point number
-		1e-5f // single-precision floating-point number
-		     // in the expotential notation
-		0.25h // 16-bit floating-point number,
-		     // but there is no real support
-		     // for such type in Ficus yet
-		nan // special 'not a number' literal of double precision.
-		   // add 'f' suffix to get the 'single-precision' nan.
-		-inff // 'minus infinity' literal of single precision.
-		    // remove 'f' suffix to get double-precision value.
-		```
+    ```
+    42 // decimal integer
+    0xffu8 // 8-bit unsigned integer in hexadecimal notation
+    12345678987654321i64 // 64-bit integer
+    0777 // octadecimal integer
+    0b11110000 // integer in binary notation
+    3.14 // double-precision floating-point number
+    1e-5f // single-precision floating-point number
+         // in the expotential notation
+    0.25h // 16-bit floating-point number,
+         // but there is no real support
+         // for such type in Ficus yet
+    nan // special 'not a number' literal of double precision.
+       // add 'f' suffix to get the 'single-precision' nan.
+    -inff // 'minus infinity' literal of single precision.
+        // remove 'f' suffix to get double-precision value.
+    ```
 
-	* boolean values (of type `bool`)
+  * boolean values (of type `bool`)
 
-		```
-		true
-		false
-		```
+    ```
+    true
+    false
+    ```
 
-	* text strings (of type `string`)
+  * text strings (of type `string`)
 
-		```
-		"abc"
-		"hello, world!\n" // usual C-style ESC-sequences are supported
+    ```
+    "abc"
+    "hello, world!\n" // usual C-style ESC-sequences are supported
 
-		/*
-		  Non-ASCII characters are captured properly
-		  from UTF8-encoded source,
-		  and then stored and processed as
-		  unicode (4-byte) characters.
-		  That is, the code will output 7
-		*/
-		println(length("привет! 😊"))
+    /*
+      Non-ASCII characters are captured properly
+      from UTF8-encoded source,
+      and then stored and processed as
+      unicode (4-byte) characters.
+      That is, the code will output 9
+    */
+    println(length("привет! \U0001F60A"))
 
-		// It's possible to embed particular characters
-		// using their ASCII or Unicode value:
-		// \ooo — 1-3 digit octadecimal ASCII codes,
-		// \xXX — 2-digit hexadecimal ASCII codes,
-		// \uXXXX — 4-digit hexadecimal Unicode value
-		// \UXXXXXXXX — 8-digit hexedecimal Unicode value
-		"Hola \U0001F60A"
+    // It's possible to embed particular characters
+    // using their ASCII or Unicode value:
+    // \ooo — 1-3 digit octadecimal ASCII codes,
+    // \xXX — 2-digit hexadecimal ASCII codes,
+    // \uXXXX — 4-digit hexadecimal Unicode value
+    // \UXXXXXXXX — 8-digit hexedecimal Unicode value
+    "Hola \U0001F60A"
 
-		// Similar to Python, f-strings may embed expression values using {} string interpolation construction
-		val r = 10
-		println(f"a circle with R={r} has area={3.1415926*r*r}")
-		// the line above is converted by the parser to
-		println("a circle with R=" + string(r) +
-		       " has area=" + string(3.1415926*r*r))
+    // Similar to Python, f-strings may embed expression values using {} string interpolation construction
+    val r = 10
+    println(f"a circle with R={r} has area={3.1415926*r*r}")
+    // the line above is converted by the parser to
+    println("a circle with R=" + string(r) +
+           " has area=" + string(3.1415926*r*r))
 
-		// therefore, custom objects can also be interpolated
-		// once you've provided string() function for them:
-		type point = { x: int; y: int }
-		// note that to avoid confusion, literal '{' and '}'
-		// need to be duplicated in f-strings
-		fun string(p: point) = f"{{x={p.x}, y={p.y}}}"
-		val pt = point { x=10, y=5 }
-		println(f"pt={pt}")
+    // therefore, custom objects can also be interpolated
+    // once you've provided string() function for them:
+    type point = { x: int; y: int }
+    // note that to avoid confusion, literal '{' and '}'
+    // need to be duplicated in f-strings
+    fun string(p: point) = f"{{x={p.x}, y={p.y}}}"
+    val pt = point { x=10, y=5 }
+    println(f"pt={pt}")
 
-		// Multi-line string literals are possible too:
-		// By default, end-of-line characters in the produced
-		// string are retained. \r\n is replaced with \n for
-		// cross-platform compatibility.
-		val author="anonymous"
-		f"multi-line
-		  strings
-		    are
-		  delimited
-		 by quotes, just like the normal string literals
-		   and can also embed some values.
-		        {author}
-		"
-		// Put \ before a newline to remove this newline and
-		// the subsequent spaces from the literal
-		val errmsg = "A very long and \
-		   detailed error message explaining \
-		   what's going wrong."
+    // Multi-line string literals are possible too:
+    // By default, end-of-line characters in the produced
+    // string are retained. \r\n is replaced with \n for
+    // cross-platform compatibility.
+    val author="anonymous"
+    f"multi-line
+      strings
+        are
+      delimited
+     by quotes, just like the normal string literals
+       and can also embed some values.
+            {author}
+    "
+    // Put \ before a newline to remove this newline and
+    // the subsequent spaces from the literal
+    val errmsg = "A very long and \
+       detailed error message explaining \
+       what's going wrong."
 
-		val assigment_regexp = Re.compile(
-			r"(?:val|var)\s+([\a_]\w+)\s*=\s*(\d+|\w+)")
-		```
+    val assigment_regexp = Re.compile(
+      r"(?:val|var)\s+([\a_]\w+)\s*=\s*(\d+|\w+)")
+    ```
 
-	* characters (of type `char`) — this is what the text strings are made of. Character literals look exactly like single-line text literals, but have `#` prefix.
+  * characters (of type `char`) — this is what the text strings are made of. Character literals look exactly like single-line text literals, but have `#` prefix.
 
-		```
-		chr(ord(#"A")) == #"A" // ~ true
-		```
+    ```
+    chr(ord(#"A")) == #"A" // ~ true
+    ```
 
-	* polymorphic literal — an empty list, vector or 1D, 2D etc. array (of type `'t list`, `'t vector`, `t []`, `t [,]` etc., respectively)
+  * polymorphic literal — an empty list, vector or 1D, 2D etc. array (of type `'t list`, `'t vector`, `t []`, `t [,]` etc., respectively)
 
-		```
-		[]
-		```
+    ```
+    []
+    ```
 
-	* null C-pointer (see the section about interaction with C/C++)
+  * null C-pointer (see the section about interaction with C/C++)
 
-		```
-		null
-		```
+    ```
+    null
+    ```
 
 * **identifiers** — they denote all the named entities, built-in or defined in the code: values, variables, functions, types, exceptions, variant tags etc. An identifier starts with the underscore `_` or a letter (Latin or not) and contains zero or more subsequent underscores, letters or decimal digits, i.e. it can be defined with the following regular expression: `[\a_]\w+`. Identifier `_` has a special meaning. It denotes an unused function parameter or, in general, element of a pattern that user does not care of (patterns are discussed further in this document).
 
 * **keywords** — they look like identifiers and are used to form various syntactic constructions. You may not have an identifier with the same name as keyword. Here is a list of Ficus keywords:
 
-	```
-	as break catch class continue do else exception
-	false finally fold for from fun if import inf inff
-	interface match nan nanf null operator ref throw
-	true try type val var when while
-	```
+  ```
+  as break catch class continue do else exception
+  false finally fold for from fun if import inf inff
+  interface match nan nanf null operator ref throw
+  true try type val var when while
+  ```
 
-	There are also **attribute-keywords** that start with `@` and are used to describe various properties of defined symbols, for-loops, code blocks etc. Here they are:
+  There are also **attribute-keywords** that start with `@` and are used to describe various properties of defined symbols, for-loops, code blocks etc. Here they are:
 
-	```
-	@ccode @data @inline @nothrow @pragma @parallel @private @pure @sync @text @unzip
-	```
+  ```
+  @ccode @data @inline @nothrow @pragma
+  @parallel @private @pure @sync @text @unzip
+  ```
 
-	The names of standard data types can also be treated as keywords:
+  The names of standard data types can also be treated as keywords:
 
-	```
-	int8 uint8 int16 uint16 int32 uint32 int uint64 int64
-	half float double bool string char list vector cptr exn
-	```
+  ```
+  int8 uint8 int16 uint16 int32 uint32 int uint64 int64
+  half float double bool string char list vector cptr exn
+  ```
 
-	But the important difference is that it's possible to define a function or a value with the name that matches the standard data type. In particular, it's the common practice — to give the name of target datatype to the type cast function:
+  But the important difference is that it's possible to define a function or a value with the name that matches the standard data type. In particular, it's the common practice — to give the name of target datatype to the type cast function:
 
-	```
-	fun string(set: 't Set.t) =
-		join_embrace("{", "}", ", ", set.map(repr))
-	type ratio_t = {n: int; d: int}
-	fun double(r: ratio_t) = double(r.n)/r.d
-	```
+  ```
+  fun string(set: 't Set.t) =
+    join_embrace("{", "}", ", ", set.map(repr))
+  type ratio_t = {n: int; d: int}
+  fun double(r: ratio_t) = double(r.n)/r.d
+  ```
 
 * **operators**
 
-	There are quite a few operators, binary and unary.
+  There are quite a few operators, binary and unary.
 
-	**Binary**:
+  **Binary**:
 
-	```
-	// overridable binary operators
-	+ − * / % **
-	.+ .− .* ./ .**
-	== != > < <= >= <=> ===
-	.== .!= .> .< .<= .>= .<=>
-	& | ^ >> << \
+  ```
+  // overridable binary operators
+  + − * / % **
+  .+ .- .* ./ .**
+  == != > < <= >= <=> ===
+  .== .!= .> .< .<= .>= .<=>
+  & | ^ >> << \
 
-	// other binary operators
-	.{...}
+  // other binary operators
+  .{...}
 
-	= += −= *= /= %= &= |= ^= >>= <<=
-	.={...}
+  = += −= *= /= %= &= |= ^= >>= <<=
+  .={...}
 
-	&& || :: :>
-	```
+  && || :: :>
+  ```
 
-	**Unary**
+  **Unary**
 
-	```
-	// overridable prefix operator
-	~
-	// other prefix operators
-	+ − *
-	.− ! \
+  ```
+  // overridable prefix operator
+  ~
+  // other prefix operators
+  + − *
+  .- ! \
 
-	// overridable postfix operator
-	'
-	```
+  // overridable postfix operator
+  '
+  ```
 
-	The overridable operators can be enclosed into `()` and be used as identifiers, e.g. to pass to a higher-level function. Also, such operators can be overridden using `operator` keyword:
+  The overridable operators can be enclosed into `()` and be used as identifiers, e.g. to pass to a higher-level function. Also, such operators can be overridden using `operator` keyword:
 
-	```
-	type ratio = { n: int; d: int }
-	operator < (r1: ratio, r2: ratio) {
-		val scale = r1.d*r2.d
-		if scale > 0 {r1.n*r2.d < r2.n*r1.d}
-		else {r1.n*r2.d > r2.n*r1.d}
-	}
-	fun R(n: int, d: int) = ratio {n=n, d=d}
-	val sorted = [:R(1,2), R(3,5), R(2,3):].sort((<))
-	```
+  ```
+  type ratio = { n: int; d: int }
+  operator < (r1: ratio, r2: ratio) {
+    val scale = r1.d*r2.d
+    if scale > 0 {r1.n*r2.d < r2.n*r1.d}
+    else {r1.n*r2.d > r2.n*r1.d}
+  }
+  fun R(n: int, d: int) = ratio {n=n, d=d}
+  val sorted = [:R(1,2), R(3,5), R(2,3):].sort((<))
+  ```
 
 * There are also various **delimiters** and **parentheses**
 
-	```
-	-> => <- @ . , : ; [ ] [: :] [| |] ( ) { }
-	```
+  ```
+  -> => <- @ . , : ; [ ] [: :] [| |] ( ) { }
+  ```
 
 All these operators will be explained later in the tutorial.
 
@@ -574,7 +577,7 @@ Operators form the foundation of expressions. The table below describes Ficus op
 | *exp1* .&#42; *exp2*, *exp1* ./ *exp2* |  15   |  left  |  coerce(*exp1* type, *exp2* type) | defined for the arrays; element-wise multiplication and division |
 | *exp1* &#42;&#42; *exp2*, *exp1* .&#42;&#42; *exp2*, | 16 | right | coerce(*exp1* type, *exp2* type) | "raise-to-power" and element-wise "raise-to-power" operation |
 | +*exp*, —*exp* | 17 | right | coerce(*exp* type, *exp* type) | unary plus and minus operations |
-| .—*exp* | 17 | right | coerce(*exp* type, *exp* type) | unary dot-minus operation. It's currently used to access the last, pre-last etc. elements of collections, e.g. `str[.−1]` is the last element of string |
+| .—*exp* | 17 | right | coerce(*exp* type, *exp* type) | unary dot-minus operation. It's currently used to access the last, pre-last etc. elements of collections, e.g. `str[.-1]` is the last element of string |
 | !*exp*    | 17 | right | bool  | logical inversion |
 | ~*exp*    | 17 | right | same as *exp* | bitwise inversion |
 | &#92;*exp*  | 17 | right | N/A | *expand* operator. It's used in the array composition operators. `[| \A, \B |]` concatenates columns of the two 2D arrays (which must have the same number of rows), whereas `[| A, B |]` is 2-element array of arrays. |
@@ -717,12 +720,12 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * boolean type `bool` that has only two possible values: `true` and `false`. There is no implicit conversion between `bool` and integer types; do it explicitly:
 
-	```
-	val nz_x = x != 0
-	val x = if nz_x {1} else {0}
-	val y = int(nz_x) // get the same result as above
-	val x = (nz_x :> int) // explicit type cast notation
-	```
+  ```
+  val nz_x = x != 0
+  val x = if nz_x {1} else {0}
+  val y = int(nz_x) // get the same result as above
+  val x = (nz_x :> int) // explicit type cast notation
+  ```
 
 * type `void`. It's not a first-class type, as in some other functional languages. It can only be used to specify a function return type or specify that the function does not take any parameters.
 
@@ -734,215 +737,215 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * **function**: `'t1 -> 'rt` (single parameter case), or `('t1, 't2, ..., 'tn) -> 'rt` (multiple parameter case) or `void -> rt` (no parameters case). If a function does not return any value, the `'rt` is `void`. The functions are described in details in **Functions** section. Here is a short example to illustrate the type use:
 
-	```
-	fun tabulate(a: double, b: double,
-	             n: int, f: double->double) =
-	[| for i <- 0:n {
-	   val x = (b - a)*i/(n-1) + a
-	   f(x)
-   } |]
-  val cosine_tab = tabulate(0., 6.28, 256, cos)
-	```
+    ```
+    fun tabulate(a: double, b: double,
+               n: int, f: double->double) =
+    [| for i <- 0:n {
+        val x = (b - a)*i/(n-1) + a
+        f(x)
+    } |]
+    val cosine_tab = tabulate(0., 6.28, 256, cos)
+    ```
 
 * **tuple**: `('t1, 't2, ..., 'tn)`. Tuple instances are created by enclosing several comma-separated values into parentheses. There is no need to explicitly define a tuple type before constructing its instance. Individual elements of tuple are accessed using `tuple_val.integer_literal` notation or using pattern-matching:
 
-	```
-	val label_color = (0u8, 255u8, 0u8)
-	val detected_object_info=((100, 200, 50, 100),
-	                          label_color, "pedestrian")
-	val bounding_box = detected_object_info.0
-	val (_, _, label) = detected_object_info // extract the label
-	```
+    ```
+    val label_color = (0u8, 255u8, 0u8)
+    val detected_object_info=((100, 200, 50, 100),
+                            label_color, "pedestrian")
+    val bounding_box = detected_object_info.0
+    val (_, _, label) = detected_object_info // extract the label
+    ```
 
-	A shorter notation `('t * N)`, where `N` is integer literal, can be used to define a tuple type of `N` elements of the same type, for example:
+  A shorter notation `('t * N)`, where `N` is integer literal, can be used to define a tuple type of `N` elements of the same type, for example:
 
-	```
-	fun cmul(a: (float*2), b: (float*2)) =
-	   (a.0*b.0 - a.1*b.1, a.0*b.1 + a.1*b.0)
-  ```
+    ```
+    fun cmul(a: (float*2), b: (float*2)) =
+     (a.0*b.0 - a.1*b.1, a.0*b.1 + a.1*b.0)
+    ```
 
 * **record**: `record_name { name1: 't1; name2: 't2, ... }`. Records may be viewed as tuples with named elements. Unlike tuples, the record types should be defined explicitly before you use them:
 
-	```
-	type rect = { x: int; y: int; width: int; height: int }
-	type detected_object_info_t // '=' can be omitted when defining a record
-	{
-	    bounding_box: rect // newline can be used as a separator
-	    label_color: (uint8*3)
-	    object_class: string
+    ```
+    type rect = { x: int; y: int; width: int; height: int }
+    type detected_object_info_t // '=' can be omitted when defining a record
+    {
+        bounding_box: rect // newline can be used as a separator
+        label_color: (uint8*3)
+        object_class: string
     }
-	val detected_object_info = detected_object_info_t {
-	    bounding_box=rect{x=100, y=200, width=50, height=100},
+    val detected_object_info = detected_object_info_t {
+        bounding_box=rect{x=100, y=200, width=50, height=100},
         label_color=(0u8, 255u8, 0u8),
-	    object_class="pedestrian" }
-	val bbox = detected_object_info.bounding_box
-	val center = (bbox.x + bbox.width/2,
-	              bbox.y + bbox.height/2)
-	```
+        object_class="pedestrian" }
+    val bbox = detected_object_info.bounding_box
+    val center = (bbox.x + bbox.width/2,
+                bbox.y + bbox.height/2)
+    ```
 
 * **reference**: `'t ref`. Reference is a structure allocated in a heap that contains a value of the specified type and the reference counter. You can access and modify the stored value:
 
-	```
-	var a = "to be" // initialize a variable
-	val b = ref a   // create a reference with the same value
-	a += " or not to be" // modify a, but *b stays the same
-	println(*b)     // outputs "to be"
-	b = ref "hello" // error: b cannot be assigned, it's a value
-	val c = b     // copy the reference, share the content
-	fun append(sr: string ref, delta: string) = *sr += delta
-	append(c, " or not to be") // correct, change the c's
-	                           // (and b's) content
-  println(*b)   // outputs "to be or not to be"
-	```
+    ```
+    var a = "to be" // initialize a variable
+    val b = ref a   // create a reference with the same value
+    a += " or not to be" // modify a, but *b stays the same
+    println(*b)     // outputs "to be"
+    b = ref "hello" // error: b cannot be assigned, it's a value
+    val c = b     // copy the reference, share the content
+    fun append(sr: string ref, delta: string) = *sr += delta
+    append(c, " or not to be") // correct, change the c's
+                             // (and b's) content
+    println(*b)   // outputs "to be or not to be"
+    ```
 
   C/C++ users may treat references as the constant pointers (`int ref` in Ficus ~ `int* const` in C++). Also, note that in Ficus there is no unary `&` operator, that is, you cannot take address of an existing object. Instead, `ref` operator always allocates a new object in the heap and assigns to it the user-specified initial value, which can further be changed.
 
 * **option**: `'t?`, e.g. `int?`, `(string, string) list?` etc. Represents 'some value' or 'nothing'. Strictly speaking, it's a partial case of variant, which is discussed later in the tutorial. But it's so common and so useful that it got the special syntax (`?`). If  `x` is a value of type `T`, `Some(x)` would be a value of type `T?`. What about 'nothing'? Use `None`. Most of the time Ficus compiler will guess correctly, which `T?` it will belong to. When it's not, use explicit type specification, e.g. `(None : int?)`.
 
-	Here is an example:
-	```
-	// convert string to int, if it's possible
-	fun str2int(s: string): int?
-	{
-	   var result = 0, sign = 1, start=0
-	   if s.startswith('-') {sign = -1; start=1}
-	   for i <- start:s.length() {
-	      val c = s[i]
-	      if '0' <= c <= '9' { result = result*10 + (ord(c) - '0') }
-	      else { result = -1; break }
-	   }
-	   if result >= 0 { Some(result*sign) } else { None }
-	}
+    Here is an example:
+    ```
+    // convert string to int, if it's possible
+    fun str2int(s: string): int?
+    {
+        var result = 0, sign = 1, start=0
+        if s.startswith('-') {sign = -1; start=1}
+        for i <- start:s.length() {
+            val c = s[i]
+            if '0' <= c <= '9' { result = result*10 + (ord(c) - '0') }
+            else { result = -1; break }
+        }
+        if result >= 0 { Some(result*sign) } else { None }
+    }
 
-	val x = str2int("-123") // Some(-123)
-	val y = str2int("abc")  // None
-	println(x.issome()) // prints 'true'
-	println(y.isnone()) // prints 'true'
-	println(x.value_or(0)) // prints '-123'
-	println(str2int("1h").value_or(-1)) // prints '-1'
-	// throws exception 'OptionError'
-	val z = str2int("123456789").value() + // 123456789 + ...
-	        str2int("not a number").value() // the exception occurs here
-	```
+    val x = str2int("-123") // Some(-123)
+    val y = str2int("abc")  // None
+    println(x.issome()) // prints 'true'
+    println(y.isnone()) // prints 'true'
+    println(x.value_or(0)) // prints '-123'
+    println(str2int("1h").value_or(-1)) // prints '-1'
+    // throws exception 'OptionError'
+    val z = str2int("123456789").value() + // 123456789 + ...
+            str2int("not a number").value() // the exception occurs here
+    ```
 
 * **array**: `'t []` — 1D array, `'t [,]` — 2D array, `'t [,,]` — 3D array etc. The type represents dense 1D or multi-dimensional arrays (currently, the compiler supports up to 5D arrays). All elements of array must have the same type. Size of an array can be arbitrary, but it's fixed at the moment of creation:
 
-	```
-	// create a small 1D array (of type int [])
-	// by listing its elements
-	val small_arr = [| 1, 2, 3, 4, 5 |]
-	// error: all array elements must have the same type
-	val err = [| 1, 2, 3, 4, 5. |]
-	// array of arrays is also possible, of course.
-	// it will have type int [][]
-	// ( can also be denoted as (int [])[] )
-	val pascal_triangle =
-	[|
-	    [| 1 |],
-	    [| 1, 1 |],
-	    [| 1, 2, 1 |],
-	    [| 1, 3, 3, 1 |],
-	    [| 1, 4, 6, 4, 1 |]
-	|]
-	val alpha = 30*M_PI/180
-	// 2D arrays can also be initialized by listing its elements,
-	// where rows are separated by ';'
-	// rotation_mtx will have 'float [,]' type
-	val rotation_mtx =
-	    [| cos(alpha), -sin(alpha);
-	       sin(alpha), cos(alpha) |]
-  // error: all rows of 2D array must have the same size
-  val pascal_triangle_err =
-  [| 1; 1, 1; 1, 2, 1; 1, 3, 3, 1; 1, 4, 6, 4, 1 |]
+    ```
+    // create a small 1D array (of type int [])
+    // by listing its elements
+    val small_arr = [| 1, 2, 3, 4, 5 |]
+    // error: all array elements must have the same type
+    val err = [| 1, 2, 3, 4, 5. |]
+    // array of arrays is also possible, of course.
+    // it will have type int [][]
+    // ( can also be denoted as (int [])[] )
+    val pascal_triangle =
+    [|
+        [| 1 |],
+        [| 1, 1 |],
+        [| 1, 2, 1 |],
+        [| 1, 3, 3, 1 |],
+        [| 1, 4, 6, 4, 1 |]
+    |]
+    val alpha = 30*M_PI/180
+    // 2D arrays can also be initialized by listing its elements,
+    // where rows are separated by ';'
+    // rotation_mtx will have 'float [,]' type
+    val rotation_mtx =
+        [| cos(alpha), -sin(alpha);
+            sin(alpha), cos(alpha) |]
+    // error: all rows of 2D array must have the same size
+    val pascal_triangle_err =
+    [| 1; 1, 1; 1, 2, 1; 1, 3, 3, 1; 1, 4, 6, 4, 1 |]
 
-	// create 2D array, which elements are all
-	// set to the same value ((0,0,0) in this case)
-	// m will have '(uint8, uint8, uint8) [,]' type
-	val image = array((480, 640), (0u8, 0u8, 0u8))
+    // create 2D array, which elements are all
+    // set to the same value ((0,0,0) in this case)
+    // m will have '(uint8, uint8, uint8) [,]' type
+    val image = array((480, 640), (0u8, 0u8, 0u8))
 
-	// access element at row=1, column=2.
-	image[1, 2] = sat_uint8(image[1,2] + (10, 10, 10))
+    // access element at row=1, column=2.
+    image[1, 2] = sat_uint8(image[1,2] + (10, 10, 10))
 
-	// invert the rectangle 30<=row<200, 50<=column<200 inside array
-	image[30:200,50:200] ^= (255u8, 255u8, 255u8)
-	```
+    // invert the rectangle 30<=row<200, 50<=column<200 inside array
+    image[30:200,50:200] ^= (255u8, 255u8, 255u8)
+    ```
 
 * **list**: `'t list`. List is an immutable single-connected list. All the elements must have the same type. There are 4 basic operations on lists: `List.hd()`, `List.tl()`, `::` (called *CONS* operation) and `List.empty()` (check for emptiness). List literals are made with `[: elem1, elem2, ..., elemn :]`:
 
-	```
-	// make a list of 5 consequitive natural numbers
-	val mylist1 = [: 1, 2, 3, 4, 5 :]
-	val hd1 = mylist1.hd() // 1
-												 // mylist1.hd() is equivalent to
-	                       // List.hd(mylist1)
-	val tl1 = mylist1.tl() // [: 2, 3, 4, 5:]
-	val mylist2 = 100 :: tl1 // [: 100, 2, 3, 4, 5:]
+    ```
+    // make a list of 5 consequitive natural numbers
+    val mylist1 = [: 1, 2, 3, 4, 5 :]
+    val hd1 = mylist1.hd() // 1
+                            // mylist1.hd() is equivalent to
+                            // List.hd(mylist1)
+    val tl1 = mylist1.tl() // [: 2, 3, 4, 5:]
+    val mylist2 = 100 :: tl1 // [: 100, 2, 3, 4, 5:]
 
-	// can also build a list using '::' operator.
-	val mylist3 = "a" :: "b" :: "c" :: "d" :: []
-	val phone_book = ("Peter", 12345678) ::
-	                 ("Ann", 131415926) :: []
+    // can also build a list using '::' operator.
+    val mylist3 = "a" :: "b" :: "c" :: "d" :: []
+    val phone_book = ("Peter", 12345678) ::
+                    ("Ann", 131415926) :: []
 
-	// here is how some computer vision function
-	// may look like - take an image on input
-	// (represented by a 2D array of bytes) and
-	// return a list of detected objects
-	// (see the records description above for
-	// example detected_object_info_t definition)
-	fun detect_objects(image: uint8 [,]) :
-	   detected_object_info_t list = { ... }
-	```
+    // here is how some computer vision function
+    // may look like - take an image on input
+    // (represented by a 2D array of bytes) and
+    // return a list of detected objects
+    // (see the records description above for
+    // example detected_object_info_t definition)
+    fun detect_objects(image: uint8 [,]) :
+        detected_object_info_t list = { ... }
+    ```
 
-	note that you cannot modify a list, you can only decompose it and create a new list out of a part of an old list and some new elements that are always added in front.
+  note that you cannot modify a list, you can only decompose it and create a new list out of a part of an old list and some new elements that are always added in front.
 
 * **vector**: `'t vector`. Vector is an immutable 1D array built on top of so-called "Relaxed Radix Balanced trees" with quite efficient random access, iteration, slicing and concatenation operations.:
 
-	```
-  val small_vector = [1, 2, 3, 4, 5]
+    ```
+    val small_vector = [1, 2, 3, 4, 5]
 
-  // make big vector [1, 2, 3, ..., N]
-  val N = 1000000
-  val big_vector = [ for i <- 0:N {i+1} ]
+    // make big vector [1, 2, 3, ..., N]
+    val N = 1000000
+    val big_vector = [ for i <- 0:N {i+1} ]
 
-  // random vector access is ~O(1) operation,
-  // so the following loop is reasonably fast
-  var sum = 0.
-  val rng = RNG(0x123u64)
-  for i <- 0:100000 { sum += big_vector[rng.uniform(0, N-1)] }
+    // random vector access is ~O(1) operation,
+    // so the following loop is reasonably fast
+    var sum = 0.
+    val rng = RNG(0x123u64)
+    for i <- 0:100000 { sum += big_vector[rng.uniform(0, N-1)] }
 
-  // make a new vector that includes the first 100K
-  // and the last 200K of elements of big_vector.
-  // It'a also a fast operation.
-  val removed_middle = big_vector[:100000] +
-                       big_vector[800000:]
+    // make a new vector that includes the first 100K
+    // and the last 200K of elements of big_vector.
+    // It'a also a fast operation.
+    val removed_middle = big_vector[:100000] +
+                        big_vector[800000:]
 
-  // make a list with the same content as big_vector
-  val big_list = [: for i <- 0:N {i+1} :]
+    // make a list with the same content as big_vector
+    val big_list = [: for i <- 0:N {i+1} :]
 
-  // may take forever, because accessing
-  // n-th element of a list takes O(n) time.
-  for i <- 0:100000 { sum -= big_list.nth(rng(0, N)) }
-	```
+    // may take forever, because accessing
+    // n-th element of a list takes O(n) time.
+    for i <- 0:100000 { sum -= big_list.nth(rng(0, N)) }
+    ```
 
-	In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + [new_value] + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
+  In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + [new_value] + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
 
 * **variant**, also known as sum type: `Tag1: 't1 | Tag2: 't2 | ...`. Variants are used to represent various data structures from from simple enumerations to very complex hierarchical data structures. We cover them in the dedicated section.
 
 * **instance** of a generic type: `'t generic_type_name` (the case of generic type with a single parameter) or `('t1, 't2, ..., 'tN) generic_type_name` (the case of multiple type parameters). Some built-in types, like arrays, lists, vectors or references, act as generic types and ‘instantiated’ in the same way. The instantiation can also be done recursively, i.e. some of 'tj` may also be instances of generic types:
 
-	```
-	// 2D array of references to integers
-	type cell_matrix = int ref [,]
+    ```
+    // 2D array of references to integers
+    type cell_matrix = int ref [,]
 
-	// a graph, represented as a list of pairs
-	// (vertex, <list of connected vertices together
-	//            with the edge weights>)
-	type graph_t = (int, (int, double) list) list
+    // a graph, represented as a list of pairs
+    // (vertex, <list of connected vertices together
+    //            with the edge weights>)
+    type graph_t = (int, (int, double) list) list
 
-	import Map
-	// associative container with string keys and integer values
-	type str2int_map_t = (string, int) Map.t
-	```
+    import Map
+    // associative container with string keys and integer values
+    type str2int_map_t = (string, int) Map.t
+    ```
 
   In the second example it may look like the outer list is instantiated with 2 type arguments. But since the compiler always knows how many parameters each generic type has (the `list` has 1), it correctly interpreters `(int, (int, double) list)` as the single type argument.
 
@@ -956,29 +959,29 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 *Code block* is simply a sequence of expressions enclosed in curly braces and separated by `;` or a newline. That is, it looks like:
 
- ```
- {
-    expr1
-    expr2; expr3
-    ...
-    expr_n
- }
- ```
+    ```
+    {
+        expr1
+        expr2; expr3
+        ...
+        expr_n
+    }
+    ```
 
 The formatting is almost arbitrary:
 
 a)
-```
-{ expr1; expr2; ... ; expr_n }
-```
+    ```
+    { expr1; expr2; ... ; expr_n }
+    ```
 
 b)
-```
-{ expr1
-  expr2
-  ...
-  expr_n }
-```
+    ```
+    { expr1
+    expr2
+    ...
+    expr_n }
+    ```
 
 etc.
 
@@ -988,68 +991,68 @@ Code block is also an expression, its type and its value matches the type and th
 
 You can put a code block in any place where a single expression is expected, in which case you need to enclose this sequence into parentheses and curly braces `({ ... })`. Many expressions in Ficus, like conditional expressions, loops, pattern matching, try-catch etc. expect code blocks as their parts, and then only `{ ... }` should be used without `( ... )`:
 
-```
-// Parentheses and curly braces are necessary here,
-// because the compiler expects a single expression after "if".
-// Such coding style is difficult to recommend, though
-if ({ val diff=x - y;
-     -10 <= diff && diff < 20 }) {
-    // then- and else- branches are expected
-    // to be code blocks, so the curly braces are necessary
-    print("condition is true"); foo()
-}
-else
-{   // here curly braces can be put immediately after 'else'
-    // or on a separate line
-    bar()
-}
+    ```
+    // Parentheses and curly braces are necessary here,
+    // because the compiler expects a single expression after "if".
+    // Such coding style is difficult to recommend, though
+    if ({ val diff=x - y;
+        -10 <= diff && diff < 20 }) {
+        // then- and else- branches are expected
+        // to be code blocks, so the curly braces are necessary
+        print("condition is true"); foo()
+    }
+    else
+    {   // here curly braces can be put immediately after 'else'
+        // or on a separate line
+        bar()
+    }
 
-// the function body can be a single expression, following =,
-// or a code block, in which case '=' should be omitted
-fun sort3(a: int, b: int, c: int): (int, int, int)
-{
-	  val (a, b) = (min(a, b), max(a, b))
-	  val (b, c) = (min(b, c), max(b, c))
-	  val (a, b) = (min(a, b), max(a, b))
-	  (a, b, c)
-}
-```
+    // the function body can be a single expression, following =,
+    // or a code block, in which case '=' should be omitted
+    fun sort3(a: int, b: int, c: int): (int, int, int)
+    {
+        val (a, b) = (min(a, b), max(a, b))
+        val (b, c) = (min(b, c), max(b, c))
+        val (a, b) = (min(a, b), max(a, b))
+        (a, b, c)
+    }
+    ```
 
 As mentioned earlier, the type of code block is defined by the type of last expression. It can be `void`, e.g.
 
-```
-fun print_in_red(msg: string) {
-    print("\33[31;1m")
-    print(msg)
-    print("\33[0m")
-}
-```
+    ```
+    fun print_in_red(msg: string) {
+        print("\33[31;1m")
+        print(msg)
+        print("\33[0m")
+    }
+    ```
 
 or non-void. But, in order to give some protection from occasional programming errors, Ficus compiler reports an error when there are non-void expression in the middle of code block.
 
-```
-fun dotprod((x1, y1, z1, w1): (float*4),
-            (x2, y2, z2, w2): (float*4)) =
-     x1*x2 // error: non-void expression x1*x2
-   + y1*y2 // error: non-void expression + y1*y2
-   + z1*z2 // error
-   + w1*w2 // no error, it's the last expression in the block
-```
+    ```
+    fun dotprod((x1, y1, z1, w1): (float*4),
+                (x2, y2, z2, w2): (float*4)) =
+        x1*x2 // error: non-void expression x1*x2
+    + y1*y2 // error: non-void expression + y1*y2
+    + z1*z2 // error
+    + w1*w2 // no error, it's the last expression in the block
+    ```
 
 If you want to insert a non-void expression (e.g. call a function, where you are interested in side effects, not the result), you can use the 2 almost equivalent solutions:
 
-```
-show_image("result", my_result)
+    ```
+    show_image("result", my_result)
 
-val _ = waitkey() // Not interested in the key code,
-                  // just wait for user to press any key.
-                  // Since it's value declaration,
-                  // it cannot be a last expression
-                  // in the code block
-ignore(waitkey()  // Same effect; ignore the return value
-                  // It can be used as the last expression
-                  // in a code block
-```
+    val _ = waitkey() // Not interested in the key code,
+                    // just wait for user to press any key.
+                    // Since it's value declaration,
+                    // it cannot be a last expression
+                    // in the code block
+    ignore(waitkey()  // Same effect; ignore the return value
+                    // It can be used as the last expression
+                    // in a code block
+    ```
 
 Where `ignore()` is a trivial standard function, defined in `Builtins`:
 
@@ -1075,11 +1078,11 @@ The scopes are handled using the following rules:
 6. Names from different scopes never conflict. In the case of overloaded functions (see [Functions](#functions)) declared in the same scope or nested scopes the compiler selects the first appropriate function. The declared functions are always added to the beginning of the list of overloaded functions, so the most recently defined function will be the first one. In the case of values/types the compiler chooses the most recently defined one, i.e. names from nested scopes [temporarily] override names from the outer scopes. A value defined in some scope overrides/cancels all overloaded functions with the same name after the point where the value is defined and till the end of the scope.
 7. Types and values/functions never conflict:
 
-	```
-	type Malkovich=string
-	fun Malkovich(Malkovich:Malkovich):Malkovich?=Some(Malkovich)
-	println(Malkovich("Malkovich"))
-	```
+  ```
+  type Malkovich=string
+  fun Malkovich(Malkovich:Malkovich):Malkovich?=Some(Malkovich)
+  println(Malkovich("Malkovich"))
+  ```
 
 8. Functions within the same scope may have the same name as long as they have a different set of parameters. The classical example is `print()` function from `Builtins` module that is defined for many different types.
 9. Values in the same scope may have the same name, the latter values "override" the former (not physically, but in terms of name resolution), as we've seen in [Values and Variables](#valsvars) section above.
@@ -1090,10 +1093,10 @@ The most general form of the conditional expression in Ficus is
 
 ```
 if expr1 {
-	exprs1 ...
+  exprs1 ...
 } /* optional else if's: */
 else if expr2 {
-	exprs2 ...
+  exprs2 ...
 } else if ...
 /* optional else */ else {
   else_exprs ...
@@ -1103,8 +1106,9 @@ else if expr2 {
 In other words, there is obligatory `then`-clause (with `exprs1`), there is optional `else`-clause and optional `else if`-clauses. All the branches must have the same type, `void`, as in classical imperative languages, or non-void. The missing `else` branch is a shortcut for `else {}`. In this case all other branches must have `void` type. Here are some examples:
 
 ```
+// error: if-branch has type 'double', else-branch has type 'void'
 val y = if x >= 0. {sqrt(x)}
-			  else {
+        else {
            println(f"x={x} is negative")
         }
 val y = if x >= 0. {sqrt(x)}
@@ -1179,8 +1183,8 @@ until the current value will reach or cross the `end_val1` boundary. If `stepj` 
 ```
 // prepare lookup table to compute Hamming distance efficiently
 fun popcount(n: int) =
-	  if n > 0 {1 + popcount(n & (n - 1))}
-	  else {0}
+    if n > 0 {1 + popcount(n & (n - 1))}
+    else {0}
 val hamming_lut = array(256, 0u8)
 for i <- 0:256 { hamming_lut[i] = uint8(popcount(i)) }
 println(hamming_lut)
@@ -1343,8 +1347,8 @@ println(fold sum = 0 for x <- array {sum + x})
 // compute Hamming distance using fold
 fun hamming_dist(a: uint8 [], b: uint8 []) =
     fold dist = 0 for x<-a, y<-b {
-	    dist + hamming_lut[int(x ^ y)]
-	}
+      dist + hamming_lut[int(x ^ y)]
+  }
 
 // fold-based version of bounding_box function:
 fun bounding_box(image: uint8 [,])
@@ -1353,7 +1357,7 @@ fun bounding_box(image: uint8 [,])
     val (minx, maxx, miny, maxy) =
         fold minx = 1000000, maxx = -1, miny = 1000000, -1
         for pix@(y, x) <- image {
-	        if pix != 0u8 {
+          if pix != 0u8 {
                 (min(minx, x), max(maxx, x), min(miny, y), max(maxy, y))
             } else {
                 (minx, maxx, miny, maxy)
@@ -1370,7 +1374,7 @@ You may have noticed that in the last example `minx, maxx, miny, maxy` had to be
 ...
 val fold minx = 1000000, maxx = -1, miny = 1000000, -1
     for pix@(y, x) <- image {
-	    if pix != 0u8 {
+      if pix != 0u8 {
             (min(minx, x), max(maxx, x), min(miny, y), max(maxy, y))
         } else {
             (minx, maxx, miny, maxy)
@@ -1410,13 +1414,13 @@ for x <- mylist { if x%2 == 0 {false; break} }
 Which stop earlier if needed, and for some reason is more crisp. But both implementations do not clear enough, not as clear as math quantifiers "for all", "exists". Each time such a common pattern is implemented, the programmer should not forget how to initialize the quantifier, not to forget inverse the condition in the case of "for all" etc. To address those issues, Ficus introduces special "macro"-like flavors of `fold` operation:
 
 * `all(for i1 <- domain1 ... [nested for's if any] {predicate(i1,...)})`
-	returns true if for each tuple of iteration values (indices can be used as well) the user's `predicate` gives true.
+  returns true if for each tuple of iteration values (indices can be used as well) the user's `predicate` gives true.
 * `exists(for i1 <- domain1 ... [nested for's ...] {predicate(i1,...)})`
-	returns true if there is at least one tuple of iteration values + indices for which user's predicate gives true.
+  returns true if there is at least one tuple of iteration values + indices for which user's predicate gives true.
 * `find(for i1 <- domain1 ... [nested for's ...] {predicate(i1,...)})`
-	returns the first iteration value or a tuple of them (together with indices, in the order they appear in code) that satisfy the user's criteria. If there is no such tuple, `NotFoundError` exception is thrown.
+  returns the first iteration value or a tuple of them (together with indices, in the order they appear in code) that satisfy the user's criteria. If there is no such tuple, `NotFoundError` exception is thrown.
 * `find_opt(for i1 <- domain1 ... [nested for's...] {predicate(i1,...)})`
-	returns `Some(i1)` or `Some((i1, ...))` for the first value/tuple that satisfy the criteria. returns `None` if there is no such value/tuple.
+  returns `Some(i1)` or `Some((i1, ...))` for the first value/tuple that satisfy the criteria. returns `None` if there is no such value/tuple.
 
 Some examples:
 
@@ -1457,9 +1461,10 @@ val n = 10
 // We have nested 10x10 for-loop, so we get 10x10 matrix.
 // Type of the body expression is double, so we will get
 // double-precision matrix.
-val hilbert = [for i <- 0:n for j <- 0:n {1./(i + j + 1)}]
+val hilbert = [| for i <- 0:n for j <- 0:n {1./(i + j + 1)} |]
 
-val img = random((480, 640), 0u8, 255u8)
+val rng = RNG(123u64)
+val img = random(rng, (480, 640), 0u8, 255u8)
 val (h, w) = size(img)
 // blur an image using 3x3 box filter
 val blurred = [| for y <- 1:h-1 for x <- 1:w-1 {
@@ -1495,8 +1500,8 @@ var acc = 0
 val n = size(A)
 val S = [| for i<-0:n+1 {
     val prev_acc = acc
-	acc = if i<n {acc + A[i]} else {0}
-	prev_acc
+    acc = if i<n {acc + A[i]} else {0}
+    prev_acc
 } |]
 ```
 
@@ -1527,7 +1532,7 @@ val primes = [for i <- 2:100 when is_prime(i) {i}]
 val primes = [for i <- 2:100 {
                 if !is_prime(i) {continue}
                 i
-            }]
+              }]
 ```
 
 The first variant with `when` clause is usually shorter and more readable, however, sometimes the predicate is complex, then it makes sense to use the second variant. Both variants are equally efficient.
@@ -1552,7 +1557,7 @@ Unzip operation requires some extra syntax:
 
 ```
 val (a_array, b_array) =
-	[| @unzip for (a, b) <- ab_vector {(a*10, b.toupper())} |]
+  [| @unzip for (a, b) <- ab_vector {(a*10, b.toupper())} |]
 // will produce [|10, 20, 30, 40, 50|] and
 //              [|"A", "B", "C", "D", "E"|]
 ```
@@ -1574,17 +1579,17 @@ The function declaration syntax is one of the following:
 
 1. function, which body is a single expression:
 
-	```
-	fun func_name(arg1: T1, arg2: T2, ..., argn: Tn)
-	   [: optional_ret_type] = body_exp
-	```
+  ```
+  fun func_name(arg1: T1, arg2: T2, ..., argn: Tn)
+     [: optional_ret_type] = body_exp
+  ```
 
 2. function, which body is a code block:
 
-	```
-	fun func_name(arg1: T1, arg2: T2, ..., argn: Tn)
-	   [: optional_ret_type] { exprs ... }
-	```
+  ```
+  fun func_name(arg1: T1, arg2: T2, ..., argn: Tn)
+     [: optional_ret_type] { exprs ... }
+  ```
 
 (There is yet another form of the function tailored for pattern matching, which is described [Pattern Matching](#pattern-matching) section).
 
@@ -1660,11 +1665,11 @@ Some higher-order algorithms take user-specified functions as parameters (referr
 ```
 fun integrate(a: double, b: double, n: int, f: double->double)
 {
-   val h = (a - b)/n
-   (fold sum = 0., left = f(a) for i <- 0:n {
-       val right = f(a + (i+1)*h)
-       (sum + (left + right)*h*0.5, right)
-   }).0
+    val h = (a - b)/n
+       (fold sum = 0., left = f(a) for i <- 0:n {
+           val right = f(a + (i+1)*h)
+           (sum + (left + right)*h*0.5, right)
+        }).0
 }
 
 print(integrate(0., 2*M_PI, 100, fun (x) {sin(x)**2}) //prints 3.1415...
@@ -1684,15 +1689,16 @@ fun (arg1 [: T1], arg2 [: T2], ..., argn[: Tn])
 ```
 
 The differences from the regular function are:
+
 1. the function name is omitted. You can, however, declare a value/variable with a lambda function as a value and then call this lambda function by name.
 2. `=` form is unavailable, use `{}`
 3. it's not required to specify types of arguments, because lambda function usually has very small scope and its parameters types can often be inferenced from the way it's used. In particular, the standard `sort` function, used in the example above, is defined as:
 
-	```
-	fun sort(arr: 't [], less_than: ('t, 't)->bool) {...}
-	```
+  ```
+  fun sort(arr: 't [], less_than: ('t, 't)->bool) {...}
+  ```
 
-	that is, the comparison function takes 2 arguments, which type should match the array elements' type. If you give it an array of integers, it deduce that the comparison function should have `(int, int)->bool` type.
+  that is, the comparison function takes 2 arguments, which type should match the array elements' type. If you give it an array of integers, it deduce that the comparison function should have `(int, int)->bool` type.
 
 ## Closures
 
@@ -1733,6 +1739,7 @@ In some languages, like C/C++ or Java, types of the actual arguments, passed to 
 ## Functions with named parameters
 
 Many of the functions typically have 1 or 2 parameters. But there are also complex algorithms with lot's of parameters, and you may want to give a full control to users over all those parameters. At the same time, to keep the API sane, you want to:
+
 1. make it clear which parameter is given which value. Sometimes comments are used for this purpose, but they are not guaranteed to be up-to-date.
 2. provide default values for some rarely used options and flags.
 
@@ -1756,9 +1763,9 @@ When such a function is called, first should be put the positional arguments in 
 
 ```
 type detection_t = {
-	x: int; y: int;
-	width: int; height: int;
-	confidence: double
+    x: int; y: int;
+    width: int; height: int;
+    confidence: double
 }
 fun create_face_detector(
        deep_model_topo_filename: string,
@@ -1779,11 +1786,11 @@ fun create_face_detector(
     }
 }
 val detector = create_face_detector(
-     "mymodel.txt", "mymodel.weights",
-     meanvalue_r = 128.,
-     meanvalue_g = 128.,
-     meanvalue_b = 128.,
-     scale = 1./255) // leave the image size and channel order as-is
+      "mymodel.txt", "mymodel.weights",
+       meanvalue_r = 128.,
+       meanvalue_g = 128.,
+       meanvalue_b = 128.,
+       scale = 1./255) // leave the image size and channel order as-is
 ...
 val faces = detector(myimage)
 ```
@@ -1800,21 +1807,21 @@ Different numeric types are not converted one to another implicitly, e.g. if a f
 
 1. via cast operator `(expr :> target_type)`:
 
-	```
-	val a = 34587345
-	val b = 987654321
-	val product = (a :> uint64) * b
-	```
+  ```
+  val a = 34587345
+  val b = 987654321
+  val product = (a :> uint64) * b
+  ```
 
-	(the operator `:>` is actually quite universal and can also be used to convert numbers to/from string, or query class interfaces, see [Object-Oriented Programming](#object-oriented-programming))
+  (the operator `:>` is actually quite universal and can also be used to convert numbers to/from string, or query class interfaces, see [Object-Oriented Programming](#object-oriented-programming))
 
 2. via dedicated conversion function: `target_typename()` or `sat_target_typename()`, e.g. `int8()` converts a number of `int8`  type. We already used `string()` functions, which convert various values to a string. The `sat_[u]intN()` flavours of the conversion functions do conversion with saturation, i.e. they clip an argument instead of taking lower `N` bits:
 
-	```
-	// a pseudo-implementation of sat_uint8()
-	fun sat_uint8(x: int) =
-	    if x < 0 {0u8} else if x > 255 {255u8} else {uint8(x)}
-	```
+  ```
+  // a pseudo-implementation of sat_uint8()
+  fun sat_uint8(x: int) =
+      if x < 0 {0u8} else if x > 255 {255u8} else {uint8(x)}
+  ```
 
 3. conversion of a floating-point number to an integer is a special case; there are several functions for that:
 
@@ -1835,7 +1842,7 @@ Arguments of binary operations may have different types, in which case the coerc
 6. if one of the types is `float` and the other one is `double`, the result will be `double`.
 7. otherwise, type checker will report an error and you need to explicitly cast arguments to some coercible pair.
 
-Coercion is recursively applied to arrays and tuples when using `.+`, `.−`, `.*`, `./` operations, it's done element-wise.
+Coercion is recursively applied to arrays and tuples when using `.+`, `.-`, `.*`, `./` operations, it's done element-wise.
 There are also some useful functions that operate on numbers:
 
 * `min(a, b)`, `max(a, b)` — find minimum/maximum of two numbers
@@ -1896,9 +1903,9 @@ Ficus does not have dedicated types for short numerical vectors, points, complex
 To simplify the use of such types as vectors, the standard Ficus library defines a whole set of basic operations on such tuples, namely:
 
 * arithmetical operations:
-	* element-wise: `.+`, `.−`, `.*`, `./`
-	* `*` on 2-element tuples computes complex number product, '/' divides two complex numbers
-	* `*` on 4-element tuples computes quaternion product.
+  * element-wise: `.+`, `.-`, `.*`, `./`
+  * `*` on 2-element tuples computes complex number product, '/' divides two complex numbers
+  * `*` on 4-element tuples computes quaternion product.
 * comparison operations: they compare tuples lexicographically.
 * `norm()` computes square root of the sum of squared tuple elements
 * `dot()` computes dot-product
@@ -1974,7 +1981,7 @@ type object_t // '=' can be omitted before '{'
 // ordering of field values can be arbitrary
 // when you construct a record
 val obj = object_t {
-	box=r, id=5, velocity=(0, 0),
+  box=r, id=5, velocity=(0, 0),
   label=("", (255u8, 255u8, 255u8))
   // use default value for the "tracked" field
 }
@@ -1990,7 +1997,7 @@ But when you unpack the record, compiler already knows the type of unpacked valu
 
 ### Modifying/updating record
 
-While tuples are usually small and rarely need to be modified by parts, it's generally not true for records, and it may be too much of a code, especially if you need to change just a single field. There is convenient record update operator `.{...}` operator to solve this problem: `record_instance . {filed_i1=new_val_i1, ..., field_iK=new_val_iK }`:
+While tuples are usually small and rarely need to be modified by parts, it's generally not true for records, and it may be too much of a code, especially if you need to change just a single field. There is convenient record update operator `.{...}` to solve this problem: `record_instance . {filed_i1=new_val_i1, ..., field_iK=new_val_iK }`:
 
 ```
 type Rect = {x: int; y: int; width: int; height: int}
@@ -2005,10 +2012,10 @@ val obj = object_t {box=r1, velocity=(10, 5)}
 // here record update is applied to the nested records
 var moved_obj = obj.{
     box = obj.box.{
-	     x = obj.box.x + obj.velocity.0,
-	     y = obj.box.y + obj.velocity.1
-	     }
-	  }
+       x = obj.box.x + obj.velocity.0,
+       y = obj.box.y + obj.velocity.1
+       }
+    }
 // rec .= {updated_members} is a shortcut for
 // rec = rec . {updated_members}
 moved_obj .= {velocity=moved_obj.velocity/2}
@@ -2065,14 +2072,14 @@ fun track(tracker: Tracker, detector: Detector, image: uint8 [,])
 {
     ...
     for obj@i <- tracker.objs {
-		    // update i-th object location
-		    ...
-		}
-		if size(newly_tracked_obj) != 0 {
-		   // concatenate two arrays;
-		   // see the 'Arrays' section for details
-	     tracker.objs = [\tracker.obj, \newly_detected_objs]
-	  }
+    // update i-th object location
+        ...
+    }
+    if size(newly_tracked_obj) != 0 {
+        // concatenate two arrays;
+        // see the 'Arrays' section for details
+        tracker.objs = [\tracker.obj, \newly_detected_objs]
+    }
 }
 ```
 
@@ -2108,7 +2115,7 @@ val affine = [| \R, \[| shift.0; shift.1 |] |]
 
 // using a comprehension
 val gradient = [| for y <- 0:256 for x <- 0:256
-					        { sat_uint8((x, y, (x+y)/2)) } |]
+                  { sat_uint8((x, y, (x+y)/2)) } |]
 ```
 
 Once the arrays are created, they can be easily read and modified:
@@ -2175,8 +2182,10 @@ elemtype* ptr = (elemtype*)(A.data + A.step[0]*i +
 That is, for each element access the produced C code checks whether the element index is within the array boundaries or not. If not, it throws `OutOfRangeError` exception. It's safe, and it helps to catch some bugs very quickly, but maybe it's not the fastest way to access arrays. In the case of subarray access using ranges instead of scalar indices the boundaries are checked too, but the overhead is obviously much lower.
 
 In order to preserve this safety and increase the performance, Ficus compiler applies special optimizations to reduce the number of range checks:
+
 * If an array is accessed unconditionally (i.e. not inside the nested `if/match/try` etc.) inside for-loop, and
 * If the index `ij` is a linear combination of loop index and some loop invariants: `ij == loop_idx*loop_inv + another_loop_inv`
+
 Then the range check is moved outside of the loop and is replaced with checks if for the smallest and the largest loop index values the corresponding array indices are within the array boundaries.
 
 For example, let's consider the matrix multiplication function given earlier:
@@ -2205,7 +2214,7 @@ fun matmul(A: double [,], B: double [,])
     // with scale=1 and offset=0. j varies from 0 to nb
     check_range(0, nb, 1, 0, B, 1)
     [| for i <- 0:ma for j <- 0:nb {
-	      // k is used as 1-st index when accessing A,
+        // k is used as 1-st index when accessing A,
         // with scale=1 and offset=0. k varies from 0 to na
         check_range(0, na, 1, 0, A, 1)
         // and it's used as 0-th index when accessing B
@@ -2252,7 +2261,7 @@ Here is are some basic array processing operations put together for convenience:
 5. flip matrix around vertical axis, i.e. reverse each row: `A[:,::-1]`
 6. flip matrix around the center: `A[::-1,::-1]`
 7. flatten array, convert it to 1D: `A[:]`
-8. apply element-wise apply element-wise binary operation two each pair of the corresponding matrix elements: `A op B`, where `op` is one of `.+, .-, .*, .-, ./, .%, .**, &, |, ^`.
+8. apply element-wise apply element-wise binary operation two each pair of the corresponding matrix elements: `A op B`, where `op` is one of `.+, .-, .*, ./, .%, .**, &, |, ^`.
 9. concatenate several arrays horizontally: `[| \A1, \A2, ... |]`
 10. concatenate several arrays vertically: `[| \A1; \A2; ... |]`
 11. convert list or string to array: `[| \source |]`
@@ -2270,20 +2279,21 @@ Here is are some basic array processing operations put together for convenience:
 ## Border extrapolation
 
 In the signal/image processing, as well as deep learning, sometimes there is a need to access an array outside of its boundaries. For example, when we apply a filter to image, e.g. Gaussian blur, for each pixel, including the pixels at the edge and in the corners, we need to compute a weighted sum across the neighbourhood of *2R+1×2R+1* pixels, where R is the filter radius. The possible ways to implement such an algorithm:
+
 1. Produce slightly smaller array on the output, i.e. process only those elements of input array which are far enough from the border
 2. Copy the array into the middle of larger fresh array and then fill the remaining elements of this larger (padded) array using some formula (e.g. propagate the left-most elements of original input to the left boundary of the new array etc.):
-	```
-	// original array:
-	a b c d
-	e f g h
-	// padded array with radius 2:
-	a a a b c d d d
-	a a a b c d d d
-	a a a b c d d d
-	e e e f g h h h
-	e e e f g h h h
-	e e e f g h h h
-	```
+  ```
+  // original array:
+  a b c d
+  e f g h
+  // padded array with radius 2:
+  a a a b c d d d
+  a a a b c d d d
+  a a a b c d d d
+  e e e f g h h h
+  e e e f g h h h
+  e e e f g h h h
+  ```
 3. Modify the algorithm so that each access to input array is replaced with more complex formula, e.g. instead of `A[i, j]` we use something like `A[min(max(i, 0), M), min(max(j, 0), N)]`.
 4. Split the array processing loop into several parts (at least 2 parts), where the main *fast* part processes the array interior without worrying about the border (basically, it's the method *1* in this list) and then process the elements near the border using method *3*.
 Depending on the application and various other circumstances, such as the array size, the extrapolation radius, the filtering operation complexity etc. any of the 4 methods can is used.
@@ -2317,6 +2327,7 @@ fun blur3x3(img: uint8 [,])
 ```
 
 As an exercise, you can implement a variant of this function that:
+
 1. creates the result image of size h×w using `array((h, w), 0u8)`
 2. computes the inner part of the result using loop over `1<=y<h-1, 1<=x<w-1`. In this loop Ficus should optimize out the range checks, since we always stay within the input image boundaries
 3. computes the border of the result using `.clip` operation. Possibly, this part can be made a separate function, since it needs to be called 4 times for each border.
@@ -2402,10 +2413,11 @@ We've met with strings already a few times in this guide, and we even know how t
 Strings in Ficus are Unicode strings, they consist of 4-byte characters (each character has `char` type).
 
 New strings can created in one of the following ways:
+
 * using string literals. Currently, there are literals of 3 kinds: `""`, `f""` and `r""`.
-	* The first one, `""` just represents a text string. It can include newline characters, which are eliminated or retained, depending on whether `\` is put before newline or not. They can also include any usual C-style escape characters.
-	* The second one, `f""` is not a literal, strictly speaking. It's converted to a concatenation of string literals and `string()` calls to convert the interpolated expressions into strings.
-	* The third one is primarily used for regular expressions, because it does not support any escape codes, except for `\\` and `\"`, which are also represented as-is (i.e. as two-character substrings).
+* The first one, `""` just represents a text string. It can include newline characters, which are eliminated or retained, depending on whether `\` is put before newline or not. They can also include any usual C-style escape characters.
+* The second one, `f""` is not a literal, strictly speaking. It's converted to a concatenation of string literals and `string()` calls to convert the interpolated expressions into strings.
+* The third one is primarily used for regular expressions, because it does not support any escape codes, except for `\\` and `\"`, which are also represented as-is (i.e. as two-character substrings).
 * as results of certain operations that produce strings
 * (the partial but important case of the previous item) as result of `string()` or `repr()` call. For most of the Ficus types, except for variants, there is automatically generated `string()` function that you can override and that represents some ficus value in a textual form. The difference between `string()` and `repr()` is that `string()` produces the output with the emphasis on readability, whereas `repr()` produces the string that is rather close representation of the object in Ficus source code (as if it was specified as literal).
 
@@ -2449,7 +2461,7 @@ There is also some useful functionality, available in the `String` module. Inste
  * `str.toupper()` — converts each character of `str` to the uppercase, e.g. `"Developers!".toupper() => "DEVELOPERS!"` etc.
  * `str.tolower()` — converts each character of `str` to the lower case.
  * `str.lstrip(), str.rstrip(), str.strip()` - remove all the leading, trailing or both leading and trailing whitespaces, respectively, from `str`. A whitespace is a SPACE, TAB or a newline character.
- * `str.tokens(f:char−>bool)` — splits `str` into a list of strings, separated by delimiters. Delimiter is a continuous non-empty sequence of characters for which `f` returned `true`:
+ * `str.tokens(f:char->bool)` — splits `str` into a list of strings, separated by delimiters. Delimiter is a continuous non-empty sequence of characters for which `f` returned `true`:
 
     ```
     val words = "Bill, Steve, Linus"
@@ -2494,11 +2506,11 @@ The following functions & method are available:
 * `re.findall(str, ignorecase=false, multiline=false): (int, int)[,]` — finds all non-overlapping substrings of `str` that match the regexp. Each row of the output matrix corresponds to a match (correspondingly, the number of rows is the number of found matches). Columns of the row, as in `prefixmatch` and `find`, correspond to the whole match and submatches.
 * `re.findall_str(str, ignorecase=false, multiline=false): string [,]` — the alternative version of `findall` that returns sub-strings.
 * `re.replace(str, subst, ignorecase=false, multiline=false): string` — replaces all non-overlapping matches with `subst`, where `subst` may use `\0`, `\1` etc. placeholders to re-use the original matches. For example:
-	```
-	val digits = Re.compile(r"\d+")
-	// produces (123)-(456)
-	val numbers_in_parens = digits.replace("123-456", "(\0)")
-	```
+  ```
+  val digits = Re.compile(r"\d+")
+  // produces (123)-(456)
+  val numbers_in_parens = digits.replace("123-456", "(\0)")
+  ```
 
 The supported regular expressions form a usable subset of the regular expressions supported by Python and other popular regular expression engines:
 
@@ -2558,7 +2570,7 @@ fun dilate3x3(img: 'pix [,]): 'pix [,] =
     val (h, w) = size(img)
     [| for y <- 0:h for x <- 0:w {
         val a = max(img.clip[y-1,x-1],
-	        max(img.clip[y-1,x], img.clip[y-1, x+1]))
+          max(img.clip[y-1,x], img.clip[y-1, x+1]))
         val a = max(a, max(img.clip[y,x-1],
           max(img.[y,x], img.clip[y, x+1])))
         max(a, max(img.clip[y+1,x-1],
@@ -2579,7 +2591,8 @@ fun gemm_A_Bt_plusC(A: 't [,], B: 't [,], C: 't [,]) =
 
 // explicit instantiation of a generic function is easy
 val dilate3x3_32f = (dilate3x3 : float [,] -> float [,])
-dilate3x3_32f(random((30, 30), 0.f, 1.f))
+val rng = RNG(123u64)
+dilate3x3_32f(random(rng, (30, 30), 0.f, 1.f))
 ```
 
 Defining and using complex generic types is easy too, as we will see in [Sum Types or Variants](#variants).
@@ -2778,7 +2791,7 @@ Note that we use `_` for the unused function parameter. With `list_foldl()/List.
 // reimplementation of List.find();
 // return the first element for which the predicate returns true.
 // return None if there is no such elements
-fun list_find(l: 't list, pred: 't−>bool): 't? =
+fun list_find(l: 't list, pred: 't->bool): 't? =
     if l.empty() {None}
     else {
         val x = l.hd()
@@ -2798,14 +2811,14 @@ Another common operation in list processing is mapping, where we process each li
 
 ```
 // reimplementation of List.map()
-fun list_map(l: 'a list, f: 'a−>'b): 'b list =
+fun list_map(l: 'a list, f: 'a->'b): 'b list =
     list_foldl(list_rev(l),
                 fun (x: 'a, res: 'b list) {f(a) :: res},
                 ([] : 'b list))
 
 // here is another implementation, which is not tail-recursive,
 // but it does not use list reversion
-fun list_map_alt(l: 'a list, f: 'a−>'b): 'b list =
+fun list_map_alt(l: 'a list, f: 'a->'b): 'b list =
     if l == [] {[]} else {f(l.hd()) :: list_map_alt(l.tl(), f)}
 
 val strs = [: "1", "a", "2":]
@@ -2903,45 +2916,46 @@ Now, what is actually a pattern and how a value is matched with it? Pattern may 
   }
   ```
 
-	this does not look any better than if statement so far, right? But let's look at more complex patterns.
+  this does not look any better than if statement so far, right? But let's look at more complex patterns.
+
 * tuple of patterns: `(pat1, pat2, ..., patN)`. The matched value is supposed to be a pattern of the size `N`, and its elements are matched with the corresponding patterns. All the nested patterns should be matched successfully in order to consider the whole pattern as successful match, and the same is true for all the complex patterns listed below.
 * record pattern: `{ field_name1=pat1, ..., field_nameN=patN }`. The patched value is supposed to be a record that has all of the fields `field_name1`, ..., `field_nameN`. The actual record may have more fields than listed, the omitted fields are not checked and not captured (as if you put `missing_field_name=_`). If you want to capture a field `field_nameJ` to a value with the same name, instead of `field_nameJ=field_nameJ` you can simply write `field_nameJ`. Also, note that while we should specify the record typename when we construct a record of that type, we omit the name in pattern matching, because the type of matched value, as well as types of all its elements, is known at compile time.
 * list pattern: `head_pattern :: tail_pattern`. The matched value is supposed to be a list. If it's empty then the match is unsuccessful (and we proceed to the next pattern, if any), otherwise the list head is matched with the `head_pattern` and the tail is matched with `tail_pattern`.
 * `as`-pattern: `pattern as ident`. The value (or a part of it) is matched with the `pattern`, if successfully, we capture the matched part under the name `ident`. While it does not make sense to write something like `| a as b => ...`, it makes more sense to write something like:
 
-	```
-	fun collect_tracked_cars(detected_objects: object_t list,
+    ```
+    fun collect_tracked_cars(detected_objects: object_t list,
                     result: object_t list): object_t list =
-	    match detected_objects {
-	    | ({label=("car", _), id, box=r,
+        match detected_objects {
+        | ({label=("car", _), id, box=r,
             tracked=true} as object) :: rest =>
-	        println(f"object #{id} is car: {{x={r.x}, y={r.y}, \
-	                  w={r.width}, h={r.height} }}")
-	        colllect_tracked_cars(rest, object :: result)
-	    | _ :: rest => collect_tracked_cars(rest, result)
-	    | [] /* or can use _ as well,
-	            because there are no mo options left
-	        */ => result.rev()
-	    }
-	```
+            println(f"object #{id} is car: {{x={r.x}, y={r.y}, \
+                    w={r.width}, h={r.height} }}")
+            colllect_tracked_cars(rest, object :: result)
+        | _ :: rest => collect_tracked_cars(rest, result)
+        | [] /* or we can use _ as well,
+              because there are no more options left
+              */ => result.rev()
+        }
+    ```
 
 * `when`-pattern: `pattern when expr`. `expr` should be of `bool` type. First, the value is matched with the `pattern`. If successfully, `expr` is evaluated (it can use the captured variables), and the matching is considered successful if the result is `true`:
 
-```
-fun diff_stat(A: int [], B: int [], eps: int):
-    (int, int, int, int) =
-    fold n_exact=0, n_near=0, n_far=0, max_diff=0
-        for a <- A, b <- B {
-            match abs(a - b) {
-            | 0 =>
-                (n_exact+1, n_near, n_far, max_diff)
-            | diff when diff < eps =>
-                (n_exact, n_near+1, n_far, max(diff, max_diff))
-            | diff =>
-                (n_exact, n_near, n_far+1, max(diff, max_diff))
+    ```
+    fun diff_stat(A: int [], B: int [], eps: int):
+        (int, int, int, int) =
+        fold n_exact=0, n_near=0, n_far=0, max_diff=0
+            for a <- A, b <- B {
+                match abs(a - b) {
+                | 0 =>
+                    (n_exact+1, n_near, n_far, max_diff)
+                | diff when diff < eps =>
+                    (n_exact, n_near+1, n_far, max(diff, max_diff))
+                | diff =>
+                    (n_exact, n_near, n_far+1, max(diff, max_diff))
+                }
             }
-        }
-```
+    ```
 
 * variant pattern: `Ident(pattern1, ..., patternN)`. `Ident` is an identifier starting with a capital letter, and the number of patterns matches the number of constructor parameters. In the case of a single parameter, and when `pattern1` is a literal, wildcard or an identifier, the parentheses may be omitted. What is this all about and what is the "variant"? We will see it in the section [Variants](#variants).
 * alternatives: `pattern1 | pattern2 | ...` — the match is considered successful if any of the patterns match the input. In the current version of Ficus compiler alternative patterns may not capture any values.
@@ -2974,11 +2988,11 @@ As you can see, we completely got rid of `empty()`, `hd()` and `tl()` operators!
 
 ```
 fun hd(l: 't list): 't =
-	match l { | a :: rest => a | _ => throw NullListError }
+  match l { | a :: rest => a | _ => throw NullListError }
 fun tl(l: 't list): 't list =
-	match l { | a :: rest => rest | _ => throw NullListError }
+  match l { | a :: rest => rest | _ => throw NullListError }
 fun empty(l: 't list): bool =
-	match l { | [] => true | _ => false }
+  match l { | [] => true | _ => false }
 ```
 
 Doesn't it look like a magic, or technically speaking, an infinite recursion (because we actually need somehow to access elements of *CONS*-cells to match it against the `::` pattern)? Well, there are some internal functions, intrinsics, that access a *CONS*-cell with assumption that it's not *[]*. Compiler uses those intrinsics when it compiles pattern matching expressions into a sequence of `if` operators in C.
@@ -3456,7 +3470,7 @@ val file_size =
         fsz
     }
     catch {
-    | IOError =>
+    | FileOpenError =>
         println("error: the log file cannot be opened")
         -1L
     }
@@ -3917,9 +3931,10 @@ class B: Printable
 }
 fun B.print_me() = ...
 
+val rng = RNG(123u64)
 fun get_some_printable(): Printable =
 {
-    if random(0, 1) == 0 {(A {...} :> Printable)}
+    if bool(rng) {(A {...} :> Printable)}
     else {(B {...} :> Printable)}
 }
 
@@ -3954,6 +3969,7 @@ That is, you write a normal for-loop or an array comprehension, put `@parallel` 
 ## Map-reduce concept
 
 When there is a task to process a massive amount of data, the solution typically includes two parts:
+
 1. The first logical step is to split this data by some criteria to prefeably similar by computational complexity parts and process it using multiple CPU cores.
 2. The second part is to combine the independently computed results together.
 
@@ -4031,10 +4047,10 @@ fun add_sat_u8(a: uint8 [], b: uint8 []): uint8 []
     @ccode
     {
         // access the arrays
-        int i, n = a−>dim[0].size;
-        uchar* aptr = (uchar*)a−>data;
-        uchar* bptr = (uchar*)b−>data;
-        uchar* rptr = (uchar*)result−>data;
+        int i, n = a->dim[0].size;
+        uchar* aptr = (uchar*)a->data;
+        uchar* bptr = (uchar*)b->data;
+        uchar* rptr = (uchar*)result->data;
 
         for( i = 0; i <= n - 16; i += 16 )
         {
@@ -4089,7 +4105,7 @@ In fact, quite a few functions in the Ficus standard library are implemented in 
 
 `File` module in the standard library replicates all the functionality of the standard C's `stdio.h`. Without explaining it deeply, here is the list of useful functions and methods:
 
-* `File.open(filename, mode): File.t` — opens the file in requested mode, replication of `fopen` function from `C`. Throws `IOError` exception if the file is not found or cannot be opened. Otherwise, the function returns an instance of class `File.t`, which methods are listed below (assuming that the class instance is called `file`):
+* `File.open(filename, mode): File.t` — opens the file in requested mode, replication of `fopen` function from `C`. Throws `FileOpenError` exception if the file is not found or cannot be opened. Otherwise, the function returns an instance of class `File.t`, which methods are listed below (assuming that the class instance is called `file`):
 * `file.eof(): bool` — `true` if we reached the end of file
 * `file.close(): void` — closes the file. It's safe to close file twice, the second call will be ignored. BTW, the file is closed automatically in the destructor.
 * `file.seek(pos, origin): void` — changes the position of the file to the specified one. `whence` is one of `SEEK_SET`, `SEEK_CURR` or `SEEK_END`.
@@ -4100,7 +4116,7 @@ In fact, quite a few functions in the Ficus standard library are implemented in 
 * `file.read(arr): int` — reads data to 1D array of type uint8. The data is read until it fills the whole provided array or until EOF occurs, whatever happens earlier. It returns the number of bytes read.
 * `file.readln(): string` — reads a single line from text file. The file is assumed to have UTF-8 encoding and the read string is converted to Unicode.
 * `File.read_utf8(filename): string` — reads entire file, assuming it's text file in UTF-8 encoding, into a text string
-* `File.write_utf8(filename, str): void` — writes string (possibly containing '\n', '\r') to a file using UTF-8 encoding.
+* `File.write_utf8(filename, str): void` — writes string (possibly containing `\n`, `\r`) to a file using UTF-8 encoding.
 * `File.read_binary_u8(filname): uint8 []` — reads the entire file (as binary file) into an array of bytes.
 
 ## Sys

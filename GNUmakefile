@@ -45,7 +45,7 @@ endif
 
 FICUS_FLAGS := -verbose -O3
 
-.PHONY: all clean final_note
+.PHONY: all clean final_note doc
 
 all: $(FICUS0) $(FICUS) final_note
 
@@ -81,7 +81,13 @@ final_note: | $(FICUS)
 	@echo "in the current directory for the intermediate .c and .o files,"
 	@echo "as well as the produced application".
 
+doc: ficustut_a4.pdf
+
+ficustut_a4.pdf: doc/ficustut.md doc/fxtemplate.latex Makefile
+	pandoc -f markdown --pdf-engine=xelatex --resource-path=doc:. -V geometry:margin=1in -V mainfont='Literata' -V fontsize=11pt -V monofont='iA Writer Mono S' -V documentclass=article -V papersize=A4 -V urlcolor=red -V title="Ficus programming language" -V author="Vadim Pisarevsky" --listings --template doc/fxtemplate.latex -o doc/ficustut_a4.pdf doc/ficustut.md
+
 clean:
 	@$(RM) $(BOOTSTRAP_BUILD_DIR)
 	@$(RM) $(BUILD_DIR)/ficus
 	@$(RM) $(FICUS)
+	@$(RM) doc/ficustut_a4.pdf
