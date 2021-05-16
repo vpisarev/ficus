@@ -83,7 +83,7 @@ You already know the `-app` and `-run` options of the compiler, which instruct i
 $ ficus -h
 ```
 
-See also the [Appendix A](#appendix-a) in the end of the tutorial.
+See also the [Appendix A](#appendix-a.-using-ficus) in the end of the tutorial.
 
 **Note:** The option `-run` suggests that Ficus can be used as a scripting language. It compiles short programs quite fast and the delay is minimum. And most of the programmers' text editors can be customized to build and run ficus programs with a keyboard shortcut. At the same time, for now Ficus lacks the interactive mode, so called *REPL*.
 
@@ -603,8 +603,8 @@ Operators form the foundation of expressions. The table below describes Ficus op
 | (*exp1*) | ∞ | N/A | same as *exp1* | enclose arbitrarily complex expression into parentheses to control the order of calculations |
 | ({*code_block ...*}) | ∞ | N/A | same as the last expression of *code_block* | inside parentheses it's possible to put curly braces and inside them put arbitrary sequence of declarations and expressions. The value of the last expression in the code block is the value of whole code block.|
 | (*exp1*, *exp2*, ...) | ∞ | N/A | the tuple type | form a tuple of values. They may have different types. |
-| [*exp1*, *exp2*, ...], [: *exp1*, *exp2*, ... :], [| *exp1*, *exp2*, ... |] | ∞ | N/A | the type of constructed collection | form a vector, a list or an array of values, respectively. All the values must have the same type. In  the case of arrays it's also possible to use expand operator `\`  and put `;` to separate one row from another (to form a 2D array instead of 1D) |
-| [for ...], [: for ... :], [| for ... |] | ∞ | N/A | the type of constructed collection | form a vector, a list or an array using comprehension, e.g. `[| for i<—0:20 {i*i} |]`. See the *Arrays* section for details |
+| [*exp1*, *exp2*, ...], [: *exp1*, *exp2*, ... :], [&#124; *exp1*, *exp2*, ... &#124;] | ∞ | N/A | the type of constructed collection | form a vector, a list or an array of values, respectively. All the values must have the same type. In  the case of arrays it's also possible to use expand operator `\`  and put `;` to separate one row from another (to form a 2D array instead of 1D) |
+| [for ...], [: for ... :], [&#124; for ... &#124;] | ∞ | N/A | the type of constructed collection | form a vector, a list or an array using comprehension. See the [Arrays](#arrays) and [Comprehensions](#comprehensions) sections for details |
 | *name1* {*name2*=*exp2*, *name3*=*exp3*, ...} | ∞ | N/A | the record type | form a fresh record of type *name1* by specifying its members' values |
 
 As in the case of other languages, the precedence and associativity rules minimise the use of `(` `)` in many cases, but you can explicitly enclose some sub-expressions into parentheses to change the evaluation order.
@@ -613,9 +613,9 @@ What is `coerce(T1, T2)` in the table? This is the type computed out of `T1` and
 
 Besides the basic operations shown in the table above, there are many other expressions, described in the respective sections (even though some of them have been mentioned briefly in the table):
 
-* Flow control expressions — described in [Sequences and Flow Control Operations](#seqflow) section
+* Flow control expressions — described in [Code Blocks and Flow Control Operations](#code-blocks-and-flow-control-operations) section
 * Array construction and access operations, array comprehensions — covered in the [Arrays](#arrays) section
-* Constructing tuples and records, accessing them — see [Tuples, Records](#tuprec)
+* Constructing tuples and records, accessing them — see [Tuples and Records](#tuples-and-records)
 * Pattern matching expressions — see [Pattern Matching](#patterns)
 * Constructing and processing variants — see [Sum Types or Variants](#variants)
 * Function and method calls, lambda functions — see [Functions](#functions)
@@ -710,18 +710,18 @@ Types from the first two categories can be used anonymously, without defining an
 Ficus includes the following built-in, automatically defined and user-defined types:
 
 * integer and floating-point numbers of various bit depth:
-    * `int` — the most used type. It's signed integer type of the same type as pointer, i.e. 32-bit integer on 32-bit machines, 64-bit integer on 64-bit machines etc.
+    * `int` — the most used type. It's signed integer type of the same size as pointer, i.e. 32-bit integer on 32-bit machines, 64-bit integer on 64-bit machines etc.
     * `uint8` — unsigned 8-bit integers within 0..255 range. `uint8` literals have `u8` suffix.
     * `int8` — signed 8-bit integers within -128..127 range. The literals have `i8` suffix.
     * `uint16` — unsigned 16-bit integers within 0..65535 range. The literals have `u16` suffix.
     * `int16` — signed 16-bit integers within -32768..32767 range. The literals have `i16` suffix.
     * `uint32` — unsigned 32-bit integers within 0..2^32-1 range. The literals have `u32` suffix.
     * `int32` — signed 32-bit integers within -2^31 .. 2^31-1 range. The literals have `i32` suffix. Note that int32 and int are not converted one to another implicitly.
-    * `uint64` — unsigned 64-bit integers within 0..2^64-1 range. The literals have `u64` suffix or `UL` suffix.
-    * `int64` — signed 64-bit integers within -2^63 .. 2^63-1 range. The literals have `i64` suffix or `L` suffix.
-    * `half` — 16-bit floating-point numbers. Currently, Ficus has no real support for such type, it's reserved for the future. The literals have `h` suffix. (**Note:** *currently there is no complete support for `half` type*).
-    * `float` — single-precision floating-point numbers. Usually these are IEEE754-compliant 32-bit floating-point numbers, but the compiler does not make an explicit assumption about it. The literals have `f` suffix.
-    * `double` — double-precision floating-point numbers. Usually these are IEEE754-compliant 64-bit floating-point numbers, but the compiler does not make an explicit assumption about it.
+    * `uint64` — unsigned 64-bit integers within 0..2^64-1 range. The literals have `u64` or `UL` suffix.
+    * `int64` — signed 64-bit integers within -2^63 .. 2^63-1 range. The literals have `i64` or `L` suffix.
+    * `half` — 16-bit floating-point numbers. Currently, Ficus has no real support for such type, it's reserved for the future. The literals have `h` suffix.
+    * `float` — single-precision (32-bit) floating-point numbers, as defined by IEEE754 standard. The literals have `f` suffix.
+    * `double` — double-precision (64-bit) floating-point numbers, as defined by IEEE754 standard.
 
   The numbers are further covered in the [Numbers](#numbers) section.
 
@@ -771,7 +771,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
      (a.0*b.0 - a.1*b.1, a.0*b.1 + a.1*b.0)
     ```
 
-* **record**: `record_name { name1: 't1; name2: 't2, ... }`. Records may be viewed as tuples with named elements. Unlike tuples, the record types should be defined explicitly before you use them:
+* **record**: `type type_params record_name = { name1: 't1; name2: 't2; ... }`. Records may be viewed as tuples with named elements. Unlike tuples, the record types should be defined explicitly before you use them:
 
     ```
     type rect = { x: int; y: int; width: int; height: int }
@@ -807,9 +807,8 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
   C/C++ users may treat references as the constant pointers (`int ref` in Ficus ~ `int* const` in C++). Also, note that in Ficus there is no unary `&` operator, that is, you cannot take address of an existing object. Instead, `ref` operator always allocates a new object in the heap and assigns to it the user-specified initial value, which can further be changed.
 
-* **option**: `'t?`, e.g. `int?`, `(string, string) list?` etc. Represents 'some value' or 'nothing'. Strictly speaking, it's a partial case of variant, which is discussed later in the tutorial. But it's so common and so useful that it got the special syntax (`?`). If  `x` is a value of type `T`, `Some(x)` would be a value of type `T?`. What about 'nothing'? Use `None`. Most of the time Ficus compiler will guess correctly, which `T?` it will belong to. When it's not, use explicit type specification, e.g. `(None : int?)`.
+* **option**: `'t?`, e.g. `int?`, `(string, string) list?` etc. Represents 'some value' or 'nothing'. Strictly speaking, it's a partial case of variant, which is discussed later in the tutorial. But it's so common and so useful that it got the special syntax (`?`). If  `x` is a value of type `T`, `Some(x)` would be a value of type `T?`. What about 'nothing'? Use `None`. Most of the time Ficus compiler will guess correctly, which `T?` it will belong to. When it's not, use explicit type specification, e.g. `(None : int?)`. Here is an example:
 
-    Here is an example:
     ```
     // convert string to int, if it's possible
     fun str2int(s: string): int?
@@ -883,8 +882,8 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     // make a list of 5 consequitive natural numbers
     val mylist1 = [: 1, 2, 3, 4, 5 :]
     val hd1 = mylist1.hd() // 1
-                            // mylist1.hd() is equivalent to
-                            // List.hd(mylist1)
+                           // mylist1.hd() is equivalent to
+                           // List.hd(mylist1)
     val tl1 = mylist1.tl() // [: 2, 3, 4, 5:]
     val mylist2 = 100 :: tl1 // [: 100, 2, 3, 4, 5:]
 
@@ -996,7 +995,7 @@ Note that some of the expressions may actually be declarations of values, functi
 
 Code block is also an expression, its type and its value matches the type and the value of the last expression in the block. The empty code block `{}` has type `void`.
 
-You can put a code block in any place where a single expression is expected, in which case you need to enclose this sequence into parentheses and curly braces `({ ... })`. Many expressions in Ficus, like conditional expressions, loops, pattern matching, try-catch etc. expect code blocks as their parts, and then only `{ ... }` should be used without `( ... )`:
+You can put a code block anywhere where a single expression is expected, in which case you need to enclose this sequence into parentheses and curly braces `({ ... })`. Many expressions in Ficus, like conditional expressions, loops, pattern matching, try-catch etc. expect code blocks as their parts, and then only `{ ... }` should be used without `( ... )`:
 
     ```
     // Parentheses and curly braces are necessary here,
@@ -1035,14 +1034,14 @@ As mentioned earlier, the type of code block is defined by the type of last expr
     }
     ```
 
-or non-void. But, in order to give some protection from occasional programming errors, Ficus compiler reports an error when there are non-void expression in the middle of code block.
+or non-void. But, in order to give some protection from occasional programming errors, Ficus compiler reports an error when there is a non-void expression in the middle of code block.
 
     ```
     fun dotprod((x1, y1, z1, w1): (float*4),
                 (x2, y2, z2, w2): (float*4)) =
         x1*x2 // error: non-void expression x1*x2
     + y1*y2 // error: non-void expression + y1*y2
-    + z1*z2 // error
+    + z1*z2 // error: non-void expression + z1*z2
     + w1*w2 // no error, it's the last expression in the block
     ```
 
@@ -1514,13 +1513,13 @@ val S = [| for i<-0:n+1 {
 
 ### Filtering data
 
-Another common pattern in data processing is to iterate through a collection and retain only those elements that satisfy certain criteria. In functional languages there is often a high-order function `List.filter` for that, and it's available in Ficus too. However, Ficus also provides 2 complementary methods to do it using comprehensions:
+Another common pattern in data processing is to iterate through a collection and retain only those elements that satisfy certain criteria. In functional languages there is often a high-order function, `List.filter` or similar, for that, and it's available in Ficus too. However, Ficus also provides 2 complementary comprehension-based methods to filter data:
 
 1. There is optional `when` clause in `for` header:
     ```
     for id1 <- domain1, id2 <- domain2, ... [when expr] {...}
     ```
-    and besides normal `for` or `fold` it can also be used in list and vector comprehensions (but not in array comprehensions!)
+    and besides the normal `for` or `fold` it can also be used in list and vector comprehensions (but not in array comprehensions!)
 2. You can use `continue` operator inside `for` and also list and vector comprehensions.
 
 Here are two equivalent variants of a comprehension that gives you prime numbers less than 100:
@@ -2098,7 +2097,7 @@ Ficus is designed for numerical computing, therefore it provides a decent suppor
 
 A multi-dimensional dense array is a built-in type in Ficus, it's denoted as `'t [,...]`, where the number of `,` is the array dimensionality minus 1. Multi-dimensional arrays are stored sequentially in memory in row-major order (like in C/C++ and unlike in Fortran and MATLAB that use column-major order), they are not arrays of arrays.
 
-Array always need to be initialized explicitly, just like values of any other type in Ficus. Here are some ways to create/initialize arrays:
+Arrays always need to be initialized explicitly, just like values of any other type in Ficus. Here are some ways to create/initialize arrays:
 
 ```
 // make 480x640 array of 8-bit numbers
@@ -2175,6 +2174,7 @@ When the subarray is not needed anymore, its destructed, the reference counter o
 ## Accessing Array Elements
 
 When `A[i, j, k, ...]` occurs in the program, Ficus compiler generates the code that can be expressed with the following pseudo-code:
+
 ```
 if (i < 0 || i >= A.size[0] ||
    j < 0 || j >= A.size[1] ||
@@ -2196,6 +2196,7 @@ In order to preserve this safety and increase the performance, Ficus compiler ap
 Then the range check is moved outside of the loop and is replaced with checks if for the smallest and the largest loop index values the corresponding array indices are within the array boundaries.
 
 For example, let's consider the matrix multiplication function given earlier:
+
 ```
 fun matmul(A: double [,], B: double [,])
 {
@@ -2241,6 +2242,7 @@ Even faster method of accessing array elements is to request them in the for-loo
 // here x is extracted using '*(array_slice_ptr + loop_index)' C code
 fold sum = 0. for x <- arr {s + x}
 ```
+
 * No range check is needed here, because we know that we iterate though array.
 * The element address does not need to be computed, we just increment for-loop index and access element with very simple operation. For example, in the case of iteration through 2D matrix we need a nested loop. Before the inner loop we set pointer to the current matrix row and inside this inner loop we use this pointer as base pointer, which, being added to the loop index, gives us the current matrix element. Such scheme with matrix row pointer is necessary because the matrix is not necessarily contiguous (it can be a sub-matrix of a bigger matrix).
 
@@ -2250,8 +2252,8 @@ Therefore, if we need both the element and its index, it's faster to request the
 
 In Python there is a convenient way to access the last element of a string or a list using negative indices, e.g. `python_str[-1]` gives you the last character of the string.
 
-In Ficus, as we've just learnt, it will produce `OutOfRangeError` exception, which is often the desired outcome.
-Instead, there is `.-` operator to access the last, pre-last etc. elements. Instead of using `N1-i1`, `N2-i2`, where `Nj` is the size of j-th matrix dimension and `ij` is the j-th index, you can simply put the dot instead of `N1`, `N2` etc.:
+In Ficus, as we've just learnt, such operator will produce `OutOfRangeError` exception, which is often the desired outcome. But there is `.-` operator to access the last, pre-last etc. elements. That is, instead of using `N1-i1`, `N2-i2`, where `Nj` is the size of j-th matrix dimension and `ij` is the j-th index, you can simply put the dot instead of `N1`, `N2` etc.:
+
     * `A[0, .-1]` — access the top-right corner of matrix
     * `A[.-1, .-1]` — access the bottom-right corner of matrix etc.
     * `A[:.-1]` — take all 1D matrix elements but the last one.
@@ -2486,7 +2488,7 @@ There is also some useful functionality, available in the `String` module. Inste
 
 ## Regular expressions
 
-Ficus includes two regular expression engines. The first one is `Re`, which is included into Ficus runtime and is always available. The other one, `Re2`, is based on Google's [RE2](#https://github.com/google/re2). It has some extra features. In order to use it, you need to have RE2 pre-installed, together with the headers.
+Ficus includes two regular expression engines. The first one is `Re`, which is included into Ficus runtime and is always available. The other one, `Re2`, is based on Google's [RE2](https://github.com/google/re2). It has some extra features. In order to use it, you need to have RE2 pre-installed, together with the headers.
 
 Here we describe `Re` (`Re2` description is to be added later).
 The engine uses *Pike VM* O(N) algorithm, i.e. it processes the text string of length `N` in `O(N)` operations and `O(1)` space (with the assumption that the length of regular expression is much smaller than the length of the string).
@@ -2519,7 +2521,7 @@ The following functions & method are available:
   val numbers_in_parens = digits.replace("123-456", "(\0)")
   ```
 
-The supported regular expressions form a usable subset of the regular expressions supported by Python and other popular regular expression engines:
+The supported regular expressions form a usable subset of the regular expressions supported by Python and some popular regular expression engines:
 
 * `\a`, `\d`, `\w`, `\s`, `\S` — match the popular character classes: a Unicode letter, Unicode decimal digit, 'identifier character' (unicode letter, digit or underscore '_'), Unicode space and Unicode non-space, respectively. In multi-line mode `\s` matches any space character except for a newline.
 * `.` — matches any character. In the multi-line mode it matches any character except for the newline (`\n`, `\r`).
@@ -3730,8 +3732,8 @@ fun new_square(x: 't, y: 't, size: 't) =
 fun Rect.area() = self.width*self.height
 
 fun Rect.contains((pt_x, pt_y): ('t, 't)) =
-    x <= pt_x < x + width &&
-    y <= pt_y < y + height
+    self.x <= pt_x < self.x + self.width &&
+    self.y <= pt_y < self.y + self.height
 
 // override the default conversion to string
 fun string(r: Rect) =
@@ -3748,7 +3750,7 @@ println(f"rectangle area={r.area()},\ncontains {pt}?: {r.contains(pt)}")
 Let's point out to a few notable features displayed in the example above:
 
 * defining classes, even generic classes, is as easy as defining other types in Ficus
-* a class will have the built-in record constructor or variant case constructors. But also it's possible to define as many alternative constructors. For example, if you implement a class representing deep learning model, the default constructor may initialize it as empty model, and there can be 'constructor' function to load the model from file.
+* a class will have the built-in record constructor or variant case constructors. But also it's possible to define one or more alternative *'constructors'*. For example, if you implement a class representing deep learning model, the default constructor may initialize it as empty model, and there can be 'constructor' function to load the model from file.
 * methods are declared just like normal functions, where class name with '.' prepend the function name, and they can access the class members using `self.member` notation.
 * methods are declared outside of the class declaration, but they must be declared inside the same module.
 
@@ -3971,16 +3973,16 @@ val out_img = [|
         } |]
 ```
 
-That is, you write a normal for-loop or an array comprehension, put `@parallel` in front of `for` and that's it. Ficus compiler will automatically run this loop as parallel.
+That is, you write a normal for-loop or an array comprehension, put `@parallel` in front of `for` and that's it. Ficus compiler will automatically run this loop as parallel. See `examples/mandelbrot.fx` example that renderers Mandelbrot fractal for illustration of this feature.
 
 ## Map-reduce concept
 
 When there is a task to process a massive amount of data, the solution typically includes two parts:
 
-1. The first logical step is to split this data by some criteria to prefeably similar by computational complexity parts and process it using multiple CPU cores.
+1. The first logical step is to split this data by some criteria to prefeably similar by computational complexity parts and process them in parallel using multiple CPU cores (or even multiple machines)
 2. The second part is to combine the independently computed results together.
 
-This 2-part approach is called [Map-Reduce](#https://en.wikipedia.org/wiki/MapReduce). The first part is perfectly solved with `@parallel for`.
+This 2-part approach is called [Map-Reduce](https://en.wikipedia.org/wiki/MapReduce). The first part is perfectly solved with `@parallel for`.
 
 The second part can be, in principle, done sequentially after the for-loop is complete. But it may be inconvenient and inefficient, because we may need as many separate storages for the output data as we have the processing threads/cores. Sometimes, on systems with dynamic dispatchers the number of threads that process the data may vary with time, and is unknown in advance, which can make the scheme even more difficult.
 
