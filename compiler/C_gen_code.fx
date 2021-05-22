@@ -1744,6 +1744,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val c_e =
                     match (get_atom_ktyp(arr_or_str, kloc), i) {
                     | (KTypString, 0L) => make_call(get_id("FX_STR_LENGTH"), [: arr_exp :], CTypInt, kloc)
+                    | (KTypVector _, 0L) => make_call(get_id("FX_RRB_SIZE"), [: arr_exp :], CTypInt, kloc)
                     | (KTypArray (ndims, _), i) =>
                         if !(0L <= i && i < int64(ndims)) {
                             throw compile_err(kloc, f"array dimension index {i}i is beyond dimensionality {ndims}")

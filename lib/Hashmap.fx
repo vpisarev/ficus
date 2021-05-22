@@ -185,8 +185,18 @@ fun t.check_free()
     println(f"]\nfree list is ok, {count} elements")
 }
 
+/*var find_idx_stat = 0
+var find_idx_stat_ncalls = 0
+fun print_and_reset()
+{
+    println(f"avg iters={double(find_idx_stat)/find_idx_stat_ncalls}")
+    find_idx_stat = 0
+    find_idx_stat_ncalls = 0
+}*/
+
 fun t.find_idx_or_insert(k: 'k): int
 {
+    //find_idx_stat_ncalls += 1
     val hv = hash(k) & ~HASH_SIGN_MASK
     var idxsz = size(self.index)
 
@@ -200,7 +210,10 @@ fun t.find_idx_or_insert(k: 'k): int
     //self.check_free()
     var perturb = hv, found = -1, insert_idx = -1
     var j = int(hv) & (idxsz - 1)
+    //var hash_iters = 0
+
     for i <- 0:idxsz+14 {
+        //hash_iters += 1
         val tidx = self.index.get(j)
         //println(f"j={j}, tidx={tidx}")
         if tidx >= HASH_ALIVE {
@@ -218,6 +231,7 @@ fun t.find_idx_or_insert(k: 'k): int
         perturb >>= PERTURB_SHIFT
         j = int(uint64(j*5 + 1) + perturb) & (idxsz - 1)
     }
+    //find_idx_stat += hash_iters
     if found >= 0 {
         //println("got here (found)")
         if insert_idx >= 0 && insert_idx != j {

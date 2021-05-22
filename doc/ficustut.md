@@ -4105,7 +4105,7 @@ In fact, quite a few functions in the Ficus standard library are implemented in 
 
 * `M_PI`, `M_E`, `M_LOG2` — (π=3.14159..), the base of natural logarithm (e=2.71828...), log(2)=0.693147...
 * `FLT_EPSILON`, `DBL_EPSILON` — minimum single-precision and double-precision numbers (ε) such that 1+ε > 1
-* `pow(x, y)`, `sqrt(x)`, `atan(x)`, `atan2(y, x)`, `cos(x)`, `sin(x)`, `tan(x)`, `log(x)`, `exp(x)`, `atanh(x)`, `cosh(x)`, `sinh(x)`, `tanh(x)` — standard math functions with `float` or `double` arguments.
+* `pow(x, y)`, `sqrt(x)`, `asin(x)`, `acos(x)`, `atan(x)`, `atan2(y, x)`, `cos(x)`, `sin(x)`, `tan(x)`, `log(x)`, `exp(x)`, `acosh(x)`, `asinh(x)`, `atanh(x)`, `cosh(x)`, `sinh(x)`, `tanh(x)` — standard math functions with `float` or `double` arguments.
 * `ceil(x)`, `floor(x)`, `round(x)`, `trunc(x)` — round single- or double-precision floating point number of int. The rounding is done towards +infinity, -infinity, the nearest even or zero, respectively.
 * `isnan(x)`, `isinf(x)` — return true iff the input is Not-a-Number or Infinity, respectively.
 * `GCD(x: int, y: int): int` — finds the greatest common denominator of 2 integers
@@ -4128,6 +4128,22 @@ In fact, quite a few functions in the Ficus standard library are implemented in 
 * `File.read_utf8(filename): string` — reads entire file, assuming it's text file in UTF-8 encoding, into a text string
 * `File.write_utf8(filename, str): void` — writes string (possibly containing `\n`, `\r`) to a file using UTF-8 encoding.
 * `File.read_binary_u8(filname): uint8 []` — reads the entire file (as binary file) into an array of bytes.
+
+## Filename
+
+`Filename` module contains various functions to operate on file paths:
+
+* `Filename.is_absolute(path)` — true if the path is absolute
+* `Filename.is_relative(path)` — true if the path is relative
+* `Filename.split(path)` — returns the tuple `(dirname,filename)`
+* `Filename.dirname(path)` — returns the directory name (`Filename.split(path).0`)
+* `Filename.basename(path)` — returns the base file name (`Filename.split(path).1`)
+* `Filename.concat(dir, fname)` — combines directory name and the file name into the single path
+* `Filename.normalize(dir, fname)` — if `fname` is relative path, combines the directory name and the `fname` into the single path, otherwise returns `fname`.
+* `Filename.remove_extension(path)` — removes extension from the filename.
+* `Filename.getcwd()` — returns the current working directory.
+* `Filename.exists(path)` — returns true if a file or a directory with the specified name exists.
+* `Filename.locate(name, dirs)` — finds the filename in the specified list of directories
 
 ## Sys
 

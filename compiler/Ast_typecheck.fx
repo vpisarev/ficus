@@ -355,6 +355,8 @@ fun coerce_types(t1: typ_t, t2: typ_t, allow_tuples: bool,
                 throw compile_err(loc, "implicit type coercion for (int, uint32/uint64) \
                                   pair is not allowed; use explicit type cast")
             }
+        | (TypSInt(64), TypUInt(b2)) when b2 <= 32 => TypSInt(64)
+        | (TypUInt(b1), TypSInt(64)) when b1 <= 32 => TypSInt(64)
         | (TypSInt(b1), TypUInt(b2)) =>
             if b1 <= 32 && b2 <= safe_max_ubits { TypInt } else {
                 throw compile_err(loc, "implicit type coercion for this (signed, unsigned) \
@@ -938,7 +940,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     //print_env("", env, eloc)
     //println(f"\n------------------------\nchecking expression at {eloc}: "); Ast_pp.pprint_exp_x(e); println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
-    fun check_for_clause(p: pat_t, e: exp_t, env: env_t, idset: idset_t, sc: scope_t list)
+    fun check_for_clause(p: pat_t, e: exp_t, env: env_t, idset: idset_t,
+                         flags: for_flags_t, sc: scope_t list)
     {
         val e = check_exp(e, env, sc)
         val is_range = match e { | ExpRange(_, _, _, _) => true | _ => false }
@@ -982,7 +985,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             match (e, etyp) {
             | (ExpRange(_, _, _, _), _) => (TypInt, 1)
             | (_, TypArray(d, et)) => (et, d)
-            | (_, TypList(et)) => (et, 1)
+            | (_, TypList(et)) =>
+                if flags.for_flag_parallel {
+                    compile_warning(eloc, "'@parallel for' over a list is not supported")
+                }
+                (et, 1)
             | (_, TypVector(et)) => (et, 1)
             | (_, TypString) => (TypChar, 1)
             | _ => throw compile_err(eloc, "unsupported iteration domain; \
@@ -995,10 +1002,13 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     }
 
     fun check_for_clauses(for_clauses: (pat_t, exp_t) list, idx_pat: pat_t,
-                          env: env_t, idset: idset_t, for_sc: scope_t list) {
+                          env: env_t, idset: idset_t, flags: for_flags_t,
+                          for_sc: scope_t list)
+    {
         val fold (trsz, for_clauses, code, dims, env, idset) = (0, [], [], 0, env, idset)
             for (pi, ei)@idx <- for_clauses {
-            val (trszj, (pi, ei), code_i, dims_i, env, idset) = check_for_clause(pi, ei, env, idset, for_sc)
+            val (trszj, (pi, ei), code_i, dims_i, env, idset) =
+                check_for_clause(pi, ei, env, idset, flags, for_sc)
             if idx > 0 && dims_i != dims {
                 throw compile_err(get_exp_loc(ei),
                     "the dimensionalities of simultaneously iterated containers/ranges do not match")
@@ -1864,7 +1874,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val for_sc = (if is_fold {new_fold_scope(curr_m_idx)}
                       else {new_loop_scope(curr_m_idx, is_nested)}) :: sc
         val (trsz, pre_code, for_clauses, idx_pat, _, env, _) =
-            check_for_clauses(for_clauses, idx_pat, env, empty_idset, for_sc)
+            check_for_clauses(for_clauses, idx_pat, env, empty_idset, flags, for_sc)
         if trsz > 0 {
             /* iteration over tuple(s) is replaced with unrolled code.
                * this is possible, since we know the tuple size at compile time
@@ -1895,7 +1905,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             fold (trsz, pre_code, map_clauses, total_dims, env, idset) =
             (0, [], [], 0, env, empty_idset) for (for_clauses, idx_pat) <- map_clauses {
             val (trsz_k, pre_code_k, for_clauses, idx_pat, dims, env, idset) =
-                check_for_clauses(for_clauses, idx_pat, env, idset, for_sc)
+                check_for_clauses(for_clauses, idx_pat, env, idset, flags, for_sc)
             (trsz + trsz_k, pre_code_k + pre_code,
             (for_clauses, idx_pat) :: map_clauses,
             total_dims + dims, env, idset)

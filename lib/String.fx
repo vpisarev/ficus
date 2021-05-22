@@ -155,7 +155,7 @@
         char_ c = src[i];
         if (fx_tolower(c) != c) break;
     }
-    if (i == 0) {
+    if (i == sz) {
         fx_copy_str(s, fx_result);
         return FX_OK;
     }
@@ -176,7 +176,7 @@
         char_ c = src[i];
         if (fx_toupper(c) != c) break;
     }
-    if (i == 0) {
+    if (i == sz) {
         fx_copy_str(s, fx_result);
         return FX_OK;
     }
