@@ -2314,6 +2314,7 @@ Ficus attempts to simplify the implementation of methods *3* and *4* by introduc
 3. `A.wrap[i1, i2, ...]` is the array element access operation with wrapping. Each of `ij` is processed using the formula `ij mod Nj`, where `mod` is the *modulo* operation that gives unsigned division remainder. For example, in the case of 1D array `A.wrap[N1] ~ A[0], A.wrap[N1+1] ~ A[1], A.wrap[-1] ~ A[N1-1]`.
 
 The border extrapolation operators have some limitations and special properties:
+
 * They cannot be used with ranges; all indices must be scalar values.
 * They can only be used with arrays which elements are scalar values (numbers, `bool`, `char`) or tuples of scalar values.
 * They never throw an exception. `.clip` and `.wrap` will always return one of array elements, as long as the array is non-empty. If it's empty, zero element is returned (just like with .zero` operation).
