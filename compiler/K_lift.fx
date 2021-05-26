@@ -204,6 +204,11 @@
         from functions they call etc. We continue to do so until all the sets of
         free variables for all the functions are stabilized and do not change
         on the next iteration.
+
+    We call a declojuring an optimization used for functions that have free variables, but
+    never used other way than calling(such as saving to variables or values or passing as 
+    parameter). In this case we just adding pass free variables as arguments and avoiding any
+    closure run-time overhead.
 */
 
 from Ast import *
@@ -416,6 +421,19 @@ fun lift_all(kmods: kmodule_t list)
 
     fun fold_defcl_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
 
+    var functions_met_as_vals = empty_id_hashset(1)
+    var declojured_functions = empty_id_hashset(1)
+
+    fun fold_defcl_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t): void  = 
+        match a {
+        | AtomId(n) => 
+            match kinfo_(n, loc) {
+            | KFun (ref {kf_name: id_t}) => {functions_met_as_vals.add(kf_name)}
+            | _ => {}
+            }
+        | _ => {}
+        }
+
     // form a closure for each function that has free variables (mutable or not)
     fun fold_defcl_kexp_(e: kexp_t, callb: k_fold_callb_t)
     {
@@ -425,6 +443,7 @@ fun lift_all(kmods: kmodule_t list)
             val {kf_name, kf_params, kf_rt, kf_closure, kf_flags, kf_scope, kf_loc} = *kf
             match ll_env.find_opt(kf_name) {
             | Some ll_info =>
+                functions_met_as_vals.add(kf_name)
                 val fvars = ll_info.ll_fvars
                 if !fvars.empty() {
                     val fvar_pairs_to_sort = fvars.foldl(
@@ -494,7 +513,7 @@ fun lift_all(kmods: kmodule_t list)
 
     val defcl_callb = k_fold_callb_t
     {
-        kcb_fold_atom=None,
+        kcb_fold_atom=Some(fold_defcl_atom_),
         kcb_fold_ktyp=Some(fold_defcl_ktyp_),
         kcb_fold_kexp=Some(fold_defcl_kexp_)
     }
@@ -597,14 +616,23 @@ fun lift_all(kmods: kmodule_t list)
         val e =
         match e {
         | KDefFun kf =>
-            val {kf_name, kf_params, kf_body, kf_closure, kf_loc} = *kf
+            val {kf_name, kf_loc} = *kf
+            val is_declojured = declojured_functions.mem(kf_name)
+            if(is_declojured) {
+                val {kf_params} = *kf
+                val (kcv_freevars, _) = get_closure_freevars(kf_name, kf_loc)
+                val params_addition = [: for (fv,_) <- kcv_freevars { fv } :]
+                val new_params = List.concat([:  kf_params, params_addition :])
+                *kf = kf->{kf_params=new_params}
+            }
+            val {kf_params, kf_body, kf_closure} = *kf
             val {kci_arg, kci_fcv_t, kci_make_fp, kci_wrap_f} = kf_closure
             fun create_defclosure(kf: kdeffun_t ref, code: kcode_t, loc: loc_t)
             {
                 val {kf_name, kf_params, kf_rt, kf_closure={kci_make_fp=make_fp}, kf_flags, kf_loc} = *kf
                 val kf_typ = get_kf_typ(kf_params, kf_rt, kf_loc)
                 val (_, orig_freevars) = get_closure_freevars(kf_name, kf_loc)
-                if orig_freevars == [] {
+                if ((orig_freevars == []) || is_declojured) {
                     if !is_constructor(kf_flags) {
                         curr_subst_env.add(kf_name, (noid, noid, Some(kf_typ)))
                     }
@@ -627,7 +655,7 @@ fun lift_all(kmods: kmodule_t list)
             }
 
             val def_fcv_t_n_make =
-                if kci_fcv_t == noid {
+                if (kci_fcv_t == noid) || is_declojured {
                     []
                 } else {
                     val kcv =
@@ -684,7 +712,28 @@ fun lift_all(kmods: kmodule_t list)
                             f"closure type '{idk2str(kci_fcv_t, kf_loc)}' for '{idk2str(kf_name, kf_loc)}' \
                               information is not valid (should be KClosureVars ...)")
                         }
-                    val {kcv_freevars, kcv_orig_freevars} = *kcv
+                    val (kcv_freevars, kcv_orig_freevars) = {
+                            val {kcv_freevars, kcv_orig_freevars} = *kcv
+                            if(is_declojured) {
+                                //Prologue for declojured functions don't need unpacking immutable variables
+                                //Temporary references for mutable variables will be created anyway, but this 
+                                //time they will be derefenced not from members of clojure, but from additional
+                                //argument.
+                                val zipped = List.zip(kcv_freevars, kcv_orig_freevars)
+                                val filtered = zipped.filter(fun (fvpair) {
+                                    val ((fv, _), fv_orig) = fvpair
+                                    val is_mutable = all_mut_fvars.mem(fv_orig)
+                                    if(!is_mutable){  
+                                        //We filter off mutable variables and, therefore, losing they in curr_subst_env. Restore there.
+                                        curr_subst_env.add(fv_orig, (fv, fv, None))
+                                    }
+                                    is_mutable
+                                })
+                                
+                                List.unzip(filtered)
+                            } else
+                            {(kcv_freevars, kcv_orig_freevars)}
+                        } 
                     val fold prologue = [] for (fv, t)@idx <- kcv_freevars, fv_orig <- kcv_orig_freevars {
                         if !defined_so_far.mem(fv_orig) {
                             throw compile_err(kf_loc,
@@ -708,7 +757,8 @@ fun lift_all(kmods: kmodule_t list)
                         } else {
                             val ref_typ = KTypRef(t)
                             val fv_ref = gen_idk(curr_m_idx, pp(fv) + "_ref")
-                            val get_fv = KExpMem(kci_arg, idx, (ref_typ, kf_loc))
+                            val get_fv = if(is_declojured) {KExpAtom(AtomId(fv))}
+                                else {KExpMem(kci_arg, idx, (ref_typ, kf_loc))}
                             val ref_flags = kv_flags.{ val_flag_tempref=true,
                                                        val_flag_mutable=false,
                                                        val_flag_global=[] }
@@ -725,7 +775,7 @@ fun lift_all(kmods: kmodule_t list)
                     | Some({ll_declared_inside, ll_called_funcs}) =>
                         ll_called_funcs.foldl(
                             fun (called_f, prologue) {
-                                if ll_declared_inside.mem(called_f) { prologue }
+                                if ll_declared_inside.mem(called_f) || declojured_functions.mem(called_f) { prologue }
                                 else {
                                 match kinfo_(called_f, kf_loc) {
                                 | KFun called_kf =>
@@ -808,15 +858,29 @@ fun lift_all(kmods: kmodule_t list)
             KExpMkClosure(make_fp, f, args, (typ, loc))
         | KExpCall(f, args, (_, loc) as kctx) =>
             val args = [: for a <- args { walk_atom_n_lift_all(a, loc, callb) } :]
-            val (curr_f, _, _) = curr_clo
-            if f == curr_f {
+            if(declojured_functions.mem(kf_name)){
+                val kcv =
+                    match kinfo_(kci_fcv_t, loc) {
+                    | KClosureVars kcv => kcv
+                    | _ => throw compile_err(loc,
+                        f"closure type '{idk2str(kci_fcv_t, loc)}' for '{idk2str(kf_name, loc)}' \
+                        information is not valid (should be KClosureVars ...)")
+                    }
+                val {kcv_freevars, kcv_orig_freevars} = *kcv
+                val args_addition = [: for ofv <- kcv_orig_freevars { walk_atom_n_lift_all(AtomId(ofv), loc, callb) } :]
+                val args = List.concat([: args, args_addition :])
                 KExpCall(f, args, kctx)
             } else {
-                match kinfo_(f, loc) {
-                | KFun (ref {kf_closure={kci_fcv_t}}) =>
-                    if kci_fcv_t == noid { KExpCall(f, args, kctx) }
-                    else { KExpCall(check_n_walk_id(f, loc, callb), args, kctx) }
-                | _ => KExpCall(check_n_walk_id(f, loc, callb), args, kctx)
+                val (curr_f, _, _) = curr_clo
+                if f == curr_f {
+                    KExpCall(f, args, kctx)
+                } else {
+                    match kinfo_(f, loc) {
+                    | KFun (ref {kf_closure={kci_fcv_t}}) =>
+                        if kci_fcv_t == noid { KExpCall(f, args, kctx) }
+                        else { KExpCall(check_n_walk_id(f, loc, callb), args, kctx) }
+                    | _ => KExpCall(check_n_walk_id(f, loc, callb), args, kctx)
+                    }
                 }
             }
         | _ => walk_kexp(e, callb)
@@ -834,14 +898,29 @@ fun lift_all(kmods: kmodule_t list)
         kcb_kexp=Some(walk_kexp_n_lift_all)
     }
 
+    fun clear_unnecessary_clojures(){
+        for declj <- declojured_functions {
+            match kinfo_(declj,noloc){  //TODO: Is noloc okay in this case, or we have to save locations strictly in map instead of set? (I'd better save reference than)
+            | KFun (kf) => *kf = kf->{kf_closure = kdefclosureinfo_t {}, kf_flags=kf_flags.{fun_flag_uses_fv=false}}
+            | _ => throw compile_err(noloc,
+                f"declojured functions list contains not a function '{idk2str(declj, noloc)}'")
+            }
+        }
+    }
+
     [: for km <- kmods {
         val {km_idx, km_top} = km
         val new_top = make_wrappers_for_nothrow(km_idx, km_top)
         curr_m_idx = km_idx
         curr_top_code = []
+        functions_met_as_vals.clear()
+        declojured_functions.clear()
+        declojured_functions.filter(fun (fn){!functions_met_as_vals.mem(fn)}) // TODO: Is there better way to find set subtraction?
         for e <- new_top { fold_defcl_kexp_(e, defcl_callb) }
         for e <- new_top {
             val e = walk_kexp_n_lift_all(e, walk_n_lift_all_callb)
+            clear_unnecessary_clojures()
+            fold_clear_declojured_kexp_(e, clear_declojured_callb)
             curr_top_code = e :: curr_top_code
         }
         km.{km_top=curr_top_code.rev()}
