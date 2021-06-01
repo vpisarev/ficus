@@ -329,6 +329,23 @@ fun t.intersect(b: 'k Hashset.t): void
     }
 }
 
+fun t.diff(b: 'k Hashset.t): void
+{
+    val table = b.table
+    for j <- 0:b.tabsz {
+        val {hv, key} = table[j]
+        if hv < HASH_SIGN_MASK {
+            val (j, tidx) = self.find_idx_(key, hv)
+            if tidx >= 0 {
+                self.index.set(j, HASH_DELETED)
+                self.table[tidx].hv = uint64(self.free) | HASH_SIGN_MASK
+                self.free = tidx+1
+                self.nactive -= 1
+            }
+        }
+    }
+}
+
 fun t.all(f: 'k->bool): bool
 {
     val table = self.table
