@@ -320,3 +320,23 @@ fun t.foldl(f: ('k, 'd, 'r)->'r, res0: 'r): 'r {
     }
     res
 }
+
+fun t.filter(f: ('k, 'd)->bool): void
+{
+    val idxsz = size(self.index)
+    val table = self.table
+    val key0 = self.default_entry.key
+    val data0 = self.default_entry.data
+    for j <- 0:idxsz {
+        val tidx = self.index.get(j)
+        if tidx < HASH_ALIVE { continue }
+        val (key,value) = table[tidx - HASH_ALIVE].key
+        if !f(key,value) {
+            self.index.set(j, HASH_DELETED)
+            table[tidx - HASH_ALIVE] = hashentry_t {
+                hv = uint64(self.free) | HASH_SIGN_MASK, key=key0, data = data0}
+            self.free = tidx + 1
+            self.nactive -= 1
+        }
+    }
+}
