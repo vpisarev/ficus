@@ -249,6 +249,11 @@ fun lift_all(kmods: kmodule_t list)
                     val fcv_tn = gen_idk(m_idx, pp(kf_name) + "_closure")
                     val fold fvars_wt = [] for fv@idx <- fvars_final {
                         val {kv_typ, kv_flags, kv_loc} = get_kval(fv, kf_loc)
+                        if is_mutable(fv, get_idk_loc(fv, noloc)){
+                            throw compile_err(kf_loc,
+                                f"free variable '{idk2str(fv, get_idk_loc(fv, noloc))}' must not be mutable on this stage. \
+                                Run K.freevars.mutable_freevars_referencing before.")
+                        }
                         // A function's free variable is a non-local and yet non-global variable
                         // that the function depends on. Since it's not global, it must be in
                         // some outer function w.r.t. the current function.

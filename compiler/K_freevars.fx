@@ -80,7 +80,7 @@ fun collect_free_vars(kmods: kmodule_t list, globals: id_t Hashset.t,
                     match kinfo_(fv, kf_loc) {
                     | KVal _ =>
                         if !dv.mem(fv) && !globals.mem(fv) {
-                            if(!only_mutable || is_mutable(fv, get_idk_loc(fv, noloc))){  //TODO: Does already-know-result-thus-stop-calculation rule work in ficus?
+                            if(!only_mutable || is_mutable(fv, get_idk_loc(fv, noloc))){
                                 fv0.add(fv)
                             }
                         }
@@ -187,8 +187,6 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
         }
 
     fun walk_ktyp_n_eliminate(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
-
-    //TODO: I'm assuming that mutable variable can only be defined with DefVal. Is it correct?
 
     fun walk_kexp_n_eliminate(e: kexp_t, callb: k_callb_t) = 
         match e {

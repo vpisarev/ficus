@@ -45,7 +45,7 @@ fun declosure_all(kmods: kmodule_t list){
     {
         match e {
         | KDefFun kf =>
-            val {kf_params, kf_body, kf_closure, kf_loc} = *kf
+            val {kf_body} = *kf
             //We cannot use fold_kexp directly on e, because we don't want to erase just defined 
             //function via fold_filcl_atom_. Thus, we are folding different details separately.
             fold_kexp(kf_body,callb)
@@ -102,6 +102,11 @@ fun declosure_all(kmods: kmodule_t list){
                     val m_idx = kf_name.m
                     val subst_map_backup = subst_map.copy()
                     val params_addition = [: for fv <- fvars { 
+                            if is_mutable(fv, get_idk_loc(fv, noloc)){
+                                throw compile_err(kf_loc,
+                                    f"free variable '{idk2str(fv, get_idk_loc(fv, noloc))}' must not be mutable on this stage. \
+                                    Run K.freevars.mutable_freevars_referencing before.")
+                            }
                             val {kv_typ, kv_flags, kv_loc} = get_kval(fv, kf_loc)
                             //Freevars are always in the same module, as a declosured function.
                             val new_fv = dup_idk(m_idx, fv)
