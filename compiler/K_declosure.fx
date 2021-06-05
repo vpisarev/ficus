@@ -46,11 +46,8 @@ fun declosure_all(kmods: kmodule_t list){
         match e {
         | KDefFun kf =>
             val {kf_params, kf_body, kf_closure, kf_loc} = *kf
-            val {kci_wrap_f} = kf_closure
             //We cannot use fold_kexp directly on e, because we don't want to erase just defined 
             //function via fold_filcl_atom_. Thus, we are folding different details separately.
-            for arg <- kf_params {check_n_fold_id(arg, kf_loc, callb)}
-            check_n_fold_id(kci_wrap_f, kf_loc, callb)
             fold_kexp(kf_body,callb)
         | KExpCall(_, args, (_, loc)) =>
             for arg <- args {check_n_fold_atom(arg, loc, callb)}
