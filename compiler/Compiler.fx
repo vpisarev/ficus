@@ -11,7 +11,8 @@ import Ast, Ast_pp, Lexer, Parser, Options
 import Ast_typecheck
 import K_form, K_pp, K_normalize, K_annotate, K_mangle
 import K_remove_unused, K_lift_simple, K_flatten, K_tailrec, K_copy_n_skip
-import K_cfold_dealias, K_lift, K_fast_idx, K_inline, K_loop_inv, K_fuse_loops
+import K_cfold_dealias, K_fast_idx, K_inline, K_loop_inv, K_fuse_loops
+import K_nothrow_wrappers, K_freevars, K_declosure, K_lift
 import C_form, C_gen_std, C_gen_code, C_pp
 import C_post_rename_locals, C_post_adjust_decls
 
@@ -317,6 +318,12 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
         temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     }
     pr_verbose("Finalizing K-form:")
+    prf("making wrappers for nothrow functions")
+    temp_kmods = K_nothrow_wrappers.make_wrappers_for_nothrow(temp_kmods)
+    prf("mutable freevars referencing")
+    temp_kmods = K_freevars.mutable_freevars_referencing(temp_kmods)
+    prf("declosuring")
+    temp_kmods = K_declosure.declosure_all(temp_kmods)
     prf("lambda lifting")
     temp_kmods = K_lift.lift_all(temp_kmods)
     prf("flatten")
