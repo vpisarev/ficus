@@ -188,7 +188,7 @@ fun uniform(rng: RNG, a: uint16, b: uint16) =
     uint16((next(rng) % (b - a + 1 :> uint64) :> int) + a)
 
 fun uniform(rng: RNG, a: uint32, b: uint32) =
-    uint32((next(rng) % (b - a + 1 :> uint64) :> int) + a)
+    uint32((next(rng) % (b - a + 1u32 :> uint64) :> uint32) + a)
 
 fun uniform(rng: RNG, a: int, b: int) =
     (next(rng) % (b - a + 1 :> uint64) :> int) + a
