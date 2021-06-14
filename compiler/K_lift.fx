@@ -114,6 +114,9 @@
             make_closure(inc_me, inc_me_closure_t {v})
         }
 
+        Note: currently this behavior is implemented in 
+        K_freevars.mutable_freevars_referencing function.
+
     2.  Besides the free variables, the nested function may also call:
         2a. itself. This is a simple case. We just call it and pass the same closure data, e.g.:
           fun bar( n: int, c: bar_closure_t* ) = if n <= 1 {1} else { ... bar(n-1, c) }
@@ -204,243 +207,53 @@
         from functions they call etc. We continue to do so until all the sets of
         free variables for all the functions are stabilized and do not change
         on the next iteration.
+
+    Note: It's assumed there, that handled code don't have mutable freevars. That means, that
+    lift_all can be called only after K.freevars.mutable_freevars_referencing
+
 */
 
 from Ast import *
 from K_form import *
+from K_freevars import *
 import K_lift_simple
 import Hashmap, Hashset
 
-type ll_func_info_t =
-{
-    ll_fvars: id_hashset_t;
-    ll_declared_inside: id_hashset_t;
-    ll_called_funcs: id_hashset_t
-}
-
-type ll_env_t = (id_t, ll_func_info_t) Hashmap.t
-type ll_subst_env_t = (id_t, (id_t, id_t, ktyp_t?)) Hashmap.t
-fun empty_subst_env(size0: int): ll_subst_env_t = Hashmap.empty(size0, noid, (noid, noid, None))
-
-fun make_wrappers_for_nothrow(km_idx: int, top_code: kcode_t)
-{
-    fun wrapf_atom(a: atom_t, loc: loc_t, callb: k_callb_t) =
-        match a {
-        | AtomId n =>
-            match kinfo_(n, loc) {
-            | KFun (ref {kf_closure={kci_wrap_f}}) =>
-                if kci_wrap_f == noid { a } else { AtomId(kci_wrap_f) }
-            | _ => a
-            }
-        | _ => a
-        }
-    fun wrapf_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
-    fun wrapf_kexp_(e: kexp_t, callb: k_callb_t) =
-        match e {
-        | KDefFun kf =>
-            val {kf_name, kf_params, kf_rt, kf_flags, kf_body, kf_closure, kf_scope, kf_loc} = *kf
-            val new_body = wrapf_kexp_(kf_body, callb)
-            *kf = kf->{kf_body=new_body}
-            if !kf_flags.fun_flag_nothrow || is_constructor(kf_flags) || kf_closure.kci_wrap_f != noid {
-                e
-            } else {
-                val w_name = gen_idk(km_idx, pp(kf_name) + "_w")
-                *kf = kf->{kf_closure=kf_closure.{kci_wrap_f=w_name}}
-                val w_flags = kf_flags.{fun_flag_nothrow=false}
-                val w_params =
-                [: for a <- kf_params {
-                    val w_a = dup_idk(km_idx, a)
-                    val {kv_typ=t} = get_kval(a, kf_loc)
-                    val _ = create_kdefval(w_a, t, default_arg_flags(), None, [], kf_loc)
-                    w_a
-                } :]
-                val w_body = KExpCall(kf_name, [: for i <- w_params {AtomId(i)} :], (kf_rt, kf_loc))
-                val code = create_kdeffun(w_name, w_params, kf_rt, w_flags,
-                                    Some(w_body), e :: [], kf_scope, kf_loc)
-                rcode2kexp(code, kf_loc)
-            }
-        | KExpCall(f, args, (t, loc)) =>
-            val args = [: for a <- args { wrapf_atom(a, loc, callb) } :]
-            KExpCall(f, args, (t, loc))
-        | _ => walk_kexp(e, callb)
-        }
-
-    val callb = k_callb_t {
-        kcb_ktyp=Some(wrapf_ktyp_),
-        kcb_kexp=Some(wrapf_kexp_),
-        kcb_atom=Some(wrapf_atom)
-        }
-    val top_kexp = code2kexp(top_code, noloc)
-    // do 2 passes to cover both forward and backward references
-    val top_kexp = wrapf_kexp_(top_kexp, callb)
-    val top_kexp = wrapf_kexp_(top_kexp, callb)
-    kexp2code(top_kexp)
-}
-
 fun lift_all(kmods: kmodule_t list)
 {
+    type ll_subst_env_t = (id_t, (id_t, ktyp_t?)) Hashmap.t
+    fun empty_subst_env(size0: int): ll_subst_env_t = Hashmap.empty(size0, noid, (noid, None))
+
     val globals = empty_id_hashset(256)
     for {km_top} <- kmods {
         K_lift_simple.update_globals(km_top, globals)
     }
 
-    val ll_info0 = ll_func_info_t {
-        ll_fvars = empty_id_hashset(1),
-        ll_declared_inside = empty_id_hashset(1),
-        ll_called_funcs = empty_id_hashset(1) }
-    var ll_env : ll_env_t = Hashmap.empty(1024, noid, ll_info0)
-    var orig_subst_env = empty_subst_env(1024)
-
-    fun fold_fv0_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
-    fun fold_fv0_kexp_(e: kexp_t, callb: k_fold_callb_t) {
-        fold_kexp(e, callb)
-        match e {
-        | KDefFun (ref {kf_name, kf_loc}) =>
-            if !globals.mem(kf_name) {
-                val uv = used_by(e::[], 256)
-                val dv = declared(e::[], 256)
-                // from the set of free variables we exclude global functions, values and types
-                // because they are not included into a closure anyway
-                val called_funcs = empty_id_hashset(16)
-                uv.app(fun (n) {
-                    match kinfo_(n, kf_loc) {
-                    | KFun _ => if !globals.mem(n) { called_funcs.add(n) }
-                    | _ => {}
-                    }})
-                val fv0 = empty_id_hashset(uv.size())
-                uv.app(fun (fv) {
-                    match kinfo_(fv, kf_loc) {
-                    | KVal _ =>
-                        if !dv.mem(fv) && !globals.mem(fv) {
-                            fv0.add(fv)
-                        }
-                    | _ => {}
-                    }})
-                ll_env.add(kf_name,
-                    ll_func_info_t {
-                        ll_fvars=fv0, ll_declared_inside=dv,
-                        ll_called_funcs=called_funcs
-                    })
-            }
-        | _ => {}
-        }
-    }
-
-    val fv0_callb = k_fold_callb_t
-    {
-        kcb_fold_atom=None,
-        kcb_fold_ktyp=Some(fold_fv0_ktyp_),
-        kcb_fold_kexp=Some(fold_fv0_kexp_)
-    }
-    /* for each function, top-level or not, find the initial set of free variables,
-       as well as the set of called functions */
-    for {km_top} <- kmods {
-        for e <- km_top { fold_fv0_kexp_(e, fv0_callb) }
-    }
-    fun finalize_sets(iters: int, ll_all: id_t list)
-    {
-        var visited_funcs = empty_id_hashset(1024)
-        val idset0 = empty_id_hashset(1)
-        var changed = false
-        if iters <= 0 {
-            throw compile_err(noloc, "finalization of the free var sets takes too much iterations")
-        }
-        fun update_fvars(f: id_t): id_hashset_t =
-            match ll_env.find_opt(f) {
-            | Some ll_info =>
-                val {ll_fvars, ll_declared_inside, ll_called_funcs} = ll_info
-                if visited_funcs.mem(f) {
-                    ll_fvars
-                } else {
-                    visited_funcs.add(f)
-                    val size0 = ll_fvars.size()
-                    ll_called_funcs.app(
-                        fun (called_f: id_t) {
-                            val called_fvars = update_fvars(called_f)
-                            called_fvars.app(fun (fv) {
-                                if !ll_declared_inside.mem(fv) {
-                                    ll_fvars.add(fv)
-                                }})
-                        })
-                    val size1 = ll_fvars.size()
-                    if size1 != size0 { changed = true }
-                    ll_fvars
-                }
-            | _ => idset0
-            }
-
-        for f <- ll_all { ignore(update_fvars(f)) }
-        if !changed { iters - 1 }
-        else { finalize_sets(iters - 1, ll_all.rev()) }
-    }
-
-    // now compute the closure of the free var sets,
-    // i.e. all the free variables of each function,
-    // directly accessed or via other functions that the function calls.
-    // The term 'closure' is used here with a different meaning,
-    // it's not a function closure but rather a transitive closure of the set.
-    val iters0 = 10
-    val ll_all = ll_env.foldl(fun (f, _, ll_all) { f :: ll_all }, []).rev()
-    val _ = finalize_sets(iters0, ll_all)
-    val all_fvars = empty_id_hashset(ll_env.size()*10)
-    ll_env.app(fun (_, ll_info) {
-            all_fvars.union(ll_info.ll_fvars)
-        })
-    // find which of the free variables are mutable
-    val all_mut_fvars = empty_id_hashset(all_fvars.size())
-    all_fvars.app(fun (fv) {
-        if is_mutable(fv, get_idk_loc(fv, noloc)) {
-            all_mut_fvars.add(fv)
-        }})
-    // each mutable variable, which is a free variable of at least one function
-    // needs to be converted into a reference. The reference (as a reference)
-    // should be stored in the corresponding function closure,
-    // but all other accesses to this variable will be done
-    // via dereferencing operator, unary '*'.
-    all_mut_fvars.app(
-        fun (mut_fv) {
-            val kv = get_kval(mut_fv, noloc)
-            val {kv_name, kv_typ, kv_flags, kv_loc} = kv
-            val m_idx = mut_fv.m
-            val new_kv_name = gen_idk(m_idx, pp(kv_name) + "_ref")
-            val new_kv_typ = KTypRef(kv_typ)
-            val new_kv_flags = kv_flags.{val_flag_mutable=false}
-            val new_kv = kdefval_t { kv_name=new_kv_name,
-                kv_cname="", kv_typ=new_kv_typ,
-                kv_flags=new_kv_flags, kv_loc=kv_loc }
-            val new_old_kv = kv.{kv_flags=kv_flags.{val_flag_tempref=true}}
-            set_idk_entry(new_kv_name, KVal(new_kv))
-            set_idk_entry(kv_name, KVal(new_old_kv))
-            orig_subst_env.add(kv_name, (kv_name, new_kv_name, None))
-        })
+    var fv_env : fv_env_t = collect_free_vars(kmods, globals, true, false, true)
 
     fun fold_defcl_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
 
-    // form a closure for each function that has free variables (mutable or not)
+    // form a closure for each function that has free variables
     fun fold_defcl_kexp_(e: kexp_t, callb: k_fold_callb_t)
     {
         fold_kexp(e, callb)
         match e {
         | KDefFun kf =>
             val {kf_name, kf_params, kf_rt, kf_closure, kf_flags, kf_scope, kf_loc} = *kf
-            match ll_env.find_opt(kf_name) {
+            match fv_env.find_opt(kf_name) {
             | Some ll_info =>
-                val fvars = ll_info.ll_fvars
+                val fvars = ll_info.fv_fvars
                 if !fvars.empty() {
-                    val fvar_pairs_to_sort = fvars.foldl(
-                        fun (fv, fvars_to_sort) {
-                            (string(fv), fv) :: fvars_to_sort
-                        }, [])
-                    // just to make sure that closure stays stable with minor modifications
-                    // of the program all the free variables are sorted by name
-                    val fvar_pairs_sorted = fvar_pairs_to_sort.sort(fun ((a, _), (b, _)) { a < b })
-                    val fvars_final = [: for (_, fv) <- fvar_pairs_sorted {fv} :]
+                    val fvars_final = sort_freevars(fvars)
                     val m_idx = kf_name.m
                     val fcv_tn = gen_idk(m_idx, pp(kf_name) + "_closure")
                     val fold fvars_wt = [] for fv@idx <- fvars_final {
                         val {kv_typ, kv_flags, kv_loc} = get_kval(fv, kf_loc)
-                        val kv_typ = if all_mut_fvars.mem(fv) { KTypRef(kv_typ) }
-                                     else { kv_typ }
+                        if is_mutable(fv, get_idk_loc(fv, noloc)){
+                            throw compile_err(kf_loc,
+                                f"free variable '{idk2str(fv, get_idk_loc(fv, noloc))}' must not be mutable on this stage. \
+                                Run K.freevars.mutable_freevars_referencing before.")
+                        }
                         // A function's free variable is a non-local and yet non-global variable
                         // that the function depends on. Since it's not global, it must be in
                         // some outer function w.r.t. the current function.
@@ -504,7 +317,7 @@ fun lift_all(kmods: kmodule_t list)
     // before it's declared.
     var defined_so_far = empty_id_hashset(256)
     var curr_m_idx = -1
-    var curr_clo = (noid, noid, noid)
+    var curr_clo = noid
     var curr_top_code : kcode_t = []
     var curr_subst_env : ll_subst_env_t = empty_subst_env(256)
     var curr_lift_extra_decls : kcode_t = []
@@ -512,12 +325,12 @@ fun lift_all(kmods: kmodule_t list)
     // During lambda lifting we we need not only to transform the lifted functions'
     // bodies and function calls expressions, we potentially need to transform various atoms
     // used in expressions, as right-hand-side values in val/var declaration etc.
-    fun walk_atom_n_lift_all_adv(a: atom_t, loc: loc_t, get_mkclosure_arg: bool) =
+    fun walk_atom_n_lift_all(a: atom_t, loc: loc_t, callb: k_callb_t) =
         match a {
         | AtomId({m=0}) => a
         | AtomId n =>
             match curr_subst_env.find_opt(n) {
-            | Some((_, _, Some f_typ)) =>
+            | Some((_, Some f_typ)) =>
                 /*
                     The atom is id, corresponding to a function that does not have/need a closure.
                     But, since we are here, it means that the function is not called directly,
@@ -537,14 +350,13 @@ fun lift_all(kmods: kmodule_t list)
                 curr_lift_extra_decls = create_kdefval(temp_cl, f_typ, default_val_flags(),
                                                 Some(make_cl), curr_lift_extra_decls, loc)
                 AtomId(temp_cl)
-            | Some((nv, nr, _)) =>
+            | Some((nv, _)) =>
                 /*
                     There is already pre-declared closure, we just replace
                     function name with the constructed closure
                 */
-                if get_mkclosure_arg { AtomId(nr) } else { AtomId(nv) }
+                AtomId(nv)
             | _ =>
-                val a =
                 match kinfo_(n, loc) {
                 | KFun (ref {kf_flags, kf_params, kf_rt, kf_closure={kci_arg}, kf_loc}) =>
                     /*
@@ -571,23 +383,10 @@ fun lift_all(kmods: kmodule_t list)
                     }
                 | _ => a
                 }
-
-                // If it's a mutable value, the atom is automatically renamed to its deferenced alias.
-                // But when we build a new closure and want to put this value there, we need to use
-                // the original reference, which we found in orig_subst_env.
-                if !get_mkclosure_arg {
-                    a
-                } else {
-                    match orig_subst_env.find_opt(n) {
-                    | Some((_, nr, _)) => AtomId(nr)
-                    | _ => a
-                    }
-                }
             }
         | _ => a
         }
-    fun walk_atom_n_lift_all(a: atom_t, loc: loc_t, callb: k_callb_t) =
-        walk_atom_n_lift_all_adv(a, loc, false)
+
     // pass-by processing types
     fun walk_ktyp_n_lift_all(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
     fun walk_kexp_n_lift_all(e: kexp_t, callb: k_callb_t)
@@ -606,12 +405,12 @@ fun lift_all(kmods: kmodule_t list)
                 val (_, orig_freevars) = get_closure_freevars(kf_name, kf_loc)
                 if orig_freevars == [] {
                     if !is_constructor(kf_flags) {
-                        curr_subst_env.add(kf_name, (noid, noid, Some(kf_typ)))
+                        curr_subst_env.add(kf_name, (noid, Some(kf_typ)))
                     }
                     KExpNop(loc) :: code
                 } else {
                     val cl_name = dup_idk(curr_m_idx, kf_name)
-                    curr_subst_env.add(kf_name, (cl_name, cl_name, None))
+                    curr_subst_env.add(kf_name, (cl_name, None))
                     defined_so_far.add(cl_name)
                     val cl_args =
                     [: for fv <- orig_freevars {
@@ -619,7 +418,7 @@ fun lift_all(kmods: kmodule_t list)
                             throw compile_err(kf_loc, f"free variable '{idk2str(fv, kf_loc)}' \
                                             of '{idk2str(kf_name, kf_loc)}' is not defined yet")
                         }
-                        walk_atom_n_lift_all_adv(AtomId(fv), kf_loc, true)
+                        walk_atom_n_lift_all(AtomId(fv), kf_loc, callb)
                     } :]
                     val make_cl = KExpMkClosure(make_fp, kf_name, cl_args, (kf_typ, kf_loc))
                     create_kdefval(cl_name, kf_typ, default_val_flags(), Some(make_cl), code, kf_loc)
@@ -671,7 +470,7 @@ fun lift_all(kmods: kmodule_t list)
             // we set the current closure to handle recursive functions. If a function
             // (with free variables or not) calls itself recursively, we don't need another closure
             // we just pass the closure data parameter directly to it.
-            curr_clo = (kf_name, kci_arg, kci_fcv_t)
+            curr_clo = kf_name
             for arg <- kf_params { defined_so_far.add(arg) }
             val prologue =
                 if kci_fcv_t == noid {
@@ -698,34 +497,20 @@ fun lift_all(kmods: kmodule_t list)
                             | KVal ({kv_typ, kv_flags}) => (kv_typ, kv_flags)
                             | _ => (t, default_val_flags())
                             }
-                        val is_mutable = all_mut_fvars.mem(fv_orig)
                         val kv_flags = kv_flags.{ val_flag_tempref=false,
                                                   val_flag_arg=false,
                                                   val_flag_global=[] }
-                        val (e, prologue, fv_proxy_mkclo_arg) =
-                        if !is_mutable {
-                            (KExpMem(kci_arg, idx, (t, kf_loc)), prologue, fv_proxy)
-                        } else {
-                            val ref_typ = KTypRef(t)
-                            val fv_ref = gen_idk(curr_m_idx, pp(fv) + "_ref")
-                            val get_fv = KExpMem(kci_arg, idx, (ref_typ, kf_loc))
-                            val ref_flags = kv_flags.{ val_flag_tempref=true,
-                                                       val_flag_mutable=false,
-                                                       val_flag_global=[] }
-                            val prologue = create_kdefval(fv_ref, ref_typ, ref_flags,
-                                                Some(get_fv), prologue, kf_loc)
-                            (KExpUnary(OpDeref, AtomId(fv_ref), (t, kf_loc)), prologue, fv_ref)
-                        }
-                        curr_subst_env.add(fv_orig, (fv_proxy, fv_proxy_mkclo_arg, None))
+                        val e = KExpMem(kci_arg, idx, (t, kf_loc))
+                        curr_subst_env.add(fv_orig, (fv_proxy, None))
                         val new_kv_flags = kv_flags.{val_flag_tempref=true}
                         create_kdefval(fv_proxy, t, new_kv_flags, Some(e), prologue, kf_loc)
                     }
 
-                    match ll_env.find_opt(kf_name) {
-                    | Some({ll_declared_inside, ll_called_funcs}) =>
-                        ll_called_funcs.foldl(
+                    match fv_env.find_opt(kf_name) {
+                    | Some({fv_declared_inside, fv_called_funcs}) =>
+                        fv_called_funcs.foldl(
                             fun (called_f, prologue) {
-                                if ll_declared_inside.mem(called_f) { prologue }
+                                if fv_declared_inside.mem(called_f) { prologue }
                                 else {
                                 match kinfo_(called_f, kf_loc) {
                                 | KFun called_kf =>
@@ -757,24 +542,8 @@ fun lift_all(kmods: kmodule_t list)
             walk_kexp(e, callb)
         | KDefVal(n, rhs, loc) =>
             val rhs = walk_kexp_n_lift_all(rhs, callb)
-            val is_mutable_fvar = all_mut_fvars.mem(n)
             defined_so_far.add(n)
-            if !is_mutable_fvar {
-                KDefVal(n, rhs, loc)
-            } else {
-                val t = get_kexp_typ(rhs)
-                val ref_typ = KTypRef(t)
-                val nr =
-                    match orig_subst_env.find_opt(n) {
-                    | Some((_, nr, None )) => nr
-                    | _ => throw compile_err(loc, f"k-lift: not found subst info about \
-                                    mutable free var '{idk2str(n, loc)}'")
-                    }
-                val (a, code) = kexp2atom(curr_m_idx, pp(n) + "_arg", rhs, false, [])
-                val code = KDefVal(nr, KExpUnary(OpMkRef, a, (ref_typ, loc)), loc) :: code
-                val code = KDefVal(n, KExpUnary(OpDeref, AtomId(nr), (t, loc)), loc) :: code
-                KExpSeq(code.rev(), (KTypVoid, loc))
-            }
+            KDefVal(n, rhs, loc)
         | KDefVariant kvar =>
             val {kvar_ifaces=kvar_ifaces0} = *kvar
             val e = walk_kexp(e, callb)
@@ -804,11 +573,11 @@ fun lift_all(kmods: kmodule_t list)
             val body = walk_kexp_n_lift_all(body, callb)
             KExpMap(e_idom_ll, body, flags, kctx)
         | KExpMkClosure(make_fp, f, args, (typ, loc)) =>
-            val args = [: for a <- args { walk_atom_n_lift_all_adv(a, loc, true) } :]
+            val args = [: for a <- args { walk_atom_n_lift_all(a, loc, callb) } :]
             KExpMkClosure(make_fp, f, args, (typ, loc))
         | KExpCall(f, args, (_, loc) as kctx) =>
             val args = [: for a <- args { walk_atom_n_lift_all(a, loc, callb) } :]
-            val (curr_f, _, _) = curr_clo
+            val curr_f = curr_clo
             if f == curr_f {
                 KExpCall(f, args, kctx)
             } else {
@@ -836,11 +605,10 @@ fun lift_all(kmods: kmodule_t list)
 
     [: for km <- kmods {
         val {km_idx, km_top} = km
-        val new_top = make_wrappers_for_nothrow(km_idx, km_top)
         curr_m_idx = km_idx
         curr_top_code = []
-        for e <- new_top { fold_defcl_kexp_(e, defcl_callb) }
-        for e <- new_top {
+        for e <- km_top { fold_defcl_kexp_(e, defcl_callb) }
+        for e <- km_top {
             val e = walk_kexp_n_lift_all(e, walk_n_lift_all_callb)
             curr_top_code = e :: curr_top_code
         }
