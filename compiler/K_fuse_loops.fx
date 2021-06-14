@@ -210,12 +210,12 @@ fun fuse_loops_(code: kcode_t)
         kcb_kexp=Some(fuse_kexp_),
         kcb_atom=None
     }
-    [: for e <- code { fuse_kexp_(e, fuse_callb) } :]
+    [for e <- code { fuse_kexp_(e, fuse_callb) } ]
 }
 
 fun fuse_loops_all(kmods: kmodule_t list) =
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_top} = km
         val new_top = fuse_loops(km_top)
         km.{km_top=new_top}
-    } :]
+    }]

@@ -87,19 +87,19 @@ fun move_loop_invs(code: kcode_t)
         val e = walk_kexp(e, callb)
         match e {
         | KExpFor (idl, idxl, body, flags, loc) =>
-            val (outer_moved, _, body) = mli_process_loop([: (KExpNop(loc), idl, idxl) :], body, loc, callb)
-            code2kexp(outer_moved + [: KExpFor(idl, idxl, body, flags, loc) :], loc)
+            val (outer_moved, _, body) = mli_process_loop([(KExpNop(loc), idl, idxl) ], body, loc, callb)
+            code2kexp(outer_moved + [KExpFor(idl, idxl, body, flags, loc) ], loc)
         | KExpMap (e_idl_l, body, flags, (t, loc)) =>
             val (outer_moved, e_idl_l, body) = mli_process_loop(e_idl_l, body, loc, callb)
-            code2kexp(outer_moved + [: KExpMap(e_idl_l, body, flags, (t, loc)) :], loc)
+            code2kexp(outer_moved + [KExpMap(e_idl_l, body, flags, (t, loc)) ], loc)
         | KExpWhile (c, body, loc) =>
-            val (outer_moved_c, _, c) = mli_process_loop([: (KExpNop(loc), [], []) :], c, loc, callb)
-            val (outer_moved, _, body) = mli_process_loop([: (KExpNop(loc), [], []) :], body, loc, callb)
-            code2kexp(outer_moved_c + (outer_moved + [: KExpWhile(c, body, loc) :]), loc)
+            val (outer_moved_c, _, c) = mli_process_loop([(KExpNop(loc), [], []) ], c, loc, callb)
+            val (outer_moved, _, body) = mli_process_loop([(KExpNop(loc), [], []) ], body, loc, callb)
+            code2kexp(outer_moved_c + (outer_moved + [KExpWhile(c, body, loc) ]), loc)
         | KExpDoWhile (body, c, loc) =>
-            val (outer_moved, _, body) = mli_process_loop([: (KExpNop(loc), [], []) :], body, loc, callb)
-            val (outer_moved_c, _, c) = mli_process_loop([: (KExpNop(loc), [], []) :], c, loc, callb)
-            code2kexp(outer_moved + (outer_moved_c + [: KExpDoWhile(body, c, loc) :]), loc)
+            val (outer_moved, _, body) = mli_process_loop([(KExpNop(loc), [], []) ], body, loc, callb)
+            val (outer_moved_c, _, c) = mli_process_loop([(KExpNop(loc), [], []) ], c, loc, callb)
+            code2kexp(outer_moved + (outer_moved_c + [KExpDoWhile(body, c, loc) ]), loc)
         | KDefVal (n, rhs, loc) =>
             if !curr_inloop.mem(n) || is_mutable(n, loc) || !is_loop_invariant(rhs) {
                 e
@@ -117,12 +117,12 @@ fun move_loop_invs(code: kcode_t)
         kcb_atom=None
     }
 
-    [: for e <- code { mli_kexp(e, mli_callb) } :]
+    [for e <- code { mli_kexp(e, mli_callb) } ]
 }
 
 fun move_loop_invs_all(kmods: kmodule_t list) =
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_top} = km
         val new_top = move_loop_invs(km_top)
         km.{km_top=new_top}
-    } :]
+    }]

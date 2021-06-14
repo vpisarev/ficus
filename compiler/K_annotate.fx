@@ -230,7 +230,7 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
 
 fun annotate_types(kmods: kmodule_t list)
 {
-    val top_code = [: for {km_top} <- kmods {km_top} :].concat()
+    val top_code = [for {km_top} <- kmods {km_top} ].concat()
     //clear_typ_annotations(top_code)
     find_recursive(top_code)
     for e <- top_code {

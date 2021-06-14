@@ -75,7 +75,7 @@ TEST("basic.fib", fun()
     }
     val fib_seq = start_fib_seq()
 
-    for x@i <- [: 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89 :] {
+    for x@i <- [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89] {
         val fib_i = fib(i+1)
         val fib2_i = fib2(i+1)
         val fib3_i = fib3(i+1)
@@ -134,7 +134,7 @@ TEST("basic.make_empty_list", fun()
 {
     fun make_null(a:'t):'t list = []
 
-    val x = [: 1, 2, 3 :]
+    val x = [1, 2, 3]
     EXPECT_EQ(make_null(x).length(), 0)
     EXPECT_EQ((x :: make_null(x)).length(), 1)
 })
@@ -169,13 +169,13 @@ TEST("basic.list.pattern_match", fun()
     var lst : int list = []
     EXPECT_EQ(f(lst), (0, 0))
 
-    lst = [: 1, :]
+    lst = [1,]
     EXPECT_EQ(f(lst), (1, 1))
 
-    lst = [: 1, 2 :]
+    lst = [1, 2]
     EXPECT_EQ(f(lst), (3, 2))
 
-    lst = [: 1, 2, 3 :]
+    lst = [1, 2, 3]
     EXPECT_EQ(f(lst), (-1, 56))
 })
 
@@ -265,9 +265,9 @@ TEST("basic.record", fun()
     EXPECT_EQ(contains(ir, ip), true)
     EXPECT_EQ(contains(fr, fp), false)
 
-    val vtx0 = [: (0, 0), (640, 0), (640, 480), (0, 480) :]
-    val vtx1 = [: for (x, y) <- vtx0 {point_t {x=x*2, y=y*2}} :]
-    val vtx2 = [: for {x, y} <- vtx1 {(x/2, y/2)} :]
+    val vtx0 = [(0, 0), (640, 0), (640, 480), (0, 480)]
+    val vtx1 = [for (x, y) <- vtx0 {point_t {x=x*2, y=y*2}}]
+    val vtx2 = [for {x, y} <- vtx1 {(x/2, y/2)}]
 
     EXPECT_EQ(vtx2, vtx0)
 })
@@ -408,7 +408,7 @@ TEST("basic.self_assignment", fun()
     type tree = Empty | Node: (int, tree, tree)
 
     var a = 5
-    var b = ", ".join([: for i<-0:10 {string(i)} :])
+    var b = ", ".join([for i<-0:10 {string(i)}])
     var c = [|[|[|1|], [|0|], [|0|]|], [|[|0|], [|1|], [|0|]|], [|[|0|], [|0|], [|1|]|]|]
     var c2 = [|[|[|1|], [|2|], [|3|]|], [|[|4|], [|5|], [|6|]|], [|[|7|], [|8|], [|9|]|]|]
     var d = ref [|1, 2, 3, 4, 5|]
@@ -516,7 +516,7 @@ TEST("basic.types.variant", fun()
     }
 
     EXPECT_EQ(
-        f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Tuple(Int::Float::[]) :: Fun([: Int, Int :], Int) :: [])})",
+        f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Tuple(Int::Float::[]) :: Fun([Int, Int], Int) :: [])})",
         "(void, int [], bool, (int, double), ((int, int) -> int))"
     )
     EXPECT_EQ(t2str(Var(ref None)), "<unknown>")
@@ -525,7 +525,7 @@ TEST("basic.types.variant", fun()
 TEST("basic.list", fun()
 {
     val l = 1 :: 2 :: 3 :: []
-    val l2 = [: 1, 2, 3 :]
+    val l2 = [1, 2, 3]
     EXPECT_EQ(l.length(), 3)
     EXPECT_THROWS(fun () {println(l.tl().tl().tl().tl())}, NullListError)
     EXPECT_EQ(l, l2)
@@ -533,7 +533,7 @@ TEST("basic.list", fun()
     EXPECT_EQ(l.tl(), 2 :: 3 :: [])
     EXPECT_EQ(l.hd() :: l.tl(), l)
     EXPECT_NE(l, 1 :: -1 :: 3 :: [])
-    EXPECT_EQ(l <=> [: 1, 2, 3, 4 :], -1)
+    EXPECT_EQ(l <=> [1, 2, 3, 4], -1)
 })
 
 TEST("basic.list.reverse", fun()
@@ -549,8 +549,8 @@ TEST("basic.list.reverse", fun()
     }
 
     val l = 1 :: 2 :: 3 :: []
-    EXPECT_EQ(list_reverse(l), [: 3, 2, 1 :])
-    EXPECT_EQ((-1 :: l).rev(), [: 3, 2, 1, -1 :])
+    EXPECT_EQ(list_reverse(l), [3, 2, 1])
+    EXPECT_EQ((-1 :: l).rev(), [3, 2, 1, -1])
 })
 
 TEST("basic.list.map", fun()
@@ -566,10 +566,10 @@ TEST("basic.list.map", fun()
     }
 
     val strings = list_map((1 :: 2 :: 3 :: []), (string: int->string))
-    EXPECT_EQ(strings, [: "1", "2", "3" :])
+    EXPECT_EQ(strings, ["1", "2", "3"])
 
     val cosines : double list = list_map((1. :: 2. :: 3. :: []), cos)
-    val expected = [: 0.5403023058681398, -0.4161468365471424, -0.9899924966004454 :]
+    val expected = [0.5403023058681398, -0.4161468365471424, -0.9899924966004454]
     EXPECT_NEAR(cosines, expected, DBL_EPSILON*10)
 })
 
@@ -589,8 +589,8 @@ TEST("basic.list.zip", fun()
     EXPECT_EQ(zipped.length(), 3)
     EXPECT_EQ(zipped.tl().tl().hd(), (3, "c"))
 
-    val triples = [: for c <- "abcdef", i <- [: 1, 2, 3, 4, 5, 6 :] {(i, i*i, c)} :]
-    EXPECT_EQ(triples, [: (1, 1, 'a'), (2, 4, 'b'), (3, 9, 'c'), (4, 16, 'd'), (5, 25, 'e'), (6, 36, 'f') :])
+    val triples = [for c <- "abcdef", i <- [1, 2, 3, 4, 5, 6] {(i, i*i, c)}]
+    EXPECT_EQ(triples, [(1, 1, 'a'), (2, 4, 'b'), (3, 9, 'c'), (4, 16, 'd'), (5, 25, 'e'), (6, 36, 'f')])
 })
 
 TEST("basic.list.unzip", fun()
@@ -608,18 +608,18 @@ TEST("basic.list.unzip", fun()
 
     val ll = ("a", 1) :: ("b", 2) :: ("c", 3) :: []
     val unzipped = list_unzip(ll)
-    EXPECT_EQ(unzipped.0, [: "a", "b", "c" :])
-    EXPECT_EQ(unzipped.1, [: 1, 2, 3 :])
-    val unzipped2 = [: @unzip for si <- ll {si} :]
-    EXPECT_EQ(unzipped2.0, [: "a", "b", "c" :])
-    EXPECT_EQ(unzipped2.1, [: 1, 2, 3 :])
+    EXPECT_EQ(unzipped.0, ["a", "b", "c"])
+    EXPECT_EQ(unzipped.1, [1, 2, 3])
+    val unzipped2 = [@unzip for si <- ll {si}]
+    EXPECT_EQ(unzipped2.0, ["a", "b", "c"])
+    EXPECT_EQ(unzipped2.1, [1, 2, 3])
 })
 
 TEST("basic.list.sort", fun()
 {
-    EXPECT_EQ([: 10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
-        -460, 451, -11034, 8848 :].sort((<)),
-        [: -11034, -460, -1, 0, 1, 2, 10, 26, 113, 355, 451, 1949, 8848, 299792458 :])
+    EXPECT_EQ([10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458,
+        -460, 451, -11034, 8848].sort((<)),
+        [-11034, -460, -1, 0, 1, 2, 10, 26, 113, 355, 451, 1949, 8848, 299792458])
 })
 
 TEST("basic.myops", fun()
@@ -667,7 +667,7 @@ TEST("basic.loop.squares", fun()
         squares.rev()
     }
 
-    EXPECT_EQ(gen_squares(4), [: 0, 1, 4, 9 :])
+    EXPECT_EQ(gen_squares(4), [0, 1, 4, 9])
 })
 
 TEST("basic.overloaded", fun()
@@ -724,11 +724,11 @@ TEST("basic.string", fun()
     EXPECT_EQ(f"abc{{2*2}}def", "abc{2*2}def")
     EXPECT_EQ(r"Dear (\w+),.+Best regards,\n(\w+)", "Dear (\\w+),.+Best regards,\\n(\\w+)")
 
-    EXPECT_EQ(", ".join([: "a", "b", "c" :]), "a, b, c")
+    EXPECT_EQ(", ".join(["a", "b", "c"]), "a, b, c")
 
     val str = "This is a sentence made of words separated by spaces."
     EXPECT_EQ(str.tokens(fun (c) {c == ' '}),
-        [:"This", "is", "a", "sentence", "made", "of", "words", "separated", "by", "spaces." :])
+        ["This", "is", "a", "sentence", "made", "of", "words", "separated", "by", "spaces."])
 
     EXPECT_EQ("Привет! 你好吗?".length(), 12)
 })
@@ -745,8 +745,8 @@ TEST("basic.templates.variants", fun()
         | Node {balance, left, right} => 1 + max(depth(left), depth(right))
     }
 
-    val depth_list = [: for n <- node_list {depth(n)} :]
-    EXPECT_EQ(depth_list, [: 0, 0, 1, 2 :])
+    val depth_list = [for n <- node_list {depth(n)}]
+    EXPECT_EQ(depth_list, [0, 0, 1, 2])
 })
 
 TEST("basic.keyword_args", fun()

@@ -425,7 +425,7 @@ fun idk2str(n: id_t, loc: loc_t) =
     }
 
 fun get_kf_typ(kf_params: id_t list, kf_rt: ktyp_t, loc: loc_t): ktyp_t =
-    KTypFun([: for a <- kf_params { get_kval(a, loc).kv_typ } :], kf_rt)
+    KTypFun([for a <- kf_params { get_kval(a, loc).kv_typ } ], kf_rt)
 
 fun get_kinfo_typ(info: kinfo_t, n: id_t, loc: loc_t): ktyp_t
 {
@@ -566,7 +566,7 @@ fun check_n_walk_atom(a: atom_t, loc: loc_t, callb: k_callb_t): atom_t =
     }
 
 fun check_n_walk_al(al: atom_t list, loc: loc_t, callb: k_callb_t): atom_t list =
-    [: for a <- al {check_n_walk_atom(a, loc, callb)} :]
+    [for a <- al {check_n_walk_atom(a, loc, callb)} ]
 
 fun check_n_walk_dom(d: dom_t, loc: loc_t, callb: k_callb_t): dom_t =
     match d {
@@ -603,7 +603,7 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
     | KTypTuple(elems) => KTypTuple(walk_ktl_(elems))
     | KTypRecord(rn, relems) =>
         KTypRecord(walk_id_(rn),
-            [: for (ni, ti) <- relems { (walk_id_(ni), walk_ktyp_(ti)) } :])
+            [for (ni, ti) <- relems { (walk_id_(ni), walk_ktyp_(ti)) } ])
     | KTypName(k) => KTypName(walk_id_(k))
     | KTypArray(d, t) => KTypArray(d, walk_ktyp_(t))
     | KTypVector(t) => KTypVector(walk_ktyp_(t))
@@ -616,21 +616,21 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
 {
     fun walk_atom_(a: atom_t, loc: loc_t): atom_t = check_n_walk_atom(a, loc, callb)
     fun walk_al_(al: atom_t list, loc: loc_t): atom_t list =
-        [: for a <- al {walk_atom_(a, loc)} :]
+        [for a <- al {walk_atom_(a, loc)} ]
     fun walk_ktyp_(t: ktyp_t, loc: loc_t): ktyp_t = check_n_walk_ktyp(t, loc, callb)
     fun walk_id_(n: id_t, loc: loc_t): id_t = check_n_walk_id(n, loc, callb)
     fun walk_idlist_(nl: id_t list, loc: loc_t, update: bool): id_t list =
-        [: for n <- nl {
+        [for n <- nl {
             if update {update_kval_(n, loc)} else {walk_id_(n, loc)}
-        } :]
+        }]
     fun walk_kexp_(e: kexp_t): kexp_t = check_n_walk_kexp(e, callb)
     fun walk_kctx_((t: ktyp_t, loc: loc_t)): kctx_t = (walk_ktyp_(t, loc), loc)
     fun walk_dom_(d: dom_t, loc: loc_t): dom_t = check_n_walk_dom(d, loc, callb)
     fun walk_idomlist_(idoml: (id_t, dom_t) list, loc: loc_t): (id_t, dom_t) list =
-        [: for (n, d) <- idoml {
+        [for (n, d) <- idoml {
             val n = update_kval_(n, loc)
             (n, walk_dom_(d, loc))
-        } :]
+        }]
     fun update_kval_(n: id_t, loc: loc_t) =
         if n.m > 0 && n.i > 0 {
             val kv = get_kval(n, loc)
@@ -688,16 +688,16 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
             KExpMkArray(all_literals, elems, walk_kctx_(ctx))
         } else {
             KExpMkArray(false,
-                [: for row <- elems {
+                [for row <- elems {
                     val fold new_row = [] for (f, a) <- row {
                         (f, walk_atom_(a, loc)) :: new_row
                     }
                     new_row.rev() }
-                :], walk_kctx_(ctx))
+                ], walk_kctx_(ctx))
         }
     | KExpMkVector(elems, (_, loc) as ctx) =>
         KExpMkVector(
-            [: for (f, a) <- elems { (f, walk_atom_(a, loc)) } :],
+            [for (f, a) <- elems { (f, walk_atom_(a, loc)) } ],
             walk_kctx_(ctx))
     | KExpCall(f, args, (_, loc) as ctx) =>
         KExpCall(walk_id_(f, loc), walk_al_(args, loc), walk_kctx_(ctx))
@@ -705,7 +705,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         KExpICall(walk_id_(obj, loc), meth, walk_al_(args, loc), walk_kctx_(ctx))
     | KExpAt(a, border, interp, idxs, (_, loc) as ctx) =>
         KExpAt(walk_atom_(a, loc), border, interp,
-               [: for idx <- idxs { walk_dom_(idx, loc) } :],
+               [for idx <- idxs { walk_dom_(idx, loc) } ],
                walk_kctx_(ctx))
     | KExpAssign(lv, rv, loc) =>
         KExpAssign(walk_id_(lv, loc), walk_atom_(rv, loc), loc)
@@ -719,17 +719,17 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
                 walk_idlist_(at_ids, loc, true),
                 walk_kexp_(body), flags, loc)
     | KExpMap(e_idoml_l, body, flags, (_, loc) as ctx) =>
-        KExpMap([: for (e, idoml, at_ids) <- e_idoml_l {
+        KExpMap([for (e, idoml, at_ids) <- e_idoml_l {
                        (walk_kexp_(e), walk_idomlist_(idoml, loc),
                        walk_idlist_(at_ids, loc, true))
-                } :],
+                }],
                 walk_kexp_(body), flags, walk_kctx_(ctx))
     | KExpMatch(cases, ctx) =>
         KExpMatch(
-            [: for (checks_i, ei) <- cases {
-                ([: for cij <- checks_i { walk_kexp_(cij) } :],
+            [for (checks_i, ei) <- cases {
+                ([for cij <- checks_i { walk_kexp_(cij) } ],
                 walk_kexp_(ei))
-            } :], walk_kctx_(ctx))
+            }], walk_kctx_(ctx))
     | KExpTryCatch(e1, e2, ctx) =>
         KExpTryCatch(walk_kexp_(e1), walk_kexp_(e2), walk_kctx_(ctx))
     | KExpCast(a, t, loc) => KExpCast(walk_atom_(a, loc), walk_ktyp_(t, loc), loc)
@@ -783,21 +783,21 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         val new_kvar_name = walk_id_(kvar_name, kvar_loc)
         val new_kvar = kvar->{
             kvar_name=new_kvar_name,
-            kvar_cases=[: for (n, t) <- kvar_cases {
+            kvar_cases=[for (n, t) <- kvar_cases {
                     (walk_id_(n, kvar_loc),
                     walk_ktyp_(t, kvar_loc))
-                } :],
-            kvar_ifaces=[: for (iname, meths) <- kvar_ifaces {
+                }],
+            kvar_ifaces=[for (iname, meths) <- kvar_ifaces {
                     (walk_id_(iname, kvar_loc),
                     walk_idlist_(meths, kvar_loc, false))
-                } :],
-            kvar_ctors=[:
+                }],
+            kvar_ctors=[
                 for c <- kvar_ctors {
                     match kinfo_(c, kvar_loc) {
                     | KVal _ => update_kval_(c, kvar_loc)
                     | _ => walk_id_(c, kvar_loc)
                     }
-                } :]
+                }]
             }
         if new_kvar_name == kvar_name {
             *kvar = new_kvar; e
@@ -827,9 +827,9 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
             ki_name=new_ki_name,
             ki_base=walk_id_(ki_base, ki_loc),
             ki_id=walk_id_(ki_id, ki_loc),
-            ki_all_methods=[: for (f, t) <- ki_all_methods {
+            ki_all_methods=[for (f, t) <- ki_all_methods {
                     (walk_id_(f, ki_loc), walk_ktyp_(t, ki_loc))
-                } :]
+                }]
             }
         if new_ki_name == ki_name {
             *ki = new_ki; e
@@ -843,9 +843,9 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         val new_kcv_name = walk_id_(kcv_name, kcv_loc)
         val new_kcv = kcv->{
             kcv_name=new_kcv_name,
-            kcv_freevars=[: for (n, t) <- kcv_freevars {
+            kcv_freevars=[for (n, t) <- kcv_freevars {
                     (walk_id_(n, kcv_loc), walk_ktyp_(t, kcv_loc))
-                } :],
+                }],
             kcv_orig_freevars=walk_idlist_(kcv_orig_freevars, kcv_loc, false)
             }
         if new_kcv_name == kcv_name {
@@ -1342,11 +1342,11 @@ fun create_kdefconstr(n: id_t, paramtyps: ktyp_t list, rt: ktyp_t, ctor: fun_con
                       isinstance: bool, code: kcode_t, sc: scope_t list, loc: loc_t): kexp_t list
 {
     val km_idx = curr_module(sc)
-    val params = [: for t@idx <- paramtyps {
+    val params = [for t@idx <- paramtyps {
         val p = gen_idk(km_idx, f"arg{idx}")
         val _ = create_kdefval(p, t, default_val_flags().{val_flag_arg=true}, None, [], loc)
         p
-    } :]
+    }]
     create_kdeffun(n, params, rt, default_fun_flags().{fun_flag_ctor=ctor,
                     fun_flag_instance=isinstance}, None, code, sc, loc)
 }

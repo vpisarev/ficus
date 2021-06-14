@@ -631,9 +631,9 @@ FX_EXTERN_C int _fx_M2PPFM21pprint_to_string_listRM1t2ii(
    int fx_status = 0;
    FX_CALL(_fx_make_rLS(0, &lines_ref_0), _fx_cleanup);
    FX_CALL(_fx_make_ri(100, &capacity_ref_0), _fx_cleanup);
-   int_* capacity_0 = &capacity_ref_0->data;
    FX_CALL(_fx_make_ri(0, &bufsize_ref_0), _fx_cleanup);
    char_* dstptr_0 = 0;
+   int_* capacity_0 = &capacity_ref_0->data;
    int_ n_0 = *capacity_0;
    {
       const int_ shape_0[] = { n_0 };

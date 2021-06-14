@@ -194,7 +194,7 @@ fun parse_options(): bool {
                 opt.app_args = next; []
             | a :: next =>
                 if a.startswith("-") {
-                    if [: "-inline-threshold", "-o", "-B", "-cflags", "-clibs" :].mem(a) {
+                    if ["-inline-threshold", "-o", "-B", "-cflags", "-clibs"].mem(a) {
                         println(f"{error} option {a} needs an argument")
                     } else {
                         println(f"{error} unrecognized option {a}")

@@ -133,7 +133,7 @@ operator + (l1: 't list, l2: 't list)
     match (l1, l2) {
         | ([], _) => l2
         | (_, []) => l1
-        | _ => link2([: for x <- l1 {x} :], l2)
+        | _ => link2([for x <- l1 {x}], l2)
     }
 }
 
@@ -263,13 +263,13 @@ fun string(a: 't [,])
     join_embrace("[| ", " |]", ";\n", rows)
 }
 
-fun string(l: 't list) = join_embrace("[: ", " :]", ", ", [| for x <- l {repr(x)} |])
+fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |])
 
 @pure fun string(a: char []): string = @ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
 
-fun string(v: 't vector) = join_embrace("[ ", " ]", ", ", [| for x <- v {repr(x)} |])
+fun string(v: 't vector) = join_embrace("[< ", " >]", ", ", [| for x <- v {repr(x)} |])
 
 @pure operator * (c: char, n: int): string = @ccode
 {
@@ -696,22 +696,22 @@ fun print(a: 't [,])
 
 fun print(l: 't list)
 {
-    print("[: ")
+    print("[")
     for x@i <- l {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print(" :]")
+    print("]")
 }
 
 fun print(v: 't vector)
 {
-    print("[")
+    print("[< ")
     for x@i <- v {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print("]")
+    print(" >]")
 }
 
 fun print(t: (...))
@@ -742,9 +742,9 @@ fun print(a: 't ref) {
 @inline fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
-fun list(a: 't []): 't list = [: for x <- a {x} :]
-fun list(s: string): char list = [: for x <- s {x} :]
-fun list(v: 't vector): 't list = [: for x <- v {x} :]
+fun list(a: 't []): 't list = [for x <- a {x}]
+fun list(s: string): char list = [for x <- s {x}]
+fun list(v: 't vector): 't list = [for x <- v {x}]
 
 fun array(): 't [] = []
 fun array(n: int, x: 't) = [| for i <- 0:n {x} |]
@@ -755,9 +755,9 @@ fun array(v: 't vector): 't [] = [| for x <- v {x} |]
 fun array(s: string): char [] = [| for x <- s {x} |]
 
 fun vector(): 't vector = []
-fun vector(l: 't list): 't vector = [for x <- l {x}]
-fun vector(a: 't [+]): 't vector = [for x <- a {x}]
-fun vector(s: string): char vector = [for x <- s {x}]
+fun vector(l: 't list): 't vector = [<for x <- l {x}>]
+fun vector(a: 't [+]): 't vector = [<for x <- a {x}>]
+fun vector(s: string): char vector = [<for x <- s {x}>]
 
 fun copy(a: 't [+]) = [| for x <- a {x} |]
 

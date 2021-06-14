@@ -98,9 +98,9 @@ fun flatten_all(kmods: kmodule_t list)
         kcb_kexp=Some(flatten_kexp_),
         kcb_atom=None
     }
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_top} = km
         val new_top = flatten(km_top, callb).rev()
         km.{km_top=new_top}
-    } :]
+    }]
 }

@@ -104,20 +104,20 @@ fun print_js(js: json_t, ofs: int, indent: string)
 }
 
 val rng = RNG(123u64)
-val s_list_list = [: for i <- 0:10 {
+val s_list_list = [for i <- 0:10 {
     val n = rng.uniform(0, 99)
-    JsonCommented(f"#{i}", JsonSeq([: for j <- 0:n {
-        JsonScalar(JsonScInt(rng.uniform(0, 99999)))} :]))
-    } :]
+    JsonCommented(f"#{i}", JsonSeq([for j <- 0:n {
+        JsonScalar(JsonScInt(rng.uniform(0, 99999)))}]))
+    }]
 
 val sample_js = JsonCommented(
     "a small Json pretty-printing example",
-    JsonMap([:
+    JsonMap([
     ("ain't it cool?", JsonScalar(JsonScBool(true))),
     ("pi", JsonCommented("the famous constant", JsonScalar(JsonScReal(3.1415926)))),
     ("a little array of arrays", JsonCommented("demonstrates compact representation of scalar arrays",
         JsonSeq(s_list_list))),
     ("greeting", JsonCommented("'hello' in Chinese", JsonScalar(JsonScString("你好")))),
-     :]))
+     ]))
 
 ignore(print_js(sample_js, 0, ""))

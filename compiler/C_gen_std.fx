@@ -15,9 +15,7 @@ fun gen_std_fun(cname: string, argtyps: ctyp_t list, rt: ctyp_t)
     val cf = ref (cdeffun_t {
         cf_name=n,
         cf_rt=rt,
-        cf_args=[: for t <- argtyps {
-                    (noid, t, [])
-        } :],
+        cf_args=[for t <- argtyps {(noid, t, [])}],
         cf_cname=cname,
         cf_body=[],
         cf_flags=default_fun_flags().{fun_flag_ccode=true, fun_flag_pure=0},
@@ -32,7 +30,7 @@ fun gen_std_macro(cname: string, nargs: int)
 {
     val n = gen_idc(1, cname)
     val cm = ref (cdefmacro_t {cm_name=n, cm_cname=cname,
-                cm_args=[: for i <- 0:nargs {noid} :],
+                cm_args=[for i <- 0:nargs {noid} ],
                 cm_body=[], cm_scope=[], cm_loc=noloc})
     set_idc_entry(n, CMacro(cm))
     n
@@ -63,7 +61,7 @@ fun init_std_names(): void {
     std_FX_CHECK_ZERO_STEP = gen_std_macro("FX_CHECK_ZERO_STEP", 2)
     std_FX_LOOP_COUNT = gen_std_macro("FX_LOOP_COUNT", 3)
     std_FX_CHECK_EQ_SIZE = gen_std_macro("FX_CHECK_EQ_SIZE", 2)
-    std_fx_copy_ptr = gen_std_fun("fx_copy_ptr", [: std_CTypConstVoidPtr, std_CTypVoidPtr :], CTypVoid)
+    std_fx_copy_ptr = gen_std_fun("fx_copy_ptr", [std_CTypConstVoidPtr, std_CTypVoidPtr ], CTypVoid)
     std_FX_STR_LENGTH = gen_std_macro("FX_STR_LENGTH", 1)
     std_FX_STR_CHKIDX = gen_std_macro("FX_STR_CHKIDX", 3)
     std_FX_STR_ELEM = gen_std_macro("FX_STR_ELEM", 2)
@@ -72,9 +70,9 @@ fun init_std_names(): void {
     std_FX_MAKE_STR = gen_std_macro("FX_MAKE_STR", 1)
     std_FX_FREE_STR = gen_std_macro("FX_FREE_STR", 1)
     std_FX_COPY_STR = gen_std_macro("FX_COPY_STR", 2)
-    std_fx_free_str = gen_std_fun("fx_free_str", [: make_ptr(CTypString) :], CTypVoid)
-    std_fx_copy_str = gen_std_fun("fx_copy_str", [: make_const_ptr(CTypString), make_ptr(CTypString) :], CTypVoid)
-    std_fx_substr = gen_std_fun("fx_substr", [: make_ptr(CTypString), CTypInt, CTypInt, CTypInt, CTypCInt, make_ptr(CTypString) :], CTypVoid)
+    std_fx_free_str = gen_std_fun("fx_free_str", [make_ptr(CTypString)], CTypVoid)
+    std_fx_copy_str = gen_std_fun("fx_copy_str", [make_const_ptr(CTypString), make_ptr(CTypString) ], CTypVoid)
+    std_fx_substr = gen_std_fun("fx_substr", [make_ptr(CTypString), CTypInt, CTypInt, CTypInt, CTypCInt, make_ptr(CTypString) ], CTypVoid)
     std_fx_exn_info_t = CTypName(get_id("fx_exn_info_t"))
     std_FX_REG_SIMPLE_EXN = gen_std_macro("FX_REG_SIMPLE_EXN", 4)
     std_FX_REG_SIMPLE_STD_EXN = gen_std_macro("FX_REG_SIMPLE_STD_EXN", 2)
@@ -107,8 +105,8 @@ fun init_std_names(): void {
         std_FX_PTR_xD_ZERO = gen_std_macro(f"FX_PTR_{i}D_ZERO", 2 + i) :: std_FX_PTR_xD_ZERO
     }
     std_fx_make_arr = gen_std_fun("fx_make_arr",
-            [: CTypCInt, make_const_ptr(CTypInt), CTypSize_t, std_CTypVoidPtr,
-            std_CTypVoidPtr, std_CTypConstVoidPtr, make_ptr(std_CTypAnyArray) :],
+            [CTypCInt, make_const_ptr(CTypInt), CTypSize_t, std_CTypVoidPtr,
+            std_CTypVoidPtr, std_CTypConstVoidPtr, make_ptr(std_CTypAnyArray)],
             CTypCInt)
     std_FX_ARR_SIZE = gen_std_macro("FX_ARR_SIZE", 2)
     std_FX_FREE_ARR = gen_std_macro("FX_FREE_ARR", 1)
@@ -117,8 +115,8 @@ fun init_std_names(): void {
     std_fx_copy_arr = gen_std_fun("fx_copy_arr", make_const_ptr(std_CTypAnyArray) :: make_ptr(std_CTypAnyArray) :: [], CTypVoid)
     std_fx_copy_arr_data = gen_std_fun("fx_copy_arr_data", make_const_ptr(std_CTypAnyArray) ::
                         make_ptr(std_CTypAnyArray) :: CTypBool :: [], CTypVoid)
-    std_fx_subarr = gen_std_fun("fx_subarr", [: make_const_ptr(std_CTypAnyArray), make_const_ptr(CTypInt),
-                                make_ptr(std_CTypAnyArray) :], CTypCInt)
+    std_fx_subarr = gen_std_fun("fx_subarr", [make_const_ptr(std_CTypAnyArray), make_const_ptr(CTypInt),
+                                make_ptr(std_CTypAnyArray)], CTypCInt)
     std_FX_FREE_REF_SIMPLE = gen_std_macro("FX_FREE_REF_SIMPLE", 1)
     std_fx_free_ref_simple = gen_std_fun("fx_free_ref_simple", std_CTypVoidPtr :: [], CTypVoid)
     std_FX_FREE_REF_IMPL = gen_std_macro("FX_FREE_REF_IMPL", 2)
@@ -131,8 +129,8 @@ fun init_std_names(): void {
     std_fx_copy_cptr = gen_std_fun("fx_copy_cptr", make_const_ptr(CTypCSmartPtr) :: make_ptr(CTypCSmartPtr) :: [], CTypVoid)
     std_fx_free_vec = gen_std_fun("fx_rrb_free", make_ptr(std_CTypAnyVector) :: [], CTypVoid)
     std_fx_copy_vec = gen_std_fun("fx_rrb_copy", make_const_ptr(std_CTypAnyVector) :: make_ptr(std_CTypAnyVector) :: [], CTypVoid)
-    std_fx_make_vec = gen_std_fun("fx_rrb_make", [: CTypInt, CTypSize_t, std_CTypVoidPtr,
-                std_CTypVoidPtr, std_CTypConstVoidPtr, make_ptr(std_CTypAnyArray) :], CTypCInt)
+    std_fx_make_vec = gen_std_fun("fx_rrb_make", [CTypInt, CTypSize_t, std_CTypVoidPtr,
+                std_CTypVoidPtr, std_CTypConstVoidPtr, make_ptr(std_CTypAnyArray)], CTypCInt)
     std_fx_ifaces_t_cptr = CTypRawPtr(CTypConst :: [], CTypName(get_id("fx_ifaces_t")))
     std_FX_COPY_IFACE = gen_std_macro("FX_COPY_IFACE", 2)
     std_FX_FREE_IFACE = gen_std_macro("FX_FREE_IFACE", 1)

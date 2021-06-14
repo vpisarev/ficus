@@ -317,7 +317,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                 else if !have_slow { e }
                 else {
                     val new_idxs =
-                        [: for idx@i <- idxs {
+                        [for idx@i <- idxs {
                             match idx {
                             | DomainElem a =>
                                 val aa_class = classify_idx(a, loc)
@@ -333,7 +333,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                                 }
                             | _ => idx
                             }
-                        } :]
+                        }]
                     KExpAt(AtomId(arr), BorderNone, InterpNone, new_idxs, (t, loc))
                 }
             | KExpMatch _ | KExpTryCatch _ | KExpWhile _ | KExpDoWhile _ | KDefFun _
@@ -367,10 +367,10 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
 
         /* steps 4 & 5. optimize some of array acceses */
         val for_clauses =
-            [: for (e, idl, idxl) <- for_clauses {
+            [for (e, idl, idxl) <- for_clauses {
                 val e = optimize_idx_kexp(e, optimize_idx_callb)
                 (e, idl, idxl)
-            } :]
+            }]
         val body = optimize_idx_kexp(body, optimize_idx_callb)
 
         /* step 6. patch modified definitions, if any */
@@ -379,10 +379,10 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             (for_clauses, body)
         } else {
             val for_clauses =
-                [: for (e, idl, idxl) <- for_clauses {
+                [for (e, idl, idxl) <- for_clauses {
                     val e = update_affine_kexp(e, update_affine_callb)
                     (e, idl, idxl)
-                } :]
+                }]
             val body = update_affine_kexp(body, update_affine_callb)
             (for_clauses, body)
         }
@@ -395,7 +395,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             | _ =>
                 val arrsz = dup_idk(km_idx, std__size__)
                 val arrsz_exp = KExpIntrin(IntrinGetSize,
-                    [: AtomId(arr), AtomLit(KLitInt(int64(i))) :], (KTypInt, for_loc))
+                    [AtomId(arr), AtomLit(KLitInt(int64(i))) ], (KTypInt, for_loc))
                 val pre_for_code = create_kdefval(arrsz, KTypInt, default_tempval_flags(),
                                                 Some(arrsz_exp), pre_for_code, for_loc)
                 (arrsz, ((arr, i), arrsz) :: arrsz_env, pre_for_code)
@@ -414,7 +414,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                         get_arrsz(aa_arr, aa_dim, arrsz_env, pre_for_code)
                     if i == noid {
                         val check_idx_exp = KExpIntrin(IntrinCheckIdx,
-                            [: AtomId(arrsz), shift :], (KTypVoid, for_loc))
+                            [AtomId(arrsz), shift ], (KTypVoid, for_loc))
                         (arrsz_env, check_idx_exp :: pre_for_code)
                     } else {
                         val (a, b, delta, arrsz_env, pre_for_code) =
@@ -431,7 +431,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                         }
                         val check_idx_range_exp =
                         KExpIntrin( IntrinCheckIdxRange,
-                                    [: AtomId(arrsz), a, b, delta, scale, shift :],
+                                    [AtomId(arrsz), a, b, delta, scale, shift ],
                                     (KTypVoid, for_loc) )
                         (arrsz_env, check_idx_range_exp :: pre_for_code)
                     }
@@ -487,14 +487,14 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
         kcb_ktyp=Some(process_ktyp),
         kcb_atom=None
     }
-    [: for e <- topcode {
+    [for e <- topcode {
         process_kexp(e, process_callb)
-    } :]
+    }]
 }
 
 fun optimize_idx_checks_all(kmods: kmodule_t list) =
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_idx, km_top} = km
         val new_top = optimize_idx_checks(km_idx, km_top)
         km.{km_top=new_top}
-    } :]
+    }]

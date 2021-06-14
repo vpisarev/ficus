@@ -54,7 +54,7 @@ fun sort_by_freq(seq: uint8 vector, length: int)
 {
     val (total, freq) = frequency(seq, length)
     val sorted = freq.list().sort(fun ((_, n1), (_, n2)) {n1 > n2})
-    "".join([: for (wj, nj) <- sorted {f"{decrypt_key(wj, length)} {nj*100./total}\n"} :])
+    "".join([for (wj, nj) <- sorted {f"{decrypt_key(wj, length)} {nj*100./total}\n"}])
 }
 
 fun find_seq(seq: uint8 vector, substr: string)
@@ -82,7 +82,7 @@ var all_lines: uint8 vector = []
 while !f.eof() {
     val line = f.readln()
     if line.startswith('>') {break}
-    val v = [for c <- line.rstrip() { encrypt_char(c)}]
+    val v = [<for c <- line.rstrip() { encrypt_char(c)}>]
     all_lines += v
 }
 f.close()

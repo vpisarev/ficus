@@ -148,7 +148,7 @@ fun lift(kmods: kmodule_t list) {
         new_top_code.rev()
     }
 
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_top=top_code} = km
         /* process each module twice since in each module there can be cyclic dependencies
            between functions (but not inter-module cyclic dependencies,
@@ -156,5 +156,5 @@ fun lift(kmods: kmodule_t list) {
         val top_code = process(top_code)
         val top_code = process(top_code)
         km.{km_top=top_code}
-    } :]
+    }]
 }

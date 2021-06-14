@@ -572,7 +572,7 @@ int fx_make_iface(const void* obj, int idx, void* iface)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
     if (idx < 0 || idx >= obj_->ifaces->nifaces)
         return FX_SET_EXN_FAST(FX_EXN_OutOfRangeError);
-    iface_->vtbl = obj_->ifaces->ifaces[idx].vtbl;
+    iface_->vtbl = (const fx_iface_vtbl_t*)obj_->ifaces->ifaces[idx].vtbl;
     FX_INCREF(obj_->rc);
     iface_->obj = obj_;
     return FX_OK;
@@ -587,7 +587,7 @@ int fx_query_iface(const void* iface, int iface_id, void* another_iface)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
     for(int i = 0; i < iobj->ifaces->nifaces; i++ ) {
         if (iobj->ifaces->ifaces[i].iface_id == iface_id) {
-            another_iface_->vtbl = iobj->ifaces->ifaces[i].vtbl;
+            another_iface_->vtbl = (const fx_iface_vtbl_t*)iobj->ifaces->ifaces[i].vtbl;
             another_iface_->obj = iobj;
             FX_INCREF(iobj->rc);
             return FX_OK;

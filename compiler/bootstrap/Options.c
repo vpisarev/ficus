@@ -281,8 +281,8 @@ FX_EXTERN_C int _fx_M7OptionsFM6stringS1LS(struct _fx_LS_data_t* l_0, fx_str_t* 
       FX_FREE_STR(&res_0);
       FX_CHECK_EXN(_fx_cleanup);
    }
-   fx_str_t slit_0 = FX_MAKE_STR("[: ");
-   fx_str_t slit_1 = FX_MAKE_STR(" :]");
+   fx_str_t slit_0 = FX_MAKE_STR("[");
+   fx_str_t slit_1 = FX_MAKE_STR("]");
    fx_str_t slit_2 = FX_MAKE_STR(", ");
    FX_CALL(_fx_F12join_embraceS4SSSA1S(&slit_0, &slit_1, &slit_2, &v_0, fx_result, 0), _fx_cleanup);
 

@@ -194,7 +194,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
         ]
     ```
 
-    Just like in the case of functions, it will be parsed as `mymatrix; [i, j]`, where the first expression returns the matrix `mymatrix` and the second one constructs 2-element vector `[x, y]`. Compiler will point to this issue as well. Put `[` to the same line of code and the problem is gone:
+    Just like in the case of functions, it will be parsed as `mymatrix; [i, j]`, where the first expression returns the matrix `mymatrix` and the second one constructs 2-element list `[x, y]`. Compiler will point to this issue as well. Put `[` to the same line of code and the problem is gone:
 
     ```
     mymatrix[
@@ -410,13 +410,13 @@ There are the following types of tokens in Ficus:
     else {r1.n*r2.d > r2.n*r1.d}
   }
   fun R(n: int, d: int) = ratio {n=n, d=d}
-  val sorted = [:R(1,2), R(3,5), R(2,3):].sort((<))
+  val sorted = [R(1,2), R(3,5), R(2,3)].sort((<))
   ```
 
 * There are also various **delimiters** and **parentheses**
 
   ```
-  -> => <- @ . , : ; [ ] [: :] [| |] ( ) { }
+  -> => <- @ . , : ; [ ] [< >] [| |] ( ) { }
   ```
 
 All these operators will be explained later in the tutorial.
@@ -603,8 +603,8 @@ Operators form the foundation of expressions. The table below describes Ficus op
 | (*exp1*) | ∞ | N/A | same as *exp1* | enclose arbitrarily complex expression into parentheses to control the order of calculations |
 | ({*code_block ...*}) | ∞ | N/A | same as the last expression of *code_block* | inside parentheses it's possible to put curly braces and inside them put arbitrary sequence of declarations and expressions. The value of the last expression in the code block is the value of whole code block.|
 | (*exp1*, *exp2*, ...) | ∞ | N/A | the tuple type | form a tuple of values. They may have different types. |
-| [*exp1*, *exp2*, ...], [: *exp1*, *exp2*, ... :], [&#124; *exp1*, *exp2*, ... &#124;] | ∞ | N/A | the type of constructed collection | form a vector, a list or an array of values, respectively. All the values must have the same type. In  the case of arrays it's also possible to use expand operator `\`  and put `;` to separate one row from another (to form a 2D array instead of 1D) |
-| [for ...], [: for ... :], [&#124; for ... &#124;] | ∞ | N/A | the type of constructed collection | form a vector, a list or an array using comprehension. See the [Arrays](#arrays) and [Comprehensions](#comprehensions) sections for details |
+| [*exp1*, *exp2*, ...], [&lt; *exp1*, *exp2*, ... &gt;], [&#124; *exp1*, *exp2*, ... &#124;] | ∞ | N/A | the type of constructed collection | form a list, a vector or an array of values, respectively. All the values must have the same type. In  the case of arrays it's also possible to use expand operator `\`  and put `;` to separate one row from another (to form a 2D array instead of 1D) |
+| [for ...], [&lt; for ... &gt;], [&#124; for ... &#124;] | ∞ | N/A | the type of constructed collection | form a list, a vector or an array using comprehension. See the [Arrays](#arrays) and [Comprehensions](#comprehensions) sections for details |
 | *name1* {*name2*=*exp2*, *name3*=*exp3*, ...} | ∞ | N/A | the record type | form a fresh record of type *name1* by specifying its members' values |
 
 As in the case of other languages, the precedence and associativity rules minimise the use of `(` `)` in many cases, but you can explicitly enclose some sub-expressions into parentheses to change the evaluation order.
@@ -669,7 +669,7 @@ fun convexhull(c: contour_t): contour_t { ... }
 // correct: we explicitly specified the value type,
 // but we do not have to. It can be inferenced automatically
 val contour: (int, int) vector =
-      [: (0, 0), (10, 0), (1, 1), (0, 10) :]
+      [<(0, 0), (10, 0), (1, 1), (0, 10)>]
 // correct: contour_t === point vector === (int, int) vector
 // the type of chull is automatically inferenced
 val chull = convexhull(contour)
@@ -677,8 +677,8 @@ val chull = convexhull(contour)
 // the previous 'contour' is now hidden.
 // no need to declare this type in advance
 val contour =
-      [: Complex {re=0.f, im=0.f}, Complex {re=10.f, im=0.f},
-         Complex {re=1.f, im=1.f}, Complex {re=0.f, im=10.f} :]
+      [<Complex {re=0.f, im=0.f}, Complex {re=10.f, im=0.f},
+       Complex {re=1.f, im=1.f}, Complex {re=0.f, im=10.f}>]
 // error: convexhull expects (int, int) vector.
 val chull_f = convexhull(contour)
 
@@ -880,12 +880,12 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
     ```
     // make a list of 5 consequitive natural numbers
-    val mylist1 = [: 1, 2, 3, 4, 5 :]
+    val mylist1 = [1, 2, 3, 4, 5]
     val hd1 = mylist1.hd() // 1
                            // mylist1.hd() is equivalent to
                            // List.hd(mylist1)
-    val tl1 = mylist1.tl() // [: 2, 3, 4, 5:]
-    val mylist2 = 100 :: tl1 // [: 100, 2, 3, 4, 5:]
+    val tl1 = mylist1.tl() // [2, 3, 4, 5]
+    val mylist2 = 100 :: tl1 // [100, 2, 3, 4, 5]
 
     // can also build a list using '::' operator.
     val mylist3 = "a" :: "b" :: "c" :: "d" :: []
@@ -907,11 +907,11 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 * **vector**: `'t vector`. Vector is an immutable 1D array built on top of so-called "Relaxed Radix Balanced trees" with quite efficient random access, iteration, slicing and concatenation operations.:
 
     ```
-    val small_vector = [1, 2, 3, 4, 5]
+    val small_vector = [<1, 2, 3, 4, 5>]
 
-    // make big vector [1, 2, 3, ..., N]
+    // make big vector [<1, 2, 3, ..., N>]
     val N = 1000000
-    val big_vector = [ for i <- 0:N {i+1} ]
+    val big_vector = [< for i <- 0:N {i+1} >]
 
     // random vector access is ~O(1) operation,
     // so the following loop is reasonably fast
@@ -926,7 +926,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
                         big_vector[800000:]
 
     // make a list with the same content as big_vector
-    val big_list = [: for i <- 0:N {i+1} :]
+    val big_list = [for i <- 0:N {i+1}]
 
     // may take forever, because accessing
     // n-th element of a list takes O(n) time.
@@ -1173,7 +1173,7 @@ Another important construction is a loop over some value range, over multi-dimen
 ```
 // iteration over a range
 for id1 <- start_val1:end_val1[:step1]
- [for id2 <- start_val2:end_val2[:step2] ...] {
+ for id2 <- start_val2:end_val2[:step2] ... {
    exprs ...
 }
 ```
@@ -1403,7 +1403,7 @@ In particular:
 all those operations can be implemented using `fold`, e.g.
 
 ```
-val mylist = [: 3, 5, 0, 7, 21 :]
+val mylist = [3, 5, 0, 7, 21]
 val fold all_odd = true for x <- mylist {
     if x%2 == 0 {false} else {all_odd}
 }
@@ -1412,7 +1412,7 @@ val fold all_odd = true for x <- mylist {
 but the problem with such implementation is that we are not able to stop earlier as soon as we know the answer, because `break` cannot be used inside `fold` (which makes sense, since `fold` body is not an imperative for-loop body, it's an expression that updates the accumulator). We can implement is using for-loop as well:
 
 ```
-val mylist = [: 3, 5, 0, 7, 21, 42 :]
+val mylist = [3, 5, 0, 7, 21, 42]
 var all_odd = true
 for x <- mylist { if x%2 == 0 {false; break} }
 ```
@@ -1431,7 +1431,7 @@ Which stop earlier if needed, and for some reason is more crisp. But both implem
 Some examples:
 
 ```
-val mylist = [: 3, 5, 0, 7, 21, 42 :]
+val mylist = [3, 5, 0, 7, 21, 42]
 println(all(for i <- mylist {i % 2 != 0})) // prints 'false'
 println(exists(for i <- mylist {i <= 0})) // prints 'true'
 
@@ -1455,11 +1455,11 @@ We have already met comprehensions, for example, when big vector and list of 100
 
 ```
 // [1, 2, 3, ..., 1000000]
-val big_vector = [ for i<-0:1000000 {i+1} ]
-val big_list = [: for i<-0:1000000 {i+1} :]
+val big_vector = [< for i<-0:1000000 {i+1} >]
+val big_list = [for i<-0:1000000 {i+1}]
 ```
 
-Basically, array/vector/list comprehension is a for loop enclosed in one of variations of Ficus' square brackets: `[| |]` (array comprehension), `[ ]` (vector comprehension) or `[: :]` (list comprehension). The comprehension produces the corresponding collection (array/vector/list), where body of the for-loop defines the elements of those collections. The comprehensions can be used to construct arbitrarily small or big collections using certain formula, or to transform one collection or a set of collection to another of the same kind (array/vector/list) or a different kind. In the case of array comprehension when iteration is done over a multi-dimensional domain (or when we have nested for-loops) the result will also be multi-dimensional. Here are some more examples:
+Basically, array/vector/list comprehension is a for loop enclosed in one of variations of Ficus' square brackets: `[| |]` (array comprehension), `[< >]` (vector comprehension) or `[ ]` (list comprehension). The comprehension produces the corresponding collection (array/vector/list), where body of the for-loop defines the elements of those collections. The comprehensions can be used to construct arbitrarily small or big collections using certain formula, or to transform one collection or a set of collection to another of the same kind (array/vector/list) or a different kind. In the case of array comprehension when iteration is done over a multi-dimensional domain (or when we have nested for-loops) the result will also be multi-dimensional. Here are some more examples:
 
 ```
 val n = 10
@@ -1550,11 +1550,11 @@ Some of the common applications of comprehensions are 'zipping' and 'unzipping' 
 Zipping collections is trivial:
 
 ```
-val a_list = [: 1, 2, 3, 4, 5 :]
-val b_list = [: "a", "b", "c", "d", "e" :]
+val a_list = [1, 2, 3, 4, 5]
+val b_list = ["a", "b", "c", "d", "e"]
 // take two lists and produce one vector of pairs
-val ab_vector = [for a <- a_list, b <- b_list {(a, b)}]
-// produces [(1, "a), (2, "b"), (3, "c"), (4, "d"), (5, "e")]
+val ab_vector = [<for a <- a_list, b <- b_list {(a, b)}>]
+// produces [<(1, "a), (2, "b"), (3, "c"), (4, "d"), (5, "e")>]
 ```
 
 `SizeMismatchError` exception is thrown when collections have different size.
@@ -2645,7 +2645,7 @@ fun dot(a: ('t ...), b: ('t ...)) =
     fold s = (0:>'t)*0.f for x<-a, y<-b {s + x*y}
 ```
 
-Also note that for-loop over a tuple can be put into `[: :]` to convert the results of tuple transformation into a list.
+Also note that for-loop over a tuple can be put into `[ ]` to convert the results of tuple transformation into a list.
 
 ### {...}
 
@@ -2674,7 +2674,7 @@ Such lists are surprisingly powerful. In fact, that was the only data type avail
 List can be expressed in Ficus in two ways:
 
 ```
-val list123 = [: 1, 2, 3:]
+val list123 = [1, 2, 3]
 // or
 val list123 = 1 :: 2 :: 3 :: []
 
@@ -2689,7 +2689,7 @@ All the variants above produce absolutely the same code. The operation `::` is c
 val a = "a" :: []
 val b = "b" :: a
 val c = "c" :: b
-println(b) // will print '[: "b", "a" :]'
+println(b) // will print '["b", "a"]'
 ```
 
 The property is useful for code analysis, debugging and is very safe, because all operations on lists do not have side effects *(unless some of list elements are mutable objects, like arrays or references)*. This is, the list a functional data structure. Another good example of immutable data structure is the red-black search tree, which we will cover in [Sum Types or Variants](#variants).
@@ -2702,9 +2702,9 @@ The other big advantage of such lists is that virtually *all* possible operation
 * `x :: l` — builds the new list by constructing *CONS* cell `(x, l)`
 
 ```
-val l0 = [: 1, 2, 3 :]
+val l0 = [1, 2, 3]
 
-// [: 16, 9, 4, 0, 1, 2, 3:]
+// [16, 9, 4, 0, 1, 2, 3]
 val fold l = l0 for i <- 0:5 {i*i :: l}
 
 // error: all elements should have the same type
@@ -2808,7 +2808,7 @@ fun list_find(l: 't list, pred: 't->bool): 't? =
         if pred(x) {Some(x)}
         else {list_find(l.tl(), pred)}
     }
-val l = [: 1, 2, 3:]
+val l = [1, 2, 3]
 val first_even = list_find(fun (x) {x % 2 == 0}, l)
 println(if first_even.issome() {
         string(first_even.value())
@@ -2831,10 +2831,10 @@ fun list_map(l: 'a list, f: 'a->'b): 'b list =
 fun list_map_alt(l: 'a list, f: 'a->'b): 'b list =
     if l == [] {[]} else {f(l.hd()) :: list_map_alt(l.tl(), f)}
 
-val strs = [: "1", "a", "2":]
+val strs = ["1", "a", "2"]
 // convert strings to integers,
 // replace non-integers with -1's.
-// the result is [: 1, -1, 2:]
+// the result is [1, -1, 2]
 val nums = list_map(strs, fun (s: string) {s.to_int_or(-1)})
 ```
 
@@ -2847,7 +2847,7 @@ Because `List.foldl()` and `List.map()` are very common, Ficus provides more con
 fun list_length3(l: 't list): int = fold len=0 for x <- l {len+1}
 
 // use list comprehension instead of List.map()
-val nums = [: for s <- strs {s.to_int_or(-1)} :]
+val nums = [for s <- strs {s.to_int_or(-1)}]
 
 // also, you can just iterate through a list
 // without producing a result (besides the side effects)
@@ -2879,9 +2879,9 @@ Even though many of the list processing operations can be easily implemented, as
 * `l.sort(lt)` — computes the sorted list using the comparison function `lt`:
 
 ```
-val a = [: ("a", 5), ("c", 0), ("A", 1):]
+val a = [("a", 5), ("c", 0), ("A", 1)]
 // sorts the list of pairs by the first element;
-// returns [: ("A", 1), ("a", 5), ("c", 0):]
+// returns [("A", 1), ("a", 5), ("c", 0)]
 val b = List.sort(a, fun ((s1, n1): (string, int),
                 (s2, n2): (string, int)) => s1 < s2)
 ```
@@ -3037,7 +3037,7 @@ fun mergeSort(l: 't list, lt: ('t,'t)->bool): 't list =
             | ([], r) => r
         }
 
-        // scan through a list [: l0, l1, l2, ... :] of sorted lists,
+        // scan through a list [l0, l1, l2, ... ] of sorted lists,
         // merge pairs of lists: l0 with l1, l2 with l3 etc.,
         // so after this pass we get (N+1)/2 lists instead of N
         fun scan(_: 't list list): 't list list
@@ -3054,7 +3054,7 @@ fun mergeSort(l: 't list, lt: ('t,'t)->bool): 't list =
         }
         // start with a list of single-element lists,
         // which are all sorted by default.
-        loop([: for a <- l {[: a :]})
+        loop([for a <- l {[a]}])
     }
 ```
 
@@ -3901,7 +3901,7 @@ val e0 = Ellipse {cx=150.f, cy=100.f, fx=20.f, fy=20.f, sc=color_blue}
 // we cannot have a heterogeneous list,
 // but we can cast all the constructed shapes to IShape
 // and then we can have 'IShape list'.
-val shapes = [: (r0 :> IShape), (e0 :> IShape) :]
+val shapes = [(r0 :> IShape), (e0 :> IShape)]
 val canvas = array((800, 800), (255u8, 255u8, 255u8))
 // draw all the shapes
 for s <- shapes { s.draw(canvas) }

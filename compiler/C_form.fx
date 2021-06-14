@@ -431,14 +431,14 @@ fun get_cinfo_typ(info: cinfo_t, i: id_t, loc: loc_t)
     | CNone => CTypAny
     | CVal ({cv_typ}) => cv_typ
     | CFun (ref {cf_args, cf_rt}) =>
-        CTypFunRawPtr([: for (_, t, _) <- cf_args {t} :], cf_rt)
+        CTypFunRawPtr([for (_, t, _) <- cf_args {t}], cf_rt)
     | CTyp (ref {ct_typ}) => ct_typ
     | CExn _ => CTypExn
     | CInterface (ref {ci_name}) => CTypName(ci_name)
     | CMacro (ref {cm_args}) =>
         match cm_args {
         | [] => CTypAny
-        | _ => CTypFunRawPtr([: for a <- cm_args {CTypAny} :], CTypAny)
+        | _ => CTypFunRawPtr([for a <- cm_args {CTypAny}], CTypAny)
         }
     | CLabel _ => CTypLabel
     | CEnum _ => CTypCInt
@@ -596,10 +596,10 @@ fun walk_ctyp(t: ctyp_t, callb: c_callb_t)
     | CTypUniChar | CTypCSmartPtr | CTypString => t
     | CTypStruct (n_opt, selems) =>
         CTypStruct(walk_id_opt_(n_opt),
-            [: for (n, t) <- selems { (walk_id_(n), walk_ctyp_(t)) } :])
+            [for (n, t) <- selems { (walk_id_(n), walk_ctyp_(t)) }])
     | CTypUnion (n_opt, uelems) =>
         CTypUnion(walk_id_opt_(n_opt),
-            [: for (n, t) <- uelems { (walk_id_(n), walk_ctyp_(t)) } :])
+            [for (n, t) <- uelems { (walk_id_(n), walk_ctyp_(t)) }])
     | CTypFunRawPtr (args, rt) => CTypFunRawPtr(args.map(walk_ctyp_), walk_ctyp_(rt))
     | CTypArray (d, et) => CTypArray(d, walk_ctyp_(et))
     | CTypVector (et) => CTypVector(walk_ctyp_(et))
@@ -670,15 +670,15 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
     | CStmtWhile (e, body, l) => CStmtWhile(walk_cexp_(e), walk_cstmt_(body), l)
     | CStmtDoWhile (body, e, l) => CStmtDoWhile(walk_cstmt_(body), walk_cexp_(e), l)
     | CStmtSwitch (e, cases, l) =>
-        CStmtSwitch(walk_cexp_(e), [: for (ll, sl) <- cases {(walk_cel_(ll), walk_csl_(sl))} :], l)
+        CStmtSwitch(walk_cexp_(e), [for (ll, sl) <- cases {(walk_cel_(ll), walk_csl_(sl))}], l)
     | CDefVal (t, n, e_opt, l) => CDefVal(walk_ctyp_(t), walk_id_(n), walk_cexp_opt_(e_opt), l)
     | CDefFun cf =>
         val {cf_name, cf_args, cf_rt, cf_body} = *cf
         *cf = cf->{
             cf_name=walk_id_(cf_name),
-            cf_args=[: for (a, t, flags) <- cf_args {
+            cf_args=[for (a, t, flags) <- cf_args {
                         (walk_id_(a), walk_ctyp_(t), flags)
-                    } :],
+                    }],
             cf_rt=walk_ctyp_(cf_rt),
             cf_body=walk_csl_(cf_body)
         }
@@ -693,9 +693,9 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
         val {cenum_name, cenum_members} = *ce
         *ce = ce->{
             cenum_name=walk_id_(cenum_name),
-            cenum_members=[: for (n, e_opt) <- cenum_members {
+            cenum_members=[for (n, e_opt) <- cenum_members {
                                 (walk_id_(n), walk_cexp_opt_(e_opt))
-                            } :]
+                            }]
         }
         s
     | CDefInterface ci =>
@@ -703,9 +703,9 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
         *ci = ci->{
             ci_name=walk_id_(ci_name), ci_base=walk_id_(ci_base),
             ci_id=walk_id_(ci_id), ci_vtbl=walk_id_(ci_vtbl),
-            ci_all_methods=[: for (f, ctyp) <- ci_all_methods {
+            ci_all_methods=[for (f, ctyp) <- ci_all_methods {
                                 (walk_id_(f), walk_ctyp_(ctyp))
-                            } :]
+                            }]
         }
         s
     | CMacroDef cm =>
@@ -715,9 +715,9 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
         s
     | CMacroUndef (n, l) => CMacroUndef(walk_id_(n), l)
     | CMacroIf (cs_l, else_l, l) =>
-        CMacroIf([: for (c, sl) <- cs_l {
+        CMacroIf([for (c, sl) <- cs_l {
                 (walk_cexp_(c), walk_csl_(sl))
-            } :], walk_csl_(else_l), l)
+            }], walk_csl_(else_l), l)
     | CMacroInclude _ => s
     | CMacroPragma _ => s
     }

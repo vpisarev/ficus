@@ -57,7 +57,7 @@ fun tok2str(ts: (token_t, loc_t) list)
         ts_part = t :: ts_part
         if i >= 9 {break}
     }
-    " ".join([: for t <- ts_part.rev() {tok2str(t).0} :])
+    " ".join([for t <- ts_part.rev() {tok2str(t).0}])
 }
 
 fun make_unary(uop: unary_t, e: exp_t, loc: loc_t) = ExpUnary(uop, e, make_new_ctx(loc))
@@ -127,14 +127,14 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
         val fr_decl = DefVal(PatIdent(fr_id, acc_loc), fold_init_exp, default_var_flags(), acc_loc)
         val acc_decl = DefVal(fold_pat, fr_exp, default_tempval_flags(), acc_loc)
         val update_fr = ExpAssign(fr_exp, fold_body, body_loc)
-        val new_body = ExpSeq([: acc_decl, update_fr :], void_ctx)
+        val new_body = ExpSeq([acc_decl, update_fr], void_ctx)
         (fr_decl, new_body, fr_exp, global_flags)
     | "all" | "exists" =>
         val is_all = special == "all"
         val fr_decl = DefVal(PatIdent(fr_id, acc_loc), ExpLit(LitBool(is_all),
                             (TypBool, acc_loc)), default_var_flags(), acc_loc)
-        val break_exp = ExpSeq([: ExpAssign(fr_exp, ExpLit(LitBool(!is_all), bool_ctx), body_loc),
-                                ExpBreak(true, body_loc) :], void_ctx)
+        val break_exp = ExpSeq([ExpAssign(fr_exp, ExpLit(LitBool(!is_all), bool_ctx), body_loc),
+                                ExpBreak(true, body_loc)], void_ctx)
         val predicate_exp = if !is_all { fold_body }
                             else { ExpUnary(OpLogicNot, fold_body, bool_ctx) }
         val new_body = ExpIf(predicate_exp, break_exp, ExpNop(body_loc), void_ctx)
@@ -146,25 +146,25 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
                             default_var_flags(), acc_loc)
         val mksome_exp = ExpCall(make_ident(some, body_loc), for_iter_exp :: [],
                                  make_new_ctx(body_loc))
-        val break_exp = ExpSeq([: ExpAssign(fr_exp, mksome_exp, body_loc),
-                                ExpBreak(true, body_loc) :], void_ctx)
+        val break_exp = ExpSeq([ExpAssign(fr_exp, mksome_exp, body_loc),
+                                ExpBreak(true, body_loc)], void_ctx)
         val new_body = ExpIf(fold_body, break_exp, ExpNop(body_loc), void_ctx)
         val new_fr_exp =
         match special {
         | "find" =>
             val x = get_id("x")
-            val some_case = (PatVariant(some, [: PatIdent(x, body_end_loc) :],
+            val some_case = (PatVariant(some, [PatIdent(x, body_end_loc) ],
                              body_end_loc), make_ident(x, body_end_loc))
             val none_case = (PatAny(body_end_loc), ExpThrow(ExpIdent(
                             get_id("NotFoundError"), (TypExn, body_end_loc)), body_end_loc))
-            ExpMatch(fr_exp, [: some_case, none_case :], (make_new_typ(), body_end_loc))
+            ExpMatch(fr_exp, [some_case, none_case ], (make_new_typ(), body_end_loc))
         | _ => fr_exp
         }
         (fr_decl, new_body, new_fr_exp, global_flags)
     | "filter" =>
         val check_exp = ExpIf(ExpUnary(OpLogicNot, fold_body, bool_ctx),
                               ExpContinue(body_loc), ExpNop(body_loc), void_ctx)
-        val new_body = ExpSeq([: check_exp, for_iter_exp :], make_new_ctx(body_loc))
+        val new_body = ExpSeq([check_exp, for_iter_exp ], make_new_ctx(body_loc))
         (ExpNop(body_loc), new_body, ExpNop(body_loc),
          global_flags.{for_flag_make=ForMakeList})
     | _ => throw ParseError(acc_loc, f"unknown fold variation '{special}'")
@@ -206,7 +206,7 @@ fun expseq2exp(eseq: exp_t list, loc: loc_t) =
     | [] => ExpNop(loc)
     | e :: [] => e
     | _ =>
-        val llist = [: for e <- eseq {get_exp_loc(e)} :]
+        val llist = [for e <- eseq {get_exp_loc(e)} ]
         val loc = loclist2loc(llist, loc)
         ExpSeq(eseq, (make_new_typ(), loc))
     }
@@ -350,20 +350,20 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
             if done { break }
         }
         (vts, ExpMkArray(result.rev(), make_new_ctx(l1)))
-    | (LLIST, l1) :: (f, _) :: _ when is_for_start(f) =>
+    | (LVECTOR, l1) :: (f, _) :: _ when is_for_start(f) =>
+        val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeVector)
+        match_paren((ts, for_exp), RVECTOR, l1)
+    | (LVECTOR, l1) :: rest =>
+        val (ts, _, el, _) = parse_exp_list(rest, RVECTOR, kw_mode=KwNone, allow_empty=false)
+        (ts, ExpMkVector(el, make_new_ctx(l1)))
+    | (LSQUARE(true), l1) :: (f, _) :: rest when is_for_start(f) =>
         val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeList)
-        match_paren((ts, for_exp), RLIST, l1)
-    | (LLIST, l1) :: rest =>
-        val (ts, _, el, _) = parse_exp_list(rest, RLIST, kw_mode=KwNone, allow_empty=true)
+        match_paren((ts, for_exp), RSQUARE, l1)
+    | (LSQUARE(true), l1) :: rest =>
+        val (ts, _, el, _) = parse_exp_list(rest, RSQUARE, kw_mode=KwNone, allow_empty=true)
         (ts, fold mklist_e = make_literal(LitEmpty, l1) for e <- el.rev() {
             ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
         })
-    | (LSQUARE(true), l1) :: (f, _) :: rest when is_for_start(f) =>
-        val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeVector)
-        match_paren((ts, for_exp), RSQUARE, l1)
-    | (LSQUARE(true), l1) :: rest =>
-        val (ts, _, el, _) = parse_exp_list(rest, RSQUARE, kw_mode=KwNone, allow_empty=false)
-        (ts, ExpMkVector(el, make_new_ctx(l1)))
     | (t, _) :: _ =>
         throw parse_err(ts, f"unxpected token '{tok2str(t).1}'. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here")
     | _ =>
@@ -972,7 +972,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
                 }
                 val loc = get_exp_loc(glob_when_e)
                 val check_e = ExpIf(glob_when_e, ExpNop(loc), ExpContinue(loc), (TypVoid, loc))
-                expseq2exp([: check_e, body :], loc)
+                expseq2exp([check_e, body ], loc)
             }
         ExpMap(pel_i_l, body, default_for_flags().{
             for_flag_make=for_make,
@@ -990,7 +990,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
                 | Some(when_e) =>
                     val loc = get_exp_loc(when_e)
                     val check_e = ExpIf(when_e, ExpNop(loc), ExpContinue(loc), (TypVoid, loc))
-                    expseq2exp([: check_e, e :], loc)
+                    expseq2exp([check_e, e ], loc)
                 | _ => e
                 }
             ExpFor(pe_l, idxp, body, flags, loc)
@@ -1207,7 +1207,7 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
         | (FINALLY, fe_loc) :: rest =>
             val (ts, final_e) = parse_block(rest)
             val eloc = l1
-            val ll = loclist2loc([: eloc, fe_loc :], eloc)
+            val ll = loclist2loc([eloc, fe_loc ], eloc)
             val tmp = gen_id(parser_ctx.m_idx, "v")
             val def_tmp = DefVal(PatIdent(tmp, eloc), e, default_tempval_flags(), l1)
             val try_block = (def_tmp :: exp2expseq(final_e)) + (make_ident(tmp, l1) :: [])
@@ -1304,10 +1304,10 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
         (ts, params, rt, [], false)
     } else {
         val recarg = std__kwargs__
-        val relems = [: for (i, t, v0, _) <- kw_params { (default_arg_flags(), i, t, v0) } :]
+        val relems = [for (i, t, v0, _) <- kw_params { (default_arg_flags(), i, t, v0) } ]
         val rectyp = TypRecord(ref (relems, true))
         val (_, _, _, loc) = kw_params.hd()
-        val recpat = PatRecord(None, [: for (i, _, _, loci) <- kw_params {(i, PatIdent(i, loci))} :], loc)
+        val recpat = PatRecord(None, [for (i, _, _, loci) <- kw_params {(i, PatIdent(i, loci))} ], loc)
         val unpack_rec = DefVal(recpat, make_ident(recarg, loc), default_tempval_flags(), loc)
         val recparam = PatTyped(PatIdent(recarg, loc), rectyp, loc)
         (ts, params + (recparam :: []), rt, unpack_rec :: [], true)
@@ -1342,12 +1342,12 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
             val loc = get_exp_loc(body)
             expseq2exp(prologue + exp2expseq(body), loc)
         }
-    val paramtyps = [: for p <- params {
+    val paramtyps = [for p <- params {
             match p {
             | PatTyped(_, t, _) => t
             | _ => make_new_typ()
             }
-        } :]
+        }]
     val df = ref (deffun_t { df_name=fname, df_templ_args=[],
         df_args=params, df_typ=TypFun(paramtyps, rt), df_body=body,
         df_flags=fflags, df_scope=[], df_loc=loc,
@@ -1707,7 +1707,7 @@ fun parse_typtuple_(ts: tklist_t, expect_comma: bool,
         if expect_comma { throw parse_err(ts, "',' is expected") }
         if n <= 0L { throw parse_err(ts, "tuple multiplicator should be positive") }
         val (ts, t) = parse_typespec_nf(rest)
-        val tt = [: for i <- 0:(n :> int) {t} :]
+        val tt = [for i <- 0:(n :> int) {t} ]
         parse_typtuple_(ts, true, tt + result, loc)
     | (RPAREN, _) :: rest =>
         val t = match result {
@@ -1721,7 +1721,7 @@ fun parse_typtuple_(ts: tklist_t, expect_comma: bool,
         val (ts, t) = parse_typespec_nf(ts)
         match ts {
         | (STAR _, _) :: (LITERAL(LitInt(n)), _) :: rest =>
-            val tt = [: for i <- 0:(n :> int) {t} :]
+            val tt = [for i <- 0:(n :> int) {t} ]
             parse_typtuple_(rest, true, tt + result, loc)
         | (ARROW, _) :: rest =>
             val (ts, rt) = parse_typespec(rest)
@@ -1837,7 +1837,7 @@ fun parse_deftype(ts: tklist_t)
     val (ts, ifaces) = match ts {
         | (COLON, _) :: rest =>
             val (ts, ifaces) = parse_ident_list(rest, false, true, [])
-            (ts, [: for i <- ifaces { (i, ([] : (id_t, id_t) list)) } :])
+            (ts, [for i <- ifaces { (i, ([] : (id_t, id_t) list)) } ])
         | _ => (ts, [])
         }
     val ts = match ts {
@@ -1947,13 +1947,13 @@ fun parse_iface(ts: tklist_t, loc: loc_t)
         match ts {
         | (FUN, _) :: (IDENT(_, f), _) :: (LPAREN _, _) :: rest =>
             val (ts, params, rt, _, have_keywords) = parse_fun_params(rest)
-            val paramtyps = [: for p <- params {
+            val paramtyps = [for p <- params {
                 match p {
                 | PatTyped(_, t, loc) => t
                 | _ => throw parse_err(rest,
                     "all parameters of interface methods should be identifiers with types ('param: type'); more complex patterns are not allowed")
                 }
-            } :]
+            }]
             val fflags = default_fun_flags().{fun_flag_have_keywords = have_keywords}
             parse_iface_members_(ts, (get_id(f), TypFun(paramtyps, rt), fflags) :: members)
         | (RBRACE, _) :: rest => (rest, members.rev())

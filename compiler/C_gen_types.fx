@@ -34,20 +34,20 @@ import Map, Set, Hashset
 fun ktyp2ctyp_fargs(args: ktyp_t list, rt: ktyp_t, loc: loc_t)
 {
     val args_ =
-    [: for kt <- args {
+    [for kt <- args {
         val ctyp = ktyp2ctyp(kt, loc)
         val {ktp_pass_by_ref} = K_annotate.get_ktprops(kt, loc)
         val ptr_attr =
             match deref_ktyp(kt, loc) {
             | KTypArray (_, _) => []
-            | _ => [: CTypConst :]
+            | _ => [CTypConst]
             }
         if ktp_pass_by_ref { CTypRawPtr(ptr_attr, ctyp) }
         else { ctyp }
-    } :]
+    }]
     val rct = if rt == KTypVoid { [] }
-              else { [: CTypRawPtr([], ktyp2ctyp(rt, loc)) :] }
-    args_ + (rct + [: std_CTypVoidPtr :])
+              else { [CTypRawPtr([], ktyp2ctyp(rt, loc)) ] }
+    args_ + (rct + [std_CTypVoidPtr])
 }
 
 fun ktyp2ctyp(t: ktyp_t, loc: loc_t) {
@@ -324,7 +324,7 @@ fun convert_all_typs(kmods: kmodule_t list)
         val src_typ0 = ctyp, dst_typ = make_ptr(ctyp)
         val (src_typ, src_flags) =
             if ktp_pass_by_ref {
-                (make_const_ptr(src_typ0), [: CArgPassByPtr :])
+                (make_const_ptr(src_typ0), [CArgPassByPtr])
             } else {
                 (src_typ0, [])
             }
@@ -334,13 +334,13 @@ fun convert_all_typs(kmods: kmodule_t list)
         val dst_exp = make_id_t_exp(dst_id, dst_typ, loc)
         val cname_wo_prefix = K_mangle.remove_fx(cname)
         val freef_decl = ref (cdeffun_t {
-            cf_name=free_f, cf_args=[: (dst_id, dst_typ, [: CArgPassByPtr :]) :],
+            cf_name=free_f, cf_args=[(dst_id, dst_typ, [CArgPassByPtr]) ],
             cf_rt=CTypVoid, cf_cname="_fx_free_" + cname_wo_prefix, cf_body=[],
             cf_flags=default_fun_flags().{fun_flag_nothrow=true, fun_flag_private=true},
             cf_scope=[], cf_loc=loc })
         val copyf_decl = ref freef_decl->{
-            cf_name=copy_f, cf_args=[: (src_id, src_typ, src_flags),
-                (dst_id, dst_typ, CArgPassByPtr :: []) :],
+            cf_name=copy_f, cf_args=[(src_id, src_typ, src_flags),
+                (dst_id, dst_typ, CArgPassByPtr :: [])],
             cf_rt=CTypVoid, cf_cname="_fx_copy_" + cname_wo_prefix
             }
         set_idc_entry(tn, CTyp(struct_decl))
@@ -425,13 +425,13 @@ fun convert_all_typs(kmods: kmodule_t list)
 
         fun decref_and_free(dst_exp, free_code, loc) {
             val rc_exp = CExpArrow(dst_exp, get_id("rc"), (CTypInt, loc))
-            val decref_exp = make_call(std_FX_DECREF, [: rc_exp :], CTypInt, loc)
+            val decref_exp = make_call(std_FX_DECREF, [rc_exp], CTypInt, loc)
             val cmp_1_exp = CExpBinary(COpCmp(CmpEQ), decref_exp, make_int_exp(1, loc), (CTypBool, loc))
             val cc_exp = CExpBinary(COpLogicAnd, dst_exp, cmp_1_exp, (CTypBool, loc))
-            val call_free = make_call(std_fx_free, [: dst_exp :], CTypVoid, loc)
+            val call_free = make_call(std_fx_free, [dst_exp], CTypVoid, loc)
             val then_exp = rccode2stmt(CExp(call_free) :: free_code, loc)
             val clear_ptr = CExpBinary(COpAssign, dst_exp, make_nullptr(loc), (CTypVoid, loc))
-            [: CExp(clear_ptr), CStmtIf(cc_exp, then_exp, CStmtNop(loc), loc) :]
+            [CExp(clear_ptr), CStmtIf(cc_exp, then_exp, CStmtNop(loc), loc) ]
         }
 
         all_decls = all_decls.add(tn)
@@ -471,7 +471,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                     val selem2 = make_id_exp(ni, loc)
                     val (cti_arg, cti_arg_flags, selem2) =
                     if ktp_pass_by_ref {
-                        (make_const_ptr(cti), [: CArgPassByPtr :], cexp_deref(selem2))
+                        (make_const_ptr(cti), [CArgPassByPtr], cexp_deref(selem2))
                     } else {
                         (cti, [], selem2)
                     }
@@ -483,7 +483,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 val mktupl =
                 if ktp.ktp_complex {
                     val make_args = (fx_result_id, make_ptr(fx_result_ct),
-                                    [: CArgPassByPtr, CArgRetVal :]) :: make_args
+                                    [CArgPassByPtr, CArgRetVal ]) :: make_args
                     val mktup_id = gen_idc(curr_cm_idx, "mktup")
                     val mktup_decl = ref (cdeffun_t {
                         cf_name=mktup_id, cf_args=make_args.rev(),
@@ -520,7 +520,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                     val selem2 = make_id_exp(arg_ni, loc)
                     val (cti_arg, cti_arg_flags, selem2) =
                     if ktp_pass_by_ref {
-                        (make_const_ptr(cti), [: CArgPassByPtr :], cexp_deref(selem2))
+                        (make_const_ptr(cti), [CArgPassByPtr], cexp_deref(selem2))
                     } else {
                         (cti, [], selem2)
                     }
@@ -532,7 +532,7 @@ fun convert_all_typs(kmods: kmodule_t list)
 
                 val mkrecl = if ktp.ktp_complex {
                     val make_args = (fx_result_id, make_ptr(fx_result_ct),
-                                    [: CArgPassByPtr, CArgRetVal :]) :: make_args
+                                    [CArgPassByPtr, CArgRetVal ]) :: make_args
                     val mkrec_id = gen_idc(curr_cm_idx, "mktup")
                     val mkrec_decl = ref (cdeffun_t {
                         cf_name=mkrec_id,
@@ -574,8 +574,8 @@ fun convert_all_typs(kmods: kmodule_t list)
                             | _ => throw compile_err(loc,
                                 f"unexpected element destructor when converting {get_idk_cname(tn, loc)}")
                             }
-                        val free_code = [: CExp(CExpCall(f, tn_arg ::
-                                free_hd_f :: [], (CTypVoid, loc))) :]
+                        val free_code = [CExp(CExpCall(f, tn_arg ::
+                                free_hd_f :: [], (CTypVoid, loc)))]
                         *freef_decl = freef_decl->{cf_body=free_code}
                         (noid, free_f)
                     }
@@ -588,7 +588,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                         f"missing element copy operator when converting {get_idk_cname(tn, loc)}")
                     }
                 val (ct_hd_arg, hd_arg_flags) =
-                    if pass_by_ref { (make_const_ptr(ct_hd), [: CArgPassByPtr :]) }
+                    if pass_by_ref { (make_const_ptr(ct_hd), [CArgPassByPtr]) }
                     else { (ct_hd, []) }
                 val make_list_body = CExp(CExpCall(make_list_m, CExpTyp(CTypName(tn), loc) ::
                                     copy_hd_f :: [], (CTypInt, loc))) :: []
@@ -596,12 +596,12 @@ fun convert_all_typs(kmods: kmodule_t list)
                     ref (cdeffun_t {
                         cf_name=cons_id,
                         cf_rt=CTypCInt,
-                        cf_args = [:(get_id("hd"), ct_hd_arg, hd_arg_flags),
+                        cf_args = [(get_id("hd"), ct_hd_arg, hd_arg_flags),
                                     (get_id("tl"), ct_tl, []),
                                     (get_id("addref_tl"), CTypBool, []),
                                     (fx_result_id, make_ptr(ct_tl),
-                                        [: CArgPassByPtr, CArgRetVal :])
-                                    :],
+                                        [CArgPassByPtr, CArgRetVal ])
+                                    ],
                         cf_cname="_fx_cons_" + tp_cname_wo_prefix,
                         cf_body=make_list_body,
                         cf_flags=default_fun_flags().{fun_flag_private=true},
@@ -630,7 +630,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                     | _ => throw compile_err(loc,
                         f"unexpected element destructor when converting {get_idk_cname(tn, loc)}")
                     }
-                    val free_code = [: CExp(CExpCall(f, tn_arg :: free_hd_f :: [], (CTypVoid, loc))) :]
+                    val free_code = [CExp(CExpCall(f, tn_arg :: free_hd_f :: [], (CTypVoid, loc))) ]
                     *freef_decl = freef_decl->{cf_body=free_code}
                     (noid, free_f)
                 }
@@ -643,16 +643,16 @@ fun convert_all_typs(kmods: kmodule_t list)
                     f"missing element copy operator when converting {get_idk_cname(tn, loc)}")
                 }
                 val (ct_arg, ct_arg_flags) =
-                    if pass_by_ref { (make_const_ptr(ctyp), [: CArgPassByPtr :]) }
+                    if pass_by_ref { (make_const_ptr(ctyp), [CArgPassByPtr]) }
                     else { (ctyp, []) }
                 val mkref_body = CExp(CExpCall(mkref_m, CExpTyp(CTypName(tn), loc) ::
                                         copy_data_f :: [], (CTypInt, loc))) :: []
                 val mkref_decl = ref (cdeffun_t {
                     cf_name=mkref_id, cf_rt=CTypCInt,
-                    cf_args = [: (get_id("arg"), ct_arg, ct_arg_flags),
+                    cf_args = [(get_id("arg"), ct_arg, ct_arg_flags),
                                 (fx_result_id, make_ptr(fx_result_ct),
-                                [: CArgPassByPtr, CArgRetVal :])
-                                :],
+                                [CArgPassByPtr, CArgRetVal ])
+                                ],
                     cf_cname="_fx_make_" + tp_cname_wo_prefix, cf_body=mkref_body,
                     cf_flags=default_fun_flags().{fun_flag_private=true},
                     cf_scope=[], cf_loc=loc
@@ -705,7 +705,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                         val ni_clean = get_orig_id(ni)
                         val selem_i = CExpMem(src_u_exp, ni_clean, (ti, kvar_loc))
                         val delem_i = CExpMem(dst_u_exp, ni_clean, (ti, kvar_loc))
-                        val switch_label_i_exps = [: make_int_exp(label_i, kvar_loc) :]
+                        val switch_label_i_exps = [make_int_exp(label_i, kvar_loc) ]
                         val free_code_i = gen_free_code(delem_i, ti, false, false, [], kvar_loc)
                         val free_cases= match free_code_i {
                                         | [] => free_cases
@@ -730,7 +730,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                     }
                     free_code
                 | _ => val free_cases = ([], []) :: free_cases
-                    [: CStmtSwitch(dst_tag_exp, free_cases.rev(), kvar_loc) :]
+                    [CStmtSwitch(dst_tag_exp, free_cases.rev(), kvar_loc) ]
                 }
             val free_code =
                 if recursive_variant {
@@ -750,12 +750,12 @@ fun convert_all_typs(kmods: kmodule_t list)
                     match copy_cases {
                     | [] => default_copy_code :: copy_code
                     | _ =>
-                        val copy_cases = ([], [: default_copy_code :]) :: copy_cases
+                        val copy_cases = ([], [default_copy_code]) :: copy_cases
                         CStmtSwitch(src_tag_exp, copy_cases.rev(), kvar_loc) :: copy_code
                     }
                 } else {
-                    val default_copy_code = [: CExp(CExpBinary(COpAssign,
-                                    dst_u_exp, src_u_exp, void_ctx)) :]
+                    val default_copy_code = [CExp(CExpBinary(COpAssign,
+                                    dst_u_exp, src_u_exp, void_ctx))]
                     match copy_cases {
                     | (_, copy_code1) :: [] => copy_code1
                     | _ => default_copy_code
@@ -774,7 +774,7 @@ fun convert_all_typs(kmods: kmodule_t list)
             } else {
                 *struct_decl = struct_decl->{ct_typ=CTypStruct(struct_id_opt, relems)}
             }
-            val ct_ifaces = [: for (iname, _) <- kvar_ifaces { iname } :]
+            val ct_ifaces = [for (iname, _) <- kvar_ifaces { iname } ]
             *struct_decl = struct_decl->{ct_enum=noid, ct_ifaces=ct_ifaces}
             *freef_decl = freef_decl->{cf_body=free_code.rev()}
             *copyf_decl = copyf_decl->{cf_body=copy_code.rev()}
@@ -790,7 +790,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 ci_scope=ki_scope, ci_loc=ki_loc
                 })
             set_idc_entry(ki_name, CInterface(iface_decl))
-            val vtbl_elems = [: for (f, t) <- ki_all_methods {
+            val vtbl_elems = [for (f, t) <- ki_all_methods {
                     val f = get_orig_id(f)
                     val (args, rt) = match t {
                         | KTypFun(args, rt) => (args, rt)
@@ -799,7 +799,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                         }
                     val cargs = std_CTypVoidPtr :: ktyp2ctyp_fargs(args, rt, loc)
                     val ctyp = CTypFunRawPtr(cargs, CTypCInt)
-                    (f, ctyp) } :]
+                    (f, ctyp) }]
             val ctp = ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
                                   ctp_free=(std_FX_FREE_IFACE, std_fx_free_iface),
                                   ctp_copy=(std_FX_COPY_IFACE, std_fx_copy_iface),
@@ -974,9 +974,10 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
     fun update_used_ids(used_ids: id_hashset_t)
     {
         val decls_plus =
-            [: for s <- all_ctypes_decl {
+            [for s <- all_ctypes_decl {
                 val uv = used_ids_by_ccode(s :: [], 8)
-                (s, uv) } :]
+                (s, uv)
+            }]
         var done = false
         for i <- 0:100 {
             val size0 = used_ids.size()

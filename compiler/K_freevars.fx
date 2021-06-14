@@ -9,15 +9,15 @@
     Free variable is variable which is used in function more deep
     than function where it was defined. Global variables is exception
     because they are accessed anywhere. Final C-code don't contain
-    free variables, they are converted to arguments of function in 
+    free variables, they are converted to arguments of function in
     one or the other view in process of declosuring or lambda lifting.
     Both processess uses collect_free_vars function.
 
-    Since mutable variables must be handled in a special way in these 
-    processess, there also defined mutable_freevars_referencing function for 
-    converting each mutable free variable to immutable free variable and 
+    Since mutable variables must be handled in a special way in these
+    processess, there also defined mutable_freevars_referencing function for
+    converting each mutable free variable to immutable free variable and
     set of mutable usual variables. It create reference variable with value of
-    original freevar and dereferencing it into local temporary variables(tempref) 
+    original freevar and dereferencing it into local temporary variables(tempref)
     in start of each function using original freevar.
 */
 
@@ -41,12 +41,12 @@ fun empty_fv_env(size0: int){
         fv_declared_inside = empty_id_hashset(1),
         fv_called_funcs = empty_id_hashset(1) }
 
-    Hashmap.empty(size0, noid, fv_info0)    
+    Hashmap.empty(size0, noid, fv_info0)
 }
 
 fun collect_free_vars(kmods: kmodule_t list, globals: id_t Hashset.t,
-                                                collect_function_info:bool, 
-                                                only_mutable:bool, 
+                                                collect_function_info:bool,
+                                                only_mutable:bool,
                                                 transitive_closure:bool): fv_env_t {
 // collect_function_info - don't collect fv_called_funcs info if it's false.
 // only_mutable - filter out immutable varibles
@@ -162,7 +162,7 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
 
     var fv_env : fv_env_t = collect_free_vars(kmods, globals, false, true, false)
 
-    //Key of map is original name of mutable vars. Value is immutable service reference, 
+    //Key of map is original name of mutable vars. Value is immutable service reference,
     //used in function prolgues to initialize replacing temporary references.
     var ref_map = Hashmap.empty(1024, noid, noid)
 
@@ -175,7 +175,7 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
             afv_fvars.union(ll_info.fv_fvars)
         })
 
-    fun walk_atom_n_eliminate(a: atom_t, loc: loc_t, callb: k_callb_t) = 
+    fun walk_atom_n_eliminate(a: atom_t, loc: loc_t, callb: k_callb_t) =
         match a {
         | AtomId({m=0}) => a
         | AtomId n =>
@@ -188,9 +188,9 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
 
     fun walk_ktyp_n_eliminate(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
 
-    fun walk_kexp_n_eliminate(e: kexp_t, callb: k_callb_t) = 
+    fun walk_kexp_n_eliminate(e: kexp_t, callb: k_callb_t) =
         match e {
-        | KDefVal(kv_name, rhs, loc) => 
+        | KDefVal(kv_name, rhs, loc) =>
             val rhs = walk_kexp(rhs, callb)
             if afv_fvars.mem(kv_name) {
                 // each mutable variable, which is a free variable of at least one function
@@ -250,7 +250,7 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
             val body_loc = get_kexp_loc(kf_body)
             val body = walk_kexp_n_eliminate(kf_body, callb)
             val body = code2kexp(prologue.rev() + kexp2code(body), body_loc)
-            if !fvars.empty() { subst_map = subst_map_backup } 
+            if !fvars.empty() { subst_map = subst_map_backup }
             *kf = kf->{kf_body=body}
             KDefFun(kf)
         | _ => walk_kexp(e, callb)
@@ -263,11 +263,11 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
         kcb_kexp=Some(walk_kexp_n_eliminate)
     }
 
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_top} = km
-        val curr_top_code = [:for e <- km_top {walk_kexp_n_eliminate(e, walk_n_eliminate_callb)}:]
+        val curr_top_code = [for e <- km_top {walk_kexp_n_eliminate(e, walk_n_eliminate_callb)}]
         km.{km_top=curr_top_code}
-    } :]
+    }]
 }
 
 // Just to make sure that closure stays stable with minor modifications
@@ -279,5 +279,5 @@ fun sort_freevars(fvars: id_hashset_t){
             (string(fv), fv) :: fvars_to_sort
         }, [])
     val fvar_pairs_sorted = fvar_pairs_to_sort.sort(fun ((a, _), (b, _)) { a < b })
-    [: for (_, fv) <- fvar_pairs_sorted {fv} :]
+    [for (_, fv) <- fvar_pairs_sorted {fv} ]
 }

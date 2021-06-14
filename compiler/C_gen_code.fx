@@ -268,7 +268,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     var i2e: cexp_map_t = Hashmap.empty(1024, noid, CExpTyp(CTypInt, noloc))
     val u1vals = find_single_use_vals(top_code)
     var block_stack: block_ctx_t ref list = []
-    val for_letters = [: "i", "j", "k", "l", "m" :]
+    val for_letters = ["i", "j", "k", "l", "m" ]
     val fx_status_ = get_id("fx_status")
 
     fun make_label(basename: string, loc: loc_t)
@@ -483,13 +483,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     fun make_break_stmt(loc: loc_t)
     {
         check_inside_loop(true, loc)
-        CExp(make_call(std_FX_BREAK, [: curr_block_label(loc) :], CTypVoid, loc))
+        CExp(make_call(std_FX_BREAK, [curr_block_label(loc)], CTypVoid, loc))
     }
 
     fun make_continue_stmt(loc: loc_t)
     {
         check_inside_loop(false, loc)
-        CExp(make_call(std_FX_CONTINUE, [: curr_block_label(loc) :], CTypVoid, loc))
+        CExp(make_call(std_FX_CONTINUE, [curr_block_label(loc)], CTypVoid, loc))
     }
 
     fun make_if(cc: cexp_t, then_s: cstmt_t, else_s: cstmt_t, loc: loc_t) =
@@ -580,7 +580,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val continue_code =
                 if bctx_continue_used == 0 { [] }
                 else if !is_parallel {
-                    [: CExp(make_call(std_FX_CHECK_CONTINUE, [], CTypVoid, end_loc)) :]
+                    [CExp(make_call(std_FX_CHECK_CONTINUE, [], CTypVoid, end_loc)) ]
                 } else {
                     throw compile_err(loc, "cgen: 'continue' may not be used inside parallel for")
                 }
@@ -588,18 +588,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 if bctx_break_used == 0 {
                     (noid, [])
                 } else if bctx_br_label == noid {
-                    (noid, [: CExp(make_call(std_FX_CHECK_BREAK, [], CTypVoid, end_loc)) :])
+                    (noid, [CExp(make_call(std_FX_CHECK_BREAK, [], CTypVoid, end_loc)) ])
                 } else if !is_parallel {
                     val br_label_exp = make_id_exp(bctx_br_label, end_loc)
-                    (bctx_br_label, [: CExp(make_call(std_FX_CHECK_BREAK_ND, [: br_label_exp :], CTypVoid, end_loc)) :])
+                    (bctx_br_label, [CExp(make_call(std_FX_CHECK_BREAK_ND, [br_label_exp], CTypVoid, end_loc)) ])
                 } else {
                     throw compile_err(loc, "cgen: 'break' may not be used inside parallel for")
                 }
             val check_exn_code =
                 if !is_parallel {
-                    [: CExp(make_call(std_FX_CHECK_EXN, [: parent_label_exp :], CTypVoid, end_loc)) :]
+                    [CExp(make_call(std_FX_CHECK_EXN, [parent_label_exp], CTypVoid, end_loc)) ]
                 } else {
-                    [: CExp(make_call(get_id("FX_CHECK_EXN_PARALLEL"), [: bctx_status, bctx_par_status :], CTypVoid, end_loc)) :]
+                    [CExp(make_call(get_id("FX_CHECK_EXN_PARALLEL"), [bctx_status, bctx_par_status], CTypVoid, end_loc)) ]
                 }
             (br_label, check_exn_code + (break_code + (continue_code + epilogue)))
         }
@@ -628,7 +628,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (vec_exp, ccode) = create_cdefval(gen_idc(cm_idx, "zvec"), CTypVector(elem_ctyp),
                         default_tempval_flags(), "", None, ccode, loc)
                     val call_make_empty = make_call(get_id("fx_rrb_make_empty"),
-                        [: elemsize_exp, free_f_exp, copy_f_exp, cexp_get_addr(vec_exp) :],
+                        [elemsize_exp, free_f_exp, copy_f_exp, cexp_get_addr(vec_exp) ],
                         CTypVoid, loc)
                     (vec_exp, CExp(call_make_empty) :: ccode)
                 | KTypArray(ndims, et) =>
@@ -637,9 +637,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (arr_exp, ccode) = create_cdefval(gen_idc(cm_idx, "zarr"), CTypArray(ndims, elem_ctyp),
                         default_tempval_flags(), "", None, ccode, loc)
                     val call_make_empty = make_call(get_id("fx_make_arr"),
-                        [: make_int_exp(ndims, loc), make_nullptr(loc),
+                        [make_int_exp(ndims, loc), make_nullptr(loc),
                         elemsize_exp, free_f_exp, copy_f_exp,
-                        make_nullptr(loc), cexp_get_addr(arr_exp) :],
+                        make_nullptr(loc), cexp_get_addr(arr_exp)],
                         CTypVoid, loc)
                     (arr_exp, CExp(call_make_empty) :: ccode)
                 | _ =>
@@ -671,14 +671,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         match arr_data {
         | [] => (make_nullptr(loc), ccode)
         | _ =>
-            val arr_ctyp = CTypRawArray([: CTypConst :], elem_ctyp)
+            val arr_ctyp = CTypRawArray([CTypConst], elem_ctyp)
             val arr_data_exp = CExpInit(arr_data, (arr_ctyp, loc))
             create_cdefval(arr_id, arr_ctyp, default_tempval_flags(), "", Some(arr_data_exp), ccode, loc)
         }
 
     fun get_elem_size_free_copy(elem_ctyp: ctyp_t, loc: loc_t)
     {
-        val sizeof_elem_exp = make_call(std_sizeof, [: CExpTyp(elem_ctyp, loc) :], CTypSize_t, loc)
+        val sizeof_elem_exp = make_call(std_sizeof, [CExpTyp(elem_ctyp, loc) ], CTypSize_t, loc)
         val free_f_exp =
             match C_gen_types.get_free_f(elem_ctyp, true, false, loc) {
             | (_, Some free_f) => CExpCast(free_f, std_fx_free_t, loc)
@@ -697,7 +697,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     {
         val arr_ctyp = get_cexp_typ(arr_exp)
         val dims = shape.length()
-        val shape_ctyp = CTypRawArray([: CTypConst :], CTypInt)
+        val shape_ctyp = CTypRawArray([CTypConst], CTypInt)
         val shape_arr = CExpInit(shape, (shape_ctyp, loc))
         val (shape_exp, ccode) = create_cdefval(gen_idc(cm_idx, "shape"), shape_ctyp, default_tempval_flags(), "", Some(shape_arr), [], loc)
         val elem_ctyp =
@@ -712,9 +712,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         val (data_exp, ccode) = decl_plain_arr(gen_idc(cm_idx, "data"), elem_ctyp, data, ccode, loc)
         val (sizeof_elem_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
 
-        val call_mkarr = make_call( std_fx_make_arr, [: make_int_exp(dims, loc), shape_exp,
+        val call_mkarr = make_call( std_fx_make_arr, [make_int_exp(dims, loc), shape_exp,
                                     sizeof_elem_exp, free_f_exp, copy_f_exp, data_exp,
-                                    cexp_get_addr(arr_exp) :], CTypCInt, loc)
+                                    cexp_get_addr(arr_exp)], CTypCInt, loc)
         val ccode = add_fx_call_(call_mkarr, ccode, lbl, loc)
         rccode2stmt(ccode, loc) :: ccode0
     }
@@ -738,9 +738,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
         val nelems_exp = make_int_exp(data.length(), loc)
         val (sizeof_elem_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
-         val call_mkvec = make_call( std_fx_make_vec, [: nelems_exp, sizeof_elem_exp,
+         val call_mkvec = make_call( std_fx_make_vec, [nelems_exp, sizeof_elem_exp,
                                     free_f_exp, copy_f_exp, data_exp,
-                                    cexp_get_addr(vec_exp) :], CTypCInt, loc)
+                                    cexp_get_addr(vec_exp)], CTypCInt, loc)
         val ccode = add_fx_call_(call_mkvec, ccode, lbl, loc)
         rccode2stmt(ccode, loc) :: ccode0
     }
@@ -767,8 +767,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         val ctyp = get_cexp_typ(lst_exp)
         val hd_exp = make_fun_arg(hd_exp, loc)
         val lcon = C_gen_types.get_constructor(ctyp, true, loc)
-        val call_cons = make_call(lcon, [: hd_exp, tl_exp, make_bool_exp(addref_tl, loc),
-                                  cexp_get_addr(lst_exp) :], CTypCInt, loc)
+        val call_cons = make_call(lcon, [hd_exp, tl_exp, make_bool_exp(addref_tl, loc),
+                                  cexp_get_addr(lst_exp)], CTypCInt, loc)
         add_fx_call(call_cons, ccode, loc)
     }
 
@@ -777,7 +777,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         val ctyp = get_cexp_typ(r_exp)
         val arg_exp = make_fun_arg(arg_exp, loc)
         val rcon = C_gen_types.get_constructor(ctyp, true, loc)
-        val call_mkref = make_call(rcon, [: arg_exp, cexp_get_addr(r_exp) :], CTypCInt, loc)
+        val call_mkref = make_call(rcon, [arg_exp, cexp_get_addr(r_exp) ], CTypCInt, loc)
         add_fx_call(call_mkref, ccode, loc)
     }
 
@@ -788,7 +788,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val fold check_exp = e0 for check_i <- rest {
                 CExpBinary(COpLogicAnd, check_exp, check_i, (CTypBool, loc))
             }
-            val check_call = make_call(std_FX_CHECK_EQ_SIZE, [: check_exp, lbl :], CTypVoid, loc)
+            val check_call = make_call(std_FX_CHECK_EQ_SIZE, [check_exp, lbl ], CTypVoid, loc)
             CExp(check_call) :: ccode
         | _ => ccode
         }
@@ -809,7 +809,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 CExpBinary(COpCmp(CmpEQ), sum_exp, make_int_exp(0, loc), bool_ctx),
                 CExpBinary(COpCmp(CmpEQ), sum_exp, make_int_exp(n, loc), bool_ctx),
                 bool_ctx)
-            val check_call = make_call(std_FX_CHECK_EQ_SIZE, [: check_exp, lbl :], CTypVoid, loc)
+            val check_call = make_call(std_FX_CHECK_EQ_SIZE, [check_exp, lbl ], CTypVoid, loc)
             CExp(check_call) :: ccode
         | _ => ccode
         }
@@ -971,7 +971,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         (COpAugAdd, COpAdd, make_int__exp(i, for_loc), init_ccode)
                     | _ =>
                         val (d_exp, init_ccode) = atom2cexp_(delta, true, init_ccode, for_loc)
-                        val init_ccode = CExp(make_call(std_FX_CHECK_ZERO_STEP, [: d_exp, lbl :], CTypVoid, for_loc)) :: init_ccode
+                        val init_ccode = CExp(make_call(std_FX_CHECK_ZERO_STEP, [d_exp, lbl ], CTypVoid, for_loc)) :: init_ccode
                         (COpAugAdd, COpAdd, d_exp, init_ccode)
                     }
                 match b {
@@ -1003,7 +1003,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                            | _ => false
                                            }
                     val calc_n_exp = if is_canonical_for { b_exp }
-                                     else { make_call(std_FX_LOOP_COUNT, [: a_exp, b_exp, d_exp :], CTypInt, for_loc) }
+                                     else { make_call(std_FX_LOOP_COUNT, [a_exp, b_exp, d_exp ], CTypInt, for_loc) }
                     val (add_elem, i_exp, i_exps, n_exps, init_checks, init_ccode) =
                         match (i_exps, n_exps) {
                         | (prev_i :: _, prev_n :: _) =>
@@ -1084,7 +1084,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             ...
                         }
                     */
-                    val calc_n_exp = make_call(std_FX_STR_LENGTH, [: col_exp :], CTypInt, for_loc)
+                    val calc_n_exp = make_call(std_FX_STR_LENGTH, [col_exp], CTypInt, for_loc)
                     val (i_exp, i_exps, n_exps, init_checks, init_ccode) =
                     match (i_exps, n_exps) {
                     | (prev_i :: _, prev_n :: _) =>
@@ -1122,7 +1122,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (i_exps, n_exps, init_checks, init_ccode) =
                     if n_exps == [] {
                         val fold i_exps = [], n_exps = [], init_ccode = init_ccode for k <- 0:ndims {
-                            val calc_n_exp = make_call(std_FX_ARR_SIZE, [: col_exp, make_int_exp(k, for_loc) :], CTypInt, for_loc)
+                            val calc_n_exp = make_call(std_FX_ARR_SIZE, [col_exp, make_int_exp(k, for_loc) ], CTypInt, for_loc)
                             val iter_letter = for_letters.nth(k + dims_ofs)
                             val (n_exp, init_ccode) = add_local(gen_idc(cm_idx, "n" + iter_letter),
                                 CTypInt, default_tempval_flags(), Some(calc_n_exp), init_ccode, for_loc)
@@ -1133,7 +1133,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         (i_exps.rev(), n_exps.rev(), init_checks, init_ccode)
                     } else {
                         val fold init_checks = init_checks for prev_nk@k <- n_exps {
-                            val calc_n_exp = make_call(std_FX_ARR_SIZE, [: col_exp, make_int_exp(k, for_loc) :], CTypInt, for_loc)
+                            val calc_n_exp = make_call(std_FX_ARR_SIZE, [col_exp, make_int_exp(k, for_loc) ], CTypInt, for_loc)
                             val init_check_k = CExpBinary(COpCmp(CmpEQ), prev_nk, calc_n_exp, (CTypBool, for_loc))
                             init_check_k :: init_checks
                         }
@@ -1169,7 +1169,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             FX_RRB_NEXT(iter, ptr)
                         }
                     */
-                    val calc_n_exp = make_call(get_id("FX_RRB_SIZE"), [: col_exp :], CTypInt, for_loc)
+                    val calc_n_exp = make_call(get_id("FX_RRB_SIZE"), [col_exp], CTypInt, for_loc)
                     val (i_exps, n_exps, init_checks, init_ccode) =
                     if n_exps == [] {
                         val (n_exp, init_ccode) = add_local(gen_idc(cm_idx, "n"),
@@ -1191,14 +1191,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (iter_exp, init_ccode) = create_cdefval(iter_id, CTypName(get_id("fx_rrbiter_t")),
                         default_tempval_flags(), "", None, init_ccode, for_loc)
                     val start_read_exp = make_call(get_id("FX_RRB_START_READ"),
-                        [: c_et_exp, col_exp, iter_exp :],
+                        [c_et_exp, col_exp, iter_exp ],
                         std_CTypVoidPtr, for_loc)
                     val ptr_id = gen_idc(cm_idx, "ptr_" + colname)
                     val (ptr_exp, init_ccode) = create_cdefval(ptr_id, c_et_ptr,
                         default_tempval_flags(), "", Some(start_read_exp), init_ccode, for_loc)
                     val get_vec_elem = CExpUnary(COpDeref, ptr_exp, (c_et, for_loc))
                     val incr_call_exp = make_call(get_id("FX_RRB_NEXT"),
-                        [: c_et_exp, iter_exp, ptr_exp :], std_CTypVoidPtr, for_loc)
+                        [c_et_exp, iter_exp, ptr_exp ], std_CTypVoidPtr, for_loc)
                     val incr_exp = CExpBinary(COpAssign, ptr_exp, incr_call_exp, (CTypVoid, for_loc))
                     val elem_flags =
                         if is_ktyp_scalar(et) { default_tempvar_flags() }
@@ -1217,8 +1217,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             init_checks, init_ccode, pre_body_ccode, body_elems, post_checks)
         }
         /*val default_exp = "<complex_exp>"
-        println(f"i_exps: {[:for i_exp <- i_exps {| CExpIdent(i, _) => string(i) | _ => default_exp} :]}")
-        println(f"n_exps: {[:for n_exp <- n_exps {| CExpIdent(i, _) => string(i) | _ => default_exp} :]}")*/
+        println(f"i_exps: {[for i_exp <- i_exps {| CExpIdent(i, _) => string(i) | _ => default_exp} ]}")
+        println(f"n_exps: {[for n_exp <- n_exps {| CExpIdent(i, _) => string(i) | _ => default_exp} ]}")*/
         /* add initial size checks */
         val init_ccode = add_size_eq_check(init_checks.rev(), init_ccode, lbl, for_loc)
         /* in the case of 1D arrays put pre_body_ccode immediately after initialization code */
@@ -1236,9 +1236,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         /* form for-loop headers */
         val fold k_final=0, for_headers=[] for i_exp <- i_exps, n_exp <- n_exps {
             val ifor_loc = get_cexp_loc(n_exp)
-            val init_exps = [: make_assign(i_exp, make_int_exp(0, ifor_loc)) :]
+            val init_exps = [make_assign(i_exp, make_int_exp(0, ifor_loc)) ]
             val check_exp = CExpBinary(COpCmp(CmpLT), i_exp, n_exp, (CTypBool, ifor_loc))
-            val incr_exps_i = [: CExpUnary(COpSuffixInc, i_exp, (CTypInt, ifor_loc)) :]
+            val incr_exps_i = [CExpUnary(COpSuffixInc, i_exp, (CTypInt, ifor_loc)) ]
             val (check_exp, incr_exps_i) =
             if k_final > 0 {
                 (check_exp, incr_exps_i)
@@ -1261,7 +1261,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | _ => check_i
                     })
             }
-            [: (None, [], check_exp_opt, incr_exps) :]
+            [(None, [], check_exp_opt, incr_exps) ]
         }
         (for_headers.rev(), list_exps, i_exps, n_exps, init_ccode, pre_body_ccode, body_elems, post_ccode)
     }
@@ -1341,7 +1341,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     [TODO] need to replace it with one
                     `if (expi0 && expi1 && ... && expi{n-1}) { action_i }`
                     if possible (i.e. when all pre_check_ij's are empty) */
-                    fold case_ccode = [: ai_stmt :]
+                    fold case_ccode = [ai_stmt]
                         for check_ij <- cchecks_i, pre_check_ij <- pre_cchecks_i {
                             val case_stmt = rccode2stmt(case_ccode, ai_end_loc)
                             val checkij_loc = get_cexp_loc(check_ij)
@@ -1361,8 +1361,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             if have_default { all_cases_ccode }
             else {
                 val no_match_err = make_id_t_exp(get_id("FX_EXN_NoMatchError"), CTypCInt, end_loc)
-                val throw_no_match = make_call(std_FX_FAST_THROW, [: no_match_err, parent_lbl :], CTypVoid, end_loc)
-                [: CExp(throw_no_match) :] :: all_cases_ccode
+                val throw_no_match = make_call(std_FX_FAST_THROW, [no_match_err, parent_lbl ], CTypVoid, end_loc)
+                [CExp(throw_no_match)] :: all_cases_ccode
             }
         val (em_label_used, ccode) =
         match (have_complex_branches, all_cases_ccode) {
@@ -1453,7 +1453,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             | OpDiv =>
                 if save_and_check {
                     val lbl = curr_block_label(kloc)
-                    val chk_denom = make_call(get_id("FX_CHECK_DIV_BY_ZERO"), [: ce2, lbl :], CTypVoid, kloc)
+                    val chk_denom = make_call(get_id("FX_CHECK_DIV_BY_ZERO"), [ce2, lbl ], CTypVoid, kloc)
                     val div_exp = CExpBinary(COpDiv, ce1, ce2, (ctyp, kloc))
                     (true, div_exp, CExp(chk_denom) :: ccode)
                 } else {
@@ -1462,7 +1462,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             | OpMod =>
                 if save_and_check {
                     val lbl = curr_block_label(kloc)
-                    val chk_denom = make_call(get_id("FX_CHECK_DIV_BY_ZERO"), [: ce2, lbl :], CTypVoid, kloc)
+                    val chk_denom = make_call(get_id("FX_CHECK_DIV_BY_ZERO"), [ce2, lbl ], CTypVoid, kloc)
                     val mod_exp = CExpBinary(COpMod, ce1, ce2, (ctyp, kloc))
                     (true, mod_exp, CExp(chk_denom) :: ccode)
                 } else if int_divmod_operands {
@@ -1517,12 +1517,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 match (c_bop, get_cexp_typ(ce1)) {
                 | (COpCmp(CmpEQ), CTypString) =>
                     val f_exp = get_id("fx_streq")
-                    val call_streq = make_call(f_exp, [: cexp_get_addr(ce1), cexp_get_addr(ce2) :], CTypBool, kloc)
+                    val call_streq = make_call(f_exp, [cexp_get_addr(ce1), cexp_get_addr(ce2) ], CTypBool, kloc)
                     (true, call_streq, ccode)
                 | (COpAdd, CTypVector _) =>
                     val (dst_exp, ccode) = get_dstexp(dstexp_r, "v", ctyp, ccode, kloc)
                     val call_concat = make_call(get_id("fx_rrb_concat"),
-                        [: cexp_get_addr(ce1), cexp_get_addr(ce2), cexp_get_addr(dst_exp) :], CTypCInt, kloc)
+                        [cexp_get_addr(ce1), cexp_get_addr(ce2), cexp_get_addr(dst_exp) ], CTypCInt, kloc)
                     val ccode = add_fx_call(call_concat, ccode, kloc)
                     (false, dst_exp, ccode)
                 | _ => (true, CExpBinary(c_bop, ce1, ce2, (ctyp, kloc)), ccode)
@@ -1560,7 +1560,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val ktyp = get_atom_ktyp(v, kloc)
                 val {ktp_ptr} = K_annotate.get_ktprops(ktyp, kloc)
                 val extract_ctag =
-                    if ktp_ptr { make_call(std_FX_REC_VARIANT_TAG, [: cv :], CTypCInt, kloc) }
+                    if ktp_ptr { make_call(std_FX_REC_VARIANT_TAG, [cv], CTypCInt, kloc) }
                     else { cexp_mem(cv, get_id("tag"), CTypCInt) }
                 val extract_ctag =
                     match ktyp {
@@ -1594,7 +1594,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     match cinfo_(vn, kloc) {
                     | CExn (ref {cexn_data}) =>
                         val exn_data = cexp_mem(cv, get_id("data"), CTypAny)
-                        val exn_data = make_call(get_id("FX_EXN_DATA"), [: CExpTyp(CTypName(cexn_data), kloc), exn_data :], ctyp, kloc)
+                        val exn_data = make_call(get_id("FX_EXN_DATA"), [CExpTyp(CTypName(cexn_data), kloc), exn_data ], ctyp, kloc)
                         (true, exn_data, ccode)
                     | _ =>
                         throw compile_err(kloc,
@@ -1635,7 +1635,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         match cinfo_(tn, kloc) {
                         | CInterface _ =>
                             make_call(std_fx_query_iface,
-                                [: cexp_get_addr(src_exp), make_id_exp(dst_iface->ci_id, kloc), cexp_get_addr(dst_exp) :],
+                                [cexp_get_addr(src_exp), make_id_exp(dst_iface->ci_id, kloc), cexp_get_addr(dst_exp) ],
                                 CTypCInt, kloc)
                         | CTyp (ref {ct_ifaces}) =>
                             var idx = -1
@@ -1649,7 +1649,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                     f"the interface '{dst_iface->ci_cname}' is not implemented by '{ctyp2str(src_typ, kloc).0}'")
                             }
                             make_call(std_fx_make_iface,
-                                [: src_exp, make_int_exp(idx, kloc), cexp_get_addr(dst_exp) :],
+                                [src_exp, make_int_exp(idx, kloc), cexp_get_addr(dst_exp) ],
                                 CTypCInt, kloc)
                         | _ =>
                             throw compile_err(kloc,
@@ -1685,7 +1685,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                     f"the interface '{src_iface->ci_cname}' is not implemented by '{ctyp2str(ctyp, kloc).0}'")
                             }
                             make_call(std_fx_get_object,
-                                [: cexp_get_addr(src_exp), make_int_exp(idx, kloc), cexp_get_addr(dst_exp) :],
+                                [cexp_get_addr(src_exp), make_int_exp(idx, kloc), cexp_get_addr(dst_exp) ],
                                 CTypCInt, kloc)
                         | _ =>
                             throw compile_err(kloc,
@@ -1699,7 +1699,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 (false, dst_exp, ccode)
             | (IntrinPopExn, []) =>
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "curr_exn", CTypExn, ccode, kloc)
-                val e = make_call(get_id("fx_exn_get_and_reset"), [: cexp_get_addr(dst_exp) :], CTypVoid, kloc)
+                val e = make_call(get_id("fx_exn_get_and_reset"), [cexp_get_addr(dst_exp)], CTypVoid, kloc)
                 (false, dst_exp, CExp(e) :: ccode)
             | (IntrinStrConcat, al) =>
                 val fold strs = [], ccode = ccode for a <- al {
@@ -1708,21 +1708,21 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         match (a, get_cexp_typ(c_exp)) {
                         | (AtomLit(KLitChar c), CTypUniChar) =>
                             make_call(get_id("FX_MAKE_STR1"),
-                                [: make_lit_exp(KLitString(string(c)), kloc) :], CTypString, kloc)
+                                [make_lit_exp(KLitString(string(c)), kloc) ], CTypString, kloc)
                         | (AtomId n, CTypUniChar) =>
-                            make_call(get_id("FX_MAKE_VAR_STR1"), [: c_exp :], CTypString, kloc)
+                            make_call(get_id("FX_MAKE_VAR_STR1"), [c_exp], CTypString, kloc)
                         | _ => c_exp
                         }
                     (s_exp :: strs, ccode)
                 }
                 val strs_id = gen_idc(cm_idx, "strs")
-                val strs_ctyp = CTypRawArray([: CTypConst :], CTypString)
+                val strs_ctyp = CTypRawArray([CTypConst], CTypString)
                 val strs0 = CExpInit(strs.rev(), (strs_ctyp, kloc))
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "concat_str", CTypString, ccode, kloc)
                 val (strs_exp, sub_ccode) = create_cdefval(strs_id, strs_ctyp, default_tempval_flags(), "", Some(strs0), [], kloc)
                 val call_exp = make_call(get_id("fx_strjoin"),
-                                [: make_nullptr(kloc), make_nullptr(kloc), make_nullptr(kloc),
-                                   strs_exp, make_int_exp(strs.length(), kloc), cexp_get_addr(dst_exp) :],
+                                [make_nullptr(kloc), make_nullptr(kloc), make_nullptr(kloc),
+                                   strs_exp, make_int_exp(strs.length(), kloc), cexp_get_addr(dst_exp)],
                                 CTypInt, kloc)
                 val sub_ccode = add_fx_call(call_exp, sub_ccode, kloc)
                 val ccode = rccode2stmt(sub_ccode, kloc) :: ccode
@@ -1731,9 +1731,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (arr_exp, ccode) = atom2cexp(arr_or_str, ccode, kloc)
                 val c_e =
                     match get_atom_ktyp(arr_or_str, kloc) {
-                    | KTypString => make_call(get_id("FX_STR_LENGTH"), [: arr_exp :], CTypInt, kloc)
-                    | KTypArray _ => make_call(get_id("FX_ARR_SIZE"), [: arr_exp, make_int_exp(0, kloc) :], CTypInt, kloc)
-                    | KTypVector _ => make_call(get_id("FX_RRB_SIZE"), [: arr_exp :], CTypInt, kloc)
+                    | KTypString => make_call(get_id("FX_STR_LENGTH"), [arr_exp], CTypInt, kloc)
+                    | KTypArray _ => make_call(get_id("FX_ARR_SIZE"), [arr_exp, make_int_exp(0, kloc) ], CTypInt, kloc)
+                    | KTypVector _ => make_call(get_id("FX_RRB_SIZE"), [arr_exp], CTypInt, kloc)
                     | ktyp =>
                         throw compile_err( kloc,
                             f"cgen: unsupported container type {ktyp} of {atom2str(arr_or_str)} in KExpIntrin(IntrinGetSize...)")
@@ -1743,13 +1743,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (arr_exp, ccode) = atom2cexp(arr_or_str, ccode, kloc)
                 val c_e =
                     match (get_atom_ktyp(arr_or_str, kloc), i) {
-                    | (KTypString, 0L) => make_call(get_id("FX_STR_LENGTH"), [: arr_exp :], CTypInt, kloc)
-                    | (KTypVector _, 0L) => make_call(get_id("FX_RRB_SIZE"), [: arr_exp :], CTypInt, kloc)
+                    | (KTypString, 0L) => make_call(get_id("FX_STR_LENGTH"), [arr_exp], CTypInt, kloc)
+                    | (KTypVector _, 0L) => make_call(get_id("FX_RRB_SIZE"), [arr_exp], CTypInt, kloc)
                     | (KTypArray (ndims, _), i) =>
                         if !(0L <= i && i < int64(ndims)) {
                             throw compile_err(kloc, f"array dimension index {i}i is beyond dimensionality {ndims}")
                         }
-                        make_call(get_id("FX_ARR_SIZE"), [: arr_exp, make_int__exp(i, kloc) :], CTypInt, kloc)
+                        make_call(get_id("FX_ARR_SIZE"), [arr_exp, make_int__exp(i, kloc) ], CTypInt, kloc)
                     | _ => throw compile_err(kloc, "cgen: unsupported container type in KExpIntrin(IntrinGetSize...)")
                     }
                 (true, c_e, ccode)
@@ -1757,7 +1757,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val lbl = curr_block_label(kloc)
                 val (arrsz_exp, ccode) = atom2cexp(arrsz, ccode, kloc)
                 val (idx_exp, ccode) = atom2cexp(idx, ccode, kloc)
-                val chk = make_call(get_id("FX_CHKIDX_SCALAR"), [: arrsz_exp, idx_exp, lbl :], CTypVoid, kloc)
+                val chk = make_call(get_id("FX_CHKIDX_SCALAR"), [arrsz_exp, idx_exp, lbl ], CTypVoid, kloc)
                 (false, dummy_exp, CExp(chk) :: ccode)
             | (IntrinCheckIdxRange, arrsz :: a :: b :: delta :: scale :: shift :: []) =>
                 val lbl = curr_block_label(kloc)
@@ -1767,8 +1767,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (delta_exp, ccode) = atom2cexp(delta, ccode, kloc)
                 val (scale_exp, ccode) = atom2cexp(scale, ccode, kloc)
                 val (shift_exp, ccode) = atom2cexp(shift, ccode, kloc)
-                val chk = make_call(get_id("FX_CHKIDX_RANGE"), [: arrsz_exp, a_exp, b_exp, delta_exp,
-                                    scale_exp, shift_exp, lbl :], CTypVoid, kloc)
+                val chk = make_call(get_id("FX_CHKIDX_RANGE"), [arrsz_exp, a_exp, b_exp, delta_exp,
+                                    scale_exp, shift_exp, lbl], CTypVoid, kloc)
                 (false, dummy_exp, CExp(chk) :: ccode)
             | (IntrinMath(s), args) =>
                 val fold cargs = [], ccode = ccode for a <- args {
@@ -1835,8 +1835,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val f_exp = make_id_exp(f, cf_loc)
                 val fv_args =
                     if !have_fv_arg { [] }
-                    else if !cf_flags.fun_flag_uses_fv { [: make_nullptr(kloc) :] }
-                    else if f == curr_func(kloc) { [: make_id_t_exp(get_id("fx_fv"), std_CTypVoidPtr, cf_loc) :] }
+                    else if !cf_flags.fun_flag_uses_fv { [make_nullptr(kloc)] }
+                    else if f == curr_func(kloc) { [make_id_t_exp(get_id("fx_fv"), std_CTypVoidPtr, cf_loc) ] }
                     else {
                         throw compile_err( kloc,
                         f"cgen: looks like lambda lifting did not transform '{cf_cname}' call correctly. " +
@@ -1852,7 +1852,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val ftyp = deref_ktyp(get_idk_ktyp(f, kloc), kloc)
                 val cftyp = C_gen_types.ktyp2ctyp(ftyp, kloc)
                 val f_exp = cexp_mem(fclo_exp, get_id("fp"), cftyp)
-                val fv_args = [: cexp_mem(fclo_exp, get_id("fcv"), std_CTypVoidPtr) :]
+                val fv_args = [cexp_mem(fclo_exp, get_id("fcv"), std_CTypVoidPtr) ]
                 (f_exp, true, fv_args, false, ccode)
             | _ => throw compile_err(kloc, f"cgen: the called '{idc2str(f, kloc)}' is not a function nor value")
             }
@@ -1883,7 +1883,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             // convert all the arguments to C expressions,
             // add the object pointer to the beginning of the list
             val obj_cexp = cexp_mem(io_cexp, get_id("obj"), std_CTypVoidPtr)
-            val fold args = [:make_fun_arg(obj_cexp, kloc):], ccode = ccode for arg <- args {
+            val fold args = [make_fun_arg(obj_cexp, kloc)], ccode = ccode for arg <- args {
                 val (carg, ccode) = atom2cexp(arg, ccode, kloc)
                 val carg = make_fun_arg(carg, kloc)
                 (carg :: args, ccode)
@@ -1923,7 +1923,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
             if tcon != noid {
                 val (t_exp, ccode) = get_dstexp(dstexp_r, prefix, ctyp, ccode, kloc)
-                val call_mktup = make_call(tcon, cargs.rev() + [: cexp_get_addr(t_exp) :], CTypVoid, kloc)
+                val call_mktup = make_call(tcon, cargs.rev() + [cexp_get_addr(t_exp)], CTypVoid, kloc)
                 (false, t_exp, CExp(call_mktup) :: ccode)
             } else {
                 val tup = gen_idc(cm_idx, prefix)
@@ -1937,7 +1937,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val fp_id = gen_idc(cm_idx, fp_prefix)
                 ensure_sym_is_defined_or_declared(f, kloc)
                 val f_exp = make_id_exp(f, kloc)
-                val e0 = CExpInit([: f_exp, make_nullptr(kloc) :], (ctyp, kloc))
+                val e0 = CExpInit([f_exp, make_nullptr(kloc) ], (ctyp, kloc))
                 val (fp_exp, ccode) = create_cdefval(fp_id, ctyp, default_tempval_flags(), "", Some(e0), ccode, kloc)
                 (true, fp_exp, ccode)
             } else {
@@ -1948,7 +1948,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 }
                 val (fp_exp, ccode) = get_dstexp(dstexp_r, fp_prefix, ctyp, ccode, kloc)
                 ensure_sym_is_defined_or_declared(make_fp, kloc)
-                val call_mkclo = make_call(make_fp, cargs.rev() + [: cexp_get_addr(fp_exp) :], CTypVoid, kloc)
+                val call_mkclo = make_call(make_fp, cargs.rev() + [cexp_get_addr(fp_exp)], CTypVoid, kloc)
                 (false, fp_exp, CExp(call_mkclo) :: ccode)
             }
         | KExpMkArray (all_literals, arows, _) =>
@@ -1995,7 +1995,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val tags_data = (make_int_exp(-1, kloc) :: tags_data.tl()).rev()
                 val (tags_exp, sub_ccode) = decl_plain_arr(gen_idc(cm_idx, "tags"), CTypSInt(8), tags_data, sub_ccode, kloc)
                 val (arr_data_exp, sub_ccode) = decl_plain_arr(gen_idc(cm_idx, "parts"), std_CTypVoidPtr, arr_data.rev(), sub_ccode, kloc)
-                val sizeof_elem_exp = make_call(std_sizeof, [: CExpTyp(elem_ctyp, kloc) :], CTypSize_t, kloc)
+                val sizeof_elem_exp = make_call(std_sizeof, [CExpTyp(elem_ctyp, kloc) ], CTypSize_t, kloc)
                 val free_f_exp =
                     match C_gen_types.get_free_f(elem_ctyp, true, false, kloc) {
                     | (_, Some free_f) => CExpCast(free_f, std_fx_free_t, kloc)
@@ -2009,8 +2009,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val call_mkarr =
                 make_call(
                     get_id("fx_compose_arr"),
-                    [: make_int_exp(dims, kloc), sizeof_elem_exp, free_f_exp,
-                       copy_f_exp, tags_exp, arr_data_exp, cexp_get_addr(arr_exp) :],
+                    [make_int_exp(dims, kloc), sizeof_elem_exp, free_f_exp,
+                       copy_f_exp, tags_exp, arr_data_exp, cexp_get_addr(arr_exp)],
                     CTypCInt,
                     kloc)
                 val sub_ccode = add_fx_call(call_mkarr, sub_ccode, kloc)
@@ -2020,8 +2020,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (arr_exp, ccode) = get_dstexp(dstexp_r, "arr", ctyp, ccode, kloc)
                 val nrows = arows.length()
                 val ncols = arows.hd().length()
-                val shape = if nrows > 1 { [: nrows, ncols :] } else { [: ncols :] }
-                val shape = [: for i <- shape { make_int_exp(i, kloc) } :]
+                val shape = if nrows > 1 { [nrows, ncols] } else { [ncols] }
+                val shape = [for i <- shape { make_int_exp(i, kloc) } ]
                 val fold data = [], ccode = ccode for arow <- arows {
                     fold data = data, ccode = ccode for (_, a) <- arow {
                         val (e, ccode) = atom2cexp(a, ccode, kloc)
@@ -2030,7 +2030,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 }
                 if all_literals {
                     val dims = shape.length()
-                    val shape_ctyp = CTypRawArray([: CTypConst :], CTypInt)
+                    val shape_ctyp = CTypRawArray([CTypConst], CTypInt)
                     val shape_arr = CExpInit(shape, (shape_ctyp, kloc))
                     val (shape_exp, ccode_) = create_cdefval(gen_idc(cm_idx, "shape"), shape_ctyp,
                                                 default_tempval_flags(), "", Some(shape_arr), [], kloc)
@@ -2042,9 +2042,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     set_idc_entry(data_id, CVal(data_cv.{cv_flags=data_flags.{val_flag_private=true}}))
                     glob_data_ccode = glob_data_ccode_
                     val (sizeof_elem_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, kloc)
-                    val call_mkarr = make_call( std_fx_make_arr, [: make_int_exp(dims, kloc), shape_exp,
+                    val call_mkarr = make_call( std_fx_make_arr, [make_int_exp(dims, kloc), shape_exp,
                                         sizeof_elem_exp, free_f_exp, copy_f_exp, data_exp,
-                                        cexp_get_addr(arr_exp) :], CTypCInt, kloc)
+                                        cexp_get_addr(arr_exp)], CTypCInt, kloc)
 
                     val ccode_ = add_fx_call(call_mkarr, ccode_, kloc)
                     (false, arr_exp, rccode2stmt(ccode_, kloc) :: ccode)
@@ -2093,7 +2093,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val tags_data = (make_int_exp(-1, kloc) :: tags_data.tl()).rev()
                 val (tags_exp, sub_ccode) = decl_plain_arr(gen_idc(cm_idx, "tags"), CTypSInt(8), tags_data, sub_ccode, kloc)
                 val (vec_data_exp, sub_ccode) = decl_plain_arr(gen_idc(cm_idx, "parts"), std_CTypVoidPtr, vec_data.rev(), sub_ccode, kloc)
-                val sizeof_elem_exp = make_call(std_sizeof, [: CExpTyp(elem_ctyp, kloc) :], CTypSize_t, kloc)
+                val sizeof_elem_exp = make_call(std_sizeof, [CExpTyp(elem_ctyp, kloc) ], CTypSize_t, kloc)
                 val free_f_exp =
                     match C_gen_types.get_free_f(elem_ctyp, true, false, kloc) {
                     | (_, Some free_f) => CExpCast(free_f, std_fx_free_t, kloc)
@@ -2107,8 +2107,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val call_mkvec =
                 make_call(
                     get_id("fx_compose_vec"),
-                    [: sizeof_elem_exp, free_f_exp, copy_f_exp, tags_exp,
-                       vec_data_exp, cexp_get_addr(vec_exp) :],
+                    [sizeof_elem_exp, free_f_exp, copy_f_exp, tags_exp,
+                     vec_data_exp, cexp_get_addr(vec_exp)],
                     CTypCInt,
                     kloc)
                 val sub_ccode = add_fx_call(call_mkvec, sub_ccode, kloc)
@@ -2161,18 +2161,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 match idxs {
                 | DomainFast i :: [] =>
                     val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
-                    val get_elem_exp = make_call(std_FX_STR_ELEM, [: arr_exp, i_exp :], CTypUniChar, kloc)
+                    val get_elem_exp = make_call(std_FX_STR_ELEM, [arr_exp, i_exp ], CTypUniChar, kloc)
                     (true, get_elem_exp, ccode)
                 | DomainElem i :: [] =>
                     val (i_exp, ccode) = atom2cexp_(i, true, ccode, kloc)
                     val (get_elem_exp, ccode) =
                     match border {
                     | BorderNone =>
-                        val chk_exp = make_call(std_FX_STR_CHKIDX, [: arr_exp, i_exp, lbl :], CTypVoid, kloc)
-                        (make_call(std_FX_STR_ELEM, [: arr_exp, i_exp :], CTypUniChar, kloc), CExp(chk_exp) :: ccode)
-                    | BorderClip => (make_call(std_FX_STR_ELEM_CLIP, [: arr_exp, i_exp :], CTypUniChar, kloc), ccode)
-                    | BorderWrap => (make_call(std_FX_STR_ELEM_WRAP, [: arr_exp, i_exp :], CTypUniChar, kloc), ccode)
-                    | BorderZero => (make_call(std_FX_STR_ELEM_ZERO, [: arr_exp, i_exp :], CTypUniChar, kloc), ccode)
+                        val chk_exp = make_call(std_FX_STR_CHKIDX, [arr_exp, i_exp, lbl ], CTypVoid, kloc)
+                        (make_call(std_FX_STR_ELEM, [arr_exp, i_exp ], CTypUniChar, kloc), CExp(chk_exp) :: ccode)
+                    | BorderClip => (make_call(std_FX_STR_ELEM_CLIP, [arr_exp, i_exp ], CTypUniChar, kloc), ccode)
+                    | BorderWrap => (make_call(std_FX_STR_ELEM_WRAP, [arr_exp, i_exp ], CTypUniChar, kloc), ccode)
+                    | BorderZero => (make_call(std_FX_STR_ELEM_ZERO, [arr_exp, i_exp ], CTypUniChar, kloc), ccode)
                     }
                     (true, get_elem_exp, ccode)
                 | DomainRange (a, b, delta) :: [] =>
@@ -2192,7 +2192,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (delta_exp, ccode) = atom2cexp(delta, ccode, kloc)
                     val (substr_exp, ccode) = get_dstexp(dstexp_r, "substr", ctyp, ccode, kloc)
                     val call_substr = make_call(std_fx_substr,
-                        [: cexp_get_addr(arr_exp), a_exp, b_exp, delta_exp, make_int_exp(mask, kloc), cexp_get_addr(substr_exp) :],
+                        [cexp_get_addr(arr_exp), a_exp, b_exp, delta_exp, make_int_exp(mask, kloc), cexp_get_addr(substr_exp) ],
                         CTypString, kloc)
                     (false, substr_exp, add_fx_call(call_substr, ccode, kloc))
                 | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing string (should be a single scalar index or range)")
@@ -2201,24 +2201,24 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 match idxs {
                 | DomainFast i :: [] =>
                     val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
-                    val get_elem_exp = make_call(get_id("FX_RRB_ELEM"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                    val get_elem_exp = make_call(get_id("FX_RRB_ELEM"), [CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
                     (true, get_elem_exp, ccode)
                 | DomainElem i :: [] =>
                     val (i_exp, ccode) = atom2cexp_(i, true, ccode, kloc)
                     val (get_elem_exp, ccode) =
                     match border {
                     | BorderNone =>
-                        val chk_exp = make_call(get_id("FX_RRB_CHKIDX"), [: arr_exp, i_exp, lbl :], CTypVoid, kloc)
-                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                        val chk_exp = make_call(get_id("FX_RRB_CHKIDX"), [arr_exp, i_exp, lbl ], CTypVoid, kloc)
+                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM"), [CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
                         (get_elem_exp, CExp(chk_exp) :: ccode)
                     | BorderClip =>
-                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_CLIP"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_CLIP"), [CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
                         (get_elem_exp, ccode)
                     | BorderWrap =>
-                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_WRAP"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_WRAP"), [CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
                         (get_elem_exp, ccode)
                     | BorderZero =>
-                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_ZERO"), [: CExpTyp(ctyp, kloc), arr_exp, i_exp :], ctyp, kloc)
+                        val get_elem_exp = make_call(get_id("FX_RRB_ELEM_ZERO"), [CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
                         (get_elem_exp, ccode)
                     }
                     (true, get_elem_exp, ccode)
@@ -2244,8 +2244,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     }
                     val (slice_exp, ccode) = get_dstexp(dstexp_r, "slice", ctyp, ccode, kloc)
                     val call_slice = make_call(get_id("fx_rrb_slice"),
-                        [: cexp_get_addr(arr_exp), a_exp, b_exp, make_int_exp(delta, kloc),
-                           make_int_exp(mask, kloc), cexp_get_addr(slice_exp) :],
+                        [cexp_get_addr(arr_exp), a_exp, b_exp, make_int_exp(delta, kloc),
+                         make_int_exp(mask, kloc), cexp_get_addr(slice_exp)],
                         ctyp, kloc)
                     (false, slice_exp, add_fx_call(call_slice, ccode, kloc))
                 | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing vector (should be a single scalar index or range)")
@@ -2261,7 +2261,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 if need_flatten {
                     val (subarr_exp, _) = get_dstexp(dstexp_r, "arr", ctyp, ccode, kloc)
                     val call_flatten = make_call(get_id("fx_flatten_arr"),
-                        [: cexp_get_addr(arr_exp), cexp_get_addr(subarr_exp) :], CTypCInt, kloc)
+                        [cexp_get_addr(arr_exp), cexp_get_addr(subarr_exp) ], CTypCInt, kloc)
                     (false, subarr_exp, add_fx_call(call_flatten, ccode, kloc))
                 } else if need_subarr {
                     if border != BorderNone {
@@ -2292,12 +2292,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         }
                     }
                     val (subarr_exp, ccode) = get_dstexp(dstexp_r, "arr", ctyp, ccode, kloc)
-                    val rdata_ctyp = CTypRawArray([: CTypConst :], CTypInt)
+                    val rdata_ctyp = CTypRawArray([CTypConst], CTypInt)
                     val rdata_arr = CExpInit(range_data.rev(), (rdata_ctyp, kloc))
                     val (rdata_exp, sub_ccode) =
                         create_cdefval(gen_idc(cm_idx, "ranges"), rdata_ctyp,
                                     default_tempval_flags(), "", Some(rdata_arr), [], kloc)
-                    val call_subarr = make_call(std_fx_subarr, [: cexp_get_addr(arr_exp), rdata_exp, cexp_get_addr(subarr_exp) :], CTypInt, kloc)
+                    val call_subarr = make_call(std_fx_subarr, [cexp_get_addr(arr_exp), rdata_exp, cexp_get_addr(subarr_exp) ], CTypInt, kloc)
                     val sub_ccode = add_fx_call(call_subarr, sub_ccode, kloc)
                     val ccode = rccode2stmt(sub_ccode, kloc) :: ccode
                     (false, subarr_exp, ccode)
@@ -2313,7 +2313,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             (chk_exp_opt, i_exp :: i_exps, ccode)
                         | DomainElem i =>
                             val (i_exp, ccode) = atom2cexp_(i, true, ccode, kloc)
-                            val chk_exp1 = make_call(std_FX_CHKIDX1, [: arr_exp, make_int_exp(dim, kloc), i_exp :], CTypBool, kloc)
+                            val chk_exp1 = make_call(std_FX_CHKIDX1, [arr_exp, make_int_exp(dim, kloc), i_exp ], CTypBool, kloc)
                             val chk_exp_opt =
                             match chk_exp_opt {
                             | Some chk_exp =>
@@ -2328,7 +2328,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val ccode =
                         match chk_exp_opt {
                         | Some chk_exp =>
-                            val call_chkidx = make_call(std_FX_CHKIDX, [: chk_exp, lbl :], CTypVoid, kloc)
+                            val call_chkidx = make_call(std_FX_CHKIDX, [chk_exp, lbl ], CTypVoid, kloc)
                             CExp(call_chkidx) :: ccode
                         | _ => ccode
                         }
@@ -2367,7 +2367,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val ctyp = get_cexp_typ(i_exp)
                 if is_subarray(i, kloc) {
                     val copy_arr_data =
-                    make_call(std_fx_copy_arr_data, [: cexp_get_addr(e_exp), cexp_get_addr(i_exp), make_bool_exp(true, kloc) :], CTypInt, kloc)
+                    make_call(std_fx_copy_arr_data, [cexp_get_addr(e_exp), cexp_get_addr(i_exp), make_bool_exp(true, kloc) ], CTypInt, kloc)
                     add_fx_call(copy_arr_data, ccode, kloc)
                 } else {
                     val ccode = C_gen_types.gen_free_code(i_exp, ctyp, true, false, ccode, kloc)
@@ -2425,7 +2425,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val ccode = epilogue + (try_ccode + (bctx_prologue + ccode))
             pop_block_ctx(try_end_loc)
             val fx_status_exp = make_fx_status(try_end_loc)
-            val catch_ccode = [: CExp(CExpBinary(COpAssign, fx_status_exp, make_int_exp(0, try_end_loc), (CTypVoid, try_end_loc))) :]
+            val catch_ccode = [CExp(CExpBinary(COpAssign, fx_status_exp, make_int_exp(0, try_end_loc), (CTypVoid, try_end_loc))) ]
             val catch_ccode =
                 match ctyp {
                 | CTypVoid => catch_ccode
@@ -2441,14 +2441,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val ccode =
             if rethrow {
                 val (i_exp, ccode) = id2cexp(i, false, ccode, kloc)
-                val throw_exp = make_call(std_FX_RETHROW, [: cexp_get_addr(i_exp), lbl :], CTypVoid, kloc)
+                val throw_exp = make_call(std_FX_RETHROW, [cexp_get_addr(i_exp), lbl ], CTypVoid, kloc)
                 CExp(throw_exp) :: ccode
             } else {
                 match builtin_exceptions.find_opt(i) {
                 | Some _ =>
                     val i = get_id("FX_EXN_" + pp(i))
                     val i_exp = make_id_t_exp(i, CTypCInt, kloc)
-                    val throw_exp = make_call(std_FX_FAST_THROW, [: i_exp, lbl :], CTypVoid, kloc)
+                    val throw_exp = make_call(std_FX_FAST_THROW, [i_exp, lbl ], CTypVoid, kloc)
                     CExp(throw_exp) :: ccode
                 | _ =>
                     val move_f =
@@ -2458,7 +2458,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         | _ => throw compile_err(kloc, "cgen: throw is applied to neither exception nor value of 'exn' type")
                         }
                     val (i_exp, ccode) = id2cexp(i, move_f, ccode, kloc)
-                    val throw_exp = make_call(std_FX_THROW, [: cexp_get_addr(i_exp), make_bool_exp(move_f, kloc), lbl :], CTypVoid, kloc)
+                    val throw_exp = make_call(std_FX_THROW, [cexp_get_addr(i_exp), make_bool_exp(move_f, kloc), lbl ], CTypVoid, kloc)
                     CExp(throw_exp) :: ccode
                 }
             }
@@ -2601,12 +2601,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (iter_exp, ccode) = create_cdefval( gen_idc(cm_idx, "iter"), iter_t,
                                                 default_tempvar_flags(), "", None, ccode, for_loc)
                     val call_start_write = make_call(get_id("FX_RRB_START_WRITE"),
-                                                [: CExpTyp(elemtyp, for_loc), sizeof_elem_exp, free_f_exp, copy_f_exp,
-                                                dst_exp, iter_exp :],
+                                                [CExpTyp(elemtyp, for_loc), sizeof_elem_exp, free_f_exp, copy_f_exp,
+                                                dst_exp, iter_exp],
                                                 std_CTypVoidPtr, for_loc)
                     val (dst_ptr, ccode) = create_cdefval( gen_idc(cm_idx, "dstptr"), make_ptr(elemtyp),
                                                 default_tempvar_flags(), "", Some(call_start_write), ccode, for_loc)
-                    val call_end_write = make_call(get_id("FX_RRB_END_WRITE"), [: iter_exp, dst_ptr :],
+                    val call_end_write = make_call(get_id("FX_RRB_END_WRITE"), [iter_exp, dst_ptr ],
                                                 CTypVoid, for_loc)
                     ((coll_ctyp, elemtyp, dst_exp, dst_ptr, iter_exp) :: dst_data, ccode, CExp(call_end_write) :: finalize_ccode)
                 | (ForMakeList, _, KTypList kelemtyp) =>
@@ -2655,10 +2655,10 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | (l_exp :: _, [], true) =>
                         /* if there is no fixed range or array iterated, just list(s),
                             and we need to make array, we need to compute length of the list. */
-                        val call_list_len = make_call(std_fx_list_length, [: l_exp :], CTypInt, nested_loc)
+                        val call_list_len = make_call(std_fx_list_length, [l_exp], CTypInt, nested_loc)
                         val (lstlen, lst_len_ccode) =
                         create_cdefval(gen_idc(cm_idx, "len"), CTypInt, default_tempval_flags(), "", Some(call_list_len), [], nested_loc)
-                        (1, [: lstlen :], lst_len_ccode)
+                        (1, [lstlen], lst_len_ccode)
                     | ([], [], true) =>
                         throw compile_err(nested_loc, for_err_msg(for_idx, nfors, -1, "array comprehension uses 'for' with indefinite range"))
                     | _ => (1, n_exps, [])
@@ -2671,7 +2671,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     else {
                         val (_, cmp_size_list) =
                         fold k = 0, cmp_size_list = [] for n_exp <- n_exps {
-                            val size_i = make_call(std_FX_ARR_SIZE, [: dst_exp0, make_int_exp(k, nested_loc) :], CTypInt, nested_loc)
+                            val size_i = make_call(std_FX_ARR_SIZE, [dst_exp0, make_int_exp(k, nested_loc) ], CTypInt, nested_loc)
                             val cmp_size_i = CExpBinary(COpCmp(CmpEQ), size_i, n_exp, (CTypBool, nested_loc))
                             (k + 1, cmp_size_i :: cmp_size_list)
                         }
@@ -2781,15 +2781,15 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                           | _ => get_id("FX_RRB_WRITE_FAST")
                                           }
                             val lbl = curr_block_label(body_loc)
-                            val write_call = make_call(write_f, [: CExpTyp(elemtyp, body_loc),
-                                                iter, dst_ptr, result_j, lbl :], CTypVoid, body_loc)
+                            val write_call = make_call(write_f, [CExpTyp(elemtyp, body_loc),
+                                                iter, dst_ptr, result_j, lbl], CTypVoid, body_loc)
                             (CExp(write_call) :: body_ccode)
                         | ForMakeList =>
                             val (node_exp, body_ccode) =
                                 create_cdefval(gen_idc(cm_idx, "node"), coll_ctyp, default_tempval_flags(), "",
                                                Some(make_nullptr(body_loc)), body_ccode, body_loc)
                             val body_ccode = make_cons_call(result_j, make_nullptr(body_loc), false, node_exp, body_ccode, body_loc)
-                            val append_call = make_call(std_FX_LIST_APPEND, [: dst_exp, iter, node_exp :], CTypVoid, body_loc)
+                            val append_call = make_call(std_FX_LIST_APPEND, [dst_exp, iter, node_exp ], CTypVoid, body_loc)
                             (CExp(append_call) :: body_ccode)
                         | _ => throw compile_err(body_loc, "unsupported kind of comprehension (only arrays, vectors and lists are supported)")
                         }
@@ -2807,8 +2807,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val for_incrs =
                         if k > 0 || !add_incr_dstptr { for_incrs }
                         else {
-                            for_incrs + [: for (_, _, _, dst_ptr, _) <- dst_data {
-                                            CExpUnary(COpSuffixInc, dst_ptr, (CTypVoid, for_loc)) } :]
+                            for_incrs + [for (_, _, _, dst_ptr, _) <- dst_data {
+                                         CExpUnary(COpSuffixInc, dst_ptr, (CTypVoid, for_loc)) }]
                         }
                     val insert_pragma = for_idx == 0 && is_parallel_map && k + 1 == nfor_headers
                     val for_body_ccode = if !insert_pragma { for_ccode }
@@ -2832,7 +2832,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val for_ccode = CStmtFor(t_opt, for_inits, for_check_opt, for_incrs,
                                             rccode2stmt(for_body_ccode, kloc), kloc) :: for_ccode
                     val for_ccode = if !insert_pragma { for_ccode }
-                                    else { for_ccode + [: CMacroPragma("omp parallel for", kloc) :] }
+                                    else { for_ccode + [CMacroPragma("omp parallel for", kloc) ] }
                     val for_ccode = if k > 0 || pre_body_ccode == [] { for_ccode }
                                     else { for_ccode + pre_body_ccode }
                     for_ccode
@@ -2843,12 +2843,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 (pre_map_ccode, post_ccode + (for_ccode + init_ccode))
             }
 
-            val (pre_map_ccode, map_ccode) = form_map([], 0, e_idoml_l + [: (body, [], []) :], [], [])
+            val (pre_map_ccode, map_ccode) = form_map([], 0, e_idoml_l + [(body, [], []) ], [], [])
             val map_ccode =
                 if !is_parallel_map { map_ccode }
                 else {
                     val update_exn_parallel = make_call(get_id("FX_UPDATE_EXN_PARALLEL"),
-                                                        [: par_status, map_lbl :], CTypVoid, kloc)
+                                                        [par_status, map_lbl ], CTypVoid, kloc)
                     CExp(update_exn_parallel) :: map_ccode
                 }
             val map_ccode = finalize_ccode + map_ccode
@@ -2857,11 +2857,11 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     map_ccode
                 } else {
                     val tcon = C_gen_types.get_constructor(ctyp, false, kloc)
-                    val cargs = [: for (_, _, dst_exp, _, _) <- dst_data {
+                    val cargs = [for (_, _, dst_exp, _, _) <- dst_data {
                                     make_fun_arg(dst_exp, kloc)
-                                } :]
+                                }]
                     val (t_exp, map_ccode) = get_dstexp(dstexp_r, "tup", ctyp, map_ccode, kloc)
-                    val call_mktup = make_call(tcon, cargs + [: cexp_get_addr(t_exp) :], CTypVoid, kloc)
+                    val call_mktup = make_call(tcon, cargs + [cexp_get_addr(t_exp)], CTypVoid, kloc)
                     CExp(call_mktup) :: map_ccode
                 }
             (false, dummy_exp, map_ccode + pre_map_ccode + ccode)
@@ -2885,7 +2885,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 (make_dummy_exp(kloc), ccode, glob_status, [])
             }
             val (for_headers, _, _, _, ccode, pre_body_ccode, body_elems, post_ccode) =
-            process_for(lbl, idoml, at_ids, 0, 1, ndims, 0, [: (body, [], []) :], ccode, kloc)
+            process_for(lbl, idoml, at_ids, 0, 1, ndims, 0, [(body, [], []) ], ccode, kloc)
             new_for_block_ctx(ndims, flags, nested_status, par_status, kloc)
             val body_ccode = if is_parallel_for { decl_nested_status }
                              else { [] }
@@ -2914,12 +2914,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     ([], post_ccode)
                 } else {
                     val update_exn_parallel = make_call(get_id("FX_UPDATE_EXN_PARALLEL"),
-                                                        [: par_status, lbl :], CTypVoid, kloc)
-                    ([: CMacroPragma("omp parallel for", kloc) :],
+                                                        [par_status, lbl ], CTypVoid, kloc)
+                    ([CMacroPragma("omp parallel for", kloc) ],
                     CExp(update_exn_parallel) :: post_ccode)
                 }
             /* add it all to ccode; nothing to return/assign, since "for-loop" is "void" expression */
-            (false, dummy_exp, post_ccode + ([: for_stmt :] + (omp_pragma + ccode)))
+            (false, dummy_exp, post_ccode + ([for_stmt ] + (omp_pragma + ccode)))
         | KExpWhile (c, body, _) =>
             new_block_ctx(BlockKind_Loop, kloc)
             val (cc, cc_code) = kexp2cexp(c, ref None, [])
@@ -3025,7 +3025,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         }
                     val (init_exp, delta_ccode) =
                         if !ktp_ptr {
-                            val init_exp = CExpInit([: tag_exp :], (ctyp, kloc))
+                            val init_exp = CExpInit([tag_exp], (ctyp, kloc))
                             (init_exp, [])
                         } else if is_null {
                             (make_nullptr(kloc), [])
@@ -3036,7 +3036,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             val struct_ctyp = CTypName(rn)
                             val data_id = gen_idc(cm_idx, pp(i) + "_data")
                             val rc_exp = make_int_exp(1, kloc)
-                            val data_init = CExpInit([: rc_exp, tag_exp :], (struct_ctyp, kloc))
+                            val data_init = CExpInit([rc_exp, tag_exp ], (struct_ctyp, kloc))
                             val (data_exp, delta_ccode) =
                             create_cdefval(data_id, struct_ctyp, default_val_flags().{val_flag_private=true},
                                             "", Some(data_init), [], kloc)
@@ -3295,7 +3295,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val result_ctyp = C_gen_types.ktyp2ctyp(kf_rt, kf_loc)
                 val (var_exp, ccode, ret_ccode) =
                 if is_recursive_variant {
-                    val alloc_var = make_call(std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START, [: CExpTyp(result_ctyp, kf_loc) :], CTypVoid, kf_loc)
+                    val alloc_var = make_call(std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START, [CExpTyp(result_ctyp, kf_loc) ], CTypVoid, kf_loc)
                     val (var_exp, _) = create_cdefval(gen_idc(cm_idx, "v"), result_ctyp, default_tempvar_flags(), "v", None, [], kf_loc)
                     val ccode = CExp(alloc_var) :: []
                     val ccode =
@@ -3306,7 +3306,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             CExp(make_assign(cexp_arrow(var_exp, get_id("ifaces"), ifaces_ptr_ctyp),
                                 cexp_get_addr(make_id_t_exp(ifaces_id, ifaces_ctyp, kloc)))) :: ccode
                         }
-                    val ret_ccode = [: CStmtReturn(Some(make_int_exp(0, kf_loc)), kf_loc) :]
+                    val ret_ccode = [CStmtReturn(Some(make_int_exp(0, kf_loc)), kf_loc) ]
                     (var_exp, ccode, ret_ccode)
                 } else {
                     (var_exp, [], [])
@@ -3342,12 +3342,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | (_, Some free_f) => free_f
                     | _ => throw compile_err(kf_loc, f"cgen: missing destructor for closure vars '{get_idk_cname(fcv_t_id, kf_loc)}'")
                     }
-                val alloc_fcv = make_call( std_FX_MAKE_FP_IMPL_START, [: CExpTyp(fcv_t, kf_loc), free_f_exp,
-                                           make_id_t_exp(f_id, std_CTypVoidPtr, kloc) :], CTypVoid, kf_loc )
+                val alloc_fcv = make_call( std_FX_MAKE_FP_IMPL_START, [CExpTyp(fcv_t, kf_loc), free_f_exp,
+                                           make_id_t_exp(f_id, std_CTypVoidPtr, kloc)], CTypVoid, kf_loc )
                 val (fcv_exp, _) = create_cdefval(gen_idc(cm_idx, "fcv"), make_ptr(fcv_t),
                                                   default_tempval_flags(), "fcv", None, [], kf_loc)
-                val ret_ccode = [: CStmtReturn(Some(make_int_exp(0, kf_loc)), kf_loc) :]
-                val ccode = [: CExp(alloc_fcv) :]
+                val ret_ccode = [CStmtReturn(Some(make_int_exp(0, kf_loc)), kf_loc) ]
+                val ccode = [CExp(alloc_fcv)]
                 val fold ccode = ccode for (a, t, flags)@idx <- real_args {
                     val src_exp = make_id_t_exp(a, t, kf_loc)
                     val (src_exp, t) = maybe_deref_fun_arg(idx, src_exp, t, flags, kf_loc)
@@ -3373,17 +3373,16 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val alloc_exn_data =
                     make_call(
                         std_FX_MAKE_EXN_IMPL_START,
-                        [:
-                            make_id_t_exp(exn_tag, CTypCInt, kf_loc),
-                            CExpTyp(exn_data_t, kf_loc),
-                            make_id_t_exp(exn_info, std_fx_exn_info_t, kf_loc)
-                            :],
+                        [ make_id_t_exp(exn_tag, CTypCInt, kf_loc),
+                          CExpTyp(exn_data_t, kf_loc),
+                          make_id_t_exp(exn_info, std_fx_exn_info_t, kf_loc)
+                        ],
                         CTypVoid,
                         kf_loc)
-                    val ret_ccode = [: CStmtReturn(Some(make_int_exp(0, kf_loc)), kf_loc) :]
+                    val ret_ccode = [CStmtReturn(Some(make_int_exp(0, kf_loc)), kf_loc) ]
                     val exn_data = make_id_t_exp(get_id("exn_data"), make_ptr(exn_data_t), kf_loc)
                     val dst_exp = cexp_arrow(exn_data, get_id("data"), exn_typ)
-                    val ccode = [: CExp(alloc_exn_data) :]
+                    val ccode = [CExp(alloc_exn_data)]
                     val fold ccode = ccode for (a, t, flags)@idx <- real_args {
                         val src_exp = make_id_t_exp(a, t, kf_loc)
                         val (src_exp, t) = maybe_deref_fun_arg(idx, src_exp, t, flags, kf_loc)
@@ -3494,11 +3493,11 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             cf_loc=end_loc })
     set_idc_entry(init_name, CFun(init_f))
     set_idc_entry(deinit_name, CFun(deinit_f))
-    val mod_names = if km_main { km_cname :: [: for {cmod_cname} <- cmods { cmod_cname } :] }
+    val mod_names = if km_main { km_cname :: [for {cmod_cname} <- cmods { cmod_cname } ] }
                     else { [] }
     val all_ccode_prologue = gen_ccode_prologue(km_main, start_loc) + top_inline_ccode.rev()
     val all_ccode = global_vars + fwd_fdecls.rev() + glob_data_ccode.rev() +
-                    c_fdecls + [: CDefFun(init_f), CDefFun(deinit_f) :] +
+                    c_fdecls + [CDefFun(init_f), CDefFun(deinit_f) ] +
                     gen_main(km_main, mod_names, end_loc)
     (all_ccode_prologue, all_ccode)
 }

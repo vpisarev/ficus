@@ -22,7 +22,7 @@ type token_t =
     | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
     | LPAREN: bool | STR_INTERP_LPAREN | RPAREN | LSQUARE: bool
-    | RSQUARE | LBRACE | RBRACE | LARRAY | RARRAY | LLIST | RLIST
+    | RSQUARE | LBRACE | RBRACE | LARRAY | RARRAY | LLIST | RLIST | LVECTOR | RVECTOR
     | COMMA | DOT | SEMICOLON | COLON | BAR | CONS | CAST | BACKSLASH: bool
     | BACK_ARROW | DOUBLE_ARROW | ARROW | QUESTION | EOF | MINUS: bool
     | PLUS: bool | STAR: bool | SLASH | SYNC | PERCENT | POWER | DOT_STAR
@@ -88,6 +88,8 @@ fun tok2str(t: token_t)
     | RBRACE => ("RBRACE", "}")
     | LARRAY => ("LARRAY", "[|")
     | RARRAY => ("RARRAY", "|]")
+    | LVECTOR => ("LVECTOR", "[<")
+    | RVECTOR => ("RVECTOR", ">]")
     | LLIST => ("LLIST", "[:")
     | RLIST => ("RLIST", ":]")
     | COMMA => ("COMMA", ",")
@@ -173,7 +175,7 @@ fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, token_t) 
    -1 - reserved/internal-use keyword.
 */
 var ficus_keywords = Hashmap.from_list("", (FUN, 0),
-    [: ("as", (AS, 1)), ("break", (BREAK, 0)), ("catch", (CATCH, 1)),
+    [ ("as", (AS, 1)), ("break", (BREAK, 0)), ("catch", (CATCH, 1)),
     ("class", (CLASS, 2)), ("continue", (CONTINUE, 0)), ("do", (DO, 2)),
     ("else", (ELSE, 1)), ("exception", (EXCEPTION, 2)),
     ("false", (LITERAL(Ast.LitBool(false)), 0)), ("finally", (FINALLY, 1)),
@@ -198,7 +200,7 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
     ("@parallel", (PARALLEL, 2)),  ("@private", (PRIVATE, 2)),
     ("@sync", (SYNC, 1)), ("@text", (DATA("text"), 2)),
     ("@pure", (PURE, 2)),  ("@unzip", (UNZIP, 2)),
-     :])
+    ])
 
 /*  The function that returns the actual tokenizer/lexer function,
     a closure with all the necessary parameters inside.
@@ -248,7 +250,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
     var prev_dot = false
 
     fun getloc(pos: int) = (strm.lineno, max(pos - strm.bol, 0) + 1)
-    fun addloc(loc: lloc_t, tokens: token_t list) = [: for t <- tokens {(t, loc)} :]
+    fun addloc(loc: lloc_t, tokens: token_t list) = [for t <- tokens {(t, loc)} ]
     fun check_ne(ne: bool, loc: lloc_t, name: string): void =
         if !ne {
             throw Lxu.LexerError(loc, f"unexpected '{name}'. Insert ';' or newline")
@@ -445,12 +447,12 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     throw Lxu.LexerError(loc, "Unexpected ')', check parens")
                 }
             | '[' =>
-                if c1 == ':' {
+                if c1 == '<' {
                     pos += 1
-                    val tokens = if prev_ne {(LLIST, loc) :: []}
-                        else {(LSQUARE(false), loc) :: (COLON, loc) :: []}
-                    paren_stack = tokens.hd() :: paren_stack
-                    tokens
+                    check_ne(prev_ne, getloc(pos-1), "[<")
+                    val t = (LVECTOR, loc)
+                    paren_stack = t :: paren_stack
+                    t :: []
                 } else if c1 == '|' {
                     pos += 1
                     check_ne(prev_ne, getloc(pos-1), "[|")
@@ -621,18 +623,6 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             | ':' =>
                 if c1 == ':' {pos += 1; (CONS, loc) :: []}
                 else if c1 == '>' {pos += 1; (CAST, loc) :: []}
-                else if c1 == ']' {
-                    pos += 1
-                    new_exp = false
-                    match paren_stack {
-                        | (LLIST, _) :: rest =>
-                            paren_stack = rest; (RLIST, loc) :: []
-                        | (LSQUARE _, _) :: rest =>
-                            paren_stack = rest; (COLON, loc) :: (RSQUARE, loc) :: []
-                        | _ => throw Lxu.LexerError(getloc(pos-2),
-                            "Unexpected ':]', check parens")
-                    }
-                }
                 else {(COLON, loc) :: []}
             | '!' =>
                 if c1 == '=' {
@@ -662,6 +652,13 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 } else if c1 == '>' {
                     if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpShiftRight), loc) :: []}
                     else {pos += 1; (SHIFT_RIGHT, loc) :: []}
+                } else if c1 == ']' {
+                    pos += 1
+                    new_exp = false
+                    match paren_stack {
+                        | (LVECTOR, _) :: rest => paren_stack = rest; (RVECTOR, loc) :: []
+                        | _ => throw Lxu.LexerError(loc, "Unexpected '>]', check parens")
+                    }
                 } else {
                     (CMP(Ast.CmpGT), loc) :: []
                 }

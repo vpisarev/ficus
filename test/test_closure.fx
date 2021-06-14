@@ -187,10 +187,10 @@ TEST("closure.kfor_0_no_kfor_fv", fun()
             }
             kfor_inner()
         } |]
-        [: for f <- hs {f(100)} :]
+        [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct(1000), [: for i <- 0:10 {1100} :])
+    EXPECT_EQ(outer_direct(1000), [for i <- 0:10 {1100}])
 })
 
 TEST("closure.kfor_1_fv", fun()
@@ -207,10 +207,10 @@ TEST("closure.kfor_1_fv", fun()
             kfor_inner()
         } |]
 
-        [: for f <- hs {f(100)} :]
+        [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct_2(1000), [: for i <- 0:10 {2200 + i} :])
+    EXPECT_EQ(outer_direct_2(1000), [for i <- 0:10 {2200 + i}])
 })
 
 TEST("closure.kfor_1", fun()
@@ -226,10 +226,10 @@ TEST("closure.kfor_1", fun()
             kfor_inner()
         } |]
 
-        [: for f <- hs {f(100)} :]
+        [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct(1000), [: for i <- 0:10 {1100 + i} :])
+    EXPECT_EQ(outer_direct(1000), [for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_2", fun()
@@ -247,10 +247,10 @@ TEST("closure.kfor_2", fun()
             kfor_inner(i + 1)
         } |]
 
-        [: for f <- hs {f(100)} :]
+        [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct_k(1000), [: for i <- 0:10 {2200 + 2 * i + 1} :])
+    EXPECT_EQ(outer_direct_k(1000), [for i <- 0:10 {2200 + 2 * i + 1}])
 })
 
 TEST("closure.kfor_3", fun()
@@ -263,10 +263,10 @@ TEST("closure.kfor_3", fun()
             h
         } |]
 
-        [: for f <- hs {f(100)} :]
+        [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_inner_val(1000), [: for i <- 0:10 {1100 + i} :])
+    EXPECT_EQ(outer_inner_val(1000), [for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_4", fun()
@@ -279,10 +279,10 @@ TEST("closure.kfor_4", fun()
             h
         } |]
 
-        [: for f <- hs {f(100)} :]
+        [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_inner_var(1000), [: for i <- 0:10 {1100 + i} :])
+    EXPECT_EQ(outer_inner_var(1000), [for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_5", fun()
@@ -295,11 +295,11 @@ TEST("closure.kfor_5", fun()
             fun h(ii: int) = ii + i_value + a
             h
         } |]
-        (i_value, [: for f <- hs {f(100)} :])
+        (i_value, [for f <- hs {f(100)}])
     }
 
     val result = outer_outer_var(1000)
-    EXPECT_EQ(result.1, [: for i <- 0:10 {1100 + result.0} :])
+    EXPECT_EQ(result.1, [for i <- 0:10 {1100 + result.0}])
 })
 
 TEST("closure.object", fun()

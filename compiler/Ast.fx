@@ -1107,7 +1107,7 @@ fun get_unary_fname(uop: unary_t, loc: loc_t) =
             f"for unary operation \"{uop}\" there is no corresponding function")
     }
 
-fun fname_always_import(): id_t list = [:
+fun fname_always_import(): id_t list = [
     fname_op_add(), fname_op_sub(), fname_op_mul(), fname_op_div(), fname_op_rdiv(),
     fname_op_mod(), fname_op_pow(), fname_op_dot_add(), fname_op_dot_sub(),
     fname_op_dot_mul(), fname_op_dot_div(), fname_op_dot_mod(), fname_op_dot_pow(),
@@ -1122,7 +1122,7 @@ fun fname_always_import(): id_t list = [:
     fname_to_int16(), fname_to_uint32(), fname_to_int32(), fname_to_uint64(),
     fname_to_int64(), fname_to_float(), fname_to_double(), fname_to_bool(),
     fname_string(), fname_print(), fname_repr(), fname_hash()
-:]
+]
 
 fun get_cast_fname(t: typ_t, loc: loc_t) =
     match deref_typ(t) {
@@ -1142,7 +1142,7 @@ fun get_cast_fname(t: typ_t, loc: loc_t) =
     | _ => throw CompileError(loc, f"for type '{typ2str(t)}' there is no corresponding cast function")
     }
 
-val reserved_keywords = Set.from_list(String.cmp, [: "fx_result", "fx_status", "fx_fv" :])
+val reserved_keywords = Set.from_list(String.cmp, ["fx_result", "fx_status", "fx_fv"])
 
 fun get_builtin_exception(n0: id_t, loc: loc_t) =
     match builtin_exceptions.find_opt(n0) {
@@ -1283,21 +1283,21 @@ fun check_n_walk_typ(t: typ_t, callb: ast_callb_t) =
     | _ => walk_typ(t, callb)
     }
 fun check_n_walk_tlist(tlist: typ_t list, callb: ast_callb_t) =
-    [: for t <- tlist {check_n_walk_typ(t, callb)} :]
+    [for t <- tlist {check_n_walk_typ(t, callb)}]
 fun check_n_walk_exp(e: exp_t, callb: ast_callb_t) =
     match callb.ast_cb_exp {
     | Some(f) => f(e, callb)
     | _ => walk_exp(e, callb)
     }
 fun check_n_walk_elist(elist: exp_t list, callb: ast_callb_t): exp_t list =
-    [: for e <- elist { check_n_walk_exp(e, callb) } :]
+    [for e <- elist { check_n_walk_exp(e, callb) }]
 fun check_n_walk_pat(p: pat_t, callb: ast_callb_t) =
     match callb.ast_cb_pat {
     | Some(f) => f(p, callb)
     | _ => walk_pat(p, callb)
     }
 fun check_n_walk_plist(plist: pat_t list, callb: ast_callb_t) =
-    [: for p <- plist { check_n_walk_pat(p, callb) } :]
+    [for p <- plist { check_n_walk_pat(p, callb) }]
 
 fun walk_typ(t: typ_t, callb: ast_callb_t) =
     match t {
@@ -1321,8 +1321,8 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypVarArray(et) => TypVarArray(check_n_walk_typ(et, callb))
     | TypVarRecord => t
     | TypRecord((ref (relems, ordered)) as r) =>
-        val new_relems = [: for (flags, n, t, v) <- relems {
-            (flags, n, check_n_walk_typ(t, callb), v)} :]
+        val new_relems = [ for (flags, n, t, v) <- relems {
+            (flags, n, check_n_walk_typ(t, callb), v)} ]
         *r = (new_relems, ordered)
         t
     | TypExn => t
@@ -1339,9 +1339,9 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     fun walk_elist_(el: exp_t list) = check_n_walk_elist(el, callb)
     fun walk_pat_(p: pat_t) = check_n_walk_pat(p, callb)
     fun walk_plist_(pl: pat_t list) = check_n_walk_plist(pl, callb)
-    fun walk_pe_l_(pe_l: (pat_t, exp_t) list) = [: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) } :]
-    fun walk_ne_l_(ne_l: (id_t, exp_t) list) = [: for (n, e) <- ne_l { (n, walk_exp_(e)) } :]
-    fun walk_cases_(pe_l: (pat_t, exp_t) list) = [: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) } :]
+    fun walk_pe_l_(pe_l: (pat_t, exp_t) list) = [for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) }]
+    fun walk_ne_l_(ne_l: (id_t, exp_t) list) = [for (n, e) <- ne_l { (n, walk_exp_(e)) }]
+    fun walk_cases_(pe_l: (pat_t, exp_t) list) = [for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) }]
     fun walk_exp_opt_(e_opt: exp_t?) {
         | Some(e) => Some(walk_exp_(e))
         | _ => None
@@ -1361,7 +1361,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpSeq(elist, ctx) => ExpSeq(walk_elist_(elist), walk_ctx_(ctx))
     | ExpSync(n, e) => ExpSync(n, walk_exp_(e))
     | ExpMkTuple(elist, ctx) => ExpMkTuple(walk_elist_(elist), walk_ctx_(ctx))
-    | ExpMkArray(ell, ctx) => ExpMkArray([: for el <- ell {walk_elist_(el)} :], walk_ctx_(ctx))
+    | ExpMkArray(ell, ctx) => ExpMkArray([for el <- ell {walk_elist_(el)}], walk_ctx_(ctx))
     | ExpMkVector(elist, ctx) => ExpMkVector(walk_elist_(elist), walk_ctx_(ctx))
     | ExpMkRecord(e, ne_l, ctx) => ExpMkRecord(walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx))
     | ExpUpdateRecord(e, ne_l, ctx) => ExpUpdateRecord(walk_exp_(e), walk_ne_l_(ne_l), walk_ctx_(ctx))
@@ -1376,7 +1376,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpFor(pe_l, idx_pat, body, flags, loc) =>
         ExpFor(walk_pe_l_(pe_l), walk_pat_(idx_pat), walk_exp_(body), flags, loc)
     | ExpMap(pew_ll, body, flags, ctx) =>
-        ExpMap([: for (pe_l, idx_pat) <- pew_ll { (walk_pe_l_(pe_l), walk_pat_(idx_pat)) } :],
+        ExpMap([for (pe_l, idx_pat) <- pew_ll { (walk_pe_l_(pe_l), walk_pat_(idx_pat)) }],
             walk_exp_(body), flags, walk_ctx_(ctx))
     | ExpTryCatch(e, cases, ctx) => ExpTryCatch(walk_exp_(e), walk_cases_(cases), walk_ctx_(ctx))
     | ExpMatch(e, cases, ctx) => ExpMatch(walk_exp_(e), walk_cases_(cases), walk_ctx_(ctx))
@@ -1408,7 +1408,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
         val {dvar_alias, dvar_cases} = *dvar
         *dvar = dvar->{
             dvar_alias=walk_typ_(dvar_alias),
-            dvar_cases=[: for (n, t) <- dvar_cases {(n, walk_typ_(t))}:]
+            dvar_cases=[ for (n, t) <- dvar_cases {(n, walk_typ_(t))} ]
         }
         e
     | DefInterface(di) => e
@@ -1430,7 +1430,7 @@ fun walk_pat(p: pat_t, callb: ast_callb_t) {
     | PatTuple(pl, loc) => PatTuple(walk_pl_(pl), loc)
     | PatVariant(n, args, loc) => PatVariant(n, walk_pl_(args), loc)
     | PatRecord(n_opt, np_l, loc) => PatRecord(n_opt,
-            [: for (n, p) <- np_l {(n, walk_pat_(p))} :], loc)
+            [for (n, p) <- np_l {(n, walk_pat_(p))}], loc)
     | PatCons(p1, p2, loc) => PatCons(walk_pat_(p1), walk_pat_(p2), loc)
     | PatAs(p, n, loc) => PatAs(walk_pat_(p), n, loc)
     | PatTyped(p, t, loc) => PatTyped(walk_pat_(p), walk_typ_(t), loc)
@@ -1446,7 +1446,7 @@ fun dup_typ_(t: typ_t, callb: ast_callb_t): typ_t =
     | TypVar  _ => TypVar(ref None)
     | TypRecord(r) =>
         val (relems, ordered) = *r
-        val new_relems = [: for (flags, n, t, v) <- relems {(flags, n, dup_typ_(t, callb), v)} :]
+        val new_relems = [for (flags, n, t, v) <- relems {(flags, n, dup_typ_(t, callb), v)}]
         TypRecord(ref (new_relems, ordered))
     | _ => walk_typ(t, callb)
     }

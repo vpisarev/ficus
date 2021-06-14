@@ -557,10 +557,10 @@ fun cfold_dealias(kmods: kmodule_t list)
         kcb_ktyp=Some(cfd_ktyp_),
         kcb_kexp=Some(cfd_kexp_)
     }
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_top=top_code} = km
-        val top_code = [: for e <- top_code { cfd_kexp_(e, cfd_callb) } :]
-        val top_code = [: for e <- top_code { cfd_kexp_(e, cfd_callb) } :]
+        val top_code = [for e <- top_code { cfd_kexp_(e, cfd_callb) } ]
+        val top_code = [for e <- top_code { cfd_kexp_(e, cfd_callb) } ]
         km.{km_top=top_code}
-    } :]
+    }]
 }

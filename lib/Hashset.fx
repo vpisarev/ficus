@@ -261,10 +261,10 @@ fun t.remove(k: 'k) {
 }
 
 fun t.list(): 'k list =
-    [: for j <- 0:self.tabsz {
+    [for j <- 0:self.tabsz {
         if self.table[j].hv >= HASH_SIGN_MASK { continue }
         self.table[j].key
-    } :]
+    }]
 
 fun t.add_list(data: 'k list)
 {

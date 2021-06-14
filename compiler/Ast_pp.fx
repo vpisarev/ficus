@@ -285,7 +285,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.end()
         }
         pp.str(" ="); pp.space()
-        val ctors = if dvar_ctors != [] { dvar_ctors } else { [: for (n, t) <- dvar_cases {n} :] }
+        val ctors = if dvar_ctors != [] { dvar_ctors } else { [for (n, t) <- dvar_cases {n}] }
         for (_, t)@i <- dvar_cases, c <- ctors {
             pp.begin(); pp.str("| ");
             ppid(pp, c); pp.str(": "); pp.space();
@@ -516,7 +516,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.end(); pp.space(); pprint_exp_as_block(pp, for_body)
         | ExpMap(map_cl, map_body, flags, _) =>
             var (oparen, cparen) = match flags.for_flag_make {
-            | ForMakeList => ("[:", ":]")
+            | ForMakeList => ("[", "]")
             | ForMakeVector => ("[", "]")
             | ForMakeTuple => ("(", ")")
             | _ => ("[|", "|]")

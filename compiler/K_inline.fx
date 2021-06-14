@@ -101,11 +101,11 @@ fun find_recursive_funcs(km_idx: int, top_code: kcode_t): kcode_t
 }
 
 fun find_recursive_funcs_all(kmods: kmodule_t list) =
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_idx, km_top} = km
         val new_top = find_recursive_funcs(km_idx, km_top)
         km.{km_top=new_top}
-    } :]
+    }]
 
 // Calculates the approximate size of each expression in some abstract units;
 // of course, it may and should be tuned.
@@ -230,7 +230,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
         val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
         ref (kf->{
             kf_name=subst_id_(kf_name, kf_loc),
-            kf_params=[: for a <- kf_params { subst_kval_(a, kf_loc, callb) } :],
+            kf_params=[for a <- kf_params { subst_kval_(a, kf_loc, callb) } ],
             kf_rt = walk_ktyp(kf_rt, kf_loc, callb),
             kf_body = walk_kexp(kf_body, callb),
             kf_closure = kdefclosureinfo_t {
@@ -246,7 +246,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
     fun subst_kexp_(e: kexp_t, callb: k_callb_t)
     {
         fun subst_idlist_(nlist: id_t list, loc: loc_t) =
-            [: for n <- nlist {subst_id_(n, loc)} :]
+            [for n <- nlist {subst_id_(n, loc)} ]
         match e {
         /*| KDefVal (n, e, loc) =>
             val new_n = subst_id_(n, loc)
@@ -260,9 +260,9 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
             val {kvar_name, kvar_cases, kvar_ifaces, kvar_ctors, kvar_scope, kvar_loc} = *kvar
             val new_kvar = ref(kvar->{
                 kvar_name = subst_id_(kvar_name, kvar_loc),
-                kvar_cases = [: for (n, t) <- kvar_cases { (n, walk_ktyp(t, kvar_loc, callb)) } :],
-                kvar_ifaces = [: for (iname, meths) <- kvar_ifaces {
-                    (subst_id_(iname, kvar_loc), subst_idlist_(meths, kvar_loc))} :],
+                kvar_cases = [for (n, t) <- kvar_cases { (n, walk_ktyp(t, kvar_loc, callb)) } ],
+                kvar_ifaces = [for (iname, meths) <- kvar_ifaces {
+                    (subst_id_(iname, kvar_loc), subst_idlist_(meths, kvar_loc))}],
                 kvar_ctors = subst_idlist_(kvar_ctors, kvar_loc),
                 kvar_scope = subst_scope(kvar_scope, kvar_loc)
                 })
@@ -289,7 +289,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
                 ki_name=subst_id_(ki_name, ki_loc),
                 ki_base=subst_id_(ki_base, ki_loc),
                 ki_id=subst_id_(ki_id, ki_loc),
-                ki_all_methods=[: for (f, t) <- ki_all_methods {(subst_id_(f, ki_loc), walk_ktyp(t, ki_loc, callb))} :],
+                ki_all_methods=[for (f, t) <- ki_all_methods {(subst_id_(f, ki_loc), walk_ktyp(t, ki_loc, callb))} ],
                 ki_scope = subst_scope(ki_scope, ki_loc)
                 })
             set_idk_entry(new_ki->ki_name, KInterface(new_ki))
@@ -298,8 +298,8 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
             val {kcv_name, kcv_freevars, kcv_orig_freevars, kcv_scope, kcv_loc} = *kcv
             val new_kcv = ref(kcv->{
                 kcv_name = subst_id_(kcv_name, kcv_loc),
-                kcv_freevars = [: for (n, t) <- kcv_freevars {
-                                (subst_id_(n, kcv_loc), walk_ktyp(t, kcv_loc, callb)) } :],
+                kcv_freevars = [for (n, t) <- kcv_freevars {
+                                (subst_id_(n, kcv_loc), walk_ktyp(t, kcv_loc, callb)) }],
                 kcv_orig_freevars = subst_idlist_(kcv_orig_freevars, kcv_loc),
                 kcv_scope = subst_scope(kcv_scope, kcv_loc)
                 })
@@ -495,13 +495,13 @@ fun inline_some(kmods: kmodule_t list)
             fold_finfo_kexp_(e, finfo_callb)
         }
     }
-    [: for km <- kmods {
+    [for km <- kmods {
         val {km_top, km_idx, km_main} = km
         //val global_size = calc_exp_size(code2kexp(km_top, noloc))
         curr_fi = gen_default_func_info(0)
         curr_km_main = km_main
         curr_km_idx = km_idx
-        val new_top = [: for e <- km_top { inline_kexp_(e, inline_callb) } :]
+        val new_top = [for e <- km_top { inline_kexp_(e, inline_callb) } ]
         km.{km_top=new_top}
-    } :]
+    }]
 }

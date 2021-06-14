@@ -454,7 +454,7 @@ val pp_ = Ast.pp
         Ast_pp.pprint_for_flags(pp, flags)
         val (begin, end) =
             match flags.for_flag_make {
-            | ForMakeList => ("[:", ":]")
+            | ForMakeList => ("[", "]")
             | ForMakeArray => ("[|", "|]")
             | ForMakeVector => ("[", "]")
             | ForMakeTuple => ("(", ")")

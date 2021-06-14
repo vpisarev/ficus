@@ -165,10 +165,10 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
                     process_func_ending(e)
                 }
             | KExpMatch (cases, _) =>
-                val cases = [: for (checks_i, e_i) <- cases {
+                val cases = [for (checks_i, e_i) <- cases {
                                 val e_i = transform_tcalls(e_i)
                                 (checks_i, e_i)
-                            } :]
+                            }]
                 KExpMatch(cases, new_ctx)
             | _ => process_func_ending(e)
             }

@@ -851,11 +851,6 @@ typedef struct _fx_LR17C_form__cmodule_t_data_t {
    struct _fx_R17C_form__cmodule_t hd;
 } _fx_LR17C_form__cmodule_t_data_t, *_fx_LR17C_form__cmodule_t;
 
-typedef struct _fx_FPv2R9Ast__id_tR10Ast__loc_t {
-   int (*fp)(struct _fx_R9Ast__id_t*, struct _fx_R10Ast__loc_t*, void*);
-   fx_fcv_t* fcv;
-} _fx_FPv2R9Ast__id_tR10Ast__loc_t;
-
 typedef struct {
    int_ rc;
    int_ data;
@@ -2963,24 +2958,21 @@ FX_EXTERN_C int _fx_M7HashmapFM9makeindexN16Hashmap__index_t1i(
 
 FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
 
-FX_EXTERN_C int _fx_M20C_post_rename_localsFM7make_fpFPv2R9Ast__id_tR10Ast__loc_t1rNt10Hashmap__t2ii(
-   struct _fx_rNt10Hashmap__t2ii_data_t* arg0,
-   struct _fx_FPv2R9Ast__id_tR10Ast__loc_t* fx_result);
-
 FX_EXTERN_C int
    _fx_M20C_post_rename_localsFM7make_fpFPv2N15C_form__cstmt_tR22C_form__c_fold_callb_t2rNt10Hashmap__t2iirNt10Hashmap__t2ii(
    struct _fx_rNt10Hashmap__t2ii_data_t* arg0,
    struct _fx_rNt10Hashmap__t2ii_data_t* arg1,
    struct _fx_FPv2N15C_form__cstmt_tR22C_form__c_fold_callb_t* fx_result);
 
+static int _fx_M20C_post_rename_localsFM14gen_cval_cnamev3R9Ast__id_tR10Ast__loc_trNt10Hashmap__t2ii(
+   struct _fx_R9Ast__id_t* n_0,
+   struct _fx_R10Ast__loc_t* loc_0,
+   struct _fx_rNt10Hashmap__t2ii_data_t* prefix_hash_ref_0,
+   void* fx_fv);
+
 FX_EXTERN_C int _fx_M7HashmapFM4copyN16Hashmap__index_t1N16Hashmap__index_t(
    struct _fx_N16Hashmap__index_t* idx_0,
    struct _fx_N16Hashmap__index_t* fx_result,
-   void* fx_fv);
-
-static int _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M6C_formFM6cinfo_N15C_form__cinfo_t2R9Ast__id_tR10Ast__loc_t(
@@ -3033,19 +3025,6 @@ FX_EXTERN_C int _fx_M6C_formFM10fold_cstmtv2N15C_form__cstmt_tRM14c_fold_callb_t
    struct _fx_N15C_form__cstmt_t_data_t* s_0,
    struct _fx_R22C_form__c_fold_callb_t* callb_0,
    void* fx_fv);
-
-typedef struct {
-   int_ rc;
-   fx_free_t free_f;
-   struct _fx_rNt10Hashmap__t2ii_data_t* t0;
-} _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t_cldata_t;
-
-FX_EXTERN_C void _fx_free_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t(
-   _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t_cldata_t* dst)
-{
-   _fx_free_rNt10Hashmap__t2ii(&dst->t0);
-   fx_free(dst);
-}
 
 typedef struct {
    int_ rc;
@@ -3341,7 +3320,6 @@ FX_EXTERN_C int _fx_M20C_post_rename_localsFM13rename_localsLR17C_form__cmodule_
    fx_arr_t v_3 = {0};
    _fx_Nt10Hashmap__t2ii prefix_hash_arg_0 = 0;
    _fx_rNt10Hashmap__t2ii prefix_hash_ref_0 = 0;
-   _fx_FPv2R9Ast__id_tR10Ast__loc_t gen_cval_cname_0 = {0};
    _fx_FPv2N15C_form__cstmt_tR22C_form__c_fold_callb_t rename_cstmt_0 = {0};
    _fx_Nt6option1FPv2N15C_form__cstmt_tR22C_form__c_fold_callb_t v_4 = 0;
    _fx_R22C_form__c_fold_callb_t rename_callb_0 = {0};
@@ -3390,7 +3368,6 @@ FX_EXTERN_C int _fx_M20C_post_rename_localsFM13rename_localsLR17C_form__cmodule_
          &entry0_1, 0, 0, 0, &v_2, &v_3, &prefix_hash_arg_0), _fx_cleanup);
    FX_CALL(_fx_make_rNt10Hashmap__t2ii(prefix_hash_arg_0, &prefix_hash_ref_0), _fx_cleanup);
    _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
-   _fx_M20C_post_rename_localsFM7make_fpFPv2R9Ast__id_tR10Ast__loc_t1rNt10Hashmap__t2ii(prefix_hash_ref_0, &gen_cval_cname_0);
    _fx_M20C_post_rename_localsFM7make_fpFPv2N15C_form__cstmt_tR22C_form__c_fold_callb_t2rNt10Hashmap__t2iirNt10Hashmap__t2ii(
       global_prefix_hash_ref_0, prefix_hash_ref_0, &rename_cstmt_0);
    FX_CALL(
@@ -3410,7 +3387,9 @@ FX_EXTERN_C int _fx_M20C_post_rename_localsFM13rename_localsLR17C_form__cmodule_
             _fx_T4N14C_form__ctyp_tR9Ast__id_tNt6option1N14C_form__cexp_tR10Ast__loc_t* vcase_0 = &s_0->u.CDefVal;
             _fx_R9Ast__id_t* n_2 = &vcase_0->t1;
             if (n_2->m > 0) {
-               FX_CALL(gen_cval_cname_0.fp(n_2, &vcase_0->t3, gen_cval_cname_0.fcv), _fx_catch_0);
+               FX_CALL(
+                  _fx_M20C_post_rename_localsFM14gen_cval_cnamev3R9Ast__id_tR10Ast__loc_trNt10Hashmap__t2ii(n_2, &vcase_0->t3,
+                     prefix_hash_ref_0, 0), _fx_catch_0);
 
             _fx_catch_0: ;
                goto _fx_endmatch_0;
@@ -3504,7 +3483,6 @@ _fx_cleanup: ;
    if (prefix_hash_ref_0) {
       _fx_free_rNt10Hashmap__t2ii(&prefix_hash_ref_0);
    }
-   FX_FREE_FP(&gen_cval_cname_0);
    FX_FREE_FP(&rename_cstmt_0);
    if (v_4) {
       _fx_free_Nt6option1FPv2N15C_form__cstmt_tR22C_form__c_fold_callb_t(&v_4);
@@ -3513,16 +3491,15 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-static int _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t(
+static int _fx_M20C_post_rename_localsFM14gen_cval_cnamev3R9Ast__id_tR10Ast__loc_trNt10Hashmap__t2ii(
    struct _fx_R9Ast__id_t* n_0,
    struct _fx_R10Ast__loc_t* loc_0,
+   struct _fx_rNt10Hashmap__t2ii_data_t* prefix_hash_ref_0,
    void* fx_fv)
 {
    _fx_N15C_form__cinfo_t v_0 = {0};
    int fx_status = 0;
-   _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t_cldata_t* cv_0 =
-      (_fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t_cldata_t*)fx_fv;
-   _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &cv_0->t0->data;
+   _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
    if (n_0->m > 0) {
       FX_CALL(_fx_M6C_formFM6cinfo_N15C_form__cinfo_t2R9Ast__id_tR10Ast__loc_t(n_0, loc_0, &v_0, 0), _fx_cleanup);
       if (v_0.tag == 2) {
@@ -3533,8 +3510,8 @@ static int _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc
          fx_str_t new_cname_0 = {0};
          _fx_R17C_form__cdefval_t v_4 = {0};
          _fx_N15C_form__cinfo_t v_5 = {0};
-         _fx_R17C_form__cdefval_t* cv_1 = &v_0.u.CVal;
-         fx_copy_str(&cv_1->cv_cname, &cv_cname_0);
+         _fx_R17C_form__cdefval_t* cv_0 = &v_0.u.CVal;
+         fx_copy_str(&cv_0->cv_cname, &cv_cname_0);
          if (FX_STR_LENGTH(cv_cname_0) == 0) {
             int_ prefix_0 = n_0->i;
             int_ idx_0;
@@ -3553,7 +3530,7 @@ static int _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc
                const fx_str_t strs_0[] = { v_2, slit_0, v_3 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &new_cname_0), _fx_catch_0);
             }
-            _fx_make_R17C_form__cdefval_t(&cv_1->cv_name, cv_1->cv_typ, &new_cname_0, &cv_1->cv_flags, &cv_1->cv_loc, &v_4);
+            _fx_make_R17C_form__cdefval_t(&cv_0->cv_name, cv_0->cv_typ, &new_cname_0, &cv_0->cv_flags, &cv_0->cv_loc, &v_4);
             _fx_M6C_formFM4CValN15C_form__cinfo_t1RM9cdefval_t(&v_4, &v_5);
             FX_CALL(_fx_M6C_formFM13set_idc_entryv2R9Ast__id_tN15C_form__cinfo_t(n_0, &v_5, 0), _fx_catch_0);
          }
@@ -3597,30 +3574,17 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M20C_post_rename_localsFM7make_fpFPv2R9Ast__id_tR10Ast__loc_t1rNt10Hashmap__t2ii(
-   struct _fx_rNt10Hashmap__t2ii_data_t* arg0,
-   struct _fx_FPv2R9Ast__id_tR10Ast__loc_t* fx_result)
-{
-   FX_MAKE_FP_IMPL_START(_fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t_cldata_t,
-      _fx_free_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t,
-      _fx_M20C_post_rename_localsFM14gen_cval_cnamev2R9Ast__id_tR10Ast__loc_t);
-   FX_COPY_PTR(arg0, &fcv->t0);
-   return 0;
-}
-
 static int _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_form__c_fold_callb_t(
    struct _fx_N15C_form__cstmt_t_data_t* s_0,
    struct _fx_R22C_form__c_fold_callb_t* callb_0,
    void* fx_fv)
 {
-   _fx_FPv2R9Ast__id_tR10Ast__loc_t gen_cval_cname_0 = {0};
    int fx_status = 0;
    _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_form__c_fold_callb_t_cldata_t* cv_0 =
       (_fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_form__c_fold_callb_t_cldata_t*)fx_fv;
-   _fx_Nt10Hashmap__t2ii* global_prefix_hash_0 = &cv_0->t0->data;
    _fx_rNt10Hashmap__t2ii prefix_hash_ref_0 = cv_0->t1;
    _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
-   _fx_M20C_post_rename_localsFM7make_fpFPv2R9Ast__id_tR10Ast__loc_t1rNt10Hashmap__t2ii(prefix_hash_ref_0, &gen_cval_cname_0);
+   _fx_Nt10Hashmap__t2ii* global_prefix_hash_0 = &cv_0->t0->data;
    int tag_0 = FX_REC_VARIANT_TAG(s_0);
    if (tag_0 == 16) {
       _fx_T4N14C_form__ctyp_tR9Ast__id_tNt6option1N14C_form__cexp_tR10Ast__loc_t* vcase_0 = &s_0->u.CDefVal;
@@ -3633,7 +3597,9 @@ static int _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_f
          _fx_catch_0: ;
          }
          FX_CHECK_EXN(_fx_catch_1);
-         FX_CALL(gen_cval_cname_0.fp(n_0, &vcase_0->t3, gen_cval_cname_0.fcv), _fx_catch_1);
+         FX_CALL(
+            _fx_M20C_post_rename_localsFM14gen_cval_cnamev3R9Ast__id_tR10Ast__loc_trNt10Hashmap__t2ii(n_0, &vcase_0->t3,
+               prefix_hash_ref_0, 0), _fx_catch_1);
 
       _fx_catch_1: ;
          goto _fx_endmatch_1;
@@ -3733,7 +3699,9 @@ static int _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_f
                if (vcase_3->t0.tag == 15) {
                   _fx_N14C_form__cexp_t v_10 = vcase_3->t1;
                   if (FX_REC_VARIANT_TAG(v_10) == 1) {
-                     FX_CALL(gen_cval_cname_0.fp(&v_10->u.CExpIdent.t0, &vcase_2->t5, gen_cval_cname_0.fcv), _fx_catch_5);
+                     FX_CALL(
+                        _fx_M20C_post_rename_localsFM14gen_cval_cnamev3R9Ast__id_tR10Ast__loc_trNt10Hashmap__t2ii(
+                           &v_10->u.CExpIdent.t0, &vcase_2->t5, prefix_hash_ref_0, 0), _fx_catch_5);
 
                   _fx_catch_5: ;
                      goto _fx_endmatch_0;
@@ -3793,7 +3761,9 @@ static int _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_f
       for (; lst_1; lst_1 = lst_1->tl) {
          _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* __pat___0 = &lst_1->hd;
          _fx_R9Ast__id_t argname_0 = __pat___0->t0;
-         FX_CALL(gen_cval_cname_0.fp(&argname_0, &cf_loc_0, gen_cval_cname_0.fcv), _fx_catch_8);
+         FX_CALL(
+            _fx_M20C_post_rename_localsFM14gen_cval_cnamev3R9Ast__id_tR10Ast__loc_trNt10Hashmap__t2ii(&argname_0, &cf_loc_0,
+               prefix_hash_ref_0, 0), _fx_catch_8);
 
       _fx_catch_8: ;
          FX_CHECK_EXN(_fx_catch_9);
@@ -3823,7 +3793,6 @@ static int _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_f
 _fx_catch_10: ;
 
 _fx_endmatch_1: ;
-   FX_FREE_FP(&gen_cval_cname_0);
    return fx_status;
 }
 

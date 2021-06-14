@@ -303,7 +303,7 @@ fun named_capturing_groups(re: regex_t): (string, int) list
         return fx_status;
     }
     val (names, indexes) = named_capturing_groups_(re)
-    [: for name <- names, index <- indexes {(name, index)} :]
+    [for name <- names, index <- indexes {(name, index)} ]
 }
 
 
@@ -313,7 +313,7 @@ fun named_capturing_groups(re: regex_t): (string, int) list
 fun capturing_group_names(re: regex_t): (int, string) list
 {
     val lst = named_capturing_groups(re)
-    [: for (name, index) <- lst {(index, name)} :]
+    [for (name, index) <- lst {(index, name)} ]
 }
 
 val digit_reg = compile(r"\\[0-9]")
@@ -1007,7 +1007,7 @@ fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    str
         if(is_found)
         {
             val (fullmatch_start, fullmatch_end) = ranges[0]
-            val j_list = str[:fullmatch_start] :: compose_replacement(str, rewrite, ranges) ::str[fullmatch_end:] :: []
+            val j_list = str[fullmatch_start] :: compose_replacement(str, rewrite, ranges) ::str[fullmatch_end] :: []
             String.join("", j_list)
         }
         else

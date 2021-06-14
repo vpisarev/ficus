@@ -46,7 +46,7 @@ fun app(l: 't list, f: 't -> void): void =
     for x <- l {f(x)}
 
 fun map(l: 't list, f: 't -> 'rt): 'rt list =
-    [: for x <- l {f(x)} :]
+    [for x <- l {f(x)}]
 
 fun all(l: 't list, f: 't -> bool): bool =
     all(for a <- l {f(a)})
@@ -70,13 +70,13 @@ fun concat(ll: 't list list): 't list =
     fold s = ([]: 't list) for l <- rev(ll) {l + s}
 
 fun filter(l: 't list, f: 't -> bool): 't list =
-    [: for x <- l { if !f(x) {continue}; x } :]
+    [for x <- l { if !f(x) {continue}; x }]
 
 fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
-    [: for x <- la, y <- lb {(x, y)} :]
+    [for x <- la, y <- lb {(x, y)}]
 
 fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
-    [: @unzip for x <- lab {x} :]
+    [@unzip for x <- lab {x}]
 
 fun sort(l: 't list, lt: ('t, 't)->bool): 't list =
     match l
