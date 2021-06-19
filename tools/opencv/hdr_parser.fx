@@ -13,25 +13,25 @@ import Sys, Re, File, Hashset, Hashmap
 
 // the list only for debugging. The real list, used in the real OpenCV build, is specified in CMakeLists.txt
 opencv_hdr_list = [
-"core/include/opencv2/core.hpp",
-"core/include/opencv2/core/mat.hpp",
-"core/include/opencv2/core/ocl.hpp",
-"flann/include/opencv2/flann/miniflann.hpp",
-"ml/include/opencv2/ml.hpp",
-"imgproc/include/opencv2/imgproc.hpp",
-"3d/include/opencv2/3d.hpp",
-"stereo/include/opencv2/stereo.hpp",
-"calib/include/opencv2/calib.hpp",
-"features2d/include/opencv2/features2d.hpp",
-"video/include/opencv2/video/tracking.hpp",
-"video/include/opencv2/video/background_segm.hpp",
-"objdetect/include/opencv2/objdetect.hpp",
-"imgcodecs/include/opencv2/imgcodecs.hpp",
-"videoio/include/opencv2/videoio.hpp",
-"highgui/include/opencv2/highgui.hpp",
+    "core/include/opencv2/core.hpp",
+    "core/include/opencv2/core/mat.hpp",
+    "core/include/opencv2/core/ocl.hpp",
+    "flann/include/opencv2/flann/miniflann.hpp",
+    "ml/include/opencv2/ml.hpp",
+    "imgproc/include/opencv2/imgproc.hpp",
+    "3d/include/opencv2/3d.hpp",
+    "stereo/include/opencv2/stereo.hpp",
+    "calib/include/opencv2/calib.hpp",
+    "features2d/include/opencv2/features2d.hpp",
+    "video/include/opencv2/video/tracking.hpp",
+    "video/include/opencv2/video/background_segm.hpp",
+    "objdetect/include/opencv2/objdetect.hpp",
+    "imgcodecs/include/opencv2/imgcodecs.hpp",
+    "videoio/include/opencv2/videoio.hpp",
+    "highgui/include/opencv2/highgui.hpp",
 ]
 
-type block_t = BlockEnumStruct | BlockEnumClass | BlockFile | BlockClass | BlockNamespace | BlockGeneric
+type block_t = BlockNone | BlockGeneric | BlockEnumStruct | BlockEnumClass | BlockEnum | BlockFile | BlockStruct | BlockClass | BlockNamespace
 type state_t = StateScan | StateComment | StateDirective | StateDocstring | StateDirectiveIf0
 
 /*
@@ -43,23 +43,29 @@ where the list of modifiers is yet another nested list of strings
    and "/A value" for the plain C arrays with counters)
 original_return_type is None if the original_return_type is the same as return_value_type
 */
-type param_info_t =
+type arg_info_t =
 {
     name: string
-    paramtype: string
-    defval: string
-    isinput: bool
-    isoutput: bool
+    arg_type: string
+    defval: string=""
+    readwrite: bool=false
+    isinput: bool=false
+    isoutput: bool=false
+    isconst: bool=false
+    isref: bool=false
+    isrref: bool=false
+    isarray: string?
+    custom_array: string?
 }
 
 type decl_t =
     | DeclFunc : {
         name: string
         rettype: string=""
-        params: param_info_t list
+        args: arg_info_t list
         orig_rettype: string=""
         docstring: string=""
-        export_as: string=""
+        name_alias: string=""
         phantom: bool=false
         mappable: string=""
         static_method: bool=false
@@ -74,6 +80,9 @@ type decl_t =
     | DeclClass : {
         name: string
         bases: string list
+        name_alias: string
+        docstring: string=""
+        members: arg_info_t list ref
         ismap: bool = false
         isparams: bool = false
         issimple: bool = false
@@ -85,6 +94,18 @@ fun string(s: state_t) {
     | StateDirective => "StateDirective"
     | StateDocstring => "StateDocstring"
     | StateDirectiveIf0 => "StateDirectiveIf0"
+}
+
+fun string(b: block_t) {
+    | BlockEnumStruct => "BlockEnumStruct"
+    | BlockEnumClass => "BlockEnumClass"
+    | BlockEnum => "BlockEnum"
+    | BlockFile => "BlockFile"
+    | BlockStruct => "BlockStruct"
+    | BlockClass => "BlockClass"
+    | BlockNamespace => "BlockNamespace"
+    | BlockGeneric => "BlockGeneric"
+    | BlockNone => "BlockNone"
 }
 
 type block_info_t
@@ -178,8 +199,9 @@ fun parse(hname: string, ~wrap_mode:bool=true)
         //fall through to the if state == DIRECTIVE check
 
         if state == StateDirective {
-            if l.endswith("\\"):
+            if l.endswith("\\") {
                 continue
+            }
             state = StateScan
             l = re_eol_comment.replace(l, "").strip()  //drop // comment
             match l {
@@ -241,7 +263,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
             //foo(Obj&& = {});
             var (token, pos) = match re_eq_empty_block.find(l) {
                 | Some(_) => (";", l.length())
-                | _ => self.find_next_token(l, [";", "\"", "{", "}", "//", "/*"])
+                | _ => self.find_next_token(l, [";", "\"", "{", "}", "//", "/*"], 0)
             }
 
             if token == "" {
@@ -250,8 +272,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
                 if block_head != "" && block_head.endswith(')') && block_head.startswith("CV_ENUM_FLAGS(") {
                     l = ""
                     token = ";"
-                }
-                else {
+                } else {
                     break
                 }
 
@@ -562,178 +583,114 @@ fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
     }
 
     arg_type = batch_replace(arg_type, [("std::", ""), ("cv::", ""), ("::", "_")])
-    (arg_type, arg_name, isinput, isoutput, )
-    return arg_type, arg_name, modlist, argno
 
-def parse_enum(self, decl_str):
-    l = decl_str
-    ll = l.split(",")
-    if ll[-1].strip() == "":
-        ll = ll[:-1]
-    prev_val = ""
-    prev_val_delta = -1
-    decl = []
-    for pair in ll:
-        pv = pair.split("=")
-        if len(pv) == 1:
-            prev_val_delta += 1
-            val = ""
-            if prev_val:
-                val = prev_val + "+"
-            val += str(prev_val_delta)
-        else:
-            prev_val_delta = 0
-            prev_val = val = pv[1].strip()
-        decl.append(["const " + self.get_dotted_name(pv[0].strip()), val, [], [], None, ""])
-    return decl
+    (arg_info_t {
+        name=arg_name,
+        arg_type=arg_type,
+        defval="",
+        isinput=isinput,
+        isoutput=isoutput,
+        isconst=isconst,
+        isref=isref,
+        isrref=isrref,
+        isarray=isarray,
+        custom_array=custom_array
+    }, argno)
+}
 
-def parse_class_decl(self, decl_str):
-    """
+fun hdr_parser_t.parse_enum(decl_str: string)
+{
+    val l = decl_str
+    val ll = l.split(',', allow_empty=false)
+    var prev_val = ""
+    var prev_val_delta = -1
+    var elems = []
+    for pair <- ll {
+        val p = pair.strip()
+        if p == "" { continue }
+        val (curr_name, curr_val) = match p.split('=', allow_empty=false) {
+            | curr_name :: [] =>
+                prev_val_delta += 1
+                val curr_val = ""
+                val curr_val = (if prev_val != "" {prev_val + "+"} else {""}) + string(prev_val_delta)
+                (curr_name, curr_val)
+            | curr_name :: curr_val :: [] =>
+                prev_val_delta = 0
+                val curr_val = curr_val.strip()
+                prev_val = curr_val
+                (curr_name, curr_val)
+            | _ => throw self.parse_err("invalid enum value definition")
+        }
+        elems = arg_info_t {
+            name=self.get_dotted_name(curr_name),
+            arg_type="int",
+            defval=curr_val,
+            isarray=None,
+            custom_array=None } :: elems
+    }
+    elems.rev()
+}
+
+/*
     Parses class/struct declaration start in the form:
         {class|struct} [CV_EXPORTS] <class_name> [: public <base_class1> [, ...]]
     Returns class_name1, <list of base_classes>
-    """
-    l = decl_str
-    modlist = []
-    if "CV_EXPORTS_W_MAP" in l:
+*/
+fun hdr_parser_t.parse_class_decl(decl_str: string, ~docstring: string="")
+{
+    var l = decl_str
+    var ismap = l.contains("CV_EXPORTS_W_MAP")
+    if ismap {
         l = l.replace("CV_EXPORTS_W_MAP", "")
-        modlist.append("/Map")
-    if "CV_EXPORTS_W_PARAMS" in l:
+    }
+    val isparams = l.contains("CV_EXPORTS_W_PARAMS")
+    if isparams {
+        ismap = true
         l = l.replace("CV_EXPORTS_W_PARAMS", "")
-        modlist.append("/Map")
-        modlist.append("/Params")
-    if "CV_EXPORTS_W_SIMPLE" in l:
+    }
+    val issimple = l.contains("CV_EXPORTS_W_SIMPLE")
+    if issimple {
         l = l.replace("CV_EXPORTS_W_SIMPLE", "")
-        modlist.append("/Simple")
-    npos = l.find("CV_EXPORTS_AS")
-    if npos < 0:
-        npos = l.find('CV_WRAP_AS')
-    if npos >= 0:
-        macro_arg, npos3 = self.get_macro_arg(l, npos)
-        modlist.append("=" + macro_arg)
-        l = l[:npos] + l[npos3+1:]
+    }
+    var npos = l.find("CV_EXPORTS_AS")
+    if npos < 0 {
+        npos = l.find("CV_WRAP_AS")
+    }
 
-    l = self.batch_replace(l, [("CV_EXPORTS_W", ""), ("CV_EXPORTS", ""), ("public virtual ", " "), ("public ", " "), ("::", ".")]).strip()
-    ll = re.split(r'\s+|\s*[,:]\s*', l)
-    ll = [le for le in ll if le]
-    classname = ll[1]
-    bases = ll[2:]
-    return classname, bases, modlist
+    val name_alias =
+        if npos >= 0 {
+            val (macro_arg, npos3) = self.get_macro_arg(l, npos)
+            l = l[:npos] + l[npos3+1:]
+            macro_arg
+        } else {""}
 
-def parse_func_decl_no_wrap(self, decl_str, static_method=false, docstring=""):
-    decl_str = (decl_str or "").strip()
-    virtual_method = false
-    explicit_method = false
-    if decl_str.startswith("explicit"):
-        decl_str = decl_str[len("explicit"):].lstrip()
-        explicit_method = true
-    if decl_str.startswith("virtual"):
-        decl_str = decl_str[len("virtual"):].lstrip()
-        virtual_method = true
-    if decl_str.startswith("static"):
-        decl_str = decl_str[len("static"):].lstrip()
-        static_method = true
+    l = batch_replace(l, [("CV_EXPORTS_W", ""), ("CV_EXPORTS", ""), ("public virtual ", " "), ("public ", " "), ("::", ".")]).strip()
+    npos = l.find(':')
+    val (classname, bases) = if npos >= 0 {
+        val classname = l[:npos].strip()
+        (classname, [for b <- l[npos+1:].split(',', allow_empty=false) {b.strip()}])
+    } else {
+        (l.strip(), [])
+    }
+    DeclClass {
+        name=classname,
+        bases=bases,
+        name_alias=name_alias,
+        docstring=docstring,
+        ismap=ismap,
+        isparams=isparams,
+        issimple=issimple
+    }
+}
 
-    fdecl = decl_str.replace("CV_OUT", "").replace("CV_IN_OUT", "")
-    fdecl = fdecl.strip().replace("\t", " ")
-    while "  " in fdecl:
-        fdecl = fdecl.replace("  ", " ")
-    fname = fdecl[:fdecl.find("(")].strip()
-    fnpos = fname.rfind(" ")
-    if fnpos < 0:
-        fnpos = 0
-    fname = fname[fnpos:].strip()
-    rettype = fdecl[:fnpos].strip()
+val re_eq0 = Re.compile(r"=\s*0")
+val re_ctor_dtor = Re.compile(r"(?:\w+::)*(\w+::)?~?(\w+)@")
+val re_typedef_func = Re.compile(r"\w+\s+\(\*\w+\)\s*\(.*\)")
+val re_typedef_method = Re.compile(r"\w+\s+\(\w+::\*\w+\)\s*\(.*\)")
+val re_macro_name = Re.compile(r"[A-Z_][A-Z0-9_]*@")
+val re_2darray = Re.compile(r"\w+\s+\(\*\w+\)\[\d+\]")
 
-    if rettype.endswith("operator"):
-        fname = ("operator " + fname).strip()
-        rettype = rettype[:rettype.rfind("operator")].strip()
-        if rettype.endswith("::"):
-            rpos = rettype.rfind(" ")
-            if rpos >= 0:
-                fname = rettype[rpos+1:].strip() + fname
-                rettype = rettype[:rpos].strip()
-            else:
-                fname = rettype + fname
-                rettype = ""
-
-    apos = fdecl.find("(")
-    if fname.endswith("operator"):
-        fname += " ()"
-        apos = fdecl.find("(", apos+1)
-
-    fname = "cv." + fname.replace("::", ".")
-    decl = [fname, rettype, [], [], None, docstring]
-
-    //inline constructor implementation
-    implmatch = re.match(r"(\(.*?\))\s*:\s*(\w+\(.*?\),?\s*)+", fdecl[apos:])
-    if bool(implmatch):
-        fdecl = fdecl[:apos] + implmatch.group(1)
-
-    args0str = fdecl[apos+1:fdecl.rfind(")")].strip()
-
-    if args0str != "" and args0str != "void":
-        args0str = re.sub(r"\([^)]*\)", lambda m: m.group(0).replace(',', "@comma@"), args0str)
-        args0 = args0str.split(",")
-
-        args = []
-        narg = ""
-        for arg in args0:
-            narg += arg.strip()
-            balance_paren = narg.count("(") - narg.count(")")
-            balance_angle = narg.count("<") - narg.count(">")
-            if balance_paren == 0 and balance_angle == 0:
-                args.append(narg.strip())
-                narg = ""
-
-        for arg in args:
-            dfpos = arg.find("=")
-            defval = ""
-            if dfpos >= 0:
-                defval = arg[dfpos+1:].strip()
-            else:
-                dfpos = arg.find("CV_DEFAULT")
-                if dfpos >= 0:
-                    defval, pos3 = self.get_macro_arg(arg, dfpos)
-                else:
-                    dfpos = arg.find("CV_WRAP_DEFAULT")
-                    if dfpos >= 0:
-                        defval, pos3 = self.get_macro_arg(arg, dfpos)
-            if dfpos >= 0:
-                defval = defval.replace("@comma@", ",")
-                arg = arg[:dfpos].strip()
-            pos = len(arg)-1
-            while pos >= 0 and (arg[pos] in "_[]" or arg[pos].isalpha() or arg[pos].isdigit()):
-                pos -= 1
-            if pos >= 0:
-                aname = arg[pos+1:].strip()
-                atype = arg[:pos+1].strip()
-                if aname.endswith("&") or aname.endswith("*") or (aname in ["int", "String", "Mat"]):
-                    atype = (atype + " " + aname).strip()
-                    aname = ""
-            else:
-                atype = arg
-                aname = ""
-            if aname.endswith("]"):
-                bidx = aname.find('[')
-                atype += aname[bidx:]
-                aname = aname[:bidx]
-            decl[3].append([atype, aname, defval, []])
-
-    if static_method:
-        decl[2].append("/S")
-    if virtual_method:
-        decl[2].append("/V")
-    if explicit_method:
-        decl[2].append("/E")
-    if bool(re.match(r".*\)\s*(const)?\s*=\s*0", decl_str)):
-        decl[2].append("/A")
-    if bool(re.match(r".*\)\s*const(\s*=\s*0)?", decl_str)):
-        decl[2].append("/C")
-    return decl
-
-def parse_func_decl(self, decl_str, mat="Mat", docstring=""):
-    """
+/*
     Parses the function or method declaration in the form:
     [([CV_EXPORTS] <rettype>) | CVAPI(rettype)]
         [~]<function_name>
@@ -742,228 +699,225 @@ def parse_func_decl(self, decl_str, mat="Mat", docstring=""):
 
     Returns the function declaration entry:
     [<func name>, <return value C-type>, <list of modifiers>, <list of arguments>, <original return type>, <docstring>] (see above)
-    """
-
-    if self.wrap_mode:
-        if not (("CV_EXPORTS_AS" in decl_str) or ("CV_EXPORTS_W" in decl_str) or ("CV_WRAP" in decl_str)):
-            return []
-
-    //ignore old API in the documentation check (for now)
-    if "CVAPI(" in decl_str and self.wrap_mode:
-        return []
-
-    top = self.block_stack[-1]
-    func_modlist = []
-
-    npos = decl_str.find("CV_EXPORTS_AS")
-    if npos >= 0:
-        arg, npos3 = self.get_macro_arg(decl_str, npos)
-        func_modlist.append("="+arg)
-        decl_str = decl_str[:npos] + decl_str[npos3+1:]
-    npos = decl_str.find("CV_WRAP_AS")
-    if npos >= 0:
-        arg, npos3 = self.get_macro_arg(decl_str, npos)
-        func_modlist.append("="+arg)
-        decl_str = decl_str[:npos] + decl_str[npos3+1:]
-    npos = decl_str.find("CV_WRAP_PHANTOM")
-    if npos >= 0:
-        decl_str, _ = self.get_macro_arg(decl_str, npos)
-        func_modlist.append("/phantom")
-    npos = decl_str.find("CV_WRAP_MAPPABLE")
-    if npos >= 0:
-        mappable, npos3 = self.get_macro_arg(decl_str, npos)
-        func_modlist.append("/mappable="+mappable)
+*/
+fun hdr_parser_t.parse_func_decl(decl_str: string, ~mat: string="Mat", ~docstring:string="")
+{
+    var decl_str = decl_str
+    if !decl_str.contains("CV_EXPORTS_AS") && !decl_str.contains("CV_EXPORTS_W") && !decl_str.contains("CV_WRAP") {
+        None
+    } else if decl_str.contains("CVAPI(") {
+        None
+    } else {
+        val top = self.block_stack.hd()
+        var npos = decl_str.find("CV_EXPORTS_AS")
+        var name_alias =
+            if npos >= 0 {
+                val (arg, npos3) = self.get_macro_arg(decl_str, npos)
+                decl_str = decl_str[:npos] + decl_str[npos3+1:]
+                arg
+            } else {""}
+        npos = decl_str.find("CV_WRAP_AS")
+        if npos >= 0 {
+            val (arg, npos3) = self.get_macro_arg(decl_str, npos)
+            decl_str = decl_str[:npos] + decl_str[npos3+1:]
+            name_alias = arg
+        }
+        npos = decl_str.find("CV_WRAP_PHANTOM")
+        val phantom = if npos >= 0 {
+                val (arg, _) = self.get_macro_arg(decl_str, npos)
+                decl_str = arg
+                true
+            } else { false }
+        /*npos = decl_str.find("CV_WRAP_MAPPABLE")
+        val mappable = if npos >= 0 {
+            val (mappable, npos3) = self.get_macro_arg(decl_str, npos)
+            func_modlist.append("/mappable="+mappable)
         classname = top[1]
-        return ['.'.join([classname, classname]), None, func_modlist, [], None, None]
+        return ['.'.join([classname, classname]), None, func_modlist, [], None, None]*/
 
-    virtual_method = false
-    pure_virtual_method = false
-    const_method = false
+        //filter off some common prefixes, which are meaningless for Python wrappers.
+        //note that we do not strip "static" prefix, which does matter;
+        //it means class methods, not instance methods
+        decl_str = batch_replace(decl_str,
+            [("static inline", ""), ("inline", ""), ("explicit ", ""),
+            ("CV_EXPORTS_W", ""), ("CV_EXPORTS", ""), ("CV_CDECL", ""),
+            ("CV_WRAP ", " "), ("CV_INLINE", ""), ("CV_DEPRECATED", ""),
+            ("CV_DEPRECATED_EXTERNAL", "")]).strip()
 
-    //filter off some common prefixes, which are meaningless for Python wrappers.
-    //note that we do not strip "static" prefix, which does matter;
-    //it means class methods, not instance methods
-    decl_str = self.batch_replace(decl_str, [("static inline", ""), ("inline", ""), ("explicit ", ""),
-                                                ("CV_EXPORTS_W", ""), ("CV_EXPORTS", ""), ("CV_CDECL", ""),
-                                                ("CV_WRAP ", " "), ("CV_INLINE", ""),
-                                                ("CV_DEPRECATED", ""), ("CV_DEPRECATED_EXTERNAL", "")]).strip()
+        val virtual_method = decl_str.strip().startswith("virtual")
+        if virtual_method {
+            decl_str = decl_str.replace("virtual", "")
+        }
 
+        val npos2 = decl_str.rfind(')')
+        val const_method = npos2 > 0 && decl_str[npos2+1:].contains("const")
+        val pure_virtual_method = re_eq0.find(decl_str[npos2+1:]).issome()
 
-    if decl_str.strip().startswith('virtual'):
-        virtual_method = true
+        val static_method =
+            decl_str.strip().startswith("static") &&
+            (match top.block_type { | BlockStruct | BlockClass => true | _ => false })
+        if static_method {
+            decl_str = decl_str.strip()[length("static"):].lstrip()
+        }
 
-    decl_str = decl_str.replace('virtual' , '')
+        var args_start = decl_str.find("(")
+        if decl_str.startswith("CVAPI") {
+            val rtype_end = decl_str.find(")", args_start+1)
+            if rtype_end < 0 {
+                throw self.parse_err("No terminating ')' in CVAPI() macro")
+            }
+            decl_str = decl_str[args_start+1:rtype_end] + " " + decl_str[rtype_end+1:]
+            args_start = decl_str.find("(")
+        }
+        if args_start < 0 {
+            throw self.parse_err(f"No args in '{decl_str}'")
+        }
 
-    end_tokens = decl_str[decl_str.rfind(')'):].split()
-    const_method = 'const' in end_tokens
-    pure_virtual_method = '=' in end_tokens and '0' in end_tokens
+        var decl_start = decl_str[:args_start].strip()
+        // handle operator () case
+        if decl_start.endswith("operator") {
+            args_start = decl_str.find("(", args_start+1)
+            if args_start < 0 {
+                throw self.parse_err(f"No args in '{decl_str}'")
+            }
+            decl_start = decl_str[:args_start].strip()
+            //TODO: normalize all types of operators
+            if decl_start.endswith("()"):
+                decl_start = decl_start[:.-2].rstrip() + " ()"
+        }
 
-    static_method = false
-    context = top[0]
-    if decl_str.startswith("static") and (context == "class" or context == "struct"):
-        decl_str = decl_str[len("static"):].lstrip()
-        static_method = true
+        // constructor/destructor case
+        decl_start = re_ctor_dtor.prefixmatch_str(decl_start + "@") {
+            | Some(r) when r[1] == "" || r[1] == r[2] => "void " + decl_start
+            | _ => decl_start
+            }
 
-    args_begin = decl_str.find("(")
-    if decl_str.startswith("CVAPI"):
-        rtype_end = decl_str.find(")", args_begin+1)
-        if rtype_end < 0:
-            print("Error at %d. no terminating ) in CVAPI() macro: %s" % (self.lineno, decl_str))
-            sys.exit(-1)
-        decl_str = decl_str[args_begin+1:rtype_end] + " " + decl_str[rtype_end+1:]
-        args_begin = decl_str.find("(")
-    if args_begin < 0:
-        print("Error at %d: no args in '%s'" % (self.lineno, decl_str))
-        sys.exit(-1)
+        val (fname_arg_info, argno) = self.parse_arg(decl_start, -1)
+        val {name=funcname, arg_type=rettype} = fname_arg_info
 
-    decl_start = decl_str[:args_begin].strip()
-    //handle operator () case
-    if decl_start.endswith("operator"):
-        args_begin = decl_str.find("(", args_begin+1)
-        if args_begin < 0:
-            print("Error at %d: no args in '%s'" % (self.lineno, decl_str))
-            sys.exit(-1)
-        decl_start = decl_str[:args_begin].strip()
-        //TODO: normalize all type of operators
-        if decl_start.endswith("()"):
-            decl_start = decl_start[0:-2].rstrip() + " ()"
+        // determine original return type, hack for return types with underscore
+        var orig_rettype = ""
+        val i = decl_start.rfind(funcname)
+        if i > 0 {
+            orig_rettype = decl_start[:i].replace("&", "").replace("const", "").strip()
+        }
 
-    //constructor/destructor case
-    if bool(re.match(r'^(\w+::)*(?P<x>\w+)::~?(?P=x)$', decl_start)):
-        decl_start = "void " + decl_start
+        val (rettype, funcname) =
+            if argno >= 0 {
+                val classname = top.block_name
+                val (rettype, funcname) =
+                if rettype == classname || rettype == "~" + classname {
+                    ("", rettype)
+                } else {
+                    if re_typedef_func.fullmatch(decl_str) ||
+                       re_typedef_method.fullmatch(decl_str) ||
+                       re_macro_name.fullmatch(decl_start+"@") ||
+                       re_2darray.fullmatch(decl_str) {
+                           (rettype, "")
+                    } else {
+                        // print rettype, funcname, modlist, argno
+                        throw self.parse_err(f"function/method name is missing: '{decl_start}'")
+                    }
+            } else {(rettype, funcname)}
+        if funcname == "" || funcname.contains("::") || funcname.startswith("~") {
+            None
+        } else {
+            val funcname = self.get_dotted_name(funcname)
+            npos = args_start
+            args_start += 1
+            var balance = 1
+            var angle_balance = 0
+            //scan the argument list; handle nested parentheses
+            var args_decls = []
+            var args = []
+            var argno = 1
 
-    rettype, funcname, modlist, argno = self.parse_arg(decl_start, -1)
+            while balance > 0 {
+                npos += 1
+                val (t, npos_) = self.find_next_token(decl_str, ["(", ")", ",", "<", ">"], npos)
+                npos = npos_
 
-    //determine original return type, hack for return types with underscore
-    original_type = None
-    i = decl_start.rfind(funcname)
-    if i > 0:
-        original_type = decl_start[:i].replace("&", "").replace("const", "").strip()
+                if t == "" {
+                    throw self.parse_err("no closing ')'")
+                } else if t == "<" {
+                    angle_balance += 1
+                } else if t == ">" {
+                    angle_balance -= 1
+                } else if t == "(" {
+                    balance += 1
+                } else if t == ")" {
+                    balance -= 1
+                }
+                if balace == 0 || (t == "," && balance == 1 && angle_balance == 0) {
+                    //process next function argument
+                    var a = decl_str[arg_start:npos].strip()
+                    // print "arg = ", a
+                    arg_start = npos+1
+                    if a != "" {
+                        var eqpos = a.find("=")
+                        val defval = if eqpos >= 0 {a[eqpos+1:].strip()}
+                            else {
+                                eqpos = a.find("CV_DEFAULT")
+                                if eqpos >= 0 {
+                                    self.get_macro_arg(a, eqpos).0
+                                } else {
+                                    eqpos = a.find("CV_WRAP_DEFAULT")
+                                    if eqpos >= 0 {
+                                        self.get_macro_arg(a, eqpos).0
+                                    } else {""}
+                                }
+                            }
+                        val defval = if defval == "NULL" {"0"} else {defval}
+                        if eqpos >= 0 {
+                            a = a[:eqpos].strip()
+                        }
+                        val (arg_info, argno) = self.parse_arg(a, argno)
+                        // TODO: Vectors could contain UMat, but this is not very easy to support and not very needed
+                        val mat_arg = "Mat"
+                        val vector_mat_arg = "vector_Mat"
+                        val vector_mat_template = "vector<Mat>".format(mat)
+                        val arg_type = arg_info.arg_type
+                        var isinput = arg_info.isinput, isoutput = arg_info.isoutput
+                        val (arg_type, isinput, isoutput) = match arg_type {
+                            | "InputArray" => (mat_arg, true, false)
+                            | "InputOutputArray" => (mat_arg, true, true)
+                            | "OutputArray" => (mat_arg, isinput, true)
+                            | "InputArrayOfArrays" => (vector_mat_arg, true, false)
+                            | "InputOutputArrayOfArrays" => (vector_mat_arg, true, true)
+                            | "OutputArrayOfArrays" => (vector_mat_arg, isinput, true)
+                            | _ => (arg_type, isinput, isoutput)
+                            }
+                        val defval = batch_replace(defval,
+                            [("InputArrayOfArrays", vector_mat_template),
+                            ("InputOutputArrayOfArrays", vector_mat_template),
+                            ("OutputArrayOfArrays", vector_mat_template),
+                            ("InputArray", mat_arg),
+                            ("InputOutputArray", mat_arg),
+                            ("OutputArray", mat_arg),
+                            ("noArray", arg_type)]).strip()
 
-    if argno >= 0:
-        classname = top[1]
-        if rettype == classname or rettype == "~" + classname:
-            rettype, funcname = "", rettype
-        else:
-            if bool(re.match('\w+\s+\(\*\w+\)\s*\(.*\)', decl_str)):
-                return [] //function typedef
-            elif bool(re.match('\w+\s+\(\w+::\*\w+\)\s*\(.*\)', decl_str)):
-                return [] //class method typedef
-            elif bool(re.match('[A-Z_]+', decl_start)):
-                return [] //it seems to be a macro instantiation
-            elif "__declspec" == decl_start:
-                return []
-            elif bool(re.match(r'\w+\s+\(\*\w+\)\[\d+\]', decl_str)):
-                return [] //exotic - dynamic 2d array
-            else:
-                #print rettype, funcname, modlist, argno
-                print("Error at %s:%d the function/method name is missing: '%s'" % (self.hname, self.lineno, decl_start))
-                sys.exit(-1)
+                        args = arg_info.{arg_type=arg_type, defval=defval, isinput=isinput, isoutput=isoutput} :: args
+                        npos = arg_start
+                    }
+                }
+            }
 
-    if self.wrap_mode and (("::" in funcname) or funcname.startswith("~")):
-        //if there is :: in function name (and this is in the header file),
-        //it means, this is inline implementation of a class method.
-        //Thus the function has been already declared within the class and we skip this repeated
-        //declaration.
-        //Also, skip the destructors, as they are always wrapped
-        return []
-
-    funcname = self.get_dotted_name(funcname)
-
-    if not self.wrap_mode:
-        decl = self.parse_func_decl_no_wrap(decl_str, static_method, docstring)
-        decl[0] = funcname
-        return decl
-
-    arg_start = args_begin+1
-    npos = arg_start-1
-    balance = 1
-    angle_balance = 0
-    //scan the argument list; handle nested parentheses
-    args_decls = []
-    args = []
-    argno = 1
-
-    while balance > 0:
-        npos += 1
-        t, npos = self.find_next_token(decl_str, ["(", ")", ",", "<", ">"], npos)
-        if not t:
-            print("Error: no closing ')' at %d" % (self.lineno,))
-            sys.exit(-1)
-        if t == "<":
-            angle_balance += 1
-        if t == ">":
-            angle_balance -= 1
-        if t == "(":
-            balance += 1
-        if t == ")":
-            balance -= 1
-
-        if (t == "," and balance == 1 and angle_balance == 0) or balance == 0:
-            //process next function argument
-            a = decl_str[arg_start:npos].strip()
-            #print "arg = ", a
-            arg_start = npos+1
-            if a:
-                eqpos = a.find("=")
-                defval = ""
-                modlist = []
-                if eqpos >= 0:
-                    defval = a[eqpos+1:].strip()
-                else:
-                    eqpos = a.find("CV_DEFAULT")
-                    if eqpos >= 0:
-                        defval, pos3 = self.get_macro_arg(a, eqpos)
-                    else:
-                        eqpos = a.find("CV_WRAP_DEFAULT")
-                        if eqpos >= 0:
-                            defval, pos3 = self.get_macro_arg(a, eqpos)
-                if defval == "NULL":
-                    defval = "0"
-                if eqpos >= 0:
-                    a = a[:eqpos].strip()
-                arg_type, arg_name, modlist, argno = self.parse_arg(a, argno)
-                if self.wrap_mode:
-                    //TODO: Vectors should contain UMat, but this is not very easy to support and not very needed
-                    vector_mat = "vector_{}".format(mat)
-                    vector_mat_template = "vector<{}>".format(mat)
-
-                    if arg_type == "InputArray":
-                        arg_type = mat
-                    elif arg_type == "InputOutputArray":
-                        arg_type = mat
-                        modlist.append("/IO")
-                    elif arg_type == "OutputArray":
-                        arg_type = mat
-                        modlist.append("/O")
-                    elif arg_type == "InputArrayOfArrays":
-                        arg_type = vector_mat
-                    elif arg_type == "InputOutputArrayOfArrays":
-                        arg_type = vector_mat
-                        modlist.append("/IO")
-                    elif arg_type == "OutputArrayOfArrays":
-                        arg_type = vector_mat
-                        modlist.append("/O")
-                    defval = self.batch_replace(defval, [("InputArrayOfArrays", vector_mat_template),
-                                                            ("InputOutputArrayOfArrays", vector_mat_template),
-                                                            ("OutputArrayOfArrays", vector_mat_template),
-                                                            ("InputArray", mat),
-                                                            ("InputOutputArray", mat),
-                                                            ("OutputArray", mat),
-                                                            ("noArray", arg_type)]).strip()
-                args.append([arg_type, arg_name, defval, modlist])
-            npos = arg_start-1
-
-    if static_method:
-        func_modlist.append("/S")
-    if const_method:
-        func_modlist.append("/C")
-    if virtual_method:
-        func_modlist.append("/V")
-    if pure_virtual_method:
-        func_modlist.append("/PV")
-
-    return [funcname, rettype, func_modlist, args, original_type, docstring]
+            Some(DeclFunc {
+                name=funcname,
+                rettype=rettype,
+                args=args.rev(),
+                orig_rettype=orig_rettype,
+                docstring=docstring,
+                name_alias=name_alias,
+                phantom=phantom,
+                static_method=static_method,
+                virtual_method=virtual_method,
+                pure_virtual_method=pure_virtual_method,
+                const_method=const_method
+            })
+        }
+    }
+}
 
 /*
     adds the dot-separated container class/namespace names to the bare function/class name, e.g. when we have
@@ -977,7 +931,7 @@ def parse_func_decl(self, decl_str, mat="Mat", docstring=""):
 
     the function will convert "A" to "cv.A" and "f" to "cv.A.f".
 */
-fun hdr_parser_t.get_dotted_name(name: string) =
+fun hdr_parser_t.get_dotted_name(name: string)
     if self.block_stack == [] || name.startswith("cv.") {
         name
     } else {
@@ -985,168 +939,151 @@ fun hdr_parser_t.get_dotted_name(name: string) =
         var n = ""
         for b <- self.block_stack {
             val {block_type, block_name} = b
-            if block_type == BlockFile || block_type == in ["file", "enum"]:
-                continue
-            if block_type in ["enum struct", "enum class"] and block_name == name:
-                continue
-            if block_type not in ["struct", "class", "namespace", "enum struct", "enum class"]:
-                print("Error at %d: there are non-valid entries in the current block stack %s" % (self.lineno, self.block_stack))
-                sys.exit(-1)
-            if block_name and (block_type == "namespace" or not qualified_name):
+            match block_type {
+            | BlockFile | BlockEnum => {}
+            | BlockEnumClass | BlockEnumStruct when block_name == name => {}
+            | BlockStruct | BlockClass | BlockNamespace | BlockEnumClass | BlockEnumStruct =>
                 n += block_name + "."
+            | _ =>
+                throw self.parse_err(f"unsupported block '{block_type}' in the block stack")
+            }
+        }
         n += name.replace("::", ".")
-        if n.endswith(".Algorithm"):
+        if n.endswith(".Algorithm") {
             n = "cv.Algorithm"
-        return n
+        }
+        n
     }
 
-def parse_stmt(self, stmt, end_token, mat="Mat", docstring=""):
-    """
-    parses the statement (ending with ';' or '}') or a block head (ending with '{')
+/*
+parses the statement (ending with ';' or '}') or a block head (ending with '{')
 
-    The function calls parse_class_decl or parse_func_decl when necessary. It returns
-    <block_type>, <block_name>, <parse_flag>, <declaration>
-    where the first 3 values only make sense for blocks (i.e. code blocks, namespaces, classes, enums and such)
-    """
-    stack_top = self.block_stack[-1]
-    context = stack_top[self.BLOCK_TYPE]
+The function calls parse_class_decl or parse_func_decl when necessary. It returns
+<block_type>, <block_name>, <parse_flag>, <declaration>
+where the first 3 values only make sense for blocks (i.e. code blocks, namespaces, classes, enums and such)
+*/
+fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
+                            ~mat: string="Mat", ~docstring: string="")
+{
+    var stack_top = self.block_stack.hd()
+    val context = stack_top.block_type
 
-    if stmt.startswith('inline namespace'):
+    if stmt.startswith("inline namespace") {
         //emulate anonymous namespace
-        return "namespace", "", true, None
+        (BlockNamespace, "", true, None)
+    } else {
+        var stmt_type = BlockNone
+        if end_token == "{" {
+            stmt_type = BlockGeneric
+        }
+        if context == BlockGeneric {
+            throw self.parse_err("should not call parse_stmt inside code blocks")
+        }
+        var parse_flag =
+            if context == BlockClass || context == BlockStruct {
+                while true {
+                    val colon_pos = stmt.find(":")
+                    if colon_pos < 0 {
+                        break
+                    }
+                    w = stmt[:colon_pos].strip()
+                    if w == "public" || w == "protected" || w == "private" {
+                        stack_top .= {public_section=w == "public"}
+                        self.block_stack = stack_top :: self.block_stack.tl()
+                        stmt = stmt[colon_pos+1:].strip()
+                    }
+                }
+                // do not process hidden class members and template classes/functions
+                stack_top.public_section && !stmt.startswith("template")
+            } else {true}
+        if !parse_flag {(stmt_type, "", parse_flag, None)}
+        else {
+            if end_token == "{" && stmt.startswith("class ") || stmt.startswith("struct ") {
+                stmt_type = if stmt.startswith("class") {BlockClass} else {BlockStruct}
+                val class_decl = self.parse_class_decl(stmt, docstring=docstring)
+                val classname = match class_decl {
+                    | DeclClass {classname} => classname
+                    | _ => throw self.parse_err("struct/class is expected")
+                    }
+                (stmt_type, classname, true, class_decl)
+            } else if end_token == "{" && stmt.startswith("enum") || stmt.startswith("namespace") {
+                //NB: Drop inheritance syntax for enum
+                val block_type = if stmt.startswith("enum") {BlockEnum} else {BlockNamespace}
+                val stmt = stmt.split(':', allow_empty=false).hd()
+                val sp = stmt.rfind(' ')
+                val stmt_list =
+                    if sp > 0 {(block_type, stmt[sp+1:].strip(), true, None)}
+                    else {(block_type, "<unnamed>", true, None)}
+            } else if end_token == "{" && stmt.startswith("extern") && stmt.contains("\"C\"") {
+                (BlockNamespace, "", true, None)
+            } else if end_token == "}" &&
+                (context == BlockEnum || context == BlockEnumClass || context == BlockEnumStruct) {
+                val decl = self.parse_enum(stmt)
+                name = stack_top.block_name
+                (context, name, false, decl)
+            } else if end_token == ";" && stmt.startswith("typedef") {
+                //TODO: handle typedef's more intelligently
+                return (stmt_type, "", false, None)
+            } else {
+                paren_pos = stmt.find("(")
+                if paren_pos >= 0 {
+                    //assume it's function or method declaration,
+                    //since we filtered off the other places where '(' can normally occur:
+                    //  - code blocks
+                    //  - function pointer typedef's
+                    val decl = self.parse_func_decl(stmt, mat=mat, docstring=docstring)
+                    //we return parse_flag == false to prevent the parser to look inside function/method bodies
+                    //(except for tracking the nested blocks)
+                    (stmt_type, "", false, decl)
+                } else if end_token == ";" && (context == BlockClass || context == BlockClass) {
+                    //looks like it's member declaration; append the members to the class declaration
+                    if stmt.contains("CV_PROP") { //or (class_decl and ("/Map" in class_decl[2])):
+                        val readwrite = stmt.contains("CV_PROP_RW")
+                        val stmt = batch_replace(stmt, [("CV_PROP_RW", ""), ("CV_PROP", "")]).strip()
+                        val var_list = stmt.split(',', allow_empty=false)
+                        val (arg_info0, argno) = self.parse_arg(var_list.hd(), -1)
+                        val class_members = match self.block_stack.hd() {
+                            | DeclClass {members} => members
+                            | _ => throw self.parse_err("invalid context; class/struct is expected")
+                        }
 
-    stmt_type = ""
-    if end_token == "{":
-        stmt_type = "block"
+                        for v <- (arg_info0.name :: var_list.tl()) {
+                            val vv = v.split('=', allow_empty=false)
+                            val vname = vv.hd().strip()
+                            val vdefval = match vv.tl() {
+                                | [] => ""
+                                | dv :: [] => dv.strip()
+                                | _ => throw self.parse_err("invalid class property (double '=')")
+                            }
+                            class_members = arg_info0.{name=vname, defval=vdefval, readwrite=readwrite} :: class_members
+                        }
+                    }
+                    (stmt_type, "", false, None)
+                } else {
+                    //something unknown
+                    (stmt_type, "", false, None)
+                }
+            }
+        }
+    }
+}
 
-    if context == "block":
-        print("Error at %d: should not call parse_stmt inside blocks" % (self.lineno,))
-        sys.exit(-1)
+/*
+Finds the next token from the 'tlist' in the input 's', starting from position 'p'.
+Returns the first occurred token and its position, or ("", len(s)) when no token is found
+*/
+fun hdr_parser_t.find_next_token(s: string, tlist: string list, pos0: int) =
+    fold token="", tpos=length(s) for t <- tlist {
+        val pos = s.find(t, pos0)
+        if 0 <= pos < tpos {(t, pos)} else {(token, tpos)}
+    }
 
-    if context == "class" or context == "struct":
-        while 1:
-            colon_pos = stmt.find(":")
-            if colon_pos < 0:
-                break
-            w = stmt[:colon_pos].strip()
-            if w in ["public", "protected", "private"]:
-                if w == "public" or (not self.wrap_mode and w == "protected"):
-                    stack_top[self.PUBLIC_SECTION] = true
-                else:
-                    stack_top[self.PUBLIC_SECTION] = false
-                stmt = stmt[colon_pos+1:].strip()
-            break
-
-    //do not process hidden class members and template classes/functions
-    if not stack_top[self.PUBLIC_SECTION] or stmt.startswith("template"):
-        return stmt_type, "", false, None
-
-    if end_token == "{":
-        if not self.wrap_mode and stmt.startswith("typedef struct"):
-            stmt_type = "struct"
-            try:
-                classname, bases, modlist = self.parse_class_decl(stmt[len("typedef "):])
-            except:
-                print("Error at %s:%d" % (self.hname, self.lineno))
-                exit(1)
-            if classname.startswith("_Ipl"):
-                classname = classname[1:]
-            decl = [stmt_type + " " + self.get_dotted_name(classname), "", modlist, [], None, docstring]
-            if bases:
-                decl[1] = ": " + ", ".join([self.get_dotted_name(b).replace(".","::") for b in bases])
-            return stmt_type, classname, true, decl
-
-        if stmt.startswith("class") or stmt.startswith("struct"):
-            stmt_type = stmt.split()[0]
-            if stmt.strip() != stmt_type:
-                try:
-                    classname, bases, modlist = self.parse_class_decl(stmt)
-                except:
-                    print("Error at %s:%d" % (self.hname, self.lineno))
-                    exit(1)
-                decl = []
-                if ("CV_EXPORTS_W" in stmt) or ("CV_EXPORTS_AS" in stmt) or (not self.wrap_mode):# and ("CV_EXPORTS" in stmt)):
-                    decl = [stmt_type + " " + self.get_dotted_name(classname), "", modlist, [], None, docstring]
-                    if bases:
-                        decl[1] = ": " + ", ".join([self.get_dotted_name(b).replace(".","::") for b in bases])
-                return stmt_type, classname, true, decl
-
-        if stmt.startswith("enum") or stmt.startswith("namespace"):
-            //NB: Drop inheritance syntax for enum
-            stmt = stmt.split(':')[0]
-            stmt_list = stmt.rsplit(" ", 1)
-            if len(stmt_list) < 2:
-                stmt_list.append("<unnamed>")
-            return stmt_list[0], stmt_list[1], true, None
-
-        if stmt.startswith("extern") and "\"C\"" in stmt:
-            return "namespace", "", true, None
-
-    if end_token == "}" and context.startswith("enum"):
-        decl = self.parse_enum(stmt)
-        name = stack_top[self.BLOCK_NAME]
-        return context, name, false, decl
-
-    if end_token == ";" and stmt.startswith("typedef"):
-        //TODO: handle typedef's more intelligently
-        return stmt_type, "", false, None
-
-    paren_pos = stmt.find("(")
-    if paren_pos >= 0:
-        //assume it's function or method declaration,
-        //since we filtered off the other places where '(' can normally occur:
-        //  - code blocks
-        //  - function pointer typedef's
-        decl = self.parse_func_decl(stmt, mat=mat, docstring=docstring)
-        //we return parse_flag == false to prevent the parser to look inside function/method bodies
-        //(except for tracking the nested blocks)
-        return stmt_type, "", false, decl
-
-    if (context == "struct" or context == "class") and end_token == ";" and stmt:
-        //looks like it's member declaration; append the members to the class declaration
-        class_decl = stack_top[self.CLASS_DECL]
-        if ("CV_PROP" in stmt): //or (class_decl and ("/Map" in class_decl[2])):
-            var_modlist = []
-            if "CV_PROP_RW" in stmt:
-                var_modlist.append("/RW")
-            stmt = self.batch_replace(stmt, [("CV_PROP_RW", ""), ("CV_PROP", "")]).strip()
-            var_list = stmt.split(",")
-            var_type, var_name1, modlist, argno = self.parse_arg(var_list[0], -1)
-            var_list = [var_name1] + [i.strip() for i in var_list[1:]]
-
-            for v in var_list:
-                vv = v.split("=")
-                vname = vv[0].strip()
-                vdefval = ""
-                if len(vv) > 1:
-                    vdefval = vv[1].strip()
-                class_decl[3].append([var_type, vname, vdefval, var_modlist])
-        return stmt_type, "", false, None
-
-    //something unknown
-    return stmt_type, "", false, None
-
-def find_next_token(self, s, tlist, p=0):
-    """
-    Finds the next token from the 'tlist' in the input 's', starting from position 'p'.
-    Returns the first occurred token and its position, or ("", len(s)) when no token is found
-    """
-    token = ""
-    tpos = len(s)
-    for t in tlist:
-        pos = s.find(t, p)
-        if pos < 0:
-            continue
-        if pos < tpos:
-            tpos = pos
-            token = t
-    return token, tpos
-
-def print_decls(self, decls):
-    """
-    Prints the list of declarations, retrieived by the parse() method
-    """
-    for d in decls:
+/*
+Prints the list of declarations, retrieived by the parse() method
+*/
+fun hdr_parser_t.print_decls(decls: decl_t list) =
+    for d <- decls {
+        | DeclFunc
         print(d[0], d[1], ";".join(d[2]))
         //Uncomment below line to see docstrings
         //print('"""\n' + d[5] + '\n"""')
@@ -1156,6 +1093,9 @@ def print_decls(self, decls):
                 print("; ".join(a[3]))
             else:
                 print()
+    }
+
+fun
 
 if __name__ == '__main__':
     parser = CppHeaderParser(generate_umat_decls=true, generate_gpumat_decls=true)
