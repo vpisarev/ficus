@@ -269,6 +269,7 @@ type exp_t =
     | ExpNop: loc_t
     | ExpBreak: (bool, loc_t)
     | ExpContinue: loc_t
+    | ExpReturn: (exp_t?, loc_t)
     | ExpRange: (exp_t?, exp_t?, exp_t?, ctx_t)
     | ExpLit: (lit_t, ctx_t)
     | ExpIdent: (id_t, ctx_t)
@@ -478,6 +479,7 @@ var all_modules_sorted: int list = []
 var builtin_exceptions = empty_idmap
 var all_compile_errs: exn list = []
 var all_compile_err_ctx: string list = []
+var all_func_ctx: (id_t, typ_t, loc_t) list = []
 
 fun string(loc: loc_t)
 {
@@ -612,6 +614,7 @@ fun get_exp_ctx(e: exp_t)
     | ExpNop(l) => (TypVoid, l)
     | ExpBreak(_, l) => (TypVoid, l)
     | ExpContinue(l) => (TypVoid, l)
+    | ExpReturn(_, l) => (TypVoid, l)
     | ExpRange(_, _, _, c) => c
     | ExpLit(_, c) => c
     | ExpIdent(_, c) => c
@@ -1352,6 +1355,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
     | ExpNop _ => e
     | ExpBreak(_, _) => e
     | ExpContinue _ => e
+    | ExpReturn(e_opt, loc) => ExpReturn(walk_exp_opt_(e_opt), loc)
     | ExpRange(e1_opt, e2_opt, e3_opt, ctx) => ExpRange(walk_exp_opt_(e1_opt), walk_exp_opt_(e2_opt), walk_exp_opt_(e3_opt), walk_ctx_(ctx))
     | ExpLit(l, ctx) => ExpLit(l, walk_ctx_(ctx))
     | ExpIdent(n, ctx) => ExpIdent(n, walk_ctx_(ctx))

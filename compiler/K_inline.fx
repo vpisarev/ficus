@@ -121,7 +121,7 @@ fun calc_exp_size(e: kexp_t)
         | KDefVariant _ | KDefTyp _ | KDefInterface _ | KDefClosureVars _ => 0
         | KExpIntrin(IntrinStrConcat, args, _) => args.length()
         | KExpBinary _ | KExpUnary _ | KExpCast _ | KExpIntrin _
-        | KExpBreak _ | KExpContinue _ | KExpMem _ | KExpAssign _ | KDefVal _ => 1
+        | KExpBreak _ | KExpContinue _ | KExpReturn _ | KExpMem _ | KExpAssign _ | KDefVal _ => 1
         | KExpSeq (elist, _) => elist.length()
         | KExpSync (_, e) => 10
         | KExpMkRecord (args, _) => args.length()

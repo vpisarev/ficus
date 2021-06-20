@@ -350,6 +350,12 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | ExpBreak(f, _) =>
             pp.str(if f {"@fold break"} else {"break"})
         | ExpContinue _ => pp.str("continue")
+        | ExpReturn (e_opt, _) =>
+            match e_opt
+            {
+            | Some(e) => pp.str("(return"); pp.space(); ppexp(e); pp.str(")")
+            | _ => pp.str("return")
+            }
         | ExpRange(e1_opt, e2_opt, e3_opt, _) =>
             pp.str("(")
             match e1_opt {

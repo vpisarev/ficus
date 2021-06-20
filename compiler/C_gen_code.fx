@@ -85,7 +85,7 @@
 from Ast import *
 from K_form import *
 from C_form import *
-import K_remove_unused, K_annotate, K_mangle
+import K_remove_unused, K_annotate, K_mangle, K_pp
 import C_gen_types, C_gen_fdecls, C_pp
 
 import Map, Set, Hashmap, Hashset
@@ -218,6 +218,7 @@ type block_ctx_t =
     bctx_cleanup: cstmt_t list;
     bctx_break_used: int;
     bctx_continue_used: int;
+    bctx_return_used: int;
     bctx_label_used: int
 }
 
@@ -270,6 +271,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
     var block_stack: block_ctx_t ref list = []
     val for_letters = ["i", "j", "k", "l", "m" ]
     val fx_status_ = get_id("fx_status")
+    var return_used = 0
+    var func_dstexp_r: cexp_t? ref = ref None
 
     fun make_label(basename: string, loc: loc_t)
     {
@@ -341,7 +344,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             bctx_kind=kind, bctx_label=l, bctx_br_label=br_l, bctx_for_flags=for_flags,
             bctx_status=make_dummy_exp(loc), bctx_par_status=make_dummy_exp(loc),
             bctx_prologue=[], bctx_cleanup=[], bctx_break_used=0,
-            bctx_continue_used=0, bctx_label_used=0
+            bctx_continue_used=0, bctx_return_used=0, bctx_label_used=0
         })
         block_stack = bctx :: block_stack
     }
@@ -1418,6 +1421,20 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                          (false, dummy_exp, break_stmt :: ccode)
         | KExpContinue _ => val continue_stmt = make_continue_stmt(kloc)
                             (false, dummy_exp, continue_stmt :: ccode)
+        | KExpReturn (a_opt, _) =>
+            val bctx = curr_block_ctx(kloc)
+            bctx->bctx_return_used += 1
+            return_used += 1
+            val ccode = match (a_opt, *func_dstexp_r) {
+                | (Some(a), Some(dst_exp)) =>
+                    val (e, ccode) = atom2cexp(a, ccode, kloc)
+                    val ctyp = get_cexp_typ(e)
+                    C_gen_types.gen_copy_code(e, dst_exp, ctyp, ccode, kloc)
+                | _ => ccode
+                }
+            val lbl = curr_block_label(kloc)
+            val ret_exp = CExp(make_call(get_id("FX_RETURN"), [lbl], CTypVoid, kloc))
+            (false, dummy_exp, ret_exp :: ccode)
         | KExpAtom (a, _) => val (e, ccode) = atom2cexp(a, ccode, kloc)
                              val e = fix_nil(e, ktyp)
                              (true, e, ccode)
@@ -1699,7 +1716,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 (false, dst_exp, ccode)
             | (IntrinPopExn, []) =>
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "curr_exn", CTypExn, ccode, kloc)
-                val e = make_call(get_id("fx_exn_get_and_reset"), [cexp_get_addr(dst_exp)], CTypVoid, kloc)
+                val fx_status_exp = make_fx_status(kloc)
+                val e = make_call(get_id("fx_exn_get_and_reset"), [fx_status_exp, cexp_get_addr(dst_exp)], CTypVoid, kloc)
                 (false, dst_exp, CExp(e) :: ccode)
             | (IntrinStrConcat, al) =>
                 val fold strs = [], ccode = ccode for a <- al {
@@ -2413,6 +2431,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 catch_code
             }
             */
+            val (pop_exn, catch_e) = match catch_e {
+                | KExpSeq((KDefVal(_, KExpIntrin(IntrinPopExn, _, _), _) as pop_exn) :: catch_e_seq, _) =>
+                    (pop_exn, code2kexp(catch_e_seq, kloc))
+                | KExpSeq((KExpIntrin(IntrinPopExn, _, _) as pop_exn) :: catch_e_seq, _) =>
+                    (pop_exn, code2kexp(catch_e_seq, kloc))
+                | _ =>
+                    throw compile_err(kloc, "catch part in KExpTryCatch() should be a sequence starting with 'val x = pop_exn()'")
+                }
             val (dst_exp, ccode) = get_dstexp(dstexp_r, "res", ctyp, ccode, kloc)
             val try_loc = get_kexp_loc(try_e)
             val try_end_loc = get_end_loc(try_loc)
@@ -2425,7 +2451,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val ccode = epilogue + (try_ccode + (bctx_prologue + ccode))
             pop_block_ctx(try_end_loc)
             val fx_status_exp = make_fx_status(try_end_loc)
-            val catch_ccode = [CExp(CExpBinary(COpAssign, fx_status_exp, make_int_exp(0, try_end_loc), (CTypVoid, try_end_loc))) ]
+            val (_, catch_ccode) = kexp2cexp(pop_exn, ref None, [])
+            val catch_ccode = CExp(CExpBinary(COpAssign, fx_status_exp, make_int_exp(0, try_end_loc), (CTypVoid, try_end_loc))) :: catch_ccode
             val catch_ccode =
                 match ctyp {
                 | CTypVoid => catch_ccode
@@ -3189,6 +3216,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             | (_, CtorNone) =>
                 val dstexp_r = ref (if retid == noid { None }
                                     else { Some(cexp_deref(make_id_exp(retid, kf_loc))) })
+                func_dstexp_r = dstexp_r
+                return_used = 0
                 val orig_status_id = gen_idc(cm_idx, "fx_status")
                 val (status_exp, ccode) = create_cdefval(orig_status_id, CTypCInt, default_tempvar_flags(),
                                                         "fx_status", Some(make_int_exp(0, kf_loc)), [], kf_loc)
@@ -3228,7 +3257,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     }
                 val {bctx_label, bctx_prologue, bctx_cleanup, bctx_label_used} = *bctx
                 val ccode =
-                    if bctx_label_used > 0 {
+                    if bctx_label_used > 0 || return_used > 0 {
                         CStmtLabel(bctx_label, end_loc) :: ccode
                     } else {
                         /* [TODO] it seems that the check is quite weak and yields wrong code.
@@ -3262,7 +3291,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     }
                 val ccode =
                     if status_id != noid {
-                        CStmtReturn(Some(status_exp), end_loc) :: ccode
+                        if return_used > 0 {
+                            val chk_ret = make_call(get_id("FX_CHECK_RETURN"), [], CTypCInt, end_loc)
+                            CStmtReturn(Some(chk_ret), end_loc) :: ccode
+                        } else {
+                            CStmtReturn(Some(status_exp), end_loc) :: ccode
+                        }
                     } else if rt == CTypVoid {
                         ccode
                     } else {

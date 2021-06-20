@@ -504,8 +504,10 @@ TEST("basic.types.variant", fun()
     }
 
     fun t2str (typ: type_t) {
-        | Unit => "void"
-        | Bool => "bool"
+        if typ == Unit {return "void"}
+
+        match typ {
+        Bool => "bool"
         | Int => "int"
         | Float => "double"
         | Fun (args, rt) when args.length() != 1 => f"(({tlist2str(args)}) -> {t2str(rt)})"
@@ -513,6 +515,8 @@ TEST("basic.types.variant", fun()
         | Tuple(args) => f"({tlist2str(args)})"
         | Array(at) => f"{t2str(at)} []"
         | Var(x) => match *x { | Some(t1) => t2str(t1) | None => "<unknown>" }
+        | _ => throw Fail("unexpected type")
+        }
     }
 
     EXPECT_EQ(

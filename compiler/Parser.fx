@@ -1321,6 +1321,9 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
         | (EQUAL, _) :: (CCODE, _) :: _ =>
             val (ts, body) = parse_ccode_exp(ts.tl(), make_new_typ())
             (ts, params, body, fflags.{fun_flag_ccode = true})
+        | (EQUAL, _) :: (CCODE, _) :: _ =>
+            val (ts, body) = parse_ccode_exp(ts, make_new_typ())
+            (ts, params, body, fflags.{fun_flag_ccode = true})
         | (EQUAL, _) :: rest =>
             val (ts, body) = parse_stmt(ts.tl())
             (ts, params, body, fflags)
@@ -1361,6 +1364,11 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
 {
     | (BREAK, l1) :: rest => (rest, ExpBreak(false, l1))
     | (CONTINUE, l1) :: rest => (rest, ExpContinue(l1))
+    | (RETURN(true), l1) :: rest =>
+        val (ts, e) = parse_exp(rest, allow_mkrecord=true)
+        (ts, ExpReturn(Some(e), l1))
+    | (RETURN(false), l1) :: rest =>
+        (rest, ExpReturn(None, l1))
     | (THROW, l1) :: rest =>
         val (ts, e) = parse_exp(rest, allow_mkrecord=true)
         (ts, ExpThrow(e, l1))
@@ -1574,7 +1582,8 @@ fun parse_match_cases(ts: tklist_t): (tklist_t, mcase_t list)
 {
     val ts = match ts {
     | (LBRACE, _) :: (BAR, _) :: rest => rest
-    | _ => throw parse_err(ts, "'{', followed by '|', is expected")
+    | (LBRACE, _) :: rest => rest
+    | _ => throw parse_err(ts, "'{', followed by optional '|', is expected")
     }
 
     fun extend_match_cases_(ts: tklist_t, result: mcase_t list): (tklist_t, mcase_t list) =

@@ -404,13 +404,6 @@ typedef struct _fx_Nt6option1N14C_form__ctyp_t {
    } u;
 } _fx_Nt6option1N14C_form__ctyp_t;
 
-typedef struct _fx_Nt6option1R9Ast__id_t {
-   int tag;
-   union {
-      struct _fx_R9Ast__id_t Some;
-   } u;
-} _fx_Nt6option1R9Ast__id_t;
-
 typedef struct _fx_T2il {
    int_ t0;
    int64_t t1;
@@ -426,15 +419,6 @@ typedef struct _fx_T2id {
    double t1;
 } _fx_T2id;
 
-typedef struct _fx_N12Ast__cmpop_t {
-   int tag;
-} _fx_N12Ast__cmpop_t;
-
-typedef struct _fx_T2R9Ast__id_tR10Ast__loc_t {
-   struct _fx_R9Ast__id_t t0;
-   struct _fx_R10Ast__loc_t t1;
-} _fx_T2R9Ast__id_tR10Ast__loc_t;
-
 typedef struct _fx_N14K_form__klit_t {
    int tag;
    union {
@@ -448,6 +432,22 @@ typedef struct _fx_N14K_form__klit_t {
       struct _fx_N14K_form__ktyp_t_data_t* KLitNil;
    } u;
 } _fx_N14K_form__klit_t;
+
+typedef struct _fx_Nt6option1R9Ast__id_t {
+   int tag;
+   union {
+      struct _fx_R9Ast__id_t Some;
+   } u;
+} _fx_Nt6option1R9Ast__id_t;
+
+typedef struct _fx_N12Ast__cmpop_t {
+   int tag;
+} _fx_N12Ast__cmpop_t;
+
+typedef struct _fx_T2R9Ast__id_tR10Ast__loc_t {
+   struct _fx_R9Ast__id_t t0;
+   struct _fx_R10Ast__loc_t t1;
+} _fx_T2R9Ast__id_tR10Ast__loc_t;
 
 typedef struct _fx_N17C_form__cbinary_t {
    int tag;

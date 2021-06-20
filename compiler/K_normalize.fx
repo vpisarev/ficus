@@ -196,6 +196,15 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
     | ExpNop(loc) => (KExpNop(loc), code)
     | ExpBreak(_, loc) => (KExpBreak(loc), code)
     | ExpContinue(loc) => (KExpContinue(loc), code)
+    | ExpReturn(e_opt, loc) =>
+        val (a_opt, code) =
+            match e_opt {
+            | Some(e) =>
+                val (a, code) = exp2atom(e, code, false, sc)
+                (Some(a), code)
+            | _ => (None, code)
+            }
+        (KExpReturn(a_opt, loc), code)
     | ExpRange(e1_opt, e2_opt, e3_opt, _) =>
         fun process_rpart(e_opt: exp_t?, code: kcode_t, defval: atom_t) =
             match e_opt {
@@ -1292,8 +1301,10 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
     }]
     if is_variant && !have_else && !match_var_cases.empty() {
         val idlist = ", ".join(match_var_cases.map(fun (n) {f"'{n}'"}))
-        throw compile_err(loc, f"the case(s) {idlist} are not covered; \
-                        add '| _ => ...' clause to suppress this error")
+        val idlist_len = idlist.length()
+        val msg = if idlist_len == 1 {f"the case {idlist} is not covered"}
+                  else {f"the cases [{idlist}] are not covered"}
+        throw compile_err(loc, f"{msg}; add '| _ => ...' clause to suppress this error")
     }
     val k_cases =
         if have_else {

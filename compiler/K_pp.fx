@@ -315,6 +315,11 @@ val pp_ = Ast.pp
     | KExpNop _ => pp.str("{}")
     | KExpBreak _ => pp.str("break")
     | KExpContinue _ => pp.str("continue")
+    | KExpReturn (a_opt, _) =>
+        match a_opt {
+        | Some(a) => pp.str("(return"); pp.space(); pp_atom_(a); pp.str(")")
+        | _ => pp.str("return")
+        }
     | KExpAtom (a, _) => pp_atom_(a)
     | KExpBinary (o, a, b, _) =>
         pp.begin(); val ostr = f" {o}"

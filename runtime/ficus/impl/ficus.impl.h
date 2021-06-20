@@ -64,9 +64,10 @@ int FX_EXN_SizeMismatchError = -22;
 int FX_EXN_StackOverflowError = -23;
 int FX_EXN_SysBreak = -24;
 int FX_EXN_SysContinue = -25;
-int FX_EXN_TypeMismatchError = -26;
-int FX_EXN_UnknownExnError = -27;
-int FX_EXN_ZeroStepError = -28;
+int FX_EXN_SysReturn = -26;
+int FX_EXN_TypeMismatchError = -27;
+int FX_EXN_UnknownExnError = -28;
+int FX_EXN_ZeroStepError = -29;
 
 int fx_init(int argc, char** argv)
 {
@@ -103,6 +104,7 @@ int fx_init(int argc, char** argv)
     FX_DECL_STD_EXN(SizeMismatchError);
     FX_DECL_STD_EXN(SysBreak);
     FX_DECL_STD_EXN(SysContinue);
+    FX_DECL_STD_EXN(SysReturn);
     FX_DECL_STD_EXN(TypeMismatchError);
     FX_DECL_STD_EXN(UnknownExnError);
     FX_DECL_STD_EXN(ZeroStepError);
@@ -379,13 +381,29 @@ int fx_rethrow_exn(fx_exn_t* exn)
 }
 
 // it's always used in the beginning of "catch"
-void fx_exn_get_and_reset(fx_exn_t* exn)
+void fx_exn_get_and_reset(int fx_status, fx_exn_t* exn)
+{
+    if (FX_EXN_SysReturn <= fx_status && fx_status <= FX_EXN_SysBreak)
+    {
+        exn->tag = fx_status;
+        exn->info = &fx_std_exn_info[-fx_status];
+        exn->data = 0;
+    }
+    else
+    {
+        fx_bt_t* curr_bt = &fx_bt;
+        fx_exn_t* curr_exn = &curr_bt->curr_exn;
+        *exn = *curr_exn;
+        curr_exn->data = 0;
+    }
+}
+/*void fx_exn_get_and_reset(fx_exn_t* exn)
 {
     fx_bt_t* curr_bt = &fx_bt;
     fx_exn_t* curr_exn = &curr_bt->curr_exn;
     *exn = *curr_exn;
     curr_exn->data = 0;
-}
+}*/
 
 int fx_exn_check_parallel(int status, int* glob_status)
 {

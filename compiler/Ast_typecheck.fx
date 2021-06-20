@@ -2015,6 +2015,21 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         }
     | ExpBreak(f, _) => check_inside_for(f, true, false, sc); e
     | ExpContinue _ => check_inside_for(false, false, false, sc); e
+    | ExpReturn(e_opt, _) =>
+        unify(etyp, TypVoid, eloc, "return statement should has 'void' type")
+        val t = match e_opt {|Some(e) => get_exp_typ(e) | _ => TypVoid}
+        match all_func_ctx {
+        | (fname, rt, _) :: _ =>
+            unify(t, rt, eloc,
+                f"the return statement type {typ2str(t)} is inconsistent with \
+                the previously deduced type {typ2str(rt)} of function {pp(fname)}")
+        | _ =>
+            throw compile_err(eloc, "return statement occurs outside of a function body")
+        }
+        ExpReturn(match e_opt {
+            | Some(e) => Some(check_exp(e, env, sc))
+            | _ => None
+            }, eloc)
     | ExpMkArray(arows, _) =>
         val elemtyp = make_new_typ()
         val (_, arows, _, dims) =
@@ -2443,9 +2458,9 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                     if nexps != 1 {
                         throw compile_err(eloc, "there cannot be {} operators inside code blocks")
                     }
-                | ExpBreak(_, _) | ExpContinue _ =>
+                | ExpBreak(_, _) | ExpContinue _ | ExpReturn(_, _) =>
                     if idx != nexps - 1 {
-                        throw compile_err( eloc, "break/continue operator should not \
+                        throw compile_err( eloc, "break/continue/return operator should not \
                             be followed by any other operators in the same linear code sequence")
                     }
                 | ExpCCode(_, _) => {}
@@ -3013,11 +3028,13 @@ fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
     if instantiate {
         all_compile_err_ctx = f"when instantiating '{pp(df_name)}' at {inst_loc}" :: all_compile_err_ctx
     }
+    all_func_ctx = (df_name, make_new_typ(), inst_loc) :: all_func_ctx
     try {
         val inst_df = instantiate_fun_(templ_df, inst_ftyp, inst_env0,
                                        inst_loc, instantiate)
         inst_df
     } finally {
+        all_func_ctx = all_func_ctx.tl()
         if instantiate { all_compile_err_ctx = all_compile_err_ctx.tl() }
     }
 }
@@ -3094,10 +3111,18 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
         })
     set_id_entry(inst_name, IdFun(inst_df))
     if instantiate { *templ_df->df_templ_inst = inst_name :: *templ_df->df_templ_inst }
+    match all_func_ctx {
+    | (_, t, _) :: _ =>
+        unify(t, rt, inst_loc, "the function body has inconsistent type; check the type of return statements")
+    | _ => throw compile_err(df_loc, f"the function stack is empty for some reason")
+    }
     val inst_body = instantiate_fun_body(inst_name, inst_ftyp, df_inst_args,
                                          inst_body, inst_env, fun_sc, inst_loc)
     // update the function return type
-    unify(get_exp_typ(inst_body), rt, inst_loc, "the function body has inconsistent type")
+    unify(get_exp_typ(inst_body), rt, inst_loc,
+        "the function body has inconsistent type; \
+        check the type of return statements, \
+        all branches and the explicit return type specification, if any")
     val inst_ftyp = match (arg_typs, is_constr) {
                     | ([], true) => rt
                     | _ => TypFun(arg_typs, rt)

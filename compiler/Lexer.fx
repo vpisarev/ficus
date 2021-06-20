@@ -19,7 +19,7 @@ type token_t =
     | DO | DATA: string | ELLIPSIS | ELSE | EXCEPTION | FINALLY
     | FOLD | FOR: bool | FROM | FUN | IF | IMPORT: bool
     | INLINE | INTERFACE | MATCH | NOTHROW | OPERATOR
-    | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | THROW
+    | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | RETURN: bool | THROW
     | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool | UNZIP
     | LPAREN: bool | STR_INTERP_LPAREN | RPAREN | LSQUARE: bool
     | RSQUARE | LBRACE | RBRACE | LARRAY | RARRAY | LLIST | RLIST | LVECTOR | RVECTOR
@@ -69,6 +69,8 @@ fun tok2str(t: token_t)
     | PRIVATE => ("PRIVATE", "@private")
     | PURE => ("PURE", "@pure")
     | REF(ne) => (ne2u(ne, "REF"), "ref")
+    | RETURN(false) => ("RETURN", "return")
+    | RETURN(true) => ("RETURN_WITH", "return_with")
     | SYNC => ("SYNC", "@sync")
     | THROW => ("THROW", "throw")
     | TRY => ("TRY", "try")
@@ -186,7 +188,8 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
     ("match", (MATCH, 2)), ("nan", (LITERAL(Ast.LitFloat(64, nan)), 0)),
     ("nanf", (LITERAL(Ast.LitFloat(32, nan)), 0)),
     ("null", (LITERAL(Ast.LitNull), 0)), ("operator", (OPERATOR, 0)),
-    ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)), ("throw", (THROW, 2)),
+    ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)),
+    ("return", (RETURN(false), 2)), ("throw", (THROW, 2)),
     ("true", (LITERAL(Ast.LitBool(true)), 0)), ("try", (TRY, 2)),
     ("type", (TYPE, 2)), ("val", (VAL, 2)), ("var", (VAR, 2)),
     ("when", (WHEN, 1)), ("while", (WHILE(true), 2)), ("with", (WITH, 1)),
@@ -412,8 +415,29 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     val t = IMPORT(new_exp); new_exp = true; t
                 | (WHILE _, _) =>
                     val t = WHILE(new_exp); new_exp = true; t
+                | (MATCH, _) =>
+                    paren_stack = (MATCH, loc) :: paren_stack
+                    new_exp = true; MATCH
                 | (REF _, _) =>
                     val t = REF(new_exp); /* retain new_exp as-is */ t
+                | (RETURN _, _) =>
+                    c = buf.zero[pos]
+                    c1 = buf.zero[pos+1]
+                    val may_have_arg =
+                        if c.isspace() ||
+                            (c == '/' && (c1 == '/' || c1 == '*')) {
+                            val (c_, p, nl) = Lxu.skip_spaces(strm, pos, true)
+                            c = c_
+                            pos = p
+                            if nl {
+                                match paren_stack {
+                                | (LPAREN _, _) :: _ | (LSQUARE _, _) :: _ => true
+                                | _ => false
+                                }
+                            } else {true}
+                        } else {true}
+                    new_exp = true
+                    RETURN(may_have_arg && c != ';')
                 | (t, -1) =>
                     throw Lxu.LexerError(loc, f"Identifier '{ident}' is reserved and cannot be used")
                 | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t
@@ -484,6 +508,9 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     val (p, s) = get_ccode(pos)
                     pos = p
                     (LITERAL(Ast.LitString(s.strip())), loc) :: []
+                | (LBRACE, l1) :: (MATCH, _) :: rest =>
+                    paren_stack = (BAR, l1) :: (LBRACE, l1) :: rest
+                    (LBRACE, l1) :: []
                 | _ =>
                     /*
                        call nexttokens recursively; if the next token is '|',
@@ -633,7 +660,9 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     check_ne(prev_ne, getloc(pos-1), "!")
                     (LOGICAL_NOT, loc) :: []
                 }
-            | '?' => new_exp = false; (QUESTION, loc) :: []
+            | '?' =>
+                new_exp = false
+                (QUESTION, loc) :: []
             | '<' =>
                 if c1 == '=' {
                     if c2 == '>' {pos += 2; (SPACESHIP, loc) :: []}

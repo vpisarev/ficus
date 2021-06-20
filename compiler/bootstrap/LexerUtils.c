@@ -674,9 +674,9 @@ FX_EXTERN_C int _fx_M10LexerUtilsFM9getstringT4iSiB6SiTa2iCBB(
 
 _fx_catch_0: ;
    if (fx_status < 0) {
+      fx_exn_get_and_reset(fx_status, &exn_0);
       fx_status = 0;
       _fx_free_T4iSiB(fx_result);
-      fx_exn_get_and_reset(&exn_0);
       int tag_0 = exn_0.tag;
       if (tag_0 == FX_EXN_OverflowError) {
          fx_exn_t v_0 = {0};

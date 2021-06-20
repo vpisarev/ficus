@@ -43,8 +43,11 @@ fun pure_kexp(e: kexp_t): bool
     fun pure_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
     fun pure_kexp_(e: kexp_t, callb: k_fold_callb_t) =
         match e {
+        // [TODO] break, continue & return, while being non-pure expressions by themselves,
+        // can still be a part of a large pure expression (or a pure function)
         | KExpBreak _ => ispure = false
         | KExpContinue _ => ispure = false
+        | KExpReturn _ => ispure = false
         | KExpIntrin (intr, _, _) =>
             match intr {
             | IntrinPopExn | IntrinCheckIdx | IntrinCheckIdxRange => ispure = false

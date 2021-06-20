@@ -116,6 +116,7 @@ extern int FX_EXN_SizeMismatchError;
 extern int FX_EXN_StackOverflowError;
 extern int FX_EXN_SysBreak;
 extern int FX_EXN_SysContinue;
+extern int FX_EXN_SysReturn;
 extern int FX_EXN_RangeError;
 extern int FX_EXN_TypeMismatchError;
 extern int FX_EXN_UnknownExnError;
@@ -159,6 +160,7 @@ void fx_free(void* ptr);
 // so we don't use FX_SET_EXN_EXN_FAST() etc.
 #define FX_BREAK(label) { fx_status = FX_EXN_SysBreak; goto label; }
 #define FX_CONTINUE(label) { fx_status = FX_EXN_SysContinue; goto label; }
+#define FX_RETURN(label) { fx_status = FX_EXN_SysReturn; goto label; }
 #define FX_CHECK_CONTINUE() \
     if (fx_status != FX_EXN_SysContinue) ; else fx_status = FX_OK
 #define FX_CHECK_BREAK() \
@@ -166,6 +168,8 @@ void fx_free(void* ptr);
         fx_status = FX_OK; \
         break; \
     }
+#define FX_CHECK_RETURN() \
+    (fx_status != FX_EXN_SysReturn ? fx_status : FX_OK)
 #define FX_CHECK_BREAK_ND(br_label) \
     if(fx_status != FX_EXN_SysBreak) ; else { \
         fx_status = FX_OK; \
@@ -464,7 +468,8 @@ typedef struct fx_exn_t
 int fx_exn_set_fast(int code, const char* funcname, const char* filename, int lineno);
 int fx_set_exn(fx_exn_t* exn, bool move, const char* funcname, const char* filename, int lineno);
 int fx_rethrow_exn(fx_exn_t* exn);
-void fx_exn_get_and_reset(fx_exn_t* exn);
+void fx_exn_get_and_reset(int fx_status, fx_exn_t* exn);
+//void fx_exn_get_and_reset(fx_exn_t* exn);
 int fx_exn_check_parallel(int status, int* glob_status);
 int fx_check_stack(void);
 

@@ -100,6 +100,7 @@ type kexp_t =
     | KExpNop: loc_t
     | KExpBreak: loc_t
     | KExpContinue: loc_t
+    | KExpReturn: (atom_t?, loc_t)
     | KExpAtom: (atom_t, kctx_t)
     | KExpBinary: (binary_t, atom_t, atom_t, kctx_t)
     | KExpUnary: (unary_t, atom_t, kctx_t)
@@ -312,6 +313,7 @@ fun get_kexp_ctx(e: kexp_t): kctx_t
     | KExpNop(l) => (KTypVoid, l)
     | KExpBreak(l) => (KTypVoid, l)
     | KExpContinue(l) => (KTypVoid, l)
+    | KExpReturn(_, l) => (KTypVoid, l)
     | KExpAtom(_, c) => c
     | KExpBinary(_, _, _, c) => c
     | KExpUnary(_, _, c) => c
@@ -645,6 +647,8 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
     | KExpNop _ => e
     | KExpBreak _ => e
     | KExpContinue _ => e
+    | KExpReturn(a_opt, loc) =>
+        KExpReturn(match a_opt {|Some(a) => Some(walk_atom_(a, loc)) | _ => None}, loc)
     | KExpAtom(a, (_, loc) as ctx) => KExpAtom(walk_atom_(a, loc), walk_kctx_(ctx))
     | KExpBinary(bop, a1, a2, (_, loc) as ctx) =>
         KExpBinary(bop, walk_atom_(a1, loc), walk_atom_(a2, loc), walk_kctx_(ctx))
@@ -953,6 +957,7 @@ fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
     | KExpNop _ => {}
     | KExpBreak _ => {}
     | KExpContinue _ => {}
+    | KExpReturn(a_opt, loc) => match a_opt {|Some(a)=>fold_atom_(a, loc)| _ => {}}
     | KExpAtom(a, (t, loc)) => fold_atom_(a, loc); fold_ktyp_(t, loc)
     | KExpBinary(_, a1, a2, (t, loc)) =>
         fold_atom_(a1, loc); fold_atom_(a2, loc); fold_ktyp_(t, loc)

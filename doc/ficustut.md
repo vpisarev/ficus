@@ -337,7 +337,7 @@ There are the following types of tokens in Ficus:
   ```
   as break catch class continue do else exception
   false finally fold for from fun if import inf inff
-  interface match nan nanf null operator ref throw
+  interface match nan nanf null operator ref return throw
   true try type val var when while
   ```
 
@@ -486,7 +486,7 @@ You may ask, why to use values when variables are just as easy to declare and ar
 ```
 fun fibseq(n: int)
 {
-    fun fib_(i: int, a: int, b: int, n: int, result: int list)=
+    fun fib_(i: int, a: int, b: int, n: int, result: int list) =
        if i < n {fib_(i+1, a+b, a, b::result)}
        else {result.rev()}
     fib_(0, 1, 1, n, [])
@@ -1353,8 +1353,8 @@ println(fold sum = 0 for x <- array {sum + x})
 // compute Hamming distance using fold
 fun hamming_dist(a: uint8 [], b: uint8 []) =
     fold dist = 0 for x<-a, y<-b {
-      dist + hamming_lut[int(x ^ y)]
-  }
+        dist + hamming_lut[int(x ^ y)]
+    }
 
 // fold-based version of bounding_box function:
 fun bounding_box(image: uint8 [,])
@@ -1563,7 +1563,7 @@ Unzip operation requires some extra syntax:
 
 ```
 val (a_array, b_array) =
-  [| @unzip for (a, b) <- ab_vector {(a*10, b.toupper())} |]
+    [| @unzip for (a, b) <- ab_vector {(a*10, b.toupper())} |]
 // will produce [|10, 20, 30, 40, 50|] and
 //              [|"A", "B", "C", "D", "E"|]
 ```
@@ -1611,7 +1611,7 @@ fun fact_fast(n: int)
 {
     // functions can be easily defined one inside another
     fun fact_(n: int, p: int) =
-       if n <= 1 {p} else {fact_(n-1, n*p)}
+        if n <= 1 {p} else {fact_(n-1, n*p)}
     fact_(n, 1)
 }
 
@@ -1802,6 +1802,27 @@ val faces = detector(myimage)
 ```
 
 Named parameters add zero overhead compared to the positional parameters, so they can be used widely without worrying about the performance.
+
+## Using return for earlier exit
+
+Ficus includes imperative-style and yet sometimes very useful `return` operator with optional return value to exit from the function earlier. Just like any control flow operator in Ficus, `return` is also an expression. It has `void` type, regardless of the function type.
+
+```
+fun foo(arg1: t1, ..., argn: tn) {
+
+    ...
+    if some_expr { return some_value }
+    ...
+    match another_expr {
+    ...
+    | pattern => return another_value
+    ... // all other actions should have 'void' type
+    }
+    final_ret_value // the final expression
+}
+```
+
+In this example, `some_value`, `another_value` and `final_ret_value` should all have the same type. If a function has `void` type then all the return operators in this function, if any, should be used without a return value.
 
 # Numbers
 
@@ -2552,7 +2573,7 @@ The big part of programming is creation of some reusable components, to eliminat
 Let's start with generic functions. It's very easy to create a generic function — just replace all or some of the parameter types with `'some_indent` and they can be treated as a *type variables*, which can take arbitrary type values. It's not necessary to make the whole argument type a type variable, you may use a type variable as a part of more complex type specification. Let's create a generic version of `make_deriv()` and use it:
 
 ```
-fun make_deriv(f: 't->'t, delta: 't) =
+fun make_deriv(f: 't->'t, delta: 't)
 {
     // note that the inner function is not generic,
     // it uses the same 't,
@@ -2575,7 +2596,7 @@ As you may see, a generic function is used exactly as a normal function. Let's i
 // for each pixel compute maximum over 3x3 neighborhood.
 // it can be applied to images of any type as long as
 // max(a, b) function is available for the elements.
-fun dilate3x3(img: 'pix [,]): 'pix [,] =
+fun dilate3x3(img: 'pix [,]): 'pix [,]
 {
     val (h, w) = size(img)
     [| for y <- 0:h for x <- 0:w {
@@ -2589,7 +2610,7 @@ fun dilate3x3(img: 'pix [,]): 'pix [,] =
 }
 
 // multiply matrix A by transposed B and add the result to C
-fun gemm_A_Bt_plusC(A: 't [,], B: 't [,], C: 't [,]) =
+fun gemm_A_Bt_plusC(A: 't [,], B: 't [,], C: 't [,])
 {
     val (ma, na) = size(A)
     val (mb, nb) = size(B)
@@ -2739,7 +2760,7 @@ Let's start with very useful list reversion function, which is also used in some
 
 ```
 // reimplementation of List.rev(l)
-fun list_rev(l: 't list): 't list =
+fun list_rev(l: 't list): 't list
 {
     fun list_rev_(l: 't list, result: 't list): 't list =
         if l.empty() {result} else {list_rev_(l.tl(), l.hd() :: result)}
@@ -2758,7 +2779,7 @@ The implementation is very simple, but there is problem with it — it's not tai
 
 ```
 // reimplementation of l.length()
-fun list_length(l: 't list): int =
+fun list_length(l: 't list): int
 {
     fun list_length_(l: 't list, len: int) =
         if l.empty() {len} else {list_length_(l.tl(), 1 + len)}
@@ -2769,7 +2790,7 @@ fun list_length(l: 't list): int =
 Moving on to the next useful function, list concatenation, which is implemented in `Builtins` module as overloaded `+` operator:
 
 ```
-fun list_concat(la: 't list, lb: 't list): 't list =
+fun list_concat(la: 't list, lb: 't list): 't list
 {
     fun list_concat_(rev_la: 't list, result: 't list): 't list =
         if rev_la.empty() {result}
@@ -2903,7 +2924,7 @@ Pattern are used extensively in Ficus; and we actually used them quite a bit alr
 
 ```
 match expr {
-| pattern1 => exprs1
+| pattern1 => exprs1 // the first '|' after '{' is optional
 | pattern2 => exprs2
 ...
 | patternN => exprsN
@@ -2952,8 +2973,7 @@ Now, what is actually a pattern and how a value is matched with it? Pattern may 
 * `when`-pattern: `pattern when expr`. `expr` should be of `bool` type. First, the value is matched with the `pattern`. If successfully, `expr` is evaluated (it can use the captured variables), and the matching is considered successful if the result is `true`:
 
     ```
-    fun diff_stat(A: int [], B: int [], eps: int):
-        (int, int, int, int) =
+    fun diff_stat(A: int [], B: int [], eps: int): (int, int, int, int) =
         fold n_exact=0, n_near=0, n_far=0, max_diff=0
             for a <- A, b <- B {
                 match abs(a - b) {
@@ -2973,7 +2993,7 @@ Now, what is actually a pattern and how a value is matched with it? Pattern may 
 You already have some impression of what `match` is capable of. It can do everything that `switch` operator in C could, and it can do much more. Let's give a few examples on how the list processing functions can be simplified using this operator:
 
 ```
-fun list_rev_case(l: 't list): 't list =
+fun list_rev_case(l: 't list): 't list
 {
     fun rev_(l_in: 't list, l_out: 't list): 't list =
         match l_in {
@@ -2998,11 +3018,11 @@ As you can see, we completely got rid of `empty()`, `hd()` and `tl()` operators!
 
 ```
 fun hd(l: 't list): 't =
-  match l { | a :: rest => a | _ => throw NullListError }
+    match l { | a :: rest => a | _ => throw NullListError }
 fun tl(l: 't list): 't list =
-  match l { | a :: rest => rest | _ => throw NullListError }
+    match l { | a :: rest => rest | _ => throw NullListError }
 fun empty(l: 't list): bool =
-  match l { | [] => true | _ => false }
+    match l { | [] => true | _ => false }
 ```
 
 Doesn't it look like a magic, or technically speaking, an infinite recursion (because we actually need somehow to access elements of *CONS*-cells to match it against the `::` pattern)? Well, there are some internal functions, intrinsics, that access a *CONS*-cell with assumption that it's not *[]*. Compiler uses those intrinsics when it compiles pattern matching expressions into a sequence of `if` operators in C.
@@ -3079,7 +3099,7 @@ Here are some important notes about the implementation:
     }
     ```
 
-    in some cases, like here, we can even omit names in the function parameters, because we will name them in the patterns.
+    in some cases, like here, we can even omit names in the function parameters, because we will name them in the patterns. Note that in this case the leading `|` after `{` is needed to distinguish a pattern-matching body from a regular function body.
 3. `match` and recursive functions are best friends, in functional programs, especially performing symbolic data analysis, you will often see them together.
 4. When we discussed [functions](#Functions) and, in particular, [list processing functions](#Lists), we encouraged you to use tail-recursive functions whenever possible. In this implementation `merge` and `scan` are not tail-recursive. This is because the tail-recursive variants would produce reversed lists, while we would like to avoid repetitive list reversion, i.e. we trade excessive list cell allocations for the extra consumed stack space.
 
@@ -3942,13 +3962,13 @@ class B: Printable
 fun B.print_me() = ...
 
 val rng = RNG(123u64)
-fun get_some_printable(): Printable =
+fun get_some_printable(): Printable
 {
     if bool(rng) {(A {...} :> Printable)}
     else {(B {...} :> Printable)}
 }
 
-fun foo(p: Printable) =
+fun foo(p: Printable)
 {
     // not clear whether to call A.print_me(),
     // B.print_me() or something else;
@@ -4053,7 +4073,7 @@ fun add_sat_u8(a: uint8 [], b: uint8 []): uint8 []
     val result = array(na, 0u8)
 
     fun add_sat_u8_(a: uint8 [], b: uint8 [],
-                    result: uint8 []): void
+                    result: uint8 []): void =
     @ccode
     {
         // access the arrays
