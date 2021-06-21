@@ -9,7 +9,7 @@
     Here is the original OpenCV license: https://github.com/opencv/opencv/blob/master/LICENSE
 */
 
-import Sys, Re, File, Hashset, Hashmap
+import Sys, Re, File, Filename, Hashset, Hashmap
 
 // the list only for debugging. The real list, used in the real OpenCV build, is specified in CMakeLists.txt
 val opencv_hdr_list = [
@@ -29,6 +29,7 @@ val opencv_hdr_list = [
     "imgcodecs/include/opencv2/imgcodecs.hpp",
     "videoio/include/opencv2/videoio.hpp",
     "highgui/include/opencv2/highgui.hpp",
+    "dnn/include/opencv2/dnn/dnn.hpp",
 ]
 
 type block_t = BlockNone | BlockGeneric | BlockEnumStruct | BlockEnumClass | BlockEnum | BlockFile | BlockStruct | BlockClass | BlockNamespace
@@ -189,8 +190,9 @@ fun parse(hname: string, ~wrap_mode:bool=true)
     val re_eq_empty_block = Re.compile(r"=\s*\{\s*\}")
 
     for l0 <- linelist {
+        //println(f"{self.lineno}. {state}. parsing '{l0.rstrip()}'")
+        //println(f"block_head='{block_head}'")
         self.lineno += 1
-        //print(state, self.lineno, l0)
 
         val l = l0.strip()
 
@@ -222,6 +224,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
                 depth_if_0 = 1
             | _ => {}
             }
+            continue
         }
 
         if state == StateDirectiveIf0 {
@@ -283,6 +286,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
                 if block_head != "" && block_head.endswith(')') && block_head.startswith("CV_ENUM_FLAGS(") {
                     l = ""
                     token = ";"
+                    pos = 0
                 } else {
                     break
                 }
@@ -323,9 +327,9 @@ fun parse(hname: string, ~wrap_mode:bool=true)
                     if t2 == "" {
                         throw self.parse_err("no terminating '\"'")
                     } else if t2 == "\"" {
+                        pos2 = pos2_
                         break
                     }
-                    pos2 = pos2_ + 2
                 }
                 block_head += " " + l[:pos2+1]
                 l = l[pos2+1:]
@@ -390,7 +394,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
             }
 
             block_head = ""
-            l = l[pos+1:]
+            l = if pos >= l.length() {""} else {l[pos+1:]}
         }
     }
 
@@ -407,7 +411,8 @@ fun hdr_parser_t.get_macro_arg(arg_str: string, npos: int)
     var balance = 1
     while true {
         val (t, npos3_) = self.find_next_token(arg_str, ["(", ")"], npos3+1)
-        if npos3_ < 0 {
+        npos3 = npos3_
+        if npos3 < 0 {
             throw self.parse_err("no matching ')' in the macro call")
         }
         if t == "(" {
@@ -419,7 +424,6 @@ fun hdr_parser_t.get_macro_arg(arg_str: string, npos: int)
                 break
             }
         }
-        npos3 = npos3_
     }
     (arg_str[npos2+1:npos3].strip(), npos3)
 }
@@ -434,6 +438,7 @@ fun hdr_parser_t.get_macro_arg(arg_str: string, npos: int)
 */
 fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
 {
+    //println(f"parse arg #{argno} '{arg_str0}'")
     var arg_str = arg_str0
     var argno = argno
     var isinput = true, isoutput = false
@@ -488,7 +493,7 @@ fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
         npos += 1
         val (t, npos_) = self.find_next_token(arg_str, [" ", "&", "*", "<", ">", ","], npos)
         npos = npos_
-        val w = arg_str[word_start:npos].strip()
+        val w = if npos >= 0 {arg_str[word_start:npos].strip()} else {arg_str[word_start:].strip()}
         if w == "operator" {
             word_list = ("operator " + arg_str[npos:].strip()) :: word_list
             break
@@ -506,6 +511,7 @@ fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
     }
 
     word_list = word_list.rev()
+    //println(f"word_list: {word_list}")
     var arg_type = ""
     var arg_name = ""
     var angle_stack = []
@@ -588,7 +594,7 @@ fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
     }
 
     while arg_type.endswith("_end_") {
-        arg_type = arg_type[:-length("_end_")]
+        arg_type = arg_type[:.-length("_end_")]
     }
 
     if add_star {
@@ -596,6 +602,7 @@ fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
     }
 
     arg_type = batch_replace(arg_type, [("std::", ""), ("cv::", ""), ("::", "_")])
+    //println(f"arg_type='{arg_type}'")
 
     (arg_info_t {
         name=arg_name,
@@ -951,13 +958,15 @@ fun hdr_parser_t.get_dotted_name(name: string) =
     } else {
         val qualified_name = name.contains('.') || name.contains("::")
         var n = ""
-        for b <- self.block_stack {
+        for b <- self.block_stack.rev() {
             val {block_type, block_name} = b
             match block_type {
             | BlockFile | BlockEnum => {}
             | BlockEnumClass | BlockEnumStruct when block_name == name => {}
             | BlockStruct | BlockClass | BlockNamespace | BlockEnumClass | BlockEnumStruct =>
-                n += block_name + "."
+                if block_name != "" && (block_type == BlockNamespace || !qualified_name) {
+                    n += block_name + "."
+                }
             | _ =>
                 throw self.parse_err(f"unsupported block '{block_type}' in the block stack")
             }
@@ -980,6 +989,7 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
                             ~mat: string="Mat", ~docstring: string=""):
     (block_t, string, bool, decl_t?)
 {
+    //println(f"parsing stmt '{stmt}'")
     var stmt = stmt
     var stack_top = self.block_stack.hd()
     val context = stack_top.block_type
@@ -995,33 +1005,32 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
         if context == BlockGeneric {
             throw self.parse_err("should not call parse_stmt inside code blocks")
         }
-        var parse_flag =
-            if context == BlockClass || context == BlockStruct {
-                while true {
-                    val colon_pos = stmt.find(":")
-                    if colon_pos < 0 {
-                        break
-                    }
-                    val w = stmt[:colon_pos].strip()
-                    if w == "public" || w == "protected" || w == "private" {
-                        stack_top = stack_top.{public_section = w == "public"}
-                        self.block_stack = stack_top :: self.block_stack.tl()
-                        stmt = stmt[colon_pos+1:].strip()
-                    }
+        if context == BlockClass || context == BlockStruct {
+            val colon_pos = stmt.find(":")
+            if colon_pos > 0 {
+                val w = stmt[:colon_pos].strip()
+                if w == "public" || w == "protected" || w == "private" {
+                    stack_top = stack_top.{public_section = w == "public"}
+                    self.block_stack = stack_top :: self.block_stack.tl()
+                    stmt = stmt[colon_pos+1:].strip()
                 }
-                // do not process hidden class members and template classes/functions
-                stack_top.public_section && !stmt.startswith("template")
-            } else {true}
-        if !parse_flag {(stmt_type, "", parse_flag, None)}
-        else {
-            if end_token == "{" && stmt.startswith("class ") || stmt.startswith("struct ") {
+            }
+        }
+        if !stack_top.public_section || stmt.startswith("template") {
+            (stmt_type, "", false, None)
+        } else {
+            if end_token == "{" && (stmt.startswith("class ") || stmt.startswith("struct ")) {
                 stmt_type = if stmt.startswith("class") {BlockClass} else {BlockStruct}
                 val class_decl = self.parse_class_decl(stmt, docstring=docstring)
                 val classname = match class_decl {
-                    | DeclClass {name} => name
+                    | DeclClass {name} => self.get_dotted_name(name)
                     | _ => throw self.parse_err("struct/class is expected")
                     }
-                (stmt_type, classname, true, Some(class_decl))
+                val (process, some_class) =
+                    if stmt.contains("CV_EXPORTS_W") || stmt.contains("CV_EXPORTS_AS") {
+                        (true, Some(class_decl))
+                    } else {(false, None)}
+                (stmt_type, classname, process, some_class)
             } else if (end_token == "{" && stmt.startswith("enum")) || stmt.startswith("namespace") {
                 //NB: Drop inheritance syntax for enum
                 val block_type = if stmt.startswith("enum") {BlockEnum} else {BlockNamespace}
@@ -1056,7 +1065,7 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
                         val readwrite = stmt.contains("CV_PROP_RW")
                         val stmt = batch_replace(stmt, [("CV_PROP_RW", ""), ("CV_PROP", "")]).strip()
                         val var_list = stmt.split(',', allow_empty=false)
-                        val (arg_info0, argno) = self.parse_arg(var_list.hd(), -1)
+                        val (arg_info0, _) = self.parse_arg(var_list.hd(), -1)
                         val class_members = match self.block_stack.hd() {
                             | {decl=Some(DeclClass {members})} => members
                             | _ => throw self.parse_err("invalid context; class/struct is expected")
@@ -1085,8 +1094,8 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
 
 fun string(a: arg_info_t)
 {
-    val {name, arg_type, defval, readwrite, isinput, isoutput, isconst, isref, isrref, isarray, custom_array} = a
-    val arg_type = (if isinput && isoutput {"[in/out]"} else {""}) + (if !isinput && isoutput {"[out] "} else {""}) +
+    val {name, arg_type, defval, readwrite, isinput, isoutput, isconst, isref, isrref} = a
+    val arg_type = (if isinput && isoutput {"[in/out] "} else {""}) + (if !isinput && isoutput {"[out] "} else {""}) +
                    (if readwrite {"[read/write] "} else {""})  +
                    (if isconst {"const "} else {""}) + arg_type +
                    (if isref {"&"} else {""}) + (if isrref {"&&"} else {""})
@@ -1118,14 +1127,14 @@ fun print_decls(decls: decl_t list) =
             val bases = if bases == [] {""} else {": " + ", ".join(bases)}
             val alias_str = if name_alias == "" {""} else {f"(as {name_alias})"}
             val members = ";\n\t".join([for a <- *members {string(a)}])
-            println(f"{prefix}class {name}{alias_str}{{\n\t{members}\n}}")
+            println(f"{prefix}class {name}{alias_str}{bases}\n{{\n\t{members}\n}}")
     }
 
-fun parse_all()
+fun parse_all(opencv_root: string)
 {
     var all_namespaces = Hashset.empty(16, "")
     val all_decls = [for hname <- opencv_hdr_list {
-        val (namespaces, decls) = parse(hname)
+        val (namespaces, decls) = parse(Filename.concat(opencv_root, f"modules/{hname}"))
         all_namespaces.union(namespaces)
         decls
         }]
@@ -1133,7 +1142,12 @@ fun parse_all()
     (all_namespaces, all_decls)
 }
 
-val (all_namespaces, all_decls) = parse_all()
+val opencv_root = match Sys.arguments() {
+    | opencv_root :: _ => opencv_root
+    | _ => "../opencv"
+}
+
+val (all_namespaces, all_decls) = parse_all(opencv_root)
 print_decls(all_decls)
 val namespace_list = all_namespaces.list().sort((<))
-println("namespaces: {namespace_list}")
+println(f"namespaces: {namespace_list}")
