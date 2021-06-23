@@ -321,7 +321,7 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     prf("making wrappers for nothrow functions")
     temp_kmods = K_nothrow_wrappers.make_wrappers_for_nothrow(temp_kmods)
     prf("mutable freevars referencing")
-    temp_kmods = K_freevars.mutable_freevars_referencing(temp_kmods)
+    temp_kmods = K_freevars.mutable_freevars2refs(temp_kmods)
     prf("declosuring")
     temp_kmods = K_declosure.declosure_all(temp_kmods)
     prf("lambda lifting")

@@ -14,7 +14,7 @@
     Both processess uses collect_free_vars function.
 
     Since mutable variables must be handled in a special way in these
-    processess, there also defined mutable_freevars_referencing function for
+    processess, there also defined mutable_freevars2refs function for
     converting each mutable free variable to immutable free variable and
     set of mutable usual variables. It create reference variable with value of
     original freevar and dereferencing it into local temporary variables(tempref)
@@ -153,7 +153,19 @@ fun collect_free_vars(kmods: kmodule_t list, globals: id_t Hashset.t,
     fv_env
 }
 
-fun mutable_freevars_referencing(kmods: kmodule_t list) {
+// Just to make sure that closure or function call stays stable with minor
+// modifications of the program all the free variables are sorted by name
+// Used for declosuring and for closure field creation.
+fun sort_freevars(fvars: id_hashset_t){
+    val fvar_pairs_to_sort = fvars.foldl(
+        fun (fv, fvars_to_sort) {
+            (id2str_(fv,true), fv) :: fvars_to_sort
+        }, [])
+    val fvar_pairs_sorted = fvar_pairs_to_sort.sort(fun ((a, fv_a), (b, fv_b)) { a < b || (a==b && fv_a.j < fv_b.j) })
+    [for (_, fv) <- fvar_pairs_sorted {fv} ]
+}
+
+fun mutable_freevars2refs(kmods: kmodule_t list) {
 
     val globals = empty_id_hashset(256)
     for {km_top} <- kmods {
@@ -224,10 +236,11 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
             | Some ll_info => ll_info.fv_fvars
             | _ =>  empty_id_hashset(1)
             }
+            val fvars = sort_freevars(fvars)
 
             val subst_map_backup = if !fvars.empty() {subst_map.copy()} else {Hashmap.empty(1, noid, noid)}
 
-            val fold prologue = [] for fv <- fvars.list() {
+            val fold prologue = [] for fv <- fvars {
                 val ref_fv = match ref_map.find_opt(fv) {
                     | Some ref_fv => ref_fv
                     | None => throw compile_err(kf_loc, f"free variable '{idk2str(fv, kf_loc)}' of function \
@@ -268,16 +281,4 @@ fun mutable_freevars_referencing(kmods: kmodule_t list) {
         val curr_top_code = [for e <- km_top {walk_kexp_n_eliminate(e, walk_n_eliminate_callb)}]
         km.{km_top=curr_top_code}
     }]
-}
-
-// Just to make sure that closure stays stable with minor modifications
-// of the program all the free variables are sorted by name
-// Used for declosuring and for closure field creation.
-fun sort_freevars(fvars: id_hashset_t){
-    val fvar_pairs_to_sort = fvars.foldl(
-        fun (fv, fvars_to_sort) {
-            (string(fv), fv) :: fvars_to_sort
-        }, [])
-    val fvar_pairs_sorted = fvar_pairs_to_sort.sort(fun ((a, _), (b, _)) { a < b })
-    [for (_, fv) <- fvar_pairs_sorted {fv} ]
 }
