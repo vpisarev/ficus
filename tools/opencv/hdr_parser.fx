@@ -363,7 +363,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
                         | {block_type=BlockNamespace, block_name} => block_name :: nested
                         | _ => nested
                         }
-                    self.namespaces.add(".".join(nested.rev()))
+                    self.namespaces.add(".".join((name :: nested).rev()))
                 }
                 (block_type, name, parse_flag, decl_opt)
             }
@@ -691,9 +691,10 @@ fun hdr_parser_t.parse_class_decl(decl_str: string, ~docstring: string="")
     } else {
         (l.strip(), [])
     }
+    val classname = classname.replace("class ", "").replace("struct ", "").strip()
     DeclClass {
-        name=classname,
-        bases=bases,
+        name=self.get_dotted_name(classname),
+        bases=[for b <- bases {self.get_dotted_name(b)}],
         name_alias=name_alias,
         members=ref [],
         docstring=docstring,
@@ -965,7 +966,14 @@ fun hdr_parser_t.get_dotted_name(name: string) =
             | BlockEnumClass | BlockEnumStruct when block_name == name => {}
             | BlockStruct | BlockClass | BlockNamespace | BlockEnumClass | BlockEnumStruct =>
                 if block_name != "" && (block_type == BlockNamespace || !qualified_name) {
-                    n += block_name + "."
+                    val bare_block_name = match block_type {
+                        | BlockNamespace => block_name
+                        | _ =>
+                            val dotpos = block_name.rfind('.')
+                            val bare_block_name = if dotpos >= 0 {block_name[dotpos+1:]} else {block_name}
+                            bare_block_name.replace("class ", "").replace("struct ", "").strip()
+                        }
+                    n += bare_block_name + "."
                 }
             | _ =>
                 throw self.parse_err(f"unsupported block '{block_type}' in the block stack")
@@ -1023,7 +1031,7 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
                 stmt_type = if stmt.startswith("class") {BlockClass} else {BlockStruct}
                 val class_decl = self.parse_class_decl(stmt, docstring=docstring)
                 val classname = match class_decl {
-                    | DeclClass {name} => self.get_dotted_name(name)
+                    | DeclClass {name} => name
                     | _ => throw self.parse_err("struct/class is expected")
                     }
                 val (process, some_class) =
