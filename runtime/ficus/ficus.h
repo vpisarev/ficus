@@ -61,7 +61,7 @@ typedef char32_t char_;
 
 #ifndef FX_XADD
 #if 0
-    #define FX_XADD(addr, delta) { int_ prev = *(addr); *(addr) += (delta); prev; }
+    FX_INLINE int_ FX_XADD(int_* addr, int delta) { int_ prev = *(addr); *(addr) += (delta); return prev; }
 #else
     #ifdef _MSC_VER
         #include <intrin.h>

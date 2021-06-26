@@ -366,6 +366,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
     val enable_openmp = Options.opt.enable_openmp
     val runtime_include_path = Filename.normalize(ficus_root, "runtime")
     val runtime_lib_path = Filename.normalize(ficus_root, "runtime/lib")
+    val runtime_impl = Filename.normalize(ficus_root, "runtime/ficus/impl/libficus")
     val build_root_dir = Options.opt.build_rootdir
     val ok = Sys.mkdir(build_root_dir, 0755)
     val build_dir = Options.opt.build_dir
@@ -424,20 +425,25 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                         else { Options.opt.cflags + " " + custom_cflags }
     val cflags = cflags + " " + custom_cflags
     pr_verbose(clrmsg(MsgBlue, f"Compiling .c/.cpp files with cflags={cflags}"))
+    val runtime_pseudo_cmod = C_form.cmodule_t {cmod_name=Ast.noid, cmod_cname=runtime_impl, cmod_ccode=[], cmod_recompile=true,
+        cmod_skip=false, cmod_main=false, cmod_pragmas=Ast.pragmas_t {pragma_cpp=false, pragma_clibs=[]}}
+    val cmods = runtime_pseudo_cmod :: cmods
     val results = [| @parallel for
         {cmod_cname, cmod_ccode, cmod_skip, cmod_pragmas={pragma_cpp, pragma_clibs}} <- array(cmods) {
         val output_fname = Filename.basename(cmod_cname)
-        val is_cpp = Options.opt.compile_by_cpp || pragma_cpp
+        val is_runtime = cmod_cname == runtime_impl
+        val is_cpp = !is_runtime && (Options.opt.compile_by_cpp || pragma_cpp)
         val (comp, ext) = if is_cpp { (cpp_comp, ".cpp") } else { (c_comp, ".c") }
-        val output_fname = output_fname + ext
         val output_fname = Filename.normalize(build_dir, output_fname)
+        val output_fname_c = output_fname + ext
         val (ok_j, reprocess, status_j) =
             if cmod_skip { (true, false, "skipped") }
+            else if is_runtime { (true, true, "")}
             else {
                 val str_new = C_pp.pprint_top_to_string(cmod_ccode)
                 val str_old = if Options.opt.force_rebuild {""} else {
                     try
-                        File.read_utf8(output_fname)
+                        File.read_utf8(output_fname_c)
                     catch {
                     | IOError | FileOpenError => ""
                     }
@@ -447,19 +453,18 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 } else {
                     val well_written =
                         try {
-                            File.write_utf8(output_fname, str_new)
+                            File.write_utf8(output_fname_c, str_new)
                             true
                         }
                         catch {
                         | IOError | FileOpenError => false
                         }
                     (well_written, well_written,
-                    if well_written {""} else {clrmsg(MsgRed, "failed to write .c")})
+                    if well_written {""} else {clrmsg(MsgRed, f"failed to write {output_fname_c}")})
                 }
             }
-        val cname = Filename.normalize(build_dir, cmod_cname)
-        val c_filename = cname + ext
-        val obj_filename = cname + obj_ext
+        val c_filename = if is_runtime {runtime_impl + ".c"} else {output_fname_c}
+        val obj_filename = output_fname + obj_ext
         val (ok_j, recompiled, status_j) =
             if ok_j && (reprocess || !Filename.exists(obj_filename)) {
                 val cmd = f"{comp} {cflags} {obj_opt}{obj_filename} {c_filename}"

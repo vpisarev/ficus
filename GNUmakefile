@@ -2,6 +2,7 @@ EXTRA_INCLUDE := ./runtime
 RUNTIME_DIR := ./runtime/ficus
 RUNTIME_DEPS := $(wildcard $(RUNTIME_DIR)/*.h)
 RUNTIME_IMPL_DEPS := $(wildcard $(RUNTIME_DIR)/impl/*.h)
+RUNTIME_LIBFICUS_C := $(RUNTIME_DIR)/impl/libficus.c
 BUILD_DIR := __fxbuild__
 BOOTSTRAP_BUILD_DIR := $(BUILD_DIR)/bootstrap
 BOOTSTRAP_SRC := ./compiler/bootstrap
@@ -24,7 +25,7 @@ CC := cc -Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -O
 CFLAGS := -I$(EXTRA_INCLUDE) -c -o
 LDFLAGS := -o
 LDLIBS := -lm
-BOOTSTRAP_OBJS := $(patsubst $(BOOTSTRAP_SRC)/%.c,$(BOOTSTRAP_BUILD_DIR)/%.o,$(BOOTSTRAP_SRCS))
+BOOTSTRAP_OBJS := $(patsubst $(BOOTSTRAP_SRC)/%.c,$(BOOTSTRAP_BUILD_DIR)/%.o,$(BOOTSTRAP_SRCS)) $(BOOTSTRAP_BUILD_DIR)/libficus.o
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 ifeq ($(UNAME_S),Darwin)
@@ -53,7 +54,11 @@ $(FICUS0): $(BOOTSTRAP_OBJS)
 	@$(CC) $(LDFLAGS)$@ $^ $(LDLIBS)
 
 $(BOOTSTRAP_BUILD_DIR)/fx.o: $(BOOTSTRAP_SRC)/fx.c $(RUNTIME_DEPS) $(RUNTIME_IMPL_DEPS)
-	@echo CC ficus.c
+	@echo CC fx.c
+	@$(CC) $(CFLAGS) $@ $<
+
+$(BOOTSTRAP_BUILD_DIR)/libficus.o: $(RUNTIME_LIBFICUS_C) $(RUNTIME_DEPS) $(RUNTIME_IMPL_DEPS)
+	@echo CC libficus.c
 	@$(CC) $(CFLAGS) $@ $<
 
 $(BOOTSTRAP_BUILD_DIR)/%.o: $(BOOTSTRAP_SRC)/%.c $(RUNTIME_DEPS) | $(BOOTSTRAP_BUILD_DIR)

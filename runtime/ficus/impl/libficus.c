@@ -2,9 +2,7 @@
     This file is a part of ficus language project.
     See ficus/LICENSE for the licensing terms
 */
-
-#ifndef __FICUS_IMPL_H__
-#define __FICUS_IMPL_H__
+#include "ficus/ficus.h"
 
 #if defined _WIN32 || defined WINCE
     #define FX_WINDOWS 1
@@ -693,6 +691,4 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 #include "ficus/impl/regex.impl.h"
 #include "ficus/impl/system.impl.h"
 #include "ficus/impl/rrbvec.impl.h"
-#include "ficus/impl/rpmalloc.c"
-
-#endif
+#include "ficus/impl/rpmalloc.impl.h"
