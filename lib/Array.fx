@@ -7,6 +7,14 @@
 
 fun total(a: 't [+]) = fold p = 1 for szj <- size(a) {p*szj}
 fun total(a: 't []) = size(a)
+@nothrow fun empty(a: 't [+]):bool = @ccode
+{
+    if (!a->data || a->ndims == 0) return true;
+    for(int i = 0; i < a->ndims; i++)
+        if (a->dim[i].size == 0)
+            return true;
+    return false;
+}
 
 fun __negate__(a: 't [+]) = [| for x <- a {-x} |]
 

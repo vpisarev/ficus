@@ -52,17 +52,15 @@ fun elemdepth(_: double) = DEPTH_FP64
 
 type anyarr_t = (uint8 [,], depth_t, int)
 
-// basically, this is violation of the type system; this function is intended
-// to be followed immediately by the conversion of anyimage_t to
-// immediately
-fun anyarray(x: 't [,]): anyarr_t
+// basically, this is violation of the type system; use with care
+@nothrow fun reinterpret(x: 'from [+]): 'to [+] = @ccode
+{
+    fx_copy_arr(x, fx_result);
+}
+fun anyarray(x: 't [+]): anyarr_t
 {
     val (depth, channels) = elemtype(x)
-    @nothrow fun reinterpret_arr(x: 't [,]): uint8 [,] = @ccode
-    {
-        fx_copy_arr(x, fx_result);
-    }
-    (reinterpret_arr(x), depth, channels)
+    ((reinterpret(x): uint8 [,]), depth, channels)
 }
 
 @ccode {
@@ -175,7 +173,7 @@ static int cvt_from(const cv::Mat& src, int dstdims, int dstdepth, int_ dstchann
         depth2cv(dstdepth) != src.depth() ||
         dstchannels != src.channels() ||
         dstdims != src.dims)
-        FX_FAST_THROW_RET(FX_EXN_BadArgError);
+        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
 
     for(i = 0; i < ndims; i++)
         size[i] = src.size.p[i];
@@ -194,32 +192,55 @@ static int cvt_from(const cv::Mat& src, int dstdims, int dstdepth, int_ dstchann
     return FX_OK;
 }
 
+static int cvt_to(const fx_str_t* src, std::string& dst)
+{
+    fx_cstr_t c_src;
+    int fx_status = fx_str2cstr(src, &c_src, 0, 0);
+    if(fx_status >= 0) {
+        dst.assign(c_src.data);
+        fx_free_cstr(&c_src);
+    }
+    return fx_status;
+}
+
 }
 
 fun imread(filename: string): uint8x3 [,] = @ccode
 {
-    fx_cstr_t c_filename={0};
-    int fx_status = fx_str2cstr(filename, &c_filename, 0, 0);
+    std::string c_filename;
+    int fx_status = cvt_to(filename, c_filename);
     FX_OCV_TRY_CATCH(
-        cv::Mat dst = cv::imread(c_filename.data, 1);
+        cv::Mat dst = cv::imread(c_filename, 1);
         fx_status = cvt_from(dst, 2, _FX_DEPTH_U8, 3, fx_result);
     )
-    fx_free_cstr(&c_filename);
     return fx_status;
 }
 
-fun imshow_(window: string, img: anyarr_t): void = @ccode
+fun imwrite_(filename: string, img: anyarr_t): void = @ccode
 {
-    fx_cstr_t c_window={0};
+    std::string c_filename;
     cv::Mat c_img;
-    int fx_status;
-    fx_status = fx_str2cstr(window, &c_window, 0, 0);
+    int fx_status = cvt_to(filename, c_filename);
+    if (fx_status >= 0)
+        fx_status = cvt_to(img, c_img);
+    FX_OCV_TRY_CATCH(
+        cv::imwrite(c_filename, c_img);
+    )
+    return fx_status;
+}
+
+fun imwrite(filename: string, img: 't [,]) = imwrite_(filename, anyarray(img))
+
+@private fun imshow_(window: string, img: anyarr_t): void = @ccode
+{
+    std::string c_window;
+    cv::Mat c_img;
+    int fx_status = cvt_to(window, c_window);
     if(fx_status >= 0)
         fx_status = cvt_to((_fx_anyarr_t*)img, c_img);
     FX_OCV_TRY_CATCH(
-        cv::imshow(c_window.data, c_img);
+        cv::imshow(c_window, c_img);
     )
-    fx_free_cstr(&c_window);
     return fx_status;
 }
 
@@ -235,7 +256,182 @@ fun waitKey(delay: int) {
     waitKey_(delay)
 }
 
+@ccode
+{
+
+typedef struct _fx_ocv_trackbar_callb_t
+{
+    int (*fp)(int_, void*);
+    fx_fcv_t* fcv;
+} _fx_ocv_trackbar_callb_t;
+
+static void _fx_ocv_trackbar_callb(int pos, void* userdata)
+{
+    _fx_ocv_trackbar_callb_t* callb = (_fx_ocv_trackbar_callb_t*)userdata;
+    callb->fp(pos, callb->fcv);
+}
+
+}
+
+fun createTrackbar(trackbarname: string, window: string,
+                   value: int32 ref, count: int,
+                   onchange: (int->void)?): void = @ccode
+{
+    std::string c_trackbarname, c_window;
+    int fx_status = cvt_to(trackbarname, c_trackbarname);
+    if (fx_status >= 0)
+        fx_status = cvt_to(window, c_window);
+    FX_OCV_TRY_CATCH(
+        _fx_ocv_trackbar_callb_t* callb = 0;
+        if (onchange->tag > 1) {
+            callb = (_fx_ocv_trackbar_callb_t*)fx_malloc(sizeof(*callb));
+            if(!callb)
+                FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+            callb->fp = onchange->u.Some.fp;
+            callb->fcv = onchange->u.Some.fcv;
+            if(callb->fcv)
+                FX_INCREF(callb->fcv->rc);
+        }
+        cv::createTrackbar(
+            c_trackbarname, c_window,
+            &value->data, (int)count,
+            callb ? _fx_ocv_trackbar_callb : 0,
+            callb);
+    )
+    return fx_status;
+}
+
+class VideoCapture = { cap: cptr }
+
+@ccode
+{
+static void _fx_ocv_free_cap(void* ptr)
+{
+    delete (cv::VideoCapture*)ptr;
+}
+}
+
+fun captureFromCamera(id: int)
+{
+    fun captureFromCamera_(id: int): cptr =
+    @ccode {
+        cv::VideoCapture* cap = 0;
+        int fx_status = 0;
+        FX_OCV_TRY_CATCH(
+            cap = new cv::VideoCapture((int)id);
+            if(cap && cap->isOpened()) {
+                fx_status = fx_make_cptr(cap, _fx_ocv_free_cap, fx_result);
+            } else {
+                delete cap;
+                fx_status = fx_ocv_err("cannot open the camera");
+            }
+        )
+        return fx_status;
+    }
+    VideoCapture {cap=captureFromCamera_(id)}
+}
+
+fun captureFromFile(filename: string)
+{
+    fun captureFromFile_(filename: string): cptr =
+    @ccode {
+        cv::VideoCapture* cap = 0;
+        std::string c_filename;
+        int fx_status = cvt_to(filename, c_filename);
+        FX_OCV_TRY_CATCH(
+            cap = new cv::VideoCapture(c_filename);
+            if(cap && cap->isOpened()) {
+                fx_status = fx_make_cptr(cap, _fx_ocv_free_cap, fx_result);
+            } else {
+                delete cap;
+                fx_status = fx_ocv_err("cannot open the video file");
+            }
+        )
+        return fx_status;
+    }
+    VideoCapture {cap=captureFromFile_(filename)}
+}
+
+fun VideoCapture.read(): uint8x3 [,] =
+@ccode
+{
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::VideoCapture* cap;
+    cv::Mat frame;
+    int fx_status = 0;
+    if (!self->cap || !self->cap->ptr)
+        return fx_ocv_err("video stream is not initialized");
+    cap = (cv::VideoCapture*)self->cap->ptr;
+    if (!cap->isOpened())
+        return fx_ocv_err("video stream is not open");
+    FX_OCV_TRY_CATCH(
+        *cap >> frame;
+        fx_status = cvt_from(frame, 2, _FX_DEPTH_U8, 3, fx_result);
+    )
+    return fx_status;
+}
+
+fun Canny(img: uint8 [,], ~threshold1: int, ~threshold2: int,
+          ~apertureSize: int=3, ~L2gradient: bool=false): uint8 [,]
+{
+    fun Canny_(img: uint8 [,], threshold1: int, threshold2: int,
+            apertureSize: int, L2gradient: bool): uint8 [,] =
+    @ccode {
+        memset(fx_result, 0, sizeof(*fx_result));
+        cv::Mat c_img, c_edges;
+        _fx_anyarr_t img_ = {*img, _FX_DEPTH_U8, 1};
+        int fx_status = cvt_to(&img_, c_img);
+        FX_OCV_TRY_CATCH(
+            cv::Canny(c_img, c_edges, threshold1, threshold2, apertureSize, L2gradient);
+            fx_status = cvt_from(c_edges, 2, _FX_DEPTH_U8, 1, fx_result);
+        )
+        return fx_status;
+    }
+    Canny_(img, threshold1, threshold2, apertureSize, L2gradient)
+}
+
+fun GaussianBlur_(img: anyarr_t, ksize: (int, int), sigma: double, sigmaY: double, borderType: int): uint8 [,] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_img, c_dst;
+    int fx_status = cvt_to((_fx_anyarr_t*)img, c_img);
+    FX_OCV_TRY_CATCH(
+        cv::GaussianBlur(c_img, c_dst, cv::Size((int)ksize->t0, (int)ksize->t1), sigma, sigmaY, borderType);
+        fx_status = cvt_from(c_dst, 2, img->t1.tag, img->t2, fx_result);
+    )
+    return fx_status;
+}
+
+val BORDER_DEFAULT: int = @ccode {cv::BORDER_DEFAULT}
+val BORDER_REFLECT_101: int = @ccode {cv::BORDER_REFLECT_101}
+val BORDER_REPLICATE: int = @ccode {cv::BORDER_REPLICATE}
+
+fun GaussianBlur(img: 't [,], ksize: (int, int), ~sigma: double, ~sigmaY: double=0.,
+                 ~borderType: int=4): 't [,]
+{
+    (reinterpret(GaussianBlur_(anyarray(img), ksize, sigma, sigmaY, borderType)) : 't [,])
+}
+
+fun bgr2gray(img: uint8x3 [,]) =
+[| for (b, g, r) <- img {uint8((b*1868 + g*9617 + r*4899 + 8192) >> 14)} |]
+
 val imgname = match Sys.arguments() {x :: _ => x | _ => "lena.jpg"}
 val a = imread(imgname)
 imshow("test", a)
+val pos = ref 0i32
+createTrackbar("radius", "test", pos, 10, Some(fun (pos) {
+    val k = pos*2+1
+    imshow("test", GaussianBlur(a, (k, k), sigma=pos*0.5))
+}))
 ignore(waitKey(0))
+
+/*val cap = captureFromFile("/Users/vpisarev/work/opencv_extra/testdata/highgui/video/big_buck_bunny.mp4")
+while true {
+    val a = cap.read()
+    if a.empty() {break}
+    val blurred = GaussianBlur(bgr2gray(a), (17, 17), sigma=5.)
+    //imshow("frame", Canny(bgr2gray(a), threshold1=0, threshold2=30))
+    imshow("frame", Canny(blurred, threshold1=0, threshold2=30))
+    if waitKey(30) > 0 {break}
+}
+*/
