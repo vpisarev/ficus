@@ -152,6 +152,7 @@ type kdefclosureinfo_t =
     kci_fcv_t: id_t;
     kci_fp_typ: id_t;
     kci_make_fp: id_t;
+    kci_make_fp_sr: id_t;
     kci_wrap_f: id_t
 }
 
@@ -743,7 +744,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         KDefVal(new_kv_name, walk_kexp_(e), loc)
     | KDefFun kf =>
         val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_loc} = *kf
-        val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
+        val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_make_fp_sr, kci_wrap_f} = kf_closure
         val new_kf_name = walk_id_(kf_name, kf_loc)
         val new_kci_arg = update_kval_(kci_arg, kf_loc)
         val new_kf = kf->{
@@ -756,6 +757,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
                 kci_fcv_t=walk_id_(kci_fcv_t, kf_loc),
                 kci_fp_typ=walk_id_(kci_fp_typ, kf_loc),
                 kci_make_fp=walk_id_(kci_make_fp, kf_loc),
+                kci_make_fp_sr=walk_id_(kci_make_fp_sr, kf_loc),
                 kci_wrap_f=walk_id_(kci_wrap_f, kf_loc)
                 }
             }
@@ -1252,7 +1254,7 @@ fun make_empty_kf_closure(): kdefclosureinfo_t =
     kdefclosureinfo_t {
         kci_arg=noid, kci_fcv_t=noid,
         kci_fp_typ=noid, kci_make_fp=noid,
-        kci_wrap_f=noid
+        kci_make_fp_sr=noid, kci_wrap_f=noid
     }
 
 fun deref_ktyp(kt: ktyp_t, loc: loc_t): ktyp_t =

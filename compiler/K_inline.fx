@@ -227,7 +227,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
     fun subst_kf_(kf: kdeffun_t ref, callb: k_callb_t)
     {
         val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_scope, kf_loc} = *kf
-        val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
+        val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_make_fp_sr, kci_wrap_f} = kf_closure
         ref (kf->{
             kf_name=subst_id_(kf_name, kf_loc),
             kf_params=[for a <- kf_params { subst_kval_(a, kf_loc, callb) } ],
@@ -238,6 +238,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
                 kci_fcv_t = subst_id_(kci_fcv_t, kf_loc),
                 kci_fp_typ = subst_id_(kci_fp_typ, kf_loc),
                 kci_make_fp = subst_id_(kci_make_fp, kf_loc),
+                kci_make_fp_sr = subst_id_(kci_make_fp_sr, kf_loc),
                 kci_wrap_f = subst_id_(kci_wrap_f, kf_loc)
                 },
             kf_scope = subst_scope(kf_scope, kf_loc)

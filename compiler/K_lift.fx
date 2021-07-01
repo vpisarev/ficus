@@ -233,9 +233,7 @@ fun lift_all(kmods: kmodule_t list)
 
     /*
     Sometimes recursive function with freevars mention itself not through direct call, but 
-    through passing itself to other function (directly or through variable). In this case 
-    it's needed internal copy of function closure for passing as an argument. Such a 
-    special case of recursion is called self-referencing.
+    through passing itself to other function (directly or through variable). E.g: 
     {
         var i = 1
         fun dipper(beeper:void->void)
@@ -254,13 +252,17 @@ fun lift_all(kmods: kmodule_t list)
 
         bill()
     }
+    In this case it's needed internal copy of function closure for passing as an argument. 
+    Such a special case of recursion is called self-referencing.
     */
-    val self_referencing_functions = empty_id_hashset(256)
+    var function_have_self_references = false
+
     var curr_folded_func = noid
 
     fun fold_defcl_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
         match a {
-        | AtomId n => if n == curr_folded_func {self_referencing_functions.add(n)}
+        | AtomId n => if n == curr_folded_func {function_have_self_references = true}
+
         | _ => {}
         }
 
@@ -271,13 +273,14 @@ fun lift_all(kmods: kmodule_t list)
         match e {
         | KDefFun kf =>
             val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_flags, kf_scope, kf_loc} = *kf
-            val curr_folded_func_backup = if (fv_env.mem(kf_name)) {
-                    val curr_folded_func_backup = curr_folded_func
-                    curr_folded_func = kf_name
-                    curr_folded_func_backup
-                } else { noid }
+            val have_fv = fv_env.mem(kf_name)
+            val curr_folded_func_backup = curr_folded_func
+            val function_have_self_references_backup = function_have_self_references
+            if(have_fv) {
+                curr_folded_func = kf_name
+                function_have_self_references = false
+            }
             fold_kexp(kf_body, callb)
-            if (fv_env.mem(kf_name)) {curr_folded_func = curr_folded_func_backup}
             match fv_env.find_opt(kf_name) {
             | Some ll_info =>
                 val fvars = ll_info.fv_fvars
@@ -314,6 +317,9 @@ fun lift_all(kmods: kmodule_t list)
                     val make_fp = gen_idk(m_idx, "make_fp")
                     val _ = create_kdefconstr(make_fp, make_args_ktyps.rev(), kf_typ,
                                               CtorFP(kf_name), false, [], kf_scope, kf_loc)
+                    val make_fp_sr = gen_idk(m_idx, "make_fp_sr")
+                    val _ = create_kdefconstr(make_fp_sr, [KTypName(fcv_tn)], kf_typ, 
+                                              CtorFPSR(kf_name), false, [], kf_scope, kf_loc)
                     val _ = create_kdefval(cl_arg, KTypName(fcv_tn), default_val_flags(), None, [], kf_loc)
 
                     /*
@@ -333,9 +339,11 @@ fun lift_all(kmods: kmodule_t list)
 
                         kf_closure.kci_make_fp is the constructor of the closure
                     */
-                    val new_kf_closure = kf_closure.{kci_arg=cl_arg, kci_fcv_t=fcv_tn, kci_make_fp=make_fp}
+                    val new_kf_closure = kf_closure.{kci_arg=cl_arg, kci_fcv_t=fcv_tn, kci_make_fp=make_fp, kci_make_fp_sr = make_fp_sr}
                     set_idk_entry(fcv_tn, KClosureVars(fcv_t))
                     *kf = kf->{kf_closure=new_kf_closure, kf_flags=kf_flags.{fun_flag_uses_fv=true}}
+                    curr_folded_func = curr_folded_func_backup
+                    function_have_self_references = function_have_self_references_backup
                 }
             | _ => {}
             }
@@ -436,8 +444,8 @@ fun lift_all(kmods: kmodule_t list)
         val e =
         match e {
         | KDefFun kf =>
-            val {kf_name, kf_params, kf_body, kf_closure, kf_loc} = *kf
-            val {kci_arg, kci_fcv_t, kci_make_fp, kci_wrap_f} = kf_closure
+            val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_loc} = *kf
+            val {kci_arg, kci_fcv_t, kci_make_fp, kci_make_fp_sr, kci_wrap_f} = kf_closure
             fun create_defclosure(kf: kdeffun_t ref, code: kcode_t, loc: loc_t)
             {
                 val {kf_name, kf_params, kf_rt, kf_closure={kci_make_fp=make_fp}, kf_flags, kf_loc} = *kf
@@ -483,7 +491,18 @@ fun lift_all(kmods: kmodule_t list)
                             f"make_fp '{idk2str(kci_make_fp, kf_loc)}' for '{idk2str(kf_name, kf_loc)}' \
                                 information is not valid (should be KClosureVars ...)")
                         }
-                    [ KDefFun(make_kf), KDefClosureVars(kcv) ]
+                    val def_fcv_t_n_make = [KDefFun(make_kf), KDefClosureVars(kcv)]
+                    val def_fcv_t_n_make = if kci_make_fp_sr == noid {
+                        def_fcv_t_n_make
+                    } else {
+                        match kinfo_(kci_make_fp_sr, kf_loc) {
+                        | KFun make_kf_sr => KDefFun(make_kf_sr) :: def_fcv_t_n_make
+                        | _ => throw compile_err(kf_loc,
+                            f"make_fp '{idk2str(kci_make_fp, kf_loc)}' for '{idk2str(kf_name, kf_loc)}' \
+                                information is not valid (should be KClosureVars ...)")
+                        }
+                    }
+                    def_fcv_t_n_make
                 }
             val out_e =
                 if kci_wrap_f != noid {
@@ -546,8 +565,14 @@ fun lift_all(kmods: kmodule_t list)
                         create_kdefval(fv_proxy, t, new_kv_flags, Some(e), prologue, kf_loc)
                     }
 
-                    val prologue = if self_referencing_functions.mem(kf_name) {
-                        create_defclosure(kf, prologue, kf_loc)
+                    val prologue = if kci_make_fp_sr != noid {
+                        val kf_typ = get_kf_typ(kf_params, kf_rt, kf_loc)
+                        val cl_name = dup_idk(curr_m_idx, kf_name)
+                        curr_subst_env.add(kf_name, (cl_name, None))
+                        defined_so_far.add(cl_name)
+                        val cl_args = [AtomId(kci_arg)]
+                        val make_cl = KExpMkClosure(kci_make_fp_sr, kf_name, cl_args, (kf_typ, kf_loc))
+                        create_kdefval(cl_name, kf_typ, default_val_flags(), Some(make_cl), prologue, kf_loc)
                     } else {prologue}
 
                     match fv_env.find_opt(kf_name) {
@@ -651,7 +676,6 @@ fun lift_all(kmods: kmodule_t list)
         val {km_idx, km_top} = km
         curr_m_idx = km_idx
         curr_top_code = []
-        self_referencing_functions.clear()
         for e <- km_top { fold_defcl_kexp_(e, defcl_callb) }
         for e <- km_top {
             val e = walk_kexp_n_lift_all(e, walk_n_lift_all_callb)
