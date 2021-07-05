@@ -410,3 +410,34 @@ TEST("closure.max_function_depending_on_var", fun()
     EXPECT_EQ(max_10(1), 11)
     EXPECT_EQ(max_10(70), 70)
 })
+
+TEST("closure.self-refencing", fun()
+{
+    type tree_t = 
+        | Leaf  
+        | Node : tree_t list
+    
+    var leafs = 0
+    
+    fun leaf_printer(tree:tree_t){
+        fun commaconcat(lst: tree_t list, f: tree_t -> string) {
+            match lst {
+            | [] => ""
+            | hd :: [] => f(hd)
+            | hd :: tl => f(hd) + ", " + commaconcat(tl, f)
+            }
+        }
+        match tree {
+        | Leaf => 
+            leafs = leafs + 1
+            f"[{leafs}]"
+        | Node(lst) => "[" + commaconcat(lst, leaf_printer) + "]"
+        }
+    }
+
+    val tree = Node([Node([Node([Leaf]),Node([Leaf])]),Node([Node([Node([Leaf])])]),Node([Node([Node([Leaf])]),Node([Leaf])])])
+
+    EXPECT_EQ(leaf_printer(tree), "[[[[1]], [[2]]], [[[[3]]]], [[[[4]]], [[5]]]]")
+    EXPECT_EQ(leafs, 5)
+})
+

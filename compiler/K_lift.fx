@@ -233,9 +233,7 @@ fun lift_all(kmods: kmodule_t list)
 
     /*
     Sometimes recursive function with freevars mention itself not through direct call, but 
-    through passing itself to other function (directly or through variable). In this case 
-    it's needed internal copy of function closure for passing as an argument. Such a 
-    special case of recursion is called self-referencing.
+    through passing itself to other function (directly or through variable). E.g: 
     {
         var i = 1
         fun dipper(beeper:void->void)
@@ -254,6 +252,8 @@ fun lift_all(kmods: kmodule_t list)
 
         bill()
     }
+    In this case it's needed internal copy of function closure for passing as an argument. 
+    Such a special case of recursion is called self-referencing.
     */
     val self_referencing_functions = empty_id_hashset(256)
     var curr_folded_func = noid
@@ -436,7 +436,7 @@ fun lift_all(kmods: kmodule_t list)
         val e =
         match e {
         | KDefFun kf =>
-            val {kf_name, kf_params, kf_body, kf_closure, kf_loc} = *kf
+            val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_loc} = *kf
             val {kci_arg, kci_fcv_t, kci_make_fp, kci_wrap_f} = kf_closure
             fun create_defclosure(kf: kdeffun_t ref, code: kcode_t, loc: loc_t)
             {
@@ -547,7 +547,11 @@ fun lift_all(kmods: kmodule_t list)
                     }
 
                     val prologue = if self_referencing_functions.mem(kf_name) {
-                        create_defclosure(kf, prologue, kf_loc)
+                        val cl_name = dup_idk(curr_m_idx, kf_name)
+                        curr_subst_env.add(kf_name, (cl_name, None))
+                        val kf_typ = get_kf_typ(kf_params, kf_rt, kf_loc)
+                        val make_cl = KExpIntrin(IntrinMakeFPbyFCV, [AtomId(kf_name)], (kf_typ, kf_loc)) //TODO: Rename CLV
+                        create_kdefval(cl_name, kf_typ, default_val_flags(), Some(make_cl), prologue, kf_loc)
                     } else {prologue}
 
                     match fv_env.find_opt(kf_name) {
@@ -631,6 +635,12 @@ fun lift_all(kmods: kmodule_t list)
                     else { KExpCall(check_n_walk_id(f, loc, callb), args, kctx) }
                 | _ => KExpCall(check_n_walk_id(f, loc, callb), args, kctx)
                 }
+            }
+        | KExpIntrin (intt, args, kctx) =>
+            // We are disabling substitution of function with internal fp inside the macros, creating this fp.
+            match intt{
+            |IntrinMakeFPbyFCV => KExpIntrin (intt, args, kctx)
+            |_ => walk_kexp(e, callb)
             }
         | _ => walk_kexp(e, callb)
         }
