@@ -981,14 +981,6 @@ typedef struct fx_fcv_t
     fcv->rc = 1; \
     fcv->free_f = (fx_free_t)free_f_
 
-#define FX_MAKE_FPSR_IMPL(fname, src_fcv)\
-   fx_result->fp = (fname);\
-   fx_result->fcv = (fx_fcv_t*)(src_fcv);\
-   if(fx_result->fcv && fx_result->fcv->free_f) {\
-      FX_INCREF(fx_result->fcv->rc);\
-   }\
-   return 0
-
 void fx_free_fp(void* fp);
 void fx_copy_fp(const void* src, void* pdst);
 

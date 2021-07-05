@@ -198,7 +198,6 @@ type fun_constr_t =
     | CtorStruct
     | CtorVariant: int
     | CtorFP: id_t
-    | CtorFPSR: id_t
     | CtorExn: id_t
 
 type fun_flags_t =
@@ -1165,7 +1164,6 @@ fun ctor2str(f: fun_constr_t) {
     | CtorStruct => "Constructor(record_or_tuple)"
     | CtorVariant(i) => f"Constructor(variant({i}))"
     | CtorFP(i) => f"Constructor(fp({i}))"
-    | CtorFPSR(i) => f"Constructor(fpsr({i}))"
     | CtorExn(i) => f"Constructor(exn({i}))"
 }
 

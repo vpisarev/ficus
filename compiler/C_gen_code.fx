@@ -3389,13 +3389,6 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     C_gen_types.gen_copy_code(src_exp, dst_exp, t, ccode, kf_loc)
                 }
                 (ret_ccode + ccode).rev()
-            /* function pointer/closure internal constructor for self-referencing functions*/
-            | (_, CtorFPSR f_id) =>
-                val fcv_source = match real_args {
-                    | (fcv, t, _)::[] => make_id_t_exp(fcv, t, kf_loc)
-                    | _ => throw compile_err(kf_loc, f"cgen: Self-referencing closure constructor '{get_idk_cname(f_id, kf_loc)}' must have only one argument")
-                }
-                [CExp(make_call( std_FX_MAKE_FP_IMPL_START, [make_id_t_exp(f_id, std_CTypVoidPtr, kloc), fcv_source], CTypVoid, kf_loc ))]
             /* exception constructor */
             | (_, CtorExn exn_id) =>
                 val (exn_typ, exn_tag, exn_std, exn_data_id, exn_info) =

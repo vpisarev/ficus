@@ -47,7 +47,6 @@ fun init_std_names(): void {
     std_FX_REC_VARIANT_TAG = gen_std_macro("FX_REC_VARIANT_TAG", 1)
     std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START = gen_std_macro("FX_MAKE_RECURSIVE_VARIANT_IMPL_START", 1)
     std_FX_MAKE_FP_IMPL_START = gen_std_macro("FX_MAKE_FP_IMPL_START", 3)
-    std_FX_MAKE_FPSR_IMPL = gen_std_macro("FX_MAKE_FPSR_IMPL", 2)
     std_FX_CALL = gen_std_macro("FX_CALL", 2)
     std_FX_COPY_PTR = gen_std_macro("FX_COPY_PTR", 2)
     std_FX_COPY_SIMPLE = gen_std_macro("FX_COPY_SIMPLE", 2)
