@@ -6802,7 +6802,7 @@ FX_EXTERN_C void _fx_M3AstFM10IntrinMathN13Ast__intrin_t1RM4id_t(
    struct _fx_R9Ast__id_t* arg0,
    struct _fx_N13Ast__intrin_t* fx_result)
 {
-   fx_result->tag = 12;
+   fx_result->tag = 13;
    fx_result->u.IntrinMath = *arg0;
 }
 
@@ -8187,6 +8187,54 @@ _fx_cleanup: ;
    FX_FREE_ARR(&old_data_0);
    _fx_free_N14Ast__id_info_t(&val0_0);
    FX_FREE_ARR(&new_data_0);
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M3AstFM7id2str_S2RM4id_tB(struct _fx_R9Ast__id_t* i_0, bool pp_0, fx_str_t* fx_result, void* fx_fv)
+{
+   fx_str_t prefix_0 = {0};
+   fx_str_t v_0 = {0};
+   fx_str_t v_1 = {0};
+   int fx_status = 0;
+   bool t_0;
+   if (i_0->m == _fx_g9Ast__noid.m && i_0->i == _fx_g9Ast__noid.i) {
+      t_0 = i_0->m == 0 || i_0->j == _fx_g9Ast__noid.j;
+   }
+   else {
+      t_0 = false;
+   }
+   if (t_0) {
+      fx_str_t slit_0 = FX_MAKE_STR("<noid>"); fx_copy_str(&slit_0, fx_result);
+   }
+   else {
+      int_ v_2 = i_0->i;
+      FX_CHKIDX(FX_CHKIDX1(_fx_g14Ast__all_names->u.t.t1, 0, v_2), _fx_cleanup);
+      fx_copy_str(FX_PTR_1D(fx_str_t, _fx_g14Ast__all_names->u.t.t1, v_2), &prefix_0);
+      bool t_1;
+      if (pp_0) {
+         t_1 = true;
+      }
+      else {
+         t_1 = i_0->m == 0;
+      }
+      if (t_1) {
+         fx_copy_str(&prefix_0, fx_result);
+      }
+      else {
+         FX_CALL(_fx_F6stringS1S(&prefix_0, &v_0, 0), _fx_cleanup);
+         FX_CALL(_fx_F6stringS1i(i_0->j, &v_1, 0), _fx_cleanup);
+         fx_str_t slit_1 = FX_MAKE_STR("@");
+         {
+            const fx_str_t strs_0[] = { v_0, slit_1, v_1 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, fx_result), _fx_cleanup);
+         }
+      }
+   }
+
+_fx_cleanup: ;
+   FX_FREE_STR(&prefix_0);
+   FX_FREE_STR(&v_0);
+   FX_FREE_STR(&v_1);
    return fx_status;
 }
 
@@ -11876,6 +11924,9 @@ FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t
       fx_str_t slit_10 = FX_MAKE_STR("__intrin_check_range__"); fx_copy_str(&slit_10, fx_result);
    }
    else if (tag_0 == 12) {
+      fx_str_t slit_11 = FX_MAKE_STR("__intrin_make_fp_by_fcv__"); fx_copy_str(&slit_11, fx_result);
+   }
+   else if (tag_0 == 13) {
       fx_str_t v_0 = {0};
       fx_str_t v_1 = {0};
       _fx_R9Ast__id_t* f_0 = &iop_0->u.IntrinMath;
@@ -11887,7 +11938,7 @@ FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t
          t_0 = false;
       }
       if (t_0) {
-         fx_str_t slit_11 = FX_MAKE_STR("<noid>"); fx_copy_str(&slit_11, &v_0);
+         fx_str_t slit_12 = FX_MAKE_STR("<noid>"); fx_copy_str(&slit_12, &v_0);
       }
       else {
          int_ v_2 = f_0->i;
@@ -11895,10 +11946,10 @@ FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t
          fx_copy_str(FX_PTR_1D(fx_str_t, _fx_g14Ast__all_names->u.t.t1, v_2), &v_0);
       }
       FX_CALL(_fx_F6stringS1S(&v_0, &v_1, 0), _fx_catch_0);
-      fx_str_t slit_12 = FX_MAKE_STR("__intrin_");
-      fx_str_t slit_13 = FX_MAKE_STR("__");
+      fx_str_t slit_13 = FX_MAKE_STR("__intrin_");
+      fx_str_t slit_14 = FX_MAKE_STR("__");
       {
-         const fx_str_t strs_0[] = { slit_12, v_1, slit_13 };
+         const fx_str_t strs_0[] = { slit_13, v_1, slit_14 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, fx_result), _fx_catch_0);
       }
 

@@ -8117,6 +8117,7 @@ _fx_R9Ast__id_t _fx_g21C_form__std_FX_DECREF;
 _fx_R9Ast__id_t _fx_g30C_form__std_FX_REC_VARIANT_TAG;
 _fx_R9Ast__id_t _fx_g48C_form__std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START;
 _fx_R9Ast__id_t _fx_g33C_form__std_FX_MAKE_FP_IMPL_START;
+_fx_R9Ast__id_t _fx_g29C_form__std_FX_MAKE_FP_BY_FCV;
 _fx_R9Ast__id_t _fx_g19C_form__std_FX_CALL;
 _fx_R9Ast__id_t _fx_g23C_form__std_FX_COPY_PTR;
 _fx_R9Ast__id_t _fx_g26C_form__std_FX_COPY_SIMPLE;
@@ -14442,6 +14443,7 @@ FX_EXTERN_C int fx_init_C_form(void)
    _fx_g30C_form__std_FX_REC_VARIANT_TAG = _fx_g9Ast__noid;
    _fx_g48C_form__std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START = _fx_g9Ast__noid;
    _fx_g33C_form__std_FX_MAKE_FP_IMPL_START = _fx_g9Ast__noid;
+   _fx_g29C_form__std_FX_MAKE_FP_BY_FCV = _fx_g9Ast__noid;
    _fx_g19C_form__std_FX_CALL = _fx_g9Ast__noid;
    _fx_g23C_form__std_FX_COPY_PTR = _fx_g9Ast__noid;
    _fx_g26C_form__std_FX_COPY_SIMPLE = _fx_g9Ast__noid;

@@ -8343,7 +8343,7 @@ FX_EXTERN_C int _fx_M18K_nothrow_wrappersFM25make_wrappers_for_nothrowLR17K_form
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M10K_freevarsFM28mutable_freevars_referencingLR17K_form__kmodule_t1LR17K_form__kmodule_t(
+FX_EXTERN_C int _fx_M10K_freevarsFM21mutable_freevars2refsLR17K_form__kmodule_t1LR17K_form__kmodule_t(
    struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
@@ -10251,7 +10251,7 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
       FX_CALL(fx_strjoin(0, 0, 0, strs_17, 2, &v_24), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_24, 0), _fx_cleanup);
-   FX_CALL(_fx_M10K_freevarsFM28mutable_freevars_referencingLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_25, 0),
+   FX_CALL(_fx_M10K_freevarsFM21mutable_freevars2refsLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_25, 0),
       _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_25, &temp_kmods_0);
