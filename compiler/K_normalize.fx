@@ -103,8 +103,8 @@ var idx_access_stack: (atom_t, int) list = []
 fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
 {
     val km_idx = curr_module(sc)
-    //println("------------------------------------\ntranslating "); Ast_pp.pprint_exp_x(e); println("\n==========================================\n")
     val (etyp, eloc) = get_exp_ctx(e)
+    //print("------------------------------------\ntranslating exp of type "); Ast_pp.pprint_typ_x(etyp, eloc); println(":"); Ast_pp.pprint_exp_x(e); println("\n==========================================\n")
     val ktyp = typ2ktyp(etyp, eloc)
     val kctx = (ktyp, eloc)
     /*
@@ -336,17 +336,17 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             | _ => throw compile_err(get_exp_loc(rn),
                     "k-normalization: in the record construction identifier is expected after type check")
             }
-        val fold (ratoms, code) = ([], code) for (_, ni, ti, opt_vi) <- relems {
+        val fold (ratoms, code) = ([], code) for (_, ni, ti, vi) <- relems {
             val (a, code) =
             match find_opt(for (nj, _) <- rinitelems { ni == nj }) {
             | Some((_, ej)) => exp2atom(ej, code, false, sc)
             | _ =>
-                match opt_vi {
-                | Some(InitLit(v0_l)) => (AtomLit(lit2klit(v0_l, typ2ktyp(ti, eloc), eloc)), code)
-                | Some(InitId(v0_n)) => (AtomId(v0_n), code)
-                | _ =>
-                    throw compile_err(eloc, f"there is no explicit inializer for \
+                match vi {
+                | ExpNop _ =>
+                    throw compile_err(eloc, f"there is no explicit initializer for \
                         the field '{pp(rn_id)}.{pp(ni)}' nor there is default initializer for it")
+                | _ =>
+                    exp2atom(vi, code, false, sc)
                 }
             }
             (a :: ratoms, code)

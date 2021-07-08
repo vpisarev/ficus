@@ -100,7 +100,7 @@ fun print_env(msg: string, env: env_t, loc: loc_t) {
   (or rather "overloaded function not found" error)
   in the very end, when we are out of candidates.
 */
-type rec_elem_t = (val_flags_t, id_t, typ_t, initializer_t?)
+type rec_elem_t = (val_flags_t, id_t, typ_t, exp_t)
 type rec_data_t = (rec_elem_t list, bool)
 
 fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
@@ -231,8 +231,8 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
                             f1.val_flag_mutable == f2.val_flag_mutable })
                 | ((relems1, _), (relems2, _)) =>
                     val have_all_matches =
-                        all(for (_, n1, t1, v1opt) <- relems1 {
-                            v1opt.issome() ||
+                        all(for (_, n1, t1, v1) <- relems1 {
+                            (match v1 { ExpNop _ => false | _ => true }) ||
                             exists(for (_, n2, t2, _) <- relems2 {
                                 n1 == n2 && maybe_unify_(t1, t2, loc)})
                             })
@@ -511,17 +511,20 @@ fun typ_bounds_flt(t: typ_t): double
     | _ => 0.
 }
 
-fun finalize_record_typ(t: typ_t, loc: loc_t): typ_t {
+fun finalize_record_typ(env: env_t, t: typ_t, sc: scope_t list, loc: loc_t): typ_t {
     val t = deref_typ(dup_typ(t))
     match t {
     | TypRecord((ref (relems, f)) as r) =>
         val relems =
-            [ for (flags, n, t, v_opt) <- relems {
-                val v_opt = match v_opt {
-                | Some(InitLit(v)) =>
+            [ for (flags, n, t, v0) <- relems {
+                val v0 = match v0 {
+                | ExpNop _ => v0
+                | ExpLit(v, (lt, lloc)) =>
                     val t0 = get_lit_typ(v)
-                    if maybe_unify(t, t0, loc, true) { v_opt }
-                    else {
+                    if maybe_unify(t, t0, loc, true) {
+                        unify(t0, lt, lloc, "inconsistent literal type");
+                        ExpLit(v, (lt, lloc))
+                    } else {
                         val v_opt = match v {
                         | LitInt(iv) =>
                             val (a, b) = typ_bounds_int(t)
@@ -545,15 +548,18 @@ fun finalize_record_typ(t: typ_t, loc: loc_t): typ_t {
                         | _ => None
                         }
                         match v_opt {
-                        | Some v => Some(InitLit(v))
+                        | Some v => ExpLit(v, (t, lloc))
                         | _ =>
                             throw compile_err(loc, f"the literal {lit2str(v)} cannot be casted \
                                 implicitly to the type '{typ2str(t)}' of the record member '{pp(n)}'")
                         }
                     }
-                | _ => v_opt
+                | _ =>
+                    val (ti, loci) = get_exp_ctx(v0)
+                    unify(ti, t, loci, "the actual type of the default expression does not match the specified type")
+                    check_exp(v0, env, sc)
                 }
-                (flags, n, t, v_opt)
+                (flags, n, t, v0)
             } ]
         *r = (relems, f)
         t
@@ -1143,7 +1149,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val f_expected_typ = TypFun(arg_typs, etyp)
         val f_exp = ExpIdent(f_id, (make_new_typ(), eloc))
         val (f_real_typ, floc) = get_exp_ctx(f_exp)
-        unify(f_real_typ, f_expected_typ, floc, "the real and expected function type do not match")
+        unify(f_real_typ, f_expected_typ, floc, f"the real '{typ2str(f_real_typ)}' and expected '{typ2str(f_expected_typ)}' function type do not match")
         val new_f = check_exp(f_exp, env, sc)
         ExpCall(new_f, args, ctx)
     }
@@ -1586,7 +1592,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val arg_typs = [for a <- args { get_exp_typ(a) }]
         val f_expected_typ = TypFun(arg_typs, etyp)
         val (f_real_typ, floc) = get_exp_ctx(f)
-        unify(f_real_typ, f_expected_typ, floc, "the real and expected function type do not match")
+        unify(f_real_typ, f_expected_typ, floc, f"the real '{typ2str(f_real_typ)}' and expected '{typ2str(f_expected_typ)}' function type do not match")
         val new_args = [for a <- args {
             // Figure out whether to check the parameter immediately.
             // If it's type may not be defined, skip it for now
@@ -2127,8 +2133,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         check_for_rec_field_duplicates([for (n, _) <- r_initializers {n}], eloc)
         val (r_new_initializers, relems) = [ @unzip for (n, e) <- r_initializers {
                 val e = check_exp(e, env, sc)
-                val etyp = get_exp_typ(e)
-                ((n, e), (default_val_flags(), n, etyp, None))
+                val (etypi, eloci) = get_exp_ctx(e)
+                ((n, e), (default_val_flags(), n, etypi, ExpNop(eloci)))
             } ]
         val rtyp = TypRecord(ref (relems, false))
         match r_e {
@@ -2916,7 +2922,7 @@ fun check_deffun(df: deffun_t ref, env: env_t) {
             classes and maybe records. It can also help to save some time and some space
 */
 fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t ref?,
-                                   sc: scope_t list, loc: loc_t): (typ_t, env_t)
+                                   sc: scope_t list, loc: loc_t, process_default: bool): (typ_t, env_t)
 {
     var r_env = env
     fun check_typ_(t: typ_t, callb: ast_callb_t) =
@@ -3008,18 +3014,34 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: idset_t
             | _ => {}
             }
             walk_typ(t, callb)
-        | TypRecord (ref (relems, _)) =>
+        | TypRecord (ref (relems, f)) =>
             check_for_rec_field_duplicates([for (_, n, _, _) <- relems {n}], loc)
-            walk_typ(t, callb)
+            TypRecord(ref ([for (flags, n, t, v0) <- relems {
+                val t = check_typ_(t, callb)
+                val v0 = if !process_default {v0} else {
+                    match v0 {
+                    | ExpNop _ => v0
+                    | _ =>
+                        //println(f"checking default record parameter {n}")
+                        val (t0, loc0) = get_exp_ctx(v0)
+                        unify(t, t0, loc0, "the actual and the specified default parameter types do not match")
+                        check_exp(v0, env, sc)
+                    }
+                }
+                (flags, n, t, v0)
+            }], f))
         | _ => walk_typ(t, callb)
         }
-
-    val callb = ast_callb_t {ast_cb_typ=Some(check_typ_), ast_cb_exp=None, ast_cb_pat=None}
+    val callb = ast_callb_t {
+        ast_cb_typ=Some(check_typ_),
+        ast_cb_exp=None,
+        ast_cb_pat=None
+    }
     (check_typ_(t, callb), r_env)
 }
 
 fun check_typ(t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): typ_t =
-    check_typ_and_collect_typ_vars(t, env, None, sc, loc).0
+    check_typ_and_collect_typ_vars(t, env, None, sc, loc, false).0
 
 fun instantiate_fun(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
                     inst_loc: loc_t, instantiate: bool): deffun_t ref
@@ -3371,7 +3393,7 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref,
                 | _ => 1
                 }
             val t = check_typ(dup_typ(t), env, sc, loc)
-            val t = finalize_record_typ(t, loc)
+            val t = finalize_record_typ(env, t, sc, loc)
             val nrealargs =
                 match t {
                 | TypTuple(telems) => telems.length()
@@ -3542,7 +3564,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
             (PatAs(p1_new, i_new, loc), typed)
         | PatTyped(p1, t1, loc) =>
             val (t1_new, env1) = check_typ_and_collect_typ_vars(t1, r_env,
-                    if proto_mode {Some(r_typ_vars)} else {None}, sc, loc)
+                    if proto_mode {Some(r_typ_vars)} else {None}, sc, loc, !proto_mode)
             r_env = env1
             unify(t1_new, t, loc, "inconsistent explicit type specification")
             val (p1, _) = check_pat_(p1, t)

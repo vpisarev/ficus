@@ -135,7 +135,7 @@ type typ_t =
     | TypTuple: typ_t list
     | TypRef: typ_t
     | TypArray: (int, typ_t)
-    | TypRecord: ((val_flags_t, id_t, typ_t, initializer_t?) list, bool) ref
+    | TypRecord: ((val_flags_t, id_t, typ_t, exp_t) list, bool) ref
     | TypExn
     | TypErr
     | TypCPointer
@@ -1325,7 +1325,7 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypVarRecord => t
     | TypRecord((ref (relems, ordered)) as r) =>
         val new_relems = [ for (flags, n, t, v) <- relems {
-            (flags, n, check_n_walk_typ(t, callb), v)} ]
+            (flags, n, check_n_walk_typ(t, callb), check_n_walk_exp(v, callb))} ]
         *r = (new_relems, ordered)
         t
     | TypExn => t
@@ -1450,7 +1450,7 @@ fun dup_typ_(t: typ_t, callb: ast_callb_t): typ_t =
     | TypVar  _ => TypVar(ref None)
     | TypRecord(r) =>
         val (relems, ordered) = *r
-        val new_relems = [for (flags, n, t, v) <- relems {(flags, n, dup_typ_(t, callb), v)}]
+        val new_relems = [for (flags, n, t, v) <- relems {(flags, n, dup_typ_(t, callb), dup_exp_(v, callb))}]
         TypRecord(ref (new_relems, ordered))
     | _ => walk_typ(t, callb)
     }

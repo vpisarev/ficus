@@ -1264,7 +1264,7 @@ fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
     }
 }
 
-type kw_param_t = (id_t, typ_t, initializer_t?, loc_t)
+type kw_param_t = (id_t, typ_t, exp_t, loc_t)
 
 fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bool)
 {
@@ -1280,11 +1280,10 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
             if expect_comma { throw parse_err(ts, "',' is expected") }
             val (ts, t) = parse_typespec(rest)
             val (ts, defparam) = match ts {
-                | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(InitLit(lit)))
-                | (EQUAL, _) :: (IDENT(_, i), _) :: _ =>
-                    val (ts, i) = parse_dot_ident(ts, false, "")
-                    (ts, Some(InitId(get_id(i))))
-                | _ => (ts, None)
+                | (EQUAL, _) :: rest =>
+                    val (ts, v0) = parse_exp(rest, allow_mkrecord=true)
+                    (ts, v0)
+                | (_, l1) :: _ => (ts, ExpNop(l1))
                 }
             add_fun_param(ts, true, params, (get_id(i), t, defparam, ploc) :: kw_params)
         | _ =>
@@ -1752,7 +1751,7 @@ fun parse_typespec(ts: tklist_t): (tklist_t, typ_t)
     }
 }
 
-type relem_t = (val_flags_t, id_t, typ_t, initializer_t?)
+type relem_t = (val_flags_t, id_t, typ_t, exp_t)
 
 fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
 {
@@ -1784,11 +1783,10 @@ fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
                 }
                 val (ts, t) = parse_typespec(ts)
                 val (ts, default_) = match ts {
-                    | (EQUAL, _) :: (LITERAL(lit), _) :: rest => (rest, Some(InitLit(lit)))
-                    | (EQUAL, _) :: (IDENT(_, _), _) :: _ =>
-                        val (ts, n) = parse_dot_ident(ts.tl(), false, "")
-                        (ts, Some(InitId(get_id(n))))
-                    | _ => (ts, None)
+                    | (EQUAL, _) :: rest =>
+                        val (ts, v0) = parse_exp(rest, allow_mkrecord=true)
+                        (ts, v0)
+                    | (_, l1) :: _ => (ts, ExpNop(l1))
                 }
                 parse_relems_(ts, true, (flags, get_id(i), t, default_) :: result)
             | _ =>

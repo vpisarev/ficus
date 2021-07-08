@@ -138,14 +138,13 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
             if brief { pp.str("{...}") }
             else {
                 pp.begin(); pp.str(if ordered {"{"} else {"@ordered {"}); pp.breaki();
-                for (flags, n, t, v0_opt)@i <- rec_elems {
+                for (flags, n, t, v0)@i <- rec_elems {
                     if i > 0 { pp.str(";"); pp.space() }
                     if flags.val_flag_mutable {pp.str("var ")}
                     ppid(pp, n); pp.str(":"); pp.space(); pptype_(t, TypPr0)
-                    match v0_opt {
-                    | Some(InitLit(v0)) => pp.str("="); pplit(pp, v0)
-                    | Some(InitId(v0)) => pp.str("="); ppid(pp, v0)
-                    | _ => {}
+                    match v0 {
+                    | ExpNop _ => {}
+                    | _ => pp.str("="); pprint_exp(pp, v0)
                     }
                 }
                 pp.breaku(); pp.str("}"); pp.end()
@@ -208,7 +207,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         else { ppexp(e0) }
         pp.end()
     | DefFun df =>
-        val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_loc} = *df
+        val {df_name, df_templ_args, df_args, df_typ, df_body, df_flags, df_loc, df_templ_inst} = *df
         val ctor_id = df_flags.fun_flag_ctor
         val class_id = df_flags.fun_flag_method_of
         pp.begin(0); pp.begin(); pprint_fun_flags(pp, df_flags)
@@ -234,6 +233,22 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         if ctor_id != CtorNone { pp.str(ctor2str(ctor_id)) }
         else { pprint_exp_as_block(pp, df_body) }
         pp.end(); pp.newline()
+        if *df_templ_inst != [] {
+            pp.beginv()
+            pp.str("[[instances: ")
+            for inst_df <- *df_templ_inst {
+                pp.space()
+                match id_info(inst_df, df_loc) {
+                | IdFun inst_df =>
+                    pprint_exp(pp, DefFun(inst_df))
+                | _ =>
+                    throw compile_err(df_loc, "one of the instances is not a function")
+                }
+            }
+            pp.space()
+            pp.str("]]")
+            pp.end()
+        }
     | DefExn (ref {dexn_name, dexn_typ, dexn_loc}) =>
         pp.begin(); pp.str("exception "); ppid(pp, dexn_name)
         match dexn_typ {

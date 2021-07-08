@@ -50,7 +50,7 @@ type arg_info_t =
     arg_type: string
     defval: string=""
     readwrite: bool=false
-    isinput: bool=false
+    isinout: bool=false
     isoutput: bool=false
     isconst: bool=false
     isref: bool=false
@@ -441,18 +441,16 @@ fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
     //println(f"parse arg #{argno} '{arg_str0}'")
     var arg_str = arg_str0
     var argno = argno
-    var isinput = true, isoutput = false
+    var isinout = false, isoutput = false
 
     //pass 0: extracts the modifiers
     if arg_str.contains("CV_OUT") {
-        isinput = false
         isoutput = true
         arg_str = arg_str.replace("CV_OUT", "")
     }
 
     if arg_str.contains("CV_IN_OUT") {
-        isinput = true
-        isoutput = true
+        isinout = true
         arg_str = arg_str.replace("CV_IN_OUT", "")
     }
 
@@ -608,7 +606,7 @@ fun hdr_parser_t.parse_arg(arg_str0: string, argno: int)
         name=arg_name,
         arg_type=arg_type,
         defval="",
-        isinput=isinput,
+        isinout=isinout,
         isoutput=isoutput,
         isconst=isconst,
         isref=isref,
@@ -899,15 +897,15 @@ fun hdr_parser_t.parse_func_decl(decl_str: string, ~mat: string="Mat", ~docstrin
                         val vector_mat_arg = "vector_Mat"
                         val vector_mat_template = "vector<Mat>"
                         val arg_type = arg_info.arg_type
-                        var isinput = arg_info.isinput, isoutput = arg_info.isoutput
-                        val (arg_type, isinput, isoutput) = match arg_type {
-                            | "InputArray" => (mat_arg, true, false)
-                            | "InputOutputArray" => (mat_arg, true, true)
-                            | "OutputArray" => (mat_arg, isinput, true)
-                            | "InputArrayOfArrays" => (vector_mat_arg, true, false)
-                            | "InputOutputArrayOfArrays" => (vector_mat_arg, true, true)
-                            | "OutputArrayOfArrays" => (vector_mat_arg, isinput, true)
-                            | _ => (arg_type, isinput, isoutput)
+                        var isinout = arg_info.isinout, isoutput = arg_info.isoutput
+                        val (arg_type, isinout, isoutput) = match arg_type {
+                            | "InputArray" => (mat_arg, false, false)
+                            | "InputOutputArray" => (mat_arg, true, false)
+                            | "OutputArray" => (mat_arg, false, true)
+                            | "InputArrayOfArrays" => (vector_mat_arg, false, false)
+                            | "InputOutputArrayOfArrays" => (vector_mat_arg, true, false)
+                            | "OutputArrayOfArrays" => (vector_mat_arg, false, true)
+                            | _ => (arg_type, isinout, isoutput)
                             }
                         val defval = batch_replace(defval,
                             [("InputArrayOfArrays", vector_mat_template),
@@ -918,7 +916,7 @@ fun hdr_parser_t.parse_func_decl(decl_str: string, ~mat: string="Mat", ~docstrin
                             ("OutputArray", mat_arg),
                             ("noArray", arg_type)]).strip()
 
-                        args = arg_info.{arg_type=arg_type, defval=defval, isinput=isinput, isoutput=isoutput} :: args
+                        args = arg_info.{arg_type=arg_type, defval=defval, isinout=isinout, isoutput=isoutput} :: args
                         npos = arg_start
                     }
                 }
@@ -1102,8 +1100,8 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
 
 fun string(a: arg_info_t)
 {
-    val {name, arg_type, defval, readwrite, isinput, isoutput, isconst, isref, isrref} = a
-    val arg_type = (if isinput && isoutput {"[in/out] "} else {""}) + (if !isinput && isoutput {"[out] "} else {""}) +
+    val {name, arg_type, defval, readwrite, isinout, isoutput, isconst, isref, isrref} = a
+    val arg_type = (if isinout {"[in/out] "} else {""}) + (if isoutput {"[out] "} else {""}) +
                    (if readwrite {"[read/write] "} else {""})  +
                    (if isconst {"const "} else {""}) + arg_type +
                    (if isref {"&"} else {""}) + (if isrref {"&&"} else {""})
