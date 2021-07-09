@@ -24,6 +24,22 @@ type uint8x3 = (uint8*3)
 type uint8x4 = (uint8*4)
 type uint16x3 = (uint16*3)
 type uint16x4 = (uint16*4)
+type int32x4 = (int32x4)
+type intx2 = (int*2)
+type intx3 = (int*3)
+type intx4 = (int*4)
+type intx5 = (int*5)
+type intx6 = (int*6)
+type float2 = (float*2)
+type float3 = (float*3)
+type float4 = (float*4)
+type float5 = (float*5)
+type float6 = (float*6)
+type double2 = (double*2)
+type double3 = (double*3)
+type double4 = (double*4)
+type double5 = (double*5)
+type double6 = (double*6)
 
 type depth_t =
     | DEPTH_U8 | DEPTH_S8 | DEPTH_U16 | DEPTH_S16 | DEPTH_U32 | DEPTH_S32
@@ -154,8 +170,74 @@ static int cvt_to(const _fx_anyarr_t* src, cv::Mat& dst)
     return FX_OK;
 }
 
-// [TODO] need to implement Ficus-based cv::MatAllocator,
-// so that we don't need to physically copy the output arrays
+namespace cv
+{
+#ifndef CV_MAX_DIM
+#define CV_MAX_DIM 32
+#endif
+
+class FXArrAllocator : public MatAllocator
+{
+public:
+    FXArrAllocator() { stdAllocator = Mat::getStdAllocator(); }
+    ~FXArrAllocator() {}
+
+    UMatData* allocate(fx_arr_t* arr, int dims, const int* sizes, int type, size_t* step) const
+    {
+        UMatData* u = new UMatData(this);
+        u->data = u->origdata = (uchar*)arr->data;
+        for( int i = 0; i < dims; i++ )
+            step[i] = arr->dim[i].step;
+        u->size = sizes[0]*step[0];
+        u->userdata = arr;
+        return u;
+    }
+
+    UMatData* allocate(int dims, const int* sizes, int type, void* data, size_t* step, AccessFlag flags, UMatUsageFlags usageFlags) const CV_OVERRIDE
+    {
+        if( data != 0 )
+            return stdAllocator->allocate(dims, sizes, type, data, step, flags, usageFlags);
+        size_t esz = CV_ELEM_SIZE(type);
+        int_ sz[CV_MAX_DIM];
+        int fx_status;
+        for( int i = 0; i < dims; i++ )
+            sz[i] = sizes[i];
+        fx_arr_t* arr = (fx_arr_t*)fx_malloc(sizeof(*arr));
+        if(!arr)
+            CV_Error_(Error::StsError, ("The ficus array of type=%d, ndims=%d can not be created", type, dims));
+        memset(arr, 0, sizeof(*arr));
+        fx_status = fx_make_arr(dims, sz, esz, 0, 0, 0, arr);
+        if (fx_status < 0)
+            CV_Error_(Error::StsError, ("The ficus array of type=%d, ndims=%d can not be created", type, dims));
+        return allocate(arr, dims, sizes, type, step);
+    }
+
+    bool allocate(UMatData* u, AccessFlag accessFlags, UMatUsageFlags usageFlags) const CV_OVERRIDE
+    {
+        return stdAllocator->allocate(u, accessFlags, usageFlags);
+    }
+
+    void deallocate(UMatData* u) const CV_OVERRIDE
+    {
+        if(!u)
+            return;
+        CV_Assert(u->urefcount >= 0);
+        CV_Assert(u->refcount >= 0);
+        if(u->refcount == 0 && u->userdata != 0)
+        {
+            fx_arr_t* arr = (fx_arr_t*)u->userdata;
+            fx_free_arr(arr);
+            fx_free(arr);
+            delete u;
+        }
+    }
+
+    const MatAllocator* stdAllocator;
+};
+}
+
+static cv::FXArrAllocator g_fxarrAllocator;
+
 static int cvt_from(const cv::Mat& src, int dstdims, int dstdepth, int_ dstchannels, fx_arr_t* dst)
 {
     const int cvdepth_tab[] = {CV_8U, CV_8S, CV_16U, CV_16S, CV_32S, CV_16F, -1, CV_32F, CV_64F};
@@ -175,20 +257,25 @@ static int cvt_from(const cv::Mat& src, int dstdims, int dstdepth, int_ dstchann
         dstdims != src.dims)
         FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
 
-    for(i = 0; i < ndims; i++)
-        size[i] = src.size.p[i];
-    status = fx_make_arr(ndims, size, src.elemSize(), 0, 0, 0, dst);
-    if(status < 0)
-        return status;
-    {
-    _fx_anyarr_t tmpsrc = {*dst, dstdepth, dstchannels};
-    status = cvt_to(&tmpsrc, cvdst);
+    if (src.allocator == &g_fxarrAllocator && src.u->userdata != 0) {
+        printf("fast copy path\n");
+        fx_copy_arr((fx_arr_t*)src.u->userdata, dst);
+    } else {
+        for(i = 0; i < ndims; i++)
+            size[i] = src.size.p[i];
+        status = fx_make_arr(ndims, size, src.elemSize(), 0, 0, 0, dst);
+        if(status < 0)
+            return status;
+        {
+        _fx_anyarr_t tmpsrc = {*dst, dstdepth, dstchannels};
+        status = cvt_to(&tmpsrc, cvdst);
+        }
+        if(status < 0)
+            return status;
+        src.copyTo(cvdst);
+        if((char*)cvdst.data != dst->data)
+            FX_FAST_THROW_RET(FX_EXN_BadArgError);
     }
-    if(status < 0)
-        return status;
-    src.copyTo(cvdst);
-    if((char*)cvdst.data != dst->data)
-        FX_FAST_THROW_RET(FX_EXN_BadArgError);
     return FX_OK;
 }
 
@@ -358,6 +445,7 @@ fun VideoCapture.read(): uint8x3 [,] =
     memset(fx_result, 0, sizeof(*fx_result));
     cv::VideoCapture* cap;
     cv::Mat frame;
+    frame.allocator = &g_fxarrAllocator;
     int fx_status = 0;
     if (!self->cap || !self->cap->ptr)
         return fx_ocv_err("video stream is not initialized");
@@ -379,6 +467,7 @@ fun Canny(img: uint8 [,], ~threshold1: int, ~threshold2: int,
     @ccode {
         memset(fx_result, 0, sizeof(*fx_result));
         cv::Mat c_img, c_edges;
+        c_edges.allocator = &g_fxarrAllocator;
         _fx_anyarr_t img_ = {*img, _FX_DEPTH_U8, 1};
         int fx_status = cvt_to(&img_, c_img);
         FX_OCV_TRY_CATCH(
@@ -394,6 +483,7 @@ fun GaussianBlur_(img: anyarr_t, ksize: (int, int), sigma: double, sigmaY: doubl
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_img, c_dst;
+    c_dst.allocator = &g_fxarrAllocator;
     int fx_status = cvt_to((_fx_anyarr_t*)img, c_img);
     FX_OCV_TRY_CATCH(
         cv::GaussianBlur(c_img, c_dst, cv::Size((int)ksize->t0, (int)ksize->t1), sigma, sigmaY, borderType);
@@ -407,7 +497,7 @@ val BORDER_REFLECT_101: int = @ccode {cv::BORDER_REFLECT_101}
 val BORDER_REPLICATE: int = @ccode {cv::BORDER_REPLICATE}
 
 fun GaussianBlur(img: 't [,], ksize: (int, int), ~sigma: double, ~sigmaY: double=0.,
-                 ~borderType: int=4): 't [,]
+                 ~borderType: int=BORDER_DEFAULT): 't [,]
 {
     (reinterpret(GaussianBlur_(anyarray(img), ksize, sigma, sigmaY, borderType)) : 't [,])
 }
