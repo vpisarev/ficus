@@ -3583,8 +3583,8 @@ static int _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_f
    _fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_form__c_fold_callb_t_cldata_t* cv_0 =
       (_fx_M20C_post_rename_localsFM12rename_cstmtv2N15C_form__cstmt_tR22C_form__c_fold_callb_t_cldata_t*)fx_fv;
    _fx_rNt10Hashmap__t2ii prefix_hash_ref_0 = cv_0->t1;
-   _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
    _fx_Nt10Hashmap__t2ii* global_prefix_hash_0 = &cv_0->t0->data;
+   _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
    int tag_0 = FX_REC_VARIANT_TAG(s_0);
    if (tag_0 == 16) {
       _fx_T4N14C_form__ctyp_tR9Ast__id_tNt6option1N14C_form__cexp_tR10Ast__loc_t* vcase_0 = &s_0->u.CDefVal;

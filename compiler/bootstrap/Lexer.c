@@ -64,6 +64,19 @@ typedef struct _fx_T4iSiB {
    bool t3;
 } _fx_T4iSiB;
 
+typedef struct _fx_R10Ast__loc_t {
+   int_ m_idx;
+   int_ line0;
+   int_ col0;
+   int_ line1;
+   int_ col1;
+} _fx_R10Ast__loc_t;
+
+typedef struct _fx_T2R10Ast__loc_tS {
+   struct _fx_R10Ast__loc_t t0;
+   fx_str_t t1;
+} _fx_T2R10Ast__loc_tS;
+
 typedef struct _fx_T2il {
    int_ t0;
    int64_t t1;
@@ -91,19 +104,6 @@ typedef struct _fx_N10Ast__lit_t {
       bool LitBool;
    } u;
 } _fx_N10Ast__lit_t;
-
-typedef struct _fx_R10Ast__loc_t {
-   int_ m_idx;
-   int_ line0;
-   int_ col0;
-   int_ line1;
-   int_ col1;
-} _fx_R10Ast__loc_t;
-
-typedef struct _fx_T2R10Ast__loc_tS {
-   struct _fx_R10Ast__loc_t t0;
-   fx_str_t t1;
-} _fx_T2R10Ast__loc_tS;
 
 typedef struct _fx_N12Ast__cmpop_t {
    int tag;
@@ -365,6 +365,23 @@ static void _fx_make_T4iSiB(int_ t0, fx_str_t* t1, int_ t2, bool t3, struct _fx_
    fx_result->t3 = t3;
 }
 
+static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
+}
+
 static void _fx_free_N10Ast__lit_t(struct _fx_N10Ast__lit_t* dst)
 {
    switch (dst->tag) {
@@ -385,23 +402,6 @@ static void _fx_copy_N10Ast__lit_t(struct _fx_N10Ast__lit_t* src, struct _fx_N10
    default:
       dst->u = src->u;
    }
-}
-
-static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
-{
-   fx_free_str(&dst->t1);
-}
-
-static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
-{
-   dst->t0 = src->t0;
-   fx_copy_str(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
-{
-   fx_result->t0 = *t0;
-   fx_copy_str(t1, &fx_result->t1);
 }
 
 static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
@@ -2984,9 +2984,9 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
    _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0_cldata_t* cv_0 =
       (_fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0_cldata_t*)fx_fv;
    _fx_N20LexerUtils__stream_t strm_0 = cv_0->t4;
-   int_* pos_0 = &cv_0->t2->data;
-   _fx_LT2N14Lexer__token_tTa2i* paren_stack_1 = &cv_0->t1->data;
    bool* new_exp_0 = &cv_0->t0->data;
+   _fx_LT2N14Lexer__token_tTa2i* paren_stack_1 = &cv_0->t1->data;
+   int_* pos_0 = &cv_0->t2->data;
    bool* prev_dot_0 = &cv_0->t3->data;
    fx_copy_str(&strm_0->u.stream_t.t3, &buf_0);
    int_ len_0;

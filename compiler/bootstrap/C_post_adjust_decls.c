@@ -2823,8 +2823,8 @@ static int _fx_M19C_post_adjust_declsFM12adjust_cstmtN15C_form__cstmt_t2N15C_for
    _fx_rB local_have_ops_ref_0 = cv_0->t1;
    _fx_M19C_post_adjust_declsFM7make_fpFPLN15C_form__cstmt_t4LN15C_form__cstmt_tR17C_form__c_callb_trLN15C_form__cstmt_trB2rLN15C_form__cstmt_trB(
       local_decls_ref_0, local_have_ops_ref_0, &adjust_sseq_0);
-   bool* local_have_ops_0 = &local_have_ops_ref_0->data;
    _fx_LN15C_form__cstmt_t* local_decls_0 = &local_decls_ref_0->data;
+   bool* local_have_ops_0 = &local_have_ops_ref_0->data;
    int tag_0 = FX_REC_VARIANT_TAG(s_0);
    if (tag_0 == 16) {
       _fx_T4N14C_form__ctyp_tR9Ast__id_tNt6option1N14C_form__cexp_tR10Ast__loc_t* vcase_0 = &s_0->u.CDefVal;

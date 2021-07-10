@@ -1369,7 +1369,12 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t
                             }
                             (pi :: inst_args, ti :: argtyps)
                         }
-                    (inst_args.rev(), argtyps.rev(), ExpSeq(rest_inst_body, body_ctx))
+                    val new_inst_body = match rest_inst_body {
+                        | [] => ExpNop(df_loc)
+                        | e :: [] => e
+                        | _ => ExpSeq(rest_inst_body, body_ctx)
+                        }
+                    (inst_args.rev(), argtyps.rev(), new_inst_body)
                 | _ =>
                     throw compile_err( df_loc,
                         "the function with keyword parameters must have the anonymous record as \
@@ -1391,7 +1396,10 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t
                     val _ = create_kdefval(i, ti, default_arg_flags(), None, [], inst_loc)
                     (i :: params, body_code)
                 }
-            val is_cfunc = match inst_body { | ExpCCode(_, _) => true | _ => false }
+            //print(f"func {inst_name} body: "); Ast_pp.pprint_exp_x(inst_body); println()
+            val is_cfunc = match inst_body {
+                | ExpCCode(_, _) | ExpSeq(_ :: ExpCCode(_, _) :: [], _) => true
+                | _ => false }
             val inst_flags = inst_flags.{
                 fun_flag_ccode=is_cfunc,
                 fun_flag_nothrow=inst_flags.fun_flag_nothrow && is_cfunc,

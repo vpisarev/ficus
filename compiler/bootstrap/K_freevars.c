@@ -6766,8 +6766,8 @@ static int _fx_M10K_freevarsFM21walk_kexp_n_eliminateN14K_form__kexp_t2N14K_form
    FX_CALL(fx_check_stack(), _fx_cleanup);
    _fx_M10K_freevarsFM21walk_kexp_n_eliminateN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t_cldata_t* cv_0 =
       (_fx_M10K_freevarsFM21walk_kexp_n_eliminateN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t_cldata_t*)fx_fv;
-   _fx_Nt10Hashmap__t2R9Ast__id_tR9Ast__id_t* ref_map_0 = &cv_0->t2->data;
    _fx_Nt10Hashmap__t2R9Ast__id_tR26K_freevars__fv_func_info_t* fv_env_0 = &cv_0->t1->data;
+   _fx_Nt10Hashmap__t2R9Ast__id_tR9Ast__id_t* ref_map_0 = &cv_0->t2->data;
    _fx_Nt10Hashmap__t2R9Ast__id_tR9Ast__id_t* subst_map_0 = &cv_0->t3->data;
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
    if (tag_0 == 31) {

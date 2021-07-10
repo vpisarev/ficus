@@ -10165,8 +10165,8 @@ static int
    _fx_Rt6Set__t1R9Ast__id_t v_5 = {0};
    int fx_status = 0;
    _fx_Rt6Set__t1R9Ast__id_t* all_decls_0 = &all_decls_ref_0->data;
-   _fx_LN15C_form__cstmt_t* top_typfun_decl_0 = &top_typfun_decl_ref_0->data;
    _fx_LN15C_form__cstmt_t* top_typ_decl_0 = &top_typ_decl_ref_0->data;
+   _fx_LN15C_form__cstmt_t* top_typfun_decl_0 = &top_typfun_decl_ref_0->data;
    bool res_0;
    FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(i_0, &_fx_g9Ast__noid, &res_0, 0), _fx_cleanup);
    if (!res_0) {
@@ -10564,8 +10564,8 @@ static int
    _fx_Rt6Set__t1R9Ast__id_t v_7 = {0};
    _fx_FPv1R9Ast__id_t __lambda___0 = {0};
    int fx_status = 0;
-   _fx_Rt6Set__t1R9Ast__id_t* all_visited_0 = &all_visited_ref_0->data;
    _fx_Rt6Set__t1R9Ast__id_t* all_decls_0 = &all_decls_ref_0->data;
+   _fx_Rt6Set__t1R9Ast__id_t* all_visited_0 = &all_visited_ref_0->data;
    int_* curr_cm_idx_0 = &curr_cm_idx_ref_0->data;
    _fx_LN15C_form__cstmt_t* top_typ_decl_0 = &top_typ_decl_ref_0->data;
    bool visited_0;
@@ -13207,8 +13207,8 @@ static int _fx_M11C_gen_typesFM10__lambda__v1R9Ast__id_t(struct _fx_R9Ast__id_t*
       (_fx_M11C_gen_typesFM10__lambda__v1R9Ast__id_t_cldata_t*)fx_fv;
    _fx_rRt6Set__t1R9Ast__id_t all_decls_ref_0 = cv_0->t0;
    _fx_rRt6Map__t2R9Ast__id_tR29C_gen_types__ctyp_temp_info_t all_saved_rec_vars_ref_0 = cv_0->t2;
-   _fx_Rt6Map__t2R9Ast__id_tR29C_gen_types__ctyp_temp_info_t* all_saved_rec_vars_0 = &all_saved_rec_vars_ref_0->data;
    _fx_Rt6Set__t1R9Ast__id_t* all_decls_0 = &all_decls_ref_0->data;
+   _fx_Rt6Map__t2R9Ast__id_tR29C_gen_types__ctyp_temp_info_t* all_saved_rec_vars_0 = &all_saved_rec_vars_ref_0->data;
    FX_COPY_PTR(all_saved_rec_vars_0->root, &v_0);
    FX_COPY_FP(&all_saved_rec_vars_0->cmp, &v_1);
    bool result_0 = 0;

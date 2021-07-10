@@ -1320,7 +1320,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
         | (EQUAL, _) :: (CCODE, _) :: _ =>
             val (ts, body) = parse_ccode_exp(ts.tl(), make_new_typ())
             (ts, params, body, fflags.{fun_flag_ccode = true})
-        | (EQUAL, _) :: (CCODE, _) :: _ =>
+        | (CCODE, _) :: _ =>
             val (ts, body) = parse_ccode_exp(ts, make_new_typ())
             (ts, params, body, fflags.{fun_flag_ccode = true})
         | (EQUAL, _) :: rest =>

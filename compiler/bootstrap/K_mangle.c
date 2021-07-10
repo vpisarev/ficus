@@ -8964,8 +8964,8 @@ static int _fx_M8K_mangleFM12mangle_kexp_v2N14K_form__kexp_tR22K_form__k_fold_ca
    _fx_M8K_mangleFM12mangle_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t* cv_0 =
       (_fx_M8K_mangleFM12mangle_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t*)fx_fv;
    _fx_rNt10Hashmap__t2ii prefix_hash_ref_0 = cv_0->t1;
-   _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
    _fx_Nt10Hashmap__t2ii* global_prefix_hash_0 = &cv_0->t0->data;
+   _fx_Nt10Hashmap__t2ii* prefix_hash_0 = &prefix_hash_ref_0->data;
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
    if (tag_0 == 31) {
       _fx_R17K_form__kdefval_t kv_0 = {0};

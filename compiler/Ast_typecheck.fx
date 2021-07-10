@@ -2306,14 +2306,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpCCode(str, _) =>
         match sc {
         | ScModule _ :: _ => e
-        | ScFun _ :: _ =>
+        | _ =>
             /* do some favor for those who start to forget to put the final ';' before } in ccode */
             val str = str.strip()
             val str = if str.endswith('}') || str.endswith(';') { str } else { str + ';' }
             ExpCCode(str, ctx)
-        | _ =>
-            throw compile_err(eloc, "ccode may be used only at the top \
-                (module level) or as a single expression in function definition")
         }
     | ExpData(kind, fname, _) =>
         val t =

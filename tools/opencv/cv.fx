@@ -258,7 +258,6 @@ static int cvt_from(const cv::Mat& src, int dstdims, int dstdepth, int_ dstchann
         FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
 
     if (src.allocator == &g_fxarrAllocator && src.u->userdata != 0) {
-        printf("fast copy path\n");
         fx_copy_arr((fx_arr_t*)src.u->userdata, dst);
     } else {
         for(i = 0; i < ndims; i++)

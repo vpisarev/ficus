@@ -8533,8 +8533,8 @@ static int _fx_M15K_cfold_dealiasFM9cfd_kexp_N14K_form__kexp_t2N14K_form__kexp_t
    _fx_rNt10Hashmap__t2R9Ast__id_tN14K_form__atom_t ida_map_ref_0 = cv_0->t1;
    _fx_M15K_cfold_dealiasFM7make_fpFPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t1rNt10Hashmap__t2R9Ast__id_tN14K_form__atom_t(
       ida_map_ref_0, &cfd_atom__0);
-   _fx_Nt10Hashmap__t2R9Ast__id_tN14K_form__atom_t* ida_map_0 = &ida_map_ref_0->data;
    _fx_Nt10Hashmap__t2R9Ast__id_tLN14K_form__atom_t* concat_map_0 = &cv_0->t0->data;
+   _fx_Nt10Hashmap__t2R9Ast__id_tN14K_form__atom_t* ida_map_0 = &ida_map_ref_0->data;
    _fx_Nt10Hashmap__t2R9Ast__id_tLN14K_form__atom_t* mktup_map_0 = &cv_0->t2->data;
    if (FX_REC_VARIANT_TAG(e_0) == 31) {
       FX_COPY_PTR(e_0, &e_1);

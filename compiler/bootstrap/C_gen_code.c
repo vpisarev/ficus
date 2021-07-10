@@ -12435,8 +12435,8 @@ static int _fx_M10C_gen_codeFM10count_kexpv2N14K_form__kexp_tR22K_form__k_fold_c
    int fx_status = 0;
    _fx_M10C_gen_codeFM10count_kexpv2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t* cv_0 =
       (_fx_M10C_gen_codeFM10count_kexpv2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t*)fx_fv;
-   _fx_Nt10Hashset__t1R9Ast__id_t* decl_const_vals_0 = &cv_0->t1->data;
    _fx_Nt10Hashmap__t2R9Ast__id_ti* count_map_0 = &cv_0->t0->data;
+   _fx_Nt10Hashset__t1R9Ast__id_t* decl_const_vals_0 = &cv_0->t1->data;
    FX_COPY_PTR(e_0, &e_1);
    _fx_copy_R22K_form__k_fold_callb_t(callb_0, &callb_1);
    for (;;) {
@@ -15672,9 +15672,9 @@ static int
    _fx_Nt6option1N14C_form__cexp_t v_0 = {0};
    _fx_N14C_form__cexp_t v_1 = 0;
    int fx_status = 0;
-   _fx_Nt10Hashmap__t2R9Ast__id_tN14C_form__cexp_t* i2e_0 = &i2e_ref_0->data;
    _fx_Nt10Hashset__t1R9Ast__id_t* defined_syms_0 = &defined_syms_ref_0->data;
    _fx_LN15C_form__cstmt_t* fwd_fdecls_0 = &fwd_fdecls_ref_0->data;
+   _fx_Nt10Hashmap__t2R9Ast__id_tN14C_form__cexp_t* i2e_0 = &i2e_ref_0->data;
    _fx_Ta2i v_2;
    FX_CALL(_fx_M10C_gen_codeFM9find_idx_Ta2i2Nt10Hashmap__t2R9Ast__id_tN14C_form__cexp_tR9Ast__id_t(*i2e_0, i_0, &v_2, 0),
       _fx_cleanup);
@@ -21100,13 +21100,13 @@ static int
       block_stack_ref_1, defined_syms_ref_1, fwd_fdecls_ref_1, i2e_ref_1, *km_idx_1, &process_cases_0);
    _fx_M10C_gen_codeFM7make_fpFPT8LT4Nt6option1N14C_form__ctyp_tLN14C_form__cexp_tNt6option1N14C_form__cexp_tLN14C_form__cexp_tLN14C_form__cexp_tLN14C_form__cexp_tLN14C_form__cexp_tLN15C_form__cstmt_tLN15C_form__cstmt_tLT3R9Ast__id_tN14C_form__cexp_tR16Ast__val_flags_tLN15C_form__cstmt_t16N14C_form__cexp_tLT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tiiiiLT3N14K_form__kexp_tLT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tLN15C_form__cstmt_tR10Ast__loc_trLrRM11block_ctx_trNt10Hashset__t1R9Ast__id_tLSrLN15C_form__cstmt_trNt10Hashmap__t2R9Ast__id_tN14C_form__cexp_ti5rLrRM11block_ctx_trNt10Hashset__t1R9Ast__id_trLN15C_form__cstmt_trNt10Hashmap__t2R9Ast__id_tN14C_form__cexp_ti(
       block_stack_ref_1, defined_syms_ref_1, fwd_fdecls_ref_1, i2e_ref_1, *km_idx_1, &process_for_0);
-   int_* return_used_0 = &return_used_ref_0->data;
+   _fx_Nt10Hashset__t1R9Ast__id_t* defined_syms_0 = &defined_syms_ref_0->data;
    _fx_rNt6option1N14C_form__cexp_t* func_dstexp_r_0 = &func_dstexp_r_ref_0->data;
    _fx_LN15C_form__cstmt_t* glob_data_ccode_0 = &glob_data_ccode_ref_0->data;
-   _fx_LN15C_form__cstmt_t* top_inline_ccode_0 = &top_inline_ccode_ref_0->data;
-   _fx_Nt10Hashset__t1R9Ast__id_t* defined_syms_0 = &defined_syms_ref_0->data;
    _fx_Nt10Hashmap__t2R9Ast__id_tN14C_form__cexp_t* i2e_0 = &i2e_ref_0->data;
    _fx_LN15C_form__cstmt_t* module_cleanup_0 = &module_cleanup_ref_0->data;
+   int_* return_used_0 = &return_used_ref_0->data;
+   _fx_LN15C_form__cstmt_t* top_inline_ccode_0 = &top_inline_ccode_ref_0->data;
    FX_CALL(_fx_M6K_formFM12get_kexp_ctxT2N14K_form__ktyp_tR10Ast__loc_t1N14K_form__kexp_t(kexp_0, &v_0, 0), _fx_cleanup);
    FX_COPY_PTR(v_0.t0, &ktyp_0);
    _fx_R10Ast__loc_t kloc_0 = v_0.t1;

@@ -5874,8 +5874,8 @@ static int _fx_M6K_liftFM16fold_defcl_kexp_v2N14K_form__kexp_tR22K_form__k_fold_
    int fx_status = 0;
    _fx_M6K_liftFM16fold_defcl_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t* cv_0 =
       (_fx_M6K_liftFM16fold_defcl_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t*)fx_fv;
-   _fx_Nt10Hashmap__t2R9Ast__id_tR26K_freevars__fv_func_info_t* fv_env_0 = &cv_0->t1->data;
    _fx_R9Ast__id_t* curr_folded_func_0 = &cv_0->t0->data;
+   _fx_Nt10Hashmap__t2R9Ast__id_tR26K_freevars__fv_func_info_t* fv_env_0 = &cv_0->t1->data;
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
    if (tag_0 == 32) {
       _fx_LN12Ast__scope_t kf_scope_0 = 0;
@@ -6246,9 +6246,9 @@ static int _fx_M6K_liftFM20walk_atom_n_lift_allN14K_form__atom_t3N14K_form__atom
    int fx_status = 0;
    _fx_M6K_liftFM20walk_atom_n_lift_allN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t_cldata_t* cv_0 =
       (_fx_M6K_liftFM20walk_atom_n_lift_allN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t_cldata_t*)fx_fv;
-   _fx_Nt10Hashmap__t2R9Ast__id_tT2R9Ast__id_tNt6option1N14K_form__ktyp_t* curr_subst_env_0 = &cv_0->t2->data;
-   int_* curr_m_idx_0 = &cv_0->t1->data;
    _fx_LN14K_form__kexp_t* curr_lift_extra_decls_0 = &cv_0->t0->data;
+   int_* curr_m_idx_0 = &cv_0->t1->data;
+   _fx_Nt10Hashmap__t2R9Ast__id_tT2R9Ast__id_tNt6option1N14K_form__ktyp_t* curr_subst_env_0 = &cv_0->t2->data;
    int tag_0 = a_0->tag;
    if (tag_0 == 1) {
       if (a_0->u.AtomId.m == 0) {
@@ -6451,12 +6451,12 @@ static int _fx_M6K_liftFM20walk_kexp_n_lift_allN14K_form__kexp_t2N14K_form__kexp
    _fx_rNt10Hashset__t1R9Ast__id_t defined_so_far_ref_0 = cv_0->t5;
    _fx_M6K_liftFM7make_fpFPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t3rLN14K_form__kexp_trirNt10Hashmap__t2R9Ast__id_tT2R9Ast__id_tNt6option1N14K_form__ktyp_t(
       curr_lift_extra_decls_ref_0, curr_m_idx_ref_0, curr_subst_env_ref_0, &walk_atom_n_lift_all_0);
-   _fx_LN14K_form__kexp_t* curr_lift_extra_decls_0 = &curr_lift_extra_decls_ref_0->data;
-   _fx_Nt10Hashmap__t2R9Ast__id_tT2R9Ast__id_tNt6option1N14K_form__ktyp_t* curr_subst_env_0 = &curr_subst_env_ref_0->data;
-   int_* curr_m_idx_0 = &curr_m_idx_ref_0->data;
-   _fx_Nt10Hashset__t1R9Ast__id_t* defined_so_far_0 = &defined_so_far_ref_0->data;
-   _fx_LN14K_form__kexp_t* curr_top_code_0 = &cv_0->t4->data;
    _fx_R9Ast__id_t* curr_clo_0 = &cv_0->t0->data;
+   _fx_LN14K_form__kexp_t* curr_lift_extra_decls_0 = &curr_lift_extra_decls_ref_0->data;
+   int_* curr_m_idx_0 = &curr_m_idx_ref_0->data;
+   _fx_Nt10Hashmap__t2R9Ast__id_tT2R9Ast__id_tNt6option1N14K_form__ktyp_t* curr_subst_env_0 = &curr_subst_env_ref_0->data;
+   _fx_LN14K_form__kexp_t* curr_top_code_0 = &cv_0->t4->data;
+   _fx_Nt10Hashset__t1R9Ast__id_t* defined_so_far_0 = &defined_so_far_ref_0->data;
    FX_COPY_PTR(*curr_lift_extra_decls_0, &saved_extra_decls_0);
    _fx_free_LN14K_form__kexp_t(curr_lift_extra_decls_0);
    *curr_lift_extra_decls_0 = 0;

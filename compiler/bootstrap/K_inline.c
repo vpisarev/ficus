@@ -6255,8 +6255,8 @@ static int _fx_M8K_inlineFM17fold_recfun_kexp_v2N14K_form__kexp_tR22K_form__k_fo
    _fx_M8K_inlineFM17fold_recfun_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t* cv_0 =
       (_fx_M8K_inlineFM17fold_recfun_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t*)fx_fv;
    int_* km_idx_0 = &cv_0->t2;
-   _fx_Nt10Hashset__t1R9Ast__id_t* curr_called_0 = &cv_0->t1->data;
    _fx_Nt10Hashmap__t2R9Ast__id_tNt10Hashset__t1R9Ast__id_t* all_called_0 = &cv_0->t0->data;
+   _fx_Nt10Hashset__t1R9Ast__id_t* curr_called_0 = &cv_0->t1->data;
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
    if (tag_0 == 32) {
       _fx_R17K_form__kdeffun_t v_0 = {0};
@@ -8891,8 +8891,8 @@ static int _fx_M8K_inlineFM16fold_finfo_kexp_v2N14K_form__kexp_tR22K_form__k_fol
    int fx_status = 0;
    _fx_M8K_inlineFM16fold_finfo_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t* cv_0 =
       (_fx_M8K_inlineFM16fold_finfo_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t_cldata_t*)fx_fv;
-   _fx_rR21K_inline__func_info_t* curr_fi_0 = &cv_0->t1->data;
    _fx_Nt10Hashmap__t2R9Ast__id_trR21K_inline__func_info_t* all_funcs_info_0 = &cv_0->t0->data;
+   _fx_rR21K_inline__func_info_t* curr_fi_0 = &cv_0->t1->data;
    if (FX_REC_VARIANT_TAG(e_0) == 32) {
       _fx_R17K_form__kdeffun_t v_0 = {0};
       _fx_rR21K_inline__func_info_t saved_fi_0 = 0;
@@ -8990,8 +8990,8 @@ static int _fx_M8K_inlineFM12inline_kexp_N14K_form__kexp_t2N14K_form__kexp_tR17K
    FX_CALL(fx_check_stack(), _fx_cleanup);
    _fx_M8K_inlineFM12inline_kexp_N14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t_cldata_t* cv_0 =
       (_fx_M8K_inlineFM12inline_kexp_N14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t_cldata_t*)fx_fv;
-   _fx_rR21K_inline__func_info_t* curr_fi_0 = &cv_0->t1->data;
    _fx_Nt10Hashmap__t2R9Ast__id_trR21K_inline__func_info_t* all_funcs_info_0 = &cv_0->t0->data;
+   _fx_rR21K_inline__func_info_t* curr_fi_0 = &cv_0->t1->data;
    int_* curr_km_idx_0 = &cv_0->t2->data;
    int tag_0 = FX_REC_VARIANT_TAG(e_0);
    if (tag_0 == 32) {
