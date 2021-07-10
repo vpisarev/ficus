@@ -1044,6 +1044,7 @@ var std_FX_DECREF = noid
 var std_FX_REC_VARIANT_TAG = noid
 var std_FX_MAKE_RECURSIVE_VARIANT_IMPL_START = noid
 var std_FX_MAKE_FP_IMPL_START = noid
+var std_FX_MAKE_FP_BY_FCV = noid
 var std_FX_CALL = noid
 var std_FX_COPY_PTR = noid
 var std_FX_COPY_SIMPLE = noid

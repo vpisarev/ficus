@@ -1787,6 +1787,10 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val chk = make_call(get_id("FX_CHKIDX_RANGE"), [arrsz_exp, a_exp, b_exp, delta_exp,
                                     scale_exp, shift_exp, lbl], CTypVoid, kloc)
                 (false, dummy_exp, CExp(chk) :: ccode)
+            | (IntrinMakeFPbyFCV, AtomId(fname)::[]) => 
+                val (dst_exp, ccode) = get_dstexp(dstexp_r, "make_fp_by_clv", ctyp, ccode, kloc)
+                val macro = CExp(make_call( std_FX_MAKE_FP_BY_FCV, [make_id_t_exp(fname, std_CTypVoidPtr, kloc), dst_exp], CTypVoid, kloc ))
+                (false, dummy_exp, macro :: ccode)
             | (IntrinMath(s), args) =>
                 val fold cargs = [], ccode = ccode for a <- args {
                     val (c_exp, ccode) = atom2cexp(a, ccode, kloc)

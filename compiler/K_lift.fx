@@ -208,9 +208,9 @@
         free variables for all the functions are stabilized and do not change
         on the next iteration.
 
+
     Note: It's assumed there, that handled code don't have mutable freevars. That means, that
     lift_all can be called only after K.freevars.mutable_freevars_referencing
-
 */
 
 from Ast import *
@@ -231,15 +231,53 @@ fun lift_all(kmods: kmodule_t list)
 
     var fv_env : fv_env_t = collect_free_vars(kmods, globals, true, false, true)
 
+    /*
+    Sometimes recursive function with freevars mention itself not through direct call, but 
+    through passing itself to other function (directly or through variable). E.g: 
+    {
+        var i = 1
+        fun dipper(beeper:void->void)
+        {
+            if(i<1000)
+            {
+                beeper()
+            }
+        }
+
+        fun bill()
+        {
+            i = i * 2 
+            dipper(bill)
+        }
+
+        bill()
+    }
+    In this case it's needed internal copy of function closure for passing as an argument. 
+    Such a special case of recursion is called self-referencing.
+    */
+    val self_referencing_functions = empty_id_hashset(256)
+    var curr_folded_func = noid
+
+    fun fold_defcl_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t) =
+        match a {
+        | AtomId n => if n == curr_folded_func {self_referencing_functions.add(n)}
+        | _ => {}
+        }
+
     fun fold_defcl_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
 
     // form a closure for each function that has free variables
-    fun fold_defcl_kexp_(e: kexp_t, callb: k_fold_callb_t)
-    {
-        fold_kexp(e, callb)
+    fun fold_defcl_kexp_(e: kexp_t, callb: k_fold_callb_t) {
         match e {
         | KDefFun kf =>
-            val {kf_name, kf_params, kf_rt, kf_closure, kf_flags, kf_scope, kf_loc} = *kf
+            val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_flags, kf_scope, kf_loc} = *kf
+            val curr_folded_func_backup = if (fv_env.mem(kf_name)) {
+                    val curr_folded_func_backup = curr_folded_func
+                    curr_folded_func = kf_name
+                    curr_folded_func_backup
+                } else { noid }
+            fold_kexp(kf_body, callb)
+            if (fv_env.mem(kf_name)) {curr_folded_func = curr_folded_func_backup}
             match fv_env.find_opt(kf_name) {
             | Some ll_info =>
                 val fvars = ll_info.fv_fvars
@@ -301,13 +339,15 @@ fun lift_all(kmods: kmodule_t list)
                 }
             | _ => {}
             }
-        | _ => {}
+        | KExpCall(f, args, (_, loc)) => 
+            for a <- args {fold_defcl_atom_(a,loc,callb)}
+        | _ => fold_kexp(e, callb)
         }
     }
 
     val defcl_callb = k_fold_callb_t
     {
-        kcb_fold_atom=None,
+        kcb_fold_atom=Some(fold_defcl_atom_),
         kcb_fold_ktyp=Some(fold_defcl_ktyp_),
         kcb_fold_kexp=Some(fold_defcl_kexp_)
     }
@@ -396,7 +436,7 @@ fun lift_all(kmods: kmodule_t list)
         val e =
         match e {
         | KDefFun kf =>
-            val {kf_name, kf_params, kf_body, kf_closure, kf_loc} = *kf
+            val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_loc} = *kf
             val {kci_arg, kci_fcv_t, kci_make_fp, kci_wrap_f} = kf_closure
             fun create_defclosure(kf: kdeffun_t ref, code: kcode_t, loc: loc_t)
             {
@@ -506,6 +546,14 @@ fun lift_all(kmods: kmodule_t list)
                         create_kdefval(fv_proxy, t, new_kv_flags, Some(e), prologue, kf_loc)
                     }
 
+                    val prologue = if self_referencing_functions.mem(kf_name) {
+                        val cl_name = dup_idk(curr_m_idx, kf_name)
+                        curr_subst_env.add(kf_name, (cl_name, None))
+                        val kf_typ = get_kf_typ(kf_params, kf_rt, kf_loc)
+                        val make_cl = KExpIntrin(IntrinMakeFPbyFCV, [AtomId(kf_name)], (kf_typ, kf_loc)) //TODO: Rename CLV
+                        create_kdefval(cl_name, kf_typ, default_val_flags(), Some(make_cl), prologue, kf_loc)
+                    } else {prologue}
+
                     match fv_env.find_opt(kf_name) {
                     | Some({fv_declared_inside, fv_called_funcs}) =>
                         fv_called_funcs.foldl(
@@ -588,6 +636,12 @@ fun lift_all(kmods: kmodule_t list)
                 | _ => KExpCall(check_n_walk_id(f, loc, callb), args, kctx)
                 }
             }
+        | KExpIntrin (intt, args, kctx) =>
+            // We are disabling substitution of function with internal fp inside the macros, creating this fp.
+            match intt{
+            |IntrinMakeFPbyFCV => KExpIntrin (intt, args, kctx)
+            |_ => walk_kexp(e, callb)
+            }
         | _ => walk_kexp(e, callb)
         }
         val e = if curr_lift_extra_decls == [] { e }
@@ -607,6 +661,7 @@ fun lift_all(kmods: kmodule_t list)
         val {km_idx, km_top} = km
         curr_m_idx = km_idx
         curr_top_code = []
+        self_referencing_functions.clear()
         for e <- km_top { fold_defcl_kexp_(e, defcl_callb) }
         for e <- km_top {
             val e = walk_kexp_n_lift_all(e, walk_n_lift_all_callb)
