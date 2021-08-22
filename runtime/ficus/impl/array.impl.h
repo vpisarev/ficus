@@ -388,6 +388,76 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
     return fx_status;
 }
 
+int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int cs1, int ce1, 
+            fx_arr_t* m2, bool t2, int rs2, int re2, int cs2, int ce2, fx_arr_t* result)
+{
+    int fx_status = FX_OK;
+    if (m1->ndims != 2 || m2->ndims != 2)
+        FX_FAST_THROW_RET(FX_EXN_DimError);
+    size_t elemsize = m1->dim[1].step;
+    if (m1->dim[1].step != m2->dim[1].step)
+        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+
+    rs1 = -1 ? 0 : rs1;
+    re1 = -1 ? m1->dim[0].size : re1;
+    cs1 = -1 ? 0 : cs1;
+    ce1 = -1 ? m1->dim[1].size : ce1;
+    rs2 = -1 ? 0 : rs2;
+    re2 = -1 ? m1->dim[0].size : re2;
+    cs2 = -1 ? 0 : cs2;
+    ce2 = -1 ? m1->dim[1].size : ce2;
+
+    if (rs1<0 || rs1 > m1->dim[0].size || re1<0 || re1 > m1->dim[0].size || rs1>=re1 ||
+        cs1<0 || cs1 > m1->dim[0].size || ce1<0 || ce1 > m1->dim[1].size || cs1>=ce1 ||
+        rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rs1>=re2 ||
+        cs2<0 || cs2 > m2->dim[0].size || ce2<0 || ce2 > m2->dim[1].size || cs1>=ce2)
+        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
+
+    //Function arguments form assumes, that original matrixes are subarrayed first(if subarrayed) 
+    //and transposed after(if transposed).
+    const size_t summlen = t1?(re1-rs1):(ce1-cs1);
+    if(summlen != (t2?(ce2-cs2):(re2-rs2)))
+        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
+
+    const size_t result_h = t1?(ce1-cs1):(re1-rs1);
+    const size_t result_w = t2?(re2-rs2):(ce2-cs2);
+
+    {//TODO: Is it possible to consider case when we don't need memory allocation?
+        int_ ressize[FX_MAX_DIMS];
+        ressize[0] = result_h;
+        ressize[1] = result_w;
+        fx_status = fx_make_arr(2, ressize, elemsize,
+            m1->free_elem, m1->copy_elem, 0, result);
+        if(fx_status<0)
+            FX_FAST_THROW_RET(fx_status);
+        memset(result->data, 0, result_h*result_w*elemsize);
+    }
+    const size_t stridem1 = m1->dim[0].step;
+    const size_t stridem2 = m2->dim[0].step;
+    const size_t strideres = result->dim[0].step;
+
+    assert(elemsize == sizeof(double)); //TODO: Handle all cases, not just float64.
+    const char* m1ptr = m1->data + stridem1 * rs1 + cs1*elemsize;
+    const char* m2ptr = m2->data + stridem2 * rs2 + cs2*elemsize;
+    const char* resptr = result->data;
+
+    int i,j,k;
+    for(i = 0; i < result_h;i++)
+        for(j = 0; j < result_w;j++)
+        {
+            double* destcell = (double*)(resptr + i*strideres + j*elemsize);
+            for(k = 0; k < summlen;k++)
+            {
+                double* src1cell = (double*)(t1? m1ptr + k*stridem1 + i*elemsize:
+                                    m1ptr + i*stridem1 + k*elemsize);
+                double* src2cell = (double*)(t2? m2ptr + j*stridem2 + k*elemsize:
+                                    m2ptr + k*stridem2 + j*elemsize);
+                (*destcell) += (*src1cell)*(*src2cell);
+            }
+        }
+    return fx_status;
+}
+
 /* alternative and probably easier-to-use method to iterate over nD arrays;
    it does not optimize 1D, 2D or continuous nD cases */
 typedef struct fx_arriter_pos_t

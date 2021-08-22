@@ -308,6 +308,8 @@ fun cfold_dealias(kmods: kmodule_t list)
     var ida_map: idamap_t = Hashmap.empty(1024, noid, AtomId(noid))
     var concat_map: idalmap_t = Hashmap.empty(1024, noid, [])
     var mktup_map: idalmap_t = Hashmap.empty(1024, noid, [])
+    //transpose_map : (final_matrix_name -> (original_matrix_name, is_transposed))
+    var transpose_map: (id_t, (id_t, bool)) Hashmap.t = Hashmap.empty(1024, noid, (noid,true))
 
     fun cfd_atom_(a: atom_t, loc: loc_t, callb: k_callb_t) =
         match a {
@@ -368,6 +370,18 @@ fun cfold_dealias(kmods: kmodule_t list)
                 | KExpMkTuple (al, (_, loc)) when
                         kv_flags.val_flag_temp && all(for a <- al {!is_mutable_atom(a, loc)}) =>
                     mktup_map.add(n, al); e
+                | KExpCall (fname, AtomId(matr)::[], (_, loc)) when
+                        !is_mutable(matr,get_idk_loc(matr, noloc)) && 
+                        pp(fname) == pp(fname_op_apos()) =>//[TODO] Also check somehow original module(instead of module of instance!). We need "Builtins"
+                    match get_idk_ktyp(matr, get_idk_loc(matr, noloc)){
+                    |KTypArray(2,KTypFloat _) =>
+                        match transpose_map.find_opt(matr){
+                        |Some((original_matrix_name,is_transposed)) =>
+                            transpose_map.add(n,(original_matrix_name, !is_transposed))
+                        |None => transpose_map.add(n,(matr,true))
+                        }
+                    | _ => {}
+                    }; e
                 | _ => e
                 }
             } else { e }
@@ -413,6 +427,36 @@ fun cfold_dealias(kmods: kmodule_t list)
                 KExpAtom(AtomLit(KLitInt(int64(ctor_id))), (t, loc))
             | _ => e
             }
+        | KExpIntrin (IntrinGEMM, args, (t, loc) as ctx) =>
+            val (m1,t1,rs1,re1,cs1,ce1,m2,t2,rs2,re2,cs2,ce2) = match args {
+            |AtomId(m1)::AtomLit(KLitBool(t1))::AtomLit(KLitSInt(_,rs1))::
+             AtomLit(KLitSInt(_,re1))::AtomLit(KLitSInt(_,cs1))::AtomLit(KLitSInt(_,ce1))::
+             AtomId(m2)::AtomLit(KLitBool(t2))::AtomLit(KLitSInt(_,rs2))::
+             AtomLit(KLitSInt(_,re2))::AtomLit(KLitSInt(_,cs2))::AtomLit(KLitSInt(_,ce2))::[]=>
+                (m1,t1,rs1,re1,cs1,ce1,m2,t2,rs2,re2,cs2,ce2)
+            |_=> throw compile_err(loc, f"IntrinGEMM has wrong arguments")
+            } 
+            fun process_matrix_info(m,t,rs,re,cs,ce){
+                val (m,t,rs,re,cs,ce) = match transpose_map.find_opt(m){
+                    |Some ((m,t_)) => 
+                        val (t, rs, re, cs, ce) = if t_ { (!t, cs, ce, rs, re)} else { (t, rs, re, cs, ce)}
+                        (m,t,rs,re,cs,ce)
+                    |None=>(m,t,rs,re,cs,ce)
+                }
+                val (rs,re,cs,ce) = 
+                    (AtomLit(KLitSInt(32,rs)),AtomLit(KLitSInt(32,re)),AtomLit(KLitSInt(32,cs)),AtomLit(KLitSInt(32,ce)))
+                (m,t,rs,re,cs,ce)
+            }
+            val (m1,t1,rs1,re1,cs1,ce1) = process_matrix_info(m1,t1,rs1,re1,cs1,ce1)
+            val (m2,t2,rs2,re2,cs2,ce2) = process_matrix_info(m2,t2,rs2,re2,cs2,ce2)
+            val arglist = [
+                AtomId(m1),
+                AtomLit(KLitBool(t1)),
+                rs1,re1,cs1,ce1,
+                AtomId(m2),
+                AtomLit(KLitBool(t2)),
+                rs2,re2,cs2,ce2]
+            KExpIntrin(IntrinGEMM, arglist, ctx)
         | KExpBinary (bop, a, b, (res_t, loc)) =>
             match cfold_bop(bop, a, b, res_t, loc) { | Some new_e => new_e | _ => e }
         | KExpUnary (uop, a, (res_t, loc)) =>
@@ -463,7 +507,7 @@ fun cfold_dealias(kmods: kmodule_t list)
                 else
                     // k-normalization step makes sure that there is always the 'else' branch.
                     actionN.
-
+KLitSInt
                 If some of the actual_check(i,j) are constant "true" or "false",
                 we can optimize the conditions a bit:
 
@@ -547,6 +591,30 @@ fun cfold_dealias(kmods: kmodule_t list)
                 }
             | _ => e
             }
+            | KExpCall (fname, AtomId(matr1)::AtomId(matr2)::[], (_, loc) as ctx) when
+                    pp(fname) == pp(fname_op_mul()) =>//[TODO] Also check somehow original module(instead of module of instance!). We need "Builtins"
+                val (matr1_t,matr2_t) = (get_idk_ktyp(matr1, get_idk_loc(matr1, noloc)),get_idk_ktyp(matr2, get_idk_loc(matr2, noloc)))
+                match (matr1_t,matr2_t){
+                |(KTypArray(2,KTypFloat bitt1), KTypArray(2,KTypFloat bitt2)) when 
+                        bitt1 == bitt2 =>
+                    fun transposition_deref(matr: id_t) = match transpose_map.find_opt(matr){
+                        |Some(pair) => pair
+                        |None=>(matr,false)
+                    }
+                    val (matr1, matr1_transposed) = transposition_deref(matr1)
+                    val (matr2, matr2_transposed) = transposition_deref(matr2)
+                    val m1 = AtomLit(KLitSInt(32,-1i64))
+                    val arglist = [
+                        AtomId(matr1),
+                        AtomLit(KLitBool(matr1_transposed)),
+                        m1,m1,m1,m1,
+                        AtomId(matr2),
+                        AtomLit(KLitBool(matr2_transposed)),
+                        m1,m1,m1,m1
+                    ]
+                    KExpIntrin(IntrinGEMM, arglist, ctx)
+                |_ => e
+                }
         | _ => e
         }
     }
