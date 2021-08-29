@@ -305,11 +305,116 @@ fun print_subst_map(m: idamap_t, loc: loc_t) {
 
 fun cfold_dealias(kmods: kmodule_t list)
 {
+    var curr_m_idx = -1
+
     var ida_map: idamap_t = Hashmap.empty(1024, noid, AtomId(noid))
     var concat_map: idalmap_t = Hashmap.empty(1024, noid, [])
     var mktup_map: idalmap_t = Hashmap.empty(1024, noid, [])
-    //transpose_map : (final_matrix_name -> (original_matrix_name, is_transposed))
-    var transpose_map: (id_t, (id_t, bool)) Hashmap.t = Hashmap.empty(1024, noid, (noid,true))
+
+    //TODO: 
+    // 1.) We need to move gemm creation stage before inlining, or it will inline apos otherwise.
+    // 2.) Isn't it better to implement in-code A->mothermat-substitutions, instead of keeping info outside, in matrix_projection chain?
+    // 3.) Is it possible to add extra index checks only when real subarraying is deleted?
+    type matrix_projection =
+    {
+        original_matrix: id_t = noid;
+        row_range: (atom_t, atom_t) = (AtomLit(KLitNil(KTypVoid)), AtomLit(KLitNil(KTypVoid)))
+        col_range: (atom_t, atom_t) = (AtomLit(KLitNil(KTypVoid)), AtomLit(KLitNil(KTypVoid)))
+        is_transposed: bool = false;
+    }
+
+    fun m_pr_transposed(target: matrix_projection) =
+        target.{is_transposed = !target.is_transposed}
+
+    fun m_pr_sliced(target: matrix_projection, row_range: (atom_t, atom_t), 
+        col_range: (atom_t, atom_t), ctx: kctx_t, code: kcode_t): (matrix_projection, kcode_t){
+        fun juxtapose_border(base: atom_t, constriction: atom_t, oldend: atom_t?, code: kcode_t): (atom_t, kcode_t){
+            match (constriction, base, oldend) {
+            //TODO: This function must check if new border in inside of old range.
+            //Check it in compile-time, if it's certain number. Or create runtime index check otherwise.
+            //Stimulating example:
+            //
+            //val mothermat = random(rng, (10,10), -2., 2.)
+            //val A = mothermat[2:8,:]
+            //val B = A[0:7,:] // There must be error 
+            //val D = B*C
+            //
+            //The best optimization with gemm will avoid B matrix and corresponding id check:
+            //val D = __intrin_gemm__(mothermat[2:9,:], C)
+            //So, code will work, when it haven't to.
+
+            | (AtomLit(KLitNil _), _, Some(oend)) => (oend, code)
+            | (AtomLit(KLitNil _), _, None) => (base, code)
+            | (_, AtomLit(KLitNil _), Some(AtomLit(KLitNil _)))
+            | (_, AtomLit(KLitNil _), None) => (constriction, code)
+            | (_, AtomLit(KLitNil _), Some(oend)) => (constriction, code) //check if constriction<oend
+            | (_, _, _) =>
+                val (_, loc) = ctx
+                val border_type = get_atom_ktyp(base, loc)
+                match cfold_bop(OpAdd, base, constriction, border_type, loc) {
+                |Some(KExpAtom(AtomLit(l),_)) => (AtomLit(l), code)
+                |_ => 
+                    val border_name = match constriction {
+                        |AtomId (border_name) => border_name
+                        |_ => match base {
+                            |AtomId (border_name) => border_name
+                            |_ => throw compile_err(loc, f"Subarray border inference error")
+                            }
+                        }
+                    val unfolded = KExpBinary(OpAdd, base, constriction, ctx)
+                    val new_border_name = dup_idk(curr_m_idx, border_name)
+                    val code = create_kdefval(new_border_name, border_type, default_val_flags(), Some(unfolded), code, loc)
+                    (AtomId(new_border_name), code)
+                }
+            }
+        }
+        val (rso, reo) = target.row_range
+        val (cso, ceo) = target.col_range
+        val (row_range, col_range) = if target.is_transposed {(col_range, row_range)} else {(row_range, col_range)}
+        val (rsn, ren) = row_range
+        val (csn, cen) = col_range
+        val (rs,code) = juxtapose_border(rso, rsn, None, code)
+        val (re,code) = juxtapose_border(rso, ren, Some(reo), code)
+        val (cs,code) = juxtapose_border(cso, csn, None, code)
+        val (ce,code) = juxtapose_border(cso, cen, Some(ceo), code)
+        val new_row_range = (rs, re)
+        val new_col_range = (cs, ce)
+        val new_target = target.{row_range = new_row_range, col_range = new_col_range}
+        (new_target, code)
+    }
+
+    fun m_pr_composition(target: matrix_projection, applied: matrix_projection, 
+                        ctx: kctx_t, code: kcode_t): (matrix_projection, kcode_t) {
+        val {row_range, col_range, is_transposed} = applied
+        val target = if is_transposed { m_pr_transposed(target) } else {target}
+        m_pr_sliced(target, row_range, col_range, ctx, code)
+    }
+
+    fun m_prs2arglist(m_pr1: matrix_projection, m_pr2: matrix_projection){
+        val (rs1,re1) = m_pr1.row_range
+        val (cs1,ce1) = m_pr1.col_range
+        val (rs2,re2) = m_pr2.row_range
+        val (cs2,ce2) = m_pr2.col_range
+        [AtomId(m_pr1.original_matrix), AtomLit(KLitBool(m_pr1.is_transposed)), rs1, re1, cs1, ce1,
+         AtomId(m_pr2.original_matrix), AtomLit(KLitBool(m_pr2.is_transposed)), rs2, re2, cs2, ce2]
+    }
+
+    fun arglist2m_prs(arglist: atom_t list, loc: loc_t){
+        match arglist {
+        |AtomId(m1)::AtomLit(KLitBool(t1))::rs1::re1::cs1::ce1::
+         AtomId(m2)::AtomLit(KLitBool(t2))::rs2::re2::cs2::ce2::[] =>
+            val m_pr1 = matrix_projection {original_matrix = m1, is_transposed = t1,
+                                            row_range = (rs1, re1), 
+                                            col_range = (cs1, ce1)}
+            val m_pr2 = matrix_projection {original_matrix = m2, is_transposed = t2,
+                                            row_range = (rs2, re2), 
+                                            col_range = (cs2, ce2)}
+            (m_pr1, m_pr2)
+        |_=> throw compile_err(loc, f"IntrinGEMM has wrong arguments")
+        } 
+    }
+
+    var mat_proj_map: (id_t, matrix_projection) Hashmap.t = Hashmap.empty(1024, noid, matrix_projection {})
 
     fun cfd_atom_(a: atom_t, loc: loc_t, callb: k_callb_t) =
         match a {
@@ -323,10 +428,11 @@ fun cfold_dealias(kmods: kmodule_t list)
     fun cfd_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
     fun cfd_kexp_(e: kexp_t, callb: k_callb_t)
     {
+        var extra_decls : kcode_t = []
         /* first, process all the sub-expressions; the only exception is KDefVal,
            which we handle separately */
         val e = match e { | KDefVal _ => e | _ => walk_kexp(e, callb) }
-        match e {
+        val e = match e {
         | KDefVal (n, rhs_e, loc) =>
             val rhs_e = cfd_kexp_(rhs_e, callb)
             val {kv_flags} = get_kval(n, loc)
@@ -375,13 +481,37 @@ fun cfold_dealias(kmods: kmodule_t list)
                         pp(fname) == pp(fname_op_apos()) =>//[TODO] Also check somehow original module(instead of module of instance!). We need "Builtins"
                     match get_idk_ktyp(matr, get_idk_loc(matr, noloc)){
                     |KTypArray(2,KTypFloat _) =>
-                        match transpose_map.find_opt(matr){
-                        |Some((original_matrix_name,is_transposed)) =>
-                            transpose_map.add(n,(original_matrix_name, !is_transposed))
-                        |None => transpose_map.add(n,(matr,true))
-                        }
+                        val mat_proj = match mat_proj_map.find_opt(matr){
+                            |Some(mat_proj) => mat_proj
+                            |None => matrix_projection {original_matrix = n}
+                            }
+                        mat_proj_map.add(n, m_pr_transposed(mat_proj))
                     | _ => {}
                     }; e
+                | KExpAt (AtomId(matr),_,_, DomainRange(rs,re,AtomLit(rstep))::DomainRange(cs,ce,AtomLit(cstep))::[], (_, loc) as ctx) when
+                        !is_mutable(matr,get_idk_loc(matr, noloc)) => 
+                    fun is_rared(step: klit_t){
+                        |KLitNil _ => false
+                        |KLitInt(1L) => false
+                        |_ => true
+                    }
+                    if is_rared(rstep) || is_rared(cstep) {e} else {  //TODO: Do we really need this constraint or we can do optimized version for thinned matrixes?
+                        match (get_idk_ktyp(matr, get_idk_loc(matr, noloc))){
+                        |(KTypArray(2,KTypFloat _)) =>
+                            val mat_proj = match mat_proj_map.find_opt(matr){
+                                |Some(mat_proj) => mat_proj
+                                |None => matrix_projection {original_matrix = matr}
+                                }
+                            match mat_proj_map.find_opt(n){ //We don't want to create extra definitions twice
+                            |Some({original_matrix}) when original_matrix == mat_proj.original_matrix => {}
+                            |_ =>
+                                val (new_mat_proj, new_extra_decls) = m_pr_sliced(mat_proj, (rs, re), (cs, ce), ctx, extra_decls)
+                                extra_decls = new_extra_decls
+                                mat_proj_map.add(n, new_mat_proj)
+                            }
+                        | _ => {}
+                        }; e
+                    }
                 | _ => e
                 }
             } else { e }
@@ -428,35 +558,18 @@ fun cfold_dealias(kmods: kmodule_t list)
             | _ => e
             }
         | KExpIntrin (IntrinGEMM, args, (t, loc) as ctx) =>
-            val (m1,t1,rs1,re1,cs1,ce1,m2,t2,rs2,re2,cs2,ce2) = match args {
-            |AtomId(m1)::AtomLit(KLitBool(t1))::AtomLit(KLitSInt(_,rs1))::
-             AtomLit(KLitSInt(_,re1))::AtomLit(KLitSInt(_,cs1))::AtomLit(KLitSInt(_,ce1))::
-             AtomId(m2)::AtomLit(KLitBool(t2))::AtomLit(KLitSInt(_,rs2))::
-             AtomLit(KLitSInt(_,re2))::AtomLit(KLitSInt(_,cs2))::AtomLit(KLitSInt(_,ce2))::[]=>
-                (m1,t1,rs1,re1,cs1,ce1,m2,t2,rs2,re2,cs2,ce2)
-            |_=> throw compile_err(loc, f"IntrinGEMM has wrong arguments")
-            } 
-            fun process_matrix_info(m,t,rs,re,cs,ce){
-                val (m,t,rs,re,cs,ce) = match transpose_map.find_opt(m){
-                    |Some ((m,t_)) => 
-                        val (t, rs, re, cs, ce) = if t_ { (!t, cs, ce, rs, re)} else { (t, rs, re, cs, ce)}
-                        (m,t,rs,re,cs,ce)
-                    |None=>(m,t,rs,re,cs,ce)
+            val (m_pr1, m_pr2) = arglist2m_prs(args, loc)
+            fun process_matrix_info(m_pr: matrix_projection) = 
+                match mat_proj_map.find_opt(m_pr.original_matrix){
+                | Some(tar_m) => 
+                    val (m_pr, new_extra_decls) = m_pr_composition(m_pr, tar_m, ctx, extra_decls)
+                    extra_decls = new_extra_decls
+                    m_pr
+                | None => m_pr
                 }
-                val (rs,re,cs,ce) = 
-                    (AtomLit(KLitSInt(32,rs)),AtomLit(KLitSInt(32,re)),AtomLit(KLitSInt(32,cs)),AtomLit(KLitSInt(32,ce)))
-                (m,t,rs,re,cs,ce)
-            }
-            val (m1,t1,rs1,re1,cs1,ce1) = process_matrix_info(m1,t1,rs1,re1,cs1,ce1)
-            val (m2,t2,rs2,re2,cs2,ce2) = process_matrix_info(m2,t2,rs2,re2,cs2,ce2)
-            val arglist = [
-                AtomId(m1),
-                AtomLit(KLitBool(t1)),
-                rs1,re1,cs1,ce1,
-                AtomId(m2),
-                AtomLit(KLitBool(t2)),
-                rs2,re2,cs2,ce2]
-            KExpIntrin(IntrinGEMM, arglist, ctx)
+            val m_pr1 = process_matrix_info(m_pr1)
+            val m_pr2 = process_matrix_info(m_pr2)
+            KExpIntrin(IntrinGEMM, m_prs2arglist(m_pr1, m_pr2), ctx)
         | KExpBinary (bop, a, b, (res_t, loc)) =>
             match cfold_bop(bop, a, b, res_t, loc) { | Some new_e => new_e | _ => e }
         | KExpUnary (uop, a, (res_t, loc)) =>
@@ -597,26 +710,19 @@ KLitSInt
                 match (matr1_t,matr2_t){
                 |(KTypArray(2,KTypFloat bitt1), KTypArray(2,KTypFloat bitt2)) when 
                         bitt1 == bitt2 =>
-                    fun transposition_deref(matr: id_t) = match transpose_map.find_opt(matr){
-                        |Some(pair) => pair
-                        |None=>(matr,false)
+                    fun get_matrix_projection(matr: id_t) = match mat_proj_map.find_opt(matr){
+                        |Some(mat_proj) => mat_proj
+                        |None => matrix_projection {original_matrix = matr}
                     }
-                    val (matr1, matr1_transposed) = transposition_deref(matr1)
-                    val (matr2, matr2_transposed) = transposition_deref(matr2)
-                    val m1 = AtomLit(KLitSInt(32,-1i64))
-                    val arglist = [
-                        AtomId(matr1),
-                        AtomLit(KLitBool(matr1_transposed)),
-                        m1,m1,m1,m1,
-                        AtomId(matr2),
-                        AtomLit(KLitBool(matr2_transposed)),
-                        m1,m1,m1,m1
-                    ]
-                    KExpIntrin(IntrinGEMM, arglist, ctx)
+                    val (m_pr1, m_pr2) = (get_matrix_projection(matr1), get_matrix_projection(matr2))
+                    KExpIntrin(IntrinGEMM, m_prs2arglist(m_pr1, m_pr2), ctx)
                 |_ => e
                 }
         | _ => e
         }
+        val e = if extra_decls == [] { e }
+            else { rcode2kexp(e :: extra_decls, get_kexp_loc(e)) }
+        e
     }
 
     val cfd_callb = k_callb_t
@@ -626,7 +732,8 @@ KLitSInt
         kcb_kexp=Some(cfd_kexp_)
     }
     [for km <- kmods {
-        val {km_top=top_code} = km
+        val {km_idx, km_top=top_code} = km
+        curr_m_idx = km_idx
         val top_code = [for e <- top_code { cfd_kexp_(e, cfd_callb) } ]
         val top_code = [for e <- top_code { cfd_kexp_(e, cfd_callb) } ]
         km.{km_top=top_code}

@@ -398,19 +398,19 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int cs1, int ce1,
     if (m1->dim[1].step != m2->dim[1].step)
         FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
 
-    rs1 = -1 ? 0 : rs1;
-    re1 = -1 ? m1->dim[0].size : re1;
-    cs1 = -1 ? 0 : cs1;
-    ce1 = -1 ? m1->dim[1].size : ce1;
-    rs2 = -1 ? 0 : rs2;
-    re2 = -1 ? m1->dim[0].size : re2;
-    cs2 = -1 ? 0 : cs2;
-    ce2 = -1 ? m1->dim[1].size : ce2;
+    rs1 = (rs1 == -1) ? 0 : rs1;
+    re1 = (re1 == -1) ? m1->dim[0].size : re1;
+    cs1 = (cs1 == -1) ? 0 : cs1;
+    ce1 = (ce1 == -1) ? m1->dim[1].size : ce1;
+    rs2 = (rs2 == -1) ? 0 : rs2;
+    re2 = (re2 == -1) ? m2->dim[0].size : re2;
+    cs2 = (cs2 == -1) ? 0 : cs2;
+    ce2 = (ce2 == -1) ? m2->dim[1].size : ce2;
 
     if (rs1<0 || rs1 > m1->dim[0].size || re1<0 || re1 > m1->dim[0].size || rs1>=re1 ||
-        cs1<0 || cs1 > m1->dim[0].size || ce1<0 || ce1 > m1->dim[1].size || cs1>=ce1 ||
-        rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rs1>=re2 ||
-        cs2<0 || cs2 > m2->dim[0].size || ce2<0 || ce2 > m2->dim[1].size || cs1>=ce2)
+        cs1<0 || cs1 > m1->dim[1].size || ce1<0 || ce1 > m1->dim[1].size || cs1>=ce1 ||
+        rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rs2>=re2 ||
+        cs2<0 || cs2 > m2->dim[1].size || ce2<0 || ce2 > m2->dim[1].size || cs2>=ce2)
         FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
 
     //Function arguments form assumes, that original matrixes are subarrayed first(if subarrayed) 

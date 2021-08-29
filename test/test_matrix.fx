@@ -50,3 +50,23 @@ TEST("matrix.mul_squares", fun() {
     EXPECT_EQ(A*B', refmul(A,B'))
     EXPECT_EQ(A'*B', refmul(A',B'))
 })
+
+TEST("matrix.mul_ranges", fun() {
+    val (h,w) = (10, 10)
+    val rng = RNG(0xffffffffUL)
+    val mothermat = random(rng, (h,w), -2., 2.)
+    for y1 <- 1:h {
+        for x1 <- 1:w {
+            val A = mothermat[:y1,:x1]
+            val B = (mothermat[h-y1:,w-x1:])'
+            for y2 <- 0:(y1-1){
+                for x2 <- 0:(x1-1){
+                    val C = (A[y2:,x2:])'
+                    val D = (B[:x1-x2,:y1-y2])'
+                    EXPECT_EQ(C*D, refmul(C,D))
+                    EXPECT_EQ(C'*D', refmul(C',D'))
+                }
+            }
+        }
+    }
+})
