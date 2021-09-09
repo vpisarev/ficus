@@ -1791,7 +1791,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "make_fp_by_fcv", ctyp, ccode, kloc)
                 val macro = CExp(make_call( std_FX_MAKE_FP_BY_FCV, [make_id_t_exp(fname, std_CTypVoidPtr, kloc), dst_exp], CTypVoid, kloc ))
                 (false, dummy_exp, macro :: ccode)
-            | (IntrinGEMM, m1::t1::rs1::re1::cs1::ce1::m2::t2::rs2::re2::cs2::ce2::[]) => 
+            | (IntrinGEMM, m1::t1::rs1::re1::rd1::cs1::ce1::cd1::m2::t2::rs2::re2::rd2::cs2::ce2::cd2::[]) => 
                 fun handle_border(border: atom_t){
                     | AtomLit(KLitNil _) => AtomLit(KLitSInt(32,-1i64))
                     | _ => border
@@ -1801,18 +1801,24 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (t1exp, ccode) = atom2cexp(t1, ccode, kloc)
                 val (rs1exp, ccode) = atom2cexp(handle_border(rs1), ccode, kloc)
                 val (re1exp, ccode) = atom2cexp(handle_border(re1), ccode, kloc)
+                val (rd1exp, ccode) = atom2cexp(handle_border(rd1), ccode, kloc)
                 val (cs1exp, ccode) = atom2cexp(handle_border(cs1), ccode, kloc)
                 val (ce1exp, ccode) = atom2cexp(handle_border(ce1), ccode, kloc)
+                val (cd1exp, ccode) = atom2cexp(handle_border(cd1), ccode, kloc)
                 val (m2exp, ccode) = atom2cexp(m2, ccode, kloc)
                 val (t2exp, ccode) = atom2cexp(t2, ccode, kloc)
                 val (rs2exp, ccode) = atom2cexp(handle_border(rs2), ccode, kloc)
                 val (re2exp, ccode) = atom2cexp(handle_border(re2), ccode, kloc)
+                val (rd2exp, ccode) = atom2cexp(handle_border(rd2), ccode, kloc)
                 val (cs2exp, ccode) = atom2cexp(handle_border(cs2), ccode, kloc)
                 val (ce2exp, ccode) = atom2cexp(handle_border(ce2), ccode, kloc)
+                val (cd2exp, ccode) = atom2cexp(handle_border(cd2), ccode, kloc)
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "gemm", ctyp, ccode, kloc)
 
                 val call_exp = make_call(get_id("fx_gemm"),
-                    [ cexp_get_addr(m1exp), t1exp, rs1exp, re1exp, cs1exp, ce1exp, cexp_get_addr(m2exp), t2exp, rs2exp, re2exp, cs2exp, ce2exp, cexp_get_addr(dst_exp)],
+                    [ cexp_get_addr(m1exp), t1exp, rs1exp, re1exp, rd1exp, cs1exp, ce1exp, cd1exp, 
+                      cexp_get_addr(m2exp), t2exp, rs2exp, re2exp, rd2exp, cs2exp, ce2exp, cd2exp,
+                       cexp_get_addr(dst_exp)],
                     CTypVoid, kloc)
                 (false, dummy_exp, CExp(call_exp)::ccode)
             | (IntrinMath(s), args) =>

@@ -388,8 +388,8 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
     return fx_status;
 }
 
-int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int cs1, int ce1, 
-            fx_arr_t* m2, bool t2, int rs2, int re2, int cs2, int ce2, fx_arr_t* result)
+int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, int cd1,
+            fx_arr_t* m2, bool t2, int rs2, int re2, int rd2, int cs2, int ce2, int cd2, fx_arr_t* result)
 {
     int fx_status = FX_OK;
     if (m1->ndims != 2 || m2->ndims != 2)
@@ -397,6 +397,14 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int cs1, int ce1,
     size_t elemsize = m1->dim[1].step;
     if (m1->dim[1].step != m2->dim[1].step)
         FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+
+    rd1 = (rd1 == -1) ? 1 : rd1;
+    cd1 = (cd1 == -1) ? 1 : cd1;
+    rd2 = (rd2 == -1) ? 1 : rd2;
+    cd2 = (cd2 == -1) ? 1 : cd2;
+
+    // assert(cd1 == 1); //TODO: Delete this constraint.
+    // assert(cd2 == 1); //TODO: Delete this constraint.
 
     rs1 = (rs1 == -1) ? 0 : rs1;
     re1 = (re1 == -1) ? m1->dim[0].size : re1;
@@ -407,20 +415,20 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int cs1, int ce1,
     cs2 = (cs2 == -1) ? 0 : cs2;
     ce2 = (ce2 == -1) ? m2->dim[1].size : ce2;
 
-    if (rs1<0 || rs1 > m1->dim[0].size || re1<0 || re1 > m1->dim[0].size || rs1>=re1 ||
-        cs1<0 || cs1 > m1->dim[1].size || ce1<0 || ce1 > m1->dim[1].size || cs1>=ce1 ||
-        rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rs2>=re2 ||
-        cs2<0 || cs2 > m2->dim[1].size || ce2<0 || ce2 > m2->dim[1].size || cs2>=ce2)
+    if (rs1<0 || rs1 > m1->dim[0].size || re1<0 || re1 > m1->dim[0].size || rd1<0 || rs1>=re1 ||
+        cs1<0 || cs1 > m1->dim[1].size || ce1<0 || ce1 > m1->dim[1].size || cd1<0 || cs1>=ce1 ||
+        rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rd2<0 || rs2>=re2 ||
+        cs2<0 || cs2 > m2->dim[1].size || ce2<0 || ce2 > m2->dim[1].size || cd2<0 || cs2>=ce2)
+        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError); // TODO: For some reason program never fails with these exceptions, just silently return empty matrix.
+
+#define RARED_COUNT(len, delta) (((len) - 1)/(delta) + 1)
+    const size_t summlen = t1?RARED_COUNT(re1-rs1,rd1):RARED_COUNT(ce1-cs1,cd1);
+    if(summlen != (t2?RARED_COUNT(ce2-cs2,cd2):RARED_COUNT(re2-rs2,rd2)))
         FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
 
-    //Function arguments form assumes, that original matrixes are subarrayed first(if subarrayed) 
-    //and transposed after(if transposed).
-    const size_t summlen = t1?(re1-rs1):(ce1-cs1);
-    if(summlen != (t2?(ce2-cs2):(re2-rs2)))
-        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
-
-    const size_t result_h = t1?(ce1-cs1):(re1-rs1);
-    const size_t result_w = t2?(re2-rs2):(ce2-cs2);
+    const size_t result_h = t1?RARED_COUNT(ce1-cs1, cd1):RARED_COUNT(re1-rs1, rd1);
+    const size_t result_w = t2?RARED_COUNT(re2-rs2, rd2):RARED_COUNT(ce2-cs2, cd2);
+#undef RARED_COUNT
 
     {//TODO: Is it possible to consider case when we don't need memory allocation?
         int_ ressize[FX_MAX_DIMS];
@@ -432,13 +440,16 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int cs1, int ce1,
             FX_FAST_THROW_RET(fx_status);
         memset(result->data, 0, result_h*result_w*elemsize);
     }
-    const size_t stridem1 = m1->dim[0].step;
-    const size_t stridem2 = m2->dim[0].step;
+    const size_t stridem1 = m1->dim[0].step * rd1;
+    const size_t stridem2 = m2->dim[0].step * rd2;
     const size_t strideres = result->dim[0].step;
 
+    const size_t hstridem1 = elemsize * cd1;
+    const size_t hstridem2 = elemsize * cd2;
+
     assert(elemsize == sizeof(double)); //TODO: Handle all cases, not just float64.
-    const char* m1ptr = m1->data + stridem1 * rs1 + cs1*elemsize;
-    const char* m2ptr = m2->data + stridem2 * rs2 + cs2*elemsize;
+    const char* m1ptr = m1->data + m1->dim[0].step * rs1 + cs1*elemsize;
+    const char* m2ptr = m2->data + m2->dim[0].step * rs2 + cs2*elemsize;
     const char* resptr = result->data;
 
     int i,j,k;
@@ -448,10 +459,10 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int cs1, int ce1,
             double* destcell = (double*)(resptr + i*strideres + j*elemsize);
             for(k = 0; k < summlen;k++)
             {
-                double* src1cell = (double*)(t1? m1ptr + k*stridem1 + i*elemsize:
-                                    m1ptr + i*stridem1 + k*elemsize);
-                double* src2cell = (double*)(t2? m2ptr + j*stridem2 + k*elemsize:
-                                    m2ptr + k*stridem2 + j*elemsize);
+                double* src1cell = (double*)(t1? m1ptr + k*stridem1 + i*hstridem1:
+                                    m1ptr + i*stridem1 + k*hstridem1);
+                double* src2cell = (double*)(t2? m2ptr + j*stridem2 + k*hstridem2:
+                                    m2ptr + k*stridem2 + j*hstridem2);
                 (*destcell) += (*src1cell)*(*src2cell);
             }
         }

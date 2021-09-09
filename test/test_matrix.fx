@@ -70,3 +70,25 @@ TEST("matrix.mul_ranges", fun() {
         }
     }
 })
+
+TEST("matrix.mul_sparsed_ranges", fun() {
+    val (h,w) = (10, 10)
+    val rng = RNG(0xffffffffUL)
+    val mothermat = random(rng, (h,w), -2., 2.)
+
+    val A = mothermat[1:8:2,2:5]
+    val B = mothermat[5:8,2:9:2]
+    EXPECT_EQ(A*B, refmul(A,B))
+    EXPECT_EQ(A'*B', refmul(A',B'))
+
+    for delta_outer <- 1:3 {
+        val A = mothermat[1:9:delta_outer,:]
+        val B = (mothermat[::delta_outer,:])'
+        for delta_inner <- 1:2 {
+            val C = A[1:3:delta_inner,:] //TODO: How to write subarraying with missed end? I tried A[1::delta_inner, but it doesn't work]
+            val D = B[:,:3:delta_inner]
+            EXPECT_EQ(C*D, refmul(C,D))
+            }
+        }
+
+})
