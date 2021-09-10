@@ -1820,7 +1820,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                       cexp_get_addr(m2exp), t2exp, rs2exp, re2exp, rd2exp, cs2exp, ce2exp, cd2exp,
                        cexp_get_addr(dst_exp)],
                     CTypVoid, kloc)
-                (false, dummy_exp, CExp(call_exp)::ccode)
+                val ccode = add_fx_call(call_exp, ccode, kloc)
+                (false, dst_exp, ccode)
             | (IntrinMath(s), args) =>
                 val fold cargs = [], ccode = ccode for a <- args {
                     val (c_exp, ccode) = atom2cexp(a, ccode, kloc)

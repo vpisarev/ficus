@@ -403,9 +403,6 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, 
     rd2 = (rd2 == -1) ? 1 : rd2;
     cd2 = (cd2 == -1) ? 1 : cd2;
 
-    // assert(cd1 == 1); //TODO: Delete this constraint.
-    // assert(cd2 == 1); //TODO: Delete this constraint.
-
     rs1 = (rs1 == -1) ? 0 : rs1;
     re1 = (re1 == -1) ? m1->dim[0].size : re1;
     cs1 = (cs1 == -1) ? 0 : cs1;
@@ -419,7 +416,7 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, 
         cs1<0 || cs1 > m1->dim[1].size || ce1<0 || ce1 > m1->dim[1].size || cd1<0 || cs1>=ce1 ||
         rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rd2<0 || rs2>=re2 ||
         cs2<0 || cs2 > m2->dim[1].size || ce2<0 || ce2 > m2->dim[1].size || cd2<0 || cs2>=ce2)
-        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError); // TODO: For some reason program never fails with these exceptions, just silently return empty matrix.
+        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
 
 #define RARED_COUNT(len, delta) (((len) - 1)/(delta) + 1)
     const size_t summlen = t1?RARED_COUNT(re1-rs1,rd1):RARED_COUNT(ce1-cs1,cd1);

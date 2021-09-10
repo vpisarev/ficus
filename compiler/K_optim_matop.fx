@@ -44,6 +44,9 @@ fun optimize_gemm(kmods: kmodule_t list)
         //The best optimization with gemm will avoid B matrix and corresponding id check:
         //val D = __intrin_gemm__(mothermat[2:9,:], C)
         //So, code will work, when it haven't to.
+        //
+        //The best of solutions is to track intermediate matrixes(B there) and insert index assertions, instead
+        //of this matrix if it erased. 
         
         fun constriction_bop(bop: binary_t, constriction: atom_t, sec_operand: atom_t, ctx: kctx_t, code: kcode_t): 
                                                                                 (atom_t, kcode_t) =
@@ -274,24 +277,22 @@ fun optimize_gemm(kmods: kmodule_t list)
         | KDefVal (n, rhs_e, loc) =>
             val rhs_e = opg_kexp_(rhs_e, callb)
             val e = KDefVal(n, rhs_e, loc)
-            if !is_mutable(n, loc) {
+            if !is_mutable(n, loc) && involved_matrixes.mem(n){
                 match rhs_e {
-                | KExpAtom (AtomId(a), (_, loc2)) when involved_matrixes.mem(a) =>
+                | KExpAtom (AtomId(a), (_, loc2)) =>
                     match mat_proj_map.find_opt(n){
                     |Some(mat_proj) => mat_proj_map.add(n, mat_proj)
                     |_ => {}
                     }
                 | KExpCall (fname, AtomId(matr)::[], (_, loc)) when
-                        !is_mutable(matr,get_idk_loc(matr, noloc)) && 
-                        involved_matrixes.mem(matr) =>
+                        !is_mutable(matr,get_idk_loc(matr, noloc)) =>
                     val mat_proj = match mat_proj_map.find_opt(matr){
                         |Some(mat_proj) => mat_proj
                         |None => matrix_projection {original_matrix = matr}
                         }
                     mat_proj_map.add(n, m_pr_transposed(mat_proj))
                 | KExpAt (AtomId(matr),_,_, DomainRange(rs,re,rd)::DomainRange(cs,ce,cd)::[], (_, loc) as ctx) when
-                        !is_mutable(matr,get_idk_loc(matr, noloc)) &&
-                        involved_matrixes.mem(matr) =>
+                        !is_mutable(matr,get_idk_loc(matr, noloc)) =>
                         val mat_proj = match mat_proj_map.find_opt(matr){
                             |Some(mat_proj) => mat_proj
                             |None => matrix_projection {original_matrix = matr}
@@ -299,7 +300,6 @@ fun optimize_gemm(kmods: kmodule_t list)
                         val (new_mat_proj, new_extra_decls) = m_pr_sliced(mat_proj, (rs, re, rd), (cs, ce, cd), ctx, extra_decls)
                         extra_decls = new_extra_decls
                         mat_proj_map.add(n, new_mat_proj)
-                        //TODO: Print there map for simplest double subarraying. Why some matrixes are handling on second pass?
                 | _ => {}
                 }
             };e
