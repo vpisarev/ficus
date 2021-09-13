@@ -49,6 +49,22 @@ TEST("matrix.mul_squares", fun() {
     EXPECT_EQ(A'*B, refmul(A',B))
     EXPECT_EQ(A*B', refmul(A,B'))
     EXPECT_EQ(A'*B', refmul(A',B'))
+
+    val C =
+     [| 2.f, 1.f, 0.f, 4.f;
+        0.f, 1.f, 1.f, 3.f;
+        1.f, 0.f, 1.f, 2.f;
+        2.f, 2.f, 0.f, 1.f |]
+    val D =
+     [| 1.f, 0.f, 4.f, 4.f;
+        3.f, 1.f, 1.f, 3.f;
+        1.f, 0.f, 3.f, 2.f;
+        1.f, 1.f, 0.f, 1.f |]
+
+    EXPECT_EQ(C*D, refmul(C,D))
+    EXPECT_EQ(C'*D, refmul(C',D))
+    EXPECT_EQ(C*D', refmul(C,D'))
+    EXPECT_EQ(C'*D', refmul(C',D'))
 })
 
 TEST("matrix.mul_ranges", fun() {
@@ -80,6 +96,10 @@ TEST("matrix.mul_sparsed_ranges", fun() {
     val B = mothermat[5:8,2:9:2]
     EXPECT_EQ(A*B, refmul(A,B))
     EXPECT_EQ(A'*B', refmul(A',B'))
+
+    val C = mothermat[5:9,2:9:2]
+    val D = mothermat[1:8:2,2:6]
+    EXPECT_EQ(C*D', refmul(C,D'))
 
     for delta_outer <- 1:3 {
         val A = mothermat[1:9:delta_outer,:]

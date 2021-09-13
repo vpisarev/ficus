@@ -45,7 +45,7 @@ fun optimize_gemm(kmods: kmodule_t list)
         //val D = __intrin_gemm__(mothermat[2:9,:], C)
         //So, code will work, when it haven't to.
         //
-        //The best of solutions is to track intermediate matrixes(B there) and insert index assertions, instead
+        //The perfect solution is to track intermediate matrixes(B there) and insert index assertions, instead
         //of this matrix if it erased. 
         
         fun constriction_bop(bop: binary_t, constriction: atom_t, sec_operand: atom_t, ctx: kctx_t, code: kcode_t): 
@@ -182,13 +182,15 @@ fun optimize_gemm(kmods: kmodule_t list)
                             !is_mutable(matr,get_idk_loc(matr, noloc)) && 
                             pp(fname) == pp(fname_op_apos()) => //[TODO] Also check somehow original module(instead of module of instance!). We need "Builtins"
                         match get_idk_ktyp(matr, get_idk_loc(matr, noloc)){
-                        |KTypArray(2,KTypFloat _) => matrix_dependencies.add(n, matr)
+                        |KTypArray(2,KTypFloat bits) when (bits == 32 || bits == 64) =>
+                            matrix_dependencies.add(n, matr)
                         | _ => fold_kexp(e, callb)
                         }
                     | KExpAt (AtomId(matr),_,_, DomainRange(_,_,_)::DomainRange(_,_,_)::[], (_, loc) as ctx) when
                             !is_mutable(matr,get_idk_loc(matr, noloc)) => 
                         match (get_idk_ktyp(matr, get_idk_loc(matr, noloc))){
-                        |(KTypArray(2,KTypFloat _)) => matrix_dependencies.add(n, matr)
+                        |(KTypArray(2,KTypFloat bits)) when (bits == 32 || bits == 64) =>
+                             matrix_dependencies.add(n, matr)
                         | _ => fold_kexp(e, callb)
                         }
                     | _ => fold_kexp(e, callb)
@@ -202,8 +204,8 @@ fun optimize_gemm(kmods: kmodule_t list)
                     pp(fname) == pp(fname_op_mul()) =>//[TODO] Also check somehow original module(instead of module of instance!). We need "Builtins"
                 val (matr1_t,matr2_t) = (get_idk_ktyp(matr1, get_idk_loc(matr1, noloc)),get_idk_ktyp(matr2, get_idk_loc(matr2, noloc)))
                 match (matr1_t,matr2_t){
-                |(KTypArray(2,KTypFloat bitt1), KTypArray(2,KTypFloat bitt2)) when 
-                        bitt1 == bitt2 =>
+                |(KTypArray(2,KTypFloat bits1), KTypArray(2,KTypFloat bits2)) when 
+                        bits1 == bits2 && (bits1 == 32 || bits1 == 64) =>
                     involved_matrixes.add(matr1)
                     involved_matrixes.add(matr2)
                 |_ => fold_kexp(e, callb)
@@ -231,39 +233,6 @@ fun optimize_gemm(kmods: kmodule_t list)
     }
 
     var mat_proj_map: (id_t, matrix_projection) Hashmap.t = Hashmap.empty(1024, noid, matrix_projection {})
-
-
-    fun pp_range(range:(atom_t, atom_t, atom_t)){ //DUBUGGG!!! Delete
-        val (rng1, rng2, rng3) = range
-        print("(")
-        K_pp.pp_atom(rng1,noloc)
-        print(", ")
-        K_pp.pp_atom(rng2,noloc)
-        print(", ")
-        K_pp.pp_atom(rng3,noloc)
-        print(")")
-    }
-
-    fun print_m_pr(m_pr: matrix_projection){ //DUBUGGG!!!
-        println(f"DUBUGGG: projected to:{m_pr.original_matrix}")
-        print("         row_range: ")
-        pp_range(m_pr.row_range)
-        print("| col_range: ")
-        pp_range(m_pr.col_range)
-        println()
-        println(f"         is_transposed: {m_pr.is_transposed}")
-    }
-
-    fun print_map(){
-        println(f"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        println(f"DUBUGGG: map print")
-        for (who, m_pr) <- mat_proj_map.list(){
-            println(f"DUBUGGG: consider {who} as:")    
-            print_m_pr(m_pr)
-        }
-        println(f"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-    }
-
 
     fun opg_atom_(a: atom_t, loc: loc_t, callb: k_callb_t) = a
     fun opg_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
