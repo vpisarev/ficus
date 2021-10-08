@@ -171,6 +171,7 @@ type intrin_t =
     | IntrinCheckIdx
     | IntrinCheckIdxRange
     | IntrinMakeFPbyFCV
+    | IntrinGEMM
     | IntrinMath: id_t
 
 type val_flags_t =
@@ -973,6 +974,7 @@ fun string(iop: intrin_t): string
     | IntrinCheckIdx => "__intrin_check_idx__"
     | IntrinCheckIdxRange => "__intrin_check_range__"
     | IntrinMakeFPbyFCV => "__intrin_make_fp_by_fcv__"
+    | IntrinGEMM => "__intrin_gemm__"
     | IntrinMath(f) => f"__intrin_{pp(f)}__"
 }
 

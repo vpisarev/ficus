@@ -840,6 +840,8 @@ int fx_compose_arr( int dims, size_t elemsize, fx_free_t free_elem, fx_copy_t co
                     const int8_t* tags, const void** data, fx_arr_t* arr );
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);
 int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* farr);
+int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, int cd1,
+            fx_arr_t* m2, bool t2, int rs2, int re2, int rd2, int cs2, int ce2, int cd2, fx_arr_t* result);
 
 ////////////////////////// Vectors /////////////////////////////
 

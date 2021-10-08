@@ -388,6 +388,180 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
     return fx_status;
 }
 
+//rs, re, rd is for "row start", "row end", "row delta"
+//cs, ce, cd is for "column start", "column end", "column delta"
+//If re1, ce1, re2, ce2 are equal to -1, we consider all matrix in corresponding
+//dimension.
+int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, int cd1,
+            fx_arr_t* m2, bool t2, int rs2, int re2, int rd2, int cs2, int ce2, int cd2, fx_arr_t* result)
+{
+    int fx_status = FX_OK;
+    if (m1->ndims != 2 || m2->ndims != 2)
+        FX_FAST_THROW_RET(FX_EXN_DimError);
+    size_t elemsize = m1->dim[1].step;
+    if (elemsize != m2->dim[1].step || !(elemsize == sizeof(float) || elemsize == sizeof(double)))
+        FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+
+    re1 = (re1 == -1) ? m1->dim[0].size : re1;
+    ce1 = (ce1 == -1) ? m1->dim[1].size : ce1;
+    re2 = (re2 == -1) ? m2->dim[0].size : re2;
+    ce2 = (ce2 == -1) ? m2->dim[1].size : ce2;
+
+    if (rs1<0 || rs1 > m1->dim[0].size || re1<0 || re1 > m1->dim[0].size || rd1<0 || rs1>=re1 ||
+        cs1<0 || cs1 > m1->dim[1].size || ce1<0 || ce1 > m1->dim[1].size || cd1<0 || cs1>=ce1 ||
+        rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rd2<0 || rs2>=re2 ||
+        cs2<0 || cs2 > m2->dim[1].size || ce2<0 || ce2 > m2->dim[1].size || cd2<0 || cs2>=ce2)
+        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
+
+    // Virtual sizes of matrixes after subarraying, but before transposition.
+    const size_t m1virt_h = (re1 - rs1 - 1)/rd1 + 1; 
+    const size_t m1virt_w = (ce1 - cs1 - 1)/cd1 + 1; 
+    const size_t m2virt_h = (re2 - rs2 - 1)/rd2 + 1; 
+    const size_t m2virt_w = (ce2 - cs2 - 1)/cd2 + 1; 
+
+    const size_t summlen = t1? m1virt_h: m1virt_w;
+    if(summlen != (t2? m2virt_w: m2virt_h))
+        FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
+
+    const size_t result_h = t1? m1virt_w: m1virt_h;
+    const size_t result_w = t2? m2virt_h: m2virt_w;
+
+    {//TODO: Is it possible to consider case when we don't need memory allocation?
+        int_ ressize[FX_MAX_DIMS];
+        ressize[0] = result_h;
+        ressize[1] = result_w;
+        fx_status = fx_make_arr(2, ressize, elemsize,
+            m1->free_elem, m1->copy_elem, 0, result);
+        if(fx_status<0)
+            FX_FAST_THROW_RET(fx_status);
+        memset(result->data, 0, result_h*result_w*elemsize);
+    }
+
+    char* temp1arr = NULL;
+    char* temp2arr = NULL;
+
+//                        (type, const FLT*,  size_t,  size_t,     size_t,     size_t,      bool, FLT*, char*)
+#define GEMM_CONDENSE_MATR(FLT,         src, vstride, hstride, src_virt_h, src_virt_w, transpose, dst_p, ers_p)\
+    do {\
+        (ers_p) = (char*)fx_malloc(sizeof(FLT) * ((src_virt_w)*(src_virt_h) + 1));\
+        if (!(ers_p))\
+        {\
+            FX_SET_EXN_FAST(FX_EXN_OutOfMemError);\
+            fx_status = FX_EXN_OutOfMemError;\
+        }\
+        else\
+        {\
+            size_t overalign = ((ptrdiff_t)(ers_p)) % sizeof(FLT);\
+            FLT* dst = (FLT*)((ers_p) + (overalign ? sizeof(FLT) - overalign : 0));\
+            if (transpose)\
+                for(int i = 0; i < (src_virt_w); i++)\
+                {\
+                    FLT* dst_relative = dst + i*(src_virt_h);\
+                    const FLT* src_relative = (src) + i*(hstride);\
+                    for(size_t j = 0; j < (src_virt_h); j++) \
+                        dst_relative[j] = src_relative[j * (vstride)];\
+                }\
+            else\
+                for(int i = 0; i < (src_virt_h); i++) \
+                {\
+                    FLT* dst_relative = dst + i*(src_virt_w);\
+                    const FLT* src_relative = (src) + i*(vstride);\
+                    for(size_t j = 0; j < (src_virt_w); j++) \
+                        dst_relative[j] = src_relative[j * (hstride)];\
+                }\
+            dst_p = dst;\
+            fx_status = FX_OK;\
+        }\
+    } while(false)
+
+//When m1 and m2 are transposed, we have worst data-continuity case, because it's impossible 
+//to make inner cycle consentaneous by column indexes. So, we transposing first matrix for 
+//cache performance. Even if matrix is solid, and deltas are equal to 1.
+
+//TODO: I assume, that even non-continous arrayhave step aliquot to size of element. Is it correct?*/
+//Otherwise, code like "size_t stridem1 = (m1->dim[0].step/sizeof(FLT)) * rd1;" is incorrect
+
+#define GEMM_TEMPLATE(FLT) \
+    do{\
+        size_t stridem1 = (m1->dim[0].step/sizeof(FLT)) * rd1;\
+        size_t stridem2 = (m2->dim[0].step/sizeof(FLT)) * rd2; \
+        const size_t strideres = result_w;\
+        FLT* m1ptr = (FLT*)(m1->data + m1->dim[0].step * rs1) + cs1;\
+        FLT* m2ptr = (FLT*)(m2->data + m2->dim[0].step * rs2) + cs2;\
+        FLT* resptr = (FLT*)result->data;\
+        if(t2 && (t1 || (cd1 > 1))) \
+        {\
+            GEMM_CONDENSE_MATR(FLT, m1ptr, stridem1, cd1, m1virt_h, m1virt_w, t1, m1ptr, temp1arr);\
+            if (fx_status<0)\
+                return fx_status;\
+            stridem1 = (t1? m1virt_h: m1virt_w);\
+        }\
+        if(cd2 > 1) \
+        {\
+            GEMM_CONDENSE_MATR(FLT, m2ptr, stridem2, cd2, m2virt_h, m2virt_w, false, m2ptr, temp2arr);\
+            if (fx_status<0)\
+            {\
+                fx_free(temp1arr);\
+                return fx_status;\
+            }\
+            stridem2 = m2virt_w;\
+        }\
+        int i,j,k;\
+        if (t2)\
+        {\
+            for(i = 0; i < result_h;i++)\
+                for(j = 0; j < result_w;j++)\
+                {\
+                    const FLT* src1relative = m1ptr + i*stridem1;\
+                    const FLT* src2relative = m2ptr + j*stridem2;\
+                    FLT* destcell = resptr + i*strideres + j;\
+                    for(k = 0; k < summlen;k++)\
+                        (*destcell) += src1relative[k]*src2relative[k];\
+                }\
+        } else if (!t1)\
+        {\
+            for(i = 0; i < result_h; i++)\
+                for(k = 0; k < summlen; k++)\
+                {\
+                    const FLT src1val = m1ptr[i*stridem1 + k*cd1];\
+                    const FLT* src2relative = m2ptr + k*stridem2;\
+                    FLT* destrelative = resptr + i*strideres;\
+                    for(j = 0; j < result_w; j++)\
+                        destrelative[j] += src1val*src2relative[j];\
+                }\
+        }\
+        else\
+        {\
+            for(i = 0; i < result_h; i++)\
+                for(k = 0; k < summlen; k++)\
+                {\
+                    const FLT src1val = m1ptr[k*stridem1 + i*cd1];\
+                    const FLT* src2relative = m2ptr + k*stridem2;\
+                    FLT* destrelative = resptr + i*strideres;\
+                    for(j = 0; j < result_w; j++)\
+                    {\
+                        destrelative[j] += src1val*src2relative[j];\
+                    }\
+                }\
+        } \
+    }while(false)
+
+    if (elemsize == sizeof(float)) 
+    {
+        GEMM_TEMPLATE(float);
+    }
+    else if (elemsize == sizeof(double)) 
+    {
+        GEMM_TEMPLATE(double);
+    }
+#undef GEMM_TEMPLATE
+#undef GEMM_CONDENSE_MATR
+    fx_free(temp2arr);
+    fx_free(temp1arr);
+
+    return fx_status;
+}
+
 /* alternative and probably easier-to-use method to iterate over nD arrays;
    it does not optimize 1D, 2D or continuous nD cases */
 typedef struct fx_arriter_pos_t

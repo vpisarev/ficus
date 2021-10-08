@@ -12,7 +12,7 @@ import Ast_typecheck
 import K_form, K_pp, K_normalize, K_annotate, K_mangle
 import K_remove_unused, K_lift_simple, K_flatten, K_tailrec, K_copy_n_skip
 import K_cfold_dealias, K_fast_idx, K_inline, K_loop_inv, K_fuse_loops
-import K_nothrow_wrappers, K_freevars, K_declosure, K_lift
+import K_optim_matop, K_nothrow_wrappers, K_freevars, K_declosure, K_lift
 import C_form, C_gen_std, C_gen_code, C_pp
 import C_post_rename_locals, C_post_adjust_decls
 
@@ -302,6 +302,8 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
         temp_kmods = K_tailrec.tailrec2loops_all(temp_kmods)
         prf("loop inv")
         temp_kmods = K_loop_inv.move_loop_invs_all(temp_kmods)
+        prf("gemm implantation")
+        temp_kmods = K_optim_matop.optimize_gemm(temp_kmods)
         prf("inline")
         if Options.opt.inline_thresh > 0 {
             temp_kmods = K_inline.inline_some(temp_kmods)
