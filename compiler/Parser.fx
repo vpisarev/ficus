@@ -1411,21 +1411,25 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
 }
 
 fun parse_pat_list(ts: tklist_t, expect_comma: bool,
-                   result: pat_t list, simple: bool): (tklist_t, pat_t list)
+                   result: pat_t list, simple: bool, rbrace: char): (tklist_t, pat_t list)
 {
     //println(f"parse_pat_list (expect_comma={expect_comma}): {tok2str(ts)}\n")
     match (ts, expect_comma) {
     | ((COMMA, _) :: rest, _) =>
-        if expect_comma { parse_pat_list(rest, false, result, simple) }
+        if expect_comma { parse_pat_list(rest, false, result, simple, rbrace) }
         else { throw parse_err(ts, "extra ','?")}
     | ((RPAREN, _) :: rest, _) =>
+        if rbrace != ')' { throw parse_err(ts, "mismatched closing brace; must be ')'") }
         if result == [] { throw parse_err(ts, "empty tuple pattern are not allowed") }
         (rest, result.rev())
+    | ((RSQUARE, _) :: rest, _) =>
+        if rbrace != ']' { throw parse_err(ts, "mismatched closing brace; must be ')'") }
+        (rest, result) // return the reversed list, because we want to convert it to a sequence '::'
     | (_, true) =>
         throw parse_err(ts, "',' is expected")
     | _ =>
         val (ts, p) = parse_pat(ts, simple)
-        parse_pat_list(ts, true, p :: result, simple)
+        parse_pat_list(ts, true, p :: result, simple, rbrace)
     }
 }
 
@@ -1474,7 +1478,7 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
                 (rest, PatVariant(i1, PatLit(lit, l2) :: [], l1))
             | (LPAREN(false), l2) :: rest =>
                 if is_any { throw ParseError(l1, "'_' cannot be used as a variant label") }
-                val (ts, pl) = parse_pat_list(rest, false, [], simple)
+                val (ts, pl) = parse_pat_list(rest, false, [], simple, ')')
                 (ts, PatVariant(i1, pl, l1))
             | (LBRACE, l2) :: rest =>
                 if is_any { throw ParseError(l1, "'_' cannot be used as a variant label") }
@@ -1492,8 +1496,13 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
                 }
             }
         | (LPAREN _, l1) :: rest =>
-            val (ts, pl) = parse_pat_list(rest, false, [], simple)
+            val (ts, pl) = parse_pat_list(rest, false, [], simple, ')')
             (ts, match pl { | p :: [] => p | _ => PatTuple(pl, l1) })
+        | (LSQUARE _, l1) :: rest =>
+            if simple {throw parse_err(ts, "list pattern cannot be used here")}
+            val (ts, pl) = parse_pat_list(rest, false, [], simple, ']')
+            (ts, fold tail = PatLit(LitEmpty, get_pat_loc(pl.hd()))
+                for p <- pl { PatCons(p, tail, loclist2loc([get_pat_loc(p), get_pat_loc(tail)], noloc)) })
         | (LBRACE, l1) :: rest =>
             val (ts, ipl) = parse_idpat_list(rest, false, [], simple)
             (ts, PatRecord(None, ipl, l1))
@@ -1556,7 +1565,8 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
             if expect_bar { parse_alt_(ts.tl(), false, simple, result) }
             else { throw parse_err(ts, "extra '|'?") }
         | ((ARROW, _) :: _, _) => throw parse_err(ts, "unexpected '->', did you mean '=>'?")
-        | ((DOUBLE_ARROW, _) :: _, true) | ((COMMA, _) :: _, true) | ((RPAREN, _) :: _, true) | ((RBRACE, _) :: _, true) =>
+        | ((DOUBLE_ARROW, _) :: _, true) | ((COMMA, _) :: _, true)
+        | ((RPAREN, _) :: _, true) | ((RSQUARE, _) :: _, true) | ((RBRACE, _) :: _, true) =>
             val p = match result {
                 | p :: [] => p
                 | _ =>
