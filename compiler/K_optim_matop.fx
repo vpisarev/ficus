@@ -32,7 +32,7 @@ fun optimize_gemm(kmods: kmodule_t list)
 
     fun m_pr_sliced(target: matrix_projection, row_range: (atom_t, atom_t, atom_t), 
         col_range: (atom_t, atom_t, atom_t), ctx: kctx_t, code: kcode_t): (matrix_projection, kcode_t){
-        //TODO: These functions must check if new border is inside of old range.
+        //TODO: These functions must check if new range limit is inside of old range.
         //Check it in compile-time, if it's certain number. Or create runtime index check otherwise.
         //Stimulating example:
         //
@@ -57,18 +57,18 @@ fun optimize_gemm(kmods: kmodule_t list)
             |AtomLit(KLitNil _) => (constriction,code)
             |_ => 
                 val (_, loc) = ctx
-                val border_type = get_atom_ktyp(constriction, loc)
-                match K_cfold_dealias.cfold_bop(bop, constriction, sec_operand, border_type, loc){
+                val constriction_type = get_atom_ktyp(constriction, loc)
+                match K_cfold_dealias.cfold_bop(bop, constriction, sec_operand, constriction_type, loc){
                 |Some(KExpAtom(at,_)) => (at, code)
                 |_ => 
                     val temp_bop_name = match (constriction, sec_operand) {
                         |(AtomId(nam1), _) => nam1
                         |(_, AtomId(nam2)) => nam2
-                        |_ => throw compile_err(loc, f"Subarray border inference error")
+                        |_ => throw compile_err(loc, f"Subarray limit inference error")
                         }
                     val unfolded = KExpBinary(bop, constriction, sec_operand, ctx)
                     val new_constr_name = dup_idk(curr_m_idx, temp_bop_name)
-                    val code = create_kdefval(new_constr_name, border_type, default_val_flags(), Some(unfolded), code, loc)
+                    val code = create_kdefval(new_constr_name, constriction_type, default_val_flags(), Some(unfolded), code, loc)
                     (AtomId(new_constr_name), code)
                 }
             }
@@ -80,14 +80,14 @@ fun optimize_gemm(kmods: kmodule_t list)
             |(AtomLit(_), AtomLit(_)) => 
                 val (_, loc) = ctx
                 match K_cfold_dealias.cfold_bop(OpCmp(cmp), op1, op2, KTypBool, loc){
-                |Some(KExpAtom(AtomLit(KLitBool(false)), _)) => throw compile_err(loc, f"Nested subarray borders are inconsistent")
+                |Some(KExpAtom(AtomLit(KLitBool(false)), _)) => throw compile_err(loc, f"Nested subarray limits are inconsistent")
                 |_ => {}
                 }
             |_ => {}
             }
         }
 
-        fun juxtapose_border(base_range: (atom_t, atom_t, atom_t), constriction: atom_t, is_end: bool,
+        fun juxtapose_idx(base_range: (atom_t, atom_t, atom_t), constriction: atom_t, is_end: bool,
                                                                      code: kcode_t): (atom_t, kcode_t){
             static_check(CmpLE, AtomLit(KLitInt(0L)), constriction, ctx)
             val (base, end, delta) = base_range 
@@ -97,7 +97,7 @@ fun optimize_gemm(kmods: kmodule_t list)
             | _ =>
                 val (multiplied_constr, code) = constriction_bop(OpMul, constriction, delta, ctx, code)
                 val (res,code) = constriction_bop(OpAdd, multiplied_constr, base, ctx, code)
-                //There we check, that new border is inside of old range. It works only for 
+                //There we check, that new range limit is inside of old range. It works only for 
                 //literal cases. Variable indexes will be checked only on run of gemm function(it's 
                 //weak check, but for needs of optimization, we are forgetting about dynamic checks.
                 static_check(if is_end {CmpLT} else {CmpLE}, base, res, ctx) 
@@ -119,11 +119,11 @@ fun optimize_gemm(kmods: kmodule_t list)
         val (row_range, col_range) = if target.is_transposed {(col_range, row_range)} else {(row_range, col_range)}
         val (rsn, ren, rdn) = row_range
         val (csn, cen, cdn) = col_range
-        val (rs,code) = juxtapose_border(target.row_range, rsn, false, code)
-        val (re,code) = juxtapose_border(target.row_range, ren, true, code)
+        val (rs,code) = juxtapose_idx(target.row_range, rsn, false, code)
+        val (re,code) = juxtapose_idx(target.row_range, ren, true, code)
         val (rd,code) = juxtapose_delta(target.row_range, rdn, code)
-        val (cs,code) = juxtapose_border(target.col_range, csn, false, code)
-        val (ce,code) = juxtapose_border(target.col_range, cen, true, code)
+        val (cs,code) = juxtapose_idx(target.col_range, csn, false, code)
+        val (ce,code) = juxtapose_idx(target.col_range, cen, true, code)
         val (cd,code) = juxtapose_delta(target.col_range, cdn, code)
         val new_row_range = (rs, re, rd)
         val new_col_range = (cs, ce, cd)
