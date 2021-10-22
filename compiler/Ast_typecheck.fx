@@ -1763,7 +1763,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         /* other cases: check each index, it should be either a scalar or a range;
            in the first case it should have integer type.
            If all the indices are scalars, then the result should have et type,
-           otherwise it's an array of as high dimensionality as the number of range indices */
+           otherwise it's an array of as high dimensionality as the number of range indices.
+           There is one more opportunity to express element taking from multidimensional array - 
+           tuple index. It must be only index and all tuple elements must be integer scalars.
+           */
         | _ =>
             val fold (new_idxs, ndims, nfirst_scalars, nranges) = ([], 0, 0, 0) for idx <- idxs {
                 val new_idx = check_exp(idx, env, sc)
@@ -1771,28 +1774,38 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 | ExpRange(_, _, _, _) =>
                     (new_idx :: new_idxs, ndims + 1, nfirst_scalars, nranges + 1)
                 | _ =>
-                    val (new_ityp, new_iloc) = get_exp_ctx(new_idx)
-                    val new_idx =
-                    if maybe_unify(new_ityp, TypInt, eloc, true) {
-                        new_idx
-                    } else {
-                        val possible_idx_typs = [ TypBool, TypUInt(8), TypSInt(8), TypUInt(16),
-                            TypSInt(16), TypUInt(32), TypSInt(32), TypUInt(64), TypSInt(64) ]
-                        if exists(for t <- possible_idx_typs {maybe_unify(new_ityp, t, eloc, true)}) {
-                            ExpCast(new_idx, TypInt, (TypInt, new_iloc))
-                        } else if interp == InterpLinear &&
-                            (maybe_unify(new_ityp, TypFloat(32), eloc, true) ||
-                            maybe_unify(new_ityp, TypFloat(64), eloc, true)) {
-                            new_idx
-                        } else {
-                            throw compile_err(new_iloc, "each scalar index in array access op must \
-                                have some integer type or bool; in the case of interpolation it can \
-                                also be float or double")
+                    var dim_inc = 1
+                    val possible_idx_typs = [ TypInt, TypBool, TypUInt(8), TypSInt(8), TypUInt(16),
+                        TypSInt(16), TypUInt(32), TypSInt(32), TypUInt(64), TypSInt(64) ]
+                    fun idx_type_is_correct_scalar(idxtyp:typ_t) : bool { //TODO: Be sure about locations
+                        exists(for t <- possible_idx_typs {maybe_unify(idxtyp, t, eloc, true)}) ||
+                                (interp == InterpLinear &&
+                                (maybe_unify(idxtyp, TypFloat(32), eloc, true) ||
+                                maybe_unify(idxtyp, TypFloat(64), eloc, true)))
+                    }
+                    fun idx_type_is_correct_tuple(idxtyp:typ_t, new_iloc: loc_t) : bool {
+                        match deref_typ(idxtyp) { //TODO: What does maybe_unify means after deref_type? Doesn't we stop type iteration by calling this function?
+                        | TypTuple(idxtyplst) => 
+                            if (idxs.length() != 1) {
+                                throw compile_err(new_iloc, "tuple index in array access op must be the only index")
+                            }
+                            val iscorrect = idxtyplst.all(fun (typ:typ_t) {idx_type_is_correct_scalar(typ)})
+                            if iscorrect {dim_inc = length(idxtyplst)}
+                            iscorrect
+                            
+                        | _ => false
                         }
                     }
-                    val nfirst_scalars = if nranges == 0 { nfirst_scalars + 1 }
+                    val (new_ityp, new_iloc) = get_exp_ctx(new_idx)
+                    //Try usual scalar indexes
+                    if !idx_type_is_correct_scalar(new_ityp) && !idx_type_is_correct_tuple(new_ityp, new_iloc){
+                        throw compile_err(new_iloc, "each scalar index in array access op must \
+                            have some integer type or bool; in the case of interpolation it can \
+                            also be float or double")
+                    }
+                    val nfirst_scalars = if nranges == 0 { nfirst_scalars + dim_inc }
                                          else { nfirst_scalars }
-                    (new_idx :: new_idxs, ndims + 1, nfirst_scalars, nranges)
+                    (new_idx :: new_idxs, ndims + dim_inc, nfirst_scalars, nranges)
                 }
             }
             match (ndims, nranges, deref_typ(new_atyp)) {
