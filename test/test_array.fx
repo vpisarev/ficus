@@ -39,42 +39,40 @@ TEST("array.tuple_index", fun() {
     val A3 = random(rng, (h,w,d), -2., 2.)
     val B3 = random(rng, (h,w,d), -2., 2.)
 
-    fun uniadd(A,B) { //TODO: Inefficient, must be implemented more precise. All of these functions.
-        var res = A
-        for x@idx <- A, y <- B { res[idx] = x + y}
-        res
+    fun uniadd(A,B) {
+        for x@idx <- A, y <- B { A[idx] = x + y}
     }
 
     fun add1(A,B) {
-        var res = A
         for x@idx <- A, y <- B { 
             val i:int = idx
-            res[i] = x + y}
-        res
+            A[i] = x + y}
     }
 
     fun add2(A,B) {
-        var res = A
         for x@idx <- A, y <- B { 
             val (i, j) = idx
-            res[i, j] = x + y}
-        res
+            A[i, j] = x + y}
     }
 
     fun add3(A,B) {
-        var res = A
         for x@idx <- A, y <- B { 
             val (i, j, k) = idx
-            res[i, j, k] = x + y}
-        res
+            A[i, j, k] = x + y}
     }
 
-    EXPECT_EQ(uniadd(A1,B1), add1(A1,B1))
-    EXPECT_EQ(uniadd(A2,B2), add2(A2,B2))
-    val C3 = uniadd(A3,B3)
-    val C3r = add3(A3,B3)
-    for layer_num <- 0:h { //TODO: There is no Arr[,,] -> string conversion, so EXPECT_EQ cannot work with 3D arrays.
-        EXPECT_EQ(C3[layer_num,:,:], C3r[layer_num,:,:])
-    }
-    
+    val A1ref = copy(A1)
+    uniadd(A1, B1)
+    add1(A1ref, B1)
+    EXPECT_EQ(A1, A1ref)
+
+    val A2ref = copy(A2)
+    uniadd(A2, B2)
+    add2(A2ref, B2)
+    EXPECT_EQ(A2, A2ref)
+
+    val A3ref = copy(A3)
+    uniadd(A3, B3)
+    add3(A3ref, B3)
+    EXPECT_EQ(A3, A3ref)
 })

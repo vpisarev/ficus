@@ -263,6 +263,19 @@ fun string(a: 't [,])
     join_embrace("[| ", " |]", ";\n", rows)
 }
 
+fun string(a: 't [,,])
+{
+    val (d, m, n) = size(a)
+    val planes = [| for k <- 0:d {
+        val rows = [| for i <- 0:m {
+            val elems = [| for j <- 0:n {repr(a[k, i, j])} |]
+            join(", ", elems)
+        } |]
+        join_embrace("", "", ";\n", rows)
+    } |]
+    join_embrace("[| ", " |]", ";;\n\n", planes)
+}
+
 fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |])
 
 @pure fun string(a: char []): string = @ccode {

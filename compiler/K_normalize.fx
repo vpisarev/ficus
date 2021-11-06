@@ -261,7 +261,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (arr, idx_i) =
         match idx_access_stack {
         | (arr, idx_i) :: _ => (arr, idx_i)
-        | _ => throw compile_err(eloc, ".- is only allowed inside array access op")
+        | _ => throw compile_err(eloc, ".- is only allowed inside array access op. .- inside of tuple indexes is not supported too.")
         }
         val (a, code) = exp2atom(e, code, false, sc)
         val args = if idx_i == 0 { [arr] }
@@ -482,20 +482,20 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
 
         fun cast_if_needed(scalar_idx: atom_t, code: kcode_t, loc:loc_t): (atom_t, kcode_t) = 
             match get_atom_ktyp(scalar_idx, loc) {
-            | KTypBool | KTypUInt(_) | KTypUInt(_) => 
-                kexp2atom(curr_module(sc), "castidx", KExpCast(scalar_idx, KTypInt, loc), false, code)
+            | KTypBool | KTypUInt(_) | KTypSInt(_) => 
+                kexp2atom(curr_module(sc), "idx", KExpCast(scalar_idx, KTypInt, loc), false, code)
             | _ => (scalar_idx, code)
         }
 
         val (dlist, code) = match (idxlist, probably_tuple_type) {
-        | (tupidx::tl, TypTuple(idxtype)) when !is_exprange(tupidx) => //TODO: is it possible and is it needed to manage idx_access_stack in this case?
+        | (tupidx::tl, TypTuple(idxtype)) when !is_exprange(tupidx) =>
             val (_, iloc) = get_exp_ctx(tupidx) 
             if (tl.length() != 0) {
                 throw compile_err(eloc, "internal error: tuple index is not only")
             }
             val (tup_id, code) = exp2id(tupidx, code, false, sc, "internal error: a literal instead of tuple")
             fold (dlist, code) = ([], code) for eltyp@elnum <- idxtype{
-                val (d, code) = kexp2atom(curr_module(sc), "tupidx", KExpMem(tup_id, elnum, (typ2ktyp(eltyp, iloc), iloc)), false, code)
+                val (d, code) = kexp2atom(curr_module(sc), "idx", KExpMem(tup_id, elnum, (typ2ktyp(eltyp, iloc), iloc)), false, code)
                 val (d, code) = cast_if_needed(d, code, iloc)
                 (DomainElem(d)::dlist, code)
             }

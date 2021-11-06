@@ -1774,34 +1774,35 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 | ExpRange(_, _, _, _) =>
                     (new_idx :: new_idxs, ndims + 1, nfirst_scalars, nranges + 1)
                 | _ =>
-                    var dim_inc = 1
                     val possible_idx_typs = [ TypInt, TypBool, TypUInt(8), TypSInt(8), TypUInt(16),
                         TypSInt(16), TypUInt(32), TypSInt(32), TypUInt(64), TypSInt(64) ]
-                    fun idx_type_is_correct_scalar(idxtyp:typ_t) : bool { //TODO: Be sure about locations
-                        exists(for t <- possible_idx_typs {maybe_unify(idxtyp, t, eloc, true)}) ||
+                    fun idx_type_is_correct_scalar(idxtyp:typ_t, idxloc: loc_t) : bool {
+                        exists(for t <- possible_idx_typs {maybe_unify(idxtyp, t, idxloc, true)}) ||
                                 (interp == InterpLinear &&
-                                (maybe_unify(idxtyp, TypFloat(32), eloc, true) ||
-                                maybe_unify(idxtyp, TypFloat(64), eloc, true)))
+                                (maybe_unify(idxtyp, TypFloat(32), idxloc, true) ||
+                                maybe_unify(idxtyp, TypFloat(64), idxloc, true)))
                     }
-                    fun idx_type_is_correct_tuple(idxtyp:typ_t, new_iloc: loc_t) : bool {
-                        match deref_typ(idxtyp) { //TODO: What does maybe_unify means after deref_type? Doesn't we stop type iteration by calling this function?
+                    fun idx_type_is_correct_tuple(idxtyp:typ_t, tuploc: loc_t) : (bool, int) {
+                        match deref_typ(idxtyp) {
                         | TypTuple(idxtyplst) => 
                             if (idxs.length() != 1) {
-                                throw compile_err(new_iloc, "tuple index in array access op must be the only index")
+                                throw compile_err(tuploc, "tuple index in array access op must be the only index")
                             }
-                            val iscorrect = idxtyplst.all(fun (typ:typ_t) {idx_type_is_correct_scalar(typ)})
-                            if iscorrect {dim_inc = length(idxtyplst)}
-                            iscorrect
-                            
-                        | _ => false
+                            val iscorrect = idxtyplst.all(fun (typ:typ_t) {idx_type_is_correct_scalar(typ, tuploc)})
+                            (iscorrect, if iscorrect { length(idxtyplst) } else { 0 })
+                        | _ => (false, 0)
                         }
                     }
                     val (new_ityp, new_iloc) = get_exp_ctx(new_idx)
                     //Try usual scalar indexes
-                    if !idx_type_is_correct_scalar(new_ityp) && !idx_type_is_correct_tuple(new_ityp, new_iloc){
-                        throw compile_err(new_iloc, "each scalar index in array access op must \
-                            have some integer type or bool; in the case of interpolation it can \
-                            also be float or double")
+                    val dim_inc = if idx_type_is_correct_scalar(new_ityp, new_iloc) { 1
+                    } else {
+                        val (is_correct_tuple, dim_inc) = idx_type_is_correct_tuple(new_ityp, new_iloc)
+                        if is_correct_tuple { dim_inc } else {
+                            throw compile_err(new_iloc, "each scalar index in array access op must \
+                                have some integer type or bool; in the case of interpolation it can \
+                                also be float or double")
+                        }
                     }
                     val nfirst_scalars = if nranges == 0 { nfirst_scalars + dim_inc }
                                          else { nfirst_scalars }
