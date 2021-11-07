@@ -392,8 +392,8 @@ int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* result)
 //cs, ce, cd is for "column start", "column end", "column delta"
 //If re1, ce1, re2, ce2 are equal to -1, we consider all matrix in corresponding
 //dimension.
-int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, int cd1,
-            fx_arr_t* m2, bool t2, int rs2, int re2, int rd2, int cs2, int ce2, int cd2, fx_arr_t* result)
+int fx_gemm(fx_arr_t* m1, bool t1, int_ rs1, int_ re1, int_ rd1, int_ cs1, int_ ce1, int_ cd1,
+            fx_arr_t* m2, bool t2, int_ rs2, int_ re2, int_ rd2, int_ cs2, int_ ce2, int_ cd2, fx_arr_t* result)
 {
     int fx_status = FX_OK;
     if (m1->ndims != 2 || m2->ndims != 2)
@@ -440,6 +440,9 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, 
     char* temp1arr = NULL;
     char* temp2arr = NULL;
 
+//TODO: It's reasonable to try implement some hybrid allocation strategy in this macro:
+// We can try to call "alloca" before malloc and call malloc in case, when it unable to 
+// allocate enough memory on stack.
 //                        (type, const FLT*,  size_t,  size_t,     size_t,     size_t,      bool, FLT*, char*)
 #define GEMM_CONDENSE_MATR(FLT,         src, vstride, hstride, src_virt_h, src_virt_w, transpose, dst_p, ers_p)\
     do {\
@@ -515,8 +518,10 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, 
                     const FLT* src1relative = m1ptr + i*stridem1;\
                     const FLT* src2relative = m2ptr + j*stridem2;\
                     FLT* destcell = resptr + i*strideres + j;\
+                    FLT destsum = 0;\
                     for(k = 0; k < summlen;k++)\
-                        (*destcell) += src1relative[k]*src2relative[k];\
+                        destsum += src1relative[k]*src2relative[k];\
+                    (*destcell) = destsum;\
                 }\
         } else if (!t1)\
         {\
@@ -547,17 +552,15 @@ int fx_gemm(fx_arr_t* m1, bool t1, int rs1, int re1, int rd1, int cs1, int ce1, 
     }while(false)
 
     if (elemsize == sizeof(float)) 
-    {
         GEMM_TEMPLATE(float);
-    }
     else if (elemsize == sizeof(double)) 
-    {
         GEMM_TEMPLATE(double);
-    }
 #undef GEMM_TEMPLATE
 #undef GEMM_CONDENSE_MATR
-    fx_free(temp2arr);
-    fx_free(temp1arr);
+    if(temp2arr)
+        fx_free(temp2arr);
+    if(temp1arr) 
+        fx_free(temp1arr);
 
     return fx_status;
 }

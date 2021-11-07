@@ -261,7 +261,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (arr, idx_i) =
         match idx_access_stack {
         | (arr, idx_i) :: _ => (arr, idx_i)
-        | _ => throw compile_err(eloc, ".- is only allowed inside array access op")
+        | _ => throw compile_err(eloc, ".- is only allowed inside array access op. .- inside of tuple indexes is not supported too.")
         }
         val (a, code) = exp2atom(e, code, false, sc)
         val args = if idx_i == 0 { [arr] }
@@ -470,12 +470,50 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         (KExpMap(pre_idom_ll.rev(), body_kexp, flags, kctx), code)
     | ExpAt(e, border, interp, idxlist, _) =>
         val (arr, code) = exp2atom(e, code, true, sc)
-        val fold (dlist, code) = ([], code) for i@idx <- idxlist {
-            idx_access_stack = (arr, idx) :: idx_access_stack
-            val (d, code) =
-                try exp2dom(i, code, sc)
-                finally { idx_access_stack = idx_access_stack.tl() }
-            (d :: dlist, code)
+        val probably_tuple_type = match idxlist{
+            | idx::[] => deref_typ(get_exp_typ(idx))
+            | _ => TypVoid
+        }
+
+        fun is_exprange(e:exp_t) = match e {
+            | ExpRange _ => true
+            | _ => false
+        }
+
+        fun cast_if_needed(scalar_idx: atom_t, code: kcode_t, loc:loc_t): (atom_t, kcode_t) = 
+            match get_atom_ktyp(scalar_idx, loc) {
+            | KTypBool | KTypUInt(_) | KTypSInt(_) => 
+                kexp2atom(curr_module(sc), "idx", KExpCast(scalar_idx, KTypInt, loc), false, code)
+            | _ => (scalar_idx, code)
+        }
+
+        val (dlist, code) = match (idxlist, probably_tuple_type) {
+        | (tupidx::tl, TypTuple(idxtype)) when !is_exprange(tupidx) =>
+            val (_, iloc) = get_exp_ctx(tupidx) 
+            if (tl.length() != 0) {
+                throw compile_err(eloc, "internal error: tuple index is not only")
+            }
+            val (tup_id, code) = exp2id(tupidx, code, false, sc, "internal error: a literal instead of tuple")
+            fold (dlist, code) = ([], code) for eltyp@elnum <- idxtype{
+                val (d, code) = kexp2atom(curr_module(sc), "idx", KExpMem(tup_id, elnum, (typ2ktyp(eltyp, iloc), iloc)), false, code)
+                val (d, code) = cast_if_needed(d, code, iloc)
+                (DomainElem(d)::dlist, code)
+            }
+        | _ => 
+            fold (dlist, code) = ([], code) for i@idx <- idxlist {
+                idx_access_stack = (arr, idx) :: idx_access_stack
+                val (d, code) =
+                    try exp2dom(i, code, sc)
+                    finally { idx_access_stack = idx_access_stack.tl() }
+                val (_, iloc) = get_exp_ctx(i)
+                val (d, code) = match d {
+                    |DomainElem(scalar_idx) => 
+                        val (scalar_idx, code) = cast_if_needed(scalar_idx, code, iloc)
+                        (DomainElem(scalar_idx), code)
+                    | _ => (d, code)
+                }
+                (d :: dlist, code)
+            }
         }
         (KExpAt(arr, border, interp, dlist.rev(), kctx), code)
     | ExpMem(e1, elem, _) =>
