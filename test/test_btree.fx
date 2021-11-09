@@ -26,7 +26,7 @@ val max_depth = max(min_depth + 2, max_depth)
 val stretch_depth = max_depth + 1
 
 val c = check (make(stretch_depth))
-EXPECT_EQ(c, 4095)
+EXPECT_EQ(`c`, 4095)
 
 val long_lived_tree = make(max_depth)
 val report = [| @parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
@@ -39,6 +39,6 @@ val report = [| @parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
     (niter, d, c)
 } |]
 
-EXPECT_EQ(report, [| (1024, 4, 31744), (256, 6, 32512), (64, 8, 32704), (16, 10, 32752) |])
-EXPECT_EQ(check(long_lived_tree), 2047)
+EXPECT_EQ(`report`, [| (1024, 4, 31744), (256, 6, 32512), (64, 8, 32704), (16, 10, 32752) |])
+EXPECT_EQ(`check(long_lived_tree)`, 2047)
 })

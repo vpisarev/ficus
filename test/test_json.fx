@@ -39,7 +39,7 @@ TEST("json.parse", fun() {
         }
     | _ => throw TestFailure("top-level json value is not a map")
     }
-    EXPECT_EQ(string(js),
+    EXPECT_EQ(`string(js)`,
 "{
    \"firstName\": \"Иван\",
    \"lastName\": \"Иванов\",
@@ -72,7 +72,7 @@ val sample_js = Json.Commented(
      ]))
 
 val pprinted = string(sample_js)
-EXPECT_EQ(pprinted,
+EXPECT_EQ(`pprinted`,
 "// small Json pretty-printing example
 {
    \"ain't it cool?\": true,

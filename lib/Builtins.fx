@@ -45,6 +45,8 @@ exception TypeMismatchError
 exception ZeroStepError
 
 fun assert(f: bool) = if !f {throw AssertError}
+// TODO: probably, we need AssertError to get a string argument or have alternative AssertErrorArg with such a argument
+fun assert((f, f_str, fname, lineno): (bool, string, string, int)) = if !f {throw Fail(f"{fname}:{lineno}: Assertion '{f_str}' failed")}
 
 fun ignore(_: 't) {}
 
@@ -180,7 +182,7 @@ fun string(a: bool) = if a {"true"} else {"false"}
         sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
     return fx_ascii2str(buf, -1, fx_result);
 }
-fun string(a: string) = a
+fun string(a: string): string = a
 
 fun string(a: 't?) {
     | Some(a) => "Some(" + repr(a) + ")"

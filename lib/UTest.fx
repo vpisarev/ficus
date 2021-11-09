@@ -65,6 +65,8 @@ fun TEST(name: string, f: void->void)
     g_test_all_registered = (test_info_t {name=name, f=f}) :: g_test_all_registered
 }
 
+type 'x errctx_t = ('x, string, string, int)
+
 fun test_nomsg(): string = ""
 fun test_msg(s: string) = (fun() {s})
 
@@ -81,31 +83,62 @@ fun ASSERT(c: bool, msg: void->string)
     }
 }
 
+fun ASSERT((c, c_str, fname, lineno): (bool, string, string, int))
+{
+    if(!c) {
+        println(f"{fname}:{lineno}: Assertion '{c_str}' failed")
+        throw TestAssertError
+    }
+}
+
 fun ASSERT(c: bool) = ASSERT(c, test_msg(""))
 
 fun test_failed_assert_cmp(a: 't, b: 't, op: string)
 {
-    print("Error: Assertion failed:\nActual:")
+    print(f"Assertion failed: <Actual> {op} <Expected>.\nActual: ")
     println(a)
-    print(f"Expected: {op}")
+    print("Expected: ")
     println(b)
     throw TestAssertError
 }
 
-fun ASSERT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_assert_cmp(a, b, "")}
+fun test_failed_assert_cmp(a: ('t, string, string, int), b: ('t, string, string, int), op: string)
+{
+    val b_str = if b.1 != "" {b.1} else {"<Expected>"}
+    print(f"{a.2}:{a.3}: Assertion failed: {a.1} {op} {b_str}.\nActual: ")
+    println(a.0)
+    print("Expected: ")
+    println(b.0)
+    throw TestAssertError
+}
+
+fun ASSERT_EQ(a: 't, b: 't) = if a == b {} else {test_failed_assert_cmp(a, b, "==")}
 fun ASSERT_NE(a: 't, b: 't) = if a != b {} else {test_failed_assert_cmp(a, b, "!=")}
 fun ASSERT_LT(a: 't, b: 't) = if a < b {} else {test_failed_assert_cmp(a, b, "<")}
 fun ASSERT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_assert_cmp(a, b, "<=")}
 fun ASSERT_GT(a: 't, b: 't) = if a > b {} else {test_failed_assert_cmp(a, b, ">")}
 fun ASSERT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_assert_cmp(a, b, ">=")}
 
-fun ASSERT_NEAR(a: 't, b: 't, eps: 't) =
+fun ASSERT_EQ(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 == b.0 {} else {test_failed_assert_cmp(a, b, "==")}
+fun ASSERT_NE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 != b.0 {} else {test_failed_assert_cmp(a, b, "!=")}
+fun ASSERT_LT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 < b.0 {} else {test_failed_assert_cmp(a, b, "<")}
+fun ASSERT_LE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 <= b.0 {} else {test_failed_assert_cmp(a, b, "<=")}
+fun ASSERT_GT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 > b.0 {} else {test_failed_assert_cmp(a, b, ">")}
+fun ASSERT_GE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 >= b.0 {} else {test_failed_assert_cmp(a, b, ">=")}
+
+fun ASSERT_EQ(a: ('t, string, string, int), b: 't) = if a.0 == b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "==")}
+fun ASSERT_NE(a: ('t, string, string, int), b: 't) = if a.0 != b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "!=")}
+fun ASSERT_LT(a: ('t, string, string, int), b: 't) = if a.0 < b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "<")}
+fun ASSERT_LE(a: ('t, string, string, int), b: 't) = if a.0 <= b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "<=")}
+fun ASSERT_GT(a: ('t, string, string, int), b: 't) = if a.0 > b {} else {test_failed_assert_cmp(a, (b, "", "", 0), ">")}
+fun ASSERT_GE(a: ('t, string, string, int), b: 't) = if a.0 >= b {} else {test_failed_assert_cmp(a, (b, "", "", 0), ">=")}
+
+fun ASSERT_NEAR(a: ('t, string, string, int), b: ('t, string, string, int), eps: 't) =
     if b - eps <= a <= b + eps {} else {
-        println("Assertion failed.\nActual: ")
+        println(f"Assertion abs(<Actual> - <Expected>) <= {eps} failed.\nActual: ")
         println(a)
         print("Expected: ")
-        print(b)
-        println(f" ±{eps}")
+        println(b)
         throw TestAssertError
     }
 
@@ -126,23 +159,50 @@ fun EXPECT(c: bool) = EXPECT(c, test_nomsg)
 
 fun test_failed_expect_cmp(a: 't, b: 't, op: string)
 {
-    print("Actual: ")
+    print(f"Unexpected result of comparison <Actual> {op} <Expected>:\nActual: ")
     println(a)
-    print(f"Expected: {op}")
+    print("Expected: ")
     println(b)
     g_test_state.currstatus = false
 }
 
+fun test_failed_expect_cmp(a: ('t, string, string, int), b: ('t, string, string, int), op: string)
+{
+    val b_str = if b.1 != "" {b.1} else {"<Expected>"}
+    print(f"{a.2}:{a.3}: Unexpected result of comparison {a.1} {op} {b_str}.\nActual: ")
+    println(a.0)
+    print(f"Expected: ")
+    println(b.0)
+    throw TestAssertError
+}
+
 fun test_failed_expect_near(a: 't, b: 't, idx:'idx?, eps: 't)
 {
+    print(f"Unexpected result of comparison abs(<Actual> - <Expected>) <= {eps}")
     match idx {
-    | Some(idx) => print(f"Actual at {idx}: ")
-    | _ => print("Actual: ")
+    | Some(idx) => print(f" at {idx}")
+    | _ => {}
     }
+    print(".\nActual: ")
     println(a)
     print(f"Expected: ")
-    print(b)
-    println(f" ±{eps}")
+    println(b)
+    g_test_state.currstatus = false
+}
+
+fun test_failed_expect_near(a: ('t, string, string, int), b: ('t, string, string, int), idx:'idx?, eps: 't)
+{
+    val a_str = if a.1 != "" {a.1} else {"<Actual>"}
+    val b_str = if b.1 != "" {b.1} else {"<Expected>"}
+    print(f"{a.2}:{a.3}: Unexpected result of comparison abs({a_str} - {b_str}) <= {eps}")
+    match idx {
+    | Some(idx) => print(f" at {idx}")
+    | _ => {}
+    }
+    print(".\nActual: ")
+    println(a)
+    print(f"Expected: ")
+    println(b)
     g_test_state.currstatus = false
 }
 
@@ -153,14 +213,44 @@ fun EXPECT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_expect_cmp(a, b, "<
 fun EXPECT_GT(a: 't, b: 't) = if a > b {} else {test_failed_expect_cmp(a, b, ">")}
 fun EXPECT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_expect_cmp(a, b, ">=")}
 
+fun EXPECT_EQ(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 == b.0 {} else {test_failed_expect_cmp(a, b, "==")}
+fun EXPECT_NE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 != b.0 {} else {test_failed_expect_cmp(a, b, "!=")}
+fun EXPECT_LT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 < b.0 {} else {test_failed_expect_cmp(a, b, "<")}
+fun EXPECT_LE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 <= b.0 {} else {test_failed_expect_cmp(a, b, "<=")}
+fun EXPECT_GT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 > b.0 {} else {test_failed_expect_cmp(a, b, ">")}
+fun EXPECT_GE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 >= b.0 {} else {test_failed_expect_cmp(a, b, ">=")}
+
+fun EXPECT_EQ(a: ('t, string, string, int), b: 't) = if a.0 == b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "==")}
+fun EXPECT_NE(a: ('t, string, string, int), b: 't) = if a.0 != b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "!=")}
+fun EXPECT_LT(a: ('t, string, string, int), b: 't) = if a.0 < b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "<")}
+fun EXPECT_LE(a: ('t, string, string, int), b: 't) = if a.0 <= b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "<=")}
+fun EXPECT_GT(a: ('t, string, string, int), b: 't) = if a.0 > b {} else {test_failed_expect_cmp(a, (b, "", "", 0), ">")}
+fun EXPECT_GE(a: ('t, string, string, int), b: 't) = if a.0 >= b {} else {test_failed_expect_cmp(a, (b, "", "", 0), ">=")}
+
 fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
     if b - eps <= a <= b + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
+
+fun EXPECT_NEAR(a: ('t, string, string, int), b: ('t, string, string, int), eps: 't) =
+    if b.0 - eps <= a.0 <= b.0 + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
+
+fun EXPECT_NEAR(a: ('t, string, string, int), b: 't, eps: 't) =
+    if b - eps <= a.0 <= b + eps {} else {test_failed_expect_near(a, (b, "", "", 0), (None: int?), eps)}
 
 fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
     try {
         val (ai, idx, bi) = find(
             for ai@idx <- a, bi <- b {!(bi - eps <= ai <= bi + eps)})
         test_failed_expect_near(ai, bi, Some(idx), eps)
+    }
+    catch {
+    | NotFoundError => {}
+    }
+
+fun EXPECT_NEAR(a: ('t [+], string, string, int), b: ('t [+], string, string, int), eps: 't) =
+    try {
+        val (ai, idx, bi) = find(
+            for ai@idx <- a.0, bi <- b.0 {!(bi - eps <= ai <= bi + eps)})
+        test_failed_expect_near((ai, "", a.2, a.3), (bi, "", "", 0), Some(idx), eps)
     }
     catch {
     | NotFoundError => {}
@@ -176,6 +266,32 @@ fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
     | NotFoundError => {}
     }
 
+fun EXPECT_NEAR(a: ('t list, string, string, int), b: 't list, eps: 't) =
+    try {
+        val (ai, idx, bi) = find(
+            for ai@idx <- a.0, bi <- b {!(bi - eps <= ai <= bi + eps)})
+        test_failed_expect_near((ai, "", a.2, a.3), (bi, "", "", 0), Some(idx), eps)
+    }
+    catch {
+    | NotFoundError => {}
+    }
+
+fun EXPECT_THROWS(f: (void->void, string, string, int), ref_exn: exn, ~msg: string="") =
+    try {
+        f.0()
+        val msg = if msg != "" {f": '{msg}'"} else {""}
+        println(f"{f.2}:{f.3}: EXPECT_THROWS({f.1}) failed{msg}")
+        println("Actual: Does not throw an exception")
+        println("Expected: Throws an exception")
+        g_test_state.currstatus = false
+    } catch {
+        | e when e.__tag__ == ref_exn.__tag__ => {}
+        | e => println(f"{f.2}:{f.3}: EXPECT_THROWS({f.1}) failed on '{msg}'")
+            println(f"Actual: Throws a different exception: '{e}'")
+            println(f"Expected: Throws exception '{ref_exn}'")
+            g_test_state.currstatus = false
+    }
+
 fun EXPECT_THROWS(f: void->void, ref_exn: exn, ~msg: string="") =
     try {
         f()
@@ -189,6 +305,19 @@ fun EXPECT_THROWS(f: void->void, ref_exn: exn, ~msg: string="") =
         | e => println(f"EXPECT_THROWS failed on '{msg}'")
             println(f"Actual: Throws a different exception: '{e}'")
             println(f"Expected: Throws exception '{ref_exn}'")
+            g_test_state.currstatus = false
+    }
+
+fun EXPECT_NO_THROWS(f: (void->void, string, string, int), ~msg: string="") =
+    try {
+        f.0()
+    } catch {
+        | e =>
+            val msg = if msg != "" {f": '{msg}'"} else {""}
+            println(f"{f.2}:{f.3}: EXPECT_THROWS({f.1}) failed{msg}")
+            println(f"EXPECT_NO_THROWS failed: '{msg}'")
+            println(f"Actual: Throws the exception '{e}'")
+            println("Expected: Does not throw an exception")
             g_test_state.currstatus = false
     }
 

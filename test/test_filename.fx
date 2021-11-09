@@ -28,9 +28,9 @@ TEST("filename.regression", fun() {
     ]
 
     for (path, dir, basename, no_ext, norm) <- reg_data {
-        EXPECT_EQ(Filename.dirname(path), dir)
-        EXPECT_EQ(Filename.basename(path), basename)
-        EXPECT_EQ(Filename.remove_extension(path), no_ext)
-        EXPECT_EQ(Filename.normalize(cwd, path), norm)
+        EXPECT_EQ(`Filename.dirname(path)`, dir)
+        EXPECT_EQ(`Filename.basename(path)`, basename)
+        EXPECT_EQ(`Filename.remove_extension(path)`, no_ext)
+        EXPECT_EQ(`Filename.normalize(cwd, path)`, norm)
     }
 })

@@ -117,7 +117,7 @@ fun advance(dt: double)
 }
 
 offsetMomentum()
-EXPECT_NEAR(energy(), -0.1690751638285244, 1e-4)
+EXPECT_NEAR(`energy()`, -0.1690751638285244, 1e-4)
 for i <- 0:1000000 {advance(0.01)}
-EXPECT_NEAR(energy(), -0.1690861845985505, 1e-4)
+EXPECT_NEAR(`energy()`, -0.1690861845985505, 1e-4)
 })

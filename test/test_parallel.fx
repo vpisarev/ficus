@@ -24,5 +24,5 @@ TEST("parallel.primes", fun()
         }
     }
 
-    EXPECT_EQ(primes.length(), 6241)
+    EXPECT_EQ(`primes.length()`, 6241)
 })

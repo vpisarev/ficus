@@ -99,22 +99,22 @@ TEST("oop.interfaces", fun()
     val ref_data = [("rectangle", 160.f), ("ellipse", 1256.6371f)]
 
     for sh@i <- shapes, (n, a) <- ref_data {
-        EXPECT_EQ(sh.name(), n)
+        EXPECT_EQ(`sh.name()`, n)
         val sh2 = ((sh :> IClone).clone() :> IShape)
         val (fx, fy) = sh2.get_scale()
         sh2.set_scale(fx*2, fy*2)
-        EXPECT_NEAR(sh2.area(), a*4, 0.01f)
-        EXPECT_NEAR(sh.area(), a, 0.01f)
+        EXPECT_NEAR(`sh2.area()`, a*4, 0.01f)
+        EXPECT_NEAR(`sh.area()`, a, 0.01f)
         fun test_ellipse()
         {
             val e = (sh2 :> Ellipse)
-            EXPECT_EQ(e.cx, e0.cx)
-            EXPECT_EQ(e.cy, e0.cy)
+            EXPECT_EQ(`e.cx`, e0.cx)
+            EXPECT_EQ(`e.cy`, e0.cy)
         }
         if i == 0 {
-            EXPECT_THROWS(test_ellipse, TypeMismatchError, msg="cast (Rect:>IShape):>Ellipse should fail")
+            EXPECT_THROWS(`test_ellipse`, TypeMismatchError, msg="cast (Rect:>IShape):>Ellipse should fail")
         } else {
-            EXPECT_NO_THROWS(test_ellipse, msg="cast (Ellipse:>IShape):>Ellipse should succeed")
+            EXPECT_NO_THROWS(`test_ellipse`, msg="cast (Ellipse:>IShape):>Ellipse should succeed")
         }
     }
 })

@@ -48,7 +48,7 @@ TEST("mandelbrot.regression", fun()
     |]
 
     val roi = result[1000-20:1000+12,8:16]
-    EXPECT_EQ(roi,
+    EXPECT_EQ(`roi`,
       [|0u8, 0u8, 0u8, 0u8, 2u8, 192u8, 8u8, 96u8;
         0u8, 0u8, 0u8, 0u8, 0u8, 64u8, 60u8, 48u8;
         0u8, 0u8, 0u8, 0u8, 0u8, 66u8, 24u8, 32u8;

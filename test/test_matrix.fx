@@ -45,10 +45,10 @@ TEST("matrix.mul_squares", fun() {
         1., 0., 3., 2.;
         1., 1., 0., 1. |]
 
-    EXPECT_EQ(A*B, refmul(A,B))
-    EXPECT_EQ(A'*B, refmul(A',B))
-    EXPECT_EQ(A*B', refmul(A,B'))
-    EXPECT_EQ(A'*B', refmul(A',B'))
+    EXPECT_EQ(`A*B`, refmul(A,B))
+    EXPECT_EQ(`A'*B`, refmul(A',B))
+    EXPECT_EQ(`A*B'`, refmul(A,B'))
+    EXPECT_EQ(`A'*B'`, refmul(A',B'))
 
     val C =
      [| 2.f, 1.f, 0.f, 4.f;
@@ -61,10 +61,10 @@ TEST("matrix.mul_squares", fun() {
         1.f, 0.f, 3.f, 2.f;
         1.f, 1.f, 0.f, 1.f |]
 
-    EXPECT_EQ(C*D, refmul(C,D))
-    EXPECT_EQ(C'*D, refmul(C',D))
-    EXPECT_EQ(C*D', refmul(C,D'))
-    EXPECT_EQ(C'*D', refmul(C',D'))
+    EXPECT_EQ(`C*D`, refmul(C,D))
+    EXPECT_EQ(`C'*D`, refmul(C',D))
+    EXPECT_EQ(`C*D'`, refmul(C,D'))
+    EXPECT_EQ(`C'*D'`, refmul(C',D'))
 })
 
 TEST("matrix.mul_ranges", fun() {
@@ -79,8 +79,8 @@ TEST("matrix.mul_ranges", fun() {
                 for x2 <- 0:(x1-1){
                     val C = (A[y2:,x2:])'
                     val D = (B[:x1-x2,:y1-y2])'
-                    EXPECT_EQ(C*D, refmul(C,D))
-                    EXPECT_EQ(C'*D', refmul(C',D'))
+                    EXPECT_EQ(`C*D`, refmul(C,D))
+                    EXPECT_EQ(`C'*D'`, refmul(C',D'))
                 }
             }
         }
@@ -94,12 +94,12 @@ TEST("matrix.mul_sparsed_ranges", fun() {
 
     val A = mothermat[1:8:2,2:5]
     val B = mothermat[5:8,2:9:2]
-    EXPECT_EQ(A*B, refmul(A,B))
-    EXPECT_EQ(A'*B', refmul(A',B'))
+    EXPECT_EQ(`A*B`, refmul(A,B))
+    EXPECT_EQ(`A'*B'`, refmul(A',B'))
 
     val C = mothermat[5:9,2:9:2]
     val D = mothermat[1:8:2,2:6]
-    EXPECT_EQ(C*D', refmul(C,D'))
+    EXPECT_EQ(`C*D'`, refmul(C,D'))
 
     for delta_outer <- 1:3 {
         val A = mothermat[1:9:delta_outer,:]
@@ -107,7 +107,7 @@ TEST("matrix.mul_sparsed_ranges", fun() {
         for delta_inner <- 1:2 {
             val C = A[1:3:delta_inner,:] //TODO: How to write subarraying with missed end? I tried A[1::delta_inner, but it doesn't work]
             val D = B[:,:3:delta_inner]
-            EXPECT_EQ(C*D, refmul(C,D))
+            EXPECT_EQ(`C*D`, refmul(C,D))
             }
         }
 

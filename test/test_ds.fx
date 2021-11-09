@@ -14,37 +14,37 @@ TEST("ds.set", fun()
     val icmp = (cmp: (int, int)->int)
     val scmp = (cmp: (string, string)->int)
 
-    EXPECT_EQ(icmp(5, 3), 1)
-    EXPECT_EQ(scmp("bar", "baz"), -1)
-    EXPECT_EQ(scmp("foo", "foo"), 0)
+    EXPECT_EQ(`icmp(5, 3)`, 1)
+    EXPECT_EQ(`scmp("bar", "baz")`, -1)
+    EXPECT_EQ(`scmp("foo", "foo")`, 0)
 
     type intset = int Set.t
     type strset = string Set.t
 
     val s1 = Set.from_list(icmp, [ 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, -1, -2, -3 ])
-    EXPECT_EQ(s1.list(), [ -3, -2, -1, 1, 2, 3, 4, 5, 6 ])
+    EXPECT_EQ(`s1.list()`, [ -3, -2, -1, 1, 2, 3, 4, 5, 6 ])
     val s2 = Set.from_list(icmp, [ 100, -1, 4, -2, 7 ])
 
     val d12 = s1.diff(s2)
-    EXPECT_EQ(d12.list(), [ -3, 1, 2, 3, 5, 6 ])
-    EXPECT_EQ(d12.size, 6)
+    EXPECT_EQ(`d12.list()`, [ -3, 1, 2, 3, 5, 6 ])
+    EXPECT_EQ(`d12.size`, 6)
 
     val u12 = s1.union(s2)
-    EXPECT_EQ(u12.list(), [ -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 100 ])
-    EXPECT_EQ(u12.size, 11)
-    EXPECT_EQ(u12.minelem(), -3)
-    EXPECT_EQ(u12.maxelem(), 100)
+    EXPECT_EQ(`u12.list()`, [ -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 100 ])
+    EXPECT_EQ(`u12.size`, 11)
+    EXPECT_EQ(`u12.minelem()`, -3)
+    EXPECT_EQ(`u12.maxelem()`, 100)
 
     val i12 = s2.intersect(s1)
-    EXPECT_EQ(i12.list(), [ -2, -1, 4 ])
-    EXPECT_EQ(i12.size, 3)
+    EXPECT_EQ(`i12.list()`, [ -2, -1, 4 ])
+    EXPECT_EQ(`i12.size`, 3)
 
     val fold sum0 = 0 for i <- u12.list() {sum0 + i}
     val sum1 = u12.foldl(fun (i, s) {s + i}, 0)
     val sum2 = u12.foldr(fun (i, s) {s + i}, 0)
-    EXPECT_EQ(sum1, sum0)
-    EXPECT_EQ(sum2, sum0)
-    EXPECT_EQ(u12.map(fun (i) {i*i}), [ 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 ])
+    EXPECT_EQ(`sum1`, sum0)
+    EXPECT_EQ(`sum2`, sum0)
+    EXPECT_EQ(`u12.map(fun (i) {i*i})`, [ 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 ])
     val phrase = "This is a very simple test for the standard and not \
         so simple implementation of binary set".split(' ', allow_empty=true)
     val refres = ["This", "a", "and", "binary", "for", "implementation", "is", "not",
@@ -52,7 +52,7 @@ TEST("ds.set", fun()
                     "test", "the", "very"]
 
     val s1 = Set.from_list(scmp, phrase)
-    EXPECT_EQ(s1.list(), refres)
+    EXPECT_EQ(`s1.list()`, refres)
 })
 
 TEST("dst.hashset", fun()
@@ -64,10 +64,10 @@ TEST("dst.hashset", fun()
                     "test", "the", "very"]
     val s2 = Hashset.empty(8, "")
     for w <- phrase {s2.add(w)}
-    EXPECT_EQ(s2.list().sort((<)), refres)
-    EXPECT_EQ(s2.mem("simple") && s2.mem("very"), true)
+    EXPECT_EQ(`s2.list().sort((<))`, refres)
+    EXPECT_EQ(`s2.mem("simple") && s2.mem("very")`, true)
     s2.remove("simple")
-    EXPECT_EQ(s2.mem("this") || s2.mem("complex") || s2.mem("simple"), false)
+    EXPECT_EQ(`s2.mem("this") || s2.mem("complex") || s2.mem("simple")`, false)
 
     val s1 = Hashset.from_list(0, [ 1, 2, 3, 100, 20, 30 ])
     val s2 = Hashset.from_list(5, [ 1, 7, 3, 110, 20, 30 ])
@@ -75,8 +75,8 @@ TEST("dst.hashset", fun()
     s_inter.intersect(s2)
     val s_union = s1.copy()
     s_union.union(s2)
-    EXPECT_EQ(s_inter.list().sort((<)), [ 1, 3, 20, 30 ])
-    EXPECT_EQ(s_union.list().sort((<)), [ 1, 2, 3, 7, 20, 30, 100, 110 ])
+    EXPECT_EQ(`s_inter.list().sort((<))`, [ 1, 3, 20, 30 ])
+    EXPECT_EQ(`s_union.list().sort((<))`, [ 1, 2, 3, 7, 20, 30, 100, 110 ])
 })
 
 TEST("ds.map", fun()
@@ -104,7 +104,7 @@ TEST("ds.map", fun()
         ("seventh", 1), ("sixth", 1), ("swans", 6), ("tenth", 1), ("third", 1), ("to", 12),
         ("tree", 12), ("true", 12), ("turtle", 11), ("twelfth", 1)]
 
-    EXPECT_EQ(wcounter.list(), ll)
+    EXPECT_EQ(`wcounter.list()`, ll)
 
     // An alternative, faster way to increment word counters is to use Map.update() function,
     // where we search for each word just once
@@ -117,19 +117,19 @@ TEST("ds.map", fun()
                 })
         }
 
-    EXPECT_EQ(wcounter2.list(), ll)
+    EXPECT_EQ(`wcounter2.list()`, ll)
 
     val total_words_ref = fold c=0 for (_, ci) <- ll {c+ci}
     val total_words = wcounter.foldl(fun (_, ci, c) {c + ci}, 0)
 
-    EXPECT_EQ(total_words, total_words_ref)
+    EXPECT_EQ(`total_words`, total_words_ref)
 
     val fold wcounter_odd=wcounter, ll_odd=[] for (w, c) <- ll {
             if c % 2 == 0 {(wcounter_odd.remove(w), ll_odd)}
             else {(wcounter_odd, (w, c) :: ll_odd)}
         }
 
-    EXPECT_EQ(wcounter_odd.list(), ll_odd.rev())
+    EXPECT_EQ(`wcounter_odd.list()`, `ll_odd.rev()`)
 })
 
 TEST("ds.hashmap", fun() {
@@ -172,8 +172,8 @@ TEST("ds.hashmap", fun() {
 
     val ll_fh = wcounter.list().sort((<))
     val odd_ll_fh = odd_wcounter.list().sort((<))
-    EXPECT_EQ(ll_fh, ll)
-    EXPECT_EQ(odd_ll_fh, odd_ll)
-    EXPECT_EQ(wcounter.find_opt("doves").value_or(-1), 11)
-    EXPECT_EQ(wcounter.find_opt("silver").value_or(-1), -1)
+    EXPECT_EQ(`ll_fh`, ll)
+    EXPECT_EQ(`odd_ll_fh`, odd_ll)
+    EXPECT_EQ(`wcounter.find_opt("doves").value_or(-1)`, 11)
+    EXPECT_EQ(`wcounter.find_opt("silver").value_or(-1)`, -1)
 })

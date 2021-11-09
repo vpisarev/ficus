@@ -2632,7 +2632,7 @@ Defining and using complex generic types is easy too, as we will see in [Sum Typ
 
 ### 't [+]
 
-You may have noticed that compehensions or for-loops, processing 1D, 2D etc. arrays often looks the same, e.g. the implementation of pairwise addition of two arrays looks like
+You may have noticed that comprehensions or for-loops, processing 1D, 2D etc. arrays often looks the same, e.g. the implementation of pairwise addition of two arrays looks like
 
 ```
 val result = [| for x <- A, y <- B {x + y} |]
@@ -2649,7 +2649,7 @@ That is, instead of defining several equivalent functions with parameters of dif
 
 ### (...)
 
-Ficus standard library also provides a compehensive set of operations on tuples, where some operations support tuples with any number of elements. The implementation is still quite compact thanks to for-loops over tuples, tuple comprehensions and `(...)` notation.
+Ficus standard library also provides a comprehensive set of operations on tuples, where some operations support tuples with any number of elements. The implementation is still quite compact thanks to for-loops over tuples, tuple comprehensions and `(...)` notation.
 
 ```
 operator .> (a: (...), b: (...)) = (for x <- a, y <- b {x > y})

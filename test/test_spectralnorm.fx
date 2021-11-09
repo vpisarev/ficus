@@ -50,5 +50,5 @@ fun spectralnorm(n: int)
 }
 
 var N = 100
-EXPECT_NEAR(spectralnorm(N), 1.274219991234931, 1e-6)
+EXPECT_NEAR(`spectralnorm(N)`, 1.274219991234931, 1e-6)
 })

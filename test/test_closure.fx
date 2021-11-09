@@ -17,7 +17,7 @@ TEST("closure.no_inner_fn", fun()
         string(pf(0))
     }
 
-    EXPECT_EQ(test(), "1")
+    EXPECT_EQ(`test()`, "1")
 })
 
 TEST("closure.inner_fn_no_fv", fun()
@@ -26,7 +26,7 @@ TEST("closure.inner_fn_no_fv", fun()
     fun get_f() { f }
     val pf = get_f();
 
-    EXPECT_EQ(pf(0), 1)
+    EXPECT_EQ(`pf(0)`, 1)
 })
 
 TEST("closure.inner_fn_in_global_block", fun()
@@ -37,7 +37,7 @@ TEST("closure.inner_fn_in_global_block", fun()
         f()
     }
 
-    EXPECT_EQ(res, 2)
+    EXPECT_EQ(`res`, 2)
 })
 
 TEST("closure.inner_fn_ref", fun()
@@ -56,7 +56,7 @@ TEST("closure.inner_fn_ref", fun()
     }
 
     val c = container()
-    EXPECT_EQ(c(), 5)
+    EXPECT_EQ(`c()`, 5)
 })
 
 TEST("closure.inner_fn_with_fv_var", fun()
@@ -70,9 +70,9 @@ TEST("closure.inner_fn_with_fv_var", fun()
 
     val pf = get_f(1)
     pf(2)
-    EXPECT_EQ(counter, 3)
+    EXPECT_EQ(`counter`, 3)
     pf(3)
-    EXPECT_EQ(counter, 7)
+    EXPECT_EQ(`counter`, 7)
 })
 
 TEST("closure.inner_fn_with_fv", fun()
@@ -83,7 +83,7 @@ TEST("closure.inner_fn_with_fv", fun()
         f
     }
     val pf = get_f(1)
-    EXPECT_EQ(pf(0), 1)
+    EXPECT_EQ(`pf(0)`, 1)
 })
 
 TEST("closure.inner_recursive_no_fv", fun()
@@ -95,9 +95,9 @@ TEST("closure.inner_recursive_no_fv", fun()
         f1(b)
     }
 
-    EXPECT_EQ(test(0), 0)
-    EXPECT_EQ(test(1), 0)
-    EXPECT_EQ(test(2), 2)
+    EXPECT_EQ(`test(0)`, 0)
+    EXPECT_EQ(`test(1)`, 0)
+    EXPECT_EQ(`test(2)`, 2)
 })
 
 TEST("closure.recursive_1", fun()
@@ -120,7 +120,7 @@ TEST("closure.recursive_1", fun()
         foo(a + b)
     }
 
-    EXPECT_EQ(outer(1, 2), 4)
+    EXPECT_EQ(`outer(1, 2)`, 4)
 })
 
 TEST("closure.recursive_2", fun()
@@ -146,7 +146,7 @@ TEST("closure.recursive_2", fun()
         foo(a + b)
     }
 
-    EXPECT_EQ(outer(1, 2), 6)
+    EXPECT_EQ(`outer(1, 2)`, 6)
 })
 
 TEST("closure.recursive_3", fun()
@@ -172,7 +172,7 @@ TEST("closure.recursive_3", fun()
         foo(a + b)
     }
 
-    EXPECT_EQ(outer(1, 2), 8)
+    EXPECT_EQ(`outer(1, 2)`, 8)
 })
 
 TEST("closure.kfor_0_no_kfor_fv", fun()
@@ -190,7 +190,7 @@ TEST("closure.kfor_0_no_kfor_fv", fun()
         [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct(1000), [for i <- 0:10 {1100}])
+    EXPECT_EQ(`outer_direct(1000)`, [for i <- 0:10 {1100}])
 })
 
 TEST("closure.kfor_1_fv", fun()
@@ -210,7 +210,7 @@ TEST("closure.kfor_1_fv", fun()
         [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct_2(1000), [for i <- 0:10 {2200 + i}])
+    EXPECT_EQ(`outer_direct_2(1000)`, [for i <- 0:10 {2200 + i}])
 })
 
 TEST("closure.kfor_1", fun()
@@ -229,7 +229,7 @@ TEST("closure.kfor_1", fun()
         [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct(1000), [for i <- 0:10 {1100 + i}])
+    EXPECT_EQ(`outer_direct(1000)`, [for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_2", fun()
@@ -250,7 +250,7 @@ TEST("closure.kfor_2", fun()
         [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_direct_k(1000), [for i <- 0:10 {2200 + 2 * i + 1}])
+    EXPECT_EQ(`outer_direct_k(1000)`, [for i <- 0:10 {2200 + 2 * i + 1}])
 })
 
 TEST("closure.kfor_3", fun()
@@ -266,7 +266,7 @@ TEST("closure.kfor_3", fun()
         [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_inner_val(1000), [for i <- 0:10 {1100 + i}])
+    EXPECT_EQ(`outer_inner_val(1000)`, [for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_4", fun()
@@ -282,7 +282,7 @@ TEST("closure.kfor_4", fun()
         [for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(outer_inner_var(1000), [for i <- 0:10 {1100 + i}])
+    EXPECT_EQ(`outer_inner_var(1000)`, [for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_5", fun()
@@ -299,7 +299,7 @@ TEST("closure.kfor_5", fun()
     }
 
     val result = outer_outer_var(1000)
-    EXPECT_EQ(result.1, [for i <- 0:10 {1100 + result.0}])
+    EXPECT_EQ(`result.1`, [for i <- 0:10 {1100 + result.0}])
 })
 
 TEST("closure.object", fun()
@@ -321,7 +321,7 @@ TEST("closure.object", fun()
         s
     }
 
-    EXPECT_EQ(closure_object(100), "109;108;107;106;105;104;103;102;101;100;")
+    EXPECT_EQ(`closure_object(100)`, "109;108;107;106;105;104;103;102;101;100;")
 })
 
 TEST("closure.object_in_tuple", fun()
@@ -344,7 +344,7 @@ TEST("closure.object_in_tuple", fun()
         s
     }
 
-    EXPECT_EQ(closure_object(1000), "109;108;107;106;105;104;103;102;101;100;")
+    EXPECT_EQ(`closure_object(1000)`, "109;108;107;106;105;104;103;102;101;100;")
 })
 
 TEST("closure.middle_empty_closure", fun()
@@ -360,22 +360,22 @@ TEST("closure.middle_empty_closure", fun()
         foo()
     }
 
-    EXPECT_EQ(test(0), 0)
-    EXPECT_EQ(test(1), 4)
+    EXPECT_EQ(`test(0)`, 0)
+    EXPECT_EQ(`test(1)`, 4)
 })
 
 TEST("closure.declare_alias", fun ()
 {
     val my_own_max_function = fun(a: int, b: int) { max(a, b) }
 
-    EXPECT_EQ(my_own_max_function(2, 3), 3)
+    EXPECT_EQ(`my_own_max_function(2, 3)`, 3)
 })
 
 TEST("closure.handmade_functions", fun()
 {
     fun g(a: int) = fun(b: int) { a + b }
 
-    EXPECT_EQ(g(2)(3), 5)
+    EXPECT_EQ(`g(2)(3)`, 5)
 })
 
 TEST("closure.max_function", fun()
@@ -385,8 +385,8 @@ TEST("closure.max_function", fun()
 
     val max_6 = fun(a: int) { max(a, 6) }
 
-    EXPECT_EQ(max_6(1), 6)
-    EXPECT_EQ(max_6(7), 7)
+    EXPECT_EQ(`max_6(1)`, 6)
+    EXPECT_EQ(`max_6(7)`, 7)
 })
 
 TEST("closure.max_function_depending_on_val", fun()
@@ -394,8 +394,8 @@ TEST("closure.max_function_depending_on_val", fun()
     val threshold = 10
     val max_10 = fun(a: int) { max(a, threshold) }
 
-    EXPECT_EQ(max_10(1), 10)
-    EXPECT_EQ(max_10(70), 70)
+    EXPECT_EQ(`max_10(1)`, 10)
+    EXPECT_EQ(`max_10(70)`, 70)
 })
 
 TEST("closure.max_function_depending_on_var", fun()
@@ -403,22 +403,22 @@ TEST("closure.max_function_depending_on_var", fun()
     var threshold = 10
     val max_10 = fun(a: int) { max(a, threshold) }
 
-    EXPECT_EQ(max_10(1), 10)
-    EXPECT_EQ(max_10(70), 70)
+    EXPECT_EQ(`max_10(1)`, 10)
+    EXPECT_EQ(`max_10(70)`, 70)
 
     threshold = 11
-    EXPECT_EQ(max_10(1), 11)
-    EXPECT_EQ(max_10(70), 70)
+    EXPECT_EQ(`max_10(1)`, 11)
+    EXPECT_EQ(`max_10(70)`, 70)
 })
 
 TEST("closure.self-refencing", fun()
 {
-    type tree_t = 
-        | Leaf  
+    type tree_t =
+        | Leaf
         | Node : tree_t list
-    
+
     var leafs = 0
-    
+
     fun leaf_printer(tree:tree_t){
         fun commaconcat(lst: tree_t list, f: tree_t -> string) {
             match lst {
@@ -428,7 +428,7 @@ TEST("closure.self-refencing", fun()
             }
         }
         match tree {
-        | Leaf => 
+        | Leaf =>
             leafs = leafs + 1
             f"[{leafs}]"
         | Node(lst) => "[" + commaconcat(lst, leaf_printer) + "]"
@@ -437,7 +437,6 @@ TEST("closure.self-refencing", fun()
 
     val tree = Node([Node([Node([Leaf]),Node([Leaf])]),Node([Node([Node([Leaf])])]),Node([Node([Node([Leaf])]),Node([Leaf])])])
 
-    EXPECT_EQ(leaf_printer(tree), "[[[[1]], [[2]]], [[[[3]]]], [[[[4]]], [[5]]]]")
-    EXPECT_EQ(leafs, 5)
+    EXPECT_EQ(`leaf_printer(tree)`, "[[[[1]], [[2]]], [[[[3]]]], [[[[4]]], [[5]]]]")
+    EXPECT_EQ(`leafs`, 5)
 })
-

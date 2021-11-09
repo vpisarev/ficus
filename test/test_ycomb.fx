@@ -32,8 +32,8 @@ fun fib (f: int->int) =
     }
 
 val recfac = ycomb(fac)
-EXPECT_EQ(recfac(5), 120)
+EXPECT_EQ(`recfac(5)`, 120)
 
 val recfib = ycomb(fib)
-EXPECT_EQ(recfib(8), 21)
+EXPECT_EQ(`recfib(8)`, 21)
 })
