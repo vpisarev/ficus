@@ -26,6 +26,8 @@ type test_rng_t =
     state: uint64 ref
 }
 
+type 't errctx = ('t, string, string, int)
+
 fun test_rng_int(rng: test_rng_t, a: int, b: int)
 {
     val s = *rng.state
@@ -65,8 +67,6 @@ fun TEST(name: string, f: void->void)
     g_test_all_registered = (test_info_t {name=name, f=f}) :: g_test_all_registered
 }
 
-type 'x errctx_t = ('x, string, string, int)
-
 fun test_nomsg(): string = ""
 fun test_msg(s: string) = (fun() {s})
 
@@ -102,7 +102,7 @@ fun test_failed_assert_cmp(a: 't, b: 't, op: string)
     throw TestAssertError
 }
 
-fun test_failed_assert_cmp(a: ('t, string, string, int), b: ('t, string, string, int), op: string)
+fun test_failed_assert_cmp(a: 't errctx, b: 't errctx, op: string)
 {
     val b_str = if b.1 != "" {b.1} else {"<Expected>"}
     print(f"{a.2}:{a.3}: Assertion failed: {a.1} {op} {b_str}.\nActual: ")
@@ -119,21 +119,21 @@ fun ASSERT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_assert_cmp(a, b, "<
 fun ASSERT_GT(a: 't, b: 't) = if a > b {} else {test_failed_assert_cmp(a, b, ">")}
 fun ASSERT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_assert_cmp(a, b, ">=")}
 
-fun ASSERT_EQ(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 == b.0 {} else {test_failed_assert_cmp(a, b, "==")}
-fun ASSERT_NE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 != b.0 {} else {test_failed_assert_cmp(a, b, "!=")}
-fun ASSERT_LT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 < b.0 {} else {test_failed_assert_cmp(a, b, "<")}
-fun ASSERT_LE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 <= b.0 {} else {test_failed_assert_cmp(a, b, "<=")}
-fun ASSERT_GT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 > b.0 {} else {test_failed_assert_cmp(a, b, ">")}
-fun ASSERT_GE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 >= b.0 {} else {test_failed_assert_cmp(a, b, ">=")}
+fun ASSERT_EQ(a: 't errctx, b: 't errctx) = if a.0 == b.0 {} else {test_failed_assert_cmp(a, b, "==")}
+fun ASSERT_NE(a: 't errctx, b: 't errctx) = if a.0 != b.0 {} else {test_failed_assert_cmp(a, b, "!=")}
+fun ASSERT_LT(a: 't errctx, b: 't errctx) = if a.0 < b.0 {} else {test_failed_assert_cmp(a, b, "<")}
+fun ASSERT_LE(a: 't errctx, b: 't errctx) = if a.0 <= b.0 {} else {test_failed_assert_cmp(a, b, "<=")}
+fun ASSERT_GT(a: 't errctx, b: 't errctx) = if a.0 > b.0 {} else {test_failed_assert_cmp(a, b, ">")}
+fun ASSERT_GE(a: 't errctx, b: 't errctx) = if a.0 >= b.0 {} else {test_failed_assert_cmp(a, b, ">=")}
 
-fun ASSERT_EQ(a: ('t, string, string, int), b: 't) = if a.0 == b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "==")}
-fun ASSERT_NE(a: ('t, string, string, int), b: 't) = if a.0 != b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "!=")}
-fun ASSERT_LT(a: ('t, string, string, int), b: 't) = if a.0 < b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "<")}
-fun ASSERT_LE(a: ('t, string, string, int), b: 't) = if a.0 <= b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "<=")}
-fun ASSERT_GT(a: ('t, string, string, int), b: 't) = if a.0 > b {} else {test_failed_assert_cmp(a, (b, "", "", 0), ">")}
-fun ASSERT_GE(a: ('t, string, string, int), b: 't) = if a.0 >= b {} else {test_failed_assert_cmp(a, (b, "", "", 0), ">=")}
+fun ASSERT_EQ(a: 't errctx, b: 't) = if a.0 == b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "==")}
+fun ASSERT_NE(a: 't errctx, b: 't) = if a.0 != b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "!=")}
+fun ASSERT_LT(a: 't errctx, b: 't) = if a.0 < b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "<")}
+fun ASSERT_LE(a: 't errctx, b: 't) = if a.0 <= b {} else {test_failed_assert_cmp(a, (b, "", "", 0), "<=")}
+fun ASSERT_GT(a: 't errctx, b: 't) = if a.0 > b {} else {test_failed_assert_cmp(a, (b, "", "", 0), ">")}
+fun ASSERT_GE(a: 't errctx, b: 't) = if a.0 >= b {} else {test_failed_assert_cmp(a, (b, "", "", 0), ">=")}
 
-fun ASSERT_NEAR(a: ('t, string, string, int), b: ('t, string, string, int), eps: 't) =
+fun ASSERT_NEAR(a: 't errctx, b: 't errctx, eps: 't) =
     if b - eps <= a <= b + eps {} else {
         println(f"Assertion abs(<Actual> - <Expected>) <= {eps} failed.\nActual: ")
         println(a)
@@ -166,7 +166,7 @@ fun test_failed_expect_cmp(a: 't, b: 't, op: string)
     g_test_state.currstatus = false
 }
 
-fun test_failed_expect_cmp(a: ('t, string, string, int), b: ('t, string, string, int), op: string)
+fun test_failed_expect_cmp(a: 't errctx, b: 't errctx, op: string)
 {
     val b_str = if b.1 != "" {b.1} else {"<Expected>"}
     print(f"{a.2}:{a.3}: Unexpected result of comparison {a.1} {op} {b_str}.\nActual: ")
@@ -190,7 +190,7 @@ fun test_failed_expect_near(a: 't, b: 't, idx:'idx?, eps: 't)
     g_test_state.currstatus = false
 }
 
-fun test_failed_expect_near(a: ('t, string, string, int), b: ('t, string, string, int), idx:'idx?, eps: 't)
+fun test_failed_expect_near(a: 't errctx, b: 't errctx, idx:'idx?, eps: 't)
 {
     val a_str = if a.1 != "" {a.1} else {"<Actual>"}
     val b_str = if b.1 != "" {b.1} else {"<Expected>"}
@@ -213,27 +213,27 @@ fun EXPECT_LE(a: 't, b: 't) = if a <= b {} else {test_failed_expect_cmp(a, b, "<
 fun EXPECT_GT(a: 't, b: 't) = if a > b {} else {test_failed_expect_cmp(a, b, ">")}
 fun EXPECT_GE(a: 't, b: 't) = if a >= b {} else {test_failed_expect_cmp(a, b, ">=")}
 
-fun EXPECT_EQ(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 == b.0 {} else {test_failed_expect_cmp(a, b, "==")}
-fun EXPECT_NE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 != b.0 {} else {test_failed_expect_cmp(a, b, "!=")}
-fun EXPECT_LT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 < b.0 {} else {test_failed_expect_cmp(a, b, "<")}
-fun EXPECT_LE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 <= b.0 {} else {test_failed_expect_cmp(a, b, "<=")}
-fun EXPECT_GT(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 > b.0 {} else {test_failed_expect_cmp(a, b, ">")}
-fun EXPECT_GE(a: ('t, string, string, int), b: ('t, string, string, int)) = if a.0 >= b.0 {} else {test_failed_expect_cmp(a, b, ">=")}
+fun EXPECT_EQ(a: 't errctx, b: 't errctx) = if a.0 == b.0 {} else {test_failed_expect_cmp(a, b, "==")}
+fun EXPECT_NE(a: 't errctx, b: 't errctx) = if a.0 != b.0 {} else {test_failed_expect_cmp(a, b, "!=")}
+fun EXPECT_LT(a: 't errctx, b: 't errctx) = if a.0 < b.0 {} else {test_failed_expect_cmp(a, b, "<")}
+fun EXPECT_LE(a: 't errctx, b: 't errctx) = if a.0 <= b.0 {} else {test_failed_expect_cmp(a, b, "<=")}
+fun EXPECT_GT(a: 't errctx, b: 't errctx) = if a.0 > b.0 {} else {test_failed_expect_cmp(a, b, ">")}
+fun EXPECT_GE(a: 't errctx, b: 't errctx) = if a.0 >= b.0 {} else {test_failed_expect_cmp(a, b, ">=")}
 
-fun EXPECT_EQ(a: ('t, string, string, int), b: 't) = if a.0 == b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "==")}
-fun EXPECT_NE(a: ('t, string, string, int), b: 't) = if a.0 != b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "!=")}
-fun EXPECT_LT(a: ('t, string, string, int), b: 't) = if a.0 < b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "<")}
-fun EXPECT_LE(a: ('t, string, string, int), b: 't) = if a.0 <= b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "<=")}
-fun EXPECT_GT(a: ('t, string, string, int), b: 't) = if a.0 > b {} else {test_failed_expect_cmp(a, (b, "", "", 0), ">")}
-fun EXPECT_GE(a: ('t, string, string, int), b: 't) = if a.0 >= b {} else {test_failed_expect_cmp(a, (b, "", "", 0), ">=")}
+fun EXPECT_EQ(a: 't errctx, b: 't) = if a.0 == b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "==")}
+fun EXPECT_NE(a: 't errctx, b: 't) = if a.0 != b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "!=")}
+fun EXPECT_LT(a: 't errctx, b: 't) = if a.0 < b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "<")}
+fun EXPECT_LE(a: 't errctx, b: 't) = if a.0 <= b {} else {test_failed_expect_cmp(a, (b, "", "", 0), "<=")}
+fun EXPECT_GT(a: 't errctx, b: 't) = if a.0 > b {} else {test_failed_expect_cmp(a, (b, "", "", 0), ">")}
+fun EXPECT_GE(a: 't errctx, b: 't) = if a.0 >= b {} else {test_failed_expect_cmp(a, (b, "", "", 0), ">=")}
 
 fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
     if b - eps <= a <= b + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
 
-fun EXPECT_NEAR(a: ('t, string, string, int), b: ('t, string, string, int), eps: 't) =
+fun EXPECT_NEAR(a: 't errctx, b: 't errctx, eps: 't) =
     if b.0 - eps <= a.0 <= b.0 + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
 
-fun EXPECT_NEAR(a: ('t, string, string, int), b: 't, eps: 't) =
+fun EXPECT_NEAR(a: 't errctx, b: 't, eps: 't) =
     if b - eps <= a.0 <= b + eps {} else {test_failed_expect_near(a, (b, "", "", 0), (None: int?), eps)}
 
 fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
