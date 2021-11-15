@@ -1399,8 +1399,7 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
         | (AUG_BINOP(binop), l2) :: rest =>
             if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
             val (ts, e2) = parse_complex_exp(rest)
-            val e2 = make_binary(binop, e1, e2, l2)
-            (ts, ExpAssign(e1, e2, l1))
+            (ts, make_binary(OpAugBinary(binop), e1, e2, l2))
         | (DOT_EQUAL, l2) :: (LBRACE, _) :: rest =>
             if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
             val (ts, _, _, rec_init_elems) = parse_exp_list(ts, RBRACE,

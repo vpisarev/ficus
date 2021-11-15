@@ -154,6 +154,7 @@ type binary_t =
     | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCmp: cmpop_t | OpDotCmp: cmpop_t | OpSpaceship | OpDotSpaceship | OpSame | OpCons
+    | OpAugBinary: binary_t 
 
 type unary_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
     | OpMkRef | OpDeref | OpExpand | OpApos
@@ -620,6 +621,7 @@ fun get_exp_ctx(e: exp_t)
     | ExpRange(_, _, _, c) => c
     | ExpLit(_, c) => c
     | ExpIdent(_, c) => c
+    | ExpBinary(OpAugBinary(_), _, _, (_,l)) => (TypVoid, l)
     | ExpBinary(_, _, _, c) => c
     | ExpUnary(_, _, c) => c
     | ExpIntrin(_, _, c) => c
@@ -946,6 +948,7 @@ fun string(bop: binary_t) {
     | OpCmp(c) => string(c)
     | OpDotCmp(c) => "."+string(c)
     | OpCons => "::"
+    | OpAugBinary(inbin) => string(inbin) + "="
 }
 
 fun string(uop: unary_t) {
@@ -1097,7 +1100,7 @@ fun get_binary_fname(bop: binary_t, loc: loc_t) =
     | OpDotCmp(CmpLE) => fname_op_dot_le()
     | OpDotCmp(CmpGE) => fname_op_dot_ge()
     | OpDotCmp(CmpGT) => fname_op_dot_gt()
-    | OpLogicAnd | OpLogicOr | OpCons =>
+    | OpLogicAnd | OpLogicOr | OpCons | OpAugBinary(_) =>
         throw compile_err(loc,
             f"for binary operation \"{bop}\" there is no corresponding function")
     }

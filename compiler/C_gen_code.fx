@@ -1527,7 +1527,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | OpBitwiseXor => COpBitwiseXor
                     | OpCmp(cmpop) => COpCmp(cmpop)
                     | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship | OpDotSpaceship
-                    | OpDotAdd | OpDotSub | OpDotMul | OpDotDiv | OpDotMod | OpDotPow | OpDotCmp _ | OpSame | OpRDiv =>
+                    | OpDotAdd | OpDotSub | OpDotMul | OpDotDiv | OpDotMod | OpDotPow | OpDotCmp _ | OpSame | OpRDiv | OpAugBinary(_) =>
                         throw compile_err(kloc, f"cgen: unsupported op '{bop}' at this stage")
                     }
                 match (c_bop, get_cexp_typ(ce1)) {

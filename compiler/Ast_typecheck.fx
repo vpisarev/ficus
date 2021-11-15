@@ -46,7 +46,6 @@ These are the tasks performed by type checker:
     ** there cannot be duplicated names in function arguments and in any other pattern.
     ** etc.
 */
-
 val pprint_typ_x = Ast_pp.pprint_typ_x
 val pprint_exp_x = Ast_pp.pprint_exp_x
 val pprint_pat_x = Ast_pp.pprint_pat_x
@@ -1367,6 +1366,12 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 check_and_make_call(f_id, [new_e1, new_e2])
             }
         }
+    | ExpBinary(OpAugBinary(bop), e1, e2, _) => 
+        val new_e1 = check_exp(e1, env, sc)
+        // val (etyp1, eloc1) = get_exp_ctx(new_e1)
+        val new_e2 = check_exp(e2, env, sc)
+        // val (etyp2, eloc2) = get_exp_ctx(new_e2)
+        check_exp(ExpAssign(new_e1, ExpBinary(bop, new_e1, new_e2, (TypVar(ref None), eloc)), eloc), env, sc)
     | ExpBinary(bop, e1, e2, _) =>
         val new_e1 = check_exp(e1, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
@@ -1426,7 +1431,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp1, etyp2, eloc, "only equal types can be compared for identity")
             unify(etyp, TypBool, eloc, "the result of identity comparison should be 'bool'")
             (bop, None)
-        | OpCons | OpCmp _ => throw compile_err(eloc, f"unsupported binary operation {bop}")
+        | OpCons | OpCmp _ | OpAugBinary _ => throw compile_err(eloc, f"unsupported binary operation {bop}")
         | OpRDiv => (bop, None)
         }
 
