@@ -355,6 +355,8 @@ FX_EXTERN_C int fx_init_K_loop_inv();
 FX_EXTERN_C void fx_deinit_K_loop_inv();
 FX_EXTERN_C int fx_init_K_fuse_loops();
 FX_EXTERN_C void fx_deinit_K_fuse_loops();
+FX_EXTERN_C int fx_init_K_optim_matop();
+FX_EXTERN_C void fx_deinit_K_optim_matop();
 FX_EXTERN_C int fx_init_K_nothrow_wrappers();
 FX_EXTERN_C void fx_deinit_K_nothrow_wrappers();
 FX_EXTERN_C int fx_init_K_freevars();
@@ -424,6 +426,7 @@ int main(int argc, char** argv)
   if (fx_status >= 0) fx_status = fx_init_K_fast_idx();
   if (fx_status >= 0) fx_status = fx_init_K_loop_inv();
   if (fx_status >= 0) fx_status = fx_init_K_fuse_loops();
+  if (fx_status >= 0) fx_status = fx_init_K_optim_matop();
   if (fx_status >= 0) fx_status = fx_init_K_nothrow_wrappers();
   if (fx_status >= 0) fx_status = fx_init_K_freevars();
   if (fx_status >= 0) fx_status = fx_init_K_declosure();
@@ -453,6 +456,7 @@ int main(int argc, char** argv)
   fx_deinit_K_declosure();
   fx_deinit_K_freevars();
   fx_deinit_K_nothrow_wrappers();
+  fx_deinit_K_optim_matop();
   fx_deinit_K_fuse_loops();
   fx_deinit_K_loop_inv();
   fx_deinit_K_fast_idx();

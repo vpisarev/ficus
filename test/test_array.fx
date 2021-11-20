@@ -39,10 +39,6 @@ TEST("array.tuple_index", fun() {
     val A3 = random(rng, (h,w,d), -2., 2.)
     val B3 = random(rng, (h,w,d), -2., 2.)
 
-    fun uniadd(A,B) {
-        for x@idx <- A, y <- B { A[idx] = x + y}
-    }
-
     fun add1(A,B) {
         for x@idx <- A, y <- B {
             val i:int = idx
@@ -62,17 +58,17 @@ TEST("array.tuple_index", fun() {
     }
 
     val A1ref = copy(A1)
-    uniadd(A1, B1)
+    A1 += B1
     add1(A1ref, B1)
     EXPECT_EQ(`A1`, `A1ref`)
 
     val A2ref = copy(A2)
-    uniadd(A2, B2)
+    A2 += B2
     add2(A2ref, B2)
     EXPECT_EQ(`A2`, `A2ref`)
 
     val A3ref = copy(A3)
-    uniadd(A3, B3)
+    A3 += B3
     add3(A3ref, B3)
     EXPECT_EQ(`A3`, `A3ref`)
 })

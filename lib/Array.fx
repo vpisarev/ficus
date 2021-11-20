@@ -61,6 +61,18 @@ operator .% (a: 'ta [+], b: 'tb [+]) =
 operator .** (a: 'ta [+], b: 'tb [+]) =
     [| for x <- a, y <- b {x .** y} |]
 
+operator += (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x + b} }
+operator -= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x - b} }
+operator .*= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x * b} }
+operator ./= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x / b} }
+operator .%= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x % b} }
+
+operator += (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x + y} }
+operator -= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x - y} }
+operator .*= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x * y} }
+operator ./= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x / y} }
+operator .%= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x % y} }
+
 operator & (a: 't, b: 't [+]) =
     [| for y <- b {a & y} |]
 operator | (a: 't, b: 't [+]) =
@@ -80,6 +92,14 @@ operator | (a: 't [+], b: 't [+]) =
     [| for x <- a, y <- b {x | y} |]
 operator ^ (a: 't [+], b: 't [+]) =
     [| for x <- a, y <- b {x ^ y} |]
+
+operator &= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x & b} }
+operator |= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x | b} }
+operator ^= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x ^ b} }
+
+operator &= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x & y} }
+operator |= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x | y} }
+operator ^= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x ^ y} }
 
 operator .<=> (a: 't [+], b: 't [+]): int [+] =
     [| for x <- a, y <- b {x <=> y} |]
@@ -156,6 +176,11 @@ operator * (a: 't [,], b: 't [,])
         }
     }
     c
+}
+
+operator *= (a: 't [,], b: 't [,]) {
+    val intermediate = a*b
+    for el@idx <- intermediate {a[idx] = el}
 }
 
 fun row2matrix(a: 't [])

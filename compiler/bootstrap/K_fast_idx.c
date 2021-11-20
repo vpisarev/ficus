@@ -6,6 +6,10 @@ struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t;
 
 static void _fx_free_Nt10Hashset__t1R9Ast__id_t(struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t** dst);
 
+struct _fx_N13Ast__binary_t_data_t;
+
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst);
+
 struct _fx_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t_data_t;
 
 static void _fx_free_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t(
@@ -348,6 +352,20 @@ typedef struct _fx_T2R10Ast__loc_tS {
    fx_str_t t1;
 } _fx_T2R10Ast__loc_tS;
 
+typedef struct _fx_N12Ast__cmpop_t {
+   int tag;
+} _fx_N12Ast__cmpop_t;
+
+typedef struct _fx_N13Ast__binary_t_data_t {
+   int_ rc;
+   int tag;
+   union {
+      struct _fx_N12Ast__cmpop_t OpCmp;
+      struct _fx_N12Ast__cmpop_t OpDotCmp;
+      struct _fx_N13Ast__binary_t_data_t* OpAugBinary;
+   } u;
+} _fx_N13Ast__binary_t_data_t, *_fx_N13Ast__binary_t;
+
 typedef struct _fx_T2SR10Ast__loc_t {
    fx_str_t t0;
    struct _fx_R10Ast__loc_t t1;
@@ -527,18 +545,6 @@ typedef struct _fx_LT2BN14K_form__atom_t_data_t {
    struct _fx_T2BN14K_form__atom_t hd;
 } _fx_LT2BN14K_form__atom_t_data_t, *_fx_LT2BN14K_form__atom_t;
 
-typedef struct _fx_N12Ast__cmpop_t {
-   int tag;
-} _fx_N12Ast__cmpop_t;
-
-typedef struct _fx_N13Ast__binary_t {
-   int tag;
-   union {
-      struct _fx_N12Ast__cmpop_t OpCmp;
-      struct _fx_N12Ast__cmpop_t OpDotCmp;
-   } u;
-} _fx_N13Ast__binary_t;
-
 typedef struct _fx_N12Ast__unary_t {
    int tag;
 } _fx_N12Ast__unary_t;
@@ -634,7 +640,7 @@ typedef struct _fx_T2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t {
 } _fx_T2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t;
 
 typedef struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t {
-   struct _fx_N13Ast__binary_t t0;
+   struct _fx_N13Ast__binary_t_data_t* t0;
    struct _fx_N14K_form__atom_t t1;
    struct _fx_N14K_form__atom_t t2;
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t3;
@@ -1734,6 +1740,20 @@ static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1
    fx_copy_str(t1, &fx_result->t1);
 }
 
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst)
+{
+   if (*dst && FX_DECREF((*dst)->rc) == 1) {
+      switch ((*dst)->tag) {
+      case 27:
+         _fx_free_N13Ast__binary_t(&(*dst)->u.OpAugBinary); break;
+      default:
+         ;
+      }
+      fx_free(*dst);
+   }
+   *dst = 0;
+}
+
 static void _fx_free_T2SR10Ast__loc_t(struct _fx_T2SR10Ast__loc_t* dst)
 {
    fx_free_str(&dst->t0);
@@ -2239,6 +2259,7 @@ static void _fx_make_T2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
 static void _fx_free_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
 {
+   _fx_free_N13Ast__binary_t(&dst->t0);
    _fx_free_N14K_form__atom_t(&dst->t1);
    _fx_free_N14K_form__atom_t(&dst->t2);
    _fx_free_T2N14K_form__ktyp_tR10Ast__loc_t(&dst->t3);
@@ -2248,20 +2269,20 @@ static void _fx_copy_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* src,
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
 {
-   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t0, &dst->t0);
    _fx_copy_N14K_form__atom_t(&src->t1, &dst->t1);
    _fx_copy_N14K_form__atom_t(&src->t2, &dst->t2);
    _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(&src->t3, &dst->t3);
 }
 
 static void _fx_make_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_N13Ast__binary_t* t0,
+   struct _fx_N13Ast__binary_t_data_t* t0,
    struct _fx_N14K_form__atom_t* t1,
    struct _fx_N14K_form__atom_t* t2,
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* t3,
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* fx_result)
 {
-   fx_result->t0 = *t0;
+   FX_COPY_PTR(t0, &fx_result->t0);
    _fx_copy_N14K_form__atom_t(t1, &fx_result->t1);
    _fx_copy_N14K_form__atom_t(t2, &fx_result->t2);
    _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(t3, &fx_result->t3);
@@ -3879,9 +3900,12 @@ _fx_N12Map__color_t _fx_g15K_fast_idx__Red = { 1 };
 _fx_N12Map__color_t _fx_g17K_fast_idx__Black = { 2 };
 _fx_Nt11Map__tree_t2R9Ast__id_tN22K_fast_idx__loop_idx_t _fx_g17K_fast_idx__Empty = 0;
 _fx_Nt11Map__tree_t2R9Ast__id_tT3N14K_form__kexp_tBN23K_fast_idx__idx_class_t _fx_g19K_fast_idx__Empty1_ = 0;
-_fx_N13Ast__binary_t _fx_g17K_fast_idx__OpAdd = { 1 };
-_fx_N13Ast__binary_t _fx_g17K_fast_idx__OpSub = { 2 };
-_fx_N13Ast__binary_t _fx_g17K_fast_idx__OpMul = { 3 };
+static _fx_N13Ast__binary_t_data_t OpAdd_data_3 = { 1, 1 };
+_fx_N13Ast__binary_t _fx_g17K_fast_idx__OpAdd = &OpAdd_data_3;
+static _fx_N13Ast__binary_t_data_t OpSub_data_3 = { 1, 2 };
+_fx_N13Ast__binary_t _fx_g17K_fast_idx__OpSub = &OpSub_data_3;
+static _fx_N13Ast__binary_t_data_t OpMul_data_3 = { 1, 3 };
+_fx_N13Ast__binary_t _fx_g17K_fast_idx__OpMul = &OpMul_data_3;
 _fx_N12Ast__unary_t _fx_g20K_fast_idx__OpNegate = { 2 };
 _fx_N13Ast__intrin_t _fx_g25K_fast_idx__IntrinGetSize = { 9 };
 _fx_N13Ast__intrin_t _fx_g26K_fast_idx__IntrinCheckIdx = { 10 };
@@ -3957,7 +3981,7 @@ FX_EXTERN_C int _fx_M6K_formFM8KExpAtomN14K_form__kexp_t2N14K_form__atom_tT2N14K
 
 FX_EXTERN_C int
    _fx_M6K_formFM10KExpBinaryN14K_form__kexp_t4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_N13Ast__binary_t* arg0,
+   struct _fx_N13Ast__binary_t_data_t* arg0,
    struct _fx_N14K_form__atom_t* arg1,
    struct _fx_N14K_form__atom_t* arg2,
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* arg3,
@@ -4985,25 +5009,70 @@ _fx_cleanup: ;
 }
 
 FX_EXTERN_C int _fx_M10K_fast_idxFM15__eq_variants__B2N13Ast__binary_tN13Ast__binary_t(
-   struct _fx_N13Ast__binary_t* a_0,
-   struct _fx_N13Ast__binary_t* b_0,
+   struct _fx_N13Ast__binary_t_data_t* a_0,
+   struct _fx_N13Ast__binary_t_data_t* b_0,
    bool* fx_result,
    void* fx_fv)
 {
+   _fx_N13Ast__binary_t a_1 = 0;
+   _fx_N13Ast__binary_t b_1 = 0;
    int fx_status = 0;
-   if (b_0->tag == 21) {
-      if (a_0->tag == 21) {
-         *fx_result = a_0->u.OpCmp.tag == b_0->u.OpCmp.tag; goto _fx_endmatch_0;
+   bool result_0 = 0;
+   FX_COPY_PTR(a_0, &a_1);
+   FX_COPY_PTR(b_0, &b_1);
+   for (;;) {
+      _fx_N13Ast__binary_t a_2 = 0;
+      _fx_N13Ast__binary_t b_2 = 0;
+      FX_COPY_PTR(a_1, &a_2);
+      FX_COPY_PTR(b_1, &b_2);
+      if (FX_REC_VARIANT_TAG(b_2) == 21) {
+         if (FX_REC_VARIANT_TAG(a_2) == 21) {
+            result_0 = a_2->u.OpCmp.tag == b_2->u.OpCmp.tag; FX_BREAK(_fx_catch_0);  _fx_catch_0: ; goto _fx_endmatch_0;
+         }
       }
-   }
-   if (b_0->tag == 22) {
-      if (a_0->tag == 22) {
-         *fx_result = a_0->u.OpDotCmp.tag == b_0->u.OpDotCmp.tag; goto _fx_endmatch_0;
+      if (FX_REC_VARIANT_TAG(b_2) == 22) {
+         if (FX_REC_VARIANT_TAG(a_2) == 22) {
+            result_0 = a_2->u.OpDotCmp.tag == b_2->u.OpDotCmp.tag; FX_BREAK(_fx_catch_1);  _fx_catch_1: ; goto _fx_endmatch_0;
+         }
       }
-   }
-   *fx_result = a_0->tag == b_0->tag;
+      if (FX_REC_VARIANT_TAG(b_2) == 27) {
+         if (FX_REC_VARIANT_TAG(a_2) == 27) {
+            _fx_N13Ast__binary_t* a0_0 = &a_2->u.OpAugBinary;
+            _fx_free_N13Ast__binary_t(&a_1);
+            FX_COPY_PTR(*a0_0, &a_1);
+            _fx_N13Ast__binary_t* b0_0 = &b_2->u.OpAugBinary;
+            _fx_free_N13Ast__binary_t(&b_1);
+            FX_COPY_PTR(*b0_0, &b_1);
+            goto _fx_endmatch_0;
+         }
+      }
+      result_0 = FX_REC_VARIANT_TAG(a_2) == FX_REC_VARIANT_TAG(b_2);
+      FX_BREAK(_fx_catch_2);
 
-_fx_endmatch_0: ;
+   _fx_catch_2: ;
+
+   _fx_endmatch_0: ;
+      FX_CHECK_EXN(_fx_catch_3);
+
+   _fx_catch_3: ;
+      if (b_2) {
+         _fx_free_N13Ast__binary_t(&b_2);
+      }
+      if (a_2) {
+         _fx_free_N13Ast__binary_t(&a_2);
+      }
+      FX_CHECK_BREAK();
+      FX_CHECK_EXN(_fx_cleanup);
+   }
+   *fx_result = result_0;
+
+_fx_cleanup: ;
+   if (a_1) {
+      _fx_free_N13Ast__binary_t(&a_1);
+   }
+   if (b_1) {
+      _fx_free_N13Ast__binary_t(&b_1);
+   }
    return fx_status;
 }
 
@@ -6176,7 +6245,7 @@ FX_EXTERN_C int _fx_M10K_fast_idxFM13optimized_addN14K_form__kexp_t3N14K_form__a
    }
    FX_CALL(
       _fx_M6K_formFM10KExpBinaryN14K_form__kexp_t4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-         &_fx_g17K_fast_idx__OpAdd, a_0, b_0, &ctx_0, fx_result), _fx_catch_3);
+         _fx_g17K_fast_idx__OpAdd, a_0, b_0, &ctx_0, fx_result), _fx_catch_3);
 
 _fx_catch_3: ;
 
@@ -6245,7 +6314,7 @@ FX_EXTERN_C int _fx_M10K_fast_idxFM13optimized_subN14K_form__kexp_t3N14K_form__a
    }
    FX_CALL(
       _fx_M6K_formFM10KExpBinaryN14K_form__kexp_t4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-         &_fx_g17K_fast_idx__OpSub, a_0, b_0, &ctx_0, fx_result), _fx_catch_3);
+         _fx_g17K_fast_idx__OpSub, a_0, b_0, &ctx_0, fx_result), _fx_catch_3);
 
 _fx_catch_3: ;
 
@@ -6314,7 +6383,7 @@ FX_EXTERN_C int _fx_M10K_fast_idxFM13optimized_mulN14K_form__kexp_t3N14K_form__a
    }
    FX_CALL(
       _fx_M6K_formFM10KExpBinaryN14K_form__kexp_t4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-         &_fx_g17K_fast_idx__OpMul, a_0, b_0, &ctx_0, fx_result), _fx_catch_3);
+         _fx_g17K_fast_idx__OpMul, a_0, b_0, &ctx_0, fx_result), _fx_catch_3);
 
 _fx_catch_3: ;
 
@@ -7098,22 +7167,22 @@ static int _fx_M10K_fast_idxFM24collect_affine_defs_kexpv2N14K_form__kexp_tR22K_
       if (FX_REC_VARIANT_TAG(rhs_0) == 6) {
          _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* vcase_1 =
             &rhs_0->u.KExpBinary;
-         _fx_N13Ast__binary_t* bop_0 = &vcase_1->t0;
+         _fx_N13Ast__binary_t bop_0 = vcase_1->t0;
          _fx_R9Ast__id_t* i_0 = &vcase_0->t0;
          bool t_0;
          if (FX_REC_VARIANT_TAG(vcase_1->t3.t0) == 1) {
             bool t_1;
-            if (bop_0->tag == 1) {
+            if (FX_REC_VARIANT_TAG(bop_0) == 1) {
                t_1 = true;
             }
             else {
-               t_1 = bop_0->tag == 2;
+               t_1 = FX_REC_VARIANT_TAG(bop_0) == 2;
             }
             if (t_1) {
                t_0 = true;
             }
             else {
-               t_0 = bop_0->tag == 3;
+               t_0 = FX_REC_VARIANT_TAG(bop_0) == 3;
             }
          }
          else {
@@ -7362,7 +7431,7 @@ static int
                      _fx_R10Ast__loc_t* loc_1 = &vcase_1->t3.t1;
                      _fx_N14K_form__atom_t* b__0 = &vcase_1->t2;
                      _fx_N14K_form__atom_t* a__0 = &vcase_1->t1;
-                     _fx_N13Ast__binary_t* bop_0 = &vcase_1->t0;
+                     _fx_N13Ast__binary_t bop_0 = vcase_1->t0;
                      FX_CALL(
                         _fx_M10K_fast_idxFM12classify_idxN23K_fast_idx__idx_class_t8N14K_form__atom_tR10Ast__loc_trRt6Map__t2R9Ast__id_tT3N14K_form__kexp_tBN23K_fast_idx__idx_class_tNt10Hashset__t1R9Ast__id_tiRt6Map__t2R9Ast__id_tN22K_fast_idx__loop_idx_trLN14K_form__kexp_trB(
                            a__0, loc_1, affine_defs_ref_0, inloop_vals_0, km_idx_0, loop_idx_0, pre_for_code_ref_0,
@@ -7378,11 +7447,11 @@ static int
                            _fx_R9Ast__id_t* a_idx_0 = &vcase_3->t0;
                            _fx_R9Ast__id_t* b_idx_0 = &vcase_2->t0;
                            bool t_2;
-                           if (bop_0->tag == 1) {
+                           if (FX_REC_VARIANT_TAG(bop_0) == 1) {
                               t_2 = true;
                            }
                            else {
-                              t_2 = bop_0->tag == 2;
+                              t_2 = FX_REC_VARIANT_TAG(bop_0) == 2;
                            }
                            bool t_3;
                            if (t_2) {
@@ -7411,7 +7480,7 @@ static int
                               _fx_Nt6option1N14K_form__kexp_t v_18 = {0};
                               _fx_N14K_form__kexp_t v_19 = 0;
                               _fx_Nt6option1N14K_form__kexp_t v_20 = {0};
-                              if (bop_0->tag == 1) {
+                              if (FX_REC_VARIANT_TAG(bop_0) == 1) {
                                  _fx_FPN14K_form__kexp_t3N14K_form__atom_tN14K_form__atom_tR10Ast__loc_t optimized_add_fp_0 =
                                     {
                                        _fx_M10K_fast_idxFM13optimized_addN14K_form__kexp_t3N14K_form__atom_tN14K_form__atom_tR10Ast__loc_t,
@@ -7457,7 +7526,7 @@ static int
                            }
                         }
                      }
-                     if (bop_0->tag == 3) {
+                     if (FX_REC_VARIANT_TAG(bop_0) == 3) {
                         if (b_class_0.tag == 2) {
                            _fx_T3R9Ast__id_tN14K_form__atom_tN14K_form__atom_t* vcase_4 = &b_class_0.u.IdxSimple;
                            if (a_class_0.tag == 2) {
@@ -7637,7 +7706,7 @@ static int
                                  _fx_N14K_form__atom_t* a1_0 = &vcase_6->t1;
                                  bool res_5;
                                  FX_CALL(
-                                    _fx_M10K_fast_idxFM15__eq_variants__B2N13Ast__binary_tN13Ast__binary_t(bop_0, &vcase_6->t0,
+                                    _fx_M10K_fast_idxFM15__eq_variants__B2N13Ast__binary_tN13Ast__binary_t(bop_0, vcase_6->t0,
                                        &res_5, 0), _fx_catch_8);
                                  bool t_6;
                                  if (res_5) {
@@ -7659,11 +7728,11 @@ static int
                                     }
                                     else {
                                        bool t_8;
-                                       if (bop_0->tag == 1) {
+                                       if (FX_REC_VARIANT_TAG(bop_0) == 1) {
                                           t_8 = true;
                                        }
                                        else {
-                                          t_8 = bop_0->tag == 3;
+                                          t_8 = FX_REC_VARIANT_TAG(bop_0) == 3;
                                        }
                                        bool t_9;
                                        if (t_8) {
