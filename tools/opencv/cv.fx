@@ -49,16 +49,18 @@ type depth_t =
 
 type elemtype_t = (depth_t, int)
 
-fun elemtype(_: 't [+]) = (elemdepth(0:>'t), 1)
-fun elemtype(_: ('t*2) [+]) = (elemdepth(0:>'t), 2)
-fun elemtype(_: ('t*3) [+]) = (elemdepth(0:>'t), 3)
-fun elemtype(_: ('t*4) [+]) = (elemdepth(0:>'t), 4)
-fun elemtype(_: ('t*5) [+]) = (elemdepth(0:>'t), 5)
-fun elemtype(_: ('t*6) [+]) = (elemdepth(0:>'t), 6)
-fun elemtype(_: ('t*7) [+]) = (elemdepth(0:>'t), 7)
-fun elemtype(_: ('t*8) [+]) = (elemdepth(0:>'t), 8)
-fun elemtype(_: ('t*9) [+]) = (elemdepth(0:>'t), 9)
-fun elemtype(_: ('t*10) [+]) = (elemdepth(0:>'t), 10)
+fun arrelemtype(_: 't [+]) = elemtype(0:>'t)
+
+fun elemtype(_: 't) = (elemdepth(0:>'t), 2)
+fun elemtype(_: ('t*2)) = (elemdepth(0:>'t), 2)
+fun elemtype(_: ('t*3)) = (elemdepth(0:>'t), 3)
+fun elemtype(_: ('t*4)) = (elemdepth(0:>'t), 4)
+fun elemtype(_: ('t*5)) = (elemdepth(0:>'t), 5)
+fun elemtype(_: ('t*6)) = (elemdepth(0:>'t), 6)
+fun elemtype(_: ('t*7)) = (elemdepth(0:>'t), 7)
+fun elemtype(_: ('t*8)) = (elemdepth(0:>'t), 8)
+fun elemtype(_: ('t*9)) = (elemdepth(0:>'t), 9)
+fun elemtype(_: ('t*10)) = (elemdepth(0:>'t), 10)
 
 fun elemdepth(_: uint8) = DEPTH_U8
 fun elemdepth(_: int8) = DEPTH_S8
@@ -77,7 +79,7 @@ type anyarr_t = (uint8 [,], depth_t, int)
 }
 fun anyarray(x: 't [+]): anyarr_t
 {
-    val (depth, channels) = elemtype(x)
+    val (depth, channels) = arrelemtype(x)
     ((reinterpret(x): uint8 [,]), depth, channels)
 }
 
@@ -381,7 +383,7 @@ type rotatecode_t = ROTATE_90_CLOCKWISE | ROTATE_180 | ROTATE_90_COUTERCLOCKWISE
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
-    int fx_status = cvt_to((_fx_anyarr_t*)src, c_src);
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
     FX_OCV_TRY_CATCH(
         cv::rotate(c_src, c_dst, (int)(rotateCode->tag-1));
         fx_status = cvt_from(c_dst, 2, src->t1.tag, src->t2, fx_result);
@@ -397,7 +399,7 @@ fun rotate(src: 't [,], rotateCode: rotatecode_t): 't [,] =
 @private fun patchNans_(arr: anyarr_t, v: double): void
 @ccode {
     cv::Mat c_arr;
-    int fx_status = cvt_to((_fx_anyarr_t*)arr, c_arr);
+    int fx_status = cvt_to((const _fx_anyarr_t*)arr, c_arr);
     FX_OCV_TRY_CATCH(
         cv::patchNans(c_arr, v);
     )
@@ -408,13 +410,13 @@ fun patchNans(arr: 't [+], ~v: double=0) = patchNans_(anyarray(arr), v)
 //fun gemm(src1: 't [,], src2: 't [,], src3: 't [,], ~alpha: double=1, ~beta: double=0, ~flags: int=0): 't [,]
 //fun mulTransposed(src1: 't [,], ~aTa: bool, ~delta: 't [,] = [], ~scale: double=1): 't [,]
 @private fun transform_(src: anyarr_t, m: anyarr_t): uint8 [,] =
-{
+@ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_m, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
-    int fx_status = cvt_to((_fx_anyarr_t*)src, c_src);
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
     if (fx_status >= 0)
-        fx_status = cvt_to((_fx_anyarr_t*)m, c_m);
+        fx_status = cvt_to((const _fx_anyarr_t*)m, c_m);
     FX_OCV_TRY_CATCH(
         cv::transform(c_src, c_dst, c_m);
         fx_status = cvt_from(c_dst, src->t0.ndims, src->t1.tag, src->t2, fx_result);
@@ -427,36 +429,434 @@ fun transform(src: 't [], m: 'k [,]): 't [] =
 fun transform(src: 't [,], m: 'k [,]): 't [,] =
     (reintrpret(transform_(anyarray(src), anyarray(m)): 't [,])
 
+@private fun perspectiveTransform_(src: anyarr_t, m: anyarr_t): uint8 [,] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_src, c_m, c_dst;
+    c_dst.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
+    if (fx_status >= 0)
+        fx_status = cvt_to((_fx_anyarr_t*)m, c_m);
+    FX_OCV_TRY_CATCH(
+        cv::perspectiveTransform(c_src, c_dst, c_m);
+        fx_status = cvt_from(c_dst, src->t0.ndims, src->t1.tag, src->t2, fx_result);
+    )
+    return fx_status;
+}
 
-
+fun perspectiveTransform(src: 't [], m: 'k [,]): 't [] =
+    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m)): 't [])
 fun perspectiveTransform(src: 't [,], m: 'k [,]): 't [,] =
-fun solveCubic(coeffs: double []): double []
-fun solvePoly(coeffs: double [], ~maxIters: int=300): double2 []
+    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m)): 't [,])
+
+fun solveCubic(coeffs: double []): double [] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    _fx_anyarr_t coeffs_ = {*coeffs, _FX_DEPTH_FP64, 1};
+    cv::Mat c_coeffs, c_roots;
+    c_roots.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)&coeffs_, c_coeffs);
+    FX_OCV_TRY_CATCH(
+        cv::solveCubic(c_coeffs, c_roots);
+        fx_status = cvt_from(c_roots, 1, _FX_DEPTH_FP64, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun solvePoly(coeffs: double [], ~maxIters: int=300): double2 [] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    _fx_anyarr_t coeffs_ = {*coeffs, _FX_DEPTH_FP64, 1};
+    cv::Mat c_coeffs, c_roots;
+    c_roots.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)&coeffs_, c_coeffs);
+    FX_OCV_TRY_CATCH(
+        cv::solvePoly(c_coeffs, c_roots);
+        fx_status = cvt_from(c_roots, 1, _FX_DEPTH_FP64, 2, fx_result);
+    )
+    return fx_status;
+}
+
+@private fun eigen_(src: anyarr_t): (bool, uint8 [], uint8 [,]) =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_src, c_evals, c_evecs;
+    c_evals.allocator = &g_fxarrAllocator;
+    c_evecs.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
+    FX_OCV_TRY_CATCH(
+        fx_result->t0 = cv::eigen(c_src, c_evals, c_evecs);
+        fx_status = cvt_from(c_evals, 1, src->t1.tag, 1, &fx_result->t1);
+        if (fx_status >= 0)
+            fx_status = cvt_from(c_evecs, 2, src->t1.tag, 1, &fx_result->t2);
+    )
+    return fx_status;
+}
+
 fun eigen(src: 't [,]): (bool, 't [], 't [,])
+{
+    val (f, values, vectors) = eigen_(anyarray(src))
+    (f, (reintrpret(values): 't []), (reinterpet(vectors): 't [,]))
+}
+
+@private fun eigenNonSymmetric_(src: anyarr_t): (uint8 [], uint8 [,]) =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_src, c_evals, c_evecs;
+    c_evals.allocator = &g_fxarrAllocator;
+    c_evecs.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
+    FX_OCV_TRY_CATCH(
+        cv::eigenNonSymmetric(c_src, c_evals, c_evecs);
+        fx_status = cvt_from(c_evals, 1, src->t1.tag, 1, &fx_result->t0);
+        if (fx_status >= 0)
+            fx_status = cvt_from(c_evecs, 2, src->t1.tag, 1, &fx_result->t1);
+    )
+    return fx_status;
+}
+
 fun eigenNonSymmetric(src: 't [,]): ('t [], 't [,])
+{
+    val (evals, evecs) = eigenNonSymmtric_(anyarray(src))
+    ((reinterpret(evals): 't []), (reinterpet(evecs): 't [,]))
+}
+
+@private fun PCACompute_(data: anyarr_t, mean: anyarr_t, maxComponents: int): (uint8 [], uint8 [,]) =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_data, c_mean, c_evals, c_evecs;
+    c_evals.allocator = &g_fxarrAllocator;
+    c_evecs.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)data, c_data);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)mean, c_mean);
+    FX_OCV_TRY_CATCH(
+        cv::PCACompute(c_data, c_mean, c_evecs, c_evals, (int)maxComponents);
+        fx_status = cvt_from(c_evals, 1, data->t1.tag, 1, &fx_result->t0);
+        if (fx_status >= 0)
+            fx_status = cvt_from(c_evecs, 2, data->t1.tag, 1, &fx_result->t1);
+    )
+    return fx_status;
+}
+
 fun PCACompute(data: 't [,], mean: 't [], ~maxComponents: int=0): ('t [], 't [,])
+{
+    val (evals, evecs) = PCACompute_(anyarray(data), anyarray(mean))
+    (reinterpret(evals): 't [], reinterpet(evecs): 't [,])
+}
+
+@private fun PCAProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_data, c_mean, c_evecs, c_proj;
+    c_proj.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)data, c_data);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)mean, c_mean);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)eigenvectors, c_evecs);
+    FX_OCV_TRY_CATCH(
+        cv::PCAProject(c_data, c_mean, c_evecs, c_proj);
+        fx_status = cvt_from(c_proj, 2, data->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
 fun PCAProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
+{
+    val proj = PCAProject_(anyarray(data), anyarray(mean), anyarray(eigenvectors))
+    (reinterpret(proj): 't [,])
+}
+
+@private fun PCABackProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_data, c_mean, c_evecs, c_bproj;
+    c_bproj.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)data, c_data);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)mean, c_mean);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)eigenvectors, c_evecs);
+    FX_OCV_TRY_CATCH(
+        cv::PCABackProject(c_data, c_mean, c_evecs, c_bproj);
+        fx_status = cvt_from(c_bproj, 2, data->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
 fun PCABackProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
+{
+    val bproj = PCABackProject_(anyarray(data), anyarray(mean), anyarray(eigenvectors))
+    (reinterpret(bproj): 't [,])
+}
+
+@private fun SVDecomp(src: anyarr_t, flags: int): (uint8 [,], uint8 [], uint8 [,]) =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_src, c_w, c_u, c_vt;
+    c_w.allocator = &g_fxarrAllocator;
+    c_u.allocator = &g_fxarrAllocator;
+    c_vt.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
+    FX_OCV_TRY_CATCH(
+        cv::SVDecomp(c_src, c_w, c_u, c_vt, (int)flags);
+        fx_status = cvt_from(c_u, 2, src->t1.tag, 1, &fx_result->t0);
+        if (fx_status >= 0)
+            fx_status = cvt_from(c_w, 1, src->t1.tag, 1, &fx_result->t1);
+        if (fx_status >= 0)
+            fx_status = cvt_from(c_vt, 2, src->t1.tag, 1, &fx_result->t2);
+    )
+    return fx_status;
+}
+
 fun SVDecomp(src: 't [,], ~flags: int=0): ('t [,], 't [], 't [,])
-fun SVDecompValues(src: 't [,], ~flags: int=0): 't []
-fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't [,]): 't [,]
-fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't []): 't []
-fun dft(src: 't [], ~flags: int=0): 't []
-fun dft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,]
-fun idft(src: 't [], ~flags: int=0): 't []
-fun idft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,]
-fun mulSpectrums(a: 't [], b: 't [], ~flags: int, conjB: bool=false): 't []
-fun mulSpectrums(a: 't [,], b: 't [,], ~flags: int, conjB: bool=false): 't [,]
-fun getOptimalDFTSize(vecsize: int): int
-fun getRNGSeed(): int
-fun setRNGSeed(seed: int): void
-fun randu(size: int, ~low: 't, ~high: 't): 't []
-fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,]
-fun randn(size: int, ~mean: 't, ~stddev: 't): 't []
-fun randn(size: (int, int), ~mean: 't, ~stddev: 't): 't [,]
-fun randShuffle(arr: 't [], ~iterFactor: double = 1.): void
+{
+    val (u, w, vt) = SVDecomp_(anyarray(src), flags)
+    ((reinterpet(u): 't [,]), (reinterpet(w): 't []), (reinterpet(vt): 't [,]))
+}
+
+@private fun SVDecompValues(src: anyarr_t, ~flags: int=0): uint8 [] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_src, c_w;
+    c_w.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
+    FX_OCV_TRY_CATCH(
+        cv::SVDecomp(c_src, c_w, noArray(), noArray(), (int)flags);
+        fx_status = cvt_from(c_w, 1, src->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun SVDecompValues(src: 't [,], ~flags: int=0): 't [] =
+    (reinterpet(SVDecompValues_(anyarray(src), flags)) : 't [])
+
+@private fun SVBackSubst2D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 [,] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_w, c_u, c_vt, c_rhs, c_result;
+    c_result.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)u, c_u);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)w, c_w);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)vt, c_vt);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)rhs, c_rhs);
+    FX_OCV_TRY_CATCH(
+        cv::SVBackSubst(c_w, c_u, c_vt, c_rhs, c_result);
+        fx_status = cvt_from(c_result, 2, w->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't [,]): 't [,] =
+    (reinterpret(SVBackSubst2D_(anyarray(u), anyarray(w), anyarray(vt), anyarray(rhs))) : 't [,])
+
+@private fun SVBackSubst1D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 [] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_w, c_u, c_vt, c_rhs, c_result;
+    c_result.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)u, c_u);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)w, c_w);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)vt, c_vt);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)rhs, c_rhs);
+    FX_OCV_TRY_CATCH(
+        cv::SVBackSubst(c_w, c_u, c_vt, c_rhs, c_result);
+        fx_status = cvt_from(c_result, 1, w->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't []): 't [] =
+    (reinterpret(SVBackSubst1D_(anyarray(u), anyarray(w), anyarray(vt), anyarray(rhs))) : 't [])
+
+val DFT_INVERSE=1
+val DFT_SCALE=2
+val DFT_ROWS=4
+
+@private fun dft(src: anyarr_t, flags: int): uint8 [] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_src, c_dst;
+    c_dst.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
+    FX_OCV_TRY_CATCH(
+        int flags_ = (int)flags | ((flags & cv::DFT_INVERSE) ? (cv::DFT_REAL_OUTPUT+cv::DFT_SCALE) : 0);
+        cv::dft(c_src, c_dst, (int)flags);
+        CV_Assert(c_dst.type() == c_src.type());
+        fx_status = cvt_from(c_dst, 1, src->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun dft(src: 't [], ~flags: int=0): 't [] =
+    (reinterpret(dft_(anyarray(src), flags)) : 't [])
+
+@private fun dft(src: anyarr_t, flags: int, nonzeroRows: int): uint8 [,] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_src, c_dst;
+    c_dst.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
+    FX_OCV_TRY_CATCH(
+        int flags_ = (int)flags | ((flags & cv::DFT_INVERSE) ? (cv::DFT_REAL_OUTPUT+cv::DFT_SCALE) : 0);
+        cv::dft(c_src, c_dst, (int)flags, (int)nonzeroRows);
+        CV_Assert(c_dst.type() == c_src.type());
+        fx_status = cvt_from(c_dst, 2, src->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun dft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
+    (reinterpret(dft_(anyarray(src), flags, nonzeroRows)) : 't [])
+
+fun idft(src: 't [], ~flags: int=0): 't [] =
+    (reinterpret(dft_(anyarray(src), flags^DFT_INVERSE)) : 't [])
+
+fun idft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
+    (reinterpret(dft_(anyarray(src), flags^DFT_INVERSE, nonzeroRows)) : 't [,])
+
+@private fun mulSpectrums1D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 [] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_a, c_b, c_dst;
+    c_dst.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)a, c_a);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)a, c_a);
+    FX_OCV_TRY_CATCH(
+        cv::mulSpectrums(c_a, c_b, c_dst, (int)flags, conjB);
+        fx_status = cvt_from(c_dst, 1, a->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun mulSpectrums(a: 't [], b: 't [], ~flags: int, conjB: bool=false): 't [] =
+    (reinterpret(mulSpectrums1D_(anyarray(a), anyarray(b), flags, conjB)) : 't [])
+
+@private fun mulSpectrums2D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 [] =
+@ccode {
+    memset(fx_result, 0, sizeof(*fx_result));
+    cv::Mat c_a, c_b, c_dst;
+    c_dst.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)a, c_a);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)a, c_a);
+    FX_OCV_TRY_CATCH(
+        cv::mulSpectrums(c_a, c_b, c_dst, (int)flags, conjB);
+        fx_status = cvt_from(c_dst, 1, a->t1.tag, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun mulSpectrums(a: 't [,], b: 't [,], ~flags: int, conjB: bool=false): 't [,] =
+    (reinterpret(mulSpectrums2D_(anyarray(a), anyarray(b), flags, conjB)) : 't [,])
+
+fun getOptimalDFTSize(vecsize: int): int =
+@ccode {
+    int fx_status = 0;
+    FX_OCV_TRY_CATCH(
+        *fx_result = cv::getOptimalDFTSize((int)vecsize);
+    )
+    return fx_status;
+}
+
+@nothrow fun getRNGSeed(): uint64 =
+@ccode {
+    return theRNG().state;
+}
+
+@nothrow fun setRNGSeed(seed: uint64): void =
+@ccode {
+    theRNG() = RNG(seed);
+}
+
+val RNG_UNIFORM : int = @ccode {cv::RNG::UNIFORM}
+val RNG_NORMAL : int = @ccode {cv::RNG::NORMAL}
+
+@private fun rand_(ndims: int, sz: (int*5), dc: (depth_t, int), param1: double, param2: double, dist: int): uint8 [,] =
+@ccode {
+    int sz_[] = {(int)sz->t0, (int)sz->t1, (int)sz->t2, (int)sz->t3, (int)sz->t4};
+    cv::Mat c_arr;
+    c_arr.allocator = &g_fxarrAllocator;
+    c_arr.create((int)ndims, sz_, CV_MAKETYPE(depth2cv(dc->t0.tag), (int)dc->t1));
+    int fx_status = CV_OK;
+    FX_OCV_TRY_CATCH(
+        if (dist == cv::RNG::UNIFORM)
+            cv::randu(c_arr, param1, param2);
+        else
+            cv::randn(c_arr, param1, param2);
+        fx_status = cvt_from(c_arr, ndims, dc->t0.tag, dc->t1, fx_result);
+    )
+    return fx_status;
+}
+
+fun randu(size: int, ~low: 't, ~high: 't): 't [] =
+    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_UNIFORM) : 't [])
+
+fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,] =
+    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_UNIFORM) : 't [,])
+
+fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
+    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_UNIFORM) : 't [,,])
+
+fun randn(size: int, ~mean: 't, ~stddev: 't): 't [] =
+    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_NORMAL) : 't [])
+
+fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,] =
+    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_NORMAL) : 't [,])
+
+fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
+    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_NORMAL) : 't [,,])
+
+@private fun randShuffle(arr: anyarr_t, iterFactor: double): void =
+@ccode {
+    cv::Mat c_arr;
+    int fx_status = cvt_to((const _fx_anyarr_t*)arr, c_arr);
+    FX_OCV_TRY_CATCH(
+        cv::randShuffle(c_arr, iterFactor);
+    )
+    return fx_status;
+}
+
+fun randShuffle(arr: 't [], ~iterFactor: double = 1.): void =
+    randShuffle(anyarray(arr), iterFactor)
+
+@private fun kmeans_(data: anyarr_t, K: int, flags: int, maxIters: int, epsilon: double,
+    attempts: int, centers: anyarr_t, labels0: anyarr_t): (double, int []) =
+@ccode {
+    cv::Mat c_data, c_centers, c_labels0, c_labels;
+    c_labels.allocator = &g_fxarrAllocator;
+    int fx_status = cvt_to((const _fx_anyarr_t*)data, c_data);
+    int flags = cv::KMEANS_PP_CENTERS;
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)centers, c_centers);
+    if (fx_status >= 0)
+        fx_status = cvt_to((const _fx_anyarr_t*)labels0, c_labels0);
+    FX_OCV_TRY_CATCH(
+        if (!c_labels0.empty()) {
+            c_labels0.copyTo(c_labels);
+            flags = cv::KMEANS_USE_INITIAL_LABELS;
+        }
+        fx_result->t0 = cv::kmeans(c_data, (int)K, c_labels,
+            cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+                             (int)maxIters, epsilon),
+            (int)attempts, flags, c_centers);
+        fx_status = cvt_from(c_labels, 1, _FX_DEPTH_S32, 1, &fx_result->t1);
+    )
+    return fx_status;
+}
+
 fun kmeans(data: float [,], K: int, ~flags: int, ~maxIters: int, ~epsilon: double=0,
-           ~attempts: int=1, ~centers: float [,]=[], ~labels0: int []=[]): (double, int [])
+           ~attempts: int=1, ~centers: float [,]=[], ~labels0: int []=[]): (double, int []) =
+    kmeans_(anyarr(data), K, flags, maxIters, epsilon, attempts,
+            anyarray(centers), anyarray(labels0))
 
 //////////////////////////////////// imgproc ///////////////////////////////
 
@@ -467,17 +867,63 @@ type box_t =
     angle: float
 }
 
-fun getGaussianKernel(ksize: int, sigma: double): float [,]
+fun getGaussianKernel(ksize: int, sigma: double): float [] =
+@ccode {
+    cv::Mat c_kernel;
+    int fx_status = FX_OK;
+    FX_OCV_TRY_CATCH(
+        c_kernel = cv::getGaussianKernel(ksize, sigma, CV_32F);
+        fx_status = cvt_from(c_kernel, 1, _FX_DEPTH_FP32, 1, fx_result);
+    )
+    return fx_status;
+}
+
+@private fun getGaborKernel_(ksize: intx2, sigma: double, theta: double, lambda: double,
+                             gamma: double, psi: double): float [,] =
+@ccode {
+    cv::Mat c_kernel;
+    int fx_status = FX_OK;
+    FX_OCV_TRY_CATCH(
+        c_kernel = cv::getGaborKernel(cv::Size((int)ksize->t0, (int)ksize->t1),
+                                      sigma, theta, lambda, gamma, psi, CV_32F);
+        fx_status = cvt_from(c_kernel, 2, _FX_DEPTH_FP32, 1, fx_result);
+    )
+    return fx_status;
+}
+
 fun getGaborKernel(ksize: intx2, ~sigma: double, ~theta: double, ~lambda: double,
-                   ~gamma: double, ~psi: double = M_PI*0.5): float [,]
+                   ~gamma: double, ~psi: double): float [,] =
+    getGaborKernel_(ksize, sigma, theta, lambda, gamma, psi)
+
+fun getStructuringElement_(ksize: intx2, ~sigma: double, ~theta: double, ~lambda: double,
+                          ~gamma: double, ~psi: double = M_PI*0.5): uint8 [,] =
+@ccode {
+    cv::Mat c_kernel;
+    int fx_status = FX_OK;
+    FX_OCV_TRY_CATCH(
+        c_kernel = cv::getStructuringElement(cv::Size((int)ksize->t0, (int)ksize->t1),
+
+        fx_status = cvt_from(c_kernel, 2, _FX_DEPTH_U8, 1, fx_result);
+    )
+    return fx_status;
+}
 
 fun getStructuringElement(shape: int, ksize: intx2, ~anchor: intx2 = (-1, -1)): bool [,]
 
-fun medianBlur(src: 't [,], ksize: int): 't [,]
+@private fun medianBlur_(src: 't [,], ksize: int): 't [,] =
+@ccode {
+
+}
+
 fun GaussianBlur(src: 't [,], ksize: intx2, ~sigma: double,
-                 ~sigmaY: double=0., ~borderType: int=BORDER_DEFAULT): 't [,]
+                 ~sigmaY: double=0., ~borderType: int=BORDER_DEFAULT): 't [,] =
+@ccode {
+
+}
+
 fun bilateralFilter(src: 't [,], d: int, ~sigmaColor: double,
-                    ~sigmaSpace: double, ~borderType: int=BORDER_DEFAULT): 't [,]
+                    ~sigmaSpace: double, ~borderType: int=BORDER_DEFAULT): 't [,] =
+
 fun blur(src: 't [,], ksize: intx2, ~anchor: intx2=(-1, -1),
          ~borderType: int=BORDER_DEFAULT): 't [,]
 fun filter2D(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),

@@ -286,6 +286,25 @@ fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |]
 
 fun string(v: 't vector) = join_embrace("[< ", " >]", ", ", [| for x <- v {repr(x)} |])
 
+@pure fun string(v: char vector): string =
+@ccode {
+    int_ i, size = v->size;
+    int fx_status = fx_make_str(0, size, fx_result);
+    if (fx_status >= 0) {
+        fx_rrbiter_t iter;
+        char_* src = FX_RRB_START_READ(char_, *v, iter);
+        char_* dst = fx_result->data;
+        for (i = 0; i < size; i++) {
+            dst[i] = *src;
+            FX_RRB_NEXT(char_, iter, src);
+        }
+    }
+    return fx_status;
+}
+
+@pure fun repr(v: char vector) =
+    join_embrace("[< ", " >]", ", ", [| for x <- v {repr(x)} |])
+
 @pure operator * (c: char, n: int): string = @ccode
 {
     int fx_status = fx_make_str(0, n, fx_result);
