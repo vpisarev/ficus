@@ -32,11 +32,11 @@ TEST("array.solve", fun() {
 TEST("array.tuple_index", fun() {
     val (h,w,d) = (10, 10, 10)
     val rng = RNG(0xffffffffUL)
-    val A1 = random(rng, (h), -2., 2.)
+    var A1 = random(rng, (h), -2., 2.)
     val B1 = random(rng, (h), -2., 2.)
-    val A2 = random(rng, (h,w), -2., 2.)
+    var A2 = random(rng, (h,w), -2., 2.)
     val B2 = random(rng, (h,w), -2., 2.)
-    val A3 = random(rng, (h,w,d), -2., 2.)
+    var A3 = random(rng, (h,w,d), -2., 2.)
     val B3 = random(rng, (h,w,d), -2., 2.)
 
     fun add1(A,B) {

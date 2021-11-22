@@ -1392,19 +1392,27 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val new_e1 = check_exp(e1, env, sc)
             val (etyp1, eloc1) as ectx1 = get_exp_ctx(new_e1)
             val new_e2 = check_exp(e2, env, sc)
-            val (etyp2, _) = get_exp_ctx(new_e2)
-            val probably_result = match (deref_typ(etyp1), deref_typ(etyp2)) {
-            | (TypArray _, _) | (TypRecord _, _) =>  //TODO: VP said to use "non-standart types or arrays". Is it enough ot use TypRecord and TypArray? 
+            val is_appropriate_type = match deref_typ(etyp1) {
+            | TypArray _ | TypRecord _ => true
+            | TypApp (_, tname) => match id_info(tname, eloc1) {
+                | IdTyp _ | IdVariant _ | IdInterface _ => true
+                | _ => false
+                }
+            | _ => false
+            }
+
+            val probably_result = if is_appropriate_type {
                 val f_id = get_binary_fname(aug_op, eloc)
                 maybe_make_call(f_id, [new_e1, new_e2])
-            | _ => None
+            } else {None}
+
+            if !is_lvalue(true, new_e1, ectx1) {
+                throw compile_err(eloc1, f"the left side of augmented operation {aug_op} is not an l-value")
             }
+
             match probably_result {
             | Some(new_e) => new_e
             | _ =>
-                if !is_lvalue(true, new_e1, ectx1) {
-                    throw compile_err(eloc1, f"the left side of augmented operation {aug_op} an l-value")
-                }
                 val binres = check_exp(ExpBinary(bop, new_e1, new_e2, (TypVar(ref None), eloc)), env, sc)
                 check_exp(ExpAssign(new_e1, binres, eloc), env, sc)
             }
