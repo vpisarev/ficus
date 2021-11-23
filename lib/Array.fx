@@ -179,8 +179,8 @@ operator * (a: 't [,], b: 't [,])
 }
 
 operator *= (a: 't [,], b: 't [,]) {
-    val intermediate = a*b
-    for el@idx <- intermediate {a[idx] = el}
+    val temp = a*b
+    a[:,:] = temp
 }
 
 fun row2matrix(a: 't [])
