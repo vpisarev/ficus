@@ -738,8 +738,7 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list,
     }
 }
 
-fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_t, typ_t)
-{
+fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): ((id_t, typ_t)?, env_entry_t list) {
     var possible_matches = []
     val nt_opt = find_first(n, env, env, sc, loc, fun (e: env_entry_t): (id_t, typ_t)? {
         | EnvId({m=0}) => None
@@ -824,7 +823,12 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
             }
         | EnvTyp _ => None
         })
+    (nt_opt, possible_matches)
+}
 
+fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_t, typ_t)
+{
+    val (nt_opt, possible_matches) = lookup_id_opt(n, t, env, sc, loc)
     match nt_opt {
     | Some(nt) => nt
     | None =>
@@ -1154,6 +1158,44 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         ExpCall(new_f, args, ctx)
     }
 
+    /* Try to find the proper function and make "call" expression
+       given that all the parameters are already type-checked */
+    fun maybe_make_call(f_id: id_t, args: exp_t list): exp_t? {
+        val arg_typs = [for a <- args { get_exp_typ(a) }]
+        val f_expected_typ = TypFun(arg_typs, etyp)
+        val (id_n_typ, _) = lookup_id_opt(f_id, f_expected_typ, env, sc, eloc)
+        match id_n_typ { 
+        | Some((f_id, f_typ)) => Some(ExpCall(ExpIdent(f_id, (f_typ, eloc)), args, ctx) )
+        | None => None
+        }
+    }
+
+    /* check that expression is lvalue. It must be already type-checked */
+    fun is_lvalue(need_mutable_id: bool, e: exp_t, ectx: ctx_t) =
+    match e {
+    | ExpAt(arr, BorderNone, InterpNone, _, _) => is_lvalue(false, arr, ectx)
+    | ExpUnary(OpDeref, r, _) => is_lvalue(false, r, ectx)
+    | ExpIdent(n1, _) => !need_mutable_id ||
+        (match id_info(n1, eloc) {
+        | IdDVal ({dv_flags}) => dv_flags.val_flag_mutable
+        | _ => false
+        })
+    | ExpMem(rec, ExpIdent(n, _), _) =>
+        is_lvalue(need_mutable_id, rec, ectx) ||
+        ({
+            val (etyp, exploc) = ectx
+            val rtyp = get_exp_typ(rec)
+            val (_, relems) = get_record_elems(None, rtyp, false, exploc)
+            match find_opt(for (_, nj, _, _) <- relems {get_orig_id(nj) == get_orig_id(n)}) {
+            | Some((flags, _, _, _)) => flags.val_flag_mutable
+            | _ => throw compile_err(eloc,
+                f"member '{pp(n)}' is not found the record of type '{typ2str(etyp)}'")
+            }
+        })
+    | ExpMem(tup, ExpLit(_, _), _) => is_lvalue(need_mutable_id, tup, ectx)
+    | _ => false
+    }
+
     val new_e =
     match e {
     | ExpNop _ => e
@@ -1252,39 +1294,15 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         | _ => throw compile_err(eloc, "unsupported element access operation")
         }
     | ExpAssign(e1, e2, _) =>
-        val (etyp1, eloc1) = get_exp_ctx(e1)
+        val (etyp1, eloc1) as ectx= get_exp_ctx(e1)
         val (etyp2, _) = get_exp_ctx(e2)
-        unify(etyp1, etyp2, eloc, "the left and the right sides of the assignment must have the same type")
-        val new_e1 = check_exp(e1, env, sc)
-        val new_e2 = check_exp(e2, env, sc)
         /* check that new_e1 is lvalue and that new_e1 and new_e2 have equal types;
            in future we can let etyp1_ and etyp2_ be different as long as the assignment
            is safe and does not loose precision, e.g. int8 to int, float to double etc. */
-        fun is_lvalue(need_mutable_id: bool, e: exp_t) =
-            match e {
-            | ExpAt(arr, BorderNone, InterpNone, _, _) => is_lvalue(false, arr)
-            | ExpUnary(OpDeref, r, _) => is_lvalue(false, r)
-            | ExpIdent(n1, _) => !need_mutable_id ||
-                (match id_info(n1, eloc) {
-                | IdDVal ({dv_flags}) => dv_flags.val_flag_mutable
-                | _ => false
-                })
-            | ExpMem(rec, ExpIdent(n, _), _) =>
-                is_lvalue(need_mutable_id, rec) ||
-                ({
-                    val rtyp = get_exp_typ(rec)
-                    val (_, relems) = get_record_elems(None, rtyp, false, eloc1)
-                    match find_opt(for (_, nj, _, _) <- relems {get_orig_id(nj) == get_orig_id(n)}) {
-                    | Some((flags, _, _, _)) => flags.val_flag_mutable
-                    | _ => throw compile_err(eloc,
-                        f"member '{pp(n)}' is not found the record of type '{typ2str(etyp1)}'")
-                    }
-                })
-            | ExpMem(tup, ExpLit(_, _), _) => is_lvalue(need_mutable_id, tup)
-            | _ => false
-            }
-
-        if !is_lvalue(true, new_e1) {
+        unify(etyp1, etyp2, eloc, "the left and the right sides of the assignment must have the same type")
+        val new_e1 = check_exp(e1, env, sc)
+        val new_e2 = check_exp(e2, env, sc)
+        if !is_lvalue(true, new_e1, ectx) {
             throw compile_err(eloc1, "the left side of assignment is not an l-value")
         }
         ExpAssign(new_e1, new_e2, eloc)
@@ -1367,6 +1385,39 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 check_and_make_call(f_id, [new_e1, new_e2])
             }
         }
+    | ExpBinary(OpAugBinary(bop) as aug_op, e1, e2, _) => 
+        match bop {
+        | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpBitwiseOr | OpBitwiseXor 
+        | OpBitwiseAnd | OpDotMul | OpDotDiv | OpDotMod | OpShiftLeft | OpShiftRight =>
+            val new_e1 = check_exp(e1, env, sc)
+            val (etyp1, eloc1) as ectx1 = get_exp_ctx(new_e1)
+            val new_e2 = check_exp(e2, env, sc)
+            val is_appropriate_type = match deref_typ(etyp1) {
+            | TypArray _ | TypRecord _ => true
+            | TypApp (_, tname) => match id_info(tname, eloc1) {
+                | IdTyp _ | IdVariant _ | IdInterface _ => true
+                | _ => false
+                }
+            | _ => false
+            }
+
+            val probably_result = if is_appropriate_type {
+                val f_id = get_binary_fname(aug_op, eloc)
+                maybe_make_call(f_id, [new_e1, new_e2])
+            } else {None}
+
+            if !is_lvalue(true, new_e1, ectx1) {
+                throw compile_err(eloc1, f"the left side of augmented operation {aug_op} is not an l-value")
+            }
+
+            match probably_result {
+            | Some(new_e) => new_e
+            | _ =>
+                val binres = check_exp(ExpBinary(bop, new_e1, new_e2, (TypVar(ref None), eloc)), env, sc)
+                check_exp(ExpAssign(new_e1, binres, eloc), env, sc)
+            }
+        | _ => throw compile_err(eloc, f"unsupported augmented binary operation {bop}")
+        }
     | ExpBinary(bop, e1, e2, _) =>
         val new_e1 = check_exp(e1, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
@@ -1426,7 +1477,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp1, etyp2, eloc, "only equal types can be compared for identity")
             unify(etyp, TypBool, eloc, "the result of identity comparison should be 'bool'")
             (bop, None)
-        | OpCons | OpCmp _ => throw compile_err(eloc, f"unsupported binary operation {bop}")
+        | OpCons | OpCmp _ | OpAugBinary _ => throw compile_err(eloc, f"unsupported binary operation {bop}")
         | OpRDiv => (bop, None)
         }
 

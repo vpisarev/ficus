@@ -1108,6 +1108,19 @@ fun get_opname(t: token_t): id_t =
     | BITWISE_OR   => fname_op_bit_or()
     | BITWISE_XOR  => fname_op_bit_xor()
     | TILDE  => fname_op_bit_not()
+    | AUG_BINOP(OpAdd)  => fname_op_aug_add()
+    | AUG_BINOP(OpSub)  => fname_op_aug_sub() 
+    | AUG_BINOP(OpMul)  => fname_op_aug_mul()
+    | AUG_BINOP(OpDiv)  => fname_op_aug_div()
+    | AUG_BINOP(OpMod)  => fname_op_aug_mod()
+    | AUG_BINOP(OpBitwiseAnd)  => fname_op_aug_bit_and() 
+    | AUG_BINOP(OpBitwiseOr)  => fname_op_aug_bit_or()
+    | AUG_BINOP(OpBitwiseXor)  => fname_op_aug_bit_xor()
+    | AUG_BINOP(OpDotMul)  => fname_op_aug_dot_mul()
+    | AUG_BINOP(OpDotDiv)  => fname_op_aug_dot_div()
+    | AUG_BINOP(OpDotMod)  => fname_op_aug_dot_mod()
+    | AUG_BINOP(OpShiftLeft)  => fname_op_aug_shl()
+    | AUG_BINOP(OpShiftRight)  => fname_op_aug_shr()
     | SPACESHIP  => fname_op_cmp()
     | SAME    => fname_op_same()
     | CMP(CmpEQ)  => fname_op_eq()
@@ -1399,8 +1412,7 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
         | (AUG_BINOP(binop), l2) :: rest =>
             if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
             val (ts, e2) = parse_complex_exp(rest)
-            val e2 = make_binary(binop, e1, e2, l2)
-            (ts, ExpAssign(e1, e2, l1))
+            (ts, make_binary(OpAugBinary(binop), e1, e2, l2))
         | (DOT_EQUAL, l2) :: (LBRACE, _) :: rest =>
             if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
             val (ts, _, _, rec_init_elems) = parse_exp_list(ts, RBRACE,

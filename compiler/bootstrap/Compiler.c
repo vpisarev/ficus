@@ -23,6 +23,10 @@ struct _fx_N10Ast__typ_t_data_t;
 
 static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst);
 
+struct _fx_N13Ast__binary_t_data_t;
+
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst);
+
 struct _fx_N10Ast__exp_t_data_t;
 
 static void _fx_free_N10Ast__exp_t(struct _fx_N10Ast__exp_t_data_t** dst);
@@ -835,13 +839,15 @@ typedef struct _fx_N12Ast__cmpop_t {
    int tag;
 } _fx_N12Ast__cmpop_t;
 
-typedef struct _fx_N13Ast__binary_t {
+typedef struct _fx_N13Ast__binary_t_data_t {
+   int_ rc;
    int tag;
    union {
       struct _fx_N12Ast__cmpop_t OpCmp;
       struct _fx_N12Ast__cmpop_t OpDotCmp;
+      struct _fx_N13Ast__binary_t_data_t* OpAugBinary;
    } u;
-} _fx_N13Ast__binary_t;
+} _fx_N13Ast__binary_t_data_t, *_fx_N13Ast__binary_t;
 
 typedef struct _fx_N12Ast__unary_t {
    int tag;
@@ -907,7 +913,7 @@ typedef struct _fx_T2R9Ast__id_tT2N10Ast__typ_tR10Ast__loc_t {
 } _fx_T2R9Ast__id_tT2N10Ast__typ_tR10Ast__loc_t;
 
 typedef struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t {
-   struct _fx_N13Ast__binary_t t0;
+   struct _fx_N13Ast__binary_t_data_t* t0;
    struct _fx_N10Ast__exp_t_data_t* t1;
    struct _fx_N10Ast__exp_t_data_t* t2;
    struct _fx_T2N10Ast__typ_tR10Ast__loc_t t3;
@@ -1310,7 +1316,7 @@ typedef struct _fx_N14Lexer__token_t {
       bool STAR;
       bool DOT_PLUS;
       bool DOT_MINUS;
-      struct _fx_N13Ast__binary_t AUG_BINOP;
+      struct _fx_N13Ast__binary_t_data_t* AUG_BINOP;
       struct _fx_N12Ast__cmpop_t CMP;
       struct _fx_N12Ast__cmpop_t DOT_CMP;
       fx_str_t RESERVED;
@@ -1433,7 +1439,7 @@ typedef struct _fx_T2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t {
 } _fx_T2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t;
 
 typedef struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t {
-   struct _fx_N13Ast__binary_t t0;
+   struct _fx_N13Ast__binary_t_data_t* t0;
    struct _fx_N14K_form__atom_t t1;
    struct _fx_N14K_form__atom_t t2;
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t3;
@@ -4052,6 +4058,20 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
    *dst = 0;
 }
 
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst)
+{
+   if (*dst && FX_DECREF((*dst)->rc) == 1) {
+      switch ((*dst)->tag) {
+      case 27:
+         _fx_free_N13Ast__binary_t(&(*dst)->u.OpAugBinary); break;
+      default:
+         ;
+      }
+      fx_free(*dst);
+   }
+   *dst = 0;
+}
+
 static void _fx_free_T2Nt6option1N10Ast__exp_tR10Ast__loc_t(struct _fx_T2Nt6option1N10Ast__exp_tR10Ast__loc_t* dst)
 {
    _fx_free_Nt6option1N10Ast__exp_t(&dst->t0);
@@ -4176,6 +4196,7 @@ static void _fx_make_T2R9Ast__id_tT2N10Ast__typ_tR10Ast__loc_t(
 static void _fx_free_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t(
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* dst)
 {
+   _fx_free_N13Ast__binary_t(&dst->t0);
    _fx_free_N10Ast__exp_t(&dst->t1);
    _fx_free_N10Ast__exp_t(&dst->t2);
    _fx_free_T2N10Ast__typ_tR10Ast__loc_t(&dst->t3);
@@ -4185,20 +4206,20 @@ static void _fx_copy_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_t
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* src,
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* dst)
 {
-   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t0, &dst->t0);
    FX_COPY_PTR(src->t1, &dst->t1);
    FX_COPY_PTR(src->t2, &dst->t2);
    _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(&src->t3, &dst->t3);
 }
 
 static void _fx_make_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t(
-   struct _fx_N13Ast__binary_t* t0,
+   struct _fx_N13Ast__binary_t_data_t* t0,
    struct _fx_N10Ast__exp_t_data_t* t1,
    struct _fx_N10Ast__exp_t_data_t* t2,
    struct _fx_T2N10Ast__typ_tR10Ast__loc_t* t3,
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* fx_result)
 {
-   fx_result->t0 = *t0;
+   FX_COPY_PTR(t0, &fx_result->t0);
    FX_COPY_PTR(t1, &fx_result->t1);
    FX_COPY_PTR(t2, &fx_result->t2);
    _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(t3, &fx_result->t3);
@@ -5453,6 +5474,8 @@ static void _fx_free_N14Lexer__token_t(struct _fx_N14Lexer__token_t* dst)
       fx_free_str(&dst->u.TYVAR); break;
    case 13:
       fx_free_str(&dst->u.DATA); break;
+   case 94:
+      _fx_free_N13Ast__binary_t(&dst->u.AUG_BINOP); break;
    case 100:
       fx_free_str(&dst->u.RESERVED); break;
    default:
@@ -5473,6 +5496,8 @@ static void _fx_copy_N14Lexer__token_t(struct _fx_N14Lexer__token_t* src, struct
       fx_copy_str(&src->u.TYVAR, &dst->u.TYVAR); break;
    case 13:
       fx_copy_str(&src->u.DATA, &dst->u.DATA); break;
+   case 94:
+      FX_COPY_PTR(src->u.AUG_BINOP, &dst->u.AUG_BINOP); break;
    case 100:
       fx_copy_str(&src->u.RESERVED, &dst->u.RESERVED); break;
    default:
@@ -5828,6 +5853,7 @@ static void _fx_make_T2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
 static void _fx_free_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
 {
+   _fx_free_N13Ast__binary_t(&dst->t0);
    _fx_free_N14K_form__atom_t(&dst->t1);
    _fx_free_N14K_form__atom_t(&dst->t2);
    _fx_free_T2N14K_form__ktyp_tR10Ast__loc_t(&dst->t3);
@@ -5837,20 +5863,20 @@ static void _fx_copy_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* src,
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
 {
-   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t0, &dst->t0);
    _fx_copy_N14K_form__atom_t(&src->t1, &dst->t1);
    _fx_copy_N14K_form__atom_t(&src->t2, &dst->t2);
    _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(&src->t3, &dst->t3);
 }
 
 static void _fx_make_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_N13Ast__binary_t* t0,
+   struct _fx_N13Ast__binary_t_data_t* t0,
    struct _fx_N14K_form__atom_t* t1,
    struct _fx_N14K_form__atom_t* t2,
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* t3,
    struct _fx_T4N13Ast__binary_tN14K_form__atom_tN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* fx_result)
 {
-   fx_result->t0 = *t0;
+   FX_COPY_PTR(t0, &fx_result->t0);
    _fx_copy_N14K_form__atom_t(t1, &fx_result->t1);
    _fx_copy_N14K_form__atom_t(t2, &fx_result->t2);
    _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(t3, &fx_result->t3);
@@ -8242,6 +8268,11 @@ FX_EXTERN_C int _fx_M10K_loop_invFM18move_loop_invs_allLR17K_form__kmodule_t1LR1
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
+FX_EXTERN_C int _fx_M13K_optim_matopFM13optimize_gemmLR17K_form__kmodule_t1LR17K_form__kmodule_t(
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
+   void* fx_fv);
+
 FX_EXTERN_C int _fx_M8K_inlineFM11inline_someLR17K_form__kmodule_t1LR17K_form__kmodule_t(
    struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
@@ -9987,6 +10018,9 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
       fx_str_t v_77 = {0};
       fx_str_t v_78 = {0};
       _fx_LR17K_form__kmodule_t v_79 = 0;
+      fx_str_t v_80 = {0};
+      fx_str_t v_81 = {0};
+      _fx_LR17K_form__kmodule_t v_82 = 0;
       int_ i_1 = 1 + i_0 * 1;
       FX_CALL(_fx_F6stringS1i(i_1, &v_51, 0), _fx_catch_0);
       fx_str_t slit_12 = FX_MAKE_STR("Optimization pass #");
@@ -10033,7 +10067,7 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
          _fx_catch_0);
       _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
       FX_COPY_PTR(v_61, &temp_kmods_0);
-      fx_str_t slit_20 = FX_MAKE_STR("inline");
+      fx_str_t slit_20 = FX_MAKE_STR("gemm implantation");
       FX_CALL(_fx_F6stringS1S(&slit_20, &v_62, 0), _fx_catch_0);
       fx_str_t slit_21 = FX_MAKE_STR("\t");
       {
@@ -10041,12 +10075,11 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
          FX_CALL(fx_strjoin(0, 0, 0, strs_10, 2, &v_63), _fx_catch_0);
       }
       FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_63, 0), _fx_catch_0);
-      if (_fx_g12Options__opt.inline_thresh > 0) {
-         FX_CALL(_fx_M8K_inlineFM11inline_someLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_64, 0), _fx_catch_0);
-         _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
-         FX_COPY_PTR(v_64, &temp_kmods_0);
-      }
-      fx_str_t slit_22 = FX_MAKE_STR("flatten");
+      FX_CALL(_fx_M13K_optim_matopFM13optimize_gemmLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_64, 0),
+         _fx_catch_0);
+      _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
+      FX_COPY_PTR(v_64, &temp_kmods_0);
+      fx_str_t slit_22 = FX_MAKE_STR("inline");
       FX_CALL(_fx_F6stringS1S(&slit_22, &v_65, 0), _fx_catch_0);
       fx_str_t slit_23 = FX_MAKE_STR("\t");
       {
@@ -10054,10 +10087,12 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
          FX_CALL(fx_strjoin(0, 0, 0, strs_11, 2, &v_66), _fx_catch_0);
       }
       FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_66, 0), _fx_catch_0);
-      FX_CALL(_fx_M9K_flattenFM11flatten_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_67, 0), _fx_catch_0);
-      _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
-      FX_COPY_PTR(v_67, &temp_kmods_0);
-      fx_str_t slit_24 = FX_MAKE_STR("fuse loops");
+      if (_fx_g12Options__opt.inline_thresh > 0) {
+         FX_CALL(_fx_M8K_inlineFM11inline_someLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_67, 0), _fx_catch_0);
+         _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
+         FX_COPY_PTR(v_67, &temp_kmods_0);
+      }
+      fx_str_t slit_24 = FX_MAKE_STR("flatten");
       FX_CALL(_fx_F6stringS1S(&slit_24, &v_68, 0), _fx_catch_0);
       fx_str_t slit_25 = FX_MAKE_STR("\t");
       {
@@ -10065,11 +10100,10 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
          FX_CALL(fx_strjoin(0, 0, 0, strs_12, 2, &v_69), _fx_catch_0);
       }
       FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_69, 0), _fx_catch_0);
-      FX_CALL(_fx_M12K_fuse_loopsFM14fuse_loops_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_70, 0),
-         _fx_catch_0);
+      FX_CALL(_fx_M9K_flattenFM11flatten_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_70, 0), _fx_catch_0);
       _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
       FX_COPY_PTR(v_70, &temp_kmods_0);
-      fx_str_t slit_26 = FX_MAKE_STR("fast idx");
+      fx_str_t slit_26 = FX_MAKE_STR("fuse loops");
       FX_CALL(_fx_F6stringS1S(&slit_26, &v_71, 0), _fx_catch_0);
       fx_str_t slit_27 = FX_MAKE_STR("\t");
       {
@@ -10077,11 +10111,11 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
          FX_CALL(fx_strjoin(0, 0, 0, strs_13, 2, &v_72), _fx_catch_0);
       }
       FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_72, 0), _fx_catch_0);
-      FX_CALL(_fx_M10K_fast_idxFM23optimize_idx_checks_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_73, 0),
+      FX_CALL(_fx_M12K_fuse_loopsFM14fuse_loops_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_73, 0),
          _fx_catch_0);
       _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
       FX_COPY_PTR(v_73, &temp_kmods_0);
-      fx_str_t slit_28 = FX_MAKE_STR("const folding");
+      fx_str_t slit_28 = FX_MAKE_STR("fast idx");
       FX_CALL(_fx_F6stringS1S(&slit_28, &v_74, 0), _fx_catch_0);
       fx_str_t slit_29 = FX_MAKE_STR("\t");
       {
@@ -10089,11 +10123,11 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
          FX_CALL(fx_strjoin(0, 0, 0, strs_14, 2, &v_75), _fx_catch_0);
       }
       FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_75, 0), _fx_catch_0);
-      FX_CALL(_fx_M15K_cfold_dealiasFM13cfold_dealiasLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_76, 0),
+      FX_CALL(_fx_M10K_fast_idxFM23optimize_idx_checks_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_76, 0),
          _fx_catch_0);
       _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
       FX_COPY_PTR(v_76, &temp_kmods_0);
-      fx_str_t slit_30 = FX_MAKE_STR("remove unused");
+      fx_str_t slit_30 = FX_MAKE_STR("const folding");
       FX_CALL(_fx_F6stringS1S(&slit_30, &v_77, 0), _fx_catch_0);
       fx_str_t slit_31 = FX_MAKE_STR("\t");
       {
@@ -10101,13 +10135,30 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
          FX_CALL(fx_strjoin(0, 0, 0, strs_15, 2, &v_78), _fx_catch_0);
       }
       FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_78, 0), _fx_catch_0);
-      FX_CALL(
-         _fx_M15K_remove_unusedFM13remove_unusedLR17K_form__kmodule_t2LR17K_form__kmodule_tB(temp_kmods_0, false, &v_79, 0),
+      FX_CALL(_fx_M15K_cfold_dealiasFM13cfold_dealiasLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_79, 0),
          _fx_catch_0);
       _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
       FX_COPY_PTR(v_79, &temp_kmods_0);
+      fx_str_t slit_32 = FX_MAKE_STR("remove unused");
+      FX_CALL(_fx_F6stringS1S(&slit_32, &v_80, 0), _fx_catch_0);
+      fx_str_t slit_33 = FX_MAKE_STR("\t");
+      {
+         const fx_str_t strs_16[] = { slit_33, v_80 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_16, 2, &v_81), _fx_catch_0);
+      }
+      FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_81, 0), _fx_catch_0);
+      FX_CALL(
+         _fx_M15K_remove_unusedFM13remove_unusedLR17K_form__kmodule_t2LR17K_form__kmodule_tB(temp_kmods_0, false, &v_82, 0),
+         _fx_catch_0);
+      _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
+      FX_COPY_PTR(v_82, &temp_kmods_0);
 
    _fx_catch_0: ;
+      if (v_82) {
+         _fx_free_LR17K_form__kmodule_t(&v_82);
+      }
+      FX_FREE_STR(&v_81);
+      FX_FREE_STR(&v_80);
       if (v_79) {
          _fx_free_LR17K_form__kmodule_t(&v_79);
       }
@@ -10157,14 +10208,14 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
       FX_FREE_STR(&v_51);
       FX_CHECK_EXN(_fx_cleanup);
    }
-   fx_str_t slit_32 = FX_MAKE_STR("Finalizing K-form:");
-   FX_CALL(_fx_M3AstFM10pr_verbosev1S(&slit_32, 0), _fx_cleanup);
-   fx_str_t slit_33 = FX_MAKE_STR("making wrappers for nothrow functions");
-   FX_CALL(_fx_F6stringS1S(&slit_33, &v_20, 0), _fx_cleanup);
-   fx_str_t slit_34 = FX_MAKE_STR("\t");
+   fx_str_t slit_34 = FX_MAKE_STR("Finalizing K-form:");
+   FX_CALL(_fx_M3AstFM10pr_verbosev1S(&slit_34, 0), _fx_cleanup);
+   fx_str_t slit_35 = FX_MAKE_STR("making wrappers for nothrow functions");
+   FX_CALL(_fx_F6stringS1S(&slit_35, &v_20, 0), _fx_cleanup);
+   fx_str_t slit_36 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_16[] = { slit_34, v_20 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_16, 2, &v_21), _fx_cleanup);
+      const fx_str_t strs_17[] = { slit_36, v_20 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_17, 2, &v_21), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_21, 0), _fx_cleanup);
    FX_CALL(
@@ -10172,104 +10223,104 @@ FX_EXTERN_C int _fx_M8CompilerFM14k_optimize_allT2LR17K_form__kmodule_tB1LR17K_f
       _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_22, &temp_kmods_0);
-   fx_str_t slit_35 = FX_MAKE_STR("mutable freevars referencing");
-   FX_CALL(_fx_F6stringS1S(&slit_35, &v_23, 0), _fx_cleanup);
-   fx_str_t slit_36 = FX_MAKE_STR("\t");
+   fx_str_t slit_37 = FX_MAKE_STR("mutable freevars referencing");
+   FX_CALL(_fx_F6stringS1S(&slit_37, &v_23, 0), _fx_cleanup);
+   fx_str_t slit_38 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_17[] = { slit_36, v_23 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_17, 2, &v_24), _fx_cleanup);
+      const fx_str_t strs_18[] = { slit_38, v_23 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_18, 2, &v_24), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_24, 0), _fx_cleanup);
    FX_CALL(_fx_M10K_freevarsFM21mutable_freevars2refsLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_25, 0),
       _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_25, &temp_kmods_0);
-   fx_str_t slit_37 = FX_MAKE_STR("declosuring");
-   FX_CALL(_fx_F6stringS1S(&slit_37, &v_26, 0), _fx_cleanup);
-   fx_str_t slit_38 = FX_MAKE_STR("\t");
+   fx_str_t slit_39 = FX_MAKE_STR("declosuring");
+   FX_CALL(_fx_F6stringS1S(&slit_39, &v_26, 0), _fx_cleanup);
+   fx_str_t slit_40 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_18[] = { slit_38, v_26 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_18, 2, &v_27), _fx_cleanup);
+      const fx_str_t strs_19[] = { slit_40, v_26 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_19, 2, &v_27), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_27, 0), _fx_cleanup);
    FX_CALL(_fx_M11K_declosureFM13declosure_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_28, 0), _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_28, &temp_kmods_0);
-   fx_str_t slit_39 = FX_MAKE_STR("lambda lifting");
-   FX_CALL(_fx_F6stringS1S(&slit_39, &v_29, 0), _fx_cleanup);
-   fx_str_t slit_40 = FX_MAKE_STR("\t");
+   fx_str_t slit_41 = FX_MAKE_STR("lambda lifting");
+   FX_CALL(_fx_F6stringS1S(&slit_41, &v_29, 0), _fx_cleanup);
+   fx_str_t slit_42 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_19[] = { slit_40, v_29 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_19, 2, &v_30), _fx_cleanup);
+      const fx_str_t strs_20[] = { slit_42, v_29 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_20, 2, &v_30), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_30, 0), _fx_cleanup);
    FX_CALL(_fx_M6K_liftFM8lift_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_31, 0), _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_31, &temp_kmods_0);
-   fx_str_t slit_41 = FX_MAKE_STR("flatten");
-   FX_CALL(_fx_F6stringS1S(&slit_41, &v_32, 0), _fx_cleanup);
-   fx_str_t slit_42 = FX_MAKE_STR("\t");
+   fx_str_t slit_43 = FX_MAKE_STR("flatten");
+   FX_CALL(_fx_F6stringS1S(&slit_43, &v_32, 0), _fx_cleanup);
+   fx_str_t slit_44 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_20[] = { slit_42, v_32 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_20, 2, &v_33), _fx_cleanup);
+      const fx_str_t strs_21[] = { slit_44, v_32 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_21, 2, &v_33), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_33, 0), _fx_cleanup);
    FX_CALL(_fx_M9K_flattenFM11flatten_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_34, 0), _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_34, &temp_kmods_0);
-   fx_str_t slit_43 = FX_MAKE_STR("remove unused");
-   FX_CALL(_fx_F6stringS1S(&slit_43, &v_35, 0), _fx_cleanup);
-   fx_str_t slit_44 = FX_MAKE_STR("\t");
+   fx_str_t slit_45 = FX_MAKE_STR("remove unused");
+   FX_CALL(_fx_F6stringS1S(&slit_45, &v_35, 0), _fx_cleanup);
+   fx_str_t slit_46 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_21[] = { slit_44, v_35 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_21, 2, &v_36), _fx_cleanup);
+      const fx_str_t strs_22[] = { slit_46, v_35 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_22, 2, &v_36), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_36, 0), _fx_cleanup);
    FX_CALL(_fx_M15K_remove_unusedFM13remove_unusedLR17K_form__kmodule_t2LR17K_form__kmodule_tB(temp_kmods_0, false, &v_37, 0),
       _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_37, &temp_kmods_0);
-   fx_str_t slit_45 = FX_MAKE_STR("mangle");
-   FX_CALL(_fx_F6stringS1S(&slit_45, &v_38, 0), _fx_cleanup);
-   fx_str_t slit_46 = FX_MAKE_STR("\t");
+   fx_str_t slit_47 = FX_MAKE_STR("mangle");
+   FX_CALL(_fx_F6stringS1S(&slit_47, &v_38, 0), _fx_cleanup);
+   fx_str_t slit_48 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_22[] = { slit_46, v_38 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_22, 2, &v_39), _fx_cleanup);
+      const fx_str_t strs_23[] = { slit_48, v_38 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_23, 2, &v_39), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_39, 0), _fx_cleanup);
    FX_CALL(_fx_M8K_mangleFM10mangle_allLR17K_form__kmodule_t2LR17K_form__kmodule_tB(temp_kmods_0, true, &v_40, 0), _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_40, &temp_kmods_0);
-   fx_str_t slit_47 = FX_MAKE_STR("remove unused");
-   FX_CALL(_fx_F6stringS1S(&slit_47, &v_41, 0), _fx_cleanup);
-   fx_str_t slit_48 = FX_MAKE_STR("\t");
+   fx_str_t slit_49 = FX_MAKE_STR("remove unused");
+   FX_CALL(_fx_F6stringS1S(&slit_49, &v_41, 0), _fx_cleanup);
+   fx_str_t slit_50 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_23[] = { slit_48, v_41 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_23, 2, &v_42), _fx_cleanup);
+      const fx_str_t strs_24[] = { slit_50, v_41 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_24, 2, &v_42), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_42, 0), _fx_cleanup);
    FX_CALL(_fx_M15K_remove_unusedFM13remove_unusedLR17K_form__kmodule_t2LR17K_form__kmodule_tB(temp_kmods_0, false, &v_43, 0),
       _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_43, &temp_kmods_0);
-   fx_str_t slit_49 = FX_MAKE_STR("mark recursive");
-   FX_CALL(_fx_F6stringS1S(&slit_49, &v_44, 0), _fx_cleanup);
-   fx_str_t slit_50 = FX_MAKE_STR("\t");
+   fx_str_t slit_51 = FX_MAKE_STR("mark recursive");
+   FX_CALL(_fx_F6stringS1S(&slit_51, &v_44, 0), _fx_cleanup);
+   fx_str_t slit_52 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_24[] = { slit_50, v_44 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_24, 2, &v_45), _fx_cleanup);
+      const fx_str_t strs_25[] = { slit_52, v_44 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_25, 2, &v_45), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_45, 0), _fx_cleanup);
    FX_CALL(_fx_M8K_inlineFM24find_recursive_funcs_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_46, 0),
       _fx_cleanup);
    _fx_free_LR17K_form__kmodule_t(&temp_kmods_0);
    FX_COPY_PTR(v_46, &temp_kmods_0);
-   fx_str_t slit_51 = FX_MAKE_STR("annotate types");
-   FX_CALL(_fx_F6stringS1S(&slit_51, &v_47, 0), _fx_cleanup);
-   fx_str_t slit_52 = FX_MAKE_STR("\t");
+   fx_str_t slit_53 = FX_MAKE_STR("annotate types");
+   FX_CALL(_fx_F6stringS1S(&slit_53, &v_47, 0), _fx_cleanup);
+   fx_str_t slit_54 = FX_MAKE_STR("\t");
    {
-      const fx_str_t strs_25[] = { slit_52, v_47 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_25, 2, &v_48), _fx_cleanup);
+      const fx_str_t strs_26[] = { slit_54, v_47 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_26, 2, &v_48), _fx_cleanup);
    }
    FX_CALL(_fx_M3AstFM10pr_verbosev1S(&v_48, 0), _fx_cleanup);
    FX_CALL(_fx_M10K_annotateFM14annotate_typesLR17K_form__kmodule_t1LR17K_form__kmodule_t(temp_kmods_0, &v_49, 0), _fx_cleanup);

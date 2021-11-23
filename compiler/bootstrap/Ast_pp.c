@@ -27,6 +27,10 @@ struct _fx_N10Ast__typ_t_data_t;
 
 static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst);
 
+struct _fx_N13Ast__binary_t_data_t;
+
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst);
+
 struct _fx_N10Ast__exp_t_data_t;
 
 static void _fx_free_N10Ast__exp_t(struct _fx_N10Ast__exp_t_data_t** dst);
@@ -505,13 +509,15 @@ typedef struct _fx_N12Ast__cmpop_t {
    int tag;
 } _fx_N12Ast__cmpop_t;
 
-typedef struct _fx_N13Ast__binary_t {
+typedef struct _fx_N13Ast__binary_t_data_t {
+   int_ rc;
    int tag;
    union {
       struct _fx_N12Ast__cmpop_t OpCmp;
       struct _fx_N12Ast__cmpop_t OpDotCmp;
+      struct _fx_N13Ast__binary_t_data_t* OpAugBinary;
    } u;
-} _fx_N13Ast__binary_t;
+} _fx_N13Ast__binary_t_data_t, *_fx_N13Ast__binary_t;
 
 typedef struct _fx_N12Ast__unary_t {
    int tag;
@@ -577,7 +583,7 @@ typedef struct _fx_T2R9Ast__id_tT2N10Ast__typ_tR10Ast__loc_t {
 } _fx_T2R9Ast__id_tT2N10Ast__typ_tR10Ast__loc_t;
 
 typedef struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t {
-   struct _fx_N13Ast__binary_t t0;
+   struct _fx_N13Ast__binary_t_data_t* t0;
    struct _fx_N10Ast__exp_t_data_t* t1;
    struct _fx_N10Ast__exp_t_data_t* t2;
    struct _fx_T2N10Ast__typ_tR10Ast__loc_t t3;
@@ -2022,6 +2028,20 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
    *dst = 0;
 }
 
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst)
+{
+   if (*dst && FX_DECREF((*dst)->rc) == 1) {
+      switch ((*dst)->tag) {
+      case 27:
+         _fx_free_N13Ast__binary_t(&(*dst)->u.OpAugBinary); break;
+      default:
+         ;
+      }
+      fx_free(*dst);
+   }
+   *dst = 0;
+}
+
 static void _fx_free_T2Nt6option1N10Ast__exp_tR10Ast__loc_t(struct _fx_T2Nt6option1N10Ast__exp_tR10Ast__loc_t* dst)
 {
    _fx_free_Nt6option1N10Ast__exp_t(&dst->t0);
@@ -2146,6 +2166,7 @@ static void _fx_make_T2R9Ast__id_tT2N10Ast__typ_tR10Ast__loc_t(
 static void _fx_free_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t(
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* dst)
 {
+   _fx_free_N13Ast__binary_t(&dst->t0);
    _fx_free_N10Ast__exp_t(&dst->t1);
    _fx_free_N10Ast__exp_t(&dst->t2);
    _fx_free_T2N10Ast__typ_tR10Ast__loc_t(&dst->t3);
@@ -2155,20 +2176,20 @@ static void _fx_copy_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_t
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* src,
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* dst)
 {
-   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t0, &dst->t0);
    FX_COPY_PTR(src->t1, &dst->t1);
    FX_COPY_PTR(src->t2, &dst->t2);
    _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(&src->t3, &dst->t3);
 }
 
 static void _fx_make_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t(
-   struct _fx_N13Ast__binary_t* t0,
+   struct _fx_N13Ast__binary_t_data_t* t0,
    struct _fx_N10Ast__exp_t_data_t* t1,
    struct _fx_N10Ast__exp_t_data_t* t2,
    struct _fx_T2N10Ast__typ_tR10Ast__loc_t* t3,
    struct _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* fx_result)
 {
-   fx_result->t0 = *t0;
+   FX_COPY_PTR(t0, &fx_result->t0);
    FX_COPY_PTR(t1, &fx_result->t1);
    FX_COPY_PTR(t2, &fx_result->t2);
    _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(t3, &fx_result->t3);
@@ -3645,7 +3666,10 @@ FX_EXTERN_C int _fx_M3AstFM9deref_typN10Ast__typ_t1N10Ast__typ_t(
    struct _fx_N10Ast__typ_t_data_t** fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__binary_t(struct _fx_N13Ast__binary_t* bop_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__binary_t(
+   struct _fx_N13Ast__binary_t_data_t* bop_0,
+   fx_str_t* fx_result,
+   void* fx_fv);
 
 static int _fx_M6Ast_ppFM11print_list_N10Ast__exp_t2N10Ast__exp_tR5PP__t(
    struct _fx_N10Ast__exp_t_data_t* e_0,
@@ -5696,7 +5720,7 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
          _fx_N10Ast__exp_t e2_0 = 0;
          _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* vcase_5 = &e_0->u.ExpBinary;
          _fx_N10Ast__exp_t e2_1 = vcase_5->t2;
-         _fx_N13Ast__binary_t* o_0 = &vcase_5->t0;
+         _fx_N13Ast__binary_t o_0 = vcase_5->t0;
          fx_str_t slit_71 = FX_MAKE_STR("(");
          FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_71, 0), _fx_catch_47);
          FX_CALL(_fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(vcase_5->t1, pp_0, 0), _fx_catch_47);
@@ -5707,7 +5731,7 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
             FX_CALL(fx_strjoin(0, 0, 0, strs_2, 2, &v_26), _fx_catch_47);
          }
          FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &v_26, 0), _fx_catch_47);
-         if (o_0->tag == 26) {
+         if (FX_REC_VARIANT_TAG(o_0) == 26) {
             FX_CALL(_fx_M6Ast_ppFM11print_list_N10Ast__exp_t2N10Ast__exp_tR5PP__t(e2_1, pp_0, &e2_0, 0), _fx_catch_46);
 
          _fx_catch_46: ;
@@ -6552,7 +6576,7 @@ static int _fx_M6Ast_ppFM11print_list_N10Ast__exp_t2N10Ast__exp_tR5PP__t(
       FX_COPY_PTR(e_1, &e_2);
       if (FX_REC_VARIANT_TAG(e_2) == 8) {
          _fx_T4N13Ast__binary_tN10Ast__exp_tN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* vcase_0 = &e_2->u.ExpBinary;
-         if (vcase_0->t0.tag == 26) {
+         if (FX_REC_VARIANT_TAG(vcase_0->t0) == 26) {
             FX_CALL(_fx_M2PPFM5spacev1RM1t(pp_0, 0), _fx_catch_0);
             FX_CALL(_fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(vcase_0->t1, pp_0, 0), _fx_catch_0);
             fx_str_t slit_0 = FX_MAKE_STR(" ::");
