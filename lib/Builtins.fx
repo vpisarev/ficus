@@ -556,6 +556,18 @@ fun int64(x: ('t...)) = (for xj <- x {int64(xj)})
 fun float(x: ('t...)) = (for xj <- x {float(xj)})
 fun double(x: ('t...)) = (for xj <- x {double(xj)})
 
+fun int(x: 't [+]) = [| for xj <- x {int(xj)} |]
+fun uint8(x: 't [+]) = [| for xj <- x {uint8(xj)} |]
+fun int8(x: 't [+]) = [| for xj <- x {int8(xj)} |]
+fun uint16(x: 't [+]) = [| for xj <- x {uint16(xj)} |]
+fun int16(x: 't [+]) = [| for xj <- x {int16(xj)} |]
+fun uint32(x: 't [+]) = [| for xj <- x {uint32(xj)} |]
+fun int32(x: 't [+]) = [| for xj <- x {int32(xj)} |]
+fun uint64(x: 't [+]) = [| for xj <- x {uint64(xj)} |]
+fun int64(x: 't [+]) = [| for xj <- x {int64(xj)} |]
+fun float(x: 't [+]) = [| for xj <- x {float(xj)} |]
+fun double(x: 't [+]) = [| for xj <- x {double(xj)} |]
+
 @pure @nothrow fun sat_uint8(i: int): uint8 = @ccode
 { return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255); }
 
