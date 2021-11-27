@@ -1109,11 +1109,11 @@ fun get_opname(t: token_t): id_t =
     | BITWISE_XOR  => fname_op_bit_xor()
     | TILDE  => fname_op_bit_not()
     | AUG_BINOP(OpAdd)  => fname_op_aug_add()
-    | AUG_BINOP(OpSub)  => fname_op_aug_sub() 
+    | AUG_BINOP(OpSub)  => fname_op_aug_sub()
     | AUG_BINOP(OpMul)  => fname_op_aug_mul()
     | AUG_BINOP(OpDiv)  => fname_op_aug_div()
     | AUG_BINOP(OpMod)  => fname_op_aug_mod()
-    | AUG_BINOP(OpBitwiseAnd)  => fname_op_aug_bit_and() 
+    | AUG_BINOP(OpBitwiseAnd)  => fname_op_aug_bit_and()
     | AUG_BINOP(OpBitwiseOr)  => fname_op_aug_bit_or()
     | AUG_BINOP(OpBitwiseXor)  => fname_op_aug_bit_xor()
     | AUG_BINOP(OpDotMul)  => fname_op_aug_dot_mul()
@@ -1348,7 +1348,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
             val (ts, body) = parse_block(ts)
             (ts, params, body, fflags)
         | _ =>
-            throw parse_err(ts, "'=' or '{' is expected")
+            throw parse_err(ts, "'=' or '{' is expected before the function body")
         }
 
     val body =

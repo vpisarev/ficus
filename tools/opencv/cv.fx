@@ -9,7 +9,8 @@
 
 import Sys
 
-pragma "c++", "clib:opencv_core", "clib:opencv_imgproc", "clib:opencv_videoio", "clib:opencv_highgui", "clib:opencv_imgcodecs"
+pragma "c++", "clib:opencv_core", "clib:opencv_imgproc", "clib:opencv_videoio",
+    "clib:opencv_highgui", "clib:opencv_imgcodecs", "clib:opencv_dnn"
 
 @ccode {
 #include <limits.h>
@@ -26,12 +27,14 @@ type uint8x3 = (uint8*3)
 type uint8x4 = (uint8*4)
 type uint16x3 = (uint16*3)
 type uint16x4 = (uint16*4)
-type int32x4 = (int32*4)
 type intx2 = (int*2)
 type intx3 = (int*3)
 type intx4 = (int*4)
 type intx5 = (int*5)
 type intx6 = (int*6)
+type int32x2 = (int32*2)
+type int32x3 = (int32*3)
+type int32x4 = (int32*4)
 type floatx2 = (float*2)
 type floatx3 = (float*3)
 type floatx4 = (float*4)
@@ -49,7 +52,13 @@ type depth_t =
 
 type elemtype_t = (depth_t, int)
 
-fun arrelemtype(_: 't [+]) = elemtype(0:>'t)
+fun elemdepth(_: uint8) = DEPTH_U8
+fun elemdepth(_: int8) = DEPTH_S8
+fun elemdepth(_: uint16) = DEPTH_U16
+fun elemdepth(_: int16) = DEPTH_S16
+fun elemdepth(_: int32) = DEPTH_S32
+fun elemdepth(_: float) = DEPTH_FP32
+fun elemdepth(_: double) = DEPTH_FP64
 
 fun elemtype(_: 't) = (elemdepth(0:>'t), 1)
 fun elemtype(_: ('t*2)) = (elemdepth(0:>'t), 2)
@@ -62,13 +71,7 @@ fun elemtype(_: ('t*8)) = (elemdepth(0:>'t), 8)
 fun elemtype(_: ('t*9)) = (elemdepth(0:>'t), 9)
 fun elemtype(_: ('t*10)) = (elemdepth(0:>'t), 10)
 
-fun elemdepth(_: uint8) = DEPTH_U8
-fun elemdepth(_: int8) = DEPTH_S8
-fun elemdepth(_: uint16) = DEPTH_U16
-fun elemdepth(_: int16) = DEPTH_S16
-fun elemdepth(_: int32) = DEPTH_S32
-fun elemdepth(_: float) = DEPTH_FP32
-fun elemdepth(_: double) = DEPTH_FP64
+fun arrelemtype(_: 't [+]) = elemtype(0:>'t)
 
 type anyarr_t = (uint8 [,], depth_t, int)
 
@@ -330,6 +333,14 @@ static cv::Rect cvt_rect(const _fx_TA4i* r)
     return cv::Rect((int)r->t0, (int)r->t1, (int)r->t2, (int)r->t3);
 }
 
+static void cvt_rect2intx4(const cv::Rect& r, _fx_TA4i* dst)
+{
+    dst->t0 = r.x;
+    dst->t1 = r.y;
+    dst->t2 = r.width;
+    dst->t3 = r.height;
+}
+
 static cv::Scalar cvt_scalar(const _fx_TA4d* sc)
 {
     return cv::Scalar(sc->t0, sc->t1, sc->t2, sc->t3);
@@ -442,9 +453,9 @@ fun patchNans(arr: 't [+], ~v: double=0) = patchNans_(anyarray(arr), v)
 }
 
 fun transform(src: 't [], m: 'k [,]): 't [] =
-    (reintrpret(transform_(anyarray(src), anyarray(m)): 't [])
+    (reinterpret(transform_(anyarray(src), anyarray(m))): 't [])
 fun transform(src: 't [,], m: 'k [,]): 't [,] =
-    (reintrpret(transform_(anyarray(src), anyarray(m)): 't [,])
+    (reinterpret(transform_(anyarray(src), anyarray(m))): 't [,])
 
 @private fun perspectiveTransform_(src: anyarr_t, m: anyarr_t): uint8 [,] =
 @ccode {
@@ -462,9 +473,9 @@ fun transform(src: 't [,], m: 'k [,]): 't [,] =
 }
 
 fun perspectiveTransform(src: 't [], m: 'k [,]): 't [] =
-    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m)): 't [])
+    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m))): 't [])
 fun perspectiveTransform(src: 't [,], m: 'k [,]): 't [,] =
-    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m)): 't [,])
+    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m))): 't [,])
 
 fun solveCubic(coeffs: double []): double [] =
 @ccode {
@@ -754,7 +765,7 @@ fun idft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
     return fx_status;
 }
 
-fun mulSpectrums(a: 't [], b: 't [], ~flags: int, conjB: bool=false): 't [] =
+fun mulSpectrums(a: 't [], b: 't [], ~flags: int, ~conjB: bool=false): 't [] =
     (reinterpret(mulSpectrums1D_(anyarray(a), anyarray(b), flags, conjB)) : 't [])
 
 @private fun mulSpectrums2D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 [] =
@@ -772,7 +783,7 @@ fun mulSpectrums(a: 't [], b: 't [], ~flags: int, conjB: bool=false): 't [] =
     return fx_status;
 }
 
-fun mulSpectrums(a: 't [,], b: 't [,], ~flags: int, conjB: bool=false): 't [,] =
+fun mulSpectrums(a: 't [,], b: 't [,], ~flags: int, ~conjB: bool=false): 't [,] =
     (reinterpret(mulSpectrums2D_(anyarray(a), anyarray(b), flags, conjB)) : 't [,])
 
 fun getOptimalDFTSize(vecsize: int): int =
@@ -815,22 +826,22 @@ val RNG_NORMAL : int = @ccode {cv::RNG::NORMAL}
 }
 
 fun randu(size: int, ~low: 't, ~high: 't): 't [] =
-    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_UNIFORM) : 't [])
+    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_UNIFORM)) : 't [])
 
 fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,] =
-    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_UNIFORM) : 't [,])
+    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_UNIFORM)) : 't [,])
 
 fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
-    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_UNIFORM) : 't [,,])
+    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_UNIFORM)) : 't [,,])
 
 fun randn(size: int, ~mean: 't, ~stddev: 't): 't [] =
-    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_NORMAL) : 't [])
+    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_NORMAL)) : 't [])
 
 fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,] =
-    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_NORMAL) : 't [,])
+    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_NORMAL)) : 't [,])
 
 fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
-    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_NORMAL) : 't [,,])
+    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_NORMAL)) : 't [,,])
 
 @private fun randShuffle_(arr: anyarr_t, iterFactor: double): void =
 @ccode {
@@ -846,7 +857,7 @@ fun randShuffle(arr: 't [], ~iterFactor: double = 1.): void =
     randShuffle(anyarray(arr), iterFactor)
 
 @private fun kmeans_(data: anyarr_t, K: int, flags: int, maxIters: int, epsilon: double,
-    attempts: int, centers: anyarr_t, labels0: anyarr_t): (double, int []) =
+    attempts: int, centers: anyarr_t, labels0: anyarr_t): (double, int32 []) =
 @ccode {
     cv::Mat c_data, c_centers, c_labels0, c_labels;
     c_labels.allocator = &g_fxarrAllocator;
@@ -870,9 +881,9 @@ fun randShuffle(arr: 't [], ~iterFactor: double = 1.): void =
     return fx_status;
 }
 
-fun kmeans(data: float [,], K: int, ~flags: int, ~maxIters: int, ~epsilon: double=0,
-           ~attempts: int=1, ~centers: float [,]=[], ~labels0: int []=[]): (double, int []) =
-    kmeans_(anyarr(data), K, flags, maxIters, epsilon, attempts,
+fun kmeans(data: float [,], K: int, ~flags: int, ~maxIters: int, ~epsilon: double=0.,
+           ~attempts: int=1, ~centers: float [,]=[], ~labels0: int32 []=[]): (double, int32 []) =
+    kmeans_(anyarray(data), K, flags, maxIters, epsilon, attempts,
             anyarray(centers), anyarray(labels0))
 
 //////////////////////////////////// imgproc ///////////////////////////////
@@ -946,7 +957,7 @@ val MORPH_RECT: int = @ccode {cv::MORPH_RECT}
 val MORPH_CROSS: int = @ccode {cv::MORPH_CROSS}
 val MORPH_ELLIPSE: int = @ccode {cv::MORPH_ELLIPSE}
 
-@private fun getStructuringElement_(shape: int, ksize: intx2, anchor: intx2 = (-1, -1)): uint8 [,] =
+@private fun getStructuringElement_(shape: int, ksize: intx2, anchor: intx2): uint8 [,] =
 @ccode {
     cv::Mat c_kernel;
     int fx_status = FX_OK;
@@ -1068,7 +1079,7 @@ fun sepFilter2D(src: 't [,], kernelX: 'k [,], kernelY: 'k [,], ~anchor: intx2=(-
     (reinterpret(sepFilter2D_(anyarray(src), anyarray(kernelX),
             anyarray(kernelY), anchor, delta, borderType)) : 't [,])
 
-@private fun Sobel_(src: anyarr_t, dx: int, dy: int, ksize: int=3, scale: double,
+@private fun Sobel_(src: anyarr_t, dx: int, dy: int, ksize: int, scale: double,
                     delta: double, borderType: int): float [,] =
 @ccode {
     cv::Mat c_src, c_dst;
@@ -1085,7 +1096,7 @@ fun Sobel(src: 't [,], dx: int, dy: int, ~ksize: int=3, ~scale: double=1.,
           ~delta: double=0., ~borderType: int=BORDER_DEFAULT): float [,] =
     Sobel_(anyarray(src), dx, dy, ksize, scale, delta, borderType)
 
-@private fun spatialGradient_(src: uint8 [,], ksize: int,
+@private fun spatialGradient_(src: anyarr_t, ksize: int,
                     borderType: int): (int16 [,], int16 [,]) =
 @ccode {
     cv::Mat c_src, c_dx, c_dy;
@@ -1122,7 +1133,7 @@ fun Laplacian(src: 't [,], ~ksize: int = 1, ~scale: double = 1, ~delta: double =
               ~borderType: int=BORDER_DEFAULT): float [,] =
     Laplacian_(anyarray(src), ksize, scale, delta, borderType)
 
-@private fun Canny_(src: uint8 [,], threshold1: double, threshold2: double,
+@private fun Canny_(src: anyarr_t, threshold1: double, threshold2: double,
                    ksize: int, L2gradient: bool): uint8 [,] =
 @ccode {
     cv::Mat c_src, c_dst;
@@ -1167,7 +1178,7 @@ fun goodFeaturesToTrack(src: uint8 [,], maxCorners: int, ~qualityLevel: double,
                          blockSize, gradientSize, useHarrisDetector, k)
 
 @private fun HoughLines_(src: anyarr_t, rho: double, theta: double, threshold: int,
-               srn: double, stn: double, minTheta: double=0, maxTheta: double): floatx2 [] =
+               srn: double, stn: double, minTheta: double, maxTheta: double): floatx2 [] =
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1180,8 +1191,8 @@ fun goodFeaturesToTrack(src: uint8 [,], maxCorners: int, ~qualityLevel: double,
 }
 
 fun HoughLines(src: uint8 [,], ~rho: double, ~theta: double, ~threshold: int,
-               ~srn: double=0, ~stn: double=0,
-               ~minTheta: double=0, ~maxTheta: double=M_PI): floatx2 [] =
+               ~srn: double=0., ~stn: double=0.,
+               ~minTheta: double=0., ~maxTheta: double=M_PI): floatx2 [] =
     HoughLines_(anyarray(src), rho, theta, threshold, srn, stn, minTheta, maxTheta)
 
 @private fun HoughLinesP_(src: anyarr_t, rho: double, theta: double, threshold: int,
@@ -1218,7 +1229,7 @@ fun HoughLinesP(src: uint8 [,], ~rho: double, ~theta: double, ~threshold: int,
 }
 
 fun HoughCircles(src: uint8 [,], ~method: int=4, ~dp: double, ~minDist: double,
-                 ~param1: double=100, ~param2: double=100,
+                 ~param1: double=100., ~param2: double=100.,
                  ~minRadius: int=0, ~maxRadius: int=0): floatx3 [] =
     HoughCircles_(anyarray(src), method, dp, minDist, param1, param2, minRadius, maxRadius)
 
@@ -1261,7 +1272,7 @@ fun dilate(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
     (reinterpret(dilate_(anyarray(src), anyarray(kernel), anchor, iterations, borderType)) : 't [,])
 
 @private fun morphologyEx_(src: anyarr_t, kernel: anyarr_t, anchor: intx2, op: int,
-                 anchor: intx2, iterations: int, borderType: int): uint8 [,] =
+                           iterations: int, borderType: int): uint8 [,] =
 @ccode {
     cv::Mat c_src, c_kernel, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1278,9 +1289,9 @@ fun dilate(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
 
 fun morphologyEx(src: 't [,], kernel: 'k [,], ~op: int,
                  ~anchor: intx2=(-1, -1),
-                 ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): 't [,]
-    (reinterpret(morphologyEx_(anyarray(src), anyarray(kernel), op,
-                anchor, iterations, borderType)) : 't [,])
+                 ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): 't [,] =
+    (reinterpret(morphologyEx_(anyarray(src), anyarray(kernel), anchor, op,
+                 iterations, borderType)) : 't [,])
 
 val INTER_LINEAR: int = @ccode {cv::INTER_LINEAR}
 val INTER_CUBIC: int = @ccode {cv::INTER_CUBIC}
@@ -1585,7 +1596,7 @@ val THRESH_TOZERO_INV: int = @ccode {cv::THRESH_BINARY}
 val THRESH_OTSU: int = @ccode {cv::THRESH_BINARY}
 val THRESH_TRIANGLE: int = @ccode {cv::THRESH_BINARY}
 
-@private fun threshold_(src: anyarr_t, thresh: double, maxVal: double, type: int): uint8 [,] =
+@private fun threshold_(src: anyarr_t, thresh: double, maxVal: double, op: int): uint8 [,] =
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1598,8 +1609,8 @@ val THRESH_TRIANGLE: int = @ccode {cv::THRESH_BINARY}
     return fx_status;
 }
 
-fun threshold(src: 't [,], ~threshold: double, ~maxVal: double, ~type: int): 't [,] =
-    (reinterpret(threshold_(anyarray(src), threshold, maxVal, type)) : 't [,])
+fun threshold(src: 't [,], ~threshold: double, ~maxVal: double, ~op: int): 't [,] =
+    (reinterpret(threshold_(anyarray(src), threshold, maxVal, op)) : 't [,])
 
 @private fun adaptiveThreshold_(src: anyarr_t, maxVal: double,
                       adaptiveMethod: int, thresholdType: int,
@@ -1622,7 +1633,7 @@ fun adaptiveThreshold(src: 't [,], maxVal: double,
                       ~blockSize: int, ~C: double): 't [,] =
     (reinterpret(adaptiveThreshold_(anyarray(src), maxVal, thresholdType, blockSize, C)) : 't [,])
 
-@private fun pyrDown_(src: anyarr_t, dsize: int2, borderType: int): uint8 [,] =
+@private fun pyrDown_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,] =
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1634,10 +1645,10 @@ fun adaptiveThreshold(src: 't [,], maxVal: double,
     return fx_status;
 }
 
-fun pyrDown(src: 't [,], ~dsize: int2=(0, 0), ~borderType: int = BORDER_DEFAULT ): 't [,] =
+fun pyrDown(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT ): 't [,] =
     (reinterpret(pyrDown_(anyarray(src), dsize, borderType)) : 't [,])
 
-@private fun pyrUp_(src: anyarr_t, dsize: int2, borderType: int): uint8 [,] =
+@private fun pyrUp_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,] =
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1649,7 +1660,7 @@ fun pyrDown(src: 't [,], ~dsize: int2=(0, 0), ~borderType: int = BORDER_DEFAULT 
     return fx_status;
 }
 
-fun pyrUp(src: 't [,], ~dsize: int2=(0, 0), ~borderType: int = BORDER_DEFAULT ): 't [,] =
+fun pyrUp(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT ): 't [,] =
     (reinterpret(pyrUp_(anyarray(src), dsize, borderType)) : 't [,])
 
 @private fun calcHist_(ndims: int, src: anyarr_t, mask: anyarr_t,
@@ -1870,10 +1881,7 @@ fun distanceTransform(src: uint8 [,], ~distanceType: int, ~maskSize: int=0): flo
         else
             fx_result->t1 = cv::floodFill(c_src, c_mask, cvt_point(seed), cvt_scalar(newVal),
                           &r, cvt_scalar(loDiff), cvt_scalar(upDiff), (int)flags);
-        fx_result->t0.t0 = r.x;
-        fx_result->t0.t1 = r.y;
-        fx_result->t0.t2 = r.width;
-        fx_result->t0.t3 = r.height;
+        cvt_rect2intx4(r, &fx_result->t0);
     )
     return fx_status;
 }
@@ -2376,10 +2384,7 @@ fun contourArea(src: 't [], ~oriented: bool=false): double =
 
     FX_OCV_TRY_CATCH(
         cv::Rect r = cv::boundingRect(c_src);
-        fx_result->t0 = r.x;
-        fx_result->t1 = r.y;
-        fx_result->t2 = r.width;
-        fx_result->t3 = r.height;
+        cvt_rect2intx4(r, fx_result);
     )
     return fx_status;
 }
@@ -2400,7 +2405,7 @@ fun boundingRect(src: 't [+]): intx4 = boundingRect_(anyarray(src))
 
 fun minAreaRect(points: 't []): box_t = minAreaRect_(anyarray(points))
 
-fun boxPoints(box: box_t): float2 [] =
+fun boxPoints(box: box_t): floatx2 [] =
 @ccode {
     cv::Mat c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2467,7 +2472,7 @@ fun convexHull(points: 't [], ~clockwise:bool=false): 't [] =
     (reinterpret(convexHull_(anyarray(points), clockwise, true)) : 't [])
 
 fun convexHullIdx(points: 't [], ~clockwise:bool=false): 't [] =
-    (reinterpret(convexHull_(anyarray(points), clockwise, false)) : int [])
+    (reinterpret(convexHull_(anyarray(points), clockwise, false)) : int32 [])
 
 @private fun isContourConvex_(contour: anyarr_t): bool =
 @ccode {
@@ -2569,7 +2574,7 @@ fun fitLine(points: 't [], ~distType: int, ~param: double, ~reps: double, ~aeps:
 fun pointPolygonTest(contour: 't [], pt: floatx2, ~measureDist: bool): double =
     pointPolygonTest_(anyarray(contour), pt, measureDist)
 
-fun rotatedRectangleIntersection(rrect1: box_t, rrect2: box_t): (int, float2 []) =
+fun rotatedRectangleIntersection(rrect1: box_t, rrect2: box_t): (int, floatx2 []) =
 @ccode {
     cv::Mat c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2627,9 +2632,23 @@ fun line(img: 't [,], pt1: intx2, pt2: intx2, ~color: doublex4,
         ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0): void =
     line_(anyarray(img), pt1, pt2, color, thickness, linetype, shift)
 
+@private fun arrowedLine_(img: anyarr_t, pt1: intx2, pt2: intx2, color: doublex4,
+                thickness: int, lineType: int, shift: int,
+                tipLength: double): void =
+@ccode {
+    cv::Mat c_img;
+    int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
+    FX_OCV_TRY_CATCH(
+        cv::arrowedLine(c_img, cvt_point(pt1), cvt_point(pt2), cvt_scalar(color),
+                 (int)thickness, (int)lineType, (int)shift, tipLength);
+    )
+    return fx_status;
+}
+
 fun arrowedLine(img: 't [,], pt1: intx2, pt2: intx2, ~color: doublex4,
                 ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0,
-                ~tipLength: double=0.1): void
+                ~tipLength: double=0.1): void =
+    allowedLine_(anyarray(img), pt1, pt2, color, thickness, lineType, shift, tipLength)
 
 @private fun rectangle_(img: anyarr_t, pt1: intx2, pt2: intx2, color: doublex4,
                         thickness: int, lineType: int, shift: int): void =
@@ -2709,13 +2728,13 @@ fun ellipse(img: 't [,], box: box_t, ~color: doublex4,
             ~thickness: int=1, ~lineType: int=LINE_8): void =
     ellipse_(anyarray(img), box, color, thickness, lineType)
 
-val MARKER_CROSS: int = {cv::MARKER_CROSS}
-val MARKER_TILTED_CROSS: int = {cv::MARKER_TILTED_CROSS}
-val MARKER_STAR: int = {cv::MARKER_STAR}
-val MARKER_DIAMOND: int = {cv::MARKER_DIAMOND}
-val MARKER_SQUARE: int = {cv::MARKER_SQUARE}
-val MARKER_TRIANGLE_UP: int = {cv::MARKER_TRIANGLE_UP}
-val MARKER_TRIANGLE_DOWN: int = {cv::MARKER_TRIANGLE_DOWN}
+val MARKER_CROSS: int = @ccode {cv::MARKER_CROSS}
+val MARKER_TILTED_CROSS: int = @ccode {cv::MARKER_TILTED_CROSS}
+val MARKER_STAR: int = @ccode {cv::MARKER_STAR}
+val MARKER_DIAMOND: int = @ccode {cv::MARKER_DIAMOND}
+val MARKER_SQUARE: int = @ccode {cv::MARKER_SQUARE}
+val MARKER_TRIANGLE_UP: int = @ccode {cv::MARKER_TRIANGLE_UP}
+val MARKER_TRIANGLE_DOWN: int = @ccode {cv::MARKER_TRIANGLE_DOWN}
 
 @private fun drawMarker_(img: anyarr_t, pos: intx2, color: doublex4,
                markerType: int, markerSize: int,
@@ -2823,15 +2842,119 @@ class FontFace
     fface: cptr;
 }
 
-fun makeFontFace(nameOrPath: string): FontFace
-fun FontFace.setInstance(params: int []): void
-fun FontFace.getInstance(): int []
+@ccode {
+static void _fx_ocv_free_fface(void* ptr) { delete (cv::FontFace*)ptr; }
+}
+
+fun makeFontFace(fontNameOrPath: string): FontFace
+{
+    fun makeFontFace_(fontPathOrName: string): cptr =
+    @ccode {
+        cv::FontFace* fface = 0;
+        std::string c_fontname;
+        int fx_status = cvt_to(fontPathOrName, c_fontname);
+        FX_OCV_TRY_CATCH(
+            fface = new cv::FontFace(c_fontname);
+            if(fface && !fface->getName().empty()) {
+                fx_status = fx_make_cptr(fface, _fx_ocv_free_fface, fx_result);
+            } else {
+                delete fface;
+                fx_status = fx_ocv_err("cannot load font");
+            }
+        )
+        return fx_status;
+    }
+    FontFace {fface=makeFontFace_(fontNameOrPath)}
+}
+
+fun FontFace.setInstance(params: int []): bool =
+@ccode {
+    int i, nparams = (int)params->dim[0].size;
+    int fx_status = FX_OK;
+    std::vector<int> params_(nparams);
+    if (!self->fface || !self->fface->ptr)
+        return fx_ocv_err("font is not initialized");
+    for(i = 0; i < nparams; i++)
+        params_[i] = (int)*FX_PTR_1D(int_, params, i);
+    FX_OCV_TRY_CATCH(
+        *fx_result = ((cv::FontFace*)self->fface->ptr)->setInstance(params_);
+    )
+    return fx_status;
+}
+
+@private fun FontFace_getInstance_(fface: cptr): int32 [] =
+@ccode {
+    int fx_status = FX_OK;
+    std::vector<int> params_;
+    if (!self->fface || !self->fface->ptr)
+        return fx_ocv_err("font is not initialized");
+    FX_OCV_TRY_CATCH(
+        bool ok = ((cv::FontFace*)self->fface->ptr)->getInstance(params_);
+        if (ok) {
+            cv::Mat m_params(params_, false);
+            fx_status = cvt_from(m_params, 1, _FX_DEPTH_S32, 1, fx_result);
+        }
+    )
+    return fx_status;
+}
+
+fun FontFace.getInstance(): int [] = int(FontFace_getInstance_(self.fface))
+
+val PUT_TEXT_ALIGN_LEFT: int = @ccode {cv::PUT_TEXT_ALIGN_LEFT}
+val PUT_TEXT_ALIGN_CENTER: int = @ccode {cv::PUT_TEXT_ALIGN_CENTER}
+val PUT_TEXT_ALIGN_RIGHT: int = @ccode {cv::PUT_TEXT_ALIGN_RIGHT}
+val PUT_TEXT_ORIGIN_TL: int = @ccode {cv::PUT_TEXT_ORIGIN_TL}
+val PUT_TEXT_ORIGIN_BL: int = @ccode {cv::PUT_TEXT_ORIGIN_BL}
+val PUT_TEXT_WRAP: int = @ccode {cv::PUT_TEXT_WRAP}
+
+@private fun putText_(img: anyarr_t, text: string, org: intx2, color: doublex4,
+            fontface: FontFace, size: int, weight: int,
+            flags: int, wrap: intx2): void =
+@ccode {
+    cv::Mat c_img;
+    std::string c_text;
+    int fx_status;
+    if (!self->fface || !self->fface->ptr)
+        return fx_ocv_err("font is not initialized");
+    fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
+    if (fx_status >= 0)
+        fx_status = cvt_to(text, c_text);
+    FX_OCV_TRY_CATCH(
+        cv::putText(c_img, c_text, cvt_point(org),
+                cvt_scalar(color), *(cv::FontFace*)(self->fface->ptr),
+                (int)size, (int)weight, (int)flags,
+                cv::Range((int)wrap->t0, (int)wrap->t1));
+    )
+    return fx_status;
+}
+
 fun putText(img: 't [,], text: string, ~org: intx2, ~color: doublex4,
             ~fontface: FontFace, ~size: int, ~weight: int=0,
-            ~flags: int=PUT_TEXT_ALIGN_LEFT, ~wrap: int2=(0,0)): void
+            ~flags: int=PUT_TEXT_ALIGN_LEFT, ~wrap: intx2=(0,0)): void =
+    putText_(anyarray(img), text, org, color, fontface, size, weight, flags, wrap)
+
+@private fun getTextSize_(imgSize: intx2, text: string, org: intx2,
+    fontface: FontFace, size: int, weight: int,
+    flags: int, wrap: intx2): intx4 =
+@ccode {
+    std::string c_text;
+    int fx_status = cvt_to(text, c_text);
+    if (!self->fface || !self->fface->ptr)
+        return fx_ocv_err("font is not initialized");
+    FX_OCV_TRY_CATCH(
+        cv::Rect r = cv::getTextSize(cvt_size(imgSize), c_text, cvt_point(org),
+                *(cv::FontFace*)(self->fface->ptr),
+                (int)size, (int)weight, (int)flags,
+                cv::Range((int)wrap->t0, (int)wrap->t1));
+        cvt_rect2intx4(r, fx_result);
+    )
+    return fx_status;
+}
+
 fun getTextSize(imgSize: intx2, text: string, ~org: intx2,
                 ~fontface: FontFace, ~size: int, ~weight: int=0,
-                ~flags: int=PUT_TEXT_ALIGN_LEFT, ~wrap: intx2=(0,0) ): intx4
+                ~flags: int=PUT_TEXT_ALIGN_LEFT, ~wrap: intx2=(0,0) ): intx4 =
+    getTextSize_(imgSize, text, org, fontface, size, weight, flags, wrap)
 
 //fun lineIterator(pt1: intx2, pt2: intx2, ~connectivity: int, ~leftToRight: bool=false): int32x2 []
 
@@ -3111,7 +3234,7 @@ val VIDEOWRITER_PROP_IS_COLOR: int = @ccode { cv::VIDEOWRITER_PROP_IS_COLOR }
 val VIDEOWRITER_PROP_DEPTH: int = @ccode { cv::VIDEOWRITER_PROP_DEPTH }
 val VIDEOWRITER_PROP_HW_ACCELERATION: int = @ccode { cv::VIDEOWRITER_PROP_HW_ACCELERATION }
 val VIDEOWRITER_PROP_HW_DEVICE: int = @ccode { cv::VIDEOWRITER_PROP_HW_DEVICE }
-val VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL = @ccode { cv::VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL }
+val VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL: int = @ccode { cv::VIDEOWRITER_PROP_HW_ACCELERATION_USE_OPENCL }
 
 val VIDEO_ACCELERATION_NONE: int = @ccode { cv::VIDEO_ACCELERATION_NONE }
 val VIDEO_ACCELERATION_ANY: int = @ccode { cv::VIDEO_ACCELERATION_ANY }
@@ -3524,11 +3647,11 @@ fun FOURCC(s: string): int
 
 fun openVideoWriter(filename: string, ~fourcc: int, ~fps: double,
                     ~frameSize: intx2, ~isColor: bool=true,
-                    ~params: int [] = []) =
+                    ~params: int [] = [])
 {
     fun openVideoWriter_(filename: string, fourcc: int, fps: double,
-                         frameSize: intx2, isColor: bool, params: int32 []) = @ccode
-    {
+                         frameSize: intx2, isColor: bool, params: int []): cptr =
+    @ccode {
         cv::VideoWriter* writer = 0;
         std::string c_filename;
         std::vector<int> c_params;
