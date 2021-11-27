@@ -3701,3 +3701,330 @@ fun VideoWriter.close(): void =
 fun VideoWriter.write(img: 't [,]) = self.write_(anyarray(img))
 
 //////////////////////////////// highgui ///////////////////////////////
+
+@private fun imshow_(window: string, img: anyarr_t): void = @ccode
+{
+    std::string c_window;
+    cv::Mat c_img;
+    int fx_status = cvt_to(window, c_window);
+    if(fx_status >= 0)
+        fx_status = cvt_to((_fx_anyarr_t*)img, c_img);
+    FX_OCV_TRY_CATCH(
+        cv::imshow(c_window, c_img);
+    )
+    return fx_status;
+}
+
+fun imshow(window: string, img: 't [,]) = imshow_(window, anyarray(img))
+
+fun waitKey(delay: int) {
+    @nothrow fun waitKey_(delay: int): int =
+    @ccode {
+        return cv::waitKey((int)delay);
+    }
+    if delay < 0 {throw OpenCVError("delay must be non-negative")}
+    waitKey_(delay)
+}
+
+@ccode
+{
+
+typedef struct _fx_ocv_trackbar_callb_t
+{
+    int (*fp)(int_, void*);
+    fx_fcv_t* fcv;
+} _fx_ocv_trackbar_callb_t;
+
+static void _fx_ocv_trackbar_callb(int pos, void* userdata)
+{
+    _fx_ocv_trackbar_callb_t* callb = (_fx_ocv_trackbar_callb_t*)userdata;
+    callb->fp(pos, callb->fcv);
+}
+
+}
+
+fun createTrackbar(trackbarname: string, window: string,
+                   value: int32 ref, count: int,
+                   onchange: (int->void)?): void = @ccode
+{
+    std::string c_trackbarname, c_window;
+    int fx_status = cvt_to(trackbarname, c_trackbarname);
+    if (fx_status >= 0)
+        fx_status = cvt_to(window, c_window);
+    FX_OCV_TRY_CATCH(
+        _fx_ocv_trackbar_callb_t* callb = 0;
+        if (onchange->tag > 1) {
+            callb = (_fx_ocv_trackbar_callb_t*)fx_malloc(sizeof(*callb));
+            if(!callb)
+                FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+            callb->fp = onchange->u.Some.fp;
+            callb->fcv = onchange->u.Some.fcv;
+            if(callb->fcv)
+                FX_INCREF(callb->fcv->rc);
+        }
+        cv::createTrackbar(
+            c_trackbarname, c_window,
+            &value->data, (int)count,
+            callb ? _fx_ocv_trackbar_callb : 0,
+            callb);
+    )
+    return fx_status;
+}
+
+//////////////////////////////// dnn ///////////////////////////////////
+
+class Net { net: cptr }
+
+@ccode {
+static void _fx_ocv_free_net(void* ptr) { delete (cv::dnn::Net*)ptr; }
+static void _fx_ocv_free_model(void* ptr) { delete (cv::dnn::Model*)ptr; }
+}
+
+val DNN_TARGET_CPU: int = @ccode {cv::DNN_TARGET_CPU}
+val DNN_TARGET_OPENCL: int = @ccode {cv::DNN_TARGET_OPENCL}
+val DNN_TARGET_OPENCL_FP16: int = @ccode {cv::DNN_TARGET_OPENCL_FP16}
+val DNN_TARGET_MYRIAD: int = @ccode {cv::DNN_TARGET_MYRIAD}
+val DNN_TARGET_VULKAN: int = @ccode {cv::DNN_TARGET_VULKAN}
+val DNN_TARGET_FPGA: int = @ccode {cv::DNN_TARGET_FPGA}
+val DNN_TARGET_CUDA: int = @ccode {cv::DNN_TARGET_CUDA}
+val DNN_TARGET_CUDA_FP16: int = @ccode {cv::DNN_TARGET_CUDA_FP16}
+val DNN_TARGET_HDDL: int = @ccode {cv::DNN_TARGET_HDDL}
+
+val DNN_BACKEND_DEFAULT: int = @ccode {cv::DNN_BACKEND_DEFAULT}
+val DNN_BACKEND_HALIDE: int = @ccode {cv::DNN_BACKEND_HALIDE}
+val DNN_BACKEND_INFERENCE_ENGINE: int = @ccode {cv::DNN_BACKEND_INFERENCE_ENGINE}
+val DNN_BACKEND_OPENCV: int = @ccode {cv::DNN_BACKEND_OPENCV}
+val DNN_BACKEND_VKCOM: int = @ccode {cv::DNN_BACKEND_VKCOM}
+val DNN_BACKEND_CUDA: int = @ccode {cv::DNN_BACKEND_CUDA}
+val DNN_BACKEND_WEBNN: int = @ccode {cv::DNN_BACKEND_WEBNN}
+
+@nothrow fun Net.empty(): bool =
+@ccode {
+    return self->net == 0 || self->net->ptr == 0 ||
+           ((cv::dnn::Net*)self->net->ptr)->empty();
+}
+
+fun Net.dump(): string
+{
+    fun dump_(net: cptr): string =
+    @ccode {
+        std::string result;
+        int fx_status = FX_OK;
+        FX_OCV_TRY_CATCH(
+            (cv::dnn::Net*)(net->ptr)->dump(result);
+            if (!result.empty())
+                fx_status = fx_cstr2str(&result[0], (int_)result.size(), fx_result);
+        )
+        return fx_status;
+    }
+    if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
+    dump_(self.net)
+}
+
+fun Net.forward(): float [,,,]
+{
+    fun forward_(net: cptr): float [,,,] =
+    @ccode {
+        int fx_status = FX_OK;
+        FX_OCV_TRY_CATCH(
+            cv::Mat c_out = (cv::dnn::Net*)(net->ptr)->forward();
+            fx_status = cvt_from(c_out, 4, _FX_DEPTH_FP32, 1, fx_result);
+        )
+        return fx_status;
+    }
+    if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
+    forward_(self.net)
+}
+
+fun Net.setPreferableBackend(backendId: int): void
+{
+    fun setPreferableBackend_(net: cptr, backendId: int): void
+    @ccode {
+        int fx_status = FX_OK;
+        FX_OCV_TRY_CATCH(
+            (cv::dnn::Net*)(net->ptr)->setPreferableBackend((int)backendId);
+        )
+        return fx_status;
+    }
+    if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
+    setPreferableBackend_(self.net, backendId)
+}
+
+fun Net.setPreferableTarget(targetId: int): void
+{
+    fun setPreferableTarget_(net: cptr, targetId: int): void =
+    @ccode {
+        int fx_status = FX_OK;
+        FX_OCV_TRY_CATCH(
+            (cv::dnn::Net*)(net->ptr)->setPreferableTarget((int)backendId);
+        )
+        return fx_status;
+    }
+    if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
+    setPreferableTarget_(self.net, targetId)
+}
+
+fun Net.setInput(blob: 't [+], ~name: string="", ~scaleFactor: double=1.,
+                    ~mean: doublex4=(0.,0.,0.,0.)): void
+{
+    fun setInput_(net: cptr, blob: anyarr_t, name: string,
+                  scaleFactor: double, mean: doublex4): void
+    @ccode {
+        cv::Mat c_blob;
+        std::string c_name;
+        int fx_status = cvt_to((const _fx_anyarr_t*)blob, c_blob);
+        if (fx_status >= 0)
+            fx_status = cvt_to(name, c_name);
+        FX_OCV_TRY_CATCH(
+            (cv::dnn::Net*)(net->ptr)->setInput(c_blob, name, scaleFactor, cvt_scalar(mean));
+        )
+        return fx_status;
+    }
+    if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
+    setInput_(self.net, blob, name, scaleFactor, mean)
+}
+
+fun readNet(model: string, ~config: string="", ~framework: string=""): Net
+{
+    fun readNet_(model: string, config: string, framework: string): cptr
+    @ccode {
+        std::string c_model, c_config, c_framework;
+        int fx_status = cvt_to(model, c_model);
+        if (fx_status >= 0)
+            fx_status = cvt_to(config, c_config);
+        if (fx_status >= 0)
+            fx_status = cvt_to(framework, c_framework);
+        FX_OCV_TRY_CATCH(
+            cv::dnn::Net* net = new cv::dnn::readNet(c_model, c_config, c_framework);
+            if (!net || net->empty()) {
+                delete net;
+                fx_status = fx_ocv_err("cannot load the network");
+            }
+            else
+                fx_status = fx_make_cptr(net, _fx_ocv_free_net, fx_result);
+        )
+        return fx_status;
+    }
+    val net = readNet_(model, config, framework)
+    if net == null {throw OpenCVError("cannot load the network")}
+    Net {net=net}
+}
+
+@private fun blobFromImages_(images: anyarr_t [], scaleFactor: double, size: intx2,
+                             mean: doublex4, swapRB: bool, crop: bool): float [,,,]
+@ccode {
+    int_ i, nimages = images->dim[0].size;
+    cv::Mat c_blob;
+    c_blob.allocator = &g_fxarrAllocator;
+    std::vector<cv::Mat> c_images(nimages);
+    int fx_status = FX_OK;
+    for(i = 0; i < nimages; i++)
+        if (fx_status >= 0)
+            fx_status = cvt_to(FX_PTR_1D(fx_anyarr_t, images, i), c_images[i]);
+    FX_OCV_TRY_CATCH(
+        cv::dnn::blobFromImages(c_images, c_blob, scaleFactor, cvt_size(size),
+                                cvt_scalar(mean), swapRB, crop);
+        fx_status = cvt_from(c_blob, 4, _FX_DEPTH_FP32, 1, fx_result);
+    )
+    return fx_status;
+}
+
+fun blobFromImages(images: 't[,][], ~scaleFactor: double=1., ~size: intx2=(0, 0),
+                    ~mean: doublex4=(0., 0., 0., 0.), ~swapRB: bool=false,
+                    ~crop: bool=false): float [,,,] =
+    blobFromImages_([| for i <- images {anyarray(i)} |],
+                scaleFactor, size, mean, swapRB, crop)
+
+fun blobFromImage(image: 't[,], ~scaleFactor: double=1., ~size: intx2=(0, 0),
+                    ~mean: doublex4=(0., 0., 0., 0.), ~swapRB: bool=false,
+                    ~crop: bool=false): float [,,,] =
+    blobFromImages_([|anyarray(image)|], scaleFactor, size,
+                   mean, swapRB, crop)
+
+@ccode {
+static int _fx_ocv_model_nonempty(model: fx_cstr_t)
+{
+    if (!model || !model->ptr || (cv::dnn::Model*)(model->ptr)->getNetwork().empty())
+        return fx_ocv_err("the model is not initialized");
+    return FX_OK;
+}
+}
+
+@private fun Model_assertNonEmpty(model: cptr): void
+@ccode { return _fx_ocv_model_nonempty(model); }
+
+@private fun Model_setPreferableBackend_(model: cptr, backendId: int): void
+@ccode {
+    int fx_status = _fx_ocv_model_nonempty(model);
+    FX_OCV_TRY_CATCH(
+        (cv::dnn::Model*)(model->ptr)->setPreferableBackend((int)backendId);
+    )
+    return fx_status;
+}
+
+@private fun Model_setPreferableTarget_(model: cptr, targetId: int): void
+@ccode {
+    int fx_status = _fx_ocv_model_nonempty(model);
+    FX_OCV_TRY_CATCH(
+        (cv::dnn::Model*)(model->ptr)->setPreferableTarget((int)targetId);
+    )
+    return fx_status;
+}
+
+class DetectionModel { model: cptr }
+
+fun readDetectionModel(modelname: string, ~config: string=""): DetectionModel
+{
+    fun readModel_(modelname: string, config: string): cptr
+    @ccode {
+        std::string c_modelname, c_config;
+        int fx_status = cvt_to(modelname, c_modelname);
+        if (fx_status >= 0)
+            fx_status = cvt_to(config, c_config);
+        FX_OCV_TRY_CATCH(
+            cv::dnn::DetectionModel* model = new DetectionModel(c_modelname, c_config);
+            if (!model || model->getNetwork().empty()) {
+                delete model;
+                fx_status = fx_ocv_err("cannot load the model");
+            }
+            else
+                fx_status = fx_make_cptr(model, _fx_ocv_free_model, fx_result);
+        )
+        return fx_status;
+    }
+    val model = readModel_(modelname, config)
+    if model == null {throw OpenCVError("cannot load the model")}
+    DetectionModel {model=model}
+}
+
+fun DetectionModel.setPreferableBackend(backendId: int) =
+    Model_setPreferableBackend_(self.model, backendId)
+fun DetectionModel.setPreferableTarget(targetId: int) =
+    Model_setPreferableTarget_(self.model, targetId)
+
+fun DetectionModel.detect(frame: 't [,], ~confThreshold: double=0.5,
+                        ~nmsThreshold: double=0.): (int32 [], float [], int32x4 [])
+{
+    fun detect_(model: cptr, frame: anyarr_t, confThreshold: double, nmsThreshold: double):
+        (int32 [], float [], int32x4 [])
+    @ccode {
+        cv::Mat c_frame;
+        std::vector<int> c_labels;
+        std::vector<float> c_conf;
+        std::vector<cv::Rect> c_boxes;
+        int fx_status = _fx_ocv_model_nonempty(model);
+        if (fx_status >= 0)
+            fx_status = cvt_to((const _fx_anyarr_t*)frame, c_frame);
+        FX_OCV_TRY_CATCH(
+            (cv::dnn::DetectionModel*)(model->ptr)->detect(c_frame,
+                (float)confThreshold, (float)nmsThreshold, c_labels, c_conf, c_boxes);
+            fx_status = cvt_from(cv::Mat(c_labels, false), 1, _FX_DEPTH_S32, 1, &fx_result->t0);
+            if (fx_status >= 0)
+                fx_status = cvt_from(cv::Mat(c_conf, false), 1, _FX_DEPTH_FP32, 1, &fx_result->t1);
+            if (fx_status >= 0)
+                fx_status = cvt_from(cv::Mat(c_boxes, false), 1, _FX_DEPTH_S32, 4, &fx_result->t2);
+        )
+        return fx_status;
+    }
+    detect_(self.model, anyarray(frame), confThreshold, nmsThreshold)
+}
