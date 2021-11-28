@@ -32,6 +32,8 @@ type token_t =
     | TILDE | LOGICAL_AND | LOGICAL_OR | LOGICAL_NOT | EQUAL
     | DOT_EQUAL | AUG_BINOP: Ast.binary_t | SPACESHIP | CMP: Ast.cmpop_t
     | DOT_SPACESHIP | DOT_CMP: Ast.cmpop_t | SAME | RESERVED: string
+    | PP_IF | PP_IFDEF | PP_IFNDEF | PP_ELIF | PP_ELSE
+    | PP_ENDIF | PP_DEFINE | PP_UNDEF
 
 fun ne2u(ne: bool, s: string) = if ne {s} else {s.decapitalize()}
 
@@ -138,6 +140,14 @@ fun tok2str(t: token_t)
     | DOT_CMP(c) => (f"DOT_CMP({c})", f".{c}")
     | SAME => ("SAME", "===")
     | RESERVED(s) => val r = f"<reserved({s})>"; (r, r)
+    | PP_IF => ("PP_IF", "@IF")
+    | PP_IFDEF => ("PP_IFDEF", "@IFDEF")
+    | PP_IFNDEF => ("PP_IFNDEF", "@IFNDEF")
+    | PP_ELIF => ("PP_ELIF", "@ELIF")
+    | PP_ELSE => ("PP_ELSE", "@ELSE")
+    | PP_ENDIF => ("PP_ENDIF", "@ENDIF")
+    | PP_DEFINE => ("PP_DEFINE", "@DEFINE")
+    | PP_UNDEF => ("PP_UNDEF", "@UNDEF")
 }
 
 fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, token_t) =
@@ -204,6 +214,9 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
     ("@parallel", (PARALLEL, 2)),  ("@private", (PRIVATE, 2)),
     ("@sync", (SYNC, 1)), ("@text", (DATA("text"), 2)),
     ("@pure", (PURE, 2)),  ("@unzip", (UNZIP, 2)),
+    ("@IF", (PP_IF, 2)), ("@IFDEF", (PP_IFDEF, 2)), ("@IFNDEF", (PP_IFNDEF, 2)),
+    ("@ELIF", (PP_ELIF, 1)), ("@ELSE", (PP_ELSE, 1)), ("@ENDIF", (PP_ENDIF, 3)),
+    ("@DEFINE", (PP_DEFINE, 2)), ("@UNDEF", (PP_UNDEF, 2))
     ])
 
 /*  The function that returns the actual tokenizer/lexer function,
@@ -411,7 +424,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 | (CCODE, _) =>
                     check_ne(new_exp, loc, "ccode")
                     paren_stack = (CCODE, loc) :: paren_stack
-                    new_exp = true; CCODE
+                    new_exp = true; t
                 | (FOR _, _) =>
                     val t = FOR(new_exp); new_exp = true; t
                 | (IMPORT _, _) =>
@@ -420,9 +433,11 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     val t = WHILE(new_exp); new_exp = true; t
                 | (MATCH, _) =>
                     paren_stack = (MATCH, loc) :: paren_stack
-                    new_exp = true; MATCH
+                    new_exp = true; t
                 | (REF _, _) =>
                     val t = REF(new_exp); /* retain new_exp as-is */ t
+                | (PP_ENDIF, _) =>
+                    new_exp = false; t
                 | (RETURN _, _) =>
                     c = buf.zero[pos]
                     c1 = buf.zero[pos+1]

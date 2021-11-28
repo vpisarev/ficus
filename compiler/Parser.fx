@@ -5,7 +5,7 @@
 
 // Ficus recursive descent parser
 
-import File, Filename, Sys
+import File, Filename, Hashmap, Sys
 from Ast import *
 import LexerUtils as Lxu
 from Lexer import *
@@ -1994,6 +1994,401 @@ fun parse_iface(ts: tklist_t, loc: loc_t)
     (ts, DefInterface(iface))
 }
 
+type ppifstate_t =
+    | PP_BR_TRUE // inside 'true' if/elif branch of conditional compilation
+    | PP_BR_FALSE: bool // inside 'false' if/elif branch of conditional compilation:
+                        // the argument tells if the true branch was already taken or not
+    | PP_BR_ELSE: bool  // inside 'else' branch.
+                        // the argument tells whether the 'else' branch is 'true' or not
+type ppstack_t = (ppifstate_t, loc_t) list
+type ppval_t = PP_INT: int64 | PP_BOOL: bool | PP_STRING: string
+type ppenv_t = (string, ppval_t) Hashmap.t
+
+fun preprocess(ts: tklist_t): tklist_t
+{
+    var env = Hashmap.empty(256, "", PP_INT(0L))
+
+    fun pp_err(ts: tklist_t, msg: string) =
+        parse_err(ts, "preprocessor: " + msg)
+
+    fun pp_match_paren((ts: tklist_t, x: ppval_t), ct: token_t, ol: loc_t): (tklist_t, ppval_t)
+    {
+        match ts {
+        | (ct_, l) :: rest when ct_ == ct => (rest, x)
+        | _ => throw pp_err(ts, f"'{tok2str(ct).1}' is expected; the opening paren is here {ol}")
+        }
+    }
+
+    fun pp_atomic(ts: tklist_t, calc: bool): (tklist_t, ppval_t)
+    {
+        val defval = PP_BOOL(false)
+        //println(f"pp_atomic @ {ts.hd().1}\n")
+        match ts {
+        | (IDENT(_, "DEFINED"), _) :: (LPAREN(false), _) :: (IDENT(_, n), _) :: (RPAREN, _) :: rest =>
+            (rest, if calc {PP_BOOL(env.mem(n))} else {defval})
+        | (IDENT(_, fname), _) :: (LPAREN(false), l1) :: rest =>
+            // [TODO] currently only single-argument preprocessor intrinsic functions are supported
+            val (ts, x) = pp_match_paren(pp_exp(rest, calc), RPAREN, l1)
+            val x = if calc {
+                match (fname, x) {
+                | ("int", PP_BOOL(b)) => PP_INT(if b {1L} else {0L})
+                | ("abs", PP_INT(i)) => PP_INT(if i >= 0L {i} else {-i})
+                | ("string", PP_BOOL(b)) => PP_STRING(string(b))
+                | ("string", PP_INT(i)) => PP_STRING(string(i))
+                | _ => throw pp_err(ts, f"unknown/unsupported function {fname}")
+                }
+            } else {defval}
+            (rest, x)
+        | (IDENT(ne, i), _) :: rest =>
+            val x = if calc {
+                match env.find_opt(i) {
+                | Some(x) => x
+                | _ => throw pp_err(ts, f"identifier 'i' is undefined")
+                }
+            } else {
+                defval
+            }
+            (rest, x)
+        | (LITERAL(lit), l1) :: rest =>
+            (rest, (match lit {
+            | LitInt(i) => PP_INT(i)
+            | LitBool(b) => PP_BOOL(b)
+            | LitString(s) => PP_STRING(s)
+            | _ => throw pp_err(ts, f"preprocessor: unsupported literal (only integers, boolean values and strings are supported)")
+            }))
+        | (LPAREN(ne), l1) :: rest =>
+            check_ne(ne, ts)
+            pp_match_paren(pp_exp(rest, calc), RPAREN, l1)
+        | (t, _) :: _ =>
+            throw pp_err(ts, f"unxpected token '{tok2str(t).1}'. An identifier, literal or '(' is expected")
+        | _ =>
+            throw pp_err(ts, f"premature end of the stream; check the parens")
+        }
+    }
+
+    fun pp_unary(ts: tklist_t, calc: bool): (tklist_t, ppval_t)
+    {
+        val defval = PP_BOOL(false)
+        //println(f"pp_unary({tok2str(ts)})\n")
+        match ts {
+        | (MINUS(true), l1) :: rest =>
+            val (ts, x) = pp_unary(rest, calc)
+            val x = if calc {
+                match x {
+                | PP_INT(x) => PP_INT(-x)
+                | _ => throw pp_err(ts, f"argument of unary '-' must be an integer")
+                }
+            } else {defval}
+            (ts, x)
+        | (PLUS(true), l1) :: rest =>
+            val (ts, x) = pp_unary(rest, calc)
+            val x = if calc {
+                match x {
+                | PP_INT(_) => x
+                | _ => throw pp_err(ts, f"argument of unary '+' must be an integer")
+                }
+            } else {defval}
+            (ts, x)
+        | (TILDE, l1) :: rest =>
+            val (ts, x) = pp_unary(rest, calc)
+            val x = if calc {
+                match x {
+                | PP_INT(x) => PP_INT(~x)
+                | _ => throw pp_err(ts, f"argument of unary '~' must be an integer")
+                }
+            } else {defval}
+            (ts, x)
+        | (LOGICAL_NOT, l1) :: rest =>
+            val (ts, x) = pp_unary(rest, calc)
+            val x = if calc {
+                match x {
+                | PP_BOOL(b) => PP_BOOL(!b)
+                | _ => throw pp_err(ts, f"argument of unary '!' must be a boolean")
+                }
+            } else {defval}
+            (ts, x)
+        | _ =>
+            pp_atomic(ts, calc)
+        }
+    }
+
+    fun pp_binary(ts: tklist_t, calc: bool) : (tklist_t, ppval_t)
+    {
+        //println(f"pp_exp({tok2str(ts)})\n")
+        fun pp_binary_(ts: tklist_t, calc: bool, result: ppval_t, min_prec: int) =
+        match ts {
+        | (t, l) :: rest =>
+            // roughly sort binary ops by how often they are met in the code,
+            // so that we have less checks in general
+            val (bop, prec, assoc) = match t {
+                | PLUS(false) => (OpAdd, 210, AssocLeft)
+                | MINUS(false) => (OpSub, 210, AssocLeft)
+                | STAR(false) => (OpMul, 220, AssocLeft)
+                | SLASH => (OpDiv, 220, AssocLeft)
+                | PERCENT => (OpMod, 220, AssocLeft)
+                | POWER => (OpPow, 230, AssocRight)
+                | SHIFT_LEFT => (OpShiftLeft, 200, AssocLeft)
+                | SHIFT_RIGHT => (OpShiftRight, 200, AssocLeft)
+                | BITWISE_OR => (OpBitwiseOr, 130, AssocLeft)
+                | BITWISE_AND => (OpBitwiseAnd, 150, AssocLeft)
+                | BITWISE_XOR => (OpBitwiseXor, 140, AssocLeft)
+                | SPACESHIP => (OpSpaceship, 170, AssocLeft)
+                | _ => (OpAdd, -1, AssocLeft)
+            }
+            if prec < min_prec { (ts, result) }
+            else {
+                val next_min_prec = match assoc { | AssocLeft => prec+1 | _ => prec }
+                val (ts, x) = pp_unary(rest, calc)
+                // non-tail call, parse rhs
+                val (ts, rhs) = pp_binary_(ts, calc, x, next_min_prec)
+                val result = if calc {
+                    match (bop, result, rhs) {
+                    | (OpAdd, PP_INT(a), PP_INT(b)) => PP_INT(a + b)
+                    | (OpAdd, PP_STRING(a), PP_STRING(b)) => PP_STRING(a + b)
+                    | (OpSub, PP_INT(a), PP_INT(b)) => PP_INT(a - b)
+                    | (OpMul, PP_INT(a), PP_INT(b)) => PP_INT(a * b)
+                    | (OpDiv, PP_INT(a), PP_INT(b)) =>
+                        if b == 0L {throw pp_err(ts, f"division by zero")}
+                        PP_INT(a / b)
+                    | (OpMod, PP_INT(a), PP_INT(b)) =>
+                        if b == 0L {throw pp_err(ts, f"division by zero")}
+                        PP_INT(a % b)
+                    | (OpPow, PP_INT(a), PP_INT(b)) =>
+                        if b < 0L {throw pp_err(ts, f"negative power")}
+                        PP_INT(a ** b)
+                    | (OpShiftLeft, PP_INT(a), PP_INT(b)) =>
+                        PP_INT(a << b)
+                    | (OpShiftRight, PP_INT(a), PP_INT(b)) =>
+                        PP_INT(a >> b)
+                    | (OpBitwiseOr, PP_INT(a), PP_INT(b)) =>
+                        PP_INT(a | b)
+                    | (OpBitwiseOr, PP_BOOL(a), PP_BOOL(b)) =>
+                        PP_BOOL(a | b)
+                    | (OpBitwiseXor, PP_INT(a), PP_INT(b)) =>
+                        PP_INT(a ^ b)
+                    | (OpBitwiseXor, PP_BOOL(a), PP_BOOL(b)) =>
+                        PP_BOOL(a ^ b)
+                    | (OpBitwiseAnd, PP_INT(a), PP_INT(b)) =>
+                        PP_INT(a & b)
+                    | (OpBitwiseAnd, PP_BOOL(a), PP_BOOL(b)) =>
+                        PP_BOOL(a & b)
+                    | (OpSpaceship, PP_INT(a), PP_INT(b)) =>
+                        PP_INT(int64(a <=> b))
+                    | (OpSpaceship, PP_BOOL(a), PP_BOOL(b)) =>
+                        PP_INT(int64(a <=> b))
+                    | (OpSpaceship, PP_STRING(a), PP_STRING(b)) =>
+                        PP_INT(int64(a <=> b))
+                    | _ => throw pp_err(ts, f"unsupported binary operation")
+                    }
+                } else {PP_BOOL(false)}
+                pp_binary_(ts, calc, result, min_prec)
+            }
+        | _ => (ts, result)
+        }
+        val (ts, x) = pp_unary(ts, calc)
+        pp_binary_(ts, calc, x, 0)
+    }
+
+    fun pp_extend_cmp(ts: tklist_t, calc: bool, result: bool, left: ppval_t): (tklist_t, ppval_t)
+    {
+        match ts {
+        | (CMP(cmpop), l1) :: rest =>
+            val (ts, right) = pp_binary(rest, calc)
+            val result = if !calc {false} else {
+                result & (match (cmpop, left, right) {
+                    | (CmpEQ, PP_INT(a), PP_INT(b)) => a == b
+                    | (CmpEQ, PP_BOOL(a), PP_BOOL(b)) => a == b
+                    | (CmpEQ, PP_STRING(a), PP_STRING(b)) => a == b
+                    | (CmpNE, PP_INT(a), PP_INT(b)) => a != b
+                    | (CmpNE, PP_BOOL(a), PP_BOOL(b)) => a != b
+                    | (CmpNE, PP_STRING(a), PP_STRING(b)) => a != b
+                    | (CmpLT, PP_INT(a), PP_INT(b)) => a < b
+                    | (CmpLT, PP_BOOL(a), PP_BOOL(b)) => a < b
+                    | (CmpLT, PP_STRING(a), PP_STRING(b)) => a < b
+                    | (CmpLE, PP_INT(a), PP_INT(b)) => a <= b
+                    | (CmpLE, PP_BOOL(a), PP_BOOL(b)) => a <= b
+                    | (CmpLE, PP_STRING(a), PP_STRING(b)) => a <= b
+                    | (CmpGE, PP_INT(a), PP_INT(b)) => a >= b
+                    | (CmpGE, PP_BOOL(a), PP_BOOL(b)) => a >= b
+                    | (CmpGE, PP_STRING(a), PP_STRING(b)) => a >= b
+                    | (CmpGT, PP_INT(a), PP_INT(b)) => a > b
+                    | (CmpGT, PP_BOOL(a), PP_BOOL(b)) => a > b
+                    | (CmpGT, PP_STRING(a), PP_STRING(b)) => a > b
+                    | _ => throw pp_err(ts, f"unsupported comparison operation")
+                })
+            }
+            pp_extend_cmp(ts, calc, result, right)
+        | _ =>
+            (ts, PP_BOOL(result))
+        }
+    }
+
+    fun pp_chained_cmp(ts: tklist_t, calc: bool): (tklist_t, ppval_t)
+    {
+        val (ts, x) = pp_binary(ts, calc)
+        match ts {
+        | (CMP(cmpop), _) :: _ =>
+            pp_extend_cmp(ts, calc, true, x)
+        | _ => (ts, x)
+        }
+    }
+
+    fun pp_logic(ts: tklist_t, calc: bool, result: ppval_t, min_prec: int): (tklist_t, ppval_t)
+    {
+        match ts {
+        | (t, l) :: rest =>
+            val (bop, prec, assoc) = match t {
+                | LOGICAL_OR => (OpLogicOr, 10, AssocLeft)
+                | LOGICAL_AND => (OpLogicAnd, 20, AssocLeft)
+                | _ => (OpAdd, -1, AssocLeft)
+            }
+            if prec < min_prec { (ts, result) }
+            else {
+                match result {
+                | PP_BOOL(_) => {}
+                | _ => throw pp_err(ts, "arguments of || and && operations must be booleans")
+                }
+                val next_min_prec = match assoc { | AssocLeft => prec+1 | _ => prec }
+                val (ts, x) = pp_chained_cmp(rest, calc)
+                val calc_rhs =
+                    match (bop, result) {
+                    | (OpLogicOr, PP_BOOL(true)) => false
+                    | (OpLogicAnd, PP_BOOL(false)) => false
+                    | _ => calc
+                    }
+                // non-tail call, parse rhs
+                val (ts, rhs) = pp_logic(ts, calc_rhs, x, next_min_prec)
+                val result = if calc_rhs {
+                    match (bop, result, rhs) {
+                    | (OpLogicOr, PP_BOOL(a), PP_BOOL(b)) => PP_BOOL(a | b)
+                    | (OpLogicAnd, PP_BOOL(a), PP_BOOL(b)) => PP_BOOL(a & b)
+                    | _ => throw pp_err(ts, "arguments of || and && operations must be booleans")
+                    }
+                } else {result}
+                pp_logic(ts, calc, result, min_prec)
+            }
+        | _ => (ts, result)
+        }
+    }
+
+    fun pp_exp(ts: tklist_t, calc: bool): (tklist_t, ppval_t)
+    {
+        val (ts, x) = pp_chained_cmp(ts, calc)
+        pp_logic(ts, calc, x, 0)
+    }
+
+    fun pp_get_bool(x: ppval_t, ts: tklist_t): bool =
+        match x {
+        | PP_BOOL(x) => x
+        | _ => throw pp_err(ts, "boolean value is expected here")
+        }
+
+    fun ppnext(ts: tklist_t, ppstack: ppstack_t, result: tklist_t): tklist_t
+    {
+        val process = match ppstack {
+            | (PP_BR_FALSE(_), _) :: _ | (PP_BR_ELSE(false), _) :: _ => false
+            | _ => true
+        }
+        val parent_process = match ppstack {
+            | _ :: (PP_BR_FALSE(_), _) :: _ | _ :: (PP_BR_ELSE(false), _) :: _ => false
+            | _ => true
+        }
+        match ts {
+        | (PP_DEFINE, _) :: rest =>
+            match rest {
+            | (IDENT(_, n), _) :: rest =>
+                val (ts, x) = pp_exp(rest, true)
+                if process {
+                    if env.mem(n) {throw pp_err(ts, f"symbol '{n}' is already defined")}
+                    env.add(n, x)
+                }
+                ppnext(ts, ppstack, result)
+            | _ => throw pp_err(ts, f"invalid syntax of the new preprocessor symbol definition. It should be '@DEFINE name expr'")
+            }
+        | (PP_UNDEF, _) :: rest =>
+            match rest {
+            | (IDENT(_, n), _) :: rest =>
+                if process { env.remove(n) }
+                ppnext(rest, ppstack, result)
+            }
+        | (PP_IFDEF, _) :: _
+        | (PP_IFNDEF, _) :: _ =>
+            val negate = match ts {(PP_IFNDEF, _) :: _ => true | _ => false}
+            match ts.tl() {
+            | (IDENT(_, n), _) :: rest =>
+                val state =
+                    if !process {PP_BR_FALSE(true)}
+                    else if (env.mem(n) ^ negate) {PP_BR_TRUE}
+                    else {PP_BR_FALSE(false)}
+                ppnext(rest, (state, ts.hd().1) :: ppstack, result)
+            | _ => throw pp_err(ts, f"invalid @IFDEF/@IFNDEF syntax: It should be '@IF[N]DEF name'")
+            }
+        | (PP_IF, _) :: _ =>
+            val (ts, x) = pp_exp(ts.tl(), process)
+            val state =
+                    if !process {PP_BR_FALSE(true)}
+                    else if pp_get_bool(x, ts.tl()) {PP_BR_TRUE}
+                    else {PP_BR_FALSE(false)}
+            ppnext(ts, (state, ts.hd().1) :: ppstack, result)
+        | (PP_ELIF, _) :: _ =>
+            val process_elif = parent_process &&
+                (match ppstack {
+                | (PP_BR_FALSE(false), _) :: _ => true
+                | (PP_BR_ELSE(_), _) :: _ =>
+                    throw pp_err(ts, f"@ELIF may not follow @ELSE (missing @ENDIF?)")
+                | [] =>
+                    throw pp_err(ts, f"@ELIF occurs without preceeding @IF")
+                | _ => false
+                })
+            val (ts, x) = pp_exp(ts.tl(), process_elif)
+            val state =
+                    if !process_elif {PP_BR_FALSE(true)}
+                    else if pp_get_bool(x, ts.tl()) {PP_BR_TRUE}
+                    else {PP_BR_FALSE(false)}
+            ppnext(ts, (state, ts.hd().1) :: ppstack.tl(), result)
+        | (PP_ELSE, _) :: _ =>
+            val process_else = parent_process &&
+                (match ppstack {
+                | (PP_BR_FALSE(false), _) :: _ => true
+                | (PP_BR_ELSE(_), _) :: _ =>
+                    throw pp_err(ts, f"@ELSE may not follow @ELSE (missing @ENDIF?)")
+                | [] =>
+                    throw pp_err(ts, f"@ELSE occurs without preceeding @IF")
+                | _ => false
+                })
+            val state = PP_BR_ELSE(process_else)
+            ppnext(ts.tl(), (state, ts.hd().1) :: ppstack.tl(), result)
+        | (PP_ENDIF, _) :: _ =>
+            match ppstack {
+            | [] => throw pp_err(ts, f"@ENDIF occurs without the matching @IF")
+            | _ => {}
+            }
+            ppnext(ts.tl(), ppstack.tl(), result)
+        | (AT, _) :: (LBRACE, l1) :: rest =>
+            val (ts, x) = pp_match_paren(pp_exp(rest, process), RBRACE, l1)
+            val result = if process {
+                    val t = match x {
+                        | PP_INT(x) => LITERAL(LitInt(x))
+                        | PP_BOOL(x) => LITERAL(LitBool(x))
+                        | PP_STRING(x) => LITERAL(LitString(x))
+                        }
+                    (t, l1) :: result
+                } else { result }
+            ppnext(ts, ppstack, result)
+        | t :: rest =>
+            val result = if process {t :: result} else {result}
+            ppnext(rest, ppstack, result)
+        | _ =>
+            match ppstack {
+            | (_, l) :: _ => throw pp_err(ts, f"@IF/ELIF/ELSE-block starting at {l} is not terminated by @ENDIF")
+            | _ => {}
+            }
+            result.rev()
+        }
+    }
+    ppnext(ts, [], [])
+}
+
 fun parse(m_idx: int, preamble: token_t list, inc_dirs: string list): bool
 {
     var dm = all_modules[m_idx]
@@ -2040,6 +2435,7 @@ fun parse(m_idx: int, preamble: token_t list, inc_dirs: string list): bool
     }
     all_tokens = all_tokens.rev()
     for t <- preamble.rev() { all_tokens = (t, parser_ctx.default_loc) :: all_tokens }
+    all_tokens = preprocess(all_tokens)
     dm.dm_defs = parse_expseq(all_tokens, true).1
     dm.dm_deps = parser_ctx.deps.rev()
     all_modules[m_idx] = dm
