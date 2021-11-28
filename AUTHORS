@@ -1,0 +1,3 @@
+Petr Chekmarev (@4ekmah)        multiple improvements and bug fixes in the compiler and the standard library,
+                                array processing optimizations, re2 module
+Vadim Pisarevsky (@vpisarev)    the language architect and lead developer
