@@ -384,7 +384,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                     " /MT " + (if opt_level == 1 {"/O1"} else {"/O2"})
                 }
             val cflags = f"/nologo{opt_flags}{omp_flag} /I{runtime_include_path}"
-            ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "kernel32.lib advapi32.lib")
+            ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "/F10485760 kernel32.lib advapi32.lib")
         } else {
             // unix or hopefully something more or less compatible with it
             val (os, libpath, cflags, clibs) =

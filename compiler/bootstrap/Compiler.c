@@ -10669,7 +10669,7 @@ FX_EXTERN_C int _fx_M8CompilerFM6run_ccB2LR17C_form__cmodule_tS(
       fx_str_t slit_14 = FX_MAKE_STR("/c /Fo");
       fx_str_t slit_15 = FX_MAKE_STR("/Fe");
       fx_str_t slit_16 = FX_MAKE_STR("");
-      fx_str_t slit_17 = FX_MAKE_STR("kernel32.lib advapi32.lib");
+      fx_str_t slit_17 = FX_MAKE_STR("/F10485760 kernel32.lib advapi32.lib");
       _fx_make_Ta9S(&slit_10, &slit_11, &slit_12, &slit_13, &slit_14, &slit_15, &slit_16, &cflags_0, &slit_17, &v_0);
    }
    else {
