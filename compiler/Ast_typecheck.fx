@@ -1164,7 +1164,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val arg_typs = [for a <- args { get_exp_typ(a) }]
         val f_expected_typ = TypFun(arg_typs, etyp)
         val (id_n_typ, _) = lookup_id_opt(f_id, f_expected_typ, env, sc, eloc)
-        match id_n_typ { 
+        match id_n_typ {
         | Some((f_id, f_typ)) => Some(ExpCall(ExpIdent(f_id, (f_typ, eloc)), args, ctx) )
         | None => None
         }
@@ -1385,9 +1385,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 check_and_make_call(f_id, [new_e1, new_e2])
             }
         }
-    | ExpBinary(OpAugBinary(bop) as aug_op, e1, e2, _) => 
+    | ExpBinary(OpAugBinary(bop) as aug_op, e1, e2, _) =>
         match bop {
-        | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpBitwiseOr | OpBitwiseXor 
+        | OpAdd | OpSub | OpMul | OpDiv | OpMod | OpBitwiseOr | OpBitwiseXor
         | OpBitwiseAnd | OpDotMul | OpDotDiv | OpDotMod | OpShiftLeft | OpShiftRight =>
             val new_e1 = check_exp(e1, env, sc)
             val (etyp1, eloc1) as ectx1 = get_exp_ctx(new_e1)
@@ -1815,7 +1815,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
            in the first case it should have integer type.
            If all the indices are scalars, then the result should have et type,
            otherwise it's an array of as high dimensionality as the number of range indices.
-           There is one more opportunity to express element taking from multidimensional array - 
+           There is one more opportunity to express element taking from multidimensional array -
            tuple index. It must be only index and all tuple elements must be integer scalars.
            */
         | _ =>
@@ -1835,7 +1835,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     }
                     fun idx_type_is_correct_tuple(idxtyp:typ_t, tuploc: loc_t) : (bool, int) {
                         match deref_typ(idxtyp) {
-                        | TypTuple(idxtyplst) => 
+                        | TypTuple(idxtyplst) =>
                             if (idxs.length() != 1) {
                                 throw compile_err(tuploc, "tuple index in array access op must be the only index")
                             }
@@ -2610,6 +2610,7 @@ fun check_directives(eseq: exp_t list, env: env_t, sc: scope_t list) {
             val m_id = dup_id(curr_m_idx, dm_name)
             set_id_entry(m_id, IdModule(m_idx))
             val env = add_id_to_env(alias, m_id, env)
+            val env = add_id_to_env(dm_name, m_id, env)
             val alias_path = pp(alias)
             // in addition to the imported 'prefix1.prefix2....prefixn.module' we
             // also add "fake" 'prefix1', 'prefix1.prefix2' etc. modules to the environment
