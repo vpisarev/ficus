@@ -9,7 +9,7 @@ cd ~/work
 git clone git@github.com:opencv/opencv.git
 cd opencv
 git checkout 5.x
-mkdir ../build/ocv5
+mkdir -p ../build/ocv5
 cd ../build/ocv5
 # configure and build opencv 5.x
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=~/work/build/ocv5/install ~/work/opencv .
