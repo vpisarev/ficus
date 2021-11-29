@@ -1,8 +1,52 @@
+/*
+The example uses some OpenCV 5 API, so please download or clone OpenCV 5.x pre from
+https://github.com/opencv/opencv/tree/5.x.
+
+Example build instructions for Linux, Windows+WSL, macOS and other Unix-like OSes
+(assuming that ficus and opencv projects reside in ~/work directory):
+
+cd ~/work
+git clone git@github.com:opencv/opencv.git
+cd opencv
+git checkout 5.x
+mkdir ../build/ocv5
+cd ../build/ocv5
+# configure and build opencv 5.x
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=~/work/build/ocv5/install ~/work/opencv .
+make -j8
+cd ~/work/ficus
+# compile objdetect example
+bin/ficus -cflags "-I$HOME/work/build/ocv5/install/include/opencv5/" \
+          -clibs "-L$HOME/work/build/ocv5/install/lib" examples/objdetect.fx
+# make sure the dynamic library loader can locate the just built .so/.dylib files.
+# on macOS use DYLD_LIBRARY_PATH instead of LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$HOME/work/build/ocv5/install/lib:$LD_LIBRARY_PATH
+ldconfig # may be needed on Linux
+# download opencv_face_detector* from
+# https://github.com/spmallick/learnopencv/tree/master/AgeGender ...
+
+# finally, run the example. You need a webcam to be attached to your computer.
+__fxbuild__/objdetect/objdetect
+*/
+
 pragma "c++"
-import OpenCV as cv
+import OpenCV as cv, Sys, Filename
 val size0 = 300
-// take the model from https://github.com/spmallick/learnopencv/tree/master/AgeGender
-val net = cv.readDetectionModel("opencv_face_detector.pbtxt", config="opencv_face_detector_uint8.pb")
+
+// take the model from
+val path = match Sys.arguments() { path :: _ => path | _ => "." }
+val modelname = Filename.concat(path, "opencv_face_detector.pbtxt")
+val configname = Filename.concat(path, "opencv_face_detector_uint8.pb")
+if !Filename.exists(modelname) || !Filename.exists(configname) {
+   println(f"\nThe face detector model {modelname}\n\
+           and/or weights {configname} cannot be located.\n\n\
+           Please, download them from\n\
+           https://github.com/spmallick/learnopencv/tree/master/AgeGender\n\
+           and pass the directory there you put them as the command-line parameter.\n")
+   throw Fail("cannot load model")
+}
+
+val net = cv.readDetectionModel(modelname, config=configname)
 net.setPreferableTarget(cv.DNN_TARGET_CPU)
 net.setInputMean((104., 177., 123., 0.))
 net.setInputScale(1.)
