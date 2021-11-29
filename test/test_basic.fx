@@ -12,7 +12,7 @@ import myops
 
 TEST("basic.version", fun()
 {
-    EXPECT_EQ(f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}", f"{__ficus_version_str__}")
+    EXPECT_EQ(f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}{__ficus_suffix__}", f"{__ficus_version_str__}")
 })
 
 TEST("basic.myops.mad_ccode", fun()
