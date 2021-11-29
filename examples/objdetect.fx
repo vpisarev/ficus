@@ -14,6 +14,7 @@ cd ../build/ocv5
 # configure and build opencv 5.x
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=~/work/build/ocv5/install ~/work/opencv .
 make -j8
+make install # copy all the headers and built libs into $HOME/work/ocv/install.
 cd ~/work/ficus
 # compile objdetect example
 bin/ficus -cflags "-I$HOME/work/build/ocv5/install/include/opencv5/" \
