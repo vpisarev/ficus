@@ -8,7 +8,7 @@
     the same variable can be saved non-nothrow functions with same signature.
     Example:
 
-    @pure @nothrow fun foo(i: int): int = @ccode {...}
+    @pure @nothrow fun foo(i: int): int @ccode {...}
     fun bar(i: int): int {...}
     val predicate = if (whistle_of_crayfish_on_a_mount) {foo} else {bar}
     val denied_ips = [1, 2, 3, 4, 5, 6, 7, 8, ... ]

@@ -7,8 +7,8 @@
 
 fun total(a: 't [+]) = fold p = 1 for szj <- size(a) {p*szj}
 fun total(a: 't []) = size(a)
-@nothrow fun empty(a: 't [+]):bool = @ccode
-{
+@nothrow fun empty(a: 't [+]):bool
+@ccode {
     if (!a->data || a->ndims == 0) return true;
     for(int i = 0; i < a->ndims; i++)
         if (a->dim[i].size == 0)
@@ -227,8 +227,8 @@ fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't) =
 
 fun sort(arr: 't [], lt: ('t, 't) -> bool)
 {
-    @nothrow fun swap(arr: 't [], i: int, j: int): void = @ccode
-    {
+    @nothrow fun swap(arr: 't [], i: int, j: int): void
+    @ccode {
         size_t esz = arr->dim[0].step;
         if(esz % sizeof(int) == 0) {
             int* ptr0 = (int*)(arr->data + i*esz);

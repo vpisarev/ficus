@@ -97,8 +97,8 @@ fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): double
     if iterations > 1 { exp(gmean/iterations)/batch } else {gmean/batch}
 }
 
-fun remove(name: string): void = @ccode
-{
+fun remove(name: string): void
+@ccode {
     fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
@@ -109,8 +109,8 @@ fun remove(name: string): void = @ccode
     return fx_status;
 }
 
-fun rename(name: string, new_name: string): bool = @ccode
-{
+fun rename(name: string, new_name: string): bool
+@ccode {
     fx_cstr_t name_, new_name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
@@ -126,8 +126,8 @@ fun rename(name: string, new_name: string): bool = @ccode
 }
 
 // [TODO] update to create all the parent directories if needed
-fun mkdir(name: string, permissions: int): bool = @ccode
-{
+fun mkdir(name: string, permissions: int): bool
+@ccode {
     fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     struct stat s;

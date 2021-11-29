@@ -84,15 +84,15 @@ operator <= (a: 't, b: 't): bool = a <=> b <= 0
 fun length(s: string) = __intrin_size__(s)
 @pure @nothrow fun length(l: 't list): int = @ccode { return fx_list_length(l) }
 
-@pure fun join(sep: string, strs:string []): string = @ccode
-{
+@pure fun join(sep: string, strs:string []): string
+@ccode {
     return fx_strjoin(0, 0, sep, (fx_str_t*)strs->data,
                     strs->dim[0].size, fx_result);
 }
 
 @pure fun join_embrace(begin: string, end: string,
-        sep: string, strs:string []): string = @ccode
-{
+        sep: string, strs:string []): string
+@ccode {
     return fx_strjoin(begin, end, sep,
         (fx_str_t*)strs->data,
         strs->dim[0].size, fx_result);
@@ -105,26 +105,26 @@ fun join_embrace(begin: string, end: string,
 fun join(sep: string, strs: string list) =
     join(sep, [| for s <- strs {s} |])
 
-operator + (a: string, b: string): string = @ccode
-{
+operator + (a: string, b: string): string
+@ccode {
     fx_str_t s[] = {*a, *b};
     return fx_strjoin(0, 0, 0, s, 2, fx_result);
 }
 
-operator + (a: string, b: char): string = @ccode
-{
+operator + (a: string, b: char): string
+@ccode {
     fx_str_t s[] = {*a, {0, &b, 1}};
     return fx_strjoin(0, 0, 0, s, 2, fx_result);
 }
 
-operator + (a: char, b: string): string = @ccode
-{
+operator + (a: char, b: string): string
+@ccode {
     fx_str_t s[] = {{0, &a, 1}, *b};
     return fx_strjoin(0, 0, 0, s, 2, fx_result);
 }
 
-operator + (a: char, b: char): string = @ccode
-{
+operator + (a: char, b: char): string
+@ccode {
     char_ cc[] = {a, b};
     return fx_make_str(cc, 2, fx_result);
 }
@@ -140,8 +140,8 @@ operator + (l1: 't list, l2: 't list)
 }
 
 @pure fun string(a: exn): string = @ccode { return fx_exn_to_string(a, fx_result) }
-@pure fun string(a: cptr): string = @ccode
-{
+@pure fun string(a: cptr): string
+@ccode {
     char buf[64];
     if (a && a->ptr)
         sprintf(buf, "cptr<%p: %p>", a, a->ptr);
@@ -160,8 +160,8 @@ fun string(a: bool) = if a {"true"} else {"false"}
 @pure fun string(a: uint64): string = @ccode { return fx_itoa((int64_t)a, true, fx_result) }
 @pure fun string(a: int64): string = @ccode { return fx_itoa(a, false, fx_result) }
 @pure fun string(c: char): string = @ccode { return fx_make_str(&c, 1, fx_result) }
-@pure fun string(a: float): string = @ccode
-{
+@pure fun string(a: float): string
+@ccode {
     char buf[32];
     fx_bits32_t u;
     u.f = a;
@@ -171,8 +171,8 @@ fun string(a: bool) = if a {"true"} else {"false"}
         sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
     return fx_ascii2str(buf, -1, fx_result);
 }
-@pure fun string(a: double): string = @ccode
-{
+@pure fun string(a: double): string
+@ccode {
     char buf[32];
     fx_bits64_t u;
     u.f = a;
@@ -182,7 +182,7 @@ fun string(a: bool) = if a {"true"} else {"false"}
         sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
     return fx_ascii2str(buf, -1, fx_result);
 }
-fun string(a: string): string = a
+@inline fun string(a: string): string = a
 
 fun string(a: 't?) {
     | Some(a) => "Some(" + repr(a) + ")"
@@ -286,7 +286,7 @@ fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |]
 
 fun string(v: 't vector) = join_embrace("[< ", " >]", ", ", [| for x <- v {repr(x)} |])
 
-@pure fun string(v: char vector): string =
+@pure fun string(v: char vector): string
 @ccode {
     int_ i, size = v->size;
     int fx_status = fx_make_str(0, size, fx_result);
@@ -305,8 +305,8 @@ fun string(v: 't vector) = join_embrace("[< ", " >]", ", ", [| for x <- v {repr(
 @pure fun repr(v: char vector) =
     join_embrace("[< ", " >]", ", ", [| for x <- v {repr(x)} |])
 
-@pure operator * (c: char, n: int): string = @ccode
-{
+@pure operator * (c: char, n: int): string
+@ccode {
     int fx_status = fx_make_str(0, n, fx_result);
     if (fx_status >= 0) {
         for( int_ i = 0; i < n; i++ )
@@ -315,8 +315,8 @@ fun string(v: 't vector) = join_embrace("[< ", " >]", ", ", [| for x <- v {repr(
     return fx_status;
 }
 
-@pure operator * (s: string, n: int): string = @ccode
-{
+@pure operator * (s: string, n: int): string
+@ccode {
     int_ sz = s->length;
     int fx_status = fx_make_str(0, n*sz, fx_result);
     if (fx_status >= 0 && (n*sz) > 0) {
@@ -490,8 +490,8 @@ fun exists(a: (bool...)) = fold f=false for x <- a {f | x}
 @pure @nothrow operator == (a: string, b: string): bool = @ccode { return fx_streq(a, b); }
 
 // [TODO] implement more clever string comparison operation
-@pure @nothrow operator <=> (a: string, b: string): int = @ccode
-{
+@pure @nothrow operator <=> (a: string, b: string): int
+@ccode {
     int_ alen = a->length, blen = b->length;
     int_ minlen = alen < blen ? alen : blen;
     const char_ *adata = a->data, *bdata = b->data;
@@ -509,8 +509,8 @@ fun exists(a: (bool...)) = fold f=false for x <- a {f | x}
 
 // these are pseudo-functions that are treated specially by the compiler
 @pure @nothrow fun __eq_variants__(a: 't, b: 't): bool = a.__tag__ == b.__tag__
-fun __fun_string__(a: 't): string = @ccode
-{
+fun __fun_string__(a: 't): string
+@ccode {
     char buf[32];
     sprintf(buf, "func<%p: %p>", a->fp, a->fcv);
     return fx_ascii2str(buf, -1, fx_result);
@@ -568,66 +568,66 @@ fun int64(x: 't [+]) = [| for xj <- x {int64(xj)} |]
 fun float(x: 't [+]) = [| for xj <- x {float(xj)} |]
 fun double(x: 't [+]) = [| for xj <- x {double(xj)} |]
 
-@pure @nothrow fun sat_uint8(i: int): uint8 = @ccode
-{ return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255); }
+@pure @nothrow fun sat_uint8(i: int): uint8
+@ccode { return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255); }
 
-@pure @nothrow fun sat_uint8(f: float): uint8 = @ccode
-{
+@pure @nothrow fun sat_uint8(f: float): uint8
+@ccode {
     int i = fx_roundf2i(f);
     return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255);
 }
 
-@pure @nothrow fun sat_uint8(d: double): uint8 = @ccode
-{
+@pure @nothrow fun sat_uint8(d: double): uint8
+@ccode {
     int_ i = fx_round2I(d);
     return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255);
 }
 
-@pure @nothrow fun sat_int8(i: int): int8 = @ccode
-{ return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127); }
+@pure @nothrow fun sat_int8(i: int): int8
+@ccode { return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127); }
 
-@pure @nothrow fun sat_int8(f: float): int8 = @ccode
-{
+@pure @nothrow fun sat_int8(f: float): int8
+@ccode {
     int i = fx_roundf2i(f);
     return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127);
 }
 
-@pure @nothrow fun sat_int8(d: double): int8 = @ccode
-{
+@pure @nothrow fun sat_int8(d: double): int8
+@ccode {
     int_ i = fx_round2I(d);
     return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127);
 }
 
-@pure @nothrow fun sat_uint16(i: int): uint16 = @ccode
-{
+@pure @nothrow fun sat_uint16(i: int): uint16
+@ccode {
     return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
 }
 
-@pure @nothrow fun sat_uint16(f: float): uint16 = @ccode
-{
+@pure @nothrow fun sat_uint16(f: float): uint16
+@ccode {
     int i = fx_roundf2i(f);
     return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
 }
 
-@pure @nothrow fun sat_uint16(d: double): uint16 = @ccode
-{
+@pure @nothrow fun sat_uint16(d: double): uint16
+@ccode {
     int_ i = fx_round2I(d);
     return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
 }
 
-@pure @nothrow fun sat_int16(i: int): int16 = @ccode
-{
+@pure @nothrow fun sat_int16(i: int): int16
+@ccode {
     return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
 }
 
-@pure @nothrow fun sat_int16(f: float): int16 = @ccode
-{
+@pure @nothrow fun sat_int16(f: float): int16
+@ccode {
     int i = fx_roundf2i(f);
     return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
 }
 
-@pure @nothrow fun sat_int16(d: double): int16 = @ccode
-{
+@pure @nothrow fun sat_int16(d: double): int16
+@ccode {
     int_ i = fx_round2I(d);
     return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
 }
@@ -645,15 +645,15 @@ fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
 // do not use lrint(x), since it's slow. and (int)round(x) is even slower
 @pure @nothrow fun round(x: float): int = @ccode { return fx_roundf2I(x) }
 @pure @nothrow fun round(x: double): int = @ccode { return fx_round2I(x) }
-@pure @nothrow fun round(x: float, n: int): float = @ccode
-{
+@pure @nothrow fun round(x: float, n: int): float
+@ccode {
     double scale =
         n ==  0 ? 1   : n == 1 ? 1e1 : n == 2 ? 1e2 : n == 3 ? 1e3 :
         n ==  4 ? 1e4 : n == 5 ? 1e5 : n == 6 ? 1e6 : n == 7 ? 1e7 : 1e8;
     return (float)(fx_round2I(x*scale)/scale);
 }
-@pure @nothrow fun round(x: double, n: int): double = @ccode
-{
+@pure @nothrow fun round(x: double, n: int): double
+@ccode {
     double scale =
         n ==  0 ? 1    : n ==  1 ? 1e1  : n ==  2 ? 1e2  : n ==  3 ? 1e3  :
         n ==  4 ? 1e4  : n ==  5 ? 1e5  : n ==  6 ? 1e6  : n ==  7 ? 1e7  :
@@ -682,8 +682,8 @@ fun print(a: 't) = print_string(string(a))
 @nothrow fun print(a: int32): void = @ccode { printf("%d", a) }
 @nothrow fun print(a: uint64): void = @ccode { printf("%llu", a) }
 @nothrow fun print(a: int64): void = @ccode { printf("%lld", a) }
-@nothrow fun print(a: float): void = @ccode
-{
+@nothrow fun print(a: float): void
+@ccode {
     fx_bits32_t u;
     u.f = a;
     if ((u.i & 0x7f800000) == 0x7f800000)
@@ -691,8 +691,8 @@ fun print(a: 't) = print_string(string(a))
     else
         printf((a == (int)a ? "%.1f" : "%.8g"), a);
 }
-@nothrow fun print(a: double): void = @ccode
-{
+@nothrow fun print(a: double): void
+@ccode {
     fx_bits64_t u;
     u.f = a;
     if ((u.i & 0x7ff0000000000000LL) == 0x7ff0000000000000LL)
@@ -700,8 +700,8 @@ fun print(a: 't) = print_string(string(a))
     else
         printf((a == (int)a ? "%.1f" : "%.16g"), a);
 }
-@nothrow fun print(a: cptr): void = @ccode
-{
+@nothrow fun print(a: cptr): void
+@ccode {
     if (a && a->ptr)
         printf("cptr<%p: %p>", a, a->ptr);
     else

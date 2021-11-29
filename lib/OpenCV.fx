@@ -77,8 +77,8 @@ fun arrelemtype(_: 't [+]) = elemtype(0:>'t)
 type anyarr_t = (uint8 [,], depth_t, int)
 
 // basically, this is violation of the type system; use with care
-@nothrow fun reinterpret(x: 'from [+]): 'to [+] = @ccode
-{
+@nothrow fun reinterpret(x: 'from [+]): 'to [+]
+@ccode {
     fx_copy_arr(x, fx_result);
 }
 fun anyarray(x: 't [+]): anyarr_t
@@ -364,8 +364,8 @@ val DECOMP_CHOLESKY: int = @ccode {cv::DECOMP_CHOLESKY}
 val DECOMP_QR: int = @ccode {cv::DECOMP_QR}
 val DECOMP_NORMAL: int = @ccode {cv::DECOMP_NORMAL}
 
-@pure @nothrow fun borderInterpolate(p: int, len: int, borderType: int): int = @ccode
-{ return cv::borderInterpolate((int)p, (int)len, (int)borderType); }
+@pure @nothrow fun borderInterpolate(p: int, len: int, borderType: int): int
+@ccode { return cv::borderInterpolate((int)p, (int)len, (int)borderType); }
 
 @private fun copyMakeBorder_(src: anyarr_t, top: int, bottom: int, left: int, right: int,
                    borderType: int, borderValue: doublex4): uint8 [,]
@@ -438,7 +438,7 @@ fun patchNans(arr: 't [+], ~v: double=0) = patchNans_(anyarray(arr), v)
 
 //fun gemm(src1: 't [,], src2: 't [,], src3: 't [,], ~alpha: double=1, ~beta: double=0, ~flags: int=0): 't [,]
 //fun mulTransposed(src1: 't [,], ~aTa: bool, ~delta: 't [,] = [], ~scale: double=1): 't [,]
-@private fun transform_(src: anyarr_t, m: anyarr_t): uint8 [,] =
+@private fun transform_(src: anyarr_t, m: anyarr_t): uint8 [,]
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_m, c_dst;
@@ -458,7 +458,7 @@ fun transform(src: 't [], m: 'k [,]): 't [] =
 fun transform(src: 't [,], m: 'k [,]): 't [,] =
     (reinterpret(transform_(anyarray(src), anyarray(m))): 't [,])
 
-@private fun perspectiveTransform_(src: anyarr_t, m: anyarr_t): uint8 [,] =
+@private fun perspectiveTransform_(src: anyarr_t, m: anyarr_t): uint8 [,]
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_m, c_dst;
@@ -478,7 +478,7 @@ fun perspectiveTransform(src: 't [], m: 'k [,]): 't [] =
 fun perspectiveTransform(src: 't [,], m: 'k [,]): 't [,] =
     (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m))): 't [,])
 
-fun solveCubic(coeffs: double []): double [] =
+fun solveCubic(coeffs: double []): double []
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     _fx_anyarr_t coeffs_ = {*coeffs, _FX_DEPTH_FP64, 1};
@@ -492,7 +492,7 @@ fun solveCubic(coeffs: double []): double [] =
     return fx_status;
 }
 
-fun solvePoly(coeffs: double [], ~maxIters: int=300): doublex2 [] =
+fun solvePoly(coeffs: double [], ~maxIters: int=300): doublex2 []
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     _fx_anyarr_t coeffs_ = {*coeffs, _FX_DEPTH_FP64, 1};
@@ -506,7 +506,7 @@ fun solvePoly(coeffs: double [], ~maxIters: int=300): doublex2 [] =
     return fx_status;
 }
 
-@private fun eigen_(src: anyarr_t): (bool, uint8 [], uint8 [,]) =
+@private fun eigen_(src: anyarr_t): (bool, uint8 [], uint8 [,])
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_evals, c_evecs;
@@ -528,7 +528,7 @@ fun eigen(src: 't [,]): (bool, 't [], 't [,])
     (f, (reintrpret(values): 't []), (reinterpet(vectors): 't [,]))
 }
 
-@private fun eigenNonSymmetric_(src: anyarr_t): (uint8 [], uint8 [,]) =
+@private fun eigenNonSymmetric_(src: anyarr_t): (uint8 [], uint8 [,])
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_evals, c_evecs;
@@ -550,7 +550,7 @@ fun eigenNonSymmetric(src: 't [,]): ('t [], 't [,])
     ((reinterpret(evals): 't []), (reinterpet(evecs): 't [,]))
 }
 
-@private fun PCACompute_(data: anyarr_t, mean: anyarr_t, maxComponents: int): (uint8 [], uint8 [,]) =
+@private fun PCACompute_(data: anyarr_t, mean: anyarr_t, maxComponents: int): (uint8 [], uint8 [,])
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_data, c_mean, c_evals, c_evecs;
@@ -574,7 +574,7 @@ fun PCACompute(data: 't [,], mean: 't [], ~maxComponents: int=0): ('t [], 't [,]
     (reinterpret(evals): 't [], reinterpet(evecs): 't [,])
 }
 
-@private fun PCAProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,] =
+@private fun PCAProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,]
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_data, c_mean, c_evecs, c_proj;
@@ -597,7 +597,7 @@ fun PCAProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
     (reinterpret(proj): 't [,])
 }
 
-@private fun PCABackProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,] =
+@private fun PCABackProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,]
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_data, c_mean, c_evecs, c_bproj;
@@ -620,7 +620,7 @@ fun PCABackProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
     (reinterpret(bproj): 't [,])
 }
 
-@private fun SVDecomp_(src: anyarr_t, flags: int): (uint8 [,], uint8 [], uint8 [,]) =
+@private fun SVDecomp_(src: anyarr_t, flags: int): (uint8 [,], uint8 [], uint8 [,])
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_w, c_u, c_vt;
@@ -645,7 +645,7 @@ fun SVDecomp(src: 't [,], ~flags: int=0): ('t [,], 't [], 't [,])
     ((reinterpet(u): 't [,]), (reinterpet(w): 't []), (reinterpet(vt): 't [,]))
 }
 
-@private fun SVDecompValues_(src: anyarr_t, ~flags: int=0): uint8 [] =
+@private fun SVDecompValues_(src: anyarr_t, ~flags: int=0): uint8 []
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_w;
@@ -661,7 +661,7 @@ fun SVDecomp(src: 't [,], ~flags: int=0): ('t [,], 't [], 't [,])
 fun SVDecompValues(src: 't [,], ~flags: int=0): 't [] =
     (reinterpet(SVDecompValues_(anyarray(src), flags)) : 't [])
 
-@private fun SVBackSubst2D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 [,] =
+@private fun SVBackSubst2D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 [,]
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_w, c_u, c_vt, c_rhs, c_result;
@@ -683,7 +683,7 @@ fun SVDecompValues(src: 't [,], ~flags: int=0): 't [] =
 fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't [,]): 't [,] =
     (reinterpret(SVBackSubst2D_(anyarray(u), anyarray(w), anyarray(vt), anyarray(rhs))) : 't [,])
 
-@private fun SVBackSubst1D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 [] =
+@private fun SVBackSubst1D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 []
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_w, c_u, c_vt, c_rhs, c_result;
@@ -709,7 +709,7 @@ val DFT_INVERSE=1
 val DFT_SCALE=2
 val DFT_ROWS=4
 
-@private fun dft_(src: anyarr_t, flags: int): uint8 [] =
+@private fun dft_(src: anyarr_t, flags: int): uint8 []
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_dst;
@@ -727,7 +727,7 @@ val DFT_ROWS=4
 fun dft(src: 't [], ~flags: int=0): 't [] =
     (reinterpret(dft_(anyarray(src), flags)) : 't [])
 
-@private fun dft_(src: anyarr_t, flags: int, nonzeroRows: int): uint8 [,] =
+@private fun dft_(src: anyarr_t, flags: int, nonzeroRows: int): uint8 [,]
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_src, c_dst;
@@ -751,7 +751,7 @@ fun idft(src: 't [], ~flags: int=0): 't [] =
 fun idft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
     (reinterpret(dft_(anyarray(src), flags^DFT_INVERSE, nonzeroRows)) : 't [,])
 
-@private fun mulSpectrums1D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 [] =
+@private fun mulSpectrums1D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 []
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_a, c_b, c_dst;
@@ -769,7 +769,7 @@ fun idft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
 fun mulSpectrums(a: 't [], b: 't [], ~flags: int, ~conjB: bool=false): 't [] =
     (reinterpret(mulSpectrums1D_(anyarray(a), anyarray(b), flags, conjB)) : 't [])
 
-@private fun mulSpectrums2D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 [] =
+@private fun mulSpectrums2D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 []
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
     cv::Mat c_a, c_b, c_dst;
@@ -787,7 +787,7 @@ fun mulSpectrums(a: 't [], b: 't [], ~flags: int, ~conjB: bool=false): 't [] =
 fun mulSpectrums(a: 't [,], b: 't [,], ~flags: int, ~conjB: bool=false): 't [,] =
     (reinterpret(mulSpectrums2D_(anyarray(a), anyarray(b), flags, conjB)) : 't [,])
 
-fun getOptimalDFTSize(vecsize: int): int =
+fun getOptimalDFTSize(vecsize: int): int
 @ccode {
     int fx_status = 0;
     FX_OCV_TRY_CATCH(
@@ -796,12 +796,12 @@ fun getOptimalDFTSize(vecsize: int): int =
     return fx_status;
 }
 
-@nothrow fun getRNGSeed(): uint64 =
+@nothrow fun getRNGSeed(): uint64
 @ccode {
     return theRNG().state;
 }
 
-@nothrow fun setRNGSeed(seed: uint64): void =
+@nothrow fun setRNGSeed(seed: uint64): void
 @ccode {
     theRNG() = RNG(seed);
 }
@@ -809,7 +809,7 @@ fun getOptimalDFTSize(vecsize: int): int =
 val RNG_UNIFORM : int = @ccode {cv::RNG::UNIFORM}
 val RNG_NORMAL : int = @ccode {cv::RNG::NORMAL}
 
-@private fun rand_(ndims: int, sz: (int*5), dc: (depth_t, int), param1: double, param2: double, dist: int): uint8 [,] =
+@private fun rand_(ndims: int, sz: (int*5), dc: (depth_t, int), param1: double, param2: double, dist: int): uint8 [,]
 @ccode {
     int sz_[] = {(int)sz->t0, (int)sz->t1, (int)sz->t2, (int)sz->t3, (int)sz->t4};
     cv::Mat c_arr;
@@ -844,7 +844,7 @@ fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,] =
 fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
     (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_NORMAL)) : 't [,,])
 
-@private fun randShuffle_(arr: anyarr_t, iterFactor: double): void =
+@private fun randShuffle_(arr: anyarr_t, iterFactor: double): void
 @ccode {
     cv::Mat c_arr;
     int fx_status = cvt_to((const _fx_anyarr_t*)arr, c_arr);
@@ -858,7 +858,7 @@ fun randShuffle(arr: 't [], ~iterFactor: double = 1.): void =
     randShuffle(anyarray(arr), iterFactor)
 
 @private fun kmeans_(data: anyarr_t, K: int, flags: int, maxIters: int, epsilon: double,
-    attempts: int, centers: anyarr_t, labels0: anyarr_t): (double, int32 []) =
+    attempts: int, centers: anyarr_t, labels0: anyarr_t): (double, int32 [])
 @ccode {
     cv::Mat c_data, c_centers, c_labels0, c_labels;
     c_labels.allocator = &g_fxarrAllocator;
@@ -926,7 +926,7 @@ static void cvt_rr2box(const cv::RotatedRect& rrect, float* box)
 
 }
 
-fun getGaussianKernel(ksize: int, sigma: double): float [] =
+fun getGaussianKernel(ksize: int, sigma: double): float []
 @ccode {
     cv::Mat c_kernel;
     int fx_status = FX_OK;
@@ -938,7 +938,7 @@ fun getGaussianKernel(ksize: int, sigma: double): float [] =
 }
 
 @private fun getGaborKernel_(ksize: intx2, sigma: double, theta: double, lambda: double,
-                             gamma: double, psi: double): float [,] =
+                             gamma: double, psi: double): float [,]
 @ccode {
     cv::Mat c_kernel;
     int fx_status = FX_OK;
@@ -958,7 +958,7 @@ val MORPH_RECT: int = @ccode {cv::MORPH_RECT}
 val MORPH_CROSS: int = @ccode {cv::MORPH_CROSS}
 val MORPH_ELLIPSE: int = @ccode {cv::MORPH_ELLIPSE}
 
-@private fun getStructuringElement_(shape: int, ksize: intx2, anchor: intx2): uint8 [,] =
+@private fun getStructuringElement_(shape: int, ksize: intx2, anchor: intx2): uint8 [,]
 @ccode {
     cv::Mat c_kernel;
     int fx_status = FX_OK;
@@ -973,7 +973,7 @@ val MORPH_ELLIPSE: int = @ccode {cv::MORPH_ELLIPSE}
 fun getStructuringElement(shape: int, ksize: intx2, ~anchor: intx2 = (-1, -1)): uint8 [,] =
     getStructuringElement_(shape, ksize, anchor)
 
-@private fun medianBlur_(src: anyarr_t, ksize: int): uint8 [,] =
+@private fun medianBlur_(src: anyarr_t, ksize: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -989,7 +989,7 @@ fun medianBlur(src: 't [,], ksize: int): 't [,] =
     (reinterpret(medianBlur_(anyarray(src), ksize)) : 't [,])
 
 @private fun GaussianBlur_(src: anyarr_t, ksize: intx2, sigma: double,
-                 sigmaY: double, borderType: int): uint8 [,] =
+                 sigmaY: double, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1006,7 +1006,7 @@ fun GaussianBlur(src: 't [,], ksize: intx2, ~sigma: double,
     (reinterpret(GaussianBlur_(anyarray(src), ksize, sigma, sigmaY, borderType)) : 't [,])
 
 @private fun bilateralFilter_(src: anyarr_t, d: int, sigmaColor: double,
-                    sigmaSpace: double, borderType: int): uint8 [,] =
+                    sigmaSpace: double, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1022,7 +1022,7 @@ fun bilateralFilter(src: 't [,], d: int, ~sigmaColor: double,
                     ~sigmaSpace: double, ~borderType: int=BORDER_DEFAULT): 't [,] =
     (reinterpret(bilteralFilter_(anyarray(src), d, sigmaColor, sigmaSpace, borderType)) : 't [,])
 
-@private fun blur_(src: anyarr_t, ksize: intx2, anchor: intx2, borderType: int): uint8 [,] =
+@private fun blur_(src: anyarr_t, ksize: intx2, anchor: intx2, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1039,7 +1039,7 @@ fun blur(src: 't [,], ksize: intx2, ~anchor: intx2=(-1, -1),
     (reinterpret(blur_(anyarray(src), ksize, anchor, borderType)) : 't [,])
 
 @private fun filter2D_(src: anyarr_t, kernel: anyarr_t, anchor: intx2,
-                    delta: double, borderType: int): uint8 [,] =
+                    delta: double, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_kernel, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1058,7 +1058,7 @@ fun filter2D(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
     (reinterpret(filter2D_(anyarray(src), anyarray(kernel), anchor, delta, borderType)) : 't [,])
 
 @private fun sepFilter2D_(src: anyarr_t, kernelX: anyarr_t, kernelY: anyarr_t,
-                          anchor: intx2, delta: double, borderType: int): uint8 [,] =
+                          anchor: intx2, delta: double, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_kernelX, c_kernelY, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1081,7 +1081,7 @@ fun sepFilter2D(src: 't [,], kernelX: 'k [,], kernelY: 'k [,], ~anchor: intx2=(-
             anyarray(kernelY), anchor, delta, borderType)) : 't [,])
 
 @private fun Sobel_(src: anyarr_t, dx: int, dy: int, ksize: int, scale: double,
-                    delta: double, borderType: int): float [,] =
+                    delta: double, borderType: int): float [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1098,7 +1098,7 @@ fun Sobel(src: 't [,], dx: int, dy: int, ~ksize: int=3, ~scale: double=1.,
     Sobel_(anyarray(src), dx, dy, ksize, scale, delta, borderType)
 
 @private fun spatialGradient_(src: anyarr_t, ksize: int,
-                    borderType: int): (int16 [,], int16 [,]) =
+                    borderType: int): (int16 [,], int16 [,])
 @ccode {
     cv::Mat c_src, c_dx, c_dy;
     c_dx.allocator = &g_fxarrAllocator;
@@ -1118,7 +1118,7 @@ fun spatialGradient(src: uint8 [,], ~ksize: int=3,
     spatialGradient_(anyarray(src), ksize, borderType)
 
 @private fun Laplacian_(src: anyarr_t, ksize: int, scale: double, delta: double,
-                        borderType: int): float [,] =
+                        borderType: int): float [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1135,7 +1135,7 @@ fun Laplacian(src: 't [,], ~ksize: int = 1, ~scale: double = 1, ~delta: double =
     Laplacian_(anyarray(src), ksize, scale, delta, borderType)
 
 @private fun Canny_(src: anyarr_t, threshold1: double, threshold2: double,
-                   ksize: int, L2gradient: bool): uint8 [,] =
+                   ksize: int, L2gradient: bool): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1155,7 +1155,7 @@ fun Canny(src: uint8 [,], threshold1: double, threshold2: double,
                         minDistance: double, mask: anyarr_t,
                         blockSize: int, gradientSize: int,
                         useHarrisDetector: bool,
-                        k: double): floatx2 [] =
+                        k: double): floatx2 []
 @ccode {
     cv::Mat c_src, c_mask, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1179,7 +1179,7 @@ fun goodFeaturesToTrack(src: uint8 [,], maxCorners: int, ~qualityLevel: double,
                          blockSize, gradientSize, useHarrisDetector, k)
 
 @private fun HoughLines_(src: anyarr_t, rho: double, theta: double, threshold: int,
-               srn: double, stn: double, minTheta: double, maxTheta: double): floatx2 [] =
+               srn: double, stn: double, minTheta: double, maxTheta: double): floatx2 []
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1197,7 +1197,7 @@ fun HoughLines(src: uint8 [,], ~rho: double, ~theta: double, ~threshold: int,
     HoughLines_(anyarray(src), rho, theta, threshold, srn, stn, minTheta, maxTheta)
 
 @private fun HoughLinesP_(src: anyarr_t, rho: double, theta: double, threshold: int,
-                          minLineLength: int, maxLineGap: int): int32x4 [] =
+                          minLineLength: int, maxLineGap: int): int32x4 []
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1216,7 +1216,7 @@ fun HoughLinesP(src: uint8 [,], ~rho: double, ~theta: double, ~threshold: int,
 @private fun HoughCircles_(src: anyarr_t, method: int,
                            dp: double, minDist: double,
                            param1: double, param2: double,
-                           minRadius: int, maxRadius: int): floatx3 [] =
+                           minRadius: int, maxRadius: int): floatx3 []
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1235,7 +1235,7 @@ fun HoughCircles(src: uint8 [,], ~method: int=4, ~dp: double, ~minDist: double,
     HoughCircles_(anyarray(src), method, dp, minDist, param1, param2, minRadius, maxRadius)
 
 @private fun erode_(src: anyarr_t, kernel: anyarr_t, anchor: intx2,
-                    iterations: int, borderType: int): uint8 [,] =
+                    iterations: int, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_kernel, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1254,7 +1254,7 @@ fun erode(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
     (reinterpret(erode_(anyarray(src), anyarray(kernel), anchor, iterations, borderType)) : 't [,])
 
 @private fun dilate_(src: anyarr_t, kernel: anyarr_t, anchor: intx2,
-                     iterations: int, borderType: int): uint8 [,] =
+                     iterations: int, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_kernel, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1273,7 +1273,7 @@ fun dilate(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
     (reinterpret(dilate_(anyarray(src), anyarray(kernel), anchor, iterations, borderType)) : 't [,])
 
 @private fun morphologyEx_(src: anyarr_t, kernel: anyarr_t, anchor: intx2, op: int,
-                           iterations: int, borderType: int): uint8 [,] =
+                           iterations: int, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_kernel, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1305,7 +1305,7 @@ val WARP_FILL_OUTLIERS: int = @ccode {cv::WARP_FILL_OUTLIERS}
 val WARP_INVERSE_MAP: int = @ccode {cv::WARP_INVERSE_MAP}
 
 @private fun resize_(src: anyarr_t, dsize: intx2, fx: double, fy: double,
-           interpolation: int): uint8 [,] =
+           interpolation: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1323,7 +1323,7 @@ fun resize(src: 't [,], dsize: intx2, ~fx: double=0, ~fy: double=0,
 
 @private fun warpAffine_(src: anyarr_t, M: anyarr_t, dsize: intx2,
                interpolation: int, borderType: int,
-               borderValue: doublex4): uint8 [,] =
+               borderValue: doublex4): uint8 [,]
 @ccode {
     cv::Mat c_src, c_M, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1347,7 +1347,7 @@ fun warpAffine(src: 't [,], M: 'k [,], dsize: intx2,
 
 @private fun warpPerspective_(src: anyarr_t, M: anyarr_t, dsize: intx2,
                interpolation: int, borderType: int,
-               borderValue: doublex4): uint8 [,] =
+               borderValue: doublex4): uint8 [,]
 @ccode {
     cv::Mat c_src, c_M, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1371,7 +1371,7 @@ fun warpPerspective(src: 't [,], M: 'k [,], dsize: intx2,
 
 @private fun remap_(src: anyarr_t, map1: anyarr_t, map2: anyarr_t,
                    iterpolation: int, borderType: int,
-                   borderValue: doublex4): uint8 [,] =
+                   borderValue: doublex4): uint8 [,]
 @ccode {
     cv::Mat c_src, c_map1, c_map2, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1395,7 +1395,7 @@ fun remap(src: 't [,], map1: 'k [,], map2: 'k [,],
     (reinterpret(remap_(anyarray(src), anyarray(map1), anyarray(map2),
             interpolation, borderType, borderValue)) : 't [,])
 
-fun getRotationMatrix2D(center: floatx2, angle: double, scale: double): double [,] =
+fun getRotationMatrix2D(center: floatx2, angle: double, scale: double): double [,]
 @ccode {
     cv::Mat c_mtx;
     int fx_status = FX_OK;
@@ -1406,7 +1406,7 @@ fun getRotationMatrix2D(center: floatx2, angle: double, scale: double): double [
     return fx_status;
 }
 
-fun getAffineTransform(src: floatx2 [], dst: floatx2 []): double [,] =
+fun getAffineTransform(src: floatx2 [], dst: floatx2 []): double [,]
 @ccode {
     cv::Mat c_mtx;
     FX_OCV_TRY_CATCH(
@@ -1417,7 +1417,7 @@ fun getAffineTransform(src: floatx2 [], dst: floatx2 []): double [,] =
     return fx_status;
 }
 
-fun invertAffineTransform(M: double [,]): double [,] =
+fun invertAffineTransform(M: double [,]): double [,]
 @ccode {
     _fx_anyarr_t src = {*M, _FX_DEPTH_FP64, 1};
     cv::Mat c_src, c_dst;
@@ -1431,7 +1431,7 @@ fun invertAffineTransform(M: double [,]): double [,] =
     return fx_status;
 }
 
-@private fun getPerspectiveTransform_(src: anyarr_t, dst: anyarr_t, method: int): double [,] =
+@private fun getPerspectiveTransform_(src: anyarr_t, dst: anyarr_t, method: int): double [,]
 @ccode {
     cv::Mat c_src, c_dst, c_mtx;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1450,7 +1450,7 @@ fun getPerspectiveTransform(src: floatx2 [], dst: floatx2 [],
                             ~solveMethod: int=DECOMP_LU): double [,] =
     getPerspectiveTransform_(anyarray(src), anyarray(dst), solveMethod)
 
-@private fun getRectSubPix_(src: anyarr_t, patchSize: intx2, center: floatx2): uint8 [,] =
+@private fun getRectSubPix_(src: anyarr_t, patchSize: intx2, center: floatx2): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1465,7 +1465,7 @@ fun getPerspectiveTransform(src: floatx2 [], dst: floatx2 [],
 fun getRectSubPix(src: 't [,], patchSize: intx2, center: floatx2): 't [,] =
     (reinterpret(getRectSubPix_(anyarray(src), patchSize, center)) : 't [,])
 
-@private fun logPolar_(src: anyarr_t, center: floatx2, M: double, flags: int): uint8 [,] =
+@private fun logPolar_(src: anyarr_t, center: floatx2, M: double, flags: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1481,7 +1481,7 @@ fun getRectSubPix(src: 't [,], patchSize: intx2, center: floatx2): 't [,] =
 fun logPolar(src: 't [,], ~center: floatx2, ~M: double, ~flags: int): 't [,] =
     (reinterpret(logPolar_(anyarray(src), center, M, flags)) : 't [,])
 
-@private fun linearPolar_(src: anyarr_t, center: floatx2, maxRadius: double, flags: int): uint8 [,] =
+@private fun linearPolar_(src: anyarr_t, center: floatx2, maxRadius: double, flags: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1497,7 +1497,7 @@ fun logPolar(src: 't [,], ~center: floatx2, ~M: double, ~flags: int): 't [,] =
 fun linearPolar(src: 't [,], ~center: floatx2, ~maxRadius: double, ~flags: int): 't [,] =
     (reinterpret(linearPolar_(anyarray(src), center, maxRadius, flags)) : 't [,])
 
-@private fun integral_(src: anyarr_t, sd: depth_t): uint8 [,] =
+@private fun integral_(src: anyarr_t, sd: depth_t): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1514,7 +1514,7 @@ fun linearPolar(src: 't [,], ~center: floatx2, ~maxRadius: double, ~flags: int):
 fun integral(src: 't [,], s0: 's): 's [,] =
     (reinterpret(integral_(anyarray(src), elemtype(s0).0)) : 's [,])
 
-@private fun integral2_(src: anyarr_t, sd: depth_t, sqd: depth_t): (uint8 [,], uint8 [,]) =
+@private fun integral2_(src: anyarr_t, sd: depth_t, sqd: depth_t): (uint8 [,], uint8 [,])
 @ccode {
     cv::Mat c_src, c_dst, c_sqdst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1538,7 +1538,7 @@ fun integral2(src: 't [,], s0: 's, sq0: 'sq): ('s [,], 'sq [,])
     (reinterpret(s) : 's [,], reinterpret(sq): 'sq [,])
 }
 
-@private fun phaseCorrelate_(src1: anyarr_t, src2: anyarr_t, window: anyarr_t): (doublex2, double) =
+@private fun phaseCorrelate_(src1: anyarr_t, src2: anyarr_t, window: anyarr_t): (doublex2, double)
 @ccode {
     cv::Mat c_src1, c_src2, c_window;
     int fx_status = cvt_to((const _fx_anyarr_t*)src1, c_src1);
@@ -1558,7 +1558,7 @@ fun integral2(src: 't [,], s0: 's, sq0: 'sq): ('s [,], 'sq [,])
 fun phaseCorrelate(src1: 't [,], src2: 't [,], window: 'k [,]): (doublex2, double) =
     phaseCorrelate_(anyarray(src1), anyarray(src2), anyarray(window))
 
-fun createHanningWindow(winSize: intx2): float [,] =
+fun createHanningWindow(winSize: intx2): float [,]
 @ccode {
     cv::Mat c_window;
     c_window.allocator = &g_fxarrAllocator;
@@ -1571,7 +1571,7 @@ fun createHanningWindow(winSize: intx2): float [,] =
     return fx_status;
 }
 
-@private fun divSpectrums_(src1: anyarr_t, src2: anyarr_t, flags: int, conj: bool): uint8 [,] =
+@private fun divSpectrums_(src1: anyarr_t, src2: anyarr_t, flags: int, conj: bool): uint8 [,]
 @ccode {
     cv::Mat c_src1, c_src2, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1597,7 +1597,7 @@ val THRESH_TOZERO_INV: int = @ccode {cv::THRESH_BINARY}
 val THRESH_OTSU: int = @ccode {cv::THRESH_BINARY}
 val THRESH_TRIANGLE: int = @ccode {cv::THRESH_BINARY}
 
-@private fun threshold_(src: anyarr_t, thresh: double, maxVal: double, op: int): uint8 [,] =
+@private fun threshold_(src: anyarr_t, thresh: double, maxVal: double, op: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1615,7 +1615,7 @@ fun threshold(src: 't [,], ~threshold: double, ~maxVal: double, ~op: int): 't [,
 
 @private fun adaptiveThreshold_(src: anyarr_t, maxVal: double,
                       adaptiveMethod: int, thresholdType: int,
-                      blockSize: int, C: double): uint8 [,] =
+                      blockSize: int, C: double): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1634,7 +1634,7 @@ fun adaptiveThreshold(src: 't [,], maxVal: double,
                       ~blockSize: int, ~C: double): 't [,] =
     (reinterpret(adaptiveThreshold_(anyarray(src), maxVal, thresholdType, blockSize, C)) : 't [,])
 
-@private fun pyrDown_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,] =
+@private fun pyrDown_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1649,7 +1649,7 @@ fun adaptiveThreshold(src: 't [,], maxVal: double,
 fun pyrDown(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT ): 't [,] =
     (reinterpret(pyrDown_(anyarray(src), dsize, borderType)) : 't [,])
 
-@private fun pyrUp_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,] =
+@private fun pyrUp_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -1666,7 +1666,7 @@ fun pyrUp(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT )
 
 @private fun calcHist_(ndims: int, src: anyarr_t, mask: anyarr_t,
                        channels: intx5, hsize: intx5, ranges: float [][],
-                       uniform: bool): float [] =
+                       uniform: bool): float []
 @ccode {
     int c_channels[] = {(int)channels->t0, (int)channels->t1,
         (int)channels->t2, (int)channels->t3, (int)channels->t4};
@@ -1715,7 +1715,7 @@ fun calcHist(src: ('t*3) [+], hsize: intx3, ~mask: 't [+],
 
 @private fun calcBackProject_(src: anyarr_t, hist: anyarr_t,
                               channels: intx5, ranges: float [][],
-                              scale: double, uniform: bool): float [] =
+                              scale: double, uniform: bool): float []
 @ccode {
     int ndims = hist->t0.ndims;
     int c_channels[] = {(int)channels->t0, (int)channels->t1,
@@ -1758,7 +1758,7 @@ fun calcBackProject(src: 't [,], hist: float [,,],
     (reinterpret(calcBackProject_(anyarray(src), anyarray(hist),
         (channels.0, channels.1, channels.2, 0, 0), ranges, uniform)) : float [,,])
 
-@private fun compareHist_(h1: anyarr_t, h2: anyarr_t, method: int): double =
+@private fun compareHist_(h1: anyarr_t, h2: anyarr_t, method: int): double
 @ccode {
     cv::Mat c_h1, c_h2;
     int fx_status = cvt_to((const _fx_anyarr_t*)h1, c_h1);
@@ -1773,7 +1773,7 @@ fun calcBackProject(src: 't [,], hist: float [,,],
 fun compareHist(h1: float [+], h2: float [+], method: int): double =
     compareHist_(anyarray(h1), anyarray(h2), method)
 
-fun equalizeHist(src: uint8 [,]): uint8 [,] =
+fun equalizeHist(src: uint8 [,]): uint8 [,]
 @ccode {
     _fx_anyarr_t src_ = {*src, _FX_DEPTH_U8, 1};
     cv::Mat c_src, c_dst;
@@ -1786,7 +1786,7 @@ fun equalizeHist(src: uint8 [,]): uint8 [,] =
     return fx_status;
 }
 
-fun watershed(src: uint8x3 [,], markers: int32 [,]): void =
+fun watershed(src: uint8x3 [,], markers: int32 [,]): void
 @ccode {
     _fx_anyarr_t src_ = {*src, _FX_DEPTH_U8, 3},
                  markers_ = {*markers, _FX_DEPTH_S32, 1};
@@ -1807,7 +1807,7 @@ val GC_EVAL_FREEZE_MODEL = 3
 
 @private fun grabCut_(src: anyarr_t, mask: anyarr_t, rect: intx4,
                       bgdModel: anyarr_t, fgdModel: anyarr_t,
-                      iterations: int, mode: int): (double [], double []) =
+                      iterations: int, mode: int): (double [], double [])
 @ccode {
     cv::Mat c_src, c_mask, c_bgdModel, c_fgdModel;
     int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
@@ -1841,7 +1841,7 @@ fun grabCut(src: uint8x3 [,], mask: uint8 [,], rect: intx4,
              iterations, mode)
 
 @private fun distanceTransform_(src: anyarr_t, distanceType: int,
-    maskSize: int, labelType: int, needLabels: bool): (float [,], int32 [,]) =
+    maskSize: int, labelType: int, needLabels: bool): (float [,], int32 [,])
 @ccode {
     cv::Mat c_src, c_dist, c_labels;
     int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
@@ -1867,7 +1867,7 @@ fun distanceTransform(src: uint8 [,], ~distanceType: int, ~maskSize: int=0): flo
     distanceTransform_(anyarray(src), distanceType, maskSize, 0, false).0
 
 @private fun floodFill_(img: anyarr_t, seed: intx2, newVal: doublex4,
-              mask: anyarr_t, loDiff: doublex4, upDiff: doublex4, flags: int): (intx4, int) =
+              mask: anyarr_t, loDiff: doublex4, upDiff: doublex4, flags: int): (intx4, int)
 @ccode {
     cv::Mat c_src, c_mask;
     int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
@@ -1894,7 +1894,7 @@ fun floodFill(img: 't [,], seed: intx2, newVal: doublex4,
               ~flags: int=4): (intx4, int) =
     floodFill(anyarray(img), seed, newVal, anyarray(mask), lodiff, upDiff, flags)
 
-@private fun blendLinear_(src1: anyarr_t, src2: anyarr_t, w1: anyarr_t, w2: anyarr_t): uint8 [,] =
+@private fun blendLinear_(src1: anyarr_t, src2: anyarr_t, w1: anyarr_t, w2: anyarr_t): uint8 [,]
 @ccode {
     cv::Mat c_src1, c_src2, c_w1, c_w2, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2181,7 +2181,7 @@ val COLOR_BayerGR2RGBA: int = @ccode {cv::COLOR_BayerGR2RGBA}
 
 val COLOR_COLORCVT_MAX: int = @ccode {cv::COLOR_COLORCVT_MAX}
 
-@private fun cvtColor_(src: anyarr_t, code: int, dstcn: int): uint8 [,] =
+@private fun cvtColor_(src: anyarr_t, code: int, dstcn: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2205,7 +2205,7 @@ fun cvtColor(src: ('t ...) [,], code: int): ('t*3) [,] =
 fun cvtColorAlpha(src: ('t ...) [,], code: int): ('t*4) [,] =
     (reinterpret(cvtColor_(anyarray(src), code, 4)) : ('t*4) [,])
 
-@private fun cvtColorTwoPlane_(src1: anyarr_t, src2: anyarr_t, code: int, dstcn: int): uint8 [,] =
+@private fun cvtColorTwoPlane_(src1: anyarr_t, src2: anyarr_t, code: int, dstcn: int): uint8 [,]
 @ccode {
     cv::Mat c_src1, c_src2, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2225,7 +2225,7 @@ fun cvtColorTwoPlane(src1: 't [,], src2: ('t*2) [,], code: int): ('t*3) [,] =
 fun cvtColorTwoPlaneAlpha(src1: 't [,], src2: ('t*2) [,], code: int): ('t*4) [,] =
     (reinterpret(cvtColorTwoPlane_(anyarray(src1), anyarray(src2), code, 4)) : ('t*4) [,])
 
-@private fun demosaic_(src: anyarr_t, code: int, dstcn: int): uint8 [,] =
+@private fun demosaic_(src: anyarr_t, code: int, dstcn: int): uint8 [,]
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2243,7 +2243,7 @@ fun demosaic(src: 't [,], code: int): ('t*3) [,] =
 fun demosaicAlpha(src: 't [,], code: int): ('t*4) [,] =
     (reinterpret(demosaic_(anyarray(src), code, 4)) : ('t*4) [,])
 
-@private fun moments_(src: anyarr_t, binaryImage:bool): (double*10) =
+@private fun moments_(src: anyarr_t, binaryImage:bool): (double*10)
 @ccode {
     cv::Mat c_src;
     int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
@@ -2259,7 +2259,7 @@ fun demosaicAlpha(src: 't [,], code: int): ('t*4) [,] =
 fun moments(src: 't [,], ~binaryImage:bool=false): (double*10) =
     moments_(anyarray(src), binaryImage)
 
-fun HuMoments(moments: (double*10)): (double*7) =
+fun HuMoments(moments: (double*10)): (double*7)
 @ccode {
     int fx_status = FX_OK;
     FX_OCV_TRY_CATCH(
@@ -2276,7 +2276,7 @@ val TM_CCOEFF: int = @ccode {cv::TM_CCOEFF}
 val TM_CCOEFF_NORMED: int = @ccode {cv::TM_CCOEFF_NORMED}
 
 @private fun matchTemplate_(image: anyarr_t, templ: anyarr_t,
-                            method: int, mask: anyarr_t): float [,] =
+                            method: int, mask: anyarr_t): float [,]
 @ccode {
     cv::Mat c_src, c_templ, c_mask, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2296,7 +2296,7 @@ val TM_CCOEFF_NORMED: int = @ccode {cv::TM_CCOEFF_NORMED}
 fun matchTemplate(image: 't [,], templ: 't [,], method: int, ~mask: uint8 [,]=[]): float [,] =
     matchTemplate_(anyarray(image), anyarray(templ), method, anyarray(mask))
 
-fun connectedComponents_(src: uint8 [,], connectivity: int): int32 [,] =
+fun connectedComponents_(src: uint8 [,], connectivity: int): int32 [,]
 @ccode {
     _fx_anyarr_t src_ = {*src, _FX_DEPTH_U8, 1};
     cv::Mat c_src, c_dst;
@@ -2311,7 +2311,7 @@ fun connectedComponents_(src: uint8 [,], connectivity: int): int32 [,] =
 }
 
 fun connectedComponentsWithStats(src: uint8 [,], connectivity: int):
-    (int32 [,], int32 [,], double [,]) =
+    (int32 [,], int32 [,], double [,])
 @ccode {
     _fx_anyarr_t src_ = {*src, _FX_DEPTH_U8, 1};
     cv::Mat c_src, c_labels, c_stats, c_centroids;
@@ -2334,7 +2334,7 @@ fun connectedComponentsWithStats(src: uint8 [,], connectivity: int):
 // [TODO]
 //fun findContours(src: uint8 [,], mode: int, method: int, ~offset:intx2=(0,0)): (int32x2 [], intx2 [], intx4 [])
 
-@private fun approxPolyDP_(curve: anyarr_t, epsilon: double, closed: bool): uint8 [] =
+@private fun approxPolyDP_(curve: anyarr_t, epsilon: double, closed: bool): uint8 []
 @ccode {
     cv::Mat c_src, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2350,7 +2350,7 @@ fun connectedComponentsWithStats(src: uint8 [,], connectivity: int):
 fun approxPolyDP(curve: 't [], epsilon: double, ~closed: bool): 't [] =
     (reinterpret(approxPolyDP_(anyarray(curve), epsilon, closed)) : 't [])
 
-@private fun arcLength_(curve: anyarr_t, closed: bool): double =
+@private fun arcLength_(curve: anyarr_t, closed: bool): double
 @ccode {
     cv::Mat c_src;
     int fx_status = cvt_to((const _fx_anyarr_t*)curve, c_src);
@@ -2364,7 +2364,7 @@ fun approxPolyDP(curve: 't [], epsilon: double, ~closed: bool): 't [] =
 fun arcLength(curve: 't [], ~closed: bool): double =
     arcLength_(anyarray(curve), closed)
 
-@private fun contourArea_(curve: anyarr_t, oriented: bool): double =
+@private fun contourArea_(curve: anyarr_t, oriented: bool): double
 @ccode {
     cv::Mat c_src;
     int fx_status = cvt_to((const _fx_anyarr_t*)curve, c_src);
@@ -2378,7 +2378,7 @@ fun arcLength(curve: 't [], ~closed: bool): double =
 fun contourArea(src: 't [], ~oriented: bool=false): double =
     contourArea_(anyarray(curve), oriented)
 
-@private fun boundingRect_(src: anyarr_t): intx4 =
+@private fun boundingRect_(src: anyarr_t): intx4
 @ccode {
     cv::Mat c_src;
     int fx_status = cvt_to((const _fx_anyarr_t*)src, c_src);
@@ -2392,7 +2392,7 @@ fun contourArea(src: 't [], ~oriented: bool=false): double =
 
 fun boundingRect(src: 't [+]): intx4 = boundingRect_(anyarray(src))
 
-@private fun minAreaRect_(points: anyarr_t): box_t =
+@private fun minAreaRect_(points: anyarr_t): box_t
 @ccode {
     cv::Mat c_src;
     int fx_status = cvt_to((const _fx_anyarr_t*)points, c_src);
@@ -2406,7 +2406,7 @@ fun boundingRect(src: 't [+]): intx4 = boundingRect_(anyarray(src))
 
 fun minAreaRect(points: 't []): box_t = minAreaRect_(anyarray(points))
 
-fun boxPoints(box: box_t): floatx2 [] =
+fun boxPoints(box: box_t): floatx2 []
 @ccode {
     cv::Mat c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2420,7 +2420,7 @@ fun boxPoints(box: box_t): floatx2 [] =
     return fx_status;
 }
 
-@private fun minEnclosingCircle_(points: anyarr_t): (floatx2, float) =
+@private fun minEnclosingCircle_(points: anyarr_t): (floatx2, float)
 @ccode {
     cv::Mat c_src;
     int fx_status = cvt_to((const _fx_anyarr_t*)points, c_src);
@@ -2438,7 +2438,7 @@ fun minEnclosingCircle(points: 't []): (floatx2, float) =
     minEnclosingCircle_(anyarray(points))
 
 @private fun matchShapes_(contour1: anyarr_t, contour2: anyarr_t,
-                          method: int, parameter: double): double =
+                          method: int, parameter: double): double
 @ccode {
     cv::Mat c_src1, c_src2;
     int fx_status = cvt_to((const _fx_anyarr_t*)contour1, c_src1);
@@ -2454,7 +2454,7 @@ fun minEnclosingCircle(points: 't []): (floatx2, float) =
 fun matchShapes(contour1: 't [], contour2: 't [], ~method: int, ~parameter: double): double =
     matchShapes_(anyarray(contour1), anyarray(contour2), method, parameter)
 
-@private fun convexHull_(points: anyarr_t, clockwise:bool, returnPoints: bool): uint8 [] =
+@private fun convexHull_(points: anyarr_t, clockwise:bool, returnPoints: bool): uint8 []
 @ccode {
     cv::Mat c_points, c_hull;
     c_hull.allocator = &g_fxarrAllocator;
@@ -2475,7 +2475,7 @@ fun convexHull(points: 't [], ~clockwise:bool=false): 't [] =
 fun convexHullIdx(points: 't [], ~clockwise:bool=false): 't [] =
     (reinterpret(convexHull_(anyarray(points), clockwise, false)) : int32 [])
 
-@private fun isContourConvex_(contour: anyarr_t): bool =
+@private fun isContourConvex_(contour: anyarr_t): bool
 @ccode {
     cv::Mat c_contour;
     int fx_status = cvt_to((const _fx_anyarr_t*)contour, c_contour);
@@ -2487,7 +2487,7 @@ fun convexHullIdx(points: 't [], ~clockwise:bool=false): 't [] =
 
 fun isContourConvex(contour: 't []): bool = isContourConvex_(anyarray(contour))
 
-@private fun intersectConvexConvex_(p1: anyarr_t, p2: anyarr_t, handleNested: bool): uint8 [] =
+@private fun intersectConvexConvex_(p1: anyarr_t, p2: anyarr_t, handleNested: bool): uint8 []
 @ccode {
     cv::Mat c_p1, c_p2, c_intersect;
     c_intersect.allocator = &g_fxarrAllocator;
@@ -2504,7 +2504,7 @@ fun isContourConvex(contour: 't []): bool = isContourConvex_(anyarray(contour))
 fun intersectConvexConvex(p1: 't [], p2: 't [], ~handleNested: bool=true): 't [] =
     (reinterpret(intersectConvexConvex_(anyarray(p1), anyarray(p2), handleNested)) : 't [])
 
-@private fun fitEllipse_(points: anyarr_t): box_t =
+@private fun fitEllipse_(points: anyarr_t): box_t
 @ccode {
     cv::Mat c_points, c_ellipse;
     c_ellipse.allocator = &g_fxarrAllocator;
@@ -2518,7 +2518,7 @@ fun intersectConvexConvex(p1: 't [], p2: 't [], ~handleNested: bool=true): 't []
 
 fun fitEllipse(points: 't []): box_t = fitEllipse_(anyarray(points))
 
-@private fun fitEllipseAMS_(points: anyarr_t): box_t =
+@private fun fitEllipseAMS_(points: anyarr_t): box_t
 @ccode {
     cv::Mat c_points, c_ellipse;
     c_ellipse.allocator = &g_fxarrAllocator;
@@ -2532,7 +2532,7 @@ fun fitEllipse(points: 't []): box_t = fitEllipse_(anyarray(points))
 
 fun fitEllipseAMS(points: 't []): box_t = fitEllipseAMS_(anyarray(points))
 
-@private fun fitEllipseDirect_(points: anyarr_t): box_t =
+@private fun fitEllipseDirect_(points: anyarr_t): box_t
 @ccode {
     cv::Mat c_points, c_ellipse;
     c_ellipse.allocator = &g_fxarrAllocator;
@@ -2547,7 +2547,7 @@ fun fitEllipseAMS(points: 't []): box_t = fitEllipseAMS_(anyarray(points))
 fun fitEllipseDirect(points: 't []): box_t = fitEllipseDirect_(anyarray(points))
 
 @private fun fitLine_(points: anyarr_t, distType: int,
-                      param: double, reps: double, aeps: double): float [] =
+                      param: double, reps: double, aeps: double): float []
 @ccode {
     cv::Mat c_points, c_line;
     c_line.allocator = &g_fxarrAllocator;
@@ -2562,7 +2562,7 @@ fun fitEllipseDirect(points: 't []): box_t = fitEllipseDirect_(anyarray(points))
 fun fitLine(points: 't [], ~distType: int, ~param: double, ~reps: double, ~aeps: double): float [] =
     fitLine_(anyarray(points), distType, param, reps, aeps)
 
-@private fun pointPolygonTest_(contour: anyarr_t, pt: floatx2, measureDist: bool): double =
+@private fun pointPolygonTest_(contour: anyarr_t, pt: floatx2, measureDist: bool): double
 @ccode {
     cv::Mat c_contour;
     int fx_status = cvt_to((const _fx_anyarr_t*)contour, c_contour);
@@ -2575,7 +2575,7 @@ fun fitLine(points: 't [], ~distType: int, ~param: double, ~reps: double, ~aeps:
 fun pointPolygonTest(contour: 't [], pt: floatx2, ~measureDist: bool): double =
     pointPolygonTest_(anyarray(contour), pt, measureDist)
 
-fun rotatedRectangleIntersection(rrect1: box_t, rrect2: box_t): (int, floatx2 []) =
+fun rotatedRectangleIntersection(rrect1: box_t, rrect2: box_t): (int, floatx2 [])
 @ccode {
     cv::Mat c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2587,7 +2587,7 @@ fun rotatedRectangleIntersection(rrect1: box_t, rrect2: box_t): (int, floatx2 []
     return fx_status;
 }
 
-@private fun applyColorMap_(src: anyarr_t, colormap: int, usermap: anyarr_t): uint8x3 [,] =
+@private fun applyColorMap_(src: anyarr_t, colormap: int, usermap: anyarr_t): uint8x3 [,]
 @ccode {
     cv::Mat c_src, c_usermap, c_dst;
     c_dst.allocator = &g_fxarrAllocator;
@@ -2618,7 +2618,7 @@ fun RGBA(r: 't, g: 't, b: 't, a: 't): doublex4 = (double(b), double(g), double(r
 fun GRAY(g: 't): doublex4 = (double(g), double(g), double(g), 0.)
 
 @private fun line_(img: anyarr_t, pt1: intx2, pt2: intx2, color: doublex4,
-        thickness: int, lineType: int, shift: int): void =
+        thickness: int, lineType: int, shift: int): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2635,7 +2635,7 @@ fun line(img: 't [,], pt1: intx2, pt2: intx2, color: doublex4,
 
 @private fun arrowedLine_(img: anyarr_t, pt1: intx2, pt2: intx2, color: doublex4,
                 thickness: int, lineType: int, shift: int,
-                tipLength: double): void =
+                tipLength: double): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2652,7 +2652,7 @@ fun arrowedLine(img: 't [,], pt1: intx2, pt2: intx2, color: doublex4,
     allowedLine_(anyarray(img), pt1, pt2, color, thickness, lineType, shift, tipLength)
 
 @private fun rectangle_(img: anyarr_t, pt1: intx2, pt2: intx2, color: doublex4,
-                        thickness: int, lineType: int, shift: int): void =
+                        thickness: int, lineType: int, shift: int): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2677,7 +2677,7 @@ fun rectangle(img: 't [,], rect: intx4, color: doublex4,
 }
 
 @private fun circle_(img: anyarr_t, center: intx2, radius: int, color: doublex4,
-                     thickness: int, lineType: int, shift: int): void =
+                     thickness: int, lineType: int, shift: int): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2694,7 +2694,7 @@ fun circle(img: 't [,], center: intx2, radius: int, color: doublex4,
 
 @private fun ellipse_(img: anyarr_t, center: intx2, axes: intx2,
             angle: double, startAngle: double, endAngle: double,
-            color: doublex4, thickness: int, lineType: int, shift: int): void =
+            color: doublex4, thickness: int, lineType: int, shift: int): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2713,7 +2713,7 @@ fun ellipse(img: 't [,], center: intx2, axes: intx2, color: doublex4,
             color, thickness, lineType, shift)
 
 @private fun ellipse_(img: anyarr_t, box: box_t, color: doublex4,
-            thickness: int, lineType: int): void =
+            thickness: int, lineType: int): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2739,7 +2739,7 @@ val MARKER_TRIANGLE_DOWN: int = @ccode {cv::MARKER_TRIANGLE_DOWN}
 
 @private fun drawMarker_(img: anyarr_t, pos: intx2, color: doublex4,
                markerType: int, markerSize: int,
-               thickness: int, lineType: int): void =
+               thickness: int, lineType: int): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2757,7 +2757,7 @@ fun drawMarker(img: 't [,], pos: intx2, color: doublex4,
     drawMaker_(anyarray(img), pos, color, markerType, markerSize, thickness, lineType)
 
 @private fun fillConvexPoly(img: anyarr_t, points: anyarr_t, color: doublex4,
-                            lineType: int, shift: int): void =
+                            lineType: int, shift: int): void
 @ccode {
     cv::Mat c_img, c_points;
     int fx_status = cvt_to((const _fx_anyarr_t*)img, c_img);
@@ -2775,7 +2775,7 @@ fun fillConvexPoly(img: 't [,], points: int32x2 [], color: doublex4,
     fillConvexPoly_(anyarray(img), anyarray(points), color, lineType, shift)
 
 @private fun fillPoly_(img: anyarr_t, points: int32x2 [][], color: doublex4,
-             lineType: int, shift: int, offset: intx2): void =
+             lineType: int, shift: int, offset: intx2): void
 @ccode {
     cv::Mat c_img;
     int i, ncontours = (int)points->dim[0].size;
@@ -2799,7 +2799,7 @@ fun fillPoly(img: 't [,], points: int32x2 [][], color: doublex4,
     fillPoly_(anyarray(img), points, color, linetype, shift, offset)
 
 @private fun polylines_(img: anyarr_t, points: int32x2 [][], color: doublex4,
-    isClosed: bool, thickness: int, lineType: int, shift: int, offset: intx2): void =
+    isClosed: bool, thickness: int, lineType: int, shift: int, offset: intx2): void
 @ccode {
     cv::Mat c_img;
     int i, ncontours = (int)points->dim[0].size;
@@ -2868,7 +2868,7 @@ fun makeFontFace(fontNameOrPath: string): FontFace
     FontFace {fface=makeFontFace_(fontNameOrPath)}
 }
 
-fun FontFace.setInstance(params: int []): bool =
+fun FontFace.setInstance(params: int []): bool
 @ccode {
     int i, nparams = (int)params->dim[0].size;
     int fx_status = FX_OK;
@@ -2883,7 +2883,7 @@ fun FontFace.setInstance(params: int []): bool =
     return fx_status;
 }
 
-@private fun FontFace_getInstance_(fface: cptr): int32 [] =
+@private fun FontFace_getInstance_(fface: cptr): int32 []
 @ccode {
     int fx_status = FX_OK;
     std::vector<int> params_;
@@ -2910,7 +2910,7 @@ val PUT_TEXT_WRAP: int = @ccode {cv::PUT_TEXT_WRAP}
 
 @private fun putText_(img: anyarr_t, text: string, org: intx2, color: doublex4,
             fontFace: FontFace, size: int, weight: int,
-            flags: int, wrap: intx2): void =
+            flags: int, wrap: intx2): void
 @ccode {
     cv::Mat c_img;
     std::string c_text;
@@ -2936,7 +2936,7 @@ fun putText(img: 't [,], text: string, org: intx2, color: doublex4,
 
 @private fun getTextSize_(imgSize: intx2, text: string, org: intx2,
     fontFace: FontFace, size: int, weight: int,
-    flags: int, wrap: intx2): intx4 =
+    flags: int, wrap: intx2): intx4
 @ccode {
     std::string c_text;
     int fx_status = cvt_to(text, c_text);
@@ -3026,8 +3026,8 @@ val IMWRITE_PAM_FORMAT_GRAYSCALE_ALPHA: int = @ccode { cv::IMWRITE_PAM_FORMAT_GR
 val IMWRITE_PAM_FORMAT_RGB: int = @ccode { cv::IMWRITE_PAM_FORMAT_RGB }
 val IMWRITE_PAM_FORMAT_RGB_ALPHA: int = @ccode { cv::IMWRITE_PAM_FORMAT_RGB_ALPHA }
 
-fun imread(filename: string): uint8x3 [,] = @ccode
-{
+fun imread(filename: string): uint8x3 [,]
+@ccode {
     std::string c_filename;
     int fx_status = cvt_to(filename, c_filename);
     FX_OCV_TRY_CATCH(
@@ -3037,8 +3037,8 @@ fun imread(filename: string): uint8x3 [,] = @ccode
     return fx_status;
 }
 
-fun imread_gray(filename: string): uint8 [,] = @ccode
-{
+fun imread_gray(filename: string): uint8 [,]
+@ccode {
     std::string c_filename;
     int fx_status = cvt_to(filename, c_filename);
     FX_OCV_TRY_CATCH(
@@ -3048,8 +3048,8 @@ fun imread_gray(filename: string): uint8 [,] = @ccode
     return fx_status;
 }
 
-@private fun imwrite_(filename: string, img: anyarr_t, params: int []): void = @ccode
-{
+@private fun imwrite_(filename: string, img: anyarr_t, params: int []): void
+@ccode {
     std::string c_filename;
     cv::Mat c_img;
     std::vector<int> c_params;
@@ -3067,8 +3067,8 @@ fun imread_gray(filename: string): uint8 [,] = @ccode
 fun imwrite(filename: string, img: 't [,], ~params: int []=[]) =
     imwrite_(filename, anyarray(img), params)
 
-fun imdecode(buf: uint8 []): uint8x3 [,] = @ccode
-{
+fun imdecode(buf: uint8 []): uint8x3 [,]
+@ccode {
     cv::Mat c_buf;
     int fx_status = cvt_to(filename, c_filename);
     if (fx_status >= 0)
@@ -3080,8 +3080,8 @@ fun imdecode(buf: uint8 []): uint8x3 [,] = @ccode
     return fx_status;
 }
 
-fun imdecode(buf: uint8 []): uint8 [,] = @ccode
-{
+fun imdecode(buf: uint8 []): uint8 [,]
+@ccode {
     cv::Mat c_buf;
     int fx_status = cvt_to(filename, c_filename);
     if (fx_status >= 0)
@@ -3093,8 +3093,8 @@ fun imdecode(buf: uint8 []): uint8 [,] = @ccode
     return fx_status;
 }
 
-@private fun imencode_(ext: string, img: anyarr_t, params: int []): uint8 [] = @ccode
-{
+@private fun imencode_(ext: string, img: anyarr_t, params: int []): uint8 []
+@ccode {
     std::string c_filename;
     cv::Mat c_img;
     std::vector<int> c_params;
@@ -3115,8 +3115,8 @@ fun imdecode(buf: uint8 []): uint8 [,] = @ccode
 fun imencode(ext: string, img: 't [,], ~params: int []=[]): uint8 [] =
     imencode_(ext, anyarray(img), params)
 
-fun haveImageReader(filename: string): bool = @ccode
-{
+fun haveImageReader(filename: string): bool
+@ccode {
     std::string c_filename;
     *fx_result = false;
     int fx_status = cvt_to(filename, c_filename);
@@ -3126,8 +3126,8 @@ fun haveImageReader(filename: string): bool = @ccode
     return fx_status;
 }
 
-fun haveImageWriter(filename: string): bool = @ccode
-{
+fun haveImageWriter(filename: string): bool
+@ccode {
     std::string c_filename;
     *fx_result = false;
     int fx_status = cvt_to(filename, c_filename);
@@ -3564,7 +3564,7 @@ fun captureFromFile(filename: string)
     VideoCapture {cap=captureFromFile_(filename)}
 }
 
-fun VideoCapture.close(): void =
+fun VideoCapture.close(): void
 @ccode {
     if (self->cap && self->cap->ptr) {
         cv::VideoCapture* cap = (cv::VideoCapture*)self->cap->ptr;
@@ -3677,7 +3677,7 @@ fun openVideoWriter(filename: string, ~fourcc: int, ~fps: double,
     }
 }
 
-fun VideoWriter.close(): void =
+fun VideoWriter.close(): void
 @ccode {
     if (self->writer && self->writer->ptr) {
         cv::VideoWriter* writer = (cv::VideoWriter*)self->writer->ptr;
@@ -3686,7 +3686,7 @@ fun VideoWriter.close(): void =
     return FX_OK;
 }
 
-@private fun VideoWriter.write_(img: anyarr_t): void =
+@private fun VideoWriter.write_(img: anyarr_t): void
 @ccode {
     cv::Mat c_img;
     int fx_status = cvt_to(img, c_img);
@@ -3703,8 +3703,8 @@ fun VideoWriter.write(img: 't [,]) = self.write_(anyarray(img))
 
 //////////////////////////////// highgui ///////////////////////////////
 
-@private fun imshow_(window: string, img: anyarr_t): void = @ccode
-{
+@private fun imshow_(window: string, img: anyarr_t): void
+@ccode {
     std::string c_window;
     cv::Mat c_img;
     int fx_status = cvt_to(window, c_window);
@@ -3746,8 +3746,8 @@ static void _fx_ocv_trackbar_callb(int pos, void* userdata)
 
 fun createTrackbar(trackbarname: string, window: string,
                    value: int32 ref, count: int,
-                   onchange: (int->void)?): void = @ccode
-{
+                   onchange: (int->void)?): void
+@ccode {
     std::string c_trackbarname, c_window;
     int fx_status = cvt_to(trackbarname, c_trackbarname);
     if (fx_status >= 0)
@@ -3799,7 +3799,7 @@ val DNN_BACKEND_VKCOM: int = @ccode {cv::dnn::DNN_BACKEND_VKCOM}
 val DNN_BACKEND_CUDA: int = @ccode {cv::dnn::DNN_BACKEND_CUDA}
 val DNN_BACKEND_WEBNN: int = @ccode {cv::dnn::DNN_BACKEND_WEBNN}
 
-@nothrow fun Net.empty(): bool =
+@nothrow fun Net.empty(): bool
 @ccode {
     return self->net == 0 || self->net->ptr == 0 ||
            ((cv::dnn::Net*)self->net->ptr)->empty();

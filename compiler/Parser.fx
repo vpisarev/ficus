@@ -2008,8 +2008,7 @@ fun preprocess(ts: tklist_t): tklist_t
 {
     var env = Hashmap.empty(256, "", PP_INT(0L))
 
-    fun pp_err(ts: tklist_t, msg: string) =
-        parse_err(ts, "preprocessor: " + msg)
+    fun pp_err(ts: tklist_t, msg: string) = parse_err(ts, msg)
 
     fun pp_match_paren((ts: tklist_t, x: ppval_t), ct: token_t, ol: loc_t): (tklist_t, ppval_t)
     {
@@ -2021,8 +2020,8 @@ fun preprocess(ts: tklist_t): tklist_t
 
     fun pp_atomic(ts: tklist_t, calc: bool): (tklist_t, ppval_t)
     {
+        //println(f"pp_atomic @ {ts.hd().1}, calc={calc}\n")
         val defval = PP_BOOL(false)
-        //println(f"pp_atomic @ {ts.hd().1}\n")
         match ts {
         | (IDENT(_, "DEFINED"), _) :: (LPAREN(false), _) :: (IDENT(_, n), _) :: (RPAREN, _) :: rest =>
             (rest, if calc {PP_BOOL(env.mem(n))} else {defval})
@@ -2038,12 +2037,12 @@ fun preprocess(ts: tklist_t): tklist_t
                 | _ => throw pp_err(ts, f"unknown/unsupported function {fname}")
                 }
             } else {defval}
-            (rest, x)
+            (ts, x)
         | (IDENT(ne, i), _) :: rest =>
             val x = if calc {
                 match env.find_opt(i) {
                 | Some(x) => x
-                | _ => throw pp_err(ts, f"identifier 'i' is undefined")
+                | _ => throw pp_err(ts, f"identifier '{i}' is undefined")
                 }
             } else {
                 defval
@@ -2273,6 +2272,7 @@ fun preprocess(ts: tklist_t): tklist_t
 
     fun pp_exp(ts: tklist_t, calc: bool): (tklist_t, ppval_t)
     {
+        //println(f"pp_exp @ {ts.hd().1}, calc={calc}\n")
         val (ts, x) = pp_chained_cmp(ts, calc)
         pp_logic(ts, calc, x, 0)
     }
@@ -2297,7 +2297,7 @@ fun preprocess(ts: tklist_t): tklist_t
         | (PP_DEFINE, _) :: rest =>
             match rest {
             | (IDENT(_, n), _) :: rest =>
-                val (ts, x) = pp_exp(rest, true)
+                val (ts, x) = pp_exp(rest, process)
                 if process {
                     if env.mem(n) {throw pp_err(ts, f"symbol '{n}' is already defined")}
                     env.add(n, x)
@@ -2364,6 +2364,26 @@ fun preprocess(ts: tklist_t): tklist_t
             | _ => {}
             }
             ppnext(ts.tl(), ppstack.tl(), result)
+        | (PP_ERROR, _) :: _ =>
+            val (next_ts, x) = pp_exp(ts.tl(), process)
+            if process {
+                val msg = match x {
+                    | PP_STRING(x) => x
+                    | _ => "@ERROR argument must be a string"
+                    }
+                throw pp_err(ts, msg)
+            }
+            ppnext(next_ts, ppstack, result)
+        | (PP_WARNING, _) :: _ =>
+            val (next_ts, x) = pp_exp(ts.tl(), process)
+            if process {
+                val msg = match x {
+                    | PP_STRING(x) => x
+                    | _ => throw pp_err(ts, "@WARNING argument must be a string")
+                    }
+                println(f"{ts.hd().1}: warning: {msg}")
+            }
+            ppnext(next_ts, ppstack, result)
         | (AT, _) :: (LBRACE, l1) :: rest =>
             val (ts, x) = pp_match_paren(pp_exp(rest, process), RBRACE, l1)
             val result = if process {

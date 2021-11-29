@@ -33,7 +33,7 @@ type token_t =
     | DOT_EQUAL | AUG_BINOP: Ast.binary_t | SPACESHIP | CMP: Ast.cmpop_t
     | DOT_SPACESHIP | DOT_CMP: Ast.cmpop_t | SAME | RESERVED: string
     | PP_IF | PP_IFDEF | PP_IFNDEF | PP_ELIF | PP_ELSE
-    | PP_ENDIF | PP_DEFINE | PP_UNDEF
+    | PP_ENDIF | PP_DEFINE | PP_UNDEF | PP_ERROR | PP_WARNING
 
 fun ne2u(ne: bool, s: string) = if ne {s} else {s.decapitalize()}
 
@@ -148,6 +148,8 @@ fun tok2str(t: token_t)
     | PP_ENDIF => ("PP_ENDIF", "@ENDIF")
     | PP_DEFINE => ("PP_DEFINE", "@DEFINE")
     | PP_UNDEF => ("PP_UNDEF", "@UNDEF")
+    | PP_ERROR => ("PP_ERROR", "@ERROR")
+    | PP_WARNING => ("PP_WARNING", "@WARNING")
 }
 
 fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, token_t) =
@@ -216,7 +218,8 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
     ("@pure", (PURE, 2)),  ("@unzip", (UNZIP, 2)),
     ("@IF", (PP_IF, 2)), ("@IFDEF", (PP_IFDEF, 2)), ("@IFNDEF", (PP_IFNDEF, 2)),
     ("@ELIF", (PP_ELIF, 1)), ("@ELSE", (PP_ELSE, 1)), ("@ENDIF", (PP_ENDIF, 3)),
-    ("@DEFINE", (PP_DEFINE, 2)), ("@UNDEF", (PP_UNDEF, 2))
+    ("@DEFINE", (PP_DEFINE, 2)), ("@UNDEF", (PP_UNDEF, 2)),
+    ("@ERROR", (PP_ERROR, 2)), ("@WARNING", (PP_WARNING, 2))
     ])
 
 /*  The function that returns the actual tokenizer/lexer function,
@@ -405,10 +408,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             } else {
                 (LITERAL(Ast.LitString(res)), loc) :: []
             }
-        } else if c.isalpha() || c == '_' || (c == '@' && c1.isalpha() &&
-            (new_exp ||
-            (c1 == 's' && buf.zero[pos+2] == 'y' &&
-            buf.zero[pos+3] == 'n' && buf.zero[pos+4] == 'c'))) {
+        } else if c.isalpha() || c == '_' || (c == '@' && c1.isalpha()) {
             var p = pos+1
             while p < len {
                 val cp = buf[p]
@@ -417,10 +417,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             }
             val ident = buf[pos:p].copy()
             pos = p
-            val t =
+            prev_dot = false
             match ficus_keywords.find_opt(ident) {
             | Some((t, n)) =>
-                match (t, n) {
+                val t = match (t, n) {
                 | (CCODE, _) =>
                     check_ne(new_exp, loc, "ccode")
                     paren_stack = (CCODE, loc) :: paren_stack
@@ -463,11 +463,15 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 | (t, 2) => check_ne(new_exp, loc, ident); new_exp = true; t
                 | _ => throw Lxu.LexerError(loc, f"Unexpected keyword '{ident}'")
                 }
+                (t, loc) :: []
             | _ =>
-                val t = IDENT(new_exp, ident); new_exp = false; t
+                if c == '@' {
+                    val t = IDENT(new_exp, ident[1:]); new_exp = false
+                    (AT, loc) :: (t, getloc(pos+1)) :: []
+                } else {
+                    val t = IDENT(new_exp, ident); new_exp = false; (t, loc) :: []
+                }
             }
-            prev_dot = false
-            (t, loc) :: []
         } else {
             val prev_ne = new_exp
             prev_dot = false

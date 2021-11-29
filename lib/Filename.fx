@@ -111,8 +111,8 @@ fun getcwd(): string = @ccode {
     return fx_cstr2str(p, (p ? -1 : 0), fx_result);
 }
 
-fun exists(name: string): bool = @ccode
-{
+fun exists(name: string): bool
+@ccode {
     fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {

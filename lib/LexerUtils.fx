@@ -88,8 +88,8 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
    h, f, uNN, iNN, L and UL suffixes are also supported.
 */
 @pure fun getnumber(s: string, pos: int, just_int: bool, get_suffix: bool):
-    (int, int64, double, int, char) = @ccode
-{
+    (int, int64, double, int, char)
+@ccode {
     const int MAX_ATOF = 128;
     char buf[128 + 16];
     int_ i = 0, len = s->length - pos;
@@ -284,8 +284,8 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
     Unicode characters (\uxxxx and \Uxxxxxxxx) are also decoded.
 */
 fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
-    (int, string, int, bool) = @ccode
-{
+    (int, string, int, bool)
+@ccode {
     int delta_lines = 0;
     int_ sz = 256, n = 0;
     char_ buf0[256 + 32];

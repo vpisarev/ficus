@@ -15,30 +15,30 @@
 
 @inline fun empty(s: string): bool = __intrin_size__(s) == 0
 
-@pure @nothrow fun startswith(s: string, prefix: string): bool = @ccode
-{
+@pure @nothrow fun startswith(s: string, prefix: string): bool
+@ccode {
     int_ sz1 = s->length;
     int_ sz2 = prefix->length;
     return sz2 == 0 ? true : sz2 <= sz1 && memcmp(s->data, prefix->data,
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
 
-@pure @nothrow fun startswith(s: string, prefix: char): bool = @ccode
-{ return s->length > 0 && s->data[0] == prefix; }
+@pure @nothrow fun startswith(s: string, prefix: char): bool
+@ccode { return s->length > 0 && s->data[0] == prefix; }
 
-@pure @nothrow fun endswith(s: string, suffix: string): bool = @ccode
-{
+@pure @nothrow fun endswith(s: string, suffix: string): bool
+@ccode {
     int_ sz1 = s->length;
     int_ sz2 = suffix->length;
     return sz2 == 0 ? true : sz2 <= sz1 && memcmp(s->data + (sz1 - sz2), suffix->data,
         (size_t)(sz2*sizeof(s->data[0]))) == 0;
 }
 
-@pure @nothrow fun endswith(s: string, suffix: char): bool = @ccode
-{ return s->length > 0 && s->data[s->length-1] == suffix; }
+@pure @nothrow fun endswith(s: string, suffix: char): bool
+@ccode { return s->length > 0 && s->data[s->length-1] == suffix; }
 
-@pure @nothrow fun find(s: string, part: string, from_pos: int): int = @ccode
-{
+@pure @nothrow fun find(s: string, part: string, from_pos: int): int
+@ccode {
     int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
     if (sz2 == 0)
         return 0;
@@ -52,24 +52,24 @@
 
 @inline fun find(s: string, part: string): int = find(s, part, 0)
 
-@pure @nothrow fun find(s: string, c: char): int = @ccode
-{
+@pure @nothrow fun find(s: string, c: char): int
+@ccode {
     int_ i, sz1 = s->length;
     for( i = 0; i < sz1; i++ )
         if( s->data[i] == c ) return i;
     return -1;
 }
 
-@pure @nothrow fun find(s: string, c: char, from_pos: int): int = @ccode
-{
+@pure @nothrow fun find(s: string, c: char, from_pos: int): int
+@ccode {
     int_ i, sz1 = s->length;
     for( i = (from_pos >= 0 ? from_pos : 0); i < sz1; i++ )
         if( s->data[i] == c ) return i;
     return -1;
 }
 
-@pure @nothrow fun rfind(s: string, part: string, from_pos: int): int = @ccode
-{
+@pure @nothrow fun rfind(s: string, part: string, from_pos: int): int
+@ccode {
     int_ sz1 = s->length, sz2 = part->length;
     int_ i = (from_pos < sz1 ? from_pos+1 : sz1) - sz2;
     if (sz2 == 0)
@@ -83,24 +83,24 @@
 
 @inline fun rfind(s: string, part: string): int = rfind(s, part, s.length()-1)
 
-@pure @nothrow fun rfind(s: string, c: char): int = @ccode
-{
+@pure @nothrow fun rfind(s: string, c: char): int
+@ccode {
     int_ i, sz1 = s->length;
     for( i = sz1-1; i >= 0; i-- )
         if( s->data[i] == c ) return i;
     return -1;
 }
 
-@pure @nothrow fun rfind(s: string, c: char, from_pos: int): int = @ccode
-{
+@pure @nothrow fun rfind(s: string, c: char, from_pos: int): int
+@ccode {
     int_ i, sz1 = s->length;
     for( i = (from_pos < sz1 ? from_pos : sz1-1); i >= 0; i-- )
         if( s->data[i] == c ) return i;
     return -1;
 }
 
-@pure @nothrow fun contains(s: string, c: char): bool = @ccode
-{
+@pure @nothrow fun contains(s: string, c: char): bool
+@ccode {
     int_ i, sz = s->length;
     char_* data = s->data;
 
@@ -112,8 +112,8 @@
 
 @inline fun contains(s: string, substr: string): bool = find(s, substr) >= 0
 
-@pure fun replace(s: string, substr: string, new_substr: string): string = @ccode
-{
+@pure fun replace(s: string, substr: string, new_substr: string): string
+@ccode {
     int_ i, j = 0, sz = s->length, sz1 = substr->length, sz2 = new_substr->length;
     int_ newsz = 0;
     if (sz == 0 || sz1 == 0) {
@@ -147,8 +147,8 @@
     return fx_status;
 }
 
-@pure fun tolower(s: string): string = @ccode
-{
+@pure fun tolower(s: string): string
+@ccode {
     int_ i, sz = s->length;
     const char_* src = s->data;
     for (i = 0; i < sz; i++ ) {
@@ -168,8 +168,8 @@
     return fx_status;
 }
 
-@pure fun toupper(s: string): string = @ccode
-{
+@pure fun toupper(s: string): string
+@ccode {
     int_ i, sz = s->length;
     const char_* src = s->data;
     for (i = 0; i < sz; i++ ) {
@@ -189,8 +189,8 @@
     return fx_status;
 }
 
-@pure fun capitalize(s: string): string = @ccode
-{
+@pure fun capitalize(s: string): string
+@ccode {
     int_ sz = s->length;
     const char_* src = s->data;
     if (sz == 0 || fx_toupper(src[0]) == src[0]) {
@@ -207,8 +207,8 @@
     return fx_status;
 }
 
-@pure fun decapitalize(s: string): string = @ccode
-{
+@pure fun decapitalize(s: string): string
+@ccode {
     int_ sz = s->length;
     const char_* src = s->data;
     if (sz == 0 || fx_tolower(src[0]) == src[0]) {
@@ -225,8 +225,8 @@
     return fx_status;
 }
 
-@pure fun lstrip(s: string): string = @ccode
-{
+@pure fun lstrip(s: string): string
+@ccode {
     const char_* ptr = s->data;
     int_ i = 0, sz = s->length;
     for (; i < sz && fx_isspace(ptr[i]); i++)
@@ -234,8 +234,8 @@
     return fx_substr(s, i, sz, 1, 0, fx_result);
 }
 
-@pure fun rstrip(s: string): string = @ccode
-{
+@pure fun rstrip(s: string): string
+@ccode {
     const char_* ptr = s->data;
     int_ sz = s->length;
     for (; sz > 0 && fx_isspace(ptr[sz - 1]); sz--)
@@ -243,8 +243,8 @@
     return fx_substr(s, 0, sz, 1, 0, fx_result);
 }
 
-@pure fun strip(s: string): string = @ccode
-{
+@pure fun strip(s: string): string
+@ccode {
     const char_* ptr = s->data;
     int_ i = 0, sz = s->length;
     for (; i < sz && fx_isspace(ptr[i]); i++)
@@ -278,26 +278,26 @@ fun split(s: string, c: char, ~allow_empty:bool)
     (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
-@nothrow fun to_int(a: string): int? = @ccode
-{
+@nothrow fun to_int(a: string): int?
+@ccode {
     bool ok = fx_atoi(a, &fx_result->u.Some, 0);
     fx_result->tag = (int)(ok+1)
 }
-@nothrow fun to_double(a: string): double? = @ccode
-{
+@nothrow fun to_double(a: string): double?
+@ccode {
     bool ok = fx_atof(a, &fx_result->u.Some);
     fx_result->tag = (int)(ok+1)
 }
 
-@nothrow fun to_int_or(a: string, defval: int): int = @ccode
-{
+@nothrow fun to_int_or(a: string, defval: int): int
+@ccode {
     int_ result;
     bool ok = fx_atoi(a, &result, 0);
     return ok ? result : defval;
 }
 
-@nothrow fun to_double_or(a: string, defval: double): int = @ccode
-{
+@nothrow fun to_double_or(a: string, defval: double): int
+@ccode {
     double result;
     bool ok = fx_atof(a, &result);
     return ok ? result : defval;

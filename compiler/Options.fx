@@ -4,6 +4,8 @@
 */
 import Filename, Sys
 
+type optval_t = OptBool: bool | OptInt: int | OptString: string
+
 type options_t =
 {
     app_args: string list = [];
@@ -19,6 +21,7 @@ type options_t =
     gen_c: bool = true;
     include_path: string list = [];
     debug: bool = false;
+    defines: (string, optval_t) list = [];
     optim_iters: int = 0;
     inline_thresh: int = 100;
     enable_openmp: bool = true;
@@ -86,6 +89,15 @@ where options can be some of:
     -Wno-unused     Do not report errors about unused values/functions
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
+    -D symbol       Define 'symbol=true' for preprocessor
+    -D symbol=value Define 'symbol=value' for preprocessor.
+                    The value may be one of the following:
+                      * a boolean: true (or on), false (or off),
+                      * an integer (if the value starts with a digit, '+' or '-' and
+                                    contains 1 or more decimal digits)
+                      * text string: everything between double quotes or
+                                     any combination of characters that does not
+                                     contain spaces, '\' or quotes and does not start with a digit or '-'
     -I <dir>        Add specified directory to the module search path
     -B <build_root> Specifies the parent directory <build_root> where subdirectory
                     <build_root>/__fxbuild__/<app_build_dir> with the generated files will be created.
@@ -174,6 +186,46 @@ fun parse_options(): bool {
                 opt.verbose = true; next
             | "-o" :: oname :: next =>
                 opt.output_name = oname; next
+            | "-D" :: nameval :: next =>
+                val p1 = nameval.find('=')
+                val (name, value) = if p1 < 0 {(nameval, "true")}
+                                    else {(nameval[:p1], nameval[p1+1:])}
+                val errval = OptBool(false)
+                val value =
+                    if name != "" && (name[0].isalpha() || name[0]=='_') &&
+                        all(for c <- name {c.isalnum() || c == '_'}) {
+                        if value == "TRUE" || value == "true" || value == "ON" || value == "on" {OptBool(true)}
+                        else if value == "FALSE" || value == "false" || value == "OFF" || value == "off" {OptBool(false)}
+                        else if value == "" {
+                            println(f"a value should follow after '{name}='")
+                            ok = false
+                            errval
+                        } else if value[0] == '+' || value[0] == '-' || value[0].isdigit() {
+                            match value.to_int() {
+                            | Some(x) => OptInt(x)
+                            | _ =>
+                                println(f"invalid numerical value '{value}' of a symbol '{name}'; \
+                                          if you meant a string, enclose it in double quotes")
+                                ok = false
+                                errval
+                            }
+                        } else if value.startswith('\"') {
+                            if !value.endswith('\"') {
+                                println(f"the value {value} starts with '\"', but does not terminate with '\"'")
+                                ok = false
+                                errval
+                            } else {
+                                OptString(value[1:-1])
+                            }
+                        } else {
+                            OptString(value)
+                        }
+                    } else {
+                        println(f"identifier '{name}' contains incorrect characters")
+                        ok = false; errval
+                    }
+                if ok { opt.defines = (name, value) :: opt.defines; next }
+                else { [] }
             | "-I" :: incdir :: next =>
                 opt.include_path = opt.include_path + (incdir :: []); next
             | "-B" :: bdir :: next =>

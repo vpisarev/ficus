@@ -154,7 +154,7 @@ type binary_t =
     | OpDotMul | OpDotDiv | OpDotMod | OpDotPow
     | OpBitwiseAnd | OpLogicAnd | OpBitwiseOr | OpLogicOr | OpBitwiseXor
     | OpCmp: cmpop_t | OpDotCmp: cmpop_t | OpSpaceship | OpDotSpaceship | OpSame | OpCons
-    | OpAugBinary: binary_t 
+    | OpAugBinary: binary_t
 
 type unary_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
     | OpMkRef | OpDeref | OpExpand | OpApos
@@ -1039,9 +1039,9 @@ fun fname_op_dot_minus() = get_id("__dot_minus__")
 fun fname_op_bit_not() = get_id("__bit_not__")
 fun fname_op_aug_add() = get_id("__aug_add__")
 fun fname_op_aug_sub() = get_id("__aug_sub__")
-fun fname_op_aug_mul() = get_id("__aug_mul__") 
-fun fname_op_aug_div() = get_id("__aug_div__") 
-fun fname_op_aug_mod() = get_id("__aug_mod__") 
+fun fname_op_aug_mul() = get_id("__aug_mul__")
+fun fname_op_aug_div() = get_id("__aug_div__")
+fun fname_op_aug_mod() = get_id("__aug_mod__")
 fun fname_op_aug_bit_and() = get_id("__aug_bit_and__")
 fun fname_op_aug_bit_or() = get_id("__aug_bit_or__")
 fun fname_op_aug_bit_xor() = get_id("__aug_bit_xor__")
@@ -1114,10 +1114,10 @@ fun get_binary_fname(bop: binary_t, loc: loc_t) =
     | OpDotCmp(CmpGE) => fname_op_dot_ge()
     | OpDotCmp(CmpGT) => fname_op_dot_gt()
     | OpAugBinary(OpAdd) => fname_op_aug_add()
-    | OpAugBinary(OpSub) => fname_op_aug_sub() 
-    | OpAugBinary(OpMul) => fname_op_aug_mul() 
-    | OpAugBinary(OpDiv) => fname_op_aug_div() 
-    | OpAugBinary(OpMod) => fname_op_aug_mod() 
+    | OpAugBinary(OpSub) => fname_op_aug_sub()
+    | OpAugBinary(OpMul) => fname_op_aug_mul()
+    | OpAugBinary(OpDiv) => fname_op_aug_div()
+    | OpAugBinary(OpMod) => fname_op_aug_mod()
     | OpAugBinary(OpBitwiseAnd) => fname_op_aug_bit_and()
     | OpAugBinary(OpBitwiseOr) => fname_op_aug_bit_or()
     | OpAugBinary(OpBitwiseXor) => fname_op_aug_bit_xor()
@@ -1153,12 +1153,12 @@ fun fname_always_import(): id_t list = [
     fname_op_dot_eq(), fname_op_dot_ne(), fname_op_dot_le(),
     fname_op_dot_ge(), fname_op_dot_lt(), fname_op_dot_gt(),
     fname_op_plus(), fname_op_negate(), fname_op_dot_minus(),
-    fname_op_bit_not(), fname_op_aug_add(), fname_op_aug_sub(), 
-    fname_op_aug_mul(), fname_op_aug_div(), fname_op_aug_mod(), 
+    fname_op_bit_not(), fname_op_aug_add(), fname_op_aug_sub(),
+    fname_op_aug_mul(), fname_op_aug_div(), fname_op_aug_mod(),
     fname_op_aug_bit_and(), fname_op_aug_bit_or(), fname_op_aug_bit_xor(),
     fname_op_aug_dot_mul(), fname_op_aug_dot_div(), fname_op_aug_dot_mod(),
     fname_op_aug_shl(), fname_op_aug_shr(),
-    
+
     fname_op_apos(),
     fname_to_int(), fname_to_uint8(), fname_to_int8(), fname_to_uint16(),
     fname_to_int16(), fname_to_uint32(), fname_to_int32(), fname_to_uint64(),
@@ -1229,8 +1229,8 @@ fun lit2str(c: lit_t) {
     }
 }
 
-fun ref2str(r: 't ref): string = @ccode
-{
+fun ref2str(r: 't ref): string
+@ccode {
     char buf[32];
     sprintf(buf, "%p", r);
     return fx_cstr2str(buf, -1, fx_result);

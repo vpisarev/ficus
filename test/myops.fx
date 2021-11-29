@@ -6,8 +6,8 @@
 // example of imported module with various tiny functions
 
 fun sqr(x:'t) = x * x
-@pure fun mad(a: int, b: int, c: int): int = @ccode
-{
+@pure fun mad(a: int, b: int, c: int): int
+@ccode {
     *fx_result = a*b + c;
     return FX_OK;
 }

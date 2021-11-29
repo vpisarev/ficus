@@ -8,8 +8,8 @@
 
 class t { handle: cptr }
 
-fun compile(rstr: string): t = @ccode
-{
+fun compile(rstr: string): t
+@ccode {
     int fx_status = fx_re_compile(rstr, &fx_result->handle);
     return fx_status;
 }

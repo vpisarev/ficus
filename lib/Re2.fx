@@ -169,8 +169,8 @@ type options_t =
 //    syntax.
 fun compile(pattern: string, options: options_t): regex_t
 {
-    fun compile_re2(pattern: string, options: options_t): cptr = @ccode
-    {
+    fun compile_re2(pattern: string, options: options_t): cptr
+    @ccode {
         using namespace re2;
         fx_cstr_t cpattern;
         int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
@@ -224,8 +224,8 @@ fun compile(pattern: string): regex_t
 //    Return original pattern string.
 //
 //    Equivalent of RE2::pattern
-@pure fun string(re: regex_t): string = @ccode
-{
+@pure fun string(re: regex_t): string
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -236,8 +236,8 @@ fun compile(pattern: string): regex_t
 //    Number of sub-matches. Full match isn't counted.
 //
 //    Equivalent of RE2::NumberOfCapturingGroups
-@pure fun number_of_capturing_groups(re: regex_t): int = @ccode
-{
+@pure fun number_of_capturing_groups(re: regex_t): int
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -258,8 +258,8 @@ fun compile(pattern: string): regex_t
 //    Equivalent of RE2::NamedCapturingGroups
 fun named_capturing_groups(re: regex_t): (string, int) list
 {
-    @pure fun named_capturing_groups_(re: regex_t): (string [], int []) = @ccode
-    {
+    @pure fun named_capturing_groups_(re: regex_t): (string [], int [])
+    @ccode {
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
         if(re_to_apply == nullptr)
@@ -402,8 +402,8 @@ fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool
 //    full_match("Call the function without suffix. But it would be nice to get submatch.",Re2.compile(r".*suffix.")) = false
 //
 //    Equivalent of RE2::FullMatch
-@pure fun full_match(text: string, re: regex_t) : bool = @ccode
-{
+@pure fun full_match(text: string, re: regex_t) : bool
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -426,8 +426,8 @@ fun check_rewrite_string(re: regex_t, rewrite: replace_pattern_t) : bool
 //
 //    Equivalent of RE2::FullMatchN
 //                                                 (success, (sub_start, sub_end)[])
-@pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = @ccode
-{
+@pure fun full_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[])
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -478,8 +478,8 @@ fx_cleanup:
 //    partial_match("Call the function to get false.",Re2.compile(r"(without|with)")) = false
 //
 //    Equivalent of RE2::PartialMatch
-@pure fun partial_match(text: string, re: regex_t) : bool = @ccode
-{
+@pure fun partial_match(text: string, re: regex_t) : bool
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -502,8 +502,8 @@ fx_cleanup:
 //
 //    Equivalent of RE2::PartialMatchN
 //                                                    (success, (sub_start, sub_end)[])
-@pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[]) = @ccode
-{
+@pure fun partial_match_n(text: string, re: regex_t) : (bool   , (int      , int    )[])
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -571,8 +571,8 @@ fun consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //
 //    Equivalent of RE2::ConsumeN
 //                                                         (success, newpos, (sub_start, sub_end)[])
-@pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = @ccode
-{
+@pure fun consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[])
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -647,8 +647,8 @@ fun find_and_consume(input: string, pos: int, re: regex_t) : (bool   ,    int)
 //
 //    Equivalent of RE2::FindAndConsumeN
 //                                                                  (success, newpos, (sub_start, sub_end)[])
-@pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[]) = @ccode
-{
+@pure fun find_and_consume_n(input: string, pos: int, re: regex_t) : (bool   ,    int, (int      , int    )[])
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -725,8 +725,8 @@ type anchor_t =
 //
 //    Equivalent of RE2::Match (It's impossible to use "match" keyword as name of function in ficus)
 //                                                                                             (success, (sub_start, sub_end)[])
-fun general_match(text: string, re: regex_t, startpos: int, endpos: int, re_anchor: anchor_t): (bool   , (int      , int    )[]) = @ccode
-{
+fun general_match(text: string, re: regex_t, startpos: int, endpos: int, re_anchor: anchor_t): (bool   , (int      , int    )[])
+@ccode {
     using namespace re2;
     RE2* re_to_apply = static_cast<RE2*>(re->handle->ptr);
     if(re_to_apply == nullptr)
@@ -842,8 +842,8 @@ fun find_str(string_to_match: string, re: regex_t): (bool   , string     [])
 //                                                 (success, (sub_start, sub_end)[,])
 fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    )[,])
 {
-    @pure fun findall_init(input: string, re: regex_t) : cptr = @ccode
-    {
+    @pure fun findall_init(input: string, re: regex_t) : cptr
+    @ccode {
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
         if(re_to_apply == nullptr)
@@ -881,8 +881,8 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
     }
 
     val proc = findall_init(string_to_match, re)
-    @pure fun find_step(proc: cptr, pos: int, re: regex_t) : (bool, int, (int, int)[]) = @ccode
-    {
+    @pure fun find_step(proc: cptr, pos: int, re: regex_t) : (bool, int, (int, int)[])
+    @ccode {
         int fx_status = FX_OK;
         using namespace re2;
         RE2* re_to_apply = static_cast<RE2*>(re->find_r->ptr);
@@ -1007,8 +1007,7 @@ fun replace(str: string, re: regex_t, rewrite: replace_pattern_t): (bool,    str
         if(is_found)
         {
             val (fullmatch_start, fullmatch_end) = ranges[0]
-            val j_list = str[fullmatch_start] :: compose_replacement(str, rewrite, ranges) ::str[fullmatch_end] :: []
-            String.join("", j_list)
+            str[fullmatch_start] + compose_replacement(str, rewrite, ranges) + str[fullmatch_end]
         }
         else
         {str})
