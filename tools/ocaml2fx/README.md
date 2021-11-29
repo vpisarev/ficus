@@ -1,6 +1,6 @@
-This is OCaml to Ficus conversion utility.
+# OCaml to Ficus conversion utility.
 
-The usage is simple: ocaml2fx myfile.ml
+The usage is simple: `ocaml2fx myfile.ml`
 It will produce myfile.fx
 (same name, different extension).
 

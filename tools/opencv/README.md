@@ -1,0 +1,1 @@
+This is a beginning of automatic OpenCV bindings generation tool, a port of hdr_parser.py from OpenCV distro to Ficus. In order to generate the bindings similar to the manually written lib/OpenCV.fx, we need to introduce some more annotations and put them into OpenCV headers (e.g. the information that the output of certain function is array of the same type as input).

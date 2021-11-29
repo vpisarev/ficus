@@ -39,7 +39,7 @@ To run this bootstrap procedure, it's enough to have C/C++ compiler and make uti
 
   ```
   $ export PATH=~/myprojects/ficus/bin:$PATH
-  $ export FICUSPATH=~/myprojects/ficus/lib # to help ficus find the standard library
+  $ export FICUS_PATH=~/myprojects/ficus/lib # to help ficus find the standard library
   ```
 
 Note: Ficus compiler is able to find the standard library automatically, but only when `ficus` binary and the library reside in some standard locations. As soon as `FICUS_PATH` is set, for example in `.bash_profile` or a similar shell configuration file, `ficus` binary can be copied to any directory and be called from there.
@@ -1762,6 +1762,7 @@ fun funcname([pos_arg1: Tp1, pos_arg2: Tp2, ...]
 ```
 
 That is, each named parameter:
+
 * is preceded by `~`
 * may have some default value. (**Note**: *currently only literals can be used as default values*)
 
@@ -3704,6 +3705,147 @@ import OpenCV.Core // or use "import OpenCV.Core as Core"
     cv.Imgproc.Canny(...)
     ```
 
+# Preprocessing, Conditional Compilation, Configurations
+
+Immediately after the lexical analysis and before the syntax analysis each Ficus module is preprocessed. During this stage it's possible to include, exclude and modify any parts of the module, including `import` and other directives, based on the current environment and desired configuration.
+
+## Defining Preprocessor Symbols
+
+First of all, there is `-D` option of the ficus compiler that can be used to define some preprocessor symbols. It may look like:
+
+* `-D symbol_name` or
+* `-D symbol_name=value`
+
+where `value` can be:
+
+* a boolean: `true` (or its synonyms `TRUE`, `ON`, `on`), `false` (or its synonyms `FALSE`, `OFF`, `off`)
+* an integer
+* a text string
+
+a missing value is replaced by `true`.
+
+The defined symbols are inserted into the beginning of each compiled module in the form:
+
+```
+@DEFINE symbol_name value
+```
+
+Users can also put their own definitions using
+
+```
+@DEFINE symbol_name preprocessor_expression
+```
+
+directives, where `preprocessor_expression` is an arithmetic expression that may include literals, previously defined symbols and the following intrinsic functions and operations:
+
+* `abs(x)` - absolute value
+* `int(x)` - cast string or boolean to integer
+* `string(x)` - cast boolean or integer to string
+* `DEFINED(x)` - true if symbol `x` is defined
+* `f"..."` - string interpolation, see the section `Text Strings`.
+
+The opposite operation is
+
+```
+@UNDEF symbol_name
+```
+
+which removes the definition, so that subsequent `DEFINED(symbol_name)` return `false` until the `symbol_name` is defined again.
+
+## Conditional Compilation
+
+It's possible to include and exclude certain parts of the compiled module using C-style conditional directives:
+
+```
+@IF preprocessor_expr
+    ...
+[@ELIF another_preprocessor_expr
+    ...] // optional else_if-branches
+[@ELSE
+    ...] // optional else-branch
+@ENDIF // the corresponding to @IF closing directive
+```
+
+with conventional shorter forms:
+
+```
+@IFDEF symbol_name // equivalent to @IF DEFINED(symbol_name)
+...
+
+@IFNDEF symbol_name // equivalent to @IF !DEFINED(symbol_name)
+...
+```
+
+## Reporting Issues
+
+is also similar to C preprocessor:
+
+```
+// prints
+// '<location>: warning: <result_of_expression>' and
+// proceeds with compilation
+@WARNING preprocessor_expression
+
+// prints
+// '<location>: error: <result_of_expression>' and
+// aborts compilation
+@ERROR preprocessor_expression
+```
+
+the arguments should be text strings or expressions that produce text strings.
+
+Here is a short hypothetical example. Let's say we have win32_ui.fx module:
+
+```
+// win32_ui.fx: Win32 UI backend, depends on Windows API
+...
+```
+
+and linux_ui.fx module:
+
+```
+// linux_ui.fx: GTK+-based UI backend with the same API as Win32 UI
+...
+```
+
+We can now have the following *cross-platform* code:
+
+```
+// my_app.fx
+@IF Platform == "Win32"
+import win32_ui as ui
+@ELIF Platform == "Linux"
+import linux_ui as ui
+@ELSE
+@ERROR "unsupported platform"
+@ENDIF
+
+ui.make_button("Click me!", fun() {println("Hello!")})
+ui.run()
+```
+
+that you can compile on different platforms with
+
+```
+ficus -app -D Platform=<target_platform> my_app.fx
+```
+
+## Result Subsitution
+
+Besides the conditional compilation, the results of preprocessor expressions can also be put into the final code using the special `@{preprocessor_expression}` directive, e.g.
+
+```
+// myexample.fx
+...
+@DEFINE x 5
+@DEFINE y x + opt
+val x = @{y*y}
+println(x)
+```
+
+when compiled with `ficus -D opt=1 myexample.fx` it will print `36`.
+Please note that preprocessor symbols only exist during the preprocessing stage. Their names cannot conflict and do not conflict with the regular names (i.e. values, functions, types, exceptions, interfaces etc.) defined in the program
+
 # Object-oriented Programming
 
 Being primarily a functional language, Ficus includes some elements of object-oriented programming to simplify implementation of reusable components and make the notation more convenient. Besides, the interfaces, introduced in the next section, provide a classical and more efficient alternative to closures for some use cases.
@@ -4037,7 +4179,7 @@ Because ficus compiles Ficus to C, calling C/C++ from Ficus is easy. You can put
 * to define a function body (note that it's always required to specify the return type in this case):
 
 ```
-fun func_name(arg1: T1, arg2: T2, ...): explicit_rettype =
+fun func_name(arg1: T1, arg2: T2, ...): explicit_rettype
 @ccode {
     // some C code
     ...
@@ -4073,9 +4215,8 @@ fun add_sat_u8(a: uint8 [], b: uint8 []): uint8 []
     val result = array(na, 0u8)
 
     fun add_sat_u8_(a: uint8 [], b: uint8 [],
-                    result: uint8 []): void =
-    @ccode
-    {
+                    result: uint8 []): void
+    @ccode {
         // access the arrays
         int i, n = a->dim[0].size;
         uchar* aptr = (uchar*)a->data;
@@ -4249,6 +4390,16 @@ where options can be some of:
                     unused values/functions
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
+    -D symbol       Define 'symbol=true' for preprocessor
+    -D symbol=value Define 'symbol=value' for preprocessor.
+                    The value may be one of the following:
+                      * a boolean: true (or on), false (or off),
+                      * an integer (if the value starts with a digit or sign and
+                                    contains 1 or more decimal digits)
+                      * text string: everything between double quotes or
+                            any combination of characters that does not
+                            contain spaces, '\' or quotes and does not start
+                            with a digit or '-'
     -I <dir>        Add specified directory to the module
                     search path
     -B <build_root> Specifies the parent directory

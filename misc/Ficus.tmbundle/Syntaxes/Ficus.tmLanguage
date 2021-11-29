@@ -31,7 +31,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>(@ccode|@data|@text|@inline|@nothrow|@parallel|@private|@pure|@unzip)\b</string>
+			<string>(@ccode|@data|@text|@inline|@nothrow|@parallel|@private|@pure|@unzip|@IF|@IFDEF|@IFNDEF|@ELIF|@ENDIF|@DEFINE|@UNDEF|@ERROR|@WARNING)\b</string>
 			<key>name</key>
 			<string>keyword.operator.fx</string>
 		</dict>
