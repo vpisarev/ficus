@@ -2901,12 +2901,12 @@ fun FontFace.setInstance(params: int []): bool
 
 fun FontFace.getInstance(): int [] = int(FontFace_getInstance_(self.fface))
 
-val PUT_TEXT_ALIGN_LEFT: int = @ccode {cv::PUT_TEXT_ALIGN_LEFT}
-val PUT_TEXT_ALIGN_CENTER: int = @ccode {cv::PUT_TEXT_ALIGN_CENTER}
-val PUT_TEXT_ALIGN_RIGHT: int = @ccode {cv::PUT_TEXT_ALIGN_RIGHT}
-val PUT_TEXT_ORIGIN_TL: int = @ccode {cv::PUT_TEXT_ORIGIN_TL}
-val PUT_TEXT_ORIGIN_BL: int = @ccode {cv::PUT_TEXT_ORIGIN_BL}
-val PUT_TEXT_WRAP: int = @ccode {cv::PUT_TEXT_WRAP}
+val PUT_TEXT_ALIGN_LEFT: int = 0 //@ccode {cv::PUT_TEXT_ALIGN_LEFT}
+val PUT_TEXT_ALIGN_CENTER: int = 1 //@ccode {cv::PUT_TEXT_ALIGN_CENTER}
+val PUT_TEXT_ALIGN_RIGHT: int = 2 //@ccode {cv::PUT_TEXT_ALIGN_RIGHT}
+val PUT_TEXT_ORIGIN_TL: int = 0 //@ccode {cv::PUT_TEXT_ORIGIN_TL}
+val PUT_TEXT_ORIGIN_BL: int = 32 //@ccode {cv::PUT_TEXT_ORIGIN_BL}
+val PUT_TEXT_WRAP: int = 128 //@ccode {cv::PUT_TEXT_WRAP}
 
 @private fun putText_(img: anyarr_t, text: string, org: intx2, color: doublex4,
             fontFace: FontFace, size: int, weight: int,
@@ -3781,23 +3781,23 @@ static void _fx_ocv_free_net(void* ptr) { delete (cv::dnn::Net*)ptr; }
 static void _fx_ocv_free_model(void* ptr) { delete (cv::dnn::Model*)ptr; }
 }
 
-val DNN_TARGET_CPU: int = @ccode {cv::dnn::DNN_TARGET_CPU}
-val DNN_TARGET_OPENCL: int = @ccode {cv::dnn::DNN_TARGET_OPENCL}
-val DNN_TARGET_OPENCL_FP16: int = @ccode {cv::dnn::DNN_TARGET_OPENCL_FP16}
-val DNN_TARGET_MYRIAD: int = @ccode {cv::dnn::DNN_TARGET_MYRIAD}
-val DNN_TARGET_VULKAN: int = @ccode {cv::dnn::DNN_TARGET_VULKAN}
-val DNN_TARGET_FPGA: int = @ccode {cv::dnn::DNN_TARGET_FPGA}
-val DNN_TARGET_CUDA: int = @ccode {cv::dnn::DNN_TARGET_CUDA}
-val DNN_TARGET_CUDA_FP16: int = @ccode {cv::dnn::DNN_TARGET_CUDA_FP16}
-val DNN_TARGET_HDDL: int = @ccode {cv::dnn::DNN_TARGET_HDDL}
+val DNN_TARGET_CPU: int = 0 //@ccode {cv::dnn::DNN_TARGET_CPU}
+val DNN_TARGET_OPENCL: int = 1 //@ccode {cv::dnn::DNN_TARGET_OPENCL}
+val DNN_TARGET_OPENCL_FP16: int = 2 //@ccode {cv::dnn::DNN_TARGET_OPENCL_FP16}
+val DNN_TARGET_MYRIAD: int = 3 //@ccode {cv::dnn::DNN_TARGET_MYRIAD}
+val DNN_TARGET_VULKAN: int = 4 //@ccode {cv::dnn::DNN_TARGET_VULKAN}
+val DNN_TARGET_FPGA: int = 5 //@ccode {cv::dnn::DNN_TARGET_FPGA}
+val DNN_TARGET_CUDA: int = 6 //@ccode {cv::dnn::DNN_TARGET_CUDA}
+val DNN_TARGET_CUDA_FP16: int = 7 //@ccode {cv::dnn::DNN_TARGET_CUDA_FP16}
+val DNN_TARGET_HDDL: int = 8 //@ccode {cv::dnn::DNN_TARGET_HDDL}
 
-val DNN_BACKEND_DEFAULT: int = @ccode {cv::dnn::DNN_BACKEND_DEFAULT}
-val DNN_BACKEND_HALIDE: int = @ccode {cv::dnn::DNN_BACKEND_HALIDE}
-val DNN_BACKEND_INFERENCE_ENGINE: int = @ccode {cv::dnn::DNN_BACKEND_INFERENCE_ENGINE}
-val DNN_BACKEND_OPENCV: int = @ccode {cv::dnn::DNN_BACKEND_OPENCV}
-val DNN_BACKEND_VKCOM: int = @ccode {cv::dnn::DNN_BACKEND_VKCOM}
-val DNN_BACKEND_CUDA: int = @ccode {cv::dnn::DNN_BACKEND_CUDA}
-val DNN_BACKEND_WEBNN: int = @ccode {cv::dnn::DNN_BACKEND_WEBNN}
+val DNN_BACKEND_DEFAULT: int = 0 //@ccode {cv::dnn::DNN_BACKEND_DEFAULT}
+val DNN_BACKEND_HALIDE: int = 1 //@ccode {cv::dnn::DNN_BACKEND_HALIDE}
+val DNN_BACKEND_INFERENCE_ENGINE: int = 2 //@ccode {cv::dnn::DNN_BACKEND_INFERENCE_ENGINE}
+val DNN_BACKEND_OPENCV: int = 3 //@ccode {cv::dnn::DNN_BACKEND_OPENCV}
+val DNN_BACKEND_VKCOM: int = 4 //@ccode {cv::dnn::DNN_BACKEND_VKCOM}
+val DNN_BACKEND_CUDA: int = 5 //@ccode {cv::dnn::DNN_BACKEND_CUDA}
+val DNN_BACKEND_WEBNN: int = 6 //@ccode {cv::dnn::DNN_BACKEND_WEBNN}
 
 @nothrow fun Net.empty(): bool
 @ccode {
