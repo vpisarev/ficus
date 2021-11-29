@@ -731,6 +731,8 @@ TEST("basic.string", fun()
         ["This", "is", "a", "sentence", "made", "of", "words", "separated", "by", "spaces."])
 
     EXPECT_EQ(`"Привет! 你好吗?".length()`, 12)
+    println("NOTE: If you get a test failure here on Windows, set Windows locale to UTF-8, as described here:\n\
+        https://superuser.com/questions/1033088/is-it-possible-to-set-locale-of-a-windows-application-to-utf-8")
 })
 
 TEST("basic.templates.variants", fun()
