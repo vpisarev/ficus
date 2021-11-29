@@ -1,7 +1,5 @@
 # Ficus
 
-**WIP**
-
 This is a new functional language with the first-class array support
 that also supports imperative and object-oriented programming paradigms.
 `ficus` compiler generates a portable C/C++ code out of .fx files.
@@ -38,7 +36,7 @@ bin/ficus -run -O3 examples/fst.fx # the usage is the same as on Unix
 
 You can add `<ficus_root>/bin` to the `PATH`. You can also customize ficus compiler behaviour by setting the following environment variables:
 
-* `FICUS_PATH` can point to the standard library (`<ficus_root>/lib`), though ficus attempts to find the standard library even without `FICUS_PATH`. It can also contain other directories separated by `:` on Unix and `;` on Windows. The directories with imported modules can also be provided via one or more command-line options `-I <import_path>`. Note that if a compiled module imports other modules from the directory where it resides, that directory does not need to be explicitly specified.
+* `FICUS_PATH` can point to the standard library (`<ficus_root>/lib`), though ficus attempts to find the standard library even without `FICUS_PATH`. It can also contain other directories separated by `:` on Unix and `;` on Windows. The directories with imported modules can also be provided via one or more command-line options `-I <import_path>`. Note that if a compiled module imports other modules from the directory where it resides then that directory does not need to be explicitly specified.
 
 * `FICUS_CFLAGS` is used by C/C++ compiler to build the produced .c/.cpp files. Alternative way to pass extra flags to C/C++ compiler is via `-cflags "<cflags>"` command-line option, e.g. `-cflags "-ffast-math -mavx2"`.
 
@@ -65,5 +63,17 @@ ficus [-app|-run|...] [-O0|-O1|-O3] [-verbose] [-I <extra_module_path>]* [-o <ap
 
 ## Credits
 
-The compiler was inspired by min-caml
+* The compiler was inspired by min-caml
 (http://esumii.github.io/min-caml/index-e.html) by Eijiro Sumii et al.
+
+* The compiler, the standard library and documentation use pieces directly copied from or inspired by various open-source projects, including:
+  * [rpmalloc](https://github.com/mjansson/rpmalloc)
+  * ['Relaxed-Radix B-tree'-based immutable vectors](https://github.com/hypirion/c-rrb)
+  * [xoshiro algorithm for random number generation](https://prng.di.unimi.it)
+  * [Python-like hash table implementation](https://github.com/python/cpython/blob/master/Objects/dictobject.c)
+  * [RE1](https://code.google.com/archive/p/re1/) and [RE2](https://github.com/google/re2) regular expression engines
+  * [OpenCV library][https://github.com/opencv/opencv]
+  * [Red-Black trees in OCaml](https://github.com/bmeurer/ocaml-rbtrees)
+  * [Unicode lookup table generator](https://www.strchr.com/multi-stage_tables)
+  * [Literata](https://fonts.google.com/specimen/Literata), [iA Writer](https://github.com/iaolo/iA-Fonts) and [Recursive](https://fonts.google.com/specimen/Recursive) fonts.
+  * etc.

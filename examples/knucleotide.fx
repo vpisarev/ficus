@@ -68,7 +68,12 @@ fun find_seq(seq: uint8 vector, substr: string)
 }
 
 var lines: string list = []
-val fname = Sys.arguments().hd()
+val fname = match Sys.arguments() {
+    | fname :: _ => fname
+    | _ =>
+        println("Missing file name. See the description: https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/knucleotide.html")
+        throw Fail("missing file name")
+    }
 val f = File.open(fname, "rt")
 while !f.eof() {
     val line = f.readln()

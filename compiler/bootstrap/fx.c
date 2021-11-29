@@ -8,6 +8,26 @@ typedef struct _fx_LS_data_t {
    fx_str_t hd;
 } _fx_LS_data_t, *_fx_LS;
 
+typedef struct _fx_N17Options__optval_t {
+   int tag;
+   union {
+      bool OptBool;
+      int_ OptInt;
+      fx_str_t OptString;
+   } u;
+} _fx_N17Options__optval_t;
+
+typedef struct _fx_T2SN17Options__optval_t {
+   fx_str_t t0;
+   struct _fx_N17Options__optval_t t1;
+} _fx_T2SN17Options__optval_t;
+
+typedef struct _fx_LT2SN17Options__optval_t_data_t {
+   int_ rc;
+   struct _fx_LT2SN17Options__optval_t_data_t* tl;
+   struct _fx_T2SN17Options__optval_t hd;
+} _fx_LT2SN17Options__optval_t_data_t, *_fx_LT2SN17Options__optval_t;
+
 typedef struct _fx_R18Options__options_t {
    struct _fx_LS_data_t* app_args;
    fx_str_t app_filename;
@@ -22,6 +42,7 @@ typedef struct _fx_R18Options__options_t {
    bool gen_c;
    struct _fx_LS_data_t* include_path;
    bool debug;
+   struct _fx_LT2SN17Options__optval_t_data_t* defines;
    int_ optim_iters;
    int_ inline_thresh;
    bool enable_openmp;
@@ -98,6 +119,63 @@ static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, s
    FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
 }
 
+static void _fx_free_N17Options__optval_t(struct _fx_N17Options__optval_t* dst)
+{
+   switch (dst->tag) {
+   case 3:
+      fx_free_str(&dst->u.OptString); break;
+   default:
+      ;
+   }
+   dst->tag = 0;
+}
+
+static void _fx_copy_N17Options__optval_t(struct _fx_N17Options__optval_t* src, struct _fx_N17Options__optval_t* dst)
+{
+   dst->tag = src->tag;
+   switch (src->tag) {
+   case 3:
+      fx_copy_str(&src->u.OptString, &dst->u.OptString); break;
+   default:
+      dst->u = src->u;
+   }
+}
+
+static void _fx_free_T2SN17Options__optval_t(struct _fx_T2SN17Options__optval_t* dst)
+{
+   fx_free_str(&dst->t0);
+   _fx_free_N17Options__optval_t(&dst->t1);
+}
+
+static void _fx_copy_T2SN17Options__optval_t(struct _fx_T2SN17Options__optval_t* src, struct _fx_T2SN17Options__optval_t* dst)
+{
+   fx_copy_str(&src->t0, &dst->t0);
+   _fx_copy_N17Options__optval_t(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2SN17Options__optval_t(
+   fx_str_t* t0,
+   struct _fx_N17Options__optval_t* t1,
+   struct _fx_T2SN17Options__optval_t* fx_result)
+{
+   fx_copy_str(t0, &fx_result->t0);
+   _fx_copy_N17Options__optval_t(t1, &fx_result->t1);
+}
+
+static void _fx_free_LT2SN17Options__optval_t(struct _fx_LT2SN17Options__optval_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LT2SN17Options__optval_t, _fx_free_T2SN17Options__optval_t);
+}
+
+static int _fx_cons_LT2SN17Options__optval_t(
+   struct _fx_T2SN17Options__optval_t* hd,
+   struct _fx_LT2SN17Options__optval_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LT2SN17Options__optval_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LT2SN17Options__optval_t, _fx_copy_T2SN17Options__optval_t);
+}
+
 static void _fx_free_R18Options__options_t(struct _fx_R18Options__options_t* dst)
 {
    _fx_free_LS(&dst->app_args);
@@ -108,6 +186,7 @@ static void _fx_free_R18Options__options_t(struct _fx_R18Options__options_t* dst
    fx_free_str(&dst->clibs);
    fx_free_str(&dst->filename);
    _fx_free_LS(&dst->include_path);
+   _fx_free_LT2SN17Options__optval_t(&dst->defines);
    fx_free_str(&dst->output_name);
 }
 
@@ -126,6 +205,7 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->gen_c = src->gen_c;
    FX_COPY_PTR(src->include_path, &dst->include_path);
    dst->debug = src->debug;
+   FX_COPY_PTR(src->defines, &dst->defines);
    dst->optim_iters = src->optim_iters;
    dst->inline_thresh = src->inline_thresh;
    dst->enable_openmp = src->enable_openmp;
@@ -158,6 +238,7 @@ static void _fx_make_R18Options__options_t(
    bool r_gen_c,
    struct _fx_LS_data_t* r_include_path,
    bool r_debug,
+   struct _fx_LT2SN17Options__optval_t_data_t* r_defines,
    int_ r_optim_iters,
    int_ r_inline_thresh,
    bool r_enable_openmp,
@@ -189,6 +270,7 @@ static void _fx_make_R18Options__options_t(
    fx_result->gen_c = r_gen_c;
    FX_COPY_PTR(r_include_path, &fx_result->include_path);
    fx_result->debug = r_debug;
+   FX_COPY_PTR(r_defines, &fx_result->defines);
    fx_result->optim_iters = r_optim_iters;
    fx_result->inline_thresh = r_inline_thresh;
    fx_result->enable_openmp = r_enable_openmp;

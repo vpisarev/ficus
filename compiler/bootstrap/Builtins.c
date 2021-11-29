@@ -256,13 +256,6 @@ char buf[32];
 
 }
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv)
-{
-   int fx_status = 0;
-   fx_copy_str(a_0, fx_result);
-   return fx_status;
-}
-
 FX_EXTERN_C int _fx_F3ordi1C(char_ c_0, int_* fx_result, void* fx_fv)
 {
    int fx_status = 0;
@@ -358,6 +351,20 @@ int fx_status = fx_make_str(0, n, fx_result);
 }
 
 FX_EXTERN_C int _fx_F7__cmp__i2ii(int_ a_0, int_ b_0, int_* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   *fx_result = (a_0 > b_0) - (a_0 < b_0);
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_F7__cmp__i2ll(int64_t a_0, int64_t b_0, int_* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   *fx_result = (a_0 > b_0) - (a_0 < b_0);
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_F7__cmp__i2BB(bool a_0, bool b_0, int_* fx_result, void* fx_fv)
 {
    int fx_status = 0;
    *fx_result = (a_0 > b_0) - (a_0 < b_0);

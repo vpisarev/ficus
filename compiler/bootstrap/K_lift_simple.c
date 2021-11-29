@@ -3032,8 +3032,6 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
    struct _fx_R10Ast__loc_t* loc_0,
    fx_str_t* msg_0,
@@ -3951,53 +3949,47 @@ static int
          _fx_R25K_form__kdefclosurevars_t v_4 = {0};
          fx_str_t v_5 = {0};
          fx_str_t v_6 = {0};
-         fx_str_t v_7 = {0};
-         fx_exn_t v_8 = {0};
+         fx_exn_t v_7 = {0};
          _fx_copy_R25K_form__kdefclosurevars_t(&v_0.u.KClosureVars->data, &v_4);
          FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(n_0, &v_4.kcv_loc, &v_5, 0), _fx_catch_1);
-         FX_CALL(_fx_F6stringS1S(&v_5, &v_6, 0), _fx_catch_1);
          fx_str_t slit_0 = FX_MAKE_STR("simple LL: KClosureVars \'");
          fx_str_t slit_1 =
             FX_MAKE_STR("\' is not expected at this step, it should appear in the end after full-scale lambda lifting");
          {
-            const fx_str_t strs_0[] = { slit_0, v_6, slit_1 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_7), _fx_catch_1);
+            const fx_str_t strs_0[] = { slit_0, v_5, slit_1 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_6), _fx_catch_1);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(kf_loc_0, &v_7, &v_8, 0), _fx_catch_1);
-         FX_THROW(&v_8, false, _fx_catch_1);
+         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(kf_loc_0, &v_6, &v_7, 0), _fx_catch_1);
+         FX_THROW(&v_7, false, _fx_catch_1);
 
       _fx_catch_1: ;
-         fx_free_exn(&v_8);
-         FX_FREE_STR(&v_7);
+         fx_free_exn(&v_7);
          FX_FREE_STR(&v_6);
          FX_FREE_STR(&v_5);
          _fx_free_R25K_form__kdefclosurevars_t(&v_4);
       }
       else if (tag_0 == 1) {
+         fx_str_t v_8 = {0};
          fx_str_t v_9 = {0};
          fx_str_t v_10 = {0};
-         fx_str_t v_11 = {0};
-         fx_str_t v_12 = {0};
-         fx_exn_t v_13 = {0};
-         FX_CALL(_fx_M3AstFM6stringS1RM4id_t(n_0, &v_9, 0), _fx_catch_2);
-         FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(kf_name_0, kf_loc_0, &v_10, 0), _fx_catch_2);
-         FX_CALL(_fx_F6stringS1S(&v_10, &v_11, 0), _fx_catch_2);
+         fx_exn_t v_11 = {0};
+         FX_CALL(_fx_M3AstFM6stringS1RM4id_t(n_0, &v_8, 0), _fx_catch_2);
+         FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(kf_name_0, kf_loc_0, &v_9, 0), _fx_catch_2);
          fx_str_t slit_2 = FX_MAKE_STR("simple LL: attempt to request type of non-existing symbol \'");
          fx_str_t slit_3 = FX_MAKE_STR("\' when checking free variables of function \'");
          fx_str_t slit_4 = FX_MAKE_STR("\'");
          {
-            const fx_str_t strs_1[] = { slit_2, v_9, slit_3, v_11, slit_4 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &v_12), _fx_catch_2);
+            const fx_str_t strs_1[] = { slit_2, v_8, slit_3, v_9, slit_4 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &v_10), _fx_catch_2);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(kf_loc_0, &v_12, &v_13, 0), _fx_catch_2);
-         FX_THROW(&v_13, false, _fx_catch_2);
+         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(kf_loc_0, &v_10, &v_11, 0), _fx_catch_2);
+         FX_THROW(&v_11, false, _fx_catch_2);
 
       _fx_catch_2: ;
-         fx_free_exn(&v_13);
-         FX_FREE_STR(&v_12);
-         FX_FREE_STR(&v_11);
+         fx_free_exn(&v_11);
          FX_FREE_STR(&v_10);
          FX_FREE_STR(&v_9);
+         FX_FREE_STR(&v_8);
       }
       else {
          FX_FAST_THROW(FX_EXN_NoMatchError, _fx_cleanup);

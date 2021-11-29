@@ -8191,8 +8191,6 @@ FX_EXTERN_C int _fx_M6C_formFM4CExpN15C_form__cstmt_t1N14C_form__cexp_t(
    struct _fx_N14C_form__cexp_t_data_t* arg0,
    struct _fx_N15C_form__cstmt_t_data_t** fx_result);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6C_formFM12get_cexp_ctxT2N14C_form__ctyp_tR10Ast__loc_t1N14C_form__cexp_t(
@@ -9662,6 +9660,13 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM7__add__LN15C_form__cstmt_t2LN15C_form__cstmt
          _fx_free_LN15C_form__cstmt_t(&v_0);
       }
    }
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M10C_gen_codeFM6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   fx_copy_str(a_0, fx_result);
    return fx_status;
 }
 
@@ -12878,11 +12883,7 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM8gen_mainLN15C_form__cstmt_t3BLSR10Ast__loc_t
          fx_str_t v_10 = {0};
          fx_str_t v_11 = {0};
          fx_str_t v_12 = {0};
-         fx_str_t v_13 = {0};
-         fx_str_t v_14 = {0};
-         fx_str_t v_15 = {0};
-         fx_str_t v_16 = {0};
-         _fx_Ta3LS v_17 = {0};
+         _fx_Ta3LS v_13 = {0};
          fx_str_t* m_0 = &lst_0->hd;
          _fx_copy_Ta3LS(&__fold_result___0, &v_8);
          FX_COPY_PTR(v_8.t0, &fwd_decls_1);
@@ -12892,45 +12893,37 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM8gen_mainLN15C_form__cstmt_t3BLSR10Ast__loc_t
             FX_COPY_PTR(fwd_decls_1, &v_9);
          }
          else {
-            FX_CALL(_fx_F6stringS1S(m_0, &v_10, 0), _fx_catch_0);
-            FX_CALL(_fx_F6stringS1S(m_0, &v_11, 0), _fx_catch_0);
             fx_str_t slit_0 = FX_MAKE_STR("FX_EXTERN_C int fx_init_");
             fx_str_t slit_1 =
                FX_MAKE_STR("();\n"
                   U"FX_EXTERN_C void fx_deinit_");
             fx_str_t slit_2 = FX_MAKE_STR("();\n");
             {
-               const fx_str_t strs_0[] = { slit_0, v_10, slit_1, v_11, slit_2 };
-               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_12), _fx_catch_0);
+               const fx_str_t strs_0[] = { slit_0, *m_0, slit_1, *m_0, slit_2 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_10), _fx_catch_0);
             }
-            FX_CALL(_fx_cons_LS(&v_12, fwd_decls_1, true, &v_9), _fx_catch_0);
+            FX_CALL(_fx_cons_LS(&v_10, fwd_decls_1, true, &v_9), _fx_catch_0);
          }
-         FX_CALL(_fx_F6stringS1S(m_0, &v_13, 0), _fx_catch_0);
          fx_str_t slit_3 = FX_MAKE_STR("  if (fx_status >= 0) fx_status = fx_init_");
          fx_str_t slit_4 = FX_MAKE_STR("();\n");
          {
-            const fx_str_t strs_1[] = { slit_3, v_13, slit_4 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_14), _fx_catch_0);
+            const fx_str_t strs_1[] = { slit_3, *m_0, slit_4 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_11), _fx_catch_0);
          }
-         FX_CALL(_fx_cons_LS(&v_14, init_calls_1, false, &init_calls_1), _fx_catch_0);
-         FX_CALL(_fx_F6stringS1S(m_0, &v_15, 0), _fx_catch_0);
+         FX_CALL(_fx_cons_LS(&v_11, init_calls_1, false, &init_calls_1), _fx_catch_0);
          fx_str_t slit_5 = FX_MAKE_STR("  fx_deinit_");
          fx_str_t slit_6 = FX_MAKE_STR("();\n");
          {
-            const fx_str_t strs_2[] = { slit_5, v_15, slit_6 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_16), _fx_catch_0);
+            const fx_str_t strs_2[] = { slit_5, *m_0, slit_6 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_12), _fx_catch_0);
          }
-         FX_CALL(_fx_cons_LS(&v_16, deinit_calls_1, false, &deinit_calls_1), _fx_catch_0);
-         _fx_make_Ta3LS(v_9, init_calls_1, deinit_calls_1, &v_17);
+         FX_CALL(_fx_cons_LS(&v_12, deinit_calls_1, false, &deinit_calls_1), _fx_catch_0);
+         _fx_make_Ta3LS(v_9, init_calls_1, deinit_calls_1, &v_13);
          _fx_free_Ta3LS(&__fold_result___0);
-         _fx_copy_Ta3LS(&v_17, &__fold_result___0);
+         _fx_copy_Ta3LS(&v_13, &__fold_result___0);
 
       _fx_catch_0: ;
-         _fx_free_Ta3LS(&v_17);
-         FX_FREE_STR(&v_16);
-         FX_FREE_STR(&v_15);
-         FX_FREE_STR(&v_14);
-         FX_FREE_STR(&v_13);
+         _fx_free_Ta3LS(&v_13);
          FX_FREE_STR(&v_12);
          FX_FREE_STR(&v_11);
          FX_FREE_STR(&v_10);
@@ -13142,22 +13135,19 @@ static int
             }
             fx_str_t v_9 = {0};
             fx_str_t v_10 = {0};
-            fx_str_t v_11 = {0};
-            fx_exn_t v_12 = {0};
+            fx_exn_t v_11 = {0};
             FX_CALL(_fx_M6C_formFM13get_idc_cnameS2R9Ast__id_tR10Ast__loc_t(tn_0, cloc_0, &v_9, 0), _fx_catch_3);
-            FX_CALL(_fx_F6stringS1S(&v_9, &v_10, 0), _fx_catch_3);
             fx_str_t slit_0 = FX_MAKE_STR("the type \'");
             fx_str_t slit_1 = FX_MAKE_STR("\' is not a structure");
             {
-               const fx_str_t strs_0[] = { slit_0, v_10, slit_1 };
-               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_11), _fx_catch_3);
+               const fx_str_t strs_0[] = { slit_0, v_9, slit_1 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_10), _fx_catch_3);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(cloc_0, &v_11, &v_12, 0), _fx_catch_3);
-            FX_THROW(&v_12, false, _fx_catch_3);
+            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(cloc_0, &v_10, &v_11, 0), _fx_catch_3);
+            FX_THROW(&v_11, false, _fx_catch_3);
 
          _fx_catch_3: ;
-            fx_free_exn(&v_12);
-            FX_FREE_STR(&v_11);
+            fx_free_exn(&v_11);
             FX_FREE_STR(&v_10);
             FX_FREE_STR(&v_9);
 
@@ -13173,15 +13163,15 @@ static int
             _fx_T4R9Ast__id_tN14C_form__cexp_tLT2R9Ast__id_tN14C_form__ctyp_ti result_3 = {0};
             _fx_T2Nt6option1R9Ast__id_tLT2R9Ast__id_tN14C_form__ctyp_t* vcase_1 = &ctyp_2->u.CTypStruct;
             _fx_Nt6option1R9Ast__id_t* rn_1 = &vcase_1->t0;
-            _fx_R9Ast__id_t v_13;
+            _fx_R9Ast__id_t v_12;
             if (rn_1->tag == 2) {
-               v_13 = rn_1->u.Some;
+               v_12 = rn_1->u.Some;
             }
             else {
-               v_13 = _fx_g9Ast__noid;
+               v_12 = _fx_g9Ast__noid;
             }
             FX_CHECK_EXN(_fx_catch_5);
-            _fx_make_T4R9Ast__id_tN14C_form__cexp_tLT2R9Ast__id_tN14C_form__ctyp_ti(&v_13, cexp_2, vcase_1->t1, 0, &result_3);
+            _fx_make_T4R9Ast__id_tN14C_form__cexp_tLT2R9Ast__id_tN14C_form__ctyp_ti(&v_12, cexp_2, vcase_1->t1, 0, &result_3);
             _fx_free_T4R9Ast__id_tN14C_form__cexp_tLT2R9Ast__id_tN14C_form__ctyp_ti(&result_0);
             _fx_copy_T4R9Ast__id_tN14C_form__cexp_tLT2R9Ast__id_tN14C_form__ctyp_ti(&result_3, &result_0);
             FX_BREAK(_fx_catch_5);
@@ -13190,13 +13180,13 @@ static int
             _fx_free_T4R9Ast__id_tN14C_form__cexp_tLT2R9Ast__id_tN14C_form__ctyp_ti(&result_3);
          }
          else {
-            fx_exn_t v_14 = {0};
+            fx_exn_t v_13 = {0};
             fx_str_t slit_2 = FX_MAKE_STR("a structure is expected here");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(cloc_0, &slit_2, &v_14, 0), _fx_catch_6);
-            FX_THROW(&v_14, false, _fx_catch_6);
+            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(cloc_0, &slit_2, &v_13, 0), _fx_catch_6);
+            FX_THROW(&v_13, false, _fx_catch_6);
 
          _fx_catch_6: ;
-            fx_free_exn(&v_14);
+            fx_free_exn(&v_13);
          }
          FX_CHECK_EXN(_fx_catch_7);
 
@@ -13885,14 +13875,9 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM11for_err_msgS4iiiS(
    fx_str_t for_msg_prefix_0 = {0};
    fx_str_t v_0 = {0};
    fx_str_t v_1 = {0};
-   fx_str_t v_2 = {0};
    fx_str_t it_clause_0 = {0};
+   fx_str_t v_2 = {0};
    fx_str_t v_3 = {0};
-   fx_str_t v_4 = {0};
-   fx_str_t v_5 = {0};
-   fx_str_t v_6 = {0};
-   fx_str_t v_7 = {0};
-   fx_str_t v_8 = {0};
    int fx_status = 0;
    if (nfors_0 == 1) {
       fx_str_t slit_0 = FX_MAKE_STR(""); fx_copy_str(&slit_0, &for_msg_prefix_0);
@@ -13906,11 +13891,10 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM11for_err_msgS4iiiS(
    else {
       FX_CALL(_fx_F6stringS1i(for_idx_0, &v_0, 0), _fx_cleanup);
       FX_CALL(_fx_M6StringFM10num_suffixS1i(for_idx_0, &v_1, 0), _fx_cleanup);
-      FX_CALL(_fx_F6stringS1S(&v_1, &v_2, 0), _fx_cleanup);
       fx_str_t slit_3 = FX_MAKE_STR("-");
       fx_str_t slit_4 = FX_MAKE_STR(" nested ");
       {
-         const fx_str_t strs_0[] = { v_0, slit_3, v_2, slit_4 };
+         const fx_str_t strs_0[] = { v_0, slit_3, v_1, slit_4 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &for_msg_prefix_0), _fx_cleanup);
       }
    }
@@ -13919,25 +13903,21 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM11for_err_msgS4iiiS(
       fx_str_t slit_5 = FX_MAKE_STR(""); fx_copy_str(&slit_5, &it_clause_0);
    }
    else {
-      FX_CALL(_fx_F6stringS1i(i_1, &v_3, 0), _fx_cleanup);
-      FX_CALL(_fx_M6StringFM10num_suffixS1i(i_1, &v_4, 0), _fx_cleanup);
-      FX_CALL(_fx_F6stringS1S(&v_4, &v_5, 0), _fx_cleanup);
+      FX_CALL(_fx_F6stringS1i(i_1, &v_2, 0), _fx_cleanup);
+      FX_CALL(_fx_M6StringFM10num_suffixS1i(i_1, &v_3, 0), _fx_cleanup);
       fx_str_t slit_6 = FX_MAKE_STR(", ");
       fx_str_t slit_7 = FX_MAKE_STR("-");
       fx_str_t slit_8 = FX_MAKE_STR(" iteration clause");
       {
-         const fx_str_t strs_1[] = { slit_6, v_3, slit_7, v_5, slit_8 };
+         const fx_str_t strs_1[] = { slit_6, v_2, slit_7, v_3, slit_8 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &it_clause_0), _fx_cleanup);
       }
    }
-   FX_CALL(_fx_F6stringS1S(&for_msg_prefix_0, &v_6, 0), _fx_cleanup);
-   FX_CALL(_fx_F6stringS1S(&it_clause_0, &v_7, 0), _fx_cleanup);
-   FX_CALL(_fx_F6stringS1S(msg_0, &v_8, 0), _fx_cleanup);
    fx_str_t slit_9 = FX_MAKE_STR("cgen: ");
    fx_str_t slit_10 = FX_MAKE_STR("for-loop");
    fx_str_t slit_11 = FX_MAKE_STR(": ");
    {
-      const fx_str_t strs_2[] = { slit_9, v_6, slit_10, v_7, slit_11, v_8 };
+      const fx_str_t strs_2[] = { slit_9, for_msg_prefix_0, slit_10, it_clause_0, slit_11, *msg_0 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_2, 6, fx_result), _fx_cleanup);
    }
 
@@ -13945,14 +13925,9 @@ _fx_cleanup: ;
    FX_FREE_STR(&for_msg_prefix_0);
    FX_FREE_STR(&v_0);
    FX_FREE_STR(&v_1);
-   FX_FREE_STR(&v_2);
    FX_FREE_STR(&it_clause_0);
+   FX_FREE_STR(&v_2);
    FX_FREE_STR(&v_3);
-   FX_FREE_STR(&v_4);
-   FX_FREE_STR(&v_5);
-   FX_FREE_STR(&v_6);
-   FX_FREE_STR(&v_7);
-   FX_FREE_STR(&v_8);
    return fx_status;
 }
 
@@ -13966,27 +13941,33 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM17compute_for_ndimsi4iiLT2R9Ast__id_tN13K_for
 {
    int fx_status = 0;
    int_ __fold_result___0 = 0;
+   int_ i_0 = nfors_0 + 1;
    int_ k_0 = 0;
    _fx_LT2R9Ast__id_tN13K_form__dom_t lst_0 = idoml_0;
    for (; lst_0; lst_0 = lst_0->tl, k_0 += 1) {
       _fx_N13K_form__dom_t dom_i_0 = {0};
       fx_str_t v_0 = {0};
       fx_str_t v_1 = {0};
+      fx_str_t for_msg_prefix_0 = {0};
       fx_str_t v_2 = {0};
       fx_str_t v_3 = {0};
-      fx_exn_t v_4 = {0};
+      fx_str_t it_clause_0 = {0};
+      fx_str_t v_4 = {0};
+      fx_str_t v_5 = {0};
+      fx_str_t v_6 = {0};
+      fx_exn_t v_7 = {0};
       _fx_T2R9Ast__id_tN13K_form__dom_t* __pat___0 = &lst_0->hd;
       _fx_copy_N13K_form__dom_t(&__pat___0->t1, &dom_i_0);
       int_ ndims_0 = __fold_result___0;
       int_ ndims_i_0;
       if (dom_i_0.tag == 1) {
-         _fx_N14K_form__atom_t* v_5 = &dom_i_0.u.DomainElem;
-         if (v_5->tag == 1) {
-            _fx_N14K_form__ktyp_t v_6 = 0;
-            FX_CALL(_fx_M6K_formFM12get_idk_ktypN14K_form__ktyp_t2R9Ast__id_tR10Ast__loc_t(&v_5->u.AtomId, for_loc_0, &v_6, 0),
+         _fx_N14K_form__atom_t* v_8 = &dom_i_0.u.DomainElem;
+         if (v_8->tag == 1) {
+            _fx_N14K_form__ktyp_t v_9 = 0;
+            FX_CALL(_fx_M6K_formFM12get_idk_ktypN14K_form__ktyp_t2R9Ast__id_tR10Ast__loc_t(&v_8->u.AtomId, for_loc_0, &v_9, 0),
                _fx_catch_0);
-            if (FX_REC_VARIANT_TAG(v_6) == 15) {
-               ndims_i_0 = v_6->u.KTypArray.t0;
+            if (FX_REC_VARIANT_TAG(v_9) == 15) {
+               ndims_i_0 = v_9->u.KTypArray.t0;
             }
             else {
                ndims_i_0 = 1;
@@ -13994,8 +13975,8 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM17compute_for_ndimsi4iiLT2R9Ast__id_tN13K_for
             FX_CHECK_EXN(_fx_catch_0);
 
          _fx_catch_0: ;
-            if (v_6) {
-               _fx_free_N14K_form__ktyp_t(&v_6);
+            if (v_9) {
+               _fx_free_N14K_form__ktyp_t(&v_9);
             }
             goto _fx_endmatch_0;
          }
@@ -14014,24 +13995,63 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM17compute_for_ndimsi4iiLT2R9Ast__id_tN13K_for
       if (t_0) {
          FX_CALL(_fx_F6stringS1i(ndims_0, &v_0, 0), _fx_catch_1);
          FX_CALL(_fx_F6stringS1i(ndims_i_0, &v_1, 0), _fx_catch_1);
-         fx_str_t slit_0 =
-            FX_MAKE_STR("dimensionalities of the simultaneously iterated collections/ranges are not the same (...");
-         fx_str_t slit_1 = FX_MAKE_STR("...");
-         fx_str_t slit_2 = FX_MAKE_STR("...)");
-         {
-            const fx_str_t strs_0[] = { slit_0, v_0, slit_1, v_1, slit_2 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_2), _fx_catch_1);
+         if (for_idx_0 == 1) {
+            fx_str_t slit_0 = FX_MAKE_STR(""); fx_copy_str(&slit_0, &for_msg_prefix_0);
          }
-         FX_CALL(_fx_M10C_gen_codeFM11for_err_msgS4iiiS(k_0, for_idx_0, nfors_0, &v_2, &v_3, 0), _fx_catch_1);
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(for_loc_0, &v_3, &v_4, 0), _fx_catch_1);
-         FX_THROW(&v_4, false, _fx_catch_1);
+         else if (k_0 == 0) {
+            fx_str_t slit_1 = FX_MAKE_STR("the outermost "); fx_copy_str(&slit_1, &for_msg_prefix_0);
+         }
+         else if (k_0 == for_idx_0 - 1) {
+            fx_str_t slit_2 = FX_MAKE_STR("the innermost "); fx_copy_str(&slit_2, &for_msg_prefix_0);
+         }
+         else {
+            FX_CALL(_fx_F6stringS1i(k_0, &v_2, 0), _fx_catch_1);
+            FX_CALL(_fx_M6StringFM10num_suffixS1i(k_0, &v_3, 0), _fx_catch_1);
+            fx_str_t slit_3 = FX_MAKE_STR("-");
+            fx_str_t slit_4 = FX_MAKE_STR(" nested ");
+            {
+               const fx_str_t strs_0[] = { v_2, slit_3, v_3, slit_4 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &for_msg_prefix_0), _fx_catch_1);
+            }
+         }
+         if (i_0 <= 0) {
+            fx_str_t slit_5 = FX_MAKE_STR(""); fx_copy_str(&slit_5, &it_clause_0);
+         }
+         else {
+            FX_CALL(_fx_F6stringS1i(i_0, &v_4, 0), _fx_catch_1);
+            FX_CALL(_fx_M6StringFM10num_suffixS1i(i_0, &v_5, 0), _fx_catch_1);
+            fx_str_t slit_6 = FX_MAKE_STR(", ");
+            fx_str_t slit_7 = FX_MAKE_STR("-");
+            fx_str_t slit_8 = FX_MAKE_STR(" iteration clause");
+            {
+               const fx_str_t strs_1[] = { slit_6, v_4, slit_7, v_5, slit_8 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &it_clause_0), _fx_catch_1);
+            }
+         }
+         fx_str_t slit_9 = FX_MAKE_STR("cgen: ");
+         fx_str_t slit_10 = FX_MAKE_STR("for-loop");
+         fx_str_t slit_11 =
+            FX_MAKE_STR(": dimensionalities of the simultaneously iterated collections/ranges are not the same (...");
+         fx_str_t slit_12 = FX_MAKE_STR("...");
+         fx_str_t slit_13 = FX_MAKE_STR("...)");
+         {
+            const fx_str_t strs_2[] = { slit_9, for_msg_prefix_0, slit_10, it_clause_0, slit_11, v_0, slit_12, v_1, slit_13 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_2, 9, &v_6), _fx_catch_1);
+         }
+         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(for_loc_0, &v_6, &v_7, 0), _fx_catch_1);
+         FX_THROW(&v_7, false, _fx_catch_1);
       }
       __fold_result___0 = ndims_i_0;
 
    _fx_catch_1: ;
-      fx_free_exn(&v_4);
+      fx_free_exn(&v_7);
+      FX_FREE_STR(&v_6);
+      FX_FREE_STR(&v_5);
+      FX_FREE_STR(&v_4);
+      FX_FREE_STR(&it_clause_0);
       FX_FREE_STR(&v_3);
       FX_FREE_STR(&v_2);
+      FX_FREE_STR(&for_msg_prefix_0);
       FX_FREE_STR(&v_1);
       FX_FREE_STR(&v_0);
       _fx_free_N13K_form__dom_t(&dom_i_0);
@@ -14211,7 +14231,7 @@ FX_EXTERN_C int
    FX_COPY_PTR(v_9.t0, &e_0);
    FX_COPY_PTR(v_9.t1, &ccode_1);
    FX_CALL(_fx_M3AstFM2ppS1RM4id_t(&km_name_0, &v_10, 0), _fx_cleanup);
-   FX_CALL(_fx_F6stringS1S(&v_10, &v_11, 0), _fx_cleanup);
+   FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_10, &v_11, 0), _fx_cleanup);
    fx_str_t slit_8 = FX_MAKE_STR("\t\'");
    fx_str_t slit_9 = FX_MAKE_STR("\' has been translated to C. Finalizing the produced code ...");
    {
@@ -14776,21 +14796,18 @@ static int _fx_M10C_gen_codeFM18check_inside_loop_v4LrRM11block_ctx_tSBR10Ast__l
          FX_CHECK_EXN(_fx_catch_2);
          if (res_1) {
             fx_str_t v_1 = {0};
-            fx_str_t v_2 = {0};
-            fx_exn_t v_3 = {0};
-            FX_CALL(_fx_F6stringS1S(bc_str_0, &v_1, 0), _fx_catch_1);
+            fx_exn_t v_2 = {0};
             fx_str_t slit_0 = FX_MAKE_STR("\'");
             fx_str_t slit_1 = FX_MAKE_STR("\' is used outside of a loop");
             {
-               const fx_str_t strs_0[] = { slit_0, v_1, slit_1 };
-               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_2), _fx_catch_1);
+               const fx_str_t strs_0[] = { slit_0, *bc_str_0, slit_1 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_1), _fx_catch_1);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_2, &v_3, 0), _fx_catch_1);
-            FX_THROW(&v_3, false, _fx_catch_1);
+            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_1, &v_2, 0), _fx_catch_1);
+            FX_THROW(&v_2, false, _fx_catch_1);
 
          _fx_catch_1: ;
-            fx_free_exn(&v_3);
-            FX_FREE_STR(&v_2);
+            fx_free_exn(&v_2);
             FX_FREE_STR(&v_1);
             goto _fx_endmatch_0;
          }
@@ -14803,23 +14820,20 @@ static int _fx_M10C_gen_codeFM18check_inside_loop_v4LrRM11block_ctx_tSBR10Ast__l
       _fx_catch_2: ;
       }
       else {
-         fx_str_t v_4 = {0};
-         fx_str_t v_5 = {0};
-         fx_exn_t v_6 = {0};
-         FX_CALL(_fx_F6stringS1S(bc_str_0, &v_4, 0), _fx_catch_3);
+         fx_str_t v_3 = {0};
+         fx_exn_t v_4 = {0};
          fx_str_t slit_2 = FX_MAKE_STR("\'");
          fx_str_t slit_3 = FX_MAKE_STR("\' is used outside of a loop");
          {
-            const fx_str_t strs_1[] = { slit_2, v_4, slit_3 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_5), _fx_catch_3);
+            const fx_str_t strs_1[] = { slit_2, *bc_str_0, slit_3 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_3), _fx_catch_3);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_5, &v_6, 0), _fx_catch_3);
-         FX_THROW(&v_6, false, _fx_catch_3);
+         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_catch_3);
+         FX_THROW(&v_4, false, _fx_catch_3);
 
       _fx_catch_3: ;
-         fx_free_exn(&v_6);
-         FX_FREE_STR(&v_5);
-         FX_FREE_STR(&v_4);
+         fx_free_exn(&v_4);
+         FX_FREE_STR(&v_3);
       }
       FX_CHECK_EXN(_fx_catch_4);
 
@@ -19489,7 +19503,7 @@ static int
             fx_str_t v_198 = {0};
             fx_exn_t v_199 = {0};
             FX_CALL(_fx_M6K_formFM8atom2strS1N14K_form__atom_t(a_1, &v_194, 0), _fx_catch_23);
-            FX_CALL(_fx_F6stringS1S(&v_194, &v_195, 0), _fx_catch_23);
+            FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_194, &v_195, 0), _fx_catch_23);
             FX_CALL(_fx_M6K_formFM6stringS1N14K_form__ktyp_t(ktyp_0, &v_196, 0), _fx_catch_23);
             fx_str_t slit_25 = FX_MAKE_STR("cannot iterate over \'");
             fx_str_t slit_26 = FX_MAKE_STR("\' of type \'");
@@ -20068,10 +20082,16 @@ static int _fx_M10C_gen_codeFM11get_iter_idR9Ast__id_t7iLR9Ast__id_tSiiR10Ast__l
    }
    else {
       _fx_LR9Ast__id_t l_0 = 0;
+      fx_str_t for_msg_prefix_0 = {0};
       fx_str_t v_0 = {0};
-      fx_exn_t v_1 = {0};
-      int_ v_2 = _fx_M10C_gen_codeFM6lengthi1LR9Ast__id_t(at_ids_0, 0);
-      if (k_0 < v_2) {
+      fx_str_t v_1 = {0};
+      fx_str_t v_2 = {0};
+      fx_str_t v_3 = {0};
+      fx_str_t it_clause_0 = {0};
+      fx_str_t v_4 = {0};
+      fx_exn_t v_5 = {0};
+      int_ v_6 = _fx_M10C_gen_codeFM6lengthi1LR9Ast__id_t(at_ids_0, 0);
+      if (k_0 < v_6) {
          _fx_R9Ast__id_t result_0 = {0};
          FX_COPY_PTR(at_ids_0, &l_0);
          int_ n_0 = k_0;
@@ -20102,16 +20122,55 @@ static int _fx_M10C_gen_codeFM11get_iter_idR9Ast__id_t7iLR9Ast__id_tSiiR10Ast__l
          *fx_result = result_0;
       }
       else {
-         fx_str_t slit_0 =
-            FX_MAKE_STR("the list of \'@\' indices is too short for array; looks like it\'s bug in type checker");
-         FX_CALL(_fx_M10C_gen_codeFM11for_err_msgS4iiiS(for_idx_0, nfors_0, 0, &slit_0, &v_0, 0), _fx_catch_3);
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_0, &v_1, 0), _fx_catch_3);
-         FX_THROW(&v_1, false, _fx_catch_3);
+         if (nfors_0 == 1) {
+            fx_str_t slit_0 = FX_MAKE_STR(""); fx_copy_str(&slit_0, &for_msg_prefix_0);
+         }
+         else if (for_idx_0 == 0) {
+            fx_str_t slit_1 = FX_MAKE_STR("the outermost "); fx_copy_str(&slit_1, &for_msg_prefix_0);
+         }
+         else if (for_idx_0 == nfors_0 - 1) {
+            fx_str_t slit_2 = FX_MAKE_STR("the innermost "); fx_copy_str(&slit_2, &for_msg_prefix_0);
+         }
+         else {
+            FX_CALL(_fx_F6stringS1i(for_idx_0, &v_0, 0), _fx_catch_3);
+            FX_CALL(_fx_M6StringFM10num_suffixS1i(for_idx_0, &v_1, 0), _fx_catch_3);
+            fx_str_t slit_3 = FX_MAKE_STR("-");
+            fx_str_t slit_4 = FX_MAKE_STR(" nested ");
+            {
+               const fx_str_t strs_0[] = { v_0, slit_3, v_1, slit_4 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &for_msg_prefix_0), _fx_catch_3);
+            }
+         }
+         FX_CALL(_fx_F6stringS1i(1, &v_2, 0), _fx_catch_3);
+         FX_CALL(_fx_M6StringFM10num_suffixS1i(1, &v_3, 0), _fx_catch_3);
+         fx_str_t slit_5 = FX_MAKE_STR(", ");
+         fx_str_t slit_6 = FX_MAKE_STR("-");
+         fx_str_t slit_7 = FX_MAKE_STR(" iteration clause");
+         {
+            const fx_str_t strs_1[] = { slit_5, v_2, slit_6, v_3, slit_7 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &it_clause_0), _fx_catch_3);
+         }
+         fx_str_t slit_8 = FX_MAKE_STR("cgen: ");
+         fx_str_t slit_9 = FX_MAKE_STR("for-loop");
+         fx_str_t slit_10 =
+            FX_MAKE_STR(": the list of \'@\' indices is too short for array; looks like it\'s bug in type checker");
+         {
+            const fx_str_t strs_2[] = { slit_8, for_msg_prefix_0, slit_9, it_clause_0, slit_10 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_2, 5, &v_4), _fx_catch_3);
+         }
+         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_4, &v_5, 0), _fx_catch_3);
+         FX_THROW(&v_5, false, _fx_catch_3);
       }
 
    _fx_catch_3: ;
-      fx_free_exn(&v_1);
+      fx_free_exn(&v_5);
+      FX_FREE_STR(&v_4);
+      FX_FREE_STR(&it_clause_0);
+      FX_FREE_STR(&v_3);
+      FX_FREE_STR(&v_2);
+      FX_FREE_STR(&v_1);
       FX_FREE_STR(&v_0);
+      FX_FREE_STR(&for_msg_prefix_0);
       FX_FREE_LIST_SIMPLE(&l_0);
    }
    return fx_status;
@@ -22387,7 +22446,7 @@ static int
                            }
                            else {
                               FX_CALL(_fx_M3AstFM2ppS1RM4id_t(tn_0, &v_91, 0), _fx_catch_29);
-                              FX_CALL(_fx_F6stringS1S(&v_91, &v_92, 0), _fx_catch_29);
+                              FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_91, &v_92, 0), _fx_catch_29);
                               FX_CALL(_fx_F6stringS1i(ncases_0, &v_93, 0), _fx_catch_29);
                               FX_CALL(_fx_F6stringS1B(is_recursive_0, &v_94, 0), _fx_catch_29);
                               fx_str_t slit_21 = FX_MAKE_STR("cgen: variant \'");
@@ -22431,7 +22490,7 @@ static int
                      fx_str_t v_100 = {0};
                      fx_exn_t v_101 = {0};
                      FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(tn_0, &kloc_0, &v_98, 0), _fx_catch_30);
-                     FX_CALL(_fx_F6stringS1S(&v_98, &v_99, 0), _fx_catch_30);
+                     FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_98, &v_99, 0), _fx_catch_30);
                      fx_str_t slit_24 = FX_MAKE_STR("cgen: unexpected type \'");
                      fx_str_t slit_25 = FX_MAKE_STR("\'; should be variant of exception");
                      {
@@ -22565,7 +22624,7 @@ static int
                            fx_str_t v_115 = {0};
                            fx_exn_t v_116 = {0};
                            FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(vn_0, &kloc_0, &v_113, 0), _fx_catch_34);
-                           FX_CALL(_fx_F6stringS1S(&v_113, &v_114, 0), _fx_catch_34);
+                           FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_113, &v_114, 0), _fx_catch_34);
                            fx_str_t slit_28 = FX_MAKE_STR("cgen: information about exception \'");
                            fx_str_t slit_29 = FX_MAKE_STR("\' is not found");
                            {
@@ -22625,7 +22684,7 @@ static int
                               fx_str_t v_125 = {0};
                               fx_exn_t v_126 = {0};
                               FX_CALL(_fx_M3AstFM2ppS1RM4id_t(n_0, &v_123, 0), _fx_catch_37);
-                              FX_CALL(_fx_F6stringS1S(&v_123, &v_124, 0), _fx_catch_37);
+                              FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_123, &v_124, 0), _fx_catch_37);
                               fx_str_t slit_30 = FX_MAKE_STR("cgen: invalid type \'");
                               fx_str_t slit_31 = FX_MAKE_STR("\'; variant is expected");
                               {
@@ -22915,12 +22974,12 @@ static int
                      }
                      if (idx_0 < 0) {
                         fx_copy_str(&dst_iface_0->data.ci_cname, &v_150);
-                        FX_CALL(_fx_F6stringS1S(&v_150, &v_151, 0), _fx_catch_48);
+                        FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_150, &v_151, 0), _fx_catch_48);
                         FX_CALL(
                            _fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__loc_t(src_typ_0, &kloc_0, &v_152, 0),
                            _fx_catch_48);
                         fx_copy_str(&v_152.t0, &v_153);
-                        FX_CALL(_fx_F6stringS1S(&v_153, &v_154, 0), _fx_catch_48);
+                        FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_153, &v_154, 0), _fx_catch_48);
                         fx_str_t slit_41 = FX_MAKE_STR("the interface \'");
                         fx_str_t slit_42 = FX_MAKE_STR("\' is not implemented by \'");
                         fx_str_t slit_43 = FX_MAKE_STR("\'");
@@ -22973,7 +23032,7 @@ static int
                         _fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__loc_t(src_typ_0, &kloc_0, &v_162, 0),
                         _fx_catch_49);
                      fx_copy_str(&v_162.t0, &v_163);
-                     FX_CALL(_fx_F6stringS1S(&v_163, &v_164, 0), _fx_catch_49);
+                     FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_163, &v_164, 0), _fx_catch_49);
                      fx_str_t slit_44 = FX_MAKE_STR("invalid type \'");
                      fx_str_t slit_45 = FX_MAKE_STR("\' of the first argument of \'IntrinQueryInterface\'");
                      {
@@ -23004,7 +23063,7 @@ static int
                   FX_CALL(_fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__loc_t(src_typ_0, &kloc_0, &v_167, 0),
                      _fx_catch_51);
                   fx_copy_str(&v_167.t0, &v_168);
-                  FX_CALL(_fx_F6stringS1S(&v_168, &v_169, 0), _fx_catch_51);
+                  FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_168, &v_169, 0), _fx_catch_51);
                   fx_str_t slit_46 = FX_MAKE_STR("invalid type \'");
                   fx_str_t slit_47 = FX_MAKE_STR("\' of the first argument of \'IntrinQueryInterface\'");
                   {
@@ -23143,12 +23202,12 @@ static int
                      }
                      if (idx_1 < 0) {
                         fx_copy_str(&src_iface_0->data.ci_cname, &v_178);
-                        FX_CALL(_fx_F6stringS1S(&v_178, &v_179, 0), _fx_catch_55);
+                        FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_178, &v_179, 0), _fx_catch_55);
                         FX_CALL(
                            _fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__loc_t(ctyp_0, &kloc_0, &v_180, 0),
                            _fx_catch_55);
                         fx_copy_str(&v_180.t0, &v_181);
-                        FX_CALL(_fx_F6stringS1S(&v_181, &v_182, 0), _fx_catch_55);
+                        FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_181, &v_182, 0), _fx_catch_55);
                         fx_str_t slit_50 = FX_MAKE_STR("the interface \'");
                         fx_str_t slit_51 = FX_MAKE_STR("\' is not implemented by \'");
                         fx_str_t slit_52 = FX_MAKE_STR("\'");
@@ -23205,7 +23264,7 @@ static int
                      FX_CALL(_fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__loc_t(ctyp_0, &kloc_0, &v_191, 0),
                         _fx_catch_56);
                      fx_copy_str(&v_191.t0, &v_192);
-                     FX_CALL(_fx_F6stringS1S(&v_192, &v_193, 0), _fx_catch_56);
+                     FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_192, &v_193, 0), _fx_catch_56);
                      fx_str_t slit_53 = FX_MAKE_STR("invalid destination type \'");
                      fx_str_t slit_54 = FX_MAKE_STR("\'. It must be an object that implements some interfaces");
                      {
@@ -23236,7 +23295,7 @@ static int
                   FX_CALL(_fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__loc_t(ctyp_0, &kloc_0, &v_196, 0),
                      _fx_catch_58);
                   fx_copy_str(&v_196.t0, &v_197);
-                  FX_CALL(_fx_F6stringS1S(&v_197, &v_198, 0), _fx_catch_58);
+                  FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_197, &v_198, 0), _fx_catch_58);
                   fx_str_t slit_55 = FX_MAKE_STR("invalid destination type \'");
                   fx_str_t slit_56 = FX_MAKE_STR("\'. It must be an object that implements some interfaces");
                   {
@@ -23695,7 +23754,7 @@ static int
                   fx_exn_t v_249 = {0};
                   FX_CALL(_fx_M6K_formFM6stringS1N14K_form__ktyp_t(v_237, &v_245, 0), _fx_catch_68);
                   FX_CALL(_fx_M6K_formFM8atom2strS1N14K_form__atom_t(arr_or_str_0, &v_246, 0), _fx_catch_68);
-                  FX_CALL(_fx_F6stringS1S(&v_246, &v_247, 0), _fx_catch_68);
+                  FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_246, &v_247, 0), _fx_catch_68);
                   fx_str_t slit_68 = FX_MAKE_STR("cgen: unsupported container type ");
                   fx_str_t slit_69 = FX_MAKE_STR(" of ");
                   fx_str_t slit_70 = FX_MAKE_STR(" in KExpIntrin(IntrinGetSize...)");
@@ -25199,7 +25258,7 @@ static int
                   FX_CALL(_fx_cons_LN14C_form__cexp_t(v_399, 0, true, &fv_args_1), _fx_catch_88);
                }
                else {
-                  FX_CALL(_fx_F6stringS1S(&cf_cname_0, &v_400, 0), _fx_catch_88);
+                  FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&cf_cname_0, &v_400, 0), _fx_catch_88);
                   fx_str_t slit_90 = FX_MAKE_STR("cgen: looks like lambda lifting did not transform \'");
                   fx_str_t slit_91 =
                      FX_MAKE_STR(
@@ -25328,7 +25387,7 @@ static int
          fx_str_t v_413 = {0};
          fx_exn_t v_414 = {0};
          FX_CALL(_fx_M6C_formFM7idc2strS2R9Ast__id_tR10Ast__loc_t(&f_3, &kloc_0, &v_411, 0), _fx_catch_90);
-         FX_CALL(_fx_F6stringS1S(&v_411, &v_412, 0), _fx_catch_90);
+         FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_411, &v_412, 0), _fx_catch_90);
          fx_str_t slit_94 = FX_MAKE_STR("cgen: the called \'");
          fx_str_t slit_95 = FX_MAKE_STR("\' is not a function nor value");
          {
@@ -25613,7 +25672,7 @@ static int
          fx_exn_t v_437 = {0};
          FX_CALL(_fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__loc_t(t_9, &kloc_0, &v_433, 0), _fx_catch_93);
          fx_copy_str(&v_433.t0, &v_434);
-         FX_CALL(_fx_F6stringS1S(&v_434, &v_435, 0), _fx_catch_93);
+         FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_434, &v_435, 0), _fx_catch_93);
          fx_str_t slit_98 = FX_MAKE_STR("the first parameter (of type \'");
          fx_str_t slit_99 = FX_MAKE_STR("\') of KExpICall is not an interface");
          {
@@ -26448,7 +26507,7 @@ static int
                      fx_str_t v_540 = {0};
                      fx_exn_t v_541 = {0};
                      FX_CALL(_fx_M6K_formFM8atom2strS1N14K_form__atom_t(&a_4, &v_538, 0), _fx_catch_105);
-                     FX_CALL(_fx_F6stringS1S(&v_538, &v_539, 0), _fx_catch_105);
+                     FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_538, &v_539, 0), _fx_catch_105);
                      fx_str_t slit_111 = FX_MAKE_STR("cgen: the expanded structure ");
                      fx_str_t slit_112 = FX_MAKE_STR(" is not an array, vector or list");
                      {
@@ -27313,7 +27372,7 @@ static int
                   fx_str_t v_597 = {0};
                   fx_exn_t v_598 = {0};
                   FX_CALL(_fx_M6K_formFM8atom2strS1N14K_form__atom_t(&a_6, &v_595, 0), _fx_catch_122);
-                  FX_CALL(_fx_F6stringS1S(&v_595, &v_596, 0), _fx_catch_122);
+                  FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_595, &v_596, 0), _fx_catch_122);
                   fx_str_t slit_123 = FX_MAKE_STR("cgen: the expanded structure ");
                   fx_str_t slit_124 = FX_MAKE_STR(" is not an array, vector or list");
                   {
@@ -30993,7 +31052,7 @@ static int
             fx_str_t slit_188 = FX_MAKE_STR("???"); fx_copy_str(&slit_188, &maptype_str_0);
          }
          FX_CHECK_EXN(_fx_catch_202);
-         FX_CALL(_fx_F6stringS1S(&maptype_str_0, &v_920, 0), _fx_catch_202);
+         FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&maptype_str_0, &v_920, 0), _fx_catch_202);
          FX_CALL(_fx_M6K_formFM6stringS1N14K_form__ktyp_t(coll_typ_0, &v_921, 0), _fx_catch_202);
          fx_str_t slit_189 = FX_MAKE_STR("cgen: invalid combination of comprehension type \'");
          fx_str_t slit_190 = FX_MAKE_STR("\' and the output collection type \'");
@@ -32981,7 +33040,7 @@ static int
          fx_str_t v_1084 = {0};
          fx_exn_t v_1085 = {0};
          FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(&kf_name_0, &kf_loc_0, &v_1082, 0), _fx_catch_224);
-         FX_CALL(_fx_F6stringS1S(&v_1082, &v_1083, 0), _fx_catch_224);
+         FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_1082, &v_1083, 0), _fx_catch_224);
          fx_str_t slit_211 = FX_MAKE_STR("cgen: the function \'");
          fx_str_t slit_212 = FX_MAKE_STR("\' declaration was not properly converted");
          {
@@ -33561,7 +33620,7 @@ static int
                fx_str_t v_1152 = {0};
                fx_exn_t v_1153 = {0};
                FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(&kf_name_0, &kf_loc_0, &v_1150, 0), _fx_catch_230);
-               FX_CALL(_fx_F6stringS1S(&v_1150, &v_1151, 0), _fx_catch_230);
+               FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_1150, &v_1151, 0), _fx_catch_230);
                fx_str_t slit_221 = FX_MAKE_STR("cgen: the return type of variant constructor ");
                fx_str_t slit_222 = FX_MAKE_STR(" is not variant");
                {
@@ -33588,7 +33647,7 @@ static int
             fx_str_t v_1156 = {0};
             fx_exn_t v_1157 = {0};
             FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(&kf_name_0, &kf_loc_0, &v_1154, 0), _fx_catch_232);
-            FX_CALL(_fx_F6stringS1S(&v_1154, &v_1155, 0), _fx_catch_232);
+            FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_1154, &v_1155, 0), _fx_catch_232);
             fx_str_t slit_223 = FX_MAKE_STR("cgen: the return type of variant constructor ");
             fx_str_t slit_224 = FX_MAKE_STR(" is not variant");
             {
@@ -33929,7 +33988,7 @@ static int
             fx_str_t v_1184 = {0};
             fx_exn_t v_1185 = {0};
             FX_CALL(_fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(f_id_0, &kf_loc_0, &v_1182, 0), _fx_catch_235);
-            FX_CALL(_fx_F6stringS1S(&v_1182, &v_1183, 0), _fx_catch_235);
+            FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_1182, &v_1183, 0), _fx_catch_235);
             fx_str_t slit_232 = FX_MAKE_STR("cgen: \'");
             fx_str_t slit_233 = FX_MAKE_STR("\' is not a function");
             {
@@ -33960,7 +34019,7 @@ static int
             fx_str_t v_1189 = {0};
             fx_exn_t v_1190 = {0};
             FX_CALL(_fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(&fcv_t_id_0, &kf_loc_0, &v_1187, 0), _fx_catch_236);
-            FX_CALL(_fx_F6stringS1S(&v_1187, &v_1188, 0), _fx_catch_236);
+            FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_1187, &v_1188, 0), _fx_catch_236);
             fx_str_t slit_234 = FX_MAKE_STR("cgen: missing destructor for closure vars \'");
             fx_str_t slit_235 = FX_MAKE_STR("\'");
             {
@@ -34180,7 +34239,7 @@ static int
             fx_str_t v_1211 = {0};
             fx_exn_t v_1212 = {0};
             FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(exn_id_0, &kf_loc_0, &v_1209, 0), _fx_catch_239);
-            FX_CALL(_fx_F6stringS1S(&v_1209, &v_1210, 0), _fx_catch_239);
+            FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_1209, &v_1210, 0), _fx_catch_239);
             fx_str_t slit_239 = FX_MAKE_STR("cgen: constructor of exception \'");
             fx_str_t slit_240 = FX_MAKE_STR("\' is expecting converted KExn=>CExn structure");
             {
@@ -34393,9 +34452,9 @@ static int
       fx_str_t v_1221 = {0};
       fx_str_t v_1222 = {0};
       fx_exn_t v_1223 = {0};
-      FX_CALL(_fx_F6stringS1S(&kf_cname_0, &v_1219, 0), _fx_catch_242);
+      FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&kf_cname_0, &v_1219, 0), _fx_catch_242);
       FX_CALL(_fx_M3AstFM8ctor2strS1N17Ast__fun_constr_t(&ctor_0, &v_1220, 0), _fx_catch_242);
-      FX_CALL(_fx_F6stringS1S(&v_1220, &v_1221, 0), _fx_catch_242);
+      FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_1220, &v_1221, 0), _fx_catch_242);
       fx_str_t slit_244 = FX_MAKE_STR("cgen: unsupported type of constructor ");
       fx_str_t slit_245 = FX_MAKE_STR(": ");
       {

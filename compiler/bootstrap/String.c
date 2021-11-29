@@ -11,6 +11,13 @@ typedef struct _fx_LS_data_t {
    fx_str_t hd;
 } _fx_LS_data_t, *_fx_LS;
 
+typedef struct _fx_Nt6option1i {
+   int tag;
+   union {
+      int_ Some;
+   } u;
+} _fx_Nt6option1i;
+
 typedef struct _fx_T3LSiB {
    struct _fx_LS_data_t* t0;
    int_ t1;
@@ -121,6 +128,13 @@ int_ sz1 = s->length;
 
 }
 
+FX_EXTERN_C bool _fx_M6StringFM10startswithB2SC(fx_str_t* s, char_ prefix, void* fx_fv)
+{
+   
+return s->length > 0 && s->data[0] == prefix;
+
+}
+
 FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t* s, fx_str_t* suffix, void* fx_fv)
 {
    
@@ -149,6 +163,16 @@ int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
             memcmp(s->data + i, part->data, sz2*sizeof(part->data[0])) == 0 )
             return i;
     }
+    return -1;
+
+}
+
+FX_EXTERN_C int_ _fx_M6StringFM4findi2SC(fx_str_t* s, char_ c, void* fx_fv)
+{
+   
+int_ i, sz1 = s->length;
+    for( i = 0; i < sz1; i++ )
+        if( s->data[i] == c ) return i;
     return -1;
 
 }
@@ -400,6 +424,14 @@ _fx_cleanup: ;
       _fx_free_LS(&__fold_result___1);
    }
    return fx_status;
+}
+
+FX_EXTERN_C void _fx_M6StringFM6to_intNt6option1i1S(fx_str_t* a, struct _fx_Nt6option1i* fx_result, void* fx_fv)
+{
+   
+bool ok = fx_atoi(a, &fx_result->u.Some, 0);
+    fx_result->tag = (int)(ok+1);
+
 }
 
 FX_EXTERN_C int_ _fx_M6StringFM9to_int_ori2Si(fx_str_t* a, int_ defval, void* fx_fv)

@@ -8347,8 +8347,6 @@ FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_Nt9Dynvec__t1S_data_t* _fx_g14Ast__all_names)
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C void _fx_M6K_formFM7KLitIntN14K_form__klit_t1l(int64_t arg0, struct _fx_N14K_form__klit_t* fx_result);
 
 FX_EXTERN_C void _fx_M6K_formFM8KLitBoolN14K_form__klit_t1B(bool arg0, struct _fx_N14K_form__klit_t* fx_result);
@@ -13723,26 +13721,24 @@ FX_EXTERN_C int _fx_M6C_formFM7idc2strS2R9Ast__id_tR10Ast__loc_t(
    fx_str_t cname_0 = {0};
    fx_str_t v_0 = {0};
    fx_str_t v_1 = {0};
-   fx_str_t v_2 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M6C_formFM13get_idc_cnameS2R9Ast__id_tR10Ast__loc_t(n_0, loc_0, &cname_0, 0), _fx_cleanup);
    if (FX_STR_LENGTH(cname_0) != 0) {
       fx_copy_str(&cname_0, fx_result);
    }
    else if (n_0->m == 0) {
-      int_ v_3 = n_0->i;
-      FX_CHKIDX(FX_CHKIDX1(_fx_g14Ast__all_names->u.t.t1, 0, v_3), _fx_cleanup);
-      fx_copy_str(FX_PTR_1D(fx_str_t, _fx_g14Ast__all_names->u.t.t1, v_3), fx_result);
+      int_ v_2 = n_0->i;
+      FX_CHKIDX(FX_CHKIDX1(_fx_g14Ast__all_names->u.t.t1, 0, v_2), _fx_cleanup);
+      fx_copy_str(FX_PTR_1D(fx_str_t, _fx_g14Ast__all_names->u.t.t1, v_2), fx_result);
    }
    else {
-      int_ v_4 = n_0->i;
-      FX_CHKIDX(FX_CHKIDX1(_fx_g14Ast__all_names->u.t.t1, 0, v_4), _fx_cleanup);
-      fx_copy_str(FX_PTR_1D(fx_str_t, _fx_g14Ast__all_names->u.t.t1, v_4), &v_0);
-      FX_CALL(_fx_F6stringS1S(&v_0, &v_1, 0), _fx_cleanup);
-      FX_CALL(_fx_F6stringS1i(n_0->j, &v_2, 0), _fx_cleanup);
+      int_ v_3 = n_0->i;
+      FX_CHKIDX(FX_CHKIDX1(_fx_g14Ast__all_names->u.t.t1, 0, v_3), _fx_cleanup);
+      fx_copy_str(FX_PTR_1D(fx_str_t, _fx_g14Ast__all_names->u.t.t1, v_3), &v_0);
+      FX_CALL(_fx_F6stringS1i(n_0->j, &v_1, 0), _fx_cleanup);
       fx_str_t slit_0 = FX_MAKE_STR("_");
       {
-         const fx_str_t strs_0[] = { v_1, slit_0, v_2 };
+         const fx_str_t strs_0[] = { v_0, slit_0, v_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, fx_result), _fx_cleanup);
       }
    }
@@ -13751,7 +13747,6 @@ _fx_cleanup: ;
    FX_FREE_STR(&cname_0);
    FX_FREE_STR(&v_0);
    FX_FREE_STR(&v_1);
-   FX_FREE_STR(&v_2);
    return fx_status;
 }
 

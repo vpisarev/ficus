@@ -3659,8 +3659,6 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
    struct _fx_R10Ast__loc_t* loc_0,
    fx_str_t* msg_0,
@@ -5348,45 +5346,43 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
          for (; lst_0; lst_0 = lst_0->tl) {
             fx_str_t v_12 = {0};
             fx_str_t v_13 = {0};
-            fx_str_t v_14 = {0};
-            fx_exn_t v_15 = {0};
-            _fx_R17K_form__kdefval_t v_16 = {0};
+            fx_exn_t v_14 = {0};
+            _fx_R17K_form__kdefval_t v_15 = {0};
             _fx_R16Ast__val_flags_t kv_flags_0 = {0};
             _fx_N14K_form__ktyp_t kv_typ_0 = 0;
             _fx_R17K_form__kdefval_t dv_0 = {0};
-            _fx_N15K_form__kinfo_t v_17 = {0};
+            _fx_N15K_form__kinfo_t v_16 = {0};
             _fx_R9Ast__id_t* fv_0 = &lst_0->hd;
-            _fx_R10Ast__loc_t v_18;
-            FX_CALL(_fx_M6K_formFM11get_idk_locR10Ast__loc_t2R9Ast__id_tR10Ast__loc_t(fv_0, &_fx_g10Ast__noloc, &v_18, 0),
+            _fx_R10Ast__loc_t v_17;
+            FX_CALL(_fx_M6K_formFM11get_idk_locR10Ast__loc_t2R9Ast__id_tR10Ast__loc_t(fv_0, &_fx_g10Ast__noloc, &v_17, 0),
                _fx_catch_0);
-            bool v_19;
-            FX_CALL(_fx_M6K_formFM10is_mutableB2R9Ast__id_tR10Ast__loc_t(fv_0, &v_18, &v_19, 0), _fx_catch_0);
-            if (v_19) {
-               _fx_R10Ast__loc_t v_20;
-               FX_CALL(_fx_M6K_formFM11get_idk_locR10Ast__loc_t2R9Ast__id_tR10Ast__loc_t(fv_0, &_fx_g10Ast__noloc, &v_20, 0),
+            bool v_18;
+            FX_CALL(_fx_M6K_formFM10is_mutableB2R9Ast__id_tR10Ast__loc_t(fv_0, &v_17, &v_18, 0), _fx_catch_0);
+            if (v_18) {
+               _fx_R10Ast__loc_t v_19;
+               FX_CALL(_fx_M6K_formFM11get_idk_locR10Ast__loc_t2R9Ast__id_tR10Ast__loc_t(fv_0, &_fx_g10Ast__noloc, &v_19, 0),
                   _fx_catch_0);
-               FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(fv_0, &v_20, &v_12, 0), _fx_catch_0);
-               FX_CALL(_fx_F6stringS1S(&v_12, &v_13, 0), _fx_catch_0);
+               FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(fv_0, &v_19, &v_12, 0), _fx_catch_0);
                fx_str_t slit_0 = FX_MAKE_STR("free variable \'");
                fx_str_t slit_1 =
                   FX_MAKE_STR("\' must not be mutable on this stage. Run K.freevars.mutable_freevars_referencing before.");
                {
-                  const fx_str_t strs_0[] = { slit_0, v_13, slit_1 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_14), _fx_catch_0);
+                  const fx_str_t strs_0[] = { slit_0, v_12, slit_1 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_13), _fx_catch_0);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kf_loc_0, &v_14, &v_15, 0), _fx_catch_0);
-               FX_THROW(&v_15, false, _fx_catch_0);
+               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kf_loc_0, &v_13, &v_14, 0), _fx_catch_0);
+               FX_THROW(&v_14, false, _fx_catch_0);
             }
-            FX_CALL(_fx_M6K_formFM8get_kvalRM9kdefval_t2R9Ast__id_tR10Ast__loc_t(fv_0, &kf_loc_0, &v_16, 0), _fx_catch_0);
-            _fx_R10Ast__loc_t kv_loc_0 = v_16.kv_loc;
-            _fx_copy_R16Ast__val_flags_t(&v_16.kv_flags, &kv_flags_0);
-            FX_COPY_PTR(v_16.kv_typ, &kv_typ_0);
+            FX_CALL(_fx_M6K_formFM8get_kvalRM9kdefval_t2R9Ast__id_tR10Ast__loc_t(fv_0, &kf_loc_0, &v_15, 0), _fx_catch_0);
+            _fx_R10Ast__loc_t kv_loc_0 = v_15.kv_loc;
+            _fx_copy_R16Ast__val_flags_t(&v_15.kv_flags, &kv_flags_0);
+            FX_COPY_PTR(v_15.kv_typ, &kv_typ_0);
             _fx_R9Ast__id_t new_fv_0;
             FX_CALL(_fx_M6K_formFM7dup_idkR9Ast__id_t2iR9Ast__id_t(m_idx_0, fv_0, &new_fv_0, 0), _fx_catch_0);
             fx_str_t slit_2 = FX_MAKE_STR("");
             _fx_make_R17K_form__kdefval_t(&new_fv_0, &slit_2, kv_typ_0, &kv_flags_0, &kv_loc_0, &dv_0);
-            _fx_M6K_formFM4KValN15K_form__kinfo_t1RM9kdefval_t(&dv_0, &v_17);
-            FX_CALL(_fx_M6K_formFM13set_idk_entryv2R9Ast__id_tN15K_form__kinfo_t(&new_fv_0, &v_17, 0), _fx_catch_0);
+            _fx_M6K_formFM4KValN15K_form__kinfo_t1RM9kdefval_t(&dv_0, &v_16);
+            FX_CALL(_fx_M6K_formFM13set_idk_entryv2R9Ast__id_tN15K_form__kinfo_t(&new_fv_0, &v_16, 0), _fx_catch_0);
             int_ idx_0;
             FX_CALL(
                _fx_M11K_declosureFM18find_idx_or_inserti2Nt10Hashmap__t2R9Ast__id_tR9Ast__id_tR9Ast__id_t(*subst_map_0, fv_0,
@@ -5398,15 +5394,14 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
             FX_LIST_APPEND(params_addition_0, lstend_0, node_0);
 
          _fx_catch_0: ;
-            _fx_free_N15K_form__kinfo_t(&v_17);
+            _fx_free_N15K_form__kinfo_t(&v_16);
             _fx_free_R17K_form__kdefval_t(&dv_0);
             if (kv_typ_0) {
                _fx_free_N14K_form__ktyp_t(&kv_typ_0);
             }
             _fx_free_R16Ast__val_flags_t(&kv_flags_0);
-            _fx_free_R17K_form__kdefval_t(&v_16);
-            fx_free_exn(&v_15);
-            FX_FREE_STR(&v_14);
+            _fx_free_R17K_form__kdefval_t(&v_15);
+            fx_free_exn(&v_14);
             FX_FREE_STR(&v_13);
             FX_FREE_STR(&v_12);
             FX_CHECK_EXN(_fx_catch_5);
@@ -5432,39 +5427,39 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
          _fx_LLR9Ast__id_t lst_2 = v_9;
          for (; lst_2; lst_2 = lst_2->tl) {
             _fx_LR9Ast__id_t s_0 = 0;
-            _fx_LR9Ast__id_t v_21 = 0;
+            _fx_LR9Ast__id_t v_20 = 0;
             _fx_LR9Ast__id_t l_0 = lst_2->hd;
             FX_COPY_PTR(__fold_result___0, &s_0);
             if (l_0 == 0) {
-               FX_COPY_PTR(s_0, &v_21);
+               FX_COPY_PTR(s_0, &v_20);
             }
             else if (s_0 == 0) {
-               FX_COPY_PTR(l_0, &v_21);
+               FX_COPY_PTR(l_0, &v_20);
             }
             else {
-               _fx_LR9Ast__id_t v_22 = 0;
+               _fx_LR9Ast__id_t v_21 = 0;
                _fx_LR9Ast__id_t lstend_1 = 0;
                _fx_LR9Ast__id_t lst_3 = l_0;
                for (; lst_3; lst_3 = lst_3->tl) {
                   _fx_R9Ast__id_t* x_1 = &lst_3->hd;
                   _fx_LR9Ast__id_t node_1 = 0;
                   FX_CALL(_fx_cons_LR9Ast__id_t(x_1, 0, false, &node_1), _fx_catch_2);
-                  FX_LIST_APPEND(v_22, lstend_1, node_1);
+                  FX_LIST_APPEND(v_21, lstend_1, node_1);
 
                _fx_catch_2: ;
                   FX_CHECK_EXN(_fx_catch_3);
                }
-               _fx_M11K_declosureFM5link2LR9Ast__id_t2LR9Ast__id_tLR9Ast__id_t(v_22, s_0, &v_21, 0);
+               _fx_M11K_declosureFM5link2LR9Ast__id_t2LR9Ast__id_tLR9Ast__id_t(v_21, s_0, &v_20, 0);
 
             _fx_catch_3: ;
-               FX_FREE_LIST_SIMPLE(&v_22);
+               FX_FREE_LIST_SIMPLE(&v_21);
             }
             FX_CHECK_EXN(_fx_catch_4);
             FX_FREE_LIST_SIMPLE(&__fold_result___0);
-            FX_COPY_PTR(v_21, &__fold_result___0);
+            FX_COPY_PTR(v_20, &__fold_result___0);
 
          _fx_catch_4: ;
-            FX_FREE_LIST_SIMPLE(&v_21);
+            FX_FREE_LIST_SIMPLE(&v_20);
             FX_FREE_LIST_SIMPLE(&s_0);
             FX_CHECK_EXN(_fx_catch_5);
          }
@@ -5474,12 +5469,12 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
                callb_0, &body_0, fx_fv), _fx_catch_5);
          _fx_free_Nt10Hashmap__t2R9Ast__id_tR9Ast__id_t(subst_map_0);
          FX_COPY_PTR(subst_map_backup_0, subst_map_0);
+         _fx_R17K_form__kdeffun_t* v_22 = &kf_0->data;
+         _fx_make_R17K_form__kdeffun_t(&v_22->kf_name, &v_22->kf_cname, params_0, v_22->kf_rt, body_0, &v_22->kf_flags,
+            &v_22->kf_closure, v_22->kf_scope, &v_22->kf_loc, &v_10);
          _fx_R17K_form__kdeffun_t* v_23 = &kf_0->data;
-         _fx_make_R17K_form__kdeffun_t(&v_23->kf_name, &v_23->kf_cname, params_0, v_23->kf_rt, body_0, &v_23->kf_flags,
-            &v_23->kf_closure, v_23->kf_scope, &v_23->kf_loc, &v_10);
-         _fx_R17K_form__kdeffun_t* v_24 = &kf_0->data;
-         _fx_free_R17K_form__kdeffun_t(v_24);
-         _fx_copy_R17K_form__kdeffun_t(&v_10, v_24);
+         _fx_free_R17K_form__kdeffun_t(v_23);
+         _fx_copy_R17K_form__kdeffun_t(&v_10, v_23);
          FX_CALL(_fx_M6K_formFM7KDefFunN14K_form__kexp_t1rRM9kdeffun_t(kf_0, fx_result), _fx_catch_5);
 
       _fx_catch_5: ;
@@ -5525,33 +5520,33 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
       }
    }
    else if (tag_0 == 12) {
-      _fx_Nt6option1LR9Ast__id_t v_25 = {0};
-      _fx_LR9Ast__id_t v_26 = 0;
+      _fx_Nt6option1LR9Ast__id_t v_24 = {0};
+      _fx_LR9Ast__id_t v_25 = 0;
       _fx_T3R9Ast__id_tLN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* vcase_0 = &e_0->u.KExpCall;
       _fx_R9Ast__id_t* f_0 = &vcase_0->t0;
-      _fx_Ta2i v_27;
-      FX_CALL(_fx_M11K_declosureFM9find_idx_Ta2i2Nt10Hashmap__t2R9Ast__id_tLR9Ast__id_tR9Ast__id_t(fv_env_0, f_0, &v_27, 0),
+      _fx_Ta2i v_26;
+      FX_CALL(_fx_M11K_declosureFM9find_idx_Ta2i2Nt10Hashmap__t2R9Ast__id_tLR9Ast__id_tR9Ast__id_t(fv_env_0, f_0, &v_26, 0),
          _fx_catch_17);
-      int_ j_1 = v_27.t1;
+      int_ j_1 = v_26.t1;
       if (j_1 >= 0) {
          FX_CHKIDX(FX_CHKIDX1(fv_env_0->u.t.t5, 0, j_1), _fx_catch_17);
-         FX_COPY_PTR(FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2R9Ast__id_tLR9Ast__id_t, fv_env_0->u.t.t5, j_1)->data, &v_26);
-         _fx_M11K_declosureFM4SomeNt6option1LR9Ast__id_t1LR9Ast__id_t(v_26, &v_25);
+         FX_COPY_PTR(FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2R9Ast__id_tLR9Ast__id_t, fv_env_0->u.t.t5, j_1)->data, &v_25);
+         _fx_M11K_declosureFM4SomeNt6option1LR9Ast__id_t1LR9Ast__id_t(v_25, &v_24);
       }
       else {
-         _fx_copy_Nt6option1LR9Ast__id_t(&_fx_g17K_declosure__None, &v_25);
+         _fx_copy_Nt6option1LR9Ast__id_t(&_fx_g17K_declosure__None, &v_24);
       }
-      if (v_25.tag == 2) {
-         _fx_LN14K_form__atom_t v_28 = 0;
+      if (v_24.tag == 2) {
+         _fx_LN14K_form__atom_t v_27 = 0;
          _fx_LR9Ast__id_t fvars_1 = 0;
-         _fx_LLN14K_form__atom_t v_29 = 0;
+         _fx_LLN14K_form__atom_t v_28 = 0;
          _fx_LN14K_form__atom_t __fold_result___2 = 0;
          _fx_LLN14K_form__atom_t __fold_result___3 = 0;
-         _fx_LLN14K_form__atom_t v_30 = 0;
+         _fx_LLN14K_form__atom_t v_29 = 0;
          _fx_LN14K_form__atom_t args_0 = 0;
          _fx_LN14K_form__atom_t args_1 = 0;
          _fx_LN14K_form__atom_t lstend_2 = 0;
-         FX_COPY_PTR(v_25.u.Some, &fvars_1);
+         FX_COPY_PTR(v_24.u.Some, &fvars_1);
          _fx_LR9Ast__id_t lst_4 = fvars_1;
          for (; lst_4; lst_4 = lst_4->tl) {
             _fx_N14K_form__atom_t res_0 = {0};
@@ -5559,15 +5554,15 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
             _fx_M6K_formFM6AtomIdN14K_form__atom_t1R9Ast__id_t(fv_1, &res_0);
             _fx_LN14K_form__atom_t node_2 = 0;
             FX_CALL(_fx_cons_LN14K_form__atom_t(&res_0, 0, false, &node_2), _fx_catch_8);
-            FX_LIST_APPEND(v_28, lstend_2, node_2);
+            FX_LIST_APPEND(v_27, lstend_2, node_2);
 
          _fx_catch_8: ;
             _fx_free_N14K_form__atom_t(&res_0);
             FX_CHECK_EXN(_fx_catch_15);
          }
-         FX_CALL(_fx_cons_LLN14K_form__atom_t(v_28, 0, true, &v_29), _fx_catch_15);
-         FX_CALL(_fx_cons_LLN14K_form__atom_t(vcase_0->t1, v_29, false, &v_29), _fx_catch_15);
-         _fx_LLN14K_form__atom_t lst_5 = v_29;
+         FX_CALL(_fx_cons_LLN14K_form__atom_t(v_27, 0, true, &v_28), _fx_catch_15);
+         FX_CALL(_fx_cons_LLN14K_form__atom_t(vcase_0->t1, v_28, false, &v_28), _fx_catch_15);
+         _fx_LLN14K_form__atom_t lst_5 = v_28;
          for (; lst_5; lst_5 = lst_5->tl) {
             _fx_LLN14K_form__atom_t r_1 = 0;
             _fx_LN14K_form__atom_t a_1 = lst_5->hd;
@@ -5582,46 +5577,46 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
             }
             FX_CHECK_EXN(_fx_catch_15);
          }
-         FX_COPY_PTR(__fold_result___3, &v_30);
-         _fx_LLN14K_form__atom_t lst_6 = v_30;
+         FX_COPY_PTR(__fold_result___3, &v_29);
+         _fx_LLN14K_form__atom_t lst_6 = v_29;
          for (; lst_6; lst_6 = lst_6->tl) {
             _fx_LN14K_form__atom_t s_1 = 0;
-            _fx_LN14K_form__atom_t v_31 = 0;
+            _fx_LN14K_form__atom_t v_30 = 0;
             _fx_LN14K_form__atom_t l_1 = lst_6->hd;
             FX_COPY_PTR(__fold_result___2, &s_1);
             if (l_1 == 0) {
-               FX_COPY_PTR(s_1, &v_31);
+               FX_COPY_PTR(s_1, &v_30);
             }
             else if (s_1 == 0) {
-               FX_COPY_PTR(l_1, &v_31);
+               FX_COPY_PTR(l_1, &v_30);
             }
             else {
-               _fx_LN14K_form__atom_t v_32 = 0;
+               _fx_LN14K_form__atom_t v_31 = 0;
                _fx_LN14K_form__atom_t lstend_3 = 0;
                _fx_LN14K_form__atom_t lst_7 = l_1;
                for (; lst_7; lst_7 = lst_7->tl) {
                   _fx_N14K_form__atom_t* x_2 = &lst_7->hd;
                   _fx_LN14K_form__atom_t node_3 = 0;
                   FX_CALL(_fx_cons_LN14K_form__atom_t(x_2, 0, false, &node_3), _fx_catch_10);
-                  FX_LIST_APPEND(v_32, lstend_3, node_3);
+                  FX_LIST_APPEND(v_31, lstend_3, node_3);
 
                _fx_catch_10: ;
                   FX_CHECK_EXN(_fx_catch_11);
                }
-               _fx_M11K_declosureFM5link2LN14K_form__atom_t2LN14K_form__atom_tLN14K_form__atom_t(v_32, s_1, &v_31, 0);
+               _fx_M11K_declosureFM5link2LN14K_form__atom_t2LN14K_form__atom_tLN14K_form__atom_t(v_31, s_1, &v_30, 0);
 
             _fx_catch_11: ;
-               if (v_32) {
-                  _fx_free_LN14K_form__atom_t(&v_32);
+               if (v_31) {
+                  _fx_free_LN14K_form__atom_t(&v_31);
                }
             }
             FX_CHECK_EXN(_fx_catch_12);
             _fx_free_LN14K_form__atom_t(&__fold_result___2);
-            FX_COPY_PTR(v_31, &__fold_result___2);
+            FX_COPY_PTR(v_30, &__fold_result___2);
 
          _fx_catch_12: ;
-            if (v_31) {
-               _fx_free_LN14K_form__atom_t(&v_31);
+            if (v_30) {
+               _fx_free_LN14K_form__atom_t(&v_30);
             }
             if (s_1) {
                _fx_free_LN14K_form__atom_t(&s_1);
@@ -5641,23 +5636,23 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
                }
             }
             if (tag_1 == 1) {
-               _fx_Ta2i v_33;
+               _fx_Ta2i v_32;
                FX_CALL(
                   _fx_M11K_declosureFM9find_idx_Ta2i2Nt10Hashmap__t2R9Ast__id_tR9Ast__id_tR9Ast__id_t(*subst_map_0,
-                     &a_2->u.AtomId, &v_33, 0), _fx_catch_13);
-               int_ j_2 = v_33.t1;
-               _fx_Nt6option1R9Ast__id_t v_34;
+                     &a_2->u.AtomId, &v_32, 0), _fx_catch_13);
+               int_ j_2 = v_32.t1;
+               _fx_Nt6option1R9Ast__id_t v_33;
                if (j_2 >= 0) {
                   FX_CHKIDX(FX_CHKIDX1((*subst_map_0)->u.t.t5, 0, j_2), _fx_catch_13);
-                  _fx_R9Ast__id_t v_35 =
+                  _fx_R9Ast__id_t v_34 =
                      FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2R9Ast__id_tR9Ast__id_t, (*subst_map_0)->u.t.t5, j_2)->data;
-                  _fx_M11K_declosureFM4SomeNt6option1R9Ast__id_t1R9Ast__id_t(&v_35, &v_34);
+                  _fx_M11K_declosureFM4SomeNt6option1R9Ast__id_t1R9Ast__id_t(&v_34, &v_33);
                }
                else {
-                  v_34 = _fx_g19K_declosure__None1_;
+                  v_33 = _fx_g19K_declosure__None1_;
                }
-               if (v_34.tag == 2) {
-                  _fx_M6K_formFM6AtomIdN14K_form__atom_t1R9Ast__id_t(&v_34.u.Some, &res_1);
+               if (v_33.tag == 2) {
+                  _fx_M6K_formFM6AtomIdN14K_form__atom_t1R9Ast__id_t(&v_33.u.Some, &res_1);
                }
                else {
                   _fx_copy_N14K_form__atom_t(a_2, &res_1);
@@ -5690,8 +5685,8 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
          if (args_0) {
             _fx_free_LN14K_form__atom_t(&args_0);
          }
-         if (v_30) {
-            _fx_free_LLN14K_form__atom_t(&v_30);
+         if (v_29) {
+            _fx_free_LLN14K_form__atom_t(&v_29);
          }
          if (__fold_result___3) {
             _fx_free_LLN14K_form__atom_t(&__fold_result___3);
@@ -5699,12 +5694,12 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
          if (__fold_result___2) {
             _fx_free_LN14K_form__atom_t(&__fold_result___2);
          }
-         if (v_29) {
-            _fx_free_LLN14K_form__atom_t(&v_29);
+         if (v_28) {
+            _fx_free_LLN14K_form__atom_t(&v_28);
          }
          FX_FREE_LIST_SIMPLE(&fvars_1);
-         if (v_28) {
-            _fx_free_LN14K_form__atom_t(&v_28);
+         if (v_27) {
+            _fx_free_LN14K_form__atom_t(&v_27);
          }
       }
       else {
@@ -5716,8 +5711,8 @@ static int _fx_M11K_declosureFM21walk_kexp_n_declojureN14K_form__kexp_t2N14K_for
       FX_CHECK_EXN(_fx_catch_17);
 
    _fx_catch_17: ;
-      FX_FREE_LIST_SIMPLE(&v_26);
-      _fx_free_Nt6option1LR9Ast__id_t(&v_25);
+      FX_FREE_LIST_SIMPLE(&v_25);
+      _fx_free_Nt6option1LR9Ast__id_t(&v_24);
    }
    else {
       FX_CALL(_fx_M6K_formFM9walk_kexpN14K_form__kexp_t2N14K_form__kexp_tRM9k_callb_t(e_0, callb_0, fx_result, 0),

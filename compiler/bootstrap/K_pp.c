@@ -3307,8 +3307,6 @@ FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
 
 FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_M2PPFM21pprint_to_string_listRM1t2ii(
    int_ margin_0,
    int_ default_indent_0,
@@ -5987,26 +5985,23 @@ FX_EXTERN_C int _fx_M4K_ppFM8pp_kmodsv1LR17K_form__kmodule_t(struct _fx_LR17K_fo
       fx_str_t km_cname_0 = {0};
       fx_str_t v_0 = {0};
       fx_str_t v_1 = {0};
-      fx_str_t v_2 = {0};
       _fx_R17K_form__kmodule_t* __pat___0 = &lst_0->hd;
       FX_COPY_PTR(__pat___0->km_top, &km_top_0);
       fx_copy_str(&__pat___0->km_cname, &km_cname_0);
-      FX_CALL(_fx_F6stringS1S(&km_cname_0, &v_0, 0), _fx_catch_0);
-      int_ v_3 = _fx_M4K_ppFM6lengthi1LN14K_form__kexp_t(km_top_0, 0);
-      FX_CALL(_fx_F6stringS1i(v_3, &v_1, 0), _fx_catch_0);
+      int_ v_2 = _fx_M4K_ppFM6lengthi1LN14K_form__kexp_t(km_top_0, 0);
+      FX_CALL(_fx_F6stringS1i(v_2, &v_0, 0), _fx_catch_0);
       fx_str_t slit_0 =
          FX_MAKE_STR("\n"
             U"///////// module ");
       fx_str_t slit_1 = FX_MAKE_STR(": ");
       fx_str_t slit_2 = FX_MAKE_STR(" expressions //////////");
       {
-         const fx_str_t strs_0[] = { slit_0, v_0, slit_1, v_1, slit_2 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_2), _fx_catch_0);
+         const fx_str_t strs_0[] = { slit_0, km_cname_0, slit_1, v_0, slit_2 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_1), _fx_catch_0);
       }
-      FX_CALL(_fx_M4K_ppFM6pp_topv2SLN14K_form__kexp_t(&v_2, km_top_0, 0), _fx_catch_0);
+      FX_CALL(_fx_M4K_ppFM6pp_topv2SLN14K_form__kexp_t(&v_1, km_top_0, 0), _fx_catch_0);
 
    _fx_catch_0: ;
-      FX_FREE_STR(&v_2);
       FX_FREE_STR(&v_1);
       FX_FREE_STR(&v_0);
       FX_FREE_STR(&km_cname_0);

@@ -6346,8 +6346,6 @@ FX_EXTERN_C int _fx_M6K_formFM7ktl2strS1LN14K_form__ktyp_t(
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_F7__mul__S2Ci(char_ c, int_ n, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1l(int64_t a, fx_str_t* fx_result, void* fx_fv);
@@ -16476,10 +16474,6 @@ FX_EXTERN_C int _fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(
    if (tag_0 == 11) {
       fx_str_t argtyps_str_0 = {0};
       fx_str_t rt_str_0 = {0};
-      fx_str_t v_5 = {0};
-      fx_str_t v_6 = {0};
-      fx_str_t v_7 = {0};
-      fx_str_t v_8 = {0};
       _fx_T2LN14K_form__ktyp_tN14K_form__ktyp_t* vcase_0 = &t_0->u.KTypFun;
       _fx_LN14K_form__ktyp_t argtyps_0 = vcase_0->t0;
       if (argtyps_0 == 0) {
@@ -16501,31 +16495,23 @@ FX_EXTERN_C int _fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(
       FX_CHECK_EXN(_fx_catch_5);
       FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(vcase_0->t1, true, &rt_str_0, 0), _fx_catch_5);
       if (nf_0) {
-         FX_CALL(_fx_F6stringS1S(&argtyps_str_0, &v_5, 0), _fx_catch_5);
-         FX_CALL(_fx_F6stringS1S(&rt_str_0, &v_6, 0), _fx_catch_5);
          fx_str_t slit_17 = FX_MAKE_STR("(");
          fx_str_t slit_18 = FX_MAKE_STR(" -> ");
          fx_str_t slit_19 = FX_MAKE_STR(")");
          {
-            const fx_str_t strs_3[] = { slit_17, v_5, slit_18, v_6, slit_19 };
+            const fx_str_t strs_3[] = { slit_17, argtyps_str_0, slit_18, rt_str_0, slit_19 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_3, 5, fx_result), _fx_catch_5);
          }
       }
       else {
-         FX_CALL(_fx_F6stringS1S(&argtyps_str_0, &v_7, 0), _fx_catch_5);
-         FX_CALL(_fx_F6stringS1S(&rt_str_0, &v_8, 0), _fx_catch_5);
          fx_str_t slit_20 = FX_MAKE_STR(" -> ");
          {
-            const fx_str_t strs_4[] = { v_7, slit_20, v_8 };
+            const fx_str_t strs_4[] = { argtyps_str_0, slit_20, rt_str_0 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, fx_result), _fx_catch_5);
          }
       }
 
    _fx_catch_5: ;
-      FX_FREE_STR(&v_8);
-      FX_FREE_STR(&v_7);
-      FX_FREE_STR(&v_6);
-      FX_FREE_STR(&v_5);
       FX_FREE_STR(&rt_str_0);
       FX_FREE_STR(&argtyps_str_0);
       goto _fx_endmatch_1;
@@ -16537,20 +16523,17 @@ FX_EXTERN_C int _fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(
       goto _fx_endmatch_1;
    }
    if (tag_0 == 13) {
-      fx_str_t v_9 = {0};
-      fx_str_t v_10 = {0};
-      FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(&t_0->u.KTypRecord.t0, &_fx_g10Ast__noloc, &v_9, 0),
+      fx_str_t v_5 = {0};
+      FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(&t_0->u.KTypRecord.t0, &_fx_g10Ast__noloc, &v_5, 0),
          _fx_catch_7);
-      FX_CALL(_fx_F6stringS1S(&v_9, &v_10, 0), _fx_catch_7);
       fx_str_t slit_21 = FX_MAKE_STR(" {...}");
       {
-         const fx_str_t strs_5[] = { v_10, slit_21 };
+         const fx_str_t strs_5[] = { v_5, slit_21 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_5, 2, fx_result), _fx_catch_7);
       }
 
    _fx_catch_7: ;
-      FX_FREE_STR(&v_10);
-      FX_FREE_STR(&v_9);
+      FX_FREE_STR(&v_5);
       goto _fx_endmatch_1;
    }
    if (tag_0 == 14) {
@@ -16562,74 +16545,59 @@ FX_EXTERN_C int _fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(
    }
    if (tag_0 == 15) {
       fx_str_t commas_0 = {0};
-      fx_str_t v_11 = {0};
-      fx_str_t v_12 = {0};
-      fx_str_t v_13 = {0};
+      fx_str_t v_6 = {0};
       _fx_T2iN14K_form__ktyp_t* vcase_1 = &t_0->u.KTypArray;
       FX_CALL(_fx_F7__mul__S2Ci((char_)44, vcase_1->t0 - 1, &commas_0, 0), _fx_catch_9);
-      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(vcase_1->t1, true, &v_11, 0), _fx_catch_9);
-      FX_CALL(_fx_F6stringS1S(&v_11, &v_12, 0), _fx_catch_9);
-      FX_CALL(_fx_F6stringS1S(&commas_0, &v_13, 0), _fx_catch_9);
+      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(vcase_1->t1, true, &v_6, 0), _fx_catch_9);
       fx_str_t slit_22 = FX_MAKE_STR(" [");
       fx_str_t slit_23 = FX_MAKE_STR("]");
       {
-         const fx_str_t strs_6[] = { v_12, slit_22, v_13, slit_23 };
+         const fx_str_t strs_6[] = { v_6, slit_22, commas_0, slit_23 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_6, 4, fx_result), _fx_catch_9);
       }
 
    _fx_catch_9: ;
-      FX_FREE_STR(&v_13);
-      FX_FREE_STR(&v_12);
-      FX_FREE_STR(&v_11);
+      FX_FREE_STR(&v_6);
       FX_FREE_STR(&commas_0);
       goto _fx_endmatch_1;
    }
    if (tag_0 == 16) {
-      fx_str_t v_14 = {0};
-      fx_str_t v_15 = {0};
-      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypVector, true, &v_14, 0), _fx_catch_10);
-      FX_CALL(_fx_F6stringS1S(&v_14, &v_15, 0), _fx_catch_10);
+      fx_str_t v_7 = {0};
+      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypVector, true, &v_7, 0), _fx_catch_10);
       fx_str_t slit_24 = FX_MAKE_STR(" vector");
       {
-         const fx_str_t strs_7[] = { v_15, slit_24 };
+         const fx_str_t strs_7[] = { v_7, slit_24 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_7, 2, fx_result), _fx_catch_10);
       }
 
    _fx_catch_10: ;
-      FX_FREE_STR(&v_15);
-      FX_FREE_STR(&v_14);
+      FX_FREE_STR(&v_7);
       goto _fx_endmatch_1;
    }
    if (tag_0 == 17) {
-      fx_str_t v_16 = {0};
-      fx_str_t v_17 = {0};
-      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypList, true, &v_16, 0), _fx_catch_11);
-      FX_CALL(_fx_F6stringS1S(&v_16, &v_17, 0), _fx_catch_11);
+      fx_str_t v_8 = {0};
+      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypList, true, &v_8, 0), _fx_catch_11);
       fx_str_t slit_25 = FX_MAKE_STR(" list");
       {
-         const fx_str_t strs_8[] = { v_17, slit_25 };
+         const fx_str_t strs_8[] = { v_8, slit_25 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_8, 2, fx_result), _fx_catch_11);
       }
 
    _fx_catch_11: ;
-      FX_FREE_STR(&v_17);
-      FX_FREE_STR(&v_16);
+      FX_FREE_STR(&v_8);
       goto _fx_endmatch_1;
    }
    if (tag_0 == 18) {
-      fx_str_t v_18 = {0};
-      fx_str_t v_19 = {0};
-      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypRef, true, &v_18, 0), _fx_catch_12);
-      FX_CALL(_fx_F6stringS1S(&v_18, &v_19, 0), _fx_catch_12);
+      fx_str_t v_9 = {0};
+      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypRef, true, &v_9, 0), _fx_catch_12);
       fx_str_t slit_26 = FX_MAKE_STR(" ref");
       {
-         const fx_str_t strs_9[] = { v_19, slit_26 };
+         const fx_str_t strs_9[] = { v_9, slit_26 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_9, 2, fx_result), _fx_catch_12);
       }
 
    _fx_catch_12: ;
-      FX_FREE_STR(&v_19);
-      FX_FREE_STR(&v_18);
+      FX_FREE_STR(&v_9);
       goto _fx_endmatch_1;
    }
    if (tag_0 == 19) {

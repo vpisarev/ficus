@@ -6082,8 +6082,6 @@ FX_EXTERN_C int _fx_M6C_formFM13CTypFunRawPtrN14C_form__ctyp_t2LN14C_form__ctyp_
    struct _fx_N14C_form__ctyp_t_data_t* arg1,
    struct _fx_N14C_form__ctyp_t_data_t** fx_result);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
    struct _fx_R10Ast__loc_t* loc_0,
    fx_str_t* msg_0,
@@ -6692,6 +6690,13 @@ FX_EXTERN_C void _fx_M11C_gen_typesFM5link2LN14C_form__ctyp_t2LN14C_form__ctyp_t
    
 fx_link_lists(l1, l2, fx_result);
 
+}
+
+FX_EXTERN_C int _fx_M11C_gen_typesFM6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   fx_copy_str(a_0, fx_result);
+   return fx_status;
 }
 
 FX_EXTERN_C int _fx_M11C_gen_typesFM3revLT2LN14C_form__cexp_tLN15C_form__cstmt_t1LT2LN14C_form__cexp_tLN15C_form__cstmt_t(
@@ -8870,111 +8875,74 @@ static int _fx_M11C_gen_typesFM10ktyp2ctyp_N14C_form__ctyp_t2N14K_form__ktyp_tR1
       }
    }
    else if (tag_0 == 12) {
-      fx_str_t v_0 = {0};
-      fx_str_t v_1 = {0};
-      fx_exn_t v_2 = {0};
-      fx_str_t slit_0 = FX_MAKE_STR("KTypTuple");
-      FX_CALL(_fx_F6stringS1S(&slit_0, &v_0, 0), _fx_catch_4);
-      fx_str_t slit_1 = FX_MAKE_STR("ktyp2ctyp: ");
-      fx_str_t slit_2 = FX_MAKE_STR(" is not supported here. It should have been converted to KTypName() at K_mangle stage");
-      {
-         const fx_str_t strs_0[] = { slit_1, v_0, slit_2 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_1), _fx_catch_4);
-      }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_1, &v_2, 0), _fx_catch_4);
-      FX_THROW(&v_2, false, _fx_catch_4);
+      fx_exn_t v_0 = {0};
+      fx_str_t slit_0 =
+         FX_MAKE_STR(
+            "ktyp2ctyp: KTypTuple is not supported here. It should have been converted to KTypName() at K_mangle stage");
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_0, 0), _fx_catch_4);
+      FX_THROW(&v_0, false, _fx_catch_4);
 
    _fx_catch_4: ;
-      fx_free_exn(&v_2);
-      FX_FREE_STR(&v_1);
-      FX_FREE_STR(&v_0);
+      fx_free_exn(&v_0);
    }
    else if (tag_0 == 13) {
-      fx_str_t v_3 = {0};
-      fx_str_t v_4 = {0};
-      fx_exn_t v_5 = {0};
-      fx_str_t slit_3 = FX_MAKE_STR("KTypRecord");
-      FX_CALL(_fx_F6stringS1S(&slit_3, &v_3, 0), _fx_catch_5);
-      fx_str_t slit_4 = FX_MAKE_STR("ktyp2ctyp: ");
-      fx_str_t slit_5 = FX_MAKE_STR(" is not supported here. It should have been converted to KTypName() at K_mangle stage");
-      {
-         const fx_str_t strs_1[] = { slit_4, v_3, slit_5 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_4), _fx_catch_5);
-      }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_4, &v_5, 0), _fx_catch_5);
-      FX_THROW(&v_5, false, _fx_catch_5);
+      fx_exn_t v_1 = {0};
+      fx_str_t slit_1 =
+         FX_MAKE_STR(
+            "ktyp2ctyp: KTypRecord is not supported here. It should have been converted to KTypName() at K_mangle stage");
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_1, 0), _fx_catch_5);
+      FX_THROW(&v_1, false, _fx_catch_5);
 
    _fx_catch_5: ;
-      fx_free_exn(&v_5);
-      FX_FREE_STR(&v_4);
-      FX_FREE_STR(&v_3);
+      fx_free_exn(&v_1);
    }
    else if (tag_0 == 14) {
       FX_CALL(_fx_M6C_formFM8CTypNameN14C_form__ctyp_t1R9Ast__id_t(&t_0->u.KTypName, fx_result), _fx_catch_6);  _fx_catch_6: ;
    }
    else if (tag_0 == 15) {
-      _fx_N14C_form__ctyp_t v_6 = 0;
+      _fx_N14C_form__ctyp_t v_2 = 0;
       _fx_T2iN14K_form__ktyp_t* vcase_1 = &t_0->u.KTypArray;
-      FX_CALL(_fx_M11C_gen_typesFM10ktyp2ctyp_N14C_form__ctyp_t2N14K_form__ktyp_tR10Ast__loc_t(vcase_1->t1, loc_0, &v_6, 0),
+      FX_CALL(_fx_M11C_gen_typesFM10ktyp2ctyp_N14C_form__ctyp_t2N14K_form__ktyp_tR10Ast__loc_t(vcase_1->t1, loc_0, &v_2, 0),
          _fx_catch_7);
-      FX_CALL(_fx_M6C_formFM9CTypArrayN14C_form__ctyp_t2iN14C_form__ctyp_t(vcase_1->t0, v_6, fx_result), _fx_catch_7);
+      FX_CALL(_fx_M6C_formFM9CTypArrayN14C_form__ctyp_t2iN14C_form__ctyp_t(vcase_1->t0, v_2, fx_result), _fx_catch_7);
 
    _fx_catch_7: ;
-      if (v_6) {
-         _fx_free_N14C_form__ctyp_t(&v_6);
+      if (v_2) {
+         _fx_free_N14C_form__ctyp_t(&v_2);
       }
    }
    else if (tag_0 == 16) {
-      _fx_N14C_form__ctyp_t v_7 = 0;
+      _fx_N14C_form__ctyp_t v_3 = 0;
       FX_CALL(
-         _fx_M11C_gen_typesFM10ktyp2ctyp_N14C_form__ctyp_t2N14K_form__ktyp_tR10Ast__loc_t(t_0->u.KTypVector, loc_0, &v_7, 0),
+         _fx_M11C_gen_typesFM10ktyp2ctyp_N14C_form__ctyp_t2N14K_form__ktyp_tR10Ast__loc_t(t_0->u.KTypVector, loc_0, &v_3, 0),
          _fx_catch_8);
-      FX_CALL(_fx_M6C_formFM10CTypVectorN14C_form__ctyp_t1N14C_form__ctyp_t(v_7, fx_result), _fx_catch_8);
+      FX_CALL(_fx_M6C_formFM10CTypVectorN14C_form__ctyp_t1N14C_form__ctyp_t(v_3, fx_result), _fx_catch_8);
 
    _fx_catch_8: ;
-      if (v_7) {
-         _fx_free_N14C_form__ctyp_t(&v_7);
+      if (v_3) {
+         _fx_free_N14C_form__ctyp_t(&v_3);
       }
    }
    else if (tag_0 == 17) {
-      fx_str_t v_8 = {0};
-      fx_str_t v_9 = {0};
-      fx_exn_t v_10 = {0};
-      fx_str_t slit_6 = FX_MAKE_STR("KTypList");
-      FX_CALL(_fx_F6stringS1S(&slit_6, &v_8, 0), _fx_catch_9);
-      fx_str_t slit_7 = FX_MAKE_STR("ktyp2ctyp: ");
-      fx_str_t slit_8 = FX_MAKE_STR(" is not supported here. It should have been converted to KTypName() at K_mangle stage");
-      {
-         const fx_str_t strs_2[] = { slit_7, v_8, slit_8 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_9), _fx_catch_9);
-      }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_9, &v_10, 0), _fx_catch_9);
-      FX_THROW(&v_10, false, _fx_catch_9);
+      fx_exn_t v_4 = {0};
+      fx_str_t slit_2 =
+         FX_MAKE_STR(
+            "ktyp2ctyp: KTypList is not supported here. It should have been converted to KTypName() at K_mangle stage");
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_2, &v_4, 0), _fx_catch_9);
+      FX_THROW(&v_4, false, _fx_catch_9);
 
    _fx_catch_9: ;
-      fx_free_exn(&v_10);
-      FX_FREE_STR(&v_9);
-      FX_FREE_STR(&v_8);
+      fx_free_exn(&v_4);
    }
    else if (tag_0 == 18) {
-      fx_str_t v_11 = {0};
-      fx_str_t v_12 = {0};
-      fx_exn_t v_13 = {0};
-      fx_str_t slit_9 = FX_MAKE_STR("KTypRef");
-      FX_CALL(_fx_F6stringS1S(&slit_9, &v_11, 0), _fx_catch_10);
-      fx_str_t slit_10 = FX_MAKE_STR("ktyp2ctyp: ");
-      fx_str_t slit_11 = FX_MAKE_STR(" is not supported here. It should have been converted to KTypName() at K_mangle stage");
-      {
-         const fx_str_t strs_3[] = { slit_10, v_11, slit_11 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_12), _fx_catch_10);
-      }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_12, &v_13, 0), _fx_catch_10);
-      FX_THROW(&v_13, false, _fx_catch_10);
+      fx_exn_t v_5 = {0};
+      fx_str_t slit_3 =
+         FX_MAKE_STR("ktyp2ctyp: KTypRef is not supported here. It should have been converted to KTypName() at K_mangle stage");
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_3, &v_5, 0), _fx_catch_10);
+      FX_THROW(&v_5, false, _fx_catch_10);
 
    _fx_catch_10: ;
-      fx_free_exn(&v_13);
-      FX_FREE_STR(&v_12);
-      FX_FREE_STR(&v_11);
+      fx_free_exn(&v_5);
    }
    else if (tag_0 == 19) {
       FX_COPY_PTR(_fx_g20C_gen_types__CTypExn, fx_result);
@@ -9091,141 +9059,135 @@ FX_EXTERN_C int _fx_M11C_gen_typesFM11get_ctpropsR17C_form__ctprops_t2N14C_form_
       if (v_13->tag == 2) {
          fx_str_t v_14 = {0};
          fx_str_t v_15 = {0};
-         fx_str_t v_16 = {0};
-         fx_exn_t v_17 = {0};
+         fx_exn_t v_16 = {0};
          FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(&v_13->u.Some, loc_0, &v_14, 0), _fx_catch_2);
-         FX_CALL(_fx_F6stringS1S(&v_14, &v_15, 0), _fx_catch_2);
          fx_str_t slit_1 = FX_MAKE_STR("there is no type properties for union \'");
          fx_str_t slit_2 = FX_MAKE_STR("\'");
          {
-            const fx_str_t strs_0[] = { slit_1, v_15, slit_2 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_16), _fx_catch_2);
+            const fx_str_t strs_0[] = { slit_1, v_14, slit_2 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_15), _fx_catch_2);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_16, &v_17, 0), _fx_catch_2);
-         FX_THROW(&v_17, false, _fx_catch_2);
+         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_15, &v_16, 0), _fx_catch_2);
+         FX_THROW(&v_16, false, _fx_catch_2);
 
       _fx_catch_2: ;
-         fx_free_exn(&v_17);
-         FX_FREE_STR(&v_16);
+         fx_free_exn(&v_16);
          FX_FREE_STR(&v_15);
          FX_FREE_STR(&v_14);
          goto _fx_endmatch_0;
       }
    }
    if (tag_0 == 14) {
-      fx_exn_t v_18 = {0};
+      fx_exn_t v_17 = {0};
       fx_str_t slit_3 = FX_MAKE_STR("there is no type properties for the anonymoous union");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_3, &v_18, 0), _fx_catch_3);
-      FX_THROW(&v_18, false, _fx_catch_3);
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_3, &v_17, 0), _fx_catch_3);
+      FX_THROW(&v_17, false, _fx_catch_3);
 
    _fx_catch_3: ;
-      fx_free_exn(&v_18);
+      fx_free_exn(&v_17);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 15) {
+      _fx_Ta2R9Ast__id_t v_18 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
       _fx_Ta2R9Ast__id_t v_19 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
-      _fx_Ta2R9Ast__id_t v_20 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
-      _fx_make_R17C_form__ctprops_t(true, false, true, false, 0, &v_19, &v_20, &ctp_0);
+      _fx_make_R17C_form__ctprops_t(true, false, true, false, 0, &v_18, &v_19, &ctp_0);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 16) {
+      _fx_Ta2R9Ast__id_t v_20 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
       _fx_Ta2R9Ast__id_t v_21 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
-      _fx_Ta2R9Ast__id_t v_22 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
-      _fx_make_R17C_form__ctprops_t(true, false, true, false, 0, &v_21, &v_22, &ctp_0);
+      _fx_make_R17C_form__ctprops_t(true, false, true, false, 0, &v_20, &v_21, &ctp_0);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 17) {
+      _fx_Ta2R9Ast__id_t v_22 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
       _fx_Ta2R9Ast__id_t v_23 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
-      _fx_Ta2R9Ast__id_t v_24 = { _fx_g9Ast__noid, _fx_g9Ast__noid };
-      _fx_make_R17C_form__ctprops_t(false, false, false, false, 0, &v_23, &v_24, &ctp_0);
+      _fx_make_R17C_form__ctprops_t(false, false, false, false, 0, &v_22, &v_23, &ctp_0);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 18) {
-      _fx_Ta2R9Ast__id_t v_25 = { _fx_g23C_form__std_FX_FREE_ARR, _fx_g23C_form__std_fx_free_arr };
-      _fx_Ta2R9Ast__id_t v_26 = { _fx_g9Ast__noid, _fx_g23C_form__std_fx_copy_arr };
-      _fx_make_R17C_form__ctprops_t(false, true, false, true, 0, &v_25, &v_26, &ctp_0);
+      _fx_Ta2R9Ast__id_t v_24 = { _fx_g23C_form__std_FX_FREE_ARR, _fx_g23C_form__std_fx_free_arr };
+      _fx_Ta2R9Ast__id_t v_25 = { _fx_g9Ast__noid, _fx_g23C_form__std_fx_copy_arr };
+      _fx_make_R17C_form__ctprops_t(false, true, false, true, 0, &v_24, &v_25, &ctp_0);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 19) {
-      _fx_Ta2R9Ast__id_t v_27 = { _fx_g9Ast__noid, _fx_g23C_form__std_fx_free_vec };
-      _fx_Ta2R9Ast__id_t v_28 = { _fx_g9Ast__noid, _fx_g23C_form__std_fx_copy_vec };
-      _fx_make_R17C_form__ctprops_t(false, true, false, true, 0, &v_27, &v_28, &ctp_0);
+      _fx_Ta2R9Ast__id_t v_26 = { _fx_g9Ast__noid, _fx_g23C_form__std_fx_free_vec };
+      _fx_Ta2R9Ast__id_t v_27 = { _fx_g9Ast__noid, _fx_g23C_form__std_fx_copy_vec };
+      _fx_make_R17C_form__ctprops_t(false, true, false, true, 0, &v_26, &v_27, &ctp_0);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 20) {
-      _fx_N15C_form__cinfo_t v_29 = {0};
+      _fx_N15C_form__cinfo_t v_28 = {0};
       _fx_R9Ast__id_t* i_0 = &ctyp_0->u.CTypName;
-      FX_CALL(_fx_M6C_formFM6cinfo_N15C_form__cinfo_t2R9Ast__id_tR10Ast__loc_t(i_0, loc_0, &v_29, 0), _fx_catch_5);
-      int tag_1 = v_29.tag;
+      FX_CALL(_fx_M6C_formFM6cinfo_N15C_form__cinfo_t2R9Ast__id_tR10Ast__loc_t(i_0, loc_0, &v_28, 0), _fx_catch_5);
+      int tag_1 = v_28.tag;
       if (tag_1 == 4) {
-         _fx_R17C_form__cdeftyp_t v_30 = {0};
-         _fx_copy_R17C_form__cdeftyp_t(&v_29.u.CTyp->data, &v_30);
-         _fx_copy_R17C_form__ctprops_t(&v_30.ct_props, &ctp_0);
-         _fx_free_R17C_form__cdeftyp_t(&v_30);
+         _fx_R17C_form__cdeftyp_t v_29 = {0};
+         _fx_copy_R17C_form__cdeftyp_t(&v_28.u.CTyp->data, &v_29);
+         _fx_copy_R17C_form__ctprops_t(&v_29.ct_props, &ctp_0);
+         _fx_free_R17C_form__cdeftyp_t(&v_29);
       }
       else if (tag_1 == 6) {
-         _fx_Ta2R9Ast__id_t v_31 = { _fx_g25C_form__std_FX_FREE_IFACE, _fx_g25C_form__std_fx_free_iface };
-         _fx_Ta2R9Ast__id_t v_32 = { _fx_g25C_form__std_FX_COPY_IFACE, _fx_g25C_form__std_fx_copy_iface };
-         _fx_make_R17C_form__ctprops_t(false, true, false, true, 0, &v_31, &v_32, &ctp_0);
+         _fx_Ta2R9Ast__id_t v_30 = { _fx_g25C_form__std_FX_FREE_IFACE, _fx_g25C_form__std_fx_free_iface };
+         _fx_Ta2R9Ast__id_t v_31 = { _fx_g25C_form__std_FX_COPY_IFACE, _fx_g25C_form__std_fx_copy_iface };
+         _fx_make_R17C_form__ctprops_t(false, true, false, true, 0, &v_30, &v_31, &ctp_0);
       }
       else {
+         fx_str_t v_32 = {0};
          fx_str_t v_33 = {0};
-         fx_str_t v_34 = {0};
-         fx_str_t v_35 = {0};
-         fx_exn_t v_36 = {0};
-         FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(i_0, loc_0, &v_33, 0), _fx_catch_4);
-         FX_CALL(_fx_F6stringS1S(&v_33, &v_34, 0), _fx_catch_4);
+         fx_exn_t v_34 = {0};
+         FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(i_0, loc_0, &v_32, 0), _fx_catch_4);
          fx_str_t slit_4 = FX_MAKE_STR("properties of non-type \'");
          fx_str_t slit_5 = FX_MAKE_STR("\' cannot be requested");
          {
-            const fx_str_t strs_1[] = { slit_4, v_34, slit_5 };
-            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_35), _fx_catch_4);
+            const fx_str_t strs_1[] = { slit_4, v_32, slit_5 };
+            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_33), _fx_catch_4);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_35, &v_36, 0), _fx_catch_4);
-         FX_THROW(&v_36, false, _fx_catch_4);
+         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_33, &v_34, 0), _fx_catch_4);
+         FX_THROW(&v_34, false, _fx_catch_4);
 
       _fx_catch_4: ;
-         fx_free_exn(&v_36);
-         FX_FREE_STR(&v_35);
-         FX_FREE_STR(&v_34);
+         fx_free_exn(&v_34);
          FX_FREE_STR(&v_33);
+         FX_FREE_STR(&v_32);
       }
       FX_CHECK_EXN(_fx_catch_5);
 
    _fx_catch_5: ;
-      _fx_free_N15C_form__cinfo_t(&v_29);
+      _fx_free_N15C_form__cinfo_t(&v_28);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 21) {
-      fx_exn_t v_37 = {0};
+      fx_exn_t v_35 = {0};
       fx_str_t slit_6 = FX_MAKE_STR("properties of label cannot be requested");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_6, &v_37, 0), _fx_catch_6);
-      FX_THROW(&v_37, false, _fx_catch_6);
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_6, &v_35, 0), _fx_catch_6);
+      FX_THROW(&v_35, false, _fx_catch_6);
 
    _fx_catch_6: ;
-      fx_free_exn(&v_37);
+      fx_free_exn(&v_35);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 22) {
-      fx_exn_t v_38 = {0};
+      fx_exn_t v_36 = {0};
       fx_str_t slit_7 = FX_MAKE_STR("properties of \'any type\' cannot be requested");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_7, &v_38, 0), _fx_catch_7);
-      FX_THROW(&v_38, false, _fx_catch_7);
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_7, &v_36, 0), _fx_catch_7);
+      FX_THROW(&v_36, false, _fx_catch_7);
 
    _fx_catch_7: ;
-      fx_free_exn(&v_38);
+      fx_free_exn(&v_36);
       goto _fx_endmatch_0;
    }
    FX_FAST_THROW(FX_EXN_NoMatchError, _fx_cleanup);
 
 _fx_endmatch_0: ;
    FX_CHECK_EXN(_fx_cleanup);
-   _fx_Ta2R9Ast__id_t* v_39 = &ctp_0.ctp_copy;
-   _fx_R9Ast__id_t copy_m_0 = v_39->t0;
-   _fx_R9Ast__id_t copy_f_0 = v_39->t1;
-   _fx_Ta2R9Ast__id_t* v_40 = &ctp_0.ctp_free;
-   _fx_R9Ast__id_t free_m_0 = v_40->t0;
-   _fx_R9Ast__id_t free_f_0 = v_40->t1;
+   _fx_Ta2R9Ast__id_t* v_37 = &ctp_0.ctp_copy;
+   _fx_R9Ast__id_t copy_m_0 = v_37->t0;
+   _fx_R9Ast__id_t copy_f_0 = v_37->t1;
+   _fx_Ta2R9Ast__id_t* v_38 = &ctp_0.ctp_free;
+   _fx_R9Ast__id_t free_m_0 = v_38->t0;
+   _fx_R9Ast__id_t free_f_0 = v_38->t1;
    bool res_1;
    FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&free_m_0, &_fx_g9Ast__noid, &res_1, 0), _fx_cleanup);
    bool t_0;
@@ -9283,27 +9245,24 @@ FX_EXTERN_C int _fx_M11C_gen_typesFM15get_constructorR9Ast__id_t3N14C_form__ctyp
    }
    fx_str_t v_1 = {0};
    fx_str_t v_2 = {0};
-   fx_str_t v_3 = {0};
-   fx_exn_t v_4 = {0};
+   fx_exn_t v_3 = {0};
    if (!required_0) {
       *fx_result = _fx_g9Ast__noid;
    }
    else {
       FX_CALL(_fx_M6C_formFM9ctyp2str_S2N14C_form__ctyp_tR10Ast__loc_t(ctyp_0, loc_0, &v_1, 0), _fx_catch_0);
-      FX_CALL(_fx_F6stringS1S(&v_1, &v_2, 0), _fx_catch_0);
       fx_str_t slit_0 = FX_MAKE_STR("cgen: missing type constructor for \'");
       fx_str_t slit_1 = FX_MAKE_STR("\'");
       {
-         const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_catch_0);
+         const fx_str_t strs_0[] = { slit_0, v_1, slit_1 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_2), _fx_catch_0);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_catch_0);
-      FX_THROW(&v_4, false, _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_2, &v_3, 0), _fx_catch_0);
+      FX_THROW(&v_3, false, _fx_catch_0);
    }
 
 _fx_catch_0: ;
-   fx_free_exn(&v_4);
-   FX_FREE_STR(&v_3);
+   fx_free_exn(&v_3);
    FX_FREE_STR(&v_2);
    FX_FREE_STR(&v_1);
 
@@ -10631,7 +10590,7 @@ static int
          fx_str_t v_12 = {0};
          fx_exn_t v_13 = {0};
          FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &v_10, 0), _fx_catch_1);
-         FX_CALL(_fx_F6stringS1S(&v_10, &v_11, 0), _fx_catch_1);
+         FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_10, &v_11, 0), _fx_catch_1);
          fx_str_t slit_0 = FX_MAKE_STR("non-recursive variant type \'");
          fx_str_t slit_1 = FX_MAKE_STR("\' references itself directly or indirectly");
          {
@@ -10684,7 +10643,7 @@ _fx_endmatch_0: ;
          fx_str_t v_16 = {0};
          fx_exn_t v_17 = {0};
          FX_CALL(_fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &v_14, 0), _fx_catch_2);
-         FX_CALL(_fx_F6stringS1S(&v_14, &v_15, 0), _fx_catch_2);
+         FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_14, &v_15, 0), _fx_catch_2);
          fx_str_t slit_3 = FX_MAKE_STR("cgen: missing information about recursive variant \'");
          fx_str_t slit_4 = FX_MAKE_STR("\'");
          {
@@ -11598,7 +11557,7 @@ _fx_endmatch_1: ;
                fx_str_t v_153 = {0};
                fx_exn_t v_154 = {0};
                FX_CALL(_fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &v_151, 0), _fx_catch_12);
-               FX_CALL(_fx_F6stringS1S(&v_151, &v_152, 0), _fx_catch_12);
+               FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_151, &v_152, 0), _fx_catch_12);
                fx_str_t slit_14 = FX_MAKE_STR("unexpected element destructor when converting ");
                {
                   const fx_str_t strs_6[] = { slit_14, v_152 };
@@ -11652,7 +11611,7 @@ _fx_endmatch_1: ;
             fx_str_t v_160 = {0};
             fx_exn_t v_161 = {0};
             FX_CALL(_fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &v_158, 0), _fx_catch_13);
-            FX_CALL(_fx_F6stringS1S(&v_158, &v_159, 0), _fx_catch_13);
+            FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_158, &v_159, 0), _fx_catch_13);
             fx_str_t slit_16 = FX_MAKE_STR("missing element copy operator when converting ");
             {
                const fx_str_t strs_7[] = { slit_16, v_159 };
@@ -11935,7 +11894,7 @@ _fx_endmatch_1: ;
                fx_str_t v_210 = {0};
                fx_exn_t v_211 = {0};
                FX_CALL(_fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &v_208, 0), _fx_catch_15);
-               FX_CALL(_fx_F6stringS1S(&v_208, &v_209, 0), _fx_catch_15);
+               FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_208, &v_209, 0), _fx_catch_15);
                fx_str_t slit_23 = FX_MAKE_STR("unexpected element destructor when converting ");
                {
                   const fx_str_t strs_9[] = { slit_23, v_209 };
@@ -11989,7 +11948,7 @@ _fx_endmatch_1: ;
             fx_str_t v_217 = {0};
             fx_exn_t v_218 = {0};
             FX_CALL(_fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &v_215, 0), _fx_catch_16);
-            FX_CALL(_fx_F6stringS1S(&v_215, &v_216, 0), _fx_catch_16);
+            FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_215, &v_216, 0), _fx_catch_16);
             fx_str_t slit_25 = FX_MAKE_STR("missing element copy operator when converting ");
             {
                const fx_str_t strs_10[] = { slit_25, v_216 };
@@ -12521,7 +12480,7 @@ _fx_endmatch_1: ;
             fx_str_t v_277 = {0};
             fx_exn_t v_278 = {0};
             if (free_cases_0->tl != 0) {
-               FX_CALL(_fx_F6stringS1S(&kvar_cname_0, &v_276, 0), _fx_catch_24);
+               FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&kvar_cname_0, &v_276, 0), _fx_catch_24);
                fx_str_t slit_33 = FX_MAKE_STR("cgen: variant \'");
                fx_str_t slit_34 = FX_MAKE_STR("\' with no tag somehow has multiple cases in the destructor");
                {
@@ -12943,9 +12902,9 @@ _fx_endmatch_1: ;
             fx_str_t v_327 = {0};
             fx_exn_t v_328 = {0};
             FX_CALL(_fx_M3AstFM2ppS1RM4id_t(&ki_name_0, &v_322, 0), _fx_catch_30);
-            FX_CALL(_fx_F6stringS1S(&v_322, &v_323, 0), _fx_catch_30);
+            FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_322, &v_323, 0), _fx_catch_30);
             FX_CALL(_fx_M3AstFM2ppS1RM4id_t(&f_3, &v_324, 0), _fx_catch_30);
-            FX_CALL(_fx_F6stringS1S(&v_324, &v_325, 0), _fx_catch_30);
+            FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_324, &v_325, 0), _fx_catch_30);
             FX_CALL(_fx_M6K_formFM6stringS1N14K_form__ktyp_t(t_0, &v_326, 0), _fx_catch_30);
             fx_str_t slit_39 = FX_MAKE_STR("cgen: method ");
             fx_str_t slit_40 = FX_MAKE_STR(".");
@@ -13129,7 +13088,7 @@ _fx_endmatch_1: ;
       fx_str_t v_343 = {0};
       fx_exn_t v_344 = {0};
       FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(tn_0, loc_0, &v_341, 0), _fx_catch_33);
-      FX_CALL(_fx_F6stringS1S(&v_341, &v_342, 0), _fx_catch_33);
+      FX_CALL(_fx_M11C_gen_typesFM6stringS1S(&v_341, &v_342, 0), _fx_catch_33);
       fx_str_t slit_44 = FX_MAKE_STR("type \'");
       fx_str_t slit_45 = FX_MAKE_STR("\' cannot be converted to C");
       {
@@ -14569,18 +14528,17 @@ static int
    _fx_LT2N15C_form__cstmt_tNt10Hashset__t1R9Ast__id_t decls_plus_0 = 0;
    fx_str_t v_0 = {0};
    fx_str_t v_1 = {0};
-   fx_str_t v_2 = {0};
-   fx_exn_t v_3 = {0};
+   fx_exn_t v_2 = {0};
    int fx_status = 0;
    _fx_LT2N15C_form__cstmt_tNt10Hashset__t1R9Ast__id_t lstend_0 = 0;
    _fx_LN15C_form__cstmt_t lst_0 = all_ctypes_decl_0;
    for (; lst_0; lst_0 = lst_0->tl) {
-      _fx_LN15C_form__cstmt_t v_4 = 0;
+      _fx_LN15C_form__cstmt_t v_3 = 0;
       _fx_Nt10Hashset__t1R9Ast__id_t uv_0 = 0;
       _fx_T2N15C_form__cstmt_tNt10Hashset__t1R9Ast__id_t tup_0 = {0};
       _fx_N15C_form__cstmt_t s_0 = lst_0->hd;
-      FX_CALL(_fx_cons_LN15C_form__cstmt_t(s_0, 0, true, &v_4), _fx_catch_0);
-      FX_CALL(_fx_M11C_gen_typesFM17used_ids_by_ccodeNt10Hashset__t1R9Ast__id_t2LN15C_form__cstmt_ti(v_4, 8, &uv_0, 0),
+      FX_CALL(_fx_cons_LN15C_form__cstmt_t(s_0, 0, true, &v_3), _fx_catch_0);
+      FX_CALL(_fx_M11C_gen_typesFM17used_ids_by_ccodeNt10Hashset__t1R9Ast__id_t2LN15C_form__cstmt_ti(v_3, 8, &uv_0, 0),
          _fx_catch_0);
       _fx_make_T2N15C_form__cstmt_tNt10Hashset__t1R9Ast__id_t(s_0, uv_0, &tup_0);
       _fx_LT2N15C_form__cstmt_tNt10Hashset__t1R9Ast__id_t node_0 = 0;
@@ -14592,8 +14550,8 @@ static int
       if (uv_0) {
          _fx_free_Nt10Hashset__t1R9Ast__id_t(&uv_0);
       }
-      if (v_4) {
-         _fx_free_LN15C_form__cstmt_t(&v_4);
+      if (v_3) {
+         _fx_free_LN15C_form__cstmt_t(&v_3);
       }
       FX_CHECK_EXN(_fx_cleanup);
    }
@@ -14608,21 +14566,21 @@ static int
          _fx_T2N15C_form__cstmt_tNt10Hashset__t1R9Ast__id_t* __pat___0 = &lst_1->hd;
          FX_COPY_PTR(__pat___0->t0, &s_1);
          FX_COPY_PTR(__pat___0->t1, &uv_1);
-         bool v_5;
+         bool v_4;
          FX_CALL(
             _fx_M11C_gen_typesFM12is_used_declB5N15C_form__cstmt_tNt10Hashset__t1R9Ast__id_tBNt10Hashset__t1SNt10Hashset__t1S(
-               s_1, used_ids_0, false, used_fwd_names_0, used_names_0, &v_5, 0), _fx_catch_2);
-         if (v_5) {
+               s_1, used_ids_0, false, used_fwd_names_0, used_names_0, &v_4, 0), _fx_catch_2);
+         if (v_4) {
             fx_copy_arr(&uv_1->u.t.t5, &table_0);
-            int_ v_6 = uv_1->u.t.t2;
-            FX_CHKIDX_RANGE(FX_ARR_SIZE(table_0, 0), 0, v_6, 1, 1, 0, _fx_catch_2);
-            for (int_ j_0 = 0; j_0 < v_6; j_0++) {
+            int_ v_5 = uv_1->u.t.t2;
+            FX_CHKIDX_RANGE(FX_ARR_SIZE(table_0, 0), 0, v_5, 1, 1, 0, _fx_catch_2);
+            for (int_ j_0 = 0; j_0 < v_5; j_0++) {
                if (FX_PTR_1D(_fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t, table_0, j_0)->hv < 9223372036854775808ULL) {
                   FX_CHKIDX(FX_CHKIDX1(table_0, 0, j_0), _fx_catch_1);
-                  _fx_R9Ast__id_t v_7 = FX_PTR_1D(_fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t, table_0, j_0)->key;
+                  _fx_R9Ast__id_t v_6 = FX_PTR_1D(_fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t, table_0, j_0)->key;
                   FX_CHKIDX(FX_CHKIDX1(table_0, 0, j_0), _fx_catch_1);
                   FX_CALL(
-                     _fx_M11C_gen_typesFM4add_v3Nt10Hashset__t1R9Ast__id_tR9Ast__id_tq(used_ids_0, &v_7,
+                     _fx_M11C_gen_typesFM4add_v3Nt10Hashset__t1R9Ast__id_tR9Ast__id_tq(used_ids_0, &v_6,
                         FX_PTR_1D(_fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t, table_0, j_0)->hv, 0), _fx_catch_1);
                }
 
@@ -14651,14 +14609,13 @@ static int
    }
    if (!done_0) {
       FX_CALL(_fx_M3AstFM2ppS1RM4id_t(mname_0, &v_0, 0), _fx_cleanup);
-      FX_CALL(_fx_F6stringS1S(&v_0, &v_1, 0), _fx_cleanup);
       fx_str_t slit_0 = FX_MAKE_STR(": too many iterations in update_used_ctypes_");
       {
-         const fx_str_t strs_0[] = { v_1, slit_0 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_2), _fx_cleanup);
+         const fx_str_t strs_0[] = { v_0, slit_0 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_1), _fx_cleanup);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&_fx_g10Ast__noloc, &v_2, &v_3, 0), _fx_cleanup);
-      FX_THROW(&v_3, false, _fx_cleanup);
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&_fx_g10Ast__noloc, &v_1, &v_2, 0), _fx_cleanup);
+      FX_THROW(&v_2, false, _fx_cleanup);
    }
 
 _fx_cleanup: ;
@@ -14667,8 +14624,7 @@ _fx_cleanup: ;
    }
    FX_FREE_STR(&v_0);
    FX_FREE_STR(&v_1);
-   FX_FREE_STR(&v_2);
-   fx_free_exn(&v_3);
+   fx_free_exn(&v_2);
    return fx_status;
 }
 

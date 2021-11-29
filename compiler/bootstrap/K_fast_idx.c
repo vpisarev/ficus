@@ -4070,8 +4070,6 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
-
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
    struct _fx_R10Ast__loc_t* loc_0,
    fx_str_t* msg_0,
@@ -4370,6 +4368,13 @@ _fx_endmatch_0: ;
    *fx_result = !v_0;
 
 _fx_cleanup: ;
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M10K_fast_idxFM6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   fx_copy_str(a_0, fx_result);
    return fx_status;
 }
 
@@ -6973,7 +6978,7 @@ static int
                fx_str_t v_40 = {0};
                fx_exn_t v_41 = {0};
                FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(i_3, &for_loc_0, &v_38, 0), _fx_catch_7);
-               FX_CALL(_fx_F6stringS1S(&v_38, &v_39, 0), _fx_catch_7);
+               FX_CALL(_fx_M10K_fast_idxFM6stringS1S(&v_38, &v_39, 0), _fx_catch_7);
                fx_str_t slit_0 = FX_MAKE_STR("fast_idx: index \'");
                fx_str_t slit_1 = FX_MAKE_STR("\' is not found in the loop_idx, but it should be there");
                {
