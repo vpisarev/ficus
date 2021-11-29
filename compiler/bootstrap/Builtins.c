@@ -34,11 +34,16 @@ FX_VERSION_MINOR
 int_ _fx_g20__ficus_patchlevel__ = 
 FX_VERSION_PATCH
 ;
+fx_str_t _fx_g16__ficus_suffix__ = 
+FX_MAKE_STR(FX_VERSION_SUFFIX)
+;
 fx_str_t _fx_g20__ficus_git_commit__ = 
 FX_MAKE_STR(FX_GIT_COMMIT)
 ;
 fx_str_t _fx_g21__ficus_version_str__ = {0};
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
+
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
 
 fx_exn_t _fx_E10ASCIIErrorv = {0};
 fx_exn_t _fx_E11AssertErrorv = {0};
@@ -256,6 +261,13 @@ char buf[32];
 
 }
 
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   fx_copy_str(a_0, fx_result);
+   return fx_status;
+}
+
 FX_EXTERN_C int _fx_F3ordi1C(char_ c_0, int_* fx_result, void* fx_fv)
 {
    int fx_status = 0;
@@ -426,6 +438,7 @@ FX_EXTERN_C int fx_init_Builtins(void)
    fx_str_t v_0 = {0};
    fx_str_t v_1 = {0};
    fx_str_t v_2 = {0};
+   fx_str_t v_3 = {0};
    FX_REG_SIMPLE_STD_EXN(FX_EXN_ASCIIError, _fx_E10ASCIIErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_AssertError, _fx_E11AssertErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_BadArgError, _fx_E11BadArgErrorv);
@@ -457,17 +470,19 @@ FX_EXTERN_C int fx_init_Builtins(void)
    FX_CALL(_fx_F6stringS1i(_fx_g15__ficus_major__, &v_0, 0), _fx_cleanup);
    FX_CALL(_fx_F6stringS1i(_fx_g15__ficus_minor__, &v_1, 0), _fx_cleanup);
    FX_CALL(_fx_F6stringS1i(_fx_g20__ficus_patchlevel__, &v_2, 0), _fx_cleanup);
+   FX_CALL(_fx_F6stringS1S(&_fx_g16__ficus_suffix__, &v_3, 0), _fx_cleanup);
    fx_str_t slit_0 = FX_MAKE_STR(".");
    fx_str_t slit_1 = FX_MAKE_STR(".");
    {
-      const fx_str_t strs_0[] = { v_0, slit_0, v_1, slit_1, v_2 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &_fx_g21__ficus_version_str__), _fx_cleanup);
+      const fx_str_t strs_0[] = { v_0, slit_0, v_1, slit_1, v_2, v_3 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_0, 6, &_fx_g21__ficus_version_str__), _fx_cleanup);
    }
 
 _fx_cleanup: ;
    FX_FREE_STR(&v_0);
    FX_FREE_STR(&v_1);
    FX_FREE_STR(&v_2);
+   FX_FREE_STR(&v_3);
    return fx_status;
 }
 
