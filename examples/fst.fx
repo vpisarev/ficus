@@ -88,8 +88,17 @@ for x@i <- a {
 fun gen_msg(i: int, a: 't []) = if i < 0 || i >= size(a) {"not found"} else {f"a[{i}]={a[i]}"}
 println(f"imperative search: negative number in {a}: {gen_msg(i1, a)}")
 
-val i2 = find_opt(for i<-0:size(a) {a[i] < 0}).value_or(-1)
-println(f"fold-based search: negative number in {a}: {gen_msg(i2, a)}")
+fun find_idx_ret(a: 't [], f: 't -> bool): int
+{
+    for x@i <- a {if f(x) {return i}}
+    -1
+}
+
+val i2 = find_idx_ret(a, fun (x) {x < 0})
+println(f"return-based imperative version of search: negative number in {a}: {gen_msg(i2, a)}")
+
+val i3 = find_opt(for i<-0:size(a) {a[i] < 0}).value_or(-1)
+println(f"fold-based search: negative number in {a}: {gen_msg(i3, a)}")
 
 exception BreakWith: int
 
@@ -106,8 +115,8 @@ fun find_idx(a: 't [], f: 't -> bool): int
     | BreakWith(i) => i
     }
 }
-val i3 = find_idx(a, fun (i) {i < 0})
-println(f"excepion-based search: negative number in {a}: {gen_msg(i3, a)}")
+val i4 = find_idx(a, fun (i) {i < 0})
+println(f"excepion-based search: negative number in {a}: {gen_msg(i4, a)}")
 
 type complex_t = {re: float; im: float}
 val c = ref (complex_t {re=1.f, im=1.f})

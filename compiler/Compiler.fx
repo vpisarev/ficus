@@ -392,8 +392,8 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 } else {
                     " /MT " + (if opt_level == 1 {"/O1"} else {"/O2"})
                 }
-            val cflags = f"/nologo{opt_flags}{omp_flag} /I{runtime_include_path}"
-            ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "/F10485760 kernel32.lib advapi32.lib")
+            val cflags = f"/utf-8 /nologo{opt_flags}{omp_flag} /I{runtime_include_path}"
+            ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "/nologo /F10485760 kernel32.lib advapi32.lib")
         } else {
             // unix or hopefully something more or less compatible with it
             val (os, libpath, cflags, clibs) =
@@ -479,7 +479,22 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         val (ok_j, recompiled, status_j) =
             if ok_j && (reprocess || !Filename.exists(obj_filename)) {
                 val cmd = f"{comp} {cflags} {obj_opt}{obj_filename} {c_filename}"
-                val result = Sys.command(cmd) == 0
+                val result =
+                    if c_comp == "cl" {
+                        val p = File.popen(cmd, "rt")
+                        var lineno = 0
+                        // read and immediately dump the output from cl,
+                        // except for the first line, which is the source file name
+                        while true {
+                            val str = p.readln()
+                            if str == "" { break }
+                            lineno += 1
+                            if lineno > 1 {print(str)}
+                        }
+                        p.pclose_exit_status() == 0
+                    } else {
+                        Sys.command(cmd) == 0
+                    }
                 val status = if result {clrmsg(MsgGreen, "ok")} else {clrmsg(MsgRed, "fail")}
                 (result, true, status)
             } else {

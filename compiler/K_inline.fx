@@ -425,7 +425,10 @@ fun inline_some(kmods: kmodule_t list)
             fold_kexp(e, callb)
             curr_fi = saved_fi
             // functions that contain other functions cannot be inlined
-            *saved_fi = saved_fi->{fi_can_inline=false}
+            curr_fi->fi_can_inline=false
+        | KExpReturn(_) =>
+            // currently do not expand functions containing return
+            curr_fi->fi_can_inline=false
         | _ => fold_kexp(e, callb)
         }
 

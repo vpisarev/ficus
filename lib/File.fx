@@ -66,6 +66,22 @@ fun popen(cmdname: string, mode: string) =
     }
 }
 
+fun pclose_exit_status(f: File.t): int
+@ccode {
+    if(!f->handle || !f->handle->ptr || f->handle->free_f != fx_pipe_destructor)
+        FX_FAST_THROW_RET(FX_EXN_FileOpenError);
+
+    *fx_result =
+#ifdef _WIN32            
+        _pclose(f->handle->ptr);
+#else
+        WEXITSTATUS(pclose(f->handle->ptr));
+#endif                        
+
+    f->handle->ptr = 0;
+    return FX_OK;
+}
+
 @nothrow fun is_open(f: File.t): bool
 @ccode { return f->handle && f->handle->ptr; }
 
