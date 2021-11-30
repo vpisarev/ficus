@@ -71,12 +71,12 @@ fun pclose_exit_status(f: File.t): int
     if(!f->handle || !f->handle->ptr || f->handle->free_f != fx_pipe_destructor)
         FX_FAST_THROW_RET(FX_EXN_FileOpenError);
 
-    *fx_result =
-#ifdef _WIN32            
-        _pclose(f->handle->ptr);
+#ifdef _WIN32
+    *fx_result = _pclose(f->handle->ptr);
 #else
-        WEXITSTATUS(pclose(f->handle->ptr));
-#endif                        
+    int result = pclose(f->handle->ptr);
+    *fx_result = WEXITSTATUS(result);
+#endif
 
     f->handle->ptr = 0;
     return FX_OK;
