@@ -30,7 +30,7 @@ fun print_hdr()
 {
     val (Color, Normal) = if Sys.colorterm() {("\33[35;1m", "\33[0m")} else {("", "")}
     println(f"{Color}Ficus version:{Normal} {__ficus_version_str__} (git commit: {__ficus_git_commit__})")
-    println(f"{Color}Plaform:{Normal} {Sys.osname(true)}")
+    println(f"{Color}Platform:{Normal} {Sys.osname(true)}")
     println(f"{Color}C/C++ Compiler:{Normal} {Sys.cc_version()}")
 }
 

@@ -282,7 +282,7 @@ fun parse_options(): bool {
     }
     if prver {
         println(f"Ficus version: {__ficus_version_str__} (git commit: {__ficus_git_commit__})")
-        println(f"Plaform: {Sys.osname(true)}")
+        println(f"Platform: {Sys.osname(true)}")
         println(f"C/C++ Compiler: {Sys.cc_version()}")
         false
     } else if prhelp > 0 {
