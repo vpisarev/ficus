@@ -2023,7 +2023,7 @@ fun preprocess(ts: tklist_t): tklist_t
         //println(f"pp_atomic @ {ts.hd().1}, calc={calc}\n")
         val defval = PP_BOOL(false)
         match ts {
-        | (IDENT(_, "DEFINED"), _) :: (LPAREN(false), _) :: (IDENT(_, n), _) :: (RPAREN, _) :: rest =>
+        | (IDENT(_, "defined"), _) :: (LPAREN(false), _) :: (IDENT(_, n), _) :: (RPAREN, _) :: rest =>
             (rest, if calc {PP_BOOL(env.mem(n))} else {defval})
         | (IDENT(_, fname), _) :: (LPAREN(false), l1) :: rest =>
             // [TODO] currently only single-argument preprocessor intrinsic functions are supported

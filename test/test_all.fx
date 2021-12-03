@@ -16,9 +16,9 @@ import test_mandelbrot
 import test_matrix
 import test_closure
 import test_re
-@IFDEF HAVE_RE2
+@ifdef HAVE_RE2
 import test_re2
-@ENDIF
+@endif
 import test_ds
 import test_deque
 import test_filename

@@ -17,6 +17,29 @@ val M_LOG2 = 0.693147180559945309417232121458176568
 val FLT_EPSILON: float = @ccode {FLT_EPSILON}
 val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 
+fun floor(x: 't [+]) = [| for xi <- x {floor(xi)} |]
+fun ceil(x: 't [+]) = [| for xi <- x {ceil(xi)} |]
+fun trunc(x: 't [+]) = [| for xi <- x {trunc(xi)} |]
+fun round(x: 't [+]) = [| for xi <- x {round(xi)} |]
+
+fun sqrt(x: 't [+]) = [| for xi <- x {sqrt(xi)} |]
+fun atan(x: 't [+]) = [| for xi <- x {atan(xi)} |]
+fun asin(x: 't [+]) = [| for xi <- x {asin(xi)} |]
+fun acos(x: 't [+]) = [| for xi <- x {acos(xi)} |]
+fun cos(x: 't [+]) = [| for xi <- x {cos(xi)} |]
+fun sin(x: 't [+]) = [| for xi <- x {sin(xi)} |]
+fun tan(x: 't [+]) = [| for xi <- x {tan(xi)} |]
+
+fun log(x: 't [+]) = [| for xi <- x {log(xi)} |]
+fun exp(x: 't [+]) = [| for xi <- x {exp(xi)} |]
+
+fun atanh(x: 't [+]) = [| for xi <- x {atanh(xi)} |]
+fun asinh(x: 't [+]) = [| for xi <- x {asinh(xi)} |]
+fun acosh(x: 't [+]) = [| for xi <- x {acosh(xi)} |]
+fun cosh(x: 't [+]) = [| for xi <- x {cosh(xi)} |]
+fun sinh(x: 't [+]) = [| for xi <- x {sinh(xi)} |]
+fun tanh(x: 't [+]) = [| for xi <- x {tanh(xi)} |]
+
 @pure @nothrow fun floor(x: float): int = @ccode { int_ i = (int_)x; return i - (i > x) }
 @pure @nothrow fun floor(x: double): int = @ccode { int_ i = (int_)x; return i - (i > x) }
 @pure @nothrow fun ceil(x: float): int = @ccode { int_ i = (int_)x; return i + (i < x) }
@@ -61,24 +84,6 @@ val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 @inline fun sinh(x: double): double = __intrin_sinh__(x)
 @inline fun tanh(x: float): float = __intrin_tanh__(x)
 @inline fun tanh(x: double): double = __intrin_tanh__(x)
-
-fun sqrt(x: 't [+]) = [| for xi <- x {sqrt(xi)} |]
-fun atan(x: 't [+]) = [| for xi <- x {atan(xi)} |]
-fun asin(x: 't [+]) = [| for xi <- x {asin(xi)} |]
-fun acos(x: 't [+]) = [| for xi <- x {acos(xi)} |]
-fun cos(x: 't [+]) = [| for xi <- x {cos(xi)} |]
-fun sin(x: 't [+]) = [| for xi <- x {sin(xi)} |]
-fun tan(x: 't [+]) = [| for xi <- x {tan(xi)} |]
-
-fun log(x: 't [+]) = [| for xi <- x {log(xi)} |]
-fun exp(x: 't [+]) = [| for xi <- x {exp(xi)} |]
-
-fun atanh(x: 't [+]) = [| for xi <- x {atanh(xi)} |]
-fun asinh(x: 't [+]) = [| for xi <- x {asinh(xi)} |]
-fun acosh(x: 't [+]) = [| for xi <- x {acosh(xi)} |]
-fun cosh(x: 't [+]) = [| for xi <- x {cosh(xi)} |]
-fun sinh(x: 't [+]) = [| for xi <- x {sinh(xi)} |]
-fun tanh(x: 't [+]) = [| for xi <- x {tanh(xi)} |]
 
 @pure @nothrow fun isnan(x: float): bool
 @ccode {

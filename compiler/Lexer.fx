@@ -216,10 +216,10 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
     ("@parallel", (PARALLEL, 2)),  ("@private", (PRIVATE, 2)),
     ("@sync", (SYNC, 1)), ("@text", (DATA("text"), 2)),
     ("@pure", (PURE, 2)),  ("@unzip", (UNZIP, 2)),
-    ("@IF", (PP_IF, 2)), ("@IFDEF", (PP_IFDEF, 2)), ("@IFNDEF", (PP_IFNDEF, 2)),
-    ("@ELIF", (PP_ELIF, 1)), ("@ELSE", (PP_ELSE, 1)), ("@ENDIF", (PP_ENDIF, 3)),
-    ("@DEFINE", (PP_DEFINE, 2)), ("@UNDEF", (PP_UNDEF, 2)),
-    ("@ERROR", (PP_ERROR, 2)), ("@WARNING", (PP_WARNING, 2))
+    ("@if", (PP_IF, 2)), ("@ifdef", (PP_IFDEF, 2)), ("@ifndef", (PP_IFNDEF, 2)),
+    ("@elif", (PP_ELIF, 1)), ("@else", (PP_ELSE, 1)), ("@endif", (PP_ENDIF, 3)),
+    ("@define", (PP_DEFINE, 2)), ("@undef", (PP_UNDEF, 2)),
+    ("@error", (PP_ERROR, 2)), ("@warning", (PP_WARNING, 2))
     ])
 
 /*  The function that returns the actual tokenizer/lexer function,

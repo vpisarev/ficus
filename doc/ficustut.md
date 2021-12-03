@@ -3727,13 +3727,13 @@ a missing value is replaced by `true`.
 The defined symbols are inserted into the beginning of each compiled module in the form:
 
 ```
-@DEFINE symbol_name value
+@define symbol_name value
 ```
 
 Users can also put their own definitions using
 
 ```
-@DEFINE symbol_name preprocessor_expression
+@define symbol_name preprocessor_expression
 ```
 
 directives, where `preprocessor_expression` is an arithmetic expression that may include literals, previously defined symbols and the following intrinsic functions and operations:
@@ -3741,38 +3741,38 @@ directives, where `preprocessor_expression` is an arithmetic expression that may
 * `abs(x)` - absolute value
 * `int(x)` - cast string or boolean to integer
 * `string(x)` - cast boolean or integer to string
-* `DEFINED(x)` - true if symbol `x` is defined
+* `defined(x)` - true if symbol `x` is defined
 * `f"..."` - string interpolation, see the section `Text Strings`.
 
 The opposite operation is
 
 ```
-@UNDEF symbol_name
+@undef symbol_name
 ```
 
-which removes the definition, so that subsequent `DEFINED(symbol_name)` return `false` until the `symbol_name` is defined again.
+which removes the definition, so that subsequent `defined(symbol_name)` return `false` until the `symbol_name` is defined again.
 
 ## Conditional Compilation
 
 It's possible to include and exclude certain parts of the compiled module using C-style conditional directives:
 
 ```
-@IF preprocessor_expr
+@if preprocessor_expr
     ...
-[@ELIF another_preprocessor_expr
+[@elif another_preprocessor_expr
     ...] // optional else_if-branches
-[@ELSE
+[@else
     ...] // optional else-branch
-@ENDIF // the corresponding to @IF closing directive
+@endif // the corresponding to @if closing directive
 ```
 
 with conventional shorter forms:
 
 ```
-@IFDEF symbol_name // equivalent to @IF DEFINED(symbol_name)
+@ifdef symbol_name // equivalent to @if defined(symbol_name)
 ...
 
-@IFNDEF symbol_name // equivalent to @IF !DEFINED(symbol_name)
+@ifndef symbol_name // equivalent to @if !defined(symbol_name)
 ...
 ```
 
@@ -3784,12 +3784,12 @@ is also similar to C preprocessor:
 // prints
 // '<location>: warning: <result_of_expression>' and
 // proceeds with compilation
-@WARNING preprocessor_expression
+@warning preprocessor_expression
 
 // prints
 // '<location>: error: <result_of_expression>' and
 // aborts compilation
-@ERROR preprocessor_expression
+@error preprocessor_expression
 ```
 
 the arguments should be text strings or expressions that produce text strings.
@@ -3812,13 +3812,13 @@ We can now have the following *cross-platform* code:
 
 ```
 // my_app.fx
-@IF Platform == "Win32"
+@if Platform == "Win32"
 import win32_ui as ui
-@ELIF Platform == "Linux"
+@elif Platform == "Linux"
 import linux_ui as ui
-@ELSE
-@ERROR "unsupported platform"
-@ENDIF
+@else
+@error "unsupported platform"
+@endif
 
 ui.make_button("Click me!", fun() {println("Hello!")})
 ui.run()
@@ -3837,8 +3837,8 @@ Besides the conditional compilation, the results of preprocessor expressions can
 ```
 // myexample.fx
 ...
-@DEFINE x 5
-@DEFINE y x + opt
+@define x 5
+@define y x + opt
 val x = @{y*y}
 println(x)
 ```
