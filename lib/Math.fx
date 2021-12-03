@@ -62,6 +62,24 @@ val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 @inline fun tanh(x: float): float = __intrin_tanh__(x)
 @inline fun tanh(x: double): double = __intrin_tanh__(x)
 
+fun sqrt(x: 't [+]) = [| for xi <- x {sqrt(xi)} |]
+fun atan(x: 't [+]) = [| for xi <- x {atan(xi)} |]
+fun asin(x: 't [+]) = [| for xi <- x {asin(xi)} |]
+fun acos(x: 't [+]) = [| for xi <- x {acos(xi)} |]
+fun cos(x: 't [+]) = [| for xi <- x {cos(xi)} |]
+fun sin(x: 't [+]) = [| for xi <- x {sin(xi)} |]
+fun tan(x: 't [+]) = [| for xi <- x {tan(xi)} |]
+
+fun log(x: 't [+]) = [| for xi <- x {log(xi)} |]
+fun exp(x: 't [+]) = [| for xi <- x {exp(xi)} |]
+
+fun atanh(x: 't [+]) = [| for xi <- x {atanh(xi)} |]
+fun asinh(x: 't [+]) = [| for xi <- x {asinh(xi)} |]
+fun acosh(x: 't [+]) = [| for xi <- x {acosh(xi)} |]
+fun cosh(x: 't [+]) = [| for xi <- x {cosh(xi)} |]
+fun sinh(x: 't [+]) = [| for xi <- x {sinh(xi)} |]
+fun tanh(x: 't [+]) = [| for xi <- x {tanh(xi)} |]
+
 @pure @nothrow fun isnan(x: float): bool
 @ccode {
     fx_bits32_t u;
