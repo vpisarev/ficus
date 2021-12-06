@@ -1396,6 +1396,7 @@ that is, you can simply put `val` (or `var`, if you want to modify the results a
 There are a few common operations that look like folding, but do not quite fit the current Ficus fold syntax and semantics.
 
 In particular:
+
 * checking that all elements from collection(s) satisfy certain criteria
 * checking if any of the elements satisfies criteria
 * finding the first/next element that satisfies criteria
@@ -1651,6 +1652,7 @@ In short, if a parameter is a scalar value or is already a pointer (`cptr`, `'t 
 There is just at most one output value, which is a function return value. If multiple values need to be returned by a function, use tuple. At the C code level (see [Interoperability with C](#interoperability-with-c)) all results are returned via pointer, even scalar values, unless the function is implemented in C/C++ and is declared as `@nothrow`, because the return code of the generated C function is used for exception handling (see [Exceptions](#exceptions)).
 
 All the function parameters are immutable values, but there is important clarification:
+
 * you can think of a function parameter as of defined (using `val`) value.
 * it means that if a parameter is reference or array, you still cannot assign to it, but you can modify its content:
 
@@ -2050,9 +2052,11 @@ moved_obj .= {velocity=moved_obj.velocity/2}
 ```
 
 Also, individual record elements can be assigned in the same situations as with tuples:
+
 * there is a variable of record type
 * there is an array of records
 * there is a reference to record
+
 You can also think of it as of a little optimization.
 
 ### Accessing, modifying record (and tuple) stored as referenced values
@@ -4276,7 +4280,7 @@ In fact, quite a few functions in the Ficus standard library are implemented in 
 
 `File` module in the standard library replicates all the functionality of the standard C's `stdio.h`. Without explaining it deeply, here is the list of useful functions and methods:
 
-* `File.open(filename, mode): File.t` — opens the file in requested mode, replication of `fopen` function from `C`. Throws `FileOpenError` exception if the file is not found or cannot be opened. Otherwise, the function returns an instance of class `File.t`, which methods are listed below (assuming that the class instance is called `file`):
+* `File.open(filename, mode): File.t` — opens the file in requested mode, replication of `fopen` function from `C`. Throws `FileOpenError` exception if the file is not found or cannot be opened. Otherwise, the function returns an instance of class `File.t`, which methods are listed below (assuming that the class instance is called `file`)
 * `file.eof(): bool` — `true` if we reached the end of file
 * `file.close(): void` — closes the file. It's safe to close file twice, the second call will be ignored. BTW, the file is closed automatically in the destructor.
 * `file.seek(pos, origin): void` — changes the position of the file to the specified one. `whence` is one of `SEEK_SET`, `SEEK_CURR` or `SEEK_END`.
