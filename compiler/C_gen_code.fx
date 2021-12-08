@@ -1514,18 +1514,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val ccode = make_cons_call(ce1, ce2, !reuse_ce2, l_exp, ccode, kloc)
                 (false, l_exp, ccode)
             | _ =>
-                val c_bop =
+                val (c_bop, bop_ctyp) =
                     match bop {
-                    | OpAdd => COpAdd
-                    | OpSub => COpSub
-                    | OpMul => COpMul
-                    | OpDiv => COpDiv
-                    | OpShiftLeft => COpShiftLeft
-                    | OpShiftRight => COpShiftRight
-                    | OpBitwiseAnd => match ktyp { | KTypBool => COpLogicAnd | _ => COpBitwiseAnd }
-                    | OpBitwiseOr => match ktyp { | KTypBool => COpLogicOr | _ => COpBitwiseOr }
-                    | OpBitwiseXor => COpBitwiseXor
-                    | OpCmp(cmpop) => COpCmp(cmpop)
+                    | OpAdd => (COpAdd, ctyp)
+                    | OpSub => (COpSub, ctyp)
+                    | OpMul => (COpMul, ctyp)
+                    | OpDiv => (COpDiv, ctyp)
+                    | OpShiftLeft => (COpShiftLeft, ctyp)
+                    | OpShiftRight => (COpShiftRight, ctyp)
+                    | OpBitwiseAnd => (COpBitwiseAnd, match ktyp {KTypBool => CTypInt | _ => ctyp})
+                    | OpBitwiseOr => (COpBitwiseOr, match ktyp {KTypBool => CTypInt | _ => ctyp})
+                    | OpBitwiseXor => (COpBitwiseXor, ctyp)
+                    | OpCmp(cmpop) => (COpCmp(cmpop), ctyp)
                     | OpCons | OpPow | OpMod | OpLogicAnd | OpLogicOr | OpSpaceship | OpDotSpaceship
                     | OpDotAdd | OpDotSub | OpDotMul | OpDotDiv | OpDotMod | OpDotPow | OpDotCmp _ | OpSame | OpRDiv | OpAugBinary(_) =>
                         throw compile_err(kloc, f"cgen: unsupported op '{bop}' at this stage")
@@ -1541,7 +1541,10 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         [cexp_get_addr(ce1), cexp_get_addr(ce2), cexp_get_addr(dst_exp) ], CTypCInt, kloc)
                     val ccode = add_fx_call(call_concat, ccode, kloc)
                     (false, dst_exp, ccode)
-                | _ => (true, CExpBinary(c_bop, ce1, ce2, (ctyp, kloc)), ccode)
+                | _ =>
+                    val res = CExpBinary(c_bop, ce1, ce2, (bop_ctyp, kloc))
+                    val res = if ctyp == bop_ctyp {res} else {CExpCast(res, ctyp, kloc)}
+                    (true, res, ccode)
                 }
             }
         | KExpUnary (OpMkRef, a1, _) =>
@@ -1787,11 +1790,11 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val chk = make_call(get_id("FX_CHKIDX_RANGE"), [arrsz_exp, a_exp, b_exp, delta_exp,
                                     scale_exp, shift_exp, lbl], CTypVoid, kloc)
                 (false, dummy_exp, CExp(chk) :: ccode)
-            | (IntrinMakeFPbyFCV, AtomId(fname)::[]) => 
+            | (IntrinMakeFPbyFCV, AtomId(fname)::[]) =>
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "make_fp_by_fcv", ctyp, ccode, kloc)
                 val macro = CExp(make_call( std_FX_MAKE_FP_BY_FCV, [make_id_t_exp(fname, std_CTypVoidPtr, kloc), dst_exp], CTypVoid, kloc ))
                 (false, dummy_exp, macro :: ccode)
-            | (IntrinGEMM, m1::t1::rs1::re1::rd1::cs1::ce1::cd1::m2::t2::rs2::re2::rd2::cs2::ce2::cd2::[]) => 
+            | (IntrinGEMM, m1::t1::rs1::re1::rd1::cs1::ce1::cd1::m2::t2::rs2::re2::rd2::cs2::ce2::cd2::[]) =>
                 fun handle_idx(range_idx: atom_t, deflt: int64) = match range_idx {
                     | AtomLit(KLitNil _) => AtomLit(KLitInt(deflt))
                     | _ => range_idx
@@ -1816,7 +1819,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "gemm", ctyp, ccode, kloc)
 
                 val call_exp = make_call(get_id("fx_gemm"),
-                    [ cexp_get_addr(m1exp), t1exp, rs1exp, re1exp, rd1exp, cs1exp, ce1exp, cd1exp, 
+                    [ cexp_get_addr(m1exp), t1exp, rs1exp, re1exp, rd1exp, cs1exp, ce1exp, cd1exp,
                       cexp_get_addr(m2exp), t2exp, rs2exp, re2exp, rd2exp, cs2exp, ce2exp, cd2exp,
                        cexp_get_addr(dst_exp)],
                     CTypVoid, kloc)
