@@ -222,6 +222,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
         | KTypChar  => "C" :: result
         | KTypString  => "S" :: result
         | KTypCPointer  => "p" :: result
+        | KTypRawPointer t => mangle_ktyp_(t, "P" :: result)
         | KTypFun (args, rt) =>
             val result = mangle_ktyp_(rt, "FP" :: result)
             val result = string(args.length()) :: result
@@ -286,6 +287,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
         match t {
         | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
         | KTypVoid | KTypBool | KTypChar | KTypString | KTypCPointer
+        | KTypRawPointer _ => t
         | KTypExn | KTypErr | KTypModule => t
         | KTypName n => ignore(mangle_ktyp(t, mangle_map, loc)); t
         | KTypRecord (rn, _) => ignore(mangle_ktyp(t, mangle_map, loc))

@@ -24,7 +24,7 @@ val pp_ = Ast.pp
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
     | KTypErr | KTypCPointer | KTypModule | KTypName _
     | KTypTuple _ | KTypRecord _ => 3
-    | KTypList _ | KTypRef _ | KTypArray _ | KTypVector _ => 2
+    | KTypList _ | KTypRef _ | KTypArray _ | KTypVector _ | KTypRawPointer _ => 2
     | KTypFun _ => 1
     }
 
@@ -96,6 +96,7 @@ val pp_ = Ast.pp
     | KTypExn  => pp.str("exn")
     | KTypErr  => pp.str("<err>")
     | KTypCPointer  => pp.str("cptr")
+    | KTypRawPointer t1 => ppktypsuf(t1, "*")
     | KTypModule  => pp.str("module")
     }
 }

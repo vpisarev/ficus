@@ -1584,9 +1584,23 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         | ("pow", x :: y :: [], xt :: yt :: []) =>
             unify(xt, yt, eloc, "arguments of pow() must have the same type")
             xt
+        | ("min", x :: y :: [], xt :: yt :: []) =>
+            unify(xt, yt, eloc, "arguments of pow() must have the same type")
+            xt
+        | ("max", x :: y :: [], xt :: yt :: []) =>
+            unify(xt, yt, eloc, "arguments of pow() must have the same type")
+            xt
+        | ("floor", x :: [], xt :: []) =>
+            TypInt
+        | ("ceil", x :: [], xt :: []) =>
+            TypInt
+        | ("round", x :: [], xt :: []) =>
+            TypInt
         | (_, x :: [], xt :: []) => xt
         | _ =>
-            val nargs_expected = if fstr == "atan2" || fstr == "pow" {2} else {1}
+            val nargs_expected =
+                if fstr == "atan2" || fstr == "pow" ||
+                    fstr == "min" || fstr == "max" {2} else {1}
             throw compile_err(eloc, f"incorrect number of arguments in __intrin_{fstr}__, \
                               {nargs_expected} expected")
         }

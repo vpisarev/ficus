@@ -44,8 +44,8 @@ fun tanh(x: 't [+]) = [| for xi <- x {tanh(xi)} |]
 @pure @nothrow fun floor(x: double): int = @ccode { int_ i = (int_)x; return i - (i > x) }
 @pure @nothrow fun ceil(x: float): int = @ccode { int_ i = (int_)x; return i + (i < x) }
 @pure @nothrow fun ceil(x: double): int = @ccode { int_ i = (int_)x; return i + (i < x) }
-@pure @nothrow fun trunc(x: float): int = @ccode { return (int_)x }
-@pure @nothrow fun trunc(x: double): int = @ccode { return (int_)x }
+@pure @nothrow fun trunc(x: float): int = (x :> int)
+@pure @nothrow fun trunc(x: double): int = (x :> int)
 
 @inline fun pow(x: float, y: float): float = __intrin_pow__(x, y)
 @inline fun pow(x: double, y: double): double = __intrin_pow__(x, y)

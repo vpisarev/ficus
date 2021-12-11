@@ -68,6 +68,7 @@ fun ktyp2ctyp(t: ktyp_t, loc: loc_t) {
         | KTypChar => CTypUniChar
         | KTypString => CTypString
         | KTypCPointer => CTypCSmartPtr
+        | KTypRawPointer(et) => CTypRawPtr([], ktyp2ctyp_(et))
         | KTypFun (args, rt) =>
             val args_ = ktyp2ctyp_fargs(args, rt, loc)
             CTypFunRawPtr(args_, CTypCInt)

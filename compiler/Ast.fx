@@ -159,6 +159,8 @@ type binary_t =
 type unary_t = OpPlus | OpNegate | OpDotMinus | OpBitwiseNot | OpLogicNot
     | OpMkRef | OpDeref | OpExpand | OpApos
 
+type sctyp_t = ScUInt8 | ScInt8 | ScUInt16 | ScInt16
+
 type intrin_t =
     | IntrinPopExn
     | IntrinVariantTag
@@ -173,7 +175,10 @@ type intrin_t =
     | IntrinCheckIdxRange
     | IntrinMakeFPbyFCV
     | IntrinGEMM
+    | IntrinGetSlice
+    | IntrinAccessSlice
     | IntrinMath: id_t
+    | IntrinSaturate: sctyp_t
 
 type val_flags_t =
 {
@@ -963,6 +968,14 @@ fun string(uop: unary_t) {
     | OpApos => "'"
 }
 
+fun string(sct: sctyp_t)
+{
+    | ScInt8 => "int8"
+    | ScUInt8 => "uint8"
+    | ScInt16 => "int16"
+    | ScUInt16 => "uint16"
+}
+
 fun string(iop: intrin_t): string
 {
     | IntrinPopExn => "__intrin_pop_exn__"
@@ -979,6 +992,9 @@ fun string(iop: intrin_t): string
     | IntrinMakeFPbyFCV => "__intrin_make_fp_by_fcv__"
     | IntrinGEMM => "__intrin_gemm__"
     | IntrinMath(f) => f"__intrin_{pp(f)}__"
+    | IntrinSaturate(sct) => f"__intrin_sat_{sct}__"
+    | IntrinGetSlice => "__intrin_get_slice__"
+    | IntrinAccessSlice => "__intrin_access_slice__"
 }
 
 fun border2str(border: border_t, f: bool) {
@@ -1521,21 +1537,22 @@ fun deref_typ_rec(t: typ_t)
 
 fun is_fixed_typ (t: typ_t): bool
 {
+    var is_fixed = true
     fun is_fixed_typ_(t: typ_t,  callb: ast_callb_t) =
-        match deref_typ(t) {
-        | TypVar (ref None) => throw Break
-        | t => walk_typ(t, callb)
-        }
+        if is_fixed {
+            match deref_typ(t) {
+            | TypVar (ref None) => is_fixed = false; t
+            | t => walk_typ(t, callb)
+            }
+        } else {t}
     val callb = ast_callb_t
     {
         ast_cb_typ = Some(is_fixed_typ_),
         ast_cb_exp = None,
         ast_cb_pat = None
     }
-    try {
-        val _ = is_fixed_typ_(t, callb);
-        true
-    } catch { | Break => false }
+    val _ = is_fixed_typ_(t, callb)
+    is_fixed
 }
 
 type idset_hashmap_t = (id_t, id_hashset_t) Hashmap.t

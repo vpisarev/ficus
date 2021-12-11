@@ -247,6 +247,67 @@ FX_INLINE int fx_round2i(double x) {
     return (int)u.i;
 }
 
+FX_INLINE int_ fx_floorf(float x) { int_ i = (int_)x; return i - (i > x); }
+FX_INLINE int_ fx_floor(double x) { int_ i = (int_)x; return i - (i > x); }
+FX_INLINE int_ fx_ceilf(float x) { int_ i = (int_)x; return i + (i < x); }
+FX_INLINE int_ fx_ceil(double x) { int_ i = (int_)x; return i + (i < x); }
+
+FX_INLINE uint8_t fx_sat_I2u8(int_ i) {
+    return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255);
+}
+
+FX_INLINE uint8_t fx_sat_f2u8(float f) {
+    int i = fx_roundf2i(f);
+    return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255);
+}
+
+FX_INLINE uint8_t fx_sat_d2u8(double d) {
+    int_ i = fx_round2I(d);
+    return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255);
+}
+
+FX_INLINE int8_t fx_sat_I2i8(int_ i) {
+    return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127);
+}
+
+FX_INLINE int8_t fx_sat_f2i8(float f) {
+    int i = fx_roundf2i(f);
+    return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127);
+}
+
+FX_INLINE int8_t fx_sat_d2i8(double d) {
+    int_ i = fx_round2I(d);
+    return (signed char)(((i + 128) & ~255) == 0 ? i : i < 0 ? -128 : 127);
+}
+
+FX_INLINE uint16_t fx_sat_I2u16(int_ i) {
+    return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
+}
+
+FX_INLINE uint16_t fx_sat_f2u16(float f) {
+    int i = fx_roundf2i(f);
+    return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
+}
+
+FX_INLINE uint16_t fx_sat_d2u16(double d) {
+    int_ i = fx_round2I(d);
+    return (unsigned short)((i & ~65535) == 0 ? i : i < 0 ? 0 : 65535);
+}
+
+FX_INLINE int16_t fx_sat_I2i16(int_ i) {
+    return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
+}
+
+FX_INLINE int16_t fx_sat_f2i16(float f) {
+    int i = fx_roundf2i(f);
+    return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
+}
+
+FX_INLINE int16_t fx_sat_d2i16(double d) {
+    int_ i = fx_round2I(d);
+    return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
+}
+
 ///////////////////////////// Strings ////////////////////////////
 
 // Unicode character category
@@ -608,9 +669,10 @@ FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ sc
     }
     return FX_OK;
 }
+
 #define FX_CHKIDX_RANGE(arrsz, a, b, delta, scale, shift, catch_label) \
-    if(fx_check_idx_range(arrsz, a, b, delta, scale, shift) >= 0) ; \
-    else goto catch_label
+    if((fx_status = fx_check_idx_range(arrsz, a, b, delta, scale, shift)) >= 0) ; \
+    else { FX_UPDATE_BT(); goto catch_label; }
 
 #define FX_PTR_1D(typ, arr, idx) \
     ((typ*)(arr).data + (idx))

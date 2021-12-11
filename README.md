@@ -72,8 +72,8 @@ ficus [-app|-run|...] [-O0|-O1|-O3] [-verbose] [-I <extra_module_path>]* [-o <ap
   * [xoshiro algorithm for random number generation](https://prng.di.unimi.it)
   * [Python-like hash table implementation](https://github.com/python/cpython/blob/master/Objects/dictobject.c)
   * [RE1](https://code.google.com/archive/p/re1/) and [RE2](https://github.com/google/re2) regular expression engines
-  * [OpenCV library][https://github.com/opencv/opencv]
+  * [OpenCV library](https://github.com/opencv/opencv)
   * [Red-Black trees in OCaml](https://github.com/bmeurer/ocaml-rbtrees)
   * [Unicode lookup table generator](https://www.strchr.com/multi-stage_tables)
-  * [Literata](https://fonts.google.com/specimen/Literata), [iA Writer](https://github.com/iaolo/iA-Fonts) and [Recursive](https://fonts.google.com/specimen/Recursive) fonts.
+  * [Literata](https://fonts.google.com/specimen/Literata), [iA Writer](https://github.com/iaolo/iA-Fonts) and [Recursive](https://www.recursive.design) fonts.
   * etc.

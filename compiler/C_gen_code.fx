@@ -622,7 +622,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 create_cdefval(gen_idc(cm_idx, "slit"), CTypString, default_tempval_flags(), "", Some(e0), ccode, loc)
             | KLitNil ktyp =>
                 match deref_ktyp(ktyp, loc) {
-                | KTypList _ | KTypCPointer =>
+                | KTypList _ | KTypCPointer | KTypRawPointer _ =>
                     (make_nullptr(loc), ccode)
                 | KTypVector et =>
                     val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
@@ -1830,11 +1830,61 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (c_exp, ccode) = atom2cexp(a, ccode, kloc)
                     (c_exp :: cargs, ccode)
                 }
-                val fname = pp(s) + (match ctyp {
-                            | CTypFloat(32) => "f"
+                val fname = pp(s)
+                val argtyp = get_atom_ktyp(args.hd(), kloc)
+                val prefix = match fname {
+                            | "floor" | "ceil" | "round "=> "fx_"
+                            | _ => ""
+                            }
+                val suffix = (match argtyp {
+                            | KTypFloat(32) => "f"
                             | _ => ""})
+                val fname = prefix + fname + suffix
                 val call_f = make_call(get_id(fname), cargs.rev(), ctyp, kloc)
                 (true, call_f, ccode)
+            | (IntrinSaturate(sct), arg :: []) =>
+                val (c_exp, ccode) = atom2cexp(arg, ccode, kloc)
+                val argtyp = get_atom_ktyp(arg, kloc)
+                val prefix = match argtyp {
+                            | KTypInt => "sat_I2"
+                            | KTypFloat(32) => "sat_f2"
+                            | KTypFloat(64) => "sat_d2"
+                            | _ =>
+                                throw compile_err(kloc, f"cgen: unsupported argument type {argtyp} of sat_...() intrinsic")
+                            }
+                val suffix = match ctyp {
+                            | CTypUInt(n) => f"u{n}"
+                            | CTypSInt(n) => f"i{n}"
+                            | _ =>
+                                throw compile_err(kloc, f"cgen: unsupported return type {ctyp2str(ctyp, kloc)} of sat_...() intrinsic")
+                            }
+                val fname = prefix + suffix
+                val call_f = make_call(get_id(fname), c_exp :: [], ctyp, kloc)
+                (true, call_f, ccode)
+            | (IntrinGetSlice, arr :: idxs) =>
+                val (arr_exp, ccode) = atom2cexp(arr, ccode, kloc)
+                val fold i_exps = [], ccode = ccode for i <- idxs {
+                    val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
+                    (i_exp :: i_exps, ccode)
+                }
+                val i_exps = make_int_exp(0, kloc) :: i_exps
+                val ndims = i_exps.length()
+                val fname = std_FX_PTR_xD.nth(ndims-1)
+                val elem_ctyp = match ctyp {
+                    | CTypRawPtr(_, elem_ctyp) => elem_ctyp
+                    | _ =>
+                        throw compile_err(kloc, f"cgen: unexpected return type \
+                            {ctyp2str(ctyp, kloc)} of IntrinGetSlice() intrinsic; \
+                            should be raw pointer")
+                    }
+                val get_slice_exp = make_call(fname, CExpTyp(elem_ctyp, kloc) ::
+                            arr_exp :: i_exps.rev(), make_ptr(elem_ctyp), kloc)
+                (true, get_slice_exp, ccode)
+            | (IntrinAccessSlice, ptr :: idx :: []) =>
+                val (ptr_exp, ccode) = atom2cexp(ptr, ccode, kloc)
+                val (i_exp, ccode) = atom2cexp(idx, ccode, kloc)
+                val get_elem_exp = CExpBinary(COpArrayElem, ptr_exp, i_exp, (ctyp, kloc))
+                (true, get_elem_exp, ccode)
             | _ => throw compile_err(kloc,
                 f"cgen: unsupported KExpIntrin({intr}, ...) or the wrong number of arguments ({args.length()})")
             }

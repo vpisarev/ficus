@@ -11,7 +11,7 @@ val N = match Sys.arguments() {
     | _ => 16000
     }
 
-val w = N, h = N, MAX_ITER = 50
+val w = N, h = N, MAX_ITER = 50, INNER_ITER = 5, OUTER_ITER = MAX_ITER / INNER_ITER
 val inv = 2.0 / w
 
 val x_ = [| @parallel for x <- 0:w {double(x) * inv - 1.5} |]
@@ -27,17 +27,19 @@ val result: uint8 [,] = [|
         var zr = cr, zi = ci
         var bits = (false, false, false, false, false, false, false, false)
 
-        for iter <- 0:MAX_ITER
+        for iter <- 0:OUTER_ITER
         {
-            val rr = zr .* zr
-            val ii = zi .* zi
+            for i <- 0:INNER_ITER {
+                val rr = zr .* zr
+                val ii = zi .* zi
 
-            val mag = rr + ii
+                val ir = zr .* zi
+                zr = (rr - ii) + cr
+                zi = (ir + ir) + ci
+            }
+
+            val mag = zr .* zr + zi .* zi
             bits |= mag .> 4.0
-
-            val ir = zr .* zi
-            zr = (rr - ii) + cr
-            zi = (ir + ir) + ci
 
             if all(bits) {break}
         }

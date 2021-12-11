@@ -28,6 +28,7 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
         | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
         | KTypVoid | KTypBool | KTypChar | KTypString
         | KTypCPointer | KTypExn | KTypErr | KTypModule => deps
+        | KTypRawPointer(et) => get_ktyp_deps_(et, deps)
         | KTypFun (args, rt) =>
             fold deps = deps for t <- rt :: args { get_ktyp_deps_(t, deps) }
         | KTypTuple tl =>
@@ -133,6 +134,13 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
                         ktp_custom_copy=false }
         | KTypCPointer =>
             ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=true,
+                        ktp_pass_by_ref=false, ktp_custom_free=false,
+                        ktp_custom_copy=false }
+        | KTypRawPointer _ =>
+            ktprops_t { ktp_complex=false, ktp_scalar=true,
+                        ktp_ptr=false, // even though technically it's a pointer,
+                                       // we just treat it as black-box scalar,
+                                       // which is passed to some intrinsics
                         ktp_pass_by_ref=false, ktp_custom_free=false,
                         ktp_custom_copy=false }
         | KTypTuple elems =>

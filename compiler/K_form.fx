@@ -63,6 +63,7 @@ type ktyp_t =
     | KTypChar
     | KTypString
     | KTypCPointer
+    | KTypRawPointer: ktyp_t
     | KTypFun: (ktyp_t list, ktyp_t)
     | KTypTuple: ktyp_t list
     | KTypRecord: (id_t, (id_t, ktyp_t) list)
@@ -601,6 +602,7 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
     | KTypFloat _ | KTypVoid | KTypBool | KTypChar
     | KTypString | KTypCPointer | KTypExn | KTypErr | KTypModule =>
         t
+    | KTypRawPointer(t) => KTypRawPointer(walk_ktyp_(t))
     | KTypFun(args, rt) => KTypFun(walk_ktl_(args), walk_ktyp_(rt))
     | KTypTuple(elems) => KTypTuple(walk_ktl_(elems))
     | KTypRecord(rn, relems) =>
@@ -918,6 +920,7 @@ fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypVoid
     | KTypBool | KTypChar | KTypString | KTypCPointer | KTypExn | KTypErr | KTypModule =>
         {}
+    | KTypRawPointer(t) => fold_ktyp_(t)
     | KTypFun(args, rt) => fold_ktl_(args); fold_ktyp_(rt)
     | KTypTuple(elems) => fold_ktl_(elems)
     | KTypRecord(rn, relems) =>
@@ -1373,6 +1376,7 @@ fun string(t: ktyp_t): string
         | KTypChar => "char"
         | KTypString => "string"
         | KTypCPointer => "cptr"
+        | KTypRawPointer(t) => ktyp2str_(t, true)+"*"
         | KTypFun(argtyps, rt) =>
             val argtyps_str =
                 match argtyps {
@@ -1432,6 +1436,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     | KLitBool(true) => "true"
     | KLitBool(false) => "false"
     | KLitNil KTypCPointer => "null"
+    | KLitNil (KTypRawPointer _) => "null"
     | KLitNil _ => "[]"
     }
 }
@@ -1443,6 +1448,13 @@ fun atom2str(a: atom_t): string
 {
     | AtomId(n) => idk2str(n, noloc)
     | AtomLit(l) => klit2str(l, false, noloc)
+}
+
+fun dom2str(a: dom_t): string
+{
+    | DomainRange(a, b, c) => f"{atom2str(a)}:{atom2str(b)}:{atom2str(c)}"
+    | DomainElem(x) => atom2str(x)
+    | DomainFast(x) => atom2str(x)
 }
 
 fun print_idset(setname: string, s: idset_t) {

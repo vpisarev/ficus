@@ -329,6 +329,8 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
         temp_kmods = K_remove_unused.remove_unused(temp_kmods, false)
     }
     pr_verbose("Finalizing K-form:")
+    prf("linearize array access")
+    temp_kmods = K_fast_idx.linearize_arrays_access(temp_kmods)
     prf("making wrappers for nothrow functions")
     temp_kmods = K_nothrow_wrappers.make_wrappers_for_nothrow(temp_kmods)
     prf("mutable freevars referencing")
@@ -424,7 +426,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             }
             val c_comp = "cc"
             val cpp_comp = "c++ -std=c++11"
-            val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline"
+            val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses"
             val ggdb_opt = if opt_level == 0 { " -ggdb" } else { "" }
             val cflags = f"-O{opt_level}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
             val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"
