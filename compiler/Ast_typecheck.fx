@@ -1196,6 +1196,16 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | _ => false
     }
 
+    /* check that an identifier expression is a non-const lvalue. accompanies is_lvalue */
+    fun is_mutable_lvalue_identifier_exp(e: exp_t, ectx: ctx_t) =
+    match e {
+    | ExpIdent(n1, _) => (match id_info(n1, eloc) {
+        | IdDVal ({dv_flags}) => dv_flags.val_flag_mutable
+        | _ => false
+        })
+    | _ => false
+    }
+
     val new_e =
     match e {
     | ExpNop _ => e
@@ -1303,7 +1313,12 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val new_e1 = check_exp(e1, env, sc)
         val new_e2 = check_exp(e2, env, sc)
         if !is_lvalue(true, new_e1, ectx) {
-            throw compile_err(eloc1, "the left side of assignment is not an l-value")
+            /* is_lvalue returns false even if we actually have an lvalue, but it is immutable */
+            if !is_mutable_lvalue_identifier_exp(new_e1, ectx) {
+                throw compile_err(eloc1, "the left side of an assignment is an immutable value")
+            } else {
+                throw compile_err(eloc1, "the left side of an assignment is not an l-value")
+            }
         }
         ExpAssign(new_e1, new_e2, eloc)
     | ExpBinary(OpCons, e1, e2, _) =>
