@@ -376,6 +376,7 @@ fun k2c_all(kmods: kmodule_t list)
 fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
     val osinfo = Sys.osname(true)
     val opt_level = Options.opt.optimize_level
+    val opt_level_str = if opt_level <= 3 {string(opt_level)} else {"fast"}
     val enable_openmp = Options.opt.enable_openmp
     val runtime_include_path = Filename.normalize(ficus_root, "runtime")
     val runtime_lib_path = Filename.normalize(ficus_root, "runtime/lib")
@@ -398,10 +399,19 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "/nologo /F10485760 kernel32.lib advapi32.lib")
         } else {
             // unix or hopefully something more or less compatible with it
+            val c_comp = Sys.getenv("CC", "cc")
+            val cpp_comp_name = Sys.getenv("CXX", "c++")
+            val cpp_comp = f"{cpp_comp_name} -std=c++11"
             val (os, libpath, cflags, clibs) =
             if osinfo.contains("Darwin") {
                 val (omp_cflags, omp_lib) =
-                    if enable_openmp { ("-Xclang -fopenmp", " -lomp") }
+                    if enable_openmp {
+                        if c_comp.contains("gcc") {
+                            ("-fopenmp", " -lgomp")
+                        } else {
+                            ("-Xclang -fopenmp", " -lomp")
+                        }
+                    }
                     else { ("", "") }
                 val (libpath, cflags, clibs) =
                 if osinfo.contains("x86_64") {
@@ -424,11 +434,10 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             } else {
                 ("", "", "", "")
             }
-            val c_comp = "cc"
-            val cpp_comp = "c++ -std=c++11"
             val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses"
             val ggdb_opt = if opt_level == 0 { " -ggdb" } else { "" }
-            val cflags = f"-O{opt_level}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
+
+            val cflags = f"-O{opt_level_str}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
             val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"
             (os, c_comp, cpp_comp, ".o", "-c -o ", "-o ", "-l", cflags, clibs)
         }

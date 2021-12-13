@@ -76,6 +76,7 @@ where options can be some of:
                                          except for the most essential ones
     -O1             Optimization level 1 (default): enable most of the optimizations
     -O3             Optimization level 3: enable all optimizations
+    -Ofast          Optimization level 3; passes '-Ofast' to C/C++ compiler
     -no-openmp      Disable OpenMP (OpenMP is enabled by default)
     -debug          Turn on debug information, disable optimizations
                     (but it can be overwritten with further -On)
@@ -158,6 +159,8 @@ fun parse_options(): bool {
                 opt.optimize_level = 1; next
             | "-O3" :: next =>
                 opt.optimize_level = 3; next
+            | "-Ofast" :: next =>
+                opt.optimize_level = 100; next
             | "-no-openmp" :: next =>
                 opt.enable_openmp = false; next
             | "-debug" :: next =>
