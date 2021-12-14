@@ -391,9 +391,9 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             val omp_flag = ""//if enable_openmp {" /openmp"} else {""}
             val opt_flags =
                 if opt_level == 0 {
-                    " /MTd /Od /GF"
+                    " /D_DEBUG /MTd /Od /GF"
                 } else {
-                    " /MT " + (if opt_level == 1 {"/O1"} else {"/O2"})
+                    " /DNDEBUG /MT " + (if opt_level == 1 {"/O1"} else {"/O2"})
                 }
             val cflags = f"/utf-8 /nologo{opt_flags}{omp_flag} /I{runtime_include_path}"
             ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "/nologo /F10485760 kernel32.lib advapi32.lib")
@@ -435,7 +435,10 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 ("", "", "", "")
             }
             val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses"
-            val ggdb_opt = if opt_level == 0 { " -ggdb" } else { "" }
+            val ggdb_opt = if opt_level == 0 { " -D_DEBUG -ggdb" } else {
+                    val stk_overflow = if opt_level == 100 {" -DFX_NO_STACK_OVERFLOW_CHECK"} else {""}
+                    f" -DNDEBUG{stk_overflow}"
+                }
 
             val cflags = f"-O{opt_level_str}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
             val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"

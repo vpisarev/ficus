@@ -16,7 +16,7 @@ val HASH_SIGN_MASK: hash_t = 9223372036854775808UL
 val PERTURB_SHIFT = 5
 
 type ('k, 'd) hashentry_t = {hv: hash_t; key: 'k; data: 'd}
-class index_t = IndexByte: uint8 [] | IndexWord: uint16 [] | IndexLarge: int []
+type index_t = int []
 
 class ('k, 'd) t
 {
@@ -28,38 +28,7 @@ class ('k, 'd) t
     var table: ('k, 'd) hashentry_t []
 }
 
-fun makeindex(size: int) =
-    if size <= 256 {IndexByte(array(size, 0u8))}
-    else if size <= 65536 {IndexWord(array(size, 0u16))}
-    else {IndexLarge(array(size, 0))}
-
-fun size(idx: index_t): int
-{
-    | IndexByte(tab) => size(tab)
-    | IndexWord(tab) => size(tab)
-    | IndexLarge(tab) => size(tab)
-}
-
-fun get(idx: index_t, i: int) =
-    match idx {
-    | IndexByte(tab) => int(tab[i])
-    | IndexWord(tab) => int(tab[i])
-    | IndexLarge(tab) => tab[i]
-    }
-
-fun set(idx: index_t, i: int, newval: int) =
-    match idx {
-    | IndexByte(tab) => tab[i] = uint8(newval)
-    | IndexWord(tab) => tab[i] = uint16(newval)
-    | IndexLarge(tab) => tab[i] = newval
-    }
-
-fun copy(idx: index_t)
-{
-    | IndexByte(tab) => IndexByte(copy(tab))
-    | IndexWord(tab) => IndexWord(copy(tab))
-    | IndexLarge(tab) => IndexLarge(copy(tab))
-}
+fun makeindex(size: int) = array(size, 0)
 
 fun empty(size0: int, k0: 'k, d0: 'd): ('k, 'd) Hashmap.t
 {
@@ -105,9 +74,9 @@ fun t.copy(): ('k, 'd) Hashmap.t =
     var found_free_slot = false
 
     for i <- 0:idxsz+14 {
-        val tidx = ht_index.get(j)
+        val tidx = ht_index[j]
         if tidx == HASH_EMPTY {
-            ht_index.set(j, tabsz+HASH_ALIVE)
+            ht_index[j] = tabsz+HASH_ALIVE
             ht_table[tabsz] = entry
             found_free_slot = true
             break
@@ -148,7 +117,7 @@ fun t.copy(): ('k, 'd) Hashmap.t =
     var perturb = hv, found = -1
     var j = int(hv) & (idxsz - 1)
     for i <- 0:idxsz+14 {
-        val tidx = self.index.get(j)
+        val tidx = self.index[j]
         if tidx >= HASH_ALIVE {
             val entry = self.table[tidx - HASH_ALIVE]
             if entry.hv == hv && entry.key == k {
@@ -214,7 +183,7 @@ fun t.find_idx_or_insert(k: 'k): int
 
     for i <- 0:idxsz+14 {
         //hash_iters += 1
-        val tidx = self.index.get(j)
+        val tidx = self.index[j]
         //println(f"j={j}, tidx={tidx}")
         if tidx >= HASH_ALIVE {
             val entry = self.table[tidx - HASH_ALIVE]
@@ -235,8 +204,8 @@ fun t.find_idx_or_insert(k: 'k): int
     if found >= 0 {
         //println("got here (found)")
         if insert_idx >= 0 && insert_idx != j {
-            self.index.set(insert_idx, found + HASH_ALIVE)
-            self.index.set(j, HASH_DELETED)
+            self.index[insert_idx] = found + HASH_ALIVE
+            self.index[j] = HASH_DELETED
         }
     } else if insert_idx >= 0 {
         found = self.free-1
@@ -251,7 +220,7 @@ fun t.find_idx_or_insert(k: 'k): int
             assert(found < size(self.table))
         }
         self.table[found] = hashentry_t {hv=hv, key=k, data=self.default_entry.data}
-        self.index.set(insert_idx, found + HASH_ALIVE)
+        self.index[insert_idx] = found + HASH_ALIVE
         self.nactive += 1
     } else {
         throw Fail("cannot insert element (full Hashtable?!)")
@@ -268,7 +237,7 @@ fun t.add(k: 'k, d: 'd): void
 fun t.remove(k: 'k) {
     val (j, tidx) = self.find_idx_(k)
     if tidx >= 0 {
-        self.index.set(j, HASH_DELETED)
+        self.index[j] = HASH_DELETED
         self.table[tidx].hv = uint64(self.free) | HASH_SIGN_MASK
         self.free = tidx+1
         //self.check_free()
@@ -328,11 +297,11 @@ fun t.filter(f: ('k, 'd)->bool): void
     val key0 = self.default_entry.key
     val data0 = self.default_entry.data
     for j <- 0:idxsz {
-        val tidx = self.index.get(j)
+        val tidx = self.index[j]
         if tidx < HASH_ALIVE { continue }
         val (key,value) = table[tidx - HASH_ALIVE].key
         if !f(key,value) {
-            self.index.set(j, HASH_DELETED)
+            self.index[j] = HASH_DELETED
             table[tidx - HASH_ALIVE] = hashentry_t {
                 hv = uint64(self.free) | HASH_SIGN_MASK, key=key0, data = data0}
             self.free = tidx + 1

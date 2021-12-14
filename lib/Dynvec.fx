@@ -23,7 +23,7 @@ fun push(v: 't Dynvec.t): int
     val sz = size(v.data)
     val n0 = v.count
     if sz <= n0 {
-        val n1 = max(n0, 128)*3/2
+        val n1 = max(n0, 128)*2
         val old_data = v.data
         val val0 = v.val0
         val new_data = [| for i <- 0:n1 { if i < n0 {old_data[i]} else {val0} } |]
@@ -32,6 +32,25 @@ fun push(v: 't Dynvec.t): int
     val i = n0
     v.count = n0 + 1
     i
+}
+
+fun push(v: 't Dynvec.t, vv: 't [])
+{
+    val dn = size(vv)
+    val sz = size(v.data)
+    val n0 = v.count
+    val newn = n0 + dn
+    if sz < newn {
+        val n1 = max(max(n0, 128)*2, newn)
+        val old_data = v.data
+        val val0 = v.val0
+        val new_data = [| for i <- 0:n1 { if i < n0 {old_data[i]} else {val0} } |]
+        v.data = new_data
+    }
+    val i = n0
+    v.count = newn
+    val data = v.data
+    for j <- 0:dn {data[i + j] = vv[j]}
 }
 
 fun push(v: 't Dynvec.t, x: 't)

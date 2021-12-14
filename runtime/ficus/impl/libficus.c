@@ -129,6 +129,7 @@ int fx_init_thread(int t_idx)
     return FX_OK;
 }
 
+#ifndef FX_NO_STACK_OVERFLOW_CHECK
 int fx_check_stack(void)
 {
     if (fx_is_main_thread) {
@@ -140,6 +141,7 @@ int fx_check_stack(void)
     }
     return FX_OK;
 }
+#endif
 
 int fx_deinit(int status)
 {

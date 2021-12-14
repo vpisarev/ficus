@@ -7,12 +7,21 @@ import Sys
 
 type tree = Empty | Node: {left: tree; right: tree}
 
-fun make (d: int) =
+fun make_(d: int) =
+    if d > 1 { Node{right=make_(d-1), left=make_(d-1)} }
+    else {
+        Node {
+            left=Node{left=Empty, right=Empty},
+            right=Node{left=Empty, right=Empty}
+        }
+    }
+
+fun make(d: int) =
     if d == 0 { Node {left=Empty, right=Empty} }
-    else { Node{right=make(d-1), left=make(d-1)} }
+    else { make_(d) }
 
 fun check (t: tree): int {
-    | Node{left=l, right=r} => 1 + check(l) + check(r)
+    | Node {left=l, right=r} => if l != Empty {1 + check(l) + check(r)} else {1}
     | _ => 0
 }
 

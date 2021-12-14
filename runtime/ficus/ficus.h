@@ -538,7 +538,12 @@ int fx_rethrow_exn(fx_exn_t* exn);
 void fx_exn_get_and_reset(int fx_status, fx_exn_t* exn);
 //void fx_exn_get_and_reset(fx_exn_t* exn);
 int fx_exn_check_parallel(int status, int* glob_status);
+
+#ifdef FX_NO_STACK_OVERFLOW_CHECK
+FX_INLINE int fx_check_stack(void) {return FX_OK;}
+#else
 int fx_check_stack(void);
+#endif
 
 #define FX_CHECK_EXN_PARALLEL(status, par_status) \
     if((status) >= 0) ; else (status) = fx_exn_check_parallel((status), &(par_status))

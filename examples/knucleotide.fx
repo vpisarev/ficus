@@ -11,17 +11,24 @@
 //    Rick Branson
 
 import File, Sys
-import Hashmap
+import Hashmap, Dynvec
 
 type hashtab_t = (int64, int) Hashmap.t
 
-fun encrypt_char(c: char): uint8
-{
-    | 'A' | 'a' => 0u8
-    | 'C' | 'c' => 1u8
-    | 'G' | 'g' => 2u8
-    | _ => 3u8
+val lut = {
+    val L = array(256, 255u8)
+    L[ord('A')] = 0u8
+    L[ord('a')] = 0u8
+    L[ord('C')] = 1u8
+    L[ord('c')] = 1u8
+    L[ord('G')] = 2u8
+    L[ord('g')] = 2u8
+    L[ord('T')] = 3u8
+    L[ord('t')] = 3u8
+    L
 }
+
+fun encrypt_char(c: char) = lut[int(c)]
 
 fun decrypt_key(n: int64, len: int)
 {
@@ -35,29 +42,32 @@ fun decrypt_key(n: int64, len: int)
     string(chars)
 }
 
-fun frequency(seq: uint8 vector, len: int)
+fun frequency(seq: uint8 [], len: int)
 {
-    val n = size(seq) + 1 - len
-    val freq = Hashmap.empty(1<<14, 0L, 0)
+    val n = size(seq)
+    val freq = Hashmap.empty(32, 0L, 0)
     var key = 0L
     val mask = (1L << len*2) - 1
-    for c@i <- seq {
-        key = (key*4 + c) & mask
-        if i < len-1 {continue}
+    for i <- 0:min(len-1, n) {
+        key = (key*4 + seq[i]) & mask
+    }
+
+    for i <- len-1:n {
+        key = (key*4 + seq[i]) & mask
         val idx = freq.find_idx_or_insert(key)
         freq.table[idx].data += 1
     }
-    (n, freq)
+    (n + 1 - len, freq)
 }
 
-fun sort_by_freq(seq: uint8 vector, length: int)
+fun sort_by_freq(seq: uint8 [], length: int)
 {
     val (total, freq) = frequency(seq, length)
     val sorted = freq.list().sort(fun ((_, n1), (_, n2)) {n1 > n2})
     "".join([for (wj, nj) <- sorted {f"{decrypt_key(wj, length)} {nj*100./total}\n"}])
 }
 
-fun find_seq(seq: uint8 vector, substr: string)
+fun find_seq(seq: uint8 [], substr: string)
 {
     val length = substr.length()
     val (_, freq) = frequency(seq, length)
@@ -71,10 +81,11 @@ var lines: string list = []
 val fname = match Sys.arguments() {
     | fname :: _ => fname
     | _ =>
-        println("Missing file name. See the description: https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/knucleotide.html")
-        throw Fail("missing file name")
+        println("reading DNA data from the standard input ...\n\
+                 See https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/knucleotide.html")
+        ""
     }
-val f = File.open(fname, "rt")
+val f = if fname != "" {File.open(fname, "rt")} else {File.stdin}
 while !f.eof() {
     val line = f.readln()
     if line.startswith('>') && line.startswith(">THREE") {
@@ -82,19 +93,20 @@ while !f.eof() {
     }
 }
 
-var all_lines: uint8 vector = []
+var all_data = Dynvec.create(0, 0u8)
 
 while !f.eof() {
     val line = f.readln()
     if line.startswith('>') {break}
-    val v = [<for c <- line.rstrip() { encrypt_char(c)}>]
-    all_lines += v
+    val converted = [| for c <- line.rstrip() {encrypt_char(c)} |]
+    all_data.push(converted)
 }
-f.close()
+
+val all_data = all_data.data[:all_data.count]
 
 val report = [| @parallel for w <- [| "*", "**", "GGT", "GGTA", "GGTATT", "GGTATTTTAATT", "GGTATTTTAATTTATAGT" |] {
-    if w.startswith("*") { sort_by_freq(all_lines, w.length()) }
-    else {find_seq(all_lines, w)}
+    if w.startswith("*") { sort_by_freq(all_data, w.length()) }
+    else {find_seq(all_data, w)}
 } |]
 
 for l <- report {println(l)}

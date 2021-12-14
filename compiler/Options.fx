@@ -265,7 +265,7 @@ fun parse_options(): bool {
     }
 
     if opt.optim_iters <= 0 {
-        opt.optim_iters = if opt.optimize_level == 3 {3} else {2}
+        opt.optim_iters = if opt.optimize_level >= 3 {3} else {2}
     }
     opt.optim_iters = max(opt.optim_iters, 2)
 
