@@ -1259,8 +1259,8 @@ fun typ2str(t: typ_t): string {
     | TypVarRecord => "{...}"
     | TypVar ((ref Some(t)) as r) => f"{typ2str(t)}"
     | TypVar (r) => "<unknown>"
-    | TypApp([], i) => string(i)
-    | TypApp(tl, i) => f"{tl2str(tl)} {i}"
+    | TypApp([], i) => id2str_m(i)
+    | TypApp(tl, i) => f"{tl2str(tl)} {id2str_m(i)}"
     | TypInt => "int"
     | TypSInt(n) => f"int{n}"
     | TypUInt(n) => f"uint{n}"

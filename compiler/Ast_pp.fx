@@ -13,20 +13,20 @@ val default_indent = 3
 val pp_ = Ast.pp
 
 fun pplit(pp: PP.t, x: lit_t) = pp.str(lit2str(x))
-fun ppid(pp: PP.t, x: id_t)
+fun ppid2str(x: id_t)
 {
-    val xstr =
-        if x == noid { "<noid>" }
+    if x == noid { "<noid>" }
+    else {
+        val prefix = all_names.data[x.i]
+        if x.m == 0 { prefix }
         else {
-            val prefix = all_names.data[x.i]
-            if x.m == 0 { prefix }
-            else {
-                val m_prefix = pp_(get_module_name(x.m)) + "."
-                f"{m_prefix}{prefix}@{x.j}"
-            }
+            val m_prefix = pp_(get_module_name(x.m)) + "."
+            f"{m_prefix}{prefix}@{x.j}"
         }
-    pp.str(xstr)
+    }
 }
+
+fun ppid(pp: PP.t, x: id_t) = pp.str(ppid2str(x))
 
 fun pprint_val_flags(pp: PP.t, flags: val_flags_t): void
 {
@@ -118,8 +118,8 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
         | TypVarArray(t1) => pptypsuf(t1, "[+]")
         | TypVarRecord => pp.str("{...}")
         | TypApp([], n) => ppid(pp, n)
-        | TypApp(t1 :: [], n) => pptypsuf(t1, string(n))
-        | TypApp(tl, n) => pptypsuf(TypTuple(tl), string(n))
+        | TypApp(t1 :: [], n) => pptypsuf(t1, ppid2str(n))
+        | TypApp(tl, n) => pptypsuf(TypTuple(tl), ppid2str(n))
         | TypTuple(tl) =>
             pp.str("("); pp.cut(); pp.begin()
             for t@i <- tl {

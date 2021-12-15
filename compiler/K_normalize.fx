@@ -104,7 +104,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
 {
     val km_idx = curr_module(sc)
     val (etyp, eloc) = get_exp_ctx(e)
-    //print("------------------------------------\ntranslating exp of type "); Ast_pp.pprint_typ_x(etyp, eloc); println(":"); Ast_pp.pprint_exp_x(e); println("\n==========================================\n")
+    //print(f"------------------------------------\n{eloc}: k-normalization of exp of type "); Ast_pp.pprint_typ_x(etyp, eloc); println(":"); Ast_pp.pprint_exp_x(e); println("\n==========================================\n")
     val ktyp = typ2ktyp(etyp, eloc)
     val kctx = (ktyp, eloc)
     /*
@@ -114,10 +114,10 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         * generates the pattern unpack code, which should be put into the beginning of the loop body
         * generates the proxy identifiers that are used in the corresponding KExpFor/KExpMap.
         For example, the following code:
-            for ((r, g, b) <- GaussianBlur(img)) { ... }
+            for (r, g, b) <- GaussianBlur(img) { ... }
         is converted to
             val temp@@105 = GaussianBlur(img)
-            for (i@@105 <- temp@@123) { val r=i@@105.0, g=i@@105.1, b = i@@105.2; ... }
+            for i@@105 <- temp@@123 { val r=i@@105.0, g=i@@105.1, b = i@@105.2; ... }
     */
     fun transform_for(pe_l: (pat_t, exp_t) list, idx_pat: pat_t,
                       code: kcode_t, sc: scope_t list, body_sc: scope_t list)
@@ -226,7 +226,8 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             | KTypVoid => noid
             | KTypName(tn) =>
                 match kinfo_(tn, eloc) {
-                | KVariant (ref {kvar_targs, kvar_ctors}) =>
+                | KVariant (ref {kvar_name, kvar_targs, kvar_ctors})
+                    when kvar_name.m == n.m =>
                     try find(for nj <- kvar_ctors {get_orig_id(nj) == get_orig_id(n)})
                     catch { | NotFoundError => n }
                 | _ => n
@@ -480,16 +481,16 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             | _ => false
         }
 
-        fun cast_if_needed(scalar_idx: atom_t, code: kcode_t, loc:loc_t): (atom_t, kcode_t) = 
+        fun cast_if_needed(scalar_idx: atom_t, code: kcode_t, loc:loc_t): (atom_t, kcode_t) =
             match get_atom_ktyp(scalar_idx, loc) {
-            | KTypBool | KTypUInt(_) | KTypSInt(_) => 
+            | KTypBool | KTypUInt(_) | KTypSInt(_) =>
                 kexp2atom(curr_module(sc), "idx", KExpCast(scalar_idx, KTypInt, loc), false, code)
             | _ => (scalar_idx, code)
         }
 
         val (dlist, code) = match (idxlist, probably_tuple_type) {
         | (tupidx::tl, TypTuple(idxtype)) when !is_exprange(tupidx) =>
-            val (_, iloc) = get_exp_ctx(tupidx) 
+            val (_, iloc) = get_exp_ctx(tupidx)
             if (tl.length() != 0) {
                 throw compile_err(eloc, "internal error: tuple index is not only")
             }
@@ -499,7 +500,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                 val (d, code) = cast_if_needed(d, code, iloc)
                 (DomainElem(d)::dlist, code)
             }
-        | _ => 
+        | _ =>
             fold (dlist, code) = ([], code) for i@idx <- idxlist {
                 idx_access_stack = (arr, idx) :: idx_access_stack
                 val (d, code) =
@@ -507,7 +508,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                     finally { idx_access_stack = idx_access_stack.tl() }
                 val (_, iloc) = get_exp_ctx(i)
                 val (d, code) = match d {
-                    |DomainElem(scalar_idx) => 
+                    |DomainElem(scalar_idx) =>
                         val (scalar_idx, code) = cast_if_needed(scalar_idx, code, iloc)
                         (DomainElem(scalar_idx), code)
                     | _ => (d, code)
