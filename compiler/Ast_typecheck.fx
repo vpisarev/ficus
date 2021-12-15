@@ -1577,26 +1577,26 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpIntrin(IntrinMath(f), args, _) =>
         val argtyps = [for a <- args {get_exp_typ(a)}]
         val fstr = pp(f)
-        val t = match (fstr, args, argtyps) {
+        val (t, argt) = match (fstr, args, argtyps) {
         | ("atan2", y :: x :: [], yt :: xt :: []) =>
             unify(xt, yt, eloc, "arguments of atan2() must have the same type")
-            xt
+            (xt, xt)
         | ("pow", x :: y :: [], xt :: yt :: []) =>
             unify(xt, yt, eloc, "arguments of pow() must have the same type")
-            xt
+            (xt, xt)
         | ("min", x :: y :: [], xt :: yt :: []) =>
             unify(xt, yt, eloc, "arguments of pow() must have the same type")
-            xt
+            (xt, xt)
         | ("max", x :: y :: [], xt :: yt :: []) =>
             unify(xt, yt, eloc, "arguments of pow() must have the same type")
-            xt
+            (xt, xt)
         | ("floor", x :: [], xt :: []) =>
-            TypInt
+            (TypInt, xt)
         | ("ceil", x :: [], xt :: []) =>
-            TypInt
+            (TypInt, xt)
         | ("round", x :: [], xt :: []) =>
-            TypInt
-        | (_, x :: [], xt :: []) => xt
+            (TypInt, xt)
+        | (_, x :: [], xt :: []) => (xt, xt)
         | _ =>
             val nargs_expected =
                 if fstr == "atan2" || fstr == "pow" ||
@@ -1606,8 +1606,15 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         }
         unify(etyp, t, eloc, f"the input and output of {fstr} should have the same types")
         val args = [for a <- args {check_exp(a, env, sc)}]
-        match deref_typ(t) {
-        | TypFloat(_) => {}
+        match (fstr, deref_typ(t))  {
+        | (_, TypFloat(_)) => {}
+        | (("floor" | "ceil" | "round"), TypInt) =>
+            match deref_typ(argt) {
+            | TypFloat(_) => {}
+            | _ =>
+                throw compile_err(eloc, f"floor/ceil/round intrinsics must have a single floating-point argument")
+            }
+        | (("min" | "max"), TypInt) => {}
         | _ => throw compile_err(eloc, "the argument and the result of intrinsic math \
                                  function must be 'float' or 'double'")
         }

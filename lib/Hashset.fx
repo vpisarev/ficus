@@ -16,7 +16,7 @@ val HASH_SIGN_MASK: hash_t = 9223372036854775808UL
 val PERTURB_SHIFT = 5
 
 type 'k hashset_entry_t = {hv: hash_t; key: 'k}
-class index_t = IndexByte: uint8 [] | IndexWord: uint16 [] | IndexLarge: int []
+type index_t = int []
 
 class 'k t
 {
@@ -28,38 +28,7 @@ class 'k t
     var table: 'k hashset_entry_t []
 }
 
-fun makeindex(size: int) =
-    if size <= 256 {IndexByte(array(size, 0u8))}
-    else if size <= 65536 {IndexWord(array(size, 0u16))}
-    else {IndexLarge(array(size, 0))}
-
-fun size(idx: index_t): int
-{
-    | IndexByte(tab) => size(tab)
-    | IndexWord(tab) => size(tab)
-    | IndexLarge(tab) => size(tab)
-}
-
-fun get(idx: index_t, i: int) =
-    match idx {
-    | IndexByte(tab) => int(tab[i])
-    | IndexWord(tab) => int(tab[i])
-    | IndexLarge(tab) => tab[i]
-    }
-
-fun set(idx: index_t, i: int, newval: int) =
-    match idx {
-    | IndexByte(tab) => tab[i] = uint8(newval)
-    | IndexWord(tab) => tab[i] = uint16(newval)
-    | IndexLarge(tab) => tab[i] = newval
-    }
-
-fun copy(idx: index_t)
-{
-    | IndexByte(tab) => IndexByte(copy(tab))
-    | IndexWord(tab) => IndexWord(copy(tab))
-    | IndexLarge(tab) => IndexLarge(copy(tab))
-}
+fun makeindex(size: int) = array(size, 0)
 
 fun empty(size0: int, k0: 'k): 'k Hashset.t
 {
@@ -118,9 +87,9 @@ fun t.compress(): 'k Hashset.t
     var found_free_slot = false
 
     for i <- 0:idxsz+14 {
-        val tidx = ht_index.get(j)
+        val tidx = ht_index[j]
         if tidx == HASH_EMPTY {
-            ht_index.set(j, tabsz+HASH_ALIVE)
+            ht_index[j] = tabsz+HASH_ALIVE
             ht_table[tabsz] = entry
             found_free_slot = true
             break
@@ -160,7 +129,7 @@ fun t.compress(): 'k Hashset.t
     var perturb = hv, found = -1
     var j = int(hv) & (idxsz - 1)
     for i <- 0:idxsz+14 {
-        val tidx = self.index.get(j)
+        val tidx = self.index[j]
         if tidx >= HASH_ALIVE {
             val entry = self.table[tidx - HASH_ALIVE]
             if entry.hv == hv && entry.key == k {
@@ -210,7 +179,7 @@ fun t.check_free()
     var perturb = hv, found = -1, insert_idx = -1
     var j = int(hv) & (idxsz - 1)
     for i <- 0:idxsz+14 {
-        val tidx = self.index.get(j)
+        val tidx = self.index[j]
         if tidx >= HASH_ALIVE {
             val entry = self.table[tidx - HASH_ALIVE]
             if entry.hv == hv && entry.key == k {
@@ -228,8 +197,8 @@ fun t.check_free()
     }
     if found >= 0 {
         if insert_idx >= 0 && insert_idx != j {
-            self.index.set(insert_idx, found + HASH_ALIVE)
-            self.index.set(j, HASH_DELETED)
+            self.index[insert_idx] = found + HASH_ALIVE
+            self.index[j] = HASH_DELETED
         }
     } else if insert_idx >= 0 {
         found = self.free-1
@@ -241,7 +210,7 @@ fun t.check_free()
             assert(found < size(self.table))
         }
         self.table[found] = hashset_entry_t {hv=hv, key=k}
-        self.index.set(insert_idx, found + HASH_ALIVE)
+        self.index[insert_idx] = found + HASH_ALIVE
         self.nactive += 1
     } else {
         throw Fail("cannot insert element (full Hashtable?!)")
@@ -253,7 +222,7 @@ fun t.add(k: 'k) = self.add_(k, hash(k) & ~HASH_SIGN_MASK)
 fun t.remove(k: 'k) {
     val (j, tidx) = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK)
     if tidx >= 0 {
-        self.index.set(j, HASH_DELETED)
+        self.index[j] = HASH_DELETED
         self.table[tidx].hv = uint64(self.free) | HASH_SIGN_MASK
         self.free = tidx+1
         self.nactive -= 1
@@ -337,7 +306,7 @@ fun t.diff(b: 'k Hashset.t): void
         if hv < HASH_SIGN_MASK {
             val (j, tidx) = self.find_idx_(key, hv)
             if tidx >= 0 {
-                self.index.set(j, HASH_DELETED)
+                self.index[j] = HASH_DELETED
                 self.table[tidx].hv = uint64(self.free) | HASH_SIGN_MASK
                 self.free = tidx+1
                 self.nactive -= 1
@@ -376,9 +345,9 @@ fun t.filter(f: 'k->bool): void
     val table = self.table
     val key0 = self.default_entry.key
     for j <- 0:idxsz {
-        val tidx = self.index.get(j)
+        val tidx = self.index[j]
         if tidx >= HASH_ALIVE && !f(table[tidx - HASH_ALIVE].key) {
-            self.index.set(j, HASH_DELETED)
+            self.index[j] = HASH_DELETED
             table[tidx - HASH_ALIVE] = hashset_entry_t {
                 hv = uint64(self.free) | HASH_SIGN_MASK, key=key0}
             self.free = tidx + 1

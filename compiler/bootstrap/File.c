@@ -107,6 +107,24 @@ if(f->handle && f->handle->ptr) {
 
 }
 
+FX_EXTERN_C int _fx_M4FileFM18pclose_exit_statusi1RM1t(struct _fx_R7File__t* f, int_* fx_result, void* fx_fv)
+{
+   
+if(!f->handle || !f->handle->ptr || f->handle->free_f != fx_pipe_destructor)
+        FX_FAST_THROW_RET(FX_EXN_FileOpenError);
+
+#ifdef _WIN32
+    *fx_result = _pclose(f->handle->ptr);
+#else
+    int result = pclose(f->handle->ptr);
+    *fx_result = WEXITSTATUS(result);
+#endif
+
+    f->handle->ptr = 0;
+    return FX_OK;
+
+}
+
 FX_EXTERN_C int _fx_M4FileFM4seekv3RM1tli(struct _fx_R7File__t* f, int64_t pos, int_ origin, void* fx_fv)
 {
    

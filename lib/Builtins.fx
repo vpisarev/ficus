@@ -667,6 +667,12 @@ fun round(x: ('t...)) = (for xj <- x {round(xj)})
 
 fun min(a: 't, b: 't) = if a <= b {a} else {b}
 fun max(a: 't, b: 't) = if a >= b {a} else {b}
+@inline fun min(a: int, b: int) = __intrin_min__(a, b)
+@inline fun max(a: int, b: int) = __intrin_max__(a, b)
+@inline fun min(a: float, b: float) = __intrin_min__(a, b)
+@inline fun max(a: float, b: float) = __intrin_max__(a, b)
+@inline fun min(a: double, b: double) = __intrin_min__(a, b)
+@inline fun max(a: double, b: double) = __intrin_max__(a, b)
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
 fun clip(x: 't, a: 't, b: 't) = if a <= x <= b {x} else if x < a {a} else {b}
 

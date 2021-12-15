@@ -40,10 +40,10 @@ fun cosh(x: 't [+]) = [| for xi <- x {cosh(xi)} |]
 fun sinh(x: 't [+]) = [| for xi <- x {sinh(xi)} |]
 fun tanh(x: 't [+]) = [| for xi <- x {tanh(xi)} |]
 
-@pure @nothrow fun floor(x: float): int = @ccode { int_ i = (int_)x; return i - (i > x) }
-@pure @nothrow fun floor(x: double): int = @ccode { int_ i = (int_)x; return i - (i > x) }
-@pure @nothrow fun ceil(x: float): int = @ccode { int_ i = (int_)x; return i + (i < x) }
-@pure @nothrow fun ceil(x: double): int = @ccode { int_ i = (int_)x; return i + (i < x) }
+@inline fun floor(x: float) = __intrin_floor__(x)
+@inline fun floor(x: double) = __intrin_floor__(x)
+@inline fun ceil(x: float) = __intrin_ceil__(x)
+@inline fun ceil(x: double) = __intrin_ceil__(x)
 @pure @nothrow fun trunc(x: float): int = (x :> int)
 @pure @nothrow fun trunc(x: double): int = (x :> int)
 

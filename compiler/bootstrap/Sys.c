@@ -353,6 +353,23 @@ fx_cstr_t name_;
 
 }
 
+FX_EXTERN_C int _fx_M3SysFM6getenvS2SS(fx_str_t* name_0, fx_str_t* defval_0, fx_str_t* fx_result, void* fx_fv)
+{
+   fx_str_t s_0 = {0};
+   int fx_status = 0;
+   FX_CALL(_fx_M3SysFM6getenvS1S(name_0, &s_0, 0), _fx_cleanup);
+   if (FX_STR_LENGTH(s_0) != 0) {
+      fx_copy_str(&s_0, fx_result);
+   }
+   else {
+      fx_copy_str(defval_0, fx_result);
+   }
+
+_fx_cleanup: ;
+   FX_FREE_STR(&s_0);
+   return fx_status;
+}
+
 FX_EXTERN_C int _fx_M3SysFM7getpathLS1S(fx_str_t* name_0, struct _fx_LS_data_t** fx_result, void* fx_fv)
 {
    fx_str_t v_0 = {0};

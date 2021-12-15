@@ -231,6 +231,14 @@ FX_INLINE int_ fx_round2I(double x) {
 }
 #endif
 
+FX_INLINE int_ fx_mini(int_ a, int_ b) { return a <= b ? a : b; }
+FX_INLINE float fx_minf(float a, float b) { return a <= b ? a : b; }
+FX_INLINE double fx_min(double a, double b) { return a <= b ? a : b; }
+
+FX_INLINE int_ fx_maxi(int_ a, int_ b) { return a >= b ? a : b; }
+FX_INLINE float fx_maxf(float a, float b) { return a >= b ? a : b; }
+FX_INLINE double fx_max(double a, double b) { return a >= b ? a : b; }
+
 FX_INLINE int fx_roundf2i(float x) {
     // special 32-bit version that can be converted to very
     // fast vectorized version inside vectorized loops.

@@ -230,15 +230,16 @@ type assoc_t = AssocLeft | AssocRight
         pp.end()
     | CExpBinary (bop, a, b, _) =>
         val (bop_str, pr0, assoc) = binop2str_(bop)
+        val use_br = pr0 < pr || (match bop {COpBitwiseAnd | COpBitwiseOr | COpBitwiseXor => true | _ => false})
         pp.begin()
-        if pr0 < pr { pp.str("("); pp.cut() }
+        if use_br { pp.str("("); pp.cut() }
         val is_shift = bop == COpShiftLeft || bop == COpShiftRight
         val a_pr = if is_shift { 1350 } else if assoc == AssocLeft { pr0 } else { pr0 + 1 }
         val b_pr = if is_shift { 1350 } else if assoc == AssocRight { pr0 } else { pr0 + 1 }
         pp_cexp_(pp, a, a_pr); pp.space()
         pp.str(bop_str); pp.space()
         pp_cexp_(pp, b, b_pr)
-        if pr0 < pr { pp.cut(); pp.str(")") }
+        if use_br { pp.cut(); pp.str(")") }
         pp.end()
     | CExpUnary (uop, e, _) =>
         val (uop_str, pr0, _) = unop2str_(uop)

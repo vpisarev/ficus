@@ -1833,11 +1833,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val fname = pp(s)
                 val argtyp = get_atom_ktyp(args.hd(), kloc)
                 val prefix = match fname {
-                            | "floor" | "ceil" | "round "=> "fx_"
+                            | "floor" | "ceil" | "round " | "min" | "max" => "fx_"
                             | _ => ""
                             }
                 val suffix = (match argtyp {
                             | KTypFloat(32) => "f"
+                            | KTypInt => "i"
                             | _ => ""})
                 val fname = prefix + fname + suffix
                 val call_f = make_call(get_id(fname), cargs.rev(), ctyp, kloc)

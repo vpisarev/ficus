@@ -196,11 +196,8 @@ FX_EXTERN_C int _fx_M8FilenameFM5splitTa2S1S(fx_str_t* path_0, struct _fx_Ta2S* 
          else if (pos0_0 < 0) {
             pos_1 = pos_0;
          }
-         else if (pos_0 >= pos0_0) {
-            pos_1 = pos_0;
-         }
          else {
-            pos_1 = pos0_0;
+            pos_1 = fx_maxi(pos_0, pos0_0);
          }
          if (pos_1 < 0) {
             fx_str_t slit_4 = FX_MAKE_STR(".");
@@ -462,11 +459,8 @@ FX_EXTERN_C int _fx_M8FilenameFM16remove_extensionS1S(fx_str_t* path_0, fx_str_t
       else if (pos0_0 < 0) {
          pos_1 = pos_0;
       }
-      else if (pos_0 >= pos0_0) {
-         pos_1 = pos_0;
-      }
       else {
-         pos_1 = pos0_0;
+         pos_1 = fx_maxi(pos_0, pos0_0);
       }
       if (dotpos_0 <= pos_1 + 1) {
          fx_copy_str(path_0, fx_result);
