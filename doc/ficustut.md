@@ -933,7 +933,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     for i <- 0:100000 { sum -= big_list.nth(rng(0, N)) }
     ```
 
-  In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + [new_value] + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
+  In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + [< new_value >] + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
 
 * **variant**, also known as sum type: `Tag1: 't1 | Tag2: 't2 | ...`. Variants are used to represent various data structures from from simple enumerations to very complex hierarchical data structures. We cover them in the dedicated section.
 
@@ -1055,7 +1055,7 @@ If you want to insert a non-void expression (e.g. call a function, where you are
                     // Since it's value declaration,
                     // it cannot be a last expression
                     // in the code block
-    ignore(waitkey()  // Same effect; ignore the return value
+    ignore(waitkey())  // Same effect; ignore the return value
                     // It can be used as the last expression
                     // in a code block
     ```
@@ -1257,7 +1257,7 @@ In the nested loop you can combine iteration over ranges and collections.
 There can also be simultaneous iteration over several collections, e.g. when we have two or more collections and want to process corresponding pairs/n-tuples of elements. The construction looks like:
 
 ```
-for val1 <- expr1, val2 <— <expr2> ... { exprs ... }
+for val1 <- expr1, val2 <— expr2 ... { exprs ... }
 ```
 
 For example, here is how to compute Hamming distance between 2 vectors:
@@ -1698,7 +1698,7 @@ fun (arg1 [: T1], arg2 [: T2], ..., argn[: Tn])
 
 The differences from the regular function are:
 
-1. the function name is omitted. You can, however, declare a value/variable with a lambda function as a value and then call this lambda function by name.
+1. the function name is omitted. You can, however, declare a value/variable, initialize it with the lambda function and then call this lambda function by name.
 2. `=` form is unavailable, use `{}`
 3. it's not required to specify types of arguments, because lambda function usually has very small scope and its parameters types can often be inferenced from the way it's used. In particular, the standard `sort` function, used in the example above, is defined as:
 
@@ -1718,7 +1718,7 @@ fun make_coin()
 {
     val rng = RNG(uint64(Sys.tick_count()))
     // 'warm up' rng a bit
-    val _ = fold s = 0UL for i <- 0:1000 {s ^ rng.next()}
+    val _ = fold s = 0UL for i <- 0:10 {s ^ rng.next()}
     fun () { if bool(rng) {"heads"} else {"tails"} }
 }
 val coin1 = make_coin()
@@ -2027,7 +2027,7 @@ But when you unpack the record, compiler already knows the type of unpacked valu
 
 ### Modifying/updating record
 
-While tuples are usually small and rarely need to be modified by parts, it's generally not true for records, and it may be too much of a code, especially if you need to change just a single field. There is convenient record update operator `.{...}` to solve this problem: `record_instance . {filed_i1=new_val_i1, ..., field_iK=new_val_iK }`:
+While tuples are usually small and rarely need to be modified by parts, it's generally not true for records, and it may be too much of a code, especially if you need to change just a single field. There is convenient record update operator `.{...}` to solve this problem: `record_instance . {field_i1=new_val_i1, ..., field_iK=new_val_iK }`:
 
 ```
 type Rect = {x: int; y: int; width: int; height: int}

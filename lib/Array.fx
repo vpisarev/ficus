@@ -18,6 +18,8 @@ fun total(a: 't []) = size(a)
 
 fun __negate__(a: 't [+]) = [| for x <- a {-x} |]
 
+fun map(arr: 'a [+], f: 'a -> 'b) = [| for x <- arr {f(x)} |]
+
 operator .+ (a: 'ta [+], b: 'tb) =
     [| for x <- a {x .+ b} |]
 operator .- (a: 'ta [+], b: 'tb) =
@@ -118,6 +120,13 @@ operator .>= (a: 't [+], b: 't [+]): bool [+] =
 
 fun sum(a: 't [+]) =
     fold s = ((0 :> 't) :> double) for aj <- a {s + aj}
+
+fun sum(a: 't [+], v0: 's) =
+    fold s = v0 for aj <- a {s + aj}
+
+fun product(a: 't [+], v0: 's) =
+    fold p = v0 for aj <- a {p * aj}
+
 fun mean(a: 't [+]) = sum(a)/(max(total(a), 1) :> double)
 
 fun normInf(a: 't [+]) =

@@ -6,7 +6,7 @@
 // Ficus compiler, the driving part
 // (calls all other parts of the compiler in the proper order)
 
-import Filename, File, Sys, Hashmap, LexerUtils as Lxu
+import Filename, File, Sys, Hashmap, Hashset, LexerUtils as Lxu
 import Ast, Ast_pp, Lexer, Parser, Options
 import Ast_typecheck
 import K_form, K_pp, K_normalize, K_annotate, K_mangle
@@ -395,7 +395,8 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 } else {
                     " /DNDEBUG /MT " + (if opt_level == 1 {"/O1"} else {"/O2"})
                 }
-            val cflags = f"/utf-8 /nologo{opt_flags}{omp_flag} /I{runtime_include_path}"
+            val incdirs = " ".join([for d <- Ast.all_c_inc_dirs.list() {"/I"+d}])
+            val cflags = f"/utf-8 /nologo{opt_flags}{omp_flag} {incdirs} /I{runtime_include_path}"
             ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "/nologo /F10485760 kernel32.lib advapi32.lib")
         } else {
             // unix or hopefully something more or less compatible with it
@@ -440,7 +441,8 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                     f" -DNDEBUG{stk_overflow}"
                 }
 
-            val cflags = f"-O{opt_level_str}{ggdb_opt} {cflags} {common_cflags} -I{runtime_include_path}"
+            val incdirs = " ".join([for d <- Ast.all_c_inc_dirs.list() {"-I"+d}])
+            val cflags = f"-O{opt_level_str}{ggdb_opt} {cflags} {common_cflags} {incdirs} -I{runtime_include_path}"
             val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"
             (os, c_comp, cpp_comp, ".o", "-c -o ", "-o ", "-l", cflags, clibs)
         }

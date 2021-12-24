@@ -488,6 +488,7 @@ var builtin_exceptions = empty_idmap
 var all_compile_errs: exn list = []
 var all_compile_err_ctx: string list = []
 var all_func_ctx: (id_t, typ_t, loc_t) list = []
+var all_c_inc_dirs: string Hashset.t = Hashset.empty(256, "")
 
 fun string(loc: loc_t)
 {
@@ -1640,6 +1641,7 @@ fun init_all(): void
     freeze_ids = false
     all_names.clear()
     all_strhash.clear()
+    all_c_inc_dirs.clear()
     for i <- builtin_ids.0.rev() { ignore(get_id(i)) }
     ignore(fname_always_import())
     all_modules_hash.clear()

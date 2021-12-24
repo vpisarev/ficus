@@ -5,7 +5,7 @@
 
 // Ficus recursive descent parser
 
-import File, Filename, Hashmap, Sys
+import File, Filename, Hashmap, Hashset, Sys
 from Ast import *
 import LexerUtils as Lxu
 from Lexer import *
@@ -26,12 +26,27 @@ var parser_ctx = parser_ctx_t { m_idx=-1, filename="", deps=[], inc_dirs=[], def
 
 fun add_to_imported_modules(mname: id_t, loc: loc_t): int
 {
-    val mfname = pp(mname).replace(".", Filename.dir_sep()) + ".fx"
+    val mfname = pp(mname)
+    var ncomps = mfname.split('.', allow_empty=false).length()
+    val mfname = mfname.replace(".", Filename.dir_sep())
     val mfname =
-        try Filename.locate(mfname, parser_ctx.inc_dirs)
+        try Filename.locate(mfname + ".fx", parser_ctx.inc_dirs)
         catch {
-        | NotFoundError => throw ParseError(loc, f"module {mname} is not found")
+        | NotFoundError =>
+            try {
+                ncomps += 1
+                Filename.locate(Filename.concat(mfname, "init.fx"), parser_ctx.inc_dirs)
+            }
+            catch {
+            | NotFoundError => throw ParseError(loc, f"module {mname} is not found")
+            }
         }
+    var dirname = mfname
+    for i <- 0:ncomps {
+        dirname = Filename.dirname(dirname)
+        if all_c_inc_dirs.mem(dirname) {break}
+        all_c_inc_dirs.add(dirname)
+    }
     val m_idx = find_module(mname, mfname)
     if !parser_ctx.deps.mem(m_idx) {
         parser_ctx.deps = m_idx :: parser_ctx.deps
