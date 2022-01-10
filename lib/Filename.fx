@@ -9,8 +9,10 @@
     #include <stdio.h>
     #include <sys/stat.h>
 #if defined WIN32 || defined _WIN32
+    #include <io.h>
     #include <direct.h>
 #else
+    #include <glob.h>
     #include <unistd.h>
 #endif
     #ifndef PATH_MAX
@@ -128,4 +130,79 @@ fun locate(name: string, dirs: string list): string
 {
     val dir = find(for d <- dirs {exists(concat(d, name))})
     normalize(getcwd(), concat(dir, name))
+}
+
+fun glob(pattern: string): string []
+{
+    fun glob_(pattern: string, strarr: string []): (string [], bool)
+    @ccode {
+        fx_cstr_t cpattern;
+        int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
+        if (fx_status < 0) return fx_status;
+#if defined _WIN32 || defined WINCE
+        fx_result->t1 = false;
+        int_ i, capacity = 0, nentries = 0;
+        fx_str_t* buf = 0, *newbuf = 0;
+        struct _finddata_t fd;
+        intptr_t h = _findfirst(cpattern.data, &fd);
+        fx_free_cstr(&cpattern);
+        if (h == -1L) {
+            if (errno == ENOENT)
+                return FX_OK;
+            FX_FAST_THROW_RET(FX_EXN_IOError);
+        }
+        for(;;) {
+            if (nentries >= capacity) {
+                capacity *= 2;
+                if (capacity < 256) capacity = 256;
+                newbuf = (fx_str_t*)fx_realloc(buf, capacity*sizeof(buf[0]));
+                if (!newbuf) {
+                    FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
+                    break;
+                }
+                buf = newbuf;
+            }
+            fx_status = fx_cstr2str(fd.name, -1, buf + nentries);
+            if (fx_status < 0) break;
+            nentries++;
+            if (_findnext(h, &fd) != 0)
+                break;
+        }
+        _findclose(h);
+        if (fx_status >= 0) {
+            fx_status = fx_make_arr(1, &nentries, sizeof(fx_str_t), strarr->free_elem, strarr->copy_elem, 0, &fx_result->t0);
+            if (fx_status >= 0) {
+                memcpy(fx_result->t0.data, buf, nentries*sizeof(buf[0]));
+                nentries = 0;
+            }
+        }
+        for (i = 0; i < nentries; i++)
+            fx_free_str(buf + i);
+        fx_free(buf);
+#else
+        fx_result->t1 = true;
+        glob_t globbuf;
+        globbuf.gl_offs = 0;
+        int glob_err = glob(cpattern.data, GLOB_TILDE, NULL, &globbuf);
+        int_ nentries = (int_)globbuf.gl_pathc;
+        fx_free_cstr(&cpattern);
+        if (glob_err != 0) {
+            if (glob_err == GLOB_NOMATCH)
+                return FX_OK;
+            FX_FAST_THROW_RET(FX_EXN_IOError);
+        }
+        fx_status = fx_make_arr(1, &nentries, sizeof(fx_str_t), strarr->free_elem, strarr->copy_elem, 0, &fx_result->t0);
+        if (fx_status >= 0) {
+            fx_str_t* data = (fx_str_t*)(fx_result->t0.data);
+            for(int_ i = 0; i < nentries && fx_status >= 0; i++, data++) {
+                fx_status = fx_cstr2str(globbuf.gl_pathv[i], -1, data);
+            }
+        }
+        globfree(&globbuf);
+#endif
+        return fx_status;
+    }
+    val (files, sorted) = glob_(pattern, ([]: string []))
+    if !sorted {sort(files, (<))}
+    files
 }
