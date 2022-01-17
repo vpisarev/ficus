@@ -111,6 +111,15 @@ fun parse_string(fname: string, s: string): t
                     }
                     val substr = strm.buf[pos:vpos]
                     (vpos, substr.copy())
+                } else if c.isdigit() || c == '-' {
+                    vpos = pos+1
+                    while true {
+                        val c = strm.buf.zero[vpos]
+                        if !c.isdigit() {break}
+                        vpos += 1
+                    }
+                    val substr = strm.buf[pos:vpos]
+                    (vpos, substr.copy())
                 } else {
                     throw Lxu.LexerError(getloc(strm, pos),
                         "unexpected character; Json key, \"...\" or <identifier> is expected")

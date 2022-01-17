@@ -12,11 +12,10 @@ type datatype_t =
     | DTYP_UINT32 | DTYP_UINT64 | DTYP_COMPLEX64 | DTYP_COMPLEX128 | DTYP_BFLOAT16
 
 type tdata_t = T_FLOAT: float [] | T_INT8: int8 [] | T_INT64: int64 []
-type tensor_id_t = string
 
 type tensor_t =
 {
-    name: tensor_id_t
+    name: string
     shape: int []
     data: tdata_t
 }
@@ -32,7 +31,7 @@ type typeinfo_t = TYPINFO_TENSOR: (datatype_t, dim_t [])
 
 type valueinfo_t =
 {
-    name: tensor_id_t
+    name: string
     denotation: string
     typ: typeinfo_t
 }
@@ -52,8 +51,8 @@ type node_t =
 {
     name: string
     op: string
-    inputs: tensor_id_t []
-    outputs: tensor_id_t []
+    inputs: string []
+    outputs: string []
     attrs: attr_t []
 }
 
@@ -213,3 +212,5 @@ fun print(model: model_t)
     println(model.graph)
     println("// end of model")
 }
+
+always_use([AttrInt(5L), AttrString("abc")])

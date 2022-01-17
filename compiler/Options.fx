@@ -303,7 +303,6 @@ fun parse_options(): bool {
         opt.app_filename = if opt.output_name != "" { opt.output_name } else { default_output_name }
         opt.build_dir = Filename.normalize(opt.build_rootdir, Filename.basename(opt.app_filename))
         if opt.output_name == "" { opt.app_filename = Filename.normalize(opt.build_dir, opt.app_filename) }
-        opt.app_args = opt.app_args.rev()
         true
     } else { false }
 }

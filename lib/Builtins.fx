@@ -50,6 +50,7 @@ fun assert(f: bool) = if !f {throw AssertError}
 fun assert((f, f_str, fname, lineno): (bool, string, string, int)) = if !f {throw Fail(f"{fname}:{lineno}: Assertion '{f_str}' failed")}
 
 fun ignore(_: 't) {}
+@nothrow fun always_use(x: 't): void = @ccode {}
 
 // 't?, int? etc. can be used instead of 't option, int option ...
 class 't option = None | Some: 't

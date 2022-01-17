@@ -5,9 +5,9 @@
 
 // dumps .onnx model
 
-import Onnx.Ast, Onnx.Parse, Sys
+import Onnx.Ast, Onnx.Parser, Sys
 val model_name = match Sys.arguments() {
     | f :: [] => f
     | _ => println("specify .onnx model name"); throw Fail("")
     }
-println(Onnx.Parse.parse(model_name))
+println(Onnx.Parser.parse(model_name))
