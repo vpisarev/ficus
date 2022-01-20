@@ -49,7 +49,7 @@ if !Filename.exists(modelname) || !Filename.exists(configname) {
 
 val net = cv.readDetectionModel(modelname, config=configname)
 net.setPreferableTarget(cv.DNN_TARGET_CPU)
-net.setInputMean((104., 177., 123., 0.))
+net.setInputMean((104., 177., 123.))
 net.setInputScale(1.)
 net.setInputSize((size0, size0))
 val cap = cv.captureFromCamera(0)

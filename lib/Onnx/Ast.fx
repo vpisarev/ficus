@@ -11,7 +11,11 @@ type datatype_t =
     | DTYP_INT32 | DTYP_INT64 | DTYP_STRING | DTYP_BOOL | DTYP_FLOAT16 | DTYP_DOUBLE
     | DTYP_UINT32 | DTYP_UINT64 | DTYP_COMPLEX64 | DTYP_COMPLEX128 | DTYP_BFLOAT16
 
-type tdata_t = T_FLOAT: float [] | T_INT8: int8 [] | T_INT64: int64 []
+type tdata_t =
+    | T_FLOAT: float []
+    | T_INT8: int8 []
+    | T_INT32: int32 []
+    | T_INT64: int64 []
 
 type tensor_t =
 {
@@ -33,13 +37,14 @@ type valueinfo_t =
 {
     name: string
     denotation: string
-    typ: typeinfo_t
+    typeinfo: typeinfo_t
 }
 
 type attrval_t =
     | AttrInt: int64 | AttrFloat: float
     | AttrString: string | AttrTensor: tensor_t
     | AttrFloats: float [] | AttrInts: int [] | AttrStrings: string []
+    | AttrGraph // temp hack
 
 type attr_t =
 {
@@ -110,13 +115,31 @@ fun tensor_data_prefix(t: tdata_t)
 {
     | T_FLOAT _ => "float32"
     | T_INT8 _ => "int8"
+    | T_INT32 _ => "int32"
     | T_INT64 _ => "int64"
+}
+
+fun tensor_data_to_floats(t: tdata_t)
+{
+    | T_FLOAT(w) => w
+    | T_INT8(w) => float(w)
+    | T_INT32(w) => float(w)
+    | T_INT64(w) => float(w)
+}
+
+fun tensor_data_to_ints(t: tdata_t)
+{
+    | T_FLOAT(w) => int(w)
+    | T_INT8(w) => int(w)
+    | T_INT32(w) => int(w)
+    | T_INT64(w) => int(w)
 }
 
 fun print_tensor_data(t: tdata_t)
 {
     | T_FLOAT(data) => print(data)
     | T_INT8(data) => print(data)
+    | T_INT32(data) => print(data)
     | T_INT64(data) => print(data)
 }
 
@@ -139,6 +162,7 @@ fun print(a: attr_t)
     | AttrInts(ints) => print(ints)
     | AttrFloats(floats) => print(floats)
     | AttrStrings(strings) => print(strings)
+    | AttrGraph => print("<subgraph>")
     }
 }
 
@@ -172,7 +196,7 @@ fun print(vi: valueinfo_t)
         print(f" ({vi.denotation})")
     }
     print(": ")
-    match vi.typ {
+    match vi.typeinfo {
     | TYPINFO_TENSOR (dt, diminfo) =>
         val diminfo = " x ".join(diminfo.map(string))
         print(f"{dt}, {diminfo}")

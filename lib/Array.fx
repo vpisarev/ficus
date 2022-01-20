@@ -4,6 +4,9 @@
 */
 
 // operations on arrays
+fun mkrange(n: int) = [| for i <- 0:n {i} |]
+fun mkrange(a: int, b: int) = [| for i <- a:b {i} |]
+fun mkrange(a: int, b: int, delta: int) = [| for i <- a:b:delta {i} |]
 
 fun total(a: 't [+]) = fold p = 1 for szj <- size(a) {p*szj}
 fun total(a: 't []) = size(a)

@@ -37,7 +37,7 @@ typedef struct onnx_value_info_t
 {
     fx_str_t name;
     fx_str_t denotation;
-    onnx_type_info_t typ;
+    onnx_type_info_t typeinfo;
 } onnx_value_info_t;
 
 typedef struct onnx_tensor_t
@@ -167,11 +167,12 @@ static int onnx_parse_value_info(FicusOnnx__ValueInfoProto* vi, const fx_arr_t* 
         fx_status = fx_cstr2str(vi->type->denotation, -1, &result->denotation);
     if (fx_status >= 0) {
         if (vi->type->value_case == FICUS_ONNX__TYPE_PROTO__VALUE_TENSOR_TYPE) {
-            result->typ.datatype = vi->type->tensor_type->elem_type + 1;
+            result->typeinfo.datatype = vi->type->tensor_type->elem_type + 1;
             const FicusOnnx__TensorShapeProto* shape = vi->type->tensor_type->shape;
             fx_status = onnx_parse_array(shape->dim, shape->n_dim, refarrs, REF_DIM,
-                                     (onnx_parse_elem_t)onnx_parse_dim, &result->typ.shapeinfo);
+                                     (onnx_parse_elem_t)onnx_parse_dim, &result->typeinfo.shapeinfo);
         } else {
+            printf("error: unsupported value_case: vi->type->value_case=%d\n", (int)vi->type->value_case);
             FX_FAST_THROW_RET(FX_EXN_NotImplementedError);
         }
     }
@@ -264,7 +265,10 @@ static int onnx_parse_attr(const FicusOnnx__AttributeProto* attr,
         result->v.tag = 7;
         fx_status = onnx_parse_array(attr->strings, attr->n_strings, refarrs, REF_STR,
                                      (onnx_parse_elem_t)onnx_parse_str, &result->v.u.attrArr);
+    } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__GRAPH) {
+        result->v.tag = 8;
     } else {
+        printf("error: unsupported attribute: attr->type=%d\n", t);
         FX_FAST_THROW_RET(FX_EXN_NotImplementedError);
     }
     return fx_status;
@@ -394,7 +398,7 @@ fun get_refarrs(): refarrs_t
     val some_attrs = [| Ast.attr_t {name="size", v=Ast.AttrInt(1L)}, Ast.attr_t {name="url", v=Ast.AttrString("http://a.b.c")} |]
     val some_node = Ast.node_t {name="n", op="conv", inputs=[|"0"|], outputs=[|"1"|], attrs=some_attrs}
     val some_dim = Ast.DimValue(1L)
-    val some_vi = Ast.valueinfo_t {name="x", denotation="", typ=Ast.TYPINFO_TENSOR(Ast.DTYP_FLOAT, [|some_dim|])}
+    val some_vi = Ast.valueinfo_t {name="x", denotation="", typeinfo=Ast.TYPINFO_TENSOR(Ast.DTYP_FLOAT, [|some_dim|])}
     val some_tensor = Ast.tensor_t {name="t", shape=[|1|], data=Ast.T_FLOAT([|1.f|])}
     val some_graph = Ast.graph_t {name="", inputs=[], outputs=[], values=[], initializers=[], nodes=[|some_node|]}
     val some_opset = Ast.opset_t {version=1L, domain=""}

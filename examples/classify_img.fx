@@ -50,7 +50,7 @@ val labels: string [] =
     }
 
 /*val net = cv.readNet(mname)
-val fface = cv.makeFontFace("uni")
+val fface = cv.makeFontFace("sans")
 val fontSize = 20
 
 for imgname@i <- images {
@@ -72,5 +72,15 @@ for imgname@i <- images {
 }
 cv.waitKey()
 */
-val model = DL.FromOnnx.read(mname)
+
+println(f"starting reading model '{mname}'")
+val model =
+    try DL.FromOnnx.read(mname)
+    catch {
+    | DL.FromOnnx.OnnxConvertError(msg) =>
+        println(f"error: {msg}"); throw Fail("")
+    | Fail(msg) =>
+        println(f"error: {msg}"); throw Fail("")
+    }
+println(f"dumping model '{mname}'")
 println(model)
