@@ -50,10 +50,14 @@ typedef struct onnx_tensor_t
     } data;
 } onnx_tensor_t;
 
+struct onnx_graph_t;
+
 typedef struct onnx_attr_t
 {
+    int_ rc;
     fx_str_t name;
     struct {
+        int_ rc;
         int tag;
         union {
             int64_t attrInt;
@@ -61,12 +65,14 @@ typedef struct onnx_attr_t
             fx_str_t attrStr;
             onnx_tensor_t attrTensor;
             fx_arr_t attrArr;
+            struct onnx_graph_t* attrGraph;
         } u;
-    } v;
+    }* v;
 } onnx_attr_t;
 
 typedef struct onnx_node_t
 {
+    int_ rc;
     fx_str_t name;
     fx_str_t op;
     fx_arr_t inputs;
@@ -76,6 +82,7 @@ typedef struct onnx_node_t
 
 typedef struct onnx_graph_t
 {
+    int_ rc;
     fx_str_t name;
     fx_arr_t inputs;
     fx_arr_t outputs;
@@ -104,7 +111,7 @@ typedef struct onnx_model_t
     fx_str_t doc_string;
     fx_arr_t opset_import;
     fx_arr_t metadata;
-    onnx_graph_t graph;
+    onnx_graph_t* graph;
 } onnx_model_t;
 
 enum {
@@ -234,39 +241,58 @@ static int onnx_parse_str(const char* str, const fx_arr_t* refarrs, fx_str_t* re
     return fx_cstr2str(str, -1, result);
 }
 
+static int onnx_parse_graph(const FicusOnnx__GraphProto* graph,
+                            const fx_arr_t* refarrs,
+                            onnx_graph_t** result_);
+
 static int onnx_parse_attr(const FicusOnnx__AttributeProto* attr,
-                           const fx_arr_t* refarrs, onnx_attr_t* result)
+                           const fx_arr_t* refarrs, onnx_attr_t** result_)
 {
-    int fx_status = fx_cstr2str(attr->name, -1, &result->name);
-    int t = attr->type;
+    onnx_attr_t* result = (onnx_attr_t*)fx_malloc(sizeof(*result));
+    int fx_status, t;
+    if (!result) {
+        FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+    }
+    *result_ = result;
+    memset(result, 0, sizeof(*result));
+    result->rc = 1;
+    result->v = fx_malloc(sizeof(*result->v));
+    if (!result) {
+        FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+    }
+    memset(result->v, 0, sizeof(*result->v));
+    result->v->rc = 1;
+    fx_status = fx_cstr2str(attr->name, -1, &result->name);
+    t = attr->type;
     if (fx_status < 0)
         return fx_status;
     if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__INT) {
-        result->v.tag = 1;
-        result->v.u.attrInt = attr->i;
+        result->v->tag = 1;
+        result->v->u.attrInt = attr->i;
     } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__FLOAT) {
-        result->v.tag = 2;
-        result->v.u.attrFloat = attr->f;
+        result->v->tag = 2;
+        result->v->u.attrFloat = attr->f;
     } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__STRING) {
-        result->v.tag = 3;
-        fx_status = fx_cstr2str((char*)attr->s.data, attr->s.len, &result->v.u.attrStr);
+        result->v->tag = 3;
+        fx_status = fx_cstr2str((char*)attr->s.data, attr->s.len, &result->v->u.attrStr);
     } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__TENSOR) {
-        result->v.tag = 4;
-        fx_status = onnx_parse_tensor(attr->t, refarrs, &result->v.u.attrTensor);
+        result->v->tag = 4;
+        fx_status = onnx_parse_tensor(attr->t, refarrs, &result->v->u.attrTensor);
     } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__FLOATS) {
-        result->v.tag = 5;
+        result->v->tag = 5;
         fx_status = onnx_parse_array(attr->floats, attr->n_floats, refarrs, REF_FLOAT,
-                                     0, &result->v.u.attrArr);
+                                     0, &result->v->u.attrArr);
     } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__INTS) {
-        result->v.tag = 6;
+        result->v->tag = 6;
         fx_status = onnx_parse_array(attr->ints, attr->n_ints, refarrs, REF_INT64,
-                                     0, &result->v.u.attrArr);
+                                     0, &result->v->u.attrArr);
     } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__STRINGS) {
-        result->v.tag = 7;
+        result->v->tag = 7;
         fx_status = onnx_parse_array(attr->strings, attr->n_strings, refarrs, REF_STR,
-                                     (onnx_parse_elem_t)onnx_parse_str, &result->v.u.attrArr);
+                                     (onnx_parse_elem_t)onnx_parse_str, &result->v->u.attrArr);
     } else if (t == FICUS_ONNX__ATTRIBUTE_PROTO__ATTRIBUTE_TYPE__GRAPH) {
-        result->v.tag = 8;
+        result->v->tag = 8;
+        fx_status = onnx_parse_graph(attr->g, refarrs, &result->v->u.attrGraph);
     } else {
         printf("error: unsupported attribute: attr->type=%d\n", t);
         FX_FAST_THROW_RET(FX_EXN_NotImplementedError);
@@ -275,9 +301,17 @@ static int onnx_parse_attr(const FicusOnnx__AttributeProto* attr,
 }
 
 static int onnx_parse_node(const FicusOnnx__NodeProto* node,
-                           const fx_arr_t* refarrs, onnx_node_t* result)
+                           const fx_arr_t* refarrs, onnx_node_t** result_)
 {
-    int fx_status = fx_cstr2str(node->name, -1, &result->name);
+    onnx_node_t* result = (onnx_node_t*)fx_malloc(sizeof(*result));
+    int fx_status;
+    if (!result) {
+        FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+    }
+    *result_ = result;
+    memset(result, 0, sizeof(*result));
+    result->rc = 1;
+    fx_status = fx_cstr2str(node->name, -1, &result->name);
     if (fx_status >= 0)
         fx_status = fx_cstr2str(node->op_type, -1, &result->op);
     if (fx_status >= 0)
@@ -294,9 +328,17 @@ static int onnx_parse_node(const FicusOnnx__NodeProto* node,
 
 static int onnx_parse_graph(const FicusOnnx__GraphProto* graph,
                             const fx_arr_t* refarrs,
-                            onnx_graph_t* result)
+                            onnx_graph_t** result_)
 {
-    int fx_status = fx_cstr2str(graph->name, -1, &result->name);
+    onnx_graph_t* result = (onnx_graph_t*)fx_malloc(sizeof(*result));
+    int fx_status, t;
+    if (!result) {
+        FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
+    }
+    *result_ = result;
+    memset(result, 0, sizeof(*result));
+    result->rc = 1;
+    fx_status = fx_cstr2str(graph->name, -1, &result->name);
     if (fx_status >= 0)
         fx_status = onnx_parse_array(graph->input, graph->n_input, refarrs, REF_VALINFO,
                                      (onnx_parse_elem_t)onnx_parse_value_info, &result->inputs);
@@ -340,9 +382,9 @@ static int onnx_parse_model(const fx_arr_t* arr, const fx_arr_t* refarrs,
     FicusOnnx__ModelProto* model;
     int fx_status = FX_OK;
 
-    assert(refarrs[REF_GRAPH].dim[0].step == sizeof(onnx_graph_t));
-    assert(refarrs[REF_NODE].dim[0].step == sizeof(onnx_node_t));
-    assert(refarrs[REF_ATTR].dim[0].step == sizeof(onnx_attr_t));
+    assert(refarrs[REF_GRAPH].dim[0].step == sizeof(onnx_graph_t*));
+    assert(refarrs[REF_NODE].dim[0].step == sizeof(onnx_node_t*));
+    assert(refarrs[REF_ATTR].dim[0].step == sizeof(onnx_attr_t*));
     assert(refarrs[REF_VALINFO].dim[0].step == sizeof(onnx_value_info_t));
     assert(refarrs[REF_TENSOR].dim[0].step == sizeof(onnx_tensor_t));
     assert(refarrs[REF_DIM].dim[0].step == sizeof(onnx_dim_t));
@@ -395,12 +437,12 @@ type refarrs_t = (
 
 fun get_refarrs(): refarrs_t
 {
-    val some_attrs = [| Ast.attr_t {name="size", v=Ast.AttrInt(1L)}, Ast.attr_t {name="url", v=Ast.AttrString("http://a.b.c")} |]
-    val some_node = Ast.node_t {name="n", op="conv", inputs=[|"0"|], outputs=[|"1"|], attrs=some_attrs}
+    val some_attrs = [| Ast.Attr {name="size", v=Ast.AttrInt(1L)}, Ast.Attr {name="url", v=Ast.AttrString("http://a.b.c")} |]
+    val some_node = Ast.Node {name="n", op="conv", inputs=[|"0"|], outputs=[|"1"|], attrs=some_attrs}
     val some_dim = Ast.DimValue(1L)
     val some_vi = Ast.valueinfo_t {name="x", denotation="", typeinfo=Ast.TYPINFO_TENSOR(Ast.DTYP_FLOAT, [|some_dim|])}
     val some_tensor = Ast.tensor_t {name="t", shape=[|1|], data=Ast.T_FLOAT([|1.f|])}
-    val some_graph = Ast.graph_t {name="", inputs=[], outputs=[], values=[], initializers=[], nodes=[|some_node|]}
+    val some_graph = Ast.Graph {name="", inputs=[], outputs=[], values=[], initializers=[], nodes=[|some_node|]}
     val some_opset = Ast.opset_t {version=1L, domain=""}
 
     ([|some_graph|], [|some_node|], [|some_tensor|],

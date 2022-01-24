@@ -81,6 +81,12 @@ match ti {
     }
 }
 
+@private fun attr2string(a: OAst.attr_t) =
+    match a.v {
+    | OAst.AttrString(s) => s
+    | _ => throw OnnxConvertError(f"error when converting attribute {a.name} to string")
+    }
+
 @private fun attr2int(a: OAst.attr_t) =
     match a.v {
     | OAst.AttrInt(i) => int(i)
@@ -181,44 +187,11 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
         opsets = [for ops <- model.import_opsets {(ops.version, ops.domain)}]
     })
 
-    val (cargs, consts) = [|
-        @unzip for c@i <- model.graph.initializers {
-            argnames.add(c.name, i+1)
-            val t = onnx2tensor(c)
-            val arg = Ast.dlarg_t {
-                name = c.name,
-                argkind = Ast.DL_Arg_Const,
-                shape = t.shape,
-                typ = Ast.gettype(t.data),
-                idx = i+1
-            }
-            (arg, t)
-        } |]
+    val args = [| empty_arg |]
 
-    var argidx0 = size(cargs)+1
-
-    val arg_groups = [| for group@k <- (model.graph.inputs, model.graph.outputs, model.graph.values) {
-        val arg_group = [| for vi@i <- group {
-            // constants have been already converted;
-            // "states" are not recognized yet; probably, it can only be done in a separate compile step
-            val (argkind, idx) = if k == 1 {(Ast.DL_Arg_Output, i)} else {(Ast.DL_Arg_Buffer, -1)}
-            argnames.add(vi.name, argidx0 + i)
-            onnx2arg(dimnames, vi, argkind, idx)
-        } |]
-        val saved_argidx0 = argidx0
-        argidx0 += size(arg_group)
-        (arg_group, saved_argidx0)
-    } |]
-
-    val args = [| empty_arg, \cargs, \arg_groups[0].0, \arg_groups[1].0, \arg_groups[2].0 |]
-    val inpargs = mkrange(arg_groups[0].1, arg_groups[1].1)
-    val outargs = mkrange(arg_groups[1].1, arg_groups[2].1)
-    val ndimnames = dimnames.size()
-    val dimnames_ = array(ndimnames, "")
     val vargs = Dynvec.create(args, empty_arg)
-    val consts = [| empty_tensor, \consts |]
+    val consts = [| empty_tensor |]
     val vconsts = Dynvec.create(consts, empty_tensor)
-    dimnames.app(fun (name, v) {dimnames_[-v-1] = name})
 
     fun get_const_tensor_arg(name: string, data: Ast.dldata_t) =
         match argnames.find_opt(name) {
@@ -247,332 +220,606 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
     //fun get_const_tensor_arg(i: int) = get_const_tensor_arg(f"const:{i}", Ast.DL_Data_I32([|int32(i)|]))
     fun get_const_tensor_arg(f: float) =
         get_const_tensor_arg(f"const:{f}", Ast.DL_Data_FP32([|f|]))
+    fun get_const_tensor_arg(i: int) =
+        get_const_tensor_arg(f"const:{i}", Ast.DL_Data_I32([|int32(i)|]))
     fun get_const_tensor_arg(iarr: int []) =
         get_const_tensor_arg(f"const:{iarr}", Ast.DL_Data_I32(int32(iarr)))
 
     val net = Ast.empty_net().{
         info = info,
         argnames = argnames,
-        dimnames = dimnames,
-        dimnames_ = dimnames_,
-        inpargs = inpargs,
-        outargs = outargs,
         args = args,
         consts = consts,
     }
 
-    val fold prog = [] for node <- model.graph.nodes {
-        println(f"parsing operation '{node.op}'")
-        val inputs = [| for argname <- node.inputs {
-            match argnames.find_opt(argname) {
-            | Some(idx) => idx
-            | _ => throw OnnxConvertError(f"cannot find input '{argname}'")
-            }} |]
-        val outputs = [| for argname <- node.outputs {
-            match argnames.find_opt(argname) {
-            | Some(idx) => idx
-            | _ =>
-                val idx = vargs.push()
-                vargs.data[idx] = Ast.dlarg_t {
-                    name=argname,
-                    argkind=Ast.DL_Arg_Buffer, // later on we can convert it to output
-                    shape=Ast.dlshape_t {
-                        shape=[],
-                        layout=Ast.DL_Layout_Unknown
-                    },
-                    typ=Ast.DL_Undefined,
-                    idx=-1 }
-                argnames.add(argname, idx)
-                idx
-            }} |]
-        val ninputs = size(inputs), noutputs = size(outputs)
-
-        val new_ops = match node.op {
-        | "Add" | "And" | "Div" | "Equal" | "Greater" | "Less" | "Mod" | "Mul" | "Or" | "Sub" | "Xor" =>
-            assert(`ninputs == 2`)
-            assert(`noutputs == 1`)
-            val op = match node.op {
-                | "Add" => Ast.DL_Add
-                | "And" => Ast.DL_And
-                | "Div" => Ast.DL_Div
-                | "Equal" => Ast.DL_Equal
-                | "Greater" => Ast.DL_Greater
-                | "Less" => Ast.DL_Less
-                | "Mod" => Ast.DL_Mod
-                | "Mul" => Ast.DL_Mul
-                | "Or" => Ast.DL_Or
-                | "Sub" => Ast.DL_Sub
-                | "Xor" => Ast.DL_Xor
+    fun find_inp_arg(nspace: string, argname: string) =
+        match argnames.find_opt((if nspace == "" {nspace} else {nspace + "::"}) + argname) {
+        | Some(idx) => idx
+        | _ =>
+            if nspace == "" {
+                throw OnnxConvertError(f"cannot find input '{argname}'")
             }
-            [Ast.DL_EWise2 {op=op, t_inp1=inputs[0], t_inp2=inputs[1], t_out=outputs[0]}]
-        | "Abs" |  "Relu" =>
-            assert(`ninputs == 1`)
-            assert(`noutputs == 1`)
-            [Ast.DL_EWise1 {op=Ast.DL_Relu, t_inp=inputs[0], t_out=outputs[0]}]
-        | "AveragePool" | "MaxPool" =>
-            val ismax = node.op == "MaxPool"
-            assert(`ninputs == 1`)
-            assert(`noutputs == 1`)
-            var kernel_shape = [], strides = [], dilations = []
-            var pads = [], auto_pad = Ast.DL_Pad_None, count_include_pad = 0
-            var ceil_mode = 0, storage_order = 0
-            for a <- node.attrs {
-                | {name="kernel_shape"} => kernel_shape = attr2ints(a)
-                | {name="pads"} => pads = attr2ints(a)
-                | {name="strides"} => strides = attr2ints(a)
-                | {name="dilations"} => dilations = attr2ints(a)
-                | {name="auto_pad"} => auto_pad = attr2autopad(a)
-                | {name="ceil_mode"} => ceil_mode = attr2int(a)
-                | {name="storage_order"} => storage_order = attr2int(a)
-                | {name="count_include_pad"} => count_include_pad = attr2int(a)
-            }
-            if size(kernel_shape) != 2 {
-                throw OnnxConvertError(f"{node.name} (op={node.op}): not a 2D pooling operation!")
-            }
-            if pads == [] {pads = [|0,0,0,0|]} else {assert(size(pads) == 4)}
-            if strides == [] {strides = [|1,1|]} else {assert(size(strides) == 2)}
-            if dilations == [] {dilations = [|1,1|]} else {assert(size(dilations) == 2)}
-            val storage_order = if storage_order == 0 {Ast.DL_RowMajor} else {Ast.DL_ColumnMajor}
-            [if ismax {
-                Ast.DL_MaxPool {
-                    kernel_shape=(kernel_shape[0], kernel_shape[1]),
-                    pads=autopad2pads2d(auto_pad, kernel_shape, pads),
-                    strides=(strides[0], strides[1]),
-                    dilations=(dilations[0], dilations[1]),
-                    ceil_mode = ceil_mode != 0,
-                    storage_order=storage_order,
-                    t_inp=inputs[0], t_out=outputs[0] }
-            } else {
-                Ast.DL_AvgPool {
-                    kernel_shape=(kernel_shape[0], kernel_shape[1]),
-                    pads=autopad2pads2d(auto_pad, kernel_shape, pads),
-                    strides=(strides[0], strides[1]),
-                    dilations=(dilations[0], dilations[1]),
-                    ceil_mode = ceil_mode != 0,
-                    count_include_pad=count_include_pad != 0,
-                    storage_order=storage_order,
-                    t_inp=inputs[0], t_out=outputs[0] }
-            }]
-        | "BatchNormalization" =>
-            assert(ninputs == 5)
-            assert(1 <= noutputs <= 3)
-            var epsilon = 1e-5f, momentum=0.9f, training_mode=0
-            for a <- node.attrs {
-                | {name="epsilon"} => epsilon = attr2float(a)
-                | {name="momentum"} => momentum = attr2float(a)
-                | {name="training_mode"} => training_mode = attr2int(a)
-            }
-            [Ast.DL_BatchNorm {
-                epsilon=epsilon, momentum=momentum, training_mode=training_mode!=0,
-                t_inp=inputs[0], t_scale=inputs[1], t_B=inputs[2],
-                t_mean=inputs[3], t_var=inputs[4], t_out=outputs[0] }]
-        | "Clip" =>
-            assert(`ninputs == 1 || ninputs == 3`)
-            assert(`noutputs == 1`)
-            var maxv = 3.402823e+38f, minv = -maxv
-            for a <- node.attrs {
-                | {name="min"} => minv = attr2float(a)
-                | {name="max"} => maxv = attr2float(a)
-            }
-            val t_min = if ninputs == 3 {inputs[1]} else {get_const_tensor_arg(minv)}
-            val t_max = if ninputs == 3 {inputs[2]} else {get_const_tensor_arg(maxv)}
-            [Ast.DL_Clip {t_inp=inputs[0], t_min=t_min, t_max=t_max, t_out=outputs[0]}]
-        | "Constant" =>
-            assert(`ninputs == 0`)
-            assert(`noutputs == 1`)
-            var t = empty_tensor, count = 0
-            for a <- node.attrs {
-                | {name=("value"|"value_float"|"value_int"|"value_floats"|"value_ints")} =>
-                    if count != 0 {
-                        throw OnnxConvertError(f"{node.name} (op=Constant): more than one 'value_*' is specified")
-                    }
-                    count += 1
-                    t = attr2tensor(a)
-                | _ =>
-                    throw OnnxConvertError(f"{node.name} (op=Constant): unsupported attribute '{a.name}'")
-            }
-            if count != 1 {
-                throw OnnxConvertError(f"{node.name} (op=Constant): missing value")
-            }
-            val c_idx = vconsts.push()
-            vconsts.data[c_idx] = t
-            vargs.data[outputs[0]] = vargs.data[outputs[0]].{argkind=Ast.DL_Arg_Const, shape=t.shape, typ=Ast.gettype(t.data), idx=c_idx}
-            [] // there is no actual output operation
-        | "Concat" =>
-            assert(`noutputs == 1`)
-            var axis = 0
-            for a <- node.attrs {
-                | {name="axis"} => axis = attr2int(a)
-            }
-            [Ast.DL_Concat {axis=axis, t_inp=copy(inputs), t_out=outputs[0]}]
-        | "Conv" =>
-            assert(`ninputs == 2 || ninputs == 3`)
-            assert(`noutputs == 1`)
-            var kernel_shape = [], strides = [], dilations = []
-            var pads = [], auto_pad = Ast.DL_Pad_None, group = 1
-            for a <- node.attrs {
-                | {name="kernel_shape"} => kernel_shape = attr2ints(a)
-                | {name="pads"} => pads = attr2ints(a)
-                | {name="strides"} => strides = attr2ints(a)
-                | {name="dilations"} => dilations = attr2ints(a)
-                | {name="group"} => group = attr2int(a)
-                | {name="auto_pad"} => auto_pad = attr2autopad(a)
-            }
-            if size(kernel_shape) != 2 {
-                throw OnnxConvertError(f"{node.name} (op=Conv): not a 2D convolution!")
-            }
-            if pads == [] {pads = [|0,0,0,0|]} else {assert(size(pads) == 4)}
-            if strides == [] {strides = [|1,1|]} else {assert(size(strides) == 2)}
-            if dilations == [] {dilations = [|1,1|]} else {assert(size(dilations) == 2)}
-            [Ast.DL_Conv2D {
-                kernel_shape=(kernel_shape[0], kernel_shape[1]),
-                pads=autopad2pads2d(auto_pad, kernel_shape, pads),
-                strides=(strides[0], strides[1]),
-                dilations=(dilations[0], dilations[1]),
-                group = group,
-                t_inp=inputs[0], t_weights=inputs[1],
-                t_bias=(if ninputs == 3 {inputs[2]} else {0}),
-                t_out=outputs[0]}]
-        | "Dropout" =>
-            assert(`1 <= ninputs <= 3`)
-            assert(`noutputs == 1 || noutputs == 2`)
-            var seed=0
-            for a <- node.attrs {
-                | {name="seed"} => seed = attr2int(a)
-            }
-            [Ast.DL_Dropout {
-                seed=seed,
-                t_inp=inputs[0],
-                t_ratio=(if ninputs >= 2 {inputs[1]} else {get_const_tensor_arg(0.5f)}),
-                t_training_mode=(if ninputs >= 3 {inputs[2]} else {0}),
-                t_out=outputs[0] }] // ignore the second output
-        | "Flatten" =>
-            assert(`ninputs == 1`)
-            assert(`noutputs == 1`)
-            var axis=1
-            for a <- node.attrs {
-                | {name="axis"} => axis = attr2int(a)
-            }
-            [Ast.DL_Flatten {axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
-        | "Gather" =>
-            assert(`ninputs == 2`)
-            assert(`noutputs == 1`)
-            var axis=0
-            for a <- node.attrs {
-                | {name="axis"} => axis = attr2int(a)
-            }
-            [Ast.DL_Gather {
-                axis=axis,
-                t_inp=inputs[0], t_ind=inputs[1],
-                t_out=outputs[0]}]
-        | "Gemm" =>
-            assert(`ninputs == 2 || ninputs == 3`)
-            assert(`noutputs == 1`)
-            var alpha=1.f, beta=1.f, transA=0, transB=0
-            for a <- node.attrs {
-                | {name="alpha"} => alpha = attr2float(a)
-                | {name="beta"} => beta = attr2float(a)
-                | {name="transA"} => transA = attr2int(a)
-                | {name="transB"} => transB = attr2int(a)
-            }
-            [Ast.DL_Gemm {
-                alpha=alpha, beta=beta,
-                transA=transA!=0, transB=transB!=0,
-                t_inp=inputs[0], t_weights=inputs[1],
-                t_bias=(if ninputs == 3 {inputs[2]} else {0}),
-                t_out=outputs[0]}]
-        | "GlobalAveragePool" =>
-            assert(`ninputs == 1`)
-            assert(`noutputs == 1`)
-            [Ast.DL_GlobalAvgPool {t_inp=inputs[0], t_out=outputs[0]}]
-        | "LRN" =>
-            assert(ninputs == 1)
-            assert(noutputs == 1)
-            var size = -1, alpha = 0.0001f, beta = 0.75f, bias = 1.0f
-            for a <- node.attrs {
-                | {name="alpha"} => alpha = attr2float(a)
-                | {name="beta"} => beta = attr2float(a)
-                | {name="bias"} => bias = attr2float(a)
-                | {name="size"} => size = attr2int(a)
-            }
-            assert(`size > 0`)
-            [Ast.DL_LRN {
-                size=size, alpha=alpha, beta=beta, bias=bias,
-                t_inp=inputs[0], t_out=outputs[0] }]
-        | "Reshape" =>
-            assert(`ninputs == 1 || ninputs == 2`)
-            assert(`noutputs == 1`)
-            var allowzero = 0, cshape = []
-            for a <- node.attrs {
-                | {name="allowzero"} => allowzero = attr2int(a)
-                | {name="shape"} => cshape = attr2ints(a)
-            }
-            val t_shape = if ninputs == 2 {inputs[1]} else {get_const_tensor_arg(cshape)}
-            [Ast.DL_Reshape {
-                allowzero=allowzero != 0,
-                t_inp=inputs[0], t_shape=t_shape, t_out=outputs[0]}]
-        | "Shape" =>
-            assert(`ninputs == 1`)
-            assert(`noutputs == 1`)
-            var start = 0, end = 2147483647
-            for a <- node.attrs {
-                | {name="start"} => start = attr2int(a)
-                | {name="end"} => end = attr2int(a)
-            }
-            [Ast.DL_Shape {start=start, end=end, t_inp=inputs[0], t_out=outputs[0]}]
-        | "Slice" =>
-            assert(`ninputs == 1 || (3 <= ninputs <= 5)`)
-            assert(`noutputs == 1`)
-            var starts = [], ends = [], axes = [], steps = []
-            for a <- node.attrs {
-                | {name="starts"} => starts = attr2ints(a)
-                | {name="ends"} => ends = attr2ints(a)
-                | {name="axes"} => axes = attr2ints(a)
-                | {name="steps"} => steps = attr2ints(a)
-            }
-            val t_starts = if ninputs >= 3 {inputs[1]} else {get_const_tensor_arg(starts)}
-            val t_ends = if ninputs >= 3 {inputs[2]} else {get_const_tensor_arg(ends)}
-            val t_axes = if ninputs >= 4 {inputs[3]} else if axes != [] {get_const_tensor_arg(axes)} else {0}
-            val t_steps = if ninputs >= 5 {inputs[4]} else if steps != [] {get_const_tensor_arg(steps)} else {0}
-            [Ast.DL_Slice {t_inp=inputs[0], t_starts=t_starts, t_ends=t_ends,
-                t_axes=t_axes, t_steps=t_steps, t_out=outputs[0]}]
-        | "Softmax" =>
-            assert(`ninputs == 1`)
-            assert(`noutputs == 1`)
-            var axis = -1
-            for a <- node.attrs {
-                | {name="axis"} => axis = attr2int(a)
-            }
-            [Ast.DL_SoftMax {axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
-        | "Transpose" =>
-            assert(`ninputs == 1`)
-            assert(`noutputs == 1`)
-            var perm = []
-            for a <- node.attrs {
-                | {name="perm"} => perm = attr2ints(a)
-            }
-            [Ast.DL_Transpose {perm=perm, t_inp=inputs[0], t_out=outputs[0]}]
-        | "Unsqueeze" =>
-            assert(`ninputs == 1 || ninputs == 2`)
-            assert(`noutputs == 1`)
-            var axes = []
-            for a <- node.attrs {
-                | {name="axes"} => axes = attr2ints(a)
-            }
-            val t_axes = if ninputs == 2 {inputs[1]} else {get_const_tensor_arg(axes)}
-            if ninputs == 1 && axes == [] {
-                throw OnnxConvertError(f"{node.name} (op=Unsqueeze): 'axes' is missing")
-            }
-            [Ast.DL_Unsqueeze {
-                t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
-        | _ => throw OnnxConvertError(f"unsupported operation '{node.op}'")
+            val pos = nspace.rfind("::")
+            find_inp_arg((if pos >= 0 {nspace[:pos]} else {""}), argname)
         }
-        new_ops + prog
+
+    fun convert_graph(onnx_graph: OAst.graph_t, nspace: string) {
+        val nspace_ = if nspace == "" {nspace} else {nspace + "::"}
+        for c <- onnx_graph.initializers {
+            val argidx = vargs.push()
+            val cidx = vconsts.push()
+            val t = onnx2tensor(c)
+            val arg = Ast.dlarg_t {
+                name = nspace_ + c.name,
+                argkind = Ast.DL_Arg_Const,
+                shape = t.shape,
+                typ = Ast.gettype(t.data),
+                idx = cidx
+            }
+            argnames.add(arg.name, argidx)
+            vconsts.data[cidx] = t
+            vargs.data[argidx] = arg
+        }
+        println(f"#constants: {vconsts.count}")
+        fun convert_targ_group(group: OAst.valueinfo_t [], argkind: Ast.dlargkind_t) {
+            for vi@i <- group {
+                val argidx = vargs.push()
+                argnames.add(nspace_ + vi.name, argidx)
+                vargs.data[argidx] = onnx2arg(dimnames, vi, argkind, -1)
+            }
+        }
+        val inputs_start = vargs.count
+        convert_targ_group(onnx_graph.inputs, Ast.DL_Arg_Buffer)
+        val outputs_start = vargs.count
+        convert_targ_group(onnx_graph.outputs, Ast.DL_Arg_Output)
+        val values_start = vargs.count
+        convert_targ_group(onnx_graph.values, Ast.DL_Arg_Buffer)
+        val inpargs = mkrange(inputs_start, outputs_start)
+        val outargs = mkrange(outputs_start, values_start)
+
+        val fold prog = [] for node <- onnx_graph.nodes {
+            println(f"parsing operation '{node.name}' (Op={node.op}); #args = {vargs.count}")
+            val inputs = [| for argname <- node.inputs { find_inp_arg(nspace, argname) } |]
+            val outputs = [| for argname <- node.outputs {
+                // unlike operation inputs, we do not search in the outer scopes for the outputs.
+                // instead, we create a new local value
+                val argname = nspace_ + argname
+                match argnames.find_opt(argname) {
+                | Some(idx) => idx
+                | _ =>
+                    val idx = vargs.push()
+                    vargs.data[idx] = Ast.dlarg_t {
+                        name=argname,
+                        argkind=Ast.DL_Arg_Buffer, // later on we can convert it to output
+                        shape=Ast.dlshape_t {
+                            shape=[],
+                            layout=Ast.DL_Layout_Unknown
+                        },
+                        typ=Ast.DL_Undefined,
+                        idx=-1 }
+                    argnames.add(argname, idx)
+                    idx
+                }} |]
+            val ninputs = size(inputs), noutputs = size(outputs)
+
+            val more_ops = match node.op {
+            | "Add" | "And" | "Div" | "Equal" | "Greater" | "Less"
+            | "Mod" | "Mul" | "Or" | "Sub" | "Xor" =>
+                assert(`ninputs == 2`)
+                assert(`noutputs == 1`)
+                val op = match node.op {
+                    | "Add" => Ast.DL_Add
+                    | "And" => Ast.DL_And
+                    | "Div" => Ast.DL_Div
+                    | "Equal" => Ast.DL_Equal
+                    | "Greater" => Ast.DL_Greater
+                    | "Less" => Ast.DL_Less
+                    | "Mod" => Ast.DL_Mod
+                    | "Mul" => Ast.DL_Mul
+                    | "Or" => Ast.DL_Or
+                    | "Sub" => Ast.DL_Sub
+                    | "Xor" => Ast.DL_Xor
+                    | _ => throw OnnxConvertError(f"unsupported unary operation {node.op}")
+                }
+                [Ast.DL_Elemwise {op=op, t_inp=inputs, t_out=outputs[0]}]
+            | "Abs" |  "Relu" | "Abs" | "Acos" | "Acosh" | "Asin" | "Asinh" | "Atan" | "Atanh"
+            | "Ceil" | "Cos" | "Cosh" | "Erf" | "Exp" | "Floor" | "IsInf" | "IsNaN" | "Log"
+            | "Neg" | "Not" | "Relu" | "Round" | "Sigmoid" | "Sign" | "Sin" | "Sinh"
+            | "Softplus" | "Softsign" | "Sqrt" | "Tan" | "Tanh" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                val op = match node.op {
+                    | "Abs" => Ast.DL_Abs | "Acos" => Ast.DL_Acos | "Acosh" => Ast.DL_Acosh
+                    | "Asin" => Ast.DL_Asin | "Asinh" => Ast.DL_Asinh | "Atan" => Ast.DL_Atan
+                    | "Atanh" => Ast.DL_Atanh | "Ceil" => Ast.DL_Ceil | "Cos" => Ast.DL_Cos
+                    | "Cosh" => Ast.DL_Cosh | "Erf" => Ast.DL_Erf | "Exp" => Ast.DL_Exp
+                    | "Floor" => Ast.DL_Floor | "IsInf" => Ast.DL_IsInf | "IsNaN" => Ast.DL_IsNaN
+                    | "Log" => Ast.DL_Log | "Neg" => Ast.DL_Neg | "Not" => Ast.DL_Not
+                    | "Relu" => Ast.DL_Relu | "Round" => Ast.DL_Round | "Sigmoid" => Ast.DL_Sigmoid
+                    | "Sign" => Ast.DL_Sign | "Sin" => Ast.DL_Sin | "Sinh" => Ast.DL_Sinh
+                    | "Softplus" => Ast.DL_Softplus | "Softsign" => Ast.DL_Softsign
+                    | "Sqrt" => Ast.DL_Sqrt | "Tan" => Ast.DL_Tan | "Tanh" => Ast.DL_Tanh
+                    | _ => throw OnnxConvertError(f"unsupported binary operation {node.op}")
+                }
+                [Ast.DL_Elemwise {op=op, t_inp=inputs, t_out=outputs[0]}]
+            | "Min" | "Max" | "Mean" =>
+                assert(`ninputs > 1`)
+                assert(`noutputs == 1`)
+                val op = match node.op {
+                    | "Min" => Ast.DL_Min | "Max" => Ast.DL_Max | "Mean" => Ast.DL_Mean
+                    | _ => throw OnnxConvertError(f"unsupported binary operation {node.op}")
+                }
+                [Ast.DL_Elemwise {op=op, t_inp=inputs, t_out=outputs[0]}]
+            | "AveragePool" | "MaxPool" =>
+                val ismax = node.op == "MaxPool"
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var kernel_shape = [], strides = [], dilations = []
+                var pads = [], auto_pad = Ast.DL_Pad_None, count_include_pad = 0
+                var ceil_mode = 0, storage_order = 0
+                for a <- node.attrs {
+                    | {name="kernel_shape"} => kernel_shape = attr2ints(a)
+                    | {name="pads"} => pads = attr2ints(a)
+                    | {name="strides"} => strides = attr2ints(a)
+                    | {name="dilations"} => dilations = attr2ints(a)
+                    | {name="auto_pad"} => auto_pad = attr2autopad(a)
+                    | {name="ceil_mode"} => ceil_mode = attr2int(a)
+                    | {name="storage_order"} => storage_order = attr2int(a)
+                    | {name="count_include_pad"} => count_include_pad = attr2int(a)
+                    | _ => {}
+                }
+                if size(kernel_shape) != 2 {
+                    throw OnnxConvertError(f"{node.name} (op={node.op}): not a 2D pooling operation!")
+                }
+                if pads == [] {pads = [|0,0,0,0|]} else {assert(size(pads) == 4)}
+                if strides == [] {strides = [|1,1|]} else {assert(size(strides) == 2)}
+                if dilations == [] {dilations = [|1,1|]} else {assert(size(dilations) == 2)}
+                val storage_order = if storage_order == 0 {Ast.DL_RowMajor} else {Ast.DL_ColumnMajor}
+                [if ismax {
+                    Ast.DL_MaxPool {
+                        kernel_shape=(kernel_shape[0], kernel_shape[1]),
+                        pads=autopad2pads2d(auto_pad, kernel_shape, pads),
+                        strides=(strides[0], strides[1]),
+                        dilations=(dilations[0], dilations[1]),
+                        ceil_mode = ceil_mode != 0,
+                        storage_order=storage_order,
+                        t_inp=inputs[0], t_out=outputs[0] }
+                } else {
+                    Ast.DL_AvgPool {
+                        kernel_shape=(kernel_shape[0], kernel_shape[1]),
+                        pads=autopad2pads2d(auto_pad, kernel_shape, pads),
+                        strides=(strides[0], strides[1]),
+                        dilations=(dilations[0], dilations[1]),
+                        ceil_mode = ceil_mode != 0,
+                        count_include_pad=count_include_pad != 0,
+                        storage_order=storage_order,
+                        t_inp=inputs[0], t_out=outputs[0] }
+                }]
+            | "BatchNormalization" =>
+                assert(ninputs == 5)
+                assert(1 <= noutputs <= 3)
+                var epsilon = 1e-5f, momentum=0.9f, training_mode=0
+                for a <- node.attrs {
+                    | {name="epsilon"} => epsilon = attr2float(a)
+                    | {name="momentum"} => momentum = attr2float(a)
+                    | {name="training_mode"} => training_mode = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_BatchNorm {
+                    epsilon=epsilon, momentum=momentum, training_mode=training_mode!=0,
+                    t_inp=inputs[0], t_scale=inputs[1], t_B=inputs[2],
+                    t_mean=inputs[3], t_var=inputs[4], t_out=outputs[0] }]
+            | "Cast" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var to = 0
+                for a <- node.attrs {
+                    | {name="to"} => to = attr2int(a)
+                    | _ => {}
+                }
+                val to = match to {
+                    | 1 => Ast.DL_FP32 | 2 => Ast.DL_U8 | 3 => Ast.DL_I8 | 4 => Ast.DL_U16
+                    | 5 => Ast.DL_I16 | 6 => Ast.DL_I32 | 7 => Ast.DL_I64 | 10 => Ast.DL_FP16
+                    | 11 => Ast.DL_FP64 | 12 => Ast.DL_U32 | 13 => Ast.DL_U64 | 16 => Ast.DL_BF16
+                    | _ => throw OnnxConvertError(f"{node.name} (op=Cast): unknown/unsupported target type {to}")
+                }
+                [Ast.DL_Cast { to=to, t_inp=inputs[0], t_out=outputs[0] }]
+            | "Clip" =>
+                assert(`ninputs == 1 || ninputs == 3`)
+                assert(`noutputs == 1`)
+                var maxv = 3.402823e+38f, minv = -maxv
+                for a <- node.attrs {
+                    | {name="min"} => minv = attr2float(a)
+                    | {name="max"} => maxv = attr2float(a)
+                    | _ => {}
+                }
+                val t_min = if ninputs == 3 {inputs[1]} else {get_const_tensor_arg(minv)}
+                val t_max = if ninputs == 3 {inputs[2]} else {get_const_tensor_arg(maxv)}
+                [Ast.DL_Clip {t_inp=inputs[0], t_min=t_min, t_max=t_max, t_out=outputs[0]}]
+            | "Constant" =>
+                assert(`ninputs == 0`)
+                assert(`noutputs == 1`)
+                var t = empty_tensor, count = 0
+                for a <- node.attrs {
+                    | {name=("value"|"value_float"|"value_int"|"value_floats"|"value_ints")} =>
+                        if count != 0 {
+                            throw OnnxConvertError(f"{node.name} (op=Constant): more than one 'value_*' is specified")
+                        }
+                        count += 1
+                        t = attr2tensor(a)
+                    | _ =>
+                        throw OnnxConvertError(f"{node.name} (op=Constant): unsupported attribute '{a.name}'")
+                }
+                if count != 1 {
+                    throw OnnxConvertError(f"{node.name} (op=Constant): missing value")
+                }
+                val c_idx = vconsts.push()
+                vconsts.data[c_idx] = t
+                vargs.data[outputs[0]] = vargs.data[outputs[0]].{argkind=Ast.DL_Arg_Const, shape=t.shape, typ=Ast.gettype(t.data), idx=c_idx}
+                [] // there is no actual output operation
+            | "ConstantOfShape" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var value = empty_tensor
+                for a <- node.attrs {
+                    | {name="value"} => value = attr2tensor(a)
+                    | _ => {}
+                }
+                [Ast.DL_ConstantOfShape { value=value, t_shape=inputs[0], t_out=outputs[0] }]
+            | "Concat" =>
+                assert(`noutputs == 1`)
+                var axis = 0
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_Concat {axis=axis, t_inp=copy(inputs), t_out=outputs[0]}]
+            | "Conv" =>
+                assert(`ninputs == 2 || ninputs == 3`)
+                assert(`noutputs == 1`)
+                var kernel_shape = [], strides = [], dilations = []
+                var pads = [], auto_pad = Ast.DL_Pad_None, group = 1
+                for a <- node.attrs {
+                    | {name="kernel_shape"} => kernel_shape = attr2ints(a)
+                    | {name="pads"} => pads = attr2ints(a)
+                    | {name="strides"} => strides = attr2ints(a)
+                    | {name="dilations"} => dilations = attr2ints(a)
+                    | {name="group"} => group = attr2int(a)
+                    | {name="auto_pad"} => auto_pad = attr2autopad(a)
+                    | _ => {}
+                }
+                if size(kernel_shape) != 2 {
+                    throw OnnxConvertError(f"{node.name} (op=Conv): not a 2D convolution!")
+                }
+                if pads == [] {pads = [|0,0,0,0|]} else {assert(size(pads) == 4)}
+                if strides == [] {strides = [|1,1|]} else {assert(size(strides) == 2)}
+                if dilations == [] {dilations = [|1,1|]} else {assert(size(dilations) == 2)}
+                [Ast.DL_Conv2D {
+                    kernel_shape=(kernel_shape[0], kernel_shape[1]),
+                    pads=autopad2pads2d(auto_pad, kernel_shape, pads),
+                    strides=(strides[0], strides[1]),
+                    dilations=(dilations[0], dilations[1]),
+                    group = group,
+                    t_inp=inputs[0], t_weights=inputs[1],
+                    t_bias=(if ninputs == 3 {inputs[2]} else {0}),
+                    t_out=outputs[0]}]
+            | "Dropout" =>
+                assert(`1 <= ninputs <= 3`)
+                assert(`noutputs == 1 || noutputs == 2`)
+                var seed=0
+                for a <- node.attrs {
+                    | {name="seed"} => seed = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_Dropout {
+                    seed=seed,
+                    t_inp=inputs[0],
+                    t_ratio=(if ninputs >= 2 {inputs[1]} else {get_const_tensor_arg(0.5f)}),
+                    t_training_mode=(if ninputs >= 3 {inputs[2]} else {0}),
+                    t_out=outputs[0] }] // ignore the second output
+            | "Expand" =>
+                assert(`ninputs == 2`)
+                assert(`noutputs == 1`)
+                [Ast.DL_Expand { t_inp=inputs[0], t_shape=inputs[1], t_out=outputs[0] }]
+            | "Flatten" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var axis=1
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_Flatten {axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
+            | "Gather" =>
+                assert(`ninputs == 2`)
+                assert(`noutputs == 1`)
+                var axis=0
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_Gather {
+                    axis=axis,
+                    t_inp=inputs[0], t_ind=inputs[1],
+                    t_out=outputs[0]}]
+            | "Gemm" =>
+                assert(`ninputs == 2 || ninputs == 3`)
+                assert(`noutputs == 1`)
+                var alpha=1.f, beta=1.f, transA=0, transB=0
+                for a <- node.attrs {
+                    | {name="alpha"} => alpha = attr2float(a)
+                    | {name="beta"} => beta = attr2float(a)
+                    | {name="transA"} => transA = attr2int(a)
+                    | {name="transB"} => transB = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_Gemm {
+                    alpha=alpha, beta=beta,
+                    transA=transA!=0, transB=transB!=0,
+                    t_inp=inputs[0], t_weights=inputs[1],
+                    t_bias=(if ninputs == 3 {inputs[2]} else {0}),
+                    t_out=outputs[0]}]
+            | "GlobalAveragePool" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                [Ast.DL_GlobalAvgPool {t_inp=inputs[0], t_out=outputs[0]}]
+            | "Identity" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                [Ast.DL_Identity {t_inp=inputs[0], t_out=outputs[0]}]
+            | "If" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs >= 1`)
+                var then_br = Ast.empty_graph(), else_br = Ast.empty_graph()
+                for a <- node.attrs {
+                    | {name="then_branch", v=OAst.AttrGraph(g)} => then_br = convert_graph(g, nspace_+g.name)
+                    | {name="else_branch", v=OAst.AttrGraph(g)} => else_br = convert_graph(g, nspace_+g.name)
+                    | _ => {}
+                }
+                if then_br.prog == [] {throw OnnxConvertError("f{node.name} (op=If): 'then' branch is missing")}
+                if else_br.prog == [] {throw OnnxConvertError("f{node.name} (op=If): 'else' branch is missing")}
+                [Ast.DL_If {
+                    then_branch=then_br, else_branch=else_br,
+                    t_inp=inputs[0], t_out=outputs}]
+            | "LeakyRelu" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var alpha = 0.01f
+                for a <- node.attrs {
+                    | {name="alpha"} => alpha = attr2float(a)
+                    | _ => {}
+                }
+                [Ast.DL_LeakyRelu {alpha=alpha, t_inp=inputs[0], t_out=outputs[0]}]
+            | "Loop" =>
+                assert(`ninputs >= 2`)
+                assert(`noutputs >= 1`)
+                var body = Ast.empty_graph()
+                for a <- node.attrs {
+                    | {name="body", v=OAst.AttrGraph(g)} => body = convert_graph(g, nspace_+g.name)
+                    | _ => {}
+                }
+                if body.prog == [] {throw OnnxConvertError("f{node.name} (op=Loop): 'body' graph is missing")}
+                [Ast.DL_Loop {
+                    body=body, t_trip_count=inputs[0], t_cond_in=inputs[1], t_v_in=inputs[2:],
+                    t_cond_out=outputs[0], t_v_out=outputs[1:]}]
+            | "LRN" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var size = -1, alpha = 0.0001f, beta = 0.75f, bias = 1.0f
+                for a <- node.attrs {
+                    | {name="alpha"} => alpha = attr2float(a)
+                    | {name="beta"} => beta = attr2float(a)
+                    | {name="bias"} => bias = attr2float(a)
+                    | {name="size"} => size = attr2int(a)
+                    | _ => {}
+                }
+                assert(`size > 0`)
+                [Ast.DL_LRN {
+                    size=size, alpha=alpha, beta=beta, bias=bias,
+                    t_inp=inputs[0], t_out=outputs[0] }]
+            | "NonMaxSuppression" =>
+                assert(`2 <= ninputs <= 5`)
+                assert(noutputs == 1)
+                var center_point_box=0
+                for a <- node.attrs {
+                    | {name="center_point_box"} => center_point_box = attr2int(a)
+                    | _ => {}
+                }
+                val t_max_output_boxes_per_class = if ninputs > 2 {inputs[2]} else {get_const_tensor_arg(0)}
+                val t_iou_threshold = if ninputs > 3 {inputs[3]} else {get_const_tensor_arg(0.f)}
+                val t_score_threshold = if ninputs > 3 {inputs[3]} else {get_const_tensor_arg(0.f)}
+                [Ast.DL_NonMaxSuppression {
+                    center_point_box=center_point_box!=0,
+                    t_boxes=inputs[0],
+                    t_scores=inputs[1],
+                    t_max_output_boxes_per_class=t_max_output_boxes_per_class,
+                    t_iou_threshold=t_iou_threshold,
+                    t_score_threshold=t_score_threshold,
+                    t_out=outputs[0] }]
+            | "NonZero" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                [Ast.DL_NonZero { t_inp=inputs[0], t_out=outputs[0] }]
+            | "Range" =>
+                assert(`ninputs == 3`)
+                assert(`noutputs == 1`)
+                [Ast.DL_Range { t_start=inputs[0], t_limit=inputs[1], t_delta=inputs[2], t_out=outputs[0] }]
+            | "Resize" =>
+                assert(`1 <= ninputs <= 4`)
+                assert(`noutputs == 1`)
+                var coord_trans = "half_pixel", cubic_coeff_a = -0.75f,
+                    exclude_outside = 0, extrapolation_value = 0.f,
+                    mode = "nearest", nearest_mode = "round_prefer_floor"
+                for a <- node.attrs {
+                    | {name="coordinate_transformation_mode"} => coord_trans = attr2string(a)
+                    | {name="cubic_coeff_a"} => cubic_coeff_a = attr2float(a)
+                    | {name="exclude_outside"} => exclude_outside = attr2int(a)
+                    | {name="mode"} => mode = attr2string(a)
+                    | {name="nearest_mode"} => nearest_mode = attr2string(a)
+                    | _ => {}
+                }
+                val coord_trans = match coord_trans {
+                    | "pytorch_half_pixel" => Ast.DL_CT_PyTorchHalfPixel
+                    | "align_corners" => Ast.DL_CT_AlignCorners
+                    | "asymmetric" => Ast.DL_CT_Asymmetric
+                    | "tf_crop_and_resize" => Ast.DL_CT_TFCropResize
+                    | _ => Ast.DL_CT_HalfPixel // [TODO] issue warning
+                }
+                val mode = match mode {
+                    | "nearest" => Ast.DL_Inter_Nearest
+                    | "cubic" => Ast.DL_Inter_Cubic
+                    | _ => Ast.DL_Inter_Linear // [TODO] issue warning
+                }
+                val nearest_mode = match nearest_mode {
+                    | "floor" => Ast.DL_Nearest_Floor
+                    | "ceil" => Ast.DL_Nearest_Ceil
+                    | "round_prefer_ceil" => Ast.DL_Nearest_RoundPreferCeil
+                    | _ => Ast.DL_Nearest_RoundPreferFloor
+                }
+                [Ast.DL_Resize {
+                    coord_trans=coord_trans, cubic_coeff_a=cubic_coeff_a,
+                    exclude_outside=exclude_outside != 0,
+                    extrapolation_value=extrapolation_value,
+                    mode=mode, nearest_mode=nearest_mode,
+                    t_inp=inputs[0],
+                    t_roi=if ninputs > 1 {inputs[1]} else {0},
+                    t_scales=if ninputs > 2 {inputs[2]} else {0},
+                    t_sizes=if ninputs > 3 {inputs[3]} else {0},
+                    t_out=outputs[0]}]
+            | "Reshape" =>
+                assert(`ninputs == 1 || ninputs == 2`)
+                assert(`noutputs == 1`)
+                var allowzero = 0, cshape = []
+                for a <- node.attrs {
+                    | {name="allowzero"} => allowzero = attr2int(a)
+                    | {name="shape"} => cshape = attr2ints(a)
+                    | _ => {}
+                }
+                val t_shape = if ninputs == 2 {inputs[1]} else {get_const_tensor_arg(cshape)}
+                [Ast.DL_Reshape {
+                    allowzero=allowzero != 0,
+                    t_inp=inputs[0], t_shape=t_shape, t_out=outputs[0]}]
+            | "Shape" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var start = 0, end = 2147483647
+                for a <- node.attrs {
+                    | {name="start"} => start = attr2int(a)
+                    | {name="end"} => end = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_Shape {start=start, end=end, t_inp=inputs[0], t_out=outputs[0]}]
+            | "Slice" =>
+                assert(`ninputs == 1 || (3 <= ninputs <= 5)`)
+                assert(`noutputs == 1`)
+                var starts = [], ends = [], axes = [], steps = []
+                for a <- node.attrs {
+                    | {name="starts"} => starts = attr2ints(a)
+                    | {name="ends"} => ends = attr2ints(a)
+                    | {name="axes"} => axes = attr2ints(a)
+                    | {name="steps"} => steps = attr2ints(a)
+                    | _ => {}
+                }
+                val t_starts = if ninputs >= 3 {inputs[1]} else {get_const_tensor_arg(starts)}
+                val t_ends = if ninputs >= 3 {inputs[2]} else {get_const_tensor_arg(ends)}
+                val t_axes = if ninputs >= 4 {inputs[3]} else if axes != [] {get_const_tensor_arg(axes)} else {0}
+                val t_steps = if ninputs >= 5 {inputs[4]} else if steps != [] {get_const_tensor_arg(steps)} else {0}
+                [Ast.DL_Slice {t_inp=inputs[0], t_starts=t_starts, t_ends=t_ends,
+                    t_axes=t_axes, t_steps=t_steps, t_out=outputs[0]}]
+            | "Softmax" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var axis = -1
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_SoftMax {axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
+            | "Split" =>
+                assert(`ninputs == 1 || ninputs == 2`)
+                var axis = 0, split = []
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | {name="split"} =>
+                        split = attr2ints(a)
+                    | _ => {}
+                }
+                val t_split = if ninputs == 2 {inputs[1]} else if split != [] {get_const_tensor_arg(split)} else {0}
+                [Ast.DL_Split {
+                    axis=axis, t_inp=inputs[0], t_split=t_split, t_out=outputs }]
+            | "Squeeze" =>
+                assert(`ninputs == 1 || ninputs == 2`)
+                assert(`noutputs == 1`)
+                var axes = []
+                for a <- node.attrs {
+                    | {name="axes"} => axes = attr2ints(a)
+                    | _ => {}
+                }
+                val t_axes = if ninputs == 2 {inputs[1]} else {get_const_tensor_arg(axes)}
+                if ninputs == 1 && axes == [] {
+                    throw OnnxConvertError(f"{node.name} (op=Squeeze): 'axes' is missing")
+                }
+                [Ast.DL_Squeeze {
+                    t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
+            | "Tile" =>
+                assert(`ninputs == 2`)
+                assert(`noutputs == 1`)
+                [Ast.DL_Tile {t_inp=inputs[0], t_repeats=inputs[1], t_out=outputs[0]}]
+            | "TopK" =>
+                assert(`ninputs == 2`)
+                assert(`noutputs == 2`)
+                var axis = -1, largest = 1, sorted = 1
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | {name="largest"} => largest = attr2int(a)
+                    | {name="sorted"} => sorted = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_TopK {axis=axis, largest=largest!=0, sorted=sorted!=0,
+                    t_inp=inputs[0], t_K=inputs[1], t_out=outputs[0], t_out_ind=outputs[1]}]
+            | "Transpose" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var perm = []
+                for a <- node.attrs {
+                    | {name="perm"} => perm = attr2ints(a)
+                    | _ => {}
+                }
+                [Ast.DL_Transpose {perm=perm, t_inp=inputs[0], t_out=outputs[0]}]
+            | "Unsqueeze" =>
+                assert(`ninputs == 1 || ninputs == 2`)
+                assert(`noutputs == 1`)
+                var axes = []
+                for a <- node.attrs {
+                    | {name="axes"} => axes = attr2ints(a)
+                    | _ => {}
+                }
+                val t_axes = if ninputs == 2 {inputs[1]} else {get_const_tensor_arg(axes)}
+                if ninputs == 1 && axes == [] {
+                    throw OnnxConvertError(f"{node.name} (op=Unsqueeze): 'axes' is missing")
+                }
+                [Ast.DL_Unsqueeze {
+                    t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
+            | _ => throw OnnxConvertError(f"unsupported operation '{node.op}'")
+            }
+            more_ops + prog
+        }
+        Ast.DL_Graph {
+            inpargs = inpargs,
+            outargs = outargs,
+            prog = array(prog.rev()),
+        }
     }
 
+    val graph = convert_graph(model.graph, "")
+    val ndimnames = dimnames.size()
+    val dimnames_ = array(ndimnames, "")
+    dimnames.app(fun (name, v) {dimnames_[-v-1] = name})
     net.{
-        prog = array(prog.rev()),
+        graph = graph,
         argnames = argnames,
+        dimnames = dimnames,
+        dimnames_ = dimnames_,
         args = vargs.data[:vargs.count],
         consts = vconsts.data[:vconsts.count]
     }

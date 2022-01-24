@@ -44,16 +44,14 @@ type attrval_t =
     | AttrInt: int64 | AttrFloat: float
     | AttrString: string | AttrTensor: tensor_t
     | AttrFloats: float [] | AttrInts: int [] | AttrStrings: string []
-    | AttrGraph // temp hack
+    | AttrGraph: graph_t
 
-type attr_t =
-{
+type attr_t = Attr: {
     name: string
     v: attrval_t
 }
 
-type node_t =
-{
+type node_t = Node: {
     name: string
     op: string
     inputs: string []
@@ -61,8 +59,7 @@ type node_t =
     attrs: attr_t []
 }
 
-type graph_t =
-{
+type graph_t = Graph: {
     name: string
     inputs: valueinfo_t []
     outputs: valueinfo_t []
@@ -162,7 +159,7 @@ fun print(a: attr_t)
     | AttrInts(ints) => print(ints)
     | AttrFloats(floats) => print(floats)
     | AttrStrings(strings) => print(strings)
-    | AttrGraph => print("<subgraph>")
+    | AttrGraph(gr) => print(gr)
     }
 }
 
