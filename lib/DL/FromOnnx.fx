@@ -29,7 +29,7 @@ exception OnnxConvertError: string
     | OAst.DTYP_UINT64 => Ast.DL_U64
     | OAst.DTYP_FLOAT16 => Ast.DL_FP16
     | OAst.DTYP_BFLOAT16 => Ast.DL_BF16
-    | OAst.DTYP_BOOL => Ast.DL_I8
+    | OAst.DTYP_BOOL => Ast.DL_BOOL
     | OAst.DTYP_DOUBLE => Ast.DL_FP64
     | OAst.DTYP_STRING | OAst.DTYP_COMPLEX64 | OAst.DTYP_COMPLEX128 =>
         throw OnnxConvertError("unsupported datatype")
@@ -145,20 +145,20 @@ match ti {
     | _ => throw OnnxConvertError(f"error when converting attribute {a.name} to padding type")
     }
 
-@private fun autopad2pads2d(p: Ast.dlpadding_t, kernel_shape: int [], pads0: int [])
+@private fun autopad2pads(p: Ast.dlpadding_t, kernel_shape: int [], pads0: int [])
 {
-    val delta_0 = (kernel_shape[0] + 1) % 2
-    val delta_1 = (kernel_shape[1] + 1) % 2
-    val half_0 = kernel_shape[0]/2
-    val half_1 = kernel_shape[1]/2
-    match p {
-        | Ast.DL_Pad_SameLower =>
-            (half_0 + delta_0, half_1 + delta_1, half_0, half_1)
-        | Ast.DL_Pad_SameUpper =>
-            (half_0, half_1, half_0 + delta_0, half_1 + delta_1)
-        | Ast.DL_Pad_Valid => (0, 0, 0, 0)
-        | _ => (pads0[0], pads0[1], pads0[2], pads0[3])
-    }
+    val dims = size(kernel_shape)
+    [|for i <- 0:dims*2 {
+        val i_ = i%dims
+        val delta_i = (kernel_shape[i_] + 1) % 2
+        val half_i = kernel_shape[i_] / 2
+        match (p, i >= dims) {
+        | (Ast.DL_Pad_SameLower, false) | (Ast.DL_Pad_SameUpper, true) => half_i + delta_i
+        | (Ast.DL_Pad_SameLower, _) | (Ast.DL_Pad_SameUpper, _) => half_i
+        | (Ast.DL_Pad_Valid, _) => 0
+        | _ => pads0[i]
+        }
+    }|]
 }
 
 fun convert(model: OAst.model_t): Ast.dlnet_t
@@ -223,7 +223,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
     fun get_const_tensor_arg(i: int) =
         get_const_tensor_arg(f"const:{i}", Ast.DL_Data_I32([|int32(i)|]))
     fun get_const_tensor_arg(iarr: int []) =
-        get_const_tensor_arg(f"const:{iarr}", Ast.DL_Data_I32(int32(iarr)))
+        get_const_tensor_arg(f"const:{Ast.arr2str(iarr)}", Ast.DL_Data_I32(int32(iarr)))
 
     val net = Ast.empty_net().{
         info = info,
@@ -279,6 +279,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
 
         val fold prog = [] for node <- onnx_graph.nodes {
             println(f"parsing operation '{node.name}' (Op={node.op}); #args = {vargs.count}")
+            val name = node.name
             val inputs = [| for argname <- node.inputs { find_inp_arg(nspace, argname) } |]
             val outputs = [| for argname <- node.outputs {
                 // unlike operation inputs, we do not search in the outer scopes for the outputs.
@@ -321,7 +322,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | "Xor" => Ast.DL_Xor
                     | _ => throw OnnxConvertError(f"unsupported unary operation {node.op}")
                 }
-                [Ast.DL_Elemwise {op=op, t_inp=inputs, t_out=outputs[0]}]
+                [Ast.DL_Elemwise {name=name, op=op, t_inp=inputs, t_out=outputs[0]}]
             | "Abs" |  "Relu" | "Abs" | "Acos" | "Acosh" | "Asin" | "Asinh" | "Atan" | "Atanh"
             | "Ceil" | "Cos" | "Cosh" | "Erf" | "Exp" | "Floor" | "IsInf" | "IsNaN" | "Log"
             | "Neg" | "Not" | "Relu" | "Round" | "Sigmoid" | "Sign" | "Sin" | "Sinh"
@@ -341,15 +342,39 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | "Sqrt" => Ast.DL_Sqrt | "Tan" => Ast.DL_Tan | "Tanh" => Ast.DL_Tanh
                     | _ => throw OnnxConvertError(f"unsupported binary operation {node.op}")
                 }
-                [Ast.DL_Elemwise {op=op, t_inp=inputs, t_out=outputs[0]}]
+                [Ast.DL_Elemwise {name=name, op=op, t_inp=inputs, t_out=outputs[0]}]
             | "Min" | "Max" | "Mean" =>
                 assert(`ninputs > 1`)
                 assert(`noutputs == 1`)
                 val op = match node.op {
                     | "Min" => Ast.DL_Min | "Max" => Ast.DL_Max | "Mean" => Ast.DL_Mean
-                    | _ => throw OnnxConvertError(f"unsupported binary operation {node.op}")
+                    | _ => throw OnnxConvertError(f"unsupported element-wise operation {node.op}")
                 }
-                [Ast.DL_Elemwise {op=op, t_inp=inputs, t_out=outputs[0]}]
+                [Ast.DL_Elemwise {name=name, op=op, t_inp=inputs, t_out=outputs[0]}]
+            | "ReduceMin" | "ReduceMax" | "ReduceMean" | "ReduceProd" | "ReduceSum" | "ReduceSumSquare"
+            | "ReduceL1" | "ReduceL2" | "ReduceLogSum" | "ReduceLogSumExp" =>
+                assert(`ninputs == 1`)
+                assert(`noutputs == 1`)
+                var axes = [], keepdims = 1
+                for a <- node.attrs {
+                    | {name="axes"} => axes = attr2ints(a)
+                    | {name="keepdims"} => keepdims = attr2int(a)
+                    | _ => {}
+                }
+                val reduce_op = match node.op {
+                    | "ReduceMin" => Ast.DL_ReduceMin
+                    | "ReduceMax" => Ast.DL_ReduceMax
+                    | "ReduceMean" => Ast.DL_ReduceMean
+                    | "ReduceProd" => Ast.DL_ReduceProd
+                    | "ReduceSum" => Ast.DL_ReduceSum
+                    | "ReduceSumSquare" => Ast.DL_ReduceSumSquare
+                    | "ReduceL1" => Ast.DL_ReduceL1
+                    | "ReduceL2" => Ast.DL_ReduceL2
+                    | "ReduceLogSum" => Ast.DL_ReduceLogSum
+                    | "ReduceLogSumExp" => Ast.DL_ReduceLogSumExp
+                    | _ => throw OnnxConvertError(f"unsupported reduce operation {node.op}")
+                }
+                [Ast.DL_Reduce {name=name, reduce_op=reduce_op, axes=axes, keepdims=keepdims!=0, t_inp=inputs[0], t_out=outputs[0]}]
             | "AveragePool" | "MaxPool" =>
                 val ismax = node.op == "MaxPool"
                 assert(`ninputs == 1`)
@@ -368,28 +393,26 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="count_include_pad"} => count_include_pad = attr2int(a)
                     | _ => {}
                 }
-                if size(kernel_shape) != 2 {
-                    throw OnnxConvertError(f"{node.name} (op={node.op}): not a 2D pooling operation!")
+                val dims = size(kernel_shape)
+                if dims == 0 {
+                    throw OnnxConvertError(f"{node.name} (op={node.op}): kernel_size is not specified")
                 }
-                if pads == [] {pads = [|0,0,0,0|]} else {assert(size(pads) == 4)}
-                if strides == [] {strides = [|1,1|]} else {assert(size(strides) == 2)}
-                if dilations == [] {dilations = [|1,1|]} else {assert(size(dilations) == 2)}
+                if pads == [] {pads = array(dims, 0)}
+                if strides == [] {strides = array(dims, 1)}
+                if dilations == [] {dilations = array(dims, 1)}
+                val pads = autopad2pads(auto_pad, kernel_shape, pads)
                 val storage_order = if storage_order == 0 {Ast.DL_RowMajor} else {Ast.DL_ColumnMajor}
                 [if ismax {
                     Ast.DL_MaxPool {
-                        kernel_shape=(kernel_shape[0], kernel_shape[1]),
-                        pads=autopad2pads2d(auto_pad, kernel_shape, pads),
-                        strides=(strides[0], strides[1]),
-                        dilations=(dilations[0], dilations[1]),
+                        name=name, kernel_shape=kernel_shape, pads=pads,
+                        strides=strides, dilations=dilations,
                         ceil_mode = ceil_mode != 0,
                         storage_order=storage_order,
                         t_inp=inputs[0], t_out=outputs[0] }
                 } else {
                     Ast.DL_AvgPool {
-                        kernel_shape=(kernel_shape[0], kernel_shape[1]),
-                        pads=autopad2pads2d(auto_pad, kernel_shape, pads),
-                        strides=(strides[0], strides[1]),
-                        dilations=(dilations[0], dilations[1]),
+                        name=name, kernel_shape=kernel_shape, pads=pads,
+                        strides=strides, dilations=dilations,
                         ceil_mode = ceil_mode != 0,
                         count_include_pad=count_include_pad != 0,
                         storage_order=storage_order,
@@ -406,7 +429,8 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | _ => {}
                 }
                 [Ast.DL_BatchNorm {
-                    epsilon=epsilon, momentum=momentum, training_mode=training_mode!=0,
+                    name=name, epsilon=epsilon,
+                    momentum=momentum, training_mode=training_mode!=0,
                     t_inp=inputs[0], t_scale=inputs[1], t_B=inputs[2],
                     t_mean=inputs[3], t_var=inputs[4], t_out=outputs[0] }]
             | "Cast" =>
@@ -419,11 +443,11 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 val to = match to {
                     | 1 => Ast.DL_FP32 | 2 => Ast.DL_U8 | 3 => Ast.DL_I8 | 4 => Ast.DL_U16
-                    | 5 => Ast.DL_I16 | 6 => Ast.DL_I32 | 7 => Ast.DL_I64 | 10 => Ast.DL_FP16
+                    | 5 => Ast.DL_I16 | 6 => Ast.DL_I32 | 7 => Ast.DL_I64 | 9 => Ast.DL_BOOL | 10 => Ast.DL_FP16
                     | 11 => Ast.DL_FP64 | 12 => Ast.DL_U32 | 13 => Ast.DL_U64 | 16 => Ast.DL_BF16
                     | _ => throw OnnxConvertError(f"{node.name} (op=Cast): unknown/unsupported target type {to}")
                 }
-                [Ast.DL_Cast { to=to, t_inp=inputs[0], t_out=outputs[0] }]
+                [Ast.DL_Cast { name=name, to=to, t_inp=inputs[0], t_out=outputs[0] }]
             | "Clip" =>
                 assert(`ninputs == 1 || ninputs == 3`)
                 assert(`noutputs == 1`)
@@ -435,7 +459,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 val t_min = if ninputs == 3 {inputs[1]} else {get_const_tensor_arg(minv)}
                 val t_max = if ninputs == 3 {inputs[2]} else {get_const_tensor_arg(maxv)}
-                [Ast.DL_Clip {t_inp=inputs[0], t_min=t_min, t_max=t_max, t_out=outputs[0]}]
+                [Ast.DL_Clip {name=name, t_inp=inputs[0], t_min=t_min, t_max=t_max, t_out=outputs[0]}]
             | "Constant" =>
                 assert(`ninputs == 0`)
                 assert(`noutputs == 1`)
@@ -465,7 +489,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="value"} => value = attr2tensor(a)
                     | _ => {}
                 }
-                [Ast.DL_ConstantOfShape { value=value, t_shape=inputs[0], t_out=outputs[0] }]
+                [Ast.DL_ConstantOfShape { name=name, value=value, t_shape=inputs[0], t_out=outputs[0] }]
             | "Concat" =>
                 assert(`noutputs == 1`)
                 var axis = 0
@@ -473,12 +497,13 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="axis"} => axis = attr2int(a)
                     | _ => {}
                 }
-                [Ast.DL_Concat {axis=axis, t_inp=copy(inputs), t_out=outputs[0]}]
-            | "Conv" =>
+                [Ast.DL_Concat {name=name, axis=axis, t_inp=copy(inputs), t_out=outputs[0]}]
+            | "Conv" | "ConvTranspose" =>
                 assert(`ninputs == 2 || ninputs == 3`)
                 assert(`noutputs == 1`)
                 var kernel_shape = [], strides = [], dilations = []
                 var pads = [], auto_pad = Ast.DL_Pad_None, group = 1
+                var out_padding = [], out_shape = []
                 for a <- node.attrs {
                     | {name="kernel_shape"} => kernel_shape = attr2ints(a)
                     | {name="pads"} => pads = attr2ints(a)
@@ -486,23 +511,34 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="dilations"} => dilations = attr2ints(a)
                     | {name="group"} => group = attr2int(a)
                     | {name="auto_pad"} => auto_pad = attr2autopad(a)
+                    | {name="out_padding"} => out_padding = attr2ints(a)
+                    | {name="out_shape"} => out_shape = attr2ints(a)
                     | _ => {}
                 }
-                if size(kernel_shape) != 2 {
-                    throw OnnxConvertError(f"{node.name} (op=Conv): not a 2D convolution!")
+                val dims = size(kernel_shape)
+                if dims == 0 {
+                    throw OnnxConvertError(f"{node.name} (op=Conv): missing kernel shape")
                 }
-                if pads == [] {pads = [|0,0,0,0|]} else {assert(size(pads) == 4)}
-                if strides == [] {strides = [|1,1|]} else {assert(size(strides) == 2)}
-                if dilations == [] {dilations = [|1,1|]} else {assert(size(dilations) == 2)}
-                [Ast.DL_Conv2D {
-                    kernel_shape=(kernel_shape[0], kernel_shape[1]),
-                    pads=autopad2pads2d(auto_pad, kernel_shape, pads),
-                    strides=(strides[0], strides[1]),
-                    dilations=(dilations[0], dilations[1]),
-                    group = group,
-                    t_inp=inputs[0], t_weights=inputs[1],
-                    t_bias=(if ninputs == 3 {inputs[2]} else {0}),
-                    t_out=outputs[0]}]
+                if pads == [] {pads = array(dims, 0)}
+                if strides == [] {strides = array(dims, 1)}
+                if dilations == [] {dilations = array(dims, 1)}
+                val pads = autopad2pads(auto_pad, kernel_shape, pads)
+                if node.op == "Conv" {
+                    [Ast.DL_Conv {
+                        name=name, kernel_shape=kernel_shape, pads=pads,
+                        strides=strides, dilations=dilations, group = group,
+                        t_inp=inputs[0], t_weights=inputs[1],
+                        t_bias=(if ninputs == 3 {inputs[2]} else {0}),
+                        t_out=outputs[0]}]
+                } else {
+                    [Ast.DL_ConvTranspose {
+                        name=name, kernel_shape=kernel_shape, pads=pads,
+                        strides=strides, dilations=dilations, group = group,
+                        out_padding = out_padding, out_shape = out_shape,
+                        t_inp=inputs[0], t_weights=inputs[1],
+                        t_bias=(if ninputs == 3 {inputs[2]} else {0}),
+                        t_out=outputs[0]}]
+                }
             | "Dropout" =>
                 assert(`1 <= ninputs <= 3`)
                 assert(`noutputs == 1 || noutputs == 2`)
@@ -512,7 +548,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | _ => {}
                 }
                 [Ast.DL_Dropout {
-                    seed=seed,
+                    name=name, seed=seed,
                     t_inp=inputs[0],
                     t_ratio=(if ninputs >= 2 {inputs[1]} else {get_const_tensor_arg(0.5f)}),
                     t_training_mode=(if ninputs >= 3 {inputs[2]} else {0}),
@@ -520,7 +556,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
             | "Expand" =>
                 assert(`ninputs == 2`)
                 assert(`noutputs == 1`)
-                [Ast.DL_Expand { t_inp=inputs[0], t_shape=inputs[1], t_out=outputs[0] }]
+                [Ast.DL_Expand { name=name, t_inp=inputs[0], t_shape=inputs[1], t_out=outputs[0] }]
             | "Flatten" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
@@ -529,7 +565,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="axis"} => axis = attr2int(a)
                     | _ => {}
                 }
-                [Ast.DL_Flatten {axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
+                [Ast.DL_Flatten {name=name, axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
             | "Gather" =>
                 assert(`ninputs == 2`)
                 assert(`noutputs == 1`)
@@ -539,7 +575,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | _ => {}
                 }
                 [Ast.DL_Gather {
-                    axis=axis,
+                    name=name, axis=axis,
                     t_inp=inputs[0], t_ind=inputs[1],
                     t_out=outputs[0]}]
             | "Gemm" =>
@@ -554,7 +590,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | _ => {}
                 }
                 [Ast.DL_Gemm {
-                    alpha=alpha, beta=beta,
+                    name=name, alpha=alpha, beta=beta,
                     transA=transA!=0, transB=transB!=0,
                     t_inp=inputs[0], t_weights=inputs[1],
                     t_bias=(if ninputs == 3 {inputs[2]} else {0}),
@@ -562,11 +598,11 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
             | "GlobalAveragePool" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
-                [Ast.DL_GlobalAvgPool {t_inp=inputs[0], t_out=outputs[0]}]
+                [Ast.DL_GlobalAvgPool {name=name, t_inp=inputs[0], t_out=outputs[0]}]
             | "Identity" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
-                [Ast.DL_Identity {t_inp=inputs[0], t_out=outputs[0]}]
+                [Ast.DL_Identity {name=name, t_inp=inputs[0], t_out=outputs[0]}]
             | "If" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs >= 1`)
@@ -579,7 +615,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 if then_br.prog == [] {throw OnnxConvertError("f{node.name} (op=If): 'then' branch is missing")}
                 if else_br.prog == [] {throw OnnxConvertError("f{node.name} (op=If): 'else' branch is missing")}
                 [Ast.DL_If {
-                    then_branch=then_br, else_branch=else_br,
+                    name=name, then_branch=then_br, else_branch=else_br,
                     t_inp=inputs[0], t_out=outputs}]
             | "LeakyRelu" =>
                 assert(`ninputs == 1`)
@@ -589,7 +625,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="alpha"} => alpha = attr2float(a)
                     | _ => {}
                 }
-                [Ast.DL_LeakyRelu {alpha=alpha, t_inp=inputs[0], t_out=outputs[0]}]
+                [Ast.DL_LeakyRelu {name=name, alpha=alpha, t_inp=inputs[0], t_out=outputs[0]}]
             | "Loop" =>
                 assert(`ninputs >= 2`)
                 assert(`noutputs >= 1`)
@@ -600,7 +636,8 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 if body.prog == [] {throw OnnxConvertError("f{node.name} (op=Loop): 'body' graph is missing")}
                 [Ast.DL_Loop {
-                    body=body, t_trip_count=inputs[0], t_cond_in=inputs[1], t_v_in=inputs[2:],
+                    name=name, body=body, t_trip_count=inputs[0],
+                    t_cond_in=inputs[1], t_v_in=inputs[2:],
                     t_cond_out=outputs[0], t_v_out=outputs[1:]}]
             | "LRN" =>
                 assert(`ninputs == 1`)
@@ -615,7 +652,8 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 assert(`size > 0`)
                 [Ast.DL_LRN {
-                    size=size, alpha=alpha, beta=beta, bias=bias,
+                    name=name, size=size, alpha=alpha,
+                    beta=beta, bias=bias,
                     t_inp=inputs[0], t_out=outputs[0] }]
             | "NonMaxSuppression" =>
                 assert(`2 <= ninputs <= 5`)
@@ -629,6 +667,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 val t_iou_threshold = if ninputs > 3 {inputs[3]} else {get_const_tensor_arg(0.f)}
                 val t_score_threshold = if ninputs > 3 {inputs[3]} else {get_const_tensor_arg(0.f)}
                 [Ast.DL_NonMaxSuppression {
+                    name=name,
                     center_point_box=center_point_box!=0,
                     t_boxes=inputs[0],
                     t_scores=inputs[1],
@@ -639,11 +678,24 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
             | "NonZero" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
-                [Ast.DL_NonZero { t_inp=inputs[0], t_out=outputs[0] }]
+                [Ast.DL_NonZero { name=name, t_inp=inputs[0], t_out=outputs[0] }]
             | "Range" =>
                 assert(`ninputs == 3`)
                 assert(`noutputs == 1`)
-                [Ast.DL_Range { t_start=inputs[0], t_limit=inputs[1], t_delta=inputs[2], t_out=outputs[0] }]
+                [Ast.DL_Range { name=name, t_start=inputs[0], t_limit=inputs[1], t_delta=inputs[2], t_out=outputs[0] }]
+            | "Reshape" =>
+                assert(`ninputs == 1 || ninputs == 2`)
+                assert(`noutputs == 1`)
+                var allowzero = 0, cshape = []
+                for a <- node.attrs {
+                    | {name="allowzero"} => allowzero = attr2int(a)
+                    | {name="shape"} => cshape = attr2ints(a)
+                    | _ => {}
+                }
+                val t_shape = if ninputs == 2 {inputs[1]} else {get_const_tensor_arg(cshape)}
+                [Ast.DL_Reshape {
+                    name=name, allowzero=allowzero != 0,
+                    t_inp=inputs[0], t_shape=t_shape, t_out=outputs[0]}]
             | "Resize" =>
                 assert(`1 <= ninputs <= 4`)
                 assert(`noutputs == 1`)
@@ -677,6 +729,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | _ => Ast.DL_Nearest_RoundPreferFloor
                 }
                 [Ast.DL_Resize {
+                    name=name,
                     coord_trans=coord_trans, cubic_coeff_a=cubic_coeff_a,
                     exclude_outside=exclude_outside != 0,
                     extrapolation_value=extrapolation_value,
@@ -686,19 +739,43 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     t_scales=if ninputs > 2 {inputs[2]} else {0},
                     t_sizes=if ninputs > 3 {inputs[3]} else {0},
                     t_out=outputs[0]}]
-            | "Reshape" =>
-                assert(`ninputs == 1 || ninputs == 2`)
+            | "RoiAlign" =>
+                assert(`ninputs == 3`)
                 assert(`noutputs == 1`)
-                var allowzero = 0, cshape = []
+                var coord_trans = "half_pixel", mode="avg",
+                    output_height=1, output_width=1, sampling_ratio=0, spatial_scale=1.f
                 for a <- node.attrs {
-                    | {name="allowzero"} => allowzero = attr2int(a)
-                    | {name="shape"} => cshape = attr2ints(a)
+                    | {name="coordinate_transformation_mode"} => coord_trans = attr2string(a)
+                    | {name="mode"} => mode = attr2string(a)
+                    | {name="output_height"} => output_height = attr2int(a)
+                    | {name="output_width"} => output_width = attr2int(a)
+                    | {name="sampling_ratio"} => sampling_ratio = attr2int(a)
+                    | {name="spatial_scale"} => spatial_scale = attr2float(a)
                     | _ => {}
                 }
-                val t_shape = if ninputs == 2 {inputs[1]} else {get_const_tensor_arg(cshape)}
-                [Ast.DL_Reshape {
-                    allowzero=allowzero != 0,
-                    t_inp=inputs[0], t_shape=t_shape, t_out=outputs[0]}]
+                val coord_trans = match coord_trans {
+                    | "output_half_pixel" => Ast.DL_CT_OutHalfPixel
+                    | _ => Ast.DL_CT_HalfPixel // [TODO] issue warning
+                }
+                val mode = match mode {
+                    | "max" => Ast.DL_Pool_Max
+                    | _ => Ast.DL_Pool_Avg // [TODO] issue warning
+                }
+                [Ast.DL_RoiAlign {
+                    name=name, coord_trans=coord_trans, mode=mode,
+                    output_height=output_height, output_width=output_width,
+                    sampling_ratio=sampling_ratio, spatial_scale=spatial_scale,
+                    t_inp=inputs[0], t_rois=inputs[1], t_batch_ind=inputs[2], t_out=outputs[0]}]
+            | "Scatter" =>
+                assert(`ninputs == 3`)
+                assert(`noutputs == 1`)
+                var axis = 0
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | _ => {}
+                }
+                [Ast.DL_Scatter {name=name, axis=axis, t_data=inputs[0],
+                    t_updates=inputs[1], t_indices=inputs[2], t_out=outputs[0]}]
             | "Shape" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
@@ -708,7 +785,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="end"} => end = attr2int(a)
                     | _ => {}
                 }
-                [Ast.DL_Shape {start=start, end=end, t_inp=inputs[0], t_out=outputs[0]}]
+                [Ast.DL_Shape {name=name, start=start, end=end, t_inp=inputs[0], t_out=outputs[0]}]
             | "Slice" =>
                 assert(`ninputs == 1 || (3 <= ninputs <= 5)`)
                 assert(`noutputs == 1`)
@@ -724,7 +801,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 val t_ends = if ninputs >= 3 {inputs[2]} else {get_const_tensor_arg(ends)}
                 val t_axes = if ninputs >= 4 {inputs[3]} else if axes != [] {get_const_tensor_arg(axes)} else {0}
                 val t_steps = if ninputs >= 5 {inputs[4]} else if steps != [] {get_const_tensor_arg(steps)} else {0}
-                [Ast.DL_Slice {t_inp=inputs[0], t_starts=t_starts, t_ends=t_ends,
+                [Ast.DL_Slice {name=name, t_inp=inputs[0], t_starts=t_starts, t_ends=t_ends,
                     t_axes=t_axes, t_steps=t_steps, t_out=outputs[0]}]
             | "Softmax" =>
                 assert(`ninputs == 1`)
@@ -734,7 +811,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="axis"} => axis = attr2int(a)
                     | _ => {}
                 }
-                [Ast.DL_SoftMax {axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
+                [Ast.DL_SoftMax {name=name, axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
             | "Split" =>
                 assert(`ninputs == 1 || ninputs == 2`)
                 var axis = 0, split = []
@@ -746,7 +823,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 val t_split = if ninputs == 2 {inputs[1]} else if split != [] {get_const_tensor_arg(split)} else {0}
                 [Ast.DL_Split {
-                    axis=axis, t_inp=inputs[0], t_split=t_split, t_out=outputs }]
+                    name=name, axis=axis, t_inp=inputs[0], t_split=t_split, t_out=outputs }]
             | "Squeeze" =>
                 assert(`ninputs == 1 || ninputs == 2`)
                 assert(`noutputs == 1`)
@@ -760,11 +837,11 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     throw OnnxConvertError(f"{node.name} (op=Squeeze): 'axes' is missing")
                 }
                 [Ast.DL_Squeeze {
-                    t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
+                    name=name, t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
             | "Tile" =>
                 assert(`ninputs == 2`)
                 assert(`noutputs == 1`)
-                [Ast.DL_Tile {t_inp=inputs[0], t_repeats=inputs[1], t_out=outputs[0]}]
+                [Ast.DL_Tile {name=name, t_inp=inputs[0], t_repeats=inputs[1], t_out=outputs[0]}]
             | "TopK" =>
                 assert(`ninputs == 2`)
                 assert(`noutputs == 2`)
@@ -775,7 +852,8 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="sorted"} => sorted = attr2int(a)
                     | _ => {}
                 }
-                [Ast.DL_TopK {axis=axis, largest=largest!=0, sorted=sorted!=0,
+                [Ast.DL_TopK {
+                    name=name, axis=axis, largest=largest!=0, sorted=sorted!=0,
                     t_inp=inputs[0], t_K=inputs[1], t_out=outputs[0], t_out_ind=outputs[1]}]
             | "Transpose" =>
                 assert(`ninputs == 1`)
@@ -785,7 +863,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="perm"} => perm = attr2ints(a)
                     | _ => {}
                 }
-                [Ast.DL_Transpose {perm=perm, t_inp=inputs[0], t_out=outputs[0]}]
+                [Ast.DL_Transpose {name=name, perm=perm, t_inp=inputs[0], t_out=outputs[0]}]
             | "Unsqueeze" =>
                 assert(`ninputs == 1 || ninputs == 2`)
                 assert(`noutputs == 1`)
@@ -799,7 +877,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     throw OnnxConvertError(f"{node.name} (op=Unsqueeze): 'axes' is missing")
                 }
                 [Ast.DL_Unsqueeze {
-                    t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
+                    name=name, t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
             | _ => throw OnnxConvertError(f"unsupported operation '{node.op}'")
             }
             more_ops + prog
