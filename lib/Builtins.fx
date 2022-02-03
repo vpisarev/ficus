@@ -813,13 +813,6 @@ fun vector(l: 't list): 't vector = [<for x <- l {x}>]
 fun vector(a: 't [+]): 't vector = [<for x <- a {x}>]
 fun vector(s: string): char vector = [<for x <- s {x}>]
 
-fun copy(a: 't [+]) = [| for x <- a {x} |]
-
-fun size(a: 't []) = __intrin_size__(a)
-fun size(a: 't [,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
-fun size(a: 't [,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
-fun size(a: 't [,,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
-                         __intrin_size__(a, 2), __intrin_size__(a, 3))
 fun size(a: 't vector) = __intrin_size__(a)
 
 @ccode {

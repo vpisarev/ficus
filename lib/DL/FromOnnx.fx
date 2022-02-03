@@ -29,7 +29,7 @@ exception OnnxConvertError: string
     | OAst.DTYP_UINT64 => Ast.DL_U64
     | OAst.DTYP_FLOAT16 => Ast.DL_FP16
     | OAst.DTYP_BFLOAT16 => Ast.DL_BF16
-    | OAst.DTYP_BOOL => Ast.DL_BOOL
+    | OAst.DTYP_BOOL => Ast.DL_Bool
     | OAst.DTYP_DOUBLE => Ast.DL_FP64
     | OAst.DTYP_STRING | OAst.DTYP_COMPLEX64 | OAst.DTYP_COMPLEX128 =>
         throw OnnxConvertError("unsupported datatype")
@@ -163,21 +163,10 @@ match ti {
 
 fun convert(model: OAst.model_t): Ast.dlnet_t
 {
-    val empty_name = ""
     val dimnames = Hashmap.empty(1024, "", 0)
     val argnames = Hashmap.empty(1024, "", 0)
-    val empty_shape = Ast.dlshape_t {shape=[], layout=Ast.DL_Layout_Unknown}
-    val empty_arg = Ast.dlarg_t {
-        name = empty_name,
-        argkind = Ast.DL_Arg_Const,
-        shape = empty_shape,
-        typ = Ast.DL_Undefined,
-        idx = 0
-    }
-    val empty_tensor = Ast.dltensor_t {
-        shape = empty_shape,
-        data = Ast.DL_Data_Empty
-    }
+    val empty_arg = Ast.empty_arg().{argkind = Ast.DL_Arg_Const, idx=0}
+    val empty_tensor = Ast.empty_tensor()
 
     val info = Ast.DL_Net_Onnx (Ast.dlonnx_t {
         ir_version = model.ir_version,
@@ -192,6 +181,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
     val vargs = Dynvec.create(args, empty_arg)
     val consts = [| empty_tensor |]
     val vconsts = Dynvec.create(consts, empty_tensor)
+    dimnames.add("?", -1)
 
     fun get_const_tensor_arg(name: string, data: Ast.dldata_t) =
         match argnames.find_opt(name) {
@@ -209,7 +199,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 name = name,
                 argkind = Ast.DL_Arg_Const,
                 shape = shape,
-                typ = Ast.gettype(data),
+                typ = data.elemtype(),
                 idx = c_idx
             }
             val idx = vargs.push()
@@ -253,7 +243,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 name = nspace_ + c.name,
                 argkind = Ast.DL_Arg_Const,
                 shape = t.shape,
-                typ = Ast.gettype(t.data),
+                typ = t.data.elemtype(),
                 idx = cidx
             }
             argnames.add(arg.name, argidx)
@@ -415,7 +405,6 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                         strides=strides, dilations=dilations,
                         ceil_mode = ceil_mode != 0,
                         count_include_pad=count_include_pad != 0,
-                        storage_order=storage_order,
                         t_inp=inputs[0], t_out=outputs[0] }
                 }]
             | "BatchNormalization" =>
@@ -443,7 +432,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 val to = match to {
                     | 1 => Ast.DL_FP32 | 2 => Ast.DL_U8 | 3 => Ast.DL_I8 | 4 => Ast.DL_U16
-                    | 5 => Ast.DL_I16 | 6 => Ast.DL_I32 | 7 => Ast.DL_I64 | 9 => Ast.DL_BOOL | 10 => Ast.DL_FP16
+                    | 5 => Ast.DL_I16 | 6 => Ast.DL_I32 | 7 => Ast.DL_I64 | 9 => Ast.DL_Bool | 10 => Ast.DL_FP16
                     | 11 => Ast.DL_FP64 | 12 => Ast.DL_U32 | 13 => Ast.DL_U64 | 16 => Ast.DL_BF16
                     | _ => throw OnnxConvertError(f"{node.name} (op=Cast): unknown/unsupported target type {to}")
                 }
@@ -479,7 +468,9 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 val c_idx = vconsts.push()
                 vconsts.data[c_idx] = t
-                vargs.data[outputs[0]] = vargs.data[outputs[0]].{argkind=Ast.DL_Arg_Const, shape=t.shape, typ=Ast.gettype(t.data), idx=c_idx}
+                vargs.data[outputs[0]] = vargs.data[outputs[0]].{
+                    argkind=Ast.DL_Arg_Const, shape=t.shape,
+                    typ=t.data.elemtype(), idx=c_idx}
                 [] // there is no actual output operation
             | "ConstantOfShape" =>
                 assert(`ninputs == 1`)
@@ -592,7 +583,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 [Ast.DL_Gemm {
                     name=name, alpha=alpha, beta=beta,
                     transA=transA!=0, transB=transB!=0,
-                    t_inp=inputs[0], t_weights=inputs[1],
+                    t_A=inputs[0], t_B=inputs[1],
                     t_bias=(if ninputs == 3 {inputs[2]} else {0}),
                     t_out=outputs[0]}]
             | "GlobalAveragePool" =>

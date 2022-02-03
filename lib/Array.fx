@@ -8,6 +8,12 @@ fun mkrange(n: int) = [| for i <- 0:n {i} |]
 fun mkrange(a: int, b: int) = [| for i <- a:b {i} |]
 fun mkrange(a: int, b: int, delta: int) = [| for i <- a:b:delta {i} |]
 
+fun size(a: 't []) = __intrin_size__(a)
+fun size(a: 't [,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
+fun size(a: 't [,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
+fun size(a: 't [,,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
+                         __intrin_size__(a, 2), __intrin_size__(a, 3))
+
 fun total(a: 't [+]) = fold p = 1 for szj <- size(a) {p*szj}
 fun total(a: 't []) = size(a)
 @nothrow fun empty(a: 't [+]):bool
@@ -18,6 +24,8 @@ fun total(a: 't []) = size(a)
             return true;
     return false;
 }
+
+fun copy(a: 't [+]) = [| for x <- a {x} |]
 
 fun __negate__(a: 't [+]) = [| for x <- a {-x} |]
 

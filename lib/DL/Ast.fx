@@ -7,17 +7,29 @@
 
 import Hashmap
 
+exception DLError: string
+
 type dltyp_t =
     | DL_Undefined | DL_I8 | DL_U8 | DL_I16 | DL_U16 | DL_I32 | DL_U32
-    | DL_I64 | DL_U64 | DL_FP16 | DL_BF16 | DL_FP32 | DL_FP64 | DL_BOOL
+    | DL_I64 | DL_U64 | DL_FP16 | DL_BF16 | DL_FP32 | DL_FP64 | DL_Bool
 
-type dldata_t =
+// please, keep the set and the order of tags here equivalent to dltyp_t,
+// because some C code may assume dltyp_t::tag == dldata_t::tag.
+class dldata_t =
     | DL_Data_Empty
     | DL_Data_I8: int8 []
     | DL_Data_U8: uint8 []
+    | DL_Data_I16: int16 []
+    | DL_Data_U16: uint16 []
     | DL_Data_I32: int32 []
+    | DL_Data_U32: uint32 []
     | DL_Data_I64: int64 []
+    | DL_Data_U64: uint64 []
+    | DL_Data_Stub_FP16
+    | DL_Data_Stub_BF16
     | DL_Data_FP32: float []
+    | DL_Data_FP64: double []
+    | DL_Data_Bool: bool []
 
 type dlargkind_t =
     | DL_Arg_Const
@@ -29,6 +41,7 @@ type dllayout_t =
     | DL_Layout_NC
     | DL_Layout_NCHW
     | DL_Layout_NHWC
+    | DL_Layout_NCHWxc
 
 type dlpadding_t =
     | DL_Pad_None
@@ -40,19 +53,21 @@ type dlpooling_t =
     | DL_Pool_Avg
     | DL_Pool_Max
 
-type dlshape_t
+type dlbuf_t = uint8 []
+
+class dlshape_t
 {
     layout: dllayout_t
     shape: int []
 }
 
-type dltensor_t =
+class dltensor_t
 {
     shape: dlshape_t
     data: dldata_t
 }
 
-type dlarg_t =
+class dlarg_t
 {
     name: string
     argkind: dlargkind_t
@@ -99,7 +114,7 @@ type dlnearest_mode_t =
     | DL_Nearest_Floor
     | DL_Nearest_Ceil
 
-type dlop_t =
+class dlop_t =
     | DL_AvgPool: {
         name: string
         ceil_mode: bool
@@ -107,7 +122,6 @@ type dlop_t =
         kernel_shape: int []
         pads: int []
         strides: int []
-        storage_order: dlorder_t
         count_include_pad: bool
         t_inp: int; t_out: int }
     | DL_BatchNorm: {
@@ -160,7 +174,7 @@ type dlop_t =
         beta: float = 1.f
         transA: bool = false
         transB: bool = false
-        t_inp: int; t_weights: int; t_bias: int; t_out: int }
+        t_A: int; t_B: int; t_bias: int; t_out: int }
     | DL_GlobalAvgPool: {
         name: string; t_inp: int; t_out: int }
     | DL_Identity: {
@@ -256,13 +270,13 @@ type dlnet_info_t =
     | DL_Net_Generic
     | DL_Net_Onnx : dlonnx_t
 
-type dlgraph_t =
+class dlgraph_t =
     DL_Graph: {
         inpargs: int []
         outargs: int []
         prog: dlop_t [] }
 
-type dlnet_t =
+class dlnet_t
 {
     info: dlnet_info_t
     argnames: dlnames_t
@@ -271,7 +285,7 @@ type dlnet_t =
     args: dlarg_t []
     consts: dltensor_t []
     outputs: dltensor_t []
-    buffers: dltensor_t []
+    buffers: (dltensor_t, dlbuf_t) []
     graph: dlgraph_t
 }
 
@@ -305,6 +319,7 @@ fun string(layout: dllayout_t)
     | DL_Layout_NC => "NC"
     | DL_Layout_NCHW => "NCHW"
     | DL_Layout_NHWC => "NHWC"
+    | DL_Layout_NCHWxc => "NCHWxc"
 }
 
 fun string(p: dlargkind_t) {
@@ -414,37 +429,91 @@ fun string(mode: dlpooling_t)
     | DL_Pool_Avg => "AveragePooling"
 }
 
-fun total(d: dldata_t)
-{
-    | DL_Data_Empty => 0
+fun dldata_t.total() =
+match self {
+    | DL_Data_Empty
+    | DL_Data_Stub_FP16 | DL_Data_Stub_BF16 => 0
     | DL_Data_I8(elems) => size(elems)
     | DL_Data_U8(elems) => size(elems)
+    | DL_Data_I16(elems) => size(elems)
+    | DL_Data_U16(elems) => size(elems)
     | DL_Data_I32(elems) => size(elems)
+    | DL_Data_U32(elems) => size(elems)
     | DL_Data_I64(elems) => size(elems)
+    | DL_Data_U64(elems) => size(elems)
     | DL_Data_FP32(elems) => size(elems)
+    | DL_Data_FP64(elems) => size(elems)
+    | DL_Data_Bool(elems) => size(elems)
 }
 
 fun float(d: dldata_t)
 {
-    | DL_Data_Empty => ([] : float [])
+    | DL_Data_Empty
+    | DL_Data_Stub_FP16 | DL_Data_Stub_BF16 => ([] : float [])
     | DL_Data_I8(elems) => float(elems)
     | DL_Data_U8(elems) => float(elems)
+    | DL_Data_I16(elems) => float(elems)
+    | DL_Data_U16(elems) => float(elems)
     | DL_Data_I32(elems) => float(elems)
+    | DL_Data_U32(elems) => float(elems)
     | DL_Data_I64(elems) => float(elems)
+    | DL_Data_U64(elems) => float(elems)
     | DL_Data_FP32(elems) => elems
+    | DL_Data_FP64(elems) => float(elems)
+    | DL_Data_Bool(elems) => float(elems)
+}
+
+fun double(d: dldata_t)
+{
+    | DL_Data_Empty
+    | DL_Data_Stub_FP16 | DL_Data_Stub_BF16 => ([] : double [])
+    | DL_Data_I8(elems) => double(elems)
+    | DL_Data_U8(elems) => double(elems)
+    | DL_Data_I16(elems) => double(elems)
+    | DL_Data_U16(elems) => double(elems)
+    | DL_Data_I32(elems) => double(elems)
+    | DL_Data_U32(elems) => double(elems)
+    | DL_Data_I64(elems) => double(elems)
+    | DL_Data_U64(elems) => double(elems)
+    | DL_Data_FP32(elems) => double(elems)
+    | DL_Data_FP64(elems) => elems
+    | DL_Data_Bool(elems) => double(elems)
+}
+
+fun int(d: dldata_t)
+{
+    | DL_Data_Empty
+    | DL_Data_Stub_FP16 | DL_Data_Stub_BF16 => ([] : int [])
+    | DL_Data_I8(elems) => int(elems)
+    | DL_Data_U8(elems) => int(elems)
+    | DL_Data_I16(elems) => int(elems)
+    | DL_Data_U16(elems) => int(elems)
+    | DL_Data_I32(elems) => int(elems)
+    | DL_Data_U32(elems) => int(elems)
+    | DL_Data_I64(elems) => int(elems)
+    | DL_Data_U64(elems) => int(elems)
+    | DL_Data_FP32(elems) => int(elems)
+    | DL_Data_FP64(elems) => int(elems)
+    | DL_Data_Bool(elems) => int(elems)
 }
 
 fun arr2str(elems: 't []) = join_embrace("[", "]", ",", elems.map(repr))
 
-fun tdata2str(d: dldata_t) {
-    match d {
-        | DL_Data_Empty => "[]"
-        | DL_Data_I8(elems) => arr2str(elems)
-        | DL_Data_U8(elems) => arr2str(elems)
-        | DL_Data_I32(elems) => arr2str(elems)
-        | DL_Data_I64(elems) => arr2str(elems)
-        | DL_Data_FP32(elems) => arr2str(elems)
-    }
+fun tdata2str(d: dldata_t)
+{
+    | DL_Data_Empty
+    | DL_Data_Stub_FP16 | DL_Data_Stub_BF16 => "[]"
+    | DL_Data_I8(elems) => arr2str(elems)
+    | DL_Data_U8(elems) => arr2str(elems)
+    | DL_Data_I16(elems) => arr2str(elems)
+    | DL_Data_U16(elems) => arr2str(elems)
+    | DL_Data_I32(elems) => arr2str(elems)
+    | DL_Data_U32(elems) => arr2str(elems)
+    | DL_Data_I64(elems) => arr2str(elems)
+    | DL_Data_U64(elems) => arr2str(elems)
+    | DL_Data_FP32(elems) => arr2str(elems)
+    | DL_Data_FP64(elems) => arr2str(elems)
+    | DL_Data_Bool(elems) => arr2str(elems)
 }
 
 fun string(typ: dltyp_t)
@@ -462,7 +531,7 @@ fun string(typ: dltyp_t)
     | DL_BF16 => "BF16"
     | DL_FP32 => "FP32"
     | DL_FP64 => "FP64"
-    | DL_BOOL => "BOOL"
+    | DL_Bool => "Bool"
 }
 
 fun dim2str(net: dlnet_t, d: int) = if d > 0 {string(d)} else if d == 0 {"?"} else {net.dimnames_[-d-1]}
@@ -477,13 +546,22 @@ fun shape2str(net: dlnet_t, s: dlshape_t)
     }) + f"<{shape_str}>"
 }
 
-fun gettype(t: dldata_t) {
+fun dldata_t.elemtype() =
+match self {
     | DL_Data_Empty => DL_Undefined
     | DL_Data_I8 _ => DL_I8
     | DL_Data_U8 _ => DL_U8
+    | DL_Data_I16 _ => DL_I16
+    | DL_Data_U16 _ => DL_U16
     | DL_Data_I32 _ => DL_I32
+    | DL_Data_U32 _ => DL_U32
     | DL_Data_I64 _ => DL_I64
+    | DL_Data_U64 _ => DL_U64
+    | DL_Data_Stub_FP16 => DL_FP16
+    | DL_Data_Stub_BF16 => DL_BF16
     | DL_Data_FP32 _ => DL_FP32
+    | DL_Data_FP64 _ => DL_FP64
+    | DL_Data_Bool _ => DL_Bool
 }
 
 fun tensor2str(net: dlnet_t, t: dltensor_t, show_small: bool) =
@@ -491,8 +569,8 @@ match t.data {
     | DL_Data_Empty => "[]"
     | _ =>
         val sp = shape2str(net, t.shape)
-        val tprefix = string(gettype(t.data))
-        val nelems = total(t.data)
+        val tprefix = string(t.data.elemtype())
+        val nelems = t.data.total()
         val tdata_str = if nelems <= 10 && show_small {tdata2str(t.data)} else {"[...]"}
         sp + " " + tprefix + " " + tdata_str
 }
@@ -535,19 +613,6 @@ fun op2str(name: string, opname: string, params: string, tensors: string list, i
         join_embrace(pprefix, f"\n{indent0}}}", f",\n{indent}", pl),
         f"\n{indent}", tensors)
 }
-
-fun gettensor(net: dlnet_t, arg: dlarg_t) =
-match arg.argkind {
-    | DL_Arg_Const => net.consts[arg.idx]
-    | DL_Arg_Output => net.outputs[arg.idx]
-    | DL_Arg_Buffer => net.buffers[arg.idx]
-}
-
-fun t2str(net: dlnet_t, tensors: (string, int) list) =
-    [for (name, tidx) <- tensors {
-        val targ = net.args[tidx]
-        f"{name}=\"{targ.name}\", // {arg2str(net, targ)}"
-    }]
 
 fun graph2str(net: dlnet_t, graph: dlgraph_t, indent: string)
 {
@@ -606,15 +671,21 @@ fun get_opname(op: dlop_t) {
 
 fun targs2pairs(prefix: string, args: int []) = [for a@i <- args {(f"{prefix}{i}", a)}]
 
+fun t2str(net: dlnet_t, tensors: (string, int) list) =
+    [for (name, tidx) <- tensors {
+        val targ = net.args[tidx]
+        f"{name}=\"{targ.name}\", // {arg2str(net, targ)}"
+    }]
+
 fun op2str(net: dlnet_t, op: dlop_t, indent: string)
 {
     val sub_indent = indent + "  "
     //println(f"dumping op={get_opname(op)}")
     match op {
-    | DL_AvgPool { name, ceil_mode, dilations, kernel_shape, pads,
-        strides, storage_order, count_include_pad, t_inp, t_out} =>
+    | DL_AvgPool {name, ceil_mode, dilations, kernel_shape, pads,
+        strides, count_include_pad, t_inp, t_out} =>
         op2str(name, "AvgPool", f"ceil_mode={ceil_mode},\ndilations={dilations},\nkernel_shape={kernel_shape},\n\
-            pads={pads},\nstrides={strides},\nstorage_order={storage_order},\ncount_include_pad={count_include_pad}",
+            pads={pads},\nstrides={strides},\ncount_include_pad={count_include_pad}",
             t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | DL_BatchNorm {name, epsilon, momentum, training_mode, t_inp, t_scale, t_B, t_mean, t_var, t_out} =>
         op2str(name, "BatchNorm", f"epsilon={epsilon},\nmomentum={momentum},\ntraining_mode={training_mode}",
@@ -649,9 +720,9 @@ fun op2str(net: dlnet_t, op: dlop_t, indent: string)
         op2str(name, "Flatten", f"axis={axis}", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | DL_Gather {name, axis, t_inp, t_ind, t_out} =>
         op2str(name, "Gather", f"axis={axis}", t2str(net, [("t_inp", t_inp), ("t_ind", t_ind), ("t_out", t_out)]), indent)
-    | DL_Gemm {name, alpha, beta, transA, transB, t_inp, t_weights, t_bias, t_out} =>
+    | DL_Gemm {name, alpha, beta, transA, transB, t_A, t_B, t_bias, t_out} =>
         op2str(name, "Gemm", f"alpha={alpha},\nbeta={beta},\ntransA={transA},\ntransB={transB}",
-        t2str(net, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
+        t2str(net, [("t_A", t_A), ("t_B", t_B), ("t_bias", t_bias), ("t_out", t_out)]), indent)
     | DL_GlobalAvgPool {name, t_inp, t_out} =>
         op2str(name, "GlobalAvgPool", "", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | DL_Identity {name, t_inp, t_out} =>
@@ -672,8 +743,8 @@ fun op2str(net: dlnet_t, op: dlop_t, indent: string)
     | DL_LRN {name, size, alpha, beta, bias, t_inp, t_out} =>
         op2str(name, "LRN", f"size={size},\nalpha={alpha},\nbeta={beta},\nbias={bias}",
                 t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
-    | DL_MaxPool { name, ceil_mode, dilations, kernel_shape, pads,
-        strides, storage_order, t_inp, t_out } =>
+    | DL_MaxPool {name, ceil_mode, dilations, kernel_shape, pads,
+        strides, storage_order, t_inp, t_out} =>
         op2str(name, "MaxPool", f"ceil_mode={ceil_mode}, dilations={dilations}, kernel_shape={kernel_shape}, \
             pads={pads}, strides={strides}, storage_order={storage_order}",
             t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
@@ -763,4 +834,185 @@ fun print(net: dlnet_t)
     | _ => println(string(net.info))
     }
     println(graph2str(net, net.graph, ""))
+}
+
+fun elemsize(t: dltyp_t)
+{
+    | DL_Undefined => -1
+    | DL_I8 | DL_U8 | DL_Bool => 1
+    | DL_I16 | DL_U16 | DL_FP16 | DL_BF16 => 2
+    | DL_I32 | DL_U32 | DL_FP32 => 4
+    | DL_I64 | DL_U64 | DL_FP64 => 8
+}
+
+fun dldata_t.copy() =
+match self {
+    | DL_Data_Empty | DL_Data_Stub_FP16 | DL_Data_Stub_BF16 => DL_Data_Empty
+    | DL_Data_I8(arr) => DL_Data_I8(copy(arr))
+    | DL_Data_U8(arr) => DL_Data_U8(copy(arr))
+    | DL_Data_I16(arr) => DL_Data_I16(copy(arr))
+    | DL_Data_U16(arr) => DL_Data_U16(copy(arr))
+    | DL_Data_I32(arr) => DL_Data_I32(copy(arr))
+    | DL_Data_U32(arr) => DL_Data_U32(copy(arr))
+    | DL_Data_I64(arr) => DL_Data_I64(copy(arr))
+    | DL_Data_U64(arr) => DL_Data_U64(copy(arr))
+    | DL_Data_FP32(arr) => DL_Data_FP32(copy(arr))
+    | DL_Data_FP64(arr) => DL_Data_FP64(copy(arr))
+    | DL_Data_Bool(arr) => DL_Data_Bool(copy(arr))
+}
+
+fun empty_shape() = dlshape_t {
+    layout = DL_Layout_Unknown,
+    shape = []
+}
+
+fun empty_tensor() = dltensor_t {
+    shape = empty_shape(),
+    data = DL_Data_Empty
+}
+
+fun empty_arg() = dlarg_t {
+    name = "",
+    argkind = Ast.DL_Arg_Buffer,
+    shape = empty_shape(),
+    typ = Ast.DL_Undefined,
+    idx = -1
+}
+
+fun dlshape_t.total() = fold p=1 for sz <- self.shape {p*sz}
+
+fun dlshape_t.copy() = dlshape_t {
+    layout = self.layout,
+    shape = self.shape.copy()
+}
+
+fun dlshape_t.get_channel_dim()
+{
+    val ndims = self.shape.size()
+    match (self.layout, ndims) {
+    | (_, 1) => 0
+    | (Ast.DL_Layout_NC, _) => 1
+    | (Ast.DL_Layout_NCHW, _) => 1
+    | (Ast.DL_Layout_NHWC, _) => ndims-1
+    | (Ast.DL_Layout_NCHWxc, _) => -ndims
+    | _ => -1
+    }
+}
+
+fun dlshape_t.get_num_channels()
+{
+    val ndims = self.shape.size()
+    match (self.layout, ndims) {
+    | (_, 1) => self.shape[0]
+    | (Ast.DL_Layout_NC, _) => self.shape[1]
+    | (Ast.DL_Layout_NCHW, _) => self.shape[1]
+    | (Ast.DL_Layout_NHWC, _) => self.shape[ndims-1]
+    | (Ast.DL_Layout_NCHWxc, _) => self.shape[1]*self.shape[ndims-1]
+    | _ => -1
+    }
+}
+
+// see https://github.com/onnx/onnx/blob/main/docs/Broadcasting.md
+// for the description of multi-way broadcasting
+fun dlshape_t.broadcast(another: dlshape_t)
+{
+    assert(`self.layout == another.layout`)
+    if self.shape == another.shape {
+        (self, true)
+    } else {
+        val ndims0 = size(self.shape)
+        val ndims1 = size(another.shape)
+        val ndims = max(ndims0, ndims1)
+        val d0 = ndims - ndims0
+        val d1 = ndims - ndims1
+        var ok = true
+        val sh = [| for i <- 0:ndims {
+            val a = if i >= d0 {self.shape[i-d0]} else {1}
+            val b = if i >= d1 {another.shape[i-d1]} else {1}
+            if a == b {a} else if a == 1 {b} else if b == 1 {a} else {ok=false; -1}
+        } |]
+        (dlshape_t {shape=sh, layout=self.layout}, ok)
+    }
+}
+
+fun dltensor_t.copy() =
+    dltensor_t { shape=self.shape.copy(), data=self.data.copy() }
+
+fun dlarg_t.isconst() = self.argkind == DL_Arg_Const
+
+fun dlarg_t.copy() = dlarg_t {
+    name = self.name,
+    argkind = self.argkind,
+    shape = self.shape.copy(),
+    typ = self.typ,
+    idx = self.idx
+}
+
+fun dlnet_t.gettensor(arg: dlarg_t)
+{
+    val argkind = arg.argkind
+    val idx = arg.idx
+    match argkind {
+    | DL_Arg_Const => self.consts[idx]
+    | DL_Arg_Output => self.outputs[idx]
+    | DL_Arg_Buffer => self.buffers[idx].0
+    }
+}
+
+fun dlnet_t.gettensor(argidx: int)
+{
+    val argkind = self.args[argidx].argkind
+    val idx = self.args[argidx].idx
+    match argkind {
+    | DL_Arg_Const => self.consts[idx]
+    | DL_Arg_Output => self.outputs[idx]
+    | DL_Arg_Buffer => self.buffers[idx].0
+    }
+}
+
+fun dlnet_t.isconst(argidx: int) = self.args[argidx].argkind == DL_Arg_Const
+
+fun fit(shape: dlshape_t, typ: dltyp_t, data: dldata_t, buf: dlbuf_t): (dldata_t, dlbuf_t)
+{
+    val bufpadding = 128
+    val new_total = shape.total()
+    val elemsz = elemsize(typ)
+    val typ0 = data.elemtype()
+    val total0 = data.total()
+    val reallocate = typ != typ0 || total0 != new_total
+
+    fun fit_(total: int, elemsz: int, typ: dltyp_t,
+        bufpadding: int, buf: dlbuf_t): (dldata_t, dlbuf_t)
+    @ccode {
+        int_ total_ = total*elemsz + bufpadding;
+        fx_arr_t* data_arr = &fx_result->t0.u.DL_Data_U8;
+
+        // if buffer has enough space to fit the new data, we re-use it
+        if (total_ > buf->dim[0].size*(int_)buf->dim[0].step) {
+            int fx_status = fx_make_arr(1, &total_, 1, 0, 0, 0, &fx_result->t1);
+            if (fx_status < 0) return fx_status;
+        } else {
+            // copy the header
+            fx_copy_arr(buf, &fx_result->t1);
+        }
+
+        // copy the header: data and buf will share data pointer and refcounter,
+        // but will have different element type and number of elements.
+        fx_copy_arr(&fx_result->t1, data_arr);
+        data_arr->dim[0].size = total;
+        data_arr->dim[0].step = (size_t)elemsz;
+        fx_result->t0.tag = typ->tag;
+        return FX_OK;
+    }
+
+    if reallocate || buf.size() < new_total*elemsz + bufpadding {
+        fit_(new_total, elemsz, typ, bufpadding, buf)
+    } else {
+        (data, buf)
+    }
+}
+
+fun normalize_axis(axis: int, ndims: int) {
+    val axis = if axis < 0 {axis + ndims} else {axis}
+    assert(`0 <= axis <= ndims`)
 }
