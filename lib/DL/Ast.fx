@@ -82,7 +82,7 @@ type dlelwise_t =
     | DL_Neg | DL_Not | DL_Relu | DL_Round | DL_Sigmoid | DL_Sign | DL_Sin | DL_Sinh
     | DL_Softplus | DL_Softsign | DL_Sqrt | DL_Tan | DL_Tanh
     | DL_Add | DL_And | DL_Div | DL_Equal | DL_Greater | DL_Less
-    | DL_Mod | DL_Mul | DL_Or | DL_Sub | DL_Xor
+    | DL_Mod | DL_Mul | DL_Pow | DL_Or | DL_Sub | DL_Xor
     | DL_Min | DL_Max | DL_Mean
 
 type dlreduce_t =
@@ -287,6 +287,7 @@ class dlnet_t
     outputs: dltensor_t []
     buffers: (dltensor_t, dlbuf_t) []
     graph: dlgraph_t
+    preferred_layout: dllayout_t
 }
 
 fun empty_net() = dlnet_t {
@@ -298,7 +299,8 @@ fun empty_net() = dlnet_t {
     consts = [],
     outputs = [],
     buffers = [],
-    graph = DL_Graph {inpargs = [], outargs = [], prog=[]}
+    graph = DL_Graph {inpargs = [], outargs = [], prog=[]},
+    preferred_layout = DL_Layout_NCHW
 }
 
 fun empty_graph() = DL_Graph {
@@ -369,6 +371,7 @@ fun string(ew: dlelwise_t)
     | DL_Mod => "Mod"
     | DL_Mul => "Mul"
     | DL_Or => "Or"
+    | DL_Pow  => "Pow"
     | DL_Sub => "Sub"
     | DL_Xor => "Xor"
 
@@ -496,6 +499,10 @@ fun int(d: dldata_t)
     | DL_Data_FP64(elems) => int(elems)
     | DL_Data_Bool(elems) => int(elems)
 }
+
+fun float(t: dltensor_t) = float(t.data)
+fun double(t: dltensor_t) = double(t.data)
+fun int(t: dltensor_t) = int(t.data)
 
 fun arr2str(elems: 't []) = join_embrace("[", "]", ",", elems.map(repr))
 
@@ -886,19 +893,6 @@ fun dlshape_t.copy() = dlshape_t {
     shape = self.shape.copy()
 }
 
-fun dlshape_t.get_channel_dim()
-{
-    val ndims = self.shape.size()
-    match (self.layout, ndims) {
-    | (_, 1) => 0
-    | (Ast.DL_Layout_NC, _) => 1
-    | (Ast.DL_Layout_NCHW, _) => 1
-    | (Ast.DL_Layout_NHWC, _) => ndims-1
-    | (Ast.DL_Layout_NCHWxc, _) => -ndims
-    | _ => -1
-    }
-}
-
 fun dlshape_t.get_num_channels()
 {
     val ndims = self.shape.size()
@@ -912,26 +906,52 @@ fun dlshape_t.get_num_channels()
     }
 }
 
+fun dlshape_t.get_spatial_channel_range()
+{
+    val ndims = self.shape.size()
+    match self.layout {
+    | Ast.DL_Layout_NCHW => (2, ndims)
+    | Ast.DL_Layout_NHWC => (1, ndims-1)
+    | Ast.DL_Layout_NCHWxc => (2, ndims-1)
+    | _ => throw DLError(f"the shape layout {self.layout} is not supported in get_spatial_channel_range()")
+    }
+}
+
+fun coerce_layouts(a: dllayout_t, b: dllayout_t) =
+match (a, b) {
+    | (DL_Layout_Unknown, _) => b
+    | (_, DL_Layout_Unknown) => a
+    | (DL_Layout_NC, _) => b
+    | (_, DL_Layout_NC) => a
+    | (_, _) =>
+        if a != b {
+            throw DLError(f"two layouts, {a} and {b}, cannot be used together")
+        }
+        a
+}
+
 // see https://github.com/onnx/onnx/blob/main/docs/Broadcasting.md
 // for the description of multi-way broadcasting
 fun dlshape_t.broadcast(another: dlshape_t)
 {
-    assert(`self.layout == another.layout`)
+    val layout = coerce_layouts(self.layout, another.layout)
     if self.shape == another.shape {
-        (self, true)
+        self.{layout = layout}
     } else {
-        val ndims0 = size(self.shape)
-        val ndims1 = size(another.shape)
+        val ndims0 = self.shape.size()
+        val ndims1 = another.shape.size()
         val ndims = max(ndims0, ndims1)
         val d0 = ndims - ndims0
         val d1 = ndims - ndims1
-        var ok = true
         val sh = [| for i <- 0:ndims {
             val a = if i >= d0 {self.shape[i-d0]} else {1}
             val b = if i >= d1 {another.shape[i-d1]} else {1}
-            if a == b {a} else if a == 1 {b} else if b == 1 {a} else {ok=false; -1}
+            if a == b {a} else if a == 1 {b} else if b == 1 {a}
+            else {
+                throw DLError("the two shapes are not compatible for the mutual broadcasting")
+            }
         } |]
-        (dlshape_t {shape=sh, layout=self.layout}, ok)
+        dlshape_t {shape=sh, layout=layout}
     }
 }
 
@@ -1015,4 +1035,5 @@ fun fit(shape: dlshape_t, typ: dltyp_t, data: dldata_t, buf: dlbuf_t): (dldata_t
 fun normalize_axis(axis: int, ndims: int) {
     val axis = if axis < 0 {axis + ndims} else {axis}
     assert(`0 <= axis <= ndims`)
+    axis
 }
