@@ -1,6 +1,6 @@
 import Json, Sys, LexerUtils as Lxu
-import OpenCV as cv
-import DL.Ast, DL.FromOnnx
+//import OpenCV as cv
+import DL.Ast, DL.FromOnnx, DL.BufferAllocator
 
 var mname = "", lname = ""
 var images: string list = []
@@ -20,6 +20,7 @@ fun parse_args(args: string list)
 
 parse_args(Sys.arguments())
 images = images.rev()
+//println(f"model='{mname}', lname='{lname}', images={images}")
 
 val labels: string [] =
     if lname == "" {[]}
@@ -83,4 +84,5 @@ val model =
         println(f"error: {msg}"); throw Fail("")
     }
 println(f"dumping model '{mname}'")
+val model = DL.BufferAllocator.assign_buffers(model)
 println(model)

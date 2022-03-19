@@ -346,6 +346,9 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
             memset(arr->data, 0, netw);
         if(elems)
             fx_copy_arr_elems(elems, arr->data, total, elemsize, copy_elem);
+    } else {
+        arr->rc = 0;
+        arr->data = 0;
     }
     arr->flags = FX_ARR_CONTINUOUS;
     arr->ndims = ndims;

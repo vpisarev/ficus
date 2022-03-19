@@ -6,6 +6,8 @@
 // very simple STL-like mutable vector (do not confuse it with embedded RRB tree-based immutable 'vector'),
 // a simple wrapper on top of arrays. The functionality is just enough to implement symbol tables for the compiler
 
+exception EmptyDynVector
+
 class 't t
 {
     var count: int;
@@ -59,4 +61,16 @@ fun push(v: 't Dynvec.t, x: 't)
     val idx = push(v)
     v.data[idx] = x
     idx
+}
+
+fun top(v: 't Dynvec.t)
+{
+    if v.count == 0 {throw EmptyDynVector}
+    v.data[v.count-1]
+}
+
+fun pop(v: 't Dynvec.t)
+{
+    if v.count == 0 {throw EmptyDynVector}
+    v.count -= 1
 }

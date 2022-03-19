@@ -18,11 +18,11 @@ type argshapeinfo_t =
 
 fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
 {
-    val (name, opname) = Ast.get_opname(op)
+    val (name, opname) = op.name()
 
     fun get_shape_typ(argidx: int)
     {
-        val t = net.gettensor(argidx)
+        val t = net.get_tensor(argidx)
         (t.shape, t.data.elemtype())
     }
 
@@ -91,7 +91,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     | DL_ConstantOfShape {value, t_shape, t_out} =>
         val typ = value.data.elemtype()
         val value = float(value.data)
-        val out_shape = int(net.gettensor(t_shape))
+        val out_shape = int(net.get_tensor(t_shape))
         val constshape = net.isconst(t_shape)
         assert(`value.size() == 1`)
         [|argshapeinfo_t {idx=t_out,
@@ -187,7 +187,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         [|argshapeinfo_t {idx=t_out, shape=out_shape, typ=typ0, dynamic=false}|]
     | DL_Expand {t_inp, t_shape, t_out} =>
         val (shape0, typ0) = get_shape_typ(t_inp)
-        val shape_arg = net.gettensor(t_shape)
+        val shape_arg = net.get_tensor(t_shape)
         val shape_arr = int(shape_arg.data)
         assert(`shape_arg.shape.shape.size() == 1`)
         val constshape = net.isconst(t_shape)
@@ -252,7 +252,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         [|infer_pooling_shape(ceil_mode, dilations, kernel_shape,
             pads, strides, t_inp, t_out)|]
     | DL_NonMaxSuppression { t_boxes, t_scores,
-        t_max_output_boxes_per_class, t_out} =>
+        t_max_output_boxes_per_class, t_out } =>
         throw Ast.DLError(f"shape inference for op={opname} is not implemented")
     | DL_NonZero {t_inp, t_out} =>
         val shape = get_shape(t_inp)
@@ -260,11 +260,11 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         val out_shape = Ast.dlshape_t {layout=Ast.DL_Layout_NC, shape=[|ndims, -1|]}
         [|argshapeinfo_t {idx=t_out, shape=out_shape, typ=Ast.DL_I64, dynamic=true}|]
     | DL_Range {t_start, t_limit, t_delta, t_out} =>
-        val start = net.gettensor(t_start)
+        val start = net.get_tensor(t_start)
         val typ = start.data.elemtype()
         val start = double(start)
-        val limit = double(net.gettensor(t_limit))
-        val delta = double(net.gettensor(t_delta))
+        val limit = double(net.get_tensor(t_limit))
+        val delta = double(net.get_tensor(t_delta))
         assert(`start.size() == 1`)
         assert(`limit.size() == 1`)
         assert(`delta.size() == 1`)
@@ -304,7 +304,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         val (shape, typ) = get_shape_typ(t_inp)
         val (sshape, styp) = get_shape_typ(t_shape)
         assert(`sshape.shape.size() == 1`)
-        val new_shape = int(net.gettensor(t_shape))
+        val new_shape = int(net.get_tensor(t_shape))
         val ndims = shape.shape.size()
         val new_ndims = new_shape.size()
         assert(`ndims == new_ndims`)
@@ -344,17 +344,17 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
             if t_roi == 0 {
                 ([] : float [])
             } else {
-                val roi = float(net.gettensor(t_roi))
+                val roi = float(net.get_tensor(t_roi))
                 assert(`coord_trans == Ast.DL_CT_TFCropResize`)
                 assert(`roi.size() == ndims*2`)
                 roi
             }
         val out_shape = if t_sizes != 0 {
-            val sizes = int(net.gettensor(t_sizes))
+            val sizes = int(net.get_tensor(t_sizes))
             assert(`sizes.size() == ndims`)
             sizes
         } else if t_scales != 0 {
-            val scales = int(net.gettensor(t_scales))
+            val scales = int(net.get_tensor(t_scales))
             assert(`scales.size() == ndims`)
             [| for sz@i <- shape.shape, scale <- scales {
                 val sz =
@@ -405,11 +405,11 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     | DL_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val axes = if t_axes != 0 {int(net.gettensor(t_axes))} else {mkrange(ndims)}
+        val axes = if t_axes != 0 {int(net.get_tensor(t_axes))} else {mkrange(ndims)}
         val naxes = axes.size()
-        val starts = int(net.gettensor(t_starts))
-        val ends = int(net.gettensor(t_ends))
-        val steps = if t_steps != 0 {int(net.gettensor(t_steps))} else {array(naxes, 1)}
+        val starts = int(net.get_tensor(t_starts))
+        val ends = int(net.get_tensor(t_ends))
+        val steps = if t_steps != 0 {int(net.get_tensor(t_steps))} else {array(naxes, 1)}
         assert(`starts.size() == naxes`)
         assert(`ends.size() == naxes`)
         assert(`steps.size() == naxes`)
@@ -440,7 +440,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         val sz_a = shape.shape[axis]
         val noutputs = t_out.size()
         if t_split != 0 {
-            val splits = int(net.gettensor(t_split))
+            val splits = int(net.get_tensor(t_split))
             val constshape = net.isconst(t_split)
             var total_sz = 0
             assert(`splits.size() == noutputs`)
@@ -470,7 +470,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     | DL_Squeeze {t_inp, t_axes, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val axes = if t_axes != 0 {int(net.gettensor(t_axes))} else {mkrange(ndims)}
+        val axes = if t_axes != 0 {int(net.get_tensor(t_axes))} else {mkrange(ndims)}
         val constshape = net.isconst(t_axes)
         val out_shape_0 = shape.shape.copy()
         val fold out_ndims = ndims for axis <- axes {
@@ -495,7 +495,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     | DL_Tile {t_inp, t_repeats, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val repeats = int(net.gettensor(t_repeats))
+        val repeats = int(net.get_tensor(t_repeats))
         assert(`repeats.size() == ndims`)
         val out_shape = [| for sz <- shape.shape, r <- repeats { assert(`r >= 0`); sz*r } |]
         val constshape = net.isconst(t_repeats)
@@ -504,7 +504,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
             dynamic=!constshape } |]
     | DL_TopK {axis, t_inp, t_K, t_out, t_out_ind} =>
         val (shape, typ) = get_shape_typ(t_inp)
-        val tK = int(net.gettensor(t_K))
+        val tK = int(net.get_tensor(t_K))
         assert(`tK.size() == 1`)
         val K = tK[0]
         assert(`K >= 0`)
@@ -533,7 +533,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     | DL_Unsqueeze {t_inp, t_axes, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val axes = int(net.gettensor(t_axes))
+        val axes = int(net.get_tensor(t_axes))
         val out_ndims = ndims + axes.size()
         val out_shape = array(out_ndims, 0)
         for axis <- axes {

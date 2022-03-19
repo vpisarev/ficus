@@ -1225,7 +1225,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                     val (case_n, tl, checks, code, alt_e_opt) =
                         get_var_tag_cmp_and_extract(n, pinfo, (checks, code), vn, case_sc, loc)
                     val plists =
-                    if case_n == noid && alt_e_opt.isnone() {
+                    if (match pl {PatAny _ :: [] => true | _ => false}) || (case_n == noid && alt_e_opt.isnone()) {
                         plists
                     } else {
                         val fold pti_l = [] for pi@idx <- pl, ti <- tl { (pi, ti, idx) :: pti_l }

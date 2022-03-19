@@ -33,8 +33,9 @@ class dldata_t =
 
 type dlargkind_t =
     | DL_Arg_Const
+    | DL_Arg_Input
     | DL_Arg_Output
-    | DL_Arg_Buffer
+    | DL_Arg_Temp
 
 type dllayout_t =
     | DL_Layout_Unknown
@@ -73,7 +74,6 @@ class dlarg_t
     argkind: dlargkind_t
     shape: dlshape_t
     typ: dltyp_t
-    idx: int
 }
 
 type dlelwise_t =
@@ -271,10 +271,11 @@ type dlnet_info_t =
     | DL_Net_Onnx : dlonnx_t
 
 class dlgraph_t =
-    DL_Graph: {
-        inpargs: int []
-        outargs: int []
-        prog: dlop_t [] }
+DL_Graph: {
+    inpargs: int []
+    outargs: int []
+    prog: dlop_t []
+}
 
 class dlnet_t
 {
@@ -283,12 +284,14 @@ class dlnet_t
     dimnames: dlnames_t
     dimnames_: string []
     args: dlarg_t []
-    consts: dltensor_t []
-    outputs: dltensor_t []
-    buffers: (dltensor_t, dlbuf_t) []
+    tensors: dltensor_t []
+    bufidxs: int []
+    buffers: dlbuf_t []
     graph: dlgraph_t
     preferred_layout: dllayout_t
 }
+
+type op_callback_t = (dlnet_t, dlop_t) -> void
 
 fun empty_net() = dlnet_t {
     info = DL_Net_Generic,
@@ -296,8 +299,8 @@ fun empty_net() = dlnet_t {
     dimnames = Hashmap.empty(8, "", 0),
     dimnames_ = [],
     args = [],
-    consts = [],
-    outputs = [],
+    tensors = [],
+    bufidxs = [],
     buffers = [],
     graph = DL_Graph {inpargs = [], outargs = [], prog=[]},
     preferred_layout = DL_Layout_NCHW
@@ -326,8 +329,9 @@ fun string(layout: dllayout_t)
 
 fun string(p: dlargkind_t) {
     | DL_Arg_Const => "const"
+    | DL_Arg_Input => "inp"
     | DL_Arg_Output => "out"
-    | DL_Arg_Buffer => "buffer"
+    | DL_Arg_Temp => "temp"
 }
 
 fun string(ew: dlelwise_t)
@@ -582,17 +586,19 @@ match t.data {
         sp + " " + tprefix + " " + tdata_str
 }
 
-fun arg2str(net: dlnet_t, t: dlarg_t)
+fun arg2str(net: dlnet_t, argidx: int)
 {
-    val sp = shape2str(net, t.shape)
-    val cprefix = match t.argkind { DL_Arg_Buffer => "" | _ => string(t.argkind) + " " }
-    val tdatastr = match t {
-        | {argkind=DL_Arg_Const, shape={shape}, idx}
-            when idx > 0 && size(shape) == 1 && shape[0] < 10 =>
-            ": " + tdata2str(net.consts[idx].data)
-        | _ => ""
+    val targ = net.args[argidx]
+    val sp = shape2str(net, targ.shape)
+    val cprefix = match targ.argkind { DL_Arg_Temp => "" | _ => string(targ.argkind) + " " }
+    val (tdatastr, bufstr) = match targ {
+        | {argkind=DL_Arg_Const, shape={shape}}
+            when argidx > 0 && size(shape) == 1 && shape[0] < 10 =>
+            (": " + tdata2str(net.tensors[argidx].data), "")
+        | {argkind=DL_Arg_Temp} => ("", f" (buf #{net.bufidxs[argidx]})")
+        | _ => ("", "")
     }
-    cprefix + sp + " " + string(t.typ) + tdatastr
+    cprefix + sp + " " + string(targ.typ) + tdatastr + bufstr
 }
 
 fun parse_params(params: string): string list
@@ -635,7 +641,8 @@ fun graph2str(net: dlnet_t, graph: dlgraph_t, indent: string)
         f",\n{prog_indent}", prog)
 }
 
-fun get_opname(op: dlop_t) {
+fun dlop_t.name() = match self
+{
     | DL_AvgPool {name} => (name, "AvgPool")
     | DL_BatchNorm {name} => (name, "BatchNorm")
     | DL_Cast {name} => (name, "Cast")
@@ -681,8 +688,53 @@ fun targs2pairs(prefix: string, args: int []) = [for a@i <- args {(f"{prefix}{i}
 fun t2str(net: dlnet_t, tensors: (string, int) list) =
     [for (name, tidx) <- tensors {
         val targ = net.args[tidx]
-        f"{name}=\"{targ.name}\", // {arg2str(net, targ)}"
+        f"{name}=\"{targ.name}\", // {arg2str(net, tidx)}"
     }]
+
+fun dlop_t.get_inputs_outputs(): (int [], int []) = match self
+{
+    | DL_AvgPool {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_BatchNorm {t_inp, t_scale, t_B, t_mean, t_var, t_out} => ([|t_inp, t_scale, t_B, t_mean, t_var|], [|t_out|])
+    | DL_Cast {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Clip {t_inp, t_min, t_max, t_out} => ([|t_inp, t_min, t_max|], [|t_out|])
+    | DL_Concat {t_inp, t_out} => (t_inp, [|t_out|])
+    | DL_ConstantOfShape {t_shape, t_out} => ([|t_shape|], [|t_out|])
+    | DL_Conv {t_inp, t_weights, t_bias, t_out} => ([|t_inp, t_weights, t_bias|], [|t_out|])
+    | DL_ConvTranspose {t_inp, t_weights, t_bias, t_out} => ([|t_inp, t_weights, t_bias|], [|t_out|])
+    | DL_Dropout {t_inp, t_ratio, t_training_mode, t_out} => ([|t_inp, t_ratio, t_training_mode|], [|t_out|])
+    | DL_Elemwise {t_inp, t_out} => (t_inp, [|t_out|])
+    | DL_Expand {t_inp, t_shape, t_out} => ([|t_inp, t_shape|], [|t_out|])
+    | DL_Flatten {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Gather {t_inp, t_ind, t_out} => ([|t_inp, t_ind|], [|t_out|])
+    | DL_Gemm {t_A, t_B, t_bias, t_out} => ([|t_A, t_B, t_bias|], [|t_out|])
+    | DL_GlobalAvgPool {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Identity {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_If {t_inp, t_out} => ([|t_inp|], t_out)
+    | DL_LeakyRelu {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Loop {t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
+        ([|t_trip_count, t_cond_in, \t_v_in|], [|t_cond_out, \t_v_out|])
+    | DL_LRN {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_MaxPool {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_NonMaxSuppression {t_boxes, t_scores, t_max_output_boxes_per_class,
+        t_iou_threshold, t_score_threshold, t_out} =>
+            ([|t_boxes, t_scores, t_max_output_boxes_per_class, t_iou_threshold, t_score_threshold|], [|t_out|])
+    | DL_NonZero {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Range {t_start, t_limit, t_delta, t_out} => ([|t_start, t_limit, t_delta|], [|t_out|])
+    | DL_Reduce {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Reshape {t_inp, t_shape, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Resize {t_inp, t_scales, t_sizes, t_roi, t_out} => ([|t_inp, t_scales, t_sizes, t_roi|], [|t_out|])
+    | DL_RoiAlign {t_inp, t_rois, t_batch_ind, t_out} => ([|t_inp, t_rois, t_batch_ind|], [|t_out|])
+    | DL_Scatter {t_data, t_updates, t_indices, t_out} => ([|t_data, t_updates, t_indices|], [|t_out|])
+    | DL_Shape {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} => ([|t_inp, t_starts, t_ends, t_axes, t_steps|], [|t_out|])
+    | DL_SoftMax {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Split {t_inp, t_split, t_out} => ([|t_inp, t_split|], t_out)
+    | DL_Squeeze {t_inp, t_axes, t_out} => ([|t_inp, t_axes|], [|t_out|])
+    | DL_Tile {t_inp, t_repeats, t_out} => ([|t_inp, t_repeats|], [|t_out|])
+    | DL_TopK {t_inp, t_K, t_out, t_out_ind} =>  ([|t_inp, t_K|], [|t_out, t_out_ind|])
+    | DL_Transpose {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_Unsqueeze {t_inp, t_axes, t_out} => ([|t_inp, t_axes|], [|t_out|])
+}
 
 fun op2str(net: dlnet_t, op: dlop_t, indent: string)
 {
@@ -880,10 +932,9 @@ fun empty_tensor() = dltensor_t {
 
 fun empty_arg() = dlarg_t {
     name = "",
-    argkind = Ast.DL_Arg_Buffer,
+    argkind = DL_Arg_Temp,
     shape = empty_shape(),
-    typ = Ast.DL_Undefined,
-    idx = -1
+    typ = DL_Undefined
 }
 
 fun dlshape_t.total() = fold p=1 for sz <- self.shape {p*sz}
@@ -898,10 +949,10 @@ fun dlshape_t.get_num_channels()
     val ndims = self.shape.size()
     match (self.layout, ndims) {
     | (_, 1) => self.shape[0]
-    | (Ast.DL_Layout_NC, _) => self.shape[1]
-    | (Ast.DL_Layout_NCHW, _) => self.shape[1]
-    | (Ast.DL_Layout_NHWC, _) => self.shape[ndims-1]
-    | (Ast.DL_Layout_NCHWxc, _) => self.shape[1]*self.shape[ndims-1]
+    | (DL_Layout_NC, _) => self.shape[1]
+    | (DL_Layout_NCHW, _) => self.shape[1]
+    | (DL_Layout_NHWC, _) => self.shape[ndims-1]
+    | (DL_Layout_NCHWxc, _) => self.shape[1]*self.shape[ndims-1]
     | _ => -1
     }
 }
@@ -910,9 +961,9 @@ fun dlshape_t.get_spatial_channel_range()
 {
     val ndims = self.shape.size()
     match self.layout {
-    | Ast.DL_Layout_NCHW => (2, ndims)
-    | Ast.DL_Layout_NHWC => (1, ndims-1)
-    | Ast.DL_Layout_NCHWxc => (2, ndims-1)
+    | DL_Layout_NCHW => (2, ndims)
+    | DL_Layout_NHWC => (1, ndims-1)
+    | DL_Layout_NCHWxc => (2, ndims-1)
     | _ => throw DLError(f"the shape layout {self.layout} is not supported in get_spatial_channel_range()")
     }
 }
@@ -964,33 +1015,21 @@ fun dlarg_t.copy() = dlarg_t {
     name = self.name,
     argkind = self.argkind,
     shape = self.shape.copy(),
-    typ = self.typ,
-    idx = self.idx
+    typ = self.typ
 }
 
-fun dlnet_t.gettensor(arg: dlarg_t)
-{
-    val argkind = arg.argkind
-    val idx = arg.idx
-    match argkind {
-    | DL_Arg_Const => self.consts[idx]
-    | DL_Arg_Output => self.outputs[idx]
-    | DL_Arg_Buffer => self.buffers[idx].0
-    }
-}
-
-fun dlnet_t.gettensor(argidx: int)
-{
-    val argkind = self.args[argidx].argkind
-    val idx = self.args[argidx].idx
-    match argkind {
-    | DL_Arg_Const => self.consts[idx]
-    | DL_Arg_Output => self.outputs[idx]
-    | DL_Arg_Buffer => self.buffers[idx].0
-    }
-}
+fun dlnet_t.get_tensor(argidx: int) = self.tensors[argidx]
 
 fun dlnet_t.isconst(argidx: int) = self.args[argidx].argkind == DL_Arg_Const
+fun dlnet_t.istemp(argidx: int) = self.args[argidx].argkind == DL_Arg_Temp
+fun dlnet_t.get_input_names(): string [] =
+    [| for i <- self.graph.inpargs {
+        self.args[i].name
+    } |]
+fun dlnet_t.get_output_names(): string [] =
+    [| for i <- self.graph.outargs {
+        self.args[i].name
+    } |]
 
 fun fit(shape: dlshape_t, typ: dltyp_t, data: dldata_t, buf: dlbuf_t): (dldata_t, dlbuf_t)
 {

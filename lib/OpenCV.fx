@@ -24,29 +24,6 @@ pragma "c++", "clib:opencv_core", "clib:opencv_imgproc", "clib:opencv_videoio",
 
 exception OpenCVError : string
 
-type uint8x3 = (uint8*3)
-type uint8x4 = (uint8*4)
-type uint16x3 = (uint16*3)
-type uint16x4 = (uint16*4)
-type intx2 = (int*2)
-type intx3 = (int*3)
-type intx4 = (int*4)
-type intx5 = (int*5)
-type intx6 = (int*6)
-type int32x2 = (int32*2)
-type int32x3 = (int32*3)
-type int32x4 = (int32*4)
-type floatx2 = (float*2)
-type floatx3 = (float*3)
-type floatx4 = (float*4)
-type floatx5 = (float*5)
-type floatx6 = (float*6)
-type doublex2 = (double*2)
-type doublex3 = (double*3)
-type doublex4 = (double*4)
-type doublex5 = (double*5)
-type doublex6 = (double*6)
-
 type depth_t =
     | DEPTH_U8 | DEPTH_S8 | DEPTH_U16 | DEPTH_S16 | DEPTH_U32 | DEPTH_S32
     | DEPTH_U64 | DEPTH_S64 | DEPTH_FP16 | DEPTH_BF16 | DEPTH_FP32 | DEPTH_FP64
@@ -76,11 +53,6 @@ fun arrelemtype(_: 't [+]) = elemtype(0:>'t)
 
 type anyarr_t = (uint8 [,], depth_t, int)
 
-// basically, this is violation of the type system; use with care
-@nothrow fun reinterpret(x: 'from [+]): 'to [+]
-@ccode {
-    fx_copy_arr(x, fx_result);
-}
 fun anyarray(x: 't [+]): anyarr_t
 {
     val (depth, channels) = arrelemtype(x)

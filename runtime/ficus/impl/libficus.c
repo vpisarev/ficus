@@ -337,8 +337,6 @@ int fx_exn_set_fast(int code, const char* funcname, const char* filename, int li
     fx_bt_t* curr_bt = &fx_bt;
     fx_exn_t* curr_exn = &curr_bt->curr_exn;
     assert(curr_exn->data == 0);
-    if (code == -23)
-        putchar('.');
     curr_exn->tag = code;
     curr_exn->info = 0;
     curr_exn->data = 0; // well, it must be NULL already

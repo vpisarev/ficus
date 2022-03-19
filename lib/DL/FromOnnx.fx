@@ -69,15 +69,14 @@ match ti {
 
 @private fun onnx2arg(dimnames: Ast.dlnames_t,
              vi: OAst.valueinfo_t,
-             argkind: Ast.dlargkind_t, idx: int)
+             argkind: Ast.dlargkind_t)
 {
     val (shape, typ) = onnx2shape(dimnames, vi.typeinfo)
     Ast.dlarg_t {
         name = vi.name,
         argkind = argkind,
         shape = shape,
-        typ = typ,
-        idx = idx
+        typ = typ
     }
 }
 
@@ -165,7 +164,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
 {
     val dimnames = Hashmap.empty(1024, "", 0)
     val argnames = Hashmap.empty(1024, "", 0)
-    val empty_arg = Ast.empty_arg().{argkind = Ast.DL_Arg_Const, idx=0}
+    val empty_arg = Ast.empty_arg().{argkind = Ast.DL_Arg_Const}
     val empty_tensor = Ast.empty_tensor()
 
     val info = Ast.DL_Net_Onnx (Ast.dlonnx_t {
@@ -177,10 +176,8 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
     })
 
     val args = [| empty_arg |]
-
     val vargs = Dynvec.create(args, empty_arg)
-    val consts = [| empty_tensor |]
-    val vconsts = Dynvec.create(consts, empty_tensor)
+    val vtensors = Dynvec.create([| empty_tensor |], empty_tensor)
     dimnames.add("?", -1)
 
     fun get_const_tensor_arg(name: string, data: Ast.dldata_t) =
@@ -189,21 +186,20 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
         | _ =>
             val sz = Ast.total(data)
             val shape = Ast.dlshape_t { shape=[|sz|], layout=Ast.DL_Layout_Unknown }
-            val t = Ast.dltensor_t {
-                shape = shape,
-                data = data
-            }
-            val c_idx = vconsts.push()
-            vconsts.data[c_idx] = t
             val arg = Ast.dlarg_t {
                 name = name,
                 argkind = Ast.DL_Arg_Const,
                 shape = shape,
-                typ = data.elemtype(),
-                idx = c_idx
+                typ = data.elemtype()
+            }
+            val t = Ast.dltensor_t {
+                shape = shape,
+                data = data
             }
             val idx = vargs.push()
+            val _ = vtensors.push()
             vargs.data[idx] = arg
+            vtensors.data[idx] = t
             argnames.add(name, idx)
             idx
         }
@@ -218,8 +214,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
     val net = Ast.empty_net().{
         info = info,
         argnames = argnames,
-        args = args,
-        consts = consts,
+        args = args
     }
 
     fun find_inp_arg(nspace: string, argname: string) =
@@ -233,42 +228,46 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
             find_inp_arg((if pos >= 0 {nspace[:pos]} else {""}), argname)
         }
 
-    fun convert_graph(onnx_graph: OAst.graph_t, nspace: string) {
+    fun convert_graph(onnx_graph: OAst.graph_t, nspace: string, nested: bool) {
         val nspace_ = if nspace == "" {nspace} else {nspace + "::"}
         for c <- onnx_graph.initializers {
             val argidx = vargs.push()
-            val cidx = vconsts.push()
+            val _ = vtensors.push()
             val t = onnx2tensor(c)
             val arg = Ast.dlarg_t {
                 name = nspace_ + c.name,
                 argkind = Ast.DL_Arg_Const,
                 shape = t.shape,
-                typ = t.data.elemtype(),
-                idx = cidx
+                typ = t.data.elemtype()
             }
             argnames.add(arg.name, argidx)
-            vconsts.data[cidx] = t
             vargs.data[argidx] = arg
+            vtensors.data[argidx] = t
         }
-        println(f"#constants: {vconsts.count}")
         fun convert_targ_group(group: OAst.valueinfo_t [], argkind: Ast.dlargkind_t) {
             for vi@i <- group {
                 val argidx = vargs.push()
+                val _ = vtensors.push()
                 argnames.add(nspace_ + vi.name, argidx)
-                vargs.data[argidx] = onnx2arg(dimnames, vi, argkind, -1)
+                val arg = onnx2arg(dimnames, vi, argkind)
+                vargs.data[argidx] = arg
+                vtensors.data[argidx] = Ast.dltensor_t {
+                        shape = arg.shape,
+                        data=Ast.DL_Data_Empty
+                    }
             }
         }
         val inputs_start = vargs.count
-        convert_targ_group(onnx_graph.inputs, Ast.DL_Arg_Buffer)
+        convert_targ_group(onnx_graph.inputs, if nested {Ast.DL_Arg_Temp} else {Ast.DL_Arg_Input})
         val outputs_start = vargs.count
-        convert_targ_group(onnx_graph.outputs, Ast.DL_Arg_Output)
+        convert_targ_group(onnx_graph.outputs, if nested {Ast.DL_Arg_Temp} else {Ast.DL_Arg_Output})
         val values_start = vargs.count
-        convert_targ_group(onnx_graph.values, Ast.DL_Arg_Buffer)
+        convert_targ_group(onnx_graph.values, Ast.DL_Arg_Temp)
         val inpargs = mkrange(inputs_start, outputs_start)
         val outargs = mkrange(outputs_start, values_start)
 
         val fold prog = [] for node <- onnx_graph.nodes {
-            println(f"parsing operation '{node.name}' (Op={node.op}); #args = {vargs.count}")
+            //println(f"parsing operation '{node.name}' (Op={node.op}); #args = {vargs.count}")
             val name = node.name
             val inputs = [| for argname <- node.inputs { find_inp_arg(nspace, argname) } |]
             val outputs = [| for argname <- node.outputs {
@@ -279,21 +278,24 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 | Some(idx) => idx
                 | _ =>
                     val idx = vargs.push()
-                    vargs.data[idx] = Ast.dlarg_t {
+                    val _ = vtensors.push()
+                    val arg = Ast.dlarg_t {
                         name=argname,
-                        argkind=Ast.DL_Arg_Buffer, // later on we can convert it to output
+                        argkind=Ast.DL_Arg_Temp, // later on we can convert it to output
                         shape=Ast.dlshape_t {
                             shape=[],
                             layout=Ast.DL_Layout_Unknown
                         },
-                        typ=Ast.DL_Undefined,
-                        idx=-1 }
+                        typ=Ast.DL_Undefined }
                     argnames.add(argname, idx)
+                    vargs.data[idx] = arg
+                    val t = Ast.dltensor_t { shape=arg.shape, data=Ast.DL_Data_Empty }
+                    vtensors.data[idx] = t
                     idx
                 }} |]
             val ninputs = size(inputs), noutputs = size(outputs)
 
-            val more_ops = match node.op {
+            val rev_more_ops = match node.op {
             | "Add" | "And" | "Div" | "Equal" | "Greater" | "Less"
             | "Mod" | "Mul" | "Or" | "Sub" | "Xor" =>
                 assert(`ninputs == 2`)
@@ -466,11 +468,10 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 if count != 1 {
                     throw OnnxConvertError(f"{node.name} (op=Constant): missing value")
                 }
-                val c_idx = vconsts.push()
-                vconsts.data[c_idx] = t
                 vargs.data[outputs[0]] = vargs.data[outputs[0]].{
                     argkind=Ast.DL_Arg_Const, shape=t.shape,
-                    typ=t.data.elemtype(), idx=c_idx}
+                    typ=t.data.elemtype()}
+                vtensors.data[outputs[0]] = t
                 [] // there is no actual output operation
             | "ConstantOfShape" =>
                 assert(`ninputs == 1`)
@@ -599,8 +600,8 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 assert(`noutputs >= 1`)
                 var then_br = Ast.empty_graph(), else_br = Ast.empty_graph()
                 for a <- node.attrs {
-                    | {name="then_branch", v=OAst.AttrGraph(g)} => then_br = convert_graph(g, nspace_+g.name)
-                    | {name="else_branch", v=OAst.AttrGraph(g)} => else_br = convert_graph(g, nspace_+g.name)
+                    | {name="then_branch", v=OAst.AttrGraph(g)} => then_br = convert_graph(g, nspace_+g.name, true)
+                    | {name="else_branch", v=OAst.AttrGraph(g)} => else_br = convert_graph(g, nspace_+g.name, true)
                     | _ => {}
                 }
                 if then_br.prog == [] {throw OnnxConvertError("f{node.name} (op=If): 'then' branch is missing")}
@@ -622,7 +623,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 assert(`noutputs >= 1`)
                 var body = Ast.empty_graph()
                 for a <- node.attrs {
-                    | {name="body", v=OAst.AttrGraph(g)} => body = convert_graph(g, nspace_+g.name)
+                    | {name="body", v=OAst.AttrGraph(g)} => body = convert_graph(g, nspace_+g.name, true)
                     | _ => {}
                 }
                 if body.prog == [] {throw OnnxConvertError("f{node.name} (op=Loop): 'body' graph is missing")}
@@ -871,7 +872,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     name=name, t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
             | _ => throw OnnxConvertError(f"unsupported operation '{node.op}'")
             }
-            more_ops + prog
+            rev_more_ops + prog
         }
         Ast.DL_Graph {
             inpargs = inpargs,
@@ -880,7 +881,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
         }
     }
 
-    val graph = convert_graph(model.graph, "")
+    val graph = convert_graph(model.graph, "", false)
     val ndimnames = dimnames.size()
     val dimnames_ = array(ndimnames, "")
     dimnames.app(fun (name, v) {dimnames_[-v-1] = name})
@@ -890,7 +891,8 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
         dimnames = dimnames,
         dimnames_ = dimnames_,
         args = vargs.data[:vargs.count],
-        consts = vconsts.data[:vconsts.count]
+        tensors = vtensors.data[:vtensors.count],
+        bufidxs = array(vargs.count, -1)
     }
 }
 

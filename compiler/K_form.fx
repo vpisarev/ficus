@@ -1441,8 +1441,14 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     }
 }
 
-fun ktl2str(tl: ktyp_t list): string =
-    join_embrace("(", ")", ", ", [| for t <- tl { string(t) } |])
+fun ktl2str(tl: ktyp_t list): string
+{
+    val (begin, end) = match tl {
+    | x :: [] => ("", "")
+    | _ => ("(", ")")
+    }
+    join_embrace(begin, end, ", ", [| for t <- tl { string(t) } |])
+}
 
 fun atom2str(a: atom_t): string
 {

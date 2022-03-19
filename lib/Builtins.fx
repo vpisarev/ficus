@@ -570,6 +570,29 @@ fun int64(x: 't [+]) = [| for xj <- x {int64(xj)} |]
 fun float(x: 't [+]) = [| for xj <- x {float(xj)} |]
 fun double(x: 't [+]) = [| for xj <- x {double(xj)} |]
 
+type uint8x3 = (uint8*3)
+type uint8x4 = (uint8*4)
+type uint16x3 = (uint16*3)
+type uint16x4 = (uint16*4)
+type intx2 = (int*2)
+type intx3 = (int*3)
+type intx4 = (int*4)
+type intx5 = (int*5)
+type intx6 = (int*6)
+type int32x2 = (int32*2)
+type int32x3 = (int32*3)
+type int32x4 = (int32*4)
+type floatx2 = (float*2)
+type floatx3 = (float*3)
+type floatx4 = (float*4)
+type floatx5 = (float*5)
+type floatx6 = (float*6)
+type doublex2 = (double*2)
+type doublex3 = (double*3)
+type doublex4 = (double*4)
+type doublex5 = (double*5)
+type doublex6 = (double*6)
+
 @pure @nothrow fun sat_uint8(i: int): uint8
 @ccode { return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255); }
 
@@ -807,6 +830,12 @@ fun array((m: int, n: int, l: int), x: 't) = [| for i <- 0:m for j <- 0:n for k 
 fun array(l: 't list): 't [] = [| for x <- l {x} |]
 fun array(v: 't vector): 't [] = [| for x <- v {x} |]
 fun array(s: string): char [] = [| for x <- s {x} |]
+
+// basically, this is violation of the type system; use with care
+@nothrow fun reinterpret(x: 'from [+]): 'to [+]
+@ccode {
+    fx_copy_arr(x, fx_result);
+}
 
 fun vector(): 't vector = []
 fun vector(l: 't list): 't vector = [<for x <- l {x}>]
