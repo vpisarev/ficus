@@ -161,7 +161,7 @@ class dlop_t =
         name: string; seed: int = 0
         t_inp: int; t_ratio: int; t_training_mode: int; t_out: int }
     | DL_Elemwise: {
-        name: string; op: dlelwise_t; t_inp: int []; t_out: int }
+        name: string; el_op: dlelwise_t; t_inp: int []; t_out: int }
     | DL_Expand: {
         name: string; t_inp: int; t_shape: int; t_out: int }
     | DL_Flatten: {
@@ -453,6 +453,23 @@ match self {
     | DL_Data_Bool(elems) => size(elems)
 }
 
+fun dltensor_t.total() =
+match self.data {
+    | DL_Data_Empty
+    | DL_Data_Stub_FP16 | DL_Data_Stub_BF16 => 0
+    | DL_Data_I8(elems) => size(elems)
+    | DL_Data_U8(elems) => size(elems)
+    | DL_Data_I16(elems) => size(elems)
+    | DL_Data_U16(elems) => size(elems)
+    | DL_Data_I32(elems) => size(elems)
+    | DL_Data_U32(elems) => size(elems)
+    | DL_Data_I64(elems) => size(elems)
+    | DL_Data_U64(elems) => size(elems)
+    | DL_Data_FP32(elems) => size(elems)
+    | DL_Data_FP64(elems) => size(elems)
+    | DL_Data_Bool(elems) => size(elems)
+}
+
 fun float(d: dldata_t)
 {
     | DL_Data_Empty
@@ -575,13 +592,31 @@ match self {
     | DL_Data_Bool _ => DL_Bool
 }
 
+fun dltensor_t.elemtype() =
+match self.data {
+    | DL_Data_Empty => DL_Undefined
+    | DL_Data_I8 _ => DL_I8
+    | DL_Data_U8 _ => DL_U8
+    | DL_Data_I16 _ => DL_I16
+    | DL_Data_U16 _ => DL_U16
+    | DL_Data_I32 _ => DL_I32
+    | DL_Data_U32 _ => DL_U32
+    | DL_Data_I64 _ => DL_I64
+    | DL_Data_U64 _ => DL_U64
+    | DL_Data_Stub_FP16 => DL_FP16
+    | DL_Data_Stub_BF16 => DL_BF16
+    | DL_Data_FP32 _ => DL_FP32
+    | DL_Data_FP64 _ => DL_FP64
+    | DL_Data_Bool _ => DL_Bool
+}
+
 fun tensor2str(net: dlnet_t, t: dltensor_t, show_small: bool) =
 match t.data {
     | DL_Data_Empty => "[]"
     | _ =>
         val sp = shape2str(net, t.shape)
-        val tprefix = string(t.data.elemtype())
-        val nelems = t.data.total()
+        val tprefix = string(t.elemtype())
+        val nelems = t.total()
         val tdata_str = if nelems <= 10 && show_small {tdata2str(t.data)} else {"[...]"}
         sp + " " + tprefix + " " + tdata_str
 }
@@ -652,7 +687,7 @@ fun dlop_t.name() = match self
     | DL_Conv {name} => (name, "Conv")
     | DL_ConvTranspose {name} => (name, "ConvTranspose")
     | DL_Dropout {name} => (name, "Dropout")
-    | DL_Elemwise {name, op} => (name, f"Elemwise{op}")
+    | DL_Elemwise {name, el_op} => (name, f"Elemwise{el_op}")
     | DL_Expand {name} => (name, "Expand")
     | DL_Flatten {name} => (name, "Flatten")
     | DL_Gather {name} => (name, "Gather")
@@ -771,8 +806,8 @@ fun op2str(net: dlnet_t, op: dlop_t, indent: string)
     | DL_Dropout {name, seed, t_inp, t_ratio, t_training_mode, t_out} =>
         op2str(name, "Dropout", f"seed={seed}", t2str(net,
             [("t_inp", t_inp), ("t_ratio", t_ratio), ("t_training_mode", t_training_mode), ("t_out", t_out)]), indent)
-    | DL_Elemwise {name, op, t_inp, t_out} =>
-        op2str(name, string(op), "", t2str(net, targs2pairs("t_inp", t_inp) + [("t_out", t_out)]), indent)
+    | DL_Elemwise {name, el_op, t_inp, t_out} =>
+        op2str(name, string(el_op), "", t2str(net, targs2pairs("t_inp", t_inp) + [("t_out", t_out)]), indent)
     | DL_Expand {name, t_inp, t_shape, t_out} =>
         op2str(name, "Expand", "", t2str(net, [("t_inp", t_inp), ("t_shape", t_shape), ("t_out", t_out)]), indent)
     | DL_Flatten {name, axis, t_inp, t_out} =>
@@ -1006,8 +1041,29 @@ fun dlshape_t.broadcast(another: dlshape_t)
     }
 }
 
+fun make_tensor(shape: dlshape_t, typ: dltyp_t)
+{
+    val total = shape.total()
+    val data = match typ {
+        | DL_I8 => DL_Data_I8(array(total, 0i8))
+        | DL_U8 => DL_Data_U8(array(total, 0u8))
+        | DL_I16 => DL_Data_I16(array(total, 0i16))
+        | DL_U16 => DL_Data_U16(array(total, 0u16))
+        | DL_I32 => DL_Data_I32(array(total, 0i32))
+        | DL_U32 => DL_Data_U32(array(total, 0u32))
+        | DL_I64 => DL_Data_I64(array(total, 0i64))
+        | DL_U64 => DL_Data_U64(array(total, 0u64))
+        | DL_FP32 => DL_Data_FP32(array(total, 0.f))
+        | DL_FP64 => DL_Data_FP64(array(total, 0.))
+        | DL_Bool => DL_Data_Bool(array(total, false))
+        | _ => throw DLError(f"unsupported tensor type {typ}")
+    }
+    dltensor_t {shape=shape, data=data}
+}
+
 fun dltensor_t.copy() =
     dltensor_t { shape=self.shape.copy(), data=self.data.copy() }
+fun dltensor_t.isscalar() = self.shape.total() == 1
 
 fun dlarg_t.isconst() = self.argkind == DL_Arg_Const
 
@@ -1022,6 +1078,7 @@ fun dlnet_t.get_tensor(argidx: int) = self.tensors[argidx]
 
 fun dlnet_t.isconst(argidx: int) = self.args[argidx].argkind == DL_Arg_Const
 fun dlnet_t.istemp(argidx: int) = self.args[argidx].argkind == DL_Arg_Temp
+fun dlnet_t.isscalar(argidx: int) = self.tensors[argidx].isscalar()
 fun dlnet_t.get_input_names(): string [] =
     [| for i <- self.graph.inpargs {
         self.args[i].name
@@ -1069,6 +1126,29 @@ fun fit(shape: dlshape_t, typ: dltyp_t, data: dldata_t, buf: dlbuf_t): (dldata_t
     } else {
         (data, buf)
     }
+}
+
+fun dlnet_t.copy_tensor_data(t_inp: int, t_out: int)
+{
+    fun copy_(inp: dldata_t, out: dldata_t): void
+    @ccode {
+        fx_arr_t* inp_arr, *out_arr;
+        if (inp->tag != out->tag)
+            return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+        if (inp->tag == 1)
+            return FX_OK;
+        inp_arr = &inp->u.DL_Data_U8;
+        out_arr = &out->u.DL_Data_U8;
+        if (inp_arr->dims != out_arr->dims || inp_arr->dims != 1 || inp_arr->dim[0].size != out_arr->dim[0].size)
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        if (inp_arr->data != out_arr->data)
+            memcpy(out_arr->data, inp_arr->data, inp_arr->dim[0].size*inp_arr->dim[0].step);
+        return FX_OK;
+    }
+
+    val inp = self.get_tensor(t_inp)
+    val out = self.get_tensor(t_out)
+    copy_(inp.data, out.data)
 }
 
 fun normalize_axis(axis: int, ndims: int) {

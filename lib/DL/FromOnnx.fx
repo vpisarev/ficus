@@ -238,7 +238,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 name = nspace_ + c.name,
                 argkind = Ast.DL_Arg_Const,
                 shape = t.shape,
-                typ = t.data.elemtype()
+                typ = t.elemtype()
             }
             argnames.add(arg.name, argidx)
             vargs.data[argidx] = arg
@@ -300,7 +300,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
             | "Mod" | "Mul" | "Or" | "Sub" | "Xor" =>
                 assert(`ninputs == 2`)
                 assert(`noutputs == 1`)
-                val op = match node.op {
+                val el_op = match node.op {
                     | "Add" => Ast.DL_Add
                     | "And" => Ast.DL_And
                     | "Div" => Ast.DL_Div
@@ -314,14 +314,14 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | "Xor" => Ast.DL_Xor
                     | _ => throw OnnxConvertError(f"unsupported unary operation {node.op}")
                 }
-                [Ast.DL_Elemwise {name=name, op=op, t_inp=inputs, t_out=outputs[0]}]
+                [Ast.DL_Elemwise {name=name, el_op=el_op, t_inp=inputs, t_out=outputs[0]}]
             | "Abs" |  "Relu" | "Abs" | "Acos" | "Acosh" | "Asin" | "Asinh" | "Atan" | "Atanh"
             | "Ceil" | "Cos" | "Cosh" | "Erf" | "Exp" | "Floor" | "IsInf" | "IsNaN" | "Log"
             | "Neg" | "Not" | "Relu" | "Round" | "Sigmoid" | "Sign" | "Sin" | "Sinh"
             | "Softplus" | "Softsign" | "Sqrt" | "Tan" | "Tanh" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
-                val op = match node.op {
+                val el_op = match node.op {
                     | "Abs" => Ast.DL_Abs | "Acos" => Ast.DL_Acos | "Acosh" => Ast.DL_Acosh
                     | "Asin" => Ast.DL_Asin | "Asinh" => Ast.DL_Asinh | "Atan" => Ast.DL_Atan
                     | "Atanh" => Ast.DL_Atanh | "Ceil" => Ast.DL_Ceil | "Cos" => Ast.DL_Cos
@@ -334,15 +334,15 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | "Sqrt" => Ast.DL_Sqrt | "Tan" => Ast.DL_Tan | "Tanh" => Ast.DL_Tanh
                     | _ => throw OnnxConvertError(f"unsupported binary operation {node.op}")
                 }
-                [Ast.DL_Elemwise {name=name, op=op, t_inp=inputs, t_out=outputs[0]}]
+                [Ast.DL_Elemwise {name=name, el_op=el_op, t_inp=inputs, t_out=outputs[0]}]
             | "Min" | "Max" | "Mean" =>
                 assert(`ninputs > 1`)
                 assert(`noutputs == 1`)
-                val op = match node.op {
+                val el_op = match node.op {
                     | "Min" => Ast.DL_Min | "Max" => Ast.DL_Max | "Mean" => Ast.DL_Mean
                     | _ => throw OnnxConvertError(f"unsupported element-wise operation {node.op}")
                 }
-                [Ast.DL_Elemwise {name=name, op=op, t_inp=inputs, t_out=outputs[0]}]
+                [Ast.DL_Elemwise {name=name, el_op=el_op, t_inp=inputs, t_out=outputs[0]}]
             | "ReduceMin" | "ReduceMax" | "ReduceMean" | "ReduceProd" | "ReduceSum" | "ReduceSumSquare"
             | "ReduceL1" | "ReduceL2" | "ReduceLogSum" | "ReduceLogSumExp" =>
                 assert(`ninputs == 1`)
@@ -470,7 +470,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                 }
                 vargs.data[outputs[0]] = vargs.data[outputs[0]].{
                     argkind=Ast.DL_Arg_Const, shape=t.shape,
-                    typ=t.data.elemtype()}
+                    typ=t.elemtype()}
                 vtensors.data[outputs[0]] = t
                 [] // there is no actual output operation
             | "ConstantOfShape" =>

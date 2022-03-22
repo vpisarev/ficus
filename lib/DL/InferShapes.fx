@@ -23,7 +23,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     fun get_shape_typ(argidx: int)
     {
         val t = net.get_tensor(argidx)
-        (t.shape, t.data.elemtype())
+        (t.shape, t.elemtype())
     }
 
     fun get_shape(argidx: int) = get_shape_typ(argidx).0
@@ -69,7 +69,9 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     | DL_Cast {to, t_inp, t_out} =>
         val shape = get_shape(t_inp)
         [|argshapeinfo_t {idx=t_out, shape=shape, typ=to, dynamic=false}|]
-    | DL_Clip {t_inp, t_out} =>
+    | DL_Clip {t_inp, t_min, t_max, t_out} =>
+        assert(`net.isscalar(t_min)`)
+        assert(`net.isscalar(t_max)`)
         [|copy_shape_typ(t_inp, t_out)|]
     | DL_Concat { axis, t_inp, t_out } =>
         val (shape0, typ0) = get_shape_typ(t_inp[0])
@@ -89,7 +91,8 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         [|argshapeinfo_t {idx=t_out, shape=Ast.dlshape_t {layout=shape0.layout,
             shape=out_shape}, typ=typ0, dynamic=false}|]
     | DL_ConstantOfShape {value, t_shape, t_out} =>
-        val typ = value.data.elemtype()
+        assert(`value.isscalar()`)
+        val typ = value.elemtype()
         val value = float(value.data)
         val out_shape = int(net.get_tensor(t_shape))
         val constshape = net.isconst(t_shape)
@@ -165,8 +168,8 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         }|]
     | DL_Dropout {t_inp, t_out} =>
         [|copy_shape_typ(t_inp, t_out)|]
-    | DL_Elemwise {op, t_inp, t_out} =>
-        val enable_broadcast = match op {
+    | DL_Elemwise {el_op, t_inp, t_out} =>
+        val enable_broadcast = match el_op {
             | Ast.DL_Add | Ast.DL_And | Ast.DL_Div
             | Ast.DL_Equal | Ast.DL_Greater | Ast.DL_Less
             | Ast.DL_Max | Ast.DL_Mean | Ast.DL_Min
@@ -215,6 +218,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         assert(`bshape.shape.size() == 2`)
         assert(`ndims_c <= 2`)
         assert(`atyp == btyp`)
+        assert(`btyp == ctyp`)
         val arows = ashape.shape[0], acols = ashape.shape[1]
         val brows = bshape.shape[0], bcols = bshape.shape[1]
         val (crows, ccols) =
@@ -230,7 +234,6 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
             shape=[|out_rows, out_cols|]}, typ=atyp, dynamic=false}|]
     | DL_GlobalAvgPool {t_inp, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
-        val ndims = shape.shape.size()
         val (c_start, c_end) = shape.get_spatial_channel_range()
         val out_shape = [| for sz@d <- shape.shape {
                 if c_start <= d < c_end {1} else {sz}
@@ -261,7 +264,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         [|argshapeinfo_t {idx=t_out, shape=out_shape, typ=Ast.DL_I64, dynamic=true}|]
     | DL_Range {t_start, t_limit, t_delta, t_out} =>
         val start = net.get_tensor(t_start)
-        val typ = start.data.elemtype()
+        val typ = start.elemtype()
         val start = double(start)
         val limit = double(net.get_tensor(t_limit))
         val delta = double(net.get_tensor(t_delta))
@@ -302,7 +305,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
     | DL_Reshape {allowzero, t_inp, t_shape, t_out} =>
         // [TODO] handle NCHWxc
         val (shape, typ) = get_shape_typ(t_inp)
-        val (sshape, styp) = get_shape_typ(t_shape)
+        val (sshape, _) = get_shape_typ(t_shape)
         assert(`sshape.shape.size() == 1`)
         val new_shape = int(net.get_tensor(t_shape))
         val ndims = shape.shape.size()
