@@ -61,20 +61,9 @@ fun anyarray(x: 't [+]): anyarr_t
 
 @ccode {
 
-enum {
-    _FX_DEPTH_U8 = 1,
-    _FX_DEPTH_S8,
-    _FX_DEPTH_U16,
-    _FX_DEPTH_S16,
-    _FX_DEPTH_U32,
-    _FX_DEPTH_S32,
-    _FX_DEPTH_U64,
-    _FX_DEPTH_S64,
-    _FX_DEPTH_FP16,
-    _FX_DEPTH_BF16,
-    _FX_DEPTH_FP32,
-    _FX_DEPTH_FP64
-};
+enum { _FX_DEPTH_U8 = 1, _FX_DEPTH_S8, _FX_DEPTH_U16, _FX_DEPTH_S16,
+       _FX_DEPTH_U32, _FX_DEPTH_S32, _FX_DEPTH_U64, _FX_DEPTH_S64,
+       _FX_DEPTH_FP16, _FX_DEPTH_BF16, _FX_DEPTH_FP32, _FX_DEPTH_FP64 };
 
 FX_EXTERN_C int _fx_M6OpenCVFM16make_OpenCVErrorE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 typedef struct _fx_anyarr_t
