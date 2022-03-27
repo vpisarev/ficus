@@ -403,11 +403,11 @@ fun cfold_dealias(kmods: kmodule_t list)
                 }
 
             match res_al {
-            | (a :: []) when (match get_atom_ktyp(a, loc) { | KTypString => true | _ => false }) =>
+            | (a :.) when (match get_atom_ktyp(a, loc) { | KTypString => true | _ => false }) =>
                 KExpAtom(a, (res_t, loc))
             | _ => KExpIntrin(IntrinStrConcat, res_al.rev(), (res_t, loc))
             }
-        | KExpIntrin (IntrinVariantTag, AtomId(n) :: [], (t, loc)) =>
+        | KExpIntrin (IntrinVariantTag, AtomId(n) :., (t, loc)) =>
             match kinfo_(n, loc) {
             | KVal {kv_flags={val_flag_ctor=ctor_id}} when ctor_id > 0 =>
                 KExpAtom(AtomLit(KLitInt(int64(ctor_id))), (t, loc))
@@ -520,7 +520,7 @@ fun cfold_dealias(kmods: kmodule_t list)
                         val eloc = get_kexp_loc(e)
                         val new_action =
                             if keep_action {
-                                code2kexp(action_extra_code + (e :: []), eloc)
+                                code2kexp(action_extra_code + (e :.), eloc)
                             } else {
                                 match match_ktyp {
                                 | KTypVoid => KExpNop(eloc)
@@ -528,7 +528,7 @@ fun cfold_dealias(kmods: kmodule_t list)
                                 }
                             }
                         match (keep_action, checks) {
-                        | (false, KExpAtom (AtomLit(KLitBool(false)), _) :: []) =>
+                        | (false, KExpAtom (AtomLit(KLitBool(false)), _) :.) =>
                             // drop the case completely, because the check is trivial (==FALSE)
                             process_cases(other_cases, result)
                         | (true, []) =>
@@ -542,7 +542,7 @@ fun cfold_dealias(kmods: kmodule_t list)
 
                 val cases = process_cases(cases, [])
                 match cases {
-                | ([], else_action) :: [] => else_action
+                | ([], else_action) :. => else_action
                 | _ => KExpMatch(cases, kctx)
                 }
             | _ => e

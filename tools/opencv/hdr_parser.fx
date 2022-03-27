@@ -162,7 +162,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
             process=true,
             public_section=true,
             decl=None
-        } :: [],
+        } :.,
         gen_gpumat_decls=false,
         gen_umat_decls=false,
         hname=hname,
@@ -627,11 +627,11 @@ fun hdr_parser_t.parse_enum(decl_str: string)
         val p = pair.strip()
         if p == "" { continue }
         val (curr_name, curr_val) = match p.split('=', allow_empty=false) {
-            | curr_name :: [] =>
+            | curr_name :. =>
                 prev_val_delta += 1
                 val curr_val = (if prev_val != "" {prev_val + "+"} else {""}) + string(prev_val_delta)
                 (curr_name, curr_val)
-            | curr_name :: curr_val :: [] =>
+            | curr_name :: curr_val :. =>
                 prev_val_delta = 0
                 val curr_val = curr_val.strip()
                 prev_val = curr_val
@@ -1082,7 +1082,7 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
                             val vname = vv.hd().strip()
                             val vdefval = match vv.tl() {
                                 | [] => ""
-                                | dv :: [] => dv.strip()
+                                | dv :. => dv.strip()
                                 | _ => throw self.parse_err("invalid class property (double '=')")
                             }
                             *class_members = arg_info0.{name=vname, defval=vdefval, readwrite=readwrite} :: *class_members

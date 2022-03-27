@@ -88,7 +88,7 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
             val fcv_typ = make_ptr(CTypName(kcv_name))
             val dst_id = get_id("dst")
             val dst_exp = make_id_t_exp(dst_id, fcv_typ, kcv_loc)
-            val relems = (get_id("free_f"), std_fx_free_t) :: (get_id("rc"), CTypInt) :: []
+            val relems = (get_id("free_f"), std_fx_free_t) :: (get_id("rc"), CTypInt) :.
             val fold relems=relems, free_ccode=[] for (n, kt)@idx <- kcv_freevars {
                 val ctyp = C_gen_types.ktyp2ctyp(kt, kcv_loc)
                 val c_id = get_id(f"t{idx}")
@@ -178,7 +178,7 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
                                             ke_cname, Some(make_dummy_exp(ke_loc)), decls, ke_loc)
                 val call_reg_exn = make_call(std_FX_REG_SIMPLE_EXN, [exn_strname,
                                             ke_tag_exp, info_exp, exn_exp], CTypVoid, ke_loc)
-                (CExp(call_reg_exn) :: [], decls, [])
+                (CExp(call_reg_exn) :., decls, [])
             /*
                 case 2. Exceptions with parameters
 
@@ -258,7 +258,7 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
                         cf_scope=[], cf_loc=ke_loc
                         })
                     set_idc_entry(free_f, CFun(cf))
-                    (free_f, CDefFun(cf) :: [])
+                    (free_f, CDefFun(cf) :.)
                 }
                 val exn_data_ct = ref (cdeftyp_t {
                     ct_name=exn_data_id, ct_typ=CTypStruct(None, relems),
@@ -282,9 +282,9 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
                 set_idc_entry(exn_data_id, CTyp(exn_data_ct))
                 val call_reg_exn = make_call(std_FX_REG_EXN, [exn_strname, ke_tag_exp,
                                              info_exp, free_f_exp], CTypVoid, ke_loc)
-                (CExp(call_reg_exn) :: [],
+                (CExp(call_reg_exn) :.,
                 free_f_decl + (CDefTyp(exn_data_ct) :: decls),
-                CDefTyp(exn_data_ct) :: [])
+                CDefTyp(exn_data_ct) :.)
             }
             top_fcv_decls = decls + top_fcv_decls
             mod_init_calls = reg_calls + mod_init_calls
@@ -360,7 +360,7 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
             val init_ifaces_args =
                 make_id_t_exp(free_f, std_fx_free_t, kvar_loc) ::
                 make_int_exp(ids.length(), kvar_loc) :: ids_exp :: iface_entries_exp ::
-                cexp_get_addr(ifaces_id_exp) :: []
+                cexp_get_addr(ifaces_id_exp) :.
             val call_init_ifaces = make_call(get_id("fx_init_ifaces"), init_ifaces_args, CTypVoid, kvar_loc)
             val init_ccode = CExp(call_init_ifaces) :: init_ccode
             *ct = ct->{ct_ifaces_id = ifaces_id}

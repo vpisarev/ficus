@@ -81,8 +81,8 @@ type dlelwise_t =
     | DL_Ceil | DL_Cos | DL_Cosh | DL_Erf | DL_Exp | DL_Floor | DL_IsInf | DL_IsNaN | DL_Log
     | DL_Neg | DL_Not | DL_Relu | DL_Round | DL_Sigmoid | DL_Sign | DL_Sin | DL_Sinh
     | DL_Softplus | DL_Softsign | DL_Sqrt | DL_Tan | DL_Tanh
-    | DL_Add | DL_And | DL_Div | DL_Equal | DL_Greater | DL_Less
-    | DL_Mod | DL_Mul | DL_Pow | DL_Or | DL_Sub | DL_Xor
+    | DL_Add | DL_And | DL_Div | DL_Equal | DL_Greater | DL_GreaterOrEqual
+    | DL_Less | DL_LessOrEqual | DL_Mod | DL_Mul | DL_Pow | DL_Or | DL_Sub | DL_Xor
     | DL_Min | DL_Max | DL_Mean
 
 type dlreduce_t =
@@ -371,7 +371,9 @@ fun string(ew: dlelwise_t)
     | DL_Div => "Div"
     | DL_Equal => "Equal"
     | DL_Greater => "Greater"
+    | DL_GreaterOrEqual => "GreaterOrEqual"
     | DL_Less => "Less"
+    | DL_LessOrEqual => "LessOrEqual"
     | DL_Mod => "Mod"
     | DL_Mul => "Mul"
     | DL_Or => "Or"
@@ -687,7 +689,7 @@ fun dlop_t.name() = match self
     | DL_Conv {name} => (name, "Conv")
     | DL_ConvTranspose {name} => (name, "ConvTranspose")
     | DL_Dropout {name} => (name, "Dropout")
-    | DL_Elemwise {name, el_op} => (name, f"Elemwise{el_op}")
+    | DL_Elemwise {name, el_op} => (name, string(el_op))
     | DL_Expand {name} => (name, "Expand")
     | DL_Flatten {name} => (name, "Flatten")
     | DL_Gather {name} => (name, "Gather")
@@ -1061,9 +1063,45 @@ fun make_tensor(shape: dlshape_t, typ: dltyp_t)
     dltensor_t {shape=shape, data=data}
 }
 
+fun elemtype(x:int8) = DL_I8
+fun elemtype(x:uint8) = DL_U8
+fun elemtype(x:int16) = DL_I16
+fun elemtype(x:uint16) = DL_U16
+fun elemtype(x:int32) = DL_I32
+fun elemtype(x:uint32) = DL_U32
+fun elemtype(x:int64) = DL_I64
+fun elemtype(x:uint64) = DL_U64
+fun elemtype(x:float) = DL_FP32
+fun elemtype(x:double) = DL_FP64
+fun elemtype(x:bool) = DL_Bool
+
+@private fun make_tensor_(arr: uint8 [,,,], typ: dltyp_t)
+{
+    fun make_data_(arr: uint8 [], typ: dltyp_t): dldata_t
+    @ccode {
+        fx_result->tag = typ->tag;
+        fx_copy_arr(arr, &fx_result->u.DL_Data_U8);
+        return FX_OK;
+    }
+    val shape = arr.size()
+    val shape = [| shape.0, shape.1, shape.2, shape.3 |]
+    val layout = DL_Layout_NCHW
+    val data = make_data_(arr[:], typ)
+    dltensor_t {shape=dlshape_t {shape=shape, layout=layout}, data=data}
+}
+
+fun make_tensor(arr: 't [,,,])
+{
+    val typ = elemtype(arr[0,0,0,0])
+    make_tensor_(reinterpret(arr) : uint8 [,,,], typ)
+}
+
 fun dltensor_t.copy() =
     dltensor_t { shape=self.shape.copy(), data=self.data.copy() }
 fun dltensor_t.isscalar() = self.shape.total() == 1
+fun dltensor_t.isfloatscalar() =
+    self.shape.total() == 1 &&
+    (match self.data {DL_Data_FP32 _ => true | _ => false})
 
 fun dlarg_t.isconst() = self.argkind == DL_Arg_Const
 
@@ -1079,6 +1117,7 @@ fun dlnet_t.get_tensor(argidx: int) = self.tensors[argidx]
 fun dlnet_t.isconst(argidx: int) = self.args[argidx].argkind == DL_Arg_Const
 fun dlnet_t.istemp(argidx: int) = self.args[argidx].argkind == DL_Arg_Temp
 fun dlnet_t.isscalar(argidx: int) = self.tensors[argidx].isscalar()
+fun dlnet_t.isfloatscalar(argidx: int) = self.tensors[argidx].isfloatscalar()
 fun dlnet_t.get_input_names(): string [] =
     [| for i <- self.graph.inpargs {
         self.args[i].name
@@ -1139,7 +1178,7 @@ fun dlnet_t.copy_tensor_data(t_inp: int, t_out: int)
             return FX_OK;
         inp_arr = &inp->u.DL_Data_U8;
         out_arr = &out->u.DL_Data_U8;
-        if (inp_arr->dims != out_arr->dims || inp_arr->dims != 1 || inp_arr->dim[0].size != out_arr->dim[0].size)
+        if (inp_arr->ndims != out_arr->ndims || inp_arr->ndims != 1 || inp_arr->dim[0].size != out_arr->dim[0].size)
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
         if (inp_arr->data != out_arr->data)
             memcpy(out_arr->data, inp_arr->data, inp_arr->dim[0].size*inp_arr->dim[0].step);

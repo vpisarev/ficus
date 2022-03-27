@@ -306,7 +306,9 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | "Div" => Ast.DL_Div
                     | "Equal" => Ast.DL_Equal
                     | "Greater" => Ast.DL_Greater
+                    | "GreaterOrEqual" => Ast.DL_GreaterOrEqual
                     | "Less" => Ast.DL_Less
+                    | "LessOrEqual" => Ast.DL_LessOrEqual
                     | "Mod" => Ast.DL_Mod
                     | "Mul" => Ast.DL_Mul
                     | "Or" => Ast.DL_Or
@@ -539,11 +541,21 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     | {name="seed"} => seed = attr2int(a)
                     | _ => {}
                 }
+                val t_training_mode =
+                    if ninputs < 3 {
+                        0
+                    } else {
+                        val t_training_mode = inputs[2]
+                        assert(`vargs.data[t_training_mode].argkind == Ast.DL_Arg_Const`)
+                        assert(`vtensors.data[t_training_mode].data.total() == 1`)
+                        assert(`int(vtensors.data[t_training_mode].data)[0] == 0`)
+                        t_training_mode
+                    }
                 [Ast.DL_Dropout {
                     name=name, seed=seed,
                     t_inp=inputs[0],
                     t_ratio=(if ninputs >= 2 {inputs[1]} else {get_const_tensor_arg(0.5f)}),
-                    t_training_mode=(if ninputs >= 3 {inputs[2]} else {0}),
+                    t_training_mode=t_training_mode,
                     t_out=outputs[0] }] // ignore the second output
             | "Expand" =>
                 assert(`ninputs == 2`)

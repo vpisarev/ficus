@@ -67,7 +67,7 @@ fun make_wrappers_for_nothrow(kmods: kmodule_t list)
                 }]
                 val w_body = KExpCall(kf_name, [for i <- w_params {AtomId(i)} ], (kf_rt, kf_loc))
                 val code = create_kdeffun(w_name, w_params, kf_rt, w_flags,
-                                    Some(w_body), e :: [], kf_scope, kf_loc)
+                                    Some(w_body), e :., kf_scope, kf_loc)
                 rcode2kexp(code, kf_loc)
             }
         | KExpCall(f, args, (t, loc)) =>

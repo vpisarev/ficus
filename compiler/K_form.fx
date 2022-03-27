@@ -372,7 +372,7 @@ fun is_val_global(flags: val_flags_t): bool = flags.val_flag_global != []
 
 fun get_val_scope(flags: val_flags_t): scope_t list =
     match flags.val_flag_global {
-    | [] => ScBlock(0) :: []
+    | [] => ScBlock(0) :.
     | sc => sc
     }
 
@@ -475,7 +475,7 @@ fun filter_out_nops(code: kcode_t): kexp_t list =
 fun code2kexp(code: kcode_t, loc: loc_t) =
     match filter_out_nops(code) {
     | [] => KExpNop(loc)
-    | e :: [] => e
+    | e :. => e
     | _ =>
         val t = get_kexp_typ(code.last())
         val final_loc = get_code_loc(code, loc)
@@ -485,7 +485,7 @@ fun code2kexp(code: kcode_t, loc: loc_t) =
 fun rcode2kexp(code: kcode_t, loc: loc_t): kexp_t =
     match filter_out_nops(code) {
     | [] => KExpNop(loc)
-    | e :: [] => e
+    | e :. => e
     | e :: rest =>
         val t = get_kexp_typ(e)
         val final_loc = get_code_loc(code, loc)
@@ -496,7 +496,7 @@ fun kexp2code(e: kexp_t): kexp_t list
 {
     | KExpNop _ => []
     | KExpSeq(elist, _) => elist
-    | _ => e :: []
+    | _ => e :.
 }
 
 fun get_kval(n: id_t, loc: loc_t): kdefval_t
@@ -678,7 +678,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         val (new_ktyp, loc) = walk_kctx_(ctx)
         match new_elist {
         | [] => KExpNop(loc)
-        | e :: [] => e
+        | e :. => e
         | _ => KExpSeq(new_elist, (new_ktyp, loc))
         }
     | KExpSync(n, e) => KExpSync(n, walk_kexp_(e))
@@ -1381,7 +1381,7 @@ fun string(t: ktyp_t): string
             val argtyps_str =
                 match argtyps {
                 | [] => "void"
-                | t :: [] => ktyp2str_(t, true)
+                | t :. => ktyp2str_(t, true)
                 | _ => ktl2str(argtyps)
                 }
             val rt_str = ktyp2str_(rt, true)
@@ -1444,7 +1444,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
 fun ktl2str(tl: ktyp_t list): string
 {
     val (begin, end) = match tl {
-    | x :: [] => ("", "")
+    | x :. => ("", "")
     | _ => ("(", ")")
     }
     join_embrace(begin, end, ", ", [| for t <- tl { string(t) } |])

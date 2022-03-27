@@ -355,7 +355,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             new_exp = false
             prev_dot = false
             pos = p
-            (t, loc) :: []
+            (t, loc) :.
         }
         /*
             single-quote (apostrophe) symbol is used in multiple cases:
@@ -370,7 +370,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
         else if c == '\'' && !new_exp {
             prev_dot = false
             pos += 1
-            (APOS, loc) :: []
+            (APOS, loc) :.
         } else if c == '\'' && c1.isalpha() && buf.zero[pos+2] != '\'' {
             var p = pos+1
             while p < len {
@@ -382,7 +382,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             pos = p
             new_exp = false
             prev_dot = false
-            (TYVAR(tyvar), loc) :: []
+            (TYVAR(tyvar), loc) :.
         } else if c == '"' || c == '\'' || ((c == 'f' || c == 'r') && c1 == '"') {
             val termpos = if c == 'f' || c == 'r' {pos+1} else {pos}
             val term = buf.zero[termpos]
@@ -398,15 +398,15 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     throw Lxu.LexerError(getloc(pos),
                         "character literal should contain exactly one character")
                 }
-                (LITERAL(Ast.LitChar(res[0])), loc) :: []
+                (LITERAL(Ast.LitChar(res[0])), loc) :.
             } else if inline_exp {
                 paren_stack = (STR_INTERP_LPAREN, getloc(prev_pos)) :: paren_stack
                 new_exp = true
-                addloc(loc, (if res == "" {LPAREN(true) :: []}
-                        else {LPAREN(true) :: LITERAL(Ast.LitString(res)) :: PLUS(false) :: []}) +
-                        (IDENT(true, "string") :: LPAREN(false) :: []))
+                addloc(loc, (if res == "" {LPAREN(true) :.}
+                        else {LPAREN(true) :: LITERAL(Ast.LitString(res)) :: PLUS(false) :.}) +
+                        (IDENT(true, "string") :: LPAREN(false) :.))
             } else {
-                (LITERAL(Ast.LitString(res)), loc) :: []
+                (LITERAL(Ast.LitString(res)), loc) :.
             }
         } else if c.isalpha() || c == '_' || (c == '@' && c1.isalpha()) {
             var p = pos+1
@@ -463,13 +463,13 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 | (t, 2) => check_ne(new_exp, loc, ident); new_exp = true; t
                 | _ => throw Lxu.LexerError(loc, f"Unexpected keyword '{ident}'")
                 }
-                (t, loc) :: []
+                (t, loc) :.
             | _ =>
                 if c == '@' {
                     val t = IDENT(new_exp, ident[1:]); new_exp = false
-                    (AT, loc) :: (t, getloc(pos+1)) :: []
+                    (AT, loc) :: (t, getloc(pos+1)) :.
                 } else {
-                    val t = IDENT(new_exp, ident); new_exp = false; (t, loc) :: []
+                    val t = IDENT(new_exp, ident); new_exp = false; (t, loc) :.
                 }
             }
         } else {
@@ -482,13 +482,13 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             match c {
             | '(' =>
                 paren_stack = (LPAREN(prev_ne), getloc(pos-1)) :: paren_stack
-                (LPAREN(prev_ne), loc) :: []
+                (LPAREN(prev_ne), loc) :.
             | ')' =>
                 new_exp = false
                 match paren_stack {
                 | (LPAREN _, _) :: rest =>
                     paren_stack = rest
-                    (RPAREN, loc) :: []
+                    (RPAREN, loc) :.
                 | _ =>
                     throw Lxu.LexerError(loc, "Unexpected ')', check parens")
                 }
@@ -498,26 +498,26 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     check_ne(prev_ne, getloc(pos-1), "[<")
                     val t = (LVECTOR, loc)
                     paren_stack = t :: paren_stack
-                    t :: []
+                    t :.
                 } else if c1 == '|' {
                     pos += 1
                     check_ne(prev_ne, getloc(pos-1), "[|")
                     val t = (LARRAY, loc)
                     paren_stack = t :: paren_stack
-                    t :: []
+                    t :.
                 } else if prev_ne && c1 == ']' {
                     pos += 1
-                    (LITERAL(Ast.LitEmpty), loc) :: []
+                    (LITERAL(Ast.LitEmpty), loc) :.
                 } else {
                     paren_stack = (LSQUARE(prev_ne), getloc(pos-1)) :: paren_stack
-                    (LSQUARE(prev_ne), loc) :: []
+                    (LSQUARE(prev_ne), loc) :.
                 }
             | ']' =>
                 new_exp = false
                 match paren_stack {
                 | (LSQUARE _, _) :: rest =>
                     paren_stack = rest
-                    (RSQUARE, loc) :: []
+                    (RSQUARE, loc) :.
                 | _ =>
                     throw Lxu.LexerError(loc, "Unexpected ']', check parens")
                 }
@@ -529,10 +529,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     paren_stack = rest
                     val (p, s) = get_ccode(pos)
                     pos = p
-                    (LITERAL(Ast.LitString(s.strip())), loc) :: []
+                    (LITERAL(Ast.LitString(s.strip())), loc) :.
                 | (LBRACE, l1) :: (MATCH, _) :: rest =>
                     paren_stack = (BAR, l1) :: (LBRACE, l1) :: rest
-                    (LBRACE, l1) :: []
+                    (LBRACE, l1) :.
                 | _ =>
                     /*
                        call nexttokens recursively; if the next token is '|',
@@ -555,47 +555,47 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     val (p, s, dl, inline_exp) = Lxu.getstring(buf, pos, getloc(pos), chr(34), false, true)
                     strm.lineno += dl
                     pos = p
-                    (if s == "" {(RPAREN, loc) :: []}
-                    else {(RPAREN, loc) :: (PLUS(false), loc) :: (LITERAL(Ast.LitString(s)), loc) :: []}) +
+                    (if s == "" {(RPAREN, loc) :.}
+                    else {(RPAREN, loc) :: (PLUS(false), loc) :: (LITERAL(Ast.LitString(s)), loc) :.}) +
                     (if inline_exp {
                         new_exp = true
                         paren_stack = (STR_INTERP_LPAREN, getloc(pos)) :: paren_stack
-                        (PLUS(false), loc) :: (IDENT(true, "string"), loc) :: (LPAREN(false), loc) :: []
+                        (PLUS(false), loc) :: (IDENT(true, "string"), loc) :: (LPAREN(false), loc) :.
                     } else {
-                        (RPAREN, loc) :: []
+                        (RPAREN, loc) :.
                     })
                 | (BAR, _) :: (LBRACE, _) :: rest =>
                     paren_stack = rest
-                    (RBRACE, loc) :: []
+                    (RBRACE, loc) :.
                 | (LBRACE, _) :: rest =>
                     paren_stack = rest
-                    (RBRACE, loc) :: []
+                    (RBRACE, loc) :.
                 | _ =>
                     throw Lxu.LexerError(loc, "Unexpected '}', check parens")
                 }
             | '|' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseOr), loc) :: []}
-                else if c1 == '|' {pos += 1; (LOGICAL_OR, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseOr), loc) :.}
+                else if c1 == '|' {pos += 1; (LOGICAL_OR, loc) :.}
                 else if c1 == ']' {
                     pos += 1
                     new_exp = false
                     match paren_stack {
-                        | (LARRAY, _) :: rest => paren_stack = rest; (RARRAY, loc) :: []
+                        | (LARRAY, _) :: rest => paren_stack = rest; (RARRAY, loc) :.
                         | _ => throw Lxu.LexerError(loc, "Unexpected '|]', check parens")
                     }
                 } else {
                     match paren_stack {
-                    | (BAR, _) :: (LBRACE, _) :: _ => (BAR, loc) :: []
-                    | _ => (BITWISE_OR, loc) :: []
+                    | (BAR, _) :: (LBRACE, _) :: _ => (BAR, loc) :.
+                    | _ => (BITWISE_OR, loc) :.
                     }
                 }
             | '+' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpAdd), loc) :: []}
-                else {(PLUS(prev_ne), loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpAdd), loc) :.}
+                else {(PLUS(prev_ne), loc) :.}
             | '-' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpSub), loc) :: []}
-                else if c1 == '>' {pos += 1; (ARROW, loc) :: []}
-                else if !prev_ne {(MINUS(false), loc) :: []} else {
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpSub), loc) :.}
+                else if c1 == '>' {pos += 1; (ARROW, loc) :.}
+                else if !prev_ne {(MINUS(false), loc) :.} else {
                     match nexttokens() {
                     | (LITERAL(Ast.LitInt(x)), _) :: rest => (LITERAL(Ast.LitInt(-x)), loc) :: rest
                     | (LITERAL(Ast.LitSInt(b, x)), _) :: rest => (LITERAL(Ast.LitSInt(b, -x)), loc) :: rest
@@ -604,121 +604,135 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     }
                 }
             | '*' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpMul), loc) :: []}
-                else if c1 == '*' && !prev_ne {pos += 1; (POWER, loc) :: []}
-                else {(STAR(prev_ne), loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpMul), loc) :.}
+                else if c1 == '*' && !prev_ne {pos += 1; (POWER, loc) :.}
+                else {(STAR(prev_ne), loc) :.}
             | '/' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpDiv), loc) :: []}
-                else {(SLASH, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpDiv), loc) :.}
+                else {(SLASH, loc) :.}
             | '%' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpMod), loc) :: []}
-                else {(PERCENT, loc) :: []}
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpMod), loc) :.}
+                else {(PERCENT, loc) :.}
             | '=' =>
                 if c1 == '=' {
                     pos += 1
-                    if c2 == '=' {pos += 1; (SAME, loc) :: []}
+                    if c2 == '=' {pos += 1; (SAME, loc) :.}
                     else {
-                        (CMP(Ast.CmpEQ), loc) :: []
+                        (CMP(Ast.CmpEQ), loc) :.
                     }
                 }
-                else if c1 == '>' {pos += 1; (DOUBLE_ARROW, loc) :: []}
-                else {(EQUAL, loc) :: []}
+                else if c1 == '>' {pos += 1; (DOUBLE_ARROW, loc) :.}
+                else {(EQUAL, loc) :.}
             | '^' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseXor), loc) :: []}
-                else { (BITWISE_XOR, loc) :: [] }
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseXor), loc) :.}
+                else { (BITWISE_XOR, loc) :. }
             | '&' =>
-                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseAnd), loc) :: []}
-                else if c1 == '&' {pos += 1; (LOGICAL_AND, loc) :: []}
-                else {(BITWISE_AND, loc) :: []}
-            | '~' => check_ne(prev_ne, getloc(pos-1), "~"); (TILDE, loc) :: []
-            | '@' => (AT, loc) :: []
-            | '\\' => (BACKSLASH(prev_ne), loc) :: []
+                if c1 == '=' {pos += 1; (AUG_BINOP(Ast.OpBitwiseAnd), loc) :.}
+                else if c1 == '&' {pos += 1; (LOGICAL_AND, loc) :.}
+                else {(BITWISE_AND, loc) :.}
+            | '~' => check_ne(prev_ne, getloc(pos-1), "~"); (TILDE, loc) :.
+            | '@' => (AT, loc) :.
+            | '\\' => (BACKSLASH(prev_ne), loc) :.
             | '.' =>
                 if c1 == '=' {
-                    if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpEQ), loc) :: []}
-                    else {pos += 1; (DOT_EQUAL, loc) :: []}
+                    if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpEQ), loc) :.}
+                    else {pos += 1; (DOT_EQUAL, loc) :.}
                 } else if c1 == '!' && c2 == '=' {
-                    pos += 2; (DOT_CMP(Ast.CmpNE), loc) :: []
+                    pos += 2; (DOT_CMP(Ast.CmpNE), loc) :.
                 } else if c1 == '<' {
-                    if c2 == '=' && c3 == '>' {pos += 3; (DOT_SPACESHIP, loc) :: []}
-                    else if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpLE), loc) :: []}
-                    else {pos += 1; (DOT_CMP(Ast.CmpLT), loc) :: []}
+                    if c2 == '=' && c3 == '>' {pos += 3; (DOT_SPACESHIP, loc) :.}
+                    else if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpLE), loc) :.}
+                    else {pos += 1; (DOT_CMP(Ast.CmpLT), loc) :.}
                 } else if c1 == '>' {
-                    if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpGE), loc) :: []}
-                    else {pos += 1; (DOT_CMP(Ast.CmpGT), loc) :: []}
+                    if c2 == '=' {pos += 2; (DOT_CMP(Ast.CmpGE), loc) :.}
+                    else {pos += 1; (DOT_CMP(Ast.CmpGT), loc) :.}
                 } else if c1 == '+' {
                     pos += 1
-                    (DOT_PLUS(prev_ne), loc) :: []
+                    (DOT_PLUS(prev_ne), loc) :.
                 }  else if c1 == '-' {
                     pos += 1
-                    (DOT_MINUS(prev_ne), loc) :: []
+                    (DOT_MINUS(prev_ne), loc) :.
                 } else if c1 == '*' {
-                    if c2 == '*' {pos += 2; (DOT_POWER, loc) :: []}
-                    else if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotMul), loc) :: []}
-                    else {pos += 1; (DOT_STAR, loc) :: []}
+                    if c2 == '*' {pos += 2; (DOT_POWER, loc) :.}
+                    else if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotMul), loc) :.}
+                    else {pos += 1; (DOT_STAR, loc) :.}
                 } else if c1 == '/' {
-                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotDiv), loc) :: []}
-                    else {pos += 1; (DOT_SLASH, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotDiv), loc) :.}
+                    else {pos += 1; (DOT_SLASH, loc) :.}
                 } else if c1 == '%' {
-                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotMod), loc) :: []}
-                    else {pos += 1; (DOT_PERCENT, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpDotMod), loc) :.}
+                    else {pos += 1; (DOT_PERCENT, loc) :.}
                 } else if c1 == '.' && c2 == '.' {
-                    pos += 2; (ELLIPSIS, loc) :: []
+                    pos += 2; (ELLIPSIS, loc) :.
                 } else {
-                    prev_dot = true; (DOT, loc) :: []
+                    prev_dot = true; (DOT, loc) :.
                 }
-            | ',' => (COMMA, loc) :: []
-            | ';' => (SEMICOLON, loc) :: []
+            | ',' => (COMMA, loc) :.
+            | ';' => (SEMICOLON, loc) :.
             | ':' =>
-                if c1 == ':' {pos += 1; (CONS, loc) :: []}
-                else if c1 == '>' {pos += 1; (CAST, loc) :: []}
-                else {(COLON, loc) :: []}
+                if c1 == ':' {
+                    pos += 1
+                    (CONS, loc) :.
+                } else if c1 == '.' && c2 == '-' {
+                    pos += 2
+                    (COLON, loc) :: (DOT_MINUS(true), loc) :.
+                } else if c1 == '.' {
+                    new_exp = false
+                    pos += 1
+                    (CONS, loc) :: (LITERAL(Ast.LitEmpty), loc) :.
+                } else if c1 == '>' {
+                    pos += 1
+                    (CAST, loc) :.
+                }
+                else {
+                    (COLON, loc) :.
+                }
             | '!' =>
                 if c1 == '=' {
                     pos += 1
-                    (CMP(Ast.CmpNE), loc) :: []
+                    (CMP(Ast.CmpNE), loc) :.
                 }
                 else {
                     check_ne(prev_ne, getloc(pos-1), "!")
-                    (LOGICAL_NOT, loc) :: []
+                    (LOGICAL_NOT, loc) :.
                 }
             | '?' =>
                 new_exp = false
-                (QUESTION, loc) :: []
+                (QUESTION, loc) :.
             | '<' =>
                 if c1 == '=' {
-                    if c2 == '>' {pos += 2; (SPACESHIP, loc) :: []}
-                    else {pos += 1; (CMP(Ast.CmpLE), loc) :: []}
+                    if c2 == '>' {pos += 2; (SPACESHIP, loc) :.}
+                    else {pos += 1; (CMP(Ast.CmpLE), loc) :.}
                 } else if c1 == '<' {
-                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpShiftLeft), loc) :: []}
-                    else {pos += 1; (SHIFT_LEFT, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpShiftLeft), loc) :.}
+                    else {pos += 1; (SHIFT_LEFT, loc) :.}
                 } else if c1 == '-' {
-                    pos += 1; (BACK_ARROW, loc) :: []
+                    pos += 1; (BACK_ARROW, loc) :.
                 } else {
-                    (CMP(Ast.CmpLT), loc) :: []
+                    (CMP(Ast.CmpLT), loc) :.
                 }
             | '>' =>
                 if c1 == '=' {
-                    pos += 1; (CMP(Ast.CmpGE), loc) :: []
+                    pos += 1; (CMP(Ast.CmpGE), loc) :.
                 } else if c1 == '>' {
-                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpShiftRight), loc) :: []}
-                    else {pos += 1; (SHIFT_RIGHT, loc) :: []}
+                    if c2 == '=' {pos += 2; (AUG_BINOP(Ast.OpShiftRight), loc) :.}
+                    else {pos += 1; (SHIFT_RIGHT, loc) :.}
                 } else if c1 == ']' {
                     pos += 1
                     new_exp = false
                     match paren_stack {
-                        | (LVECTOR, _) :: rest => paren_stack = rest; (RVECTOR, loc) :: []
+                        | (LVECTOR, _) :: rest => paren_stack = rest; (RVECTOR, loc) :.
                         | _ => throw Lxu.LexerError(loc, "Unexpected '>]', check parens")
                     }
                 } else {
-                    (CMP(Ast.CmpGT), loc) :: []
+                    (CMP(Ast.CmpGT), loc) :.
                 }
             | '`' =>
                 if backquote_pos < 0 {
                     backquote_pos = pos
                     backquote_loc = getloc(pos-1)
                     paren_stack = (LPAREN(true), backquote_loc) :: paren_stack
-                    (LPAREN(true), loc) :: []
+                    (LPAREN(true), loc) :.
                 } else {
                     val verb = buf[backquote_pos:pos-1]
                     val endloc = getloc(pos)
@@ -740,7 +754,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     f"some braces (around {lloc2str(l)}) are not closed")
                 | _ => {}
                 }
-                (EOF, loc) :: []
+                (EOF, loc) :.
             | _ =>
                 throw Lxu.LexerError(loc, f"unrecognized character '{c}'")
             }

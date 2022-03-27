@@ -698,6 +698,7 @@ fun max(a: 't, b: 't) = if a >= b {a} else {b}
 @inline fun min(a: double, b: double) = __intrin_min__(a, b)
 @inline fun max(a: double, b: double) = __intrin_max__(a, b)
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
+fun sign(a: 't) = int(a > (0 :> 't)) - int(a < (0 :> 't))
 fun clip(x: 't, a: 't, b: 't) = if a <= x <= b {x} else if x < a {a} else {b}
 
 @nothrow fun print_string(a: string): void = @ccode { fx_fputs(stdout, a) }

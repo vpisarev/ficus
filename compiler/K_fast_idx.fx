@@ -193,7 +193,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
         var pre_for_code: kcode_t = []
         var arrsz_env: ((id_t, int), id_t) list = []
         var update_affine_defs = false
-        val inloop_vals = declared(whole_e :: [], 256)
+        val inloop_vals = declared(whole_e :., 256)
         var affine_defs: affine_map_t = Map.empty(cmp_id)
 
         fun get_arrsz(arr: id_t, i: int,
@@ -616,7 +616,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
         match e {
         | KExpFor (idl, idxl, body, flags, loc) =>
             //print("before: "); KPP.pp_kexp(e); println()
-            val (for_clauses, body, pre_for_code) = optimize_for(e, (KExpNop(loc), idl, idxl) :: [], body)
+            val (for_clauses, body, pre_for_code) = optimize_for(e, (KExpNop(loc), idl, idxl) :., body)
             /* process nested for's, if any, after the call to optimize_for;
                we do it in this order to put the 'batch range checks' as high as
                possible in the hierarchy of nested loops, e.g.:
@@ -636,7 +636,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             val body = process_kexp(body, callb)
             val e =
             match for_clauses {
-            | (KExpNop _, idl, idxl) :: [] => KExpFor(idl, idxl, body, flags, loc)
+            | (KExpNop _, idl, idxl) :. => KExpFor(idl, idxl, body, flags, loc)
             | _ => throw compile_err(loc,
                 "fast_idx: unexpected output of optimize_for; should output single for_clause")
             }
@@ -684,7 +684,7 @@ fun linearize_arrays_access_(km_idx: int, topcode: kexp_t list)
         val for_loc = get_kexp_loc(whole_e)
         var all_slices: ((id_t, atom_t list), atom_t) list = []
         var pre_for_code = pre_for_code0
-        val inloop_vals = declared(whole_e :: [], 256)
+        val inloop_vals = declared(whole_e :., 256)
 
         fun linearize_idx_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
         fun linearize_idx_kexp(e: kexp_t, callb: k_callb_t) =

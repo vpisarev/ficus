@@ -63,7 +63,7 @@ fun move_loop_invs(code: kcode_t)
         val (outer_moved, new_e_idl_l, new_body) =
             fold nested_elist = kexp2code(body), e_idl_l = [], body = KExpNop(loc)
             for (pre_e, idl, idxl) <- e_idl_l.rev() {
-                val in_pre = declared(pre_e :: [], 256)
+                val in_pre = declared(pre_e :., 256)
                 for (i, _) <- idl { curr_inloop.add(i) }
                 for i <- idxl { curr_inloop.add(i) }
                 curr_moved = []

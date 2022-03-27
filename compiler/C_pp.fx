@@ -133,7 +133,7 @@ type assoc_t = AssocLeft | AssocRight
         pp.begin()
         match args {
         | [] => pp.str("void")
-        | t :: [] =>
+        | t :. =>
             pp_ctyp__(pp, "", "", t, None, true, loc)
         | _ =>
             val nargs = args.length()
@@ -230,12 +230,23 @@ type assoc_t = AssocLeft | AssocRight
         pp.end()
     | CExpBinary (bop, a, b, _) =>
         val (bop_str, pr0, assoc) = binop2str_(bop)
-        val use_br = pr0 < pr || (match bop {COpBitwiseAnd | COpBitwiseOr | COpBitwiseXor => true | _ => false})
+        val use_br = pr0 < pr/* || (match bop {COpBitwiseAnd | COpBitwiseOr | COpBitwiseXor => true | _ => false})*/
         pp.begin()
         if use_br { pp.str("("); pp.cut() }
         val is_shift = bop == COpShiftLeft || bop == COpShiftRight
         val a_pr = if is_shift { 1350 } else if assoc == AssocLeft { pr0 } else { pr0 + 1 }
         val b_pr = if is_shift { 1350 } else if assoc == AssocRight { pr0 } else { pr0 + 1 }
+        val is_bitwise = bop == COpBitwiseAnd || bop == COpBitwiseOr || bop == COpBitwiseXor
+        val a_pr =
+            if is_bitwise &&
+                (match a {
+                | CExpBinary(bop1, _, _, _) when bop1 != bop => true
+                | _ => false}) {1350} else {a_pr}
+        val b_pr =
+            if is_bitwise &&
+                (match b {
+                | CExpBinary(bop1, _, _, _) when bop1 != bop => true
+                | _ => false}) {1350} else {b_pr}
         pp_cexp_(pp, a, a_pr); pp.space()
         pp.str(bop_str); pp.space()
         pp_cexp_(pp, b, b_pr)
@@ -329,7 +340,7 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pprint_cstmt_or_block_cbox(pp: PP.t, s: cstmt_t)
 {
-    val sl = match s { | CStmtBlock (sl, _) => sl | CStmtNop _ => [] | _ => s :: [] }
+    val sl = match s { | CStmtBlock (sl, _) => sl | CStmtNop _ => [] | _ => s :. }
 
     pp.str("{"); pp.newline(); pp.beginv(0)
     for s@i <- sl {
@@ -341,7 +352,7 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pprint_cstmt_as_block(pp: PP.t, s: cstmt_t)
 {
-    val sl = match s { | CStmtBlock(sl, _) => sl | CStmtNop _ => [] | _ => s :: [] }
+    val sl = match s { | CStmtBlock(sl, _) => sl | CStmtNop _ => [] | _ => s :. }
     match sl {
     | [] => pp.str("{}")
     | _ =>

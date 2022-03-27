@@ -316,7 +316,7 @@ fun escaped(s: string, ~quotes: bool=true)
     val sn = "\\n", sr = "\\r", st = "\\t",
         ssq = "\\\'", sdq = "\\\"", ss = "\\\\", sz = "\\0"
     val q = if quotes {"\""} else {""}
-    val fold (ll, verb) = (q :: [], 0) for c@i <- s {
+    val fold (ll, verb) = (q :., 0) for c@i <- s {
         val code = ord(c)
         if code >= 40 && code != 92 { (ll, verb) }
         else {

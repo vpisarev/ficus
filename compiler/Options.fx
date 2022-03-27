@@ -230,7 +230,7 @@ fun parse_options(): bool {
                 if ok { opt.defines = (name, value) :: opt.defines; next }
                 else { [] }
             | "-I" :: incdir :: next =>
-                opt.include_path = opt.include_path + (incdir :: []); next
+                opt.include_path = opt.include_path + (incdir :.); next
             | "-B" :: bdir :: next =>
                 opt.build_rootdir = bdir; next
             | "-c++" :: next =>
@@ -258,7 +258,7 @@ fun parse_options(): bool {
                 } else if inputfile == "" {
                     inputfile = a; next
                 } else {
-                    println(f"{error} more than one input file is specified: {inputfile :: a :: []}")
+                    println(f"{error} more than one input file is specified: {inputfile :: a :.}")
                     ok = false; []
                 }
         }

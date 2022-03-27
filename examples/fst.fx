@@ -146,7 +146,7 @@ println(if 0.1 <= sin(1.) < 0.7 {
     })
 
 val key1 = "xyz", key2 = "b"
-val pairs = ("a", 0) :: ("b", 33) :: ("rest", 2) :: []
+val pairs = ("a", 0) :: ("b", 33) :: ("rest", 2) :.
 val r1 = pairs.assoc_opt(key1)
 val r2 = pairs.assoc_opt(key2)
 

@@ -1281,7 +1281,7 @@ fun typ2str(t: typ_t): string {
     | TypTuple(tl) =>
         val s = tl2str(tl)
         match tl {
-        | x :: [] => "(" + s + ",)"
+        | x :. => "(" + s + ",)"
         | _ => s
         }
     | TypRecord (ref (relems, _)) =>
@@ -1302,7 +1302,7 @@ fun typ2str(t: typ_t): string {
 
 fun tl2str(tl: typ_t list): string {
     val (begin, end) = match tl {
-    | x :: [] => ("", "")
+    | x :. => ("", "")
     | _ => ("(", ")")
     }
     join_embrace(begin, end, ", ", [| for t <- tl { typ2str(t) } |])

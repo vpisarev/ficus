@@ -69,7 +69,7 @@ val pp_ = Ast.pp
         pp.begin(); pp.str("(")
         match tl {
         | [] => pp.str("void")
-        | t1 :: [] => ppktyp_(t1, prec)
+        | t1 :. => ppktyp_(t1, prec)
         | _ => ppktyp_(KTypTuple(tl), prec)
         }
         pp.space(); pp.str("->"); pp.space(); ppktyp_(t2, prec)
@@ -162,7 +162,7 @@ val pp_ = Ast.pp
             | KExpCCode(s, _) => pp.str("@ccode "); KExpAtom(AtomLit(KLitString(s)), get_kexp_ctx(e))
             | _ => e
         }
-        val eseq = match e { | KExpSeq(eseq, _) => eseq | _ => e :: [] }
+        val eseq = match e { | KExpSeq(eseq, _) => eseq | _ => e :. }
         if flow { pp.str(" {"); pp.end(); pp.breaki(); pp.beginv(0) }
         else { pp.str("{"); pp.beginv(); pp.space() };
         for e@i <- eseq { if i > 0 { pp.opt_semi() }; pp_exp_(pp, e) }
@@ -184,7 +184,7 @@ val pp_ = Ast.pp
             if i == 0 {
                 match at_ids {
                 | [] => {}
-                | a :: [] => pp.str("@"); pp_id_(a)
+                | a :. => pp.str("@"); pp_id_(a)
                 | _ =>
                     pp.str("@"); pp.str("(");
                     for idx@i <- at_ids {
@@ -358,7 +358,7 @@ val pp_ = Ast.pp
             | KTypName n =>
                 match kinfo_(n, loc) {
                 | KTyp (ref {kt_name, kt_typ=KTypRecord (_, rec_elems)}) => (kt_name, rec_elems)
-                | KVariant (ref {kvar_cases=(rn, KTypRecord(_, rec_elems)) :: []}) => (rn, rec_elems)
+                | KVariant (ref {kvar_cases=(rn, KTypRecord(_, rec_elems)) :.}) => (rn, rec_elems)
                 | _ => throw compile_err(loc, f"KPP: invalid record type '{KTypName(n)}' in KExpMkRecord(...)")
                 }
             | _ => throw compile_err(loc, f"KPP: invalid record type '{t}' in KExpMkRecord(...)")

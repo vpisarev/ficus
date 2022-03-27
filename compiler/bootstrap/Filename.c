@@ -8,8 +8,10 @@
     #include <stdio.h>
     #include <sys/stat.h>
 #if defined WIN32 || defined _WIN32
+    #include <io.h>
     #include <direct.h>
 #else
+    #include <glob.h>
     #include <unistd.h>
 #endif
     #ifndef PATH_MAX
@@ -277,6 +279,30 @@ FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_resu
 
 _fx_cleanup: ;
    _fx_free_Ta2S(&v_0);
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M8FilenameFM6concatS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv)
+{
+   fx_str_t sep_0 = {0};
+   int fx_status = 0;
+   FX_CALL(_fx_M8FilenameFM7dir_sepS0(&sep_0, 0), _fx_cleanup);
+   bool v_0;
+   if (_fx_M6StringFM8endswithB2SS(dir_0, &sep_0, 0)) {
+      v_0 = true;
+   }
+   else {
+      fx_str_t slit_0 = FX_MAKE_STR("/"); v_0 = _fx_M6StringFM8endswithB2SS(dir_0, &slit_0, 0);
+   }
+   if (v_0) {
+      const fx_str_t strs_0[] = { *dir_0, *fname_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, fx_result), _fx_cleanup);
+   }
+   else {
+      const fx_str_t strs_1[] = { *dir_0, sep_0, *fname_0 }; FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, fx_result), _fx_cleanup);
+   }
+
+_fx_cleanup: ;
+   FX_FREE_STR(&sep_0);
    return fx_status;
 }
 

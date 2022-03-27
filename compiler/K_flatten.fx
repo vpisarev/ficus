@@ -73,7 +73,7 @@ from K_form import *
     val new_e = flatten_kexp_(e, callb)
     match new_e {
     | KExpSeq ([], (_, loc)) => (KExpNop(loc), code)
-    | KExpSeq (e :: [], _) => (e, code)
+    | KExpSeq (e :., _) => (e, code)
     | KExpSeq ((e :: rest) as nested_list, _) =>
         val rnested = nested_list.rev()
         (rnested.hd(), rnested.tl() + code)

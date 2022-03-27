@@ -161,8 +161,8 @@ TEST("basic.list.pattern_match", fun()
 {
     fun f(l: int list) {
         | [] => (0, 0)
-        | a :: [] => (a, 1)
-        | a :: d :: [] => (a+d, 2)
+        | a :. => (a, 1)
+        | a :: d :. => (a+d, 2)
         | _ => (-1, 56)
     }
 
@@ -496,7 +496,7 @@ TEST("basic.types.variant", fun()
 
     fun tlist2str(args: type_t list) {
         | [] => ""
-        | a :: [] => t2str(a)
+        | a :. => t2str(a)
         | a :: args1 => t2str(a) + ", " + tlist2str(args1)
     }
 
@@ -517,7 +517,7 @@ TEST("basic.types.variant", fun()
     }
 
     EXPECT_EQ(
-        `f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Tuple(Int::Float::[]) :: Fun([Int, Int], Int) :: [])})"`,
+        `f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Tuple(Int::Float::[]) :: Fun([Int, Int], Int) :.)})"`,
         "(void, int [], bool, (int, double), ((int, int) -> int))"
     )
     EXPECT_EQ(`t2str(Var(ref None))`, "<unknown>")
@@ -525,15 +525,15 @@ TEST("basic.types.variant", fun()
 
 TEST("basic.list", fun()
 {
-    val l = 1 :: 2 :: 3 :: []
+    val l = 1 :: 2 :: 3 :.
     val l2 = [1, 2, 3]
     EXPECT_EQ(`l.length()`, 3)
     EXPECT_THROWS(`fun () {println(l.tl().tl().tl().tl())}`, NullListError)
     EXPECT_EQ(`l`, `l2`)
     EXPECT_EQ(`l.hd()`, 1)
-    EXPECT_EQ(`l.tl()`, 2 :: 3 :: [])
+    EXPECT_EQ(`l.tl()`, 2 :: 3 :.)
     EXPECT_EQ(`l.hd() :: l.tl()`, l)
-    EXPECT_NE(`l`, 1 :: -1 :: 3 :: [])
+    EXPECT_NE(`l`, 1 :: -1 :: 3 :.)
     EXPECT_EQ(`l <=> [1, 2, 3, 4]`, -1)
 })
 
@@ -549,7 +549,7 @@ TEST("basic.list.reverse", fun()
         rev_(l, [])
     }
 
-    val l = 1 :: 2 :: 3 :: []
+    val l = 1 :: 2 :: 3 :.
     EXPECT_EQ(`list_reverse(l)`, [3, 2, 1])
     EXPECT_EQ(`(-1 :: l).rev()`, [3, 2, 1, -1])
 })
@@ -566,10 +566,10 @@ TEST("basic.list.map", fun()
         map_(l, []).rev()
     }
 
-    val strings = list_map((1 :: 2 :: 3 :: []), (string: int->string))
+    val strings = list_map((1 :: 2 :: 3 :.), (string: int->string))
     EXPECT_EQ(`strings`, ["1", "2", "3"])
 
-    val cosines : double list = list_map((1. :: 2. :: 3. :: []), cos)
+    val cosines : double list = list_map((1. :: 2. :: 3. :.), cos)
     val expected = [0.5403023058681398, -0.4161468365471424, -0.9899924966004454]
     EXPECT_NEAR(`cosines`, expected, DBL_EPSILON*10)
 })
@@ -586,7 +586,7 @@ TEST("basic.list.zip", fun()
         zip_(la, lb, [])
     }
 
-    val zipped = list_zip((1 :: 2 :: 3 :: []), ("a" :: "b" :: "c" :: []))
+    val zipped = list_zip((1 :: 2 :: 3 :.), ("a" :: "b" :: "c" :.))
     EXPECT_EQ(`zipped.length()`, 3)
     EXPECT_EQ(`zipped.tl().tl().hd()`, (3, "c"))
 
@@ -607,7 +607,7 @@ TEST("basic.list.unzip", fun()
         unzip_(lab, [], [])
     }
 
-    val ll = ("a", 1) :: ("b", 2) :: ("c", 3) :: []
+    val ll = ("a", 1) :: ("b", 2) :: ("c", 3) :.
     val unzipped = list_unzip(ll)
     EXPECT_EQ(`unzipped.0`, ["a", "b", "c"])
     EXPECT_EQ(`unzipped.1`, [1, 2, 3])

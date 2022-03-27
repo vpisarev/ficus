@@ -6028,6 +6028,84 @@ _fx_cleanup: ;
    return fx_status;
 }
 
+FX_EXTERN_C int _fx_M10K_fast_idxFM9find_idx_Ta2i3Nt10Hashset__t1R9Ast__id_tR9Ast__id_tq(
+   struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t* self_0,
+   struct _fx_R9Ast__id_t* k_0,
+   uint64_t hv_0,
+   struct _fx_Ta2i* fx_result,
+   void* fx_fv)
+{
+   fx_arr_t v_0 = {0};
+   int fx_status = 0;
+   fx_copy_arr(&self_0->u.t.t4, &v_0);
+   int_ idxsz_0 = FX_ARR_SIZE(v_0, 0);
+   uint64_t perturb_0 = hv_0;
+   int_ found_0 = -1;
+   int_ j_0 = (int_)hv_0 & (idxsz_0 - 1);
+   int_ v_1 = idxsz_0 + 14;
+   for (int_ i_0 = 0; i_0 < v_1; i_0++) {
+      FX_CHKIDX(FX_CHKIDX1(self_0->u.t.t4, 0, j_0), _fx_catch_0);
+      int_ tidx_0 = *FX_PTR_1D(int_, self_0->u.t.t4, j_0);
+      if (tidx_0 >= 2) {
+         int_ v_2 = tidx_0 - 2;
+         FX_CHKIDX(FX_CHKIDX1(self_0->u.t.t5, 0, v_2), _fx_catch_0);
+         _fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t entry_0 =
+            *FX_PTR_1D(_fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t, self_0->u.t.t5, v_2);
+         bool t_0;
+         if (entry_0.hv == hv_0) {
+            _fx_R9Ast__id_t v_3 = entry_0.key;
+            bool __fold_result___0 = true;
+            bool t_1;
+            if (v_3.m == k_0->m) {
+               t_1 = __fold_result___0;
+            }
+            else {
+               t_1 = false;
+            }
+            __fold_result___0 = t_1;
+            bool t_2;
+            if (v_3.i == k_0->i) {
+               t_2 = __fold_result___0;
+            }
+            else {
+               t_2 = false;
+            }
+            __fold_result___0 = t_2;
+            bool t_3;
+            if (v_3.j == k_0->j) {
+               t_3 = __fold_result___0;
+            }
+            else {
+               t_3 = false;
+            }
+            __fold_result___0 = t_3;
+            t_0 = __fold_result___0;
+         }
+         else {
+            t_0 = false;
+         }
+         if (t_0) {
+            found_0 = tidx_0 - 2; FX_BREAK(_fx_catch_0);
+         }
+      }
+      else if (tidx_0 == 0) {
+         FX_BREAK(_fx_catch_0);
+      }
+      perturb_0 = perturb_0 >> 5;
+      j_0 = (int_)((uint64_t)(j_0 * 5 + 1) + perturb_0) & (idxsz_0 - 1);
+
+   _fx_catch_0: ;
+      FX_CHECK_BREAK();
+      FX_CHECK_EXN(_fx_cleanup);
+   }
+   _fx_Ta2i tup_0 = { j_0, found_0 };
+   *fx_result = tup_0;
+
+_fx_cleanup: ;
+   FX_FREE_ARR(&v_0);
+   return fx_status;
+}
+
 FX_EXTERN_C int
    _fx_M10K_fast_idxFM4NodeNt11Map__tree_t2R9Ast__id_tN22K_fast_idx__loop_idx_t5N12Map__color_tNt11Map__tree_t2R9Ast__id_tN22K_fast_idx__loop_idx_tR9Ast__id_tN22K_fast_idx__loop_idx_tNt11Map__tree_t2R9Ast__id_tN22K_fast_idx__loop_idx_t(
    struct _fx_N12Map__color_t* arg0,
@@ -6861,84 +6939,6 @@ _fx_cleanup: ;
       _fx_free_Nt11Map__tree_t2R9Ast__id_tT3N14K_form__kexp_tBN23K_fast_idx__idx_class_t(&new_root_0);
    }
    FX_FREE_FP(&v_4);
-   return fx_status;
-}
-
-FX_EXTERN_C int _fx_M10K_fast_idxFM9find_idx_Ta2i3Nt10Hashset__t1R9Ast__id_tR9Ast__id_tq(
-   struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t* self_0,
-   struct _fx_R9Ast__id_t* k_0,
-   uint64_t hv_0,
-   struct _fx_Ta2i* fx_result,
-   void* fx_fv)
-{
-   fx_arr_t v_0 = {0};
-   int fx_status = 0;
-   fx_copy_arr(&self_0->u.t.t4, &v_0);
-   int_ idxsz_0 = FX_ARR_SIZE(v_0, 0);
-   uint64_t perturb_0 = hv_0;
-   int_ found_0 = -1;
-   int_ j_0 = (int_)hv_0 & (idxsz_0 - 1);
-   int_ v_1 = idxsz_0 + 14;
-   for (int_ i_0 = 0; i_0 < v_1; i_0++) {
-      FX_CHKIDX(FX_CHKIDX1(self_0->u.t.t4, 0, j_0), _fx_catch_0);
-      int_ tidx_0 = *FX_PTR_1D(int_, self_0->u.t.t4, j_0);
-      if (tidx_0 >= 2) {
-         int_ v_2 = tidx_0 - 2;
-         FX_CHKIDX(FX_CHKIDX1(self_0->u.t.t5, 0, v_2), _fx_catch_0);
-         _fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t entry_0 =
-            *FX_PTR_1D(_fx_Rt24Hashset__hashset_entry_t1R9Ast__id_t, self_0->u.t.t5, v_2);
-         bool t_0;
-         if (entry_0.hv == hv_0) {
-            _fx_R9Ast__id_t v_3 = entry_0.key;
-            bool __fold_result___0 = true;
-            bool t_1;
-            if (v_3.m == k_0->m) {
-               t_1 = __fold_result___0;
-            }
-            else {
-               t_1 = false;
-            }
-            __fold_result___0 = t_1;
-            bool t_2;
-            if (v_3.i == k_0->i) {
-               t_2 = __fold_result___0;
-            }
-            else {
-               t_2 = false;
-            }
-            __fold_result___0 = t_2;
-            bool t_3;
-            if (v_3.j == k_0->j) {
-               t_3 = __fold_result___0;
-            }
-            else {
-               t_3 = false;
-            }
-            __fold_result___0 = t_3;
-            t_0 = __fold_result___0;
-         }
-         else {
-            t_0 = false;
-         }
-         if (t_0) {
-            found_0 = tidx_0 - 2; FX_BREAK(_fx_catch_0);
-         }
-      }
-      else if (tidx_0 == 0) {
-         FX_BREAK(_fx_catch_0);
-      }
-      perturb_0 = perturb_0 >> 5;
-      j_0 = (int_)((uint64_t)(j_0 * 5 + 1) + perturb_0) & (idxsz_0 - 1);
-
-   _fx_catch_0: ;
-      FX_CHECK_BREAK();
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   _fx_Ta2i tup_0 = { j_0, found_0 };
-   *fx_result = tup_0;
-
-_fx_cleanup: ;
-   FX_FREE_ARR(&v_0);
    return fx_status;
 }
 

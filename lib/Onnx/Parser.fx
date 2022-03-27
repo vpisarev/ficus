@@ -206,8 +206,12 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
     }
     if (fx_status >= 0) {
         int tag = tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT8 ? 2 :
-                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT64 ? 3 : 1;
-        size_t elemsize = tag == 1 ? sizeof(float) : tag == 2 ? 1 : 8;
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT32 ? 3 :
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT64 ? 4 :
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__FLOAT ? 1 : -1;
+        if (tag < 0)
+            return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+        size_t elemsize = tag == 1 || tag == 3 ? sizeof(float) : tag == 2 ? 1 : 8;
         fx_status = fx_make_arr(1, &total, elemsize, 0, 0, 0, &result->data.arr);
         if (fx_status >= 0) {
             result->data.tag = tag;
@@ -225,7 +229,7 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
             } else if (elemsize == 8 && tensor->raw_data.len == total*8) {
                 int64_t* dst = (int64_t*)result->data.arr.data;
                 for(int_ i = 0; i < total; i++) {
-                    uint8_t* p = tensor->raw_data.data + i*4;
+                    uint8_t* p = tensor->raw_data.data + i*8;
                     dst[i] = unpack_int64(p);
                 }
             } else {

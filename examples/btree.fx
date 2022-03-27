@@ -27,7 +27,7 @@ fun check (t: tree): int {
 
 val min_depth = 4
 val max_depth = match Sys.arguments() {
-    | n_str :: [] => n_str.to_int_or(10)
+    | n_str :. => n_str.to_int_or(10)
     | _ => 20
     }
 val max_depth = max(min_depth + 2, max_depth)

@@ -253,7 +253,7 @@ fun annotate_types(kmods: kmodule_t list)
             // in such variants valid tag values start with 0, not with 1.
             // In all other variants tag=0 means "uninitialized variant"
             val option_like = match kvar_cases {
-                              | (_, KTypVoid ) :: (_, _) :: [] => true
+                              | (_, KTypVoid ) :: (_, _) :. => true
                               | _ => false
                               }
             // Single-case variant can be recursive (see ycomb.fx for example) or not.

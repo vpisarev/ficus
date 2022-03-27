@@ -423,7 +423,7 @@ TEST("closure.self-refencing", fun()
         fun commaconcat(lst: tree_t list, f: tree_t -> string) {
             match lst {
             | [] => ""
-            | hd :: [] => f(hd)
+            | hd :. => f(hd)
             | hd :: tl => f(hd) + ", " + commaconcat(tl, f)
             }
         }

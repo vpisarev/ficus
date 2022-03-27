@@ -410,7 +410,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
                 | KTypRecord (r_id, relems) =>
                     if r_id == noid {
                         match relems {
-                        | (n, t) :: [] => t
+                        | (n, t) :. => t
                         | _ => KTypTuple([for (_, tj) <- relems { tj } ])
                         }
                     } else {
@@ -494,7 +494,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
                         if !(kv_flags.val_flag_temp || kv_flags.val_flag_tempref) {
                             set_idk_entry(n, KVal(kv.{
                                 kv_flags=kv_flags.{
-                                    val_flag_global=ScModule(km_idx) :: []}}))
+                                    val_flag_global=ScModule(km_idx) :.}}))
                             ignore(mangle_id_typ(n, loc, walk_n_mangle_callb))
                         }
                     }

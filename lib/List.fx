@@ -11,7 +11,7 @@ fun tl(_: 't list) { | _ :: ll => ll | _ => throw NullListError }
 fun empty(_: 't list) { | [] => true | _ => false }
 fun last(_: 't list)
 {
-    | a :: [] => a
+    | a :. => a
     | _ :: rest => last(rest)
     | _ => throw NullListError
 }
@@ -82,8 +82,8 @@ fun sort(l: 't list, lt: ('t, 't)->bool): 't list =
     match l
     {
         | [] => l
-        | _ :: [] => l
-        | a :: b :: [] => if lt(b, a) {b::a::[]} else {l}
+        | _ :. => l
+        | a :: b :. => if lt(b, a) {b::a::[]} else {l}
         | _ =>
             val arr = array(l)
             arr.sort(lt)

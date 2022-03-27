@@ -80,7 +80,7 @@ fun fuse_loops_(code: kcode_t)
     for e <- code {
         fold_kexp(e, process_callb)
         match e {
-        | KDefVal (i, KExpMap ((_, idl, []) :: [], body, flags, (KTypArray _, _)), loc) =>
+        | KDefVal (i, KExpMap ((_, idl, []) :., body, flags, (KTypArray _, _)), loc) =>
             if K_remove_unused.pure_kexp(body) && !flags.for_flag_unzip {
                 val ainfo = ref (arr_info_t {
                     arr_nused=0, arr_nused_for=0,
@@ -89,7 +89,7 @@ fun fuse_loops_(code: kcode_t)
                 process_idl(false, idl)
             }
         | KExpFor (idl, [], _, _, _) => process_idl(true, idl)
-        | KExpMap ((_, idl, []) :: [], _, _, _) => process_idl(false, idl)
+        | KExpMap ((_, idl, []) :., _, _, _) => process_idl(false, idl)
         | _ => {}
         }
     }
@@ -187,7 +187,7 @@ fun fuse_loops_(code: kcode_t)
         val e = walk_kexp(e, callb)
         match e {
         | KExpSeq(elist, (t, loc)) => code2kexp(fuse_loops(elist), loc)
-        | KDefVal(i, KExpMap ((e0, idl, idxs) :: [], body, _, _), loc) =>
+        | KDefVal(i, KExpMap ((e0, idl, idxs) :., body, _, _), loc) =>
             match arrs_to_fuse.find_opt(i) {
             | Some ainfo =>
                 ainfo->arr_idl = idl
@@ -198,9 +198,9 @@ fun fuse_loops_(code: kcode_t)
         | KExpFor (idl, [], body, flags, loc) =>
             val (new_idl, new_body) = fuse_for(idl, body, loc)
             KExpFor(new_idl.rev(), [], new_body, flags, loc)
-        | KExpMap ((e0, idl, []) :: [], body, flags, (map_result_type, loc)) =>
+        | KExpMap ((e0, idl, []) :., body, flags, (map_result_type, loc)) =>
             val (new_idl, new_body) = fuse_for(idl, body, loc)
-            KExpMap((e0, new_idl.rev(), []) :: [], new_body, flags, (map_result_type, loc))
+            KExpMap((e0, new_idl.rev(), []) :., new_body, flags, (map_result_type, loc))
         | _ => e
         }
     }

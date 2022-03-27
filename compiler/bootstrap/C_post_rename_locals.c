@@ -3120,7 +3120,7 @@ FX_EXTERN_C int _fx_M20C_post_rename_localsFM18find_idx_or_inserti2Nt10Hashmap__
    fx_arr_t v_1 = {0};
    fx_exn_t v_2 = {0};
    int fx_status = 0;
-   uint64_t hv_0 = (uint64_t)k_0 ^ 14695981039346656037ULL & 9223372036854775807ULL;
+   uint64_t hv_0 = ((uint64_t)k_0 ^ 14695981039346656037ULL) & 9223372036854775807ULL;
    fx_copy_arr(&self_0->u.t.t4, &v_0);
    int_ idxsz_0 = FX_ARR_SIZE(v_0, 0);
    if (self_0->u.t.t1 + 1 > idxsz_0 >> 1) {

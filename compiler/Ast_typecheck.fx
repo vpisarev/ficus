@@ -62,7 +62,7 @@ fun print_env(msg: string, env: env_t, loc: loc_t) {
                 match id_info(n, loc) {
                 | IdFun (ref {df_templ_inst}) => n :: *df_templ_inst
                 | IdVariant (ref {dvar_templ_inst}) => n :: *dvar_templ_inst
-                | _ => n :: []
+                | _ => n :.
                 }
                 for ni@i <- templ_inst {
                     val t =
@@ -210,7 +210,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
                 true
             | TypApp(t_args, tn) =>
                 match id_info(tn, loc) {
-                | IdVariant (ref (defvariant_t {dvar_cases=(_, TypRecord _) :: []})) =>
+                | IdVariant (ref (defvariant_t {dvar_cases=(_, TypRecord _) :.})) =>
                     undo_stack = (r1, *r1) :: undo_stack
                     *r1 = Some(t2)
                     true
@@ -268,8 +268,8 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         | (TypApp(args1, id1), TypApp(args2, id2)) =>
             if id1 != id2 { false }
             else {
-                val t1 = match args1 { | [] => TypVoid | t :: [] => t | _ => TypTuple(args1) }
-                val t2 = match args2 { | [] => TypVoid | t :: [] => t | _ => TypTuple(args2) }
+                val t1 = match args1 { | [] => TypVoid | t :. => t | _ => TypTuple(args1) }
+                val t2 = match args2 { | [] => TypVoid | t :. => t | _ => TypTuple(args2) }
                 maybe_unify_(t1, t2, loc)
             }
         /* unify TypVar _ with another TypVar _: consider several cases */
@@ -404,7 +404,7 @@ fun typ2constr(t: typ_t, rt: typ_t, loc: loc_t): typ_t =
     | TypVoid => rt
     | _ => TypFun(match t {
             | TypTuple(tl) => tl
-            | _ => t :: [] }, rt)
+            | _ => t :. }, rt)
     }
 
 fun get_eseq_typ(eseq: exp_t list): typ_t {
@@ -610,7 +610,7 @@ fun get_record_elems(vn_opt: id_t?, t: typ_t, proto_mode: bool, loc: loc_t): (id
                 }
             }
         match id_info(n, loc) {
-        | IdVariant (ref {dvar_templ_args, dvar_flags, dvar_cases=(vn0, TypRecord (ref (relems, true))) :: [], dvar_loc})
+        | IdVariant (ref {dvar_templ_args, dvar_flags, dvar_cases=(vn0, TypRecord (ref (relems, true))) :., dvar_loc})
             when dvar_flags.var_flag_record =>
             check_and_norm_tyargs(new_tyargs, dvar_templ_args, dvar_loc, loc)
             if input_vn != noid && input_vn != get_orig_id(vn0) {
@@ -620,7 +620,7 @@ fun get_record_elems(vn_opt: id_t?, t: typ_t, proto_mode: bool, loc: loc_t): (id
             (noid, relems)
         | IdVariant (ref {dvar_name, dvar_templ_args, dvar_cases, dvar_ctors, dvar_loc}) =>
             check_and_norm_tyargs(new_tyargs, dvar_templ_args, dvar_loc, loc)
-            val single_case = match dvar_cases { | _ :: [] => true | _ => false }
+            val single_case = match dvar_cases { | _ :. => true | _ => false }
             val found_case_ctor = find_opt(for (vn, t) <- dvar_cases, c_id <- dvar_ctors {
                     get_orig_id(vn) == input_vn || (single_case && input_vn == noid)
                 })
@@ -730,7 +730,7 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list,
     }
 
     val e_all = find_all(n, env)
-    val e_all = if e_all == [] && is_unique_id(n) { EnvId(n) :: [] } else { e_all }
+    val e_all = if e_all == [] && is_unique_id(n) { EnvId(n) :. } else { e_all }
     if e_all != [] { find_next_(e_all) }
     else {
         val n_path = pp(n)
@@ -844,10 +844,10 @@ fun try_autogen_symbols(n: id_t, t: typ_t, env: env_t, sc:
 {
     val nstr = pp(n)
     match (nstr, deref_typ_rec(t)) {
-    | ("__eq__", TypFun(TypApp(_, n1) :: TypApp(_, n2) :: [], _))
+    | ("__eq__", TypFun(TypApp(_, n1) :: TypApp(_, n2) :., _))
         when n1 == n2 && (match id_info(n1, loc) { | IdVariant _ => true | _ => false}) =>
         Some(lookup_id(get_id("__eq_variants__"), t, env, sc, loc))
-    | ("string", TypFun(TypFun(_, _) :: [], _)) =>
+    | ("string", TypFun(TypFun(_, _) :., _)) =>
         Some(lookup_id(get_id("__fun_string__"), t, env, sc, loc))
     | _ => None
     }
@@ -903,8 +903,8 @@ fun check_and_norm_tyargs(actual_ty_args: typ_t list, templ_args: id_t list,
     val n_templ_args = templ_args.length()
     match (actual_ty_args, n_aty_args, n_templ_args) {
     | (_, m, n) when m == n => actual_ty_args
-    | ((TypTuple tl):: [], 1, n) when tl.length() == n => tl
-    | (_, _, 1) => TypTuple(actual_ty_args) :: []
+    | ((TypTuple tl):., 1, n) when tl.length() == n => tl
+    | (_, _, 1) => TypTuple(actual_ty_args) :.
     | _ => throw compile_err(inst_loc, f"the number of actual type arguments ({n_aty_args}) \
                              does not match the number of formal type parameters ({n_templ_args}), \
                              as declared at\n\t{def_loc}")
@@ -927,7 +927,7 @@ fun match_ty_templ_args(actual_ty_args: typ_t list, templ_args: id_t list,
     Whenever possible, we try to do type unification before processing sub-expressions.
     This is because sometimes we know type of the outer expression (type of the expression result)
     and using this information we can possibly deduce the types of arguments. For example,
-    in `5 :: []` operation we can figure out that the second argument has `int list` type,
+    in `5 :.` operation we can figure out that the second argument has `int list` type,
     we do not have to write more explicit `5 :: ([]: int list)` expression. Or, in the case of
     some hypothetical "fun integrate(a: 't, b: 't, f: 't->'t)" we can just call it with
     `integrate(0.f, 10.f, Math.sin)` instead of more explicit
@@ -1073,8 +1073,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val pj = dup_pat(pj)
                 val (pnj, pvj) =
                 match pat_skip_typed(pj) {
-                | PatTuple(pnj :: pvj :: [], _) => (pnj, pvj)
-                | PatAs(PatTuple(pnj :: pvj :: [], _), as_id, _)
+                | PatTuple(pnj :: pvj :., _) => (pnj, pvj)
+                | PatAs(PatTuple(pnj :: pvj :., _), as_id, _)
                     when get_orig_id(as_id) == std__pat__ => (pnj, pvj)
                 | _ => throw compile_err(eloc, "when iterating through record, \
                             a 2-element tuple should be used as pattern")
@@ -1363,10 +1363,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 | TypString =>
                     match (new_e1, new_e2) {
                     | (_, ExpLit(LitString "", _)) =>
-                        val e1_size = ExpIntrin(IntrinGetSize, new_e1 :: [], (TypInt, eloc1))
+                        val e1_size = ExpIntrin(IntrinGetSize, new_e1 :., (TypInt, eloc1))
                         Some(ExpBinary(bop, e1_size, ExpLit(LitInt(0L), (TypInt, eloc2)), ctx))
                     | (ExpLit (LitString "", _), _) =>
-                        val e2_size = ExpIntrin(IntrinGetSize, new_e2 :: [], (TypInt, eloc2))
+                        val e2_size = ExpIntrin(IntrinGetSize, new_e2 :., (TypInt, eloc2))
                         Some(ExpBinary(bop, e2_size, ExpLit(LitInt(0L), (TypInt, eloc1)), ctx))
                     | _ => None
                     }
@@ -1385,8 +1385,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                         }
                     }
                     if is_simple_ctor(new_e1) || is_simple_ctor(new_e2) {
-                        val tag1 = ExpIntrin(IntrinVariantTag, new_e1 :: [], (TypInt, eloc1))
-                        val tag2 = ExpIntrin(IntrinVariantTag, new_e2 :: [], (TypInt, eloc2))
+                        val tag1 = ExpIntrin(IntrinVariantTag, new_e1 :., (TypInt, eloc1))
+                        val tag2 = ExpIntrin(IntrinVariantTag, new_e2 :., (TypInt, eloc2))
                         Some(ExpBinary(bop, tag1, tag2, ctx))
                     } else { None}
                 | _ => None
@@ -1593,25 +1593,25 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val argtyps = [for a <- args {get_exp_typ(a)}]
         val fstr = pp(f)
         val (t, argt) = match (fstr, args, argtyps) {
-        | ("atan2", y :: x :: [], yt :: xt :: []) =>
+        | ("atan2", y :: x :., yt :: xt :.) =>
             unify(xt, yt, eloc, "arguments of atan2() must have the same type")
             (xt, xt)
-        | ("pow", x :: y :: [], xt :: yt :: []) =>
+        | ("pow", x :: y :., xt :: yt :.) =>
             unify(xt, yt, eloc, "arguments of pow() must have the same type")
             (xt, xt)
-        | ("min", x :: y :: [], xt :: yt :: []) =>
+        | ("min", x :: y :., xt :: yt :.) =>
             unify(xt, yt, eloc, "arguments of pow() must have the same type")
             (xt, xt)
-        | ("max", x :: y :: [], xt :: yt :: []) =>
+        | ("max", x :: y :., xt :: yt :.) =>
             unify(xt, yt, eloc, "arguments of pow() must have the same type")
             (xt, xt)
-        | ("floor", x :: [], xt :: []) =>
+        | ("floor", x :., xt :.) =>
             (TypInt, xt)
-        | ("ceil", x :: [], xt :: []) =>
+        | ("ceil", x :., xt :.) =>
             (TypInt, xt)
-        | ("round", x :: [], xt :: []) =>
+        | ("round", x :., xt :.) =>
             (TypInt, xt)
-        | (_, x :: [], xt :: []) => (xt, xt)
+        | (_, x :., xt :.) => (xt, xt)
         | _ =>
             val nargs_expected =
                 if fstr == "atan2" || fstr == "pow" ||
@@ -1639,8 +1639,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         | IntrinGetSize =>
             val (a, idx) =
                 match args {
-                | a :: [] => (a, 0)
-                | a :: ExpLit(LitInt(i),_) :: [] => (a, int(i))
+                | a :. => (a, 0)
+                | a :: ExpLit(LitInt(i),_) :. => (a, int(i))
                 | _ => throw compile_err(eloc,
                     "there should be exactly one or two argument of __intrin_size__ intrinsic. " +
                     "In the latter case the second parameter must be literal integer")
@@ -1686,7 +1686,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             val need_to_check =
                 match a {
                 // lambda function case
-                | ExpSeq(DefFun(ref {df_name, df_loc}) as exp_df :: ExpIdent(f, _) :: [], _)
+                | ExpSeq(DefFun(ref {df_name, df_loc}) as exp_df :: ExpIdent(f, _) :., _)
                     when get_orig_id(f) == std__lambda__ && f == df_name =>
                     val df = match dup_exp(exp_df) {
                         | DefFun df => df
@@ -1738,7 +1738,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                         assert(argtyps.length() == new_args.length() + 1)
                         val last_typ = argtyps.last()
                         val mkrec = ExpMkRecord(ExpNop(eloc), [], (last_typ, eloc))
-                        new_args + ((mkrec, true) :: [])
+                        new_args + ((mkrec, true) :.)
                     }
                 | _ => new_args
                 }
@@ -1828,19 +1828,19 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         }
         match idxs {
         /* the 'flatten' case: "arr[:]" */
-        | ExpRange(None, None, None, _) :: [] =>
+        | ExpRange(None, None, None, _) :. =>
             val new_idx = check_exp(idxs.hd(), env, sc)
             match deref_typ(new_atyp) {
             | TypArray(d, et) =>
                 unify(etyp, TypArray(1, et), eloc,
                     "the result of flatten operation ([:]) applied to N-D array \
                     must be 1D array with elements of the same type as input array")
-                ExpAt(new_arr, BorderNone, InterpNone, new_idx :: [], ctx)
+                ExpAt(new_arr, BorderNone, InterpNone, new_idx :., ctx)
             | TypVector(et) =>
                 unify(etyp, TypVector(et), eloc,
                     "the result of flatten operation ([:]) applied to vector \
                     must be a vector of the same type")
-                ExpAt(new_arr, BorderNone, InterpNone, new_idx :: [], ctx)
+                ExpAt(new_arr, BorderNone, InterpNone, new_idx :., ctx)
             | TypString =>
                 unify(etyp, TypString, eloc, "the result of flatten operation ([:]) \
                       applied to a string must be string")
@@ -2049,7 +2049,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 throw compile_err(eloc, "@unzip for is not supported in tuple/record comprehensions")
             }
             val (for_clauses, idx_pat) = match map_clauses {
-                | (for_clauses, idx_pat) :: [] => (for_clauses, idx_pat)
+                | (for_clauses, idx_pat) :. => (for_clauses, idx_pat)
                 | _ => throw compile_err(eloc, "tuple comprehension with nested for is not supported yet")
                 }
             val elem_typ = make_new_typ()
@@ -2074,7 +2074,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             } else if make_vector {
                 ExpMkVector(elems, (TypVector(elem_typ), eloc))
             } else {
-                ExpMkArray(elems :: [], (TypArray(1, elem_typ), eloc))
+                ExpMkArray(elems :., (TypArray(1, elem_typ), eloc))
             }
             val coll_typ = get_exp_typ(mk_struct_exp)
             unify(etyp, coll_typ, eloc, f"inconsistent type of the constructed {coll_name}")
@@ -2244,7 +2244,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             ExpMkRecord(r_e, r_new_initializers, ctx)
         | _ =>
             val (r_etyp, r_eloc) = get_exp_ctx(r_e)
-            val r_expected_typ = TypFun(rtyp :: [], etyp)
+            val r_expected_typ = TypFun(rtyp :., etyp)
             unify(r_etyp, r_expected_typ, r_eloc,
                 "there is no proper record constructor/function with record argument")
             val new_r_e = check_exp(r_e, env, sc)
@@ -3175,7 +3175,7 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
     val inst_env = inst_env0
     val inst_ftyp = deref_typ(inst_ftyp)
     val (arg_typs, rt) = match inst_ftyp {
-        | TypFun(TypVoid :: [], rt) => ([], rt)
+        | TypFun(TypVoid :., rt) => ([], rt)
         | TypFun(arg_typs, rt) => (arg_typs, rt)
         | rt => if is_constr { ([], rt) } else {
                     throw compile_err(inst_loc, "internal error: the type of \
@@ -3184,10 +3184,10 @@ fun instantiate_fun_(templ_df: deffun_t ref, inst_ftyp: typ_t, inst_env0: env_t,
         }
     val ninst_args = arg_typs.length()
     val arg_typs = if nargs == ninst_args { arg_typs }
-            else if nargs == 1 { TypTuple(arg_typs) :: [] }
+            else if nargs == 1 { TypTuple(arg_typs) :. }
             else {
                 match arg_typs {
-                | (TypTuple(elems) :: []) when elems.length() == nargs => elems
+                | (TypTuple(elems) :.) when elems.length() == nargs => elems
                 | _ => throw compile_err( df_loc, f"during instantion at {inst_loc}: \
                                           incorrect number of actual parameters = '{ninst_args}' \
                                           (vs expected {nargs})")
@@ -3313,8 +3313,8 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
     match pp(inst_name) {
     | "__eq_variants__" =>
         match (ftyp, inst_args) {
-        | (TypFun((TypApp(_, n1) as t1) :: (TypApp(_, n2) as t2):: [], rt),
-            PatTyped(PatIdent(a, _), _, _) :: PatTyped(PatIdent(b, _), _, _) :: [])
+        | (TypFun((TypApp(_, n1) as t1) :: (TypApp(_, n2) as t2):., rt),
+            PatTyped(PatIdent(a, _), _, _) :: PatTyped(PatIdent(b, _), _, _) :.)
               when n1 == n2 && (match id_info(n1, inst_loc) {
                                | IdVariant _ => true
                                | _ => false
@@ -3369,7 +3369,7 @@ fun instantiate_fun_body(inst_name: id_t, inst_ftyp: typ_t, inst_args: pat_t lis
                     val ab_case_pat = PatTuple([a_case_pat, b_case_pat], body_loc)
                     (ab_case_pat, cmp_code) :: complex_cases
                 | _ =>
-                    val args = match t { | TypTuple(tl) => tl | _ => t :: [] }
+                    val args = match t { | TypTuple(tl) => tl | _ => t :. }
                     val fold (al, bl, cmp_code) = ([], [], ExpNop(body_loc))
                         for idx <- 0:args.length() {
                         val ai = get_id(f"{astr}{idx}")
@@ -3502,7 +3502,7 @@ fun instantiate_variant(ty_args: typ_t list, dvar: defvariant_t ref,
             val argtyps =
                 match (t, nargs) {
                 | (TypVoid, 0) => []
-                | (_, 1) => t :: []
+                | (_, 1) => t :.
                 | (TypTuple(telems), _) when nrealargs == nargs => telems
                 | _ =>
                     throw compile_err( loc,
@@ -3590,7 +3590,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                 // which we want to match with the proper variant case
                 // regardless of how many parameters it has
                 val pl = match pl {
-                    | PatAny(any_loc) :: [] =>
+                    | PatAny(any_loc) :. =>
                         match find_opt(for (n, t) <- get_variant_cases(t, loc).0 {
                             get_orig_id(n) == bare_v}) {
                         | Some((n, t)) =>
@@ -3647,7 +3647,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                 (PatRecord(if ctor != noid {Some(ctor)} else {None}, new_relems, loc), false)
             } catch {
             | CompileError(_, _) as err when rn_opt.issome() =>
-                check_pat_(PatVariant(rn_opt.value_or(noid), PatRecord(None, relems, loc) :: [], loc), t)
+                check_pat_(PatVariant(rn_opt.value_or(noid), PatRecord(None, relems, loc) :., loc), t)
             }
         | PatCons(p1, p2, loc) =>
             val t1 = make_new_typ()
@@ -3708,7 +3708,7 @@ fun check_mod(m_idx: int)
 {
     val minfo = get_module(m_idx)
     try {
-        val modsc = ScModule(m_idx) :: []
+        val modsc = ScModule(m_idx) :.
         /* when typechecking a module, we import the module to itself,
            which let us to use object oriented notation or make
            prototypes of exposed functions look better,

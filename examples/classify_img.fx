@@ -1,6 +1,6 @@
 import Json, Sys, LexerUtils as Lxu
-//import OpenCV as cv
-import DL.Ast, DL.FromOnnx, DL.BufferAllocator
+import OpenCV as cv
+import DL.Ast, DL.Run, DL.FromOnnx, DL.BufferAllocator
 
 var mname = "", lname = ""
 var images: string list = []
@@ -74,8 +74,31 @@ for imgname@i <- images {
 cv.waitKey()
 */
 
-println(f"starting reading model '{mname}'")
 val model =
+    try DL.FromOnnx.read(mname)
+    catch {
+    | DL.FromOnnx.OnnxConvertError(msg) =>
+        println(f"error: {msg}"); throw Fail("")
+    | Fail(msg) =>
+        println(f"error: {msg}"); throw Fail("")
+    }
+val model = DL.BufferAllocator.assign_buffers(model)
+
+for imgname@i <- images {
+    println(f"starting reading model '{mname}'")
+    val img = cv.imread(imgname)
+    val inp = cv.blobFromImage(img, size=(224, 224),
+            mean=(104.00698793, 116.66876762, 122.67891434),
+            swapRB=false, crop=false)
+    println(inp.size())
+    val inp = DL.Ast.make_tensor(inp)
+    val outputs = DL.Run.inference(model, [|("", inp)|])
+    for out@i <- outputs {
+        println(f"output #{i}: name='{out.0}', shape={out.1.shape}")
+    }
+}
+
+/*val model =
     try DL.FromOnnx.read(mname)
     catch {
     | DL.FromOnnx.OnnxConvertError(msg) =>
@@ -86,3 +109,4 @@ val model =
 println(f"dumping model '{mname}'")
 val model = DL.BufferAllocator.assign_buffers(model)
 println(model)
+*/

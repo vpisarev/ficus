@@ -111,13 +111,13 @@ fun parse_all(fname0: string, ficus_path: string list): bool
     val cwd = Filename.getcwd()
     val fname0 = Filename.normalize(cwd, fname0)
     val dir0 = Filename.dirname(fname0)
-    val inc_dirs0 = if dir0 == cwd { cwd :: [] } else { dir0 :: cwd :: [] }
+    val inc_dirs0 = if dir0 == cwd { cwd :. } else { dir0 :: cwd :. }
     val inc_dirs0 = inc_dirs0 + Options.opt.include_path
     val inc_dirs0 = inc_dirs0 + ficus_path
     val inc_dirs0 = [for d <- inc_dirs0 { Filename.normalize(cwd, d) }]
     val name0_id = Ast.get_id(Filename.remove_extension(Filename.basename(fname0)))
     val m_idx = Ast.find_module(name0_id, fname0)
-    var queue = m_idx :: []
+    var queue = m_idx :.
     var ok = true
     while queue != [] {
         val m_idx = queue.hd()
@@ -129,7 +129,7 @@ fun parse_all(fname0: string, ficus_path: string list): bool
                 // prevent from repeated parsing
                 Ast.all_modules[m_idx].dm_parsed = true
                 val dir1 = Filename.dirname(mfname)
-                val inc_dirs = (if dir1 == dir0 {[]} else {dir1 :: []}) + inc_dirs0
+                val inc_dirs = (if dir1 == dir0 {[]} else {dir1 :.}) + inc_dirs0
                 val preamble = get_preamble(mfname)
                 ok &= Parser.parse(m_idx, preamble, inc_dirs)
                 for dep <- Ast.all_modules[m_idx].dm_deps.rev() {

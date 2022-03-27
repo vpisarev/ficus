@@ -145,7 +145,7 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
             match e {
             | KExpSeq (elist, (_, eloc)) =>
                 val rcode = match elist.rev() {
-                            | [] => KExpBreak(eloc) :: []
+                            | [] => KExpBreak(eloc) :.
                             | final_e :: rest => transform_tcalls(final_e) :: rest
                             }
                 rcode2kexp(rcode, eloc)
@@ -180,7 +180,7 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
         val loop_exp = KExpWhile(KExpAtom(AtomLit(KLitBool(true)), (KTypBool, lloc)), loop_body, lloc)
         val f_code =
             if res_n == noid { [] }
-            else { KExpAtom(AtomId(res_n), (rt, kf_loc)) :: [] }
+            else { KExpAtom(AtomId(res_n), (rt, kf_loc)) :. }
         val f_code = f_code + (loop_exp :: f_init_code)
         val new_kf_body = rcode2kexp(f_code, kf_loc)
         *kf = kf->{kf_params=new_kf_params, kf_body=new_kf_body}

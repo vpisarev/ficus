@@ -25,7 +25,7 @@
         For other complex types a unique name (signature) is generated and is used
         to reference the type and name the corresponding C structure.
         For example, KTypList(KTypInt) becomes _fx_Li_t,
-        KTypTuple(KTypFloat :: KTypFloat :: KTypFloat :: []) becomes _fx_Ta3f etc.
+        KTypTuple(KTypFloat :: KTypFloat :: KTypFloat :.) becomes _fx_Ta3f etc.
         See k_mangle module.
     * the memory is now managed manually.
       Reference counting is involved when copying and releasing smart pointers to actual data
@@ -50,7 +50,7 @@
           are passed as 'const' pointers, e.g.
           int _fx_print_vec(fx_ctx_t* fx_ctx, const _fx_v3f_t* mytup) { ... }
         * Static data types may have fields that are represented by dynamic data types.
-          For example, KTypTuple(KTypBool :: KTypList(KTypInt) :: KTypList(KTypInt) :: []).
+          For example, KTypTuple(KTypBool :: KTypList(KTypInt) :: KTypList(KTypInt) :.).
     * an expression does not represent any element of the code anymore.
       There are now expressions and statements, since it's C/C++.
     * the complex (nested) expressions are re-introduced.
@@ -509,7 +509,7 @@ fun filter_out_nops(code: ccode_t) =
 fun ccode2stmt(code: ccode_t, loc: loc_t) =
     match filter_out_nops(code) {
     | [] => CStmtNop(loc)
-    | s :: [] => s
+    | s :. => s
     | _ =>
         val final_loc = get_ccode_loc(code, loc)
         CStmtBlock(code, final_loc)
@@ -518,7 +518,7 @@ fun ccode2stmt(code: ccode_t, loc: loc_t) =
 fun rccode2stmt(code: ccode_t, loc: loc_t) =
     match filter_out_nops(code) {
     | [] => CStmtNop(loc)
-    | s :: [] => s
+    | s :. => s
     | _ => val final_loc = get_ccode_loc(code, loc)
            CStmtBlock(code.rev(), final_loc)
     }
@@ -527,7 +527,7 @@ fun stmt2ccode(s: cstmt_t) =
     match s {
     | CStmtNop _ => []
     | CStmtBlock (slist, _) => slist
-    | _ => s :: []
+    | _ => s :.
     }
 
 fun cexp2stmt(e: cexp_t) =
@@ -949,8 +949,8 @@ fun make_ptr(t: ctyp_t) =
 
 fun make_const_ptr(t: ctyp_t) =
     match t {
-    | CTypAny => CTypRawPtr(CTypConst :: [], CTypVoid)
-    | _ => CTypRawPtr(CTypConst :: [], t)
+    | CTypAny => CTypRawPtr(CTypConst :., CTypVoid)
+    | _ => CTypRawPtr(CTypConst :., t)
     }
 
 val std_CTypVoidPtr = make_ptr(CTypVoid)

@@ -197,7 +197,7 @@ fun copy_some(kmods: kmodule_t list)
     val idset0 = empty_id_hashset(1)
     var all_deps = Hashmap.empty(1024, noid, idset0)
     for (n, (_, e)) <- all_copied {
-        val deps = used_by(e :: [], 16)
+        val deps = used_by(e :., 16)
         deps.intersect(all_copied_set)
         all_deps.add(n, deps)
     }

@@ -32,13 +32,13 @@ fun update_globals(top_code: kcode_t, globals: id_hashset_t) =
     for e <- top_code {
         val n_list =
         match e {
-        | KDefVal (n, e, _) => n :: []
-        | KDefFun (ref {kf_name}) => kf_name :: []
-        | KDefExn (ref {ke_name, ke_tag}) => ke_name :: ke_tag :: []
-        | KDefVariant (ref {kvar_name}) => kvar_name :: []
-        | KDefTyp (ref {kt_name}) => kt_name :: []
-        | KDefClosureVars (ref {kcv_name}) => kcv_name :: []
-        | KDefInterface (ref {ki_name, ki_all_methods}) => ki_name :: []
+        | KDefVal (n, e, _) => n :.
+        | KDefFun (ref {kf_name}) => kf_name :.
+        | KDefExn (ref {ke_name, ke_tag}) => ke_name :: ke_tag :.
+        | KDefVariant (ref {kvar_name}) => kvar_name :.
+        | KDefTyp (ref {kt_name}) => kt_name :.
+        | KDefClosureVars (ref {kcv_name}) => kcv_name :.
+        | KDefInterface (ref {ki_name, ki_all_methods}) => ki_name :.
         | _ => []
         }
         globals.add_list(n_list)
@@ -66,7 +66,7 @@ fun lift(kmods: kmodule_t list) {
     fun can_lift_fun(kf: kdeffun_t ref): bool
     {
         val {kf_name, kf_loc} = *kf
-        val code = KDefFun(kf) :: []
+        val code = KDefFun(kf) :.
         val uv = used_by(code, 256)
         val dv = declared(code, 256)
         uv.all(fun (n: id_t) {

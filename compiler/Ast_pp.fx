@@ -104,7 +104,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
             pp.begin(); pp.str("(")
             match tl {
             | [] => pp.str("void")
-            | t1 :: [] => pptype_(t1, prec)
+            | t1 :. => pptype_(t1, prec)
             | _ => pptype_(TypTuple(tl), prec)
             }
             pp.space(); pp.str("->"); pp.space(); pptype_(t2, prec); pp.str(")")
@@ -118,7 +118,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
         | TypVarArray(t1) => pptypsuf(t1, "[+]")
         | TypVarRecord => pp.str("{...}")
         | TypApp([], n) => ppid(pp, n)
-        | TypApp(t1 :: [], n) => pptypsuf(t1, ppid2str(n))
+        | TypApp(t1 :., n) => pptypsuf(t1, ppid2str(n))
         | TypApp(tl, n) => pptypsuf(TypTuple(tl), ppid2str(n))
         | TypTuple(tl) =>
             pp.str("("); pp.cut(); pp.begin()
@@ -165,7 +165,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
 fun pprint_templ_args(pp: PP.t, tt: id_t list) =
 match tt {
     | [] => {}
-    | t :: [] => ppid(pp, t)
+    | t :. => ppid(pp, t)
     | _ =>
         pp.str("(")
         for t@i <- tt {
@@ -446,7 +446,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
                 ppexp(e)
             }
             match el {
-            | e :: [] => pp.str(",")
+            | e :. => pp.str(",")
             | _ => {}
             }
             pp.str(")")
@@ -593,7 +593,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
 fun pprint_exp_as_block(pp: PP.t, e: exp_t) =
 match e {
     | ExpSeq(eseq, _) => pprint_expseq(pp, eseq, true)
-    | _ => pprint_expseq(pp, e :: [], true)
+    | _ => pprint_expseq(pp, e :., true)
 }
 
 fun pprint_exp_as_seq(pp: PP.t, e: exp_t) =
@@ -658,7 +658,7 @@ fun pprint_pat(pp: PP.t, p: pat_t)
         pp.space(); pprint_exp(pp, e); pp.end()
     | PatAlt(pl, _) =>
         match pl {
-        | p :: [] => pppat(p)
+        | p :. => pppat(p)
         | _ =>
             pp.beginv(0); pp.str("(");
             for p@i <- pl {

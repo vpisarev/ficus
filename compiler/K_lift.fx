@@ -232,8 +232,8 @@ fun lift_all(kmods: kmodule_t list)
     var fv_env : fv_env_t = collect_free_vars(kmods, globals, true, false, true)
 
     /*
-    Sometimes recursive function with freevars mention itself not through direct call, but 
-    through passing itself to other function (directly or through variable). E.g: 
+    Sometimes recursive function with freevars mention itself not through direct call, but
+    through passing itself to other function (directly or through variable). E.g:
     {
         var i = 1
         fun dipper(beeper:void->void)
@@ -246,13 +246,13 @@ fun lift_all(kmods: kmodule_t list)
 
         fun bill()
         {
-            i = i * 2 
+            i = i * 2
             dipper(bill)
         }
 
         bill()
     }
-    In this case it's needed internal copy of function closure for passing as an argument. 
+    In this case it's needed internal copy of function closure for passing as an argument.
     Such a special case of recursion is called self-referencing.
     */
     val self_referencing_functions = empty_id_hashset(256)
@@ -339,7 +339,7 @@ fun lift_all(kmods: kmodule_t list)
                 }
             | _ => {}
             }
-        | KExpCall(f, args, (_, loc)) => 
+        | KExpCall(f, args, (_, loc)) =>
             for a <- args {fold_defcl_atom_(a,loc,callb)}
         | _ => fold_kexp(e, callb)
         }
@@ -500,7 +500,7 @@ fun lift_all(kmods: kmodule_t list)
                         where all the free variables the function accesses should be defined.
                     */
                     val extra_code = create_defclosure(kf, [], kf_loc)
-                    curr_top_code = extra_code.tl() + def_fcv_t_n_make + (KDefFun(kf) :: []) + curr_top_code
+                    curr_top_code = extra_code.tl() + def_fcv_t_n_make + (KDefFun(kf) :.) + curr_top_code
                     extra_code.hd()
                 }
             // form the prologue where we extract all free variables from the closure data

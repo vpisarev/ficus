@@ -59,6 +59,9 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         }
     }
 
+    val (inp, _) = op.get_inputs_outputs()
+    println(f"inferring shape for {op.name()}: inp #0 shape={net.get_tensor(inp[0]).shape}")
+
     try {
     match op {
     | DL_AvgPool {ceil_mode, dilations, kernel_shape, pads, strides, t_inp, t_out} =>
@@ -166,7 +169,8 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
                           // not on their content, even if the weights are computed dynamically,
                           // thus we set dynamic=false
         }|]
-    | DL_Dropout {t_inp, t_out} =>
+    | DL_Dropout {t_inp, t_ratio, t_out} =>
+        assert(`net.isfloatscalar(t_ratio)`)
         [|copy_shape_typ(t_inp, t_out)|]
     | DL_Elemwise {el_op, t_inp, t_out} =>
         val enable_broadcast = match el_op {
@@ -308,13 +312,11 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         val (sshape, _) = get_shape_typ(t_shape)
         assert(`sshape.shape.size() == 1`)
         val new_shape = int(net.get_tensor(t_shape))
-        val ndims = shape.shape.size()
-        val new_ndims = new_shape.size()
-        assert(`ndims == new_ndims`)
+        println(f"   Reshape: new_shape={new_shape}, allowzero={allowzero}")
         val fold old_total = 1 for sz <- shape.shape {if sz != 0 {old_total*sz} else {old_total}}
         val fold new_total=1, havem1=false for sz@i <- new_shape {
             if sz == -1 {
-                if havem1 {throw Ast.DLError(f"shape inference: {name} (op={opname}): the new shape contains more than -1")}
+                if havem1 {throw Ast.DLError(f"shape inference: {name} (op={opname}): the new shape contains more than one -1")}
                 (new_total, true)
             } else if sz == 0 {
                 if allowzero {(new_total, havem1)}

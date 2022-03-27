@@ -345,7 +345,7 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
         }
         else
         {
-            RPString(rewrite) :: []
+            RPString(rewrite) :.
         }
 
     val fold max_sub = -1 for piece <- piece_lst
