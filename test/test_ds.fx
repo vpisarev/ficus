@@ -21,22 +21,22 @@ TEST("ds.set", fun()
     type intset = int Set.t
     type strset = string Set.t
 
-    val s1 = Set.from_list(icmp, [ 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, -1, -2, -3 ])
-    EXPECT_EQ(`s1.list()`, [ -3, -2, -1, 1, 2, 3, 4, 5, 6 ])
-    val s2 = Set.from_list(icmp, [ 100, -1, 4, -2, 7 ])
+    val s1 = Set.from_list(icmp, [:: 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, -1, -2, -3 ])
+    EXPECT_EQ(`s1.list()`, [:: -3, -2, -1, 1, 2, 3, 4, 5, 6 ])
+    val s2 = Set.from_list(icmp, [:: 100, -1, 4, -2, 7 ])
 
     val d12 = s1.diff(s2)
-    EXPECT_EQ(`d12.list()`, [ -3, 1, 2, 3, 5, 6 ])
+    EXPECT_EQ(`d12.list()`, [:: -3, 1, 2, 3, 5, 6 ])
     EXPECT_EQ(`d12.size`, 6)
 
     val u12 = s1.union(s2)
-    EXPECT_EQ(`u12.list()`, [ -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 100 ])
+    EXPECT_EQ(`u12.list()`, [:: -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 100 ])
     EXPECT_EQ(`u12.size`, 11)
     EXPECT_EQ(`u12.minelem()`, -3)
     EXPECT_EQ(`u12.maxelem()`, 100)
 
     val i12 = s2.intersect(s1)
-    EXPECT_EQ(`i12.list()`, [ -2, -1, 4 ])
+    EXPECT_EQ(`i12.list()`, [:: -2, -1, 4 ])
     EXPECT_EQ(`i12.size`, 3)
 
     val fold sum0 = 0 for i <- u12.list() {sum0 + i}
@@ -44,10 +44,10 @@ TEST("ds.set", fun()
     val sum2 = u12.foldr(fun (i, s) {s + i}, 0)
     EXPECT_EQ(`sum1`, sum0)
     EXPECT_EQ(`sum2`, sum0)
-    EXPECT_EQ(`u12.map(fun (i) {i*i})`, [ 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 ])
+    EXPECT_EQ(`u12.map(fun (i) {i*i})`, [:: 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 ])
     val phrase = "This is a very simple test for the standard and not \
         so simple implementation of binary set".split(' ', allow_empty=true)
-    val refres = ["This", "a", "and", "binary", "for", "implementation", "is", "not",
+    val refres = [:: "This", "a", "and", "binary", "for", "implementation", "is", "not",
                     "of", "set", "simple", "so", "standard",
                     "test", "the", "very"]
 
@@ -59,7 +59,7 @@ TEST("dst.hashset", fun()
 {
     val phrase = "This is a very simple test for the standard and not \
         so simple implementation of binary set".split(' ', allow_empty=true)
-    val refres = ["This", "a", "and", "binary", "for", "implementation", "is", "not",
+    val refres = [:: "This", "a", "and", "binary", "for", "implementation", "is", "not",
                     "of", "set", "simple", "so", "standard",
                     "test", "the", "very"]
     val s2 = Hashset.empty(8, "")
@@ -69,14 +69,14 @@ TEST("dst.hashset", fun()
     s2.remove("simple")
     EXPECT_EQ(`s2.mem("this") || s2.mem("complex") || s2.mem("simple")`, false)
 
-    val s1 = Hashset.from_list(0, [ 1, 2, 3, 100, 20, 30 ])
-    val s2 = Hashset.from_list(5, [ 1, 7, 3, 110, 20, 30 ])
+    val s1 = Hashset.from_list(0, [:: 1, 2, 3, 100, 20, 30 ])
+    val s2 = Hashset.from_list(5, [:: 1, 7, 3, 110, 20, 30 ])
     val s_inter = s1.copy()
     s_inter.intersect(s2)
     val s_union = s1.copy()
     s_union.union(s2)
-    EXPECT_EQ(`s_inter.list().sort((<))`, [ 1, 3, 20, 30 ])
-    EXPECT_EQ(`s_union.list().sort((<))`, [ 1, 2, 3, 7, 20, 30, 100, 110 ])
+    EXPECT_EQ(`s_inter.list().sort((<))`, [:: 1, 3, 20, 30 ])
+    EXPECT_EQ(`s_union.list().sort((<))`, [:: 1, 2, 3, 7, 20, 30, 100, 110 ])
 })
 
 TEST("ds.map", fun()
@@ -91,7 +91,7 @@ TEST("ds.map", fun()
         wcounter.add(w, wcounter.find(w, 0)+1)
     }
 
-    val ll = [("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),
+    val ll = [:: ("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),
         ("Five", 8), ("Four", 9), ("French", 10), ("My", 12), ("Nine", 4),
         ("Seven", 6), ("Six", 7), ("Ten", 3), ("The", 12), ("Three", 10),
         ("Twelve", 1), ("Two", 11), ("a", 12), ("a-laying", 7), ("a-milking", 5),
@@ -150,14 +150,14 @@ TEST("ds.hashmap", fun() {
         }
     }
 
-    val odd_ll = [("Eight", 1), ("Four", 1), ("Six", 1), ("Ten", 1), ("Twelve", 1),
+    val odd_ll = [:: ("Eight", 1), ("Four", 1), ("Six", 1), ("Ten", 1), ("Twelve", 1),
                      ("Two", 1), ("a-laying", 1), ("a-milking", 1), ("and", 1), ("birds", 1),
                      ("colly", 1), ("doves", 1), ("eighth", 1), ("eleventh", 1), ("fiddlers", 1),
                      ("fiddling", 1), ("fifth", 1), ("first", 1), ("fourth", 1), ("geese", 1),
                      ("maids", 1), ("ninth", 1), ("pipers", 1), ("piping", 1), ("second", 1),
                      ("seventh", 1), ("sixth", 1), ("tenth", 1), ("third", 1), ("turtle", 1),
                      ("twelfth", 1)]
-    val ll = [("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),
+    val ll = [:: ("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),
         ("Five", 8), ("Four", 9), ("French", 10), ("My", 12), ("Nine", 4),
         ("Seven", 6), ("Six", 7), ("Ten", 3), ("The", 12), ("Three", 10),
         ("Twelve", 1), ("Two", 11), ("a", 12), ("a-laying", 7), ("a-milking", 5),

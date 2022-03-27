@@ -41,11 +41,11 @@ fun inference(net: Ast.dlnet_t, inputs: (string, Ast.dltensor_t) []/*,
     run_graph(net, net.graph)
 
     // collect outputs
-    [| for argidx <- net.graph.outargs {
+    [for argidx <- net.graph.outargs {
         val arg = net.args[argidx]
         assert(arg.argkind == Ast.DL_Arg_Output)
         (arg.name, net.tensors[argidx])
-    } |]
+    }]
 }
 
 fun run_op(net: Ast.dlnet_t, op: Ast.dlop_t) =

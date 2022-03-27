@@ -197,7 +197,7 @@ fun copy_some(kmods: kmodule_t list)
     val idset0 = empty_id_hashset(1)
     var all_deps = Hashmap.empty(1024, noid, idset0)
     for (n, (_, e)) <- all_copied {
-        val deps = used_by(e :., 16)
+        val deps = used_by([:: e], 16)
         deps.intersect(all_copied_set)
         all_deps.add(n, deps)
     }
@@ -205,14 +205,14 @@ fun copy_some(kmods: kmodule_t list)
     // step 3. Compute the final set of dependencies as a transitive closure:
     // if a depends on b and b depends on c then a depends on c.
     val iters0 = 10
-    val _ = calc_sets_closure(iters0, [for (n, _) <- all_copied {n} ], all_deps)
+    val _ = calc_sets_closure(iters0, [:: for (n, _) <- all_copied {n} ], all_deps)
 
     // step 4. This step is the final one. Actually copy into each module
     // the functionality (from the above defined category:
     // instances of generic types and functions, inline functions)
     // it uses, directly or indirectly.
     // The step is quite complex, so we split it into sub-items.
-    val all_copied_code = [for km <- kmods {
+    val all_copied_code = [:: for km <- kmods {
         val {km_top, km_idx, km_toposort_idx} = km
 
         // 4.1. find all ids directly used by the currently processed module
@@ -249,7 +249,7 @@ fun copy_some(kmods: kmodule_t list)
         // Bring the extracted code to more or less stable order and
         // then discard indices
         copied_code = copied_code.sort(fun ((idx1, _), (idx2, _)) {idx1 < idx2})
-        val copied_code = [for (_, e) <- copied_code {e} ]
+        val copied_code = [:: for (_, e) <- copied_code {e} ]
 
         //K_pp.pp_top(f"code copied to '{pp(get_module_name(km_idx))}' before rename: {copied_code.length()} definitions", copied_code)
 
@@ -275,7 +275,7 @@ fun copy_some(kmods: kmodule_t list)
     }]
 
     // step 5. Append the copied code to the destination modules' code, update all the references to the copied code
-    [for km <- kmods, (copied_code, subst_map) <- all_copied_code {
+    [:: for km <- kmods, (copied_code, subst_map) <- all_copied_code {
         val {km_top, km_idx} = km
 
         //K_pp.pp_top(f"code copied to '{pp(get_module_name(km_idx))}' after rename: {copied_code.length()} definitions", copied_code)

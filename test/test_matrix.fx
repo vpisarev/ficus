@@ -35,15 +35,15 @@ fun refmul(a: 't [,], b: 't [,]) {
 
 TEST("matrix.mul_squares", fun() {
     val A =
-     [| 2., 1., 0., 4.;
+     [ 2., 1., 0., 4.;
         0., 1., 1., 3.;
         1., 0., 1., 2.;
-        2., 2., 0., 1. |]
+        2., 2., 0., 1. ]
     val B =
-     [| 1., 0., 4., 4.;
+     [ 1., 0., 4., 4.;
         3., 1., 1., 3.;
         1., 0., 3., 2.;
-        1., 1., 0., 1. |]
+        1., 1., 0., 1. ]
 
     EXPECT_EQ(`A*B`, refmul(A,B))
     EXPECT_EQ(`A'*B`, refmul(A',B))
@@ -51,15 +51,15 @@ TEST("matrix.mul_squares", fun() {
     EXPECT_EQ(`A'*B'`, refmul(A',B'))
 
     val C =
-     [| 2.f, 1.f, 0.f, 4.f;
+     [ 2.f, 1.f, 0.f, 4.f;
         0.f, 1.f, 1.f, 3.f;
         1.f, 0.f, 1.f, 2.f;
-        2.f, 2.f, 0.f, 1.f |]
+        2.f, 2.f, 0.f, 1.f ]
     val D =
-     [| 1.f, 0.f, 4.f, 4.f;
+     [ 1.f, 0.f, 4.f, 4.f;
         3.f, 1.f, 1.f, 3.f;
         1.f, 0.f, 3.f, 2.f;
-        1.f, 1.f, 0.f, 1.f |]
+        1.f, 1.f, 0.f, 1.f ]
 
     EXPECT_EQ(`C*D`, refmul(C,D))
     EXPECT_EQ(`C'*D`, refmul(C',D))

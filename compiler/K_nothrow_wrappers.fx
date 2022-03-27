@@ -11,7 +11,7 @@
     @pure @nothrow fun foo(i: int): int @ccode {...}
     fun bar(i: int): int {...}
     val predicate = if (whistle_of_crayfish_on_a_mount) {foo} else {bar}
-    val denied_ips = [1, 2, 3, 4, 5, 6, 7, 8, ... ]
+    val denied_ips = [:: 1, 2, 3, 4, 5, 6, 7, 8, ... ]
     denied_ips.filter(predicate)
 
     predicate fucntion must be called independently of containment.
@@ -59,19 +59,19 @@ fun make_wrappers_for_nothrow(kmods: kmodule_t list)
                 *kf = kf->{kf_closure=kf_closure.{kci_wrap_f=w_name}}
                 val w_flags = kf_flags.{fun_flag_nothrow=false}
                 val w_params =
-                [for a <- kf_params {
+                [:: for a <- kf_params {
                     val w_a = dup_idk(curr_m_idx, a)
                     val {kv_typ=t} = get_kval(a, kf_loc)
                     val _ = create_kdefval(w_a, t, default_arg_flags(), None, [], kf_loc)
                     w_a
                 }]
-                val w_body = KExpCall(kf_name, [for i <- w_params {AtomId(i)} ], (kf_rt, kf_loc))
+                val w_body = KExpCall(kf_name, [:: for i <- w_params {AtomId(i)} ], (kf_rt, kf_loc))
                 val code = create_kdeffun(w_name, w_params, kf_rt, w_flags,
-                                    Some(w_body), e :., kf_scope, kf_loc)
+                                    Some(w_body), [:: e], kf_scope, kf_loc)
                 rcode2kexp(code, kf_loc)
             }
         | KExpCall(f, args, (t, loc)) =>
-            val args = [for a <- args { wrapf_atom(a, loc, callb) } ]
+            val args = [:: for a <- args { wrapf_atom(a, loc, callb) } ]
             KExpCall(f, args, (t, loc))
         | _ => walk_kexp(e, callb)
         }
@@ -82,7 +82,7 @@ fun make_wrappers_for_nothrow(kmods: kmodule_t list)
         kcb_atom=Some(wrapf_atom)
         }
 
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_top,km_idx} = km
         curr_m_idx = km_idx
         val top_kexp = code2kexp(km_top, noloc)

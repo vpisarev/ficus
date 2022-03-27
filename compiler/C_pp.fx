@@ -133,7 +133,7 @@ type assoc_t = AssocLeft | AssocRight
         pp.begin()
         match args {
         | [] => pp.str("void")
-        | t :. =>
+        | [:: t] =>
             pp_ctyp__(pp, "", "", t, None, true, loc)
         | _ =>
             val nargs = args.length()
@@ -340,7 +340,7 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pprint_cstmt_or_block_cbox(pp: PP.t, s: cstmt_t)
 {
-    val sl = match s { | CStmtBlock (sl, _) => sl | CStmtNop _ => [] | _ => s :. }
+    val sl = match s { | CStmtBlock (sl, _) => sl | CStmtNop _ => [] | _ => [:: s] }
 
     pp.str("{"); pp.newline(); pp.beginv(0)
     for s@i <- sl {
@@ -352,7 +352,7 @@ type assoc_t = AssocLeft | AssocRight
 
 @private fun pprint_cstmt_as_block(pp: PP.t, s: cstmt_t)
 {
-    val sl = match s { | CStmtBlock(sl, _) => sl | CStmtNop _ => [] | _ => s :. }
+    val sl = match s { | CStmtBlock(sl, _) => sl | CStmtNop _ => [] | _ => [:: s] }
     match sl {
     | [] => pp.str("{}")
     | _ =>

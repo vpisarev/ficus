@@ -7,15 +7,15 @@ import Sys
 import File
 
 val N = match Sys.arguments() {
-    | n_str :. => n_str.to_int_or(16000)
+    | [:: n_str] => n_str.to_int_or(16000)
     | _ => 16000
     }
 
 val w = N, h = N, MAX_ITER = 50, INNER_ITER = 5, OUTER_ITER = MAX_ITER / INNER_ITER
 val inv = 2.0 / w
 
-val x_ = [| @parallel for x <- 0:w {double(x) * inv - 1.5} |]
-val result: uint8 [,] = [|
+val x_ = [ @parallel for x <- 0:w {double(x) * inv - 1.5}]
+val result: uint8 [,] = [
     @parallel
         for y <- 0:h
             for x8 <- 0:(w/8)
@@ -48,7 +48,7 @@ val result: uint8 [,] = [|
 
         uint8(mask ^ 255)
     }
-|]
+]
 
 val f: File.t = File.open("result.pgm", "wb")
 try {

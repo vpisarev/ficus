@@ -29,7 +29,7 @@ fun push(v: 't Dynvec.t): int
         val n1 = max(n0, 128)*2
         val old_data = v.data
         val val0 = v.val0
-        val new_data = [| for i <- 0:n1 { if i < n0 {old_data[i]} else {val0} } |]
+        val new_data = [for i <- 0:n1 { if i < n0 {old_data[i]} else {val0} }]
         v.data = new_data
     }
     val i = n0
@@ -47,7 +47,7 @@ fun push(v: 't Dynvec.t, vv: 't [])
         val n1 = max(max(n0, 128)*2, newn)
         val old_data = v.data
         val val0 = v.val0
-        val new_data = [| for i <- 0:n1 { if i < n0 {old_data[i]} else {val0} } |]
+        val new_data = [for i <- 0:n1 { if i < n0 {old_data[i]} else {val0} }]
         v.data = new_data
     }
     val i = n0

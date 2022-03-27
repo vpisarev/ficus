@@ -242,7 +242,7 @@ match op
 {
 | Ast.DL_Elemwise {el_op, t_inp, t_out} when t_inp.size() >= 2 =>
     val ninputs = t_inp.size()
-    val inp = [| for i <- t_inp {net.get_tensor(i)} |]
+    val inp = [for i <- t_inp {net.get_tensor(i)}]
     val out = net.get_tensor(t_out)
     match (el_op, inp[0].data, inp[1].data, out.data) {
     | (Ast.DL_Max, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>

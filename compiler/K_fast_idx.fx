@@ -7,7 +7,7 @@
   inside for-loops (including comprehensions).
 
   For example, without this optimization the following code
-  [for i <- 1:n-1 {(arr[i-1] + arr[i]*2 + arr[i+1])/4}]]
+  [:: for i <- 1:n-1 {(arr[i-1] + arr[i]*2 + arr[i+1])/4}]]
 
   is translated to the following pseudo-C code:
 
@@ -193,7 +193,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
         var pre_for_code: kcode_t = []
         var arrsz_env: ((id_t, int), id_t) list = []
         var update_affine_defs = false
-        val inloop_vals = declared(whole_e :., 256)
+        val inloop_vals = declared([:: whole_e], 256)
         var affine_defs: affine_map_t = Map.empty(cmp_id)
 
         fun get_arrsz(arr: id_t, i: int,
@@ -203,7 +203,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             | _ =>
                 val arrsz = dup_idk(km_idx, std__size__)
                 val arrsz_exp = KExpIntrin(IntrinGetSize,
-                    [AtomId(arr), AtomLit(KLitInt(int64(i))) ], (KTypInt, for_loc))
+                    [:: AtomId(arr), AtomLit(KLitInt(int64(i))) ], (KTypInt, for_loc))
                 val pre_for_code = create_kdefval(arrsz, KTypInt, default_tempval_flags(),
                                                 Some(arrsz_exp), pre_for_code, for_loc)
                 arrsz_env = ((arr, i), arrsz) :: arrsz_env
@@ -420,7 +420,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                 if have_ranges || !have_slow { e }
                 else {
                     val new_idxs =
-                        [for idx@i <- idxs {
+                        [:: for idx@i <- idxs {
                             match idx {
                             | DomainElem a =>
                                 val aa_class = classify_idx(a, loc)
@@ -442,7 +442,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             // if there is val arrsz = size(arr, dim_idx),
             // where arr is loop invariant and dim_idx is literal,
             // we move it outside of the loop and memorize it.
-            | KDefVal(arrsz, KExpIntrin(IntrinGetSize, [AtomId(arr), AtomLit(KLitInt(dim))], _), loc)
+            | KDefVal(arrsz, KExpIntrin(IntrinGetSize, [:: AtomId(arr), AtomLit(KLitInt(dim))], _), loc)
                 when is_loop_invariant(AtomId(arr), inloop_vals, loc) =>
                 pre_for_code = e :: pre_for_code
                 arrsz_env = ((arr, int(dim)), arrsz) :: arrsz_env
@@ -466,7 +466,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                 check_idx_range(N, A0*C0+A1, B0*C1 + (B1-B0), D0, D1)
             */
             | KExpIntrin(IntrinCheckIdxRange,
-                [AtomId(arrsz), a, b, AtomLit(KLitInt 1L), scale, shift],
+                [:: AtomId(arrsz), a, b, AtomLit(KLitInt 1L), scale, shift],
                 (_, loc) )
                 when (is_loop_invariant(scale, inloop_vals, loc) &&
                      is_loop_invariant(shift, inloop_vals, loc) &&
@@ -509,7 +509,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                             // we don't care if those expressions include some sub-constant expressions -
                             // const folding stage will take care of that
                             val new_check = KExpIntrin(IntrinCheckIdxRange,
-                                [AtomId(arrsz), new_a, new_b, AtomLit(KLitInt(1L)), scale, shift],
+                                [:: AtomId(arrsz), new_a, new_b, AtomLit(KLitInt(1L)), scale, shift],
                                 (KTypVoid, loc) )
                             (KExpNop(loc), new_check :: pre_for_code)
                         | _ => (e, pre_for_code)
@@ -552,7 +552,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
 
         /* steps 4 & 5. optimize some of array acceses */
         val for_clauses =
-            [for (e, idl, idxl) <- for_clauses {
+            [:: for (e, idl, idxl) <- for_clauses {
                 val e = optimize_idx_kexp(e, optimize_idx_callb)
                 (e, idl, idxl)
             }]
@@ -564,7 +564,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             (for_clauses, body)
         } else {
             val for_clauses =
-                [for (e, idl, idxl) <- for_clauses {
+                [:: for (e, idl, idxl) <- for_clauses {
                     val e = update_affine_kexp(e, update_affine_callb)
                     (e, idl, idxl)
                 }]
@@ -583,13 +583,13 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                     val (arrsz, pre_for_code) =
                         get_arrsz(aa_arr, aa_dim, pre_for_code)
                     if i == noid {
-                        KExpIntrin(IntrinCheckIdx, [AtomId(arrsz), shift],
+                        KExpIntrin(IntrinCheckIdx, [:: AtomId(arrsz), shift],
                             (KTypVoid, for_loc)) :: pre_for_code
                     } else {
                         val (a, b, delta, pre_for_code) =
                             get_loop_idx_range(i, pre_for_code, for_loc)
                         KExpIntrin( IntrinCheckIdxRange,
-                                    [AtomId(arrsz), a, b, delta, scale, shift],
+                                    [:: AtomId(arrsz), a, b, delta, scale, shift],
                                     (KTypVoid, for_loc) ) :: pre_for_code
                     }
                 | _ => pre_for_code
@@ -616,7 +616,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
         match e {
         | KExpFor (idl, idxl, body, flags, loc) =>
             //print("before: "); KPP.pp_kexp(e); println()
-            val (for_clauses, body, pre_for_code) = optimize_for(e, (KExpNop(loc), idl, idxl) :., body)
+            val (for_clauses, body, pre_for_code) = optimize_for(e, [:: (KExpNop(loc), idl, idxl)], body)
             /* process nested for's, if any, after the call to optimize_for;
                we do it in this order to put the 'batch range checks' as high as
                possible in the hierarchy of nested loops, e.g.:
@@ -636,7 +636,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             val body = process_kexp(body, callb)
             val e =
             match for_clauses {
-            | (KExpNop _, idl, idxl) :. => KExpFor(idl, idxl, body, flags, loc)
+            | [:: (KExpNop _, idl, idxl)] => KExpFor(idl, idxl, body, flags, loc)
             | _ => throw compile_err(loc,
                 "fast_idx: unexpected output of optimize_for; should output single for_clause")
             }
@@ -655,13 +655,13 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
         kcb_ktyp=Some(process_ktyp),
         kcb_atom=None
     }
-    [for e <- topcode {
+    [:: for e <- topcode {
         process_kexp(e, process_callb)
     }]
 }
 
 fun optimize_idx_checks_all(kmods: kmodule_t list) =
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_idx, km_top} = km
         val new_top = optimize_idx_checks(km_idx, km_top)
         km.{km_top=new_top}
@@ -684,7 +684,7 @@ fun linearize_arrays_access_(km_idx: int, topcode: kexp_t list)
         val for_loc = get_kexp_loc(whole_e)
         var all_slices: ((id_t, atom_t list), atom_t) list = []
         var pre_for_code = pre_for_code0
-        val inloop_vals = declared(whole_e :., 256)
+        val inloop_vals = declared([:: whole_e], 256)
 
         fun linearize_idx_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
         fun linearize_idx_kexp(e: kexp_t, callb: k_callb_t) =
@@ -725,7 +725,7 @@ fun linearize_arrays_access_(km_idx: int, topcode: kexp_t list)
                             pre_for_code = new_pre_for_code
                             slice
                         }
-                    KExpIntrin(IntrinAccessSlice, [slice, last_idx], (t, loc))
+                    KExpIntrin(IntrinAccessSlice, [:: slice, last_idx], (t, loc))
                 }
             // similar to 'if', do not optimize other non-linear fragments of the loop body;
             // type/exception/fun declarations don't need to be processed either.
@@ -782,14 +782,14 @@ fun linearize_arrays_access_(km_idx: int, topcode: kexp_t list)
         kcb_ktyp=Some(process_ktyp),
         kcb_atom=None
     }
-    [for e <- topcode {
+    [:: for e <- topcode {
         process_kexp(e, process_callb)
     }]
 }
 
 fun linearize_arrays_access(kmods: kmodule_t list)
 {
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_idx, km_top} = km
         val new_top = linearize_arrays_access_(km_idx, km_top)
         km.{km_top=new_top}

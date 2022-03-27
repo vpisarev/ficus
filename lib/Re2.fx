@@ -115,7 +115,7 @@ exception BadRegexp : string
 
 fun incise(str: string, starts_ends: (int, int)[]): string []
 {
-    [| for (start, end) <- starts_ends {str[start:end]} |]
+    [for (start, end) <- starts_ends {str[start:end]}]
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +303,7 @@ fun named_capturing_groups(re: regex_t): (string, int) list
         return fx_status;
     }
     val (names, indexes) = named_capturing_groups_(re)
-    [for name <- names, index <- indexes {(name, index)} ]
+    [:: for name <- names, index <- indexes {(name, index)} ]
 }
 
 
@@ -313,7 +313,7 @@ fun named_capturing_groups(re: regex_t): (string, int) list
 fun capturing_group_names(re: regex_t): (int, string) list
 {
     val lst = named_capturing_groups(re)
-    [for (name, index) <- lst {(index, name)} ]
+    [:: for (name, index) <- lst {(index, name)} ]
 }
 
 val digit_reg = compile(r"\\[0-9]")
@@ -345,7 +345,7 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
         }
         else
         {
-            RPString(rewrite) :.
+            [:: RPString(rewrite)]
         }
 
     val fold max_sub = -1 for piece <- piece_lst
@@ -954,12 +954,12 @@ fun findall_str(string_to_match: string, re: regex_t): (bool   , string     [,])
 {
     val (success, starts_ends) = findall(string_to_match, re)
     val (len_i, len_j) = size(starts_ends)
-    (success, [| for i <- 0:len_i for j <- 0:len_j
+    (success, [for i <- 0:len_i for j <- 0:len_j
                 {
                     val(start,end) = starts_ends[i,j]
                     string_to_match[start:end]
                 }
-              |])
+              ])
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

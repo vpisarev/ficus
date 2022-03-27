@@ -568,7 +568,7 @@ fun dim2str(net: dlnet_t, d: int) = if d > 0 {string(d)} else if d == 0 {"?"} el
 
 fun shape2str(net: dlnet_t, s: dlshape_t)
 {
-    val shape_str = " x ".join([|for d <- s.shape {dim2str(net, d)}|])
+    val shape_str = " x ".join([for d <- s.shape {dim2str(net, d)}])
     (match (s.layout, size(s.shape)) {
     | (DL_Layout_Unknown, _) => ""
     | (_, dims) when dims > 1 => f"{s.layout} "
@@ -669,9 +669,9 @@ fun graph2str(net: dlnet_t, graph: dlgraph_t, indent: string)
     val {inpargs, outargs, prog} = graph
     val new_indent = indent + "  "
     val prog_indent = new_indent + "  "
-    val inpstrs = [| for a <- inpargs {net.args[a].name} |]
-    val outstrs = [| for a <- outargs {net.args[a].name} |]
-    val prog = [| for op <- prog {op2str(net, op, prog_indent)} |]
+    val inpstrs = [for a <- inpargs {net.args[a].name}]
+    val outstrs = [for a <- outargs {net.args[a].name}]
+    val prog = [for op <- prog {op2str(net, op, prog_indent)}]
     join_embrace(f"graph {{\n{new_indent}inputs={inpstrs},\n\
         {new_indent}outputs={outstrs},\n{new_indent}prog={{\n{prog_indent}",
         f"\n{new_indent}}}\n{indent}}}",
@@ -720,57 +720,57 @@ fun dlop_t.name() = match self
     | DL_Unsqueeze {name} => (name, "Unsqueeze")
 }
 
-fun targs2pairs(prefix: string, args: int []) = [for a@i <- args {(f"{prefix}{i}", a)}]
+fun targs2pairs(prefix: string, args: int []) = [:: for a@i <- args {(f"{prefix}{i}", a)}]
 
 fun t2str(net: dlnet_t, tensors: (string, int) list) =
-    [for (name, tidx) <- tensors {
+    [:: for (name, tidx) <- tensors {
         val targ = net.args[tidx]
         f"{name}=\"{targ.name}\", // {arg2str(net, tidx)}"
     }]
 
 fun dlop_t.get_inputs_outputs(): (int [], int []) = match self
 {
-    | DL_AvgPool {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_BatchNorm {t_inp, t_scale, t_B, t_mean, t_var, t_out} => ([|t_inp, t_scale, t_B, t_mean, t_var|], [|t_out|])
-    | DL_Cast {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Clip {t_inp, t_min, t_max, t_out} => ([|t_inp, t_min, t_max|], [|t_out|])
-    | DL_Concat {t_inp, t_out} => (t_inp, [|t_out|])
-    | DL_ConstantOfShape {t_shape, t_out} => ([|t_shape|], [|t_out|])
-    | DL_Conv {t_inp, t_weights, t_bias, t_out} => ([|t_inp, t_weights, t_bias|], [|t_out|])
-    | DL_ConvTranspose {t_inp, t_weights, t_bias, t_out} => ([|t_inp, t_weights, t_bias|], [|t_out|])
-    | DL_Dropout {t_inp, t_ratio, t_training_mode, t_out} => ([|t_inp, t_ratio, t_training_mode|], [|t_out|])
-    | DL_Elemwise {t_inp, t_out} => (t_inp, [|t_out|])
-    | DL_Expand {t_inp, t_shape, t_out} => ([|t_inp, t_shape|], [|t_out|])
-    | DL_Flatten {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Gather {t_inp, t_ind, t_out} => ([|t_inp, t_ind|], [|t_out|])
-    | DL_Gemm {t_A, t_B, t_bias, t_out} => ([|t_A, t_B, t_bias|], [|t_out|])
-    | DL_GlobalAvgPool {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Identity {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_If {t_inp, t_out} => ([|t_inp|], t_out)
-    | DL_LeakyRelu {t_inp, t_out} => ([|t_inp|], [|t_out|])
+    | DL_AvgPool {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_BatchNorm {t_inp, t_scale, t_B, t_mean, t_var, t_out} => ([t_inp, t_scale, t_B, t_mean, t_var], [t_out])
+    | DL_Cast {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Clip {t_inp, t_min, t_max, t_out} => ([t_inp, t_min, t_max], [t_out])
+    | DL_Concat {t_inp, t_out} => (t_inp, [t_out])
+    | DL_ConstantOfShape {t_shape, t_out} => ([t_shape], [t_out])
+    | DL_Conv {t_inp, t_weights, t_bias, t_out} => ([t_inp, t_weights, t_bias], [t_out])
+    | DL_ConvTranspose {t_inp, t_weights, t_bias, t_out} => ([t_inp, t_weights, t_bias], [t_out])
+    | DL_Dropout {t_inp, t_ratio, t_training_mode, t_out} => ([t_inp, t_ratio, t_training_mode], [t_out])
+    | DL_Elemwise {t_inp, t_out} => (t_inp, [t_out])
+    | DL_Expand {t_inp, t_shape, t_out} => ([t_inp, t_shape], [t_out])
+    | DL_Flatten {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Gather {t_inp, t_ind, t_out} => ([t_inp, t_ind], [t_out])
+    | DL_Gemm {t_A, t_B, t_bias, t_out} => ([t_A, t_B, t_bias], [t_out])
+    | DL_GlobalAvgPool {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Identity {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_If {t_inp, t_out} => ([t_inp], t_out)
+    | DL_LeakyRelu {t_inp, t_out} => ([t_inp], [t_out])
     | DL_Loop {t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
-        ([|t_trip_count, t_cond_in, \t_v_in|], [|t_cond_out, \t_v_out|])
-    | DL_LRN {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_MaxPool {t_inp, t_out} => ([|t_inp|], [|t_out|])
+        ([t_trip_count, t_cond_in, \t_v_in], [t_cond_out, \t_v_out])
+    | DL_LRN {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_MaxPool {t_inp, t_out} => ([t_inp], [t_out])
     | DL_NonMaxSuppression {t_boxes, t_scores, t_max_output_boxes_per_class,
         t_iou_threshold, t_score_threshold, t_out} =>
-            ([|t_boxes, t_scores, t_max_output_boxes_per_class, t_iou_threshold, t_score_threshold|], [|t_out|])
-    | DL_NonZero {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Range {t_start, t_limit, t_delta, t_out} => ([|t_start, t_limit, t_delta|], [|t_out|])
-    | DL_Reduce {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Reshape {t_inp, t_shape, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Resize {t_inp, t_scales, t_sizes, t_roi, t_out} => ([|t_inp, t_scales, t_sizes, t_roi|], [|t_out|])
-    | DL_RoiAlign {t_inp, t_rois, t_batch_ind, t_out} => ([|t_inp, t_rois, t_batch_ind|], [|t_out|])
-    | DL_Scatter {t_data, t_updates, t_indices, t_out} => ([|t_data, t_updates, t_indices|], [|t_out|])
-    | DL_Shape {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} => ([|t_inp, t_starts, t_ends, t_axes, t_steps|], [|t_out|])
-    | DL_SoftMax {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Split {t_inp, t_split, t_out} => ([|t_inp, t_split|], t_out)
-    | DL_Squeeze {t_inp, t_axes, t_out} => ([|t_inp, t_axes|], [|t_out|])
-    | DL_Tile {t_inp, t_repeats, t_out} => ([|t_inp, t_repeats|], [|t_out|])
-    | DL_TopK {t_inp, t_K, t_out, t_out_ind} =>  ([|t_inp, t_K|], [|t_out, t_out_ind|])
-    | DL_Transpose {t_inp, t_out} => ([|t_inp|], [|t_out|])
-    | DL_Unsqueeze {t_inp, t_axes, t_out} => ([|t_inp, t_axes|], [|t_out|])
+            ([t_boxes, t_scores, t_max_output_boxes_per_class, t_iou_threshold, t_score_threshold], [t_out])
+    | DL_NonZero {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Range {t_start, t_limit, t_delta, t_out} => ([t_start, t_limit, t_delta], [t_out])
+    | DL_Reduce {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Reshape {t_inp, t_shape, t_out} => ([t_inp], [t_out])
+    | DL_Resize {t_inp, t_scales, t_sizes, t_roi, t_out} => ([t_inp, t_scales, t_sizes, t_roi], [t_out])
+    | DL_RoiAlign {t_inp, t_rois, t_batch_ind, t_out} => ([t_inp, t_rois, t_batch_ind], [t_out])
+    | DL_Scatter {t_data, t_updates, t_indices, t_out} => ([t_data, t_updates, t_indices], [t_out])
+    | DL_Shape {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} => ([t_inp, t_starts, t_ends, t_axes, t_steps], [t_out])
+    | DL_SoftMax {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Split {t_inp, t_split, t_out} => ([t_inp, t_split], t_out)
+    | DL_Squeeze {t_inp, t_axes, t_out} => ([t_inp, t_axes], [t_out])
+    | DL_Tile {t_inp, t_repeats, t_out} => ([t_inp, t_repeats], [t_out])
+    | DL_TopK {t_inp, t_K, t_out, t_out_ind} =>  ([t_inp, t_K], [t_out, t_out_ind])
+    | DL_Transpose {t_inp, t_out} => ([t_inp], [t_out])
+    | DL_Unsqueeze {t_inp, t_axes, t_out} => ([t_inp, t_axes], [t_out])
 }
 
 fun op2str(net: dlnet_t, op: dlop_t, indent: string)
@@ -912,7 +912,7 @@ fun string(info: dlnet_info_t) {
             if onnx.opsets == [] {"[]"}
             else {
                 join_embrace("[\n       ", "\n    ]", ",\n        ",
-                    [for (ver, domain) <- onnx.opsets {f"\"{domain} v{ver}\""}])
+                    [:: for (ver, domain) <- onnx.opsets {f"\"{domain} v{ver}\""}])
             }
         f"Imported_from_Onnx {{
     ir_version={onnx.ir_version},
@@ -1031,14 +1031,14 @@ fun dlshape_t.broadcast(another: dlshape_t)
         val ndims = max(ndims0, ndims1)
         val d0 = ndims - ndims0
         val d1 = ndims - ndims1
-        val sh = [| for i <- 0:ndims {
+        val sh = [for i <- 0:ndims {
             val a = if i >= d0 {self.shape[i-d0]} else {1}
             val b = if i >= d1 {another.shape[i-d1]} else {1}
             if a == b {a} else if a == 1 {b} else if b == 1 {a}
             else {
                 throw DLError("the two shapes are not compatible for the mutual broadcasting")
             }
-        } |]
+        }]
         dlshape_t {shape=sh, layout=layout}
     }
 }
@@ -1084,7 +1084,7 @@ fun elemtype(x:bool) = DL_Bool
         return FX_OK;
     }
     val shape = arr.size()
-    val shape = [| shape.0, shape.1, shape.2, shape.3 |]
+    val shape = [ shape.0, shape.1, shape.2, shape.3 ]
     val layout = DL_Layout_NCHW
     val data = make_data_(arr[:], typ)
     dltensor_t {shape=dlshape_t {shape=shape, layout=layout}, data=data}
@@ -1119,13 +1119,13 @@ fun dlnet_t.istemp(argidx: int) = self.args[argidx].argkind == DL_Arg_Temp
 fun dlnet_t.isscalar(argidx: int) = self.tensors[argidx].isscalar()
 fun dlnet_t.isfloatscalar(argidx: int) = self.tensors[argidx].isfloatscalar()
 fun dlnet_t.get_input_names(): string [] =
-    [| for i <- self.graph.inpargs {
+    [for i <- self.graph.inpargs {
         self.args[i].name
-    } |]
+    }]
 fun dlnet_t.get_output_names(): string [] =
-    [| for i <- self.graph.outargs {
+    [for i <- self.graph.outargs {
         self.args[i].name
-    } |]
+    }]
 
 fun fit(shape: dlshape_t, typ: dltyp_t, data: dldata_t, buf: dlbuf_t): (dldata_t, dlbuf_t)
 {

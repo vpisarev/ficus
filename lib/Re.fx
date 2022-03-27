@@ -33,7 +33,7 @@ fun prefixmatch(regex: t, str: string,
 fun prefixmatch_str(regex: t, str: string,
     ~ignorecase:bool=false, ~multiline:bool=false): string []? =
     match prefixmatch(regex, str, ignorecase=ignorecase, multiline=multiline) {
-    | Some(matches) => Some([| for (i, j) <- matches {str[i:j]} |])
+    | Some(matches) => Some([for (i, j) <- matches {str[i:j]}])
     | _ => None
     }
 
@@ -70,7 +70,7 @@ fun find(regex: t, str: string,
 fun find_str(regex: t, str: string,
     ~ignorecase:bool=false, ~multiline:bool=false): string []? =
     match find(regex, str, ignorecase=ignorecase, multiline=multiline) {
-    | Some(matches) => Some([| for (i, j) <- matches {str[i:j]} |])
+    | Some(matches) => Some([for (i, j) <- matches {str[i:j]}])
     | _ => None
     }
 
@@ -92,7 +92,7 @@ fun findall_str(regex: t, str: string,
     ~ignorecase:bool=false, ~multiline:bool=false): string [,]
 {
     val matches = findall(regex, str, ignorecase=ignorecase, multiline=multiline)
-    [| for (i, j) <- matches {str[i:j]} |]
+    [for (i, j) <- matches {str[i:j]}]
 }
 
 fun replace(regex: t, str: string, subst: string,

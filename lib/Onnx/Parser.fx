@@ -441,16 +441,16 @@ type refarrs_t = (
 
 fun get_refarrs(): refarrs_t
 {
-    val some_attrs = [| Ast.Attr {name="size", v=Ast.AttrInt(1L)}, Ast.Attr {name="url", v=Ast.AttrString("http://a.b.c")} |]
-    val some_node = Ast.Node {name="n", op="conv", inputs=[|"0"|], outputs=[|"1"|], attrs=some_attrs}
+    val some_attrs = [ Ast.Attr {name="size", v=Ast.AttrInt(1L)}, Ast.Attr {name="url", v=Ast.AttrString("http://a.b.c")}]
+    val some_node = Ast.Node {name="n", op="conv", inputs=["0"], outputs=["1"], attrs=some_attrs}
     val some_dim = Ast.DimValue(1L)
-    val some_vi = Ast.valueinfo_t {name="x", denotation="", typeinfo=Ast.TYPINFO_TENSOR(Ast.DTYP_FLOAT, [|some_dim|])}
-    val some_tensor = Ast.tensor_t {name="t", shape=[|1|], data=Ast.T_FLOAT([|1.f|])}
-    val some_graph = Ast.Graph {name="", inputs=[], outputs=[], values=[], initializers=[], nodes=[|some_node|]}
+    val some_vi = Ast.valueinfo_t {name="x", denotation="", typeinfo=Ast.TYPINFO_TENSOR(Ast.DTYP_FLOAT, [some_dim])}
+    val some_tensor = Ast.tensor_t {name="t", shape=[1], data=Ast.T_FLOAT([1.f])}
+    val some_graph = Ast.Graph {name="", inputs=[], outputs=[], values=[], initializers=[], nodes=[some_node]}
     val some_opset = Ast.opset_t {version=1L, domain=""}
 
-    ([|some_graph|], [|some_node|], [|some_tensor|],
-    some_attrs, [|some_vi|], [|some_dim|], [|"abc"|], [|0.f|], [|0L|], [|some_opset|], [|("key", "value")|])
+    ([some_graph], [some_node], [some_tensor],
+    some_attrs, [some_vi], [some_dim], ["abc"], [0.f], [0L], [some_opset], [("key", "value")])
 }
 
 val refarrs = get_refarrs()

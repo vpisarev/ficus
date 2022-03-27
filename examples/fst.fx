@@ -79,7 +79,7 @@ for i <- 1:31 {
 }
 println()
 
-val a=[|0, 1, 2, -10, 7, -3|]
+val a=[0, 1, 2, -10, 7, -3]
 var i1 = -1
 for x@i <- a {
     if x < 0 {i1 = i; break}
@@ -146,7 +146,7 @@ println(if 0.1 <= sin(1.) < 0.7 {
     })
 
 val key1 = "xyz", key2 = "b"
-val pairs = ("a", 0) :: ("b", 33) :: ("rest", 2) :.
+val pairs = ("a", 0) :: ("b", 33) :: ("rest", 2) :: []
 val r1 = pairs.assoc_opt(key1)
 val r2 = pairs.assoc_opt(key2)
 
@@ -160,7 +160,7 @@ println(f"assoc '{key1}' @ {pairs}: {assoc_result(r1)}")
 println(f"assoc '{key2}' @ {pairs}: {assoc_result(r2)}")
 
 val n = 30
-val a = [|for i <- 0:n {i+1}|]
+val a = [for i <- 0:n {i+1}]
 for i <- 1:n {a[i] += a[i-1]}
 println(f"triangular numbers: {a}")
 
@@ -172,16 +172,16 @@ fun is_prime(n: int)
     }
 }
 
-println(f"primes <100: {[<for i <- 0:100 when is_prime(i) {i}>]}")
+println(f"primes <100: {vector [for i <- 0:100 when is_prime(i) {i}]}")
 
-val sorted = [10, 355, 113, -1, 2, 26, 1, 1949, 0,
+val sorted = [:: 10, 355, 113, -1, 2, 26, 1, 1949, 0,
               299792458, -460, 451, -11034, 8848].sort((<))
 print("sorted: ")
 println(sorted)
 
 fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     val step = (b - a)/w
-    val tab = [|for x <- 0:w {f(a + step*x)}|]
+    val tab = [for x <- 0:w {f(a + step*x)}]
     val v0 = tab[0]
     val fold (minv, maxv)=(v0, v0) for y <- tab { (min(minv, y), max(maxv, y)) }
     val scale = (h-1)/(maxv - minv)

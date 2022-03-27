@@ -40,7 +40,7 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
         | TypDecl => KTypVoid
         | TypModule => KTypModule
         | TypList(t) => KTypList(typ2ktyp_(t))
-        | TypTuple(tl) => KTypTuple([for t <- tl {typ2ktyp_(t)} ])
+        | TypTuple(tl) => KTypTuple([::for t <- tl {typ2ktyp_(t)} ])
         | TypVarTuple _ => throw compile_err(loc,
             "variable tuple type cannot be inferenced; please, use explicit type annotation")
         | TypRef(t) => KTypRef(typ2ktyp_(t))
@@ -50,9 +50,9 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
             "variable array type cannot be inferenced; please, use explicit type annotation")
         | TypVarRecord => throw compile_err(loc,
             "variable record type cannot be inferenced; please, use explicit type annotation")
-        | TypFun(args, rt) => KTypFun([for t <- args {typ2ktyp_(t)} ], typ2ktyp_(rt))
+        | TypFun(args, rt) => KTypFun([::for t <- args {typ2ktyp_(t)} ], typ2ktyp_(rt))
         | TypRecord (ref (relems, true)) =>
-            KTypRecord(noid, [for (_, ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } ])
+            KTypRecord(noid, [:: for (_, ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } ])
         | TypRecord _ => throw compile_err(loc,
             "the record type cannot be inferenced; use explicit type annotation")
         | TypApp(args, n) =>
@@ -60,13 +60,13 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
             match t_opt {
             | Some(TypApp([], n)) =>
                 match id_info(n, loc) {
-                | IdVariant (ref {dvar_cases=(_, TypRecord (ref (relems, true))) :., dvar_flags})
+                | IdVariant (ref {dvar_cases=[:: (_, TypRecord (ref (relems, true)))], dvar_flags})
                     when dvar_flags.var_flag_record =>
                     if id_stack.mem(n) {
                         throw compile_err(loc, f"the record '{n}' directly or indirectly references itself")
                     } else {
                         id_stack = n :: id_stack
-                        val new_t = KTypRecord(n, [for (_, ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } ])
+                        val new_t = KTypRecord(n, [:: for (_, ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } ])
                         id_stack = id_stack.tl()
                         new_t
                     }
@@ -152,7 +152,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         | PatTyped(p, TypInt, loc) =>
             val (idx, body_code) = pat_simple_unpack(p, KTypInt, None, body_code,
                                                      "i", default_tempval_flags(), body_sc)
-            (idx :., body_code)
+            ([:: idx], body_code)
         | PatTyped(p, TypTuple(tl), _) =>
             val p = pat_skip_typed(p)
             match p {
@@ -180,7 +180,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                 val ktyp = KTypTuple(ktl)
                 val at_ids = at_ids.rev()
                 val body_code = create_kdefval(idx, ktyp, default_tempval_flags(),
-                    Some(KExpMkTuple([for i <- at_ids { AtomId(i) } ], (ktyp, loc))),
+                    Some(KExpMkTuple([::for i <- at_ids { AtomId(i) } ], (ktyp, loc))),
                     body_code, loc)
                 (at_ids, body_code)
             | _ => throw compile_err(loc,
@@ -219,7 +219,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (a1, code) = process_rpart(e1_opt, code, _ALitVoid)
         val (a2, code) = process_rpart(e2_opt, code, _ALitVoid)
         val (a3, code) = process_rpart(e3_opt, code, AtomLit(KLitInt(1L)))
-        (KExpMkTuple(a1 :: a2 :: a3 :., kctx), code)
+        (KExpMkTuple([:: a1, a2, a3], kctx), code)
     | ExpLit(LitEmpty, _) =>
         val z = gen_idk(km_idx, "z")
         val code = create_kdefval(z, ktyp, default_tempval_flags(),
@@ -257,7 +257,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (a2, code) = exp2atom(e2, code, false, sc)
         match (bop, get_atom_ktyp(a1, eloc), get_atom_ktyp(a2, eloc)) {
         | (OpAdd, KTypString, KTypString) | (OpAdd, KTypChar, KTypString) | (OpAdd, KTypString, KTypChar) =>
-            (KExpIntrin(IntrinStrConcat, [a1, a2 ], kctx), code)
+            (KExpIntrin(IntrinStrConcat, [:: a1, a2 ], kctx), code)
         | _ => (KExpBinary(bop, a1, a2, kctx), code)
         }
     | ExpUnary(OpDeref, e, _) =>
@@ -270,8 +270,8 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         | _ => throw compile_err(eloc, ".- is only allowed inside array access op. .- inside of tuple indexes is not supported too.")
         }
         val (a, code) = exp2atom(e, code, false, sc)
-        val args = if idx_i == 0 { [arr] }
-                   else { [arr, AtomLit(KLitInt(int64(idx_i))) ] }
+        val args = if idx_i == 0 { [:: arr] }
+                   else { [:: arr, AtomLit(KLitInt(int64(idx_i))) ] }
         val (sz, code) = kexp2atom(km_idx, "sz", KExpIntrin(IntrinGetSize,
                                     args, (KTypInt, eloc)), false, code)
         (KExpBinary(OpSub, sz, a, kctx), code)
@@ -555,10 +555,10 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             (KExpMem(a_id, idx, kctx), code)
         | (KTypName(tn), ExpIdent(n, (_, nloc))) =>
             if n == std__tag__ {
-                (KExpIntrin(IntrinVariantTag, AtomId(a_id) :., (KTypCInt, eloc)), code)
+                (KExpIntrin(IntrinVariantTag, [:: AtomId(a_id)], (KTypCInt, eloc)), code)
             } else {
                 val ((ctor, case_i, vt, _), relems) = get_record_elems_k(None, ktyp, eloc)
-                val get_vcase = KExpIntrin(IntrinVariantCase, [AtomId(a_id), AtomLit(KLitInt(int64(case_i))) ], (vt, eloc))
+                val get_vcase = KExpIntrin(IntrinVariantCase, [:: AtomId(a_id), AtomLit(KLitInt(int64(case_i))) ], (vt, eloc))
                 val i = find_relem(ctor, relems, n, eloc)
                 val (get_elem, code) =
                 if relems.length() == 1 {
@@ -572,7 +572,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             }
         | (KTypExn, ExpIdent(n, (etyp2, eloc2)))
             when n == std__tag__ =>
-            (KExpIntrin(IntrinVariantTag, AtomId(a_id) :., (KTypCInt, eloc)), code)
+            (KExpIntrin(IntrinVariantTag, [:: AtomId(a_id)], (KTypCInt, eloc)), code)
         | (_, ExpIdent(n, (etyp2, eloc2))) =>
             throw compile_err(e1loc,
                 f"unsupported '(some_struct : {typ2str(get_exp_typ(e1))}).{pp(n)}' access operation")
@@ -637,7 +637,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (k_cases, catch_code) = transform_pat_matching(AtomId(exn_n),
                         cases, catch_code, catch_sc, exn_loc, true)
         val handle_exn = match k_cases {
-            | ([], e) :. => e
+            | [:: ([], e)] => e
             | _ => KExpMatch(k_cases, (ktyp, exn_loc))
             }
         val handle_exn = rcode2kexp(handle_exn :: catch_code, exn_loc)
@@ -692,7 +692,7 @@ fun exp2dom(e: exp_t, code: kcode_t, sc: scope_t list): (dom_t, kcode_t) =
     | ExpRange _ =>
         val (ek, code) = exp2kexp(e, code, false, sc)
         match ek {
-        | KExpMkTuple(a :: b :: c :., _) => (DomainRange(a, b, c), code)
+        | KExpMkTuple([:: a, b, c], _) => (DomainRange(a, b, c), code)
         | _ => throw compile_err(get_exp_loc(e),
             "the range was not converted to a 3-element tuple as expected")
         }
@@ -754,7 +754,7 @@ fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t): ((id_t, int, ktyp_
     | KTypRecord(_, relems) => ((noid, 0, t, false), relems)
     | KTypName(tn) =>
         match kinfo_(tn, loc) {
-        | KVariant (ref {kvar_flags, kvar_cases=(vn0, KTypRecord(_, relems) as rectyp) :.})
+        | KVariant (ref {kvar_flags, kvar_cases=[:: (vn0, KTypRecord(_, relems) as rectyp)]})
             when kvar_flags.var_flag_record =>
             if input_vn != noid && input_vn != get_orig_id(vn0) {
                 throw compile_err(loc,
@@ -762,13 +762,13 @@ fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t): ((id_t, int, ktyp_
             }
             ((noid, 1, rectyp, false), relems)
         | KVariant (ref {kvar_cases, kvar_ctors}) =>
-            val single_case = match kvar_cases { | _ :. => true | _ => false }
+            val single_case = match kvar_cases { | [:: _] => true | _ => false }
             match find_opt(for (vn, t)@i <- kvar_cases, c_id <- kvar_ctors {
                         get_orig_id(vn) == input_vn || (single_case && input_vn == noid) }) {
             | Some(((_, KTypRecord(_, relems)), i, ctor)) =>
                 val rectyp = match relems {
-                             | (_, t) :. => t
-                             | _ => KTypTuple([for (_, t) <- relems {t} ])
+                             | [:: (_, t)] => t
+                             | _ => KTypTuple([::for (_, t) <- relems {t} ])
                              }
                 ((ctor, i+1, rectyp, kvar_cases.length() > 1), relems)
             | _ => throw compile_err(loc, f"tag '{pp(input_vn)}' is not found or is not a record")
@@ -807,13 +807,13 @@ fun match_variant_pat(pat: pat_t, ptyp: ktyp_t): ((id_t, int, ktyp_t), (pat_t, k
         match find_opt(for (vn, t)@i <- kvar_cases, c_id <- kvar_ctors {
                         get_orig_id(vn) == get_orig_id(vn0) }) {
         | Some(((_, t), idx, ctor)) =>
-            val tl = match t { | KTypTuple(tl) => tl | _ => t :. }
+            val tl = match t { | KTypTuple(tl) => tl | _ => [:: t] }
             if pl.length() != tl.length() {
                 throw compile_err( loc,
                     f"the number of variant pattern arguments does not match \
                     the number of '{pp(ctor)}' parameters.\nSee {kvar_loc}")
             }
-            val typed_var_pl = [for pi <- pl, ti <- tl { (pi, ti) } ]
+            val typed_var_pl = [:: for pi <- pl, ti <- tl { (pi, ti) } ]
             ((ctor, idx+1, t), typed_var_pl)
         | _ => throw compile_err(loc, f"tag '{pp(vn0)}' is not found or is not a record")
         }
@@ -950,9 +950,9 @@ fun pat_simple_unpack(p: pat_t, ptyp: ktyp_t, e_opt: kexp_t?, code: kcode_t,
             | PatIdent(_, _) => code
             | PatVariant(vn, _, loc) =>
                 val ((_, case_i, vt), typed_var_pl) = match_variant_pat(p, ptyp)
-                val get_vcase = KExpIntrin(IntrinVariantCase, [AtomId(n), AtomLit(KLitInt(int64(case_i))) ], (vt, loc))
+                val get_vcase = KExpIntrin(IntrinVariantCase, [:: AtomId(n), AtomLit(KLitInt(int64(case_i))) ], (vt, loc))
                 match typed_var_pl {
-                | (p, t) :. =>
+                | [:: (p, t)] =>
                     pat_simple_unpack(p, t, Some(get_vcase), code, temp_prefix, flags, sc).1
                 | _ =>
                     val (ve, code) = kexp2atom(km_idx, "vcase", get_vcase, true, code)
@@ -973,12 +973,12 @@ fun pat_simple_unpack(p: pat_t, ptyp: ktyp_t, e_opt: kexp_t?, code: kcode_t,
                                 | Some(rn) => rn
                                 | _ => throw compile_err(loc, "record tag should be non-empty here")
                                 }*/
-                    val get_vcase = KExpIntrin(IntrinVariantCase, [AtomId(n), AtomLit(KLitInt(int64(case_i))) ], (rectyp, loc))
+                    val get_vcase = KExpIntrin(IntrinVariantCase, [:: AtomId(n), AtomLit(KLitInt(int64(case_i))) ], (rectyp, loc))
                     val (r, code2) = kexp2atom(km_idx, "vcase", get_vcase, true, code)
                     (atom2id(r, loc, "variant case extraction should produce id, not literal"), get_vcase, code2)
                 }
                 match (ctor != noid, multiple_relems, typed_rec_pl) {
-                | (true, false, (_, p, t, _) :.) =>
+                | (true, false, [:: (_, p, t, _)]) =>
                     pat_simple_unpack(p, t, Some(get_vcase), code, temp_prefix, flags, sc).1
                 | _ =>
                     fold code = code2 for (_, pi, ti, ii) <- typed_rec_pl {
@@ -1043,7 +1043,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
         match (need_checks, have_vars) {
         | (true, false) => match p {
                            | PatLit(_, _) => (pinfo :: pl_c, pl_cu, pl_u)
-                           | _ => (pl_c + (pinfo :.), pl_cu, pl_u)
+                           | _ => (pl_c + ([:: pinfo]), pl_cu, pl_u)
                            }
         | (true, true) => (pl_c, pinfo :: pl_cu, pl_u)
         | (false, true) => (pl_c, pl_cu, pinfo :: pl_u)
@@ -1053,16 +1053,16 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
 
     fun get_extract_tag_exp(a: atom_t, atyp: ktyp_t, loc: loc_t) =
         match deref_ktyp(atyp, loc) {
-        | KTypExn => KExpIntrin(IntrinVariantTag, a :., (KTypCInt, loc))
+        | KTypExn => KExpIntrin(IntrinVariantTag, [:: a], (KTypCInt, loc))
         | KTypRecord(_, _) => KExpAtom(AtomLit(KLitInt(0L)), (KTypCInt, loc))
         | KTypName(tn) =>
             match kinfo_(tn, loc) {
             | KVariant (ref {kvar_cases}) =>
                 match kvar_cases {
-                | (n, _) :. =>
+                | [:: (n, _)] =>
                     KExpAtom(AtomLit(KLitInt(1L)), (KTypCInt, loc))
-                    //KExpIntrin(IntrinVariantTag, a :., (KTypCInt, loc))
-                | _ => KExpIntrin(IntrinVariantTag, a :., (KTypCInt, loc))
+                    //KExpIntrin(IntrinVariantTag, [:: a], (KTypCInt, loc))
+                | _ => KExpIntrin(IntrinVariantTag, [:: a], (KTypCInt, loc))
                 }
             | _ => throw compile_err(loc,
                 f"k-normalize: enxpected type '{tn}'; record, variant of exception is expected here")
@@ -1078,7 +1078,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
         fun process_pat_list(tup_id: id_t, pti_l: (pat_t, ktyp_t, int) list,
             plists: (pat_info_t list, pat_info_t list, pat_info_t list), alt_ei_opt: kexp_t?) =
             match pti_l {
-            | (PatAny _, _, _) :. => plists
+            | [:: (PatAny _, _, _)] => plists
             | _ =>
                 val fold plists_delta = [] for (pi, ti, idxi)@idx <- pti_l {
                     val loci = get_pat_loc(pi)
@@ -1108,7 +1108,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
             val (c_args, vn_tag_val, vn_case_val) =
             match kinfo_(vn, loc) {
             | KFun (ref {kf_params, kf_flags}) =>
-                val c_args = [for arg <- kf_params {get_kval(arg, loc).kv_typ} ]
+                val c_args = [:: for arg <- kf_params {get_kval(arg, loc).kv_typ} ]
                 val ctor = kf_flags.fun_flag_ctor
                 val vn_val = match ctor {
                              | CtorVariant(tv) => AtomLit(KLitInt(int64(tv)))
@@ -1119,7 +1119,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                 (match ke_typ {
                  | KTypTuple(args) => args
                  | KTypVoid => []
-                 | _ => ke_typ :.
+                 | _ => [:: ke_typ]
                  }, AtomId(ke_tag), AtomId(vn))
             | KVal ({kv_flags}) =>
                 val ctor_id = kv_flags.val_flag_ctor
@@ -1144,11 +1144,11 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
             | [] => (noid, [], None)
             | _ =>
                 val (is_tuple, case_typ) = match c_args {
-                                           | t :. => (false, t)
+                                           | [:: t] => (false, t)
                                            | _ => (true, KTypTuple(c_args))
                                            }
                 val extract_case_exp = KExpIntrin(IntrinVariantCase,
-                    AtomId(n) :: vn_case_val :., (case_typ, loc))
+                    [:: AtomId(n), vn_case_val], (case_typ, loc))
                 if is_tuple {
                     val case_n = gen_idk(km_idx, "vcase")
                     val code = create_kdefval(case_n, case_typ, default_tempref_flags(),
@@ -1207,8 +1207,8 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                              | KTypList(et) => et
                              | _ => throw compile_err(loc, "the pattern needs list type")
                              }
-                    val get_hd_exp = KExpIntrin(IntrinListHead, AtomId(n) :., (et, loc))
-                    val get_tl_exp = KExpIntrin(IntrinListTail, AtomId(n) :., (ptyp, loc))
+                    val get_hd_exp = KExpIntrin(IntrinListHead, [:: AtomId(n)], (et, loc))
+                    val get_tl_exp = KExpIntrin(IntrinListTail, [:: AtomId(n)], (ptyp, loc))
                     val p_hd = pat_info_t {pinfo_p=p1, pinfo_typ=et, pinfo_e=get_hd_exp, pinfo_tag=noid}
                     val p_tl = pat_info_t {pinfo_p=p2, pinfo_typ=ptyp, pinfo_e=get_tl_exp, pinfo_tag=noid}
                     val plists = dispatch_pat(p_hd, plists)
@@ -1227,7 +1227,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                     val (case_n, tl, checks, code, alt_e_opt) =
                         get_var_tag_cmp_and_extract(n, pinfo, (checks, code), vn, case_sc, loc)
                     val plists =
-                    if (match pl {PatAny _ :. => true | _ => false}) || (case_n == noid && alt_e_opt.isnone()) {
+                    if (match pl {[:: PatAny _] => true | _ => false}) || (case_n == noid && alt_e_opt.isnone()) {
                         plists
                     } else {
                         val fold pti_l = [] for pi@idx <- pl, ti <- tl { (pi, ti, idx) :: pti_l }
@@ -1248,7 +1248,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                         plists
                     } else {
                         val (_, ktyp_rec_pl) = match_record_pat(p, ptyp)
-                        val pti_l = [for (_, pi, ti, idxi) <- ktyp_rec_pl { (pi, ti, idxi) } ]
+                        val pti_l = [:: for (_, pi, ti, idxi) <- ktyp_rec_pl { (pi, ti, idxi) } ]
                         process_pat_list(case_n, pti_l, plists, alt_e_opt)
                     }
                     (plists, checks, code)
@@ -1324,7 +1324,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
     }
     var have_else = false
     val k_cases =
-    [for (p, e) <- cases {
+    [:: for (p, e) <- cases {
         val ploc = get_pat_loc(p)
         val pinfo = pat_info_t {pinfo_p=p, pinfo_typ=atyp,
             pinfo_e=KExpAtom(a, (atyp, loc)), pinfo_tag=var_tag0}
@@ -1353,13 +1353,13 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
         } else if catch_mode {
             val rethrow_exp = KExpThrow(atom2id(a, loc,
                 "internal error: a literal cannot occur here"), true, loc)
-            k_cases + [([], rethrow_exp) ]
+            k_cases + [:: ([], rethrow_exp) ]
         } else {
             if builtin_exn_NoMatchError == noid {
                 throw compile_err(loc, "internal error: NoMatchError exception is not found")
             }
             val nomatch_err = KExpThrow(builtin_exn_NoMatchError, false, loc)
-            k_cases + [([], nomatch_err) ]
+            k_cases + [:: ([], nomatch_err) ]
         }
     (k_cases, code)
 }
@@ -1373,7 +1373,7 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t
         | [] | ScModule _ :: _ => false
         | _ => true
         }
-    val inst_list = if df_templ_args == [] { df_name :. } else { *df_templ_inst }
+    val inst_list = if df_templ_args == [] { [:: df_name] } else { *df_templ_inst }
     fold code = code for inst <- inst_list {
         match id_info(inst, df_loc) {
         | IdFun(inst_df) =>
@@ -1412,7 +1412,7 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t
                         }
                     val new_inst_body = match rest_inst_body {
                         | [] => ExpNop(df_loc)
-                        | e :. => e
+                        | [:: e] => e
                         | _ => ExpSeq(rest_inst_body, body_ctx)
                         }
                     (inst_args.rev(), argtyps.rev(), new_inst_body)
@@ -1439,7 +1439,7 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t
                 }
             //print(f"func {inst_name} body: "); Ast_pp.pprint_exp_x(inst_body); println()
             val is_cfunc = match inst_body {
-                | ExpCCode(_, _) | ExpSeq(_ :: ExpCCode(_, _) :., _) => true
+                | ExpCCode(_, _) | ExpSeq([:: _, ExpCCode(_, _)], _) => true
                 | _ => false }
             val inst_flags = inst_flags.{
                 fun_flag_ccode=is_cfunc,
@@ -1464,9 +1464,9 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
     val km_idx = curr_module(sc)
     fold code = code for e <- elist {
         | DefVariant (ref {dvar_name, dvar_templ_args, dvar_cases, dvar_templ_inst, dvar_scope, dvar_loc}) =>
-            val inst_list = if dvar_templ_args == [] { dvar_name :. } else { *dvar_templ_inst }
+            val inst_list = if dvar_templ_args == [] { [:: dvar_name] } else { *dvar_templ_inst }
             val tags =
-                [for (n, _)@i <- dvar_cases {
+                [:: for (n, _)@i <- dvar_cases {
                     if n == noid { noid } else {
                         val tag_id = dup_idk(km_idx, n)
                         val tag_flags = default_val_flags().{val_flag_global=dvar_scope}
@@ -1482,13 +1482,13 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                                   dvar_ctors, dvar_ifaces, dvar_flags, dvar_scope, dvar_loc=inst_loc}) =>
                     val targs =
                     match deref_typ(inst_alias) {
-                    | TypApp(targs, _) => [for t <- targs { typ2ktyp(t, inst_loc) } ]
+                    | TypApp(targs, _) => [:: for t <- targs { typ2ktyp(t, inst_loc) } ]
                     | _ => throw compile_err(inst_loc,
                         f"invalid variant type alias '{inst_name}'; should be TypApp(_, _)")
                     }
                     match (dvar_cases, dvar_flags.var_flag_record, dvar_ifaces) {
-                    | ((rn, TypRecord (ref (relems, _))) :., true, []) =>
-                        val rec_elems = [for (_, i, t, _) <- relems { (i, typ2ktyp(t, inst_loc)) } ]
+                    | ([:: (rn, TypRecord (ref (relems, _)))], true, []) =>
+                        val rec_elems = [:: for (_, i, t, _) <- relems { (i, typ2ktyp(t, inst_loc)) } ]
                         val kt = ref (kdeftyp_t { kt_name=inst_name, kt_cname="",
                                 kt_targs=targs, kt_proto=noid, kt_props=None,
                                 kt_typ=KTypRecord(inst_name, rec_elems),
@@ -1496,10 +1496,10 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                         set_idk_entry(inst_name, KTyp(kt))
                         KDefTyp(kt) :: code
                     | _ =>
-                        val kvar_cases = [for (_, t) <- dvar_cases, tag <- tags {
+                        val kvar_cases = [:: for (_, t) <- dvar_cases, tag <- tags {
                                             (tag, typ2ktyp(t, inst_loc)) }]
-                        val kvar_ifaces = [for (iname, meths) <- dvar_ifaces {
-                            (iname, [for (a, b) <- meths {
+                        val kvar_ifaces = [:: for (iname, meths) <- dvar_ifaces {
+                            (iname, [:: for (a, b) <- meths {
                                 if b == noid {
                                     throw compile_err(inst_loc,
                                     f"type '{pp(dvar_name)} claims to implement interface '{pp(iname)}', " +
@@ -1520,12 +1520,12 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                                 match id_info(ctor, dvar_loc) {
                                 | IdFun (ref {df_name, df_typ}) =>
                                     val argtyps = match df_typ {
-                                        | TypFun(TypRecord (ref (relems, true)) :., _) =>
-                                            [for (_, n, t, _) <- relems {t} ]
+                                        | TypFun([:: TypRecord (ref (relems, true))], _) =>
+                                            [:: for (_, n, t, _) <- relems {t} ]
                                         | TypFun(argtyps, _) => argtyps
                                         | _ => []
                                         }
-                                    val kargtyps = [for t <- argtyps {typ2ktyp(t, dvar_loc)} ]
+                                    val kargtyps = [:: for t <- argtyps {typ2ktyp(t, dvar_loc)} ]
                                     val tagval = i+1
                                     val code =
                                         match kargtyps {
@@ -1573,7 +1573,7 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
             val code = if is_std { code } else { decl_tag + code }
             val dexn_typ =
                 match deref_typ(dexn_typ) {
-                | TypRecord (ref (relems, true)) => TypTuple([for (_, _, t, _) <- relems {t} ])
+                | TypRecord (ref (relems, true)) => TypTuple([::for (_, _, t, _) <- relems {t} ])
                 | _ => dexn_typ
                 }
             val ke_typ = typ2ktyp(dexn_typ, dexn_loc)
@@ -1584,7 +1584,7 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
                 val make_id = gen_idk(km_idx, "make_" + pp(dexn_name))
                 val argtyps = match ke_typ {
                               | KTypTuple(telems) => telems
-                              | _ => ke_typ :.
+                              | _ => [:: ke_typ]
                               }
                 val delta_code = create_kdefconstr(make_id, argtyps, KTypExn,
                                     CtorExn(dexn_name), false, [], dexn_scope, dexn_loc)
@@ -1601,7 +1601,7 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
             delta_code + (KDefExn(ke) :: code)
         | DefInterface (ref {di_name, di_base, di_all_methods, di_scope, di_loc}) =>
             val ki_all_methods =
-                [for (f, t, _) <- di_all_methods {
+                [:: for (f, t, _) <- di_all_methods {
                     val ktyp = typ2ktyp(t, di_loc)
                     val dv = match id_info(f, di_loc) {
                         | IdDVal(dv) => dv
@@ -1641,8 +1641,8 @@ fun embed_data(kind: string, fname: string, (_: ktyp_t, loc: loc_t))
         }
     } else if kind == "binary" {
         val data = File.read_binary_u8(fname)
-        val data = [for i <- data {(false, AtomLit(KLitUInt(8, uint64(i))))} ]
-        KExpMkArray(true, data :., (KTypArray(1, KTypUInt(8)), loc))
+        val data = [:: for i <- data {(false, AtomLit(KLitUInt(8, uint64(i))))} ]
+        KExpMkArray(true, [:: data], (KTypArray(1, KTypUInt(8)), loc))
     } else {
         throw compile_err(loc, f"'{kind}' data is not supported")
     }
@@ -1651,7 +1651,7 @@ fun embed_data(kind: string, fname: string, (_: ktyp_t, loc: loc_t))
 fun normalize_mod(minfo: defmodule_t, kcode_typedefs: kcode_t, toposort_idx: int, is_main: bool): kmodule_t
 {
     idx_access_stack = []
-    val modsc = ScModule(minfo.dm_idx) :.
+    val modsc = [:: ScModule(minfo.dm_idx)]
     val (kcode, pragmas) = eseq2code(minfo.dm_defs, kcode_typedefs, modsc)
     kmodule_t { km_name=minfo.dm_name, km_idx=minfo.dm_idx, km_cname=pp(minfo.dm_name),
                 km_top=kcode.rev(), km_deps=minfo.dm_deps, km_toposort_idx=toposort_idx, km_main=is_main,
@@ -1663,11 +1663,11 @@ fun normalize_all_modules(modules: int list): kmodule_t list
     val n = modules.length()
     val fold modules_plus = [] for m <- modules {
         val minfo = get_module(m)
-        val modsc = ScModule(m) :.
+        val modsc = [:: ScModule(m)]
         val kcode_typedefs = transform_all_types_and_cons(minfo.dm_defs, [], modsc)
         (minfo, kcode_typedefs) :: modules_plus
     }
-    [for (minfo, kcode_typedefs)@i <- modules_plus.rev() {
+    [:: for (minfo, kcode_typedefs)@i <- modules_plus.rev() {
         normalize_mod(minfo, kcode_typedefs, i, i + 1 == n)
     }]
 }

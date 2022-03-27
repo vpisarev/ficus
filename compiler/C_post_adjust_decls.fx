@@ -49,7 +49,7 @@ fun adjust_decls(cmod: cmodule_t)
     {
         val saved_decls = local_decls
         local_decls = []
-        val sseq = [for s <- sseq { adjust_cstmt(s, callb) } ]
+        val sseq = [:: for s <- sseq { adjust_cstmt(s, callb) } ]
         val sseq = local_decls.rev() + sseq
         local_decls = saved_decls
         sseq
@@ -88,7 +88,7 @@ fun adjust_decls(cmod: cmodule_t)
         ccb_exp=None,
         ccb_stmt=Some(adjust_cstmt)
     }
-    val ccode = [for s <- cmod_ccode { adjust_cstmt(s, adjust_callb) } ]
+    val ccode = [:: for s <- cmod_ccode { adjust_cstmt(s, adjust_callb) } ]
     cmod.{cmod_ccode=ccode}
 }
 

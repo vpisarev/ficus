@@ -23,8 +23,8 @@ TEST("Re.submatch_extraction", fun()
     val bards = "Mockles! Fent on silpen tree,\nBlockards three a-feening,\nMockles, what silps came to thee\nIn thy pantry dreaming?"
     val se_reg = Re.compile(r"(\b[E-Te-t]+\b)")
     val r = Re.compile(r"[.,!? ]([^g-p\s]+)[.,!? ]")
-    EXPECT_EQ(`r.find(bards)`, Some([| (23, 29), (24, 28) |]))
-    EXPECT_EQ(`se_reg.find(bards)`, Some([| (9, 13), (9, 13) |]))
+    EXPECT_EQ(`r.find(bards)`, Some([ (23, 29), (24, 28) ]))
+    EXPECT_EQ(`se_reg.find(bards)`, Some([ (9, 13), (9, 13) ]))
 })
 
 TEST("Re.find", fun()
@@ -33,22 +33,22 @@ TEST("Re.find", fun()
     val letters = Re.compile(r"\a+")
     val cword = Re.compile(r"c\a+")
     val digits = Re.compile(r"\d+")
-    EXPECT_EQ(`letters.prefixmatch(str)`, Some([| (0, 5) |]))
-    EXPECT_EQ(`cword.find_str(str, ignorecase=true)`, Some([|"Cheburashka"|]))
-    EXPECT_EQ(`digits.find_str("The moon is 384467 kilometers distant.")`, Some([| "384467" |]))
+    EXPECT_EQ(`letters.prefixmatch(str)`, Some([ (0, 5) ]))
+    EXPECT_EQ(`cword.find_str(str, ignorecase=true)`, Some(["Cheburashka"]))
+    EXPECT_EQ(`digits.find_str("The moon is 384467 kilometers distant.")`, Some([ "384467" ]))
 })
 
 TEST("Re.findall", fun()
 {
     val fullstring_re = Re.compile(r".*")
     EXPECT_EQ(`fullstring_re.findall_str("The hooves clattered.\nAs if singing:\n— Crib.\nGrab.\nGrub.\nGruff.\n", multiline=true)`,
-            [| "The hooves clattered.";"As if singing:";"— Crib.";"Grab.";"Grub.";"Gruff." |])
+            [ "The hooves clattered.";"As if singing:";"— Crib.";"Grab.";"Grub.";"Gruff." ])
 })
 
 TEST("Re.general_match", fun()
 {
     val me = Re.compile(r"\b(?:I'm|I am)\b")
-    EXPECT_EQ(`me.find_str("Hello, I'm Cornelius")`, Some([| "I'm" |]))
+    EXPECT_EQ(`me.find_str("Hello, I'm Cornelius")`, Some([ "I'm" ]))
 })
 
 TEST("Re.replace", fun()

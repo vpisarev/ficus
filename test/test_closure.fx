@@ -179,18 +179,18 @@ TEST("closure.kfor_0_no_kfor_fv", fun()
 {
     fun outer_direct(a: int)
     {
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             fun kfor_inner()
             {
                 fun h(ii: int): int = ii + a
                 h
             }
             kfor_inner()
-        } |]
-        [for f <- hs {f(100)}]
+        }]
+        [:: for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(`outer_direct(1000)`, [for i <- 0:10 {1100}])
+    EXPECT_EQ(`outer_direct(1000)`, [:: for i <- 0:10 {1100}])
 })
 
 TEST("closure.kfor_1_fv", fun()
@@ -198,38 +198,38 @@ TEST("closure.kfor_1_fv", fun()
     fun outer_direct_2(a: int)
     {
         fun fn_fv(j: int) = a + j
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             fun kfor_inner()
             {
                 fun h(ii: int) = ii + i + a + fn_fv(ii)
                 h
             }
             kfor_inner()
-        } |]
+        }]
 
-        [for f <- hs {f(100)}]
+        [:: for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(`outer_direct_2(1000)`, [for i <- 0:10 {2200 + i}])
+    EXPECT_EQ(`outer_direct_2(1000)`, [:: for i <- 0:10 {2200 + i}])
 })
 
 TEST("closure.kfor_1", fun()
 {
     fun outer_direct(a: int)
     {
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             fun kfor_inner()
             {
                 fun h(ii: int) = ii + i + a
                 h
             }
             kfor_inner()
-        } |]
+        }]
 
-        [for f <- hs {f(100)}]
+        [:: for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(`outer_direct(1000)`, [for i <- 0:10 {1100 + i}])
+    EXPECT_EQ(`outer_direct(1000)`, [:: for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_2", fun()
@@ -238,51 +238,51 @@ TEST("closure.kfor_2", fun()
     {
         fun fn_fv(j: int) = a + j
 
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             fun kfor_inner(k: int)
             {
                 fun h(ii: int) = ii + i + a + k + fn_fv(ii)
                 h
             }
             kfor_inner(i + 1)
-        } |]
+        }]
 
-        [for f <- hs {f(100)}]
+        [:: for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(`outer_direct_k(1000)`, [for i <- 0:10 {2200 + 2 * i + 1}])
+    EXPECT_EQ(`outer_direct_k(1000)`, [:: for i <- 0:10 {2200 + 2 * i + 1}])
 })
 
 TEST("closure.kfor_3", fun()
 {
     fun outer_inner_val(a: int)
     {
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             val i_value = i
             fun h(ii: int) = ii + i_value + a
             h
-        } |]
+        }]
 
-        [for f <- hs {f(100)}]
+        [:: for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(`outer_inner_val(1000)`, [for i <- 0:10 {1100 + i}])
+    EXPECT_EQ(`outer_inner_val(1000)`, [:: for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_4", fun()
 {
     fun outer_inner_var(a: int)
     {
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             var i_value = i
             fun h(ii: int) = ii + i_value + a
             h
-        } |]
+        }]
 
-        [for f <- hs {f(100)}]
+        [:: for f <- hs {f(100)}]
     }
 
-    EXPECT_EQ(`outer_inner_var(1000)`, [for i <- 0:10 {1100 + i}])
+    EXPECT_EQ(`outer_inner_var(1000)`, [:: for i <- 0:10 {1100 + i}])
 })
 
 TEST("closure.kfor_5", fun()
@@ -290,16 +290,16 @@ TEST("closure.kfor_5", fun()
     fun outer_outer_var(a: int)
     {
         var i_value = 0;
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             i_value = i
             fun h(ii: int) = ii + i_value + a
             h
-        } |]
-        (i_value, [for f <- hs {f(100)}])
+        }]
+        (i_value, [:: for f <- hs {f(100)}])
     }
 
     val result = outer_outer_var(1000)
-    EXPECT_EQ(`result.1`, [for i <- 0:10 {1100 + result.0}])
+    EXPECT_EQ(`result.1`, [:: for i <- 0:10 {1100 + result.0}])
 })
 
 TEST("closure.object", fun()
@@ -307,11 +307,11 @@ TEST("closure.object", fun()
     fun closure_object(a: int)
     {
         var res: int list = []
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             val i_value = i
             fun h(ii: int) { res = (i_value + ii) :: res }
             h
-        } |]
+        }]
 
         for f <- hs {f(100)}
         var s = ""
@@ -329,11 +329,11 @@ TEST("closure.object_in_tuple", fun()
     fun closure_object(a: int)
     {
         var res: (int list, float list) = ([], [])
-        val hs = [| @parallel for i <- 0:10 {
+        val hs = [ @parallel for i <- 0:10 {
             val i_value = i;
             fun h(ii: int) {res = ((i_value + ii) :: res.0, (i :> float) :: res.1) }
             h
-        } |]
+        }]
 
         for f <- hs {f(100)}
 
@@ -423,7 +423,7 @@ TEST("closure.self-refencing", fun()
         fun commaconcat(lst: tree_t list, f: tree_t -> string) {
             match lst {
             | [] => ""
-            | hd :. => f(hd)
+            | [:: hd] => f(hd)
             | hd :: tl => f(hd) + ", " + commaconcat(tl, f)
             }
         }
@@ -435,7 +435,11 @@ TEST("closure.self-refencing", fun()
         }
     }
 
-    val tree = Node([Node([Node([Leaf]),Node([Leaf])]),Node([Node([Node([Leaf])])]),Node([Node([Node([Leaf])]),Node([Leaf])])])
+    val tree = Node([::
+        Node([:: Node([:: Leaf]), Node([:: Leaf])]),
+        Node([:: Node([:: Node([:: Leaf])])]),
+        Node([:: Node([:: Node([:: Leaf])]),
+                 Node([:: Leaf])])])
 
     EXPECT_EQ(`leaf_printer(tree)`, "[[[[1]], [[2]]], [[[[3]]]], [[[[4]]], [[5]]]]")
     EXPECT_EQ(`leafs`, 5)

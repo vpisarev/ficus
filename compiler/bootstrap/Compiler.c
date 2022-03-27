@@ -5673,9 +5673,9 @@ static void _fx_free_N14Lexer__token_t(struct _fx_N14Lexer__token_t* dst)
       fx_free_str(&dst->u.TYVAR); break;
    case 13:
       fx_free_str(&dst->u.DATA); break;
-   case 94:
+   case 88:
       _fx_free_N13Ast__binary_t(&dst->u.AUG_BINOP); break;
-   case 100:
+   case 94:
       fx_free_str(&dst->u.RESERVED); break;
    default:
       ;
@@ -5695,9 +5695,9 @@ static void _fx_copy_N14Lexer__token_t(struct _fx_N14Lexer__token_t* src, struct
       fx_copy_str(&src->u.TYVAR, &dst->u.TYVAR); break;
    case 13:
       fx_copy_str(&src->u.DATA, &dst->u.DATA); break;
-   case 94:
+   case 88:
       FX_COPY_PTR(src->u.AUG_BINOP, &dst->u.AUG_BINOP); break;
-   case 100:
+   case 94:
       fx_copy_str(&src->u.RESERVED, &dst->u.RESERVED); break;
    default:
       dst->u = src->u;
@@ -8305,8 +8305,8 @@ static void _fx_make_T2LR17C_form__cmodule_tB(
 }
 
 _fx_N14Lexer__token_t _fx_g14Compiler__FROM = { 20 };
-_fx_N14Lexer__token_t _fx_g19Compiler__SEMICOLON = { 59 };
-_fx_N14Lexer__token_t _fx_g19Compiler__PP_DEFINE = { 107 };
+_fx_N14Lexer__token_t _fx_g19Compiler__SEMICOLON = { 53 };
+_fx_N14Lexer__token_t _fx_g19Compiler__PP_DEFINE = { 101 };
 int _FX_EXN_E30Compiler__CumulativeParseError = 0;
 _fx_N20Compiler__msgcolor_t _fx_g16Compiler__MsgRed = { 1 };
 _fx_N20Compiler__msgcolor_t _fx_g18Compiler__MsgGreen = { 2 };

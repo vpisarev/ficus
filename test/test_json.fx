@@ -34,7 +34,7 @@ TEST("json.parse", fun() {
         | _ => throw TestFailure("'address' is not found or is not a map")
         }
         match m.assoc_opt("phoneNumbers") {
-        | Some(Json.Seq(s)) => EXPECT_EQ(s.nth(1), Json.Str("916 123-4567"))
+        | Some(Json.Seq(s)) => EXPECT_EQ(s[1], Json.Str("916 123-4567"))
         | _ => throw TestFailure("'phoneNumbers' is not found or is not a sequence")
         }
     | _ => throw TestFailure("top-level json value is not a map")

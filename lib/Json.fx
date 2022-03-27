@@ -13,8 +13,8 @@ type t =
     | Real: double
     | Bool: bool
     | Null
-    | Seq: t list
-    | Map: (string, t) list
+    | Seq: t []
+    | Map: (string, t) []
     | Commented: (string, t)
 
 type lloc_t = Lxu.lloc_t
@@ -87,7 +87,7 @@ fun parse_string(fname: string, s: string): t
                 throw Lxu.LexerError(getloc(strm, pos), "',' or ']' is expected")
             }
         }
-        (vpos, Seq(elems.rev()))
+        (vpos, Seq(array(elems.rev())))
     }
 
     fun parse_map(strm: stream_t, pos: int) {
@@ -148,7 +148,7 @@ fun parse_string(fname: string, s: string): t
                 throw Lxu.LexerError(getloc(strm, pos), "',' or '}' is expected")
             }
         }
-        (vpos, Map(elems.rev()))
+        (vpos, Map(array(elems.rev())))
     }
 
     parse_value(strm, 0, true).1
@@ -167,7 +167,7 @@ fun scalar2string(js: t): (string, bool)
 @private fun print_(js: t, ofs: int, indent: string, printf: string -> void)
 {
     val W0 = 80, W1 = 100
-    fun all_scalars(l: t list) =
+    fun all_scalars(l: t []) =
         all(for x <- l {
             | Int _ | Real _ | Bool _ | Str _ | Null => true
             | _ => false
@@ -192,7 +192,7 @@ fun scalar2string(js: t): (string, bool)
         throw Fail("comments are not expected here")
     | (_, Map(m)) =>
         printf("{\n")
-        val n = length(m)
+        val n = m.size()
         for (k, v)@i <- m {
             printf(newind)
             val v = process_comments(v, newind)
@@ -205,7 +205,7 @@ fun scalar2string(js: t): (string, bool)
         l_oldind+1
     | (_, Seq(l)) =>
         if all_scalars(l) {
-            val n = length(l)
+            val n = l.size()
             printf("[ ")
             val fold ofs = ofs + 2 for x@i <- l {
                 val (str, printed) = scalar2string(x)
@@ -226,7 +226,7 @@ fun scalar2string(js: t): (string, bool)
             printf("]"); ofs + 1
         } else {
             printf("[\n")
-            val n = length(l)
+            val n = l.size()
             for v@i <- l {
                 printf(newind)
                 val v = process_comments(v, newind)

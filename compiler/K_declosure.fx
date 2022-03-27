@@ -101,7 +101,7 @@ fun declosure_all(kmods: kmodule_t list){
                 | Some(fvars) =>
                     val m_idx = kf_name.m
                     val subst_map_backup = subst_map.copy()
-                    val params_addition = [ for fv <- fvars {
+                    val params_addition = [:: for fv <- fvars {
                             if is_mutable(fv, get_idk_loc(fv, noloc)){
                                 throw compile_err(kf_loc,
                                     f"free variable '{idk2str(fv, get_idk_loc(fv, noloc))}' must not be mutable on this stage. \
@@ -122,7 +122,7 @@ fun declosure_all(kmods: kmodule_t list){
                             subst_map.add(fv,new_fv)
                             new_fv
                         } ]
-                    val params = List.concat([ kf_params, params_addition ])
+                    val params = List.concat([:: kf_params, params_addition ])
                     val body = walk_kexp_n_declojure(kf_body,callb)
                     subst_map = subst_map_backup
                     *kf=kf->{kf_params = params, kf_body = body}
@@ -132,8 +132,8 @@ fun declosure_all(kmods: kmodule_t list){
         | KExpCall(f, args, (_, loc) as kctx) =>
             match fv_env.find_opt(f){
                 | Some(fvars) =>
-                    val args = List.concat([ args, [ for fv <- fvars { AtomId(fv) } ] ])
-                    val args = [ for a <- args { walk_atom_n_declojure(a, loc, callb) } ]
+                    val args = List.concat([:: args, [:: for fv <- fvars { AtomId(fv) } ] ])
+                    val args = [:: for a <- args { walk_atom_n_declojure(a, loc, callb) } ]
                     KExpCall(f, args, kctx)
                 | _ => walk_kexp(e,callb)
             }
@@ -147,9 +147,9 @@ fun declosure_all(kmods: kmodule_t list){
         kcb_kexp=Some(walk_kexp_n_declojure)
     }
 
-    [ for km <- kmods {
+    [:: for km <- kmods {
         val {km_top} = km
-        val curr_top_code = [for e <- km_top {walk_kexp_n_declojure(e, walk_n_declojure_callb)}]
+        val curr_top_code = [:: for e <- km_top {walk_kexp_n_declojure(e, walk_n_declojure_callb)}]
         km.{km_top=curr_top_code}
     } ]
 }

@@ -105,7 +105,7 @@ fun join_embrace(begin: string, end: string,
     join_embrace(begin, end, sep, array(strs))
 
 fun join(sep: string, strs: string list) =
-    join(sep, [| for s <- strs {s} |])
+    join(sep, [for s <- strs {s}])
 
 operator + (a: string, b: string): string
 @ccode {
@@ -137,7 +137,7 @@ operator + (l1: 't list, l2: 't list)
     match (l1, l2) {
         | ([], _) => l2
         | (_, []) => l1
-        | _ => link2([for x <- l1 {x}], l2)
+        | _ => link2([::for x <- l1 {x}], l2)
     }
 }
 
@@ -248,45 +248,45 @@ fun repr(a: string) = "\"" + a + "\""
     }
 }
 
-fun string(t: (...)) = join_embrace("(", ")", ", ", [| for x <- t {repr(x)} |])
-fun string(r: {...}) = join_embrace("{", "}", ", ", [| for (n, x) <- r {n+"="+repr(x)} |])
+fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
+fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
 fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
 {
-    join_embrace("[| ", " |]", ", ", [| for x <- a {repr(x)} |])
+    join_embrace("[ ", " ]", ", ", [for x <- a {repr(x)}])
 }
 
 fun string(a: 't [,])
 {
     val (m, n) = size(a)
-    val rows = [| for i <- 0:m {
-        val elems = [| for j <- 0:n {repr(a[i, j])} |]
+    val rows = [for i <- 0:m {
+        val elems = [for j <- 0:n {repr(a[i, j])}]
         join(", ", elems)
-    } |]
-    join_embrace("[| ", " |]", ";\n", rows)
+    }]
+    join_embrace("[ ", " ]", ";\n", rows)
 }
 
 fun string(a: 't [,,])
 {
     val (d, m, n) = size(a)
-    val planes = [| for k <- 0:d {
-        val rows = [| for i <- 0:m {
-            val elems = [| for j <- 0:n {repr(a[k, i, j])} |]
+    val planes = [for k <- 0:d {
+        val rows = [for i <- 0:m {
+            val elems = [for j <- 0:n {repr(a[k, i, j])}]
             join(", ", elems)
-        } |]
+        }]
         join_embrace("", "", ";\n", rows)
-    } |]
-    join_embrace("[| ", " |]", ";;\n\n", planes)
+    }]
+    join_embrace("[ ", " ]", ";;\n\n", planes)
 }
 
-fun string(l: 't list) = join_embrace("[", "]", ", ", [| for x <- l {repr(x)} |])
+fun string(l: 't list) = join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
 
 @pure fun string(a: char []): string = @ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
 
-fun string(v: 't vector) = join_embrace("[< ", " >]", ", ", [| for x <- v {repr(x)} |])
+fun string(v: 't vector) = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 @pure fun string(v: char vector): string
 @ccode {
@@ -305,7 +305,7 @@ fun string(v: 't vector) = join_embrace("[< ", " >]", ", ", [| for x <- v {repr(
 }
 
 @pure fun repr(v: char vector) =
-    join_embrace("[< ", " >]", ", ", [| for x <- v {repr(x)} |])
+    join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 @pure operator * (c: char, n: int): string
 @ccode {
@@ -558,17 +558,17 @@ fun int64(x: ('t...)) = (for xj <- x {int64(xj)})
 fun float(x: ('t...)) = (for xj <- x {float(xj)})
 fun double(x: ('t...)) = (for xj <- x {double(xj)})
 
-fun int(x: 't [+]) = [| for xj <- x {int(xj)} |]
-fun uint8(x: 't [+]) = [| for xj <- x {uint8(xj)} |]
-fun int8(x: 't [+]) = [| for xj <- x {int8(xj)} |]
-fun uint16(x: 't [+]) = [| for xj <- x {uint16(xj)} |]
-fun int16(x: 't [+]) = [| for xj <- x {int16(xj)} |]
-fun uint32(x: 't [+]) = [| for xj <- x {uint32(xj)} |]
-fun int32(x: 't [+]) = [| for xj <- x {int32(xj)} |]
-fun uint64(x: 't [+]) = [| for xj <- x {uint64(xj)} |]
-fun int64(x: 't [+]) = [| for xj <- x {int64(xj)} |]
-fun float(x: 't [+]) = [| for xj <- x {float(xj)} |]
-fun double(x: 't [+]) = [| for xj <- x {double(xj)} |]
+fun int(x: 't [+]) = [for xj <- x {int(xj)}]
+fun uint8(x: 't [+]) = [for xj <- x {uint8(xj)}]
+fun int8(x: 't [+]) = [for xj <- x {int8(xj)}]
+fun uint16(x: 't [+]) = [for xj <- x {uint16(xj)}]
+fun int16(x: 't [+]) = [for xj <- x {int16(xj)}]
+fun uint32(x: 't [+]) = [for xj <- x {uint32(xj)}]
+fun int32(x: 't [+]) = [for xj <- x {int32(xj)}]
+fun uint64(x: 't [+]) = [for xj <- x {uint64(xj)}]
+fun int64(x: 't [+]) = [for xj <- x {int64(xj)}]
+fun float(x: 't [+]) = [for xj <- x {float(xj)}]
+fun double(x: 't [+]) = [for xj <- x {double(xj)}]
 
 type uint8x3 = (uint8*3)
 type uint8x4 = (uint8*4)
@@ -745,12 +745,12 @@ fun print_repr(a: string) { print("\""); print(a); print("\"") }
 fun print_repr(a: char) { print("'"); print(a); print("'") }
 fun print(a: 't [])
 {
-    print("[| ")
+    print("[ ")
     for x@i <- a {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print(" |]")
+    print(" ]")
 }
 
 @nothrow fun print(a: char []): void = @ccode {
@@ -760,7 +760,7 @@ fun print(a: 't [])
 
 fun print(a: 't [,])
 {
-    print("[| ")
+    print("[ ")
     val (m, n) = size(a)
     for i <- 0:m {
         for j <- 0:n {
@@ -769,7 +769,7 @@ fun print(a: 't [,])
         }
         if i < m-1 {print(";\n ")}
     }
-    print(" |]")
+    print(" ]")
 }
 
 fun print(l: 't list)
@@ -784,12 +784,12 @@ fun print(l: 't list)
 
 fun print(v: 't vector)
 {
-    print("[< ")
+    print("[")
     for x@i <- v {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print(" >]")
+    print("]")
 }
 
 fun print(t: (...))
@@ -820,17 +820,17 @@ fun print(a: 't ref) {
 @inline fun println() = print("\n")
 fun println(a: 't) { print(a); print("\n") }
 
-fun list(a: 't []): 't list = [for x <- a {x}]
-fun list(s: string): char list = [for x <- s {x}]
-fun list(v: 't vector): 't list = [for x <- v {x}]
+fun list(a: 't []): 't list = [:: for x <- a {x}]
+fun list(s: string): char list = [:: for x <- s {x}]
+fun list(v: 't vector): 't list = [:: for x <- v {x}]
 
 fun array(): 't [] = []
-fun array(n: int, x: 't) = [| for i <- 0:n {x} |]
-fun array((m: int, n: int), x: 't) = [| for i <- 0:m for j <- 0:n {x} |]
-fun array((m: int, n: int, l: int), x: 't) = [| for i <- 0:m for j <- 0:n for k <- 0:l {x} |]
-fun array(l: 't list): 't [] = [| for x <- l {x} |]
-fun array(v: 't vector): 't [] = [| for x <- v {x} |]
-fun array(s: string): char [] = [| for x <- s {x} |]
+fun array(n: int, x: 't) = [for i <- 0:n {x}]
+fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
+fun array((m: int, n: int, l: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
+fun array(l: 't list): 't [] = [for x <- l {x}]
+fun array(v: 't vector): 't [] = [for x <- v {x}]
+fun array(s: string): char [] = [for x <- s {x}]
 
 // basically, this is violation of the type system; use with care
 @nothrow fun reinterpret(x: 'from [+]): 'to [+]
@@ -839,9 +839,9 @@ fun array(s: string): char [] = [| for x <- s {x} |]
 }
 
 fun vector(): 't vector = []
-fun vector(l: 't list): 't vector = [<for x <- l {x}>]
-fun vector(a: 't [+]): 't vector = [<for x <- a {x}>]
-fun vector(s: string): char vector = [<for x <- s {x}>]
+fun vector(l: 't list): 't vector = vector [for x <- l {x}]
+fun vector(a: 't [+]): 't vector = vector [for x <- a {x}]
+fun vector(s: string): char vector = vector [for x <- s {x}]
 
 fun size(a: 't vector) = __intrin_size__(a)
 

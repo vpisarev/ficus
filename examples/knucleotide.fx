@@ -32,13 +32,13 @@ fun encrypt_char(c: char) = lut[int(c)]
 
 fun decrypt_key(n: int64, len: int)
 {
-    val chars = [| for i <- 0:len {
+    val chars = [for i <- 0:len {
         match (n >> (len-i-1)*2) & 3L {
             | 0L => 'A'
             | 1L => 'C'
             | 2L => 'G'
             | _ => 'T'
-        } } |]
+        } }]
     string(chars)
 }
 
@@ -64,7 +64,7 @@ fun sort_by_freq(seq: uint8 [], length: int)
 {
     val (total, freq) = frequency(seq, length)
     val sorted = freq.list().sort(fun ((_, n1), (_, n2)) {n1 > n2})
-    "".join([for (wj, nj) <- sorted {f"{decrypt_key(wj, length)} {nj*100./total}\n"}])
+    "".join([::for (wj, nj) <- sorted {f"{decrypt_key(wj, length)} {nj*100./total}\n"}])
 }
 
 fun find_seq(seq: uint8 [], substr: string)
@@ -98,15 +98,15 @@ var all_data = Dynvec.create(0, 0u8)
 while !f.eof() {
     val line = f.readln()
     if line.startswith('>') {break}
-    val converted = [| for c <- line.rstrip() {encrypt_char(c)} |]
+    val converted = [for c <- line.rstrip() {encrypt_char(c)}]
     all_data.push(converted)
 }
 
 val all_data = all_data.data[:all_data.count]
 
-val report = [| @parallel for w <- [| "*", "**", "GGT", "GGTA", "GGTATT", "GGTATTTTAATT", "GGTATTTTAATTTATAGT" |] {
+val report = [ @parallel for w <- [ "*", "**", "GGT", "GGTA", "GGTATT", "GGTATTTTAATT", "GGTATTTTAATTTATAGT" ] {
     if w.startswith("*") { sort_by_freq(all_data, w.length()) }
     else {find_seq(all_data, w)}
-} |]
+}]
 
 for l <- report {println(l)}

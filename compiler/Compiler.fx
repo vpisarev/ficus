@@ -47,7 +47,7 @@ fun get_preamble(mfname: string): Lexer.token_t list {
     if Options.opt.use_preamble {
         val bare_name = Filename.remove_extension(Filename.basename(mfname))
         val (preamble, _) = fold (preamble, found) = ([], false)
-            for (mname, from_import) <- [("Builtins", true), ("Math", true),
+            for (mname, from_import) <- [:: ("Builtins", true), ("Math", true),
                                             ("Array", true), ("List", false),
                                             ("Vector", false), ("Char", false),
                                             ("String", false),
@@ -57,9 +57,9 @@ fun get_preamble(mfname: string): Lexer.token_t list {
             } else if bare_name == mname {
                 (preamble, true)
             } else if from_import {
-                (preamble + [Lexer.FROM, Lexer.IDENT(true, mname), Lexer.IMPORT(false), Lexer.STAR(true), Lexer.SEMICOLON], false)
+                (preamble + [:: Lexer.FROM, Lexer.IDENT(true, mname), Lexer.IMPORT(false), Lexer.STAR(true), Lexer.SEMICOLON], false)
             } else {
-                (preamble + [Lexer.IMPORT(true), Lexer.IDENT(true, mname), Lexer.SEMICOLON], false)
+                (preamble + [:: Lexer.IMPORT(true), Lexer.IDENT(true, mname), Lexer.SEMICOLON], false)
             }
         }
         preamble
@@ -84,7 +84,7 @@ fun find_ficus_dirs(): (string, string list)
     // if 'ficus' is '{/usr|/usr/local|/opt}/bin/ficus'
     val ficus_inst_path = Filename.normalize(Filename.dirname(ficus_app_path),
                             f"lib/ficus-{__ficus_major__}.{__ficus_minor__}")
-    val std_ficus_path = [ Filename.normalize(Filename.dirname(ficus_app_path), "lib"),
+    val std_ficus_path = [:: Filename.normalize(Filename.dirname(ficus_app_path), "lib"),
                            Filename.normalize(ficus_pp_path, "lib"),
                            Filename.normalize(ficus_inst_path, "lib") ]
     val std_ficus_path_len = std_ficus_path.length()
@@ -111,13 +111,13 @@ fun parse_all(fname0: string, ficus_path: string list): bool
     val cwd = Filename.getcwd()
     val fname0 = Filename.normalize(cwd, fname0)
     val dir0 = Filename.dirname(fname0)
-    val inc_dirs0 = if dir0 == cwd { cwd :. } else { dir0 :: cwd :. }
+    val inc_dirs0 = if dir0 == cwd { [:: cwd] } else { [:: dir0, cwd] }
     val inc_dirs0 = inc_dirs0 + Options.opt.include_path
     val inc_dirs0 = inc_dirs0 + ficus_path
-    val inc_dirs0 = [for d <- inc_dirs0 { Filename.normalize(cwd, d) }]
+    val inc_dirs0 = [:: for d <- inc_dirs0 { Filename.normalize(cwd, d) }]
     val name0_id = Ast.get_id(Filename.remove_extension(Filename.basename(fname0)))
     val m_idx = Ast.find_module(name0_id, fname0)
-    var queue = m_idx :.
+    var queue = [:: m_idx]
     var ok = true
     while queue != [] {
         val m_idx = queue.hd()
@@ -129,7 +129,7 @@ fun parse_all(fname0: string, ficus_path: string list): bool
                 // prevent from repeated parsing
                 Ast.all_modules[m_idx].dm_parsed = true
                 val dir1 = Filename.dirname(mfname)
-                val inc_dirs = (if dir1 == dir0 {[]} else {dir1 :.}) + inc_dirs0
+                val inc_dirs = (if dir1 == dir0 {[]} else {[:: dir1]}) + inc_dirs0
                 val preamble = get_preamble(mfname)
                 ok &= Parser.parse(m_idx, preamble, inc_dirs)
                 for dep <- Ast.all_modules[m_idx].dm_deps.rev() {
@@ -156,15 +156,15 @@ type dep_graph_t = (int, int list) list
 fun toposort(graph: dep_graph_t): int list
 {
     //print("before toposort: ")
-    //println([for (i, _) <- graph {(Ast.pp(Ast.get_module_name(i)), i)}])
-    val graph = [|for (_, deps) <- graph {deps}|], nvtx = size(graph)
+    //println([::for (i, _) <- graph {(Ast.pp(Ast.get_module_name(i)), i)}])
+    val graph = [for (_, deps) <- graph {deps}], nvtx = size(graph)
     val processed = array(nvtx, false)
     var result: int list = []
 
     fun dfs(i: int, visited: int list) {
         val deps = graph[i]
         if visited.mem(i) {
-            val vlist = ", ".join([for j <- visited { Ast.pp(Ast.get_module_name(j)) }])
+            val vlist = ", ".join([::for j <- visited { Ast.pp(Ast.get_module_name(j)) }])
             throw Fail(f"error: cyclib dependency between the modules: {vlist}")
         }
         val visited = i :: visited
@@ -208,7 +208,7 @@ fun k_skip_some(kmods: kmodule_t list)
     var ok = ok && Sys.mkdir(build_dir, 0755)
     val obj_ext = if Sys.win32 {".obj"} else {".o"}
 
-    val kmods = [ for km <- kmods {
+    val kmods = [:: for km <- kmods {
         val {km_idx, km_cname, km_top, km_deps, km_pragmas} = km
         val is_cpp = Options.opt.compile_by_cpp || km_pragmas.pragma_cpp
         val ext = if is_cpp { ".cpp" } else { ".c" }
@@ -363,7 +363,7 @@ fun k2c_all(kmods: kmodule_t list)
     val cmods = C_gen_code.gen_ccode_all(kmods)
     pr_verbose(clrmsg(MsgBlue, "C code generated"))
     val cmods = C_post_rename_locals.rename_locals(cmods)
-    val cmods = [for cmod <- cmods {
+    val cmods = [:: for cmod <- cmods {
         val is_cpp = Options.opt.compile_by_cpp || cmod.cmod_pragmas.pragma_cpp
         if is_cpp { C_post_adjust_decls.adjust_decls(cmod) }
         else { cmod }
@@ -395,7 +395,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 } else {
                     " /DNDEBUG /MT " + (if opt_level == 1 {"/O1"} else {"/O2"})
                 }
-            val incdirs = " ".join([for d <- Ast.all_c_inc_dirs.list() {"/I"+d}])
+            val incdirs = " ".join([::for d <- Ast.all_c_inc_dirs.list() {"/I"+d}])
             val cflags = f"/utf-8 /nologo{opt_flags}{omp_flag} {incdirs} /I{runtime_include_path}"
             ("win", "cl", "cl", ".obj", "/c /Fo", "/Fe", "", cflags, "/nologo /F10485760 kernel32.lib advapi32.lib")
         } else {
@@ -441,7 +441,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                     f" -DNDEBUG{stk_overflow}"
                 }
 
-            val incdirs = " ".join([for d <- Ast.all_c_inc_dirs.list() {"-I"+d}])
+            val incdirs = " ".join([::for d <- Ast.all_c_inc_dirs.list() {"-I"+d}])
             val cflags = f"-O{opt_level_str}{ggdb_opt} {cflags} {common_cflags} {incdirs} -I{runtime_include_path}"
             val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"
             (os, c_comp, cpp_comp, ".o", "-c -o ", "-o ", "-l", cflags, clibs)
@@ -455,7 +455,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
     val runtime_pseudo_cmod = C_form.cmodule_t {cmod_name=Ast.noid, cmod_cname=runtime_impl, cmod_ccode=[], cmod_recompile=true,
         cmod_skip=false, cmod_main=false, cmod_pragmas=Ast.pragmas_t {pragma_cpp=false, pragma_clibs=[]}}
     val cmods = runtime_pseudo_cmod :: cmods
-    val results = [| @parallel for
+    val results = [@parallel for
         {cmod_cname, cmod_ccode, cmod_skip, cmod_pragmas={pragma_cpp, pragma_clibs}} <- array(cmods) {
         val output_fname = Filename.basename(cmod_cname)
         val is_runtime = cmod_cname == runtime_impl
@@ -517,9 +517,9 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 (ok_j, false, status_j)
             }
         pr_verbose(f"CC {c_filename}: {status_j}")
-        val clibs = [for (l, _) <- pragma_clibs { l }].rev()
+        val clibs = [:: for (l, _) <- pragma_clibs { l }].rev()
         (is_cpp, recompiled, clibs, ok_j, obj_filename)
-    } |]
+    }]
 
     val fold (any_cpp, any_recompiled, all_clibs, ok, objs) = (false, false, [], ok, [])
         for (is_cpp, is_recompiled, clibs_j, ok_j, obj) <- results {
@@ -539,7 +539,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             if all_clibs == [] { custom_clibs }
             else {
                 custom_clibs + " " +
-                " ".join([for l <- all_clibs.rev() {link_lib_opt + l}])
+                " ".join([::for l <- all_clibs.rev() {link_lib_opt + l}])
             }
         val clibs = clibs + " " + custom_clibs
         pr_verbose(f"Linking the app with flags={clibs}")
@@ -582,7 +582,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
    there are (/usr|...)/lib/ficus-{__ficus_major__}.{__ficus_minor__}/{{runtime, lib}}") }
         val ok = parse_all(fname0, ficus_path)
         if !ok { throw CumulativeParseError }
-        val graph = [for minfo <- Ast.all_modules {
+        val graph = [:: for minfo <- Ast.all_modules {
                         (minfo.dm_idx, minfo.dm_deps)
                     }]
         Ast.all_modules_sorted = toposort(graph).tl().tl()
@@ -592,7 +592,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
                 Ast_pp.pprint_mod(minfo)
             }
         }
-        val modules_used = ", ".join([for m_idx <- Ast.all_modules_sorted { Ast.pp(Ast.get_module_name(m_idx)) }])
+        val modules_used = ", ".join([::for m_idx <- Ast.all_modules_sorted { Ast.pp(Ast.get_module_name(m_idx)) }])
         val parsing_complete = clrmsg(MsgBlue, "Parsing complete")
         pr_verbose(f"{parsing_complete}. Modules used: {modules_used}")
         val ok = typecheck_all(Ast.all_modules_sorted)

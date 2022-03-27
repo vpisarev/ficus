@@ -87,7 +87,7 @@ fun pprint_to_string_list(margin: int, ~default_indent: int=4): t
         val strsize = s.length(), bufsz = bufsize
         while bufsz + strsize > capacity {
             capacity *= 2
-            curr = [| \curr, \curr |]
+            curr = [ \curr, \curr ]
         }
         for c@i <- s { curr[bufsz+i] = c }
         bufsize = bufsz + strsize

@@ -25,7 +25,7 @@
         For other complex types a unique name (signature) is generated and is used
         to reference the type and name the corresponding C structure.
         For example, KTypList(KTypInt) becomes _fx_Li_t,
-        KTypTuple(KTypFloat :: KTypFloat :: KTypFloat :.) becomes _fx_Ta3f etc.
+        KTypTuple([:: KTypFloat, KTypFloat, KTypFloat]) becomes _fx_Ta3f etc.
         See k_mangle module.
     * the memory is now managed manually.
       Reference counting is involved when copying and releasing smart pointers to actual data
@@ -50,7 +50,7 @@
           are passed as 'const' pointers, e.g.
           int _fx_print_vec(fx_ctx_t* fx_ctx, const _fx_v3f_t* mytup) { ... }
         * Static data types may have fields that are represented by dynamic data types.
-          For example, KTypTuple(KTypBool :: KTypList(KTypInt) :: KTypList(KTypInt) :.).
+          For example, KTypTuple([:: KTypBool, KTypList(KTypInt), KTypList(KTypInt)]).
     * an expression does not represent any element of the code anymore.
       There are now expressions and statements, since it's C/C++.
     * the complex (nested) expressions are re-introduced.
@@ -338,7 +338,7 @@ fun init_all_idcs()
     freeze_ids = true
     freeze_idks = true
     freeze_idcs = false
-    all_idcs = [| for k <- all_idks {Dynvec.create(k.count, CNone)} |]
+    all_idcs = [for k <- all_idks {Dynvec.create(k.count, CNone)}]
 }
 
 fun get_cexp_ctx(e: cexp_t): cctx_t
@@ -431,14 +431,14 @@ fun get_cinfo_typ(info: cinfo_t, i: id_t, loc: loc_t)
     | CNone => CTypAny
     | CVal ({cv_typ}) => cv_typ
     | CFun (ref {cf_args, cf_rt}) =>
-        CTypFunRawPtr([for (_, t, _) <- cf_args {t}], cf_rt)
+        CTypFunRawPtr([::for (_, t, _) <- cf_args {t}], cf_rt)
     | CTyp (ref {ct_typ}) => ct_typ
     | CExn _ => CTypExn
     | CInterface (ref {ci_name}) => CTypName(ci_name)
     | CMacro (ref {cm_args}) =>
         match cm_args {
         | [] => CTypAny
-        | _ => CTypFunRawPtr([for a <- cm_args {CTypAny}], CTypAny)
+        | _ => CTypFunRawPtr([::for a <- cm_args {CTypAny}], CTypAny)
         }
     | CLabel _ => CTypLabel
     | CEnum _ => CTypCInt
@@ -509,7 +509,7 @@ fun filter_out_nops(code: ccode_t) =
 fun ccode2stmt(code: ccode_t, loc: loc_t) =
     match filter_out_nops(code) {
     | [] => CStmtNop(loc)
-    | s :. => s
+    | [:: s] => s
     | _ =>
         val final_loc = get_ccode_loc(code, loc)
         CStmtBlock(code, final_loc)
@@ -518,7 +518,7 @@ fun ccode2stmt(code: ccode_t, loc: loc_t) =
 fun rccode2stmt(code: ccode_t, loc: loc_t) =
     match filter_out_nops(code) {
     | [] => CStmtNop(loc)
-    | s :. => s
+    | [:: s] => s
     | _ => val final_loc = get_ccode_loc(code, loc)
            CStmtBlock(code.rev(), final_loc)
     }
@@ -527,7 +527,7 @@ fun stmt2ccode(s: cstmt_t) =
     match s {
     | CStmtNop _ => []
     | CStmtBlock (slist, _) => slist
-    | _ => s :.
+    | _ => [:: s]
     }
 
 fun cexp2stmt(e: cexp_t) =
@@ -596,10 +596,10 @@ fun walk_ctyp(t: ctyp_t, callb: c_callb_t)
     | CTypUniChar | CTypCSmartPtr | CTypString => t
     | CTypStruct (n_opt, selems) =>
         CTypStruct(walk_id_opt_(n_opt),
-            [for (n, t) <- selems { (walk_id_(n), walk_ctyp_(t)) }])
+            [:: for (n, t) <- selems { (walk_id_(n), walk_ctyp_(t)) }])
     | CTypUnion (n_opt, uelems) =>
         CTypUnion(walk_id_opt_(n_opt),
-            [for (n, t) <- uelems { (walk_id_(n), walk_ctyp_(t)) }])
+            [:: for (n, t) <- uelems { (walk_id_(n), walk_ctyp_(t)) }])
     | CTypFunRawPtr (args, rt) => CTypFunRawPtr(args.map(walk_ctyp_), walk_ctyp_(rt))
     | CTypArray (d, et) => CTypArray(d, walk_ctyp_(et))
     | CTypVector (et) => CTypVector(walk_ctyp_(et))
@@ -670,13 +670,13 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
     | CStmtWhile (e, body, l) => CStmtWhile(walk_cexp_(e), walk_cstmt_(body), l)
     | CStmtDoWhile (body, e, l) => CStmtDoWhile(walk_cstmt_(body), walk_cexp_(e), l)
     | CStmtSwitch (e, cases, l) =>
-        CStmtSwitch(walk_cexp_(e), [for (ll, sl) <- cases {(walk_cel_(ll), walk_csl_(sl))}], l)
+        CStmtSwitch(walk_cexp_(e), [:: for (ll, sl) <- cases {(walk_cel_(ll), walk_csl_(sl))}], l)
     | CDefVal (t, n, e_opt, l) => CDefVal(walk_ctyp_(t), walk_id_(n), walk_cexp_opt_(e_opt), l)
     | CDefFun cf =>
         val {cf_name, cf_args, cf_rt, cf_body} = *cf
         *cf = cf->{
             cf_name=walk_id_(cf_name),
-            cf_args=[for (a, t, flags) <- cf_args {
+            cf_args=[:: for (a, t, flags) <- cf_args {
                         (walk_id_(a), walk_ctyp_(t), flags)
                     }],
             cf_rt=walk_ctyp_(cf_rt),
@@ -693,7 +693,7 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
         val {cenum_name, cenum_members} = *ce
         *ce = ce->{
             cenum_name=walk_id_(cenum_name),
-            cenum_members=[for (n, e_opt) <- cenum_members {
+            cenum_members=[:: for (n, e_opt) <- cenum_members {
                                 (walk_id_(n), walk_cexp_opt_(e_opt))
                             }]
         }
@@ -703,7 +703,7 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
         *ci = ci->{
             ci_name=walk_id_(ci_name), ci_base=walk_id_(ci_base),
             ci_id=walk_id_(ci_id), ci_vtbl=walk_id_(ci_vtbl),
-            ci_all_methods=[for (f, ctyp) <- ci_all_methods {
+            ci_all_methods=[:: for (f, ctyp) <- ci_all_methods {
                                 (walk_id_(f), walk_ctyp_(ctyp))
                             }]
         }
@@ -715,7 +715,7 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
         s
     | CMacroUndef (n, l) => CMacroUndef(walk_id_(n), l)
     | CMacroIf (cs_l, else_l, l) =>
-        CMacroIf([for (c, sl) <- cs_l {
+        CMacroIf([::for (c, sl) <- cs_l {
                 (walk_cexp_(c), walk_csl_(sl))
             }], walk_csl_(else_l), l)
     | CMacroInclude _ => s
@@ -949,8 +949,8 @@ fun make_ptr(t: ctyp_t) =
 
 fun make_const_ptr(t: ctyp_t) =
     match t {
-    | CTypAny => CTypRawPtr(CTypConst :., CTypVoid)
-    | _ => CTypRawPtr(CTypConst :., t)
+    | CTypAny => CTypRawPtr([:: CTypConst], CTypVoid)
+    | _ => CTypRawPtr([:: CTypConst], t)
     }
 
 val std_CTypVoidPtr = make_ptr(CTypVoid)

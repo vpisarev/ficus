@@ -61,7 +61,7 @@ for imgname@i <- images {
             swapRB=false, crop=false)
     val probs = net.forward(inp)
     val (_, _, _, n) = size(probs)
-    val tprobs = [|for i <- 0:n {(probs[0, 0, 0, i], i)}|]
+    val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
     sort(tprobs, (>))
     for j <- 0:5 {
         val lbl = if labels != [] {labels[tprobs[j].1]} else {f"class_{tprobs[j].1}"}
@@ -92,7 +92,7 @@ for imgname@i <- images {
             swapRB=false, crop=false)
     println(inp.size())
     val inp = DL.Ast.make_tensor(inp)
-    val outputs = DL.Run.inference(model, [|("", inp)|])
+    val outputs = DL.Run.inference(model, [("", inp)])
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}")
     }

@@ -27,7 +27,7 @@ fun check (t: tree): int {
 
 val min_depth = 4
 val max_depth = match Sys.arguments() {
-    | n_str :. => n_str.to_int_or(10)
+    | [:: n_str] => n_str.to_int_or(10)
     | _ => 20
     }
 val max_depth = max(min_depth + 2, max_depth)
@@ -38,7 +38,7 @@ println(f"stretch tree of depth {stretch_depth}\t check: {c}")
 
 val long_lived_tree = make(max_depth)
 
-val report = [| @parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
+val report = [ @parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
 {
     val d = min_depth + i * 2
     val niter = 1 << (max_depth - d + min_depth)
@@ -46,7 +46,7 @@ val report = [| @parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
         c + check(make(d))
     }
     f"{niter}\t trees of depth {d}\t check: {c}"
-} |]
+}]
 
 for l <- report {println(l)}
 

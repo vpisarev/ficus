@@ -30,7 +30,7 @@ fun optimize_gemm(kmods: kmodule_t list)
     fun m_pr_transposed(target: matrix_projection) =
         target.{is_transposed = !target.is_transposed}
 
-    fun m_pr_sliced(target: matrix_projection, row_range: (atom_t, atom_t, atom_t), 
+    fun m_pr_sliced(target: matrix_projection, row_range: (atom_t, atom_t, atom_t),
         col_range: (atom_t, atom_t, atom_t), ctx: kctx_t, code: kcode_t): (matrix_projection, kcode_t){
         //TODO: These functions must check if new range limit is inside of old range.
         //Check it in compile-time, if it's certain number. Or create runtime index check otherwise.
@@ -38,7 +38,7 @@ fun optimize_gemm(kmods: kmodule_t list)
         //
         //val mothermat = random(rng, (10,10), -2., 2.)
         //val A = mothermat[2:8,:]
-        //val B = A[0:7,:] // There must be error 
+        //val B = A[0:7,:] // There must be error
         //val D = B*C
         //
         //The best optimization with gemm will avoid B matrix and corresponding id check:
@@ -46,21 +46,21 @@ fun optimize_gemm(kmods: kmodule_t list)
         //So, code will work, when it haven't to.
         //
         //The perfect solution is to track intermediate matrixes(B there) and insert index assertions, instead
-        //of this matrix if it erased. 
-        
-        fun constriction_bop(bop: binary_t, constriction: atom_t, sec_operand: atom_t, ctx: kctx_t, code: kcode_t): 
+        //of this matrix if it erased.
+
+        fun constriction_bop(bop: binary_t, constriction: atom_t, sec_operand: atom_t, ctx: kctx_t, code: kcode_t):
                                                                                 (atom_t, kcode_t) =
             match sec_operand {
             //It's obvious, that in bop=OpAdd case (constr + Nil) = constr;
             //But, luckily, we use bop=OpMul, only for multiplying constr on delta.
             //delta = Nil means delta = 1, so (constr * Nil) = constr too.
             |AtomLit(KLitNil _) => (constriction,code)
-            |_ => 
+            |_ =>
                 val (_, loc) = ctx
                 val constriction_type = get_atom_ktyp(constriction, loc)
                 match K_cfold_dealias.cfold_bop(bop, constriction, sec_operand, constriction_type, loc){
                 |Some(KExpAtom(at,_)) => (at, code)
-                |_ => 
+                |_ =>
                     val temp_bop_name = match (constriction, sec_operand) {
                         |(AtomId(nam1), _) => nam1
                         |(_, AtomId(nam2)) => nam2
@@ -72,12 +72,12 @@ fun optimize_gemm(kmods: kmodule_t list)
                     (AtomId(new_constr_name), code)
                 }
             }
-        
+
         fun static_check(cmp: cmpop_t, op1: atom_t, op2: atom_t, ctx: kctx_t){
             match (op1, op2){
-            |(AtomLit(KLitNil _), _)  
+            |(AtomLit(KLitNil _), _)
             |(_, AtomLit(KLitNil _)) => {}
-            |(AtomLit(_), AtomLit(_)) => 
+            |(AtomLit(_), AtomLit(_)) =>
                 val (_, loc) = ctx
                 match K_cfold_dealias.cfold_bop(OpCmp(cmp), op1, op2, KTypBool, loc){
                 |Some(KExpAtom(AtomLit(KLitBool(false)), _)) => throw compile_err(loc, f"Nested subarray limits are inconsistent")
@@ -90,28 +90,28 @@ fun optimize_gemm(kmods: kmodule_t list)
         fun juxtapose_idx(base_range: (atom_t, atom_t, atom_t), constriction: atom_t, is_end: bool,
                                                                      code: kcode_t): (atom_t, kcode_t){
             static_check(CmpLE, AtomLit(KLitInt(0L)), constriction, ctx)
-            val (base, end, delta) = base_range 
+            val (base, end, delta) = base_range
             match (constriction, base, delta) {
             | (AtomLit(KLitNil _), _, _) => (if is_end {end} else {base}, code)
             | (_, AtomLit(KLitNil _), AtomLit(KLitNil _)) => (constriction, code)
             | _ =>
                 val (multiplied_constr, code) = constriction_bop(OpMul, constriction, delta, ctx, code)
                 val (res,code) = constriction_bop(OpAdd, multiplied_constr, base, ctx, code)
-                //There we check, that new range limit is inside of old range. It works only for 
-                //literal cases. Variable indexes will be checked only on run of gemm function(it's 
+                //There we check, that new range limit is inside of old range. It works only for
+                //literal cases. Variable indexes will be checked only on run of gemm function(it's
                 //weak check, but for needs of optimization, we are forgetting about dynamic checks.
-                static_check(if is_end {CmpLT} else {CmpLE}, base, res, ctx) 
+                static_check(if is_end {CmpLT} else {CmpLE}, base, res, ctx)
                 static_check(if is_end {CmpLE} else {CmpLT}, res,  end, ctx)
                 (res,code)
             }
         }
 
         fun juxtapose_delta(base_range: (atom_t, atom_t, atom_t), ndelt: atom_t, code: kcode_t): (atom_t, kcode_t){
-            static_check(CmpLE, AtomLit(KLitInt(0L)), ndelt, ctx) 
-            val (_, _, delta) = base_range 
+            static_check(CmpLE, AtomLit(KLitInt(0L)), ndelt, ctx)
+            val (_, _, delta) = base_range
             match (ndelt, delta) {
             | (AtomLit(KLitNil _), _) => (delta, code)
-            | (_, AtomLit(KLitNil _)) => (ndelt, code) 
+            | (_, AtomLit(KLitNil _)) => (ndelt, code)
             | _ => constriction_bop(OpMul, ndelt, delta, ctx, code)
             }
         }
@@ -131,7 +131,7 @@ fun optimize_gemm(kmods: kmodule_t list)
         (new_target, code)
     }
 
-    fun m_pr_composition(target: matrix_projection, applied: matrix_projection, 
+    fun m_pr_composition(target: matrix_projection, applied: matrix_projection,
                         ctx: kctx_t, code: kcode_t): (matrix_projection, kcode_t) {
         val {row_range, col_range, is_transposed} = applied
         val target = if is_transposed { m_pr_transposed(target) } else {target}
@@ -143,7 +143,7 @@ fun optimize_gemm(kmods: kmodule_t list)
         val (cs1,ce1,cd1) = m_pr1.col_range
         val (rs2,re2,rd2) = m_pr2.row_range
         val (cs2,ce2,cd2) = m_pr2.col_range
-        [AtomId(m_pr1.original_matrix), AtomLit(KLitBool(m_pr1.is_transposed)), rs1, re1, rd1, cs1, ce1, cd1,
+        [:: AtomId(m_pr1.original_matrix), AtomLit(KLitBool(m_pr1.is_transposed)), rs1, re1, rd1, cs1, ce1, cd1,
          AtomId(m_pr2.original_matrix), AtomLit(KLitBool(m_pr2.is_transposed)), rs2, re2, rd2, cs2, ce2, cd2]
     }
 
@@ -152,14 +152,14 @@ fun optimize_gemm(kmods: kmodule_t list)
         |AtomId(m1)::AtomLit(KLitBool(t1))::rs1::re1::rd1::cs1::ce1::cd1::
          AtomId(m2)::AtomLit(KLitBool(t2))::rs2::re2::rd2::cs2::ce2::cd2::[] =>
             val m_pr1 = matrix_projection {original_matrix = m1, is_transposed = t1,
-                                            row_range = (rs1, re1, rd1), 
+                                            row_range = (rs1, re1, rd1),
                                             col_range = (cs1, ce1, cd1)}
             val m_pr2 = matrix_projection {original_matrix = m2, is_transposed = t2,
-                                            row_range = (rs2, re2, rd2), 
+                                            row_range = (rs2, re2, rd2),
                                             col_range = (cs2, ce2, cd2)}
             (m_pr1, m_pr2)
         |_=> throw compile_err(loc, f"IntrinGEMM has wrong arguments")
-        } 
+        }
     }
 
     var involved_matrixes = empty_id_hashset(256)
@@ -168,7 +168,7 @@ fun optimize_gemm(kmods: kmodule_t list)
 
         involved_matrixes.clear()
         var matrix_dependencies = Hashmap.empty(1024, noid, noid)
-        
+
         fun fold_matrdep_atom_(a: atom_t, loc: loc_t, callb: k_fold_callb_t) {}
         fun fold_matrdep_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}
         fun fold_matrdep_kexp_(e: kexp_t, callb: k_fold_callb_t) {
@@ -179,7 +179,7 @@ fun optimize_gemm(kmods: kmodule_t list)
                     | KExpAtom (AtomId(a), (_, loc2)) =>
                         matrix_dependencies.add(n,a)
                     | KExpCall (fname, AtomId(matr)::[], (_, loc)) when
-                            !is_mutable(matr,get_idk_loc(matr, noloc)) && 
+                            !is_mutable(matr,get_idk_loc(matr, noloc)) &&
                             pp(fname) == pp(fname_op_apos()) => //[TODO] Also check somehow original module(instead of module of instance!). We need "Builtins"
                         match get_idk_ktyp(matr, get_idk_loc(matr, noloc)){
                         |KTypArray(2,KTypFloat bits) when (bits == 32 || bits == 64) =>
@@ -187,7 +187,7 @@ fun optimize_gemm(kmods: kmodule_t list)
                         | _ => fold_kexp(e, callb)
                         }
                     | KExpAt (AtomId(matr),_,_, DomainRange(_,_,_)::DomainRange(_,_,_)::[], (_, loc) as ctx) when
-                            !is_mutable(matr,get_idk_loc(matr, noloc)) => 
+                            !is_mutable(matr,get_idk_loc(matr, noloc)) =>
                         match (get_idk_ktyp(matr, get_idk_loc(matr, noloc))){
                         |(KTypArray(2,KTypFloat bits)) when (bits == 32 || bits == 64) =>
                              matrix_dependencies.add(n, matr)
@@ -204,7 +204,7 @@ fun optimize_gemm(kmods: kmodule_t list)
                     pp(fname) == pp(fname_op_mul()) =>//[TODO] Also check somehow original module(instead of module of instance!). We need "Builtins"
                 val (matr1_t,matr2_t) = (get_idk_ktyp(matr1, get_idk_loc(matr1, noloc)),get_idk_ktyp(matr2, get_idk_loc(matr2, noloc)))
                 match (matr1_t,matr2_t){
-                |(KTypArray(2,KTypFloat bits1), KTypArray(2,KTypFloat bits2)) when 
+                |(KTypArray(2,KTypFloat bits1), KTypArray(2,KTypFloat bits2)) when
                         bits1 == bits2 && (bits1 == 32 || bits1 == 64) =>
                     involved_matrixes.add(matr1)
                     involved_matrixes.add(matr2)
@@ -222,8 +222,8 @@ fun optimize_gemm(kmods: kmodule_t list)
         }
 
         for e <- ktop { fold_matrdep_kexp_(e, matrdep_callb) }
-        for matr <- involved_matrixes.list() { 
-            fun collect_dep_nodes(m: id_t) = 
+        for matr <- involved_matrixes.list() {
+            fun collect_dep_nodes(m: id_t) =
                 match matrix_dependencies.find_opt(m){
                 |Some(m2) => involved_matrixes.add(m); collect_dep_nodes(m2)
                 |None => involved_matrixes.add(m)
@@ -274,9 +274,9 @@ fun optimize_gemm(kmods: kmodule_t list)
             };e
         | KExpIntrin (IntrinGEMM, args, (t, loc) as ctx) =>
             val (m_pr1, m_pr2) = arglist2m_prs(args, loc)
-            fun process_matrix_info(m_pr: matrix_projection) = 
+            fun process_matrix_info(m_pr: matrix_projection) =
                 match mat_proj_map.find_opt(m_pr.original_matrix){
-                | Some(tar_m) => 
+                | Some(tar_m) =>
                     val (m_pr, new_extra_decls) = m_pr_composition(m_pr, tar_m, ctx, extra_decls)
                     extra_decls = new_extra_decls
                     m_pr
@@ -308,11 +308,11 @@ fun optimize_gemm(kmods: kmodule_t list)
         kcb_ktyp=Some(opg_ktyp_),
         kcb_kexp=Some(opg_kexp_)
     }
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_idx, km_top=top_code} = km
         curr_m_idx = km_idx
         form_involved_matrixes(top_code)
-        val top_code = [for e <- top_code { opg_kexp_(e, cfd_callb) } ]
+        val top_code = [:: for e <- top_code { opg_kexp_(e, cfd_callb) } ]
         km.{km_top=top_code}
     }]
 }

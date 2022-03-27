@@ -1662,7 +1662,7 @@ fun calcHist(src: 't [+], hsize: int, ~mask: 'm [+],
             ~uniform: bool=true): float [] =
     (reinterpret(calcHist_(1, anyarray(src), anyarray(mask),
         (channel, 0, 0, 0, 0), (hsize, 0, 0, 0, 0),
-        [|ranges|], uniform)) : float [])
+        [ranges], uniform)) : float [])
 
 fun calcHist(src: ('t*2) [+], hsize: intx2, ~mask: 'm [+],
             ~channels: intx2 = (0, 1), ~ranges: float [][]=[],
@@ -1710,7 +1710,7 @@ fun calcBackProject(src: 't [,], hist: float [],
                     ~scale: double=1, ~uniform: bool=true): float [,] =
     (reinterpret(calcBackProject_(anyarray(src), anyarray(hist),
         (channel, 0, 0, 0, 0), (hsize, 0, 0, 0, 0),
-        [|ranges|], uniform)) : float [])
+        [ranges], uniform)) : float [])
 
 fun calcBackProject(src: 't [,], hist: float [,],
                     ~channels: intx2=(0, 1), ~ranges: float [][]=[],
@@ -3894,13 +3894,13 @@ fun readNet(model: string, ~config: string="", ~framework: string=""): Net
 fun blobFromImages(images: 't[,][], ~scaleFactor: double=1., ~size: intx2=(0, 0),
                     ~mean: doublex3=(0., 0., 0.), ~swapRB: bool=false,
                     ~crop: bool=false): float [,,,] =
-    blobFromImages_([| for i <- images {anyarray(i)} |],
+    blobFromImages_([for i <- images {anyarray(i)}],
                 scaleFactor, size, mean, swapRB, crop)
 
 fun blobFromImage(image: 't[,], ~scaleFactor: double=1., ~size: intx2=(0, 0),
                     ~mean: doublex3=(0., 0., 0.), ~swapRB: bool=false,
                     ~crop: bool=false): float [,,,] =
-    blobFromImages_([|anyarray(image)|], scaleFactor, size,
+    blobFromImages_([anyarray(image)], scaleFactor, size,
                    mean, swapRB, crop)
 
 @ccode {

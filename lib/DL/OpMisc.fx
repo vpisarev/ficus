@@ -52,7 +52,7 @@ fun run_softmax(inp: 't [], inp_shape: Ast.dlshape_t, out: 't [])
     @parallel for i <- 0:N {
         val ofs = i*C
         val fold maxval = inp[ofs] for j <- 1:C {max(maxval, inp[ofs+j])}
-        val tab = [| for j <- 0:C {exp(inp[ofs+j] - maxval)} |]
+        val tab = [for j <- 0:C {exp(inp[ofs+j] - maxval)}]
         val s = (1/sum(tab) :> 't)
         for j <- 0:C {out[ofs+j] = tab[j]*s}
     }

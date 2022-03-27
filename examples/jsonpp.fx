@@ -7,9 +7,9 @@
 import Json
 
 val rng = RNG(123u64)
-val s_list_list: Json.t list = [for i <- 0:10 {
+val s_list_list: Json.t list = [:: for i <- 0:10 {
     val n = rng.uniform(0, 99)
-    Json.Commented(f"#{i}", Json.Seq([for j <- 0:n {
+    Json.Commented(f"#{i}", Json.Seq([::for j <- 0:n {
         Json.Int(rng.uniform(0, 99999) :> int64)}]))
     }]
 

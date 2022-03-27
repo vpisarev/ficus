@@ -58,15 +58,15 @@ fun from_list(l: 't list): 't Deque.t = t {head=l, tail=[]}
 fun list(d: 't Deque.t): 't list = d.head + d.tail.rev()
 fun array(d: 't Deque.t): 't list
 {
-    val h = [| for x <- d.head {x} |]
-    val t = [| for x <- d.tail.rev() {x} |]
-    [| \h, \t |]
+    val h = [for x <- d.head {x}]
+    val t = [for x <- d.tail.rev() {x}]
+    [ \h, \t ]
 }
 
 fun map(d: 't Deque.t, f: 't -> 'rt): 'rt t
 {
-    val new_head = [for x <- d.head {f(x)}]
-    val new_tail = [for x <- d.tail {f(x)}]
+    val new_head = [:: for x <- d.head {f(x)}]
+    val new_tail = [:: for x <- d.tail {f(x)}]
     t {head=new_head, tail=new_tail}
 }
 

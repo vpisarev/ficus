@@ -162,7 +162,7 @@ fun sort_freevars(fvars: id_hashset_t){
             (id2str_(fv,true), fv) :: fvars_to_sort
         }, [])
     val fvar_pairs_sorted = fvar_pairs_to_sort.sort(fun ((a, fv_a), (b, fv_b)) { a < b || (a==b && fv_a.j < fv_b.j) })
-    [for (_, fv) <- fvar_pairs_sorted {fv} ]
+    [:: for (_, fv) <- fvar_pairs_sorted {fv} ]
 }
 
 fun mutable_freevars2refs(kmods: kmodule_t list) {
@@ -276,9 +276,9 @@ fun mutable_freevars2refs(kmods: kmodule_t list) {
         kcb_kexp=Some(walk_kexp_n_eliminate)
     }
 
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_top} = km
-        val curr_top_code = [for e <- km_top {walk_kexp_n_eliminate(e, walk_n_eliminate_callb)}]
+        val curr_top_code = [:: for e <- km_top {walk_kexp_n_eliminate(e, walk_n_eliminate_callb)}]
         km.{km_top=curr_top_code}
     }]
 }

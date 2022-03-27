@@ -4,10 +4,11 @@
 */
 
 // operations on arrays
-fun mkrange(n: int) = [| for i <- 0:n {i} |]
-fun mkrange(a: int, b: int) = [| for i <- a:b {i} |]
-fun mkrange(a: int, b: int, delta: int) = [| for i <- a:b:delta {i} |]
+fun mkrange(n: int) = [for i <- 0:n {i}]
+fun mkrange(a: int, b: int) = [for i <- a:b {i}]
+fun mkrange(a: int, b: int, delta: int) = [for i <- a:b:delta {i}]
 
+fun length(a: 't []) = __intrin_size__(a)
 fun size(a: 't []) = __intrin_size__(a)
 fun size(a: 't [,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
 fun size(a: 't [,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
@@ -25,54 +26,64 @@ fun total(a: 't []) = size(a)
     return false;
 }
 
-fun copy(a: 't [+]) = [| for x <- a {x} |]
+fun copy(a: 't [+]) = [for x <- a {x}]
 
-fun __negate__(a: 't [+]) = [| for x <- a {-x} |]
+fun __negate__(a: 't [+]) = [for x <- a {-x}]
 
-fun map(arr: 'a [+], f: 'a -> 'b) = [| for x <- arr {f(x)} |]
+fun map(arr: 'a [+], f: 'a -> 'b) = [for x <- arr {f(x)}]
+fun assoc_opt(arr: ('a, 'b) [], key: 'a): 'b? =
+    match find_opt(for (a, b) <- arr {a == key}) {
+    | Some((a, b)) => Some(b)
+    | _ => None
+    }
+fun assoc(arr: ('a, 'b) [], key: 'a): 'b =
+    match find_opt(for (a, b) <- arr {a == key}) {
+    | Some((a, b)) => b
+    | _ => throw NotFoundError
+    }
 
 operator .+ (a: 'ta [+], b: 'tb) =
-    [| for x <- a {x .+ b} |]
+    [for x <- a {x .+ b}]
 operator .- (a: 'ta [+], b: 'tb) =
-    [| for x <- a {x .- b} |]
+    [for x <- a {x .- b}]
 operator .* (a: 'ta [+], b: 'tb) =
-    [| for x <- a {x .* b} |]
+    [for x <- a {x .* b}]
 operator ./ (a: 'ta [+], b: 'tb) =
-    [| for x <- a {x ./ b} |]
+    [for x <- a {x ./ b}]
 operator .% (a: 'ta [+], b: 'tb) =
-    [| for x <- a {x .% b} |]
+    [for x <- a {x .% b}]
 operator .** (a: 'ta [+], b: 'tb) =
-    [| for x <- a {x .** b} |]
+    [for x <- a {x .** b}]
 
 operator .+ (a: 'ta, b: 'tb [+]) =
-    [| for y <- b {a .+ y} |]
+    [for y <- b {a .+ y}]
 operator .- (a: 'ta, b: 'tb [+]) =
-    [| for y <- b {a .- y} |]
+    [for y <- b {a .- y}]
 operator .* (a: 'ta, b: 'tb [+]) =
-    [| for y <- b {a .* y} |]
+    [for y <- b {a .* y}]
 operator ./ (a: 'ta, b: 'tb [+]) =
-    [| for y <- b {a ./ y} |]
+    [for y <- b {a ./ y}]
 operator .% (a: 'ta, b: 'tb [+]) =
-    [| for y <- b {a .% y} |]
+    [for y <- b {a .% y}]
 operator .** (a: 'ta, b: 'tb [+]) =
-    [| for y <- b {a .** y} |]
+    [for y <- b {a .** y}]
 
 operator + (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x + y} |]
+    [for x <- a, y <- b {x + y}]
 operator - (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x - y} |]
+    [for x <- a, y <- b {x - y}]
 operator .+ (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x + y} |]
+    [for x <- a, y <- b {x + y}]
 operator .- (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x - y} |]
+    [for x <- a, y <- b {x - y}]
 operator .* (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x .* y} |]
+    [for x <- a, y <- b {x .* y}]
 operator ./ (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x ./ y} |]
+    [for x <- a, y <- b {x ./ y}]
 operator .% (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x .% y} |]
+    [for x <- a, y <- b {x .% y}]
 operator .** (a: 'ta [+], b: 'tb [+]) =
-    [| for x <- a, y <- b {x .** y} |]
+    [for x <- a, y <- b {x .** y}]
 
 operator += (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x + b} }
 operator -= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x - b} }
@@ -87,24 +98,24 @@ operator ./= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x / y}
 operator .%= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x % y} }
 
 operator & (a: 't, b: 't [+]) =
-    [| for y <- b {a & y} |]
+    [for y <- b {a & y}]
 operator | (a: 't, b: 't [+]) =
-    [| for y <- b {a | y} |]
+    [for y <- b {a | y}]
 operator ^ (a: 't, b: 't [+]) =
-    [| for y <- b {a ^ y} |]
+    [for y <- b {a ^ y}]
 operator & (a: 't [+], b: 't) =
-    [| for x <- a {x & b} |]
+    [for x <- a {x & b}]
 operator | (a: 't [+], b: 't) =
-    [| for x <- a {x | b} |]
+    [for x <- a {x | b}]
 operator ^ (a: 't [+], b: 't) =
-    [| for x <- a {x ^ b} |]
+    [for x <- a {x ^ b}]
 
 operator & (a: 't [+], b: 't [+]) =
-    [| for x <- a, y <- b {x & y} |]
+    [for x <- a, y <- b {x & y}]
 operator | (a: 't [+], b: 't [+]) =
-    [| for x <- a, y <- b {x | y} |]
+    [for x <- a, y <- b {x | y}]
 operator ^ (a: 't [+], b: 't [+]) =
-    [| for x <- a, y <- b {x ^ y} |]
+    [for x <- a, y <- b {x ^ y}]
 
 operator &= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x & b} }
 operator |= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x | b} }
@@ -115,19 +126,19 @@ operator |= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x | y} 
 operator ^= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x ^ y} }
 
 operator .<=> (a: 't [+], b: 't [+]): int [+] =
-    [| for x <- a, y <- b {x <=> y} |]
+    [for x <- a, y <- b {x <=> y}]
 operator .== (a: 't [+], b: 't [+]): bool [+] =
-    [| for x <- a, y <- b {x == y} |]
+    [for x <- a, y <- b {x == y}]
 operator .!= (a: 't [+], b: 't [+]): bool [+] =
-    [| for x <- a, y <- b {!(x == y)} |]
+    [for x <- a, y <- b {!(x == y)}]
 operator .< (a: 't [+], b: 't [+]) =
-    [| for x <- a, y <- b {x < y} |]
+    [for x <- a, y <- b {x < y}]
 operator .<= (a: 't [+], b: 't [+]): bool [+] =
-    [| for x <- a, y <- b {!(y < x)} |]
+    [for x <- a, y <- b {!(y < x)}]
 operator .> (a: 't [+], b: 't [+]): bool [+] =
-    [| for x <- a, y <- b {y < x} |]
+    [for x <- a, y <- b {y < x}]
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
-    [| for x <- a, y <- b {!(x < y)} |]
+    [for x <- a, y <- b {!(x < y)}]
 
 fun sum(a: 't [+]) =
     fold s = ((0 :> 't) :> double) for aj <- a {s + aj}
@@ -161,13 +172,13 @@ fun normL2(a: 't [+], b: 't [+]) =
 operator ' (a: 't [,])
 {
     val (m, n) = size(a)
-    [| for j <- 0:n for i <- 0:m {a[i, j]} |]
+    [for j <- 0:n for i <- 0:m {a[i, j]}]
 }
 
 operator ' (a: 't [])
 {
     val n = size(a)
-    [| for j <- 0:n for i <- 0:1 {a[j]} |]
+    [for j <- 0:n for i <- 0:1 {a[j]}]
 }
 
 // matrix product: not very efficient and is put here for now just as a placeholder
@@ -206,14 +217,14 @@ operator *= (a: 't [,], b: 't [,]) {
 fun row2matrix(a: 't [])
 {
     val n = size(a)
-    [| for i <- 0:1 for j <- 0:n {a[j]} |]
+    [for i <- 0:1 for j <- 0:n {a[j]}]
 }
 
 operator * (a: 't [], b: 't [,]) = row2matrix(a)*b
 operator * (a: 't [,], b: 't []) = a*row2matrix(b)
 
-operator * (a: 't [+], alpha: 't) = [| for x <- a {x*alpha} |]
-operator * (alpha: 't, a: 't [+]) = [| for x <- a {x*alpha} |]
+operator * (a: 't [+], alpha: 't) = [for x <- a {x*alpha}]
+operator * (alpha: 't, a: 't [+]) = [for x <- a {x*alpha}]
 
 fun diag(d: 't[])
 {
@@ -233,17 +244,17 @@ fun diag(n: int, d: 't)
 }
 
 fun random(rng: RNG, size: int, a: 't, b: 't) =
-    [| for i <- 0:size {rng.uniform(a, b)} |]
+    [for i <- 0:size {rng.uniform(a, b)}]
 
 fun random(rng: RNG, size: (int, int), a: 't, b: 't) =
-    [| for i <- 0:size.0 for j <- 0:size.1 {rng.uniform(a, b)} |]
+    [for i <- 0:size.0 for j <- 0:size.1 {rng.uniform(a, b)}]
 
 fun random(rng: RNG, size: (int, int, int), a: 't, b: 't) =
-    [| for i <- 0:size.0 for j <- 0:size.1 for k <- 0:size.2 {rng.uniform(a, b)} |]
+    [for i <- 0:size.0 for j <- 0:size.1 for k <- 0:size.2 {rng.uniform(a, b)}]
 
 fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't) =
-    [| for i <- 0:size.0 for j <- 0:size.1
-       for k <- 0:size.2 for l <- 0:size.3 {rng.uniform(a, b)} |]
+    [for i <- 0:size.0 for j <- 0:size.1
+       for k <- 0:size.2 for l <- 0:size.3 {rng.uniform(a, b)}]
 
 fun sort(arr: 't [], lt: ('t, 't) -> bool)
 {

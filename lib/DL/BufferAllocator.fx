@@ -110,7 +110,7 @@ fun assign_buffers(net: Ast.dlnet_t)
                     }
                 | _ => (false, -1)
                 }
-            //println(f"name={op.name()}, inplace={inplace_op}, inps={[for i<-inps {net.args[i].name}]}, outs={[for i<-outs {net.args[i].name}]}")
+            //println(f"name={op.name()}, inplace={inplace_op}, inps={[::for i<-inps {net.args[i].name}]}, outs={[::for i<-outs {net.args[i].name}]}")
             if inplace_op && net.args[outs[0]].argkind != Ast.DL_Arg_Output {
                 bufidxs[outs[0]] = bufidxs[reuse_idx]
             } else {

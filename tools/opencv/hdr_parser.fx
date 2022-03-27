@@ -36,7 +36,7 @@ type block_t = BlockNone | BlockGeneric | BlockEnumStruct | BlockEnumClass | Blo
 type state_t = StateScan | StateComment | StateDirective | StateDocstring | StateDirectiveIf0
 
 /*
-Each declaration is [funcname, return_value_type (in C, not in Python), <list_of_modifiers>, <list_of_arguments>, original_return_type, docstring],
+Each declaration is [:: funcname, return_value_type (in C, not in Python), <list_of_modifiers>, <list_of_arguments>, original_return_type, docstring],
 where each element of <list_of_arguments> is 4-element list itself:
 [argtype, argname, default_value (or "" if none), <list_of_modifiers>]
 where the list of modifiers is yet another nested list of strings
@@ -156,13 +156,13 @@ fun parse(hname: string, ~wrap_mode:bool=true)
 {
     val self = hdr_parser_t
     {
-        block_stack = block_info_t {
+        block_stack = [:: block_info_t {
             block_type=BlockFile,
             block_name=hname,
             process=true,
             public_section=true,
             decl=None
-        } :.,
+        }],
         gen_gpumat_decls=false,
         gen_umat_decls=false,
         hname=hname,
@@ -277,7 +277,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
             //foo(Obj&& = {});
             var (token, pos) = match re_eq_empty_block.find(l) {
                 | Some(_) => (";", l.length())
-                | _ => self.find_next_token(l, [";", "\"", "{", "}", "//", "/*"], 0)
+                | _ => self.find_next_token(l, [:: ";", "\"", "{", "}", "//", "/*"], 0)
             }
 
             if token == "" {
@@ -429,7 +429,7 @@ fun hdr_parser_t.get_macro_arg(arg_str: string, npos: int)
 }
 
 /*
-    Parses <arg_type> [arg_name]
+    Parses <arg_type> [:: arg_name]
     Returns arg_type, arg_name, modlist, argno, where
     modlist is the list of wrapper-related modifiers (such as "output argument", "has counter", ...)
     and argno is the new index of an anonymous argument.
@@ -627,11 +627,11 @@ fun hdr_parser_t.parse_enum(decl_str: string)
         val p = pair.strip()
         if p == "" { continue }
         val (curr_name, curr_val) = match p.split('=', allow_empty=false) {
-            | curr_name :. =>
+            | [:: curr_name] =>
                 prev_val_delta += 1
                 val curr_val = (if prev_val != "" {prev_val + "+"} else {""}) + string(prev_val_delta)
                 (curr_name, curr_val)
-            | curr_name :: curr_val :. =>
+            | [:: curr_name, curr_val] =>
                 prev_val_delta = 0
                 val curr_val = curr_val.strip()
                 prev_val = curr_val
@@ -650,7 +650,7 @@ fun hdr_parser_t.parse_enum(decl_str: string)
 
 /*
     Parses class/struct declaration start in the form:
-        {class|struct} [CV_EXPORTS] <class_name> [: public <base_class1> [, ...]]
+        {class|struct} [:: CV_EXPORTS] <class_name> [: public <base_class1> [, ...]]
     Returns class_name1, <list of base_classes>
 */
 fun hdr_parser_t.parse_class_decl(decl_str: string, ~docstring: string="")
@@ -685,14 +685,14 @@ fun hdr_parser_t.parse_class_decl(decl_str: string, ~docstring: string="")
     npos = l.find(':')
     val (classname, bases) = if npos >= 0 {
         val classname = l[:npos].strip()
-        (classname, [for b <- l[npos+1:].split(',', allow_empty=false) {b.strip()}])
+        (classname, [:: for b <- l[npos+1:].split(',', allow_empty=false) {b.strip()}])
     } else {
         (l.strip(), [])
     }
     val classname = classname.replace("class ", "").replace("struct ", "").strip()
     DeclClass {
         name=self.get_dotted_name(classname),
-        bases=[for b <- bases {self.get_dotted_name(b)}],
+        bases=[:: for b <- bases {self.get_dotted_name(b)}],
         name_alias=name_alias,
         members=ref [],
         docstring=docstring,
@@ -711,10 +711,10 @@ val re_2darray = Re.compile(r"\w+\s+\(\*\w+\)\[\d+\]")
 
 /*
     Parses the function or method declaration in the form:
-    [([CV_EXPORTS] <rettype>) | CVAPI(rettype)]
+    [([::CV_EXPORTS] <rettype>) | CVAPI(rettype)]
         [~]<function_name>
         (<arg_type1> <arg_name1>[=<default_value1>] [, <arg_type2> <arg_name2>[=<default_value2>] ...])
-        [const] {; | <function_body>}
+        [:: const] {; | <function_body>}
 
     Returns the function declaration entry:
     [<func name>, <return value C-type>, <list of modifiers>, <list of arguments>, <original return type>, <docstring>] (see above)
@@ -752,7 +752,7 @@ fun hdr_parser_t.parse_func_decl(decl_str: string, ~mat: string="Mat", ~docstrin
             val (mappable, npos3) = self.get_macro_arg(decl_str, npos)
             func_modlist.append("/mappable="+mappable)
         classname = top[1]
-        return ['.'.join([classname, classname]), None, func_modlist, [], None, None]*/
+        return ['.'.join([::classname, classname]), None, func_modlist, [], None, None]*/
 
         //filter off some common prefixes, which are meaningless for Python wrappers.
         //note that we do not strip "static" prefix, which does matter;
@@ -776,7 +776,7 @@ fun hdr_parser_t.parse_func_decl(decl_str: string, ~mat: string="Mat", ~docstrin
             decl_str.strip().startswith("static") &&
             (match top.block_type { | BlockStruct | BlockClass => true | _ => false })
         if static_method {
-            decl_str = decl_str.strip()[length("static"):].lstrip()
+            decl_str = decl_str.strip()[::length("static"):].lstrip()
         }
 
         var arg_start = decl_str.find("(")
@@ -1082,7 +1082,7 @@ fun hdr_parser_t.parse_stmt(stmt: string, end_token: string,
                             val vname = vv.hd().strip()
                             val vdefval = match vv.tl() {
                                 | [] => ""
-                                | dv :. => dv.strip()
+                                | [:: dv] => dv.strip()
                                 | _ => throw self.parse_err("invalid class property (double '=')")
                             }
                             *class_members = arg_info0.{name=vname, defval=vdefval, readwrite=readwrite} :: *class_members
@@ -1119,11 +1119,11 @@ fun print_decls(decls: decl_t list) =
             val suffix = if const_method {" const"} else {""}
             val suffix = suffix + (if pure_virtual_method {" = 0"} else {""})
             val alias_str = if name_alias=="" {""} else {f" (as {name_alias})"}
-            val args = ",\n\t".join([for a <- args {string(a)}])
+            val args = ",\n\t".join([::for a <- args {string(a)}])
             val args = if args == "" {args} else {f"\n\t{args}"}
             println(f"{prefix}func {name}{alias_str}({args}): {rettype}{suffix}")
         | DeclEnum {name, elems} =>
-            val elems = ",\n\t".join([for a <- elems {string(a)}])
+            val elems = ",\n\t".join([::for a <- elems {string(a)}])
             val elems = if elems == "" {elems} else {f"\n\t{elems}"}
             println(f"enum {name}{{{elems}}}")
         | DeclClass {name, bases, name_alias, members, ismap, isparams, issimple} =>
@@ -1132,14 +1132,14 @@ fun print_decls(decls: decl_t list) =
             val prefix = (if issimple {"simple "} else {""}) + prefix
             val bases = if bases == [] {""} else {": " + ", ".join(bases)}
             val alias_str = if name_alias == "" {""} else {f"(as {name_alias})"}
-            val members = ";\n\t".join([for a <- *members {string(a)}])
+            val members = ";\n\t".join([::for a <- *members {string(a)}])
             println(f"{prefix}class {name}{alias_str}{bases}\n{{\n\t{members}\n}}")
     }
 
 fun parse_all(opencv_root: string)
 {
     var all_namespaces = Hashset.empty(16, "")
-    val all_decls = [for hname <- opencv_hdr_list {
+    val all_decls = [:: for hname <- opencv_hdr_list {
         val (namespaces, decls) = parse(Filename.concat(opencv_root, f"modules/{hname}"))
         all_namespaces.union(namespaces)
         decls

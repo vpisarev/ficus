@@ -73,7 +73,7 @@ from K_form import *
     val new_e = flatten_kexp_(e, callb)
     match new_e {
     | KExpSeq ([], (_, loc)) => (KExpNop(loc), code)
-    | KExpSeq (e :., _) => (e, code)
+    | KExpSeq ([:: e], _) => (e, code)
     | KExpSeq ((e :: rest) as nested_list, _) =>
         val rnested = nested_list.rev()
         (rnested.hd(), rnested.tl() + code)
@@ -98,7 +98,7 @@ fun flatten_all(kmods: kmodule_t list)
         kcb_kexp=Some(flatten_kexp_),
         kcb_atom=None
     }
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_top} = km
         val new_top = flatten(km_top, callb).rev()
         km.{km_top=new_top}

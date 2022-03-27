@@ -396,7 +396,7 @@ fun test_run_all(opts: test_options_t)
     println(f"[==========] {nexecuted} test(s) ran ({ts0_diff_str})")
     println(f"{Green}[  PASSED  ]{Normal} {npassed} test(s)")
     if nfailed > 0 {
-        println(f"{Red}[  FAILED ]{Normal} {nfailed} test(s):")
+        println(f"{Red}[  FAILED  ]{Normal} {nfailed} test(s):")
         for i <- failed.rev() {println(i)}
     }
 }

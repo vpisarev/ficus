@@ -325,7 +325,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
     fun mangle_ktyp_retain_record(t: ktyp_t, loc: loc_t, callb: k_callb_t) =
         match t {
         | KTypRecord (rn, relems) =>
-            KTypRecord(rn, [for (ni, ti) <- relems {
+            KTypRecord(rn, [:: for (ni, ti) <- relems {
                                 (ni, walk_ktyp_n_mangle(ti, loc, callb))
                             }])
         | t => walk_ktyp_n_mangle(t, loc, callb)
@@ -370,7 +370,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
                 | KClosureVars kcv =>
                     val {kcv_freevars, kcv_loc} = *kcv
                     val cv_cname = cname + "_cldata_t"
-                    val freevars = [for (n, t) <- kcv_freevars {
+                    val freevars = [:: for (n, t) <- kcv_freevars {
                                        (n, walk_ktyp_n_mangle(t, kcv_loc, callb))
                                     }]
                     *kcv = kcv->{kcv_cname=cv_cname,
@@ -401,7 +401,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
             val _ = mangle_ktyp(KTypName(kvar_name), mangle_map, kvar_loc)
             //val tag_base_name = "_FX_" + pp(kvar->kvar_basename) + "_"
             val var_cases =
-            [for (ni, ti) <- kvar_cases {
+            [:: for (ni, ti) <- kvar_cases {
                 //val tag_name = tag_base_name + pp(ni)
                 //val kv = get_kval(ni, kvar_loc)
                 //set_idk_entry(ni, KVal(kv.{kv_cname=tag_name}))
@@ -410,8 +410,8 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
                 | KTypRecord (r_id, relems) =>
                     if r_id == noid {
                         match relems {
-                        | (n, t) :. => t
-                        | _ => KTypTuple([for (_, tj) <- relems { tj } ])
+                        | [:: (n, t)] => t
+                        | _ => KTypTuple([::for (_, tj) <- relems { tj } ])
                         }
                     } else {
                         KTypName(r_id)
@@ -428,13 +428,13 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
             val {ki_name, ki_all_methods, ki_loc} = *ki
             val _ = mangle_ktyp(KTypName(ki_name), mangle_map, ki_loc)
             val all_methods =
-            [for (fi, ti) <- ki_all_methods {
+            [:: for (fi, ti) <- ki_all_methods {
                 val (args, rt) = match deref_ktyp(ti, ki_loc) {
                     | KTypFun(args, rt) => (args, rt)
                     | _ => throw compile_err(ki_loc,
                         f"method '{idk2str(ki_name, ki_loc)}.{pp(fi)}' has non-function type")
                     }
-                val args = [for a <- args {
+                val args = [:: for a <- args {
                         walk_ktyp_n_mangle(a, ki_loc, callb)
                     }]
                 val rt = walk_ktyp_n_mangle(rt, ki_loc, callb)
@@ -478,7 +478,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
         kcb_atom=None
     }
 
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_idx, km_top} = km
         mangle_map.clear()
         curr_top_code = []
@@ -494,7 +494,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
                         if !(kv_flags.val_flag_temp || kv_flags.val_flag_tempref) {
                             set_idk_entry(n, KVal(kv.{
                                 kv_flags=kv_flags.{
-                                    val_flag_global=ScModule(km_idx) :.}}))
+                                    val_flag_global=[:: ScModule(km_idx)]}}))
                             ignore(mangle_id_typ(n, loc, walk_n_mangle_callb))
                         }
                     }

@@ -308,7 +308,7 @@ fun lift_all(kmods: kmodule_t list)
                             kcv_scope=kf_scope,
                             kcv_loc=kf_loc
                             })
-                    val make_args_ktyps = [ for (_, t) <- fvars_wt {t} ]
+                    val make_args_ktyps = [:: for (_, t) <- fvars_wt {t} ]
                     val kf_typ = get_kf_typ(kf_params, kf_rt, kf_loc)
                     val cl_arg = gen_idk(m_idx, "cv")
                     val make_fp = gen_idk(m_idx, "make_fp")
@@ -453,7 +453,7 @@ fun lift_all(kmods: kmodule_t list)
                     curr_subst_env.add(kf_name, (cl_name, None))
                     defined_so_far.add(cl_name)
                     val cl_args =
-                    [ for fv <- orig_freevars {
+                    [:: for fv <- orig_freevars {
                         if !defined_so_far.mem(fv) {
                             throw compile_err(kf_loc, f"free variable '{idk2str(fv, kf_loc)}' \
                                             of '{idk2str(kf_name, kf_loc)}' is not defined yet")
@@ -483,7 +483,7 @@ fun lift_all(kmods: kmodule_t list)
                             f"make_fp '{idk2str(kci_make_fp, kf_loc)}' for '{idk2str(kf_name, kf_loc)}' \
                                 information is not valid (should be KClosureVars ...)")
                         }
-                    [ KDefFun(make_kf), KDefClosureVars(kcv) ]
+                    [:: KDefFun(make_kf), KDefClosureVars(kcv) ]
                 }
             val out_e =
                 if kci_wrap_f != noid {
@@ -500,7 +500,7 @@ fun lift_all(kmods: kmodule_t list)
                         where all the free variables the function accesses should be defined.
                     */
                     val extra_code = create_defclosure(kf, [], kf_loc)
-                    curr_top_code = extra_code.tl() + def_fcv_t_n_make + (KDefFun(kf) :.) + curr_top_code
+                    curr_top_code = extra_code.tl() + def_fcv_t_n_make + [:: KDefFun(kf)] + curr_top_code
                     extra_code.hd()
                 }
             // form the prologue where we extract all free variables from the closure data
@@ -550,7 +550,7 @@ fun lift_all(kmods: kmodule_t list)
                         val cl_name = dup_idk(curr_m_idx, kf_name)
                         curr_subst_env.add(kf_name, (cl_name, None))
                         val kf_typ = get_kf_typ(kf_params, kf_rt, kf_loc)
-                        val make_cl = KExpIntrin(IntrinMakeFPbyFCV, [AtomId(kf_name)], (kf_typ, kf_loc)) //TODO: Rename CLV
+                        val make_cl = KExpIntrin(IntrinMakeFPbyFCV, [:: AtomId(kf_name)], (kf_typ, kf_loc)) //TODO: Rename CLV
                         create_kdefval(cl_name, kf_typ, default_val_flags(), Some(make_cl), prologue, kf_loc)
                     } else {prologue}
 
@@ -598,7 +598,7 @@ fun lift_all(kmods: kmodule_t list)
             *kvar = kvar->{kvar_ifaces=kvar_ifaces0}
             e
         | KExpFor(idom_l, at_ids, body, flags, loc) =>
-            val idom_l = [ for (i, dom_i) <- idom_l {
+            val idom_l = [:: for (i, dom_i) <- idom_l {
                              val dom_i = check_n_walk_dom(dom_i, loc, callb)
                              defined_so_far.add(i)
                              (i, dom_i)
@@ -608,7 +608,7 @@ fun lift_all(kmods: kmodule_t list)
             KExpFor(idom_l, at_ids, body, flags, loc)
         | KExpMap(e_idom_ll, body, flags, (etyp, eloc) as kctx) =>
             val e_idom_ll =
-            [ for (e, idom_l, at_ids) <- e_idom_ll {
+            [:: for (e, idom_l, at_ids) <- e_idom_ll {
                 val e = walk_kexp_n_lift_all(e, callb)
                 val fold idom_l = [] for (i, dom_i) <- idom_l {
                     val dom_i = check_n_walk_dom(dom_i, eloc, callb)
@@ -621,10 +621,10 @@ fun lift_all(kmods: kmodule_t list)
             val body = walk_kexp_n_lift_all(body, callb)
             KExpMap(e_idom_ll, body, flags, kctx)
         | KExpMkClosure(make_fp, f, args, (typ, loc)) =>
-            val args = [ for a <- args { walk_atom_n_lift_all(a, loc, callb) } ]
+            val args = [:: for a <- args { walk_atom_n_lift_all(a, loc, callb) } ]
             KExpMkClosure(make_fp, f, args, (typ, loc))
         | KExpCall(f, args, (_, loc) as kctx) =>
-            val args = [ for a <- args { walk_atom_n_lift_all(a, loc, callb) } ]
+            val args = [:: for a <- args { walk_atom_n_lift_all(a, loc, callb) } ]
             val curr_f = curr_clo
             if f == curr_f {
                 KExpCall(f, args, kctx)
@@ -657,7 +657,7 @@ fun lift_all(kmods: kmodule_t list)
         kcb_kexp=Some(walk_kexp_n_lift_all)
     }
 
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_idx, km_top} = km
         curr_m_idx = km_idx
         curr_top_code = []

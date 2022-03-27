@@ -95,8 +95,8 @@ TEST("oop.interfaces", fun()
     val r0 = Rect {cx=100.f, cy=100.f, fx=16.f, fy=10.f, sc=make_solid(color_red)}
     val e0 = Ellipse {cx=150.f, cy=100.f, fx=20.f, fy=20.f, sc=make_solid(color_blue)}
 
-    val shapes = [(r0 :> IShape), (e0 :> IShape)]
-    val ref_data = [("rectangle", 160.f), ("ellipse", 1256.6371f)]
+    val shapes = [:: (r0 :> IShape), (e0 :> IShape)]
+    val ref_data = [:: ("rectangle", 160.f), ("ellipse", 1256.6371f)]
 
     for sh@i <- shapes, (n, a) <- ref_data {
         EXPECT_EQ(`sh.name()`, n)

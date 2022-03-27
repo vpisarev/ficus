@@ -6077,7 +6077,7 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
       if (tag_1 == 14) {
          _fx_LLN10Ast__exp_t arows_0 = 0;
          FX_CALL(_fx_M2PPFM5beginv1RM1t(pp_0, 0), _fx_catch_67);
-         fx_str_t slit_95 = FX_MAKE_STR("[|");
+         fx_str_t slit_95 = FX_MAKE_STR("[");
          FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_95, 0), _fx_catch_67);
          int_ i_13 = 0;
          FX_COPY_PTR(e_0->u.ExpMkArray.t0, &arows_0);
@@ -6109,7 +6109,7 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
          _fx_catch_66: ;
             FX_CHECK_EXN(_fx_catch_67);
          }
-         fx_str_t slit_98 = FX_MAKE_STR("|]");
+         fx_str_t slit_98 = FX_MAKE_STR("]");
          FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_98, 0), _fx_catch_67);
          FX_CALL(_fx_M2PPFM3endv1RM1t(pp_0, 0), _fx_catch_67);
 
@@ -6122,7 +6122,7 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
       if (tag_1 == 15) {
          _fx_LN10Ast__exp_t elems_0 = 0;
          FX_CALL(_fx_M2PPFM5beginv1RM1t(pp_0, 0), _fx_catch_69);
-         fx_str_t slit_99 = FX_MAKE_STR("[");
+         fx_str_t slit_99 = FX_MAKE_STR("vector [");
          FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_99, 0), _fx_catch_69);
          int_ i_14 = 0;
          FX_COPY_PTR(e_0->u.ExpMkVector.t0, &elems_0);
@@ -6343,12 +6343,12 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
          _fx_N15Ast__for_make_t v_43 = flags_0->for_flag_make;
          int tag_5 = v_43.tag;
          if (tag_5 == 3) {
-            fx_str_t slit_118 = FX_MAKE_STR("[");
+            fx_str_t slit_118 = FX_MAKE_STR("[::");
             fx_str_t slit_119 = FX_MAKE_STR("]");
             _fx_make_Ta2S(&slit_118, &slit_119, &v_42);
          }
          else if (tag_5 == 4) {
-            fx_str_t slit_120 = FX_MAKE_STR("[");
+            fx_str_t slit_120 = FX_MAKE_STR("vector [");
             fx_str_t slit_121 = FX_MAKE_STR("]");
             _fx_make_Ta2S(&slit_120, &slit_121, &v_42);
          }
@@ -6358,8 +6358,8 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
             _fx_make_Ta2S(&slit_122, &slit_123, &v_42);
          }
          else {
-            fx_str_t slit_124 = FX_MAKE_STR("[|");
-            fx_str_t slit_125 = FX_MAKE_STR("|]");
+            fx_str_t slit_124 = FX_MAKE_STR("[");
+            fx_str_t slit_125 = FX_MAKE_STR("]");
             _fx_make_Ta2S(&slit_124, &slit_125, &v_42);
          }
          FX_CHECK_EXN(_fx_catch_83);

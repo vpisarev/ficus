@@ -168,7 +168,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
     for {km_top} <- kmods {
         reset_purity_flags(km_top)
     }
-    val all_top = [for {km_top} <- kmods {km_top} ].concat()
+    val all_top = [:: for {km_top} <- kmods {km_top} ].concat()
     val used_somewhere = used_by(all_top, 1024)
 
     var fold_pairs = empty_idmap
@@ -309,7 +309,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
         kcb_kexp=Some(remove_unused_kexp_),
         kcb_atom=None
     }
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_top, km_idx, km_main} = km
         is_main = km_main
         curr_m_idx = km_idx
@@ -373,7 +373,7 @@ fun remove_unused_by_main(kmods: kmodule_t list)
     val idset0 = empty_id_hashset(1)
     var all_deps = Hashmap.empty(1024, noid, idset0)
     for (n, e) <- all_top {
-        val deps = used_by(e :., 16)
+        val deps = used_by([:: e], 16)
         deps.intersect(all_top_ids)
         all_deps.add(n, deps.compress())
     }
@@ -390,7 +390,7 @@ fun remove_unused_by_main(kmods: kmodule_t list)
 
     // And then indirect top-level dependencies by calculating transitive closure
     val iters0 = 10
-    val _ = calc_sets_closure(iters0, main_id :: [for (n, _) <- all_top {n} ], all_deps)
+    val _ = calc_sets_closure(iters0, main_id :: [:: for (n, _) <- all_top {n} ], all_deps)
 
     // Extract all dependencies for the main module
     val all_main_deps = match all_deps.find_opt(main_id) {
@@ -399,7 +399,7 @@ fun remove_unused_by_main(kmods: kmodule_t list)
         }
 
     // Finally, exclude everything that is not needed by the main module
-    [for km <- kmods {
+    [:: for km <- kmods {
         val {km_top, km_main} = km
         if km_main {
             km // retain everything in the main module

@@ -36025,7 +36025,7 @@ _fx_endmatch_0: ;
                         FX_CALL(_fx_F6stringS1i(j_0, &v_79, 0), _fx_catch_13);
                         FX_CALL(_fx_F6stringS1i(nelems_0, &v_80, 0), _fx_catch_13);
                         fx_str_t slit_11 = FX_MAKE_STR("cgen: the tuple/record element index ");
-                        fx_str_t slit_12 = FX_MAKE_STR(" is out of range [0, ");
+                        fx_str_t slit_12 = FX_MAKE_STR(" is out of range [:: 0, ");
                         fx_str_t slit_13 = FX_MAKE_STR("]");
                         {
                            const fx_str_t strs_1[] = { slit_11, v_79, slit_12, v_80, slit_13 };
