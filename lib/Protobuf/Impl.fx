@@ -37,7 +37,7 @@
  *
  * \authors Dave Benson and the protobuf-c authors
  *
- * \copyright 2008-2014. Licensed under the terms of the [:: BSD-2-Clause] license.
+ * \copyright 2008-2014. Licensed under the terms of the [BSD-2-Clause] license.
  */
 
 /**
@@ -2566,7 +2566,7 @@ parse_required_member(ScannedMember *scanned_member,
 		if (*pstr == NULL)
 			return FALSE;
 		memcpy(*pstr, data + pref_len, len - pref_len);
-		(*pstr)[::len - pref_len] = 0;
+		(*pstr)[len - pref_len] = 0;
 		return TRUE;
 	}
 	case PROTOBUF_C_TYPE_BYTES: {
@@ -2791,7 +2791,7 @@ parse_packed_repeated_member(ScannedMember *scanned_member,
 				PROTOBUF_C_UNPACK_ERROR("bad packed-repeated int32 value");
 				return FALSE;
 			}
-			((int32_t *) array)[::count++] = parse_int32(s, at);
+			((int32_t *) array)[count++] = parse_int32(s, at);
 			at += s;
 			rem -= s;
 		}
@@ -2803,7 +2803,7 @@ parse_packed_repeated_member(ScannedMember *scanned_member,
 				PROTOBUF_C_UNPACK_ERROR("bad packed-repeated sint32 value");
 				return FALSE;
 			}
-			((int32_t *) array)[::count++] = unzigzag32(parse_uint32(s, at));
+			((int32_t *) array)[count++] = unzigzag32(parse_uint32(s, at));
 			at += s;
 			rem -= s;
 		}
@@ -2815,7 +2815,7 @@ parse_packed_repeated_member(ScannedMember *scanned_member,
 				PROTOBUF_C_UNPACK_ERROR("bad packed-repeated enum or uint32 value");
 				return FALSE;
 			}
-			((uint32_t *) array)[::count++] = parse_uint32(s, at);
+			((uint32_t *) array)[count++] = parse_uint32(s, at);
 			at += s;
 			rem -= s;
 		}
@@ -2828,7 +2828,7 @@ parse_packed_repeated_member(ScannedMember *scanned_member,
 				PROTOBUF_C_UNPACK_ERROR("bad packed-repeated sint64 value");
 				return FALSE;
 			}
-			((int64_t *) array)[::count++] = unzigzag64(parse_uint64(s, at));
+			((int64_t *) array)[count++] = unzigzag64(parse_uint64(s, at));
 			at += s;
 			rem -= s;
 		}
@@ -2841,7 +2841,7 @@ parse_packed_repeated_member(ScannedMember *scanned_member,
 				PROTOBUF_C_UNPACK_ERROR("bad packed-repeated int64/uint64 value");
 				return FALSE;
 			}
-			((int64_t *) array)[::count++] = parse_uint64(s, at);
+			((int64_t *) array)[count++] = parse_uint64(s, at);
 			at += s;
 			rem -= s;
 		}
@@ -2853,7 +2853,7 @@ parse_packed_repeated_member(ScannedMember *scanned_member,
 				PROTOBUF_C_UNPACK_ERROR("bad packed-repeated boolean value");
 				return FALSE;
 			}
-			((protobuf_c_boolean *) array)[::count++] = parse_boolean(s, at);
+			((protobuf_c_boolean *) array)[count++] = parse_boolean(s, at);
 			at += s;
 			rem -= s;
 		}
@@ -3198,7 +3198,7 @@ protobuf_c_message_unpack(const ProtobufCMessageDescriptor *desc,
 			if (scanned_member_slabs[which_slab] == NULL)
 				goto error_cleanup_during_scan;
 		}
-		scanned_member_slabs[which_slab][::in_slab_index++] = tmp;
+		scanned_member_slabs[which_slab][in_slab_index++] = tmp;
 
 		if (field != NULL && field->label == PROTOBUF_C_LABEL_REPEATED) {
 			size_t *n = STRUCT_MEMBER_PTR(size_t, rv,

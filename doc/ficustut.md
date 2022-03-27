@@ -416,7 +416,7 @@ There are the following types of tokens in Ficus:
 * There are also various **delimiters** and **parentheses**
 
   ```
-  -> => <- @ . , : ; [ ] [< >] [| |] ( ) { }
+  -> => <- @ . , : ; [ ] ( ) { }
   ```
 
 All these operators will be explained later in the tutorial.
@@ -587,7 +587,7 @@ Operators form the foundation of expressions. The table below describes Ficus op
 | .—*exp* | 17 | right | coerce(*exp* type, *exp* type) | unary dot-minus operation. It's currently used to access the last, pre-last etc. elements of collections, e.g. `str[.-1]` is the last element of string |
 | !*exp*    | 17 | right | bool  | logical inversion |
 | ~*exp*    | 17 | right | same as *exp* | bitwise inversion |
-| &#92;*exp*  | 17 | right | N/A | *expand* operator. It's used in the array composition operators. `[| \A, \B |]` concatenates columns of the two 2D arrays (which must have the same number of rows), whereas `[| A, B |]` is 2-element array of arrays. |
+| &#92;*exp*  | 17 | right | N/A | *expand* operator. It's used in the array composition operators. `[\A, \B]` concatenates columns of the two 2D arrays (which must have the same number of rows), whereas `[A, B]` is 2-element array of arrays. |
 | ref *exp*    | 17 | right | *T ref*, if *exp* has type *T* | creates a new reference with initial value *exp* |
 | *exp*'  | 18 | left | usually same as *exp* | *apostrophe* operator. For matrices it denotes transposition; for other types it can be redefined, e.g. it may denote a function derivative. |
 | &#42;*exp*  | 19 | right | when *exp* has *T ref* type, the result will have *T* type | dereference a reference |
@@ -666,10 +666,8 @@ Here is how the above-defined generic and non-generic types can be used:
 
 ```
 fun convexhull(c: contour_t): contour_t { ... }
-// correct: we explicitly specified the value type,
-// but we do not have to. It can be inferenced automatically
-val contour: (int, int) vector =
-      [<(0, 0), (10, 0), (1, 1), (0, 10)>]
+// represent a contour as a vector of pairs of integers
+val contour = vector [(0, 0), (10, 0), (1, 1), (0, 10)]
 // correct: contour_t === point vector === (int, int) vector
 // the type of chull is automatically inferenced
 val chull = convexhull(contour)
@@ -677,8 +675,8 @@ val chull = convexhull(contour)
 // the previous 'contour' is now hidden.
 // no need to declare this type in advance
 val contour =
-      [<Complex {re=0.f, im=0.f}, Complex {re=10.f, im=0.f},
-       Complex {re=1.f, im=1.f}, Complex {re=0.f, im=10.f}>]
+      vector [Complex {re=0.f, im=0.f}, Complex {re=10.f, im=0.f},
+       Complex {re=1.f, im=1.f}, Complex {re=0.f, im=10.f}]
 // error: convexhull expects (int, int) vector.
 val chull_f = convexhull(contour)
 
@@ -747,10 +745,10 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     ```
     fun tabulate(a: double, b: double,
                n: int, f: double->double) =
-    [| for i <- 0:n {
+    [for i <- 0:n {
         val x = (b - a)*i/(n-1) + a
         f(x)
-    } |]
+    }]
     val cosine_tab = tabulate(0., 6.28, 256, cos)
     ```
 
@@ -839,30 +837,30 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     ```
     // create a small 1D array (of type int [])
     // by listing its elements
-    val small_arr = [| 1, 2, 3, 4, 5 |]
+    val small_arr = [1, 2, 3, 4, 5]
     // error: all array elements must have the same type
-    val err = [| 1, 2, 3, 4, 5. |]
+    val err = [1, 2, 3, 4, 5.]
     // array of arrays is also possible, of course.
     // it will have type int [][]
     // ( can also be denoted as (int [])[] )
     val pascal_triangle =
-    [|
-        [| 1 |],
-        [| 1, 1 |],
-        [| 1, 2, 1 |],
-        [| 1, 3, 3, 1 |],
-        [| 1, 4, 6, 4, 1 |]
-    |]
+    [
+        [ 1 ],
+        [ 1, 1 ],
+        [ 1, 2, 1 ],
+        [ 1, 3, 3, 1 ],
+        [ 1, 4, 6, 4, 1 ]
+    ]
     val alpha = 30*M_PI/180
     // 2D arrays can also be initialized by listing its elements,
     // where rows are separated by ';'
     // rotation_mtx will have 'float [,]' type
     val rotation_mtx =
-        [| cos(alpha), -sin(alpha);
-            sin(alpha), cos(alpha) |]
+        [ cos(alpha), -sin(alpha);
+            sin(alpha), cos(alpha) ]
     // error: all rows of 2D array must have the same size
     val pascal_triangle_err =
-    [| 1; 1, 1; 1, 2, 1; 1, 3, 3, 1; 1, 4, 6, 4, 1 |]
+    [ 1; 1, 1; 1, 2, 1; 1, 3, 3, 1; 1, 4, 6, 4, 1 ]
 
     // create 2D array, which elements are all
     // set to the same value ((0,0,0) in this case)
@@ -880,12 +878,12 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
     ```
     // make a list of 5 consequitive natural numbers
-    val mylist1 = [1, 2, 3, 4, 5]
+    val mylist1 = [:: 1, 2, 3, 4, 5]
     val hd1 = mylist1.hd() // 1
                            // mylist1.hd() is equivalent to
                            // List.hd(mylist1)
-    val tl1 = mylist1.tl() // [2, 3, 4, 5]
-    val mylist2 = 100 :: tl1 // [100, 2, 3, 4, 5]
+    val tl1 = mylist1.tl() // [:: 2, 3, 4, 5]
+    val mylist2 = 100 :: tl1 // [:: 100, 2, 3, 4, 5]
 
     // can also build a list using '::' operator.
     val mylist3 = "a" :: "b" :: "c" :: "d" :: []
@@ -907,11 +905,11 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 * **vector**: `'t vector`. Vector is an immutable 1D array built on top of so-called "Relaxed Radix Balanced trees" with quite efficient random access, iteration, slicing and concatenation operations.:
 
     ```
-    val small_vector = [<1, 2, 3, 4, 5>]
+    val small_vector = vector [1, 2, 3, 4, 5]
 
-    // make big vector [<1, 2, 3, ..., N>]
+    // make big vector vector [1, 2, 3, ..., N]
     val N = 1000000
-    val big_vector = [< for i <- 0:N {i+1} >]
+    val big_vector = vector [for i <- 0:N {i+1}]
 
     // random vector access is ~O(1) operation,
     // so the following loop is reasonably fast
@@ -926,14 +924,14 @@ Ficus includes the following built-in, automatically defined and user-defined ty
                         big_vector[800000:]
 
     // make a list with the same content as big_vector
-    val big_list = [for i <- 0:N {i+1}]
+    val big_list = vector [for i <- 0:N {i+1}]
 
     // may take forever, because accessing
     // n-th element of a list takes O(n) time.
     for i <- 0:100000 { sum -= big_list.nth(rng(0, N)) }
     ```
 
-  In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + [< new_value >] + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
+  In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + (vector [new_values ...]) + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
 
 * **variant**, also known as sum type: `Tag1: 't1 | Tag2: 't2 | ...`. Variants are used to represent various data structures from from simple enumerations to very complex hierarchical data structures. We cover them in the dedicated section.
 
@@ -1345,7 +1343,7 @@ for x1 <- domain1, x2 <- domain2 ...
 That is, the expression consists of 2 parts. The first part declares accumulators and their initial values. The second part is just the normal for-loop with the important exception: the body does not have type `void`, instead, it should be the updated accumulator value (a tuple of values in the case of multiple accumulators). Inside the loop accumulators are immutable values. Here are some examples:
 
 ```
-val array = [| 1, 2, 3, 4, 5 |]
+val array = [ 1, 2, 3, 4, 5 ]
 // compute the sum of elements.
 // After each iteration sum is replaced with 'sum + x'
 println(fold sum = 0 for x <- array {sum + x})
@@ -1456,11 +1454,11 @@ We have already met comprehensions, for example, when big vector and list of 100
 
 ```
 // [1, 2, 3, ..., 1000000]
-val big_vector = [< for i<-0:1000000 {i+1} >]
-val big_list = [for i<-0:1000000 {i+1}]
+val big_vector = vector [for i<-0:1000000 {i+1}]
+val big_list = [:: for i<-0:1000000 {i+1}]
 ```
 
-Basically, array/vector/list comprehension is a for loop enclosed in one of variations of Ficus' square brackets: `[| |]` (array comprehension), `[< >]` (vector comprehension) or `[ ]` (list comprehension). The comprehension produces the corresponding collection (array/vector/list), where body of the for-loop defines the elements of those collections. The comprehensions can be used to construct arbitrarily small or big collections using certain formula, or to transform one collection or a set of collection to another of the same kind (array/vector/list) or a different kind. In the case of array comprehension when iteration is done over a multi-dimensional domain (or when we have nested for-loops) the result will also be multi-dimensional. Here are some more examples:
+Basically, array/vector/list comprehension is a for loop enclosed in one of variations of Ficus' square brackets: `[for ...]` (array comprehension), `vector [for ...]` (vector comprehension) or `[:: for ...]` (list comprehension). The comprehension produces the corresponding collection (array/vector/list), where body of the for-loop defines the elements of those collections. The comprehensions can be used to construct arbitrarily small or big collections using certain formula, or to transform one collection or a set of collection to another of the same kind (array/vector/list) or a different kind. In the case of array comprehension when iteration is done over a multi-dimensional domain (or when we have nested for-loops) the result will also be multi-dimensional. Here are some more examples:
 
 ```
 val n = 10
@@ -1468,18 +1466,18 @@ val n = 10
 // We have nested 10x10 for-loop, so we get 10x10 matrix.
 // Type of the body expression is double, so we will get
 // double-precision matrix.
-val hilbert = [| for i <- 0:n for j <- 0:n {1./(i + j + 1)} |]
+val hilbert = [for i <- 0:n for j <- 0:n {1./(i + j + 1)}]
 
 val rng = RNG(123u64)
 val img = random(rng, (480, 640), 0u8, 255u8)
 val (h, w) = size(img)
 // blur an image using 3x3 box filter
-val blurred = [| for y <- 1:h-1 for x <- 1:w-1 {
+val blurred = [for y <- 1:h-1 for x <- 1:w-1 {
       sat_uint8((img[y-1, x-1] + img[y-1, x] + img[y-1, x+1]+
                  img[y, x-1] + img[y, x] + img[y, x+1]+
-                 img[y+1, x-1] + img[y+1, x] + img[y+1, x+1])/9)} |]
+                 img[y+1, x-1] + img[y+1, x] + img[y+1, x+1])/9)}]
 // compare blurred image with the original
-val diffmap = [|for a <- blurred, b <- img[1:h-1, 1:w-1] {abs(a - b)}|]
+val diffmap = [for a <- blurred, b <- img[1:h-1, 1:w-1] {abs(a - b)}]
 
 // compute matrix product
 // (naive algorithm with quite bad memory access pattern,
@@ -1487,12 +1485,12 @@ val diffmap = [|for a <- blurred, b <- img[1:h-1, 1:w-1] {abs(a - b)}|]
 fun matmul(A: double [,], B: double [,]) {
    val (ma, na) = size(A), (mb, nb) = size(B)
    assert(na == mb)
-   [|
+   [
        for i <- 0:ma
          for j <- 0:nb {
             fold s=0. for k <- 0:na {s + A[i,k]*B[k,j]}
          }
-   |]
+   ]
 }
 ```
 
@@ -1501,15 +1499,15 @@ As you can see, the concept is quite powerful, and you can actually implement qu
 ```
 // compute 'integral' for 1D input array:
 // S_i = sum_{j<i} (A[j]):
-// S = [|0, A[0], A[0]+A[1], A[0]+A[1]+A[2], ...|]
-val A = [| 1, 2, 3, 4, 5 |]
+// S = [0, A[0], A[0]+A[1], A[0]+A[1]+A[2], ...]
+val A = [1, 2, 3, 4, 5]
 var acc = 0
 val n = size(A)
-val S = [| for i<-0:n+1 {
+val S = [for i<-0:n+1 {
     val prev_acc = acc
     acc = if i<n {acc + A[i]} else {0}
     prev_acc
-} |]
+}]
 ```
 
 ### Filtering data
@@ -1551,11 +1549,11 @@ Some of the common applications of comprehensions are 'zipping' and 'unzipping' 
 Zipping collections is trivial:
 
 ```
-val a_list = [1, 2, 3, 4, 5]
-val b_list = ["a", "b", "c", "d", "e"]
+val a_list = [:: 1, 2, 3, 4, 5]
+val b_list = [:: "a", "b", "c", "d", "e"]
 // take two lists and produce one vector of pairs
-val ab_vector = [<for a <- a_list, b <- b_list {(a, b)}>]
-// produces [<(1, "a), (2, "b"), (3, "c"), (4, "d"), (5, "e")>]
+val ab_vector = vector [for a <- a_list, b <- b_list {(a, b)}]
+// produces vector [(1, "a), (2, "b"), (3, "c"), (4, "d"), (5, "e")]
 ```
 
 `SizeMismatchError` exception is thrown when collections have different size.
@@ -1564,9 +1562,9 @@ Unzip operation requires some extra syntax:
 
 ```
 val (a_array, b_array) =
-    [| @unzip for (a, b) <- ab_vector {(a*10, b.toupper())} |]
-// will produce [|10, 20, 30, 40, 50|] and
-//              [|"A", "B", "C", "D", "E"|]
+    [@unzip for (a, b) <- ab_vector {(a*10, b.toupper())}]
+// will produce [10, 20, 30, 40, 50] and
+//              ["A", "B", "C", "D", "E"]
 ```
 
 `@unzip` attribute before `for` instructs the compiler to produce a tuple of collections on output instead of a single collection.
@@ -1682,10 +1680,10 @@ fun integrate(a: double, b: double, n: int, f: double->double)
 
 print(integrate(0., 2*M_PI, 100, fun (x) {sin(x)**2}) //prints 3.1415...
 
-val arr = [| 1, 100, 10, 30, 15 |]
-val sorted_idx = [| for i<-0:size(arr) {i} |]
+val arr = [1, 100, 10, 30, 15]
+val sorted_idx = [for i<-0:size(arr) {i}]
 // sort arr indirectly, by reording indices;
-// the result is [| 0, 2, 4, 3, 1 |].
+// the result is [0, 2, 4, 3, 1].
 sort(sorted_idx, fun (i, j) {arr[i] < arr[j]})
 ```
 
@@ -2137,17 +2135,17 @@ val lighter_image = image .+ 100u8
 val phi = M_PI/3
 val (a, b) = (cos(phi), sin(phi))
 // construct 2x2 rotation matrix by explicitly specifying all its elements
-val R = [| a, -b; b, a |]
+val R = [a, -b; b, a]
 val RR = R*R // compute matrix product
 val shift = (100., 10.)
 // compose 2x3 affine transformation matrix:
 //   the left 2x2 block will be initialized with R
 //   the right 2x1 block will be initialized with the shift vector
-val affine = [| \R, \[| shift.0; shift.1 |] |]
+val affine = [\R, \[shift.0; shift.1]]
 
 // using a comprehension
-val gradient = [| for y <- 0:256 for x <- 0:256
-                  { sat_uint8((x, y, (x+y)/2)) } |]
+val gradient = [for y <- 0:256 for x <- 0:256
+                  { sat_uint8((x, y, (x+y)/2)) }]
 ```
 
 Once the arrays are created, they can be easily read and modified:
@@ -2179,8 +2177,8 @@ Arrays are accessed using `arr[idx_or_range1, idx_or_range2, ...]` notation, whe
 // create unnormalized Hadamard matrix
 fun Hadamard(n: int, one: 't): 't [,] {
     assert(n & (n-1) == 0)
-    if n == 1 { [| for i <- 0:1 for j <- 0:1 {one} |] }
-    else { val h = Hadamard(n/2, one); [| \h, \h; \h, \(-h) |] }
+    if n == 1 { [for i <- 0:1 for j <- 0:1 {one}] }
+    else { val h = Hadamard(n/2, one); [\h, \h; \h, \(-h)] }
 }
 
 val mtx = Hadamard(8, 1.)
@@ -2228,9 +2226,9 @@ fun matmul(A: double [,], B: double [,])
 {
     val (ma, na) = size(A), (mb, nb) = size(B)
     assert(na == mb)
-    [| for i <- 0:ma for j <- 0:nb {
+    [for i <- 0:ma for j <- 0:nb {
         fold s = 0. for k <- 0:na {s + A[i,k]*B[k,j]}
-     } |]
+     }]
 }
 ```
 
@@ -2247,16 +2245,17 @@ fun matmul(A: double [,], B: double [,])
     // j is used as 1-st index when accessing B,
     // with scale=1 and offset=0. j varies from 0 to nb
     check_range(0, nb, 1, 0, B, 1)
-    [| for i <- 0:ma for j <- 0:nb {
+    [for i <- 0:ma for j <- 0:nb {
         // k is used as 1-st index when accessing A,
         // with scale=1 and offset=0. k varies from 0 to na
         check_range(0, na, 1, 0, A, 1)
         // and it's used as 0-th index when accessing B
         // with scale=1 and offset=0. k varies from 0 to na
         check_range(0, na, 1, 0, B, 0)
-        // <.> denotes fast access without range check
+        // <.> denotes fast access without range check,
+        // this is not a real Ficus syntax
         fold s = 0. for k <- 0:na {s + A[<i>,<k>]*B[<k>,<j>]}
-     } |]
+     }]
 }
 ```
 
@@ -2297,12 +2296,12 @@ Here is are some basic array processing operations put together for convenience:
 6. flip matrix around the center: `A[::-1,::-1]`
 7. flatten array, convert it to 1D: `A[:]`
 8. apply element-wise apply element-wise binary operation two each pair of the corresponding matrix elements: `A op B`, where `op` is one of `.+, .-, .*, ./, .%, .**, &, |, ^`.
-9. concatenate several arrays horizontally: `[| \A1, \A2, ... |]`
-10. concatenate several arrays vertically: `[| \A1; \A2; ... |]`
-11. convert list or string to array: `[| \source |]`
+9. concatenate several arrays horizontally: `[\A1, \A2, ...]`
+10. concatenate several arrays vertically: `[\A1; \A2; ...]`
+11. convert list or string to array: `[\source]`
 12. convert array back to list or string: `list(arr)`, `string(arr)`. In the latter case the array must have `char []` type, otherwise `string(arr)` function will create the textual representation of array.
-12. merge several arrays into one multi-channel array: `[| for x1 <- A1, x2 <- A2, ... {(x1, x2, ...)} |]`
-13. split multi-channel array into several single-channel arrays: `[| @unzip for x <- A {x} |]`
+12. merge several arrays into one multi-channel array: `[for x1 <- A1, x2 <- A2, ... {(x1, x2, ...)}]`
+13. split multi-channel array into several single-channel arrays: `[@unzip for x <- A {x}]`
 14. transpose matrix using postfix apostrophe operator: `A'`
 15. multiply two matrices: `A*B`
 16. invert matrix (currently, QR algorithm is used): `A\1`
@@ -2352,13 +2351,13 @@ Here is a naive, but usable implementation of 3x3 blur using `.clip` operation.
 fun blur3x3(img: uint8 [,])
 {
    val (h, w) = size(img)
-   [| for y <- 0:h for x <- 0:w {
+   [for y <- 0:h for x <- 0:w {
       sat_uint8((img.clip[y-1, x-1] + img.clip[y-1, x] +
                  img.clip[y-1, x+1]+ img.clip[y, x-1] +
                  img[y, x] + img.clip[y, x+1]+
                  img.clip[y+1, x-1] + img.clip[y+1, x] +
                  img.clip[y+1, x+1])/9)
-     } |]
+     }]
 }
 ```
 
@@ -2604,14 +2603,14 @@ As you may see, a generic function is used exactly as a normal function. Let's i
 fun dilate3x3(img: 'pix [,]): 'pix [,]
 {
     val (h, w) = size(img)
-    [| for y <- 0:h for x <- 0:w {
+    [for y <- 0:h for x <- 0:w {
         val a = max(img.clip[y-1,x-1],
           max(img.clip[y-1,x], img.clip[y-1, x+1]))
         val a = max(a, max(img.clip[y,x-1],
           max(img.[y,x], img.clip[y, x+1])))
         max(a, max(img.clip[y+1,x-1],
           max(img.clip[y+1,x]), img.clip[y+1, x+1])))
-    } |]
+    }]
 }
 
 // multiply matrix A by transposed B and add the result to C
@@ -2620,9 +2619,9 @@ fun gemm_A_Bt_plusC(A: 't [,], B: 't [,], C: 't [,])
     val (ma, na) = size(A)
     val (mb, nb) = size(B)
     val (mc, nc) = size(C)
-    [| for i <- 0:mc for j <- 0:nc {
+    [for i <- 0:mc for j <- 0:nc {
         fold s = C[i, j] for k <- 0:na {s + A[i, k]*B[j, k]}
-    } |]
+    }]
 }
 
 // explicit instantiation of a generic function is easy
@@ -2640,14 +2639,14 @@ Defining and using complex generic types is easy too, as we will see in [Sum Typ
 You may have noticed that comprehensions or for-loops, processing 1D, 2D etc. arrays often looks the same, e.g. the implementation of pairwise addition of two arrays looks like
 
 ```
-val result = [| for x <- A, y <- B {x + y} |]
+val result = [for x <- A, y <- B {x + y}]
 ```
 
 regardless of the element type and dimensionality of `A` and `B` (as long as it's the same in `A` and `B`).
 Ficus provide a convenient notation to implement a single generic function that supports arrays of any dimensionality:
 
 ```
-operator .+ (A: 't [+], B: 't [+]) = [| for x <- A, y <- B {x+y} |]
+operator .+ (A: 't [+], B: 't [+]) = [for x <- A, y <- B {x+y}]
 ```
 
 That is, instead of defining several equivalent functions with parameters of different dimensionality `'t []`, `'t [,]`, `'t [,,]` etc. we simply write `'t [+]`. For each specific dimensionality (1D, 2D etc.) and for each particular element type the compiler will create a dedicated function that will handle such arrays.
@@ -2680,7 +2679,7 @@ There are much less built-in operations on records, but still it's possible to p
 ```
 // a part of Builtins.fx
 // for loop of record gives you names of the record members, as well as their values
-fun string(r: {...}) = join_embrace("{", "}", ", ", [| for (n, x) <- r {n+"="+repr(x)} |])
+fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
 ```
 
 # Lists
@@ -2700,7 +2699,7 @@ Such lists are surprisingly powerful. In fact, that was the only data type avail
 List can be expressed in Ficus in two ways:
 
 ```
-val list123 = [1, 2, 3]
+val list123 = [:: 1, 2, 3]
 // or
 val list123 = 1 :: 2 :: 3 :: []
 
@@ -2728,7 +2727,7 @@ The other big advantage of such lists is that virtually *all* possible operation
 * `x :: l` — builds the new list by constructing *CONS* cell `(x, l)`
 
 ```
-val l0 = [1, 2, 3]
+val l0 = [:: 1, 2, 3]
 
 // [16, 9, 4, 0, 1, 2, 3]
 val fold l = l0 for i <- 0:5 {i*i :: l}
@@ -2834,7 +2833,7 @@ fun list_find(l: 't list, pred: 't->bool): 't? =
         if pred(x) {Some(x)}
         else {list_find(l.tl(), pred)}
     }
-val l = [1, 2, 3]
+val l = [:: 1, 2, 3]
 val first_even = list_find(fun (x) {x % 2 == 0}, l)
 println(if first_even.issome() {
         string(first_even.value())
@@ -2857,10 +2856,10 @@ fun list_map(l: 'a list, f: 'a->'b): 'b list =
 fun list_map_alt(l: 'a list, f: 'a->'b): 'b list =
     if l == [] {[]} else {f(l.hd()) :: list_map_alt(l.tl(), f)}
 
-val strs = ["1", "a", "2"]
+val strs = [:: "1", "a", "2"]
 // convert strings to integers,
 // replace non-integers with -1's.
-// the result is [1, -1, 2]
+// the result is [:: 1, -1, 2]
 val nums = list_map(strs, fun (s: string) {s.to_int_or(-1)})
 ```
 
@@ -2873,7 +2872,7 @@ Because `List.foldl()` and `List.map()` are very common, Ficus provides more con
 fun list_length3(l: 't list): int = fold len=0 for x <- l {len+1}
 
 // use list comprehension instead of List.map()
-val nums = [for s <- strs {s.to_int_or(-1)}]
+val nums = [:: for s <- strs {s.to_int_or(-1)}]
 
 // also, you can just iterate through a list
 // without producing a result (besides the side effects)
@@ -2905,9 +2904,9 @@ Even though many of the list processing operations can be easily implemented, as
 * `l.sort(lt)` — computes the sorted list using the comparison function `lt`:
 
 ```
-val a = [("a", 5), ("c", 0), ("A", 1)]
+val a = [:: ("a", 5), ("c", 0), ("A", 1)]
 // sorts the list of pairs by the first element;
-// returns [("A", 1), ("a", 5), ("c", 0)]
+// returns [:: ("A", 1), ("a", 5), ("c", 0)]
 val b = List.sort(a, fun ((s1, n1): (string, int),
                 (s2, n2): (string, int)) => s1 < s2)
 ```
@@ -3125,9 +3124,9 @@ val { box, tracked } = obj
 val { label=("car", _), box, tracked=true } = obj
 
 // unpack pixels when we iterate through an image
-val gray = [| for (r, g, b) <- img {
+val gray = [for (r, g, b) <- img {
         sat_uint8(round(r*0.299 + g*0.587 + b*0.114))
-    } |]
+    }]
 
 // perspective projection of 3D point to 2D plane
 fun normalize((x, y, z): (float*3)) = (x/z, y/z)
@@ -4133,11 +4132,11 @@ The first useful thing is the `@parallel for`:
 
 ```
 val (h, w) = size(img)
-val out_img = [|
+val out_img = [
     @parallel for y <- 0:h
         for x <- 0:w {
             some_time_consuming_filter(img, x, y)
-        } |]
+        }]
 ```
 
 That is, you write a normal for-loop or an array comprehension, put `@parallel` in front of `for` and that's it. Ficus compiler will automatically run this loop as parallel. See `examples/mandelbrot.fx` example that renderers Mandelbrot fractal for illustration of this feature.
@@ -4255,7 +4254,7 @@ And this is how it can be used:
 import SSE2_Utils as sse2
 val n = 42
 val a = array(n, 200u8)
-val b = [| for i <- 0:n {uint8(i*5)} |]
+val b = [for i <- 0:n {uint8(i*5)}]
 println(sse2.add_sat_u8(a, b))
 0
 ```
