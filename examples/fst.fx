@@ -172,7 +172,7 @@ fun is_prime(n: int)
     }
 }
 
-println(f"primes <100: {vector [for i <- 0:100 when is_prime(i) {i}]}")
+println(f"primes <100: {vector(for i <- 0:100 when is_prime(i) {i})}")
 
 val sorted = [:: 10, 355, 113, -1, 2, 26, 1, 1949, 0,
               299792458, -460, 451, -11034, 8848].sort((<))

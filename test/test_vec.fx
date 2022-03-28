@@ -11,12 +11,13 @@ from UTest import *
 TEST("vector.simple", fun()
 {
     val N = 10
-    val a = vector [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+    val a = vector([0, 1, 4, 9, 16, 25, 36, 49, 64, 81])
+    var arr = [for i <- 0:N {i*i}]
     EXPECT_EQ(`size(a)`, 10)
-    EXPECT_EQ(`a`, vector [for i <- 0:N {i*i}])
-    EXPECT_EQ(`a`, vector([for i <- 0:N {i*i}]))
+    EXPECT_EQ(`a`, vector(for i <- 0:N {i*i}))
+    EXPECT_EQ(`a`, vector(arr))
     EXPECT_EQ(`a[5]`, 25)
-    EXPECT_EQ(`a[6:.-1][::-1] + a[:4]`, vector [64, 49, 36, 0, 1, 4, 9])
+    EXPECT_EQ(`a[6:.-1][::-1] + a[:4]`, vector([64, 49, 36, 0, 1, 4, 9]))
     //EXPECT_EQ(a.wrap[-2], 64)
 })
 
@@ -24,13 +25,13 @@ TEST("vector.comprehensions", fun()
 {
     val N = 1000003
     val arr = [for i <- 0:N {i}]
-    val vec = vector [for i <- 0:N {float(i)}]
+    val vec = vector([for i <- 0:N {float(i)}])
     EXPECT_EQ(`size(vec)`, size(arr))
     for x <- arr, y <- vec {
         EXPECT_EQ(`float(x)`, y)
         if float(x) != y {break}
     }
-    val vec = vector [for i <- 0:N {vector [string(i)]}]
+    val vec = vector(for i <- 0:N {vector([string(i)])})
     for x <- arr, y <- vec {
         EXPECT_EQ(`size(y)`, 1)
         val str_x = string(x), y_0 = y[0]
@@ -47,7 +48,7 @@ TEST("vector.concat_slice", fun()
     var vec: float vector = []
     while i < N {
         val j = rng.uniform(i, N+1)
-        val added_vec = vector [for k <- i:j {float(k)}]
+        val added_vec = vector(for k <- i:j {float(k)})
         vec += added_vec
         i = j
     }
@@ -63,7 +64,7 @@ TEST("vector.concat_slice", fun()
         if i == 0 {0} else if i == ncuts {N} else {rng.uniform(0, N)}
     }]
     cuts.sort((<))
-    val parts = vector [for i <- 0:ncuts {vec[cuts[i]:cuts[i+1]]}]
+    val parts = vector(for i <- 0:ncuts {vec[cuts[i]:cuts[i+1]]})
     var vec2: float vector = []
     // test the reverse at once
     for part <- parts[::-1] { vec2 = part + vec2 }
@@ -79,7 +80,7 @@ TEST("vector.find", fun()
 {
     val rng = RNG(0xffffffffUL)
     val N = 1000003
-    val (simple_vec, complex_vec) = vector [@unzip for i <- 0:N {(i, vector [i])}]
+    val (simple_vec, complex_vec) = vector(@unzip for i <- 0:N {(i, vector([i]))})
 
     for i <- 0:10000 {
         val idx = rng.uniform(0, N)

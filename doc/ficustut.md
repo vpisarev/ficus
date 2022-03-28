@@ -667,7 +667,7 @@ Here is how the above-defined generic and non-generic types can be used:
 ```
 fun convexhull(c: contour_t): contour_t { ... }
 // represent a contour as a vector of pairs of integers
-val contour = vector [(0, 0), (10, 0), (1, 1), (0, 10)]
+val contour = vector([(0, 0), (10, 0), (1, 1), (0, 10)])
 // correct: contour_t === point vector === (int, int) vector
 // the type of chull is automatically inferenced
 val chull = convexhull(contour)
@@ -675,8 +675,8 @@ val chull = convexhull(contour)
 // the previous 'contour' is now hidden.
 // no need to declare this type in advance
 val contour =
-      vector [Complex {re=0.f, im=0.f}, Complex {re=10.f, im=0.f},
-       Complex {re=1.f, im=1.f}, Complex {re=0.f, im=10.f}]
+      vector([Complex {re=0.f, im=0.f}, Complex {re=10.f, im=0.f},
+              Complex {re=1.f, im=1.f}, Complex {re=0.f, im=10.f}])
 // error: convexhull expects (int, int) vector.
 val chull_f = convexhull(contour)
 
@@ -905,11 +905,12 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 * **vector**: `'t vector`. Vector is an immutable 1D array built on top of so-called "Relaxed Radix Balanced trees" with quite efficient random access, iteration, slicing and concatenation operations.:
 
     ```
-    val small_vector = vector [1, 2, 3, 4, 5]
+    val small_vector = vector([1, 2, 3, 4, 5])
 
-    // make big vector vector [1, 2, 3, ..., N]
+    // make big vector vector([1, 2, 3, ..., N])
     val N = 1000000
-    val big_vector = vector [for i <- 0:N {i+1}]
+    // use vector comprehension; [] inside () can be omitted
+    val big_vector = vector([for i <- 0:N {i+1}])
 
     // random vector access is ~O(1) operation,
     // so the following loop is reasonably fast
@@ -924,14 +925,14 @@ Ficus includes the following built-in, automatically defined and user-defined ty
                         big_vector[800000:]
 
     // make a list with the same content as big_vector
-    val big_list = vector [for i <- 0:N {i+1}]
+    val big_list = vector([for i <- 0:N {i+1}])
 
     // may take forever, because accessing
     // n-th element of a list takes O(n) time.
     for i <- 0:100000 { sum -= big_list.nth(rng(0, N)) }
     ```
 
-  In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + (vector [new_values ...]) + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
+  In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + vector([new_values ...]) + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
 
 * **variant**, also known as sum type: `Tag1: 't1 | Tag2: 't2 | ...`. Variants are used to represent various data structures from from simple enumerations to very complex hierarchical data structures. We cover them in the dedicated section.
 
@@ -1454,11 +1455,11 @@ We have already met comprehensions, for example, when big vector and list of 100
 
 ```
 // [1, 2, 3, ..., 1000000]
-val big_vector = vector [for i<-0:1000000 {i+1}]
+val big_vector = vector([for i<-0:1000000 {i+1}])
 val big_list = [:: for i<-0:1000000 {i+1}]
 ```
 
-Basically, array/vector/list comprehension is a for loop enclosed in one of variations of Ficus' square brackets: `[for ...]` (array comprehension), `vector [for ...]` (vector comprehension) or `[:: for ...]` (list comprehension). The comprehension produces the corresponding collection (array/vector/list), where body of the for-loop defines the elements of those collections. The comprehensions can be used to construct arbitrarily small or big collections using certain formula, or to transform one collection or a set of collection to another of the same kind (array/vector/list) or a different kind. In the case of array comprehension when iteration is done over a multi-dimensional domain (or when we have nested for-loops) the result will also be multi-dimensional. Here are some more examples:
+Basically, array/vector/list comprehension is a for loop enclosed in one of variations of Ficus' square brackets: `[for ...]` (array comprehension), `vector([for ...])` or `vector(for ...)` (vector comprehension) or `[:: for ...]` (list comprehension). The comprehension produces the corresponding collection (array/vector/list), where body of the for-loop defines the elements of those collections. The comprehensions can be used to construct arbitrarily small or big collections using certain formula, or to transform one collection or a set of collection to another of the same kind (array/vector/list) or a different kind. In the case of array comprehension when iteration is done over a multi-dimensional domain (or when we have nested for-loops) the result will also be multi-dimensional. Here are some more examples:
 
 ```
 val n = 10
@@ -1552,8 +1553,8 @@ Zipping collections is trivial:
 val a_list = [:: 1, 2, 3, 4, 5]
 val b_list = [:: "a", "b", "c", "d", "e"]
 // take two lists and produce one vector of pairs
-val ab_vector = vector [for a <- a_list, b <- b_list {(a, b)}]
-// produces vector [(1, "a), (2, "b"), (3, "c"), (4, "d"), (5, "e")]
+val ab_vector = vector(for a <- a_list, b <- b_list {(a, b)})
+// produces vector([(1, "a), (2, "b"), (3, "c"), (4, "d"), (5, "e")])
 ```
 
 `SizeMismatchError` exception is thrown when collections have different size.
@@ -3061,7 +3062,7 @@ fun mergeSort(l: 't list, lt: ('t,'t)->bool): 't list =
             | ([], r) => r
         }
 
-        // scan through a list [l0, l1, l2, ... ] of sorted lists,
+        // scan through a list [:: l0, l1, l2, ... ] of sorted lists,
         // merge pairs of lists: l0 with l1, l2 with l3 etc.,
         // so after this pass we get (N+1)/2 lists instead of N
         fun scan(_: 't list list): 't list list

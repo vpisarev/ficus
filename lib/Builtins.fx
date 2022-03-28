@@ -839,9 +839,9 @@ fun array(s: string): char [] = [for x <- s {x}]
 }
 
 fun vector(): 't vector = []
-fun vector(l: 't list): 't vector = vector [for x <- l {x}]
-fun vector(a: 't [+]): 't vector = vector [for x <- a {x}]
-fun vector(s: string): char vector = vector [for x <- s {x}]
+fun vector(l: 't list): 't vector = vector(for x <- l {x})
+fun vector(a: 't [+]): 't vector = vector(for x <- a {x})
+fun vector(s: string): char vector = vector(for x <- s {x})
 
 fun size(a: 't vector) = __intrin_size__(a)
 

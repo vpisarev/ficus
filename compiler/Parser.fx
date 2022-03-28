@@ -182,6 +182,9 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
         val new_body = ExpSeq([::check_exp, for_iter_exp ], make_new_ctx(body_loc))
         (ExpNop(body_loc), new_body, ExpNop(body_loc),
          global_flags.{for_flag_make=ForMakeList})
+    | "vector" =>
+        (ExpNop(body_loc), fold_body, ExpNop(body_loc),
+         global_flags.{for_flag_make=ForMakeVector})
     | _ => throw ParseError(acc_loc, f"unknown fold variation '{special}'")
     }
 
@@ -321,10 +324,18 @@ fun parse_ident_list(ts: tklist_t, expect_comma: bool, dot_idents: bool, result:
         (ts, result.rev())
     }
 
+fun make_list_exp(el: exp_t list, l1: loc_t) =
+    fold mklist_e = make_literal(LitEmpty, l1) for e <- el.rev() {
+        ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
+    }
+
 fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
 {
     //println(f"parse_atomic_exp @ {ts.hd().1}\n")
     match ts {
+    | (IDENT(ne, i), l1) :: rest =>
+        check_ne(ne, ts)
+        (rest, make_ident(i, l1))
     | (LITERAL(lit), l1) :: rest => (rest, make_literal(lit, l1))
     | (LPAREN(true), l1) :: (t, l2) :: (RPAREN, _) :: rest
         when get_opname(t) != noid =>
@@ -349,28 +360,12 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
         | [:: e] => e
         | _ => make_tuple(el, l1)
         })
-    | (IDENT(true, i), l1) :: (LSQUARE(false), _) :: (f, _) :: rest
-        when (i == "vector" || i == "list") && is_for_start(f) =>
-        val (ts, for_exp, _) = parse_for(ts.tl().tl(), if i == "vector" {ForMakeVector} else {ForMakeList})
-        match_paren((ts, for_exp), RSQUARE, l1)
-    | (IDENT(true, i), l1) :: (LSQUARE(false), _) :: rest
-        when (i == "vector" || i == "list") =>
-        val (ts, _, el, _) = parse_exp_list(rest, RSQUARE, kw_mode=KwNone, allow_empty=true)
-        if i == "vector" {
-            (ts, ExpMkVector(el, make_new_ctx(l1)))
-        } else {
-            (ts, fold mklist_e = make_literal(LitEmpty, l1) for e <- el.rev() {
-                ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
-            })
-        }
     | (LSQUARE(true), l1) :: (CONS, _) :: (f, _) :: rest when is_for_start(f) =>
         val (ts, for_exp, _) = parse_for(ts.tl().tl(), ForMakeList)
         match_paren((ts, for_exp), RSQUARE, l1)
     | (LSQUARE(true), l1) :: (CONS, _) :: rest =>
         val (ts, _, el, _) = parse_exp_list(rest, RSQUARE, kw_mode=KwNone, allow_empty=true)
-        (ts, fold mklist_e = make_literal(LitEmpty, l1) for e <- el.rev() {
-            ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
-        })
+        (ts, make_list_exp(el, l1))
     | (LSQUARE(true), l1) :: (f, _) :: rest when is_for_start(f) =>
         val (ts, for_exp, _) = parse_for(ts.tl(), ForMakeArray)
         match_paren((ts, for_exp), RSQUARE, l1)
@@ -384,9 +379,6 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
             if done { break }
         }
         (vts, ExpMkArray(result.rev(), make_new_ctx(l1)))
-    | (IDENT(ne, i), l1) :: rest =>
-        check_ne(ne, ts)
-        (rest, make_ident(i, l1))
     | (t, _) :: _ =>
         throw parse_err(ts, f"unxpected token '{tok2str(t).1}'. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here")
     | _ =>
@@ -404,7 +396,7 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
         // 2. array access [...]
         // 3. function call (...)
         match ts {
-        | (LPAREN(false), l1) :: (FOR _, l2) :: rest =>
+        | (LPAREN(false), l1) :: (f, l2) :: rest when is_for_start(f) =>
             val eloc = get_exp_loc(e)
             val istr = match e {
                 | ExpIdent(i, _) => pp(i)
@@ -415,7 +407,6 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
             val (ts, fold_exp) = match_paren((ts, fold_exp), RPAREN, l1)
             extend_simple_exp_(ts, fold_exp)
         | (LPAREN(false), l1) :: rest =>
-            // function call ([TODO] support keyword args)
             val (ts_, _, args, kw_args) = parse_exp_list(rest, RPAREN,
                                             kw_mode=KwMaybe, allow_empty=true)
             val args =
@@ -424,41 +415,66 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
                     args + [:: ExpMkRecord(ExpNop(l1), kw_args, make_new_ctx(l1))]
                 }
             val call_exp = match e {
-                | ExpIdent(i, _) when pp(i).startswith("__intrin_") =>
+                | ExpIdent(i, _) =>
                     val istr = pp(i)
-                    val iop =
-                        match istr {
-                        | "__intrin_sqrt__" => IntrinMath(get_id("sqrt"))
-                        | "__intrin_pow__" => IntrinMath(get_id("pow"))
-                        | "__intrin_sin__" => IntrinMath(get_id("sin"))
-                        | "__intrin_cos__" => IntrinMath(get_id("cos"))
-                        | "__intrin_tan__" => IntrinMath(get_id("tan"))
-                        | "__intrin_asin__" => IntrinMath(get_id("asin"))
-                        | "__intrin_acos__" => IntrinMath(get_id("acos"))
-                        | "__intrin_atan__" => IntrinMath(get_id("atan"))
-                        | "__intrin_atan2__" => IntrinMath(get_id("atan2"))
-                        | "__intrin_log__" => IntrinMath(get_id("log"))
-                        | "__intrin_exp__" => IntrinMath(get_id("exp"))
-                        | "__intrin_atanh__" => IntrinMath(get_id("atanh"))
-                        | "__intrin_asinh__" => IntrinMath(get_id("asinh"))
-                        | "__intrin_acosh__" => IntrinMath(get_id("acosh"))
-                        | "__intrin_sinh__" => IntrinMath(get_id("sinh"))
-                        | "__intrin_cosh__" => IntrinMath(get_id("cosh"))
-                        | "__intrin_tanh__" => IntrinMath(get_id("tanh"))
-                        | "__intrin_min__" => IntrinMath(get_id("min"))
-                        | "__intrin_max__" => IntrinMath(get_id("max"))
-                        | "__intrin_abs__" => IntrinMath(get_id("abs"))
-                        | "__intrin_floor__" => IntrinMath(get_id("floor"))
-                        | "__intrin_ceil__" => IntrinMath(get_id("ceil"))
-                        | "__intrin_round__" => IntrinMath(get_id("round"))
-                        | "__intrin_sat_uint8__" => IntrinSaturate(ScUInt8)
-                        | "__intrin_sat_int8__" => IntrinSaturate(ScInt8)
-                        | "__intrin_sat_uint16__" => IntrinSaturate(ScUInt16)
-                        | "__intrin_sat_int16__" => IntrinSaturate(ScInt16)
-                        | "__intrin_size__" => IntrinGetSize
-                        | _ => throw parse_err(ts, f"unknown/unsupported intrinsic {istr}")
+                    if istr.startswith("__intrin_") {
+                        val iop = match istr {
+                            | "__intrin_sqrt__" => IntrinMath(get_id("sqrt"))
+                            | "__intrin_pow__" => IntrinMath(get_id("pow"))
+                            | "__intrin_sin__" => IntrinMath(get_id("sin"))
+                            | "__intrin_cos__" => IntrinMath(get_id("cos"))
+                            | "__intrin_tan__" => IntrinMath(get_id("tan"))
+                            | "__intrin_asin__" => IntrinMath(get_id("asin"))
+                            | "__intrin_acos__" => IntrinMath(get_id("acos"))
+                            | "__intrin_atan__" => IntrinMath(get_id("atan"))
+                            | "__intrin_atan2__" => IntrinMath(get_id("atan2"))
+                            | "__intrin_log__" => IntrinMath(get_id("log"))
+                            | "__intrin_exp__" => IntrinMath(get_id("exp"))
+                            | "__intrin_atanh__" => IntrinMath(get_id("atanh"))
+                            | "__intrin_asinh__" => IntrinMath(get_id("asinh"))
+                            | "__intrin_acosh__" => IntrinMath(get_id("acosh"))
+                            | "__intrin_sinh__" => IntrinMath(get_id("sinh"))
+                            | "__intrin_cosh__" => IntrinMath(get_id("cosh"))
+                            | "__intrin_tanh__" => IntrinMath(get_id("tanh"))
+                            | "__intrin_min__" => IntrinMath(get_id("min"))
+                            | "__intrin_max__" => IntrinMath(get_id("max"))
+                            | "__intrin_abs__" => IntrinMath(get_id("abs"))
+                            | "__intrin_floor__" => IntrinMath(get_id("floor"))
+                            | "__intrin_ceil__" => IntrinMath(get_id("ceil"))
+                            | "__intrin_round__" => IntrinMath(get_id("round"))
+                            | "__intrin_sat_uint8__" => IntrinSaturate(ScUInt8)
+                            | "__intrin_sat_int8__" => IntrinSaturate(ScInt8)
+                            | "__intrin_sat_uint16__" => IntrinSaturate(ScUInt16)
+                            | "__intrin_sat_int16__" => IntrinSaturate(ScInt16)
+                            | "__intrin_size__" => IntrinGetSize
+                            | _ => throw parse_err(ts, f"unknown/unsupported intrinsic '{istr}'")
+                            }
+                        ExpIntrin(iop, args, make_new_ctx(eloc))
+                    } else if (istr == "vector" || istr == "list" || istr == "array") &&
+                        (match args {[:: ExpMap _] | [:: ExpMkArray ([:: _], _)] | [:: ExpMkVector _] => true | _ => false}) {
+                        match args {
+                        | [:: ExpMap(for_clauses, body, flags, ctx)] =>
+                            val mkflag = if istr == "array" {ForMakeArray}
+                                else if istr == "vector" {ForMakeVector}
+                                else {ForMakeList}
+                            ExpMap(for_clauses, body, flags.{for_flag_make=mkflag}, ctx)
+                        | _ =>
+                            val (el, ctx) = match args.hd() {
+                                | ExpMkArray([:: el], ctx) => (el, ctx)
+                                | ExpMkVector(el, ctx) => (el, ctx)
+                                | _ => throw parse_err(ts, f"unexpected '{istr}' argument")
+                                }
+                            if istr == "array" {
+                                ExpMkArray([:: el], ctx)
+                            } else if istr == "vector" {
+                                ExpMkVector(el, ctx)
+                            } else {
+                                make_list_exp(el, ctx.1)
+                            }
                         }
-                    ExpIntrin(iop, args, make_new_ctx(eloc))
+                    } else {
+                        ExpCall(e, args, make_new_ctx(eloc))
+                    }
                 | _ =>
                     ExpCall(e, args, make_new_ctx(eloc))
                 }
@@ -890,10 +906,10 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             is_parallel = true; vts = rest
         | (UNZIP, _) :: rest =>
             if need_unzip {throw parse_err(ts, "duplicate @unzip attribute")}
-            match for_make {
+            /*match for_make {
             | ForMakeNone | ForMakeTuple =>
                 throw parse_err(ts, "@unzip can only be used with array and list comprehensions")
-            | _ => {}}
+            | _ => {}}*/
             need_unzip = true; vts = rest
         | (FOR _, _) :: rest =>
             break
@@ -1019,7 +1035,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             val nested = i < nfors-1
             val flags = default_for_flags()
             val flags = if nested {flags.{for_flag_nested=true}}
-                else {flags.{for_flag_parallel=is_parallel}}
+                else {flags.{for_flag_parallel=is_parallel, for_flag_unzip=need_unzip}}
             val body = match when_e {
                 | Some(when_e) =>
                     val loc = get_exp_loc(when_e)
