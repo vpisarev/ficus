@@ -921,6 +921,17 @@ int fx_compose_arr( int dims, size_t elemsize, fx_free_t free_elem, fx_copy_t co
                     const int8_t* tags, const void** data, fx_arr_t* arr );
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);
 int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* farr);
+
+int fx_sgemm(bool tA, bool tB, float alpha, float beta,
+             int ma, int na, const float* a, int lda0, int lda1,
+             int mb, int nb, const float* b, int ldb0, int ldb1,
+             float* c, int ldc, int num_threads);
+
+int fx_dgemm(bool tA, bool tB, double alpha, double beta,
+             int ma, int na, const double* a, int lda0, int lda1,
+             int mb, int nb, const double* b, int ldb0, int ldb1,
+             double* c, int ldc, int num_threads);
+
 int fx_gemm(fx_arr_t* m1, bool t1, int_ rs1, int_ re1, int_ rd1, int_ cs1, int_ ce1, int_ cd1,
             fx_arr_t* m2, bool t2, int_ rs2, int_ re2, int_ rd2, int_ cs2, int_ ce2, int_ cd2, fx_arr_t* result);
 

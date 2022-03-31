@@ -23,6 +23,10 @@
 
 #include "ficus/impl/rpmalloc.h"
 
+#ifdef __ARM_NEON
+#include <arm_neon.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -759,5 +763,6 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 #include "ficus/impl/string.impl.h"
 #include "ficus/impl/regex.impl.h"
 #include "ficus/impl/system.impl.h"
+#include "ficus/impl/gemm.impl.h"
 #include "ficus/impl/rrbvec.impl.h"
 #include "ficus/impl/rpmalloc.impl.h"

@@ -222,6 +222,18 @@ fun uniform(rng: RNG, a: float, b: float) =
 fun uniform(rng: RNG, a: double, b: double) =
     double(rng)*(b - a) + a
 
+fun uniform(rng: RNG, sz: int, a: 't, b: 't) =
+    [for i <- 0:sz {uniform(rng, a, b)}]
+
+fun uniform(rng: RNG, (sz0, sz1): (int*2), a: 't, b: 't) =
+    [for i <- 0:sz0 for j <- 0:sz1 {uniform(rng, a, b)}]
+
+fun uniform(rng: RNG, (sz0, sz1, sz2): (int*3), a: 't, b: 't) =
+    [for i <- 0:sz0 for j <- 0:sz1 for k <- 0:sz2 {uniform(rng, a, b)}]
+
+fun uniform(rng: RNG, (sz0, sz1, sz2, sz3): (int*4), a: 't, b: 't) =
+    [for i <- 0:sz0 for j <- 0:sz1 for k <- 0:sz2 for l <- 0:sz3 {uniform(rng, a, b)}]
+
 fun jump(rng: RNG): RNG
 {
     val result = RNG {state=(0UL,0UL,0UL,0UL)}

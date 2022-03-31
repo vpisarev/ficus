@@ -45,10 +45,10 @@ TEST("matrix.mul_squares", fun() {
         1., 0., 3., 2.;
         1., 1., 0., 1. ]
 
-    EXPECT_EQ(`A*B`, refmul(A,B))
-    EXPECT_EQ(`A'*B`, refmul(A',B))
-    EXPECT_EQ(`A*B'`, refmul(A,B'))
-    EXPECT_EQ(`A'*B'`, refmul(A',B'))
+    EXPECT_NEAR(`A*B`, `refmul(A,B)`, 1e-5)
+    EXPECT_NEAR(`A'*B`, `refmul(A',B)`, 1e-5)
+    EXPECT_NEAR(`A*B'`, `refmul(A,B')`, 1e-5)
+    EXPECT_NEAR(`A'*B'`, `refmul(A',B')`, 1e-5)
 
     val C =
      [ 2.f, 1.f, 0.f, 4.f;
@@ -61,10 +61,38 @@ TEST("matrix.mul_squares", fun() {
         1.f, 0.f, 3.f, 2.f;
         1.f, 1.f, 0.f, 1.f ]
 
-    EXPECT_EQ(`C*D`, refmul(C,D))
-    EXPECT_EQ(`C'*D`, refmul(C',D))
-    EXPECT_EQ(`C*D'`, refmul(C,D'))
-    EXPECT_EQ(`C'*D'`, refmul(C',D'))
+    EXPECT_NEAR(`C*D`, `refmul(C,D)`, 1e-5f)
+    EXPECT_NEAR(`C'*D`, `refmul(C',D)`, 1e-5f)
+    EXPECT_NEAR(`C*D'`, `refmul(C,D')`, 1e-5f)
+    EXPECT_NEAR(`C'*D'`, `refmul(C',D')`, 1e-5f)
+})
+
+TEST("matrix.mul_big", fun() {
+    val rng = RNG(0x12345u64)
+    val M = 1007, N = 503, K = 185
+    val A = rng.uniform((M, K), -1.f, 1.f)
+    var At_ = A'
+    val At = At_
+    val B = rng.uniform((K, N), -1.f, 1.f)
+    var Bt_ = B'
+    val Bt = Bt_
+    val ref_C = refmul(A,B)
+    EXPECT_NEAR(`A*B`, `ref_C`, 1e-5f)
+    EXPECT_NEAR(`At'*B`, `ref_C`, 1e-5f)
+    EXPECT_NEAR(`A*Bt'`, `ref_C`, 1e-5f)
+    EXPECT_NEAR(`At'*Bt'`, `ref_C`, 1e-5f)
+
+    val Ad = rng.uniform((M, K), -1., 1.)
+    var Adt_ = Ad'
+    val Adt = Adt_
+    val Bd = rng.uniform((K, N), -1., 1.)
+    var Bdt_ = Bd'
+    val Bdt = Bdt_
+    val ref_Cd = refmul(Ad,Bd)
+    EXPECT_NEAR(`Ad*Bd`, `ref_Cd`, 1e-5)
+    EXPECT_NEAR(`Adt'*Bd`, `ref_Cd`, 1e-5)
+    EXPECT_NEAR(`Ad*Bdt'`, `ref_Cd`, 1e-5)
+    EXPECT_NEAR(`Adt'*Bdt'`, `ref_Cd`, 1e-5)
 })
 
 TEST("matrix.mul_ranges", fun() {
@@ -79,8 +107,8 @@ TEST("matrix.mul_ranges", fun() {
                 for x2 <- 0:(x1-1){
                     val C = (A[y2:,x2:])'
                     val D = (B[:x1-x2,:y1-y2])'
-                    EXPECT_EQ(`C*D`, refmul(C,D))
-                    EXPECT_EQ(`C'*D'`, refmul(C',D'))
+                    EXPECT_NEAR(`C*D`, `refmul(C,D)`, 1e-5)
+                    EXPECT_NEAR(`C'*D'`, `refmul(C',D')`, 1e-5)
                 }
             }
         }
@@ -94,12 +122,12 @@ TEST("matrix.mul_sparsed_ranges", fun() {
 
     val A = mothermat[1:8:2,2:5]
     val B = mothermat[5:8,2:9:2]
-    EXPECT_EQ(`A*B`, refmul(A,B))
-    EXPECT_EQ(`A'*B'`, refmul(A',B'))
+    EXPECT_NEAR(`A*B`, `refmul(A,B)`, 1e-10)
+    EXPECT_NEAR(`A'*B'`, `refmul(A',B')`, 1e-10)
 
     val C = mothermat[5:9,2:9:2]
     val D = mothermat[1:8:2,2:6]
-    EXPECT_EQ(`C*D'`, refmul(C,D'))
+    EXPECT_NEAR(`C*D'`, `refmul(C,D')`, 1e-10)
 
     for delta_outer <- 1:3 {
         val A = mothermat[1:9:delta_outer,:]
@@ -107,7 +135,7 @@ TEST("matrix.mul_sparsed_ranges", fun() {
         for delta_inner <- 1:2 {
             val C = A[1:3:delta_inner,:] //TODO: How to write subarraying with missed end? I tried A[1::delta_inner, but it doesn't work]
             val D = B[:,:3:delta_inner]
-            EXPECT_EQ(`C*D`, refmul(C,D))
+            EXPECT_NEAR(`C*D`, `refmul(C,D)`, 1e-10)
             }
         }
 
