@@ -20,6 +20,7 @@ import test_re
 import test_re2
 @endif
 import test_ds
+import test_dsp
 import test_deque
 import test_filename
 import test_oop
