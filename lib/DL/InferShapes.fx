@@ -176,11 +176,18 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
         val enable_broadcast = match el_op {
             | Ast.DL_Add | Ast.DL_And | Ast.DL_Div
             | Ast.DL_Equal | Ast.DL_Greater | Ast.DL_Less
+            | Ast.DL_LessOrEqual | Ast.DL_GreaterOrEqual
             | Ast.DL_Max | Ast.DL_Mean | Ast.DL_Min
             | Ast.DL_Mul | Ast.DL_Or | Ast.DL_Pow
             | Ast.DL_Sub | Ast.DL_Xor => true
             | _ => false }
         val (shape0, typ0) = get_shape_typ(t_inp[0])
+        val out_typ = match el_op {
+            | Ast.DL_Equal | Ast.DL_Greater | Ast.DL_Less
+            | Ast.DL_LessOrEqual | Ast.DL_GreaterOrEqual
+            | Ast.DL_IsInf | Ast.DL_IsNaN => Ast.DL_Bool
+            | _ => typ0
+            }
         val fold out_shape = shape0 for t_inp_i@i <- t_inp {
             val (shape_i, typ_i) = get_shape_typ(t_inp_i)
             assert(`typ_i == typ0`)
@@ -191,7 +198,7 @@ fun infer(net: Ast.dlnet_t, op: Ast.dlop_t): argshapeinfo_t []
                 out_shape.{layout = Ast.coerce_layouts(out_shape.layout, shape_i.layout)}
             }
         }
-        [argshapeinfo_t {idx=t_out, shape=out_shape, typ=typ0, dynamic=false}]
+        [argshapeinfo_t {idx=t_out, shape=out_shape, typ=out_typ, dynamic=false}]
     | DL_Expand {t_inp, t_shape, t_out} =>
         val (shape0, typ0) = get_shape_typ(t_inp)
         val shape_arg = net.get_tensor(t_shape)

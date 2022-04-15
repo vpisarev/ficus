@@ -521,6 +521,7 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                     [:: Ast.DL_Conv {
                         name=name, kernel_shape=kernel_shape, pads=pads,
                         strides=strides, dilations=dilations, group = group,
+                        conv_data=ref null,
                         t_inp=inputs[0], t_weights=inputs[1],
                         t_bias=(if ninputs == 3 {inputs[2]} else {0}),
                         t_out=outputs[0]}]

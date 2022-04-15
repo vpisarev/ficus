@@ -146,6 +146,7 @@ class dlop_t =
         strides: int []
         dilations: int []
         group: int
+        conv_data: cptr ref
         t_inp: int; t_weights: int; t_bias: int; t_out: int }
     | DL_ConvTranspose: {
         name: string
@@ -654,7 +655,7 @@ fun parse_params(params: string): string list
     params.tokens(issep).map(String.strip)
 }
 
-fun op2str(name: string, opname: string, params: string, tensors: string list, indent0: string)
+fun op2str(name: string, opname: string, params: string, tensors: string [], indent0: string)
 {
     val indent = indent0 + "   "
     val pl = parse_params(params)
@@ -720,10 +721,10 @@ fun dlop_t.name() = match self
     | DL_Unsqueeze {name} => (name, "Unsqueeze")
 }
 
-fun targs2pairs(prefix: string, args: int []) = [:: for a@i <- args {(f"{prefix}{i}", a)}]
+fun targs2pairs(prefix: string, args: int []) = [for a@i <- args {(f"{prefix}{i}", a)}]
 
-fun t2str(net: dlnet_t, tensors: (string, int) list) =
-    [:: for (name, tidx) <- tensors {
+fun t2str(net: dlnet_t, tensors: (string, int) []) =
+    [for (name, tidx) <- tensors {
         val targ = net.args[tidx]
         f"{name}=\"{targ.name}\", // {arg2str(net, tidx)}"
     }]
@@ -862,13 +863,13 @@ fun op2str(net: dlnet_t, op: dlop_t, indent: string)
     | DL_Resize { name, coord_trans, cubic_coeff_a, exclude_outside, extrapolation_value,
         mode, nearest_mode, t_inp, t_scales, t_sizes, t_roi, t_out } =>
         val nearest_mode_str = if mode == DL_Inter_Nearest {f", nearest_mode={nearest_mode}"} else {""}
-        val tensors = [("t_out", t_out)]
+        val tensors = [:: ("t_out", t_out)]
         val tensors = if coord_trans == DL_CT_TFCropResize {("t_roi", t_roi) :: tensors} else {tensors}
         val tensors = if t_scales != 0 {("t_scales", t_scales) :: tensors} else {("t_sizes", t_sizes) :: tensors}
         op2str(name, "Resize", f"coord_trans={coord_trans}, cubic_coeff_a={cubic_coeff_a},\
             exclude_outside={exclude_outside}, extrapolation_value={extrapolation_value},\
             mode={mode}{nearest_mode_str}",
-            t2str(net, ("t_inp", t_inp) :: tensors), indent)
+            t2str(net, array(("t_inp", t_inp) :: tensors)), indent)
     | DL_Reshape {name, allowzero, t_inp, t_shape, t_out} =>
         op2str(name, "Reshape", f"allowzero={allowzero}",
             t2str(net, [("t_inp", t_inp), ("t_shape", t_shape), ("t_out", t_out)]), indent)

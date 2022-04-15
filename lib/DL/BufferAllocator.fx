@@ -103,7 +103,10 @@ fun assign_buffers(net: Ast.dlnet_t)
                     (usecounts[inps[0]] == 1 && net.istemp(inps[0]), inps[0])
                 | Ast.DL_Scatter _ =>
                     (usecounts[inps[0]] == 1 && inps[1] != inps[0] && inps[2] != inps[0] && net.istemp(inps[0]), inps[0])
-                | Ast.DL_Elemwise _ =>
+                // because of posssible broadcasting we cannot safely perform
+                // element-wise operations in-place, unless there is just one input.
+                | Ast.DL_Elemwise {el_op, t_inp} when t_inp.size() == 1 && (match el_op {
+                    | Ast.DL_IsInf | Ast.DL_IsNaN => false | _ => true}) =>
                     match find_opt(for argidx <- inps {usecounts[argidx] == 1 && net.istemp(argidx)}) {
                     | Some(argidx) => (true, argidx)
                     | _ => (false, -1)
