@@ -96,7 +96,7 @@ typedef struct _fx_conv2d_t
     int K, C, Hk, Wk;
     int stride_y, stride_x;
     int dilation_y, dilation_x;
-    int pad_top, pad_bottom, pd_left, pad_right;
+    int pad_top, pad_bottom, pad_left, pad_right;
     float* weights;
     float* bias;
     int activ;
@@ -708,17 +708,17 @@ fun init_conv(kernel_shape: int [], strides: int [], dilations: int [], pads: in
     const int_* w_shape_ = (const int_*)w_shape->shape.data;
     const int_* strides_ = (const int_*)strides->data;
     const int_* dilations_ = (const int_*)dilations->data;
-    const int_* pads_ = (const int_*)pads.data;
-    if (w_shape->ndims != 1 || w_shape->dim[0].size != 4 ||
+    const int_* pads_ = (const int_*)pads->data;
+    if (w_shape->shape.ndims != 1 || w_shape->shape.dim[0].size != 4 ||
         strides->ndims != 1 || strides->dim[0].size != 2 ||
         dilations->ndims != 1 || dilations->dim[0].size != 2 ||
         pads->ndims != 1 || pads->dim[0].size != 4)
-        return FX_SET_EXN_FAST(FX_EXN_BadSizeError);
+        return FX_SET_EXN_FAST(FX_EXN_SizeError);
     return _fx_init_conv2d(_FX_LAYOUT_NCHW, _FX_LAYOUT_NCHW, (int)group,
         (int)w_shape_[0], (int)w_shape_[1], (int)w_shape_[2], (int)w_shape_[3],
         (int)strides_[0], (int)strides_[1], (int)dilations_[0], (int)dilations_[1],
         (int)pads_[0], (int)pads_[1], (int)pads_[2], (int)pads_[3],
-        (const float*)w_data.data, (const float*)bias_data.data,
+        (const float*)w_data->data, (const float*)bias_data->data,
         0, 0, 0, 0, 0, _FX_ACTIV_NONE, 0, 0, 0, fx_result);
 }
 
@@ -729,10 +729,10 @@ fun run_conv(inp_shape: Ast.dlshape_t, inp_data: float [],
 {
     const int ntasks = 4;
     _fx_conv2d_t* conv = conv_data && conv_data->ptr ? (_fx_conv2d_t*)conv_data->ptr : 0;
-    int_ ndims = inp_shape->shape.dim[0];
+    int_ ndims = inp_shape->shape.dim[0].size;
     if (!conv)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
-    if (ndims != 4 || ndims != out_shape->shape.dim[0])
+    if (ndims != 4 || ndims != out_shape->shape.dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     return _fx_conv2d((int)ndims,
                       (const int_*)inp_shape->shape.data,

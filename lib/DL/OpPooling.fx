@@ -271,7 +271,7 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
 
 fun run_maxpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
                    out: 't [], out_shape: Ast.dlshape_t,
-                   kh: int, kw: int, sy: int, sx: int,
+                   Hk: int, Wk: int, sy: int, sx: int,
                    dy: int, dx: int, pad_top: int, pad_left: int,
                    pad_bottom: int, pad_right: int): void
 @ccode {
@@ -279,21 +279,21 @@ fun run_maxpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
     _fx_pooling2d_t pool;
     int_ ndims = inp_shape->shape.dim[0].size;
     const int_* inpsize = (const int_*)inp_shape->shape.data;
-    const int_* outsize = (const out_*)out_shape->shape.data;
+    const int_* outsize = (const int_*)out_shape->shape.data;
 
     if (ndims != 4 || ndims != out_shape->shape.dim[0].size ||
         inpsize[0] != outsize[0] || inpsize[1] != outsize[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if ((Hk|Wk) != 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    pool->C = (int)inpsize[1];
-    pool->Hk = (int)kh; pool->Wk = (int)kw;
-    pool->stride_y = (int)sy; pool->stride_x = (int)sx;
-    pool->dilation_y = (int)dy; pool->dilation_x = (int)dx;
-    pool->pad_top = (int)pad_top; pool->pad_left = (int)pad_left;
-    pool->pad_bottom = (int)pad_bottom; pool->pad_right = (int)pad_right;
+    pool.C = (int)inpsize[1];
+    pool.Hk = (int)Hk; pool.Wk = (int)Wk;
+    pool.stride_y = (int)sy; pool.stride_x = (int)sx;
+    pool.dilation_y = (int)dy; pool.dilation_x = (int)dx;
+    pool.pad_top = (int)pad_top; pool.pad_left = (int)pad_left;
+    pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
     return _fx_maxpool2d((int)ndims, inpsize, (const float*)inp->data,
-                         outsize, (float*)out->data, pool, ntasks);
+                         outsize, (float*)out->data, &pool, ntasks);
 }
 
 fun run_maxpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
@@ -320,7 +320,7 @@ match op {
 
 fun run_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
                    out: 't [], out_shape: Ast.dlshape_t,
-                   kh: int, kw: int, sy: int, sx: int,
+                   Hk: int, Wk: int, sy: int, sx: int,
                    dy: int, dx: int, pad_top: int, pad_left: int,
                    pad_bottom: int, pad_right: int,
                    count_include_pad: bool): void
@@ -329,22 +329,22 @@ fun run_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
     _fx_pooling2d_t pool;
     int_ ndims = inp_shape->shape.dim[0].size;
     const int_* inpsize = (const int_*)inp_shape->shape.data;
-    const int_* outsize = (const out_*)out_shape->shape.data;
+    const int_* outsize = (const int_*)out_shape->shape.data;
 
     if (ndims != 4 || ndims != out_shape->shape.dim[0].size ||
         inpsize[0] != outsize[0] || inpsize[1] != outsize[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if ((Hk|Wk) != 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    pool->C = (int)inpsize[1];
-    pool->Hk = (int)kh; pool->Wk = (int)kw;
-    pool->stride_y = (int)sy; pool->stride_x = (int)sx;
-    pool->dilation_y = (int)dy; pool->dilation_x = (int)dx;
-    pool->pad_top = (int)pad_top; pool->pad_left = (int)pad_left;
-    pool->pad_bottom = (int)pad_bottom; pool->pad_right = (int)pad_right;
-    pool->count_include_pad = count_include_pad;
+    pool.C = (int)inpsize[1];
+    pool.Hk = (int)Hk; pool.Wk = (int)Wk;
+    pool.stride_y = (int)sy; pool.stride_x = (int)sx;
+    pool.dilation_y = (int)dy; pool.dilation_x = (int)dx;
+    pool.pad_top = (int)pad_top; pool.pad_left = (int)pad_left;
+    pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
+    pool.count_include_pad = count_include_pad;
     return _fx_avgpool2d((int)ndims, inpsize, (const float*)inp->data,
-                         outsize, (float*)out->data, pool, ntasks);
+                         outsize, (float*)out->data, &pool, ntasks);
 }
 
 fun run_avgpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
