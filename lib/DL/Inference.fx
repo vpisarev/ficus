@@ -8,8 +8,9 @@ import Hashmap
 import Ast, InferShapes
 import OpConv, OpElemwise, OpGemm, OpMisc, OpPermute, OpPooling, OpReduce
 
-fun inference(net: Ast.dlnet_t, inputs: (string, Ast.dltensor_t) []/*,
-            cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/):
+fun run(net: Ast.dlnet_t, inputs: (string, Ast.dltensor_t) []/*,
+            cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
+        ~outputs: (string, Ast.dltensor_t) [] = []):
     (string, Ast.dltensor_t) []
 {
     var empty_names = true
@@ -38,7 +39,7 @@ fun inference(net: Ast.dlnet_t, inputs: (string, Ast.dltensor_t) []/*,
     }
 
     println("running main graph")
-    run_graph(net, net.graph)
+    run_graph(net, net.graph, outputs)
 
     // collect outputs
     [for argidx <- net.graph.outargs {
@@ -140,14 +141,14 @@ match op
         net.copy_tensor_data(t_inp, t_out)
 }
 
-fun run_graph(net: Ast.dlnet_t, graph: Ast.dlgraph_t)
+fun run_graph(net: Ast.dlnet_t, graph: Ast.dlgraph_t, outputs: (string, Ast.dltensor_t) [])
 {
     for op <- graph.prog {
         println(f"preparing to run op {op.name()}")
         val oinfo = InferShapes.infer(net, op)
         for oi@outidx <- oinfo {
             val {idx=argidx, shape, typ} = oi
-            println(f"   output info #{outidx}: {oi}")
+            println(f"   output #{outidx} ('{net.args[argidx].name}'): {oi}")
             val shape0 = net.tensors[argidx].shape
             val typ0 = net.tensors[argidx].elemtype()
             if shape != shape0 || typ != typ0 {
@@ -157,7 +158,7 @@ fun run_graph(net: Ast.dlnet_t, graph: Ast.dlgraph_t)
                     net.tensors[argidx] = Ast.make_tensor(shape, typ)
                 } else if arg.argkind == Ast.DL_Arg_Temp {
                     val bufidx = net.bufidxs[argidx]
-                    println(f"   fit with shape={shape}, typ={typ}, data of {net.tensors[argidx].data.total()} elems, buf of {net.buffers[bufidx].size()} bytes")
+                    println(f"   fit into buf #{bufidx} with shape={shape}, typ={typ}, data of {net.tensors[argidx].data.total()} elems, buf of {net.buffers[bufidx].size()} bytes")
                     val (data, buf) = Ast.fit(shape, typ, net.tensors[argidx].data, net.buffers[bufidx])
                     net.tensors[argidx].data = data
                     net.tensors[argidx].shape = shape
@@ -169,5 +170,45 @@ fun run_graph(net: Ast.dlnet_t, graph: Ast.dlgraph_t)
         }
         println(f"running op {op.name()}")
         run_op(net, op)
+        if outputs != [] {
+            for oi@outidx <- oinfo {
+                val {idx=argidx} = oi
+                val name = net.args[argidx].name
+                match find_opt(for (n,_)@i <- outputs {n == name}) {
+                | Some((_, i)) =>
+                    outputs[i].1 = net.tensors[argidx].copy()
+                | _ => {}
+                }
+            }
+        }
     }
+}
+
+fun top_k(t: Ast.dltensor_t, k: int)
+{
+    val shape = t.shape.shape
+    val ndims = shape.size()
+    assert(k > 0)
+    assert(ndims == 1 || ndims == 2)
+    val (nrows, ncols) = if ndims == 1 {(1, shape[0])} else {(shape[0], shape[1])}
+    val k = min(k, ncols)
+    val data = float(t)
+    assert(data.size() == nrows*ncols)
+    val temp = array(ncols, (0.f, 0))
+    val result = array((nrows, k), (0, 0.f))
+    for i <- 0:nrows {
+        val data_i = data[i*ncols:(i+1)*ncols]
+        if k == 1 {
+            val (prob, label) = maxindex(data_i)
+            result[i, 0] = (label, prob)
+        } else {
+            for j <- 0:ncols {temp[j] = (-data_i[j], j)}
+            sort(temp, (<), prefix=k)
+            for j <- 0:k {
+                val t = temp[j]
+                result[i, j] = (t.1, -t.0)
+            }
+        }
+    }
+    result
 }

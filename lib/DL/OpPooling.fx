@@ -48,11 +48,11 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
 
     int* ofstab = (int*)alloca(3*padded_ksize*sizeof(ofstab[0]));
     int* xytab = ofstab + padded_ksize;
-    int inner_ytop = (pad_bottom + stride_y-1)/stride_y, inner_ybottom;
+    int inner_ytop = (pad_top + stride_y-1)/stride_y, inner_ybottom;
     int inner_xleft = (pad_left + stride_x-1)/stride_x, inner_xright;
     for (int k = 0; k < padded_ksize; k++) {
-        int y = k < padded_ksize ? k / Wk : 0;
-        int x = k < padded_ksize ? k % Wk : 0;
+        int y = k < ksize ? k / Wk : 0;
+        int x = k < ksize ? k % Wk : 0;
         int dy = y*dilation_y, dx = x*dilation_x;
         xytab[k*2] = dy; xytab[k*2+1] = dx;
         ofstab[k] = dy*Wi + dx;
@@ -65,6 +65,15 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
         inner_xleft = W0;
         inner_ytop = H0;
     }
+    /*printf("inpsize: %d x %d x %d x %d, outsize: %d x %d x %d x %d; kernel_size: %d x %d, stride: %d x %d, dilation: %d x %d; inner: y=%d - %d, x=%d - %d\n",
+        (int)inpsize[0], (int)inpsize[1], (int)inpsize[2], (int)inpsize[3],
+        (int)outsize[0], (int)outsize[1], (int)outsize[2], (int)outsize[3],
+        Hk, Wk, stride_y, stride_x, dilation_y, dilation_x,
+        inner_ytop, inner_ybottom, inner_xleft, inner_xright);
+    printf("ofstab: ");
+    for(int k = 0; k < ksize; k++)
+        printf("%d ", ofstab[k]);
+    printf("\n");*/
 
 #ifdef __ARM_NEON
     bool useSIMD = stride_x == 1 && inner_xleft < W0;
@@ -102,7 +111,7 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
                     if (is3x3) {
                         for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
                             int xi_ = x0*stride_x - pad_left;
-                            const float* inptr_xi = inptr + W0*yi_ + xi_;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
                             float32x4_t s1 = vld1q_f32(inptr_xi + ofstab[1]);
                             float32x4_t s2 = vld1q_f32(inptr_xi + ofstab[2]);
@@ -132,7 +141,7 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
             #endif
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    const float* inptr_xi = inptr + W0*yi_ + xi_;
+                    const float* inptr_xi = inptr + Wi*yi_ + xi_;
                     s = inptr_xi[ofstab[0]];
                     for (int k = 1; k < ksize; k++)
                         s = fx_maxf(s, inptr_xi[ofstab[k]]);
@@ -166,11 +175,11 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
 
     int* ofstab = (int*)alloca(3*padded_ksize*sizeof(ofstab[0]));
     int* xytab = ofstab + padded_ksize;
-    int inner_ytop = (pad_bottom + stride_y-1)/stride_y, inner_ybottom;
+    int inner_ytop = (pad_top + stride_y-1)/stride_y, inner_ybottom;
     int inner_xleft = (pad_left + stride_x-1)/stride_x, inner_xright;
     for (int k = 0; k < padded_ksize; k++) {
-        int y = k < padded_ksize ? k / Wk : 0;
-        int x = k < padded_ksize ? k % Wk : 0;
+        int y = k < ksize ? k / Wk : 0;
+        int x = k < ksize ? k % Wk : 0;
         int dy = y*dilation_y, dx = x*dilation_x;
         xytab[k*2] = dy; xytab[k*2+1] = dx;
         ofstab[k] = dy*Wi + dx;
@@ -284,7 +293,7 @@ fun run_maxpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
     if (ndims != 4 || ndims != out_shape->shape.dim[0].size ||
         inpsize[0] != outsize[0] || inpsize[1] != outsize[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    if ((Hk|Wk) != 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
+    if ((Hk|Wk) == 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     pool.C = (int)inpsize[1];
     pool.Hk = (int)Hk; pool.Wk = (int)Wk;
@@ -334,7 +343,7 @@ fun run_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
     if (ndims != 4 || ndims != out_shape->shape.dim[0].size ||
         inpsize[0] != outsize[0] || inpsize[1] != outsize[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    if ((Hk|Wk) != 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
+    if ((Hk|Wk) == 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     pool.C = (int)inpsize[1];
     pool.Hk = (int)Hk; pool.Wk = (int)Wk;

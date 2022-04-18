@@ -399,7 +399,7 @@ static int onnx_parse_model(const fx_arr_t* arr, const fx_arr_t* refarrs,
     assert(refarrs[REF_METADATA_ENTRY].dim[0].step == sizeof(onnx_metadata_entry_t));
 
     if( !data || datasize == 0 || arr->ndims != 1 || arr->dim[0].step != 1 ||
-        arr->copy_elem != 0 && arr->free_elem != 0 ) {
+        arr->copy_elem != 0 || arr->free_elem != 0 ) {
         FX_FAST_THROW_RET(FX_EXN_BadArgError);
     }
 

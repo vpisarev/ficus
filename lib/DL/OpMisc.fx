@@ -16,7 +16,7 @@ fun run_lrn_2d(inp: float [], inp_shape: Ast.dlshape_t, out: float [],
     val scale = alpha/size
     @parallel for i <- 0:npixels {
         val plane_idx = i/plane_size
-        val plane_ofs = i - i*plane_idx
+        val plane_ofs = i - plane_idx*plane_size
         val ofs0 = plane_idx*plane_size*C + plane_ofs
         for c <- 0:C {
             val ofs = ofs0 + c*plane_size
@@ -52,8 +52,9 @@ fun run_softmax(inp: 't [], inp_shape: Ast.dlshape_t, out: 't [])
     @parallel for i <- 0:N {
         val ofs = i*C
         val fold maxval = inp[ofs] for j <- 1:C {max(maxval, inp[ofs+j])}
-        val tab = [for j <- 0:C {exp(inp[ofs+j] - maxval)}]
-        val s = (1/sum(tab) :> 't)
+        var s = 0.
+        val tab = [for j <- 0:C {val t = exp(inp[ofs+j] - maxval); s += t; t}]
+        val s = (1/s :> 't)
         for j <- 0:C {out[ofs+j] = tab[j]*s}
     }
 }

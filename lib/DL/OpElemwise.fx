@@ -285,19 +285,40 @@ fun run_dropout(inp: 't [], out: 't [], ratio: float)
 fun run_dropout(net: Ast.dlnet_t, op: Ast.dlop_t) =
 match op
 {
-| Ast.DL_Dropout {t_inp, t_ratio, t_out} =>
+| Ast.DL_Dropout {t_inp, t_ratio, t_training_mode, t_out} =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
-    val ratio = if t_ratio == 0 {0.5f} else {
-        match net.get_tensor(t_ratio).data {
-        | Ast.DL_Data_FP32 ratio_data => ratio_data[0]
+    val training_mode =
+        if t_training_mode == 0 {
+            false
+        } else {
+            val t = net.get_tensor(t_training_mode)
+            match t.data {
+            | Ast.DL_Data_Bool f => f[0]
+            | Ast.DL_Data_FP32 f => f[0] != 0.f
+            | Ast.DL_Data_I32 f => f[0] != 0i32
+            | Ast.DL_Data_U8 f => f[0] != 0u8
+            | Ast.DL_Data_I8 f => f[0] != 0i8
+            | tdata => int(tdata)[0] != 0
+            }
+        }
+
+    val ratio =
+        if !training_mode {0.f}
+        else if t_ratio == 0 {0.5f} else {
+            match net.get_tensor(t_ratio).data {
+            | Ast.DL_Data_FP32 ratio_data => ratio_data[0]
+            | _ => throw NotImplementedError
+            }
+        }
+    if ratio == 0.f {
+        net.copy_tensor_data(t_inp, t_out)
+    } else {
+        match (inp.data, out.data) {
+        | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+            run_dropout(inp_data, out_data, ratio)
         | _ => throw NotImplementedError
         }
-    }
-    match (inp.data, out.data) {
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
-        run_dropout(inp_data, out_data, ratio)
-    | _ => throw NotImplementedError
     }
 | _ => throw Ast.DLError(f"unexpected op {op.name()}")
 }

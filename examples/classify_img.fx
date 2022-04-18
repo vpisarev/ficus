@@ -1,6 +1,7 @@
 import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
-import DL.Ast, DL.Run, DL.FromOnnx, DL.BufferAllocator
+//import Image.Decoder
+import DL.Ast, DL.Inference, DL.FromOnnx, DL.BufferAllocator
 
 var mname = "", lname = ""
 var images: string list = []
@@ -50,8 +51,8 @@ val labels: string [] =
         }
     }
 
-/*val net = cv.readNet(mname)
-val fface = cv.makeFontFace("sans")
+val net = cv.readNet(mname)
+/*val fface = cv.makeFontFace("sans")
 val fontSize = 20
 
 for imgname@i <- images {
@@ -83,6 +84,9 @@ val model =
         println(f"error: {msg}"); throw Fail("")
     }
 val model = DL.BufferAllocator.assign_buffers(model)
+val k = 5
+val lname = "prob_1"
+val temp_outputs = [(lname, DL.Ast.empty_tensor())]
 
 for imgname@i <- images {
     println(f"starting reading model '{mname}'")
@@ -91,10 +95,39 @@ for imgname@i <- images {
             mean=(104.00698793, 116.66876762, 122.67891434),
             swapRB=false, crop=false)
     println(inp.size())
-    val inp = DL.Ast.make_tensor(inp)
-    val outputs = DL.Run.inference(model, [("", inp)])
+    val out = net.forward(inp, outputs=[lname, "prob_1"])
+    val probs = out[1]
+    val (_, _, _, n) = size(probs)
+    val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
+    sort(tprobs, (>))
+    val inp_ = DL.Ast.make_tensor(inp)
+    val outputs = DL.Inference.run(model, [("", inp_)], outputs=temp_outputs)
+    for t_out@i <- temp_outputs {
+        println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
+    }
+    val temp = float(temp_outputs[0].1)
+    //val shape = temp_outputs[0].1.shape.shape
+    //val shape2d = (shape[0]*shape[1]*shape[2], shape[3])
+    val ntemp = temp.size()
+    println(f"||'{lname}_ref' - '{lname}'||/sz = {normL1(out[0][:] - temp)/ntemp}")
+    //println(out[0].reshape(shape2d)[:5,:5])
+    //println(temp.reshape(shape2d)[:5,:5])
+    println(out[0][:][:20])
+    println(temp[:20])
     for out@i <- outputs {
-        println(f"output #{i}: name='{out.0}', shape={out.1.shape}")
+        println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
+        val sorted_k = DL.Inference.top_k(out.1, k)
+        for j <- 0:k {
+            val (label, prob) = sorted_k[0, j]
+            val label_str = if labels != [] {labels[label]} else {f"class_{label}"}
+            println(f"\t{j+1}. label={label_str} ({label}), prob={prob}")
+        }
+    }
+    for j <- 0:k {
+        val label = tprobs[j].1
+        val lbl = if labels != [] {labels[label]} else {f"class_{label}"}
+        val prob = tprobs[j].0
+        println(f"\t{j+1}. label={lbl} ({label}), prob={prob}")
     }
 }
 

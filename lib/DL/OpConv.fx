@@ -535,7 +535,10 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                        const int_* outsize, float* out,
                        const _fx_conv2d_t* conv, int ntasks)
 {
-    assert(ndims == 4 && inpsize[0] == outsize[0] && outsize[1] == conv->K && inpsize[1] == conv->C);
+    assert(ndims == 4 &&
+           inpsize[0] == outsize[0] &&
+           outsize[1] == conv->K &&
+           inpsize[1] == conv->C);
     if (conv->ngroups == conv->K && conv->ngroups == conv->C) {
         _fx_depthwise_conv2d(ndims, inpsize, inp, outsize, out, conv);
         return FX_OK;
@@ -715,7 +718,7 @@ fun init_conv(kernel_shape: int [], strides: int [], dilations: int [], pads: in
         pads->ndims != 1 || pads->dim[0].size != 4)
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
     return _fx_init_conv2d(_FX_LAYOUT_NCHW, _FX_LAYOUT_NCHW, (int)group,
-        (int)w_shape_[0], (int)w_shape_[1], (int)w_shape_[2], (int)w_shape_[3],
+        (int)w_shape_[0], (int)w_shape_[1]*group, (int)w_shape_[2], (int)w_shape_[3],
         (int)strides_[0], (int)strides_[1], (int)dilations_[0], (int)dilations_[1],
         (int)pads_[0], (int)pads_[1], (int)pads_[2], (int)pads_[3],
         (const float*)w_data->data, (const float*)bias_data->data,

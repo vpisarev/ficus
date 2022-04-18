@@ -198,6 +198,8 @@ fun RNG(seed: uint64)
     RNG {state=(x, y, z, w)}
 }
 
+fun RNG(seed: int) = RNG(seed :> uint64)
+
 @pure @nothrow fun next(rng: RNG): uint64 = @ccode { return _fx_rng_next(&rng->u.RNG.t0); }
 
 fun double(rng: RNG) = next(rng)*5.42101086242752217003726400434970855712890625e-20

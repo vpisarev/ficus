@@ -28,6 +28,24 @@ fun total(a: 't []) = size(a)
 
 fun copy(a: 't [+]) = [for x <- a {x}]
 
+fun reshape(a: 't [+], size: (int*2)): 't [,]
+@ccode {
+    return fx_reshape_arr(a, 2, &size->t0, fx_result);
+}
+fun reshape(a: 't [+], s0: int, s1: int) = reshape(a, (s0, s1))
+
+fun reshape(a: 't [+], size: (int*3)): 't [,,]
+@ccode {
+    return fx_reshape_arr(a, 3, &size->t0, fx_result);
+}
+fun reshape(a: 't [+], s0: int, s1: int, s2: int) = reshape(a, (s0, s1, s2))
+
+fun reshape(a: 't [+], size: (int*4)): 't [,,,]
+@ccode {
+    return fx_reshape_arr(a, 4, &size->t0, fx_result);
+}
+fun reshape(a: 't [+], s0: int, s1: int, s2: int, s3: int) = reshape(a, (s0, s1, s2, s3))
+
 fun __negate__(a: 't [+]) = [for x <- a {-x}]
 
 fun map(arr: 'a [+], f: 'a -> 'b) = [for x <- arr {f(x)}]
@@ -140,6 +158,12 @@ operator .> (a: 't [+], b: 't [+]): bool [+] =
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {!(x < y)}]
 
+fun min(a: 't [+], b: 't [+]) =
+    [for x <- a, y <- b {min(x, y)}]
+
+fun max(a: 't [+], b: 't [+]) =
+    [for x <- a, y <- b {max(x, y)}]
+
 fun sum(a: 't [+]) =
     fold s = ((0 :> 't) :> double) for aj <- a {s + aj}
 
@@ -168,6 +192,24 @@ fun normL1(a: 't [+], b: 't [+]) =
 
 fun normL2(a: 't [+], b: 't [+]) =
     sqrt(fold s = 0. for aj <- a, bj <- b {val d = aj - bj; s + double(d)*d})
+
+fun minindex(a: 't []): ('t, int) =
+    if a == [] {
+        (0 :> 't, -1)
+    } else {
+        fold (minv, mini) = (a[0], 0) for x@i <- a {
+            if x < minv {(x, i)} else {(minv, mini)}
+        }
+    }
+
+fun maxindex(a: 't []): ('t, int) =
+    if a == [] {
+        (0 :> 't, -1)
+    } else {
+        fold (maxv, maxi) = (a[0], 0) for x@i <- a {
+            if x > maxv {(x, i)} else {(maxv, maxi)}
+        }
+    }
 
 operator ' (a: 't [,])
 {
@@ -256,7 +298,7 @@ fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't) =
     [for i <- 0:size.0 for j <- 0:size.1
        for k <- 0:size.2 for l <- 0:size.3 {rng.uniform(a, b)}]
 
-fun sort(arr: 't [], lt: ('t, 't) -> bool)
+fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int)
 {
     @nothrow fun swap(arr: 't [], i: int, j: int): void
     @ccode {
@@ -279,7 +321,7 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
         }
     }
 
-    fun qsort_(lo: int, hi: int) =
+    fun qsort_(lo: int, hi: int) {
         if lo+1 < hi {
             val m = (lo+hi)/2
             val a = arr[lo], b = arr[m], p = arr[hi]
@@ -313,13 +355,13 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
             for j <- i0:hi {
                 if lt(p, arr[j+1]) {i1=j; break}
             }
-            // do the longest half sorting via tail recursion to save stack space
+            // do the shortest half sorting via tail recursion to save stack space
             if i0 - lo < hi - i1 {
+                if i1 < prefix { qsort_(i1+1, hi) }
                 qsort_(lo, i0-1)
-                qsort_(i1+1, hi)
             } else {
                 qsort_(lo, i0-1)
-                qsort_(i1+1, hi)
+                if i1 < prefix { qsort_(i1+1, hi) }
             }
         } else if lo < hi {
             val a = arr[lo], b = arr[hi]
@@ -328,9 +370,12 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool)
                 arr[lo] = b
             }
         }
+    }
 
     qsort_(0, size(arr)-1)
 }
+
+fun sort(arr: 't [], lt: ('t, 't) -> bool) = sort(arr, lt, prefix=size(arr))
 
 @ccode {
 /*

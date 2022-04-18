@@ -549,7 +549,6 @@ fun convert(model: OAst.model_t): Ast.dlnet_t
                         val t_training_mode = inputs[2]
                         assert(`vargs.data[t_training_mode].argkind == Ast.DL_Arg_Const`)
                         assert(`vtensors.data[t_training_mode].data.total() == 1`)
-                        assert(`int(vtensors.data[t_training_mode].data)[0] == 0`)
                         t_training_mode
                     }
                 [:: Ast.DL_Dropout {

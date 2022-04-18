@@ -3818,6 +3818,55 @@ fun Net.forward(blob: 't [+], ~scaleFactor: double=1., ~mean: doublex3=(0., 0., 
     Net_forward_(self.net, anyarray(blob), scaleFactor, mean)
 }
 
+@private fun Net_forward_outs_(net: cptr, blob: anyarr_t,
+    outnames: string [], outputs_: float [,,,][], scaleFactor: double, mean: doublex3): float [,,,][] =
+@ccode {
+    cv::Mat c_blob;
+    std::string c_name;
+    std::vector<std::string> c_outnames;
+    std::vector<cv::Mat> c_outputs;
+    int fx_status = cvt_to((const _fx_anyarr_t*)blob, c_blob);
+    int newsz[] = {1, 1, 1, 1};
+    int_ i, noutputs = outnames->dim[0].size;
+    FX_OCV_TRY_CATCH(
+        ((cv::dnn::Net*)(net->ptr))->setInput(c_blob, "",
+                    scaleFactor, cvt_scalar3(&mean->t0));
+        for (i = 0; i < noutputs; i++) {
+            std::string c_outname;
+            fx_status = cvt_to((fx_str_t*)outnames->data + i, c_outname);
+            if (fx_status < 0)
+                return fx_status;
+            c_outnames.push_back(c_outname);
+        }
+        ((cv::dnn::Net*)(net->ptr))->forward(c_outputs, c_outnames);
+        CV_Assert(c_outputs.size() == c_outnames.size() && c_outputs.size() == (size_t)noutputs);
+        fx_status = fx_make_arr(1, &noutputs, sizeof(fx_arr_t),
+            outputs_->free_elem, outputs_->copy_elem, 0, fx_result);
+        if (fx_status < 0)
+            return fx_status;
+        for (i = 0; i < noutputs; i++) {
+            cv::Mat c_out = c_outputs[i];
+            if (c_out.dims != 4) {
+                CV_Assert(c_out.dims < 4);
+                for (int i = 0; i < c_out.dims; i++)
+                    newsz[i > 0 ? 4 - c_out.dims + i : 0] = c_out.size[i];
+                c_out = c_out.reshape(1, 4, newsz);
+            }
+            fx_status = cvt_from(c_out, 4, _FX_DEPTH_FP32, 1, (fx_arr_t*)fx_result->data + i);
+            if (fx_status < 0)
+                break;
+        }
+    )
+    return fx_status;
+}
+
+fun Net.forward(blob: 't [+], ~outputs: string [], ~scaleFactor: double=1.,
+                ~mean: doublex3=(0., 0., 0.)): float [,,,][]
+{
+    if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
+    Net_forward_outs_(self.net, anyarray(blob), outputs, [], scaleFactor, mean)
+}
+
 fun Net.setPreferableBackend(backendId: int): void
 {
     fun setPreferableBackend_(net: cptr, backendId: int): void
