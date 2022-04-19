@@ -6,7 +6,7 @@
 // various element-wise operations
 import Ast
 
-fun run_lrn_2d(inp: float [], inp_shape: Ast.dlshape_t, out: float [],
+fun run_lrn_2d(inp: float [], inp_shape: Ast.nnshape_t, out: float [],
                size: int, alpha: float, beta: float, bias: float)
 {
     val N = inp_shape.shape[0], C = inp_shape.shape[1]
@@ -31,22 +31,22 @@ fun run_lrn_2d(inp: float [], inp_shape: Ast.dlshape_t, out: float [],
     }
 }
 
-fun run_lrn(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_lrn(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_LRN {size, alpha, beta, bias, t_inp, t_out} =>
+| Ast.NN_LRN {size, alpha, beta, bias, t_inp, t_out} =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
-    assert(`inp.shape.layout == Ast.DL_Layout_NCHW`)
+    assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     assert(`inp.shape.shape.size() == 4`)
     match (inp.data, out.data) {
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_lrn_2d(inp_data, inp.shape, out_data, size, alpha, beta, bias)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
 }
 
-fun run_softmax(inp: 't [], inp_shape: Ast.dlshape_t, out: 't [])
+fun run_softmax(inp: 't [], inp_shape: Ast.nnshape_t, out: 't [])
 {
     val N = inp_shape.shape[0], C = inp_shape.shape[1]
     @parallel for i <- 0:N {
@@ -59,17 +59,17 @@ fun run_softmax(inp: 't [], inp_shape: Ast.dlshape_t, out: 't [])
     }
 }
 
-fun run_softmax(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_softmax(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_SoftMax {axis, t_inp, t_out} =>
+| Ast.NN_SoftMax {axis, t_inp, t_out} =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
     assert(`inp.shape.shape.size() == 2`)
     assert(`axis == 1 || axis == -1`)
     match (inp.data, out.data) {
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_softmax(inp_data, inp.shape, out_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
 }

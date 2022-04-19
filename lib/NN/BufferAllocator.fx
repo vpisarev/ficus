@@ -51,7 +51,7 @@ The reallocation is done using NN.Ast.fit() function.
 
 import Ast, Dynvec
 
-fun assign_buffers(net: Ast.dlnet_t)
+fun assign_buffers(net: Ast.nnet_t)
 {
     val nargs = net.args.size()
     val usecounts = array(nargs, 0)
@@ -59,16 +59,16 @@ fun assign_buffers(net: Ast.dlnet_t)
     val freebufs = Dynvec.create(0, 0)
     val bufidxs = array(nargs, -1)
 
-    fun update_counts(graph: Ast.dlgraph_t)
+    fun update_counts(graph: Ast.nngraph_t)
     {
         for op <- graph.prog {
             val (inps, _) = op.get_inputs_outputs()
             for i <- inps {usecounts[i] += 1}
             match op {
-            | Ast.DL_If {then_branch, else_branch} =>
+            | Ast.NN_If {then_branch, else_branch} =>
                 update_counts(then_branch)
                 update_counts(else_branch)
-            | Ast.DL_Loop {body} =>
+            | Ast.NN_Loop {body} =>
                 update_counts(body)
             | _ => {}
             }
@@ -82,31 +82,31 @@ fun assign_buffers(net: Ast.dlnet_t)
     }
     println("========================================================")*/
 
-    fun assign_buffers_(graph: Ast.dlgraph_t): void
+    fun assign_buffers_(graph: Ast.nngraph_t): void
     {
         for op <- graph.prog {
             // [TODO] this is the simplest but sub-optimal algorithm, e.g.
             // we could reuse the same buffers in 'then' and 'else' branches
             match op {
-            | Ast.DL_If {then_branch, else_branch} =>
+            | Ast.NN_If {then_branch, else_branch} =>
                 assign_buffers_(then_branch)
                 assign_buffers_(else_branch)
-            | Ast.DL_Loop {body} =>
+            | Ast.NN_Loop {body} =>
                 assign_buffers_(body)
             | _ => {}
             }
             val (inps, outs) = op.get_inputs_outputs()
             val (inplace_op, reuse_idx) = match op {
-                | Ast.DL_BatchNorm _ | Ast.DL_Clip _ | Ast.DL_Dropout _
-                | Ast.DL_Flatten _ | Ast.DL_Identity _ | Ast.DL_LeakyRelu _
-                | Ast.DL_Reshape _ | Ast.DL_Squeeze _ | Ast.DL_Unsqueeze _ =>
+                | Ast.NN_BatchNorm _ | Ast.NN_Clip _ | Ast.NN_Dropout _
+                | Ast.NN_Flatten _ | Ast.NN_Identity _ | Ast.NN_LeakyRelu _
+                | Ast.NN_Reshape _ | Ast.NN_Squeeze _ | Ast.NN_Unsqueeze _ =>
                     (usecounts[inps[0]] == 1 && net.istemp(inps[0]), inps[0])
-                | Ast.DL_Scatter _ =>
+                | Ast.NN_Scatter _ =>
                     (usecounts[inps[0]] == 1 && inps[1] != inps[0] && inps[2] != inps[0] && net.istemp(inps[0]), inps[0])
                 // because of posssible broadcasting we cannot safely perform
                 // element-wise operations in-place, unless there is just one input.
-                | Ast.DL_Elemwise {el_op, t_inp} when t_inp.size() == 1 && (match el_op {
-                    | Ast.DL_IsInf | Ast.DL_IsNaN => false | _ => true}) =>
+                | Ast.NN_Elemwise {el_op, t_inp} when t_inp.size() == 1 && (match el_op {
+                    | Ast.NN_IsInf | Ast.NN_IsNaN => false | _ => true}) =>
                     match find_opt(for argidx <- inps {usecounts[argidx] == 1 && net.istemp(argidx)}) {
                     | Some(argidx) => (true, argidx)
                     | _ => (false, -1)
@@ -114,7 +114,7 @@ fun assign_buffers(net: Ast.dlnet_t)
                 | _ => (false, -1)
                 }
             //println(f"name={op.name()}, inplace={inplace_op}, inps={[::for i<-inps {net.args[i].name}]}, outs={[::for i<-outs {net.args[i].name}]}")
-            if inplace_op && net.args[outs[0]].argkind != Ast.DL_Arg_Output {
+            if inplace_op && net.args[outs[0]].argkind != Ast.NN_Arg_Output {
                 bufidxs[outs[0]] = bufidxs[reuse_idx]
             } else {
                 for argidx <- outs {

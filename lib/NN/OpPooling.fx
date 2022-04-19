@@ -278,8 +278,8 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
 
 }
 
-fun run_maxpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
-                   out: 't [], out_shape: Ast.dlshape_t,
+fun run_maxpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
+                   out: 't [], out_shape: Ast.nnshape_t,
                    Hk: int, Wk: int, sy: int, sx: int,
                    dy: int, dx: int, pad_top: int, pad_left: int,
                    pad_bottom: int, pad_right: int): void
@@ -304,30 +304,30 @@ fun run_maxpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
                          outsize, (float*)out->data, &pool);
 }
 
-fun run_maxpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_maxpool(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_MaxPool {ceil_mode, dilations, kernel_shape, pads, strides, storage_order, t_inp, t_out}
+| Ast.NN_MaxPool {ceil_mode, dilations, kernel_shape, pads, strides, storage_order, t_inp, t_out}
     when kernel_shape.size() == 2 =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
-    assert(`inp.shape.layout == Ast.DL_Layout_NCHW`)
+    assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     match (inp.data, out.data) {
-    | (Ast.DL_Data_U8 inp_data, Ast.DL_Data_U8 out_data) =>
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_U8 out_data) =>
         run_maxpool_2d(inp_data, inp.shape, out_data, out.shape,
             kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
             pads[0], pads[1], pads[2], pads[3])
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_maxpool_2d(inp_data, inp.shape, out_data, out.shape, kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
             pads[0], pads[1], pads[2], pads[3])
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
 }
 
-fun run_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
-                   out: 't [], out_shape: Ast.dlshape_t,
+fun run_avgpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
+                   out: 't [], out_shape: Ast.nnshape_t,
                    Hk: int, Wk: int, sy: int, sx: int,
                    dy: int, dx: int, pad_top: int, pad_left: int,
                    pad_bottom: int, pad_right: int,
@@ -354,28 +354,28 @@ fun run_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
                          outsize, (float*)out->data, &pool);
 }
 
-fun run_avgpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_avgpool(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_AvgPool {ceil_mode, dilations, kernel_shape, pads,
+| Ast.NN_AvgPool {ceil_mode, dilations, kernel_shape, pads,
     strides, count_include_pad, t_inp, t_out}
     when kernel_shape.size() == 2 =>
 
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
-    assert(`inp.shape.layout == Ast.DL_Layout_NCHW`)
+    assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     match (inp.data, out.data) {
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_avgpool_2d(inp_data, inp.shape, out_data, out.shape,
             kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
             pads[0], pads[1], pads[2], pads[3], count_include_pad)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
 }
 
-fun run_global_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
-                          out: float [], out_shape: Ast.dlshape_t, zero: 'w)
+fun run_global_avgpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
+                          out: float [], out_shape: Ast.nnshape_t, zero: 'w)
 {
     assert(`inp_shape.shape.size() == 4 && out_shape.shape.size() == 4`)
     val (N, C, H, W) = (inp_shape.shape[0], inp_shape.shape[1],
@@ -393,16 +393,16 @@ fun run_global_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
     }
 }
 
-fun run_global_avgpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_global_avgpool(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_GlobalAvgPool {t_inp, t_out} =>
+| Ast.NN_GlobalAvgPool {t_inp, t_out} =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
-    assert(`inp.shape.layout == Ast.DL_Layout_NCHW`)
+    assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     match (inp.data, out.data) {
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_global_avgpool_2d(inp_data, inp.shape, out_data, out.shape, 0.f)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
 }

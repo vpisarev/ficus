@@ -86,6 +86,7 @@ val model =
 val model = NN.BufferAllocator.assign_buffers(model)
 val k = 5
 val lname = "output"
+val ocv_outputs = [lname]
 val temp_outputs = [(lname, NN.Ast.empty_tensor())]
 
 for imgname@i <- images {
@@ -93,17 +94,19 @@ for imgname@i <- images {
     val img = cv.imread(imgname)
     val inp = cv.blobFromImage(img, size=(224, 224),
             mean=(104.00698793, 116.66876762, 122.67891434),
-            swapRB=true, crop=false)
+            swapRB=false, crop=false)
     println(inp.size())
-    val out = net.forward(inp, outputs=[lname, "output"])
-    val probs = out[1]
+    val out = net.forward(inp)
+    //println(f"out[1]={out[1][:]}")
+    //println(f"out[2]={out[2][:]}")
+    val probs = out
     val (_, _, _, n) = size(probs)
     val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
     sort(tprobs, (>))
     val inp_ = NN.Ast.make_tensor(inp)
     val outputs =
         try NN.Inference.run(model, [("", inp_)], outputs=temp_outputs) catch {
-        | NN.Ast.DLError msg => println(f"exception DL_Error('{msg}') occured"); []
+        | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
         | Fail msg => println(f"failure: '{msg}'"); []
         }
     for t_out@i <- temp_outputs {
@@ -113,7 +116,7 @@ for imgname@i <- images {
     //val shape = temp_outputs[0].1.shape.shape
     //val shape2d = (shape[0]*shape[1]*shape[2], shape[3])
     val ntemp = temp.size()
-    println(f"||'{lname}_ref' - '{lname}'||/sz = {normL1(out[0][:] - temp)/ntemp}")
+    //println(f"||'{lname}_ref' - '{lname}'||/sz = {normL1(out[0][:] - temp)/ntemp}")
     //println(out[0].reshape(shape2d)[:5,:5])
     //println(temp.reshape(shape2d)[:5,:5])
     //println(out[0][:][:20])

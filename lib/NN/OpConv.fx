@@ -705,7 +705,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
 }
 
 fun init_conv(kernel_shape: int [], strides: int [], dilations: int [], pads: int [], group: int,
-              w_shape: Ast.dlshape_t, w_data: float [], bias_shape: Ast.dlshape_t, bias_data: float []): cptr
+              w_shape: Ast.nnshape_t, w_data: float [], bias_shape: Ast.nnshape_t, bias_data: float []): cptr
 @ccode
 {
     const int_* w_shape_ = (const int_*)w_shape->shape.data;
@@ -725,8 +725,8 @@ fun init_conv(kernel_shape: int [], strides: int [], dilations: int [], pads: in
         0, 0, 0, 0, 0, _FX_ACTIV_NONE, 0, 0, 0, fx_result);
 }
 
-fun run_conv(inp_shape: Ast.dlshape_t, inp_data: float [],
-             out_shape: Ast.dlshape_t, out_data: float [],
+fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
+             out_shape: Ast.nnshape_t, out_data: float [],
              conv_data: cptr): void
 @ccode
 {
@@ -745,9 +745,9 @@ fun run_conv(inp_shape: Ast.dlshape_t, inp_data: float [],
                       conv, ntasks);
 }
 
-fun run_conv(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_conv(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_Conv {kernel_shape, pads, strides, dilations, group, conv_data, t_inp, t_weights, t_bias, t_out} =>
+| Ast.NN_Conv {kernel_shape, pads, strides, dilations, group, conv_data, t_inp, t_weights, t_bias, t_out} =>
     assert(`kernel_shape.size() == 2`)
     val inp = net.get_tensor(t_inp)
     val weights = net.get_tensor(t_weights)
@@ -755,7 +755,7 @@ match op {
     val out = net.get_tensor(t_out)
     if *conv_data == null || !net.isconst(t_weights) || !net.isconst(t_bias) {
         match (weights.data, bias.data) {
-        | (Ast.DL_Data_FP32 w_data, Ast.DL_Data_FP32 bias_data) =>
+        | (Ast.NN_Data_FP32 w_data, Ast.NN_Data_FP32 bias_data) =>
             *conv_data = null // first of all, release the previous data, if any
                               // this way we can immediately re-use the same chunk of memory
                               // for the updated convolution structure
@@ -765,21 +765,21 @@ match op {
         }
     }
     match (inp.data, out.data) {
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_conv(inp.shape, inp_data, out.shape, out_data, *conv_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_conv_transposed(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_conv_transposed(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_ConvTranspose {kernel_shape, pads, strides, dilations, group,
+| Ast.NN_ConvTranspose {kernel_shape, pads, strides, dilations, group,
         out_shape, out_padding, t_inp, t_weights, t_bias, t_out} =>
     val out = net.get_tensor(t_out)
     match out.data {
-    | Ast.DL_Data_FP32 out_data => for _@idx <- out_data {out_data[idx] = 0.f}
+    | Ast.NN_Data_FP32 out_data => for _@idx <- out_data {out_data[idx] = 0.f}
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }

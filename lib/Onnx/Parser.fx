@@ -193,8 +193,8 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
     int_ n_dims = (int_)tensor->n_dims;
     int_ temp_dims = n_dims > 0 ? n_dims : 1;
     int_ total = 1;
-    if (fx_status >= 0) {
-        fx_status = fx_make_arr(1, &temp_dims, sizeof(int_), 0, 0, 0, &result->shape);
+    if (fx_status >= 0 && n_dims > 0) {
+        fx_status = fx_make_arr(1, &n_dims, sizeof(int_), 0, 0, 0, &result->shape);
         if (fx_status >= 0) {
             int_* shape = (int_*)result->shape.data;
             shape[0] = 1;

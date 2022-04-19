@@ -5,10 +5,10 @@
 
 import Ast
 
-fun run_gemm(A: float [], A_shape: Ast.dlshape_t,
-             B: float [], B_shape: Ast.dlshape_t,
-             bias: float [], bias_shape: Ast.dlshape_t,
-             out: float [], out_shape: Ast.dlshape_t,
+fun run_gemm(A: float [], A_shape: Ast.nnshape_t,
+             B: float [], B_shape: Ast.nnshape_t,
+             bias: float [], bias_shape: Ast.nnshape_t,
+             out: float [], out_shape: Ast.nnshape_t,
              alpha: float, beta: float,
              transA: bool, transB: bool): void
 @ccode {
@@ -60,18 +60,18 @@ fun run_gemm(A: float [], A_shape: Ast.dlshape_t,
             out_data, (int)out_shape_[1], ntasks);
 }
 
-fun run_gemm(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_gemm(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_Gemm {alpha, beta, transA, transB, t_A, t_B, t_bias, t_out} =>
+| Ast.NN_Gemm {alpha, beta, transA, transB, t_A, t_B, t_bias, t_out} =>
     val A = net.get_tensor(t_A), B = net.get_tensor(t_B)
     val bias = net.get_tensor(t_bias)
     val out = net.get_tensor(t_out)
     match (A.data, B.data, bias.data, out.data) {
-    | (Ast.DL_Data_FP32 a_data, Ast.DL_Data_FP32 b_data,
-       Ast.DL_Data_FP32 bias_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 a_data, Ast.NN_Data_FP32 b_data,
+       Ast.NN_Data_FP32 bias_data, Ast.NN_Data_FP32 out_data) =>
         run_gemm(a_data, A.shape, b_data, B.shape, bias_data, bias.shape,
                  out_data, out.shape, alpha, beta, transA, transB)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
 }

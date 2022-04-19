@@ -142,8 +142,7 @@ fun print_tensor_data(t: tdata_t)
 
 fun print(t: tensor_t)
 {
-    val shape = "x".join(t.shape.map(string))
-    print(f"tensor {{name='{t.name}', shape={shape}, data={tensor_data_prefix(t.data)} ")
+    print(f"tensor {{name='{t.name}', shape={t.shape}, data={tensor_data_prefix(t.data)} ")
     if total(t) > 10 {print("[...]")} else {print_tensor_data(t.data)}
     print("}")
 }

@@ -254,7 +254,7 @@ fun string(a: 't ref) = "ref(" + repr(*a) + ")"
 
 fun string(a: 't [])
 {
-    join_embrace("[ ", " ]", ", ", [for x <- a {repr(x)}])
+    join_embrace("[", "]", ", ", [for x <- a {repr(x)}])
 }
 
 fun string(a: 't [,])
@@ -264,7 +264,7 @@ fun string(a: 't [,])
         val elems = [for j <- 0:n {repr(a[i, j])}]
         join(", ", elems)
     }]
-    join_embrace("[ ", " ]", ";\n", rows)
+    join_embrace("[", "]", ";\n", rows)
 }
 
 fun string(a: 't [,,])
@@ -277,7 +277,7 @@ fun string(a: 't [,,])
         }]
         join_embrace("", "", ";\n", rows)
     }]
-    join_embrace("[ ", " ]", ";;\n\n", planes)
+    join_embrace("[", "]", ";;\n\n", planes)
 }
 
 fun string(l: 't list) = join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
@@ -745,12 +745,12 @@ fun print_repr(a: string) { print("\""); print(a); print("\"") }
 fun print_repr(a: char) { print("'"); print(a); print("'") }
 fun print(a: 't [])
 {
-    print("[ ")
+    print("[")
     for x@i <- a {
         if i > 0 {print(", ")}
         print_repr(x)
     }
-    print(" ]")
+    print("]")
 }
 
 @nothrow fun print(a: char []): void = @ccode {
@@ -760,7 +760,7 @@ fun print(a: 't [])
 
 fun print(a: 't [,])
 {
-    print("[ ")
+    print("[")
     val (m, n) = size(a)
     for i <- 0:m {
         for j <- 0:n {
@@ -769,7 +769,7 @@ fun print(a: 't [,])
         }
         if i < m-1 {print(";\n ")}
     }
-    print(" ]")
+    print("]")
 }
 
 fun print(l: 't list)

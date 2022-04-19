@@ -12,96 +12,96 @@ import Ast
 @private fun run_cast(inp: float [], out: int16 []) = for x@idx <- inp {out[idx] = sat_int16(x)}
 @private fun run_cast(inp: float [], out: int32 []) = for x@idx <- inp {out[idx] = int32(round(x))}
 
-fun run_cast(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_cast(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_Cast {t_inp, t_out} =>
+| Ast.NN_Cast {t_inp, t_out} =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
     match (inp.data, out.data) {
-    | (Ast.DL_Data_Empty, _) => {}
-    | (_, Ast.DL_Data_Empty) => {}
-    | (Ast.DL_Data_I8 inp_data, Ast.DL_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I16 inp_data, Ast.DL_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I32 inp_data, Ast.DL_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I64 inp_data, Ast.DL_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_Bool inp_data, Ast.DL_Data_U8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_Empty, _) => {}
+    | (_, Ast.NN_Data_Empty) => {}
+    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
 
-    | (Ast.DL_Data_U8 inp_data, Ast.DL_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I16 inp_data, Ast.DL_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I32 inp_data, Ast.DL_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I64 inp_data, Ast.DL_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_Bool inp_data, Ast.DL_Data_I8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
 
-    | (Ast.DL_Data_I8 inp_data, Ast.DL_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_U8 inp_data, Ast.DL_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I16 inp_data, Ast.DL_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I64 inp_data, Ast.DL_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_Bool inp_data, Ast.DL_Data_I32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
 
-    | (Ast.DL_Data_I8 inp_data, Ast.DL_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_U8 inp_data, Ast.DL_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I16 inp_data, Ast.DL_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I32 inp_data, Ast.DL_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I64 inp_data, Ast.DL_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_Bool inp_data, Ast.DL_Data_FP32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
 
-    | (Ast.DL_Data_I8 inp_data, Ast.DL_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_U8 inp_data, Ast.DL_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I16 inp_data, Ast.DL_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I32 inp_data, Ast.DL_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_I64 inp_data, Ast.DL_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_Bool out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
 @private fun run_clip(inp: 't [], minval: 't, maxval: 't, out: 't []) =
     for x@idx <- inp {out[idx] = min(max(x, minval), maxval)}
 
-fun run_clip(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_clip(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
 {
-| Ast.DL_Clip {t_inp, t_min, t_max, t_out} =>
+| Ast.NN_Clip {t_inp, t_min, t_max, t_out} =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
     val minval = net.get_tensor(t_min)
     val maxval = net.get_tensor(t_max)
     match (inp.data, minval.data, maxval.data, out.data) {
-    | (Ast.DL_Data_U8 inp_data, Ast.DL_Data_U8 min_data, Ast.DL_Data_U8 max_data, Ast.DL_Data_U8 out_data) =>
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_U8 min_data, Ast.NN_Data_U8 max_data, Ast.NN_Data_U8 out_data) =>
         run_clip(inp_data, min_data[0], max_data[0], out_data)
-    | (Ast.DL_Data_I8 inp_data, Ast.DL_Data_I8 min_data, Ast.DL_Data_I8 max_data, Ast.DL_Data_I8 out_data) =>
+    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I8 min_data, Ast.NN_Data_I8 max_data, Ast.NN_Data_I8 out_data) =>
         run_clip(inp_data, min_data[0], max_data[0], out_data)
-    | (Ast.DL_Data_I32 inp_data, Ast.DL_Data_I32 min_data, Ast.DL_Data_I32 max_data, Ast.DL_Data_I32 out_data) =>
+    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I32 min_data, Ast.NN_Data_I32 max_data, Ast.NN_Data_I32 out_data) =>
         run_clip(inp_data, min_data[0], max_data[0], out_data)
-    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 min_data, Ast.DL_Data_FP32 max_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 min_data, Ast.NN_Data_FP32 max_data, Ast.NN_Data_FP32 out_data) =>
         run_clip(inp_data, min_data[0], max_data[0], out_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
 @private fun run_constantOfShape(v: 't, out: 't []) = for _@idx <- out {out[idx] = v}
 
-fun run_constantOfShape(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_constantOfShape(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.DL_ConstantOfShape {value, t_out} =>
+| Ast.NN_ConstantOfShape {value, t_out} =>
     val out = net.get_tensor(t_out)
     match (value.data, out.data) {
-    | (Ast.DL_Data_U8 v_data, Ast.DL_Data_U8 out_data) =>
+    | (Ast.NN_Data_U8 v_data, Ast.NN_Data_U8 out_data) =>
         OpElemwise.run_constantOfShape(v_data[0], out_data)
-    | (Ast.DL_Data_I8 v_data, Ast.DL_Data_I8 out_data) =>
+    | (Ast.NN_Data_I8 v_data, Ast.NN_Data_I8 out_data) =>
         OpElemwise.run_constantOfShape(v_data[0], out_data)
-    | (Ast.DL_Data_I32 v_data, Ast.DL_Data_I32 out_data) =>
+    | (Ast.NN_Data_I32 v_data, Ast.NN_Data_I32 out_data) =>
         OpElemwise.run_constantOfShape(v_data[0], out_data)
-    | (Ast.DL_Data_FP32 v_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Data_FP32 v_data, Ast.NN_Data_FP32 out_data) =>
         OpElemwise.run_constantOfShape(v_data[0], out_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
 @private fun run_abs(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = abs(x)}
@@ -116,38 +116,38 @@ match op {
 @private fun run_softsign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = x/(1 + abs(x))}
 @private fun run_sqrt(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sqrt(x)}
 
-fun run_unary(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_unary(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
 {
-| Ast.DL_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 1 =>
+| Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 1 =>
     val inp = net.get_tensor(t_inp[0])
     val out = net.get_tensor(t_out)
     match (el_op, inp.data, out.data) {
-    | (Ast.DL_Abs, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Abs, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_abs(inp_data, out_data)
-    | (Ast.DL_Cos, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Cos, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_cos(inp_data, out_data)
-    | (Ast.DL_Exp, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Exp, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_exp(inp_data, out_data)
-    | (Ast.DL_Log, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Log, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_log(inp_data, out_data)
-    | (Ast.DL_Relu, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Relu, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_relu(inp_data, out_data)
-    | (Ast.DL_Sigmoid, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Sigmoid, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_sigmoid(inp_data, out_data)
-    | (Ast.DL_Sign, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Sign, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_sign(inp_data, out_data)
-    | (Ast.DL_Sin, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Sin, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_sin(inp_data, out_data)
-    | (Ast.DL_Softplus, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Softplus, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_softplus(inp_data, out_data)
-    | (Ast.DL_Softsign, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Softsign, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_softsign(inp_data, out_data)
-    | (Ast.DL_Sqrt, Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Sqrt, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_sqrt(inp_data, out_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
 // [TODO] add broadcast support
@@ -190,90 +190,90 @@ match op
 @private fun run_xor(inp0: bool [], inp1: bool [], out: bool []) =
     for x@idx <- inp0, y <- inp1 {out[idx] = x ^ y}
 
-fun run_binary(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_binary(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
 {
-| Ast.DL_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 2 =>
+| Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 2 =>
     val inp0 = net.get_tensor(t_inp[0])
     val inp1 = net.get_tensor(t_inp[1])
     val out = net.get_tensor(t_out)
     match (el_op, inp0.data, inp1.data, out.data) {
-    | (Ast.DL_Add, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Add, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_add(inp0_data, inp1_data, out_data)
-    | (Ast.DL_And, Ast.DL_Data_Bool inp0_data, Ast.DL_Data_Bool inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_And, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
         run_and(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Div, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Div, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_div(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Equal, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_Equal, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
         run_cmp_eq(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Greater, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_Greater, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
         run_cmp_gt(inp0_data, inp1_data, out_data)
-    | (Ast.DL_GreaterOrEqual, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_GreaterOrEqual, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
         run_cmp_ge(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Less, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_Less, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
         run_cmp_lt(inp0_data, inp1_data, out_data)
-    | (Ast.DL_LessOrEqual, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_LessOrEqual, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
         run_cmp_le(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Max, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Max, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_max(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Mean, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Mean, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_mean(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Min, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Min, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_min(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Mod, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Mod, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_mod(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Mul, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Mul, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_mul(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Or, Ast.DL_Data_Bool inp0_data, Ast.DL_Data_Bool inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_Or, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
         run_or(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Pow, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Pow, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_pow(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Sub, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Sub, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_sub(inp0_data, inp1_data, out_data)
-    | (Ast.DL_Xor, Ast.DL_Data_Bool inp0_data, Ast.DL_Data_Bool inp1_data, Ast.DL_Data_Bool out_data) =>
+    | (Ast.NN_Xor, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
         run_xor(inp0_data, inp1_data, out_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_nary(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_nary(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
 {
-| Ast.DL_Elemwise {el_op, t_inp, t_out} when t_inp.size() >= 2 =>
+| Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() >= 2 =>
     val ninputs = t_inp.size()
     val inp = [for i <- t_inp {net.get_tensor(i)}]
     val out = net.get_tensor(t_out)
     match (el_op, inp[0].data, inp[1].data, out.data) {
-    | (Ast.DL_Max, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Max, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_max(inp0_data, inp1_data, out_data)
         for j <- 2:ninputs {
             match inp[j].data {
-            | Ast.DL_Data_FP32 inparrj => run_min(inparrj, out_data, out_data)
+            | Ast.NN_Data_FP32 inparrj => run_min(inparrj, out_data, out_data)
             | _ => throw TypeMismatchError
             }
         }
-    | (Ast.DL_Mean, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Mean, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_add(inp0_data, inp1_data, out_data)
         for j <- 2:ninputs {
             match inp[j].data {
-            | Ast.DL_Data_FP32 inparrj => run_add(inparrj, out_data, out_data)
+            | Ast.NN_Data_FP32 inparrj => run_add(inparrj, out_data, out_data)
             | _ => throw TypeMismatchError
             }
         }
         val scale = 1.f/ninputs
         for x@idx <- out_data {out_data[idx] = x*scale}
-    | (Ast.DL_Min, Ast.DL_Data_FP32 inp0_data, Ast.DL_Data_FP32 inp1_data, Ast.DL_Data_FP32 out_data) =>
+    | (Ast.NN_Min, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_min(inp0_data, inp1_data, out_data)
         for j <- 2:ninputs {
             match inp[j].data {
-            | Ast.DL_Data_FP32 inparrj => run_min(inparrj, out_data, out_data)
+            | Ast.NN_Data_FP32 inparrj => run_min(inparrj, out_data, out_data)
             | _ => throw TypeMismatchError
             }
         }
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
 fun run_dropout(inp: 't [], out: 't [], ratio: float)
@@ -282,10 +282,10 @@ fun run_dropout(inp: 't [], out: 't [], ratio: float)
     for x@idx <- inp {out[idx] = (x*scale :> 't)}
 }
 
-fun run_dropout(net: Ast.dlnet_t, op: Ast.dlop_t) =
+fun run_dropout(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
 {
-| Ast.DL_Dropout {t_inp, t_ratio, t_training_mode, t_out} =>
+| Ast.NN_Dropout {t_inp, t_ratio, t_training_mode, t_out} =>
     val inp = net.get_tensor(t_inp)
     val out = net.get_tensor(t_out)
     val training_mode =
@@ -294,11 +294,11 @@ match op
         } else {
             val t = net.get_tensor(t_training_mode)
             match t.data {
-            | Ast.DL_Data_Bool f => f[0]
-            | Ast.DL_Data_FP32 f => f[0] != 0.f
-            | Ast.DL_Data_I32 f => f[0] != 0i32
-            | Ast.DL_Data_U8 f => f[0] != 0u8
-            | Ast.DL_Data_I8 f => f[0] != 0i8
+            | Ast.NN_Data_Bool f => f[0]
+            | Ast.NN_Data_FP32 f => f[0] != 0.f
+            | Ast.NN_Data_I32 f => f[0] != 0i32
+            | Ast.NN_Data_U8 f => f[0] != 0u8
+            | Ast.NN_Data_I8 f => f[0] != 0i8
             | tdata => int(tdata)[0] != 0
             }
         }
@@ -307,7 +307,7 @@ match op
         if !training_mode {0.f}
         else if t_ratio == 0 {0.5f} else {
             match net.get_tensor(t_ratio).data {
-            | Ast.DL_Data_FP32 ratio_data => ratio_data[0]
+            | Ast.NN_Data_FP32 ratio_data => ratio_data[0]
             | _ => throw NotImplementedError
             }
         }
@@ -315,10 +315,10 @@ match op
         net.copy_tensor_data(t_inp, t_out)
     } else {
         match (inp.data, out.data) {
-        | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+        | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
             run_dropout(inp_data, out_data, ratio)
         | _ => throw NotImplementedError
         }
     }
-| _ => throw Ast.DLError(f"unexpected op {op.name()}")
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
