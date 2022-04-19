@@ -388,7 +388,7 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
     int pad_left = conv->pad_left, pad_right = conv->pad_right;
     int ksize = Hk*Wk, padded_ksize = ((ksize + FX_VEC_NLANES-1)/FX_VEC_NLANES)*FX_VEC_NLANES;
 
-    int* ofstab = (int*)malloc(3*padded_ksize*sizeof(ofstab[0]));
+    int* ofstab = (int*)fx_malloc(3*padded_ksize*sizeof(ofstab[0]));
     int* xytab = ofstab + padded_ksize;
     const float* weights0 = conv->weights, *bias = conv->bias;
     int inner_ytop = (pad_bottom + stride_y-1)/stride_y, inner_ybottom;

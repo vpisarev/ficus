@@ -32,7 +32,7 @@ typedef struct _fx_pooling2d_t
 
 static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
                          const int_* outsize, float* out,
-                         const _fx_pooling2d_t* pool, int ntasks)
+                         const _fx_pooling2d_t* pool)
 {
     int N = (int)inpsize[0], C = (int)inpsize[1];
     int Hi = (int)inpsize[2], Wi = (int)inpsize[3];
@@ -157,7 +157,7 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
 
 static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
                          const int_* outsize, float* out,
-                         const _fx_pooling2d_t* pool, int ntasks)
+                         const _fx_pooling2d_t* pool)
 {
     int N = (int)inpsize[0], C = (int)inpsize[1];
     int Hi = (int)inpsize[2], Wi = (int)inpsize[3];
@@ -284,7 +284,6 @@ fun run_maxpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
                    dy: int, dx: int, pad_top: int, pad_left: int,
                    pad_bottom: int, pad_right: int): void
 @ccode {
-    const int ntasks = 4;
     _fx_pooling2d_t pool;
     int_ ndims = inp_shape->shape.dim[0].size;
     const int_* inpsize = (const int_*)inp_shape->shape.data;
@@ -302,7 +301,7 @@ fun run_maxpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
     pool.pad_top = (int)pad_top; pool.pad_left = (int)pad_left;
     pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
     return _fx_maxpool2d((int)ndims, inpsize, (const float*)inp->data,
-                         outsize, (float*)out->data, &pool, ntasks);
+                         outsize, (float*)out->data, &pool);
 }
 
 fun run_maxpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
@@ -334,7 +333,6 @@ fun run_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
                    pad_bottom: int, pad_right: int,
                    count_include_pad: bool): void
 @ccode {
-    const int ntasks = 4;
     _fx_pooling2d_t pool;
     int_ ndims = inp_shape->shape.dim[0].size;
     const int_* inpsize = (const int_*)inp_shape->shape.data;
@@ -353,7 +351,7 @@ fun run_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
     pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
     pool.count_include_pad = count_include_pad;
     return _fx_avgpool2d((int)ndims, inpsize, (const float*)inp->data,
-                         outsize, (float*)out->data, &pool, ntasks);
+                         outsize, (float*)out->data, &pool);
 }
 
 fun run_avgpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
@@ -371,6 +369,39 @@ match op {
             kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
             pads[0], pads[1], pads[2], pads[3], count_include_pad)
+    | _ => throw NotImplementedError
+    }
+| _ => throw Ast.DLError(f"unsupported operation {op.name()}")
+}
+
+fun run_global_avgpool_2d(inp: 't [], inp_shape: Ast.dlshape_t,
+                          out: float [], out_shape: Ast.dlshape_t, zero: 'w)
+{
+    assert(`inp_shape.shape.size() == 4 && out_shape.shape.size() == 4`)
+    val (N, C, H, W) = (inp_shape.shape[0], inp_shape.shape[1],
+                        inp_shape.shape[2], inp_shape.shape[3])
+    assert(`out_shape.shape[0] == N`)
+    assert(`out_shape.shape[1] == C`)
+    assert(`out_shape.shape[2] == 1 && out_shape.shape[3] == 1`)
+    val planesize = H*W
+    val scale = 1.f/planesize
+
+    @parallel for nc <- 0:N*C {
+        val i0 = nc*planesize
+        val i1 = i0 + planesize
+        out[nc] = (fold s = zero for i <- i0:i1 {s + inp[i]})*scale
+    }
+}
+
+fun run_global_avgpool(net: Ast.dlnet_t, op: Ast.dlop_t) =
+match op {
+| Ast.DL_GlobalAvgPool {t_inp, t_out} =>
+    val inp = net.get_tensor(t_inp)
+    val out = net.get_tensor(t_out)
+    assert(`inp.shape.layout == Ast.DL_Layout_NCHW`)
+    match (inp.data, out.data) {
+    | (Ast.DL_Data_FP32 inp_data, Ast.DL_Data_FP32 out_data) =>
+        run_global_avgpool_2d(inp_data, inp.shape, out_data, out.shape, 0.f)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.DLError(f"unsupported operation {op.name()}")

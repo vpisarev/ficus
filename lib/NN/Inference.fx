@@ -89,7 +89,7 @@ match op
     | Ast.DL_Gemm _ =>
         OpGemm.run_gemm(net, op)
     | Ast.DL_GlobalAvgPool {t_inp, t_out} =>
-        throw Ast.DLError(f"unsupported operation {op.name()}")
+        OpPooling.run_global_avgpool(net, op)
     | Ast.DL_Identity {t_inp, t_out} =>
         net.copy_tensor_data(t_inp, t_out)
     | Ast.DL_If {then_branch, else_branch, t_inp, t_out} =>
@@ -122,7 +122,7 @@ match op
     | Ast.DL_Scatter {axis, t_data, t_updates, t_indices, t_out} =>
         throw Ast.DLError(f"unsupported operation {op.name()}")
     | Ast.DL_Shape {start, end, t_inp, t_out} =>
-        throw Ast.DLError(f"unsupported operation {op.name()}")
+        OpPermute.run_shape(net, op)
     | Ast.DL_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
         throw Ast.DLError(f"unsupported operation {op.name()}")
     | Ast.DL_SoftMax _ =>

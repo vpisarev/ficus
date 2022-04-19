@@ -1,7 +1,7 @@
 import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 //import Image.Decoder
-import DL.Ast, DL.Inference, DL.FromOnnx, DL.BufferAllocator
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.BufferAllocator
 
 var mname = "", lname = ""
 var images: string list = []
@@ -76,32 +76,36 @@ cv.waitKey()
 */
 
 val model =
-    try DL.FromOnnx.read(mname)
+    try NN.FromOnnx.read(mname)
     catch {
-    | DL.FromOnnx.OnnxConvertError(msg) =>
+    | NN.FromOnnx.OnnxConvertError(msg) =>
         println(f"error: {msg}"); throw Fail("")
     | Fail(msg) =>
         println(f"error: {msg}"); throw Fail("")
     }
-val model = DL.BufferAllocator.assign_buffers(model)
+val model = NN.BufferAllocator.assign_buffers(model)
 val k = 5
-val lname = "prob_1"
-val temp_outputs = [(lname, DL.Ast.empty_tensor())]
+val lname = "output"
+val temp_outputs = [(lname, NN.Ast.empty_tensor())]
 
 for imgname@i <- images {
     println(f"starting reading model '{mname}'")
     val img = cv.imread(imgname)
     val inp = cv.blobFromImage(img, size=(224, 224),
             mean=(104.00698793, 116.66876762, 122.67891434),
-            swapRB=false, crop=false)
+            swapRB=true, crop=false)
     println(inp.size())
-    val out = net.forward(inp, outputs=[lname, "prob_1"])
+    val out = net.forward(inp, outputs=[lname, "output"])
     val probs = out[1]
     val (_, _, _, n) = size(probs)
     val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
     sort(tprobs, (>))
-    val inp_ = DL.Ast.make_tensor(inp)
-    val outputs = DL.Inference.run(model, [("", inp_)], outputs=temp_outputs)
+    val inp_ = NN.Ast.make_tensor(inp)
+    val outputs =
+        try NN.Inference.run(model, [("", inp_)], outputs=temp_outputs) catch {
+        | NN.Ast.DLError msg => println(f"exception DL_Error('{msg}') occured"); []
+        | Fail msg => println(f"failure: '{msg}'"); []
+        }
     for t_out@i <- temp_outputs {
         println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
     }
@@ -112,11 +116,11 @@ for imgname@i <- images {
     println(f"||'{lname}_ref' - '{lname}'||/sz = {normL1(out[0][:] - temp)/ntemp}")
     //println(out[0].reshape(shape2d)[:5,:5])
     //println(temp.reshape(shape2d)[:5,:5])
-    println(out[0][:][:20])
-    println(temp[:20])
+    //println(out[0][:][:20])
+    //println(temp[:20])
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
-        val sorted_k = DL.Inference.top_k(out.1, k)
+        val sorted_k = NN.Inference.top_k(out.1, k)
         for j <- 0:k {
             val (label, prob) = sorted_k[0, j]
             val label_str = if labels != [] {labels[label]} else {f"class_{label}"}
@@ -132,14 +136,14 @@ for imgname@i <- images {
 }
 
 /*val model =
-    try DL.FromOnnx.read(mname)
+    try NN.FromOnnx.read(mname)
     catch {
-    | DL.FromOnnx.OnnxConvertError(msg) =>
+    | NN.FromOnnx.OnnxConvertError(msg) =>
         println(f"error: {msg}"); throw Fail("")
     | Fail(msg) =>
         println(f"error: {msg}"); throw Fail("")
     }
 println(f"dumping model '{mname}'")
-val model = DL.BufferAllocator.assign_buffers(model)
+val model = NN.BufferAllocator.assign_buffers(model)
 println(model)
 */

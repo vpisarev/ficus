@@ -46,7 +46,7 @@ the inference the buffer #3 will be reallocated from 0 bytes to 1000*4 bytes to 
 then from 4000 to 6*6*32*4=4608 bytes to fit arg #10 and then it will fit arg #14 without reallocations.
 During the second run of inference with the same resolution input the buffer will not be reallocated.
 
-The reallocation is done using DL.Ast.fit() function.
+The reallocation is done using NN.Ast.fit() function.
 */
 
 import Ast, Dynvec

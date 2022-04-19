@@ -3,7 +3,7 @@
     See ficus/LICENSE for the licensing terms
 */
 
-// Converts Onnx model to DL.Ast
+// Converts Onnx model to NN.Ast
 import Ast, Onnx.Ast as OAst, Onnx.Parser
 import Hashmap, Dynvec
 
