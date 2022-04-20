@@ -336,7 +336,6 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
         val (sshape, _) = get_shape_typ(t_shape)
         assert(`sshape.shape.size() == 1`)
         val new_shape = int(net.get_tensor(t_shape))
-        println(f"   Reshape: new_shape={new_shape}, allowzero={allowzero}")
         val fold old_total = 1 for sz <- shape.shape {if sz != 0 {old_total*sz} else {old_total}}
         val fold new_total=1, havem1=false for sz@i <- new_shape {
             if sz == -1 {

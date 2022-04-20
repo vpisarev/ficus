@@ -391,11 +391,11 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
     int* ofstab = (int*)fx_malloc(3*padded_ksize*sizeof(ofstab[0]));
     int* xytab = ofstab + padded_ksize;
     const float* weights0 = conv->weights, *bias = conv->bias;
-    int inner_ytop = (pad_bottom + stride_y-1)/stride_y, inner_ybottom;
+    int inner_ytop = (pad_top + stride_y-1)/stride_y, inner_ybottom;
     int inner_xleft = (pad_left + stride_x-1)/stride_x, inner_xright;
     for (int k = 0; k < padded_ksize; k++) {
-        int y = k < padded_ksize ? k / Wk : 0;
-        int x = k < padded_ksize ? k % Wk : 0;
+        int y = k < ksize ? k / Wk : 0;
+        int x = k < ksize ? k % Wk : 0;
         int dy = y*dilation_y, dx = x*dilation_x;
         xytab[k*2] = dy; xytab[k*2+1] = dx;
         ofstab[k] = dy*Wi + dx;
@@ -470,7 +470,7 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
                     if (is3x3) {
                         for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
                             int xi_ = x0*stride_x - pad_left;
-                            const float* inptr_xi = inptr + W0*yi_ + xi_;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vfmaq_f32(vbias, vld1q_f32(inptr_xi + ofstab[0]), w0);
                             float32x4_t s1 = vmulq_f32(vld1q_f32(inptr_xi + ofstab[1]), w1);
                             float32x4_t s2 = vmulq_f32(vld1q_f32(inptr_xi + ofstab[2]), w2);
@@ -490,7 +490,7 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
                     } else {
                         for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
                             int xi_ = x0*stride_x - pad_left, k = 0;
-                            const float* inptr_xi = inptr + W0*yi_ + xi_;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vbias;
                             for (; k <= ksize - 4; k += 4) {
                                 float32x4_t v0 = vld1q_f32(inptr_xi + ofstab[k]);
@@ -513,7 +513,7 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
             #endif
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    const float* inptr_xi = inptr + W0*yi_ + xi_;
+                    const float* inptr_xi = inptr + Wi*yi_ + xi_;
                     s = biasval;
                     for (int k = 0; k < ksize; k++)
                         s += inptr_xi[ofstab[k]]*weights[k];

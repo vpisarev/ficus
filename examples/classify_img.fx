@@ -87,14 +87,15 @@ val model = NN.BufferAllocator.assign_buffers(model)
 val k = 5
 val lname = "output"
 val ocv_outputs = [lname]
-val temp_outputs = [(lname, NN.Ast.empty_tensor())]
+val temp_outputs = [for i <- (lname, "474") {(i, NN.Ast.empty_tensor())}]
 
 for imgname@i <- images {
     println(f"starting reading model '{mname}'")
     val img = cv.imread(imgname)
     val inp = cv.blobFromImage(img, size=(224, 224),
-            mean=(104.00698793, 116.66876762, 122.67891434),
-            swapRB=false, crop=false)
+            scaleFactor=0.017,
+            mean=(103., 116., 123.),
+            swapRB=true, crop=false)
     println(inp.size())
     val out = net.forward(inp)
     //println(f"out[1]={out[1][:]}")
@@ -112,15 +113,14 @@ for imgname@i <- images {
     for t_out@i <- temp_outputs {
         println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
     }
-    val temp = float(temp_outputs[0].1)
+    //val temp = float(temp_outputs[1].1)
     //val shape = temp_outputs[0].1.shape.shape
     //val shape2d = (shape[0]*shape[1]*shape[2], shape[3])
-    val ntemp = temp.size()
+    //val ntemp = temp.size()
     //println(f"||'{lname}_ref' - '{lname}'||/sz = {normL1(out[0][:] - temp)/ntemp}")
     //println(out[0].reshape(shape2d)[:5,:5])
     //println(temp.reshape(shape2d)[:5,:5])
     //println(out[0][:][:20])
-    //println(temp[:20])
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
         val sorted_k = NN.Inference.top_k(out.1, k)

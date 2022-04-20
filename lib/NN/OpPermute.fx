@@ -50,12 +50,14 @@ typedef struct _fx_nndata_t {
 fun run_concat(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Concat {axis, t_inp, t_out} =>
-    var etyp = Ast.NN_FP32
+    var etyp_0 = Ast.NN_FP32
     val (inp_data, inp_shape) = [@unzip for idx@i <- t_inp {
             val t = net.get_tensor(idx)
+            val etyp_i = t.data.elemtype()
             if i > 0 {
-                println(f"{i}. etyp0={etyp}, etyp_i={t.data.elemtype()}")
-                assert(`etyp == t.data.elemtype()`)
+                assert(`etyp_0 == etyp_i`)
+            } else {
+                etyp_0 = etyp_i
             }
             (t.data, t.shape.shape)
         }]
@@ -80,17 +82,18 @@ match op {
     size_t slicesize = elemsize;
     size_t inp_stride, out_stride;
     const char* inptr0 = inp_data->u.NN_Data_I8.data;
-    char* outptr0 = inp_data->u.NN_Data_I8.data;
-    const fx_arr_t* ind_arr = &(inp_data->u.NN_Data_I32);
+    char* outptr0 = out_data->u.NN_Data_I8.data;
+    const fx_arr_t* ind_arr = &(ind_data->u.NN_Data_I32);
     const int* ind32 = 0;
-    const int_* ind64 = 0;
+    const int64_t* ind64 = 0;
     int_ s = ((const int_*)inp_shape->data)[axis];
 
-    if (ind_arr->dim[0].step == sizeof(int))
-        ind32 = (const int*)inp_data->u.NN_Data_I32.data;
+    if (ind_arr->dim[0].step == sizeof(int)) {
+        ind32 = (const int*)ind_arr->data;
+    }
     else {
         assert(ind_arr->dim[0].step == sizeof(int64_t));
-        ind64 = (const int_*)inp_data->u.NN_Data_I64.data;
+        ind64 = (const int64_t*)ind_arr->data;
     }
 
     for(int_ i = 0; i < q; i++)
@@ -115,7 +118,6 @@ match op {
         if (k >= s) {
             fx_status = FX_EXN_OutOfRangeError; continue;
         }
-
         for(int_ j = 0; j < nslices; j++)
             memcpy(outptr + j*out_stride, inptr + j*inp_stride, slicesize);
     }
@@ -137,7 +139,6 @@ match op {
     val out_shape = out.shape.shape
     val ndims = out_shape.size()
     assert(`ndims == q + r - 1`)
-    //println(f"inp_shape={inp_shape}, ind_shape={ind_shape}, out_shape={out_shape}")
     match ind.data {
     | Ast.NN_Data_I32 _ | Ast.NN_Data_I64 _ => {}
     | _ => throw Ast.NNError(f"Gather: unsupported index type '{ind.data.elemtype()}'")
