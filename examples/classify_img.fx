@@ -87,7 +87,7 @@ val model = NN.BufferAllocator.assign_buffers(model)
 val k = 5
 val lname = "output"
 val ocv_outputs = [lname]
-val temp_outputs = [for i <- (lname, "474") {(i, NN.Ast.empty_tensor())}]
+val temp_outputs = [for i <- [lname] {(i, NN.Ast.empty_tensor())}]
 
 for imgname@i <- images {
     println(f"starting reading model '{mname}'")

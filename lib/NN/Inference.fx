@@ -54,9 +54,8 @@ match op
 {
     | Ast.NN_AvgPool _ =>
         OpPooling.run_avgpool(net, op)
-    | Ast.NN_BatchNorm {epsilon, momentum, training_mode,
-        t_inp, t_scale, t_B, t_mean, t_var, t_out} =>
-        throw Ast.NNError(f"unsupported operation {op.name()}")
+    | Ast.NN_BatchNorm _ =>
+        OpConv.run_batchnorm(net, op)
     | Ast.NN_Cast _ =>
         OpElemwise.run_cast(net, op)
     | Ast.NN_Clip _ =>
