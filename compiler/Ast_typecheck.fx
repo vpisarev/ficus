@@ -236,6 +236,11 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
                             exists(for (_, n2, t2, _) <- relems2 {
                                 n1 == n2 && maybe_unify_(t1, t2, loc)})
                             })
+                    val have_all_matches2 =
+                        all(for (_, n2, t2, v2) <- relems2 {
+                            exists(for (_, n1, t1, _) <- relems1 {
+                                n1 == n2 && maybe_unify_(t1, t2, loc)})
+                            })
                     /*
                         if both the record types are unknown then all the v1opt's in relems1
                         are None's. Since we do not have duplicates, which is checked by the parser,
@@ -244,7 +249,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
                         So, below we put the opposite check,
                         which ensures that len(relems1) = len(relems2).
                     */
-                    have_all_matches && relems1.length() >= relems2.length()
+                    have_all_matches && have_all_matches2 && relems1.length() >= relems2.length()
                 }
             if ok {
                 rec_undo_stack = (r2, *r2) :: rec_undo_stack

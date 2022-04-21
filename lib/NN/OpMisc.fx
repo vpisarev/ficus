@@ -45,31 +45,3 @@ match op {
     }
 | _ => throw Ast.NNError(f"unsupported operation {op.name()}")
 }
-
-fun run_softmax(inp: 't [], inp_shape: Ast.nnshape_t, out: 't [])
-{
-    val N = inp_shape.shape[0], C = inp_shape.shape[1]
-    @parallel for i <- 0:N {
-        val ofs = i*C
-        val fold maxval = inp[ofs] for j <- 1:C {max(maxval, inp[ofs+j])}
-        var s = 0.
-        val tab = [for j <- 0:C {val t = exp(inp[ofs+j] - maxval); s += t; t}]
-        val s = (1/s :> 't)
-        for j <- 0:C {out[ofs+j] = tab[j]*s}
-    }
-}
-
-fun run_softmax(net: Ast.nnet_t, op: Ast.nnop_t) =
-match op {
-| Ast.NN_SoftMax {axis, t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
-    assert(`inp.shape.shape.size() == 2`)
-    assert(`axis == 1 || axis == -1`)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_softmax(inp_data, inp.shape, out_data)
-    | _ => throw NotImplementedError
-    }
-| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
-}

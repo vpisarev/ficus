@@ -6,7 +6,7 @@
 // Computes shapes of all intermediate tensors
 import Hashmap
 import Ast, InferShapes
-import OpConv, OpElemwise, OpGemm, OpMisc, OpPermute, OpPooling, OpReduce
+import OpConv, OpElemwise, OpNN, OpMisc, OpPermute, OpPooling, OpReduce
 
 fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
             cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
@@ -55,7 +55,7 @@ match op
     | Ast.NN_AvgPool _ =>
         OpPooling.run_avgpool(net, op)
     | Ast.NN_BatchNorm _ =>
-        OpConv.run_batchnorm(net, op)
+        OpNN.run_batchnorm(net, op)
     | Ast.NN_Cast _ =>
         OpElemwise.run_cast(net, op)
     | Ast.NN_Clip _ =>
@@ -86,7 +86,7 @@ match op
     | Ast.NN_Gather _ =>
         OpPermute.run_gather(net, op)
     | Ast.NN_Gemm _ =>
-        OpGemm.run_gemm(net, op)
+        OpNN.run_gemm(net, op)
     | Ast.NN_GlobalAvgPool {t_inp, t_out} =>
         OpPooling.run_global_avgpool(net, op)
     | Ast.NN_Identity {t_inp, t_out} =>
@@ -125,7 +125,7 @@ match op
     | Ast.NN_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
         throw Ast.NNError(f"unsupported operation {op.name()}")
     | Ast.NN_SoftMax _ =>
-        OpMisc.run_softmax(net, op)
+        OpNN.run_softmax(net, op)
     | Ast.NN_Split {axis, t_inp, t_split, t_out} =>
         throw Ast.NNError(f"unsupported operation {op.name()}")
     | Ast.NN_Squeeze {t_inp, t_out} =>

@@ -6314,11 +6314,12 @@ static int _fx_cons_LT2LN14K_form__kexp_tNt10Hashmap__t2R9Ast__id_tN14K_form__at
 
 _fx_Nt6option1T2iN14K_form__kexp_t _fx_g19K_copy_n_skip__None = { 1 };
 _fx_Nt6option1Nt10Hashset__t1R9Ast__id_t _fx_g21K_copy_n_skip__None1_ = { 1 };
-static int _fx_M13K_copy_n_skipFM6qsort_v4iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t(
+static int _fx_M13K_copy_n_skipFM6qsort_v5iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_ti(
    int_ lo_0,
    int_ hi_0,
    fx_arr_t* arr_0,
    struct _fx_FPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t* lt_0,
+   int_ prefix_0,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
@@ -6545,25 +6546,27 @@ size_t esz = arr->dim[0].step;
 
 }
 
-FX_EXTERN_C int _fx_M13K_copy_n_skipFM4sortv2A1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t(
+FX_EXTERN_C int _fx_M13K_copy_n_skipFM4sortv3A1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_ti(
    fx_arr_t* arr_0,
    struct _fx_FPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t* lt_0,
+   int_ prefix_0,
    void* fx_fv)
 {
    int fx_status = 0;
    FX_CALL(
-      _fx_M13K_copy_n_skipFM6qsort_v4iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t(0,
-         FX_ARR_SIZE(*arr_0, 0) - 1, arr_0, lt_0, 0), _fx_cleanup);
+      _fx_M13K_copy_n_skipFM6qsort_v5iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_ti(0,
+         FX_ARR_SIZE(*arr_0, 0) - 1, arr_0, lt_0, prefix_0, 0), _fx_cleanup);
 
 _fx_cleanup: ;
    return fx_status;
 }
 
-static int _fx_M13K_copy_n_skipFM6qsort_v4iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t(
+static int _fx_M13K_copy_n_skipFM6qsort_v5iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_ti(
    int_ lo_0,
    int_ hi_0,
    fx_arr_t* arr_0,
    struct _fx_FPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t* lt_0,
+   int_ prefix_0,
    void* fx_fv)
 {
    int fx_status = 0;
@@ -6694,18 +6697,24 @@ static int _fx_M13K_copy_n_skipFM6qsort_v4iiA1T2iN14K_form__kexp_tFPB2T2iN14K_fo
             FX_CHECK_EXN(_fx_catch_2);
          }
          if (i0_1 - lo_2 < hi_2 - i1_0) {
-            FX_CALL(
-               _fx_M13K_copy_n_skipFM6qsort_v4iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t(lo_2,
-                  i0_1 - 1, arr_0, lt_0, 0), _fx_catch_2);
-            lo_1 = i1_0 + 1;
-            hi_1 = hi_2;
+            if (i1_0 < prefix_0) {
+               FX_CALL(
+                  _fx_M13K_copy_n_skipFM6qsort_v5iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_ti(i1_0 + 1,
+                     hi_2, arr_0, lt_0, prefix_0, 0), _fx_catch_2);
+            }
+            lo_1 = lo_2;
+            hi_1 = i0_1 - 1;
          }
          else {
             FX_CALL(
-               _fx_M13K_copy_n_skipFM6qsort_v4iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t(lo_2,
-                  i0_1 - 1, arr_0, lt_0, 0), _fx_catch_2);
-            lo_1 = i1_0 + 1;
-            hi_1 = hi_2;
+               _fx_M13K_copy_n_skipFM6qsort_v5iiA1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_ti(lo_2,
+                  i0_1 - 1, arr_0, lt_0, prefix_0, 0), _fx_catch_2);
+            if (i1_0 < prefix_0) {
+               lo_1 = i1_0 + 1; hi_1 = hi_2;
+            }
+            else {
+               FX_BREAK(_fx_catch_2);
+            }
          }
       }
       else if (lo_2 < hi_2) {
@@ -6805,8 +6814,9 @@ FX_EXTERN_C int
    for (; lst_0; lst_0 = lst_0->tl, dstptr_0++) {
       _fx_T2iN14K_form__kexp_t* x_0 = &lst_0->hd; _fx_copy_T2iN14K_form__kexp_t(x_0, dstptr_0);
    }
-   FX_CALL(_fx_M13K_copy_n_skipFM4sortv2A1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_t(&arr_0, lt_0, 0),
-      _fx_catch_2);
+   FX_CALL(
+      _fx_M13K_copy_n_skipFM4sortv3A1T2iN14K_form__kexp_tFPB2T2iN14K_form__kexp_tT2iN14K_form__kexp_ti(&arr_0, lt_0,
+         FX_ARR_SIZE(arr_0, 0), 0), _fx_catch_2);
    _fx_LT2iN14K_form__kexp_t lstend_0 = 0;
    int_ ni_0 = FX_ARR_SIZE(arr_0, 0);
    _fx_T2iN14K_form__kexp_t* ptr_arr_0 = FX_PTR_1D(_fx_T2iN14K_form__kexp_t, arr_0, 0);
