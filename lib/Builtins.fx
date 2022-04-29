@@ -614,6 +614,24 @@ type doublex4 = (double*4)
 type doublex5 = (double*5)
 type doublex6 = (double*6)
 
+/*
+@inline fun sat_uint8(i: int) = __intrin_sat_uint8__(i)
+@inline fun sat_uint8(f: float) = __intrin_sat_uint8__(f)
+@inline fun sat_uint8(d: double) = __intrin_sat_uint8__(d)
+
+@inline fun sat_int8(i: int) = __intrin_sat_int8__(i)
+@inline fun sat_int8(f: float) = __intrin_sat_int8__(f)
+@inline fun sat_int8(d: double) = __intrin_sat_int8__(d)
+
+@inline fun sat_uint16(i: int) = __intrin_sat_uint16__(i)
+@inline fun sat_uint16(f: float) = __intrin_sat_uint16__(f)
+@inline fun sat_uint16(d: double) = __intrin_sat_uint16__(d)
+
+@inline fun sat_int16(i: int) = __intrin_sat_int16__(i)
+@inline fun sat_int16(f: float) = __intrin_sat_int16__(f)
+@inline fun sat_int16(d: double) = __intrin_sat_int16__(d)
+*/
+
 @pure @nothrow fun sat_uint8(i: int): uint8
 @ccode { return (unsigned char)((i & ~255) == 0 ? i : i < 0 ? 0 : 255); }
 

@@ -1,7 +1,7 @@
 import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.BufferAllocator
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator
 
 var mname = "", lname = ""
 var images: string list = []
@@ -83,6 +83,8 @@ val model =
     | Fail(msg) =>
         println(f"error: {msg}"); throw Fail("")
     }
+//val model = NN.FuseBasic.fuse_basic(model)
+println(model)
 val model = NN.BufferAllocator.assign_buffers(model)
 val k = 5
 val lname = "output"

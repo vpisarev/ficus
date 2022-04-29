@@ -114,7 +114,17 @@ type dlnearest_mode_t =
     | NN_Nearest_Floor
     | NN_Nearest_Ceil
 
+type nnconv_attr_t
+{
+    kernel_shape: int []
+    pads: int []
+    strides: int []
+    dilations: int []
+    group: int
+}
+
 class nnop_t =
+    | NN_Nop
     | NN_AvgPool: {
         name: string
         ceil_mode: bool
@@ -141,11 +151,7 @@ class nnop_t =
         name: string; value: nntensor_t; t_shape: int; t_out: int }
     | NN_Conv: {
         name: string
-        kernel_shape: int []
-        pads: int []
-        strides: int []
-        dilations: int []
-        group: int
+        attr: nnconv_attr_t
         conv_data: cptr ref
         fused_batch_norm: nnop_t?
         non_const_batch_norm: bool
@@ -494,8 +500,8 @@ fun float(d: nndata_t)
     | NN_Data_Bool(elems) => float(elems)
 }
 
-fun float_scalar_or(d: nndata_t, defval: float)
-{
+fun float_scalar_or(d: nndata_t, defval: float): float =
+match d {
     | NN_Data_Empty => defval
     | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
     | NN_Data_I8(elems) => float(elems[0])
@@ -700,8 +706,9 @@ fun graph2str(net: nnet_t, graph: nngraph_t, indent: string)
         f",\n{prog_indent}", prog)
 }
 
-fun nnop_t.name() = match self
+fun nnop_t.name(): (string, string) = match self
 {
+    | NN_Nop => ("", "Nop")
     | NN_AvgPool {name} => (name, "AvgPool")
     | NN_BatchNorm {name} => (name, "BatchNorm")
     | NN_Cast {name} => (name, "Cast")
@@ -752,6 +759,7 @@ fun t2str(net: nnet_t, tensors: (string, int) []) =
 
 fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
 {
+    | NN_Nop => ([], [])
     | NN_AvgPool {t_inp, t_out} => ([t_inp], [t_out])
     | NN_BatchNorm {t_inp, t_scale, t_B, t_mean, t_var, t_out} => ([t_inp, t_scale, t_B, t_mean, t_var], [t_out])
     | NN_Cast {t_inp, t_out} => ([t_inp], [t_out])
@@ -800,6 +808,7 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string)
     val sub_indent = indent + "  "
     //println(f"dumping op={get_opname(op)}")
     match op {
+    | NN_Nop => "Nop"
     | NN_AvgPool {name, ceil_mode, dilations, kernel_shape, pads,
         strides, count_include_pad, t_inp, t_out} =>
         op2str(name, "AvgPool", f"ceil_mode={ceil_mode},\ndilations={dilations},\nkernel_shape={kernel_shape},\n\
@@ -818,12 +827,18 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string)
     | NN_ConstantOfShape {name, value, t_shape, t_out} =>
         op2str(name, "ConstantOfShape", f"value={tensor2str(net, value, true)}",
             t2str(net, [("t_shape", t_shape), ("t_out", t_out)]), indent)
-    | NN_Conv {name, kernel_shape, pads, strides, dilations, group,
+    | NN_Conv {name=convname, attr,
         fused_batch_norm, fused_activ, t_inp, t_weights, t_bias, t_out} =>
-        val bnorm_name = match fused_batch_norm {| Some(NN_BatchNorm _) => " + BatchNorm" | _ => ""}
-        val activ_name = match fused_activ {| Some(activ) => " + " + activ.name().1 | _ => ""}
-        op2str(name, "Conv" + bnorm_name + activ_name, f"kernel_shape={kernel_shape}, \
-            pads={pads}, strides={strides}, dilations={dilations}, group={group}",
+        val bnorm_name = match fused_batch_norm {
+            | Some(NN_BatchNorm _) => " + BatchNorm"
+            | _ => ""}
+        val activ_name = match fused_activ {
+            | Some(activ) =>
+                val (_, opname): (string, string) = activ.name()
+                " + " + opname
+            | _ => ""}
+        op2str(convname, "Conv" + bnorm_name + activ_name, f"kernel_shape={attr.kernel_shape}, \
+            pads={attr.pads}, strides={attr.strides}, dilations={attr.dilations}, group={attr.group}",
             t2str(net, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
     | NN_ConvTranspose {name, kernel_shape, pads, strides, dilations, group,
         out_shape, out_padding, t_inp, t_weights, t_bias, t_out} =>
@@ -1213,6 +1228,31 @@ fun nnet_t.copy_tensor_data(t_inp: int, t_out: int)
     val inp = self.get_tensor(t_inp)
     val out = self.get_tensor(t_out)
     copy_(inp.data, out.data)
+}
+
+fun nnet_t.use_counts(): int []
+{
+    val nargs = self.args.size()
+    val usecounts = array(nargs, 0)
+
+    fun update_counts(graph: nngraph_t)
+    {
+        for op <- graph.prog {
+            val (inps, _) = op.get_inputs_outputs()
+            for i <- inps {usecounts[i] += 1}
+            match op {
+            | NN_If {then_branch, else_branch} =>
+                update_counts(then_branch)
+                update_counts(else_branch)
+            | NN_Loop {body} =>
+                update_counts(body)
+            | _ => {}
+            }
+        }
+    }
+
+    update_counts(self.graph)
+    usecounts
 }
 
 fun normalize_axis(axis: int, ndims: int) {

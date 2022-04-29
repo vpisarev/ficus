@@ -52,6 +52,7 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
 fun run_op(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
 {
+    | Ast.NN_Nop => {}
     | Ast.NN_AvgPool _ =>
         OpPooling.run_avgpool(net, op)
     | Ast.NN_BatchNorm _ =>

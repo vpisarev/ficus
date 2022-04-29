@@ -519,8 +519,10 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                 val pads = autopad2pads(auto_pad, kernel_shape, pads)
                 if node.op == "Conv" {
                     [:: Ast.NN_Conv {
-                        name=name, kernel_shape=kernel_shape, pads=pads,
-                        strides=strides, dilations=dilations, group = group,
+                        name=name,
+                        attr=Ast.nnconv_attr_t {
+                            kernel_shape=kernel_shape, pads=pads,
+                            strides=strides, dilations=dilations, group = group },
                         conv_data=ref null,
                         fused_batch_norm=None,
                         non_const_batch_norm=false,

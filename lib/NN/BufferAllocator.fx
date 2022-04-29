@@ -54,28 +54,11 @@ import Ast, Dynvec
 fun assign_buffers(net: Ast.nnet_t)
 {
     val nargs = net.args.size()
-    val usecounts = array(nargs, 0)
+    val usecounts = net.use_counts()
     var nbufs = 0
     val freebufs = Dynvec.create(0, 0)
     val bufidxs = array(nargs, -1)
 
-    fun update_counts(graph: Ast.nngraph_t)
-    {
-        for op <- graph.prog {
-            val (inps, _) = op.get_inputs_outputs()
-            for i <- inps {usecounts[i] += 1}
-            match op {
-            | Ast.NN_If {then_branch, else_branch} =>
-                update_counts(then_branch)
-                update_counts(else_branch)
-            | Ast.NN_Loop {body} =>
-                update_counts(body)
-            | _ => {}
-            }
-        }
-    }
-
-    update_counts(net.graph)
     /*println("=================== arg use counts =====================")
     for i <- 0:nargs {
         println(f"{net.args[i].name}: count={usecounts[i]}")
@@ -87,6 +70,7 @@ fun assign_buffers(net: Ast.nnet_t)
         for op <- graph.prog {
             // [TODO] this is the simplest but sub-optimal algorithm, e.g.
             // we could reuse the same buffers in 'then' and 'else' branches
+            if op == Ast.NN_Nop {continue}
             match op {
             | Ast.NN_If {then_branch, else_branch} =>
                 assign_buffers_(then_branch)
@@ -120,7 +104,7 @@ fun assign_buffers(net: Ast.nnet_t)
                 for argidx <- outs {
                     if net.istemp(argidx) {
                         if freebufs.count == 0 {
-                            ignore(freebufs.push(nbufs))
+                            freebufs.do_push(nbufs)
                             //println(f"added buf #{nbufs}: {freebufs.data[:freebufs.count]}")
                             nbufs += 1
                         }
@@ -133,7 +117,7 @@ fun assign_buffers(net: Ast.nnet_t)
             }
             for argidx <- outs {
                 if net.istemp(argidx) && usecounts[argidx] == 0 {
-                    ignore(freebufs.push(bufidxs[argidx]))
+                    freebufs.do_push(bufidxs[argidx])
                     //println(f"arg '{net.args[argidx].name}' (buf #{net.args[argidx].idx}) is not used anymore: {freebufs.data[:freebufs.count]}")
                 }
             }
@@ -144,7 +128,7 @@ fun assign_buffers(net: Ast.nnet_t)
                     assert(usecounts[argidx] > 0)
                     usecounts[argidx] -= 1
                     if usecounts[argidx] == 0 {
-                        ignore(freebufs.push(bufidxs[argidx]))
+                        freebufs.do_push(bufidxs[argidx])
                         //println(f"arg '{net.args[argidx].name}' (buf #{net.args[argidx].idx}) is not used anymore: {freebufs.data[:freebufs.count]}")
                     }
                 }

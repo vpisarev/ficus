@@ -60,6 +60,11 @@ fun assoc(arr: ('a, 'b) [], key: 'a): 'b =
     | _ => throw NotFoundError
     }
 
+fun sat_uint8(a: 't [+]) = [for x <- a {sat_uint8(x)}]
+fun sat_int8(a: 't [+]) = [for x <- a {sat_int8(x)}]
+fun sat_uint16(a: 't [+]) = [for x <- a {sat_uint16(x)}]
+fun sat_int16(a: 't [+]) = [for x <- a {sat_int16(x)}]
+
 operator .+ (a: 'ta [+], b: 'tb) =
     [for x <- a {x .+ b}]
 operator .- (a: 'ta [+], b: 'tb) =

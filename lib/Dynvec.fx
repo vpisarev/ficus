@@ -63,6 +63,12 @@ fun push(v: 't Dynvec.t, x: 't)
     idx
 }
 
+fun do_push(v: 't Dynvec.t, x: 't)
+{
+    val idx = push(v)
+    v.data[idx] = x
+}
+
 fun top(v: 't Dynvec.t)
 {
     if v.count == 0 {throw EmptyDynVector}
