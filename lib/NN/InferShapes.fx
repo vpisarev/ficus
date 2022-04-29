@@ -59,8 +59,8 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
         }
     }
 
-    val (inp, _) = op.get_inputs_outputs()
-    println(f"inferring shape for {op.name()}: inp #0 shape={net.get_tensor(inp[0]).shape}")
+    //val (inp, _) = op.get_inputs_outputs()
+    //println(f"inferring shape for {op.name()}: inp #0 shape={net.get_tensor(inp[0]).shape}")
 
     try {
     match op {
@@ -234,7 +234,7 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
                 if j < axis {shape.shape[j]}
                 else {shape.shape[j+1]}
             }}]
-        println(f"Gather: axis={axis}, inpshape={shape.shape}, indshape={ind_shape.shape}, out_shape={out_shape}")
+        //println(f"Gather: axis={axis}, inpshape={shape.shape}, indshape={ind_shape.shape}, out_shape={out_shape}")
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape.layout,
             shape=out_shape}, typ=typ, dynamic=!const_ind}]
     | NN_Gemm {transA, transB, t_A, t_B, t_bias, t_out} =>

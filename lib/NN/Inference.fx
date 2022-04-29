@@ -29,16 +29,16 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
                 }
                 argidx
             }
-        println(f"assigned input #{i} to {net.args[argidx].name}")
+        //println(f"assigned input #{i} to {net.args[argidx].name}")
         val arg = net.args[argidx]
-        println(f"input #{i}: {arg}")
+        //println(f"input #{i}: {arg}")
         assert(arg.argkind == Ast.NN_Arg_Input)
         assert(arg.typ == t.elemtype())
         assert(arg.shape.layout == t.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown)
         net.tensors[argidx] = t
     }
 
-    println("running main graph")
+    //println("running main graph")
     run_graph(net, net.graph, outputs)
 
     // collect outputs
@@ -143,11 +143,11 @@ match op
 fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     for op <- graph.prog {
-        println(f"preparing to run op {op.name()}")
+        //println(f"preparing to run op {op.name()}")
         val oinfo = InferShapes.infer(net, op)
         for oi@outidx <- oinfo {
             val {idx=argidx, shape, typ} = oi
-            println(f"   output #{outidx} ('{net.args[argidx].name}'): {oi}")
+            //println(f"   output #{outidx} ('{net.args[argidx].name}'): {oi}")
             val shape0 = net.tensors[argidx].shape
             val typ0 = net.tensors[argidx].elemtype()
             if shape != shape0 || typ != typ0 {
@@ -157,7 +157,7 @@ fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nnten
                     net.tensors[argidx] = Ast.make_tensor(shape, typ)
                 } else if arg.argkind == Ast.NN_Arg_Temp {
                     val bufidx = net.bufidxs[argidx]
-                    println(f"   fit into buf #{bufidx} with shape={shape}, typ={typ}, data of {net.tensors[argidx].data.total()} elems, buf of {net.buffers[bufidx].size()} bytes")
+                    //println(f"   fit into buf #{bufidx} with shape={shape}, typ={typ}, data of {net.tensors[argidx].data.total()} elems, buf of {net.buffers[bufidx].size()} bytes")
                     val (data, buf) = Ast.fit(shape, typ, net.tensors[argidx].data, net.buffers[bufidx])
                     net.tensors[argidx].data = data
                     net.tensors[argidx].shape = shape
@@ -167,7 +167,7 @@ fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nnten
                 }
             }
         }
-        println(f"running op {op.name()}")
+        //println(f"running op {op.name()}")
         run_op(net, op)
         if outputs != [] {
             for oi@outidx <- oinfo {

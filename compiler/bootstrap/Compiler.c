@@ -158,6 +158,41 @@ typedef struct _fx_R9Ast__id_t {
    int_ j;
 } _fx_R9Ast__id_t;
 
+typedef struct _fx_Nt6option1R9Ast__id_t {
+   int tag;
+   union {
+      struct _fx_R9Ast__id_t Some;
+   } u;
+} _fx_Nt6option1R9Ast__id_t;
+
+typedef struct _fx_Nt6option1N10Ast__exp_t_data_t {
+   int_ rc;
+   union {
+      struct _fx_N10Ast__exp_t_data_t* Some;
+   } u;
+} _fx_Nt6option1N10Ast__exp_t_data_t, *_fx_Nt6option1N10Ast__exp_t;
+
+typedef struct _fx_Rt24Hashset__hashset_entry_t1S {
+   uint64_t hv;
+   fx_str_t key;
+} _fx_Rt24Hashset__hashset_entry_t1S;
+
+typedef struct _fx_T6Rt24Hashset__hashset_entry_t1SiiiA1iA1Rt24Hashset__hashset_entry_t1S {
+   struct _fx_Rt24Hashset__hashset_entry_t1S t0;
+   int_ t1;
+   int_ t2;
+   int_ t3;
+   fx_arr_t t4;
+   fx_arr_t t5;
+} _fx_T6Rt24Hashset__hashset_entry_t1SiiiA1iA1Rt24Hashset__hashset_entry_t1S;
+
+typedef struct _fx_Nt10Hashset__t1S_data_t {
+   int_ rc;
+   union {
+      struct _fx_T6Rt24Hashset__hashset_entry_t1SiiiA1iA1Rt24Hashset__hashset_entry_t1S t;
+   } u;
+} _fx_Nt10Hashset__t1S_data_t, *_fx_Nt10Hashset__t1S;
+
 typedef struct _fx_R10Ast__loc_t {
    int_ m_idx;
    int_ line0;
@@ -211,32 +246,23 @@ typedef struct _fx_R16Ast__val_flags_t {
    struct _fx_LN12Ast__scope_t_data_t* val_flag_global;
 } _fx_R16Ast__val_flags_t;
 
-typedef struct _fx_T2R9Ast__id_tN14C_form__ctyp_t {
-   struct _fx_R9Ast__id_t t0;
-   struct _fx_N14C_form__ctyp_t_data_t* t1;
-} _fx_T2R9Ast__id_tN14C_form__ctyp_t;
+typedef struct _fx_R13Ast__defval_t {
+   struct _fx_R9Ast__id_t dv_name;
+   struct _fx_N10Ast__typ_t_data_t* dv_typ;
+   struct _fx_R16Ast__val_flags_t dv_flags;
+   struct _fx_LN12Ast__scope_t_data_t* dv_scope;
+   struct _fx_R10Ast__loc_t dv_loc;
+} _fx_R13Ast__defval_t;
 
-typedef struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t {
-   int_ rc;
-   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* tl;
-   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t hd;
-} _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t, *_fx_LT2R9Ast__id_tN14C_form__ctyp_t;
+typedef struct _fx_FPi2R9Ast__id_tR9Ast__id_t {
+   int (*fp)(struct _fx_R9Ast__id_t*, struct _fx_R9Ast__id_t*, int_*, void*);
+   fx_fcv_t* fcv;
+} _fx_FPi2R9Ast__id_tR9Ast__id_t;
 
-typedef struct _fx_R23C_form__cdefinterface_t {
-   struct _fx_R9Ast__id_t ci_name;
-   fx_str_t ci_cname;
-   struct _fx_R9Ast__id_t ci_id;
-   struct _fx_R9Ast__id_t ci_vtbl;
-   struct _fx_R9Ast__id_t ci_base;
-   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* ci_all_methods;
-   struct _fx_LN12Ast__scope_t_data_t* ci_scope;
-   struct _fx_R10Ast__loc_t ci_loc;
-} _fx_R23C_form__cdefinterface_t;
-
-typedef struct _fx_rR23C_form__cdefinterface_t_data_t {
-   int_ rc;
-   struct _fx_R23C_form__cdefinterface_t data;
-} _fx_rR23C_form__cdefinterface_t_data_t, *_fx_rR23C_form__cdefinterface_t;
+typedef struct _fx_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t {
+   struct _fx_Nt11Map__tree_t2R9Ast__id_tLN16Ast__env_entry_t_data_t* root;
+   struct _fx_FPi2R9Ast__id_tR9Ast__id_t cmp;
+} _fx_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t;
 
 typedef struct _fx_N17Ast__fun_constr_t {
    int tag;
@@ -262,346 +288,11 @@ typedef struct _fx_R16Ast__fun_flags_t {
    bool fun_flag_instance;
 } _fx_R16Ast__fun_flags_t;
 
-typedef struct _fx_LN15C_form__cstmt_t_data_t {
-   int_ rc;
-   struct _fx_LN15C_form__cstmt_t_data_t* tl;
-   struct _fx_N15C_form__cstmt_t_data_t* hd;
-} _fx_LN15C_form__cstmt_t_data_t, *_fx_LN15C_form__cstmt_t;
-
-typedef struct _fx_N19C_form__carg_attr_t {
-   int tag;
-} _fx_N19C_form__carg_attr_t;
-
-typedef struct _fx_LN19C_form__carg_attr_t_data_t {
-   int_ rc;
-   struct _fx_LN19C_form__carg_attr_t_data_t* tl;
-   struct _fx_N19C_form__carg_attr_t hd;
-} _fx_LN19C_form__carg_attr_t_data_t, *_fx_LN19C_form__carg_attr_t;
-
-typedef struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t {
-   struct _fx_R9Ast__id_t t0;
-   struct _fx_N14C_form__ctyp_t_data_t* t1;
-   struct _fx_LN19C_form__carg_attr_t_data_t* t2;
-} _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t;
-
-typedef struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t {
-   int_ rc;
-   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* tl;
-   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t hd;
-} _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t, *_fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t;
-
-typedef struct _fx_R17C_form__cdeffun_t {
-   struct _fx_R9Ast__id_t cf_name;
-   fx_str_t cf_cname;
-   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* cf_args;
-   struct _fx_N14C_form__ctyp_t_data_t* cf_rt;
-   struct _fx_LN15C_form__cstmt_t_data_t* cf_body;
-   struct _fx_R16Ast__fun_flags_t cf_flags;
-   struct _fx_LN12Ast__scope_t_data_t* cf_scope;
-   struct _fx_R10Ast__loc_t cf_loc;
-} _fx_R17C_form__cdeffun_t;
-
-typedef struct _fx_rR17C_form__cdeffun_t_data_t {
-   int_ rc;
-   struct _fx_R17C_form__cdeffun_t data;
-} _fx_rR17C_form__cdeffun_t_data_t, *_fx_rR17C_form__cdeffun_t;
-
-typedef struct _fx_Ta2R9Ast__id_t {
-   struct _fx_R9Ast__id_t t0;
-   struct _fx_R9Ast__id_t t1;
-} _fx_Ta2R9Ast__id_t;
-
 typedef struct _fx_LR9Ast__id_t_data_t {
    int_ rc;
    struct _fx_LR9Ast__id_t_data_t* tl;
    struct _fx_R9Ast__id_t hd;
 } _fx_LR9Ast__id_t_data_t, *_fx_LR9Ast__id_t;
-
-typedef struct _fx_R17C_form__ctprops_t {
-   bool ctp_scalar;
-   bool ctp_complex;
-   bool ctp_ptr;
-   bool ctp_pass_by_ref;
-   struct _fx_LR9Ast__id_t_data_t* ctp_make;
-   struct _fx_Ta2R9Ast__id_t ctp_free;
-   struct _fx_Ta2R9Ast__id_t ctp_copy;
-} _fx_R17C_form__ctprops_t;
-
-typedef struct _fx_R17C_form__cdeftyp_t {
-   struct _fx_R9Ast__id_t ct_name;
-   struct _fx_N14C_form__ctyp_t_data_t* ct_typ;
-   fx_str_t ct_cname;
-   struct _fx_R17C_form__ctprops_t ct_props;
-   int_ ct_data_start;
-   struct _fx_R9Ast__id_t ct_enum;
-   struct _fx_LR9Ast__id_t_data_t* ct_ifaces;
-   struct _fx_R9Ast__id_t ct_ifaces_id;
-   struct _fx_LN12Ast__scope_t_data_t* ct_scope;
-   struct _fx_R10Ast__loc_t ct_loc;
-} _fx_R17C_form__cdeftyp_t;
-
-typedef struct _fx_rR17C_form__cdeftyp_t_data_t {
-   int_ rc;
-   struct _fx_R17C_form__cdeftyp_t data;
-} _fx_rR17C_form__cdeftyp_t_data_t, *_fx_rR17C_form__cdeftyp_t;
-
-typedef struct _fx_Nt6option1N14C_form__cexp_t {
-   int tag;
-   union {
-      struct _fx_N14C_form__cexp_t_data_t* Some;
-   } u;
-} _fx_Nt6option1N14C_form__cexp_t;
-
-typedef struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t {
-   struct _fx_R9Ast__id_t t0;
-   struct _fx_Nt6option1N14C_form__cexp_t t1;
-} _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t;
-
-typedef struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t {
-   int_ rc;
-   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* tl;
-   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t hd;
-} _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t, *_fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t;
-
-typedef struct _fx_R18C_form__cdefenum_t {
-   struct _fx_R9Ast__id_t cenum_name;
-   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* cenum_members;
-   fx_str_t cenum_cname;
-   struct _fx_LN12Ast__scope_t_data_t* cenum_scope;
-   struct _fx_R10Ast__loc_t cenum_loc;
-} _fx_R18C_form__cdefenum_t;
-
-typedef struct _fx_rR18C_form__cdefenum_t_data_t {
-   int_ rc;
-   struct _fx_R18C_form__cdefenum_t data;
-} _fx_rR18C_form__cdefenum_t_data_t, *_fx_rR18C_form__cdefenum_t;
-
-typedef struct _fx_R19C_form__cdefmacro_t {
-   struct _fx_R9Ast__id_t cm_name;
-   fx_str_t cm_cname;
-   struct _fx_LR9Ast__id_t_data_t* cm_args;
-   struct _fx_LN15C_form__cstmt_t_data_t* cm_body;
-   struct _fx_LN12Ast__scope_t_data_t* cm_scope;
-   struct _fx_R10Ast__loc_t cm_loc;
-} _fx_R19C_form__cdefmacro_t;
-
-typedef struct _fx_rR19C_form__cdefmacro_t_data_t {
-   int_ rc;
-   struct _fx_R19C_form__cdefmacro_t data;
-} _fx_rR19C_form__cdefmacro_t_data_t, *_fx_rR19C_form__cdefmacro_t;
-
-typedef struct _fx_T2R9Ast__id_tN14K_form__ktyp_t {
-   struct _fx_R9Ast__id_t t0;
-   struct _fx_N14K_form__ktyp_t_data_t* t1;
-} _fx_T2R9Ast__id_tN14K_form__ktyp_t;
-
-typedef struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t {
-   int_ rc;
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* tl;
-   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t hd;
-} _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t, *_fx_LT2R9Ast__id_tN14K_form__ktyp_t;
-
-typedef struct _fx_R23K_form__kdefinterface_t {
-   struct _fx_R9Ast__id_t ki_name;
-   struct _fx_R9Ast__id_t ki_base;
-   fx_str_t ki_cname;
-   struct _fx_R9Ast__id_t ki_id;
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* ki_all_methods;
-   struct _fx_LN12Ast__scope_t_data_t* ki_scope;
-   struct _fx_R10Ast__loc_t ki_loc;
-} _fx_R23K_form__kdefinterface_t;
-
-typedef struct _fx_rR23K_form__kdefinterface_t_data_t {
-   int_ rc;
-   struct _fx_R23K_form__kdefinterface_t data;
-} _fx_rR23K_form__kdefinterface_t_data_t, *_fx_rR23K_form__kdefinterface_t;
-
-typedef struct _fx_R25K_form__kdefclosureinfo_t {
-   struct _fx_R9Ast__id_t kci_arg;
-   struct _fx_R9Ast__id_t kci_fcv_t;
-   struct _fx_R9Ast__id_t kci_fp_typ;
-   struct _fx_R9Ast__id_t kci_make_fp;
-   struct _fx_R9Ast__id_t kci_wrap_f;
-} _fx_R25K_form__kdefclosureinfo_t;
-
-typedef struct _fx_R17K_form__kdeffun_t {
-   struct _fx_R9Ast__id_t kf_name;
-   fx_str_t kf_cname;
-   struct _fx_LR9Ast__id_t_data_t* kf_params;
-   struct _fx_N14K_form__ktyp_t_data_t* kf_rt;
-   struct _fx_N14K_form__kexp_t_data_t* kf_body;
-   struct _fx_R16Ast__fun_flags_t kf_flags;
-   struct _fx_R25K_form__kdefclosureinfo_t kf_closure;
-   struct _fx_LN12Ast__scope_t_data_t* kf_scope;
-   struct _fx_R10Ast__loc_t kf_loc;
-} _fx_R17K_form__kdeffun_t;
-
-typedef struct _fx_rR17K_form__kdeffun_t_data_t {
-   int_ rc;
-   struct _fx_R17K_form__kdeffun_t data;
-} _fx_rR17K_form__kdeffun_t_data_t, *_fx_rR17K_form__kdeffun_t;
-
-typedef struct _fx_R17K_form__kdefexn_t {
-   struct _fx_R9Ast__id_t ke_name;
-   fx_str_t ke_cname;
-   fx_str_t ke_base_cname;
-   struct _fx_N14K_form__ktyp_t_data_t* ke_typ;
-   bool ke_std;
-   struct _fx_R9Ast__id_t ke_tag;
-   struct _fx_R9Ast__id_t ke_make;
-   struct _fx_LN12Ast__scope_t_data_t* ke_scope;
-   struct _fx_R10Ast__loc_t ke_loc;
-} _fx_R17K_form__kdefexn_t;
-
-typedef struct _fx_rR17K_form__kdefexn_t_data_t {
-   int_ rc;
-   struct _fx_R17K_form__kdefexn_t data;
-} _fx_rR17K_form__kdefexn_t_data_t, *_fx_rR17K_form__kdefexn_t;
-
-typedef struct _fx_R17K_form__ktprops_t {
-   bool ktp_complex;
-   bool ktp_scalar;
-   bool ktp_ptr;
-   bool ktp_pass_by_ref;
-   bool ktp_custom_free;
-   bool ktp_custom_copy;
-} _fx_R17K_form__ktprops_t;
-
-typedef struct _fx_Nt6option1R17K_form__ktprops_t {
-   int tag;
-   union {
-      struct _fx_R17K_form__ktprops_t Some;
-   } u;
-} _fx_Nt6option1R17K_form__ktprops_t;
-
-typedef struct _fx_R16Ast__var_flags_t {
-   int_ var_flag_class_from;
-   bool var_flag_record;
-   bool var_flag_recursive;
-   bool var_flag_have_tag;
-   bool var_flag_have_mutable;
-   bool var_flag_opt;
-   bool var_flag_instance;
-} _fx_R16Ast__var_flags_t;
-
-typedef struct _fx_LN14K_form__ktyp_t_data_t {
-   int_ rc;
-   struct _fx_LN14K_form__ktyp_t_data_t* tl;
-   struct _fx_N14K_form__ktyp_t_data_t* hd;
-} _fx_LN14K_form__ktyp_t_data_t, *_fx_LN14K_form__ktyp_t;
-
-typedef struct _fx_T2R9Ast__id_tLR9Ast__id_t {
-   struct _fx_R9Ast__id_t t0;
-   struct _fx_LR9Ast__id_t_data_t* t1;
-} _fx_T2R9Ast__id_tLR9Ast__id_t;
-
-typedef struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t {
-   int_ rc;
-   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* tl;
-   struct _fx_T2R9Ast__id_tLR9Ast__id_t hd;
-} _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t, *_fx_LT2R9Ast__id_tLR9Ast__id_t;
-
-typedef struct _fx_R21K_form__kdefvariant_t {
-   struct _fx_R9Ast__id_t kvar_name;
-   fx_str_t kvar_cname;
-   struct _fx_R9Ast__id_t kvar_proto;
-   struct _fx_Nt6option1R17K_form__ktprops_t kvar_props;
-   struct _fx_LN14K_form__ktyp_t_data_t* kvar_targs;
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* kvar_cases;
-   struct _fx_LR9Ast__id_t_data_t* kvar_ctors;
-   struct _fx_R16Ast__var_flags_t kvar_flags;
-   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* kvar_ifaces;
-   struct _fx_LN12Ast__scope_t_data_t* kvar_scope;
-   struct _fx_R10Ast__loc_t kvar_loc;
-} _fx_R21K_form__kdefvariant_t;
-
-typedef struct _fx_rR21K_form__kdefvariant_t_data_t {
-   int_ rc;
-   struct _fx_R21K_form__kdefvariant_t data;
-} _fx_rR21K_form__kdefvariant_t_data_t, *_fx_rR21K_form__kdefvariant_t;
-
-typedef struct _fx_R17K_form__kdeftyp_t {
-   struct _fx_R9Ast__id_t kt_name;
-   fx_str_t kt_cname;
-   struct _fx_R9Ast__id_t kt_proto;
-   struct _fx_Nt6option1R17K_form__ktprops_t kt_props;
-   struct _fx_LN14K_form__ktyp_t_data_t* kt_targs;
-   struct _fx_N14K_form__ktyp_t_data_t* kt_typ;
-   struct _fx_LN12Ast__scope_t_data_t* kt_scope;
-   struct _fx_R10Ast__loc_t kt_loc;
-} _fx_R17K_form__kdeftyp_t;
-
-typedef struct _fx_rR17K_form__kdeftyp_t_data_t {
-   int_ rc;
-   struct _fx_R17K_form__kdeftyp_t data;
-} _fx_rR17K_form__kdeftyp_t_data_t, *_fx_rR17K_form__kdeftyp_t;
-
-typedef struct _fx_R25K_form__kdefclosurevars_t {
-   struct _fx_R9Ast__id_t kcv_name;
-   fx_str_t kcv_cname;
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* kcv_freevars;
-   struct _fx_LR9Ast__id_t_data_t* kcv_orig_freevars;
-   struct _fx_LN12Ast__scope_t_data_t* kcv_scope;
-   struct _fx_R10Ast__loc_t kcv_loc;
-} _fx_R25K_form__kdefclosurevars_t;
-
-typedef struct _fx_rR25K_form__kdefclosurevars_t_data_t {
-   int_ rc;
-   struct _fx_R25K_form__kdefclosurevars_t data;
-} _fx_rR25K_form__kdefclosurevars_t_data_t, *_fx_rR25K_form__kdefclosurevars_t;
-
-typedef struct _fx_Nt6option1R9Ast__id_t {
-   int tag;
-   union {
-      struct _fx_R9Ast__id_t Some;
-   } u;
-} _fx_Nt6option1R9Ast__id_t;
-
-typedef struct _fx_Nt6option1N10Ast__exp_t_data_t {
-   int_ rc;
-   union {
-      struct _fx_N10Ast__exp_t_data_t* Some;
-   } u;
-} _fx_Nt6option1N10Ast__exp_t_data_t, *_fx_Nt6option1N10Ast__exp_t;
-
-typedef struct _fx_Rt24Hashset__hashset_entry_t1S {
-   uint64_t hv;
-   fx_str_t key;
-} _fx_Rt24Hashset__hashset_entry_t1S;
-
-typedef struct _fx_T6Rt24Hashset__hashset_entry_t1SiiiA1iA1Rt24Hashset__hashset_entry_t1S {
-   struct _fx_Rt24Hashset__hashset_entry_t1S t0;
-   int_ t1;
-   int_ t2;
-   int_ t3;
-   fx_arr_t t4;
-   fx_arr_t t5;
-} _fx_T6Rt24Hashset__hashset_entry_t1SiiiA1iA1Rt24Hashset__hashset_entry_t1S;
-
-typedef struct _fx_Nt10Hashset__t1S_data_t {
-   int_ rc;
-   union {
-      struct _fx_T6Rt24Hashset__hashset_entry_t1SiiiA1iA1Rt24Hashset__hashset_entry_t1S t;
-   } u;
-} _fx_Nt10Hashset__t1S_data_t, *_fx_Nt10Hashset__t1S;
-
-typedef struct _fx_R13Ast__defval_t {
-   struct _fx_R9Ast__id_t dv_name;
-   struct _fx_N10Ast__typ_t_data_t* dv_typ;
-   struct _fx_R16Ast__val_flags_t dv_flags;
-   struct _fx_LN12Ast__scope_t_data_t* dv_scope;
-   struct _fx_R10Ast__loc_t dv_loc;
-} _fx_R13Ast__defval_t;
-
-typedef struct _fx_FPi2R9Ast__id_tR9Ast__id_t {
-   int (*fp)(struct _fx_R9Ast__id_t*, struct _fx_R9Ast__id_t*, int_*, void*);
-   fx_fcv_t* fcv;
-} _fx_FPi2R9Ast__id_tR9Ast__id_t;
-
-typedef struct _fx_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t {
-   struct _fx_Nt11Map__tree_t2R9Ast__id_tLN16Ast__env_entry_t_data_t* root;
-   struct _fx_FPi2R9Ast__id_tR9Ast__id_t cmp;
-} _fx_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t;
 
 typedef struct _fx_LN10Ast__pat_t_data_t {
    int_ rc;
@@ -658,6 +349,16 @@ typedef struct _fx_rR13Ast__deftyp_t_data_t {
    struct _fx_R13Ast__deftyp_t data;
 } _fx_rR13Ast__deftyp_t_data_t, *_fx_rR13Ast__deftyp_t;
 
+typedef struct _fx_R16Ast__var_flags_t {
+   int_ var_flag_class_from;
+   bool var_flag_record;
+   bool var_flag_recursive;
+   bool var_flag_have_tag;
+   bool var_flag_have_mutable;
+   bool var_flag_opt;
+   bool var_flag_instance;
+} _fx_R16Ast__var_flags_t;
+
 typedef struct _fx_T2R9Ast__id_tN10Ast__typ_t {
    struct _fx_R9Ast__id_t t0;
    struct _fx_N10Ast__typ_t_data_t* t1;
@@ -668,6 +369,11 @@ typedef struct _fx_LT2R9Ast__id_tN10Ast__typ_t_data_t {
    struct _fx_LT2R9Ast__id_tN10Ast__typ_t_data_t* tl;
    struct _fx_T2R9Ast__id_tN10Ast__typ_t hd;
 } _fx_LT2R9Ast__id_tN10Ast__typ_t_data_t, *_fx_LT2R9Ast__id_tN10Ast__typ_t;
+
+typedef struct _fx_Ta2R9Ast__id_t {
+   struct _fx_R9Ast__id_t t0;
+   struct _fx_R9Ast__id_t t1;
+} _fx_Ta2R9Ast__id_t;
 
 typedef struct _fx_LTa2R9Ast__id_t_data_t {
    int_ rc;
@@ -1384,6 +1090,32 @@ typedef struct _fx_LN14Lexer__token_t_data_t {
    struct _fx_N14Lexer__token_t hd;
 } _fx_LN14Lexer__token_t_data_t, *_fx_LN14Lexer__token_t;
 
+typedef struct _fx_T2R9Ast__id_tN14K_form__ktyp_t {
+   struct _fx_R9Ast__id_t t0;
+   struct _fx_N14K_form__ktyp_t_data_t* t1;
+} _fx_T2R9Ast__id_tN14K_form__ktyp_t;
+
+typedef struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t {
+   int_ rc;
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* tl;
+   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t hd;
+} _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t, *_fx_LT2R9Ast__id_tN14K_form__ktyp_t;
+
+typedef struct _fx_R23K_form__kdefinterface_t {
+   struct _fx_R9Ast__id_t ki_name;
+   struct _fx_R9Ast__id_t ki_base;
+   fx_str_t ki_cname;
+   struct _fx_R9Ast__id_t ki_id;
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* ki_all_methods;
+   struct _fx_LN12Ast__scope_t_data_t* ki_scope;
+   struct _fx_R10Ast__loc_t ki_loc;
+} _fx_R23K_form__kdefinterface_t;
+
+typedef struct _fx_rR23K_form__kdefinterface_t_data_t {
+   int_ rc;
+   struct _fx_R23K_form__kdefinterface_t data;
+} _fx_rR23K_form__kdefinterface_t_data_t, *_fx_rR23K_form__kdefinterface_t;
+
 typedef struct _fx_N14K_form__klit_t {
    int tag;
    union {
@@ -1406,6 +1138,22 @@ typedef struct _fx_N14K_form__atom_t {
    } u;
 } _fx_N14K_form__atom_t;
 
+typedef struct _fx_R17K_form__ktprops_t {
+   bool ktp_complex;
+   bool ktp_scalar;
+   bool ktp_ptr;
+   bool ktp_pass_by_ref;
+   bool ktp_custom_free;
+   bool ktp_custom_copy;
+} _fx_R17K_form__ktprops_t;
+
+typedef struct _fx_Nt6option1R17K_form__ktprops_t {
+   int tag;
+   union {
+      struct _fx_R17K_form__ktprops_t Some;
+   } u;
+} _fx_Nt6option1R17K_form__ktprops_t;
+
 typedef struct _fx_Nt6option1N14K_form__atom_t {
    int tag;
    union {
@@ -1413,22 +1161,11 @@ typedef struct _fx_Nt6option1N14K_form__atom_t {
    } u;
 } _fx_Nt6option1N14K_form__atom_t;
 
-typedef struct _fx_LN14K_form__kexp_t_data_t {
+typedef struct _fx_LN14K_form__ktyp_t_data_t {
    int_ rc;
-   struct _fx_LN14K_form__kexp_t_data_t* tl;
-   struct _fx_N14K_form__kexp_t_data_t* hd;
-} _fx_LN14K_form__kexp_t_data_t, *_fx_LN14K_form__kexp_t;
-
-typedef struct _fx_T2BN14K_form__atom_t {
-   bool t0;
-   struct _fx_N14K_form__atom_t t1;
-} _fx_T2BN14K_form__atom_t;
-
-typedef struct _fx_LT2BN14K_form__atom_t_data_t {
-   int_ rc;
-   struct _fx_LT2BN14K_form__atom_t_data_t* tl;
-   struct _fx_T2BN14K_form__atom_t hd;
-} _fx_LT2BN14K_form__atom_t_data_t, *_fx_LT2BN14K_form__atom_t;
+   struct _fx_LN14K_form__ktyp_t_data_t* tl;
+   struct _fx_N14K_form__ktyp_t_data_t* hd;
+} _fx_LN14K_form__ktyp_t_data_t, *_fx_LN14K_form__ktyp_t;
 
 typedef struct _fx_T2LN14K_form__ktyp_tN14K_form__ktyp_t {
    struct _fx_LN14K_form__ktyp_t_data_t* t0;
@@ -1524,6 +1261,12 @@ typedef struct _fx_T2R9Ast__id_tN14K_form__kexp_t {
    struct _fx_N14K_form__kexp_t_data_t* t1;
 } _fx_T2R9Ast__id_tN14K_form__kexp_t;
 
+typedef struct _fx_LN14K_form__kexp_t_data_t {
+   int_ rc;
+   struct _fx_LN14K_form__kexp_t_data_t* tl;
+   struct _fx_N14K_form__kexp_t_data_t* hd;
+} _fx_LN14K_form__kexp_t_data_t, *_fx_LN14K_form__kexp_t;
+
 typedef struct _fx_T2LN14K_form__kexp_tT2N14K_form__ktyp_tR10Ast__loc_t {
    struct _fx_LN14K_form__kexp_t_data_t* t0;
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t1;
@@ -1560,6 +1303,17 @@ typedef struct _fx_T4R9Ast__id_tR9Ast__id_tLN14K_form__atom_tT2N14K_form__ktyp_t
    struct _fx_LN14K_form__atom_t_data_t* t2;
    struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t t3;
 } _fx_T4R9Ast__id_tR9Ast__id_tLN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t;
+
+typedef struct _fx_T2BN14K_form__atom_t {
+   bool t0;
+   struct _fx_N14K_form__atom_t t1;
+} _fx_T2BN14K_form__atom_t;
+
+typedef struct _fx_LT2BN14K_form__atom_t_data_t {
+   int_ rc;
+   struct _fx_LT2BN14K_form__atom_t_data_t* tl;
+   struct _fx_T2BN14K_form__atom_t hd;
+} _fx_LT2BN14K_form__atom_t_data_t, *_fx_LT2BN14K_form__atom_t;
 
 typedef struct _fx_LLT2BN14K_form__atom_t_data_t {
    int_ rc;
@@ -1693,6 +1447,108 @@ typedef struct _fx_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t {
    struct _fx_R10Ast__loc_t t2;
 } _fx_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t;
 
+typedef struct _fx_R25K_form__kdefclosureinfo_t {
+   struct _fx_R9Ast__id_t kci_arg;
+   struct _fx_R9Ast__id_t kci_fcv_t;
+   struct _fx_R9Ast__id_t kci_fp_typ;
+   struct _fx_R9Ast__id_t kci_make_fp;
+   struct _fx_R9Ast__id_t kci_wrap_f;
+} _fx_R25K_form__kdefclosureinfo_t;
+
+typedef struct _fx_R17K_form__kdeffun_t {
+   struct _fx_R9Ast__id_t kf_name;
+   fx_str_t kf_cname;
+   struct _fx_LR9Ast__id_t_data_t* kf_params;
+   struct _fx_N14K_form__ktyp_t_data_t* kf_rt;
+   struct _fx_N14K_form__kexp_t_data_t* kf_body;
+   struct _fx_R16Ast__fun_flags_t kf_flags;
+   struct _fx_R25K_form__kdefclosureinfo_t kf_closure;
+   struct _fx_LN12Ast__scope_t_data_t* kf_scope;
+   struct _fx_R10Ast__loc_t kf_loc;
+} _fx_R17K_form__kdeffun_t;
+
+typedef struct _fx_rR17K_form__kdeffun_t_data_t {
+   int_ rc;
+   struct _fx_R17K_form__kdeffun_t data;
+} _fx_rR17K_form__kdeffun_t_data_t, *_fx_rR17K_form__kdeffun_t;
+
+typedef struct _fx_R17K_form__kdefexn_t {
+   struct _fx_R9Ast__id_t ke_name;
+   fx_str_t ke_cname;
+   fx_str_t ke_base_cname;
+   struct _fx_N14K_form__ktyp_t_data_t* ke_typ;
+   bool ke_std;
+   struct _fx_R9Ast__id_t ke_tag;
+   struct _fx_R9Ast__id_t ke_make;
+   struct _fx_LN12Ast__scope_t_data_t* ke_scope;
+   struct _fx_R10Ast__loc_t ke_loc;
+} _fx_R17K_form__kdefexn_t;
+
+typedef struct _fx_rR17K_form__kdefexn_t_data_t {
+   int_ rc;
+   struct _fx_R17K_form__kdefexn_t data;
+} _fx_rR17K_form__kdefexn_t_data_t, *_fx_rR17K_form__kdefexn_t;
+
+typedef struct _fx_T2R9Ast__id_tLR9Ast__id_t {
+   struct _fx_R9Ast__id_t t0;
+   struct _fx_LR9Ast__id_t_data_t* t1;
+} _fx_T2R9Ast__id_tLR9Ast__id_t;
+
+typedef struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t {
+   int_ rc;
+   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* tl;
+   struct _fx_T2R9Ast__id_tLR9Ast__id_t hd;
+} _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t, *_fx_LT2R9Ast__id_tLR9Ast__id_t;
+
+typedef struct _fx_R21K_form__kdefvariant_t {
+   struct _fx_R9Ast__id_t kvar_name;
+   fx_str_t kvar_cname;
+   struct _fx_R9Ast__id_t kvar_proto;
+   struct _fx_Nt6option1R17K_form__ktprops_t kvar_props;
+   struct _fx_LN14K_form__ktyp_t_data_t* kvar_targs;
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* kvar_cases;
+   struct _fx_LR9Ast__id_t_data_t* kvar_ctors;
+   struct _fx_R16Ast__var_flags_t kvar_flags;
+   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* kvar_ifaces;
+   struct _fx_LN12Ast__scope_t_data_t* kvar_scope;
+   struct _fx_R10Ast__loc_t kvar_loc;
+} _fx_R21K_form__kdefvariant_t;
+
+typedef struct _fx_rR21K_form__kdefvariant_t_data_t {
+   int_ rc;
+   struct _fx_R21K_form__kdefvariant_t data;
+} _fx_rR21K_form__kdefvariant_t_data_t, *_fx_rR21K_form__kdefvariant_t;
+
+typedef struct _fx_R17K_form__kdeftyp_t {
+   struct _fx_R9Ast__id_t kt_name;
+   fx_str_t kt_cname;
+   struct _fx_R9Ast__id_t kt_proto;
+   struct _fx_Nt6option1R17K_form__ktprops_t kt_props;
+   struct _fx_LN14K_form__ktyp_t_data_t* kt_targs;
+   struct _fx_N14K_form__ktyp_t_data_t* kt_typ;
+   struct _fx_LN12Ast__scope_t_data_t* kt_scope;
+   struct _fx_R10Ast__loc_t kt_loc;
+} _fx_R17K_form__kdeftyp_t;
+
+typedef struct _fx_rR17K_form__kdeftyp_t_data_t {
+   int_ rc;
+   struct _fx_R17K_form__kdeftyp_t data;
+} _fx_rR17K_form__kdeftyp_t_data_t, *_fx_rR17K_form__kdeftyp_t;
+
+typedef struct _fx_R25K_form__kdefclosurevars_t {
+   struct _fx_R9Ast__id_t kcv_name;
+   fx_str_t kcv_cname;
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* kcv_freevars;
+   struct _fx_LR9Ast__id_t_data_t* kcv_orig_freevars;
+   struct _fx_LN12Ast__scope_t_data_t* kcv_scope;
+   struct _fx_R10Ast__loc_t kcv_loc;
+} _fx_R25K_form__kdefclosurevars_t;
+
+typedef struct _fx_rR25K_form__kdefclosurevars_t_data_t {
+   int_ rc;
+   struct _fx_R25K_form__kdefclosurevars_t data;
+} _fx_rR25K_form__kdefclosurevars_t_data_t, *_fx_rR25K_form__kdefclosurevars_t;
+
 typedef struct _fx_N14K_form__kexp_t_data_t {
    int_ rc;
    int tag;
@@ -1769,6 +1625,13 @@ typedef struct _fx_Nt6option1N14C_form__ctyp_t {
    } u;
 } _fx_Nt6option1N14C_form__ctyp_t;
 
+typedef struct _fx_Nt6option1N14C_form__cexp_t {
+   int tag;
+   union {
+      struct _fx_N14C_form__cexp_t_data_t* Some;
+   } u;
+} _fx_Nt6option1N14C_form__cexp_t;
+
 typedef struct _fx_N17C_form__cbinary_t {
    int tag;
    union {
@@ -1783,6 +1646,31 @@ typedef struct _fx_N16C_form__cunary_t {
 typedef struct _fx_N19C_form__ctyp_attr_t {
    int tag;
 } _fx_N19C_form__ctyp_attr_t;
+
+typedef struct _fx_N19C_form__carg_attr_t {
+   int tag;
+} _fx_N19C_form__carg_attr_t;
+
+typedef struct _fx_R17C_form__ctprops_t {
+   bool ctp_scalar;
+   bool ctp_complex;
+   bool ctp_ptr;
+   bool ctp_pass_by_ref;
+   struct _fx_LR9Ast__id_t_data_t* ctp_make;
+   struct _fx_Ta2R9Ast__id_t ctp_free;
+   struct _fx_Ta2R9Ast__id_t ctp_copy;
+} _fx_R17C_form__ctprops_t;
+
+typedef struct _fx_T2R9Ast__id_tN14C_form__ctyp_t {
+   struct _fx_R9Ast__id_t t0;
+   struct _fx_N14C_form__ctyp_t_data_t* t1;
+} _fx_T2R9Ast__id_tN14C_form__ctyp_t;
+
+typedef struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t {
+   int_ rc;
+   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* tl;
+   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t hd;
+} _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t, *_fx_LT2R9Ast__id_tN14C_form__ctyp_t;
 
 typedef struct _fx_T2Nt6option1R9Ast__id_tLT2R9Ast__id_tN14C_form__ctyp_t {
    struct _fx_Nt6option1R9Ast__id_t t0;
@@ -1922,6 +1810,12 @@ typedef struct _fx_T2Nt6option1N14C_form__cexp_tR10Ast__loc_t {
    struct _fx_R10Ast__loc_t t1;
 } _fx_T2Nt6option1N14C_form__cexp_tR10Ast__loc_t;
 
+typedef struct _fx_LN15C_form__cstmt_t_data_t {
+   int_ rc;
+   struct _fx_LN15C_form__cstmt_t_data_t* tl;
+   struct _fx_N15C_form__cstmt_t_data_t* hd;
+} _fx_LN15C_form__cstmt_t_data_t, *_fx_LN15C_form__cstmt_t;
+
 typedef struct _fx_T2LN15C_form__cstmt_tR10Ast__loc_t {
    struct _fx_LN15C_form__cstmt_t_data_t* t0;
    struct _fx_R10Ast__loc_t t1;
@@ -1983,6 +1877,112 @@ typedef struct _fx_T4N14C_form__ctyp_tR9Ast__id_tNt6option1N14C_form__cexp_tR10A
    struct _fx_Nt6option1N14C_form__cexp_t t2;
    struct _fx_R10Ast__loc_t t3;
 } _fx_T4N14C_form__ctyp_tR9Ast__id_tNt6option1N14C_form__cexp_tR10Ast__loc_t;
+
+typedef struct _fx_LN19C_form__carg_attr_t_data_t {
+   int_ rc;
+   struct _fx_LN19C_form__carg_attr_t_data_t* tl;
+   struct _fx_N19C_form__carg_attr_t hd;
+} _fx_LN19C_form__carg_attr_t_data_t, *_fx_LN19C_form__carg_attr_t;
+
+typedef struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t {
+   struct _fx_R9Ast__id_t t0;
+   struct _fx_N14C_form__ctyp_t_data_t* t1;
+   struct _fx_LN19C_form__carg_attr_t_data_t* t2;
+} _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t;
+
+typedef struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t {
+   int_ rc;
+   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* tl;
+   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t hd;
+} _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t, *_fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t;
+
+typedef struct _fx_R17C_form__cdeffun_t {
+   struct _fx_R9Ast__id_t cf_name;
+   fx_str_t cf_cname;
+   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* cf_args;
+   struct _fx_N14C_form__ctyp_t_data_t* cf_rt;
+   struct _fx_LN15C_form__cstmt_t_data_t* cf_body;
+   struct _fx_R16Ast__fun_flags_t cf_flags;
+   struct _fx_LN12Ast__scope_t_data_t* cf_scope;
+   struct _fx_R10Ast__loc_t cf_loc;
+} _fx_R17C_form__cdeffun_t;
+
+typedef struct _fx_rR17C_form__cdeffun_t_data_t {
+   int_ rc;
+   struct _fx_R17C_form__cdeffun_t data;
+} _fx_rR17C_form__cdeffun_t_data_t, *_fx_rR17C_form__cdeffun_t;
+
+typedef struct _fx_R17C_form__cdeftyp_t {
+   struct _fx_R9Ast__id_t ct_name;
+   struct _fx_N14C_form__ctyp_t_data_t* ct_typ;
+   fx_str_t ct_cname;
+   struct _fx_R17C_form__ctprops_t ct_props;
+   int_ ct_data_start;
+   struct _fx_R9Ast__id_t ct_enum;
+   struct _fx_LR9Ast__id_t_data_t* ct_ifaces;
+   struct _fx_R9Ast__id_t ct_ifaces_id;
+   struct _fx_LN12Ast__scope_t_data_t* ct_scope;
+   struct _fx_R10Ast__loc_t ct_loc;
+} _fx_R17C_form__cdeftyp_t;
+
+typedef struct _fx_rR17C_form__cdeftyp_t_data_t {
+   int_ rc;
+   struct _fx_R17C_form__cdeftyp_t data;
+} _fx_rR17C_form__cdeftyp_t_data_t, *_fx_rR17C_form__cdeftyp_t;
+
+typedef struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t {
+   struct _fx_R9Ast__id_t t0;
+   struct _fx_Nt6option1N14C_form__cexp_t t1;
+} _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t;
+
+typedef struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t {
+   int_ rc;
+   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* tl;
+   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t hd;
+} _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t, *_fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t;
+
+typedef struct _fx_R18C_form__cdefenum_t {
+   struct _fx_R9Ast__id_t cenum_name;
+   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* cenum_members;
+   fx_str_t cenum_cname;
+   struct _fx_LN12Ast__scope_t_data_t* cenum_scope;
+   struct _fx_R10Ast__loc_t cenum_loc;
+} _fx_R18C_form__cdefenum_t;
+
+typedef struct _fx_rR18C_form__cdefenum_t_data_t {
+   int_ rc;
+   struct _fx_R18C_form__cdefenum_t data;
+} _fx_rR18C_form__cdefenum_t_data_t, *_fx_rR18C_form__cdefenum_t;
+
+typedef struct _fx_R23C_form__cdefinterface_t {
+   struct _fx_R9Ast__id_t ci_name;
+   fx_str_t ci_cname;
+   struct _fx_R9Ast__id_t ci_id;
+   struct _fx_R9Ast__id_t ci_vtbl;
+   struct _fx_R9Ast__id_t ci_base;
+   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* ci_all_methods;
+   struct _fx_LN12Ast__scope_t_data_t* ci_scope;
+   struct _fx_R10Ast__loc_t ci_loc;
+} _fx_R23C_form__cdefinterface_t;
+
+typedef struct _fx_rR23C_form__cdefinterface_t_data_t {
+   int_ rc;
+   struct _fx_R23C_form__cdefinterface_t data;
+} _fx_rR23C_form__cdefinterface_t_data_t, *_fx_rR23C_form__cdefinterface_t;
+
+typedef struct _fx_R19C_form__cdefmacro_t {
+   struct _fx_R9Ast__id_t cm_name;
+   fx_str_t cm_cname;
+   struct _fx_LR9Ast__id_t_data_t* cm_args;
+   struct _fx_LN15C_form__cstmt_t_data_t* cm_body;
+   struct _fx_LN12Ast__scope_t_data_t* cm_scope;
+   struct _fx_R10Ast__loc_t cm_loc;
+} _fx_R19C_form__cdefmacro_t;
+
+typedef struct _fx_rR19C_form__cdefmacro_t_data_t {
+   int_ rc;
+   struct _fx_R19C_form__cdefmacro_t data;
+} _fx_rR19C_form__cdefmacro_t_data_t, *_fx_rR19C_form__cdefmacro_t;
 
 typedef struct _fx_T2N14C_form__cexp_tLN15C_form__cstmt_t {
    struct _fx_N14C_form__cexp_t_data_t* t0;
@@ -2405,943 +2405,6 @@ static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2
    fx_copy_str(t1, &fx_result->t1);
 }
 
-static int _fx_cons_LN12Ast__scope_t(
-   struct _fx_N12Ast__scope_t* hd,
-   struct _fx_LN12Ast__scope_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LN12Ast__scope_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LN12Ast__scope_t, FX_COPY_SIMPLE_BY_PTR);
-}
-
-static void _fx_free_R16Ast__val_flags_t(struct _fx_R16Ast__val_flags_t* dst)
-{
-   fx_free_list_simple(&dst->val_flag_global);
-}
-
-static void _fx_copy_R16Ast__val_flags_t(struct _fx_R16Ast__val_flags_t* src, struct _fx_R16Ast__val_flags_t* dst)
-{
-   dst->val_flag_arg = src->val_flag_arg;
-   dst->val_flag_mutable = src->val_flag_mutable;
-   dst->val_flag_temp = src->val_flag_temp;
-   dst->val_flag_tempref = src->val_flag_tempref;
-   dst->val_flag_private = src->val_flag_private;
-   dst->val_flag_subarray = src->val_flag_subarray;
-   dst->val_flag_instance = src->val_flag_instance;
-   dst->val_flag_method = src->val_flag_method;
-   dst->val_flag_ctor = src->val_flag_ctor;
-   FX_COPY_PTR(src->val_flag_global, &dst->val_flag_global);
-}
-
-static void _fx_make_R16Ast__val_flags_t(
-   bool r_val_flag_arg,
-   bool r_val_flag_mutable,
-   bool r_val_flag_temp,
-   bool r_val_flag_tempref,
-   bool r_val_flag_private,
-   bool r_val_flag_subarray,
-   bool r_val_flag_instance,
-   struct _fx_T2R9Ast__id_ti* r_val_flag_method,
-   int_ r_val_flag_ctor,
-   struct _fx_LN12Ast__scope_t_data_t* r_val_flag_global,
-   struct _fx_R16Ast__val_flags_t* fx_result)
-{
-   fx_result->val_flag_arg = r_val_flag_arg;
-   fx_result->val_flag_mutable = r_val_flag_mutable;
-   fx_result->val_flag_temp = r_val_flag_temp;
-   fx_result->val_flag_tempref = r_val_flag_tempref;
-   fx_result->val_flag_private = r_val_flag_private;
-   fx_result->val_flag_subarray = r_val_flag_subarray;
-   fx_result->val_flag_instance = r_val_flag_instance;
-   fx_result->val_flag_method = *r_val_flag_method;
-   fx_result->val_flag_ctor = r_val_flag_ctor;
-   FX_COPY_PTR(r_val_flag_global, &fx_result->val_flag_global);
-}
-
-static void _fx_free_T2R9Ast__id_tN14C_form__ctyp_t(struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* dst)
-{
-   _fx_free_N14C_form__ctyp_t(&dst->t1);
-}
-
-static void _fx_copy_T2R9Ast__id_tN14C_form__ctyp_t(
-   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* src,
-   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* dst)
-{
-   dst->t0 = src->t0;
-   FX_COPY_PTR(src->t1, &dst->t1);
-}
-
-static void _fx_make_T2R9Ast__id_tN14C_form__ctyp_t(
-   struct _fx_R9Ast__id_t* t0,
-   struct _fx_N14C_form__ctyp_t_data_t* t1,
-   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* fx_result)
-{
-   fx_result->t0 = *t0;
-   FX_COPY_PTR(t1, &fx_result->t1);
-}
-
-static void _fx_free_LT2R9Ast__id_tN14C_form__ctyp_t(struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tN14C_form__ctyp_t, _fx_free_T2R9Ast__id_tN14C_form__ctyp_t);
-}
-
-static int _fx_cons_LT2R9Ast__id_tN14C_form__ctyp_t(
-   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* hd,
-   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tN14C_form__ctyp_t, _fx_copy_T2R9Ast__id_tN14C_form__ctyp_t);
-}
-
-static void _fx_free_R23C_form__cdefinterface_t(struct _fx_R23C_form__cdefinterface_t* dst)
-{
-   fx_free_str(&dst->ci_cname);
-   _fx_free_LT2R9Ast__id_tN14C_form__ctyp_t(&dst->ci_all_methods);
-   fx_free_list_simple(&dst->ci_scope);
-}
-
-static void _fx_copy_R23C_form__cdefinterface_t(
-   struct _fx_R23C_form__cdefinterface_t* src,
-   struct _fx_R23C_form__cdefinterface_t* dst)
-{
-   dst->ci_name = src->ci_name;
-   fx_copy_str(&src->ci_cname, &dst->ci_cname);
-   dst->ci_id = src->ci_id;
-   dst->ci_vtbl = src->ci_vtbl;
-   dst->ci_base = src->ci_base;
-   FX_COPY_PTR(src->ci_all_methods, &dst->ci_all_methods);
-   FX_COPY_PTR(src->ci_scope, &dst->ci_scope);
-   dst->ci_loc = src->ci_loc;
-}
-
-static void _fx_make_R23C_form__cdefinterface_t(
-   struct _fx_R9Ast__id_t* r_ci_name,
-   fx_str_t* r_ci_cname,
-   struct _fx_R9Ast__id_t* r_ci_id,
-   struct _fx_R9Ast__id_t* r_ci_vtbl,
-   struct _fx_R9Ast__id_t* r_ci_base,
-   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* r_ci_all_methods,
-   struct _fx_LN12Ast__scope_t_data_t* r_ci_scope,
-   struct _fx_R10Ast__loc_t* r_ci_loc,
-   struct _fx_R23C_form__cdefinterface_t* fx_result)
-{
-   fx_result->ci_name = *r_ci_name;
-   fx_copy_str(r_ci_cname, &fx_result->ci_cname);
-   fx_result->ci_id = *r_ci_id;
-   fx_result->ci_vtbl = *r_ci_vtbl;
-   fx_result->ci_base = *r_ci_base;
-   FX_COPY_PTR(r_ci_all_methods, &fx_result->ci_all_methods);
-   FX_COPY_PTR(r_ci_scope, &fx_result->ci_scope);
-   fx_result->ci_loc = *r_ci_loc;
-}
-
-static void _fx_free_rR23C_form__cdefinterface_t(struct _fx_rR23C_form__cdefinterface_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR23C_form__cdefinterface_t, _fx_free_R23C_form__cdefinterface_t);
-}
-
-static int _fx_make_rR23C_form__cdefinterface_t(
-   struct _fx_R23C_form__cdefinterface_t* arg,
-   struct _fx_rR23C_form__cdefinterface_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR23C_form__cdefinterface_t, _fx_copy_R23C_form__cdefinterface_t);
-}
-
-static void _fx_free_LN15C_form__cstmt_t(struct _fx_LN15C_form__cstmt_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LN15C_form__cstmt_t, _fx_free_N15C_form__cstmt_t);
-}
-
-static int _fx_cons_LN15C_form__cstmt_t(
-   struct _fx_N15C_form__cstmt_t_data_t* hd,
-   struct _fx_LN15C_form__cstmt_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LN15C_form__cstmt_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LN15C_form__cstmt_t, FX_COPY_PTR);
-}
-
-static int _fx_cons_LN19C_form__carg_attr_t(
-   struct _fx_N19C_form__carg_attr_t* hd,
-   struct _fx_LN19C_form__carg_attr_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LN19C_form__carg_attr_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LN19C_form__carg_attr_t, FX_COPY_SIMPLE_BY_PTR);
-}
-
-static void _fx_free_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
-   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* dst)
-{
-   _fx_free_N14C_form__ctyp_t(&dst->t1);
-   fx_free_list_simple(&dst->t2);
-}
-
-static void _fx_copy_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
-   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* src,
-   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* dst)
-{
-   dst->t0 = src->t0;
-   FX_COPY_PTR(src->t1, &dst->t1);
-   FX_COPY_PTR(src->t2, &dst->t2);
-}
-
-static void _fx_make_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
-   struct _fx_R9Ast__id_t* t0,
-   struct _fx_N14C_form__ctyp_t_data_t* t1,
-   struct _fx_LN19C_form__carg_attr_t_data_t* t2,
-   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* fx_result)
-{
-   fx_result->t0 = *t0;
-   FX_COPY_PTR(t1, &fx_result->t1);
-   FX_COPY_PTR(t2, &fx_result->t2);
-}
-
-static void _fx_free_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
-   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t,
-      _fx_free_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t);
-}
-
-static int _fx_cons_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
-   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* hd,
-   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t,
-      _fx_copy_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t);
-}
-
-static void _fx_free_R17C_form__cdeffun_t(struct _fx_R17C_form__cdeffun_t* dst)
-{
-   fx_free_str(&dst->cf_cname);
-   _fx_free_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(&dst->cf_args);
-   _fx_free_N14C_form__ctyp_t(&dst->cf_rt);
-   _fx_free_LN15C_form__cstmt_t(&dst->cf_body);
-   fx_free_list_simple(&dst->cf_scope);
-}
-
-static void _fx_copy_R17C_form__cdeffun_t(struct _fx_R17C_form__cdeffun_t* src, struct _fx_R17C_form__cdeffun_t* dst)
-{
-   dst->cf_name = src->cf_name;
-   fx_copy_str(&src->cf_cname, &dst->cf_cname);
-   FX_COPY_PTR(src->cf_args, &dst->cf_args);
-   FX_COPY_PTR(src->cf_rt, &dst->cf_rt);
-   FX_COPY_PTR(src->cf_body, &dst->cf_body);
-   dst->cf_flags = src->cf_flags;
-   FX_COPY_PTR(src->cf_scope, &dst->cf_scope);
-   dst->cf_loc = src->cf_loc;
-}
-
-static void _fx_make_R17C_form__cdeffun_t(
-   struct _fx_R9Ast__id_t* r_cf_name,
-   fx_str_t* r_cf_cname,
-   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* r_cf_args,
-   struct _fx_N14C_form__ctyp_t_data_t* r_cf_rt,
-   struct _fx_LN15C_form__cstmt_t_data_t* r_cf_body,
-   struct _fx_R16Ast__fun_flags_t* r_cf_flags,
-   struct _fx_LN12Ast__scope_t_data_t* r_cf_scope,
-   struct _fx_R10Ast__loc_t* r_cf_loc,
-   struct _fx_R17C_form__cdeffun_t* fx_result)
-{
-   fx_result->cf_name = *r_cf_name;
-   fx_copy_str(r_cf_cname, &fx_result->cf_cname);
-   FX_COPY_PTR(r_cf_args, &fx_result->cf_args);
-   FX_COPY_PTR(r_cf_rt, &fx_result->cf_rt);
-   FX_COPY_PTR(r_cf_body, &fx_result->cf_body);
-   fx_result->cf_flags = *r_cf_flags;
-   FX_COPY_PTR(r_cf_scope, &fx_result->cf_scope);
-   fx_result->cf_loc = *r_cf_loc;
-}
-
-static void _fx_free_rR17C_form__cdeffun_t(struct _fx_rR17C_form__cdeffun_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR17C_form__cdeffun_t, _fx_free_R17C_form__cdeffun_t);
-}
-
-static int _fx_make_rR17C_form__cdeffun_t(
-   struct _fx_R17C_form__cdeffun_t* arg,
-   struct _fx_rR17C_form__cdeffun_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR17C_form__cdeffun_t, _fx_copy_R17C_form__cdeffun_t);
-}
-
-static int _fx_cons_LR9Ast__id_t(
-   struct _fx_R9Ast__id_t* hd,
-   struct _fx_LR9Ast__id_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LR9Ast__id_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LR9Ast__id_t, FX_COPY_SIMPLE_BY_PTR);
-}
-
-static void _fx_free_R17C_form__ctprops_t(struct _fx_R17C_form__ctprops_t* dst)
-{
-   fx_free_list_simple(&dst->ctp_make);
-}
-
-static void _fx_copy_R17C_form__ctprops_t(struct _fx_R17C_form__ctprops_t* src, struct _fx_R17C_form__ctprops_t* dst)
-{
-   dst->ctp_scalar = src->ctp_scalar;
-   dst->ctp_complex = src->ctp_complex;
-   dst->ctp_ptr = src->ctp_ptr;
-   dst->ctp_pass_by_ref = src->ctp_pass_by_ref;
-   FX_COPY_PTR(src->ctp_make, &dst->ctp_make);
-   dst->ctp_free = src->ctp_free;
-   dst->ctp_copy = src->ctp_copy;
-}
-
-static void _fx_make_R17C_form__ctprops_t(
-   bool r_ctp_scalar,
-   bool r_ctp_complex,
-   bool r_ctp_ptr,
-   bool r_ctp_pass_by_ref,
-   struct _fx_LR9Ast__id_t_data_t* r_ctp_make,
-   struct _fx_Ta2R9Ast__id_t* r_ctp_free,
-   struct _fx_Ta2R9Ast__id_t* r_ctp_copy,
-   struct _fx_R17C_form__ctprops_t* fx_result)
-{
-   fx_result->ctp_scalar = r_ctp_scalar;
-   fx_result->ctp_complex = r_ctp_complex;
-   fx_result->ctp_ptr = r_ctp_ptr;
-   fx_result->ctp_pass_by_ref = r_ctp_pass_by_ref;
-   FX_COPY_PTR(r_ctp_make, &fx_result->ctp_make);
-   fx_result->ctp_free = *r_ctp_free;
-   fx_result->ctp_copy = *r_ctp_copy;
-}
-
-static void _fx_free_R17C_form__cdeftyp_t(struct _fx_R17C_form__cdeftyp_t* dst)
-{
-   _fx_free_N14C_form__ctyp_t(&dst->ct_typ);
-   fx_free_str(&dst->ct_cname);
-   _fx_free_R17C_form__ctprops_t(&dst->ct_props);
-   fx_free_list_simple(&dst->ct_ifaces);
-   fx_free_list_simple(&dst->ct_scope);
-}
-
-static void _fx_copy_R17C_form__cdeftyp_t(struct _fx_R17C_form__cdeftyp_t* src, struct _fx_R17C_form__cdeftyp_t* dst)
-{
-   dst->ct_name = src->ct_name;
-   FX_COPY_PTR(src->ct_typ, &dst->ct_typ);
-   fx_copy_str(&src->ct_cname, &dst->ct_cname);
-   _fx_copy_R17C_form__ctprops_t(&src->ct_props, &dst->ct_props);
-   dst->ct_data_start = src->ct_data_start;
-   dst->ct_enum = src->ct_enum;
-   FX_COPY_PTR(src->ct_ifaces, &dst->ct_ifaces);
-   dst->ct_ifaces_id = src->ct_ifaces_id;
-   FX_COPY_PTR(src->ct_scope, &dst->ct_scope);
-   dst->ct_loc = src->ct_loc;
-}
-
-static void _fx_make_R17C_form__cdeftyp_t(
-   struct _fx_R9Ast__id_t* r_ct_name,
-   struct _fx_N14C_form__ctyp_t_data_t* r_ct_typ,
-   fx_str_t* r_ct_cname,
-   struct _fx_R17C_form__ctprops_t* r_ct_props,
-   int_ r_ct_data_start,
-   struct _fx_R9Ast__id_t* r_ct_enum,
-   struct _fx_LR9Ast__id_t_data_t* r_ct_ifaces,
-   struct _fx_R9Ast__id_t* r_ct_ifaces_id,
-   struct _fx_LN12Ast__scope_t_data_t* r_ct_scope,
-   struct _fx_R10Ast__loc_t* r_ct_loc,
-   struct _fx_R17C_form__cdeftyp_t* fx_result)
-{
-   fx_result->ct_name = *r_ct_name;
-   FX_COPY_PTR(r_ct_typ, &fx_result->ct_typ);
-   fx_copy_str(r_ct_cname, &fx_result->ct_cname);
-   _fx_copy_R17C_form__ctprops_t(r_ct_props, &fx_result->ct_props);
-   fx_result->ct_data_start = r_ct_data_start;
-   fx_result->ct_enum = *r_ct_enum;
-   FX_COPY_PTR(r_ct_ifaces, &fx_result->ct_ifaces);
-   fx_result->ct_ifaces_id = *r_ct_ifaces_id;
-   FX_COPY_PTR(r_ct_scope, &fx_result->ct_scope);
-   fx_result->ct_loc = *r_ct_loc;
-}
-
-static void _fx_free_rR17C_form__cdeftyp_t(struct _fx_rR17C_form__cdeftyp_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR17C_form__cdeftyp_t, _fx_free_R17C_form__cdeftyp_t);
-}
-
-static int _fx_make_rR17C_form__cdeftyp_t(
-   struct _fx_R17C_form__cdeftyp_t* arg,
-   struct _fx_rR17C_form__cdeftyp_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR17C_form__cdeftyp_t, _fx_copy_R17C_form__cdeftyp_t);
-}
-
-static void _fx_free_Nt6option1N14C_form__cexp_t(struct _fx_Nt6option1N14C_form__cexp_t* dst)
-{
-   switch (dst->tag) {
-   case 2:
-      _fx_free_N14C_form__cexp_t(&dst->u.Some); break;
-   default:
-      ;
-   }
-   dst->tag = 0;
-}
-
-static void _fx_copy_Nt6option1N14C_form__cexp_t(
-   struct _fx_Nt6option1N14C_form__cexp_t* src,
-   struct _fx_Nt6option1N14C_form__cexp_t* dst)
-{
-   dst->tag = src->tag;
-   switch (src->tag) {
-   case 2:
-      FX_COPY_PTR(src->u.Some, &dst->u.Some); break;
-   default:
-      dst->u = src->u;
-   }
-}
-
-static void _fx_free_T2R9Ast__id_tNt6option1N14C_form__cexp_t(struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* dst)
-{
-   _fx_free_Nt6option1N14C_form__cexp_t(&dst->t1);
-}
-
-static void _fx_copy_T2R9Ast__id_tNt6option1N14C_form__cexp_t(
-   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* src,
-   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* dst)
-{
-   dst->t0 = src->t0;
-   _fx_copy_Nt6option1N14C_form__cexp_t(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2R9Ast__id_tNt6option1N14C_form__cexp_t(
-   struct _fx_R9Ast__id_t* t0,
-   struct _fx_Nt6option1N14C_form__cexp_t* t1,
-   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* fx_result)
-{
-   fx_result->t0 = *t0;
-   _fx_copy_Nt6option1N14C_form__cexp_t(t1, &fx_result->t1);
-}
-
-static void _fx_free_LT2R9Ast__id_tNt6option1N14C_form__cexp_t(
-   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t, _fx_free_T2R9Ast__id_tNt6option1N14C_form__cexp_t);
-}
-
-static int _fx_cons_LT2R9Ast__id_tNt6option1N14C_form__cexp_t(
-   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* hd,
-   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t, _fx_copy_T2R9Ast__id_tNt6option1N14C_form__cexp_t);
-}
-
-static void _fx_free_R18C_form__cdefenum_t(struct _fx_R18C_form__cdefenum_t* dst)
-{
-   _fx_free_LT2R9Ast__id_tNt6option1N14C_form__cexp_t(&dst->cenum_members);
-   fx_free_str(&dst->cenum_cname);
-   fx_free_list_simple(&dst->cenum_scope);
-}
-
-static void _fx_copy_R18C_form__cdefenum_t(struct _fx_R18C_form__cdefenum_t* src, struct _fx_R18C_form__cdefenum_t* dst)
-{
-   dst->cenum_name = src->cenum_name;
-   FX_COPY_PTR(src->cenum_members, &dst->cenum_members);
-   fx_copy_str(&src->cenum_cname, &dst->cenum_cname);
-   FX_COPY_PTR(src->cenum_scope, &dst->cenum_scope);
-   dst->cenum_loc = src->cenum_loc;
-}
-
-static void _fx_make_R18C_form__cdefenum_t(
-   struct _fx_R9Ast__id_t* r_cenum_name,
-   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* r_cenum_members,
-   fx_str_t* r_cenum_cname,
-   struct _fx_LN12Ast__scope_t_data_t* r_cenum_scope,
-   struct _fx_R10Ast__loc_t* r_cenum_loc,
-   struct _fx_R18C_form__cdefenum_t* fx_result)
-{
-   fx_result->cenum_name = *r_cenum_name;
-   FX_COPY_PTR(r_cenum_members, &fx_result->cenum_members);
-   fx_copy_str(r_cenum_cname, &fx_result->cenum_cname);
-   FX_COPY_PTR(r_cenum_scope, &fx_result->cenum_scope);
-   fx_result->cenum_loc = *r_cenum_loc;
-}
-
-static void _fx_free_rR18C_form__cdefenum_t(struct _fx_rR18C_form__cdefenum_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR18C_form__cdefenum_t, _fx_free_R18C_form__cdefenum_t);
-}
-
-static int _fx_make_rR18C_form__cdefenum_t(
-   struct _fx_R18C_form__cdefenum_t* arg,
-   struct _fx_rR18C_form__cdefenum_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR18C_form__cdefenum_t, _fx_copy_R18C_form__cdefenum_t);
-}
-
-static void _fx_free_R19C_form__cdefmacro_t(struct _fx_R19C_form__cdefmacro_t* dst)
-{
-   fx_free_str(&dst->cm_cname);
-   fx_free_list_simple(&dst->cm_args);
-   _fx_free_LN15C_form__cstmt_t(&dst->cm_body);
-   fx_free_list_simple(&dst->cm_scope);
-}
-
-static void _fx_copy_R19C_form__cdefmacro_t(struct _fx_R19C_form__cdefmacro_t* src, struct _fx_R19C_form__cdefmacro_t* dst)
-{
-   dst->cm_name = src->cm_name;
-   fx_copy_str(&src->cm_cname, &dst->cm_cname);
-   FX_COPY_PTR(src->cm_args, &dst->cm_args);
-   FX_COPY_PTR(src->cm_body, &dst->cm_body);
-   FX_COPY_PTR(src->cm_scope, &dst->cm_scope);
-   dst->cm_loc = src->cm_loc;
-}
-
-static void _fx_make_R19C_form__cdefmacro_t(
-   struct _fx_R9Ast__id_t* r_cm_name,
-   fx_str_t* r_cm_cname,
-   struct _fx_LR9Ast__id_t_data_t* r_cm_args,
-   struct _fx_LN15C_form__cstmt_t_data_t* r_cm_body,
-   struct _fx_LN12Ast__scope_t_data_t* r_cm_scope,
-   struct _fx_R10Ast__loc_t* r_cm_loc,
-   struct _fx_R19C_form__cdefmacro_t* fx_result)
-{
-   fx_result->cm_name = *r_cm_name;
-   fx_copy_str(r_cm_cname, &fx_result->cm_cname);
-   FX_COPY_PTR(r_cm_args, &fx_result->cm_args);
-   FX_COPY_PTR(r_cm_body, &fx_result->cm_body);
-   FX_COPY_PTR(r_cm_scope, &fx_result->cm_scope);
-   fx_result->cm_loc = *r_cm_loc;
-}
-
-static void _fx_free_rR19C_form__cdefmacro_t(struct _fx_rR19C_form__cdefmacro_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR19C_form__cdefmacro_t, _fx_free_R19C_form__cdefmacro_t);
-}
-
-static int _fx_make_rR19C_form__cdefmacro_t(
-   struct _fx_R19C_form__cdefmacro_t* arg,
-   struct _fx_rR19C_form__cdefmacro_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR19C_form__cdefmacro_t, _fx_copy_R19C_form__cdefmacro_t);
-}
-
-static void _fx_free_T2R9Ast__id_tN14K_form__ktyp_t(struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* dst)
-{
-   _fx_free_N14K_form__ktyp_t(&dst->t1);
-}
-
-static void _fx_copy_T2R9Ast__id_tN14K_form__ktyp_t(
-   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* src,
-   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* dst)
-{
-   dst->t0 = src->t0;
-   FX_COPY_PTR(src->t1, &dst->t1);
-}
-
-static void _fx_make_T2R9Ast__id_tN14K_form__ktyp_t(
-   struct _fx_R9Ast__id_t* t0,
-   struct _fx_N14K_form__ktyp_t_data_t* t1,
-   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* fx_result)
-{
-   fx_result->t0 = *t0;
-   FX_COPY_PTR(t1, &fx_result->t1);
-}
-
-static void _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tN14K_form__ktyp_t, _fx_free_T2R9Ast__id_tN14K_form__ktyp_t);
-}
-
-static int _fx_cons_LT2R9Ast__id_tN14K_form__ktyp_t(
-   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* hd,
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tN14K_form__ktyp_t, _fx_copy_T2R9Ast__id_tN14K_form__ktyp_t);
-}
-
-static void _fx_free_R23K_form__kdefinterface_t(struct _fx_R23K_form__kdefinterface_t* dst)
-{
-   fx_free_str(&dst->ki_cname);
-   _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(&dst->ki_all_methods);
-   fx_free_list_simple(&dst->ki_scope);
-}
-
-static void _fx_copy_R23K_form__kdefinterface_t(
-   struct _fx_R23K_form__kdefinterface_t* src,
-   struct _fx_R23K_form__kdefinterface_t* dst)
-{
-   dst->ki_name = src->ki_name;
-   dst->ki_base = src->ki_base;
-   fx_copy_str(&src->ki_cname, &dst->ki_cname);
-   dst->ki_id = src->ki_id;
-   FX_COPY_PTR(src->ki_all_methods, &dst->ki_all_methods);
-   FX_COPY_PTR(src->ki_scope, &dst->ki_scope);
-   dst->ki_loc = src->ki_loc;
-}
-
-static void _fx_make_R23K_form__kdefinterface_t(
-   struct _fx_R9Ast__id_t* r_ki_name,
-   struct _fx_R9Ast__id_t* r_ki_base,
-   fx_str_t* r_ki_cname,
-   struct _fx_R9Ast__id_t* r_ki_id,
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* r_ki_all_methods,
-   struct _fx_LN12Ast__scope_t_data_t* r_ki_scope,
-   struct _fx_R10Ast__loc_t* r_ki_loc,
-   struct _fx_R23K_form__kdefinterface_t* fx_result)
-{
-   fx_result->ki_name = *r_ki_name;
-   fx_result->ki_base = *r_ki_base;
-   fx_copy_str(r_ki_cname, &fx_result->ki_cname);
-   fx_result->ki_id = *r_ki_id;
-   FX_COPY_PTR(r_ki_all_methods, &fx_result->ki_all_methods);
-   FX_COPY_PTR(r_ki_scope, &fx_result->ki_scope);
-   fx_result->ki_loc = *r_ki_loc;
-}
-
-static void _fx_free_rR23K_form__kdefinterface_t(struct _fx_rR23K_form__kdefinterface_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR23K_form__kdefinterface_t, _fx_free_R23K_form__kdefinterface_t);
-}
-
-static int _fx_make_rR23K_form__kdefinterface_t(
-   struct _fx_R23K_form__kdefinterface_t* arg,
-   struct _fx_rR23K_form__kdefinterface_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR23K_form__kdefinterface_t, _fx_copy_R23K_form__kdefinterface_t);
-}
-
-static void _fx_free_R17K_form__kdeffun_t(struct _fx_R17K_form__kdeffun_t* dst)
-{
-   fx_free_str(&dst->kf_cname);
-   fx_free_list_simple(&dst->kf_params);
-   _fx_free_N14K_form__ktyp_t(&dst->kf_rt);
-   _fx_free_N14K_form__kexp_t(&dst->kf_body);
-   fx_free_list_simple(&dst->kf_scope);
-}
-
-static void _fx_copy_R17K_form__kdeffun_t(struct _fx_R17K_form__kdeffun_t* src, struct _fx_R17K_form__kdeffun_t* dst)
-{
-   dst->kf_name = src->kf_name;
-   fx_copy_str(&src->kf_cname, &dst->kf_cname);
-   FX_COPY_PTR(src->kf_params, &dst->kf_params);
-   FX_COPY_PTR(src->kf_rt, &dst->kf_rt);
-   FX_COPY_PTR(src->kf_body, &dst->kf_body);
-   dst->kf_flags = src->kf_flags;
-   dst->kf_closure = src->kf_closure;
-   FX_COPY_PTR(src->kf_scope, &dst->kf_scope);
-   dst->kf_loc = src->kf_loc;
-}
-
-static void _fx_make_R17K_form__kdeffun_t(
-   struct _fx_R9Ast__id_t* r_kf_name,
-   fx_str_t* r_kf_cname,
-   struct _fx_LR9Ast__id_t_data_t* r_kf_params,
-   struct _fx_N14K_form__ktyp_t_data_t* r_kf_rt,
-   struct _fx_N14K_form__kexp_t_data_t* r_kf_body,
-   struct _fx_R16Ast__fun_flags_t* r_kf_flags,
-   struct _fx_R25K_form__kdefclosureinfo_t* r_kf_closure,
-   struct _fx_LN12Ast__scope_t_data_t* r_kf_scope,
-   struct _fx_R10Ast__loc_t* r_kf_loc,
-   struct _fx_R17K_form__kdeffun_t* fx_result)
-{
-   fx_result->kf_name = *r_kf_name;
-   fx_copy_str(r_kf_cname, &fx_result->kf_cname);
-   FX_COPY_PTR(r_kf_params, &fx_result->kf_params);
-   FX_COPY_PTR(r_kf_rt, &fx_result->kf_rt);
-   FX_COPY_PTR(r_kf_body, &fx_result->kf_body);
-   fx_result->kf_flags = *r_kf_flags;
-   fx_result->kf_closure = *r_kf_closure;
-   FX_COPY_PTR(r_kf_scope, &fx_result->kf_scope);
-   fx_result->kf_loc = *r_kf_loc;
-}
-
-static void _fx_free_rR17K_form__kdeffun_t(struct _fx_rR17K_form__kdeffun_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR17K_form__kdeffun_t, _fx_free_R17K_form__kdeffun_t);
-}
-
-static int _fx_make_rR17K_form__kdeffun_t(
-   struct _fx_R17K_form__kdeffun_t* arg,
-   struct _fx_rR17K_form__kdeffun_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR17K_form__kdeffun_t, _fx_copy_R17K_form__kdeffun_t);
-}
-
-static void _fx_free_R17K_form__kdefexn_t(struct _fx_R17K_form__kdefexn_t* dst)
-{
-   fx_free_str(&dst->ke_cname);
-   fx_free_str(&dst->ke_base_cname);
-   _fx_free_N14K_form__ktyp_t(&dst->ke_typ);
-   fx_free_list_simple(&dst->ke_scope);
-}
-
-static void _fx_copy_R17K_form__kdefexn_t(struct _fx_R17K_form__kdefexn_t* src, struct _fx_R17K_form__kdefexn_t* dst)
-{
-   dst->ke_name = src->ke_name;
-   fx_copy_str(&src->ke_cname, &dst->ke_cname);
-   fx_copy_str(&src->ke_base_cname, &dst->ke_base_cname);
-   FX_COPY_PTR(src->ke_typ, &dst->ke_typ);
-   dst->ke_std = src->ke_std;
-   dst->ke_tag = src->ke_tag;
-   dst->ke_make = src->ke_make;
-   FX_COPY_PTR(src->ke_scope, &dst->ke_scope);
-   dst->ke_loc = src->ke_loc;
-}
-
-static void _fx_make_R17K_form__kdefexn_t(
-   struct _fx_R9Ast__id_t* r_ke_name,
-   fx_str_t* r_ke_cname,
-   fx_str_t* r_ke_base_cname,
-   struct _fx_N14K_form__ktyp_t_data_t* r_ke_typ,
-   bool r_ke_std,
-   struct _fx_R9Ast__id_t* r_ke_tag,
-   struct _fx_R9Ast__id_t* r_ke_make,
-   struct _fx_LN12Ast__scope_t_data_t* r_ke_scope,
-   struct _fx_R10Ast__loc_t* r_ke_loc,
-   struct _fx_R17K_form__kdefexn_t* fx_result)
-{
-   fx_result->ke_name = *r_ke_name;
-   fx_copy_str(r_ke_cname, &fx_result->ke_cname);
-   fx_copy_str(r_ke_base_cname, &fx_result->ke_base_cname);
-   FX_COPY_PTR(r_ke_typ, &fx_result->ke_typ);
-   fx_result->ke_std = r_ke_std;
-   fx_result->ke_tag = *r_ke_tag;
-   fx_result->ke_make = *r_ke_make;
-   FX_COPY_PTR(r_ke_scope, &fx_result->ke_scope);
-   fx_result->ke_loc = *r_ke_loc;
-}
-
-static void _fx_free_rR17K_form__kdefexn_t(struct _fx_rR17K_form__kdefexn_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR17K_form__kdefexn_t, _fx_free_R17K_form__kdefexn_t);
-}
-
-static int _fx_make_rR17K_form__kdefexn_t(
-   struct _fx_R17K_form__kdefexn_t* arg,
-   struct _fx_rR17K_form__kdefexn_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR17K_form__kdefexn_t, _fx_copy_R17K_form__kdefexn_t);
-}
-
-static void _fx_free_LN14K_form__ktyp_t(struct _fx_LN14K_form__ktyp_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LN14K_form__ktyp_t, _fx_free_N14K_form__ktyp_t);
-}
-
-static int _fx_cons_LN14K_form__ktyp_t(
-   struct _fx_N14K_form__ktyp_t_data_t* hd,
-   struct _fx_LN14K_form__ktyp_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LN14K_form__ktyp_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LN14K_form__ktyp_t, FX_COPY_PTR);
-}
-
-static void _fx_free_T2R9Ast__id_tLR9Ast__id_t(struct _fx_T2R9Ast__id_tLR9Ast__id_t* dst)
-{
-   fx_free_list_simple(&dst->t1);
-}
-
-static void _fx_copy_T2R9Ast__id_tLR9Ast__id_t(
-   struct _fx_T2R9Ast__id_tLR9Ast__id_t* src,
-   struct _fx_T2R9Ast__id_tLR9Ast__id_t* dst)
-{
-   dst->t0 = src->t0;
-   FX_COPY_PTR(src->t1, &dst->t1);
-}
-
-static void _fx_make_T2R9Ast__id_tLR9Ast__id_t(
-   struct _fx_R9Ast__id_t* t0,
-   struct _fx_LR9Ast__id_t_data_t* t1,
-   struct _fx_T2R9Ast__id_tLR9Ast__id_t* fx_result)
-{
-   fx_result->t0 = *t0;
-   FX_COPY_PTR(t1, &fx_result->t1);
-}
-
-static void _fx_free_LT2R9Ast__id_tLR9Ast__id_t(struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tLR9Ast__id_t, _fx_free_T2R9Ast__id_tLR9Ast__id_t);
-}
-
-static int _fx_cons_LT2R9Ast__id_tLR9Ast__id_t(
-   struct _fx_T2R9Ast__id_tLR9Ast__id_t* hd,
-   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tLR9Ast__id_t, _fx_copy_T2R9Ast__id_tLR9Ast__id_t);
-}
-
-static void _fx_free_R21K_form__kdefvariant_t(struct _fx_R21K_form__kdefvariant_t* dst)
-{
-   fx_free_str(&dst->kvar_cname);
-   _fx_free_LN14K_form__ktyp_t(&dst->kvar_targs);
-   _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(&dst->kvar_cases);
-   fx_free_list_simple(&dst->kvar_ctors);
-   _fx_free_LT2R9Ast__id_tLR9Ast__id_t(&dst->kvar_ifaces);
-   fx_free_list_simple(&dst->kvar_scope);
-}
-
-static void _fx_copy_R21K_form__kdefvariant_t(
-   struct _fx_R21K_form__kdefvariant_t* src,
-   struct _fx_R21K_form__kdefvariant_t* dst)
-{
-   dst->kvar_name = src->kvar_name;
-   fx_copy_str(&src->kvar_cname, &dst->kvar_cname);
-   dst->kvar_proto = src->kvar_proto;
-   dst->kvar_props = src->kvar_props;
-   FX_COPY_PTR(src->kvar_targs, &dst->kvar_targs);
-   FX_COPY_PTR(src->kvar_cases, &dst->kvar_cases);
-   FX_COPY_PTR(src->kvar_ctors, &dst->kvar_ctors);
-   dst->kvar_flags = src->kvar_flags;
-   FX_COPY_PTR(src->kvar_ifaces, &dst->kvar_ifaces);
-   FX_COPY_PTR(src->kvar_scope, &dst->kvar_scope);
-   dst->kvar_loc = src->kvar_loc;
-}
-
-static void _fx_make_R21K_form__kdefvariant_t(
-   struct _fx_R9Ast__id_t* r_kvar_name,
-   fx_str_t* r_kvar_cname,
-   struct _fx_R9Ast__id_t* r_kvar_proto,
-   struct _fx_Nt6option1R17K_form__ktprops_t* r_kvar_props,
-   struct _fx_LN14K_form__ktyp_t_data_t* r_kvar_targs,
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* r_kvar_cases,
-   struct _fx_LR9Ast__id_t_data_t* r_kvar_ctors,
-   struct _fx_R16Ast__var_flags_t* r_kvar_flags,
-   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* r_kvar_ifaces,
-   struct _fx_LN12Ast__scope_t_data_t* r_kvar_scope,
-   struct _fx_R10Ast__loc_t* r_kvar_loc,
-   struct _fx_R21K_form__kdefvariant_t* fx_result)
-{
-   fx_result->kvar_name = *r_kvar_name;
-   fx_copy_str(r_kvar_cname, &fx_result->kvar_cname);
-   fx_result->kvar_proto = *r_kvar_proto;
-   fx_result->kvar_props = *r_kvar_props;
-   FX_COPY_PTR(r_kvar_targs, &fx_result->kvar_targs);
-   FX_COPY_PTR(r_kvar_cases, &fx_result->kvar_cases);
-   FX_COPY_PTR(r_kvar_ctors, &fx_result->kvar_ctors);
-   fx_result->kvar_flags = *r_kvar_flags;
-   FX_COPY_PTR(r_kvar_ifaces, &fx_result->kvar_ifaces);
-   FX_COPY_PTR(r_kvar_scope, &fx_result->kvar_scope);
-   fx_result->kvar_loc = *r_kvar_loc;
-}
-
-static void _fx_free_rR21K_form__kdefvariant_t(struct _fx_rR21K_form__kdefvariant_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR21K_form__kdefvariant_t, _fx_free_R21K_form__kdefvariant_t);
-}
-
-static int _fx_make_rR21K_form__kdefvariant_t(
-   struct _fx_R21K_form__kdefvariant_t* arg,
-   struct _fx_rR21K_form__kdefvariant_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR21K_form__kdefvariant_t, _fx_copy_R21K_form__kdefvariant_t);
-}
-
-static void _fx_free_R17K_form__kdeftyp_t(struct _fx_R17K_form__kdeftyp_t* dst)
-{
-   fx_free_str(&dst->kt_cname);
-   _fx_free_LN14K_form__ktyp_t(&dst->kt_targs);
-   _fx_free_N14K_form__ktyp_t(&dst->kt_typ);
-   fx_free_list_simple(&dst->kt_scope);
-}
-
-static void _fx_copy_R17K_form__kdeftyp_t(struct _fx_R17K_form__kdeftyp_t* src, struct _fx_R17K_form__kdeftyp_t* dst)
-{
-   dst->kt_name = src->kt_name;
-   fx_copy_str(&src->kt_cname, &dst->kt_cname);
-   dst->kt_proto = src->kt_proto;
-   dst->kt_props = src->kt_props;
-   FX_COPY_PTR(src->kt_targs, &dst->kt_targs);
-   FX_COPY_PTR(src->kt_typ, &dst->kt_typ);
-   FX_COPY_PTR(src->kt_scope, &dst->kt_scope);
-   dst->kt_loc = src->kt_loc;
-}
-
-static void _fx_make_R17K_form__kdeftyp_t(
-   struct _fx_R9Ast__id_t* r_kt_name,
-   fx_str_t* r_kt_cname,
-   struct _fx_R9Ast__id_t* r_kt_proto,
-   struct _fx_Nt6option1R17K_form__ktprops_t* r_kt_props,
-   struct _fx_LN14K_form__ktyp_t_data_t* r_kt_targs,
-   struct _fx_N14K_form__ktyp_t_data_t* r_kt_typ,
-   struct _fx_LN12Ast__scope_t_data_t* r_kt_scope,
-   struct _fx_R10Ast__loc_t* r_kt_loc,
-   struct _fx_R17K_form__kdeftyp_t* fx_result)
-{
-   fx_result->kt_name = *r_kt_name;
-   fx_copy_str(r_kt_cname, &fx_result->kt_cname);
-   fx_result->kt_proto = *r_kt_proto;
-   fx_result->kt_props = *r_kt_props;
-   FX_COPY_PTR(r_kt_targs, &fx_result->kt_targs);
-   FX_COPY_PTR(r_kt_typ, &fx_result->kt_typ);
-   FX_COPY_PTR(r_kt_scope, &fx_result->kt_scope);
-   fx_result->kt_loc = *r_kt_loc;
-}
-
-static void _fx_free_rR17K_form__kdeftyp_t(struct _fx_rR17K_form__kdeftyp_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR17K_form__kdeftyp_t, _fx_free_R17K_form__kdeftyp_t);
-}
-
-static int _fx_make_rR17K_form__kdeftyp_t(
-   struct _fx_R17K_form__kdeftyp_t* arg,
-   struct _fx_rR17K_form__kdeftyp_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR17K_form__kdeftyp_t, _fx_copy_R17K_form__kdeftyp_t);
-}
-
-static void _fx_free_R25K_form__kdefclosurevars_t(struct _fx_R25K_form__kdefclosurevars_t* dst)
-{
-   fx_free_str(&dst->kcv_cname);
-   _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(&dst->kcv_freevars);
-   fx_free_list_simple(&dst->kcv_orig_freevars);
-   fx_free_list_simple(&dst->kcv_scope);
-}
-
-static void _fx_copy_R25K_form__kdefclosurevars_t(
-   struct _fx_R25K_form__kdefclosurevars_t* src,
-   struct _fx_R25K_form__kdefclosurevars_t* dst)
-{
-   dst->kcv_name = src->kcv_name;
-   fx_copy_str(&src->kcv_cname, &dst->kcv_cname);
-   FX_COPY_PTR(src->kcv_freevars, &dst->kcv_freevars);
-   FX_COPY_PTR(src->kcv_orig_freevars, &dst->kcv_orig_freevars);
-   FX_COPY_PTR(src->kcv_scope, &dst->kcv_scope);
-   dst->kcv_loc = src->kcv_loc;
-}
-
-static void _fx_make_R25K_form__kdefclosurevars_t(
-   struct _fx_R9Ast__id_t* r_kcv_name,
-   fx_str_t* r_kcv_cname,
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* r_kcv_freevars,
-   struct _fx_LR9Ast__id_t_data_t* r_kcv_orig_freevars,
-   struct _fx_LN12Ast__scope_t_data_t* r_kcv_scope,
-   struct _fx_R10Ast__loc_t* r_kcv_loc,
-   struct _fx_R25K_form__kdefclosurevars_t* fx_result)
-{
-   fx_result->kcv_name = *r_kcv_name;
-   fx_copy_str(r_kcv_cname, &fx_result->kcv_cname);
-   FX_COPY_PTR(r_kcv_freevars, &fx_result->kcv_freevars);
-   FX_COPY_PTR(r_kcv_orig_freevars, &fx_result->kcv_orig_freevars);
-   FX_COPY_PTR(r_kcv_scope, &fx_result->kcv_scope);
-   fx_result->kcv_loc = *r_kcv_loc;
-}
-
-static void _fx_free_rR25K_form__kdefclosurevars_t(struct _fx_rR25K_form__kdefclosurevars_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rR25K_form__kdefclosurevars_t, _fx_free_R25K_form__kdefclosurevars_t);
-}
-
-static int _fx_make_rR25K_form__kdefclosurevars_t(
-   struct _fx_R25K_form__kdefclosurevars_t* arg,
-   struct _fx_rR25K_form__kdefclosurevars_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rR25K_form__kdefclosurevars_t, _fx_copy_R25K_form__kdefclosurevars_t);
-}
-
 static void _fx_free_Nt6option1N10Ast__exp_t(struct _fx_Nt6option1N10Ast__exp_t_data_t** dst)
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
@@ -3417,6 +2480,59 @@ static void _fx_free_Nt10Hashset__t1S(struct _fx_Nt10Hashset__t1S_data_t** dst)
    *dst = 0;
 }
 
+static int _fx_cons_LN12Ast__scope_t(
+   struct _fx_N12Ast__scope_t* hd,
+   struct _fx_LN12Ast__scope_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LN12Ast__scope_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LN12Ast__scope_t, FX_COPY_SIMPLE_BY_PTR);
+}
+
+static void _fx_free_R16Ast__val_flags_t(struct _fx_R16Ast__val_flags_t* dst)
+{
+   fx_free_list_simple(&dst->val_flag_global);
+}
+
+static void _fx_copy_R16Ast__val_flags_t(struct _fx_R16Ast__val_flags_t* src, struct _fx_R16Ast__val_flags_t* dst)
+{
+   dst->val_flag_arg = src->val_flag_arg;
+   dst->val_flag_mutable = src->val_flag_mutable;
+   dst->val_flag_temp = src->val_flag_temp;
+   dst->val_flag_tempref = src->val_flag_tempref;
+   dst->val_flag_private = src->val_flag_private;
+   dst->val_flag_subarray = src->val_flag_subarray;
+   dst->val_flag_instance = src->val_flag_instance;
+   dst->val_flag_method = src->val_flag_method;
+   dst->val_flag_ctor = src->val_flag_ctor;
+   FX_COPY_PTR(src->val_flag_global, &dst->val_flag_global);
+}
+
+static void _fx_make_R16Ast__val_flags_t(
+   bool r_val_flag_arg,
+   bool r_val_flag_mutable,
+   bool r_val_flag_temp,
+   bool r_val_flag_tempref,
+   bool r_val_flag_private,
+   bool r_val_flag_subarray,
+   bool r_val_flag_instance,
+   struct _fx_T2R9Ast__id_ti* r_val_flag_method,
+   int_ r_val_flag_ctor,
+   struct _fx_LN12Ast__scope_t_data_t* r_val_flag_global,
+   struct _fx_R16Ast__val_flags_t* fx_result)
+{
+   fx_result->val_flag_arg = r_val_flag_arg;
+   fx_result->val_flag_mutable = r_val_flag_mutable;
+   fx_result->val_flag_temp = r_val_flag_temp;
+   fx_result->val_flag_tempref = r_val_flag_tempref;
+   fx_result->val_flag_private = r_val_flag_private;
+   fx_result->val_flag_subarray = r_val_flag_subarray;
+   fx_result->val_flag_instance = r_val_flag_instance;
+   fx_result->val_flag_method = *r_val_flag_method;
+   fx_result->val_flag_ctor = r_val_flag_ctor;
+   FX_COPY_PTR(r_val_flag_global, &fx_result->val_flag_global);
+}
+
 static void _fx_free_R13Ast__defval_t(struct _fx_R13Ast__defval_t* dst)
 {
    _fx_free_N10Ast__typ_t(&dst->dv_typ);
@@ -3469,6 +2585,15 @@ static void _fx_make_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t(
 {
    FX_COPY_PTR(r_root, &fx_result->root);
    FX_COPY_FP(r_cmp, &fx_result->cmp);
+}
+
+static int _fx_cons_LR9Ast__id_t(
+   struct _fx_R9Ast__id_t* hd,
+   struct _fx_LR9Ast__id_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LR9Ast__id_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LR9Ast__id_t, FX_COPY_SIMPLE_BY_PTR);
 }
 
 static void _fx_free_LN10Ast__pat_t(struct _fx_LN10Ast__pat_t_data_t** dst)
@@ -5718,6 +4843,93 @@ static int _fx_cons_LN14Lexer__token_t(
    FX_MAKE_LIST_IMPL(_fx_LN14Lexer__token_t, _fx_copy_N14Lexer__token_t);
 }
 
+static void _fx_free_T2R9Ast__id_tN14K_form__ktyp_t(struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* dst)
+{
+   _fx_free_N14K_form__ktyp_t(&dst->t1);
+}
+
+static void _fx_copy_T2R9Ast__id_tN14K_form__ktyp_t(
+   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* src,
+   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* dst)
+{
+   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R9Ast__id_tN14K_form__ktyp_t(
+   struct _fx_R9Ast__id_t* t0,
+   struct _fx_N14K_form__ktyp_t_data_t* t1,
+   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* fx_result)
+{
+   fx_result->t0 = *t0;
+   FX_COPY_PTR(t1, &fx_result->t1);
+}
+
+static void _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tN14K_form__ktyp_t, _fx_free_T2R9Ast__id_tN14K_form__ktyp_t);
+}
+
+static int _fx_cons_LT2R9Ast__id_tN14K_form__ktyp_t(
+   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* hd,
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tN14K_form__ktyp_t, _fx_copy_T2R9Ast__id_tN14K_form__ktyp_t);
+}
+
+static void _fx_free_R23K_form__kdefinterface_t(struct _fx_R23K_form__kdefinterface_t* dst)
+{
+   fx_free_str(&dst->ki_cname);
+   _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(&dst->ki_all_methods);
+   fx_free_list_simple(&dst->ki_scope);
+}
+
+static void _fx_copy_R23K_form__kdefinterface_t(
+   struct _fx_R23K_form__kdefinterface_t* src,
+   struct _fx_R23K_form__kdefinterface_t* dst)
+{
+   dst->ki_name = src->ki_name;
+   dst->ki_base = src->ki_base;
+   fx_copy_str(&src->ki_cname, &dst->ki_cname);
+   dst->ki_id = src->ki_id;
+   FX_COPY_PTR(src->ki_all_methods, &dst->ki_all_methods);
+   FX_COPY_PTR(src->ki_scope, &dst->ki_scope);
+   dst->ki_loc = src->ki_loc;
+}
+
+static void _fx_make_R23K_form__kdefinterface_t(
+   struct _fx_R9Ast__id_t* r_ki_name,
+   struct _fx_R9Ast__id_t* r_ki_base,
+   fx_str_t* r_ki_cname,
+   struct _fx_R9Ast__id_t* r_ki_id,
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* r_ki_all_methods,
+   struct _fx_LN12Ast__scope_t_data_t* r_ki_scope,
+   struct _fx_R10Ast__loc_t* r_ki_loc,
+   struct _fx_R23K_form__kdefinterface_t* fx_result)
+{
+   fx_result->ki_name = *r_ki_name;
+   fx_result->ki_base = *r_ki_base;
+   fx_copy_str(r_ki_cname, &fx_result->ki_cname);
+   fx_result->ki_id = *r_ki_id;
+   FX_COPY_PTR(r_ki_all_methods, &fx_result->ki_all_methods);
+   FX_COPY_PTR(r_ki_scope, &fx_result->ki_scope);
+   fx_result->ki_loc = *r_ki_loc;
+}
+
+static void _fx_free_rR23K_form__kdefinterface_t(struct _fx_rR23K_form__kdefinterface_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR23K_form__kdefinterface_t, _fx_free_R23K_form__kdefinterface_t);
+}
+
+static int _fx_make_rR23K_form__kdefinterface_t(
+   struct _fx_R23K_form__kdefinterface_t* arg,
+   struct _fx_rR23K_form__kdefinterface_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR23K_form__kdefinterface_t, _fx_copy_R23K_form__kdefinterface_t);
+}
+
 static void _fx_free_N14K_form__klit_t(struct _fx_N14K_form__klit_t* dst)
 {
    switch (dst->tag) {
@@ -5790,49 +5002,18 @@ static void _fx_copy_Nt6option1N14K_form__atom_t(
    }
 }
 
-static void _fx_free_LN14K_form__kexp_t(struct _fx_LN14K_form__kexp_t_data_t** dst)
+static void _fx_free_LN14K_form__ktyp_t(struct _fx_LN14K_form__ktyp_t_data_t** dst)
 {
-   FX_FREE_LIST_IMPL(_fx_LN14K_form__kexp_t, _fx_free_N14K_form__kexp_t);
+   FX_FREE_LIST_IMPL(_fx_LN14K_form__ktyp_t, _fx_free_N14K_form__ktyp_t);
 }
 
-static int _fx_cons_LN14K_form__kexp_t(
-   struct _fx_N14K_form__kexp_t_data_t* hd,
-   struct _fx_LN14K_form__kexp_t_data_t* tl,
+static int _fx_cons_LN14K_form__ktyp_t(
+   struct _fx_N14K_form__ktyp_t_data_t* hd,
+   struct _fx_LN14K_form__ktyp_t_data_t* tl,
    bool addref_tl,
-   struct _fx_LN14K_form__kexp_t_data_t** fx_result)
+   struct _fx_LN14K_form__ktyp_t_data_t** fx_result)
 {
-   FX_MAKE_LIST_IMPL(_fx_LN14K_form__kexp_t, FX_COPY_PTR);
-}
-
-static void _fx_free_T2BN14K_form__atom_t(struct _fx_T2BN14K_form__atom_t* dst)
-{
-   _fx_free_N14K_form__atom_t(&dst->t1);
-}
-
-static void _fx_copy_T2BN14K_form__atom_t(struct _fx_T2BN14K_form__atom_t* src, struct _fx_T2BN14K_form__atom_t* dst)
-{
-   dst->t0 = src->t0;
-   _fx_copy_N14K_form__atom_t(&src->t1, &dst->t1);
-}
-
-static void _fx_make_T2BN14K_form__atom_t(bool t0, struct _fx_N14K_form__atom_t* t1, struct _fx_T2BN14K_form__atom_t* fx_result)
-{
-   fx_result->t0 = t0;
-   _fx_copy_N14K_form__atom_t(t1, &fx_result->t1);
-}
-
-static void _fx_free_LT2BN14K_form__atom_t(struct _fx_LT2BN14K_form__atom_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LT2BN14K_form__atom_t, _fx_free_T2BN14K_form__atom_t);
-}
-
-static int _fx_cons_LT2BN14K_form__atom_t(
-   struct _fx_T2BN14K_form__atom_t* hd,
-   struct _fx_LT2BN14K_form__atom_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LT2BN14K_form__atom_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LT2BN14K_form__atom_t, _fx_copy_T2BN14K_form__atom_t);
+   FX_MAKE_LIST_IMPL(_fx_LN14K_form__ktyp_t, FX_COPY_PTR);
 }
 
 static void _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(struct _fx_T2LN14K_form__ktyp_tN14K_form__ktyp_t* dst)
@@ -6173,6 +5354,20 @@ static void _fx_make_T2R9Ast__id_tN14K_form__kexp_t(
    FX_COPY_PTR(t1, &fx_result->t1);
 }
 
+static void _fx_free_LN14K_form__kexp_t(struct _fx_LN14K_form__kexp_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LN14K_form__kexp_t, _fx_free_N14K_form__kexp_t);
+}
+
+static int _fx_cons_LN14K_form__kexp_t(
+   struct _fx_N14K_form__kexp_t_data_t* hd,
+   struct _fx_LN14K_form__kexp_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LN14K_form__kexp_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LN14K_form__kexp_t, FX_COPY_PTR);
+}
+
 static void _fx_free_T2LN14K_form__kexp_tT2N14K_form__ktyp_tR10Ast__loc_t(
    struct _fx_T2LN14K_form__kexp_tT2N14K_form__ktyp_tR10Ast__loc_t* dst)
 {
@@ -6338,6 +5533,37 @@ static void _fx_make_T4R9Ast__id_tR9Ast__id_tLN14K_form__atom_tT2N14K_form__ktyp
    fx_result->t1 = *t1;
    FX_COPY_PTR(t2, &fx_result->t2);
    _fx_copy_T2N14K_form__ktyp_tR10Ast__loc_t(t3, &fx_result->t3);
+}
+
+static void _fx_free_T2BN14K_form__atom_t(struct _fx_T2BN14K_form__atom_t* dst)
+{
+   _fx_free_N14K_form__atom_t(&dst->t1);
+}
+
+static void _fx_copy_T2BN14K_form__atom_t(struct _fx_T2BN14K_form__atom_t* src, struct _fx_T2BN14K_form__atom_t* dst)
+{
+   dst->t0 = src->t0;
+   _fx_copy_N14K_form__atom_t(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2BN14K_form__atom_t(bool t0, struct _fx_N14K_form__atom_t* t1, struct _fx_T2BN14K_form__atom_t* fx_result)
+{
+   fx_result->t0 = t0;
+   _fx_copy_N14K_form__atom_t(t1, &fx_result->t1);
+}
+
+static void _fx_free_LT2BN14K_form__atom_t(struct _fx_LT2BN14K_form__atom_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LT2BN14K_form__atom_t, _fx_free_T2BN14K_form__atom_t);
+}
+
+static int _fx_cons_LT2BN14K_form__atom_t(
+   struct _fx_T2BN14K_form__atom_t* hd,
+   struct _fx_LT2BN14K_form__atom_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LT2BN14K_form__atom_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LT2BN14K_form__atom_t, _fx_copy_T2BN14K_form__atom_t);
 }
 
 static void _fx_free_LLT2BN14K_form__atom_t(struct _fx_LLT2BN14K_form__atom_t_data_t** dst)
@@ -6849,6 +6075,323 @@ static void _fx_make_T3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t(
    fx_result->t2 = *t2;
 }
 
+static void _fx_free_R17K_form__kdeffun_t(struct _fx_R17K_form__kdeffun_t* dst)
+{
+   fx_free_str(&dst->kf_cname);
+   fx_free_list_simple(&dst->kf_params);
+   _fx_free_N14K_form__ktyp_t(&dst->kf_rt);
+   _fx_free_N14K_form__kexp_t(&dst->kf_body);
+   fx_free_list_simple(&dst->kf_scope);
+}
+
+static void _fx_copy_R17K_form__kdeffun_t(struct _fx_R17K_form__kdeffun_t* src, struct _fx_R17K_form__kdeffun_t* dst)
+{
+   dst->kf_name = src->kf_name;
+   fx_copy_str(&src->kf_cname, &dst->kf_cname);
+   FX_COPY_PTR(src->kf_params, &dst->kf_params);
+   FX_COPY_PTR(src->kf_rt, &dst->kf_rt);
+   FX_COPY_PTR(src->kf_body, &dst->kf_body);
+   dst->kf_flags = src->kf_flags;
+   dst->kf_closure = src->kf_closure;
+   FX_COPY_PTR(src->kf_scope, &dst->kf_scope);
+   dst->kf_loc = src->kf_loc;
+}
+
+static void _fx_make_R17K_form__kdeffun_t(
+   struct _fx_R9Ast__id_t* r_kf_name,
+   fx_str_t* r_kf_cname,
+   struct _fx_LR9Ast__id_t_data_t* r_kf_params,
+   struct _fx_N14K_form__ktyp_t_data_t* r_kf_rt,
+   struct _fx_N14K_form__kexp_t_data_t* r_kf_body,
+   struct _fx_R16Ast__fun_flags_t* r_kf_flags,
+   struct _fx_R25K_form__kdefclosureinfo_t* r_kf_closure,
+   struct _fx_LN12Ast__scope_t_data_t* r_kf_scope,
+   struct _fx_R10Ast__loc_t* r_kf_loc,
+   struct _fx_R17K_form__kdeffun_t* fx_result)
+{
+   fx_result->kf_name = *r_kf_name;
+   fx_copy_str(r_kf_cname, &fx_result->kf_cname);
+   FX_COPY_PTR(r_kf_params, &fx_result->kf_params);
+   FX_COPY_PTR(r_kf_rt, &fx_result->kf_rt);
+   FX_COPY_PTR(r_kf_body, &fx_result->kf_body);
+   fx_result->kf_flags = *r_kf_flags;
+   fx_result->kf_closure = *r_kf_closure;
+   FX_COPY_PTR(r_kf_scope, &fx_result->kf_scope);
+   fx_result->kf_loc = *r_kf_loc;
+}
+
+static void _fx_free_rR17K_form__kdeffun_t(struct _fx_rR17K_form__kdeffun_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR17K_form__kdeffun_t, _fx_free_R17K_form__kdeffun_t);
+}
+
+static int _fx_make_rR17K_form__kdeffun_t(
+   struct _fx_R17K_form__kdeffun_t* arg,
+   struct _fx_rR17K_form__kdeffun_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR17K_form__kdeffun_t, _fx_copy_R17K_form__kdeffun_t);
+}
+
+static void _fx_free_R17K_form__kdefexn_t(struct _fx_R17K_form__kdefexn_t* dst)
+{
+   fx_free_str(&dst->ke_cname);
+   fx_free_str(&dst->ke_base_cname);
+   _fx_free_N14K_form__ktyp_t(&dst->ke_typ);
+   fx_free_list_simple(&dst->ke_scope);
+}
+
+static void _fx_copy_R17K_form__kdefexn_t(struct _fx_R17K_form__kdefexn_t* src, struct _fx_R17K_form__kdefexn_t* dst)
+{
+   dst->ke_name = src->ke_name;
+   fx_copy_str(&src->ke_cname, &dst->ke_cname);
+   fx_copy_str(&src->ke_base_cname, &dst->ke_base_cname);
+   FX_COPY_PTR(src->ke_typ, &dst->ke_typ);
+   dst->ke_std = src->ke_std;
+   dst->ke_tag = src->ke_tag;
+   dst->ke_make = src->ke_make;
+   FX_COPY_PTR(src->ke_scope, &dst->ke_scope);
+   dst->ke_loc = src->ke_loc;
+}
+
+static void _fx_make_R17K_form__kdefexn_t(
+   struct _fx_R9Ast__id_t* r_ke_name,
+   fx_str_t* r_ke_cname,
+   fx_str_t* r_ke_base_cname,
+   struct _fx_N14K_form__ktyp_t_data_t* r_ke_typ,
+   bool r_ke_std,
+   struct _fx_R9Ast__id_t* r_ke_tag,
+   struct _fx_R9Ast__id_t* r_ke_make,
+   struct _fx_LN12Ast__scope_t_data_t* r_ke_scope,
+   struct _fx_R10Ast__loc_t* r_ke_loc,
+   struct _fx_R17K_form__kdefexn_t* fx_result)
+{
+   fx_result->ke_name = *r_ke_name;
+   fx_copy_str(r_ke_cname, &fx_result->ke_cname);
+   fx_copy_str(r_ke_base_cname, &fx_result->ke_base_cname);
+   FX_COPY_PTR(r_ke_typ, &fx_result->ke_typ);
+   fx_result->ke_std = r_ke_std;
+   fx_result->ke_tag = *r_ke_tag;
+   fx_result->ke_make = *r_ke_make;
+   FX_COPY_PTR(r_ke_scope, &fx_result->ke_scope);
+   fx_result->ke_loc = *r_ke_loc;
+}
+
+static void _fx_free_rR17K_form__kdefexn_t(struct _fx_rR17K_form__kdefexn_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR17K_form__kdefexn_t, _fx_free_R17K_form__kdefexn_t);
+}
+
+static int _fx_make_rR17K_form__kdefexn_t(
+   struct _fx_R17K_form__kdefexn_t* arg,
+   struct _fx_rR17K_form__kdefexn_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR17K_form__kdefexn_t, _fx_copy_R17K_form__kdefexn_t);
+}
+
+static void _fx_free_T2R9Ast__id_tLR9Ast__id_t(struct _fx_T2R9Ast__id_tLR9Ast__id_t* dst)
+{
+   fx_free_list_simple(&dst->t1);
+}
+
+static void _fx_copy_T2R9Ast__id_tLR9Ast__id_t(
+   struct _fx_T2R9Ast__id_tLR9Ast__id_t* src,
+   struct _fx_T2R9Ast__id_tLR9Ast__id_t* dst)
+{
+   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R9Ast__id_tLR9Ast__id_t(
+   struct _fx_R9Ast__id_t* t0,
+   struct _fx_LR9Ast__id_t_data_t* t1,
+   struct _fx_T2R9Ast__id_tLR9Ast__id_t* fx_result)
+{
+   fx_result->t0 = *t0;
+   FX_COPY_PTR(t1, &fx_result->t1);
+}
+
+static void _fx_free_LT2R9Ast__id_tLR9Ast__id_t(struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tLR9Ast__id_t, _fx_free_T2R9Ast__id_tLR9Ast__id_t);
+}
+
+static int _fx_cons_LT2R9Ast__id_tLR9Ast__id_t(
+   struct _fx_T2R9Ast__id_tLR9Ast__id_t* hd,
+   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tLR9Ast__id_t, _fx_copy_T2R9Ast__id_tLR9Ast__id_t);
+}
+
+static void _fx_free_R21K_form__kdefvariant_t(struct _fx_R21K_form__kdefvariant_t* dst)
+{
+   fx_free_str(&dst->kvar_cname);
+   _fx_free_LN14K_form__ktyp_t(&dst->kvar_targs);
+   _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(&dst->kvar_cases);
+   fx_free_list_simple(&dst->kvar_ctors);
+   _fx_free_LT2R9Ast__id_tLR9Ast__id_t(&dst->kvar_ifaces);
+   fx_free_list_simple(&dst->kvar_scope);
+}
+
+static void _fx_copy_R21K_form__kdefvariant_t(
+   struct _fx_R21K_form__kdefvariant_t* src,
+   struct _fx_R21K_form__kdefvariant_t* dst)
+{
+   dst->kvar_name = src->kvar_name;
+   fx_copy_str(&src->kvar_cname, &dst->kvar_cname);
+   dst->kvar_proto = src->kvar_proto;
+   dst->kvar_props = src->kvar_props;
+   FX_COPY_PTR(src->kvar_targs, &dst->kvar_targs);
+   FX_COPY_PTR(src->kvar_cases, &dst->kvar_cases);
+   FX_COPY_PTR(src->kvar_ctors, &dst->kvar_ctors);
+   dst->kvar_flags = src->kvar_flags;
+   FX_COPY_PTR(src->kvar_ifaces, &dst->kvar_ifaces);
+   FX_COPY_PTR(src->kvar_scope, &dst->kvar_scope);
+   dst->kvar_loc = src->kvar_loc;
+}
+
+static void _fx_make_R21K_form__kdefvariant_t(
+   struct _fx_R9Ast__id_t* r_kvar_name,
+   fx_str_t* r_kvar_cname,
+   struct _fx_R9Ast__id_t* r_kvar_proto,
+   struct _fx_Nt6option1R17K_form__ktprops_t* r_kvar_props,
+   struct _fx_LN14K_form__ktyp_t_data_t* r_kvar_targs,
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* r_kvar_cases,
+   struct _fx_LR9Ast__id_t_data_t* r_kvar_ctors,
+   struct _fx_R16Ast__var_flags_t* r_kvar_flags,
+   struct _fx_LT2R9Ast__id_tLR9Ast__id_t_data_t* r_kvar_ifaces,
+   struct _fx_LN12Ast__scope_t_data_t* r_kvar_scope,
+   struct _fx_R10Ast__loc_t* r_kvar_loc,
+   struct _fx_R21K_form__kdefvariant_t* fx_result)
+{
+   fx_result->kvar_name = *r_kvar_name;
+   fx_copy_str(r_kvar_cname, &fx_result->kvar_cname);
+   fx_result->kvar_proto = *r_kvar_proto;
+   fx_result->kvar_props = *r_kvar_props;
+   FX_COPY_PTR(r_kvar_targs, &fx_result->kvar_targs);
+   FX_COPY_PTR(r_kvar_cases, &fx_result->kvar_cases);
+   FX_COPY_PTR(r_kvar_ctors, &fx_result->kvar_ctors);
+   fx_result->kvar_flags = *r_kvar_flags;
+   FX_COPY_PTR(r_kvar_ifaces, &fx_result->kvar_ifaces);
+   FX_COPY_PTR(r_kvar_scope, &fx_result->kvar_scope);
+   fx_result->kvar_loc = *r_kvar_loc;
+}
+
+static void _fx_free_rR21K_form__kdefvariant_t(struct _fx_rR21K_form__kdefvariant_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR21K_form__kdefvariant_t, _fx_free_R21K_form__kdefvariant_t);
+}
+
+static int _fx_make_rR21K_form__kdefvariant_t(
+   struct _fx_R21K_form__kdefvariant_t* arg,
+   struct _fx_rR21K_form__kdefvariant_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR21K_form__kdefvariant_t, _fx_copy_R21K_form__kdefvariant_t);
+}
+
+static void _fx_free_R17K_form__kdeftyp_t(struct _fx_R17K_form__kdeftyp_t* dst)
+{
+   fx_free_str(&dst->kt_cname);
+   _fx_free_LN14K_form__ktyp_t(&dst->kt_targs);
+   _fx_free_N14K_form__ktyp_t(&dst->kt_typ);
+   fx_free_list_simple(&dst->kt_scope);
+}
+
+static void _fx_copy_R17K_form__kdeftyp_t(struct _fx_R17K_form__kdeftyp_t* src, struct _fx_R17K_form__kdeftyp_t* dst)
+{
+   dst->kt_name = src->kt_name;
+   fx_copy_str(&src->kt_cname, &dst->kt_cname);
+   dst->kt_proto = src->kt_proto;
+   dst->kt_props = src->kt_props;
+   FX_COPY_PTR(src->kt_targs, &dst->kt_targs);
+   FX_COPY_PTR(src->kt_typ, &dst->kt_typ);
+   FX_COPY_PTR(src->kt_scope, &dst->kt_scope);
+   dst->kt_loc = src->kt_loc;
+}
+
+static void _fx_make_R17K_form__kdeftyp_t(
+   struct _fx_R9Ast__id_t* r_kt_name,
+   fx_str_t* r_kt_cname,
+   struct _fx_R9Ast__id_t* r_kt_proto,
+   struct _fx_Nt6option1R17K_form__ktprops_t* r_kt_props,
+   struct _fx_LN14K_form__ktyp_t_data_t* r_kt_targs,
+   struct _fx_N14K_form__ktyp_t_data_t* r_kt_typ,
+   struct _fx_LN12Ast__scope_t_data_t* r_kt_scope,
+   struct _fx_R10Ast__loc_t* r_kt_loc,
+   struct _fx_R17K_form__kdeftyp_t* fx_result)
+{
+   fx_result->kt_name = *r_kt_name;
+   fx_copy_str(r_kt_cname, &fx_result->kt_cname);
+   fx_result->kt_proto = *r_kt_proto;
+   fx_result->kt_props = *r_kt_props;
+   FX_COPY_PTR(r_kt_targs, &fx_result->kt_targs);
+   FX_COPY_PTR(r_kt_typ, &fx_result->kt_typ);
+   FX_COPY_PTR(r_kt_scope, &fx_result->kt_scope);
+   fx_result->kt_loc = *r_kt_loc;
+}
+
+static void _fx_free_rR17K_form__kdeftyp_t(struct _fx_rR17K_form__kdeftyp_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR17K_form__kdeftyp_t, _fx_free_R17K_form__kdeftyp_t);
+}
+
+static int _fx_make_rR17K_form__kdeftyp_t(
+   struct _fx_R17K_form__kdeftyp_t* arg,
+   struct _fx_rR17K_form__kdeftyp_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR17K_form__kdeftyp_t, _fx_copy_R17K_form__kdeftyp_t);
+}
+
+static void _fx_free_R25K_form__kdefclosurevars_t(struct _fx_R25K_form__kdefclosurevars_t* dst)
+{
+   fx_free_str(&dst->kcv_cname);
+   _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(&dst->kcv_freevars);
+   fx_free_list_simple(&dst->kcv_orig_freevars);
+   fx_free_list_simple(&dst->kcv_scope);
+}
+
+static void _fx_copy_R25K_form__kdefclosurevars_t(
+   struct _fx_R25K_form__kdefclosurevars_t* src,
+   struct _fx_R25K_form__kdefclosurevars_t* dst)
+{
+   dst->kcv_name = src->kcv_name;
+   fx_copy_str(&src->kcv_cname, &dst->kcv_cname);
+   FX_COPY_PTR(src->kcv_freevars, &dst->kcv_freevars);
+   FX_COPY_PTR(src->kcv_orig_freevars, &dst->kcv_orig_freevars);
+   FX_COPY_PTR(src->kcv_scope, &dst->kcv_scope);
+   dst->kcv_loc = src->kcv_loc;
+}
+
+static void _fx_make_R25K_form__kdefclosurevars_t(
+   struct _fx_R9Ast__id_t* r_kcv_name,
+   fx_str_t* r_kcv_cname,
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* r_kcv_freevars,
+   struct _fx_LR9Ast__id_t_data_t* r_kcv_orig_freevars,
+   struct _fx_LN12Ast__scope_t_data_t* r_kcv_scope,
+   struct _fx_R10Ast__loc_t* r_kcv_loc,
+   struct _fx_R25K_form__kdefclosurevars_t* fx_result)
+{
+   fx_result->kcv_name = *r_kcv_name;
+   fx_copy_str(r_kcv_cname, &fx_result->kcv_cname);
+   FX_COPY_PTR(r_kcv_freevars, &fx_result->kcv_freevars);
+   FX_COPY_PTR(r_kcv_orig_freevars, &fx_result->kcv_orig_freevars);
+   FX_COPY_PTR(r_kcv_scope, &fx_result->kcv_scope);
+   fx_result->kcv_loc = *r_kcv_loc;
+}
+
+static void _fx_free_rR25K_form__kdefclosurevars_t(struct _fx_rR25K_form__kdefclosurevars_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR25K_form__kdefclosurevars_t, _fx_free_R25K_form__kdefclosurevars_t);
+}
+
+static int _fx_make_rR25K_form__kdefclosurevars_t(
+   struct _fx_R25K_form__kdefclosurevars_t* arg,
+   struct _fx_rR25K_form__kdefclosurevars_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR25K_form__kdefclosurevars_t, _fx_copy_R25K_form__kdefclosurevars_t);
+}
+
 static void _fx_free_N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t** dst)
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
@@ -7035,6 +6578,101 @@ static void _fx_copy_Nt6option1N14C_form__ctyp_t(
    default:
       dst->u = src->u;
    }
+}
+
+static void _fx_free_Nt6option1N14C_form__cexp_t(struct _fx_Nt6option1N14C_form__cexp_t* dst)
+{
+   switch (dst->tag) {
+   case 2:
+      _fx_free_N14C_form__cexp_t(&dst->u.Some); break;
+   default:
+      ;
+   }
+   dst->tag = 0;
+}
+
+static void _fx_copy_Nt6option1N14C_form__cexp_t(
+   struct _fx_Nt6option1N14C_form__cexp_t* src,
+   struct _fx_Nt6option1N14C_form__cexp_t* dst)
+{
+   dst->tag = src->tag;
+   switch (src->tag) {
+   case 2:
+      FX_COPY_PTR(src->u.Some, &dst->u.Some); break;
+   default:
+      dst->u = src->u;
+   }
+}
+
+static void _fx_free_R17C_form__ctprops_t(struct _fx_R17C_form__ctprops_t* dst)
+{
+   fx_free_list_simple(&dst->ctp_make);
+}
+
+static void _fx_copy_R17C_form__ctprops_t(struct _fx_R17C_form__ctprops_t* src, struct _fx_R17C_form__ctprops_t* dst)
+{
+   dst->ctp_scalar = src->ctp_scalar;
+   dst->ctp_complex = src->ctp_complex;
+   dst->ctp_ptr = src->ctp_ptr;
+   dst->ctp_pass_by_ref = src->ctp_pass_by_ref;
+   FX_COPY_PTR(src->ctp_make, &dst->ctp_make);
+   dst->ctp_free = src->ctp_free;
+   dst->ctp_copy = src->ctp_copy;
+}
+
+static void _fx_make_R17C_form__ctprops_t(
+   bool r_ctp_scalar,
+   bool r_ctp_complex,
+   bool r_ctp_ptr,
+   bool r_ctp_pass_by_ref,
+   struct _fx_LR9Ast__id_t_data_t* r_ctp_make,
+   struct _fx_Ta2R9Ast__id_t* r_ctp_free,
+   struct _fx_Ta2R9Ast__id_t* r_ctp_copy,
+   struct _fx_R17C_form__ctprops_t* fx_result)
+{
+   fx_result->ctp_scalar = r_ctp_scalar;
+   fx_result->ctp_complex = r_ctp_complex;
+   fx_result->ctp_ptr = r_ctp_ptr;
+   fx_result->ctp_pass_by_ref = r_ctp_pass_by_ref;
+   FX_COPY_PTR(r_ctp_make, &fx_result->ctp_make);
+   fx_result->ctp_free = *r_ctp_free;
+   fx_result->ctp_copy = *r_ctp_copy;
+}
+
+static void _fx_free_T2R9Ast__id_tN14C_form__ctyp_t(struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* dst)
+{
+   _fx_free_N14C_form__ctyp_t(&dst->t1);
+}
+
+static void _fx_copy_T2R9Ast__id_tN14C_form__ctyp_t(
+   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* src,
+   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* dst)
+{
+   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R9Ast__id_tN14C_form__ctyp_t(
+   struct _fx_R9Ast__id_t* t0,
+   struct _fx_N14C_form__ctyp_t_data_t* t1,
+   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* fx_result)
+{
+   fx_result->t0 = *t0;
+   FX_COPY_PTR(t1, &fx_result->t1);
+}
+
+static void _fx_free_LT2R9Ast__id_tN14C_form__ctyp_t(struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tN14C_form__ctyp_t, _fx_free_T2R9Ast__id_tN14C_form__ctyp_t);
+}
+
+static int _fx_cons_LT2R9Ast__id_tN14C_form__ctyp_t(
+   struct _fx_T2R9Ast__id_tN14C_form__ctyp_t* hd,
+   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tN14C_form__ctyp_t, _fx_copy_T2R9Ast__id_tN14C_form__ctyp_t);
 }
 
 static void _fx_free_T2Nt6option1R9Ast__id_tLT2R9Ast__id_tN14C_form__ctyp_t(
@@ -7515,6 +7153,20 @@ static void _fx_make_T2Nt6option1N14C_form__cexp_tR10Ast__loc_t(
    fx_result->t1 = *t1;
 }
 
+static void _fx_free_LN15C_form__cstmt_t(struct _fx_LN15C_form__cstmt_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LN15C_form__cstmt_t, _fx_free_N15C_form__cstmt_t);
+}
+
+static int _fx_cons_LN15C_form__cstmt_t(
+   struct _fx_N15C_form__cstmt_t_data_t* hd,
+   struct _fx_LN15C_form__cstmt_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LN15C_form__cstmt_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LN15C_form__cstmt_t, FX_COPY_PTR);
+}
+
 static void _fx_free_T2LN15C_form__cstmt_tR10Ast__loc_t(struct _fx_T2LN15C_form__cstmt_tR10Ast__loc_t* dst)
 {
    _fx_free_LN15C_form__cstmt_t(&dst->t0);
@@ -7782,6 +7434,354 @@ static void _fx_make_T4N14C_form__ctyp_tR9Ast__id_tNt6option1N14C_form__cexp_tR1
    fx_result->t1 = *t1;
    _fx_copy_Nt6option1N14C_form__cexp_t(t2, &fx_result->t2);
    fx_result->t3 = *t3;
+}
+
+static int _fx_cons_LN19C_form__carg_attr_t(
+   struct _fx_N19C_form__carg_attr_t* hd,
+   struct _fx_LN19C_form__carg_attr_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LN19C_form__carg_attr_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LN19C_form__carg_attr_t, FX_COPY_SIMPLE_BY_PTR);
+}
+
+static void _fx_free_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
+   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* dst)
+{
+   _fx_free_N14C_form__ctyp_t(&dst->t1);
+   fx_free_list_simple(&dst->t2);
+}
+
+static void _fx_copy_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
+   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* src,
+   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* dst)
+{
+   dst->t0 = src->t0;
+   FX_COPY_PTR(src->t1, &dst->t1);
+   FX_COPY_PTR(src->t2, &dst->t2);
+}
+
+static void _fx_make_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
+   struct _fx_R9Ast__id_t* t0,
+   struct _fx_N14C_form__ctyp_t_data_t* t1,
+   struct _fx_LN19C_form__carg_attr_t_data_t* t2,
+   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* fx_result)
+{
+   fx_result->t0 = *t0;
+   FX_COPY_PTR(t1, &fx_result->t1);
+   FX_COPY_PTR(t2, &fx_result->t2);
+}
+
+static void _fx_free_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
+   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t,
+      _fx_free_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t);
+}
+
+static int _fx_cons_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(
+   struct _fx_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t* hd,
+   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t,
+      _fx_copy_T3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t);
+}
+
+static void _fx_free_R17C_form__cdeffun_t(struct _fx_R17C_form__cdeffun_t* dst)
+{
+   fx_free_str(&dst->cf_cname);
+   _fx_free_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t(&dst->cf_args);
+   _fx_free_N14C_form__ctyp_t(&dst->cf_rt);
+   _fx_free_LN15C_form__cstmt_t(&dst->cf_body);
+   fx_free_list_simple(&dst->cf_scope);
+}
+
+static void _fx_copy_R17C_form__cdeffun_t(struct _fx_R17C_form__cdeffun_t* src, struct _fx_R17C_form__cdeffun_t* dst)
+{
+   dst->cf_name = src->cf_name;
+   fx_copy_str(&src->cf_cname, &dst->cf_cname);
+   FX_COPY_PTR(src->cf_args, &dst->cf_args);
+   FX_COPY_PTR(src->cf_rt, &dst->cf_rt);
+   FX_COPY_PTR(src->cf_body, &dst->cf_body);
+   dst->cf_flags = src->cf_flags;
+   FX_COPY_PTR(src->cf_scope, &dst->cf_scope);
+   dst->cf_loc = src->cf_loc;
+}
+
+static void _fx_make_R17C_form__cdeffun_t(
+   struct _fx_R9Ast__id_t* r_cf_name,
+   fx_str_t* r_cf_cname,
+   struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* r_cf_args,
+   struct _fx_N14C_form__ctyp_t_data_t* r_cf_rt,
+   struct _fx_LN15C_form__cstmt_t_data_t* r_cf_body,
+   struct _fx_R16Ast__fun_flags_t* r_cf_flags,
+   struct _fx_LN12Ast__scope_t_data_t* r_cf_scope,
+   struct _fx_R10Ast__loc_t* r_cf_loc,
+   struct _fx_R17C_form__cdeffun_t* fx_result)
+{
+   fx_result->cf_name = *r_cf_name;
+   fx_copy_str(r_cf_cname, &fx_result->cf_cname);
+   FX_COPY_PTR(r_cf_args, &fx_result->cf_args);
+   FX_COPY_PTR(r_cf_rt, &fx_result->cf_rt);
+   FX_COPY_PTR(r_cf_body, &fx_result->cf_body);
+   fx_result->cf_flags = *r_cf_flags;
+   FX_COPY_PTR(r_cf_scope, &fx_result->cf_scope);
+   fx_result->cf_loc = *r_cf_loc;
+}
+
+static void _fx_free_rR17C_form__cdeffun_t(struct _fx_rR17C_form__cdeffun_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR17C_form__cdeffun_t, _fx_free_R17C_form__cdeffun_t);
+}
+
+static int _fx_make_rR17C_form__cdeffun_t(
+   struct _fx_R17C_form__cdeffun_t* arg,
+   struct _fx_rR17C_form__cdeffun_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR17C_form__cdeffun_t, _fx_copy_R17C_form__cdeffun_t);
+}
+
+static void _fx_free_R17C_form__cdeftyp_t(struct _fx_R17C_form__cdeftyp_t* dst)
+{
+   _fx_free_N14C_form__ctyp_t(&dst->ct_typ);
+   fx_free_str(&dst->ct_cname);
+   _fx_free_R17C_form__ctprops_t(&dst->ct_props);
+   fx_free_list_simple(&dst->ct_ifaces);
+   fx_free_list_simple(&dst->ct_scope);
+}
+
+static void _fx_copy_R17C_form__cdeftyp_t(struct _fx_R17C_form__cdeftyp_t* src, struct _fx_R17C_form__cdeftyp_t* dst)
+{
+   dst->ct_name = src->ct_name;
+   FX_COPY_PTR(src->ct_typ, &dst->ct_typ);
+   fx_copy_str(&src->ct_cname, &dst->ct_cname);
+   _fx_copy_R17C_form__ctprops_t(&src->ct_props, &dst->ct_props);
+   dst->ct_data_start = src->ct_data_start;
+   dst->ct_enum = src->ct_enum;
+   FX_COPY_PTR(src->ct_ifaces, &dst->ct_ifaces);
+   dst->ct_ifaces_id = src->ct_ifaces_id;
+   FX_COPY_PTR(src->ct_scope, &dst->ct_scope);
+   dst->ct_loc = src->ct_loc;
+}
+
+static void _fx_make_R17C_form__cdeftyp_t(
+   struct _fx_R9Ast__id_t* r_ct_name,
+   struct _fx_N14C_form__ctyp_t_data_t* r_ct_typ,
+   fx_str_t* r_ct_cname,
+   struct _fx_R17C_form__ctprops_t* r_ct_props,
+   int_ r_ct_data_start,
+   struct _fx_R9Ast__id_t* r_ct_enum,
+   struct _fx_LR9Ast__id_t_data_t* r_ct_ifaces,
+   struct _fx_R9Ast__id_t* r_ct_ifaces_id,
+   struct _fx_LN12Ast__scope_t_data_t* r_ct_scope,
+   struct _fx_R10Ast__loc_t* r_ct_loc,
+   struct _fx_R17C_form__cdeftyp_t* fx_result)
+{
+   fx_result->ct_name = *r_ct_name;
+   FX_COPY_PTR(r_ct_typ, &fx_result->ct_typ);
+   fx_copy_str(r_ct_cname, &fx_result->ct_cname);
+   _fx_copy_R17C_form__ctprops_t(r_ct_props, &fx_result->ct_props);
+   fx_result->ct_data_start = r_ct_data_start;
+   fx_result->ct_enum = *r_ct_enum;
+   FX_COPY_PTR(r_ct_ifaces, &fx_result->ct_ifaces);
+   fx_result->ct_ifaces_id = *r_ct_ifaces_id;
+   FX_COPY_PTR(r_ct_scope, &fx_result->ct_scope);
+   fx_result->ct_loc = *r_ct_loc;
+}
+
+static void _fx_free_rR17C_form__cdeftyp_t(struct _fx_rR17C_form__cdeftyp_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR17C_form__cdeftyp_t, _fx_free_R17C_form__cdeftyp_t);
+}
+
+static int _fx_make_rR17C_form__cdeftyp_t(
+   struct _fx_R17C_form__cdeftyp_t* arg,
+   struct _fx_rR17C_form__cdeftyp_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR17C_form__cdeftyp_t, _fx_copy_R17C_form__cdeftyp_t);
+}
+
+static void _fx_free_T2R9Ast__id_tNt6option1N14C_form__cexp_t(struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* dst)
+{
+   _fx_free_Nt6option1N14C_form__cexp_t(&dst->t1);
+}
+
+static void _fx_copy_T2R9Ast__id_tNt6option1N14C_form__cexp_t(
+   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* src,
+   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* dst)
+{
+   dst->t0 = src->t0;
+   _fx_copy_Nt6option1N14C_form__cexp_t(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R9Ast__id_tNt6option1N14C_form__cexp_t(
+   struct _fx_R9Ast__id_t* t0,
+   struct _fx_Nt6option1N14C_form__cexp_t* t1,
+   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* fx_result)
+{
+   fx_result->t0 = *t0;
+   _fx_copy_Nt6option1N14C_form__cexp_t(t1, &fx_result->t1);
+}
+
+static void _fx_free_LT2R9Ast__id_tNt6option1N14C_form__cexp_t(
+   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t, _fx_free_T2R9Ast__id_tNt6option1N14C_form__cexp_t);
+}
+
+static int _fx_cons_LT2R9Ast__id_tNt6option1N14C_form__cexp_t(
+   struct _fx_T2R9Ast__id_tNt6option1N14C_form__cexp_t* hd,
+   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t, _fx_copy_T2R9Ast__id_tNt6option1N14C_form__cexp_t);
+}
+
+static void _fx_free_R18C_form__cdefenum_t(struct _fx_R18C_form__cdefenum_t* dst)
+{
+   _fx_free_LT2R9Ast__id_tNt6option1N14C_form__cexp_t(&dst->cenum_members);
+   fx_free_str(&dst->cenum_cname);
+   fx_free_list_simple(&dst->cenum_scope);
+}
+
+static void _fx_copy_R18C_form__cdefenum_t(struct _fx_R18C_form__cdefenum_t* src, struct _fx_R18C_form__cdefenum_t* dst)
+{
+   dst->cenum_name = src->cenum_name;
+   FX_COPY_PTR(src->cenum_members, &dst->cenum_members);
+   fx_copy_str(&src->cenum_cname, &dst->cenum_cname);
+   FX_COPY_PTR(src->cenum_scope, &dst->cenum_scope);
+   dst->cenum_loc = src->cenum_loc;
+}
+
+static void _fx_make_R18C_form__cdefenum_t(
+   struct _fx_R9Ast__id_t* r_cenum_name,
+   struct _fx_LT2R9Ast__id_tNt6option1N14C_form__cexp_t_data_t* r_cenum_members,
+   fx_str_t* r_cenum_cname,
+   struct _fx_LN12Ast__scope_t_data_t* r_cenum_scope,
+   struct _fx_R10Ast__loc_t* r_cenum_loc,
+   struct _fx_R18C_form__cdefenum_t* fx_result)
+{
+   fx_result->cenum_name = *r_cenum_name;
+   FX_COPY_PTR(r_cenum_members, &fx_result->cenum_members);
+   fx_copy_str(r_cenum_cname, &fx_result->cenum_cname);
+   FX_COPY_PTR(r_cenum_scope, &fx_result->cenum_scope);
+   fx_result->cenum_loc = *r_cenum_loc;
+}
+
+static void _fx_free_rR18C_form__cdefenum_t(struct _fx_rR18C_form__cdefenum_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR18C_form__cdefenum_t, _fx_free_R18C_form__cdefenum_t);
+}
+
+static int _fx_make_rR18C_form__cdefenum_t(
+   struct _fx_R18C_form__cdefenum_t* arg,
+   struct _fx_rR18C_form__cdefenum_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR18C_form__cdefenum_t, _fx_copy_R18C_form__cdefenum_t);
+}
+
+static void _fx_free_R23C_form__cdefinterface_t(struct _fx_R23C_form__cdefinterface_t* dst)
+{
+   fx_free_str(&dst->ci_cname);
+   _fx_free_LT2R9Ast__id_tN14C_form__ctyp_t(&dst->ci_all_methods);
+   fx_free_list_simple(&dst->ci_scope);
+}
+
+static void _fx_copy_R23C_form__cdefinterface_t(
+   struct _fx_R23C_form__cdefinterface_t* src,
+   struct _fx_R23C_form__cdefinterface_t* dst)
+{
+   dst->ci_name = src->ci_name;
+   fx_copy_str(&src->ci_cname, &dst->ci_cname);
+   dst->ci_id = src->ci_id;
+   dst->ci_vtbl = src->ci_vtbl;
+   dst->ci_base = src->ci_base;
+   FX_COPY_PTR(src->ci_all_methods, &dst->ci_all_methods);
+   FX_COPY_PTR(src->ci_scope, &dst->ci_scope);
+   dst->ci_loc = src->ci_loc;
+}
+
+static void _fx_make_R23C_form__cdefinterface_t(
+   struct _fx_R9Ast__id_t* r_ci_name,
+   fx_str_t* r_ci_cname,
+   struct _fx_R9Ast__id_t* r_ci_id,
+   struct _fx_R9Ast__id_t* r_ci_vtbl,
+   struct _fx_R9Ast__id_t* r_ci_base,
+   struct _fx_LT2R9Ast__id_tN14C_form__ctyp_t_data_t* r_ci_all_methods,
+   struct _fx_LN12Ast__scope_t_data_t* r_ci_scope,
+   struct _fx_R10Ast__loc_t* r_ci_loc,
+   struct _fx_R23C_form__cdefinterface_t* fx_result)
+{
+   fx_result->ci_name = *r_ci_name;
+   fx_copy_str(r_ci_cname, &fx_result->ci_cname);
+   fx_result->ci_id = *r_ci_id;
+   fx_result->ci_vtbl = *r_ci_vtbl;
+   fx_result->ci_base = *r_ci_base;
+   FX_COPY_PTR(r_ci_all_methods, &fx_result->ci_all_methods);
+   FX_COPY_PTR(r_ci_scope, &fx_result->ci_scope);
+   fx_result->ci_loc = *r_ci_loc;
+}
+
+static void _fx_free_rR23C_form__cdefinterface_t(struct _fx_rR23C_form__cdefinterface_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR23C_form__cdefinterface_t, _fx_free_R23C_form__cdefinterface_t);
+}
+
+static int _fx_make_rR23C_form__cdefinterface_t(
+   struct _fx_R23C_form__cdefinterface_t* arg,
+   struct _fx_rR23C_form__cdefinterface_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR23C_form__cdefinterface_t, _fx_copy_R23C_form__cdefinterface_t);
+}
+
+static void _fx_free_R19C_form__cdefmacro_t(struct _fx_R19C_form__cdefmacro_t* dst)
+{
+   fx_free_str(&dst->cm_cname);
+   fx_free_list_simple(&dst->cm_args);
+   _fx_free_LN15C_form__cstmt_t(&dst->cm_body);
+   fx_free_list_simple(&dst->cm_scope);
+}
+
+static void _fx_copy_R19C_form__cdefmacro_t(struct _fx_R19C_form__cdefmacro_t* src, struct _fx_R19C_form__cdefmacro_t* dst)
+{
+   dst->cm_name = src->cm_name;
+   fx_copy_str(&src->cm_cname, &dst->cm_cname);
+   FX_COPY_PTR(src->cm_args, &dst->cm_args);
+   FX_COPY_PTR(src->cm_body, &dst->cm_body);
+   FX_COPY_PTR(src->cm_scope, &dst->cm_scope);
+   dst->cm_loc = src->cm_loc;
+}
+
+static void _fx_make_R19C_form__cdefmacro_t(
+   struct _fx_R9Ast__id_t* r_cm_name,
+   fx_str_t* r_cm_cname,
+   struct _fx_LR9Ast__id_t_data_t* r_cm_args,
+   struct _fx_LN15C_form__cstmt_t_data_t* r_cm_body,
+   struct _fx_LN12Ast__scope_t_data_t* r_cm_scope,
+   struct _fx_R10Ast__loc_t* r_cm_loc,
+   struct _fx_R19C_form__cdefmacro_t* fx_result)
+{
+   fx_result->cm_name = *r_cm_name;
+   fx_copy_str(r_cm_cname, &fx_result->cm_cname);
+   FX_COPY_PTR(r_cm_args, &fx_result->cm_args);
+   FX_COPY_PTR(r_cm_body, &fx_result->cm_body);
+   FX_COPY_PTR(r_cm_scope, &fx_result->cm_scope);
+   fx_result->cm_loc = *r_cm_loc;
+}
+
+static void _fx_free_rR19C_form__cdefmacro_t(struct _fx_rR19C_form__cdefmacro_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rR19C_form__cdefmacro_t, _fx_free_R19C_form__cdefmacro_t);
+}
+
+static int _fx_make_rR19C_form__cdefmacro_t(
+   struct _fx_R19C_form__cdefmacro_t* arg,
+   struct _fx_rR19C_form__cdefmacro_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rR19C_form__cdefmacro_t, _fx_copy_R19C_form__cdefmacro_t);
 }
 
 static void _fx_free_T2N14C_form__cexp_tLN15C_form__cstmt_t(struct _fx_T2N14C_form__cexp_tLN15C_form__cstmt_t* dst)
@@ -8315,16 +8315,16 @@ bool _fx_g21Compiler__iscolorterm;
 fx_str_t _fx_g15Compiler__error = {0};
 FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv);
 
-FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep, struct _fx_LS_data_t* strs, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3SysFM9colortermB0(bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_R18Options__options_t _fx_g12Options__opt)
-FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M8FilenameFM16remove_extensionS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM16remove_extensionS1S(fx_str_t* path, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv);
 
@@ -8344,14 +8344,14 @@ FX_EXTERN_C void _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(
    struct _fx_N10Ast__lit_t* arg0,
    struct _fx_N14Lexer__token_t* fx_result);
 
-FX_EXTERN_C int _fx_M3SysFM7getpathLS1S(fx_str_t* name_0, struct _fx_LS_data_t** fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3SysFM7getpathLS1S(fx_str_t* name, struct _fx_LS_data_t** fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_LS_data_t* _fx_g9Sys__argv)
-FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir, fx_str_t* fname, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M8FilenameFM7dirnameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM7dirnameS1S(fx_str_t* path, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(int_ _fx_g15__ficus_major__)
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
@@ -8359,30 +8359,30 @@ FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
 FX_EXTERN_C_VAL(int_ _fx_g15__ficus_minor__)
 FX_EXTERN_C int _fx_M8FilenameFM6existsB1S(fx_str_t* name, bool* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s_0, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11find_modulei2RM4id_tS(
-   struct _fx_R9Ast__id_t* mname_0,
-   fx_str_t* mfname_0,
+   struct _fx_R9Ast__id_t* mname,
+   fx_str_t* mfname,
    int_* fx_result,
    void* fx_fv);
 
 FX_EXTERN_C_VAL(fx_arr_t _fx_g16Ast__all_modules)
 FX_EXTERN_C int _fx_M6ParserFM5parseB3iLN14Lexer__token_tLS(
-   int_ m_idx_0,
-   struct _fx_LN14Lexer__token_t_data_t* preamble_0,
-   struct _fx_LS_data_t* inc_dirs_0,
+   int_ m_idx,
+   struct _fx_LN14Lexer__token_t_data_t* preamble,
+   struct _fx_LS_data_t* inc_dirs,
    bool* fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM10get_moduleN16Ast__defmodule_t1i(
-   int_ m_0,
+   int_ m,
    struct _fx_N16Ast__defmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C_VAL(int _FX_EXN_E22LexerUtils__LexerError)
 FX_EXTERN_C_VAL(int _FX_EXN_E18Parser__ParseError)
-FX_EXTERN_C int _fx_M3AstFM6stringS1RM5loc_t(struct _fx_R10Ast__loc_t* loc_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1RM5loc_t(struct _fx_R10Ast__loc_t* loc, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t* a, fx_str_t* fx_result, void* fx_fv);
 
@@ -8394,19 +8394,19 @@ static int _fx_M8CompilerFM3dfsv5iLiA1LiA1BrLi(
    struct _fx_rLi_data_t* result_ref_0,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM15get_module_nameRM4id_t1i(int_ m_0, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM15get_module_nameRM4id_t1i(int_ m, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
 FX_EXTERN_C int _fx_M3SysFM5mkdirB2Si(fx_str_t* name, int_ permissions, bool* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(bool _fx_g10Sys__win32)
-FX_EXTERN_C int _fx_M8K_mangleFM12mangle_mnameS1S(fx_str_t* m_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8K_mangleFM12mangle_mnameS1S(fx_str_t* m, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M4K_ppFM16pp_top_to_stringS1LN14K_form__kexp_t(
-   struct _fx_LN14K_form__kexp_t_data_t* code_0,
+   struct _fx_LN14K_form__kexp_t_data_t* code,
    fx_str_t* fx_result,
    void* fx_fv);
 
@@ -8418,7 +8418,7 @@ FX_EXTERN_C int _fx_M4FileFM10write_utf8v2SS(fx_str_t* fname, fx_str_t* text, vo
 
 FX_EXTERN_C int _fx_M3SysFM6removev1S(fx_str_t* name, void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM10pr_verbosev1S(fx_str_t* str_0, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM10pr_verbosev1S(fx_str_t* str, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6K_formFM9KExpCCodeN14K_form__kexp_t2ST2N14K_form__ktyp_tR10Ast__loc_t(
    fx_str_t* arg0,
@@ -8427,131 +8427,131 @@ FX_EXTERN_C int _fx_M6K_formFM9KExpCCodeN14K_form__kexp_t2ST2N14K_form__ktyp_tR1
 
 FX_EXTERN_C_VAL(struct _fx_LE_data_t* _fx_g21Ast__all_compile_errs)
 FX_EXTERN_C int _fx_M15K_remove_unusedFM13remove_unusedLR17K_form__kmodule_t2LR17K_form__kmodule_tB(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
-   bool initial_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
+   bool initial,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M10K_annotateFM14annotate_typesLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M13K_copy_n_skipFM9copy_someLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M15K_remove_unusedFM21remove_unused_by_mainLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M8K_mangleFM10mangle_allLR17K_form__kmodule_t2LR17K_form__kmodule_tB(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
-   bool final_mode_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
+   bool final_mode,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M8K_mangleFM13mangle_localsLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M8K_mangleFM12demangle_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M13K_lift_simpleFM4liftLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M9K_tailrecFM17tailrec2loops_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M10K_loop_invFM18move_loop_invs_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M13K_optim_matopFM13optimize_gemmLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M8K_inlineFM11inline_someLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M9K_flattenFM11flatten_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M12K_fuse_loopsFM14fuse_loops_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M10K_fast_idxFM23optimize_idx_checks_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M15K_cfold_dealiasFM13cfold_dealiasLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M10K_fast_idxFM23linearize_arrays_accessLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M18K_nothrow_wrappersFM25make_wrappers_for_nothrowLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M10K_freevarsFM21mutable_freevars2refsLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M11K_declosureFM13declosure_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M6K_liftFM8lift_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M8K_inlineFM24find_recursive_funcs_allLR17K_form__kmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_FPS1B _fx_g11Sys__osname)
 FX_EXTERN_C_VAL(struct _fx_Nt10Hashset__t1S_data_t* _fx_g19Ast__all_c_inc_dirs)
-FX_EXTERN_C int _fx_M3SysFM6getenvS2SS(fx_str_t* name_0, fx_str_t* defval_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3SysFM6getenvS2SS(fx_str_t* name, fx_str_t* defval, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(bool _fx_g9Sys__unix)
 FX_EXTERN_C int _fx_M3SysFM6getenvS1S(fx_str_t* name, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
 FX_EXTERN_C int _fx_M4C_ppFM20pprint_top_to_stringS1LN15C_form__cstmt_t(
-   struct _fx_LN15C_form__cstmt_t_data_t* code_0,
+   struct _fx_LN15C_form__cstmt_t_data_t* code,
    fx_str_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname_0, fx_str_t* mode_0, struct _fx_R7File__t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname, fx_str_t* mode, struct _fx_R7File__t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv);
 
@@ -8563,7 +8563,7 @@ FX_EXTERN_C int _fx_M3AstFM8init_allv0(void* fx_fv);
 
 FX_EXTERN_C_VAL(fx_exn_t _fx_E30Compiler__CumulativeParseErrorv)
 FX_EXTERN_C_VAL(struct _fx_Li_data_t* _fx_g23Ast__all_modules_sorted)
-FX_EXTERN_C int _fx_M6Ast_ppFM10pprint_modv1N16Ast__defmodule_t(struct _fx_N16Ast__defmodule_t_data_t* dm_0, void* fx_fv);
+FX_EXTERN_C int _fx_M6Ast_ppFM10pprint_modv1N16Ast__defmodule_t(struct _fx_N16Ast__defmodule_t_data_t* dm, void* fx_fv);
 
 FX_EXTERN_C int _fx_M13Ast_typecheckFM9check_modv1i(int_ m_idx_0, void* fx_fv);
 
@@ -8574,28 +8574,28 @@ FX_EXTERN_C int _fx_M11K_normalizeFM21normalize_all_modulesLR17K_form__kmodule_t
    struct _fx_LR17K_form__kmodule_t_data_t** fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M4K_ppFM8pp_kmodsv1LR17K_form__kmodule_t(struct _fx_LR17K_form__kmodule_t_data_t* kmods_0, void* fx_fv);
+FX_EXTERN_C int _fx_M4K_ppFM8pp_kmodsv1LR17K_form__kmodule_t(struct _fx_LR17K_form__kmodule_t_data_t* kmods, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6C_formFM13init_all_idcsv0(void* fx_fv);
 
 FX_EXTERN_C int _fx_M9C_gen_stdFM14init_std_namesv0(void* fx_fv);
 
 FX_EXTERN_C int _fx_M10C_gen_codeFM13gen_ccode_allLR17C_form__cmodule_t1LR17K_form__kmodule_t(
-   struct _fx_LR17K_form__kmodule_t_data_t* kmods_0,
+   struct _fx_LR17K_form__kmodule_t_data_t* kmods,
    struct _fx_LR17C_form__cmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M20C_post_rename_localsFM13rename_localsLR17C_form__cmodule_t1LR17C_form__cmodule_t(
-   struct _fx_LR17C_form__cmodule_t_data_t* cmods_0,
+   struct _fx_LR17C_form__cmodule_t_data_t* cmods,
    struct _fx_LR17C_form__cmodule_t_data_t** fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M19C_post_adjust_declsFM12adjust_declsR17C_form__cmodule_t1R17C_form__cmodule_t(
-   struct _fx_R17C_form__cmodule_t* cmod_0,
+   struct _fx_R17C_form__cmodule_t* cmod,
    struct _fx_R17C_form__cmodule_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM17print_compile_errv1E(fx_exn_t* err_0, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM17print_compile_errv1E(fx_exn_t* err, void* fx_fv);
 
 FX_EXTERN_C_VAL(int _FX_EXN_E4Fail)
 FX_EXTERN_C_VAL(int _FX_EXN_E17Ast__CompileError)

@@ -89,6 +89,8 @@ val lname = "output"
 val ocv_outputs = [lname]
 val temp_outputs = [for i <- [lname] {(i, NN.Ast.empty_tensor())}]
 
+type nn_output_t = (string, NN.Ast.nntensor_t)
+
 for imgname@i <- images {
     println(f"starting reading model '{mname}'")
     val img = cv.imread(imgname)
@@ -105,11 +107,16 @@ for imgname@i <- images {
     val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
     sort(tprobs, (>))
     val inp_ = NN.Ast.make_tensor(inp)
-    val outputs =
-        try NN.Inference.run(model, [("", inp_)], outputs=temp_outputs) catch {
-        | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
-        | Fail msg => println(f"failure: '{msg}'"); []
-        }
+    var outputs: nn_output_t [] = []
+    val (gmean, mintime) = Sys.timeit(
+        fun () {
+            outputs =
+            try NN.Inference.run(model, [("", inp_)], outputs=temp_outputs) catch {
+            | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
+            | Fail msg => println(f"failure: '{msg}'"); []
+            }
+        }, iterations=5, batch=1)
+    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}")
     for t_out@i <- temp_outputs {
         println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
     }

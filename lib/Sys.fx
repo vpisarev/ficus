@@ -84,17 +84,18 @@ fun arguments() = argv.tl()
 @pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
 @pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }
 
-fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): double
+fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): (double, double)
 {
-    val fold gmean = 0. for i <- 0:iterations {
+    val fold gmean = 0., mintime = 0. for i <- 0:iterations {
         val t = tick_count()
         for j <- 0:batch {f()}
         val t = tick_count() - t
         val t = t/tick_frequency()
-        val t = if iterations > 1 { log(max(t, 1e-16)) } else {t}
-        gmean + t
+        val log_t = if iterations > 1 { log(max(t, 1e-16)) } else {t}
+        (gmean + log_t, if i == 0 {t} else {min(mintime, t)})
     }
-    if iterations > 1 { exp(gmean/iterations)/batch } else {gmean/batch}
+    val gmean = if iterations > 1 { exp(gmean/iterations)/batch } else {gmean/batch}
+    (gmean, mintime/batch)
 }
 
 fun remove(name: string): void

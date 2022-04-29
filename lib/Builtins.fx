@@ -63,19 +63,40 @@ fun isnone(x: 't?) { | Some _ => false | _ => true }
 fun issome(x: 't?) { | Some _ => true | _ => false }
 
 fun __is_scalar__(x: 't) = false
-fun __is_scalar__(x: int) = true
-fun __is_scalar__(x: int8) = true
-fun __is_scalar__(x: uint8) = true
-fun __is_scalar__(x: int16) = true
-fun __is_scalar__(x: uint16) = true
-fun __is_scalar__(x: int32) = true
-fun __is_scalar__(x: uint32) = true
-fun __is_scalar__(x: int64) = true
-fun __is_scalar__(x: uint64) = true
-fun __is_scalar__(x: float) = true
-fun __is_scalar__(x: double) = true
-fun __is_scalar__(x: char) = true
-fun __is_scalar__(x: bool) = true
+@inline fun __is_scalar__(x: int) = true
+@inline fun __is_scalar__(x: int8) = true
+@inline fun __is_scalar__(x: uint8) = true
+@inline fun __is_scalar__(x: int16) = true
+@inline fun __is_scalar__(x: uint16) = true
+@inline fun __is_scalar__(x: int32) = true
+@inline fun __is_scalar__(x: uint32) = true
+@inline fun __is_scalar__(x: int64) = true
+@inline fun __is_scalar__(x: uint64) = true
+@inline fun __is_scalar__(x: float) = true
+@inline fun __is_scalar__(x: double) = true
+@inline fun __is_scalar__(x: char) = true
+@inline fun __is_scalar__(x: bool) = true
+
+@inline fun __min__(x: int8) = -128i8
+@inline fun __max__(x: int8) = 127i8
+@inline fun __min__(x: uint8) = 0u8
+@inline fun __max__(x: uint8) = 255u8
+@inline fun __min__(x: int16) = -32768i16
+@inline fun __max__(x: int16) = 32767i16
+@inline fun __min__(x: uint16) = 0u16
+@inline fun __max__(x: uint16) = 65535u16
+@inline fun __min__(x: int32) = -2147483648i32
+@inline fun __max__(x: int32) = 2147483647i32
+@inline fun __min__(x: uint32) = 0u32
+@inline fun __max__(x: uint32) = 4294967295u32
+@inline fun __min__(x: int64) = -9223372036854775807i64 // -922....808 causes a warning
+@inline fun __max__(x: int64) = 9223372036854775807i64
+@inline fun __min__(x: uint64) = 0u64
+@inline fun __max__(x: uint64) = 18446744073709551615u64
+@inline fun __min__(x: float) = -3.402823466e+38f
+@inline fun __max__(x: float) = 3.402823466e+38f
+@inline fun __min__(x: double) = -1.797693134862315e+308
+@inline fun __max__(x: double) = 1.797693134862315e+308
 
 operator != (a: 't, b: 't): bool = !(a == b)
 operator < (a: 't, b: 't): bool = a <=> b < 0

@@ -147,6 +147,10 @@ class nnop_t =
         dilations: int []
         group: int
         conv_data: cptr ref
+        fused_batch_norm: nnop_t?
+        non_const_batch_norm: bool
+        fused_activ: nnop_t?
+        non_const_activ: bool
         t_inp: int; t_weights: int; t_bias: int; t_out: int }
     | NN_ConvTranspose: {
         name: string
@@ -490,6 +494,23 @@ fun float(d: nndata_t)
     | NN_Data_Bool(elems) => float(elems)
 }
 
+fun float_scalar_or(d: nndata_t, defval: float)
+{
+    | NN_Data_Empty => defval
+    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
+    | NN_Data_I8(elems) => float(elems[0])
+    | NN_Data_U8(elems) => float(elems[0])
+    | NN_Data_I16(elems) => float(elems[0])
+    | NN_Data_U16(elems) => float(elems[0])
+    | NN_Data_I32(elems) => float(elems[0])
+    | NN_Data_U32(elems) => float(elems[0])
+    | NN_Data_I64(elems) => float(elems[0])
+    | NN_Data_U64(elems) => float(elems[0])
+    | NN_Data_FP32(elems) => elems[0]
+    | NN_Data_FP64(elems) => float(elems[0])
+    | NN_Data_Bool(elems) => float(elems[0])
+}
+
 fun double(d: nndata_t)
 {
     | NN_Data_Empty
@@ -797,8 +818,11 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string)
     | NN_ConstantOfShape {name, value, t_shape, t_out} =>
         op2str(name, "ConstantOfShape", f"value={tensor2str(net, value, true)}",
             t2str(net, [("t_shape", t_shape), ("t_out", t_out)]), indent)
-    | NN_Conv {name, kernel_shape, pads, strides, dilations, group, t_inp, t_weights, t_bias, t_out} =>
-        op2str(name, "Conv", f"kernel_shape={kernel_shape}, \
+    | NN_Conv {name, kernel_shape, pads, strides, dilations, group,
+        fused_batch_norm, fused_activ, t_inp, t_weights, t_bias, t_out} =>
+        val bnorm_name = match fused_batch_norm {| Some(NN_BatchNorm _) => " + BatchNorm" | _ => ""}
+        val activ_name = match fused_activ {| Some(activ) => " + " + activ.name().1 | _ => ""}
+        op2str(name, "Conv" + bnorm_name + activ_name, f"kernel_shape={kernel_shape}, \
             pads={pads}, strides={strides}, dilations={dilations}, group={group}",
             t2str(net, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
     | NN_ConvTranspose {name, kernel_shape, pads, strides, dilations, group,

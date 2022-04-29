@@ -20,6 +20,34 @@ TEST("basic.myops.mad_ccode", fun()
     EXPECT_EQ(`myops.mad(1, 2, 3)`, 5)
 })
 
+TEST("basic.limits", fun()
+{
+    EXPECT_EQ(__min__(0i8), -128i8)
+    EXPECT_EQ(__max__(0i8), 127i8)
+    EXPECT_EQ(__min__(0u8), 0u8)
+    EXPECT_EQ(__max__(0u8), 255u8)
+    EXPECT_EQ(__min__(0i16), -32768i16)
+    EXPECT_EQ(__max__(0i16), 32767i16)
+    EXPECT_EQ(__min__(0u16), 0u16)
+    EXPECT_EQ(__max__(0u16), 65535u16)
+    EXPECT_EQ(__min__(0i32), -2147483648i32)
+    EXPECT_EQ(__max__(0i32), 2147483647i32)
+    EXPECT_EQ(__min__(0u32), 0u32)
+    EXPECT_EQ(__max__(0u32), 4294967295u32)
+    EXPECT_EQ(__min__(0i64), -9223372036854775807L)
+    EXPECT_EQ(__max__(0i64), 9223372036854775807L)
+    EXPECT_EQ(__min__(0u64), 0u64)
+    EXPECT_EQ(__max__(0u64), 18446744073709551615UL)
+    EXPECT_EQ(__min__(0.f), -FLT_MAX)
+    EXPECT_LT(__min__(0.f), -3.4e38f)
+    EXPECT_EQ(__max__(0.f), FLT_MAX)
+    EXPECT_GT(__max__(0.f), 3.4e38f)
+    EXPECT_EQ(__min__(0.), -DBL_MAX)
+    EXPECT_LT(__min__(0.), -1.7e308)
+    EXPECT_EQ(__max__(0.), DBL_MAX)
+    EXPECT_GT(__max__(0.), 1.7e308)
+})
+
 TEST("basic.fib", fun()
 {
     fun fib(n: int) {
@@ -118,6 +146,11 @@ TEST("basic.find", fun()
         | BreakWith(i) => i
         }
     }
+
+    fun find_return(a: 't [], f: 't->bool): int {
+        for x@i <- a {if f(x) {return i}}
+        return -1
+    }
     val a=[ 0, 1, 2, -10, 7, -3 ]
     fun is_negative(x: int) {x < 0}
     fun is_five(x: int) {x == 5}
@@ -125,9 +158,11 @@ TEST("basic.find", fun()
     EXPECT_EQ(`find_iterative(a, is_negative)`, 3)
     EXPECT_EQ(`find_fold(a, is_negative)`, 3)
     EXPECT_EQ(`find_exn(a, is_negative)`, 3)
+    EXPECT_EQ(`find_return(a, is_negative)`, 3)
     EXPECT_EQ(`find_iterative(a, is_five)`, -1)
     EXPECT_EQ(`find_fold(a, is_five)`, -1)
     EXPECT_EQ(`find_exn(a, is_five)`, -1)
+    EXPECT_EQ(`find_return(a, is_five)`, -1)
 })
 
 TEST("basic.make_empty_list", fun()

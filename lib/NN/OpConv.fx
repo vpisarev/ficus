@@ -4,6 +4,10 @@
 */
 import Ast
 
+type activ_func_t =
+    | ACTIV_NONE | ACTIV_RELU | ACTIV_CLIP | ACTIV_LRELU
+    | ACTIV_PRELU | ACTIV_SIGMOID | ACTIV_TANH | ACTIV_MISH
+
 @ccode {
 #include <assert.h>
 #include <float.h>
@@ -15,8 +19,8 @@ import Ast
 
 enum { _FX_LAYOUT_UNKNOWN=0, _FX_LAYOUT_NCHW=1, _FX_LAYOUT_NHWC=2 };
 enum { _FX_CONV_GENERIC=0, _FX_CONV_DEPTHWISE=1, _FX_CONV_WINOGRAD3x3=2 };
-enum { _FX_ACTIV_CUSTOM=-1, _FX_ACTIV_NONE=0, _FX_ACTIV_RELU=1, _FX_ACTIV_CLIP=2, _FX_ACTIV_LRELU=3,
-       _FX_ACTIV_PRELU=4, _FX_ACTIV_RELU6=6, _FX_ACTIV_SIGMOID=7, _FX_ACTIV_TANH=8, _FX_ACTIV_MISH=9 };
+enum { _FX_ACTIV_CUSTOM=0, _FX_ACTIV_NONE=1, _FX_ACTIV_RELU=2, _FX_ACTIV_CLIP=3, _FX_ACTIV_LRELU=4,
+       _FX_ACTIV_PRELU=5, _FX_ACTIV_SIGMOID=6, _FX_ACTIV_TANH=7, _FX_ACTIV_MISH=8 };
 
 typedef void (*_fx_activ_func_t)(float* data, size_t step, int size0, int size1, const float* params);
 
@@ -138,6 +142,7 @@ static int _fx_init_conv2d(
     fx_cptr_t* fx_result)
 {
     _fx_conv2d_t* conv = (_fx_conv2d_t*)fx_malloc(sizeof(*conv));
+    float* bn_ab = bn_mean || bn_var || bn_scale || bn_shift ? (float*)fx_malloc(K*2*sizeof(bn_ab[0])) : 0;
     int k = 0, nbias = K + FX_CONV_MR-1;
     int fx_status;
 
@@ -161,7 +166,7 @@ static int _fx_init_conv2d(
     conv->activ = activ;
     conv->activ_func =
         activ == _FX_ACTIV_CUSTOM ? activ_func :
-        activ == _FX_ACTIV_RELU || activ == _FX_ACTIV_RELU6 || activ == _FX_ACTIV_CLIP ? 0 :
+        activ == _FX_ACTIV_RELU || activ == _FX_ACTIV_CLIP ? 0 :
         activ == _FX_ACTIV_LRELU ? _fx_activ_lrelu :
         activ == _FX_ACTIV_PRELU ? _fx_activ_prelu :
         activ == _FX_ACTIV_MISH ? _fx_activ_mish :
@@ -176,9 +181,6 @@ static int _fx_init_conv2d(
         assert(activ_params && activ_nparams == 2);
         conv->minval = activ_params[0];
         conv->maxval = activ_params[1];
-    } else if (activ == _FX_ACTIV_RELU6) {
-        conv->minval = 0.f;
-        conv->maxval = 6.f;
     } else if (activ_params) {
         assert(activ_nparams > 0);
         conv->activ_params = (float*)fx_malloc(activ_nparams*sizeof(activ_params[0]));
@@ -187,12 +189,25 @@ static int _fx_init_conv2d(
         memcpy(conv->activ_params, activ_params, activ_nparams*sizeof(activ_params[0]));
     }
 
+    if (bn_ab) {
+        for(k = 0; k < K; k++) {
+            float mean = bn_mean ? bn_mean[k] : 0.f;
+            float vr = bn_var ? bn_var[k] : 1.f;
+            float a = (bn_scale ? bn_scale[k] : 1.f)/sqrt(vr + bn_eps);
+            float b = (bn_shift ? bn_shift[k] : 0.f) - a*mean;
+            bn_ab[k] = a;
+            bn_ab[k + K] = b;
+        }
+    }
+
     // store bias; append some zero's to make sure that
     // we can always read FX_CONV_MR elements starting from any valid index
     conv->bias = (float*)fx_malloc(nbias*sizeof(conv->bias[0]));
     if (conv->bias) {
-        for(; k < K; k++)
-            conv->bias[k] = bias ? bias[k] : 0.f;
+        for(; k < K; k++) {
+            float bias_k = bias ? bias[k] : 0.f;
+            conv->bias[k] = bn_ab ? bn_ab[k + K] + bn_ab[k]*bias_k : biask_k;
+
         for(; k < nbias; k++)
             conv->bias[k] = 0.f;
     }
@@ -207,8 +222,9 @@ static int _fx_init_conv2d(
         if (conv->weights) {
             memset(conv->weights, 0, nweights*sizeof(conv->weights[0]));
             for(int c = 0; c < C; c++) {
+                float scale = bn_ab ? bn_ab[c] : 1.f;
                 for (int k = 0; k < ksize; k++)
-                    conv->weights[c*padded_ksize + k] = weights[c*ksize + k];
+                    conv->weights[c*padded_ksize + k] = weights[c*ksize + k]*scale;
             }
         }
     } else {
@@ -224,9 +240,11 @@ static int _fx_init_conv2d(
             for(int g = 0; g < ngroups; g++) {
                 for(int k0 = 0; k0 < Kg_aligned; k0 += FX_CONV_MR) {
                     int dk = Kg - k0 < FX_CONV_MR ? Kg - k0 : FX_CONV_MR;
+                    int k_idx = g*Kg + k0;
+                    float scale = bn_ab ? bn_ab[k_idx] : 1.f;
                     for(int c = 0; c < Cg; c++) {
                         for(int yx = 0; yx < Hk*Wk; yx++, packed_wptr += FX_CONV_MR) {
-                            const float* wptr = weights + (size_t)((g*Kg + k0)*Cg + c)*Hk*Wk + yx;
+                            const float* wptr = weights + (size_t)(k_idx*Cg + c)*Hk*Wk + yx;
                             int k = 0;
                             for(; k < dk; k++, wptr += Cg*Hk*Wk)
                                 packed_wptr[k] = *wptr;
@@ -239,6 +257,7 @@ static int _fx_init_conv2d(
         }
     }
 
+    fx_free(bn_ab);
     if (conv && conv->bias && conv->weights)
         fx_status = fx_make_cptr(conv, _fx_free_conv2d, fx_result);
     else
@@ -381,7 +400,7 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
     const size_t out_planesize = (size_t)H0*W0;
     float minval = conv->minval, maxval = conv->maxval;
     bool fast_activ = conv->activ != _FX_ACTIV_NONE && conv->activ_func == 0;
-    bool slow_activ = conv->activ_func != 0;
+    _fx_activ_func_t activ_func = !fast_activ ? conv->activ_func : 0;
     int stride_y = conv->stride_y, stride_x = conv->stride_x;
     int dilation_y = conv->dilation_y, dilation_x = conv->dilation_x;
     int pad_top = conv->pad_top, pad_bottom = conv->pad_bottom;
@@ -523,8 +542,8 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
                 x1 = W0;
             }
         }
-        if (slow_activ) {
-            conv->activ_func(outptr, 0, 1, W0*H0, conv->activ_params);
+        if (activ_func) {
+            activ_func(outptr, 0, 1, W0*H0, conv->activ_params);
         }
     }
 
@@ -552,7 +571,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
     const size_t out_planesize = (size_t)H0*W0;
     float minval = conv->minval, maxval = conv->maxval;
     bool fast_activ = conv->activ != _FX_ACTIV_NONE && conv->activ_func == 0;
-    _fx_activ_func_t activ_func = conv->activ_func;
+    _fx_activ_func_t activ_func = !fast_activ ? conv->activ_func : 0;
     const float* activ_params = conv->activ_params;
     int stripes_per_sample = (H0*W0+FX_CONV_NR-1)/FX_CONV_NR;
     int stride_y = conv->stride_y, stride_x = conv->stride_x;
@@ -686,9 +705,8 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                 _fx_conv_block(HkWkCg, conv->weights+(g*Kg_aligned + k)*HkWkCg,
                            inpbuf_task, outptr, outstep, conv->bias + Kg*g + k,
                            minval, maxval, fast_activ);
-                if (activ_func) {
+                if (activ_func)
                     activ_func(outptr, outstep, FX_CONV_MR, FX_CONV_NR, activ_params);
-                }
                 if (partial) {
                     for (int k1 = 0; k1 < dk; k1++)
                         memcpy(outptr0 + k1*outstep0, &cbuf[k1*FX_CONV_NR],
@@ -705,24 +723,43 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
 }
 
 fun init_conv(kernel_shape: int [], strides: int [], dilations: int [], pads: int [], group: int,
-              w_shape: Ast.nnshape_t, w_data: float [], bias_shape: Ast.nnshape_t, bias_data: float []): cptr
+              w_shape: Ast.nnshape_t, w_data: float [], bias_shape: Ast.nnshape_t, bias_data: float [],
+              bn_data: float [][], bn_eps: float, activ_func: activ_func_t, activ_params: float []): cptr
 @ccode
 {
     const int_* w_shape_ = (const int_*)w_shape->shape.data;
     const int_* strides_ = (const int_*)strides->data;
     const int_* dilations_ = (const int_*)dilations->data;
     const int_* pads_ = (const int_*)pads->data;
+    int_ n_bn_data = bn_data->dim[0].size;
+    int_ n_activ_params = activ_params->dim[0].size;
+    int_ K = w_shape_ ? w_shape_[0] : 0;
+    const float* bn_data_[4] = {0, 0, 0, 0};
     if (w_shape->shape.ndims != 1 || w_shape->shape.dim[0].size != 4 ||
         strides->ndims != 1 || strides->dim[0].size != 2 ||
         dilations->ndims != 1 || dilations->dim[0].size != 2 ||
-        pads->ndims != 1 || pads->dim[0].size != 4)
+        pads->ndims != 1 || pads->dim[0].size != 4 ||
+        (n_bn_data != 4 && n_bn_data != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
+
+    if (n_bn_data > 0) {
+        for(int i_ = 0; i < n_bn_data; i++) {
+            fx_arr_t* bn_data_i = ((fx_arr_t*)bn_data->data) + i;
+            int_ n_bn_data_i = bn_data_i->dim[0].size;
+            if (n_bn_data_i != 0 && n_bn_data_i != K)
+                return FX_SET_EXN_FAST(FX_EXN_SizeError);
+            bn_data_[i] = (const float*)bn_data_i->data;
+        }
+    }
+
     return _fx_init_conv2d(_FX_LAYOUT_NCHW, _FX_LAYOUT_NCHW, (int)group,
         (int)w_shape_[0], (int)w_shape_[1]*group, (int)w_shape_[2], (int)w_shape_[3],
         (int)strides_[0], (int)strides_[1], (int)dilations_[0], (int)dilations_[1],
         (int)pads_[0], (int)pads_[1], (int)pads_[2], (int)pads_[3],
         (const float*)w_data->data, (const float*)bias_data->data,
-        0, 0, 0, 0, 0, _FX_ACTIV_NONE, 0, 0, 0, fx_result);
+        bn_data_[0], bn_data_[1], bn_data_[2], bn_data_[3], bn_eps,
+        (int)activ_func->tag, 0, (const float*)activ_params->data,
+        (int)n_activ_params, fx_result);
 }
 
 fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
@@ -747,14 +784,49 @@ fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
 
 fun run_conv(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
-| Ast.NN_Conv {kernel_shape, pads, strides, dilations, group, conv_data, t_inp, t_weights, t_bias, t_out} =>
+| Ast.NN_Conv {kernel_shape, pads, strides, dilations, group, conv_data,
+               fused_batch_norm, non_const_batch_norm,
+               fused_activ, non_const_activ, t_inp, t_weights, t_bias, t_out} =>
     assert(`kernel_shape.size() == 2`)
     val inp = net.get_tensor(t_inp)
     val weights = net.get_tensor(t_weights)
     val bias = net.get_tensor(t_bias)
     val out = net.get_tensor(t_out)
-    if *conv_data == null || !net.isconst(t_weights) || !net.isconst(t_bias) {
-        println(f"Conv: weights.data: {weights.data.elemtype()}, bias.data: {bias.data.elemtype()}")
+    if *conv_data == null || !net.isconst(t_weights) || !net.isconst(t_bias) ||
+        non_const_batch_norm || non_const_activ {
+        //println(f"Conv: weights.data: {weights.data.elemtype()}, bias.data: {bias.data.elemtype()}")
+        val (bn_data, bn_eps) =
+            match fused_batch_norm {
+            | Some (Ast.NN_BatchNorm {epsilon, momentum,
+                t_inp, t_scale, t_B, t_mean, t_var, t_out}) =>
+                    val bn_mean = net.get_tensor(t_mean)
+                    val bn_var = net.get_tensor(t_var)
+                    val bn_scale = net.get_tensor(t_scale)
+                    val bn_bias = net.get_tensor(t_B)
+                    ([for bn <- [bn_mean, bn_var, bn_scale, bn_bias] {
+                        match bn.data {
+                        | Ast.NN_Data_FP32 bn_data => bn_data
+                        | Ast.NN_Data_Empty => empty
+                        }
+                    }], epsilon)
+            | _ => (([]: float [][]), 0.f)
+            }
+        val (activ_func, (activ_params : float [])) = match fused_activ {
+            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Relu}) => (ACTIV_RELU, [])
+            | Some (Ast.NN_Clip {t_min: int; t_max: int} =>
+                val minval = net.get_tensor(t_min)
+                val maxval = net.get_tensor(t_max)
+                match (minval.data, maxval.data) {
+                | (Ast.NN_Data_U8 min_data, Ast.NN_Data_U8 max_data) =>
+                    (ACTIV_CLIP, [float(min_data[0]), float(max_data[0])])
+                | (Ast.NN_Data_I8 min_data, Ast.NN_Data_I8 max_data) =>
+                    (ACTIV_CLIP, [float(min_data[0]), float(max_data[0])])
+                | (Ast.NN_Data_I32 min_data, Ast.NN_Data_I32 max_data) =>
+                    (ACTIV_CLIP, [float(min_data[0]), float(max_data[0])])
+                | (Ast.NN_Data_FP32 min_data, Ast.NN_Data_FP32 max_data) =>
+                    (ACTIV_CLIP, [float(min_data[0]), float(max_data[0])])
+                | _ => (ACTIV_CLIP, float(minval.data)[0], float(maxval.data[0])
+        }
         match (weights.data, bias.data) {
         | (Ast.NN_Data_FP32 w_data, (Ast.NN_Data_FP32 _ | Ast.NN_Data_Empty)) =>
             val bias_data = match bias.data { Ast.NN_Data_FP32 bias_data => bias_data | _ => [] }
@@ -762,7 +834,7 @@ match op {
                               // this way we can immediately re-use the same chunk of memory
                               // for the updated convolution structure
             *conv_data = init_conv(kernel_shape, strides, dilations, pads, group,
-                                   weights.shape, w_data, bias.shape, bias_data)
+                                   weights.shape, w_data, bias.shape, bias_data, bn_data, bn_eps)
         | _ => throw NotImplementedError
         }
     }

@@ -17,14 +17,14 @@ type hashtab_t = (int64, int) Hashmap.t
 
 val lut = {
     val L = array(256, 255u8)
-    L[ord('A')] = 0u8
-    L[ord('a')] = 0u8
-    L[ord('C')] = 1u8
-    L[ord('c')] = 1u8
-    L[ord('G')] = 2u8
-    L[ord('g')] = 2u8
-    L[ord('T')] = 3u8
-    L[ord('t')] = 3u8
+    L[ord('A')] = 0
+    L[ord('a')] = 0
+    L[ord('C')] = 1
+    L[ord('c')] = 1
+    L[ord('G')] = 2
+    L[ord('g')] = 2
+    L[ord('T')] = 3
+    L[ord('t')] = 3
     L
 }
 

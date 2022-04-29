@@ -450,7 +450,7 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                     | {name="max"} => maxv = attr2float(a)
                     | _ => {}
                 }
-                val t_min = if ninputs == 3 {inputs[1]} else {get_const_tensor_arg(minv)}
+                val t_min = if ninputs > 1 {inputs[1]} else {get_const_tensor_arg(minv)}
                 val t_max = if ninputs == 3 {inputs[2]} else {get_const_tensor_arg(maxv)}
                 [:: Ast.NN_Clip {name=name, t_inp=inputs[0], t_min=t_min, t_max=t_max, t_out=outputs[0]}]
             | "Constant" =>
@@ -522,6 +522,10 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                         name=name, kernel_shape=kernel_shape, pads=pads,
                         strides=strides, dilations=dilations, group = group,
                         conv_data=ref null,
+                        fused_batch_norm=None,
+                        non_const_batch_norm=false,
+                        fused_activ=None,
+                        non_const_activ=false,
                         t_inp=inputs[0], t_weights=inputs[1],
                         t_bias=(if ninputs == 3 {inputs[2]} else {0}),
                         t_out=outputs[0]}]

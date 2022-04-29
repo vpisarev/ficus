@@ -412,11 +412,6 @@ fun typ2constr(t: typ_t, rt: typ_t, loc: loc_t): typ_t =
             | _ => [:: t] }, rt)
     }
 
-fun get_eseq_typ(eseq: exp_t list): typ_t {
-    | [] => TypVoid
-    | _ => get_exp_typ(eseq.last())
-    }
-
 fun add_typ_to_env(key: id_t, t: typ_t, env: env_t) {
     val entries = find_all(key, env)
     env.add(key, EnvTyp(t) :: entries)
@@ -514,6 +509,40 @@ fun typ_bounds_flt(t: typ_t): double
     | TypFloat(16) => 65504.
     | TypFloat(32) => 3.402823e+38
     | _ => 0.
+}
+
+fun try_unify_with_literal(t1: typ_t, e2: exp_t, msg: string)
+{
+    val t1_ = deref_typ(t1)
+    val (t2, eloc2) = get_exp_ctx(e2)
+    match (t1_, e2) {
+    | ((TypSInt _ | TypUInt _ | TypFloat _), ExpLit(LitInt(i), _)) =>
+        val (minval, maxval) = typ_bounds_int(t1_)
+        if i < minval || i > maxval {
+            throw compile_err(eloc2,
+                f"the literal '{i}' is outside of the exactly-represented value range [{minval}, {maxval}] of type '{typ2str(t1_)}'")
+        }
+        match t1_ {
+        | TypSInt(bits) => ExpLit(LitSInt(bits, i), (t1, eloc2))
+        | TypUInt(bits) => ExpLit(LitUInt(bits, uint64(i)), (t1, eloc2))
+        | TypFloat(bits) => ExpLit(LitFloat(bits, double(i)), (t1, eloc2))
+        | _ => throw compile_err(eloc2,
+            f"unexpected type '{typ2str(t1_)}'; TypSInt(_), TypUInt(_) or TypFloat(_) is expected")
+        }
+    | (TypTuple(tl), ExpMkTuple(el, _)) =>
+        val nt = tl.length(), nexp = el.length()
+        if nt != nexp {
+            throw compile_err(eloc2,
+                f"the tuple type is supposed to have {nt} elements, whereas the constructed tuple has {nexp} elements")
+        }
+        val (el, tl) = [:: @unzip for t <- tl, e <- el {
+            val e = try_unify_with_literal(t, e, msg)
+            val t = get_exp_typ(e)
+            (e, t)
+            }]
+        ExpMkTuple(el, (TypTuple(tl), eloc2))
+    | _ => unify(t1, t2, eloc2, msg); e2
+    }
 }
 
 fun finalize_record_typ(env: env_t, t: typ_t, sc: scope_t list, loc: loc_t): typ_t {
@@ -1309,13 +1338,12 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         | _ => throw compile_err(eloc, "unsupported element access operation")
         }
     | ExpAssign(e1, e2, _) =>
-        val (etyp1, eloc1) as ectx= get_exp_ctx(e1)
-        val (etyp2, _) = get_exp_ctx(e2)
+        val new_e1 = check_exp(e1, env, sc)
+        val (etyp1, eloc1) as ectx = get_exp_ctx(new_e1)
         /* check that new_e1 is lvalue and that new_e1 and new_e2 have equal types;
            in future we can let etyp1_ and etyp2_ be different as long as the assignment
            is safe and does not loose precision, e.g. int8 to int, float to double etc. */
-        unify(etyp1, etyp2, eloc, "the left and the right sides of the assignment must have the same type")
-        val new_e1 = check_exp(e1, env, sc)
+        val e2 = try_unify_with_literal(etyp1, e2, "the left and the right sides of the assignment must have the same type")
         val new_e2 = check_exp(e2, env, sc)
         if !is_lvalue(true, new_e1, ectx) {
             /* is_lvalue returns false even if we actually have an lvalue, but it is immutable */
@@ -1350,7 +1378,17 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val new_e2 = check_exp(e2, env, sc)
         val (etyp1, eloc1) = get_exp_ctx(new_e1)
         val (etyp2, eloc2) = get_exp_ctx(new_e2)
-        unify(etyp1, etyp2, eloc, "the compared elements must have the same type")
+        val cmp_eqtypes_msg = "the compared elements must have the same type"
+        val (new_e1, new_e2) =
+            match (new_e1, new_e2) {
+            | (_, ExpLit _) =>
+                (new_e1, try_unify_with_literal(etyp1, new_e2, cmp_eqtypes_msg))
+            | (ExpLit _, _) =>
+                (try_unify_with_literal(etyp2, new_e1, cmp_eqtypes_msg), new_e2)
+            | _ =>
+                unify(etyp1, etyp2, eloc, cmp_eqtypes_msg)
+                (new_e1, new_e2)
+            }
         unify(etyp, TypBool, eloc, f"result of comparison operation '{bop}' must be bool")
         if is_typ_scalar(etyp1) && is_typ_scalar(etyp2) {
             ExpBinary(bop, new_e1, new_e2, ctx)
@@ -1666,7 +1704,17 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         | _ => throw compile_err(eloc, f"the intrinsic '{iop}' is not supported by the type checker")
         }
     | ExpSeq(eseq, _) =>
-        val eseq_typ = get_eseq_typ(eseq)
+        val is_func_body = match sc {ScFun _ :: _ => true | ScBlock _ :: ScFun _ :: _ => true | _ => false}
+        val eseq_typ = match eseq {
+            | [] => TypVoid
+            | _ =>
+                val last_exp = eseq.last()
+                val last_exp = match last_exp {
+                    | ExpReturn(Some(returned_e), _) when is_func_body => returned_e
+                    | _ => last_exp
+                    }
+                get_exp_typ(last_exp)
+            }
         unify(etyp, eseq_typ, eloc, "the expected type of block expression does not match its actual type")
         val (eseq, _) = check_eseq(eseq, env, sc, true)
         ExpSeq(eseq, ctx)
@@ -2128,7 +2176,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpBreak(f, _) => check_inside_for(f, true, false, sc); e
     | ExpContinue _ => check_inside_for(false, false, false, sc); e
     | ExpReturn(e_opt, _) =>
-        unify(etyp, TypVoid, eloc, "return statement should has 'void' type")
+        unify(etyp, TypVoid, eloc, "return statement should have 'void' type")
         val t = match e_opt {|Some(e) => get_exp_typ(e) | _ => TypVoid}
         match all_func_ctx {
         | (fname, rt, _) :: _ =>
@@ -2479,6 +2527,7 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
 
     // create the nested block scope if requested
     val curr_m_idx = curr_module(sc)
+    val is_func_scope = match sc {ScFun _ :: _ => true | _ => false}
     val sc = if create_sc { new_block_scope(curr_m_idx) :: sc } else { sc }
     val is_glob_scope = is_global_scope(sc)
     // process directives (currently they are just import directives)
@@ -2560,6 +2609,11 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                     }
                     (DefFun(df) :: eseq, env)
             | _ =>
+                val e = match e {
+                        | ExpReturn(Some(returned_e), _) =>
+                            if idx == nexps - 1 && is_func_scope {returned_e} else {e}
+                        | _ => e
+                        }
                 val e = check_exp(e, env, sc)
                 val (etyp, eloc) = get_exp_ctx(e)
                 match e {

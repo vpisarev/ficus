@@ -59,8 +59,12 @@ match op {
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-@private fun run_clip(inp: 't [], minval: 't, maxval: 't, out: 't []) =
+@private fun run_clip(inp: 't [], minval: float, maxval: float, out: 't [])
+{
+    val minval = (max(minval, float(__min__(0:>'t))) :> 't)
+    val maxval = (min(maxval, float(__max__(0:>'t))) :> 't)
     for x@idx <- inp {out[idx] = min(max(x, minval), maxval)}
+}
 
 fun run_clip(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
@@ -70,15 +74,17 @@ match op
     val out = net.get_tensor(t_out)
     val minval = net.get_tensor(t_min)
     val maxval = net.get_tensor(t_max)
-    match (inp.data, minval.data, maxval.data, out.data) {
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_U8 min_data, Ast.NN_Data_U8 max_data, Ast.NN_Data_U8 out_data) =>
-        run_clip(inp_data, min_data[0], max_data[0], out_data)
-    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I8 min_data, Ast.NN_Data_I8 max_data, Ast.NN_Data_I8 out_data) =>
-        run_clip(inp_data, min_data[0], max_data[0], out_data)
-    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I32 min_data, Ast.NN_Data_I32 max_data, Ast.NN_Data_I32 out_data) =>
-        run_clip(inp_data, min_data[0], max_data[0], out_data)
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 min_data, Ast.NN_Data_FP32 max_data, Ast.NN_Data_FP32 out_data) =>
-        run_clip(inp_data, min_data[0], max_data[0], out_data)
+    val minval = minval.data.float_scalar_or(-FLT_MAX)
+    val maxval = maxval.data.float_scalar_or(FLT_MAX)
+    match (inp.data, out.data) {
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_U8 out_data) =>
+        run_clip(inp_data, minval, maxval, out_data)
+    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I8 out_data) =>
+        run_clip(inp_data, minval, maxval, out_data)
+    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I32 out_data) =>
+        run_clip(inp_data, minval, maxval, out_data)
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_clip(inp_data, minval, maxval, out_data)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
