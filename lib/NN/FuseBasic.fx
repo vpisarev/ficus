@@ -77,7 +77,12 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
             val t_inp0 = t_inp[0], t_inp1 = t_inp[1]
             val uc0 = usecounts[t_inp0], uc1 = usecounts[t_inp1]
             val (t_passby_idx, conv_op_idx) =
-                if (uc0 == 1 && uc1 == 2) || (uc0 == 2 || uc1 == 1) {
+                if uc0 == 1 && uc1 == 1 {
+                    val conv_op_idx0 = produced_by[t_inp0]
+                    val conv_op_idx1 = produced_by[t_inp1]
+                    if conv_op_idx0 > conv_op_idx1 {(t_inp1, conv_op_idx0)}
+                    else {(t_inp0, conv_op_idx1)}
+                } else if (uc0 == 1 && uc1 == 2) || (uc0 == 2 || uc1 == 1) {
                     val (t_inp0, t_inp1) = if uc0 == 2 {(t_inp0, t_inp1)} else {(t_inp1, t_inp0)}
                     fun is_passby(t_inp0: int, t_inp1: int, depth: int) {
                         val conv_op_idx = produced_by[t_inp1]
