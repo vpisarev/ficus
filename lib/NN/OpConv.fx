@@ -150,7 +150,7 @@ static int _fx_init_conv2d(
     _fx_conv2d_t* conv = (_fx_conv2d_t*)fx_malloc(sizeof(*conv));
     float* bn_ab = bn_mean || bn_var || bn_scale || bn_shift ?
         (float*)fx_malloc(K*2*sizeof(bn_ab[0])) : 0;
-    int k = 0, nbias = K + FX_CONV_MR-1;
+    int k, nbias = K + FX_CONV_MR-1;
     int fx_status;
 
     memset(conv, 0, sizeof(*conv));
@@ -211,7 +211,7 @@ static int _fx_init_conv2d(
     // we can always read FX_CONV_MR elements starting from any valid index
     conv->bias = (float*)fx_malloc(nbias*sizeof(conv->bias[0]));
     if (conv->bias) {
-        for(; k < K; k++) {
+        for(k = 0; k < K; k++) {
             float bias_k = bias ? bias[k] : 0.f;
             conv->bias[k] = bn_ab ? bn_ab[k + K] + bn_ab[k]*bias_k : bias_k;
         }
@@ -249,19 +249,21 @@ static int _fx_init_conv2d(
                 for(int k0 = 0; k0 < Kg_aligned; k0 += FX_CONV_MR) {
                     int dk = Kg - k0 < FX_CONV_MR ? Kg - k0 : FX_CONV_MR;
                     int k_idx = g*Kg + k0;
-                    float scale = bn_ab ? bn_ab[k_idx] : 1.f;
                     for(int c = 0; c < Cg; c++) {
                         for(int yx = 0; yx < Hk*Wk; yx++, packed_wptr += FX_CONV_MR) {
                             const float* wptr = weights + (size_t)(k_idx*Cg + c)*Hk*Wk + yx;
                             int k = 0;
-                            for(; k < dk; k++, wptr += Cg*Hk*Wk)
-                                packed_wptr[k] = *wptr;
+                            for(; k < dk; k++, wptr += Cg*Hk*Wk) {
+                                float scale = bn_ab ? bn_ab[k_idx+k] : 1.f;
+                                packed_wptr[k] = *wptr*scale;
+                            }
                             for(; k < FX_CONV_MR; k++)
                                 packed_wptr[k] = 0.f;
                         }
                     }
                 }
             }
+            assert(packed_wptr - conv->weights <= nweights);
         }
     }
 
@@ -276,7 +278,7 @@ static int _fx_init_conv2d(
 }
 
 static void _fx_conv_block( int k, const float *a, const float *b,
-                            float *c, int ldc, const float* bias,
+                            float *c, int ldc, const float* pb, const float* bias,
                             float minval, float maxval, bool activ )
 {
 #ifdef __ARM_NEON
@@ -288,6 +290,17 @@ static void _fx_conv_block( int k, const float *a, const float *b,
     float32x4_t c15 = vdupq_n_f32(bias[5]), c16 = c15, c17 = c15;
     float32x4_t c18 = vdupq_n_f32(bias[6]), c19 = c18, c20 = c18;
     float32x4_t c21 = vdupq_n_f32(bias[7]), c22 = c21, c23 = c21;
+
+    if (pb) {
+        c0 = vaddq_f32(c0, vld1q_f32(pb)); c1 = vaddq_f32(c1, vld1q_f32(pb + 4)); c2 = vaddq_f32(c2, vld1q_f32(pb + 8));
+        c3 = vaddq_f32(c3, vld1q_f32(pb + ldc)); c4 = vaddq_f32(c4, vld1q_f32(pb + ldc + 4)); c5 = vaddq_f32(c5, vld1q_f32(pb + ldc + 8));
+        c6 = vaddq_f32(c6, vld1q_f32(pb + ldc*2)); c7 = vaddq_f32(c7, vld1q_f32(pb + ldc*2 + 4)); c8 = vaddq_f32(c8, vld1q_f32(pb + ldc*2 + 8));
+        c9 = vaddq_f32(c9, vld1q_f32(pb + ldc*3)); c10 = vaddq_f32(c10, vld1q_f32(pb + ldc*3 + 4)); c11 = vaddq_f32(c11, vld1q_f32(pb + ldc*3 + 8));
+        c12 = vaddq_f32(c12, vld1q_f32(pb + ldc*4)); c13 = vaddq_f32(c13, vld1q_f32(pb + ldc*4 + 4)); c14 = vaddq_f32(c14, vld1q_f32(pb + ldc*4 + 8));
+        c15 = vaddq_f32(c15, vld1q_f32(pb + ldc*5)); c16 = vaddq_f32(c16, vld1q_f32(pb + ldc*5 + 4)); c17 = vaddq_f32(c17, vld1q_f32(pb + ldc*5 + 8));
+        c18 = vaddq_f32(c18, vld1q_f32(pb + ldc*6)); c19 = vaddq_f32(c19, vld1q_f32(pb + ldc*6 + 4)); c20 = vaddq_f32(c20, vld1q_f32(pb + ldc*6 + 8));
+        c21 = vaddq_f32(c21, vld1q_f32(pb + ldc*7)); c22 = vaddq_f32(c22, vld1q_f32(pb + ldc*7 + 4)); c23 = vaddq_f32(c23, vld1q_f32(pb + ldc*7 + 8));
+    }
 
     for( int p = 0; p < k; p++, a += FX_CONV_MR, b += FX_CONV_NR )
     {
@@ -560,7 +573,7 @@ static void _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* in
 
 static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                        const int_* outsize, float* out,
-                       const _fx_conv2d_t* conv, int ntasks)
+                       const float* passby, const _fx_conv2d_t* conv, int ntasks)
 {
     assert(ndims == 4 &&
            inpsize[0] == outsize[0] &&
@@ -602,7 +615,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
     }
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(ntasks)
     for (int task_id = 0; task_id < ntasks; task_id++) {
         float* inpbuf_task = &inpbuf_all[taskbufsize*task_id];
         int ngs0 = (N*ngroups*stripes_per_sample)*task_id/ntasks, ngs1 = (N*ngroups*stripes_per_sample)*(task_id+1)/ntasks;
@@ -698,20 +711,32 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
             // 2. do convolution, compute Kg x (yx1 - yx0) part of the output tensor
             {
             int outstep0 = H0*W0;
-            float* outptr0 = out + (n*ngroups + g)*Kg*outstep0 + yx0;
-            float cbuf[FX_CONV_MR*FX_CONV_NR];
+            size_t outofs = (n*ngroups + g)*Kg*outstep0 + yx0;
+            float* outptr0 = out + outofs;
+            const float* pbptr0 = passby ? passby + outofs : 0;
+            float cbuf[FX_CONV_MR*FX_CONV_NR], pbbuf[FX_CONV_MR*FX_CONV_NR];
             bool partial0 = yx1 - yx0 < FX_CONV_NR;
-            for(int k = 0; k < Kg; k += FX_CONV_MR, outptr0 += outstep0*FX_CONV_MR) {
+            memset(pbbuf, 0, sizeof(pbbuf));
+            for(int k = 0; k < Kg; k += FX_CONV_MR, outptr0 += outstep0*FX_CONV_MR,
+                                   pbptr0 += (pbptr0 ? outstep0*FX_CONV_MR : 0))
+            {
                 int dk = Kg - k < FX_CONV_MR ? Kg - k : FX_CONV_MR;
                 bool partial = partial0 || dk < FX_CONV_MR;
                 float* outptr = outptr0;
+                float* pbptr = (float*)pbptr0;
                 int outstep = outstep0;
                 if (partial) {
                     outptr = cbuf;
                     outstep = FX_CONV_NR;
+                    if (pbptr) {
+                        pbptr = pbbuf;
+                        for (int k1 = 0; k1 < dk; k1++)
+                            memcpy(&pbbuf[k1*FX_CONV_NR], pbptr0 + k1*outstep0,
+                                (yx1 - yx0)*sizeof(pbbuf[0]));
+                    }
                 }
                 _fx_conv_block(HkWkCg, conv->weights+(g*Kg_aligned + k)*HkWkCg,
-                           inpbuf_task, outptr, outstep, conv->bias + Kg*g + k,
+                           inpbuf_task, outptr, outstep, pbptr, conv->bias + Kg*g + k,
                            minval, maxval, fast_activ);
                 if (activ_func)
                     activ_func(outptr, outstep, FX_CONV_MR, FX_CONV_NR, activ_params);
@@ -772,7 +797,7 @@ fun init_conv(kernel_shape: int [], strides: int [], dilations: int [], pads: in
 
 fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
              out_shape: Ast.nnshape_t, out_data: float [],
-             conv_data: cptr): void
+             bp_data: float [], conv_data: cptr): void
 @ccode {
     const int ntasks = 4;
     _fx_conv2d_t* conv = conv_data && conv_data->ptr ? (_fx_conv2d_t*)conv_data->ptr : 0;
@@ -786,6 +811,7 @@ fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
                       (const float*)inp_data->data,
                       (const int_*)out_shape->shape.data,
                       (float*)out_data->data,
+                      (float*)bp_data->data,
                       conv, ntasks);
 }
 
@@ -793,20 +819,20 @@ fun run_conv(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Conv {attr={kernel_shape, pads, strides, dilations, group},
         conv_data, fused_batch_norm, non_const_batch_norm,
-        fused_activ, non_const_activ, t_inp, t_weights, t_bias, t_out} =>
+        fused_activ, non_const_activ, t_inp, t_weights, t_bias, t_out, t_passby} =>
     assert(`kernel_shape.size() == 2`)
     val inp = net.get_tensor(t_inp)
     val weights = net.get_tensor(t_weights)
     val bias = net.get_tensor(t_bias)
     val out = net.get_tensor(t_out)
+    val pb = net.get_tensor(t_passby)
     if *conv_data == null || !net.isconst(t_weights) || !net.isconst(t_bias) ||
         non_const_batch_norm || non_const_activ {
         //println(f"Conv: weights.data: {weights.data.elemtype()}, bias.data: {bias.data.elemtype()}")
         val empty: float [] = []
         val (bn_data, bn_eps) =
             match fused_batch_norm {
-            | Some (Ast.NN_BatchNorm {epsilon, momentum,
-                t_inp, t_scale, t_B, t_mean, t_var, t_out}) =>
+            | Some (Ast.NN_BatchNorm {epsilon, t_mean, t_var, t_scale, t_B}) =>
                     val bn_mean = net.get_tensor(t_mean)
                     val bn_var = net.get_tensor(t_var)
                     val bn_scale = net.get_tensor(t_scale)
@@ -847,9 +873,10 @@ match op {
         | _ => throw NotImplementedError
         }
     }
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_conv(inp.shape, inp_data, out.shape, out_data, *conv_data)
+    match (inp.data, out.data, pb.data) {
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data, (Ast.NN_Data_FP32 _ | Ast.NN_Data_Empty)) =>
+        val pb_data: float [] = match pb.data {|Ast.NN_Data_FP32 pb_data => pb_data | _ => []}
+        run_conv(inp.shape, inp_data, out.shape, out_data, pb_data, *conv_data)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")

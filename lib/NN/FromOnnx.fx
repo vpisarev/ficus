@@ -275,10 +275,13 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                 // instead, we create a new local value
                 val argname = nspace_ + argname
                 match argnames.find_opt(argname) {
-                | Some(idx) => idx
+                | Some(idx) =>
+                    //println(f"found '{argname}' as {idx}")
+                    idx
                 | _ =>
                     val idx = vargs.push()
                     val _ = vtensors.push()
+                    //println(f"did not found '{argname}'; adding arg #{idx}")
                     val arg = Ast.nnarg_t {
                         name=argname,
                         argkind=Ast.NN_Arg_Temp, // later on we can convert it to output
@@ -530,7 +533,7 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                         non_const_activ=false,
                         t_inp=inputs[0], t_weights=inputs[1],
                         t_bias=(if ninputs == 3 {inputs[2]} else {0}),
-                        t_out=outputs[0]}]
+                        t_out=outputs[0], t_passby=0}]
                 } else {
                     [:: Ast.NN_ConvTranspose {
                         name=name, kernel_shape=kernel_shape, pads=pads,

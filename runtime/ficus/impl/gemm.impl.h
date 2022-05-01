@@ -337,7 +337,7 @@ int fx_sgemm( bool tA, bool tB, float alpha, float beta,
                int mb, int nb, const float *b, int ldb0, int ldb1,
                float *c, int ldc, int num_threads )
 {
-    assert(FX_SGEMM_MR == 8 && FX_SGEMM_NR == 8);
+    assert(FX_SGEMM_MR == 8 && FX_SGEMM_NR == 12);
     num_threads = num_threads <= 0 ? 4 : fx_maxi(num_threads, 1);
     int M = tA ? na : ma, N = tB ? mb : nb, K = tA ? ma : na;
 

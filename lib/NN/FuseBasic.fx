@@ -5,36 +5,19 @@
 
 /*
     Performs some basic graph optimizations:
-    1. Conv + Batchnorm
-    2. Conv [+ Batchnorm] + ReLU/ReLU6/Clip
+    * Conv [+ Batchnorm] [+ Add] [+ ReLU/ReLU6/Clip/LeakyReLU/Sigmoid/Tanh]
 */
 import Ast, Dynvec, Hashmap
 
-fun get_produced_by(net: Ast.nnet_t, graph: Ast.nngraph_t)
+fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
 {
     val nargs = net.args.size()
     val produced_by = array(nargs, -1)
-
-    for op@op_idx <- graph.prog {
-        val (_, outs) = op.get_inputs_outputs()
-        for i <- outs {
-            if i > 0 {produced_by[i] = op_idx}
-            // we don't look into If and Loop subgraphs,
-            // because get_produced_by() assumes linear indices
-            // inside a single flat graph
-        }
-    }
-    produced_by
-}
-
-fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
-{
-    val produced_by = get_produced_by(net, graph)
     val prog = graph.prog
     val new_prog = Dynvec.create(0, Ast.NN_Nop)
     var modified = false
     fun get_op(op_idx: int) =
-        if op_idx >= 0 {prog[op_idx]} else {Ast.NN_Nop}
+        if op_idx >= 0 {new_prog.data[op_idx]} else {Ast.NN_Nop}
 
     for op@i <- prog {
         val (fused_op_idx, fused_op, t_out_old, t_out_new) = match op {
@@ -46,7 +29,7 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
             | Ast.NN_Conv {
                 name, attr, conv_data,
                 fused_batch_norm=None, fused_activ=None,
-                t_inp=t_conv_inp, t_weights, t_bias, t_out=t_conv_out }
+                t_inp=t_conv_inp, t_weights, t_bias, t_out=t_conv_out, t_passby=0 }
                 when t_conv_out == t_inp =>
                 // merge Conv + BatchNorm
                 val non_const_batch_norm =
@@ -59,7 +42,7 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
                     non_const_batch_norm=non_const_batch_norm,
                     fused_activ=None, non_const_activ=false,
                     t_inp=t_conv_inp, t_weights=t_weights,
-                    t_bias=t_bias, t_out=t_out}
+                    t_bias=t_bias, t_out=t_out, t_passby=0}
                 (conv_op_idx, new_conv_op, t_conv_out, t_out)
             | _ => (-1, Ast.NN_Nop, -1, -1)
             }
@@ -73,7 +56,7 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
             | Ast.NN_Conv {
                 name, attr, conv_data,
                 fused_batch_norm, non_const_batch_norm, fused_activ=None,
-                t_inp=t_conv_inp, t_weights, t_bias, t_out=t_conv_out }
+                t_inp=t_conv_inp, t_weights, t_bias, t_out=t_conv_out, t_passby }
                 when t_conv_out == t_activ_inp[0] && usecounts[t_conv_out] == 1 =>
                 // merge Conv + activation
                 val non_const_activ = match op {
@@ -86,19 +69,60 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
                     non_const_batch_norm=non_const_batch_norm,
                     fused_activ=Some(op), non_const_activ=non_const_activ,
                     t_inp=t_conv_inp, t_weights=t_weights,
-                    t_bias=t_bias, t_out=t_activ_out[0]}
+                    t_bias=t_bias, t_out=t_activ_out[0], t_passby=t_passby}
                 (conv_op_idx, new_conv_op, t_conv_out, t_activ_out[0])
+            | _ => (-1, Ast.NN_Nop, -1, -1)
+            }
+        | Ast.NN_Elemwise {el_op=Ast.NN_Add, t_inp, t_out} =>
+            val t_inp0 = t_inp[0], t_inp1 = t_inp[1]
+            val uc0 = usecounts[t_inp0], uc1 = usecounts[t_inp1]
+            val (t_passby_idx, conv_op_idx) =
+                if (uc0 == 1 && uc1 == 2) || (uc0 == 2 || uc1 == 1) {
+                    val (t_inp0, t_inp1) = if uc0 == 2 {(t_inp0, t_inp1)} else {(t_inp1, t_inp0)}
+                    fun is_passby(t_inp0: int, t_inp1: int, depth: int) {
+                        val conv_op_idx = produced_by[t_inp1]
+                        val conv_op = get_op(conv_op_idx)
+                        match conv_op {
+                        | Ast.NN_Conv {t_inp=t_conv_inp, t_out=t_conv_out, t_passby}
+                            when t_passby == 0 || depth > 0 =>
+                            if t_conv_inp == t_inp0 {true}
+                            else {is_passby(t_inp0, t_conv_inp, depth+1)}
+                        | _ => false
+                        }
+                    }
+                    if is_passby(t_inp0, t_inp1, 0) {
+                        (t_inp0, produced_by[t_inp1])
+                    } else {(-1, -1)}
+                } else {(-1, -1)}
+            val conv_op = get_op(conv_op_idx)
+            match conv_op {
+            | Ast.NN_Conv {
+                name, attr, conv_data,
+                fused_batch_norm, non_const_batch_norm, fused_activ=None,
+                t_inp=t_conv_inp, t_weights, t_bias, t_out=t_conv_out, t_passby=0 }
+                when usecounts[t_conv_out] == 1 =>
+                // merge Conv + Add
+                val new_conv_op = Ast.NN_Conv {
+                    name=name, attr=attr, conv_data=conv_data,
+                    fused_batch_norm=fused_batch_norm,
+                    non_const_batch_norm=non_const_batch_norm,
+                    fused_activ=None, non_const_activ=false,
+                    t_inp=t_conv_inp, t_weights=t_weights,
+                    t_bias=t_bias, t_out=t_out, t_passby=t_passby_idx}
+                (conv_op_idx, new_conv_op, t_conv_out, t_out)
             | _ => (-1, Ast.NN_Nop, -1, -1)
             }
         | _ => (-1, Ast.NN_Nop, -1, -1)
         }
         if fused_op_idx >= 0 {
             modified = true
-            prog[fused_op_idx] = fused_op
+            new_prog.data[fused_op_idx] = fused_op
             usecounts[t_out_old] = 0
             produced_by[t_out_old] = -1
             produced_by[t_out_new] = fused_op_idx
         } else {
+            val (_, t_outs) = op.get_inputs_outputs()
+            for out <- t_outs {produced_by[out] = new_prog.count}
             new_prog.do_push(op)
         }
     }

@@ -104,7 +104,7 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
             shape=Ast.nnshape_t {layout=Ast.NN_Layout_Unknown, shape=out_shape},
             typ=typ, dynamic=!const_shape}]
     | Ast.NN_Conv {attr={kernel_shape, pads, strides, dilations, group},
-        t_inp, t_weights, t_out} =>
+        t_inp, t_weights, t_out, t_passby} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size() // convolution may produce a tensor of different size than output,
                                     // but it will always have the same dimensionality, regardless of the layout
@@ -126,6 +126,11 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
                     (inpsz + pad - dilations[i1]*(kernel_shape[i1] - 1) - 1)/strides[i1] + 1
                 }
             }]
+        if t_passby > 0 {
+            val (pb_shape, pb_typ) = get_shape_typ(t_passby)
+            assert(`pb_shape.shape == out_shape`)
+            assert(`pb_typ == typ`)
+        }
         [argshapeinfo_t {
             idx=t_out,
             shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape}, typ=typ,

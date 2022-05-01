@@ -83,9 +83,9 @@ val model =
     | Fail(msg) =>
         println(f"error: {msg}"); throw Fail("")
     }
-//val model = NN.FuseBasic.fuse_basic(model)
-println(model)
+val model = NN.FuseBasic.fuse_basic(model)
 val model = NN.BufferAllocator.assign_buffers(model)
+println(model)
 val k = 5
 val lname = "output"
 val ocv_outputs = [lname]
@@ -117,18 +117,18 @@ for imgname@i <- images {
             | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
             | Fail msg => println(f"failure: '{msg}'"); []
             }
-        }, iterations=5, batch=1)
+        }, iterations=15, batch=1)
     println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}")
-    for t_out@i <- temp_outputs {
+    /*for t_out@i <- temp_outputs {
         println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
     }
-    //val temp = float(temp_outputs[1].1)
-    //val shape = temp_outputs[0].1.shape.shape
-    //val shape2d = (shape[0]*shape[1]*shape[2], shape[3])
+    val temp = float(temp_outputs[1].1)
+    val shape = temp_outputs[1].1.shape.shape
+    val shape2d = (shape[0]*shape[1]*shape[2], shape[3])
     //val ntemp = temp.size()
     //println(f"||'{lname}_ref' - '{lname}'||/sz = {normL1(out[0][:] - temp)/ntemp}")
     //println(out[0].reshape(shape2d)[:5,:5])
-    //println(temp.reshape(shape2d)[:5,:5])
+    println(temp.reshape(shape2d)[:5,:5])*/
     //println(out[0][:][:20])
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
