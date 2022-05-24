@@ -14,6 +14,7 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
     (string, Ast.nntensor_t) []
 {
     var empty_names = true
+    OpConv.reset_total_time_1x1()
 
     // assign input tensors
     for (inpname, t)@i <- inputs {
@@ -40,6 +41,7 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
 
     //println("running main graph")
     run_graph(net, net.graph, outputs)
+    OpConv.update_total_time_1x1()
 
     // collect outputs
     [for argidx <- net.graph.outargs {

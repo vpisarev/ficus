@@ -41,6 +41,7 @@
  * bl_sgemm.c
  * */
 
+#define FX_GEMM_MAX_STACKBUF (1 << 14)
 #define FX_SGEMM_MC 64
 #define FX_SGEMM_NC 240
 #define FX_SGEMM_STORAGE (1<<20)
@@ -363,14 +364,16 @@ int fx_sgemm( bool tA, bool tB, float alpha, float beta,
                             FX_SGEMM_VOL-1)/FX_SGEMM_VOL;
     int ntasks = (int)(ntasks_ < (uint64_t)num_threads ? ntasks_ :
                             (uint64_t)num_threads);
+    size_t bufsize = KC*(MC+NC)*sizeof(c[0]);
+    bool use_stackbuf = bufsize <= FX_GEMM_MAX_STACKBUF;
     int m_tiles = (M + MC - 1)/MC;
     int n_tiles = (N + NC - 1)/NC;
     int total_tiles = m_tiles * n_tiles;
 
-    #pragma omp parallel for num_threads(ntasks)
+    #pragma omp parallel for if (ntasks > 1) num_threads(ntasks)
     for( int tid = 0; tid < ntasks; tid++ )
     {
-        float* packA = (float*)fx_malloc(KC*(MC+NC)*sizeof(packA[0]));
+        float* packA = (float*)(use_stackbuf ? alloca(bufsize) : fx_malloc(bufsize));
         float* packB = packA + KC*MC;
         int start_tile = total_tiles*tid/ntasks;
         int end_tile = total_tiles*(tid+1)/ntasks;
@@ -401,7 +404,8 @@ int fx_sgemm( bool tA, bool tB, float alpha, float beta,
                 fx_sgemm_macro_kernel(mc, nc, kc, packA, packB, &c[i0 * ldc + j0], ldc);
             }
         }
-        fx_free(packA);
+        if (!use_stackbuf)
+            fx_free(packA);
     }
     }
 
@@ -703,14 +707,16 @@ int fx_dgemm( bool tA, bool tB, double alpha, double beta,
                             FX_DGEMM_VOL-1)/FX_DGEMM_VOL;
     int ntasks = (int)(ntasks_ < (uint64_t)num_threads ? ntasks_ :
                             (uint64_t)num_threads);
+    size_t bufsize = KC*(MC+NC)*sizeof(c[0]);
+    bool use_stackbuf = bufsize <= FX_GEMM_MAX_STACKBUF;
     int m_tiles = (M + MC - 1)/MC;
     int n_tiles = (N + NC - 1)/NC;
     int total_tiles = m_tiles * n_tiles;
 
-    #pragma omp parallel for num_threads(ntasks)
+    #pragma omp parallel for if(ntasks > 1) num_threads(ntasks)
     for( int tid = 0; tid < ntasks; tid++ )
     {
-        double* packA = (double*)fx_malloc(KC*(MC+NC)*sizeof(packA[0]));
+        double* packA = (double*)(use_stackbuf ? alloca(bufsize) : fx_malloc(bufsize));
         double* packB = packA + KC*MC;
         int start_tile = total_tiles*tid/ntasks;
         int end_tile = total_tiles*(tid+1)/ntasks;
@@ -741,7 +747,8 @@ int fx_dgemm( bool tA, bool tB, double alpha, double beta,
                 fx_dgemm_macro_kernel(mc, nc, kc, packA, packB, &c[i0 * ldc + j0], ldc);
             }
         }
-        fx_free(packA);
+        if (!use_stackbuf)
+            fx_free(packA);
     }
     }
 

@@ -701,7 +701,8 @@ fun graph2str(net: nnet_t, graph: nngraph_t, indent: string)
     val prog_indent = new_indent + "  "
     val inpstrs = [for a <- inpargs {net.args[a].name}]
     val outstrs = [for a <- outargs {net.args[a].name}]
-    val prog = [for op <- prog {op2str(net, op, prog_indent)}]
+    val prog = [for op@i <- prog {
+        f"{indent}// op #{i}\n{prog_indent}" + op2str(net, op, prog_indent)}]
     join_embrace(f"graph {{\n{new_indent}inputs={inpstrs},\n\
         {new_indent}outputs={outstrs},\n{new_indent}prog={{\n{prog_indent}",
         f"\n{new_indent}}}\n{indent}}}",
@@ -807,7 +808,7 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
     | NN_Unsqueeze {t_inp, t_axes, t_out} => ([t_inp, t_axes], [t_out])
 }
 
-fun op2str(net: nnet_t, op: nnop_t, indent: string)
+fun op2str(net: nnet_t, op: nnop_t, indent: string): string
 {
     val sub_indent = indent + "  "
     //println(f"dumping op={op.name()}")

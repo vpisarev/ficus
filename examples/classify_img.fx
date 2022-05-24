@@ -1,7 +1,7 @@
 import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.OpConv
 
 var mname = "", lname = ""
 var images: string list = []
@@ -99,7 +99,7 @@ for imgname@i <- images {
     val inp = cv.blobFromImage(img, size=(224, 224),
             scaleFactor=0.017,
             mean=(103., 116., 123.),
-            swapRB=true, crop=false)
+            swapRB=false, crop=false)
     println(inp.size())
     val out = net.forward(inp)
     //println(f"out[1]={out[1][:]}")
@@ -110,6 +110,8 @@ for imgname@i <- images {
     sort(tprobs, (>))
     val inp_ = NN.Ast.make_tensor(inp)
     var outputs: nn_output_t [] = []
+    NN.OpConv.reset_min_total_time_1x1()
+    val niters = 30
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =
@@ -117,8 +119,9 @@ for imgname@i <- images {
             | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
             | Fail msg => println(f"failure: '{msg}'"); []
             }
-        }, iterations=15, batch=1)
-    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}")
+        }, iterations=niters, batch=1)
+    val total_time = NN.OpConv.get_total_time_1x1()*1000/Sys.tick_frequency()
+    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, 1x1 total={total_time} ms")
     /*for t_out@i <- temp_outputs {
         println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
     }

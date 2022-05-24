@@ -95,6 +95,8 @@ fun assign_buffers(net: Ast.nnet_t)
                     | Some(argidx) => (true, argidx)
                     | _ => (false, -1)
                     }
+                | Ast.NN_Conv {t_passby} when t_passby > 0 && usecounts[t_passby] == 1 =>
+                    (true, t_passby)
                 | _ => (false, -1)
                 }
             //println(f"name={op.name()}, inplace={inplace_op}, inps={[::for i<-inps {net.args[i].name}]}, outs={[::for i<-outs {net.args[i].name}]}")

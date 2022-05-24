@@ -12,7 +12,7 @@ The code is distributed under Apache 2 license, see the [LICENSE](LICENSE)
 
 The compiler is written in Ficus itself and needs C/C++ compiler and make utility.
 
-### **Unix (Linux, macOS, BSD, ...)**
+### **Unix (Linux, macOS, BSD, WSL, ...)**
 
 ```
 cd <ficus_root>
@@ -22,7 +22,7 @@ bin/ficus -run -O3 examples/fst.fx # run some examples, e.g. fst.fx,
                                    # optionally specify optimization level
 ```
 
-### **Windows**
+### **Windows (native)**
 
 Install Visual Studio, for example Visual Studio 2019 Community Edition, open "Developer PowerShell for VS2019" from the Windows menu and type:
 
