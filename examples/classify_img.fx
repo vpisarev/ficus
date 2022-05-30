@@ -5,9 +5,15 @@ import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.O
 
 var mname = "", lname = ""
 var images: string list = []
+var ntasks = 0
+var use_f16 = false
 
 fun parse_args(args: string list)
 {
+    | "-ntasks" :: ntasks_ :: rest =>
+        ntasks = ntasks_.to_int_or(0); parse_args(rest)
+    | "-f16" :: rest =>
+        use_f16 = true; parse_args(rest)
     | "-labels" :: lname_ :: rest =>
         lname = lname_; parse_args(rest)
     | "-model" :: mname_ :: rest =>
@@ -92,6 +98,10 @@ val ocv_outputs = [lname]
 val temp_outputs = [for i <- [lname] {(i, NN.Ast.empty_tensor())}]
 
 type nn_output_t = (string, NN.Ast.nntensor_t)
+if ntasks > 0 {
+    *model.ntasks = ntasks
+}
+*model.use_f16 = use_f16
 
 for imgname@i <- images {
     println(f"starting reading model '{mname}'")
@@ -111,7 +121,7 @@ for imgname@i <- images {
     val inp_ = NN.Ast.make_tensor(inp)
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time_1x1()
-    val niters = 30
+    val niters = 15
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =

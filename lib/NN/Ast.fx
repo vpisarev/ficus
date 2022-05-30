@@ -302,6 +302,8 @@ class nnet_t
     buffers: nnbuf_t []
     graph: nngraph_t
     preferred_layout: nnlayout_t
+    ntasks: int ref
+    use_f16: bool ref
 }
 
 type op_callback_t = (nnet_t, nnop_t) -> void
@@ -316,7 +318,9 @@ fun empty_net() = nnet_t {
     bufidxs = [],
     buffers = [],
     graph = NN_Graph {inpargs = [], outargs = [], prog=[]},
-    preferred_layout = NN_Layout_NCHW
+    preferred_layout = NN_Layout_NCHW,
+    ntasks = ref 4,
+    use_f16 = ref false
 }
 
 fun empty_graph() = NN_Graph {
