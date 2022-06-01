@@ -2000,7 +2000,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                      int y0 = yx0/W0, x0 = yx0%W0;
                     for (int c = 0; c < Cg; c++)
                     {
-                        float* inpbuf_c = inpbuf_task + c*(FAST_CONV_NR*ksize);
+                        float* inpbuf_c = inpbuf_task + c*(FX_CONV_NR*ksize);
                         const float* inptr_c = inptr + c*inp_planesize;
 
                         for (int k = 0; k < ksize; k++)
@@ -2010,14 +2010,14 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                             int xi_0 = yxtab[k*2+1] - pad_left;
 
                             int yi = y0 + yxtab[k*2] - pad_top, xi = x0_tmp + xi_0;
-                            float* inpbuf_k = inpbuf_c + k * FAST_CONV_NR;
+                            float* inpbuf_k = inpbuf_c + k * FX_CONV_NR;
 
                             int i = 0;
                             for (; i < slice_len;)
                             {
                                 int copyLen = std::min(slice_len - i, W0 - x0_tmp);
 
-                                int di_z = (i + copyLen == slice_len) ? FAST_CONV_NR - slice_len : 0; // The final padding.
+                                int di_z = (i + copyLen == slice_len) ? FX_CONV_NR - slice_len : 0; // The final padding.
                                 // pad_top or pad bottom
                                 if (yi < 0 || yi > Hi - 1)
                                 {
