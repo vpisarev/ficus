@@ -1997,70 +1997,86 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                      interleave the data in inpbuf with 0's
                      (that correspond to the padding elements) when necessary
                      */
-                    int y0 = yx0/W0, x0 = yx0 - y0*W0;
-                    for (int k = 0; k < ksize; k++) {
-                        int dx_k = yxtab[k*2+1] - pad_left;
-                        int yi = y0 - pad_top + yxtab[k*2], xi = x0 + dx_k;
-                        // xi_0 is the x-coordinate that we set when we move to the next row.
-                        // Wi_part, correspondingly, is how many elements at
-                        // max we can grab from the input tensor row as long as we set xi=xi_0.
-                        int xi_0 = dx_k <= 0 ? 0 : dx_k;
-                        int Wi_part = W0 + (dx_k <= 0 ? dx_k : 0);
-                        Wi_part = (Wi_part < Wi - xi_0) ? Wi_part : (Wi - xi_0);
-                        // di_z0 is how many zero elements we put to inpbuf between rows.
-                        int di_z0 = dx_k <= 0 ? -dx_k : W0 + dx_k - Wi;
-                        float* inpbuf_k = inpbuf_task + k*FX_CONV_NR;
-                        int i = 0, di = W0 - x0;
-                        // if we are initially outside of the input tensor, we first put some 0's
-                        // into inpbuf and then start the main loop
-                        if (((unsigned)xi >= (unsigned)Wi) | ((unsigned)yi >= (unsigned)Hi)) {
-                            di = xi >= Wi ? di : xi >= 0 ? 0 : -xi < di ? -xi : di;
-                            if ((unsigned)yi < (unsigned)(Hi-1))
-                                yi += (xi >= Wi);
-                            else if (yi < 0) {
-                                di = (-yi-1)*W0 + (W0 - x0) + (dx_k < 0 ? -dx_k : 0);
-                                yi = 0;
-                            } else if ((yi >= Hi) | (xi >= 0))
-                                di = FX_CONV_NR;
-                            di = di < FX_CONV_NR ? di : FX_CONV_NR;
-                            assert(di > 0);
-                            for (int c = 0; c < Cg; c++)
-                                memset(inpbuf_k + c*(FX_CONV_NR*ksize), 0, di*sizeof(inpbuf_k[0]));
-                            i = di;
-                            xi = xi_0;
-                            di = Wi_part;
-                        }
-                        di = di < Wi - xi ? di : Wi - xi;
-                        for (; i < FX_CONV_NR;) {
-                            di = (di < FX_CONV_NR - i) ? di : (FX_CONV_NR - i);
-                            const float* inptr_k = inptr + yi*Wi + xi;
-                            int di_z = FX_CONV_NR - (i + di);
-                            if (di_z > 0) {
-                                // we handle the end of the feature plane gracefully,
-                                // in this case we just add as many 0's as necessary
-                                // to complete each contiguous slice
-                                // in inpbuf to FX_CONV_NR elements.
-                                di_z = ((yi == Hi-1) | (di_z < di_z0)) ? di_z : di_z0;
-                                for (int c = 0; c < Cg; c++) {
-                                    memcpy(inpbuf_k + i + c*(FX_CONV_NR*ksize),
-                                           inptr_k + c*inp_planesize,
-                                           di*sizeof(inpbuf_k[0]));
-                                    memset(inpbuf_k + i + di + c*(FX_CONV_NR*ksize),
-                                           0, di_z*sizeof(inpbuf_k[0]));
+                     int y0 = yx0/W0, x0 = yx0%W0;
+                    for (int c = 0; c < Cg; c++)
+                    {
+                        float* inpbuf_c = inpbuf_task + c*(FAST_CONV_NR*ksize);
+                        const float* inptr_c = inptr + c*inp_planesize;
+
+                        for (int k = 0; k < ksize; k++)
+                        {
+                            int x0_tmp = x0;
+
+                            int xi_0 = yxtab[k*2+1] - pad_left;
+
+                            int yi = y0 + yxtab[k*2] - pad_top, xi = x0_tmp + xi_0;
+                            float* inpbuf_k = inpbuf_c + k * FAST_CONV_NR;
+
+                            int i = 0;
+                            for (; i < slice_len;)
+                            {
+                                int copyLen = std::min(slice_len - i, W0 - x0_tmp);
+
+                                int di_z = (i + copyLen == slice_len) ? FAST_CONV_NR - slice_len : 0; // The final padding.
+                                // pad_top or pad bottom
+                                if (yi < 0 || yi > Hi - 1)
+                                {
+                                    memset(inpbuf_k + i,
+                                           0, (copyLen + di_z)*sizeof(inpbuf_k[0]));
+                                    i += copyLen + di_z;
                                 }
-                            } else {
-                                for (int c = 0; c < Cg; c++) {
-                                    memcpy(inpbuf_k + i + c*(FX_CONV_NR*ksize),
-                                           inptr_k + c*inp_planesize,
-                                           di*sizeof(inpbuf_k[0]));
+                                else
+                                {
+                                    int x_pad_left = 0, x_pad_right = 0;
+
+                                    // pad_left
+                                    if (xi < 0)
+                                    {
+                                        x_pad_left = std::min(-xi, copyLen);
+                                        xi = 0;
+                                        copyLen -= x_pad_left;
+                                    }
+
+                                    memset(inpbuf_k + i,
+                                           0, x_pad_left*sizeof(inpbuf_k[0]));
+                                    i += x_pad_left;
+
+                                    // pad right
+                                    if (xi + copyLen > Wi)
+                                    {
+                                        if (xi > Wi)
+                                        {
+                                            x_pad_right = copyLen;
+                                            copyLen = 0;
+                                        }
+                                        else
+                                        {
+                                            x_pad_right = std::min(xi + copyLen - Wi, copyLen);
+                                            copyLen -= x_pad_right;
+                                        }
+                                    }
+
+                                    CV_Assert(copyLen >=0);
+
+                                    const float* inptr_k = inptr_c + yi*Wi + xi;
+                                    memcpy(inpbuf_k + i,
+                                           inptr_k,
+                                           copyLen*sizeof(inpbuf_k[0]));
+
+                                    i += copyLen;
+
+                                    // pad_right and the final padding.
+                                    memset(inpbuf_k + i,
+                                           0, (di_z + x_pad_right) * sizeof(inpbuf_k[0]));
+                                    i += x_pad_right + di_z;
                                 }
+
+                                x0_tmp = 0;
+                                xi = xi_0;
+                                yi++;
                             }
-                            i += di + di_z;
-                            di = Wi_part;
-                            xi = xi_0;
-                            yi++;
                         }
-                    }
+                    }                    
                 } else {
                     int y0_ = yx0/W0, x0_ = yx0 - y0_*W0;
                     for (int k = 0; k < ksize; k++) {
