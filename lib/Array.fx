@@ -8,6 +8,11 @@ fun mkrange(n: int) = [for i <- 0:n {i}]
 fun mkrange(a: int, b: int) = [for i <- a:b {i}]
 fun mkrange(a: int, b: int, delta: int) = [for i <- a:b:delta {i}]
 
+fun channels(a: ('t*2) [+]) = 2
+fun channels(a: ('t*3) [+]) = 3
+fun channels(a: ('t*4) [+]) = 4
+fun channels(a: ('t*5) [+]) = 5
+
 fun length(a: 't []) = __intrin_size__(a)
 fun size(a: 't []) = __intrin_size__(a)
 fun size(a: 't [,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
@@ -30,21 +35,27 @@ fun copy(a: 't [+]) = [for x <- a {x}]
 
 fun reshape(a: 't [+], size: (int*2)): 't [,]
 @ccode {
-    return fx_reshape_arr(a, 2, &size->t0, fx_result);
+    return fx_reshape_arr(a, 2, &size->t0, 1, 1, fx_result);
 }
 fun reshape(a: 't [+], s0: int, s1: int) = reshape(a, (s0, s1))
 
 fun reshape(a: 't [+], size: (int*3)): 't [,,]
 @ccode {
-    return fx_reshape_arr(a, 3, &size->t0, fx_result);
+    return fx_reshape_arr(a, 3, &size->t0, 1, 1, fx_result);
 }
 fun reshape(a: 't [+], s0: int, s1: int, s2: int) = reshape(a, (s0, s1, s2))
 
 fun reshape(a: 't [+], size: (int*4)): 't [,,,]
 @ccode {
-    return fx_reshape_arr(a, 4, &size->t0, fx_result);
+    return fx_reshape_arr(a, 4, &size->t0, 1, 1, fx_result);
 }
 fun reshape(a: 't [+], s0: int, s1: int, s2: int, s3: int) = reshape(a, (s0, s1, s2, s3))
+
+fun reshape_multichan_(a: ('t ...)[+], nchannels: int, size: (int*4)): 't [,,,]
+@ccode {
+    return fx_reshape_arr(a, 4, &size->t0, (int)nchannels, 1, fx_result);
+}
+fun reshape_multichan(a: ('t ...) [+], size: (int*4)): 't [,,,] = reshape_multichan_(a, channels(a), size)
 
 fun __negate__(a: 't [+]) = [for x <- a {-x}]
 
@@ -163,11 +174,55 @@ operator .> (a: 't [+], b: 't [+]): bool [+] =
 operator .>= (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {!(x < y)}]
 
+operator .<=> (x: 't, b: 't [+]): int [+] =
+    [for y <- b {x <=> y}]
+operator .== (x: 't, b: 't [+]): bool [+] =
+    [for y <- b {x == y}]
+operator .!= (x: 't, b: 't [+]): bool [+] =
+    [for y <- b {!(x == y)}]
+operator .< (x: 't, b: 't [+]) =
+    [for y <- b {x < y}]
+operator .<= (x: 't, b: 't [+]): bool [+] =
+    [for y <- b {!(y < x)}]
+operator .> (x: 't, b: 't [+]): bool [+] =
+    [for y <- b {y < x}]
+operator .>= (x: 't, b: 't [+]): bool [+] =
+    [for y <- b {!(x < y)}]
+
+operator .<=> (a: 't [+], y: 't): int [+] =
+    [for x <- a {x <=> y}]
+operator .== (a: 't [+], y: 't): bool [+] =
+    [for x <- a {x == y}]
+operator .!= (a: 't [+], y: 't): bool [+] =
+    [for x <- a {!(x == y)}]
+operator .< (a: 't [+], y: 't) =
+    [for x <- a {x < y}]
+operator .<= (a: 't [+], y: 't): bool [+] =
+    [for x <- a {!(y < x)}]
+operator .> (a: 't [+], y: 't): bool [+] =
+    [for x <- a {y < x}]
+operator .>= (a: 't [+], y: 't): bool [+] =
+    [for x <- a {!(x < y)}]
+
 fun min(a: 't [+], b: 't [+]) =
     [for x <- a, y <- b {min(x, y)}]
-
 fun max(a: 't [+], b: 't [+]) =
     [for x <- a, y <- b {max(x, y)}]
+
+fun min(x: 't, b: 't [+]) =
+    [for y <- b {min(x, y)}]
+fun max(x: 't, b: 't [+]) =
+    [for y <- b {max(x, y)}]
+
+fun min(a: 't [+], y: 't) =
+    [for x <- a {min(x, y)}]
+fun max(a: 't [+], y: 't) =
+    [for x <- a {max(x, y)}]
+
+fun clip(a: 't [+], minv: 't, maxv: 't) =
+    [for x <- a {min(max(x, minv), maxv)}]
+fun clip(a: 't [+], minv_arr: 't [+], maxv_arr: 't [+]) =
+    [for x <- a, minv <- minv_arr, maxv <- maxv_arr {min(max(x, minv), maxv)}]
 
 fun sum(a: 't [+]) =
     fold s = ((0 :> 't) :> double) for aj <- a {s + aj}
@@ -181,22 +236,26 @@ fun product(a: 't [+], v0: 's) =
 fun mean(a: 't [+]) = sum(a)/(max(total(a), 1) :> double)
 
 fun normInf(a: 't [+]) =
-    fold s = 0. for aj <- a {max(s, double(abs(aj)))}
+    fold s = normInf(0 :> 't) for aj <- a {max(s, normInf(aj))}
 
 fun normL1(a: 't [+]) =
-    fold s = 0. for aj <- a {s + abs(aj)}
+    fold s = 0. for aj <- a {s + normL1(aj)}
 
-fun normL2(a: 't [+]) =
-    sqrt(fold s = 0. for aj <- a {s + double(aj)*aj})
+fun normL2sqr(a: 't [+]) =
+    fold s = 0. for aj <- a {s + normL2sqr(aj)}
+
+fun normL2(a: 't [+]) = sqrt(normL2sqr(a))
 
 fun normInf(a: 't [+], b: 't [+]) =
-    fold s = 0. for aj <- a, bj <- b {val d = aj - bj; max(s, double(abs(d)))}
+    fold s = normInf(0 :> 't) for aj <- a, bj <- b {max(s, normInf(aj, bj))}
 
 fun normL1(a: 't [+], b: 't [+]) =
-    fold s = 0. for aj <- a, bj <- b {val d = aj - bj; s + abs(d)}
+    fold s = 0. for aj <- a, bj <- b {s + normL1(aj, bj)}
 
-fun normL2(a: 't [+], b: 't [+]) =
-    sqrt(fold s = 0. for aj <- a, bj <- b {val d = aj - bj; s + double(d)*d})
+fun normL2sqr(a: 't [+], b: 't [+]) =
+    fold s = 0. for aj <- a, bj <- b {s + normL2sqr(aj, bj)}
+
+fun normL2(a: 't [+], b: 't [+]) = sqrt(normL2sqr(a, b))
 
 fun minindex(a: 't []): ('t, int) =
     if a == [] {
@@ -303,29 +362,28 @@ fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't) =
     [for i <- 0:size.0 for j <- 0:size.1
        for k <- 0:size.2 for l <- 0:size.3 {rng.uniform(a, b)}]
 
-fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int)
+fun shuffle(arr: 't [], rng: RNG): void
 {
-    @nothrow fun swap(arr: 't [], i: int, j: int): void
-    @ccode {
-        size_t esz = arr->dim[0].step;
-        if(esz % sizeof(int) == 0) {
-            int* ptr0 = (int*)(arr->data + i*esz);
-            int* ptr1 = (int*)(arr->data + j*esz);
-            esz /= sizeof(int);
-            for( size_t k = 0; k < esz; k++ ) {
-                int t0 = ptr0[k], t1 = ptr1[k];
-                ptr0[k] = t1; ptr1[k] = t0;
+    val n = size(arr)
+    if n > 1 {
+        if __is_scalar__(arr[0]) {
+            for i <- 0:n {
+                val j = rng.uniform(0, n-1)
+                val t = arr[i]
+                arr[i] = arr[j]
+                arr[j] = t
             }
         } else {
-            char* ptr0 = arr->data + i*esz;
-            char* ptr1 = arr->data + j*esz;
-            for( size_t k = 0; k < esz; k++ ) {
-                char t0 = ptr0[k], t1 = ptr1[k];
-                ptr0[k] = t1; ptr1[k] = t0;
+            for i <- 0:n {
+                val j = rng.uniform(0, n-1)
+                _swap_(arr, i, j)
             }
         }
     }
+}
 
+fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int)
+{
     fun qsort_(lo: int, hi: int) {
         if lo+1 < hi {
             val m = (lo+hi)/2
@@ -349,7 +407,7 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int)
                 } else {
                     fold i0 = lo for j <- lo:hi {
                         if lt(arr[j], p) {
-                            swap(arr, i0, j)
+                            _swap_(arr, i0, j)
                             i0 + 1
                         } else {i0}
                     }

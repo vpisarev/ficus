@@ -406,6 +406,12 @@ operator <=> (a: 't [], b: 't []): int
     if d != 0 {d} else {na <=> nb}
 }
 
+// [TODO] add __intrin_tuple_size(x) that is expanded to a constant at compile time.
+fun size(_: ('t*2)) = 2
+fun size(_: ('t*3)) = 3
+fun size(_: ('t*4)) = 4
+fun size(_: ('t*5)) = 5
+
 operator == (a: (...), b: (...)) =
     fold f=true for aj <- a, bj <- b {if aj == bj {f} else {false}}
 operator <=> (a: (...), b: (...)) =
@@ -469,9 +475,31 @@ fun cross(a: ('t*2), b: ('t*2)) = a.0*b.1 - a.1*b.0
 fun cross(a: ('t*3), b: ('t*3)) =
     (a.1*b.2 - a.2*b.1, a.2*b.0 - a.0*b.2, a.0*b.1 - a.1*b.0)
 
-// absolute value
-fun norm(a: ('t...)) =
-    __intrin_sqrt__(fold s = a.0*0.f for aj <- a {s + aj*aj})
+fun normInf(a: 't, b: 't) = abs(a - b)
+fun normInf(a: 't) = abs(a)
+fun normL1(a: 't, b: 't) = abs(a - b)
+fun normL1(a: 't) = abs(a)
+fun normL2sqr(a: 't, b: 't) { val t = abs(a - b); t*t }
+fun normL2sqr(a: 't) { val t = abs(a); t*t }
+fun normL2(a: 't) = abs(a)
+
+fun normInf(a: ('t...)) =
+    fold s = normInf(a.0) for aj <- a {max(s, normInf(aj))}
+fun normL1(a: ('t...)) =
+    fold s = normL1(a.0)*0.f for aj <- a {s + normL1(aj)}
+fun normL2sqr(a: ('t...)) =
+    fold s = normL1(a.0)*0.f for aj <- a {s + normL2sqr(aj)}
+fun normL2(a: ('t...)) = __intrin_sqrt__(normL2sqr(a))
+fun normInf(a: ('t...), b: ('t...)) =
+    fold s = normInf(a.0, b.0) for aj <- a, bj <- b {max(s, normInf(aj, bj))}
+fun normL1(a: ('t...), b: ('t...)) =
+    fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s + normL1(aj, bj)}
+fun normL2sqr(a: ('t...), b: ('t...)) =
+    fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s + normL2sqr(aj, bj)}
+fun normL2(a: ('t...), b: ('t...)) = __intrin_sqrt__(normL2sqr(a, b))
+
+fun norm(a: ('t...)) = normL2(a)
+fun norm(a: ('t...), b: ('t...)) = normL2(a, b)
 
 operator .== (a: ('t...), b: 't): (bool...) = (for aj <- a {aj == b})
 operator .!= (a: ('t...), b: 't): (bool...) = (for aj <- a {aj != b})
@@ -737,6 +765,13 @@ fun max(a: 't, b: 't) = if a >= b {a} else {b}
 @inline fun min(a: double, b: double) = __intrin_min__(a, b)
 @inline fun max(a: double, b: double) = __intrin_max__(a, b)
 fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
+@inline fun abs(a: uint8) = int(a)
+@inline fun abs(a: int8) = if a >= 0 {int(a)} else {-a}
+@inline fun abs(a: uint16) = int(a)
+@inline fun abs(a: int16) = if a >= 0 {int(a)} else {-a}
+@inline fun abs(a: uint32) = a
+@inline fun abs(a: int32) = if a >= 0 {int(a)} else {int(-a)}
+@inline fun abs(a: uint64) = a
 fun sign(a: 't) = int(a > (0 :> 't)) - int(a < (0 :> 't))
 fun clip(x: 't, a: 't, b: 't) = if a <= x <= b {x} else if x < a {a} else {b}
 
@@ -934,4 +969,27 @@ fun hash(x: {...}): hash_t =
         hash *= FNV_1A_PRIME;
     }
     return hash;
+}
+
+// helper function used in sorting, shuffling and possibly some other array processing algorithms.
+// it does _not_ perform range checking for better efficiency, so, please, use with care.
+@nothrow fun _swap_(arr: 't [], i: int, j: int): void
+@ccode {
+    size_t esz = arr->dim[0].step;
+    if(esz % sizeof(int) == 0) {
+        int* ptr0 = (int*)(arr->data + i*esz);
+        int* ptr1 = (int*)(arr->data + j*esz);
+        esz /= sizeof(int);
+        for( size_t k = 0; k < esz; k++ ) {
+            int t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
+        }
+    } else {
+        char* ptr0 = arr->data + i*esz;
+        char* ptr1 = arr->data + j*esz;
+        for( size_t k = 0; k < esz; k++ ) {
+            char t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
+        }
+    }
 }

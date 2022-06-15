@@ -1,7 +1,39 @@
+/*
+    This file is a part of ficus language project.
+    See ficus/LICENSE for the licensing terms
+*/
+
 import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
+import Color
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.OpConv
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpYolo
+
+val coco_class_names =
+    ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat", "traffic light",
+    "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+    "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+    "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+    "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa",
+    "potted plant", "bed", "dining table", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard",
+    "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
+    "teddy bear", "hair drier", "toothbrush"]
+
+fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [], ~class_names: string [], ~show_labels:bool=true)
+{
+    val nclasses = class_names.size()
+    val colors = [for i <- 0:nclasses {
+        val rgb = Color.hsv2rgb(float(i)/nclasses, 1.f, 1.f)
+        (rgb.2*255., rgb.1*255., rgb.0*255., 255.)
+    }]
+
+    for (x0, y0, x1, y1, conf, clsid) <- bboxes {
+        cv.rectangle(image, (round(x0), round(y0)),
+            (round(x1), round(y1)), colors[int(clsid)], thickness=3)
+        println(f"({x0},")
+    }
+}
 
 var mname = "", lname = ""
 var images: string list = []
@@ -57,7 +89,6 @@ val labels: string [] =
         }
     }
 
-val net = cv.readNet(mname)
 /*val fface = cv.makeFontFace("sans")
 val fontSize = 20
 
@@ -94,7 +125,6 @@ val model = NN.BufferAllocator.assign_buffers(model)
 println(model)
 val k = 5
 val lname = "output"
-val ocv_outputs = [lname]
 val temp_outputs = [for i <- [lname] {(i, NN.Ast.empty_tensor())}]
 
 type nn_output_t = (string, NN.Ast.nntensor_t)
@@ -102,26 +132,34 @@ if ntasks > 0 {
     *model.ntasks = ntasks
 }
 *model.use_f16 = use_f16
+val size0 = 416
 
 for imgname@i <- images {
-    println(f"starting reading model '{mname}'")
+    //println(f"starting reading model '{mname}'")
     val img = cv.imread(imgname)
-    val inp = cv.blobFromImage(img, size=(224, 224),
-            scaleFactor=0.017,
-            mean=(103., 116., 123.),
-            swapRB=false, crop=false)
+    val (h, w) = img.size()
+    val resized_img = if h == w {
+            cv.resize(img, (size0, size0), interpolation=cv.INTER_LINEAR)
+        } else {
+            val (w, h) = if w > h {(size0, (h*size0+w/2)/w)} else {((w*size0+h/2)/h, size0)}
+            val resized_img = cv.resize(img, (w, h), interpolation=cv.INTER_LINEAR)
+            val canvas = array((size0, size0), (128u8, 128u8, 128u8))
+            val y0 = (size0-h)/2
+            val x0 = (size0-w)/2
+            canvas[y0:y0+h,x0:x0+w] = resized_img
+            canvas
+        }
+    val resized_img = cv.cvtColor(resized_img, cv.COLOR_BGR2RGB)
+    //cv.imshow("original", img)
+    //cv.imshow("test", resized_img)
+    //ignore(cv.waitKey())
+
+    val inp = reshape_multichan(resized_img, (1, size0, size0, 3)).*(1.f/255)
     println(inp.size())
-    val out = net.forward(inp)
-    //println(f"out[1]={out[1][:]}")
-    //println(f"out[2]={out[2][:]}")
-    val probs = out
-    val (_, _, _, n) = size(probs)
-    val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
-    sort(tprobs, (>))
     val inp_ = NN.Ast.make_tensor(inp)
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time_1x1()
-    val niters = 15
+    val niters = 1
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =
@@ -132,43 +170,24 @@ for imgname@i <- images {
         }, iterations=niters, batch=1)
     val total_time = NN.OpConv.get_total_time_1x1()*1000/Sys.tick_frequency()
     println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, 1x1 total={total_time} ms")
-    /*for t_out@i <- temp_outputs {
-        println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
-    }
-    val temp = float(temp_outputs[1].1)
-    val shape = temp_outputs[1].1.shape.shape
-    val shape2d = (shape[0]*shape[1]*shape[2], shape[3])
-    //val ntemp = temp.size()
-    //println(f"||'{lname}_ref' - '{lname}'||/sz = {normL1(out[0][:] - temp)/ntemp}")
-    //println(out[0].reshape(shape2d)[:5,:5])
-    println(temp.reshape(shape2d)[:5,:5])*/
     //println(out[0][:][:20])
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
-        val sorted_k = NN.Inference.top_k(out.1, k)
+        /*val sorted_k = NN.Inference.top_k(out.1, k)
         for j <- 0:k {
             val (label, prob) = sorted_k[0, j]
             val label_str = if labels != [] {labels[label]} else {f"class_{label}"}
             println(f"\t{j+1}. label={label_str} ({label}), prob={prob}")
-        }
+        }*/
     }
-    for j <- 0:k {
-        val label = tprobs[j].1
-        val lbl = if labels != [] {labels[label]} else {f"class_{label}"}
-        val prob = tprobs[j].0
-        println(f"\t{j+1}. label={lbl} ({label}), prob={prob}")
-    }
+    val outputs = [for (_, out) <- outputs {out}]
+    val boxes = NN.OpYolo.yolov4_postprocess(
+        outputs, orig_image_size=(h, w), input_size=size0,
+        score_threshold=0.25f, nms_threshold=0.213f,
+        anchors=NN.OpYolo.yolov4_default_anchors,
+        strides=NN.OpYolo.yolov4_default_strides,
+        xyscale=NN.OpYolo.yolov4_default_scale)
+    draw_boxes(img, boxes, class_names=coco_class_names)
+    cv.imshow("detection", img)
+    ignore(cv.waitKey())
 }
-
-/*val model =
-    try NN.FromOnnx.read(mname)
-    catch {
-    | NN.FromOnnx.OnnxConvertError(msg) =>
-        println(f"error: {msg}"); throw Fail("")
-    | Fail(msg) =>
-        println(f"error: {msg}"); throw Fail("")
-    }
-println(f"dumping model '{mname}'")
-val model = NN.BufferAllocator.assign_buffers(model)
-println(model)
-*/

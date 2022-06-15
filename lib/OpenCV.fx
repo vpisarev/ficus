@@ -1283,7 +1283,7 @@ val WARP_INVERSE_MAP: int = @ccode {cv::WARP_INVERSE_MAP}
     return fx_status;
 }
 
-fun resize(src: 't [,], dsize: intx2, ~fx: double=0, ~fy: double=0,
+fun resize(src: 't [,], dsize: intx2, ~fx: double=0., ~fy: double=0.,
            ~interpolation: int = INTER_LINEAR ): 't [,] =
     (reinterpret(resize_(anyarray(src), dsize, fx, fy, interpolation)) : 't [,])
 
@@ -2155,7 +2155,7 @@ val COLOR_COLORCVT_MAX: int = @ccode {cv::COLOR_COLORCVT_MAX}
 
     FX_OCV_TRY_CATCH(
         cv::cvtColor(c_src, c_dst, (int)code, (int)dstcn);
-        fx_status = cvt_from(c_dst, src1->t0.ndims, src1->t1.tag, dstcn, fx_result);
+        fx_status = cvt_from(c_dst, src->t0.ndims, src->t1.tag, dstcn, fx_result);
     )
     return fx_status;
 }

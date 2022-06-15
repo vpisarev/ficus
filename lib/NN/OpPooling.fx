@@ -32,7 +32,7 @@ typedef struct _fx_pooling2d_t
 
 static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
                          const int_* outsize, float* out,
-                         const _fx_pooling2d_t* pool)
+                         const _fx_pooling2d_t* pool, int ntasks)
 {
     int N = (int)inpsize[0], C = (int)inpsize[1];
     int Hi = (int)inpsize[2], Wi = (int)inpsize[3];
@@ -80,7 +80,7 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
     bool is3x3 = Hk == 3 && Wk == 3;
 #endif
 
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(ntasks)
     for (int nc = 0; nc < N*C; nc++) {
         int c = nc % C;
         const float* inptr = inp + inp_planesize*nc;
@@ -157,7 +157,7 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
 
 static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
                          const int_* outsize, float* out,
-                         const _fx_pooling2d_t* pool)
+                         const _fx_pooling2d_t* pool, int ntasks)
 {
     int N = (int)inpsize[0], C = (int)inpsize[1];
     int Hi = (int)inpsize[2], Wi = (int)inpsize[3];
@@ -199,7 +199,7 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
     float32x4_t vscale = vdupq_n_f32(avg_scale);
 #endif
 
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(ntasks)
     for (int nc = 0; nc < N*C; nc++) {
         int c = nc % C;
         const float* inptr = inp + inp_planesize*nc;
@@ -278,11 +278,11 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
 
 }
 
-fun run_maxpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
-                   out: 't [], out_shape: Ast.nnshape_t,
+fun run_maxpool_2d(inp: float [], inp_shape: Ast.nnshape_t,
+                   out: float [], out_shape: Ast.nnshape_t,
                    Hk: int, Wk: int, sy: int, sx: int,
                    dy: int, dx: int, pad_top: int, pad_left: int,
-                   pad_bottom: int, pad_right: int): void
+                   pad_bottom: int, pad_right: int, ntasks: int): void
 @ccode {
     _fx_pooling2d_t pool;
     int_ ndims = inp_shape->shape.dim[0].size;
@@ -301,7 +301,7 @@ fun run_maxpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
     pool.pad_top = (int)pad_top; pool.pad_left = (int)pad_left;
     pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
     return _fx_maxpool2d((int)ndims, inpsize, (const float*)inp->data,
-                         outsize, (float*)out->data, &pool);
+                         outsize, (float*)out->data, &pool, (int)ntasks);
 }
 
 fun run_maxpool(net: Ast.nnet_t, op: Ast.nnop_t) =
@@ -312,26 +312,21 @@ match op {
     val out = net.get_tensor(t_out)
     assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     match (inp.data, out.data) {
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_U8 out_data) =>
-        run_maxpool_2d(inp_data, inp.shape, out_data, out.shape,
-            kernel_shape[0], kernel_shape[0],
-            strides[0], strides[1], dilations[0], dilations[1],
-            pads[0], pads[1], pads[2], pads[3])
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_maxpool_2d(inp_data, inp.shape, out_data, out.shape, kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
-            pads[0], pads[1], pads[2], pads[3])
+            pads[0], pads[1], pads[2], pads[3], *net.ntasks)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-fun run_avgpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
-                   out: 't [], out_shape: Ast.nnshape_t,
+fun run_avgpool_2d(inp: float [], inp_shape: Ast.nnshape_t,
+                   out: float [], out_shape: Ast.nnshape_t,
                    Hk: int, Wk: int, sy: int, sx: int,
                    dy: int, dx: int, pad_top: int, pad_left: int,
                    pad_bottom: int, pad_right: int,
-                   count_include_pad: bool): void
+                   count_include_pad: bool, ntasks: int): void
 @ccode {
     _fx_pooling2d_t pool;
     int_ ndims = inp_shape->shape.dim[0].size;
@@ -351,7 +346,7 @@ fun run_avgpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
     pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
     pool.count_include_pad = count_include_pad;
     return _fx_avgpool2d((int)ndims, inpsize, (const float*)inp->data,
-                         outsize, (float*)out->data, &pool);
+                         outsize, (float*)out->data, &pool, (int)ntasks);
 }
 
 fun run_avgpool(net: Ast.nnet_t, op: Ast.nnop_t) =
@@ -368,10 +363,10 @@ match op {
         run_avgpool_2d(inp_data, inp.shape, out_data, out.shape,
             kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
-            pads[0], pads[1], pads[2], pads[3], count_include_pad)
+            pads[0], pads[1], pads[2], pads[3], count_include_pad, *net.ntasks)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
 fun run_global_avgpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
@@ -404,5 +399,5 @@ match op {
         run_global_avgpool_2d(inp_data, inp.shape, out_data, out.shape, 0.f)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

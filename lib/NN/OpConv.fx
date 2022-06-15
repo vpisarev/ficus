@@ -554,7 +554,7 @@ static void _fx_conv_block( int k, const float *a, const float *b,
 
 static int _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* inp,
                                 const int_* outsize, float* out,
-                                const _fx_conv2d_t* conv)
+                                const _fx_conv2d_t* conv, int ntasks)
 {
     assert(ndims == 4 && inpsize[0] == outsize[0] && outsize[1] == conv->K && inpsize[1] == conv->C);
     assert(conv->ngroups == conv->K && conv->K == conv->C);
@@ -606,7 +606,7 @@ static int _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* inp
 #endif
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(ntasks)
     for (int nc = 0; nc < N*C; nc++) {
         int c = nc % C, dy0 = 1;
         const float* inptr = inp + inp_planesize*nc;
@@ -1869,7 +1869,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
            outsize[1] == conv->K &&
            inpsize[1] == conv->C);
     if (conv->conv_type == _FX_CONV_TYPE_DEPTHWISE) {
-        return _fx_depthwise_conv2d(ndims, inpsize, inp, outsize, out, conv);
+        return _fx_depthwise_conv2d(ndims, inpsize, inp, outsize, out, conv, ntasks);
     }
 #ifdef __ARM_NEON
     //else if (conv->conv_type == _FX_CONV_TYPE_WINOGRAD3X3) {

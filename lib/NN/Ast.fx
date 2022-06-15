@@ -108,7 +108,7 @@ type nninterpolation_t =
     | NN_Inter_Linear
     | NN_Inter_Cubic
 
-type dlnearest_mode_t =
+type nnearest_mode_t =
     | NN_Nearest_RoundPreferFloor
     | NN_Nearest_RoundPreferCeil
     | NN_Nearest_Floor
@@ -237,7 +237,7 @@ class nnop_t =
         exclude_outside: bool
         extrapolation_value: float
         mode: nninterpolation_t
-        nearest_mode: dlnearest_mode_t
+        nearest_mode: nnearest_mode_t
         t_inp: int; t_scales: int; t_sizes: int
         t_roi: int; t_out: int }
     | NN_RoiAlign: {
@@ -441,7 +441,7 @@ fun string(coord_trans: nncoord_trans_t)
     | NN_CT_OutHalfPixel => "OutputHalfPixel"
 }
 
-fun string(nearest_round: dlnearest_mode_t)
+fun string(nearest_round: nnearest_mode_t)
 {
     | NN_Nearest_RoundPreferFloor => "Nearest_RoundPreferFloor"
     | NN_Nearest_RoundPreferCeil => "Nearest_RoundPreferCeil"
@@ -918,7 +918,7 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string): string
         val nearest_mode_str = if mode == NN_Inter_Nearest {f", nearest_mode={nearest_mode}"} else {""}
         val tensors = [:: ("t_out", t_out)]
         val tensors = if coord_trans == NN_CT_TFCropResize {("t_roi", t_roi) :: tensors} else {tensors}
-        val tensors = if t_scales != 0 {("t_scales", t_scales) :: tensors} else {("t_sizes", t_sizes) :: tensors}
+        val tensors = ("t_scales", t_scales) :: ("t_sizes", t_sizes) :: tensors
         op2str(name, "Resize", f"coord_trans={coord_trans}, cubic_coeff_a={cubic_coeff_a},\
             exclude_outside={exclude_outside}, extrapolation_value={extrapolation_value},\
             mode={mode}{nearest_mode_str}",
@@ -944,7 +944,8 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string): string
     | NN_SoftMax {name, axis, t_inp, t_out } =>
         op2str(name, "SoftMax", f"axis={axis}", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Split {name, axis, t_inp, t_split, t_out} =>
-        op2str(name, "Split", f"axis={axis}", t2str(net, [("t_inp", t_inp), ("t_split", t_split)] + targs2pairs("t_out", t_out)), indent)
+        op2str(name, "Split", f"axis={axis}", t2str(net,
+            [("t_inp", t_inp), ("t_split", t_split), \targs2pairs("t_out", t_out)]), indent)
     | NN_Squeeze {name, t_inp, t_axes, t_out} =>
         op2str(name, "Squeeze", "", t2str(net, [("t_inp", t_inp), ("t_axes", t_axes), ("t_out", t_out)]), indent)
     | NN_Tile {name, t_inp, t_repeats, t_out} =>

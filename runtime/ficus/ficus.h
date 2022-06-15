@@ -921,7 +921,8 @@ int fx_compose_arr( int dims, size_t elemsize, fx_free_t free_elem, fx_copy_t co
                     const int8_t* tags, const void** data, fx_arr_t* arr );
 int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);
 int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* farr);
-int fx_reshape_arr(const fx_arr_t* arr, int ndims, const int_* size, fx_arr_t* result);
+int fx_reshape_arr(const fx_arr_t* arr, int ndims, const int_* size,
+                   int arr_channels, int new_channels, fx_arr_t* result);
 
 int fx_sgemm(bool tA, bool tB, float alpha, float beta,
              int ma, int na, const float* a, int lda0, int lda1,

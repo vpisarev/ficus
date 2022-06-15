@@ -41,6 +41,13 @@ match op {
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
     | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
 
+    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
+    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
+
     | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
     | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
     | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
@@ -54,7 +61,8 @@ match op {
     | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
     | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | _ => throw NotImplementedError
+    | _ =>
+        throw Ast.NNError(f"cast from {inp.data.elemtype()} to {out.data.elemtype()} is not implemented")
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
@@ -111,6 +119,9 @@ match op {
 }
 
 @private fun run_abs(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = abs(x)}
+@private fun run_acos(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = acos(x)}
+@private fun run_asin(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = asin(x)}
+@private fun run_atan(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = atan(x)}
 @private fun run_cos(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = cos(x)}
 @private fun run_exp(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = exp(x)}
 @private fun run_log(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = log(x)}
@@ -121,6 +132,7 @@ match op {
 @private fun run_softplus(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = log(1 + exp(x))}
 @private fun run_softsign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = x/(1 + abs(x))}
 @private fun run_sqrt(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sqrt(x)}
+@private fun run_tanh(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = tanh(x)}
 
 fun run_unary(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
@@ -131,6 +143,12 @@ match op
     match (el_op, inp.data, out.data) {
     | (Ast.NN_Abs, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_abs(inp_data, out_data)
+    | (Ast.NN_Acos, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_acos(inp_data, out_data)
+    | (Ast.NN_Asin, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_asin(inp_data, out_data)
+    | (Ast.NN_Atan, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_atan(inp_data, out_data)
     | (Ast.NN_Cos, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_cos(inp_data, out_data)
     | (Ast.NN_Exp, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
@@ -151,50 +169,115 @@ match op
         run_softsign(inp_data, out_data)
     | (Ast.NN_Sqrt, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_sqrt(inp_data, out_data)
+    | (Ast.NN_Tanh, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_tanh(inp_data, out_data)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
+type ElemwiseOpType = EOT_AoA | EOT_AoS | EOT_SoA
+fun rev_eot(eot: ElemwiseOpType) { | EOT_AoS => EOT_SoA | EOT_SoA => EOT_AoS | _ => eot }
+
 // [TODO] add broadcast support
-@private fun run_cmp_gt(inp0: 't [], inp1: 't [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x > y}
-@private fun run_cmp_ge(inp0: 't [], inp1: 't [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x >= y}
-@private fun run_cmp_lt(inp0: 't [], inp1: 't [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x < y}
-@private fun run_cmp_le(inp0: 't [], inp1: 't [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x <= y}
-@private fun run_cmp_eq(inp0: 't [], inp1: 't [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x == y}
-@private fun run_cmp_ne(inp0: 't [], inp1: 't [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x != y}
-@private fun run_add(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x + y}
-@private fun run_sub(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x - y}
-@private fun run_mul(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x * y}
-@private fun run_div(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x / y}
-@private fun run_mod(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x - floor(x / y)*y}
-@private fun run_pow(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x ** y}
-@private fun run_max(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = max(x, y)}
+@private fun run_cmp_gt(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x > y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x > y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x > y}
+    }
+@private fun run_cmp_ge(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x >= y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x >= y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x >= y}
+    }
+@private fun run_cmp_lt(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
+    run_cmp_gt(inp1, inp0, out, rev_eot(eot))
+@private fun run_cmp_le(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
+    run_cmp_ge(inp1, inp0, out, rev_eot(eot))
+@private fun run_cmp_eq(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x == y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x == y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x == y}
+    }
+@private fun run_cmp_ne(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x != y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x != y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x != y}
+    }
+@private fun run_add(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x + y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x + y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x + y}
+    }
+@private fun run_sub(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x - y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x - y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x - y}
+    }
+@private fun run_mul(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x * y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x * y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x * y}
+    }
+@private fun run_div(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x / y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x / y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x / y}
+    }
+@private fun run_mod(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x - floor(x / y)*y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x - floor(x / y)*y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x - floor(x / y)*y}
+    }
+@private fun run_pow(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x ** y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x ** y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x ** y}
+    }
+@private fun run_max(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = max(x, y)}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = max(x, y)}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = max(x, y)}
+    }
 @private fun run_mean(inp0: 't [], inp1: 't [], out: 't []) =
     for x@idx <- inp0, y <- inp1 {out[idx] = (x + y)/2}
 @private fun run_mean(inp0: float [], inp1: float [], out: float []) =
     for x@idx <- inp0, y <- inp1 {out[idx] = (x + y)*0.5f}
-@private fun run_min(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = min(x, y)}
-@private fun run_and(inp0: bool [], inp1: bool [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x & y}
-@private fun run_or(inp0: bool [], inp1: bool [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x | y}
-@private fun run_xor(inp0: bool [], inp1: bool [], out: bool []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = x ^ y}
+@private fun run_min(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = min(x, y)}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = min(x, y)}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = min(x, y)}
+    }
+@private fun run_and(inp0: bool [], inp1: bool [], out: bool [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x & y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x & y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x & y}
+    }
+@private fun run_or(inp0: bool [], inp1: bool [], out: bool [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x | y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x | y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x | y}
+    }
+@private fun run_xor(inp0: bool [], inp1: bool [], out: bool [], eot: ElemwiseOpType) =
+    match eot {
+    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x ^ y}
+    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x ^ y}
+    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x ^ y}
+    }
 
 fun run_binary(net: Ast.nnet_t, op: Ast.nnop_t) =
 match op
@@ -203,41 +286,57 @@ match op
     val inp0 = net.get_tensor(t_inp[0])
     val inp1 = net.get_tensor(t_inp[1])
     val out = net.get_tensor(t_out)
+    val inp0_shape = inp0.shape.shape
+    val inp1_shape = inp1.shape.shape
+    val out_shape = out.shape.shape
+    val eot =
+        if inp0_shape == inp1_shape && inp0_shape == out_shape {EOT_AoA}
+        else if inp0_shape == out_shape && inp1_shape.product(1) == 1 {EOT_AoS}
+        else if inp1_shape == out_shape && inp0_shape.product(1) == 1 {EOT_SoA}
+        else {throw Ast.NNError(f"unexpected combination of tensor shapes in {op.name()}; \
+            full broadcasting is not supported yet")}
+
     match (el_op, inp0.data, inp1.data, out.data) {
     | (Ast.NN_Add, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_add(inp0_data, inp1_data, out_data)
+        run_add(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_And, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_and(inp0_data, inp1_data, out_data)
+        run_and(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Div, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_div(inp0_data, inp1_data, out_data)
+        run_div(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Equal, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_eq(inp0_data, inp1_data, out_data)
+        run_cmp_eq(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Greater, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_gt(inp0_data, inp1_data, out_data)
+        run_cmp_gt(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_GreaterOrEqual, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_ge(inp0_data, inp1_data, out_data)
+        run_cmp_ge(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Less, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_lt(inp0_data, inp1_data, out_data)
+        run_cmp_lt(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_LessOrEqual, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_le(inp0_data, inp1_data, out_data)
+        run_cmp_le(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Max, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_max(inp0_data, inp1_data, out_data)
+        run_max(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Mean, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
+        match eot {
+            | EOT_AoA => {}
+            | _ =>
+                throw Ast.NNError(f"unexpected combination of tensor shapes in {op.name()}; \
+                full broadcasting is not supported yet")
+        }
         run_mean(inp0_data, inp1_data, out_data)
     | (Ast.NN_Min, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_min(inp0_data, inp1_data, out_data)
+        run_min(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Mod, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_mod(inp0_data, inp1_data, out_data)
+        run_mod(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Mul, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_mul(inp0_data, inp1_data, out_data)
+        run_mul(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Or, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_or(inp0_data, inp1_data, out_data)
+        run_or(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Pow, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_pow(inp0_data, inp1_data, out_data)
+        run_pow(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Sub, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_sub(inp0_data, inp1_data, out_data)
+        run_sub(inp0_data, inp1_data, out_data, eot)
     | (Ast.NN_Xor, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_xor(inp0_data, inp1_data, out_data)
+        run_xor(inp0_data, inp1_data, out_data, eot)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
@@ -252,28 +351,28 @@ match op
     val out = net.get_tensor(t_out)
     match (el_op, inp[0].data, inp[1].data, out.data) {
     | (Ast.NN_Max, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_max(inp0_data, inp1_data, out_data)
+        run_max(inp0_data, inp1_data, out_data, EOT_AoA)
         for j <- 2:ninputs {
             match inp[j].data {
-            | Ast.NN_Data_FP32 inparrj => run_min(inparrj, out_data, out_data)
+            | Ast.NN_Data_FP32 inparrj => run_max(inparrj, out_data, out_data, EOT_AoA)
             | _ => throw TypeMismatchError
             }
         }
     | (Ast.NN_Mean, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_add(inp0_data, inp1_data, out_data)
+        run_add(inp0_data, inp1_data, out_data, EOT_AoA)
         for j <- 2:ninputs {
             match inp[j].data {
-            | Ast.NN_Data_FP32 inparrj => run_add(inparrj, out_data, out_data)
+            | Ast.NN_Data_FP32 inparrj => run_add(inparrj, out_data, out_data, EOT_AoA)
             | _ => throw TypeMismatchError
             }
         }
         val scale = 1.f/ninputs
         for x@idx <- out_data {out_data[idx] = x*scale}
     | (Ast.NN_Min, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_min(inp0_data, inp1_data, out_data)
+        run_min(inp0_data, inp1_data, out_data, EOT_AoA)
         for j <- 2:ninputs {
             match inp[j].data {
-            | Ast.NN_Data_FP32 inparrj => run_min(inparrj, out_data, out_data)
+            | Ast.NN_Data_FP32 inparrj => run_min(inparrj, out_data, out_data, EOT_AoA)
             | _ => throw TypeMismatchError
             }
         }

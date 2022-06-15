@@ -238,7 +238,7 @@ int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst, bool free_dst)
         //    (int)FX_IS_ARR_CONTINUOUS(src->flags & dst->flags), (int)nrows);
 
         if ((ndims > 1 && nrows != dst->dim[0].size) || ncols != dst->dim[ndims-1].size)
-            FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
+            FX_FAST_THROW_RET(FX_EXN_SizeMismatchError);
         if (FX_IS_ARR_CONTINUOUS(src->flags & dst->flags)) {
             ncols *= nrows;
             nrows = 1;
@@ -709,15 +709,24 @@ int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t c
     return FX_OK;
 }
 
-int fx_reshape_arr(const fx_arr_t* arr, int ndims, const int_* size, fx_arr_t* result)
+int fx_reshape_arr(const fx_arr_t* arr, int ndims, const int_* size,
+                   int old_channels, int new_channels, fx_arr_t* result)
 {
-    int_ i, ndims0 = arr->ndims, p0 = 1, p = 1;
+    int_ i, ndims0 = arr->ndims, p0 = old_channels, p = new_channels;
     size_t elemsize = arr->dim[ndims0 > 0 ? ndims0-1 : 0].step, step = elemsize;
     for (i = ndims0 - 1; i >= 0; i--) {
         p0 *= arr->dim[i].size;
         if (step != arr->dim[i].step)
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
         step *= arr->dim[i].size;
+    }
+    if (old_channels != 1 || new_channels != 1) {
+        if (old_channels <= 0 || new_channels <= 0)
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        if (elemsize % old_channels != 0)
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        if (arr->copy_elem != 0 || arr->free_elem != 0)
+            return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     }
     for (i = 0; i < ndims; i++) {
         if (size[i] < 0)
@@ -728,7 +737,7 @@ int fx_reshape_arr(const fx_arr_t* arr, int ndims, const int_* size, fx_arr_t* r
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     fx_copy_arr(arr, result);
     result->ndims = ndims;
-    step = elemsize;
+    step = (elemsize/old_channels)*new_channels;
     for (i = ndims-1; i >= 0; i--) {
         result->dim[i].step = step;
         result->dim[i].size = size[i];

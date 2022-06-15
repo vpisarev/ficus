@@ -43,5 +43,5 @@ match op {
         run_lrn_2d(inp_data, inp.shape, out_data, size, alpha, beta, bias)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

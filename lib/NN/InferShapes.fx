@@ -375,22 +375,29 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
         // [TODO] handle NCHWxc properly
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
+        //println(f"Resize inp shape: {shape.shape}")
         val roi =
             if t_roi == 0 {
                 ([] : float [])
             } else {
                 val roi = float(net.get_tensor(t_roi))
-                assert(`coord_trans == Ast.NN_CT_TFCropResize`)
-                assert(`roi.size() == ndims*2`)
-                roi
+                if roi == [] {
+                    roi
+                } else {
+                    assert(`coord_trans == Ast.NN_CT_TFCropResize`)
+                    assert(`roi.size() == ndims*2`)
+                    roi
+                }
             }
         val out_shape = if t_sizes != 0 {
             val sizes = int(net.get_tensor(t_sizes))
+            //println(f"Resize sizes: {sizes}")
             assert(`sizes.size() == ndims`)
             sizes
         } else if t_scales != 0 {
-            val scales = int(net.get_tensor(t_scales))
+            val scales = float(net.get_tensor(t_scales))
             assert(`scales.size() == ndims`)
+            //println(f"Resize scales: {scales}")
             [for sz@i <- shape.shape, scale <- scales {
                 val sz =
                     if t_roi == 0 {float(sz)}
@@ -400,10 +407,17 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
         } else {
             throw Ast.NNError(f"shape inference: {name} (op={opname}): both scales and sizes are missing")
         }
+        //println(f"Resize out shape: {out_shape}")
+        // [TODO] when 't_sizes' is computed using 'Shape' operation and some operations
+        // on the shape, it could be treated as a constant input of 'Resize' in some cases,
+        // i.e. 'dynamic' could be set to false.
         val const_shape =
             (t_roi == 0 || net.isconst(t_roi)) &&
             (t_sizes == 0 || net.isconst(t_sizes)) &&
             (t_scales == 0 || net.isconst(t_scales))
+        /*println(f"resize const_shape: roi: {t_roi == 0 || net.isconst(t_roi)}, \
+                                      sizes: {t_sizes == 0 || net.isconst(t_sizes)} \
+                                      scales: {t_scales == 0 || net.isconst(t_scales)}")*/
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape},
             typ=typ, dynamic=!const_shape}]
     | Ast.NN_RoiAlign {output_height, output_width, t_inp, t_rois, t_out} =>
@@ -457,6 +471,7 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
             assert(`step != 0`)
             val nelems = if step > 0 {(end - start + step-1)/step}
                          else {(start - end - step-1)/(-step)}
+            assert(`nelems >= 0`)
             out_shape[axis] = nelems
         }
         val const_shape =
@@ -561,7 +576,7 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
         assert(`perm.size() == ndims`)
         val out_shape = [for axis <- 0:ndims {
             val axis = Ast.normalize_axis(axis, ndims)
-            shape.shape[axis]}]
+            shape.shape[perm[axis]]}]
         [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
             layout=shape.layout, shape=out_shape}, typ=typ,
             dynamic=false}]

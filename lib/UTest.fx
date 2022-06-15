@@ -190,6 +190,20 @@ fun test_failed_expect_near(a: 't, b: 't, idx:'idx?, eps: 't)
     g_test_state.currstatus = false
 }
 
+fun test_failed_expect_near(a: ('t...), b: ('t...), idx:'idx?, eps: 't)
+{
+    print(f"Unexpected result of comparison abs(<Actual> - <Expected>) <= {eps}")
+    match idx {
+    | Some(idx) => print(f" at {idx}")
+    | _ => {}
+    }
+    print(".\nActual: ")
+    println(a)
+    print(f"Expected: ")
+    println(b)
+    g_test_state.currstatus = false
+}
+
 fun test_failed_expect_near(a: 't errctx, b: 't errctx, idx:'idx?, eps: 't)
 {
     val a_str = if a.1 != "" {a.1} else {"<Actual>"}
@@ -228,18 +242,28 @@ fun EXPECT_GT(a: 't errctx, b: 't) = if a.0 > b {} else {test_failed_expect_cmp(
 fun EXPECT_GE(a: 't errctx, b: 't) = if a.0 >= b {} else {test_failed_expect_cmp(a, (b, "", "", 0), ">=")}
 
 fun EXPECT_NEAR(a: 't, b: 't, eps: 't) =
-    if b - eps <= a <= b + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
+    if normInf(a, b) > eps {test_failed_expect_near(a, b, (None: int?), eps)}
 
 fun EXPECT_NEAR(a: 't errctx, b: 't errctx, eps: 't) =
-    if b.0 - eps <= a.0 <= b.0 + eps {} else {test_failed_expect_near(a, b, (None: int?), eps)}
+    if normInf(a.0, b.0) > eps {test_failed_expect_near(a, b, (None: int?), eps)}
 
 fun EXPECT_NEAR(a: 't errctx, b: 't, eps: 't) =
-    if b - eps <= a.0 <= b + eps {} else {test_failed_expect_near(a, (b, "", "", 0), (None: int?), eps)}
+    if normInf(a.0, b) > eps {test_failed_expect_near(a, (b, "", "", 0), (None: int?), eps)}
 
 fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
     try {
         val (ai, idx, bi) = find(
-            for ai@idx <- a, bi <- b {!(bi - eps <= ai <= bi + eps)})
+            for ai@idx <- a, bi <- b {normInf(ai, bi) > eps})
+        test_failed_expect_near(ai, bi, Some(idx), eps)
+    }
+    catch {
+    | NotFoundError => {}
+    }
+
+fun EXPECT_NEAR(a: ('t...) [+], b: ('t...) [+], eps: 't) =
+    try {
+        val (ai, idx, bi) = find(
+            for ai@idx <- a, bi <- b {normInf(ai, bi) > eps})
         test_failed_expect_near(ai, bi, Some(idx), eps)
     }
     catch {
@@ -249,7 +273,17 @@ fun EXPECT_NEAR(a: 't [+], b: 't [+], eps: 't) =
 fun EXPECT_NEAR(a: ('t [+], string, string, int), b: ('t [+], string, string, int), eps: 't) =
     try {
         val (ai, idx, bi) = find(
-            for ai@idx <- a.0, bi <- b.0 {!(bi - eps <= ai <= bi + eps)})
+            for ai@idx <- a.0, bi <- b.0 {normInf(ai, bi) > eps})
+        test_failed_expect_near((ai, "", a.2, a.3), (bi, "", "", 0), Some(idx), eps)
+    }
+    catch {
+    | NotFoundError => {}
+    }
+
+fun EXPECT_NEAR(a: (('t...) [+], string, string, int), b: (('t...) [+], string, string, int), eps: 't) =
+    try {
+        val (ai, idx, bi) = find(
+            for ai@idx <- a.0, bi <- b.0 {normInf(ai, bi) > eps})
         test_failed_expect_near((ai, "", a.2, a.3), (bi, "", "", 0), Some(idx), eps)
     }
     catch {
@@ -259,7 +293,7 @@ fun EXPECT_NEAR(a: ('t [+], string, string, int), b: ('t [+], string, string, in
 fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
     try {
         val (ai, idx, bi) = find(
-            for ai@idx <- a, bi <- b {!(bi - eps <= ai <= bi + eps)})
+            for ai@idx <- a, bi <- b {normInf(ai, bi) > eps})
         test_failed_expect_near(ai, bi, Some(idx), eps)
     }
     catch {
@@ -269,7 +303,7 @@ fun EXPECT_NEAR(a: 't list, b: 't list, eps: 't) =
 fun EXPECT_NEAR(a: ('t list, string, string, int), b: 't list, eps: 't) =
     try {
         val (ai, idx, bi) = find(
-            for ai@idx <- a.0, bi <- b {!(bi - eps <= ai <= bi + eps)})
+            for ai@idx <- a.0, bi <- b {normInf(ai, bi) > eps})
         test_failed_expect_near((ai, "", a.2, a.3), (bi, "", "", 0), Some(idx), eps)
     }
     catch {

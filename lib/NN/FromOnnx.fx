@@ -723,11 +723,14 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                     | {name="nearest_mode"} => nearest_mode = attr2string(a)
                     | _ => {}
                 }
+                var have_roi = 0
                 val coord_trans = match coord_trans {
                     | "pytorch_half_pixel" => Ast.NN_CT_PyTorchHalfPixel
                     | "align_corners" => Ast.NN_CT_AlignCorners
                     | "asymmetric" => Ast.NN_CT_Asymmetric
-                    | "tf_crop_and_resize" => Ast.NN_CT_TFCropResize
+                    | "tf_crop_and_resize" =>
+                        have_roi = if ninputs > 1 {1} else {0}
+                        Ast.NN_CT_TFCropResize
                     | _ => Ast.NN_CT_HalfPixel // [TODO] issue warning
                 }
                 val mode = match mode {
@@ -741,6 +744,7 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                     | "round_prefer_ceil" => Ast.NN_Nearest_RoundPreferCeil
                     | _ => Ast.NN_Nearest_RoundPreferFloor
                 }
+                println(f"parsing Resize: inputs={inputs}")
                 [:: Ast.NN_Resize {
                     name=name,
                     coord_trans=coord_trans, cubic_coeff_a=cubic_coeff_a,
@@ -748,7 +752,7 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                     extrapolation_value=extrapolation_value,
                     mode=mode, nearest_mode=nearest_mode,
                     t_inp=inputs[0],
-                    t_roi=if ninputs > 1 {inputs[1]} else {0},
+                    t_roi=if have_roi > 0 {inputs[1]} else {0},
                     t_scales=if ninputs > 2 {inputs[2]} else {0},
                     t_sizes=if ninputs > 3 {inputs[3]} else {0},
                     t_out=outputs[0]}]

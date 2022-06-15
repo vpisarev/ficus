@@ -12,7 +12,7 @@ TEST("array.stat", fun() {
     EXPECT_EQ(`sum(arr)`, double(1+2+3+4+5))
     EXPECT_NEAR(`mean(arr)`, double(1+2+3+4+5)/5, 1e-5)
     EXPECT_NEAR(`normL2(arr)`, 7.416198487095663, 1e-5)
-    EXPECT_EQ(`normInf(arr)`, 5.)
+    EXPECT_EQ(`normInf(arr)`, 5)
 })
 
 TEST("array.solve", fun() {

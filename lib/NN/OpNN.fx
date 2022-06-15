@@ -30,14 +30,14 @@ match op {
         run_softmax(inp_data, inp.shape, out_data)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
 @private fun run_batchnorm(inp_shape: int [], inp_data: float [],
                            inp_mean_data: float [], inp_var_data: float [],
                            scale_data: float [], B_data: float [],
                            out_shape: int [], out_data: float [],
-                           epsilon: float): void
+                           epsilon: float, ntasks: int): void
 @ccode {
     int_ i, ndims = inp_shape->dim[0].size;
     const int_* inp_shape_ = (const int_*)inp_shape->data;
@@ -66,7 +66,7 @@ match op {
         if (i > 1) planesize *= (size_t)inp_shape_[i];
     }
 
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(ntasks)
     for (i = 0; i < N*C; i++) {
         int_ c = i % C;
         float alpha = scales[c]/sqrt(inp_var[c] + epsilon);
@@ -97,7 +97,7 @@ match op {
        Ast.NN_Data_FP32 out_data) =>
         run_batchnorm(inp.shape.shape, inp_data, inp_mean_data,
                       inp_var_data, scale_data, B_data,
-                      out.shape.shape, out_data, epsilon)
+                      out.shape.shape, out_data, epsilon, *net.ntasks)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
@@ -108,9 +108,8 @@ fun run_gemm(A: float [], A_shape: Ast.nnshape_t,
              bias: float [], bias_shape: Ast.nnshape_t,
              out: float [], out_shape: Ast.nnshape_t,
              alpha: float, beta: float,
-             transA: bool, transB: bool): void
+             transA: bool, transB: bool, ntasks: int): void
 @ccode {
-    const int ntasks = 4;
     const int_* A_shape_ = (const int_*)A_shape->shape.data;
     const int_* B_shape_ = (const int_*)B_shape->shape.data;
     const int_* bias_shape_ = (const int_*)bias_shape->shape.data;
@@ -155,7 +154,7 @@ fun run_gemm(A: float [], A_shape: Ast.nnshape_t,
     return fx_sgemm(transA, transB, alpha, beta,
             (int)A_shape_[0], (int)A_shape_[1], A_data, (int)A_shape_[1], 1,
             (int)B_shape_[0], (int)B_shape_[1], B_data, (int)B_shape_[1], 1,
-            out_data, (int)out_shape_[1], ntasks);
+            out_data, (int)out_shape_[1], (int)ntasks);
 }
 
 fun run_gemm(net: Ast.nnet_t, op: Ast.nnop_t) =
@@ -168,8 +167,8 @@ match op {
     | (Ast.NN_Data_FP32 a_data, Ast.NN_Data_FP32 b_data,
        Ast.NN_Data_FP32 bias_data, Ast.NN_Data_FP32 out_data) =>
         run_gemm(a_data, A.shape, b_data, B.shape, bias_data, bias.shape,
-                 out_data, out.shape, alpha, beta, transA, transB)
+                 out_data, out.shape, alpha, beta, transA, transB, *net.ntasks)
     | _ => throw NotImplementedError
     }
-| _ => throw Ast.NNError(f"unsupported operation {op.name()}")
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
