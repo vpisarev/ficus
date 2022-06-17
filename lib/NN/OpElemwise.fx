@@ -130,6 +130,11 @@ match op {
 @private fun run_sign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (sign(x) :> 't)}
 @private fun run_sin(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sin(x)}
 @private fun run_softplus(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = log(1 + exp(x))}
+@private fun run_mish(inp: 't [], out: 't []) = for x@idx <- inp {
+    val x = if x > -36.73f {x} else {0.f}
+    val y = exp(-x)
+    out[idx] = x*(1 + 2*y)/(1 + 2*y + 2*y*y)
+}
 @private fun run_softsign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = x/(1 + abs(x))}
 @private fun run_sqrt(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sqrt(x)}
 @private fun run_tanh(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = tanh(x)}
@@ -155,6 +160,8 @@ match op
         run_exp(inp_data, out_data)
     | (Ast.NN_Log, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_log(inp_data, out_data)
+    | (Ast.NN_Mish, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_mish(inp_data, out_data)
     | (Ast.NN_Relu, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_relu(inp_data, out_data)
     | (Ast.NN_Sigmoid, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>

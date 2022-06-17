@@ -7,7 +7,7 @@ import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 import Color
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpYolo
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpYolo
 
 val coco_class_names =
     ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat", "traffic light",
@@ -24,14 +24,13 @@ fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [], ~class_names: string 
 {
     val nclasses = class_names.size()
     val colors = [for i <- 0:nclasses {
-        val rgb = Color.hsv2rgb(float(i)/nclasses, 1.f, 1.f)
+        val rgb = Color.hsv2rgb(i*360.f/nclasses, 1.f, 1.f)
         (rgb.2*255., rgb.1*255., rgb.0*255., 255.)
     }]
 
     for (x0, y0, x1, y1, conf, clsid) <- bboxes {
         cv.rectangle(image, (round(x0), round(y0)),
             (round(x1), round(y1)), colors[int(clsid)], thickness=3)
-        println(f"({x0},")
     }
 }
 
@@ -39,6 +38,7 @@ var mname = "", lname = ""
 var images: string list = []
 var ntasks = 0
 var use_f16 = false
+var temp_name = ""
 
 fun parse_args(args: string list)
 {
@@ -48,6 +48,8 @@ fun parse_args(args: string list)
         use_f16 = true; parse_args(rest)
     | "-labels" :: lname_ :: rest =>
         lname = lname_; parse_args(rest)
+    | "-temp" :: tname :: rest =>
+        temp_name = tname; parse_args(rest)
     | "-model" :: mname_ :: rest =>
         mname = mname_; parse_args(rest)
     | optname :: _ when optname.startswith('-') =>
@@ -120,12 +122,14 @@ val model =
     | Fail(msg) =>
         println(f"error: {msg}"); throw Fail("")
     }
+val model = NN.ConstFold.cfold(model)
 val model = NN.FuseBasic.fuse_basic(model)
 val model = NN.BufferAllocator.assign_buffers(model)
 println(model)
 val k = 5
-val lname = "output"
-val temp_outputs = [for i <- [lname] {(i, NN.Ast.empty_tensor())}]
+val temp_outputs = if temp_name != "" {
+    [for i <- [temp_name] {(i, NN.Ast.empty_tensor())}]
+} else {[]}
 
 type nn_output_t = (string, NN.Ast.nntensor_t)
 if ntasks > 0 {
@@ -171,8 +175,49 @@ for imgname@i <- images {
     val total_time = NN.OpConv.get_total_time_1x1()*1000/Sys.tick_frequency()
     println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, 1x1 total={total_time} ms")
     //println(out[0][:][:20])
-    for out@i <- outputs {
-        println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
+    for out@i <- [\outputs, \temp_outputs] {
+        println(f"output #{i}: name='{out.0}', shape={out.1.shape}")
+        /*val out_data = match out.1.data {
+            | NN.Ast.NN_Data_FP32 out_data => out_data
+            | _ => throw NN.Ast.NNError("floating-point data is expected")
+        }
+        val oshape = out.1.shape.shape
+        val m0 = 5, n0 = 8
+
+        println(f"========================= output {i} ======================")
+        if oshape.size() == 5 {
+            val _ = oshape[1], w = oshape[2], m = oshape[3], n = oshape[4]
+            for y <- 0:3 {
+                if y > 0 {
+                    println(f"---------------------- y = {y} --------------------")
+                }
+                for x <- 0:m0 {
+                    for j <- 0:m {
+                        print(f"y = {y}, x = {x}, j = {j}: ")
+                        for k <- 0:n0 {
+                            val idx = ((y*w + x)*m + j)*n + k
+                            print(f"{out_data[idx]}, ")
+                        }
+                        println()
+                    }
+                }
+            }
+        } else {
+            val N = oshape[0], C = oshape[1], H = oshape[2], W = oshape[3]
+            for c <- 0:min(n0, C) {
+                if c > 0 {
+                    println(f"---------------------- c = {c} --------------------")
+                }
+                for y <- 0:n0 {
+                    print(f"y={y}: ")
+                    for x <- 0:n0 {
+                        val idx = (c*H + y)*W + x
+                        print(f"{out_data[idx]}, ")
+                    }
+                    println()
+                }
+            }
+        }*/
         /*val sorted_k = NN.Inference.top_k(out.1, k)
         for j <- 0:k {
             val (label, prob) = sorted_k[0, j]
@@ -180,10 +225,10 @@ for imgname@i <- images {
             println(f"\t{j+1}. label={label_str} ({label}), prob={prob}")
         }*/
     }
-    val outputs = [for (_, out) <- outputs {out}]
+    val outputs = [for (_, out) <- outputs[:3] {out}]
     val boxes = NN.OpYolo.yolov4_postprocess(
         outputs, orig_image_size=(h, w), input_size=size0,
-        score_threshold=0.25f, nms_threshold=0.213f,
+        score_threshold=0.25f, nms_threshold=0.22f,
         anchors=NN.OpYolo.yolov4_default_anchors,
         strides=NN.OpYolo.yolov4_default_strides,
         xyscale=NN.OpYolo.yolov4_default_scale)

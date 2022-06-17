@@ -3,10 +3,9 @@
     See ficus/LICENSE for the licensing terms
 */
 
-// Computes shapes of all intermediate tensors
+// Runs the inference on user-provided data
 import Hashmap
-import Ast, InferShapes
-import OpConv, OpElemwise, OpNN, OpMisc, OpPermute, OpPooling, OpReduce, OpResize
+import Ast, InferShapes, OpConv, RunOp
 
 fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
             cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
@@ -51,97 +50,6 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
     }]
 }
 
-fun run_op(net: Ast.nnet_t, op: Ast.nnop_t) =
-match op
-{
-    | Ast.NN_Nop => {}
-    | Ast.NN_AvgPool _ =>
-        OpPooling.run_avgpool(net, op)
-    | Ast.NN_BatchNorm _ =>
-        OpNN.run_batchnorm(net, op)
-    | Ast.NN_Cast _ =>
-        OpElemwise.run_cast(net, op)
-    | Ast.NN_Clip _ =>
-        OpElemwise.run_clip(net, op)
-    | Ast.NN_Concat _ =>
-        OpPermute.run_concat(net, op)
-    | Ast.NN_ConstantOfShape _ =>
-        OpElemwise.run_constantOfShape(net, op)
-    | Ast.NN_Conv _ =>
-        OpConv.run_conv(net, op)
-    | Ast.NN_ConvTranspose _ =>
-        OpConv.run_conv_transposed(net, op)
-    | Ast.NN_Dropout _ =>
-        OpElemwise.run_dropout(net, op)
-    | Ast.NN_Elemwise {t_inp} =>
-        val ninputs = t_inp.size()
-        if ninputs == 1 {
-            OpElemwise.run_unary(net, op)
-        } else if ninputs == 2 {
-            OpElemwise.run_binary(net, op)
-        } else {
-            OpElemwise.run_nary(net, op)
-        }
-    | Ast.NN_Expand {t_inp, t_shape, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Flatten {t_inp, t_out} =>
-        net.copy_tensor_data(t_inp, t_out)
-    | Ast.NN_Gather _ =>
-        OpPermute.run_gather(net, op)
-    | Ast.NN_Gemm _ =>
-        OpNN.run_gemm(net, op)
-    | Ast.NN_GlobalAvgPool {t_inp, t_out} =>
-        OpPooling.run_global_avgpool(net, op)
-    | Ast.NN_Identity {t_inp, t_out} =>
-        net.copy_tensor_data(t_inp, t_out)
-    | Ast.NN_If {then_branch, else_branch, t_inp, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_LeakyRelu {alpha, t_inp, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Loop {body, t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_LRN _ =>
-        OpMisc.run_lrn(net, op)
-    | Ast.NN_MaxPool _ =>
-        OpPooling.run_maxpool(net, op)
-    | Ast.NN_NonMaxSuppression {center_point_box, t_boxes, t_scores,
-        t_max_output_boxes_per_class, t_iou_threshold, t_score_threshold, t_out } =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_NonZero {t_inp, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Range {t_start, t_limit, t_delta, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Reduce {reduce_op, axes, keepdims, t_inp, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Reshape {t_inp, t_out} =>
-        net.copy_tensor_data(t_inp, t_out)
-    | Ast.NN_Resize _ =>
-        OpResize.run_resize(net, op)
-    | Ast.NN_RoiAlign {coord_trans, mode, output_height, output_width,
-        sampling_ratio, spatial_scale, t_inp, t_rois, t_batch_ind, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Scatter {axis, t_data, t_updates, t_indices, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Shape _ =>
-        OpPermute.run_shape(net, op)
-    | Ast.NN_Slice _ =>
-        OpPermute.run_slice(net, op)
-    | Ast.NN_SoftMax _ =>
-        OpNN.run_softmax(net, op)
-    | Ast.NN_Split _ =>
-        OpPermute.run_split(net, op)
-    | Ast.NN_Squeeze {t_inp, t_out} =>
-        net.copy_tensor_data(t_inp, t_out)
-    | Ast.NN_Tile {t_inp, t_repeats, t_out} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_TopK {axis, largest, sorted, t_inp, t_K, t_out, t_out_ind} =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
-    | Ast.NN_Transpose {perm, t_inp, t_out} =>
-        OpPermute.run_transpose(net, op)
-    | Ast.NN_Unsqueeze {t_inp, t_out} =>
-        net.copy_tensor_data(t_inp, t_out)
-}
-
 fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     for op <- graph.prog {
@@ -170,7 +78,19 @@ fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nnten
             }
         }
         //println(f"running op {op.name()}")
-        run_op(net, op)
+        RunOp.run_op(net, op)
+        for oi@outidx <- oinfo {
+            val {idx=argidx} = oi
+            match net.get_tensor(argidx).data {
+            | Ast.NN_Data_FP32 data =>
+                match find_opt(for x <- data {isnan(x)}) {
+                | Some _ => throw Ast.NNError(f"result of '{op.name()}' has NaN's!")
+                | _ => {}
+                }
+            | _ => {}
+            }
+        }
+
         if outputs != [] {
             for oi@outidx <- oinfo {
                 val {idx=argidx} = oi

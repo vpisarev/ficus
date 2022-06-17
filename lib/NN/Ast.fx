@@ -78,9 +78,9 @@ class nnarg_t
 
 type nnelwise_t =
     | NN_Abs | NN_Acos | NN_Acosh | NN_Asin | NN_Asinh | NN_Atan | NN_Atanh
-    | NN_Ceil | NN_Cos | NN_Cosh | NN_Erf | NN_Exp | NN_Floor | NN_IsInf | NN_IsNaN | NN_Log
-    | NN_Neg | NN_Not | NN_Relu | NN_Round | NN_Sigmoid | NN_Sign | NN_Sin | NN_Sinh
-    | NN_Softplus | NN_Softsign | NN_Sqrt | NN_Tan | NN_Tanh
+    | NN_Ceil | NN_Cos | NN_Cosh | NN_Erf | NN_Exp | NN_Floor | NN_IsInf | NN_IsNaN
+    | NN_Log | NN_Mish | NN_Neg | NN_Not | NN_Relu | NN_Round | NN_Sigmoid | NN_Sign
+    | NN_Sin | NN_Sinh | NN_Softplus | NN_Softsign | NN_Sqrt | NN_Tan | NN_Tanh
     | NN_Add | NN_And | NN_Div | NN_Equal | NN_Greater | NN_GreaterOrEqual
     | NN_Less | NN_LessOrEqual | NN_Mod | NN_Mul | NN_Pow | NN_Or | NN_Sub | NN_Xor
     | NN_Min | NN_Max | NN_Mean
@@ -371,6 +371,7 @@ fun string(ew: nnelwise_t)
     | NN_Log => "Log"
     | NN_Neg => "Neg"
     | NN_Not => "Not"
+    | NN_Mish => "Mish"
     | NN_Relu => "Relu"
     | NN_Round => "Round"
     | NN_Sigmoid => "Sigmoid"
@@ -1029,7 +1030,7 @@ fun empty_arg() = nnarg_t {
     typ = NN_Undefined
 }
 
-fun nnshape_t.total() = fold p=1 for sz <- self.shape {p*sz}
+fun total(shape: nnshape_t) = fold p=1 for sz <- shape.shape {p*sz}
 
 fun nnshape_t.copy() = nnshape_t {
     layout = self.layout,
@@ -1170,6 +1171,7 @@ fun nnarg_t.copy() = nnarg_t {
 fun nnet_t.get_tensor(argidx: int) = self.tensors[argidx]
 
 fun nnet_t.isconst(argidx: int) = self.args[argidx].argkind == NN_Arg_Const
+fun nnet_t.isoutput(argidx: int) = self.args[argidx].argkind == NN_Arg_Output
 fun nnet_t.istemp(argidx: int) = self.args[argidx].argkind == NN_Arg_Temp
 fun nnet_t.isscalar(argidx: int) = self.tensors[argidx].isscalar()
 fun nnet_t.isfloatscalar(argidx: int) = self.tensors[argidx].isfloatscalar()

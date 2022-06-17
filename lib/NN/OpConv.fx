@@ -58,7 +58,6 @@ static void _fx_activ_lrelu(float* data, size_t step, int size0,
                             int size1, const float* params)
 {
     float alpha = params[0];
-    step /= sizeof(data[0]);
     for (int i = 0; i < size0; i++, data += step) {
         for (int j = 0; j < size1; j++) {
             float x = data[j];
@@ -71,7 +70,6 @@ static void _fx_activ_lrelu(float* data, size_t step, int size0,
 static void _fx_activ_prelu(float* data, size_t step, int size0,
                             int size1, const float* params)
 {
-    step /= sizeof(data[0]);
     for (int i = 0; i < size0; i++, data += step) {
         for (int j = 0; j < size1; j++) {
             float x = data[j];
@@ -85,7 +83,6 @@ static void _fx_activ_prelu(float* data, size_t step, int size0,
 static void _fx_activ_sigmoid(float* data, size_t step, int size0,
                               int size1, const float* params)
 {
-    step /= sizeof(data[0]);
     for (int i = 0; i < size0; i++, data += step) {
         for (int j = 0; j < size1; j++) {
             float x = data[j];
@@ -99,7 +96,6 @@ static void _fx_activ_sigmoid(float* data, size_t step, int size0,
 static void _fx_activ_tanh(float* data, size_t step, int size0,
                            int size1, const float* params)
 {
-    step /= sizeof(data[0]);
     for (int i = 0; i < size0; i++, data += step) {
         for (int j = 0; j < size1; j++) {
             data[j] = tanh(data[j]);
@@ -110,11 +106,10 @@ static void _fx_activ_tanh(float* data, size_t step, int size0,
 static void _fx_activ_mish(float* data, size_t step, int size0,
                            int size1, const float* params)
 {
-    step /= sizeof(data[0]);
     for (int i = 0; i < size0; i++, data += step) {
         for (int j = 0; j < size1; j++) {
             float x = data[j];
-            x = x > -36.73f ? x : -0.f;
+            x = x > -36.73f ? x : 0.f;
             float y = expf(-x);
             data[j] = x*(1 + 2*y)/(1 + 2*y + 2*y*y);
         }
@@ -1836,6 +1831,8 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
                                        inpbuf_task, outptr, outstep, pbptr, pbstep,
                                        conv->bias + Kg*g + k,
                                        minval, maxval, fast_activ);
+                    if (activ_func)
+                        activ_func(outptr, outstep, dk, FX_CONV_NR, activ_params);
                     if (partial) {
                         for (int i = 0; i < dk; i++)
                             memcpy(outptr0 + i*outstep0, &cbuf[i*FX_CONV_NR_FP16],
@@ -2139,6 +2136,8 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                     _fx_conv_block(HkWkCg, conv->weights+(g*Kg_aligned + k)*HkWkCg,
                                    inpbuf_task, outptr, outstep, pbptr, conv->bias + Kg*g + k,
                                    minval, maxval, fast_activ);
+                    if (activ_func)
+                        activ_func(outptr, outstep, dk, FX_CONV_NR, activ_params);
                     if (partial) {
                         for (int i = 0; i < dk; i++)
                             memcpy(outptr0 + i*outstep0, &cbuf[i*FX_CONV_NR],
@@ -2151,7 +2150,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
     }
 
     fx_free(inpbuf_all);
-    if (Hk == 1 && Wk == 1)
+    //if (Hk == 1 && Wk == 1)
     {
     ts = fx_tick_count() - ts;
     total_time_1x1 += ts;
@@ -2267,6 +2266,7 @@ match op {
             | Some (Ast.NN_Elemwise {el_op=Ast.NN_Relu}) => (ACTIV_RELU, [])
             | Some (Ast.NN_Elemwise {el_op=Ast.NN_Sigmoid}) => (ACTIV_SIGMOID, [])
             | Some (Ast.NN_Elemwise {el_op=Ast.NN_Tanh}) => (ACTIV_TANH, [])
+            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Mish}) => (ACTIV_MISH, [])
             | Some (Ast.NN_Clip {t_min, t_max}) =>
                 val minval = net.get_tensor(t_min)
                 val maxval = net.get_tensor(t_max)
