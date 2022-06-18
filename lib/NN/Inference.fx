@@ -13,7 +13,7 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
     (string, Ast.nntensor_t) []
 {
     var empty_names = true
-    OpConv.reset_total_time_1x1()
+    OpConv.reset_total_time()
 
     // assign input tensors
     for (inpname, t)@i <- inputs {
@@ -40,7 +40,7 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
 
     //println("running main graph")
     run_graph(net, net.graph, outputs)
-    OpConv.update_total_time_1x1()
+    OpConv.update_total_time()
 
     // collect outputs
     [for argidx <- net.graph.outargs {
@@ -82,7 +82,7 @@ fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nnten
         RunOp.run_op(net, op)
         //val t = Sys.tick_count() - t
         //println(f"{op.name()}: {round(t*1000./Sys.tick_frequency(), 2)}ms")
-        for oi@outidx <- oinfo {
+        /*for oi@outidx <- oinfo {
             val {idx=argidx} = oi
             match net.get_tensor(argidx).data {
             | Ast.NN_Data_FP32 data =>
@@ -92,7 +92,7 @@ fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nnten
                 }
             | _ => {}
             }
-        }
+        }*/
 
         if outputs != [] {
             for oi@outidx <- oinfo {

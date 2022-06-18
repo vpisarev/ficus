@@ -131,18 +131,18 @@ for imgname@i <- images {
     sort(tprobs, (>))
     val inp_ = NN.Ast.make_tensor(inp)
     var outputs: nn_output_t [] = []
-    NN.OpConv.reset_min_total_time_1x1()
-    val niters = 25
+    NN.OpConv.reset_min_total_time()
+    val niters = 15
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =
-            try NN.Inference.run(model, [("", inp_)], outputs=temp_outputs) catch {
+            try NN.Inference.run(model, [("", inp_)], outputs=[]) catch {
             | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
             | Fail msg => println(f"failure: '{msg}'"); []
             }
         }, iterations=niters, batch=1)
-    val total_time = NN.OpConv.get_total_time_1x1()*1000/Sys.tick_frequency()
-    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, 1x1 total={total_time} ms")
+    val total_time = NN.OpConv.get_total_time()*1000/Sys.tick_frequency()
+    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, conv total={total_time} ms")
     /*for t_out@i <- temp_outputs {
         println(f"temp output #{i}: name='{t_out.0}', shape={t_out.1.shape}")
     }

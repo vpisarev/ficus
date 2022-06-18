@@ -350,16 +350,19 @@ static int _fx_init_conv2d(
     conv->activ_params = 0;
     if (activ == _FX_ACTIV_RELU) {
         conv->minval = 0.f;
-    } else if (activ == _FX_ACTIV_CLIP) {
-        assert(activ_params && activ_nparams == 2);
-        conv->minval = activ_params[0];
-        conv->maxval = activ_params[1];
-    } else if (activ_params) {
-        assert(activ_nparams > 0);
-        conv->activ_params = (float*)fx_malloc(activ_nparams*sizeof(activ_params[0]));
-        if (!conv->activ_params)
-            return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
-        memcpy(conv->activ_params, activ_params, activ_nparams*sizeof(activ_params[0]));
+    } else {
+        if (activ == _FX_ACTIV_CLIP) {
+            assert(activ_params && activ_nparams == 2);
+            conv->minval = activ_params[0];
+            conv->maxval = activ_params[1];
+        }
+        if (activ_params) {
+            assert(activ_nparams > 0);
+            conv->activ_params = (float*)fx_malloc(activ_nparams*sizeof(activ_params[0]));
+            if (!conv->activ_params)
+                return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
+            memcpy(conv->activ_params, activ_params, activ_nparams*sizeof(activ_params[0]));
+        }
     }
 
     if (bn_ab) {
@@ -1510,8 +1513,8 @@ static int _fx_winograd_conv2d(int ndims, const int_* inpsize, const float* inp,
 }
 #endif
 
-static double total_time_1x1 = 0;
-static double min_total_time_1x1 = 0;
+static double total_time = 0;
+static double min_total_time = 0;
 
 #ifdef __ARM_NEON
 static void _fx_conv_block_f16( int k, const flt16_t *a, const flt16_t *b,
@@ -1994,7 +1997,7 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
     //if (Hk == 1 && Wk == 1)
     {
     ts = fx_tick_count() - ts;
-    total_time_1x1 += ts;
+    total_time += ts;
     //printf("Conv 2D (%dx%ds%dd%d): (%d x %d x %d x %d) => (%d x %d x %d x %d): time=%.1f\n",
     //    Hk, Wk, stride_x, dilation_x, N, C, Hi, Wi, N, K, H0, W0, ts*1000./fx_tick_frequency());
     }
@@ -2030,7 +2033,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
     int inp_planesize = Hi*Wi;
     int out_planesize = H0*W0;
     float minval = conv->minval, maxval = conv->maxval;
-    bool fast_activ = conv->activ != _FX_ACTIV_NONE && conv->activ_func == 0;
+    bool fast_activ = conv->activ == _FX_ACTIV_RELU || conv->activ == _FX_ACTIV_CLIP;
     _fx_activ_func_t activ_func = !fast_activ ? conv->activ_func : 0;
     const float* activ_params = conv->activ_params;
     int stripes_per_sample = (out_planesize + FX_CONV_NR - 1)/FX_CONV_NR;
@@ -2297,10 +2300,10 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
 
     fx_free(inpbuf_all);
     //if (Hk == 1 && Wk == 1)
-    /*{
+    {
     ts = fx_tick_count() - ts;
-    total_time_1x1 += ts;
-    printf("Conv 2D [%s] (%dx%ds%dd%d): (%d x %d x %d x %d) => (%d x %d x %d x %d): time=%.1f\n",
+    total_time += ts;
+    /*printf("Conv 2D [%s] (%dx%ds%dd%d): (%d x %d x %d x %d) => (%d x %d x %d x %d): time=%.1f\n",
         (conv->activ == _FX_ACTIV_NONE ? "" :
          conv->activ == _FX_ACTIV_RELU ? "+ReLU" :
          conv->activ == _FX_ACTIV_LRELU ? "+Leaky ReLU" :
@@ -2310,18 +2313,18 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
          conv->activ == _FX_ACTIV_SIGMOID ? "+Sigmoid" :
          conv->activ == _FX_ACTIV_TANH ? "+Tahnh" :
          "unknown activation"),
-        Hk, Wk, stride_x, dilation_x, N, C, Hi, Wi, N, K, H0, W0, ts*1000./fx_tick_frequency());
-    }*/
+        Hk, Wk, stride_x, dilation_x, N, C, Hi, Wi, N, K, H0, W0, ts*1000./fx_tick_frequency());*/
+    }
     return FX_OK;
 }
 }
 
-@nothrow fun get_total_time_1x1(): double = @ccode { return min_total_time_1x1; }
-@nothrow fun reset_min_total_time_1x1(): void = @ccode { min_total_time_1x1 = 0.; }
-@nothrow fun reset_total_time_1x1(): void = @ccode { total_time_1x1 = 0.; }
-@nothrow fun update_total_time_1x1(): void = @ccode {
-    min_total_time_1x1 = min_total_time_1x1 == 0 || min_total_time_1x1 > total_time_1x1 ?
-        total_time_1x1 : min_total_time_1x1;
+@nothrow fun get_total_time(): double = @ccode { return min_total_time; }
+@nothrow fun reset_min_total_time(): void = @ccode { min_total_time = 0.; }
+@nothrow fun reset_total_time(): void = @ccode { total_time = 0.; }
+@nothrow fun update_total_time(): void = @ccode {
+    min_total_time = min_total_time == 0 || min_total_time > total_time ?
+        total_time : min_total_time;
 }
 
 fun init_conv(kernel_shape: int [], strides: int [],

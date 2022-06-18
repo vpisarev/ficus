@@ -162,7 +162,7 @@ for imgname@i <- images {
     println(inp.size())
     val inp_ = NN.Ast.make_tensor(inp)
     var outputs: nn_output_t [] = []
-    NN.OpConv.reset_min_total_time_1x1()
+    NN.OpConv.reset_min_total_time()
     val niters = 10
     val (gmean, mintime) = Sys.timeit(
         fun () {
@@ -172,8 +172,8 @@ for imgname@i <- images {
             | Fail msg => println(f"failure: '{msg}'"); []
             }
         }, iterations=niters, batch=1)
-    val total_time = NN.OpConv.get_total_time_1x1()*1000/Sys.tick_frequency()
-    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, 1x1 total={total_time} ms")
+    val total_time = NN.OpConv.get_total_time()*1000/Sys.tick_frequency()
+    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, conv total={total_time} ms")
     //println(out[0][:][:20])
     for out@i <- [\outputs, \temp_outputs] {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}")
