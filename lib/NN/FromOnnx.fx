@@ -744,7 +744,7 @@ fun convert(model: OAst.model_t): Ast.nnet_t
                     | "round_prefer_ceil" => Ast.NN_Nearest_RoundPreferCeil
                     | _ => Ast.NN_Nearest_RoundPreferFloor
                 }
-                println(f"parsing Resize: inputs={inputs}")
+                //println(f"parsing Resize: inputs={inputs}")
                 [:: Ast.NN_Resize {
                     name=name,
                     coord_trans=coord_trans, cubic_coeff_a=cubic_coeff_a,

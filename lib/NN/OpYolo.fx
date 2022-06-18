@@ -67,7 +67,7 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
                     val w = exp(data_i[idx, 2])*anchors[i, j].0
                     val h = exp(data_i[idx, 3])*anchors[i, j].1
                     val xmin = x - w*0.5f, ymin = y - h*0.5f, xmax = x + w*0.5f, ymax = y + h*0.5f
-                    if isnan(x) || isnan(y) || isnan(w) || isnan(h) || isinf(xmax) || isinf(ymax) {continue}
+                    if isnan(x+y+w+h) || isinf(xmax+ymax) {continue}
 
                     val xmin = (xmin - dw)/resize_ratio
                     val xmax = (xmax - dw)/resize_ratio

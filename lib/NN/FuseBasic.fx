@@ -219,22 +219,30 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
                 j += 1
             }
         }
+        println(f"updated graph: {prog.size()} ops to {j} ops")
         Ast.NN_Graph {inpargs=graph.inpargs,
             outargs=graph.outargs, prog=new_prog.data[0:j].copy()}
     } else {
+        println(f"not updated graph")
         graph
     }
 }
 
-fun fuse_basic(net: Ast.nnet_t)
+fun fuse_basic(net_: Ast.nnet_t)
 {
-    val usecounts = net.use_counts()
-    var new_graph = net.graph
+    var net = net_
     for iter <- 0:3 {
-        val nops_before = new_graph.prog.size()
-        new_graph = fuse_conv_elemwise(net, new_graph, usecounts)
+        val usecounts = net.use_counts()
+        /*if iter > 0 {
+            for c@i <- usecounts {
+                println(f"{iter}. '{net.args[i].name}': {c}")
+            }
+        }*/
+        val nops_before = net.graph.prog.size()
+        val new_graph = fuse_conv_elemwise(net, net.graph, usecounts)
         val nops_after = new_graph.prog.size()
         if nops_after == nops_before {break}
+        net = net.{graph = new_graph}
     }
-    net.{graph = new_graph}
+    net
 }

@@ -163,7 +163,7 @@ for imgname@i <- images {
     val inp_ = NN.Ast.make_tensor(inp)
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time_1x1()
-    val niters = 1
+    val niters = 10
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =

@@ -54,6 +54,124 @@ typedef __fp16 flt16_t;
 typedef int16_t flt16_t;
 #endif
 
+/* NEON implementation of sin, cos, exp and log
+
+   Inspired by Intel Approximate Math library, and based on the
+   corresponding algorithms of the cephes math library
+*/
+
+/* Copyright (C) 2011  Julien Pommier
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+
+  (this is the zlib license)
+*/
+#ifdef __ARM_NEON
+#define _fx_c_exp_hi 88.3762626647949f
+#define _fx_c_exp_lo -88.3762626647949f
+
+#define _fx_c_cephes_LOG2EF 1.44269504088896341
+#define _fx_c_cephes_exp_C1 0.693359375
+#define _fx_c_cephes_exp_C2 -2.12194440e-4
+
+#define _fx_c_cephes_exp_p0 1.9875691500E-4
+#define _fx_c_cephes_exp_p1 1.3981999507E-3
+#define _fx_c_cephes_exp_p2 8.3334519073E-3
+#define _fx_c_cephes_exp_p3 4.1665795894E-2
+#define _fx_c_cephes_exp_p4 1.6666665459E-1
+#define _fx_c_cephes_exp_p5 5.0000001201E-1
+
+/* exp() computed for 4 float at once */
+static __inline float32x4_t _fx_vexpq_f32(float32x4_t x) {
+    float32x4_t tmp, fx;
+
+    float32x4_t one = vdupq_n_f32(1);
+    x = vminq_f32(x, vdupq_n_f32(_fx_c_exp_hi));
+    x = vmaxq_f32(x, vdupq_n_f32(_fx_c_exp_lo));
+
+    /* express exp(x) as exp(g + n*log(2)) */
+    fx = vmlaq_f32(vdupq_n_f32(0.5f), x, vdupq_n_f32(_fx_c_cephes_LOG2EF));
+
+    /* perform a floorf */
+    tmp = vcvtq_f32_s32(vcvtq_s32_f32(fx));
+
+    /* if greater, substract 1 */
+    uint32x4_t mask = vcgtq_f32(tmp, fx);
+    mask = vandq_u32(mask, vreinterpretq_u32_f32(one));
+
+    fx = vsubq_f32(tmp, vreinterpretq_f32_u32(mask));
+
+    tmp = vmulq_f32(fx, vdupq_n_f32(_fx_c_cephes_exp_C1));
+    float32x4_t z = vmulq_f32(fx, vdupq_n_f32(_fx_c_cephes_exp_C2));
+    x = vsubq_f32(x, tmp);
+    x = vsubq_f32(x, z);
+
+    const float _fx_cephes_exp_p[6] = {
+        _fx_c_cephes_exp_p0, _fx_c_cephes_exp_p1,
+        _fx_c_cephes_exp_p2, _fx_c_cephes_exp_p3,
+        _fx_c_cephes_exp_p4, _fx_c_cephes_exp_p5 };
+    float32x4_t y = vld1q_dup_f32(_fx_cephes_exp_p+0);
+    float32x4_t c1 = vld1q_dup_f32(_fx_cephes_exp_p+1);
+    float32x4_t c2 = vld1q_dup_f32(_fx_cephes_exp_p+2);
+    float32x4_t c3 = vld1q_dup_f32(_fx_cephes_exp_p+3);
+    float32x4_t c4 = vld1q_dup_f32(_fx_cephes_exp_p+4);
+    float32x4_t c5 = vld1q_dup_f32(_fx_cephes_exp_p+5);
+
+    y = vmulq_f32(y, x);
+    z = vmulq_f32(x, x);
+    y = vaddq_f32(y, c1);
+    y = vmulq_f32(y, x);
+    y = vaddq_f32(y, c2);
+    y = vmulq_f32(y, x);
+    y = vaddq_f32(y, c3);
+    y = vmulq_f32(y, x);
+    y = vaddq_f32(y, c4);
+    y = vmulq_f32(y, x);
+    y = vaddq_f32(y, c5);
+
+    y = vmulq_f32(y, z);
+    y = vaddq_f32(y, x);
+    y = vaddq_f32(y, one);
+
+    /* build 2^n */
+    int32x4_t mm = vcvtq_s32_f32(fx);
+    mm = vaddq_s32(mm, vdupq_n_s32(0x7f));
+    mm = vshlq_n_s32(mm, 23);
+    float32x4_t pow2n = vreinterpretq_f32_s32(mm);
+
+    y = vmulq_f32(y, pow2n);
+    return y;
+}
+#endif
+
+static void _fx_activ_clip(float* data, size_t step, int size0,
+                            int size1, const float* params)
+{
+    float a = params[0], b = params[1];
+    for (int i = 0; i < size0; i++, data += step) {
+        for (int j = 0; j < size1; j++) {
+            float x = data[j];
+            x = x >= a ? x : a;
+            x = x <= b ? x : b;
+            data[j] = x;
+        }
+    }
+}
+
 static void _fx_activ_lrelu(float* data, size_t step, int size0,
                             int size1, const float* params)
 {
@@ -106,14 +224,32 @@ static void _fx_activ_tanh(float* data, size_t step, int size0,
 static void _fx_activ_mish(float* data, size_t step, int size0,
                            int size1, const float* params)
 {
+#ifdef __ARM_NEON
+    assert(size1 % 4 == 0);
+    float32x4_t thr = vdupq_n_f32(-36.73f), one = vdupq_n_f32(1.f), z = vdupq_n_f32(0.f);
     for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j++) {
+        for (int j = 0; j < size1; j += 4) {
+            float32x4_t x = vld1q_f32(data + j);
+            x = vbslq_f32(vcleq_f32(x, thr), z, x);
+            float32x4_t y = _fx_vexpq_f32(vsubq_f32(z, x));
+            float32x4_t y2 = vaddq_f32(y, y);
+            float32x4_t y2_1 = vaddq_f32(y2, one);
+            x = vdivq_f32(
+                vmulq_f32(x, y2_1),
+                vaddq_f32(y2_1, vmulq_f32(y2, y)));
+            vst1q_f32(data + j, x);
+        }
+    }
+#else
+    for (int i = 0; i < size0; i++, data += step) {
+        for (int j = 0; j < size1; j += 4) {
             float x = data[j];
-            x = x > -36.73f ? x : 0.f;
+            x *= (x > -36.73f ? 1.f : 0.f);
             float y = expf(-x);
             data[j] = x*(1 + 2*y)/(1 + 2*y + 2*y*y);
         }
     }
+#endif
 }
 
 enum { FX_CONV_TYPE_GENERIC=0, FX_CONV_TYPE_DEPTHWISE=1, FX_CONV_TYPE_WINOGRAD3X3=2 };
@@ -202,7 +338,8 @@ static int _fx_init_conv2d(
     conv->activ = activ;
     conv->activ_func =
         activ == _FX_ACTIV_CUSTOM ? activ_func :
-        activ == _FX_ACTIV_RELU || activ == _FX_ACTIV_CLIP ? 0 :
+        activ == _FX_ACTIV_RELU ? 0 :
+        activ == _FX_ACTIV_CLIP ? _fx_activ_clip :
         activ == _FX_ACTIV_LRELU ? _fx_activ_lrelu :
         activ == _FX_ACTIV_PRELU ? _fx_activ_prelu :
         activ == _FX_ACTIV_MISH ? _fx_activ_mish :
@@ -526,9 +663,9 @@ static void _fx_conv_block( int k, const float *a, const float *b,
     {
         for( int i = 0; i < FX_CONV_MR; i++ )
         {
-            float alpha = a[FX_CONV_MR*p + i];
+            float ai = a[FX_CONV_MR*p + i];
             for( int j = 0; j < FX_CONV_NR; j++ )
-                cbuf[i*FX_CONV_NR+j] += b[FX_CONV_NR*p + j]*alpha;
+                cbuf[i*FX_CONV_NR+j] += b[FX_CONV_NR*p + j]*ai;
         }
     }
     if (activ) {
@@ -1379,7 +1516,7 @@ static double min_total_time_1x1 = 0;
 #ifdef __ARM_NEON
 static void _fx_conv_block_f16( int k, const flt16_t *a, const flt16_t *b,
                                 float *c, int ldc, const float* pb, int ldp,
-                                const float* bias, float minval,
+                                const float* bias, float alpha,
                                 float maxval, bool activ )
 {
 #if FX_CONV_NR_FP16 == 24 && FX_CONV_MR_FP16 == 8
@@ -1488,8 +1625,9 @@ static void _fx_conv_block_f16( int k, const flt16_t *a, const flt16_t *b,
         _FX_UPDATE_CBUF_ROW(7);
     }
 
-    float32x4_t vmin = vdupq_n_f32(minval);
+    float32x4_t valpha = vdupq_n_f32(alpha);
     float32x4_t vmax = vdupq_n_f32(maxval);
+    float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
     float32x4_t c0, c1, c2, c3, c4, c5;
 #undef _FX_FINIT_ROW
 #define _FX_FINIT_ROW(row) \
@@ -1505,12 +1643,12 @@ static void _fx_conv_block_f16( int k, const flt16_t *a, const flt16_t *b,
     c3 = vaddq_f32(c3, vld1q_f32(pb + row*ldp + 12)); \
     c4 = vaddq_f32(c4, vld1q_f32(pb + row*ldp + 16)); \
     c5 = vaddq_f32(c5, vld1q_f32(pb + row*ldp + 20)); \
-    c0 = vminq_f32(vmaxq_f32(c0, vmin), vmax); \
-    c1 = vminq_f32(vmaxq_f32(c1, vmin), vmax); \
-    c2 = vminq_f32(vmaxq_f32(c2, vmin), vmax); \
-    c3 = vminq_f32(vmaxq_f32(c3, vmin), vmax); \
-    c4 = vminq_f32(vmaxq_f32(c4, vmin), vmax); \
-    c5 = vminq_f32(vmaxq_f32(c5, vmin), vmax); \
+    c0 = vmulq_f32(vminq_f32(c0, vmax), vbslq_f32(vcltq_f32(c0, z), valpha, one)); \
+    c1 = vmulq_f32(vminq_f32(c1, vmax), vbslq_f32(vcltq_f32(c1, z), valpha, one)); \
+    c2 = vmulq_f32(vminq_f32(c2, vmax), vbslq_f32(vcltq_f32(c2, z), valpha, one)); \
+    c3 = vmulq_f32(vminq_f32(c3, vmax), vbslq_f32(vcltq_f32(c3, z), valpha, one)); \
+    c4 = vmulq_f32(vminq_f32(c4, vmax), vbslq_f32(vcltq_f32(c4, z), valpha, one)); \
+    c5 = vmulq_f32(vminq_f32(c5, vmax), vbslq_f32(vcltq_f32(c5, z), valpha, one)); \
     vst1q_f32(c + row*ldc, c0); \
     vst1q_f32(c + row*ldc + 4, c1); \
     vst1q_f32(c + row*ldc + 8, c2); \
@@ -1539,17 +1677,17 @@ static void _fx_conv_block_f16( int k, const flt16_t *a, const flt16_t *b,
     {
         for( int i = 0; i < FX_CONV_MR_FP16; i++ )
         {
-            float alpha = a[FX_CONV_MR_FP16*p + i];
+            float ai = a[FX_CONV_MR_FP16*p + i];
             for( int j = 0; j < FX_CONV_NR_FP16; j++ )
-                cbuf[i*FX_CONV_NR_FP16+j] += b[FX_CONV_NR_FP16*p + j]*alpha;
+                cbuf[i*FX_CONV_NR_FP16+j] += b[FX_CONV_NR_FP16*p + j]*ai;
         }
     }
     if (activ) {
         for( int i = 0; i < FX_CONV_MR_FP16*FX_CONV_NR_FP16; i++ )
         {
             float v = cbuf[i];
-            v = v >= minval ? v : minval;
             v = v <= maxval ? v : maxval;
+            v *= (v < 0.f ? alpha : 1.f);
             cbuf[i] = v;
         }
     }
@@ -1577,8 +1715,16 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
     int inp_planesize = Hi*Wi;
     int out_planesize = H0*W0;
     float minval = conv->minval, maxval = conv->maxval;
-    bool fast_activ = conv->activ != _FX_ACTIV_NONE && conv->activ_func == 0;
+    float alpha =
+        conv->activ == _FX_ACTIV_RELU ? 0.f :
+        conv->activ == _FX_ACTIV_LRELU ? conv->activ_params[0] :
+        conv->activ == _FX_ACTIV_CLIP && minval == 0.f ? 0.f : 1.f;
+    bool fast_activ = conv->activ == _FX_ACTIV_RELU ||
+                      conv->activ == _FX_ACTIV_LRELU ||
+                      (conv->activ == _FX_ACTIV_CLIP && minval == 0);
     _fx_activ_func_t activ_func = !fast_activ ? conv->activ_func : 0;
+    //printf("activ=%d, minval=%f, maxval=%f, alpha=%f, fast_activ=%d, activ_func=%p\n",
+    //    conv->activ, minval, maxval, alpha, (int)fast_activ, activ_func);
     const float* activ_params = conv->activ_params;
     int stripes_per_sample = (out_planesize + FX_CONV_NR_FP16 - 1)/FX_CONV_NR_FP16;
     if (stripes_per_sample < ntasks*4)
@@ -1812,7 +1958,7 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
                 for(int k = k0; k < k1; k += FX_CONV_MR_FP16, outptr0 += outstep0*FX_CONV_MR_FP16,
                                     pbptr0 += (passby ? outstep0*FX_CONV_MR_FP16 : 0)) {
                     int dk = Kg - k < FX_CONV_MR_FP16 ? Kg - k : FX_CONV_MR_FP16;
-                    bool partial = partial0 || dk < FX_CONV_MR_FP16;
+                    bool partial = partial0 || dk < FX_CONV_MR_FP16 || activ_func;
                     float* outptr = outptr0;
                     float* pbptr = (float*)pbptr0;
                     int outstep = outstep0, pbstep = pbstep0;
@@ -1830,10 +1976,10 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
                     _fx_conv_block_f16(HkWkCg, conv->wf16+(g*Kg_aligned + k)*HkWkCg,
                                        inpbuf_task, outptr, outstep, pbptr, pbstep,
                                        conv->bias + Kg*g + k,
-                                       minval, maxval, fast_activ);
-                    if (activ_func)
-                        activ_func(outptr, outstep, dk, FX_CONV_NR, activ_params);
+                                       alpha, maxval, fast_activ);
                     if (partial) {
+                        if (activ_func)
+                            activ_func(outptr, outstep, 1, dk*FX_CONV_NR_FP16, activ_params);
                         for (int i = 0; i < dk; i++)
                             memcpy(outptr0 + i*outstep0, &cbuf[i*FX_CONV_NR_FP16],
                                    (yx1 - yx0)*sizeof(cbuf[0]));
@@ -1845,7 +1991,7 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
     }
 
     fx_free(inpbuf_all);
-    if (Hk == 1 && Wk == 1)
+    //if (Hk == 1 && Wk == 1)
     {
     ts = fx_tick_count() - ts;
     total_time_1x1 += ts;
@@ -2119,7 +2265,7 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                 for(int k = k0; k < k1; k += FX_CONV_MR, outptr0 += outstep0*FX_CONV_MR,
                                     pbptr0 += (pbptr0 ? outstep0*FX_CONV_MR : 0)) {
                     int dk = Kg - k < FX_CONV_MR ? Kg - k : FX_CONV_MR;
-                    bool partial = partial0 || dk < FX_CONV_MR;
+                    bool partial = partial0 || dk < FX_CONV_MR || activ_func;
                     float* outptr = outptr0;
                     float* pbptr = (float*)pbptr0;
                     int outstep = outstep0;
@@ -2136,9 +2282,9 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                     _fx_conv_block(HkWkCg, conv->weights+(g*Kg_aligned + k)*HkWkCg,
                                    inpbuf_task, outptr, outstep, pbptr, conv->bias + Kg*g + k,
                                    minval, maxval, fast_activ);
-                    if (activ_func)
-                        activ_func(outptr, outstep, dk, FX_CONV_NR, activ_params);
                     if (partial) {
+                        if (activ_func)
+                            activ_func(outptr, outstep, 1, dk*FX_CONV_NR, activ_params);
                         for (int i = 0; i < dk; i++)
                             memcpy(outptr0 + i*outstep0, &cbuf[i*FX_CONV_NR],
                                    (yx1 - yx0)*sizeof(cbuf[0]));
@@ -2151,12 +2297,21 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
 
     fx_free(inpbuf_all);
     //if (Hk == 1 && Wk == 1)
-    {
+    /*{
     ts = fx_tick_count() - ts;
     total_time_1x1 += ts;
-    //printf("Conv 2D (%dx%ds%dd%d): (%d x %d x %d x %d) => (%d x %d x %d x %d): time=%.1f\n",
-    //    Hk, Wk, stride_x, dilation_x, N, C, Hi, Wi, N, K, H0, W0, ts*1000./fx_tick_frequency());
-    }
+    printf("Conv 2D [%s] (%dx%ds%dd%d): (%d x %d x %d x %d) => (%d x %d x %d x %d): time=%.1f\n",
+        (conv->activ == _FX_ACTIV_NONE ? "" :
+         conv->activ == _FX_ACTIV_RELU ? "+ReLU" :
+         conv->activ == _FX_ACTIV_LRELU ? "+Leaky ReLU" :
+         conv->activ == _FX_ACTIV_PRELU ? "+PReLU" :
+         conv->activ == _FX_ACTIV_MISH ? "+Mish" :
+         conv->activ == _FX_ACTIV_CLIP ? "+Clip" :
+         conv->activ == _FX_ACTIV_SIGMOID ? "+Sigmoid" :
+         conv->activ == _FX_ACTIV_TANH ? "+Tahnh" :
+         "unknown activation"),
+        Hk, Wk, stride_x, dilation_x, N, C, Hi, Wi, N, K, H0, W0, ts*1000./fx_tick_frequency());
+    }*/
     return FX_OK;
 }
 }

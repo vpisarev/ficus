@@ -4,7 +4,7 @@
 */
 
 // Runs the inference on user-provided data
-import Hashmap
+import Hashmap, Sys
 import Ast, InferShapes, OpConv, RunOp
 
 fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
@@ -77,8 +77,11 @@ fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nnten
                 }
             }
         }
-        //println(f"running op {op.name()}")
+        //println(f"running op '{op.name()}'")
+        //val t = Sys.tick_count()
         RunOp.run_op(net, op)
+        //val t = Sys.tick_count() - t
+        //println(f"{op.name()}: {round(t*1000./Sys.tick_frequency(), 2)}ms")
         for oi@outidx <- oinfo {
             val {idx=argidx} = oi
             match net.get_tensor(argidx).data {
