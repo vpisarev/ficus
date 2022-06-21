@@ -12,11 +12,11 @@ import Ast
 @private fun run_cast(inp: float [], out: int16 []) = for x@idx <- inp {out[idx] = sat_int16(x)}
 @private fun run_cast(inp: float [], out: int32 []) = for x@idx <- inp {out[idx] = int32(round(x))}
 
-fun run_cast(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_cast(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Cast {t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     match (inp.data, out.data) {
     | (Ast.NN_Data_Empty, _) => {}
     | (_, Ast.NN_Data_Empty) => {}
@@ -74,14 +74,14 @@ match op {
     for x@idx <- inp {out[idx] = min(max(x, minval), maxval)}
 }
 
-fun run_clip(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_clip(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
 | Ast.NN_Clip {t_inp, t_min, t_max, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
-    val minval = net.get_tensor(t_min)
-    val maxval = net.get_tensor(t_max)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
+    val minval = model.get_tensor(t_min)
+    val maxval = model.get_tensor(t_max)
     val minval = minval.data.float_scalar_or(-FLT_MAX)
     val maxval = maxval.data.float_scalar_or(FLT_MAX)
     match (inp.data, out.data) {
@@ -100,10 +100,10 @@ match op
 
 @private fun run_constantOfShape(v: 't, out: 't []) = for _@idx <- out {out[idx] = v}
 
-fun run_constantOfShape(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_constantOfShape(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_ConstantOfShape {value, t_out} =>
-    val out = net.get_tensor(t_out)
+    val out = model.get_tensor(t_out)
     match (value.data, out.data) {
     | (Ast.NN_Data_U8 v_data, Ast.NN_Data_U8 out_data) =>
         OpElemwise.run_constantOfShape(v_data[0], out_data)
@@ -139,12 +139,12 @@ match op {
 @private fun run_sqrt(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sqrt(x)}
 @private fun run_tanh(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = tanh(x)}
 
-fun run_unary(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_unary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
 | Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 1 =>
-    val inp = net.get_tensor(t_inp[0])
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp[0])
+    val out = model.get_tensor(t_out)
     match (el_op, inp.data, out.data) {
     | (Ast.NN_Abs, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_abs(inp_data, out_data)
@@ -286,13 +286,13 @@ fun rev_eot(eot: ElemwiseOpType) { | EOT_AoS => EOT_SoA | EOT_SoA => EOT_AoS | _
     | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x ^ y}
     }
 
-fun run_binary(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_binary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
 | Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 2 =>
-    val inp0 = net.get_tensor(t_inp[0])
-    val inp1 = net.get_tensor(t_inp[1])
-    val out = net.get_tensor(t_out)
+    val inp0 = model.get_tensor(t_inp[0])
+    val inp1 = model.get_tensor(t_inp[1])
+    val out = model.get_tensor(t_out)
     val inp0_shape = inp0.shape.shape
     val inp1_shape = inp1.shape.shape
     val out_shape = out.shape.shape
@@ -349,13 +349,13 @@ match op
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_nary(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_nary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
 | Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() >= 2 =>
     val ninputs = t_inp.size()
-    val inp = [for i <- t_inp {net.get_tensor(i)}]
-    val out = net.get_tensor(t_out)
+    val inp = [for i <- t_inp {model.get_tensor(i)}]
+    val out = model.get_tensor(t_out)
     match (el_op, inp[0].data, inp[1].data, out.data) {
     | (Ast.NN_Max, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
         run_max(inp0_data, inp1_data, out_data, EOT_AoA)
@@ -394,17 +394,17 @@ fun run_dropout(inp: 't [], out: 't [], ratio: float)
     for x@idx <- inp {out[idx] = (x*scale :> 't)}
 }
 
-fun run_dropout(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_dropout(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
 | Ast.NN_Dropout {t_inp, t_ratio, t_training_mode, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     val training_mode =
         if t_training_mode == 0 {
             false
         } else {
-            val t = net.get_tensor(t_training_mode)
+            val t = model.get_tensor(t_training_mode)
             match t.data {
             | Ast.NN_Data_Bool f => f[0]
             | Ast.NN_Data_FP32 f => f[0] != 0.f
@@ -418,13 +418,13 @@ match op
     val ratio =
         if !training_mode {0.f}
         else if t_ratio == 0 {0.5f} else {
-            match net.get_tensor(t_ratio).data {
+            match model.get_tensor(t_ratio).data {
             | Ast.NN_Data_FP32 ratio_data => ratio_data[0]
             | _ => throw NotImplementedError
             }
         }
     if ratio == 0.f {
-        net.copy_tensor_data(t_inp, t_out)
+        model.copy_tensor_data(t_inp, t_out)
     } else {
         match (inp.data, out.data) {
         | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>

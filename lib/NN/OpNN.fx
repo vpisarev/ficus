@@ -18,11 +18,11 @@ fun run_softmax(inp: 't [], inp_shape: Ast.nnshape_t, out: 't [])
     }
 }
 
-fun run_softmax(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_softmax(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_SoftMax {axis, t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     assert(`inp.shape.shape.size() == 2`)
     assert(`axis == 1 || axis == -1`)
     match (inp.data, out.data) {
@@ -80,16 +80,16 @@ match op {
     return FX_OK;
 }
 
-fun run_batchnorm(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_batchnorm(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_BatchNorm {epsilon, momentum,
         t_inp, t_scale, t_B, t_mean, t_var, t_out} =>
-    val inp = net.get_tensor(t_out)
-    val inp_mean = net.get_tensor(t_mean)
-    val inp_var = net.get_tensor(t_var)
-    val scale = net.get_tensor(t_scale)
-    val B = net.get_tensor(t_B)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_out)
+    val inp_mean = model.get_tensor(t_mean)
+    val inp_var = model.get_tensor(t_var)
+    val scale = model.get_tensor(t_scale)
+    val B = model.get_tensor(t_B)
+    val out = model.get_tensor(t_out)
     match (inp.data, inp_mean.data, inp_var.data, scale.data, B.data, out.data) {
     | (Ast.NN_Data_FP32 inp_data,
        Ast.NN_Data_FP32 inp_mean_data, Ast.NN_Data_FP32 inp_var_data,
@@ -97,7 +97,7 @@ match op {
        Ast.NN_Data_FP32 out_data) =>
         run_batchnorm(inp.shape.shape, inp_data, inp_mean_data,
                       inp_var_data, scale_data, B_data,
-                      out.shape.shape, out_data, epsilon, *net.ntasks)
+                      out.shape.shape, out_data, epsilon, *model.ntasks)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
@@ -157,17 +157,17 @@ fun run_gemm(A: float [], A_shape: Ast.nnshape_t,
             out_data, (int)out_shape_[1], (int)ntasks);
 }
 
-fun run_gemm(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_gemm(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Gemm {alpha, beta, transA, transB, t_A, t_B, t_bias, t_out} =>
-    val A = net.get_tensor(t_A), B = net.get_tensor(t_B)
-    val bias = net.get_tensor(t_bias)
-    val out = net.get_tensor(t_out)
+    val A = model.get_tensor(t_A), B = model.get_tensor(t_B)
+    val bias = model.get_tensor(t_bias)
+    val out = model.get_tensor(t_out)
     match (A.data, B.data, bias.data, out.data) {
     | (Ast.NN_Data_FP32 a_data, Ast.NN_Data_FP32 b_data,
        Ast.NN_Data_FP32 bias_data, Ast.NN_Data_FP32 out_data) =>
         run_gemm(a_data, A.shape, b_data, B.shape, bias_data, bias.shape,
-                 out_data, out.shape, alpha, beta, transA, transB, *net.ntasks)
+                 out_data, out.shape, alpha, beta, transA, transB, *model.ntasks)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")

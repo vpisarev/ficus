@@ -11,9 +11,9 @@
 */
 import Ast, Dynvec, Hashmap
 
-fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
+fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int [])
 {
-    val nargs = net.args.size()
+    val nargs = model.args.size()
     val produced_by = array(nargs, -1)
     val prog = graph.prog
     val new_prog = Dynvec.create(0, Ast.NN_Nop)
@@ -21,8 +21,8 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
     fun get_op(op_idx: int) =
         if op_idx >= 0 {new_prog.data[op_idx]} else {Ast.NN_Nop}
     fun is_const_scalar_tensor(argidx: int, v: float?) =
-        if net.isconst(argidx) {
-            val t = net.get_tensor(argidx)
+        if model.isconst(argidx) {
+            val t = model.get_tensor(argidx)
             if t.shape.total() == 1 {
                 match (v, t.data) {
                 | (None, _) => true
@@ -59,8 +59,8 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
                 when t_conv_out == t_inp =>
                 // merge Conv + BatchNorm
                 val non_const_batch_norm =
-                    !net.isconst(t_mean) || !net.isconst(t_var) ||
-                    !net.isconst(t_scale) || !net.isconst(t_B)
+                    !model.isconst(t_mean) || !model.isconst(t_var) ||
+                    !model.isconst(t_scale) || !model.isconst(t_B)
                 *conv_data = null
                 val new_conv_op = Ast.NN_Conv {
                     name=name, attr=attr, conv_data=conv_data,
@@ -87,7 +87,7 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
                 when t_conv_out == t_activ_inp[0] && usecounts[t_conv_out] == 1 =>
                 // merge Conv + activation
                 val non_const_activ = match op {
-                    | Ast.NN_Clip {t_min, t_max} => !net.isconst(t_min) || !net.isconst(t_max)
+                    | Ast.NN_Clip {t_min, t_max} => !model.isconst(t_min) || !model.isconst(t_max)
                     | _ => false }
                 *conv_data = null
                 val new_conv_op = Ast.NN_Conv {
@@ -228,21 +228,21 @@ fun fuse_conv_elemwise(net: Ast.nnet_t, graph: Ast.nngraph_t, usecounts: int [])
     }
 }
 
-fun fuse_basic(net_: Ast.nnet_t)
+fun fuse_basic(net_: Ast.nnmodel_t)
 {
-    var net = net_
+    var model = net_
     for iter <- 0:3 {
-        val usecounts = net.use_counts()
+        val usecounts = model.use_counts()
         /*if iter > 0 {
             for c@i <- usecounts {
-                println(f"{iter}. '{net.args[i].name}': {c}")
+                println(f"{iter}. '{model.args[i].name}': {c}")
             }
         }*/
-        val nops_before = net.graph.prog.size()
-        val new_graph = fuse_conv_elemwise(net, net.graph, usecounts)
+        val nops_before = model.graph.prog.size()
+        val new_graph = fuse_conv_elemwise(model, model.graph, usecounts)
         val nops_after = new_graph.prog.size()
         if nops_after == nops_before {break}
-        net = net.{graph = new_graph}
+        model = model.{graph = new_graph}
     }
-    net
+    model
 }

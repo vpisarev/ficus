@@ -3,11 +3,13 @@
     See ficus/LICENSE for the licensing terms
 */
 
-import Json, Sys, LexerUtils as Lxu
+import Filename, Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 import Color
 //import Image.Decoder
 import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpYolo
+
+type model_kind_t = DetectorSSD | DetectorYolo | DetectorTinyYolo | DetectorAuto
 
 val coco_class_names =
     ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat", "traffic light",
@@ -39,6 +41,7 @@ var images: string list = []
 var ntasks = 0
 var use_f16 = false
 var temp_name = ""
+var detector_kind = DetectorAuto
 
 fun parse_args(args: string list)
 {
@@ -50,6 +53,10 @@ fun parse_args(args: string list)
         lname = lname_; parse_args(rest)
     | "-temp" :: tname :: rest =>
         temp_name = tname; parse_args(rest)
+    | "-ssd" :: rest =>
+        detector_kind = DetectorSSD; parse_args(rest)
+    | "-yolo" :: rest =>
+        detector_kind = DetectorYolo; parse_args(rest)
     | "-model" :: mname_ :: rest =>
         mname = mname_; parse_args(rest)
     | optname :: _ when optname.startswith('-') =>
@@ -91,30 +98,7 @@ val labels: string [] =
         }
     }
 
-/*val fface = cv.makeFontFace("sans")
-val fontSize = 20
-
-for imgname@i <- images {
-    val img = cv.imread(imgname)
-    val inp = cv.blobFromImage(img, size=(224, 224),
-            mean=(104.00698793, 116.66876762, 122.67891434),
-            swapRB=false, crop=false)
-    val probs = net.forward(inp)
-    val (_, _, _, n) = size(probs)
-    val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
-    sort(tprobs, (>))
-    for j <- 0:5 {
-        val lbl = if labels != [] {labels[tprobs[j].1]} else {f"class_{tprobs[j].1}"}
-        val p = tprobs[j].0
-        cv.putText(img, f"{lbl}: p={round(p, 3)}",
-            (10, 30 + j*(fontSize+5)), cv.RGB(0, 255, 0), weight=400, fontFace=fface, size=fontSize)
-    }
-    cv.imshow(f"image #{i+1}", img)
-}
-cv.waitKey()
-*/
-
-val model =
+var model =
     try NN.FromOnnx.read(mname)
     catch {
     | NN.FromOnnx.OnnxConvertError(msg) =>
@@ -122,10 +106,55 @@ val model =
     | Fail(msg) =>
         println(f"error: {msg}"); throw Fail("")
     }
-val model = NN.ConstFold.cfold(model)
-val model = NN.FuseBasic.fuse_basic(model)
-val model = NN.BufferAllocator.assign_buffers(model)
+
+if detector_kind == DetectorAuto {
+    val mname_upcase = Filename.basename(mname).toupper()
+    if mname_upcase.contains("SSD") {
+        detector_kind = DetectorSSD
+    } else if mname_upcase.contains("YOLO") {
+        if mname_upcase.contains("TINY") {
+            detector_kind = DetectorTinyYolo
+        } else {
+            detector_kind = DetectorYolo
+        }
+    }
+}
+
+var ok =
+try {
+    model = NN.ConstFold.cfold(model)
+    model = NN.FuseBasic.fuse_basic(model)
+    model = NN.BufferAllocator.assign_buffers(model)
+    true
+} catch {
+    | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); false
+    | Fail msg => println(f"failure: '{msg}'"); false
+}
+if !ok {throw Fail("exiting")}
 println(model)
+
+var planar_input = true, ndims0 = 4, input_typ = NN.Ast.NN_FP32
+for t_inp@i <- model.graph.inpargs {
+    val inparg = model.args[t_inp]
+    val shape = inparg.shape.shape
+    val ndims = shape.size()
+    if i == 0 {
+        ndims0 = ndims
+        input_typ = inparg.typ
+        if (ndims == 3 || ndims == 4) && shape[ndims-1] == 3 {
+            planar_input = false
+        }
+    }
+    println(f"input #{i}, '{inparg.name}': {NN.Ast.shape2str(model, inparg.shape)}, typ={inparg.typ}")
+}
+
+val (input_size, planar_input) = match detector_kind {
+    | DetectorYolo => (416, false)
+    | DetectorTinyYolo => (416, true)
+    | DetectorSSD => (300, false)
+    | _ => (300, planar_input)
+    }
+
 val k = 5
 val temp_outputs = if temp_name != "" {
     [for i <- [temp_name] {(i, NN.Ast.empty_tensor())}]
@@ -136,31 +165,31 @@ if ntasks > 0 {
     *model.ntasks = ntasks
 }
 *model.use_f16 = use_f16
-val size0 = 416
 
 for imgname@i <- images {
     //println(f"starting reading model '{mname}'")
     val img = cv.imread(imgname)
     val (h, w) = img.size()
-    val resized_img = if h == w {
-            cv.resize(img, (size0, size0), interpolation=cv.INTER_LINEAR)
+    val resized_img =
+        if h == w {
+            cv.resize(img, (input_size, input_size), interpolation=cv.INTER_LINEAR)
         } else {
-            val (w, h) = if w > h {(size0, (h*size0+w/2)/w)} else {((w*size0+h/2)/h, size0)}
+            val (w, h) = if w > h {(input_size, (h*input_size+w/2)/w)} else {((w*input_size+h/2)/h, input_size)}
             val resized_img = cv.resize(img, (w, h), interpolation=cv.INTER_LINEAR)
-            val canvas = array((size0, size0), (128u8, 128u8, 128u8))
-            val y0 = (size0-h)/2
-            val x0 = (size0-w)/2
+            val canvas = array((input_size, input_size), (128u8, 128u8, 128u8))
+            val y0 = (input_size-h)/2
+            val x0 = (input_size-w)/2
             canvas[y0:y0+h,x0:x0+w] = resized_img
             canvas
         }
     val resized_img = cv.cvtColor(resized_img, cv.COLOR_BGR2RGB)
-    //cv.imshow("original", img)
-    //cv.imshow("test", resized_img)
-    //ignore(cv.waitKey())
-
-    val inp = reshape_multichan(resized_img, (1, size0, size0, 3)).*(1.f/255)
-    println(inp.size())
-    val inp_ = NN.Ast.make_tensor(inp)
+    val inp = reshape_multichan(resized_img, (1, input_size, input_size, 3))
+    val inp_ =
+        if input_typ == NN.Ast.NN_FP32 {
+            NN.Ast.make_tensor(inp.*(1.f/255))
+        } else {
+            NN.Ast.make_tensor(inp)
+        }
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time()
     val niters = 10
@@ -218,16 +247,10 @@ for imgname@i <- images {
                 }
             }
         }*/
-        /*val sorted_k = NN.Inference.top_k(out.1, k)
-        for j <- 0:k {
-            val (label, prob) = sorted_k[0, j]
-            val label_str = if labels != [] {labels[label]} else {f"class_{label}"}
-            println(f"\t{j+1}. label={label_str} ({label}), prob={prob}")
-        }*/
     }
     val outputs = [for (_, out) <- outputs[:3] {out}]
     val boxes = NN.OpYolo.yolov4_postprocess(
-        outputs, orig_image_size=(h, w), input_size=size0,
+        outputs, orig_image_size=(h, w), input_size=input_size,
         score_threshold=0.25f, nms_threshold=0.22f,
         anchors=NN.OpYolo.yolov4_default_anchors,
         strides=NN.OpYolo.yolov4_default_strides,

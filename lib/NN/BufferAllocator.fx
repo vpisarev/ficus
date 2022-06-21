@@ -51,17 +51,17 @@ The reallocation is done using NN.Ast.fit() function.
 
 import Ast, Dynvec
 
-fun assign_buffers(net: Ast.nnet_t)
+fun assign_buffers(model: Ast.nnmodel_t)
 {
-    val nargs = net.args.size()
-    val usecounts = net.use_counts()
+    val nargs = model.args.size()
+    val usecounts = model.use_counts()
     var nbufs = 0
     val freebufs = Dynvec.create(0, 0)
     val bufidxs = array(nargs, -1)
 
     /*println("=================== arg use counts =====================")
     for i <- 0:nargs {
-        println(f"{net.args[i].name}: count={usecounts[i]}")
+        println(f"{model.args[i].name}: count={usecounts[i]}")
     }
     println("========================================================")*/
 
@@ -84,14 +84,14 @@ fun assign_buffers(net: Ast.nnet_t)
                 | Ast.NN_BatchNorm _ | Ast.NN_Clip _ | Ast.NN_Dropout _
                 | Ast.NN_Flatten _ | Ast.NN_Identity _ | Ast.NN_LeakyRelu _
                 | Ast.NN_Reshape _ | Ast.NN_Squeeze _ | Ast.NN_Unsqueeze _ =>
-                    (usecounts[inps[0]] == 1 && net.istemp(inps[0]), inps[0])
+                    (usecounts[inps[0]] == 1 && model.istemp(inps[0]), inps[0])
                 | Ast.NN_Scatter _ =>
-                    (usecounts[inps[0]] == 1 && inps[1] != inps[0] && inps[2] != inps[0] && net.istemp(inps[0]), inps[0])
+                    (usecounts[inps[0]] == 1 && inps[1] != inps[0] && inps[2] != inps[0] && model.istemp(inps[0]), inps[0])
                 // because of posssible broadcasting we cannot safely perform
                 // element-wise operations in-place, unless there is just one input.
                 | Ast.NN_Elemwise {el_op, t_inp} when t_inp.size() == 1 && (match el_op {
                     | Ast.NN_IsInf | Ast.NN_IsNaN => false | _ => true}) =>
-                    match find_opt(for argidx <- inps {usecounts[argidx] == 1 && net.istemp(argidx)}) {
+                    match find_opt(for argidx <- inps {usecounts[argidx] == 1 && model.istemp(argidx)}) {
                     | Some(argidx) => (true, argidx)
                     | _ => (false, -1)
                     }
@@ -99,12 +99,12 @@ fun assign_buffers(net: Ast.nnet_t)
                     (true, t_passby)
                 | _ => (false, -1)
                 }
-            //println(f"name={op.name()}, inplace={inplace_op}, inps={[::for i<-inps {net.args[i].name}]}, outs={[::for i<-outs {net.args[i].name}]}")
-            if inplace_op && net.args[outs[0]].argkind != Ast.NN_Arg_Output {
+            //println(f"name={op.name()}, inplace={inplace_op}, inps={[::for i<-inps {model.args[i].name}]}, outs={[::for i<-outs {model.args[i].name}]}")
+            if inplace_op && model.args[outs[0]].argkind != Ast.NN_Arg_Output {
                 bufidxs[outs[0]] = bufidxs[reuse_idx]
             } else {
                 for argidx <- outs {
-                    if net.istemp(argidx) {
+                    if model.istemp(argidx) {
                         if freebufs.count == 0 {
                             freebufs.do_push(nbufs)
                             //println(f"added buf #{nbufs}: {freebufs.data[:freebufs.count]}")
@@ -118,25 +118,25 @@ fun assign_buffers(net: Ast.nnet_t)
                 }
             }
             for argidx <- outs {
-                if net.istemp(argidx) && usecounts[argidx] == 0 {
+                if model.istemp(argidx) && usecounts[argidx] == 0 {
                     freebufs.do_push(bufidxs[argidx])
-                    //println(f"arg '{net.args[argidx].name}' (buf #{net.args[argidx].idx}) is not used anymore: {freebufs.data[:freebufs.count]}")
+                    //println(f"arg '{model.args[argidx].name}' (buf #{model.args[argidx].idx}) is not used anymore: {freebufs.data[:freebufs.count]}")
                 }
             }
             val ninps = inps.size()
             for i <- 0:ninps {
                 val argidx = inps[ninps-i-1]
-                if net.istemp(argidx) && (!inplace_op || argidx != reuse_idx) {
+                if model.istemp(argidx) && (!inplace_op || argidx != reuse_idx) {
                     assert(usecounts[argidx] > 0)
                     usecounts[argidx] -= 1
                     if usecounts[argidx] == 0 {
                         freebufs.do_push(bufidxs[argidx])
-                        //println(f"arg '{net.args[argidx].name}' (buf #{net.args[argidx].idx}) is not used anymore: {freebufs.data[:freebufs.count]}")
+                        //println(f"arg '{model.args[argidx].name}' (buf #{model.args[argidx].idx}) is not used anymore: {freebufs.data[:freebufs.count]}")
                     }
                 }
             }
         }
     }
-    assign_buffers_(net.graph)
-    net.{bufidxs = bufidxs, buffers = array(nbufs, ([]: uint8 []))}
+    assign_buffers_(model.graph)
+    model.{bufidxs = bufidxs, buffers = array(nbufs, ([]: uint8 []))}
 }

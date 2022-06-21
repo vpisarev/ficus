@@ -290,7 +290,7 @@ NN_Graph: {
     prog: nnop_t []
 }
 
-class nnet_t
+class nnmodel_t
 {
     info: dlnet_info_t
     argnames: nnnames_t
@@ -306,9 +306,9 @@ class nnet_t
     use_f16: bool ref
 }
 
-type op_callback_t = (nnet_t, nnop_t) -> void
+type op_callback_t = (nnmodel_t, nnop_t) -> void
 
-fun empty_net() = nnet_t {
+fun empty_net() = nnmodel_t {
     info = NN_Net_Generic,
     argnames = Hashmap.empty(8, "", 0),
     dimnames = Hashmap.empty(8, "", 0),
@@ -599,11 +599,11 @@ fun string(typ: nntyp_t)
     | NN_Bool => "Bool"
 }
 
-fun dim2str(net: nnet_t, d: int) = if d > 0 {string(d)} else if d == 0 {"?"} else {net.dimnames_[-d-1]}
+fun dim2str(model: nnmodel_t, d: int) = if d > 0 {string(d)} else if d == 0 {"?"} else {model.dimnames_[-d-1]}
 
-fun shape2str(net: nnet_t, s: nnshape_t)
+fun shape2str(model: nnmodel_t, s: nnshape_t)
 {
-    val shape_str = " x ".join([for d <- s.shape {dim2str(net, d)}])
+    val shape_str = " x ".join([for d <- s.shape {dim2str(model, d)}])
     (match (s.layout, size(s.shape)) {
     | (NN_Layout_Unknown, _) => ""
     | (_, dims) when dims > 1 => f"{s.layout} "
@@ -647,27 +647,27 @@ match self.data {
     | NN_Data_Bool _ => NN_Bool
 }
 
-fun tensor2str(net: nnet_t, t: nntensor_t, show_small: bool) =
+fun tensor2str(model: nnmodel_t, t: nntensor_t, show_small: bool) =
 match t.data {
     | NN_Data_Empty => "[]"
     | _ =>
-        val sp = shape2str(net, t.shape)
+        val sp = shape2str(model, t.shape)
         val tprefix = string(t.elemtype())
         val nelems = t.total()
         val tdata_str = if nelems <= 10 && show_small {tdata2str(t.data)} else {"[...]"}
         sp + " " + tprefix + " " + tdata_str
 }
 
-fun arg2str(net: nnet_t, argidx: int)
+fun arg2str(model: nnmodel_t, argidx: int)
 {
-    val targ = net.args[argidx]
-    val sp = shape2str(net, targ.shape)
+    val targ = model.args[argidx]
+    val sp = shape2str(model, targ.shape)
     val cprefix = match targ.argkind { NN_Arg_Temp => "" | _ => string(targ.argkind) + " " }
     val (tdatastr, bufstr) = match targ {
         | {argkind=NN_Arg_Const, shape={shape}}
             when argidx > 0 && size(shape) == 1 && shape[0] < 10 =>
-            (": " + tdata2str(net.tensors[argidx].data), "")
-        | {argkind=NN_Arg_Temp} => ("", f" (buf #{net.bufidxs[argidx]})")
+            (": " + tdata2str(model.tensors[argidx].data), "")
+        | {argkind=NN_Arg_Temp} => ("", f" (buf #{model.bufidxs[argidx]})")
         | _ => ("", "")
     }
     cprefix + sp + " " + string(targ.typ) + tdatastr + bufstr
@@ -699,15 +699,15 @@ fun op2str(name: string, opname: string, params: string, tensors: string [], ind
         f"\n{indent}", tensors)
 }
 
-fun graph2str(net: nnet_t, graph: nngraph_t, indent: string)
+fun graph2str(model: nnmodel_t, graph: nngraph_t, indent: string)
 {
     val {inpargs, outargs, prog} = graph
     val new_indent = indent + "  "
     val prog_indent = new_indent + "  "
-    val inpstrs = [for a <- inpargs {net.args[a].name}]
-    val outstrs = [for a <- outargs {net.args[a].name}]
+    val inpstrs = [for a <- inpargs {arg2str(model, a)}]
+    val outstrs = [for a <- outargs {arg2str(model, a)}]
     val prog = [for op@i <- prog {
-        f"{indent}// op #{i}\n{prog_indent}" + op2str(net, op, prog_indent)}]
+        f"{indent}// op #{i}\n{prog_indent}" + op2str(model, op, prog_indent)}]
     join_embrace(f"graph {{\n{new_indent}inputs={inpstrs},\n\
         {new_indent}outputs={outstrs},\n{new_indent}prog={{\n{prog_indent}",
         f"\n{new_indent}}}\n{indent}}}",
@@ -761,10 +761,10 @@ fun targs2pairs(prefix: string, args: int []) =
     if args.size() == 1 {[(prefix, args[0])]}
     else {[for a@i <- args {(f"{prefix}{i}", a)}]}
 
-fun t2str(net: nnet_t, tensors: (string, int) []) =
+fun t2str(model: nnmodel_t, tensors: (string, int) []) =
     [for (name, tidx) <- tensors {
-        val targ = if tidx >= 0 {net.args[tidx]} else {empty_arg()}
-        f"{name}=\"{targ.name}\", // {arg2str(net, tidx)}"
+        val targ = if tidx >= 0 {model.args[tidx]} else {empty_arg()}
+        f"{name}=\"{targ.name}\", // {arg2str(model, tidx)}"
     }]
 
 fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
@@ -813,7 +813,7 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
     | NN_Unsqueeze {t_inp, t_axes, t_out} => ([t_inp, t_axes], [t_out])
 }
 
-fun op2str(net: nnet_t, op: nnop_t, indent: string): string
+fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
 {
     val sub_indent = indent + "  "
     //println(f"dumping op={op.name()}")
@@ -823,20 +823,20 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string): string
         strides, count_include_pad, t_inp, t_out} =>
         op2str(name, "AvgPool", f"ceil_mode={ceil_mode},\ndilations={dilations},\nkernel_shape={kernel_shape},\n\
             pads={pads},\nstrides={strides},\ncount_include_pad={count_include_pad}",
-            t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_BatchNorm {name, epsilon, momentum, training_mode, t_inp, t_scale, t_B, t_mean, t_var, t_out} =>
         op2str(name, "BatchNorm", f"epsilon={epsilon},\nmomentum={momentum},\ntraining_mode={training_mode}",
-            t2str(net, [("t_inp", t_inp), ("t_scale", t_scale), ("t_B", t_B),
+            t2str(model, [("t_inp", t_inp), ("t_scale", t_scale), ("t_B", t_B),
             ("t_mean", t_mean), ("t_var", t_var), ("t_out", t_out)]), indent)
     | NN_Cast {name, to, t_inp, t_out} =>
-        op2str(name, "Cast", f"to={to}", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "Cast", f"to={to}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Clip {name, t_inp, t_min, t_max, t_out} =>
-        op2str(name, "Clip", "", t2str(net, [("t_inp", t_inp), ("t_min", t_min), ("t_max", t_max), ("t_out", t_out)]), indent)
+        op2str(name, "Clip", "", t2str(model, [("t_inp", t_inp), ("t_min", t_min), ("t_max", t_max), ("t_out", t_out)]), indent)
     | NN_Concat {name, axis, t_inp, t_out} =>
-        op2str(name, "Concat", f"axis={axis}", t2str(net, [\targs2pairs("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "Concat", f"axis={axis}", t2str(model, [\targs2pairs("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_ConstantOfShape {name, value, t_shape, t_out} =>
-        op2str(name, "ConstantOfShape", f"value={tensor2str(net, value, true)}",
-            t2str(net, [("t_shape", t_shape), ("t_out", t_out)]), indent)
+        op2str(name, "ConstantOfShape", f"value={tensor2str(model, value, true)}",
+            t2str(model, [("t_shape", t_shape), ("t_out", t_out)]), indent)
     | NN_Conv {name=convname, attr,
         fused_batch_norm, fused_activ, t_inp, t_weights, t_bias, t_out, t_passby} =>
         val bnorm_name = match fused_batch_norm {
@@ -849,71 +849,71 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string): string
             | _ => ""}
         val (passby_name, passby_attr) =
             if t_passby > 0 {
-                (" + Add", f", passby=\"{net.args[t_passby].name}\"")
+                (" + Add", f", passby=\"{model.args[t_passby].name}\"")
             } else {("", "")}
         op2str(convname, "Conv" + bnorm_name + passby_name + activ_name, f"kernel_shape={attr.kernel_shape}, \
             pads={attr.pads}, strides={attr.strides}, dilations={attr.dilations}, group={attr.group}{passby_attr}",
-            t2str(net, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
     | NN_ConvTranspose {name, kernel_shape, pads, strides, dilations, group,
         out_shape, out_padding, t_inp, t_weights, t_bias, t_out} =>
         op2str(name, "Conv", f"kernel_shape={kernel_shape}, \
             pads={pads}, strides={strides}, dilations={dilations}, group={group}, out_padding={out_padding}, out_shape={out_shape}",
-            t2str(net, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
     | NN_Dropout {name, seed, t_inp, t_ratio, t_training_mode, t_out} =>
-        op2str(name, "Dropout", f"seed={seed}", t2str(net,
+        op2str(name, "Dropout", f"seed={seed}", t2str(model,
             [("t_inp", t_inp), ("t_ratio", t_ratio), ("t_training_mode", t_training_mode), ("t_out", t_out)]), indent)
     | NN_Elemwise {name, el_op, t_inp, t_out} =>
         val targs = [\targs2pairs("t_inp", t_inp), ("t_out", t_out)]
-        op2str(name, string(el_op), "", t2str(net, targs), indent)
+        op2str(name, string(el_op), "", t2str(model, targs), indent)
     | NN_Expand {name, t_inp, t_shape, t_out} =>
-        op2str(name, "Expand", "", t2str(net, [("t_inp", t_inp), ("t_shape", t_shape), ("t_out", t_out)]), indent)
+        op2str(name, "Expand", "", t2str(model, [("t_inp", t_inp), ("t_shape", t_shape), ("t_out", t_out)]), indent)
     | NN_Flatten {name, axis, t_inp, t_out} =>
-        op2str(name, "Flatten", f"axis={axis}", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "Flatten", f"axis={axis}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Gather {name, axis, t_inp, t_ind, t_out} =>
-        op2str(name, "Gather", f"axis={axis}", t2str(net, [("t_inp", t_inp), ("t_ind", t_ind), ("t_out", t_out)]), indent)
+        op2str(name, "Gather", f"axis={axis}", t2str(model, [("t_inp", t_inp), ("t_ind", t_ind), ("t_out", t_out)]), indent)
     | NN_Gemm {name, alpha, beta, transA, transB, t_A, t_B, t_bias, t_out} =>
         op2str(name, "Gemm", f"alpha={alpha},\nbeta={beta},\ntransA={transA},\ntransB={transB}",
-        t2str(net, [("t_A", t_A), ("t_B", t_B), ("t_bias", t_bias), ("t_out", t_out)]), indent)
+        t2str(model, [("t_A", t_A), ("t_B", t_B), ("t_bias", t_bias), ("t_out", t_out)]), indent)
     | NN_GlobalAvgPool {name, t_inp, t_out} =>
-        op2str(name, "GlobalAvgPool", "", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "GlobalAvgPool", "", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Identity {name, t_inp, t_out} =>
-        op2str(name, "Identity", "", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "Identity", "", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_If {name, then_branch, else_branch, t_inp, t_out} =>
-        val then_branch_str = graph2str(net, then_branch, sub_indent)
-        val else_branch_str = graph2str(net, else_branch, sub_indent)
+        val then_branch_str = graph2str(model, then_branch, sub_indent)
+        val else_branch_str = graph2str(model, else_branch, sub_indent)
         op2str(name, "If", f"then={then_branch_str}, else={else_branch_str}",
-            t2str(net, [("t_inp", t_inp)] + targs2pairs("t_out", t_out)), indent)
+            t2str(model, [("t_inp", t_inp), \targs2pairs("t_out", t_out)]), indent)
     | NN_LeakyRelu {name, alpha, t_inp, t_out} =>
-        op2str(name, "LeakyRelu", f"alpha={alpha}", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "LeakyRelu", f"alpha={alpha}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Loop {name, body, t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
-        val body_str = graph2str(net, body, sub_indent)
+        val body_str = graph2str(model, body, sub_indent)
         op2str(name, "Loop", f"body={body_str}",
-            t2str(net, [("t_trip_count", t_trip_count), ("t_cond_in", t_cond_in),
+            t2str(model, [("t_trip_count", t_trip_count), ("t_cond_in", t_cond_in),
                 \targs2pairs("t_v_in", t_v_in), ("t_cond_out", t_cond_out),
                 \targs2pairs("t_v_out", t_v_out)]), indent)
     | NN_LRN {name, size, alpha, beta, bias, t_inp, t_out} =>
         op2str(name, "LRN", f"size={size},\nalpha={alpha},\nbeta={beta},\nbias={bias}",
-                t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+                t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_MaxPool {name, ceil_mode, dilations, kernel_shape, pads,
         strides, storage_order, t_inp, t_out} =>
         op2str(name, "MaxPool", f"ceil_mode={ceil_mode}, dilations={dilations}, kernel_shape={kernel_shape}, \
             pads={pads}, strides={strides}, storage_order={storage_order}",
-            t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_NonMaxSuppression {
         name, center_point_box, t_boxes, t_scores,
         t_max_output_boxes_per_class, t_iou_threshold,
         t_score_threshold, t_out } =>
         op2str(name, "NonMaxSuppression", f"center_point_box={center_point_box}",
-            t2str(net, [("t_boxes", t_boxes), ("t_scores", t_scores), ("t_max_output_boxes_per_class", t_max_output_boxes_per_class),
+            t2str(model, [("t_boxes", t_boxes), ("t_scores", t_scores), ("t_max_output_boxes_per_class", t_max_output_boxes_per_class),
             ("t_iou_threshold", t_iou_threshold), ("t_score_threshold", t_score_threshold), ("t_out", t_out)]), indent)
     | NN_NonZero { name, t_inp, t_out } =>
-        op2str(name, "NonZero", "", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "NonZero", "", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Range {name, t_start, t_limit, t_delta, t_out} =>
-        op2str(name, "Range", "", t2str(net, [("t_start", t_start), ("t_limit", t_limit),
+        op2str(name, "Range", "", t2str(model, [("t_start", t_start), ("t_limit", t_limit),
             ("t_delta", t_delta), ("t_out", t_out)]), indent)
     | NN_Reduce {name, reduce_op, axes, keepdims, t_inp, t_out} =>
         op2str(name, string(reduce_op), f"axes={axes}, keepdims={keepdims}",
-            t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Resize { name, coord_trans, cubic_coeff_a, exclude_outside, extrapolation_value,
         mode, nearest_mode, t_inp, t_scales, t_sizes, t_roi, t_out } =>
         val nearest_mode_str = if mode == NN_Inter_Nearest {f", nearest_mode={nearest_mode}"} else {""}
@@ -923,41 +923,41 @@ fun op2str(net: nnet_t, op: nnop_t, indent: string): string
         op2str(name, "Resize", f"coord_trans={coord_trans}, cubic_coeff_a={cubic_coeff_a},\
             exclude_outside={exclude_outside}, extrapolation_value={extrapolation_value},\
             mode={mode}{nearest_mode_str}",
-            t2str(net, array(("t_inp", t_inp) :: tensors)), indent)
+            t2str(model, array(("t_inp", t_inp) :: tensors)), indent)
     | NN_Reshape {name, allowzero, t_inp, t_shape, t_out} =>
         op2str(name, "Reshape", f"allowzero={allowzero}",
-            t2str(net, [("t_inp", t_inp), ("t_shape", t_shape), ("t_out", t_out)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_shape", t_shape), ("t_out", t_out)]), indent)
     | NN_RoiAlign {name, coord_trans, mode, output_height, output_width,
         sampling_ratio, spatial_scale, t_inp, t_rois, t_batch_ind, t_out} =>
         op2str(name, "RoiAlign", f"coord_trans={coord_trans}, pooling_mode={mode},\
             output_height={output_height}, output_width={output_width},\
             sampling_ratio={sampling_ratio}, sampling_ratio={sampling_ratio}",
-            t2str(net, [("t_inp", t_inp), ("t_rois", t_rois), ("t_batch_ind", t_batch_ind), ("t_out", t_out)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_rois", t_rois), ("t_batch_ind", t_batch_ind), ("t_out", t_out)]), indent)
     | NN_Scatter {name, axis, t_data, t_updates, t_indices, t_out} =>
         op2str(name, "Scatter", f"axis={axis}",
-            t2str(net, [("t_data", t_data), ("t_updates", t_updates), ("t_indices", t_indices), ("t_out", t_out)]), indent)
+            t2str(model, [("t_data", t_data), ("t_updates", t_updates), ("t_indices", t_indices), ("t_out", t_out)]), indent)
     | NN_Shape {name, start, end, t_inp, t_out} =>
         op2str(name, "Shape", f"start={start}, end={end}",
-            t2str(net, [("t_data", t_inp), ("t_shape", t_out)]), indent)
+            t2str(model, [("t_data", t_inp), ("t_shape", t_out)]), indent)
     | NN_Slice {name, t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
-        op2str(name, "Slice", "", t2str(net, [("t_inp", t_inp), ("t_starts", t_starts),
+        op2str(name, "Slice", "", t2str(model, [("t_inp", t_inp), ("t_starts", t_starts),
             ("t_ends", t_ends), ("t_axes", t_axes), ("t_steps", t_steps), ("t_out", t_out)]), indent)
     | NN_SoftMax {name, axis, t_inp, t_out } =>
-        op2str(name, "SoftMax", f"axis={axis}", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "SoftMax", f"axis={axis}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Split {name, axis, t_inp, t_split, t_out} =>
-        op2str(name, "Split", f"axis={axis}", t2str(net,
+        op2str(name, "Split", f"axis={axis}", t2str(model,
             [("t_inp", t_inp), ("t_split", t_split), \targs2pairs("t_out", t_out)]), indent)
     | NN_Squeeze {name, t_inp, t_axes, t_out} =>
-        op2str(name, "Squeeze", "", t2str(net, [("t_inp", t_inp), ("t_axes", t_axes), ("t_out", t_out)]), indent)
+        op2str(name, "Squeeze", "", t2str(model, [("t_inp", t_inp), ("t_axes", t_axes), ("t_out", t_out)]), indent)
     | NN_Tile {name, t_inp, t_repeats, t_out} =>
-        op2str(name, "Tile", "", t2str(net, [("t_inp", t_inp), ("t_repeats", t_repeats), ("t_out", t_out)]), indent)
+        op2str(name, "Tile", "", t2str(model, [("t_inp", t_inp), ("t_repeats", t_repeats), ("t_out", t_out)]), indent)
     | NN_TopK {name, axis, largest, sorted, t_inp, t_K, t_out, t_out_ind} =>
         op2str(name, "TopK", f"axis={axis}, largest={largest}, sorted={sorted}",
-            t2str(net, [("t_inp", t_inp), ("t_K", t_K), ("t_out", t_out), ("t_out_ind", t_out_ind)]), indent)
+            t2str(model, [("t_inp", t_inp), ("t_K", t_K), ("t_out", t_out), ("t_out_ind", t_out_ind)]), indent)
     | NN_Transpose {name, perm, t_inp, t_out} =>
-        op2str(name, "Tranpose", f"perm={perm}", t2str(net, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "Tranpose", f"perm={perm}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Unsqueeze {name, t_inp, t_axes, t_out} =>
-        op2str(name, "Unsqueeze", "", t2str(net, [("t_inp", t_inp), ("t_axes", t_axes), ("t_out", t_out)]), indent)
+        op2str(name, "Unsqueeze", "", t2str(model, [("t_inp", t_inp), ("t_axes", t_axes), ("t_out", t_out)]), indent)
     }
 }
 
@@ -979,13 +979,13 @@ fun string(info: dlnet_info_t) {
 }}"
 }
 
-fun print(net: nnet_t)
+fun print(model: nnmodel_t)
 {
-    match net.info {
+    match model.info {
     | NN_Net_Generic => {}
-    | _ => println(string(net.info))
+    | _ => println(string(model.info))
     }
-    println(graph2str(net, net.graph, ""))
+    println(graph2str(model, model.graph, ""))
 }
 
 fun elemsize(t: nntyp_t)
@@ -1168,18 +1168,18 @@ fun nnarg_t.copy() = nnarg_t {
     typ = self.typ
 }
 
-fun nnet_t.get_tensor(argidx: int) = self.tensors[argidx]
+fun nnmodel_t.get_tensor(argidx: int) = self.tensors[argidx]
 
-fun nnet_t.isconst(argidx: int) = self.args[argidx].argkind == NN_Arg_Const
-fun nnet_t.isoutput(argidx: int) = self.args[argidx].argkind == NN_Arg_Output
-fun nnet_t.istemp(argidx: int) = self.args[argidx].argkind == NN_Arg_Temp
-fun nnet_t.isscalar(argidx: int) = self.tensors[argidx].isscalar()
-fun nnet_t.isfloatscalar(argidx: int) = self.tensors[argidx].isfloatscalar()
-fun nnet_t.get_input_names(): string [] =
+fun nnmodel_t.isconst(argidx: int) = self.args[argidx].argkind == NN_Arg_Const
+fun nnmodel_t.isoutput(argidx: int) = self.args[argidx].argkind == NN_Arg_Output
+fun nnmodel_t.istemp(argidx: int) = self.args[argidx].argkind == NN_Arg_Temp
+fun nnmodel_t.isscalar(argidx: int) = self.tensors[argidx].isscalar()
+fun nnmodel_t.isfloatscalar(argidx: int) = self.tensors[argidx].isfloatscalar()
+fun nnmodel_t.get_input_names(): string [] =
     [for i <- self.graph.inpargs {
         self.args[i].name
     }]
-fun nnet_t.get_output_names(): string [] =
+fun nnmodel_t.get_output_names(): string [] =
     [for i <- self.graph.outargs {
         self.args[i].name
     }]
@@ -1224,7 +1224,7 @@ fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t, buf: nnbuf_t): (nndata_t
     }
 }
 
-fun nnet_t.copy_tensor_data(t_inp: int, t_out: int)
+fun nnmodel_t.copy_tensor_data(t_inp: int, t_out: int)
 {
     fun copy_(inp: nndata_t, out: nndata_t): void
     @ccode {
@@ -1247,7 +1247,7 @@ fun nnet_t.copy_tensor_data(t_inp: int, t_out: int)
     copy_(inp.data, out.data)
 }
 
-fun nnet_t.use_counts(): int []
+fun nnmodel_t.use_counts(): int []
 {
     val nargs = self.args.size()
     val usecounts = array(nargs, 0)

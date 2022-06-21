@@ -3,7 +3,7 @@
     See ficus/LICENSE for the licensing terms
 */
 
-// Converts Onnx model to NN.Ast
+// Converts Onnx onnx_model to NN.Ast
 import Ast, Onnx.Ast as OAst, Onnx.Parser
 import Hashmap, Dynvec
 
@@ -14,6 +14,7 @@ exception OnnxConvertError: string
     | OAst.T_INT32 _ => Ast.NN_I32
     | OAst.T_INT64 _ => Ast.NN_I64
     | OAst.T_FLOAT _ => Ast.NN_FP32
+    | OAst.T_BOOL _ => Ast.NN_Bool
 }
 
 @private fun onnx2typ(dtyp: OAst.datatype_t) {
@@ -43,6 +44,8 @@ Ast.nntensor_t {
     | OAst.T_INT32(w) => Ast.NN_Data_I32(w)
     | OAst.T_INT64(w) => Ast.NN_Data_I64(w)
     | OAst.T_FLOAT(w) => Ast.NN_Data_FP32(w)
+    | OAst.T_BOOL(w) => Ast.NN_Data_Bool(w)
+    | _ => throw Ast.NNError(f"unsupported tensor type {OAst.tensor_data_prefix(t.data)}")
     })
 }
 
@@ -160,7 +163,7 @@ match ti {
     }]
 }
 
-fun convert(model: OAst.model_t): Ast.nnet_t
+fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
 {
     val dimnames = Hashmap.empty(1024, "", 0)
     val argnames = Hashmap.empty(1024, "", 0)
@@ -168,11 +171,11 @@ fun convert(model: OAst.model_t): Ast.nnet_t
     val empty_tensor = Ast.empty_tensor()
 
     val info = Ast.NN_Net_Onnx (Ast.nnonnx_t {
-        ir_version = model.ir_version,
-        producer = model.producer,
-        domain = model.domain,
-        doc_string = model.doc_string,
-        opsets = [:: for ops <- model.import_opsets {(ops.version, ops.domain)}]
+        ir_version = onnx_model.ir_version,
+        producer = onnx_model.producer,
+        domain = onnx_model.domain,
+        doc_string = onnx_model.doc_string,
+        opsets = [:: for ops <- onnx_model.import_opsets {(ops.version, ops.domain)}]
     })
 
     val args = [ empty_arg ]
@@ -211,7 +214,7 @@ fun convert(model: OAst.model_t): Ast.nnet_t
     fun get_const_tensor_arg(iarr: int []) =
         get_const_tensor_arg(f"const:{Ast.arr2str(iarr)}", Ast.NN_Data_I32(int32(iarr)))
 
-    val net = Ast.empty_net().{
+    val model = Ast.empty_net().{
         info = info,
         argnames = argnames,
         args = args
@@ -906,11 +909,11 @@ fun convert(model: OAst.model_t): Ast.nnet_t
         }
     }
 
-    val graph = convert_graph(model.graph, "", false)
+    val graph = convert_graph(onnx_model.graph, "", false)
     val ndimnames = dimnames.size()
     val dimnames_ = array(ndimnames, "")
     dimnames.app(fun (name, v) {dimnames_[-v-1] = name})
-    net.{
+    model.{
         graph = graph,
         argnames = argnames,
         dimnames = dimnames,

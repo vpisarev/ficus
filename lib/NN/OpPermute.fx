@@ -75,22 +75,22 @@ typedef struct _fx_nndata_t {
     return FX_OK;
 }
 
-fun run_concat(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_concat(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Concat {axis, t_inp, t_out} =>
-    val out = net.get_tensor(t_out)
+    val out = model.get_tensor(t_out)
     val out_shape = out.shape.shape
     val ndims = out_shape.size()
     var etyp_0 = out.data.elemtype()
     val (inp_data, inp_shape) = [@unzip for idx@i <- t_inp {
-            val t = net.get_tensor(idx)
+            val t = model.get_tensor(idx)
             val etyp_i = t.data.elemtype()
             assert(`etyp_0 == etyp_i`)
             (t.data, t.shape.shape)
         }]
 
     val axis = Ast.normalize_axis(axis, ndims)
-    run_concat_(axis, inp_shape, inp_data, out_shape, out.data, *net.ntasks)
+    run_concat_(axis, inp_shape, inp_data, out_shape, out.data, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -150,17 +150,17 @@ match op {
     return fx_status >= 0 ? fx_status : FX_SET_EXN_FAST(fx_status);
 }
 
-fun run_gather(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_gather(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Gather {axis, t_inp, t_ind, t_out} =>
-    val inp = net.get_tensor(t_inp)
+    val inp = model.get_tensor(t_inp)
     val inp_shape = inp.shape.shape
     val r = inp_shape.size()
     val axis = Ast.normalize_axis(axis, r)
-    val ind = net.get_tensor(t_ind)
+    val ind = model.get_tensor(t_ind)
     val ind_shape = ind.shape.shape
     val q = ind_shape.size()
-    val out = net.get_tensor(t_out)
+    val out = model.get_tensor(t_out)
     val out_shape = out.shape.shape
     val ndims = out_shape.size()
     assert(`ndims == q + r - 1`)
@@ -173,16 +173,16 @@ match op {
     | (_, Ast.NN_Data_Empty) => throw Ast.NNError(f"Gather: output data cannot be empty")
     | _ => {}
     }
-    run_gather_(axis, inp_shape, inp.data, ind_shape, ind.data, out_shape, out.data, *net.ntasks)
+    run_gather_(axis, inp_shape, inp.data, ind_shape, ind.data, out_shape, out.data, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-fun run_shape(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_shape(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Shape {start, end, t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
+    val inp = model.get_tensor(t_inp)
     val inp_shape = inp.shape.shape
-    val out = net.get_tensor(t_out)
+    val out = model.get_tensor(t_out)
     val ndims = inp_shape.size()
     val start = Ast.normalize_axis(start, ndims)
     val end = if end >= ndims {ndims} else {Ast.normalize_axis(end, ndims)}
@@ -295,11 +295,11 @@ match op {
     return FX_OK;
 }
 
-fun run_transpose(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_transpose(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Transpose {perm, t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     run_transpose_(inp.shape.shape, inp.data, perm, out.shape.shape, out.data)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
@@ -438,19 +438,19 @@ match op {
     return FX_OK;
 }
 
-fun run_slice(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_slice(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     val inp_shape = inp.shape.shape
     val out_shape = out.shape.shape
     val ndims = inp_shape.size()
-    val axes = if t_axes != 0 {int(net.get_tensor(t_axes))} else {mkrange(ndims)}
+    val axes = if t_axes != 0 {int(model.get_tensor(t_axes))} else {mkrange(ndims)}
     val naxes = axes.size()
-    val starts = int(net.get_tensor(t_starts))
-    val ends = int(net.get_tensor(t_ends))
-    val steps = if t_steps != 0 {int(net.get_tensor(t_steps))} else {array(naxes, 1)}
+    val starts = int(model.get_tensor(t_starts))
+    val ends = int(model.get_tensor(t_ends))
+    val steps = if t_steps != 0 {int(model.get_tensor(t_steps))} else {array(naxes, 1)}
     run_slice_(inp_shape, inp.data, out_shape, out.data, axes, starts, ends, steps)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
@@ -514,20 +514,143 @@ match op {
     return FX_OK;
 }
 
-fun run_split(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_split(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Split {axis, t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
+    val inp = model.get_tensor(t_inp)
     val inp_shape = inp.shape.shape
     val ndims = inp_shape.size()
     var etyp_0 = inp.data.elemtype()
     val (out_data, out_shape) = [@unzip for idx@i <- t_out {
-            val t = net.get_tensor(idx)
+            val t = model.get_tensor(idx)
             val etyp_i = t.data.elemtype()
             assert(`etyp_0 == etyp_i`)
             (t.data, t.shape.shape)
         }]
     val axis = Ast.normalize_axis(axis, ndims)
-    run_split_(axis, inp_shape, inp.data, out_shape, out_data, *net.ntasks)
+    run_split_(axis, inp_shape, inp.data, out_shape, out_data, *model.ntasks)
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
+}
+
+@private fun run_tile_(inp_shape_: int [], inp_data_: Ast.nndata_t,
+                       repeats_: int [], out_shape_: int [],
+                       out_data_: Ast.nndata_t, ntasks: int): void
+@ccode {
+    enum {TILE_MAX_DIMS=4};
+    int_ ndims = inp_shape_->dim[0].size;
+    const int_* inp_shape0 = (const int_*)(inp_shape_->data);
+    const int_* out_shape0 = (const int_*)(out_shape_->data);
+    const int_* repeats0 = (const int_*)(repeats_->data);
+    size_t esz = inp_data_->u.NN_Data_I8.dim[0].step;
+    size_t out_esz = out_data_->u.NN_Data_I8.dim[0].step;
+    int_ total_size = 0, total_repeats = 0;
+    int_ inp_shape[TILE_MAX_DIMS] = {1, 1, 1, 1};
+    int_ out_shape[TILE_MAX_DIMS] = {1, 1, 1, 1};
+    int_ repeats[TILE_MAX_DIMS] = {1, 1, 1, 1};
+    size_t inp_step[TILE_MAX_DIMS], out_step[TILE_MAX_DIMS];
+    int_ delta = TILE_MAX_DIMS - ndims;
+    char* inp_data0 = inp_data_->u.NN_Data_I8.data;
+
+    if (ndims > TILE_MAX_DIMS)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    if (esz != out_esz)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+
+    if (ndims != out_shape_->dim[0].size ||
+        ndims != repeats_->dim[0].size )
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
+    for (int i = 0; i < ndims; i++) {
+        inp_shape[i + delta] = inp_shape0[i];
+        out_shape[i + delta] = out_shape0[i];
+        repeats[i + delta] = repeats0[i];
+        if (out_shape0[i] != inp_shape0[i]*repeats0[i])
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        total_repeats *= repeats0[i];
+        total_size *= out_shape0[i];
+    }
+
+    for (int i = TILE_MAX_DIMS-1; i >= 0; i--) {
+        if (i == TILE_MAX_DIMS-1)
+            inp_step[i] = out_step[i] = 1;
+        else {
+            inp_step[i] = inp_step[i+1]*inp_shape[i+1];
+            out_step[i] = out_step[i+1]*out_shape[i+1];
+        }
+    }
+
+    // [TODO] compress some inner dimensions 'i' iff repeats[i] == 1
+    // ...
+
+    #pragma omp parallel for num_threads(ntasks) if (total_size > 10000000)
+    for (int i = 0; i < ntasks; i++) {
+        int_ j0 = i*total_repeats/ntasks, j1 = (i+1)*total_repeats/ntasks;
+        int_ ofs[TILE_MAX_DIMS];
+        int_ sz0 = inp_shape[0], sz1 = inp_shape[1], sz2 = inp_shape[2], sz3 = inp_shape[3];
+
+        // this is a partial case of compression to reduce the innermost loop overhead
+        int_ out_step_prelast = out_step[TILE_MAX_DIMS-2];
+        if (repeats[TILE_MAX_DIMS-1] == 1) {
+            sz3 *= sz2;
+            out_step_prelast *= sz2;
+            sz2 = 1;
+        }
+
+        for (int_ j = j0; j < j1; j++)
+        {
+            // convert raw tile index into n-dim tile index.
+            // but we don't need this nd-index itself, we just need the
+            // offset of the tile in the output tensor
+            int_ j_ = j, raw_ofs = 0;
+            for (int_ k = TILE_MAX_DIMS-1; k >= 0; k--) {
+                int_ r = repeats[k];
+                int_ q = j_ / r;
+                raw_ofs += (j_ - q*r)*inp_shape[k]*out_step[k];
+                j_ = q;
+            }
+
+            #undef _FX_IMPLEMENT_TILE
+            #define _FX_IMPLEMENT_TILE(typ) \
+            typ* inp_data = (typ*)inp_data0; \
+            typ* out_data0 = (typ*)(out_data_->u.NN_Data_I8.data) + raw_ofs; \
+            for (int_ i0 = 0; i0 < sz0; i0++) { \
+                for (int_ i1 = 0; i1 < sz1; i1++) { \
+                    typ* out_data = out_data0 + i0*out_step[0] + i1*out_step[1]; \
+                    for (int_ i2 = 0; i2 < sz2; i2++, out_data += out_step_prelast, inp_data += sz3) { \
+                        for (int_ i3 = 0; i3 < sz3; i3++) { \
+                            out_data[i3] = inp_data[i3]; \
+                        } \
+                    } \
+                } \
+            }
+
+            if (esz == 1) {
+                _FX_IMPLEMENT_TILE(int8_t)
+            } else if (esz == 2) {
+                _FX_IMPLEMENT_TILE(int16_t)
+            } else if (esz == 4) {
+                _FX_IMPLEMENT_TILE(int32_t)
+            } else {
+                assert(esz == 8);
+                _FX_IMPLEMENT_TILE(int64_t)
+            }
+        }
+    }
+    return FX_OK;
+}
+
+fun run_tile(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op {
+| Ast.NN_Tile {t_inp, t_repeats, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val inp_shape = inp.shape.shape
+    val ndims = inp_shape.size()
+    val out = model.get_tensor(t_out)
+    val out_shape = out.shape.shape
+    val repeats = model.get_tensor(t_repeats)
+    val repeats_data = int(repeats.data)
+    assert(`repeats.shape.shape.size() == 1 && repeats.shape.shape[0] == ndims`)
+    run_tile_(inp_shape, inp.data, repeats_data, out_shape, out.data, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

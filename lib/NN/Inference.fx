@@ -7,7 +7,7 @@
 import Hashmap, Sys
 import Ast, InferShapes, OpConv, RunOp
 
-fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
+fun run(net: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
             cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
         ~outputs: (string, Ast.nntensor_t) [] = []):
     (string, Ast.nntensor_t) []
@@ -19,7 +19,7 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
     for (inpname, t)@i <- inputs {
         // check that either all input names are empty or none of them
         if i == 0 {empty_names = inpname == ""}
-        else {assert(empty_names == (inpname == ""))}
+        else {assert(`empty_names == (inpname == "")`)}
         val argidx =
             if inpname == "" {net.graph.inpargs[i]}
             else {
@@ -32,9 +32,9 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
         //println(f"assigned input #{i} to {net.args[argidx].name}")
         val arg = net.args[argidx]
         //println(f"input #{i}: {arg}")
-        assert(arg.argkind == Ast.NN_Arg_Input)
-        assert(arg.typ == t.elemtype())
-        assert(arg.shape.layout == t.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown)
+        assert(`arg.argkind == Ast.NN_Arg_Input`)
+        assert(`arg.typ == t.elemtype()`)
+        assert(`arg.shape.layout == t.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown`)
         net.tensors[argidx] = t
     }
 
@@ -45,12 +45,12 @@ fun run(net: Ast.nnet_t, inputs: (string, Ast.nntensor_t) []/*,
     // collect outputs
     [for argidx <- net.graph.outargs {
         val arg = net.args[argidx]
-        assert(arg.argkind == Ast.NN_Arg_Output)
+        assert(`arg.argkind == Ast.NN_Arg_Output`)
         (arg.name, net.tensors[argidx])
     }]
 }
 
-fun run_graph(net: Ast.nnet_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
+fun run_graph(net: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     for op <- graph.prog {
         //println(f"preparing to run op {op.name()}")
@@ -112,12 +112,12 @@ fun top_k(t: Ast.nntensor_t, k: int)
 {
     val shape = t.shape.shape
     val ndims = shape.size()
-    assert(k > 0)
-    assert(ndims == 1 || ndims == 2)
+    assert(`k > 0`)
+    assert(`ndims == 1 || ndims == 2`)
     val (nrows, ncols) = if ndims == 1 {(1, shape[0])} else {(shape[0], shape[1])}
     val k = min(k, ncols)
     val data = float(t)
-    assert(data.size() == nrows*ncols)
+    assert(`data.size() == nrows*ncols`)
     val temp = array(ncols, (0.f, 0))
     val result = array((nrows, k), (0, 0.f))
     for i <- 0:nrows {

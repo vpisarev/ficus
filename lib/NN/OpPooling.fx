@@ -304,18 +304,18 @@ fun run_maxpool_2d(inp: float [], inp_shape: Ast.nnshape_t,
                          outsize, (float*)out->data, &pool, (int)ntasks);
 }
 
-fun run_maxpool(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_maxpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_MaxPool {ceil_mode, dilations, kernel_shape, pads, strides, storage_order, t_inp, t_out}
     when kernel_shape.size() == 2 =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     match (inp.data, out.data) {
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_maxpool_2d(inp_data, inp.shape, out_data, out.shape, kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
-            pads[0], pads[1], pads[2], pads[3], *net.ntasks)
+            pads[0], pads[1], pads[2], pads[3], *model.ntasks)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
@@ -349,21 +349,21 @@ fun run_avgpool_2d(inp: float [], inp_shape: Ast.nnshape_t,
                          outsize, (float*)out->data, &pool, (int)ntasks);
 }
 
-fun run_avgpool(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_avgpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_AvgPool {ceil_mode, dilations, kernel_shape, pads,
     strides, count_include_pad, t_inp, t_out}
     when kernel_shape.size() == 2 =>
 
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     match (inp.data, out.data) {
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_avgpool_2d(inp_data, inp.shape, out_data, out.shape,
             kernel_shape[0], kernel_shape[0],
             strides[0], strides[1], dilations[0], dilations[1],
-            pads[0], pads[1], pads[2], pads[3], count_include_pad, *net.ntasks)
+            pads[0], pads[1], pads[2], pads[3], count_include_pad, *model.ntasks)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
@@ -388,11 +388,11 @@ fun run_global_avgpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
     }
 }
 
-fun run_global_avgpool(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_global_avgpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_GlobalAvgPool {t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     match (inp.data, out.data) {
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>

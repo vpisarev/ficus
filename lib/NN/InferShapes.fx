@@ -16,7 +16,7 @@ type argshapeinfo_t =
                     // not only on their shapes (see, e.g. ONNX op "NonZero"))
 }
 
-fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
+fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
 {
     val (name, opname) = op.name()
 
@@ -281,7 +281,7 @@ fun infer(net: Ast.nnet_t, op: Ast.nnop_t): argshapeinfo_t []
         throw Ast.NNError(f"shape inference for op={opname} is not implemented")
     | Ast.NN_LeakyRelu {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
-    | Ast.NN_Loop {} =>
+    | Ast.NN_Loop {body, t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
         throw Ast.NNError(f"shape inference for op={opname} is not implemented")
     | Ast.NN_LRN {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]

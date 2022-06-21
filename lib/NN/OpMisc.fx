@@ -31,11 +31,11 @@ fun run_lrn_2d(inp: float [], inp_shape: Ast.nnshape_t, out: float [],
     }
 }
 
-fun run_lrn(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_lrn(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_LRN {size, alpha, beta, bias, t_inp, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
     assert(`inp.shape.shape.size() == 4`)
     match (inp.data, out.data) {

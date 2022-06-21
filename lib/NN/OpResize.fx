@@ -280,21 +280,21 @@ static int _fx_prepare_for_resize(
     return FX_OK;
 }
 
-fun run_resize(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_resize(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Resize {coord_trans, cubic_coeff_a, exclude_outside,
         extrapolation_value, mode, nearest_mode, t_inp, t_scales, t_sizes, t_roi, t_out} =>
-    val inp = net.get_tensor(t_inp)
-    val out = net.get_tensor(t_out)
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
     val inp_shape = inp.shape.shape
     val out_shape = out.shape.shape
-    val scales = float(net.get_tensor(t_scales))
-    val sizes = int(net.get_tensor(t_sizes))
-    val roi = float(net.get_tensor(t_roi))
+    val scales = float(model.get_tensor(t_scales))
+    val sizes = int(model.get_tensor(t_sizes))
+    val roi = float(model.get_tensor(t_roi))
     match mode {
     | Ast.NN_Inter_Nearest =>
         run_resize_nearest(inp_shape, inp.data, out_shape, out.data, scales, sizes, roi,
-                           coord_trans, nearest_mode, *net.ntasks)
+                           coord_trans, nearest_mode, *model.ntasks)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")

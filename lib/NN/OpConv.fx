@@ -2389,28 +2389,28 @@ fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
                       conv, ntasks, use_f16);
 }
 
-fun run_conv(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_conv(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Conv {attr={kernel_shape, pads, strides, dilations, group},
         conv_data, fused_batch_norm, non_const_batch_norm,
         fused_activ, non_const_activ, t_inp, t_weights, t_bias, t_out, t_passby} =>
     assert(`kernel_shape.size() == 2`)
-    val inp = net.get_tensor(t_inp)
-    val weights = net.get_tensor(t_weights)
-    val bias = net.get_tensor(t_bias)
-    val out = net.get_tensor(t_out)
-    val pb = net.get_tensor(t_passby)
-    if *conv_data == null || !net.isconst(t_weights) || !net.isconst(t_bias) ||
+    val inp = model.get_tensor(t_inp)
+    val weights = model.get_tensor(t_weights)
+    val bias = model.get_tensor(t_bias)
+    val out = model.get_tensor(t_out)
+    val pb = model.get_tensor(t_passby)
+    if *conv_data == null || !model.isconst(t_weights) || !model.isconst(t_bias) ||
         non_const_batch_norm || non_const_activ {
         //println(f"Conv: weights.data: {weights.data.elemtype()}, bias.data: {bias.data.elemtype()}")
         val empty: float [] = []
         val (bn_data, bn_eps) =
             match fused_batch_norm {
             | Some (Ast.NN_BatchNorm {epsilon, t_mean, t_var, t_scale, t_B}) =>
-                    val bn_mean = net.get_tensor(t_mean)
-                    val bn_var = net.get_tensor(t_var)
-                    val bn_scale = net.get_tensor(t_scale)
-                    val bn_bias = net.get_tensor(t_B)
+                    val bn_mean = model.get_tensor(t_mean)
+                    val bn_var = model.get_tensor(t_var)
+                    val bn_scale = model.get_tensor(t_scale)
+                    val bn_bias = model.get_tensor(t_B)
                     ([for bn <- [bn_mean, bn_var, bn_scale, bn_bias] {
                         match bn.data {
                         | Ast.NN_Data_FP32 bn_data => bn_data
@@ -2426,8 +2426,8 @@ match op {
             | Some (Ast.NN_Elemwise {el_op=Ast.NN_Tanh}) => (ACTIV_TANH, [])
             | Some (Ast.NN_Elemwise {el_op=Ast.NN_Mish}) => (ACTIV_MISH, [])
             | Some (Ast.NN_Clip {t_min, t_max}) =>
-                val minval = net.get_tensor(t_min)
-                val maxval = net.get_tensor(t_max)
+                val minval = model.get_tensor(t_min)
+                val maxval = model.get_tensor(t_max)
                 val minval = minval.data.float_scalar_or(-FLT_MAX)
                 val maxval = maxval.data.float_scalar_or(FLT_MAX)
                 (ACTIV_CLIP, [minval, maxval])
@@ -2451,17 +2451,17 @@ match op {
     match (inp.data, out.data, pb.data) {
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data, (Ast.NN_Data_FP32 _ | Ast.NN_Data_Empty)) =>
         val pb_data: float [] = match pb.data {|Ast.NN_Data_FP32 pb_data => pb_data | _ => []}
-        run_conv(inp.shape, inp_data, out.shape, out_data, pb_data, *conv_data, *net.ntasks, *net.use_f16)
+        run_conv(inp.shape, inp_data, out.shape, out_data, pb_data, *conv_data, *model.ntasks, *model.use_f16)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_conv_transposed(net: Ast.nnet_t, op: Ast.nnop_t) =
+fun run_conv_transposed(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_ConvTranspose {kernel_shape, pads, strides, dilations, group,
         out_shape, out_padding, t_inp, t_weights, t_bias, t_out} =>
-    val out = net.get_tensor(t_out)
+    val out = model.get_tensor(t_out)
     match out.data {
     | Ast.NN_Data_FP32 out_data => for _@idx <- out_data {out_data[idx] = 0.f}
     | _ => throw NotImplementedError
