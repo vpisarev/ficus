@@ -617,7 +617,7 @@ static void fx_dgemm8x6( int k, const double *a, const double *b, double *c, int
     {
         for( int i = 0; i < FX_DGEMM_MR; i++ )
         {
-            float alpha = a[FX_DGEMM_MR*p + i];
+            double alpha = a[FX_DGEMM_MR*p + i];
             for( int j = 0; j < FX_DGEMM_NR; j++ )
             {
                 c[i*ldc+j] += b[FX_DGEMM_NR*p + j]*alpha;
@@ -669,7 +669,7 @@ static void fx_dgemm_thin(bool tA, double alpha, double beta,
         else if (beta != 1.f)
             for( int j = 0; j < N; j++ ) c[i*ldc + j] *= beta;
         for( int k = 0; k < K; k++ ) {
-            float aval = alpha*a[i*lda0 + k*lda1];
+            double aval = alpha*a[i*lda0 + k*lda1];
             for( int j = 0; j < N; j++ )
                 c[i*ldc + j] += aval*b[ldb*k + j];
         }
