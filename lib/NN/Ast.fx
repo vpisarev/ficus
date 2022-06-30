@@ -199,7 +199,7 @@ class nnop_t =
     | NN_Loop: {
         name: string; body: nngraph_t; t_trip_count: int;
         t_cond_in: int; t_v_in: int [];
-        t_cond_out: int; t_v_out: int [] }
+        t_v_out: int [] }
     | NN_LRN: {
         name: string; size: int; alpha: float
         beta: float; bias: float
@@ -285,6 +285,7 @@ type dlnet_info_t =
 
 class nngraph_t =
 NN_Graph: {
+    name: string
     inpargs: int []
     outargs: int []
     prog: nnop_t []
@@ -303,7 +304,7 @@ class nnmodel_t
     graph: nngraph_t
     preferred_layout: nnlayout_t
     ntasks: int ref
-    use_f16: bool ref
+    use_fp16: bool ref
 }
 
 type op_callback_t = (nnmodel_t, nnop_t) -> void
@@ -317,13 +318,14 @@ fun empty_net() = nnmodel_t {
     tensors = [],
     bufidxs = [],
     buffers = [],
-    graph = NN_Graph {inpargs = [], outargs = [], prog=[]},
+    graph = NN_Graph {name = "main", inpargs = [], outargs = [], prog=[]},
     preferred_layout = NN_Layout_NCHW,
     ntasks = ref 4,
-    use_f16 = ref false
+    use_fp16 = ref false
 }
 
 fun empty_graph() = NN_Graph {
+    name = "",
     inpargs = [],
     outargs = [],
     prog = []
@@ -611,7 +613,7 @@ fun shape2str(model: nnmodel_t, s: nnshape_t)
     }) + f"<{shape_str}>"
 }
 
-fun nndata_t.elemtype() =
+fun nndata_t.elemtype(): nntyp_t =
 match self {
     | NN_Data_Empty => NN_Undefined
     | NN_Data_I8 _ => NN_I8
@@ -629,23 +631,7 @@ match self {
     | NN_Data_Bool _ => NN_Bool
 }
 
-fun nntensor_t.elemtype() =
-match self.data {
-    | NN_Data_Empty => NN_Undefined
-    | NN_Data_I8 _ => NN_I8
-    | NN_Data_U8 _ => NN_U8
-    | NN_Data_I16 _ => NN_I16
-    | NN_Data_U16 _ => NN_U16
-    | NN_Data_I32 _ => NN_I32
-    | NN_Data_U32 _ => NN_U32
-    | NN_Data_I64 _ => NN_I64
-    | NN_Data_U64 _ => NN_U64
-    | NN_Data_Stub_FP16 => NN_FP16
-    | NN_Data_Stub_BF16 => NN_BF16
-    | NN_Data_FP32 _ => NN_FP32
-    | NN_Data_FP64 _ => NN_FP64
-    | NN_Data_Bool _ => NN_Bool
-}
+fun elemtype(t: nntensor_t): nntyp_t = t.data.elemtype()
 
 fun tensor2str(model: nnmodel_t, t: nntensor_t, show_small: bool) =
 match t.data {
@@ -701,15 +687,19 @@ fun op2str(name: string, opname: string, params: string, tensors: string [], ind
 
 fun graph2str(model: nnmodel_t, graph: nngraph_t, indent: string)
 {
+    fun grapharg2str(model: nnmodel_t, idx: int, indent: string) {
+        val targ = model.args[idx]
+        f"{indent}\"{targ.name}\", // {arg2str(model, idx)}\n"
+    }
     val {inpargs, outargs, prog} = graph
     val new_indent = indent + "  "
     val prog_indent = new_indent + "  "
-    val inpstrs = [for a <- inpargs {arg2str(model, a)}]
-    val outstrs = [for a <- outargs {arg2str(model, a)}]
+    val inpstrs = "".join([for a <- inpargs {grapharg2str(model, a, prog_indent)}])
+    val outstrs = "".join([for a <- outargs {grapharg2str(model, a, prog_indent)}])
     val prog = [for op@i <- prog {
         f"{indent}// op #{i}\n{prog_indent}" + op2str(model, op, prog_indent)}]
-    join_embrace(f"graph {{\n{new_indent}inputs={inpstrs},\n\
-        {new_indent}outputs={outstrs},\n{new_indent}prog={{\n{prog_indent}",
+    join_embrace(f"graph {{\n{new_indent}inputs={{\n{inpstrs}{new_indent}}},\n\
+        {new_indent}outputs={{\n{outstrs}{new_indent}}},\n{new_indent}prog={{\n{prog_indent}",
         f"\n{new_indent}}}\n{indent}}}",
         f",\n{prog_indent}", prog)
 }
@@ -788,8 +778,8 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
     | NN_Identity {t_inp, t_out} => ([t_inp], [t_out])
     | NN_If {t_inp, t_out} => ([t_inp], t_out)
     | NN_LeakyRelu {t_inp, t_out} => ([t_inp], [t_out])
-    | NN_Loop {t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
-        ([t_trip_count, t_cond_in, \t_v_in], [t_cond_out, \t_v_out])
+    | NN_Loop {t_trip_count, t_cond_in, t_v_in, t_v_out} =>
+        ([t_trip_count, t_cond_in, \t_v_in], t_v_out)
     | NN_LRN {t_inp, t_out} => ([t_inp], [t_out])
     | NN_MaxPool {t_inp, t_out} => ([t_inp], [t_out])
     | NN_NonMaxSuppression {t_boxes, t_scores, t_max_output_boxes_per_class,
@@ -885,12 +875,11 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
             t2str(model, [("t_inp", t_inp), \targs2pairs("t_out", t_out)]), indent)
     | NN_LeakyRelu {name, alpha, t_inp, t_out} =>
         op2str(name, "LeakyRelu", f"alpha={alpha}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
-    | NN_Loop {name, body, t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
+    | NN_Loop {name, body, t_trip_count, t_cond_in, t_v_in, t_v_out} =>
         val body_str = graph2str(model, body, sub_indent)
         op2str(name, "Loop", f"body={body_str}",
             t2str(model, [("t_trip_count", t_trip_count), ("t_cond_in", t_cond_in),
-                \targs2pairs("t_v_in", t_v_in), ("t_cond_out", t_cond_out),
-                \targs2pairs("t_v_out", t_v_out)]), indent)
+                \targs2pairs("t_v_in", t_v_in), \targs2pairs("t_v_out", t_v_out)]), indent)
     | NN_LRN {name, size, alpha, beta, bias, t_inp, t_out} =>
         op2str(name, "LRN", f"size={size},\nalpha={alpha},\nbeta={beta},\nbias={bias}",
                 t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
@@ -1168,13 +1157,14 @@ fun nnarg_t.copy() = nnarg_t {
     typ = self.typ
 }
 
-fun nnmodel_t.get_tensor(argidx: int) = self.tensors[argidx]
+fun nnmodel_t.get_tensor(argidx: int) = if argidx > 0 {self.tensors[argidx]} else {empty_tensor()}
 
-fun nnmodel_t.isconst(argidx: int) = self.args[argidx].argkind == NN_Arg_Const
-fun nnmodel_t.isoutput(argidx: int) = self.args[argidx].argkind == NN_Arg_Output
-fun nnmodel_t.istemp(argidx: int) = self.args[argidx].argkind == NN_Arg_Temp
-fun nnmodel_t.isscalar(argidx: int) = self.tensors[argidx].isscalar()
-fun nnmodel_t.isfloatscalar(argidx: int) = self.tensors[argidx].isfloatscalar()
+fun nnmodel_t.isconst(argidx: int) = argidx == 0 || self.args[argidx].argkind == NN_Arg_Const
+fun nnmodel_t.isinput(argidx: int) = argidx > 0 && self.args[argidx].argkind == NN_Arg_Input
+fun nnmodel_t.isoutput(argidx: int) = argidx > 0 && self.args[argidx].argkind == NN_Arg_Output
+fun nnmodel_t.istemp(argidx: int) = argidx > 0 && self.args[argidx].argkind == NN_Arg_Temp
+fun nnmodel_t.isscalar(argidx: int) = argidx > 0 && self.tensors[argidx].isscalar()
+fun nnmodel_t.isfloatscalar(argidx: int) = argidx > 0 && self.tensors[argidx].isfloatscalar()
 fun nnmodel_t.get_input_names(): string [] =
     [for i <- self.graph.inpargs {
         self.args[i].name
@@ -1184,7 +1174,8 @@ fun nnmodel_t.get_output_names(): string [] =
         self.args[i].name
     }]
 
-fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t, buf: nnbuf_t): (nndata_t, nnbuf_t)
+fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t,
+        buf: nnbuf_t, ~x2: bool=false): (nndata_t, nnbuf_t)
 {
     val bufpadding = 128
     val new_total = shape.total()
@@ -1194,13 +1185,17 @@ fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t, buf: nnbuf_t): (nndata_t
     val reallocate = typ != typ0 || total0 != new_total
 
     fun fit_(total: int, elemsz: int, typ: nntyp_t,
-        bufpadding: int, buf: nnbuf_t): (nndata_t, nnbuf_t)
+        bufpadding: int, buf: nnbuf_t, x2: bool): (nndata_t, nnbuf_t)
     @ccode {
         int_ total_ = total*elemsz + bufpadding;
         fx_arr_t* data_arr = &fx_result->t0.u.NN_Data_U8;
 
         // if buffer has enough space to fit the new data, we re-use it
         if (total_ > buf->dim[0].size*(int_)buf->dim[0].step) {
+            if (x2) {
+                int_ curr_x2 = buf->dim[0].size*(int_)buf->dim[0].step*2;
+                total_ = total_ >= curr_x2 ? total_ : curr_x2;
+            }
             int fx_status = fx_make_arr(1, &total_, 1, 0, 0, 0, &fx_result->t1);
             if (fx_status < 0) return fx_status;
         } else {
@@ -1218,33 +1213,93 @@ fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t, buf: nnbuf_t): (nndata_t
     }
 
     if reallocate || buf.size() < new_total*elemsz + bufpadding {
-        fit_(new_total, elemsz, typ, bufpadding, buf)
+        fit_(new_total, elemsz, typ, bufpadding, buf, x2)
     } else {
         (data, buf)
     }
 }
 
+fun fit(model: nnmodel_t, argidx: int, shape: nnshape_t, typ: nntyp_t, ~x2: bool=false)
+{
+    val shape0 = model.tensors[argidx].shape
+    val typ0 = model.tensors[argidx].elemtype()
+    if shape != shape0 || typ != typ0 {
+        model.args[argidx].shape.layout = shape.layout
+        val bufidx = model.bufidxs[argidx]
+        //println(f"   fit into buf #{bufidx} with shape={shape}, typ={typ}, data of {model.tensors[argidx].data.total()} elems, buf of {model.buffers[bufidx].size()} bytes")
+        val (data, buf) = fit(shape, typ, model.tensors[argidx].data, model.buffers[bufidx], x2=x2)
+        model.tensors[argidx].data = data
+        model.tensors[argidx].shape = shape
+        model.buffers[bufidx] = buf
+    }
+}
+
+fun copy_tensor_data(inp: nndata_t, out: nndata_t): void
+@ccode {
+    fx_arr_t* inp_arr, *out_arr;
+    if (inp->tag != out->tag)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (inp->tag == 1)
+        return FX_OK;
+    inp_arr = &inp->u.NN_Data_U8;
+    out_arr = &out->u.NN_Data_U8;
+    if (inp_arr->ndims != out_arr->ndims ||
+        inp_arr->ndims != 1 ||
+        inp_arr->dim[0].size*inp_arr->dim[0].step !=
+        out_arr->dim[0].size*out_arr->dim[0].step)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    if (inp_arr->data != out_arr->data)
+        memcpy(out_arr->data, inp_arr->data,
+                inp_arr->dim[0].size*inp_arr->dim[0].step);
+    return FX_OK;
+}
+
 fun nnmodel_t.copy_tensor_data(t_inp: int, t_out: int)
 {
-    fun copy_(inp: nndata_t, out: nndata_t): void
-    @ccode {
-        fx_arr_t* inp_arr, *out_arr;
-        if (inp->tag != out->tag)
-            return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
-        if (inp->tag == 1)
-            return FX_OK;
-        inp_arr = &inp->u.NN_Data_U8;
-        out_arr = &out->u.NN_Data_U8;
-        if (inp_arr->ndims != out_arr->ndims || inp_arr->ndims != 1 || inp_arr->dim[0].size != out_arr->dim[0].size)
-            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-        if (inp_arr->data != out_arr->data)
-            memcpy(out_arr->data, inp_arr->data, inp_arr->dim[0].size*inp_arr->dim[0].step);
-        return FX_OK;
-    }
-
     val inp = self.get_tensor(t_inp)
     val out = self.get_tensor(t_out)
-    copy_(inp.data, out.data)
+    copy_tensor_data(inp.data, out.data)
+}
+
+fun nnmodel_t.concat_inplace(t_inp: int, t_out: int)
+{
+    fun do_concat_(inp_data_: nndata_t, orig_out_data_: nndata_t,
+                   new_out_data_: nndata_t): void
+    @ccode {
+        fx_arr_t* inp_data = &inp_data_->u.NN_Data_U8;
+        fx_arr_t* orig_out_data = &orig_out_data_->u.NN_Data_U8;
+        fx_arr_t* new_out_data = &new_out_data_->u.NN_Data_U8;
+        size_t esz = inp_data->dim[0].step;
+        int_ delta = inp_data->dim[0].size;
+        int_ sz0 = orig_out_data->dim[0].size;
+        int_ sz1 = new_out_data->dim[0].size;
+        if (orig_out_data->dim[0].step != esz || new_out_data->dim[0].step != esz)
+            return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+        if (sz1 != sz0 + delta)
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        if (new_out_data->data != orig_out_data->data)
+            memcpy(new_out_data->data, orig_out_data->data, sz0*esz);
+        memcpy(new_out_data->data + sz0*esz, inp_data->data, delta*esz);
+        return FX_OK;
+    }
+    val inp = self.get_tensor(t_inp)
+    val out = self.get_tensor(t_out)
+    val inp_shape = inp.shape.shape
+    val out_shape = out.shape.shape
+    val inp_ndims = inp_shape.size()
+    val out_ndims = out_shape.size()
+    val inp_typ = inp.elemtype()
+    val out_typ = out.elemtype()
+    assert(`inp_ndims == out_ndims`)
+    assert(`inp_typ == out_typ`)
+    val new_shape = [for i <- 0:inp_ndims {
+        val inp_sz_i = inp_shape[i], out_sz_i = out_shape[i]
+        if i == 0 { inp_sz_i + out_sz_i }
+        else { assert(`inp_sz_i == out_sz_i`); out_sz_i }
+    }]
+    val orig_out_data = out.data
+    self.fit(t_out, nnshape_t {shape=new_shape, layout=inp.shape.layout}, inp_typ, x2=true)
+    do_concat_(inp.data, orig_out_data, self.tensors[t_out].data)
 }
 
 fun nnmodel_t.use_counts(): int []
@@ -1254,6 +1309,16 @@ fun nnmodel_t.use_counts(): int []
 
     fun update_counts(graph: nngraph_t)
     {
+        val {outargs} = graph
+        /* 1. when we have the main graph, we gonna use its outputs in one way or another,
+              so we increment the use count.
+           2. when we have a subgraph, we need to copy (which could possibly done in-place, i.e.
+              without actual copying) its formal outputs to the actual outputs,
+              specified in If, Loop, Scan etc. To reflect it, we increment the use counts as well.
+           So, whether it's the main graph or a subgraph, we increment 'usage counter' of each
+           its output
+        */
+        for outarg <- outargs {usecounts[outarg] += 1}
         for op <- graph.prog {
             val (inps, _) = op.get_inputs_outputs()
             for i <- inps {usecounts[i] += 1}

@@ -79,4 +79,11 @@ fun pop(v: 't Dynvec.t)
 {
     if v.count == 0 {throw EmptyDynVector}
     v.count -= 1
+    v.data[v.count]
+}
+
+fun do_pop(v: 't Dynvec.t)
+{
+    if v.count == 0 {throw EmptyDynVector}
+    v.count -= 1
 }

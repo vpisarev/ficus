@@ -654,7 +654,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 [:: Ast.NN_Loop {
                     name=name, body=body, t_trip_count=inputs[0],
                     t_cond_in=inputs[1], t_v_in=inputs[2:],
-                    t_cond_out=outputs[0], t_v_out=outputs[1:]}]
+                    t_v_out=outputs}]
             | "LRN" =>
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
@@ -903,6 +903,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
             rev_more_ops + prog
         }
         Ast.NN_Graph {
+            name = onnx_graph.name,
             inpargs = inpargs,
             outargs = outargs,
             prog = array(prog.rev()),

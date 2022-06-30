@@ -16,13 +16,13 @@ type argshapeinfo_t =
                     // not only on their shapes (see, e.g. ONNX op "NonZero"))
 }
 
-fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
+fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
 {
     val (name, opname) = op.name()
 
     fun get_shape_typ(argidx: int)
     {
-        val t = net.get_tensor(argidx)
+        val t = model.get_tensor(argidx)
         (t.shape, t.elemtype())
     }
 
@@ -60,7 +60,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     }
 
     //val (inp, _) = op.get_inputs_outputs()
-    //println(f"inferring shape for {op.name()}: inp #0 shape={net.get_tensor(inp[0]).shape}")
+    //println(f"inferring shape for {op.name()}: inp #0 shape={model.get_tensor(inp[0]).shape}")
 
     try {
     match op {
@@ -74,8 +74,8 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val shape = get_shape(t_inp)
         [argshapeinfo_t {idx=t_out, shape=shape, typ=to, dynamic=false}]
     | Ast.NN_Clip {t_inp, t_min, t_max, t_out} =>
-        assert(`net.isscalar(t_min)`)
-        assert(`net.isscalar(t_max)`)
+        assert(`model.isscalar(t_min)`)
+        assert(`model.isscalar(t_max)`)
         [copy_shape_typ(t_inp, t_out)]
     | Ast.NN_Concat { axis, t_inp, t_out } =>
         val (shape0, typ0) = get_shape_typ(t_inp[0])
@@ -97,8 +97,8 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         assert(`value.isscalar()`)
         val typ = value.elemtype()
         val value = float(value.data)
-        val out_shape = int(net.get_tensor(t_shape))
-        val const_shape = net.isconst(t_shape)
+        val out_shape = int(model.get_tensor(t_shape))
+        val const_shape = model.isconst(t_shape)
         assert(`value.size() == 1`)
         [argshapeinfo_t {idx=t_out,
             shape=Ast.nnshape_t {layout=Ast.NN_Layout_Unknown, shape=out_shape},
@@ -176,7 +176,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                           // thus we set dynamic=false
         }]
     | Ast.NN_Dropout {t_inp, t_ratio, t_out} =>
-        assert(`net.isfloatscalar(t_ratio)`)
+        assert(`model.isfloatscalar(t_ratio)`)
         [copy_shape_typ(t_inp, t_out)]
     | Ast.NN_Elemwise {el_op, t_inp, t_out} =>
         val enable_broadcast = match el_op {
@@ -207,10 +207,10 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         [argshapeinfo_t {idx=t_out, shape=out_shape, typ=out_typ, dynamic=false}]
     | Ast.NN_Expand {t_inp, t_shape, t_out} =>
         val (shape0, typ0) = get_shape_typ(t_inp)
-        val shape_arg = net.get_tensor(t_shape)
+        val shape_arg = model.get_tensor(t_shape)
         val shape_arr = int(shape_arg.data)
         assert(`shape_arg.shape.shape.size() == 1`)
-        val const_shape = net.isconst(t_shape)
+        val const_shape = model.isconst(t_shape)
         val out_shape = shape0.broadcast(Ast.nnshape_t {layout=shape0.layout, shape=shape_arr})
         assert(`out_shape.shape == shape_arr`)
         [argshapeinfo_t {idx=t_out, shape=out_shape, typ=typ0, dynamic=!const_shape}]
@@ -227,7 +227,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Gather {axis, t_inp, t_ind, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val (ind_shape, ind_typ) = get_shape_typ(t_ind)
-        val const_ind = net.isconst(t_ind)
+        val const_ind = model.isconst(t_ind)
         assert(`match ind_typ {Ast.NN_I32 | Ast.NN_I64 => true | _ => false}`)
         val r = shape.shape.size()
         val q = ind_shape.shape.size()
@@ -277,12 +277,37 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             layout=shape.layout}, typ=typ, dynamic=false}]
     | Ast.NN_Identity {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
-    | Ast.NN_If {} =>
-        throw Ast.NNError(f"shape inference for op={opname} is not implemented")
+    | Ast.NN_If _ =>
+        // we don't go into the if branches;
+        // instead, we infere shapes inside one of the branch when we execute it
+        []
     | Ast.NN_LeakyRelu {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
-    | Ast.NN_Loop {body, t_trip_count, t_cond_in, t_v_in, t_cond_out, t_v_out} =>
-        throw Ast.NNError(f"shape inference for op={opname} is not implemented")
+    | Ast.NN_Loop {body, t_trip_count, t_cond_in, t_v_in, t_v_out} =>
+        // we don't go recursively into the loop body;
+        // instead, we infere shapes inside body while we execute the loop
+        val {inpargs} = body
+        val (tcount_shape, tcount_typ) = get_shape_typ(t_trip_count)
+        val (tcond_shape, tcond_typ) = get_shape_typ(t_cond_in)
+        val n_state_vars = t_v_in.size()
+        val n_accums = t_v_out.size() - n_state_vars
+        assert(`n_accums >= 0`)
+        if t_trip_count > 0 {
+            assert(`tcount_shape.total() == 1`)
+            assert(`tcount_typ == Ast.NN_I32 || tcount_typ == Ast.NN_I64`)
+        }
+        if t_cond_in > 0 {
+            assert(`tcond_shape.total() == 1`)
+            assert(`tcond_typ == Ast.NN_Bool`)
+        }
+        // we don't calculate shapes for output tensors & accums (t_v_out).
+        // accumulators shall be created empty initially
+        [ for i <- -2:n_state_vars {
+            val argidx = if i == -2 { t_trip_count }
+                         else if i == -1 { t_cond_in }
+                         else { t_v_in[i] }
+            copy_shape_typ(argidx, inpargs[i+2])
+        } ]
     | Ast.NN_LRN {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
     | Ast.NN_MaxPool { ceil_mode, dilations, kernel_shape, pads,
@@ -298,16 +323,16 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val out_shape = Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[ndims, -1]}
         [argshapeinfo_t {idx=t_out, shape=out_shape, typ=Ast.NN_I64, dynamic=true}]
     | Ast.NN_Range {t_start, t_limit, t_delta, t_out} =>
-        val start = net.get_tensor(t_start)
+        val start = model.get_tensor(t_start)
         val typ = start.elemtype()
         val start = double(start)
-        val limit = double(net.get_tensor(t_limit))
-        val delta = double(net.get_tensor(t_delta))
+        val limit = double(model.get_tensor(t_limit))
+        val delta = double(model.get_tensor(t_delta))
         assert(`start.size() == 1`)
         assert(`limit.size() == 1`)
         assert(`delta.size() == 1`)
         val nelems = max(ceil((limit[0] - start[0])/delta[0]), 0)
-        val allconsts = net.isconst(t_start) && net.isconst(t_limit) && net.isconst(t_delta)
+        val allconsts = model.isconst(t_start) && model.isconst(t_limit) && model.isconst(t_delta)
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[nelems]},
             typ=typ, dynamic=!allconsts}]
     | Ast.NN_Reduce {reduce_op, axes, keepdims, t_inp, t_out} =>
@@ -342,7 +367,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val (shape, typ) = get_shape_typ(t_inp)
         val (sshape, _) = get_shape_typ(t_shape)
         assert(`sshape.shape.size() == 1`)
-        val new_shape = int(net.get_tensor(t_shape))
+        val new_shape = int(model.get_tensor(t_shape))
         val fold old_total = 1 for sz <- shape.shape {if sz != 0 {old_total*sz} else {old_total}}
         val fold new_total=1, havem1=false for sz@i <- new_shape {
             if sz == -1 {
@@ -368,7 +393,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                 else if allowzero { 0 }
                 else { shape.shape[i] }
             }]
-        val const_shape = net.isconst(t_shape)
+        val const_shape = model.isconst(t_shape)
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape},
             typ=typ, dynamic=!const_shape}]
     | Ast.NN_Resize { coord_trans, t_inp, t_scales, t_sizes, t_roi, t_out } =>
@@ -380,7 +405,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             if t_roi == 0 {
                 ([] : float [])
             } else {
-                val roi = float(net.get_tensor(t_roi))
+                val roi = float(model.get_tensor(t_roi))
                 if roi == [] {
                     roi
                 } else {
@@ -390,12 +415,12 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                 }
             }
         val out_shape = if t_sizes != 0 {
-            val sizes = int(net.get_tensor(t_sizes))
+            val sizes = int(model.get_tensor(t_sizes))
             //println(f"Resize sizes: {sizes}")
             assert(`sizes.size() == ndims`)
             sizes
         } else if t_scales != 0 {
-            val scales = float(net.get_tensor(t_scales))
+            val scales = float(model.get_tensor(t_scales))
             assert(`scales.size() == ndims`)
             //println(f"Resize scales: {scales}")
             [for sz@i <- shape.shape, scale <- scales {
@@ -412,12 +437,12 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         // on the shape, it could be treated as a constant input of 'Resize' in some cases,
         // i.e. 'dynamic' could be set to false.
         val const_shape =
-            (t_roi == 0 || net.isconst(t_roi)) &&
-            (t_sizes == 0 || net.isconst(t_sizes)) &&
-            (t_scales == 0 || net.isconst(t_scales))
-        /*println(f"resize const_shape: roi: {t_roi == 0 || net.isconst(t_roi)}, \
-                                      sizes: {t_sizes == 0 || net.isconst(t_sizes)} \
-                                      scales: {t_scales == 0 || net.isconst(t_scales)}")*/
+            (t_roi == 0 || model.isconst(t_roi)) &&
+            (t_sizes == 0 || model.isconst(t_sizes)) &&
+            (t_scales == 0 || model.isconst(t_scales))
+        /*println(f"resize const_shape: roi: {t_roi == 0 || model.isconst(t_roi)}, \
+                                      sizes: {t_sizes == 0 || model.isconst(t_sizes)} \
+                                      scales: {t_scales == 0 || model.isconst(t_scales)}")*/
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape},
             typ=typ, dynamic=!const_shape}]
     | Ast.NN_RoiAlign {output_height, output_width, t_inp, t_rois, t_out} =>
@@ -454,11 +479,11 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val axes = if t_axes != 0 {int(net.get_tensor(t_axes))} else {mkrange(ndims)}
+        val axes = if t_axes != 0 {int(model.get_tensor(t_axes))} else {mkrange(ndims)}
         val naxes = axes.size()
-        val starts = int(net.get_tensor(t_starts))
-        val ends = int(net.get_tensor(t_ends))
-        val steps = if t_steps != 0 {int(net.get_tensor(t_steps))} else {array(naxes, 1)}
+        val starts = int(model.get_tensor(t_starts))
+        val ends = int(model.get_tensor(t_ends))
+        val steps = if t_steps != 0 {int(model.get_tensor(t_steps))} else {array(naxes, 1)}
         assert(`starts.size() == naxes`)
         assert(`ends.size() == naxes`)
         assert(`steps.size() == naxes`)
@@ -475,10 +500,10 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             out_shape[axis] = nelems
         }
         val const_shape =
-            (t_starts == 0 || net.isconst(t_starts)) &&
-            (t_ends == 0 || net.isconst(t_ends)) &&
-            (t_axes == 0 || net.isconst(t_axes)) &&
-            (t_steps == 0 || net.isconst(t_steps))
+            (t_starts == 0 || model.isconst(t_starts)) &&
+            (t_ends == 0 || model.isconst(t_ends)) &&
+            (t_axes == 0 || model.isconst(t_axes)) &&
+            (t_steps == 0 || model.isconst(t_steps))
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NCHW,
             shape=out_shape}, typ=typ, dynamic=!const_shape}]
     | Ast.NN_SoftMax {t_inp, t_out} =>
@@ -490,8 +515,8 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val sz_a = shape.shape[axis]
         val noutputs = t_out.size()
         if t_split != 0 {
-            val splits = int(net.get_tensor(t_split))
-            val const_shape = net.isconst(t_split)
+            val splits = int(model.get_tensor(t_split))
+            val const_shape = model.isconst(t_split)
             var total_sz = 0
             assert(`splits.size() == noutputs`)
             [for t_out_i@i <- t_out {
@@ -520,8 +545,8 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Squeeze {t_inp, t_axes, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val axes = if t_axes != 0 {int(net.get_tensor(t_axes))} else {mkrange(ndims)}
-        val const_shape = net.isconst(t_axes)
+        val axes = if t_axes != 0 {int(model.get_tensor(t_axes))} else {mkrange(ndims)}
+        val const_shape = model.isconst(t_axes)
         val out_shape_0 = shape.shape.copy()
         val fold out_ndims = ndims for axis <- axes {
             val axis = Ast.normalize_axis(axis, ndims)
@@ -545,16 +570,16 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Tile {t_inp, t_repeats, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val repeats = int(net.get_tensor(t_repeats))
+        val repeats = int(model.get_tensor(t_repeats))
         assert(`repeats.size() == ndims`)
         val out_shape = [for sz <- shape.shape, r <- repeats { assert(`r >= 0`); sz*r }]
-        val const_shape = net.isconst(t_repeats)
+        val const_shape = model.isconst(t_repeats)
         [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
             layout=shape.layout, shape=out_shape}, typ=typ,
             dynamic=!const_shape }]
     | Ast.NN_TopK {axis, t_inp, t_K, t_out, t_out_ind} =>
         val (shape, typ) = get_shape_typ(t_inp)
-        val tK = int(net.get_tensor(t_K))
+        val tK = int(model.get_tensor(t_K))
         assert(`tK.size() == 1`)
         val K = tK[0]
         assert(`K >= 0`)
@@ -562,7 +587,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val axis = Ast.normalize_axis(axis, ndims)
         val out_shape = shape.shape.copy()
         out_shape[axis] = K
-        val constK = net.isconst(t_K)
+        val constK = model.isconst(t_K)
         [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
             layout=shape.layout, shape=out_shape}, typ=typ,
             dynamic=!constK },
@@ -583,7 +608,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Unsqueeze {t_inp, t_axes, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
-        val axes = int(net.get_tensor(t_axes))
+        val axes = int(model.get_tensor(t_axes))
         val out_ndims = ndims + axes.size()
         val out_shape = array(out_ndims, 0)
         for axis <- axes {
@@ -598,7 +623,7 @@ fun infer(net: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                 j += 1
             }
         }
-        val constaxes = net.isconst(t_axes)
+        val constaxes = model.isconst(t_axes)
         [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
             layout=shape.layout, shape=out_shape}, typ=typ,
             dynamic=!constaxes }]

@@ -220,7 +220,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
             }
         }
         println(f"updated graph: {prog.size()} ops to {j} ops")
-        Ast.NN_Graph {inpargs=graph.inpargs,
+        Ast.NN_Graph {name=graph.name, inpargs=graph.inpargs,
             outargs=graph.outargs, prog=new_prog.data[0:j].copy()}
     } else {
         println(f"not updated graph")

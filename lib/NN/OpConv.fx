@@ -1517,7 +1517,7 @@ static double total_time = 0;
 static double min_total_time = 0;
 
 #ifdef __ARM_NEON
-static void _fx_conv_block_f16( int k, const flt16_t *a, const flt16_t *b,
+static void _fx_conv_block_fp16( int k, const flt16_t *a, const flt16_t *b,
                                 float *c, int ldc, const float* pb, int ldp,
                                 const float* bias, float alpha,
                                 float maxval, bool activ )
@@ -1701,7 +1701,7 @@ static void _fx_conv_block_f16( int k, const flt16_t *a, const flt16_t *b,
 #endif
 }
 
-static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
+static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
                           const int_* outsize, float* out,
                           const float* passby, _fx_conv2d_t* conv,
                           int ntasks)
@@ -1976,10 +1976,10 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
                                     slice_len*sizeof(pbbuf[0]));
                         }
                     }
-                    _fx_conv_block_f16(HkWkCg, conv->wf16+(g*Kg_aligned + k)*HkWkCg,
-                                       inpbuf_task, outptr, outstep, pbptr, pbstep,
-                                       conv->bias + Kg*g + k,
-                                       alpha, maxval, fast_activ);
+                    _fx_conv_block_fp16(HkWkCg, conv->wf16+(g*Kg_aligned + k)*HkWkCg,
+                                        inpbuf_task, outptr, outstep, pbptr, pbstep,
+                                        conv->bias + Kg*g + k,
+                                        alpha, maxval, fast_activ);
                     if (partial) {
                         if (activ_func)
                             activ_func(outptr, outstep, 1, dk*FX_CONV_NR_FP16, activ_params);
@@ -2008,7 +2008,7 @@ static int _fx_conv2d_f16(int ndims, const int_* inpsize, const float* inp,
 static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
                        const int_* outsize, float* out,
                        const float* passby, _fx_conv2d_t* conv,
-                       int ntasks, bool use_f16)
+                       int ntasks, bool use_fp16)
 {
     assert(ndims == 4 &&
            inpsize[0] == outsize[0] &&
@@ -2021,8 +2021,8 @@ static int _fx_conv2d(int ndims, const int_* inpsize, const float* inp,
     //else if (conv->conv_type == _FX_CONV_TYPE_WINOGRAD3X3) {
     //    return _fx_winograd_conv2d(ndims, inpsize, inp, outsize, out, passby, conv, ntasks);
     //}
-    else if (conv->wf16 && use_f16) {
-        return _fx_conv2d_f16(ndims, inpsize, inp, outsize, out, passby, conv, ntasks);
+    else if (conv->wf16 && use_fp16) {
+        return _fx_conv2d_fp16(ndims, inpsize, inp, outsize, out, passby, conv, ntasks);
     }
 #endif
     int N = (int)inpsize[0], C = (int)inpsize[1], Hi = (int)inpsize[2], Wi = (int)inpsize[3];
@@ -2372,7 +2372,7 @@ fun init_conv(kernel_shape: int [], strides: int [],
 
 fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
              out_shape: Ast.nnshape_t, out_data: float [],
-             bp_data: float [], conv_data: cptr, ntasks: int, use_f16: bool): void
+             bp_data: float [], conv_data: cptr, ntasks: int, use_fp16: bool): void
 @ccode {
     _fx_conv2d_t* conv = conv_data && conv_data->ptr ? (_fx_conv2d_t*)conv_data->ptr : 0;
     int_ ndims = inp_shape->shape.dim[0].size;
@@ -2386,7 +2386,7 @@ fun run_conv(inp_shape: Ast.nnshape_t, inp_data: float [],
                       (const int_*)out_shape->shape.data,
                       (float*)out_data->data,
                       (float*)bp_data->data,
-                      conv, ntasks, use_f16);
+                      conv, ntasks, use_fp16);
 }
 
 fun run_conv(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -2451,7 +2451,7 @@ match op {
     match (inp.data, out.data, pb.data) {
     | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data, (Ast.NN_Data_FP32 _ | Ast.NN_Data_Empty)) =>
         val pb_data: float [] = match pb.data {|Ast.NN_Data_FP32 pb_data => pb_data | _ => []}
-        run_conv(inp.shape, inp_data, out.shape, out_data, pb_data, *conv_data, *model.ntasks, *model.use_f16)
+        run_conv(inp.shape, inp_data, out.shape, out_data, pb_data, *conv_data, *model.ntasks, *model.use_fp16)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")

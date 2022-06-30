@@ -1,19 +1,19 @@
 import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.OpConv
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.ConstFold, NN.OpConv
 
 var mname = "", lname = ""
 var images: string list = []
 var ntasks = 0
-var use_f16 = false
+var use_fp16 = false
 
 fun parse_args(args: string list)
 {
     | "-ntasks" :: ntasks_ :: rest =>
         ntasks = ntasks_.to_int_or(0); parse_args(rest)
-    | "-f16" :: rest =>
-        use_f16 = true; parse_args(rest)
+    | "-fp16" :: rest =>
+        use_fp16 = true; parse_args(rest)
     | "-labels" :: lname_ :: rest =>
         lname = lname_; parse_args(rest)
     | "-model" :: mname_ :: rest =>
@@ -81,7 +81,7 @@ for imgname@i <- images {
 cv.waitKey()
 */
 
-val model =
+var model =
     try NN.FromOnnx.read(mname)
     catch {
     | NN.FromOnnx.OnnxConvertError(msg) =>
@@ -89,8 +89,18 @@ val model =
     | Fail(msg) =>
         println(f"error: {msg}"); throw Fail("")
     }
-val model = NN.FuseBasic.fuse_basic(model)
-val model = NN.BufferAllocator.assign_buffers(model)
+
+var ok =
+try {
+    model = NN.ConstFold.cfold(model)
+    model = NN.FuseBasic.fuse_basic(model)
+    model = NN.BufferAllocator.assign_buffers(model)
+    true
+} catch {
+    | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); false
+    | Fail msg => println(f"failure: '{msg}'"); false
+}
+if !ok {throw Fail("exiting")}
 println(model)
 val k = 5
 val lname = "output"
@@ -101,7 +111,7 @@ type nn_output_t = (string, NN.Ast.nntensor_t)
 if ntasks > 0 {
     *model.ntasks = ntasks
 }
-*model.use_f16 = use_f16
+*model.use_fp16 = use_fp16
 
 /*fun rgb2gray(img: ('t*3) [,]) = [for (b, g, r) <- img {sat_uint8(b*0.114 + g*0.587 + r*0.299)}]
 fun blur(img: 't [,]) = [for v@idx <- img {

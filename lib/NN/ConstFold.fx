@@ -27,13 +27,10 @@ fun cfold_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t)
             val else_branch = cfold_graph(model, else_branch)
             Some(Ast.NN_If {name=name, then_branch=then_branch,
                 else_branch=else_branch, t_inp=t_inp, t_out=t_out})
-        | Ast.NN_Loop {name, body, t_trip_count, t_cond_in, t_v_in,
-                       t_cond_out, t_v_out} =>
+        | Ast.NN_Loop {name, body, t_trip_count, t_cond_in, t_v_in, t_v_out} =>
             val body = cfold_graph(model, body)
-            Some(Ast.NN_Loop {name=name, body=body,
-                t_trip_count=t_trip_count,
-                t_cond_in=t_cond_in, t_v_in=t_v_in,
-                t_cond_out=t_cond_out, t_v_out=t_v_out})
+            Some(Ast.NN_Loop {name=name, body=body, t_trip_count=t_trip_count,
+                t_cond_in=t_cond_in, t_v_in=t_v_in, t_v_out=t_v_out})
         | _ =>
             val (inps, outs) = op.get_inputs_outputs()
             if !all(for t_inp <- inps {model.isconst(t_inp)}) ||
@@ -62,8 +59,8 @@ fun cfold_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t)
     }
     if new_prog.count == graph.prog.size() {graph}
     else {
-        val {inpargs, outargs} = graph
-        Ast.NN_Graph {inpargs=inpargs, outargs=outargs,
+        val {name, inpargs, outargs} = graph
+        Ast.NN_Graph {name=name, inpargs=inpargs, outargs=outargs,
             prog = new_prog.data[:new_prog.count]}
     }
 }

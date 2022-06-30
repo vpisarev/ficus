@@ -39,7 +39,7 @@ fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [], ~class_names: string 
 var mname = "", lname = ""
 var images: string list = []
 var ntasks = 0
-var use_f16 = false
+var use_fp16 = false
 var temp_name = ""
 var detector_kind = DetectorAuto
 
@@ -47,8 +47,8 @@ fun parse_args(args: string list)
 {
     | "-ntasks" :: ntasks_ :: rest =>
         ntasks = ntasks_.to_int_or(0); parse_args(rest)
-    | "-f16" :: rest =>
-        use_f16 = true; parse_args(rest)
+    | "-fp16" :: rest =>
+        use_fp16 = true; parse_args(rest)
     | "-labels" :: lname_ :: rest =>
         lname = lname_; parse_args(rest)
     | "-temp" :: tname :: rest =>
@@ -164,7 +164,7 @@ type nn_output_t = (string, NN.Ast.nntensor_t)
 if ntasks > 0 {
     *model.ntasks = ntasks
 }
-*model.use_f16 = use_f16
+*model.use_fp16 = use_fp16
 
 for imgname@i <- images {
     //println(f"starting reading model '{mname}'")
@@ -192,7 +192,7 @@ for imgname@i <- images {
         }
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time()
-    val niters = 10
+    val niters = 1
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =

@@ -7,84 +7,146 @@
 import Hashmap, Sys
 import Ast, InferShapes, OpConv, RunOp
 
-fun run(net: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
+fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
             cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
         ~outputs: (string, Ast.nntensor_t) [] = []):
     (string, Ast.nntensor_t) []
 {
     var empty_names = true
+    val ninputs = inputs.size()
     OpConv.reset_total_time()
 
+    assert(`ninputs == model.graph.inpargs.size()`)
+
     // assign input tensors
-    for (inpname, t)@i <- inputs {
+    for (inpname, inp)@i <- inputs {
         // check that either all input names are empty or none of them
         if i == 0 {empty_names = inpname == ""}
         else {assert(`empty_names == (inpname == "")`)}
         val argidx =
-            if inpname == "" {net.graph.inpargs[i]}
+            if inpname == "" {model.graph.inpargs[i]}
             else {
-                val argidx = net.argnames.find_opt(inpname).value_or(-1)
+                val argidx = model.argnames.find_opt(inpname).value_or(-1)
                 if argidx < 0 {
-                    throw Ast.NNError(f"cannot find input '{inpname}'; available inputs are: {net.get_input_names()}")
+                    throw Ast.NNError(f"cannot find input '{inpname}'; available inputs are: {model.get_input_names()}")
                 }
                 argidx
             }
-        //println(f"assigned input #{i} to {net.args[argidx].name}")
-        val arg = net.args[argidx]
+        //println(f"input #{i} is set to {model.args[argidx].name}")
+        val arg = model.args[argidx]
+        val inp_typ = inp.elemtype()
         //println(f"input #{i}: {arg}")
         assert(`arg.argkind == Ast.NN_Arg_Input`)
-        assert(`arg.typ == t.elemtype()`)
-        assert(`arg.shape.layout == t.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown`)
-        net.tensors[argidx] = t
+        assert(`arg.typ == inp_typ`)
+        assert(`arg.shape.layout == inp.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown`)
+        model.fit(argidx, inp.shape, inp_typ)
+        Ast.copy_tensor_data(inp.data, model.tensors[argidx].data)
     }
 
     //println("running main graph")
-    run_graph(net, net.graph, outputs)
+    run_graph(model, model.graph, outputs)
     OpConv.update_total_time()
 
     // collect outputs
-    [for argidx <- net.graph.outargs {
-        val arg = net.args[argidx]
+    [for argidx <- model.graph.outargs {
+        val arg = model.args[argidx]
         assert(`arg.argkind == Ast.NN_Arg_Output`)
-        (arg.name, net.tensors[argidx])
+        (arg.name, model.tensors[argidx])
     }]
 }
 
-fun run_graph(net: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
+fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     for op <- graph.prog {
-        //println(f"preparing to run op {op.name()}")
-        val oinfo = InferShapes.infer(net, op)
+        println(f"preparing to run op {op.name()}")
+        val oinfo = InferShapes.infer(model, op)
         for oi@outidx <- oinfo {
             val {idx=argidx, shape, typ} = oi
-            //println(f"   output #{outidx} ('{net.args[argidx].name}'): {oi}")
-            val shape0 = net.tensors[argidx].shape
-            val typ0 = net.tensors[argidx].elemtype()
-            if shape != shape0 || typ != typ0 {
-                val arg = net.args[argidx]
-                net.args[argidx].shape.layout = shape.layout
-                if arg.argkind == Ast.NN_Arg_Output {
-                    net.tensors[argidx] = Ast.make_tensor(shape, typ)
-                } else if arg.argkind == Ast.NN_Arg_Temp {
-                    val bufidx = net.bufidxs[argidx]
-                    //println(f"   fit into buf #{bufidx} with shape={shape}, typ={typ}, data of {net.tensors[argidx].data.total()} elems, buf of {net.buffers[bufidx].size()} bytes")
-                    val (data, buf) = Ast.fit(shape, typ, net.tensors[argidx].data, net.buffers[bufidx])
-                    net.tensors[argidx].data = data
-                    net.tensors[argidx].shape = shape
-                    net.buffers[bufidx] = buf
-                } else {
-                    throw Ast.NNError(f"unexpected argkind={arg.argkind} of the output {outidx} of {op.name()}")
+            if model.bufidxs[argidx] >= 0 {
+                model.fit(argidx, shape, typ)
+            }
+            println(f"   output #{outidx} ('{model.args[argidx].name}'): {oi}")
+        }
+        println(f"running op '{op.name()}'")
+        //val t = Sys.tick_count()
+        match op {
+        | Ast.NN_Loop { body, t_trip_count, t_cond_in, t_v_in, t_v_out } =>
+            val {inpargs, outargs} = body
+            val n_state_vars = t_v_in.size()
+            val n_accums = t_v_out.size() - n_state_vars
+            assert(`n_accums >= 0`)
+            var trip_count =
+                if t_trip_count > 0 {
+                    val t_data = model.tensors[t_trip_count].data
+                    assert(`t_data.total() == 1`)
+                    match model.tensors[t_trip_count].data {
+                    | Ast.NN_Data_Empty => None
+                    | Ast.NN_Data_I32 data => Some(int64(data[0]))
+                    | Ast.NN_Data_I64 data => Some(int64(data[0]))
+                    | _ => throw Ast.NNError("Loop's trip_count (if any) is expected to be I32/I64 scalar")
+                    }
+                } else {None}
+            var loop_condition =
+                if t_cond_in > 0 {
+                    val t_data = model.tensors[t_trip_count].data
+                    assert(`t_data.total() == 1`)
+                    match model.tensors[t_trip_count].data {
+                    | Ast.NN_Data_Empty => true
+                    | Ast.NN_Data_Bool data => data[0]
+                    | _ => throw Ast.NNError("Loop's cond_in (if any) is expected to be Bool scalar")
+                    }
+                } else {true}
+            // copy trip_count, t_cond_in & t_v_in tensors
+            // to the respective graph inpargs
+            for i <- -2:n_state_vars {
+                val v_inp = if i == -2 { t_trip_count }
+                            else if i == -1 { t_cond_in }
+                            else { t_v_in[i] }
+                val inparg = inpargs[i+2]
+                if model.bufidxs[inparg] >= 0 {
+                    model.copy_tensor_data(v_inp, inparg)
                 }
             }
+
+            var first_iter = true
+            while loop_condition && trip_count.value_or(1L) > 0L {
+                run_graph(model, body, outputs)
+                val outarg_0 = outargs[0]
+                trip_count = match trip_count {
+                    | Some(i) => Some(i-1)
+                    | _ => trip_count
+                    }
+                if outarg_0 > 0 {
+                    val l_data = model.tensors[outarg_0].data
+                    assert(`l_data.total() == 1`)
+                    loop_condition = match model.tensors[t_cond_in].data {
+                        | Ast.NN_Data_Bool data => data[0]
+                        | _ => throw Ast.NNError("Loop's cond_out (if any) is expected to be Bool scalar")
+                        }
+                }
+                for i <- 0:n_state_vars+n_accums {
+                    val isaccum = i >= n_state_vars
+                    val outarg = outargs[i+1]
+                    val v_out = t_v_out[i]
+                    if model.bufidxs[v_out] >= 0 {
+                        if !isaccum || first_iter {
+                            val t = model.tensors[outarg]
+                            model.fit(v_out, t.shape, t.elemtype())
+                            model.copy_tensor_data(outarg, v_out)
+                        } else {
+                            model.concat_inplace(outarg, v_out)
+                        }
+                    }
+                }
+                first_iter = false
+            }
+        | _ => RunOp.run_op(model, op)
         }
-        //println(f"running op '{op.name()}'")
-        //val t = Sys.tick_count()
-        RunOp.run_op(net, op)
         //val t = Sys.tick_count() - t
         //println(f"{op.name()}: {round(t*1000./Sys.tick_frequency(), 2)}ms")
         /*for oi@outidx <- oinfo {
             val {idx=argidx} = oi
-            match net.get_tensor(argidx).data {
+            match model.get_tensor(argidx).data {
             | Ast.NN_Data_FP32 data =>
                 match find_opt(for x <- data {isnan(x)}) {
                 | Some _ => throw Ast.NNError(f"result of '{op.name()}' has NaN's!")
@@ -97,10 +159,10 @@ fun run_graph(net: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nn
         if outputs != [] {
             for oi@outidx <- oinfo {
                 val {idx=argidx} = oi
-                val name = net.args[argidx].name
+                val name = model.args[argidx].name
                 match find_opt(for (n,_)@i <- outputs {n == name}) {
                 | Some((_, i)) =>
-                    outputs[i].1 = net.tensors[argidx].copy()
+                    outputs[i].1 = model.tensors[argidx].copy()
                 | _ => {}
                 }
             }
