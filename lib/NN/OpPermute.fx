@@ -5,15 +5,7 @@
 import Ast
 
 @ccode {
-#include <limits.h>
-
-typedef struct _fx_nndata_t {
-   int tag;
-   union {
-      fx_arr_t NN_Data_I8;
-      fx_arr_t NN_Data_U8;
-   } u;
-} _fx_nndata_t;
+#include "ficus_nn_common.h"
 }
 
 @private fun run_concat_(axis: int, inp_shape_: int [][], inp_data_: Ast.nndata_t [],

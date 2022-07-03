@@ -77,13 +77,13 @@ class nnarg_t
 }
 
 type nnelwise_t =
+    | NN_Add | NN_And | NN_Div | NN_Equal | NN_Greater | NN_GreaterOrEqual
+    | NN_Less | NN_LessOrEqual | NN_Mod | NN_Mul | NN_Pow | NN_Or | NN_Sub | NN_Xor
+    | NN_Min | NN_Max | NN_Mean
     | NN_Abs | NN_Acos | NN_Acosh | NN_Asin | NN_Asinh | NN_Atan | NN_Atanh
     | NN_Ceil | NN_Cos | NN_Cosh | NN_Erf | NN_Exp | NN_Floor | NN_IsInf | NN_IsNaN
     | NN_Log | NN_Mish | NN_Neg | NN_Not | NN_Relu | NN_Round | NN_Sigmoid | NN_Sign
     | NN_Sin | NN_Sinh | NN_Softplus | NN_Softsign | NN_Sqrt | NN_Tan | NN_Tanh
-    | NN_Add | NN_And | NN_Div | NN_Equal | NN_Greater | NN_GreaterOrEqual
-    | NN_Less | NN_LessOrEqual | NN_Mod | NN_Mul | NN_Pow | NN_Or | NN_Sub | NN_Xor
-    | NN_Min | NN_Max | NN_Mean
 
 type nnreduce_t =
     | NN_ReduceMin | NN_ReduceMax | NN_ReduceMean
@@ -1290,13 +1290,14 @@ fun nnmodel_t.concat_inplace(t_inp: int, t_out: int)
     val out_ndims = out_shape.size()
     val inp_typ = inp.elemtype()
     val out_typ = out.elemtype()
-    assert(`inp_ndims == out_ndims`)
+    assert(`inp_ndims+1 == out_ndims`)
     assert(`inp_typ == out_typ`)
-    val new_shape = [for i <- 0:inp_ndims {
-        val inp_sz_i = inp_shape[i], out_sz_i = out_shape[i]
-        if i == 0 { inp_sz_i + out_sz_i }
-        else { assert(`inp_sz_i == out_sz_i`); out_sz_i }
-    }]
+    val new_shape = [for i <- 0:out_ndims {
+        if i == 0 {out_shape[0] + 1}
+        else {
+            assert(`inp_shape[i-1] == out_shape[i]`)
+            out_shape[i]
+        }}]
     val orig_out_data = out.data
     self.fit(t_out, nnshape_t {shape=new_shape, layout=inp.shape.layout}, inp_typ, x2=true)
     do_concat_(inp.data, orig_out_data, self.tensors[t_out].data)

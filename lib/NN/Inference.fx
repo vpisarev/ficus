@@ -58,7 +58,8 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
 fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     for op <- graph.prog {
-        println(f"preparing to run op {op.name()}")
+        val noindent=""
+        println(f"preparing to run op {model.op2str(op, noindent)}")
         val oinfo = InferShapes.infer(model, op)
         for oi@outidx <- oinfo {
             val {idx=argidx, shape, typ} = oi
@@ -79,7 +80,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                 if t_trip_count > 0 {
                     val t_data = model.tensors[t_trip_count].data
                     assert(`t_data.total() == 1`)
-                    match model.tensors[t_trip_count].data {
+                    match t_data {
                     | Ast.NN_Data_Empty => None
                     | Ast.NN_Data_I32 data => Some(int64(data[0]))
                     | Ast.NN_Data_I64 data => Some(int64(data[0]))
@@ -88,9 +89,9 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                 } else {None}
             var loop_condition =
                 if t_cond_in > 0 {
-                    val t_data = model.tensors[t_trip_count].data
+                    val t_data = model.tensors[t_cond_in].data
                     assert(`t_data.total() == 1`)
-                    match model.tensors[t_trip_count].data {
+                    match t_data {
                     | Ast.NN_Data_Empty => true
                     | Ast.NN_Data_Bool data => data[0]
                     | _ => throw Ast.NNError("Loop's cond_in (if any) is expected to be Bool scalar")
@@ -108,8 +109,9 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                 }
             }
 
-            var first_iter = true
+            var iter = 0
             while loop_condition && trip_count.value_or(1L) > 0L {
+                println(f"================ LOOP ITERATION #{iter}/{trip_count.value_or(-1L)} ================")
                 run_graph(model, body, outputs)
                 val outarg_0 = outargs[0]
                 trip_count = match trip_count {
@@ -119,7 +121,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                 if outarg_0 > 0 {
                     val l_data = model.tensors[outarg_0].data
                     assert(`l_data.total() == 1`)
-                    loop_condition = match model.tensors[t_cond_in].data {
+                    loop_condition = match l_data {
                         | Ast.NN_Data_Bool data => data[0]
                         | _ => throw Ast.NNError("Loop's cond_out (if any) is expected to be Bool scalar")
                         }
@@ -129,17 +131,20 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                     val outarg = outargs[i+1]
                     val v_out = t_v_out[i]
                     if model.bufidxs[v_out] >= 0 {
-                        if !isaccum || first_iter {
+                        if !isaccum || iter == 0 {
                             val t = model.tensors[outarg]
-                            model.fit(v_out, t.shape, t.elemtype())
+                            val t_shape = t.shape
+                            val new_shape = Ast.nnshape_t {layout=t_shape.layout, shape=[1, \t_shape.shape]}
+                            model.fit(v_out, new_shape, t.elemtype())
                             model.copy_tensor_data(outarg, v_out)
                         } else {
                             model.concat_inplace(outarg, v_out)
                         }
                     }
                 }
-                first_iter = false
+                iter += 1
             }
+            println(f"================ LOOP IS OVER ================")
         | _ => RunOp.run_op(model, op)
         }
         //val t = Sys.tick_count() - t

@@ -186,166 +186,423 @@ match op
 type ElemwiseOpType = EOT_AoA | EOT_AoS | EOT_SoA
 fun rev_eot(eot: ElemwiseOpType) { | EOT_AoS => EOT_SoA | EOT_SoA => EOT_AoS | _ => eot }
 
-// [TODO] add broadcast support
-@private fun run_cmp_gt(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x > y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x > y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x > y}
-    }
-@private fun run_cmp_ge(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x >= y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x >= y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x >= y}
-    }
-@private fun run_cmp_lt(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
-    run_cmp_gt(inp1, inp0, out, rev_eot(eot))
-@private fun run_cmp_le(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
-    run_cmp_ge(inp1, inp0, out, rev_eot(eot))
-@private fun run_cmp_eq(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x == y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x == y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x == y}
-    }
-@private fun run_cmp_ne(inp0: 't [], inp1: 't [], out: bool [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x != y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x != y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x != y}
-    }
 @private fun run_add(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
     match eot {
     | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x + y}
     | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x + y}
     | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x + y}
     }
-@private fun run_sub(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x - y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x - y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x - y}
-    }
-@private fun run_mul(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x * y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x * y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x * y}
-    }
-@private fun run_div(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x / y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x / y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x / y}
-    }
-@private fun run_mod(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x - floor(x / y)*y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x - floor(x / y)*y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x - floor(x / y)*y}
-    }
-@private fun run_pow(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x ** y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x ** y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x ** y}
-    }
+
 @private fun run_max(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
     match eot {
     | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = max(x, y)}
     | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = max(x, y)}
     | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = max(x, y)}
     }
-@private fun run_mean(inp0: 't [], inp1: 't [], out: 't []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = (x + y)/2}
-@private fun run_mean(inp0: float [], inp1: float [], out: float []) =
-    for x@idx <- inp0, y <- inp1 {out[idx] = (x + y)*0.5f}
+
 @private fun run_min(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
     match eot {
     | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = min(x, y)}
     | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = min(x, y)}
     | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = min(x, y)}
     }
-@private fun run_and(inp0: bool [], inp1: bool [], out: bool [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x & y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x & y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x & y}
+
+@ccode {
+#include "ficus_nn_common.h"
+
+/*
+    Prepare the strides for the efficient BROADCAST_MAX_DIMS-dimensional operation.
+    The algorithm includes the following steps:
+
+    1. Make both input array and the output array BROADCAST_MAX_DIMS-dimensional.
+       If necessary, prepend the shapes with 1's and compute the corresponding strides.
+       This makes the actual operation much more straight-forward,
+       we just have to deal with fixed dimensionality using fixed number of nested loops.
+    2. For some i one of the inputs may have i-th dimension == 1,
+       whereas the other input may have the same dimension > 1.
+       We need to handle it by zero'ing the corresponding i-th step.
+
+       E.g. shape1[2] == 1, shape2[2] == 100 (and so shape[2] == 100).
+
+       When we will iterate through this dimension within a nested loop and access elements
+
+       for (int i0 = 0; i0 < shape[0]; i0++)
+          for (int i1 = 0; i1 < shape[1]; i++) {
+             for (int i2 = 0; i2 < shape[2]; i2++) {
+                ...
+                input1.ptr<float>[i0*step1[0] + i1*step1[1] + i2*step1[2] + ...]
+             }
+
+       we need to take into account that shape1[2] == 1 and set step1[2]=0.
+    3. Often the inputs are contiguous (the output is assumed to be contiguous),
+       so we can try to flatten/reshape inputs in order to increase the length of inner loops and
+       correspondingly shorten the outer loops so that the loop overhead is reduced.
+       We do flattening within in a loop with descending j, starting from j=BROADCAST_MAX_DIMS-2:
+       3a. we check that for some stepi[j] = stepi[j+1]*shapei[j+1] for all i: i=0,1,2 (i=0 means the output tensor)
+       3b. we also check that for each tensor we stay in scalar mode or stay in non-scalar mode
+       3c. we also check if shapei[j] == 1 for all i.
+       3d. if yes for (3a && (3b || 3c)), we do shapei[j+1] *= shapei[j] and eliminate j-th dimension.
+       3e. otherwise, we leave everything as is, decrease j and proceed.
+       3f. in the end of the loop we append the proper number of 1's
+           to the final shape to keep it BROADCAST_MAX_DIMS-dimensional.
+*/
+static bool _fx_prepare_for_broadcast_op(
+    int narrays, int max_ndims,
+    const int* ndims, const int_** shape_,
+    int_** shape, size_t** step)
+{
+    int i, j, k;
+
+    // step 1.
+    // * make all inputs and the output max_ndims-dimensional.
+    // * compute proper step's
+    for (i = max_ndims-1; i >= 0; i-- ) {
+        for (k = 0; k < narrays; k++) {
+            j = ndims[k] - (max_ndims - i);
+            int sz_i = j >= 0 ? shape_[k][j] : 1;
+            size_t st_i = i == max_ndims-1 ? 1 : step[k][i+1]*shape[k][i+1];
+            shape[k][i] = sz_i;
+            step[k][i] = st_i;
+            if (shape[k][i] == 0)
+                return false;
+        }
     }
-@private fun run_or(inp0: bool [], inp1: bool [], out: bool [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x | y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x | y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x | y}
+
+    // step 3. Let's do the flattening first,
+    // since we'd need proper values of steps to check continuity.
+    // this loop is probably the most tricky part
+    // in the whole implementation of broadcasting.
+    j = max_ndims-1;
+    for (i = j - 1; i >= 0; i--) {
+        bool all_contiguous = true, all_scalars = true, all_consistent = true;
+        for(k = 0; k < narrays; k++) {
+            size_t st = step[k][j]*shape[k][j];
+            bool prev_scalar = shape[k][j] == 1;
+            bool scalar = shape[k][i] == 1;
+            all_contiguous = all_contiguous && (st == step[k][i]);
+            all_scalars = all_scalars && scalar;
+            all_consistent = all_consistent && (scalar == prev_scalar);
+        }
+        if (all_contiguous && (all_consistent || all_scalars)) {
+            for(k = 0; k < narrays; k++)
+                shape[k][j] *= shape[k][i];
+        } else {
+            j--;
+            if (i < j) {
+                for(k = 0; k < narrays; k++) {
+                    shape[k][j] = shape[k][i];
+                    step[k][j] = step[k][i];
+                }
+            }
+        }
     }
-@private fun run_xor(inp0: bool [], inp1: bool [], out: bool [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x ^ y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x ^ y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x ^ y}
+
+    // step 2. Set some step's to 0's.
+    for (i = max_ndims-1; i >= j; i--) {
+        for (k = 0; k < narrays; k++)
+            step[k][i] = shape[k][i] == 1 ? 0 : step[k][i];
     }
+    for (; i >= 0; i--) {
+        for (k = 0; k < narrays; k++) {
+            step[k][i] = 0;
+            shape[k][i] = 1;
+        }
+    }
+    return true;
+}
+
+enum {
+_FX_NN_Add=1,
+_FX_NN_And,
+_FX_NN_Div,
+_FX_NN_Equal,
+_FX_NN_Greater,
+_FX_NN_GreaterOrEqual,
+_FX_NN_Less,
+_FX_NN_LessOrEqual,
+_FX_NN_Mod,
+_FX_NN_Mul,
+_FX_NN_Pow,
+_FX_NN_Or,
+_FX_NN_Sub,
+_FX_NN_Xor,
+_FX_NN_Min,
+_FX_NN_Max,
+_FX_NN_Mean
+};
+
+enum {_FX_ELEMWISE_MAX_DIMS=5};
+
+#define _FX_OP_ADD(x, y) ((x) + (y))
+#define _FX_OP_SUB(x, y) ((x) - (y))
+#define _FX_OP_MUL(x, y) ((x) * (y))
+#define _FX_OP_DIV(x, y) ((x) / (y))
+#define _FX_OP_MOD(x, y) ((x) % (y))
+#define _FX_OP_MIN(x, y) ((x) <= (y) ? (x) : (y))
+#define _FX_OP_MAX(x, y) ((x) >= (y) ? (x) : (y))
+#define _FX_OP_MEAN(x, y) (((x) + (y))/2)
+#define _FX_OP_AND(x, y) ((x) & (y))
+#define _FX_OP_OR(x, y) ((x) | (y))
+#define _FX_OP_XOR(x, y) ((x) ^ (y))
+#define _FX_OP_CMP_GT(x, y) ((x) > (y))
+#define _FX_OP_CMP_GE(x, y) ((x) >= (y))
+#define _FX_OP_CMP_EQ(x, y) ((x) == (y))
+
+#undef _FX_IMPLEMENT_BINARY_OP
+#define _FX_IMPLEMENT_BINARY_OP(suffix, _Tp1, _Tp2, _Tp, do_op) \
+static void _fx_elemwise_##suffix(const char* data1, size_t rowstep1, size_t dp1, \
+                                const char* data2, size_t rowstep2, size_t dp2, \
+                                char* data, size_t rowstep, size_t dp, \
+                                int nrows, int ncols) \
+{ \
+    for (int_ i = 0; i < nrows; i++) { \
+        const _Tp1* ptr1 = (const _Tp1*)data1 + rowstep1*i; \
+        const _Tp2* ptr2 = (const _Tp2*)data2 + rowstep2*i; \
+        _Tp* ptr = (_Tp*)data + rowstep*i; \
+        if (dp1 == 1 && dp2 == 1 && dp == 1) { \
+            for(int j = 0; j < ncols; j++) { \
+                _Tp1 x1 = ptr1[j]; _Tp2 x2 = ptr2[j]; \
+                ptr[j] = (_Tp)do_op(x1, x2); \
+            } \
+        } else if (dp1 == 1 && dp2 == 0 && dp == 1) { \
+            _Tp2 x2 = *ptr2; \
+            for(int j = 0; j < ncols; j++) { \
+                _Tp1 x1 = ptr1[j]; \
+                ptr[j] = (_Tp)do_op(x1, x2); \
+            } \
+        } else if (dp1 == 0 && dp2 == 1 && dp == 1) { \
+            _Tp1 x1 = *ptr1; \
+            for(int j = 0; j < ncols; j++) { \
+                _Tp2 x2 = ptr2[j]; \
+                ptr[j] = (_Tp)do_op(x1, x2); \
+            } \
+        } else { \
+            for(int j = 0; j < ncols; j++, ptr1 += dp1, ptr2 += dp2, ptr += dp) { \
+                _Tp1 x1 = *ptr1; _Tp2 x2 = *ptr2; \
+                *ptr = (_Tp)do_op(x1, x2); \
+            } \
+        } \
+    } \
+}
+
+typedef void (*_fx_elemwise_binary_func_t)(
+    const char* data1, size_t rowstep1, size_t dp1,
+    const char* data2, size_t rowstep2, size_t dp2,
+    char* data, size_t rowstep, size_t dp,
+    int nrows, int ncols);
+
+_FX_IMPLEMENT_BINARY_OP(add_f32, float, float, float, _FX_OP_ADD)
+_FX_IMPLEMENT_BINARY_OP(add_i32, int, int, int, _FX_OP_ADD)
+_FX_IMPLEMENT_BINARY_OP(add_i64, int64_t, int64_t, int64_t, _FX_OP_ADD)
+
+_FX_IMPLEMENT_BINARY_OP(sub_f32, float, float, float, _FX_OP_SUB)
+_FX_IMPLEMENT_BINARY_OP(sub_i32, int, int, int, _FX_OP_SUB)
+_FX_IMPLEMENT_BINARY_OP(sub_i64, int64_t, int64_t, int64_t, _FX_OP_SUB)
+
+_FX_IMPLEMENT_BINARY_OP(mul_f32, float, float, float, _FX_OP_MUL)
+_FX_IMPLEMENT_BINARY_OP(mul_i32, int, int, int, _FX_OP_MUL)
+_FX_IMPLEMENT_BINARY_OP(mul_i64, int64_t, int64_t, int64_t, _FX_OP_MUL)
+
+_FX_IMPLEMENT_BINARY_OP(div_f32, float, float, float, _FX_OP_DIV)
+_FX_IMPLEMENT_BINARY_OP(div_i32, int, int, int, _FX_OP_DIV)
+_FX_IMPLEMENT_BINARY_OP(div_i64, int64_t, int64_t, int64_t, _FX_OP_DIV)
+
+_FX_IMPLEMENT_BINARY_OP(mod_f32, float, float, float, fmodf)
+_FX_IMPLEMENT_BINARY_OP(mod_i32, int, int, int, _FX_OP_MOD)
+_FX_IMPLEMENT_BINARY_OP(mod_i64, int64_t, int64_t, int64_t, _FX_OP_MOD)
+
+_FX_IMPLEMENT_BINARY_OP(pow_f32, float, float, float, powf)
+_FX_IMPLEMENT_BINARY_OP(pow_i32, int, int, int, pow)
+_FX_IMPLEMENT_BINARY_OP(pow_i64, int64_t, int64_t, int64_t, pow)
+
+_FX_IMPLEMENT_BINARY_OP(min_f32, float, float, float, _FX_OP_MIN)
+_FX_IMPLEMENT_BINARY_OP(min_i32, int, int, int, _FX_OP_MIN)
+_FX_IMPLEMENT_BINARY_OP(min_i64, int64_t, int64_t, int64_t, _FX_OP_MIN)
+
+_FX_IMPLEMENT_BINARY_OP(max_f32, float, float, float, _FX_OP_MAX)
+_FX_IMPLEMENT_BINARY_OP(max_i32, int, int, int, _FX_OP_MAX)
+_FX_IMPLEMENT_BINARY_OP(max_i64, int64_t, int64_t, int64_t, _FX_OP_MAX)
+
+_FX_IMPLEMENT_BINARY_OP(mean_f32, float, float, float, _FX_OP_MEAN)
+_FX_IMPLEMENT_BINARY_OP(mean_i32, int, int, int, _FX_OP_MEAN)
+_FX_IMPLEMENT_BINARY_OP(mean_i64, int64_t, int64_t, int64_t, _FX_OP_MEAN)
+
+_FX_IMPLEMENT_BINARY_OP(cmp_eq_f32, float, float, bool, _FX_OP_CMP_EQ)
+_FX_IMPLEMENT_BINARY_OP(cmp_eq_i32, int, int, bool, _FX_OP_CMP_EQ)
+_FX_IMPLEMENT_BINARY_OP(cmp_eq_i64, int64_t, int64_t, bool, _FX_OP_CMP_EQ)
+
+_FX_IMPLEMENT_BINARY_OP(cmp_gt_f32, float, float, bool, _FX_OP_CMP_GT)
+_FX_IMPLEMENT_BINARY_OP(cmp_gt_i32, int, int, bool, _FX_OP_CMP_GT)
+_FX_IMPLEMENT_BINARY_OP(cmp_gt_i64, int64_t, int64_t, bool, _FX_OP_CMP_GT)
+
+_FX_IMPLEMENT_BINARY_OP(cmp_ge_f32, float, float, bool, _FX_OP_CMP_GE)
+_FX_IMPLEMENT_BINARY_OP(cmp_ge_i32, int, int, bool, _FX_OP_CMP_GE)
+_FX_IMPLEMENT_BINARY_OP(cmp_ge_i64, int64_t, int64_t, bool, _FX_OP_CMP_GE)
+
+_FX_IMPLEMENT_BINARY_OP(and_bool, bool, bool, bool, _FX_OP_AND)
+_FX_IMPLEMENT_BINARY_OP(or_bool, bool, bool, bool, _FX_OP_OR)
+_FX_IMPLEMENT_BINARY_OP(xor_bool, bool, bool, bool, _FX_OP_XOR)
+
+static _fx_elemwise_binary_func_t
+_fx_get_elemwise_binary_func(int el_op, int typ)
+{
+    return
+        el_op == _FX_NN_Add ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_add_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_add_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_add_i64 : 0) :
+        el_op == _FX_NN_Sub ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_sub_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_sub_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_sub_i64 : 0) :
+        el_op == _FX_NN_Mul ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_mul_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_mul_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_mul_i64 : 0) :
+        el_op == _FX_NN_Div ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_div_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_div_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_div_i64 : 0) :
+        el_op == _FX_NN_Mod ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_mod_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_mod_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_mod_i64 : 0) :
+        el_op == _FX_NN_Pow ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_pow_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_pow_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_pow_i64 : 0) :
+        el_op == _FX_NN_Min ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_min_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_min_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_min_i64 : 0) :
+        el_op == _FX_NN_Max ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_max_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_max_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_max_i64 : 0) :
+        el_op == _FX_NN_Mean ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_mean_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_mean_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_mean_i64 : 0) :
+        el_op == _FX_NN_Equal ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_cmp_eq_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_cmp_eq_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_cmp_eq_i64 : 0) :
+        el_op == _FX_NN_Greater ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_cmp_gt_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_cmp_gt_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_cmp_gt_i64 : 0) :
+        el_op == _FX_NN_GreaterOrEqual ?
+            (typ == _FX_NN_FP32 ? _fx_elemwise_cmp_ge_f32 :
+             typ == _FX_NN_I32 ? _fx_elemwise_cmp_ge_i32 :
+             typ == _FX_NN_I64 ? _fx_elemwise_cmp_ge_i64 : 0) :
+        el_op == _FX_NN_And ?
+            (typ == _FX_NN_Bool ? _fx_elemwise_and_bool : 0) :
+        el_op == _FX_NN_Or ?
+            (typ == _FX_NN_Bool ? _fx_elemwise_or_bool : 0) :
+        el_op == _FX_NN_Xor ?
+            (typ == _FX_NN_Bool ? _fx_elemwise_and_bool : 0) :
+        0;
+}
+
+}
+
+@private fun run_binary(inp1_shape_: int [], inp1_data_: Ast.nndata_t,
+                        inp2_shape_: int [], inp2_data_: Ast.nndata_t,
+                        out_shape_: int [], out_data_: Ast.nndata_t,
+                        el_op_: Ast.nnelwise_t): void
+@ccode
+{
+    int_ shape1[_FX_ELEMWISE_MAX_DIMS], shape2[_FX_ELEMWISE_MAX_DIMS], shape[_FX_ELEMWISE_MAX_DIMS];
+    size_t step1[_FX_ELEMWISE_MAX_DIMS], step2[_FX_ELEMWISE_MAX_DIMS], step[_FX_ELEMWISE_MAX_DIMS];
+    int el_op = el_op_->tag, inp_typ = inp1_data_->tag;
+    fx_arr_t* inp1_data = &inp1_data_->u.NN_Data_I8;
+    fx_arr_t* inp2_data = &inp2_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+
+    if (el_op == _FX_NN_Less || el_op == _FX_NN_LessOrEqual) {
+        el_op = el_op == _FX_NN_Less ? _FX_NN_Greater : _FX_NN_GreaterOrEqual;
+        fx_arr_t* t = inp1_shape_; inp1_shape_ = inp2_shape_; inp2_shape_ = t;
+        t = inp1_data; inp1_data = inp2_data; inp2_data = t;
+    }
+
+    int all_ndims[] = {
+        (int)inp1_shape_->dim[0].size,
+        (int)inp2_shape_->dim[0].size,
+        (int)out_shape_->dim[0].size
+    };
+    const int_* orig_shapes[] = {
+        (int_*)inp1_shape_->data,
+        (int_*)inp2_shape_->data,
+        (int_*)out_shape_->data
+    };
+    int_* shapes[] = {shape1, shape2, shape};
+    size_t* steps[] = {step1, step2, step};
+
+    for (int i = 0; i < 3; i++) {
+        if (all_ndims[i] > _FX_ELEMWISE_MAX_DIMS)
+            return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    }
+
+    // some of inputs are empty => result is empty
+    if (!_fx_prepare_for_broadcast_op(3, _FX_ELEMWISE_MAX_DIMS,
+                                  all_ndims, orig_shapes,
+                                  shapes, steps))
+        return FX_OK;
+
+    {
+    size_t dp1 = step1[_FX_ELEMWISE_MAX_DIMS-1];
+    size_t dp2 = step2[_FX_ELEMWISE_MAX_DIMS-1];
+    size_t dp = step[_FX_ELEMWISE_MAX_DIMS-1];
+    size_t rowstep1 = step1[_FX_ELEMWISE_MAX_DIMS-2];
+    size_t rowstep2 = step2[_FX_ELEMWISE_MAX_DIMS-2];
+    size_t rowstep = step[_FX_ELEMWISE_MAX_DIMS-2];
+    char* data1 = inp1_data->data;
+    char* data2 = inp2_data->data;
+    char* data = out_data->data;
+    size_t esz1 = inp1_data->dim[0].step;
+    size_t esz2 = inp2_data->dim[0].step;
+    size_t esz = out_data->dim[0].step;
+    int_ nrows = shape[_FX_ELEMWISE_MAX_DIMS-2];
+    int_ ncols = shape[_FX_ELEMWISE_MAX_DIMS-1];
+    size_t plane_idx, nplanes = 1;
+    _fx_elemwise_binary_func_t processing_func = _fx_get_elemwise_binary_func(el_op, inp_typ);
+
+    if (!processing_func)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    for (int k = 0; k < _FX_ELEMWISE_MAX_DIMS-2; k++) nplanes *= shape[k];
+
+    for (plane_idx = 0; plane_idx < nplanes; plane_idx++) {
+        size_t ofs1 = 0, ofs2 = 0, ofs = 0;
+        size_t idx = plane_idx;
+        for (int k = _FX_ELEMWISE_MAX_DIMS-3; k >= 0; k--) {
+            size_t prev_idx = idx/shape[k];
+            size_t i_k = idx - prev_idx*shape[k];
+            ofs1 += i_k*step1[k];
+            ofs2 += i_k*step2[k];
+            ofs += i_k*step[k];
+            idx = prev_idx;
+        }
+
+        processing_func(data1 + ofs1*esz1, rowstep1, dp1,
+                        data2 + ofs2*esz2, rowstep2, dp2,
+                        data + ofs*esz, rowstep, dp,
+                        nrows, ncols);
+    }
+    }
+
+    return FX_OK;
+}
 
 fun run_binary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
 | Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 2 =>
-    val inp0 = model.get_tensor(t_inp[0])
-    val inp1 = model.get_tensor(t_inp[1])
+    val inp1 = model.get_tensor(t_inp[0])
+    val inp2 = model.get_tensor(t_inp[1])
     val out = model.get_tensor(t_out)
-    val inp0_shape = inp0.shape.shape
-    val inp1_shape = inp1.shape.shape
-    val out_shape = out.shape.shape
-    val eot =
-        if inp0_shape == inp1_shape && inp0_shape == out_shape {EOT_AoA}
-        else if inp0_shape == out_shape && inp1_shape.product(1) == 1 {EOT_AoS}
-        else if inp1_shape == out_shape && inp0_shape.product(1) == 1 {EOT_SoA}
-        else {throw Ast.NNError(f"unexpected combination of tensor shapes in {op.name()}; \
-            full broadcasting is not supported yet")}
-
-    match (el_op, inp0.data, inp1.data, out.data) {
-    | (Ast.NN_Add, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_add(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_And, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_and(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Div, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_div(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Equal, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_eq(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Greater, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_gt(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_GreaterOrEqual, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_ge(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Less, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_lt(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_LessOrEqual, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_cmp_le(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Max, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_max(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Mean, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        match eot {
-            | EOT_AoA => {}
-            | _ =>
-                throw Ast.NNError(f"unexpected combination of tensor shapes in {op.name()}; \
-                full broadcasting is not supported yet")
-        }
-        run_mean(inp0_data, inp1_data, out_data)
-    | (Ast.NN_Min, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_min(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Mod, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_mod(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Mul, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_mul(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Or, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_or(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Pow, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_pow(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Sub, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_sub(inp0_data, inp1_data, out_data, eot)
-    | (Ast.NN_Xor, Ast.NN_Data_Bool inp0_data, Ast.NN_Data_Bool inp1_data, Ast.NN_Data_Bool out_data) =>
-        run_xor(inp0_data, inp1_data, out_data, eot)
-    | _ => throw NotImplementedError
-    }
+    run_binary(inp1.shape.shape, inp1.data, inp2.shape.shape, inp2.data,
+               out.shape.shape, out.data, el_op)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 

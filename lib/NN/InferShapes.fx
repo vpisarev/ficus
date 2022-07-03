@@ -300,8 +300,9 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             assert(`tcond_shape.total() == 1`)
             assert(`tcond_typ == Ast.NN_Bool`)
         }
-        // we don't calculate shapes for output tensors & accums (t_v_out).
-        // accumulators shall be created empty initially
+        // we don't calculate shapes for output tensors & accums (t_v_out);
+        // accumulators are be created empty initially,
+        // and are augmented after each iteration.
         [ for i <- -2:n_state_vars {
             val argidx = if i == -2 { t_trip_count }
                          else if i == -1 { t_cond_in }

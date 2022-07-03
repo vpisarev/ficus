@@ -11,13 +11,7 @@ import Ast
 
 @ccode {
 
-typedef struct _fx_nndata_t {
-   int tag;
-   union {
-      fx_arr_t NN_Data_I8;
-      fx_arr_t NN_Data_U8;
-   } u;
-} _fx_nndata_t;
+#include "ficus_nn_common.h"
 
 enum {
     _FX_NN_Inter_Nearest=1,
@@ -94,14 +88,18 @@ static int _fx_compute_tab(int* tab, float* alphatab, int_ inpsz_, int_ outsz_,
         } else if (mode == _FX_NN_Inter_Linear) {
             int_x -= inp_x < int_x;
             float a = inp_x - int_x;
-            float a0 = (unsigned)int_x < (unsigned)inpsz ? a : 0.f;
-            float a1 = (unsigned)(int_x+1) < (unsigned)inpsz ? a : 0.f;
-            int int_x0 = (unsigned)int_x < (unsigned)inpsz ? a : 0.f;
-            int int_x1 = int_x+1 < 0 ? 0 : int_x1 >= inpsz ? inpsz - 1 : int_x1;
-            tab[out_x*2] = (int)(int_x*inp_step);
+            int int_x0 = int_x, int_x1 = int_x+1;
+            if (int_x0 < 0) {
+                int_x0 = int_x1 = 0;
+                a = 0.f;
+            } else if (int_x1 >= inpsz) {
+                int_x0 = int_x1 = inpsz - 1;
+                a = 0.f;
+            }
+            tab[out_x*2] = (int)(int_x0*inp_step);
             tab[out_x*2+1] = (int)(int_x1*inp_step);
-            alphatab[out_x*2] = a;
-            alphatab[out_x*2+1] = 1.f - a;
+            alphatab[out_x*2] = 1.f - a;
+            alphatab[out_x*2+1] = a;
         } else {
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
         }
@@ -166,6 +164,7 @@ static int _fx_prepare_for_resize(
     *alltabs = (int*)fx_malloc(total_tab_size*sizeof(alltabs[0]));
     if (!*alltabs)
         return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
+
     total_tab_size = 0;
     for (i = 0; i < _FX_RESIZE_MAX_DIMS; i++) {
         int_ inpsz_i = inp_shape[i];
@@ -206,8 +205,8 @@ static int _fx_prepare_for_resize(
     int_ out_shape[_FX_RESIZE_MAX_DIMS];
     int_ inp_step[_FX_RESIZE_MAX_DIMS];
     int_ out_step[_FX_RESIZE_MAX_DIMS];
-    fx_arr_t* inp_data = &((_fx_nndata_t*)inp_data_)->u.NN_Data_I8;
-    fx_arr_t* out_data = &((_fx_nndata_t*)out_data_)->u.NN_Data_I8;
+    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
     int* alltabs = 0;
     int* tab[_FX_RESIZE_MAX_DIMS];
@@ -280,6 +279,130 @@ static int _fx_prepare_for_resize(
     return FX_OK;
 }
 
+@private fun run_resize_linear(inp_shape_: int [], inp_data_: Ast.nndata_t,
+                               out_shape_: int [], out_data_: Ast.nndata_t,
+                               scales_: float [], sizes_: int [], roi_: float [],
+                               coord_trans: Ast.nncoord_trans_t, ntasks: int): void
+@ccode {
+    int_ inp_shape[_FX_RESIZE_MAX_DIMS];
+    int_ out_shape[_FX_RESIZE_MAX_DIMS];
+    int_ inp_step[_FX_RESIZE_MAX_DIMS];
+    int_ out_step[_FX_RESIZE_MAX_DIMS];
+    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    size_t esz = inp_data->dim[0].step;
+    int* alltabs = 0;
+    int* tab[_FX_RESIZE_MAX_DIMS];
+    float* alpha[_FX_RESIZE_MAX_DIMS];
+    int typ = inp_data_->tag;
+    int_ nsubtasks;
+    size_t inp_planesize, out_planesize;
+    int status;
+    volatile int parallel_status = FX_OK;
+
+    if (typ != _FX_NN_FP32 && typ != _FX_NN_U8)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    status = _fx_prepare_for_resize(inp_shape_, inp_data, out_shape_, out_data,
+                                    scales_, sizes_, roi_, _FX_NN_Inter_Linear,
+                                    coord_trans->tag, _FX_NN_Nearest_Floor,
+                                    inp_shape, out_shape, inp_step, out_step,
+                                    &alltabs, tab, alpha);
+    if (status < 0)
+        return status;
+
+    // in the case of linear interpolation we process all channels of each "pixel" at once,
+    // so in total we have N*H subtasks (N is the number of samples in batch, H is the image height):
+    // each subtask computes a certain row the output image, all its channnels.
+    nsubtasks = out_shape[0]*out_shape[2];
+    inp_planesize = (size_t)inp_shape[2]*inp_shape[3];
+    out_planesize = (size_t)out_shape[2]*out_shape[3];
+
+    /*printf("Resize linear (typ=%s): ", typ == _FX_NN_FP32 ? "FP32" : "U8");
+    for (int i = 0; i < _FX_RESIZE_MAX_DIMS; i++) {
+        printf("%s%d -> %d (%s)", (i == 0 ? "" : ", "), (int)inp_shape[i], (int)out_shape[i],
+            (scale_dims[i] ? "true" : "false"));
+    }
+    printf("\n");*/
+
+    if (inp_shape[0] != out_shape[0] || inp_shape[1] != out_shape[1]) {
+        status = FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    } else if (inp_shape[2] == out_shape[2] && inp_shape[3] == out_shape[3]) {
+        memcpy(out_data->data, inp_data->data, inp_data->dim[0].size*esz);
+    } else {
+        #pragma omp parallel for num_threads((int)ntasks)
+        for(int task_id = 0; task_id < ntasks; task_id++) {
+            int_ ny0 = task_id*nsubtasks/ntasks;
+            int_ ny1 = (task_id+1)*nsubtasks/ntasks;
+            int_ nchannels = out_shape[1];
+            int_ height = out_shape[2];
+            int_ width = out_shape[3];
+            const int* ytab = tab[2];
+            const int* xtab = tab[3];
+            const float* yalpha = alpha[2];
+            const float* xalpha = alpha[3];
+            for (; ny0 < ny1; ny0++) {
+                int_ sample_id = ny0/height;
+                int_ y = ny0 - height*sample_id;
+                float ya0 = yalpha[y*2], ya1 = yalpha[y*2+1];
+                int_ y0 = ytab[y*2], y1 = ytab[y*2+1];
+
+                #undef _FX_IMPLEMENT_RESIZE_LINEAR
+                #define _FX_IMPLEMENT_RESIZE_LINEAR(typ, round_delta) \
+                    typ* outptr = (typ*)out_data->data + sample_id*(nchannels*out_planesize) + y*width; \
+                    /* ytab already contains input tensor y's multiplied by input width */ \
+                    typ* inptr0 = (typ*)inp_data->data + sample_id*(nchannels*inp_planesize) + y0; \
+                    typ* inptr1 = (typ*)inp_data->data + sample_id*(nchannels*inp_planesize) + y1; \
+                    if (nchannels == 1) { \
+                        for (int_ x = 0; x < width; x++, outptr++) { \
+                            int x0 = xtab[x*2], x1 = xtab[x*2+1]; \
+                            float xa0 = xalpha[x*2], xa1 = xalpha[x*2+1]; \
+                            float out = (inptr0[x0]*xa0 + inptr0[x1]*xa1)*ya0 + \
+                                        (inptr1[x0]*xa0 + inptr1[x1]*xa1)*ya1; \
+                            outptr[0] = (typ)(out + round_delta); \
+                        } \
+                    } else if (nchannels == 3) { \
+                        for (int_ x = 0; x < width; x++, outptr++) { \
+                            int x0 = xtab[x*2], x1 = xtab[x*2+1]; \
+                            float xa0 = xalpha[x*2], xa1 = xalpha[x*2+1]; \
+                            float out0 = (inptr0[x0]*xa0 + inptr0[x1]*xa1)*ya0 + \
+                                        (inptr1[x0]*xa0 + inptr1[x1]*xa1)*ya1; \
+                            float out1 = (inptr0[x0+inp_planesize]*xa0 + inptr0[x1+inp_planesize]*xa1)*ya0 + \
+                                        (inptr1[x0+inp_planesize]*xa0 + inptr1[x1+inp_planesize]*xa1)*ya1; \
+                            float out2 = (inptr0[x0+inp_planesize*2]*xa0 + inptr0[x1+inp_planesize*2]*xa1)*ya0 + \
+                                        (inptr1[x0+inp_planesize*2]*xa0 + inptr1[x1+inp_planesize*2]*xa1)*ya1; \
+                            outptr[0] = (typ)(out0 + round_delta); \
+                            outptr[out_planesize] = (typ)(out1 + round_delta); \
+                            outptr[out_planesize*2] = (typ)(out2 + round_delta); \
+                        } \
+                    } else { \
+                        for (int_ x = 0; x < width; x++, outptr++) { \
+                            int x0 = xtab[x*2], x1 = xtab[x*2+1]; \
+                            float xa0 = xalpha[x*2], xa1 = xalpha[x*2+1]; \
+                            for (int_ c = 0; c < nchannels; c++) { \
+                                float out = (inptr0[x0+inp_planesize*c]*xa0 + inptr0[x1+inp_planesize*c]*xa1)*ya0 + \
+                                            (inptr1[x0+inp_planesize*c]*xa0 + inptr1[x1+inp_planesize*c]*xa1)*ya1; \
+                                outptr[out_planesize*c] = (typ)(out + round_delta); \
+                            } \
+                        } \
+                    }
+                if (typ == _FX_NN_FP32) {
+                    _FX_IMPLEMENT_RESIZE_LINEAR(float, 0.f)
+                } else if (typ == _FX_NN_U8) {
+                    _FX_IMPLEMENT_RESIZE_LINEAR(uint8_t, 0.5f)
+                } else {
+                    parallel_status = FX_EXN_NotImplementedError;
+                    break;
+                }
+            }
+        }
+    }
+    if (parallel_status < 0)
+        status = FX_SET_EXN_FAST(parallel_status);
+    fx_free(alltabs);
+    return status;
+}
+
 fun run_resize(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Resize {coord_trans, cubic_coeff_a, exclude_outside,
@@ -295,6 +418,12 @@ match op {
     | Ast.NN_Inter_Nearest =>
         run_resize_nearest(inp_shape, inp.data, out_shape, out.data, scales, sizes, roi,
                            coord_trans, nearest_mode, *model.ntasks)
+    | Ast.NN_Inter_Linear =>
+        val inp_typ = inp.elemtype()
+        val out_typ = out.elemtype()
+        assert(`inp_typ == out_typ`)
+        run_resize_linear(inp_shape, inp.data, out_shape, out.data,
+                          scales, sizes, roi, coord_trans, *model.ntasks)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
