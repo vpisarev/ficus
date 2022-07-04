@@ -57,9 +57,16 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
 
 fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
-    for op <- graph.prog {
+    val nops = graph.prog.size()
+    for op@opidx <- graph.prog {
         val noindent=""
         println(f"preparing to run op {model.op2str(op, noindent)}")
+        /*match op {
+        | Ast.NN_Transpose {name, t_inp, t_out, perm} when name=="where_op_added__679" =>
+            println(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            println(f"TRANSPOSE: t_inp={model.tensor2str(model.get_tensor(t_inp), true)}, perm={perm}, t_out={model.tensor2str(model.get_tensor(t_out), true)}")
+        | _ => {}
+        }*/
         val oinfo = InferShapes.infer(model, op)
         for oi@outidx <- oinfo {
             val {idx=argidx, shape, typ} = oi
@@ -68,7 +75,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
             println(f"   output #{outidx} ('{model.args[argidx].name}'): {oi}")
         }
-        println(f"running op '{op.name()}'")
+        println(f"[op #{opidx}/{nops} in graph '{graph.name}']. running op '{op.name()}'")
         //val t = Sys.tick_count()
         match op {
         | Ast.NN_Loop { body, t_trip_count, t_cond_in, t_v_in, t_v_out } =>
@@ -159,6 +166,12 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                 }
             | _ => {}
             }
+        }*/
+        /*match op {
+        | Ast.NN_NonZero {name, t_inp, t_out} when name=="Postprocessor/BatchMultiClassNonMaxSuppression/map/while/MultiClassNonMaxSuppression/FilterGreaterThan_9/Where" =>
+            println(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            println(f"NONZERO: t_inp={model.tensor2str(model.get_tensor(t_inp), true)}, t_out={model.tensor2str(model.get_tensor(t_out), true)}")
+        | _ => {}
         }*/
 
         if outputs != [] {

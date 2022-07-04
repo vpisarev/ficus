@@ -183,30 +183,6 @@ match op
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-type ElemwiseOpType = EOT_AoA | EOT_AoS | EOT_SoA
-fun rev_eot(eot: ElemwiseOpType) { | EOT_AoS => EOT_SoA | EOT_SoA => EOT_AoS | _ => eot }
-
-@private fun run_add(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = x + y}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = x + y}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = x + y}
-    }
-
-@private fun run_max(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = max(x, y)}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = max(x, y)}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = max(x, y)}
-    }
-
-@private fun run_min(inp0: 't [], inp1: 't [], out: 't [], eot: ElemwiseOpType) =
-    match eot {
-    | EOT_AoA => for x@idx <- inp0, y <- inp1 {out[idx] = min(x, y)}
-    | EOT_AoS => val y = inp1[0]; for x@idx <- inp0 {out[idx] = min(x, y)}
-    | EOT_SoA => val x = inp0[0]; for y@idx <- inp1 {out[idx] = min(x, y)}
-    }
-
 @ccode {
 #include "ficus_nn_common.h"
 
@@ -340,7 +316,7 @@ enum {_FX_ELEMWISE_MAX_DIMS=5};
 #define _FX_OP_MOD(x, y) ((x) % (y))
 #define _FX_OP_MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define _FX_OP_MAX(x, y) ((x) >= (y) ? (x) : (y))
-#define _FX_OP_MEAN(x, y) (((x) + (y))/2)
+#define _FX_OP_MEAN(x, y) (((x) + (y))*param)
 #define _FX_OP_AND(x, y) ((x) & (y))
 #define _FX_OP_OR(x, y) ((x) | (y))
 #define _FX_OP_XOR(x, y) ((x) ^ (y))
@@ -353,31 +329,32 @@ enum {_FX_ELEMWISE_MAX_DIMS=5};
 static void _fx_elemwise_##suffix(const char* data1, size_t rowstep1, size_t dp1, \
                                 const char* data2, size_t rowstep2, size_t dp2, \
                                 char* data, size_t rowstep, size_t dp, \
-                                int nrows, int ncols) \
+                                int_ nrows, int_ ncols, double param) \
 { \
+    param; \
     for (int_ i = 0; i < nrows; i++) { \
         const _Tp1* ptr1 = (const _Tp1*)data1 + rowstep1*i; \
         const _Tp2* ptr2 = (const _Tp2*)data2 + rowstep2*i; \
         _Tp* ptr = (_Tp*)data + rowstep*i; \
         if (dp1 == 1 && dp2 == 1 && dp == 1) { \
-            for(int j = 0; j < ncols; j++) { \
+            for(int_ j = 0; j < ncols; j++) { \
                 _Tp1 x1 = ptr1[j]; _Tp2 x2 = ptr2[j]; \
                 ptr[j] = (_Tp)do_op(x1, x2); \
             } \
         } else if (dp1 == 1 && dp2 == 0 && dp == 1) { \
             _Tp2 x2 = *ptr2; \
-            for(int j = 0; j < ncols; j++) { \
+            for(int_ j = 0; j < ncols; j++) { \
                 _Tp1 x1 = ptr1[j]; \
                 ptr[j] = (_Tp)do_op(x1, x2); \
             } \
         } else if (dp1 == 0 && dp2 == 1 && dp == 1) { \
             _Tp1 x1 = *ptr1; \
-            for(int j = 0; j < ncols; j++) { \
+            for(int_ j = 0; j < ncols; j++) { \
                 _Tp2 x2 = ptr2[j]; \
                 ptr[j] = (_Tp)do_op(x1, x2); \
             } \
         } else { \
-            for(int j = 0; j < ncols; j++, ptr1 += dp1, ptr2 += dp2, ptr += dp) { \
+            for(int_ j = 0; j < ncols; j++, ptr1 += dp1, ptr2 += dp2, ptr += dp) { \
                 _Tp1 x1 = *ptr1; _Tp2 x2 = *ptr2; \
                 *ptr = (_Tp)do_op(x1, x2); \
             } \
@@ -389,7 +366,7 @@ typedef void (*_fx_elemwise_binary_func_t)(
     const char* data1, size_t rowstep1, size_t dp1,
     const char* data2, size_t rowstep2, size_t dp2,
     char* data, size_t rowstep, size_t dp,
-    int nrows, int ncols);
+    int_ nrows, int_ ncols, double param);
 
 _FX_IMPLEMENT_BINARY_OP(add_f32, float, float, float, _FX_OP_ADD)
 _FX_IMPLEMENT_BINARY_OP(add_i32, int, int, int, _FX_OP_ADD)
@@ -509,7 +486,7 @@ _fx_get_elemwise_binary_func(int el_op, int typ)
 @private fun run_binary(inp1_shape_: int [], inp1_data_: Ast.nndata_t,
                         inp2_shape_: int [], inp2_data_: Ast.nndata_t,
                         out_shape_: int [], out_data_: Ast.nndata_t,
-                        el_op_: Ast.nnelwise_t): void
+                        el_op_: Ast.nnelwise_t, ~param: double=0.): void
 @ccode
 {
     int_ shape1[_FX_ELEMWISE_MAX_DIMS], shape2[_FX_ELEMWISE_MAX_DIMS], shape[_FX_ELEMWISE_MAX_DIMS];
@@ -587,7 +564,7 @@ _fx_get_elemwise_binary_func(int el_op, int typ)
         processing_func(data1 + ofs1*esz1, rowstep1, dp1,
                         data2 + ofs2*esz2, rowstep2, dp2,
                         data + ofs*esz, rowstep, dp,
-                        nrows, ncols);
+                        nrows, ncols, param);
     }
     }
 
@@ -602,7 +579,10 @@ match op
     val inp2 = model.get_tensor(t_inp[1])
     val out = model.get_tensor(t_out)
     run_binary(inp1.shape.shape, inp1.data, inp2.shape.shape, inp2.data,
-               out.shape.shape, out.data, el_op)
+               out.shape.shape, out.data, el_op,
+               param=0.5 // so far the only binary operation that needs parameter
+                         // is Mean and there the parameter is 0.5; other operations just ignore it
+               )
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
@@ -613,32 +593,29 @@ match op
     val ninputs = t_inp.size()
     val inp = [for i <- t_inp {model.get_tensor(i)}]
     val out = model.get_tensor(t_out)
-    match (el_op, inp[0].data, inp[1].data, out.data) {
-    | (Ast.NN_Max, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_max(inp0_data, inp1_data, out_data, EOT_AoA)
+    match el_op {
+    | Ast.NN_Max =>
+        run_binary(inp[0].shape.shape, inp[0].data, inp[1].shape.shape, inp[1].data,
+                   out.shape.shape, out.data, Ast.NN_Max)
         for j <- 2:ninputs {
-            match inp[j].data {
-            | Ast.NN_Data_FP32 inparrj => run_max(inparrj, out_data, out_data, EOT_AoA)
-            | _ => throw TypeMismatchError
-            }
+            run_binary(inp[j].shape.shape, inp[j].data, out.shape.shape, out.data,
+                       out.shape.shape, out.data, Ast.NN_Max)
         }
-    | (Ast.NN_Mean, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_add(inp0_data, inp1_data, out_data, EOT_AoA)
+    | Ast.NN_Mean =>
+        val scale = 1./ninputs
+        run_binary(inp[0].shape.shape, inp[0].data, inp[1].shape.shape, inp[1].data,
+                   out.shape.shape, out.data, Ast.NN_Add)
         for j <- 2:ninputs {
-            match inp[j].data {
-            | Ast.NN_Data_FP32 inparrj => run_add(inparrj, out_data, out_data, EOT_AoA)
-            | _ => throw TypeMismatchError
-            }
+            val op = if j == ninputs-1 {Ast.NN_Mean} else {Ast.NN_Add}
+            run_binary(inp[j].shape.shape, inp[j].data, out.shape.shape, out.data,
+                       out.shape.shape, out.data, op, param=scale)
         }
-        val scale = 1.f/ninputs
-        for x@idx <- out_data {out_data[idx] = x*scale}
-    | (Ast.NN_Min, Ast.NN_Data_FP32 inp0_data, Ast.NN_Data_FP32 inp1_data, Ast.NN_Data_FP32 out_data) =>
-        run_min(inp0_data, inp1_data, out_data, EOT_AoA)
+    | Ast.NN_Min =>
+        run_binary(inp[0].shape.shape, inp[0].data, inp[1].shape.shape, inp[1].data,
+                   out.shape.shape, out.data, Ast.NN_Min)
         for j <- 2:ninputs {
-            match inp[j].data {
-            | Ast.NN_Data_FP32 inparrj => run_min(inparrj, out_data, out_data, EOT_AoA)
-            | _ => throw TypeMismatchError
-            }
+            run_binary(inp[j].shape.shape, inp[j].data, out.shape.shape, out.data,
+                       out.shape.shape, out.data, Ast.NN_Min)
         }
     | _ => throw NotImplementedError
     }
@@ -689,5 +666,110 @@ match op
         | _ => throw NotImplementedError
         }
     }
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
+}
+
+@private fun run_expand(inp_shape_: int [], inp_data_: Ast.nndata_t,
+                        out_shape_: int [], out_data_: Ast.nndata_t): void
+@ccode
+{
+    #undef _FX_EXPAND_MAX_DIMS
+    #define _FX_EXPAND_MAX_DIMS 5
+    int_ inp_shape[_FX_EXPAND_MAX_DIMS], shape[_FX_EXPAND_MAX_DIMS];
+    size_t inp_step[_FX_EXPAND_MAX_DIMS], out_step[_FX_EXPAND_MAX_DIMS];
+    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    size_t esz = inp_data->dim[0].step;
+
+    int all_ndims[] = {
+        (int)inp_shape_->dim[0].size,
+        (int)out_shape_->dim[0].size
+    };
+    const int_* orig_shapes[] = {
+        (int_*)inp_shape_->data,
+        (int_*)out_shape_->data
+    };
+    int_* shapes[] = {inp_shape, shape};
+    size_t* steps[] = {inp_step, out_step};
+
+    if (all_ndims[0] > _FX_EXPAND_MAX_DIMS || all_ndims[1] > _FX_EXPAND_MAX_DIMS)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    if (inp_data_->tag != out_data_->tag)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+
+    // some of inputs are empty => result is empty
+    if (!_fx_prepare_for_broadcast_op(2, _FX_EXPAND_MAX_DIMS, all_ndims, orig_shapes, shapes, steps))
+        return FX_OK;
+
+    {
+    size_t inp_dp = inp_step[_FX_EXPAND_MAX_DIMS-1];
+    size_t out_dp = out_step[_FX_EXPAND_MAX_DIMS-1];
+    assert(out_dp == 1);
+    size_t inp_rowstep = inp_step[_FX_EXPAND_MAX_DIMS-2];
+    size_t out_rowstep = out_step[_FX_EXPAND_MAX_DIMS-2];
+    char* inptr0 = inp_data->data;
+    char* outptr0 = out_data->data;
+    size_t esz = out_data->dim[0].step;
+    int_ nrows = shape[_FX_EXPAND_MAX_DIMS-2];
+    int_ ncols = shape[_FX_EXPAND_MAX_DIMS-1];
+    size_t plane_idx, nplanes = 1;
+
+    if (esz != 1 && esz != 2 && esz != 4 && esz != 8)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    for (int k = 0; k < _FX_EXPAND_MAX_DIMS-2; k++) nplanes *= shape[k];
+
+    for (plane_idx = 0; plane_idx < nplanes; plane_idx++) {
+        size_t inp_ofs = 0, out_ofs = 0;
+        size_t idx = plane_idx;
+        for (int k = _FX_EXPAND_MAX_DIMS-3; k >= 0; k--) {
+            size_t prev_idx = idx/shape[k];
+            size_t i_k = idx - prev_idx*shape[k];
+            inp_ofs += i_k*inp_step[k];
+            out_ofs += i_k*out_step[k];
+            idx = prev_idx;
+        }
+
+        #undef _FX_IMPLEMENT_EXPAND
+        #define _FX_IMPLEMENT_EXPAND(_Tp) \
+            for (int_ i = 0; i < nrows; i++) { \
+                const _Tp* inptr = (const _Tp*)inptr0 + inp_ofs + inp_rowstep*i; \
+                _Tp* outptr = (_Tp*)outptr0 + out_ofs + out_rowstep*i; \
+                if (inp_dp == 1) { \
+                    for(int_ j = 0; j < ncols; j++) { \
+                        outptr[j] = inptr[j]; \
+                    } \
+                } else { \
+                    _Tp x = *inptr; \
+                    for(int_ j = 0; j < ncols; j++) { \
+                        outptr[j] = x; \
+                    } \
+                } \
+            }
+
+        if (esz == 1) {
+            _FX_IMPLEMENT_EXPAND(int8_t)
+        } else if (esz == 2) {
+            _FX_IMPLEMENT_EXPAND(int16_t)
+        } else if (esz == 4) {
+            _FX_IMPLEMENT_EXPAND(int32_t)
+        } else {
+            _FX_IMPLEMENT_EXPAND(int64_t)
+        }
+    }
+    }
+
+    return FX_OK;
+}
+
+fun run_expand(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op
+{
+| Ast.NN_Expand {t_inp, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
+    run_expand(inp.shape.shape, inp.data,
+               out.shape.shape, out.data)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }

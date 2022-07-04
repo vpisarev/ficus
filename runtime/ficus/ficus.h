@@ -185,7 +185,7 @@ void fx_free(void* ptr);
 #define FX_COPY_SIMPLE_BY_PTR(src, dst) *(dst) = *(src)
 #define FX_NOP(ptr)
 #define FX_CHECK_ZERO_STEP(delta, label) \
-    if(delta == 0) ; else FX_FAST_THROW(FX_EXN_ZeroStepError, label)
+    if(delta != 0) ; else FX_FAST_THROW(FX_EXN_ZeroStepError, label)
 #define FX_LOOP_COUNT(a, b, delta) \
     ((delta) > 0 ? ((b) - (a) + (delta) - 1)/(delta) : ((a) - (b) - (delta) - 1)/-(delta))
 #define FX_CHECK_EQ_SIZE(check, label) if(check) ; else FX_FAST_THROW(FX_EXN_SizeMismatchError, label)

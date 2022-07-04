@@ -315,13 +315,13 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         strides, t_inp, t_out } =>
         [infer_pooling_shape(ceil_mode, dilations, kernel_shape,
             pads, strides, t_inp, t_out)]
-    | Ast.NN_NonMaxSuppression { t_boxes, t_scores,
-        t_max_output_boxes_per_class, t_out } =>
-        throw Ast.NNError(f"shape inference for op={opname} is not implemented")
+    | Ast.NN_NonMaxSuppression {t_out} =>
+        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[1, 3]},
+            typ=Ast.NN_I64, dynamic=true}]
     | Ast.NN_NonZero {t_inp, t_out} =>
         val shape = get_shape(t_inp)
         val ndims = shape.shape.size()
-        val out_shape = Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[ndims, -1]}
+        val out_shape = Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[ndims, 1]}
         [argshapeinfo_t {idx=t_out, shape=out_shape, typ=Ast.NN_I64, dynamic=true}]
     | Ast.NN_Range {t_start, t_limit, t_delta, t_out} =>
         val start = model.get_tensor(t_start)
@@ -367,9 +367,9 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         // [TODO] handle NCHWxc
         val (shape, typ) = get_shape_typ(t_inp)
         val (sshape, _) = get_shape_typ(t_shape)
-        assert(`sshape.shape.size() == 1`)
+        assert(`sshape.shape.size() == 1 || sshape.shape.size() == 0`)
         val new_shape = int(model.get_tensor(t_shape))
-        val fold old_total = 1 for sz <- shape.shape {if sz != 0 {old_total*sz} else {old_total}}
+        val fold old_total = 1 for sz <- shape.shape {old_total*sz}
         val fold new_total=1, havem1=false for sz@i <- new_shape {
             if sz == -1 {
                 if havem1 {throw Ast.NNError(f"shape inference: {name} (op={opname}): the new shape contains more than one -1")}

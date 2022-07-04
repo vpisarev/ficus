@@ -209,7 +209,7 @@ match op {
 
     if (ndims > TRANSPOSE_MAX_DIMS)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-    if (ndims != out_ndims || ndims != perm_ndims)
+    if (ndims != out_ndims || (ndims != perm_ndims && perm_ndims != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (esz != out_esz)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
@@ -219,23 +219,21 @@ match op {
             (int)((int_*)inp_shape_->data)[i], (int)((int_*)out_shape_->data)[i], (int)((int_*)perm_->data)[i]);
     }*/
 
-    for(i = 0; i < ndims; i++) {
-        int_ j = ((int_*)perm_->data)[i];
+    for(i = ndims - 1; i >= 0; i--) {
+        int_ j = perm_->data ? ((int_*)perm_->data)[i] : ndims - i - 1;
         int_ inp_dim, out_dim;
         if (j < 0) j = ndims - j;
         if (j < 0 || j >= ndims)
             return FX_SET_EXN_FAST(FX_EXN_OutOfRangeError);
+        perm[delta + i] = j + delta;
         inp_dim = ((int_*)inp_shape_->data)[j];
         out_dim = ((int_*)out_shape_->data)[i];
         if (inp_dim != out_dim)
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    }
-
-    for (i = ndims - 1; i >= 0; i--) {
-        perm[delta + i] = ((int_*)perm_->data)[i] + delta;
         inp_shape[delta + i] = ((int_*)inp_shape_->data)[i];
         out_shape[delta + i] = ((int_*)out_shape_->data)[i];
     }
+
     for (i = TRANSPOSE_MAX_DIMS-2; i >= 0; i--)
         inp_step[i] = inp_step[i+1]*inp_shape[i+1];
 

@@ -601,7 +601,7 @@ fun string(typ: nntyp_t)
     | NN_Bool => "Bool"
 }
 
-fun dim2str(model: nnmodel_t, d: int) = if d > 0 {string(d)} else if d == 0 {"?"} else {model.dimnames_[-d-1]}
+fun dim2str(model: nnmodel_t, d: int) = if d >= 0 {string(d)} else {model.dimnames_[-d-1]}
 
 fun shape2str(model: nnmodel_t, s: nnshape_t)
 {
@@ -788,7 +788,7 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
     | NN_NonZero {t_inp, t_out} => ([t_inp], [t_out])
     | NN_Range {t_start, t_limit, t_delta, t_out} => ([t_start, t_limit, t_delta], [t_out])
     | NN_Reduce {t_inp, t_out} => ([t_inp], [t_out])
-    | NN_Reshape {t_inp, t_shape, t_out} => ([t_inp], [t_out])
+    | NN_Reshape {t_inp, t_shape, t_out} => ([t_inp, t_shape], [t_out])
     | NN_Resize {t_inp, t_scales, t_sizes, t_roi, t_out} => ([t_inp, t_scales, t_sizes, t_roi], [t_out])
     | NN_RoiAlign {t_inp, t_rois, t_batch_ind, t_out} => ([t_inp, t_rois, t_batch_ind], [t_out])
     | NN_Scatter {t_data, t_updates, t_indices, t_out} => ([t_data, t_updates, t_indices], [t_out])
@@ -944,7 +944,7 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
         op2str(name, "TopK", f"axis={axis}, largest={largest}, sorted={sorted}",
             t2str(model, [("t_inp", t_inp), ("t_K", t_K), ("t_out", t_out), ("t_out_ind", t_out_ind)]), indent)
     | NN_Transpose {name, perm, t_inp, t_out} =>
-        op2str(name, "Tranpose", f"perm={perm}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+        op2str(name, "Transpose", f"perm={perm}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Unsqueeze {name, t_inp, t_axes, t_out} =>
         op2str(name, "Unsqueeze", "", t2str(model, [("t_inp", t_inp), ("t_axes", t_axes), ("t_out", t_out)]), indent)
     }
@@ -1343,3 +1343,5 @@ fun normalize_axis(axis: int, ndims: int) {
     assert(`0 <= axis <= ndims`)
     axis
 }
+
+always_use([NN_Data_I32([0i32, 1i32])])
