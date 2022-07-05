@@ -447,6 +447,9 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
                             | "__intrin_sat_uint16__" => IntrinSaturate(ScUInt16)
                             | "__intrin_sat_int16__" => IntrinSaturate(ScInt16)
                             | "__intrin_size__" => IntrinGetSize
+
+                            | "__intrin_gemm__" => IntrinGEMM
+
                             | _ => throw parse_err(ts, f"unknown/unsupported intrinsic '{istr}'")
                             }
                         ExpIntrin(iop, args, make_new_ctx(eloc))

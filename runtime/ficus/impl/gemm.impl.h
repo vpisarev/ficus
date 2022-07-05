@@ -774,6 +774,10 @@ int fx_gemm(fx_arr_t* m1, bool t1, int_ rs1, int_ re1, int_ rd1, int_ cs1, int_ 
     re2 = (re2 == -1) ? m2->dim[0].size : re2;
     ce2 = (ce2 == -1) ? m2->dim[1].size : ce2;
 
+    /*printf("elemsize=%d, t1=%d, rs1=%d, re1=%d, rd1=%d, cs1=%d, ce1=%d, cd1=%d, t2=%d, rs2=%d, re2=%d, rd2=%d, cs2=%d, ce2=%d, cd2=%d\n",
+        (int)elemsize, (int)t1, (int)rs1, (int)re1, (int)rd1, (int)cs1, (int)ce1, (int)cd1,
+        (int)t2, (int)rs2, (int)re2, (int)rd2, (int)cs2, (int)ce2, (int)cd2);*/
+
     if (rs1<0 || rs1 > m1->dim[0].size || re1<0 || re1 > m1->dim[0].size || rd1<0 || rs1>=re1 ||
         cs1<0 || cs1 > m1->dim[1].size || ce1<0 || ce1 > m1->dim[1].size || cd1<0 || cs1>=ce1 ||
         rs2<0 || rs2 > m2->dim[0].size || re2<0 || re2 > m2->dim[0].size || rd2<0 || rs2>=re2 ||

@@ -1677,6 +1677,30 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                                  function must be 'float' or 'double'")
         }
         ExpIntrin(IntrinMath(f), args, ctx)
+    | ExpIntrin(IntrinGEMM, [:: m1, t1, rs1, re1, rd1, cs1, ce1, cd1, m2, t2, rs2, re2, rd2, cs2, ce2, cd2], _) =>
+        val (m1, t1, rs1, re1, rd1, cs1, ce1, cd1, m2, t2, rs2, re2, rd2, cs2, ce2, cd2) =
+            (for a <- (m1, t1, rs1, re1, rd1, cs1, ce1, cd1, m2, t2, rs2, re2, rd2, cs2, ce2, cd2)
+            {
+                check_exp(a, env, sc)
+            })
+        unify(get_exp_typ(t1), TypBool, eloc, f"t1 should be boolean")
+        unify(get_exp_typ(t2), TypBool, eloc, f"t1 should be boolean")
+        for range_val <- (rs1, re1, rd1, cs1, ce1, cd1, rs2, re2, rd2, cs2, ce2, cd2) {
+            unify(get_exp_typ(range_val), TypInt, eloc,
+                f"range boundaries/delta's should all be integers")
+        }
+        val m1typ = get_exp_typ(m1)
+        val m2typ = get_exp_typ(m2)
+        unify(m1typ, m2typ, eloc, f"m1 and m2 should have the same type")
+        val elemtyp = make_new_typ()
+        val mtyp = TypArray(2, elemtyp)
+        unify(m1typ, mtyp, eloc, f"m1 and m2 should be 2 dimensional arrays")
+        if !maybe_unify(elemtyp, TypFloat(32), eloc, true) &&
+           !maybe_unify(elemtyp, TypFloat(64), eloc, true) {
+            throw compile_err(eloc, f"multiplied matrices should contain float or double elements")
+        }
+        unify(etyp, mtyp, eloc, f"the result of GEMM must be the same as the type of arguments")
+        ExpIntrin(IntrinGEMM, [:: m1, t1, rs1, re1, rd1, cs1, ce1, cd1, m2, t2, rs2, re2, rd2, cs2, ce2, cd2], ctx)
     | ExpIntrin(iop, args, _) =>
         match iop {
         | IntrinGetSize =>

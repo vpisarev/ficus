@@ -5827,6 +5827,7 @@ _fx_N12Ast__sctyp_t _fx_g14Parser__ScInt8 = { 2 };
 _fx_N12Ast__sctyp_t _fx_g16Parser__ScUInt16 = { 3 };
 _fx_N12Ast__sctyp_t _fx_g15Parser__ScInt16 = { 4 };
 _fx_N13Ast__intrin_t _fx_g21Parser__IntrinGetSize = { 9 };
+_fx_N13Ast__intrin_t _fx_g18Parser__IntrinGEMM = { 13 };
 _fx_N15Ast__for_make_t _fx_g19Parser__ForMakeNone = { 1 };
 _fx_N15Ast__for_make_t _fx_g20Parser__ForMakeArray = { 2 };
 _fx_N15Ast__for_make_t _fx_g19Parser__ForMakeList = { 3 };
@@ -11485,14 +11486,18 @@ static int
                      if (fx_streq(&istr_1, &slit_52)) {
                         iop_0 = _fx_g21Parser__IntrinGetSize; goto _fx_endmatch_0;
                      }
+                     fx_str_t slit_53 = FX_MAKE_STR("__intrin_gemm__");
+                     if (fx_streq(&istr_1, &slit_53)) {
+                        iop_0 = _fx_g18Parser__IntrinGEMM; goto _fx_endmatch_0;
+                     }
                      fx_str_t v_44 = {0};
                      fx_str_t v_45 = {0};
                      fx_exn_t v_46 = {0};
                      FX_CALL(_fx_M6ParserFM6stringS1S(&istr_1, &v_44, 0), _fx_catch_26);
-                     fx_str_t slit_53 = FX_MAKE_STR("unknown/unsupported intrinsic \'");
-                     fx_str_t slit_54 = FX_MAKE_STR("\'");
+                     fx_str_t slit_54 = FX_MAKE_STR("unknown/unsupported intrinsic \'");
+                     fx_str_t slit_55 = FX_MAKE_STR("\'");
                      {
-                        const fx_str_t strs_0[] = { slit_53, v_44, slit_54 };
+                        const fx_str_t strs_0[] = { slit_54, v_44, slit_55 };
                         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_45), _fx_catch_26);
                      }
                      FX_CALL(_fx_M6ParserFM9parse_errE2LT2N14Lexer__token_tR10Ast__loc_tS(ts_2, &v_45, &v_46, 0), _fx_catch_26);
@@ -11512,20 +11517,20 @@ static int
                   }
                   else {
                      bool v_47;
-                     fx_str_t slit_55 = FX_MAKE_STR("vector");
+                     fx_str_t slit_56 = FX_MAKE_STR("vector");
                      bool t_0;
-                     if (_fx_F6__eq__B2SS(&istr_1, &slit_55, 0)) {
+                     if (_fx_F6__eq__B2SS(&istr_1, &slit_56, 0)) {
                         t_0 = true;
                      }
                      else {
-                        fx_str_t slit_56 = FX_MAKE_STR("list"); t_0 = _fx_F6__eq__B2SS(&istr_1, &slit_56, 0);
+                        fx_str_t slit_57 = FX_MAKE_STR("list"); t_0 = _fx_F6__eq__B2SS(&istr_1, &slit_57, 0);
                      }
                      bool t_1;
                      if (t_0) {
                         t_1 = true;
                      }
                      else {
-                        fx_str_t slit_57 = FX_MAKE_STR("array"); t_1 = _fx_F6__eq__B2SS(&istr_1, &slit_57, 0);
+                        fx_str_t slit_58 = FX_MAKE_STR("array"); t_1 = _fx_F6__eq__B2SS(&istr_1, &slit_58, 0);
                      }
                      if (t_1) {
                         bool res_1;
@@ -11580,16 +11585,16 @@ static int
                                     vcase_0 = &v_50->u.ExpMap;
                                  _fx_R16Ast__for_flags_t* flags_0 = &vcase_0->t2;
                                  bool v_51;
-                                 fx_str_t slit_58 = FX_MAKE_STR("array");
-                                 v_51 = _fx_F6__eq__B2SS(&istr_1, &slit_58, 0);
+                                 fx_str_t slit_59 = FX_MAKE_STR("array");
+                                 v_51 = _fx_F6__eq__B2SS(&istr_1, &slit_59, 0);
                                  _fx_N15Ast__for_make_t mkflag_0;
                                  if (v_51) {
                                     mkflag_0 = _fx_g20Parser__ForMakeArray;
                                  }
                                  else {
                                     bool v_52;
-                                    fx_str_t slit_59 = FX_MAKE_STR("vector");
-                                    v_52 = _fx_F6__eq__B2SS(&istr_1, &slit_59, 0);
+                                    fx_str_t slit_60 = FX_MAKE_STR("vector");
+                                    v_52 = _fx_F6__eq__B2SS(&istr_1, &slit_60, 0);
                                     if (v_52) {
                                        mkflag_0 = _fx_g21Parser__ForMakeVector;
                                     }
@@ -11635,10 +11640,10 @@ static int
                         fx_str_t v_59 = {0};
                         fx_exn_t v_60 = {0};
                         FX_CALL(_fx_M6ParserFM6stringS1S(&istr_1, &v_58, 0), _fx_catch_28);
-                        fx_str_t slit_60 = FX_MAKE_STR("unexpected \'");
-                        fx_str_t slit_61 = FX_MAKE_STR("\' argument");
+                        fx_str_t slit_61 = FX_MAKE_STR("unexpected \'");
+                        fx_str_t slit_62 = FX_MAKE_STR("\' argument");
                         {
-                           const fx_str_t strs_1[] = { slit_60, v_58, slit_61 };
+                           const fx_str_t strs_1[] = { slit_61, v_58, slit_62 };
                            FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_59), _fx_catch_28);
                         }
                         FX_CALL(_fx_M6ParserFM9parse_errE2LT2N14Lexer__token_tR10Ast__loc_tS(ts_2, &v_59, &v_60, 0),
@@ -11655,8 +11660,8 @@ static int
                         FX_COPY_PTR(v_55.t0, &el_0);
                         _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(&v_55.t1, &ctx_0);
                         bool v_61;
-                        fx_str_t slit_62 = FX_MAKE_STR("array");
-                        v_61 = _fx_F6__eq__B2SS(&istr_1, &slit_62, 0);
+                        fx_str_t slit_63 = FX_MAKE_STR("array");
+                        v_61 = _fx_F6__eq__B2SS(&istr_1, &slit_63, 0);
                         if (v_61) {
                            FX_CALL(_fx_cons_LLN10Ast__exp_t(el_0, 0, true, &v_56), _fx_catch_29);
                            FX_CALL(
@@ -11665,8 +11670,8 @@ static int
                         }
                         else {
                            bool v_62;
-                           fx_str_t slit_63 = FX_MAKE_STR("vector");
-                           v_62 = _fx_F6__eq__B2SS(&istr_1, &slit_63, 0);
+                           fx_str_t slit_64 = FX_MAKE_STR("vector");
+                           v_62 = _fx_F6__eq__B2SS(&istr_1, &slit_64, 0);
                            if (v_62) {
                               FX_CALL(
                                  _fx_M3AstFM11ExpMkVectorN10Ast__exp_t2LN10Ast__exp_tT2N10Ast__typ_tRM5loc_t(el_0, &ctx_0,

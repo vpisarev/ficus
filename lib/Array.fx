@@ -315,6 +315,9 @@ operator * (a: 't [,], b: 't [,])
     c
 }
 
+operator * (a: float [,], b: float [,]) = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
+operator * (a: double [,], b: double [,]) = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
+
 operator *= (a: 't [,], b: 't [,]) {
     val temp = a*b
     a[:,:] = temp

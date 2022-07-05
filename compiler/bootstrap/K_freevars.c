@@ -3941,26 +3941,26 @@ FX_EXTERN_C int _fx_M10K_freevarsFM7__add__LN14K_form__kexp_t2LN14K_form__kexp_t
    return fx_status;
 }
 
-FX_EXTERN_C void _fx_M10K_freevarsFM4swapv3A1T2SR9Ast__id_tii(fx_arr_t* arr, int_ i, int_ j, void* fx_fv)
+FX_EXTERN_C void _fx_M10K_freevarsFM6_swap_v3A1T2SR9Ast__id_tii(fx_arr_t* arr, int_ i, int_ j, void* fx_fv)
 {
    
 size_t esz = arr->dim[0].step;
-        if(esz % sizeof(int) == 0) {
-            int* ptr0 = (int*)(arr->data + i*esz);
-            int* ptr1 = (int*)(arr->data + j*esz);
-            esz /= sizeof(int);
-            for( size_t k = 0; k < esz; k++ ) {
-                int t0 = ptr0[k], t1 = ptr1[k];
-                ptr0[k] = t1; ptr1[k] = t0;
-            }
-        } else {
-            char* ptr0 = arr->data + i*esz;
-            char* ptr1 = arr->data + j*esz;
-            for( size_t k = 0; k < esz; k++ ) {
-                char t0 = ptr0[k], t1 = ptr1[k];
-                ptr0[k] = t1; ptr1[k] = t0;
-            }
+    if(esz % sizeof(int) == 0) {
+        int* ptr0 = (int*)(arr->data + i*esz);
+        int* ptr1 = (int*)(arr->data + j*esz);
+        esz /= sizeof(int);
+        for( size_t k = 0; k < esz; k++ ) {
+            int t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
         }
+    } else {
+        char* ptr0 = arr->data + i*esz;
+        char* ptr1 = arr->data + j*esz;
+        for( size_t k = 0; k < esz; k++ ) {
+            char t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
+        }
+    }
 
 }
 
@@ -4073,7 +4073,7 @@ static int _fx_M10K_freevarsFM6qsort_v5iiA1T2SR9Ast__id_tFPB2T2SR9Ast__id_tT2SR9
             FX_CALL(lt_0->fp(&v_9, &p_1, &v_10, lt_0->fcv), _fx_catch_0);
             int_ v_11;
             if (v_10) {
-               _fx_M10K_freevarsFM4swapv3A1T2SR9Ast__id_tii(arr_0, i0_0, j_1, 0); v_11 = i0_0 + 1;
+               _fx_M10K_freevarsFM6_swap_v3A1T2SR9Ast__id_tii(arr_0, i0_0, j_1, 0); v_11 = i0_0 + 1;
             }
             else {
                v_11 = i0_0;
