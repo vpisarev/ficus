@@ -226,7 +226,7 @@ static int _fx_prepare_for_resize(
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     #pragma omp parallel for num_threads((int)ntasks)
-    for(int task_id = 0; task_id < ntasks; task_id++) {
+    for(int_ task_id = 0; task_id < ntasks; task_id++) {
         int_ ncy0 = task_id*nsubtasks/ntasks;
         int_ ncy1 = (task_id+1)*nsubtasks/ntasks;
         int_ outsz_0 = out_shape[0];
@@ -331,7 +331,7 @@ static int _fx_prepare_for_resize(
         memcpy(out_data->data, inp_data->data, inp_data->dim[0].size*esz);
     } else {
         #pragma omp parallel for num_threads((int)ntasks)
-        for(int task_id = 0; task_id < ntasks; task_id++) {
+        for(int_ task_id = 0; task_id < ntasks; task_id++) {
             int_ ny0 = task_id*nsubtasks/ntasks;
             int_ ny1 = (task_id+1)*nsubtasks/ntasks;
             int_ nchannels = out_shape[1];

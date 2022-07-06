@@ -40,7 +40,7 @@ fun run_nonzero(inp_shape_: int [], inp_data_: Ast.nndata_t,
     }
 
     #pragma omp parallel for num_threads(ntasks)
-    for (int task_id = 0; task_id < ntasks; task_id++) {
+    for (int_ task_id = 0; task_id < ntasks; task_id++) {
         int_ i0 = task_id*inp_total/ntasks, i1 = (task_id+1)*inp_total/ntasks;
         int_ nz = 0;
         #undef _FX_IMPLEMENT_NONZERO_COUNT
@@ -64,7 +64,7 @@ fun run_nonzero(inp_shape_: int [], inp_data_: Ast.nndata_t,
     }
 
     cofs[0] = 0;
-    for (int i = 0; i < ntasks; i++)
+    for (int_ i = 0; i < ntasks; i++)
         cofs[i+1] = cofs[i] + cbuf[i];
     out_total = cofs[ntasks];
     new_out_total_bytes = out_total*ndims*esz;
@@ -81,7 +81,7 @@ fun run_nonzero(inp_shape_: int [], inp_data_: Ast.nndata_t,
     out_data.dim[0].step = esz;
 
     #pragma omp parallel for num_threads(ntasks)
-    for (int task_id = 0; task_id < ntasks; task_id++) {
+    for (int_ task_id = 0; task_id < ntasks; task_id++) {
         int_ i0 = task_id*inp_total/ntasks, i1 = (task_id+1)*inp_total/ntasks;
         int64_t* outptr = (int64_t*)out_data.data + cofs[task_id];
 

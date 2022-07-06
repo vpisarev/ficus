@@ -574,7 +574,7 @@ match op {
     // ...
 
     #pragma omp parallel for num_threads(ntasks) if (total_size > 10000000)
-    for (int i = 0; i < ntasks; i++) {
+    for (int_ i = 0; i < ntasks; i++) {
         int_ j0 = i*total_repeats/ntasks, j1 = (i+1)*total_repeats/ntasks;
         int_ ofs[TILE_MAX_DIMS];
         int_ sz0 = inp_shape[0], sz1 = inp_shape[1], sz2 = inp_shape[2], sz3 = inp_shape[3];

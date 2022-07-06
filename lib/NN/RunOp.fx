@@ -7,7 +7,7 @@
 // will likely be eliminated soon
 
 import Ast
-import OpConv, OpElemwise, OpNN, OpMisc, /*OpNMS,*/ OpPermute, OpPooling, OpReduce, OpResize
+import OpConv, OpElemwise, OpNN, OpMisc, OpNMS, OpPermute, OpPooling, OpReduce, OpResize
 
 fun run_op(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
@@ -63,8 +63,7 @@ match op
     | Ast.NN_MaxPool _ =>
         OpPooling.run_maxpool(model, op)
     | Ast.NN_NonMaxSuppression _ =>
-        //OpNMS.run_nms(model, op)
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        OpNMS.run_nms(model, op)
     | Ast.NN_NonZero _ =>
         OpReduce.run_nonzero(model, op)
     | Ast.NN_Range _ =>
