@@ -923,6 +923,9 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* result);
 int fx_flatten_arr(const fx_arr_t* arr, fx_arr_t* farr);
 int fx_reshape_arr(const fx_arr_t* arr, int ndims, const int_* size,
                    int arr_channels, int new_channels, fx_arr_t* result);
+typedef bool (*fx_less_t)(const void*, const void*, void* userdata);
+int fx_qsort(void* arr, int_ size, size_t esz,
+             fx_less_t lt, void* userdata, int_ prefix);
 
 int fx_sgemm(bool tA, bool tB, float alpha, float beta,
              int ma, int na, const float* a, int lda0, int lda1,

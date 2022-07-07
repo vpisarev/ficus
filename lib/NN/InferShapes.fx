@@ -580,19 +580,22 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             dynamic=!const_shape }]
     | Ast.NN_TopK {axis, t_inp, t_K, t_out, t_out_ind} =>
         val (shape, typ) = get_shape_typ(t_inp)
-        val tK = int(model.get_tensor(t_K))
-        assert(`tK.size() == 1`)
-        val K = tK[0]
+        val tK = model.get_tensor(t_K).data
+        assert(`tK.total() == 1`)
+        val K = match tK {
+            | Ast.NN_Data_I64 tK_data => int(tK_data[0])
+            | _ => throw Ast.NNError("incorrect type of K tensor in topK: INT64 is expected\n")
+            }
         assert(`K >= 0`)
         val ndims = shape.shape.size()
         val axis = Ast.normalize_axis(axis, ndims)
         val out_shape = shape.shape.copy()
-        out_shape[axis] = K
+        out_shape[axis] = min(K, shape.shape[axis])
         val constK = model.isconst(t_K)
         [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
             layout=shape.layout, shape=out_shape}, typ=typ,
             dynamic=!constK },
-           argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
+           argshapeinfo_t {idx=t_out_ind, shape=Ast.nnshape_t {
             layout=shape.layout, shape=out_shape}, typ=Ast.NN_I64,
             dynamic=!constK }]
     | Ast.NN_Transpose {perm, t_inp, t_out} =>

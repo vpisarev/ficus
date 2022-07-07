@@ -221,11 +221,20 @@ fun bool(rng: RNG) = int64(next(rng)) < 0L
 fun uniform(rng: RNG, a: uint8, b: uint8) =
     uint8((next(rng) % (b - a + 1 :> uint64) :> int) + a)
 
+fun uniform(rng: RNG, a: int8, b: int8) =
+    int8((next(rng) % (b - a + 1 :> uint64) :> int) + a)
+
 fun uniform(rng: RNG, a: uint16, b: uint16) =
     uint16((next(rng) % (b - a + 1 :> uint64) :> int) + a)
 
+fun uniform(rng: RNG, a: int16, b: int16) =
+    int16((next(rng) % (b - a + 1 :> uint64) :> int) + a)
+
 fun uniform(rng: RNG, a: uint32, b: uint32) =
     uint32((next(rng) % (b - a + 1u32 :> uint64) :> uint32) + a)
+
+fun uniform(rng: RNG, a: int32, b: int32) =
+    int32((next(rng) % (b - a + 1u32 :> uint64) :> uint32) + a)
 
 fun uniform(rng: RNG, a: int, b: int) =
     (next(rng) % (b - a + 1 :> uint64) :> int) + a

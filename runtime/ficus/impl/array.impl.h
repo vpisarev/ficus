@@ -746,6 +746,115 @@ int fx_reshape_arr(const fx_arr_t* arr, int ndims, const int_* size,
     return FX_OK;
 }
 
+FX_INLINE void fx_swap_arrelems(char* a, char* b, size_t esz)
+{
+    if ((esz & 3) == 0) {
+        int* ia = (int*)a;
+        int* ib = (int*)b;
+        for (size_t i = 0; i < (esz >> 2); i++) {
+            int t0 = ia[i], t1 = ib[i];
+            ia[i] = t1; ib[i] = t0;
+        }
+    } else {
+        for (size_t i = 0; i < esz; i++) {
+            char t0 = a[i], t1 = b[i];
+            a[i] = t1; b[i] = t0;
+        }
+    }
+}
+
+int fx_qsort(void* arr_, int_ size, size_t esz,
+             bool (*lt)(const void* a, const void* b, void* userdata),
+             void* userdata, int_ prefix)
+{
+    enum {FX_QSORT_STACK_SIZE=256};
+    int_ stack[FX_QSORT_STACK_SIZE];
+    int_* top = stack;
+    char* arr = (char*)arr_;
+    *top++ = 0;
+    *top++ = size-1;
+    if (prefix <= 0)
+        prefix = size;
+    while (top > stack) {
+        int_ hi = *--top;
+        int_ lo = *--top;
+
+        if (lo+1 < hi) {
+            int_ m = (lo+hi)/2, j, i0, i1;
+            char* a = arr + lo*esz;
+            char* b = arr + m*esz;
+            char* p = arr + hi*esz;
+
+            // choose pivot element as a median-of-3
+            if (lt(a, b, userdata)) {
+                if (lt(b, p, userdata)) {
+                    fx_swap_arrelems(b, p, esz);
+                } else if (!lt(a, p, userdata)) {
+                    fx_swap_arrelems(a, p, esz);
+                }
+            } else {
+                if (lt(a, p, userdata)) {
+                    fx_swap_arrelems(a, p, esz);
+                } else if (!lt(b, p, userdata)) {
+                    fx_swap_arrelems(b, p, esz);
+                }
+            }
+
+            // move all elements that are less than pivot to the left of it
+            for(i0 = j = lo; j < hi; j++) {
+                char* arr_j = arr + j*esz;
+                if (lt(arr_j, p, userdata)) {
+                    if (j > i0)
+                        fx_swap_arrelems(arr_j, arr + i0*esz, esz);
+                    i0++;
+                }
+            }
+
+            // put pivot element in place:
+            //      ooooooxxxxxxp => oooooopxxxxxxx
+            //      ( o's are less than p, x's are not less than p)
+            if (i0 < hi) {
+                fx_swap_arrelems(arr + i0*esz, p, esz);
+                p = arr + i0*esz;
+            }
+
+            // try to find a prefix in the x's part where elements are not greater than p:
+            // oooooopxxxxxxx => ooooooopppxxxxx
+            for (j = i0, i1 = hi; j < hi; j++)
+                if (lt(p, arr + (j+1)*esz, userdata)) {
+                    i1=j; break;
+                }
+
+            if (top + 4 > stack + FX_QSORT_STACK_SIZE)
+                return FX_SET_EXN_FAST(FX_EXN_StackOverflowError);
+
+            // do the shortest half sorting via tail recursion to save stack space
+            if (i0 - lo < hi - i1) {
+                if (i1 < prefix) {
+                    *top++ = i1+1;
+                    *top++ = hi;
+                }
+                *top++ = lo;
+                *top++ = i0-1;
+            } else {
+                *top++ = lo;
+                *top++ = i0-1;
+                if (i1 < prefix) {
+                    *top++ = i1+1;
+                    *top++ = hi;
+                }
+            }
+        } else if (lo < hi) {
+            char* a = arr + lo*esz;
+            char* b = arr + hi*esz;
+            if (lt(b, a, userdata)) {
+                fx_swap_arrelems(a, b, esz);
+            }
+        }
+    }
+    return FX_OK;
+}
+
 #ifdef __cplusplus
 }
 #endif

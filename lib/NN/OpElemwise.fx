@@ -138,6 +138,7 @@ match op {
 @private fun run_softsign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = x/(1 + abs(x))}
 @private fun run_sqrt(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sqrt(x)}
 @private fun run_tanh(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = tanh(x)}
+@private fun run_leaky_relu(inp: 't [], alpha: float, out: 't []) = for x@idx <- inp {out[idx] = if x >= 0.f {x} else {(x*alpha :> 't)}}
 
 fun run_unary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
@@ -182,6 +183,21 @@ match op
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
+
+fun run_leaky_relu(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op
+{
+| Ast.NN_LeakyRelu {alpha, t_inp, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
+    match (inp.data, out.data) {
+    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_leaky_relu(inp_data, alpha, out_data)
+    | _ => throw NotImplementedError
+    }
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
+}
+
 
 @ccode {
 #include "ficus_nn_common.h"

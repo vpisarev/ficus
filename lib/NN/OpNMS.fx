@@ -26,13 +26,15 @@ typedef struct _fx_nms_entry
     We preserve the original order. This makes the sorting results completely determinstic regarless
     of the actual implementation of qsort().
 */
-static int _fx_cmp_boxes(const void* a_, const void* b_)
+static bool _fx_lt_boxes(const void* a_, const void* b_, void* userdata)
 {
     const _fx_nms_entry* a = (const _fx_nms_entry*)a_;
     const _fx_nms_entry* b = (const _fx_nms_entry*)b_;
-    return a->cls != b->cls ? a->cls - b->cls :
-           a->score != b->score ? (a->score > b->score ? -1 : 1) :
-           a->idx - b->idx;
+    if (a->cls < b->cls)
+        return true;
+    if (a->score < b->score)
+        return true;
+    return a->idx < b->idx;
 }
 
 static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
@@ -68,7 +70,7 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
     const int_* scores_shape = (const int_*)(scores_shape_->data);
     const float* scores_data = (const float*)(scores_data_->data);
     int_ N, B, C;
-    int status = FX_OK;
+    volatile int status = FX_OK;
     _fx_nms_entry* best_boxes = 0;
     int* best_counters = 0;
     int_ total_best = 0;
@@ -103,7 +105,7 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
     for (int_ task_id = 0; task_id < ntasks; task_id++)
     {
         int_ n0 = task_id*N/ntasks, n1 = (task_id+1)*N/ntasks;
-        for (; n0 < n1; n0++) {
+        for (; n0 < n1 && status >= 0; n0++) {
             _fx_nms_entry* bboxes_n = best_boxes + n0*B, *bboxes = bboxes_n;
             _fx_nms_entry* nms_bboxes = bboxes;
             int_ i, j, k, i0, i1, nboxes;
@@ -145,11 +147,10 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
                 best_counters[n0] = 0;
                 continue;
             }
-            // qsort is not the fastest sorting algorithm, but we only
-            // apply it to the boxes that have high-enough score, so
-            // on typical images with just several objects and
-            // it should be relatively fast.
-            qsort(bboxes, nboxes, sizeof(bboxes[0]), _fx_cmp_boxes);
+
+            status = fx_qsort(bboxes, nboxes, sizeof(bboxes[0]), _fx_lt_boxes, 0, 0);
+            if (status < 0)
+                break;
 
             // do the actual non-maxima suppression inside each class
             for (i0 = 0; i0 < nboxes; i0++) {
@@ -184,7 +185,7 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
     } else {
         fx_copy_arr(out_buf0, &out_buf);
     }
-    if (status > 0) {
+    if (status >= 0) {
         fx_copy_arr(&out_buf, &out_data);
         out_data.dim[0].size = total_best*3;
         out_data.dim[0].step = sizeof(*outptr);
@@ -203,6 +204,7 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
         fx_result->t1 = out_data;
         fx_result->t2 = out_buf;
     }
+    fx_free(best_boxes);
     return status;
 }
 

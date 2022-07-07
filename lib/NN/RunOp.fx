@@ -55,7 +55,7 @@ match op
     | Ast.NN_If _ =>
         throw Ast.NNError(f"unsupported operation '{op.name()}'")
     | Ast.NN_LeakyRelu _ =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        OpElemwise.run_leaky_relu(model, op)
     | Ast.NN_Loop _ =>
         throw Ast.NNError(f"unsupported operation '{op.name()}'")
     | Ast.NN_LRN _ =>
@@ -91,7 +91,7 @@ match op
     | Ast.NN_Tile _ =>
         OpPermute.run_tile(model, op)
     | Ast.NN_TopK _ =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        OpReduce.run_top_k(model, op)
     | Ast.NN_Transpose _ =>
         OpPermute.run_transpose(model, op)
     | Ast.NN_Unsqueeze {t_inp, t_out} =>
