@@ -21,7 +21,6 @@ fun size(a: 't [,,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
                          __intrin_size__(a, 2), __intrin_size__(a, 3))
 
 fun total(a: 't [+]) = fold p = 1 for szj <- size(a) {p*szj}
-fun total(a: 't []) = size(a)
 @nothrow fun empty(a: 't [+]):bool
 @ccode {
     if (!a->data || a->ndims == 0) return true;

@@ -277,9 +277,13 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             layout=shape.layout}, typ=typ, dynamic=false}]
     | Ast.NN_Identity {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
-    | Ast.NN_If _ =>
+    | Ast.NN_If {t_inp} =>
         // we don't go into the if branches;
         // instead, we infere shapes inside one of the branch when we execute it
+        val (shape, typ) = get_shape_typ(t_inp)
+        println(f"If: t_inp's shape={shape.shape}, total={shape.total()}")
+        assert(`shape.total() == 1`)
+        assert(`typ == Ast.NN_Bool`)
         []
     | Ast.NN_LeakyRelu {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
@@ -326,13 +330,16 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Range {t_start, t_limit, t_delta, t_out} =>
         val start = model.get_tensor(t_start)
         val typ = start.elemtype()
-        val start = double(start)
-        val limit = double(model.get_tensor(t_limit))
-        val delta = double(model.get_tensor(t_delta))
-        assert(`start.size() == 1`)
-        assert(`limit.size() == 1`)
-        assert(`delta.size() == 1`)
-        val nelems = max(ceil((limit[0] - start[0])/delta[0]), 0)
+        val start = start.data
+        val limit = model.get_tensor(t_limit).data
+        val delta = model.get_tensor(t_delta).data
+        assert(`start.total() == 1`)
+        assert(`limit.total() == 1`)
+        assert(`delta.total() == 1`)
+        val start = start.double_scalar_or(0.)
+        val limit = limit.double_scalar_or(0.)
+        val delta = delta.double_scalar_or(1.)
+        val nelems = max(ceil((limit - start)/delta), 0)
         val allconsts = model.isconst(t_start) && model.isconst(t_limit) && model.isconst(t_delta)
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[nelems]},
             typ=typ, dynamic=!allconsts}]

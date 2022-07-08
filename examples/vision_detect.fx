@@ -7,7 +7,7 @@ import Filename, Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 import Color
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpYolo
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpDetect
 
 type model_kind_t = DetectorSSD | DetectorYolo | DetectorTinyYolo | DetectorAuto
 
@@ -30,7 +30,7 @@ fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [], ~class_names: string 
         (rgb.2*255., rgb.1*255., rgb.0*255., 255.)
     }]
 
-    for (x0, y0, x1, y1, conf, clsid) <- bboxes {
+    for (y0, x0, y1, x1, conf, clsid) <- bboxes {
         cv.rectangle(image, (round(x0), round(y0)),
             (round(x1), round(y1)), colors[int(clsid)], thickness=3)
     }
@@ -248,13 +248,18 @@ for imgname@i <- images {
             }
         }*/
     }
-    val outputs = [for (_, out) <- outputs[:3] {out}]
-    val boxes = NN.OpYolo.yolov4_postprocess(
-        outputs, orig_image_size=(h, w), input_size=input_size,
-        score_threshold=0.25f, nms_threshold=0.22f,
-        anchors=NN.OpYolo.yolov4_default_anchors,
-        strides=NN.OpYolo.yolov4_default_strides,
-        xyscale=NN.OpYolo.yolov4_default_scale)
+    val outputs = [for (_, out) <- outputs {out}]
+
+    val boxes = match detector_kind {
+        | DetectorYolo => NN.OpDetect.yolov4_postprocess(
+            outputs, orig_image_size=(h, w), input_size=input_size,
+            score_threshold=0.25f, nms_threshold=0.22f,
+            anchors=NN.OpDetect.yolov4_default_anchors,
+            strides=NN.OpDetect.yolov4_default_strides,
+            xyscale=NN.OpDetect.yolov4_default_scale)
+        | _ =>
+            NN.OpDetect.ssd_postprocess(outputs, orig_image_size=(h, w), input_size=input_size)
+        }
     draw_boxes(img, boxes, class_names=coco_class_names)
     cv.imshow("detection", img)
     ignore(cv.waitKey())

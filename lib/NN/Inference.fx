@@ -78,6 +78,21 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
         println(f"[op #{opidx}/{nops} in graph '{graph.name}']. running op '{op.name()}'")
         //val t = Sys.tick_count()
         match op {
+        | Ast.NN_If {then_branch, else_branch, t_inp, t_out} =>
+            val inp = model.get_tensor(t_inp)
+            val f = match inp.data {
+                | Ast.NN_Data_Bool inp_data => inp_data[0]
+                | _ => throw Ast.NNError("Incorrect input of If operation, a boolean scalar is expected")
+                }
+            val branch = if f {then_branch} else {else_branch}
+            run_graph(model, branch, outputs)
+            val {outargs} = branch
+            assert(`outargs.size() == t_out.size()`)
+            for br_outidx@i <- outargs, outidx <- t_out {
+                val br_out = model.tensors[br_outidx]
+                model.fit(outidx, br_out.shape, br_out.elemtype())
+                model.copy_tensor_data(br_outidx, outidx)
+            }
         | Ast.NN_Loop { body, t_trip_count, t_cond_in, t_v_in, t_v_out } =>
             val {inpargs, outargs} = body
             val n_state_vars = t_v_in.size()

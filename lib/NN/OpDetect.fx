@@ -77,7 +77,7 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
                     if xmin >= org_w || ymin >= org_h || xmax < 0.f || ymax < 0.f {continue}
                     //println(f"{boxes.count}: {(xmin, ymin, xmax, ymax, score, best_class)}")
 
-                    boxes.do_push((xmin, ymin, xmax, ymax, score, float(best_class)))
+                    boxes.do_push((ymin, xmin, ymax, xmax, score, float(best_class)))
                 }
             }
         }
@@ -91,10 +91,11 @@ fun bboxes_iou(box1: yolo_detection_t, box2: yolo_detection_t): float
     val area1 = (box1.2 - box1.0)*(box1.3 - box1.1)
     val area2 = (box2.2 - box2.0)*(box2.3 - box2.1)
 
-    val xmin = max(box1.0, box2.0)
-    val ymin = max(box1.1, box2.1)
-    val xmax = min(box1.2, box2.2)
-    val ymax = min(box1.3, box2.3)
+    val ymin = max(box1.0, box2.0)
+    val xmin = max(box1.1, box2.1)
+    val ymax = min(box1.2, box2.2)
+    val xmax = min(box1.3, box2.3)
+
     val dx = max(xmax - xmin, 0.f)
     val dy = max(ymax - ymin, 0.f)
     val inter_area = dx*dy
@@ -166,4 +167,66 @@ fun yolov4_postprocess(yolo_outputs: Ast.nntensor_t [],
     val boxes = collect_boxes(yolo_outputs, anchors, strides, xyscale,
                               orig_image_size, input_size, score_threshold)
     nms(boxes, nms_threshold)
+}
+
+fun ssd_postprocess(ssd_outputs: Ast.nntensor_t [],
+                    ~orig_image_size: (int*2), ~input_size: int)
+{
+    assert(`ssd_outputs.size() == 4`)
+    val detection_boxes = ssd_outputs[0]
+    val detection_classes = ssd_outputs[1]
+    val detection_scores = ssd_outputs[2]
+    val num_detections = ssd_outputs[3]
+
+    val db_shape = detection_boxes.shape.shape // N x K x 4
+    val dc_shape = detection_classes.shape.shape // N x K
+    val ds_shape = detection_scores.shape.shape // N x K
+    val nd_shape = num_detections.shape.shape // N
+    assert(`detection_boxes.elemtype() == Ast.NN_FP32`)
+    assert(`detection_classes.elemtype() == Ast.NN_FP32`)
+    assert(`detection_scores.elemtype() == Ast.NN_FP32`)
+    assert(`num_detections.elemtype() == Ast.NN_FP32`)
+    assert(`db_shape.size() == 3`)
+    assert(`dc_shape.size() == 2`)
+    assert(`ds_shape.size() == 2`)
+    assert(`nd_shape.size() == 1`)
+    assert(`db_shape[0] == dc_shape[0] && db_shape[0] == ds_shape[0] && db_shape[0] == nd_shape[0]`)
+    assert(`db_shape[1] == dc_shape[1] && db_shape[1] == ds_shape[1]`)
+    assert(`db_shape[2] == 4`)
+    val N = db_shape[0]
+    val K = db_shape[1]
+    val detection_boxes = match detection_boxes.data {
+        | Ast.NN_Data_FP32 detection_boxes => detection_boxes.reshape(N, K, 4)
+        | _ => throw Ast.NNError("detection_boxes should be floating-point tensor")
+    }
+    val detection_classes = match detection_classes.data {
+        | Ast.NN_Data_FP32 detection_classes => detection_classes.reshape(N, K)
+        | _ => throw Ast.NNError("detection_classes should be floating-point tensor")
+    }
+    val detection_scores = match detection_scores.data {
+        | Ast.NN_Data_FP32 detection_scores => detection_scores.reshape(N, K)
+        | _ => throw Ast.NNError("detection_scores should be floating-point tensor")
+    }
+    val num_detections = match num_detections.data {
+        | Ast.NN_Data_FP32 num_detections => num_detections
+        | _ => throw Ast.NNError("num_detections should be floating-point tensor")
+    }
+
+    val ratio_y = float(orig_image_size.0)/input_size
+    val ratio_x = float(orig_image_size.1)/input_size
+    val max_ratio = max(ratio_x, ratio_y)
+    val dy0 = (input_size - orig_image_size.0/max_ratio)*0.5f
+    val dx0 = (input_size - orig_image_size.1/max_ratio)*0.5f
+
+    val n = 0
+    val nd_n = int(num_detections[n])
+    [for i <- 0:nd_n {
+        val score = detection_scores[n, i]
+        val cls = detection_classes[n, i]
+        val y1 = (detection_boxes[n, i, 0]*input_size - dy0)*max_ratio
+        val x1 = (detection_boxes[n, i, 1]*input_size - dx0)*max_ratio
+        val y2 = (detection_boxes[n, i, 2]*input_size - dy0)*max_ratio
+        val x2 = (detection_boxes[n, i, 3]*input_size - dx0)*max_ratio
+        (x1, y1, x2, y2, score, cls)
+    }]
 }

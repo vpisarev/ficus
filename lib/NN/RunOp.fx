@@ -53,11 +53,13 @@ match op
     | Ast.NN_Identity {t_inp, t_out} =>
         model.copy_tensor_data(t_inp, t_out)
     | Ast.NN_If _ =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        // handled in Inference.fx
+        throw Ast.NNError(f"unexpected operation '{op.name()}'")
     | Ast.NN_LeakyRelu _ =>
         OpElemwise.run_leaky_relu(model, op)
     | Ast.NN_Loop _ =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        // handled in Inference.fx
+        throw Ast.NNError(f"unexpected operation '{op.name()}'")
     | Ast.NN_LRN _ =>
         OpMisc.run_lrn(model, op)
     | Ast.NN_MaxPool _ =>
@@ -67,7 +69,7 @@ match op
     | Ast.NN_NonZero _ =>
         OpReduce.run_nonzero(model, op)
     | Ast.NN_Range _ =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        OpMisc.run_range(model, op)
     | Ast.NN_Reduce _ =>
         throw Ast.NNError(f"unsupported operation '{op.name()}'")
     | Ast.NN_Reshape {t_inp, t_out} =>

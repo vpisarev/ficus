@@ -45,3 +45,39 @@ match op {
     }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
+
+fun run_range(out_shape_: int [], out_data: Ast.nndata_t,
+              start: double, limit: double, delta: double): void
+{
+    val nelems = max(ceil((limit - start)/delta), 0)
+    assert(`out_data.total() == nelems && out_shape_.size() == 1`)
+    match out_data {
+    | Ast.NN_Data_FP32 data =>
+        for i <- 0:nelems {data[i] = float(start + i*delta)}
+    | Ast.NN_Data_I32 data =>
+        val start = int(start), delta = int(delta)
+        for i <- 0:nelems {data[i] = int32(start + i*delta)}
+    | Ast.NN_Data_I64 data =>
+        val start = int64(start), delta = int64(delta)
+        for i <- 0:nelems {data[i] = int32(start + i*delta)}
+    | _ => throw Ast.NNError("run_range: unsupported type `out_data.elemtype()`")
+    }
+}
+
+fun run_range(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op {
+| Ast.NN_Range {t_start, t_limit, t_delta, t_out} =>
+    val start = model.get_tensor(t_start)
+    val start = start.data
+    val limit = model.get_tensor(t_limit).data
+    val delta = model.get_tensor(t_delta).data
+    val out = model.get_tensor(t_out)
+    assert(`start.total() == 1`)
+    assert(`limit.total() == 1`)
+    assert(`delta.total() == 1`)
+    val start = start.double_scalar_or(0.)
+    val limit = limit.double_scalar_or(0.)
+    val delta = delta.double_scalar_or(1.)
+    run_range(out.shape.shape, out.data, start, limit, delta)
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
+}

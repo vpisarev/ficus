@@ -509,6 +509,23 @@ fun float(d: nndata_t)
     | NN_Data_Bool(elems) => float(elems)
 }
 
+fun double_scalar_or(d: nndata_t, defval: double): double =
+match d {
+    | NN_Data_Empty => defval
+    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
+    | NN_Data_I8(elems) => double(elems[0])
+    | NN_Data_U8(elems) => double(elems[0])
+    | NN_Data_I16(elems) => double(elems[0])
+    | NN_Data_U16(elems) => double(elems[0])
+    | NN_Data_I32(elems) => double(elems[0])
+    | NN_Data_U32(elems) => double(elems[0])
+    | NN_Data_I64(elems) => double(elems[0])
+    | NN_Data_U64(elems) => double(elems[0])
+    | NN_Data_FP32(elems) => double(elems[0])
+    | NN_Data_FP64(elems) => elems[0]
+    | NN_Data_Bool(elems) => double(elems[0])
+}
+
 fun float_scalar_or(d: nndata_t, defval: float): float =
 match d {
     | NN_Data_Empty => defval

@@ -44,7 +44,7 @@ type valueinfo_t =
 type attrval_t =
     | AttrInt: int64 | AttrFloat: float
     | AttrString: string | AttrTensor: tensor_t
-    | AttrFloats: float [] | AttrInts: int [] | AttrStrings: string []
+    | AttrFloats: float [] | AttrInts: int64 [] | AttrStrings: string []
     | AttrGraph: graph_t
 
 type attr_t = Attr: {

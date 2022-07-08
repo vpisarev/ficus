@@ -106,7 +106,7 @@ match ti {
 @private fun attr2ints(a: OAst.attr_t) =
     match a.v {
     | OAst.AttrInt(i) => [int(i)]
-    | OAst.AttrInts(ints) => ints
+    | OAst.AttrInts(ints) => int(ints)
     | OAst.AttrTensor (OAst.tensor_t {shape, data}) =>
         assert(size(shape) == 1)
         OAst.tensor_data_to_ints(data)
@@ -129,8 +129,8 @@ match ti {
     match a.v {
     | OAst.AttrFloat(f) => Ast.nntensor_t {shape=scalar_shape, data=Ast.NN_Data_FP32([f])}
     | OAst.AttrFloats(fs) => Ast.nntensor_t {shape=scalar_shape, data=Ast.NN_Data_FP32(fs)}
-    | OAst.AttrInt(i) => Ast.nntensor_t {shape=scalar_shape, data=Ast.NN_Data_I32([int32(i)])}
-    | OAst.AttrInts(ints) => Ast.nntensor_t {shape=scalar_shape, data=Ast.NN_Data_I32(int32(ints))}
+    | OAst.AttrInt(i) => Ast.nntensor_t {shape=scalar_shape, data=Ast.NN_Data_I64([i])}
+    | OAst.AttrInts(ints) => Ast.nntensor_t {shape=scalar_shape, data=Ast.NN_Data_I64(ints)}
     | OAst.AttrTensor(t) => onnx2tensor(t)
     | _ => throw OnnxConvertError(f"error when converting attribute {a.name} to tensor")
     }
