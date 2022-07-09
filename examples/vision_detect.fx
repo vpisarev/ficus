@@ -196,7 +196,7 @@ for imgname@i <- images {
         }
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time()
-    val niters = 1
+    val niters = 5
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =

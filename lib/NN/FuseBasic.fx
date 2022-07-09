@@ -11,7 +11,7 @@
 */
 import Ast, Dynvec, Hashmap
 
-fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int [])
+fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int []): Ast.nngraph_t
 {
     val nargs = model.args.size()
     val produced_by = array(nargs, -1)
@@ -45,6 +45,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
 
     for op@i <- prog {
         var imm_op_idx = -1, t_imm_arg = -1, mish_arg_idx = -1
+        var op = op
         val (fused_op_idx, fused_op, t_out_new, (t_out_removed : int [])) = match op {
         // fuse convolution + batchnorm
         | Ast.NN_BatchNorm {t_inp, t_mean, t_var, t_scale, t_B, t_out}
@@ -192,6 +193,28 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
                 (conv_op_idx, new_conv_op, t_out, [t_conv_out])
             | _ => (-1, Ast.NN_Nop, -1, [])
             }
+        | Ast.NN_If {name, then_branch, else_branch, t_inp, t_out} =>
+            val then_before = then_branch.prog.size()
+            val else_before = else_branch.prog.size()
+            val then_branch = fuse_conv_elemwise(model, then_branch, usecounts)
+            val else_branch = fuse_conv_elemwise(model, else_branch, usecounts)
+            val then_after = then_branch.prog.size()
+            val else_after = else_branch.prog.size()
+            if then_after != then_before || else_after != else_before {
+                modified = true
+            }
+            op = Ast.NN_If {name=name, then_branch=then_branch, else_branch=else_branch, t_inp=t_inp, t_out=t_out}
+            (-1, Ast.NN_Nop, -1, [])
+        | Ast.NN_Loop {name, body, t_trip_count, t_cond_in, t_v_in, t_v_out} =>
+            val body_before = body.prog.size()
+            val body = fuse_conv_elemwise(model, body, usecounts)
+            val body_after = body.prog.size()
+            if body_after != body_before {
+                modified = true
+            }
+            op = Ast.NN_Loop {name=name, body=body, t_trip_count=t_trip_count,
+                              t_cond_in=t_cond_in, t_v_in=t_v_in, t_v_out=t_v_out}
+            (-1, Ast.NN_Nop, -1, [])
         | _ => (-1, Ast.NN_Nop, -1, [])
         }
         if fused_op_idx >= 0 {
