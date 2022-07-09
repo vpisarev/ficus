@@ -90,7 +90,7 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
 
     N = boxes_shape[0];
     B = boxes_shape[1];
-    Bx = B*3;
+    Bx = B*3 + 100;
     C = scores_shape[1];
     //printf("N=%d, B=%d, C=%d\n", (int)N, (int)B, (int)C);
 

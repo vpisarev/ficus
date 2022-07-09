@@ -7,7 +7,7 @@ import Filename, Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 import Color
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpDetect
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpDetect, NN.OpPermute
 
 type model_kind_t = DetectorSSD | DetectorYolo | DetectorTinyYolo | DetectorAuto
 
@@ -190,17 +190,28 @@ for imgname@i <- images {
     val inp = reshape_multichan(resized_img, (1, input_size, input_size, 3))
     val inp_ =
         if input_typ == NN.Ast.NN_FP32 {
-            NN.Ast.make_tensor(inp.*(1.f/255))
+            NN.Ast.mktensor(inp.*(1.f/255))
         } else {
-            NN.Ast.make_tensor(inp)
+            NN.Ast.mktensor(inp)
         }
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time()
     val niters = 5
+    val inputs = match detector_kind {
+        | DetectorTinyYolo =>
+            val planar_data = NN.Ast.NN_Data_FP32(array(input_size*input_size*3, 0.f))
+            val planar_t = NN.Ast.nntensor_t {data = planar_data,
+                            shape = NN.Ast.nnshape_t {layout=NN.Ast.NN_Layout_NCHW,
+                                            shape=[1, 3, input_size, input_size]}}
+            NN.OpPermute.run_transpose(inp_.shape.shape, inp_.data, [0, 3, 1, 2],
+                                       planar_t.shape.shape, planar_data)
+            [("", planar_t), ("", NN.Ast.mktensor([float(h), float(w)]))]
+        | _ => [("", inp_)]
+        }
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =
-            try NN.Inference.run(model, [("", inp_)], outputs=temp_outputs) catch {
+            try NN.Inference.run(model, inputs, outputs=temp_outputs) catch {
             | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
             | Fail msg => println(f"failure: '{msg}'"); []
             }

@@ -139,7 +139,7 @@ for imgname@i <- images {
     val (_, _, _, n) = size(probs)
     val tprobs = [for i <- 0:n {(probs[0, 0, 0, i], i)}]
     sort(tprobs, (>))
-    val inp_ = NN.Ast.make_tensor(inp)
+    val inp_ = NN.Ast.mktensor(inp)
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time()
     val niters = 15

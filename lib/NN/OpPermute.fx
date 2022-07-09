@@ -190,8 +190,8 @@ match op {
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-@private fun run_transpose_(inp_shape_: int [], inp_data_: Ast.nndata_t, perm_: int [],
-                            out_shape_: int [], out_data_: Ast.nndata_t): void
+fun run_transpose(inp_shape_: int [], inp_data_: Ast.nndata_t, perm_: int [],
+                  out_shape_: int [], out_data_: Ast.nndata_t): void
 @ccode {
     enum {TRANSPOSE_MAX_DIMS=4};
     int_ i, ndims = inp_shape_->dim[0].size;
@@ -290,7 +290,7 @@ match op {
 | Ast.NN_Transpose {perm, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_transpose_(inp.shape.shape, inp.data, perm, out.shape.shape, out.data)
+    run_transpose(inp.shape.shape, inp.data, perm, out.shape.shape, out.data)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 

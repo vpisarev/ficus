@@ -193,8 +193,11 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
         | _ => RunOp.run_op(model, op)
         }
-        //val t = Sys.tick_count() - t
-        //println(f"{op.name()}: {round(t*1000./Sys.tick_frequency(), 2)}ms")
+        /*val t = Sys.tick_count() - t
+        val t = t*1000./Sys.tick_frequency()
+        if t > 0.1 {
+            println(f"{op.name()}: {round(t, 2)}ms")
+        }*/
         /*for oi@outidx <- oinfo {
             val {idx=argidx} = oi
             match model.get_tensor(argidx).data {

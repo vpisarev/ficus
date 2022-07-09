@@ -43,7 +43,7 @@ fun cfold_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t)
                     val arg = model.args[argidx]
                     if arg.argkind == Ast.NN_Arg_Temp {
                         model.args[argidx].argkind = Ast.NN_Arg_Const
-                        model.tensors[argidx] = Ast.make_tensor(shape, typ)
+                        model.tensors[argidx] = Ast.mktensor(shape, typ)
                     } else {
                         throw Ast.NNError(f"unexpected argkind={arg.argkind} of the output {outidx} of {op.name()}")
                     }

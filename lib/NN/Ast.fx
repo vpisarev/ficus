@@ -1174,7 +1174,7 @@ fun nnshape_t.broadcast(another: nnshape_t)
     }
 }
 
-fun make_tensor(shape: nnshape_t, typ: nntyp_t)
+fun mktensor(shape: nnshape_t, typ: nntyp_t)
 {
     val total = shape.total()
     val data = match typ {
@@ -1206,7 +1206,7 @@ fun elemtype(x:float) = NN_FP32
 fun elemtype(x:double) = NN_FP64
 fun elemtype(x:bool) = NN_Bool
 
-@private fun make_tensor_(arr: uint8 [,,,], typ: nntyp_t)
+@private fun mktensor_(arr: uint8 [], shape: int [], typ: nntyp_t)
 {
     fun make_data_(arr: uint8 [], typ: nntyp_t): nndata_t
     @ccode {
@@ -1214,17 +1214,25 @@ fun elemtype(x:bool) = NN_Bool
         fx_copy_arr(arr, &fx_result->u.NN_Data_U8);
         return FX_OK;
     }
-    val shape = arr.size()
-    val shape = [ shape.0, shape.1, shape.2, shape.3 ]
     val layout = NN_Layout_NCHW
-    val data = make_data_(arr[:], typ)
+    val data = make_data_(arr, typ)
     nntensor_t {shape=nnshape_t {shape=shape, layout=layout}, data=data}
 }
 
-fun make_tensor(arr: 't [,,,])
+fun mktensor(arr: 't [+])
 {
-    val typ = elemtype(arr[0,0,0,0])
-    make_tensor_(reinterpret(arr) : uint8 [,,,], typ)
+    val sz = arr.size()
+    val shape = [for sz_i <- sz {sz_i}]
+    val typ = elemtype(0 :> 't)
+    mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ)
+}
+
+fun mktensor(arr: 't [])
+{
+    val sz = arr.size()
+    val shape = [sz]
+    val typ = elemtype(0 :> 't)
+    mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ)
 }
 
 fun nntensor_t.copy() =
