@@ -305,6 +305,7 @@ class nnmodel_t
     preferred_layout: nnlayout_t
     ntasks: int ref
     use_fp16: bool ref
+    trace: bool ref
 }
 
 type op_callback_t = (nnmodel_t, nnop_t) -> void
@@ -321,7 +322,8 @@ fun empty_net() = nnmodel_t {
     graph = NN_Graph {name = "main", inpargs = [], outargs = [], prog=[]},
     preferred_layout = NN_Layout_NCHW,
     ntasks = ref 4,
-    use_fp16 = ref false
+    use_fp16 = ref false,
+    trace = ref false
 }
 
 fun empty_graph() = NN_Graph {
@@ -659,6 +661,73 @@ match t.data {
         val nelems = t.total()
         val tdata_str = if nelems <= 10 && show_small {tdata2str(t.data)} else {"[...]"}
         sp + " " + tprefix + " " + tdata_str
+}
+
+fun string(t: nntensor_t, ~border: int=3, ~braces: bool=true)
+{
+    fun row2str(data: 't [], n: int, ofs: int)
+    {
+        val ndump = min(n, border*2+1)
+        val elems = [for i <- 0:ndump {
+                val j = if n == ndump || i < border {i} else if i == border {-1}
+                        else {n-border*2-1+i}
+                if j >= 0 {string(data[ofs + j])} else {"... "}
+            }]
+        ", ".join(elems)
+    }
+
+    match t.data {
+    | NN_Data_Empty => "no data"
+    | _ when exists(for i <- t.shape.shape {i == 0}) => "no data"
+    | _ =>
+        val shape = t.shape.shape
+        val ndims = shape.size()
+        var rows: string list = []
+        val step = array(ndims, 1)
+        for i <- ndims-2:-1:-1 { step[i] *= step[i+1]*shape[i+1] }
+        fun slice2str(d: int, ofs: int) {
+            val n = if d >= ndims {1} else {shape[d]}
+            if d >= ndims - 1 {
+                match t.data {
+                | NN_Data_Empty => {}
+                | NN_Data_I8 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_U8 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_I16 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_U16 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_I32 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_U32 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_I64 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_U64 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_FP32 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_FP64 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_Bool data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_Stub_BF16 | NN_Data_Stub_FP16 =>
+                    throw NotImplementedError
+                }
+            } else {
+                val ndump = min(n, border*2+1)
+                var dots = false
+                for i <- 0:ndump {
+                    if i > 0 && !dots {
+                        val nempty_lines = ndims - 2 - d
+                        for k <- 0:nempty_lines {rows = "" :: rows}
+                    }
+                    val j = if n == ndump || i < border {i}
+                            else if i == border {-1}
+                            else {n - border*2 - 1 + i}
+                    dots = j < 0
+                    if !dots {
+                        slice2str(d+1, ofs + j*step[d])
+                    } else {
+                        rows = "..." :: rows
+                    }
+                }
+            }
+        }
+        slice2str(0, 0)
+        val (begin, end) = if ndims > 0 && braces {("[", "]")} else {("", "")}
+        join_embrace(begin, end, "\n", rows.rev())
+    }
 }
 
 fun arg2str(model: nnmodel_t, argidx: int)

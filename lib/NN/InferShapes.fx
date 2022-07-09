@@ -281,7 +281,6 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         // we don't go into the if branches;
         // instead, we infere shapes inside one of the branch when we execute it
         val (shape, typ) = get_shape_typ(t_inp)
-        println(f"If: t_inp's shape={shape.shape}, total={shape.total()}")
         assert(`shape.total() == 1`)
         assert(`typ == Ast.NN_Bool`)
         []

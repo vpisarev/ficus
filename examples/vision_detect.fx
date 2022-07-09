@@ -40,6 +40,7 @@ var mname = "", lname = ""
 var images: string list = []
 var ntasks = 0
 var use_fp16 = false
+var trace = false
 var temp_name = ""
 var detector_kind = DetectorAuto
 
@@ -49,6 +50,8 @@ fun parse_args(args: string list)
         ntasks = ntasks_.to_int_or(0); parse_args(rest)
     | "-fp16" :: rest =>
         use_fp16 = true; parse_args(rest)
+    | "-trace" :: rest =>
+        trace = true; parse_args(rest)
     | "-labels" :: lname_ :: rest =>
         lname = lname_; parse_args(rest)
     | "-temp" :: tname :: rest =>
@@ -131,7 +134,7 @@ try {
     | Fail msg => println(f"failure: '{msg}'"); false
 }
 if !ok {throw Fail("exiting")}
-println(model)
+//println(model)
 
 var planar_input = true, ndims0 = 4, input_typ = NN.Ast.NN_FP32
 for t_inp@i <- model.graph.inpargs {
@@ -165,6 +168,7 @@ if ntasks > 0 {
     *model.ntasks = ntasks
 }
 *model.use_fp16 = use_fp16
+*model.trace = trace
 
 for imgname@i <- images {
     //println(f"starting reading model '{mname}'")

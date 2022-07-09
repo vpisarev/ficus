@@ -227,6 +227,6 @@ fun ssd_postprocess(ssd_outputs: Ast.nntensor_t [],
         val x1 = (detection_boxes[n, i, 1]*input_size - dx0)*max_ratio
         val y2 = (detection_boxes[n, i, 2]*input_size - dy0)*max_ratio
         val x2 = (detection_boxes[n, i, 3]*input_size - dx0)*max_ratio
-        (x1, y1, x2, y2, score, cls)
+        (y1, x1, y2, x2, score, cls)
     }]
 }

@@ -55,12 +55,32 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
     }]
 }
 
+fun dump_arg(model: Ast.nnmodel_t, prefix: string, idx: int, argidx: int, dumpdata: bool)
+{
+    val t = model.get_tensor(argidx)
+    val name = model.args[argidx].name
+    val etyp = t.elemtype()
+    println(f"{prefix} {idx} Name: {name}\n Type: {etyp}\n Shape: {t.shape.shape}")
+    if dumpdata {
+        println(string(t))
+    }
+}
+
 fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     val nops = graph.prog.size()
     for op@opidx <- graph.prog {
-        val noindent=""
-        println(f"preparing to run op {model.op2str(op, noindent)}")
+        val (opname, opkind) = op.name()
+        val (inps, outs) = op.get_inputs_outputs()
+        if *model.trace {
+            println("-----------")
+            println(f"'{graph.name}'[{opidx}/{nops}]. {opkind} node: {opname}")
+            for inp@i <- inps {
+                dump_arg(model, "Input", i, inp, false)
+            }
+        }
+        //val noindent=""
+        //println(f"preparing to run op {model.op2str(op, noindent)}")
         /*match op {
         | Ast.NN_Transpose {name, t_inp, t_out, perm} when name=="where_op_added__679" =>
             println(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -73,9 +93,9 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             if model.bufidxs[argidx] >= 0 {
                 model.fit(argidx, shape, typ)
             }
-            println(f"   output #{outidx} ('{model.args[argidx].name}'): {oi}")
+            //println(f"   output #{outidx} ('{model.args[argidx].name}'): {oi}")
         }
-        println(f"[op #{opidx}/{nops} in graph '{graph.name}']. running op '{op.name()}'")
+        //println(f"[op #{opidx}/{nops} in graph '{graph.name}']. running op '{op.name()}'")
         //val t = Sys.tick_count()
         match op {
         | Ast.NN_If {then_branch, else_branch, t_inp, t_out} =>
@@ -133,7 +153,9 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
 
             var iter = 0
             while loop_condition && trip_count.value_or(1L) > 0L {
-                println(f"================ LOOP ITERATION #{iter}/{trip_count.value_or(-1L)} ================")
+                if *model.trace {
+                    println(f"================ LOOP ITERATION #{iter}/{trip_count.value_or(-1L)} ================")
+                }
                 run_graph(model, body, outputs)
                 val outarg_0 = outargs[0]
                 trip_count = match trip_count {
@@ -166,7 +188,9 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                 }
                 iter += 1
             }
-            println(f"================ LOOP IS OVER ================")
+            if *model.trace {
+                println(f"================ LOOP IS OVER ================")
+            }
         | _ => RunOp.run_op(model, op)
         }
         //val t = Sys.tick_count() - t
@@ -183,11 +207,18 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
         }*/
         /*match op {
-        | Ast.NN_NonZero {name, t_inp, t_out} when name=="Postprocessor/BatchMultiClassNonMaxSuppression/map/while/MultiClassNonMaxSuppression/FilterGreaterThan_9/Where" =>
-            println(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            println(f"NONZERO: t_inp={model.tensor2str(model.get_tensor(t_inp), true)}, t_out={model.tensor2str(model.get_tensor(t_out), true)}")
+        | Ast.NN_Clip {name, t_inp, t_out} when name == "FeatureExtractor/MobilenetV1/MobilenetV1/Conv2d_11_depthwise/Relu6" =>
+            println(f"CLIP: t_inp={model.tensor2str(model.get_tensor(t_inp), true)}, t_out={model.tensor2str(model.get_tensor(t_out), true)}")
+            throw Fail("reached 'Relu6'")
         | _ => {}
         }*/
+        if *model.trace {
+            println("-----------")
+            for out@i <- outs {
+                dump_arg(model, "Output", i, out, true)
+            }
+            println()
+        }
 
         if outputs != [] {
             for oi@outidx <- oinfo {

@@ -86,15 +86,15 @@ match op {
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-@private fun run_gather_(axis: int, inp_shape: int [], inp_data: Ast.nndata_t,
-                         ind_shape: int [], ind_data: Ast.nndata_t,
-                         out_shape: int [], out_data: Ast.nndata_t, ntasks: int): void
+fun run_gather(axis: int, inp_shape: int [], inp_data: Ast.nndata_t,
+               ind_shape: int [], ind_data: Ast.nndata_t,
+               out_shape: int [], out_data: Ast.nndata_t, ntasks: int): void
 @ccode {
     int_ r = inp_shape->dim[0].size;
     int_ q = ind_shape->dim[0].size;
     int_ ndims = out_shape->dim[0].size;
     int_ pq = 1, nslices = 1;
-    int fx_status = FX_OK;
+    volatile int fx_status = FX_OK;
     size_t elemsize = inp_data->u.NN_Data_I8.dim[0].step;
     size_t slicesize = elemsize;
     size_t inp_stride, out_stride;
@@ -126,19 +126,19 @@ match op {
     inp_stride = slicesize * ((int_*)inp_shape->data)[axis];
     out_stride = slicesize * pq;
 
-    #pragma omp parallel for num_threads(ntasks)
-    for (int_ i = 0; i < pq; i++) {
-        int_ k = ind32 ? (int_)ind32[i] : (int_)ind64[i];
-        k += k < 0 ? s : 0;
-        const char* inptr = inptr0 + k*slicesize;
-        char* outptr = outptr0 + i*slicesize;
-        if (k >= s) {
-            fx_status = FX_EXN_OutOfRangeError; continue;
+    #pragma omp parallel for num_threads(ntasks) if(pq > 1 && slicesize*nslices*pq > 1000000)
+    for (int_ j = 0; j < pq; j++) {
+        int_ k = ind32 ? (int_)ind32[j] : (int_)ind64[j];
+        char* outptr = outptr0 + j*slicesize;
+        const char* inptr = inptr0;
+        for (int_ i = 0; i < nslices; i++, inptr += inp_stride, outptr += out_stride) {
+            k += k < 0 ? s : 0;
+            if (k < 0 || k >= s) {
+                fx_status = FX_EXN_OutOfRangeError; continue;
+            }
+            memcpy(outptr, inptr + k*slicesize, slicesize);
         }
-        for(int_ j = 0; j < nslices; j++)
-            memcpy(outptr + j*out_stride, inptr + j*inp_stride, slicesize);
     }
-
     return fx_status >= 0 ? fx_status : FX_SET_EXN_FAST(fx_status);
 }
 
@@ -165,7 +165,7 @@ match op {
     | (_, Ast.NN_Data_Empty) => throw Ast.NNError(f"Gather: output data cannot be empty")
     | _ => {}
     }
-    run_gather_(axis, inp_shape, inp.data, ind_shape, ind.data, out_shape, out.data, *model.ntasks)
+    run_gather(axis, inp_shape, inp.data, ind_shape, ind.data, out_shape, out.data, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -533,7 +533,7 @@ match op {
     const int_* repeats0 = (const int_*)(repeats_->data);
     size_t esz = inp_data_->u.NN_Data_I8.dim[0].step;
     size_t out_esz = out_data_->u.NN_Data_I8.dim[0].step;
-    int_ total_size = 0, total_repeats = 0;
+    int_ total_size = 1, total_repeats = 1;
     int_ inp_shape[TILE_MAX_DIMS] = {1, 1, 1, 1};
     int_ out_shape[TILE_MAX_DIMS] = {1, 1, 1, 1};
     int_ repeats[TILE_MAX_DIMS] = {1, 1, 1, 1};
@@ -568,11 +568,14 @@ match op {
             inp_step[i] = inp_step[i+1]*inp_shape[i+1];
             out_step[i] = out_step[i+1]*out_shape[i+1];
         }
+        //printf("Tile: i=%d. inp_step_i=%d, out_step_i=%d, inp_shape_i=%d, out_shape_i=%d, repeats_i=%d\n",
+        //    i, (int)inp_step[i], (int)out_step[i], (int)inp_shape[i], (int)out_shape[i], (int)repeats[i]);
     }
 
+    if (ntasks > total_repeats)
+        ntasks = total_repeats;
     // [TODO] compress some inner dimensions 'i' iff repeats[i] == 1
     // ...
-
     #pragma omp parallel for num_threads(ntasks) if (total_size > 10000000)
     for (int_ i = 0; i < ntasks; i++) {
         int_ j0 = i*total_repeats/ntasks, j1 = (i+1)*total_repeats/ntasks;
@@ -581,11 +584,11 @@ match op {
 
         // this is a partial case of compression to reduce the innermost loop overhead
         int_ out_step_prelast = out_step[TILE_MAX_DIMS-2];
-        if (repeats[TILE_MAX_DIMS-1] == 1) {
+        /*if (repeats[TILE_MAX_DIMS-1] == 1) {
             sz3 *= sz2;
             out_step_prelast *= sz2;
             sz2 = 1;
-        }
+        }*/
 
         for (int_ j = j0; j < j1; j++)
         {
@@ -599,6 +602,7 @@ match op {
                 raw_ofs += (j_ - q*r)*inp_shape[k]*out_step[k];
                 j_ = q;
             }
+            //printf("j=%d, j0=%d, j1=%d, raw_ofs=%d, esz=%d\n", (int)j, (int)j0, (int)j1, (int)raw_ofs, (int)esz);
 
             #undef _FX_IMPLEMENT_TILE
             #define _FX_IMPLEMENT_TILE(typ) \

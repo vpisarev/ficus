@@ -58,9 +58,6 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
 }
 }
 
-// [TODO] this NMS implementation handles the case when a box
-// gets equally top scores for several classes differently from
-// a reference implementation. It should probably be fixed.
 fun run_nms(boxes_shape_: int [], boxes_data_: float [],
             scores_shape_: int [], scores_data_: float [],
             max_boxes: int, center_point_box: bool,
@@ -72,7 +69,7 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
     const float* boxes_data = (const float*)(boxes_data_->data);
     const int_* scores_shape = (const int_*)(scores_shape_->data);
     const float* scores_data = (const float*)(scores_data_->data);
-    int_ N, B, C;
+    int_ N, B, Bx, C;
     volatile int status = FX_OK;
     _fx_nms_entry* best_boxes = 0;
     int* best_counters = 0;
@@ -93,11 +90,12 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
 
     N = boxes_shape[0];
     B = boxes_shape[1];
+    Bx = B*3;
     C = scores_shape[1];
     //printf("N=%d, B=%d, C=%d\n", (int)N, (int)B, (int)C);
 
-    best_boxes = (_fx_nms_entry*)fx_malloc(N*sizeof(int) + N*B*sizeof(_fx_nms_entry));
-    best_counters = (int*)(best_boxes + N*B);
+    best_boxes = (_fx_nms_entry*)fx_malloc(N*sizeof(int) + N*Bx*sizeof(_fx_nms_entry));
+    best_counters = (int*)(best_boxes + N*Bx);
 
     if (!best_boxes)
         return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
@@ -110,7 +108,7 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
     {
         int_ n0 = task_id*N/ntasks, n1 = (task_id+1)*N/ntasks;
         for (; n0 < n1 && status >= 0; n0++) {
-            _fx_nms_entry* bboxes_n = best_boxes + n0*B, *bboxes = bboxes_n;
+            _fx_nms_entry* bboxes_n = best_boxes + n0*Bx, *bboxes = bboxes_n;
             _fx_nms_entry* nms_bboxes = bboxes;
             int_ i, j, k, i0, i1, nboxes;
 
@@ -118,33 +116,48 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
                 const float* scores_ni = scores_data + n0*B*C + i;
                 float best_score = scores_ni[0];
                 int_ best_label = 0;
+                bool multiclass = false;
                 for (int_ j = 1; j < C; j++) {
                     float score_nij = scores_ni[j*B];
                     //printf("%d. class=%d. score=%.2f\n", (int)i, (int)j, score_nij);
-                    if (score_nij > best_score) {
+                    if (score_nij > best_score)
+                    {
                         best_score = score_nij;
                         best_label = j;
+                        multiclass = false;
                     }
+                    else if (score_nij == best_score)
+                        multiclass = true;
                 }
+
                 if (best_score > score_threshold) {
                     const float* box0 = boxes_data + (n0*B + i)*4;
-                    if (!center_point_box) {
-                        bboxes->y1 = box0[0];
-                        bboxes->x1 = box0[1];
-                        bboxes->y2 = box0[2];
-                        bboxes->x2 = box0[3];
-                    } else {
-                        float cx = box0[0], cy = box0[1], w = box0[2], h = box0[3];
-                        bboxes->y1 = cy - h*0.5f;
-                        bboxes->x1 = cx - w*0.5f;
-                        bboxes->y2 = cy + h*0.5f;
-                        bboxes->x2 = cx + w*0.5f;
+                    i0 = 0; i1 = C;
+                    if (!multiclass) {
+                        i0 = best_label;
+                        i1 = best_label+1;
                     }
-                    //printf("%d. cls=%d, score=%.2f, idx=%d\n", (int)i, (int)best_label, best_score, (int)i);
-                    bboxes->score = best_score;
-                    bboxes->cls = (int)best_label;
-                    bboxes->idx = (int)i;
-                    bboxes++;
+                    for (; i0 < i1 && (bboxes - bboxes_n) < Bx; i0++) {
+                        if (scores_ni[i0*B] < best_score)
+                            continue;
+                        if (!center_point_box) {
+                            bboxes->y1 = box0[0];
+                            bboxes->x1 = box0[1];
+                            bboxes->y2 = box0[2];
+                            bboxes->x2 = box0[3];
+                        } else {
+                            float cx = box0[0], cy = box0[1], w = box0[2], h = box0[3];
+                            bboxes->y1 = cy - h*0.5f;
+                            bboxes->x1 = cx - w*0.5f;
+                            bboxes->y2 = cy + h*0.5f;
+                            bboxes->x2 = cx + w*0.5f;
+                        }
+                        //printf("%d. multiclass=%d, cls=%d, score=%.2f\n", (int)i, (int)multiclass, (int)i0, best_score);
+                        bboxes->score = best_score;
+                        bboxes->cls = (int)i0;
+                        bboxes->idx = (int)i;
+                        bboxes++;
+                    }
                 }
             }
             nboxes = bboxes - bboxes_n;

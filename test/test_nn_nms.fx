@@ -67,12 +67,12 @@ TEST("NN.NonMaxSuppression.two_classes", fun()
         0.0, 10.1, 1.0, 11.1,
         0.0, 100.0, 1.0, 101.0])
     val scores = float([0.9, 0.75, 0.6, 0.95, 0.5, 0.3,
-                    0.9, 0.76, 0.6, 0.95, 0.6, 0.4])
+                        0.9, 0.75, 0.6, 0.95, 0.5, 0.3])
     val max_output_boxes_per_class = 2
     val iou_threshold = 0.5f
     val score_threshold = 0.f
 
-    val selected_ref = int64([0, 0, 3; 0, 0, 0; 0, 1, 1; 0, 1, 4])
+    val selected_ref = int64([0, 0, 3; 0, 0, 0; 0, 1, 3; 0, 1, 0])
     val (n, selected, buf) = OpNMS.run_nms([1, 6, 4], boxes, [1, 2, 6], scores,
                                     max_output_boxes_per_class, center_point_box,
                                     iou_threshold, score_threshold, [], 4)
