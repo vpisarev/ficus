@@ -303,7 +303,7 @@ fun run_top_k(inp_shape_: int [], inp_data_: Ast.nndata_t,
                 _FX_NN_TOPK_INIT_SORTBUF(int64_t)
             }
 
-            status = fx_qsort(sort_buf_idx, len, esz, cmpfunc, 0, K);
+            status = fx_qsort(sort_buf_idx, len, esz, cmpfunc, sort_buf0, K);
             if (status < 0)
                 break;
             out_ind_ptr = (int64_t*)out_ind_data->data + out_ofs;

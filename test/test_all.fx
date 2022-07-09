@@ -27,6 +27,8 @@ import test_oop
 import test_parallel
 import test_vec
 import test_color
+import test_nn_nms
+import test_nn_reduce
 
 fun print_hdr()
 {

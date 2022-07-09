@@ -30,10 +30,10 @@ static bool _fx_lt_boxes(const void* a_, const void* b_, void* userdata)
 {
     const _fx_nms_entry* a = (const _fx_nms_entry*)a_;
     const _fx_nms_entry* b = (const _fx_nms_entry*)b_;
-    if (a->cls < b->cls)
-        return true;
-    if (a->score < b->score)
-        return true;
+    if (a->cls != b->cls)
+        return a->cls < b->cls;
+    if (a->score != b->score)
+        return a->score > b->score;
     return a->idx < b->idx;
 }
 
@@ -58,11 +58,14 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
 }
 }
 
-@private fun run_nms(boxes_shape_: int [], boxes_data_: float [],
-                     scores_shape_: int [], scores_data_: float [],
-                     max_boxes: int, center_point_box: bool,
-                     iou_threshold: float, score_threshold: float,
-                     out_buf0: Ast.nnbuf_t, ntasks: int):
+// [TODO] this NMS implementation handles the case when a box
+// gets equally top scores for several classes differently from
+// a reference implementation. It should probably be fixed.
+fun run_nms(boxes_shape_: int [], boxes_data_: float [],
+            scores_shape_: int [], scores_data_: float [],
+            max_boxes: int, center_point_box: bool,
+            iou_threshold: float, score_threshold: float,
+            out_buf0: Ast.nnbuf_t, ntasks: int):
     (int, int64 [], Ast.nnbuf_t)
 @ccode {
     const int_* boxes_shape = (const int_*)(boxes_shape_->data);
@@ -91,6 +94,7 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
     N = boxes_shape[0];
     B = boxes_shape[1];
     C = scores_shape[1];
+    //printf("N=%d, B=%d, C=%d\n", (int)N, (int)B, (int)C);
 
     best_boxes = (_fx_nms_entry*)fx_malloc(N*sizeof(int) + N*B*sizeof(_fx_nms_entry));
     best_counters = (int*)(best_boxes + N*B);
@@ -116,6 +120,7 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
                 int_ best_label = 0;
                 for (int_ j = 1; j < C; j++) {
                     float score_nij = scores_ni[j*B];
+                    //printf("%d. class=%d. score=%.2f\n", (int)i, (int)j, score_nij);
                     if (score_nij > best_score) {
                         best_score = score_nij;
                         best_label = j;
@@ -135,9 +140,10 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
                         bboxes->y2 = cy + h*0.5f;
                         bboxes->x2 = cx + w*0.5f;
                     }
+                    //printf("%d. cls=%d, score=%.2f, idx=%d\n", (int)i, (int)best_label, best_score, (int)i);
                     bboxes->score = best_score;
-                    bboxes->cls = best_label;
-                    bboxes->idx = i;
+                    bboxes->cls = (int)best_label;
+                    bboxes->idx = (int)i;
                     bboxes++;
                 }
             }
@@ -151,9 +157,14 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
             status = fx_qsort(bboxes, nboxes, sizeof(bboxes[0]), _fx_lt_boxes, 0, 0);
             if (status < 0)
                 break;
+            /*printf("after qsort\n");
+            for (i0 = 0; i0 < nboxes; i0++) {
+                printf("idx=%d, cls=%d, score=%.2f\n", bboxes[i0].idx,
+                    bboxes[i0].cls, bboxes[i0].score);
+            }*/
 
             // do the actual non-maxima suppression inside each class
-            for (i0 = 0; i0 < nboxes; i0++) {
+            for (i0 = 0; i0 < nboxes;) {
                 int cls = bboxes[i0].cls;
                 int_ ccount = 0;
                 for (i1 = i0+1; i1 < nboxes; i1++) {
@@ -161,6 +172,7 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
                         break;
                 }
                 for (;i0 < i1 && ccount < max_boxes; nms_bboxes++, ccount++) {
+                    //printf("nboxes=%d, cls=%d, i0=%d, i1=%d, ccount=%d\n", (int)nboxes, cls, (int)i0, (int)i1, (int)ccount);
                     *nms_bboxes = bboxes[i0];
                     for (j = i1 - 1, k = i1; j > i0; j--) {
                         if (_fx_iou_boxes(bboxes + j, nms_bboxes) <= iou_threshold) {
@@ -176,8 +188,10 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
         }
     }
 
-    for (int_ i = 0; i < N; i++)
+    for (int_ i = 0; i < N; i++) {
+        //printf("best_counter[%d]=%d\n", (int)i, best_counters[i]);
         total_best += best_counters[i];
+    }
 
     if (total_best*3*sizeof(*outptr) > out_buf0->dim[0].size*out_buf0->dim[0].step) {
         int_ total_bytes = (int_)(total_best*3*sizeof(*outptr));

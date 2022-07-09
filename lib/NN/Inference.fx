@@ -88,7 +88,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             run_graph(model, branch, outputs)
             val {outargs} = branch
             assert(`outargs.size() == t_out.size()`)
-            for br_outidx@i <- outargs, outidx <- t_out {
+            for br_outidx <- outargs, outidx <- t_out {
                 val br_out = model.tensors[br_outidx]
                 model.fit(outidx, br_out.shape, br_out.elemtype())
                 model.copy_tensor_data(br_outidx, outidx)

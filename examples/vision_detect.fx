@@ -258,6 +258,7 @@ for imgname@i <- images {
             strides=NN.OpDetect.yolov4_default_strides,
             xyscale=NN.OpDetect.yolov4_default_scale)
         | _ =>
+            println(f"num_detections: {int(outputs[3])[0]}")
             NN.OpDetect.ssd_postprocess(outputs, orig_image_size=(h, w), input_size=input_size)
         }
     draw_boxes(img, boxes, class_names=coco_class_names)
