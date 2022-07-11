@@ -298,19 +298,19 @@ match op {
                         out_shape_: int [], out_data_: Ast.nndata_t,
                         axes_: int [], starts_: int [], ends_: int [], steps_: int []): void
 @ccode {
-    enum {SLICE_MAX_DIMS=4};
+    enum {SLICE_MAX_DIMS=5};
     int_ i, ndims = inp_shape_->dim[0].size;
     fx_arr_t* inp_data = &((_fx_nndata_t*)inp_data_)->u.NN_Data_I8;
     fx_arr_t* out_data = &((_fx_nndata_t*)out_data_)->u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
     size_t out_esz = out_data->dim[0].step;
     int_ out_ndims = out_shape_->dim[0].size;
-    int_ starts[SLICE_MAX_DIMS] = {0, 0, 0, 0};
-    int_ ends[SLICE_MAX_DIMS] = {INT_MAX, INT_MAX, INT_MAX, INT_MAX};
-    int_ steps[SLICE_MAX_DIMS] = {1, 1, 1, 1};
-    int_ inp_shape[SLICE_MAX_DIMS] = {1, 1, 1, 1};
-    int_ out_shape[SLICE_MAX_DIMS] = {1, 1, 1, 1};
-    int_ inp_step[SLICE_MAX_DIMS] = {0, 0, 0, 1};
+    int_ starts[SLICE_MAX_DIMS] = {0, 0, 0, 0, 0};
+    int_ ends[SLICE_MAX_DIMS] = {INT_MAX, INT_MAX, INT_MAX, INT_MAX, INT_MAX};
+    int_ steps[SLICE_MAX_DIMS] = {1, 1, 1, 1, 1};
+    int_ inp_shape[SLICE_MAX_DIMS] = {1, 1, 1, 1, 1};
+    int_ out_shape[SLICE_MAX_DIMS] = {1, 1, 1, 1, 1};
+    int_ inp_step[SLICE_MAX_DIMS] = {0, 0, 0, 0, 1};
     int_ delta = SLICE_MAX_DIMS - ndims;
     int_ naxes = axes_->dim[0].size;
     bool empty_out = false;
@@ -382,32 +382,34 @@ match op {
         }
     }
 
-    int_ sz0 = out_shape[0], sz1 = out_shape[1];
-    int_ sz2 = out_shape[2], sz3 = out_shape[3];
-    int_ p0 = inp_step[0], p1 = inp_step[1];
-    int_ p2 = inp_step[2], p3 = inp_step[3];
+    int_ sz0 = out_shape[4], sz1 = out_shape[3];
+    int_ sz2 = out_shape[2], sz3 = out_shape[1], sz4 = out_shape[0];
+    int_ p0 = inp_step[4], p1 = inp_step[3];
+    int_ p2 = inp_step[2], p3 = inp_step[1], p4 = inp_step[0];
 
 #undef _FX_IMPLEMENT_SLICE
 #define _FX_IMPLEMENT_SLICE(typ) \
     typ* outptr = (typ*)(out_data->data); \
-    for(int_ i0 = 0; i0 < sz0; i0++) { \
-        for(int_ i1 = 0; i1 < sz1; i1++) { \
-            for(int_ i2 = 0; i2 < sz2; i2++, outptr += sz3) { \
-                const typ* inptr = (const typ*)inptr0 + i0*p0 + i1*p1 + i2*p2; \
-                int_ i3 = 0; \
-                if (p3 == 1) { \
-                    memcpy(outptr, inptr, sz3*esz); \
-                    continue; \
+    for(int_ i4 = 0; i4 < sz4; i4++) { \
+        for(int_ i3 = 0; i3 < sz3; i3++) { \
+            for(int_ i2 = 0; i2 < sz2; i2++) { \
+                for(int_ i1 = 0; i1 < sz1; i1++, outptr += sz0) { \
+                    const typ* inptr = (const typ*)inptr0 + i4*p4 + i3*p3 + i2*p2 + i1*p1; \
+                    int_ i0 = 0; \
+                    if (p0 == 1) { \
+                        memcpy(outptr, inptr, sz0*esz); \
+                        continue; \
+                    } \
+                    for (; i0 <= sz0 - 4; i0 += 4) { \
+                        int_ ip0 = i0*p0; \
+                        typ t0 = inptr[ip0], t1 = inptr[ip0 + p0]; \
+                        typ t2 = inptr[ip0 + p0*2], t3 = inptr[ip0 + p0*3]; \
+                        outptr[i0] = t0; outptr[i0+1] = t1; \
+                        outptr[i0+2] = t2; outptr[i0+3] = t3; \
+                    } \
+                    for (; i0 < sz0; i0++) \
+                        outptr[i0] = inptr[i0*p0]; \
                 } \
-                for (; i3 <= sz3 - 4; i3 += 4) { \
-                    int_ ip3 = i3*p3; \
-                    typ t0 = inptr[ip3], t1 = inptr[ip3 + p3]; \
-                    typ t2 = inptr[ip3 + p3*2], t3 = inptr[ip3 + p3*3]; \
-                    outptr[i3] = t0; outptr[i3+1] = t1; \
-                    outptr[i3+2] = t2; outptr[i3+3] = t3; \
-                } \
-                for (; i3 < sz3; i3++) \
-                    outptr[i3] = inptr[i3*p3]; \
             } \
         } \
     }

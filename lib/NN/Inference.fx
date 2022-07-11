@@ -91,10 +91,11 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
         val oinfo = InferShapes.infer(model, op)
         for oi@outidx <- oinfo {
             val {idx=argidx, shape, typ} = oi
+            //println(f"output #{outidx} ('{model.args[argidx].name}'): {oi}")
             if model.bufidxs[argidx] >= 0 {
+                //println(f"fit buf #{model.bufidxs[argidx]} to fit arg #{argidx} with shape #{shape.shape}")
                 model.fit(argidx, shape, typ)
             }
-            //println(f"   output #{outidx} ('{model.args[argidx].name}'): {oi}")
         }
         //println(f"[op #{opidx}/{nops} in graph '{graph.name}']. running op '{op.name()}'")
         //val t = Sys.tick_count()

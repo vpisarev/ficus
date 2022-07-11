@@ -367,7 +367,6 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                     out_shape[:out_ndims]
                 }
             }
-        println(f"Infer shapes for Reduce: axes={axes}, keepdims={keepdims}, inp_shape={shape.shape}, out_shape={out_shape}")
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape},
             typ=typ, dynamic=false}]
     | Ast.NN_Reshape {allowzero, t_inp, t_shape, t_out} =>

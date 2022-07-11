@@ -189,9 +189,9 @@ static int onnx_parse_value_info(FicusOnnx__ValueInfoProto* vi, const fx_arr_t* 
 static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* refarrs,
                             onnx_tensor_t* result)
 {
+    memset(result, 0, sizeof(*result));
     int fx_status = fx_cstr2str(tensor->name, -1, &result->name);
     int_ n_dims = (int_)tensor->n_dims;
-    int_ temp_dims = n_dims > 0 ? n_dims : 1;
     int_ total = 1;
     if (fx_status >= 0 && n_dims > 0) {
         fx_status = fx_make_arr(1, &n_dims, sizeof(int_), 0, 0, 0, &result->shape);
@@ -213,7 +213,7 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
                   -1;
         if (tag < 0)
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-        size_t elemsize = tag == 1 || tag == 3 ? sizeof(float) : tag == 2 || tag == 9 ? 1 : 8;
+        size_t elemsize = tag == 1 || tag == 3 ? sizeof(float) : tag == 2 || tag == 5 ? 1 : 8;
         fx_status = fx_make_arr(1, &total, elemsize, 0, 0, 0, &result->data.arr);
         if (fx_status >= 0) {
             result->data.tag = tag;
