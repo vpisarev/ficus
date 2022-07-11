@@ -10,6 +10,7 @@
 #define __FICUS_NN_COMMON_H__
 
 #include <limits.h>
+#include <float.h>
 
 #ifdef __cplusplus
 extern "C" {

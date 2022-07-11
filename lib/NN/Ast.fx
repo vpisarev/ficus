@@ -86,9 +86,9 @@ type nnelwise_t =
     | NN_Sin | NN_Sinh | NN_Softplus | NN_Softsign | NN_Sqrt | NN_Tan | NN_Tanh
 
 type nnreduce_t =
-    | NN_ReduceMin | NN_ReduceMax | NN_ReduceMean
     | NN_ReduceL1 | NN_ReduceL2
     | NN_ReduceLogSum | NN_ReduceLogSumExp
+    | NN_ReduceMax | NN_ReduceMean| NN_ReduceMin
     | NN_ReduceProd | NN_ReduceSum | NN_ReduceSumSquare
 
 type nnorder_t =
@@ -1438,4 +1438,4 @@ fun normalize_axis(axis: int, ndims: int) {
     axis
 }
 
-always_use([NN_Data_I32([0i32, 1i32])])
+always_use((NN_Data_I32([0i32, 1i32]), NN_ReduceL1))

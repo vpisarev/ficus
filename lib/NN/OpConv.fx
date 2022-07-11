@@ -2457,7 +2457,7 @@ match op {
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_conv_transposed(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+/*fun run_conv_transposed(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_ConvTranspose {kernel_shape, pads, strides, dilations, group,
         out_shape, out_padding, t_inp, t_weights, t_bias, t_out} =>
@@ -2467,4 +2467,4 @@ match op {
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
-}
+}*/

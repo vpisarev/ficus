@@ -340,10 +340,10 @@ match op {
     for (i = SLICE_MAX_DIMS-2; i >= 0; i--)
         inp_step[i] = inp_step[i+1]*inp_shape[i+1];
     for (i = 0; i < naxes; i++) {
-        int_ j = ((int_*)axes_->data)[i];
+        int_ j = axes_->data ? ((int_*)axes_->data)[i] : i;
         int_ start = ((int_*)starts_->data)[i];
         int_ end = ((int_*)ends_->data)[i];
-        int_ step = ((int_*)steps_->data)[i];
+        int_ step = steps_->data ? ((int_*)steps_->data)[i] : 1;
         int_ sz_j, out_sz_j;
 
         if (j < 0) j += ndims;
@@ -351,16 +351,15 @@ match op {
             return FX_SET_EXN_FAST(FX_EXN_RangeError);
         j += delta;
         sz_j = inp_shape[j];
-        if (start < 0) start += sz_j;
-        if (start < 0)
-            return FX_SET_EXN_FAST(FX_EXN_RangeError);
-        if (start > sz_j) start = sz_j;
-        if (end < 0) end += sz_j;
-        if (end < 0)
-            return FX_SET_EXN_FAST(FX_EXN_RangeError);
-        if (end > sz_j) end = sz_j;
         if (step == 0)
-            return FX_SET_EXN_FAST(FX_EXN_RangeError);
+            return FX_SET_EXN_FAST(FX_EXN_ZeroStepError);
+        if (start < 0) start += sz_j;
+        if (start < 0) start = 0;
+        if (start > sz_j - (step < 0)) start = sz_j - (step < 0);
+        if (end < 0) end += sz_j;
+        if (end < -(step < 0)) end = -(step < 0);
+        if (end > sz_j - (step < 0)) end = sz_j - (step < 0);
+
         out_sz_j = step > 0 ? (end - start + step-1)/step : (start - end - step-1)/(-step);
         if (out_sz_j < 0)
             return FX_SET_EXN_FAST(FX_EXN_RangeError);

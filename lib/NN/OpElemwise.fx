@@ -138,6 +138,9 @@ match op {
 @private fun run_softsign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = x/(1 + abs(x))}
 @private fun run_sqrt(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sqrt(x)}
 @private fun run_tanh(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = tanh(x)}
+@private fun run_round(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (round(x) :> 't)}
+@private fun run_ceil(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (ceil(x) :> 't)}
+@private fun run_floor(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (floor(x) :> 't)}
 @private fun run_leaky_relu(inp: 't [], alpha: float, out: 't []) = for x@idx <- inp {out[idx] = if x >= 0.f {x} else {(x*alpha :> 't)}}
 
 fun run_unary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -179,6 +182,12 @@ match op
         run_sqrt(inp_data, out_data)
     | (Ast.NN_Tanh, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
         run_tanh(inp_data, out_data)
+    | (Ast.NN_Round, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_round(inp_data, out_data)
+    | (Ast.NN_Ceil, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_ceil(inp_data, out_data)
+    | (Ast.NN_Floor, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
+        run_floor(inp_data, out_data)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")

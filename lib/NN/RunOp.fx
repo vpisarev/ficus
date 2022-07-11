@@ -28,7 +28,8 @@ match op
     | Ast.NN_Conv _ =>
         OpConv.run_conv(model, op)
     | Ast.NN_ConvTranspose _ =>
-        OpConv.run_conv_transposed(model, op)
+        //OpConv.run_conv_transposed(model, op)
+        throw Ast.NNError(f"unsupported operation '{op.name()}'")
     | Ast.NN_Dropout _ =>
         OpElemwise.run_dropout(model, op)
     | Ast.NN_Elemwise {t_inp} =>
@@ -71,7 +72,7 @@ match op
     | Ast.NN_Range _ =>
         OpMisc.run_range(model, op)
     | Ast.NN_Reduce _ =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        OpReduce.run_reduce(model, op)
     | Ast.NN_Reshape {t_inp, t_out} =>
         model.copy_tensor_data(t_inp, t_out)
     | Ast.NN_Resize _ =>

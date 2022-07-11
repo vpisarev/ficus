@@ -43,6 +43,8 @@ var use_fp16 = false
 var trace = false
 var temp_name = ""
 var detector_kind = DetectorAuto
+var show_boxes = true
+var dump_model = false
 
 fun parse_args(args: string list)
 {
@@ -60,6 +62,10 @@ fun parse_args(args: string list)
         detector_kind = DetectorSSD; parse_args(rest)
     | "-yolo" :: rest =>
         detector_kind = DetectorYolo; parse_args(rest)
+    | "-noshow" :: rest =>
+        show_boxes = false; parse_args(rest)
+    | "-prmodel" :: rest =>
+        dump_model = true; parse_args(rest)
     | "-model" :: mname_ :: rest =>
         mname = mname_; parse_args(rest)
     | optname :: _ when optname.startswith('-') =>
@@ -134,7 +140,10 @@ try {
     | Fail msg => println(f"failure: '{msg}'"); false
 }
 if !ok {throw Fail("exiting")}
-//println(model)
+
+if dump_model {
+    println(model)
+}
 
 var planar_input = true, ndims0 = 4, input_typ = NN.Ast.NN_FP32
 for t_inp@i <- model.graph.inpargs {
@@ -273,10 +282,12 @@ for imgname@i <- images {
             strides=NN.OpDetect.yolov4_default_strides,
             xyscale=NN.OpDetect.yolov4_default_scale)
         | _ =>
-            println(f"num_detections: {int(outputs[3])[0]}")
             NN.OpDetect.ssd_postprocess(outputs, orig_image_size=(h, w), input_size=input_size)
         }
+    println(f"{imgname}: {boxes.size()} object(s) detected")
     draw_boxes(img, boxes, class_names=coco_class_names)
-    cv.imshow("detection", img)
-    ignore(cv.waitKey())
+    if show_boxes {
+        cv.imshow("detection", img)
+        ignore(cv.waitKey())
+    }
 }

@@ -346,9 +346,9 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size()
         val dummy_val = -1000000
-        val out_shape =
+        val out_shape: int [] =
             if axes == [] {
-                [ 1 ]
+                []
             } else {
                 val out_shape = shape.shape.copy()
                 for axis <- axes {
@@ -367,6 +367,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                     out_shape[:out_ndims]
                 }
             }
+        println(f"Infer shapes for Reduce: axes={axes}, keepdims={keepdims}, inp_shape={shape.shape}, out_shape={out_shape}")
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape},
             typ=typ, dynamic=false}]
     | Ast.NN_Reshape {allowzero, t_inp, t_shape, t_out} =>
@@ -498,8 +499,13 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         for axis <- axes, start <- starts, end <- ends, step <- steps {
             val axis = Ast.normalize_axis(axis, ndims)
             val sz_a = shape.shape[axis]
-            val start = min((if start < 0 {start + sz_a} else {start}), sz_a)
-            val end = min((if end < 0 {end + sz_a} else {end}), sz_a)
+            val max_start = sz_a - int(step < 0)
+            val min_end = -int(step < 0)
+            val max_end = max_start
+            val start = if start < 0 {start + sz_a} else {start}
+            val start = if start < 0 {0} else if start > max_start {max_start} else {start}
+            val end = if end < 0 {end + sz_a} else {end}
+            val end = if end < min_end {min_end} else if end > max_end {max_end} else {end}
             assert(`step != 0`)
             val nelems = if step > 0 {(end - start + step-1)/step}
                          else {(start - end - step-1)/(-step)}

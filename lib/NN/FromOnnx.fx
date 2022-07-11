@@ -155,8 +155,8 @@ match ti {
         val delta_i = (kernel_shape[i_] + 1) % 2
         val half_i = kernel_shape[i_] / 2
         match (p, i >= dims) {
-        | (Ast.NN_Pad_SameLower, false) | (Ast.NN_Pad_SameUpper, true) => half_i + delta_i
-        | (Ast.NN_Pad_SameLower, _) | (Ast.NN_Pad_SameUpper, _) => half_i
+        | (Ast.NN_Pad_SameLower, false) | (Ast.NN_Pad_SameUpper, true) => half_i
+        | (Ast.NN_Pad_SameLower, _) | (Ast.NN_Pad_SameUpper, _) => half_i - delta_i
         | (Ast.NN_Pad_Valid, _) => 0
         | _ => pads0[i]
         }

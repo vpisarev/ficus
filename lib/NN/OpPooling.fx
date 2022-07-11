@@ -65,10 +65,11 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
         inner_xleft = W0;
         inner_ytop = H0;
     }
-    /*printf("inpsize: %d x %d x %d x %d, outsize: %d x %d x %d x %d; kernel_size: %d x %d, stride: %d x %d, dilation: %d x %d; inner: y=%d - %d, x=%d - %d\n",
+    /*printf("inpsize: %d x %d x %d x %d, outsize: %d x %d x %d x %d; kernel_size: %d x %d, stride: %d x %d, dilation: %d x %d; pad_y: (%d, %d), pad_x: (%d, %d), inner: y=%d - %d, x=%d - %d\n",
         (int)inpsize[0], (int)inpsize[1], (int)inpsize[2], (int)inpsize[3],
         (int)outsize[0], (int)outsize[1], (int)outsize[2], (int)outsize[3],
         Hk, Wk, stride_y, stride_x, dilation_y, dilation_x,
+        pad_top, pad_bottom, pad_left, pad_right,
         inner_ytop, inner_ybottom, inner_xleft, inner_xright);
     printf("ofstab: ");
     for(int k = 0; k < ksize; k++)

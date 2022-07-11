@@ -60,7 +60,8 @@ fun dump_arg(model: Ast.nnmodel_t, prefix: string, idx: int, argidx: int, dumpda
     val t = model.get_tensor(argidx)
     val name = model.args[argidx].name
     val etyp = t.elemtype()
-    println(f"{prefix} {idx} Name: {name}\n Type: {etyp}\n Shape: {t.shape.shape}")
+    val sh = join_embrace("{", "}", ",", [for sz <- t.shape.shape {string(sz)}])
+    println(f"{prefix} {idx} Name: {name}\n Type: {etyp}\n Shape: {sh}")
     if dumpdata {
         println(string(t))
     }

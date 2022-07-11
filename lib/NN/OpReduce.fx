@@ -357,3 +357,388 @@ match op {
               axis, largest, sorted, K, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
+
+@ccode {
+
+enum {
+    _FX_NN_REDUCE_L1=1,
+    _FX_NN_REDUCE_L2,
+    _FX_NN_REDUCE_LOG_SUM,
+    _FX_NN_REDUCE_LOG_SUM_EXP,
+    _FX_NN_REDUCE_MAX,
+    _FX_NN_REDUCE_MEAN,
+    _FX_NN_REDUCE_MIN,
+    _FX_NN_REDUCE_PROD,
+    _FX_NN_REDUCE_SUM,
+    _FX_NN_REDUCE_SUM_SQUARE
+};
+
+#define _FX_REDUCE_OP_MIN(a, b) ((a) <= (b) ? (a) : (b))
+#define _FX_REDUCE_OP_MAX(a, b) ((a) >= (b) ? (a) : (b))
+#define _FX_REDUCE_OP_SUM(a, b) ((a) + (b))
+#define _FX_REDUCE_OP_SUM_ABSF(a, b) ((a) + fabs(b))
+#define _FX_REDUCE_OP_SUM_ABS(a, b) ((a) + ((b) >= 0 ? (b) : -(b)))
+#define _FX_REDUCE_OP_SUM_SQR(a, b) ((a) + (b)*(b))
+#define _FX_REDUCE_OP_SUM_EXP(a, b) ((a) + exp(b))
+#define _FX_REDUCE_OP_PROD(a, b) ((a) * (b))
+
+#define _FX_REDUCE_IMPL(typ, acctyp, suffix, op, val0) \
+static void _fx_reduce_##suffix(const char* inptr0, int_ ystep, int_ xstep, \
+                                int_ nrows, int_ ncols, char* accptr, bool init) { \
+    acctyp acc = init ? (acctyp)val0 : *(acctyp*)accptr; \
+    if (xstep == 1) { \
+        for (int_ i = 0; i < nrows; i++) { \
+            const typ* inptr = (const typ*)inptr0 + ystep*i; \
+            for (int_ j = 0; j < ncols; j++) { \
+                acctyp x = (acctyp)inptr[j]; \
+                acc = op(acc, x); \
+            } \
+        } \
+    } else { \
+        for (int_ i = 0; i < nrows; i++) { \
+            const typ* inptr = (const typ*)inptr0 + ystep*i; \
+            for (int_ j = 0; j < ncols; j++) { \
+                acctyp x = (acctyp)inptr[j*xstep]; \
+                acc = op(acc, x); \
+            } \
+        } \
+    } \
+    *(acctyp*)accptr = acc; \
+}
+
+_FX_REDUCE_IMPL(int8_t, int32_t, max_i8, _FX_REDUCE_OP_MAX, -128)
+_FX_REDUCE_IMPL(int8_t, int32_t, min_i8, _FX_REDUCE_OP_MIN, 127)
+_FX_REDUCE_IMPL(uint8_t, uint32_t, max_u8, _FX_REDUCE_OP_MAX, 0)
+_FX_REDUCE_IMPL(uint8_t, uint32_t, min_u8, _FX_REDUCE_OP_MIN, 255)
+_FX_REDUCE_IMPL(int32_t, int32_t, max_i32, _FX_REDUCE_OP_MAX, INT_MIN)
+_FX_REDUCE_IMPL(int32_t, int32_t, min_i32, _FX_REDUCE_OP_MIN, INT_MAX)
+_FX_REDUCE_IMPL(uint32_t, uint32_t, max_u32, _FX_REDUCE_OP_MAX, 0)
+_FX_REDUCE_IMPL(uint32_t, uint32_t, min_u32, _FX_REDUCE_OP_MIN, UINT_MAX)
+_FX_REDUCE_IMPL(int64_t, int64_t, max_i64, _FX_REDUCE_OP_MAX, 0x8000000000000000LL)
+_FX_REDUCE_IMPL(int64_t, int64_t, min_i64, _FX_REDUCE_OP_MIN, 0x7fffffffffffffffLL)
+_FX_REDUCE_IMPL(uint64_t, uint64_t, max_u64, _FX_REDUCE_OP_MAX, 0)
+_FX_REDUCE_IMPL(uint64_t, uint64_t, min_u64, _FX_REDUCE_OP_MIN, 0xffffffffffffffffUL)
+_FX_REDUCE_IMPL(float, float, max_f32, _FX_REDUCE_OP_MAX, -FLT_MAX)
+_FX_REDUCE_IMPL(float, float, min_f32, _FX_REDUCE_OP_MIN, FLT_MAX)
+
+_FX_REDUCE_IMPL(int32_t, int64_t, sum_i32, _FX_REDUCE_OP_SUM, 0)
+_FX_REDUCE_IMPL(uint32_t, uint64_t, sum_u32, _FX_REDUCE_OP_SUM, 0)
+_FX_REDUCE_IMPL(int64_t, int64_t, sum_i64, _FX_REDUCE_OP_SUM, 0)
+_FX_REDUCE_IMPL(float, double, sum_f32, _FX_REDUCE_OP_SUM, 0.f)
+
+_FX_REDUCE_IMPL(int32_t, int64_t, sum_abs_i32, _FX_REDUCE_OP_SUM_ABS, 0)
+_FX_REDUCE_IMPL(int64_t, int64_t, sum_abs_i64, _FX_REDUCE_OP_SUM_ABS, 0)
+_FX_REDUCE_IMPL(float, double, sum_abs_f32, _FX_REDUCE_OP_SUM_ABSF, 0.f)
+
+_FX_REDUCE_IMPL(int32_t, uint64_t, sum_sqr_i32, _FX_REDUCE_OP_SUM_SQR, 0)
+_FX_REDUCE_IMPL(uint32_t, uint64_t, sum_sqr_u32, _FX_REDUCE_OP_SUM_SQR, 0)
+_FX_REDUCE_IMPL(int64_t, uint64_t, sum_sqr_i64, _FX_REDUCE_OP_SUM_SQR, 0)
+_FX_REDUCE_IMPL(uint64_t, uint64_t, sum_sqr_u64, _FX_REDUCE_OP_SUM_SQR, 0)
+_FX_REDUCE_IMPL(float, double, sum_sqr_f32, _FX_REDUCE_OP_SUM_SQR, 0.)
+
+_FX_REDUCE_IMPL(float, double, sum_exp_f32, _FX_REDUCE_OP_SUM_EXP, 0.)
+
+_FX_REDUCE_IMPL(int32_t, int64_t, prod_i32, _FX_REDUCE_OP_PROD, 1)
+_FX_REDUCE_IMPL(uint32_t, uint64_t, prod_u32, _FX_REDUCE_OP_PROD, 1)
+_FX_REDUCE_IMPL(int64_t, int64_t, prod_i64, _FX_REDUCE_OP_PROD, 1)
+_FX_REDUCE_IMPL(uint64_t, uint64_t, prod_u64, _FX_REDUCE_OP_PROD, 1)
+_FX_REDUCE_IMPL(float, double, prod_f32, _FX_REDUCE_OP_PROD, 1.f)
+
+static void _fx_finit_copy_i8(const char* inptr, char* outptr, double param)
+{ *outptr = *inptr; }
+
+static void _fx_finit_copy_i32(const char* inptr, char* outptr, double param)
+{ *(int*)outptr = *(int*)inptr; }
+
+static void _fx_finit_copy_i64(const char* inptr, char* outptr, double param)
+{ *(int64_t*)outptr = *(int64_t*)inptr; }
+
+static void _fx_finit_cast_f64f32(const char* inptr, char* outptr, double param)
+{ *(float*)outptr = (float)*(double*)inptr; }
+
+static void _fx_finit_cast_i64i32(const char* inptr, char* outptr, double param)
+{ *(int32_t*)outptr = (int32_t)(*(int64_t*)inptr); }
+
+// [TODO] check for overflow on Windows where 'long int' is 32-bit integer.
+static void _fx_finit_sqrt_u64u32(const char* inptr, char* outptr, double param)
+{ *(uint32_t*)outptr = (uint32_t)lrint(sqrt((double)*(uint64_t*)inptr)); }
+
+static void _fx_finit_sqrt_u64(const char* inptr, char* outptr, double param)
+{ *(uint64_t*)outptr = (uint64_t)lrint(sqrt((double)*(uint64_t*)inptr)); }
+
+static void _fx_finit_sqrt_f64f32(const char* inptr, char* outptr, double param)
+{ *(float*)outptr = (float)sqrt(*(double*)inptr); }
+
+static void _fx_finit_log_f64f32(const char* inptr, char* outptr, double param)
+{ *(float*)outptr = (float)log(*(double*)inptr); }
+
+static void _fx_finit_scale_f64f32(const char* inptr, char* outptr, double param)
+{ *(float*)outptr = (float)(*(double*)inptr*param); }
+
+static void _fx_finit_scale_i64i32(const char* inptr, char* outptr, double param)
+{ *(int32_t*)outptr = (int32_t)lrint(*(int64_t*)inptr*param); }
+
+// [TODO] check for overflow on Windows where 'long int' is 32-bit integer.
+static void _fx_finit_scale_u64u32(const char* inptr, char* outptr, double param)
+{ *(uint32_t*)outptr = (uint32_t)lrint(*(uint64_t*)inptr*param); }
+
+static void _fx_finit_scale_i64(const char* inptr, char* outptr, double param)
+{ *(int64_t*)outptr = (int64_t)lrint(*(int64_t*)inptr*param); }
+
+static void _fx_finit_scale_u64(const char* inptr, char* outptr, double param)
+{ *(uint64_t*)outptr = (uint64_t)lrint(*(uint64_t*)inptr*param); }
+
+typedef void (*_fx_reduce_func_t)(const char* inptr, int_ ystep, int_ xstep,
+                                int_ nrows, int_ ncols, char* outptr, bool init);
+typedef void (*_fx_reduce_finit_func_t)(const char* acc, char* outptr, double param);
+}
+
+fun run_reduce(inp_shape_: int [], inp_data_: Ast.nndata_t,
+               out_shape_: int [], out_data_: Ast.nndata_t,
+               axes_: int [], keepdims: bool,
+               reduce_op_: Ast.nnreduce_t, ntasks: int): void
+@ccode {
+    enum {_FX_REDUCE_MAX_DIMS=5};
+    int_ inp_ndims = inp_shape_->dim[0].size;
+    int_ out_ndims = out_shape_->dim[0].size;
+    int_ naxes = axes_->dim[0].size;
+    if (naxes == 0)
+        naxes = inp_ndims;
+    const int_* axes = (const int_*)(axes_->data);
+    int inp_typ = inp_data_->tag, out_typ = out_data_->tag;
+    const int_* inp_shape = (const int_*)inp_shape_->data;
+    const int_* out_shape = (const int_*)out_shape_->data;
+    int_ inp_step[_FX_REDUCE_MAX_DIMS], out_step[_FX_REDUCE_MAX_DIMS];
+    int_ dim_map[_FX_REDUCE_MAX_DIMS] = {0, 1, 2, 3, 4};
+    int_ reduce_shape[_FX_REDUCE_MAX_DIMS], reduce_step[_FX_REDUCE_MAX_DIMS];
+    bool axes_mask[_FX_REDUCE_MAX_DIMS]={false, false, false, false, false};
+    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    size_t esz = inp_data->dim[0].step;
+    int_ out_total = 1, reduce_total = 1;
+    int reduce_op = reduce_op_->tag;
+    _fx_reduce_finit_func_t finit_func = 0;
+    _fx_reduce_func_t reduce_func = 0;
+    double param = 1.;
+
+    if (inp_typ != out_typ)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (inp_ndims > _FX_REDUCE_MAX_DIMS)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if ((keepdims && inp_ndims != out_ndims) ||
+        (!keepdims && inp_ndims != out_ndims + naxes))
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
+    for (int_ i = inp_ndims - 1; i >= 0; i--) {
+        inp_step[i] = i == inp_ndims - 1 ? 1 : inp_step[i+1]*inp_shape[i+1];
+    }
+    for (int_ i = out_ndims - 1; i >= 0; i--) {
+        out_step[i] = i == out_ndims - 1 ? 1 : out_step[i+1]*out_shape[i+1];
+        out_total *= out_shape[i];
+    }
+    for (int_ i = 0; i < naxes; i++) {
+        int_ a = axes ? axes[i] : i;
+        if (a < 0) a += inp_ndims;
+        if (a < 0 || a >= inp_ndims)
+            return FX_SET_EXN_FAST(FX_EXN_OutOfRangeError);
+        if (axes_mask[a])
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        axes_mask[a] = true;
+        reduce_total *= inp_shape[a];
+    }
+
+    for (int_ i = 0; i < out_ndims; i++)
+        dim_map[i] = i;
+
+    {
+    int_ j = 0, k = 0;
+    for (int_ i = 0; i < inp_ndims; i++) {
+        if (!axes_mask[i]) {
+            if (!keepdims) {
+                dim_map[k] = i;
+                k++;
+            }
+            continue;
+        }
+        reduce_shape[j] = inp_shape[i];
+        reduce_step[j] = inp_step[i];
+        j++;
+    }
+    }
+
+    if (reduce_op == _FX_NN_REDUCE_MIN || reduce_op == _FX_NN_REDUCE_MAX) {
+        if (inp_typ == _FX_NN_I8) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
+                _fx_reduce_min_i8 : _fx_reduce_max_i8;
+            finit_func = _fx_finit_copy_i8;
+        } else if (inp_typ == _FX_NN_U8) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
+                _fx_reduce_min_u8 : _fx_reduce_max_u8;
+            finit_func = _fx_finit_copy_i8; // copy_i* === copy_u*
+        } else if (inp_typ == _FX_NN_I32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
+                _fx_reduce_min_i32 : _fx_reduce_max_i32;
+            finit_func = _fx_finit_copy_i32;
+        } else if (inp_typ == _FX_NN_U32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
+                _fx_reduce_min_u32 : _fx_reduce_max_u32;
+            finit_func = _fx_finit_copy_i32;
+        } else if (inp_typ == _FX_NN_I64) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
+                _fx_reduce_min_i64 : _fx_reduce_max_i64;
+            finit_func = _fx_finit_copy_i64;
+        } else if (inp_typ == _FX_NN_U64) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
+                _fx_reduce_min_u64 : _fx_reduce_max_u64;
+            finit_func = _fx_finit_copy_i64;
+        } else if (inp_typ == _FX_NN_FP32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
+                _fx_reduce_min_f32 : _fx_reduce_max_f32;
+            finit_func = _fx_finit_copy_i32;
+        }
+    } else if (reduce_op == _FX_NN_REDUCE_SUM ||
+               reduce_op == _FX_NN_REDUCE_PROD ||
+               reduce_op == _FX_NN_REDUCE_MEAN) {
+        if (inp_typ == _FX_NN_I32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
+                _fx_reduce_prod_i32 : _fx_reduce_sum_i32;
+            finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
+                _fx_finit_scale_i64i32 : _fx_finit_cast_i64i32;
+        } else if (inp_typ == _FX_NN_U32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
+                _fx_reduce_prod_u32 : _fx_reduce_sum_u32;
+            finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
+                _fx_finit_scale_u64u32 : _fx_finit_cast_i64i32 ;
+        } else if (inp_typ == _FX_NN_I64) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
+                _fx_reduce_prod_i64 : _fx_reduce_sum_i64;
+            finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
+                _fx_finit_scale_i64 : _fx_finit_copy_i64;
+        } else if (inp_typ == _FX_NN_U64) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
+                _fx_reduce_prod_u64 : _fx_reduce_sum_i64; // sum_i64 === sum_u64
+            finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
+                _fx_finit_scale_u64 : _fx_finit_copy_i64;
+        } else if (inp_typ == _FX_NN_FP32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
+                _fx_reduce_prod_f32 : _fx_reduce_sum_f32;
+            finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
+                _fx_finit_scale_f64f32 : _fx_finit_cast_f64f32;
+        }
+        if (reduce_op == _FX_NN_REDUCE_MEAN)
+            param = reduce_total == 0 ? 0. : 1./reduce_total;
+    } else if (reduce_op == _FX_NN_REDUCE_L1 ||
+               reduce_op == _FX_NN_REDUCE_L2 ||
+               reduce_op == _FX_NN_REDUCE_SUM_SQUARE) {
+        if (inp_typ == _FX_NN_I32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
+                _fx_reduce_sum_abs_i32 : _fx_reduce_sum_sqr_i32;
+            finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
+                _fx_finit_sqrt_u64u32 : _fx_finit_cast_i64i32;
+        } else if (inp_typ == _FX_NN_U32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
+                _fx_reduce_sum_u32 : _fx_reduce_sum_sqr_u32;
+            finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
+                _fx_finit_sqrt_u64u32 : _fx_finit_cast_i64i32;
+        } else if (inp_typ == _FX_NN_I64) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
+                _fx_reduce_sum_abs_i64 : _fx_reduce_sum_sqr_i64;
+            finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
+                _fx_finit_sqrt_u64 : _fx_finit_copy_i64;
+        } else if (inp_typ == _FX_NN_U64) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
+                _fx_reduce_sum_i64 : _fx_reduce_sum_sqr_u64;
+            finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
+                _fx_finit_sqrt_u64 : _fx_finit_copy_i64;
+        } else if (inp_typ == _FX_NN_FP32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
+                _fx_reduce_sum_abs_f32 : _fx_reduce_sum_sqr_f32;
+            finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
+                _fx_finit_sqrt_f64f32 : _fx_finit_cast_f64f32;
+        }
+    } else if (reduce_op == _FX_NN_REDUCE_LOG_SUM ||
+               reduce_op == _FX_NN_REDUCE_LOG_SUM_EXP) {
+        if (inp_typ == _FX_NN_FP32) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_LOG_SUM_EXP ?
+                _fx_reduce_sum_exp_f32 : _fx_reduce_sum_f32;
+            finit_func = _fx_finit_log_f64f32;
+        }
+    }
+
+    if (!reduce_func || !finit_func)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    if (out_total == 1 || out_total*reduce_total < 100000)
+        ntasks = 1;
+
+    /*printf("esz=%d, reduce_func=%p, sum_f32=%p, reduce_total=%d, out_total=%d\n",
+        (int)esz, reduce_func, _fx_reduce_sum_f32,
+        (int)reduce_total, (int)out_total);*/
+
+    #pragma omp parallel for num_threads(ntasks)
+    for (int task_id = 0; task_id < ntasks; task_id++)
+    {
+        char acc[8];
+        int_ out_idx0 = task_id*out_total/ntasks, out_idx1 = (task_id + 1)*out_total/ntasks;
+        int_ ystep = naxes >= 2 ? reduce_step[naxes - 2] : 0;
+        int_ xstep = naxes >= 1 ? reduce_step[naxes - 1] : 0;
+        int_ nrows = naxes >= 2 ? reduce_shape[naxes - 2] : 1;
+        int_ ncols = naxes >= 1 ? reduce_shape[naxes - 1] : 1;
+
+        if (nrows > 1 && ystep == ncols*xstep)
+        {
+            ncols *= nrows;
+            nrows = 1;
+        }
+        for (;out_idx0 < out_idx1; out_idx0++) {
+            int_ idx = out_idx0;
+            int_ i, j, inp_ofs = 0, out_ofs = 0;
+            const char* inptr = inp_data->data;
+            char* outptr = out_data->data;
+
+            for (i = out_ndims-1; i >= 0; i--) {
+                int_ prev_idx = idx / out_shape[i];
+                idx -= prev_idx*out_shape[i];
+                out_ofs += out_step[i]*idx;
+                inp_ofs += inp_step[dim_map[i]]*idx;
+                idx = prev_idx;
+            }
+            assert(out_idx0 == out_ofs);
+            inptr += inp_ofs*esz;
+            outptr += out_ofs*esz;
+
+            //printf("out_ofs=%d, out_idx0=%d, inp_ofs=%d, ystep=%d, xstep=%d, nrows=%d, ncols=%d\n",
+            //    (int)out_ofs, (int)out_idx0, (int)inp_ofs, (int)ystep, (int)xstep, (int)nrows, (int)ncols);
+
+            for (j = 0; j < reduce_total; j += nrows*ncols) {
+                int_ y, x;
+                inp_ofs = 0;
+                idx = j;
+                for (i = naxes-1; i >= 0; i--) {
+                    int_ prev_idx = idx / reduce_shape[i];
+                    idx -= prev_idx*reduce_shape[i];
+                    inp_ofs += reduce_step[i]*idx;
+                    idx = prev_idx;
+                }
+                reduce_func(inptr + inp_ofs, ystep, xstep, nrows, ncols, acc, j == 0);
+            }
+            finit_func(acc, outptr, param);
+            /*printf("acc=%.2f, param=%.2f, *outptr=%.2f\n",
+                (reduce_op == _FX_NN_REDUCE_MAX || reduce_op == _FX_NN_REDUCE_MIN ?
+                (double)*(float*)acc : *(double*)acc), param, *(float*)outptr);*/
+        }
+    }
+    return FX_OK;
+}
+
+fun run_reduce(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op {
+| Ast.NN_Reduce {reduce_op, axes, keepdims, t_inp, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val inp_shape = inp.shape.shape
+    val out = model.get_tensor(t_out)
+    val out_shape = out.shape.shape
+    run_reduce(inp_shape, inp.data, out_shape, out.data,
+              axes, keepdims, reduce_op, *model.ntasks)
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
+}
