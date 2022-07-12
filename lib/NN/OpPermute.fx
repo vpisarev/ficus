@@ -337,8 +337,8 @@ match op {
         inp_shape[delta + i] = ((int_*)inp_shape_->data)[i];
         out_shape[delta + i] = ((int_*)out_shape_->data)[i];
     }
-    for (i = SLICE_MAX_DIMS-2; i >= 0; i--)
-        inp_step[i] = inp_step[i+1]*inp_shape[i+1];
+    for (i = SLICE_MAX_DIMS-1; i >= 0; i--)
+        inp_step[i] = i == SLICE_MAX_DIMS-1 ? 1 : inp_step[i+1]*inp_shape[i+1];
     for (i = 0; i < naxes; i++) {
         int_ j = axes_->data ? ((int_*)axes_->data)[i] : i;
         int_ start = ((int_*)starts_->data)[i];
@@ -370,16 +370,13 @@ match op {
         starts[j] = start;
         ends[j] = end;
         steps[j] = step;
+        //printf("slice: i=%d. j=%d. sz_j=%d, starts_j=%d, ends_j=%d, steps_j=%d\n",
+        //       (int)i, (int)(j-delta), (int)sz_j, (int)starts[j], (int)ends[j], (int)steps[j]);
     }
 
     for (i = 0; i < SLICE_MAX_DIMS; i++) {
-        if (ends[i] > inp_shape[i]) ends[i] = inp_shape[i];
-        if (steps[i] > 0)
-            inptr0 += starts[i]*inp_step[i]*esz;
-        else {
-            inptr0 += (ends[i]-1)*inp_step[i]*esz;
-            inp_step[i] *= -1;
-        }
+        inptr0 += starts[i]*inp_step[i]*esz;
+        inp_step[i] *= steps[i];
     }
 
     int_ sz0 = out_shape[4], sz1 = out_shape[3];

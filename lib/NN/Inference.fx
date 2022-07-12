@@ -61,7 +61,7 @@ fun dump_arg(model: Ast.nnmodel_t, prefix: string, idx: int, argidx: int, dumpda
     val name = model.args[argidx].name
     val etyp = t.elemtype()
     val sh = join_embrace("{", "}", ",", [for sz <- t.shape.shape {string(sz)}])
-    println(f"{prefix} {idx} Name: {name}\n Type: {etyp}\n Shape: {sh}")
+    println(f"{prefix} {idx} Name: {name}\n Buf: {model.bufidxs[argidx]}\n Type: {etyp}\n Shape: {sh}")
     if dumpdata {
         println(string(t))
     }
@@ -131,6 +131,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                     | _ => throw Ast.NNError("Loop's trip_count (if any) is expected to be I32/I64 scalar")
                     }
                 } else {None}
+            val trip_count0 = trip_count
             var loop_condition =
                 if t_cond_in > 0 {
                     val t_data = model.tensors[t_cond_in].data
@@ -156,7 +157,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             var iter = 0
             while loop_condition && trip_count.value_or(1L) > 0L {
                 if *model.trace {
-                    println(f"================ LOOP ITERATION #{iter}/{trip_count.value_or(-1L)} ================")
+                    println(f"================ LOOP ITERATION #{iter}/{trip_count0.value_or(-1L)} ================")
                 }
                 run_graph(model, body, outputs)
                 val outarg_0 = outargs[0]
@@ -180,12 +181,24 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                         if !isaccum || iter == 0 {
                             val t = model.tensors[outarg]
                             val t_shape = t.shape
-                            val new_shape = Ast.nnshape_t {layout=t_shape.layout, shape=[1, \t_shape.shape]}
+                            val shape1 = if isaccum {[1, \t_shape.shape]} else {t_shape.shape}
+                            val new_shape = Ast.nnshape_t {layout=t_shape.layout, shape=shape1}
                             model.fit(v_out, new_shape, t.elemtype())
                             model.copy_tensor_data(outarg, v_out)
                         } else {
+                            //println(f"accumulating '{model.args[outarg].name}'={model.tensors[outarg]} to '{model.args[v_out].name}'")
                             model.concat_inplace(outarg, v_out)
                         }
+                    }
+                }
+                for i <- 0:n_state_vars {
+                    val outarg = outargs[i+1]
+                    val v_inp = inpargs[i+2]
+                    if v_inp >= 0 && model.bufidxs[v_inp] >= 0 {
+                        val t = model.tensors[outarg]
+                        val t_shape = t.shape
+                        model.fit(v_inp, t_shape, t.elemtype())
+                        model.copy_tensor_data(outarg, v_inp)
                     }
                 }
                 iter += 1

@@ -265,9 +265,9 @@ fun assign_buffers(model: Ast.nnmodel_t)
                         }
                     }
                     if !model.isconst(v_out) {
-                        if !model.isconst(v_inp) {
+                        /*if !model.isconst(v_inp) {
                             share_buffer(v_inp, v_out)
-                        }
+                        }*/
                         if !model.isconst(outarg) && usecounts[outarg] == 1 {
                             share_buffer(v_out, outarg)
                         }

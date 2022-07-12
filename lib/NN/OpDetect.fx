@@ -230,3 +230,34 @@ fun ssd_postprocess(ssd_outputs: Ast.nntensor_t [],
         (y1, x1, y2, x2, score, cls)
     }]
 }
+
+fun tinyyolo_postprocess(ty_outputs: Ast.nntensor_t [], ~orig_image_size: (int*2), ~input_size: int)
+{
+    assert(`ty_outputs.size() == 3`)
+    val boxes = ty_outputs[0], scores = ty_outputs[1], selected = ty_outputs[2]
+    val box_shape = boxes.shape.shape, scores_shape = scores.shape.shape
+    val selected_shape = selected.shape.shape
+    assert(`box_shape.size() == 3`)
+    assert(`scores_shape.size() == 3`)
+    assert(`selected_shape.size() == 3`)
+    assert(`box_shape[0] == scores_shape[0]`)
+    assert(`box_shape[0] == 1`) // batch_size=1 is only supported for now
+    assert(`box_shape[1] == scores_shape[2]`)
+    val box_data = float(boxes.data).reshape(box_shape[0], box_shape[1], box_shape[2])
+    val scores_data = float(scores.data).reshape(scores_shape[0], scores_shape[1], scores_shape[2])
+    val selected_data = float(selected.data).reshape(selected_shape[0], selected_shape[1], selected_shape[2])
+    val nselected = selected_shape[1]
+    [for i <- 0:nselected {
+        val batch_id = int(selected_data[0, i, 0])
+        val class_id = int(selected_data[0, i, 1])
+        val box_idx = int(selected_data[0, i, 2])
+        val y1 = box_data[batch_id, box_idx, 0]
+        val x1 = box_data[batch_id, box_idx, 1]
+        val y2 = box_data[batch_id, box_idx, 2]
+        val x2 = box_data[batch_id, box_idx, 3]
+        val score = scores_data[batch_id, class_id, box_idx]
+        val detection = (y1, x1, y2, x2, score, float(class_id))
+        //println(f"detection #{i}: detection={detection}")
+        detection
+    }]
+}

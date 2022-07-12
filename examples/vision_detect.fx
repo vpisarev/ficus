@@ -62,6 +62,8 @@ fun parse_args(args: string list)
         detector_kind = DetectorSSD; parse_args(rest)
     | "-yolo" :: rest =>
         detector_kind = DetectorYolo; parse_args(rest)
+    | "-yolo" :: rest =>
+        detector_kind = DetectorTinyYolo; parse_args(rest)
     | "-noshow" :: rest =>
         show_boxes = false; parse_args(rest)
     | "-prmodel" :: rest =>
@@ -214,7 +216,7 @@ for imgname@i <- images {
                                             shape=[1, 3, input_size, input_size]}}
             NN.OpPermute.run_transpose(inp_.shape.shape, inp_.data, [0, 3, 1, 2],
                                        planar_t.shape.shape, planar_data)
-            [("", planar_t), ("", NN.Ast.mktensor([float(h), float(w)]))]
+            [("", planar_t), ("", NN.Ast.mktensor([float(h), float(w)].reshape(1, 2)))]
         | _ => [("", inp_)]
         }
     val (gmean, mintime) = Sys.timeit(
@@ -281,10 +283,16 @@ for imgname@i <- images {
             anchors=NN.OpDetect.yolov4_default_anchors,
             strides=NN.OpDetect.yolov4_default_strides,
             xyscale=NN.OpDetect.yolov4_default_scale)
-        | _ =>
+        | DetectorSSD =>
             NN.OpDetect.ssd_postprocess(outputs, orig_image_size=(h, w), input_size=input_size)
+        | DetectorTinyYolo =>
+            NN.OpDetect.tinyyolo_postprocess(outputs, orig_image_size=(h, w), input_size=input_size)
+        | _ =>
+            println("unrecognized detector type; specify it explicitly via command line options: '-ssd', '-yolo' or '-tinyyolo'")
+            throw Fail("...")
         }
     println(f"{imgname}: {boxes.size()} object(s) detected")
+    //val resized_img = cv.cvtColor(resized_img, cv.COLOR_BGR2RGB)
     draw_boxes(img, boxes, class_names=coco_class_names)
     if show_boxes {
         cv.imshow("detection", img)
