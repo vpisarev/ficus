@@ -1,7 +1,8 @@
 import Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.BufferAllocator, NN.ConstFold, NN.OpConv
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic
+import NN.BufferAllocator, NN.ConstFold, NN.OpConv, NN.Preprocess
 
 var mname = "", lname = ""
 var images: string list = []
@@ -29,36 +30,9 @@ parse_args(Sys.arguments())
 images = images.rev()
 //println(f"model='{mname}', lname='{lname}', images={images}")
 
-val labels: string [] =
-    if lname == "" {[]}
-    else {
-        try {
-            match Json.parse_file(lname) {
-            | Json.Map(entries) =>
-                val fold maxk = 0 for (k, v) <- entries {
-                    val ik = k.to_int().value_or(-1)
-                    assert(ik >= 0)
-                    max(maxk, ik)
-                }
-                val labels_arr = array(maxk + 1, "unknown")
-                for (k, v) <- entries {
-                    val ik = k.to_int().value_or(-1)
-                    val v = match v {
-                        | Json.Str(s) => s
-                        | _ => println(f"invalid label for {k}"); throw Fail("")
-                        }
-                    labels_arr[ik] = v
-                }
-                labels_arr
-            | _ => println("invalid labels"); throw Fail("")
-            }
-        } catch {
-        | Lxu.LexerError(lloc, msg) => println(f"{lname}:{lloc.0}: error: {msg}"); throw Fail("")
-        }
-    }
 
-val net = cv.readNet(mname)
-/*val fface = cv.makeFontFace("sans")
+/*val net = cv.readNet(mname)
+val fface = cv.makeFontFace("sans")
 val fontSize = 20
 
 for imgname@i <- images {
@@ -126,7 +100,7 @@ for imgname@i <- images {
     //cv.imshow("gray", rgb2gray(img))
     //cv.imshow("blurred", blur(rgb2gray(img)))
     //ignore(cv.waitKey())
-
+    fun image_to_tensor(image: uint8x3 [,], params: image_preprocess_params_t): Ast.nntensor_t
     val inp = cv.blobFromImage(img, size=(224, 224),
             scaleFactor=0.017,
             mean=(103., 116., 123.),

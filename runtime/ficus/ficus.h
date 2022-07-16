@@ -91,6 +91,8 @@ typedef char32_t char_;
 
 #define FX_CONCAT(a, b) a ## b
 
+#define FX_SWAP (a, b, t) {(t)=(a); (a)=(b); (b)=(t);}
+
 //////////////////////// Error Codes //////////////////////
 extern int FX_EXN_ASCIIError;
 extern int FX_EXN_AssertError;
@@ -198,38 +200,13 @@ void fx_copy_ptr(const void* src, void* pdst);
 typedef union fx_bits64_t {double f; int64_t i; uint64_t u;} fx_bits64_t;
 typedef union fx_bits32_t {float f; int i; unsigned u;} fx_bits32_t;
 
-#if FX_ARCH_64
-
-// use well-known trick that effectively rounds x by adding it to
-// the magic constant with almost all zero mantissa bits and big-enough exponent.
-// it looks like compilers are smart enough to avoid store/load operations;
-// instead, they do "reinterpret_cast<int64_t>(x+magic_number)" right in the registers.
-// in the end we propagate the sign bit of the 51-bit result.
 FX_INLINE int_ fx_roundf2I(float x) {
-    fx_bits64_t u;
-    u.f = x + 6755399441055744.0;
-    return (u.i << 13) >> 13;
+    return (int_)lrintf(x);
 }
 
 FX_INLINE int_ fx_round2I(double x) {
-    fx_bits64_t u;
-    u.f = x + 6755399441055744.0;
-    return (u.i << 13) >> 13;
+    return (int_)lrint(x);
 }
-#else
-// on 32-bit machines we need just lower 32 bits of the result.
-FX_INLINE int_ fx_roundf2I(float x) {
-    fx_bits64_t u;
-    u.f = x + 6755399441055744.0;
-    return (int_)(int)u.i;
-}
-
-FX_INLINE int_ fx_round2I(double x) {
-    fx_bits64_t u;
-    u.f = x + 6755399441055744.0;
-    return (int_)(int)u.i;
-}
-#endif
 
 FX_INLINE int_ fx_mini(int_ a, int_ b) { return a <= b ? a : b; }
 FX_INLINE float fx_minf(float a, float b) { return a <= b ? a : b; }
@@ -240,19 +217,11 @@ FX_INLINE float fx_maxf(float a, float b) { return a >= b ? a : b; }
 FX_INLINE double fx_max(double a, double b) { return a >= b ? a : b; }
 
 FX_INLINE int fx_roundf2i(float x) {
-    // special 32-bit version that can be converted to very
-    // fast vectorized version inside vectorized loops.
-    // the result is limited to [-2**22,2**22) value range,
-    // it's still useful for float -> [u]int16 or [u]int8 conversion
-    fx_bits32_t u;
-    u.f = x + 12582912.0f;
-    return (u.i << 10) >> 10;
+    return (int)lrintf(x);
 }
 
 FX_INLINE int fx_round2i(double x) {
-    fx_bits64_t u;
-    u.f = x + 6755399441055744.0;
-    return (int)u.i;
+    return (int)lrint(x);
 }
 
 FX_INLINE int_ fx_floorf(float x) { int_ i = (int_)x; return i - (i > x); }

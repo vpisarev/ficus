@@ -280,3 +280,28 @@ fun top_k(t: Ast.nntensor_t, k: int)
     }
     result
 }
+
+fun read_labels(fname: string) =
+    try {
+        match Json.parse_file(fname) {
+        | Json.Map(entries) =>
+            val fold maxk = 0 for (k, v) <- entries {
+                val ik = k.to_int().value_or(-1)
+                assert(ik >= 0)
+                max(maxk, ik)
+            }
+            val labels_arr = array(maxk + 1, "unknown")
+            for (k, v) <- entries {
+                val ik = k.to_int().value_or(-1)
+                val v = match v {
+                    | Json.Str(s) => s
+                    | _ => println(f"invalid label for {k}"); throw Fail("")
+                    }
+                labels_arr[ik] = v
+            }
+            labels_arr
+        | _ => println("invalid labels"); throw Fail("")
+        }
+    } catch {
+    | Lxu.LexerError(lloc, msg) => println(f"{fname}:{lloc.0}: error: {msg}"); throw Fail("")
+    }

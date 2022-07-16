@@ -207,7 +207,7 @@ for imgname@i <- images {
         }
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time()
-    val niters = 5
+    val niters = 15
     val inputs = match detector_kind {
         | DetectorTinyYolo =>
             val planar_data = NN.Ast.NN_Data_FP32(array(input_size*input_size*3, 0.f))
