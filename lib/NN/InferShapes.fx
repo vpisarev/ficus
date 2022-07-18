@@ -114,6 +114,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val N = shape.shape[0]
         val (c_start, c_end) = shape.get_spatial_channel_range()
         val nspatdims = c_end - c_start
+        //println(f"conv shape infer: )
         val out_shape = [for i <- 0:ndims {
                 if i == 0 {N} // just copy N, the batch size
                 else if i < c_start {wshape.shape[0]} // we have NCHW or NCHWxc: take K from from wshape
@@ -253,18 +254,20 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         assert(`bshape.shape.size() == 2`)
         assert(`ndims_c <= 2`)
         assert(`atyp == btyp`)
-        assert(`btyp == ctyp`)
         val arows = ashape.shape[0], acols = ashape.shape[1]
         val brows = bshape.shape[0], bcols = bshape.shape[1]
-        val (crows, ccols) =
-            if ndims_c == 2 {(cshape.shape[0], cshape.shape[1])}
-            else if ndims_c == 1 {(1, cshape.shape[0])}
-            else {(1, 1)}
         assert(`(if transA {arows} else {acols}) == (if transB {bcols} else {brows})`)
         val out_rows = if transA {acols} else {arows}
         val out_cols = if transB {brows} else {bcols}
-        assert(`crows == 1 || crows == out_rows`)
-        assert(`ccols == 1 || ccols == out_cols`)
+        if t_bias != 0 {
+            assert(`btyp == ctyp`)
+            val (crows, ccols) =
+                if ndims_c == 2 {(cshape.shape[0], cshape.shape[1])}
+                else if ndims_c == 1 {(1, cshape.shape[0])}
+                else {(1, 1)}
+            assert(`crows == 1 || crows == out_rows`)
+            assert(`ccols == 1 || ccols == out_cols`)
+        }
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=bshape.layout,
             shape=[out_rows, out_cols]}, typ=atyp, dynamic=false}]
     | Ast.NN_GlobalAvgPool {t_inp, t_out} =>
@@ -614,11 +617,16 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val ndims = shape.shape.size()
         val perm = if perm != [] {int(perm)} else {mkrange(ndims-1, -1, -1)}
         assert(`perm.size() == ndims`)
+        val out_layout = match (ndims, shape.layout) {
+            | (4, Ast.NN_Layout_NHWC) => Ast.NN_Layout_NCHW
+            | (4, Ast.NN_Layout_NCHW) => Ast.NN_Layout_NHWC
+            | _ => shape.layout
+            }
         val out_shape = [for axis <- 0:ndims {
             val axis = Ast.normalize_axis(axis, ndims)
             shape.shape[perm[axis]]}]
         [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
-            layout=shape.layout, shape=out_shape}, typ=typ,
+            layout=out_layout, shape=out_shape}, typ=typ,
             dynamic=false}]
     | Ast.NN_Unsqueeze {t_inp, t_axes, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)

@@ -154,6 +154,7 @@ match ti {
         val i_ = i%dims
         val delta_i = (kernel_shape[i_] + 1) % 2
         val half_i = kernel_shape[i_] / 2
+        //println(f"i={i}. i_={i_}, p={p}, kernel_shape={kernel_shape}, pads0={pads0}")
         match (p, i >= dims) {
         | (Ast.NN_Pad_SameLower, false) | (Ast.NN_Pad_SameUpper, true) => half_i
         | (Ast.NN_Pad_SameLower, _) | (Ast.NN_Pad_SameUpper, _) => half_i - delta_i
@@ -249,15 +250,17 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
         }
         fun convert_targ_group(group: OAst.valueinfo_t [], argkind: Ast.nnargkind_t) {
             for vi@i <- group {
-                val argidx = vargs.push()
-                val _ = vtensors.push()
-                argnames.add(nspace_ + vi.name, argidx)
-                val arg = onnx2arg(dimnames, vi, argkind)
-                vargs.data[argidx] = arg
-                vtensors.data[argidx] = Ast.nntensor_t {
-                        shape = arg.shape,
-                        data=Ast.NN_Data_Empty
-                    }
+                if vi.name == "" || !argnames.mem(vi.name) {
+                    val argidx = vargs.push()
+                    val _ = vtensors.push()
+                    argnames.add(nspace_ + vi.name, argidx)
+                    val arg = onnx2arg(dimnames, vi, argkind)
+                    vargs.data[argidx] = arg
+                    vtensors.data[argidx] = Ast.nntensor_t {
+                            shape = arg.shape,
+                            data=Ast.NN_Data_Empty
+                        }
+                }
             }
         }
         val inputs_start = vargs.count
@@ -397,7 +400,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 if dims == 0 {
                     throw OnnxConvertError(f"{node.name} (op={node.op}): kernel_size is not specified")
                 }
-                if pads == [] {pads = array(dims, 0)}
+                if pads == [] {pads = array(dims*2, 0)}
                 if strides == [] {strides = array(dims, 1)}
                 if dilations == [] {dilations = array(dims, 1)}
                 val pads = autopad2pads(auto_pad, kernel_shape, pads)
@@ -594,7 +597,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     name=name, axis=axis,
                     t_inp=inputs[0], t_ind=inputs[1],
                     t_out=outputs[0]}]
-            | "Gemm" =>
+            | "Gemm" | "MatMul" =>
                 assert(`ninputs == 2 || ninputs == 3`)
                 assert(`noutputs == 1`)
                 var alpha=1.f, beta=1.f, transA=0, transB=0
@@ -604,6 +607,9 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     | {name="transA"} => transA = attr2int(a)
                     | {name="transB"} => transB = attr2int(a)
                     | _ => {}
+                }
+                if node.op == "MatMul" {
+                    assert(`ninputs == 2 && alpha == 1.f && transA == 0 && transB == 0`)
                 }
                 [:: Ast.NN_Gemm {
                     name=name, alpha=alpha, beta=beta,

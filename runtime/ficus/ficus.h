@@ -91,7 +91,7 @@ typedef char32_t char_;
 
 #define FX_CONCAT(a, b) a ## b
 
-#define FX_SWAP (a, b, t) {(t)=(a); (a)=(b); (b)=(t);}
+#define FX_SWAP(a, b, t) {(t)=(a); (a)=(b); (b)=(t);}
 
 //////////////////////// Error Codes //////////////////////
 extern int FX_EXN_ASCIIError;

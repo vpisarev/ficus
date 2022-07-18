@@ -193,7 +193,7 @@ match op {
 fun run_transpose(inp_shape_: int [], inp_data_: Ast.nndata_t, perm_: int [],
                   out_shape_: int [], out_data_: Ast.nndata_t): void
 @ccode {
-    enum {TRANSPOSE_MAX_DIMS=4};
+    enum {TRANSPOSE_MAX_DIMS=5};
     int_ i, ndims = inp_shape_->dim[0].size;
     fx_arr_t* inp_data = &((_fx_nndata_t*)inp_data_)->u.NN_Data_I8;
     fx_arr_t* out_data = &((_fx_nndata_t*)out_data_)->u.NN_Data_I8;
@@ -201,10 +201,10 @@ fun run_transpose(inp_shape_: int [], inp_data_: Ast.nndata_t, perm_: int [],
     size_t out_esz = out_data->dim[0].step;
     int_ out_ndims = out_shape_->dim[0].size;
     int_ perm_ndims = perm_->dim[0].size;
-    int_ perm[TRANSPOSE_MAX_DIMS] = {0, 1, 2, 3};
-    int_ inp_shape[TRANSPOSE_MAX_DIMS] = {1, 1, 1, 1};
-    int_ out_shape[TRANSPOSE_MAX_DIMS] = {1, 1, 1, 1};
-    size_t inp_step[TRANSPOSE_MAX_DIMS] = {0, 0, 0, 1};
+    int_ perm[TRANSPOSE_MAX_DIMS] = {0, 1, 2, 3, 4};
+    int_ inp_shape[TRANSPOSE_MAX_DIMS] = {1, 1, 1, 1, 1};
+    int_ out_shape[TRANSPOSE_MAX_DIMS] = {1, 1, 1, 1, 1};
+    size_t inp_step[TRANSPOSE_MAX_DIMS] = {0, 0, 0, 0, 1};
     int_ delta = TRANSPOSE_MAX_DIMS - ndims;
 
     if (ndims > TRANSPOSE_MAX_DIMS)
@@ -237,10 +237,10 @@ fun run_transpose(inp_shape_: int [], inp_data_: Ast.nndata_t, perm_: int [],
     for (i = TRANSPOSE_MAX_DIMS-2; i >= 0; i--)
         inp_step[i] = inp_step[i+1]*inp_shape[i+1];
 
-    int_ sz0 = out_shape[0], sz1 = out_shape[1];
-    int_ sz2 = out_shape[2], sz3 = out_shape[3];
-    size_t p0 = inp_step[perm[0]], p1 = inp_step[perm[1]];
-    size_t p2 = inp_step[perm[2]], p3 = inp_step[perm[3]];
+    int_ sz4 = out_shape[0], sz3 = out_shape[1];
+    int_ sz2 = out_shape[2], sz1 = out_shape[3], sz0 = out_shape[4];
+    size_t p4 = inp_step[perm[0]], p3 = inp_step[perm[1]];
+    size_t p2 = inp_step[perm[2]], p1 = inp_step[perm[3]], p0 = inp_step[perm[4]];
 
     /*printf("esz=%d, out_esz=%d\n", (int)esz, (int)out_esz);
     for(i = 0; i < TRANSPOSE_MAX_DIMS; i++) {
@@ -253,20 +253,24 @@ fun run_transpose(inp_shape_: int [], inp_data_: Ast.nndata_t, perm_: int [],
     #define _FX_IMPLEMENT_TRANSPOSE(typ) \
         const typ* inptr0 = (const typ*)(inp_data->data); \
         typ* outptr = (typ*)(out_data->data); \
-        for (int_ i0 = 0; i0 < sz0; i0++) { \
-            for (int_ i1 = 0; i1 < sz1; i1++) { \
-                for (int_ i2 = 0; i2 < sz2; i2++, outptr += sz3) { \
-                    int_ i3 = 0; \
-                    const typ* inptr = inptr0 + i0*p0 + i1*p1 + i2*p2; \
-                    for (; i3 <= sz3 - 3; i3 += 3) { \
-                        int_ ip3 = i3*p3; \
-                        typ t0 = inptr[ip3], t1 = inptr[ip3+p3], t2 = inptr[ip3+p3*2]; \
-                        outptr[i3] = t0; \
-                        outptr[i3+1] = t1; \
-                        outptr[i3+2] = t2; \
+        for (int_ i4 = 0; i4 < sz4; i4++) { \
+            for (int_ i3 = 0; i3 < sz3; i3++) { \
+                for (int_ i2 = 0; i2 < sz2; i2++) { \
+                    for (int_ i1 = 0; i1 < sz1; i1++, outptr += sz0) { \
+                        int_ i0 = 0; \
+                        const typ* inptr = inptr0 + i4*p4 + i3*p3 + i2*p2 + i1*p1; \
+                        for (; i0 <= sz0 - 3; i0 += 3) { \
+                            int_ ip0 = i0*p0; \
+                            typ t0 = inptr[ip0]; \
+                            typ t1 = inptr[ip0+p0]; \
+                            typ t2 = inptr[ip0+p0*2]; \
+                            outptr[i0] = t0; \
+                            outptr[i0+1] = t1; \
+                            outptr[i0+2] = t2; \
+                        } \
+                        for (; i0 < sz0; i0++) \
+                            outptr[i0] = inptr[i0*p0]; \
                     } \
-                    for (; i3 < sz3; i3++) \
-                        outptr[i3] = inptr[i3*p3]; \
                 } \
             } \
         }
@@ -300,8 +304,8 @@ match op {
 @ccode {
     enum {SLICE_MAX_DIMS=5};
     int_ i, ndims = inp_shape_->dim[0].size;
-    fx_arr_t* inp_data = &((_fx_nndata_t*)inp_data_)->u.NN_Data_I8;
-    fx_arr_t* out_data = &((_fx_nndata_t*)out_data_)->u.NN_Data_I8;
+    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
     size_t out_esz = out_data->dim[0].step;
     int_ out_ndims = out_shape_->dim[0].size;

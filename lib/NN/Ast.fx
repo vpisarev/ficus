@@ -306,6 +306,7 @@ class nnmodel_t
     ntasks: int ref
     use_fp16: bool ref
     trace: bool ref
+    profile: bool ref
 }
 
 type op_callback_t = (nnmodel_t, nnop_t) -> void
@@ -323,7 +324,8 @@ fun empty_net() = nnmodel_t {
     preferred_layout = NN_Layout_NCHW,
     ntasks = ref 4,
     use_fp16 = ref false,
-    trace = ref false
+    trace = ref false,
+    profile = ref false
 }
 
 fun empty_graph() = NN_Graph {

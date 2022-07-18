@@ -6,29 +6,88 @@
 // various element-wise operations
 import Ast
 
-fun run_lrn_2d(inp: float [], inp_shape: Ast.nnshape_t, out: float [],
-               size: int, alpha: float, beta: float, bias: float)
-{
-    val N = inp_shape.shape[0], C = inp_shape.shape[1]
-    val H = inp_shape.shape[2], W = inp_shape.shape[3]
-    val plane_size = H*W, npixels = N*plane_size
-    val dc0 = floor((size-1)/2.), dc1 = ceil((size-1)/2.)+1
-    val scale = alpha/size
-    @parallel for i <- 0:npixels {
-        val plane_idx = i/plane_size
-        val plane_ofs = i - plane_idx*plane_size
-        val ofs0 = plane_idx*plane_size*C + plane_ofs
-        for c <- 0:C {
-            val ofs = ofs0 + c*plane_size
-            val c0 = max(c-dc0, 0)
-            val c1 = min(c+dc1, C)
-            val fold sqsum = 0.f for j <- c0:c1 {
-                val x = inp[j*plane_size + ofs0]
-                sqsum + x*x
+@ccode {
+#include <alloca.h>
+#include "ficus_nn_common.h"
+}
+
+fun run_lrn_2d(inp_shape_: int [], inp_data_: Ast.nndata_t,
+               out_shape_: int [], out_data_: Ast.nndata_t,
+               size: int, alpha: float, beta: float,
+               bias: float, ntasks: int): void
+@ccode {
+    const int_* inp_shape = (const int_*)(inp_shape_->data);
+    const int_* out_shape = (const int_*)(out_shape_->data);
+    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    int inp_typ = inp_data_->tag, out_typ = out_data_->tag;
+    int_ N, C, plane_size = 1;
+    int dc0 = (int)floor((size-1)/2.), dc1 = (int)ceil((size-1)/2.)+1;
+    float scale = alpha/size;
+    bool b_0_75 = fabsf(beta - 0.75f) < 1e-5f;
+    int_ ndims = inp_shape_->dim[0].size;
+
+    if (ndims < 3 || ndims != out_shape_->dim[0].size)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
+    if (inp_typ != _FX_NN_FP32 || out_typ != inp_typ)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    N = inp_shape[0];
+    C = inp_shape[1];
+    for (int_ i = 0; i < ndims; i++) {
+        if (inp_shape[i] != out_shape[i])
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        if (i >= 2) plane_size *= inp_shape[i];
+    }
+
+    if (plane_size*N < 100000) ntasks = 1;
+
+    #pragma omp parallel for num_threads(ntasks)
+    for (int_ task_id = 0; task_id < ntasks; task_id++)
+    {
+        double* buf = (double*)alloca((C+1)*(sizeof(double) + sizeof(float)));
+        double *sqsumbuf = buf;
+        float* inpbuf = (float*)(sqsumbuf + C + 1);
+        sqsumbuf[0] = 0.;
+        int_ pix0 = task_id*(N*plane_size)/ntasks;
+        int_ pix1 = (task_id+1)*(N*plane_size)/ntasks;
+        for (; pix0 < pix1; pix0++) {
+            int_ sample_idx = pix0 / plane_size;
+            int_ ofs = pix0 - sample_idx * plane_size;
+            ofs += sample_idx * (plane_size * C);
+            const float* inptr = (const float*)inp_data->data + ofs;
+            float* outptr = (float*)out_data->data + ofs;
+            double sq = 0;
+
+            for (int_ c = 0; c < C; c++) {
+                float x = inptr[c*plane_size];
+                sq += x*x;
+                inpbuf[c] = x;
+                sqsumbuf[c+1] = sq;
             }
-            out[ofs] = inp[ofs]*pow(bias + scale*sqsum, -beta)
+            if (b_0_75) {
+                for (int_ c = 0; c < C; c++) {
+                    int_ c0 = c - dc0, c1 = c + dc1;
+                    c0 = c0 >= 0 ? c0 : 0;
+                    c1 = c1 <= C ? c1 : C;
+                    float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
+                    float x = bias + scale*sqsum;
+                    outptr[c*plane_size] = (inpbuf[c]/x)*sqrtf(sqrtf(x));
+                }
+            } else {
+                for (int_ c = 0; c < C; c++) {
+                    int_ c0 = c - dc0, c1 = c + dc1;
+                    c0 = c0 >= 0 ? c0 : 0;
+                    c1 = c1 <= C ? c1 : C;
+                    float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
+                    float x = bias + scale*sqsum;
+                    outptr[c*plane_size] = inpbuf[c]*powf(x, -beta);
+                }
+            }
         }
     }
+    return FX_OK;
 }
 
 fun run_lrn(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -37,12 +96,9 @@ match op {
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
     assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
-    assert(`inp.shape.shape.size() == 4`)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_lrn_2d(inp_data, inp.shape, out_data, size, alpha, beta, bias)
-    | _ => throw NotImplementedError
-    }
+    assert(`inp.shape.shape.size() >= 3`)
+    run_lrn_2d(inp.shape.shape, inp.data, out.shape.shape, out.data,
+               size, alpha, beta, bias, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 

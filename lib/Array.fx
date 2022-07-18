@@ -57,6 +57,11 @@ fun reshape_multichan_(a: ('t ...)[+], nchannels: int, size: (int*4)): 't [,,,]
     return fx_reshape_arr(a, 4, &size->t0, (int)nchannels, 1, fx_result);
 }
 fun reshape_multichan(a: ('t ...) [+], size: (int*4)): 't [,,,] = reshape_multichan_(a, channels(a), size)
+fun reshape_multichan_c3(a: 't [+], size: (int*2)): ('t*3) [,]
+@ccode {
+    return fx_reshape_arr(a, 2, &size->t0, 1, 3, fx_result);
+}
+fun reshape_multichan_c3(a: 't [+], s0: int, s1: int) = reshape_multichan_c3(a, (s0, s1))
 
 fun __negate__(a: 't [+]) = [for x <- a {-x}]
 

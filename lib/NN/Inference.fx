@@ -4,7 +4,7 @@
 */
 
 // Runs the inference on user-provided data
-import Hashmap, Sys
+import Hashmap, Json, LexerUtils as Lxu, Sys
 import Ast, InferShapes, OpConv, RunOp
 
 fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
@@ -70,7 +70,11 @@ fun dump_arg(model: Ast.nnmodel_t, prefix: string, idx: int, argidx: int, dumpda
 fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     val nops = graph.prog.size()
+    var t = 0L
     for op@opidx <- graph.prog {
+        if *model.profile {
+            t = Sys.tick_count()
+        }
         val (opname, opkind) = op.name()
         val (inps, outs) = op.get_inputs_outputs()
         if *model.trace {
@@ -98,7 +102,6 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
         }
         //println(f"[op #{opidx}/{nops} in graph '{graph.name}']. running op '{op.name()}'")
-        //val t = Sys.tick_count()
         match op {
         | Ast.NN_If {then_branch, else_branch, t_inp, t_out} =>
             val inp = model.get_tensor(t_inp)
@@ -208,11 +211,11 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
         | _ => RunOp.run_op(model, op)
         }
-        /*val t = Sys.tick_count() - t
-        val t = t*1000./Sys.tick_frequency()
-        if t > 0.1 {
-            println(f"{op.name()}: {round(t, 2)}ms")
-        }*/
+        if *model.profile {
+            t = Sys.tick_count() - t
+            val t_ms = t*1000./Sys.tick_frequency()
+            println(f"TIME {op.name()}: {round(t_ms, 2)}ms")
+        }
         /*for oi@outidx <- oinfo {
             val {idx=argidx} = oi
             match model.get_tensor(argidx).data {
@@ -257,7 +260,7 @@ fun top_k(t: Ast.nntensor_t, k: int)
     val shape = t.shape.shape
     val ndims = shape.size()
     assert(`k > 0`)
-    assert(`ndims == 1 || ndims == 2`)
+    assert(`ndims == 1 || ndims == 2 || (ndims == 4 && shape[2] == 1 && shape[3] == 1)`)
     val (nrows, ncols) = if ndims == 1 {(1, shape[0])} else {(shape[0], shape[1])}
     val k = min(k, ncols)
     val data = float(t)

@@ -12,10 +12,7 @@ type activ_func_t =
 #include <assert.h>
 #include <float.h>
 #include <math.h>
-
-#ifdef __ARM_NEON
-#include <arm_neon.h>
-#endif
+#include "ficus_nn_common.h"
 
 enum { _FX_LAYOUT_UNKNOWN=0, _FX_LAYOUT_NCHW=1, _FX_LAYOUT_NHWC=2 };
 enum { _FX_CONV_TYPE_GENERIC=0, _FX_CONV_TYPE_DEPTHWISE=1, _FX_CONV_TYPE_WINOGRAD3X3=2 };
@@ -80,83 +77,6 @@ typedef int16_t flt16_t;
 
   (this is the zlib license)
 */
-#ifdef __ARM_NEON
-#define _fx_c_exp_hi 88.3762626647949f
-#define _fx_c_exp_lo -88.3762626647949f
-
-#define _fx_c_cephes_LOG2EF 1.44269504088896341
-#define _fx_c_cephes_exp_C1 0.693359375
-#define _fx_c_cephes_exp_C2 -2.12194440e-4
-
-#define _fx_c_cephes_exp_p0 1.9875691500E-4
-#define _fx_c_cephes_exp_p1 1.3981999507E-3
-#define _fx_c_cephes_exp_p2 8.3334519073E-3
-#define _fx_c_cephes_exp_p3 4.1665795894E-2
-#define _fx_c_cephes_exp_p4 1.6666665459E-1
-#define _fx_c_cephes_exp_p5 5.0000001201E-1
-
-/* exp() computed for 4 float at once */
-static __inline float32x4_t _fx_vexpq_f32(float32x4_t x) {
-    float32x4_t tmp, fx;
-
-    float32x4_t one = vdupq_n_f32(1);
-    x = vminq_f32(x, vdupq_n_f32(_fx_c_exp_hi));
-    x = vmaxq_f32(x, vdupq_n_f32(_fx_c_exp_lo));
-
-    /* express exp(x) as exp(g + n*log(2)) */
-    fx = vmlaq_f32(vdupq_n_f32(0.5f), x, vdupq_n_f32(_fx_c_cephes_LOG2EF));
-
-    /* perform a floorf */
-    tmp = vcvtq_f32_s32(vcvtq_s32_f32(fx));
-
-    /* if greater, substract 1 */
-    uint32x4_t mask = vcgtq_f32(tmp, fx);
-    mask = vandq_u32(mask, vreinterpretq_u32_f32(one));
-
-    fx = vsubq_f32(tmp, vreinterpretq_f32_u32(mask));
-
-    tmp = vmulq_f32(fx, vdupq_n_f32(_fx_c_cephes_exp_C1));
-    float32x4_t z = vmulq_f32(fx, vdupq_n_f32(_fx_c_cephes_exp_C2));
-    x = vsubq_f32(x, tmp);
-    x = vsubq_f32(x, z);
-
-    const float _fx_cephes_exp_p[6] = {
-        _fx_c_cephes_exp_p0, _fx_c_cephes_exp_p1,
-        _fx_c_cephes_exp_p2, _fx_c_cephes_exp_p3,
-        _fx_c_cephes_exp_p4, _fx_c_cephes_exp_p5 };
-    float32x4_t y = vld1q_dup_f32(_fx_cephes_exp_p+0);
-    float32x4_t c1 = vld1q_dup_f32(_fx_cephes_exp_p+1);
-    float32x4_t c2 = vld1q_dup_f32(_fx_cephes_exp_p+2);
-    float32x4_t c3 = vld1q_dup_f32(_fx_cephes_exp_p+3);
-    float32x4_t c4 = vld1q_dup_f32(_fx_cephes_exp_p+4);
-    float32x4_t c5 = vld1q_dup_f32(_fx_cephes_exp_p+5);
-
-    y = vmulq_f32(y, x);
-    z = vmulq_f32(x, x);
-    y = vaddq_f32(y, c1);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c2);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c3);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c4);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c5);
-
-    y = vmulq_f32(y, z);
-    y = vaddq_f32(y, x);
-    y = vaddq_f32(y, one);
-
-    /* build 2^n */
-    int32x4_t mm = vcvtq_s32_f32(fx);
-    mm = vaddq_s32(mm, vdupq_n_s32(0x7f));
-    mm = vshlq_n_s32(mm, 23);
-    float32x4_t pow2n = vreinterpretq_f32_s32(mm);
-
-    y = vmulq_f32(y, pow2n);
-    return y;
-}
-#endif
 
 static void _fx_activ_clip(float* data, size_t step, int size0,
                             int size1, const float* params)
@@ -253,6 +173,9 @@ static void _fx_activ_mish(float* data, size_t step, int size0,
 }
 
 enum { FX_CONV_TYPE_GENERIC=0, FX_CONV_TYPE_DEPTHWISE=1, FX_CONV_TYPE_WINOGRAD3X3=2 };
+
+static double total_time = 0;
+static double min_total_time = 0;
 
 typedef struct _fx_conv2d_t
 {
@@ -691,6 +614,7 @@ static int _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* inp
                                 const int_* outsize, float* out,
                                 const _fx_conv2d_t* conv, int ntasks)
 {
+    int64_t ts = fx_tick_count();
     assert(ndims == 4 && inpsize[0] == outsize[0] && outsize[1] == conv->K && inpsize[1] == conv->C);
     assert(conv->ngroups == conv->K && conv->K == conv->C);
     int N = (int)inpsize[0], C = (int)inpsize[1], Hi = (int)inpsize[2], Wi = (int)inpsize[3];
@@ -968,6 +892,8 @@ static int _fx_depthwise_conv2d(int ndims, const int_* inpsize, const float* inp
         if (activ_func)
             activ_func(outptr, 0, 1, (int)out_planesize, activ_params);
     }
+    ts = fx_tick_count() - ts;
+    total_time += ts;
     return FX_OK;
 }
 
@@ -1507,14 +1433,12 @@ static int _fx_winograd_conv2d(int ndims, const int_* inpsize, const float* inp,
     fx_free(wbuf_all);
     {
     ts = fx_tick_count() - ts;
-    printf("Winograd: N=%d, K=%d, C=%d, Hi=%d, Wi=%d: time=%.1f\n", N, K, C, Hi, Wi, ts*1000./fx_tick_frequency());
+    total_time += ts;
+    //printf("Winograd: N=%d, K=%d, C=%d, Hi=%d, Wi=%d: time=%.1f\n", N, K, C, Hi, Wi, ts*1000./fx_tick_frequency());
     }
     return FX_OK;
 }
 #endif
-
-static double total_time = 0;
-static double min_total_time = 0;
 
 #ifdef __ARM_NEON
 static void _fx_conv_block_fp16( int k, const flt16_t *a, const flt16_t *b,

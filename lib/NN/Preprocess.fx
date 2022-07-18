@@ -21,7 +21,6 @@ type image_preprocess_params_t =
     swaprb: bool
     layout: Ast.nnlayout_t
     elemtype: Ast.nntyp_t
-    ntasks: int
 }
 
 @private fun resize_normalize_image(
@@ -34,27 +33,29 @@ type image_preprocess_params_t =
     int_ image_height = image->dim[0].size;
     int_ image_width = image->dim[1].size;
     int_ N = 1, C = 3, H = input_size->t0, W = input_size->t1;
-    int_ nhwc_shape[] = {1, H, W, C};
-    int_ nchw_shape[] = {1, C, H, W};
+    int_ total = H*W*C;
     int layout = layout_->tag;
-    int_* shape = layout == _FX_NN_Layout_NHWC ? nhwc_shape : nchw_shape;
     int elemtype = elemtype_->tag;
     size_t esz = elemtype == _FX_NN_U8 || elemtype == _FX_NN_I8 ?
         1 : elemtype == _FX_NN_FP32 ? 4 : 2;
     fx_arr_t data;
     int status = FX_OK;
-    float scale_y = yxscale->t0, scale_x = yscale->t1;
+    float scale_y = yxscale->t0, scale_x = yxscale->t1;
     float dy = yxdelta->t0, dx = yxdelta->t1;
     int_ Cstep = layout == _FX_NN_Layout_NHWC ? 1 : H*W;
     int_ ystep = layout == _FX_NN_Layout_NHWC ? C*W : W;
     int_ pixsize = layout == _FX_NN_Layout_NHWC ? C : 1;
-    size_t total = C*H*W;
     int* buf = (int*)alloca(W*C*esz + W*(sizeof(int) + sizeof(float)));
     int* xbuf = buf;
     float* alphabuf = (float*)(xbuf + W);
     char* borderbuf = (char*)(alphabuf + W);
     float m0 = mean->t0, m1 = mean->t1, m2 = mean->t2;
     float s0 = scale->t0, s1 = scale->t1, s2 = scale->t2;
+    float t;
+    if (swaprb) {
+        FX_SWAP(m0, m2, t);
+        FX_SWAP(s0, s2, t);
+    }
 
     if (elemtype != _FX_NN_U8 && elemtype != _FX_NN_FP32)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
@@ -62,18 +63,14 @@ type image_preprocess_params_t =
     if ((elemtype == _FX_NN_U8) && (s0 != 1.f || s1 != 1.f || s2 != 1.f))
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
-    status = fx_make_arr(4, shape, esz, 0, 0, 0, &data);
+    status = fx_make_arr(1, &total, esz, 0, 0, 0, &data);
     if (status < 0)
         return status;
 
     if (elemtype == _FX_NN_U8) {
-        uint8_t r = fx_sat_f2u8(mean->t0);
-        uint8_t g = fx_sat_f2u8(mean->t1);
-        uint8_t b = fx_sat_f2u8(mean->t2);
-        if (swaprb) {
-            uint8_t t;
-            FX_SWAP(r, b, t);
-        }
+        uint8_t r = fx_sat_f2u8(m0);
+        uint8_t g = fx_sat_f2u8(m1);
+        uint8_t b = fx_sat_f2u8(m2);
         uint8_t* bufptr = (uint8_t*)borderbuf;
         for (int_ x = 0; x < W; x++, bufptr += pixsize) {
             bufptr[0] = r;
@@ -91,7 +88,7 @@ type image_preprocess_params_t =
             alphabuf[x] = 0.f;
         } else {
             int ix = (int)sx;
-            xbuf[x] = ix;
+            xbuf[x] = ix >= image_width ? image_width-1 : ix;
             sx -= ix;
             alphabuf[x] = sx;
         }
@@ -99,35 +96,40 @@ type image_preprocess_params_t =
 
     if (total < 100000) ntasks = 1;
 
+    /*printf("esz=%d, H=%d, W=%d, layout=NCHW? %d, scale_y=%.3f, scale_x=%.3f, scale_y*inp_size.0=%d, scale_x*inp_size.1=%d, dy=%.2f, dx=%.2f, mean=(%.2f, %.2f, %.2f), scale=(%.2f, %.2f, %.2f)\n",
+        (int)esz, (int)H, (int)W, (int)(layout == _FX_NN_Layout_NCHW), scale_y, scale_x,
+        (int)lrint(scale_y*input_size->t0), (int)lrint(scale_x*input_size->t1),
+        dy, dx, mean->t0, mean->t1, mean->t2, scale->t0, scale->t1, scale->t2
+        );*/
     #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++) {
         int_ y0 = task_id*H/ntasks, y1 = (task_id+1)*H/ntasks;
-        int bofs = swaprb ? 0 : 2, rofs = 2 - bofs;
+        int rofs = !swaprb ? 0 : 2, bofs = 2 - rofs;
         for (; y0 < y1; y0++) {
             float sy = y0*scale_y + dy;
-            char* outptr_ = data->data + ystep*y0;
+            char* outptr_ = data.data + ystep*esz*y0;
             const uint8_t *inptr0, *inptr1;
             int iy = (int)sy;
             if (sy < 0.f || sy >= image_height) {
                 if (layout == _FX_NN_Layout_NHWC)
-                    memcpy(outptr_y_, borderbuf, W*C*esz);
+                    memcpy(outptr_, borderbuf, W*C*esz);
                 else {
-                    memcpy(outptr_y_, borderbuf, W*esz);
-                    memcpy(outptr_y_ + Cstep*esz, borderbuf + W*esz, W*esz);
-                    memcpy(outptr_y_ + Cstep*2*esz, borderbuf + W*2*esz, W*esz);
+                    memcpy(outptr_, borderbuf, W*esz);
+                    memcpy(outptr_ + Cstep*esz, borderbuf + W*esz, W*esz);
+                    memcpy(outptr_ + Cstep*2*esz, borderbuf + W*2*esz, W*esz);
                 }
                 continue;
             }
             sy -= iy;
-            inptr0 = (uint8_t*)image->data + image_width*3*(iy >= image_height ? image_height - 1 : iy);
-            inptr1 = (uint8_t*)image->data + image_width*3*(iy+1 >= image_height ? image_height - 1 : iy+1);
+            inptr0 = (uint8_t*)(image->data + image->dim[0].step*(iy >= image_height ? image_height - 1 : iy));
+            inptr1 = (uint8_t*)(image->data + image->dim[0].step*(iy+1 >= image_height ? image_height - 1 : iy+1));
 
             if (elemtype == _FX_NN_U8) {
                 const uint8_t* bbuf = (const uint8_t*)borderbuf;
                 uint8_t r_def = bbuf[0], g_def = bbuf[1], b_def = bbuf[2];
                 uint8_t* outptr = (uint8_t*)outptr_;
 
-                for (int_ x = 0; x < W; x++, ouptr += pixsize) {
+                for (int_ x = 0; x < W; x++, outptr += pixsize) {
                     int ix = xbuf[x];
                     float sx = alphabuf[x];
                     uint8_t r, g, b;
@@ -168,9 +170,6 @@ type image_preprocess_params_t =
                         g = fx_sat_f2u8(g0 + (g2 - g0)*sy);
                         b = fx_sat_f2u8(b0 + (b2 - b0)*sy);
                     }
-                    r = fx_sat_f2u8(rf);
-                    g = fx_sat_f2u8(gf);
-                    b = fx_sat_f2u8(bf);
                     outptr[0] = r;
                     outptr[Cstep] = g;
                     outptr[Cstep*2] = b;
@@ -180,7 +179,7 @@ type image_preprocess_params_t =
                 float r_def = bbuf[0], g_def = bbuf[1], b_def = bbuf[2];
                 float* outptr = (float*)outptr_;
 
-                for (int_ x = 0; x < W; x++, ouptr += pixsize) {
+                for (int_ x = 0; x < W; x++, outptr += pixsize) {
                     int ix = xbuf[x];
                     float sx = alphabuf[x];
                     float r, g, b;
@@ -233,51 +232,49 @@ type image_preprocess_params_t =
     return FX_OK;
 }
 
-fun image_to_tensor(image: uint8x3 [,], params: image_preprocess_params_t): Ast.nntensor_t
+fun image_to_tensor(image: uint8x3 [,], params: image_preprocess_params_t, ntasks: int): Ast.nntensor_t
 {
-    assert(`layout == Ast.NN_Layout_NCHW || layout == Ast.NN_Layout_NHWC`)
+    assert(`params.layout == Ast.NN_Layout_NCHW || params.layout == Ast.NN_Layout_NHWC`)
     val image_size = image.size()
     val ratio_y = float(params.input_size.0)/image_size.0
     val ratio_x = float(params.input_size.1)/image_size.1
     val (scale_y, scale_x, dy, dx) =
         match params.resize_mode {
         | ResizeStretch =>
-            (params.input_size, 1.f/ratio_y, 1.f/ratio_x, 0, 0)
+            (1.f/ratio_y, 1.f/ratio_x, 0.f, 0.f)
         | ResizeFit =>
             if ratio_y < ratio_x {
                 val ratio = ratio_y
                 val scale = 1.f/ratio
                 val resized_size_x = round(image_size.1*ratio)
-                val dx = (input_size.1 - resized_size_x)/2;
+                val dx = (params.input_size.1 - resized_size_x)/2;
                 (scale, scale, 0.f, -dx*scale)
             } else {
                 val ratio = ratio_x
                 val scale = 1.f/ratio
                 val resized_size_y = round(image_size.0*ratio)
-                val dy = (input_size.0 - resized_size_y)/2;
+                val dy = (params.input_size.0 - resized_size_y)/2;
                 (scale, scale, -dy*scale, 0.f)
             }
         | ResizeCropCenter =>
-            val (scale, dy, dx) =
-                if ratio_y > ratio_x {
-                    val ratio = ratio_y
-                    val scale = 1.f/ratio
-                    (scale, 0.f, (image_size.1 - params.input_size.1*scale)*0.5f)
-                } else {
-                    val ratio = ratio_x
-                    val scale = 1.f/ratio
-                    (scale, (image_size.0 - params.input_size.0*scale)*0.5f, 0.f)
-                }
-            (scale, scale, dy, dx)
+            if ratio_y > ratio_x {
+                val ratio = ratio_y
+                val scale = 1.f/ratio
+                (scale, scale, 0.f, (image_size.1 - params.input_size.1*scale)*0.5f)
+            } else {
+                val ratio = ratio_x
+                val scale = 1.f/ratio
+                (scale, scale, (image_size.0 - params.input_size.0*scale)*0.5f, 0.f)
+            }
         }
     val data = resize_normalize_image(image, params.input_size,
                                       (scale_y, scale_x), (dy, dx),
                                       params.mean, params.scale,
                                       params.swaprb, params.layout,
-                                      params.elemtype, params.ntasks)
+                                      params.elemtype, ntasks)
     val shape = match params.layout {
-        | Ast.NN_Layout_NCHW => [N, 3, params.input_size.0, params.input_size.1]
-        | Ast.NN_Layout_NHWC => [N, params.input_size.0, params.input_size.1, 3]
+        | Ast.NN_Layout_NCHW => [1, 3, params.input_size.0, params.input_size.1]
+        | Ast.NN_Layout_NHWC => [1, params.input_size.0, params.input_size.1, 3]
         | _ => throw Ast.NNError(f"unxpected layout '{params.layout}'")
     }
     Ast.nntensor_t {data=data, shape=Ast.nnshape_t {shape=shape, layout=params.layout}}

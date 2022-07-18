@@ -178,8 +178,11 @@ static int onnx_parse_value_info(FicusOnnx__ValueInfoProto* vi, const fx_arr_t* 
             const FicusOnnx__TensorShapeProto* shape = vi->type->tensor_type->shape;
             fx_status = onnx_parse_array(shape->dim, shape->n_dim, refarrs, REF_DIM,
                                      (onnx_parse_elem_t)onnx_parse_dim, &result->typeinfo.shapeinfo);
+        } else if (vi->type->value_case == FICUS_ONNX__TYPE_PROTO__VALUE_SEQUENCE_TYPE) {
+            printf("error when parsing '%s': sequences are not supported yet\n", vi->name);
+            FX_FAST_THROW_RET(FX_EXN_NotImplementedError);
         } else {
-            printf("error: unsupported value_case: vi->type->value_case=%d\n", (int)vi->type->value_case);
+            printf("error when parsing '%s': unsupported value_case: vi->type->value_case=%d\n", vi->name, (int)vi->type->value_case);
             FX_FAST_THROW_RET(FX_EXN_NotImplementedError);
         }
     }

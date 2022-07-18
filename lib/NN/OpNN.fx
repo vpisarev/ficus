@@ -5,17 +5,100 @@
 
 import Ast
 
-fun run_softmax(inp: 't [], inp_shape: Ast.nnshape_t, out: 't [])
-{
-    val N = inp_shape.shape[0], C = inp_shape.shape[1]
-    @parallel for i <- 0:N {
-        val ofs = i*C
-        val fold maxval = inp[ofs] for j <- 1:C {max(maxval, inp[ofs+j])}
-        var s = 0.
-        val tab = [for j <- 0:C {val t = exp(inp[ofs+j] - maxval); s += t; t}]
-        val s = (1/s :> 't)
-        for j <- 0:C {out[ofs+j] = tab[j]*s}
+@ccode {
+#include <alloca.h>
+#include "ficus_nn_common.h"
+}
+
+fun run_softmax(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
+@ccode {
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* out_shape_ = &out->shape.shape;
+    const int_* inp_shape = (const int_*)(inp_shape_->data);
+    const int_* out_shape = (const int_*)(out_shape_->data);
+    int_ ndims = inp_shape_->dim[0].size;
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    const fx_arr_t* out_data = &out->data.u.NN_Data_I8;
+    int inp_typ = inp->data.tag, out_typ = out->data.tag;
+    int_ N, C, Ca, plane_size = 1;
+
+    if (ndims < 2 || ndims != out_shape_->dim[0].size)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
+    if (inp_typ != _FX_NN_FP32 || out_typ != inp_typ)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    N = inp_shape[0];
+    C = inp_shape[1];
+    Ca = (C + 7) & -8;
+    for (int_ i = 0; i < ndims; i++) {
+        if (inp_shape[i] != out_shape[i])
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        if (i >= 2) plane_size *= inp_shape[i];
     }
+
+    if (plane_size*N < 100000) ntasks = 1;
+
+    #pragma omp parallel for num_threads(ntasks)
+    for (int_ task_id = 0; task_id < ntasks; task_id++)
+    {
+        float* buf = (float*)alloca(Ca*sizeof(float));
+        int_ pix0 = task_id*(N*plane_size)/ntasks;
+        int_ pix1 = (task_id+1)*(N*plane_size)/ntasks;
+        for (; pix0 < pix1; pix0++) {
+            int_ sample_idx = pix0 / plane_size;
+            int_ ofs = pix0 - sample_idx * plane_size;
+            ofs += sample_idx * (plane_size * C);
+            const float* inptr = (const float*)inp_data->data + ofs;
+            float* outptr = (float*)out_data->data + ofs;
+            float maxval = -FLT_MAX, s = 0.f;
+            int_ j = 0;
+
+            for(; j < C; j++) {
+                float x = inptr[j*plane_size];
+                buf[j] = x;
+            }
+            #ifdef __ARM_NEON
+            {
+            float vbuf[4];
+            float32x4_t vmax = vdupq_n_f32(maxval);
+            float32x4_t vs = vdupq_n_f32(0.f);
+            for (; j < Ca; j++)
+                buf[j] = maxval;
+            for (j = 0; j < C; j += 4)
+                vmax = vmaxq_f32(vmax, vld1q_f32(buf + j));
+            vst1q_f32(vbuf, vmax);
+            maxval = vbuf[0];
+            maxval = maxval >= vbuf[1] ? maxval : vbuf[1];
+            maxval = maxval >= vbuf[2] ? maxval : vbuf[2];
+            maxval = maxval >= vbuf[3] ? maxval : vbuf[3];
+            vmax = vdupq_n_f32(maxval);
+            for (j = 0; j < C; j += 4) {
+                float32x4_t t = vld1q_f32(buf + j);
+                t = _fx_vexpq_f32(vsubq_f32(t, vmax));
+                vs = vaddq_f32(vs, t);
+                vst1q_f32(buf + j, t);
+            }
+            vst1q_f32(vbuf, vs);
+            s = vbuf[0] + vbuf[1] + vbuf[2] + vbuf[3];
+            }
+            #else
+            for (j = 0; j < C; j++) {
+                float x = buf[j];
+                maxval = maxval >= x ? maxval : x;
+            }
+            for (j = 0; j < C; j++) {
+                float x = expf(buf[j] - maxval);
+                buf[j] = x;
+                s += x;
+            }
+            #endif
+            s = 1.f/s;
+            for (j = 0; j < C; j++)
+                outptr[j*plane_size] = buf[j]*s;
+        }
+    }
+    return FX_OK;
 }
 
 fun run_softmax(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -23,13 +106,9 @@ match op {
 | Ast.NN_SoftMax {axis, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    assert(`inp.shape.shape.size() == 2`)
+    assert(`inp.shape.shape.size() >= 2`)
     assert(`axis == 1 || axis == -1`)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_softmax(inp_data, inp.shape, out_data)
-    | _ => throw NotImplementedError
-    }
+    run_softmax(inp, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -103,58 +182,67 @@ match op {
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_gemm(A: float [], A_shape: Ast.nnshape_t,
-             B: float [], B_shape: Ast.nnshape_t,
-             bias: float [], bias_shape: Ast.nnshape_t,
-             out: float [], out_shape: Ast.nnshape_t,
+fun run_gemm(A_shape_: int [], A_data_: Ast.nndata_t,
+             B_shape_: int [], B_data_: Ast.nndata_t,
+             C_shape_: int [], C_data_: Ast.nndata_t,
+             out_shape_: int [], out_data_: Ast.nndata_t,
              alpha: float, beta: float,
              transA: bool, transB: bool, ntasks: int): void
 @ccode {
-    const int_* A_shape_ = (const int_*)A_shape->shape.data;
-    const int_* B_shape_ = (const int_*)B_shape->shape.data;
-    const int_* bias_shape_ = (const int_*)bias_shape->shape.data;
-    const int_* out_shape_ = (const int_*)out_shape->shape.data;
-    int_ bias_ndims = bias_shape->shape.dim[0].size;
-    const float* A_data = (const float*)A->data;
-    const float* B_data = (const float*)B->data;
-    const float* bias_data = (const float*)bias->data;
-    float* out_data = (float*)out->data;
+    const int_* A_shape = (const int_*)A_shape_->data;
+    const int_* B_shape = (const int_*)B_shape_->data;
+    const int_* C_shape = (const int_*)C_shape_->data;
+    const int_* out_shape = (const int_*)out_shape_->data;
+    const fx_arr_t* A_data = &A_data_->u.NN_Data_I8;
+    const fx_arr_t* B_data = &B_data_->u.NN_Data_I8;
+    const fx_arr_t* C_data = &C_data_->u.NN_Data_I8;
+    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    int A_typ = A_data_->tag, B_typ = B_data_->tag;
+    int C_typ = C_data_->tag, out_typ = out_data_->tag;
+    int_ C_ndims = C_typ == _FX_NN_Undefined ? 0 : C_shape_->dim[0].size;
 
-    if (A_shape->shape.dim[0].size != 2 ||
-        B_shape->shape.dim[0].size != 2 ||
-        out_shape->shape.dim[0].size != 2 ||
-        (bias_ndims != 2 && bias_ndims != 1 && bias_ndims != 0))
+    if (A_typ != _FX_NN_FP32 || B_typ != A_typ ||
+        (C_typ != A_typ && C_typ != _FX_NN_Undefined) ||
+        out_typ != A_typ)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    if (A_shape_->dim[0].size != 2 ||
+        B_shape_->dim[0].size != 2 ||
+        out_shape_->dim[0].size != 2 ||
+        (C_ndims != 2 && C_ndims != 1 && C_ndims != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
 
-    if (bias_ndims == 1 && (bias_shape_[0] != out_shape_[1]))
+    if (C_ndims == 1 && (C_shape[0] != out_shape[1]))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    if (bias_ndims == 2 &&
-        (bias_shape_[0] != out_shape_[0] ||
-         bias_shape_[1] != out_shape_[1]))
+    if (C_ndims == 2 &&
+        (C_shape[0] != out_shape[0] ||
+         C_shape[1] != out_shape[1]))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    if (bias_ndims == 0 || beta == 0.f) {
+    if (C_ndims == 0 || beta == 0.f || C_typ == _FX_NN_Undefined) {
         beta = 0.f;
     } else {
-        int_ cols = out_shape_[1];
-        for (int_ i = 0; i < out_shape_[0]; i++) {
-            const float* b_i = bias_data + (bias_ndims == 1 ? 0 : cols)*i;
-            float* out_i = out_data + cols*i;
-            if (beta == 1.f)
-                memcpy(out_i, b_i, cols*sizeof(out_i[0]));
+        int_ cols = out_shape[1];
+        for (int_ i = 0; i < out_shape[0]; i++) {
+            const float* c_i = (float*)(C_data->data) + (C_ndims == 2 ? cols : 0)*i;
+            float* out_i = (float*)(out_data->data) + cols*i;
+            if (beta == 1.f) {
+                if (out_i != c_i)
+                    memcpy(out_i, c_i, cols*sizeof(out_i[0]));
+            }
             else {
                 for(int_ j = 0; j < cols; j++)
-                    out_i[j] = beta*b_i[j];
+                    out_i[j] = beta*c_i[j];
             }
         }
         beta = 1.f;
     }
 
     return fx_sgemm(transA, transB, alpha, beta,
-            (int)A_shape_[0], (int)A_shape_[1], A_data, (int)A_shape_[1], 1,
-            (int)B_shape_[0], (int)B_shape_[1], B_data, (int)B_shape_[1], 1,
-            out_data, (int)out_shape_[1], (int)ntasks);
+            (int)A_shape[0], (int)A_shape[1], (const float*)(A_data->data), (int)A_shape[1], 1,
+            (int)B_shape[0], (int)B_shape[1], (const float*)(B_data->data), (int)B_shape[1], 1,
+            (float*)(out_data->data), (int)out_shape[1], (int)ntasks);
 }
 
 fun run_gemm(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -163,12 +251,9 @@ match op {
     val A = model.get_tensor(t_A), B = model.get_tensor(t_B)
     val bias = model.get_tensor(t_bias)
     val out = model.get_tensor(t_out)
-    match (A.data, B.data, bias.data, out.data) {
-    | (Ast.NN_Data_FP32 a_data, Ast.NN_Data_FP32 b_data,
-       Ast.NN_Data_FP32 bias_data, Ast.NN_Data_FP32 out_data) =>
-        run_gemm(a_data, A.shape, b_data, B.shape, bias_data, bias.shape,
-                 out_data, out.shape, alpha, beta, transA, transB, *model.ntasks)
-    | _ => throw NotImplementedError
-    }
+    run_gemm(A.shape.shape, A.data, B.shape.shape, B.data,
+             bias.shape.shape, bias.data,
+             out.shape.shape, out.data,
+             alpha, beta, transA, transB, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
