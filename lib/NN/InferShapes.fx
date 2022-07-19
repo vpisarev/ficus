@@ -106,6 +106,15 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Conv {attr={kernel_shape, pads, strides, dilations, group},
         t_inp, t_weights, t_out, t_passby} =>
         val (shape, typ) = get_shape_typ(t_inp)
+        val out_typ = match (typ, *model.use_fp16) {
+            | (Ast.NN_FP32, true) => Ast.NN_FP16
+            | _ => typ
+            }
+        // for now we only handle planar data
+        val shape = match shape.layout {
+            | Ast.NN_Layout_NCHW => shape
+            | _ => Ast.nnshape_t {layout=Ast.NN_Layout_NCHW, shape=shape.shape}
+            }
         val ndims = shape.shape.size() // convolution may produce a tensor of different size than output,
                                     // but it will always have the same dimensionality, regardless of the layout
         val wshape = get_shape(t_weights)
@@ -134,7 +143,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         }
         [argshapeinfo_t {
             idx=t_out,
-            shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape}, typ=typ,
+            shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape}, typ=out_typ,
             dynamic=false // the shape of output tensor depends only on the shape of inputs,
                           // not on their content, even if the weights are computed dynamically,
                           // thus we set dynamic=false
@@ -519,7 +528,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             (t_ends == 0 || model.isconst(t_ends)) &&
             (t_axes == 0 || model.isconst(t_axes)) &&
             (t_steps == 0 || model.isconst(t_steps))
-        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NCHW,
+        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape.layout,
             shape=out_shape}, typ=typ, dynamic=!const_shape}]
     | Ast.NN_SoftMax {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
@@ -620,13 +629,16 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val out_layout = match (ndims, shape.layout) {
             | (4, Ast.NN_Layout_NHWC) => Ast.NN_Layout_NCHW
             | (4, Ast.NN_Layout_NCHW) => Ast.NN_Layout_NHWC
+            | (4, _) when perm == [0, 3, 1, 2] => Ast.NN_Layout_NCHW
+            | (4, _) when perm == [0, 2, 3, 1] => Ast.NN_Layout_NHWC
             | _ => shape.layout
             }
         val out_shape = [for axis <- 0:ndims {
             val axis = Ast.normalize_axis(axis, ndims)
             shape.shape[perm[axis]]}]
-        [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
-            layout=out_layout, shape=out_shape}, typ=typ,
+        val out_shape=Ast.nnshape_t {layout=out_layout, shape=out_shape}
+        //println(f"Transpose: inferencing shape: inp_shape={shape}, perm={perm}, out_shape={out_shape}")
+        [ argshapeinfo_t {idx=t_out, shape=out_shape, typ=typ,
             dynamic=false}]
     | Ast.NN_Unsqueeze {t_inp, t_axes, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)

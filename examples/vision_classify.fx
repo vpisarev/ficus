@@ -35,7 +35,7 @@ val preprocess_params_resnet = NN.Preprocess.image_preprocess_params_t {
     resize_mode = NN.Preprocess.ResizeCropCenter,
     mean = (123.68f, 116.779f, 103.939f),
     scale = (1.f/(255*0.229f), 1.f/(255*0.224f), 1.f/(255*0.225f)),
-    swaprb = true,
+    swaprb = true, // ???
     layout = NN.Ast.NN_Layout_NCHW,
     elemtype = NN.Ast.NN_FP32
 }

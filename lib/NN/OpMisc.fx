@@ -11,23 +11,30 @@ import Ast
 #include "ficus_nn_common.h"
 }
 
-fun run_lrn_2d(inp_shape_: int [], inp_data_: Ast.nndata_t,
-               out_shape_: int [], out_data_: Ast.nndata_t,
+fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                size: int, alpha: float, beta: float,
                bias: float, ntasks: int): void
 @ccode {
+    fx_arr_t* inp_shape_ = &inp->shape.shape;
+    fx_arr_t* out_shape_ = &out->shape.shape;
     const int_* inp_shape = (const int_*)(inp_shape_->data);
     const int_* out_shape = (const int_*)(out_shape_->data);
-    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
-    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
-    int inp_typ = inp_data_->tag, out_typ = out_data_->tag;
+    fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
+    int inp_typ = inp->data.tag, out_typ = out->data.tag;
     int_ N, C, plane_size = 1;
     int dc0 = (int)floor((size-1)/2.), dc1 = (int)ceil((size-1)/2.)+1;
     float scale = alpha/size;
     bool b_0_75 = fabsf(beta - 0.75f) < 1e-5f;
     int_ ndims = inp_shape_->dim[0].size;
 
-    if (ndims < 3 || ndims != out_shape_->dim[0].size)
+    if (inp->shape.layout.tag != _FX_NN_Layout_NCHW)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    if (ndims < 3)
+        return FX_SET_EXN_FAST(FX_EXN_SizeError);
+
+    if (ndims != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
     if (inp_typ != _FX_NN_FP32 || out_typ != inp_typ)
@@ -95,19 +102,16 @@ match op {
 | Ast.NN_LRN {size, alpha, beta, bias, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
-    assert(`inp.shape.shape.size() >= 3`)
-    run_lrn_2d(inp.shape.shape, inp.data, out.shape.shape, out.data,
-               size, alpha, beta, bias, *model.ntasks)
+    run_lrn_2d(inp, out, size, alpha, beta, bias, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-fun run_range(out_shape_: int [], out_data: Ast.nndata_t,
+fun run_range(out: Ast.nntensor_t,
               start: double, limit: double, delta: double): void
 {
     val nelems = max(ceil((limit - start)/delta), 0)
-    assert(`out_data.total() == nelems && out_shape_.size() == 1`)
-    match out_data {
+    assert(`out.data.total() == nelems && out.shape.shape.size() == 1`)
+    match out.data {
     | Ast.NN_Data_FP32 data =>
         for i <- 0:nelems {data[i] = float(start + i*delta)}
     | Ast.NN_Data_I32 data =>
@@ -134,6 +138,6 @@ match op {
     val start = start.double_scalar_or(0.)
     val limit = limit.double_scalar_or(0.)
     val delta = delta.double_scalar_or(1.)
-    run_range(out.shape.shape, out.data, start, limit, delta)
+    run_range(out, start, limit, delta)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

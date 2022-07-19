@@ -32,15 +32,8 @@ match op
         throw Ast.NNError(f"unsupported operation '{op.name()}'")
     | Ast.NN_Dropout _ =>
         OpElemwise.run_dropout(model, op)
-    | Ast.NN_Elemwise {t_inp} =>
-        val ninputs = t_inp.size()
-        if ninputs == 1 {
-            OpElemwise.run_unary(model, op)
-        } else if ninputs == 2 {
-            OpElemwise.run_binary(model, op)
-        } else {
-            OpElemwise.run_nary(model, op)
-        }
+    | Ast.NN_Elemwise _ =>
+        OpElemwise.run_elemwise(model, op)
     | Ast.NN_Expand _ =>
         OpElemwise.run_expand(model, op)
     | Ast.NN_Flatten {t_inp, t_out} =>

@@ -6,210 +6,339 @@
 // various element-wise operations
 import Ast
 
-@private fun run_cast(inp: 'inpT [], out: 'outT []) = for x@idx <- inp {out[idx] = (x :> 'outT)}
-@private fun run_cast(inp: float [], out: uint8 []) = for x@idx <- inp {out[idx] = sat_uint8(x)}
-@private fun run_cast(inp: float [], out: int8 []) = for x@idx <- inp {out[idx] = sat_int8(x)}
-@private fun run_cast(inp: float [], out: int16 []) = for x@idx <- inp {out[idx] = sat_int16(x)}
-@private fun run_cast(inp: float [], out: int32 []) = for x@idx <- inp {out[idx] = int32(round(x))}
-
-fun run_cast(model: Ast.nnmodel_t, op: Ast.nnop_t) =
-match op {
-| Ast.NN_Cast {t_inp, t_out} =>
-    val inp = model.get_tensor(t_inp)
-    val out = model.get_tensor(t_out)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_Empty, _) => {}
-    | (_, Ast.NN_Data_Empty) => {}
-    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_U8 out_data) => run_cast(inp_data, out_data)
-
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_I8 out_data) => run_cast(inp_data, out_data)
-
-    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_I32 out_data) => run_cast(inp_data, out_data)
-
-    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_I64 out_data) => run_cast(inp_data, out_data)
-
-    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_Bool inp_data, Ast.NN_Data_FP32 out_data) => run_cast(inp_data, out_data)
-
-    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I16 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_I64 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_Bool out_data) => run_cast(inp_data, out_data)
-    | _ =>
-        throw Ast.NNError(f"cast from {inp.data.elemtype()} to {out.data.elemtype()} is not implemented")
-    }
-| _ => throw Ast.NNError(f"unexpected op {op.name()}")
-}
-
-@private fun run_clip(inp: 't [], minval: float, maxval: float, out: 't [])
-{
-    val minval = (max(minval, float(__min__(0:>'t))) :> 't)
-    val maxval = (min(maxval, float(__max__(0:>'t))) :> 't)
-    for x@idx <- inp {out[idx] = min(max(x, minval), maxval)}
-}
-
-fun run_clip(model: Ast.nnmodel_t, op: Ast.nnop_t) =
-match op
-{
-| Ast.NN_Clip {t_inp, t_min, t_max, t_out} =>
-    val inp = model.get_tensor(t_inp)
-    val out = model.get_tensor(t_out)
-    val minval = model.get_tensor(t_min)
-    val maxval = model.get_tensor(t_max)
-    val minval = minval.data.float_scalar_or(-FLT_MAX)
-    val maxval = maxval.data.float_scalar_or(FLT_MAX)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_U8 inp_data, Ast.NN_Data_U8 out_data) =>
-        run_clip(inp_data, minval, maxval, out_data)
-    | (Ast.NN_Data_I8 inp_data, Ast.NN_Data_I8 out_data) =>
-        run_clip(inp_data, minval, maxval, out_data)
-    | (Ast.NN_Data_I32 inp_data, Ast.NN_Data_I32 out_data) =>
-        run_clip(inp_data, minval, maxval, out_data)
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_clip(inp_data, minval, maxval, out_data)
-    | _ => throw NotImplementedError
-    }
-| _ => throw Ast.NNError(f"unexpected op {op.name()}")
-}
-
-@private fun run_constantOfShape(v: 't, out: 't []) = for _@idx <- out {out[idx] = v}
-
-fun run_constantOfShape(model: Ast.nnmodel_t, op: Ast.nnop_t) =
-match op {
-| Ast.NN_ConstantOfShape {value, t_out} =>
-    val out = model.get_tensor(t_out)
-    match (value.data, out.data) {
-    | (Ast.NN_Data_U8 v_data, Ast.NN_Data_U8 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
-    | (Ast.NN_Data_I8 v_data, Ast.NN_Data_I8 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
-    | (Ast.NN_Data_I32 v_data, Ast.NN_Data_I32 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
-    | (Ast.NN_Data_FP32 v_data, Ast.NN_Data_FP32 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
-    | _ => throw NotImplementedError
-    }
-| _ => throw Ast.NNError(f"unexpected op {op.name()}")
-}
-
-@private fun run_abs(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = abs(x)}
-@private fun run_acos(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = acos(x)}
-@private fun run_asin(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = asin(x)}
-@private fun run_atan(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = atan(x)}
-@private fun run_cos(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = cos(x)}
-@private fun run_exp(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = exp(x)}
-@private fun run_log(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = log(x)}
-@private fun run_relu(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = max(x, (0:>'t))}
-@private fun run_sigmoid(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = 1 / (1 + exp(-x))}
-@private fun run_sign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (sign(x) :> 't)}
-@private fun run_sin(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sin(x)}
-@private fun run_softplus(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = log(1 + exp(x))}
-@private fun run_mish(inp: 't [], out: 't []) = for x@idx <- inp {
-    val x = if x > -36.73f {x} else {0.f}
-    val y = exp(-x)
-    out[idx] = x*(1 + 2*y)/(1 + 2*y + 2*y*y)
-}
-@private fun run_softsign(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = x/(1 + abs(x))}
-@private fun run_sqrt(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = sqrt(x)}
-@private fun run_tanh(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = tanh(x)}
-@private fun run_round(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (round(x) :> 't)}
-@private fun run_ceil(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (ceil(x) :> 't)}
-@private fun run_floor(inp: 't [], out: 't []) = for x@idx <- inp {out[idx] = (floor(x) :> 't)}
-@private fun run_leaky_relu(inp: 't [], alpha: float, out: 't []) = for x@idx <- inp {out[idx] = if x >= 0.f {x} else {(x*alpha :> 't)}}
-
-fun run_unary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
-match op
-{
-| Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 1 =>
-    val inp = model.get_tensor(t_inp[0])
-    val out = model.get_tensor(t_out)
-    match (el_op, inp.data, out.data) {
-    | (Ast.NN_Abs, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_abs(inp_data, out_data)
-    | (Ast.NN_Acos, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_acos(inp_data, out_data)
-    | (Ast.NN_Asin, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_asin(inp_data, out_data)
-    | (Ast.NN_Atan, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_atan(inp_data, out_data)
-    | (Ast.NN_Cos, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_cos(inp_data, out_data)
-    | (Ast.NN_Exp, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_exp(inp_data, out_data)
-    | (Ast.NN_Log, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_log(inp_data, out_data)
-    | (Ast.NN_Mish, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_mish(inp_data, out_data)
-    | (Ast.NN_Relu, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_relu(inp_data, out_data)
-    | (Ast.NN_Sigmoid, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_sigmoid(inp_data, out_data)
-    | (Ast.NN_Sign, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_sign(inp_data, out_data)
-    | (Ast.NN_Sin, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_sin(inp_data, out_data)
-    | (Ast.NN_Softplus, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_softplus(inp_data, out_data)
-    | (Ast.NN_Softsign, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_softsign(inp_data, out_data)
-    | (Ast.NN_Sqrt, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_sqrt(inp_data, out_data)
-    | (Ast.NN_Tanh, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_tanh(inp_data, out_data)
-    | (Ast.NN_Round, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_round(inp_data, out_data)
-    | (Ast.NN_Ceil, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_ceil(inp_data, out_data)
-    | (Ast.NN_Floor, Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_floor(inp_data, out_data)
-    | _ => throw NotImplementedError
-    }
-| _ => throw Ast.NNError(f"unexpected op {op.name()}")
-}
-
-fun run_leaky_relu(model: Ast.nnmodel_t, op: Ast.nnop_t) =
-match op
-{
-| Ast.NN_LeakyRelu {alpha, t_inp, t_out} =>
-    val inp = model.get_tensor(t_inp)
-    val out = model.get_tensor(t_out)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_leaky_relu(inp_data, alpha, out_data)
-    | _ => throw NotImplementedError
-    }
-| _ => throw Ast.NNError(f"unexpected op {op.name()}")
-}
-
-
 @ccode {
 #include "ficus_nn_common.h"
+
+// !!! keep it consistent with NN.Ast.nnelwise_t !!!
+enum {
+    // binary op's
+    _FX_NN_Add=1,
+    _FX_NN_And,
+    _FX_NN_Div,
+    _FX_NN_Equal,
+    _FX_NN_Greater,
+    _FX_NN_GreaterOrEqual,
+    _FX_NN_Less,
+    _FX_NN_LessOrEqual,
+    _FX_NN_Mod,
+    _FX_NN_Mul,
+    _FX_NN_Pow,
+    _FX_NN_Or,
+    _FX_NN_Sub,
+    _FX_NN_Xor,
+
+    // n-ary op's
+    _FX_NN_Min,
+    _FX_NN_Max,
+    _FX_NN_Mean,
+
+    // unary op's
+    _FX_NN_Abs,
+    _FX_NN_Acos,
+    _FX_NN_Acosh,
+    _FX_NN_Asin,
+    _FX_NN_Asinh,
+    _FX_NN_Atan,
+    _FX_NN_Atanh,
+    _FX_NN_Ceil,
+    _FX_NN_Cos,
+    _FX_NN_Cosh,
+    _FX_NN_Erf,
+    _FX_NN_Exp,
+    _FX_NN_Floor,
+    _FX_NN_IsInf,
+    _FX_NN_IsNaN,
+    _FX_NN_Log,
+    _FX_NN_Mish,
+    _FX_NN_Neg,
+    _FX_NN_Not,
+    _FX_NN_Relu,
+    _FX_NN_Round,
+    _FX_NN_Sigmoid,
+    _FX_NN_Sign,
+    _FX_NN_Sin,
+    _FX_NN_Sinh,
+    _FX_NN_Softplus,
+    _FX_NN_Softsign,
+    _FX_NN_Sqrt,
+    _FX_NN_Tan,
+    _FX_NN_Tanh
+};
+
+typedef void (*_fx_unary_func_t)(const char* inptr, char* outptr,
+                                 int_ nelems, const float* param);
+
+#undef _FX_IMPLEMENT_UNARY_OP
+#define _FX_IMPLEMENT_UNARY_OP(suffix, _Tp1, _Tp2, op) \
+static void _fx_elemwise_##suffix(const char* inptr_, char* outptr_, \
+                                  int_ len, const float* param) \
+{ \
+    const _Tp1* inptr = (const _Tp1*)inptr_; \
+    _Tp2* outptr = (_Tp2*)outptr_; \
+    for (int_ j = 0; j < len; j++) { \
+        _Tp1 x = inptr[j]; \
+        outptr[j] = (_Tp2)op(x); \
+    } \
+}
+
+#define _FX_NOP(x)      (x)
+#define _FX_RELU(x)     (x >= 0.f ? x : 0.f)
+#define _FX_SIGMOID(x)  (1.f / (1.f + expf(-(x))))
+#define _FX_SIGN(x)     ((x >= 0.f) - (x <= 0.f))
+#define _FX_SOFTPLUS(x) logf(1 + expf(x))
+#define _FX_SOFTSIGN(x) ((x)/(1 + fabsf(x)))
+#define _FX_SAT_U8(x)   ((x) & ~255 ? (x) : (x) < 0 ? 0 : 255)
+#define _FX_SAT_I8(x)   (((x)+128) & ~255 ? (x) : (x) < -128 ? 0 : 127)
+#define _FX_NONZERO(x)  ((x) != 0)
+
+static __inline int8_t _fx_cast_f32i8(float x) { int y = (int)lrintf(x); return _FX_SAT_I8(y); }
+static __inline uint8_t _fx_cast_f32u8(float x) { int y = (int)lrintf(x); return _FX_SAT_U8(y); }
+
+_FX_IMPLEMENT_UNARY_OP(abs_f32, float, float, fabsf)
+_FX_IMPLEMENT_UNARY_OP(acos_f32, float, float, acosf)
+_FX_IMPLEMENT_UNARY_OP(acosh_f32, float, float, acoshf)
+_FX_IMPLEMENT_UNARY_OP(asin_f32, float, float, asinf)
+_FX_IMPLEMENT_UNARY_OP(asinh_f32, float, float, asinhf)
+_FX_IMPLEMENT_UNARY_OP(atan_f32, float, float, atanf)
+_FX_IMPLEMENT_UNARY_OP(atanh_f32, float, float, atanhf)
+_FX_IMPLEMENT_UNARY_OP(ceil_f32, float, float, ceilf)
+_FX_IMPLEMENT_UNARY_OP(cos_f32, float, float, cosf)
+_FX_IMPLEMENT_UNARY_OP(cosh_f32, float, float, coshf)
+_FX_IMPLEMENT_UNARY_OP(exp_f32, float, float, expf)
+_FX_IMPLEMENT_UNARY_OP(floor_f32, float, float, floorf)
+_FX_IMPLEMENT_UNARY_OP(log_f32, float, float, logf)
+_FX_IMPLEMENT_UNARY_OP(relu_f32, float, float, _FX_RELU)
+_FX_IMPLEMENT_UNARY_OP(round_f32, float, float, roundf)
+_FX_IMPLEMENT_UNARY_OP(sigmoid_f32, float, float, _FX_SIGMOID)
+_FX_IMPLEMENT_UNARY_OP(sign_f32, float, float, _FX_SIGN)
+_FX_IMPLEMENT_UNARY_OP(sin_f32, float, float, sinf)
+_FX_IMPLEMENT_UNARY_OP(sinh_f32, float, float, sinhf)
+_FX_IMPLEMENT_UNARY_OP(softplus_f32, float, float, _FX_SOFTPLUS)
+_FX_IMPLEMENT_UNARY_OP(softsign_f32, float, float, _FX_SOFTSIGN)
+_FX_IMPLEMENT_UNARY_OP(sqrt_f32, float, float, sqrtf)
+_FX_IMPLEMENT_UNARY_OP(tan_f32, float, float, tanf)
+_FX_IMPLEMENT_UNARY_OP(tanh_f32, float, float, tanhf)
+
+_FX_IMPLEMENT_UNARY_OP(cast_i8i32, int8_t, int32_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_i8i64, int8_t, int64_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_i8f32, int8_t, float, _FX_NOP)
+
+_FX_IMPLEMENT_UNARY_OP(cast_u8i32, uint8_t, int32_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_u8i64, uint8_t, int64_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_u8f32, uint8_t, float, _FX_NOP)
+
+_FX_IMPLEMENT_UNARY_OP(cast_i32i8, int32_t, int8_t, _FX_SAT_I8)
+_FX_IMPLEMENT_UNARY_OP(cast_i32u8, int32_t, uint8_t, _FX_SAT_U8)
+_FX_IMPLEMENT_UNARY_OP(cast_i32i64, int32_t, int64_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_i32f32, int32_t, float, _FX_NOP)
+
+_FX_IMPLEMENT_UNARY_OP(cast_i64i8, int64_t, int8_t, _FX_SAT_I8)
+_FX_IMPLEMENT_UNARY_OP(cast_i64u8, int64_t, uint8_t, _FX_SAT_U8)
+_FX_IMPLEMENT_UNARY_OP(cast_i64i32, int64_t, int32_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_i64f32, int64_t, float, _FX_NOP)
+
+_FX_IMPLEMENT_UNARY_OP(cast_f32i8, float, int8_t, _fx_cast_f32i8)
+_FX_IMPLEMENT_UNARY_OP(cast_f32u8, float, uint8_t, _fx_cast_f32u8)
+_FX_IMPLEMENT_UNARY_OP(cast_f32i32, float, int32_t, lrintf)
+_FX_IMPLEMENT_UNARY_OP(cast_f32i64, float, int64_t, lrintf)
+
+_FX_IMPLEMENT_UNARY_OP(cast_i8b, int8_t,  bool, _FX_NONZERO)
+_FX_IMPLEMENT_UNARY_OP(cast_i16b, int16_t, bool, _FX_NONZERO)
+_FX_IMPLEMENT_UNARY_OP(cast_i32b, int32_t, bool, _FX_NONZERO)
+_FX_IMPLEMENT_UNARY_OP(cast_i64b, int64_t, bool, _FX_NONZERO)
+_FX_IMPLEMENT_UNARY_OP(cast_f32b, float,  bool, _FX_NONZERO)
+
+_FX_IMPLEMENT_UNARY_OP(cast_bi8, bool, int8_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_bi16, bool, int16_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_bi32, bool, int32_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_bi64, bool, int64_t, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_bf32, bool, float, _FX_NOP)
+
+#ifdef __ARM_NEON
+#define _FX_FP16_CASE(x) x
+
+_FX_IMPLEMENT_UNARY_OP(cast_f32f16, float, __fp16, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_f16f32, __fp16, float, _FX_NOP)
+
+_FX_IMPLEMENT_UNARY_OP(cast_i32f16, int32_t, __fp16, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_i64f16, int64_t, __fp16, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_f16i32, __fp16, int32_t, lrintf)
+_FX_IMPLEMENT_UNARY_OP(cast_f16i64, __fp16, int64_t, lrintf)
+
+_FX_IMPLEMENT_UNARY_OP(cast_i8f16, int8_t, __fp16, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_u8f16, uint8_t, __fp16, _FX_NOP)
+_FX_IMPLEMENT_UNARY_OP(cast_f16i8, __fp16, int8_t, _fx_cast_f32i8)
+_FX_IMPLEMENT_UNARY_OP(cast_f16u8, __fp16, uint8_t, _fx_cast_f32u8)
+_FX_IMPLEMENT_UNARY_OP(cast_f16b, __fp16, bool, _FX_NONZERO)
+_FX_IMPLEMENT_UNARY_OP(cast_bf16, bool, __fp16, _FX_NOP)
+#else
+#define _FX_FP16_CASE(x)
+#endif
+
+static void _fx_elemwise_mish_f32(const char* inptr_, char* outptr_,
+                                  int_ len, const float* param)
+{
+    const float* inptr = (const float*)inptr_;
+    float* outptr = (float*)outptr_;
+    for (int_ j = 0; j < len; j++) {
+        float x = inptr[j];
+        x = x > -36.73f ? x : 0.f;
+        float y = expf(-x);
+        outptr[j] = x*(1 + 2*y)/(1 + 2*y + 2*y*y);
+    }
+}
+
+static void _fx_elemwise_leaky_relu_f32(const char* inptr_, char* outptr_,
+                                        int_ len, const float* param)
+{
+    const float* inptr = (const float*)inptr_;
+    float* outptr = (float*)outptr_;
+    float alpha = *param;
+    for (int_ j = 0; j < len; j++) {
+        float x = inptr[j];
+        outptr[j] = x*(x >= 0 ? 1.f : alpha);
+    }
+}
+
+static void _fx_elemwise_clip_f32(const char* inptr_, char* outptr_,
+                                  int_ len, const float* param)
+{
+    const float* inptr = (const float*)inptr_;
+    float* outptr = (float*)outptr_;
+    float minval = param[0], maxval = param[1];
+    for (int_ j = 0; j < len; j++) {
+        float x = inptr[j];
+        x = x >= minval ? x : minval;
+        x = x <= maxval ? x : maxval;
+        outptr[j] = x;
+    }
+}
+
+static _fx_unary_func_t _fx_get_cast_func(int inp_typ, int out_typ)
+{
+    return
+        inp_typ == _FX_NN_I8 ?
+            (out_typ == _FX_NN_I32 ? _fx_elemwise_cast_i8i32 :
+            out_typ == _FX_NN_I64 ? _fx_elemwise_cast_i8i64 :
+            out_typ == _FX_NN_Bool ? _fx_elemwise_cast_i8b :
+            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_elemwise_cast_i8f16 :)
+            out_typ == _FX_NN_FP32 ? _fx_elemwise_cast_i8f32 : 0) :
+        inp_typ == _FX_NN_U8 ?
+            (out_typ == _FX_NN_I32 ? _fx_elemwise_cast_u8i32 :
+            out_typ == _FX_NN_I64 ? _fx_elemwise_cast_u8i64 :
+            out_typ == _FX_NN_Bool ? _fx_elemwise_cast_i8b :
+            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_elemwise_cast_u8f16 :)
+            out_typ == _FX_NN_FP32 ? _fx_elemwise_cast_u8f32 : 0) :
+        inp_typ == _FX_NN_I32 ?
+            (out_typ == _FX_NN_I8 ? _fx_elemwise_cast_i32i8 :
+            out_typ == _FX_NN_U8 ? _fx_elemwise_cast_i32u8 :
+            out_typ == _FX_NN_I64 ? _fx_elemwise_cast_i32i64 :
+            out_typ == _FX_NN_Bool ? _fx_elemwise_cast_i32b :
+            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_elemwise_cast_i32f16 :)
+            out_typ == _FX_NN_FP32 ? _fx_elemwise_cast_i32f32 : 0) :
+        inp_typ == _FX_NN_I64 ?
+            (out_typ == _FX_NN_I8 ? _fx_elemwise_cast_i64i8 :
+            out_typ == _FX_NN_U8 ? _fx_elemwise_cast_i64u8 :
+            out_typ == _FX_NN_I32 ? _fx_elemwise_cast_i64i32 :
+            out_typ == _FX_NN_Bool ? _fx_elemwise_cast_i64b :
+            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_elemwise_cast_i64f16 :)
+            out_typ == _FX_NN_FP32 ? _fx_elemwise_cast_i64f32 : 0) :
+        inp_typ == _FX_NN_FP32 ?
+            (out_typ == _FX_NN_I8 ? _fx_elemwise_cast_f32i8 :
+            out_typ == _FX_NN_U8 ? _fx_elemwise_cast_f32u8 :
+            out_typ == _FX_NN_I32 ? _fx_elemwise_cast_f32i32 :
+            out_typ == _FX_NN_I64 ? _fx_elemwise_cast_f32i64 :
+            out_typ == _FX_NN_Bool ? _fx_elemwise_cast_f32b :
+            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_elemwise_cast_f32f16 :)
+            0) :
+        inp_typ == _FX_NN_Bool ?
+            (out_typ == _FX_NN_I8 ? _fx_elemwise_cast_bi8 :
+            out_typ == _FX_NN_U8 ? _fx_elemwise_cast_bi8 :
+            out_typ == _FX_NN_I32 ? _fx_elemwise_cast_bi32 :
+            out_typ == _FX_NN_I64 ? _fx_elemwise_cast_bi64 :
+            out_typ == _FX_NN_FP32 ? _fx_elemwise_cast_bf32 :
+            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_elemwise_cast_bf16 :)
+            0) :
+    #ifdef __ARM_NEON
+        inp_typ == _FX_NN_FP16 ?
+            (out_typ == _FX_NN_I8 ? _fx_elemwise_cast_f16i8 :
+            out_typ == _FX_NN_U8 ? _fx_elemwise_cast_f16u8 :
+            out_typ == _FX_NN_I32 ? _fx_elemwise_cast_f16i32 :
+            out_typ == _FX_NN_I64 ? _fx_elemwise_cast_f16i64 :
+            out_typ == _FX_NN_FP32 ? _fx_elemwise_cast_i64f32 : 0) :
+    #endif
+        0;
+}
+
+static _fx_unary_func_t _fx_get_unary_func(int op, int inp_typ)
+{
+    return
+        op == _FX_NN_Abs ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_abs_f32 : 0) :
+        op == _FX_NN_Acos ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_acos_f32 : 0) :
+        op == _FX_NN_Acosh ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_acosh_f32 : 0) :
+        op == _FX_NN_Asin ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_asin_f32 : 0) :
+        op == _FX_NN_Asinh ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_asinh_f32 : 0) :
+        op == _FX_NN_Atan ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_atan_f32 : 0) :
+        op == _FX_NN_Atanh ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_atanh_f32 : 0) :
+        op == _FX_NN_Ceil ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_ceil_f32 : 0) :
+        op == _FX_NN_Cos ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_cos_f32 : 0) :
+        op == _FX_NN_Cosh ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_cosh_f32 : 0) :
+        op == _FX_NN_Exp ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_exp_f32 : 0) :
+        op == _FX_NN_Floor ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_floor_f32 : 0) :
+        op == _FX_NN_Log ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_log_f32 : 0) :
+        op == _FX_NN_Mish ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_mish_f32 : 0) :
+        op == _FX_NN_Relu ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_relu_f32 : 0) :
+        op == _FX_NN_Round ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_round_f32 : 0) :
+        op == _FX_NN_Sigmoid ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_sigmoid_f32 : 0) :
+        op == _FX_NN_Sign ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_sign_f32 : 0) :
+        op == _FX_NN_Sin ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_sin_f32 : 0) :
+        op == _FX_NN_Sinh ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_sinh_f32 : 0) :
+        op == _FX_NN_Softplus ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_softplus_f32 : 0) :
+        op == _FX_NN_Softsign ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_softsign_f32 : 0) :
+        op == _FX_NN_Sqrt ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_sqrt_f32 : 0) :
+        op == _FX_NN_Tan ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_tan_f32 : 0) :
+        op == _FX_NN_Tanh ? (inp_typ == _FX_NN_FP32 ? _fx_elemwise_tanh_f32 : 0) :
+        0;
+}
+
+static int _fx_run_any_unary(_fx_nntensor_t* inp, _fx_nntensor_t* out,
+                             _fx_unary_func_t func, const float* param, int_ ntasks)
+{
+    fx_arr_t* inp_shape_ = &inp->shape.shape;
+    fx_arr_t* out_shape_ = &out->shape.shape;
+    int_ i, ndims = inp_shape_->dim[0].size;
+    int_ total_size = 1;
+    fx_arr_t* inp_data_ = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data_ = &out->data.u.NN_Data_I8;
+    size_t inp_esz = inp_data_->dim[0].step;
+    size_t out_esz = out_data_->dim[0].step;
+
+    if (!func)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if (ndims != out_shape_->dim[0].size)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
+    for (int_ i = 0; i < ndims; i++) {
+        int_ sz_i = ((int_*)(inp_shape_->data))[i];
+        if (sz_i != ((int_*)(out_shape_->data))[i])
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        total_size *= sz_i;
+    }
+
+    if (total_size < 100000) ntasks = 1;
+    else ntasks = ntasks > 0 ? ntasks : 1;
+
+    #pragma omp parallel for num_threads(ntasks)
+    for (int_ task_id = 0; task_id < ntasks; task_id++) {
+        int_ pix0 = task_id*total_size/ntasks;
+        int_ pix1 = (task_id+1)*total_size/ntasks;
+        const char* inptr = inp_data_->data + inp_esz*pix0;
+        char* outptr = out_data_->data + out_esz*pix0;
+        int_ len = pix1 - pix0;
+        func(inptr, outptr, len, param);
+    }
+    return FX_OK;
+}
 
 /*
     Prepare the strides for the efficient BROADCAST_MAX_DIMS-dimensional operation.
@@ -312,28 +441,6 @@ static bool _fx_prepare_for_broadcast_op(
     return true;
 }
 
-enum {
-_FX_NN_Add=1,
-_FX_NN_And,
-_FX_NN_Div,
-_FX_NN_Equal,
-_FX_NN_Greater,
-_FX_NN_GreaterOrEqual,
-_FX_NN_Less,
-_FX_NN_LessOrEqual,
-_FX_NN_Mod,
-_FX_NN_Mul,
-_FX_NN_Pow,
-_FX_NN_Or,
-_FX_NN_Sub,
-_FX_NN_Xor,
-_FX_NN_Min,
-_FX_NN_Max,
-_FX_NN_Mean
-};
-
-enum {_FX_ELEMWISE_MAX_DIMS=5};
-
 #define _FX_OP_ADD(x, y) ((x) + (y))
 #define _FX_OP_SUB(x, y) ((x) - (y))
 #define _FX_OP_MUL(x, y) ((x) * (y))
@@ -354,9 +461,8 @@ enum {_FX_ELEMWISE_MAX_DIMS=5};
 static void _fx_elemwise_##suffix(const char* data1, size_t rowstep1, size_t dp1, \
                                 const char* data2, size_t rowstep2, size_t dp2, \
                                 char* data, size_t rowstep, size_t dp, \
-                                int_ nrows, int_ ncols, double param) \
+                                int_ nrows, int_ ncols, float param) \
 { \
-    param; \
     for (int_ i = 0; i < nrows; i++) { \
         const _Tp1* ptr1 = (const _Tp1*)data1 + rowstep1*i; \
         const _Tp2* ptr2 = (const _Tp2*)data2 + rowstep2*i; \
@@ -391,7 +497,7 @@ typedef void (*_fx_elemwise_binary_func_t)(
     const char* data1, size_t rowstep1, size_t dp1,
     const char* data2, size_t rowstep2, size_t dp2,
     char* data, size_t rowstep, size_t dp,
-    int_ nrows, int_ ncols, double param);
+    int_ nrows, int_ ncols, float param);
 
 _FX_IMPLEMENT_BINARY_OP(add_f32, float, float, float, _FX_OP_ADD)
 _FX_IMPLEMENT_BINARY_OP(add_i32, int, int, int, _FX_OP_ADD)
@@ -505,21 +611,86 @@ _fx_get_elemwise_binary_func(int el_op, int typ)
             (typ == _FX_NN_Bool ? _fx_elemwise_and_bool : 0) :
         0;
 }
-
 }
 
-@private fun run_binary(inp1_shape_: int [], inp1_data_: Ast.nndata_t,
-                        inp2_shape_: int [], inp2_data_: Ast.nndata_t,
-                        out_shape_: int [], out_data_: Ast.nndata_t,
-                        el_op_: Ast.nnelwise_t, ~param: double=0.): void
-@ccode
+fun run_cast(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
+@ccode {
+    _fx_unary_func_t func = _fx_get_cast_func(inp->data.tag, out->data.tag);
+    return _fx_run_any_unary((_fx_nntensor_t*)inp, (_fx_nntensor_t*)out, func, 0, ntasks);
+}
+
+fun run_cast(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op {
+| Ast.NN_Cast {t_inp, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
+    run_cast(inp, out, *model.ntasks)
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
+}
+
+fun run_clip(inp: Ast.nntensor_t, out: Ast.nntensor_t, minval: float, maxval: float, ntasks: int): void
+@ccode {
+    float param[] = {minval, maxval};
+    int inp_typ = inp->data.tag;
+    _fx_unary_func_t func = inp_typ == _FX_NN_FP32 ? _fx_elemwise_clip_f32 : 0;
+
+    return _fx_run_any_unary((_fx_nntensor_t*)inp, (_fx_nntensor_t*)out, func, param, ntasks);
+}
+
+fun run_clip(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op
 {
+| Ast.NN_Clip {t_inp, t_min, t_max, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val out = model.get_tensor(t_out)
+    val minval = model.get_tensor(t_min)
+    val maxval = model.get_tensor(t_max)
+    val minval = minval.data.float_scalar_or(-FLT_MAX)
+    val maxval = maxval.data.float_scalar_or(FLT_MAX)
+    run_clip(inp, out, minval, maxval, *model.ntasks)
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
+}
+
+@private fun run_constantOfShape(v: 't, out: 't []) = for _@idx <- out {out[idx] = v}
+
+fun run_constantOfShape(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op {
+| Ast.NN_ConstantOfShape {value, t_out} =>
+    val out = model.get_tensor(t_out)
+    match (value.data, out.data) {
+    | (Ast.NN_Data_U8 v_data, Ast.NN_Data_U8 out_data) =>
+        OpElemwise.run_constantOfShape(v_data[0], out_data)
+    | (Ast.NN_Data_I8 v_data, Ast.NN_Data_I8 out_data) =>
+        OpElemwise.run_constantOfShape(v_data[0], out_data)
+    | (Ast.NN_Data_I32 v_data, Ast.NN_Data_I32 out_data) =>
+        OpElemwise.run_constantOfShape(v_data[0], out_data)
+    | (Ast.NN_Data_FP32 v_data, Ast.NN_Data_FP32 out_data) =>
+        OpElemwise.run_constantOfShape(v_data[0], out_data)
+    | _ => throw NotImplementedError
+    }
+| _ => throw Ast.NNError(f"unexpected op {op.name()}")
+}
+
+fun run_unary(op: Ast.nnelwise_t, inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
+@ccode {
+    _fx_unary_func_t func = _fx_get_unary_func(op->tag, inp->data.tag);
+    return _fx_run_any_unary((_fx_nntensor_t*)inp, (_fx_nntensor_t*)out, func, 0, ntasks);
+}
+
+fun run_binary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
+               inp2: Ast.nntensor_t, out: Ast.nntensor_t,
+               param: float, ntasks: int): void
+@ccode {
+    enum {_FX_ELEMWISE_MAX_DIMS=5};
     int_ shape1[_FX_ELEMWISE_MAX_DIMS], shape2[_FX_ELEMWISE_MAX_DIMS], shape[_FX_ELEMWISE_MAX_DIMS];
     size_t step1[_FX_ELEMWISE_MAX_DIMS], step2[_FX_ELEMWISE_MAX_DIMS], step[_FX_ELEMWISE_MAX_DIMS];
-    int el_op = el_op_->tag, inp_typ = inp1_data_->tag;
-    fx_arr_t* inp1_data = &inp1_data_->u.NN_Data_I8;
-    fx_arr_t* inp2_data = &inp2_data_->u.NN_Data_I8;
-    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    fx_arr_t* inp1_shape_ = &inp1->shape.shape;
+    fx_arr_t* inp2_shape_ = &inp2->shape.shape;
+    fx_arr_t* out_shape_ = &out->shape.shape;
+    int el_op = el_op_->tag, inp_typ = inp1->data.tag;
+    fx_arr_t* inp1_data = &inp1->data.u.NN_Data_I8;
+    fx_arr_t* inp2_data = &inp2->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
 
     if (el_op == _FX_NN_Less || el_op == _FX_NN_LessOrEqual) {
         el_op = el_op == _FX_NN_Less ? _FX_NN_Greater : _FX_NN_GreaterOrEqual;
@@ -596,54 +767,46 @@ _fx_get_elemwise_binary_func(int el_op, int typ)
     return FX_OK;
 }
 
-fun run_binary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+fun run_elemwise(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
-| Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() == 2 =>
-    val inp1 = model.get_tensor(t_inp[0])
-    val inp2 = model.get_tensor(t_inp[1])
+| Ast.NN_Elemwise {el_op, t_inp, t_out} =>
+    val ntasks = *model.ntasks
+    val ninputs = t_inp.size()
+    val inp0 = model.get_tensor(t_inp[0])
     val out = model.get_tensor(t_out)
-    run_binary(inp1.shape.shape, inp1.data, inp2.shape.shape, inp2.data,
-               out.shape.shape, out.data, el_op,
-               param=0.5 // so far the only binary operation that needs parameter
-                         // is Mean and there the parameter is 0.5; other operations just ignore it
-               )
+    if ninputs == 1 {
+        run_unary(el_op, inp0, out, ntasks)
+    } else if ninputs == 2 {
+        val inp1 = model.get_tensor(t_inp[1])
+        val param = 0.5f
+        run_binary(el_op, inp0, inp1, out, param, ntasks)
+    } else {
+        val el_op_0 = match el_op {Ast.NN_Mean => Ast.NN_Add | _ => el_op}
+        val param = 1.f/ninputs
+        run_binary(el_op_0, inp0, model.get_tensor(t_inp[1]), out, param, ntasks)
+        for j <- 2:ninputs {
+            val el_op_j = if j+1 == ninputs {el_op} else {el_op_0}
+            run_binary(el_op_j, model.get_tensor(t_inp[j]), out, out, param, ntasks)
+        }
+    }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_nary(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+fun run_leaky_relu(inp: Ast.nntensor_t, out: Ast.nntensor_t, alpha: float, ntasks: int): void
+@ccode {
+    int inp_typ = inp->data.tag;
+    _fx_unary_func_t func = inp_typ == _FX_NN_FP32 ? _fx_elemwise_leaky_relu_f32 : 0;
+    return _fx_run_any_unary((_fx_nntensor_t*)inp, (_fx_nntensor_t*)out, func, &alpha, ntasks);
+}
+
+fun run_leaky_relu(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
 {
-| Ast.NN_Elemwise {el_op, t_inp, t_out} when t_inp.size() >= 2 =>
-    val ninputs = t_inp.size()
-    val inp = [for i <- t_inp {model.get_tensor(i)}]
+| Ast.NN_LeakyRelu {alpha, t_inp, t_out} =>
+    val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    match el_op {
-    | Ast.NN_Max =>
-        run_binary(inp[0].shape.shape, inp[0].data, inp[1].shape.shape, inp[1].data,
-                   out.shape.shape, out.data, Ast.NN_Max)
-        for j <- 2:ninputs {
-            run_binary(inp[j].shape.shape, inp[j].data, out.shape.shape, out.data,
-                       out.shape.shape, out.data, Ast.NN_Max)
-        }
-    | Ast.NN_Mean =>
-        val scale = 1./ninputs
-        run_binary(inp[0].shape.shape, inp[0].data, inp[1].shape.shape, inp[1].data,
-                   out.shape.shape, out.data, Ast.NN_Add)
-        for j <- 2:ninputs {
-            val op = if j == ninputs-1 {Ast.NN_Mean} else {Ast.NN_Add}
-            run_binary(inp[j].shape.shape, inp[j].data, out.shape.shape, out.data,
-                       out.shape.shape, out.data, op, param=scale)
-        }
-    | Ast.NN_Min =>
-        run_binary(inp[0].shape.shape, inp[0].data, inp[1].shape.shape, inp[1].data,
-                   out.shape.shape, out.data, Ast.NN_Min)
-        for j <- 2:ninputs {
-            run_binary(inp[j].shape.shape, inp[j].data, out.shape.shape, out.data,
-                       out.shape.shape, out.data, Ast.NN_Min)
-        }
-    | _ => throw NotImplementedError
-    }
+    run_leaky_relu(inp, out, alpha, *model.ntasks)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
@@ -694,16 +857,16 @@ match op
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-@private fun run_expand(inp_shape_: int [], inp_data_: Ast.nndata_t,
-                        out_shape_: int [], out_data_: Ast.nndata_t): void
+fun run_expand(inp: Ast.nntensor_t, out: Ast.nntensor_t): void
 @ccode
 {
-    #undef _FX_EXPAND_MAX_DIMS
-    #define _FX_EXPAND_MAX_DIMS 5
+    enum {_FX_EXPAND_MAX_DIMS = 5};
     int_ inp_shape[_FX_EXPAND_MAX_DIMS], shape[_FX_EXPAND_MAX_DIMS];
     size_t inp_step[_FX_EXPAND_MAX_DIMS], out_step[_FX_EXPAND_MAX_DIMS];
-    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
-    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    fx_arr_t* inp_shape_ = &inp->shape.shape;
+    fx_arr_t* out_shape_ = &out->shape.shape;
+    fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
 
     int all_ndims[] = {
@@ -720,7 +883,7 @@ match op
     if (all_ndims[0] > _FX_EXPAND_MAX_DIMS || all_ndims[1] > _FX_EXPAND_MAX_DIMS)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
-    if (inp_data_->tag != out_data_->tag)
+    if (inp->data.tag != out->data.tag)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
 
     // some of inputs are empty => result is empty
@@ -794,7 +957,6 @@ match op
 | Ast.NN_Expand {t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_expand(inp.shape.shape, inp.data,
-               out.shape.shape, out.data)
+    run_expand(inp, out)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }

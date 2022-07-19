@@ -1208,7 +1208,7 @@ fun elemtype(x:float) = NN_FP32
 fun elemtype(x:double) = NN_FP64
 fun elemtype(x:bool) = NN_Bool
 
-@private fun mktensor_(arr: uint8 [], shape: int [], typ: nntyp_t)
+@private fun mktensor_(arr: uint8 [], shape: int [], typ: nntyp_t, ~layout: nnlayout_t=NN_Layout_Unknown)
 {
     fun make_data_(arr: uint8 [], typ: nntyp_t): nndata_t
     @ccode {
@@ -1216,25 +1216,24 @@ fun elemtype(x:bool) = NN_Bool
         fx_copy_arr(arr, &fx_result->u.NN_Data_U8);
         return FX_OK;
     }
-    val layout = NN_Layout_NCHW
     val data = make_data_(arr, typ)
     nntensor_t {shape=nnshape_t {shape=shape, layout=layout}, data=data}
 }
 
-fun mktensor(arr: 't [+])
+fun mktensor(arr: 't [+], ~layout: nnlayout_t=NN_Layout_Unknown)
 {
     val sz = arr.size()
     val shape = [for sz_i <- sz {sz_i}]
     val typ = elemtype(0 :> 't)
-    mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ)
+    mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ, layout=layout)
 }
 
-fun mktensor(arr: 't [])
+fun mktensor(arr: 't [], ~layout: nnlayout_t=NN_Layout_Unknown)
 {
     val sz = arr.size()
     val shape = [sz]
     val typ = elemtype(0 :> 't)
-    mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ)
+    mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ, layout=layout)
 }
 
 fun nntensor_t.copy() =

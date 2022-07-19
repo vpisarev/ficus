@@ -24,6 +24,20 @@ typedef struct _fx_nndata_t {
    } u;
 } _fx_nndata_t;
 
+typedef struct _fx_nnlayout_t {
+    int tag;
+} _fx_nnlayout_t;
+
+typedef struct _fx_nnshape_t {
+    _fx_nnlayout_t layout;
+    fx_arr_t shape;
+} _fx_nnshape_t;
+
+typedef struct _fx_nntensor_t {
+   _fx_nnshape_t shape;
+   _fx_nndata_t data;
+} _fx_nntensor_t;
+
 enum {
     _FX_NN_Undefined=1, _FX_NN_I8, _FX_NN_U8, _FX_NN_I16, _FX_NN_U16,
     _FX_NN_I32, _FX_NN_U32, _FX_NN_I64, _FX_NN_U64, _FX_NN_FP16,

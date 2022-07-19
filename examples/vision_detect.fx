@@ -199,11 +199,12 @@ for imgname@i <- images {
         }
     val resized_img = cv.cvtColor(resized_img, cv.COLOR_BGR2RGB)
     val inp = reshape_multichan(resized_img, (1, input_size, input_size, 3))
+    val layout = NN.Ast.NN_Layout_NHWC
     val inp_ =
         if input_typ == NN.Ast.NN_FP32 {
-            NN.Ast.mktensor(inp.*(1.f/255))
+            NN.Ast.mktensor(inp.*(1.f/255), layout=layout)
         } else {
-            NN.Ast.mktensor(inp)
+            NN.Ast.mktensor(inp, layout=layout)
         }
     var outputs: nn_output_t [] = []
     NN.OpConv.reset_min_total_time()
@@ -214,8 +215,7 @@ for imgname@i <- images {
             val planar_t = NN.Ast.nntensor_t {data = planar_data,
                             shape = NN.Ast.nnshape_t {layout=NN.Ast.NN_Layout_NCHW,
                                             shape=[1, 3, input_size, input_size]}}
-            NN.OpPermute.run_transpose(inp_.shape.shape, inp_.data, [0, 3, 1, 2],
-                                       planar_t.shape.shape, planar_data)
+            NN.OpPermute.run_transpose(inp_, [0, 3, 1, 2], planar_t)
             [("", planar_t), ("", NN.Ast.mktensor([float(h), float(w)].reshape(1, 2)))]
         | _ => [("", inp_)]
         }

@@ -8,6 +8,7 @@ import Ast
 @ccode {
 #include <alloca.h>
 #include <float.h>
+#include "ficus_nn_common.h"
 
 #ifdef __ARM_NEON
 #include <arm_neon.h>
@@ -30,8 +31,9 @@ typedef struct _fx_pooling2d_t
     bool count_include_pad;
 } _fx_pooling2d_t;
 
-static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
-                         const int_* outsize, float* out,
+static int _fx_maxpool2d(int ndims, int inp_typ,
+                         const int_* inpsize, const char* inp_,
+                         const int_* outsize, char* out_,
                          const _fx_pooling2d_t* pool, int ntasks)
 {
     int N = (int)inpsize[0], C = (int)inpsize[1];
@@ -81,11 +83,14 @@ static int _fx_maxpool2d(int ndims, const int_* inpsize, const float* inp,
     bool is3x3 = Hk == 3 && Wk == 3;
 #endif
 
+    if (inp_typ != _FX_NN_FP32)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
     #pragma omp parallel for num_threads(ntasks)
     for (int nc = 0; nc < N*C; nc++) {
         int c = nc % C;
-        const float* inptr = inp + inp_planesize*nc;
-        float* outptr = out + out_planesize*nc;
+        const float* inptr = (const float*)inp_ + inp_planesize*nc;
+        float* outptr = (float*)out_ + out_planesize*nc;
 
         for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
             int x0 = 0, x1 = y0 >= inner_ytop && y0 < inner_ybottom ? inner_xleft : W0;
@@ -279,18 +284,24 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
 
 }
 
-fun run_maxpool_2d(inp: float [], inp_shape: Ast.nnshape_t,
-                   out: float [], out_shape: Ast.nnshape_t,
+fun run_maxpool_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                    Hk: int, Wk: int, sy: int, sx: int,
                    dy: int, dx: int, pad_top: int, pad_left: int,
                    pad_bottom: int, pad_right: int, ntasks: int): void
 @ccode {
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
     _fx_pooling2d_t pool;
-    int_ ndims = inp_shape->shape.dim[0].size;
-    const int_* inpsize = (const int_*)inp_shape->shape.data;
-    const int_* outsize = (const int_*)out_shape->shape.data;
+    int_ ndims = inp->shape.shape.dim[0].size;
+    int inp_typ = inp->data.tag;
+    const int_* inpsize = (const int_*)inp->shape.shape.data;
+    const int_* outsize = (const int_*)out->shape.shape.data;
 
-    if (ndims != 4 || ndims != out_shape->shape.dim[0].size ||
+    if (inp_typ != out->data.tag)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (inp->shape.layout.tag != _FX_NN_Layout_NCHW)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if (ndims != 4 || ndims != out->shape.shape.dim[0].size ||
         inpsize[0] != outsize[0] || inpsize[1] != outsize[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if ((Hk|Wk) == 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
@@ -301,8 +312,8 @@ fun run_maxpool_2d(inp: float [], inp_shape: Ast.nnshape_t,
     pool.dilation_y = (int)dy; pool.dilation_x = (int)dx;
     pool.pad_top = (int)pad_top; pool.pad_left = (int)pad_left;
     pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
-    return _fx_maxpool2d((int)ndims, inpsize, (const float*)inp->data,
-                         outsize, (float*)out->data, &pool, (int)ntasks);
+    return _fx_maxpool2d((int)ndims, inp_typ, inpsize, inp_data->data,
+                         outsize, out_data->data, &pool, (int)ntasks);
 }
 
 fun run_maxpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -311,14 +322,9 @@ match op {
     when kernel_shape.size() == 2 =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_maxpool_2d(inp_data, inp.shape, out_data, out.shape, kernel_shape[0], kernel_shape[0],
+    run_maxpool_2d(inp, out, kernel_shape[0], kernel_shape[1],
             strides[0], strides[1], dilations[0], dilations[1],
             pads[0], pads[1], pads[2], pads[3], *model.ntasks)
-    | _ => throw NotImplementedError
-    }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 

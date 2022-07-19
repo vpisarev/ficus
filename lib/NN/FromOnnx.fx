@@ -38,7 +38,7 @@ exception OnnxConvertError: string
 
 @private fun onnx2tensor(t: OAst.tensor_t) =
 Ast.nntensor_t {
-    shape = Ast.nnshape_t {layout=Ast.NN_Layout_NCHW, shape=t.shape},
+    shape = Ast.nnshape_t {layout=Ast.NN_Layout_Unknown, shape=t.shape},
     data = (match t.data {
     | OAst.T_INT8(w) => Ast.NN_Data_I8(w)
     | OAst.T_INT32(w) => Ast.NN_Data_I32(w)

@@ -86,57 +86,76 @@ match op {
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-fun run_gather(axis: int, inp_shape: int [], inp_data: Ast.nndata_t,
-               ind_shape: int [], ind_data: Ast.nndata_t,
-               out_shape: int [], out_data: Ast.nndata_t, ntasks: int): void
+fun run_gather(axis: int, inp: Ast.nntensor_t, ind: Ast.nntensor_t,
+               out: Ast.nntensor_t, ntasks: int): void
 @ccode {
-    int_ r = inp_shape->dim[0].size;
-    int_ q = ind_shape->dim[0].size;
-    int_ ndims = out_shape->dim[0].size;
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* ind_shape_ = &ind->shape.shape;
+    const fx_arr_t* out_shape_ = &out->shape.shape;
+    const int_* inp_shape = (const int_*)(inp_shape_->data);
+    const int_* ind_shape = (const int_*)(ind_shape_->data);
+    const int_* out_shape = (const int_*)(out_shape_->data);
+    int_ r = inp_shape_->dim[0].size;
+    int_ q = ind_shape_->dim[0].size;
+    int_ ndims = out_shape_->dim[0].size;
     int_ pq = 1, nslices = 1;
     volatile int fx_status = FX_OK;
-    size_t elemsize = inp_data->u.NN_Data_I8.dim[0].step;
+    size_t elemsize = inp->data.u.NN_Data_I8.dim[0].step;
     size_t slicesize = elemsize;
     size_t inp_stride, out_stride;
-    const char* inptr0 = inp_data->u.NN_Data_I8.data;
-    char* outptr0 = out_data->u.NN_Data_I8.data;
-    const fx_arr_t* ind_arr = &(ind_data->u.NN_Data_I32);
+    const char* inptr0 = inp->data.u.NN_Data_I8.data;
+    char* outptr0 = out->data.u.NN_Data_I8.data;
     const int* ind32 = 0;
     const int64_t* ind64 = 0;
-    int_ s = ((const int_*)inp_shape->data)[axis];
+    int_ s = inp_shape[axis];
 
-    if (ind_arr->dim[0].step == sizeof(int)) {
-        ind32 = (const int*)ind_arr->data;
+    if (inp->data.tag <= 1)
+        return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
+
+    if (inp->data.tag != out->data.tag)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+
+    if (ind->data.tag == _FX_NN_I32) {
+        ind32 = (const int*)ind->data.u.NN_Data_I8.data;
     }
-    else {
-        assert(ind_arr->dim[0].step == sizeof(int64_t));
-        ind64 = (const int64_t*)ind_arr->data;
+    else if (ind->data.tag == _FX_NN_I64) {
+        ind64 = (const int64_t*)ind->data.u.NN_Data_I8.data;
+    } else {
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     }
+
+    if (ndims != q + r - 1)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
     for(int_ i = 0; i < q; i++)
-        pq *= ((int_*)ind_shape->data)[i];
+        pq *= ind_shape[i];
 
     for(int_ j = 0; j < r; j++) {
-        int_ szj = ((int_*)inp_shape->data)[j];
+        int_ szj = inp_shape[j];
         if (j < axis)
             nslices *= szj;
         else if (j > axis)
             slicesize *= szj;
     }
-    inp_stride = slicesize * ((int_*)inp_shape->data)[axis];
+    inp_stride = slicesize * s;
     out_stride = slicesize * pq;
+    if(pq == 1 || slicesize*nslices*pq < 1000000)
+        ntasks = 1;
 
-    #pragma omp parallel for num_threads(ntasks) if(pq > 1 && slicesize*nslices*pq > 1000000)
-    for (int_ j = 0; j < pq; j++) {
-        int_ k = ind32 ? (int_)ind32[j] : (int_)ind64[j];
-        char* outptr = outptr0 + j*slicesize;
-        const char* inptr = inptr0;
-        for (int_ i = 0; i < nslices; i++, inptr += inp_stride, outptr += out_stride) {
-            k += k < 0 ? s : 0;
-            if (k < 0 || k >= s) {
-                fx_status = FX_EXN_OutOfRangeError; continue;
+    #pragma omp parallel for num_threads(ntasks)
+    for (int_ task_id = 0; task_id < ntasks; task_id++) {
+        int_ j0 = task_id*pq/ntasks, j1 = (task_id+1)*pq/ntasks;
+        for (; j0 < j1; j0++) {
+            int_ k = ind32 ? (int_)ind32[j0] : (int_)ind64[j0];
+            char* outptr = outptr0 + j0*slicesize;
+            const char* inptr = inptr0;
+            for (int_ i = 0; i < nslices; i++, inptr += inp_stride, outptr += out_stride) {
+                k += k < 0 ? s : 0;
+                if (k < 0 || k >= s) {
+                    fx_status = FX_EXN_OutOfRangeError; continue;
+                }
+                memcpy(outptr, inptr + k*slicesize, slicesize);
             }
-            memcpy(outptr, inptr + k*slicesize, slicesize);
         }
     }
     return fx_status >= 0 ? fx_status : FX_SET_EXN_FAST(fx_status);
@@ -146,26 +165,11 @@ fun run_gather(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Gather {axis, t_inp, t_ind, t_out} =>
     val inp = model.get_tensor(t_inp)
-    val inp_shape = inp.shape.shape
-    val r = inp_shape.size()
+    val r = inp.shape.shape.size()
     val axis = Ast.normalize_axis(axis, r)
     val ind = model.get_tensor(t_ind)
-    val ind_shape = ind.shape.shape
-    val q = ind_shape.size()
     val out = model.get_tensor(t_out)
-    val out_shape = out.shape.shape
-    val ndims = out_shape.size()
-    assert(`ndims == q + r - 1`)
-    match ind.data {
-    | Ast.NN_Data_I32 _ | Ast.NN_Data_I64 _ => {}
-    | _ => throw Ast.NNError(f"Gather: unsupported index type '{ind.data.elemtype()}'")
-    }
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_Empty, _) => throw Ast.NNError(f"Gather: input data cannot be empty")
-    | (_, Ast.NN_Data_Empty) => throw Ast.NNError(f"Gather: output data cannot be empty")
-    | _ => {}
-    }
-    run_gather(axis, inp_shape, inp.data, ind_shape, ind.data, out_shape, out.data, *model.ntasks)
+    run_gather(axis, inp, ind, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -190,13 +194,14 @@ match op {
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-fun run_transpose(inp_shape_: int [], inp_data_: Ast.nndata_t, perm_: int [],
-                  out_shape_: int [], out_data_: Ast.nndata_t): void
+fun run_transpose(inp: Ast.nntensor_t, perm_: int [], out: Ast.nntensor_t): void
 @ccode {
     enum {TRANSPOSE_MAX_DIMS=5};
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* out_shape_ = &out->shape.shape;
     int_ i, ndims = inp_shape_->dim[0].size;
-    fx_arr_t* inp_data = &((_fx_nndata_t*)inp_data_)->u.NN_Data_I8;
-    fx_arr_t* out_data = &((_fx_nndata_t*)out_data_)->u.NN_Data_I8;
+    fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
     size_t out_esz = out_data->dim[0].step;
     int_ out_ndims = out_shape_->dim[0].size;
@@ -294,21 +299,23 @@ match op {
 | Ast.NN_Transpose {perm, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_transpose(inp.shape.shape, inp.data, perm, out.shape.shape, out.data)
+    run_transpose(inp, perm, out)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-@private fun run_slice_(inp_shape_: int [], inp_data_: Ast.nndata_t,
-                        out_shape_: int [], out_data_: Ast.nndata_t,
-                        axes_: int [], starts_: int [], ends_: int [], steps_: int []): void
+fun run_slice(inp: Ast.nntensor_t, out: Ast.nntensor_t,
+              axes_: Ast.nntensor_t, starts_: Ast.nntensor_t,
+              ends_: Ast.nntensor_t, steps_: Ast.nntensor_t): void
 @ccode {
     enum {SLICE_MAX_DIMS=5};
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* out_shape_ = &out->shape.shape;
     int_ i, ndims = inp_shape_->dim[0].size;
-    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
-    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
+    int_ out_ndims = out_shape_->dim[0].size;
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
     size_t out_esz = out_data->dim[0].step;
-    int_ out_ndims = out_shape_->dim[0].size;
     int_ starts[SLICE_MAX_DIMS] = {0, 0, 0, 0, 0};
     int_ ends[SLICE_MAX_DIMS] = {INT_MAX, INT_MAX, INT_MAX, INT_MAX, INT_MAX};
     int_ steps[SLICE_MAX_DIMS] = {1, 1, 1, 1, 1};
@@ -316,26 +323,39 @@ match op {
     int_ out_shape[SLICE_MAX_DIMS] = {1, 1, 1, 1, 1};
     int_ inp_step[SLICE_MAX_DIMS] = {0, 0, 0, 0, 1};
     int_ delta = SLICE_MAX_DIMS - ndims;
-    int_ naxes = axes_->dim[0].size;
+    int_ naxes = axes_->data.tag > 1 ? axes_->data.u.NN_Data_I8.dim[0].size : ndims;
     bool empty_out = false;
     const char* inptr0 = inp_data->data;
+    char* axes_data = axes_->data.u.NN_Data_I8.data;
+    char* starts_data = starts_->data.u.NN_Data_I8.data;
+    char* ends_data = ends_->data.u.NN_Data_I8.data;
+    char* steps_data = steps_->data.u.NN_Data_I8.data;
 
     if (ndims > SLICE_MAX_DIMS)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-    if (ndims != out_ndims)
+    if (ndims != out_ndims || naxes > ndims)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (esz != out_esz)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
-    if (naxes > ndims ||
-        starts_->dim[0].size != naxes ||
-        ends_->dim[0].size != naxes ||
-        steps_->dim[0].size != naxes)
-        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    /*for(i = 0; i < ndims; i++) {
-        printf("i=%d. inp_shape_i=%d, out_shape_i=%d, perm_i=%d\n", (int)i,
-            (int)((int_*)inp_shape_->data)[i], (int)((int_*)out_shape_->data)[i], (int)((int_*)perm_->data)[i]);
-    }*/
+    for (int k = 0; k < 4; k++) {
+        const _fx_nntensor_t* t = (const _fx_nntensor_t*)(
+                k == 0 ? axes_ : k == 1 ? starts_ :
+                k == 2 ? ends_ : steps_);
+        int typ = t->data.tag;
+        if (typ > 1) {
+            const fx_arr_t* shape = &t->shape.shape;
+            const fx_arr_t* data = &t->data.u.NN_Data_I8;
+            if (typ != _FX_NN_I32 && typ != _FX_NN_I64)
+                return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+            if (shape->dim[0].size != 1 || *(int_*)(shape->data) != naxes ||
+                data->ndims != 1 || data->dim[0].size != naxes)
+                return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        } else if (k == 1 || k == 2) {
+            // starts_ and ends_ must be specified
+            return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
+        }
+    }
 
     for (i = ndims - 1; i >= 0; i--) {
         inp_shape[delta + i] = ((int_*)inp_shape_->data)[i];
@@ -344,10 +364,14 @@ match op {
     for (i = SLICE_MAX_DIMS-1; i >= 0; i--)
         inp_step[i] = i == SLICE_MAX_DIMS-1 ? 1 : inp_step[i+1]*inp_shape[i+1];
     for (i = 0; i < naxes; i++) {
-        int_ j = axes_->data ? ((int_*)axes_->data)[i] : i;
-        int_ start = ((int_*)starts_->data)[i];
-        int_ end = ((int_*)ends_->data)[i];
-        int_ step = steps_->data ? ((int_*)steps_->data)[i] : 1;
+        int_ j = axes_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)axes_data)[i] :
+                 axes_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)axes_data)[i] : i;
+        int_ start = starts_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)starts_data)[i] :
+                     starts_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)starts_data)[i] : 0;
+        int_ end = ends_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)ends_data)[i] :
+                   ends_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)ends_data)[i] : INT_MAX;
+        int_ step = steps_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)steps_data)[i] :
+                   steps_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)steps_data)[i] : 1;
         int_ sz_j, out_sz_j;
 
         if (j < 0) j += ndims;
@@ -435,15 +459,11 @@ match op {
 | Ast.NN_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    val inp_shape = inp.shape.shape
-    val out_shape = out.shape.shape
-    val ndims = inp_shape.size()
-    val axes = if t_axes != 0 {int(model.get_tensor(t_axes))} else {mkrange(ndims)}
-    val naxes = axes.size()
-    val starts = int(model.get_tensor(t_starts))
-    val ends = int(model.get_tensor(t_ends))
-    val steps = if t_steps != 0 {int(model.get_tensor(t_steps))} else {array(naxes, 1)}
-    run_slice_(inp_shape, inp.data, out_shape, out.data, axes, starts, ends, steps)
+    val axes = model.get_tensor(t_axes)
+    val starts = model.get_tensor(t_starts)
+    val ends = model.get_tensor(t_ends)
+    val steps = model.get_tensor(t_steps)
+    run_slice(inp, out, axes, starts, ends, steps)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -524,39 +544,47 @@ match op {
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-@private fun run_tile_(inp_shape_: int [], inp_data_: Ast.nndata_t,
-                       repeats_: int [], out_shape_: int [],
-                       out_data_: Ast.nndata_t, ntasks: int): void
+fun run_tile(inp: Ast.nntensor_t, repeats_: Ast.nntensor_t,
+             out: Ast.nntensor_t, ntasks: int): void
 @ccode {
     enum {TILE_MAX_DIMS=4};
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* repeats_shape_ = &repeats_->shape.shape;
+    const fx_arr_t* out_shape_ = &out->shape.shape;
+    const fx_arr_t* repeats_data = &repeats_->data.u.NN_Data_I8;
     int_ ndims = inp_shape_->dim[0].size;
     const int_* inp_shape0 = (const int_*)(inp_shape_->data);
     const int_* out_shape0 = (const int_*)(out_shape_->data);
-    const int_* repeats0 = (const int_*)(repeats_->data);
-    size_t esz = inp_data_->u.NN_Data_I8.dim[0].step;
-    size_t out_esz = out_data_->u.NN_Data_I8.dim[0].step;
+    const int64_t* repeats0 = (const int64_t*)(repeats_data->data);
+    size_t esz = inp->data.u.NN_Data_I8.dim[0].step;
+    size_t out_esz = out->data.u.NN_Data_I8.dim[0].step;
     int_ total_size = 1, total_repeats = 1;
     int_ inp_shape[TILE_MAX_DIMS] = {1, 1, 1, 1};
     int_ out_shape[TILE_MAX_DIMS] = {1, 1, 1, 1};
     int_ repeats[TILE_MAX_DIMS] = {1, 1, 1, 1};
     size_t inp_step[TILE_MAX_DIMS], out_step[TILE_MAX_DIMS];
     int_ delta = TILE_MAX_DIMS - ndims;
-    char* inp_data0 = inp_data_->u.NN_Data_I8.data;
+    char* inp_data0 = inp->data.u.NN_Data_I8.data;
 
     if (ndims > TILE_MAX_DIMS)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    if (repeats_->data.tag != _FX_NN_I64)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
 
     if (esz != out_esz)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
 
     if (ndims != out_shape_->dim[0].size ||
-        ndims != repeats_->dim[0].size )
+        repeats_shape_->dim[0].size != 1 ||
+        ((int_*)repeats_shape_->data)[0] != ndims ||
+        ndims != repeats_data->dim[0].size )
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
     for (int i = 0; i < ndims; i++) {
         inp_shape[i + delta] = inp_shape0[i];
         out_shape[i + delta] = out_shape0[i];
-        repeats[i + delta] = repeats0[i];
+        repeats[i + delta] = (int_)repeats0[i];
         if (out_shape0[i] != inp_shape0[i]*repeats0[i])
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
         total_repeats *= repeats0[i];
@@ -576,9 +604,11 @@ match op {
 
     if (ntasks > total_repeats)
         ntasks = total_repeats;
+    if (total_size < 1000000)
+        ntasks = 1;
     // [TODO] compress some inner dimensions 'i' iff repeats[i] == 1
     // ...
-    #pragma omp parallel for num_threads(ntasks) if (total_size > 10000000)
+    #pragma omp parallel for num_threads(ntasks)
     for (int_ i = 0; i < ntasks; i++) {
         int_ j0 = i*total_repeats/ntasks, j1 = (i+1)*total_repeats/ntasks;
         int_ ofs[TILE_MAX_DIMS];
@@ -609,7 +639,7 @@ match op {
             #undef _FX_IMPLEMENT_TILE
             #define _FX_IMPLEMENT_TILE(typ) \
             typ* inp_data = (typ*)inp_data0; \
-            typ* out_data0 = (typ*)(out_data_->u.NN_Data_I8.data) + raw_ofs; \
+            typ* out_data0 = (typ*)(out->data.u.NN_Data_I8.data) + raw_ofs; \
             for (int_ i0 = 0; i0 < sz0; i0++) { \
                 for (int_ i1 = 0; i1 < sz1; i1++) { \
                     typ* out_data = out_data0 + i0*out_step[0] + i1*out_step[1]; \
@@ -640,13 +670,8 @@ fun run_tile(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Tile {t_inp, t_repeats, t_out} =>
     val inp = model.get_tensor(t_inp)
-    val inp_shape = inp.shape.shape
-    val ndims = inp_shape.size()
     val out = model.get_tensor(t_out)
-    val out_shape = out.shape.shape
     val repeats = model.get_tensor(t_repeats)
-    val repeats_data = int(repeats.data)
-    assert(`repeats.shape.shape.size() == 1 && repeats.shape.shape[0] == ndims`)
-    run_tile_(inp_shape, inp.data, repeats_data, out_shape, out.data, *model.ntasks)
+    run_tile(inp, repeats, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

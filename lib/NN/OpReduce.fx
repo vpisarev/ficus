@@ -10,17 +10,17 @@ import Ast
 typedef int64_t _fx_coord_t;
 }
 
-fun run_nonzero(inp_shape_: int [], inp_data_: Ast.nndata_t,
-                         out_buf0: Ast.nnbuf_t, ntasks: int):
+fun run_nonzero(inp: Ast.nntensor_t, out_buf0: Ast.nnbuf_t, ntasks: int):
     (int, int64 [], Ast.nnbuf_t)
 @ccode {
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
     int_ ndims = inp_shape_->dim[0].size;
     const int_* inp_shape = (const int_*)inp_shape_->data;
     int_* cbuf = (int_*)alloca((ntasks*2 + 1)*sizeof(cbuf[0]));
     int_* cofs = cbuf + ntasks;
-    int inp_typ = inp_data_->tag, out_typ = _FX_NN_I64;
+    int inp_typ = inp->data.tag, out_typ = _FX_NN_I64;
     size_t esz = sizeof(_fx_coord_t);
-    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
     fx_arr_t out_buf, out_data;
     int_ inp_total = inp_data->dim[0].size;
     int_ out_total_bytes = out_buf0->dim[0].size*out_buf0->dim[0].step;
@@ -125,11 +125,10 @@ fun run_nonzero(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_NonZero {t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
-    val inp_shape = inp.shape.shape
-    val ndims = inp_shape.size()
+    val ndims = inp.shape.shape.size()
     val out_bufidx = model.bufidxs[t_out]
     val out_buf = model.buffers[out_bufidx]
-    val (out_total, out_data, out_buf) = run_nonzero(inp_shape, inp.data, out_buf, *model.ntasks)
+    val (out_total, out_data, out_buf) = run_nonzero(inp, out_buf, *model.ntasks)
     model.buffers[out_bufidx] = out_buf
     model.tensors[t_out] = Ast.nntensor_t {
         shape=Ast.nnshape_t {shape=[ndims, out_total],
@@ -200,21 +199,22 @@ static bool _fx_cmp_gt_f32(const void* a, const void* b, void* userdata) {
 }
 }
 
-fun run_top_k(inp_shape_: int [], inp_data_: Ast.nndata_t,
-              out_shape_: int [], out_data_: Ast.nndata_t,
-              out_ind_data_: Ast.nndata_t, axis: int,
+fun run_top_k(inp: Ast.nntensor_t, out: Ast.nntensor_t,
+              out_ind: Ast.nntensor_t, axis: int,
               largest: bool, sorted: bool,
               K: int, ntasks: int): void
 @ccode {
     enum {_FX_TOPK_MAX_DIMS=5};
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* out_shape_ = &out->shape.shape;
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
+    fx_arr_t* out_ind_data = &out_ind->data.u.NN_Data_I8;
     int_ ndims = inp_shape_->dim[0].size;
-    int inp_typ = inp_data_->tag, out_typ = out_data_->tag;
-    const int_* inp_shape = (const int_*)inp_shape_->data;
-    const int_* out_shape = (const int_*)out_shape_->data;
+    int inp_typ = inp->data.tag, out_typ = out->data.tag;
+    const int_* inp_shape = (const int_*)inp->shape.shape.data;
+    const int_* out_shape = (const int_*)out->shape.shape.data;
     int_ inp_step[_FX_TOPK_MAX_DIMS], out_step[_FX_TOPK_MAX_DIMS];
-    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
-    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
-    fx_arr_t* out_ind_data = &out_ind_data_->u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
     int_ nslices = 1;
     int_ len = inp_shape[axis];
@@ -237,7 +237,7 @@ fun run_top_k(inp_shape_: int [], inp_data_: Ast.nndata_t,
         inp_typ != _FX_NN_I64 &&
         inp_typ != _FX_NN_I8 &&
         inp_typ != _FX_NN_U8 &&
-        out_ind_data_->tag != _FX_NN_I64)
+        out_ind->data.tag != _FX_NN_I64)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     if (ndims > _FX_TOPK_MAX_DIMS)
@@ -340,7 +340,6 @@ fun run_top_k(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_TopK {axis, largest, sorted, t_inp, t_K, t_out, t_out_ind} =>
     val inp = model.get_tensor(t_inp)
-    val inp_shape = inp.shape.shape
     val out = model.get_tensor(t_out)
     val out_ind = model.get_tensor(t_out_ind)
     val tK = model.get_tensor(t_K).data
@@ -350,11 +349,10 @@ match op {
         | _ => throw Ast.NNError("incorrect type of K tensor in topK: INT64 is expected\n")
         }
     assert(`K >= 0`)
-    val ndims = inp_shape.size()
+    val ndims = inp.shape.shape.size()
     val axis = Ast.normalize_axis(axis, ndims)
     assert(`out.shape.shape == out_ind.shape.shape`)
-    run_top_k(inp_shape, inp.data, out.shape.shape, out.data, out_ind.data,
-              axis, largest, sorted, K, *model.ntasks)
+    run_top_k(inp, out, out_ind, axis, largest, sorted, K, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -493,27 +491,28 @@ typedef void (*_fx_reduce_func_t)(const char* inptr, int_ ystep, int_ xstep,
 typedef void (*_fx_reduce_finit_func_t)(const char* acc, char* outptr, double param);
 }
 
-fun run_reduce(inp_shape_: int [], inp_data_: Ast.nndata_t,
-               out_shape_: int [], out_data_: Ast.nndata_t,
+fun run_reduce(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                axes_: int [], keepdims: bool,
                reduce_op_: Ast.nnreduce_t, ntasks: int): void
 @ccode {
     enum {_FX_REDUCE_MAX_DIMS=5};
+    const fx_arr_t* inp_shape_ = &inp->shape.shape;
+    const fx_arr_t* out_shape_ = &out->shape.shape;
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
     int_ inp_ndims = inp_shape_->dim[0].size;
     int_ out_ndims = out_shape_->dim[0].size;
     int_ naxes = axes_->dim[0].size;
     if (naxes == 0)
         naxes = inp_ndims;
     const int_* axes = (const int_*)(axes_->data);
-    int inp_typ = inp_data_->tag, out_typ = out_data_->tag;
+    int inp_typ = inp->data.tag, out_typ = out->data.tag;
     const int_* inp_shape = (const int_*)inp_shape_->data;
     const int_* out_shape = (const int_*)out_shape_->data;
     int_ inp_step[_FX_REDUCE_MAX_DIMS], out_step[_FX_REDUCE_MAX_DIMS];
     int_ dim_map[_FX_REDUCE_MAX_DIMS] = {0, 1, 2, 3, 4};
     int_ reduce_shape[_FX_REDUCE_MAX_DIMS], reduce_step[_FX_REDUCE_MAX_DIMS];
     bool axes_mask[_FX_REDUCE_MAX_DIMS]={false, false, false, false, false};
-    fx_arr_t* inp_data = &inp_data_->u.NN_Data_I8;
-    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
     size_t esz = inp_data->dim[0].step;
     int_ out_total = 1, reduce_total = 1;
     int reduce_op = reduce_op_->tag;
@@ -735,10 +734,7 @@ fun run_reduce(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
 | Ast.NN_Reduce {reduce_op, axes, keepdims, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
-    val inp_shape = inp.shape.shape
     val out = model.get_tensor(t_out)
-    val out_shape = out.shape.shape
-    run_reduce(inp_shape, inp.data, out_shape, out.data,
-              axes, keepdims, reduce_op, *model.ntasks)
+    run_reduce(inp, out, axes, keepdims, reduce_op, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
