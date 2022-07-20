@@ -235,6 +235,18 @@ fun t.list(): 'k list =
         self.table[j].key
     }]
 
+fun t.array(): 'k []
+{
+    val result = array(self.nactive, self.default_entry.key)
+    var k = 0
+    for j <- 0:self.tabsz {
+        if self.table[j].hv >= HASH_SIGN_MASK { continue }
+        result[k] = self.table[j].key
+        k += 1
+    }
+    result
+}
+
 fun t.add_list(data: 'k list)
 {
     var datasz = self.nactive + data.length()

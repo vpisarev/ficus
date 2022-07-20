@@ -5,7 +5,7 @@
 
 // Converts Onnx onnx_model to NN.Ast
 import Ast, Onnx.Ast as OAst, Onnx.Parser
-import Hashmap, Dynvec
+import Hashmap, Hashset, Dynvec
 
 exception OnnxConvertError: string
 
@@ -166,6 +166,7 @@ match ti {
 
 fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
 {
+    val unsupported_ops = Hashset.empty(1024, "")
     val dimnames = Hashmap.empty(1024, "", 0)
     val argnames = Hashmap.empty(1024, "", 0)
     val empty_arg = Ast.empty_arg().{argkind = Ast.NN_Arg_Const}
@@ -405,6 +406,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 if dilations == [] {dilations = array(dims, 1)}
                 val pads = autopad2pads(auto_pad, kernel_shape, pads)
                 val storage_order = if storage_order == 0 {Ast.NN_RowMajor} else {Ast.NN_ColumnMajor}
+                assert(`strides.size() == dims && dilations.size() == dims && pads.size() == dims*2`)
                 [:: if ismax {
                     Ast.NN_MaxPool {
                         name=name, kernel_shape=kernel_shape, pads=pads,
@@ -904,7 +906,9 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_Unsqueeze {
                     name=name, t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
-            | _ => throw OnnxConvertError(f"unsupported operation '{node.op}'")
+            | _ =>
+                unsupported_ops.add(node.op)
+                []
             }
             rev_more_ops + prog
         }
@@ -920,6 +924,15 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
     val ndimnames = dimnames.size()
     val dimnames_ = array(ndimnames, "")
     dimnames.app(fun (name, v) {dimnames_[-v-1] = name})
+
+    if !unsupported_ops.empty() {
+        val ops = unsupported_ops.array()
+        sort(ops, (<))
+        val msg = if ops.size() == 1 {f"unsupported op: {ops[0]}"}
+                  else {join_embrace("unsupported op's: ", "", ", ", ops)}
+        throw OnnxConvertError(msg)
+    }
+
     model.{
         graph = graph,
         argnames = argnames,

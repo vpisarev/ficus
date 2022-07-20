@@ -24,142 +24,17 @@ enum { FX_VEC_NLANES=1 };
 
 typedef struct _fx_pooling2d_t
 {
-    int C, Hk, Wk;
+    int Hi, Wi, H0, W0;
+    int Hk, Wk;
     int stride_y, stride_x;
     int dilation_y, dilation_x;
     int pad_top, pad_bottom, pad_left, pad_right;
+    int inner_y0, inner_y1;
+    int inner_x0, inner_x1;
     bool count_include_pad;
+    const int* ofstab;
+    const int* yxtab;
 } _fx_pooling2d_t;
-
-static int _fx_maxpool2d(int ndims, int inp_typ,
-                         const int_* inpsize, const char* inp_,
-                         const int_* outsize, char* out_,
-                         const _fx_pooling2d_t* pool, int ntasks)
-{
-    int N = (int)inpsize[0], C = (int)inpsize[1];
-    int Hi = (int)inpsize[2], Wi = (int)inpsize[3];
-    int Hk = pool->Hk, Wk = pool->Wk;
-    int H0 = (int)outsize[2], W0 = (int)outsize[3];
-    const size_t inp_planesize = (size_t)Hi*Wi;
-    const size_t out_planesize = (size_t)H0*W0;
-    int stride_y = pool->stride_y, stride_x = pool->stride_x;
-    int dilation_y = pool->dilation_y, dilation_x = pool->dilation_x;
-    int pad_top = pool->pad_top, pad_bottom = pool->pad_bottom;
-    int pad_left = pool->pad_left, pad_right = pool->pad_right;
-    int ksize = Hk*Wk, padded_ksize = ((ksize + FX_VEC_NLANES-1)/FX_VEC_NLANES)*FX_VEC_NLANES;
-
-    int* ofstab = (int*)alloca(3*padded_ksize*sizeof(ofstab[0]));
-    int* xytab = ofstab + padded_ksize;
-    int inner_ytop = (pad_top + stride_y-1)/stride_y, inner_ybottom;
-    int inner_xleft = (pad_left + stride_x-1)/stride_x, inner_xright;
-    for (int k = 0; k < padded_ksize; k++) {
-        int y = k < ksize ? k / Wk : 0;
-        int x = k < ksize ? k % Wk : 0;
-        int dy = y*dilation_y, dx = x*dilation_x;
-        xytab[k*2] = dy; xytab[k*2+1] = dx;
-        ofstab[k] = dy*Wi + dx;
-    }
-    inner_xright = (Wi - (Wk - 1)*dilation_x + pad_left)/stride_x;
-    inner_xright += inner_xright*stride_x - pad_left + (Wk-1)*dilation_x < Wi;
-    inner_ybottom = (Hi - (Hk - 1)*dilation_y + pad_top)/stride_y;
-    inner_ybottom += inner_ybottom*stride_y - pad_top + (Hk-1)*dilation_y < Hi;
-    if (inner_xleft >= inner_xright || inner_ytop >= inner_ybottom) {
-        inner_xleft = W0;
-        inner_ytop = H0;
-    }
-    /*printf("inpsize: %d x %d x %d x %d, outsize: %d x %d x %d x %d; kernel_size: %d x %d, stride: %d x %d, dilation: %d x %d; pad_y: (%d, %d), pad_x: (%d, %d), inner: y=%d - %d, x=%d - %d\n",
-        (int)inpsize[0], (int)inpsize[1], (int)inpsize[2], (int)inpsize[3],
-        (int)outsize[0], (int)outsize[1], (int)outsize[2], (int)outsize[3],
-        Hk, Wk, stride_y, stride_x, dilation_y, dilation_x,
-        pad_top, pad_bottom, pad_left, pad_right,
-        inner_ytop, inner_ybottom, inner_xleft, inner_xright);
-    printf("ofstab: ");
-    for(int k = 0; k < ksize; k++)
-        printf("%d ", ofstab[k]);
-    printf("\n");*/
-
-#ifdef __ARM_NEON
-    bool useSIMD = stride_x == 1 && inner_xleft < W0;
-    bool is3x3 = Hk == 3 && Wk == 3;
-#endif
-
-    if (inp_typ != _FX_NN_FP32)
-        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-
-    #pragma omp parallel for num_threads(ntasks)
-    for (int nc = 0; nc < N*C; nc++) {
-        int c = nc % C;
-        const float* inptr = (const float*)inp_ + inp_planesize*nc;
-        float* outptr = (float*)out_ + out_planesize*nc;
-
-        for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
-            int x0 = 0, x1 = y0 >= inner_ytop && y0 < inner_ybottom ? inner_xleft : W0;
-            int yi_ = y0*stride_y - pad_top;
-            for(;;) {
-                float s;
-                for (; x0 < x1; x0++) {
-                    int xi_ = x0*stride_x - pad_left;
-                    s = -FLT_MAX;
-                    for (int k = 0; k < ksize; k++) {
-                        int yi = yi_ + xytab[k*2];
-                        int xi = xi_ + xytab[k*2+1];
-                        if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
-                            continue;
-                        s = fx_maxf(s, inptr[yi*Wi + xi]);
-                    }
-                    outptr[x0] = s;
-                }
-                if (x0 == W0)
-                    break;
-                x1 = inner_xright;
-            #ifdef __ARM_NEON
-                if (useSIMD) {
-                    if (is3x3) {
-                        for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
-                            int xi_ = x0*stride_x - pad_left;
-                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                            float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
-                            float32x4_t s1 = vld1q_f32(inptr_xi + ofstab[1]);
-                            float32x4_t s2 = vld1q_f32(inptr_xi + ofstab[2]);
-
-                            s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[3]));
-                            s1 = vmaxq_f32(s1, vld1q_f32(inptr_xi + ofstab[4]));
-                            s2 = vmaxq_f32(s2, vld1q_f32(inptr_xi + ofstab[5]));
-
-                            s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[6]));
-                            s1 = vmaxq_f32(s1, vld1q_f32(inptr_xi + ofstab[7]));
-                            s2 = vmaxq_f32(s2, vld1q_f32(inptr_xi + ofstab[8]));
-
-                            s0 = vmaxq_f32(vmaxq_f32(s0, s1), s2);
-                            vst1q_f32(outptr + x0, s0);
-                        }
-                    } else {
-                        for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
-                            int xi_ = x0*stride_x - pad_left, k = 0;
-                            const float* inptr_xi = inptr + W0*yi_ + xi_;
-                            float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
-                            for (k = 1; k < ksize; k++)
-                                s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[k]));
-                            vst1q_f32(outptr + x0, s0);
-                        }
-                    }
-                }
-            #endif
-                for (; x0 < x1; x0++) {
-                    int xi_ = x0*stride_x - pad_left;
-                    const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                    s = inptr_xi[ofstab[0]];
-                    for (int k = 1; k < ksize; k++)
-                        s = fx_maxf(s, inptr_xi[ofstab[k]]);
-                    outptr[x0] = s;
-                }
-                x1 = W0;
-            }
-        }
-    }
-
-    return FX_OK;
-}
 
 static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
                          const int_* outsize, float* out,
@@ -180,14 +55,14 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
     float avg_scale = 1.f/(Hk*Wk);
 
     int* ofstab = (int*)alloca(3*padded_ksize*sizeof(ofstab[0]));
-    int* xytab = ofstab + padded_ksize;
+    int* yxtab = ofstab + padded_ksize;
     int inner_ytop = (pad_top + stride_y-1)/stride_y, inner_ybottom;
     int inner_xleft = (pad_left + stride_x-1)/stride_x, inner_xright;
     for (int k = 0; k < padded_ksize; k++) {
         int y = k < ksize ? k / Wk : 0;
         int x = k < ksize ? k % Wk : 0;
         int dy = y*dilation_y, dx = x*dilation_x;
-        xytab[k*2] = dy; xytab[k*2+1] = dx;
+        yxtab[k*2] = dy; yxtab[k*2+1] = dx;
         ofstab[k] = dy*Wi + dx;
     }
     inner_xright = (Wi - (Wk - 1)*dilation_x + pad_left)/stride_x;
@@ -221,8 +96,8 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
                     int counter = 0;
                     s = 0.f;
                     for (int k = 0; k < ksize; k++) {
-                        int yi = yi_ + xytab[k*2];
-                        int xi = xi_ + xytab[k*2+1];
+                        int yi = yi_ + yxtab[k*2];
+                        int xi = xi_ + yxtab[k*2+1];
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
                         s += inptr[yi*Wi + xi];
@@ -282,49 +157,232 @@ static int _fx_avgpool2d(int ndims, const int_* inpsize, const float* inp,
     return FX_OK;
 }
 
+static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
+                               const _fx_pooling2d_t* pool)
+{
+    const float* inptr = (const float*)inptr_;
+    float* outptr = (float*)outptr_;
+    int Hi = pool->Hi, Wi = pool->Wi, H0 = pool->H0, W0 = pool->W0;
+    int inner_y0 = pool->inner_y0, inner_y1 = pool->inner_y1;
+    int inner_x0 = pool->inner_x0, inner_x1 = pool->inner_x1;
+    int stride_y = pool->stride_y, stride_x = pool->stride_x;
+    int ksize = pool->Hk*pool->Wk;
+    int pad_top = pool->pad_top, pad_left = pool->pad_left;
+    const int* yxtab = pool->yxtab;
+    const int* ofstab = pool->ofstab;
+#ifdef __ARM_NEON
+    bool useSIMD = stride_x == 1 && inner_x0 < W0;
+    bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
+#endif
+
+    for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
+        for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
+            int x0 = 0, x1 = y0 >= inner_y0 && y0 < inner_y1 ? inner_x0 : W0;
+            int yi_ = y0*stride_y - pad_top;
+            for(;;) {
+                float s;
+                for (; x0 < x1; x0++) {
+                    int xi_ = x0*stride_x - pad_left;
+                    s = -FLT_MAX;
+                    for (int k = 0; k < ksize; k++) {
+                        int yi = yi_ + yxtab[k*2];
+                        int xi = xi_ + yxtab[k*2+1];
+                        float v;
+                        if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
+                            continue;
+                        v = inptr[yi*Wi + xi];
+                        s = s >= v ? s : v;
+                    }
+                    outptr[x0] = s;
+                }
+                if (x0 == W0)
+                    break;
+                x1 = inner_x1;
+            #ifdef __ARM_NEON
+                if (useSIMD) {
+                    if (is3x3) {
+                        for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
+                            int xi_ = x0*stride_x - pad_left;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                            float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
+                            float32x4_t s1 = vld1q_f32(inptr_xi + ofstab[1]);
+                            float32x4_t s2 = vld1q_f32(inptr_xi + ofstab[2]);
+
+                            s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[3]));
+                            s1 = vmaxq_f32(s1, vld1q_f32(inptr_xi + ofstab[4]));
+                            s2 = vmaxq_f32(s2, vld1q_f32(inptr_xi + ofstab[5]));
+
+                            s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[6]));
+                            s1 = vmaxq_f32(s1, vld1q_f32(inptr_xi + ofstab[7]));
+                            s2 = vmaxq_f32(s2, vld1q_f32(inptr_xi + ofstab[8]));
+
+                            s0 = vmaxq_f32(vmaxq_f32(s0, s1), s2);
+                            vst1q_f32(outptr + x0, s0);
+                        }
+                    } else {
+                        for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
+                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            const float* inptr_xi = inptr + W0*yi_ + xi_;
+                            float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
+                            for (k = 1; k < ksize; k++)
+                                s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[k]));
+                            vst1q_f32(outptr + x0, s0);
+                        }
+                    }
+                }
+            #endif
+                for (; x0 < x1; x0++) {
+                    int xi_ = x0*stride_x - pad_left;
+                    const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                    s = inptr_xi[ofstab[0]];
+                    for (int k = 1; k < ksize; k++) {
+                        float v = inptr_xi[ofstab[k]];
+                        s = s >= v ? s : v;
+                    }
+                    outptr[x0] = s;
+                }
+                x1 = W0;
+            }
+        }
+    }
 }
 
-fun run_maxpool_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
-                   Hk: int, Wk: int, sy: int, sx: int,
-                   dy: int, dx: int, pad_top: int, pad_left: int,
-                   pad_bottom: int, pad_right: int, ntasks: int): void
+typedef void (*_fx_pool_func_t)(int nc, const char* inptr_, char* outptr_,
+                               const _fx_pooling2d_t* pool);
+
+}
+
+fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
+                kernel_shape_: int [], stride_: int [], dilation_: int [],
+                padding_: int [], count_include_pad: bool,
+                ntasks: int): void
 @ccode {
     const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
     fx_arr_t* out_data = &out->data.u.NN_Data_I8;
     _fx_pooling2d_t pool;
     int_ ndims = inp->shape.shape.dim[0].size;
+    int_ k_ndims = kernel_shape_->dim[0].size;
+    const int_* kernel_shape = (const int_*)(kernel_shape_->data);
+    const int_* stride = (const int_*)(stride_->data);
+    const int_* dilation = (const int_*)(dilation_->data);
+    const int_* padding = (const int_*)(padding_->data);
     int inp_typ = inp->data.tag;
+    size_t esz = inp_data->dim[0].step;
     const int_* inpsize = (const int_*)inp->shape.shape.data;
     const int_* outsize = (const int_*)out->shape.shape.data;
+    int_ NC, ksize, padded_ksize;
+    size_t inp_planesize, out_planesize;
+    int_ inner_y0, inner_y1;
+    int_ inner_x0, inner_x1;
+    _fx_pool_func_t func;
+    int *ofstab, *yxtab;
 
     if (inp_typ != out->data.tag)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
-    if (inp->shape.layout.tag != _FX_NN_Layout_NCHW)
+
+    if (inp->shape.layout.tag != _FX_NN_Layout_NCHW || k_ndims != 2)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-    if (ndims != 4 || ndims != out->shape.shape.dim[0].size ||
+    if (ndims != 2 + k_ndims || ndims != out->shape.shape.dim[0].size ||
         inpsize[0] != outsize[0] || inpsize[1] != outsize[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    if ((Hk|Wk) == 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
+
+    memset(&pool, 0, sizeof(pool));
+
+    NC = inpsize[0]*inpsize[1];
+    pool.Hi = inpsize[2];
+    pool.Wi = inpsize[3];
+    pool.H0 = outsize[2];
+    pool.W0 = outsize[3];
+    pool.Hk = (int)kernel_shape[0];
+    pool.Wk = (int)kernel_shape[1];
+    pool.stride_y = (int)stride[0];
+    pool.stride_x = (int)stride[1];
+    pool.pad_top = (int)padding[0];
+    pool.pad_left = (int)padding[1];
+    pool.pad_bottom = (int)padding[2];
+    pool.pad_right = (int)padding[3];
+    pool.count_include_pad = count_include_pad;
+    inp_planesize = (size_t)pool.Hi*pool.Wi;
+    out_planesize = (size_t)pool.H0*pool.W0;
+
+    if ((pool.Hk|pool.Wk) == 1 &&
+        (pool.pad_left | pool.pad_right | pool.pad_top | pool.pad_bottom) != 0)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    pool.C = (int)inpsize[1];
-    pool.Hk = (int)Hk; pool.Wk = (int)Wk;
-    pool.stride_y = (int)sy; pool.stride_x = (int)sx;
-    pool.dilation_y = (int)dy; pool.dilation_x = (int)dx;
-    pool.pad_top = (int)pad_top; pool.pad_left = (int)pad_left;
-    pool.pad_bottom = (int)pad_bottom; pool.pad_right = (int)pad_right;
-    return _fx_maxpool2d((int)ndims, inp_typ, inpsize, inp_data->data,
-                         outsize, out_data->data, &pool, (int)ntasks);
+
+    ksize = pool.Hk*pool.Wk;
+    padded_ksize = ((ksize + FX_VEC_NLANES-1)/FX_VEC_NLANES)*FX_VEC_NLANES;
+    ofstab = (int*)alloca(3*padded_ksize*sizeof(ofstab[0]));
+    yxtab = ofstab + padded_ksize;
+
+    for (int_ k = 0; k < padded_ksize; k++) {
+        int_ y = k < ksize ? k / pool.Wk : 0;
+        int_ x = k < ksize ? k % pool.Wk : 0;
+        int_ dy = y*dilation[0], dx = x*dilation[1];
+        yxtab[k*2] = (int)dy; yxtab[k*2+1] = (int)dx;
+        ofstab[k] = (int)(dy*pool.Wi + dx);
+    }
+
+    /*printf("inpsize: %d x %d x %d x %d, outsize: %d x %d x %d x %d; kernel_size: %d x %d, stride: %d x %d, dilation: %d x %d; pad_y: (%d, %d), pad_x: (%d, %d), inner: y=%d - %d, x=%d - %d\n",
+        (int)inpsize[0], (int)inpsize[1], (int)inpsize[2], (int)inpsize[3],
+        (int)outsize[0], (int)outsize[1], (int)outsize[2], (int)outsize[3],
+        Hk, Wk, stride_y, stride_x, dilation_y, dilation_x,
+        pad_top, pad_bottom, pad_left, pad_right,
+        inner_ytop, inner_ybottom, inner_xleft, inner_xright);
+    printf("ofstab: ");
+    for(int k = 0; k < ksize; k++)
+        printf("%d ", ofstab[k]);
+    printf("\n");*/
+
+    func =
+        inp_typ == _FX_NN_FP32 ?
+            (pool_typ == 'M' ? _fx_maxpool_2d_f32 : 0) :
+        0;
+
+    if (!func)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    inner_y0 = (pool.pad_top + pool.stride_y-1)/pool.stride_y;
+    inner_y1 = (pool.Hi - (pool.Hk - 1)*dilation[0] + pool.pad_top)/pool.stride_y;
+    inner_y1 += inner_y1*pool.stride_y - pool.pad_top + (pool.Hk-1)*dilation[0] < pool.Hi;
+
+    inner_x0 = (pool.pad_left + pool.stride_x-1)/pool.stride_x;
+    inner_x1 = (pool.Wi - (pool.Wk - 1)*dilation[1] + pool.pad_left)/pool.stride_x;
+    inner_x1 += inner_x1*pool.stride_x - pool.pad_left + (pool.Wk-1)*dilation[1] < pool.Wi;
+
+    if (inner_x0 >= inner_x1 || inner_y0 >= inner_y1) {
+        inner_x0 = pool.W0;
+        inner_y0 = pool.H0;
+    }
+
+    pool.inner_y0 = (int)inner_y0;
+    pool.inner_y1 = (int)inner_y1;
+    pool.inner_x0 = (int)inner_x0;
+    pool.inner_x1 = (int)inner_x1;
+    pool.ofstab = ofstab;
+    pool.yxtab = yxtab;
+
+    if (NC*out_planesize < 100000)
+        ntasks = 1;
+
+    #pragma omp parallel for num_threads(ntasks)
+    for (int_ task_id = 0; task_id < ntasks; task_id++) {
+        int_ nc0 = task_id*NC/ntasks, nc1 = (task_id+1)*NC/ntasks;
+        func((int)(nc1 - nc0),
+            inp_data->data + inp_planesize*nc0*esz,
+            out_data->data + out_planesize*nc0*esz,
+            &pool);
+    }
+
+    return FX_OK;
 }
 
 fun run_maxpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
-| Ast.NN_MaxPool {ceil_mode, dilations, kernel_shape, pads, strides, storage_order, t_inp, t_out}
-    when kernel_shape.size() == 2 =>
+| Ast.NN_MaxPool {ceil_mode, dilations, kernel_shape, pads,
+                  strides, storage_order, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_maxpool_2d(inp, out, kernel_shape[0], kernel_shape[1],
-            strides[0], strides[1], dilations[0], dilations[1],
-            pads[0], pads[1], pads[2], pads[3], *model.ntasks)
+    run_pooling('M', inp, out, kernel_shape, strides, dilations, pads, true, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -345,7 +403,7 @@ fun run_avgpool_2d(inp: float [], inp_shape: Ast.nnshape_t,
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if ((Hk|Wk) == 1 && (pad_left != 0 || pad_right != 0 || pad_top != 0 || pad_bottom != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    pool.C = (int)inpsize[1];
+    //pool.C = (int)inpsize[1];
     pool.Hk = (int)Hk; pool.Wk = (int)Wk;
     pool.stride_y = (int)sy; pool.stride_x = (int)sx;
     pool.dilation_y = (int)dy; pool.dilation_x = (int)dx;
