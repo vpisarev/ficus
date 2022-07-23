@@ -431,11 +431,6 @@ typedef struct _fx_Li_data_t {
    int_ hd;
 } _fx_Li_data_t, *_fx_Li;
 
-typedef struct _fx_rRt6Set__t1R9Ast__id_t_data_t {
-   int_ rc;
-   struct _fx_Rt6Set__t1R9Ast__id_t data;
-} _fx_rRt6Set__t1R9Ast__id_t_data_t, *_fx_rRt6Set__t1R9Ast__id_t;
-
 typedef struct _fx_T2il {
    int_ t0;
    int64_t t1;
@@ -906,6 +901,11 @@ typedef struct _fx_LR17K_form__kmodule_t_data_t {
    struct _fx_LR17K_form__kmodule_t_data_t* tl;
    struct _fx_R17K_form__kmodule_t hd;
 } _fx_LR17K_form__kmodule_t_data_t, *_fx_LR17K_form__kmodule_t;
+
+typedef struct _fx_rRt6Set__t1R9Ast__id_t_data_t {
+   int_ rc;
+   struct _fx_Rt6Set__t1R9Ast__id_t data;
+} _fx_rRt6Set__t1R9Ast__id_t_data_t, *_fx_rRt6Set__t1R9Ast__id_t;
 
 typedef struct _fx_Nt6option1Nt10Hashset__t1R9Ast__id_t {
    int tag;
@@ -1788,18 +1788,6 @@ static int _fx_cons_LT2SR10Ast__loc_t(
 static int _fx_cons_Li(int_ hd, struct _fx_Li_data_t* tl, bool addref_tl, struct _fx_Li_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_Li, FX_COPY_SIMPLE);
-}
-
-static void _fx_free_rRt6Set__t1R9Ast__id_t(struct _fx_rRt6Set__t1R9Ast__id_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rRt6Set__t1R9Ast__id_t, _fx_free_Rt6Set__t1R9Ast__id_t);
-}
-
-static int _fx_make_rRt6Set__t1R9Ast__id_t(
-   struct _fx_Rt6Set__t1R9Ast__id_t* arg,
-   struct _fx_rRt6Set__t1R9Ast__id_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rRt6Set__t1R9Ast__id_t, _fx_copy_Rt6Set__t1R9Ast__id_t);
 }
 
 static void _fx_free_N14K_form__klit_t(struct _fx_N14K_form__klit_t* dst)
@@ -3151,6 +3139,18 @@ static int _fx_cons_LR17K_form__kmodule_t(
    FX_MAKE_LIST_IMPL(_fx_LR17K_form__kmodule_t, _fx_copy_R17K_form__kmodule_t);
 }
 
+static void _fx_free_rRt6Set__t1R9Ast__id_t(struct _fx_rRt6Set__t1R9Ast__id_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rRt6Set__t1R9Ast__id_t, _fx_free_Rt6Set__t1R9Ast__id_t);
+}
+
+static int _fx_make_rRt6Set__t1R9Ast__id_t(
+   struct _fx_Rt6Set__t1R9Ast__id_t* arg,
+   struct _fx_rRt6Set__t1R9Ast__id_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rRt6Set__t1R9Ast__id_t, _fx_copy_Rt6Set__t1R9Ast__id_t);
+}
+
 static void _fx_free_Nt6option1Nt10Hashset__t1R9Ast__id_t(struct _fx_Nt6option1Nt10Hashset__t1R9Ast__id_t* dst)
 {
    switch (dst->tag) {
@@ -3254,9 +3254,9 @@ _fx_N12Set__color_t _fx_g17K_annotate__Black = { 2 };
 _fx_Nt11Set__tree_t1R9Ast__id_t _fx_g17K_annotate__Empty = 0;
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
-FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6K_formFM6kinfo_N15K_form__kinfo_t2R9Ast__id_tR10Ast__loc_t(
    struct _fx_R9Ast__id_t* n_0,
@@ -3267,8 +3267,8 @@ FX_EXTERN_C int _fx_M6K_formFM6kinfo_N15K_form__kinfo_t2R9Ast__id_tR10Ast__loc_t
 FX_EXTERN_C_VAL(struct _fx_Rt6Set__t1R9Ast__id_t _fx_g16Ast__empty_idset)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
 FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(
-   struct _fx_R9Ast__id_t* a_0,
-   struct _fx_R9Ast__id_t* b_0,
+   struct _fx_R9Ast__id_t* a,
+   struct _fx_R9Ast__id_t* b,
    bool* fx_result,
    void* fx_fv);
 
@@ -3279,13 +3279,13 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* msg_0,
+   struct _fx_R10Ast__loc_t* loc,
+   fx_str_t* msg,
    fx_exn_t* fx_result,
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM16empty_id_hashsetNt10Hashset__t1RM4id_t1i(
-   int_ size0_0,
+   int_ size0,
    struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t** fx_result,
    void* fx_fv);
 
@@ -3295,9 +3295,9 @@ FX_EXTERN_C int
    struct _fx_FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t* fx_result);
 
 FX_EXTERN_C int _fx_M3AstFM17calc_sets_closurei3iLRM4id_tNt10Hashmap__t2RM4id_tNt10Hashset__t1RM4id_t(
-   int_ iters_0,
-   struct _fx_LR9Ast__id_t_data_t* all_ids_0,
-   struct _fx_Nt10Hashmap__t2R9Ast__id_tNt10Hashset__t1R9Ast__id_t_data_t* all_sets_0,
+   int_ iters,
+   struct _fx_LR9Ast__id_t_data_t* all_ids,
+   struct _fx_Nt10Hashmap__t2R9Ast__id_tNt10Hashset__t1R9Ast__id_t_data_t* all_sets,
    int_* fx_result,
    void* fx_fv);
 
@@ -3308,7 +3308,7 @@ static int _fx_M10K_annotateFM16fold_deps0_kexp_v2N14K_form__kexp_tR22K_form__k_
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM10id_hashsetNt10Hashset__t1RM4id_t1Rt6Set__t1RM4id_t(
-   struct _fx_Rt6Set__t1R9Ast__id_t* s_0,
+   struct _fx_Rt6Set__t1R9Ast__id_t* s,
    struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t** fx_result,
    void* fx_fv);
 
@@ -4671,9 +4671,9 @@ FX_EXTERN_C int _fx_M10K_annotateFM12get_typ_depsRt6Set__t1R9Ast__id_t2R9Ast__id
          FX_CHECK_EXN(_fx_catch_7);
       }
       _fx_copy_Rt6Set__t1R9Ast__id_t(&__fold_result___2, &deps_3);
-      bool res_0;
-      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(ki_base_0, &_fx_g9Ast__noid, &res_0, 0), _fx_catch_7);
-      if (res_0) {
+      bool v_18;
+      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(ki_base_0, &_fx_g9Ast__noid, &v_18, 0), _fx_catch_7);
+      if (v_18) {
          _fx_copy_Rt6Set__t1R9Ast__id_t(&deps_3, fx_result);
       }
       else {
@@ -4687,15 +4687,15 @@ FX_EXTERN_C int _fx_M10K_annotateFM12get_typ_depsRt6Set__t1R9Ast__id_t2R9Ast__id
          if ((t_2 != 0) + 1 == 2) {
             _fx_T4N12Set__color_tNt11Set__tree_t1R9Ast__id_tR9Ast__id_tNt11Set__tree_t1R9Ast__id_t* vcase_1 = &t_2->u.Node;
             if (vcase_1->t0.tag == 1) {
-               _fx_Nt11Set__tree_t1R9Ast__id_t v_18 = 0;
+               _fx_Nt11Set__tree_t1R9Ast__id_t v_19 = 0;
                FX_CALL(
                   _fx_M10K_annotateFM4NodeNt11Set__tree_t1R9Ast__id_t4N12Set__color_tNt11Set__tree_t1R9Ast__id_tR9Ast__id_tNt11Set__tree_t1R9Ast__id_t(
-                     &_fx_g17K_annotate__Black, vcase_1->t1, &vcase_1->t2, vcase_1->t3, &v_18), _fx_catch_6);
-               _fx_make_T2Nt11Set__tree_t1R9Ast__id_tB(v_18, false, &v_15);
+                     &_fx_g17K_annotate__Black, vcase_1->t1, &vcase_1->t2, vcase_1->t3, &v_19), _fx_catch_6);
+               _fx_make_T2Nt11Set__tree_t1R9Ast__id_tB(v_19, false, &v_15);
 
             _fx_catch_6: ;
-               if (v_18) {
-                  _fx_free_Nt11Set__tree_t1R9Ast__id_t(&v_18);
+               if (v_19) {
+                  _fx_free_Nt11Set__tree_t1R9Ast__id_t(&v_19);
                }
                goto _fx_endmatch_1;
             }
@@ -4731,23 +4731,23 @@ FX_EXTERN_C int _fx_M10K_annotateFM12get_typ_depsRt6Set__t1R9Ast__id_t2R9Ast__id
       _fx_free_R23K_form__kdefinterface_t(&v_11);
    }
    else {
-      fx_str_t v_19 = {0};
       fx_str_t v_20 = {0};
-      fx_exn_t v_21 = {0};
-      FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(n_0, loc_0, &v_19, 0), _fx_catch_8);
+      fx_str_t v_21 = {0};
+      fx_exn_t v_22 = {0};
+      FX_CALL(_fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(n_0, loc_0, &v_20, 0), _fx_catch_8);
       fx_str_t slit_0 = FX_MAKE_STR("the symbol \'");
       fx_str_t slit_1 = FX_MAKE_STR("\' is not a type");
       {
-         const fx_str_t strs_0[] = { slit_0, v_19, slit_1 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_20), _fx_catch_8);
+         const fx_str_t strs_0[] = { slit_0, v_20, slit_1 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_21), _fx_catch_8);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_20, &v_21, 0), _fx_catch_8);
-      FX_THROW(&v_21, false, _fx_catch_8);
+      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_21, &v_22, 0), _fx_catch_8);
+      FX_THROW(&v_22, false, _fx_catch_8);
 
    _fx_catch_8: ;
-      fx_free_exn(&v_21);
+      fx_free_exn(&v_22);
+      FX_FREE_STR(&v_21);
       FX_FREE_STR(&v_20);
-      FX_FREE_STR(&v_19);
    }
 
 _fx_cleanup: ;

@@ -3446,9 +3446,9 @@ _fx_Nt6option1LR9Ast__id_t _fx_g17K_declosure__None = { 1 };
 _fx_Nt6option1R9Ast__id_t _fx_g19K_declosure__None1_ = { 1 };
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
-FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6K_formFM9fold_kexpv2N14K_form__kexp_tRM14k_fold_callb_t(
    struct _fx_N14K_form__kexp_t_data_t* e_0,
@@ -3467,7 +3467,7 @@ FX_EXTERN_C int _fx_M10K_freevarsFM13sort_freevarsLR9Ast__id_t1Nt10Hashset__t1R9
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM16empty_id_hashsetNt10Hashset__t1RM4id_t1i(
-   int_ size0_0,
+   int_ size0,
    struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t** fx_result,
    void* fx_fv);
 
@@ -3552,8 +3552,8 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* msg_0,
+   struct _fx_R10Ast__loc_t* loc,
+   fx_str_t* msg,
    fx_exn_t* fx_result,
    void* fx_fv);
 

@@ -25,8 +25,8 @@ class nndata_t =
     | NN_Data_U32: uint32 []
     | NN_Data_I64: int64 []
     | NN_Data_U64: uint64 []
-    | NN_Data_Stub_FP16
-    | NN_Data_Stub_BF16
+    | NN_Data_FP16: int16 []
+    | NN_Data_BF16: int16 []
     | NN_Data_FP32: float []
     | NN_Data_FP64: double []
     | NN_Data_Bool: bool []
@@ -39,7 +39,7 @@ type nnargkind_t =
 
 type nnlayout_t =
     | NN_Layout_Unknown
-    | NN_Layout_NC
+    | NN_Layout_ND
     | NN_Layout_NCHW
     | NN_Layout_NHWC
     | NN_Layout_NCHWxc
@@ -124,7 +124,6 @@ type nnconv_attr_t
 }
 
 class nnop_t =
-    | NN_Nop
     | NN_AvgPool: {
         name: string
         ceil_mode: bool
@@ -267,6 +266,7 @@ class nnop_t =
         name: string; perm: int []; t_inp: int; t_out: int }
     | NN_Unsqueeze: {
         name: string; t_inp: int; t_axes: int; t_out: int }
+    | NN_Nop // shall always be the last operation in the list
 
 type nnnames_t = (string, int) Hashmap.t
 
@@ -307,6 +307,7 @@ class nnmodel_t
     use_fp16: bool ref
     trace: bool ref
     profile: bool ref
+    scratch_buf: nnbuf_t ref
 }
 
 type op_callback_t = (nnmodel_t, nnop_t) -> void
@@ -325,7 +326,8 @@ fun empty_net() = nnmodel_t {
     ntasks = ref 4,
     use_fp16 = ref false,
     trace = ref false,
-    profile = ref false
+    profile = ref false,
+    scratch_buf = ref ([] : nnbuf_t)
 }
 
 fun empty_graph() = NN_Graph {
@@ -344,7 +346,7 @@ fun string(order: nnorder_t)
 fun string(layout: nnlayout_t)
 {
     | NN_Layout_Unknown => "Unknown"
-    | NN_Layout_NC => "NC"
+    | NN_Layout_ND => "ND"
     | NN_Layout_NCHW => "NCHW"
     | NN_Layout_NHWC => "NHWC"
     | NN_Layout_NCHWxc => "NCHWxc"
@@ -516,7 +518,7 @@ fun float(d: nndata_t)
 fun double_scalar_or(d: nndata_t, defval: double): double =
 match d {
     | NN_Data_Empty => defval
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
+    | NN_Data_Stub_BF16 _ => throw Fail("FP16 is not supported yet")
     | NN_Data_I8(elems) => double(elems[0])
     | NN_Data_U8(elems) => double(elems[0])
     | NN_Data_I16(elems) => double(elems[0])
@@ -525,6 +527,7 @@ match d {
     | NN_Data_U32(elems) => double(elems[0])
     | NN_Data_I64(elems) => double(elems[0])
     | NN_Data_U64(elems) => double(elems[0])
+    | NN_Data_FP16(elems) => double(elems[0])
     | NN_Data_FP32(elems) => double(elems[0])
     | NN_Data_FP64(elems) => elems[0]
     | NN_Data_Bool(elems) => double(elems[0])
@@ -1119,7 +1122,7 @@ fun nnshape_t.get_num_channels()
     val ndims = self.shape.size()
     match (self.layout, ndims) {
     | (_, 1) => self.shape[0]
-    | (NN_Layout_NC, _) => self.shape[1]
+    | (NN_Layout_ND, _) => self.shape[1]
     | (NN_Layout_NCHW, _) => self.shape[1]
     | (NN_Layout_NHWC, _) => self.shape[ndims-1]
     | (NN_Layout_NCHWxc, _) => self.shape[1]*self.shape[ndims-1]
@@ -1142,8 +1145,8 @@ fun coerce_layouts(a: nnlayout_t, b: nnlayout_t) =
 match (a, b) {
     | (NN_Layout_Unknown, _) => b
     | (_, NN_Layout_Unknown) => a
-    | (NN_Layout_NC, _) => b
-    | (_, NN_Layout_NC) => a
+    | (NN_Layout_ND, _) => b
+    | (_, NN_Layout_ND) => a
     | (_, _) =>
         if a != b {
             throw NNError(f"two layouts, {a} and {b}, cannot be used together")

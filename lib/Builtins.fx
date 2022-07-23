@@ -183,15 +183,27 @@ fun string(a: bool) = if a {"true"} else {"false"}
 @pure fun string(a: uint64): string = @ccode { return fx_itoa((int64_t)a, true, fx_result) }
 @pure fun string(a: int64): string = @ccode { return fx_itoa(a, false, fx_result) }
 @pure fun string(c: char): string = @ccode { return fx_make_str(&c, 1, fx_result) }
+@pure fun string(a: half): string
+@ccode {
+    char buf[32];
+    fx_bits32_t u;
+    float f = FX_FLOAT(a);
+    u.f = f;
+    if ((u.i & 0x7f800000) != 0x7f800000)
+        sprintf(buf, (f == (int)f ? "%.1f" : "%.4g"), f);
+    else
+        strcpy(buf, (u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+    return fx_ascii2str(buf, -1, fx_result);
+}
 @pure fun string(a: float): string
 @ccode {
     char buf[32];
     fx_bits32_t u;
     u.f = a;
-    if ((u.i & 0x7f800000) == 0x7f800000)
-        strcpy(buf, (u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
-    else
+    if ((u.i & 0x7f800000) != 0x7f800000)
         sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
+    else
+        strcpy(buf, (u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
     return fx_ascii2str(buf, -1, fx_result);
 }
 @pure fun string(a: double): string
@@ -199,10 +211,10 @@ fun string(a: bool) = if a {"true"} else {"false"}
     char buf[32];
     fx_bits64_t u;
     u.f = a;
-    if ((u.i & 0x7FF0000000000000LL) == 0x7FF0000000000000LL)
-        strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
-    else
+    if ((u.i & 0x7FF0000000000000LL) != 0x7FF0000000000000LL)
         sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
+    else
+        strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
     return fx_ascii2str(buf, -1, fx_result);
 }
 @inline fun string(a: string): string = a
@@ -594,6 +606,7 @@ fun uint64(x: 't) = (x :> uint64)
 fun int64(x: 't) = (x :> int64)
 fun float(x: 't) = (x :> float)
 fun double(x: 't) = (x :> double)
+fun half(x: 't) = (x :> half)
 
 fun int(x: ('t...)) = (for xj <- x {int(xj)})
 fun uint8(x: ('t...)) = (for xj <- x {uint8(xj)})
@@ -606,6 +619,7 @@ fun uint64(x: ('t...)) = (for xj <- x {uint64(xj)})
 fun int64(x: ('t...)) = (for xj <- x {int64(xj)})
 fun float(x: ('t...)) = (for xj <- x {float(xj)})
 fun double(x: ('t...)) = (for xj <- x {double(xj)})
+fun half(x: ('t...)) = (for xj <- x {half(xj)})
 
 fun int(x: 't [+]) = [for xj <- x {int(xj)}]
 fun uint8(x: 't [+]) = [for xj <- x {uint8(xj)}]
@@ -618,6 +632,7 @@ fun uint64(x: 't [+]) = [for xj <- x {uint64(xj)}]
 fun int64(x: 't [+]) = [for xj <- x {int64(xj)}]
 fun float(x: 't [+]) = [for xj <- x {float(xj)}]
 fun double(x: 't [+]) = [for xj <- x {double(xj)}]
+fun half(x: 't [+]) = [for xj <- x {half(xj)}]
 
 type uint8x3 = (uint8*3)
 type uint8x4 = (uint8*4)
@@ -788,23 +803,33 @@ fun print(a: 't) = print_string(string(a))
 @nothrow fun print(a: int32): void = @ccode { printf("%d", a) }
 @nothrow fun print(a: uint64): void = @ccode { printf("%llu", a) }
 @nothrow fun print(a: int64): void = @ccode { printf("%lld", a) }
+@nothrow fun print(a: half): void
+@ccode {
+    fx_bits32_t u;
+    float f = FX_FLOAT(a);
+    u.f = f;
+    if ((u.i & 0x7f800000) != 0x7f800000)
+        printf((f == (int)f ? "%.1f" : "%.4g"), f);
+    else
+        printf((u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
+}
 @nothrow fun print(a: float): void
 @ccode {
     fx_bits32_t u;
     u.f = a;
-    if ((u.i & 0x7f800000) == 0x7f800000)
-        printf((u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
-    else
+    if ((u.i & 0x7f800000) != 0x7f800000)
         printf((a == (int)a ? "%.1f" : "%.8g"), a);
+    else
+        printf((u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
 }
 @nothrow fun print(a: double): void
 @ccode {
     fx_bits64_t u;
     u.f = a;
-    if ((u.i & 0x7ff0000000000000LL) == 0x7ff0000000000000LL)
-        printf((u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
-    else
+    if ((u.i & 0x7ff0000000000000LL) != 0x7ff0000000000000LL)
         printf((a == (int)a ? "%.1f" : "%.16g"), a);
+    else
+        printf((u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
 }
 @nothrow fun print(a: cptr): void
 @ccode {
@@ -971,6 +996,7 @@ fun hash(x: {...}): hash_t =
     return hash;
 }
 
+// [TODO] make it an intrinsic
 // helper function used in sorting, shuffling and possibly some other array processing algorithms.
 // it does _not_ perform range checking for better efficiency, so, please, use with care.
 @nothrow fun _swap_(arr: 't [], i: int, j: int): void

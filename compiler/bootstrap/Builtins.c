@@ -239,10 +239,10 @@ FX_EXTERN_C int _fx_F6stringS1f(float a, fx_str_t* fx_result, void* fx_fv)
 char buf[32];
     fx_bits32_t u;
     u.f = a;
-    if ((u.i & 0x7f800000) == 0x7f800000)
-        strcpy(buf, (u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
-    else
+    if ((u.i & 0x7f800000) != 0x7f800000)
         sprintf(buf, (a == (int)a ? "%.1f" : "%.8g"), a);
+    else
+        strcpy(buf, (u.i & 0x7fffff) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
     return fx_ascii2str(buf, -1, fx_result);
 
 }
@@ -253,10 +253,10 @@ FX_EXTERN_C int _fx_F6stringS1d(double a, fx_str_t* fx_result, void* fx_fv)
 char buf[32];
     fx_bits64_t u;
     u.f = a;
-    if ((u.i & 0x7FF0000000000000LL) == 0x7FF0000000000000LL)
-        strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
-    else
+    if ((u.i & 0x7FF0000000000000LL) != 0x7FF0000000000000LL)
         sprintf(buf, (a == (int)a ? "%.1f" : "%.16g"), a);
+    else
+        strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : u.i > 0 ? "inf" : "-inf");
     return fx_ascii2str(buf, -1, fx_result);
 
 }

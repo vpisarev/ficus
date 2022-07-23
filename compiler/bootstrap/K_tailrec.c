@@ -345,11 +345,6 @@ typedef struct _fx_Li_data_t {
    int_ hd;
 } _fx_Li_data_t, *_fx_Li;
 
-typedef struct _fx_ri_data_t {
-   int_ rc;
-   int_ data;
-} _fx_ri_data_t, *_fx_ri;
-
 typedef struct _fx_Nt6option1N14K_form__kexp_t {
    int tag;
    union {
@@ -832,6 +827,11 @@ typedef struct _fx_LR17K_form__kmodule_t_data_t {
    struct _fx_LR17K_form__kmodule_t_data_t* tl;
    struct _fx_R17K_form__kmodule_t hd;
 } _fx_LR17K_form__kmodule_t_data_t, *_fx_LR17K_form__kmodule_t;
+
+typedef struct _fx_ri_data_t {
+   int_ rc;
+   int_ data;
+} _fx_ri_data_t, *_fx_ri;
 
 typedef struct _fx_T2R9Ast__id_tLN14K_form__kexp_t {
    struct _fx_R9Ast__id_t t0;
@@ -1514,11 +1514,6 @@ static int _fx_cons_LT2SR10Ast__loc_t(
 static int _fx_cons_Li(int_ hd, struct _fx_Li_data_t* tl, bool addref_tl, struct _fx_Li_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_Li, FX_COPY_SIMPLE);
-}
-
-static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
 }
 
 static void _fx_free_Nt6option1N14K_form__kexp_t(struct _fx_Nt6option1N14K_form__kexp_t* dst)
@@ -2917,6 +2912,11 @@ static int _fx_cons_LR17K_form__kmodule_t(
    FX_MAKE_LIST_IMPL(_fx_LR17K_form__kmodule_t, _fx_copy_R17K_form__kmodule_t);
 }
 
+static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
+}
+
 static void _fx_free_T2R9Ast__id_tLN14K_form__kexp_t(struct _fx_T2R9Ast__id_tLN14K_form__kexp_t* dst)
 {
    _fx_free_LN14K_form__kexp_t(&dst->t1);
@@ -3097,8 +3097,8 @@ FX_EXTERN_C int _fx_M6K_formFM9KExpWhileN14K_form__kexp_t3N14K_form__kexp_tN14K_
    struct _fx_N14K_form__kexp_t_data_t** fx_result);
 
 FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(
-   struct _fx_R9Ast__id_t* a_0,
-   struct _fx_R9Ast__id_t* b_0,
+   struct _fx_R9Ast__id_t* a,
+   struct _fx_R9Ast__id_t* b,
    bool* fx_result,
    void* fx_fv);
 
@@ -3541,9 +3541,9 @@ FX_EXTERN_C int _fx_M9K_tailrecFM12tailrec2loopv2irR17K_form__kdeffun_t(
       FX_CALL(
          _fx_M6K_formFM9KExpWhileN14K_form__kexp_t3N14K_form__kexp_tN14K_form__kexp_tR10Ast__loc_t(v_6, loop_body_0, &lloc_0,
             &loop_exp_0), _fx_cleanup);
-      bool res_1;
-      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&res_n_1, &_fx_g9Ast__noid, &res_1, 0), _fx_cleanup);
-      if (!res_1) {
+      bool v_31;
+      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&res_n_1, &_fx_g9Ast__noid, &v_31, 0), _fx_cleanup);
+      if (!v_31) {
          _fx_M6K_formFM6AtomIdN14K_form__atom_t1R9Ast__id_t(&res_n_1, &v_7);
          _fx_make_T2N14K_form__ktyp_tR10Ast__loc_t(rt_0, &kf_loc_0, &v_8);
          FX_CALL(_fx_M6K_formFM8KExpAtomN14K_form__kexp_t2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(&v_7, &v_8, &v_9),
@@ -3556,12 +3556,12 @@ FX_EXTERN_C int _fx_M9K_tailrecFM12tailrec2loopv2irR17K_form__kdeffun_t(
       FX_CALL(
          _fx_M6K_formFM10rcode2kexpN14K_form__kexp_t2LN14K_form__kexp_tR10Ast__loc_t(f_code_1, &kf_loc_0, &new_kf_body_0, 0),
          _fx_cleanup);
-      _fx_R17K_form__kdeffun_t* v_31 = &kf_0->data;
-      _fx_make_R17K_form__kdeffun_t(&v_31->kf_name, &v_31->kf_cname, new_kf_params_1, v_31->kf_rt, new_kf_body_0,
-         &v_31->kf_flags, &v_31->kf_closure, v_31->kf_scope, &v_31->kf_loc, &v_11);
       _fx_R17K_form__kdeffun_t* v_32 = &kf_0->data;
-      _fx_free_R17K_form__kdeffun_t(v_32);
-      _fx_copy_R17K_form__kdeffun_t(&v_11, v_32);
+      _fx_make_R17K_form__kdeffun_t(&v_32->kf_name, &v_32->kf_cname, new_kf_params_1, v_32->kf_rt, new_kf_body_0,
+         &v_32->kf_flags, &v_32->kf_closure, v_32->kf_scope, &v_32->kf_loc, &v_11);
+      _fx_R17K_form__kdeffun_t* v_33 = &kf_0->data;
+      _fx_free_R17K_form__kdeffun_t(v_33);
+      _fx_copy_R17K_form__kdeffun_t(&v_11, v_33);
    }
 
 _fx_cleanup: ;
@@ -3723,9 +3723,9 @@ static int _fx_M9K_tailrecFM19have_tailrec_calls_B2N14K_form__kexp_tR9Ast__id_t(
       _fx_catch_3: ;
       }
       else if (tag_0 == 12) {
-         bool res_1;
-         FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&e_2->u.KExpCall.t0, kf_name_0, &res_1, 0), _fx_catch_4);
-         result_0 = res_1;
+         bool result_3;
+         FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&e_2->u.KExpCall.t0, kf_name_0, &result_3, 0), _fx_catch_4);
+         result_0 = result_3;
          FX_BREAK(_fx_catch_4);
 
       _fx_catch_4: ;
@@ -3823,18 +3823,18 @@ static int _fx_M9K_tailrecFM19process_func_endingN14K_form__kexp_t3N14K_form__ke
       FX_CALL(_fx_M6K_formFM12get_kexp_ctxT2N14K_form__ktyp_tR10Ast__loc_t1N14K_form__kexp_t(final_e_0, &v_0, 0), _fx_catch_0);
       FX_COPY_PTR(v_0.t0, &ktyp_0);
       _fx_R10Ast__loc_t kloc_0 = v_0.t1;
-      bool res_0;
-      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(res_n_0, &_fx_g9Ast__noid, &res_0, 0), _fx_catch_0);
-      if (res_0) {
+      bool v_6;
+      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(res_n_0, &_fx_g9Ast__noid, &v_6, 0), _fx_catch_0);
+      if (v_6) {
          _fx_make_T2N14K_form__kexp_tLN14K_form__kexp_t(final_e_0, 0, &v_1);
       }
       else {
-         bool res_1;
-         FX_CALL(_fx_M6K_formFM14is_ktyp_scalarB1N14K_form__ktyp_t(ktyp_0, &res_1, 0), _fx_catch_0);
+         bool res_0;
+         FX_CALL(_fx_M6K_formFM14is_ktyp_scalarB1N14K_form__ktyp_t(ktyp_0, &res_0, 0), _fx_catch_0);
          fx_str_t slit_0 = FX_MAKE_STR("result");
          FX_CALL(
             _fx_M6K_formFM9kexp2atomT2N14K_form__atom_tLN14K_form__kexp_t5iSN14K_form__kexp_tBLN14K_form__kexp_t(km_idx_0,
-               &slit_0, final_e_0, !res_1, 0, &v_2, 0), _fx_catch_0);
+               &slit_0, final_e_0, !res_0, 0, &v_2, 0), _fx_catch_0);
          _fx_copy_N14K_form__atom_t(&v_2.t0, &final_atom_0);
          FX_COPY_PTR(v_2.t1, &code_0);
          FX_CALL(
@@ -3995,9 +3995,9 @@ static int
       _fx_LN14K_form__kexp_t tcall_rcode_0 = 0;
       _fx_T3R9Ast__id_tLN14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t* vcase_2 = &e_0->u.KExpCall;
       _fx_R10Ast__loc_t* eloc_2 = &vcase_2->t2.t1;
-      bool res_0;
-      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&vcase_2->t0, kf_name_0, &res_0, 0), _fx_catch_6);
-      if (res_0) {
+      bool v_3;
+      FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&vcase_2->t0, kf_name_0, &v_3, 0), _fx_catch_6);
+      if (v_3) {
          _fx_LT2R9Ast__id_tN14K_form__ktyp_t lst_1 = trec_args_0;
          FX_COPY_PTR(vcase_2->t1, &real_args_0);
          _fx_LN14K_form__atom_t lst_2 = real_args_0;

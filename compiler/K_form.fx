@@ -1427,7 +1427,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
         if cmode { f"{v}" } else { f"{v}i{b}" }
     | KLitUInt(b, v) =>
         if cmode { f"{v}u" } else { f"{v}u{b}" }
-    | KLitFloat(16, v) => if !cmode {f"{v}f"} else {flt2str(v, "f")}
+    | KLitFloat(16, v) => if !cmode {f"{v}h"} else {flt2str(v, "f")}
     | KLitFloat(32, v) => if !cmode {f"{v}f"} else {flt2str(v, "f")}
     | KLitFloat(64, v) => if !cmode {f"{v}"} else {flt2str(v, "")}
     | KLitFloat(b, v) => throw compile_err(loc, f"invalid literal LitFloat({b}, {v})")

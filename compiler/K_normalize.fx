@@ -252,9 +252,13 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         val (e2, code2) = exp2kexp(e2, [], false, sc)
         val e2 = rcode2kexp(e2 :: code2, eloc2)
         (KExpIf(e1, KExpAtom(AtomLit(KLitBool(true)), (KTypBool, eloc2)), e2, kctx), code)
-    | ExpBinary(bop, e1, e2, _) =>
+    | ExpBinary(OpCons, e1, e2, _) =>
         val (a1, code) = exp2atom(e1, code, false, sc)
         val (a2, code) = exp2atom(e2, code, false, sc)
+        (KExpBinary(OpCons, a1, a2, kctx), code)
+    | ExpBinary(bop, e1, e2, _) =>
+        val (a1, code) = arithm_subexp2atom(e1, code, false, sc)
+        val (a2, code) = arithm_subexp2atom(e2, code, false, sc)
         match (bop, get_atom_ktyp(a1, eloc), get_atom_ktyp(a2, eloc)) {
         | (OpAdd, KTypString, KTypString) | (OpAdd, KTypChar, KTypString) | (OpAdd, KTypString, KTypChar) =>
             (KExpIntrin(IntrinStrConcat, [:: a1, a2 ], kctx), code)
@@ -276,7 +280,10 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                                     args, (KTypInt, eloc)), false, code)
         (KExpBinary(OpSub, sz, a, kctx), code)
     | ExpUnary(uop, e1, _) =>
-        val (a1, code) = exp2atom(e1, code, false, sc)
+        val (a1, code) = match uop {
+            | OpPlus | OpNegate => arithm_subexp2atom(e1, code, false, sc)
+            | _ => exp2atom(e1, code, false, sc)
+            }
         (KExpUnary(uop, a1, kctx), code)
     | ExpIntrin(iop, args, _) =>
         val fold (args, code) = ([], code) for ei <- args {
@@ -679,6 +686,17 @@ fun exp2atom(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list): (atom_t, kc
 {
     val (e, code) = exp2kexp(e, code, tref, sc)
     kexp2atom(curr_module(sc), "v", e, tref, code)
+}
+
+fun arithm_subexp2atom(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list): (atom_t, kcode_t)
+{
+    val loc = get_exp_loc(e)
+    val (a, code) = exp2atom(e, code, tref, sc)
+    match get_atom_ktyp(a, loc) {
+    | KTypFloat(16) => kexp2atom(curr_module(sc), "v",
+        KExpCast(a, KTypFloat(32), loc), tref, code)
+    | _ => (a, code)
+    }
 }
 
 fun exp2id(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list, msg: string): (id_t, kcode_t)

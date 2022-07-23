@@ -1,7 +1,7 @@
 import Filename, Json, Sys, LexerUtils as Lxu
 import Image.Decoder
 import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.Labels
-import NN.BufferAllocator, NN.ConstFold, NN.OpConv, NN.Preprocess
+import NN.BufferAllocator, NN.ConstFold, NN.Preprocess
 
 type classifier_kind =
     | ClassifierAuto
@@ -149,7 +149,6 @@ for imgname@i <- images {
     val img = Image.Decoder.imread_rgb(imgname)
     val inp = NN.Preprocess.image_to_tensor(img, preprocess_params, ntasks)
     var outputs: nn_output_t [] = []
-    NN.OpConv.reset_min_total_time()
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =
@@ -158,8 +157,7 @@ for imgname@i <- images {
             | Fail msg => println(f"failure: '{msg}'"); []
             }
         }, iterations=niter, batch=1)
-    val total_time = NN.OpConv.get_total_time()*1000/Sys.tick_frequency()
-    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, conv total={total_time} ms")
+    println(f"execution time: gmean={gmean*1000.}ms, mintime={mintime*1000.}ms")
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
         val sorted_k = NN.Inference.top_k(out.1, k)

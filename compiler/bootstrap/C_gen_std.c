@@ -2556,7 +2556,7 @@ FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g18C_form__std_sizeof)
 FX_EXTERN_C_VAL(struct _fx_N14C_form__ctyp_t_data_t* _fx_g23C_form__std_CTypVoidPtr)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g21C_form__std_fx_malloc)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g19C_form__std_fx_free)
-FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s_0, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6C_formFM8CTypNameN14C_form__ctyp_t1R9Ast__id_t(
    struct _fx_R9Ast__id_t* arg0,

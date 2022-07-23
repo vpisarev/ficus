@@ -232,7 +232,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val fold sz1 = 1, sz2 = 1 for sz@i <- shape.shape {
             if i < axis {(sz1*sz, sz2)} else {(sz1, sz2*sz)}
         }
-        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NC,
+        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_ND,
             shape=[sz1, sz2]}, typ=typ, dynamic=false}]
     | Ast.NN_Gather {axis, t_inp, t_ind, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
@@ -331,12 +331,12 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         [infer_pooling_shape(ceil_mode, dilations, kernel_shape,
             pads, strides, t_inp, t_out)]
     | Ast.NN_NonMaxSuppression {t_out} =>
-        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[1, 3]},
+        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_ND, shape=[1, 3]},
             typ=Ast.NN_I64, dynamic=true}]
     | Ast.NN_NonZero {t_inp, t_out} =>
         val shape = get_shape(t_inp)
         val ndims = shape.shape.size()
-        val out_shape = Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[ndims, 1]}
+        val out_shape = Ast.nnshape_t {layout=Ast.NN_Layout_ND, shape=[ndims, 1]}
         [argshapeinfo_t {idx=t_out, shape=out_shape, typ=Ast.NN_I64, dynamic=true}]
     | Ast.NN_Range {t_start, t_limit, t_delta, t_out} =>
         val start = model.get_tensor(t_start)
@@ -352,7 +352,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val delta = delta.double_scalar_or(1.)
         val nelems = max(ceil((limit - start)/delta), 0)
         val allconsts = model.isconst(t_start) && model.isconst(t_limit) && model.isconst(t_delta)
-        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[nelems]},
+        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_ND, shape=[nelems]},
             typ=typ, dynamic=!allconsts}]
     | Ast.NN_Reduce {reduce_op, axes, keepdims, t_inp, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)
@@ -493,7 +493,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val start = Ast.normalize_axis(start, ndims)
         val end = if end >= ndims {ndims} else {Ast.normalize_axis(end, ndims)}
         val out_shape = [max(end-start, 0)]
-        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_NC,
+        [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_ND,
             shape=out_shape}, typ=Ast.NN_I64, dynamic=false}]
     | Ast.NN_Slice {t_inp, t_starts, t_ends, t_axes, t_steps, t_out} =>
         val (shape, typ) = get_shape_typ(t_inp)

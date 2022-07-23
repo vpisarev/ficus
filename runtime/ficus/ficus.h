@@ -59,6 +59,77 @@ typedef char32_t char_;
 #endif
 #endif
 
+typedef union fx_bits64_t {double f; int64_t i; uint64_t u;} fx_bits64_t;
+typedef union fx_bits32_t {float f; int i; unsigned u;} fx_bits32_t;
+
+
+#ifdef __ARM_NEON
+typedef __fp16 fx_f16_t;
+#define FX_FLOAT(x) (float)(x)
+#define FX_FLOAT16(x) (__fp16)(x)
+#else
+typedef struct fx_f16_t { uint16_t bits; } fx_f16_t;
+#if (defined _MSC_VER || defined _M_X64) || (defined __GNUC__ && defined __AVX2__)
+#include "immintrin.h"
+FX_INLINE float FX_FLOAT(fx_f16_t h) {
+    float f;
+    _mm_store_ss(&f, _mm_cvtph_ps(_mm_cvtsi32_si128(h.bits)));
+    return f;
+}
+FX_INLINE fx_f16_t FX_FLOAT16(float f) {
+    fx_f16_t h;
+    h.bits = (uint16_t)_mm_cvtsi128_si32(_mm_cvtps_ph(_mm_set_ss(f), 0));
+    return h;
+}
+#else
+FX_INLINE float FX_FLOAT(fx_f16_t h) {
+    fx_bits32_t out;
+
+    unsigned t = ((h.bits & 0x7fff) << 13) + 0x38000000;
+    unsigned sign = (h.bits & 0x8000) << 16;
+    unsigned e = h.bits & 0x7c00;
+
+    if (e >= 0x7c00) {
+        out.u = t + 0x38000000;
+    } else if (e == 0) {
+        out.u = t + (1 << 23);
+        out.f -= 6.103515625e-05f;
+    } else {
+        out.u = t;
+    }
+    out.u |= sign;
+    return out.f;
+}
+
+FX_INLINE fx_f16_t FX_FLOAT16(float x)
+{
+    fx_f16_t h;
+    fx_bits32_t in;
+    in.f = x;
+    unsigned sign = in.u & 0x80000000;
+    in.u ^= sign;
+
+    if( in.u >= 0x47800000 )
+        h.bits = (uint16_t)(in.u > 0x7f800000 ? 0x7e00 : 0x7c00);
+    else
+    {
+        if (in.u < 0x38800000)
+        {
+            in.f += 0.5f;
+            h.bits = (uint16_t)(in.u - 0x3f000000);
+        }
+        else
+        {
+            unsigned t = in.u + 0xc8000fff;
+            h.bits = (uint16_t)((t + ((in.u >> 13) & 1)) >> 13);
+        }
+    }
+    h.bits = (uint16_t)(h.bits | (sign >> 16));
+    return h;
+}
+#endif
+#endif
+
 #ifndef FX_XADD
 #if 0
     FX_INLINE int_ FX_XADD(int_* addr, int delta) { int_ prev = *(addr); *(addr) += (delta); return prev; }
@@ -196,9 +267,6 @@ void fx_free(void* ptr);
 void fx_copy_ptr(const void* src, void* pdst);
 
 ///////////////////////////// Numbers ////////////////////////////
-
-typedef union fx_bits64_t {double f; int64_t i; uint64_t u;} fx_bits64_t;
-typedef union fx_bits32_t {float f; int i; unsigned u;} fx_bits32_t;
 
 FX_INLINE int_ fx_roundf2I(float x) {
     return (int_)lrintf(x);

@@ -301,11 +301,6 @@ typedef struct _fx_LT2SR10Ast__loc_t_data_t {
    struct _fx_T2SR10Ast__loc_t hd;
 } _fx_LT2SR10Ast__loc_t_data_t, *_fx_LT2SR10Ast__loc_t;
 
-typedef struct _fx_rB_data_t {
-   int_ rc;
-   bool data;
-} _fx_rB_data_t, *_fx_rB;
-
 typedef struct _fx_T2LN14K_form__ktyp_tN14K_form__ktyp_t {
    struct _fx_LN14K_form__ktyp_t_data_t* t0;
    struct _fx_N14K_form__ktyp_t_data_t* t1;
@@ -339,6 +334,11 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
 } _fx_N14K_form__ktyp_t_data_t, *_fx_N14K_form__ktyp_t;
+
+typedef struct _fx_rB_data_t {
+   int_ rc;
+   bool data;
+} _fx_rB_data_t, *_fx_rB;
 
 typedef struct _fx_R17C_form__c_callb_t {
    struct _fx_Nt6option1FPR9Ast__id_t2R9Ast__id_tR17C_form__c_callb_t_data_t* ccb_ident;
@@ -1359,11 +1359,6 @@ static int _fx_cons_LT2SR10Ast__loc_t(
    FX_MAKE_LIST_IMPL(_fx_LT2SR10Ast__loc_t, _fx_copy_T2SR10Ast__loc_t);
 }
 
-static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
-}
-
 static void _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(struct _fx_T2LN14K_form__ktyp_tN14K_form__ktyp_t* dst)
 {
    _fx_free_LN14K_form__ktyp_t(&dst->t0);
@@ -1455,6 +1450,11 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       fx_free(*dst);
    }
    *dst = 0;
+}
+
+static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
 static void _fx_free_R17C_form__c_callb_t(struct _fx_R17C_form__c_callb_t* dst)

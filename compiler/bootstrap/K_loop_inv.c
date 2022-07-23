@@ -346,11 +346,6 @@ typedef struct _fx_Li_data_t {
    int_ hd;
 } _fx_Li_data_t, *_fx_Li;
 
-typedef struct _fx_rB_data_t {
-   int_ rc;
-   bool data;
-} _fx_rB_data_t, *_fx_rB;
-
 typedef struct _fx_T2il {
    int_ t0;
    int64_t t1;
@@ -873,6 +868,11 @@ typedef struct _fx_rLN14K_form__kexp_t_data_t {
    int_ rc;
    struct _fx_LN14K_form__kexp_t_data_t* data;
 } _fx_rLN14K_form__kexp_t_data_t, *_fx_rLN14K_form__kexp_t;
+
+typedef struct _fx_rB_data_t {
+   int_ rc;
+   bool data;
+} _fx_rB_data_t, *_fx_rB;
 
 typedef struct _fx_rNt10Hashset__t1R9Ast__id_t_data_t {
    int_ rc;
@@ -1488,11 +1488,6 @@ static int _fx_cons_LT2SR10Ast__loc_t(
 static int _fx_cons_Li(int_ hd, struct _fx_Li_data_t* tl, bool addref_tl, struct _fx_Li_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_Li, FX_COPY_SIMPLE);
-}
-
-static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
 static void _fx_free_N14K_form__klit_t(struct _fx_N14K_form__klit_t* dst)
@@ -2908,6 +2903,11 @@ static int _fx_make_rLN14K_form__kexp_t(
    FX_MAKE_REF_IMPL(_fx_rLN14K_form__kexp_t, FX_COPY_PTR);
 }
 
+static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
+}
+
 static void _fx_free_rNt10Hashset__t1R9Ast__id_t(struct _fx_rNt10Hashset__t1R9Ast__id_t_data_t** dst)
 {
    FX_FREE_REF_IMPL(_fx_rNt10Hashset__t1R9Ast__id_t, _fx_free_Nt10Hashset__t1R9Ast__id_t);
@@ -2975,12 +2975,12 @@ static void _fx_make_T2LT3N14K_form__kexp_tLT2R9Ast__id_tN13K_form__dom_tLR9Ast_
 _fx_Nt6option1FPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t _fx_g16K_loop_inv__None = 0;
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
-FX_EXTERN_C int _fx_M7HashsetFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashsetFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM16empty_id_hashsetNt10Hashset__t1RM4id_t1i(
-   int_ size0_0,
+   int_ size0,
    struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t** fx_result,
    void* fx_fv);
 

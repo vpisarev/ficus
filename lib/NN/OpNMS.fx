@@ -258,7 +258,7 @@ match op {
                             int(max_boxes), center_point_box, iou_threshold, score_threshold, out_buf, *model.ntasks)
         model.buffers[out_bufidx] = out_buf
         model.tensors[t_out] = Ast.nntensor_t {data = Ast.NN_Data_I64(out_data),
-            shape = Ast.nnshape_t {layout=Ast.NN_Layout_NC, shape=[ndetections, 3]}}
+            shape = Ast.nnshape_t {layout=Ast.NN_Layout_ND, shape=[ndetections, 3]}}
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")

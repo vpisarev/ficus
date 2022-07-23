@@ -132,7 +132,7 @@ match op {
     model.buffers[out_bufidx] = out_buf
     model.tensors[t_out] = Ast.nntensor_t {
         shape=Ast.nnshape_t {shape=[ndims, out_total],
-        layout=Ast.NN_Layout_NC}, data=Ast.NN_Data_I64(out_data)
+        layout=Ast.NN_Layout_ND}, data=Ast.NN_Data_I64(out_data)
         }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

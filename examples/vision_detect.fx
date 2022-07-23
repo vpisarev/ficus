@@ -7,20 +7,9 @@ import Filename, Json, Sys, LexerUtils as Lxu
 import OpenCV as cv
 import Color
 //import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpConv, NN.OpDetect, NN.OpPermute
+import NN.Ast, NN.Inference, NN.FromOnnx, NN.ConstFold, NN.FuseBasic, NN.BufferAllocator, NN.OpDetect, NN.OpPermute, NN.Labels
 
 type model_kind_t = DetectorSSD | DetectorYolo | DetectorTinyYolo | DetectorAuto
-
-val coco_class_names =
-    ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat", "traffic light",
-    "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
-    "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-    "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
-    "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa",
-    "potted plant", "bed", "dining table", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard",
-    "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-    "teddy bear", "hair drier", "toothbrush"]
 
 fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [], ~class_names: string [], ~show_labels:bool=true)
 {
@@ -207,7 +196,6 @@ for imgname@i <- images {
             NN.Ast.mktensor(inp, layout=layout)
         }
     var outputs: nn_output_t [] = []
-    NN.OpConv.reset_min_total_time()
     val niters = 15
     val inputs = match detector_kind {
         | DetectorTinyYolo =>
@@ -227,8 +215,7 @@ for imgname@i <- images {
             | Fail msg => println(f"failure: '{msg}'"); []
             }
         }, iterations=niters, batch=1)
-    val total_time = NN.OpConv.get_total_time()*1000/Sys.tick_frequency()
-    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}, conv total={total_time} ms")
+    println(f"execution time: gmean={gmean*1000.}, mintime={mintime*1000.}")
     //println(out[0][:][:20])
     for out@i <- [\outputs, \temp_outputs] {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}")
@@ -293,7 +280,7 @@ for imgname@i <- images {
         }
     println(f"{imgname}: {boxes.size()} object(s) detected")
     //val resized_img = cv.cvtColor(resized_img, cv.COLOR_BGR2RGB)
-    draw_boxes(img, boxes, class_names=coco_class_names)
+    draw_boxes(img, boxes, class_names=NN.Labels.COCO)
     if show_boxes {
         cv.imshow("detection", img)
         ignore(cv.waitKey())

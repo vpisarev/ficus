@@ -3369,16 +3369,16 @@ FX_EXTERN_C int _fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(
-   struct _fx_R9Ast__id_t* a_0,
-   struct _fx_R9Ast__id_t* b_0,
+   struct _fx_R9Ast__id_t* a,
+   struct _fx_R9Ast__id_t* b,
    bool* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1C(char_ c, fx_str_t* fx_result, void* fx_fv);
 
@@ -3415,7 +3415,7 @@ FX_EXTERN_C int _fx_F6stringS1l(int64_t a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1d(double a, fx_str_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6stringS1B(bool a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1B(bool a, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M6K_formFM8KExpCastN14K_form__kexp_t3N14K_form__atom_tN14K_form__ktyp_tR10Ast__loc_t(
    struct _fx_N14K_form__atom_t* arg0,
@@ -3452,8 +3452,8 @@ FX_EXTERN_C int _fx_M6K_formFM15is_ktyp_integerB2N14K_form__ktyp_tB(
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* msg_0,
+   struct _fx_R10Ast__loc_t* loc,
+   fx_str_t* msg,
    fx_exn_t* fx_result,
    void* fx_fv);
 
@@ -3933,10 +3933,10 @@ FX_EXTERN_C int _fx_M15K_cfold_dealiasFM6__eq__B2T2R9Ast__id_tN14K_form__ktyp_tT
    bool __fold_result___0 = true;
    _fx_R9Ast__id_t aj_1 = a_0->t0;
    _fx_R9Ast__id_t bj_1 = b_0->t0;
-   bool res_0;
-   FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&aj_1, &bj_1, &res_0, 0), _fx_cleanup);
+   bool v_0;
+   FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&aj_1, &bj_1, &v_0, 0), _fx_cleanup);
    bool t_0;
-   if (res_0) {
+   if (v_0) {
       t_0 = __fold_result___0;
    }
    else {
@@ -3945,10 +3945,10 @@ FX_EXTERN_C int _fx_M15K_cfold_dealiasFM6__eq__B2T2R9Ast__id_tN14K_form__ktyp_tT
    __fold_result___0 = t_0;
    FX_COPY_PTR(a_0->t1, &aj_0);
    FX_COPY_PTR(b_0->t1, &bj_0);
-   bool v_0;
-   FX_CALL(_fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K_form__ktyp_t(aj_0, bj_0, &v_0, 0), _fx_cleanup);
+   bool v_1;
+   FX_CALL(_fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K_form__ktyp_t(aj_0, bj_0, &v_1, 0), _fx_cleanup);
    bool t_1;
-   if (v_0) {
+   if (v_1) {
       t_1 = __fold_result___0;
    }
    else {
@@ -4144,13 +4144,13 @@ FX_EXTERN_C int _fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K
          _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t* vcase_2 = &b_2->u.KTypRecord;
          if (FX_REC_VARIANT_TAG(a_2) == 14) {
             _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t* vcase_3 = &a_2->u.KTypRecord;
-            bool res_0;
-            FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&vcase_3->t0, &vcase_2->t0, &res_0, 0), _fx_catch_5);
             bool v_2;
+            FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&vcase_3->t0, &vcase_2->t0, &v_2, 0), _fx_catch_5);
+            bool v_3;
             FX_CALL(
                _fx_M15K_cfold_dealiasFM6__eq__B2LT2R9Ast__id_tN14K_form__ktyp_tLT2R9Ast__id_tN14K_form__ktyp_t(vcase_3->t1,
-                  vcase_2->t1, &v_2, 0), _fx_catch_5);
-            result_0 = (bool)(res_0 & v_2);
+                  vcase_2->t1, &v_3, 0), _fx_catch_5);
+            result_0 = (bool)(v_2 & v_3);
             FX_BREAK(_fx_catch_5);
 
          _fx_catch_5: ;
@@ -4159,9 +4159,9 @@ FX_EXTERN_C int _fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K
       }
       if (FX_REC_VARIANT_TAG(b_2) == 15) {
          if (FX_REC_VARIANT_TAG(a_2) == 15) {
-            bool res_1;
-            FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&a_2->u.KTypName, &b_2->u.KTypName, &res_1, 0), _fx_catch_6);
-            result_0 = res_1;
+            bool result_2;
+            FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&a_2->u.KTypName, &b_2->u.KTypName, &result_2, 0), _fx_catch_6);
+            result_0 = result_2;
             FX_BREAK(_fx_catch_6);
 
          _fx_catch_6: ;
@@ -4172,11 +4172,11 @@ FX_EXTERN_C int _fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K
          _fx_T2iN14K_form__ktyp_t* vcase_4 = &b_2->u.KTypArray;
          if (FX_REC_VARIANT_TAG(a_2) == 16) {
             _fx_T2iN14K_form__ktyp_t* vcase_5 = &a_2->u.KTypArray;
-            bool v_3;
+            bool v_4;
             FX_CALL(
-               _fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K_form__ktyp_t(vcase_5->t1, vcase_4->t1, &v_3, 0),
+               _fx_M15K_cfold_dealiasFM15__eq_variants__B2N14K_form__ktyp_tN14K_form__ktyp_t(vcase_5->t1, vcase_4->t1, &v_4, 0),
                _fx_catch_7);
-            result_0 = (bool)((vcase_5->t0 == vcase_4->t0) & v_3);
+            result_0 = (bool)((vcase_5->t0 == vcase_4->t0) & v_4);
             FX_BREAK(_fx_catch_7);
 
          _fx_catch_7: ;

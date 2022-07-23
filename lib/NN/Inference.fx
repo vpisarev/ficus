@@ -5,7 +5,7 @@
 
 // Runs the inference on user-provided data
 import Hashmap, Json, LexerUtils as Lxu, Sys
-import Ast, InferShapes, OpConv, RunOp
+import Ast, InferShapes, RunOp
 
 fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
             cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
@@ -14,7 +14,6 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
 {
     var empty_names = true
     val ninputs = inputs.size()
-    OpConv.reset_total_time()
 
     assert(`ninputs == model.graph.inpargs.size()`)
 
@@ -45,7 +44,6 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
 
     //println("running main graph")
     run_graph(model, model.graph, outputs)
-    OpConv.update_total_time()
 
     // collect outputs
     [for argidx <- model.graph.outargs {

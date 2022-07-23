@@ -1455,8 +1455,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             | OpPow =>
                 val (need_cast, ce1, ce2, rtyp, f) =
                 match ctyp {
-                | CTypFloat 32 => (false, ce1, ce2, ctyp, get_id("powf"))
                 | CTypFloat 64 => (false, ce1, ce2, ctyp, get_id("pow"))
+                | CTypFloat _ => (false, ce1, ce2, ctyp, get_id("powf"))
                 | _ =>
                     val ce1 = CExpCast(ce1, CTypFloat(64), kloc)
                     val ce2 = CExpCast(ce2, CTypFloat(64), kloc)
@@ -2580,8 +2580,17 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             (false, dummy_exp, ccode)
         | KExpCast (a1, kt, _) =>
             val (ce1, ccode) = atom2cexp(a1, ccode, kloc)
+            val atyp = get_atom_ktyp(a1, kloc)
             val ctyp = C_gen_types.ktyp2ctyp(kt, kloc)
-            (true, CExpCast(ce1, ctyp, kloc), ccode)
+            (true, (match (atyp, ctyp) {
+            | (KTypFloat(16), CTypFloat(32)) =>
+                make_call(get_id("FX_FLOAT"), [:: ce1], CTypFloat(32), kloc)
+            | (KTypFloat(16), _) =>
+                CExpCast(make_call(get_id("FX_FLOAT"), [:: ce1], CTypFloat(32), kloc), ctyp, kloc)
+            | (_, CTypFloat(16)) =>
+                make_call(get_id("FX_FLOAT16"), [:: ce1], CTypFloat(16), kloc)
+            | _ => CExpCast(ce1, ctyp, kloc)
+            }), ccode)
         | KExpMap (e_idoml_l, body, flags, _) =>
             /*
                 1. generate output collection (`arr/list_first = get_dstexp).
