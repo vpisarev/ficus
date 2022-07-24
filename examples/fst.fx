@@ -10,9 +10,9 @@ val str = f"
 привет! 你好吗?
 BTW,
     2*2 = {2*2},
-    π (the area of circle with radius 1) = {M_PI},
-    e = {exp(1.)},
-    φ (golden ratio) = {(1+5.**0.5)/2}
+    π (the area of circle with radius 1) ~ {M_PI:.5f},
+    e ~ {exp(1.):.9f},
+    φ (golden ratio) ~ {(1+5.**0.5)/2:.3f}
 "
 val c = '😄'
 println(str + c)
@@ -69,13 +69,14 @@ val fib_seq = start_fib_seq()
 
 for i <- 1:31 {
     fun foo() {
-        print(fib(i))
+        print(f"{fib(i):6}")
     }
-    print(f"fib({i})=")
+    print(f"fib({i:2})=")
     foo()
-    print(f", fib2({i})={fib2(i)}")
-    print(f", fib3({i})={fib3(i)}")
-    println(f", fib_seq()={fib_seq()}")
+    val fib2v = f"{fib2(i)},"
+    print(f", fib2({i:2})={fib2v:<8}")
+    print(f"fib3({i:2})={fib3(i):6}")
+    println(f", fib_seq()={fib_seq():<6}")
 }
 println()
 
