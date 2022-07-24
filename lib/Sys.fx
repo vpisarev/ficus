@@ -84,7 +84,8 @@ fun arguments() = argv.tl()
 @pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
 @pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }
 
-fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): (double, double)
+fun timeit(f: void -> void, ~updated_min: (void->void)?,
+           ~iterations: int=1, ~batch: int=1, ): (double, double)
 {
     val nreal_iterations = max(iterations - 1, 1)
     val fold gmean = 0., mintime = 0. for i <- 0:iterations {
@@ -94,12 +95,19 @@ fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1): (double, double)
         val t = t/tick_frequency()
         val log_t = if nreal_iterations > 1 { log(max(t, 1e-16)) } else {t}
         val new_mintime = if i == 0 {t} else {min(mintime, t)}
+        match (i == 0 || new_mintime < mintime, updated_min) {
+        | (true, Some(f)) => f()
+        | _ => {}
+        }
         if iterations > 1 && i == 0 {(gmean, new_mintime)}
         else { (gmean + log_t, new_mintime) }
     }
     val gmean = if nreal_iterations > 1 { exp(gmean/nreal_iterations)/batch } else {gmean/batch}
     (gmean, mintime/batch)
 }
+
+fun timeit(f: void -> void, ~iterations: int=1, ~batch: int=1, ): (double, double) =
+    timeit(f, updated_min=None, iterations=iterations, batch=batch)
 
 fun remove(name: string): void
 @ccode {

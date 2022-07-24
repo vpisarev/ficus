@@ -16,6 +16,12 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
     val ninputs = inputs.size()
 
     assert(`ninputs == model.graph.inpargs.size()`)
+    if *model.profile {
+        for i <- 0:Ast.nn_operations {
+            model.perf_profile_time[i] = 0L
+            model.perf_profile_count[i] = 0
+        }
+    }
 
     // assign input tensors
     for (inpname, inp)@i <- inputs {
@@ -68,9 +74,10 @@ fun dump_arg(model: Ast.nnmodel_t, prefix: string, idx: int, argidx: int, dumpda
 fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.nntensor_t) [])
 {
     val nops = graph.prog.size()
+    val any_profile = *model.profile || *model.detailed_profile
     var t = 0L
     for op@opidx <- graph.prog {
-        if *model.profile {
+        if any_profile {
             t = Sys.tick_count()
         }
         val (opname, opkind) = op.name()
@@ -209,10 +216,15 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
         | _ => RunOp.run_op(model, op)
         }
-        if *model.profile {
+        if any_profile {
             t = Sys.tick_count() - t
-            val t_ms = t*1000./Sys.tick_frequency()
-            println(f"TIME {op.name()}: {round(t_ms, 2)}ms")
+            val op_idx = op.__tag__ - 1
+            model.perf_profile_time[op_idx] += t
+            model.perf_profile_count[op_idx] += 1
+            if *model.detailed_profile {
+                val t_ms = t*1000./Sys.tick_frequency()
+                println(f"TIME {op.name()}: {t_ms:.2f}ms")
+            }
         }
         /*for oi@outidx <- oinfo {
             val {idx=argidx} = oi
@@ -280,6 +292,47 @@ fun top_k(t: Ast.nntensor_t, k: int)
         }
     }
     result
+}
+
+fun collect_used_op_names(model: Ast.nnmodel_t): string []
+{
+    val names = array(Ast.nn_total_operations, "")
+    fun scan_graph(graph: Ast.nngraph_t) {
+        for op <- graph.prog {
+            val idx = op.perf_profile_index()
+            if names[idx] == "" {
+                names[idx] = op.name().1
+            }
+            match op {
+            | Ast.NN_Loop {body} =>
+                scan_graph(body)
+            | Ast.NN_If {then_branch, else_branch} =>
+                scan_graph(then_branch)
+                scan_graph(else_branch)
+            | _ => {}
+            }
+        }
+    }
+    scan_graph(model.graph)
+    names
+}
+
+fun print_total_profile(model: Ast.nnmodel_t)
+{
+    val opnames = collect_used_op_names(model)
+    val N = opnames.size()
+    val idx = mkrange(N)
+    fun cmp_time(i: int, j: int) {
+        val diff = model.perf_profile_time[i] - model.perf_profile_time[j]
+        if diff > 0 {true} else {diff == 0 && i < j}
+    }
+    sort(idx, cmp_time)
+    val ms_scale = 1000./Sys.tick_frequency()
+    for i <- 0:N {
+        val t = model.perf_profile_time[idx[i]]
+        if t == 0 {break}
+        println(f"{i+1}. {opnames[idx[i]]}: {t*ms_scale:.2f}")
+    }
 }
 
 fun read_labels(fname: string) =

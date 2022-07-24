@@ -135,6 +135,7 @@ for imgname@i <- images {
     val img = Image.Decoder.imread_rgb(imgname)
     val inp = NN.Preprocess.image_to_tensor(img, preprocess_params, ntasks)
     var outputs: nn_output_t [] = []
+    var best_profile = model.perf_profile_time.copy()
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =
@@ -142,7 +143,12 @@ for imgname@i <- images {
             | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
             | Fail msg => println(f"failure: '{msg}'"); []
             }
-        }, iterations=niter, batch=1)
+        }, iterations=niter, batch=1, updated_min=Some(
+        fun () {if profile {best_profile=model.perf_profile_time.copy()}}))
+    if (profile) {
+        model.perf_profile_time[:] = best_profile
+        NN.Inference.print_total_profile(model)
+    }
     println(f"execution time: gmean={gmean*1000.:.2f}ms, mintime={mintime*1000.:.2f}ms")
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")

@@ -83,7 +83,7 @@ type nnelwise_t =
     | NN_Abs | NN_Acos | NN_Acosh | NN_Asin | NN_Asinh | NN_Atan | NN_Atanh
     | NN_Ceil | NN_Cos | NN_Cosh | NN_Erf | NN_Exp | NN_Floor | NN_IsInf | NN_IsNaN
     | NN_Log | NN_Mish | NN_Neg | NN_Not | NN_Relu | NN_Round | NN_Sigmoid | NN_Sign
-    | NN_Sin | NN_Sinh | NN_Softplus | NN_Softsign | NN_Sqrt | NN_Tan | NN_Tanh
+    | NN_Sin | NN_Sinh | NN_Softplus | NN_Softsign | NN_Sqrt | NN_Tan | NN_Tanh | NN_Elemwise_ZZ
 
 type nnreduce_t =
     | NN_ReduceL1 | NN_ReduceL2
@@ -268,6 +268,10 @@ class nnop_t =
         name: string; t_inp: int; t_axes: int; t_out: int }
     | NN_Nop // shall always be the last operation in the list
 
+val nn_operations = NN_Nop.__tag__
+val nn_elemwise_operations = NN_Elemwise_ZZ.__tag__ - 1
+val nn_total_operations = nn_operations + nn_elemwise_operations
+
 type nnnames_t = (string, int) Hashmap.t
 
 type nnonnx_t =
@@ -307,7 +311,10 @@ class nnmodel_t
     use_fp16: bool ref
     trace: bool ref
     profile: bool ref
+    detailed_profile: bool ref
     scratch_buf: nnbuf_t ref
+    perf_profile_time: int64 []
+    perf_profile_count: int []
 }
 
 type op_callback_t = (nnmodel_t, nnop_t) -> void
@@ -327,7 +334,10 @@ fun empty_net() = nnmodel_t {
     use_fp16 = ref false,
     trace = ref false,
     profile = ref false,
-    scratch_buf = ref ([] : nnbuf_t)
+    detailed_profile = ref false,
+    scratch_buf = ref ([] : nnbuf_t),
+    perf_profile_time = array(nn_total_operations, 0L),
+    perf_profile_count = array(nn_total_operations, 0)
 }
 
 fun empty_graph() = NN_Graph {
@@ -410,6 +420,8 @@ fun string(ew: nnelwise_t)
     | NN_Min => "Min"
     | NN_Max => "Max"
     | NN_Mean => "Mean"
+
+    | NN_Elemwise_ZZ => "???"
 }
 
 fun string(r: nnreduce_t)
@@ -805,7 +817,6 @@ fun graph2str(model: nnmodel_t, graph: nngraph_t, indent: string)
 
 fun nnop_t.name(): (string, string) = match self
 {
-    | NN_Nop => ("", "Nop")
     | NN_AvgPool {name} => (name, "AvgPool")
     | NN_BatchNorm {name} => (name, "BatchNorm")
     | NN_Cast {name} => (name, "Cast")
@@ -844,6 +855,12 @@ fun nnop_t.name(): (string, string) = match self
     | NN_TopK {name} => (name, "TopK")
     | NN_Transpose {name} => (name, "Transpose")
     | NN_Unsqueeze {name} => (name, "Unsqueeze")
+    | NN_Nop => ("", "Nop")
+}
+
+fun nnop_t.perf_profile_index(): int = match self {
+    | NN_Elemwise {el_op} => nn_operations + el_op.__tag__ - 1
+    | _ => self.__tag__ - 1
 }
 
 fun targs2pairs(prefix: string, args: int []) =
