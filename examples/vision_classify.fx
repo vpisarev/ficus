@@ -1,7 +1,6 @@
 import Filename, Json, Sys, LexerUtils as Lxu
 import Image.Decoder
-import NN.Ast, NN.Inference, NN.FromOnnx, NN.FuseBasic, NN.Labels
-import NN.BufferAllocator, NN.ConstFold, NN.Preprocess
+import NN.Ast, NN.Inference, NN.Labels, NN.Preprocess
 
 type classifier_kind =
     | ClassifierAuto
@@ -108,26 +107,13 @@ val preprocess_params = match classifier_kind {
 
 if labels == [] {labels = NN.Labels.ImageNet}
 
-var model =
-    try NN.FromOnnx.read(mname)
-    catch {
-    | NN.FromOnnx.OnnxConvertError(msg) =>
-        println(f"error: {msg}"); throw Fail("")
-    | Fail(msg) =>
-        println(f"error: {msg}"); throw Fail("")
-    }
-
-var ok =
+val model =
 try {
-    model = NN.ConstFold.cfold(model)
-    model = NN.FuseBasic.fuse_basic(model)
-    model = NN.BufferAllocator.assign_buffers(model)
-    true
+    NN.Inference.read_model(mname)
 } catch {
-    | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); false
-    | Fail msg => println(f"failure: '{msg}'"); false
+| Fail(msg) => println(msg); throw Exit(1)
+| e => println(e); throw Exit(1)
 }
-if !ok {throw Fail("exiting")}
 
 if dump {
     println(model)
@@ -157,7 +143,7 @@ for imgname@i <- images {
             | Fail msg => println(f"failure: '{msg}'"); []
             }
         }, iterations=niter, batch=1)
-    println(f"execution time: gmean={gmean*1000.}ms, mintime={mintime*1000.}ms")
+    println(f"execution time: gmean={gmean*1000.:.2f}ms, mintime={mintime*1000.:.2f}ms")
     for out@i <- outputs {
         println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
         val sorted_k = NN.Inference.top_k(out.1, k)

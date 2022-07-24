@@ -5,7 +5,7 @@
 
 // Runs the inference on user-provided data
 import Hashmap, Json, LexerUtils as Lxu, Sys
-import Ast, InferShapes, RunOp
+import Ast, BufferAllocator, ConstFold, FromOnnx, FuseBasic, InferShapes, RunOp
 
 fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
             cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
@@ -306,3 +306,24 @@ fun read_labels(fname: string) =
     } catch {
     | Lxu.LexerError(lloc, msg) => println(f"{fname}:{lloc.0}: error: {msg}"); throw Fail("")
     }
+
+fun read_model(mname: string)
+{
+    var model =
+        try FromOnnx.read(mname)
+        catch {
+        | FromOnnx.OnnxConvertError(msg) =>
+            throw Fail(f"import error: msg")
+        | Fail(msg) =>
+            throw Fail(f"import error: {msg}")
+        }
+
+    try {
+        model = ConstFold.cfold(model)
+        model = FuseBasic.fuse_basic(model)
+        BufferAllocator.assign_buffers(model)
+    } catch {
+        | Ast.NNError msg => throw Fail("preprocessing error: {msg}")
+        | Fail msg => throw Fail("preprocessing error: {msg}")
+    }
+}

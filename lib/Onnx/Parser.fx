@@ -471,6 +471,6 @@ fun parse(data: uint8 [])
 
 fun parse(fname: string)
 {
-    val data = File.read_binary_u8(fname)
+    val data = try { File.read_binary_u8(fname) } catch { | _ => throw Fail(f"cannot read model file '{fname}'")}
     parse(data)
 }
