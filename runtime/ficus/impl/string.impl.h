@@ -766,7 +766,14 @@ int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_s
     }
     *ptr++ = (char)typespec;
     *ptr = '\0';
-    sprintf(buf, fmtstr, x >= 0 ? x : -x);
+    {
+    fx_bits64_t u;
+    u.f = x;
+    if ((u.i & 0x7FF0000000000000LL) != 0x7FF0000000000000LL)
+        sprintf(buf, fmtstr, x >= 0 ? x : -x);
+    else
+        strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : "inf");
+    }
     n = strlen(buf);
     ptr = buf;
     min_width = n + prefix_len;
@@ -787,7 +794,7 @@ int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_s
     offset = align == '<' ? 0 : align == '^' ? (width - min_width)/2 : fill == '0' ? 0 : width - min_width;
     data = data + offset;
     if (prefix_sign_len > 0) {
-        char s = x < 0 ? '-' : (char)sign;
+        char s = *ptr == 'n' ? ' ' : x < 0 ? '-' : (char)sign;
         *data++ = s;
     }
 
