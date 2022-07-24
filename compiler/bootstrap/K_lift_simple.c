@@ -2924,12 +2924,12 @@ static int _fx_make_rLN14K_form__kexp_t(
 _fx_Nt6option1FPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t _fx_g19K_lift_simple__None = 0;
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
-FX_EXTERN_C int _fx_M7HashsetFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashsetFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM16empty_id_hashsetNt10Hashset__t1RM4id_t1i(
-   int_ size0,
+   int_ size0_0,
    struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t** fx_result,
    void* fx_fv);
 
@@ -2972,7 +2972,7 @@ FX_EXTERN_C int _fx_M6K_formFM6kinfo_N15K_form__kinfo_t2R9Ast__id_tR10Ast__loc_t
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM14is_constructorB1RM11fun_flags_t(
-   struct _fx_R16Ast__fun_flags_t* flags,
+   struct _fx_R16Ast__fun_flags_t* flags_0,
    bool* fx_result,
    void* fx_fv);
 
@@ -2983,12 +2983,12 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc,
-   fx_str_t* msg,
+   struct _fx_R10Ast__loc_t* loc_0,
+   fx_str_t* msg_0,
    fx_exn_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1RM4id_t(struct _fx_R9Ast__id_t* i, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
 
 static int _fx_M13K_lift_simpleFM16walk_kexp_n_liftN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t(
    struct _fx_N14K_form__kexp_t_data_t* e_0,

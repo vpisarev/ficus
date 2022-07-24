@@ -2901,9 +2901,9 @@ _fx_Nt6option1FPv2N14C_form__ctyp_tR22C_form__c_fold_callb_t _fx_g28C_post_renam
 _fx_Nt6option1FPv2R9Ast__id_tR22C_form__c_fold_callb_t _fx_g28C_post_rename_locals__None2_ = 0;
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
-FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
 
 FX_EXTERN_C int
    _fx_M20C_post_rename_localsFM7make_fpFPv2N15C_form__cstmt_tR22C_form__c_fold_callb_t2rNt10Hashmap__t2iirNt10Hashmap__t2ii(
@@ -2942,8 +2942,8 @@ FX_EXTERN_C int _fx_M6C_formFM7idc2strS2R9Ast__id_tR10Ast__loc_t(
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc,
-   fx_str_t* msg,
+   struct _fx_R10Ast__loc_t* loc_0,
+   fx_str_t* msg_0,
    fx_exn_t* fx_result,
    void* fx_fv);
 

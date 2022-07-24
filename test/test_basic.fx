@@ -836,3 +836,12 @@ TEST("basic.finally", fun()
     EXPECT_EQ(`res1`, 1)
     EXPECT_EQ(`finalized1`, "ok1")
 })
+
+TEST("basic.format", fun() {
+    EXPECT_EQ(f"{M_PI:.5f}", "3.14159")
+    EXPECT_EQ(f"{(-1 :> uint8):#x}", "0xff")
+    EXPECT_EQ(f"{int(1e6):,}", "1,000,000")
+    EXPECT_EQ(f"{[sqrt(2.), sqrt(3.), sqrt(4.)]:.2g}", "[1.4, 1.7, 2]")
+    val abc = "abc"
+    EXPECT_EQ(f"{abc:~^30}", "~~~~~~~~~~~~~abc~~~~~~~~~~~~~~")
+})

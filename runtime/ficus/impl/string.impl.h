@@ -567,6 +567,258 @@ int fx_strjoin(const fx_str_t* begin, const fx_str_t* end, const fx_str_t* sep,
     return FX_OK;
 }
 
+int fx_parse_format(const fx_str_t* str, int_ start, fx_format_t* fmt, int_* end)
+{
+    int_ len = str->length;
+    char_* data = str->data;
+    int_ pos = start;
+    char_ fill = ' ', align = ' ', sign = '-';
+    bool num_alt = false;
+    int_ width = 0, precision = -1;
+    char_ grouping = ' ', typespec = ' ';
+    char_ c0 = pos < len ? data[pos] : '\0';
+    char_ c1 = pos+1 < len ? data[pos+1] : '\0';
+    if (c1 == '<' || c1 == '^' || c1 == '>' || c1 == '=') {
+        fill = c0;
+        align = c1;
+        pos += 2;
+    } else if (c0 == '<' || c0 == '^' || c0 == '>' || c0 == '=') {
+        align = c0;
+        pos++;
+    }
+    c0 = pos < len ? data[pos] : '\0';
+    if (c0 == '+' || c0 == '-' || c0 == ' ') {
+        sign = c0;
+        pos++;
+        c0 = pos < len ? data[pos] : '\0';
+    }
+    if (c0 == '#') {
+        num_alt = true;
+        pos++;
+        c0 = pos < len ? data[pos] : '\0';
+    }
+    if (c0 == '0') {
+        fill = '0';
+        pos++;
+        c0 = pos < len ? data[pos] : '\0';
+    }
+    while ('0' <= c0 && c0 <= '9') {
+        width = width*10 + c0 - '0';
+        pos++;
+        c0 = pos < len ? data[pos] : '\0';
+    }
+    if (c0 == ',' || c0 == '_') {
+        grouping = c0;
+        pos++;
+        c0 = pos < len ? data[pos] : '\0';
+    }
+    if (c0 == '.') {
+        pos++;
+        c0 = pos < len ? data[pos] : '\0';
+        if (c0 < '0' || c0 > '9')
+            return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+        precision = 0;
+        while ('0' <= c0 && c0 <= '9') {
+            precision = precision*10 + c0 - '0';
+            pos++;
+            c0 = pos < len ? data[pos] : '\0';
+        }
+    }
+
+    if (c0 == 'd' || c0 == 'u' || c0 == 'o' || c0 == 'x' || c0 == 'X' ||
+        c0 == 'f' || c0 == 'F' || c0 == 'e' || c0 == 'E' || c0 == 'g' ||
+        c0 == 'G' || c0 == 's' || c0 == 'c') {
+        typespec = c0;
+        pos++;
+    }
+    fmt->fill = fill;
+    fmt->align = align;
+    fmt->sign = sign;
+    fmt->num_alt = num_alt;
+    fmt->width = width;
+    fmt->precision = precision;
+    fmt->grouping = grouping;
+    fmt->typ = typespec;
+    *end = pos;
+    return FX_OK;
+}
+
+int fx_format_int(int64_t x, bool u, const fx_format_t* fmt, fx_str_t* fx_result)
+{
+    enum {MAX_STATIC_WIDTH=64};
+    char fmtstr[16], buf[MAX_STATIC_WIDTH+16], *ptr = fmtstr, *ptr0;
+    char default_typespec = u ? 'u' : 'd';
+    char typespec = fmt->typ == default_typespec || fmt->typ == 'o' ||
+                    fmt->typ == 'x' || fmt->typ == 'X' ? (char)fmt->typ : default_typespec;
+    bool num_alt = fmt->num_alt && typespec != default_typespec;
+    char_ fill = fmt->fill, align = fmt->align, sign = fmt->sign, grouping = fmt->grouping;
+    int_ i, j, k, min_width, width = fmt->width, offset;
+    int prefix_radix_len = typespec != default_typespec && num_alt ? 2 : 0;
+    int prefix_sign_len = !u && (x < 0 || sign == '+' || sign == ' ');
+    int prefix_len = prefix_radix_len + prefix_sign_len;
+    int n, status;
+    char_* data;
+    *ptr++ = '%';
+    if (grouping != ' ' && typespec != default_typespec)
+        return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+    *ptr++ = 'l';
+    *ptr++ = 'l';
+    *ptr++ = (char)typespec;
+    *ptr = '\0';
+    if (u)
+        sprintf(buf, fmtstr, (unsigned long long)x);
+    else
+        sprintf(buf, fmtstr, (long long)(x >= 0 ? x : -x));
+    n = strlen(buf);
+    ptr0 = buf;
+    if (*ptr0 == '-') {
+        // handle +/-(1 << 63)
+        ptr0++;
+        n--;
+    }
+    ptr = ptr0;
+    min_width = n + prefix_len;
+    if (grouping != ' ') {
+        int ngroups = (n - 1)/3;
+        min_width += ngroups;
+        //printf("ngroups=%d\n", ngroups);
+    }
+    width = width >= min_width ? width : min_width;
+    status = fx_make_str(0, width, fx_result);
+    if (status < 0)
+        return status;
+
+    data = fx_result->data;
+    for (i = 0; i < width; i++)
+        data[i] = fill;
+
+    offset = align == '<' ? 0 : align == '^' ? (width - min_width)/2 : fill == '0' ? 0 : width - min_width;
+    data += offset;
+    if (prefix_sign_len > 0) {
+        char s = x < 0 ? '-' : (char)sign;
+        if (align == '=') {
+            fx_result->data[0] = s;
+            data++;
+        }
+        else
+            *data++ = s;
+    }
+    if (prefix_radix_len > 0) {
+        *data++ = '0';
+        *data++ = (char)typespec;
+    }
+
+    if (grouping == ' ') {
+        if (align == ' ' && align == '>')
+            data = fx_result->data + (width - n);
+        for (i = 0; i < n; i++)
+            data[i] = ptr[i];
+    } else {
+        int_ left = data - fx_result->data;
+        //printf("min_width-prefix_len=%d\n", (int)(min_width - prefix_len));
+        int_ i = align == ' ' || align == '>' || align == '=' ? width-1 : left + min_width - prefix_len - 1;
+        int_ j = n - 1, rest;
+        data = fx_result->data;
+        left++;
+        for (; i > left && j >= 3; i -= 4, j -= 3) {
+            data[i] = ptr0[j];
+            data[i-1] = ptr0[j-1];
+            data[i-2] = ptr0[j-2];
+            data[i-3] = (char)grouping;
+        }
+        rest = j+1;
+        for (; j >= 0; j--, i--)
+            data[i] = ptr0[j];
+        if ((align == ' ' || align == '=') && fill == '0') {
+            i -= 3 - rest;
+            for (; i > left; i -= 4)
+                data[i] = (char)grouping;
+        }
+    }
+    return FX_OK;
+}
+
+int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_str_t* fx_result)
+{
+    enum {MAX_STATIC_WIDTH=1024};
+    char fmtstr[32], buf[MAX_STATIC_WIDTH+16], *ptr = fmtstr;
+    char typespec = fmt->typ == 'f' || fmt->typ == 'F' ||
+                    fmt->typ == 'e' || fmt->typ == 'E' ||
+                    fmt->typ == 'g' || fmt->typ == 'G' ? (char)fmt->typ : 'g';
+    bool num_alt = fmt->num_alt && typespec != 'd';
+    char_ fill = fmt->fill, align = fmt->align, sign = fmt->sign, grouping = fmt->grouping;
+    int_ i, j, k, min_width, width = fmt->width, offset;
+    int prefix_sign_len = x < 0 || sign == '+' || sign == ' ';
+    int prefix_len = prefix_sign_len;
+    int precision = fmt->precision >= 0 ? fmt->precision :
+                    default_precision >= 0 ? default_precision : 8;
+    int n = 0, status;
+    char_* data;
+    *ptr++ = '%';
+    if (precision >= 0) {
+        if (precision > MAX_STATIC_WIDTH/2) {
+            return FX_SET_EXN_FAST(FX_EXN_SizeError);
+        }
+        *ptr++ = '.';
+        sprintf(ptr, "%d%n", precision, &n);
+        ptr += n;
+        n = 0;
+    }
+    *ptr++ = (char)typespec;
+    *ptr = '\0';
+    sprintf(buf, fmtstr, x >= 0 ? x : -x);
+    n = strlen(buf);
+    ptr = buf;
+    min_width = n + prefix_len;
+    if (grouping != ' ') {
+        int ngroups = (n - 1)/3;
+        min_width += ngroups;
+        //printf("ngroups=%d\n", ngroups);
+    }
+    width = width >= min_width ? width : min_width;
+    status = fx_make_str(0, width, fx_result);
+    if (status < 0)
+        return status;
+
+    data = fx_result->data;
+    for (i = 0; i < width; i++)
+        data[i] = fill;
+
+    offset = align == '<' ? 0 : align == '^' ? (width - min_width)/2 : fill == '0' ? 0 : width - min_width;
+    data = data + offset;
+    if (prefix_sign_len > 0) {
+        char s = x < 0 ? '-' : (char)sign;
+        *data++ = s;
+    }
+
+    if (align == ' ' && align == '>')
+        data = fx_result->data + (width - n);
+    for (i = 0; i < n; i++)
+        data[i] = ptr[i];
+    return FX_OK;
+}
+
+int fx_format_str(const fx_str_t* x, const fx_format_t* fmt, fx_str_t* fx_result)
+{
+    int_ n = x->length;
+    int_ i, width = fmt->width, offset;
+    width = width > n ? width : n;
+    int status = fx_make_str(0, width, fx_result);
+    char_ fill = fmt->fill, align = fmt->align;
+    char_ *x_data = x->data, *data;
+    if (status < 0)
+        return status;
+    data = fx_result->data;
+    offset = align == '>' ? width - n : align == '^' ? (width - n)/2 : 0;
+    for (i = 0; i < offset; i++)
+        data[i] = fill;
+    for (i = 0; i < n; i++)
+        data[offset + i] = x_data[i];
+    for (i = offset + n; i < width; i++)
+        data[i] = fill;
+    return FX_OK;
+}
+
 #ifdef __cplusplus
 }
 #endif

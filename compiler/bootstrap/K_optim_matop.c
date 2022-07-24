@@ -373,6 +373,11 @@ typedef struct _fx_Li_data_t {
    int_ hd;
 } _fx_Li_data_t, *_fx_Li;
 
+typedef struct _fx_ri_data_t {
+   int_ rc;
+   int_ data;
+} _fx_ri_data_t, *_fx_ri;
+
 typedef struct _fx_Nt6option1N14K_form__kexp_t {
    int tag;
    union {
@@ -902,11 +907,6 @@ typedef struct _fx_rLN14K_form__kexp_t_data_t {
    int_ rc;
    struct _fx_LN14K_form__kexp_t_data_t* data;
 } _fx_rLN14K_form__kexp_t_data_t, *_fx_rLN14K_form__kexp_t;
-
-typedef struct _fx_ri_data_t {
-   int_ rc;
-   int_ data;
-} _fx_ri_data_t, *_fx_ri;
 
 typedef struct _fx_rNt10Hashset__t1R9Ast__id_t_data_t {
    int_ rc;
@@ -1641,6 +1641,11 @@ static int _fx_cons_LT2SR10Ast__loc_t(
 static int _fx_cons_Li(int_ hd, struct _fx_Li_data_t* tl, bool addref_tl, struct _fx_Li_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_Li, FX_COPY_SIMPLE);
+}
+
+static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
 }
 
 static void _fx_free_Nt6option1N14K_form__kexp_t(struct _fx_Nt6option1N14K_form__kexp_t* dst)
@@ -3080,11 +3085,6 @@ static int _fx_make_rLN14K_form__kexp_t(
    FX_MAKE_REF_IMPL(_fx_rLN14K_form__kexp_t, FX_COPY_PTR);
 }
 
-static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
-}
-
 static void _fx_free_rNt10Hashset__t1R9Ast__id_t(struct _fx_rNt10Hashset__t1R9Ast__id_t_data_t** dst)
 {
    FX_FREE_REF_IMPL(_fx_rNt10Hashset__t1R9Ast__id_t, _fx_free_Nt10Hashset__t1R9Ast__id_t);
@@ -3400,22 +3400,22 @@ _fx_Nt6option1R32K_optim_matop__matrix_projection _fx_g19K_optim_matop__None = {
 _fx_Nt6option1R9Ast__id_t _fx_g21K_optim_matop__None1_ = { 1 };
 _fx_N12Ast__cmpop_t _fx_g20K_optim_matop__CmpLT = { 3 };
 _fx_N12Ast__cmpop_t _fx_g20K_optim_matop__CmpLE = { 4 };
-static _fx_N13Ast__binary_t_data_t OpAdd_data_1 = { 1, 1 };
-_fx_N13Ast__binary_t _fx_g20K_optim_matop__OpAdd = &OpAdd_data_1;
-static _fx_N13Ast__binary_t_data_t OpMul_data_1 = { 1, 3 };
-_fx_N13Ast__binary_t _fx_g20K_optim_matop__OpMul = &OpMul_data_1;
+static _fx_N13Ast__binary_t_data_t OpAdd_data_4 = { 1, 1 };
+_fx_N13Ast__binary_t _fx_g20K_optim_matop__OpAdd = &OpAdd_data_4;
+static _fx_N13Ast__binary_t_data_t OpMul_data_4 = { 1, 3 };
+_fx_N13Ast__binary_t _fx_g20K_optim_matop__OpMul = &OpMul_data_4;
 _fx_N13Ast__intrin_t _fx_g25K_optim_matop__IntrinGEMM = { 13 };
 static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_5 = { 1, 6 };
 _fx_N14K_form__ktyp_t _fx_g23K_optim_matop__KTypVoid = &KTypVoid_data_5;
 static _fx_N14K_form__ktyp_t_data_t KTypBool_data_3 = { 1, 7 };
 _fx_N14K_form__ktyp_t _fx_g23K_optim_matop__KTypBool = &KTypBool_data_3;
-FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
 
-FX_EXTERN_C int _fx_M7HashsetFM9makeindexA1i1i(int_ size, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashsetFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM5OpCmpN13Ast__binary_t1N12Ast__cmpop_t(
    struct _fx_N12Ast__cmpop_t* arg0,
@@ -3432,8 +3432,8 @@ FX_EXTERN_C int
    void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc,
-   fx_str_t* msg,
+   struct _fx_R10Ast__loc_t* loc_0,
+   fx_str_t* msg_0,
    fx_exn_t* fx_result,
    void* fx_fv);
 
@@ -3448,7 +3448,7 @@ FX_EXTERN_C void _fx_M6K_formFM7AtomLitN14K_form__atom_t1N14K_form__klit_t(
    struct _fx_N14K_form__atom_t* fx_result);
 
 FX_EXTERN_C int _fx_M3AstFM16empty_id_hashsetNt10Hashset__t1RM4id_t1i(
-   int_ size0,
+   int_ size0_0,
    struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t** fx_result,
    void* fx_fv);
 
@@ -3557,7 +3557,7 @@ FX_EXTERN_C int _fx_M6K_formFM11get_idk_locR10Ast__loc_t2R9Ast__id_tR10Ast__loc_
    struct _fx_R10Ast__loc_t* fx_result,
    void* fx_fv);
 
-FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C int _fx_M3AstFM13fname_op_aposRM4id_t0(struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
 

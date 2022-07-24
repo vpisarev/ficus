@@ -100,9 +100,9 @@ fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: kt
         | ConstInt x =>
             match res_t {
             | KTypInt => mk_some_lit_atom(KLitInt(x))
-            | KTypCInt => mk_some_lit_atom(KLitSInt(32, x))
-            | KTypSInt b => mk_some_lit_atom(KLitSInt(b, x))
-            | KTypUInt b => mk_some_lit_atom(KLitUInt(b, uint64(x)))
+            | KTypCInt => mk_some_lit_atom(KLitSInt(32, (x << 32) >> 32))
+            | KTypSInt b => mk_some_lit_atom(KLitSInt(b, (x << (64-b)) >> (64-b)))
+            | KTypUInt b => mk_some_lit_atom(KLitUInt(b, (uint64(x) << (64-b)) >> (64-b)))
             | KTypFloat b => mk_some_lit_atom(KLitFloat(b, double(x)))
             | KTypBool => mk_some_lit_atom(KLitBool(x != 0L))
             | KTypString => mk_some_lit_atom(KLitString(string(x)))

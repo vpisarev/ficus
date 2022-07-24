@@ -264,6 +264,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
     var prev_dot = false
     var backquote_pos = -1
     var backquote_loc = (0, 0)
+    var fmt: format_t? = None
 
     fun getloc(pos: int) = (strm.lineno, max(pos - strm.bol, 0) + 1)
     fun addloc(loc: lloc_t, tokens: token_t list) = [:: for t <- tokens {(t, loc)} ]
@@ -308,6 +309,29 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
         }
         if lbraces > 0 {throw Lxu.LexerError(getloc(p), "unterminated ccode block (check braces)")}
         (q, buf[p:q-1].copy())
+    }
+
+    fun fmt2tokens(fmt: format_t?, loc: lloc_t): (token_t, lloc_t) list
+    {
+        fun add_pair(attrname: string, x: 't, defval: 't, attrval: Ast.lit_t, tl: token_t list) =
+            if x == defval {tl} else {[:: IDENT(true, attrname), EQUAL, LITERAL(attrval), COMMA] + tl}
+        match fmt {
+        | Some(format_t {fill, align, sign, num_alt, width, precision, grouping, typ}) =>
+            val params = add_pair("typ", typ, ' ', Ast.LitChar(typ), [])
+            val params = add_pair("grouping", grouping, ' ', Ast.LitChar(grouping), params)
+            val params = add_pair("precision", precision, -1, Ast.LitInt(int64(precision)), params)
+            val params = add_pair("width", width, 0, Ast.LitInt(int64(width)), params)
+            val params = add_pair("num_alt", num_alt, false, Ast.LitBool(num_alt), params)
+            val params = add_pair("sign", sign, '-', Ast.LitChar(sign), params)
+            val params = add_pair("align", align, '-', Ast.LitChar(align), params)
+            val params = add_pair("fill", fill, ' ', Ast.LitChar(fill), params)
+            if params != [] {
+                addloc(loc, [:: COMMA, IDENT(true, "format_t"), LBRACE] + params + [:: RBRACE])
+            } else {
+                []
+            }
+        | _ => []
+        }
     }
 
     fun nexttokens(): (token_t, lloc_t) list
@@ -396,6 +420,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             } else if inline_exp {
                 paren_stack = (STR_INTERP_LPAREN, getloc(prev_pos)) :: paren_stack
                 new_exp = true
+                fmt = None
                 addloc(loc, (if res == "" {[:: LPAREN(true)]}
                         else {[:: LPAREN(true), LITERAL(Ast.LitString(res)), PLUS(false)]}) +
                         [:: IDENT(true, "string"), LPAREN(false)])
@@ -537,6 +562,8 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     val (p, s, dl, inline_exp) = Lxu.getstring(buf, pos, getloc(pos), chr(34), false, true)
                     strm.lineno += dl
                     pos = p
+
+                    fmt2tokens(fmt, loc) +
                     (if s == "" {[:: (RPAREN, loc)]}
                     else {[:: (RPAREN, loc), (PLUS(false), loc), (LITERAL(Ast.LitString(s)), loc)]}) +
                     (if inline_exp {
@@ -645,15 +672,31 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             | ',' => [:: (COMMA, loc)]
             | ';' => [:: (SEMICOLON, loc)]
             | ':' =>
-                if c1 == ':' {
-                    pos += 1
-                    [:: (CONS, loc)]
-                } else if c1 == '>' {
-                    pos += 1
-                    [:: (CAST, loc)]
-                }
-                else {
-                    [:: (COLON, loc)]
+                match paren_stack {
+                // handle string interpolation with formatting
+                | (STR_INTERP_LPAREN, _) :: rest =>
+                    val (fmt_, end) =
+                        try { parse_format(buf, start=pos) }
+                        catch { | _ =>
+                            throw Lxu.LexerError(getloc(pos), "invalid format specification")
+                        }
+                    fmt = Some(fmt_)
+                    pos = end
+                    if buf.zero[pos] != '}' {
+                        throw Lxu.LexerError(getloc(pos), "'}' is expected after ':...' inside interpolated expression")
+                    }
+                    nexttokens()
+                | _ =>
+                    if c1 == ':' {
+                        pos += 1
+                        [:: (CONS, loc)]
+                    } else if c1 == '>' {
+                        pos += 1
+                        [:: (CAST, loc)]
+                    }
+                    else {
+                        [:: (COLON, loc)]
+                    }
                 }
             | '!' =>
                 if c1 == '=' {

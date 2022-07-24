@@ -337,8 +337,105 @@ fun string(v: 't vector) = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
     return fx_status;
 }
 
-@pure fun repr(v: char vector) =
+fun repr(v: char vector) =
     join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
+
+type format_t =
+{
+    fill: char=' '
+    align: char=' '
+    sign: char='-'
+    num_alt: bool=false
+    width: int=0
+    precision: int=-1
+    grouping: char=' '
+    typ: char=' '
+}
+
+@pure fun parse_format(fmt: string, ~start: int=0): (format_t, int)
+@ccode {
+    FX_STATIC_ASSERT(sizeof(fx_result->t0) == sizeof(fx_format_t));
+    return fx_parse_format(fmt, start, (fx_format_t*)&fx_result->t0, &fx_result->t1);
+}
+fun string(x: 't, fmt: format_t) = repr(x)
+fun string(x: 't, fmt: string) = string(x, parse_format(fmt).0)
+@pure fun format_(x: int64, u: bool, fmt: format_t): string
+@ccode {
+    FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
+    return fx_format_int(x, u, (fx_format_t*)fmt, fx_result);
+}
+@pure fun format_(x: double, precision0: int, fmt: format_t): string
+@ccode {
+    FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
+    return fx_format_flt(x, precision0, (fx_format_t*)fmt, fx_result);
+}
+fun string(x: int, fmt: format_t) = format_(x :> int64, false, fmt)
+fun string(x: int8, fmt: format_t) = format_(x :> int64, false, fmt)
+fun string(x: uint8, fmt: format_t) = format_(x :> int64, true, fmt)
+fun string(x: int16, fmt: format_t) = format_(x :> int64, false, fmt)
+fun string(x: uint16, fmt: format_t) = format_(x :> int64, true, fmt)
+fun string(x: int32, fmt: format_t) = format_(x :> int64, false, fmt)
+fun string(x: uint32, fmt: format_t) = format_(x :> int64, true, fmt)
+fun string(x: int64, fmt: format_t) = format_(x, false, fmt)
+fun string(x: uint64, fmt: format_t) = format_(x :> int64, true, fmt)
+fun string(x: float, fmt: format_t) = format_(x :> double, 8, fmt)
+fun string(x: double, fmt: format_t) = format_(x, 16, fmt)
+fun string(x: half, fmt: format_t) = format_(x :> double, 4, fmt)
+@pure fun string(x: string, fmt: format_t): string
+@ccode {
+    FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
+    return fx_format_str(x, (fx_format_t*)fmt, fx_result);
+}
+@pure fun string(x: bool, fmt: format_t): string
+@ccode {
+    fx_str_t false_str = FX_MAKE_STR("false");
+    fx_str_t true_str = FX_MAKE_STR("true");
+    FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
+    return fx_format_str(x ? &true_str : &false_str, (fx_format_t*)fmt, fx_result);
+}
+@pure fun string(x: char, fmt: format_t): string
+@ccode {
+    fx_str_t x_str = FX_MAKE_VAR_STR1(x);
+    FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
+    return fx_format_str(&x_str, (fx_format_t*)fmt, fx_result);
+}
+
+fun string(t: (...), fmt: format_t) = join_embrace("(", ")", ", ", [for x <- t {string(x, fmt)}])
+fun string(r: {...}, fmt: format_t) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+string(x, fmt)}])
+fun string(a: 't ref, fmt: format_t) = "ref(" + format(a, fmt) + ")"
+
+fun string(a: 't [], fmt: format_t)
+{
+    join_embrace("[", "]", ", ", [for x <- a {string(x, fmt)}])
+}
+
+fun string(a: 't [,], fmt: format_t)
+{
+    val (m, n) = size(a)
+    val rows = [for i <- 0:m {
+        val elems = [for j <- 0:n {string(a[i, j], fmt)}]
+        join(", ", elems)
+    }]
+    join_embrace("[", "]", ";\n", rows)
+}
+
+fun string(a: 't [,,], fmt: format_t)
+{
+    val (d, m, n) = size(a)
+    val planes = [for k <- 0:d {
+        val rows = [for i <- 0:m {
+            val elems = [for j <- 0:n {string(a[k, i, j], fmt)}]
+            join(", ", elems)
+        }]
+        join_embrace("", "", ";\n", rows)
+    }]
+    join_embrace("[", "]", ";;\n\n", planes)
+}
+
+fun string(l: 't list, fmt: format_t) = join_embrace("[", "]", ", ", [for x <- l {string(x, fmt)}])
+fun string(a: char [], fmt: format_t) = string(string(a), fmt)
+fun string(v: 't vector, fmt: format_t) = join_embrace("[", "]", ", ", [for x <- v {string(x, fmt)}])
+fun string(v: char vector, fmt: format_t) = string(string(v), fmt)
 
 @pure operator * (c: char, n: int): string
 @ccode {

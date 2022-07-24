@@ -7,11 +7,27 @@ typedef uint64_t hash_t;
 #define FNV_1A_PRIME 1099511628211ULL
 #define FNV_1A_OFFSET 14695981039346656037ULL
 
+typedef struct _fx_R8format_t {
+   char_ fill;
+   char_ align;
+   char_ sign;
+   bool num_alt;
+   int_ width;
+   int_ precision;
+   char_ grouping;
+   char_ typ;
+} _fx_R8format_t;
+
 typedef struct _fx_LS_data_t {
    int_ rc;
    struct _fx_LS_data_t* tl;
    fx_str_t hd;
 } _fx_LS_data_t, *_fx_LS;
+
+typedef struct _fx_T2R8format_ti {
+   struct _fx_R8format_t t0;
+   int_ t1;
+} _fx_T2R8format_ti;
 
 static void _fx_free_LS(struct _fx_LS_data_t** dst)
 {
@@ -347,6 +363,14 @@ FX_EXTERN_C int _fx_F6stringS1A1C(fx_arr_t* a, fx_str_t* fx_result, void* fx_fv)
 {
    
 return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
+
+}
+
+FX_EXTERN_C int _fx_F12parse_formatT2R8format_ti2Si(fx_str_t* fmt, int_ start, struct _fx_T2R8format_ti* fx_result, void* fx_fv)
+{
+   
+FX_STATIC_ASSERT(sizeof(fx_result->t0) == sizeof(fx_format_t));
+    return fx_parse_format(fmt, start, (fx_format_t*)&fx_result->t0, &fx_result->t1);
 
 }
 

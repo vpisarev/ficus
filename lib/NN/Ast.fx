@@ -25,8 +25,8 @@ class nndata_t =
     | NN_Data_U32: uint32 []
     | NN_Data_I64: int64 []
     | NN_Data_U64: uint64 []
-    | NN_Data_FP16: int16 []
-    | NN_Data_BF16: int16 []
+    | NN_Data_FP16: half []
+    | NN_Data_Stub_BF16
     | NN_Data_FP32: float []
     | NN_Data_FP64: double []
     | NN_Data_Bool: bool []
@@ -467,7 +467,7 @@ fun string(mode: nnpooling_t)
 fun nndata_t.total() =
 match self {
     | NN_Data_Empty
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => 0
+    | NN_Data_Stub_BF16 => 0
     | NN_Data_I8(elems) => size(elems)
     | NN_Data_U8(elems) => size(elems)
     | NN_Data_I16(elems) => size(elems)
@@ -478,13 +478,14 @@ match self {
     | NN_Data_U64(elems) => size(elems)
     | NN_Data_FP32(elems) => size(elems)
     | NN_Data_FP64(elems) => size(elems)
+    | NN_Data_FP16(elems) => size(elems)
     | NN_Data_Bool(elems) => size(elems)
 }
 
 fun nntensor_t.total() =
 match self.data {
     | NN_Data_Empty
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => 0
+    | NN_Data_Stub_BF16 => 0
     | NN_Data_I8(elems) => size(elems)
     | NN_Data_U8(elems) => size(elems)
     | NN_Data_I16(elems) => size(elems)
@@ -495,13 +496,14 @@ match self.data {
     | NN_Data_U64(elems) => size(elems)
     | NN_Data_FP32(elems) => size(elems)
     | NN_Data_FP64(elems) => size(elems)
+    | NN_Data_FP16(elems) => size(elems)
     | NN_Data_Bool(elems) => size(elems)
 }
 
 fun float(d: nndata_t)
 {
     | NN_Data_Empty
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => ([] : float [])
+    | NN_Data_Stub_BF16 => ([] : float [])
     | NN_Data_I8(elems) => float(elems)
     | NN_Data_U8(elems) => float(elems)
     | NN_Data_I16(elems) => float(elems)
@@ -512,6 +514,7 @@ fun float(d: nndata_t)
     | NN_Data_U64(elems) => float(elems)
     | NN_Data_FP32(elems) => elems
     | NN_Data_FP64(elems) => float(elems)
+    | NN_Data_FP16(elems) => float(elems)
     | NN_Data_Bool(elems) => float(elems)
 }
 
@@ -536,7 +539,7 @@ match d {
 fun float_scalar_or(d: nndata_t, defval: float): float =
 match d {
     | NN_Data_Empty => defval
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
+    | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
     | NN_Data_I8(elems) => float(elems[0])
     | NN_Data_U8(elems) => float(elems[0])
     | NN_Data_I16(elems) => float(elems[0])
@@ -547,13 +550,14 @@ match d {
     | NN_Data_U64(elems) => float(elems[0])
     | NN_Data_FP32(elems) => elems[0]
     | NN_Data_FP64(elems) => float(elems[0])
+    | NN_Data_FP16(elems) => float(elems[0])
     | NN_Data_Bool(elems) => float(elems[0])
 }
 
 fun double(d: nndata_t)
 {
     | NN_Data_Empty
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => ([] : double [])
+    | NN_Data_Stub_BF16 => ([] : double [])
     | NN_Data_I8(elems) => double(elems)
     | NN_Data_U8(elems) => double(elems)
     | NN_Data_I16(elems) => double(elems)
@@ -564,13 +568,14 @@ fun double(d: nndata_t)
     | NN_Data_U64(elems) => double(elems)
     | NN_Data_FP32(elems) => double(elems)
     | NN_Data_FP64(elems) => elems
+    | NN_Data_FP16(elems) => double(elems)
     | NN_Data_Bool(elems) => double(elems)
 }
 
 fun int(d: nndata_t)
 {
     | NN_Data_Empty
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => ([] : int [])
+    | NN_Data_Stub_BF16 => ([] : int [])
     | NN_Data_I8(elems) => int(elems)
     | NN_Data_U8(elems) => int(elems)
     | NN_Data_I16(elems) => int(elems)
@@ -581,6 +586,7 @@ fun int(d: nndata_t)
     | NN_Data_U64(elems) => int(elems)
     | NN_Data_FP32(elems) => int(elems)
     | NN_Data_FP64(elems) => int(elems)
+    | NN_Data_FP16(elems) => int(elems)
     | NN_Data_Bool(elems) => int(elems)
 }
 
@@ -593,7 +599,7 @@ fun arr2str(elems: 't []) = join_embrace("[", "]", ",", elems.map(repr))
 fun tdata2str(d: nndata_t)
 {
     | NN_Data_Empty
-    | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => "[]"
+    | NN_Data_Stub_BF16 => "[]"
     | NN_Data_I8(elems) => arr2str(elems)
     | NN_Data_U8(elems) => arr2str(elems)
     | NN_Data_I16(elems) => arr2str(elems)
@@ -604,6 +610,7 @@ fun tdata2str(d: nndata_t)
     | NN_Data_U64(elems) => arr2str(elems)
     | NN_Data_FP32(elems) => arr2str(elems)
     | NN_Data_FP64(elems) => arr2str(elems)
+    | NN_Data_FP16(elems) => arr2str(elems)
     | NN_Data_Bool(elems) => arr2str(elems)
 }
 
@@ -648,10 +655,10 @@ match self {
     | NN_Data_U32 _ => NN_U32
     | NN_Data_I64 _ => NN_I64
     | NN_Data_U64 _ => NN_U64
-    | NN_Data_Stub_FP16 => NN_FP16
     | NN_Data_Stub_BF16 => NN_BF16
     | NN_Data_FP32 _ => NN_FP32
     | NN_Data_FP64 _ => NN_FP64
+    | NN_Data_FP16 _ => NN_FP16
     | NN_Data_Bool _ => NN_Bool
 }
 
@@ -705,8 +712,9 @@ fun string(t: nntensor_t, ~border: int=3, ~braces: bool=true)
                 | NN_Data_U64 data => rows = row2str(data, n, ofs) :: rows
                 | NN_Data_FP32 data => rows = row2str(data, n, ofs) :: rows
                 | NN_Data_FP64 data => rows = row2str(data, n, ofs) :: rows
+                | NN_Data_FP16 data => rows = row2str(data, n, ofs) :: rows
                 | NN_Data_Bool data => rows = row2str(data, n, ofs) :: rows
-                | NN_Data_Stub_BF16 | NN_Data_Stub_FP16 =>
+                | NN_Data_Stub_BF16 =>
                     throw NotImplementedError
                 }
             } else {
@@ -1079,7 +1087,7 @@ fun elemsize(t: nntyp_t)
 
 fun nndata_t.copy() =
 match self {
-    | NN_Data_Empty | NN_Data_Stub_FP16 | NN_Data_Stub_BF16 => NN_Data_Empty
+    | NN_Data_Empty | NN_Data_Stub_BF16 => NN_Data_Empty
     | NN_Data_I8(arr) => NN_Data_I8(copy(arr))
     | NN_Data_U8(arr) => NN_Data_U8(copy(arr))
     | NN_Data_I16(arr) => NN_Data_I16(copy(arr))
@@ -1090,6 +1098,7 @@ match self {
     | NN_Data_U64(arr) => NN_Data_U64(copy(arr))
     | NN_Data_FP32(arr) => NN_Data_FP32(copy(arr))
     | NN_Data_FP64(arr) => NN_Data_FP64(copy(arr))
+    | NN_Data_FP16(arr) => NN_Data_FP16(copy(arr))
     | NN_Data_Bool(arr) => NN_Data_Bool(copy(arr))
 }
 

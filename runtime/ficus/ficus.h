@@ -512,6 +512,24 @@ bool fx_atoi(const fx_str_t* str, int_* result, int base);
 bool fx_atof(const fx_str_t* str, double* result);
 int fx_itoa(int64_t n, bool nosign, fx_str_t* str);
 
+// the structure must match format_t in Builtins.fx 1:1
+typedef struct fx_format_t
+{
+    char_ fill;
+    char_ align;
+    char_ sign;
+    bool num_alt;
+    int_ width;
+    int_ precision;
+    char_ grouping;
+    char_ typ;
+} fx_format_t;
+
+int fx_parse_format(const fx_str_t* fmtstr, int_ start, fx_format_t* fmt, int_* end);
+int fx_format_int(int64_t x, bool u, const fx_format_t* fmt, fx_str_t* result);
+int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_str_t* result);
+int fx_format_str(const fx_str_t* x, const fx_format_t* fmt, fx_str_t* result);
+
 ////////////////////////// Exceptions //////////////////////
 
 typedef int (*fx_to_string_t)(void*, fx_str_t*, void*);
