@@ -130,6 +130,10 @@ if ntasks > 0 {
 *model.trace = trace
 *model.use_fp16 = use_fp16
 
+val preprocess_params =
+    if use_fp16 {preprocess_params.{elemtype=NN.Ast.NN_FP16}}
+    else {preprocess_params}
+
 for imgname@i <- images {
     println(f"processing '{imgname}' ...")
     val img = Image.Decoder.imread_rgb(imgname)

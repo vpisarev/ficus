@@ -106,10 +106,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     | Ast.NN_Conv {attr={kernel_shape, pads, strides, dilations, group},
         t_inp, t_weights, t_out, t_passby} =>
         val (shape, typ) = get_shape_typ(t_inp)
-        val out_typ = match (typ, *model.use_fp16) {
-            | (Ast.NN_FP32, true) => Ast.NN_FP16
-            | _ => typ
-            }
+        val out_typ = typ
         // for now we only handle planar data
         val shape = match shape.layout {
             | Ast.NN_Layout_NCHW => shape

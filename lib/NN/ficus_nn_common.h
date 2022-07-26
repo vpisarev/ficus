@@ -74,6 +74,9 @@ enum {
     _FX_NN_Nearest_Ceil=4
 };
 
+typedef void (*_fx_unary_func_t)(const void* inptr, void* outptr,
+                                 int_ nelems, const float* param);
+
 static int _fx_compute_resize_tab(int* tab, float* alphatab, int_ inpsz_, int_ outsz_,
                                   float scale, float roi_start, float roi_end,
                                   int mode, int coord_trans, int nearest_mode,
@@ -172,6 +175,13 @@ static int _fx_compute_resize_tab(int* tab, float* alphatab, int_ inpsz_, int_ o
 */
 
 #ifdef __ARM_NEON
+#define _FX_NN_ENABLE_FP16 1
+#define _FX_FP16_CASE(x)
+#else
+#define _FX_FP16_CASE(x)
+#endif
+
+#ifdef __ARM_NEON
 #include <arm_neon.h>
 
 #define _fx_c_exp_hi 88.3762626647949f
@@ -197,7 +207,7 @@ static __inline float32x4_t _fx_vexpq_f32(float32x4_t x) {
     x = vmaxq_f32(x, vdupq_n_f32(_fx_c_exp_lo));
 
     /* express exp(x) as exp(g + n*log(2)) */
-    fx = vmlaq_f32(vdupq_n_f32(0.5f), x, vdupq_n_f32(_fx_c_cephes_LOG2EF));
+    fx = vfmaq_f32(vdupq_n_f32(0.5f), x, vdupq_n_f32(_fx_c_cephes_LOG2EF));
 
     /* perform a floorf */
     tmp = vcvtq_f32_s32(vcvtq_s32_f32(fx));
@@ -213,42 +223,53 @@ static __inline float32x4_t _fx_vexpq_f32(float32x4_t x) {
     x = vsubq_f32(x, tmp);
     x = vsubq_f32(x, z);
 
-    const float _fx_cephes_exp_p[6] = {
-        _fx_c_cephes_exp_p0, _fx_c_cephes_exp_p1,
-        _fx_c_cephes_exp_p2, _fx_c_cephes_exp_p3,
-        _fx_c_cephes_exp_p4, _fx_c_cephes_exp_p5 };
-    float32x4_t y = vld1q_dup_f32(_fx_cephes_exp_p+0);
-    float32x4_t c1 = vld1q_dup_f32(_fx_cephes_exp_p+1);
-    float32x4_t c2 = vld1q_dup_f32(_fx_cephes_exp_p+2);
-    float32x4_t c3 = vld1q_dup_f32(_fx_cephes_exp_p+3);
-    float32x4_t c4 = vld1q_dup_f32(_fx_cephes_exp_p+4);
-    float32x4_t c5 = vld1q_dup_f32(_fx_cephes_exp_p+5);
+    float32x4_t c0 = vdupq_n_f32(_fx_c_cephes_exp_p0);
+    float32x4_t c1 = vdupq_n_f32(_fx_c_cephes_exp_p1);
+    float32x4_t c2 = vdupq_n_f32(_fx_c_cephes_exp_p2);
+    float32x4_t c3 = vdupq_n_f32(_fx_c_cephes_exp_p3);
+    float32x4_t c4 = vdupq_n_f32(_fx_c_cephes_exp_p4);
+    float32x4_t c5 = vdupq_n_f32(_fx_c_cephes_exp_p5);
 
-    y = vmulq_f32(y, x);
     z = vmulq_f32(x, x);
-    y = vaddq_f32(y, c1);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c2);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c3);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c4);
-    y = vmulq_f32(y, x);
-    y = vaddq_f32(y, c5);
-
-    y = vmulq_f32(y, z);
-    y = vaddq_f32(y, x);
+    float32x4_t y = vfmaq_f32(c1, x, c0);
+    y = vfmaq_f32(c2, y, x);
+    y = vfmaq_f32(c3, y, x);
+    y = vfmaq_f32(c4, y, x);
+    y = vfmaq_f32(c5, y, x);
+    y = vfmaq_f32(x, y, z);
     y = vaddq_f32(y, one);
 
     /* build 2^n */
     int32x4_t mm = vcvtq_s32_f32(fx);
     mm = vaddq_s32(mm, vdupq_n_s32(0x7f));
     mm = vshlq_n_s32(mm, 23);
-    float32x4_t pow2n = vreinterpretq_f32_s32(mm);
 
-    y = vmulq_f32(y, pow2n);
+    y = vmulq_f32(y, vreinterpretq_f32_s32(mm));
     return y;
 }
+#endif
+
+void _fx_nn_elemwise_clip_f32(const void* inptr_, void* outptr_,
+                              int_ len, const float* param);
+void _fx_nn_elemwise_leaky_relu_f32(const void* inptr_, void* outptr_,
+                                    int_ len, const float* param);
+void _fx_nn_elemwise_mish_f32(const void* inptr_, void* outptr_,
+                              int_ len, const float* param);
+void _fx_nn_elemwise_sigmoid_f32(const void* inptr_, void* outptr_,
+                                 int_ len, const float* param);
+void _fx_nn_elemwise_tanh_f32(const void* inptr_, void* outptr_,
+                              int_ len, const float* param);
+#ifdef _FX_NN_ENABLE_FP16
+void _fx_nn_elemwise_clip_f16(const void* inptr_, void* outptr_,
+                              int_ len, const float* param);
+void _fx_nn_elemwise_leaky_relu_f16(const void* inptr_, void* outptr_,
+                                    int_ len, const float* param);
+void _fx_nn_elemwise_mish_f16(const void* inptr_, void* outptr_,
+                              int_ len, const float* param);
+void _fx_nn_elemwise_sigmoid_f16(const void* inptr_, void* outptr_,
+                                 int_ len, const float* param);
+void _fx_nn_elemwise_tanh_f16(const void* inptr_, void* outptr_,
+                              int_ len, const float* param);
 #endif
 
 #ifdef __cplusplus

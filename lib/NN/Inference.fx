@@ -42,7 +42,7 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
         val inp_typ = inp.elemtype()
         //println(f"input #{i}: {arg}")
         assert(`arg.argkind == Ast.NN_Arg_Input`)
-        assert(`arg.typ == inp_typ`)
+        assert(`arg.typ == inp_typ || (arg.typ == Ast.NN_FP32 && inp_typ == Ast.NN_FP16 && *model.use_fp16)`)
         assert(`arg.shape.layout == inp.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown`)
         model.fit(argidx, inp.shape, inp_typ)
         Ast.copy_tensor_data(inp.data, model.tensors[argidx].data)

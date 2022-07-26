@@ -57,7 +57,7 @@ type image_preprocess_params_t =
         FX_SWAP(s0, s2, t);
     }
 
-    if (elemtype != _FX_NN_U8 && elemtype != _FX_NN_FP32)
+    if (elemtype != _FX_NN_U8 && elemtype != _FX_NN_FP32 && elemtype != _FX_NN_FP16)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     if ((elemtype == _FX_NN_U8) && (s0 != 1.f || s1 != 1.f || s2 != 1.f))
@@ -174,12 +174,13 @@ type image_preprocess_params_t =
                     outptr[Cstep] = g;
                     outptr[Cstep*2] = b;
                 }
-            } else if (elemtype == _FX_NN_FP32) {
+            } else {
                 const float* bbuf = (const float*)borderbuf;
                 float r_def = bbuf[0], g_def = bbuf[1], b_def = bbuf[2];
                 float* outptr = (float*)outptr_;
+                fx_f16_t* outptr_f16 = (fx_f16_t*)outptr_;
 
-                for (int_ x = 0; x < W; x++, outptr += pixsize) {
+                for (int_ x = 0; x < W; x++, outptr += pixsize, outptr_f16 += pixsize) {
                     int ix = xbuf[x];
                     float sx = alphabuf[x];
                     float r, g, b;
@@ -220,9 +221,15 @@ type image_preprocess_params_t =
                         g = ((g0 + (g2 - g0)*sy) - m1)*s1;
                         b = ((b0 + (b2 - b0)*sy) - m2)*s2;
                     }
-                    outptr[0] = r;
-                    outptr[Cstep] = g;
-                    outptr[Cstep*2] = b;
+                    if (elemtype == _FX_NN_FP32) {
+                        outptr[0] = r;
+                        outptr[Cstep] = g;
+                        outptr[Cstep*2] = b;
+                    } else {
+                        outptr_f16[0] = FX_FLOAT16(r);
+                        outptr_f16[Cstep] = FX_FLOAT16(g);
+                        outptr_f16[Cstep*2] = FX_FLOAT16(b);
+                    }
                 }
             }
         }

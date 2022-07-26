@@ -6,7 +6,7 @@ import Ast
 
 type activ_func_t =
     | ACTIV_NONE | ACTIV_RELU | ACTIV_CLIP | ACTIV_LRELU
-    | ACTIV_PRELU | ACTIV_SIGMOID | ACTIV_TANH | ACTIV_MISH
+    | ACTIV_SIGMOID | ACTIV_TANH | ACTIV_MISH
 
 @ccode {
 #include <assert.h>
@@ -23,15 +23,14 @@ enum {
     _FX_WINO_AREA=_FX_WINO_SIZE*_FX_WINO_SIZE
 };
 
-enum { _FX_ACTIV_CUSTOM=0, _FX_ACTIV_NONE=1, _FX_ACTIV_RELU=2, _FX_ACTIV_CLIP=3, _FX_ACTIV_LRELU=4,
-       _FX_ACTIV_PRELU=5, _FX_ACTIV_SIGMOID=6, _FX_ACTIV_TANH=7, _FX_ACTIV_MISH=8 };
+enum { _FX_ACTIV_NONE=1, _FX_ACTIV_RELU=2, _FX_ACTIV_CLIP=3, _FX_ACTIV_LRELU=4,
+       _FX_ACTIV_SIGMOID=6, _FX_ACTIV_TANH=7, _FX_ACTIV_MISH=8 };
 
 typedef void (*_fx_conv_block_t)(int k, const void *a, const void *b,
                                  void *c, int ldc, const void* pb, int ldp,
-                                 const void* bias, float alpha,
+                                 const float* bias, float alpha,
                                  float maxval, bool activ );
-typedef void (*_fx_activ_func_t)(float* data, size_t step, int size0,
-                                 int size1, const float* params);
+typedef _fx_unary_func_t _fx_activ_func_t;
 
 #ifdef __ARM_NEON
 #define FX_CONV_MR 4
@@ -48,106 +47,10 @@ enum { FX_VEC_NLANES=1 };
 #ifdef __ARM_NEON
 #define FX_CONV_MR_FP16 8
 #define FX_CONV_NR_FP16 24
-typedef __fp16 flt16_t;
 #else
 #define FX_CONV_MR_FP16 FX_CONV_MR
 #define FX_CONV_NR_FP16 FX_CONV_NR
-typedef int16_t flt16_t;
 #endif
-
-static void _fx_activ_clip(float* data, size_t step, int size0,
-                            int size1, const float* params)
-{
-    float a = params[0], b = params[1];
-    for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j++) {
-            float x = data[j];
-            x = x >= a ? x : a;
-            x = x <= b ? x : b;
-            data[j] = x;
-        }
-    }
-}
-
-static void _fx_activ_lrelu(float* data, size_t step, int size0,
-                            int size1, const float* params)
-{
-    float alpha = params[0];
-    for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j++) {
-            float x = data[j];
-            float a = x >= 0.f ? 1 : alpha;
-            data[j] = x*a;
-        }
-    }
-}
-
-static void _fx_activ_prelu(float* data, size_t step, int size0,
-                            int size1, const float* params)
-{
-    for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j++) {
-            float x = data[j];
-            float alpha = params[j];
-            float a = x >= 0.f ? 1 : alpha;
-            data[j] = x*a;
-        }
-    }
-}
-
-static void _fx_activ_sigmoid(float* data, size_t step, int size0,
-                              int size1, const float* params)
-{
-    for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j++) {
-            float x = data[j];
-            float e_x = expf(-fabsf(x));
-            float denom = 1.f/(1 + e_x);
-            data[j] = (x >= 0.f ? 1.f : e_x)*denom;
-        }
-    }
-}
-
-static void _fx_activ_tanh(float* data, size_t step, int size0,
-                           int size1, const float* params)
-{
-    for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j++) {
-            data[j] = tanh(data[j]);
-        }
-    }
-}
-
-static void _fx_activ_mish(float* data, size_t step, int size0,
-                           int size1, const float* params)
-{
-#ifdef __ARM_NEON
-    assert(size1 % 4 == 0);
-    float32x4_t thr = vdupq_n_f32(-36.73f), one = vdupq_n_f32(1.f), z = vdupq_n_f32(0.f);
-    for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j += 4) {
-            float32x4_t x = vld1q_f32(data + j);
-            x = vbslq_f32(vcleq_f32(x, thr), z, x);
-            float32x4_t y = _fx_vexpq_f32(vsubq_f32(z, x));
-            float32x4_t y2 = vaddq_f32(y, y);
-            float32x4_t y2_1 = vaddq_f32(y2, one);
-            x = vdivq_f32(
-                vmulq_f32(x, y2_1),
-                vaddq_f32(y2_1, vmulq_f32(y2, y)));
-            vst1q_f32(data + j, x);
-        }
-    }
-#else
-    for (int i = 0; i < size0; i++, data += step) {
-        for (int j = 0; j < size1; j += 4) {
-            float x = data[j];
-            x *= (x > -36.73f ? 1.f : 0.f);
-            float y = expf(-x);
-            data[j] = x*(1 + 2*y)/(1 + 2*y + 2*y*y);
-        }
-    }
-#endif
-}
 
 enum { FX_CONV_TYPE_GENERIC=0, FX_CONV_TYPE_DEPTHWISE=1, FX_CONV_TYPE_WINOGRAD3X3=2 };
 
@@ -160,13 +63,14 @@ typedef struct _fx_conv2d_t
     int pad_top, pad_bottom, pad_left, pad_right;
     int conv_type;
     float* weights;
-    flt16_t* wf16;
+    fx_f16_t* wf16;
     float* bias;
     int activ;
-    float* activ_params;
-    int nactive_params;
     _fx_activ_func_t activ_func;
-    float minval, maxval;
+    _fx_activ_func_t activ_func_f16;
+    int nactiv_params;
+    float* activ_params;
+    float minval, maxval, alpha;
 } _fx_conv2d_t;
 
 static void _fx_free_conv2d(void* conv_ptr)
@@ -196,9 +100,8 @@ static int _fx_init_conv2d(
     const float* bn_shift,
     float bn_eps,
     int activ,
-    _fx_activ_func_t activ_func,
     const float* activ_params,
-    int activ_nparams,
+    int nactiv_params,
     fx_cptr_t* fx_result)
 {
     _fx_conv2d_t* conv = (_fx_conv2d_t*)fx_malloc(sizeof(*conv));
@@ -233,33 +136,39 @@ static int _fx_init_conv2d(
         conv->conv_type = FX_CONV_TYPE_GENERIC;
 #endif
     conv->activ = activ;
-    conv->activ_func =
-        activ == _FX_ACTIV_CUSTOM ? activ_func :
-        activ == _FX_ACTIV_RELU ? 0 :
-        activ == _FX_ACTIV_CLIP ? _fx_activ_clip :
-        activ == _FX_ACTIV_LRELU ? _fx_activ_lrelu :
-        activ == _FX_ACTIV_PRELU ? _fx_activ_prelu :
-        activ == _FX_ACTIV_MISH ? _fx_activ_mish :
-        activ == _FX_ACTIV_SIGMOID ? _fx_activ_sigmoid :
-        activ == _FX_ACTIV_TANH ? _fx_activ_tanh : 0;
     conv->minval = -FLT_MAX;
     conv->maxval = FLT_MAX;
-    conv->activ_params = 0;
+    conv->alpha = 1.f;
     if (activ == _FX_ACTIV_RELU) {
+        conv->alpha = 0.f;
         conv->minval = 0.f;
+    } else if (activ == _FX_ACTIV_LRELU) {
+        assert(nactiv_params == 1);
+        conv->alpha = activ_params[0];
+    } else if (activ == _FX_ACTIV_CLIP) {
+        assert(nactiv_params == 2);
+        conv->minval = activ_params[0];
+        conv->maxval = activ_params[1];
+        conv->alpha = conv->minval == 0.f ? 0.f : 1.f;
+        conv->activ_func = _fx_nn_elemwise_clip_f32;
+        conv->activ_func_f16 = _fx_nn_elemwise_clip_f16;
+    } else if (activ == _FX_ACTIV_MISH) {
+        conv->activ_func = _fx_nn_elemwise_mish_f32;
+        conv->activ_func_f16 = _fx_nn_elemwise_mish_f16;
+    } else if (activ == _FX_ACTIV_SIGMOID) {
+        conv->activ_func = _fx_nn_elemwise_sigmoid_f32;
+        conv->activ_func_f16 = _fx_nn_elemwise_sigmoid_f16;
+    } else if (activ == _FX_ACTIV_TANH) {
+        conv->activ_func = _fx_nn_elemwise_tanh_f32;
+        conv->activ_func_f16 = _fx_nn_elemwise_tanh_f16;
     } else {
-        if (activ == _FX_ACTIV_CLIP) {
-            assert(activ_params && activ_nparams == 2);
-            conv->minval = activ_params[0];
-            conv->maxval = activ_params[1];
-        }
-        if (activ_params) {
-            assert(activ_nparams > 0);
-            conv->activ_params = (float*)fx_malloc(activ_nparams*sizeof(activ_params[0]));
-            if (!conv->activ_params)
-                return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
-            memcpy(conv->activ_params, activ_params, activ_nparams*sizeof(activ_params[0]));
-        }
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    }
+    conv->nactiv_params = nactiv_params;
+    if (nactiv_params > 0) {
+        size_t param_sz = nactiv_params*sizeof(conv->activ_params[0]);
+        conv->activ_params = (float*)fx_malloc(param_sz);
+        memcpy(conv->activ_params, activ_params, param_sz);
     }
 
     if (bn_ab) {
@@ -335,16 +244,16 @@ static int _fx_init_conv2d(
         }
     } else {
         int Kg = K/ngroups, Cg = C/ngroups;
-#ifdef __ARM_NEON
+#ifdef _FX_NN_ENABLE_FP16
         {
         // the weights are packed as
         // ngroups x (ceil((K/ngroups)/FX_CONV_MR)*FX_CONV_MR) x (Cg*Hk*Wk) x FX_CONV_MR tensor
         int Kg_aligned = ((Kg + FX_CONV_MR_FP16 - 1)/FX_CONV_MR_FP16)*FX_CONV_MR_FP16;
         size_t nweights = (size_t)ngroups*Kg_aligned*Cg*Hk*Wk;
-        conv->wf16 = (flt16_t*)fx_malloc(nweights*sizeof(conv->weights[0]));
+        conv->wf16 = (fx_f16_t*)fx_malloc(nweights*sizeof(conv->weights[0]));
         if (conv->wf16) {
             memset(conv->wf16, 0, nweights*sizeof(conv->wf16[0]));
-            flt16_t* packed_wptr = conv->wf16;
+            fx_f16_t* packed_wptr = conv->wf16;
             for(int g = 0; g < ngroups; g++) {
                 for(int k0 = 0; k0 < Kg_aligned; k0 += FX_CONV_MR_FP16) {
                     int dk = Kg - k0 < FX_CONV_MR_FP16 ? Kg - k0 : FX_CONV_MR_FP16;
@@ -355,10 +264,10 @@ static int _fx_init_conv2d(
                             int k = 0;
                             for(; k < dk; k++, wptr += Cg*Hk*Wk) {
                                 float scale = bn_ab ? bn_ab[k_idx+k] : 1.f;
-                                packed_wptr[k] = (flt16_t)(*wptr*scale);
+                                packed_wptr[k] = (fx_f16_t)(*wptr*scale);
                             }
                             for(; k < FX_CONV_MR_FP16; k++)
-                                packed_wptr[k] = (flt16_t)0.f;
+                                packed_wptr[k] = (fx_f16_t)0.f;
                         }
                     }
                 }
@@ -456,7 +365,7 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
     bool s1d1 = stride_x == 1 && stride_y == 1 && dilation_x == 1 && dilation_y == 1;
     int HkWkCg = ksize*Cg, HkWkC = HkWkCg*ngroups;
     size_t taskbufsize = FX_CONV_NR_FP16*ksize*Cg;
-    flt16_t* inpbuf_all = (flt16_t*)fx_malloc(ntasks*taskbufsize*sizeof(inpbuf_all[0]) + ksize*3*sizeof(int));
+    fx_f16_t* inpbuf_all = (fx_f16_t*)fx_malloc(ntasks*taskbufsize*sizeof(inpbuf_all[0]) + ksize*3*sizeof(int));
     int* interior_ofstab = (int*)(inpbuf_all + ntasks*taskbufsize);
     int* yxtab = interior_ofstab + Hk*Wk;
     int64_t ts = fx_tick_count();
@@ -477,7 +386,7 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
     #pragma omp parallel for num_threads(ntasks)
     for (int task_id = 0; task_id < ntasks; task_id++) {
-        flt16_t* inpbuf_task = &inpbuf_all[taskbufsize*task_id];
+        fx_f16_t* inpbuf_task = &inpbuf_all[taskbufsize*task_id];
         //float inpbuf_task_gold[Cg*ksize*FX_CONV_NR_FP16];
         int ngs0 = (int)((size_t)nsubtasks*task_id/ntasks);
         int ngs1 = (int)((size_t)nsubtasks*(task_id+1)/ntasks);
@@ -506,7 +415,7 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
             }
 
             for (; yx0 < yx_limit; yx0 += FX_CONV_NR_FP16) {
-                flt16_t* inpbuf = inpbuf_task;
+                fx_f16_t* inpbuf = inpbuf_task;
                 const float* inptr = inp + inp_plane_ofs;
                 int yx1 = yx0 + FX_CONV_NR_FP16;
                 yx1 = yx1 <= yx_limit ? yx1 : yx_limit;
@@ -532,12 +441,12 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
                         // Compilers will likely unroll this loop properly.
                         for (int c = 0; c < Cg; c++, inptr += inp_planesize, inpbuf += FX_CONV_NR_FP16) {
                             for (int j = 0; j < FX_CONV_NR_FP16; j++)
-                                inpbuf[j] = (flt16_t)inptr[j];
+                                inpbuf[j] = (fx_f16_t)inptr[j];
                         }
                     } else {
                         for (int c = 0; c < Cg; c++, inptr += inp_planesize, inpbuf += FX_CONV_NR_FP16) {
                             for (int j = 0; j < slice_len; j++)
-                                inpbuf[j] = (flt16_t)inptr[j];
+                                inpbuf[j] = (fx_f16_t)inptr[j];
                             memset(inpbuf + slice_len, 0, (FX_CONV_NR_FP16 - slice_len)*sizeof(inpbuf[0]));
                         }
                     }
@@ -560,7 +469,7 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
                         Wi_part = (Wi_part < Wi - xi_0) ? Wi_part : (Wi - xi_0);
                         // di_z0 is how many zero elements we put to inpbuf between rows.
                         int di_z0 = dx_k <= 0 ? -dx_k : W0 + dx_k - Wi;
-                        flt16_t* inpbuf_k = inpbuf_task + k*FX_CONV_NR_FP16;
+                        fx_f16_t* inpbuf_k = inpbuf_task + k*FX_CONV_NR_FP16;
                         int i = 0, di = W0 - x0;
                         // if we are initially outside of the input tensor, we first put some 0's
                         // into inpbuf and then start the main loop
@@ -616,7 +525,7 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
                         int dy = yxtab[k*2], dx = yxtab[k*2+1];
                         int i = 0, y0 = y0_, x0 = x0_;
                         for (; i < FX_CONV_NR_FP16;) {
-                            flt16_t* inpbuf_ki = inpbuf_task + k*FX_CONV_NR_FP16 + i;
+                            fx_f16_t* inpbuf_ki = inpbuf_task + k*FX_CONV_NR_FP16 + i;
                             int yi = y0*stride_y + dy - pad_top;
                             int xi = x0*stride_x + dx - pad_left;
 
@@ -626,15 +535,15 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
                                 if (i + 4 <= FX_CONV_NR_FP16 && x0 + 4 <= W0 && xi + stride_x*4 <= Wi) {
                                     if (stride_x == 2) {
                                         for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16*ksize, inptr_ki += inp_planesize) {
-                                            flt16_t t0 = (flt16_t)inptr_ki[0], t1 = (flt16_t)inptr_ki[2];
-                                            flt16_t t2 = (flt16_t)inptr_ki[4], t3 = (flt16_t)inptr_ki[6];
+                                            fx_f16_t t0 = (fx_f16_t)inptr_ki[0], t1 = (fx_f16_t)inptr_ki[2];
+                                            fx_f16_t t2 = (fx_f16_t)inptr_ki[4], t3 = (fx_f16_t)inptr_ki[6];
                                             inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
                                             inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
                                         }
                                     } else {
                                         for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16*ksize, inptr_ki += inp_planesize) {
-                                            flt16_t t0 = (flt16_t)inptr_ki[0], t1 = (flt16_t)inptr_ki[stride_x];
-                                            flt16_t t2 = (flt16_t)inptr_ki[stride_x*2], t3 = (flt16_t)inptr_ki[stride_x*3];
+                                            fx_f16_t t0 = (fx_f16_t)inptr_ki[0], t1 = (fx_f16_t)inptr_ki[stride_x];
+                                            fx_f16_t t2 = (fx_f16_t)inptr_ki[stride_x*2], t3 = (fx_f16_t)inptr_ki[stride_x*3];
                                             inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
                                             inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
                                         }
@@ -643,13 +552,13 @@ static int _fx_conv2d_fp16(int ndims, const int_* inpsize, const float* inp,
                                     x0 += 4;
                                 } else {
                                     for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16*ksize, inptr_ki += inp_planesize)
-                                        *inpbuf_ki = (flt16_t)*inptr_ki;
+                                        *inpbuf_ki = (fx_f16_t)*inptr_ki;
                                     i++;
                                     x0++;
                                 }
                             } else {
                                 for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16*ksize)
-                                    inpbuf_ki[0] = (flt16_t)0.f;
+                                    inpbuf_ki[0] = (fx_f16_t)0.f;
                                 i++;
                                 x0++;
                             }
@@ -734,9 +643,13 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     int ndims = inp_shape_->dim[0].size;
     int out_ndims = out_shape_->dim[0].size;
     _fx_conv_block_t conv_block_func;
-    float minval = conv->minval, maxval = conv->maxval;
-    bool fast_activ = conv->activ == _FX_ACTIV_RELU || conv->activ == _FX_ACTIV_CLIP;
-    _fx_activ_func_t activ_func = !fast_activ ? conv->activ_func : 0;
+    float minval = conv->minval, maxval = conv->maxval, alpha = conv->alpha;
+    bool fast_activ = conv->activ == _FX_ACTIV_RELU ||
+                      (conv->activ == _FX_ACTIV_CLIP && minval == 0.f) ||
+                      conv->activ == _FX_ACTIV_LRELU;
+    _fx_activ_func_t activ_func = fast_activ || conv->activ == _FX_ACTIV_NONE ? 0 :
+        inp_typ == _FX_NN_FP32 ? conv->activ_func :
+        inp_typ == _FX_NN_FP16 ? conv->activ_func_f16 : 0;
     const float* activ_params = conv->activ_params;
 
     int N = inp_shape[0], C = conv->C, K = conv->K;
@@ -769,7 +682,7 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     if (ndims != 4 || inp_shape[0] != out_shape[0] ||
         inp_shape[1] != conv->C || out_shape[1] != conv->K)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    if (inp_typ != out_typ)
+    if (inp_typ != out_typ || (pb_typ > 1 && pb_typ != inp_typ))
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
     if (s1d1 && (pad_right > conv->pad_right || pad_right < 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
@@ -785,7 +698,8 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
         return _fx_depthwise_conv2d(ndims, inp_shape, inp_data, out_shape, out_data, conv, ntasks);
     }
 
-    conv_block_func = inp_typ == _FX_NN_FP32 ? _fx_conv_block_f32 : 0;
+    conv_block_func = inp_typ == _FX_NN_FP32 ? _fx_conv_block_f32 :
+                      _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_conv_block_f16 :) 0;
     if (!conv_block_func)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
@@ -864,9 +778,9 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                         if (esz == sizeof(float)) {
                             for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz)
                                 memcpy(inpbuf, inptr, CONV_NR*sizeof(float));
-                        } else if (esz == sizeof(flt16_t)) {
+                        } else if (esz == sizeof(fx_f16_t)) {
                             for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz)
-                                memcpy(inpbuf, inptr, CONV_NR*sizeof(flt16_t));
+                                memcpy(inpbuf, inptr, CONV_NR*sizeof(fx_f16_t));
                         } else {
                             for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz)
                                 memcpy(inpbuf, inptr, CONV_NR*esz);
@@ -1046,26 +960,29 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                 // 2. do convolution, compute Kg x (yx1 - yx0) part of the output tensor
                 {
                 int outstep0 = out_planesize;
-                size_t outofs = ((n*ngroups + g)*Kg + k0)*outstep0 + yx0;
-                float* outptr0 = (float*)out_data->data + outofs;
-                const float* pbptr0 = pb_data->data ? (const float*)pb_data->data + outofs : 0;
+                size_t outofs = (((n*ngroups + g)*Kg + k0)*outstep0 + yx0)*esz;
+                char* outptr0 = out_data->data + outofs;
+                const char* pbptr0 = pb_data->data ? pb_data->data + outofs : 0;
                 float cbuf[CONV_MR*CONV_NR], pbbuf[CONV_MR*CONV_NR];
                 memset(pbbuf, 0, sizeof(pbbuf));
-                for(int k = k0; k < k1; k += CONV_MR, outptr0 += outstep0*CONV_MR,
-                                    pbptr0 += (pbptr0 ? outstep0*CONV_MR : 0)) {
+                partial0 = partial0 || activ_func;
+                for(int k = k0; k < k1; k += CONV_MR, outptr0 += outstep0*CONV_MR*esz,
+                                    pbptr0 += (pbptr0 ? outstep0*CONV_MR*esz : 0))
+                {
                     int dk = Kg - k < CONV_MR ? Kg - k : CONV_MR;
-                    bool partial = partial0 || dk < CONV_MR || activ_func;
-                    float* outptr = outptr0;
-                    float* pbptr = (float*)pbptr0;
+                    bool partial = partial0 || dk < CONV_MR;
+                    char* outptr = outptr0;
+                    char* pbptr = (char*)pbptr0;
                     int outstep = outstep0;
                     if (partial) {
-                        outptr = cbuf;
+                        outptr = (char*)cbuf;
                         outstep = CONV_NR;
                         if (pbptr) {
-                            pbptr = pbbuf;
+                            pbptr = (char*)pbbuf;
                             for (int k1 = 0; k1 < dk; k1++)
-                                memcpy(&pbbuf[k1*CONV_NR], pbptr0 + k1*outstep0,
-                                    slice_len*sizeof(pbbuf[0]));
+                                memcpy(pbptr + k1*(CONV_NR*esz),
+                                       pbptr0 + k1*(outstep0*esz),
+                                       slice_len*esz);
                         }
                     }
                     conv_block_func(HkWkCg, conv->weights+(g*Kg_aligned + k)*HkWkCg,
@@ -1073,10 +990,11 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     conv->bias + Kg*g + k, minval, maxval, fast_activ);
                     if (partial) {
                         if (activ_func)
-                            activ_func(outptr, outstep, 1, dk*CONV_NR, activ_params);
+                            activ_func(outptr, outptr, dk*CONV_NR, activ_params);
                         for (int i = 0; i < dk; i++)
-                            memcpy(outptr0 + i*outstep0, &cbuf[i*CONV_NR],
-                                   (yx1 - yx0)*sizeof(cbuf[0]));
+                            memcpy(outptr0 + i*(outstep0*esz),
+                                   outptr + i*(CONV_NR*esz),
+                                   (yx1 - yx0)*esz);
                     }
                 }
                 }
@@ -1127,7 +1045,7 @@ fun init_conv(kernel_shape: int [], strides: int [],
         (int)pads_[0], (int)pads_[1], (int)pads_[2], (int)pads_[3],
         (const float*)w_data->data, (const float*)bias_data->data,
         bn_data_[0], bn_data_[1], bn_data_[2], bn_data_[3], bn_eps,
-        (int)activ_func->tag, 0, (const float*)activ_params->data,
+        (int)activ_func->tag, (const float*)activ_params->data,
         (int)n_activ_params, fx_result);
 }
 

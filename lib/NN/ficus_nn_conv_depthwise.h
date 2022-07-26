@@ -4,7 +4,7 @@
 */
 
 // (ARM-only)
-// im2col & depth-wise fp16 convolution.
+// depthwise fp32 & fp16 convolution.
 // The header is not intented to be used alone.
 // It is assumed to be included into OpConv.fx
 
@@ -289,7 +289,7 @@ static int _fx_depthwise_conv2d(int ndims, const int_* inp_shape, const fx_arr_t
             }
         }
         if (activ_func)
-            activ_func(outptr, 0, 1, (int)out_planesize, activ_params);
+            activ_func(outptr, outptr, (int_)out_planesize, activ_params);
     }
     return FX_OK;
 }

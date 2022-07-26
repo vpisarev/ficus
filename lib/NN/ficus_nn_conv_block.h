@@ -8,13 +8,12 @@
 // It is assumed to be included into OpConv.fx
 static void _fx_conv_block_f32( int k, const void* a_, const void* b_,
                                 void* c_, int ldc, const void* pb_, int ldp,
-                                const void* bias_, float minval, float maxval, bool activ)
+                                const float* bias, float alpha, float maxval, bool activ)
 {
     const float* a = (const float*)a_;
     const float* b = (const float*)b_;
     float* c = (float*)c_;
     const float* pb = (const float*)pb_;
-    const float* bias = (const float*)bias_;
 
 #ifdef __ARM_NEON
 #if FX_CONV_MR == 4 && FX_CONV_NR == 28
@@ -98,38 +97,39 @@ static void _fx_conv_block_f32( int k, const void* a_, const void* b_,
     }
 
     if (activ) {
-        float32x4_t vmin = vdupq_n_f32(minval), vmax = vdupq_n_f32(maxval);
-        c00 = vminq_f32(vmaxq_f32(c00, vmin), vmax);
-        c01 = vminq_f32(vmaxq_f32(c01, vmin), vmax);
-        c02 = vminq_f32(vmaxq_f32(c02, vmin), vmax);
-        c03 = vminq_f32(vmaxq_f32(c03, vmin), vmax);
-        c04 = vminq_f32(vmaxq_f32(c04, vmin), vmax);
-        c05 = vminq_f32(vmaxq_f32(c05, vmin), vmax);
-        c06 = vminq_f32(vmaxq_f32(c06, vmin), vmax);
+        float32x4_t valpha = vdupq_n_f32(alpha), vmax = vdupq_n_f32(maxval);
+        float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
+        c00 = vmulq_f32(vminq_f32(c00, vmax), vbslq_f32(vcltq_f32(c00, z), valpha, one));
+        c01 = vmulq_f32(vminq_f32(c01, vmax), vbslq_f32(vcltq_f32(c01, z), valpha, one));
+        c02 = vmulq_f32(vminq_f32(c02, vmax), vbslq_f32(vcltq_f32(c02, z), valpha, one));
+        c03 = vmulq_f32(vminq_f32(c03, vmax), vbslq_f32(vcltq_f32(c03, z), valpha, one));
+        c04 = vmulq_f32(vminq_f32(c04, vmax), vbslq_f32(vcltq_f32(c04, z), valpha, one));
+        c05 = vmulq_f32(vminq_f32(c05, vmax), vbslq_f32(vcltq_f32(c05, z), valpha, one));
+        c06 = vmulq_f32(vminq_f32(c06, vmax), vbslq_f32(vcltq_f32(c06, z), valpha, one));
 
-        c10 = vminq_f32(vmaxq_f32(c10, vmin), vmax);
-        c11 = vminq_f32(vmaxq_f32(c11, vmin), vmax);
-        c12 = vminq_f32(vmaxq_f32(c12, vmin), vmax);
-        c13 = vminq_f32(vmaxq_f32(c13, vmin), vmax);
-        c14 = vminq_f32(vmaxq_f32(c14, vmin), vmax);
-        c15 = vminq_f32(vmaxq_f32(c15, vmin), vmax);
-        c16 = vminq_f32(vmaxq_f32(c16, vmin), vmax);
+        c10 = vmulq_f32(vminq_f32(c10, vmax), vbslq_f32(vcltq_f32(c10, z), valpha, one));
+        c11 = vmulq_f32(vminq_f32(c11, vmax), vbslq_f32(vcltq_f32(c11, z), valpha, one));
+        c12 = vmulq_f32(vminq_f32(c12, vmax), vbslq_f32(vcltq_f32(c12, z), valpha, one));
+        c13 = vmulq_f32(vminq_f32(c13, vmax), vbslq_f32(vcltq_f32(c13, z), valpha, one));
+        c14 = vmulq_f32(vminq_f32(c14, vmax), vbslq_f32(vcltq_f32(c14, z), valpha, one));
+        c15 = vmulq_f32(vminq_f32(c15, vmax), vbslq_f32(vcltq_f32(c15, z), valpha, one));
+        c16 = vmulq_f32(vminq_f32(c16, vmax), vbslq_f32(vcltq_f32(c16, z), valpha, one));
 
-        c20 = vminq_f32(vmaxq_f32(c20, vmin), vmax);
-        c21 = vminq_f32(vmaxq_f32(c21, vmin), vmax);
-        c22 = vminq_f32(vmaxq_f32(c22, vmin), vmax);
-        c23 = vminq_f32(vmaxq_f32(c23, vmin), vmax);
-        c24 = vminq_f32(vmaxq_f32(c24, vmin), vmax);
-        c25 = vminq_f32(vmaxq_f32(c25, vmin), vmax);
-        c26 = vminq_f32(vmaxq_f32(c26, vmin), vmax);
+        c20 = vmulq_f32(vminq_f32(c20, vmax), vbslq_f32(vcltq_f32(c20, z), valpha, one));
+        c21 = vmulq_f32(vminq_f32(c21, vmax), vbslq_f32(vcltq_f32(c21, z), valpha, one));
+        c22 = vmulq_f32(vminq_f32(c22, vmax), vbslq_f32(vcltq_f32(c22, z), valpha, one));
+        c23 = vmulq_f32(vminq_f32(c23, vmax), vbslq_f32(vcltq_f32(c23, z), valpha, one));
+        c24 = vmulq_f32(vminq_f32(c24, vmax), vbslq_f32(vcltq_f32(c24, z), valpha, one));
+        c25 = vmulq_f32(vminq_f32(c25, vmax), vbslq_f32(vcltq_f32(c25, z), valpha, one));
+        c26 = vmulq_f32(vminq_f32(c26, vmax), vbslq_f32(vcltq_f32(c26, z), valpha, one));
 
-        c30 = vminq_f32(vmaxq_f32(c30, vmin), vmax);
-        c31 = vminq_f32(vmaxq_f32(c31, vmin), vmax);
-        c32 = vminq_f32(vmaxq_f32(c32, vmin), vmax);
-        c33 = vminq_f32(vmaxq_f32(c33, vmin), vmax);
-        c34 = vminq_f32(vmaxq_f32(c34, vmin), vmax);
-        c35 = vminq_f32(vmaxq_f32(c35, vmin), vmax);
-        c36 = vminq_f32(vmaxq_f32(c36, vmin), vmax);
+        c30 = vmulq_f32(vminq_f32(c30, vmax), vbslq_f32(vcltq_f32(c30, z), valpha, one));
+        c31 = vmulq_f32(vminq_f32(c31, vmax), vbslq_f32(vcltq_f32(c31, z), valpha, one));
+        c32 = vmulq_f32(vminq_f32(c32, vmax), vbslq_f32(vcltq_f32(c32, z), valpha, one));
+        c33 = vmulq_f32(vminq_f32(c33, vmax), vbslq_f32(vcltq_f32(c33, z), valpha, one));
+        c34 = vmulq_f32(vminq_f32(c34, vmax), vbslq_f32(vcltq_f32(c34, z), valpha, one));
+        c35 = vmulq_f32(vminq_f32(c35, vmax), vbslq_f32(vcltq_f32(c35, z), valpha, one));
+        c36 = vmulq_f32(vminq_f32(c36, vmax), vbslq_f32(vcltq_f32(c36, z), valpha, one));
     }
     vst1q_f32(c, c00); vst1q_f32(c+4, c01);
     vst1q_f32(c+8, c02); vst1q_f32(c+12, c03);
@@ -178,8 +178,8 @@ static void _fx_conv_block_f32( int k, const void* a_, const void* b_,
         for( int i = 0; i < FX_CONV_MR*FX_CONV_NR; i++ )
         {
             float v = cbuf[i];
-            v = v >= minval ? v : minval;
             v = v <= maxval ? v : maxval;
+            v *= (v < 0.f ? alpha : 1.f);
             cbuf[i] = v;
         }
     }
@@ -190,12 +190,16 @@ static void _fx_conv_block_f32( int k, const void* a_, const void* b_,
 #endif
 }
 
-#ifdef __ARM_NEON
-static void _fx_conv_block_fp16( int k, const flt16_t *a, const flt16_t *b,
-                                float *c, int ldc, const float* pb, int ldp,
+#ifdef _FX_NN_ENABLE_FP16
+static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
+                                void *c_, int ldc, const void* pb_, int ldp,
                                 const float* bias, float alpha,
                                 float maxval, bool activ )
 {
+    const fx_f16_t* a = (const fx_f16_t*)a_;
+    const fx_f16_t* b = (const fx_f16_t*)b_;
+    fx_f16_t* c = (fx_f16_t*)c_;
+    const fx_f16_t* pb = (const fx_f16_t*)pb_;
 #if FX_CONV_NR_FP16 == 24 && FX_CONV_MR_FP16 == 8
     float cbuf[FX_CONV_MR_FP16*FX_CONV_NR_FP16];
 
@@ -221,14 +225,14 @@ static void _fx_conv_block_fp16( int k, const flt16_t *a, const flt16_t *b,
 
     const int BLOCK_SZ = 64;
     for( int k0 = 0; k0 < k; ) {
-        float16x8_t c00 = vdupq_n_f16((flt16_t)0.f), c01 = c00, c02 = c00;
-        float16x8_t c10 = vdupq_n_f16((flt16_t)0.f), c11 = c10, c12 = c10;
-        float16x8_t c20 = vdupq_n_f16((flt16_t)0.f), c21 = c20, c22 = c20;
-        float16x8_t c30 = vdupq_n_f16((flt16_t)0.f), c31 = c30, c32 = c30;
-        float16x8_t c40 = vdupq_n_f16((flt16_t)0.f), c41 = c40, c42 = c40;
-        float16x8_t c50 = vdupq_n_f16((flt16_t)0.f), c51 = c50, c52 = c50;
-        float16x8_t c60 = vdupq_n_f16((flt16_t)0.f), c61 = c60, c62 = c60;
-        float16x8_t c70 = vdupq_n_f16((flt16_t)0.f), c71 = c70, c72 = c70;
+        float16x8_t c00 = vdupq_n_f16((fx_f16_t)0.f), c01 = c00, c02 = c00;
+        float16x8_t c10 = vdupq_n_f16((fx_f16_t)0.f), c11 = c10, c12 = c10;
+        float16x8_t c20 = vdupq_n_f16((fx_f16_t)0.f), c21 = c20, c22 = c20;
+        float16x8_t c30 = vdupq_n_f16((fx_f16_t)0.f), c31 = c30, c32 = c30;
+        float16x8_t c40 = vdupq_n_f16((fx_f16_t)0.f), c41 = c40, c42 = c40;
+        float16x8_t c50 = vdupq_n_f16((fx_f16_t)0.f), c51 = c50, c52 = c50;
+        float16x8_t c60 = vdupq_n_f16((fx_f16_t)0.f), c61 = c60, c62 = c60;
+        float16x8_t c70 = vdupq_n_f16((fx_f16_t)0.f), c71 = c70, c72 = c70;
         int k1 = k0 + BLOCK_SZ <= k ? k0 + BLOCK_SZ : k;
 
         for( ; k0 < k1; k0++, a += FX_CONV_MR_FP16, b += FX_CONV_NR_FP16 )
@@ -302,36 +306,31 @@ static void _fx_conv_block_fp16( int k, const flt16_t *a, const flt16_t *b,
         _FX_UPDATE_CBUF_ROW(7);
     }
 
-    float32x4_t valpha = vdupq_n_f32(alpha);
-    float32x4_t vmax = vdupq_n_f32(maxval);
-    float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
-    float32x4_t c0, c1, c2, c3, c4, c5;
+    float16x8_t valpha = vdupq_n_f16((__fp16)alpha);
+    float16x8_t vmax = vdupq_n_f16((__fp16)maxval);
+    float16x8_t z = vdupq_n_f16(0.f), one = vdupq_n_f16(1.f);
+    float16x8_t c0, c1, c2;
+    float16x4_t f0, f1;
 #undef _FX_FINIT_ROW
 #define _FX_FINIT_ROW(row) \
-    c0 = vld1q_f32(cbuf + row*FX_CONV_NR_FP16); \
-    c1 = vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 4); \
-    c2 = vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 8); \
-    c3 = vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 12); \
-    c4 = vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 16); \
-    c5 = vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 20); \
-    c0 = vaddq_f32(c0, vld1q_f32(pb + row*ldp)); \
-    c1 = vaddq_f32(c1, vld1q_f32(pb + row*ldp + 4)); \
-    c2 = vaddq_f32(c2, vld1q_f32(pb + row*ldp + 8)); \
-    c3 = vaddq_f32(c3, vld1q_f32(pb + row*ldp + 12)); \
-    c4 = vaddq_f32(c4, vld1q_f32(pb + row*ldp + 16)); \
-    c5 = vaddq_f32(c5, vld1q_f32(pb + row*ldp + 20)); \
-    c0 = vmulq_f32(vminq_f32(c0, vmax), vbslq_f32(vcltq_f32(c0, z), valpha, one)); \
-    c1 = vmulq_f32(vminq_f32(c1, vmax), vbslq_f32(vcltq_f32(c1, z), valpha, one)); \
-    c2 = vmulq_f32(vminq_f32(c2, vmax), vbslq_f32(vcltq_f32(c2, z), valpha, one)); \
-    c3 = vmulq_f32(vminq_f32(c3, vmax), vbslq_f32(vcltq_f32(c3, z), valpha, one)); \
-    c4 = vmulq_f32(vminq_f32(c4, vmax), vbslq_f32(vcltq_f32(c4, z), valpha, one)); \
-    c5 = vmulq_f32(vminq_f32(c5, vmax), vbslq_f32(vcltq_f32(c5, z), valpha, one)); \
-    vst1q_f32(c + row*ldc, c0); \
-    vst1q_f32(c + row*ldc + 4, c1); \
-    vst1q_f32(c + row*ldc + 8, c2); \
-    vst1q_f32(c + row*ldc + 12, c3); \
-    vst1q_f32(c + row*ldc + 16, c4); \
-    vst1q_f32(c + row*ldc + 20, c5)
+    f0 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16)); \
+    f1 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 4)); \
+    c0 = vcombine_f16(f0, f1); \
+    f0 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 8)); \
+    f1 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 12)); \
+    c1 = vcombine_f16(f0, f1); \
+    f0 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 16)); \
+    f1 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 20)); \
+    c2 = vcombine_f16(f0, f1); \
+    c0 = vaddq_f16(c0, vld1q_f16(pb + row*ldp)); \
+    c1 = vaddq_f16(c1, vld1q_f16(pb + row*ldp + 8)); \
+    c2 = vaddq_f16(c2, vld1q_f16(pb + row*ldp + 16)); \
+    c0 = vmulq_f16(vminq_f16(c0, vmax), vbslq_f16(vcltq_f16(c0, z), valpha, one)); \
+    c1 = vmulq_f16(vminq_f16(c1, vmax), vbslq_f16(vcltq_f16(c1, z), valpha, one)); \
+    c2 = vmulq_f16(vminq_f16(c2, vmax), vbslq_f16(vcltq_f16(c2, z), valpha, one)); \
+    vst1q_f16(c + row*ldc, c0); \
+    vst1q_f16(c + row*ldc + 8, c1); \
+    vst1q_f16(c + row*ldc + 16, c2)
 
     _FX_FINIT_ROW(0);
     _FX_FINIT_ROW(1);
@@ -370,7 +369,7 @@ static void _fx_conv_block_fp16( int k, const flt16_t *a, const flt16_t *b,
     }
     for(int i = 0; i < FX_CONV_MR_FP16; i++) {
         for(int j = 0; j < FX_CONV_NR_FP16; j++)
-            c[i*ldc + j] = cbuf[i*FX_CONV_NR_FP16 + j];
+            c[i*ldc + j] = FX_FLOAT16(cbuf[i*FX_CONV_NR_FP16 + j]);
     }
 #endif
 }
