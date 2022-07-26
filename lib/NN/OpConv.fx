@@ -139,7 +139,9 @@ static int _fx_init_conv2d(
     conv->minval = -FLT_MAX;
     conv->maxval = FLT_MAX;
     conv->alpha = 1.f;
-    if (activ == _FX_ACTIV_RELU) {
+    if (activ == _FX_ACTIV_NONE) {
+        ;
+    } else if (activ == _FX_ACTIV_RELU) {
         conv->alpha = 0.f;
         conv->minval = 0.f;
     } else if (activ == _FX_ACTIV_LRELU) {
