@@ -20,7 +20,7 @@ type image_preprocess_params_t =
     scale: (float*3)
     swaprb: bool
     layout: Ast.nnlayout_t
-    elemtype: Ast.nntyp_t
+    elemtype: scalar_t
 }
 
 @private fun resize_normalize_image(
@@ -28,7 +28,7 @@ type image_preprocess_params_t =
     yxscale: (float*2), yxdelta: (float*2),
     mean: (float*3), scale: (float*3),
     swaprb: bool, layout_: Ast.nnlayout_t,
-    elemtype_: Ast.nntyp_t, ntasks: int): Ast.nndata_t
+    elemtype_: scalar_t, ntasks: int): Ast.nndata_t
 @ccode {
     int_ image_height = image->dim[0].size;
     int_ image_width = image->dim[1].size;
@@ -36,8 +36,8 @@ type image_preprocess_params_t =
     int_ total = H*W*C;
     int layout = layout_->tag;
     int elemtype = elemtype_->tag;
-    size_t esz = elemtype == _FX_NN_U8 || elemtype == _FX_NN_I8 ?
-        1 : elemtype == _FX_NN_FP32 ? 4 : 2;
+    size_t esz = elemtype == FX_U8 || elemtype == FX_I8 ?
+        1 : elemtype == FX_F32 ? 4 : 2;
     fx_arr_t data;
     int status = FX_OK;
     float scale_y = yxscale->t0, scale_x = yxscale->t1;
@@ -57,17 +57,17 @@ type image_preprocess_params_t =
         FX_SWAP(s0, s2, t);
     }
 
-    if (elemtype != _FX_NN_U8 && elemtype != _FX_NN_FP32 && elemtype != _FX_NN_FP16)
+    if (elemtype != FX_U8 && elemtype != FX_F32 && elemtype != FX_F16)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
-    if ((elemtype == _FX_NN_U8) && (s0 != 1.f || s1 != 1.f || s2 != 1.f))
+    if ((elemtype == FX_U8) && (s0 != 1.f || s1 != 1.f || s2 != 1.f))
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     status = fx_make_arr(1, &total, esz, 0, 0, 0, &data);
     if (status < 0)
         return status;
 
-    if (elemtype == _FX_NN_U8) {
+    if (elemtype == FX_U8) {
         uint8_t r = fx_sat_f2u8(m0);
         uint8_t g = fx_sat_f2u8(m1);
         uint8_t b = fx_sat_f2u8(m2);
@@ -124,7 +124,7 @@ type image_preprocess_params_t =
             inptr0 = (uint8_t*)(image->data + image->dim[0].step*(iy >= image_height ? image_height - 1 : iy));
             inptr1 = (uint8_t*)(image->data + image->dim[0].step*(iy+1 >= image_height ? image_height - 1 : iy+1));
 
-            if (elemtype == _FX_NN_U8) {
+            if (elemtype == FX_U8) {
                 const uint8_t* bbuf = (const uint8_t*)borderbuf;
                 uint8_t r_def = bbuf[0], g_def = bbuf[1], b_def = bbuf[2];
                 uint8_t* outptr = (uint8_t*)outptr_;
@@ -178,7 +178,7 @@ type image_preprocess_params_t =
                 const float* bbuf = (const float*)borderbuf;
                 float r_def = bbuf[0], g_def = bbuf[1], b_def = bbuf[2];
                 float* outptr = (float*)outptr_;
-                fx_f16_t* outptr_f16 = (fx_f16_t*)outptr_;
+                fx_f16* outptr_f16 = (fx_f16*)outptr_;
 
                 for (int_ x = 0; x < W; x++, outptr += pixsize, outptr_f16 += pixsize) {
                     int ix = xbuf[x];
@@ -221,7 +221,7 @@ type image_preprocess_params_t =
                         g = ((g0 + (g2 - g0)*sy) - m1)*s1;
                         b = ((b0 + (b2 - b0)*sy) - m2)*s2;
                     }
-                    if (elemtype == _FX_NN_FP32) {
+                    if (elemtype == FX_F32) {
                         outptr[0] = r;
                         outptr[Cstep] = g;
                         outptr[Cstep*2] = b;

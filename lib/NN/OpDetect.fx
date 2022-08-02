@@ -182,10 +182,10 @@ fun ssd_postprocess(ssd_outputs: Ast.nntensor_t [],
     val dc_shape = detection_classes.shape.shape // N x K
     val ds_shape = detection_scores.shape.shape // N x K
     val nd_shape = num_detections.shape.shape // N
-    assert(`detection_boxes.elemtype() == Ast.NN_FP32`)
-    assert(`detection_classes.elemtype() == Ast.NN_FP32`)
-    assert(`detection_scores.elemtype() == Ast.NN_FP32`)
-    assert(`num_detections.elemtype() == Ast.NN_FP32`)
+    assert(`detection_boxes.elemtype() == Type_F32`)
+    assert(`detection_classes.elemtype() == Type_F32`)
+    assert(`detection_scores.elemtype() == Type_F32`)
+    assert(`num_detections.elemtype() == Type_F32`)
     assert(`db_shape.size() == 3`)
     assert(`dc_shape.size() == 2`)
     assert(`ds_shape.size() == 2`)

@@ -9,14 +9,11 @@ import Hashmap
 
 exception NNError: string
 
-type nntyp_t =
-    | NN_Undefined | NN_I8 | NN_U8 | NN_I16 | NN_U16 | NN_I32 | NN_U32
-    | NN_I64 | NN_U64 | NN_FP16 | NN_BF16 | NN_FP32 | NN_FP64 | NN_Bool
-
-// please, keep the set and the order of tags here equivalent to nntyp_t,
-// because some C code may assume nntyp_t::tag == nndata_t::tag.
+// please, keep the set and the order of tags here equivalent to scalar_t,
+// because some C code may assume scalar_t::tag == nndata_t::tag.
 class nndata_t =
     | NN_Data_Empty
+    | NN_Data_Int: int []
     | NN_Data_I8: int8 []
     | NN_Data_U8: uint8 []
     | NN_Data_I16: int16 []
@@ -73,7 +70,7 @@ class nnarg_t
     name: string
     argkind: nnargkind_t
     shape: nnshape_t
-    typ: nntyp_t
+    typ: scalar_t
 }
 
 type nnelwise_t =
@@ -141,7 +138,7 @@ class nnop_t =
         t_inp: int; t_scale: int; t_B: int
         t_mean: int; t_var: int; t_out: int }
     | NN_Cast: {
-        name: string; to: nntyp_t; t_inp: int; t_out: int }
+        name: string; to: scalar_t; t_inp: int; t_out: int }
     | NN_Clip: {
         name: string; t_inp: int; t_min: int; t_max: int; t_out: int }
     | NN_Concat: {
@@ -480,6 +477,7 @@ fun nndata_t.total() =
 match self {
     | NN_Data_Empty
     | NN_Data_Stub_BF16 => 0
+    | NN_Data_Int(elems) => size(elems)
     | NN_Data_I8(elems) => size(elems)
     | NN_Data_U8(elems) => size(elems)
     | NN_Data_I16(elems) => size(elems)
@@ -498,6 +496,7 @@ fun nntensor_t.total() =
 match self.data {
     | NN_Data_Empty
     | NN_Data_Stub_BF16 => 0
+    | NN_Data_Int(elems) => size(elems)
     | NN_Data_I8(elems) => size(elems)
     | NN_Data_U8(elems) => size(elems)
     | NN_Data_I16(elems) => size(elems)
@@ -516,6 +515,7 @@ fun float(d: nndata_t)
 {
     | NN_Data_Empty
     | NN_Data_Stub_BF16 => ([] : float [])
+    | NN_Data_Int(elems) => float(elems)
     | NN_Data_I8(elems) => float(elems)
     | NN_Data_U8(elems) => float(elems)
     | NN_Data_I16(elems) => float(elems)
@@ -534,6 +534,7 @@ fun double_scalar_or(d: nndata_t, defval: double): double =
 match d {
     | NN_Data_Empty => defval
     | NN_Data_Stub_BF16 _ => throw Fail("FP16 is not supported yet")
+    | NN_Data_Int(elems) => double(elems[0])
     | NN_Data_I8(elems) => double(elems[0])
     | NN_Data_U8(elems) => double(elems[0])
     | NN_Data_I16(elems) => double(elems[0])
@@ -552,6 +553,7 @@ fun float_scalar_or(d: nndata_t, defval: float): float =
 match d {
     | NN_Data_Empty => defval
     | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
+    | NN_Data_Int(elems) => float(elems[0])
     | NN_Data_I8(elems) => float(elems[0])
     | NN_Data_U8(elems) => float(elems[0])
     | NN_Data_I16(elems) => float(elems[0])
@@ -570,6 +572,7 @@ fun double(d: nndata_t)
 {
     | NN_Data_Empty
     | NN_Data_Stub_BF16 => ([] : double [])
+    | NN_Data_Int(elems) => double(elems)
     | NN_Data_I8(elems) => double(elems)
     | NN_Data_U8(elems) => double(elems)
     | NN_Data_I16(elems) => double(elems)
@@ -588,6 +591,7 @@ fun int(d: nndata_t)
 {
     | NN_Data_Empty
     | NN_Data_Stub_BF16 => ([] : int [])
+    | NN_Data_Int(elems) => elems
     | NN_Data_I8(elems) => int(elems)
     | NN_Data_U8(elems) => int(elems)
     | NN_Data_I16(elems) => int(elems)
@@ -612,6 +616,7 @@ fun tdata2str(d: nndata_t)
 {
     | NN_Data_Empty
     | NN_Data_Stub_BF16 => "[]"
+    | NN_Data_Int(elems) => arr2str(elems)
     | NN_Data_I8(elems) => arr2str(elems)
     | NN_Data_U8(elems) => arr2str(elems)
     | NN_Data_I16(elems) => arr2str(elems)
@@ -626,24 +631,6 @@ fun tdata2str(d: nndata_t)
     | NN_Data_Bool(elems) => arr2str(elems)
 }
 
-fun string(typ: nntyp_t)
-{
-    | NN_Undefined => "Undefined"
-    | NN_I8 => "I8"
-    | NN_U8 => "U8"
-    | NN_I16 => "I16"
-    | NN_U16 => "U16"
-    | NN_I32 => "I32"
-    | NN_U32 => "U32"
-    | NN_I64 => "I64"
-    | NN_U64 => "U64"
-    | NN_FP16 => "FP16"
-    | NN_BF16 => "BF16"
-    | NN_FP32 => "FP32"
-    | NN_FP64 => "FP64"
-    | NN_Bool => "Bool"
-}
-
 fun dim2str(model: nnmodel_t, d: int) = if d >= 0 {string(d)} else {model.dimnames_[-d-1]}
 
 fun shape2str(model: nnmodel_t, s: nnshape_t)
@@ -656,25 +643,26 @@ fun shape2str(model: nnmodel_t, s: nnshape_t)
     }) + f"<{shape_str}>"
 }
 
-fun nndata_t.elemtype(): nntyp_t =
+fun nndata_t.elemtype(): scalar_t =
 match self {
-    | NN_Data_Empty => NN_Undefined
-    | NN_Data_I8 _ => NN_I8
-    | NN_Data_U8 _ => NN_U8
-    | NN_Data_I16 _ => NN_I16
-    | NN_Data_U16 _ => NN_U16
-    | NN_Data_I32 _ => NN_I32
-    | NN_Data_U32 _ => NN_U32
-    | NN_Data_I64 _ => NN_I64
-    | NN_Data_U64 _ => NN_U64
-    | NN_Data_Stub_BF16 => NN_BF16
-    | NN_Data_FP32 _ => NN_FP32
-    | NN_Data_FP64 _ => NN_FP64
-    | NN_Data_FP16 _ => NN_FP16
-    | NN_Data_Bool _ => NN_Bool
+    | NN_Data_Empty => Notype
+    | NN_Data_Int _ => Type_Int
+    | NN_Data_I8 _ => Type_I8
+    | NN_Data_U8 _ => Type_U8
+    | NN_Data_I16 _ => Type_I16
+    | NN_Data_U16 _ => Type_U16
+    | NN_Data_I32 _ => Type_I32
+    | NN_Data_U32 _ => Type_U32
+    | NN_Data_I64 _ => Type_I64
+    | NN_Data_U64 _ => Type_U64
+    | NN_Data_Stub_BF16 => Type_BF16
+    | NN_Data_FP32 _ => Type_F32
+    | NN_Data_FP64 _ => Type_F64
+    | NN_Data_FP16 _ => Type_F16
+    | NN_Data_Bool _ => Type_Bool
 }
 
-fun elemtype(t: nntensor_t): nntyp_t = t.data.elemtype()
+fun elemtype(t: nntensor_t): scalar_t = t.data.elemtype()
 
 fun tensor2str(model: nnmodel_t, t: nntensor_t, show_small: bool) =
 match t.data {
@@ -714,6 +702,7 @@ fun string(t: nntensor_t, ~border: int=3, ~braces: bool=true)
             if d >= ndims - 1 {
                 match t.data {
                 | NN_Data_Empty => {}
+                | NN_Data_Int data => rows = row2str(data, n, ofs) :: rows
                 | NN_Data_I8 data => rows = row2str(data, n, ofs) :: rows
                 | NN_Data_U8 data => rows = row2str(data, n, ofs) :: rows
                 | NN_Data_I16 data => rows = row2str(data, n, ofs) :: rows
@@ -1093,18 +1082,10 @@ fun print(model: nnmodel_t)
     println(graph2str(model, model.graph, ""))
 }
 
-fun elemsize(t: nntyp_t)
-{
-    | NN_Undefined => -1
-    | NN_I8 | NN_U8 | NN_Bool => 1
-    | NN_I16 | NN_U16 | NN_FP16 | NN_BF16 => 2
-    | NN_I32 | NN_U32 | NN_FP32 => 4
-    | NN_I64 | NN_U64 | NN_FP64 => 8
-}
-
 fun nndata_t.copy() =
 match self {
     | NN_Data_Empty | NN_Data_Stub_BF16 => NN_Data_Empty
+    | NN_Data_Int(arr) => NN_Data_Int(copy(arr))
     | NN_Data_I8(arr) => NN_Data_I8(copy(arr))
     | NN_Data_U8(arr) => NN_Data_U8(copy(arr))
     | NN_Data_I16(arr) => NN_Data_I16(copy(arr))
@@ -1133,7 +1114,7 @@ fun empty_arg() = nnarg_t {
     name = "",
     argkind = NN_Arg_Temp,
     shape = empty_shape(),
-    typ = NN_Undefined
+    typ = Notype
 }
 
 fun total(shape: nnshape_t) = fold p=1 for sz <- shape.shape {p*sz}
@@ -1205,41 +1186,30 @@ fun nnshape_t.broadcast(another: nnshape_t)
     }
 }
 
-fun mktensor(shape: nnshape_t, typ: nntyp_t)
+fun mktensor(shape: nnshape_t, typ: scalar_t)
 {
     val total = shape.total()
     val data = match typ {
-        | NN_I8 => NN_Data_I8(array(total, 0i8))
-        | NN_U8 => NN_Data_U8(array(total, 0u8))
-        | NN_I16 => NN_Data_I16(array(total, 0i16))
-        | NN_U16 => NN_Data_U16(array(total, 0u16))
-        | NN_I32 => NN_Data_I32(array(total, 0i32))
-        | NN_U32 => NN_Data_U32(array(total, 0u32))
-        | NN_I64 => NN_Data_I64(array(total, 0i64))
-        | NN_U64 => NN_Data_U64(array(total, 0u64))
-        | NN_FP32 => NN_Data_FP32(array(total, 0.f))
-        | NN_FP64 => NN_Data_FP64(array(total, 0.))
-        | NN_Bool => NN_Data_Bool(array(total, false))
+        | Type_Int => NN_Data_Int(array(total, 0))
+        | Type_I8 => NN_Data_I8(array(total, 0i8))
+        | Type_U8 => NN_Data_U8(array(total, 0u8))
+        | Type_I16 => NN_Data_I16(array(total, 0i16))
+        | Type_U16 => NN_Data_U16(array(total, 0u16))
+        | Type_I32 => NN_Data_I32(array(total, 0i32))
+        | Type_U32 => NN_Data_U32(array(total, 0u32))
+        | Type_I64 => NN_Data_I64(array(total, 0i64))
+        | Type_U64 => NN_Data_U64(array(total, 0u64))
+        | Type_F32 => NN_Data_FP32(array(total, 0.f))
+        | Type_F64 => NN_Data_FP64(array(total, 0.))
+        | Type_Bool => NN_Data_Bool(array(total, false))
         | _ => throw NNError(f"unsupported tensor type {typ}")
     }
     nntensor_t {shape=shape, data=data}
 }
 
-fun elemtype(x:int8) = NN_I8
-fun elemtype(x:uint8) = NN_U8
-fun elemtype(x:int16) = NN_I16
-fun elemtype(x:uint16) = NN_U16
-fun elemtype(x:int32) = NN_I32
-fun elemtype(x:uint32) = NN_U32
-fun elemtype(x:int64) = NN_I64
-fun elemtype(x:uint64) = NN_U64
-fun elemtype(x:float) = NN_FP32
-fun elemtype(x:double) = NN_FP64
-fun elemtype(x:bool) = NN_Bool
-
-@private fun mktensor_(arr: uint8 [], shape: int [], typ: nntyp_t, ~layout: nnlayout_t=NN_Layout_Unknown)
+@private fun mktensor_(arr: uint8 [], shape: int [], typ: scalar_t, ~layout: nnlayout_t=NN_Layout_Unknown)
 {
-    fun make_data_(arr: uint8 [], typ: nntyp_t): nndata_t
+    fun make_data_(arr: uint8 [], typ: scalar_t): nndata_t
     @ccode {
         fx_result->tag = typ->tag;
         fx_copy_arr(arr, &fx_result->u.NN_Data_U8);
@@ -1253,7 +1223,7 @@ fun mktensor(arr: 't [+], ~layout: nnlayout_t=NN_Layout_Unknown)
 {
     val sz = arr.size()
     val shape = [for sz_i <- sz {sz_i}]
-    val typ = elemtype(0 :> 't)
+    val typ = scalar_type(0 :> 't)
     mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ, layout=layout)
 }
 
@@ -1261,7 +1231,7 @@ fun mktensor(arr: 't [], ~layout: nnlayout_t=NN_Layout_Unknown)
 {
     val sz = arr.size()
     val shape = [sz]
-    val typ = elemtype(0 :> 't)
+    val typ = scalar_type(0 :> 't)
     mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ, layout=layout)
 }
 
@@ -1298,7 +1268,7 @@ fun nnmodel_t.get_output_names(): string [] =
         self.args[i].name
     }]
 
-fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t,
+fun fit(shape: nnshape_t, typ: scalar_t, data: nndata_t,
         buf: nnbuf_t, ~x2: bool=false): (nndata_t, nnbuf_t)
 {
     val bufpadding = 128
@@ -1308,7 +1278,7 @@ fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t,
     val total0 = data.total()
     val reallocate = typ != typ0 || total0 != new_total
 
-    fun fit_(total: int, elemsz: int, typ: nntyp_t,
+    fun fit_(total: int, elemsz: int, typ: scalar_t,
         bufpadding: int, buf: nnbuf_t, x2: bool): (nndata_t, nnbuf_t)
     @ccode {
         int_ total_ = total*elemsz + bufpadding;
@@ -1343,7 +1313,7 @@ fun fit(shape: nnshape_t, typ: nntyp_t, data: nndata_t,
     }
 }
 
-fun fit(model: nnmodel_t, argidx: int, shape: nnshape_t, typ: nntyp_t, ~x2: bool=false)
+fun fit(model: nnmodel_t, argidx: int, shape: nnshape_t, typ: scalar_t, ~x2: bool=false)
 {
     val shape0 = model.tensors[argidx].shape
     val typ0 = model.tensors[argidx].elemtype()

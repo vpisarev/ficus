@@ -39,12 +39,6 @@ typedef struct _fx_nntensor_t {
 } _fx_nntensor_t;
 
 enum {
-    _FX_NN_Undefined=1, _FX_NN_I8, _FX_NN_U8, _FX_NN_I16, _FX_NN_U16,
-    _FX_NN_I32, _FX_NN_U32, _FX_NN_I64, _FX_NN_U64, _FX_NN_FP16,
-    _FX_NN_BF16, _FX_NN_FP32, _FX_NN_FP64, _FX_NN_Bool
-};
-
-enum {
     _FX_NN_Layout_Unknown=1,
     _FX_NN_Layout_NC,
     _FX_NN_Layout_NCHW,
@@ -176,7 +170,7 @@ static int _fx_compute_resize_tab(int* tab, float* alphatab, int_ inpsz_, int_ o
 
 #ifdef __ARM_NEON
 #define _FX_NN_ENABLE_FP16 1
-#define _FX_FP16_CASE(x)
+#define _FX_FP16_CASE(x) x
 #else
 #define _FX_FP16_CASE(x)
 #endif
@@ -198,53 +192,48 @@ static int _fx_compute_resize_tab(int* tab, float* alphatab, int_ inpsz_, int_ o
 #define _fx_c_cephes_exp_p4 1.6666665459E-1
 #define _fx_c_cephes_exp_p5 5.0000001201E-1
 
+#define _FX_VEXP_INIT() \
+    float32x4_t _fx_vexp_lo = vdupq_n_f32(_fx_c_exp_lo); \
+    float32x4_t _fx_vexp_hi = vdupq_n_f32(_fx_c_exp_hi); \
+    float32x4_t _fx_vexp_half = vdupq_n_f32(0.5f); \
+    float32x4_t _fx_vexp_one = vdupq_n_f32(1.f); \
+    float32x4_t _fx_vexp_LOG2EF = vdupq_n_f32(_fx_c_cephes_LOG2EF); \
+    float32x4_t _fx_vexp_C1 = vdupq_n_f32(-_fx_c_cephes_exp_C1); \
+    float32x4_t _fx_vexp_C2 = vdupq_n_f32(-_fx_c_cephes_exp_C2); \
+    float32x4_t _fx_vexp_p0 = vdupq_n_f32(_fx_c_cephes_exp_p0); \
+    float32x4_t _fx_vexp_p1 = vdupq_n_f32(_fx_c_cephes_exp_p1); \
+    float32x4_t _fx_vexp_p2 = vdupq_n_f32(_fx_c_cephes_exp_p2); \
+    float32x4_t _fx_vexp_p3 = vdupq_n_f32(_fx_c_cephes_exp_p3); \
+    float32x4_t _fx_vexp_p4 = vdupq_n_f32(_fx_c_cephes_exp_p4); \
+    float32x4_t _fx_vexp_p5 = vdupq_n_f32(_fx_c_cephes_exp_p5)
+
+#define _FX_VEXP_COMPUTE(x, y) { \
+    float32x4_t _vexp_fx, _vexp_x, _vexp_y, _vexp_z; \
+    _vexp_x = vminq_f32(x, _fx_vexp_hi); \
+    _vexp_x = vmaxq_f32(_vexp_x, _fx_vexp_lo); \
+    _vexp_fx = vfmaq_f32(_fx_vexp_half, _vexp_x, _fx_vexp_LOG2EF); \
+    int32x4_t _vexp_mm = vcvtmq_s32_f32(_vexp_fx); \
+    _vexp_fx = vcvtq_f32_s32(_vexp_mm); \
+    _vexp_mm = vaddq_s32(_vexp_mm, vdupq_n_s32(0x7f)); \
+    _vexp_mm = vshlq_n_s32(_vexp_mm, 23); \
+    _vexp_x = vfmaq_f32(_vexp_x, _vexp_fx, _fx_vexp_C1); \
+    _vexp_x = vfmaq_f32(_vexp_x, _vexp_fx, _fx_vexp_C2); \
+    _vexp_z = vmulq_f32(_vexp_x, _vexp_x); \
+    _vexp_y = vfmaq_f32(_fx_vexp_p1, _vexp_x, _fx_vexp_p0); \
+    _vexp_y = vfmaq_f32(_fx_vexp_p2, _vexp_y, _vexp_x); \
+    _vexp_y = vfmaq_f32(_fx_vexp_p3, _vexp_y, _vexp_x); \
+    _vexp_y = vfmaq_f32(_fx_vexp_p4, _vexp_y, _vexp_x); \
+    _vexp_y = vfmaq_f32(_fx_vexp_p5, _vexp_y, _vexp_x); \
+    _vexp_y = vfmaq_f32(_vexp_x, _vexp_y, _vexp_z); \
+    _vexp_y = vaddq_f32(_vexp_y, _fx_vexp_one); \
+    y = vmulq_f32(_vexp_y, vreinterpretq_f32_s32(_vexp_mm)); \
+    }
+
 /* exp() computed for 4 float at once */
 static __inline float32x4_t _fx_vexpq_f32(float32x4_t x) {
-    float32x4_t tmp, fx;
-
-    float32x4_t one = vdupq_n_f32(1);
-    x = vminq_f32(x, vdupq_n_f32(_fx_c_exp_hi));
-    x = vmaxq_f32(x, vdupq_n_f32(_fx_c_exp_lo));
-
-    /* express exp(x) as exp(g + n*log(2)) */
-    fx = vfmaq_f32(vdupq_n_f32(0.5f), x, vdupq_n_f32(_fx_c_cephes_LOG2EF));
-
-    /* perform a floorf */
-    tmp = vcvtq_f32_s32(vcvtq_s32_f32(fx));
-
-    /* if greater, substract 1 */
-    uint32x4_t mask = vcgtq_f32(tmp, fx);
-    mask = vandq_u32(mask, vreinterpretq_u32_f32(one));
-
-    fx = vsubq_f32(tmp, vreinterpretq_f32_u32(mask));
-
-    tmp = vmulq_f32(fx, vdupq_n_f32(_fx_c_cephes_exp_C1));
-    float32x4_t z = vmulq_f32(fx, vdupq_n_f32(_fx_c_cephes_exp_C2));
-    x = vsubq_f32(x, tmp);
-    x = vsubq_f32(x, z);
-
-    float32x4_t c0 = vdupq_n_f32(_fx_c_cephes_exp_p0);
-    float32x4_t c1 = vdupq_n_f32(_fx_c_cephes_exp_p1);
-    float32x4_t c2 = vdupq_n_f32(_fx_c_cephes_exp_p2);
-    float32x4_t c3 = vdupq_n_f32(_fx_c_cephes_exp_p3);
-    float32x4_t c4 = vdupq_n_f32(_fx_c_cephes_exp_p4);
-    float32x4_t c5 = vdupq_n_f32(_fx_c_cephes_exp_p5);
-
-    z = vmulq_f32(x, x);
-    float32x4_t y = vfmaq_f32(c1, x, c0);
-    y = vfmaq_f32(c2, y, x);
-    y = vfmaq_f32(c3, y, x);
-    y = vfmaq_f32(c4, y, x);
-    y = vfmaq_f32(c5, y, x);
-    y = vfmaq_f32(x, y, z);
-    y = vaddq_f32(y, one);
-
-    /* build 2^n */
-    int32x4_t mm = vcvtq_s32_f32(fx);
-    mm = vaddq_s32(mm, vdupq_n_s32(0x7f));
-    mm = vshlq_n_s32(mm, 23);
-
-    y = vmulq_f32(y, vreinterpretq_f32_s32(mm));
+    _FX_VEXP_INIT();
+    float32x4_t y;
+    _FX_VEXP_COMPUTE(x, y);
     return y;
 }
 #endif
@@ -259,7 +248,7 @@ void _fx_nn_elemwise_sigmoid_f32(const void* inptr_, void* outptr_,
                                  int_ len, const float* param);
 void _fx_nn_elemwise_tanh_f32(const void* inptr_, void* outptr_,
                               int_ len, const float* param);
-#ifdef _FX_NN_ENABLE_FP16
+#if _FX_NN_ENABLE_FP16
 void _fx_nn_elemwise_clip_f16(const void* inptr_, void* outptr_,
                               int_ len, const float* param);
 void _fx_nn_elemwise_leaky_relu_f16(const void* inptr_, void* outptr_,

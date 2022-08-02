@@ -19,7 +19,7 @@ fun run_nonzero(inp: Ast.nntensor_t, out_buf0: Ast.nnbuf_t, ntasks: int):
     const int_* inp_shape = (const int_*)inp_shape_->data;
     int_* cbuf = (int_*)alloca((ntasks*2 + 1)*sizeof(cbuf[0]));
     int_* cofs = cbuf + ntasks;
-    int inp_typ = inp->data.tag, out_typ = _FX_NN_I64;
+    int inp_typ = inp->data.tag, out_typ = FX_I64;
     size_t esz = sizeof(_fx_coord_t);
     fx_arr_t out_buf, out_data;
     int_ inp_total = inp_data->dim[0].size;
@@ -30,10 +30,10 @@ fun run_nonzero(inp: Ast.nntensor_t, out_buf0: Ast.nnbuf_t, ntasks: int):
         ntasks = 1;
     }
 
-    if (inp_typ != _FX_NN_I8 && inp_typ != _FX_NN_U8 && inp_typ != _FX_NN_Bool &&
-        inp_typ != _FX_NN_I32 && inp_typ != _FX_NN_U32 &&
-        inp_typ != _FX_NN_I64 && inp_typ != _FX_NN_U64 &&
-        inp_typ != _FX_NN_FP32)
+    if (inp_typ != FX_I8 && inp_typ != FX_U8 && inp_typ != FX_Bool &&
+        inp_typ != FX_I32 && inp_typ != FX_U32 &&
+        inp_typ != FX_I64 && inp_typ != FX_U64 &&
+        inp_typ != FX_F32)
     {
         printf("run_nonzero: unsupported inp_typ=%d\n", inp_typ);
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
@@ -50,14 +50,14 @@ fun run_nonzero(inp: Ast.nntensor_t, out_buf0: Ast.nnbuf_t, ntasks: int):
             for (; i0 < i1; i0++) \
                 nz += inptr[i0] != 0; \
         }
-        if (inp_typ == _FX_NN_U8 || inp_typ == _FX_NN_I8 || inp_typ == _FX_NN_Bool) {
+        if (inp_typ == FX_U8 || inp_typ == FX_I8 || inp_typ == FX_Bool) {
             _FX_IMPLEMENT_NONZERO_COUNT(int8_t)
-        } else if (inp_typ == _FX_NN_I32 || inp_typ == _FX_NN_U32) {
+        } else if (inp_typ == FX_I32 || inp_typ == FX_U32) {
             _FX_IMPLEMENT_NONZERO_COUNT(int32_t)
-        } else if (inp_typ == _FX_NN_I64 || inp_typ == _FX_NN_U64) {
+        } else if (inp_typ == FX_I64 || inp_typ == FX_U64) {
             _FX_IMPLEMENT_NONZERO_COUNT(int64_t)
         } else {
-            assert(inp_typ == _FX_NN_FP32);
+            assert(inp_typ == FX_F32);
             _FX_IMPLEMENT_NONZERO_COUNT(float)
         }
         cbuf[task_id] = nz;
@@ -100,14 +100,14 @@ fun run_nonzero(inp: Ast.nntensor_t, out_buf0: Ast.nnbuf_t, ntasks: int):
                 outptr++; \
             }
 
-        if (inp_typ == _FX_NN_U8 || inp_typ == _FX_NN_I8 || inp_typ == _FX_NN_Bool) {
+        if (inp_typ == FX_U8 || inp_typ == FX_I8 || inp_typ == FX_Bool) {
             _FX_IMPLEMENT_NONZERO_STORE(int8_t)
-        } else if (inp_typ == _FX_NN_I32 || inp_typ == _FX_NN_U32) {
+        } else if (inp_typ == FX_I32 || inp_typ == FX_U32) {
             _FX_IMPLEMENT_NONZERO_STORE(int32_t)
-        } else if (inp_typ == _FX_NN_I64 || inp_typ == _FX_NN_U64) {
+        } else if (inp_typ == FX_I64 || inp_typ == FX_U64) {
             _FX_IMPLEMENT_NONZERO_STORE(int64_t)
         } else {
-            assert(inp_typ == _FX_NN_FP32);
+            assert(inp_typ == FX_F32);
             _FX_IMPLEMENT_NONZERO_STORE(float)
         }
     }
@@ -222,22 +222,22 @@ fun run_top_k(inp: Ast.nntensor_t, out: Ast.nntensor_t,
     char* all_sort_bufs;
     volatile int status = FX_OK;
     fx_less_t cmpfunc =
-        inp_typ == _FX_NN_I8 ? (largest ? _fx_cmp_gt_i8 : _fx_cmp_lt_i8) :
-        inp_typ == _FX_NN_U8 ? (largest ? _fx_cmp_gt_u8 : _fx_cmp_lt_u8) :
-        inp_typ == _FX_NN_I32 ? (largest ? _fx_cmp_gt_i32 : _fx_cmp_lt_i32) :
-        inp_typ == _FX_NN_I64 ? (largest ? _fx_cmp_gt_i64 : _fx_cmp_lt_i64) :
-        inp_typ == _FX_NN_FP32 ? (largest ? _fx_cmp_gt_f32 : _fx_cmp_lt_f32) : 0;
+        inp_typ == FX_I8 ? (largest ? _fx_cmp_gt_i8 : _fx_cmp_lt_i8) :
+        inp_typ == FX_U8 ? (largest ? _fx_cmp_gt_u8 : _fx_cmp_lt_u8) :
+        inp_typ == FX_I32 ? (largest ? _fx_cmp_gt_i32 : _fx_cmp_lt_i32) :
+        inp_typ == FX_I64 ? (largest ? _fx_cmp_gt_i64 : _fx_cmp_lt_i64) :
+        inp_typ == FX_F32 ? (largest ? _fx_cmp_gt_f32 : _fx_cmp_lt_f32) : 0;
 
     if (!cmpfunc)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (inp_typ != out_typ)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
-    if (inp_typ != _FX_NN_FP32 &&
-        inp_typ != _FX_NN_I32 &&
-        inp_typ != _FX_NN_I64 &&
-        inp_typ != _FX_NN_I8 &&
-        inp_typ != _FX_NN_U8 &&
-        out_ind->data.tag != _FX_NN_I64)
+    if (inp_typ != FX_F32 &&
+        inp_typ != FX_I32 &&
+        inp_typ != FX_I64 &&
+        inp_typ != FX_I8 &&
+        inp_typ != FX_U8 &&
+        out_ind->data.tag != FX_I64)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     if (ndims > _FX_TOPK_MAX_DIMS)
@@ -566,31 +566,31 @@ fun run_reduce(inp: Ast.nntensor_t, out: Ast.nntensor_t,
     }
 
     if (reduce_op == _FX_NN_REDUCE_MIN || reduce_op == _FX_NN_REDUCE_MAX) {
-        if (inp_typ == _FX_NN_I8) {
+        if (inp_typ == FX_I8) {
             reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
                 _fx_reduce_min_i8 : _fx_reduce_max_i8;
             finit_func = _fx_finit_copy_i8;
-        } else if (inp_typ == _FX_NN_U8) {
+        } else if (inp_typ == FX_U8) {
             reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
                 _fx_reduce_min_u8 : _fx_reduce_max_u8;
             finit_func = _fx_finit_copy_i8; // copy_i* === copy_u*
-        } else if (inp_typ == _FX_NN_I32) {
+        } else if (inp_typ == FX_I32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
                 _fx_reduce_min_i32 : _fx_reduce_max_i32;
             finit_func = _fx_finit_copy_i32;
-        } else if (inp_typ == _FX_NN_U32) {
+        } else if (inp_typ == FX_U32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
                 _fx_reduce_min_u32 : _fx_reduce_max_u32;
             finit_func = _fx_finit_copy_i32;
-        } else if (inp_typ == _FX_NN_I64) {
+        } else if (inp_typ == FX_I64) {
             reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
                 _fx_reduce_min_i64 : _fx_reduce_max_i64;
             finit_func = _fx_finit_copy_i64;
-        } else if (inp_typ == _FX_NN_U64) {
+        } else if (inp_typ == FX_U64) {
             reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
                 _fx_reduce_min_u64 : _fx_reduce_max_u64;
             finit_func = _fx_finit_copy_i64;
-        } else if (inp_typ == _FX_NN_FP32) {
+        } else if (inp_typ == FX_F32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_MIN ?
                 _fx_reduce_min_f32 : _fx_reduce_max_f32;
             finit_func = _fx_finit_copy_i32;
@@ -598,27 +598,27 @@ fun run_reduce(inp: Ast.nntensor_t, out: Ast.nntensor_t,
     } else if (reduce_op == _FX_NN_REDUCE_SUM ||
                reduce_op == _FX_NN_REDUCE_PROD ||
                reduce_op == _FX_NN_REDUCE_MEAN) {
-        if (inp_typ == _FX_NN_I32) {
+        if (inp_typ == FX_I32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
                 _fx_reduce_prod_i32 : _fx_reduce_sum_i32;
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
                 _fx_finit_scale_i64i32 : _fx_finit_cast_i64i32;
-        } else if (inp_typ == _FX_NN_U32) {
+        } else if (inp_typ == FX_U32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
                 _fx_reduce_prod_u32 : _fx_reduce_sum_u32;
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
                 _fx_finit_scale_u64u32 : _fx_finit_cast_i64i32 ;
-        } else if (inp_typ == _FX_NN_I64) {
+        } else if (inp_typ == FX_I64) {
             reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
                 _fx_reduce_prod_i64 : _fx_reduce_sum_i64;
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
                 _fx_finit_scale_i64 : _fx_finit_copy_i64;
-        } else if (inp_typ == _FX_NN_U64) {
+        } else if (inp_typ == FX_U64) {
             reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
                 _fx_reduce_prod_u64 : _fx_reduce_sum_i64; // sum_i64 === sum_u64
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
                 _fx_finit_scale_u64 : _fx_finit_copy_i64;
-        } else if (inp_typ == _FX_NN_FP32) {
+        } else if (inp_typ == FX_F32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
                 _fx_reduce_prod_f32 : _fx_reduce_sum_f32;
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
@@ -629,27 +629,27 @@ fun run_reduce(inp: Ast.nntensor_t, out: Ast.nntensor_t,
     } else if (reduce_op == _FX_NN_REDUCE_L1 ||
                reduce_op == _FX_NN_REDUCE_L2 ||
                reduce_op == _FX_NN_REDUCE_SUM_SQUARE) {
-        if (inp_typ == _FX_NN_I32) {
+        if (inp_typ == FX_I32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
                 _fx_reduce_sum_abs_i32 : _fx_reduce_sum_sqr_i32;
             finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
                 _fx_finit_sqrt_u64u32 : _fx_finit_cast_i64i32;
-        } else if (inp_typ == _FX_NN_U32) {
+        } else if (inp_typ == FX_U32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
                 _fx_reduce_sum_u32 : _fx_reduce_sum_sqr_u32;
             finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
                 _fx_finit_sqrt_u64u32 : _fx_finit_cast_i64i32;
-        } else if (inp_typ == _FX_NN_I64) {
+        } else if (inp_typ == FX_I64) {
             reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
                 _fx_reduce_sum_abs_i64 : _fx_reduce_sum_sqr_i64;
             finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
                 _fx_finit_sqrt_u64 : _fx_finit_copy_i64;
-        } else if (inp_typ == _FX_NN_U64) {
+        } else if (inp_typ == FX_U64) {
             reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
                 _fx_reduce_sum_i64 : _fx_reduce_sum_sqr_u64;
             finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
                 _fx_finit_sqrt_u64 : _fx_finit_copy_i64;
-        } else if (inp_typ == _FX_NN_FP32) {
+        } else if (inp_typ == FX_F32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_L1 ?
                 _fx_reduce_sum_abs_f32 : _fx_reduce_sum_sqr_f32;
             finit_func = reduce_op == _FX_NN_REDUCE_L2 ?
@@ -657,7 +657,7 @@ fun run_reduce(inp: Ast.nntensor_t, out: Ast.nntensor_t,
         }
     } else if (reduce_op == _FX_NN_REDUCE_LOG_SUM ||
                reduce_op == _FX_NN_REDUCE_LOG_SUM_EXP) {
-        if (inp_typ == _FX_NN_FP32) {
+        if (inp_typ == FX_F32) {
             reduce_func = reduce_op == _FX_NN_REDUCE_LOG_SUM_EXP ?
                 _fx_reduce_sum_exp_f32 : _fx_reduce_sum_f32;
             finit_func = _fx_finit_log_f64f32;

@@ -26,7 +26,7 @@ val preprocess_params_alexnet = NN.Preprocess.image_preprocess_params_t {
     scale = (1.f, 1.f, 1.f),
     swaprb = true,
     layout = NN.Ast.NN_Layout_NCHW,
-    elemtype = NN.Ast.NN_FP32
+    elemtype = Type_F32
 }
 
 val preprocess_params_resnet = NN.Preprocess.image_preprocess_params_t {
@@ -36,7 +36,7 @@ val preprocess_params_resnet = NN.Preprocess.image_preprocess_params_t {
     scale = (1.f/(255*0.229f), 1.f/(255*0.224f), 1.f/(255*0.225f)),
     swaprb = true, // ???
     layout = NN.Ast.NN_Layout_NCHW,
-    elemtype = NN.Ast.NN_FP32
+    elemtype = Type_F32
 }
 
 val preprocess_params_efficientnet = NN.Preprocess.image_preprocess_params_t {
@@ -46,7 +46,7 @@ val preprocess_params_efficientnet = NN.Preprocess.image_preprocess_params_t {
     scale = (1.f/128, 1.f/128, 1.f/128),
     swaprb = false,
     layout = NN.Ast.NN_Layout_NHWC,
-    elemtype = NN.Ast.NN_FP32
+    elemtype = Type_F32
 }
 
 fun parse_args(args: string list)
@@ -131,7 +131,7 @@ if ntasks > 0 {
 *model.use_fp16 = use_fp16
 
 val preprocess_params =
-    if use_fp16 {preprocess_params.{elemtype=NN.Ast.NN_FP16}}
+    if use_fp16 {preprocess_params.{elemtype=Type_F16}}
     else {preprocess_params}
 
 for imgname@i <- images {

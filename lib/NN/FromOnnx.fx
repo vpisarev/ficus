@@ -10,28 +10,28 @@ import Hashmap, Hashset, Dynvec
 exception OnnxConvertError: string
 
 @private fun onnx2typ(t: OAst.tensor_t) = match t.data {
-    | OAst.T_INT8 _ => Ast.NN_I8
-    | OAst.T_INT32 _ => Ast.NN_I32
-    | OAst.T_INT64 _ => Ast.NN_I64
-    | OAst.T_FLOAT _ => Ast.NN_FP32
-    | OAst.T_BOOL _ => Ast.NN_Bool
+    | OAst.T_INT8 _ => Type_I8
+    | OAst.T_INT32 _ => Type_I32
+    | OAst.T_INT64 _ => Type_I64
+    | OAst.T_FLOAT _ => Type_F32
+    | OAst.T_BOOL _ => Type_Bool
 }
 
 @private fun onnx2typ(dtyp: OAst.datatype_t) {
-    | OAst.DTYP_UNDEFINED => Ast.NN_Undefined
-    | OAst.DTYP_FLOAT => Ast.NN_FP32
-    | OAst.DTYP_UINT8 => Ast.NN_U8
-    | OAst.DTYP_INT8 => Ast.NN_I8
-    | OAst.DTYP_UINT16 => Ast.NN_U16
-    | OAst.DTYP_INT16 => Ast.NN_I16
-    | OAst.DTYP_INT32 => Ast.NN_I32
-    | OAst.DTYP_UINT32 => Ast.NN_U32
-    | OAst.DTYP_INT64 => Ast.NN_I64
-    | OAst.DTYP_UINT64 => Ast.NN_U64
-    | OAst.DTYP_FLOAT16 => Ast.NN_FP16
-    | OAst.DTYP_BFLOAT16 => Ast.NN_BF16
-    | OAst.DTYP_BOOL => Ast.NN_Bool
-    | OAst.DTYP_DOUBLE => Ast.NN_FP64
+    | OAst.DTYP_UNDEFINED => Notype
+    | OAst.DTYP_FLOAT => Type_F32
+    | OAst.DTYP_UINT8 => Type_U8
+    | OAst.DTYP_INT8 => Type_I8
+    | OAst.DTYP_UINT16 => Type_U16
+    | OAst.DTYP_INT16 => Type_I16
+    | OAst.DTYP_INT32 => Type_I32
+    | OAst.DTYP_UINT32 => Type_U32
+    | OAst.DTYP_INT64 => Type_I64
+    | OAst.DTYP_UINT64 => Type_U64
+    | OAst.DTYP_FLOAT16 => Type_F16
+    | OAst.DTYP_BFLOAT16 => Type_BF16
+    | OAst.DTYP_BOOL => Type_Bool
+    | OAst.DTYP_DOUBLE => Type_F64
     | OAst.DTYP_STRING | OAst.DTYP_COMPLEX64 | OAst.DTYP_COMPLEX128 =>
         throw OnnxConvertError("unsupported datatype")
 }
@@ -296,7 +296,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                             shape=[],
                             layout=Ast.NN_Layout_Unknown
                         },
-                        typ=Ast.NN_Undefined }
+                        typ=Notype }
                     argnames.add(argname, idx)
                     vargs.data[idx] = arg
                     val t = Ast.nntensor_t { shape=arg.shape, data=Ast.NN_Data_Empty }
@@ -446,9 +446,9 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     | _ => {}
                 }
                 val to = match to {
-                    | 1 => Ast.NN_FP32 | 2 => Ast.NN_U8 | 3 => Ast.NN_I8 | 4 => Ast.NN_U16
-                    | 5 => Ast.NN_I16 | 6 => Ast.NN_I32 | 7 => Ast.NN_I64 | 9 => Ast.NN_Bool | 10 => Ast.NN_FP16
-                    | 11 => Ast.NN_FP64 | 12 => Ast.NN_U32 | 13 => Ast.NN_U64 | 16 => Ast.NN_BF16
+                    | 1 => Type_F32 | 2 => Type_U8 | 3 => Type_I8 | 4 => Type_U16
+                    | 5 => Type_I16 | 6 => Type_I32 | 7 => Type_I64 | 9 => Type_Bool | 10 => Type_F16
+                    | 11 => Type_F64 | 12 => Type_U32 | 13 => Type_U64 | 16 => Type_BF16
                     | _ => throw OnnxConvertError(f"{node.name} (op=Cast): unknown/unsupported target type {to}")
                 }
                 [:: Ast.NN_Cast { name=name, to=to, t_inp=inputs[0], t_out=outputs[0] }]

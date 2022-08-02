@@ -84,6 +84,8 @@ fun arguments() = argv.tl()
 @pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
 @pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }
 
+@pure @nothrow fun get_max_threads(): int = @ccode { return fx_get_max_threads() }
+
 fun timeit(f: void -> void, ~updated_min: (void->void)?,
            ~iterations: int=1, ~batch: int=1, ): (double, double)
 {

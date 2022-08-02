@@ -37,7 +37,7 @@ fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
     if (ndims != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    if (inp_typ != _FX_NN_FP32 || out_typ != inp_typ)
+    if (inp_typ != FX_F32 || out_typ != inp_typ)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     N = inp_shape[0];

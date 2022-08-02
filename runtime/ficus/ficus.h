@@ -62,71 +62,20 @@ typedef char32_t char_;
 typedef union fx_bits64_t {double f; int64_t i; uint64_t u;} fx_bits64_t;
 typedef union fx_bits32_t {float f; int i; unsigned u;} fx_bits32_t;
 
-
 #ifdef __ARM_NEON
-typedef __fp16 fx_f16_t;
-#define FX_FLOAT(x) (float)(x)
-#define FX_FLOAT16(x) (__fp16)(x)
+#define FX_HAVE_SIMD 1
+#define FX_SIMD_NEON 1
+typedef __fp16 fx_f16;
 #else
-typedef struct fx_f16_t { uint16_t bits; } fx_f16_t;
-#if (defined _MSC_VER || defined _M_X64) || (defined __GNUC__ && defined __AVX2__)
-#include "immintrin.h"
-FX_INLINE float FX_FLOAT(fx_f16_t h) {
-    float f;
-    _mm_store_ss(&f, _mm_cvtph_ps(_mm_cvtsi32_si128(h.bits)));
-    return f;
-}
-FX_INLINE fx_f16_t FX_FLOAT16(float f) {
-    fx_f16_t h;
-    h.bits = (uint16_t)_mm_cvtsi128_si32(_mm_cvtps_ph(_mm_set_ss(f), 0));
-    return h;
-}
-#else
-FX_INLINE float FX_FLOAT(fx_f16_t h) {
-    fx_bits32_t out;
+typedef struct fx_f16 { uint16_t bits; } fx_f16;
 
-    unsigned t = ((h.bits & 0x7fff) << 13) + 0x38000000;
-    unsigned sign = (h.bits & 0x8000) << 16;
-    unsigned e = h.bits & 0x7c00;
-
-    if (e >= 0x7c00) {
-        out.u = t + 0x38000000;
-    } else if (e == 0) {
-        out.u = t + (1 << 23);
-        out.f -= 6.103515625e-05f;
-    } else {
-        out.u = t;
-    }
-    out.u |= sign;
-    return out.f;
-}
-
-FX_INLINE fx_f16_t FX_FLOAT16(float x)
-{
-    fx_f16_t h;
-    fx_bits32_t in;
-    in.f = x;
-    unsigned sign = in.u & 0x80000000;
-    in.u ^= sign;
-
-    if( in.u >= 0x47800000 )
-        h.bits = (uint16_t)(in.u > 0x7f800000 ? 0x7e00 : 0x7c00);
-    else
-    {
-        if (in.u < 0x38800000)
-        {
-            in.f += 0.5f;
-            h.bits = (uint16_t)(in.u - 0x3f000000);
-        }
-        else
-        {
-            unsigned t = in.u + 0xc8000fff;
-            h.bits = (uint16_t)((t + ((in.u >> 13) & 1)) >> 13);
-        }
-    }
-    h.bits = (uint16_t)(h.bits | (sign >> 16));
-    return h;
-}
+#if (defined _MSC_VER && defined _M_X64) || (defined __GNUC__ && defined __x86_64__)
+    #define FX_HAVE_SIMD 1
+    #define FX_SIMD_SSE2 1
+    #if defined _MSC_VER || defined __AVX2__
+        #include "immintrin.h"
+        #define FX_SIMD_AVX2 1
+    #endif
 #endif
 #endif
 
@@ -159,6 +108,8 @@ FX_INLINE fx_f16_t FX_FLOAT16(float x)
 #else
 #define FX_THREAD_LOCAL __thread
 #endif
+
+int fx_get_max_threads(void);
 
 #define FX_CONCAT(a, b) a ## b
 
@@ -203,6 +154,24 @@ enum {
     FX_EXN_StdMin = -48,
     FX_EXN_User = -1024
 };
+
+enum {
+    FX_Notype = 1,
+    FX_Int,
+    FX_I8, FX_U8,
+    FX_I16, FX_U16,
+    FX_I32, FX_U32,
+    FX_I64, FX_U64,
+    FX_F16, FX_BF16,
+    FX_F32, FX_F64,
+    FX_Bool, FX_Char,
+    FX_Type_Max
+};
+
+FX_INLINE int_ fx_elemsize(int typ) {
+    return typ <= 1 || FX_Type_Max <= typ ? 0 :
+        (int_)((0x418422884422110ULL | sizeof(int_)) >> (typ-2)*4) & 0xf;
+}
 
 struct fx_str_t;
 
@@ -982,15 +951,10 @@ typedef bool (*fx_less_t)(const void*, const void*, void* userdata);
 int fx_qsort(void* arr, int_ size, size_t esz,
              fx_less_t lt, void* userdata, int_ prefix);
 
-int fx_sgemm(bool tA, bool tB, float alpha, float beta,
-             int ma, int na, const float* a, int lda0, int lda1,
-             int mb, int nb, const float* b, int ldb0, int ldb1,
-             float* c, int ldc, int num_threads);
-
-int fx_dgemm(bool tA, bool tB, double alpha, double beta,
-             int ma, int na, const double* a, int lda0, int lda1,
-             int mb, int nb, const double* b, int ldb0, int ldb1,
-             double* c, int ldc, int num_threads);
+int fx_mpgemm(bool tA, bool tB, double alpha, double beta,
+              int_ ma, int_ na, int a_typ, const void* a, int_ lda0, int_ lda1,
+              int_ mb, int_ nb, int b_typ, const void* b, int_ ldb0, int_ ldb1,
+              int c_typ, void* c, int_ ldc, int num_threads);
 
 int fx_gemm(fx_arr_t* m1, bool t1, int_ rs1, int_ re1, int_ rd1, int_ cs1, int_ ce1, int_ cd1,
             fx_arr_t* m2, bool t2, int_ rs2, int_ re2, int_ rd2, int_ cs2, int_ ce2, int_ cd2, fx_arr_t* result);
@@ -1240,6 +1204,65 @@ int fx_re_fullmatch(const fx_cptr_t regex, const fx_str_t* str, int flags);
 int fx_re_match(const fx_cptr_t regex, const fx_str_t* str, int flags, fx_arr_t* fx_result);
 int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str,
                   const fx_str_t* subst, int flags, fx_str_t* result);
+
+//////////////////////////// FP16<=>FP32 conversion //////////////////////
+
+#if defined FX_SIMD_NEON && FX_SIMD_NEON
+#define FX_FLOAT(x) (float)(x)
+#define FX_FLOAT16(x) (__fp16)(x)
+#elif defined FX_SIMD_AVX2 && FX_SIMD_AVX2
+FX_INLINE float FX_FLOAT(fx_f16 h) {
+    float f;
+    _mm_store_ss(&f, _mm_cvtph_ps(_mm_cvtsi32_si128(h.bits)));
+    return f;
+}
+FX_INLINE fx_f16 FX_FLOAT16(float f) {
+    fx_f16 h;
+    h.bits = (uint16_t)_mm_cvtsi128_si32(_mm_cvtps_ph(_mm_set_ss(f), 0));
+    return h;
+}
+#else
+static inline float FX_FLOAT(fx_f16 h) {
+    fx_bits32_t out;
+    unsigned t = ((h.bits & 0x7fff) << 13) + 0x38000000;
+    unsigned e = h.bits & 0x7c00;
+    out.u = t + (e == 0x7c00 ? 0x38000000 : 0);
+    if (e == 0) {
+        out.u += 1 << 23;
+        out.f -= 6.103515625e-05f;
+    }
+    out.u |= (h.bits >> 15) << 31;
+    return out.f;
+}
+
+// Slightly reshaped float->half by Fabian "ryg" Giesen:
+// https://gist.github.com/rygorous/2156668
+static inline fx_f16 FX_FLOAT16(float f)
+{
+    fx_bits32_t u;
+    fx_f16 h;
+    u.f = f;
+    unsigned sign = u.u & 0x80000000;
+    u.u ^= sign;
+
+    if (u.u < 0x47800000) {
+        if (u.u >= 0x38800000) {
+            h.bits = (uint16_t)((u.u + 0xc8000fff + ((u.u >> 13) & 1)) >> 13);
+        } else {
+            // denormal or +/-0
+            fx_bits32_t denorm_magic;
+            denorm_magic.u = 0x3f000000;
+            u.f += denorm_magic.f;
+            h.bits = (uint16_t)(u.u - denorm_magic.u);
+        }
+    } else {
+        // nan or +/-inf
+        h.bits = (uint16_t)(0x7c00 + ((u.u > 0x7f800000)<<9));
+    }
+    h.bits = (uint16_t)(h.bits | (sign >> 16));
+    return h;
+}
+#endif
 
 #ifdef __cplusplus
 }

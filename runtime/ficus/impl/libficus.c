@@ -38,6 +38,14 @@ static char** _fx_argv = 0;
 
 int_ fx_argc(void) { return _fx_argc; }
 char* fx_argv(int_ idx) { return _fx_argv[idx]; }
+int fx_get_max_threads(void) {
+    int omp_get_max_threads();
+#ifdef _OPENMP
+    return omp_get_max_threads();
+#else
+    return 1;
+#endif
+}
 
 static fx_exn_info_t fx_std_exn_info[-FX_EXN_StdMin];
 

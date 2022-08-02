@@ -13348,7 +13348,7 @@ FX_EXTERN_C int _fx_M6C_formFM8ctyp2strT2SR9Ast__id_t2N14C_form__ctyp_tR10Ast__l
    }
    if (tag_0 == 6) {
       if (t_0->u.CTypFloat == 16) {
-         fx_str_t slit_7 = FX_MAKE_STR("fx_f16_t");
+         fx_str_t slit_7 = FX_MAKE_STR("fx_f16");
          _fx_make_T2SR9Ast__id_t(&slit_7, &_fx_g9Ast__noid, fx_result);
          goto _fx_endmatch_0;
       }

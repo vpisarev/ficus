@@ -171,15 +171,16 @@ void _fx_nn_elemwise_mish_f32(const void* inptr_, void* outptr_,
     int_ i = 0;
 #ifdef __ARM_NEON
     float32x4_t thr = vdupq_n_f32(-36.73f), one = vdupq_n_f32(1.f), z = vdupq_n_f32(0.f);
+    _FX_VEXP_INIT();
     for (; i <= len - 4; i += 4) {
-        float32x4_t x = vld1q_f32(inptr + i);
+        float32x4_t x = vld1q_f32(inptr + i), y;
         x = vbslq_f32(vcleq_f32(x, thr), z, x);
-        float32x4_t y = _fx_vexpq_f32(vsubq_f32(z, x));
-        float32x4_t y2 = vaddq_f32(y, y);
-        float32x4_t y2_1 = vaddq_f32(y2, one);
+        _FX_VEXP_COMPUTE(vsubq_f32(z, x), y);
+        float32x4_t _2y = vaddq_f32(y, y);
+        float32x4_t _2y_1 = vaddq_f32(_2y, one);
         x = vdivq_f32(
-            vmulq_f32(x, y2_1),
-            vaddq_f32(y2_1, vmulq_f32(y2, y)));
+            vmulq_f32(x, _2y_1),
+            vaddq_f32(_2y_1, vmulq_f32(_2y, y)));
         vst1q_f32(outptr + i, x);
     }
 #endif
@@ -227,31 +228,36 @@ void _fx_nn_elemwise_scale_f32(const void* inptr_, void* outptr_,
         outptr[i] = inptr[i]*scale;
 }
 
-#ifdef _FX_NN_ENABLE_FP16
+#if _FX_NN_ENABLE_FP16
 
-_FX_IMPLEMENT_UNARY_OP(relu_f16, __fp16, __fp16, _FX_RELU)
-_FX_IMPLEMENT_UNARY_OP(tanh_f16, __fp16, __fp16, tanhf)
+static _FX_IMPLEMENT_UNARY_OP(abs_f16, fx_f16, fx_f16, fabsf)
+static _FX_IMPLEMENT_UNARY_OP(ceil_f16, fx_f16, fx_f16, ceilf)
+static _FX_IMPLEMENT_UNARY_OP(floor_f16, fx_f16, fx_f16, floorf)
+static _FX_IMPLEMENT_UNARY_OP(round_f16, fx_f16, fx_f16, roundf)
+static _FX_IMPLEMENT_UNARY_OP(sqrt_f16, fx_f16, fx_f16, sqrtf)
+_FX_IMPLEMENT_UNARY_OP(relu_f16, fx_f16, fx_f16, _FX_RELU)
+_FX_IMPLEMENT_UNARY_OP(tanh_f16, fx_f16, fx_f16, tanhf)
 
-static _FX_IMPLEMENT_UNARY_OP(cast_f32f16, float, __fp16, _FX_NOP)
-static _FX_IMPLEMENT_UNARY_OP(cast_f16f32, __fp16, float, _FX_NOP)
+static _FX_IMPLEMENT_UNARY_OP(cast_f32f16, float, fx_f16, _FX_NOP)
+static _FX_IMPLEMENT_UNARY_OP(cast_f16f32, fx_f16, float, _FX_NOP)
 
-static _FX_IMPLEMENT_UNARY_OP(cast_i32f16, int32_t, __fp16, _FX_NOP)
-static _FX_IMPLEMENT_UNARY_OP(cast_i64f16, int64_t, __fp16, _FX_NOP)
-static _FX_IMPLEMENT_UNARY_OP(cast_f16i32, __fp16, int32_t, lrintf)
-static _FX_IMPLEMENT_UNARY_OP(cast_f16i64, __fp16, int64_t, lrintf)
+static _FX_IMPLEMENT_UNARY_OP(cast_i32f16, int32_t, fx_f16, _FX_NOP)
+static _FX_IMPLEMENT_UNARY_OP(cast_i64f16, int64_t, fx_f16, _FX_NOP)
+static _FX_IMPLEMENT_UNARY_OP(cast_f16i32, fx_f16, int32_t, lrintf)
+static _FX_IMPLEMENT_UNARY_OP(cast_f16i64, fx_f16, int64_t, lrintf)
 
-static _FX_IMPLEMENT_UNARY_OP(cast_i8f16, int8_t, __fp16, _FX_NOP)
-static _FX_IMPLEMENT_UNARY_OP(cast_u8f16, uint8_t, __fp16, _FX_NOP)
-static _FX_IMPLEMENT_UNARY_OP(cast_f16i8, __fp16, int8_t, _fx_cast_f32i8)
-static _FX_IMPLEMENT_UNARY_OP(cast_f16u8, __fp16, uint8_t, _fx_cast_f32u8)
-static _FX_IMPLEMENT_UNARY_OP(cast_f16b, __fp16, bool, _FX_NONZERO)
-static _FX_IMPLEMENT_UNARY_OP(cast_bf16, bool, __fp16, _FX_NOP)
+static _FX_IMPLEMENT_UNARY_OP(cast_i8f16, int8_t, fx_f16, _FX_NOP)
+static _FX_IMPLEMENT_UNARY_OP(cast_u8f16, uint8_t, fx_f16, _FX_NOP)
+static _FX_IMPLEMENT_UNARY_OP(cast_f16i8, fx_f16, int8_t, _fx_cast_f32i8)
+static _FX_IMPLEMENT_UNARY_OP(cast_f16u8, fx_f16, uint8_t, _fx_cast_f32u8)
+static _FX_IMPLEMENT_UNARY_OP(cast_f16b, fx_f16, bool, _FX_NONZERO)
+static _FX_IMPLEMENT_UNARY_OP(cast_bf16, bool, fx_f16, _FX_NOP)
 
 void _fx_nn_elemwise_sigmoid_f16(const void* inptr_, void* outptr_,
                               int_ len, const float* param)
 {
-    const fx_f16_t* inptr = (const fx_f16_t*)inptr_;
-    fx_f16_t* outptr = (fx_f16_t*)outptr_;
+    const fx_f16* inptr = (const fx_f16*)inptr_;
+    fx_f16* outptr = (fx_f16*)outptr_;
     for (int_ i = 0; i < len; i++) {
         float x = FX_FLOAT(inptr[i]);
         float e_x = expf(-fabsf(x));
@@ -260,22 +266,23 @@ void _fx_nn_elemwise_sigmoid_f16(const void* inptr_, void* outptr_,
 }
 
 void _fx_nn_elemwise_mish_f16(const void* inptr_, void* outptr_,
-                           int_ len, const float* param)
+                              int_ len, const float* param)
 {
-    const fx_f16_t* inptr = (const fx_f16_t*)inptr_;
-    fx_f16_t* outptr = (fx_f16_t*)outptr_;
+    const fx_f16* inptr = (const fx_f16*)inptr_;
+    fx_f16* outptr = (fx_f16*)outptr_;
     int_ i = 0;
 #ifdef __ARM_NEON
     float16x8_t thr = vdupq_n_f16(-36.73f), one = vdupq_n_f16(1.f), z = vdupq_n_f16(0.f);
+    _FX_VEXP_INIT();
     for (; i <= len - 4; i += 4) {
-        float32x4_t x = vcvt_f32_f16(vld1_f16(inptr + i));
+        float32x4_t x = vcvt_f32_f16(vld1_f16(inptr + i)), y;
         x = vbslq_f32(vcleq_f32(x, thr), z, x);
-        float32x4_t y = _fx_vexpq_f32(vsubq_f32(z, x));
-        float32x4_t y2 = vaddq_f32(y, y);
-        float32x4_t y2_1 = vaddq_f32(y2, one);
+        _FX_VEXP_COMPUTE(vsubq_f32(z, x), y);
+        float32x4_t _2y = vaddq_f32(y, y);
+        float32x4_t _2y_1 = vaddq_f32(_2y, one);
         x = vdivq_f32(
-            vmulq_f32(x, y2_1),
-            vaddq_f32(y2_1, vmulq_f32(y2, y)));
+            vmulq_f32(x, _2y_1),
+            vaddq_f32(_2y_1, vmulq_f32(_2y, y)));
         vst1_f16(outptr + i, vcvt_f16_f32(x));
     }
 #endif
@@ -288,7 +295,7 @@ void _fx_nn_elemwise_mish_f16(const void* inptr_, void* outptr_,
 }
 
 void _fx_nn_elemwise_clip_f16(const void* inptr_, void* outptr_,
-                            int_ len, const float* param)
+                              int_ len, const float* param)
 {
     const float* inptr = (const float*)inptr_;
     float* outptr = (float*)outptr_;
@@ -302,10 +309,10 @@ void _fx_nn_elemwise_clip_f16(const void* inptr_, void* outptr_,
 }
 
 void _fx_nn_elemwise_leaky_relu_f16(const void* inptr_, void* outptr_,
-                                 int_ len, const float* param)
+                                    int_ len, const float* param)
 {
-    const fx_f16_t* inptr = (const fx_f16_t*)inptr_;
-    fx_f16_t* outptr = (fx_f16_t*)outptr_;
+    const fx_f16* inptr = (const fx_f16*)inptr_;
+    fx_f16* outptr = (fx_f16*)outptr_;
     float alpha = *param;
     for (int_ j = 0; j < len; j++) {
         float x = FX_FLOAT(inptr[j]);
@@ -316,8 +323,8 @@ void _fx_nn_elemwise_leaky_relu_f16(const void* inptr_, void* outptr_,
 void _fx_nn_elemwise_scale_f16(const void* inptr_, void* outptr_,
                                int_ len, const float* param)
 {
-    const fx_f16_t* inptr = (const fx_f16_t*)inptr_;
-    fx_f16_t* outptr = (fx_f16_t*)outptr_;
+    const fx_f16* inptr = (const fx_f16*)inptr_;
+    fx_f16* outptr = (fx_f16*)outptr_;
     float scale = *param;
     for (int_ i = 0; i < len; i++)
         outptr[i] = FX_FLOAT16(inptr[i]*scale);
@@ -327,55 +334,55 @@ void _fx_nn_elemwise_scale_f16(const void* inptr_, void* outptr_,
 static _fx_unary_func_t _fx_get_cast_func(int inp_typ, int out_typ)
 {
     return
-        inp_typ == _FX_NN_I8 ?
-            (out_typ == _FX_NN_I32 ? _fx_nn_elemwise_cast_i8i32 :
-            out_typ == _FX_NN_I64 ? _fx_nn_elemwise_cast_i8i64 :
-            out_typ == _FX_NN_Bool ? _fx_nn_elemwise_cast_i8b :
-            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_nn_elemwise_cast_i8f16 :)
-            out_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cast_i8f32 : 0) :
-        inp_typ == _FX_NN_U8 ?
-            (out_typ == _FX_NN_I32 ? _fx_nn_elemwise_cast_u8i32 :
-            out_typ == _FX_NN_I64 ? _fx_nn_elemwise_cast_u8i64 :
-            out_typ == _FX_NN_Bool ? _fx_nn_elemwise_cast_i8b :
-            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_nn_elemwise_cast_u8f16 :)
-            out_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cast_u8f32 : 0) :
-        inp_typ == _FX_NN_I32 ?
-            (out_typ == _FX_NN_I8 ? _fx_nn_elemwise_cast_i32i8 :
-            out_typ == _FX_NN_U8 ? _fx_nn_elemwise_cast_i32u8 :
-            out_typ == _FX_NN_I64 ? _fx_nn_elemwise_cast_i32i64 :
-            out_typ == _FX_NN_Bool ? _fx_nn_elemwise_cast_i32b :
-            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_nn_elemwise_cast_i32f16 :)
-            out_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cast_i32f32 : 0) :
-        inp_typ == _FX_NN_I64 ?
-            (out_typ == _FX_NN_I8 ? _fx_nn_elemwise_cast_i64i8 :
-            out_typ == _FX_NN_U8 ? _fx_nn_elemwise_cast_i64u8 :
-            out_typ == _FX_NN_I32 ? _fx_nn_elemwise_cast_i64i32 :
-            out_typ == _FX_NN_Bool ? _fx_nn_elemwise_cast_i64b :
-            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_nn_elemwise_cast_i64f16 :)
-            out_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cast_i64f32 : 0) :
-        inp_typ == _FX_NN_FP32 ?
-            (out_typ == _FX_NN_I8 ? _fx_nn_elemwise_cast_f32i8 :
-            out_typ == _FX_NN_U8 ? _fx_nn_elemwise_cast_f32u8 :
-            out_typ == _FX_NN_I32 ? _fx_nn_elemwise_cast_f32i32 :
-            out_typ == _FX_NN_I64 ? _fx_nn_elemwise_cast_f32i64 :
-            out_typ == _FX_NN_Bool ? _fx_nn_elemwise_cast_f32b :
-            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_nn_elemwise_cast_f32f16 :)
+        inp_typ == FX_I8 ?
+            (out_typ == FX_I32 ? _fx_nn_elemwise_cast_i8i32 :
+            out_typ == FX_I64 ? _fx_nn_elemwise_cast_i8i64 :
+            out_typ == FX_Bool ? _fx_nn_elemwise_cast_i8b :
+            _FX_FP16_CASE(out_typ == FX_F16 ? _fx_nn_elemwise_cast_i8f16 :)
+            out_typ == FX_F32 ? _fx_nn_elemwise_cast_i8f32 : 0) :
+        inp_typ == FX_U8 ?
+            (out_typ == FX_I32 ? _fx_nn_elemwise_cast_u8i32 :
+            out_typ == FX_I64 ? _fx_nn_elemwise_cast_u8i64 :
+            out_typ == FX_Bool ? _fx_nn_elemwise_cast_i8b :
+            _FX_FP16_CASE(out_typ == FX_F16 ? _fx_nn_elemwise_cast_u8f16 :)
+            out_typ == FX_F32 ? _fx_nn_elemwise_cast_u8f32 : 0) :
+        inp_typ == FX_I32 ?
+            (out_typ == FX_I8 ? _fx_nn_elemwise_cast_i32i8 :
+            out_typ == FX_U8 ? _fx_nn_elemwise_cast_i32u8 :
+            out_typ == FX_I64 ? _fx_nn_elemwise_cast_i32i64 :
+            out_typ == FX_Bool ? _fx_nn_elemwise_cast_i32b :
+            _FX_FP16_CASE(out_typ == FX_F16 ? _fx_nn_elemwise_cast_i32f16 :)
+            out_typ == FX_F32 ? _fx_nn_elemwise_cast_i32f32 : 0) :
+        inp_typ == FX_I64 ?
+            (out_typ == FX_I8 ? _fx_nn_elemwise_cast_i64i8 :
+            out_typ == FX_U8 ? _fx_nn_elemwise_cast_i64u8 :
+            out_typ == FX_I32 ? _fx_nn_elemwise_cast_i64i32 :
+            out_typ == FX_Bool ? _fx_nn_elemwise_cast_i64b :
+            _FX_FP16_CASE(out_typ == FX_F16 ? _fx_nn_elemwise_cast_i64f16 :)
+            out_typ == FX_F32 ? _fx_nn_elemwise_cast_i64f32 : 0) :
+        inp_typ == FX_F32 ?
+            (out_typ == FX_I8 ? _fx_nn_elemwise_cast_f32i8 :
+            out_typ == FX_U8 ? _fx_nn_elemwise_cast_f32u8 :
+            out_typ == FX_I32 ? _fx_nn_elemwise_cast_f32i32 :
+            out_typ == FX_I64 ? _fx_nn_elemwise_cast_f32i64 :
+            out_typ == FX_Bool ? _fx_nn_elemwise_cast_f32b :
+            _FX_FP16_CASE(out_typ == FX_F16 ? _fx_nn_elemwise_cast_f32f16 :)
             0) :
-        inp_typ == _FX_NN_Bool ?
-            (out_typ == _FX_NN_I8 ? _fx_nn_elemwise_cast_bi8 :
-            out_typ == _FX_NN_U8 ? _fx_nn_elemwise_cast_bi8 :
-            out_typ == _FX_NN_I32 ? _fx_nn_elemwise_cast_bi32 :
-            out_typ == _FX_NN_I64 ? _fx_nn_elemwise_cast_bi64 :
-            out_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cast_bf32 :
-            _FX_FP16_CASE(out_typ == _FX_NN_FP16 ? _fx_nn_elemwise_cast_bf16 :)
+        inp_typ == FX_Bool ?
+            (out_typ == FX_I8 ? _fx_nn_elemwise_cast_bi8 :
+            out_typ == FX_U8 ? _fx_nn_elemwise_cast_bi8 :
+            out_typ == FX_I32 ? _fx_nn_elemwise_cast_bi32 :
+            out_typ == FX_I64 ? _fx_nn_elemwise_cast_bi64 :
+            out_typ == FX_F32 ? _fx_nn_elemwise_cast_bf32 :
+            _FX_FP16_CASE(out_typ == FX_F16 ? _fx_nn_elemwise_cast_bf16 :)
             0) :
     #ifdef __ARM_NEON
-        inp_typ == _FX_NN_FP16 ?
-            (out_typ == _FX_NN_I8 ? _fx_nn_elemwise_cast_f16i8 :
-            out_typ == _FX_NN_U8 ? _fx_nn_elemwise_cast_f16u8 :
-            out_typ == _FX_NN_I32 ? _fx_nn_elemwise_cast_f16i32 :
-            out_typ == _FX_NN_I64 ? _fx_nn_elemwise_cast_f16i64 :
-            out_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cast_i64f32 : 0) :
+        inp_typ == FX_F16 ?
+            (out_typ == FX_I8 ? _fx_nn_elemwise_cast_f16i8 :
+            out_typ == FX_U8 ? _fx_nn_elemwise_cast_f16u8 :
+            out_typ == FX_I32 ? _fx_nn_elemwise_cast_f16i32 :
+            out_typ == FX_I64 ? _fx_nn_elemwise_cast_f16i64 :
+            out_typ == FX_F32 ? _fx_nn_elemwise_cast_i64f32 : 0) :
     #endif
         0;
 }
@@ -383,39 +390,39 @@ static _fx_unary_func_t _fx_get_cast_func(int inp_typ, int out_typ)
 static _fx_unary_func_t _fx_get_unary_func(int op, int inp_typ)
 {
     return
-        op == _FX_NN_Abs ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_abs_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_abs_f16 :) 0) :
-        op == _FX_NN_Acos ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_acos_f32 : 0) :
-        op == _FX_NN_Acosh ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_acosh_f32 : 0) :
-        op == _FX_NN_Asin ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_asin_f32 : 0) :
-        op == _FX_NN_Asinh ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_asinh_f32 : 0) :
-        op == _FX_NN_Atan ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_atan_f32 : 0) :
-        op == _FX_NN_Atanh ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_atanh_f32 : 0) :
-        op == _FX_NN_Ceil ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_ceil_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_ceil_f16 :) 0) :
-        op == _FX_NN_Cos ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cos_f32 : 0) :
-        op == _FX_NN_Cosh ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_cosh_f32 : 0) :
-        op == _FX_NN_Exp ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_exp_f32 : 0) :
-        op == _FX_NN_Floor ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_floor_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_floor_f16 :) 0) :
-        op == _FX_NN_Log ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_log_f32 : 0) :
-        op == _FX_NN_Mish ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_mish_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_mish_f16 :) 0) :
-        op == _FX_NN_Relu ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_relu_f32 : 0) :
-        op == _FX_NN_Round ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_round_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_round_f16 :) 0) :
-        op == _FX_NN_Sigmoid ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_sigmoid_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_sigmoid_f16 :) 0) :
-        op == _FX_NN_Sign ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_sign_f32 : 0) :
-        op == _FX_NN_Sin ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_sin_f32 : 0) :
-        op == _FX_NN_Sinh ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_sinh_f32 : 0) :
-        op == _FX_NN_Softplus ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_softplus_f32 : 0) :
-        op == _FX_NN_Softsign ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_softsign_f32 : 0) :
-        op == _FX_NN_Sqrt ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_sqrt_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_sqrt_f16 :) 0) :
-        op == _FX_NN_Tan ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_tan_f32 : 0) :
-        op == _FX_NN_Tanh ? (inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_tanh_f32 :
-                _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_tanh_f16 :) 0) :
+        op == _FX_NN_Abs ? (inp_typ == FX_F32 ? _fx_nn_elemwise_abs_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_abs_f16 :) 0) :
+        op == _FX_NN_Acos ? (inp_typ == FX_F32 ? _fx_nn_elemwise_acos_f32 : 0) :
+        op == _FX_NN_Acosh ? (inp_typ == FX_F32 ? _fx_nn_elemwise_acosh_f32 : 0) :
+        op == _FX_NN_Asin ? (inp_typ == FX_F32 ? _fx_nn_elemwise_asin_f32 : 0) :
+        op == _FX_NN_Asinh ? (inp_typ == FX_F32 ? _fx_nn_elemwise_asinh_f32 : 0) :
+        op == _FX_NN_Atan ? (inp_typ == FX_F32 ? _fx_nn_elemwise_atan_f32 : 0) :
+        op == _FX_NN_Atanh ? (inp_typ == FX_F32 ? _fx_nn_elemwise_atanh_f32 : 0) :
+        op == _FX_NN_Ceil ? (inp_typ == FX_F32 ? _fx_nn_elemwise_ceil_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_ceil_f16 :) 0) :
+        op == _FX_NN_Cos ? (inp_typ == FX_F32 ? _fx_nn_elemwise_cos_f32 : 0) :
+        op == _FX_NN_Cosh ? (inp_typ == FX_F32 ? _fx_nn_elemwise_cosh_f32 : 0) :
+        op == _FX_NN_Exp ? (inp_typ == FX_F32 ? _fx_nn_elemwise_exp_f32 : 0) :
+        op == _FX_NN_Floor ? (inp_typ == FX_F32 ? _fx_nn_elemwise_floor_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_floor_f16 :) 0) :
+        op == _FX_NN_Log ? (inp_typ == FX_F32 ? _fx_nn_elemwise_log_f32 : 0) :
+        op == _FX_NN_Mish ? (inp_typ == FX_F32 ? _fx_nn_elemwise_mish_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_mish_f16 :) 0) :
+        op == _FX_NN_Relu ? (inp_typ == FX_F32 ? _fx_nn_elemwise_relu_f32 : 0) :
+        op == _FX_NN_Round ? (inp_typ == FX_F32 ? _fx_nn_elemwise_round_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_round_f16 :) 0) :
+        op == _FX_NN_Sigmoid ? (inp_typ == FX_F32 ? _fx_nn_elemwise_sigmoid_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_sigmoid_f16 :) 0) :
+        op == _FX_NN_Sign ? (inp_typ == FX_F32 ? _fx_nn_elemwise_sign_f32 : 0) :
+        op == _FX_NN_Sin ? (inp_typ == FX_F32 ? _fx_nn_elemwise_sin_f32 : 0) :
+        op == _FX_NN_Sinh ? (inp_typ == FX_F32 ? _fx_nn_elemwise_sinh_f32 : 0) :
+        op == _FX_NN_Softplus ? (inp_typ == FX_F32 ? _fx_nn_elemwise_softplus_f32 : 0) :
+        op == _FX_NN_Softsign ? (inp_typ == FX_F32 ? _fx_nn_elemwise_softsign_f32 : 0) :
+        op == _FX_NN_Sqrt ? (inp_typ == FX_F32 ? _fx_nn_elemwise_sqrt_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_sqrt_f16 :) 0) :
+        op == _FX_NN_Tan ? (inp_typ == FX_F32 ? _fx_nn_elemwise_tan_f32 : 0) :
+        op == _FX_NN_Tanh ? (inp_typ == FX_F32 ? _fx_nn_elemwise_tanh_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_tanh_f16 :) 0) :
         0;
 }
 
@@ -669,12 +676,12 @@ _FX_IMPLEMENT_BINARY_OP(and_bool, bool, bool, bool, _FX_OP_AND)
 _FX_IMPLEMENT_BINARY_OP(or_bool, bool, bool, bool, _FX_OP_OR)
 _FX_IMPLEMENT_BINARY_OP(xor_bool, bool, bool, bool, _FX_OP_XOR)
 
-#ifdef _FX_NN_ENABLE_FP16
-_FX_IMPLEMENT_BINARY_OP(add_f16_f32f16, float, fx_f16_t, fx_f16_t, _FX_OP_ADD)
-_FX_IMPLEMENT_BINARY_OP(mul_f16_f32f16, float, fx_f16_t, fx_f16_t, _FX_OP_MUL)
-_FX_IMPLEMENT_BINARY_OP(min_f16_f32f16, float, fx_f16_t, fx_f16_t, _FX_OP_MIN)
-_FX_IMPLEMENT_BINARY_OP(max_f16_f32f16, float, fx_f16_t, fx_f16_t, _FX_OP_MAX)
-_FX_IMPLEMENT_BINARY_OP(mean_f16_f32f16, float, fx_f16_t, fx_f16_t, _FX_OP_MEAN)
+#if _FX_NN_ENABLE_FP16
+_FX_IMPLEMENT_BINARY_OP(add_f16_f32f16, float, fx_f16, fx_f16, _FX_OP_ADD)
+_FX_IMPLEMENT_BINARY_OP(mul_f16_f32f16, float, fx_f16, fx_f16, _FX_OP_MUL)
+_FX_IMPLEMENT_BINARY_OP(min_f16_f32f16, float, fx_f16, fx_f16, _FX_OP_MIN)
+_FX_IMPLEMENT_BINARY_OP(max_f16_f32f16, float, fx_f16, fx_f16, _FX_OP_MAX)
+_FX_IMPLEMENT_BINARY_OP(mean_f16_f32f16, float, fx_f16, fx_f16, _FX_OP_MEAN)
 #endif
 
 static _fx_nn_elemwise_binary_func_t
@@ -682,74 +689,74 @@ _fx_get_elemwise_binary_func(int el_op, int typ, int typ2)
 {
     if (typ != typ2)
         return
-    #ifdef _FX_NN_ENABLE_FP16
+    #if _FX_NN_ENABLE_FP16
             el_op == _FX_NN_Add ?
-            (typ == _FX_NN_FP32 && typ2 == _FX_NN_FP16 ? _fx_nn_elemwise_add_f16_f32f16 : 0) :
+            (typ == FX_F32 && typ2 == FX_F16 ? _fx_nn_elemwise_add_f16_f32f16 : 0) :
             el_op == _FX_NN_Mul ?
-            (typ == _FX_NN_FP32 && typ2 == _FX_NN_FP16 ? _fx_nn_elemwise_mul_f16_f32f16 : 0) :
+            (typ == FX_F32 && typ2 == FX_F16 ? _fx_nn_elemwise_mul_f16_f32f16 : 0) :
             el_op == _FX_NN_Min ?
-            (typ == _FX_NN_FP32 && typ2 == _FX_NN_FP16 ? _fx_nn_elemwise_min_f16_f32f16 : 0) :
+            (typ == FX_F32 && typ2 == FX_F16 ? _fx_nn_elemwise_min_f16_f32f16 : 0) :
             el_op == _FX_NN_Max ?
-            (typ == _FX_NN_FP32 && typ2 == _FX_NN_FP16 ? _fx_nn_elemwise_max_f16_f32f16 : 0) :
+            (typ == FX_F32 && typ2 == FX_F16 ? _fx_nn_elemwise_max_f16_f32f16 : 0) :
             el_op == _FX_NN_Mean ?
-            (typ == _FX_NN_FP32 && typ2 == _FX_NN_FP16 ? _fx_nn_elemwise_mean_f16_f32f16 : 0) :
+            (typ == FX_F32 && typ2 == FX_F16 ? _fx_nn_elemwise_mean_f16_f32f16 : 0) :
     #endif
             0;
     return
         el_op == _FX_NN_Add ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_add_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_add_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_add_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_add_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_add_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_add_i64 : 0) :
         el_op == _FX_NN_Sub ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_sub_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_sub_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_sub_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_sub_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_sub_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_sub_i64 : 0) :
         el_op == _FX_NN_Mul ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_mul_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_mul_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_mul_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_mul_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_mul_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_mul_i64 : 0) :
         el_op == _FX_NN_Div ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_div_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_div_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_div_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_div_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_div_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_div_i64 : 0) :
         el_op == _FX_NN_Mod ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_mod_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_mod_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_mod_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_mod_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_mod_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_mod_i64 : 0) :
         el_op == _FX_NN_Pow ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_pow_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_pow_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_pow_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_pow_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_pow_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_pow_i64 : 0) :
         el_op == _FX_NN_Min ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_min_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_min_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_min_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_min_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_min_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_min_i64 : 0) :
         el_op == _FX_NN_Max ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_max_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_max_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_max_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_max_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_max_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_max_i64 : 0) :
         el_op == _FX_NN_Mean ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_mean_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_mean_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_mean_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_mean_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_mean_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_mean_i64 : 0) :
         el_op == _FX_NN_Equal ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_cmp_eq_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_cmp_eq_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_cmp_eq_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_cmp_eq_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_cmp_eq_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_cmp_eq_i64 : 0) :
         el_op == _FX_NN_Greater ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_cmp_gt_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_cmp_gt_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_cmp_gt_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_cmp_gt_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_cmp_gt_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_cmp_gt_i64 : 0) :
         el_op == _FX_NN_GreaterOrEqual ?
-            (typ == _FX_NN_FP32 ? _fx_nn_elemwise_cmp_ge_f32 :
-             typ == _FX_NN_I32 ? _fx_nn_elemwise_cmp_ge_i32 :
-             typ == _FX_NN_I64 ? _fx_nn_elemwise_cmp_ge_i64 : 0) :
+            (typ == FX_F32 ? _fx_nn_elemwise_cmp_ge_f32 :
+             typ == FX_I32 ? _fx_nn_elemwise_cmp_ge_i32 :
+             typ == FX_I64 ? _fx_nn_elemwise_cmp_ge_i64 : 0) :
         el_op == _FX_NN_And ?
-            (typ == _FX_NN_Bool ? _fx_nn_elemwise_and_bool : 0) :
+            (typ == FX_Bool ? _fx_nn_elemwise_and_bool : 0) :
         el_op == _FX_NN_Or ?
-            (typ == _FX_NN_Bool ? _fx_nn_elemwise_or_bool : 0) :
+            (typ == FX_Bool ? _fx_nn_elemwise_or_bool : 0) :
         el_op == _FX_NN_Xor ?
-            (typ == _FX_NN_Bool ? _fx_nn_elemwise_and_bool : 0) :
+            (typ == FX_Bool ? _fx_nn_elemwise_and_bool : 0) :
         0;
 }
 }
@@ -773,8 +780,8 @@ fun run_clip(inp: Ast.nntensor_t, out: Ast.nntensor_t, minval: float, maxval: fl
 @ccode {
     float param[] = {minval, maxval};
     int inp_typ = inp->data.tag;
-    _fx_unary_func_t func = inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_clip_f32 :
-        _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_clip_f16 :) 0;
+    _fx_unary_func_t func = inp_typ == FX_F32 ? _fx_nn_elemwise_clip_f32 :
+        _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_clip_f16 :) 0;
 
     return _fx_run_any_unary((_fx_nntensor_t*)inp, (_fx_nntensor_t*)out, func, param, ntasks);
 }
@@ -841,7 +848,7 @@ fun run_binary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
         t = inp1_data; inp1_data = inp2_data; inp2_data = t;
     }
 
-    if ((inp_typ == _FX_NN_FP16 && inp2_typ == _FX_NN_FP32) &&
+    if ((inp_typ == FX_F16 && inp2_typ == FX_F32) &&
         (el_op == _FX_NN_Add || el_op == _FX_NN_Mul ||
          el_op == _FX_NN_Min || el_op == _FX_NN_Max)) {
         fx_arr_t* t = inp1_shape_; inp1_shape_ = inp2_shape_; inp2_shape_ = t;
@@ -947,8 +954,8 @@ match op
 fun run_leaky_relu(inp: Ast.nntensor_t, out: Ast.nntensor_t, alpha: float, ntasks: int): void
 @ccode {
     int inp_typ = inp->data.tag;
-    _fx_unary_func_t func = inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_leaky_relu_f32 :
-        _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_leaky_relu_f16 :) 0;
+    _fx_unary_func_t func = inp_typ == FX_F32 ? _fx_nn_elemwise_leaky_relu_f32 :
+        _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_leaky_relu_f16 :) 0;
     return _fx_run_any_unary((_fx_nntensor_t*)inp, (_fx_nntensor_t*)out, func, &alpha, ntasks);
 }
 
@@ -966,8 +973,8 @@ fun run_dropout(inp: Ast.nntensor_t, out: Ast.nntensor_t, ratio: float, ntasks: 
 @ccode {
     float scale = 1.f/(1 - ratio);
     int inp_typ = inp->data.tag;
-    _fx_unary_func_t func = inp_typ == _FX_NN_FP32 ? _fx_nn_elemwise_scale_f32 :
-        _FX_FP16_CASE(inp_typ == _FX_NN_FP16 ? _fx_nn_elemwise_scale_f16 :) 0;
+    _fx_unary_func_t func = inp_typ == FX_F32 ? _fx_nn_elemwise_scale_f32 :
+        _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_scale_f16 :) 0;
     return _fx_run_any_unary((_fx_nntensor_t*)inp, (_fx_nntensor_t*)out, func, &scale, ntasks);
 }
 

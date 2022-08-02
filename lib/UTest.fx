@@ -214,9 +214,9 @@ fun test_failed_expect_near(a: 't errctx, b: 't errctx, idx:'idx?, eps: 't)
     | _ => {}
     }
     print(".\nActual: ")
-    println(a)
+    println(a.0)
     print(f"Expected: ")
-    println(b)
+    println(b.0)
     g_test_state.currstatus = false
 }
 

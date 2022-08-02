@@ -208,7 +208,7 @@ static int _fx_prepare_for_resize(
     int status;
     volatile int parallel_status = FX_OK;
 
-    if (typ != _FX_NN_FP32 && typ != _FX_NN_U8)
+    if (typ != FX_F32 && typ != FX_U8)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     status = _fx_prepare_for_resize(inp_shape_, inp_data, out_shape_, out_data,
@@ -226,7 +226,7 @@ static int _fx_prepare_for_resize(
     inp_planesize = (size_t)inp_shape[2]*inp_shape[3];
     out_planesize = (size_t)out_shape[2]*out_shape[3];
 
-    /*printf("Resize linear (typ=%s): ", typ == _FX_NN_FP32 ? "FP32" : "U8");
+    /*printf("Resize linear (typ=%s): ", typ == FX_F32 ? "FP32" : "U8");
     for (int i = 0; i < _FX_RESIZE_MAX_DIMS; i++) {
         printf("%s%d -> %d (%s)", (i == 0 ? "" : ", "), (int)inp_shape[i], (int)out_shape[i],
             (scale_dims[i] ? "true" : "false"));
@@ -294,9 +294,9 @@ static int _fx_prepare_for_resize(
                             } \
                         } \
                     }
-                if (typ == _FX_NN_FP32) {
+                if (typ == FX_F32) {
                     _FX_IMPLEMENT_RESIZE_LINEAR(float, 0.f)
-                } else if (typ == _FX_NN_U8) {
+                } else if (typ == FX_U8) {
                     _FX_IMPLEMENT_RESIZE_LINEAR(uint8_t, 0.5f)
                 } else {
                     parallel_status = FX_EXN_NotImplementedError;

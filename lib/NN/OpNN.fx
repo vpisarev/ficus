@@ -25,7 +25,7 @@ fun run_softmax(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
     if (ndims < 2 || ndims != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    if (inp_typ != _FX_NN_FP32 || out_typ != inp_typ)
+    if (inp_typ != FX_F32 || out_typ != inp_typ)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     N = inp_shape[0];
@@ -182,33 +182,31 @@ match op {
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_gemm(A_shape_: int [], A_data_: Ast.nndata_t,
-             B_shape_: int [], B_data_: Ast.nndata_t,
-             C_shape_: int [], C_data_: Ast.nndata_t,
-             out_shape_: int [], out_data_: Ast.nndata_t,
-             alpha: float, beta: float,
+fun run_gemm(A: Ast.nntensor_t, B: Ast.nntensor_t, C: Ast.nntensor_t,
+             out: Ast.nntensor_t, alpha: float, beta: float,
              transA: bool, transB: bool, ntasks: int): void
 @ccode {
-    const int_* A_shape = (const int_*)A_shape_->data;
-    const int_* B_shape = (const int_*)B_shape_->data;
-    const int_* C_shape = (const int_*)C_shape_->data;
-    const int_* out_shape = (const int_*)out_shape_->data;
-    const fx_arr_t* A_data = &A_data_->u.NN_Data_I8;
-    const fx_arr_t* B_data = &B_data_->u.NN_Data_I8;
-    const fx_arr_t* C_data = &C_data_->u.NN_Data_I8;
-    fx_arr_t* out_data = &out_data_->u.NN_Data_I8;
-    int A_typ = A_data_->tag, B_typ = B_data_->tag;
-    int C_typ = C_data_->tag, out_typ = out_data_->tag;
-    int_ C_ndims = C_typ == _FX_NN_Undefined ? 0 : C_shape_->dim[0].size;
+    const int_* A_shape = (const int_*)A->shape.shape.data;
+    const int_* B_shape = (const int_*)B->shape.shape.data;
+    const int_* C_shape = (const int_*)C->shape.shape.data;
+    const int_* out_shape = (const int_*)out->shape.shape.data;
+    const fx_arr_t* A_data = &A->data.u.NN_Data_I8;
+    const fx_arr_t* B_data = &B->data.u.NN_Data_I8;
+    const fx_arr_t* C_data = &C->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
+    int A_typ = A->data.tag, B_typ = B->data.tag;
+    int C_typ = C->data.tag, out_typ = out->data.tag;
+    int_ C_ndims = C_typ == FX_Notype ? 0 : C->shape.shape.dim[0].size;
 
-    if (A_typ != _FX_NN_FP32 || B_typ != A_typ ||
-        (C_typ != A_typ && C_typ != _FX_NN_Undefined) ||
-        out_typ != A_typ)
+    if ((A_typ != FX_F32 && A_typ != FX_F16) ||
+        (B_typ != FX_F32 && B_typ != FX_F16) ||
+        (C_typ != FX_F32 && C_typ != FX_F16 && C_typ != FX_Notype) ||
+        (out_typ != FX_F32 && out_typ != FX_F16))
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
-    if (A_shape_->dim[0].size != 2 ||
-        B_shape_->dim[0].size != 2 ||
-        out_shape_->dim[0].size != 2 ||
+    if (A->shape.shape.dim[0].size != 2 ||
+        B->shape.shape.dim[0].size != 2 ||
+        out->shape.shape.dim[0].size != 2 ||
         (C_ndims != 2 && C_ndims != 1 && C_ndims != 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
 
@@ -220,29 +218,39 @@ fun run_gemm(A_shape_: int [], A_data_: Ast.nndata_t,
          C_shape[1] != out_shape[1]))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    if (C_ndims == 0 || beta == 0.f || C_typ == _FX_NN_Undefined) {
+    if (C_ndims == 0 || beta == 0.f || C_typ == FX_Notype) {
         beta = 0.f;
     } else {
-        int_ cols = out_shape[1];
-        for (int_ i = 0; i < out_shape[0]; i++) {
-            const float* c_i = (float*)(C_data->data) + (C_ndims == 2 ? cols : 0)*i;
-            float* out_i = (float*)(out_data->data) + cols*i;
-            if (beta == 1.f) {
-                if (out_i != c_i)
-                    memcpy(out_i, c_i, cols*sizeof(out_i[0]));
-            }
-            else {
-                for(int_ j = 0; j < cols; j++)
-                    out_i[j] = beta*c_i[j];
+        int_ nrows = out_shape[0], ncols = out_shape[1];
+        size_t out_esz = out_data->dim[1].step;
+        // [TODO] provide convenient Ficus C API to convert
+        // arrays from one type to another with broadcasting support
+        for (int_ i = 0; i < nrows; i++) {
+            const char* c_i_ = C_data->data + (C_ndims == 2 ? C_data->dim[0].step : 0)*i;
+            char* out_i_ = out_data->data + out_data->dim[0].step*i;
+            if (out_typ == C_typ) {
+                if (out_i_ != c_i_)
+                    memcpy(out_i_, c_i_, ncols*out_esz);
+            } else if (C_typ == FX_F16 && out_typ == FX_F32) {
+                const fx_f16* c_i = (const fx_f16*)c_i_;
+                float* out_i = (float*)out_i_;
+                for (int_ j = 0; j < ncols; j++)
+                    out_i[j] = FX_FLOAT(c_i[j]);
+            } else if (C_typ == FX_F32 && out_typ == FX_F16) {
+                const float* c_i = (const float*)c_i_;
+                fx_f16* out_i = (fx_f16*)out_i_;
+                for (int_ j = 0; j < ncols; j++)
+                    out_i[j] = FX_FLOAT16(c_i[j]);
+            } else {
+                return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
             }
         }
-        beta = 1.f;
     }
 
-    return fx_sgemm(transA, transB, alpha, beta,
-            (int)A_shape[0], (int)A_shape[1], (const float*)(A_data->data), (int)A_shape[1], 1,
-            (int)B_shape[0], (int)B_shape[1], (const float*)(B_data->data), (int)B_shape[1], 1,
-            (float*)(out_data->data), (int)out_shape[1], (int)ntasks);
+    return fx_mpgemm(transA, transB, alpha, beta,
+            A_shape[0], A_shape[1], A_typ, A_data->data, A_shape[1], 1,
+            B_shape[0], B_shape[1], B_typ, B_data->data, B_shape[1], 1,
+            C_typ, out_data->data, out_shape[1], (int)ntasks);
 }
 
 fun run_gemm(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -251,9 +259,6 @@ match op {
     val A = model.get_tensor(t_A), B = model.get_tensor(t_B)
     val bias = model.get_tensor(t_bias)
     val out = model.get_tensor(t_out)
-    run_gemm(A.shape.shape, A.data, B.shape.shape, B.data,
-             bias.shape.shape, bias.data,
-             out.shape.shape, out.data,
-             alpha, beta, transA, transB, *model.ntasks)
+    run_gemm(A, B, bias, out, alpha, beta, transA, transB, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

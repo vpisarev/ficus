@@ -45,6 +45,12 @@ exception StackOverflowError
 exception TypeMismatchError
 exception ZeroStepError
 
+type scalar_t =
+    | Notype | Type_Int | Type_I8 | Type_U8
+    | Type_I16 | Type_U16 | Type_I32 | Type_U32
+    | Type_I64 | Type_U64 | Type_F16 | Type_BF16
+    | Type_F32 | Type_F64 | Type_Bool | Type_Char
+
 fun assert(f: bool) = if !f {throw AssertError}
 // TODO: probably, we need AssertError to get a string argument or have alternative AssertErrorArg with such a argument
 fun assert((f, f_str, fname, lineno): (bool, string, string, int)) = if !f {throw Fail(f"{fname}:{lineno}: Assertion '{f_str}' failed")}
@@ -72,10 +78,30 @@ fun __is_scalar__(x: 't) = false
 @inline fun __is_scalar__(x: uint32) = true
 @inline fun __is_scalar__(x: int64) = true
 @inline fun __is_scalar__(x: uint64) = true
+@inline fun __is_scalar__(x: half) = true
 @inline fun __is_scalar__(x: float) = true
 @inline fun __is_scalar__(x: double) = true
-@inline fun __is_scalar__(x: char) = true
 @inline fun __is_scalar__(x: bool) = true
+@inline fun __is_scalar__(x: char) = true
+
+@inline fun scalar_type(_: 't) = Notype
+@inline fun scalar_type(_: int) = Type_Int
+@inline fun scalar_type(_: int8) = Type_I8
+@inline fun scalar_type(_: uint8) = Type_U8
+@inline fun scalar_type(_: int16) = Type_I16
+@inline fun scalar_type(_: uint16) = Type_U16
+@inline fun scalar_type(_: int32) = Type_I32
+@inline fun scalar_type(_: uint32) = Type_U32
+@inline fun scalar_type(_: int64) = Type_I64
+@inline fun scalar_type(_: uint64) = Type_U64
+@inline fun scalar_type(_: half) = Type_F16
+@inline fun scalar_type(_: float) = Type_F32
+@inline fun scalar_type(_: double) = Type_F64
+@inline fun scalar_type(_: bool) = Type_Bool
+@inline fun scalar_type(_: char) = Type_Char
+
+@pure @nothrow fun elemsize(t: scalar_t): int
+@ccode { return fx_elemsize(t->tag); }
 
 @inline fun __min__(x: int8) = -128i8
 @inline fun __max__(x: int8) = 127i8
@@ -335,6 +361,26 @@ fun string(v: 't vector) = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
         }
     }
     return fx_status;
+}
+
+fun string(typ: scalar_t)
+{
+    | Notype => "Notype"
+    | Type_Int => "Int"
+    | Type_I8 => "I8"
+    | Type_U8 => "U8"
+    | Type_I16 => "I16"
+    | Type_U16 => "U16"
+    | Type_I32 => "I32"
+    | Type_U32 => "U32"
+    | Type_I64 => "I64"
+    | Type_U64 => "U64"
+    | Type_F16 => "F16"
+    | Type_BF16 => "BF16"
+    | Type_F32 => "F32"
+    | Type_F64 => "F64"
+    | Type_Bool => "Bool"
+    | Type_Char => "Char"
 }
 
 fun repr(v: char vector) =

@@ -136,7 +136,7 @@ if dump_model {
     println(model)
 }
 
-var planar_input = true, ndims0 = 4, input_typ = NN.Ast.NN_FP32
+var planar_input = true, ndims0 = 4, input_typ = Type_F32
 for t_inp@i <- model.graph.inpargs {
     val inparg = model.args[t_inp]
     val shape = inparg.shape.shape
@@ -190,7 +190,7 @@ for imgname@i <- images {
     val inp = reshape_multichan(resized_img, (1, input_size, input_size, 3))
     val layout = NN.Ast.NN_Layout_NHWC
     val inp_ =
-        if input_typ == NN.Ast.NN_FP32 {
+        if input_typ == Type_F32 {
             NN.Ast.mktensor(inp.*(1.f/255), layout=layout)
         } else {
             NN.Ast.mktensor(inp, layout=layout)

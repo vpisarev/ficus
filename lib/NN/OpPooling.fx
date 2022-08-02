@@ -400,11 +400,11 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     printf("\n");*/
 
     func =
-        inp_typ == _FX_NN_FP32 ?
+        inp_typ == FX_F32 ?
             (pool_typ == 'M' ? _fx_maxpool_2d_f32 :
             pool_typ == 'A' ? _fx_avgpool_2d_f32 : 0) :
-    #ifdef __ARM_NEON
-        inp_typ == _FX_NN_FP16 ?
+    #if _FX_NN_ENABLE_FP16
+        inp_typ == FX_F16 ?
             (pool_typ == 'M' ? _fx_maxpool_2d_f16 : 0) :
     #endif
         0;
@@ -468,23 +468,79 @@ match op {
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
-fun run_global_avgpool_2d(inp: 't [], inp_shape: Ast.nnshape_t,
-                          out: float [], out_shape: Ast.nnshape_t, zero: 'w)
-{
-    assert(`inp_shape.shape.size() == 4 && out_shape.shape.size() == 4`)
-    val (N, C, H, W) = (inp_shape.shape[0], inp_shape.shape[1],
-                        inp_shape.shape[2], inp_shape.shape[3])
-    assert(`out_shape.shape[0] == N`)
-    assert(`out_shape.shape[1] == C`)
-    assert(`out_shape.shape[2] == 1 && out_shape.shape[3] == 1`)
-    val planesize = H*W
-    val scale = 1.f/planesize
+fun run_global_avgpool(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
+@ccode {
+    int inp_typ = inp->data.tag, out_typ = out->data.tag;
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
+    const int_* inp_shape = (const int_*)inp->shape.shape.data;
+    const int_* out_shape = (const int_*)out->shape.shape.data;
+    int_ inp_ndims = inp->shape.shape.dim[0].size;
+    int_ out_ndims = out->shape.shape.dim[0].size;
+    int_ NC, planesize = 1;
+    double scale;
 
-    @parallel for nc <- 0:N*C {
-        val i0 = nc*planesize
-        val i1 = i0 + planesize
-        out[nc] = (fold s = zero for i <- i0:i1 {s + inp[i]})*scale
+    if (inp_typ != out_typ)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (inp_typ != FX_F32
+        _FX_FP16_CASE(&& inp_typ != FX_F16)
+        )
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if (inp_ndims < 3 || inp_ndims != out_ndims)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    if (inp_typ != out_typ)
+    NC = inp_shape[0]*inp_shape[1];
+    for (int_ i = 0; i < inp_ndims; i++) {
+        if (i < 2) {
+            if (inp_shape[i] != out_shape[i])
+                return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+            continue;
+        }
+        planesize *= inp_shape[i];
+        if (out_shape[i] != 1)
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
+    scale = planesize != 0 ? 1./planesize : 0.;
+
+    if (NC*planesize < 100000)
+        ntasks = 1;
+    #pragma omp parallel for num_threads(ntasks)
+    for (int_ task_id = 0; task_id < ntasks; task_id++) {
+        int_ nc0 = task_id*NC/ntasks, nc1 = (task_id + 1)*NC/ntasks;
+        for (; nc0 < nc1; nc0++) {
+            if (inp_typ == FX_F32) {
+                const float* inptr = (const float*)inp_data->data + nc0*planesize;
+                float* outptr = (float*)out_data->data + nc0;
+                const int_ block_size = 64;
+                double total = 0;
+                for (int_ j = 0; j < planesize; ) {
+                    int_ block_end = j + block_size < planesize ? j + block_size : planesize;
+                    float s = 0;
+                    for (; j < block_end; j++)
+                        s += inptr[j];
+                    total += s;
+                }
+                *outptr = (float)(total*scale);
+            }
+        #if _FX_NN_ENABLE_FP16
+            else if (inp_typ == FX_F16) {
+                const fx_f16* inptr = (const fx_f16*)inp_data->data + nc0*planesize;
+                fx_f16* outptr = (fx_f16*)out_data->data + nc0;
+                const int_ block_size = 256;
+                double total = 0;
+                for (int_ j = 0; j < planesize; ) {
+                    int_ block_end = j + block_size < planesize ? j + block_size : planesize;
+                    float s = 0;
+                    for (; j < block_end; j++)
+                        s += FX_FLOAT(inptr[j]);
+                    total += s;
+                }
+                *outptr = FX_FLOAT16((float)(total*scale));
+            }
+        #endif
+        }
+    }
+    return FX_OK;
 }
 
 fun run_global_avgpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -493,10 +549,6 @@ match op {
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
     assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
-    match (inp.data, out.data) {
-    | (Ast.NN_Data_FP32 inp_data, Ast.NN_Data_FP32 out_data) =>
-        run_global_avgpool_2d(inp_data, inp.shape, out_data, out.shape, 0.f)
-    | _ => throw NotImplementedError
-    }
+    run_global_avgpool(inp, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

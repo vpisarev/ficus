@@ -115,10 +115,10 @@ fun run_gather(axis: int, inp: Ast.nntensor_t, ind: Ast.nntensor_t,
     if (inp->data.tag != out->data.tag)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
 
-    if (ind->data.tag == _FX_NN_I32) {
+    if (ind->data.tag == FX_I32) {
         ind32 = (const int*)ind->data.u.NN_Data_I8.data;
     }
-    else if (ind->data.tag == _FX_NN_I64) {
+    else if (ind->data.tag == FX_I64) {
         ind64 = (const int64_t*)ind->data.u.NN_Data_I8.data;
     } else {
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
@@ -346,7 +346,7 @@ fun run_slice(inp: Ast.nntensor_t, out: Ast.nntensor_t,
         if (typ > 1) {
             const fx_arr_t* shape = &t->shape.shape;
             const fx_arr_t* data = &t->data.u.NN_Data_I8;
-            if (typ != _FX_NN_I32 && typ != _FX_NN_I64)
+            if (typ != FX_I32 && typ != FX_I64)
                 return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
             if (shape->dim[0].size != 1 || *(int_*)(shape->data) != naxes ||
                 data->ndims != 1 || data->dim[0].size != naxes)
@@ -364,14 +364,14 @@ fun run_slice(inp: Ast.nntensor_t, out: Ast.nntensor_t,
     for (i = SLICE_MAX_DIMS-1; i >= 0; i--)
         inp_step[i] = i == SLICE_MAX_DIMS-1 ? 1 : inp_step[i+1]*inp_shape[i+1];
     for (i = 0; i < naxes; i++) {
-        int_ j = axes_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)axes_data)[i] :
-                 axes_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)axes_data)[i] : i;
-        int_ start = starts_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)starts_data)[i] :
-                     starts_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)starts_data)[i] : 0;
-        int_ end = ends_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)ends_data)[i] :
-                   ends_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)ends_data)[i] : INT_MAX;
-        int_ step = steps_->data.tag == _FX_NN_I32 ? (int_)((int32_t*)steps_data)[i] :
-                   steps_->data.tag == _FX_NN_I64 ? (int_)((int64_t*)steps_data)[i] : 1;
+        int_ j = axes_->data.tag == FX_I32 ? (int_)((int32_t*)axes_data)[i] :
+                 axes_->data.tag == FX_I64 ? (int_)((int64_t*)axes_data)[i] : i;
+        int_ start = starts_->data.tag == FX_I32 ? (int_)((int32_t*)starts_data)[i] :
+                     starts_->data.tag == FX_I64 ? (int_)((int64_t*)starts_data)[i] : 0;
+        int_ end = ends_->data.tag == FX_I32 ? (int_)((int32_t*)ends_data)[i] :
+                   ends_->data.tag == FX_I64 ? (int_)((int64_t*)ends_data)[i] : INT_MAX;
+        int_ step = steps_->data.tag == FX_I32 ? (int_)((int32_t*)steps_data)[i] :
+                   steps_->data.tag == FX_I64 ? (int_)((int64_t*)steps_data)[i] : 1;
         int_ sz_j, out_sz_j;
 
         if (j < 0) j += ndims;
@@ -569,7 +569,7 @@ fun run_tile(inp: Ast.nntensor_t, repeats_: Ast.nntensor_t,
     if (ndims > TILE_MAX_DIMS)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
-    if (repeats_->data.tag != _FX_NN_I64)
+    if (repeats_->data.tag != FX_I64)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
 
     if (esz != out_esz)

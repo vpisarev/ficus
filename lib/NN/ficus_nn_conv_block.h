@@ -196,10 +196,10 @@ static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
                                 const float* bias, float alpha,
                                 float maxval, bool activ )
 {
-    const fx_f16_t* a = (const fx_f16_t*)a_;
-    const fx_f16_t* b = (const fx_f16_t*)b_;
-    fx_f16_t* c = (fx_f16_t*)c_;
-    const fx_f16_t* pb = (const fx_f16_t*)pb_;
+    const fx_f16* a = (const fx_f16*)a_;
+    const fx_f16* b = (const fx_f16*)b_;
+    fx_f16* c = (fx_f16*)c_;
+    const fx_f16* pb = (const fx_f16*)pb_;
 #if FX_CONV_NR_FP16 == 24 && FX_CONV_MR_FP16 == 8
     float cbuf[FX_CONV_MR_FP16*FX_CONV_NR_FP16];
 
@@ -225,14 +225,14 @@ static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
 
     const int BLOCK_SZ = 64;
     for( int k0 = 0; k0 < k; ) {
-        float16x8_t c00 = vdupq_n_f16((fx_f16_t)0.f), c01 = c00, c02 = c00;
-        float16x8_t c10 = vdupq_n_f16((fx_f16_t)0.f), c11 = c10, c12 = c10;
-        float16x8_t c20 = vdupq_n_f16((fx_f16_t)0.f), c21 = c20, c22 = c20;
-        float16x8_t c30 = vdupq_n_f16((fx_f16_t)0.f), c31 = c30, c32 = c30;
-        float16x8_t c40 = vdupq_n_f16((fx_f16_t)0.f), c41 = c40, c42 = c40;
-        float16x8_t c50 = vdupq_n_f16((fx_f16_t)0.f), c51 = c50, c52 = c50;
-        float16x8_t c60 = vdupq_n_f16((fx_f16_t)0.f), c61 = c60, c62 = c60;
-        float16x8_t c70 = vdupq_n_f16((fx_f16_t)0.f), c71 = c70, c72 = c70;
+        float16x8_t c00 = vdupq_n_f16((fx_f16)0.f), c01 = c00, c02 = c00;
+        float16x8_t c10 = vdupq_n_f16((fx_f16)0.f), c11 = c10, c12 = c10;
+        float16x8_t c20 = vdupq_n_f16((fx_f16)0.f), c21 = c20, c22 = c20;
+        float16x8_t c30 = vdupq_n_f16((fx_f16)0.f), c31 = c30, c32 = c30;
+        float16x8_t c40 = vdupq_n_f16((fx_f16)0.f), c41 = c40, c42 = c40;
+        float16x8_t c50 = vdupq_n_f16((fx_f16)0.f), c51 = c50, c52 = c50;
+        float16x8_t c60 = vdupq_n_f16((fx_f16)0.f), c61 = c60, c62 = c60;
+        float16x8_t c70 = vdupq_n_f16((fx_f16)0.f), c71 = c70, c72 = c70;
         int k1 = k0 + BLOCK_SZ <= k ? k0 + BLOCK_SZ : k;
 
         for( ; k0 < k1; k0++, a += FX_CONV_MR_FP16, b += FX_CONV_NR_FP16 )
@@ -322,12 +322,16 @@ static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
     f0 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 16)); \
     f1 = vcvt_f16_f32(vld1q_f32(cbuf + row*FX_CONV_NR_FP16 + 20)); \
     c2 = vcombine_f16(f0, f1); \
-    c0 = vaddq_f16(c0, vld1q_f16(pb + row*ldp)); \
-    c1 = vaddq_f16(c1, vld1q_f16(pb + row*ldp + 8)); \
-    c2 = vaddq_f16(c2, vld1q_f16(pb + row*ldp + 16)); \
-    c0 = vmulq_f16(vminq_f16(c0, vmax), vbslq_f16(vcltq_f16(c0, z), valpha, one)); \
-    c1 = vmulq_f16(vminq_f16(c1, vmax), vbslq_f16(vcltq_f16(c1, z), valpha, one)); \
-    c2 = vmulq_f16(vminq_f16(c2, vmax), vbslq_f16(vcltq_f16(c2, z), valpha, one)); \
+    if (pb) { \
+        c0 = vaddq_f16(c0, vld1q_f16(pb + row*ldp)); \
+        c1 = vaddq_f16(c1, vld1q_f16(pb + row*ldp + 8)); \
+        c2 = vaddq_f16(c2, vld1q_f16(pb + row*ldp + 16)); \
+    } \
+    if (activ) { \
+        c0 = vmulq_f16(vminq_f16(c0, vmax), vbslq_f16(vcltq_f16(c0, z), valpha, one)); \
+        c1 = vmulq_f16(vminq_f16(c1, vmax), vbslq_f16(vcltq_f16(c1, z), valpha, one)); \
+        c2 = vmulq_f16(vminq_f16(c2, vmax), vbslq_f16(vcltq_f16(c2, z), valpha, one)); \
+    } \
     vst1q_f16(c + row*ldc, c0); \
     vst1q_f16(c + row*ldc + 8, c1); \
     vst1q_f16(c + row*ldc + 16, c2)
@@ -346,8 +350,13 @@ static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
     for( int i = 0; i < FX_CONV_MR_FP16; i++ )
     {
         float beta = bias[i];
-        for( int j = 0; j < FX_CONV_NR_FP16; j++ )
-            cbuf[i*FX_CONV_NR_FP16 + j] = beta + pb[i*ldp + j];
+        if (pb) {
+            for( int j = 0; j < FX_CONV_NR_FP16; j++ )
+                cbuf[i*FX_CONV_NR_FP16 + j] = beta + pb[i*ldp + j];
+        } else {
+            for( int j = 0; j < FX_CONV_NR_FP16; j++ )
+                cbuf[i*FX_CONV_NR_FP16 + j] = beta;
+        }
     }
     for( int p = 0; p < k; p++ )
     {
