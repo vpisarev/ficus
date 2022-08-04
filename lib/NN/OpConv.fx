@@ -2,7 +2,7 @@
     This file is a part of ficus language project.
     See ficus/LICENSE for the licensing terms
 */
-import Ast
+import Ast, OpConv_Block
 
 type activ_func_t =
     | ACTIV_NONE | ACTIV_RELU | ACTIV_CLIP | ACTIV_LRELU
@@ -31,26 +31,6 @@ typedef void (*_fx_conv_block_t)(int k, const void *a, const void *b,
                                  const float* bias, float alpha,
                                  float maxval, bool activ );
 typedef _fx_unary_func_t _fx_activ_func_t;
-
-#ifdef __ARM_NEON
-#define FX_CONV_MR 4
-#define FX_CONV_NR 28
-enum { FX_VEC_NLANES=4 };
-#elif defined __AVX__
-#define FX_CONV_MR 4
-#define FX_CONV_NR 24
-enum { FX_VEC_NLANES=8 };
-#else
-enum { FX_VEC_NLANES=1 };
-#endif
-
-#ifdef __ARM_NEON
-#define FX_CONV_MR_FP16 8
-#define FX_CONV_NR_FP16 24
-#else
-#define FX_CONV_MR_FP16 FX_CONV_MR
-#define FX_CONV_NR_FP16 FX_CONV_NR
-#endif
 
 enum { FX_CONV_TYPE_GENERIC=0, FX_CONV_TYPE_DEPTHWISE=1, FX_CONV_TYPE_WINOGRAD3X3=2 };
 
@@ -318,7 +298,7 @@ static int _fx_init_conv2d(
     return fx_status;
 }
 
-#include "ficus_nn_conv_block.h"
+//#include "ficus_nn_conv_block.h"
 #include "ficus_nn_conv_depthwise.h"
 
 static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
@@ -345,7 +325,6 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     size_t esz = inp_data->dim[0].step;
     int ndims = inp_shape_->dim[0].size;
     int out_ndims = out_shape_->dim[0].size;
-    _fx_conv_block_t conv_block_func;
     float minval = conv->minval, maxval = conv->maxval, alpha = conv->alpha;
     bool fast_activ = conv->activ == _FX_ACTIV_RELU ||
                       (conv->activ == _FX_ACTIV_CLIP && minval == 0.f) ||
@@ -381,12 +360,15 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     char* inpbuf_all = 0;
     int* interior_ofstab = (int*)alloca(ksize*3*sizeof(interior_ofstab[0]));
     int* yxtab = interior_ofstab + ksize;
+    int status = 0;
 
     if (ndims != 4 || inp_shape[0] != out_shape[0] ||
         inp_shape[1] != conv->C || out_shape[1] != conv->K)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (inp_typ != out_typ || (pb_typ > 1 && pb_typ != inp_typ))
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (inp_typ != FX_F32 && inp_typ != FX_F16)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (s1d1 && (pad_right > conv->pad_right || pad_right < 0))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (ksize == 1) {
@@ -396,18 +378,13 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
 
-    printf("HAVE PASSBY: %d, fast_activ=%d, activ=%d, minval=%.5g, maxval=%.5g, alpha=%.5g\n",
-        (int)(pb_data->data != 0), (int)fast_activ, (int)conv->activ, minval, maxval, alpha);
+    //printf("HAVE PASSBY: %d, fast_activ=%d, activ=%d, minval=%.5g, maxval=%.5g, alpha=%.5g\n",
+    //    (int)(pb_data->data != 0), (int)fast_activ, (int)conv->activ, minval, maxval, alpha);
 
     if (conv->conv_type == _FX_CONV_TYPE_DEPTHWISE) {
         fx_copy_arr(scratch_buf, fx_result);
         return _fx_depthwise_conv2d(ndims, inp_shape, inp_data, out_shape, out_data, conv, ntasks);
     }
-
-    conv_block_func = inp_typ == FX_F32 ? _fx_conv_block_f32 :
-                      _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_conv_block_f16 :) 0;
-    if (!conv_block_func)
-        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     if (totalbufsize > scratch_buf->dim[0].step*scratch_buf->dim[0].size) {
         int_ totalbufsz = (int_)totalbufsize;
@@ -483,13 +460,11 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                         // Compilers will likely unroll this loop properly.
                         if (esz == sizeof(float)) {
                             for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz)
-                                memcpy(inpbuf, inptr, CONV_NR*sizeof(float));
-                        } else if (esz == sizeof(fx_f16)) {
-                            for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz)
-                                memcpy(inpbuf, inptr, CONV_NR*sizeof(fx_f16));
+                                memcpy(inpbuf, inptr, FX_CONV_NR*sizeof(float));
                         } else {
+                            assert(esz == sizeof(fx_f16));
                             for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz)
-                                memcpy(inpbuf, inptr, CONV_NR*esz);
+                                memcpy(inpbuf, inptr, FX_CONV_NR_FP16*sizeof(fx_f16));
                         }
                     } else {
                         for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz) {
@@ -693,10 +668,21 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                        slice_len*esz);
                         }
                     }
-                    conv_block_func(HkWkCg,
-                                    weights + (g*Kg_aligned + k)*HkWkCg*esz,
-                                    inpbuf_task, outptr, outstep, pbptr, outstep,
-                                    conv->bias + Kg*g + k, minval, maxval, fast_activ);
+
+                    if (inp_typ == FX_F32) {
+                        _fx_conv_block_f32(HkWkCg,
+                            weights + (g*Kg_aligned + k)*HkWkCg*esz,
+                            inpbuf_task, outptr, outstep, pbptr, outstep,
+                            conv->bias + Kg*g + k, minval, maxval, fast_activ);
+                    }
+                #ifdef _FX_NN_ENABLE_FP16
+                    else {
+                        _fx_conv_block_f16(HkWkCg,
+                            weights + (g*Kg_aligned + k)*HkWkCg*esz,
+                            inpbuf_task, outptr, outstep, pbptr, outstep,
+                            conv->bias + Kg*g + k, minval, maxval, fast_activ);
+                    }
+                #endif
                     if (partial) {
                         if (activ_func)
                             activ_func(outptr, outptr, dk*CONV_NR, activ_params);
@@ -711,6 +697,8 @@ static int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
         }
     }
 
+    if (status < 0)
+        return FX_SET_EXN_FAST(status);
     return FX_OK;
 }
 }

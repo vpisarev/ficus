@@ -128,11 +128,15 @@ if ntasks > 0 {
 
 *model.profile = profile
 *model.trace = trace
+if trace {
+    *model.detailed_profile = true
+}
 *model.use_fp16 = use_fp16
 
 val preprocess_params =
     if use_fp16 {preprocess_params.{elemtype=Type_F16}}
     else {preprocess_params}
+println(f"network input type: {preprocess_params.elemtype}")
 
 for imgname@i <- images {
     println(f"processing '{imgname}' ...")

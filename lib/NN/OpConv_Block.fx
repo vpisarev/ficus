@@ -3,12 +3,15 @@
     See ficus/LICENSE for the licensing terms
 */
 
+@ccode {
+#include "ficus_nn_common.h"
+
 // fp16/fp32 convolution kernels for im2col-based convolution.
 // The header is not intented to be used alone.
 // It is assumed to be included into OpConv.fx
-static void _fx_conv_block_f32( int k, const void* a_, const void* b_,
-                                void* c_, int ldc, const void* pb_, int ldp,
-                                const float* bias, float alpha, float maxval, bool activ)
+void _fx_conv_block_f32( int k, const void* a_, const void* b_,
+                        void* c_, int ldc, const void* pb_, int ldp,
+                        const float* bias, float alpha, float maxval, bool activ)
 {
     const float* a = (const float*)a_;
     const float* b = (const float*)b_;
@@ -191,10 +194,10 @@ static void _fx_conv_block_f32( int k, const void* a_, const void* b_,
 }
 
 #ifdef _FX_NN_ENABLE_FP16
-static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
-                                void *c_, int ldc, const void* pb_, int ldp,
-                                const float* bias, float alpha,
-                                float maxval, bool activ )
+void _fx_conv_block_f16( int k, const void *a_, const void *b_,
+                        void *c_, int ldc, const void* pb_, int ldp,
+                        const float* bias, float alpha,
+                        float maxval, bool activ )
 {
     const fx_f16* a = (const fx_f16*)a_;
     const fx_f16* b = (const fx_f16*)b_;
@@ -223,7 +226,7 @@ static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
     _FX_SET_BIAS(6);
     _FX_SET_BIAS(7);
 
-    const int BLOCK_SZ = 64;
+    const int BLOCK_SZ = 128;
     for( int k0 = 0; k0 < k; ) {
         float16x8_t c00 = vdupq_n_f16((fx_f16)0.f), c01 = c00, c02 = c00;
         float16x8_t c10 = vdupq_n_f16((fx_f16)0.f), c11 = c10, c12 = c10;
@@ -383,3 +386,4 @@ static void _fx_conv_block_f16( int k, const void *a_, const void *b_,
 #endif
 }
 #endif
+}

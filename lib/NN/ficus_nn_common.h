@@ -261,6 +261,34 @@ void _fx_nn_elemwise_tanh_f16(const void* inptr_, void* outptr_,
                               int_ len, const float* param);
 #endif
 
+#ifdef __ARM_NEON
+#define FX_CONV_MR 4
+#define FX_CONV_NR 28
+enum { FX_VEC_NLANES=4 };
+#elif defined __AVX__
+#define FX_CONV_MR 4
+#define FX_CONV_NR 24
+enum { FX_VEC_NLANES=8 };
+#else
+enum { FX_VEC_NLANES=1 };
+#endif
+
+#ifdef __ARM_NEON
+#define FX_CONV_MR_FP16 8
+#define FX_CONV_NR_FP16 24
+#else
+#define FX_CONV_MR_FP16 FX_CONV_MR
+#define FX_CONV_NR_FP16 FX_CONV_NR
+#endif
+
+void _fx_conv_block_f32( int k, const void* a_, const void* b_,
+                        void* c_, int ldc, const void* pb_, int ldp,
+                        const float* bias, float alpha, float maxval, bool activ);
+void _fx_conv_block_f16( int k, const void *a_, const void *b_,
+                        void *c_, int ldc, const void* pb_, int ldp,
+                        const float* bias, float alpha,
+                        float maxval, bool activ );
+
 #ifdef __cplusplus
 }
 #endif

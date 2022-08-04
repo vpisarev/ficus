@@ -96,11 +96,10 @@ type image_preprocess_params_t =
 
     if (total < 100000) ntasks = 1;
 
-    /*printf("esz=%d, H=%d, W=%d, layout=NCHW? %d, scale_y=%.3f, scale_x=%.3f, scale_y*inp_size.0=%d, scale_x*inp_size.1=%d, dy=%.2f, dx=%.2f, mean=(%.2f, %.2f, %.2f), scale=(%.2f, %.2f, %.2f)\n",
-        (int)esz, (int)H, (int)W, (int)(layout == _FX_NN_Layout_NCHW), scale_y, scale_x,
+    /*printf("esz=%d, image_height=%d, image_width=%d, H=%d, W=%d, layout=NCHW? %d, scale_y=%.3f, scale_x=%.3f, scale_y*inp_size.0=%d, scale_x*inp_size.1=%d, dy=%.2f, dx=%.2f, mean=(%.2f, %.2f, %.2f), scale=(%.2f, %.2f, %.2f)\n",
+        (int)esz, (int)image_height, (int)image_width, (int)H, (int)W, (int)(layout == _FX_NN_Layout_NCHW), scale_y, scale_x,
         (int)lrint(scale_y*input_size->t0), (int)lrint(scale_x*input_size->t1),
-        dy, dx, mean->t0, mean->t1, mean->t2, scale->t0, scale->t1, scale->t2
-        );*/
+        dy, dx, m0, m1, m2, s0, s1, s2);*/
     #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++) {
         int_ y0 = task_id*H/ntasks, y1 = (task_id+1)*H/ntasks;

@@ -10,18 +10,6 @@ import Ast
 #include <float.h>
 #include "ficus_nn_common.h"
 
-#ifdef __ARM_NEON
-#include <arm_neon.h>
-#endif
-
-#ifdef __ARM_NEON
-enum { FX_VEC_NLANES=4 };
-#elif defined __AVX__
-enum { FX_VEC_NLANES=8 };
-#else
-enum { FX_VEC_NLANES=1 };
-#endif
-
 #ifndef FLT16_MAX
 #define FLT16_MAX 6.5504e+4
 #endif
@@ -488,7 +476,7 @@ fun run_global_avgpool(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): v
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (inp_ndims < 3 || inp_ndims != out_ndims)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    if (inp_typ != out_typ)
+
     NC = inp_shape[0]*inp_shape[1];
     for (int_ i = 0; i < inp_ndims; i++) {
         if (i < 2) {
@@ -501,6 +489,9 @@ fun run_global_avgpool(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): v
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
     scale = planesize != 0 ? 1./planesize : 0.;
+    /*printf("inp_typ=%d, planesize=%d, NC=%d, inp_shape=[%d, %d, %d, %d]\n",
+        inp_typ, (int)planesize, (int)NC,
+        (int)inp_shape[0], (int)inp_shape[1], (int)inp_shape[2], (int)inp_shape[3]);*/
 
     if (NC*planesize < 100000)
         ntasks = 1;

@@ -250,7 +250,7 @@ fun run_gemm(A: Ast.nntensor_t, B: Ast.nntensor_t, C: Ast.nntensor_t,
     return fx_mpgemm(transA, transB, alpha, beta,
             A_shape[0], A_shape[1], A_typ, A_data->data, A_shape[1], 1,
             B_shape[0], B_shape[1], B_typ, B_data->data, B_shape[1], 1,
-            C_typ, out_data->data, out_shape[1], (int)ntasks);
+            out_typ, out_data->data, out_shape[1], (int)ntasks);
 }
 
 fun run_gemm(model: Ast.nnmodel_t, op: Ast.nnop_t) =

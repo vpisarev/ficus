@@ -602,7 +602,6 @@ static void fx_gemm_macro_kernel( int typ, int_ m, int_ n, int_ k,
     }
 }
 
-
 int fx_mpgemm( bool tA, bool tB, double alpha, double beta,
                int_ ma, int_ na, int a_typ, const void *a_, int_ lda0, int_ lda1,
                int_ mb, int_ nb, int b_typ, const void *b_, int_ ldb0, int_ ldb1,
@@ -621,6 +620,9 @@ int fx_mpgemm( bool tA, bool tB, double alpha, double beta,
 
     if (!(ma > 0 && na > 0 && mb > 0 && nb > 0 && a && b && c && ldc >= N))
         return FX_SET_EXN_FAST(FX_EXN_BadArgError);
+
+    /*printf("gemm: a_typ=%d, b_typ=%d, c_typ=%d, tA=%d, tB=%d, alpha=%.3f, beta=%.3f\n",
+        a_typ, b_typ, c_typ, (int)tA, (int)tB, alpha, beta);*/
 
     if (!tB && ldb1 == 1 && (M <= 4 || (uint64_t)M*N*K <= 10000))
         return fx_gemm_thin(alpha, beta, M, N, K, a_typ, a, lda0, lda1,
@@ -666,14 +668,14 @@ int fx_mpgemm( bool tA, bool tB, double alpha, double beta,
         ntasks = 1;
 
     a_packer =
-        a_typ == FX_F32 ? (c_typ == FX_F32 ? _fx_gemm_pack8_f32 :
-                           c_typ == FX_F64 ? _fx_gemm_pack8_f32f64 : 0) :
+        a_typ == FX_F32 ? (c_typ == FX_F64 ? _fx_gemm_pack8_f32f64 :
+                           c_typ == FX_F32 || c_typ == FX_F16 ? _fx_gemm_pack8_f32 : 0) :
         a_typ == FX_F64 ? (c_typ == FX_F64 ? _fx_gemm_pack8_f64 : 0) :
         a_typ == FX_F16 ? (c_typ == FX_F32 || c_typ == FX_F16 ? _fx_gemm_pack8_f16f32 : 0) : 0;
 
     b_packer =
-        b_typ == FX_F32 ? (c_typ == FX_F32 ? _fx_gemm_pack12_f32 :
-                           c_typ == FX_F64 ? _fx_gemm_pack6_f32f64 : 0) :
+        b_typ == FX_F32 ? (c_typ == FX_F64 ? _fx_gemm_pack6_f32f64 :
+                           c_typ == FX_F32 || c_typ == FX_F16 ? _fx_gemm_pack12_f32 : 0) :
         b_typ == FX_F64 ? (c_typ == FX_F64 ? _fx_gemm_pack6_f64 : 0) :
         b_typ == FX_F16 ? (c_typ == FX_F32 || c_typ == FX_F16 ? _fx_gemm_pack12_f16f32 : 0) : 0;
 
