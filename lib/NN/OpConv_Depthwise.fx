@@ -105,7 +105,12 @@ static int _fx_depthwise_conv2d_f32(int N, int C, int Hi, int Wi, int H0, int W0
                 if (useSIMD) {
                     if (is3x3) {
                         if (dy0 == 3) {
-                            for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
+                            for (; x0 < x1; x0 += FX_VEC_NLANES) {
+                                if (x0 + FX_VEC_NLANES > x1) {
+                                    if (x0 <= inner_xleft)
+                                        break;
+                                    x0 = x1 - FX_VEC_NLANES;
+                                }
                                 int xi_ = x0*stride_x - pad_left;
                                 const float* inptr_xi = inptr + Wi*yi_ + xi_;
                                 float32x4_t s0, s1, s2;
@@ -173,7 +178,12 @@ static int _fx_depthwise_conv2d_f32(int N, int C, int Hi, int Wi, int H0, int W0
                                 vst1q_f32(outptr + W0*2 + x0, s2);
                             }
                         } else {
-                            for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
+                            for (; x0 < x1; x0 += FX_VEC_NLANES) {
+                                if (x0 + FX_VEC_NLANES > x1) {
+                                    if (x0 <= inner_xleft)
+                                        break;
+                                    x0 = x1 - FX_VEC_NLANES;
+                                }
                                 int xi_ = x0*stride_x - pad_left;
                                 const float* inptr_xi = inptr + Wi*yi_ + xi_;
                                 float32x4_t s0 = vfmaq_f32(vbias, vld1q_f32(inptr_xi + ofstab[0]), w0);
@@ -194,7 +204,12 @@ static int _fx_depthwise_conv2d_f32(int N, int C, int Hi, int Wi, int H0, int W0
                             }
                         }
                     } else {
-                        for (; x0 <= x1 - FX_VEC_NLANES; x0 += FX_VEC_NLANES) {
+                        for (; x0 < x1; x0 += FX_VEC_NLANES) {
+                            if (x0 + FX_VEC_NLANES > x1) {
+                                if (x0 <= inner_xleft)
+                                    break;
+                                x0 = x1 - FX_VEC_NLANES;
+                            }
                             int xi_ = x0*stride_x - pad_left, k = 0;
                             const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vbias;
@@ -359,8 +374,13 @@ static int _fx_depthwise_conv2d_f16(int N, int C, int Hi, int Wi, int H0, int W0
                 if (useSIMD) {
                     if (is3x3) {
                         if (dy0 == 3) {
-                            for (; x0 <= x1 - FX_VEC_F16_NLANES; x0 += FX_VEC_F16_NLANES) {
-                                int xi_ = x0*stride_x - pad_left;
+                            for (; x0 < x1; x0 += FX_VEC_F16_NLANES) {
+                                if (x0 + FX_VEC_F16_NLANES > x1) {
+                                    if (x0 <= inner_xleft)
+                                        break;
+                                    x0 = x1 - FX_VEC_F16_NLANES;
+                                }
+                                int xi_ = x0 - pad_left;
                                 const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
                                 float16x8_t s0, s1, s2;
                                 float16x8_t x00 = vld1q_f16(inptr_xi);
@@ -427,7 +447,12 @@ static int _fx_depthwise_conv2d_f16(int N, int C, int Hi, int Wi, int H0, int W0
                                 vst1q_f16(outptr + W0*2 + x0, s2);
                             }
                         } else {
-                            for (; x0 <= x1 - FX_VEC_F16_NLANES; x0 += FX_VEC_F16_NLANES) {
+                            for (; x0 < x1; x0 += FX_VEC_F16_NLANES) {
+                                if (x0 + FX_VEC_F16_NLANES > x1) {
+                                    if (x0 <= inner_xleft)
+                                        break;
+                                    x0 = x1 - FX_VEC_F16_NLANES;
+                                }
                                 int xi_ = x0*stride_x - pad_left;
                                 const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
                                 float16x8_t s0 = vfmaq_f16(vbias, vld1q_f16(inptr_xi + ofstab[0]), w0);
@@ -448,7 +473,12 @@ static int _fx_depthwise_conv2d_f16(int N, int C, int Hi, int Wi, int H0, int W0
                             }
                         }
                     } else {
-                        for (; x0 <= x1 - FX_VEC_F16_NLANES; x0 += FX_VEC_F16_NLANES) {
+                        for (; x0 < x1; x0 += FX_VEC_F16_NLANES) {
+                            if (x0 + FX_VEC_F16_NLANES > x1) {
+                                if (x0 <= inner_xleft)
+                                    break;
+                                x0 = x1 - FX_VEC_F16_NLANES;
+                            }
                             int xi_ = x0*stride_x - pad_left, k = 0;
                             const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
                             float16x8_t s0 = vbias;

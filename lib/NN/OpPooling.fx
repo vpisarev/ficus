@@ -166,7 +166,12 @@ static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
             #ifdef __ARM_NEON
                 if (useSIMD) {
                     if (is3x3) {
-                        for (; x0 <= x1 - vec_nlanes; x0 += vec_nlanes) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
                             int xi_ = x0*stride_x - pad_left;
                             const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
@@ -185,7 +190,12 @@ static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                             vst1q_f32(outptr + x0, s0);
                         }
                     } else {
-                        for (; x0 <= x1 - vec_nlanes; x0 += vec_nlanes) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
                             int xi_ = x0*stride_x - pad_left, k = 0;
                             const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
@@ -226,7 +236,7 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
     const int* yxtab = pool->yxtab;
     const int* ofstab = pool->ofstab;
-    const int vec_nlanes = FX_VEC_NLANES*2;
+    const int vec_nlanes = FX_VEC_F16_NLANES;
 
     bool useSIMD = stride_x == 1 && inner_x0 < W0;
     bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
@@ -256,7 +266,12 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                 x1 = inner_x1;
                 if (useSIMD) {
                     if (is3x3) {
-                        for (; x0 <= x1 - vec_nlanes; x0 += vec_nlanes) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
                             int xi_ = x0*stride_x - pad_left;
                             const __fp16* inptr_xi = inptr + Wi*yi_ + xi_;
                             float16x8_t s0 = vld1q_f16(inptr_xi + ofstab[0]);
@@ -275,7 +290,12 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                             vst1q_f16(outptr + x0, s0);
                         }
                     } else {
-                        for (; x0 <= x1 - vec_nlanes; x0 += vec_nlanes) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
                             int xi_ = x0*stride_x - pad_left, k = 0;
                             const __fp16* inptr_xi = inptr + Wi*yi_ + xi_;
                             float16x8_t s0 = vld1q_f16(inptr_xi + ofstab[0]);
