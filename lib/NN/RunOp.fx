@@ -7,7 +7,7 @@
 // will likely be eliminated soon
 
 import Ast
-import OpConv, OpElemwise, OpNN, OpMisc, OpNMS, OpPermute, OpPooling, OpReduce, OpResize
+import OpConv, OpElemwise, OpNN, OpMisc, OpNMS, OpPermute, OpPooling, OpQuantized, OpReduce, OpResize
 
 fun run_op(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
@@ -30,6 +30,8 @@ match op
     | Ast.NN_ConvTranspose _ =>
         //OpConv.run_conv_transposed(model, op)
         throw Ast.NNError(f"unsupported operation '{op.name()}'")
+    | Ast.NN_DequantizeLinear _ =>
+        OpQuantized.run_dequantize(model, op)
     | Ast.NN_Dropout _ =>
         OpElemwise.run_dropout(model, op)
     | Ast.NN_Elemwise _ =>
@@ -62,6 +64,14 @@ match op
         OpNMS.run_nms(model, op)
     | Ast.NN_NonZero _ =>
         OpReduce.run_nonzero(model, op)
+    | Ast.NN_QLinearAdd _ =>
+        OpQuantized.run_qadd(model, op)
+    | Ast.NN_QLinearMatMul _ =>
+        OpQuantized.run_qgemm(model, op)
+    | Ast.NN_QLinearGlobalAvgPool _ =>
+        OpPooling.run_qgemm(model, op)
+    | Ast.NN_QuantizeLinear _ =>
+        OpQuantized.run_quantize(model, op)
     | Ast.NN_Range _ =>
         OpMisc.run_range(model, op)
     | Ast.NN_Reduce _ =>

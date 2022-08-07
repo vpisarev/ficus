@@ -486,6 +486,16 @@ static void _fx_finit_scale_i64(const char* inptr, char* outptr, double param)
 static void _fx_finit_scale_u64(const char* inptr, char* outptr, double param)
 { *(uint64_t*)outptr = (uint64_t)lrint(*(uint64_t*)inptr*param); }
 
+#ifdef _FX_NN_ENABLE_FP16
+_FX_REDUCE_IMPL(fx_f16, double, sum_f16, _FX_REDUCE_OP_SUM, 0.f)
+_FX_REDUCE_IMPL(fx_f16, double, prod_f16, _FX_REDUCE_OP_PROD, 1.f)
+
+static void _fx_finit_cast_f64f16(const char* inptr, char* outptr, double param)
+{ *(fx_f16*)outptr = FX_FLOAT16((float)*(double*)inptr); }
+static void _fx_finit_scale_f64f16(const char* inptr, char* outptr, double param)
+{ *(fx_f16*)outptr = FX_FLOAT16((float)(*(double*)inptr*param)); }
+#endif
+
 typedef void (*_fx_reduce_func_t)(const char* inptr, int_ ystep, int_ xstep,
                                 int_ nrows, int_ ncols, char* outptr, bool init);
 typedef void (*_fx_reduce_finit_func_t)(const char* acc, char* outptr, double param);
@@ -623,6 +633,11 @@ fun run_reduce(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                 _fx_reduce_prod_f32 : _fx_reduce_sum_f32;
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
                 _fx_finit_scale_f64f32 : _fx_finit_cast_f64f32;
+        } else if (inp_typ == FX_F16) {
+            reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
+                _fx_reduce_prod_f16 : _fx_reduce_sum_f16;
+            finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
+                _fx_finit_scale_f64f16 : _fx_finit_cast_f64f16;
         }
         if (reduce_op == _FX_NN_REDUCE_MEAN)
             param = reduce_total == 0 ? 0. : 1./reduce_total;

@@ -19,6 +19,7 @@ type argshapeinfo_t =
 fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
 {
     val (name, opname) = op.name()
+    val default_flt_typ = if *model.use_fp16 {Type_F16} else {Type_F32}
 
     fun get_shape_typ(argidx: int)
     {
@@ -145,8 +146,11 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                           // not on their content, even if the weights are computed dynamically,
                           // thus we set dynamic=false
         }]
-    | Ast.NN_ConvTranspose {kernel_shape, pads, strides, dilations,
-        out_shape, out_padding, group, t_inp, t_weights, t_out} =>
+    | Ast.NN_ConvTranspose {attr, out_padding, out_shape, t_inp, t_weights, t_out} =>
+        val kernel_shape = attr.kernel_shape
+        val strides = attr.strides
+        val dilations = attr.dilations
+        val pads = attr.pads
         val (shape, typ) = get_shape_typ(t_inp)
         val ndims = shape.shape.size() // convolution may produce a tensor of different size than output,
                                     // but it will always have the same dimensionality, regardless of the layout
@@ -181,6 +185,24 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             dynamic=false // the shape of output tensor depends only on the shape of inputs,
                           // not on their content, even if the weights are computed dynamically,
                           // thus we set dynamic=false
+        }]
+    | Ast.NN_DequantizeLinear {t_inp, axis, t_scale, t_zp, t_out} =>
+        val (shape, typ) = get_shape_typ(t_inp)
+        val ndims = shape.shape.size()
+        val axis = Ast.normalize_axis(axis, ndims)
+        val (sc_shape, sc_typ) = get_shape_typ(t_scale)
+        val sc_total = sc_shape.shape.total()
+        assert(`typ == Type_I8 || typ == Type_U8`)
+        assert(`sc_typ == Type_F32 || sc_typ == Type_F16`)
+        assert(`sc_total == 1 || sc_total == shape.shape[axis]`)
+        if t_zp > 0 {
+            val (zp_shape, zp_typ) = get_shape_typ(t_scale)
+            val zp_total = zp_shape.shape.total()
+            assert(`zp_typ == typ`)
+            assert(`zp_shape.shape == sc_shape.shape`)
+        }
+        [argshapeinfo_t {
+            idx=t_out, shape=shape, typ=default_flt_typ, dynamic=false
         }]
     | Ast.NN_Dropout {t_inp, t_ratio, t_out} =>
         assert(`model.isfloatscalar(t_ratio)`)
@@ -219,7 +241,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             | Ast.NN_IsInf | Ast.NN_IsNaN => Type_Bool
             | _ =>
                 if equal_types || !have_fp {typ0}
-                else if *model.use_fp16 {Type_F16} else {Type_F32}
+                else {default_flt_typ}
             }
         [argshapeinfo_t {idx=t_out, shape=out_shape, typ=out_typ, dynamic=false}]
     | Ast.NN_Expand {t_inp, t_shape, t_out} =>
@@ -285,7 +307,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             assert(`crows == 1 || crows == out_rows`)
             assert(`ccols == 1 || ccols == out_cols`)
         }
-        val out_typ = if *model.use_fp16 {Type_F16} else {Type_F32}
+        val out_typ = default_flt_typ
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=bshape.layout,
             shape=[out_rows, out_cols]}, typ=out_typ, dynamic=false}]
     | Ast.NN_GlobalAvgPool {t_inp, t_out} =>
@@ -347,6 +369,99 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val ndims = shape.shape.size()
         val out_shape = Ast.nnshape_t {layout=Ast.NN_Layout_ND, shape=[ndims, 1]}
         [argshapeinfo_t {idx=t_out, shape=out_shape, typ=Type_I64, dynamic=true}]
+    | Ast.NN_QLinearAdd {t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
+                         t_out_scale, t_out_zp, t_out} =>
+        val (A_shape, A_typ) = get_shape_typ(t_A)
+        val (B_shape, B_typ) = get_shape_typ(t_B)
+        val (A_sc_shape, A_sc_typ) = get_shape_typ(t_A_scale)
+        val (B_sc_shape, B_sc_typ) = get_shape_typ(t_B_scale)
+        val (out_sc_shape, out_sc_typ) = get_shape_typ(t_out_scale)
+        assert(`A_typ == Type_I8 || A_typ == Type_U8`)
+        //assert(`B_typ == Type_I8 || B_typ == Type_U8`)
+        assert(`A_typ == B_typ`)
+        assert(`A_sc_typ == Type_F32 || A_sc_typ == Type_F16`)
+        assert(`B_sc_typ == Type_F32 || B_sc_typ == Type_F16`)
+        assert(`out_sc_typ == Type_F32 || out_sc_typ == Type_F16`)
+        assert(`A_sc_shape.total() == 1`)
+        assert(`B_sc_shape.total() == 1`)
+        assert(`out_sc_shape.total() == 1`)
+        if t_A_zp > 0 {
+            val (A_zp_shape, A_zp_typ) = get_shape_typ(t_A_zp)
+            assert(`A_zp_typ == A_typ`)
+            assert(`A_zp_shape.total() == 1`)
+        }
+        if t_B_zp > 0 {
+            val (B_zp_shape, B_zp_typ) = get_shape_typ(t_B_zp)
+            assert(`B_zp_typ == B_typ`)
+            assert(`B_zp_shape.total() == 1`)
+        }
+        if t_out_zp > 0 {
+            val (out_zp_shape, out_zp_typ) = get_shape_typ(t_out_zp)
+            assert(`out_zp_typ == A_typ`)
+            assert(`out_zp_shape.total() == 1`)
+        }
+        val out_shape = A_shape.broadcast(B_shape)
+        [argshapeinfo_t {
+            idx=t_out, shape=out_shape, typ=A_typ, dynamic=false
+        }]
+    | Ast.NN_QLinearMatMul {t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
+                            t_out_scale, t_out_zp, t_out} =>
+        val (A_shape, A_typ) = get_shape_typ(t_A)
+        val (B_shape, B_typ) = get_shape_typ(t_B)
+        val A_ndims = A_shape.shape.size(), B_ndims = B_shape.shape.size()
+        val (A_sc_shape, A_sc_typ) = get_shape_typ(t_A_scale)
+        val (B_sc_shape, B_sc_typ) = get_shape_typ(t_B_scale)
+        val (A_zp_shape, A_zp_typ) = get_shape_typ(t_A_zp)
+        val (B_zp_shape, B_zp_typ) = get_shape_typ(t_B_zp)
+        val (out_sc_shape, out_sc_typ) = get_shape_typ(t_out_scale)
+        val (out_zp_shape, out_zp_typ) = get_shape_typ(t_out_zp)
+
+        assert(`A_typ == Type_I8 || A_typ == Type_U8`)
+        assert(`B_typ == Type_I8 || B_typ == Type_U8`)
+        assert(`A_sc_typ == Type_F32 || A_sc_typ == Type_F16`)
+        assert(`B_sc_typ == Type_F32 || B_sc_typ == Type_F16`)
+        assert(`out_sc_typ == Type_F32 || out_sc_typ == Type_F16`)
+        assert(`A_zp_typ == Type_I8 || A_zp_typ == Type_U8`)
+        assert(`B_zp_typ == Type_I8 || B_zp_typ == Type_U8`)
+        assert(`out_zp_typ == Type_I8 || out_zp_typ == Type_U8`)
+        val A_sc_total = A_sc_shape.total()
+        val B_sc_total = B_sc_shape.total()
+        val out_sc_total = out_sc_shape.total()
+        assert(`A_sc_total == 1 || (A_ndims == 2 &&
+                (A_sc_total == A_shape.shape[0] ||
+                A_sc_total == A_shape.shape[1]))`)
+        assert(`B_sc_total == 1 || (B_ndims == 2 &&
+                (B_sc_total == B_shape.shape[0] ||
+                B_sc_total == B_shape.shape[1]))`)
+        assert(`A_sc_shape == A_zp_shape`)
+        assert(`B_sc_shape == B_zp_shape`)
+        assert(`out_sc_shape == out_zp_shape`)
+        val out_shape = [A_shape.shape[0], B_shape.shape[1]]
+        [argshapeinfo_t {
+            idx=t_out, shape=Ast.nnshape_t {layout=A_shape.layout, shape=out_shape},
+            typ=out_zp_typ, dynamic=false
+        }]
+    | Ast.NN_QuantizeLinear {t_inp, axis, t_scale, t_zp, t_out} =>
+        val (shape, typ) = get_shape_typ(t_inp)
+        val ndims = shape.shape.size()
+        val axis = Ast.normalize_axis(axis, ndims)
+        val (sc_shape, sc_typ) = get_shape_typ(t_scale)
+        val sc_total = sc_shape.shape.total()
+        assert(`typ == Type_F32 || typ == Type_F16`)
+        assert(`sc_typ == Type_F32 || sc_typ == Type_F16`)
+        assert(`sc_total == 1 || sc_total == shape.shape[axis]`)
+        val out_typ =
+            if t_zp > 0 {
+                val (zp_shape, zp_typ) = get_shape_typ(t_scale)
+                assert(`zp_typ == Type_U8 || zp_typ == Type_I8`)
+                assert(`zp_shape.shape == sc_shape.shape`)
+                zp_typ
+            } else {
+                Type_U8
+            }
+        [argshapeinfo_t {
+            idx=t_out, shape=shape, typ=out_typ, dynamic=false
+        }]
     | Ast.NN_Range {t_start, t_limit, t_delta, t_out} =>
         val start = model.get_tensor(t_start)
         val typ = start.elemtype()

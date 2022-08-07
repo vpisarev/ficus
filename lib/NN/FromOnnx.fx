@@ -235,6 +235,35 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
             find_inp_arg((if pos >= 0 {nspace[:pos]} else {""}), argname)
         }
 
+    fun parse_conv_attr(node: OAst.node_t) {
+        var kernel_shape = [], strides = [], dilations = []
+        var pads = [], auto_pad = Ast.NN_Pad_None, group = 1
+        var out_padding = [], out_shape = []
+        for a <- node.attrs {
+            | {name="kernel_shape"} => kernel_shape = attr2ints(a)
+            | {name="pads"} => pads = attr2ints(a)
+            | {name="strides"} => strides = attr2ints(a)
+            | {name="dilations"} => dilations = attr2ints(a)
+            | {name="group"} => group = attr2int(a)
+            | {name="auto_pad"} => auto_pad = attr2autopad(a)
+            | {name="out_padding"} => out_padding = attr2ints(a)
+            | {name="out_shape"} => out_shape = attr2ints(a)
+            | _ => {}
+        }
+        val dims = size(kernel_shape)
+        if dims == 0 {
+            throw OnnxConvertError(f"{node.name} (op={node.op}): missing kernel shape")
+        }
+        if pads == [] {pads = array(dims, 0)}
+        if strides == [] {strides = array(dims, 1)}
+        if dilations == [] {dilations = array(dims, 1)}
+        val pads = autopad2pads(auto_pad, kernel_shape, pads)
+        (Ast.nnconv_attr_t {
+            kernel_shape=kernel_shape, pads=pads,
+            strides=strides, dilations=dilations, group = group },
+        out_padding, out_shape)
+    }
+
     fun convert_graph(onnx_graph: OAst.graph_t, nspace: string, nested: bool) {
         val nspace_ = if nspace == "" {nspace} else {nspace + "::"}
         for c <- onnx_graph.initializers {
@@ -508,34 +537,11 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
             | "Conv" | "ConvTranspose" =>
                 assert(`ninputs == 2 || ninputs == 3`)
                 assert(`noutputs == 1`)
-                var kernel_shape = [], strides = [], dilations = []
-                var pads = [], auto_pad = Ast.NN_Pad_None, group = 1
-                var out_padding = [], out_shape = []
-                for a <- node.attrs {
-                    | {name="kernel_shape"} => kernel_shape = attr2ints(a)
-                    | {name="pads"} => pads = attr2ints(a)
-                    | {name="strides"} => strides = attr2ints(a)
-                    | {name="dilations"} => dilations = attr2ints(a)
-                    | {name="group"} => group = attr2int(a)
-                    | {name="auto_pad"} => auto_pad = attr2autopad(a)
-                    | {name="out_padding"} => out_padding = attr2ints(a)
-                    | {name="out_shape"} => out_shape = attr2ints(a)
-                    | _ => {}
-                }
-                val dims = size(kernel_shape)
-                if dims == 0 {
-                    throw OnnxConvertError(f"{node.name} (op=Conv): missing kernel shape")
-                }
-                if pads == [] {pads = array(dims, 0)}
-                if strides == [] {strides = array(dims, 1)}
-                if dilations == [] {dilations = array(dims, 1)}
-                val pads = autopad2pads(auto_pad, kernel_shape, pads)
+                val (conv_attr, out_padding, out_shape) = parse_conv_attr(node)
                 if node.op == "Conv" {
                     [:: Ast.NN_Conv {
                         name=name,
-                        attr=Ast.nnconv_attr_t {
-                            kernel_shape=kernel_shape, pads=pads,
-                            strides=strides, dilations=dilations, group = group },
+                        attr=conv_attr,
                         conv_data=ref null,
                         fused_batch_norm=None,
                         non_const_batch_norm=false,
@@ -546,13 +552,26 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                         t_out=outputs[0], t_passby=0}]
                 } else {
                     [:: Ast.NN_ConvTranspose {
-                        name=name, kernel_shape=kernel_shape, pads=pads,
-                        strides=strides, dilations=dilations, group = group,
+                        name=name, attr=conv_attr,
                         out_padding = out_padding, out_shape = out_shape,
                         t_inp=inputs[0], t_weights=inputs[1],
                         t_bias=(if ninputs == 3 {inputs[2]} else {0}),
                         t_out=outputs[0]}]
                 }
+            | "DequantizeLinear" =>
+                assert(`ninputs == 2 || ninputs == 3`)
+                assert(`noutputs == 1`)
+                var axis = 1
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | _ => {}
+                }
+                [:: Ast.NN_DequantizeLinear {
+                    name=name, axis=axis,
+                    t_inp=inputs[0],
+                    t_scale=inputs[1],
+                    t_zp=(if ninputs >= 3 {inputs[2]} else {0}),
+                    t_out=outputs[0] }]
             | "Dropout" =>
                 assert(`1 <= ninputs <= 3`)
                 assert(`noutputs == 1 || noutputs == 2`)
@@ -705,6 +724,63 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 assert(`ninputs == 1`)
                 assert(`noutputs == 1`)
                 [:: Ast.NN_NonZero { name=name, t_inp=inputs[0], t_out=outputs[0] }]
+            | "QLinearAdd" =>
+                assert(`ninputs == 8`)
+                assert(`noutputs == 1`)
+                [:: Ast.NN_QLinearAdd {
+                    name=name,
+                    t_A=inputs[0], t_A_scale=inputs[1], t_A_zp=inputs[2],
+                    t_B=inputs[3], t_B_scale=inputs[4], t_B_zp=inputs[5],
+                    t_out_scale=inputs[6], t_out_zp=inputs[7],
+                    t_out=outputs[0]}]
+            | "QLinearConv" =>
+                assert(`ninputs == 8 || ninputs == 9`)
+                assert(`noutputs == 1`)
+                val (conv_attr, _, _) = parse_conv_attr(node)
+                [:: Ast.NN_QLinearConv {
+                    name=name, attr=conv_attr,
+                    qconv_data=ref null,
+                    t_inp=inputs[0], t_inp_scale=inputs[1], t_inp_zp=inputs[2],
+                    t_weights=inputs[3], t_w_scale=inputs[4], t_w_zp=inputs[5],
+                    t_out_scale=inputs[6], t_out_zp=inputs[7],
+                    t_bias=(if ninputs >= 8 {inputs[8]} else {0}),
+                    t_out=outputs[0]}]
+            | "QLinearGlobalAveragePool" =>
+                assert(`ninputs == 5`)
+                assert(`noutputs == 1`)
+                var channels_last = 0
+                for a <- node.attrs {
+                    | {name="channels_last"} => channels_last = attr2int(a)
+                    | _ => {}
+                }
+                [:: Ast.NN_QLinearGlobalAvgPool {
+                    name=name, channels_last = channels_last != 0,
+                    t_inp=inputs[0], t_inp_scale=inputs[1], t_inp_zp=inputs[2],
+                    t_out_scale=inputs[3], t_out_zp=inputs[4],
+                    t_out=outputs[0]}]
+            | "QLinearMatMul" =>
+                assert(`ninputs == 8`)
+                assert(`noutputs == 1`)
+                [:: Ast.NN_QLinearMatMul {
+                    name=name,
+                    t_A=inputs[0], t_A_scale=inputs[1], t_A_zp=inputs[2],
+                    t_B=inputs[3], t_B_scale=inputs[4], t_B_zp=inputs[5],
+                    t_out_scale=inputs[6], t_out_zp=inputs[7],
+                    t_out=outputs[0]}]
+            | "QuantizeLinear" =>
+                assert(`ninputs == 2 || ninputs == 3`)
+                assert(`noutputs == 1`)
+                var axis = 1
+                for a <- node.attrs {
+                    | {name="axis"} => axis = attr2int(a)
+                    | _ => {}
+                }
+                [:: Ast.NN_QuantizeLinear {
+                    name=name, axis=axis,
+                    t_inp=inputs[0],
+                    t_scale=inputs[1],
+                    t_zp=(if ninputs >= 3 {inputs[2]} else {0}),
+                    t_out=outputs[0] }]
             | "Range" =>
                 assert(`ninputs == 3`)
                 assert(`noutputs == 1`)

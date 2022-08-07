@@ -158,14 +158,17 @@ class nnop_t =
         t_passby: int }
     | NN_ConvTranspose: {
         name: string
-        kernel_shape: int []
-        pads: int []
-        strides: int []
-        dilations: int []
+        attr: nnconv_attr_t
         out_shape: int []
         out_padding: int []
-        group: int
         t_inp: int; t_weights: int; t_bias: int; t_out: int }
+    | NN_DequantizeLinear: {
+        name: string
+        axis: int
+        t_inp: int
+        t_scale: int
+        t_zp: int
+        t_out: int }
     | NN_Dropout: {
         name: string; seed: int = 0
         t_inp: int; t_ratio: int; t_training_mode: int; t_out: int }
@@ -220,6 +223,40 @@ class nnop_t =
         t_out: int }
     | NN_NonZero: {
         name: string; t_inp: int; t_out: int }
+    | NN_QLinearConv: {
+        name: string
+        attr: nnconv_attr_t
+        qconv_data: cptr ref
+        t_inp: int; t_weights: int
+        t_bias: int; t_out: int;
+        t_inp_scale: int; t_inp_zp: int;
+        t_w_scale: int; t_w_zp: int;
+        t_out_scale: int; t_out_zp: int }
+    | NN_QLinearAdd: {
+        name: string
+        t_A: int; t_B: int; t_out: int
+        t_A_scale: int; t_A_zp: int
+        t_B_scale: int; t_B_zp: int
+        t_out_scale: int; t_out_zp: int }
+    | NN_QLinearGlobalAvgPool: {
+        name: string
+        channels_last: bool
+        t_inp: int; t_out: int
+        t_inp_scale: int; t_inp_zp: int
+        t_out_scale: int; t_out_zp: int }
+    | NN_QLinearMatMul: {
+        name: string
+        t_A: int; t_B: int; t_out: int
+        t_A_scale: int; t_A_zp: int
+        t_B_scale: int; t_B_zp: int
+        t_out_scale: int; t_out_zp: int }
+    | NN_QuantizeLinear: {
+        name: string
+        axis: int
+        t_inp: int
+        t_scale: int
+        t_zp: int
+        t_out: int }
     | NN_Range: {
         name: string; t_start: int; t_limit: int; t_delta: int; t_out: int }
     | NN_Reduce: {
@@ -814,6 +851,7 @@ fun nnop_t.name(): (string, string) = match self
     | NN_ConstantOfShape {name} => (name, "ConstantOfShape")
     | NN_Conv {name} => (name, "Conv")
     | NN_ConvTranspose {name} => (name, "ConvTranspose")
+    | NN_DequantizeLinear {name} => (name, "DequantizeLinear")
     | NN_Dropout {name} => (name, "Dropout")
     | NN_Elemwise {name, el_op} => (name, string(el_op))
     | NN_Expand {name} => (name, "Expand")
@@ -829,6 +867,11 @@ fun nnop_t.name(): (string, string) = match self
     | NN_MaxPool {name} => (name, "MaxPool")
     | NN_NonMaxSuppression {name} => (name, "NonMaxSuppression")
     | NN_NonZero {name} => (name, "NonZero")
+    | NN_QLinearAdd {name} => (name, "QLinearAdd")
+    | NN_QLinearGlobalAvgPool {name} => (name, "QLinearGlobalAvgPool")
+    | NN_QLinearMatMul {name} => (name, "QLinearMatMul")
+    | NN_QLinearConv {name} => (name, "QLinearConv")
+    | NN_QuantizeLinear {name} => (name, "QuantizeLinear")
     | NN_Range {name} => (name, "Range")
     | NN_Reduce {name, reduce_op} => (name, string(reduce_op))
     | NN_Resize {name} => (name, "Resize")
@@ -844,7 +887,7 @@ fun nnop_t.name(): (string, string) = match self
     | NN_TopK {name} => (name, "TopK")
     | NN_Transpose {name} => (name, "Transpose")
     | NN_Unsqueeze {name} => (name, "Unsqueeze")
-    | NN_Nop => ("", "Nop")
+    | NN_Nop => ("<nop>", "Nop")
 }
 
 fun nnop_t.perf_profile_index(): int = match self {
@@ -873,6 +916,7 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
     | NN_ConstantOfShape {t_shape, t_out} => ([t_shape], [t_out])
     | NN_Conv {t_inp, t_weights, t_bias, t_out, t_passby} => ([t_inp, t_weights, t_bias, t_passby], [t_out])
     | NN_ConvTranspose {t_inp, t_weights, t_bias, t_out} => ([t_inp, t_weights, t_bias], [t_out])
+    | NN_DequantizeLinear {t_inp, t_scale, t_zp, t_out} => ([t_inp, t_scale, t_zp], [t_out])
     | NN_Dropout {t_inp, t_ratio, t_training_mode, t_out} => ([t_inp, t_ratio, t_training_mode], [t_out])
     | NN_Elemwise {t_inp, t_out} => (t_inp, [t_out])
     | NN_Expand {t_inp, t_shape, t_out} => ([t_inp, t_shape], [t_out])
@@ -891,6 +935,19 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
         t_iou_threshold, t_score_threshold, t_out} =>
             ([t_boxes, t_scores, t_max_output_boxes_per_class, t_iou_threshold, t_score_threshold], [t_out])
     | NN_NonZero {t_inp, t_out} => ([t_inp], [t_out])
+    | NN_QLinearAdd {t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
+                    t_out_scale, t_out_zp, t_out} =>
+        ([t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp, t_out_scale, t_out_zp], [t_out])
+    | NN_QLinearConv {t_inp, t_weights, t_bias, t_out, t_inp_scale, t_inp_zp,
+                      t_w_scale, t_w_zp, t_out_scale, t_out_zp} =>
+        ([t_inp, t_weights, t_bias, t_inp_scale, t_inp_zp,
+          t_w_scale, t_w_zp, t_out_scale, t_out_zp], [t_out])
+    | NN_QLinearGlobalAvgPool {t_inp, t_out, t_inp_scale, t_inp_zp, t_out_scale, t_out_zp} =>
+        ([t_inp, t_inp_scale, t_inp_zp, t_out_scale, t_out_zp], [t_out])
+    | NN_QLinearMatMul {t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
+                    t_out_scale, t_out_zp, t_out} =>
+        ([t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp, t_out_scale, t_out_zp], [t_out])
+    | NN_QuantizeLinear {t_inp, t_scale, t_zp, t_out} => ([t_inp, t_scale, t_zp], [t_out])
     | NN_Range {t_start, t_limit, t_delta, t_out} => ([t_start, t_limit, t_delta], [t_out])
     | NN_Reduce {t_inp, t_out} => ([t_inp], [t_out])
     | NN_Reshape {t_inp, t_shape, t_out} => ([t_inp, t_shape], [t_out])
@@ -910,6 +967,11 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
 
 fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
 {
+    fun conv_attr2str(attr: nnconv_attr_t) =
+        f"kernel_shape={attr.kernel_shape}, \
+        pads={attr.pads}, strides={attr.strides}, \
+        dilations={attr.dilations}, group={attr.group}"
+
     val sub_indent = indent + "  "
     //println(f"dumping op={op.name()}")
     match op {
@@ -946,14 +1008,18 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
             if t_passby > 0 {
                 (" + Add", f", passby=\"{model.args[t_passby].name}\"")
             } else {("", "")}
-        op2str(convname, "Conv" + bnorm_name + passby_name + activ_name, f"kernel_shape={attr.kernel_shape}, \
-            pads={attr.pads}, strides={attr.strides}, dilations={attr.dilations}, group={attr.group}{passby_attr}",
+        op2str(convname, "Conv" + bnorm_name + passby_name + activ_name,
+            conv_attr2str(attr) + f"{passby_attr}",
+            t2str(model, [("t_inp", t_inp), ("t_weights", t_weights),
+                ("t_bias", t_bias), ("t_out", t_out)]), indent)
+    | NN_ConvTranspose {name, attr, out_shape, out_padding,
+                        t_inp, t_weights, t_bias, t_out} =>
+        op2str(name, "Conv", conv_attr2str(attr) + f"out_padding={out_padding}, out_shape={out_shape}",
             t2str(model, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
-    | NN_ConvTranspose {name, kernel_shape, pads, strides, dilations, group,
-        out_shape, out_padding, t_inp, t_weights, t_bias, t_out} =>
-        op2str(name, "Conv", f"kernel_shape={kernel_shape}, \
-            pads={pads}, strides={strides}, dilations={dilations}, group={group}, out_padding={out_padding}, out_shape={out_shape}",
-            t2str(model, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias), ("t_out", t_out)]), indent)
+    | NN_DequantizeLinear {name, axis, t_inp, t_scale, t_zp, t_out} =>
+        op2str(name, "DequantizeLinear", f"axis={axis}",
+            t2str(model, [("t_inp", t_inp), ("t_scale", t_scale),
+                   ("t_zp", t_zp), ("t_out", t_out)]), indent)
     | NN_Dropout {name, seed, t_inp, t_ratio, t_training_mode, t_out} =>
         op2str(name, "Dropout", f"seed={seed}", t2str(model,
             [("t_inp", t_inp), ("t_ratio", t_ratio), ("t_training_mode", t_training_mode), ("t_out", t_out)]), indent)
@@ -1002,6 +1068,39 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
             ("t_iou_threshold", t_iou_threshold), ("t_score_threshold", t_score_threshold), ("t_out", t_out)]), indent)
     | NN_NonZero { name, t_inp, t_out } =>
         op2str(name, "NonZero", "", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
+    | NN_QLinearAdd {name, t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
+                    t_out_scale, t_out_zp, t_out} =>
+        op2str(name, "QLinearAdd", "",
+            t2str(model, [("t_A", t_A), ("t_B", t_B),
+                ("t_A_scale", t_A_scale), ("t_A_zp", t_A_zp),
+                ("t_B_scale", t_B_scale), ("t_B_zp", t_B_zp),
+                ("t_out", t_out)]), indent)
+    | NN_QLinearConv {name, attr, t_inp, t_weights, t_bias, t_out, t_inp_scale, t_inp_zp,
+                      t_w_scale, t_w_zp, t_out_scale, t_out_zp} =>
+        op2str(name, "QLinearConv", conv_attr2str(attr),
+            t2str(model, [("t_inp", t_inp), ("t_weights", t_weights), ("t_bias", t_bias),
+                ("t_inp_scale", t_inp_scale), ("t_inp_zp", t_inp_zp),
+                ("t_w_scale", t_w_scale), ("t_w_zp", t_w_zp),
+                ("t_out_scale", t_out_scale), ("t_out_zp", t_out_zp),
+                ("t_out", t_out)]), indent)
+    | NN_QLinearGlobalAvgPool {name, channels_last, t_inp, t_out, t_inp_scale,
+                               t_inp_zp, t_out_scale, t_out_zp} =>
+        op2str(name, "QLinearGlobalAvgPool", f"channels_last={channels_last}",
+            t2str(model, [("t_inp", t_inp),
+                ("t_inp_scale", t_inp_scale), ("t_inp_zp", t_inp_zp),
+                ("t_out_scale", t_out_scale), ("t_out_zp", t_out_zp),
+                ("t_out", t_out)]), indent)
+    | NN_QLinearMatMul {name, t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
+                    t_out_scale, t_out_zp, t_out} =>
+        op2str(name, "QLinearMatMul", "",
+            t2str(model, [("t_A", t_A), ("t_B", t_B),
+                ("t_A_scale", t_A_scale), ("t_A_zp", t_A_zp),
+                ("t_B_scale", t_B_scale), ("t_B_zp", t_B_zp),
+                ("t_out", t_out)]), indent)
+    | NN_QuantizeLinear {name, axis, t_inp, t_scale, t_zp, t_out} =>
+        op2str(name, "QuantizeLinear", f"axis={axis}",
+            t2str(model, [("t_inp", t_inp), ("t_scale", t_scale),
+                   ("t_zp", t_zp), ("t_out", t_out)]), indent)
     | NN_Range {name, t_start, t_limit, t_delta, t_out} =>
         op2str(name, "Range", "", t2str(model, [("t_start", t_start), ("t_limit", t_limit),
             ("t_delta", t_delta), ("t_out", t_out)]), indent)
@@ -1010,8 +1109,9 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
             t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Resize { name, coord_trans, cubic_coeff_a, exclude_outside, extrapolation_value,
         mode, nearest_mode, t_inp, t_scales, t_sizes, t_roi, t_out } =>
-        val nearest_mode_str = if mode == NN_Inter_Nearest {f", nearest_mode={nearest_mode}"} else {""}
-        val tensors = [:: ("t_out", t_out)]
+        val nearest_mode_str =
+            if mode == NN_Inter_Nearest {f", nearest_mode={nearest_mode}"} else {""}
+        val tensors = ("t_out", t_out) :: []
         val tensors = if coord_trans == NN_CT_TFCropResize {("t_roi", t_roi) :: tensors} else {tensors}
         val tensors = ("t_scales", t_scales) :: ("t_sizes", t_sizes) :: tensors
         op2str(name, "Resize", f"coord_trans={coord_trans}, cubic_coeff_a={cubic_coeff_a},\
