@@ -232,8 +232,8 @@ static int _fx_init_conv2d(
                 for(int k0 = 0; k0 < Kg_aligned; k0 += FX_CONV_MR_FP16) {
                     int dk = Kg - k0 < FX_CONV_MR_FP16 ? Kg - k0 : FX_CONV_MR_FP16;
                     int k_idx = g*Kg + k0;
-                    for(int c = 0; c < Cg; c++) {
-                        for(int yx = 0; yx < Hk*Wk; yx++, packed_wptr += FX_CONV_MR_FP16) {
+                    for(int yx = 0; yx < Hk*Wk; yx++) {
+                        for(int c = 0; c < Cg; c++, packed_wptr += FX_CONV_MR_FP16) {
                             const float* wptr = weights + (size_t)(k_idx*Cg + c)*Hk*Wk + yx;
                             int k = 0;
                             for(; k < dk; k++, wptr += Cg*Hk*Wk) {
@@ -262,8 +262,8 @@ static int _fx_init_conv2d(
                 for(int k0 = 0; k0 < Kg_aligned; k0 += FX_CONV_MR) {
                     int dk = Kg - k0 < FX_CONV_MR ? Kg - k0 : FX_CONV_MR;
                     int k_idx = g*Kg + k0;
-                    for(int c = 0; c < Cg; c++) {
-                        for(int yx = 0; yx < Hk*Wk; yx++, packed_wptr += FX_CONV_MR) {
+                    for(int yx = 0; yx < Hk*Wk; yx++) {
+                        for(int c = 0; c < Cg; c++, packed_wptr += FX_CONV_MR) {
                             const float* wptr = weights + (size_t)(k_idx*Cg + c)*Hk*Wk + yx;
                             int k = 0;
                             for(; k < dk; k++, wptr += Cg*Hk*Wk) {
@@ -290,6 +290,9 @@ static int _fx_init_conv2d(
     return fx_status;
 }
 
+int64_t depthwise_time = 0, _1x1_time = 0;
+int depthwise_calls = 0, _1x1_calls = 0;
+
 int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                const _fx_nntensor_t* passby,
                _fx_conv2d_t* conv, int_ ntasks,
@@ -309,7 +312,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     // then we can increase the amount of pixels (yx_limit - yx0) that we process at once.
     // That is, we should make K_BLOCK_SIZE and C_BLOCK_SIZE adaptive.
     int MAX_STRIPES = (56 + CONV_NR - 1)/CONV_NR;
-    int K_BLOCK_SIZE = ((64*(inp_typ == FX_F16 ? 2 : 1) + CONV_MR - 1)/CONV_MR)*CONV_MR;
+    int K_BLOCK_SIZE = ((32*(inp_typ == FX_F16 ? 2 : 1) + CONV_MR - 1)/CONV_MR)*CONV_MR;
     int C_BLOCK_SIZE = 256;
 
     const fx_arr_t* inp_shape_ = &inp->shape.shape;
@@ -361,6 +364,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     int* interior_ofstab = (int*)alloca(ksize*3*sizeof(interior_ofstab[0]));
     int* yxtab = interior_ofstab + ksize;
     int status = 0;
+    //int64_t t_ = fx_tick_count();
 
     if (ndims != 4 || inp_shape[0] != out_shape[0] ||
         inp_shape[1] != conv->C || out_shape[1] != conv->K)
@@ -383,8 +387,13 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
 
     if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
         fx_copy_arr(curr_scratch_buf, new_scratch_buf);
-        return _fx_depthwise_conv2d(ndims, inp_typ, inp_shape, inp_data,
+        //int64_t t = fx_tick_count();
+        int status = _fx_depthwise_conv2d(ndims, inp_typ, inp_shape, inp_data,
                                     out_shape, out_data, conv, ntasks);
+        //t = fx_tick_count() - t;
+        //depthwise_time += t;
+        //depthwise_calls++;
+        return status;
     }
 
     if (totalbufsize > curr_scratch_buf->dim[0].step*curr_scratch_buf->dim[0].size) {
@@ -406,6 +415,8 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             yxtab[k*2] = dy; yxtab[k*2+1] = dx;
             interior_ofstab[k] = dy*Wi + dx;
         }
+
+    //memset(out_data->data, 0, out_planesize*N*K*esz);
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
     #pragma omp parallel for num_threads(ntasks)
@@ -531,15 +542,13 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                 for (int stripe = 0; yx0 < yx_block_limit; stripe++, yx0 += CONV_NR) {
                     char* inpbuf = inpbuf_task + stripe*stripesize*esz;
                     const char* inptr = inp_data->data + inp_plane_ofs*esz;
-                    yx1 = yx0 + CONV_NR;
-                    yx1 = yx1 <= yx_block_limit ? yx1 : yx_block_limit;
-                    int slice_len = yx1 - yx0;
-                    bool partial = slice_len < CONV_NR;
                     /*
                         1. pack the data. Copy the HkxWk CONV_NR-wide slices from
                            each feature plane of the input tensor to the input buffer.
                     */
                     if (fast_1x1) {
+                        int slice_len = yx1 - yx0;
+                        bool partial = slice_len < CONV_NR;
                         // super-fast branch for 1x1 convolutions with sy=sx=1.
                         // in this case each feature plane can be safely treated
                         // as 1D array and we just extract next portion
@@ -565,116 +574,52 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                 memset(inpbuf + slice_len*esz, 0, (CONV_NR - slice_len)*esz);
                             }
                         }
-                    } else if (s1d1) {
-                        // slower, but still fast branch for sy=sx=1, dy=dx=1.
-                        // in this case we copy data from input tensors by chunks and
-                        // interleave the data in inpbuf with 0's
-                        // (that correspond to the padding elements) when necessary
-                        int y0 = yx0/W0, x0 = yx0 - y0*W0;
-                        for (int k = 0; k < ksize; k++) {
-                            int dx_k = yxtab[k*2+1] - pad_left;
-                            int yi = y0 - pad_top + yxtab[k*2], xi = x0 + dx_k;
-                            // xi_0 is the x-coordinate that we set when we move to the next row.
-                            // Wi_part, correspondingly, is how many elements at
-                            // max we can grab from the input tensor row as long as we set xi=xi_0.
-                            int xi_0 = dx_k <= 0 ? 0 : dx_k;
-                            int Wi_part = W0 + (dx_k <= 0 ? dx_k : 0);
-                            Wi_part = (Wi_part < Wi - xi_0) ? Wi_part : (Wi - xi_0);
-                            // di_z0 is how many zero elements we put to inpbuf between rows.
-                            int di_z0 = dx_k <= 0 ? -dx_k : W0 + dx_k - Wi;
-                            char* inpbuf_k = inpbuf + k*CONV_NR*esz;
-                            int i = 0, di = W0 - x0;
-                            // if we are initially outside of the input tensor, we first put some 0's
-                            // into inpbuf and then start the main loop
-                            if (((unsigned)xi >= (unsigned)Wi) | ((unsigned)yi >= (unsigned)Hi)) {
-                                di = xi >= Wi ? di : xi >= 0 ? 0 : -xi < di ? -xi : di;
-                                if ((unsigned)yi < (unsigned)(Hi-1))
-                                    yi += (xi >= Wi);
-                                else if (yi < 0) {
-                                    di = (-yi-1)*W0 + (W0 - x0) + (dx_k < 0 ? -dx_k : 0);
-                                    yi = 0;
-                                } else if ((yi >= Hi) | (xi >= 0))
-                                    di = CONV_NR;
-                                di = di < CONV_NR ? di : CONV_NR;
-                                assert(di > 0);
-                                for (int c = 0; c < Cg; c++)
-                                    memset(inpbuf_k + c*((CONV_NR*ksize)*esz), 0, di*esz);
-                                i = di;
-                                xi = xi_0;
-                                di = Wi_part;
-                            }
-                            di = di < Wi - xi ? di : Wi - xi;
-                            for (; i < CONV_NR;) {
-                                di = (di < CONV_NR - i) ? di : (CONV_NR - i);
-                                const char* inptr_k = inptr + (yi*Wi + xi)*esz;
-                                int di_z = CONV_NR - (i + di);
-                                if (di_z > 0) {
-                                    // we handle the end of the feature plane gracefully,
-                                    // in this case we just add as many 0's as necessary
-                                    // to complete each contiguous slice
-                                    // in inpbuf to CONV_NR elements.
-                                    di_z = ((yi == Hi-1) | (di_z < di_z0)) ? di_z : di_z0;
-                                    for (int c = 0; c < Cg; c++) {
-                                        memcpy(inpbuf_k + (i + c*(CONV_NR*ksize))*esz,
-                                               inptr_k + c*(inp_planesize*esz),
-                                               di*esz);
-                                        memset(inpbuf_k + (i + di + c*(CONV_NR*ksize))*esz,
-                                               0, di_z*esz);
-                                    }
-                                } else {
-                                    for (int c = 0; c < Cg; c++) {
-                                        memcpy(inpbuf_k + (i + c*(CONV_NR*ksize))*esz,
-                                               inptr_k + c*(inp_planesize*esz),
-                                               di*esz);
-                                    }
-                                }
-                                i += di + di_z;
-                                di = Wi_part;
-                                xi = xi_0;
-                                yi++;
-                            }
-                        }
                     } else {
+                        //memset(inpbuf, 0, HkWkCg*CONV_NR*esz);
                         int y0_ = yx0/W0, x0_ = yx0 - y0_*W0;
                         for (int k = 0; k < ksize; k++) {
                             int dy = yxtab[k*2], dx = yxtab[k*2+1];
                             if (esz == 4) {
                                 int i = 0, y0 = y0_, x0 = x0_;
-                                for (; i < CONV_NR;) {
-                                    float* inpbuf_ki = (float*)inpbuf + k*CONV_NR + i;
+                                for (; i < FX_CONV_NR;) {
+                                    float* inpbuf_ki = (float*)inpbuf + k*(FX_CONV_NR*Cg) + i;
                                     int yi = y0*stride_y + dy - pad_top;
                                     int xi = x0*stride_x + dx - pad_left;
 
                                     if ((unsigned)yi < (unsigned)Hi &&
                                         (unsigned)xi < (unsigned)Wi) {
                                         const float* inptr_ki = (float*)inptr + yi*Wi + xi;
-                                        if (i + 4 <= CONV_NR && x0 + 4 <= W0 && xi + stride_x*4 <= Wi) {
-                                            if (stride_x == 2) {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize, inptr_ki += inp_planesize) {
-                                                    float t0 = inptr_ki[0], t1 = inptr_ki[2];
-                                                    float t2 = inptr_ki[4], t3 = inptr_ki[6];
+                                        if (i + 6 <= FX_CONV_NR && x0 + 6 <= W0 && xi + stride_x*6 <= Wi) {
+                                            if (stride_x == 1) {
+                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize) {
+                                                    float t0 = inptr_ki[0], t1 = inptr_ki[1];
+                                                    float t2 = inptr_ki[2], t3 = inptr_ki[3];
+                                                    float t4 = inptr_ki[4], t5 = inptr_ki[5];
                                                     inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
                                                     inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
+                                                    inpbuf_ki[4] = t4; inpbuf_ki[5] = t5;
                                                 }
                                             } else {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize, inptr_ki += inp_planesize) {
+                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize) {
                                                     float t0 = inptr_ki[0], t1 = inptr_ki[stride_x];
                                                     float t2 = inptr_ki[stride_x*2], t3 = inptr_ki[stride_x*3];
+                                                    float t4 = inptr_ki[stride_x*4], t5 = inptr_ki[stride_x*5];
                                                     inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
                                                     inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
+                                                    inpbuf_ki[4] = t4; inpbuf_ki[5] = t5;
                                                 }
                                             }
-                                            i += 4;
-                                            x0 += 4;
+                                            i += 6;
+                                            x0 += 6;
                                         } else {
-                                            for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize, inptr_ki += inp_planesize)
+                                            for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize)
                                                 *inpbuf_ki = *inptr_ki;
                                             i++;
                                             x0++;
                                         }
                                     } else {
-                                        for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize)
-                                            inpbuf_ki[0] = 0.f;
+                                        for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR)
+                                            *inpbuf_ki = 0.f;
                                         i++;
                                         x0++;
                                     }
@@ -685,24 +630,24 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             } else {
                                 assert(esz == 2);
                                 int i = 0, y0 = y0_, x0 = x0_;
-                                for (; i < CONV_NR;) {
-                                    int16_t* inpbuf_ki = (int16_t*)inpbuf + k*CONV_NR + i;
+                                for (; i < FX_CONV_NR_FP16;) {
+                                    int16_t* inpbuf_ki = (int16_t*)inpbuf + k*(FX_CONV_NR_FP16*Cg) + i;
                                     int yi = y0*stride_y + dy - pad_top;
                                     int xi = x0*stride_x + dx - pad_left;
 
                                     if ((unsigned)yi < (unsigned)Hi &&
                                         (unsigned)xi < (unsigned)Wi) {
                                         const int16_t* inptr_ki = (int16_t*)inptr + yi*Wi + xi;
-                                        if (i + 4 <= CONV_NR && x0 + 4 <= W0 && xi + stride_x*4 <= Wi) {
-                                            if (stride_x == 2) {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize, inptr_ki += inp_planesize) {
-                                                    int16_t t0 = inptr_ki[0], t1 = inptr_ki[2];
-                                                    int16_t t2 = inptr_ki[4], t3 = inptr_ki[6];
+                                        if (i + 4 <= FX_CONV_NR_FP16 && x0 + 4 <= W0 && xi + stride_x*4 <= Wi) {
+                                            if (stride_x == 1) {
+                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16, inptr_ki += inp_planesize) {
+                                                    int16_t t0 = inptr_ki[0], t1 = inptr_ki[1];
+                                                    int16_t t2 = inptr_ki[2], t3 = inptr_ki[3];
                                                     inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
                                                     inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
                                                 }
                                             } else {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize, inptr_ki += inp_planesize) {
+                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16, inptr_ki += inp_planesize) {
                                                     int16_t t0 = inptr_ki[0], t1 = inptr_ki[stride_x];
                                                     int16_t t2 = inptr_ki[stride_x*2], t3 = inptr_ki[stride_x*3];
                                                     inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
@@ -712,14 +657,14 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                             i += 4;
                                             x0 += 4;
                                         } else {
-                                            for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize, inptr_ki += inp_planesize)
+                                            for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16, inptr_ki += inp_planesize)
                                                 *inpbuf_ki = *inptr_ki;
                                             i++;
                                             x0++;
                                         }
                                     } else {
-                                        for (int c = 0; c < Cg; c++, inpbuf_ki += CONV_NR*ksize)
-                                            inpbuf_ki[0] = 0;
+                                        for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_FP16)
+                                            *inpbuf_ki = 0;
                                         i++;
                                         x0++;
                                     }
@@ -778,7 +723,12 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             float32x4_t vbias = vdupq_n_f32(biasval), valpha = vdupq_n_f32(alpha), vmax = vdupq_n_f32(maxval);
                             float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
                             if (pbptr) {
-                                for (; j <= out_width - 8; j += 8) {
+                                for (; j < out_width; j += 8) {
+                                    if (j + 8 > out_width) {
+                                        if (j == 0)
+                                            break;
+                                        j = out_width - 8;
+                                    }
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
                                     v0 = vaddq_f32(v0, vld1q_f32(pbptr + j));
@@ -789,7 +739,12 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     vst1q_f32(outptr + j + 4, v1);
                                 }
                             } else {
-                                for (; j <= out_width - 8; j += 8) {
+                                for (; j < out_width; j += 8) {
+                                    if (j + 8 > out_width) {
+                                        if (j == 0)
+                                            break;
+                                        j = out_width - 8;
+                                    }
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
                                     v0 = vmulq_f32(vminq_f32(v0, vmax), vbslq_f32(vcltq_f32(v0, z), valpha, one));
@@ -833,7 +788,12 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             float16x8_t vmax = vdupq_n_f16(maxval < 65504.f ? maxval : 65504.f);
                             float16x8_t z = vdupq_n_f16(0.f), one = vdupq_n_f16(1.f);
                             if (pbptr) {
-                                for (; j <= out_width - 8; j += 8) {
+                                for (; j < out_width; j += 8) {
+                                    if (j + 8 > out_width) {
+                                        if (j == 0)
+                                            break;
+                                        j = out_width - 8;
+                                    }
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
                                     float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
@@ -842,7 +802,12 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     vst1q_f16(outptr + j, v);
                                 }
                             } else {
-                                for (; j <= out_width - 8; j += 8) {
+                                for (; j < out_width; j += 8) {
+                                    if (j + 8 > out_width) {
+                                        if (j == 0)
+                                            break;
+                                        j = out_width - 8;
+                                    }
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
                                     float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
@@ -874,6 +839,13 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             }
         }
     }
+
+    /*if (Wk == 1 && Hk == 1)
+    {
+        t_ = fx_tick_count() - t_;
+        _1x1_time += t_;
+        _1x1_calls++;
+    }*/
 
     return FX_OK;
 }

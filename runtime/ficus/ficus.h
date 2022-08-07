@@ -59,9 +59,6 @@ typedef char32_t char_;
 #endif
 #endif
 
-typedef union fx_bits64_t {double f; int64_t i; uint64_t u;} fx_bits64_t;
-typedef union fx_bits32_t {float f; int i; unsigned u;} fx_bits32_t;
-
 #ifdef __ARM_NEON
 #define FX_HAVE_SIMD 1
 #define FX_SIMD_NEON 1
@@ -78,6 +75,10 @@ typedef struct fx_f16 { uint16_t bits; } fx_f16;
     #endif
 #endif
 #endif
+
+typedef union fx_bits64_t {double f; int64_t i; uint64_t u;} fx_bits64_t;
+typedef union fx_bits32_t {float f; int i; unsigned u;} fx_bits32_t;
+typedef union fx_bits16_t {fx_f16 f; int16_t i; uint16_t u; } fx_bits16_t;
 
 #ifndef FX_XADD
 #if 0

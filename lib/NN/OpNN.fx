@@ -25,7 +25,7 @@ fun run_softmax(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
     if (ndims < 2 || ndims != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    if (inp_typ != FX_F32 || out_typ != inp_typ)
+    if ((inp_typ != FX_F32 && inp_typ != FX_F16) || out_typ != inp_typ)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     N = inp_shape[0];
@@ -45,18 +45,26 @@ fun run_softmax(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
         float* buf = (float*)alloca(Ca*sizeof(float));
         int_ pix0 = task_id*(N*plane_size)/ntasks;
         int_ pix1 = (task_id+1)*(N*plane_size)/ntasks;
+        //printf("pix0=%d, pix1=%d, C=%d, plane_size=%d\n", (int)pix0, (int)pix1, (int)C, (int)plane_size);
         for (; pix0 < pix1; pix0++) {
             int_ sample_idx = pix0 / plane_size;
             int_ ofs = pix0 - sample_idx * plane_size;
             ofs += sample_idx * (plane_size * C);
-            const float* inptr = (const float*)inp_data->data + ofs;
-            float* outptr = (float*)out_data->data + ofs;
             float maxval = -FLT_MAX, s = 0.f;
             int_ j = 0;
 
-            for(; j < C; j++) {
-                float x = inptr[j*plane_size];
-                buf[j] = x;
+            if (inp_typ == FX_F32) {
+                const float* inptr = (const float*)inp_data->data + ofs;
+                for(; j < C; j++) {
+                    float x = inptr[j*plane_size];
+                    buf[j] = x;
+                }
+            } else {
+                const fx_f16* inptr = (const fx_f16*)inp_data->data + ofs;
+                for(; j < C; j++) {
+                    float x = FX_FLOAT(inptr[j*plane_size]);
+                    buf[j] = x;
+                }
             }
             #ifdef __ARM_NEON
             {
@@ -94,8 +102,16 @@ fun run_softmax(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
             }
             #endif
             s = 1.f/s;
-            for (j = 0; j < C; j++)
-                outptr[j*plane_size] = buf[j]*s;
+            //printf("maxval=%.5g, s=%.5g\n", maxval, s);
+            if (inp_typ == FX_F32) {
+                float* outptr = (float*)out_data->data + ofs;
+                for (j = 0; j < C; j++)
+                    outptr[j*plane_size] = buf[j]*s;
+            } else {
+                fx_f16* outptr = (fx_f16*)out_data->data + ofs;
+                for (j = 0; j < C; j++)
+                    outptr[j*plane_size] = FX_FLOAT16(buf[j]*s);
+            }
         }
     }
     return FX_OK;

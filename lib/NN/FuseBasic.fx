@@ -44,7 +44,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
         }
 
     for op@i <- prog {
-        var imm_op_idx = -1, t_imm_arg = -1, mish_arg_idx = -1
+        var imm_op_idx = -1, t_imm_arg = -1, mish_arg_idx = -1, gemm_op_idx = -1, fused_bias = -1
         var op = op
         val (fused_op_idx, fused_op, t_out_new, (t_out_removed : int [])) = match op {
         // fuse convolution + batchnorm
@@ -102,7 +102,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
             | _ => (-1, Ast.NN_Nop, -1, [])
             }
         // convert log(1 + exp(x)) to softplus(x)
-        | Ast.NN_Elemwise {name, el_op=Ast.NN_Log, t_inp, t_out=t_out_log} when usecounts [t_inp[0]] == 1 =>
+        | Ast.NN_Elemwise {name, el_op=Ast.NN_Log, t_inp, t_out=t_out_log} when usecounts[t_inp[0]] == 1 =>
             val t_inp0 = t_inp[0]
             val add_op_idx = produced_by[t_inp0]
             var _1_arg = -1
@@ -148,6 +148,25 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
             } else {
                 (-1, Ast.NN_Nop, -1, [])
             }
+        | Ast.NN_Elemwise {el_op=Ast.NN_Add, t_inp, t_out} when
+            exists(for i <- 0:2 {
+                val gemm_out = t_inp[i]
+                gemm_op_idx = produced_by[gemm_out]
+                match get_op(gemm_op_idx) {
+                    | Ast.NN_Gemm {t_bias=0} when usecounts[gemm_out] == 1 =>
+                        fused_bias = t_inp[1-i]
+                        true
+                    | _ => false
+                }}) =>
+            val (new_gemm, t_gemm_out) = match get_op(gemm_op_idx) {
+                | Ast.NN_Gemm {name, alpha, transA, transB, t_A, t_B, t_out=t_gemm_out} =>
+                    (Ast.NN_Gemm {name=name, alpha=alpha, beta=1.f, transA=transA,
+                        transB=transB, t_A=t_A, t_B=t_B, t_bias=fused_bias,
+                        t_out=t_out}, t_gemm_out)
+                | _ =>
+                    throw Ast.NNError("Gemm/MatMul is expected")
+                }
+            (gemm_op_idx, new_gemm, t_out, [t_gemm_out])
         // fuse convolution [+ batchnorm] + add
         | Ast.NN_Elemwise {el_op=Ast.NN_Add, t_inp, t_out} =>
             val t_inp0 = t_inp[0], t_inp1 = t_inp[1]

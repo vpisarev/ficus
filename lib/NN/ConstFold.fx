@@ -39,7 +39,6 @@ fun cfold_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int [])
             val Bt_shape = Ast.nnshape_t {shape=[B.shape.shape[1], B.shape.shape[0]], layout=B.shape.layout}
             val Bt = Ast.mktensor(Bt_shape, B.elemtype())
             OpPermute.run_transpose(B, [1, 0], Bt)
-            println(f"B_shape={B.shape}, Bt_shape={Bt.shape}")
             model.tensors[t_B] = Bt
             model.args[t_B].shape = Bt.shape
             have_changes = true

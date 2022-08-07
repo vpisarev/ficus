@@ -11,7 +11,7 @@ import Ast
 #include "ficus_nn_common.h"
 
 #ifndef FLT16_MAX
-#define FLT16_MAX 6.5504e+4
+#define FLT16_MAX 65504.f
 #endif
 
 typedef struct _fx_pooling2d_t
@@ -57,7 +57,8 @@ static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                 float s;
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    s = -FLT_MAX;
+                    int count = 0;
+                    s = 0;
                     for (int k = 0; k < ksize; k++) {
                         int yi = yi_ + yxtab[k*2];
                         int xi = xi_ + yxtab[k*2+1];
@@ -65,9 +66,10 @@ static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
                         v = inptr[yi*Wi + xi];
-                        s = s >= v ? s : v;
+                        s += v;
+                        count++;
                     }
-                    outptr[x0] = s;
+                    outptr[x0] = count_include_pad ? s*avg_scale : s/count;
                 }
                 if (x0 == W0)
                     break;
@@ -75,32 +77,42 @@ static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
             #ifdef __ARM_NEON
                 if (useSIMD) {
                     if (is3x3) {
-                        for (; x0 <= x1 - vec_nlanes; x0 += vec_nlanes) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x1)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
                             int xi_ = x0*stride_x - pad_left;
                             const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
                             float32x4_t s1 = vld1q_f32(inptr_xi + ofstab[1]);
                             float32x4_t s2 = vld1q_f32(inptr_xi + ofstab[2]);
 
-                            s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[3]));
-                            s1 = vmaxq_f32(s1, vld1q_f32(inptr_xi + ofstab[4]));
-                            s2 = vmaxq_f32(s2, vld1q_f32(inptr_xi + ofstab[5]));
+                            s0 = vaddq_f32(s0, vld1q_f32(inptr_xi + ofstab[3]));
+                            s1 = vaddq_f32(s1, vld1q_f32(inptr_xi + ofstab[4]));
+                            s2 = vaddq_f32(s2, vld1q_f32(inptr_xi + ofstab[5]));
 
-                            s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[6]));
-                            s1 = vmaxq_f32(s1, vld1q_f32(inptr_xi + ofstab[7]));
-                            s2 = vmaxq_f32(s2, vld1q_f32(inptr_xi + ofstab[8]));
+                            s0 = vaddq_f32(s0, vld1q_f32(inptr_xi + ofstab[6]));
+                            s1 = vaddq_f32(s1, vld1q_f32(inptr_xi + ofstab[7]));
+                            s2 = vaddq_f32(s2, vld1q_f32(inptr_xi + ofstab[8]));
 
-                            s0 = vmaxq_f32(vmaxq_f32(s0, s1), s2);
-                            vst1q_f32(outptr + x0, s0);
+                            s0 = vaddq_f32(vaddq_f32(s0, s1), s2);
+                            vst1q_f32(outptr + x0, vmulq_f32(s0, vscale));
                         }
                     } else {
-                        for (; x0 <= x1 - vec_nlanes; x0 += vec_nlanes) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x1)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
                             int xi_ = x0*stride_x - pad_left, k = 0;
                             const float* inptr_xi = inptr + Wi*yi_ + xi_;
                             float32x4_t s0 = vld1q_f32(inptr_xi + ofstab[0]);
                             for (k = 1; k < ksize; k++)
-                                s0 = vmaxq_f32(s0, vld1q_f32(inptr_xi + ofstab[k]));
-                            vst1q_f32(outptr + x0, s0);
+                                s0 = vaddq_f32(s0, vld1q_f32(inptr_xi + ofstab[k]));
+                            vst1q_f32(outptr + x0, vmulq_f32(s0, vscale));
                         }
                     }
                 }
@@ -111,15 +123,123 @@ static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                     s = inptr_xi[ofstab[0]];
                     for (int k = 1; k < ksize; k++) {
                         float v = inptr_xi[ofstab[k]];
-                        s = s >= v ? s : v;
+                        s += v;
                     }
-                    outptr[x0] = s;
+                    outptr[x0] = s*avg_scale;
                 }
                 x1 = W0;
             }
         }
     }
 }
+
+#ifdef _FX_NN_ENABLE_FP16
+static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
+                               const _fx_pooling2d_t* pool)
+{
+    const fx_f16* inptr = (const fx_f16*)inptr_;
+    fx_f16* outptr = (fx_f16*)outptr_;
+    int Hi = pool->Hi, Wi = pool->Wi, H0 = pool->H0, W0 = pool->W0;
+    int inner_y0 = pool->inner_y0, inner_y1 = pool->inner_y1;
+    int inner_x0 = pool->inner_x0, inner_x1 = pool->inner_x1;
+    int stride_y = pool->stride_y, stride_x = pool->stride_x;
+    int ksize = pool->Hk*pool->Wk;
+    int pad_top = pool->pad_top, pad_left = pool->pad_left;
+    const int* yxtab = pool->yxtab;
+    const int* ofstab = pool->ofstab;
+    bool count_include_pad = pool->count_include_pad;
+    float avg_scale = 1.f/(pool->Hk*pool->Wk);
+#ifdef __ARM_NEON
+    bool useSIMD = stride_x == 1 && inner_x0 < W0;
+    bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
+    float16x8_t vscale = vdupq_n_f16(avg_scale);
+    const int vec_nlanes = FX_VEC_F16_NLANES;
+#endif
+
+    for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
+        for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
+            int x0 = 0, x1 = y0 >= inner_y0 && y0 < inner_y1 ? inner_x0 : W0;
+            int yi_ = y0*stride_y - pad_top;
+            for(;;) {
+                float s;
+                for (; x0 < x1; x0++) {
+                    int xi_ = x0*stride_x - pad_left;
+                    int count = 0;
+                    s = 0;
+                    for (int k = 0; k < ksize; k++) {
+                        int yi = yi_ + yxtab[k*2];
+                        int xi = xi_ + yxtab[k*2+1];
+                        float v;
+                        if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
+                            continue;
+                        v = FX_FLOAT(inptr[yi*Wi + xi]);
+                        s += v;
+                        count++;
+                    }
+                    outptr[x0] = FX_FLOAT16(count_include_pad ? s*avg_scale : s/count);
+                }
+                if (x0 == W0)
+                    break;
+                x1 = inner_x1;
+            #ifdef __ARM_NEON
+                if (useSIMD) {
+                    if (is3x3) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x1)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left;
+                            const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
+                            float16x8_t s0 = vld1q_f16(inptr_xi + ofstab[0]);
+                            float16x8_t s1 = vld1q_f16(inptr_xi + ofstab[1]);
+                            float16x8_t s2 = vld1q_f16(inptr_xi + ofstab[2]);
+
+                            s0 = vaddq_f16(s0, vld1q_f16(inptr_xi + ofstab[3]));
+                            s1 = vaddq_f16(s1, vld1q_f16(inptr_xi + ofstab[4]));
+                            s2 = vaddq_f16(s2, vld1q_f16(inptr_xi + ofstab[5]));
+
+                            s0 = vaddq_f16(s0, vld1q_f16(inptr_xi + ofstab[6]));
+                            s1 = vaddq_f16(s1, vld1q_f16(inptr_xi + ofstab[7]));
+                            s2 = vaddq_f16(s2, vld1q_f16(inptr_xi + ofstab[8]));
+
+                            s0 = vaddq_f16(vaddq_f16(s0, s1), s2);
+                            vst1q_f16(outptr + x0, vmulq_f16(s0, vscale));
+                        }
+                    } else {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x1)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
+                            float16x8_t s0 = vld1q_f16(inptr_xi + ofstab[0]);
+                            for (k = 1; k < ksize; k++)
+                                s0 = vaddq_f32(s0, vld1q_f16(inptr_xi + ofstab[k]));
+                            vst1q_f16(outptr + x0, vmulq_f16(s0, vscale));
+                        }
+                    }
+                }
+            #endif
+                for (; x0 < x1; x0++) {
+                    int xi_ = x0*stride_x - pad_left;
+                    const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
+                    s = FX_FLOAT(inptr_xi[ofstab[0]]);
+                    for (int k = 1; k < ksize; k++) {
+                        float v = FX_FLOAT(inptr_xi[ofstab[k]]);
+                        s += v;
+                    }
+                    outptr[x0] = FX_FLOAT16(s*avg_scale);
+                }
+                x1 = W0;
+            }
+        }
+    }
+}
+#endif
 
 static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                                const _fx_pooling2d_t* pool)
@@ -413,7 +533,8 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
             pool_typ == 'A' ? _fx_avgpool_2d_f32 : 0) :
     #if _FX_NN_ENABLE_FP16
         inp_typ == FX_F16 ?
-            (pool_typ == 'M' ? _fx_maxpool_2d_f16 : 0) :
+            (pool_typ == 'M' ? _fx_maxpool_2d_f16 :
+            pool_typ == 'A' ? _fx_avgpool_2d_f16 : 0) :
     #endif
         0;
 

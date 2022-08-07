@@ -11,6 +11,7 @@ exception OnnxConvertError: string
 
 @private fun onnx2typ(t: OAst.tensor_t) = match t.data {
     | OAst.T_INT8 _ => Type_I8
+    | OAst.T_UINT8 _ => Type_U8
     | OAst.T_INT32 _ => Type_I32
     | OAst.T_INT64 _ => Type_I64
     | OAst.T_FLOAT _ => Type_F32
@@ -41,6 +42,7 @@ Ast.nntensor_t {
     shape = Ast.nnshape_t {layout=Ast.NN_Layout_Unknown, shape=t.shape},
     data = (match t.data {
     | OAst.T_INT8(w) => Ast.NN_Data_I8(w)
+    | OAst.T_UINT8(w) => Ast.NN_Data_U8(w)
     | OAst.T_INT32(w) => Ast.NN_Data_I32(w)
     | OAst.T_INT64(w) => Ast.NN_Data_I64(w)
     | OAst.T_FLOAT(w) => Ast.NN_Data_FP32(w)
@@ -347,11 +349,11 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     | _ => throw OnnxConvertError(f"unsupported binary operation {node.op}")
                 }
                 [:: Ast.NN_Elemwise {name=name, el_op=el_op, t_inp=inputs, t_out=outputs[0]}]
-            | "Min" | "Max" | "Mean" =>
+            | "Min" | "Max" | "Mean" | "Sum" =>
                 assert(`ninputs > 1`)
                 assert(`noutputs == 1`)
                 val el_op = match node.op {
-                    | "Min" => Ast.NN_Min | "Max" => Ast.NN_Max | "Mean" => Ast.NN_Mean
+                    | "Min" => Ast.NN_Min | "Max" => Ast.NN_Max | "Mean" => Ast.NN_Mean | "Sum" => Ast.NN_Add
                     | _ => throw OnnxConvertError(f"unsupported element-wise operation {node.op}")
                 }
                 [:: Ast.NN_Elemwise {name=name, el_op=el_op, t_inp=inputs, t_out=outputs[0]}]

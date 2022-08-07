@@ -7,6 +7,24 @@
 import Hashmap, Json, LexerUtils as Lxu, Sys
 import Ast, BufferAllocator, ConstFold, FromOnnx, FuseBasic, InferShapes, RunOp
 
+type conv_stat_t =
+{
+    conv_generic_time: double
+    conv_depthwise_time: double
+}
+
+@nothrow fun print_conv_time(): conv_stat_t
+@ccode {
+    extern int64_t depthwise_time, _1x1_time;
+    //extern int depthwise_calls, _1x1_calls;
+    double scale = 1000./fx_tick_frequency();
+    //printf("total depthwise time = %.2fms (%d calls)\n", depthwise_time*scale, depthwise_calls);
+    //printf("total 1x1 time = %.2fms (%d calls)\n", _1x1_time*scale, _1x1_calls);
+    //depthwise_time = _1x1_time = 0;
+    //depthwise_calls = _1x1_calls = 0;
+    double dt = depthwise_time*scale, gt = _1x1_time*scale;
+}
+
 fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
             cb_before: Ast.op_callback_t?, cb_after: Ast.op_callback_t?*/,
         ~outputs: (string, Ast.nntensor_t) [] = []):
@@ -50,6 +68,7 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
 
     //println("running main graph")
     run_graph(model, model.graph, outputs)
+    //print_conv_time()
 
     // collect outputs
     [for argidx <- model.graph.outargs {
@@ -366,7 +385,7 @@ fun read_model(mname: string)
         try FromOnnx.read(mname)
         catch {
         | FromOnnx.OnnxConvertError(msg) =>
-            throw Fail(f"import error: msg")
+            throw Fail(f"import error: {msg}")
         | Fail(msg) =>
             throw Fail(f"import error: {msg}")
         }

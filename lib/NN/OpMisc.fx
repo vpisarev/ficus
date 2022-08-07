@@ -37,7 +37,7 @@ fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
     if (ndims != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
-    if (inp_typ != FX_F32 || out_typ != inp_typ)
+    if ((inp_typ != FX_F32 && inp_typ != FX_F16) || out_typ != inp_typ)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     N = inp_shape[0];
@@ -63,33 +63,66 @@ fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
             int_ sample_idx = pix0 / plane_size;
             int_ ofs = pix0 - sample_idx * plane_size;
             ofs += sample_idx * (plane_size * C);
-            const float* inptr = (const float*)inp_data->data + ofs;
-            float* outptr = (float*)out_data->data + ofs;
-            double sq = 0;
 
-            for (int_ c = 0; c < C; c++) {
-                float x = inptr[c*plane_size];
-                sq += x*x;
-                inpbuf[c] = x;
-                sqsumbuf[c+1] = sq;
-            }
-            if (b_0_75) {
+            if (inp_typ == FX_F32) {
+                const float* inptr = (const float*)inp_data->data + ofs;
+                float* outptr = (float*)out_data->data + ofs;
+                double sq = 0;
+
                 for (int_ c = 0; c < C; c++) {
-                    int_ c0 = c - dc0, c1 = c + dc1;
-                    c0 = c0 >= 0 ? c0 : 0;
-                    c1 = c1 <= C ? c1 : C;
-                    float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
-                    float x = bias + scale*sqsum;
-                    outptr[c*plane_size] = (inpbuf[c]/x)*sqrtf(sqrtf(x));
+                    float x = inptr[c*plane_size];
+                    sq += x*x;
+                    inpbuf[c] = x;
+                    sqsumbuf[c+1] = sq;
+                }
+                if (b_0_75) {
+                    for (int_ c = 0; c < C; c++) {
+                        int_ c0 = c - dc0, c1 = c + dc1;
+                        c0 = c0 >= 0 ? c0 : 0;
+                        c1 = c1 <= C ? c1 : C;
+                        float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
+                        float x = bias + scale*sqsum;
+                        outptr[c*plane_size] = (inpbuf[c]/x)*sqrtf(sqrtf(x));
+                    }
+                } else {
+                    for (int_ c = 0; c < C; c++) {
+                        int_ c0 = c - dc0, c1 = c + dc1;
+                        c0 = c0 >= 0 ? c0 : 0;
+                        c1 = c1 <= C ? c1 : C;
+                        float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
+                        float x = bias + scale*sqsum;
+                        outptr[c*plane_size] = inpbuf[c]*powf(x, -beta);
+                    }
                 }
             } else {
+                const fx_f16* inptr = (const fx_f16*)inp_data->data + ofs;
+                fx_f16* outptr = (fx_f16*)out_data->data + ofs;
+                double sq = 0;
+
                 for (int_ c = 0; c < C; c++) {
-                    int_ c0 = c - dc0, c1 = c + dc1;
-                    c0 = c0 >= 0 ? c0 : 0;
-                    c1 = c1 <= C ? c1 : C;
-                    float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
-                    float x = bias + scale*sqsum;
-                    outptr[c*plane_size] = inpbuf[c]*powf(x, -beta);
+                    float x = FX_FLOAT(inptr[c*plane_size]);
+                    sq += x*x;
+                    inpbuf[c] = x;
+                    sqsumbuf[c+1] = sq;
+                }
+                if (b_0_75) {
+                    for (int_ c = 0; c < C; c++) {
+                        int_ c0 = c - dc0, c1 = c + dc1;
+                        c0 = c0 >= 0 ? c0 : 0;
+                        c1 = c1 <= C ? c1 : C;
+                        float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
+                        float x = bias + scale*sqsum;
+                        outptr[c*plane_size] = FX_FLOAT16((inpbuf[c]/x)*sqrtf(sqrtf(x)));
+                    }
+                } else {
+                    for (int_ c = 0; c < C; c++) {
+                        int_ c0 = c - dc0, c1 = c + dc1;
+                        c0 = c0 >= 0 ? c0 : 0;
+                        c1 = c1 <= C ? c1 : C;
+                        float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
+                        float x = bias + scale*sqsum;
+                        outptr[c*plane_size] = FX_FLOAT16(inpbuf[c]*powf(x, -beta));
+                    }
                 }
             }
         }

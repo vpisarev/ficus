@@ -208,15 +208,19 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
         }
     }
     if (fx_status >= 0) {
-        int tag = tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT8 ? 2 :
-                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT32 ? 3 :
-                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT64 ? 4 :
-                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__FLOAT ? 1 :
-                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__BOOL ? 5 :
+        int tag = tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__UINT8 ? 2 :
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT8 ? 3 :
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT32 ? 4 :
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__INT64 ? 5 :
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__FLOAT ||
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__FLOAT16 ? 1 :
+                  tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__BOOL ? 6 :
                   -1;
-        if (tag < 0)
+        if (tag < 0) {
+            printf("Onnx parsing error: unsupported tensor data_type = %d\n", (int)tensor->data_type);
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-        size_t elemsize = tag == 1 || tag == 3 ? sizeof(float) : tag == 2 || tag == 5 ? 1 : 8;
+        }
+        size_t elemsize = tag == 1 || tag == 4 ? sizeof(float) : tag == 2 || tag == 3 || tag == 6 ? 1 : 8;
         fx_status = fx_make_arr(1, &total, elemsize, 0, 0, 0, &result->data.arr);
         if (fx_status >= 0) {
             result->data.tag = tag;
@@ -224,6 +228,16 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
                 memcpy(result->data.arr.data, tensor->raw_data.data, total*elemsize);
             } else if (elemsize == 4 && tensor->n_float_data == total) {
                 memcpy(result->data.arr.data, tensor->float_data, total*elemsize);
+            } else if (elemsize == 4 &&
+                tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__FLOAT16 &&
+                tensor->raw_data.len == total*2) {
+                float* dst = (float*)result->data.arr.data;
+                for(int_ i = 0; i < total; i++) {
+                    uint8_t* p = tensor->raw_data.data + i*4;
+                    fx_bits16_t u;
+                    u.u = (uint16_t)(p[0] | ((uint32_t)p[1] << 8));
+                    dst[i] = FX_FLOAT(u.f);
+                }
             } else if (elemsize == 4 && tensor->raw_data.len == total*4) {
                 uint32_t* dst = (uint32_t*)result->data.arr.data;
                 for(int_ i = 0; i < total; i++) {

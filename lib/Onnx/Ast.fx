@@ -13,6 +13,7 @@ type datatype_t =
 
 type tdata_t =
     | T_FLOAT: float []
+    | T_UINT8: uint8 []
     | T_INT8: int8 []
     | T_INT32: int32 []
     | T_INT64: int64 []
@@ -112,6 +113,7 @@ fun string(dim: dim_t) {
 fun tensor_data_prefix(t: tdata_t)
 {
     | T_FLOAT _ => "float32"
+    | T_UINT8 _ => "uint8"
     | T_INT8 _ => "int8"
     | T_INT32 _ => "int32"
     | T_INT64 _ => "int64"
@@ -121,6 +123,7 @@ fun tensor_data_prefix(t: tdata_t)
 fun tensor_data_to_floats(t: tdata_t)
 {
     | T_FLOAT(w) => w
+    | T_UINT8(w) => float(w)
     | T_INT8(w) => float(w)
     | T_INT32(w) => float(w)
     | T_INT64(w) => float(w)
@@ -130,6 +133,7 @@ fun tensor_data_to_floats(t: tdata_t)
 fun tensor_data_to_ints(t: tdata_t)
 {
     | T_FLOAT(w) => int(w)
+    | T_UINT8(w) => int(w)
     | T_INT8(w) => int(w)
     | T_INT32(w) => int(w)
     | T_INT64(w) => int(w)
@@ -139,6 +143,7 @@ fun tensor_data_to_ints(t: tdata_t)
 fun print_tensor_data(t: tdata_t)
 {
     | T_FLOAT(data) => print(data)
+    | T_UINT8(data) => print(data)
     | T_INT8(data) => print(data)
     | T_INT32(data) => print(data)
     | T_INT64(data) => print(data)

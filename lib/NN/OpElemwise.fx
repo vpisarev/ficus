@@ -408,7 +408,8 @@ static _fx_unary_func_t _fx_get_unary_func(int op, int inp_typ)
         op == _FX_NN_Log ? (inp_typ == FX_F32 ? _fx_nn_elemwise_log_f32 : 0) :
         op == _FX_NN_Mish ? (inp_typ == FX_F32 ? _fx_nn_elemwise_mish_f32 :
                 _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_mish_f16 :) 0) :
-        op == _FX_NN_Relu ? (inp_typ == FX_F32 ? _fx_nn_elemwise_relu_f32 : 0) :
+        op == _FX_NN_Relu ? (inp_typ == FX_F32 ? _fx_nn_elemwise_relu_f32 :
+                _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_relu_f16 :) 0) :
         op == _FX_NN_Round ? (inp_typ == FX_F32 ? _fx_nn_elemwise_round_f32 :
                 _FX_FP16_CASE(inp_typ == FX_F16 ? _fx_nn_elemwise_round_f16 :) 0) :
         op == _FX_NN_Sigmoid ? (inp_typ == FX_F32 ? _fx_nn_elemwise_sigmoid_f32 :
