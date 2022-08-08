@@ -502,7 +502,7 @@ static int _fx_run_any_unary(_fx_nntensor_t* inp, _fx_nntensor_t* out,
        3f. in the end of the loop we append the proper number of 1's
            to the final shape to keep it BROADCAST_MAX_DIMS-dimensional.
 */
-static bool _fx_prepare_for_broadcast_op(
+bool _fx_prepare_for_broadcast_op(
     int narrays, int max_ndims,
     const int* ndims, const int_** shape_,
     int_** shape, size_t** step)

@@ -60,6 +60,43 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         }
     }
 
+    fun infer_conv_shape(t_inp: int, t_weights: int, t_bias: int, attr: Ast.nnconv_attr_t)
+    {
+        val (shape, typ) = get_shape_typ(t_inp)
+        // for now we only handle planar data
+        val shape = match shape.layout {
+            | Ast.NN_Layout_NCHW => shape
+            | _ => Ast.nnshape_t {layout=Ast.NN_Layout_NCHW, shape=shape.shape}
+            }
+        val ndims = shape.shape.size() // convolution may produce a tensor of different size than output,
+                                       // but it will always have the same dimensionality, regardless of the layout
+        val wshape = get_shape(t_weights)
+        val wndims = wshape.shape.size()
+        assert(`ndims >= 3 && wndims == ndims`)
+        val N = shape.shape[0]
+        val (c_start, c_end) = shape.get_spatial_channel_range()
+        val nspatdims = c_end - c_start
+
+        if (t_bias > 0) {
+            val bshape = get_shape(t_bias)
+            val bndims = bshape.shape.size()
+            assert(`bndims == 1 && bshape.shape[0] == wshape.shape[0]`)
+        }
+        //println(f"conv shape infer: )
+        ((shape, typ), [for i <- 0:ndims {
+            if i == 0 {N} // just copy N, the batch size
+            else if i < c_start {wshape.shape[0]} // we have NCHW or NCHWxc: take K from from wshape
+            else if i >= c_end { // we have either NHWC or NCHWxc: take K or k from wshape
+                wshape.shape[wndims-1]
+            } else { // one of spatial dimensionalities
+                val i1 = i - c_start
+                val inpsz = shape.shape[i]
+                val pad = attr.pads[i1] + attr.pads[i1+nspatdims]
+                (inpsz + pad - attr.dilations[i1]*(attr.kernel_shape[i1] - 1) - 1)/attr.strides[i1] + 1
+            }
+        }])
+    }
+
     //val (inp, _) = op.get_inputs_outputs()
     //println(f"inferring shape for {op.name()}: inp #0 shape={model.get_tensor(inp[0]).shape}")
 
@@ -104,40 +141,13 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         [argshapeinfo_t {idx=t_out,
             shape=Ast.nnshape_t {layout=Ast.NN_Layout_Unknown, shape=out_shape},
             typ=typ, dynamic=!const_shape}]
-    | Ast.NN_Conv {attr={kernel_shape, pads, strides, dilations, group},
-        t_inp, t_weights, t_out, t_passby} =>
-        val (shape, typ) = get_shape_typ(t_inp)
+    | Ast.NN_Conv {attr, t_inp, t_weights, t_bias, t_out, t_passby} =>
+        val ((shape, typ), out_shape) = infer_conv_shape(t_inp, t_weights, t_bias, attr)
         val out_typ = typ
-        // for now we only handle planar data
-        val shape = match shape.layout {
-            | Ast.NN_Layout_NCHW => shape
-            | _ => Ast.nnshape_t {layout=Ast.NN_Layout_NCHW, shape=shape.shape}
-            }
-        val ndims = shape.shape.size() // convolution may produce a tensor of different size than output,
-                                    // but it will always have the same dimensionality, regardless of the layout
-        val wshape = get_shape(t_weights)
-        val wndims = wshape.shape.size()
-        assert(`shape.shape.size() >= 3`)
-        val N = shape.shape[0]
-        val (c_start, c_end) = shape.get_spatial_channel_range()
-        val nspatdims = c_end - c_start
-        //println(f"conv shape infer: )
-        val out_shape = [for i <- 0:ndims {
-                if i == 0 {N} // just copy N, the batch size
-                else if i < c_start {wshape.shape[0]} // we have NCHW or NCHWxc: take K from from wshape
-                else if i >= c_end { // we have either NHWC or NCHWxc: take K or k from wshape
-                    wshape.shape[wndims-1]
-                } else { // one of spatial dimensionalities
-                    val i1 = i - c_start
-                    val inpsz = shape.shape[i]
-                    val pad = pads[i1] + pads[i1+nspatdims]
-                    (inpsz + pad - dilations[i1]*(kernel_shape[i1] - 1) - 1)/strides[i1] + 1
-                }
-            }]
         if t_passby > 0 {
             val (pb_shape, pb_typ) = get_shape_typ(t_passby)
             assert(`pb_shape.shape == out_shape`)
-            assert(`pb_typ == typ`)
+            assert(`pb_typ == out_typ`)
         }
         [argshapeinfo_t {
             idx=t_out,
@@ -191,13 +201,12 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val ndims = shape.shape.size()
         val axis = Ast.normalize_axis(axis, ndims)
         val (sc_shape, sc_typ) = get_shape_typ(t_scale)
-        val sc_total = sc_shape.shape.total()
+        val sc_total = sc_shape.total()
         assert(`typ == Type_I8 || typ == Type_U8`)
         assert(`sc_typ == Type_F32 || sc_typ == Type_F16`)
         assert(`sc_total == 1 || sc_total == shape.shape[axis]`)
         if t_zp > 0 {
-            val (zp_shape, zp_typ) = get_shape_typ(t_scale)
-            val zp_total = zp_shape.shape.total()
+            val (zp_shape, zp_typ) = get_shape_typ(t_zp)
             assert(`zp_typ == typ`)
             assert(`zp_shape.shape == sc_shape.shape`)
         }
@@ -404,6 +413,45 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         [argshapeinfo_t {
             idx=t_out, shape=out_shape, typ=A_typ, dynamic=false
         }]
+    | Ast.NN_QLinearConv {attr, t_inp, t_weights, t_bias, t_out, t_inp_scale, t_inp_zp,
+                          t_w_scale, t_w_zp, t_out_scale, t_out_zp} =>
+        val ((shape, typ), out_shape) = infer_conv_shape(t_inp, t_weights, t_bias, attr)
+        val (out_zp_shape, out_zp_typ) = get_shape_typ(t_out_zp)
+        // [TODO] add more checks for t_inp_scale, t_inp_zp, t_w_scale, t_w_zp, t_out_scale.
+        assert(`typ == Type_I8 || typ == Type_U8`)
+        assert(`out_zp_typ == Type_I8 || out_zp_typ == Type_U8`)
+        assert(`out_zp_shape.total() == 1`)
+        [argshapeinfo_t {
+            idx=t_out,
+            shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape}, typ=out_zp_typ,
+            dynamic=false // the shape of output tensor depends only on the shape of inputs,
+                          // not on their content, even if the weights are computed dynamically,
+                          // thus we set dynamic=false
+        }]
+    | Ast.NN_QLinearGlobalAvgPool {channels_last, t_inp, t_out, t_inp_scale,
+                                   t_inp_zp, t_out_scale, t_out_zp} =>
+        val (shape, typ) = get_shape_typ(t_inp)
+        val ndims = shape.shape.size()
+        val c_idx = if channels_last {ndims-1} else {1}
+        val (inp_sc_shape, inp_sc_typ) = get_shape_typ(t_inp_scale)
+        val (inp_zp_shape, inp_zp_typ) = get_shape_typ(t_inp_zp)
+        val (out_sc_shape, out_sc_typ) = get_shape_typ(t_out_scale)
+        val (out_zp_shape, out_zp_typ) = get_shape_typ(t_out_zp)
+        assert(`typ == Type_I8 || typ == Type_U8`)
+        assert(`inp_sc_typ == Type_F32 || inp_sc_typ == Type_F16`)
+        assert(`out_sc_typ == Type_F32 || out_sc_typ == Type_F16`)
+        assert(`inp_zp_typ == typ && out_zp_typ == typ`)
+        assert(`inp_sc_shape.total() == 1`)
+        assert(`inp_zp_shape.total() == 1`)
+        assert(`out_sc_shape.total() == 1`)
+        assert(`out_zp_shape.total() == 1`)
+        val out_shape = [for sz@i <- shape.shape {
+                if i == 0 || i == c_idx {sz} else {1}
+            }]
+        [argshapeinfo_t {
+            idx=t_out, shape=Ast.nnshape_t {layout=shape.layout, shape=out_shape},
+            typ=typ, dynamic=false
+        }]
     | Ast.NN_QLinearMatMul {t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
                             t_out_scale, t_out_zp, t_out} =>
         val (A_shape, A_typ) = get_shape_typ(t_A)
@@ -426,7 +474,6 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         assert(`out_zp_typ == Type_I8 || out_zp_typ == Type_U8`)
         val A_sc_total = A_sc_shape.total()
         val B_sc_total = B_sc_shape.total()
-        val out_sc_total = out_sc_shape.total()
         assert(`A_sc_total == 1 || (A_ndims == 2 &&
                 (A_sc_total == A_shape.shape[0] ||
                 A_sc_total == A_shape.shape[1]))`)
@@ -446,13 +493,13 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val ndims = shape.shape.size()
         val axis = Ast.normalize_axis(axis, ndims)
         val (sc_shape, sc_typ) = get_shape_typ(t_scale)
-        val sc_total = sc_shape.shape.total()
+        val sc_total = sc_shape.total()
         assert(`typ == Type_F32 || typ == Type_F16`)
         assert(`sc_typ == Type_F32 || sc_typ == Type_F16`)
         assert(`sc_total == 1 || sc_total == shape.shape[axis]`)
         val out_typ =
             if t_zp > 0 {
-                val (zp_shape, zp_typ) = get_shape_typ(t_scale)
+                val (zp_shape, zp_typ) = get_shape_typ(t_zp)
                 assert(`zp_typ == Type_U8 || zp_typ == Type_I8`)
                 assert(`zp_shape.shape == sc_shape.shape`)
                 zp_typ

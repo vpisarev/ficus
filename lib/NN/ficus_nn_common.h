@@ -261,6 +261,10 @@ void _fx_nn_elemwise_tanh_f16(const void* inptr_, void* outptr_,
                               int_ len, const float* param);
 #endif
 
+bool _fx_prepare_for_broadcast_op(
+    int narrays, int max_ndims, const int* ndims,
+    const int_** shape_, int_** shape, size_t** step);
+
 #ifdef __ARM_NEON
 #define FX_CONV_MR 4
 #define FX_CONV_NR 28
