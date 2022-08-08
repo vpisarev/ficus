@@ -72,7 +72,7 @@ match op
         //OpQuantized.run_qgemm(model, op)
         throw Ast.NNError(f"unsupported operation '{op.name()}'")
     | Ast.NN_QLinearGlobalAvgPool _ =>
-        OpPooling.run_qglobal_avgpool(model, op)
+        OpQuantized.run_qglobal_avgpool(model, op)
     | Ast.NN_QuantizeLinear _ =>
         OpQuantized.run_quantize(model, op)
     | Ast.NN_Range _ =>

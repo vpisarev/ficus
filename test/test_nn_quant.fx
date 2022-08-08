@@ -70,3 +70,26 @@ TEST("NN.Quantized.add", fun()
                             Ast.mktensor(y_scale), Ast.mktensor(y_zp), 4)
     EXPECT_NEAR(int(y), int(y_ref), 1)
 })
+
+TEST("NN.Quantized.globalAvgPool", fun()
+{
+    val N = 2, C = 5, H = 135, W = 101
+    val rng = RNG(-1)
+    val x = rng.uniform((N, C, H, W), 0u8, 255u8)
+    val x_scale = float([128])
+    val x_zp = uint8([100])
+    val y_scale = float([110])
+    val y_zp = uint8([127])
+    val y_ref = [for n <- 0:N for c <- 0:C {
+            val xsc = x_scale[0]
+            val xzp = x_zp[0]
+            val fold s = 0. for i <- 0:H for j <- 0:W {s + (x[n, c, i, j] - xzp)*xsc}
+            sat_uint8(s/(y_scale[0]*H*W) + y_zp[0])
+        }].reshape(N, C, 1, 1)
+    val y = array(N*C, 0u8).reshape(N, C, 1, 1)
+    OpQuantized.run_qglobal_avgpool(Ast.mktensor(x),
+                            Ast.mktensor(x_scale), Ast.mktensor(x_zp),
+                            Ast.mktensor(y_scale), Ast.mktensor(y_zp),
+                            Ast.mktensor(y), false, 4)
+    EXPECT_NEAR(int(y[:]), int(y_ref[:]), 1)
+})

@@ -95,7 +95,7 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
                 }
             #endif
                 for (; j < plane_size; j++) {
-                    int v = (int)lrint(inptr[j]*sc) + zp;
+                    int v = (int)lrintf(inptr[j]*sc) + zp;
                     uint8_t b = (uint8_t)(((v & ~255) == 0 ? v : v < 0 ? 0 : 255) ^ zp_delta);
                     outptr[j] = b;
                 }
@@ -126,7 +126,7 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
                 }
             #endif
                 for (; j < plane_size; j++) {
-                    int v = (int)lrint(FX_FLOAT(inptr[j])*sc) + zp;
+                    int v = (int)lrintf(FX_FLOAT(inptr[j])*sc) + zp;
                     uint8_t b = (uint8_t)(((v & ~255) == 0 ? v : v < 0 ? 0 : 255) ^ zp_delta);
                     outptr[j] = b;
                 }
@@ -353,27 +353,27 @@ static void _fx_nn_qadd_u8(const uint8_t* data1, size_t rowstep1, size_t dp1,
         #endif
             for(; j < ncols; j++) {
                 int x1 = ptr1[j] ^ mask, x2 = ptr2[j] ^ mask;
-                int y = (int)lrint(x1*sc1 + x2*sc2 + bias);
+                int y = (int)lrintf(x1*sc1 + x2*sc2 + bias);
                 ptr[j] = FX_SATURATE(y, mask);
             }
         } else if (dp1 == 1 && dp2 == 0 && dp == 1) {
             float x2_sc2_bias = (*ptr2 ^ mask)*sc2 + bias;
             for(int_ j = 0; j < ncols; j++) {
                 int x1 = ptr1[j] ^ mask;
-                int y = (int)lrint(x1*sc1 + x2_sc2_bias);
+                int y = (int)lrintf(x1*sc1 + x2_sc2_bias);
                 ptr[j] = FX_SATURATE(y, mask);
             }
         } else if (dp1 == 0 && dp2 == 1 && dp == 1) {
             float x1_sc1_bias = (*ptr1 ^ mask)*sc1 + bias;
             for(int_ j = 0; j < ncols; j++) {
                 int x2 = ptr2[j] ^ mask;
-                int y = (int)lrint(x2*sc2 + x1_sc1_bias);
+                int y = (int)lrintf(x2*sc2 + x1_sc1_bias);
                 ptr[j] = FX_SATURATE(y, mask);
             }
         } else {
             for(int_ j = 0; j < ncols; j++, ptr1 += dp1, ptr2 += dp2, ptr += dp) {
                 int x1 = *ptr1 ^ mask, x2 = *ptr2 ^ mask;
-                int y = (int)lrint(x1*sc1 + x2*sc2 + bias);
+                int y = (int)lrintf(x1*sc1 + x2*sc2 + bias);
                 *ptr = FX_SATURATE(y, mask);
             }
         }
@@ -449,9 +449,9 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (inp1_typ != inp2_typ || inp1_typ != out_typ)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
-    if ((zp1_typ > 0 && zp1_typ != inp1_typ) ||
-        (zp2_typ > 0 && zp2_typ != inp2_typ) ||
-        (zp_typ > 0 && zp_typ != out_typ))
+    if ((zp1_typ > 1 && zp1_typ != inp1_typ) ||
+        (zp2_typ > 1 && zp2_typ != inp2_typ) ||
+        (zp_typ > 1 && zp_typ != out_typ))
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
     if (sc1_data->dim[0].size != 1 || sc2_data->dim[0].size != 1 ||
         sc_data->dim[0].size != 1)
@@ -513,6 +513,7 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
 
     for (int k = 0; k < _FX_ELEMWISE_MAX_DIMS-2; k++) nplanes *= shape[k];
 
+    #pragma omp parallel for num_threads(ntasks) if (nplanes >= ntasks)
     for (plane_idx = 0; plane_idx < nplanes; plane_idx++) {
         size_t ofs1 = 0, ofs2 = 0, ofs = 0;
         size_t idx = plane_idx;
@@ -550,5 +551,121 @@ match op {
     val out_zp = model.get_tensor(t_out_zp)
     run_qbinary(Ast.NN_Add, A, B, out, A_scale, A_zp,
                 B_scale, B_zp, out_scale, out_zp, *model.ntasks)
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
+}
+
+fun run_qglobal_avgpool(inp: Ast.nntensor_t,
+                        inp_scale: Ast.nntensor_t, inp_zp: Ast.nntensor_t,
+                        out_scale: Ast.nntensor_t, out_zp: Ast.nntensor_t,
+                        out: Ast.nntensor_t, channels_last: bool, ntasks: int): void
+@ccode {
+    int inp_typ = inp->data.tag, out_typ = out->data.tag;
+    const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
+    fx_arr_t* out_data = &out->data.u.NN_Data_I8;
+    const int_* inp_shape = (const int_*)inp->shape.shape.data;
+    const int_* out_shape = (const int_*)out->shape.shape.data;
+    fx_arr_t* inp_sc_shape_ = &inp_scale->shape.shape;
+    fx_arr_t* out_sc_shape_ = &out_scale->shape.shape;
+    fx_arr_t* inp_zp_shape_ = &inp_zp->shape.shape;
+    fx_arr_t* out_zp_shape_ = &out_zp->shape.shape;
+    int inp_sc_typ = inp_scale->data.tag, inp_zp_typ = inp_zp->data.tag;
+    int out_sc_typ = out_scale->data.tag, out_zp_typ = out_zp->data.tag;
+    fx_arr_t* inp_sc_data = &inp_scale->data.u.NN_Data_I8;
+    fx_arr_t* out_sc_data = &out_scale->data.u.NN_Data_I8;
+    fx_arr_t* inp_zp_data = &inp_zp->data.u.NN_Data_I8;
+    fx_arr_t* out_zp_data = &out_zp->data.u.NN_Data_I8;
+    int_ inp_ndims = inp->shape.shape.dim[0].size;
+    int_ out_ndims = out->shape.shape.dim[0].size;
+    int_ NC, planesize = 1;
+    int mask = inp_typ == FX_I8 ? 128 : 0;
+    double avg_scale, inp_scale0, out_scale0, bias, inp_out_scale;
+    int inp_zp0, out_zp0;
+
+    if (channels_last)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if (inp_typ != out_typ || (inp_typ != FX_I8 && inp_typ != FX_U8))
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (inp_ndims < 3 || inp_ndims != out_ndims)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    if ((inp_sc_typ != FX_F32 && inp_sc_typ != FX_F16) ||
+        (out_sc_typ != FX_F32 && out_sc_typ != FX_F16))
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if ((inp_zp_typ > 1 && inp_zp_typ != inp_typ) ||
+        (out_zp_typ > 0 && out_zp_typ != out_typ))
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (inp_sc_data->dim[0].size != 1 || out_sc_data->dim[0].size != 1)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    if ((inp_zp_data->data && inp_zp_data->dim[0].size != 1) ||
+        (out_zp_data->data && out_zp_data->dim[0].size != 1))
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
+    NC = inp_shape[0]*inp_shape[1];
+    for (int_ i = 0; i < inp_ndims; i++) {
+        if (i < 2) {
+            if (inp_shape[i] != out_shape[i])
+                return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+            continue;
+        }
+        planesize *= inp_shape[i];
+        if (out_shape[i] != 1)
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    }
+
+    inp_scale0 = inp_sc_typ == FX_F32 ? *(float*)inp_sc_data->data :
+                            FX_FLOAT(*(fx_f16*)inp_sc_data->data);
+    out_scale0 = out_sc_typ == FX_F32 ? *(float*)out_sc_data->data :
+                            FX_FLOAT(*(fx_f16*)out_sc_data->data);
+    inp_zp0 = inp_zp_data->data == 0 ? mask :
+              inp_zp_typ == FX_I8 ? *((int8_t*)inp_zp_data->data) + mask :
+                               (int)*((uint8_t*)inp_zp_data->data);
+    out_zp0 = out_zp_data->data == 0 ? mask :
+              out_zp_typ == FX_I8 ? *((int8_t*)out_zp_data->data) + mask :
+                            (int)*((uint8_t*)out_zp_data->data);
+    inp_out_scale = inp_scale0 / out_scale0;
+    avg_scale = planesize != 0 ? inp_out_scale/planesize : 0.;
+    bias = out_zp0 - inp_zp0*inp_out_scale;
+    /*printf("inp_typ=%d, planesize=%d, NC=%d, inp_shape=[%d, %d, %d, %d]\n",
+        inp_typ, (int)planesize, (int)NC,
+        (int)inp_shape[0], (int)inp_shape[1], (int)inp_shape[2], (int)inp_shape[3]);*/
+
+    if (NC*planesize < 100000)
+        ntasks = 1;
+    #pragma omp parallel for num_threads(ntasks)
+    for (int_ task_id = 0; task_id < ntasks; task_id++) {
+        int_ nc0 = task_id*NC/ntasks, nc1 = (task_id + 1)*NC/ntasks;
+        for (; nc0 < nc1; nc0++) {
+            const uint8_t* inptr = (const uint8_t*)inp_data->data + nc0*planesize;
+            uint8_t* outptr = (uint8_t*)out_data->data + nc0;
+            const int_ block_size = 1<<20;
+            int64_t total = 0;
+            /* (sum_j ((inp[j] - inp_zp)*inp_sc))/(out_sc*planesize) + out_zp =
+               (inp_sc/(out_sc*planesize)*((sum_j inp[j]) - inp_zp*planesize) + out_zp =
+               inp_sc/(out_sc*planesize)*(sum_j inp[j]) + out_zp - inp_zp*inp_sc/out_sc */
+            for (int_ j = 0; j < planesize; ) {
+                int_ block_end = j + block_size < planesize ? j + block_size : planesize;
+                int s = 0;
+                for (; j < block_end; j++)
+                    s += inptr[j];
+                total += s;
+            }
+            int iavg = (int)lrint(total*avg_scale + bias);
+            *outptr = FX_SATURATE(iavg, mask);
+        }
+    }
+    return FX_OK;
+}
+
+fun run_qglobal_avgpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op {
+| Ast.NN_QLinearGlobalAvgPool {channels_last, t_inp, t_inp_scale, t_inp_zp,
+                               t_out_scale, t_out_zp, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val inp_scale = model.get_tensor(t_inp_scale)
+    val inp_zp = model.get_tensor(t_inp_zp)
+    val out_scale = model.get_tensor(t_out_scale)
+    val out_zp = model.get_tensor(t_out_zp)
+    val out = model.get_tensor(t_out)
+    run_qglobal_avgpool(inp, inp_scale, inp_zp, out_scale, out_zp,
+                        out, channels_last, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

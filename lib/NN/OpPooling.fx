@@ -684,13 +684,3 @@ match op {
     run_global_avgpool(inp, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
-
-fun run_qglobal_avgpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
-match op {
-/*| Ast.NN_QGlobalAvgPool {t_inp, t_out} =>
-    val inp = model.get_tensor(t_inp)
-    val out = model.get_tensor(t_out)
-    assert(`inp.shape.layout == Ast.NN_Layout_NCHW`)
-    run_global_avgpool(inp, out, *model.ntasks)*/
-| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
-}
