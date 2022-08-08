@@ -1538,4 +1538,4 @@ fun normalize_axis(axis: int, ndims: int) {
     axis
 }
 
-always_use((NN_Data_I32([0i32, 1i32]), NN_ReduceL1))
+always_use((NN_Data_I32([0i32, 1i32]), NN_ReduceL1, NN_Add))

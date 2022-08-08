@@ -287,6 +287,108 @@ match op {
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
+@ccode {
+
+typedef struct _fx_nn_qbinary_params_t
+{
+    float sc1, sc2, sc;
+    int zp1, zp2, zp;
+    int mask;
+} _fx_nn_qbinary_params_t;
+
+#undef FX_SATURATE
+#define FX_SATURATE(x, mask) \
+    (uint8_t)((((x) & ~255) == 0 ? (x) : (x) < 0 ? 0 : 255) ^ (mask))
+
+/*
+    out[j] = saturate(((inp1[j] - zp1)*sc1 + (inp2[j] - zp2)*sc2)*sc + zp) =
+        saturate(inp1[j]*(sc1*sc) + inp2[j]*(sc2*sc) +
+                 (zp - zp1*(sc1*sc) - zp2*(sc2*sc)))
+*/
+static void _fx_nn_qadd_u8(const uint8_t* data1, size_t rowstep1, size_t dp1,
+                           const uint8_t* data2, size_t rowstep2, size_t dp2,
+                           uint8_t* data, size_t rowstep, size_t dp,
+                           int_ nrows, int_ ncols,
+                           const _fx_nn_qbinary_params_t* params)
+{
+    float sc = params->sc, sc1 = params->sc1*sc, sc2 = params->sc2*sc;
+    int zp1 = params->zp1, zp2 = params->zp2, zp = params->zp;
+    float bias = zp - sc1*zp1 - sc2*zp2;
+    int mask = params->mask;
+    for (int_ i = 0; i < nrows; i++) {
+        const uint8_t* ptr1 = data1 + rowstep1*i;
+        const uint8_t* ptr2 = data2 + rowstep2*i;
+        uint8_t* ptr = (uint8_t*)data + rowstep*i;
+        if (dp1 == 1 && dp2 == 1 && dp == 1) {
+            int_ j = 0;
+        #ifdef __ARM_NEON
+            float32x4_t vsc1 = vdupq_n_f32(sc1), vsc2 = vdupq_n_f32(sc2);
+            float32x4_t vbias = vdupq_n_f32(bias);
+            uint8x8_t vmask = vdup_n_u8(mask);
+            for(; j < ncols; j += 8) {
+                if (j > ncols) {
+                    if (j == 0)
+                        break;
+                    j = ncols - 8;
+                }
+                uint8x8_t x1 = veor_u8(vld1_u8(ptr1 + j), vmask);
+                uint8x8_t x2 = veor_u8(vld1_u8(ptr2 + j), vmask);
+                int16x8_t x1w = vreinterpretq_s16_u16(vmovl_u8(x1));
+                int16x8_t x2w = vreinterpretq_s16_u16(vmovl_u8(x2));
+                float32x4_t x1f, x2f, y0, y1;
+                x1f = vcvtq_f32_s32(vmovl_s16(vget_low_s16(x1w)));
+                x2f = vcvtq_f32_s32(vmovl_s16(vget_low_s16(x2w)));
+                y0 = vfmaq_f32(vbias, x1f, vsc1);
+                y0 = vfmaq_f32(y0, x2f, vsc2);
+                x1f = vcvtq_f32_s32(vmovl_high_s16(x1w));
+                x2f = vcvtq_f32_s32(vmovl_high_s16(x2w));
+                y1 = vfmaq_f32(vbias, x1f, vsc1);
+                y1 = vfmaq_f32(y1, x2f, vsc2);
+                int32x4_t y0i = vcvtnq_s32_f32(y0);
+                int32x4_t y1i = vcvtnq_s32_f32(y1);
+                uint16x8_t yw = vcombine_u16(vqmovun_s32(y0i), vqmovun_s32(y1i));
+                uint8x8_t y = veor_u8(vqmovn_u16(yw), vmask);
+                vst1_u8(ptr + j, y);
+            }
+        #endif
+            for(; j < ncols; j++) {
+                int x1 = ptr1[j] ^ mask, x2 = ptr2[j] ^ mask;
+                int y = (int)lrint(x1*sc1 + x2*sc2 + bias);
+                ptr[j] = FX_SATURATE(y, mask);
+            }
+        } else if (dp1 == 1 && dp2 == 0 && dp == 1) {
+            float x2_sc2_bias = (*ptr2 ^ mask)*sc2 + bias;
+            for(int_ j = 0; j < ncols; j++) {
+                int x1 = ptr1[j] ^ mask;
+                int y = (int)lrint(x1*sc1 + x2_sc2_bias);
+                ptr[j] = FX_SATURATE(y, mask);
+            }
+        } else if (dp1 == 0 && dp2 == 1 && dp == 1) {
+            float x1_sc1_bias = (*ptr1 ^ mask)*sc1 + bias;
+            for(int_ j = 0; j < ncols; j++) {
+                int x2 = ptr2[j] ^ mask;
+                int y = (int)lrint(x2*sc2 + x1_sc1_bias);
+                ptr[j] = FX_SATURATE(y, mask);
+            }
+        } else {
+            for(int_ j = 0; j < ncols; j++, ptr1 += dp1, ptr2 += dp2, ptr += dp) {
+                int x1 = *ptr1 ^ mask, x2 = *ptr2 ^ mask;
+                int y = (int)lrint(x1*sc1 + x2*sc2 + bias);
+                *ptr = FX_SATURATE(y, mask);
+            }
+        }
+    }
+}
+
+typedef void (*_fx_nn_qbinary_func_t)(
+    const uint8_t* data1, size_t rowstep1, size_t dp1,
+    const uint8_t* data2, size_t rowstep2, size_t dp2,
+    uint8_t* data, size_t rowstep, size_t dp,
+    int_ nrows, int_ ncols,
+    const _fx_nn_qbinary_params_t* params);
+
+}
+
 fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
                 inp2: Ast.nntensor_t, out: Ast.nntensor_t,
                 inp1_scale: Ast.nntensor_t, inp1_zp: Ast.nntensor_t,
@@ -306,17 +408,21 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
     fx_arr_t* inp1_zp_shape_ = &inp1_zp->shape.shape;
     fx_arr_t* inp2_zp_shape_ = &inp2_zp->shape.shape;
     fx_arr_t* out_zp_shape_ = &out_zp->shape.shape;
-    int el_op = el_op_->tag, inp_typ = inp1->data.tag;
+    int el_op = el_op_->tag, inp1_typ = inp1->data.tag;
     int inp2_typ = inp2->data.tag, out_typ = out->data.tag;
+    int sc1_typ = inp1_scale->data.tag, zp1_typ = inp1_zp->data.tag;
+    int sc2_typ = inp2_scale->data.tag, zp2_typ = inp2_zp->data.tag;
+    int sc_typ = out_scale->data.tag, zp_typ = out_zp->data.tag;
     fx_arr_t* inp1_data = &inp1->data.u.NN_Data_I8;
     fx_arr_t* inp2_data = &inp2->data.u.NN_Data_I8;
     fx_arr_t* out_data = &out->data.u.NN_Data_I8;
-    fx_arr_t* inp1_sc_data = &inp1_scale->data.u.NN_Data_I8;
-    fx_arr_t* inp2_sc_data = &inp2_scale->data.u.NN_Data_I8;
-    fx_arr_t* out_sc_data = &out_scale->data.u.NN_Data_I8;
-    fx_arr_t* inp1_zp_data = &inp1_zp->data.u.NN_Data_I8;
-    fx_arr_t* inp2_zp_data = &inp2_zp->data.u.NN_Data_I8;
-    fx_arr_t* out_zp_data = &out_zp->data.u.NN_Data_I8;
+    fx_arr_t* sc1_data = &inp1_scale->data.u.NN_Data_I8;
+    fx_arr_t* sc2_data = &inp2_scale->data.u.NN_Data_I8;
+    fx_arr_t* sc_data = &out_scale->data.u.NN_Data_I8;
+    fx_arr_t* zp1_data = &inp1_zp->data.u.NN_Data_I8;
+    fx_arr_t* zp2_data = &inp2_zp->data.u.NN_Data_I8;
+    fx_arr_t* zp_data = &out_zp->data.u.NN_Data_I8;
+    int mask = inp1_typ == FX_I8 ? 128 : 0;
 
     int all_ndims[] = {
         (int)inp1_shape_->dim[0].size,
@@ -331,6 +437,30 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
     int_* shapes[] = {shape1, shape2, shape};
     size_t* steps[] = {step1, step2, step};
 
+    int zp_delta = inp1_typ == FX_I8 ? 128 : 0;
+
+    if ((inp1_typ != FX_I8 && inp1_typ != FX_U8) ||
+        (inp2_typ != FX_I8 && inp2_typ != FX_U8) ||
+        (out_typ != FX_I8 && out_typ != FX_U8))
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if ((sc1_typ != FX_F32 && sc1_typ != FX_F16) ||
+        (sc2_typ != FX_F32 && sc2_typ != FX_F16) ||
+        (sc_typ != FX_F32 && sc_typ != FX_F16))
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+    if (inp1_typ != inp2_typ || inp1_typ != out_typ)
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if ((zp1_typ > 0 && zp1_typ != inp1_typ) ||
+        (zp2_typ > 0 && zp2_typ != inp2_typ) ||
+        (zp_typ > 0 && zp_typ != out_typ))
+        return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+    if (sc1_data->dim[0].size != 1 || sc2_data->dim[0].size != 1 ||
+        sc_data->dim[0].size != 1)
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    if ((zp1_data->data && zp1_data->dim[0].size != 1) ||
+        (zp2_data->data && zp2_data->dim[0].size != 1) ||
+        (zp_data->data && zp_data->dim[0].size != 1))
+        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
     for (int i = 0; i < 3; i++) {
         if (all_ndims[i] > _FX_ELEMWISE_MAX_DIMS)
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
@@ -342,24 +472,41 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
                                   shapes, steps))
         return FX_OK;
 
-    /*{
+    {
     size_t dp1 = step1[_FX_ELEMWISE_MAX_DIMS-1];
     size_t dp2 = step2[_FX_ELEMWISE_MAX_DIMS-1];
     size_t dp = step[_FX_ELEMWISE_MAX_DIMS-1];
     size_t rowstep1 = step1[_FX_ELEMWISE_MAX_DIMS-2];
     size_t rowstep2 = step2[_FX_ELEMWISE_MAX_DIMS-2];
     size_t rowstep = step[_FX_ELEMWISE_MAX_DIMS-2];
-    char* data1 = inp1_data->data;
-    char* data2 = inp2_data->data;
-    char* data = out_data->data;
+    const uint8_t* data1 = (const uint8_t*)inp1_data->data;
+    const uint8_t* data2 = (const uint8_t*)inp2_data->data;
+    uint8_t* data = (uint8_t*)out_data->data;
     size_t esz1 = inp1_data->dim[0].step;
     size_t esz2 = inp2_data->dim[0].step;
     size_t esz = out_data->dim[0].step;
     int_ nrows = shape[_FX_ELEMWISE_MAX_DIMS-2];
     int_ ncols = shape[_FX_ELEMWISE_MAX_DIMS-1];
     size_t plane_idx, nplanes = 1;
-    _fx_nn_elemwise_binary_func_t processing_func =
-        _fx_get_elemwise_binary_func(el_op, inp_typ, inp2_typ);
+    _fx_nn_qbinary_func_t processing_func =
+        el_op == _FX_NN_Add ? _fx_nn_qadd_u8 : 0;
+    _fx_nn_qbinary_params_t params;
+    params.sc1 = sc1_typ == FX_F32 ? *(float*)sc1_data->data :
+                            FX_FLOAT(*(fx_f16*)sc1_data->data);
+    params.sc2 = sc2_typ == FX_F32 ? *(float*)sc2_data->data :
+                            FX_FLOAT(*(fx_f16*)sc2_data->data);
+    params.sc = 1.f/(sc1_typ == FX_F32 ? *(float*)sc_data->data :
+                           FX_FLOAT(*(fx_f16*)sc_data->data));
+    params.zp1 = zp1_data->data == 0 ? mask :
+                 zp1_typ == FX_I8 ? *((int8_t*)zp1_data->data) + mask :
+                               (int)*((uint8_t*)zp1_data->data);
+    params.zp2 = zp2_data->data == 0 ? mask :
+                 zp2_typ == FX_I8 ? *((int8_t*)zp2_data->data) + mask :
+                            (int)*((uint8_t*)zp2_data->data);
+    params.zp = zp_data->data == 0 ? mask :
+                zp_typ == FX_I8 ? *((int8_t*)zp_data->data) + mask :
+                            (int)*((uint8_t*)zp_data->data);
+    params.mask = mask;
 
     if (!processing_func)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
@@ -381,9 +528,9 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
         processing_func(data1 + ofs1*esz1, rowstep1, dp1,
                         data2 + ofs2*esz2, rowstep2, dp2,
                         data + ofs*esz, rowstep, dp,
-                        nrows, ncols, param);
+                        nrows, ncols, &params);
     }
-    }*/
+    }
 
     return FX_OK;
 }
