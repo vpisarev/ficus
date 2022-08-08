@@ -7,7 +7,7 @@
 // will likely be eliminated soon
 
 import Ast
-import OpConv, OpElemwise, OpNN, OpMisc, OpNMS, OpPermute, OpPooling, OpQuantized, OpReduce, OpResize
+import OpConv, OpElemwise, OpGemm, OpMisc, OpNN, OpNMS, OpPermute, OpPooling, OpQuantized, OpReduce, OpResize
 
 fun run_op(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
@@ -43,7 +43,7 @@ match op
     | Ast.NN_Gather _ =>
         OpPermute.run_gather(model, op)
     | Ast.NN_Gemm _ =>
-        OpNN.run_gemm(model, op)
+        OpGemm.run_gemm(model, op)
     | Ast.NN_GlobalAvgPool _ =>
         OpPooling.run_global_avgpool(model, op)
     | Ast.NN_Identity {t_inp, t_out} =>
@@ -69,8 +69,7 @@ match op
     | Ast.NN_QLinearConv _ =>
         throw Ast.NNError(f"unsupported operation '{op.name()}'")
     | Ast.NN_QLinearMatMul _ =>
-        //OpQuantized.run_qgemm(model, op)
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        OpGemm.run_qmatmul(model, op)
     | Ast.NN_QLinearGlobalAvgPool _ =>
         OpQuantized.run_qglobal_avgpool(model, op)
     | Ast.NN_QuantizeLinear _ =>

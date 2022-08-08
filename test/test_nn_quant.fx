@@ -7,7 +7,7 @@
 // https://github.com/onnx/onnx/blob/main/docs/Operators.md
 
 from UTest import *
-import NN.Ast as Ast, NN.OpQuantized as OpQuantized
+import NN.Ast as Ast, NN.OpQuantized as OpQuantized, NN.OpGemm as OpGemm
 
 TEST("NN.Quantized.quantizeLinear", fun()
 {
@@ -92,4 +92,27 @@ TEST("NN.Quantized.globalAvgPool", fun()
                             Ast.mktensor(y_scale), Ast.mktensor(y_zp),
                             Ast.mktensor(y), false, 4)
     EXPECT_NEAR(int(y[:]), int(y_ref[:]), 1)
+})
+
+TEST("NN.Quantized.matmul", fun()
+{
+    val a = uint8([208, 236, 0, 238;
+                   3, 214, 255, 29])
+    val a_scale = float([0.0066])
+    val a_zp = uint8([113])
+    val b = uint8([152, 51, 244;
+                  60, 26, 255;
+                  0, 127, 246;
+                  127, 254, 247])
+    val b_scale = float([0.00705])
+    val b_zp = uint8([114])
+    val y_scale = float([0.0107])
+    val y_zp = uint8([118])
+    val y_ref = uint8([168, 115, 255;
+                       1, 66, 151])
+    val y = array(y_ref.size(), 0u8)
+    OpGemm.run_qmatmul(Ast.mktensor(a), Ast.mktensor(b), Ast.mktensor(a_scale),
+                       Ast.mktensor(a_zp), Ast.mktensor(b_scale), Ast.mktensor(b_zp),
+                       Ast.mktensor(y_scale), Ast.mktensor(y_zp), Ast.mktensor(y), 4)
+    EXPECT_EQ(int(y), int(y_ref))
 })
