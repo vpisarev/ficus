@@ -223,6 +223,12 @@ class nnop_t =
         t_out: int }
     | NN_NonZero: {
         name: string; t_inp: int; t_out: int }
+    | NN_QLinearAdd: {
+        name: string
+        t_A: int; t_B: int; t_out: int
+        t_A_scale: int; t_A_zp: int
+        t_B_scale: int; t_B_zp: int
+        t_out_scale: int; t_out_zp: int }
     | NN_QLinearConv: {
         name: string
         attr: nnconv_attr_t
@@ -231,12 +237,6 @@ class nnop_t =
         t_bias: int; t_out: int;
         t_inp_scale: int; t_inp_zp: int;
         t_w_scale: int; t_w_zp: int;
-        t_out_scale: int; t_out_zp: int }
-    | NN_QLinearAdd: {
-        name: string
-        t_A: int; t_B: int; t_out: int
-        t_A_scale: int; t_A_zp: int
-        t_B_scale: int; t_B_zp: int
         t_out_scale: int; t_out_zp: int }
     | NN_QLinearGlobalAvgPool: {
         name: string
@@ -570,7 +570,7 @@ fun float(d: nndata_t)
 fun double_scalar_or(d: nndata_t, defval: double): double =
 match d {
     | NN_Data_Empty => defval
-    | NN_Data_Stub_BF16 _ => throw Fail("FP16 is not supported yet")
+    | NN_Data_Stub_BF16 _ => throw Fail("BF16 is not supported yet")
     | NN_Data_Int(elems) => double(elems[0])
     | NN_Data_I8(elems) => double(elems[0])
     | NN_Data_U8(elems) => double(elems[0])
@@ -589,7 +589,7 @@ match d {
 fun float_scalar_or(d: nndata_t, defval: float): float =
 match d {
     | NN_Data_Empty => defval
-    | NN_Data_Stub_BF16 => throw Fail("FP16 is not supported yet")
+    | NN_Data_Stub_BF16 => throw Fail("BF16 is not supported yet")
     | NN_Data_Int(elems) => float(elems[0])
     | NN_Data_I8(elems) => float(elems[0])
     | NN_Data_U8(elems) => float(elems[0])
@@ -603,6 +603,25 @@ match d {
     | NN_Data_FP64(elems) => float(elems[0])
     | NN_Data_FP16(elems) => float(elems[0])
     | NN_Data_Bool(elems) => float(elems[0])
+}
+
+fun int_scalar_or(d: nndata_t, defval: int): int =
+match d {
+    | NN_Data_Empty => defval
+    | NN_Data_Stub_BF16 => throw Fail("BF16 is not supported yet")
+    | NN_Data_Int(elems) => elems[0]
+    | NN_Data_I8(elems) => int(elems[0])
+    | NN_Data_U8(elems) => int(elems[0])
+    | NN_Data_I16(elems) => int(elems[0])
+    | NN_Data_U16(elems) => int(elems[0])
+    | NN_Data_I32(elems) => int(elems[0])
+    | NN_Data_U32(elems) => int(elems[0])
+    | NN_Data_I64(elems) => int(elems[0])
+    | NN_Data_U64(elems) => int(elems[0])
+    | NN_Data_FP32(elems) => int(elems[0])
+    | NN_Data_FP64(elems) => int(elems[0])
+    | NN_Data_FP16(elems) => int(elems[0])
+    | NN_Data_Bool(elems) => int(elems[0])
 }
 
 fun double(d: nndata_t)

@@ -36,7 +36,7 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (sc_typ != FX_F32 && sc_typ != FX_F16)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-    if (ndims < 3)
+    if (ndims < 2)
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
     if (ndims != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
@@ -174,7 +174,7 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (sc_typ != FX_F32 && sc_typ != FX_F16)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-    if (ndims < 3)
+    if (ndims < 2)
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
     if (ndims != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
@@ -295,10 +295,6 @@ typedef struct _fx_nn_qbinary_params_t
     int zp1, zp2, zp;
     int mask;
 } _fx_nn_qbinary_params_t;
-
-#undef FX_SATURATE
-#define FX_SATURATE(x, mask) \
-    (uint8_t)((((x) & ~255) == 0 ? (x) : (x) < 0 ? 0 : 255) ^ (mask))
 
 /*
     out[j] = saturate(((inp1[j] - zp1)*sc1 + (inp2[j] - zp2)*sc2)*sc + zp) =

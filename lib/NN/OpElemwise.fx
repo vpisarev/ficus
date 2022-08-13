@@ -686,17 +686,17 @@ fun run_binary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
     fx_arr_t* inp2_data = &inp2->data.u.NN_Data_I8;
     fx_arr_t* out_data = &out->data.u.NN_Data_I8;
 
-    if (el_op == _FX_NN_Less || el_op == _FX_NN_LessOrEqual) {
-        el_op = el_op == _FX_NN_Less ? _FX_NN_Greater : _FX_NN_GreaterOrEqual;
-        fx_arr_t* t = inp1_shape_; inp1_shape_ = inp2_shape_; inp2_shape_ = t;
-        t = inp1_data; inp1_data = inp2_data; inp2_data = t;
-    }
-
-    if ((inp_typ == FX_F16 && inp2_typ == FX_F32) &&
+    if (el_op == _FX_NN_Less || el_op == _FX_NN_LessOrEqual ||
+        ((inp_typ == FX_F16 && inp2_typ == FX_F32) &&
         (el_op == _FX_NN_Add || el_op == _FX_NN_Mul ||
-         el_op == _FX_NN_Min || el_op == _FX_NN_Max)) {
-        fx_arr_t* t = inp1_shape_; inp1_shape_ = inp2_shape_; inp2_shape_ = t;
-        t = inp1_data; inp1_data = inp2_data; inp2_data = t;
+         el_op == _FX_NN_Min || el_op == _FX_NN_Max))) {
+        el_op = el_op == _FX_NN_Less ? _FX_NN_Greater : el_op == _FX_NN_LessOrEqual ?
+            _FX_NN_GreaterOrEqual : el_op;
+        fx_arr_t* t;
+        FX_SWAP(inp1_shape_, inp2_shape_, t);
+        FX_SWAP(inp1_data, inp2_data, t);
+        int t2;
+        FX_SWAP(inp_typ, inp2_typ, t2);
     }
 
     int all_ndims[] = {

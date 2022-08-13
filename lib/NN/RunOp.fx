@@ -7,7 +7,8 @@
 // will likely be eliminated soon
 
 import Ast
-import OpConv, OpElemwise, OpGemm, OpMisc, OpNN, OpNMS, OpPermute, OpPooling, OpQuantized, OpReduce, OpResize
+import OpConv, OpConv_Quantized, OpElemwise, OpGemm, OpMisc, OpNN, OpNMS
+import OpPermute, OpPooling, OpQuantized, OpReduce, OpResize
 
 fun run_op(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op
@@ -67,7 +68,7 @@ match op
     | Ast.NN_QLinearAdd _ =>
         OpQuantized.run_qadd(model, op)
     | Ast.NN_QLinearConv _ =>
-        throw Ast.NNError(f"unsupported operation '{op.name()}'")
+        OpConv_Quantized.run_qconv(model, op)
     | Ast.NN_QLinearMatMul _ =>
         OpGemm.run_qmatmul(model, op)
     | Ast.NN_QLinearGlobalAvgPool _ =>

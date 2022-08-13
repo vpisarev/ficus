@@ -6,6 +6,7 @@
 import Ast
 
 @ccode {
+#include "ficus_nn_common.h"
 #include <alloca.h>
 }
 
@@ -248,10 +249,6 @@ fun run_qmatmul(A: Ast.nntensor_t, B: Ast.nntensor_t,
                     buf[j - j0] += aval*(b_k[j] ^ B_mask);
             }
             double A_i_out = A_sc_i*out_sc0;
-
-            #undef FX_SATURATE
-            #define FX_SATURATE(x, mask) \
-                (uint8_t)((((x) & ~255) == 0 ? (x) : (x) < 0 ? 0 : 255) ^ (mask))
 
             for (j = j0; j < j1; j++) {
                 double out_ij = A_i_out*(B_sc_buf[j]*(buf[j - j0] -

@@ -16,6 +16,10 @@
 extern "C" {
 #endif
 
+#undef FX_SATURATE
+#define FX_SATURATE(x, mask) \
+    (uint8_t)((((x) & ~255) == 0 ? (x) : (x) < 0 ? 0 : 255) ^ (mask))
+
 typedef struct _fx_nndata_t {
    int tag;
    union {
@@ -320,26 +324,35 @@ void _fx_nn_elemwise_tanh_f16(const void* inptr_, void* outptr_,
 #ifdef __ARM_NEON
 #define FX_CONV_MR 4
 #define FX_CONV_NR 28
-enum { FX_VEC_NLANES=4, FX_VEC_F16_NLANES=8 };
-#elif defined __AVX__
+#define FX_CONV_MR_F16 8
+#define FX_CONV_NR_F16 24
+#define FX_VEC_NLANES_F32 4
+#else
+#ifdef __AVX__
 #define FX_CONV_MR 4
 #define FX_CONV_NR 24
-enum { FX_VEC_NLANES=8, FX_VEC_F16_NLANES=16 };
+#define FX_VEC_NLANES_F32 8
 #else
-enum { FX_VEC_NLANES=1, FX_VEC_F16_NLANES=1 };
+#define FX_CONV_MR 4
+#define FX_CONV_MR 12
+#define FX_VEC_NLANES_F32 4
+#endif
+#define FX_CONV_MR_F16 FX_CONV_MR
+#define FX_CONV_NR_F16 FX_CONV_NR
 #endif
 
-#ifdef __ARM_NEON
-#define FX_CONV_MR_FP16 8
-#define FX_CONV_NR_FP16 24
-#else
-#define FX_CONV_MR_FP16 FX_CONV_MR
-#define FX_CONV_NR_FP16 FX_CONV_NR
-#endif
+#define FX_VEC_NLANES_F16 (FX_VEC_NLANES_F32*2)
+#define FX_VEC_NLANES_U8 (FX_VEC_NLANES_F32*4)
+
+#define FX_QCONV_C 4
+#define FX_QCONV_MR FX_CONV_MR
+#define FX_QCONV_NR FX_CONV_NR
 
 enum { _FX_ACTIV_NONE=1, _FX_ACTIV_RELU=2, _FX_ACTIV_CLIP=3, _FX_ACTIV_LRELU=4,
        _FX_ACTIV_SIGMOID=6, _FX_ACTIV_TANH=7, _FX_ACTIV_MISH=8 };
 typedef _fx_unary_func_t _fx_activ_func_t;
+
+enum { FX_CONV_TYPE_GENERIC=0, FX_CONV_TYPE_DEPTHWISE=1, FX_CONV_TYPE_WINOGRAD3X3=2 };
 
 typedef struct _fx_conv2d_t
 {
@@ -359,6 +372,22 @@ typedef struct _fx_conv2d_t
     float* activ_params;
     float minval, maxval, alpha;
 } _fx_conv2d_t;
+
+typedef struct _fx_qconv2d_t
+{
+    int layout, ngroups;
+    int K, C, Hk, Wk;
+    int stride_y, stride_x;
+    int dilation_y, dilation_x;
+    int pad_top, pad_bottom, pad_left, pad_right;
+    int conv_type;
+    int w_typ;
+    uint8_t* weights;
+    float* w_scale;
+    int32_t* w_sum;
+    int32_t* w_zp;
+    int32_t* bias;
+} _fx_qconv2d_t;
 
 /*
     Prepare the strides for the efficient BROADCAST_MAX_DIMS-dimensional operation.

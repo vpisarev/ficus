@@ -47,8 +47,9 @@ fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
         if (i >= 2) plane_size *= inp_shape[i];
     }
+    //printf("dc0=%d, dc1=%d, C=%d, planesize=%d\n", dc0, dc1, (int)C, (int)plane_size);
 
-    if (plane_size*N < 100000) ntasks = 1;
+    if (plane_size*N < 10000) ntasks = 1;
 
     #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++)

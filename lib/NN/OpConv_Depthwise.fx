@@ -20,7 +20,7 @@ static int _fx_depthwise_conv2d_f32(int N, int C, int Hi, int Wi, int H0, int W0
                                     const float* bias, int ntasks)
 {
     size_t inp_planesize = Hi*Wi, out_planesize = H0*W0;
-    int ksize = Hk*Wk, padded_ksize = ((ksize + FX_VEC_NLANES-1)/FX_VEC_NLANES)*FX_VEC_NLANES;
+    int ksize = Hk*Wk, padded_ksize = ((ksize + FX_VEC_NLANES_F32-1)/FX_VEC_NLANES_F32)*FX_VEC_NLANES_F32;
 #ifdef __ARM_NEON
     float32x4_t vminval = vdupq_n_f32(minval), vmaxval = vdupq_n_f32(maxval);
     bool useSIMD = stride_x == 1 && inner_xleft < W0;
@@ -105,11 +105,11 @@ static int _fx_depthwise_conv2d_f32(int N, int C, int Hi, int Wi, int H0, int W0
                 if (useSIMD) {
                     if (is3x3) {
                         if (dy0 == 3) {
-                            for (; x0 < x1; x0 += FX_VEC_NLANES) {
-                                if (x0 + FX_VEC_NLANES > x1) {
+                            for (; x0 < x1; x0 += FX_VEC_NLANES_F32) {
+                                if (x0 + FX_VEC_NLANES_F32 > x1) {
                                     if (x0 <= inner_xleft)
                                         break;
-                                    x0 = x1 - FX_VEC_NLANES;
+                                    x0 = x1 - FX_VEC_NLANES_F32;
                                 }
                                 int xi_ = x0*stride_x - pad_left;
                                 const float* inptr_xi = inptr + Wi*yi_ + xi_;
@@ -178,11 +178,11 @@ static int _fx_depthwise_conv2d_f32(int N, int C, int Hi, int Wi, int H0, int W0
                                 vst1q_f32(outptr + W0*2 + x0, s2);
                             }
                         } else {
-                            for (; x0 < x1; x0 += FX_VEC_NLANES) {
-                                if (x0 + FX_VEC_NLANES > x1) {
+                            for (; x0 < x1; x0 += FX_VEC_NLANES_F32) {
+                                if (x0 + FX_VEC_NLANES_F32 > x1) {
                                     if (x0 <= inner_xleft)
                                         break;
-                                    x0 = x1 - FX_VEC_NLANES;
+                                    x0 = x1 - FX_VEC_NLANES_F32;
                                 }
                                 int xi_ = x0*stride_x - pad_left;
                                 const float* inptr_xi = inptr + Wi*yi_ + xi_;
@@ -204,11 +204,11 @@ static int _fx_depthwise_conv2d_f32(int N, int C, int Hi, int Wi, int H0, int W0
                             }
                         }
                     } else {
-                        for (; x0 < x1; x0 += FX_VEC_NLANES) {
-                            if (x0 + FX_VEC_NLANES > x1) {
+                        for (; x0 < x1; x0 += FX_VEC_NLANES_F32) {
+                            if (x0 + FX_VEC_NLANES_F32 > x1) {
                                 if (x0 <= inner_xleft)
                                     break;
-                                x0 = x1 - FX_VEC_NLANES;
+                                x0 = x1 - FX_VEC_NLANES_F32;
                             }
                             int xi_ = x0*stride_x - pad_left, k = 0;
                             const float* inptr_xi = inptr + Wi*yi_ + xi_;
@@ -287,8 +287,8 @@ static int _fx_depthwise_conv2d_f16(int N, int C, int Hi, int Wi, int H0, int W0
 {
     size_t inp_planesize = Hi*Wi, out_planesize = H0*W0;
     int ksize = Hk*Wk;
-    int padded_ksize_f32 = ((ksize + FX_VEC_NLANES-1)/FX_VEC_NLANES)*FX_VEC_NLANES;
-    int padded_ksize = ((ksize + FX_VEC_F16_NLANES-1)/FX_VEC_F16_NLANES)*FX_VEC_F16_NLANES;
+    int padded_ksize_f32 = ((ksize + FX_VEC_NLANES_F32-1)/FX_VEC_NLANES_F32)*FX_VEC_NLANES_F32;
+    int padded_ksize = ((ksize + FX_VEC_NLANES_F16-1)/FX_VEC_NLANES_F16)*FX_VEC_NLANES_F16;
 #ifdef __ARM_NEON
     float16x8_t vminval = vdupq_n_f16(minval), vmaxval = vdupq_n_f16(maxval);
     bool useSIMD = stride_x == 1 && inner_xleft < W0;
@@ -374,11 +374,11 @@ static int _fx_depthwise_conv2d_f16(int N, int C, int Hi, int Wi, int H0, int W0
                 if (useSIMD) {
                     if (is3x3) {
                         if (dy0 == 3) {
-                            for (; x0 < x1; x0 += FX_VEC_F16_NLANES) {
-                                if (x0 + FX_VEC_F16_NLANES > x1) {
+                            for (; x0 < x1; x0 += FX_VEC_NLANES_F16) {
+                                if (x0 + FX_VEC_NLANES_F16 > x1) {
                                     if (x0 <= inner_xleft)
                                         break;
-                                    x0 = x1 - FX_VEC_F16_NLANES;
+                                    x0 = x1 - FX_VEC_NLANES_F16;
                                 }
                                 int xi_ = x0 - pad_left;
                                 const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
@@ -447,11 +447,11 @@ static int _fx_depthwise_conv2d_f16(int N, int C, int Hi, int Wi, int H0, int W0
                                 vst1q_f16(outptr + W0*2 + x0, s2);
                             }
                         } else {
-                            for (; x0 < x1; x0 += FX_VEC_F16_NLANES) {
-                                if (x0 + FX_VEC_F16_NLANES > x1) {
+                            for (; x0 < x1; x0 += FX_VEC_NLANES_F16) {
+                                if (x0 + FX_VEC_NLANES_F16 > x1) {
                                     if (x0 <= inner_xleft)
                                         break;
-                                    x0 = x1 - FX_VEC_F16_NLANES;
+                                    x0 = x1 - FX_VEC_NLANES_F16;
                                 }
                                 int xi_ = x0*stride_x - pad_left;
                                 const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
@@ -473,11 +473,11 @@ static int _fx_depthwise_conv2d_f16(int N, int C, int Hi, int Wi, int H0, int W0
                             }
                         }
                     } else {
-                        for (; x0 < x1; x0 += FX_VEC_F16_NLANES) {
-                            if (x0 + FX_VEC_F16_NLANES > x1) {
+                        for (; x0 < x1; x0 += FX_VEC_NLANES_F16) {
+                            if (x0 + FX_VEC_NLANES_F16 > x1) {
                                 if (x0 <= inner_xleft)
                                     break;
-                                x0 = x1 - FX_VEC_F16_NLANES;
+                                x0 = x1 - FX_VEC_NLANES_F16;
                             }
                             int xi_ = x0*stride_x - pad_left, k = 0;
                             const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
@@ -560,7 +560,7 @@ int _fx_depthwise_conv2d(int ndims, int inp_typ,
     int dilation_y = conv->dilation_y, dilation_x = conv->dilation_x;
     int pad_top = conv->pad_top, pad_bottom = conv->pad_bottom;
     int pad_left = conv->pad_left, pad_right = conv->pad_right;
-    int ksize = Hk*Wk, padded_ksize = ((ksize + FX_VEC_NLANES-1)/FX_VEC_NLANES)*FX_VEC_NLANES;
+    int ksize = Hk*Wk, padded_ksize = ((ksize + FX_VEC_NLANES_F32-1)/FX_VEC_NLANES_F32)*FX_VEC_NLANES_F32;
     int* ofstab = (int*)alloca(3*padded_ksize*sizeof(ofstab[0]));
     int* yxtab = ofstab + padded_ksize;
     int inner_ytop = (pad_bottom + stride_y-1)/stride_y, inner_ybottom;
