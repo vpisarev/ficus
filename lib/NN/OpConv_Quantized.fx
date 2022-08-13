@@ -342,10 +342,35 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
                                                      inptr += inp_planesize*FX_QCONV_C,
                                                      inpbuf += FX_QCONV_NR*FX_QCONV_C) {
                             int j = 0;
+                        #ifdef __ARM_NEON
+                            for (; j < slice_len; j += 16) {
+                                if (j + 16 > slice_len) {
+                                    if (j == 0)
+                                        break;
+                                    j = slice_len - 16;
+                                }
+                                uint8x16_t t0 = vld1q_u8(inptr + j);
+                                uint8x16_t t1 = vld1q_u8(inptr + j + inp_planesize);
+                                uint8x16_t t2 = vld1q_u8(inptr + j + inp_planesize*2);
+                                uint8x16_t t3 = vld1q_u8(inptr + j + inp_planesize*3);
+                                uint8x16_t t02_0 = vzip1q_u8(t0, t2);
+                                uint8x16_t t02_1 = vzip2q_u8(t0, t2);
+                                uint8x16_t t13_0 = vzip1q_u8(t1, t3);
+                                uint8x16_t t13_1 = vzip2q_u8(t1, t3);
+                                uint8x16_t t0123_0 = vzip1q_u8(t02_0, t13_0);
+                                uint8x16_t t0123_1 = vzip2q_u8(t02_0, t13_0);
+                                uint8x16_t t0123_2 = vzip1q_u8(t02_1, t13_1);
+                                uint8x16_t t0123_3 = vzip2q_u8(t02_1, t13_1);
+                                vst1q_u8(inpbuf + j*FX_QCONV_C, t0123_0);
+                                vst1q_u8(inpbuf + j*FX_QCONV_C + 16, t0123_1);
+                                vst1q_u8(inpbuf + j*FX_QCONV_C + 32, t0123_2);
+                                vst1q_u8(inpbuf + j*FX_QCONV_C + 48, t0123_3);
+                            }
+                        #endif
                             for (; j < slice_len; j++) {
                                 uint8_t t0 = inptr[j];
                                 uint8_t t1 = inptr[j + inp_planesize];
-                                uint8_t t2 = inptr[j+inp_planesize*2];
+                                uint8_t t2 = inptr[j + inp_planesize*2];
                                 uint8_t t3 = inptr[j + inp_planesize*3];
                                 inpbuf[j*FX_QCONV_C] = t0;
                                 inpbuf[j*FX_QCONV_C+1] = t1;
@@ -413,6 +438,24 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
                                             for (; c <= Cg - FX_QCONV_C; c += FX_QCONV_C,
                                                         inpbuf_ki += FX_QCONV_NR*FX_QCONV_C,
                                                         inptr_ki += inp_planesize*FX_QCONV_C) {
+                                            #ifdef __ARM_NEON
+                                                uint8x8_t t0 = vld1_u8(inptr_ki);
+                                                uint8x8_t t1 = vld1_u8(inptr_ki + inp_planesize);
+                                                uint8x8_t t2 = vld1_u8(inptr_ki + inp_planesize*2);
+                                                uint8x8_t t3 = vld1_u8(inptr_ki + inp_planesize*3);
+                                                uint8x8_t t02_0 = vzip1_u8(t0, t2);
+                                                uint8x8_t t02_1 = vzip2_u8(t0, t2);
+                                                uint8x8_t t13_0 = vzip1_u8(t1, t3);
+                                                uint8x8_t t13_1 = vzip2_u8(t1, t3);
+                                                uint8x8_t t0123_0 = vzip1_u8(t02_0, t13_0);
+                                                uint8x8_t t0123_1 = vzip2_u8(t02_0, t13_0);
+                                                uint8x8_t t0123_2 = vzip1_u8(t02_1, t13_1);
+                                                uint8x8_t t0123_3 = vzip2_u8(t02_1, t13_1);
+                                                vst1_u8(inpbuf_ki, t0123_0);
+                                                vst1_u8(inpbuf_ki + 8, t0123_1);
+                                                vst1_u8(inpbuf_ki + 16, t0123_2);
+                                                vst1_u8(inpbuf_ki + 24, t0123_3);
+                                            #else
                                                 _FX_PACK_U8_LOAD8(0, 1, inptr_ki);
                                                 _FX_PACK_U8_LOAD8(1, 1, inptr_ki + inp_planesize);
                                                 _FX_PACK_U8_LOAD8(2, 1, inptr_ki + inp_planesize*2);
@@ -425,6 +468,7 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
                                                 _FX_PACK_U8_STORE4(5);
                                                 _FX_PACK_U8_STORE4(6);
                                                 _FX_PACK_U8_STORE4(7);
+                                            #endif
                                             }
                                         } else {
                                             for (; c <= Cg - FX_QCONV_C; c += FX_QCONV_C,
@@ -516,9 +560,43 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
 
                 memset(isum_task, 0, FX_QCONV_NR*nstripes*c_esz);
                 for (int stripe = 0; stripe < nstripes; stripe++) {
+                    int32_t* inpsumptr = isum_task + stripe*FX_QCONV_NR;
+                #ifdef __ARM_NEON
+                    #if FX_QCONV_NR != 28
+                    #error "unsupported FX_QCONV_NR (must be 28)"
+                    #endif
+                    if (inp_mask == 0) {
+                        uint32x4_t s0 = vdupq_n_u32(0), s1 = s0, s2 = s0,
+                                s3 = s0, s4 = s0, s5 = s0, s6 = s0;
+                        uint8x16_t _1s_ = vdupq_n_u8(1);
+                        for (int p = 0; p < HkWkCg_aligned; p += FX_QCONV_C) {
+                            uint8_t* inptr = inpbuf_task + stripe*stripesize + p*FX_QCONV_NR;
+                            uint8x16_t t0 = vld1q_u8(inptr);
+                            uint8x16_t t1 = vld1q_u8(inptr + 16);
+                            uint8x16_t t2 = vld1q_u8(inptr + 16*2);
+                            uint8x16_t t3 = vld1q_u8(inptr + 16*3);
+                            uint8x16_t t4 = vld1q_u8(inptr + 16*4);
+                            uint8x16_t t5 = vld1q_u8(inptr + 16*5);
+                            uint8x16_t t6 = vld1q_u8(inptr + 16*6);
+                            s0 = vdotq_u32(s0, t0, _1s_);
+                            s1 = vdotq_u32(s1, t1, _1s_);
+                            s2 = vdotq_u32(s2, t2, _1s_);
+                            s3 = vdotq_u32(s3, t3, _1s_);
+                            s4 = vdotq_u32(s4, t4, _1s_);
+                            s5 = vdotq_u32(s5, t5, _1s_);
+                            s6 = vdotq_u32(s6, t6, _1s_);
+                        }
+                        vst1q_u32((uint32_t*)inpsumptr, s0);
+                        vst1q_u32((uint32_t*)inpsumptr + 4, s1);
+                        vst1q_u32((uint32_t*)inpsumptr + 8, s2);
+                        vst1q_u32((uint32_t*)inpsumptr + 12, s3);
+                        vst1q_u32((uint32_t*)inpsumptr + 16, s4);
+                        vst1q_u32((uint32_t*)inpsumptr + 20, s5);
+                        vst1q_u32((uint32_t*)inpsumptr + 24, s6);
+                    } else
+                #endif
                     for (int p = 0; p < HkWkCg_aligned; p += FX_QCONV_C) {
                         uint8_t* inptr = inpbuf_task + stripe*stripesize + p*FX_QCONV_NR;
-                        int32_t* inpsumptr = isum_task + stripe*FX_QCONV_NR;
                         if (inp_mask == 0) {
                             for (int j = 0; j < FX_QCONV_NR; j++) {
                                 inpsumptr[j] += inptr[j*FX_QCONV_C] + inptr[j*FX_QCONV_C+1] +
@@ -577,6 +655,33 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
                         float biasval = biasptr[k]*scale + out_zp0 +
                             scale*inp_zp0*(HkWkCg_aligned*w_zp_k - w_sum[k]);
                         int j = 0;
+                    #ifdef __ARM_NEON
+                        int32x4_t vw_zp = vdupq_n_s32(-w_zp_k);
+                        float32x4_t vscale = vdupq_n_f32(scale);
+                        float32x4_t vbias = vdupq_n_f32(biasval);
+                        uint8x8_t vout_mask = vdup_n_u8((uint8_t)out_mask);
+                        for (; j < out_width; j += 8) {
+                            if (j + 8 > out_width) {
+                                if (j == 0)
+                                    break;
+                                j = out_width - 8;
+                            }
+                            int32x4_t c0 = vld1q_s32(cptr + j);
+                            int32x4_t c1 = vld1q_s32(cptr + j + 4);
+                            int32x4_t isum0 = vld1q_s32(isum_task + j);
+                            int32x4_t isum1 = vld1q_s32(isum_task + j + 4);
+                            c0 = vmlaq_s32(c0, isum0, vw_zp);
+                            c1 = vmlaq_s32(c1, isum1, vw_zp);
+                            float32x4_t v0 = vfmaq_f32(vbias, vcvtq_f32_s32(c0), vscale);
+                            float32x4_t v1 = vfmaq_f32(vbias, vcvtq_f32_s32(c1), vscale);
+                            c0 = vcvtnq_s32_f32(v0);
+                            c1 = vcvtnq_s32_f32(v1);
+                            uint16x4_t w0 = vqmovun_s32(c0);
+                            uint16x4_t w1 = vqmovun_s32(c1);
+                            uint8x8_t b = vqmovn_u16(vcombine_u16(w0, w1));
+                            vst1_u8(outptr + j, veor_u8(b, vout_mask));
+                        }
+                    #endif
                         for (; j < out_width; j++) {
                             int delta_jk = w_zp_k*isum_task[j];
                             int v = (int)lrintf((cptr[j] - delta_jk)*scale + biasval);

@@ -226,6 +226,9 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
             result->data.tag = tag;
             if (elemsize == 1 && tensor->raw_data.len == total) {
                 memcpy(result->data.arr.data, tensor->raw_data.data, total*elemsize);
+            } else if (elemsize == 1 && tensor->n_int32_data == total) {
+                for(int j = 0; j < total; j++)
+                    result->data.arr.data[j] = (char)(tensor->int32_data[j]);
             } else if (elemsize == 4 && tensor->n_float_data == total) {
                 memcpy(result->data.arr.data, tensor->float_data, total*elemsize);
             } else if (elemsize == 4 &&

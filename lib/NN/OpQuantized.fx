@@ -69,6 +69,8 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
                 zp_typ == FX_I8 ? ((int8_t*)zp_data->data)[sc_c] + zp_delta :
                                   (int)(((uint8_t*)zp_data->data)[sc_c]);
             uint8_t* outptr = (uint8_t*)out_data->data + nc0*plane_size;
+            /*printf("nc0=%d. sc_c=%d, sc=%.5f, zp=%d, plane_size=%d, NC=%d, C=%d\n",
+                   (int)nc0, (int)sc_c, sc, zp, (int)plane_size, (int)NC, (int)C);*/
             if (inp_typ == FX_F32) {
                 const float* inptr = (const float*)inp_data->data + nc0*plane_size;
                 int j = 0;
@@ -487,6 +489,7 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
     _fx_nn_qbinary_func_t processing_func =
         el_op == _FX_NN_Add ? _fx_nn_qadd_u8 : 0;
     _fx_nn_qbinary_params_t params;
+
     params.sc1 = sc1_typ == FX_F32 ? *(float*)sc1_data->data :
                             FX_FLOAT(*(fx_f16*)sc1_data->data);
     params.sc2 = sc2_typ == FX_F32 ? *(float*)sc2_data->data :
@@ -508,6 +511,32 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     for (int k = 0; k < _FX_ELEMWISE_MAX_DIMS-2; k++) nplanes *= shape[k];
+
+    if (nplanes == 1) {
+        bool same_shapes = true;
+        for (int k = 0; k < _FX_ELEMWISE_MAX_DIMS; k++) {
+            if (shape1[k] != shape2[k] || shape1[k] != shape[k]) {
+                same_shapes = false;
+                break;
+            }
+        }
+        if (same_shapes && (nrows == 1 || (
+            ncols*dp1 == rowstep1 &&
+            ncols*dp2 == rowstep2 &&
+            ncols*dp == rowstep))) {
+            int_ total = nplanes*nrows*ncols;
+
+            #pragma omp parallel for num_threads(ntasks)
+            for (plane_idx = 0; plane_idx < ntasks; plane_idx++) {
+                int_ pix0 = plane_idx*total/ntasks, pix1 = (plane_idx+1)*total/ntasks;
+                processing_func(data1 + pix0*esz1, 0, dp1,
+                        data2 + pix0*esz2, 0, dp2,
+                        data + pix0*esz, 0, dp,
+                        1, pix1 - pix0, &params);
+            }
+            return FX_OK;
+        }
+    }
 
     #pragma omp parallel for num_threads(ntasks) if (nplanes >= ntasks)
     for (plane_idx = 0; plane_idx < nplanes; plane_idx++) {
