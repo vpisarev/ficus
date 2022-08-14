@@ -602,6 +602,8 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     pool.Wk = (int)kernel_shape[1];
     pool.stride_y = (int)stride[0];
     pool.stride_x = (int)stride[1];
+    pool.dilation_y = (int)dilation[0];
+    pool.dilation_x = (int)dilation[1];
     pool.pad_top = (int)padding[0];
     pool.pad_left = (int)padding[1];
     pool.pad_bottom = (int)padding[2];
@@ -624,11 +626,12 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
     /*printf("inpsize: %d x %d x %d x %d, outsize: %d x %d x %d x %d; kernel_size: %d x %d, stride: %d x %d, dilation: %d x %d; pad_y: (%d, %d), pad_x: (%d, %d), inner: y=%d - %d, x=%d - %d\n",
-        (int)inpsize[0], (int)inpsize[1], (int)inpsize[2], (int)inpsize[3],
-        (int)outsize[0], (int)outsize[1], (int)outsize[2], (int)outsize[3],
-        Hk, Wk, stride_y, stride_x, dilation_y, dilation_x,
-        pad_top, pad_bottom, pad_left, pad_right,
-        inner_ytop, inner_ybottom, inner_xleft, inner_xright);
+        pool.dw_ctx.N, (int)inp_shape[1], pool.dw_ctx.Hi, pool.dw_ctx.Wi,
+        pool.dw_ctx.N, (int)out_shape[1], pool.dw_ctx.H0, pool.dw_ctx.W0,
+        pool.Hk, pool.Wk, pool.stride_y, pool.stride_x, pool.dilation_y, pool.dilation_x,
+        pool.pad_top, pool.pad_bottom, pool.pad_left, pool.pad_right,
+        pool.dw_ctx.inner_ytop, pool.dw_ctx.inner_ybottom,
+        pool.dw_ctx.inner_xleft, pool.dw_ctx.inner_xright);
     printf("ofstab: ");
     for(int k = 0; k < ksize; k++)
         printf("%d ", ofstab[k]);

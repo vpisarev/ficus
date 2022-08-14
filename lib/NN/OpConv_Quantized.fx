@@ -159,13 +159,13 @@ static int _fx_init_qconv2d(
         }
     }
 
-    if (conv && conv->w_scale && conv->weights)
+    if (conv && conv->w_scale && (conv->weights || conv->depthwise_weights))
         fx_status = fx_make_cptr(conv, _fx_free_qconv2d, fx_result);
     else
         fx_status = FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
     if (fx_status < 0)
         _fx_free_qconv2d(conv);
-    return FX_OK;
+    return fx_status;
 }
 
 static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0_,

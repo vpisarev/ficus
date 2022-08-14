@@ -612,7 +612,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
     const int* yxtab = dw_ctx->yxtab;
     const int* ofstab = dw_ctx->ofstab;
 #ifdef __ARM_NEON
-    const int vec_size = FX_VEC_NLANES_U8/2;
+    const int vec_nlanes = FX_VEC_NLANES_U8/2;
     bool useSIMD = stride_x == 1 && inner_xleft < W0;
     bool is3x3 = qconv->Hk == 3 && qconv->Wk == 3;
     bool is3x3_r3 = is3x3 && qconv->stride_y == 1 &&
@@ -698,7 +698,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                 if (x0 == W0)
                     break;
                 x1 = inner_xright;
-            #if 0 // def __ARM_NEON
+            #ifdef __ARM_NEON
                 if (useSIMD) {
                     if (is3x3) {
                         if (dy0 == 3) {
@@ -827,7 +827,9 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                             }
                             int xi_ = x0*stride_x - pad_left;
                             const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
-                            int32x4_t s0l = vdupq_n_s32(0), s0h=s0l;
+                            int32x4_t s0l = vdupq_n_s32(0), s0h = s0l;
+                            int k = 0;
+
                             for (; k <= ksize - 4; k += 4) {
                                 uint8x8_t b0 = veor_u8(vld1_u8(inptr_xi + ofstab[k]), vinp_mask);
                                 uint8x8_t b1 = veor_u8(vld1_u8(inptr_xi + ofstab[k+1]), vinp_mask);
@@ -853,7 +855,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                             for (; k < ksize; k++) {
                                 uint8x8_t b0 = veor_u8(vld1_u8(inptr_xi + ofstab[k]), vinp_mask);
                                 int16x8_t t0 = vreinterpretq_s16_u16(vmovl_u8(b0));
-                                int16x4_t w = vdup_s16(weights[k]);
+                                int16x4_t w = vdup_n_s16(weights[k]);
                                 s0l = vmlal_lane_s16(s0l, vget_low_s16(t0), w, 0);
                                 s0h = vmlal_high_lane_s16(s0h, t0, w, 0);
                             }
