@@ -12,16 +12,20 @@ import Ast, OpConv_Block, OpConv_Depthwise
 
 void _fx_conv_update_block_u8( int np, const void* a_, const void* b_,
                                void* c_, int ldc, bool init_c );
-int _fx_depthwise_qconv2d(int ndims, int inp_typ,
-                          const int_* inp_shape, const fx_arr_t* inp_data,
-                          const int_* out_shape, fx_arr_t* out_data,
-                          const _fx_conv2d_t* conv, int ntasks);
+int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
+                             const _fx_qconv2d_t* qconv,
+                             int inp_typ, const uint8_t* inptr0,
+                             float inp_scale0, int inp_zp0,
+                             int out_typ, uint8_t* outptr0,
+                             float out_scale0, int out_zp0,
+                             int ntasks);
 
 static void _fx_free_qconv2d(void* conv_ptr)
 {
     _fx_qconv2d_t* conv = (_fx_qconv2d_t*)conv_ptr;
     if(conv) {
         fx_free(conv->weights);
+        fx_free(conv->depthwise_weights);
         fx_free(conv->w_scale);
         fx_free(conv);
     }
@@ -55,6 +59,7 @@ static int _fx_init_qconv2d(
     assert(pad_top >= 0 && pad_bottom >= 0 && pad_left >= 0 && pad_right >= 0);
     conv->layout = layout;
     conv->K = K; conv->C = C; conv->Hk = Hk; conv->Wk = Wk;
+    conv->padded_ksize = (Hk*Wk + FX_VEC_NLANES_F16-1) & -FX_VEC_NLANES_F16;
     conv->stride_y = stride_y;
     conv->stride_x = stride_x;
     conv->dilation_y = dilation_y;
@@ -67,7 +72,7 @@ static int _fx_init_qconv2d(
                       stride_y == 1 && stride_x == 1 ? FX_CONV_TYPE_WINOGRAD3X3 : FX_CONV_TYPE_GENERIC;
     // so far we only have ARM implementation of Winograd-based 3x3 convolution
 #if 1 //ndef __ARM_NEON
-    //if (conv->conv_type != FX_CONV_TYPE_DEPTHWISE)
+    if (conv->conv_type != FX_CONV_TYPE_DEPTHWISE)
         conv->conv_type = FX_CONV_TYPE_GENERIC;
 #endif
     conv->w_typ = w_typ;
@@ -96,14 +101,19 @@ static int _fx_init_qconv2d(
         // for depth-wise convolutions on NCHW data we just preserve the weights in KCHW layout,
         // but add some padding to make the weights array layout more SIMD-friendly
         int ksize = Hk*Wk;
-        int padded_ksize = ((ksize + FX_VEC_NLANES_U8-1)/FX_VEC_NLANES_U8)*FX_VEC_NLANES_U8;
-        int nweights = C*padded_ksize;
-        conv->weights = (uint8_t*)fx_malloc(nweights*sizeof(conv->weights[0]));
-        if (conv->weights) {
-            memset(conv->weights, 0, nweights*sizeof(conv->weights[0]));
+        int padded_ksize = conv->padded_ksize;
+        size_t dwbufsize = C*padded_ksize*sizeof(conv->depthwise_weights[0]);
+        conv->depthwise_weights = (int16_t*)fx_malloc(dwbufsize);
+        if (conv->depthwise_weights) {
+            memset(conv->depthwise_weights, 0, dwbufsize);
             for(int c = 0; c < C; c++) {
-                for (int k = 0; k < ksize; k++)
-                    conv->weights[c*padded_ksize + k] = weights[c*ksize + k] ^ w_mask;
+                int w_zp_c = conv->w_zp[c], w_sum_c = 0;
+                for (int k = 0; k < ksize; k++) {
+                    int w = (weights[c*ksize + k] ^ w_mask) - w_zp_c;
+                    conv->depthwise_weights[c*padded_ksize + k] = (int16_t)w;
+                    w_sum_c += w;
+                }
+                conv->w_sum[c] = w_sum_c;
             }
         }
     } else {
@@ -216,8 +226,8 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
     size_t totalbufsize = taskbufsize*ntasks;
     char* inpbuf_all = 0;
     int* localbuf = (int*)alloca(ksize*3*sizeof(localbuf[0]) + FX_QCONV_NR);
-    int* interior_ofstab = localbuf;
-    int* yxtab = interior_ofstab + ksize;
+    int* ofstab = localbuf;
+    int* yxtab = ofstab + ksize;
     uint8_t* zbuf = (uint8_t*)(yxtab + ksize*2);
     int inp_mask = inp_typ == FX_I8 ? 128 : 0;
     int out_mask = out_typ == FX_I8 ? 128 : 0;
@@ -225,11 +235,7 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
     uint8_t inp_zp0_b = (uint8_t)inp_zp0;
     int out_zp0 = out_zp0_ + out_mask;
     int status = 0;
-    //int64_t t_ = fx_tick_count();
     float inv_out_scale0 = out_scale0 == 0.f ? 0.f : 1.f/out_scale0;
-
-    for (int j = 0; j < FX_QCONV_NR; j++)
-        zbuf[j] = inp_zp0_b;
 
     if (ndims != 4 || inp_shape[0] != out_shape[0] ||
         inp_shape[1] != conv->C || out_shape[1] != conv->K)
@@ -247,19 +253,22 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
 
-    //printf("HAVE PASSBY: %d, fast_activ=%d, activ=%d, minval=%.5g, maxval=%.5g, alpha=%.5g\n",
-    //    (int)(pb_data->data != 0), (int)fast_activ, (int)conv->activ, minval, maxval, alpha);
+    if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
+        _fx_depthwise2d_t dw_ctx;
+        _fx_init_depthwise2d(N, Hi, Wi, H0, W0, Hk, Wk,
+                            stride_y, stride_x, dilation_y, dilation_x,
+                            pad_top, pad_left, pad_bottom, pad_right,
+                            yxtab, ofstab, &dw_ctx);
 
-    /*if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
-        fx_copy_arr(curr_scratch_buf, new_scratch_buf);
-        //int64_t t = fx_tick_count();
-        int status = _fx_depthwise_conv2d(ndims, inp_typ, inp_shape, inp_data,
-                                    out_shape, out_data, conv, ntasks);
-        //t = fx_tick_count() - t;
-        //depthwise_time += t;
-        //depthwise_calls++;
+        int status = _fx_depthwise_qconv2d_u8(&dw_ctx, conv,
+            inp_typ, (const uint8_t*)inp_data->data, inp_scale0, inp_zp0_,
+            out_typ, (uint8_t*)out_data->data, out_scale0, out_zp0_,
+            (int)ntasks);
+
+        if (status >= 0)
+            fx_copy_arr(curr_scratch_buf, new_scratch_buf);
         return status;
-    }*/
+    }
 
     if (totalbufsize > curr_scratch_buf->dim[0].step*curr_scratch_buf->dim[0].size) {
         int_ totalbufsz = (int_)totalbufsize;
@@ -270,24 +279,16 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
         fx_copy_arr(curr_scratch_buf, new_scratch_buf);
     }
     inpbuf_all = new_scratch_buf->data;
-    //printf("taskbufsize=%d, stripes_per_sample=%d, weights_size=%d\n", (int)(taskbufsize*esz), (int)stripes_per_sample, (int)(K*Cg*ksize*esz));
 
-    for (int y = 0; y < Hk; y++)
-        for( int x = 0; x < Wk; x++) {
-            int k = y*Wk + x;
-            int dy = y*dilation_y, dx = x*dilation_x;
-            yxtab[k*2] = dy; yxtab[k*2+1] = dx;
-            interior_ofstab[k] = dy*Wi + dx;
-        }
+    _fx_calc_ofstab2d(Wi, Hk, Wk, dilation_y, dilation_x, yxtab, ofstab);
+    memset(zbuf, inp_zp0_b, FX_QCONV_NR);
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
     #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++) {
-        //printf("task #%d\n", task_id);
         int32_t* cbuf_task = (int32_t*)&inpbuf_all[taskbufsize*task_id];
         int32_t* isum_task = cbuf_task + FX_QCONV_NR*MAX_STRIPES*K_BLOCK_SIZE;
         uint8_t* inpbuf_task = (uint8_t*)(isum_task + FX_QCONV_NR*MAX_STRIPES);
-        //float inpbuf_task_gold[Cg*ksize*FX_QCONV_NR];
         int ngs0 = (int)((size_t)nsubtasks*task_id/ntasks);
         int ngs1 = (int)((size_t)nsubtasks*(task_id+1)/ntasks);
         for (int subtask = ngs0; subtask < ngs1; ) {
@@ -692,13 +693,6 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
             }
         }
     }
-
-    /*if (Wk == 1 && Hk == 1)
-    {
-        t_ = fx_tick_count() - t_;
-        _1x1_time += t_;
-        _1x1_calls++;
-    }*/
     return FX_OK;
 }
 }

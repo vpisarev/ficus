@@ -25,10 +25,14 @@ void _fx_conv_update_block_f32( int np, const void* a_, const void* b_,
                                 void* c_, int ldc, bool init_c );
 void _fx_conv_update_block_f16( int np, const void* a_, const void* b_,
                                 void* c_, int ldc, bool init_c );
-int _fx_depthwise_conv2d(int ndims, int inp_typ,
-                         const int_* inp_shape, const fx_arr_t* inp_data,
-                         const int_* out_shape, fx_arr_t* out_data,
-                         const _fx_conv2d_t* conv, int ntasks);
+int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
+                             const _fx_conv2d_t* conv,
+                             const char* inptr0, char* outptr0,
+                             int ntasks);
+int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
+                             const _fx_conv2d_t* conv,
+                             const char* inptr0, char* outptr0,
+                             int ntasks);
 
 static void _fx_free_conv2d(void* conv_ptr)
 {
@@ -292,8 +296,7 @@ int64_t depthwise_time = 0, _1x1_time = 0;
 int depthwise_calls = 0, _1x1_calls = 0;
 
 int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
-               const _fx_nntensor_t* passby,
-               _fx_conv2d_t* conv, int_ ntasks,
+               const _fx_nntensor_t* passby, _fx_conv2d_t* conv, int_ ntasks,
                fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf)
 {
     int inp_typ = inp->data.tag;
@@ -333,9 +336,9 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
         inp_typ == FX_F16 ? conv->activ_func_f16 : 0;
     const float* activ_params = conv->activ_params;
 
-    int N = inp_shape[0], C = conv->C, K = conv->K;
-    int Hi = ndims >= 4 ? inp_shape[2] : 0, Wi = ndims >= 4 ? inp_shape[3] : 0;
-    int H0 = out_ndims >= 4 ? out_shape[2] : 0, W0 = out_ndims >= 4 ? out_shape[3] : 0;
+    int N = (int)inp_shape[0], C = conv->C, K = conv->K;
+    int Hi = (int)(ndims >= 4 ? inp_shape[2] : 0), Wi = (int)(ndims >= 4 ? inp_shape[3] : 0);
+    int H0 = (int)(out_ndims >= 4 ? out_shape[2] : 0), W0 = (int)(out_ndims >= 4 ? out_shape[3] : 0);
     int inp_planesize = Hi*Wi, out_planesize = H0*W0;
     int Hk = conv->Hk, Wk = conv->Wk, ksize = Hk*Wk, ngroups = conv->ngroups;
     int Cg = C/ngroups, Kg = K/ngroups;
@@ -359,10 +362,9 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     size_t taskbufsize = (stripesize + CONV_NR*K_BLOCK_SIZE*(c_esz/esz))*MAX_STRIPES;
     size_t totalbufsize = taskbufsize*ntasks*esz;
     char* inpbuf_all = 0;
-    int* interior_ofstab = (int*)alloca(ksize*3*sizeof(interior_ofstab[0]));
-    int* yxtab = interior_ofstab + ksize;
+    int* ofstab = (int*)alloca(ksize*3*sizeof(ofstab[0]));
+    int* yxtab = ofstab + ksize;
     int status = 0;
-    //int64_t t_ = fx_tick_count();
 
     if (ndims != 4 || inp_shape[0] != out_shape[0] ||
         inp_shape[1] != conv->C || out_shape[1] != conv->K)
@@ -380,17 +382,31 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
 
-    //printf("HAVE PASSBY: %d, fast_activ=%d, activ=%d, minval=%.5g, maxval=%.5g, alpha=%.5g\n",
-    //    (int)(pb_data->data != 0), (int)fast_activ, (int)conv->activ, minval, maxval, alpha);
-
     if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
-        fx_copy_arr(curr_scratch_buf, new_scratch_buf);
-        //int64_t t = fx_tick_count();
-        int status = _fx_depthwise_conv2d(ndims, inp_typ, inp_shape, inp_data,
-                                    out_shape, out_data, conv, ntasks);
-        //t = fx_tick_count() - t;
-        //depthwise_time += t;
-        //depthwise_calls++;
+        _fx_depthwise2d_t dw_ctx;
+        _fx_init_depthwise2d(N, Hi, Wi, H0, W0, Hk, Wk,
+                            stride_y, stride_x, dilation_y, dilation_x,
+                            pad_top, pad_left, pad_bottom, pad_right,
+                            yxtab, ofstab, &dw_ctx);
+
+        // passby != 0 is not supported for depthwise convolutions
+        // (graph fusion module should prevent such fusion)
+        if (pb_data && pb_data->data)
+            return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+        int status =
+            inp_typ == FX_F32 ?
+                _fx_depthwise_conv2d_f32(&dw_ctx, conv, inp_data->data,
+                                         out_data->data, (int)ntasks) :
+        #ifdef _FX_NN_ENABLE_FP16
+            inp_typ == FX_F16 ?
+                _fx_depthwise_conv2d_f16(&dw_ctx, conv, inp_data->data,
+                                         out_data->data, (int)ntasks) :
+        #endif
+            FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+        if (status >= 0)
+            fx_copy_arr(curr_scratch_buf, new_scratch_buf);
         return status;
     }
 
@@ -402,27 +418,15 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     } else {
         fx_copy_arr(curr_scratch_buf, new_scratch_buf);
     }
+
     inpbuf_all = new_scratch_buf->data;
-    //printf("taskbufsize=%d, stripes_per_sample=%d, weights_size=%d\n", (int)(taskbufsize*esz), (int)stripes_per_sample, (int)(K*Cg*ksize*esz));
-    //inpbuf_all = (char*)fx_malloc(totalbufsize);
-
-    for (int y = 0; y < Hk; y++)
-        for( int x = 0; x < Wk; x++) {
-            int k = y*Wk + x;
-            int dy = y*dilation_y, dx = x*dilation_x;
-            yxtab[k*2] = dy; yxtab[k*2+1] = dx;
-            interior_ofstab[k] = dy*Wi + dx;
-        }
-
-    //memset(out_data->data, 0, out_planesize*N*K*esz);
+    _fx_calc_ofstab2d(Wi, Hk, Wk, dilation_y, dilation_x, yxtab, ofstab);
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
     #pragma omp parallel for num_threads(ntasks)
     for (int task_id = 0; task_id < ntasks; task_id++) {
-        //printf("task #%d\n", task_id);
         char* inpbuf_task = &inpbuf_all[taskbufsize*task_id*esz];
         float* cbuf_task = (float*)(inpbuf_task + stripesize*MAX_STRIPES*esz);
-        //float inpbuf_task_gold[Cg*ksize*CONV_NR];
         int ngs0 = (int)((size_t)nsubtasks*task_id/ntasks);
         int ngs1 = (int)((size_t)nsubtasks*(task_id+1)/ntasks);
         for (int subtask = ngs0; subtask < ngs1; ) {
@@ -837,13 +841,6 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             }
         }
     }
-
-    /*if (Wk == 1 && Hk == 1)
-    {
-        t_ = fx_tick_count() - t_;
-        _1x1_time += t_;
-        _1x1_calls++;
-    }*/
 
     return FX_OK;
 }

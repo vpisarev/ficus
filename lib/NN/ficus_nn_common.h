@@ -360,7 +360,7 @@ typedef struct _fx_conv2d_t
     int K, C, Hk, Wk;
     int stride_y, stride_x;
     int dilation_y, dilation_x;
-    int pad_top, pad_bottom, pad_left, pad_right;
+    int pad_top, pad_left, pad_bottom, pad_right;
     int conv_type;
     float* weights;
     fx_f16* wf16;
@@ -377,11 +377,13 @@ typedef struct _fx_qconv2d_t
 {
     int layout, ngroups;
     int K, C, Hk, Wk;
+    int padded_ksize;
     int stride_y, stride_x;
     int dilation_y, dilation_x;
-    int pad_top, pad_bottom, pad_left, pad_right;
+    int pad_top, pad_left, pad_bottom, pad_right;
     int conv_type;
     int w_typ;
+    int16_t* depthwise_weights;
     uint8_t* weights;
     float* w_scale;
     int32_t* w_sum;
@@ -488,6 +490,59 @@ static bool _fx_prepare_for_broadcast_op(
         }
     }
     return true;
+}
+
+typedef struct _fx_depthwise2d_t
+{
+    int N, Hi, Wi, H0, W0;
+    int inner_ytop, inner_xleft, inner_ybottom, inner_xright;
+    const int* ofstab;
+    const int* yxtab;
+} _fx_depthwise2d_t;
+
+static void _fx_calc_ofstab2d(int Wi, int Hk, int Wk, int dilation_y,
+                              int dilation_x, int* yxtab, int* ofstab)
+{
+    for (int y = 0; y < Hk; y++)
+        for (int x = 0; x < Wk; x++) {
+            int k = y*Wk + x;
+            int dy = y*dilation_y, dx = x*dilation_x;
+            yxtab[k*2] = dy; yxtab[k*2+1] = dx;
+            ofstab[k] = dy*Wi + dx;
+        }
+}
+
+static void _fx_init_depthwise2d(int N, int Hi, int Wi, int H0, int W0,
+                          int Hk, int Wk, int stride_y, int stride_x,
+                          int dilation_y, int dilation_x,
+                          int pad_top, int pad_left, int pad_bottom, int pad_right,
+                          int* yxtab, int* ofstab,
+                          _fx_depthwise2d_t* data)
+{
+    data->N = N;
+    data->Hi = Hi; data->Wi = Wi;
+    data->H0 = H0; data->W0 = W0;
+    data->yxtab = yxtab; data->ofstab = ofstab;
+
+    _fx_calc_ofstab2d(Wi, Hk, Wk, dilation_y, dilation_x, yxtab, ofstab);
+
+    int inner_ytop = (pad_top + stride_y-1)/stride_y, inner_ybottom;
+    int inner_xleft = (pad_left + stride_x-1)/stride_x, inner_xright;
+
+    inner_xright = (Wi - (Wk - 1)*dilation_x + pad_left)/stride_x;
+    inner_xright += inner_xright*stride_x - pad_left + (Wk-1)*dilation_x < Wi;
+    inner_ybottom = (Hi - (Hk - 1)*dilation_y + pad_top)/stride_y;
+    inner_ybottom += inner_ybottom*stride_y - pad_top + (Hk-1)*dilation_y < Hi;
+    inner_xright = inner_xright < W0 ? inner_xright : W0;
+    inner_ybottom = inner_ybottom < H0 ? inner_ybottom : H0;
+    if (inner_xleft >= inner_xright || inner_ytop >= inner_ybottom) {
+        inner_xleft = W0;
+        inner_ytop = H0;
+    }
+    data->inner_ytop = inner_ytop;
+    data->inner_xleft = inner_xleft;
+    data->inner_ybottom = inner_ybottom;
+    data->inner_xright = inner_xright;
 }
 
 #ifdef __cplusplus

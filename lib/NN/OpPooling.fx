@@ -16,15 +16,12 @@ import Ast
 
 typedef struct _fx_pooling2d_t
 {
-    int Hi, Wi, H0, W0;
+    _fx_depthwise2d_t dw_ctx;
     int Hk, Wk;
     int stride_y, stride_x;
+    int dilation_y, dilation_x;
     int pad_top, pad_bottom, pad_left, pad_right;
-    int inner_y0, inner_y1;
-    int inner_x0, inner_x1;
     bool count_include_pad;
-    const int* ofstab;
-    const int* yxtab;
 } _fx_pooling2d_t;
 
 static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
@@ -32,21 +29,24 @@ static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
 {
     const float* inptr = (const float*)inptr_;
     float* outptr = (float*)outptr_;
-    int Hi = pool->Hi, Wi = pool->Wi, H0 = pool->H0, W0 = pool->W0;
-    int inner_y0 = pool->inner_y0, inner_y1 = pool->inner_y1;
-    int inner_x0 = pool->inner_x0, inner_x1 = pool->inner_x1;
+    int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
+    int H0 = pool->dw_ctx.H0, W0 = pool->dw_ctx.W0;
+    int inner_y0 = pool->dw_ctx.inner_ytop;
+    int inner_y1 = pool->dw_ctx.inner_ybottom;
+    int inner_x0 = pool->dw_ctx.inner_xleft;
+    int inner_x1 = pool->dw_ctx.inner_xright;
     int stride_y = pool->stride_y, stride_x = pool->stride_x;
     int ksize = pool->Hk*pool->Wk;
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
-    const int* yxtab = pool->yxtab;
-    const int* ofstab = pool->ofstab;
+    const int* yxtab = pool->dw_ctx.yxtab;
+    const int* ofstab = pool->dw_ctx.ofstab;
     bool count_include_pad = pool->count_include_pad;
     float avg_scale = 1.f/(pool->Hk*pool->Wk);
 #ifdef __ARM_NEON
+    const int vec_nlanes = FX_VEC_NLANES_F32;
     bool useSIMD = stride_x == 1 && inner_x0 < W0;
     bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
     float32x4_t vscale = vdupq_n_f32(avg_scale);
-    const int vec_nlanes = FX_VEC_NLANES_F32;
 #endif
 
     for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
@@ -139,21 +139,24 @@ static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
 {
     const fx_f16* inptr = (const fx_f16*)inptr_;
     fx_f16* outptr = (fx_f16*)outptr_;
-    int Hi = pool->Hi, Wi = pool->Wi, H0 = pool->H0, W0 = pool->W0;
-    int inner_y0 = pool->inner_y0, inner_y1 = pool->inner_y1;
-    int inner_x0 = pool->inner_x0, inner_x1 = pool->inner_x1;
+    int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
+    int H0 = pool->dw_ctx.H0, W0 = pool->dw_ctx.W0;
+    int inner_y0 = pool->dw_ctx.inner_ytop;
+    int inner_y1 = pool->dw_ctx.inner_ybottom;
+    int inner_x0 = pool->dw_ctx.inner_xleft;
+    int inner_x1 = pool->dw_ctx.inner_xright;
     int stride_y = pool->stride_y, stride_x = pool->stride_x;
     int ksize = pool->Hk*pool->Wk;
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
-    const int* yxtab = pool->yxtab;
-    const int* ofstab = pool->ofstab;
+    const int* yxtab = pool->dw_ctx.yxtab;
+    const int* ofstab = pool->dw_ctx.ofstab;
     bool count_include_pad = pool->count_include_pad;
     float avg_scale = 1.f/(pool->Hk*pool->Wk);
 #ifdef __ARM_NEON
+    const int vec_nlanes = FX_VEC_NLANES_F16;
     bool useSIMD = stride_x == 1 && inner_x0 < W0;
     bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
     float16x8_t vscale = vdupq_n_f16(avg_scale);
-    const int vec_nlanes = FX_VEC_NLANES_F16;
 #endif
 
     for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
@@ -246,18 +249,21 @@ static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
 {
     const float* inptr = (const float*)inptr_;
     float* outptr = (float*)outptr_;
-    int Hi = pool->Hi, Wi = pool->Wi, H0 = pool->H0, W0 = pool->W0;
-    int inner_y0 = pool->inner_y0, inner_y1 = pool->inner_y1;
-    int inner_x0 = pool->inner_x0, inner_x1 = pool->inner_x1;
+    int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
+    int H0 = pool->dw_ctx.H0, W0 = pool->dw_ctx.W0;
+    int inner_y0 = pool->dw_ctx.inner_ytop;
+    int inner_y1 = pool->dw_ctx.inner_ybottom;
+    int inner_x0 = pool->dw_ctx.inner_xleft;
+    int inner_x1 = pool->dw_ctx.inner_xright;
     int stride_y = pool->stride_y, stride_x = pool->stride_x;
     int ksize = pool->Hk*pool->Wk;
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
-    const int* yxtab = pool->yxtab;
-    const int* ofstab = pool->ofstab;
+    const int* yxtab = pool->dw_ctx.yxtab;
+    const int* ofstab = pool->dw_ctx.ofstab;
 #ifdef __ARM_NEON
+    const int vec_nlanes = FX_VEC_NLANES_F32;
     bool useSIMD = stride_x == 1 && inner_x0 < W0;
     bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
-    const int vec_nlanes = FX_VEC_NLANES_F32;
 #endif
 
     for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
@@ -348,16 +354,19 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
 {
     const __fp16* inptr = (const __fp16*)inptr_;
     __fp16* outptr = (__fp16*)outptr_;
-    int Hi = pool->Hi, Wi = pool->Wi, H0 = pool->H0, W0 = pool->W0;
-    int inner_y0 = pool->inner_y0, inner_y1 = pool->inner_y1;
-    int inner_x0 = pool->inner_x0, inner_x1 = pool->inner_x1;
+    int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
+    int H0 = pool->dw_ctx.H0, W0 = pool->dw_ctx.W0;
+    int inner_y0 = pool->dw_ctx.inner_ytop;
+    int inner_y1 = pool->dw_ctx.inner_ybottom;
+    int inner_x0 = pool->dw_ctx.inner_xleft;
+    int inner_x1 = pool->dw_ctx.inner_xright;
     int stride_y = pool->stride_y, stride_x = pool->stride_x;
     int ksize = pool->Hk*pool->Wk;
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
-    const int* yxtab = pool->yxtab;
-    const int* ofstab = pool->ofstab;
-    const int vec_nlanes = FX_VEC_NLANES_F16;
+    const int* yxtab = pool->dw_ctx.yxtab;
+    const int* ofstab = pool->dw_ctx.ofstab;
 
+    const int vec_nlanes = FX_VEC_NLANES_F16;
     bool useSIMD = stride_x == 1 && inner_x0 < W0;
     bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
 
@@ -447,18 +456,21 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
 {
     const uint8_t* inptr = (const uint8_t*)inptr_;
     uint8_t* outptr = (uint8_t*)outptr_;
-    int Hi = pool->Hi, Wi = pool->Wi, H0 = pool->H0, W0 = pool->W0;
-    int inner_y0 = pool->inner_y0, inner_y1 = pool->inner_y1;
-    int inner_x0 = pool->inner_x0, inner_x1 = pool->inner_x1;
+    int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
+    int H0 = pool->dw_ctx.H0, W0 = pool->dw_ctx.W0;
+    int inner_y0 = pool->dw_ctx.inner_ytop;
+    int inner_y1 = pool->dw_ctx.inner_ybottom;
+    int inner_x0 = pool->dw_ctx.inner_xleft;
+    int inner_x1 = pool->dw_ctx.inner_xright;
     int stride_y = pool->stride_y, stride_x = pool->stride_x;
     int ksize = pool->Hk*pool->Wk;
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
-    const int* yxtab = pool->yxtab;
-    const int* ofstab = pool->ofstab;
+    const int* yxtab = pool->dw_ctx.yxtab;
+    const int* ofstab = pool->dw_ctx.ofstab;
 #ifdef __ARM_NEON
+    const int vec_nlanes = FX_VEC_NLANES_U8;
     bool useSIMD = stride_x == 1 && inner_x0 < W0;
     bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
-    const int vec_nlanes = FX_VEC_NLANES_U8;
 #endif
 
     for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
@@ -555,7 +567,6 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
 @ccode {
     const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
     fx_arr_t* out_data = &out->data.u.NN_Data_I8;
-    _fx_pooling2d_t pool;
     int_ ndims = inp->shape.shape.dim[0].size;
     int_ k_ndims = kernel_shape_->dim[0].size;
     const int_* kernel_shape = (const int_*)(kernel_shape_->data);
@@ -564,14 +575,17 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     const int_* padding = (const int_*)(padding_->data);
     int inp_typ = inp->data.tag;
     size_t esz = inp_data->dim[0].step;
-    const int_* inpsize = (const int_*)inp->shape.shape.data;
-    const int_* outsize = (const int_*)out->shape.shape.data;
-    int_ NC, ksize;
+    const int_* inp_shape = (const int_*)inp->shape.shape.data;
+    const int_* out_shape = (const int_*)out->shape.shape.data;
+    int_ NC;
     size_t inp_planesize, out_planesize;
     int_ inner_y0, inner_y1;
     int_ inner_x0, inner_x1;
     _fx_pool_func_t func;
-    int *ofstab, *yxtab;
+    int ksize = (int)(kernel_shape[0]*kernel_shape[1]);
+    int* ofstab = (int*)alloca(ksize*3*sizeof(ofstab[0]));
+    int* yxtab = ofstab + ksize;
+    _fx_pooling2d_t pool;
 
     if (inp_typ != out->data.tag)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
@@ -579,16 +593,11 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     if (inp->shape.layout.tag != _FX_NN_Layout_NCHW || k_ndims != 2)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (ndims != 2 + k_ndims || ndims != out->shape.shape.dim[0].size ||
-        inpsize[0] != outsize[0] || inpsize[1] != outsize[1])
+        inp_shape[0] != out_shape[0] || inp_shape[1] != out_shape[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
 
     memset(&pool, 0, sizeof(pool));
-
-    NC = inpsize[0]*inpsize[1];
-    pool.Hi = inpsize[2];
-    pool.Wi = inpsize[3];
-    pool.H0 = outsize[2];
-    pool.W0 = outsize[3];
+    NC = inp_shape[0]*inp_shape[1];
     pool.Hk = (int)kernel_shape[0];
     pool.Wk = (int)kernel_shape[1];
     pool.stride_y = (int)stride[0];
@@ -598,24 +607,21 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     pool.pad_bottom = (int)padding[2];
     pool.pad_right = (int)padding[3];
     pool.count_include_pad = count_include_pad;
-    inp_planesize = (size_t)pool.Hi*pool.Wi;
-    out_planesize = (size_t)pool.H0*pool.W0;
+
+    _fx_init_depthwise2d((int)inp_shape[0], (int)inp_shape[2], (int)inp_shape[3],
+                         (int)out_shape[2], (int)out_shape[3],
+                         pool.Hk, pool.Wk, pool.stride_y, pool.stride_x,
+                         pool.dilation_y, pool.dilation_x,
+                         pool.pad_top, pool.pad_left,
+                         pool.pad_bottom, pool.pad_right,
+                         yxtab, ofstab, &pool.dw_ctx);
+
+    inp_planesize = (size_t)pool.dw_ctx.Hi*pool.dw_ctx.Wi;
+    out_planesize = (size_t)pool.dw_ctx.H0*pool.dw_ctx.W0;
 
     if ((pool.Hk|pool.Wk) == 1 &&
         (pool.pad_left | pool.pad_right | pool.pad_top | pool.pad_bottom) != 0)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-
-    ksize = pool.Hk*pool.Wk;
-    ofstab = (int*)alloca(3*ksize*sizeof(ofstab[0]));
-    yxtab = ofstab + ksize;
-
-    for (int_ k = 0; k < ksize; k++) {
-        int_ y = k / pool.Wk;
-        int_ x = k - y * pool.Wk;
-        int_ dy = y*dilation[0], dx = x*dilation[1];
-        yxtab[k*2] = (int)dy; yxtab[k*2+1] = (int)dx;
-        ofstab[k] = (int)(dy*pool.Wi + dx);
-    }
 
     /*printf("inpsize: %d x %d x %d x %d, outsize: %d x %d x %d x %d; kernel_size: %d x %d, stride: %d x %d, dilation: %d x %d; pad_y: (%d, %d), pad_x: (%d, %d), inner: y=%d - %d, x=%d - %d\n",
         (int)inpsize[0], (int)inpsize[1], (int)inpsize[2], (int)inpsize[3],
@@ -643,26 +649,6 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
 
     if (!func)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-
-    inner_y0 = (pool.pad_top + pool.stride_y-1)/pool.stride_y;
-    inner_y1 = (pool.Hi - (pool.Hk - 1)*dilation[0] + pool.pad_top)/pool.stride_y;
-    inner_y1 += inner_y1*pool.stride_y - pool.pad_top + (pool.Hk-1)*dilation[0] < pool.Hi;
-
-    inner_x0 = (pool.pad_left + pool.stride_x-1)/pool.stride_x;
-    inner_x1 = (pool.Wi - (pool.Wk - 1)*dilation[1] + pool.pad_left)/pool.stride_x;
-    inner_x1 += inner_x1*pool.stride_x - pool.pad_left + (pool.Wk-1)*dilation[1] < pool.Wi;
-
-    if (inner_x0 >= inner_x1 || inner_y0 >= inner_y1) {
-        inner_x0 = pool.W0;
-        inner_y0 = pool.H0;
-    }
-
-    pool.inner_y0 = (int)inner_y0;
-    pool.inner_y1 = (int)inner_y1;
-    pool.inner_x0 = (int)inner_x0;
-    pool.inner_x1 = (int)inner_x1;
-    pool.ofstab = ofstab;
-    pool.yxtab = yxtab;
 
     if (NC*out_planesize < 100000)
         ntasks = 1;
