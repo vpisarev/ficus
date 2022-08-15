@@ -50,7 +50,7 @@ fun run_gemm(A: Ast.nntensor_t, B: Ast.nntensor_t, C: Ast.nntensor_t,
         beta = 0.f;
     } else {
         int_ nrows = out_shape[0], ncols = out_shape[1];
-        size_t out_esz = out_data->dim[1].step;
+        size_t out_esz = out_data->dim[0].step;
         // [TODO] provide convenient Ficus C API to convert
         // arrays from one type to another with broadcasting support
         for (int_ i = 0; i < nrows; i++) {
