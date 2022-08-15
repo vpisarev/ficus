@@ -349,7 +349,7 @@ void _fx_nn_elemwise_tanh_f16(const void* inptr_, void* outptr_,
 #define FX_QCONV_NR FX_CONV_NR
 
 enum { _FX_ACTIV_NONE=1, _FX_ACTIV_RELU=2, _FX_ACTIV_CLIP=3, _FX_ACTIV_LRELU=4,
-       _FX_ACTIV_SIGMOID=6, _FX_ACTIV_TANH=7, _FX_ACTIV_MISH=8 };
+       _FX_ACTIV_SIGMOID=5, _FX_ACTIV_TANH=6, _FX_ACTIV_MISH=7 };
 typedef _fx_unary_func_t _fx_activ_func_t;
 
 enum { FX_CONV_TYPE_GENERIC=0, FX_CONV_TYPE_DEPTHWISE=1, FX_CONV_TYPE_WINOGRAD3X3=2 };

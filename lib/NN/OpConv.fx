@@ -4,10 +4,6 @@
 */
 import Ast, OpConv_Block, OpConv_Depthwise
 
-type activ_func_t =
-    | ACTIV_NONE | ACTIV_RELU | ACTIV_CLIP | ACTIV_LRELU
-    | ACTIV_SIGMOID | ACTIV_TANH | ACTIV_MISH
-
 @ccode {
 #include <assert.h>
 #include <float.h>
@@ -773,6 +769,9 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     outptr[j] = v;
                                 }
                             }
+
+                            if (activ_func)
+                                activ_func(outptr, outptr, out_width, activ_params);
                         }
                     } else {
                         fx_f16* outptr = (fx_f16*)(out_data->data + outofs);
@@ -835,6 +834,9 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     outptr[j] = FX_FLOAT16(v);
                                 }
                             }
+
+                            if (activ_func)
+                                activ_func(outptr, outptr, out_width, activ_params);
                         }
                     }
                 }
@@ -851,7 +853,7 @@ fun init_conv(kernel_shape: int [], strides: int [],
               weights: Ast.nntensor_t,
               bias: Ast.nntensor_t,
               bn_data: Ast.nntensor_t [], bn_eps: float,
-              activ_func: activ_func_t, activ_params: float []): cptr
+              activ_func: Ast.nnactiv_t, activ_params: float []): cptr
 @ccode
 {
     int w_typ = weights->data.tag, b_typ = bias->data.tag;
@@ -937,21 +939,21 @@ match op {
                     ([bn_mean, bn_var, bn_scale, bn_bias], epsilon)
             | _ => (([]: Ast.nntensor_t []), 0.f)
             }
-        val (activ_func, (activ_params : float [])) = match fused_activ {
-            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Relu}) => (ACTIV_RELU, [])
-            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Sigmoid}) => (ACTIV_SIGMOID, [])
-            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Tanh}) => (ACTIV_TANH, [])
-            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Mish}) => (ACTIV_MISH, [])
+        val (activ_id, (activ_params : float [])) = match fused_activ {
+            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Relu}) => (Ast.NN_ACTIV_RELU, [])
+            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Sigmoid}) => (Ast.NN_ACTIV_SIGMOID, [])
+            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Tanh}) => (Ast.NN_ACTIV_TANH, [])
+            | Some (Ast.NN_Elemwise {el_op=Ast.NN_Mish}) => (Ast.NN_ACTIV_MISH, [])
             | Some (Ast.NN_Clip {t_min, t_max}) =>
                 val minval = model.get_tensor(t_min)
                 val maxval = model.get_tensor(t_max)
                 val minval = minval.data.float_scalar_or(-FLT_MAX)
                 val maxval = maxval.data.float_scalar_or(FLT_MAX)
-                (ACTIV_CLIP, [minval, maxval])
-            | Some (Ast.NN_LeakyRelu {alpha}) => (ACTIV_LRELU, [alpha])
+                (Ast.NN_ACTIV_CLIP, [minval, maxval])
+            | Some (Ast.NN_LeakyRelu {alpha}) => (Ast.NN_ACTIV_LRELU, [alpha])
             | Some op =>
                 throw Ast.NNError(f"unexpected activation {op.name()}")
-            | _ => (ACTIV_NONE, [])
+            | _ => (Ast.NN_ACTIV_NONE, [])
             }
         val weights = model.get_tensor(t_weights)
         val bias = model.get_tensor(t_bias)
@@ -959,7 +961,7 @@ match op {
                           // this way we can immediately re-use the same chunk of memory
                           // for the updated convolution structure
         *conv_data = init_conv(kernel_shape, strides, dilations, pads, group,
-                                weights, bias, bn_data, bn_eps, activ_func, activ_params)
+                                weights, bias, bn_data, bn_eps, activ_id, activ_params)
     }
     *model.scratch_buf = run_conv(inp, out, pb, *conv_data, *model.ntasks, *model.scratch_buf)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")

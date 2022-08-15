@@ -245,17 +245,6 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                 println(f"TIME {op.name()}: {t_ms:.2f}ms")
             }
         }
-        /*for oi@outidx <- oinfo {
-            val {idx=argidx} = oi
-            match model.get_tensor(argidx).data {
-            | Ast.NN_Data_FP32 data =>
-                match find_opt(for x <- data {isnan(x)}) {
-                | Some _ => throw Ast.NNError(f"result of '{op.name()}' has NaN's!")
-                | _ => {}
-                }
-            | _ => {}
-            }
-        }*/
         /*match op {
         | Ast.NN_Clip {name, t_inp, t_out} when name == "FeatureExtractor/MobilenetV1/MobilenetV1/Conv2d_11_depthwise/Relu6" =>
             println(f"CLIP: t_inp={model.tensor2str(model.get_tensor(t_inp), true)}, t_out={model.tensor2str(model.get_tensor(t_out), true)}")
@@ -269,6 +258,22 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
             println()
         }
+        /*for oi@outidx <- oinfo {
+            val {idx=argidx} = oi
+            match model.get_tensor(argidx).data {
+            | Ast.NN_Data_FP32 data =>
+                match find_opt(for x <- data {isnan(x)}) {
+                | Some _ => throw Ast.NNError(f"result of '{op.name()}' has NaN's!")
+                | _ => {}
+                }
+            | Ast.NN_Data_FP16 data =>
+                match find_opt(for x <- data {isnan(float(x))}) {
+                | Some _ => throw Ast.NNError(f"result of '{op.name()}' has NaN's!")
+                | _ => {}
+                }
+            | _ => {}
+            }
+        }*/
 
         if outputs != [] {
             for oi@outidx <- oinfo {

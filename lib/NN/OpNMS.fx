@@ -58,17 +58,17 @@ static float _fx_iou_boxes(const _fx_nms_entry* a, const _fx_nms_entry* b)
 }
 }
 
-fun run_nms(boxes_shape_: int [], boxes_data_: float [],
-            scores_shape_: int [], scores_data_: float [],
+fun run_nms(boxes: Ast.nntensor_t, scores: Ast.nntensor_t,
             max_boxes: int, center_point_box: bool,
             iou_threshold: float, score_threshold: float,
             out_buf0: Ast.nnbuf_t, ntasks: int):
     (int, int64 [], Ast.nnbuf_t)
 @ccode {
-    const int_* boxes_shape = (const int_*)(boxes_shape_->data);
-    const float* boxes_data = (const float*)(boxes_data_->data);
-    const int_* scores_shape = (const int_*)(scores_shape_->data);
-    const float* scores_data = (const float*)(scores_data_->data);
+    int boxes_typ = boxes->data.tag, scores_typ = scores->data.tag;
+    const int_* boxes_shape = (const int_*)(boxes->shape.shape.data);
+    const char* boxes_data = boxes->data.u.NN_Data_I8.data;
+    const int_* scores_shape = (const int_*)(scores->shape.shape.data);
+    const char* scores_data = scores->data.u.NN_Data_I8.data;
     int_ N, B, Bx, C;
     volatile int status = FX_OK;
     _fx_nms_entry* best_boxes = 0;
@@ -79,8 +79,12 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
 
     if (max_boxes == 0) max_boxes = INT_MAX;
 
-    if (boxes_shape_->dim[0].size != 3 ||
-        scores_shape_->dim[0].size != 3)
+    if ((boxes_typ != FX_F32 && boxes_typ != FX_F16) ||
+        (scores_typ != FX_F32 && scores_typ != FX_F16))
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+
+    if (boxes->shape.shape.dim[0].size != 3 ||
+        scores->shape.shape.dim[0].size != 3)
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
 
     if (boxes_shape[0] != scores_shape[0] ||
@@ -113,12 +117,13 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
             int_ i, j, k, i0, i1, nboxes;
 
             for (i = 0; i < B; i++) {
-                const float* scores_ni = scores_data + n0*B*C + i;
+                const float* scores_ni = (const float*)scores_data + n0*B*C + i;
+                const fx_f16* scores_ni_f16 = (const fx_f16*)scores_data + n0*B*C + i;
                 float best_score = scores_ni[0];
                 int_ best_label = 0;
                 bool multiclass = false;
                 for (int_ j = 1; j < C; j++) {
-                    float score_nij = scores_ni[j*B];
+                    float score_nij = scores_typ == FX_F32 ? scores_ni[j*B] : FX_FLOAT(scores_ni_f16[j*B]);
                     //printf("%d. class=%d. score=%.2f\n", (int)i, (int)j, score_nij);
                     if (score_nij > best_score)
                     {
@@ -130,8 +135,24 @@ fun run_nms(boxes_shape_: int [], boxes_data_: float [],
                         multiclass = true;
                 }
 
+                /*printf("%s%d. best_score=%.5g, score_threshold=%.5g\n",
+                    (best_score > score_threshold ? "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! " : ""),
+                    (int)i, best_score, score_threshold);*/
                 if (best_score > score_threshold) {
-                    const float* box0 = boxes_data + (n0*B + i)*4;
+                    float box0[4];
+                    if (boxes_typ == FX_F32) {
+                        const float* boxptr = (const float*)boxes_data + (n0*B + i)*4;
+                        box0[0] = boxptr[0];
+                        box0[1] = boxptr[1];
+                        box0[2] = boxptr[2];
+                        box0[3] = boxptr[3];
+                    } else {
+                        const fx_f16* boxptr_f16 = (const fx_f16*)boxes_data + (n0*B + i)*4;
+                        box0[0] = FX_FLOAT(boxptr_f16[0]);
+                        box0[1] = FX_FLOAT(boxptr_f16[1]);
+                        box0[2] = FX_FLOAT(boxptr_f16[2]);
+                        box0[3] = FX_FLOAT(boxptr_f16[3]);
+                    }
                     i0 = 0; i1 = C;
                     if (!multiclass) {
                         i0 = best_label;
@@ -252,14 +273,11 @@ match op {
         | Ast.NN_Data_I64 max_boxes_data => max_boxes_data[0]
         | _ => throw Ast.NNError(f"NonMaxSuppression: 'max_output_boxes_per_class' parameter, if any, must have I64 type")
     }
-    match (boxes.data, scores.data) {
-    | (Ast.NN_Data_FP32 boxes_data, Ast.NN_Data_FP32 scores_data) =>
-        val (ndetections, out_data, out_buf) = run_nms(boxes.shape.shape, boxes_data, scores.shape.shape, scores_data,
-                            int(max_boxes), center_point_box, iou_threshold, score_threshold, out_buf, *model.ntasks)
-        model.buffers[out_bufidx] = out_buf
-        model.tensors[t_out] = Ast.nntensor_t {data = Ast.NN_Data_I64(out_data),
+    val (ndetections, out_data, out_buf) = run_nms(boxes, scores,
+            int(max_boxes), center_point_box, iou_threshold,
+            score_threshold, out_buf, *model.ntasks)
+    model.buffers[out_bufidx] = out_buf
+    model.tensors[t_out] = Ast.nntensor_t {data = Ast.NN_Data_I64(out_data),
             shape = Ast.nnshape_t {layout=Ast.NN_Layout_ND, shape=[ndetections, 3]}}
-    | _ => throw NotImplementedError
-    }
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

@@ -44,6 +44,7 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
         val nclasses = n - CLS0
         val data_i = match out.data {
             | Ast.NN_Data_FP32 out_data => out_data.reshape(N*output_size*output_size*m, n)
+            | Ast.NN_Data_FP16 out_data => float(out_data).reshape(N*output_size*output_size*m, n)
             | _ => throw Ast.NNError("floating-point tensors are expected as Yolo outputs")
             }
 

@@ -82,6 +82,10 @@ type nnelwise_t =
     | NN_Log | NN_Mish | NN_Neg | NN_Not | NN_Relu | NN_Round | NN_Sigmoid | NN_Sign
     | NN_Sin | NN_Sinh | NN_Softplus | NN_Softsign | NN_Sqrt | NN_Tan | NN_Tanh | NN_Elemwise_ZZ
 
+type nnactiv_t =
+    | NN_ACTIV_NONE | NN_ACTIV_RELU | NN_ACTIV_CLIP | NN_ACTIV_LRELU
+    | NN_ACTIV_SIGMOID | NN_ACTIV_TANH | NN_ACTIV_MISH
+
 type nnreduce_t =
     | NN_ReduceL1 | NN_ReduceL2
     | NN_ReduceLogSum | NN_ReduceLogSumExp

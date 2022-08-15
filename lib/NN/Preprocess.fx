@@ -30,6 +30,7 @@ type image_preprocess_params_t =
     swaprb: bool, layout_: Ast.nnlayout_t,
     elemtype_: scalar_t, ntasks: int): Ast.nndata_t
 @ccode {
+    ntasks = ntasks <= 0 ? 4 : ntasks;
     int_ image_height = image->dim[0].size;
     int_ image_width = image->dim[1].size;
     int_ N = 1, C = 3, H = input_size->t0, W = input_size->t1;
@@ -96,9 +97,12 @@ type image_preprocess_params_t =
 
     if (total < 100000) ntasks = 1;
 
-    /*printf("esz=%d, image_height=%d, image_width=%d, H=%d, W=%d, layout=NCHW? %d, scale_y=%.3f, scale_x=%.3f, scale_y*inp_size.0=%d, scale_x*inp_size.1=%d, dy=%.2f, dx=%.2f, mean=(%.2f, %.2f, %.2f), scale=(%.2f, %.2f, %.2f)\n",
-        (int)esz, (int)image_height, (int)image_width, (int)H, (int)W, (int)(layout == _FX_NN_Layout_NCHW), scale_y, scale_x,
-        (int)lrintf(scale_y*input_size->t0), (int)lrintf(scale_x*input_size->t1),
+    /*printf("esz=%d, ntasks=%d, image_height=%d, image_width=%d, H=%d, W=%d, layout=%s, scale_y=%.3f, scale_x=%.3f, scale_y*inp_size.0=%d, scale_x*inp_size.1=%d, dy=%.2f, dx=%.2f, mean=(%.5f, %.5f, %.5f), scale=(%.5f, %.5f, %.5f)\n",
+        (int)esz, (int)ntasks, (int)image_height, (int)image_width, (int)H, (int)W,
+        (layout == _FX_NN_Layout_NCHW ? "NCHW" :
+        layout == _FX_NN_Layout_NHWC ? "NHWC" : "???"),
+        scale_y, scale_x, (int)lrintf(scale_y*input_size->t0),
+        (int)lrintf(scale_x*input_size->t1),
         dy, dx, m0, m1, m2, s0, s1, s2);*/
     #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++) {

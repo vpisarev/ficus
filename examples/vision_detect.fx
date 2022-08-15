@@ -9,31 +9,35 @@ import NN.Ast as Ast, NN.Inference, NN.Labels, NN.OpDetect, NN.Preprocess as Pre
 
 type detector_kind_t = DetectorSSD | DetectorYolo | DetectorTinyYolo | DetectorAuto
 
-fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [], ~class_names: string [], ~show_labels:bool=true)
+fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [],
+               ~class_names: string [], ~show_labels:bool=true)
 {
     val nclasses = class_names.size()
     val colors = [for i <- 0:nclasses {
-        val hue = ((i*17) % nclasses)*360.f
+        val hue = ((i*10 + 37) % nclasses)*360.f/nclasses
         val rgb = Color.hsv2rgb(hue, 1.f, 1.f)
         sat_uint8((rgb.2*255., rgb.1*255., rgb.0*255.))
     }]
 
-    for (y0, x0, y1, x1, conf, clsid) <- bboxes {
-        draw.rectangle(image, (round(x0), round(y0)),
-            (round(x1), round(y1)), colors[int(clsid)], thickness=3)
+    val (h, w) = image.size()
+    val thickness = if h*w > 300*300 {5} else {3}
+    for (y0, x0, y1, x1, conf, clsid)@i <- bboxes {
+        val x0_ = round(x0), y0_ = round(y0), x1_ = round(x1), y1_ = round(y1)
+        val clsid = int(clsid)
+        draw.rectangle(image, (x0_, y0_), (x1_, y1_), colors[clsid], thickness=thickness)
+        println(f"object #{i} ({class_names[clsid]}, class_id={clsid}): {(x0, y0, x1-x0+1, y1-y0+1):.1f}, conf={conf:.2f}")
     }
 }
 
 var mname = "", lname = ""
 var images: string list = []
-var ntasks = 0
+var ntasks = 4
 var use_fp16 = false
 var trace = false
 var detector_kind = DetectorAuto
 var show_boxes = true
 var dump = false
 var profile = false
-var labels: string [] = []
 var niter = 15
 var outname = "output.jpg"
 
@@ -55,8 +59,6 @@ fun parse_args(args: string list)
                 throw Fail("")
             }
         parse_args(rest)
-    | "-labels" :: lname_ :: rest =>
-        lname = lname_; parse_args(rest)
     | "-ssd" :: rest =>
         detector_kind = DetectorSSD; parse_args(rest)
     | "-yolo" :: rest =>
@@ -96,8 +98,6 @@ if detector_kind == DetectorAuto {
     }
 }
 
-if labels == [] {labels = NN.Labels.COCO}
-
 val model =
 try {
     NN.Inference.read_model(mname)
@@ -125,11 +125,11 @@ for t_inp@i <- model.graph.inpargs {
     println(f"input #{i}, '{inparg.name}': {Ast.shape2str(model, inparg.shape)}, typ={inparg.typ}")
 }
 
-val (input_size, planar_input) = match detector_kind {
-    | DetectorYolo => (416, false)
-    | DetectorTinyYolo => (416, true)
-    | DetectorSSD => (300, false)
-    | _ => (300, planar_input)
+val (input_size, planar_input, labels) = match detector_kind {
+    | DetectorYolo => (416, false, NN.Labels.COCO_2014)
+    | DetectorTinyYolo => (416, true, NN.Labels.COCO_2014)
+    | DetectorSSD => (300, false, NN.Labels.COCO_paper)
+    | _ => (300, planar_input, NN.Labels.COCO_2014)
     }
 
 type nn_output_t = (string, Ast.nntensor_t)
@@ -163,12 +163,17 @@ for imgname@i <- images {
     val img = Image.Decoder.imread_rgb(imgname)
     val (h, w) = img.size()
     val inp = Preprocess.image_to_tensor(img, preprocess_params, ntasks)
+    val inputs = match detector_kind {
+        | DetectorTinyYolo => [("", inp), ("", NN.Ast.mktensor([float(h), float(w)].reshape(1, 2)))]
+        | _ => [("", inp)]
+        }
+
     var outputs: nn_output_t [] = []
     var best_profile = model.perf_profile_time.copy()
     val (gmean, mintime) = Sys.timeit(
         fun () {
             outputs =
-            try NN.Inference.run(model, [("", inp)], outputs=[]) catch {
+            try NN.Inference.run(model, inputs, outputs=[]) catch {
             | Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
             | Fail msg => println(f"failure: '{msg}'"); []
             }
