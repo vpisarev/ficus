@@ -252,7 +252,7 @@ int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
                 if (dy0 == 3) {
                     for (; x0 < x1; x0++) {
                         int xi_ = x0*stride_x - pad_left;
-                        const float* inptr_xi = inptr + W0*yi_ + xi_;
+                        const float* inptr_xi = inptr + Wi*yi_ + xi_;
                         s_0 = s_1 = s_2 = biasval;
                         for (int k = 0; k < ksize; k++) {
                             int inp_ofs = ofstab[k];
@@ -393,8 +393,7 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                         int xi_ = x0*stride_x - pad_left;
                         s_0 = biasval;
                         for (int k = 0; k < ksize; k++) {
-                            int dy = yxtab[k*2];
-                            int yi = yi_ + dy;
+                            int yi = yi_ + yxtab[k*2];
                             int xi = xi_ + yxtab[k*2+1];
                             float w = w_f32[k];
                             if (((unsigned)yi < (unsigned)Hi) & ((unsigned)xi < (unsigned)Wi))
@@ -542,7 +541,7 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                 if (dy0 == 3) {
                     for (; x0 < x1; x0++) {
                         int xi_ = x0*stride_x - pad_left;
-                        const fx_f16* inptr_xi = inptr + W0*yi_ + xi_;
+                        const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
                         s_0 = s_1 = s_2 = biasval;
                         for (int k = 0; k < ksize; k++) {
                             int inp_ofs = ofstab[k];
@@ -626,21 +625,16 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
         const uint8_t* inptr = (const uint8_t*)inptr0 + inp_planesize*nc;
         uint8_t* outptr = (uint8_t*)outptr0 + out_planesize*nc;
         float scale = (inp_scale0*inv_out_scale0)*qconv->w_scale[c];
-        float biasval = (qconv->bias[c] - (inp_zp0 +
-            inp_mask)*qconv->w_sum[c])*scale + out_zp0 + out_mask;
-        const int16_t* weights = (const int16_t*)qconv->depthwise_weights + c*padded_ksize;
+        float biasval = (qconv->bias[c] - inp_zp0*qconv->w_sum[c])*scale + out_zp0;
+        const int16_t* weights = qconv->depthwise_weights + c*padded_ksize;
 #ifdef __ARM_NEON
         uint8x8_t vinp_mask = vdup_n_u8(inp_mask), vout_mask = vdup_n_u8(out_mask);
         int16x4_t w03 = vdup_n_s16(0), w47 = w03, w8 = w03;
-        float32x4_t vscale = vdupq_n_f32(0.f), vbias = vscale;
-        if (useSIMD) {
-            vscale = vdupq_n_f32(scale);
-            vbias = vdupq_n_f32(biasval);
-            if (is3x3) {
-                w03 = vld1_s16(weights);
-                w47 = vld1_s16(weights+4);
-                w8 = vdup_n_s16(weights[8]);
-            }
+        float32x4_t vscale = vdupq_n_f32(scale), vbias = vdupq_n_f32(biasval);
+        if (useSIMD && is3x3) {
+            w03 = vld1_s16(weights);
+            w47 = vld1_s16(weights+4);
+            w8 = vdup_n_s16(weights[8]);
         }
 #endif
         for (int y0 = 0; y0 < H0; y0 += dy0, outptr += W0*dy0) {
@@ -656,8 +650,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                         int xi_ = x0*stride_x - pad_left;
                         s_0 = s_1 = s_2 = 0;
                         for (int k = 0; k < ksize; k++) {
-                            int dy = yxtab[k*2];
-                            int yi = yi_ + dy;
+                            int yi = yi_ + yxtab[k*2];
                             int xi = xi_ + yxtab[k*2+1];
                             int w = weights[k];
                             if ((unsigned)xi < (unsigned)Wi) {
@@ -670,9 +663,9 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                 s_2 += inp_mask*w;
                             }
                         }
-                        s_0 = (int)lrint(s_0*scale + biasval);
-                        s_1 = (int)lrint(s_1*scale + biasval);
-                        s_2 = (int)lrint(s_2*scale + biasval);
+                        s_0 = (int)lrintf(s_0*scale + biasval);
+                        s_1 = (int)lrintf(s_1*scale + biasval);
+                        s_2 = (int)lrintf(s_2*scale + biasval);
                         outptr[x0] = FX_SATURATE(s_0, out_mask);
                         outptr[x0 + W0] = FX_SATURATE(s_1, out_mask);
                         outptr[x0 + W0*2] = FX_SATURATE(s_2, out_mask);
@@ -682,8 +675,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                         int xi_ = x0*stride_x - pad_left;
                         s_0 = 0;
                         for (int k = 0; k < ksize; k++) {
-                            int dy = yxtab[k*2];
-                            int yi = yi_ + dy;
+                            int yi = yi_ + yxtab[k*2];
                             int xi = xi_ + yxtab[k*2+1];
                             int w = weights[k];
                             if (((unsigned)yi < (unsigned)Hi) & ((unsigned)xi < (unsigned)Wi))
@@ -691,7 +683,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                             else
                                 s_0 += inp_mask*w;
                         }
-                        s_0 = (int)lrint(s_0*scale + biasval);
+                        s_0 = (int)lrintf(s_0*scale + biasval);
                         outptr[x0] = FX_SATURATE(s_0, out_mask);
                     }
                 }
@@ -713,8 +705,9 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                 uint8x8_t b0, b1, b2;
                                 int32x4_t s0l = vdupq_n_s32(0), s0h=s0l, s1l=s0l, s1h=s0l, s2l=s0l, s2h=s0l;
 
+                                #undef _FX_QDEPTHWISE_LOAD3
                                 #define _FX_QDEPTHWISE_LOAD3(row) \
-                                    b0 = veor_u8(vld1_u8(inptr_xi+Wi*row), vinp_mask); \
+                                    b0 = veor_u8(vld1_u8(inptr_xi+Wi*row+0), vinp_mask); \
                                     b1 = veor_u8(vld1_u8(inptr_xi+Wi*row+1), vinp_mask); \
                                     b2 = veor_u8(vld1_u8(inptr_xi+Wi*row+2), vinp_mask); \
                                     int16x8_t x##row##0 = vreinterpretq_s16_u16(vmovl_u8(b0)); \
@@ -724,8 +717,8 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                 #define _FX_QDEPTHWISE_ACC3(row0, row1, row2, col, w, lane) \
                                     s0l = vmlal_lane_s16(s0l, vget_low_s16(x##row0##col), w, lane); \
                                     s0h = vmlal_high_lane_s16(s0h, x##row0##col, w, lane); \
-                                    s1l = vmlal_lane_s16(s0l, vget_low_s16(x##row1##col), w, lane); \
-                                    s1h = vmlal_high_lane_s16(s0h, x##row1##col, w, lane); \
+                                    s1l = vmlal_lane_s16(s1l, vget_low_s16(x##row1##col), w, lane); \
+                                    s1h = vmlal_high_lane_s16(s1h, x##row1##col, w, lane); \
                                     s2l = vmlal_lane_s16(s2l, vget_low_s16(x##row2##col), w, lane); \
                                     s2h = vmlal_high_lane_s16(s2h, x##row2##col, w, lane)
 
@@ -746,12 +739,12 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                 _FX_QDEPTHWISE_ACC3(2, 3, 4, 1, w47, 3);
                                 _FX_QDEPTHWISE_ACC3(2, 3, 4, 2, w8, 0);
 
-                                s0l = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s0l), vscale, vbias));
-                                s0h = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s0h), vscale, vbias));
-                                s1l = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s1l), vscale, vbias));
-                                s1h = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s1h), vscale, vbias));
-                                s2l = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s2l), vscale, vbias));
-                                s2h = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s2h), vscale, vbias));
+                                s0l = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s0l), vscale));
+                                s0h = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s0h), vscale));
+                                s1l = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s1l), vscale));
+                                s1h = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s1h), vscale));
+                                s2l = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s2l), vscale));
+                                s2h = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s2h), vscale));
 
                                 uint16x8_t t0 = vcombine_u16(vqmovun_s32(s0l), vqmovun_s32(s0h));
                                 uint16x8_t t1 = vcombine_u16(vqmovun_s32(s1l), vqmovun_s32(s1h));
@@ -810,8 +803,8 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                 s0l = vmlal_lane_s16(s0l, vget_low_s16(x22), w8, 0);
                                 s0h = vmlal_high_lane_s16(s0h, x22, w8, 0);
 
-                                s0l = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s0l), vscale, vbias));
-                                s0h = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s0h), vscale, vbias));
+                                s0l = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s0l), vscale));
+                                s0h = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s0h), vscale));
                                 uint16x8_t t0 = vcombine_u16(vqmovun_s32(s0l), vqmovun_s32(s0h));
 
                                 b0 = veor_u8(vqmovn_u16(t0), vout_mask);
@@ -856,13 +849,13 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                 uint8x8_t b0 = veor_u8(vld1_u8(inptr_xi + ofstab[k]), vinp_mask);
                                 int16x8_t t0 = vreinterpretq_s16_u16(vmovl_u8(b0));
                                 int16x4_t w = vdup_n_s16(weights[k]);
-                                s0l = vmlal_lane_s16(s0l, vget_low_s16(t0), w, 0);
-                                s0h = vmlal_high_lane_s16(s0h, t0, w, 0);
+                                s0l = vmlal_s16(s0l, vget_low_s16(t0), w);
+                                s0h = vmlal_s16(s0h, vget_high_s16(t0), w);
                             }
 
                             {
-                            s0l = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s0l), vscale, vbias));
-                            s0h = vcvtnq_s32_f32(vfmaq_f32(vcvtq_f32_s32(s0h), vscale, vbias));
+                            s0l = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s0l), vscale));
+                            s0h = vcvtnq_s32_f32(vfmaq_f32(vbias, vcvtq_f32_s32(s0h), vscale));
                             uint16x8_t t0 = vcombine_u16(vqmovun_s32(s0l), vqmovun_s32(s0h));
                             vst1_u8(outptr + x0, veor_u8(vqmovn_u16(t0), vout_mask));
                             }
@@ -873,7 +866,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                 if (dy0 == 3) {
                     for (; x0 < x1; x0++) {
                         int xi_ = x0*stride_x - pad_left;
-                        const uint8_t* inptr_xi = inptr + W0*yi_ + xi_;
+                        const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
                         s_0 = s_1 = s_2 = 0;
                         for (int k = 0; k < ksize; k++) {
                             int inp_ofs = ofstab[k];
@@ -882,9 +875,9 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                             s_1 += (inptr_xi[inp_ofs + Wi] ^ inp_mask)*w;
                             s_2 += (inptr_xi[inp_ofs + Wi*2] ^ inp_mask)*w;
                         }
-                        s_0 = (int)lrint(s_0*scale + biasval);
-                        s_1 = (int)lrint(s_1*scale + biasval);
-                        s_2 = (int)lrint(s_2*scale + biasval);
+                        s_0 = (int)lrintf(s_0*scale + biasval);
+                        s_1 = (int)lrintf(s_1*scale + biasval);
+                        s_2 = (int)lrintf(s_2*scale + biasval);
                         outptr[x0] = FX_SATURATE(s_0, out_mask);
                         outptr[x0 + W0] = FX_SATURATE(s_1, out_mask);
                         outptr[x0 + W0*2] = FX_SATURATE(s_2, out_mask);
@@ -892,12 +885,12 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                 } else {
                     for (; x0 < x1; x0++) {
                         int xi_ = x0*stride_x - pad_left;
-                        const uint8_t* inptr_xi = inptr + W0*yi_ + xi_;
+                        const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
                         s_0 = 0;
                         for (int k = 0; k < ksize; k++) {
                             s_0 += (inptr_xi[ofstab[k]] ^ inp_mask)*weights[k];
                         }
-                        s_0 = (int)lrint(s_0*scale + biasval);
+                        s_0 = (int)lrintf(s_0*scale + biasval);
                         outptr[x0] = FX_SATURATE(s_0, out_mask);
                     }
                 }

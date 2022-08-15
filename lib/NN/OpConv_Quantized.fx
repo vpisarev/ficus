@@ -109,7 +109,7 @@ static int _fx_init_qconv2d(
             for(int c = 0; c < C; c++) {
                 int w_zp_c = conv->w_zp[c], w_sum_c = 0;
                 for (int k = 0; k < ksize; k++) {
-                    int w = (weights[c*ksize + k] ^ w_mask) - w_zp_c;
+                    int w = (((const uint8_t*)weights)[c*ksize + k] ^ w_mask) - w_zp_c;
                     conv->depthwise_weights[c*padded_ksize + k] = (int16_t)w;
                     w_sum_c += w;
                 }
@@ -261,8 +261,8 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
                             yxtab, ofstab, &dw_ctx);
 
         int status = _fx_depthwise_qconv2d_u8(&dw_ctx, conv,
-            inp_typ, (const uint8_t*)inp_data->data, inp_scale0, inp_zp0_,
-            out_typ, (uint8_t*)out_data->data, out_scale0, out_zp0_,
+            inp_typ, (const uint8_t*)inp_data->data, inp_scale0, inp_zp0,
+            out_typ, (uint8_t*)out_data->data, out_scale0, out_zp0,
             (int)ntasks);
 
         if (status >= 0)
