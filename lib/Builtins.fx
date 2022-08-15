@@ -887,11 +887,6 @@ fun sat_int8(x: ('t...)) = (for xj <- x {sat_int8(xj)})
 fun sat_uint16(x: ('t...)) = (for xj <- x {sat_uint16(xj)})
 fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
 
-fun sat_uint8(x: ('t...)) = (for xj <- x {sat_uint8(xj)})
-fun sat_int8(x: ('t...)) = (for xj <- x {sat_int8(xj)})
-fun sat_uint16(x: ('t...)) = (for xj <- x {sat_uint16(xj)})
-fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
-
 // do not use lrint(x), since it's slow. and (int)round(x) is even slower
 @pure @nothrow fun round(x: float): int = @ccode { return fx_roundf2I(x) }
 @pure @nothrow fun round(x: double): int = @ccode { return fx_round2I(x) }

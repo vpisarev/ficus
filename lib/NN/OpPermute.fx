@@ -46,7 +46,7 @@ import Ast
         totalsize += total_i;
     }
 
-    #pragma omp parallel for num_threads(ntasks) if (totalsize > 10000000)
+    #pragma omp parallel for num_threads(ntasks) if (totalsize > 1000000)
     for (i = 0; i < ninputs; i++) {
         char* outptr = out_data_->u.NN_Data_I8.data;
         fx_arr_t* inp_shape_i_ = (fx_arr_t*)inp_shape_->data + i;

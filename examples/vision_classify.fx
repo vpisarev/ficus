@@ -118,7 +118,7 @@ try {
 if dump {
     println(model)
 }
-val k = 5
+val top_k = 5
 val lname = "output"
 
 type nn_output_t = (string, NN.Ast.nntensor_t)
@@ -159,9 +159,10 @@ for imgname@i <- images {
     }
     println(f"execution time: gmean={gmean*1000.:.2f}ms, mintime={mintime*1000.:.2f}ms")
     for out@i <- outputs {
-        println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{k}:")
-        val sorted_k = NN.Inference.top_k(out.1, k)
-        for j <- 0:k {
+        println(f"output #{i}: name='{out.0}', shape={out.1.shape}: top-{top_k}:")
+        val sorted_k = NN.Inference.top_k(out.1, top_k)
+        val top_k = min(top_k, sorted_k.size().1)
+        for j <- 0:top_k {
             val (label, prob) = sorted_k[0, j]
             val label_str = if labels != [] {labels[label]} else {f"class_{label}"}
             println(f"\t{j+1}. label={label_str} ({label}), prob={prob}")
