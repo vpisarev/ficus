@@ -35,7 +35,7 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
 
     assert(`ninputs == model.graph.inpargs.size()`)
     if *model.profile {
-        for i <- 0:Ast.nn_operations {
+        for i <- 0:Ast.nn_total_operations {
             model.perf_profile_time[i] = 0L
             model.perf_profile_count[i] = 0
         }
@@ -110,12 +110,6 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
         }
         //val noindent=""
         //println(f"preparing to run op {model.op2str(op, noindent)}")
-        /*match op {
-        | Ast.NN_Transpose {name, t_inp, t_out, perm} when name=="where_op_added__679" =>
-            println(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            println(f"TRANSPOSE: t_inp={model.tensor2str(model.get_tensor(t_inp), true)}, perm={perm}, t_out={model.tensor2str(model.get_tensor(t_out), true)}")
-        | _ => {}
-        }*/
         val oinfo = InferShapes.infer(model, op)
         for oi@outidx <- oinfo {
             val {idx=argidx, shape, typ} = oi
@@ -237,7 +231,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
         }
         if any_profile {
             t = Sys.tick_count() - t
-            val op_idx = op.__tag__ - 1
+            val op_idx = op.perf_profile_index()
             model.perf_profile_time[op_idx] += t
             model.perf_profile_count[op_idx] += 1
             if *model.detailed_profile {

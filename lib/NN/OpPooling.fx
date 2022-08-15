@@ -221,7 +221,7 @@ static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                             const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
                             float16x8_t s0 = vld1q_f16(inptr_xi + ofstab[0]);
                             for (k = 1; k < ksize; k++)
-                                s0 = vaddq_f32(s0, vld1q_f16(inptr_xi + ofstab[k]));
+                                s0 = vaddq_f16(s0, vld1q_f16(inptr_xi + ofstab[k]));
                             vst1q_f16(outptr + x0, vmulq_f16(s0, vscale));
                         }
                     }

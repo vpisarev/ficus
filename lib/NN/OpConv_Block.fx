@@ -364,13 +364,13 @@ void _fx_conv_update_block_u8( int np, const void* a_, const void* b_,
         c25 = vaddq_u32(c25, vld1q_u32(c + ldc*2 + 20));
         c26 = vaddq_u32(c26, vld1q_u32(c + ldc*2 + 24));
 
-        c30 = vaddq_f32(c30, vld1q_u32(c + ldc*3));
-        c31 = vaddq_f32(c31, vld1q_u32(c + ldc*3 + 4));
-        c32 = vaddq_f32(c32, vld1q_u32(c + ldc*3 + 8));
-        c33 = vaddq_f32(c33, vld1q_u32(c + ldc*3 + 12));
-        c34 = vaddq_f32(c34, vld1q_u32(c + ldc*3 + 16));
-        c35 = vaddq_f32(c35, vld1q_u32(c + ldc*3 + 20));
-        c36 = vaddq_f32(c36, vld1q_u32(c + ldc*3 + 24));
+        c30 = vaddq_u32(c30, vld1q_u32(c + ldc*3));
+        c31 = vaddq_u32(c31, vld1q_u32(c + ldc*3 + 4));
+        c32 = vaddq_u32(c32, vld1q_u32(c + ldc*3 + 8));
+        c33 = vaddq_u32(c33, vld1q_u32(c + ldc*3 + 12));
+        c34 = vaddq_u32(c34, vld1q_u32(c + ldc*3 + 16));
+        c35 = vaddq_u32(c35, vld1q_u32(c + ldc*3 + 20));
+        c36 = vaddq_u32(c36, vld1q_u32(c + ldc*3 + 24));
     }
 
     vst1q_u32(c, c00); vst1q_u32(c+4, c01);

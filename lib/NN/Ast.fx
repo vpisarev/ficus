@@ -90,7 +90,7 @@ type nnreduce_t =
     | NN_ReduceL1 | NN_ReduceL2
     | NN_ReduceLogSum | NN_ReduceLogSumExp
     | NN_ReduceMax | NN_ReduceMean| NN_ReduceMin
-    | NN_ReduceProd | NN_ReduceSum | NN_ReduceSumSquare
+    | NN_ReduceProd | NN_ReduceSum | NN_ReduceSumSquare | NN_ReduceZZ
 
 type nnorder_t =
     | NN_RowMajor
@@ -308,7 +308,8 @@ class nnop_t =
 
 val nn_operations = NN_Nop.__tag__
 val nn_elemwise_operations = NN_Elemwise_ZZ.__tag__ - 1
-val nn_total_operations = nn_operations + nn_elemwise_operations
+val nn_reduce_operations = NN_ReduceZZ.__tag__ - 1
+val nn_total_operations = nn_operations + nn_elemwise_operations + nn_reduce_operations
 
 type nnnames_t = (string, int) Hashmap.t
 
@@ -459,7 +460,7 @@ fun string(ew: nnelwise_t)
     | NN_Max => "Max"
     | NN_Mean => "Mean"
 
-    | NN_Elemwise_ZZ => "???"
+    | NN_Elemwise_ZZ => "Elemwise_ZZ"
 }
 
 fun string(r: nnreduce_t)
@@ -474,6 +475,7 @@ fun string(r: nnreduce_t)
     | NN_ReduceProd => "ReduceProd"
     | NN_ReduceSum => "ReduceSum"
     | NN_ReduceSumSquare => "ReduceSumSquare"
+    | NN_ReduceZZ => "ReduceZZ"
 }
 
 fun string(p: nnpadding_t) {
@@ -876,7 +878,7 @@ fun nnop_t.name(): (string, string) = match self
     | NN_ConvTranspose {name} => (name, "ConvTranspose")
     | NN_DequantizeLinear {name} => (name, "DequantizeLinear")
     | NN_Dropout {name} => (name, "Dropout")
-    | NN_Elemwise {name, el_op} => (name, string(el_op))
+    | NN_Elemwise {name, el_op} => (name, "Elemwise_" + string(el_op))
     | NN_Expand {name} => (name, "Expand")
     | NN_Flatten {name} => (name, "Flatten")
     | NN_Gather {name} => (name, "Gather")
@@ -896,7 +898,7 @@ fun nnop_t.name(): (string, string) = match self
     | NN_QLinearConv {name} => (name, "QLinearConv")
     | NN_QuantizeLinear {name} => (name, "QuantizeLinear")
     | NN_Range {name} => (name, "Range")
-    | NN_Reduce {name, reduce_op} => (name, string(reduce_op))
+    | NN_Reduce {name, reduce_op} => (name, "Reduce_" + string(reduce_op))
     | NN_Resize {name} => (name, "Resize")
     | NN_Reshape {name} => (name, "Reshape")
     | NN_RoiAlign {name} => (name, "RoiAlign")
@@ -915,6 +917,7 @@ fun nnop_t.name(): (string, string) = match self
 
 fun nnop_t.perf_profile_index(): int = match self {
     | NN_Elemwise {el_op} => nn_operations + el_op.__tag__ - 1
+    | NN_Reduce {reduce_op} => nn_operations + nn_elemwise_operations + reduce_op.__tag__ - 1
     | _ => self.__tag__ - 1
 }
 
