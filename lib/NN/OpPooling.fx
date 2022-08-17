@@ -356,6 +356,7 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
     __fp16* outptr = (__fp16*)outptr_;
     int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
     int H0 = pool->dw_ctx.H0, W0 = pool->dw_ctx.W0;
+    int Hk = pool->Hk, Wk = pool->Wk;
     int inner_y0 = pool->dw_ctx.inner_ytop;
     int inner_y1 = pool->dw_ctx.inner_ybottom;
     int inner_x0 = pool->dw_ctx.inner_xleft;
@@ -367,18 +368,18 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
     const int* ofstab = pool->dw_ctx.ofstab;
 
     const int vec_nlanes = FX_VEC_NLANES_F16;
-    bool useSIMD = stride_x == 1 && inner_x0 < W0;
-    bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
+    bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_x0 < W0;
+    bool is3x3 = stride_x == 1 && Hk == 3 && Wk == 3;
 
     for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
         for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
             int x0 = 0, x1 = y0 >= inner_y0 && y0 < inner_y1 ? inner_x0 : W0;
             int yi_ = y0*stride_y - pad_top;
             for(;;) {
-                __fp16 s;
+                __fp16 s0;
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    s = -FLT16_MAX;
+                    s0 = -FLT16_MAX;
                     for (int k = 0; k < ksize; k++) {
                         int yi = yi_ + yxtab[k*2];
                         int xi = xi_ + yxtab[k*2+1];
@@ -386,9 +387,9 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
                         v = inptr[yi*Wi + xi];
-                        s = s >= v ? s : v;
+                        s0 = s0 >= v ? s0 : v;
                     }
-                    outptr[x0] = s;
+                    outptr[x0] = s0;
                 }
                 if (x0 == W0)
                     break;
@@ -418,18 +419,33 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                             s0 = vmaxq_f16(vmaxq_f16(s0, s1), s2);
                             vst1q_f16(outptr + x0, s0);
                         }
-                    } else {
+                    } else if (stride_x == 1) {
                         for (; x0 < x1; x0 += vec_nlanes) {
                             if (x0 + vec_nlanes > x1) {
                                 if (x0 <= inner_x0)
                                     break;
                                 x0 = x1 - vec_nlanes;
                             }
-                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            int xi_ = x0*stride_x - pad_left;
                             const __fp16* inptr_xi = inptr + Wi*yi_ + xi_;
                             float16x8_t s0 = vld1q_f16(inptr_xi + ofstab[0]);
-                            for (k = 1; k < ksize; k++)
+                            for (int k = 1; k < ksize; k++)
                                 s0 = vmaxq_f16(s0, vld1q_f16(inptr_xi + ofstab[k]));
+                            vst1q_f16(outptr + x0, s0);
+                        }
+                    } else if (yi_ + (Hk-1)*pool->dilation_y < Hi-1) {
+                        assert(stride_x == 2);
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left;
+                            const __fp16* inptr_xi = inptr + Wi*yi_ + xi_;
+                            float16x8_t s0 = vld2q_f16(inptr_xi + ofstab[0]).val[0];
+                            for (int k = 1; k < ksize; k++)
+                                s0 = vmaxq_f16(s0, vld2q_f16(inptr_xi + ofstab[k]).val[0]);
                             vst1q_f16(outptr + x0, s0);
                         }
                     }
@@ -437,12 +453,12 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
                     const __fp16* inptr_xi = inptr + Wi*yi_ + xi_;
-                    s = inptr_xi[ofstab[0]];
+                    s0 = inptr_xi[ofstab[0]];
                     for (int k = 1; k < ksize; k++) {
                         __fp16 v = inptr_xi[ofstab[k]];
-                        s = s >= v ? s : v;
+                        s0 = s0 >= v ? s0 : v;
                     }
-                    outptr[x0] = s;
+                    outptr[x0] = s0;
                 }
                 x1 = W0;
             }
@@ -469,8 +485,8 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
     const int* ofstab = pool->dw_ctx.ofstab;
 #ifdef __ARM_NEON
     const int vec_nlanes = FX_VEC_NLANES_U8;
-    bool useSIMD = stride_x == 1 && inner_x0 < W0;
-    bool is3x3 = pool->Hk == 3 && pool->Wk == 3;
+    bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_x0 < W0;
+    bool is3x3 = stride_x == 1 && pool->Hk == 3 && pool->Wk == 3;
 #endif
 
     for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
@@ -522,7 +538,7 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                             s0 = vmaxq_u8(vmaxq_u8(s0, s1), s2);
                             vst1q_u8(outptr + x0, s0);
                         }
-                    } else {
+                    } else if (stride_x == 1) {
                         for (; x0 < x1; x0 += vec_nlanes) {
                             if (x0 + vec_nlanes > x1) {
                                 if (x0 <= inner_x0)
@@ -534,6 +550,21 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                             uint8x16_t s0 = vld1q_u8(inptr_xi + ofstab[0]);
                             for (k = 1; k < ksize; k++)
                                 s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[k]));
+                            vst1q_u8(outptr + x0, s0);
+                        }
+                    } else if (yi_ + (pool->Hk-1)*pool->dilation_y < Hi-1) {
+                        assert(stride_x == 2);
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
+                            uint8x16_t s0 = vld2q_u8(inptr_xi + ofstab[0]).val[0];
+                            for (k = 1; k < ksize; k++)
+                                s0 = vmaxq_u8(s0, vld2q_u8(inptr_xi + ofstab[k]).val[0]);
                             vst1q_u8(outptr + x0, s0);
                         }
                     }
@@ -653,7 +684,7 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     if (!func)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
-    if (NC*out_planesize < 100000)
+    if ((size_t)NC*out_planesize*pool.Hk*pool.Wk < 100000)
         ntasks = 1;
 
     #pragma omp parallel for num_threads(ntasks)
