@@ -661,7 +661,7 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
                         float32x4_t vscale = vdupq_n_f32(scale);
                         float32x4_t vbias = vdupq_n_f32(biasval);
                         uint8x8_t vout_mask = vdup_n_u8((uint8_t)out_mask);
-                        for (; j < out_width; j += 8) {
+                        for (; j + 7 < out_width; j += 8) {
                             if (j + 8 > out_width) {
                                 if (j == 0)
                                     break;
