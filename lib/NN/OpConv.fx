@@ -721,12 +721,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             float32x4_t vbias = vdupq_n_f32(biasval), valpha = vdupq_n_f32(alpha), vmax = vdupq_n_f32(maxval);
                             float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
                             if (pbptr) {
-                                for (; j < out_width; j += 8) {
-                                    if (j + 8 > out_width) {
-                                        if (j == 0)
-                                            break;
-                                        j = out_width - 8;
-                                    }
+                                for (; j + 7 < out_width; j += 8) {
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
                                     v0 = vaddq_f32(v0, vld1q_f32(pbptr + j));
@@ -789,12 +784,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             float16x8_t vmax = vdupq_n_f16(maxval < 65504.f ? maxval : 65504.f);
                             float16x8_t z = vdupq_n_f16(0.f), one = vdupq_n_f16(1.f);
                             if (pbptr) {
-                                for (; j < out_width; j += 8) {
-                                    if (j + 8 > out_width) {
-                                        if (j == 0)
-                                            break;
-                                        j = out_width - 8;
-                                    }
+                                for (; j + 7 < out_width; j += 8) {
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
                                     float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
