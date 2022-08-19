@@ -121,17 +121,14 @@ type nnconv_attr_t
     pads: int []
     strides: int []
     dilations: int []
-    group: int
+    group: int = 0
 }
 
 class nnop_t =
     | NN_AvgPool: {
         name: string
         ceil_mode: bool
-        dilations: int []
-        kernel_shape: int []
-        pads: int []
-        strides: int []
+        attr: nnconv_attr_t
         count_include_pad: bool
         t_inp: int; t_out: int }
     | NN_BatchNorm: {
@@ -210,10 +207,7 @@ class nnop_t =
     | NN_MaxPool: {
         name: string
         ceil_mode: bool
-        dilations: int []
-        kernel_shape: int []
-        pads: int []
-        strides: int []
+        attr: nnconv_attr_t
         storage_order: nnorder_t = NN_RowMajor
         t_inp: int; t_out: int }
     | NN_NonMaxSuppression: {
@@ -233,6 +227,16 @@ class nnop_t =
         t_A_scale: int; t_A_zp: int
         t_B_scale: int; t_B_zp: int
         t_out_scale: int; t_out_zp: int }
+    | NN_QLinearAvgPool: {
+        name: string
+        ceil_mode: bool
+        attr: nnconv_attr_t
+        count_include_pad: bool
+        channels_last: bool
+        t_inp: int; t_out: int
+        t_inp_scale: int; t_inp_zp: int
+        t_out_scale: int; t_out_zp: int
+        }
     | NN_QLinearConv: {
         name: string
         attr: nnconv_attr_t
@@ -304,6 +308,11 @@ class nnop_t =
         name: string; perm: int []; t_inp: int; t_out: int }
     | NN_Unsqueeze: {
         name: string; t_inp: int; t_axes: int; t_out: int }
+    | NN_Conv_Profile_1x1
+    | NN_Conv_Profile_Depthwise
+    | NN_Conv_Profile_3x3s1d1
+    | NN_QLinearConv_Profile_1x1
+    | NN_QLinearConv_Profile_Depthwise
     | NN_Nop // shall always be the last operation in the list
 
 val nn_operations = NN_Nop.__tag__
@@ -893,9 +902,10 @@ fun nnop_t.name(): (string, string) = match self
     | NN_NonMaxSuppression {name} => (name, "NonMaxSuppression")
     | NN_NonZero {name} => (name, "NonZero")
     | NN_QLinearAdd {name} => (name, "QLinearAdd")
+    | NN_QLinearAvgPool {name} => (name, "QLinearAvgPool")
+    | NN_QLinearConv {name} => (name, "QLinearConv")
     | NN_QLinearGlobalAvgPool {name} => (name, "QLinearGlobalAvgPool")
     | NN_QLinearMatMul {name} => (name, "QLinearMatMul")
-    | NN_QLinearConv {name} => (name, "QLinearConv")
     | NN_QuantizeLinear {name} => (name, "QuantizeLinear")
     | NN_Range {name} => (name, "Range")
     | NN_Reduce {name, reduce_op} => (name, "Reduce_" + string(reduce_op))
@@ -912,13 +922,12 @@ fun nnop_t.name(): (string, string) = match self
     | NN_TopK {name} => (name, "TopK")
     | NN_Transpose {name} => (name, "Transpose")
     | NN_Unsqueeze {name} => (name, "Unsqueeze")
+    | NN_Conv_Profile_1x1 => ("<noname>", "Conv (1x1)")
+    | NN_Conv_Profile_Depthwise => ("<noname>", "Conv (Depthwise)")
+    | NN_Conv_Profile_3x3s1d1 => ("<noname>", "Conv (3x3s1d1)")
+    | NN_QLinearConv_Profile_1x1 => ("<noname>", "QLinearConv (1x1)")
+    | NN_QLinearConv_Profile_Depthwise => ("<noname>", "QLinearConv (Depthwise)")
     | NN_Nop => ("<nop>", "Nop")
-}
-
-fun nnop_t.perf_profile_index(): int = match self {
-    | NN_Elemwise {el_op} => nn_operations + el_op.__tag__ - 1
-    | NN_Reduce {reduce_op} => nn_operations + nn_elemwise_operations + reduce_op.__tag__ - 1
-    | _ => self.__tag__ - 1
 }
 
 fun targs2pairs(prefix: string, args: int []) =
@@ -964,6 +973,8 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
     | NN_QLinearAdd {t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp,
                     t_out_scale, t_out_zp, t_out} =>
         ([t_A, t_A_scale, t_A_zp, t_B, t_B_scale, t_B_zp, t_out_scale, t_out_zp], [t_out])
+    | NN_QLinearAvgPool {t_inp, t_inp_scale, t_inp_zp, t_out, t_out_scale, t_out_zp} =>
+        ([t_inp, t_inp_scale, t_inp_zp, t_out_scale, t_out_zp], [t_out])
     | NN_QLinearConv {t_inp, t_weights, t_bias, t_out, t_inp_scale, t_inp_zp,
                       t_w_scale, t_w_zp, t_out_scale, t_out_zp} =>
         ([t_inp, t_weights, t_bias, t_inp_scale, t_inp_zp,
@@ -989,23 +1000,27 @@ fun nnop_t.get_inputs_outputs(): (int [], int []) = match self
     | NN_TopK {t_inp, t_K, t_out, t_out_ind} =>  ([t_inp, t_K], [t_out, t_out_ind])
     | NN_Transpose {t_inp, t_out} => ([t_inp], [t_out])
     | NN_Unsqueeze {t_inp, t_axes, t_out} => ([t_inp, t_axes], [t_out])
+    | NN_Conv_Profile_1x1
+    | NN_Conv_Profile_Depthwise
+    | NN_Conv_Profile_3x3s1d1
+    | NN_QLinearConv_Profile_1x1
+    | NN_QLinearConv_Profile_Depthwise => ([], [])
 }
 
 fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
 {
-    fun conv_attr2str(attr: nnconv_attr_t) =
+    fun conv_attr2str(attr: nnconv_attr_t, ~pr_group: bool=true) =
         f"kernel_shape={attr.kernel_shape}, \
         pads={attr.pads}, strides={attr.strides}, \
-        dilations={attr.dilations}, group={attr.group}"
+        dilations={attr.dilations}" + (if pr_group {f", group={attr.group}"} else {""})
 
     val sub_indent = indent + "  "
     //println(f"dumping op={op.name()}")
     match op {
     | NN_Nop => "Nop"
-    | NN_AvgPool {name, ceil_mode, dilations, kernel_shape, pads,
-        strides, count_include_pad, t_inp, t_out} =>
-        op2str(name, "AvgPool", f"ceil_mode={ceil_mode},\ndilations={dilations},\nkernel_shape={kernel_shape},\n\
-            pads={pads},\nstrides={strides},\ncount_include_pad={count_include_pad}",
+    | NN_AvgPool {name, ceil_mode, attr, count_include_pad, t_inp, t_out} =>
+        op2str(name, "AvgPool", conv_attr2str(attr, pr_group=false) +
+            f"ceil_mode={ceil_mode},\ncount_include_pad={count_include_pad}",
             t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_BatchNorm {name, epsilon, momentum, training_mode, t_inp, t_scale, t_B, t_mean, t_var, t_out} =>
         op2str(name, "BatchNorm", f"epsilon={epsilon},\nmomentum={momentum},\ntraining_mode={training_mode}",
@@ -1080,10 +1095,9 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
     | NN_LRN {name, size, alpha, beta, bias, t_inp, t_out} =>
         op2str(name, "LRN", f"size={size},\nalpha={alpha},\nbeta={beta},\nbias={bias}",
                 t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
-    | NN_MaxPool {name, ceil_mode, dilations, kernel_shape, pads,
-        strides, storage_order, t_inp, t_out} =>
-        op2str(name, "MaxPool", f"ceil_mode={ceil_mode}, dilations={dilations}, kernel_shape={kernel_shape}, \
-            pads={pads}, strides={strides}, storage_order={storage_order}",
+    | NN_MaxPool {name, ceil_mode, attr, storage_order, t_inp, t_out} =>
+        op2str(name, "MaxPool", conv_attr2str(attr, pr_group=false) +
+            f"ceil_mode={ceil_mode},\nstorage_order={storage_order}",
             t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_NonMaxSuppression {
         name, center_point_box, t_boxes, t_scores,
@@ -1101,6 +1115,13 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
                 ("t_A_scale", t_A_scale), ("t_A_zp", t_A_zp),
                 ("t_B_scale", t_B_scale), ("t_B_zp", t_B_zp),
                 ("t_out", t_out)]), indent)
+    | NN_QLinearAvgPool {name, ceil_mode, attr, count_include_pad, channels_last,
+        t_inp, t_inp_scale, t_inp_zp, t_out, t_out_scale, t_out_zp} =>
+        op2str(name, "QLinearAvgPool", conv_attr2str(attr) + f"ceil_mode={ceil_mode},\n\
+            channels_last={channels_last},\ncount_include_pad={count_include_pad}",
+            t2str(model, [("t_inp", t_inp), ("t_inp_scale", t_inp_scale),
+                ("t_int_zp", t_inp_zp), ("t_out_scale", t_out_scale),
+                ("t_out_zp", t_out_zp), ("t_out", t_out)]), indent)
     | NN_QLinearConv {name, attr, t_inp, t_weights, t_bias, t_out, t_inp_scale, t_inp_zp,
                       t_w_scale, t_w_zp, t_out_scale, t_out_zp} =>
         op2str(name, "QLinearConv", conv_attr2str(attr),
@@ -1178,6 +1199,12 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
         op2str(name, "Transpose", f"perm={perm}", t2str(model, [("t_inp", t_inp), ("t_out", t_out)]), indent)
     | NN_Unsqueeze {name, t_inp, t_axes, t_out} =>
         op2str(name, "Unsqueeze", "", t2str(model, [("t_inp", t_inp), ("t_axes", t_axes), ("t_out", t_out)]), indent)
+    | NN_Conv_Profile_1x1
+    | NN_Conv_Profile_Depthwise
+    | NN_Conv_Profile_3x3s1d1
+    | NN_QLinearConv_Profile_1x1
+    | NN_QLinearConv_Profile_Depthwise =>
+        throw NNError(f"unexpected operation '{op.name().1}'")
     }
 }
 
@@ -1377,7 +1404,8 @@ fun nnarg_t.copy() = nnarg_t {
     typ = self.typ
 }
 
-fun nnmodel_t.get_tensor(argidx: int) = if argidx > 0 {self.tensors[argidx]} else {empty_tensor()}
+fun nnmodel_t.get_tensor(argidx: int): nntensor_t =
+    if argidx > 0 {self.tensors[argidx]} else {empty_tensor()}
 
 fun nnmodel_t.isconst(argidx: int) = argidx == 0 || self.args[argidx].argkind == NN_Arg_Const
 fun nnmodel_t.isinput(argidx: int) = argidx > 0 && self.args[argidx].argkind == NN_Arg_Input
@@ -1393,6 +1421,41 @@ fun nnmodel_t.get_output_names(): string [] =
     [for i <- self.graph.outargs {
         self.args[i].name
     }]
+
+fun nnmodel_t.perf_profile_index(op: nnop_t): (int, string?) =
+    match op {
+    | NN_Elemwise {el_op} => (nn_operations + el_op.__tag__ - 1, None)
+    | NN_Reduce {reduce_op} =>
+        (nn_operations + nn_elemwise_operations + reduce_op.__tag__ - 1, None)
+    | NN_Conv {attr, t_weights} =>
+        val w_shape = self.get_tensor(t_weights).shape.shape
+        if attr.group == w_shape[0] {
+            val perf_op = NN_Conv_Profile_Depthwise
+            (perf_op.__tag__ - 1, Some(perf_op.name().1))
+        } else if attr.kernel_shape[0] == 1 && attr.kernel_shape[1] == 1 {
+            val perf_op = NN_Conv_Profile_1x1
+            (perf_op.__tag__ - 1, Some(perf_op.name().1))
+        } else if attr.kernel_shape[0] == 3 && attr.kernel_shape[1] == 3 &&
+                  attr.strides[0] == 1 && attr.strides[1] == 1 &&
+                  attr.dilations[0] == 1 && attr.dilations[1] == 1 {
+            val perf_op = NN_Conv_Profile_3x3s1d1
+            (perf_op.__tag__ - 1, Some(perf_op.name().1))
+        } else {
+            (op.__tag__ - 1, None)
+        }
+    | NN_QLinearConv {attr, t_weights} =>
+        val w_shape = self.get_tensor(t_weights).shape.shape
+        if attr.group == w_shape[0] {
+            val perf_op = NN_QLinearConv_Profile_Depthwise
+            (perf_op.__tag__ - 1, Some(perf_op.name().1))
+        } else if attr.kernel_shape[0] == 1 && attr.kernel_shape[1] == 1 {
+            val perf_op = NN_QLinearConv_Profile_1x1
+            (perf_op.__tag__ - 1, Some(perf_op.name().1))
+        } else {
+            (op.__tag__ - 1, None)
+        }
+    | _ => (op.__tag__ - 1, None)
+    }
 
 fun fit(shape: nnshape_t, typ: scalar_t, data: nndata_t,
         buf: nnbuf_t, ~x2: bool=false): (nndata_t, nnbuf_t)

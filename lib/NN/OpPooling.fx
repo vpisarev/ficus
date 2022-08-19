@@ -22,6 +22,8 @@ typedef struct _fx_pooling2d_t
     int dilation_y, dilation_x;
     int pad_top, pad_bottom, pad_left, pad_right;
     bool count_include_pad;
+    float inp_scale, out_scale;
+    int inp_zp, out_zp;
 } _fx_pooling2d_t;
 
 static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
@@ -243,6 +245,140 @@ static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
     }
 }
 #endif
+
+static void _fx_avgpool_2d_u8(int nc, const char* inptr_, char* outptr_,
+                              const _fx_pooling2d_t* pool)
+{
+    const uint8_t* inptr = (const uint8_t*)inptr_;
+    uint8_t* outptr = (uint8_t*)outptr_;
+    int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
+    int H0 = pool->dw_ctx.H0, W0 = pool->dw_ctx.W0;
+    int Hk = pool->Hk, Wk = pool->Wk;
+    int inner_y0 = pool->dw_ctx.inner_ytop;
+    int inner_y1 = pool->dw_ctx.inner_ybottom;
+    int inner_x0 = pool->dw_ctx.inner_xleft;
+    int inner_x1 = pool->dw_ctx.inner_xright;
+    int stride_y = pool->stride_y, stride_x = pool->stride_x;
+    int ksize = pool->Hk*pool->Wk;
+    int pad_top = pool->pad_top, pad_left = pool->pad_left;
+    const int* yxtab = pool->dw_ctx.yxtab;
+    const int* ofstab = pool->dw_ctx.ofstab;
+    float inp_scale = pool->inp_scale;
+    float out_scale = pool->out_scale;
+    int inp_zp = pool->inp_zp;
+    int out_zp = pool->out_zp;
+    bool count_include_pad = pool->count_include_pad;
+    float scale_ = inp_scale/out_scale;
+    float bias = out_zp - inp_zp*scale_;
+    float scale = scale_/(Hk*Wk);
+#ifdef __ARM_NEON
+    const int vec_nlanes = FX_VEC_NLANES_U8;
+    bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_x0 < W0;
+    bool is3x3 = stride_x == 1 && Hk == 3 && Wk == 3;
+#endif
+
+    for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
+        for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
+            int x0 = 0, x1 = y0 >= inner_y0 && y0 < inner_y1 ? inner_x0 : W0;
+            int yi_ = y0*stride_y - pad_top;
+            for(;;) {
+                int s;
+                for (; x0 < x1; x0++) {
+                    int xi_ = x0*stride_x - pad_left;
+                    int count = 0;
+                    s = 0;
+                    for (int k = 0; k < ksize; k++) {
+                        int yi = yi_ + yxtab[k*2];
+                        int xi = xi_ + yxtab[k*2+1];
+                        int v;
+                        if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
+                            continue;
+                        v = inptr[yi*Wi + xi];
+                        s += v;
+                        count++;
+                    }
+                    s = count_include_pad ? s*scale + bias : s*scale_/count + bias;
+                    int isum = (int)lrintf(s);
+                    outptr[x0] = FX_SATURATE(isum, 0);
+                }
+                if (x0 == W0)
+                    break;
+                x1 = inner_x1;
+            #if 0 //def __ARM_NEON
+                if (useSIMD) {
+                    if (is3x3) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left;
+                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
+                            uint8x16_t s0 = vld1q_u8(inptr_xi + ofstab[0]);
+                            uint8x16_t s1 = vld1q_u8(inptr_xi + ofstab[1]);
+                            uint8x16_t s2 = vld1q_u8(inptr_xi + ofstab[2]);
+
+                            s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[3]));
+                            s1 = vmaxq_u8(s1, vld1q_u8(inptr_xi + ofstab[4]));
+                            s2 = vmaxq_u8(s2, vld1q_u8(inptr_xi + ofstab[5]));
+
+                            s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[6]));
+                            s1 = vmaxq_u8(s1, vld1q_u8(inptr_xi + ofstab[7]));
+                            s2 = vmaxq_u8(s2, vld1q_u8(inptr_xi + ofstab[8]));
+
+                            s0 = vmaxq_u8(vmaxq_u8(s0, s1), s2);
+                            vst1q_u8(outptr + x0, s0);
+                        }
+                    } else if (stride_x == 1) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
+                            uint8x16_t s0 = vld1q_u8(inptr_xi + ofstab[0]);
+                            for (k = 1; k < ksize; k++)
+                                s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[k]));
+                            vst1q_u8(outptr + x0, s0);
+                        }
+                    } else if (yi_ + (pool->Hk-1)*pool->dilation_y < Hi-1) {
+                        assert(stride_x == 2);
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_x0)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
+                            uint8x16_t s0 = vld2q_u8(inptr_xi + ofstab[0]).val[0];
+                            for (k = 1; k < ksize; k++)
+                                s0 = vmaxq_u8(s0, vld2q_u8(inptr_xi + ofstab[k]).val[0]);
+                            vst1q_u8(outptr + x0, s0);
+                        }
+                    }
+                }
+            #endif
+                for (; x0 < x1; x0++) {
+                    int xi_ = x0*stride_x - pad_left;
+                    const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
+                    s = inptr_xi[ofstab[0]];
+                    for (int k = 1; k < ksize; k++) {
+                        int v = inptr_xi[ofstab[k]];
+                        s = s >= v ? s : v;
+                    }
+                    s = s*scale + bias;
+                    int isum = (int)lrintf(s);
+                    outptr[x0] = FX_SATURATE(isum, 0);
+                }
+                x1 = W0;
+            }
+        }
+    }
+}
 
 static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                                const _fx_pooling2d_t* pool)
@@ -483,6 +619,7 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
     const int* yxtab = pool->dw_ctx.yxtab;
     const int* ofstab = pool->dw_ctx.ofstab;
+
 #ifdef __ARM_NEON
     const int vec_nlanes = FX_VEC_NLANES_U8;
     bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_x0 < W0;
@@ -594,7 +731,7 @@ typedef void (*_fx_pool_func_t)(int nc, const char* inptr_, char* outptr_,
 fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
                 kernel_shape_: int [], stride_: int [], dilation_: int [],
                 padding_: int [], count_include_pad: bool,
-                ntasks: int): void
+                inp_out_scale_zp: (float, int, float, int)?, ntasks: int): void
 @ccode {
     const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
     fx_arr_t* out_data = &out->data.u.NN_Data_I8;
@@ -641,6 +778,13 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     pool.pad_right = (int)padding[3];
     pool.count_include_pad = count_include_pad;
 
+    if (inp_out_scale_zp->tag > 1) {
+        pool.inp_scale = inp_out_scale_zp->u.Some.t0;
+        pool.inp_zp = (int)inp_out_scale_zp->u.Some.t1;
+        pool.out_scale = inp_out_scale_zp->u.Some.t2;
+        pool.out_zp = (int)inp_out_scale_zp->u.Some.t3;
+    }
+
     _fx_init_depthwise2d((int)inp_shape[0], (int)inp_shape[2], (int)inp_shape[3],
                          (int)out_shape[2], (int)out_shape[3],
                          pool.Hk, pool.Wk, pool.stride_y, pool.stride_x,
@@ -670,7 +814,8 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
 
     func =
         inp_typ == FX_U8 ?
-            (pool_typ == 'M' ? _fx_maxpool_2d_u8 : 0) :
+            (pool_typ == 'M' ? _fx_maxpool_2d_u8 :
+             pool_typ == 'A' ? _fx_avgpool_2d_u8 : 0) :
         inp_typ == FX_F32 ?
             (pool_typ == 'M' ? _fx_maxpool_2d_f32 :
             pool_typ == 'A' ? _fx_avgpool_2d_f32 : 0) :
@@ -701,22 +846,35 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
 
 fun run_maxpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
-| Ast.NN_MaxPool {ceil_mode, dilations, kernel_shape, pads,
-                  strides, storage_order, t_inp, t_out} =>
+| Ast.NN_MaxPool {ceil_mode, attr, storage_order, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_pooling('M', inp, out, kernel_shape, strides, dilations, pads, true, *model.ntasks)
+    run_pooling('M', inp, out, attr.kernel_shape, attr.strides, attr.dilations, attr.pads, true, None, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
 fun run_avgpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {
-| Ast.NN_AvgPool {ceil_mode, dilations, kernel_shape, pads,
-    strides, count_include_pad, t_inp, t_out} =>
+| Ast.NN_AvgPool {ceil_mode, attr, count_include_pad, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_pooling('A', inp, out, kernel_shape, strides, dilations, pads,
-                count_include_pad, *model.ntasks)
+    run_pooling('A', inp, out, attr.kernel_shape, attr.strides, attr.dilations, attr.pads,
+                count_include_pad, None, *model.ntasks)
+| _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
+}
+
+fun run_qavgpool(model: Ast.nnmodel_t, op: Ast.nnop_t) =
+match op {
+| Ast.NN_QLinearAvgPool {ceil_mode, attr, count_include_pad, t_inp,
+    t_inp_scale, t_inp_zp, t_out_scale, t_out_zp, t_out} =>
+    val inp = model.get_tensor(t_inp)
+    val inp_scale = model.get_tensor(t_inp_scale).data.float_scalar_or(1.f)
+    val inp_zp = model.get_tensor(t_inp_zp).data.int_scalar_or(0)
+    val out_scale = model.get_tensor(t_inp_scale).data.float_scalar_or(1.f)
+    val out_zp = model.get_tensor(t_out_zp).data.int_scalar_or(0)
+    val out = model.get_tensor(t_out)
+    run_pooling('A', inp, out, attr.kernel_shape, attr.strides, attr.dilations, attr.pads,
+                count_include_pad, Some((inp_scale, inp_zp, out_scale, out_zp)), *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 

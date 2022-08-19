@@ -67,6 +67,8 @@ match op
         OpReduce.run_nonzero(model, op)
     | Ast.NN_QLinearAdd _ =>
         OpQuantized.run_qadd(model, op)
+    | Ast.NN_QLinearAvgPool _ =>
+        OpPooling.run_qavgpool(model, op)
     | Ast.NN_QLinearConv _ =>
         OpConv_Quantized.run_qconv(model, op)
     | Ast.NN_QLinearMatMul _ =>
@@ -105,4 +107,10 @@ match op
         OpPermute.run_transpose(model, op)
     | Ast.NN_Unsqueeze {t_inp, t_out} =>
         model.copy_tensor_data(t_inp, t_out)
+    | Ast.NN_Conv_Profile_1x1
+    | Ast.NN_Conv_Profile_Depthwise
+    | Ast.NN_Conv_Profile_3x3s1d1
+    | Ast.NN_QLinearConv_Profile_1x1
+    | Ast.NN_QLinearConv_Profile_Depthwise =>
+        throw Ast.NNError(f"run op: unexpected operation '{op.name().1}'")
 }

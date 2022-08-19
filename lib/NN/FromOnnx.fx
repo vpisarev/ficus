@@ -29,8 +29,9 @@ exception OnnxConvertError: string
     | OAst.DTYP_UINT32 => Type_U32
     | OAst.DTYP_INT64 => Type_I64
     | OAst.DTYP_UINT64 => Type_U64
-    | OAst.DTYP_FLOAT16 => Type_F16
-    | OAst.DTYP_BFLOAT16 => Type_BF16
+    | OAst.DTYP_FLOAT16 => Type_F32   // convert FLOAT16=>F32, since we may or
+                                      // may not have FP16 support on the target platform
+    | OAst.DTYP_BFLOAT16 => Type_F32  // ... same ...
     | OAst.DTYP_BOOL => Type_Bool
     | OAst.DTYP_DOUBLE => Type_F64
     | OAst.DTYP_STRING | OAst.DTYP_COMPLEX64 | OAst.DTYP_COMPLEX128 =>
@@ -337,8 +338,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
             val ninputs = size(inputs), noutputs = size(outputs)
 
             val rev_more_ops = match node.op {
-            | "Add" | "And" | "Div" | "Equal" | "Greater" | "Less"
-            | "Mod" | "Mul" | "Or" | "Sub" | "Xor" =>
+            | "Add" | "And" | "Div" | "Equal" | "Greater" | "GreaterOrEqual"
+            | "Less" | "LessOrEqual" | "Mod" | "Mul" | "Or" | "Pow" | "Sub" | "Xor" =>
                 assert(`ninputs == 2`)
                 assert(`noutputs == 1`)
                 val el_op = match node.op {
@@ -353,6 +354,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     | "Mod" => Ast.NN_Mod
                     | "Mul" => Ast.NN_Mul
                     | "Or" => Ast.NN_Or
+                    | "Pow" => Ast.NN_Pow
                     | "Sub" => Ast.NN_Sub
                     | "Xor" => Ast.NN_Xor
                     | _ => throw OnnxConvertError(f"unsupported unary operation {node.op}")
@@ -410,22 +412,28 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     | _ => throw OnnxConvertError(f"unsupported reduce operation {node.op}")
                 }
                 [:: Ast.NN_Reduce {name=name, reduce_op=reduce_op, axes=axes, keepdims=keepdims!=0, t_inp=inputs[0], t_out=outputs[0]}]
-            | "AveragePool" | "MaxPool" =>
+            | "AveragePool" | "MaxPool" | "QLinearAveragePool" =>
                 val ismax = node.op == "MaxPool"
-                assert(`ninputs == 1`)
+                val quantized = node.op == "QLinearAveragePool"
+                if quantized {
+                    assert(`ninputs == 4 || ninputs == 5`)
+                } else {
+                    assert(`ninputs == 1`)
+                }
                 assert(`noutputs == 1`)
                 var kernel_shape = [], strides = [], dilations = []
                 var pads = [], auto_pad = Ast.NN_Pad_None, count_include_pad = 0
-                var ceil_mode = 0, storage_order = 0
+                var ceil_mode = 0, storage_order = 0, channels_last = 0
                 for a <- node.attrs {
-                    | {name="kernel_shape"} => kernel_shape = attr2ints(a)
-                    | {name="pads"} => pads = attr2ints(a)
-                    | {name="strides"} => strides = attr2ints(a)
-                    | {name="dilations"} => dilations = attr2ints(a)
                     | {name="auto_pad"} => auto_pad = attr2autopad(a)
                     | {name="ceil_mode"} => ceil_mode = attr2int(a)
-                    | {name="storage_order"} => storage_order = attr2int(a)
                     | {name="count_include_pad"} => count_include_pad = attr2int(a)
+                    | {name="dilations"} => dilations = attr2ints(a)
+                    | {name="kernel_shape"} => kernel_shape = attr2ints(a)
+                    | {name="last_channeles"} => channels_last = attr2int(a)
+                    | {name="pads"} => pads = attr2ints(a)
+                    | {name="storage_order"} => storage_order = attr2int(a)
+                    | {name="strides"} => strides = attr2ints(a)
                     | _ => {}
                 }
                 val dims = size(kernel_shape)
@@ -440,15 +448,28 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 assert(`strides.size() == dims && dilations.size() == dims && pads.size() == dims*2`)
                 [:: if ismax {
                     Ast.NN_MaxPool {
-                        name=name, kernel_shape=kernel_shape, pads=pads,
-                        strides=strides, dilations=dilations,
+                        name=name, attr=Ast.nnconv_attr_t {
+                            kernel_shape=kernel_shape, pads=pads,
+                            strides=strides, dilations=dilations },
                         ceil_mode = ceil_mode != 0,
                         storage_order=storage_order,
                         t_inp=inputs[0], t_out=outputs[0] }
+                } else if quantized {
+                    Ast.NN_QLinearAvgPool {
+                        name=name, attr=Ast.nnconv_attr_t {
+                            kernel_shape=kernel_shape, pads=pads,
+                            strides=strides, dilations=dilations },
+                        ceil_mode = ceil_mode != 0,
+                        count_include_pad=count_include_pad != 0,
+                        channels_last=channels_last != 0,
+                        t_inp=inputs[0], t_inp_scale=inputs[1], t_inp_zp=inputs[2], t_out_scale=inputs[3],
+                        t_out_zp=(if ninputs > 4 {inputs[4]} else {0}),
+                        t_out=outputs[0] }
                 } else {
                     Ast.NN_AvgPool {
-                        name=name, kernel_shape=kernel_shape, pads=pads,
-                        strides=strides, dilations=dilations,
+                        name=name, attr=Ast.nnconv_attr_t {
+                            kernel_shape=kernel_shape, pads=pads,
+                            strides=strides, dilations=dilations },
                         ceil_mode = ceil_mode != 0,
                         count_include_pad=count_include_pad != 0,
                         t_inp=inputs[0], t_out=outputs[0] }

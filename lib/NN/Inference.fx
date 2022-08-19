@@ -231,7 +231,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
         }
         if any_profile {
             t = Sys.tick_count() - t
-            val op_idx = op.perf_profile_index()
+            val (op_idx, _) = model.perf_profile_index(op)
             model.perf_profile_time[op_idx] += t
             model.perf_profile_count[op_idx] += 1
             if *model.detailed_profile {
@@ -317,9 +317,11 @@ fun collect_used_op_names(model: Ast.nnmodel_t): string []
     val names = array(Ast.nn_total_operations, "")
     fun scan_graph(graph: Ast.nngraph_t) {
         for op <- graph.prog {
-            val idx = op.perf_profile_index()
-            if names[idx] == "" {
-                names[idx] = op.name().1
+            val (idx, perf_name_opt) = model.perf_profile_index(op)
+            match (names[idx], perf_name_opt) {
+            | ("", Some(perf_name)) => names[idx] = perf_name
+            | ("", None) => names[idx] = op.name().1
+            | _ => {}
             }
             match op {
             | Ast.NN_Loop {body} =>

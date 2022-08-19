@@ -103,9 +103,9 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
     try {
     match op {
     | Ast.NN_Nop => []
-    | Ast.NN_AvgPool {ceil_mode, dilations, kernel_shape, pads, strides, t_inp, t_out} =>
-        [infer_pooling_shape(ceil_mode, dilations, kernel_shape,
-            pads, strides, t_inp, t_out)]
+    | Ast.NN_AvgPool {ceil_mode, attr, t_inp, t_out} =>
+        [infer_pooling_shape(ceil_mode, attr.dilations, attr.kernel_shape,
+            attr.pads, attr.strides, t_inp, t_out)]
     | Ast.NN_BatchNorm {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
     | Ast.NN_Cast {to, t_inp, t_out} =>
@@ -366,10 +366,9 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         } ]
     | Ast.NN_LRN {t_inp, t_out} =>
         [copy_shape_typ(t_inp, t_out)]
-    | Ast.NN_MaxPool { ceil_mode, dilations, kernel_shape, pads,
-        strides, t_inp, t_out } =>
-        [infer_pooling_shape(ceil_mode, dilations, kernel_shape,
-            pads, strides, t_inp, t_out)]
+    | Ast.NN_MaxPool { ceil_mode, attr, t_inp, t_out } =>
+        [infer_pooling_shape(ceil_mode, attr.dilations, attr.kernel_shape,
+            attr.pads, attr.strides, t_inp, t_out)]
     | Ast.NN_NonMaxSuppression {t_out} =>
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_ND, shape=[1, 3]},
             typ=Type_I64, dynamic=true}]
@@ -413,6 +412,28 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         [argshapeinfo_t {
             idx=t_out, shape=out_shape, typ=A_typ, dynamic=false
         }]
+    | Ast.NN_QLinearAvgPool {ceil_mode, attr, t_inp, t_inp_scale,
+                            t_inp_zp, t_out_scale, t_out_zp, t_out} =>
+        val (_, inp_typ) = get_shape_typ(t_inp)
+        val (inp_sc_shape, inp_sc_typ) = get_shape_typ(t_inp_scale)
+        val (out_sc_shape, out_sc_typ) = get_shape_typ(t_out_scale)
+        assert(`inp_typ == Type_I8 || inp_typ == Type_U8`)
+        assert(`inp_sc_typ == Type_F32 || inp_sc_typ == Type_F16`)
+        assert(`out_sc_typ == Type_F32 || out_sc_typ == Type_F16`)
+        assert(`inp_sc_shape.total() == 1`)
+        assert(`out_sc_shape.total() == 1`)
+        if t_inp_zp > 0 {
+            val (inp_zp_shape, inp_zp_typ) = get_shape_typ(t_inp_zp)
+            assert(`inp_zp_typ == inp_typ`)
+            assert(`inp_zp_shape.total() == 1`)
+        }
+        if t_out_zp > 0 {
+            val (out_zp_shape, out_zp_typ) = get_shape_typ(t_out_zp)
+            assert(`out_zp_typ == inp_typ`)
+            assert(`out_zp_shape.total() == 1`)
+        }
+        [infer_pooling_shape(ceil_mode, attr.dilations, attr.kernel_shape,
+            attr.pads, attr.strides, t_inp, t_out)]
     | Ast.NN_QLinearConv {attr, t_inp, t_weights, t_bias, t_out, t_inp_scale, t_inp_zp,
                           t_w_scale, t_w_zp, t_out_scale, t_out_zp} =>
         val ((shape, typ), out_shape) = infer_conv_shape(t_inp, t_weights, t_bias, attr)
@@ -833,6 +854,12 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         [ argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {
             layout=shape.layout, shape=out_shape}, typ=typ,
             dynamic=!constaxes }]
+    | Ast.NN_Conv_Profile_1x1
+    | Ast.NN_Conv_Profile_Depthwise
+    | Ast.NN_Conv_Profile_3x3s1d1
+    | Ast.NN_QLinearConv_Profile_1x1
+    | Ast.NN_QLinearConv_Profile_Depthwise =>
+        throw Ast.NNError(f"shape inference: unexpected operation '{op.name().1}'")
     }} catch {
     | AssertError =>
         throw Ast.NNError(f"shape inference: {name} (op={opname}): assertion failed")

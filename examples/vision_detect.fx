@@ -39,6 +39,8 @@ var show_boxes = true
 var dump = false
 var profile = false
 var niter = 15
+var input_width = 0
+var input_height = 0
 var outname = "output.jpg"
 
 fun parse_args(args: string list)

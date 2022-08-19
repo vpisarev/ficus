@@ -176,7 +176,7 @@ static int onnx_parse_value_info(FicusOnnx__ValueInfoProto* vi, const fx_arr_t* 
         if (vi->type->value_case == FICUS_ONNX__TYPE_PROTO__VALUE_TENSOR_TYPE) {
             result->typeinfo.datatype = vi->type->tensor_type->elem_type + 1;
             const FicusOnnx__TensorShapeProto* shape = vi->type->tensor_type->shape;
-            fx_status = onnx_parse_array(shape->dim, shape->n_dim, refarrs, REF_DIM,
+            fx_status = onnx_parse_array(shape ? shape->dim : 0, shape ? shape->n_dim : 0, refarrs, REF_DIM,
                                      (onnx_parse_elem_t)onnx_parse_dim, &result->typeinfo.shapeinfo);
         } else if (vi->type->value_case == FICUS_ONNX__TYPE_PROTO__VALUE_SEQUENCE_TYPE) {
             printf("error when parsing '%s': sequences are not supported yet\n", vi->name);
@@ -233,29 +233,34 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
                 memcpy(result->data.arr.data, tensor->float_data, total*elemsize);
             } else if (elemsize == 4 &&
                 tensor->data_type == FICUS_ONNX__TENSOR_PROTO__DATA_TYPE__FLOAT16 &&
-                tensor->raw_data.len == total*2) {
+                tensor->n_int32_data == total) {
                 float* dst = (float*)result->data.arr.data;
-                for(int_ i = 0; i < total; i++) {
-                    uint8_t* p = tensor->raw_data.data + i*4;
+                for(int_ j = 0; j < total; j++) {
                     fx_bits16_t u;
-                    u.u = (uint16_t)(p[0] | ((uint32_t)p[1] << 8));
-                    dst[i] = FX_FLOAT(u.f);
+                    u.u = (uint16_t)(tensor->int32_data[j]);
+                    dst[j] = FX_FLOAT(u.f);
                 }
             } else if (elemsize == 4 && tensor->raw_data.len == total*4) {
                 uint32_t* dst = (uint32_t*)result->data.arr.data;
-                for(int_ i = 0; i < total; i++) {
-                    uint8_t* p = tensor->raw_data.data + i*4;
-                    dst[i] = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+                for(int_ j = 0; j < total; j++) {
+                    uint8_t* p = tensor->raw_data.data + j*4;
+                    dst[j] = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
                         ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+                }
+            } else if (elemsize == 8 && tensor->n_int64_data == total) {
+                int64_t* dst = (int64_t*)result->data.arr.data;
+                for(int_ j = 0; j < total; j++) {
+                    dst[j] = tensor->int64_data[j];
                 }
             } else if (elemsize == 8 && tensor->raw_data.len == total*8) {
                 int64_t* dst = (int64_t*)result->data.arr.data;
-                for(int_ i = 0; i < total; i++) {
-                    uint8_t* p = tensor->raw_data.data + i*8;
-                    dst[i] = unpack_int64(p);
+                for(int_ j = 0; j < total; j++) {
+                    uint8_t* p = tensor->raw_data.data + j*8;
+                    dst[j] = unpack_int64(p);
                 }
             } else {
-                memset(result->data.arr.data, 0, elemsize*total);
+                printf("Onnx parsing error: unsupported tensor data_type = %d\n", (int)tensor->data_type);
+                return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
             }
         }
     }
