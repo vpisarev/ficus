@@ -334,7 +334,7 @@ void _fx_nn_elemwise_tanh_f16(const void* inptr_, void* outptr_,
 #define FX_VEC_NLANES_F32 8
 #else
 #define FX_CONV_MR 4
-#define FX_CONV_MR 12
+#define FX_CONV_NR 12
 #define FX_VEC_NLANES_F32 4
 #endif
 #define FX_CONV_MR_F16 FX_CONV_MR

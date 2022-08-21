@@ -115,6 +115,69 @@ void _fx_conv_update_block_f32( int np, const void* a_, const void* b_, void* c_
 #else
 #error "unsupported FX_CONV_MR and FX_CONV_NR"
 #endif
+#elif defined __AVX2__ && FX_CONV_MR == 4 && FX_CONV_NR == 24
+    __m256 c00 = _mm256_setzero_ps(), c01 = c00, c02 = c00;
+    __m256 c10 = _mm256_setzero_ps(), c11 = c10, c12 = c10;
+    __m256 c20 = _mm256_setzero_ps(), c21 = c20, c22 = c20;
+    __m256 c30 = _mm256_setzero_ps(), c31 = c30, c32 = c30;
+
+    for( int p = 0; p < np; p++, a += FX_CONV_MR, b += FX_CONV_NR )
+    {
+        __m256 b0 = _mm256_loadu_ps(b);
+        __m256 b1 = _mm256_loadu_ps(b + 8);
+        __m256 b2 = _mm256_loadu_ps(b + 16);
+        __m256 a0 = _mm256_broadcast_ss(a);
+
+        c00 = _mm256_fmadd_ps(a0, b0, c00);
+        c01 = _mm256_fmadd_ps(a0, b1, c01);
+        c02 = _mm256_fmadd_ps(a0, b2, c02);
+        a0 = _mm256_broadcast_ss(a + 1);
+        c10 = _mm256_fmadd_ps(a0, b0, c10);
+        c11 = _mm256_fmadd_ps(a0, b1, c11);
+        c12 = _mm256_fmadd_ps(a0, b2, c12);
+        a0 = _mm256_broadcast_ss(a + 2);
+        c20 = _mm256_fmadd_ps(a0, b0, c20);
+        c21 = _mm256_fmadd_ps(a0, b1, c21);
+        c22 = _mm256_fmadd_ps(a0, b2, c22);
+        a0 = _mm256_broadcast_ss(a + 3);
+        c30 = _mm256_fmadd_ps(a0, b0, c30);
+        c31 = _mm256_fmadd_ps(a0, b1, c31);
+        c32 = _mm256_fmadd_ps(a0, b2, c32);
+    }
+
+    if (!init_c) {
+        c00 = _mm256_add_ps(c00, _mm256_loadu_ps(c));
+        c01 = _mm256_add_ps(c01, _mm256_loadu_ps(c + 8));
+        c02 = _mm256_add_ps(c02, _mm256_loadu_ps(c + 16));
+
+        c10 = _mm256_add_ps(c10, _mm256_loadu_ps(c + ldc));
+        c11 = _mm256_add_ps(c11, _mm256_loadu_ps(c + ldc + 8));
+        c12 = _mm256_add_ps(c12, _mm256_loadu_ps(c + ldc + 16));
+
+        c20 = _mm256_add_ps(c20, _mm256_loadu_ps(c + ldc*2));
+        c21 = _mm256_add_ps(c21, _mm256_loadu_ps(c + ldc*2 + 8));
+        c22 = _mm256_add_ps(c22, _mm256_loadu_ps(c + ldc*2 + 16));
+
+        c30 = _mm256_add_ps(c30, _mm256_loadu_ps(c + ldc*3));
+        c31 = _mm256_add_ps(c31, _mm256_loadu_ps(c + ldc*3 + 8));
+        c32 = _mm256_add_ps(c32, _mm256_loadu_ps(c + ldc*3 + 16));
+    }
+
+    _mm256_storeu_ps(c, c00);
+    _mm256_storeu_ps(c + 8, c01);
+    _mm256_storeu_ps(c + 16, c02);
+
+    _mm256_storeu_ps(c + ldc, c10);
+    _mm256_storeu_ps(c + ldc + 8, c11);
+    _mm256_storeu_ps(c + ldc + 16, c12);
+
+    _mm256_storeu_ps(c + ldc*2, c20);
+    _mm256_storeu_ps(c + ldc*2 + 8, c21);
+    _mm256_storeu_ps(c + ldc*2 + 16, c22);
+
+    _mm256_storeu_ps(c + ldc*3, c30);
+    _mm256_storeu_ps(c + ldc*3 + 8, c31);
+    _mm256_storeu_ps(c + ldc*3 + 16, c32);
 #else
     float cbuf[FX_CONV_MR*FX_CONV_NR];
     memset(cbuf, 0, sizeof(cbuf));

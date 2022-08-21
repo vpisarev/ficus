@@ -174,7 +174,7 @@ static void _fx_gemm_pack##N##suffix( int_ m, int_ k, const void* A_, \
     __m128i x1 = _mm_loadu_ps((src) + 4); \
     __m128i y0 = _mm_cvtps_ph(x0, 0); \
     __m128i y1 = _mm_cvtps_ph(x1, 0); \
-    _mm_storeu_si128((const __m128i*)(dst), _mm_unpacklo_epi64(y0, y1))
+    _mm_storeu_si128((__m128i*)(dst), _mm_unpacklo_epi64(y0, y1))
 
 #else
 
@@ -762,10 +762,10 @@ int fx_mpgemm( bool tA, bool tB, double alpha, double beta,
                         __m128i c_ = _mm_loadu_si128((const __m128i*)(cf16_i + j));
                         c_ = _mm_and_si128(c_, mask);
                         c0 = _mm_fmadd_ps(_mm_cvtph_ps(c_), vb, c0);
-                        c1 = _mm_fmadd_ps(_mm_cvtph_ps(_mm_unpackhi_epi64(c_, c_), vb, c1);
+                        c1 = _mm_fmadd_ps(_mm_cvtph_ps(_mm_unpackhi_epi64(c_, c_)), vb, c1);
                         __m128i cf16_0 = _mm_cvtps_ph(c0, 0);
                         __m128i cf16_1 = _mm_cvtps_ph(c1, 0);
-                        _mm_storeu_ps((const __m128i*)(cf16_i + j), _mm_unpacklo_epi64(cf16_0, cf16_1));
+                        _mm_storeu_si128((__m128i*)(cf16_i + j), _mm_unpacklo_epi64(cf16_0, cf16_1));
                     }
                 #endif
                     if (betaf == 0.f) {

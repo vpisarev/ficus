@@ -109,16 +109,16 @@ static int _fx_init_conv2d(
         conv->maxval = activ_params[1];
         conv->alpha = conv->minval == 0.f ? 0.f : 1.f;
         conv->activ_func = _fx_nn_elemwise_clip_f32;
-        conv->activ_func_f16 = _fx_nn_elemwise_clip_f16;
+        _FX_FP16_CASE(conv->activ_func_f16 = _fx_nn_elemwise_clip_f16);
     } else if (activ == _FX_ACTIV_MISH) {
         conv->activ_func = _fx_nn_elemwise_mish_f32;
-        conv->activ_func_f16 = _fx_nn_elemwise_mish_f16;
+        _FX_FP16_CASE(conv->activ_func_f16 = _fx_nn_elemwise_mish_f16);
     } else if (activ == _FX_ACTIV_SIGMOID) {
         conv->activ_func = _fx_nn_elemwise_sigmoid_f32;
-        conv->activ_func_f16 = _fx_nn_elemwise_sigmoid_f16;
+        _FX_FP16_CASE(conv->activ_func_f16 = _fx_nn_elemwise_sigmoid_f16);
     } else if (activ == _FX_ACTIV_TANH) {
         conv->activ_func = _fx_nn_elemwise_tanh_f32;
-        conv->activ_func_f16 = _fx_nn_elemwise_tanh_f16;
+        _FX_FP16_CASE(conv->activ_func_f16 = _fx_nn_elemwise_tanh_f16);
     } else {
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     }
@@ -365,7 +365,9 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     if (ndims != 4 || inp_shape[0] != out_shape[0] ||
         inp_shape[1] != conv->C || out_shape[1] != conv->K)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-    if (inp_typ != FX_F32 && inp_typ != FX_F16)
+    if (inp_typ != FX_F32
+        _FX_FP16_CASE(&& inp_typ != FX_F16)
+        )
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (inp_typ != out_typ || (pb_typ > 1 && pb_typ != inp_typ))
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
@@ -693,11 +695,14 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     wptr += HkWkCg*CONV_MR*esz,
                                     cptr += CONV_MR*ldc
                                     ) {
-                                if (inp_typ == FX_F32) {
-                                    _fx_conv_update_block_f32(c1 - c0,
-                                        wptr, inptr, cptr, ldc, c0 == 0);
-                                } else {
+                            #ifdef _FX_NN_ENABLE_FP16
+                                if (inp_typ == FX_F16) {
                                     _fx_conv_update_block_f16(c1 - c0,
+                                        wptr, inptr, cptr, ldc, c0 == 0);
+                                } else
+                            #endif
+                                {
+                                    _fx_conv_update_block_f32(c1 - c0,
                                         wptr, inptr, cptr, ldc, c0 == 0);
                                 }
                             }

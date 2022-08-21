@@ -633,12 +633,15 @@ fun run_reduce(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                 _fx_reduce_prod_f32 : _fx_reduce_sum_f32;
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
                 _fx_finit_scale_f64f32 : _fx_finit_cast_f64f32;
-        } else if (inp_typ == FX_F16) {
+        }
+    #ifdef _FX_NN_ENABLE_FP16
+        else if (inp_typ == FX_F16) {
             reduce_func = reduce_op == _FX_NN_REDUCE_PROD ?
                 _fx_reduce_prod_f16 : _fx_reduce_sum_f16;
             finit_func = reduce_op == _FX_NN_REDUCE_MEAN ?
                 _fx_finit_scale_f64f16 : _fx_finit_cast_f64f16;
         }
+    #endif
         if (reduce_op == _FX_NN_REDUCE_MEAN)
             param = reduce_total == 0 ? 0. : 1./reduce_total;
     } else if (reduce_op == _FX_NN_REDUCE_L1 ||

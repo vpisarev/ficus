@@ -33,14 +33,20 @@ int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
     _fx_activ_func_t activ_func = fast_activ ||
         conv->activ == _FX_ACTIV_NONE ? 0 : conv->activ_func;
 
-#ifdef __ARM_NEON
+#if defined __ARM_NEON || defined __AVX2__
     const int vec_nlanes = FX_VEC_NLANES_F32;
+    bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_xleft < W0;
+#ifdef __ARM_NEON
     float32x4_t valpha = vdupq_n_f32(alpha), vmaxval = vdupq_n_f32(maxval);
     float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
-    bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_xleft < W0;
     bool is3x3 = stride_x == 1 && Hk == 3 && Wk == 3;
     bool is3x3_r3 = is3x3 && conv->stride_y == 1 &&
         conv->dilation_y == 1 && conv->dilation_x == 1;
+#elif defined __AVX2__
+    __m256 valpha = _mm256_set1_ps(alpha);
+    __m256 vmaxval = _mm256_set1_ps(maxval);
+    __m256 z = _mm256_setzero_ps(), one = _mm256_set1_ps(1.f);
+#endif
 #endif
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
@@ -52,21 +58,28 @@ int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
         float biasval = conv->bias[c];
         const float* weights = conv->weights + c*padded_ksize;
 #ifdef __ARM_NEON
-        float32x4_t w0=vdupq_n_f32(0.f), w1=w0, w2=w0, w3=w0, w4=w0, w5=w0, w6=w0, w7=w0, w8=w0, vbias = w0;
-        if (useSIMD) {
-            vbias = vdupq_n_f32(biasval);
-            if (is3x3) {
-                w0 = vdupq_n_f32(weights[0]);
-                w1 = vdupq_n_f32(weights[1]);
-                w2 = vdupq_n_f32(weights[2]);
-                w3 = vdupq_n_f32(weights[3]);
-                w4 = vdupq_n_f32(weights[4]);
-                w5 = vdupq_n_f32(weights[5]);
-                w6 = vdupq_n_f32(weights[6]);
-                w7 = vdupq_n_f32(weights[7]);
-                w8 = vdupq_n_f32(weights[8]);
-            }
+        float32x4_t w0=vdupq_n_f32(0.f), w1=w0, w2=w0, w3=w0, w4=w0, w5=w0, w6=w0, w7=w0, w8=w0;
+        float32x4_t vbias = vdupq_n_f32(biasval);
+        if (useSIMD && is3x3) {
+            w0 = vdupq_n_f32(weights[0]);
+            w1 = vdupq_n_f32(weights[1]);
+            w2 = vdupq_n_f32(weights[2]);
+            w3 = vdupq_n_f32(weights[3]);
+            w4 = vdupq_n_f32(weights[4]);
+            w5 = vdupq_n_f32(weights[5]);
+            w6 = vdupq_n_f32(weights[6]);
+            w7 = vdupq_n_f32(weights[7]);
+            w8 = vdupq_n_f32(weights[8]);
         }
+#elif defined __AVX2__
+        const int even_mask[] = {0, 2, 4, 6, 1, 3, 5, 7};
+        __m256 vbias = _mm256_set1_ps(biasval);
+        __m256i even = _mm256_loadu_si256((const __m256i*)even_mask);
+        #define _mm256_loadeven_ps(ptr) \
+            _mm256_permute2f128_ps( \
+                _mm256_permutevar8x32_ps(_mm256_loadu_ps(ptr), even), \
+                _mm256_permutevar8x32_ps(_mm256_loadu_ps((ptr) + 8), even), \
+                0 + 2*16)
 #endif
         for (int y0 = 0; y0 < H0; y0 += dy0, outptr += W0*dy0) {
         #ifdef __ARM_NEON
@@ -281,6 +294,79 @@ int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
                             s0 = vmulq_f32(vminq_f32(s0, vmaxval),
                                            vbslq_f32(vcltq_f32(s0, z), valpha, one));
                             vst1q_f32(outptr + x0, s0);
+                        }
+                    }
+                }
+            #elif defined __AVX2__
+                if (useSIMD) {
+                    if (stride_x == 1) {
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_xleft)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                            __m256 s0 = vbias;
+                            for (; k <= ksize - 4; k += 4) {
+                                __m256 v0 = _mm256_loadu_ps(inptr_xi + ofstab[k]);
+                                __m256 v1 = _mm256_loadu_ps(inptr_xi + ofstab[k+1]);
+                                __m256 v2 = _mm256_loadu_ps(inptr_xi + ofstab[k+2]);
+                                __m256 v3 = _mm256_loadu_ps(inptr_xi + ofstab[k+3]);
+                                __m256 w = _mm256_broadcast_ss(weights + k);
+                                s0 = _mm256_fmadd_ps(v0, w, s0);
+                                w = _mm256_broadcast_ss(weights + k + 1);
+                                s0 = _mm256_fmadd_ps(v1, w, s0);
+                                w = _mm256_broadcast_ss(weights + k + 2);
+                                s0 = _mm256_fmadd_ps(v2, w, s0);
+                                w = _mm256_broadcast_ss(weights + k + 3);
+                                s0 = _mm256_fmadd_ps(v3, w, s0);
+                            }
+                            for (; k < ksize; k++) {
+                                __m256 v0 = _mm256_loadu_ps(inptr_xi + ofstab[k]);
+                                __m256 w = _mm256_broadcast_ss(weights + k);
+                                s0 = _mm256_fmadd_ps(v0, w, s0);
+                            }
+                            s0 = _mm256_mul_ps(_mm256_min_ps(s0, vmaxval),
+                                    _mm256_blendv_ps(one, valpha,
+                                        _mm256_cmp_ps(s0, z, _CMP_LT_OQ)));
+                            _mm256_storeu_ps(outptr + x0, s0);
+                        }
+                    } else if (yi_ + (Hk-1)*conv->dilation_y < Hi-1) {
+                        assert(stride_x == 2);
+                        for (; x0 < x1; x0 += vec_nlanes) {
+                            if (x0 + vec_nlanes > x1) {
+                                if (x0 <= inner_xleft)
+                                    break;
+                                x0 = x1 - vec_nlanes;
+                            }
+                            int xi_ = x0*stride_x - pad_left, k = 0;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                            __m256 s0 = vbias;
+                            for (; k <= ksize - 4; k += 4) {
+                                __m256 v0 = _mm256_loadeven_ps(inptr_xi + ofstab[k]);
+                                __m256 v1 = _mm256_loadeven_ps(inptr_xi + ofstab[k+1]);
+                                __m256 v2 = _mm256_loadeven_ps(inptr_xi + ofstab[k+2]);
+                                __m256 v3 = _mm256_loadeven_ps(inptr_xi + ofstab[k+3]);
+                                __m256 w = _mm256_broadcast_ss(weights + k);
+                                s0 = _mm256_fmadd_ps(v0, w, s0);
+                                w = _mm256_broadcast_ss(weights + k + 1);
+                                s0 = _mm256_fmadd_ps(v1, w, s0);
+                                w = _mm256_broadcast_ss(weights + k + 2);
+                                s0 = _mm256_fmadd_ps(v2, w, s0);
+                                w = _mm256_broadcast_ss(weights + k + 3);
+                                s0 = _mm256_fmadd_ps(v3, w, s0);
+                            }
+                            for (; k < ksize; k++) {
+                                __m256 v0 = _mm256_loadeven_ps(inptr_xi + ofstab[k]);
+                                __m256 w = _mm256_broadcast_ss(weights + k);
+                                s0 = _mm256_fmadd_ps(v0, w, s0);
+                            }
+                            s0 = _mm256_mul_ps(_mm256_min_ps(s0, vmaxval),
+                                    _mm256_blendv_ps(one, valpha,
+                                    _mm256_cmp_ps(s0, z, _CMP_LT_OQ)));
+                            _mm256_storeu_ps(outptr + x0, s0);
                         }
                     }
                 }
