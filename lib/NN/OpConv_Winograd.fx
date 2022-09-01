@@ -268,9 +268,9 @@ _fx_winograd_accum_f16(const fx_f16* inwptr, const fx_f16* wptr,
             float16x8_t s30 = vdupq_n_f16(0.f), s31 = s00, s32 = s00;
             for (int c = 0; c < Cg; c++, inwptr += _FX_WINO_IBLOCK*_FX_WINO_ATOM_F16,
                                          wptr += _FX_WINO_KBLOCK*_FX_WINO_ATOM_F16) {
-                float32x4_t w0 = vld1q_f16(wptr), w1 = vld1q_f16(wptr + 8);
-                float32x4_t w2 = vld1q_f16(wptr + 16), w3 = vld1q_f16(wptr + 24);
-                float32x4_t x0, x1, x2;
+                float16x8_t w0 = vld1q_f16(wptr), w1 = vld1q_f16(wptr + 8);
+                float16x8_t w2 = vld1q_f16(wptr + 16), w3 = vld1q_f16(wptr + 24);
+                float16x8_t x0, x1, x2;
                 x0 = vld1q_f16(inwptr);
                 x1 = vld1q_f16(inwptr + 8);
                 x2 = vld1q_f16(inwptr + 16);
