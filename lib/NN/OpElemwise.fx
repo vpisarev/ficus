@@ -776,22 +776,39 @@ fun run_binary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
 
     for (int k = 0; k < _FX_ELEMWISE_MAX_DIMS-2; k++) nplanes *= shape[k];
 
-    for (plane_idx = 0; plane_idx < nplanes; plane_idx++) {
-        size_t ofs1 = 0, ofs2 = 0, ofs = 0;
-        size_t idx = plane_idx;
-        for (int k = _FX_ELEMWISE_MAX_DIMS-3; k >= 0; k--) {
-            size_t prev_idx = idx/shape[k];
-            size_t i_k = idx - prev_idx*shape[k];
-            ofs1 += i_k*step1[k];
-            ofs2 += i_k*step2[k];
-            ofs += i_k*step[k];
-            idx = prev_idx;
-        }
+    if (nplanes == 1 && nrows == 1 && ncols > 100000 && ntasks > 1) {
+        // this branch covers 2 common cases:
+        //   tensor1 op tensor2 (where both tensors have equal shapes),
+        //   tensor op scalar and
+        //   scalar op tensor.
+        #pragma omp parallel for num_threads(ntasks)
+        for (int_ task_id = 0; task_id < ntasks; task_id++) {
+            int_ col0 = task_id*ncols/ntasks;
+            int_ col1 = (task_id+1)*ncols/ntasks;
 
-        processing_func(data1 + ofs1*esz1, rowstep1, dp1,
-                        data2 + ofs2*esz2, rowstep2, dp2,
-                        data + ofs*esz, rowstep, dp,
-                        nrows, ncols, param);
+            processing_func(data1 + (dp1*esz1)*col0, 0, dp1,
+                            data2 + (dp2*esz2)*col0, 0, dp2,
+                            data + (dp*esz)*col0, 0, dp,
+                            1, col1 - col0, param);
+        }
+    } else {
+        for (plane_idx = 0; plane_idx < nplanes; plane_idx++) {
+            size_t ofs1 = 0, ofs2 = 0, ofs = 0;
+            size_t idx = plane_idx;
+            for (int k = _FX_ELEMWISE_MAX_DIMS-3; k >= 0; k--) {
+                size_t prev_idx = idx/shape[k];
+                size_t i_k = idx - prev_idx*shape[k];
+                ofs1 += i_k*step1[k];
+                ofs2 += i_k*step2[k];
+                ofs += i_k*step[k];
+                idx = prev_idx;
+            }
+
+            processing_func(data1 + ofs1*esz1, rowstep1, dp1,
+                            data2 + ofs2*esz2, rowstep2, dp2,
+                            data + ofs*esz, rowstep, dp,
+                            nrows, ncols, param);
+        }
     }
     }
 
