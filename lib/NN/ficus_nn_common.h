@@ -12,6 +12,10 @@
 #include <limits.h>
 #include <float.h>
 
+#ifndef FLT16_MAX
+#define FLT16_MAX 65504.f
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -352,7 +356,20 @@ enum { _FX_ACTIV_NONE=1, _FX_ACTIV_RELU=2, _FX_ACTIV_CLIP=3, _FX_ACTIV_LRELU=4,
        _FX_ACTIV_SIGMOID=5, _FX_ACTIV_TANH=6, _FX_ACTIV_MISH=7 };
 typedef _fx_unary_func_t _fx_activ_func_t;
 
-enum { FX_CONV_TYPE_GENERIC=0, FX_CONV_TYPE_DEPTHWISE=1, FX_CONV_TYPE_WINOGRAD3X3=2 };
+enum { _FX_CONV_TYPE_GENERIC=0, _FX_CONV_TYPE_DEPTHWISE=1, _FX_CONV_TYPE_WINOGRAD3X3=2 };
+
+enum {
+    _FX_WINO_STEP=6,
+    _FX_WINO_KSIZE=3,
+    _FX_WINO_SIZE=_FX_WINO_STEP+_FX_WINO_KSIZE-1,
+    _FX_WINO_AREA=_FX_WINO_SIZE*_FX_WINO_SIZE,
+    _FX_WINO_KBLOCK = 4,
+    _FX_WINO_IBLOCK = 6,
+    _FX_WINO_ATOM_F32 = 4,
+    _FX_WINO_NATOMS_F32 = _FX_WINO_AREA / _FX_WINO_ATOM_F32,
+    _FX_WINO_ATOM_F16 = _FX_WINO_ATOM_F32*2,
+    _FX_WINO_NATOMS_F16 = _FX_WINO_AREA / _FX_WINO_ATOM_F16,
+};
 
 typedef struct _fx_conv2d_t
 {

@@ -1047,7 +1047,7 @@ fun op2str(model: nnmodel_t, op: nnop_t, indent: string): string
             | _ => ""}
         val (passby_name, passby_attr) =
             if t_passby > 0 {
-                (" + Add", f", passby=\"{model.args[t_passby].name}\"")
+                (" + Add", f", bypass=\"{model.args[t_passby].name}\"")
             } else {("", "")}
         op2str(convname, "Conv" + bnorm_name + passby_name + activ_name,
             conv_attr2str(attr) + f"{passby_attr}",

@@ -204,7 +204,7 @@ void _fx_conv_update_block_f32( int np, const void* a_, const void* b_, void* c_
 #endif
 }
 
-#ifdef _FX_NN_ENABLE_FP16
+#if _FX_NN_ENABLE_FP16
 void _fx_conv_update_block_f16( int np, const void* a_, const void* b_, void* c_, int ldc, bool init_c )
 {
     const fx_f16* a = (const fx_f16*)a_;

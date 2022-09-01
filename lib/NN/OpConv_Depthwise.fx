@@ -765,7 +765,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
     const int* ofstab = dw_ctx->ofstab;
 #ifdef __ARM_NEON
     const int vec_nlanes = FX_VEC_NLANES_U8/2;
-    bool useSIMD = (stride_x == 1 || stride_x == 2) & inner_xleft < W0;
+    bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_xleft < W0;
     bool is3x3 = stride_x == 1 && Hk == 3 && Wk == 3;
     bool is3x3_r3 = is3x3 && qconv->stride_y == 1 &&
         qconv->dilation_y == 1 && qconv->dilation_x == 1;

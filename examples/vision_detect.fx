@@ -131,7 +131,7 @@ val (input_size, planar_input, labels) = match detector_kind {
     | DetectorYolo => (416, false, NN.Labels.COCO_2014)
     | DetectorTinyYolo => (416, true, NN.Labels.COCO_2014)
     | DetectorSSD => (300, false, NN.Labels.COCO_paper)
-    | _ => (300, planar_input, NN.Labels.COCO_2014)
+    | _ => (416, planar_input, NN.Labels.COCO_2014)
     }
 
 type nn_output_t = (string, Ast.nntensor_t)

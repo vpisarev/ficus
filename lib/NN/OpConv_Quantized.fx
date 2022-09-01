@@ -67,13 +67,13 @@ static int _fx_init_qconv2d(
     conv->pad_top = pad_top; conv->pad_left = pad_left;
     conv->pad_bottom = pad_bottom; conv->pad_right = pad_right;
     conv->ngroups = ngroups;
-    conv->conv_type = ngroups == K && ngroups == C ? FX_CONV_TYPE_DEPTHWISE :
+    conv->conv_type = ngroups == K && ngroups == C ? _FX_CONV_TYPE_DEPTHWISE :
                       Hk == 3 && Wk == 3 && dilation_y == 1 && dilation_x == 1 &&
-                      stride_y == 1 && stride_x == 1 ? FX_CONV_TYPE_WINOGRAD3X3 : FX_CONV_TYPE_GENERIC;
+                      stride_y == 1 && stride_x == 1 ? _FX_CONV_TYPE_WINOGRAD3X3 : _FX_CONV_TYPE_GENERIC;
     // so far we only have ARM implementation of Winograd-based 3x3 convolution
 #if 1 //ndef __ARM_NEON
-    if (conv->conv_type != FX_CONV_TYPE_DEPTHWISE)
-        conv->conv_type = FX_CONV_TYPE_GENERIC;
+    if (conv->conv_type != _FX_CONV_TYPE_DEPTHWISE)
+        conv->conv_type = _FX_CONV_TYPE_GENERIC;
 #endif
     conv->w_typ = w_typ;
     int w_mask = w_typ == FX_I8 ? 128 : 0;
@@ -97,7 +97,7 @@ static int _fx_init_qconv2d(
         }
     }
 
-    if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
+    if (conv->conv_type == _FX_CONV_TYPE_DEPTHWISE) {
         // for depth-wise convolutions on NCHW data we just preserve the weights in KCHW layout,
         // but add some padding to make the weights array layout more SIMD-friendly
         int ksize = Hk*Wk;
@@ -253,7 +253,7 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
 
-    if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
+    if (conv->conv_type == _FX_CONV_TYPE_DEPTHWISE) {
         _fx_depthwise2d_t dw_ctx;
         _fx_init_depthwise2d(N, Hi, Wi, H0, W0, Hk, Wk,
                             stride_y, stride_x, dilation_y, dilation_x,

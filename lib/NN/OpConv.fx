@@ -2,20 +2,13 @@
     This file is a part of ficus language project.
     See ficus/LICENSE for the licensing terms
 */
-import Ast, OpConv_Block, OpConv_Depthwise
+import Ast, OpConv_Block, OpConv_Depthwise, OpConv_Winograd
 
 @ccode {
 #include <assert.h>
 #include <float.h>
 #include <math.h>
 #include "ficus_nn_common.h"
-
-enum {
-    _FX_WINO_STEP=6,
-    _FX_WINO_KSIZE=3,
-    _FX_WINO_SIZE=_FX_WINO_STEP+_FX_WINO_KSIZE-1,
-    _FX_WINO_AREA=_FX_WINO_SIZE*_FX_WINO_SIZE
-};
 
 void _fx_conv_update_block_f32( int np, const void* a_, const void* b_,
                                 void* c_, int ldc, bool init_c );
@@ -29,6 +22,10 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                              const _fx_conv2d_t* conv,
                              const char* inptr0, char* outptr0,
                              int ntasks);
+int _fx_winograd_conv2d(int typ, int ndims, const int_* inpshape, const char* inp,
+                        const char* bypass, const int_* outshape, char* out,
+                        const struct _fx_conv2d_t* conv, int ntasks,
+                        fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf);
 
 static void _fx_free_conv2d(void* conv_ptr)
 {
@@ -83,13 +80,14 @@ static int _fx_init_conv2d(
     conv->pad_top = pad_top; conv->pad_left = pad_left;
     conv->pad_bottom = pad_bottom; conv->pad_right = pad_right;
     conv->ngroups = ngroups;
-    conv->conv_type = ngroups == K && ngroups == C ? FX_CONV_TYPE_DEPTHWISE :
+    conv->conv_type = ngroups == K && ngroups == C ? _FX_CONV_TYPE_DEPTHWISE :
                       Hk == 3 && Wk == 3 && dilation_y == 1 && dilation_x == 1 &&
-                      stride_y == 1 && stride_x == 1 ? FX_CONV_TYPE_WINOGRAD3X3 : FX_CONV_TYPE_GENERIC;
+                      stride_y == 1 && stride_x == 1 ? _FX_CONV_TYPE_WINOGRAD3X3 :
+                      _FX_CONV_TYPE_GENERIC;
     // so far we only have ARM implementation of Winograd-based 3x3 convolution
-#if 1 //ndef __ARM_NEON
-    if (conv->conv_type != FX_CONV_TYPE_DEPTHWISE)
-        conv->conv_type = FX_CONV_TYPE_GENERIC;
+#ifndef __ARM_NEON
+    if (conv->conv_type != _FX_CONV_TYPE_DEPTHWISE)
+        conv->conv_type = _FX_CONV_TYPE_GENERIC;
 #endif
     conv->activ = activ;
     conv->minval = -FLT_MAX;
@@ -154,7 +152,7 @@ static int _fx_init_conv2d(
     }
     conv->wf16 = 0;
 
-    if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
+    if (conv->conv_type == _FX_CONV_TYPE_DEPTHWISE) {
         // for depth-wise convolutions on NCHW data we just preserve the weights in KCHW layout,
         // but add some padding to make the weights array layout more SIMD-friendly
         int ksize = Hk*Wk;
@@ -182,7 +180,7 @@ static int _fx_init_conv2d(
             }
         }
     #endif
-    } else if (conv->conv_type == FX_CONV_TYPE_WINOGRAD3X3) {
+    } else if (conv->conv_type == _FX_CONV_TYPE_WINOGRAD3X3) {
         const float G[] = {
             1.f, 0.f, 0.f,
             -2.f/9, -2.f/9, -2.f/9,
@@ -193,16 +191,29 @@ static int _fx_init_conv2d(
             32.f/45, -16.f/45, 8.f/45,
             0.f, 0.f, 1.f
         };
-        // the weights are packed as K * (C/ngroups) * W * W, where W is
-        // the both height and width of the Winograd-transformed kernel
+        // the weights are packed as 6-dim tensor:
+        // ngroups * ceil((K/ngroups)/KBLOCK) * (W*W/ATOM_SIZE) * (C/ngroups) * KBLOCK * ATOM_SIZE,
+        // where W is the size of Winograd-transformed kernel (8x8),
+        // ATOM_SIZE is number of lanes in SIMD register (4 for NEON and FP32),
+        // KBLOCK is some platform-dependent constant dependent on the number of SIMD registers.
         int Cg = C/ngroups;
-        size_t nweights = K*Cg*_FX_WINO_AREA;
+        int Kg = K/ngroups;
+        int Kg_nblocks = (Kg + _FX_WINO_KBLOCK - 1)/_FX_WINO_KBLOCK;
+        size_t nweights = ngroups*Kg_nblocks*Cg*_FX_WINO_KBLOCK*_FX_WINO_AREA;
         conv->weights = (float*)fx_malloc(nweights*sizeof(conv->weights[0]));
         memset(conv->weights, 0, nweights*sizeof(conv->weights[0]));
+    #if _FX_NN_ENABLE_FP16
+        conv->wf16 = (fx_f16*)fx_malloc(nweights*sizeof(conv->weights[0]));
+        memset(conv->wf16, 0, nweights*sizeof(conv->wf16[0]));
+    #endif
         for(int k = 0; k < K; k++) {
             float scale = bn_ab ? bn_ab[k] : 1.f;
+            int g = k / Kg;
+            int k_ = k - g*Kg;
+            int k0 = k_ / _FX_WINO_KBLOCK;
+            int dk = k_ - k0*_FX_WINO_KBLOCK;
             for(int c = 0; c < Cg; c++) {
-                float GW[_FX_WINO_SIZE*3];
+                float GW[_FX_WINO_SIZE*3], GWG[_FX_WINO_AREA];
                 fx_mpgemm(false, true, scale, 0.f,
                         _FX_WINO_SIZE, 3, FX_F32, G, 3, 1,
                         3, 3, FX_F32, weights + (k*Cg + c)*Hk*Wk, 3, 1,
@@ -210,8 +221,26 @@ static int _fx_init_conv2d(
                 fx_mpgemm(false, true, 1.f, 0.f,
                         _FX_WINO_SIZE, 3, FX_F32, GW, 3, 1,
                         _FX_WINO_SIZE, 3, FX_F32, G, 3, 1,
-                        FX_F32, conv->weights + (k*Cg + c)*_FX_WINO_AREA,
-                        _FX_WINO_SIZE, 1);
+                        FX_F32, GWG, _FX_WINO_SIZE, 1);
+                float* wptr = conv->weights +
+                            (g*Kg_nblocks + k0)*Cg*_FX_WINO_KBLOCK*_FX_WINO_AREA +
+                            (c*_FX_WINO_KBLOCK + dk)*_FX_WINO_ATOM_F32;
+                for (int i = 0; i < _FX_WINO_NATOMS_F32; i++,
+                    wptr += Cg*_FX_WINO_KBLOCK*_FX_WINO_ATOM_F32) {
+                    assert(conv->weights <= wptr && wptr + _FX_WINO_ATOM_F32 <= conv->weights + nweights);
+                    for (int j = 0; j < _FX_WINO_ATOM_F32; j++)
+                        wptr[j] = GWG[i*_FX_WINO_ATOM_F32 + j];
+                }
+            #if _FX_NN_ENABLE_FP16
+                fx_f16* wptr_f16 = conv->wf16 +
+                            (g*Kg_nblocks + k0)*Cg*_FX_WINO_KBLOCK*_FX_WINO_AREA +
+                            (c*_FX_WINO_KBLOCK + dk)*_FX_WINO_ATOM_F16;
+                for (int i = 0; i < _FX_WINO_NATOMS_F16; i++,
+                    wptr_f16 += Cg*_FX_WINO_KBLOCK*_FX_WINO_ATOM_F16) {
+                    for (int j = 0; j < _FX_WINO_ATOM_F16; j++)
+                        wptr_f16[j] = FX_FLOAT16(GWG[i*_FX_WINO_ATOM_F16 + j]);
+                }
+            #endif
             }
         }
     } else {
@@ -292,12 +321,12 @@ int64_t depthwise_time = 0, _1x1_time = 0;
 int depthwise_calls = 0, _1x1_calls = 0;
 
 int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
-               const _fx_nntensor_t* passby, _fx_conv2d_t* conv, int_ ntasks,
+               const _fx_nntensor_t* bypass, _fx_conv2d_t* conv, int_ ntasks,
                fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf)
 {
     int inp_typ = inp->data.tag;
     int out_typ = out->data.tag;
-    int pb_typ = passby ? passby->data.tag : FX_Notype;
+    int pb_typ = bypass ? bypass->data.tag : FX_Notype;
 
     int CONV_MR = inp_typ == FX_F16 ? FX_CONV_MR_F16 : FX_CONV_MR;
     int CONV_NR = inp_typ == FX_F16 ? FX_CONV_NR_F16 : FX_CONV_NR;
@@ -318,7 +347,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     const int_* out_shape = (const int_*)(out_shape_->data);
     const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
     fx_arr_t* out_data = &out->data.u.NN_Data_I8;
-    const fx_arr_t* pb_data = passby ? &passby->data.u.NN_Data_I8 : 0;
+    const fx_arr_t* bp_data = bypass ? &bypass->data.u.NN_Data_I8 : 0;
     size_t esz = inp_data->dim[0].step;
     size_t c_esz = sizeof(float);
     int ndims = inp_shape_->dim[0].size;
@@ -380,23 +409,23 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
 
-    if (conv->conv_type == FX_CONV_TYPE_DEPTHWISE) {
+    if (conv->conv_type == _FX_CONV_TYPE_DEPTHWISE) {
         _fx_depthwise2d_t dw_ctx;
         _fx_init_depthwise2d(N, Hi, Wi, H0, W0, Hk, Wk,
                             stride_y, stride_x, dilation_y, dilation_x,
                             pad_top, pad_left, pad_bottom, pad_right,
                             yxtab, ofstab, &dw_ctx);
 
-        // passby != 0 is not supported for depthwise convolutions
+        // bypass != 0 is not supported for depthwise convolutions
         // (graph fusion module should prevent such fusion)
-        if (pb_data && pb_data->data)
+        if (bp_data && bp_data->data)
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
         int status =
             inp_typ == FX_F32 ?
                 _fx_depthwise_conv2d_f32(&dw_ctx, conv, inp_data->data,
                                          out_data->data, (int)ntasks) :
-        #ifdef _FX_NN_ENABLE_FP16
+        #if _FX_NN_ENABLE_FP16
             inp_typ == FX_F16 ?
                 _fx_depthwise_conv2d_f16(&dw_ctx, conv, inp_data->data,
                                          out_data->data, (int)ntasks) :
@@ -406,6 +435,12 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
         if (status >= 0)
             fx_copy_arr(curr_scratch_buf, new_scratch_buf);
         return status;
+    } else if (conv->conv_type == _FX_CONV_TYPE_WINOGRAD3X3) {
+        if (inp_typ != out_typ)
+            return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
+        return _fx_winograd_conv2d(inp_typ, 4, inp_shape, inp_data->data,
+                        bp_data ? bp_data->data : 0, out_shape, out_data->data,
+                        conv, (int)ntasks, curr_scratch_buf, new_scratch_buf);
     }
 
     if (totalbufsize > curr_scratch_buf->dim[0].step*curr_scratch_buf->dim[0].size) {
@@ -695,7 +730,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     wptr += HkWkCg*CONV_MR*esz,
                                     cptr += CONV_MR*ldc
                                     ) {
-                            #ifdef _FX_NN_ENABLE_FP16
+                            #if _FX_NN_ENABLE_FP16
                                 if (inp_typ == FX_F16) {
                                     _fx_conv_update_block_f16(c1 - c0,
                                         wptr, inptr, cptr, ldc, c0 == 0);
@@ -714,18 +749,18 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                     const float* cptr = (const float*)cbuf_task;
                     if (inp_typ == FX_F32) {
                         float* outptr = (float*)(out_data->data + outofs);
-                        const float* pbptr = pb_data && pb_data->data ? (float*)(pb_data->data + outofs) : 0;
+                        const float* bpptr = bp_data && bp_data->data ? (float*)(bp_data->data + outofs) : 0;
 
                         for (int k = k0_block; k < k1_block; k++,
                                 cptr += ldc, outptr += out_planesize,
-                                pbptr += (pbptr ? out_planesize : 0)) {
+                                bpptr += (bpptr ? out_planesize : 0)) {
                             float biasval = biasptr[k];
                             int j = 0;
 
                         #ifdef __ARM_NEON
                             float32x4_t vbias = vdupq_n_f32(biasval), valpha = vdupq_n_f32(alpha), vmax = vdupq_n_f32(maxval);
                             float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
-                            if (pbptr) {
+                            if (bpptr) {
                                 for (; j < out_width; j += 8) {
                                     if (j + 8 > out_width) {
                                         if (j == 0)
@@ -734,8 +769,8 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     }
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
-                                    v0 = vaddq_f32(v0, vld1q_f32(pbptr + j));
-                                    v1 = vaddq_f32(v1, vld1q_f32(pbptr + j + 4));
+                                    v0 = vaddq_f32(v0, vld1q_f32(bpptr + j));
+                                    v1 = vaddq_f32(v1, vld1q_f32(bpptr + j + 4));
                                     v0 = vmulq_f32(vminq_f32(v0, vmax), vbslq_f32(vcltq_f32(v0, z), valpha, one));
                                     v1 = vmulq_f32(vminq_f32(v1, vmax), vbslq_f32(vcltq_f32(v1, z), valpha, one));
                                     vst1q_f32(outptr + j, v0);
@@ -758,10 +793,10 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             }
                         #endif
 
-                            if (pbptr) {
+                            if (bpptr) {
                                 for (; j < out_width; j++) {
                                     float v = cptr[j] + biasval;
-                                    v += pbptr[j];
+                                    v += bpptr[j];
                                     v = v <= maxval ? v : maxval;
                                     v *= (v < 0.f ? alpha : 1.f);
                                     outptr[j] = v;
@@ -780,11 +815,11 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                         }
                     } else {
                         fx_f16* outptr = (fx_f16*)(out_data->data + outofs);
-                        const fx_f16* pbptr = pb_data && pb_data->data ? (fx_f16*)(pb_data->data + outofs) : 0;
+                        const fx_f16* bpptr = bp_data && bp_data->data ? (fx_f16*)(bp_data->data + outofs) : 0;
 
                         for (int k = k0_block; k < k1_block; k++,
                                 cptr += ldc, outptr += out_planesize,
-                                pbptr += (pbptr ? out_planesize : 0)) {
+                                bpptr += (bpptr ? out_planesize : 0)) {
                             float biasval = biasptr[k];
                             int j = 0;
 
@@ -793,7 +828,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             float16x8_t valpha = vdupq_n_f16(alpha);
                             float16x8_t vmax = vdupq_n_f16(maxval < 65504.f ? maxval : 65504.f);
                             float16x8_t z = vdupq_n_f16(0.f), one = vdupq_n_f16(1.f);
-                            if (pbptr) {
+                            if (bpptr) {
                                 for (; j < out_width; j += 8) {
                                     if (j + 8 > out_width) {
                                         if (j == 0)
@@ -803,7 +838,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
                                     float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
                                     float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
-                                    v = vaddq_f16(v, vld1q_f16(pbptr + j));
+                                    v = vaddq_f16(v, vld1q_f16(bpptr + j));
                                     v = vmulq_f16(vminq_f16(v, vmax), vbslq_f16(vcltq_f16(v, z), valpha, one));
                                     vst1q_f16(outptr + j, v);
                                 }
@@ -823,10 +858,10 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             }
                         #endif
 
-                            if (pbptr) {
+                            if (bpptr) {
                                 for (; j < out_width; j++) {
                                     float v = cptr[j] + biasval;
-                                    v += FX_FLOAT(pbptr[j]);
+                                    v += FX_FLOAT(bpptr[j]);
                                     v = v <= maxval ? v : maxval;
                                     v *= (v < 0.f ? alpha : 1.f);
                                     outptr[j] = FX_FLOAT16(v);
@@ -912,14 +947,14 @@ fun init_conv(kernel_shape: int [], strides: int [],
         (int)n_activ_params, fx_result);
 }
 
-fun run_conv(inp: Ast.nntensor_t, out: Ast.nntensor_t, passby: Ast.nntensor_t,
+fun run_conv(inp: Ast.nntensor_t, out: Ast.nntensor_t, bypass: Ast.nntensor_t,
              conv_data: cptr, ntasks: int, scratch_buf: Ast.nnbuf_t): Ast.nnbuf_t
 @ccode {
     _fx_conv2d_t* conv = conv_data && conv_data->ptr ? (_fx_conv2d_t*)conv_data->ptr : 0;
     if (!conv)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
     return _fx_conv2d((const _fx_nntensor_t*)inp, (_fx_nntensor_t*)out,
-                      (const _fx_nntensor_t*)passby, conv, ntasks, scratch_buf, fx_result);
+                      (const _fx_nntensor_t*)bypass, conv, ntasks, scratch_buf, fx_result);
 }
 
 fun run_conv(model: Ast.nnmodel_t, op: Ast.nnop_t) =

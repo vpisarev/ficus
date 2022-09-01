@@ -10,10 +10,6 @@ import Ast
 #include <float.h>
 #include "ficus_nn_common.h"
 
-#ifndef FLT16_MAX
-#define FLT16_MAX 65504.f
-#endif
-
 typedef struct _fx_pooling2d_t
 {
     _fx_depthwise2d_t dw_ctx;
@@ -135,7 +131,7 @@ static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
     }
 }
 
-#ifdef _FX_NN_ENABLE_FP16
+#if _FX_NN_ENABLE_FP16
 static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                                const _fx_pooling2d_t* pool)
 {
