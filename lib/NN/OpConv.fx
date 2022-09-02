@@ -10,6 +10,12 @@ import Ast, OpConv_Block, OpConv_Depthwise, OpConv_Winograd
 #include <math.h>
 #include "ficus_nn_common.h"
 
+void _fx_conv_block_f32( int k, const void* a_, const void* b_,
+                         void* c_, int ldc, const void* bp_, int ldp,
+                         const float* bias, float alpha, float maxval, bool activ);
+void _fx_conv_block_f16( int k, const void* a_, const void* b_,
+                         void* c_, int ldc, const void* bp_, int ldp,
+                         const float* bias, float alpha, float maxval, bool activ);
 void _fx_conv_update_block_f32( int np, const void* a_, const void* b_,
                                 void* c_, int ldc, bool init_c );
 void _fx_conv_update_block_f16( int np, const void* a_, const void* b_,
@@ -321,9 +327,6 @@ static int _fx_init_conv2d(
     return fx_status;
 }
 
-int64_t depthwise_time = 0, _1x1_time = 0;
-int depthwise_calls = 0, _1x1_calls = 0;
-
 int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                const _fx_nntensor_t* bypass, _fx_conv2d_t* conv, int_ ntasks,
                fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf)
@@ -334,16 +337,6 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
 
     int CONV_MR = inp_typ == FX_F16 ? FX_CONV_MR_F16 : FX_CONV_MR;
     int CONV_NR = inp_typ == FX_F16 ? FX_CONV_NR_F16 : FX_CONV_NR;
-
-    // [TODO] sometimes we deal with small kernels and few input channels,
-    // then C_BLOCK_SIZE=256 is probably greater than HkWkCg and then we can,
-    // given constant L1 cache size, increase K_BLOCK_SIZE.
-    // it can also be that the number of output channels is small.
-    // then we can increase the amount of pixels (yx_limit - yx0) that we process at once.
-    // That is, we should make K_BLOCK_SIZE and C_BLOCK_SIZE adaptive.
-    int MAX_STRIPES = (56 + CONV_NR - 1)/CONV_NR;
-    int K_BLOCK_SIZE = ((32*(inp_typ == FX_F16 ? 2 : 1) + CONV_MR - 1)/CONV_MR)*CONV_MR;
-    int C_BLOCK_SIZE = 256;
 
     const fx_arr_t* inp_shape_ = &inp->shape.shape;
     const fx_arr_t* out_shape_ = &out->shape.shape;
@@ -372,13 +365,6 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     int Hk = conv->Hk, Wk = conv->Wk, ksize = Hk*Wk, ngroups = conv->ngroups;
     int Cg = C/ngroups, Kg = K/ngroups;
     int Kg_nblocks = (Kg + CONV_MR-1)/CONV_MR, Kg_aligned = Kg_nblocks*CONV_MR;
-    int stripes_per_sample = (out_planesize + CONV_NR - 1)/CONV_NR;
-    if (stripes_per_sample < ntasks*4)
-        stripes_per_sample = 1;
-    else
-        Kg_nblocks = 1;
-    int Kstripes = Kg_nblocks*stripes_per_sample;
-    int nsubtasks = N*ngroups*Kstripes;
     int stride_y = conv->stride_y, stride_x = conv->stride_x;
     int dilation_y = conv->dilation_y, dilation_x = conv->dilation_x;
     int pad_top = conv->pad_top, pad_bottom = conv->pad_bottom;
@@ -387,9 +373,9 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     bool fast_1x1 = stride_x == 1 && stride_y == 1 && ksize == 1;
     bool s1d1 = stride_x == 1 && stride_y == 1 && dilation_x == 1 && dilation_y == 1;
     int HkWkCg = ksize*Cg, HkWkC = HkWkCg*ngroups;
-    size_t stripesize = CONV_NR*ksize*Cg;
-    size_t taskbufsize = (stripesize + CONV_NR*K_BLOCK_SIZE*(c_esz/esz))*MAX_STRIPES;
-    size_t totalbufsize = taskbufsize*ntasks*esz;
+    int stripes_per_plane = (out_planesize + CONV_NR - 1)/CONV_NR;
+    size_t stripe_size = (size_t)HkWkCg*CONV_NR;
+    size_t totalbufsize = N*ngroups*stripes_per_plane*stripe_size*esz;
     char* inpbuf_all = 0;
     int* ofstab = (int*)alloca(ksize*3*sizeof(ofstab[0]));
     int* yxtab = ofstab + ksize;
@@ -459,431 +445,245 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     inpbuf_all = new_scratch_buf->data;
     _fx_calc_ofstab2d(Wi, Hk, Wk, dilation_y, dilation_x, yxtab, ofstab);
 
-    // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
+    // phase 1. im2row
     #pragma omp parallel for num_threads(ntasks)
     for (int task_id = 0; task_id < ntasks; task_id++) {
-        char* inpbuf_task = &inpbuf_all[taskbufsize*task_id*esz];
-        float* cbuf_task = (float*)(inpbuf_task + stripesize*MAX_STRIPES*esz);
-        int ngs0 = (int)((size_t)nsubtasks*task_id/ntasks);
-        int ngs1 = (int)((size_t)nsubtasks*(task_id+1)/ntasks);
-        for (int subtask = ngs0; subtask < ngs1; ) {
-            int ng = subtask / Kstripes;
-            int kyx0 = subtask - ng*Kstripes;
-            int kyx1 = kyx0 + (ngs1 - subtask);
-            int n = ng/ngroups, g = ng - n*ngroups;
-            size_t inp_plane_ofs = (size_t)(n*ngroups + g)*Cg*inp_planesize;
-            kyx1 = kyx1 <= Kstripes ? kyx1 : Kstripes;
-            subtask += kyx1 - kyx0;
-            int k0, k1;
-            int yx0, yx_limit, yx_block_limit = 0;
-            if (stripes_per_sample == 1) {
-                k0 = kyx0 * CONV_MR;
-                k1 = kyx1 * CONV_MR;
-                k1 = k1 <= Kg ? k1 : Kg;
-                yx0 = 0;
-                yx_limit = out_planesize;
-            } else {
-                k0 = 0;
-                k1 = Kg;
-                yx0 = kyx0*CONV_NR;
-                yx_limit = kyx1*CONV_NR;
-                yx_limit = yx_limit < out_planesize ? yx_limit : out_planesize;
-            }
+        int nc0 = task_id*N*C/ntasks, nc1 = (task_id+1)*N*C/ntasks, dc = 0;
+        for (; nc0 < nc1; nc0 += dc) {
+            int n = nc0/C, c0 = nc0 - n*C;
+            int g = c0 / Cg;
+            c0 -= g*Cg;
+            dc = Cg - c0 <= nc1 - nc0 ? Cg - c0 : nc1 - nc0;
+            const char* inptr_ = inp_data->data + (size_t)nc0*inp_planesize*esz;
+            char* inpbuf_ = inpbuf_all + ((n*ngroups + g)*stripes_per_plane*stripe_size + c0*CONV_NR)*esz;
+            int yx0 = 0;
+            for (int i = 0; i < stripes_per_plane; i++, yx0 += CONV_NR, inpbuf_ += stripe_size*esz) {
+                char* inpbuf = inpbuf_;
+                int yx1 = yx0 + CONV_NR;
+                yx1 = yx1 <= out_planesize ? yx1 : out_planesize;
+                int slice_len = yx1 - yx0;
+                bool partial = slice_len < CONV_NR;
+                if (fast_1x1) {
+                    const char* inptr = inptr_ + yx0*esz;
+                    if (!partial) {
+                        // Make special branch where memcpy() is called with a constant buffer size.
+                        // Compilers will likely unroll this loop properly.
+                        if (esz == sizeof(float)) {
+                            for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += FX_CONV_NR*sizeof(float))
+                                memcpy(inpbuf, inptr, FX_CONV_NR*sizeof(float));
+                        } else {
+                            for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += FX_CONV_NR_F16*sizeof(fx_f16))
+                                memcpy(inpbuf, inptr, FX_CONV_NR_F16*sizeof(fx_f16));
+                        }
+                    } else {
+                        for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz) {
+                            memcpy(inpbuf, inptr, slice_len*esz);
+                            memset(inpbuf + slice_len*esz, 0, (CONV_NR - slice_len)*esz);
+                        }
+                    }
+                } else {
+                    int y0_ = yx0/W0, x0_ = yx0 - y0_*W0;
+                    for (int k = 0; k < ksize; k++) {
+                        int dy = yxtab[k*2], dx = yxtab[k*2+1];
+                        if (esz == 4) {
+                            int i = 0, y0 = y0_, x0 = x0_;
+                            for (; i < FX_CONV_NR;) {
+                                int* inpbuf_ki = (int*)inpbuf + k*(FX_CONV_NR*Cg) + i;
+                                int yi = y0*stride_y + dy - pad_top;
+                                int xi = x0*stride_x + dx - pad_left;
 
-            for (; yx0 < yx_limit; yx0 = yx_block_limit) {
-                /*
-                ....................... MACROBLOCKS PROCESSING .....................
-
-                Processing each macroblock means complete computation of a certain
-                region inside 4D output tensor:
-                {sample_index_in_batch=n, group=g, k0 <= k0_block k < k1_block <= k1},
-                0 <= {yx0 <= yx < yx_block_limit} <= yx_limit <= W0*H0,
-                where yx is a flattened index: yx = y*W0 + x. Such a scheme is also
-                friendly for the further extension of this kernel to
-                1D and 3D convolution, we just need to modify the repacking part
-                (the loop below) to handle 1D and 3D spatial geometry
-                (maybe move it to a dedicated function(s)).
-                That is, if we consider YX (or, more generally, all the spatial
-                dimensions flattened, X or ZYX ...) as 1D continous space,
-                the macroblock is 2D rectangular block of size:
-
-                (k1_block - k0_block) x (yx_block_limit - yx0).
-
-                Each macroblock consists of several microblocks, which size
-                (CONV_MR x CONV_NR) depends on the used accuracy mode and architecture:
-                ARM 64-bit:
-                    FP32: 4 (CONV_MR) x 28 (CONV_NR)
-                    FP16: 8 (CONV_MR) x 24 (CONV_NR)
-                We allocate a temporary buffer for macroblock that fits the integer
-                number of microblocks and after computing the macroblock we copy
-                the proper part of temporary buffer to the output tensor.
-
-                Procedure consists of 3 steps:
-                1. Repacking part of input tensor in zigzag form, which is optimal
-                   for microblock processing. It can be viewed as im2col applied to
-                   a part of input tensor combined with zigzag reshaping, all in one loop.
-
-                   Basically, we extract Hk*Wk*Cg x CONV_NR*nstripes im2col-ed block,
-                   where Hk x Wk is the spatial kernel size (e.g. 1x1 or 3x3),
-                   Cg is the number of input channels in group, CONV_NR is microblock width
-                   and 1 <= nstripes < MAX_STRIPES. The extracted input tensor
-                   data is stored stripe by stripe, where each stripe is
-                   Hk*Wk*Cg x CONV_NR, i.e. it's perfectly suitable for microblock processing.
-
-                   Note that convolution weights are repacked before the actual inference;
-                   They are also stored stripe by stripe, where each stripe is
-                   Hk*Wk*Cg x CONV_MR and CONV_MR is the microblock height.
-
-                2,3. The actual convolution (step 2), which essentially computes
-                   A'*B matrix product, where A is Hk*Wk*Cg x (k1-k0)
-                   (a part of 'weights' tensor) and B is Hk*Wk*Cg x CONV_NR*nstripes.
-                   The product is computed in 4 nested loops.
-                   After each macroblock is computed, it's postprocessed (step 3):
-                   1. bias is added.
-                   2. pre-activation-function 'pass-by' activations are optionally added
-                   3. activation function is applied
-                   4. post-activation-function 'pass-by' activations are optionally added.
-                   5. the result is stored in the output tensor
-
-                   Here is the scheme:
-
-                   for (k0_block = k0; k0_block < k1; k0_block += K_BLOCK_SIZE) {
-                       k1_block = min(k0_block + K_BLOCK_SIZE, k1)
-                       // set 'C_buffer' of size (k1_block - k0_block) x (CONV_NR*nstripes) to 0's.
-                       memset(C_buffer, 0, ...);
-                       for (c0 = 0; c0 < Hk*Wk*Cg; c0 += C_BLOCK_SIZE) {
-                           c1 = min(c0 + C_BLOCK_SIZE, Hk*Wk*Cg)
-                           // compute C_buffer += A[k0_block:k1_block,c0:c1]'*B[c0:c1,:]
-                           for (stripe = 0; stripe < nstripes; stripe++) {
-                               for (k = k0_block; k < k1_block; k += CONV_MR) {
-                                   // compute rectangular part of the result and accumulate it
-                                   // using microblock-level kernel
-                                   C_buffer[k:k+CONV_MR, stripe*CONV_NR:(stripe+1)*CONV_NR] +=
-                                       A[c0:c1, k:k+CONV_MR]'*
-                                       B[c0:c1, stripe*CONV_NR:(stripe+1)*CONV_NR]
-                               }
-                           }
-                       }
-                       // post-process C_buffer (1, 2, 3, 4, 5 ...)
-                       ...
-                   }
-
-                   Such scheme, with properly selected K_BLOCK_SIZE and C_BLOCK_SIZE, let
-                   us to achieve much better L1 and L2 cache utilization.
-                */
-
-                // step 1. extract part of input tensor and represent it in zigzag form
-                yx_block_limit = yx0 + CONV_NR*MAX_STRIPES;
-                yx_block_limit = yx_block_limit < yx_limit ? yx_block_limit : yx_limit;
-                int nstripes = (yx_block_limit - yx0 + CONV_NR - 1)/CONV_NR;
-                int yx0_saved = yx0;
-                assert(nstripes <= MAX_STRIPES);
-                for (int stripe = 0; yx0 < yx_block_limit; stripe++, yx0 += CONV_NR) {
-                    char* inpbuf = inpbuf_task + stripe*stripesize*esz;
-                    const char* inptr = inp_data->data + inp_plane_ofs*esz;
-                    /*
-                        1. pack the data. Copy the HkxWk CONV_NR-wide slices from
-                           each feature plane of the input tensor to the input buffer.
-                    */
-                    if (fast_1x1) {
-                        int slice_len = yx_block_limit - yx0;
-                        bool partial = slice_len < CONV_NR;
-                        // super-fast branch for 1x1 convolutions with sy=sx=1.
-                        // in this case each feature plane can be safely treated
-                        // as 1D array and we just extract next portion
-                        // of CONV_NR elements from each feature plane and
-                        // put it together.
-                        inptr += yx0*esz;
-                        if (!partial) {
-                            // Make special branch where memcpy() is called with a constant buffer size.
-                            // Compilers will likely unroll this loop properly.
-                            if (esz == sizeof(float)) {
-                                for (int c = 0; c < Cg; c++, inptr += inp_planesize*sizeof(float),
-                                                             inpbuf += FX_CONV_NR*sizeof(float))
-                                    memcpy(inpbuf, inptr, FX_CONV_NR*sizeof(float));
-                            } else {
-                                assert(esz == sizeof(fx_f16));
-                                for (int c = 0; c < Cg; c++, inptr += inp_planesize*sizeof(fx_f16),
-                                                             inpbuf += FX_CONV_NR_F16*sizeof(fx_f16))
-                                    memcpy(inpbuf, inptr, FX_CONV_NR_F16*sizeof(fx_f16));
+                                if ((unsigned)yi < (unsigned)Hi &&
+                                    (unsigned)xi < (unsigned)Wi) {
+                                    const int* inptr_ki = (int*)inptr_ + yi*Wi + xi;
+                                    if (i + 6 <= FX_CONV_NR && x0 + 6 <= W0 && xi + stride_x*6 <= Wi) {
+                                        if (stride_x == 1) {
+                                            for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize) {
+                                                int t0 = inptr_ki[0], t1 = inptr_ki[1];
+                                                int t2 = inptr_ki[2], t3 = inptr_ki[3];
+                                                int t4 = inptr_ki[4], t5 = inptr_ki[5];
+                                                inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
+                                                inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
+                                                inpbuf_ki[4] = t4; inpbuf_ki[5] = t5;
+                                            }
+                                        } else {
+                                            for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize) {
+                                                int t0 = inptr_ki[0], t1 = inptr_ki[stride_x];
+                                                int t2 = inptr_ki[stride_x*2], t3 = inptr_ki[stride_x*3];
+                                                int t4 = inptr_ki[stride_x*4], t5 = inptr_ki[stride_x*5];
+                                                inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
+                                                inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
+                                                inpbuf_ki[4] = t4; inpbuf_ki[5] = t5;
+                                            }
+                                        }
+                                        i += 6;
+                                        x0 += 6;
+                                    } else {
+                                        for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize)
+                                            *inpbuf_ki = *inptr_ki;
+                                        i++;
+                                        x0++;
+                                    }
+                                } else {
+                                    for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR)
+                                        *inpbuf_ki = 0;
+                                    i++;
+                                    x0++;
+                                }
+                                int mask = x0 >= W0;
+                                y0 += mask;
+                                x0 &= mask-1;
                             }
                         } else {
-                            for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz) {
-                                memcpy(inpbuf, inptr, slice_len*esz);
-                                memset(inpbuf + slice_len*esz, 0, (CONV_NR - slice_len)*esz);
-                            }
-                        }
-                    } else {
-                        //memset(inpbuf, 0, HkWkCg*CONV_NR*esz);
-                        int y0_ = yx0/W0, x0_ = yx0 - y0_*W0;
-                        for (int k = 0; k < ksize; k++) {
-                            int dy = yxtab[k*2], dx = yxtab[k*2+1];
-                            if (esz == 4) {
-                                int i = 0, y0 = y0_, x0 = x0_;
-                                for (; i < FX_CONV_NR;) {
-                                    float* inpbuf_ki = (float*)inpbuf + k*(FX_CONV_NR*Cg) + i;
-                                    int yi = y0*stride_y + dy - pad_top;
-                                    int xi = x0*stride_x + dx - pad_left;
+                            assert(esz == 2);
+                            int i = 0, y0 = y0_, x0 = x0_;
+                            for (; i < FX_CONV_NR_F16;) {
+                                int16_t* inpbuf_ki = (int16_t*)inpbuf + k*(FX_CONV_NR_F16*Cg) + i;
+                                int yi = y0*stride_y + dy - pad_top;
+                                int xi = x0*stride_x + dx - pad_left;
 
-                                    if ((unsigned)yi < (unsigned)Hi &&
-                                        (unsigned)xi < (unsigned)Wi) {
-                                        const float* inptr_ki = (float*)inptr + yi*Wi + xi;
-                                        if (i + 6 <= FX_CONV_NR && x0 + 6 <= W0 && xi + stride_x*6 <= Wi) {
-                                            if (stride_x == 1) {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize) {
-                                                    float t0 = inptr_ki[0], t1 = inptr_ki[1];
-                                                    float t2 = inptr_ki[2], t3 = inptr_ki[3];
-                                                    float t4 = inptr_ki[4], t5 = inptr_ki[5];
-                                                    inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
-                                                    inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
-                                                    inpbuf_ki[4] = t4; inpbuf_ki[5] = t5;
-                                                }
-                                            } else {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize) {
-                                                    float t0 = inptr_ki[0], t1 = inptr_ki[stride_x];
-                                                    float t2 = inptr_ki[stride_x*2], t3 = inptr_ki[stride_x*3];
-                                                    float t4 = inptr_ki[stride_x*4], t5 = inptr_ki[stride_x*5];
-                                                    inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
-                                                    inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
-                                                    inpbuf_ki[4] = t4; inpbuf_ki[5] = t5;
-                                                }
+                                if ((unsigned)yi < (unsigned)Hi &&
+                                    (unsigned)xi < (unsigned)Wi) {
+                                    const int16_t* inptr_ki = (int16_t*)inptr_ + yi*Wi + xi;
+                                    if (i + 4 <= FX_CONV_NR_F16 && x0 + 4 <= W0 && xi + stride_x*4 <= Wi) {
+                                        if (stride_x == 1) {
+                                            for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR_F16, inptr_ki += inp_planesize) {
+                                                int16_t t0 = inptr_ki[0], t1 = inptr_ki[1];
+                                                int16_t t2 = inptr_ki[2], t3 = inptr_ki[3];
+                                                inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
+                                                inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
                                             }
-                                            i += 6;
-                                            x0 += 6;
                                         } else {
-                                            for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR, inptr_ki += inp_planesize)
-                                                *inpbuf_ki = *inptr_ki;
-                                            i++;
-                                            x0++;
+                                            for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR_F16, inptr_ki += inp_planesize) {
+                                                int16_t t0 = inptr_ki[0], t1 = inptr_ki[stride_x];
+                                                int16_t t2 = inptr_ki[stride_x*2], t3 = inptr_ki[stride_x*3];
+                                                inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
+                                                inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
+                                            }
                                         }
+                                        i += 4;
+                                        x0 += 4;
                                     } else {
-                                        for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR)
-                                            *inpbuf_ki = 0.f;
+                                        for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR_F16, inptr_ki += inp_planesize)
+                                            *inpbuf_ki = *inptr_ki;
                                         i++;
                                         x0++;
                                     }
-                                    int mask = x0 >= W0;
-                                    y0 += mask;
-                                    x0 &= mask-1;
+                                } else {
+                                    for (int c = 0; c < dc; c++, inpbuf_ki += FX_CONV_NR_F16)
+                                        *inpbuf_ki = 0;
+                                    i++;
+                                    x0++;
                                 }
-                            } else {
-                                assert(esz == 2);
-                                int i = 0, y0 = y0_, x0 = x0_;
-                                for (; i < FX_CONV_NR_F16;) {
-                                    int16_t* inpbuf_ki = (int16_t*)inpbuf + k*(FX_CONV_NR_F16*Cg) + i;
-                                    int yi = y0*stride_y + dy - pad_top;
-                                    int xi = x0*stride_x + dx - pad_left;
-
-                                    if ((unsigned)yi < (unsigned)Hi &&
-                                        (unsigned)xi < (unsigned)Wi) {
-                                        const int16_t* inptr_ki = (int16_t*)inptr + yi*Wi + xi;
-                                        if (i + 4 <= FX_CONV_NR_F16 && x0 + 4 <= W0 && xi + stride_x*4 <= Wi) {
-                                            if (stride_x == 1) {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_F16, inptr_ki += inp_planesize) {
-                                                    int16_t t0 = inptr_ki[0], t1 = inptr_ki[1];
-                                                    int16_t t2 = inptr_ki[2], t3 = inptr_ki[3];
-                                                    inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
-                                                    inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
-                                                }
-                                            } else {
-                                                for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_F16, inptr_ki += inp_planesize) {
-                                                    int16_t t0 = inptr_ki[0], t1 = inptr_ki[stride_x];
-                                                    int16_t t2 = inptr_ki[stride_x*2], t3 = inptr_ki[stride_x*3];
-                                                    inpbuf_ki[0] = t0; inpbuf_ki[1] = t1;
-                                                    inpbuf_ki[2] = t2; inpbuf_ki[3] = t3;
-                                                }
-                                            }
-                                            i += 4;
-                                            x0 += 4;
-                                        } else {
-                                            for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_F16, inptr_ki += inp_planesize)
-                                                *inpbuf_ki = *inptr_ki;
-                                            i++;
-                                            x0++;
-                                        }
-                                    } else {
-                                        for (int c = 0; c < Cg; c++, inpbuf_ki += FX_CONV_NR_F16)
-                                            *inpbuf_ki = 0;
-                                        i++;
-                                        x0++;
-                                    }
-                                    int mask = x0 >= W0;
-                                    y0 += mask;
-                                    x0 &= mask-1;
-                                }
+                                int mask = x0 >= W0;
+                                y0 += mask;
+                                x0 &= mask-1;
                             }
                         }
                     }
                 }
+            }
+        }
+    }
 
-                yx0 = yx0_saved;
-                const char* weights = (inp_typ == FX_F32 ?
-                    (const char*)conv->weights : (const char*)conv->wf16) + g*Kg_aligned*HkWkCg*esz;
-                const float* biasptr = conv->bias + Kg*g;
-                int ldc = nstripes*CONV_NR;
-                // 2. do convolution, compute Kg x (yx_block_limit - yx0) part of the output tensor
-                for (int k0_block = k0; k0_block < k1; k0_block += K_BLOCK_SIZE) {
-                    int k1_block = k0_block + K_BLOCK_SIZE < k1 ? k0_block + K_BLOCK_SIZE : k1;
-                    for (int c0 = 0; c0 < HkWkCg; c0 += C_BLOCK_SIZE) {
-                        int c1 = c0 + C_BLOCK_SIZE < HkWkCg ? c0 + C_BLOCK_SIZE : HkWkCg;
-                        for (int stripe = 0; stripe < nstripes; stripe++) {
-                            const char* wptr = weights + (k0_block*HkWkCg + c0*CONV_MR)*esz;
-                            const char* inptr = inpbuf_task + (stripe*stripesize + c0*CONV_NR)*esz;
-                            float* cptr = cbuf_task + stripe*CONV_NR;
-                            for (int k = k0_block; k < k1_block; k += CONV_MR,
-                                    wptr += HkWkCg*CONV_MR*esz,
-                                    cptr += CONV_MR*ldc
-                                    ) {
-                            #if _FX_NN_ENABLE_FP16
-                                if (inp_typ == FX_F16) {
-                                    _fx_conv_update_block_f16(c1 - c0,
-                                        wptr, inptr, cptr, ldc, c0 == 0);
-                                } else
-                            #endif
-                                {
-                                    _fx_conv_update_block_f32(c1 - c0,
-                                        wptr, inptr, cptr, ldc, c0 == 0);
-                                }
+    // phase 2. do the actual convolution
+    #pragma omp parallel for num_threads(ntasks)
+    for (int task_id = 0; task_id < ntasks; task_id++) {
+        int ngk0 = task_id*N*ngroups*Kg_nblocks/ntasks;
+        int ngk1 = (task_id + 1)*N*ngroups*Kg_nblocks/ntasks;
+        int dngk = 0;
+        for ( ; ngk0 < ngk1; ngk0 += dngk ) {
+            int n = ngk0 / (Kg_nblocks*ngroups);
+            int gk0 = ngk0 - n*ngroups*Kg_nblocks;
+            int g = gk0 / Kg_nblocks;
+            int k0 = gk0 - g * Kg_nblocks;
+            dngk = Kg_nblocks - k0;
+            if (dngk > ngk1 - ngk0) dngk = ngk1 - ngk0;
+            k0 *= CONV_MR;
+            int dk0 = dngk * CONV_MR, k1;
+            if (k0 + dk0 > Kg) dk0 = Kg - k0;
+            k1 = k0 + dk0;
+            for (; k0 < k1; k0 += CONV_MR) {
+                size_t wofs = (g*Kg_aligned + k0)*HkWkCg;
+                const float* biasptr = conv->bias + Kg*g + k0;
+                size_t bufofs = (n*ngroups + g)*stripes_per_plane*stripe_size;
+                size_t outofs = ((n*ngroups + g)*Kg + k0)*out_planesize;
+                int dk = CONV_MR;
+                if (dk > k1 - k0) dk = k1 - k0;
+                bool partial0 = dk < CONV_MR || activ_func;
+                if (inp_typ == FX_F32) {
+                    float outbuf[FX_CONV_NR*FX_CONV_MR];
+                    memset(outbuf, 0, CONV_NR*dk*sizeof(outbuf[0]));
+                    const float* weights = conv->weights + wofs;
+                    const float* inpbuf = (const float*)inpbuf_all + bufofs;
+                    int yx0 = 0;
+                    float* outptr0 = (float*)out_data->data + outofs;
+                    float* bpptr0 = bp_data && bp_data->data ? (float*)bp_data->data + outofs : 0;
+                    for (; yx0 < out_planesize; yx0 += CONV_NR, outptr0 += CONV_NR, inpbuf += stripe_size) {
+                        int dyx = CONV_NR;
+                        if (yx0 + dyx > out_planesize) dyx = out_planesize - yx0;
+                        bool partial = partial0 || dyx < CONV_NR;
+                        float* outptr = outptr0;
+                        int outstep = out_planesize;
+                        const float* bpptr = bpptr0 ? bpptr0 + yx0 : 0;
+
+                        if (partial) {
+                            if (bpptr) {
+                                for (int k_ = 0; k_ < dk; k_++)
+                                    memcpy(outbuf + k_*CONV_NR, bpptr + k_*outstep, dyx*sizeof(bpptr[0]));
+                                bpptr = outbuf;
                             }
+                            outptr = outbuf;
+                            outstep = CONV_NR;
                         }
-                    }
-
-                    size_t outofs = (((n*ngroups + g)*Kg + k0_block)*out_planesize + yx0)*esz;
-                    int out_width = yx_block_limit - yx0;
-                    const float* cptr = (const float*)cbuf_task;
-                    if (inp_typ == FX_F32) {
-                        float* outptr = (float*)(out_data->data + outofs);
-                        const float* bpptr = bp_data && bp_data->data ? (float*)(bp_data->data + outofs) : 0;
-
-                        for (int k = k0_block; k < k1_block; k++,
-                                cptr += ldc, outptr += out_planesize,
-                                bpptr += (bpptr ? out_planesize : 0)) {
-                            float biasval = biasptr[k];
-                            int j = 0;
-
-                        #ifdef __ARM_NEON
-                            float32x4_t vbias = vdupq_n_f32(biasval), valpha = vdupq_n_f32(alpha), vmax = vdupq_n_f32(maxval);
-                            float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
-                            if (bpptr) {
-                                for (; j < out_width; j += 8) {
-                                    if (j + 8 > out_width) {
-                                        if (j == 0)
-                                            break;
-                                        j = out_width - 8;
-                                    }
-                                    float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
-                                    float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
-                                    v0 = vaddq_f32(v0, vld1q_f32(bpptr + j));
-                                    v1 = vaddq_f32(v1, vld1q_f32(bpptr + j + 4));
-                                    v0 = vmulq_f32(vminq_f32(v0, vmax), vbslq_f32(vcltq_f32(v0, z), valpha, one));
-                                    v1 = vmulq_f32(vminq_f32(v1, vmax), vbslq_f32(vcltq_f32(v1, z), valpha, one));
-                                    vst1q_f32(outptr + j, v0);
-                                    vst1q_f32(outptr + j + 4, v1);
-                                }
-                            } else {
-                                for (; j < out_width; j += 8) {
-                                    if (j + 8 > out_width) {
-                                        if (j == 0)
-                                            break;
-                                        j = out_width - 8;
-                                    }
-                                    float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
-                                    float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
-                                    v0 = vmulq_f32(vminq_f32(v0, vmax), vbslq_f32(vcltq_f32(v0, z), valpha, one));
-                                    v1 = vmulq_f32(vminq_f32(v1, vmax), vbslq_f32(vcltq_f32(v1, z), valpha, one));
-                                    vst1q_f32(outptr + j, v0);
-                                    vst1q_f32(outptr + j + 4, v1);
-                                }
-                            }
-                        #endif
-
-                            if (bpptr) {
-                                for (; j < out_width; j++) {
-                                    float v = cptr[j] + biasval;
-                                    v += bpptr[j];
-                                    v = v <= maxval ? v : maxval;
-                                    v *= (v < 0.f ? alpha : 1.f);
-                                    outptr[j] = v;
-                                }
-                            } else {
-                                for (; j < out_width; j++) {
-                                    float v = cptr[j] + biasval;
-                                    v = v <= maxval ? v : maxval;
-                                    v *= (v < 0.f ? alpha : 1.f);
-                                    outptr[j] = v;
-                                }
-                            }
-
+                        _fx_conv_block_f32(HkWkCg, weights, inpbuf, outptr, outstep, bpptr, outstep,
+                                           biasptr, alpha, maxval, fast_activ);
+                        if (partial) {
                             if (activ_func)
-                                activ_func(outptr, outptr, out_width, activ_params);
-                        }
-                    } else {
-                        fx_f16* outptr = (fx_f16*)(out_data->data + outofs);
-                        const fx_f16* bpptr = bp_data && bp_data->data ? (fx_f16*)(bp_data->data + outofs) : 0;
-
-                        for (int k = k0_block; k < k1_block; k++,
-                                cptr += ldc, outptr += out_planesize,
-                                bpptr += (bpptr ? out_planesize : 0)) {
-                            float biasval = biasptr[k];
-                            int j = 0;
-
-                        #ifdef __ARM_NEON
-                            float32x4_t vbias = vdupq_n_f32(biasval);
-                            float16x8_t valpha = vdupq_n_f16(alpha);
-                            float16x8_t vmax = vdupq_n_f16(maxval < 65504.f ? maxval : 65504.f);
-                            float16x8_t z = vdupq_n_f16(0.f), one = vdupq_n_f16(1.f);
-                            if (bpptr) {
-                                for (; j < out_width; j += 8) {
-                                    if (j + 8 > out_width) {
-                                        if (j == 0)
-                                            break;
-                                        j = out_width - 8;
-                                    }
-                                    float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
-                                    float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
-                                    float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
-                                    v = vaddq_f16(v, vld1q_f16(bpptr + j));
-                                    v = vmulq_f16(vminq_f16(v, vmax), vbslq_f16(vcltq_f16(v, z), valpha, one));
-                                    vst1q_f16(outptr + j, v);
-                                }
-                            } else {
-                                for (; j < out_width; j += 8) {
-                                    if (j + 8 > out_width) {
-                                        if (j == 0)
-                                            break;
-                                        j = out_width - 8;
-                                    }
-                                    float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
-                                    float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
-                                    float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
-                                    v = vmulq_f16(vminq_f16(v, vmax), vbslq_f16(vcltq_f16(v, z), valpha, one));
-                                    vst1q_f16(outptr + j, v);
-                                }
+                                activ_func(outbuf, outbuf, CONV_NR*dk, activ_params);
+                            for (int k_ = 0; k_ < dk; k_++) {
+                                memcpy(outptr0 + k_*out_planesize, outptr + k_*CONV_NR, dyx*sizeof(outptr[0]));
                             }
-                        #endif
-
-                            if (bpptr) {
-                                for (; j < out_width; j++) {
-                                    float v = cptr[j] + biasval;
-                                    v += FX_FLOAT(bpptr[j]);
-                                    v = v <= maxval ? v : maxval;
-                                    v *= (v < 0.f ? alpha : 1.f);
-                                    outptr[j] = FX_FLOAT16(v);
-                                }
-                            } else {
-                                for (; j < out_width; j++) {
-                                    float v = cptr[j] + biasval;
-                                    v = v <= maxval ? v : maxval;
-                                    v *= (v < 0.f ? alpha : 1.f);
-                                    outptr[j] = FX_FLOAT16(v);
-                                }
-                            }
-
-                            if (activ_func)
-                                activ_func(outptr, outptr, out_width, activ_params);
                         }
                     }
                 }
+            #if _FX_NN_ENABLE_FP16
+                else {
+                    fx_f16 outbuf[FX_CONV_NR_F16*FX_CONV_MR_F16];
+                    memset(outbuf, 0, CONV_NR*dk*sizeof(outbuf[0]));
+                    const fx_f16* weights = conv->wf16 + wofs;
+                    const fx_f16* inpbuf = (const fx_f16*)inpbuf_all + bufofs;
+                    int yx0 = 0;
+                    fx_f16* outptr0 = (fx_f16*)out_data->data + outofs;
+                    const fx_f16* bpptr0 = bp_data && bp_data->data ? (const fx_f16*)bp_data->data + outofs : 0;
+                    for (; yx0 < out_planesize; yx0 += CONV_NR, outptr0 += CONV_NR, inpbuf += stripe_size) {
+                        int dyx = CONV_NR;
+                        if (yx0 + dyx > out_planesize) dyx = out_planesize - yx0;
+                        bool partial = partial0 || dyx < CONV_NR;
+                        fx_f16* outptr = outptr0;
+                        int outstep = out_planesize;
+                        const fx_f16* bpptr = bpptr0 ? bpptr0 + yx0 : 0;
+
+                        if (partial) {
+                            if (bpptr) {
+                                for (int k_ = 0; k_ < dk; k_++)
+                                    memcpy(outbuf + k_*CONV_NR, bpptr + k_*outstep, dyx*sizeof(bpptr[0]));
+                                bpptr = outbuf;
+                            }
+                            outptr = outbuf;
+                            outstep = CONV_NR;
+                        }
+                        _fx_conv_block_f16(HkWkCg, weights, inpbuf, outptr, outstep, bpptr, outstep,
+                                           biasptr, alpha, maxval, fast_activ);
+                        if (partial) {
+                            if (activ_func)
+                                activ_func(outbuf, outbuf, CONV_NR*dk, activ_params);
+                            for (int k_ = 0; k_ < dk; k_++) {
+                                memcpy(outptr0 + k_*out_planesize, outptr + k_*CONV_NR, dyx*sizeof(outptr[0]));
+                            }
+                        }
+                    }
+                }
+            #endif
             }
         }
     }
