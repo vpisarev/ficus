@@ -56,6 +56,7 @@ static int _fx_init_conv2d(
     int activ,
     const float* activ_params,
     int nactiv_params,
+    int ntasks,
     fx_cptr_t* fx_result)
 {
     _fx_conv2d_t* conv = (_fx_conv2d_t*)fx_malloc(sizeof(*conv));
@@ -80,15 +81,17 @@ static int _fx_init_conv2d(
     conv->pad_top = pad_top; conv->pad_left = pad_left;
     conv->pad_bottom = pad_bottom; conv->pad_right = pad_right;
     conv->ngroups = ngroups;
-    conv->conv_type = ngroups == K && ngroups == C ? _FX_CONV_TYPE_DEPTHWISE :
-                      Hk == 3 && Wk == 3 && dilation_y == 1 && dilation_x == 1 &&
-                      stride_y == 1 && stride_x == 1 ? _FX_CONV_TYPE_WINOGRAD3X3 :
-                      _FX_CONV_TYPE_GENERIC;
+    conv->conv_type =
+        ngroups == K && ngroups == C ? _FX_CONV_TYPE_DEPTHWISE :
     // so far we only have ARM implementation of Winograd-based 3x3 convolution
-#ifndef __ARM_NEON
-    if (conv->conv_type != _FX_CONV_TYPE_DEPTHWISE)
+    #ifdef __ARM_NEON
+        Hk == 3 && Wk == 3 && dilation_y == 1 && dilation_x == 1 &&
+        stride_y == 1 && stride_x == 1 ? _FX_CONV_TYPE_WINOGRAD3X3 :
+    #endif
+        _FX_CONV_TYPE_GENERIC;
+    // looks like there is a bug in Winograd code when ngroups > 1
+    if (conv->conv_type != _FX_CONV_TYPE_DEPTHWISE && conv->ngroups != 1)
         conv->conv_type = _FX_CONV_TYPE_GENERIC;
-#endif
     conv->activ = activ;
     conv->minval = -FLT_MAX;
     conv->maxval = FLT_MAX;
@@ -206,6 +209,7 @@ static int _fx_init_conv2d(
         conv->wf16 = (fx_f16*)fx_malloc(nweights*sizeof(conv->weights[0]));
         memset(conv->wf16, 0, nweights*sizeof(conv->wf16[0]));
     #endif
+        #pragma omp parallel for num_threads(ntasks)
         for(int k = 0; k < K; k++) {
             float scale = bn_ab ? bn_ab[k] : 1.f;
             int g = k / Kg;
@@ -893,7 +897,8 @@ fun init_conv(kernel_shape: int [], strides: int [],
               weights: Ast.nntensor_t,
               bias: Ast.nntensor_t,
               bn_data: Ast.nntensor_t [], bn_eps: float,
-              activ_func: Ast.nnactiv_t, activ_params: float []): cptr
+              activ_func: Ast.nnactiv_t, activ_params: float [],
+              ntasks: int): cptr
 @ccode
 {
     int w_typ = weights->data.tag, b_typ = bias->data.tag;
@@ -944,7 +949,7 @@ fun init_conv(kernel_shape: int [], strides: int [],
         (const float*)w_data->data, bias_data ? (const float*)bias_data->data : 0,
         bn_data_[0], bn_data_[1], bn_data_[2], bn_data_[3], bn_eps,
         (int)activ_func->tag, (const float*)activ_params->data,
-        (int)n_activ_params, fx_result);
+        (int)n_activ_params, (int)ntasks, fx_result);
 }
 
 fun run_conv(inp: Ast.nntensor_t, out: Ast.nntensor_t, bypass: Ast.nntensor_t,
@@ -1001,7 +1006,8 @@ match op {
                           // this way we can immediately re-use the same chunk of memory
                           // for the updated convolution structure
         *conv_data = init_conv(kernel_shape, strides, dilations, pads, group,
-                                weights, bias, bn_data, bn_eps, activ_id, activ_params)
+                                weights, bias, bn_data, bn_eps,
+                                activ_id, activ_params, *model.ntasks)
     }
     *model.scratch_buf = run_conv(inp, out, pb, *conv_data, *model.ntasks, *model.scratch_buf)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
