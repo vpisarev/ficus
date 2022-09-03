@@ -337,6 +337,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
 
     int CONV_MR = inp_typ == FX_F16 ? FX_CONV_MR_F16 : FX_CONV_MR;
     int CONV_NR = inp_typ == FX_F16 ? FX_CONV_NR_F16 : FX_CONV_NR;
+    int K_BLOCK = 24;
 
     const fx_arr_t* inp_shape_ = &inp->shape.shape;
     const fx_arr_t* out_shape_ = &out->shape.shape;
@@ -598,33 +599,35 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             int k0 = gk0 - g * Kg_nblocks;
             dngk = Kg_nblocks - k0;
             if (dngk > ngk1 - ngk0) dngk = ngk1 - ngk0;
+            if (dngk > K_BLOCK/CONV_MR) dngk = K_BLOCK/CONV_MR;
             k0 *= CONV_MR;
             int dk0 = dngk * CONV_MR, k1;
             if (k0 + dk0 > Kg) dk0 = Kg - k0;
             k1 = k0 + dk0;
-            for (; k0 < k1; k0 += CONV_MR) {
-                size_t wofs = (g*Kg_aligned + k0)*HkWkCg;
-                const float* biasptr = conv->bias + Kg*g + k0;
-                size_t bufofs = (n*ngroups + g)*stripes_per_plane*stripe_size;
-                size_t outofs = ((n*ngroups + g)*Kg + k0)*out_planesize;
-                int dk = CONV_MR;
-                if (dk > k1 - k0) dk = k1 - k0;
-                bool partial0 = dk < CONV_MR || activ_func;
-                if (inp_typ == FX_F32) {
-                    float outbuf[FX_CONV_NR*FX_CONV_MR];
-                    memset(outbuf, 0, CONV_NR*dk*sizeof(outbuf[0]));
-                    const float* weights = conv->weights + wofs;
-                    const float* inpbuf = (const float*)inpbuf_all + bufofs;
-                    int yx0 = 0;
-                    float* outptr0 = (float*)out_data->data + outofs;
-                    float* bpptr0 = bp_data && bp_data->data ? (float*)bp_data->data + outofs : 0;
-                    for (; yx0 < out_planesize; yx0 += CONV_NR, outptr0 += CONV_NR, inpbuf += stripe_size) {
-                        int dyx = CONV_NR;
-                        if (yx0 + dyx > out_planesize) dyx = out_planesize - yx0;
-                        bool partial = partial0 || dyx < CONV_NR;
-                        float* outptr = outptr0;
+            size_t bufofs = (n*ngroups + g)*stripes_per_plane*stripe_size;
+            size_t outofs = (n*ngroups + g)*Kg*out_planesize;
+
+            if (inp_typ == FX_F32) {
+                float outbuf[FX_CONV_MR*FX_CONV_NR];
+                memset(outbuf, 0, CONV_MR*CONV_NR*sizeof(outbuf[0]));
+                const float* inpbuf = (const float*)inpbuf_all + bufofs;
+                int yx0 = 0;
+                float* outptr0 = (float*)out_data->data + outofs;
+                float* bpptr0 = bp_data && bp_data->data ? (float*)bp_data->data + outofs : 0;
+                for (; yx0 < out_planesize; yx0 += CONV_NR, outptr0 += CONV_NR, inpbuf += stripe_size) {
+                    int dyx = CONV_NR;
+                    if (yx0 + dyx > out_planesize) dyx = out_planesize - yx0;
+                    bool partial0 = activ_func || dyx < CONV_NR;
+                    for (int k = k0; k < k1; k += CONV_MR) {
+                        size_t wofs = (g*Kg_aligned + k)*HkWkCg;
+                        const float* weights = conv->weights + wofs;
+                        const float* biasptr = conv->bias + Kg*g + k;
+                        int dk = CONV_MR;
+                        if (dk > k1 - k) dk = k1 - k;
+                        bool partial = partial0 || dk < CONV_MR;
+                        float* outptr = outptr0 + k*out_planesize;
                         int outstep = out_planesize;
-                        const float* bpptr = bpptr0 ? bpptr0 + yx0 : 0;
+                        const float* bpptr = bpptr0 ? bpptr0 + k*out_planesize + yx0 : 0;
 
                         if (partial) {
                             if (bpptr) {
@@ -636,32 +639,38 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             outstep = CONV_NR;
                         }
                         _fx_conv_block_f32(HkWkCg, weights, inpbuf, outptr, outstep, bpptr, outstep,
-                                           biasptr, alpha, maxval, fast_activ);
+                                            biasptr, alpha, maxval, fast_activ);
                         if (partial) {
                             if (activ_func)
                                 activ_func(outbuf, outbuf, CONV_NR*dk, activ_params);
-                            for (int k_ = 0; k_ < dk; k_++) {
-                                memcpy(outptr0 + k_*out_planesize, outptr + k_*CONV_NR, dyx*sizeof(outptr[0]));
-                            }
+                            for (int k_ = 0; k_ < dk; k_++)
+                                memcpy(outptr0 + (k + k_)*out_planesize, outptr + k_*CONV_NR, dyx*sizeof(outptr[0]));
                         }
                     }
                 }
-            #if _FX_NN_ENABLE_FP16
-                else {
-                    fx_f16 outbuf[FX_CONV_NR_F16*FX_CONV_MR_F16];
-                    memset(outbuf, 0, CONV_NR*dk*sizeof(outbuf[0]));
-                    const fx_f16* weights = conv->wf16 + wofs;
-                    const fx_f16* inpbuf = (const fx_f16*)inpbuf_all + bufofs;
-                    int yx0 = 0;
-                    fx_f16* outptr0 = (fx_f16*)out_data->data + outofs;
-                    const fx_f16* bpptr0 = bp_data && bp_data->data ? (const fx_f16*)bp_data->data + outofs : 0;
-                    for (; yx0 < out_planesize; yx0 += CONV_NR, outptr0 += CONV_NR, inpbuf += stripe_size) {
-                        int dyx = CONV_NR;
-                        if (yx0 + dyx > out_planesize) dyx = out_planesize - yx0;
-                        bool partial = partial0 || dyx < CONV_NR;
-                        fx_f16* outptr = outptr0;
+            }
+        #if _FX_NN_ENABLE_FP16
+            else {
+                fx_f16 outbuf[FX_CONV_MR_F16*FX_CONV_NR_F16];
+                memset(outbuf, 0, CONV_MR*CONV_NR*sizeof(outbuf[0]));
+                const fx_f16* inpbuf = (const fx_f16*)inpbuf_all + bufofs;
+                int yx0 = 0;
+                fx_f16* outptr0 = (fx_f16*)out_data->data + outofs;
+                fx_f16* bpptr0 = bp_data && bp_data->data ? (fx_f16*)bp_data->data + outofs : 0;
+                for (; yx0 < out_planesize; yx0 += CONV_NR, outptr0 += CONV_NR, inpbuf += stripe_size) {
+                    int dyx = CONV_NR;
+                    if (yx0 + dyx > out_planesize) dyx = out_planesize - yx0;
+                    bool partial0 = activ_func || dyx < CONV_NR;
+                    for (int k = k0; k < k1; k += CONV_MR) {
+                        size_t wofs = (g*Kg_aligned + k)*HkWkCg;
+                        const fx_f16* weights = conv->wf16 + wofs;
+                        const float* biasptr = conv->bias + Kg*g + k;
+                        int dk = CONV_MR;
+                        if (dk > k1 - k) dk = k1 - k;
+                        bool partial = partial0 || dk < CONV_MR;
+                        fx_f16* outptr = outptr0 + k*out_planesize;
                         int outstep = out_planesize;
-                        const fx_f16* bpptr = bpptr0 ? bpptr0 + yx0 : 0;
+                        const fx_f16* bpptr = bpptr0 ? bpptr0 + k*out_planesize + yx0 : 0;
 
                         if (partial) {
                             if (bpptr) {
@@ -673,18 +682,17 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             outstep = CONV_NR;
                         }
                         _fx_conv_block_f16(HkWkCg, weights, inpbuf, outptr, outstep, bpptr, outstep,
-                                           biasptr, alpha, maxval, fast_activ);
+                                            biasptr, alpha, maxval, fast_activ);
                         if (partial) {
                             if (activ_func)
                                 activ_func(outbuf, outbuf, CONV_NR*dk, activ_params);
-                            for (int k_ = 0; k_ < dk; k_++) {
-                                memcpy(outptr0 + k_*out_planesize, outptr + k_*CONV_NR, dyx*sizeof(outptr[0]));
-                            }
+                            for (int k_ = 0; k_ < dk; k_++)
+                                memcpy(outptr0 + (k + k_)*out_planesize, outptr + k_*CONV_NR, dyx*sizeof(outptr[0]));
                         }
                     }
                 }
-            #endif
             }
+        #endif
         }
     }
 
