@@ -10,9 +10,9 @@ import Ast, OpConv_Block, OpConv_Depthwise, OpConv_Winograd
 #include <math.h>
 #include "ficus_nn_common.h"
 
-void _fx_conv_update_block_f32( int np, const void* a_, const void* b_,
+void _fx_conv_update_block_f32( int np, int width, const void* a_, const void* b_,
                                 void* c_, int ldc, bool init_c );
-void _fx_conv_update_block_f16( int np, const void* a_, const void* b_,
+void _fx_conv_update_block_f16( int np, int width, const void* a_, const void* b_,
                                 void* c_, int ldc, bool init_c );
 int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
                              const _fx_conv2d_t* conv,
@@ -343,7 +343,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     // That is, we should make K_BLOCK_SIZE and C_BLOCK_SIZE adaptive.
     int MAX_STRIPES = (56 + CONV_NR - 1)/CONV_NR;
     int K_BLOCK_SIZE = ((32*(inp_typ == FX_F16 ? 2 : 1) + CONV_MR - 1)/CONV_MR)*CONV_MR;
-    int C_BLOCK_SIZE = 512;
+    int C_BLOCK_SIZE = 256;
 
     const fx_arr_t* inp_shape_ = &inp->shape.shape;
     const fx_arr_t* out_shape_ = &out->shape.shape;
@@ -724,6 +724,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                 // 2. do convolution, compute Kg x (yx_block_limit - yx0) part of the output tensor
                 for (int k0_block = k0; k0_block < k1; k0_block += K_BLOCK_SIZE) {
                     int k1_block = k0_block + K_BLOCK_SIZE < k1 ? k0_block + K_BLOCK_SIZE : k1;
+                    int out_width = yx_block_limit - yx0;
                     for (int c0 = 0; c0 < HkWkCg; c0 += C_BLOCK_SIZE) {
                         int c1 = c0 + C_BLOCK_SIZE < HkWkCg ? c0 + C_BLOCK_SIZE : HkWkCg;
                         for (int stripe = 0; stripe < nstripes; stripe++) {
@@ -737,12 +738,12 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                     ) {
                             #if _FX_NN_ENABLE_FP16
                                 if (inp_typ == FX_F16) {
-                                    _fx_conv_update_block_f16(c1 - c0,
+                                    _fx_conv_update_block_f16(c1 - c0, out_width,
                                         wptr, inptr, cptr_f16, ldc, c0 == 0);
                                 } else
                             #endif
                                 {
-                                    _fx_conv_update_block_f32(c1 - c0,
+                                    _fx_conv_update_block_f32(c1 - c0, out_width,
                                         wptr, inptr, cptr, ldc, c0 == 0);
                                 }
                             }
@@ -750,7 +751,6 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                     }
 
                     size_t outofs = (((n*ngroups + g)*Kg + k0_block)*out_planesize + yx0)*esz;
-                    int out_width = yx_block_limit - yx0;
                     if (inp_typ == FX_F32) {
                         const float* cptr = (const float*)cbuf_task;
                         float* outptr = (float*)(out_data->data + outofs);

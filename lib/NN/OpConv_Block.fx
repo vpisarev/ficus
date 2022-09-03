@@ -349,7 +349,7 @@ void _fx_conv_block_f16( int k, const void *a_, const void *b_,
 #endif
 }
 
-void _fx_conv_update_block_f32( int np, const void* a_, const void* b_, void* c_, int ldc, bool init_c )
+void _fx_conv_update_block_f32( int np, int width, const void* a_, const void* b_, void* c_, int ldc, bool init_c )
 {
     const float* a = (const float*)a_;
     const float* b = (const float*)b_;
@@ -362,44 +362,65 @@ void _fx_conv_update_block_f32( int np, const void* a_, const void* b_, void* c_
     float32x4_t c20 = vdupq_n_f32(0.f), c21 = c20, c22 = c20, c23 = c20, c24 = c20, c25 = c20, c26 = c20;
     float32x4_t c30 = vdupq_n_f32(0.f), c31 = c30, c32 = c30, c33 = c30, c34 = c30, c35 = c30, c36 = c30;
 
-    for( int p = 0; p < np; p++, a += FX_CONV_MR, b += FX_CONV_NR )
-    {
-        float32x4_t a0 = vld1q_f32(a), b0, b1, b2;
-        b0 = vld1q_f32(b); b1 = vld1q_f32(b + 4); b2 = vld1q_f32(b + 8);
+    if (width > 12) {
+        for( int p = 0; p < np; p++, a += FX_CONV_MR, b += FX_CONV_NR )
+        {
+            float32x4_t a0 = vld1q_f32(a), b0, b1, b2;
+            b0 = vld1q_f32(b); b1 = vld1q_f32(b + 4); b2 = vld1q_f32(b + 8);
 
-        c00 = vfmaq_laneq_f32(c00, b0, a0, 0);
-        c01 = vfmaq_laneq_f32(c01, b1, a0, 0);
-        c02 = vfmaq_laneq_f32(c02, b2, a0, 0);
-        c10 = vfmaq_laneq_f32(c10, b0, a0, 1);
-        c11 = vfmaq_laneq_f32(c11, b1, a0, 1);
-        c12 = vfmaq_laneq_f32(c12, b2, a0, 1);
-        c20 = vfmaq_laneq_f32(c20, b0, a0, 2);
-        c21 = vfmaq_laneq_f32(c21, b1, a0, 2);
-        c22 = vfmaq_laneq_f32(c22, b2, a0, 2);
-        c30 = vfmaq_laneq_f32(c30, b0, a0, 3);
-        c31 = vfmaq_laneq_f32(c31, b1, a0, 3);
-        c32 = vfmaq_laneq_f32(c32, b2, a0, 3);
+            c00 = vfmaq_laneq_f32(c00, b0, a0, 0);
+            c01 = vfmaq_laneq_f32(c01, b1, a0, 0);
+            c02 = vfmaq_laneq_f32(c02, b2, a0, 0);
+            c10 = vfmaq_laneq_f32(c10, b0, a0, 1);
+            c11 = vfmaq_laneq_f32(c11, b1, a0, 1);
+            c12 = vfmaq_laneq_f32(c12, b2, a0, 1);
+            c20 = vfmaq_laneq_f32(c20, b0, a0, 2);
+            c21 = vfmaq_laneq_f32(c21, b1, a0, 2);
+            c22 = vfmaq_laneq_f32(c22, b2, a0, 2);
+            c30 = vfmaq_laneq_f32(c30, b0, a0, 3);
+            c31 = vfmaq_laneq_f32(c31, b1, a0, 3);
+            c32 = vfmaq_laneq_f32(c32, b2, a0, 3);
 
-        b0 = vld1q_f32(b + 12); b1 = vld1q_f32(b + 16); b2 = vld1q_f32(b + 20);
+            b0 = vld1q_f32(b + 12); b1 = vld1q_f32(b + 16); b2 = vld1q_f32(b + 20);
 
-        c03 = vfmaq_laneq_f32(c03, b0, a0, 0);
-        c04 = vfmaq_laneq_f32(c04, b1, a0, 0);
-        c05 = vfmaq_laneq_f32(c05, b2, a0, 0);
-        c13 = vfmaq_laneq_f32(c13, b0, a0, 1);
-        c14 = vfmaq_laneq_f32(c14, b1, a0, 1);
-        c15 = vfmaq_laneq_f32(c15, b2, a0, 1);
-        c23 = vfmaq_laneq_f32(c23, b0, a0, 2);
-        c24 = vfmaq_laneq_f32(c24, b1, a0, 2);
-        c25 = vfmaq_laneq_f32(c25, b2, a0, 2);
-        c33 = vfmaq_laneq_f32(c33, b0, a0, 3);
-        c34 = vfmaq_laneq_f32(c34, b1, a0, 3);
-        c35 = vfmaq_laneq_f32(c35, b2, a0, 3);
+            c03 = vfmaq_laneq_f32(c03, b0, a0, 0);
+            c04 = vfmaq_laneq_f32(c04, b1, a0, 0);
+            c05 = vfmaq_laneq_f32(c05, b2, a0, 0);
+            c13 = vfmaq_laneq_f32(c13, b0, a0, 1);
+            c14 = vfmaq_laneq_f32(c14, b1, a0, 1);
+            c15 = vfmaq_laneq_f32(c15, b2, a0, 1);
+            c23 = vfmaq_laneq_f32(c23, b0, a0, 2);
+            c24 = vfmaq_laneq_f32(c24, b1, a0, 2);
+            c25 = vfmaq_laneq_f32(c25, b2, a0, 2);
+            c33 = vfmaq_laneq_f32(c33, b0, a0, 3);
+            c34 = vfmaq_laneq_f32(c34, b1, a0, 3);
+            c35 = vfmaq_laneq_f32(c35, b2, a0, 3);
 
-        b0 = vld1q_f32(b + 24);
-        c06 = vfmaq_laneq_f32(c06, b0, a0, 0);
-        c16 = vfmaq_laneq_f32(c16, b0, a0, 1);
-        c26 = vfmaq_laneq_f32(c26, b0, a0, 2);
-        c36 = vfmaq_laneq_f32(c36, b0, a0, 3);
+            b0 = vld1q_f32(b + 24);
+            c06 = vfmaq_laneq_f32(c06, b0, a0, 0);
+            c16 = vfmaq_laneq_f32(c16, b0, a0, 1);
+            c26 = vfmaq_laneq_f32(c26, b0, a0, 2);
+            c36 = vfmaq_laneq_f32(c36, b0, a0, 3);
+        }
+    } else {
+        for( int p = 0; p < np; p++, a += FX_CONV_MR, b += FX_CONV_NR )
+        {
+            float32x4_t a0 = vld1q_f32(a), b0, b1, b2;
+            b0 = vld1q_f32(b); b1 = vld1q_f32(b + 4); b2 = vld1q_f32(b + 8);
+
+            c00 = vfmaq_laneq_f32(c00, b0, a0, 0);
+            c01 = vfmaq_laneq_f32(c01, b1, a0, 0);
+            c02 = vfmaq_laneq_f32(c02, b2, a0, 0);
+            c10 = vfmaq_laneq_f32(c10, b0, a0, 1);
+            c11 = vfmaq_laneq_f32(c11, b1, a0, 1);
+            c12 = vfmaq_laneq_f32(c12, b2, a0, 1);
+            c20 = vfmaq_laneq_f32(c20, b0, a0, 2);
+            c21 = vfmaq_laneq_f32(c21, b1, a0, 2);
+            c22 = vfmaq_laneq_f32(c22, b2, a0, 2);
+            c30 = vfmaq_laneq_f32(c30, b0, a0, 3);
+            c31 = vfmaq_laneq_f32(c31, b1, a0, 3);
+            c32 = vfmaq_laneq_f32(c32, b2, a0, 3);
+        }
     }
 
     if (!init_c) {
@@ -548,7 +569,7 @@ void _fx_conv_update_block_f32( int np, const void* a_, const void* b_, void* c_
 }
 
 #if _FX_NN_ENABLE_FP16
-void _fx_conv_update_block_f16( int np, const void* a_, const void* b_, void* c_, int ldc, bool init_c )
+void _fx_conv_update_block_f16( int np, int width, const void* a_, const void* b_, void* c_, int ldc, bool init_c )
 {
     const fx_f16* a = (const fx_f16*)a_;
     const fx_f16* b = (const fx_f16*)b_;
@@ -563,42 +584,89 @@ void _fx_conv_update_block_f16( int np, const void* a_, const void* b_, void* c_
     float16x8_t c60 = vdupq_n_f16((fx_f16)0.f), c61 = c60, c62 = c60;
     float16x8_t c70 = vdupq_n_f16((fx_f16)0.f), c71 = c70, c72 = c70;
 
-    for( int p = 0; p < np; p++, a += FX_CONV_MR_F16, b += FX_CONV_NR_F16 )
-    {
-        float16x8_t a0 = vld1q_f16(a);
-        float16x8_t b0 = vld1q_f16(b), b1 = vld1q_f16(b + 8), b2 = vld1q_f16(b + 16);
+    if (width > 16) {
+        for( int p = 0; p < np; p++, a += FX_CONV_MR_F16, b += FX_CONV_NR_F16 )
+        {
+            float16x8_t a0 = vld1q_f16(a);
+            float16x8_t b0 = vld1q_f16(b), b1 = vld1q_f16(b + 8), b2 = vld1q_f16(b + 16);
 
-        c00 = vfmaq_laneq_f16(c00, b0, a0, 0);
-        c01 = vfmaq_laneq_f16(c01, b1, a0, 0);
-        c02 = vfmaq_laneq_f16(c02, b2, a0, 0);
+            c00 = vfmaq_laneq_f16(c00, b0, a0, 0);
+            c01 = vfmaq_laneq_f16(c01, b1, a0, 0);
+            c02 = vfmaq_laneq_f16(c02, b2, a0, 0);
 
-        c10 = vfmaq_laneq_f16(c10, b0, a0, 1);
-        c11 = vfmaq_laneq_f16(c11, b1, a0, 1);
-        c12 = vfmaq_laneq_f16(c12, b2, a0, 1);
+            c10 = vfmaq_laneq_f16(c10, b0, a0, 1);
+            c11 = vfmaq_laneq_f16(c11, b1, a0, 1);
+            c12 = vfmaq_laneq_f16(c12, b2, a0, 1);
 
-        c20 = vfmaq_laneq_f16(c20, b0, a0, 2);
-        c21 = vfmaq_laneq_f16(c21, b1, a0, 2);
-        c22 = vfmaq_laneq_f16(c22, b2, a0, 2);
+            c20 = vfmaq_laneq_f16(c20, b0, a0, 2);
+            c21 = vfmaq_laneq_f16(c21, b1, a0, 2);
+            c22 = vfmaq_laneq_f16(c22, b2, a0, 2);
 
-        c30 = vfmaq_laneq_f16(c30, b0, a0, 3);
-        c31 = vfmaq_laneq_f16(c31, b1, a0, 3);
-        c32 = vfmaq_laneq_f16(c32, b2, a0, 3);
+            c30 = vfmaq_laneq_f16(c30, b0, a0, 3);
+            c31 = vfmaq_laneq_f16(c31, b1, a0, 3);
+            c32 = vfmaq_laneq_f16(c32, b2, a0, 3);
 
-        c40 = vfmaq_laneq_f16(c40, b0, a0, 4);
-        c41 = vfmaq_laneq_f16(c41, b1, a0, 4);
-        c42 = vfmaq_laneq_f16(c42, b2, a0, 4);
+            c40 = vfmaq_laneq_f16(c40, b0, a0, 4);
+            c41 = vfmaq_laneq_f16(c41, b1, a0, 4);
+            c42 = vfmaq_laneq_f16(c42, b2, a0, 4);
 
-        c50 = vfmaq_laneq_f16(c50, b0, a0, 5);
-        c51 = vfmaq_laneq_f16(c51, b1, a0, 5);
-        c52 = vfmaq_laneq_f16(c52, b2, a0, 5);
+            c50 = vfmaq_laneq_f16(c50, b0, a0, 5);
+            c51 = vfmaq_laneq_f16(c51, b1, a0, 5);
+            c52 = vfmaq_laneq_f16(c52, b2, a0, 5);
 
-        c60 = vfmaq_laneq_f16(c60, b0, a0, 6);
-        c61 = vfmaq_laneq_f16(c61, b1, a0, 6);
-        c62 = vfmaq_laneq_f16(c62, b2, a0, 6);
+            c60 = vfmaq_laneq_f16(c60, b0, a0, 6);
+            c61 = vfmaq_laneq_f16(c61, b1, a0, 6);
+            c62 = vfmaq_laneq_f16(c62, b2, a0, 6);
 
-        c70 = vfmaq_laneq_f16(c70, b0, a0, 7);
-        c71 = vfmaq_laneq_f16(c71, b1, a0, 7);
-        c72 = vfmaq_laneq_f16(c72, b2, a0, 7);
+            c70 = vfmaq_laneq_f16(c70, b0, a0, 7);
+            c71 = vfmaq_laneq_f16(c71, b1, a0, 7);
+            c72 = vfmaq_laneq_f16(c72, b2, a0, 7);
+        }
+    } else if (width > 8) {
+        for( int p = 0; p < np; p++, a += FX_CONV_MR_F16, b += FX_CONV_NR_F16 )
+        {
+            float16x8_t a0 = vld1q_f16(a);
+            float16x8_t b0 = vld1q_f16(b), b1 = vld1q_f16(b + 8);
+
+            c00 = vfmaq_laneq_f16(c00, b0, a0, 0);
+            c01 = vfmaq_laneq_f16(c01, b1, a0, 0);
+
+            c10 = vfmaq_laneq_f16(c10, b0, a0, 1);
+            c11 = vfmaq_laneq_f16(c11, b1, a0, 1);
+
+            c20 = vfmaq_laneq_f16(c20, b0, a0, 2);
+            c21 = vfmaq_laneq_f16(c21, b1, a0, 2);
+
+            c30 = vfmaq_laneq_f16(c30, b0, a0, 3);
+            c31 = vfmaq_laneq_f16(c31, b1, a0, 3);
+
+            c40 = vfmaq_laneq_f16(c40, b0, a0, 4);
+            c41 = vfmaq_laneq_f16(c41, b1, a0, 4);
+
+            c50 = vfmaq_laneq_f16(c50, b0, a0, 5);
+            c51 = vfmaq_laneq_f16(c51, b1, a0, 5);
+
+            c60 = vfmaq_laneq_f16(c60, b0, a0, 6);
+            c61 = vfmaq_laneq_f16(c61, b1, a0, 6);
+
+            c70 = vfmaq_laneq_f16(c70, b0, a0, 7);
+            c71 = vfmaq_laneq_f16(c71, b1, a0, 7);
+        }
+    } else {
+        for( int p = 0; p < np; p++, a += FX_CONV_MR_F16, b += FX_CONV_NR_F16 )
+        {
+            float16x8_t a0 = vld1q_f16(a);
+            float16x8_t b0 = vld1q_f16(b);
+
+            c00 = vfmaq_laneq_f16(c00, b0, a0, 0);
+            c10 = vfmaq_laneq_f16(c10, b0, a0, 1);
+            c20 = vfmaq_laneq_f16(c20, b0, a0, 2);
+            c30 = vfmaq_laneq_f16(c30, b0, a0, 3);
+            c40 = vfmaq_laneq_f16(c40, b0, a0, 4);
+            c50 = vfmaq_laneq_f16(c50, b0, a0, 5);
+            c60 = vfmaq_laneq_f16(c60, b0, a0, 6);
+            c70 = vfmaq_laneq_f16(c70, b0, a0, 7);
+        }
     }
 
     if (!init_c) {
