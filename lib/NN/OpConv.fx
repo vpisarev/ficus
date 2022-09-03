@@ -343,7 +343,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     // That is, we should make K_BLOCK_SIZE and C_BLOCK_SIZE adaptive.
     int MAX_STRIPES = (56 + CONV_NR - 1)/CONV_NR;
     int K_BLOCK_SIZE = ((32*(inp_typ == FX_F16 ? 2 : 1) + CONV_MR - 1)/CONV_MR)*CONV_MR;
-    int C_BLOCK_SIZE = 256;
+    int C_BLOCK_SIZE = 512;
 
     const fx_arr_t* inp_shape_ = &inp->shape.shape;
     const fx_arr_t* out_shape_ = &out->shape.shape;
@@ -730,14 +730,15 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             const char* wptr = weights + (k0_block*HkWkCg + c0*CONV_MR)*esz;
                             const char* inptr = inpbuf_task + (stripe*stripesize + c0*CONV_NR)*esz;
                             float* cptr = cbuf_task + stripe*CONV_NR;
+                            fx_f16* cptr_f16 = (fx_f16*)cbuf_task + stripe*CONV_NR;
                             for (int k = k0_block; k < k1_block; k += CONV_MR,
                                     wptr += HkWkCg*CONV_MR*esz,
-                                    cptr += CONV_MR*ldc
+                                    cptr += CONV_MR*ldc, cptr_f16 += CONV_MR*ldc
                                     ) {
                             #if _FX_NN_ENABLE_FP16
                                 if (inp_typ == FX_F16) {
                                     _fx_conv_update_block_f16(c1 - c0,
-                                        wptr, inptr, cptr, ldc, c0 == 0);
+                                        wptr, inptr, cptr_f16, ldc, c0 == 0);
                                 } else
                             #endif
                                 {
@@ -750,8 +751,8 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
 
                     size_t outofs = (((n*ngroups + g)*Kg + k0_block)*out_planesize + yx0)*esz;
                     int out_width = yx_block_limit - yx0;
-                    const float* cptr = (const float*)cbuf_task;
                     if (inp_typ == FX_F32) {
+                        const float* cptr = (const float*)cbuf_task;
                         float* outptr = (float*)(out_data->data + outofs);
                         const float* bpptr = bp_data && bp_data->data ? (float*)(bp_data->data + outofs) : 0;
 
@@ -818,6 +819,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                 activ_func(outptr, outptr, out_width, activ_params);
                         }
                     } else {
+                        const fx_f16* cptr = (const fx_f16*)cbuf_task;
                         fx_f16* outptr = (fx_f16*)(out_data->data + outofs);
                         const fx_f16* bpptr = bp_data && bp_data->data ? (fx_f16*)(bp_data->data + outofs) : 0;
 
@@ -828,7 +830,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             int j = 0;
 
                         #ifdef __ARM_NEON
-                            float32x4_t vbias = vdupq_n_f32(biasval);
+                            float16x8_t vbias = vdupq_n_f16(biasval);
                             float16x8_t valpha = vdupq_n_f16(alpha);
                             float16x8_t vmax = vdupq_n_f16(maxval < 65504.f ? maxval : 65504.f);
                             float16x8_t z = vdupq_n_f16(0.f), one = vdupq_n_f16(1.f);
@@ -839,9 +841,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                             break;
                                         j = out_width - 8;
                                     }
-                                    float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
-                                    float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
-                                    float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
+                                    float16x8_t v = vaddq_f16(vld1q_f16(cptr + j), vbias);
                                     v = vaddq_f16(v, vld1q_f16(bpptr + j));
                                     v = vmulq_f16(vminq_f16(v, vmax), vbslq_f16(vcltq_f16(v, z), valpha, one));
                                     vst1q_f16(outptr + j, v);
@@ -853,9 +853,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                             break;
                                         j = out_width - 8;
                                     }
-                                    float32x4_t v0 = vaddq_f32(vld1q_f32(cptr + j), vbias);
-                                    float32x4_t v1 = vaddq_f32(vld1q_f32(cptr + j + 4), vbias);
-                                    float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
+                                    float16x8_t v = vaddq_f16(vld1q_f16(cptr + j), vbias);
                                     v = vmulq_f16(vminq_f16(v, vmax), vbslq_f16(vcltq_f16(v, z), valpha, one));
                                     vst1q_f16(outptr + j, v);
                                 }
@@ -864,7 +862,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
 
                             if (bpptr) {
                                 for (; j < out_width; j++) {
-                                    float v = cptr[j] + biasval;
+                                    float v = FX_FLOAT(cptr[j]) + biasval;
                                     v += FX_FLOAT(bpptr[j]);
                                     v = v <= maxval ? v : maxval;
                                     v *= (v < 0.f ? alpha : 1.f);
@@ -872,7 +870,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                                 }
                             } else {
                                 for (; j < out_width; j++) {
-                                    float v = cptr[j] + biasval;
+                                    float v = FX_FLOAT(cptr[j]) + biasval;
                                     v = v <= maxval ? v : maxval;
                                     v *= (v < 0.f ? alpha : 1.f);
                                     outptr[j] = FX_FLOAT16(v);

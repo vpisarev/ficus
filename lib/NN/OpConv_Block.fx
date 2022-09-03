@@ -552,7 +552,7 @@ void _fx_conv_update_block_f16( int np, const void* a_, const void* b_, void* c_
 {
     const fx_f16* a = (const fx_f16*)a_;
     const fx_f16* b = (const fx_f16*)b_;
-    float* c = (float*)c_;
+    fx_f16* c = (fx_f16*)c_;
 #if FX_CONV_NR_F16 == 24 && FX_CONV_MR_F16 == 8
     float16x8_t c00 = vdupq_n_f16((fx_f16)0.f), c01 = c00, c02 = c00;
     float16x8_t c10 = vdupq_n_f16((fx_f16)0.f), c11 = c10, c12 = c10;
@@ -601,53 +601,12 @@ void _fx_conv_update_block_f16( int np, const void* a_, const void* b_, void* c_
         c72 = vfmaq_laneq_f16(c72, b2, a0, 7);
     }
 
-    float32x4_t t0, t1, t2, t3, t4, t5;
-
-    if (init_c) {
-    #undef _FX_INIT_CBUF_ROW
-    #define _FX_INIT_CBUF_ROW(row) \
-        t0 = vcvt_f32_f16(vget_low_f16(c##row##0)); \
-        t1 = vcvt_f32_f16(vget_high_f16(c##row##0)); \
-        t2 = vcvt_f32_f16(vget_low_f16(c##row##1)); \
-        t3 = vcvt_f32_f16(vget_high_f16(c##row##1)); \
-        t4 = vcvt_f32_f16(vget_low_f16(c##row##2)); \
-        t5 = vcvt_f32_f16(vget_high_f16(c##row##2)); \
-        vst1q_f32(c + row*ldc, t0); \
-        vst1q_f32(c + row*ldc + 4, t1); \
-        vst1q_f32(c + row*ldc + 8, t2); \
-        vst1q_f32(c + row*ldc + 12, t3); \
-        vst1q_f32(c + row*ldc + 16, t4); \
-        vst1q_f32(c + row*ldc + 20, t5)
-
-        _FX_INIT_CBUF_ROW(0);
-        _FX_INIT_CBUF_ROW(1);
-        _FX_INIT_CBUF_ROW(2);
-        _FX_INIT_CBUF_ROW(3);
-        _FX_INIT_CBUF_ROW(4);
-        _FX_INIT_CBUF_ROW(5);
-        _FX_INIT_CBUF_ROW(6);
-        _FX_INIT_CBUF_ROW(7);
-    } else {
+    if (!init_c) {
     #undef _FX_UPDATE_CBUF_ROW
     #define _FX_UPDATE_CBUF_ROW(row) \
-        t0 = vcvt_f32_f16(vget_low_f16(c##row##0)); \
-        t1 = vcvt_f32_f16(vget_high_f16(c##row##0)); \
-        t2 = vcvt_f32_f16(vget_low_f16(c##row##1)); \
-        t3 = vcvt_f32_f16(vget_high_f16(c##row##1)); \
-        t4 = vcvt_f32_f16(vget_low_f16(c##row##2)); \
-        t5 = vcvt_f32_f16(vget_high_f16(c##row##2)); \
-        t0 = vaddq_f32(t0, vld1q_f32(c + row*ldc)); \
-        t1 = vaddq_f32(t1, vld1q_f32(c + row*ldc + 4)); \
-        t2 = vaddq_f32(t2, vld1q_f32(c + row*ldc + 8)); \
-        t3 = vaddq_f32(t3, vld1q_f32(c + row*ldc + 12)); \
-        t4 = vaddq_f32(t4, vld1q_f32(c + row*ldc + 16)); \
-        t5 = vaddq_f32(t5, vld1q_f32(c + row*ldc + 20)); \
-        vst1q_f32(c + row*ldc, t0); \
-        vst1q_f32(c + row*ldc + 4, t1); \
-        vst1q_f32(c + row*ldc + 8, t2); \
-        vst1q_f32(c + row*ldc + 12, t3); \
-        vst1q_f32(c + row*ldc + 16, t4); \
-        vst1q_f32(c + row*ldc + 20, t5)
+        c##row##0 = vaddq_f16(c##row##0, vld1q_f16(c + row*ldc)); \
+        c##row##1 = vaddq_f16(c##row##1, vld1q_f16(c + row*ldc + 8)); \
+        c##row##2 = vaddq_f16(c##row##2, vld1q_f16(c + row*ldc + 16))
 
         _FX_UPDATE_CBUF_ROW(0);
         _FX_UPDATE_CBUF_ROW(1);
@@ -658,6 +617,21 @@ void _fx_conv_update_block_f16( int np, const void* a_, const void* b_, void* c_
         _FX_UPDATE_CBUF_ROW(6);
         _FX_UPDATE_CBUF_ROW(7);
     }
+
+    #undef _FX_STORE_CBUF_ROW
+    #define _FX_STORE_CBUF_ROW(row) \
+        vst1q_f16(c + row*ldc, c##row##0); \
+        vst1q_f16(c + row*ldc + 8, c##row##1); \
+        vst1q_f16(c + row*ldc + 16, c##row##2)
+
+    _FX_STORE_CBUF_ROW(0);
+    _FX_STORE_CBUF_ROW(1);
+    _FX_STORE_CBUF_ROW(2);
+    _FX_STORE_CBUF_ROW(3);
+    _FX_STORE_CBUF_ROW(4);
+    _FX_STORE_CBUF_ROW(5);
+    _FX_STORE_CBUF_ROW(6);
+    _FX_STORE_CBUF_ROW(7);
 #else
     float cbuf[FX_CONV_MR_F16*FX_CONV_NR_F16];
     memset(cbuf, 0, sizeof(cbuf));
@@ -673,12 +647,12 @@ void _fx_conv_update_block_f16( int np, const void* a_, const void* b_, void* c_
     if (!init_c) {
         for(int i = 0; i < FX_CONV_MR_F16; i++) {
             for(int j = 0; j < FX_CONV_NR_F16; j++)
-                c[i*ldc + j] += cbuf[i*FX_CONV_NR_F16 + j];
+                c[i*ldc + j] = FX_FLOAT16(FX_FLOAT(c[i*ldc + j]) + cbuf[i*FX_CONV_NR_F16 + j]);
         }
     } else {
         for(int i = 0; i < FX_CONV_MR_F16; i++) {
             for(int j = 0; j < FX_CONV_NR_F16; j++)
-                c[i*ldc + j] = cbuf[i*FX_CONV_NR_F16 + j];
+                c[i*ldc + j] = FX_FLOAT16(cbuf[i*FX_CONV_NR_F16 + j]);
         }
     }
 #endif
