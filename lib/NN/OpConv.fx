@@ -321,9 +321,6 @@ static int _fx_init_conv2d(
     return fx_status;
 }
 
-int64_t depthwise_time = 0, _1x1_time = 0;
-int depthwise_calls = 0, _1x1_calls = 0;
-
 int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                const _fx_nntensor_t* bypass, _fx_conv2d_t* conv, int_ ntasks,
                fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf)
@@ -372,24 +369,31 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
     int Hk = conv->Hk, Wk = conv->Wk, ksize = Hk*Wk, ngroups = conv->ngroups;
     int Cg = C/ngroups, Kg = K/ngroups;
     int Kg_nblocks = (Kg + CONV_MR-1)/CONV_MR, Kg_aligned = Kg_nblocks*CONV_MR;
-    int stripes_per_sample = (out_planesize + CONV_NR - 1)/CONV_NR;
-    if (stripes_per_sample < ntasks*4)
-        stripes_per_sample = 1;
-    else
-        Kg_nblocks = 1;
-    int Kstripes = Kg_nblocks*stripes_per_sample;
-    int nsubtasks = N*ngroups*Kstripes;
     int stride_y = conv->stride_y, stride_x = conv->stride_x;
     int dilation_y = conv->dilation_y, dilation_x = conv->dilation_x;
     int pad_top = conv->pad_top, pad_bottom = conv->pad_bottom;
     int pad_left = conv->pad_left, pad_right = conv->pad_right;
     int pad_x = pad_left + pad_right;
     bool fast_1x1 = stride_x == 1 && stride_y == 1 && ksize == 1;
-    bool s1d1 = stride_x == 1 && stride_y == 1 && dilation_x == 1 && dilation_y == 1;
+    int stripes_per_plane0 = (out_planesize + CONV_NR - 1)/CONV_NR;
+    int stripes_per_plane = stripes_per_plane0;
+    if (fast_1x1 || stripes_per_plane < ntasks*4)
+        stripes_per_plane = 1;
+    else
+        Kg_nblocks = 1;
+    int Kstripes = Kg_nblocks*stripes_per_plane;
+    int nsubtasks = N*ngroups*Kstripes;
     int HkWkCg = ksize*Cg, HkWkC = HkWkCg*ngroups;
-    size_t stripesize = CONV_NR*ksize*Cg;
-    size_t taskbufsize = (stripesize + CONV_NR*K_BLOCK_SIZE*(c_esz/esz))*MAX_STRIPES;
-    size_t totalbufsize = taskbufsize*ntasks*esz;
+    size_t stripesize = (size_t)HkWkCg*CONV_NR;
+    size_t cbufsize = CONV_NR*K_BLOCK_SIZE*MAX_STRIPES;
+    size_t taskbufsize = cbufsize*sizeof(float);
+    if (!fast_1x1)
+        taskbufsize += stripesize*MAX_STRIPES*esz;
+    size_t totalbufsize_base = taskbufsize*ntasks;
+    size_t totalbufsize = totalbufsize_base;
+    if (fast_1x1)
+        totalbufsize += N*ngroups*stripes_per_plane0*stripesize*esz;
+
     char* inpbuf_all = 0;
     int* ofstab = (int*)alloca(ksize*3*sizeof(ofstab[0]));
     int* yxtab = ofstab + ksize;
@@ -404,8 +408,6 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (inp_typ != out_typ || (pb_typ > 1 && pb_typ != inp_typ))
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
-    if (s1d1 && (pad_right > conv->pad_right || pad_right < 0))
-        return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (ksize == 1) {
         if((pad_left | pad_right | pad_top | pad_bottom) != 0)
             return FX_SET_EXN_FAST(FX_EXN_BadArgError);
@@ -456,14 +458,59 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
         fx_copy_arr(curr_scratch_buf, new_scratch_buf);
     }
 
-    inpbuf_all = new_scratch_buf->data;
+    inpbuf_all = new_scratch_buf->data + totalbufsize_base;
     _fx_calc_ofstab2d(Wi, Hk, Wk, dilation_y, dilation_x, yxtab, ofstab);
 
-    // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
+    // In the case of 1x1 convolution we first reorder the whole input tensor.
+    // In general, im2row results in Hk*Wk-x unrolling factor
+    // (e.g. 3*3=9x unrolling for 3x3 convolution), thus for 1x1 convolution
+    // the reordered tensor will take as much space as the original tensor.
+    if (fast_1x1) {
+        // the optional phase 1. im2row
+        #pragma omp parallel for num_threads(ntasks)
+        for (int task_id = 0; task_id < ntasks; task_id++) {
+            int nc0 = task_id*N*C/ntasks, nc1 = (task_id+1)*N*C/ntasks, dc = 0;
+            for (; nc0 < nc1; nc0 += dc) {
+                int n = nc0/C, c0 = nc0 - n*C;
+                int g = c0 / Cg;
+                c0 -= g*Cg;
+                dc = Cg - c0 <= nc1 - nc0 ? Cg - c0 : nc1 - nc0;
+                const char* inptr_ = inp_data->data + (size_t)nc0*inp_planesize*esz;
+                char* inpbuf_ = inpbuf_all + ((n*ngroups + g)*stripes_per_plane0*stripesize + c0*CONV_NR)*esz;
+                int yx0 = 0;
+                for (int i = 0; i < stripes_per_plane0; i++, yx0 += CONV_NR, inpbuf_ += stripesize*esz) {
+                    int yx1 = yx0 + CONV_NR;
+                    yx1 = yx1 <= out_planesize ? yx1 : out_planesize;
+                    int slice_len = yx1 - yx0;
+                    bool partial = slice_len < CONV_NR;
+                    const char* inptr = inptr_ + yx0*esz;
+                    char* inpbuf = inpbuf_;
+                    if (!partial) {
+                        // Make special branch where memcpy() is called with a constant buffer size.
+                        // Compilers will likely unroll this loop properly.
+                        if (esz == sizeof(float)) {
+                            for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += FX_CONV_NR*sizeof(float))
+                                memcpy(inpbuf, inptr, FX_CONV_NR*sizeof(float));
+                        } else {
+                            for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += FX_CONV_NR_F16*sizeof(fx_f16))
+                                memcpy(inpbuf, inptr, FX_CONV_NR_F16*sizeof(fx_f16));
+                        }
+                    } else {
+                        for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz) {
+                            memcpy(inpbuf, inptr, slice_len*esz);
+                            memset(inpbuf + slice_len*esz, 0, (CONV_NR - slice_len)*esz);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // phase 2. the actual convolution: (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
     #pragma omp parallel for num_threads(ntasks)
     for (int task_id = 0; task_id < ntasks; task_id++) {
-        char* inpbuf_task = &inpbuf_all[taskbufsize*task_id*esz];
-        float* cbuf_task = (float*)(inpbuf_task + stripesize*MAX_STRIPES*esz);
+        float* cbuf_task = (float*)(new_scratch_buf->data + taskbufsize*task_id);
+        char* inpbuf_task = (char*)(cbuf_task + cbufsize);
         int ngs0 = (int)((size_t)nsubtasks*task_id/ntasks);
         int ngs1 = (int)((size_t)nsubtasks*(task_id+1)/ntasks);
         for (int subtask = ngs0; subtask < ngs1; ) {
@@ -476,7 +523,7 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             subtask += kyx1 - kyx0;
             int k0, k1;
             int yx0, yx_limit, yx_block_limit = 0;
-            if (stripes_per_sample == 1) {
+            if (stripes_per_plane == 1) {
                 k0 = kyx0 * CONV_MR;
                 k1 = kyx1 * CONV_MR;
                 k1 = k1 <= Kg ? k1 : Kg;
@@ -576,44 +623,43 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                 yx_block_limit = yx0 + CONV_NR*MAX_STRIPES;
                 yx_block_limit = yx_block_limit < yx_limit ? yx_block_limit : yx_limit;
                 int nstripes = (yx_block_limit - yx0 + CONV_NR - 1)/CONV_NR;
-                int yx0_saved = yx0;
                 assert(nstripes <= MAX_STRIPES);
-                for (int stripe = 0; yx0 < yx_block_limit; stripe++, yx0 += CONV_NR) {
-                    char* inpbuf = inpbuf_task + stripe*stripesize*esz;
-                    const char* inptr = inp_data->data + inp_plane_ofs*esz;
-                    /*
-                        1. pack the data. Copy the HkxWk CONV_NR-wide slices from
-                           each feature plane of the input tensor to the input buffer.
-                    */
-                    if (fast_1x1) {
-                        int slice_len = yx_block_limit - yx0;
+                if (fast_1x1) {
+                    /*int yx0_saved = yx0, dc = Cg;
+                    for (int stripe = 0; yx0 < yx_block_limit; stripe++, yx0 += CONV_NR) {
+                        char* inpbuf = inpbuf_task + stripe*stripesize*esz;
+                        const char* inptr = inp_data->data + (inp_plane_ofs + yx0)*esz;
+                        int yx1 = yx0 + CONV_NR;
+                        yx1 = yx1 <= out_planesize ? yx1 : out_planesize;
+                        int slice_len = yx1 - yx0;
                         bool partial = slice_len < CONV_NR;
-                        // super-fast branch for 1x1 convolutions with sy=sx=1.
-                        // in this case each feature plane can be safely treated
-                        // as 1D array and we just extract next portion
-                        // of CONV_NR elements from each feature plane and
-                        // put it together.
-                        inptr += yx0*esz;
                         if (!partial) {
                             // Make special branch where memcpy() is called with a constant buffer size.
                             // Compilers will likely unroll this loop properly.
                             if (esz == sizeof(float)) {
-                                for (int c = 0; c < Cg; c++, inptr += inp_planesize*sizeof(float),
-                                                             inpbuf += FX_CONV_NR*sizeof(float))
+                                for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += FX_CONV_NR*sizeof(float))
                                     memcpy(inpbuf, inptr, FX_CONV_NR*sizeof(float));
                             } else {
-                                assert(esz == sizeof(fx_f16));
-                                for (int c = 0; c < Cg; c++, inptr += inp_planesize*sizeof(fx_f16),
-                                                             inpbuf += FX_CONV_NR_F16*sizeof(fx_f16))
+                                for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += FX_CONV_NR_F16*sizeof(fx_f16))
                                     memcpy(inpbuf, inptr, FX_CONV_NR_F16*sizeof(fx_f16));
                             }
                         } else {
-                            for (int c = 0; c < Cg; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz) {
+                            for (int c = 0; c < dc; c++, inptr += inp_planesize*esz, inpbuf += CONV_NR*esz) {
                                 memcpy(inpbuf, inptr, slice_len*esz);
                                 memset(inpbuf + slice_len*esz, 0, (CONV_NR - slice_len)*esz);
                             }
                         }
-                    } else {
+                    }
+                    yx0 = yx0_saved;*/
+                } else {
+                    int yx0_saved = yx0;
+                    for (int stripe = 0; yx0 < yx_block_limit; stripe++, yx0 += CONV_NR) {
+                        char* inpbuf = inpbuf_task + stripe*stripesize*esz;
+                        const char* inptr = inp_data->data + inp_plane_ofs*esz;
+                        /*
+                            1. pack the data. Copy the HkxWk CONV_NR-wide slices from
+                            each feature plane of the input tensor to the input buffer.
+                        */
                         //memset(inpbuf, 0, HkWkCg*CONV_NR*esz);
                         int y0_ = yx0/W0, x0_ = yx0 - y0_*W0;
                         for (int k = 0; k < ksize; k++) {
@@ -714,9 +760,9 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                             }
                         }
                     }
+                    yx0 = yx0_saved;
                 }
 
-                yx0 = yx0_saved;
                 const char* weights = (inp_typ == FX_F32 ?
                     (const char*)conv->weights : (const char*)conv->wf16) + g*Kg_aligned*HkWkCg*esz;
                 const float* biasptr = conv->bias + Kg*g;
@@ -727,9 +773,12 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
                     int out_width = yx_block_limit - yx0;
                     for (int c0 = 0; c0 < HkWkCg; c0 += C_BLOCK_SIZE) {
                         int c1 = c0 + C_BLOCK_SIZE < HkWkCg ? c0 + C_BLOCK_SIZE : HkWkCg;
-                        for (int stripe = 0; stripe < nstripes; stripe++) {
+                        const char* inptr = fast_1x1 ?
+                            inpbuf_all + (ng*stripes_per_plane0 + yx0/CONV_NR)*stripesize*esz :
+                            inpbuf_task;
+                        inptr += c0*CONV_NR*esz;
+                        for (int stripe = 0; stripe < nstripes; stripe++, inptr += stripesize*esz) {
                             const char* wptr = weights + (k0_block*HkWkCg + c0*CONV_MR)*esz;
-                            const char* inptr = inpbuf_task + (stripe*stripesize + c0*CONV_NR)*esz;
                             float* cptr = cbuf_task + stripe*CONV_NR;
                             fx_f16* cptr_f16 = (fx_f16*)cbuf_task + stripe*CONV_NR;
                             for (int k = k0_block; k < k1_block; k += CONV_MR,
