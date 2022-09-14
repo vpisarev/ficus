@@ -7,6 +7,12 @@
 @ccode {
 #include "ficus_nn_common.h"
 
+#if defined __ARM_NEON || defined __AVX2__
+#define _FX_DEPTHWISE_USE_SIMD 1
+#else
+#define _FX_DEPTHWISE_USE_SIMD 0
+#endif
+
 int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
                              const _fx_conv2d_t* conv,
                              const char* inptr0, char* outptr0,
@@ -15,6 +21,7 @@ int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
     int Hi = dw_ctx->Hi, Wi = dw_ctx->Wi, H0 = dw_ctx->H0, W0 = dw_ctx->W0;
     int Hk = conv->Hk, Wk = conv->Wk;
     int stride_x = conv->stride_x, stride_y = conv->stride_y;
+    int dilation_x = conv->dilation_x, dilation_y = conv->dilation_y;
     int pad_top = conv->pad_top, pad_left = conv->pad_left;
     int_ NC = dw_ctx->N*conv->C;
     size_t inp_planesize = Hi*Wi, out_planesize = H0*W0;
@@ -33,384 +40,487 @@ int _fx_depthwise_conv2d_f32(const _fx_depthwise2d_t* dw_ctx,
     _fx_activ_func_t activ_func = fast_activ ||
         conv->activ == _FX_ACTIV_NONE ? 0 : conv->activ_func;
 
-#if defined __ARM_NEON || defined __AVX2__
+#if _FX_DEPTHWISE_USE_SIMD
     const int vec_nlanes = FX_VEC_NLANES_F32;
     bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_xleft < W0;
+    int Wi_simd = Wi - (vec_nlanes - 1)*stride_x - (Wk - 1)*dilation_x;
+    bool is3x3 = stride_x == 1 && Hk == 3 && Wk == 3;
+    bool is3x3_r3 = is3x3 && stride_y == 1 &&
+        dilation_y == 1 && dilation_x == 1;
+    uint32_t xofsbuf[FX_VEC_NLANES_F32];
+    uint32_t* xofstab = (uint32_t*)alloca(vec_nlanes*ksize*sizeof(xofstab[0]));
+    for (int j = 0; j < vec_nlanes; j++)
+        xofsbuf[j] = j*stride_x;
+    for (int k = 0; k < ksize; k++) {
+        int xi = yxtab[k*2+1];
+        for (int j = 0; j < FX_VEC_NLANES_F32; j++)
+            xofstab[k*vec_nlanes + j] = xi + xofsbuf[j];
+    }
 #ifdef __ARM_NEON
     float32x4_t valpha = vdupq_n_f32(alpha), vmaxval = vdupq_n_f32(maxval);
     float32x4_t z = vdupq_n_f32(0.f), one = vdupq_n_f32(1.f);
-    bool is3x3 = stride_x == 1 && Hk == 3 && Wk == 3;
-    bool is3x3_r3 = is3x3 && conv->stride_y == 1 &&
-        conv->dilation_y == 1 && conv->dilation_x == 1;
+    uint32x4_t v_Wi = vdupq_n_u32((uint32_t)Wi);
+    uint32x4_t vxofs0 = vld1q_u32(xofsbuf);
 #elif defined __AVX2__
     __m256 valpha = _mm256_set1_ps(alpha);
     __m256 vmaxval = _mm256_set1_ps(maxval);
     __m256 z = _mm256_setzero_ps(), one = _mm256_set1_ps(1.f);
+    __m256i v_Wi = _mm256_set1_epi32(Wi);
+    __m256i vxofs0 = _mm256_loadu_si256((const __m256i*)xofsbuf);
 #endif
+#else
+    const int vec_nlanes = 1;
 #endif
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
     #pragma omp parallel for num_threads(ntasks)
-    for (int_ nc = 0; nc < NC; nc++) {
-        int c = (int)(nc % conv->C), dy0 = 1;
-        const float* inptr = (const float*)inptr0 + inp_planesize*nc;
-        float* outptr = (float*)outptr0 + out_planesize*nc;
-        float biasval = conv->bias[c];
-        const float* weights = conv->weights + c*padded_ksize;
-#ifdef __ARM_NEON
-        float32x4_t w0=vdupq_n_f32(0.f), w1=w0, w2=w0, w3=w0, w4=w0, w5=w0, w6=w0, w7=w0, w8=w0;
-        float32x4_t vbias = vdupq_n_f32(biasval);
-        if (useSIMD && is3x3) {
-            w0 = vdupq_n_f32(weights[0]);
-            w1 = vdupq_n_f32(weights[1]);
-            w2 = vdupq_n_f32(weights[2]);
-            w3 = vdupq_n_f32(weights[3]);
-            w4 = vdupq_n_f32(weights[4]);
-            w5 = vdupq_n_f32(weights[5]);
-            w6 = vdupq_n_f32(weights[6]);
-            w7 = vdupq_n_f32(weights[7]);
-            w8 = vdupq_n_f32(weights[8]);
-        }
-#elif defined __AVX2__
-        const int even_mask[] = {0, 2, 4, 6, 1, 3, 5, 7};
-        __m256 vbias = _mm256_set1_ps(biasval);
-        __m256i even = _mm256_loadu_si256((const __m256i*)even_mask);
-        #define _mm256_loadeven_ps(ptr) \
-            _mm256_permute2f128_ps( \
-                _mm256_permutevar8x32_ps(_mm256_loadu_ps(ptr), even), \
-                _mm256_permutevar8x32_ps(_mm256_loadu_ps((ptr) + 8), even), \
-                0 + 2*16)
-#endif
-        for (int y0 = 0; y0 < H0; y0 += dy0, outptr += W0*dy0) {
-        #ifdef __ARM_NEON
-            dy0 = inner_ytop <= y0 && y0+3 < inner_ybottom && is3x3_r3 ? 3 : 1;
-        #endif
-            int x0 = 0, x1 = y0 >= inner_ytop && y0 < inner_ybottom ? inner_xleft : W0;
-            int yi_ = y0*stride_y - pad_top;
-            for(;;) {
-                float s_0, s_1, s_2;
-                if (dy0 == 3) {
-                    for (; x0 < x1; x0++) {
-                        int xi_ = x0*stride_x - pad_left;
-                        s_0 = s_1 = s_2 = biasval;
-                        for (int k = 0; k < ksize; k++) {
-                            int yi = yi_ + yxtab[k*2];
-                            int xi = xi_ + yxtab[k*2+1];
-                            float w = weights[k];
-                            if ((unsigned)xi < (unsigned)Wi) {
-                                s_0 += inptr[yi*Wi + xi]*w;
-                                s_1 += inptr[(yi+1)*Wi + xi]*w;
-                                s_2 += inptr[(yi+2)*Wi + xi]*w;
-                            }
-                        }
-                        s_0 = s_0 <= maxval ? s_0 : maxval;
-                        s_0 *= (s_0 < 0.f ? alpha : 1.f);
-                        s_1 = s_1 <= maxval ? s_1 : maxval;
-                        s_1 *= (s_1 < 0.f ? alpha : 1.f);
-                        s_2 = s_2 <= maxval ? s_2 : maxval;
-                        s_2 *= (s_2 < 0.f ? alpha : 1.f);
-                        outptr[x0] = s_0;
-                        outptr[x0 + W0] = s_1;
-                        outptr[x0 + W0*2] = s_2;
-                    }
-                } else {
-                    for (; x0 < x1; x0++) {
-                        int xi_ = x0*stride_x - pad_left;
-                        s_0 = biasval;
-                        for (int k = 0; k < ksize; k++) {
-                            int yi = yi_ + yxtab[k*2];
-                            int xi = xi_ + yxtab[k*2+1];
-                            float w = weights[k];
-                            if (((unsigned)yi < (unsigned)Hi) & ((unsigned)xi < (unsigned)Wi))
-                                s_0 += inptr[yi*Wi + xi]*w;
-                        }
-                        s_0 = s_0 <= maxval ? s_0 : maxval;
-                        s_0 *= (s_0 < 0.f ? alpha : 1.f);
-                        outptr[x0] = s_0;
-                    }
-                }
-                if (x0 == W0)
-                    break;
-                x1 = inner_xright;
+    for (int task_id = 0; task_id < ntasks; task_id++) {
+        int nc0 = task_id*NC/ntasks, nc1 = (task_id+1)*NC/ntasks;
+        for (int nc = nc0; nc < nc1; nc++) {
+            int c = nc % conv->C, dy0 = 1;
+            const float* inptr = (const float*)inptr0 + inp_planesize*nc;
+            float* outptr = (float*)outptr0 + out_planesize*nc;
+            float biasval = conv->bias[c];
+            const float* weights = conv->weights + c*padded_ksize;
+            int safe_y0 = nc > nc0 ? 0 : 1;
+            int safe_y1 = nc < nc1-1 ? H0 : H0-1;
+        #if _FX_DEPTHWISE_USE_SIMD
             #ifdef __ARM_NEON
-                if (useSIMD) {
-                    if (is3x3) {
-                        if (dy0 == 3) {
-                            for (; x0 < x1; x0 += vec_nlanes) {
-                                if (x0 + vec_nlanes > x1) {
-                                    if (x0 <= inner_xleft)
-                                        break;
-                                    x0 = x1 - vec_nlanes;
-                                }
-                                int xi_ = x0*stride_x - pad_left;
-                                const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                                float32x4_t s0, s1, s2;
-                                float32x4_t x00 = vld1q_f32(inptr_xi);
-                                float32x4_t x01 = vld1q_f32(inptr_xi + 1);
-                                float32x4_t x02 = vld1q_f32(inptr_xi + 2);
-
-                                float32x4_t x10 = vld1q_f32(inptr_xi + Wi);
-                                float32x4_t x11 = vld1q_f32(inptr_xi + Wi + 1);
-                                float32x4_t x12 = vld1q_f32(inptr_xi + Wi + 2);
-
-                                float32x4_t x20 = vld1q_f32(inptr_xi + Wi*2);
-                                float32x4_t x21 = vld1q_f32(inptr_xi + Wi*2 + 1);
-                                float32x4_t x22 = vld1q_f32(inptr_xi + Wi*2 + 2);
-
-                                float32x4_t x30 = vld1q_f32(inptr_xi + Wi*3);
-                                float32x4_t x31 = vld1q_f32(inptr_xi + Wi*3 + 1);
-                                float32x4_t x32 = vld1q_f32(inptr_xi + Wi*3 + 2);
-
-                                float32x4_t x40 = vld1q_f32(inptr_xi + Wi*4);
-                                float32x4_t x41 = vld1q_f32(inptr_xi + Wi*4 + 1);
-                                float32x4_t x42 = vld1q_f32(inptr_xi + Wi*4 + 2);
-
-                                s0 = vfmaq_f32(vbias, x00, w0);
-                                s1 = vfmaq_f32(vbias, x10, w0);
-                                s2 = vfmaq_f32(vbias, x20, w0);
-
-                                s0 = vfmaq_f32(s0, x01, w1);
-                                s1 = vfmaq_f32(s1, x11, w1);
-                                s2 = vfmaq_f32(s2, x21, w1);
-
-                                s0 = vfmaq_f32(s0, x02, w2);
-                                s1 = vfmaq_f32(s1, x12, w2);
-                                s2 = vfmaq_f32(s2, x22, w2);
-
-                                s0 = vfmaq_f32(s0, x10, w3);
-                                s1 = vfmaq_f32(s1, x20, w3);
-                                s2 = vfmaq_f32(s2, x30, w3);
-
-                                s0 = vfmaq_f32(s0, x11, w4);
-                                s1 = vfmaq_f32(s1, x21, w4);
-                                s2 = vfmaq_f32(s2, x31, w4);
-
-                                s0 = vfmaq_f32(s0, x12, w5);
-                                s1 = vfmaq_f32(s1, x22, w5);
-                                s2 = vfmaq_f32(s2, x32, w5);
-
-                                s0 = vfmaq_f32(s0, x20, w6);
-                                s1 = vfmaq_f32(s1, x30, w6);
-                                s2 = vfmaq_f32(s2, x40, w6);
-
-                                s0 = vfmaq_f32(s0, x21, w7);
-                                s1 = vfmaq_f32(s1, x31, w7);
-                                s2 = vfmaq_f32(s2, x41, w7);
-
-                                s0 = vfmaq_f32(s0, x22, w8);
-                                s1 = vfmaq_f32(s1, x32, w8);
-                                s2 = vfmaq_f32(s2, x42, w8);
-
-                                s0 = vmulq_f32(vminq_f32(s0, vmaxval),
-                                               vbslq_f32(vcltq_f32(s0, z), valpha, one));
-                                s1 = vmulq_f32(vminq_f32(s1, vmaxval),
-                                               vbslq_f32(vcltq_f32(s1, z), valpha, one));
-                                s2 = vmulq_f32(vminq_f32(s2, vmaxval),
-                                               vbslq_f32(vcltq_f32(s2, z), valpha, one));
-                                vst1q_f32(outptr + x0, s0);
-                                vst1q_f32(outptr + W0 + x0, s1);
-                                vst1q_f32(outptr + W0*2 + x0, s2);
-                            }
-                        } else {
-                            for (; x0 < x1; x0 += vec_nlanes) {
-                                if (x0 + vec_nlanes > x1) {
-                                    if (x0 <= inner_xleft)
-                                        break;
-                                    x0 = x1 - vec_nlanes;
-                                }
-                                int xi_ = x0*stride_x - pad_left;
-                                const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                                float32x4_t s0 = vfmaq_f32(vbias, vld1q_f32(inptr_xi + ofstab[0]), w0);
-                                float32x4_t s1 = vmulq_f32(vld1q_f32(inptr_xi + ofstab[1]), w1);
-                                float32x4_t s2 = vmulq_f32(vld1q_f32(inptr_xi + ofstab[2]), w2);
-
-                                s0 = vfmaq_f32(s0, vld1q_f32(inptr_xi + ofstab[3]), w3);
-                                s1 = vfmaq_f32(s1, vld1q_f32(inptr_xi + ofstab[4]), w4);
-                                s2 = vfmaq_f32(s2, vld1q_f32(inptr_xi + ofstab[5]), w5);
-
-                                s0 = vfmaq_f32(s0, vld1q_f32(inptr_xi + ofstab[6]), w6);
-                                s1 = vfmaq_f32(s1, vld1q_f32(inptr_xi + ofstab[7]), w7);
-                                s2 = vfmaq_f32(s2, vld1q_f32(inptr_xi + ofstab[8]), w8);
-
-                                s0 = vaddq_f32(vaddq_f32(s0, s1), s2);
-                                s0 = vmulq_f32(vminq_f32(s0, vmaxval),
-                                               vbslq_f32(vcltq_f32(s0, z), valpha, one));
-                                vst1q_f32(outptr + x0, s0);
-                            }
-                        }
-                    } else if (stride_x == 1) {
-                        for (; x0 < x1; x0 += vec_nlanes) {
-                            if (x0 + vec_nlanes > x1) {
-                                if (x0 <= inner_xleft)
-                                    break;
-                                x0 = x1 - vec_nlanes;
-                            }
-                            int xi_ = x0*stride_x - pad_left, k = 0;
-                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                            float32x4_t s0 = vbias;
-                            for (; k <= ksize - 4; k += 4) {
-                                float32x4_t v0 = vld1q_f32(inptr_xi + ofstab[k]);
-                                float32x4_t v1 = vld1q_f32(inptr_xi + ofstab[k+1]);
-                                float32x4_t v2 = vld1q_f32(inptr_xi + ofstab[k+2]);
-                                float32x4_t v3 = vld1q_f32(inptr_xi + ofstab[k+3]);
-                                float32x4_t ww = vld1q_f32(weights + k);
-                                s0 = vfmaq_laneq_f32(s0, v0, ww, 0);
-                                s0 = vfmaq_laneq_f32(s0, v1, ww, 1);
-                                s0 = vfmaq_laneq_f32(s0, v2, ww, 2);
-                                s0 = vfmaq_laneq_f32(s0, v3, ww, 3);
-                            }
-                            for (; k < ksize; k++)
-                                s0 = vfmaq_f32(s0, vld1q_f32(inptr_xi + ofstab[k]),
-                                               vdupq_n_f32(weights[k]));
-                            s0 = vmulq_f32(vminq_f32(s0, vmaxval),
-                                           vbslq_f32(vcltq_f32(s0, z), valpha, one));
-                            vst1q_f32(outptr + x0, s0);
-                        }
-                    } else if (yi_ + (Hk-1)*conv->dilation_y < Hi-1) {
-                        assert(stride_x == 2);
-                        for (; x0 < x1; x0 += vec_nlanes) {
-                            if (x0 + vec_nlanes > x1) {
-                                if (x0 <= inner_xleft)
-                                    break;
-                                x0 = x1 - vec_nlanes;
-                            }
-                            int xi_ = x0*stride_x - pad_left, k = 0;
-                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                            float32x4_t s0 = vbias;
-                            for (; k <= ksize - 4; k += 4) {
-                                float32x4_t v0 = vld2q_f32(inptr_xi + ofstab[k]).val[0];
-                                float32x4_t v1 = vld2q_f32(inptr_xi + ofstab[k+1]).val[0];
-                                float32x4_t v2 = vld2q_f32(inptr_xi + ofstab[k+2]).val[0];
-                                float32x4_t v3 = vld2q_f32(inptr_xi + ofstab[k+3]).val[0];
-                                float32x4_t ww = vld1q_f32(weights + k);
-                                s0 = vfmaq_laneq_f32(s0, v0, ww, 0);
-                                s0 = vfmaq_laneq_f32(s0, v1, ww, 1);
-                                s0 = vfmaq_laneq_f32(s0, v2, ww, 2);
-                                s0 = vfmaq_laneq_f32(s0, v3, ww, 3);
-                            }
-                            for (; k < ksize; k++)
-                                s0 = vfmaq_f32(s0, vld2q_f32(inptr_xi + ofstab[k]).val[0],
-                                               vdupq_n_f32(weights[k]));
-                            s0 = vmulq_f32(vminq_f32(s0, vmaxval),
-                                           vbslq_f32(vcltq_f32(s0, z), valpha, one));
-                            vst1q_f32(outptr + x0, s0);
-                        }
-                    }
+                float32x4_t w0=vdupq_n_f32(0.f), w1=w0, w2=w0, w3=w0, w4=w0, w5=w0, w6=w0, w7=w0, w8=w0;
+                float32x4_t vbias = vdupq_n_f32(biasval);
+                if (useSIMD && is3x3) {
+                    w0 = vdupq_n_f32(weights[0]);
+                    w1 = vdupq_n_f32(weights[1]);
+                    w2 = vdupq_n_f32(weights[2]);
+                    w3 = vdupq_n_f32(weights[3]);
+                    w4 = vdupq_n_f32(weights[4]);
+                    w5 = vdupq_n_f32(weights[5]);
+                    w6 = vdupq_n_f32(weights[6]);
+                    w7 = vdupq_n_f32(weights[7]);
+                    w8 = vdupq_n_f32(weights[8]);
                 }
             #elif defined __AVX2__
-                if (useSIMD) {
-                    if (stride_x == 1) {
-                        for (; x0 < x1; x0 += vec_nlanes) {
-                            if (x0 + vec_nlanes > x1) {
-                                if (x0 <= inner_xleft)
-                                    break;
-                                x0 = x1 - vec_nlanes;
-                            }
-                            int xi_ = x0*stride_x - pad_left, k = 0;
-                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                            __m256 s0 = vbias;
-                            for (; k <= ksize - 4; k += 4) {
-                                __m256 v0 = _mm256_loadu_ps(inptr_xi + ofstab[k]);
-                                __m256 v1 = _mm256_loadu_ps(inptr_xi + ofstab[k+1]);
-                                __m256 v2 = _mm256_loadu_ps(inptr_xi + ofstab[k+2]);
-                                __m256 v3 = _mm256_loadu_ps(inptr_xi + ofstab[k+3]);
-                                __m256 w = _mm256_broadcast_ss(weights + k);
-                                s0 = _mm256_fmadd_ps(v0, w, s0);
-                                w = _mm256_broadcast_ss(weights + k + 1);
-                                s0 = _mm256_fmadd_ps(v1, w, s0);
-                                w = _mm256_broadcast_ss(weights + k + 2);
-                                s0 = _mm256_fmadd_ps(v2, w, s0);
-                                w = _mm256_broadcast_ss(weights + k + 3);
-                                s0 = _mm256_fmadd_ps(v3, w, s0);
-                            }
-                            for (; k < ksize; k++) {
-                                __m256 v0 = _mm256_loadu_ps(inptr_xi + ofstab[k]);
-                                __m256 w = _mm256_broadcast_ss(weights + k);
-                                s0 = _mm256_fmadd_ps(v0, w, s0);
-                            }
-                            s0 = _mm256_mul_ps(_mm256_min_ps(s0, vmaxval),
-                                    _mm256_blendv_ps(one, valpha,
-                                        _mm256_cmp_ps(s0, z, _CMP_LT_OQ)));
-                            _mm256_storeu_ps(outptr + x0, s0);
-                        }
-                    } else if (yi_ + (Hk-1)*conv->dilation_y < Hi-1) {
-                        assert(stride_x == 2);
-                        for (; x0 < x1; x0 += vec_nlanes) {
-                            if (x0 + vec_nlanes > x1) {
-                                if (x0 <= inner_xleft)
-                                    break;
-                                x0 = x1 - vec_nlanes;
-                            }
-                            int xi_ = x0*stride_x - pad_left, k = 0;
-                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                            __m256 s0 = vbias;
-                            for (; k <= ksize - 4; k += 4) {
-                                __m256 v0 = _mm256_loadeven_ps(inptr_xi + ofstab[k]);
-                                __m256 v1 = _mm256_loadeven_ps(inptr_xi + ofstab[k+1]);
-                                __m256 v2 = _mm256_loadeven_ps(inptr_xi + ofstab[k+2]);
-                                __m256 v3 = _mm256_loadeven_ps(inptr_xi + ofstab[k+3]);
-                                __m256 w = _mm256_broadcast_ss(weights + k);
-                                s0 = _mm256_fmadd_ps(v0, w, s0);
-                                w = _mm256_broadcast_ss(weights + k + 1);
-                                s0 = _mm256_fmadd_ps(v1, w, s0);
-                                w = _mm256_broadcast_ss(weights + k + 2);
-                                s0 = _mm256_fmadd_ps(v2, w, s0);
-                                w = _mm256_broadcast_ss(weights + k + 3);
-                                s0 = _mm256_fmadd_ps(v3, w, s0);
-                            }
-                            for (; k < ksize; k++) {
-                                __m256 v0 = _mm256_loadeven_ps(inptr_xi + ofstab[k]);
-                                __m256 w = _mm256_broadcast_ss(weights + k);
-                                s0 = _mm256_fmadd_ps(v0, w, s0);
-                            }
-                            s0 = _mm256_mul_ps(_mm256_min_ps(s0, vmaxval),
-                                    _mm256_blendv_ps(one, valpha,
-                                    _mm256_cmp_ps(s0, z, _CMP_LT_OQ)));
-                            _mm256_storeu_ps(outptr + x0, s0);
-                        }
-                    }
-                }
+                const int even_mask[] = {0, 2, 4, 6, 1, 3, 5, 7};
+                __m256 vbias = _mm256_set1_ps(biasval);
+                __m256i even = _mm256_loadu_si256((const __m256i*)even_mask);
+                #define _mm256_loadeven_ps(ptr) \
+                    _mm256_permute2f128_ps( \
+                        _mm256_permutevar8x32_ps(_mm256_loadu_ps(ptr), even), \
+                        _mm256_permutevar8x32_ps(_mm256_loadu_ps((ptr) + 8), even), \
+                        0 + 2*16)
             #endif
-                if (dy0 == 3) {
-                    for (; x0 < x1; x0++) {
-                        int xi_ = x0*stride_x - pad_left;
-                        const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                        s_0 = s_1 = s_2 = biasval;
-                        for (int k = 0; k < ksize; k++) {
-                            int inp_ofs = ofstab[k];
-                            float w = weights[k];
-                            s_0 += inptr_xi[inp_ofs]*w;
-                            s_1 += inptr_xi[inp_ofs + Wi]*w;
-                            s_2 += inptr_xi[inp_ofs + Wi*2]*w;
-                        }
-                        s_0 = s_0 <= maxval ? s_0 : maxval;
-                        s_0 *= (s_0 < 0.f ? alpha : 1.f);
-                        s_1 = s_1 <= maxval ? s_1 : maxval;
-                        s_1 *= (s_1 < 0.f ? alpha : 1.f);
-                        s_2 = s_2 <= maxval ? s_2 : maxval;
-                        s_2 *= (s_2 < 0.f ? alpha : 1.f);
-                        outptr[x0] = s_0;
-                        outptr[x0 + W0] = s_1;
-                        outptr[x0 + W0*2] = s_2;
-                    }
-                } else {
-                    for (; x0 < x1; x0++) {
-                        int xi_ = x0*stride_x - pad_left;
-                        const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                        s_0 = biasval;
-                        for (int k = 0; k < ksize; k++) {
-                            s_0 += inptr_xi[ofstab[k]]*weights[k];
-                        }
-                        s_0 = s_0 <= maxval ? s_0 : maxval;
-                        s_0 *= (s_0 < 0.f ? alpha : 1.f);
-                        outptr[x0] = s_0;
-                    }
+        #endif
+            for (int y0 = 0; y0 < H0; y0 += dy0, outptr += W0*dy0) {
+            #if _FX_DEPTHWISE_USE_SIMD && (defined __ARM_NEON)
+                dy0 = inner_ytop <= y0 && y0+3 < inner_ybottom && is3x3_r3 ? 3 : 1;
+            #endif
+                int k0 = 0, k1 = ksize;
+                bool inner_y = y0 >= inner_ytop && y0 < inner_ybottom;
+                int x0 = 0, x1 = inner_xleft, x0_start;
+                int yi_ = y0*stride_y - pad_top;
+                if (!inner_y) {
+                    for (; k0 < ksize; k0++)
+                        if ((unsigned)(yi_ + yxtab[k0*2]) < (unsigned)Hi)
+                            break;
+                    for (; k1 > 0; k1--)
+                        if ((unsigned)(yi_ + yxtab[k1*2-2]) < (unsigned)Hi)
+                            break;
                 }
-                x1 = W0;
+            #if _FX_DEPTHWISE_USE_SIMD
+                if (dy0 == 1 && !is3x3 && safe_y0 <= y0 && y0 < safe_y1 && W0 > vec_nlanes/2)
+                    x1 = 0;
+            #endif
+                for(;;) {
+                    float s_0, s_1, s_2;
+                    if (dy0 == 3) {
+                        for (; x0 < x1; x0++) {
+                            int xi_ = x0*stride_x - pad_left;
+                            s_0 = s_1 = s_2 = biasval;
+                            for (int k = 0; k < ksize; k++) {
+                                int yi = yi_ + yxtab[k*2];
+                                int xi = xi_ + yxtab[k*2+1];
+                                float w = weights[k];
+                                if ((unsigned)xi < (unsigned)Wi) {
+                                    s_0 += inptr[yi*Wi + xi]*w;
+                                    s_1 += inptr[(yi+1)*Wi + xi]*w;
+                                    s_2 += inptr[(yi+2)*Wi + xi]*w;
+                                }
+                            }
+                            s_0 = s_0 <= maxval ? s_0 : maxval;
+                            s_0 *= (s_0 < 0.f ? alpha : 1.f);
+                            s_1 = s_1 <= maxval ? s_1 : maxval;
+                            s_1 *= (s_1 < 0.f ? alpha : 1.f);
+                            s_2 = s_2 <= maxval ? s_2 : maxval;
+                            s_2 *= (s_2 < 0.f ? alpha : 1.f);
+                            outptr[x0] = s_0;
+                            outptr[x0 + W0] = s_1;
+                            outptr[x0 + W0*2] = s_2;
+                        }
+                    } else {
+                        for (; x0 < x1; x0++) {
+                            int xi_ = x0*stride_x - pad_left;
+                            s_0 = biasval;
+                            for (int k = k0; k < k1; k++) {
+                                int yi = yi_ + yxtab[k*2];
+                                int xi = xi_ + yxtab[k*2+1];
+                                float w = weights[k];
+                                if ((unsigned)xi < (unsigned)Wi)
+                                    s_0 += inptr[yi*Wi + xi]*w;
+                            }
+                            s_0 = s_0 <= maxval ? s_0 : maxval;
+                            s_0 *= (s_0 < 0.f ? alpha : 1.f);
+                            outptr[x0] = s_0;
+                        }
+                    }
+                    if (x0 >= W0)
+                        break;
+                    x0_start = x0;
+                    x1 = inner_xright;
+                #if _FX_DEPTHWISE_USE_SIMD && (defined __ARM_NEON)
+                    if (useSIMD) {
+                        if (is3x3 && inner_y) {
+                            if (dy0 == 3) {
+                                for (; x0 < x1; x0 += vec_nlanes) {
+                                    if (x0 + vec_nlanes > x1) {
+                                        if (x0 <= inner_xleft)
+                                            break;
+                                        x0 = x1 - vec_nlanes;
+                                    }
+                                    int xi_ = x0*stride_x - pad_left;
+                                    const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                                    float32x4_t s0, s1, s2;
+                                    float32x4_t x00 = vld1q_f32(inptr_xi);
+                                    float32x4_t x01 = vld1q_f32(inptr_xi + 1);
+                                    float32x4_t x02 = vld1q_f32(inptr_xi + 2);
+
+                                    float32x4_t x10 = vld1q_f32(inptr_xi + Wi);
+                                    float32x4_t x11 = vld1q_f32(inptr_xi + Wi + 1);
+                                    float32x4_t x12 = vld1q_f32(inptr_xi + Wi + 2);
+
+                                    float32x4_t x20 = vld1q_f32(inptr_xi + Wi*2);
+                                    float32x4_t x21 = vld1q_f32(inptr_xi + Wi*2 + 1);
+                                    float32x4_t x22 = vld1q_f32(inptr_xi + Wi*2 + 2);
+
+                                    float32x4_t x30 = vld1q_f32(inptr_xi + Wi*3);
+                                    float32x4_t x31 = vld1q_f32(inptr_xi + Wi*3 + 1);
+                                    float32x4_t x32 = vld1q_f32(inptr_xi + Wi*3 + 2);
+
+                                    float32x4_t x40 = vld1q_f32(inptr_xi + Wi*4);
+                                    float32x4_t x41 = vld1q_f32(inptr_xi + Wi*4 + 1);
+                                    float32x4_t x42 = vld1q_f32(inptr_xi + Wi*4 + 2);
+
+                                    s0 = vfmaq_f32(vbias, x00, w0);
+                                    s1 = vfmaq_f32(vbias, x10, w0);
+                                    s2 = vfmaq_f32(vbias, x20, w0);
+
+                                    s0 = vfmaq_f32(s0, x01, w1);
+                                    s1 = vfmaq_f32(s1, x11, w1);
+                                    s2 = vfmaq_f32(s2, x21, w1);
+
+                                    s0 = vfmaq_f32(s0, x02, w2);
+                                    s1 = vfmaq_f32(s1, x12, w2);
+                                    s2 = vfmaq_f32(s2, x22, w2);
+
+                                    s0 = vfmaq_f32(s0, x10, w3);
+                                    s1 = vfmaq_f32(s1, x20, w3);
+                                    s2 = vfmaq_f32(s2, x30, w3);
+
+                                    s0 = vfmaq_f32(s0, x11, w4);
+                                    s1 = vfmaq_f32(s1, x21, w4);
+                                    s2 = vfmaq_f32(s2, x31, w4);
+
+                                    s0 = vfmaq_f32(s0, x12, w5);
+                                    s1 = vfmaq_f32(s1, x22, w5);
+                                    s2 = vfmaq_f32(s2, x32, w5);
+
+                                    s0 = vfmaq_f32(s0, x20, w6);
+                                    s1 = vfmaq_f32(s1, x30, w6);
+                                    s2 = vfmaq_f32(s2, x40, w6);
+
+                                    s0 = vfmaq_f32(s0, x21, w7);
+                                    s1 = vfmaq_f32(s1, x31, w7);
+                                    s2 = vfmaq_f32(s2, x41, w7);
+
+                                    s0 = vfmaq_f32(s0, x22, w8);
+                                    s1 = vfmaq_f32(s1, x32, w8);
+                                    s2 = vfmaq_f32(s2, x42, w8);
+
+                                    s0 = vmulq_f32(vminq_f32(s0, vmaxval),
+                                                vbslq_f32(vcltq_f32(s0, z), valpha, one));
+                                    s1 = vmulq_f32(vminq_f32(s1, vmaxval),
+                                                vbslq_f32(vcltq_f32(s1, z), valpha, one));
+                                    s2 = vmulq_f32(vminq_f32(s2, vmaxval),
+                                                vbslq_f32(vcltq_f32(s2, z), valpha, one));
+                                    vst1q_f32(outptr + x0, s0);
+                                    vst1q_f32(outptr + W0 + x0, s1);
+                                    vst1q_f32(outptr + W0*2 + x0, s2);
+                                }
+                            } else {
+                                for (; x0 < x1; x0 += vec_nlanes) {
+                                    if (x0 + vec_nlanes > x1) {
+                                        if (x0 <= inner_xleft)
+                                            break;
+                                        x0 = x1 - vec_nlanes;
+                                    }
+                                    int xi_ = x0*stride_x - pad_left;
+                                    const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                                    float32x4_t s0 = vfmaq_f32(vbias, vld1q_f32(inptr_xi + ofstab[0]), w0);
+                                    float32x4_t s1 = vmulq_f32(vld1q_f32(inptr_xi + ofstab[1]), w1);
+                                    float32x4_t s2 = vmulq_f32(vld1q_f32(inptr_xi + ofstab[2]), w2);
+
+                                    s0 = vfmaq_f32(s0, vld1q_f32(inptr_xi + ofstab[3]), w3);
+                                    s1 = vfmaq_f32(s1, vld1q_f32(inptr_xi + ofstab[4]), w4);
+                                    s2 = vfmaq_f32(s2, vld1q_f32(inptr_xi + ofstab[5]), w5);
+
+                                    s0 = vfmaq_f32(s0, vld1q_f32(inptr_xi + ofstab[6]), w6);
+                                    s1 = vfmaq_f32(s1, vld1q_f32(inptr_xi + ofstab[7]), w7);
+                                    s2 = vfmaq_f32(s2, vld1q_f32(inptr_xi + ofstab[8]), w8);
+
+                                    s0 = vaddq_f32(vaddq_f32(s0, s1), s2);
+                                    s0 = vmulq_f32(vminq_f32(s0, vmaxval),
+                                                vbslq_f32(vcltq_f32(s0, z), valpha, one));
+                                    vst1q_f32(outptr + x0, s0);
+                                }
+                            }
+                        } else if (stride_x == 1) {
+                            if (y0 < safe_y1 && x0 + vec_nlanes/2 <= W0)
+                                x1 = W0;
+                            for (; x0 < x1; x0 += vec_nlanes) {
+                                if (x0 + vec_nlanes > x1) {
+                                    if (x0 == x0_start && x0_start > 0)
+                                        break;
+                                    x0 = x1 - vec_nlanes;
+                                    if (x0 < 0) x0 = 0;
+                                }
+                                int xi_ = x0*stride_x - pad_left, k = k0;
+                                const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                                float32x4_t s0 = vbias;
+                                // (x0 + vec_nlanes - 1)*stride_x - pad_left + (Wk - 1)*dilation_x < Wi ~
+                                // xi_ < Wi - (vec_nlanes - 1)*stride_x - (Wk - 1)*dilation_x = Wi_simd
+                                if ((unsigned)xi_ < (unsigned)Wi_simd) {
+                                    for (; k <= k1 - 4; k += 4) {
+                                        float32x4_t v0 = vld1q_f32(inptr_xi + ofstab[k]);
+                                        float32x4_t v1 = vld1q_f32(inptr_xi + ofstab[k+1]);
+                                        float32x4_t v2 = vld1q_f32(inptr_xi + ofstab[k+2]);
+                                        float32x4_t v3 = vld1q_f32(inptr_xi + ofstab[k+3]);
+                                        float32x4_t ww = vld1q_f32(weights + k);
+                                        s0 = vfmaq_laneq_f32(s0, v0, ww, 0);
+                                        s0 = vfmaq_laneq_f32(s0, v1, ww, 1);
+                                        s0 = vfmaq_laneq_f32(s0, v2, ww, 2);
+                                        s0 = vfmaq_laneq_f32(s0, v3, ww, 3);
+                                    }
+                                    for (; k < k1; k++)
+                                        s0 = vfmaq_f32(s0, vld1q_f32(inptr_xi + ofstab[k]), vdupq_n_f32(weights[k]));
+                                } else {
+                                    uint32x4_t vxofs = vdupq_n_u32((uint32_t)xi_);
+                                    for (; k <= k1 - 4; k += 4) {
+                                    #define _FX_LOAD_APPLY_MASK_F32(i) \
+                                        uint32x4_t m##i = vaddq_u32(vld1q_u32(xofstab + (k+i)*vec_nlanes), vxofs); \
+                                        m##i = vcltq_u32(m##i, v_Wi); \
+                                        m##i = vandq_u32(m##i, vld1q_u32( \
+                                            (const uint32_t*)inptr_xi + ofstab[k+i])); \
+                                        float32x4_t v##i = vreinterpretq_f32_u32(m##i)
+
+                                        _FX_LOAD_APPLY_MASK_F32(0);
+                                        _FX_LOAD_APPLY_MASK_F32(1);
+                                        _FX_LOAD_APPLY_MASK_F32(2);
+                                        _FX_LOAD_APPLY_MASK_F32(3);
+                                        float32x4_t ww = vld1q_f32(weights + k);
+                                        s0 = vfmaq_laneq_f32(s0, v0, ww, 0);
+                                        s0 = vfmaq_laneq_f32(s0, v1, ww, 1);
+                                        s0 = vfmaq_laneq_f32(s0, v2, ww, 2);
+                                        s0 = vfmaq_laneq_f32(s0, v3, ww, 3);
+                                    }
+                                    for (; k < k1; k++) {
+                                        _FX_LOAD_APPLY_MASK_F32(0);
+                                        float32x4_t ww = vdupq_n_f32(weights[k]);
+                                        s0 = vfmaq_f32(s0, v0, ww);
+                                    }
+                                }
+                                s0 = vmulq_f32(vminq_f32(s0, vmaxval),
+                                            vbslq_f32(vcltq_f32(s0, z), valpha, one));
+                                vst1q_f32(outptr + x0, s0);
+                            }
+                        } else if(yi_ + (Hk-1)*dilation_y < Hi-1 || x1 < W0) {
+                            assert(stride_x == 2);
+                            if (y0 < safe_y1 && x0 + vec_nlanes/2 <= W0)
+                                x1 = W0;
+                            for (; x0 < x1; x0 += vec_nlanes) {
+                                if (x0 + vec_nlanes > x1) {
+                                    if (x0 == x0_start && x0_start > 0)
+                                        break;
+                                    x0 = x1 - vec_nlanes;
+                                    if (x0 < 0) x0 = 0;
+                                }
+                                int xi_ = x0*stride_x - pad_left, k = k0;
+                                const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                                float32x4_t s0 = vbias;
+                                if ((unsigned)xi_ < (unsigned)Wi_simd) {
+                                    for (; k <= k1 - 4; k += 4) {
+                                        float32x4_t v0 = vld2q_f32(inptr_xi + ofstab[k]).val[0];
+                                        float32x4_t v1 = vld2q_f32(inptr_xi + ofstab[k+1]).val[0];
+                                        float32x4_t v2 = vld2q_f32(inptr_xi + ofstab[k+2]).val[0];
+                                        float32x4_t v3 = vld2q_f32(inptr_xi + ofstab[k+3]).val[0];
+                                        float32x4_t ww = vld1q_f32(weights + k);
+                                        s0 = vfmaq_laneq_f32(s0, v0, ww, 0);
+                                        s0 = vfmaq_laneq_f32(s0, v1, ww, 1);
+                                        s0 = vfmaq_laneq_f32(s0, v2, ww, 2);
+                                        s0 = vfmaq_laneq_f32(s0, v3, ww, 3);
+                                    }
+                                    for (; k < k1; k++)
+                                        s0 = vfmaq_f32(s0, vld2q_f32(inptr_xi + ofstab[k]).val[0], vdupq_n_f32(weights[k]));
+                                } else {
+                                    uint32x4_t vxofs = vdupq_n_u32((uint32_t)xi_);
+                                    for (; k <= k1 - 4; k += 4) {
+                                    #undef _FX_LOAD_APPLY_MASK_F32
+                                    #define _FX_LOAD_APPLY_MASK_F32(i) \
+                                        uint32x4_t m##i = vaddq_u32(vld1q_u32(xofstab + (k+i)*vec_nlanes), vxofs); \
+                                        m##i = vcltq_u32(m##i, v_Wi); \
+                                        m##i = vandq_u32(m##i, vld2q_u32( \
+                                            (const uint32_t*)inptr_xi + ofstab[k+i]).val[0]); \
+                                        float32x4_t v##i = vreinterpretq_f32_u32(m##i)
+
+                                        _FX_LOAD_APPLY_MASK_F32(0);
+                                        _FX_LOAD_APPLY_MASK_F32(1);
+                                        _FX_LOAD_APPLY_MASK_F32(2);
+                                        _FX_LOAD_APPLY_MASK_F32(3);
+                                        float32x4_t ww = vld1q_f32(weights + k);
+                                        s0 = vfmaq_laneq_f32(s0, v0, ww, 0);
+                                        s0 = vfmaq_laneq_f32(s0, v1, ww, 1);
+                                        s0 = vfmaq_laneq_f32(s0, v2, ww, 2);
+                                        s0 = vfmaq_laneq_f32(s0, v3, ww, 3);
+                                    }
+                                    for (; k < k1; k++) {
+                                        _FX_LOAD_APPLY_MASK_F32(0);
+                                        float32x4_t ww = vdupq_n_f32(weights[k]);
+                                        s0 = vfmaq_f32(s0, v0, ww);
+                                    }
+                                }
+                                s0 = vmulq_f32(vminq_f32(s0, vmaxval),
+                                            vbslq_f32(vcltq_f32(s0, z), valpha, one));
+                                vst1q_f32(outptr + x0, s0);
+                            }
+                        }
+                    }
+                #elif _FX_DEPTHWISE_USE_SIMD && (defined __AVX2__)
+                    if (useSIMD) {
+                        if (stride_x == 1) {
+                            for (; x0 < x1; x0 += vec_nlanes) {
+                                if (x0 + vec_nlanes > x1) {
+                                    if (x0 <= inner_xleft)
+                                        break;
+                                    x0 = x1 - vec_nlanes;
+                                }
+                                int xi_ = x0*stride_x - pad_left, k = 0;
+                                const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                                __m256 s0 = vbias;
+                                for (; k <= ksize - 4; k += 4) {
+                                    __m256 v0 = _mm256_loadu_ps(inptr_xi + ofstab[k]);
+                                    __m256 v1 = _mm256_loadu_ps(inptr_xi + ofstab[k+1]);
+                                    __m256 v2 = _mm256_loadu_ps(inptr_xi + ofstab[k+2]);
+                                    __m256 v3 = _mm256_loadu_ps(inptr_xi + ofstab[k+3]);
+                                    __m256 w = _mm256_broadcast_ss(weights + k);
+                                    s0 = _mm256_fmadd_ps(v0, w, s0);
+                                    w = _mm256_broadcast_ss(weights + k + 1);
+                                    s0 = _mm256_fmadd_ps(v1, w, s0);
+                                    w = _mm256_broadcast_ss(weights + k + 2);
+                                    s0 = _mm256_fmadd_ps(v2, w, s0);
+                                    w = _mm256_broadcast_ss(weights + k + 3);
+                                    s0 = _mm256_fmadd_ps(v3, w, s0);
+                                }
+                                for (; k < ksize; k++) {
+                                    __m256 v0 = _mm256_loadu_ps(inptr_xi + ofstab[k]);
+                                    __m256 w = _mm256_broadcast_ss(weights + k);
+                                    s0 = _mm256_fmadd_ps(v0, w, s0);
+                                }
+                                s0 = _mm256_mul_ps(_mm256_min_ps(s0, vmaxval),
+                                        _mm256_blendv_ps(one, valpha,
+                                            _mm256_cmp_ps(s0, z, _CMP_LT_OQ)));
+                                _mm256_storeu_ps(outptr + x0, s0);
+                            }
+                        } else if (yi_ + (Hk-1)*conv->dilation_y < Hi-1) {
+                            assert(stride_x == 2);
+                            for (; x0 < x1; x0 += vec_nlanes) {
+                                if (x0 + vec_nlanes > x1) {
+                                    if (x0 <= inner_xleft)
+                                        break;
+                                    x0 = x1 - vec_nlanes;
+                                }
+                                int xi_ = x0*stride_x - pad_left, k = 0;
+                                const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                                __m256 s0 = vbias;
+                                for (; k <= ksize - 4; k += 4) {
+                                    __m256 v0 = _mm256_loadeven_ps(inptr_xi + ofstab[k]);
+                                    __m256 v1 = _mm256_loadeven_ps(inptr_xi + ofstab[k+1]);
+                                    __m256 v2 = _mm256_loadeven_ps(inptr_xi + ofstab[k+2]);
+                                    __m256 v3 = _mm256_loadeven_ps(inptr_xi + ofstab[k+3]);
+                                    __m256 w = _mm256_broadcast_ss(weights + k);
+                                    s0 = _mm256_fmadd_ps(v0, w, s0);
+                                    w = _mm256_broadcast_ss(weights + k + 1);
+                                    s0 = _mm256_fmadd_ps(v1, w, s0);
+                                    w = _mm256_broadcast_ss(weights + k + 2);
+                                    s0 = _mm256_fmadd_ps(v2, w, s0);
+                                    w = _mm256_broadcast_ss(weights + k + 3);
+                                    s0 = _mm256_fmadd_ps(v3, w, s0);
+                                }
+                                for (; k < ksize; k++) {
+                                    __m256 v0 = _mm256_loadeven_ps(inptr_xi + ofstab[k]);
+                                    __m256 w = _mm256_broadcast_ss(weights + k);
+                                    s0 = _mm256_fmadd_ps(v0, w, s0);
+                                }
+                                s0 = _mm256_mul_ps(_mm256_min_ps(s0, vmaxval),
+                                        _mm256_blendv_ps(one, valpha,
+                                        _mm256_cmp_ps(s0, z, _CMP_LT_OQ)));
+                                _mm256_storeu_ps(outptr + x0, s0);
+                            }
+                        }
+                    }
+                #endif
+                    if (dy0 == 3) {
+                        for (; x0 < x1; x0++) {
+                            int xi_ = x0*stride_x - pad_left;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                            s_0 = s_1 = s_2 = biasval;
+                            for (int k = 0; k < ksize; k++) {
+                                int inp_ofs = ofstab[k];
+                                float w = weights[k];
+                                s_0 += inptr_xi[inp_ofs]*w;
+                                s_1 += inptr_xi[inp_ofs + Wi]*w;
+                                s_2 += inptr_xi[inp_ofs + Wi*2]*w;
+                            }
+                            s_0 = s_0 <= maxval ? s_0 : maxval;
+                            s_0 *= (s_0 < 0.f ? alpha : 1.f);
+                            s_1 = s_1 <= maxval ? s_1 : maxval;
+                            s_1 *= (s_1 < 0.f ? alpha : 1.f);
+                            s_2 = s_2 <= maxval ? s_2 : maxval;
+                            s_2 *= (s_2 < 0.f ? alpha : 1.f);
+                            outptr[x0] = s_0;
+                            outptr[x0 + W0] = s_1;
+                            outptr[x0 + W0*2] = s_2;
+                        }
+                    } else {
+                        for (; x0 < x1; x0++) {
+                            int xi_ = x0*stride_x - pad_left;
+                            const float* inptr_xi = inptr + Wi*yi_ + xi_;
+                            s_0 = biasval;
+                            for (int k = k0; k < k1; k++) {
+                                s_0 += inptr_xi[ofstab[k]]*weights[k];
+                            }
+                            s_0 = s_0 <= maxval ? s_0 : maxval;
+                            s_0 *= (s_0 < 0.f ? alpha : 1.f);
+                            outptr[x0] = s_0;
+                        }
+                    }
+                    x1 = W0;
+                }
             }
         }
-        if (activ_func)
-            activ_func(outptr, outptr, (int_)out_planesize, conv->activ_params);
+        if (activ_func) {
+            float* outptr_nc = (float*)outptr0 + out_planesize*nc0;
+            activ_func(outptr_nc, outptr_nc,
+                (int_)out_planesize*(nc1 - nc0),
+                conv->activ_params);
+        }
     }
     return FX_OK;
 }
@@ -516,7 +626,7 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                         if ((unsigned)(yi_ + yxtab[k1*2-2]) < (unsigned)Hi)
                             break;
                 }
-                if (dy0 == 1 && safe_y0 <= y0 && y0 < safe_y1 && W0 > vec_nlanes/2)
+                if (dy0 == 1 && !is3x3 && safe_y0 <= y0 && y0 < safe_y1 && W0 > vec_nlanes/2)
                     x1 = 0;
                 for(;;) {
                     float s_0, s_1, s_2;
@@ -815,7 +925,7 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                             const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
                             s_0 = biasval;
                             for (int k = k0; k < k1; k++) {
-                                s_0 += FX_FLOAT(inptr_xi[ofstab[k]])*weights[k];
+                                s_0 += FX_FLOAT(inptr_xi[ofstab[k]])*w_f32[k];
                             }
                             s_0 = s_0 <= maxval ? s_0 : maxval;
                             s_0 *= (s_0 < 0.f ? alpha : 1.f);
@@ -825,8 +935,12 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                     x1 = W0;
                 }
             }
-            if (activ_func)
-                activ_func(outptr, outptr, (int_)out_planesize, conv->activ_params);
+        }
+        if (activ_func) {
+            fx_f16* outptr_nc = (fx_f16*)outptr0 + out_planesize*nc0;
+            activ_func(outptr_nc, outptr_nc,
+                (int_)out_planesize*(nc1 - nc0),
+                conv->activ_params);
         }
     }
     return FX_OK;
