@@ -1038,7 +1038,7 @@ int _fx_winograd_conv2d(int typ, int ndims, const int_* inpshape, const char* in
                 int block_id1 = block_id0 + _FX_WINO_IBLOCK;
                 block_id1 = block_id1 < blocks_per_plane ? block_id1 : blocks_per_plane;
                 size_t inwofs = ((n*ngroups + g)*blocks_per_plane_aligned + block_id0)*Cg*_FX_WINO_AREA;
-                size_t wofs = k0*Cg*_FX_WINO_AREA;
+                size_t wofs = (g*Kg_nblocks*_FX_WINO_KBLOCK + k0)*Cg*_FX_WINO_AREA;
                 #if _FX_NN_ENABLE_FP16
                 if (typ == FX_F16) {
                     fx_f16* inwptr = (fx_f16*)wbuf_all + inwofs;
